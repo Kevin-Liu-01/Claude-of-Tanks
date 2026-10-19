@@ -1570,7 +1570,13 @@ solo peak is 21 live vehicles (the player, four allies and sixteen hostiles), be
 (five humans, twenty hostiles at the cap) — the 10-17 peak, inside the 14 v 14 preset. The harness's `horde.law.peakAliveMax`
 reads 16 on every solo run (`tools/mode-aggression-targets.json` `horde.peakAlive`).
 
-@@PERF@@
+Measured once on the mobile tier (2026-10-19, `.qa-dev/modes228-captures.mjs` part `perf`, never staged; the mobile
+lap's iPhone, 892 x 412 landscape at DSF 3, `?tier=mobile`, headless Chromium over ANGLE; a solo Horde on Verdant in
+`m1a1_abrams_hc` driven to round 5, the swarm, until 16 hostiles stood with the four allies: 21 live) for 20 s of rAF
+gaps: 31 fps, gap p50 33.3 ms, p90 33.4, p99 50.1, 71 frames over 33 ms and 8 over 50 ms, at a 1-minute load of 80-84
+from other sessions (the 10-17 runs above sat at 56-87). The frame held at every other vsync throughout; the plan's
+40 fps at the solo peak is not shown on this loaded host, and the probe needs a quiet re-run before it is a verdict
+(open, gameplay-modes-228 round 2).
 
 A room seats at most six distinct bot vehicles a side (`TEAM_NATIONS_RULES.mpDistinctBotSpecsPerSide`): before, every bot
 cloned a human's pick, so a room loaded one or two profiles; it now loads up to twelve more. Host boot and client join on

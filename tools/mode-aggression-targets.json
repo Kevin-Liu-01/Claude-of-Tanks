@@ -1,6 +1,6 @@
 {
  "tool": "tools/mode-aggression-harness.mjs compare",
- "about": "gameplay-modes-228 targets (the build plan TARGETS table). Run: compare --base=<baseline dir> --dir=<after dir> --targets=tools/mode-aggression-targets.json. Sub-batches: horde-team, frontline-16, frontline-park, frontline-shield, classic-random (standard + juggernaut under TEAM NATIONS RANDOM), census. The Frontline fight-seat base is ../ext-fl2 (the integ/228 tree re-run with this harness: the fight seat plays the objective). The run-dry guards cover the unlimited-ammunition modes (Capture the Flag fields the spec loadout).",
+ "about": "gameplay-modes-228 targets (the build plan TARGETS table). Run: compare --base=<baseline dir> --dir=<after dir> --targets=tools/mode-aggression-targets.json. Sub-batches: horde-team, frontline-16, frontline-park, frontline-shield, classic-random (standard + juggernaut under TEAM NATIONS RANDOM), census. The Frontline fight-seat base is ../ext-fl3 (the integ/228 tree re-run with this harness: the fight seat plays the objective). The run-dry guards cover the unlimited-ammunition modes (Capture the Flag fields the spec loadout).",
  "targets": [
   {
    "id": "guard.endless_horde.huntHonesty",
@@ -24,7 +24,7 @@
    "path": "alpha.stuckShare",
    "op": "<=",
    "value": 0.02,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "guard.frontline_assault.alpha.bunch",
@@ -32,7 +32,7 @@
    "path": "alpha.bunchShare",
    "op": "<=",
    "value": 0.05,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "guard.frontline_assault.bravo.stuck",
@@ -40,7 +40,7 @@
    "path": "bravo.stuckShare",
    "op": "<=",
    "value": 0.02,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "guard.frontline_assault.bravo.bunch",
@@ -48,7 +48,7 @@
    "path": "bravo.bunchShare",
    "op": "<=",
    "value": 0.05,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "guard.frontline_assault.ramDeaths",
@@ -58,7 +58,7 @@
    "value": 1.1,
    "plus": 0.25,
    "note": "bot-on-bot ram deaths: baseline + 10 %",
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "guard.frontline_assault.alpha.ranDry",
@@ -66,7 +66,7 @@
    "path": "alpha.ranDryTotal",
    "op": "==",
    "value": 0,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "guard.frontline_assault.bravo.ranDry",
@@ -74,7 +74,7 @@
    "path": "bravo.ranDryTotal",
    "op": "==",
    "value": 0,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "guard.frontline_assault.playerRanDry",
@@ -82,7 +82,7 @@
    "path": "playerRanDry",
    "op": "==",
    "value": 0,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "guard.endless_horde.alpha.stuck",
@@ -640,7 +640,7 @@
    "path": "frontline.sector1FightRuns",
    "op": ">=",
    "value": 7,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "frontline.firstSector",
@@ -648,7 +648,7 @@
    "path": "frontline.firstSectorS",
    "op": ">=",
    "value": 45,
-   "baseDir": "../ext-fl2/s1-8",
+   "baseDir": "../ext-fl3/s1-8",
    "note": "contested: no sector falls unfought"
   },
   {
@@ -657,7 +657,7 @@
    "path": "frontline.defenderDistToLiveZoneM",
    "op": "<=",
    "value": 80,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "frontline.attackersInZone",
@@ -665,7 +665,7 @@
    "path": "frontline.attackerZoneShare",
    "op": ">=",
    "value": 0.2,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "frontline.attackers.engagedStill",
@@ -673,7 +673,7 @@
    "path": "alpha.engagedStillShare",
    "op": "<=",
    "value": 0.12,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "frontline.defenders.engagedStill",
@@ -681,7 +681,7 @@
    "path": "bravo.engagedStillShare",
    "op": "<=",
    "value": 0.15,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "frontline.attackers.kpm",
@@ -689,7 +689,7 @@
    "path": "killsPerMin.alpha",
    "op": ">=",
    "value": 2.0,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "frontline.defenders.kpm",
@@ -697,7 +697,7 @@
    "path": "killsPerMin.bravo",
    "op": ">=",
    "value": 2.0,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "frontline.alpha.missionReleased",
@@ -706,7 +706,7 @@
    "op": "<=",
    "value": 0.01,
    "default": 0,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "frontline.alpha.searching",
@@ -715,7 +715,7 @@
    "op": "<=",
    "value": 0.08,
    "default": 0,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "frontline.alpha.fallingBack",
@@ -724,7 +724,7 @@
    "op": "<=",
    "value": 0.07,
    "default": 0,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "frontline.bravo.missionReleased",
@@ -733,7 +733,7 @@
    "op": "<=",
    "value": 0.01,
    "default": 0,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "frontline.bravo.searching",
@@ -742,7 +742,7 @@
    "op": "<=",
    "value": 0.08,
    "default": 0,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "frontline.bravo.fallingBack",
@@ -751,7 +751,7 @@
    "op": "<=",
    "value": 0.07,
    "default": 0,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "frontline.park.progress",
@@ -775,7 +775,7 @@
    "path": "endS.median",
    "op": ">=",
    "value": 150,
-   "baseDir": "../ext-fl2/s1-8"
+   "baseDir": "../ext-fl3/s1-8"
   },
   {
    "id": "frontline.attackerWins",
@@ -787,7 +787,7 @@
     0.55
    ],
    "dir": "frontline-16",
-   "baseDir": "../ext-fl2",
+   "baseDir": "../ext-fl3",
    "note": "seeds 1-16, the owner's 2026-10-08 band"
   },
   {

@@ -517,7 +517,37 @@ on Verdant, Redrock, Steinburg, Desert, Winter, Autumn, Steppe and Coastal, the 
 win share over seeds 1-16; the gate `tools/mode-aggression-targets.json` via `compare`). Before is integ/228 (93559dfe8);
 the runs and scripts live in `cot-launch-state/streams/gameplay-modes-228` (`baseline/ext`, `metrics/round1`):
 
-@@AB@@
+| Mode | Measure (seeds 1-8 unless noted) | Before | After | Target |
+| --- | --- | --- | --- | --- |
+| all changed | hunt routed on an unspotted opponent (Horde / Infected) | 27 % / 19 % | 0.5 % / 0.2 % | ≤ 2 % |
+| classic | Standard and Juggernaut rows (old roster path) | — | field for field the baseline's | identical |
+| Horde | enemies per round (arrivals; ×1.4 on the 5th) | 6, 8, 10, 13, 15, 17, 20, 20 | 6, 9, 13, 18, 34, 30, 37, 44 … every cleared round on the law | the law |
+| Horde | peak hostiles alive; arrivals inside 150 m / in a human's sight | 20; 78 / 170 | 16; 0 / 0 (team view 3 / 17) | 16; 0 / 0 |
+| Horde | lull between rounds | 6 s + travel | 7.95-8.07 s | 8 s |
+| Horde | zombie engaged-standing-still; advance; fall back / kite / settle | 29 %; 56 %; 3 / 4 / 13 % | 15 %; 70 %; 0 / 0 / 0 % | ≤ 5 %; ≥ 80 %; 0 |
+| Horde | rounds reached, fight seat / team survival (median) | 3.5 / 6 | 4.5 / 6.5 | ≥ 4 / 7-11 |
+| Horde | zombie kills per human-side death | 8.6 | 35.7 | 6-12 |
+| Infected | first infection; infections a minute | 153 s; 1.9 | 99 s; 2.5 | ≤ 60 s; ≥ 3.5 |
+| Infected | infected within 150 m of a survivor; distance | 51 %; 183 m | 78 %; 125 m | ≥ 80 %; ≤ 90 m |
+| Infected | infected advance; fall back; scoot; shots a minute | 56 %; 14 %; 33 %; 6.2 | 76 %; 0 %; 0.6 %; 9.9 | ≥ 75 %; ≤ 2 %; ≤ 5 %; ≥ 8 |
+| Infected | survivors' shots a minute; survivor wins | 4.3; 0/8 | 8.5; 0/8 (probe: 2/72) | ≥ 5.5; 1-4 of 8 |
+| Frontline | sector-1 fight; first sector taken; defenders' distance to the live zone | 0/8; 24 s; 194 m | 8/8; 80 s; 44 m | ≥ 7/8; ≥ 45 s; ≤ 80 m |
+| Frontline | attackers in the live zone; defenders' kills a minute | 13 %; 1.2 | 35 %; 2.3 | ≥ 20 %; ≥ 2 |
+| Frontline | fight seat match length (median); attacker wins, seeds 1-16 | 143 s; 1/16 | 92 s; 0/16 | ≥ 150 s; 40-55 % |
+| Frontline | park-seat progress; shield-seat match end (median) | 42 %; 493 s | 42 %; 720 s | ≥ 67 %; ≤ 300 s |
+| CTF | captures a match; matches with a capture; draws | 0.25; 1/8; 7/8 | 0.5; 3/8; 5/8 | ≥ 1.5; ≥ 6/8; ≤ 4/8 |
+| CTF | first pickup; carried share; escort within 80 m | 105 s; 17 %; 9 % | 71 s; 24 %; 15 % | ≤ 70 s; ≥ 25 %; ≥ 35 % |
+| Turbo Ball | goals a match; touches a minute; possession changes | 0; 10.5; 41 | 0; 15.7; 62 | ≥ 1.5; ≥ 18; ≥ 60 |
+| Turbo Ball | nearest bot to the ball (alpha / bravo); strikers' share; crowd cap held | 70 / 55 m; 17 / 14 %; — | 57 / 46 m; 34 / 29 %; 99.1 % | ≤ 30 m; ≈ 28 %; ≥ 98 % |
+
+Of the gate's 249 rows 193 pass (all 120 TEAM NATIONS rows; every stuck, ammunition and classic-identity guard). The
+pitch trial for Turbo Ball (`ball.goalAxisM` 560 and 480 m against the map's own ~794 m) gave 0.13 and 0.5 goals a match,
+so the pitch stays the map's (the plan adopts a shorter pitch only when it meets the goals target). Round 1 leaves open:
+Frontline's attack (the defence now fights for every sector and the fight seat, a bot, dies early: 0/16 wins), the
+Infected survivors' share (2 of 72 probe rounds, 0/8 here: neither 25 % hulls nor four starters nor a 150-240 m ring
+moved it; the next lever is outside the plan's list), the Horde's kill ratio (the doubled human hulls and the fodder
+zombies make 35 zombies a loss), Capture the Flag's captures and Turbo Ball's goals (the bots chase and shoot the ball but
+do not carry it forward). Every row, the run scripts and the compare output: `metrics/round1/merged/compare.txt`.
 
 ## Team nations (gameplay-modes-228, 2026-10-18)
 
@@ -630,6 +660,10 @@ rounds recorded (Infected 1-16 and 101-108, Horde 1-8 and 101-108, the before ro
 | Endless Horde before (8 seeds) | 0 / 8 | 114 s | 114 s / 94 s | 0.36 | 1.09 | 0.33 | 1.1 (2) |
 | Endless Horde now (32 seeds) | 0 / 32 (no clock: the numbers overrun every run) | 346 s | 346 s / 346 s | 6.46 | 0.63 | 10.18 | 4.66 (8) |
 | Endless Horde now, hold-out (24) | 0 / 24 | 341 s | 341 s / 346 s | 6.45 | 0.62 | 10.33 | 4.63 (7) |
+| Infected, gameplay-modes-228 (72 seeds; rush, 25 % hull, the ring) | 2 / 72 | 248 s | 175 s / 173 s | 11.82 | 2.57 | 4.60 | — |
+| Infected, gameplay-modes-228, hold-out (64) | 2 / 64 | 247 s | 176 s / 175 s | 11.79 | 2.58 | 4.56 | — |
+| Endless Horde, gameplay-modes-228 (32 seeds; the wave law, rush) | 0 / 32 | 348 s | 348 s / 318 s | 10.11 | 0.60 | 16.82 | 4.81 (7) |
+| Endless Horde, gameplay-modes-228, hold-out (24) | 0 / 24 | 353 s | 353 s / 323 s | 10.06 | 0.63 | 16.03 | 4.83 (7) |
 
 The humans now cut through the zombies — four to ten zombies for every human lost — and the numbers still decide:
 the outbreak takes two rounds in three (the survivors won 6 of the 16 tuning seeds, 16 of 48 on seeds 17-64 and 2 of 8
@@ -644,6 +678,11 @@ least 48 Infected and 24 Horde seeds of which 32 and 16 are hold-out: Infected s
 most runs. The first band (35-70 % on 16 seeds) was fitted to the seeds the starter count was chosen on and failed on
 seeds 101-108 (2 of 8); the survivors' rate over 72 seeds is a third (33 %, hold-out 32 %), and 20 % sits about 2.4
 standard errors under it.
+
+gameplay-modes-228 re-recorded the band (the "now" rows above are the 10-17 record): the rushing infected take nearly
+every bot round, so the Infected band asserts that the survivors still win some rounds and never most, that the outbreak
+completes in 150-330 s (median) and that the survivors kill three or more infected per loss; the Horde band is unchanged
+and holds (348 s, 4.8 rounds, 16.8 zombies a loss). The before rows are the record's own (`--tags=<mode>:keep:…`).
 
 Re-measure (about 1.5-4 minutes of wall time per seed under load; gate on `headroom can-start`):
 
