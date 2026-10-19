@@ -1040,7 +1040,7 @@ pilot.
 | Plan contract | `types.ts` | the pathway classes by road index (`main`, `gasse`, `footpath`, `none`), the kerb line, the frontage band, the return radius, the excluded squares, the gates and the wall line; each civic area's room, arms, corridors, roundel, beds, paving, monument, trees, furniture, parking, lamps, lawns, keep-outs |
 | Regional style | `styles.ts` | kerb, pavement flags, gutter, bands, edging (kerb, dwarf wall, piers, railing kind), path, lawn, flowers, hedge, grates, steps |
 | Civic area | `civicAreaKit.ts` | one baked-material geometry (the roundel's ring and rose, the beds' kerb, wall, piers, lawn, paths and feature, the flush paving, the frontage walks with their Rinne, the fountain's ring, the landing steps, the bays' sett rows, the grates, the monument's octagon) and the pieces the props add after every seeded pass |
-| Pathways | `pathwayKit.ts` | kerbs and flag pavements only where houses front a main street (the run's kerb face on `kerbM`, its pavement out to the facade line, at most `maxWalkM`), never on a square or past the wall line, a metre clear of a gate's piers; returns round the lanes' corners; the lanes laid wall to wall by the terrain; the legacy kerb pass's draws spent first |
+| Pathways | `pathwayKit.ts` | kerbs and flag pavements only where houses front a main street (the run's kerb face on `kerbM`, its pavement out to the facade line, at most `maxWalkM`), never on a square or past the wall line, a metre clear of a gate's piers; returns round the lanes' corners, each where its run is carried on to the corner's tangent point (the fillet solved on the street segment that point lands on), none where a house, a mouth or the square stops the run; the lanes laid wall to wall by the terrain; the legacy kerb pass's draws spent first |
 | Furniture | `civicFurnitureKit.ts` | the kiosk, the Litfaßsäule, the TelH78, the bollard, the planter (r2, member-built, each with its broken state); the memorial column is wellKit's `saeule`, fortified cover (`collision.ts isFortifiedCoverKind`) |
 
 **The rules each adopting map's receipts hold** (`civicArea.selftest.mjs`, `civicPathways.selftest.mjs`,
@@ -1049,7 +1049,10 @@ pilot.
 - **G1 the objective seats.** Nothing in the roundel's hold disc (r 9 where there is one, 6 m at least); no solid that
   is not fortified inside an objective disc; the modes probe seats every objective unchanged within 1 m.
 - **G2 the corridors.** Nothing on the arms' carriageways; no crushable and no tree on the measured traffic corridors
-  (the routeheat probe's top quartile, authored as the plan's `corridors`); ring lanes at least 9 m.
+  (the routeheat probe's top quartile, authored as the plan's `corridors`); ring lanes at least 9 m (the plan's `lanes`,
+  measured across every half metre against every collision footprint and trunk); the arms at least as wide as the
+  narrowest street feeding the square; a 6 m pivot disc at each mouth; the objective seats past the roundel (an
+  extraction's convoy disc: the plan's `holds`) clear of every piece and trunk.
 - **G3 the planner.** A fortified monument stands at least 2.75 m (beyond its footprint) off every segment of its 25 m
   planner cell and 3.5 m off every node: no new hull-closed edge.
 - **G4 balance.** Hull-high crushable cover balanced across the team axis within one piece; the fleet brief's bands hold.
