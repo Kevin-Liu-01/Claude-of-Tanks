@@ -12,7 +12,7 @@
   "width": 1920,
   "height": 1080
  },
- "count": 10,
+ "count": 12,
  "items": [
   {
    "id": "f6-leo2a6-steinburg-r6",
@@ -194,6 +194,37 @@
    "source": "vs03-reservoir-k2-ztz99-r6-1920.webp"
   },
   {
+   "id": "vs04-railyard-leclerc-t14-r6",
+   "round": 6,
+   "map": "railyard",
+   "hour": "night",
+   "title": {
+    "en": "Cinder Junction, night: Leclerc SXXI v T-14 Armata",
+    "zh": "灰渣枢纽，夜晚：Leclerc SXXI 对 T-14 Armata"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leclerc_sxxi",
+     "displayName": "Leclerc SXXI",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t14_armata",
+     "displayName": "T-14 Armata",
+     "paint": "factory"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs04-railyard-leclerc-t14-r6.json",
+   "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r6.webp",
+   "bytes": 379282,
+   "sha256": "1bc260738a79ba312d9a83ececa502d4f9479f452026158ae5fbfca102e32c4a",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs04-railyard-leclerc-t14-r6-1920.webp"
+  },
+  {
    "id": "vs05-oasis-merkava-t72b3-r6",
    "round": 6,
    "map": "oasis",
@@ -353,6 +384,37 @@
    "width": 1920,
    "height": 1080,
    "source": "vs09-alpine-strv122-t80bv-r6-1920.webp"
+  },
+  {
+   "id": "vs10-steppe-chieftain-t64-r6",
+   "round": 6,
+   "map": "steppe",
+   "hour": "night",
+   "title": {
+    "en": "Tarkhan Steppe, night: Chieftain Mk 10 v T-64BV1",
+    "zh": "塔尔罕草原，夜晚：Chieftain Mk 10 对 T-64BV1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "chieftain_mk10",
+     "displayName": "Chieftain Mk 10",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1",
+     "paint": "factory"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs10-steppe-chieftain-t64-r6.json",
+   "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6.webp",
+   "bytes": 247650,
+   "sha256": "1d1da8987e4b7832e991d2b2ee9bbac9db8519271ed1bc3f1b53426a356863c2",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs10-steppe-chieftain-t64-r6-1920.webp"
   }
  ]
 }

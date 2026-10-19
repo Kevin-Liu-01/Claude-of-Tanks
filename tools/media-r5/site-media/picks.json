@@ -10,7 +10,7 @@
     "deliverFleet": "shots/media-r5/site50/deliver-fleet",
     "frames": "shots/media-r5/final/blur-r14/renders",
     "framesFallback": "shots/media-r5/final/blur-r13/renders",
-    "trailers": "shots/media-r5/trailers-r6/deliver",
+    "trailers": "shots/media-r5/trailers-r7/deliver",
     "home": "shots/media-r5/home-r2/deliver"
   },
   "takes": {
