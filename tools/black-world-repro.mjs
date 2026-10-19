@@ -56,7 +56,8 @@
  *                            tab brought to the front (CDP Page.bringToFront), as the frame scheduler sees a real blur
  *   --gldiag                 ?gldiag=1: the guard's per-pass GL error watch after every resolution change (P8)
  *   session steps: inject:<fault> (applied ONCE; the black-world guard must heal it), inject:persist:<fault>:<s> (applied
- *                  every frame for s seconds), faults layers | roots | override | passes | viewport1 | nancloud | nanscene;
+ *                  every frame for s seconds), faults layers | roots | override | passes | viewport1 | nancloud | nanscene (a NaN over the
+ *                  scene target inside the scene pass) | emptypass | control;
  *                  every inject row records the guard's receipts (window.__GL_DIAG.blackWorld) opened after the fault,
  *                  their class, heal rung and latency from the fault to the healthy verdict
  * Every row records the guard's incidents and stats (natural runs must show none).
@@ -665,19 +666,31 @@ function injectOnce(spec) {
       if (kind === 'nancloud') {
         if (!vc?.history) return { error: 'no cloud layer' };
         for (const target of vc.history) vc.renderQuad(nanMaterial, target);
-      } else {
-        // the scene target itself (the probe's NaN cells; it is redrawn next frame, so persist holds it)
-        const prev = R.getRenderTarget();
-        const q = vc ? (t) => vc.renderQuad(nanMaterial, t) : null;
-        if (q) q(P.sceneAA.sceneTarget);
-        R.setRenderTarget(prev);
+      } else if (!R.__bwrNanPass) {
+        // the scene pass itself lands a non-finite value (a NaN light or a broken material over the whole view): three's
+        // render into the scene target draws, then a NaN quad covers it, inside the pass and so before the guard's probe
+        // reads the target, for the fault's seconds (a frame written after the pass would be cleared by the next one)
+        if (!vc) return { error: 'no cloud layer (its quad draws the NaN)' };
+        const render = R.render;
+        R.__bwrNanPass = render;
+        let inside = false;
+        R.render = function (sceneArg, cameraArg) {
+          const target = R.getRenderTarget();
+          const result = render.call(this, sceneArg, cameraArg);
+          if (!inside && target === P.sceneAA.sceneTarget) {
+            inside = true;
+            try { vc.renderQuad(nanMaterial, target); } finally { inside = false; }
+          }
+          return result;
+        };
+        setTimeout(() => { R.render = render; delete R.__bwrNanPass; }, Math.max(0.05, seconds || 0.05) * 1000);
       }
     }
     return null;
   };
   const injectAt = performance.now();
   const error = apply();
-  if (persist && kind !== 'emptypass') {
+  if (persist && kind !== 'emptypass' && kind !== 'nanscene') {
     const until = injectAt + seconds * 1000;
     const loop = () => { if (performance.now() < until) { apply(); requestAnimationFrame(loop); } };
     requestAnimationFrame(loop);
