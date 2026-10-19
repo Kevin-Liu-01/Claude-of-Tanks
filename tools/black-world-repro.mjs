@@ -439,10 +439,11 @@ async function enterAndWait(page, map, row) {
   if (awayDuringLoadS > 0) {
     await sleep(awayAtS * 1000);
     const before = await page.evaluate(() => ({ cover: !!document.querySelector('.cot-bl.on'), phase: window.__DEBUG?.game?.phase ?? null })).catch(() => null);
-    await blurAndReturn(page, awayDuringLoadS, awayHidden);
+    // --real-focus: the page's own focus and visibility while away and once back (the change was real, not assumed)
+    const observed = await blurAndReturn(page, awayDuringLoadS, awayHidden);
     const after = await page.evaluate(() => ({ cover: !!document.querySelector('.cot-bl.on'), phase: window.__DEBUG?.game?.phase ?? null })).catch(() => null);
-    row.away = { atS: awayAtS, forS: awayDuringLoadS, hidden: awayHidden, before, after };
-    log(`  away during the load ${awayDuringLoadS} s${awayHidden ? ' (hidden)' : ''}: before ${JSON.stringify(before)} after ${JSON.stringify(after)}`);
+    row.away = { atS: awayAtS, forS: awayDuringLoadS, hidden: awayHidden, before, after, observed: observed ?? null };
+    log(`  away during the load ${awayDuringLoadS} s${awayHidden ? ' (hidden)' : ''}: before ${JSON.stringify(before)} after ${JSON.stringify(after)}${observed ? ` page ${JSON.stringify(observed)}` : ''}`);
   }
   return waiting;
 }
@@ -1388,7 +1389,8 @@ try {
           row.action = `preset-${step.value}`;
           log(`  preset: ${JSON.stringify(row.tier)}`);
         } else if (step.action === 'away' || step.action === 'awayhidden') {
-          await blurAndReturn(page, Number(step.value ?? pauseS), step.action === 'awayhidden');
+          row.awayObserved = (await blurAndReturn(page, Number(step.value ?? pauseS), step.action === 'awayhidden')) ?? null;
+          if (row.awayObserved) log(`  away ${step.value ?? pauseS} s: page ${JSON.stringify(row.awayObserved)}`);
           row.action = `${step.action}-${step.value ?? pauseS}s`;
         } else if (step.action === 'dynflap') {
           // the governor's resolution steps, forced: the pin walks 1 -> 0.9 -> 0.8 -> 0.667 -> 0.75 -> 1 every
