@@ -554,7 +554,22 @@ are the player's country and the ground force one enemy country. Rooms read coun
 
 Census (`mode-aggression-harness.mjs roster`, 7 modes × 32 seeds, no simulation):
 
-@@CENSUS@@
+| Row (32 seeds, before → after) | Allied nations | Enemy nations | On both sides | Enemy = player's country | Far-era seats | Bots outside the plan |
+| --- | --- | --- | --- | --- | --- | --- |
+| Standard / CTF / Turbo Ball, default (MONO) | 4.69 → 1 | 5.25 → 1 | 2.41 → 0 | 16 → 0 | 0 → 0 | 0 |
+| Frontline Assault, default | 2.78 → 1 | 1 → 1 | 0.09 → 0 | 3 → 0 | 12 → 0 | 0 |
+| Endless Horde, default | 3.38 → 1 | 1 → 1 | 0.19 → 0 | 6 → 0 | 5 → 0 | 0 |
+| Endless Horde, arranged enemy + sides ('both') | 1 → 1 | 5.19 → 1.78 (fills printed in 24 runs) | 0.06 → 0 | 2 → 0 | 20 → 0 | 0 |
+| Infected, default | 6.19 → 1.06 (fills printed in 2) | 4.03 → 1 | 2.28 → 0 | 14 → 0 | 0 → 0 | 0 |
+| Juggernaut, default (boss role) | — | 7.38 → 1 | 0.72 → 0 | 23 → 0 | 0 → 0 | 0 |
+| RANDOM, Standard / CTF / Turbo Ball | 4.69 | 5.25 | 2.41 | 16 | 0 | — (the old pool, field for field) |
+| RANDOM, Frontline / Horde enemies | — | 7.38 / 9.47 | 2.28 / 3.56 | 23 / 29 | 0 | — |
+
+The player's pick is kept in every row (32/32). Rooms: with one human (`mp1`) the bots no longer clone the host (32/32 runs
+before, 0 after), each side seats six distinct vehicles (1 before) and the enemy never holds the host's country (32 → 0);
+the co-op rooms seat 4 allies + the 20-strong pool (Horde) and 3 + 12 (Frontline), 0 + 0 before; `planStart` and
+`planFromRoom` name the same bots in every row (32/32). All 120 TEAM NATIONS rows of the gate pass
+(`tools/mode-aggression-targets.json`, `nations.*`).
 
 ## Zombie balance and endless rounds (2026-10-17)
 

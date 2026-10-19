@@ -1627,17 +1627,6 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const activeFriend = (friend: Entity, team: ObjectiveTeam): boolean =>
     teamOf(friend) === team && friend.modeActive !== false && !friend.combat.destroyed;
 
-  function responderRank(entity: Entity, team: ObjectiveTeam, point: ObjectivePoint): number {
-    const ownDistance = squaredDistance(entity, point.x, point.z);
-    let ahead = 0;
-    for (const friend of teams[team]) {
-      if (friend === entity || !friend.bot || !activeFriend(friend, team) || flagCarriedBy(friend.id)) continue;
-      const distance = squaredDistance(friend, point.x, point.z);
-      if (distance < ownDistance || (distance === ownDistance && friend.id < entity.id)) ahead++;
-    }
-    return ahead;
-  }
-
   // Capture the Flag bots (gameplay-modes-228; the ruleset's flagBots): the flags are run, not brawled over. Roles are
   // dealt per team once a second (and at once when a flag changes hands) in id order: with our flag away the nearest
   // recoverMin recover first; with our carrier running the nearest `escorts` of the rest escort it; then, with our flag
