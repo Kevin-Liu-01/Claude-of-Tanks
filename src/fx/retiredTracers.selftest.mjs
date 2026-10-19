@@ -78,6 +78,21 @@ assert.deepEqual([...unknown], [], 'every saved scene effect type is still a Stu
 const shots = readFileSync(join(ROOT, 'src/dev/shotViews.ts'), 'utf8');
 assert.match(shots, /combat_firing\(\)[\s\S]{0,1400}fx\.composeFiringMoment\(/, 'the __SHOTS combat_firing view still composes its shot');
 
+// ---- (r2) the frontline backdrop's AA fire draws through the projectile tracers, not its September shader ----
+{
+  const front = readFileSync(join(ROOT, 'src/world/frontlineAtmosphere.ts'), 'utf8');
+  assert.doesNotMatch(front, /TRACER_VERT|TRACER_FRAG|frontline-aa-tracers/, "the backdrop's own tracer shader and mesh are gone");
+  assert.match(front, /setAmbientRoundSource\(\{/, 'its rounds register as an ambient source');
+  assert.match(effects, /ambientRoundSource\(\)\?\.drawRounds\(drawAmbientRound\);/, 'and the effects frame draws them with the rounds in flight');
+  const { setAmbientRoundSource, ambientRoundSource } = await import('../world/destructibles.ts');
+  const a = { drawRounds() {} }, b = { drawRounds() {} };
+  const offA = setAmbientRoundSource(a), offB = setAmbientRoundSource(b);
+  offA();
+  assert.equal(ambientRoundSource(), b, "a stale unregister leaves the newer source in place");
+  offB();
+  assert.equal(ambientRoundSource(), null);
+}
+
 // ---- battle-only: the garage boot never statically reaches the gunship's FX resolver ----
 const closure = staticImportClosure('src/main.ts', { root: ROOT });
 for (const file of ['src/fx/gunshipRounds.ts', 'src/fx/projectileTracers.ts', 'src/fx/effects.ts', 'src/fx/missileLooks.ts']) {

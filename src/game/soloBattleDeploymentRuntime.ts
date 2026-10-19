@@ -58,6 +58,9 @@ async function stageGunshipAirframes(tanks: readonly DeploymentEntity[]): Promis
 type DeploymentGame = Omit<TerrainWarmOptions['game'], 'tanks' | 'player'> & {
   phase?: string;
   preBattleS?: number;
+  /** (ac130-fx-228 r2) the battle mode's presentation state, for the covered objective staging */
+  matchModeState?: unknown;
+  timeS?: number;
   tanks: DeploymentEntity[];
   player?: DeploymentEntity | null;
 };
@@ -112,6 +115,8 @@ interface DeploymentWarmTrace {
   enemyVisualsDeferred?: boolean;
   /** (ac130-fx-228 r2) gunship airframes staged for the covered compile */
   gunshipAirframes?: number;
+  /** (ac130-fx-228 r2) the mode objective presentations built for the covered compile */
+  objectivesStaged?: number;
   deploymentCompileMs?: number;
   deploymentProgramSubmission?: ForwardProgramCompileTiming;
   /** The scene's programs submitted once the battle's light signature is final, ahead of the allied builds. */
@@ -615,6 +620,15 @@ export function createSoloBattleDeploymentRuntime(
         const airframes = await stageGunshipAirframes(game.tanks);
         requireCurrent(generation);
         trace.gunshipAirframes = airframes.length;
+        // (ac130-fx-228 r2) the mode's objective markers and posts built for this compile (the battle's frame first hands
+        // them their state after it: an AC-130 battle's escort and extraction posts compiled at the reveal). The module
+        // is in: every battle's interface load waits for it (main.ts ensureBattleHud)
+        if (game.matchModeState) {
+          const { stageMatchModeObjectives } = await import('./matchModeWorldPresentation.ts');
+          requireCurrent(generation);
+          trace.objectivesStaged = stageMatchModeObjectives(options.scene,
+            game.matchModeState as Parameters<typeof stageMatchModeObjectives>[1], game.timeS ?? 0);
+        }
         const earlySubmission: ForwardProgramCompileTiming = {};
         trace.deploymentEarlySubmission = earlySubmission;
         for (const _ of options.forwardProgramWarm.compileSceneSteps({ sliceMs: 8, timing: earlySubmission })) {

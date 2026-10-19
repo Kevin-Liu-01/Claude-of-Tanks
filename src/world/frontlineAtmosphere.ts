@@ -12,10 +12,9 @@
 // mixer applies the travel delay and a long-range law of its own.
 import * as THREE from 'three';
 import { isMapId, type MapId } from './maps/catalog.ts';
-import { emitBreakFx, emitDestroyed, registerWorldDestructibles } from './destructibles.ts';
+import { emitBreakFx, emitDestroyed, registerWorldDestructibles, setAmbientRoundSource, type AmbientRoundDraw } from './destructibles.ts';
 import { buildFlyover, flyoversForMap, type FlyoverType } from './flyoverAircraft.ts';
 import { buildAaGun, fieldworksForms } from './maps/fieldworksKit.ts';
-import { setAmbientRoundSource, type AmbientRoundDraw } from '../fx/ambientRounds.ts';
 
 interface FrontlineEventBus {
   emit(event: string, payload: unknown): void;
@@ -333,7 +332,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
   interface AaGun { pos: THREE.Vector3; yaw: number; pitch: number; nextBurstAt: number; shotsLeft: number; nextShotAt: number; destroyed: boolean; }
   const aaGuns: AaGun[] = [];
   // (ac130-fx-228 r2; the owner: "get rid of the old ones") the AA rounds in flight: a fixed ring of slots (birth, muzzle,
-  // direction) on the front's clock, drawn each frame by the effects runtime's projectile tracers (fx/ambientRounds.ts),
+  // direction) on the front's clock, drawn each frame by the effects runtime's projectile tracers (registered on the world/fx seam, destructibles.ts),
   // the game's one tracer look, in place of this layer's September tracer shader: an autocannon's streak and halo, the
   // gun's ammunition lineage (the Red Army's and the Warsaw Pact's guns a green-yellow trace, the West's red)
   const tracerCap = FRONTLINE_LIMITS.tracerCap;

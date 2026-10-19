@@ -6,7 +6,7 @@ import {
   createFrontlineAtmosphere, FRONTLINE_INTENSITY, FRONTLINE_LIMITS, resolveFrontBearingDeg,
 } from './frontlineAtmosphere.ts';
 import { MAP_IDS } from './maps/catalog.ts';
-import { ambientRoundSource } from '../fx/ambientRounds.ts';
+import { ambientRoundSource } from './destructibles.ts';
 
 // Every map has an authored front (0 = silent) and nothing leaves [0, 1].
 assert.deepEqual(Object.keys(FRONTLINE_INTENSITY).sort(), [...MAP_IDS].sort(), 'one intensity per map, no strays');
@@ -139,7 +139,7 @@ assert.ok(a.parent.getObjectByName('frontline-aircraft-0'), 'aircraft slot exist
       assert.ok(aaBursts[i].timeS - aaBursts[i - 1].timeS >= FRONTLINE_LIMITS.aaBurstIntervalS[0] * 0.98, 'one gun keeps its burst interval');
     }
   }
-  // (ac130-fx-228 r2) the AA rounds draw through the effects runtime's projectile tracers (fx/ambientRounds.ts), not a
+  // (ac130-fx-228 r2) the AA rounds draw through the effects runtime's projectile tracers (the world/fx seam, destructibles.ts), not a
   // shader of this layer's own: the latest front registers its rounds, they fly from the guns at the tracer speed,
   // capped by the slot ring, in the gun's ammunition lineage; dispose withdraws the source
   assert.equal(a.parent.getObjectByName('frontline-aa-tracers'), undefined, 'the September tracer mesh is gone');

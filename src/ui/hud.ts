@@ -189,6 +189,8 @@ interface HudAimView {
 
 interface HudTankVisual {
   turretTopWorld?(out: THREE.Vector3): void;
+  /** (ac130-fx-228 r2) the camera rig hides the player's own vehicle while its lens (a scope, the gunship's gimbal) is the camera */
+  root?: { visible: boolean };
 }
 
 export interface HudTank {
@@ -6426,7 +6428,7 @@ export function initHud(bus: EventBus): HudRuntime {
     updateSpecialAction(frame.player || playerRef);
     const flier = frame.player || playerRef;
     aerialHud.update(flier,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone || 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision || 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort,
-      flier?.aerial?.kind !== 'gunship' || state.camera?.userData.gunshipLensId === flier.id);
+      flier?.aerial?.kind !== 'gunship' || flier.visual?.root?.visible === false);
     updateDriveReadout(frame.player || playerRef, frame.timeS);
     updateDamagePanelPose(state.camera);
     shotInfo.setPlayer(playerId);

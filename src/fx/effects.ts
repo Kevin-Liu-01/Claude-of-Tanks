@@ -2,7 +2,6 @@ import { createAuxiliaryPresentation, type AuxiliaryVisualEntity } from './auxil
 // atmospherics lane: rounds in flight (tracers); (ac130-fx-228) the gunship's rounds and the composer's frozen round
 // draw here too: the pre-October ribbon block is gone
 import { createProjectileTracers } from './projectileTracers.ts';
-import { ambientRoundSource, type AmbientRoundDraw } from './ambientRounds.ts';
 import { gunshipCaliberMm, gunshipRoundOf, gunshipShotOf, type GunshipRound } from './gunshipRounds.ts';
 import { firedIsMissile, missileFlicker, missileLookFor, missileSpin, missileTrailOf, missileWobble, MISSILE_LOOKS, type MissileLook,
   type MissileTrail } from './missileLooks.ts';
@@ -47,7 +46,8 @@ import type { EventBus } from '../game/stateCore.ts';
 // kind-flavored break bursts and forwards shell flight/impact data so light
 // props (fences, carts, barrels, bales...) break under fire without the sim
 // layer knowing about them (see src/world/destructibles.ts).
-import { setBreakFxProvider, notifyShellSweep, notifyShellImpact, notifyBlast } from '../world/destructibles.ts';
+import { setBreakFxProvider, notifyShellSweep, notifyShellImpact, notifyBlast, ambientRoundSource, type AmbientRoundDraw }
+  from '../world/destructibles.ts';
 // destruction-fx lane (2026-10-07): simulated volumetric media, thrown material and the munition x surface recipes
 import { createVolumeMedia, makeVolumePuff, type VolumeMedia } from './volumeMedia.ts';
 import { battleLightTintFromRig } from './sceneLightTint.ts';
@@ -623,6 +623,10 @@ const GUNSHIP_LENS_M = 25;
  *  from outside it leaves the wing. */
 const GUNSHIP_PYLON_LOCAL = new THREE.Vector3(7.5, 1.9, 1.6);
 const GUNSHIP_PYLON_MERGE_M = 120;
+/** (ac130-fx-228 r2) the missile motor flare's sphere (m) and the widest it is ever drawn from the camera (rad, its
+ *  radius): ~10 px at the gunship's 3.6x gimbal zoom, ~3 px at a tank's 60 deg view */
+const ATGM_FLARE_RADIUS_M = 0.25;
+const FLARE_MAX_RAD = 0.004;
 
 // Nominal muzzle velocities used ONLY by composeFiringMoment (m/s)
 const COMPOSED_ROUND_MPS = { AP: 800, APCR: 1050, HEAT: 780, HE: 750, HESH: 780, APFSDS: 1700 };
@@ -1342,7 +1346,7 @@ function* createFxSteps(
   // fins, the Kornet's canards and folding wings, the Spike's seeker dome...), lit by the time of day's rig; the flare
   // is its tracking beacon or motor's hot core at the tail, in the look's colour
   const bodies = createMissileBodies(missileLight, MAX_ATGM_BODIES);
-  const atgmFlareGeo = new THREE.SphereGeometry(0.25, 8, 6);
+  const atgmFlareGeo = new THREE.SphereGeometry(ATGM_FLARE_RADIUS_M, 8, 6);
   const atgmFlareMat = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     transparent: true,
@@ -1356,6 +1360,21 @@ function* createFxSteps(
   atgmFlares.renderOrder = 26;
   atgmFlares.layers.set(LATE_FX_LAYER);
   atgmFlares.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  // (ac130-fx-228 r2, the motion critic: every Hellfire launch in the gunner's lens "pops a flat, hard-edged white
+  // 12-sided polygon (unlit disc, no soft falloff)") the motor's hot core is a glow, not a solid: bright where the sphere
+  // faces the eye and gone at its rim, so even close up it reads as a hot point with a soft edge, never a cut-out disc
+  // (writeGuidedBody also caps its angular size near the camera; the screen-space halo is tracers.glow's)
+  atgmFlareMat.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying float vFlareFace;')
+      .replace('#include <project_vertex>', `#include <project_vertex>
+  // the instances carry no rotation and one scale: the view-space normal is the normal matrix's
+  vFlareFace = max( dot( normalize( normalMatrix * normal ), normalize( -mvPosition.xyz ) ), 0.0 );`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vFlareFace;')
+      .replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\n  diffuseColor.a *= vFlareFace * vFlareFace * vFlareFace;');
+  };
+  atgmFlareMat.customProgramCacheKey = () => 'fx-motor-flare-soft';
   // (fx 9a) instance colours from the start: one program variant for every missile, warmed with the pools
   {
     const white = new THREE.Color(1, 1, 1);
@@ -4254,6 +4273,9 @@ function* createFxSteps(
   let liveAtgmCount = 0;
   const _bodyDims = [0, 0];
   const _flareColor = new THREE.Color();
+  /** (ac130-fx-228 r2) this frame's camera, for the motor flare's angular cap (writeLiveShellTracers sets it) */
+  const _flareCam = new THREE.Vector3();
+  let flareCamSet = false;
 
   /** One missile's airframe and its motor's hot core: the nose at the round, the body its calibre and its family's
    *  length behind (missileBodies.ts), rolled; the core at the tail; an unlit motor (a soft launch's coast) shows none. */
@@ -4264,7 +4286,12 @@ function* createFxSteps(
       bodies.write(look.id, shellPos, direction, roll, _bodyDims[0], _bodyDims[1], look.bodyHex);
       _atgmFlareObject.position.copy(shellPos).addScaledVector(direction, -(_bodyDims[1] + 0.04));
       _atgmFlareObject.quaternion.identity();
-      _atgmFlareObject.scale.setScalar(lit ? 0.32 + 0.12 * look.flarePx : 1e-4);
+      // (ac130-fx-228 r2) never wider than FLARE_MAX_RAD from this frame's camera: a motor a few metres from the lens (a
+      // round leaving its launcher beside the eye) stays a hot point, not a disc over the frame
+      let flareScale = lit ? 0.32 + 0.12 * look.flarePx : 1e-4;
+      if (lit && flareCamSet) flareScale = Math.min(flareScale,
+        _atgmFlareObject.position.distanceTo(_flareCam) * FLARE_MAX_RAD / ATGM_FLARE_RADIUS_M);
+      _atgmFlareObject.scale.setScalar(Math.max(1e-4, flareScale));
       _atgmFlareObject.updateMatrix();
       atgmFlares.setMatrixAt(liveAtgmCount, _atgmFlareObject.matrix);
       _flareColor.setRGB(look.flareCore[0], look.flareCore[1], look.flareCore[2]).multiplyScalar(1.4 * flareK);
@@ -4660,6 +4687,8 @@ function* createFxSteps(
     tracers.ambient(hx, hy, hz, dx, dy, dz, speedMps, travelledM, k, east);
 
   function writeLiveShellTracers(shells: LiveShell[], camera: THREE.Camera): void {
+    camera.getWorldPosition(_flareCam);
+    flareCamSet = true;
     drones.begin(particles.getTime(), camera.position);
     tracers.begin(); // atmospherics lane
     liveAtgmCount = 0;

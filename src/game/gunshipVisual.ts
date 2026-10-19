@@ -43,8 +43,10 @@ function airframeOf(tankRoot: THREE.Object3D): Airframe | null {
   return model;
 }
 
-/** An orbiting four-engine gunship replaces the tank exterior in aerial mode. (ac130-fx-228) The caller hides the pilot's
- *  own airframe while its gimbal lens (inside the airframe, at the orbit centre) is the camera. */
+/** An orbiting four-engine gunship replaces the tank exterior in aerial mode, drawn while `visible`. (ac130-fx-228 r2)
+ *  The anchor (`tankRoot`, an empty group) keeps the visibility the camera rig and the streamer give it: the rig hides
+ *  the pilot's own vehicle on every frame its gimbal lens (inside the airframe, at the orbit centre) is the camera and
+ *  shows it for an external pose (the killcam, the ending's replay and orbit), so the caller passes it straight on. */
 export function syncGunshipVisual(tankRoot: THREE.Object3D, position: THREE.Vector3, yaw: number, dt: number, visible: boolean): void {
   const model = airframeOf(tankRoot);
   if (model) {
@@ -54,7 +56,6 @@ export function syncGunshipVisual(tankRoot: THREE.Object3D, position: THREE.Vect
     model.root.rotation.set(0, yaw, GUNSHIP_BANK_RAD);
     model.spin(dt);
   }
-  tankRoot.visible = false;
 }
 
 /** (ac130-fx-228 r2) The covered entry: the airframe built, posed and shown for the scene compile under the cover (it is
@@ -68,6 +69,9 @@ export function hideGunshipVisual(tankRoot: THREE.Object3D): void { const model=
 
 /** Aircraft-only battle carrier. It never constructs a tank or its textures. */
 export function createGunshipBattleVisual(specId: string) {
+  // (ac130-fx-228 r2) a carrier exists only in an AC-130 battle, built while its loading cover is up: the airframe's
+  // chunk starts loading with it (solo and online), so the first sync finds it
+  void loadGunshipAirframe();
   const root = new THREE.Group();
   root.name = 'AC-130 flight anchor';
   root.userData.aircraftOnly = true;

@@ -389,9 +389,9 @@ interface ProjectileTracers {
     rocket?: boolean): void;
   /** the effects clock was rebased by `delta` s (fx.setFrozen / resetClock): the births keep their age */
   shiftTime(delta: number): void;
-  /** (ac130-fx-228 r2) a round that is not a shell this frame (the frontline backdrop's AA fire, ambientRounds.ts), drawn
-   *  as an autocannon round of its lineage is: its head, unit direction, speed (m/s), distance flown (m), strength
-   *  (0..1, its own burn-out); call between begin and end */
+  /** (ac130-fx-228 r2) a round that is not a shell this frame (the frontline backdrop's AA fire: world/destructibles.ts
+   *  setAmbientRoundSource), drawn as an autocannon round of its lineage is: its head, unit direction, speed (m/s),
+   *  distance flown (m), strength (0..1, its own burn-out); call between begin and end */
   ambient(hx: number, hy: number, hz: number, dx: number, dy: number, dz: number, speedMps: number, travelledM: number,
     k: number, east: boolean): void;
   reset(): void;

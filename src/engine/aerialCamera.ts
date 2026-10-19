@@ -35,7 +35,7 @@ export function createAerialCamera(camera: THREE.PerspectiveCamera) {
     update(entity: { id?: string; aerial?: AerialView; input?: { aimPoint?: THREE.Vector3 | null }; visual?: { root: THREE.Object3D } | null }, input: { mouseDX: number; mouseDY: number; wheel: number; shiftPressed?: boolean; cursorAim?: boolean; cursorX?: number; cursorY?: number }, dt: number): boolean {
       const view=entity.aerial;
       if(!view?.active){
-        camera.userData.thermalFlight=false;camera.userData.aerialPilotId=null;camera.userData.gunshipLensId=null;
+        camera.userData.thermalFlight=false;camera.userData.aerialPilotId=null;
         if(previousKind){camera.fov=60;camera.updateProjectionMatrix();previousKind='';owner=null;}
         return false;
       }
@@ -57,8 +57,6 @@ export function createAerialCamera(camera: THREE.PerspectiveCamera) {
       const fpv=view.kind==='drone'&&!view.launching&&launchBlend<=0;
       // The fx pass skips only this pilot's own airframe near this camera (its lens rides inside it); see dronePresentation.
       camera.userData.aerialPilotId=view.kind==='drone'?entity.id??null:null;
-      // (ac130-fx-228 r2) this camera is the gunship pilot's gimbal lens this frame (its airframe and the lens sight key off it)
-      camera.userData.gunshipLensId=view.kind==='gunship'?entity.id??null:null;
       camera.userData.thermalFlight=view.kind==='gunship'||fpv;
       camera.userData.flightVision=aerialVisionCode(getAerialVision());
       if(fpv){

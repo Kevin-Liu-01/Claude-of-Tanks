@@ -112,7 +112,19 @@ fires a NATO red tracer belt (every second round lit), the 152 mm howitzer a hea
 tank round's, and the guided missile is a Hellfire-class rail missile with its own airframe, motor flare and dense white
 smoke trail. Impacts use the munition recipes (the howitzer's and missile's plunging starburst and rayed crater). From the
 pilot's lens no muzzle flash or propellant cloud is drawn; other views see a small gun-port flash on the airframe, which
-is visible in the killcam, the ending's replay and any camera that is not the pilot's lens.
+is visible in the killcam, the ending's replay and any camera that is not the pilot's lens. The missile is drawn
+leaving its rail under the port wing and joins its guided line within 120 m, so from the pilot's lens it enters from the
+frame's edge rather than appearing on the glass (round 2). Every missile's motor core is a soft glow that never grows past
+~0.23 degrees from the camera, and a heavy charge (the howitzer's shell, the missile's warhead) bursting on a hull draws
+the full detonation the ground burst does (a white-hot dome of fireball medium cooling inside its own smoke), not a plate
+flash.
+
+The airframe is a procedural C-130-proportioned model (`src/game/gunshipAirframe.ts`: lofted fuselage, high wing with
+dihedral, four turboprops, the port-side 30 mm and howitzer, the sensor ball) on one lit material in the shadow cascades.
+It is its own chunk: an AC-130 battle loads it, and the covered deployment builds it and compiles its programs before
+the reveal. The camera rig hides the pilot's own vehicle on every frame its gimbal lens is the camera and shows it for an
+external pose, so the airframe draws in the killcam, the ending's replay and orbit, and never inside the lens; the
+gimbal's sight and fire solution leave the HUD with the lens.
 
 A kill made with the gunship is credited to the pilot (kills, score and medals) and shown as the **AC-130**'s: the kill
 feed, the killcam, the battle report, the final blow, the end rosters, the service record and the crew radio all name the

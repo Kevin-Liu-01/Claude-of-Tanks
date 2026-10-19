@@ -5,8 +5,8 @@
 //     cascades, outward faces, and released whole;
 //   - it is its own chunk: the boot closure never reaches it; the flight anchor syncs nothing until it has loaded and
 //     asks for it; the covered entry loads it, builds it and shows it for the covered scene compile, then hides it;
-//   - the pilot's own airframe hides exactly while the gimbal lens is the camera (the aerial camera says so per frame;
-//     an external pose clears it), and the gimbal's sight and solution leave with the lens;
+//   - the pilot's own airframe hides exactly while the gimbal lens is the camera (the rig's own-vehicle visibility: its
+//     aerial branch hides it each lens frame, an external pose shows it), and the gimbal's sight and solution leave with it;
 //   - the rest of the AC-130 warm path is registered under the cover: the mode's objective markers, the late pass's copy
 //     program, the ground's pressure ring.
 import assert from 'node:assert/strict';
@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import { staticImportClosure } from '../../tools/static-import-closure.mjs';
 import { buildGunshipAirframe } from './gunshipAirframe.ts';
 import { createGunshipBattleVisual, hideGunshipVisual, loadGunshipAirframe, stageGunshipVisual, syncGunshipVisual } from './gunshipVisual.ts';
-import { createAerialCamera } from '../engine/aerialCamera.ts';
+import { createMatchModeWorldPresentation, stageMatchModeObjectives } from './matchModeWorldPresentation.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const src = (path) => readFileSync(resolve(ROOT, path), 'utf8');
@@ -82,7 +82,9 @@ const src = (path) => readFileSync(resolve(ROOT, path), 'utf8');
   // before the chunk is in, a sync draws nothing (and asks for it)
   const pending = loadGunshipAirframe();
   syncGunshipVisual(anchor.root, new THREE.Vector3(0, 240, 90), 0, 0.016, true);
-  assert.equal(anchor.root.visible, false, 'the anchor itself never draws');
+  let drawables = 0;
+  anchor.root.traverse((o) => { if (o.isMesh || o.isSprite || o.isLine || o.isPoints) drawables++; });
+  assert.equal(drawables, 0, 'the anchor itself draws nothing (an empty group: its visibility is only the rig\'s word)');
   await pending;
   const staged = stageGunshipVisual(anchor.root, new THREE.Vector3(0, 240, 90), 1.2);
   assert.ok(staged && staged.parent === scene && staged.visible, 'the covered entry shows the airframe for its compile');
@@ -99,32 +101,61 @@ const src = (path) => readFileSync(resolve(ROOT, path), 'utf8');
     'the covered deployment stages the airframes before its scene compile and hides them after its forward warm');
 }
 
-// ---- the lens: the pilot's own airframe and the gimbal's sight key off the camera the aerial camera drives ----
+// ---- the lens: the pilot's own airframe and the gimbal's sight key off the rig's own-vehicle visibility ----
 {
-  const camera = new THREE.PerspectiveCamera(55, 16 / 9, 0.5, 4000);
-  const aerial = createAerialCamera(camera);
-  const pilot = { id: 'pilot', aerial: { kind: 'gunship', active: true, launching: false, x: 0, y: 240, z: 90, yaw: 0, pitch: -0.6,
-    batteryS: 0, cooldownS: 0 }, input: { aimPoint: new THREE.Vector3() } };
-  const frame = { mouseDX: 0, mouseDY: 0, wheel: 0 };
-  assert.equal(aerial.update(pilot, frame, 1 / 60), true);
-  assert.equal(camera.userData.gunshipLensId, 'pilot', "the gimbal lens is this pilot's");
-  pilot.aerial.active = false;
-  aerial.update(pilot, frame, 1 / 60);
-  assert.equal(camera.userData.gunshipLensId, null, 'not once the flight view is off');
+  // the anchor's visibility is passed straight on and never overwritten: hidden in the lens frame, the airframe hides;
+  // shown by an external pose (the killcam, the ending's replay and orbit), it draws, and keeps drawing on the frames
+  // after (the rig sets it once for the pose)
+  const scene = new THREE.Scene();
+  const anchor = createGunshipBattleVisual('t90am');
+  scene.add(anchor.root);
+  const pos = new THREE.Vector3(0, 240, 90);
+  anchor.root.visible = false; // the rig's aerial branch, a lens frame
+  syncGunshipVisual(anchor.root, pos, 0, 1 / 60, anchor.root.visible);
+  const model = stageGunshipVisual(anchor.root, pos, 0);
+  anchor.root.visible = false;
+  syncGunshipVisual(anchor.root, pos, 0, 1 / 60, anchor.root.visible);
+  assert.equal(model.visible, false, 'hidden in its own lens');
+  anchor.root.visible = true; // setExternalPose: applyPlayerVisibility(player, true), once
+  for (let frame = 0; frame < 3; frame++) syncGunshipVisual(anchor.root, pos, 0, 1 / 60, anchor.root.visible);
+  assert.equal(anchor.root.visible, true, "the sync never overwrites the rig's visibility");
+  assert.equal(model.visible, true, 'drawn for the external pose, on every frame after it');
+  anchor.dispose();
   const rig = src('src/engine/cameraRig.ts');
-  assert.match(rig, /camera\.userData\.gunshipLensId = null;\n      if \(external\) return;/, 'each rig frame starts without the lens');
-  assert.match(rig.slice(rig.indexOf('setExternalPose(')), /camera\.userData\.gunshipLensId = null;/, 'an external pose (the ending, a replay) is never the lens');
-  assert.match(src('src/game/battlePresentationRuntime.ts'), /visual\.root\.visible && !\(entity\.isPlayer && camera\.userData\.gunshipLensId === entity\.id\)/,
-    "the pilot's airframe hides exactly in its own lens (never by distance)");
-  assert.match(src('src/ui/hud.ts'), /flier\?\.aerial\?\.kind !== 'gunship' \|\| state\.camera\?\.userData\.gunshipLensId === flier\.id/,
+  assert.match(rig, /if \(aerialCamera\.update\(player, camInput, dt\)\) \{[\s\S]{0,400}applyPlayerVisibility\(player, player\.aerial\?\.kind !== 'gunship'\);/,
+    "the rig hides the gunship pilot's own vehicle on every lens frame");
+  assert.match(rig.slice(rig.indexOf('setExternalPose(pos: THREE.Vector3')), /^[\s\S]{0,600}applyPlayerVisibility\(getPlayer\(\), true\);/,
+    'an external pose (the ending, a replay) shows it');
+  assert.match(src('src/game/battlePresentationRuntime.ts'),
+    /if \(entity\.aerial\?\.kind === 'gunship'\) syncGunshipVisual\(visual\.root, state\.pos, state\.yaw, dtFrame \?\? 0, visual\.root\.visible\);/,
+    "the presentation passes the rig's visibility straight on (never a distance test)");
+  assert.doesNotMatch(src('src/game/gunshipVisual.ts'), /tankRoot\.visible = false/, "the sync never hides the anchor itself");
+  assert.match(src('src/ui/hud.ts'), /flier\?\.aerial\?\.kind !== 'gunship' \|\| flier\.visual\?\.root\?\.visible === false/,
     "the gimbal's sight shows only through the lens");
   assert.match(src('src/ui/aerialHud.ts'), /solution\.hidden=drone\|\|!lensUp;sight\.hidden=!drone&&!lensUp;/);
 }
 
 // ---- the rest of the AC-130 warm path, under the cover ----
 {
-  assert.match(src('src/main.ts'), /prepareAtmosphere: async \(\) => \{[\s\S]{0,400}matchModeWorld\.update\(game\.matchModeState/,
-    "the mode's objective markers are built under the cover (the escort's and the extraction's posts compiled at the reveal)");
+  // the mode's objective markers are built under the cover, by the lazy deployment (the game's entry is untouched): a
+  // presentation drawn in the battle's scene is staged, one in another scene is not, a disposed one is gone
+  const battle = new THREE.Scene(), other = new THREE.Scene();
+  const host = new THREE.Group(); battle.add(host);
+  const view = createMatchModeWorldPresentation(host), elsewhere = createMatchModeWorldPresentation(other);
+  const state = { label: 'Escort', perspectiveTeam: 'alpha', respawns: true, target: null, score: { alpha: 0, bravo: 0 },
+    flags: [], ball: null, goals: [], horde: null, pickups: [], playerAmmo: null, playerAmmoCapacity: null,
+    id: 'zone_control', zones: [{ id: 'a', x: -40, y: 1, z: 7, control: 0.5, owner: 'alpha', contested: false }] };
+  assert.equal(view.root.getObjectByName('capture-zone-1'), undefined, 'nothing built before a state');
+  assert.equal(stageMatchModeObjectives(battle, state, 0), 1, "only the battle scene's presentation is staged");
+  assert.ok(view.root.getObjectByName('capture-zone-1'), 'its markers are built for the covered compile');
+  assert.equal(elsewhere.root.getObjectByName('capture-zone-1'), undefined);
+  assert.equal(stageMatchModeObjectives(battle, null, 0), 0, 'no state, nothing staged');
+  view.dispose(); elsewhere.dispose();
+  assert.equal(stageMatchModeObjectives(battle, state, 0), 0, 'a disposed presentation leaves the live set');
+  const deploy = src('src/game/soloBattleDeploymentRuntime.ts');
+  assert.match(deploy, /const \{ stageMatchModeObjectives \} = await import\('\.\/matchModeWorldPresentation\.ts'\);[\s\S]{0,200}stageMatchModeObjectives\(options\.scene,[\s\S]{0,600}compileSceneSteps\(\{ sliceMs: 8, timing: earlySubmission \}\)/,
+    "the solo deployment stages them before its early scene compile");
+  assert.doesNotMatch(src('src/main.ts'), /ac130-fx-228/, 'the game entry carries none of it');
   const warm = src('src/game/battleWarmRuntime.ts');
   assert.match(warm, /post\.prepareSoftParticles\(\);\n    warmLateFxCopy\(post\);/, "the late pass's copy program links with the covered FX");
   const fx = src('src/fx/effects.ts');

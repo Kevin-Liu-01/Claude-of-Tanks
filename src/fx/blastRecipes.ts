@@ -918,6 +918,7 @@ export function plateBurst(C: BlastContext, I: PlateBurstInput): void {
   // (the bloom's share capped), gone in two or three frames
   lightPuff(C, 'flash', I.x + nx * 0.3, I.y + ny * 0.3, I.z + nz * 0.3, nx, ny + 0.5, nz, 0.045, 1.0 * s * dk,
     2.3 * s * dk, FLASH_WHITE, FLASH_ORANGE, 0.65, 0, bo);
+  if (heavyHit) { heavyHullBurst(C, I, nx, ny, nz, dk, bo); return; }
   const fireN = Math.round(3 + s);
   for (let i = 0; i < fireN; i++) {
     const v = (3 + R() * 5) * s;
@@ -946,6 +947,74 @@ export function plateBurst(C: BlastContext, I: PlateBurstInput): void {
   // 1.5 m over the hull it struck
   C.lightPulse(I.x + nx, I.y + 1.5, I.z + nz, Math.min(0.7, 0.3 + 0.2 * s), 0, 0.25, BURST_LIGHT_HEX);
   if (I.ground) dustSurge(C, I.x, C.groundY(I.x, I.z), I.z, Math.max(0.8, s * 0.8), I.ground, bo + 0.02);
+}
+
+/**
+ * (ac130-fx-228 r2, the motion critic: the gunship's Hellfire on a hull "only a white flash and pale grey dust", its
+ * 152 mm "a small white flash and tan dust" where the same shell on the ground stands a large fireball, and at night the
+ * hull burst's fire "flat orange petal sprites") a heavy charge (the howitzer's shell, a missile's warhead) bursting on a
+ * hull is the full detonation the ground burst draws, the plate only tilting it: the dome of fireball medium born white-
+ * hot at most of the charge's width and cooling to an orange heart inside its own soot within a third of a second, a few
+ * small tongues of fire at its heart (never broad additive cards), the light glowing inside the medium for a moment, the
+ * fragments sparking off the plate, and the lobed smoke climbing on its heat, leaning downwind and thinning; the ground's
+ * dust and shock ring when the hull sits on it.
+ */
+function heavyHullBurst(C: BlastContext, I: PlateBurstInput, nx: number, ny: number, nz: number, dk: number,
+  bo: number): void {
+  const R = C.rand;
+  const m = C.m;
+  const kg = Math.max(0.3, I.chargeKg);
+  const s = blastScale(kg);
+  const sq = Math.sqrt(s);
+  // the fireball's width, the ground burst's (~3.9 kg^0.32 m: the howitzer's ~7 m, the Hellfire's ~8 m)
+  const D = 3.9 * Math.pow(kg, 0.32);
+  // its centre thrown a little off the plate and up (the hull takes the lower half of the dome)
+  const cx = I.x + nx * 0.2 * D, cy = I.y + Math.max(0.15, ny) * 0.25 * D + 0.3, cz = I.z + nz * 0.2 * D;
+  for (let i = 0; i < 3; i++) {
+    const a = R() * TAU, v = (1.5 + R() * 2) * sq;
+    lightPuff(C, 'fire', cx + Math.cos(a) * 0.08 * D, cy, cz + Math.sin(a) * 0.08 * D,
+      Math.cos(a) * v + nx * v, v * 0.8 + 1, Math.sin(a) * v + nz * v, 0.12 + R() * 0.05, 0.2 * D * dk,
+      (0.38 + R() * 0.1) * D * dk, FIRE_DEEP, FIRE_DEEP, 0.55, 1.5, bo + 0.01);
+  }
+  for (let i = 0; i < 4; i++) {
+    const a = R() * TAU;
+    place(m, cx + Math.cos(a) * 0.1 * D, cy + 0.12 * R() * D, cz + Math.sin(a) * 0.1 * D, bo - 0.01);
+    move(m, Math.cos(a) * 0.8 * D + nx * 0.6 * D, (0.8 + R() * 0.6) * D, Math.sin(a) * 0.8 * D + nz * 0.6 * D, 3.4, 0.55,
+      0.5, 0);
+    const life = 1.5 + R() * 0.5;
+    shape(m, life, 0.62 * D * dk, (0.95 + 0.2 * R()) * D * dk, 5, R);
+    look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.35), 0.95, 0.0, 0.5);
+    book(m, 'billow', R, life);
+    heat(m, 1.55, 7);
+    C.media(m);
+  }
+  C.lightPulse(cx, cy + 0.3 * D, cz, Math.min(0.45, 0.15 + 0.09 * s), 0, 0.2, BURST_LIGHT_HEX);
+  C.glow(cx, cy + 0.2 * D, cz, 0.9 * D, 0.6, 0.24, bo);
+  // the casing's (or the warhead's) fragments off the plate
+  sparkSpray(C, I.x, I.y, I.z, nx, ny, nz, Math.round(14 + 8 * s), 20 * Math.sqrt(s), 1.2, 0.45, 0.026, bo);
+  sparkSpray(C, I.x, I.y, I.z, nx, ny, nz, Math.round(24 + 6 * s), 55, 1.4, 0.35, 0.022, bo, FRAG_HOT, -9);
+  // the smoke: born out of the cooling fireball, climbing on its heat into one lobed mass (the ground burst's palette)
+  const crowd = C.crowd ? C.crowd(I.x, I.z) : 0;
+  const smokeN = Math.max(3, Math.round(12 * (1 - 0.7 * crowd)));
+  const smokeC0 = mixInto(_e, BLAST_RESIDUE, SOOT, 0.3);
+  for (let i = 0; i < smokeN; i++) {
+    const u = (i + R()) / smokeN;
+    const a = R() * TAU, r = R() * 0.3 * D;
+    place(m, cx + Math.cos(a) * r, cy + 0.4 * u * D, cz + Math.sin(a) * r, bo + 0.04 + 0.1 * u);
+    const out = (2.0 + 2.6 * R()) * sq;
+    move(m, Math.cos(a) * out, (2.2 + 2.4 * u) * sq * 1.3, Math.sin(a) * out, 1.3, (0.42 + 0.14 * u) * Math.sqrt(sq), 0.85, 0);
+    const life = (9 + 4 * R()) * 1.2 * (1 - 0.25 * crowd);
+    shape(m, life, 0.4 * D * dk, (1.5 + 0.4 * u + 0.35 * R()) * D * dk * (1 + 0.35 * crowd), 6, R);
+    look(m, smokeC0, SMOKE_AGED, 0.78, 0.0, 0.33);
+    book(m, 'billow', R, life);
+    heat(m, 0.3, 4.5);
+    C.media(m);
+  }
+  if (I.ground) {
+    const gy = C.groundY(I.x, I.z);
+    C.shockRing(I.x, I.z, 0.5 + 0.38 * s, Math.min(1.3, 0.55 + 0.28 * s), Math.max(0, -bo));
+    dustSurge(C, I.x, gy, I.z, Math.max(0.8, s * 0.8), I.ground, bo + 0.02);
+  }
 }
 
 /** The kinetic results on armour that armorHit draws (the battle's shell:hit kinds; HE and shaped charges are plateBurst). */

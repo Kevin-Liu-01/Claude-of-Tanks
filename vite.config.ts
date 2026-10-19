@@ -412,6 +412,12 @@ export default defineConfig({
             // (no import but other tables) that the builders, the gallery and main all reach, so each split into a chunk of
             // its own (14 boot requests of 0.1-10 KB). One group takes exactly these modules, none of their dependencies.
             { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-19 (ac130-fx-228 r2; the game's entry is over its budget): a kill's source identity (the AC-130's and
+            // the drone's label and icon, ui/killSourceIdentity.ts) is read by the loading roster at boot and by the HUD,
+            // killcam, battle report, final blow and debrief; on its own it became one more boot request and one more
+            // entry in the entry chunk's preload map. It rides in the icon library's chunk, whose icon ids it names; the
+            // group takes exactly these two modules, none of their dependencies (the locale runtime stays in its own).
+            { name: 'uiIcons', test: /[\\/]src[\\/]ui[\\/](?:uiIcons|killSourceIdentity)\.ts$/, includeDependenciesRecursively: false },
             { name: 'groundBounce', test: /(?:[\\/]three[\\/]examples[\\/]jsm[\\/]postprocessing[\\/]Pass\.js|[\\/]src[\\/]engine[\\/](?:atmosphere|cloudscapes|lightModelCore|hazeLaw|groundBounce)\.ts)$/, includeDependenciesRecursively: false },
           ],
         },
