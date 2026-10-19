@@ -111,8 +111,10 @@ const TYPE96_HULL_STATIONS: readonly Type96Station[] = [
  * 108-117 mm over the roof, under the mantlet boot (the middle head stood 59 mm inside it with the gun at rest).
  * The lid now stands on a coaming, 20 mm inside its rim, its underside 6 mm into the roof at every point of its
  * foot, its top 2 mm into the lid; the periscope row stands 10 mm ahead of the rim, out of the boot's sweep, each
- * head 30 mm over the roof on a base 15 mm inside its sides, front and rear, cut to the roof's fall (underside 6 mm
- * into the roof, top 2 mm into the head's floor). */
+ * head's floor 8 mm over the roof at its centre on a base cut to the roof's fall (underside 6 mm into the roof). The
+ * base stands 2 mm inside the head's sides, front and rear and reaches 8 mm into it, past the 14 mm round of its
+ * lower edges. A 30 mm neck on a 15 mm inset left slots under the head's overhang and its window that the watertight
+ * gate's 25 mm lattice reads as enclosed pockets (0.19 L a side head). */
 function addType96DriverStation(P: TankBuilderPort): void {
     const [a, b] = [TYPE96_HULL_STATIONS[3], TYPE96_HULL_STATIONS[4]];
     const roof = (z: number) => a[6] + (b[6] - a[6]) * (z - a[0]) / (b[0] - a[0]);
@@ -122,12 +124,12 @@ function addType96DriverStation(P: TankBuilderPort): void {
     for (let i = 0; i < p.count; i++)
         p.setY(i, p.getY(i) > 0 ? lid.y - lid.h / 2 + .002 : roof(lid.z + p.getZ(i)) - .006);
     equipment(P, 'hull', 'Detail', coaming, 0, 0, lid.z);
-    const head = { w: .18, h: .06, d: .08 }, z = lid.z + lid.r + .01 + head.d / 2, floor = roof(z) + .03;
+    const head = { w: .18, h: .06, d: .08 }, z = lid.z + lid.r + .01 + head.d / 2, floor = roof(z) + .008;
     for (const x of [-.25, 0, .25]) {
         optic(P, 'hull', x, floor + head.h / 2, z, head.w, head.h, head.d);
-        const x0 = x - head.w / 2 + .015, x1 = x + head.w / 2 - .015;
-        equipment(P, 'hull', 'Detail', sectionSolid([z - head.d / 2 + .015, z + head.d / 2 - .015].map(zz => ({ z: zz,
-            ring: [[x0, roof(zz) - .006], [x1, roof(zz) - .006], [x1, floor + .002], [x0, floor + .002]] as const }))), 0, 0, 0);
+        const x0 = x - head.w / 2 + .002, x1 = x + head.w / 2 - .002;
+        equipment(P, 'hull', 'Detail', sectionSolid([z - head.d / 2 + .002, z + head.d / 2 - .002].map(zz => ({ z: zz,
+            ring: [[x0, roof(zz) - .006], [x1, roof(zz) - .006], [x1, floor + .008], [x0, floor + .008]] as const }))), 0, 0, 0);
     }
 }
 function buildType96Hull(P: TankBuilderPort): void {

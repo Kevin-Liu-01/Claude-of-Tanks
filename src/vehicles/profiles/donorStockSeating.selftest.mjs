@@ -98,8 +98,11 @@ for (const quality of ['high', 'low']) {
       assert.equal(heads.length, 3, `type96b/${quality}: three driver's periscope heads`);
       const bases = heads.map((head) => {
         const base = hull.filter((p) => p !== head && p.bucket === 'hullDetail' && insideFootprint(p, head)
-          && p.box.max.y >= head.box.min.y && p.box.max.y <= head.box.min.y + .003);
+          && p.box.max.y >= head.box.min.y + .006 && p.box.max.y <= head.box.min.y + .010);
+        // the base reaches 6-10 mm into the head, past the round of its lower edges (no slot under its overhang)
         assert.equal(base.length, 1, `type96b/${quality}: one base under the head at x ${head.box.getCenter(new THREE.Vector3()).x.toFixed(2)}`);
+        assert.ok(near(base[0].box.getSize(new THREE.Vector3()).x, head.box.getSize(new THREE.Vector3()).x - .004, .0015),
+          `type96b/${quality}: the base fills the head's width but 2 mm a side`);
         const depth = seatDepths(base[0], hullShell);
         assert.ok(depth.length >= 4 && depth.every((d) => d >= .005 && d <= .007),
           `type96b/${quality}: the periscope base's foot 5-7 mm into the roof (${depth.map((d) => (d * 1000).toFixed(1)).join(', ')} mm)`);
@@ -107,10 +110,10 @@ for (const quality of ['high', 'low']) {
         return base[0];
       });
       // negative control: the heads lie inside the hull shell's box (the AABB census cannot see them float, as with the
-      // lid), so the rays carry it: each head's own floor stands 25-35 mm over the roof, its base the only contact
+      // lid), so the rays carry it: each head's own floor stands 2-14 mm over the falling roof, its base the only contact
       for (const head of heads) {
         const gap = Math.min(...vertices(head).map((v) => v.y - hullShell(v.x, v.z, head.box.max.y + .5)));
-        assert.ok(gap >= .025 && gap <= .035, `type96b/${quality}: negative control: a periscope head alone stands ${(gap * 1000).toFixed(1)} mm over the roof`);
+        assert.ok(gap >= .002 && gap <= .014, `type96b/${quality}: negative control: a periscope head alone stands ${(gap * 1000).toFixed(1)} mm over the roof`);
       }
 
       // the gun clears every periscope head (its bezel and glass included) and base by 15 mm at rest, fully depressed
