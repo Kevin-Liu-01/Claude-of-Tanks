@@ -220,8 +220,9 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
   // the drift: a narrow dust fillet in the angle between the collar's foot and the yard, a little higher to windward,
   // its outer edge in the ground's own shaded tone so it reads as the contact line rather than a band of its own (the r9
   // blind critic: "a flat, untextured orange ring ... like plastic" against the textured ground; a wide vertex-coloured
-  // mound cannot carry the yard's grain, so it stays a fillet)
-  if (dust) {
+  // mound cannot carry the yard's grain, so it stays a fillet). A plated collar carries its yard's dust in the plate
+  // itself, so it needs none: its face meets the ground over the plinth.
+  if (dust && !plateRect) {
     const groundTone = new THREE.Color(b.skin.ground).multiplyScalar(0.62);
     const crestTone = dust.clone().lerp(groundTone, 0.45).multiplyScalar(0.82);
     const scallop = (a: number): number => 0.5 + 0.5 * Math.sin(a * 7 + 1.3) * Math.sin(a * 3 - 0.4);
