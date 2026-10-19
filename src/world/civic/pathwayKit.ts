@@ -132,7 +132,7 @@ function nearestOnRoad(road: Road, x: number, z: number): { d: number; i: number
   return best;
 }
 
-interface Sample { x: number; z: number; nx: number; nz: number; state: 'fronted' | 'open' | 'blocked'; outer: number }
+interface Sample { x: number; z: number; nx: number; nz: number; state: 'fronted' | 'open' | 'blocked'; outer: number; why?: string }
 
 /** The pathway architecture of a town from its plan. */
 export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle, ctx: PathwayContext): PathwayBuild {
@@ -174,16 +174,34 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
         const side = Math.sign(-tA[1] * dB[0] + tA[0] * dB[1]) || 1;
         void side;
         for (const dir of [1, -1]) {
-          const dA: [number, number] = [tA[0] * dir, tA[1] * dir], R = plan.returnR;
-          const nA: [number, number] = [-dA[1], dA[0]], sA = Math.sign(dot2(nA, dB)) || 1, nAc: [number, number] = [nA[0] * sA, nA[1] * sA];
-          const nB0: [number, number] = [-dB[1], dB[0]], sB = Math.sign(dot2(nB0, dA)) || 1, nBc: [number, number] = [nB0[0] * sB, nB0[1] * sB];
-          const eA = K, eB = clearOf(rj) - 0.4, denom = dot2(dA, nBc);
-          if (Math.abs(denom) < 0.2) continue;
-          const t0 = (eB + R - (eA + R) * dot2(nAc, nBc)) / denom;
-          if (!(t0 > 0 && t0 < 14)) continue;
-          const O: [number, number] = [jx + nAc[0] * (eA + R) + dA[0] * t0, jz + nAc[1] * (eA + R) + dA[1] * t0];
-          corners.push({ road: ri, jx, jz, dA, dB, other: rj, nAc, t0, O,
-            TA: [O[0] - nAc[0] * R, O[1] - nAc[1] * R], TB: [O[0] - nBc[0] * R, O[1] - nBc[1] * R] });
+          const R = plan.returnR;
+          // the fillet on the street's segment its tangent point lands on (228 r1b: a street bending at the junction's
+          // node set the corner off the run's kerb line by up to 0.3 m): solved on the junction's segment, then again on
+          // the segment the tangent point fell on, from where that segment's line meets the lane's
+          let seg = near.i, cx = jx, cz = jz, t: [number, number] = tA, corner: Corner | null = null;
+          for (let pass = 0; pass < 3; pass++) {
+            const dA: [number, number] = [t[0] * dir, t[1] * dir];
+            const nA: [number, number] = [-dA[1], dA[0]], sA = Math.sign(dot2(nA, dB)) || 1, nAc: [number, number] = [nA[0] * sA, nA[1] * sA];
+            const nB0: [number, number] = [-dB[1], dB[0]], sB = Math.sign(dot2(nB0, dA)) || 1, nBc: [number, number] = [nB0[0] * sB, nB0[1] * sB];
+            const eA = K, eB = clearOf(rj) - 0.4, denom = dot2(dA, nBc);
+            if (Math.abs(denom) < 0.2) { corner = null; break; }
+            const t0 = (eB + R - (eA + R) * dot2(nAc, nBc)) / denom;
+            if (!(t0 > 0 && t0 < 14)) { corner = null; break; }
+            const O: [number, number] = [cx + nAc[0] * (eA + R) + dA[0] * t0, cz + nAc[1] * (eA + R) + dA[1] * t0];
+            corner = { road: ri, jx: cx, jz: cz, dA, dB, other: rj, nAc, t0, O,
+              TA: [O[0] - nAc[0] * R, O[1] - nAc[1] * R], TB: [O[0] - nBc[0] * R, O[1] - nBc[1] * R] };
+            const on = nearestOnRoad(A, cx + dA[0] * t0, cz + dA[1] * t0);
+            if (on.i === seg) break;
+            // the tangent point's segment: its line, and where it meets the lane's centreline
+            seg = on.i;
+            const [px, pz] = A[seg], [qx, qz] = A[seg + 1], ql = Math.hypot(qx - px, qz - pz) || 1;
+            t = [(qx - px) / ql, (qz - pz) / ql];
+            const cr = t[0] * dB[1] - t[1] * dB[0];
+            if (Math.abs(cr) < 0.2) { corner = null; break; }
+            const u = ((ex - px) * dB[1] - (ez - pz) * dB[0]) / cr;
+            cx = px + t[0] * u; cz = pz + t[1] * u;
+          }
+          if (corner) corners.push(corner);
         }
       }
     }
@@ -198,7 +216,7 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
         const [tx, tz] = rs.t[i], nx = -tz * side, nz = tx * side;
         const kx = x + nx * K, kz = z + nz * K;
         const out: Sample = { x, z, nx, nz, state: 'blocked', outer: W0 + 2.0 };
-        const why = (r: string): Sample => { census[`sample:${r}`] = (census[`sample:${r}`] ?? 0) + 1; return out; };
+        const why = (r: string): Sample => { census[`sample:${r}`] = (census[`sample:${r}`] ?? 0) + 1; out.why = r; return out; };
         if (!insidePolygon(plan.inside, kx, kz) || polygonEdgeDistance(plan.inside, kx, kz) < 1.5) return why('outside');
         if (plan.exclude.some((r) => inRect(r, kx, kz) || inRect(r, x + nx * (W0 + 1), z + nz * (W0 + 1)))) return why('square');
         // a junction's mouth: another road's carriageway at the kerb
@@ -257,8 +275,38 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
     }
   }
 
+  // ------------------------------------------------------------------- a run carried on to the corner it comes up to
+  // (228 r1b: a run whose last fronted sample stopped short of a lane's corner left a metre or more of bare setts between
+  // its dressed end and the return's kerb) a run's end within 6 m of a corner's tangent point on its side runs on over
+  // the open samples to the first sample the return takes, that sample set on the tangent point, so the kerb and the
+  // flags meet the return; a house at the kerb, a junction's mouth or the square on the way stops it (no return there)
+  const met = new Set<Corner>();
+  for (const run of runsByRoad) {
+    const S = run.samples;
+    for (const dir of [1, -1] as const) {
+      const end = dir === 1 ? run.to : run.from, e = S[end];
+      for (const c of corners) {
+        if (c.road !== run.ri || met.has(c) || e.nx * c.nAc[0] + e.nz * c.nAc[1] < 0.5) continue;
+        if (Math.hypot(e.x + e.nx * K - c.TA[0], e.z + e.nz * K - c.TA[1]) >= 6) continue;
+        let k = end + dir;
+        while (k >= 0 && k < S.length && Math.abs(k - end) <= 7 && (S[k].state === 'open' || S[k].state === 'fronted')) k += dir;
+        if (k < 0 || k >= S.length || S[k].why !== 'return' || Math.abs(k - end) > 8) continue;
+        const along = (S[k].x - c.jx) * c.dA[0] + (S[k].z - c.jz) * c.dA[1];
+        if (Math.abs(along - c.t0) > 0.01) {
+          // the first return sample moves onto the corner's tangent point
+          S[k] = { ...S[k], x: c.jx + c.dA[0] * c.t0, z: c.jz + c.dA[1] * c.t0, nx: c.nAc[0], nz: c.nAc[1] };
+        }
+        for (let q = end + dir; q !== k + dir; q += dir) S[q] = { ...S[q], state: 'fronted', outer: e.outer };
+        if (dir === 1) run.to = k; else run.from = k;
+        census.carried = (census.carried ?? 0) + Math.abs(k - end);
+        met.add(c);
+        break;
+      }
+    }
+  }
+
   // ------------------------------------------------------------------------------------------- lay a run
-  const kerbTopAt = (x: number, z: number, nx: number, nz: number, face: number): number => ctx.ground(x + nx * K, z + nz * K) + face;
+  const kerbTopAt =(x: number, z: number, nx: number, nz: number, face: number): number => ctx.ground(x + nx * K, z + nz * K) + face;
   const mouthRamp = (x: number, z: number): number => {
     // the face over the last 2 m before a square's walk: down to 2 cm at the walk
     let f = 1;
@@ -337,11 +385,9 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
 
   // ------------------------------------------------------------------------------------- the returns at the lanes
   for (const c of corners) {
-    const R = plan.returnR, O = c.O, TA = c.TA, TB = c.TB, nAc = c.nAc;
-    // only where the street's run comes up to the corner (its last fronted sample within 6 m of TA, on this side)
-    const reaching = runsByRoad.some((run) => run.ri === c.road && [run.samples[run.from], run.samples[run.to]].some((s) =>
-      Math.hypot(s.x + s.nx * K - TA[0], s.z + s.nz * K - TA[1]) < 6 && s.nx * nAc[0] + s.nz * nAc[1] > 0.5));
-    if (!reaching) continue;
+    const R = plan.returnR, O = c.O, TA = c.TA, TB = c.TB;
+    // only where the street's run comes up to the corner (carried on to its tangent point above, on this side)
+    if (!met.has(c)) continue;
     const near = plotsNear(O[0], O[1], R + 4);
     const a0 = Math.atan2(TA[0] - O[0], TA[1] - O[1]), a1 = Math.atan2(TB[0] - O[0], TB[1] - O[1]);
     let da = a1 - a0;

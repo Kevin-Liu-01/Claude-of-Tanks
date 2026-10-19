@@ -83,6 +83,13 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
   assert.equal(shortRuns, 0, `${mapId}: every run at least 3 m long`);
   assert.equal(runs, census.runs, `${mapId}: ${runs} continuous ribbons, one a run (${census.runs})`);
   assert.ok((census.returns ?? 0) >= 1, `${mapId}: the lanes' corners return (${census.returns ?? 0})`);
+  // (228 r1b) every return meets its run: the corner's tangent point is a run's kerb end (no bare setts between a run's
+  // dressed end and the corner's kerb)
+  const runEnds = report.debugPolys.filter((p) => p.col[1] === 120).flatMap((p) => [[p.pts[0], p.pts[1]], [p.pts[2], p.pts[3]]]);
+  for (const r of report.debugPolys.filter((p) => p.col[1] === 60)) {
+    const gap = Math.min(...runEnds.map(([x, z]) => Math.hypot(x - r.pts[0], z - r.pts[1])));
+    assert.ok(gap < 0.2, `${mapId}: the return at (${r.pts[0].toFixed(1)}, ${r.pts[1].toFixed(1)}) ${gap.toFixed(2)} m from its run's kerb end`);
+  }
   console.log(`${mapId}: ${census.legacyPieces} legacy pieces' draws spent; ${runs} runs, ${metres.toFixed(0)} m of kerb, ${(census.walkM2 ?? 0).toFixed(0)} m² of pavement, `
     + `${census.returns ?? 0} returns, ${census.triangles} triangles`);
 }
