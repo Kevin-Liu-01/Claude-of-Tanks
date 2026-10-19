@@ -33,7 +33,7 @@ import {
   type AtmosphereSummary,
 } from './atmosphere.ts';
 import { SkyEnvironmentCache } from './skyEnvironmentCache.ts';
-import { earthLandTexture } from './earthLandMask.ts';
+import { loadEarthLand, loadedEarthLandTexture } from './earthLandAccess.ts';
 import { authoredSunOf, lightTune, resolveLightModel, type LightingConfig, type LightModelPreset } from './lightModelCore.ts';
 import { installFogLayer } from './fogLayer.ts';
 import { HAZE_MATERIAL_FOG_SHARE } from './hazeLaw.ts';
@@ -946,6 +946,20 @@ const EARTH_LAND_PLACEHOLDER = (() => {
   return t;
 })();
 
+/**
+ * (the 228 entry diet) the land mask for a sky that draws the Earth: its module loads with the world build of the map
+ * whose sky draws it (earthLandAccess.ts), so a built world finds it loaded and the raster comes back synchronously as
+ * before. A sky applied without that build binds the placeholder until the module arrives, then the raster.
+ */
+function earthLandTexture(u: Record<string, THREE.IUniform>): THREE.Texture {
+  const land = loadedEarthLandTexture();
+  if (land) return land;
+  void loadEarthLand().then(() => {
+    if (u.uEarth.value > 0.5) u.uEarthLand.value = loadedEarthLandTexture();
+  }, () => undefined);
+  return EARTH_LAND_PLACEHOLDER;
+}
+
 /** Apply the shared atmosphere parameters to a Sky instance. @param {Sky} sky @param {THREE.Vector3} sunDir @param {object} [preset] */
 function configureSkyUniforms(
   sky: Sky,
@@ -971,7 +985,7 @@ function configureSkyUniforms(
   u.uEarth.value = preset.earth;
   // (the land mask only where the sky draws its Earth: a 1 x 1 placeholder elsewhere, no raster at boot)
   u.uEarthLand ??= { value: EARTH_LAND_PLACEHOLDER };
-  if (preset.earth > 0.5) u.uEarthLand.value = earthLandTexture();
+  if (preset.earth > 0.5) u.uEarthLand.value = earthLandTexture(u);
   u.uPlanetR ??= { value: 0.007 };
   u.uPlanetR.value = preset.planetDeg * Math.PI / 360;
   u.uPlanetTint ??= { value: new THREE.Color(0xedf2ff) };

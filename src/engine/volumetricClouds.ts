@@ -109,6 +109,14 @@ const CLOUD_CIRRUS_TILE_M = 30000;
 // (round 6, wave 222: an overcast "with no brighter patch to give the sun's direction" — the critics' advice "a lower,
 // subtler deck that shows the sun's direction, not more cloud contrast": the forward lobe through a deck at 0.45)
 export const CLOUD_DECK_SUN_LOBE = 0.45;
+/**
+ * (2026-10-18, the SKY lane's s187 bisect) the share of a low sun's light a closing deck's deep diffusion drops at dusk (0..1,
+ * ramped out by a 17-degree sun; cloudShaders.ts eTop): the approved evening deck reads grey under a sky-lit sheet, not
+ * orange-pink. QA: CLOUD_DECK_DUSK.
+ */
+export const CLOUD_DECK_DUSK = 1;
+/** (2026-10-18) at dusk a deck's vertical depth hands back from its cell's column to the sun ray's (0..1; QA: CLOUD_DECK_DUSK_TAU). */
+export const CLOUD_DECK_DUSK_TAU = 1;
 // (the march's light budget is per tier now: CLOUD_TIERS lightEvery / exitT / fineN / fineStride. Round 9 set the high
 // tier's — the light on every third lit step, the march out at 0.05 of the light, priced at Monsoon's sky-w: −0.18 and
 // −0.46 ms; the sun step kept for the towers' self-shadowing near the point)
@@ -885,7 +893,7 @@ export class VolumetricCloudLayer {
         uDetailRange: { value: defs.detailRange }, uPixelAngle: { value: 0.002 },
         uHazeDatum: { value: 0 }, uOvercastHaze: { value: new THREE.Vector4(0, 1, 0, 0) }, uOvercastTint: { value: new THREE.Vector3(1, 1, 1) },
         uOpaqueCut: { value: 1 }, uLightBudget: { value: new THREE.Vector4(defs.lightEvery, 0.15, defs.sunSteps, defs.exitT) },
-        uStepCap: { value: defs.steps }, uFine: { value: new THREE.Vector2(defs.fineN, defs.fineStride) }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckTune: { value: new THREE.Vector3(1, 1, CLOUD_DECK_GROUND_RETURN) }, uBsmLowSun: { value: new THREE.Vector2(1, 0.3) }, uFarFade: { value: 1 }, uEntryJitter: { value: 1 }, uDebug: { value: 0 },
+        uStepCap: { value: defs.steps }, uFine: { value: new THREE.Vector2(defs.fineN, defs.fineStride) }, uDeckLobe: { value: CLOUD_DECK_SUN_LOBE }, uDeckDusk: { value: new THREE.Vector2(CLOUD_DECK_DUSK_TAU, CLOUD_DECK_DUSK) }, uDeckTune: { value: new THREE.Vector3(1, 1, CLOUD_DECK_GROUND_RETURN) }, uBsmLowSun: { value: new THREE.Vector2(1, 0.3) }, uFarFade: { value: 1 }, uEntryJitter: { value: 1 }, uDebug: { value: 0 },
         tSceneDepth: { value: null }, uSceneDepthOn: { value: 0 }, uSceneNearFar: { value: new THREE.Vector2(0.5, 4000) },
         uDepthRight: { value: new THREE.Vector3(1, 0, 0) }, uDepthUp: { value: new THREE.Vector3(0, 1, 0) },
         uDepthFwd: { value: new THREE.Vector3(0, 0, -1) }, uDepthTan: { value: new THREE.Vector2(1, 1) }, uDomeRadius: { value: CLOUD_DOME_RADIUS_M },
@@ -1454,6 +1462,7 @@ export class VolumetricCloudLayer {
     m.uWeatherWarp.value = this.warpM * lightTune('CLOUD_WARP', 1);
     m.uTurbulence.value = this.turbM * lightTune('CLOUD_TURBULENCE', 1);
     t.uDeckLobe.value = lightTune('CLOUD_DECK_SUN_LOBE', CLOUD_DECK_SUN_LOBE);
+    (t.uDeckDusk.value as THREE.Vector2).set(lightTune('CLOUD_DECK_DUSK_TAU', CLOUD_DECK_DUSK_TAU), lightTune('CLOUD_DECK_DUSK', CLOUD_DECK_DUSK));
     // (2026-10-15, the C2 diagnosis critic: the Beer map's share under a low sun made the shade muddy brown on every
     // sunset map, and its single-front texel stacks a 5-degree ray's cumulus into strata) none at the horizon, all of it
     // from 17 degrees up; the secondary march takes three more doubling steps there instead (lowSunExtraSteps)

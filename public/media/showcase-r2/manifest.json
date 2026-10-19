@@ -79,10 +79,6 @@
       "19_live_sniper",
       "17_live_player_hud"
     ],
-    "docs/performance": [
-      "17_live_player_hud",
-      "16_mobile_garage"
-    ],
     "docs/worlds": [
       "01_garage_verdant",
       "03_garage_frosthollow"
@@ -511,13 +507,13 @@
       "quality": {
         "passed": true,
         "metrics": {
-          "meanLuma": 23.6731,
+          "meanLuma": 23.8789,
           "p05": 7.5788,
-          "p95": 59.1536,
-          "clippedBlack": 0.0143,
+          "p95": 57.5492,
+          "clippedBlack": 0.015,
           "clippedWhite": 0,
-          "meanSaturation": 0.3783,
-          "edgeMean": 3.4262
+          "meanSaturation": 0.376,
+          "edgeMean": 3.6857
         }
       }
     },
@@ -526,7 +522,7 @@
       "id": "12_gallery_armor",
       "src": "/media/showcase-r2/12_gallery_armor.webp",
       "title": "Tank Gallery armor inspection",
-      "alt": "Current Tank Gallery interface showing the Strv 122 armor diagnostic layer",
+      "alt": "Current Tank Gallery interface showing the Stridsvagn 121 armor diagnostic layer",
       "kind": "interface",
       "feature": "Tank Gallery",
       "map": "Tank Gallery",
@@ -543,13 +539,13 @@
       "quality": {
         "passed": true,
         "metrics": {
-          "meanLuma": 25.245,
+          "meanLuma": 25.6179,
           "p05": 7.5788,
-          "p95": 74.5562,
-          "clippedBlack": 0.0143,
+          "p95": 76.8098,
+          "clippedBlack": 0.0148,
           "clippedWhite": 0,
-          "meanSaturation": 0.3734,
-          "edgeMean": 3.8596
+          "meanSaturation": 0.3733,
+          "edgeMean": 4.0443
         }
       }
     },
@@ -558,7 +554,7 @@
       "id": "13_gallery_modules",
       "src": "/media/showcase-r2/13_gallery_modules.webp",
       "title": "Tank Gallery module inspection",
-      "alt": "Current Tank Gallery interface showing the Leclerc XLR internal modules",
+      "alt": "Current Tank Gallery interface showing the Leclerc SXXI internal modules",
       "kind": "interface",
       "feature": "Tank Gallery",
       "map": "Tank Gallery",
@@ -575,13 +571,13 @@
       "quality": {
         "passed": true,
         "metrics": {
-          "meanLuma": 23.946,
+          "meanLuma": 27.0665,
           "p05": 7.5788,
-          "p95": 59.5066,
-          "clippedBlack": 0.0147,
+          "p95": 74.8376,
+          "clippedBlack": 0.0152,
           "clippedWhite": 0,
-          "meanSaturation": 0.3729,
-          "edgeMean": 3.5797
+          "meanSaturation": 0.373,
+          "edgeMean": 3.9107
         }
       }
     },
@@ -606,13 +602,13 @@
       "quality": {
         "passed": true,
         "metrics": {
-          "meanLuma": 22.6329,
+          "meanLuma": 23.3085,
           "p05": 7.5788,
-          "p95": 52.3072,
-          "clippedBlack": 0.0151,
+          "p95": 52.5198,
+          "clippedBlack": 0.0152,
           "clippedWhite": 0,
-          "meanSaturation": 0.3705,
-          "edgeMean": 3.3938
+          "meanSaturation": 0.3737,
+          "edgeMean": 3.5121
         }
       }
     },
@@ -640,13 +636,13 @@
       "quality": {
         "passed": true,
         "metrics": {
-          "meanLuma": 135.2298,
-          "p05": 15.5106,
-          "p95": 209.2414,
+          "meanLuma": 84.817,
+          "p05": 8.3662,
+          "p95": 178.957,
           "clippedBlack": 0,
-          "clippedWhite": 0,
-          "meanSaturation": 0.3331,
-          "edgeMean": 9.3899
+          "clippedWhite": 0.0004,
+          "meanSaturation": 0.3002,
+          "edgeMean": 7.7609
         }
       }
     },
@@ -667,7 +663,6 @@
       },
       "pages": [
         "garage",
-        "docs/performance",
         "docs/interface"
       ],
       "quality": {
@@ -701,20 +696,19 @@
       "pages": [
         "docs",
         "docs/rendering",
-        "docs/performance",
         "docs/ai",
         "docs/multiplayer"
       ],
       "quality": {
         "passed": true,
         "metrics": {
-          "meanLuma": 132.3375,
-          "p05": 38.2362,
-          "p95": 206.2454,
-          "clippedBlack": 0.0002,
+          "meanLuma": 111.7452,
+          "p05": 38.5932,
+          "p95": 194.0414,
+          "clippedBlack": 0,
           "clippedWhite": 0,
-          "meanSaturation": 0.4421,
-          "edgeMean": 10.2891
+          "meanSaturation": 0.6445,
+          "edgeMean": 8.79
         }
       }
     },
@@ -737,13 +731,13 @@
       "quality": {
         "passed": true,
         "metrics": {
-          "meanLuma": 136.5626,
-          "p05": 42.7212,
-          "p95": 204.2546,
+          "meanLuma": 106.6959,
+          "p05": 40.2098,
+          "p95": 192.0762,
           "clippedBlack": 0,
           "clippedWhite": 0,
-          "meanSaturation": 0.4729,
-          "edgeMean": 11.7533
+          "meanSaturation": 0.6768,
+          "edgeMean": 8.9032
         }
       }
     },

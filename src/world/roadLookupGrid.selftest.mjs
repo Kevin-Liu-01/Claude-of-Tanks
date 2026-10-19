@@ -292,6 +292,8 @@ function mapFixture(fine, fail = false) {
     startHorizonRingBuild: () => ({ stats: {}, dispose() {} }), supplyHorizonRing: () => {}, withdrawHorizonRing: () => {}, finishHorizonRingAsync: async () => {},
     // (the horizons stream, 2026-10-13, HL-3) a migrated map builds the Hinterland instead of the ring; this map keeps the ring
     selectHinterland: () => false, startHinterlandBuild: () => null, supplyHinterland: () => {}, withdrawHinterland: () => {},
+    // (the 228 entry diet) the land mask of a sky that draws the Earth loads with its world (earthLandAccess.ts): urban's draws none
+    skyDrawsEarth: (sky) => (sky?.earth ?? 0) > 0.5, loadEarthLand: () => { throw new Error('urban draws no Earth'); },
     createHeightField() { assert.equal(fine, false); events.push('sync-field'); return field; },
     async createHeightFieldAsync(_seed, _config, tick) {
       assert.equal(fine, true); events.push('field-start');
