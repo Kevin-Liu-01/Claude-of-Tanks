@@ -269,8 +269,11 @@ const TYPE96_TURRET_STATIONS: readonly Type96Station[] = [
 // The gunner's sight housing on the right front roof: centre and width, height, depth (source frame).
 const TYPE96_GUNNER_SIGHT = { x: .649, y: 2.436, z: .36, w: .51, h: .214, d: .28 } as const;
 /** Options for reusing the Type 96B turret on another hull. mastTopY lowers the rear whip's tip (Type 96B frame,
- * default its own 5.26855 m) for a concept whose listed height is its body and roof weapon, keeping the whip's rake. */
-export interface Type96TurretOptions { mastTopY?: number }
+ * default its own 5.26855 m) for a concept whose listed height is its body and roof weapon, keeping the whip's rake.
+ * bootFloor clips the pitching mantlet boot's underside at each of its six stations (source-frame heights, null for
+ * none) so the boot clears the hull it is carried over through the whole traverse and pitch range; without it the
+ * boot keeps Object_6's measured underside. */
+export interface Type96TurretOptions { mastTopY?: number; bootFloor?: readonly (number | null)[] }
 export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptions = {}): void {
     P.add('turret', cylY(1.00, 1.04, .15, P.q ? 40 : 22), 0, .045, 0);
     P.add('turret', sectionSolid(TYPE96_TURRET_STATIONS.map(row => turretStation(P, ...row)),
@@ -301,15 +304,17 @@ export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptio
         [1.20, .250, 1.595, 2.171], [1.32, .260, 1.582, 2.212],
         [1.60, .246, 1.616, 2.173], [1.75, .216, 1.641, 2.082],
         [1.85, .190, 1.704, 2.044], [1.951, .157, 1.696, 2.017],
-    ].map(([z, half, bottom, top]) => ({
+    ].map(([z, half, bottom, top], station) => ({
         z: z - 1.6, ring: Array.from({ length: P.q ? 20 : 12 }, (_, i) => {
             const a = i * Math.PI * 2 / (P.q ? 20 : 12);
-            return [Math.cos(a) * half, (top + bottom) / 2 - 1.8602 + Math.sin(a) * (top - bottom) / 2] as const;
+            const y = (top + bottom) / 2 - 1.8602 + Math.sin(a) * (top - bottom) / 2, floor = options.bootFloor?.[station];
+            return [Math.cos(a) * half, floor == null ? y : Math.max(y, floor - 1.8602)] as const;
         }),
     }));
     // Object_6 is the pitching mantlet boot; the tube and ambiguous Object_11
     // collar remain in recoil. This changes ownership only, not neutral stock.
-    P.addGunExtra(sectionSolid(boot));
+    // A clipped underside is a flat run of contour points: its caps keep every one.
+    P.addGunExtra(options.bootFloor ? sectionSolid(boot, { preserveCapBoundary: true }) : sectionSolid(boot));
     // Source Object_13 is the outer tapered shroud. Object_14's 68 mm
     // radius belongs to its inner bore and must not become the outer barrel.
     const stations: readonly (readonly [
@@ -343,6 +348,15 @@ function addType96GunnerSightPlinth(P: TankBuilderPort): void {
     equipment(P, 'turret', 'Detail', sectionSolid([s.z - s.d / 2 + .02, s.z + s.d / 2 - .02].map(z => ({ z,
         ring: [[x0, roof(z) - .006], [x1, roof(z) - .006], [x1, top], [x0, top]] as const }))), 0, 0, 0);
 }
+/** The fleet Type 96B's mantlet boot floors (buildType96Turret's bootFloor; the stations at source z 1.20, 1.32, 1.60,
+ * 1.75, 1.85, 1.951 about the trunnion at y 1.8602, z 1.60). Release 227: Object_6's underside (y 1.582-1.704) hung
+ * 4-10 cm below the turret's own floor and swept through this hull's roof (y 1.59-1.62) at every traverse, through the
+ * driver's hatch lid at rest, and 5.6 cm into the roof at full elevation. Behind the trunnion the clipped floor rides
+ * inside the turret at rest and swings down to the turret's floor line at +14 degrees, 15 mm over the driver's hatch
+ * handle (y 1.651); ahead of it the floor clears the rear-deck panels (y 1.6535) with the turret reversed. The two front
+ * stations, which wrap the barrel collar, keep their measured undersides. type96MantletClearance.selftest.mjs sweeps
+ * every traverse and pitch for crossings. */
+const TYPE96B_BOOT_FLOOR = [1.75, 1.73, 1.66, 1.67, null, null] as const;
 export function buildType96bX(P: TankBuilderPort): void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
@@ -356,7 +370,7 @@ export function buildType96bX(P: TankBuilderPort): void {
     P.gunG.position.set(0, frame.gun[1] - frame.turret[1], frame.gun[2] - frame.turret[2]);
     buildType96Hull(P);
     buildType96Gear(P);
-    buildType96Turret(P);
+    buildType96Turret(P, { bootFloor: TYPE96B_BOOT_FLOOR });
     addType96GunnerSightPlinth(P);
     preserveSourceStudyGunMountAppearance(P);
     addRearFieldStowage(P);
