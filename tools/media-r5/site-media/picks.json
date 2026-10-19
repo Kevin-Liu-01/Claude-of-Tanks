@@ -958,43 +958,8 @@
   "home": {
     "hero": [
       {
-        "versus": "vs02-verdant-challenger-t80u-r6",
-        "focus": "80% 50%"
-      },
-      {
-        "versus": "vs03-reservoir-k2-ztz99-r6",
-        "focus": "62% 52%"
-      },
-      {
-        "versus": "vs09-alpine-strv122-t80bv-r6",
-        "focus": "66% 58%"
-      },
-      {
-        "versus": "f6-leo2a6-steinburg-r6",
-        "focus": "58% 55%"
-      },
-      {
-        "versus": "vs06-coastal-type10-ztz99a2-r6",
-        "focus": "56% 55%"
-      },
-      {
-        "versus": "vs05-oasis-merkava-t72b3-r6",
-        "focus": "52% 62%"
-      },
-      {
-        "id": "s21-fields-assault",
-        "still": "close",
-        "focus": "52% 62%"
-      },
-      {
-        "id": "s39-lakeside-village",
-        "still": "moment",
-        "focus": "40% 52%"
-      },
-      {
-        "id": "s26-minaret-fire",
-        "still": "close",
-        "focus": "38% 58%"
+        "versus": "vs01-desert-abrams-t90m-r6",
+        "focus": "28% 58%"
       },
       {
         "id": "s38-church-knockout",
@@ -1002,14 +967,49 @@
         "focus": "46% 57%"
       },
       {
-        "id": "s18-street-knockout",
+        "versus": "vs02-verdant-challenger-t80u-r6",
+        "focus": "64% 48%"
+      },
+      {
+        "id": "s39-lakeside-village",
         "still": "moment",
-        "focus": "57% 66%"
+        "focus": "40% 52%"
+      },
+      {
+        "versus": "vs05-oasis-merkava-t72b3-r6",
+        "focus": "36% 62%"
+      },
+      {
+        "id": "s21-fields-assault",
+        "still": "close",
+        "focus": "52% 62%"
+      },
+      {
+        "versus": "vs03-reservoir-k2-ztz99-r6",
+        "focus": "62% 52%"
+      },
+      {
+        "id": "s26-minaret-fire",
+        "still": "close",
+        "focus": "38% 58%"
+      },
+      {
+        "versus": "vs04-railyard-leclerc-t14-r6",
+        "focus": "38% 55%"
       },
       {
         "id": "s07-lake-shellfire",
         "still": "moment",
         "focus": "55% 60%"
+      },
+      {
+        "versus": "vs06-coastal-type10-ztz99a2-r6",
+        "focus": "44% 60%"
+      },
+      {
+        "id": "s18-street-knockout",
+        "still": "moment",
+        "focus": "57% 66%"
       }
     ],
     "rail": [

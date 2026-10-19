@@ -4,29 +4,26 @@
   "source": "The site fifty (public/media/site50-r14): takes staged in Scene Studio and rendered at 4K in the game engine, picked in tools/media-r5/site-media/picks.json",
   "hero": [
     {
+      "versus": "vs01-desert-abrams-t90m-r6",
+      "title": "Sirocco Wadi, day: M1A2 Abrams SEPv3 v T-90M",
+      "src": "/media/versus-r1/vs01-desert-abrams-t90m-r6.webp"
+    },
+    {
+      "id": "s38-church-knockout",
+      "title": "A Leopard 2A6 is knocked out beside the onion-domed church at night",
+      "src": "/media/site50-r14/stills/s38-church-knockout-close.webp",
+      "still": "close"
+    },
+    {
       "versus": "vs02-verdant-challenger-t80u-r6",
       "title": "Verdant Fields, day: Challenger 3 v T-80U",
       "src": "/media/versus-r1/vs02-verdant-challenger-t80u-r6.webp"
     },
     {
-      "versus": "vs03-reservoir-k2-ztz99-r6",
-      "title": "Highland Reservoir, golden hour: K2 Black Panther v ZTZ-99 Longwei",
-      "src": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6.webp"
-    },
-    {
-      "versus": "vs09-alpine-strv122-t80bv-r6",
-      "title": "Glacier Pass, morning: Stridsvagn 122 v T-80BV",
-      "src": "/media/versus-r1/vs09-alpine-strv122-t80bv-r6.webp"
-    },
-    {
-      "versus": "f6-leo2a6-steinburg-r6",
-      "title": "Steinburg, day: Leopard 2A6 v T-90M",
-      "src": "/media/versus-r1/f6-leo2a6-steinburg-r6.webp"
-    },
-    {
-      "versus": "vs06-coastal-type10-ztz99a2-r6",
-      "title": "Saltmere Bay, day: Type 10 v ZTZ-99A2",
-      "src": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r6.webp"
+      "id": "s39-lakeside-village",
+      "title": "A Chieftain Mk 10 fires across the village at Highland Reservoir",
+      "src": "/media/site50-r14/stills/s39-lakeside-village.webp",
+      "still": "moment"
     },
     {
       "versus": "vs05-oasis-merkava-t72b3-r6",
@@ -40,10 +37,9 @@
       "still": "close"
     },
     {
-      "id": "s39-lakeside-village",
-      "title": "A Chieftain Mk 10 fires across the village at Highland Reservoir",
-      "src": "/media/site50-r14/stills/s39-lakeside-village.webp",
-      "still": "moment"
+      "versus": "vs03-reservoir-k2-ztz99-r6",
+      "title": "Highland Reservoir, golden hour: K2 Black Panther v ZTZ-99 Longwei",
+      "src": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6.webp"
     },
     {
       "id": "s26-minaret-fire",
@@ -52,21 +48,25 @@
       "still": "close"
     },
     {
-      "id": "s38-church-knockout",
-      "title": "A Leopard 2A6 is knocked out beside the onion-domed church at night",
-      "src": "/media/site50-r14/stills/s38-church-knockout-close.webp",
-      "still": "close"
-    },
-    {
-      "id": "s18-street-knockout",
-      "title": "A T-90A is knocked out at the end of a Steinburg street at night",
-      "src": "/media/site50-r14/stills/s18-street-knockout.webp",
-      "still": "moment"
+      "versus": "vs04-railyard-leclerc-t14-r6",
+      "title": "Cinder Junction, night: Leclerc SXXI v T-14 Armata",
+      "src": "/media/versus-r1/vs04-railyard-leclerc-t14-r6.webp"
     },
     {
       "id": "s07-lake-shellfire",
       "title": "A Stridsvagn 122 crosses the frozen lake through shellfire",
       "src": "/media/site50-r14/stills/s07-lake-shellfire.webp",
+      "still": "moment"
+    },
+    {
+      "versus": "vs06-coastal-type10-ztz99a2-r6",
+      "title": "Saltmere Bay, day: Type 10 v ZTZ-99A2",
+      "src": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r6.webp"
+    },
+    {
+      "id": "s18-street-knockout",
+      "title": "A T-90A is knocked out at the end of a Steinburg street at night",
+      "src": "/media/site50-r14/stills/s18-street-knockout.webp",
       "still": "moment"
     }
   ],

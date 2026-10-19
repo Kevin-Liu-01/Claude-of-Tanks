@@ -56,7 +56,11 @@ assert.equal(manifest.hero.length, 12, 'the hero has twelve reviewed in-engine s
 assert.deepEqual(manifest.hero.map((slide) => slide.versus ?? slide.id), picks.home.hero.map((slide) => slide.versus ?? slide.id),
   'the hero shows the picks in their order');
 assert.equal(manifest.hero.filter((slide) => slide.versus).length, 6, 'six versus stills');
-assert.ok(manifest.hero.slice(0, 6).every((slide) => slide.versus), 'the hero opens on the versus stills');
+// (the owner, 2026-10-19: "the heroes should use the recommended i liked like the abrams", and of six duels in a row
+// "gets reptitive"): the SEPv3 opens, then a versus still and a site fifty slide in turn
+assert.equal(manifest.hero[0].versus, 'vs01-desert-abrams-t90m-r6', 'the hero opens on the SEPv3');
+manifest.hero.forEach((slide, i) => assert.equal(Boolean(slide.versus), i % 2 === 0,
+  `hero slide ${i + 1}: the versus stills and the site fifty slides take turns`));
 for (const slide of manifest.hero) {
   if (slide.versus) assert.equal(slide.src, versusById.get(slide.versus)?.path, `${slide.versus} is a published versus still`);
   else assert.ok(slide.src.startsWith(`${site50}/stills/`), `${slide.id} is a site fifty still`);
