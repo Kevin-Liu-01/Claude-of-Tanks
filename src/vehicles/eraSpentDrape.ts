@@ -171,17 +171,20 @@ export function drapeSuitOverSpentEra(port: EraDrapePort, owners: readonly (read
         // the nodes lying on a module move (a garnish card's within 5 cm of it, the cloth's within 3 cm); then, ring by ring
         // (three), a node held up over a joint or standing in a card follows a moving neighbour in its direction onto the
         // permanent stock; a node lying on the permanent stock stays (a card across a module and a frame bends over it)
-        const own = new Map<number, {c: string; dir: THREE.Vector3}>(), lie = nodes.length <= 24 ? CARD_REST_M : REST_M;
+        // (a card's node stays only where it touches the permanent stock: a card's tip standing a centimetre off a frame
+        // plate falls with the card instead of drawing it out into a spike)
+        const card = nodes.length <= 24, lie = card ? CARD_REST_M : REST_M, hang = card ? .006 : HANG_M;
+        const own = new Map<number, {c: string; dir: THREE.Vector3}>();
         for (const v of nodes) {
           const r = rest[v];
           if (!r || r.t.cluster === null || r.d > lie) continue;
           const go = onto(v);
           if (go) { own.set(v, {c: r.t.cluster, dir: go.dir}); move(r.t.cluster, v, go.to); }
         }
-        for (let ring = 0; ring < 3; ring++) {
+        for (let ring = 0; ring < (card ? 6 : 3); ring++) {
           const add: [number, {c: string; dir: THREE.Vector3}][] = [];
           for (const v of nodes) {
-            if (own.has(v) || (rest[v] && rest[v]!.d <= HANG_M)) continue;
+            if (own.has(v) || (rest[v] && rest[v]!.d <= hang)) continue;
             const from = [...near[v]].map(u => own.get(u)).find(x => x !== undefined);
             if (from) add.push([v, from]);
           }
