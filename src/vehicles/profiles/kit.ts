@@ -14,7 +14,7 @@ import { KIT } from '../tankFactoryCore.ts';
 import { emitSpareLink } from '../spareLinkGeometry.ts';
 import { ownFittingGeometry } from '../ownedFittingGeometry.ts';
 import {
-  addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRidingCradle, addPintleRing, addPintleShield,
+  addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRidingCradle, addPintleRing, addPintleShield, addPintleShieldPort,
   createPintleLayout, isMgClass, machinedRing, MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT, MG_CLASSES, RIDING_CRADLE_RECOIL_M,
   type PintleLayout,
 } from '../machineGunGeometry.ts';
@@ -1574,7 +1574,9 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
     // shield: its top line comes level with the leaf sight's (the emplacement's height is the sight's), its top beam
     // still 50 mm over the barrel's support collar.
     if (opts.ridingCradle) {
-      addPintleShield({...weaponContext,recY:weaponContext.recY-.012*context.s},{braces:false,recessSlot:'dark'});addPintleRing(context,'detail');
+      // round 6 (visual critic CN-D3): the shield's window closed round a gun port (machineGunGeometry.ts addPintleShieldPort)
+      const shieldContext={...weaponContext,recY:weaponContext.recY-.012*context.s};
+      addPintleShield(shieldContext,{braces:false,recessSlot:'dark'});addPintleShieldPort(shieldContext);addPintleRing(context,'detail');
       pitchFrameParts([weapon,gun],context.recY,0,context.recZ);
       RIDING_CRADLE_PARTS.set(key,storeFittingParts([context.parts,weapon,gun]));
     }

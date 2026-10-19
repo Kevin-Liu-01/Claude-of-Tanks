@@ -884,6 +884,31 @@ export function addPintleShield(context: PintleLayout,
 }
 
 /**
+ * Release 227, round 6 (visual critic CN-D3: "the 'light shield' reads as an open rectangular window frame ... not a
+ * shield plate. From the front it looks like a hollow box frame around the gun"): a riding cradle's shield closes the
+ * 0.15 m window between its two inner panels with a face plate round a gun port, on the same pitch group, so it reads
+ * as one shield with a port. Four flat plates, 20 mm thick, 12 mm into each inner panel's inboard edge and set between
+ * the panels' faces (no coplanar face): an apron under the port down to 10 mm over the leaves' foot, a plate over it
+ * into the top beam, and two port cheeks. The port is 36 mm from the barrel's axis each way: the barrel's support collar
+ * (24 mm radius) passes through it with 12 mm of air at every pitch (cradle and barrel pitch together) and through the
+ * whole 12 mm recoil stroke (the barrel runs back along its own axis); the receiver's and the can's fronts stand 16 mm
+ * behind the plates at rest and recoil away from them. The aprons bury the shield carrier's cross-bar front by 1 mm.
+ */
+export function addPintleShieldPort(context: PintleLayout): void {
+  const { parts, recY, s, shieldVariant, tone, trunY, trunZ } = context;
+  if (!shieldVariant) return;
+  const shieldSlot = tone === 'dark' ? 'dark' : 'detail';
+  const shieldH = shieldVariant === 'low' ? 0.14 : shieldVariant === 'armored' ? 0.27 : 0.22;
+  const x0 = 0.075 * s, t = 0.022 * s, z = trunZ + 0.035 * s - 0.003 * s, halfW = x0 + 0.012 * s;
+  const port = 0.036 * s, portBottom = trunY - port, portTop = trunY + port;
+  const foot = recY + 0.018 * s - shieldH * s / 2 + 0.010 * s, beamIn = recY + shieldH * 0.48 * s - 0.010 * s;
+  parts.add(shieldSlot, block(2 * halfW, portBottom - foot, t), 0, (portBottom + foot) / 2, z);
+  parts.add(shieldSlot, block(2 * halfW, beamIn - portTop, t), 0, (beamIn + portTop) / 2, z);
+  const cheekW = halfW - port, cheekH = portTop - portBottom + 0.004 * s;
+  for (const side of [-1, 1]) parts.add(shieldSlot, block(cheekW, cheekH, t), side * (port + cheekW / 2), trunY, z);
+}
+
+/**
  * The AA ring round the mount. 2026-10-07 (round 4, Type 99A critics: "the dark rings on the hatch and round the MG
  * pedestal read as loose rubber hoses, not machined ring mounts"): a flat-faced machined ring with chamfered edges,
  * its bolt heads and the brackets that carry it, in the mount's paint, instead of a round 22 mm torus.
