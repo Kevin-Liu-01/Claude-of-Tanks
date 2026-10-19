@@ -671,7 +671,15 @@ function crownRimTrim(
 // rear fuel drums hanging 1.5..2.1 behind the transom.  This tank is
 // DISTINCT from the resident ztz99_longwei: longer/deeper cheek wedge, revised
 // roof optics, drum rack — and its own frame throughout.
-export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
+// The lofted hull's plate top line [z, y], stern to bow toe.
+const ZTZ99A2_DECK: readonly (readonly [number, number])[] = [[-4.05, 1.60], [-3.80, 1.68], [-2.05, 1.72],
+  [-0.30, 1.68], [1.90, 1.64], [3.55, 1.02]];
+export interface ZTZ99A2HullOptions {
+  /** Lay the rear-deck louvre field on the deck line (the fleet ZTZ-99A2). Without it the field stays level at the
+   * deck's 1.72 crest, as the VT-4A1 and the prototype were certified. */
+  seatedDeckLouvres?: boolean;
+}
+export function buildZTZ99A2Hull(P: ChinaBuilderPort, options: ZTZ99A2HullOptions = {}): void {
   const { box, cylY, cylZ, torus, buildRunningGear, headlight, periscope, towCable, liftEye } = KIT;
 
   // ---- six large-wheel stations, rear drive, covered return run.
@@ -696,8 +704,7 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // ---- lofted hull: stern -4.05, bow toe +3.55, rear deck 1.70 (print
   // 1.72), long shallow glacis to the published 7.6 envelope.
   loftHull(P, {
-    deck: [[-4.05, 1.60], [-3.80, 1.68], [-2.05, 1.72], [-0.30, 1.68],
-      [1.90, 1.64], [3.55, 1.02]],
+    deck: ZTZ99A2_DECK,
     belly: [[-4.05, 0.70], [-3.35, 0.46], [2.15, 0.46], [3.10, 0.60],
       [3.55, 0.96]],
     wUp: [[-4.05, 1.66], [3.10, 1.66], [3.55, 1.26]],
@@ -820,9 +827,23 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // ---- rear deck + transom: louvre field, service transom, twin fuel drums
   // on real angle brackets and a center rack (print band 1.5..2.1 at the
   // stern — the silhouette rows in specs carry this overhang).
+  // Release 227 (CN critic round 5): the deck falls 40 mm from its -2.05 crest to -3.80, and the level field stood
+  // 5-17 mm over it from the second bar aft. Seated, each slot plate and bar follows the deck line at its station,
+  // tilted to the fall: the dark plate 2 mm proud of the deck, the bar's underside 2 mm into it.
+  const deckAt = (z: number): [y: number, slope: number] => {
+    let i = 1;
+    while (i < ZTZ99A2_DECK.length - 1 && ZTZ99A2_DECK[i][0] < z) i++;
+    const [z0, y0] = ZTZ99A2_DECK[i - 1], [z1, y1] = ZTZ99A2_DECK[i], slope = (y1 - y0) / (z1 - z0);
+    return [y0 + slope * (z - z0), slope];
+  };
+  const louvre = (bucket: string, g: BufferGeometry, z: number, levelY: number, lift: number) => {
+    if (!options.seatedDeckLouvres) { P.add(bucket, g, 0, levelY, z); return; }
+    const [y, slope] = deckAt(z);
+    P.add(bucket, g, 0, y + lift, z, -Math.atan(slope), 0, 0);
+  };
   Array.from({ length: 7 }, (_, index) => index).forEach((i) => {
-    P.add('hullDark', box(2.50, 0.018, 0.075), 0, 1.712, -2.10 - i * 0.24);
-    P.add('hullDetail', box(2.50, 0.028, 0.026), 0, 1.735, -2.22 - i * 0.24);
+    louvre('hullDark', box(2.50, 0.018, 0.075), -2.10 - i * 0.24, 1.712, 0.002 - 0.009);
+    louvre('hullDetail', box(2.50, 0.028, 0.026), -2.22 - i * 0.24, 1.735, 0.014 - 0.002);
   });
   ([[-0.85, -1.75], [0.72, -1.88]] as const).forEach(([x, z]) => {
     P.add('hullDetail', cylY(0.095, 0.095, 0.032, 10), x, 1.725, z);
@@ -1247,7 +1268,7 @@ export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99
 function buildZTZ99A2(P: ChinaBuilderPort): void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
-  buildZTZ99A2Hull(P);
+  buildZTZ99A2Hull(P, { seatedDeckLouvres: true });
   buildZTZ99A2ProductionTurret(P);
 }
 
