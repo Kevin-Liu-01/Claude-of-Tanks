@@ -3046,7 +3046,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setBattleGameMode(choice.dataset.gameMode);
   });
   // sides (owner 2026-09-18): the battle menu's 7v7 / 14v14 / custom switch stores one sides setting for the
-  // symmetric modes (game/teamArrangement.ts writeSides, clamped by the ruleset); the menu stays open while the
+  // symmetric modes (game/teamArrangement.ts writeTeamArrangement, clamped by the ruleset); the menu stays open while the
   // player types, and the wave modes arrange their allied bots and pool in the play menu instead
   const sidesChoices = [...battleMenu.querySelectorAll<HTMLButtonElement>('.cot-sides-choice')];
   const sidesCustom = requiredElement<HTMLElement>(battleMenu, '[data-sides-custom]');
@@ -3096,7 +3096,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const setupIcon = requiredElement<HTMLElement>(battleMenu, '[data-setup-icon]');
   const setupSelection = requiredElement<HTMLElement>(battleMenu, '[data-setup-selection]');
   const setupLaunch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-launch]');
-  const arrangementPanel = createBattleArrangementPanel(soloOptions);
+  // TEAM NATIONS: MONO's switch leads with the selected vehicle's flag
+  const arrangementPanel = createBattleArrangementPanel(soloOptions, { playerNation: () => specs.find((spec) => spec.id === selectedId)?.nation ?? null });
   renderBattleOptions = () => {
     battleMenu.dataset.rule = battleGameMode;
     arrangementPanel.render(battleGameMode);

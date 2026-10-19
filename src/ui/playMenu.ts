@@ -6,8 +6,11 @@ import { revealMenuSelectOption } from './menuSelectScroll.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import { CAMPAIGN_OPERATIONS, campaignLadder, campaignOperationById, campaignSummary } from '../game/campaignOperations.ts';
 import {
-  ENEMY_NATION_OPTIONS, readBrainSettings, readTeamArrangement, writeBrainSettings, writeTeamArrangement,
+  ENEMY_NATION_OPTIONS, readBrainSettings, readTeamArrangement, readTeamNations, writeBrainSettings, writeTeamArrangement,
+  writeTeamNations,
 } from '../game/teamArrangement.ts';
+import { createTeamNationsControl } from './teamNationsControl.ts';
+import { countryOfNation } from '../sim/teamNations.ts';
 import {
   BATTLE_FIELD_LIMIT, SIDES_PRESETS, TEAM_ARRANGEMENT_LIMITS, acceptsTeamArrangement, isWaveMode, modeCopyValues,
   normalizeTeamArrangement, rulesetSides, sidesPresetOf, type TeamArrangement,
@@ -76,6 +79,8 @@ interface PlayMenuVehicle {
   id: string;
   name: string;
   tier?: number;
+  /** The spec nation (TEAM NATIONS: MONO's switch leads with its flag). */
+  nation?: string;
 }
 
 interface PlayMenuSelection {
@@ -775,7 +780,8 @@ export function createPlayMenu({
   // from the same table the sim reads, so the card can never promise a rule the battle does not keep
   // team arrangement (2026-09-15): the card follows the player's arrangement, the nation reads as copy
   const ruleLineValues = (line: { key: string; values: Readonly<Record<string, string>> }): Record<string, string> =>
-    line.key === 'enemyNation' ? { value: t(`campaign.enemy.${line.values.value}`) } : { ...line.values };
+    line.key === 'enemyNation' ? { value: t(`campaign.enemy.${line.values.value}`) }
+      : line.key === 'teamsMono' ? { scope: t(`rules.teams.scope.${line.values.scope}`) } : { ...line.values };
   const ruleLineCopy = (id: GameModeId, arrangement: TeamArrangement | null = readTeamArrangement(id)): string =>
     rulesetLines(matchRulesetFor(id, null, arrangement))
       .map((line) => t(`rules.line.${line.key}`, ruleLineValues(line))).join(' · ');
@@ -893,6 +899,7 @@ export function createPlayMenu({
     <div class="rule-heading"><b>${t('playMenu.rules.heading')}</b><span>${t('playMenu.rules.sub')}</span></div>
     <div class="rules" role="list" aria-label="${t('playMenu.battleRulesAria')}">${ruleCards}</div>
     <small class="rule-note" data-rule-note hidden>${t('playMenu.rules.campaignSoloNote')}</small>
+    <div class="teams-host" data-teams-host></div>
     <section class="arrange" data-arrange hidden aria-label="${t('playMenu.arrange.heading')}">
       <div class="arrange-head"><b>${t('playMenu.arrange.heading')}</b><span data-arrange-note>${t('playMenu.arrange.sub')}</span></div>
       <div class="arrange-sides" data-arrange-sides role="group" aria-label="${t('playMenu.arrange.sides')}" hidden>
@@ -908,8 +915,7 @@ export function createPlayMenu({
         <label data-arrange-field="alliesCount" hidden><span>${t('playMenu.arrange.allies')}</span><input type="number" inputmode="numeric" step="1" data-arrange="alliesCount"></label>
         <label data-arrange-field="enemiesCount" hidden><span>${t('playMenu.arrange.enemiesField')}</span><input type="number" inputmode="numeric" step="1" data-arrange="enemiesCount"></label>
         <label data-arrange-wave><span>${t('playMenu.arrange.waveSize')}</span><select data-arrange="waveSize"></select></label>
-        <label class="cot-nation-field" data-arrange-field="alliedNation"><span>${t('playMenu.arrange.alliedNation')}</span><select data-arrange="alliedNation"></select></label>
-        <label><span>${t('playMenu.arrange.nation')}</span><select data-arrange="enemyNation"></select></label>
+        <label data-arrange-field="enemyNation"><span>${t('playMenu.arrange.nation')}</span><select data-arrange="enemyNation"></select></label>
         <label data-arrange-field="marsGravity" hidden><span>${t('playMenu.arrange.marsGravity')}</span><select data-arrange="marsGravity"></select></label>
         <label data-arrange-field="juggernautRole" hidden><span>${t('playMenu.arrange.juggernautRole')}</span><select data-arrange="juggernautRole"></select></label>
         <label data-arrange-field="marsCaches" hidden><span>${t('playMenu.arrange.marsCaches')}</span><select data-arrange="marsCaches"></select></label>
@@ -1096,6 +1102,31 @@ export function createPlayMenu({
   let invitedHostName: string | null = null;
   let selectedGameMode = normalizeGameMode(stored(GAME_MODE_KEY, 'standard'));
 
+  // ---- TEAM NATIONS (gameplay-modes-228): MONO-NATION or RANDOM, one switch solo and in a lobby -------------------
+  // solo it is the player's preference; in a lobby the room's arrangement holds it, the host changes it (and keeps it
+  // as its own preference), the guests see it locked
+  const playerNation = (): string | null => vehicles.find((vehicle) => vehicle.id === getSelection().specId)?.nation ?? null;
+  let teamsFromLobby = false;
+  const teamsControl = createTeamNationsControl({
+    read: () => (teamsFromLobby && state ? (state.arrangement?.teamNations === 'random' ? 'random' : 'mono') : readTeamNations()),
+    write: (value) => {
+      writeTeamNations(value);
+      if (teamsFromLobby && state && role === 'host' && state.phase === 'waiting') {
+        command({ type: 'set_arrangement', arrangement: normalizeTeamArrangement(selectedGameMode, { ...(state.arrangement ?? {}), teamNations: value }) });
+      }
+      renderArrangement(selectedGameMode, teamsFromLobby);
+      refreshRuleLines(selectedGameMode);
+    },
+    playerNation,
+    enemyCountry: () => currentArrangement(selectedGameMode)?.enemyNation ?? null,
+    locked: () => teamsFromLobby && (role !== 'host' || state?.phase !== 'waiting'),
+  });
+  root.querySelector<HTMLElement>('[data-teams-host]')!.append(teamsControl.root);
+  function renderTeams(fromLobby: boolean): void {
+    teamsFromLobby = fromLobby;
+    teamsControl.render();
+  }
+
   // ---- team arrangement (owner 2026-09-15) --------------------------------------------------
   const arrangeSection = root.querySelector<HTMLElement>('[data-arrange]')!;
   const arrangeSelect = (name: string): HTMLSelectElement => arrangeSection.querySelector<HTMLSelectElement>(`select[data-arrange="${name}"]`)!;
@@ -1125,7 +1156,9 @@ export function createPlayMenu({
   let sidesCustomOpen = false;
   function renderArrangement(mode: GameModeId, fromLobby: boolean): void {
     // a room keeps its own team size for the symmetric modes (the room's teamSize); the wave modes arrange here
-    if (!acceptsTeamArrangement(mode) || (fromLobby && !isWaveMode(mode) && mode !== 'juggernaut')) { arrangeSection.hidden = true; arrangementDropdowns.forEach(dropdown => dropdown.close()); return; }
+    if (!acceptsTeamArrangement(mode) || (fromLobby && !isWaveMode(mode) && mode !== 'juggernaut')) {
+      arrangeSection.hidden = true; arrangementDropdowns.forEach(dropdown => dropdown.close()); renderTeams(fromLobby); return;
+    }
     arrangeSection.hidden = false;
     const wave = isWaveMode(mode);
     const arranged = currentArrangement(mode);
@@ -1167,12 +1200,14 @@ export function createPlayMenu({
       fillOptions(arrangeSelect('waveSize'), range(TEAM_ARRANGEMENT_LIMITS.waveSize[0], TEAM_ARRANGEMENT_LIMITS.waveSize[1]),
         String(arranged?.waveSize ?? defaults.horde?.waveSize ?? TEAM_ARRANGEMENT_LIMITS.waveSize[0]));
     }
-    arrangeField('alliedNation').hidden = fromLobby;
-    fillOptions(arrangeSelect('alliedNation'),
-      [['', t('playMenu.arrange.mixed')], ['player', t('playMenu.arrange.sameNation')]], arranged?.alliedNation ?? '');
+    // TEAM NATIONS: MONO's enemy country (AUTO first, never the player's own); RANDOM hides and ignores it
+    const ownCountry = countryOfNation(playerNation());
+    arrangeField('enemyNation').hidden = defaults.teamNations === 'random';
     fillOptions(arrangeSelect('enemyNation'),
-      [['', t('playMenu.arrange.mixed')], ...ENEMY_NATION_OPTIONS.map((option): [string, string] => [option.id, t(`campaign.enemy.${option.id}`)])],
-      arranged?.enemyNation ?? '');
+      [['', t('teams.auto')], ...ENEMY_NATION_OPTIONS.map((option): [string, string] => [option.id, t(`campaign.enemy.${option.id}`)])],
+      arranged?.enemyNation && arranged.enemyNation !== ownCountry ? arranged.enemyNation : '');
+    for (const option of arrangeSelect('enemyNation').options) option.disabled = !!option.value && option.value === ownCountry;
+    renderTeams(fromLobby);
     // Mars settings (owner 2026-09-18): the gravity world and boost-cache cadence, mars only
     const mars = mode === 'mars';
     arrangeField('marsGravity').hidden = !mars;
@@ -1204,7 +1239,6 @@ export function createPlayMenu({
       allies: number('allies'), enemies: number('enemies'),
       waveSize: Number.isFinite(waveSize) ? waveSize : null,
       enemyNation: arrangeSelect('enemyNation').value || null,
-      alliedNation: arrangeSelect('alliedNation').value === 'player' ? 'player' : null,
       juggernautRole: mode === 'juggernaut' ? arrangeSelect('juggernautRole').value as TeamArrangement['juggernautRole'] : null,
       marsGravity: mode === 'mars' ? arrangeSelect('marsGravity').value as TeamArrangement['marsGravity'] : null,
       marsCaches: mode === 'mars' ? arrangeSelect('marsCaches').value as TeamArrangement['marsCaches'] : null,

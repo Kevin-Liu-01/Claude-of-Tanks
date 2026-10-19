@@ -236,7 +236,8 @@ export interface HudMatchModeState extends ObjectiveStateView {
   target?: number;
   playerAmmo?: number;
   playerAmmoCapacity?: number;
-  horde?: { wave?: number; alive?: number; nextWaveInS?: number } | null;
+  horde?: { wave?: number; alive?: number; nextWaveInS?: number; total?: number; queued?: number; remaining?: number;
+    special?: 'runner' | 'swarm' | null } | null;
   line?: { index?: number; total?: number; holdS?: number } | null;
 }
 
@@ -1820,7 +1821,7 @@ function fmtTimer(s: number): string {
  */
 export function hordeStatusCopy(modeState: HudMatchModeState, liveRuleset: MatchRuleset | null): string {
   const horde = modeState.horde;
-  const wave = String(horde?.wave || 1), alive = String(horde?.alive || 0);
+  const wave = String(horde?.wave || 1), alive = String(horde?.remaining ?? horde?.alive ?? 0);
   const rules = (liveRuleset?.mode === modeState.id ? liveRuleset : null) ?? matchRulesetFor(normalizeGameMode(modeState.id));
   if (rules.ammo === 'unlimited') return t('hud.modeStatus.hordeWave', { wave, alive });
   return t('hud.modeStatus.horde', {
@@ -3067,16 +3068,18 @@ export function initHud(bus: EventBus): HudRuntime {
     objectiveTeam = ownTeam;
     const enemyTeam = ownTeam === 'alpha' ? 'bravo' : 'alpha';
     const horde = modeState.id === 'endless_horde' ? modeState.horde : null;
-    const ownScore = horde ? `W${horde.wave}` : Math.round(modeState.score?.[ownTeam] || 0);
+    // the Horde (gameplay-modes-228): WAVE 7 on the own side, the hostiles still to destroy of the wave's total on the other
+    const ownScore = horde ? String(horde.wave || 1) : Math.round(modeState.score?.[ownTeam] || 0);
+    const remaining = horde ? Math.round(horde.remaining ?? horde.alive ?? 0) : 0;
     const enemyScore = horde
-      ? Math.round(horde.alive || 0)
+      ? (horde.total ? `${remaining} / ${horde.total}` : String(remaining))
       : Math.round(modeState.score?.[enemyTeam] || 0);
     const score = `${modeState.id}|${ownScore}:${enemyScore}|${tally.allyAlive}/${tally.allyTotal}|${tally.enemyAlive}/${tally.enemyTotal}`;
     if (score !== lastScore) {
       fgEl.textContent = String(ownScore);
       feEl.textContent = String(enemyScore);
-      allyLabelEl.textContent = horde ? t('hud.wave') : t('hud.allies');
-      enemyLabelEl.textContent = horde ? t('hud.hostiles') : t('hud.enemy');
+      allyLabelEl.textContent = horde ? (horde.special ? t(`hud.waveSpecial.${horde.special}`) : t('hud.wave')) : t('hud.allies');
+      enemyLabelEl.textContent = horde ? t('hud.remaining') : t('hud.enemy');
       allyAliveEl.textContent = `${tally.allyAlive} / ${tally.allyTotal}`;
       enemyAliveEl.textContent = `${tally.enemyAlive} / ${tally.enemyTotal}`;
       lastScore = score;

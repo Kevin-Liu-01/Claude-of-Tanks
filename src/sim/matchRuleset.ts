@@ -70,6 +70,89 @@ export const DRONE_WARHEAD = shell('FPV shaped charge', 'HEAT', 90, 350, 350, 14
 type RulesetAmmo = 'spec' | 'he_only' | 'unlimited';
 type RulesetTimeout = 'draw' | 'defeat';
 
+/**
+ * Bot doctrine (gameplay-modes-228; owner 2026-10-18: "up its aggression of tanks more" in Frontline Assault, "increase
+ * aggression" in Endless Horde, "increase aggression of bots trying to capturing flag or pursuing ball", "infected should
+ * be super aggressie"): how a bot plays its SIDE of a mode. Every knob multiplies or gates one site of the shared
+ * controller (game/ai.ts); CLASSIC_BOT_DOCTRINE is today's controller exactly, so a mode without a table of its own plays
+ * byte-identical (server/battlePacing, the harness's standard and juggernaut rows). A doctrine is keyed by side only,
+ * never by nation: the TEAM NATIONS option decides which vehicles fill the seats, not how they drive.
+ */
+type BotHitReactions = 'all' | 'angle' | 'none';
+export interface BotDoctrine {
+  /** The opening read phase (game/ai.ts DEPLOYMENT_TUNING): long contacts are left alone for the first 2-2.75 min. */
+  readonly openingRead: boolean;
+  /** Multiplies the role's hold band (0 = no stand-off band at all). */
+  readonly holdBandScale: number;
+  /** Multiplies the role's engage envelope. */
+  readonly engageRangeScale: number;
+  /** Multiplies the cover discipline (reload cover, hull-down searches; 0 = never duck). */
+  readonly coverScale: number;
+  /** Multiplies the low-hull fallback's thresholds and divides the burst rule's (0 = never fall back). */
+  readonly fallbackScale: number;
+  /** Hit reactions: every one, only the hull turn onto the shot, or none (keep coming). */
+  readonly hitReactions: BotHitReactions;
+  /** A scout kites away from close contacts. */
+  readonly scoutKite: boolean;
+  /** Shoot-and-scoot relocations after a shot. */
+  readonly scoot: boolean;
+  /** The lone-spearhead guard (a hull out in front alone holds outside the fight). */
+  readonly spearheadGuard: boolean;
+  /** Low-odds lays at a bot are held to save rounds. Today's gate is ammunition-blind, so CLASSIC keeps it on. */
+  readonly conserveRounds: boolean;
+  /** Seconds of a silent gun with a live contact before the stalemate push (the contact push; 12 s classic). */
+  readonly stalemateSilentS: number;
+  /** Throttle of a route (and a mission) after the opening minute. */
+  readonly missionSpeed: number;
+  /** A mission bot breaks off its mission for the fallback under this hull fraction (0 = never). */
+  readonly missionBreakOffHp: number;
+  /** A zone holder leaves its zone for a SPOTTED enemy this far outside its edge, then returns (0 = holds). */
+  readonly zoneSortieM: number;
+  /** The hunt: drive at the target and orbit it at point blank with the gun laid; never stop in a band, never ram. */
+  readonly rush: boolean;
+  /** The Turbo Ball striker's jump at the ball (game/botAbilities.ts). */
+  readonly offensiveJump: boolean;
+  /** The no-contact search and the scout's kite scan read live enemy positions, or only what the team has spotted. */
+  readonly searchRouting: 'live' | 'spotted';
+  /** The mode route push (both builders): seconds between pushes and the move that re-routes a bot. */
+  readonly routeRefreshS: number;
+  readonly routeMoveM: number;
+  /** Targets are claimed only this close (null: any spotted target in sight); a rusher's hunt brings it closer. */
+  readonly claimRangeM: number | null;
+}
+/** Today's controller, knob for knob. */
+export const CLASSIC_BOT_DOCTRINE: BotDoctrine = Object.freeze({
+  openingRead: true, holdBandScale: 1, engageRangeScale: 1, coverScale: 1, fallbackScale: 1, hitReactions: 'all',
+  scoutKite: true, scoot: true, spearheadGuard: true, conserveRounds: true, stalemateSilentS: 12, missionSpeed: 0.85,
+  missionBreakOffHp: 0.25, zoneSortieM: 0, rush: false, offensiveJump: false, searchRouting: 'live',
+  routeRefreshS: 3, routeMoveM: 12, claimRangeM: null,
+});
+type BotDoctrineOverrides = { readonly alpha?: Partial<BotDoctrine>; readonly bravo?: Partial<BotDoctrine> };
+/** The Horde's zombies (and, with the hull turn, the infected): charge, fire on the move, never duck, never retreat. */
+const RUSH_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
+  openingRead: false, rush: true, holdBandScale: 0, coverScale: 0, fallbackScale: 0, hitReactions: 'none', scoutKite: false,
+  scoot: false, spearheadGuard: false, conserveRounds: false, stalemateSilentS: 4, missionSpeed: 1, missionBreakOffHp: 0,
+  searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8, claimRangeM: 120,
+});
+/**
+ * The hunt's drive (mission 'hunt' with `rush`): straight at a visible target inside `directM`, an orbit at
+ * [orbitMinM, orbitMaxM] once inside `orbitInM` with the turret laid, and never a ram: inside `noRamM` and closing it
+ * steers to the tangent (a ram costs the fodder hull more than the survivor's).
+ */
+export const RUSH_DRIVE = Object.freeze({ directM: 70, orbitInM: 35, orbitMinM: 25, orbitMaxM: 35, noRamM: 12 });
+/** The Turbo Ball striker's offensive jump (`offensiveJump`): the ball within [minM, rangeM] ahead, inside coneRad of the bow. */
+export const STRIKER_JUMP = Object.freeze({ rangeM: 25, minM: 4, coneRad: 0.35 });
+/**
+ * The honest hunt (matchModes.ts): the nearest opponent the hunting team spots, else its freshest sighting within
+ * `lastSeenMaxS`, else a seeded sweep over the opponents' side. Hunters are assigned once a second in id order at the
+ * cost of distance + `crowdPenaltyM` per hunter already on that target beyond its fair share; until `laneUntilM` each
+ * takes a lateral lane `laneMinM`-`laneMaxM` off the line, `flankShare` of them on flank arcs of ±`flankDeg`.
+ */
+export const HUNT_RULES = Object.freeze({
+  lastSeenMaxS: 45, assignEveryS: 1, crowdPenaltyM: 60, laneMinM: 15, laneMaxM: 45, laneUntilM: 90, flankShare: 0.4,
+  flankDeg: 50, sweepRingM: 140,
+});
+
 interface AssaultRules {
   /** Defenders fielded on the first sector; each further sector adds one. */
   readonly initialActive: number;
@@ -88,6 +171,30 @@ interface AssaultRules {
   readonly difficultyHp: number;
   /** Seconds the last sector must be held. */
   readonly holdS: number;
+  /**
+   * A sector's defenders stand on its line from the start (gameplay-modes-228: sector 1 fell in 24 s with no shot fired,
+   * its three defenders still driving from the bravo base 800 m back): placed `lineBandM` behind its centre facing the
+   * attack, and the reinforcements for the next sector form on that sector's line.
+   */
+  readonly defendersStartOnLine: boolean;
+  readonly lineBandM: readonly [number, number];
+  /** `squad` fresh defenders drive at the sector just taken `afterCaptureS` after it falls, for `forS`, then fall back. */
+  readonly counterAttack: { readonly squad: number; readonly afterCaptureS: number; readonly forS: number } | null;
+  /** While a sector is contested and its line is short, one defender arrives from the rear this often, up to count + `reinforceExtra`. */
+  readonly reinforceTrickleS: number;
+  readonly reinforceExtra: number;
+  /** The rear the trickle arrives from: this far behind the line. */
+  readonly reinforceRearM: number;
+  /**
+   * The regroup before the last sector (bots lane 2026-10-03): the attackers hold the sector they just took until every
+   * bot stands within `regroupRadiusM` of it, for at most `regroupMaxS`; a human within `regroupHumanM` of the last
+   * sector leads them on.
+   */
+  readonly regroupMaxS: number;
+  readonly regroupRadiusM: number;
+  readonly regroupHumanM: number;
+  /** Destroyed allied BOTS revive behind the last sector taken after this long (null: only when a sector falls). */
+  readonly allyReviveS: number | null;
 }
 
 /**
@@ -95,17 +202,70 @@ interface AssaultRules {
  * (owner 2026-10-17: "all the zombies actually have low hp"): the ruleset's `hpScale` is the humans' hull; the hostiles
  * arrive as fodder at `hostileHpScale` of their own hull (about one main-gun round), so the pressure is their numbers.
  */
-interface HordeRules {
-  /** Hostiles fielded on the first wave. */
+/**
+ * Where a hostile arrives (gameplay-modes-228; a game-director decision of the authority, never bot knowledge and
+ * never sent to a client): on a ring `spawnRingM` round the living humans' centroid, in `spawnSectors` sectors
+ * `sectorWidthDeg` wide centred on the bearing to the hostile base and ±`sectorSpreadDeg` (rotated per arrival), never
+ * within `spawnMinHumanM` of a human or (spawnOutOfSight) in the terrain sight of one within `sightRangeM` (a
+ * height-field march every `sightStepM` from `sightEyeM` up to the hull `sightHullM` up; a crest hides it only by
+ * `sightMarginM`), out of `spawnCandidates` seeded candidates; else at the hostile base.
+ */
+export interface ArrivalRules {
+  readonly spawnRingM: readonly [number, number];
+  readonly spawnSectors: number;
+  readonly sectorWidthDeg: number;
+  readonly sectorSpreadDeg: number;
+  readonly spawnMinHumanM: number;
+  readonly spawnOutOfSight: boolean;
+  readonly sightRangeM: number;
+  readonly sightStepM: number;
+  readonly sightEyeM: number;
+  readonly sightHullM: number;
+  readonly sightMarginM: number;
+  readonly spawnCandidates: number;
+}
+
+interface HordeRules extends ArrivalRules {
+  /**
+   * The wave total (gameplay-modes-228; owner 2026-10-18: "more enemies per round"): round(waveSize + waveStep·(w−1) +
+   * waveCurve·(w−1)²) hostiles a wave — 6, 9, 13, 18, 24, 30, 37, 44, 52, 61 … rising every round with no cap — times
+   * (1 + perHumanTotal per extra human). The total is not what stands on the field at once (maxAlive is): the rest
+   * queue and trickle in as the field thins.
+   */
   readonly waveSize: number;
-  /** Hostiles added every wave. */
   readonly waveStep: number;
-  /** One more hostile every this many waves (0 = never). */
-  readonly surgeEvery: number;
+  readonly waveCurve: number;
+  readonly perHumanTotal: number;
+  /** Hostiles alive at once: maxAlive + maxAlivePerHuman per extra human, never over maxAliveCap or the pool. */
+  readonly maxAlive: number;
+  readonly maxAlivePerHuman: number;
+  readonly maxAliveCap: number;
+  /** While some of the wave is queued and the field is below maxAlive, one rested pool identity arrives this often… */
+  readonly trickleS: number;
+  /** …a wreck's identity only once it has lain this long (it never vanishes under the gun that killed it). */
+  readonly recycleAfterS: number;
+  /** The lull between waves (a clear, readable break; was a 6 s literal plus 0-49 s of travel). */
+  readonly intermissionS: number;
+  /** Share of maximum hull repaired on every surviving human when a wave is cleared. */
+  readonly waveRepair: number;
   /** A hostile's hull on the first wave, as a multiple of its vehicle's own hull (not of the humans' `hpScale`). */
   readonly hostileHpScale: number;
-  /** Hull a hostile gains every wave after the first, as a share of its first-wave hull. */
+  /** Hull a hostile gains every wave after the first through wave lateFromWave − 1, as a share of its first-wave hull… */
   readonly hpPerWave: number;
+  /** …and every wave from `lateFromWave` on (the curve that ends every run while a hostile stays fodder). */
+  readonly hpPerWaveLate: number;
+  readonly lateFromWave: number;
+  /** Every `runnerEvery`-th wave is a RUNNER wave: `runnerSpeed` × speed, light hulls first. */
+  readonly runnerEvery: number;
+  readonly runnerSpeed: number;
+  /** Every `swarmEvery`-th wave is a SWARM wave: `swarmTotalScale` × the total at `swarmHull` of their own hull. */
+  readonly swarmEvery: number;
+  readonly swarmTotalScale: number;
+  readonly swarmHull: number;
+  /** How the hunt routes: on what the hunting team spots ('spotted') — never on a hidden human's live position. */
+  readonly hunt: 'spotted' | 'live';
+  /** Allied bots hunt spotted hostiles only within this of the humans' centroid; beyond it they rejoin the humans. */
+  readonly allyLeashM: number;
   /** Speed a hostile (and a Frontline defender) gains every wave after the first, up to `speedPerWaveMax`. */
   readonly speedPerWave: number;
   readonly speedPerWaveMax: number;
@@ -113,6 +273,85 @@ interface HordeRules {
   readonly cacheHeal: { readonly first: number; readonly perWave: number; readonly floor: number };
   /** Difficulty tiers the hostiles' bots play below the battle's (0 = the same; never under the easiest). */
   readonly hostileDifficultyStep: number;
+  /**
+   * Multiplies a hostile's reload (gameplay-modes-228): the zombies charge to point blank now, so a wave's pressure is
+   * its numbers and its speed, not a full tank gun's rate of fire from every one of them (the 10-17 ask: no
+   * steamroll). The humans' own hull, rounds and reload are never touched.
+   */
+  readonly hostileReloadScale: number;
+}
+
+/** Frontline attackers (gameplay-modes-228): the push into a sector, its anti-suicide gate and the flank lanes. */
+interface AssaultBotRules {
+  /** An attacker that has held the zone edge this long without capture progress drives into the centre… */
+  readonly pushAfterS: number;
+  /** …and a push waits until `pushMinGroup` attackers (itself included) stand within `pushGroupM`, or pushAfterS passes. */
+  readonly pushMinGroup: number;
+  readonly pushGroupM: number;
+  /** Where the edge is: this far outside the zone's radius, on the attack's side. */
+  readonly stageM: number;
+  /** `flankShare` of the attackers approach on lanes `flankOffsetM` off the axis, converging in the last `flankConvergeM`. */
+  readonly flankShare: number;
+  readonly flankOffsetM: number;
+  readonly flankConvergeM: number;
+}
+/** Capture the Flag bots (gameplay-modes-228: "increase aggression of bots trying to capturing flag"). */
+interface FlagBotRules {
+  /** Share of the squad (at least `recoverMin`) that recovers the own flag while it is away… */
+  readonly recoverShare: number;
+  readonly recoverMin: number;
+  /** …or every bot that is neither the carrier nor an escort (a capture needs the own flag home). */
+  readonly huntWhenHomeFlagTaken: boolean;
+  /** Escorts of the own carrier, `escortAheadM` ahead of it on its route home at ±`escortSideM`. */
+  readonly escorts: number;
+  readonly escortAheadM: number;
+  readonly escortSideM: number;
+  /** Share of a squad of `defendMinSquad` or more that guards home while no flag is carried. */
+  readonly defendShare: number;
+  readonly defendMinSquad: number;
+  /** Recoverers aim at the enemy carrier's point this far ahead along its line home (the flag marker is public). */
+  readonly interceptLeadS: number;
+}
+/** Turbo Ball bots (gameplay-modes-228: "pursuing ball"). */
+interface BallBotRules {
+  /** Strikers per team: the chaser and a support striker `supportBackM` behind it and `supportSideM` to the side. */
+  readonly strikers: number;
+  readonly supportBackM: number;
+  readonly supportSideM: number;
+  /** A striker keeps its job this long unless a teammate is `swapM` closer to the ball. */
+  readonly strikerHoldS: number;
+  readonly swapM: number;
+  /** The intercept: the ball's point t ahead (its drag law), t its ETA iterated `leadIterations` times, at most `leadMaxS`. */
+  readonly leadMaxS: number;
+  readonly leadIterations: number;
+  /** Screens `screenNear` / `screenFar` of the way from the own goal to the ball, `screenSideM` off the line. */
+  readonly screens: number;
+  readonly screenNear: number;
+  readonly screenFar: number;
+  readonly screenSideM: number;
+  /** Keepers `keeperM` out from the own goal. */
+  readonly keepers: number;
+  readonly keeperM: number;
+  /** At most `crowdCap` bots of a team within `crowdM` of the ball; the rest hold their lanes. */
+  readonly crowdCap: number;
+  readonly crowdM: number;
+  /** A striker may fire at the ball within `maxRangeM` when it lies inside `coneDeg` of the line to the opponent goal. */
+  readonly shootBall: { readonly maxRangeM: number; readonly coneDeg: number } | null;
+}
+/** Turbo Ball pitch rules: the goals at the middle ± goalAxisM / 2 along the axis (null: the deployment centres). */
+interface BallPitchRules {
+  readonly goalAxisM: number | null;
+  /** A ball nobody has touched this long goes back to the kick-off spot (null: never). */
+  readonly idleResetS: number | null;
+}
+/** Infected survivors: unengaged survivors close on their own living centroid and hold together within this. */
+interface InfectionBotRules {
+  readonly survivorRallyM: number;
+  /**
+   * The infected rise round the survivors (the opening five and every respawn, a convert's included), out of their sight,
+   * not at a far base: the outbreak is among them. Null keeps the infected's base.
+   */
+  readonly arrival: ArrivalRules | null;
 }
 
 /**
@@ -162,7 +401,48 @@ function marsRulesFor(gravity: MarsGravityId, caches: MarsCachesId): MarsRules {
 }
 export const MARS_DEFAULT_RULES: MarsRules = marsRulesFor('mars', 'standard');
 
+/**
+ * TEAM NATIONS (gameplay-modes-228; owner 2026-10-18: "be able to select wehtehr we want team enemies to be mononation or
+ * just random"): MONO-NATION seats each side from ONE country — the allies from the player's pick's country, the
+ * enemies from one opposing country per match, shortfalls filled from the closest allied countries (sim/teamNations.ts)
+ * and said so — and RANDOM seats any vehicle on either side. The player's own pick is always kept. One per-player
+ * preference (game/teamArrangement.ts), decided by the host in a room.
+ */
+export const TEAM_NATIONS_IDS = Object.freeze(['mono', 'random'] as const);
+export type TeamNationsId = (typeof TEAM_NATIONS_IDS)[number];
+export const DEFAULT_TEAM_NATIONS: TeamNationsId = 'mono';
+export function isTeamNationsId(value: unknown): value is TeamNationsId {
+  return value === 'mono' || value === 'random';
+}
+/**
+ * The planner's numbers: the rival bloc's weight in the AUTO enemy draw, the distinct bot vehicles a multiplayer side
+ * may field (each one a procedural profile every seat loads; beyond it the side repeats), and whether the AUTO enemy
+ * must fill its seats from contemporaries alone where any country can.
+ */
+export const TEAM_NATIONS_RULES = Object.freeze({ rivalBlocWeight: 3, mpDistinctBotSpecsPerSide: 6, autoEnemyNeedsContemporaries: true });
+/**
+ * How MONO-NATION reads in each mode's fiction (the rule card and docs/GAME-MODES.md say so): `sides` the two sides it
+ * seats; a note key under `rules.teams.scope.*` when the fiction bends it.
+ */
+export const TEAM_NATIONS_MODE_SCOPE: Readonly<Record<GameModeId, { readonly note: string | null }>> = Object.freeze({
+  standard: { note: null }, capture_the_flag: { note: null }, zone_control: { note: null }, turbo_ball: { note: null },
+  mars: { note: null }, realistic: { note: null }, gun_game: { note: null }, drone: { note: null },
+  // the zombie pool is one country (every wave draws from it), the allies the player's
+  endless_horde: { note: 'horde' },
+  // the defending formation is one country (a campaign operation's in the campaign)
+  frontline_assault: { note: 'frontline' },
+  // the opening survivors are the player's country, the opening infected one enemy country; a convert keeps its hull,
+  // so the sides mix by design as the outbreak spreads
+  infected: { note: 'infected' },
+  // boss role: the hunters are one country; hunter role: the player's country against one enemy juggernaut
+  juggernaut: { note: 'juggernaut' },
+  // the escorts are the player's country, the ground force one enemy country
+  ac130: { note: 'ac130' },
+});
+
 export interface TeamArrangement {
+  /** TEAM NATIONS: 'random' seats any vehicle; absent / null / 'mono' is MONO-NATION (the default). */
+  readonly teamNations?: TeamNationsId | null;
   /** Juggernaut side, from the local player/host perspective. */
   readonly juggernautRole?: 'boss' | 'hunter' | null;
   /** Free-sortie objective controls; irrelevant fields are discarded at the boundary. */
@@ -175,7 +455,7 @@ export interface TeamArrangement {
   readonly waveSize?: number | null;
   /** Enemy nation id (game/teamArrangement.ts ENEMY_NATION_OPTIONS) or null for a mixed force. */
   readonly enemyNation?: string | null;
-  /** Solo allied bots follow the selected player's nation. */
+  /** Retired (TEAM NATIONS): the legacy "allies are the player's nation" flag, read as MONO-NATION and dropped. */
   readonly alliedNation?: 'player' | null;
   /** Mars mode only: the gravity world and boost-cache cadence (MARS_GRAVITY_OPTIONS / MARS_CACHE_OPTIONS). */
   readonly marsGravity?: MarsGravityId | null;
@@ -345,11 +625,19 @@ export interface MatchRuleset {
   readonly assault: AssaultRules | null;
   /** Endless Horde wave law. */
   readonly horde: HordeRules | null;
-  /** Enemy nation id the roster fills from first (co-op modes; null = mixed / the operation decides). */
+  /** Enemy country id under MONO-NATION (null = AUTO, or the operation decides); RANDOM ignores it. */
   readonly enemyNation: string | null;
-  readonly alliedNation?: 'player' | null;
+  /** TEAM NATIONS: MONO-NATION (each side one country, the default) or RANDOM. */
+  readonly teamNations: TeamNationsId;
   /** Buildings that break and collapse, ground that craters (docs/DESTRUCTION.md §9). */
   readonly destruction: DestructionRules;
+  /** Per-side bot doctrine over CLASSIC_BOT_DOCTRINE (rulesetBotDoctrine); absent = classic on both sides. */
+  readonly bots?: BotDoctrineOverrides;
+  readonly assaultBots?: AssaultBotRules;
+  readonly flagBots?: FlagBotRules;
+  readonly ballBots?: BallBotRules;
+  readonly ball?: BallPitchRules;
+  readonly infectionBots?: InfectionBotRules;
   /**
    * The battlefield variant the mode plays on (null: the base map). Frontline Assault's 'assault-trenches' carves the
    * trench system into the terrain and dresses its works; every client builds it and the authority plays exactly it
@@ -410,8 +698,37 @@ const STANDARD: MatchRuleset = Object.freeze({
   mode: 'standard', gravityScale: 1, physics: STANDARD_PHYSICS, speedMultiplier: 1, hpScale: 1, damageScale: 1, reloadScale: 1,
   ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, recoilLaunchScale: 1, shellKnockScale: 0.3,
   respawnS: null, timeLimitS: 900, timeout: 'draw', endingHoldS: ENDING_HOLD_S,
-  allies: null, enemies: null, assault: null, horde: null, enemyNation: null,
+  allies: null, enemies: null, assault: null, horde: null, enemyNation: null, teamNations: DEFAULT_TEAM_NATIONS,
   destruction: DESTRUCTION_ON, terrainVariant: null,
+});
+
+// Per-side doctrines (gameplay-modes-228). Each is a partial over CLASSIC_BOT_DOCTRINE; see BotDoctrine for the knobs.
+const HORDE_ALLY_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
+  openingRead: false, conserveRounds: false, searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8,
+});
+// the infected keep firing at range on the way in (a zombie's long shot is wasted; the infected's is pressure)
+const INFECTED_DOCTRINE: Partial<BotDoctrine> = Object.freeze({ ...RUSH_DOCTRINE, hitReactions: 'angle', claimRangeM: null });
+const SURVIVOR_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
+  openingRead: false, conserveRounds: false, fallbackScale: 0.5, hitReactions: 'angle', stalemateSilentS: 6,
+  spearheadGuard: true, scoutKite: true, holdBandScale: 1, searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8,
+});
+const ASSAULT_ATTACKER_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
+  openingRead: false, conserveRounds: false, missionSpeed: 1, missionBreakOffHp: 0, spearheadGuard: false, coverScale: 0.5,
+  fallbackScale: 0.5, hitReactions: 'angle', stalemateSilentS: 6, holdBandScale: 0.6, searchRouting: 'spotted',
+  routeRefreshS: 1.25, routeMoveM: 8,
+});
+const ASSAULT_DEFENDER_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
+  openingRead: false, conserveRounds: false, missionSpeed: 1, missionBreakOffHp: 0.15, zoneSortieM: 80, coverScale: 0.75,
+  fallbackScale: 0.5, hitReactions: 'angle', holdBandScale: 0.7, stalemateSilentS: 6, routeRefreshS: 1.25, routeMoveM: 8,
+});
+const FLAG_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
+  openingRead: false, missionSpeed: 1, missionBreakOffHp: 0, fallbackScale: 0.5, coverScale: 0.5, hitReactions: 'angle',
+  stalemateSilentS: 8, searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8,
+});
+const FAST_ROUTE_DOCTRINE: Partial<BotDoctrine> = Object.freeze({ routeRefreshS: 1.25, routeMoveM: 0 });
+const BALL_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
+  ...FAST_ROUTE_DOCTRINE, openingRead: false, conserveRounds: false, missionSpeed: 1, missionBreakOffHp: 0,
+  offensiveJump: true, hitReactions: 'angle',
 });
 
 // Ammunition (owner 2026-10-17: "for special modes like juggernaut, ammo should be endless"): the competitive and
@@ -422,7 +739,13 @@ const STANDARD: MatchRuleset = Object.freeze({
 const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze({
   standard: STANDARD,
   // Flags: respawning objective play on the standard physics; the controller slows a carrier.
-  capture_the_flag: Object.freeze({ ...STANDARD, mode: 'capture_the_flag', respawnS: 6 }),
+  // gameplay-modes-228 (owner 2026-10-18: "increase aggression of bots trying to capturing flag"): the flags are run,
+  // not brawled over — every free bot recovers a taken home flag (a capture needs it home), three escorts lead the
+  // carrier home, recoverers cut the carrier off; no opening read, full pace, no mission break-off in a respawn mode
+  capture_the_flag: Object.freeze({ ...STANDARD, mode: 'capture_the_flag', respawnS: 6,
+    bots: Object.freeze({ alpha: FLAG_DOCTRINE, bravo: FLAG_DOCTRINE }),
+    flagBots: Object.freeze({ recoverShare: 0.5, recoverMin: 2, huntWhenHomeFlagTaken: true, escorts: 3, escortAheadM: 24,
+      escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5 }) }),
   // Zones: respawning hold-the-ground play; the 750-point target resolves inside the clock.
   zone_control: Object.freeze({ ...STANDARD, mode: 'zone_control', respawnS: 6 }),
   // Turbo Ball: arcade physics — 0.6 g so hulls and shells fly, 1.85× speed, tough hulls, half
@@ -433,6 +756,13 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     damageScale: 0.5, reloadScale: 0.7, ammo: 'unlimited', equipmentSlots: 0, consumables: false,
     criticalDamage: false, jumpMps: 13, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
     destruction: DESTRUCTION_OFF,
+    // gameplay-modes-228 ("pursuing ball"): two strikers on an intercept course, screens and a keeper, at most three a
+    // team on the ball; strikers jump at it and shoot it toward the goal; the goals sit goalAxisM apart (A/B-chosen)
+    bots: Object.freeze({ alpha: BALL_DOCTRINE, bravo: BALL_DOCTRINE }),
+    ballBots: Object.freeze({ strikers: 2, supportBackM: 25, supportSideM: 14, strikerHoldS: 3, swapM: 25, leadMaxS: 3,
+      leadIterations: 2, screens: 2, screenNear: 0.85, screenFar: 0.6, screenSideM: 28, keepers: 1, keeperM: 30, crowdCap: 3,
+      crowdM: 30, shootBall: Object.freeze({ maxRangeM: 120, coneDeg: 25 }) }),
+    ball: Object.freeze({ goalAxisM: null, idleResetS: 30 }),
   }),
   // Horde: survival — the player with four allied bots on alpha (co-op humans join it), a pool of
   // twenty hostile identities on the far side drawn afresh every wave (six on the first wave,
@@ -443,21 +773,45 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // hostiles arrive at 15 % of their own (about one main-gun round) plus 2 % a wave and play one
   // difficulty tier below the battle's, so a wave is many and weak and its pressure is numbers
   // (docs/GAME-MODES.md "Zombie balance": 1.1 waves and a 1:3 kill ratio before, measured after).
+  // gameplay-modes-228 (owner 2026-10-18: "make it work a lot more properly like youd expect, more enemies per round, and
+  // then increase aggression in that game mode too because of what it implies"): a wave TOTAL that grows every round
+  // without a cap (6, 9, 13, 18, 24, 30, 37 …), at most sixteen on the field at once (the twenty pool identities rest
+  // and rotate, trickling back in every 1.5 s), arriving 170-300 m round the humans, out of their sight, from three
+  // sectors; an 8 s lull; runner waves every fourth, swarm waves every fifth; the zombies charge (RUSH_DOCTRINE) on
+  // what they have spotted, and the allied bots stay within reach of the humans
   endless_horde: Object.freeze({
     ...STANDARD, mode: 'endless_horde', hpScale: 2, ammo: 'unlimited', respawnS: null, timeLimitS: null,
     allies: 4, enemies: 20,
     horde: Object.freeze({
-      waveSize: 6, waveStep: 2, surgeEvery: 3, hostileHpScale: 0.15, hpPerWave: 0.02,
+      waveSize: 6, waveStep: 3, waveCurve: 0.35, perHumanTotal: 0.25, maxAlive: 16, maxAlivePerHuman: 1, maxAliveCap: 20,
+      trickleS: 1.5, recycleAfterS: 6, spawnRingM: Object.freeze([260, 380] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
+      spawnMinHumanM: 150, spawnOutOfSight: true, sightRangeM: 450, sightStepM: 8, sightEyeM: 2.4, sightHullM: 1.5, sightMarginM: 1,
+      spawnCandidates: 12,
+      intermissionS: 8, waveRepair: 0.3,
+      hostileHpScale: 0.15, hpPerWave: 0.02, hpPerWaveLate: 0.06, lateFromWave: 11,
+      runnerEvery: 4, runnerSpeed: 1.25, swarmEvery: 5, swarmTotalScale: 1.4, swarmHull: 0.10,
       speedPerWave: 0.045, speedPerWaveMax: 0.55, cacheHeal: Object.freeze({ first: 0.62, perWave: 0.055, floor: 0.08 }),
-      hostileDifficultyStep: 1,
+      hostileDifficultyStep: 1, hostileReloadScale: 1.8, hunt: 'spotted', allyLeashM: 120,
     }),
+    bots: Object.freeze({ bravo: RUSH_DOCTRINE, alpha: HORDE_ALLY_DOCTRINE }),
   }),
   // Frontline Assault: the campaign sortie — three allies, no respawn, unlimited rounds, a twelve-minute
   // clock that costs the operation when it runs out; defenders escalate per sector and per difficulty.
   frontline_assault: Object.freeze({
     ...STANDARD, mode: 'frontline_assault', ammo: 'unlimited', respawnS: null, timeLimitS: 720, timeout: 'defeat',
-    allies: 3, enemies: 10, terrainVariant: 'assault-trenches',
-    assault: Object.freeze({ initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, finalLineHp: 1.15, difficultyHp: 0, holdS: 20 }),
+    allies: 3, enemies: 12, terrainVariant: 'assault-trenches',
+    // gameplay-modes-228 (owner 2026-10-18: "up its aggression of tanks more"): every sector is fought for — its
+    // defenders dug in on the line from the start (4 / 5 / 6), a two-tank counter-attack on the sector just taken, a
+    // trickle from the rear while a sector is contested; the attackers push in groups on flank lanes, the defenders
+    // sortie at the attackers they see within 80 m of their line
+    assault: Object.freeze({ initialActive: 4, extraDefenders: 0, hpPerLine: 0.16, finalLineHp: 1.15, difficultyHp: 0, holdS: 20,
+      defendersStartOnLine: true, lineBandM: Object.freeze([30, 70] as const),
+      counterAttack: Object.freeze({ squad: 2, afterCaptureS: 8, forS: 40 }),
+      reinforceTrickleS: 30, reinforceExtra: 2, reinforceRearM: 140,
+      regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: null }),
+    assaultBots: Object.freeze({ pushAfterS: 15, pushMinGroup: 2, pushGroupM: 80, stageM: 20, flankShare: 0.4, flankOffsetM: 60,
+      flankConvergeM: 80 }),
+    bots: Object.freeze({ alpha: ASSAULT_ATTACKER_DOCTRINE, bravo: ASSAULT_DEFENDER_DOCTRINE }),
   }),
   // Mars mode (owner 2026-09-18): Olympus Basin's own physics — 0.38 g, a 6.5 m/s jump, +25 % speed, tougher
   // hulls, a lighter recoil launch than Turbo Ball — on the zone objective with 6 s respawns, unlimited
@@ -465,6 +819,8 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   mars: Object.freeze({
     ...STANDARD, mode: 'mars', mars: MARS_DEFAULT_RULES, gravityScale: 0.38, physics: MARS_PHYSICS, speedMultiplier: 1.25, hpScale: 1.2, damageScale: 0.9,
     reloadScale: 0.9, ammo: 'unlimited', jumpMps: 9.5, recoilLaunchScale: 3, shellKnockScale: 0.9, respawnS: 6, timeLimitS: 720,
+    // the station sectors re-route every 1.25 s (the authority's long-standing fast route mode, now a rule)
+    bots: Object.freeze({ alpha: FAST_ROUTE_DOCTRINE, bravo: FAST_ROUTE_DOCTRINE }),
   }),
   juggernaut: Object.freeze({ ...STANDARD, mode: 'juggernaut', ammo: 'unlimited', allies: 0, enemies: 12, respawnS: 6, timeLimitS: 600,
     juggernaut: Object.freeze({ team: 'alpha', hpScale: 8, reloadScale: .5, speedScale: .9 }) }),
@@ -472,8 +828,16 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // the nearest survivor at +30 % speed with no reload bonus and come back 5 s after every death, a converted survivor's
   // included; the outbreak wins by numbers (four starters let the survivors win 3 rounds in 4, six almost never). Before: survivors at 30 % against infected at 125 % with +40 % speed and a
   // ×0.7 reload lost every bot round inside 2:16 (docs/GAME-MODES.md "Zombie balance").
+  // gameplay-modes-228 (owner 2026-10-18: "infected should be super aggressie as well"): the infected take the Horde's
+  // charge with one difference, the hull turn onto a hit (second only to the zombies); the survivors fight back hard —
+  // no opening read, every round fired, a shorter fallback, their range kept — and close ranks round their own centroid
   infected: Object.freeze({ ...STANDARD, mode: 'infected', ammo: 'unlimited', allies: 9, enemies: 5, respawnS: 5, timeLimitS: 420,
-    infection: Object.freeze({ infectedSpeed: 1.3, survivorHpScale: 1.5, infectedHpScale: .3, infectedReloadScale: 1, hunt: true }) }),
+    infection: Object.freeze({ infectedSpeed: 1.3, survivorHpScale: 1.5, infectedHpScale: .3, infectedReloadScale: 1, hunt: true }),
+    bots: Object.freeze({ bravo: INFECTED_DOCTRINE, alpha: SURVIVOR_DOCTRINE }),
+    infectionBots: Object.freeze({ survivorRallyM: 90, arrival: Object.freeze({
+      spawnRingM: Object.freeze([160, 260] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
+      spawnMinHumanM: 140, spawnOutOfSight: true, sightRangeM: 450, sightStepM: 8, sightEyeM: 2.4, sightHullM: 1.5,
+      sightMarginM: 1, spawnCandidates: 12 }) }) }),
   realistic: Object.freeze({ ...STANDARD, mode: 'realistic', alwaysVisible: false, moduleOnlyDamage: true, consumables: false }),
   gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', respawnS: 4, ammo: 'unlimited', timeLimitS: 900,
     gunGame: Object.freeze({ killsPerWeapon: 2 }) }),
@@ -489,8 +853,8 @@ export const RULESET_SCORE_TARGETS: Readonly<Record<string, number>> = Object.fr
 });
 /** A flag carrier drives at this share of the mode speed (Capture the Flag). */
 export const FLAG_CARRIER_SPEED_SCALE = 0.85;
-/** Share of maximum hull repaired on every surviving attacker when a Horde wave is cleared. */
-export const HORDE_WAVE_REPAIR = 0.3;
+/** Share of maximum hull repaired on every surviving attacker when a Horde wave is cleared (the Horde's `waveRepair`). */
+export const HORDE_WAVE_REPAIR = BASE_RULESETS.endless_horde.horde!.waveRepair;
 
 /**
  * The numbers a mode's card, battle setup and manual quote, read from this table (`{target}`, `{gravity}`, ...), so the
@@ -570,7 +934,9 @@ export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangemen
   const enemies = input.enemies == null ? null : clampInt(input.enemies, TEAM_ARRANGEMENT_LIMITS.enemies[mode]);
   const waveSize = mode === 'endless_horde' && input.waveSize != null
     ? clampInt(input.waveSize, TEAM_ARRANGEMENT_LIMITS.waveSize) : null;
-  const alliedNation = input.alliedNation === 'player' ? 'player' : null;
+  // TEAM NATIONS: only 'random' is stored; mono is the absent default (old stores, old rooms and the retired
+  // alliedNation 'player' all read as MONO)
+  const teamNations = input.teamNations === 'random' ? 'random' : null;
   const enemyNation = typeof input.enemyNation === 'string' && /^[a-z_]{2,24}$/.test(input.enemyNation) ? input.enemyNation : null;
   const marsGravity = mode === 'mars' && isMarsGravityId(input.marsGravity) ? input.marsGravity : null;
   const marsCaches = mode === 'mars' && isMarsCachesId(input.marsCaches) ? input.marsCaches : null;
@@ -587,10 +953,10 @@ export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangemen
     const sides = rulesetSides({ allies, enemies });
     if (sides.allies + sides.enemies + 1 > BATTLE_FIELD_LIMIT) allies = Math.max(0, BATTLE_FIELD_LIMIT - 1 - sides.enemies);
   }
-  if (allies == null && enemies == null && waveSize == null && enemyNation == null && alliedNation == null && marsGravity == null && marsCaches == null && scoreTarget == null && respawnS == null && waveStep == null && holdS == null && juggernautRole == null) return null;
+  if (allies == null && enemies == null && waveSize == null && enemyNation == null && teamNations == null && marsGravity == null && marsCaches == null && scoreTarget == null && respawnS == null && waveStep == null && holdS == null && juggernautRole == null) return null;
   return Object.freeze({
     allies, enemies, waveSize, enemyNation,
-    ...(alliedNation ? { alliedNation } : {}),
+    ...(teamNations ? { teamNations } : {}),
     ...(juggernautRole ? { juggernautRole } : {}),
     ...(scoreTarget != null ? { scoreTarget } : {}), ...(respawnS != null ? { respawnS } : {}),
     ...(waveStep != null ? { waveStep } : {}), ...(holdS != null ? { holdS } : {}),
@@ -650,11 +1016,12 @@ export function matchRulesetFor(
         ? Object.freeze({ ...ruleset.assault, holdS: arranged.holdS }) : ruleset.assault,
       allies: arranged.allies ?? ruleset.allies,
       enemies: arranged.enemies ?? ruleset.enemies,
-      ...(arranged.alliedNation ? { alliedNation: arranged.alliedNation } : {}),
+      teamNations: arranged.teamNations ?? ruleset.teamNations,
       // a campaign operation's formation is not overridden by the free-sortie nation setting
       enemyNation: campaign?.enemy ? ruleset.enemyNation : (arranged.enemyNation ?? ruleset.enemyNation),
+      // the first wave and the step are the arranged ones; the pool caps only what stands on the field at once (maxAlive)
       horde: ruleset.horde && (arranged.waveSize != null || arranged.waveStep != null)
-        ? Object.freeze({ ...ruleset.horde, waveSize: Math.min(arranged.waveSize ?? ruleset.horde.waveSize, arranged.enemies ?? ruleset.enemies ?? ruleset.horde.waveSize), waveStep: arranged.waveStep ?? ruleset.horde.waveStep })
+        ? Object.freeze({ ...ruleset.horde, waveSize: arranged.waveSize ?? ruleset.horde.waveSize, waveStep: arranged.waveStep ?? ruleset.horde.waveStep })
         : ruleset.horde,
     };
   }
@@ -690,15 +1057,43 @@ export function assaultWaveHealthScale(rules: AssaultRules, line: number, lines:
   return base + rules.difficultyHp;
 }
 
-/** Hostiles the Horde fields on a wave (1-based), before the pool caps it. */
+/** The base wave law (1-based wave, one human): round(waveSize + waveStep·(w−1) + waveCurve·(w−1)²). */
 export function hordeWaveSize(rules: HordeRules, wave: number): number {
-  const w = Math.max(1, Math.floor(wave));
-  return rules.waveSize + (w - 1) * rules.waveStep + (rules.surgeEvery > 0 ? Math.floor((w - 1) / rules.surgeEvery) : 0);
+  const k = Math.max(1, Math.floor(wave)) - 1;
+  return Math.round(rules.waveSize + rules.waveStep * k + rules.waveCurve * k * k);
 }
 
-/** A Horde hostile's hull on a wave (1-based) as a multiple of its vehicle's own: the zombies' fodder law. */
+/** A wave's kind: every swarmEvery-th a SWARM, every runnerEvery-th a RUNNER (a swarm wins when both fall due). */
+export function hordeWaveSpecial(rules: HordeRules, wave: number): 'swarm' | 'runner' | null {
+  const w = Math.max(1, Math.floor(wave));
+  if (rules.swarmEvery > 0 && w % rules.swarmEvery === 0) return 'swarm';
+  if (rules.runnerEvery > 0 && w % rules.runnerEvery === 0) return 'runner';
+  return null;
+}
+
+/** Hostiles a wave brings in total (gameplay-modes-228): the base law, the swarm's scale, (1 + perHumanTotal) per extra human. */
+export function hordeWaveTotal(rules: HordeRules, wave: number, humans: number): number {
+  const coop = 1 + rules.perHumanTotal * (Math.max(1, Math.floor(humans)) - 1);
+  const swarm = hordeWaveSpecial(rules, wave) === 'swarm' ? rules.swarmTotalScale : 1;
+  return Math.max(1, Math.round(hordeWaveSize(rules, wave) * swarm * coop));
+}
+
+/** Hostiles on the field at once: maxAlive + maxAlivePerHuman per extra human, never over maxAliveCap or the pool. */
+export function hordeMaxAlive(rules: HordeRules, humans: number, pool: number): number {
+  const scaled = rules.maxAlive + rules.maxAlivePerHuman * (Math.max(1, Math.floor(humans)) - 1);
+  return Math.max(0, Math.min(Math.floor(pool), rules.maxAliveCap, scaled));
+}
+
+/**
+ * A Horde hostile's hull on a wave (1-based) as a multiple of its vehicle's own: the zombies' fodder law — hpPerWave a
+ * wave through lateFromWave − 1, hpPerWaveLate a wave after it (wave 10: 0.177, wave 15: 0.222), a swarm at swarmHull.
+ */
 export function hordeHostileHull(rules: HordeRules, wave: number): number {
-  return rules.hostileHpScale * (1 + (Math.max(1, Math.floor(wave)) - 1) * rules.hpPerWave);
+  const w = Math.max(1, Math.floor(wave));
+  if (hordeWaveSpecial(rules, w) === 'swarm') return rules.swarmHull;
+  const early = Math.min(w, rules.lateFromWave - 1) - 1;
+  const late = Math.max(0, w - (rules.lateFromWave - 1));
+  return rules.hostileHpScale * (1 + early * rules.hpPerWave + late * rules.hpPerWaveLate);
 }
 
 /**
@@ -709,9 +1104,31 @@ export function hordeWaveHealthScale(ruleset: Pick<MatchRuleset, 'hpScale'>, rul
   return hordeHostileHull(rules, wave) / (ruleset.hpScale > 0 ? ruleset.hpScale : 1);
 }
 
-/** Speed multiplier the wave pressure gives a Horde hostile or a Frontline defender on a wave (1-based). */
+/** Speed multiplier the wave pressure gives a Horde hostile or a Frontline defender on a wave (1-based); runners run. */
 export function hordeWaveSpeedScale(rules: HordeRules, wave: number): number {
-  return 1 + Math.min(rules.speedPerWaveMax, (Math.max(1, Math.floor(wave)) - 1) * rules.speedPerWave);
+  const ramp = 1 + Math.min(rules.speedPerWaveMax, (Math.max(1, Math.floor(wave)) - 1) * rules.speedPerWave);
+  return hordeWaveSpecial(rules, wave) === 'runner' ? ramp * rules.runnerSpeed : ramp;
+}
+
+const doctrineMemo = new WeakMap<object, { alpha: BotDoctrine; bravo: BotDoctrine }>();
+/**
+ * The doctrine a bot on `team` plays under a ruleset: CLASSIC_BOT_DOCTRINE under the mode's side table. The side reads
+ * the way rulesetBotDifficulty's does (`bravo` and solo's `enemy` are bravo, everything else alpha), so both builders
+ * read one table and an Infected convert switches to the infected's on its first tick. Frozen and memoised per
+ * ruleset: a tick allocates nothing.
+ */
+export function rulesetBotDoctrine(ruleset: Pick<MatchRuleset, 'bots'>, team: string): BotDoctrine {
+  const bots = ruleset.bots;
+  if (!bots) return CLASSIC_BOT_DOCTRINE;
+  let memo = doctrineMemo.get(ruleset);
+  if (!memo) {
+    memo = {
+      alpha: bots.alpha ? Object.freeze({ ...CLASSIC_BOT_DOCTRINE, ...bots.alpha }) : CLASSIC_BOT_DOCTRINE,
+      bravo: bots.bravo ? Object.freeze({ ...CLASSIC_BOT_DOCTRINE, ...bots.bravo }) : CLASSIC_BOT_DOCTRINE,
+    };
+    doctrineMemo.set(ruleset, memo);
+  }
+  return team === 'bravo' || team === 'enemy' ? memo.bravo : memo.alpha;
 }
 
 /** Mars caches split evenly between a repair and a rearm (the Horde's fall with the waves). */
@@ -818,12 +1235,20 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
       line('sides', { allies: String(sides.allies + 1), enemies: String(sides.enemies) });
     }
   }
-  if (ruleset.enemyNation) line('enemyNation', { value: ruleset.enemyNation });
+  // TEAM NATIONS: the card's teams chip where it differs from Standard's MONO-NATION — RANDOM, or a mode whose fiction
+  // bends it (the note); the deploy and loading screens pair the actual flags
+  const teamsNote = TEAM_NATIONS_MODE_SCOPE[ruleset.mode]?.note ?? null;
+  if (ruleset.teamNations === 'random') line('teamsRandom');
+  else if (teamsNote) line('teamsMono', { scope: teamsNote });
+  if (ruleset.enemyNation && ruleset.teamNations !== 'random') line('enemyNation', { value: ruleset.enemyNation });
   if (ruleset.scoreTarget != null) line('scoreTarget', { value: String(ruleset.scoreTarget) });
   if (ruleset.assault) line('sectorHold', { value: String(ruleset.assault.holdS) });
   if (ruleset.mode === 'capture_the_flag') line('carrierSpeed', { value: percent(FLAG_CARRIER_SPEED_SCALE) });
-  if (ruleset.horde) line('hordeWaves', { value: String(ruleset.horde.waveSize), step: String(ruleset.horde.waveStep) });
-  if (ruleset.mode === 'endless_horde') line('waveRepair', { value: `${Math.round(HORDE_WAVE_REPAIR * 100)} %` });
+  if (ruleset.horde) {
+    line('hordeWaves', { value: String(hordeWaveSize(ruleset.horde, 1)), step: String(hordeWaveSize(ruleset.horde, 2) - hordeWaveSize(ruleset.horde, 1)) });
+    line('hordeField', { value: String(ruleset.horde.maxAlive), lull: String(ruleset.horde.intermissionS) });
+    line('waveRepair', { value: `${Math.round(ruleset.horde.waveRepair * 100)} %` });
+  }
   if (ruleset.assault) {
     line('assaultWaves', {
       value: String(ruleset.assault.initialActive + ruleset.assault.extraDefenders),

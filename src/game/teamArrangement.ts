@@ -7,8 +7,10 @@ import type { GameModeId } from '../sim/matchModes.ts';
 import {
   acceptsTeamArrangement, isWaveMode, normalizeTeamArrangement, rulesetSides, type TeamArrangement,
   MARS_DEFAULT_RULES, isMarsCachesId, isMarsGravityId, type MarsCachesId, type MarsGravityId,
+  DEFAULT_TEAM_NATIONS, isTeamNationsId, type TeamNationsId,
 } from '../sim/matchRuleset.ts';
 import { GAME_MODE_IDS } from '../sim/matchModes.ts';
+import { COUNTRIES } from '../sim/teamNations.ts';
 
 export const TEAM_ARRANGEMENT_STORAGE_KEY = 'cot.game.teams.v1';
 
@@ -19,22 +21,8 @@ interface EnemyNationOption {
   readonly specNations: readonly string[];
 }
 
-/** Every nation the fleet can field as a same-nation force. */
-export const ENEMY_NATION_OPTIONS: readonly EnemyNationOption[] = Object.freeze([
-  Object.freeze({ id: 'russia', specNations: Object.freeze(['Russia', 'USSR', 'USSR/Russia', 'RU']) }),
-  Object.freeze({ id: 'germany', specNations: Object.freeze(['Germany']) }),
-  Object.freeze({ id: 'usa', specNations: Object.freeze(['USA', 'US']) }),
-  Object.freeze({ id: 'uk', specNations: Object.freeze(['UK']) }),
-  Object.freeze({ id: 'france', specNations: Object.freeze(['France']) }),
-  Object.freeze({ id: 'china', specNations: Object.freeze(['China']) }),
-  Object.freeze({ id: 'japan', specNations: Object.freeze(['Japan']) }),
-  Object.freeze({ id: 'sweden', specNations: Object.freeze(['Sweden']) }),
-  Object.freeze({ id: 'israel', specNations: Object.freeze(['Israel']) }),
-  Object.freeze({ id: 'poland', specNations: Object.freeze(['Poland']) }),
-  Object.freeze({ id: 'italy', specNations: Object.freeze(['Italy']) }),
-  Object.freeze({ id: 'south_korea', specNations: Object.freeze(['South Korea']) }),
-  Object.freeze({ id: 'ukraine', specNations: Object.freeze(['Ukraine']) }),
-]);
+/** Every nation the fleet can field as a same-nation force: the country table (sim/teamNations.ts COUNTRIES). */
+export const ENEMY_NATION_OPTIONS: readonly EnemyNationOption[] = COUNTRIES;
 
 export function isEnemyNationId(id: string | null | undefined): boolean {
   return !!id && ENEMY_NATION_OPTIONS.some((option) => option.id === id);
@@ -64,11 +52,35 @@ function readAll(storage: ArrangementStorage | null): Record<string, TeamArrange
   } catch { return {}; }
 }
 
-/** The player's arrangement for a mode (clamped), or null when none is stored or the mode takes none. */
+/** The player's arrangement for a mode (clamped, the TEAM NATIONS preference folded in), or null when none applies. */
 export function readTeamArrangement(mode: GameModeId, storage?: ArrangementStorage | null): TeamArrangement | null {
   if (!acceptsTeamArrangement(mode)) return null;
-  const stored = readAll(storageOf(storage))[mode];
-  return normalizeTeamArrangement(mode, stored ?? null);
+  const store = storageOf(storage);
+  const stored = readAll(store)[mode];
+  // TEAM NATIONS is one per-player preference, not a per-mode setting: every consumer of an arrangement sees it
+  const teamNations = readTeamNations(store);
+  return normalizeTeamArrangement(mode, teamNations === 'random' ? { ...(stored ?? {}), teamNations } : stored ?? null);
+}
+
+/** TEAM NATIONS (gameplay-modes-228): the per-player preference, MONO-NATION by default. */
+export const TEAM_NATIONS_STORAGE_KEY = 'cot.game.teamNations.v1';
+
+/** The player's TEAM NATIONS choice (DEFAULT_TEAM_NATIONS when nothing is stored, the store is blocked or corrupt). */
+export function readTeamNations(storage?: ArrangementStorage | null): TeamNationsId {
+  const target = storageOf(storage);
+  if (!target) return DEFAULT_TEAM_NATIONS;
+  try {
+    const raw = target.getItem(TEAM_NATIONS_STORAGE_KEY);
+    return isTeamNationsId(raw) ? raw : DEFAULT_TEAM_NATIONS;
+  } catch { return DEFAULT_TEAM_NATIONS; }
+}
+
+/** Store the TEAM NATIONS choice (unknown values keep the current one); returns what applies now. */
+export function writeTeamNations(value: unknown, storage?: ArrangementStorage | null): TeamNationsId {
+  const target = storageOf(storage);
+  if (!target || !isTeamNationsId(value)) return readTeamNations(target);
+  try { target.setItem(TEAM_NATIONS_STORAGE_KEY, value); } catch { /* storage full or blocked: the in-memory game keeps playing */ }
+  return readTeamNations(target);
 }
 
 /** The symmetric modes share one sides setting (owner 2026-09-18: the Garage battle menu's 7v7 / 14v14 /
@@ -81,24 +93,6 @@ export function readSides(storage?: ArrangementStorage | null): { readonly allie
   return rulesetSides({ allies: stored?.allies ?? null, enemies: stored?.enemies ?? null });
 }
 
-/** Store one sides setting on every symmetric mode (each keeps its own enemy nation); null restores 7 v 7. */
-export function writeSides(
-  sides: { readonly allies: number; readonly enemies: number } | null,
-  storage?: ArrangementStorage | null,
-): { readonly allies: number; readonly enemies: number } {
-  for (const mode of SIDES_MODES) {
-    const current = readTeamArrangement(mode, storage);
-    writeTeamArrangement(mode, {
-      allies: sides?.allies ?? null, enemies: sides?.enemies ?? null, enemyNation: current?.enemyNation ?? null,
-      alliedNation: current?.alliedNation ?? null,
-      // the Mars settings ride on the mars arrangement; a sides change must not drop them
-      marsGravity: current?.marsGravity ?? null, marsCaches: current?.marsCaches ?? null,
-      juggernautRole: current?.juggernautRole ?? null,
-    }, storage);
-  }
-  return readSides(storage);
-}
-
 /** Persist (clamped) or clear a mode's arrangement; returns what was stored. */
 export function writeTeamArrangement(
   mode: GameModeId, arrangement: TeamArrangement | null, storage?: ArrangementStorage | null,
@@ -106,10 +100,12 @@ export function writeTeamArrangement(
   const target = storageOf(storage);
   if (!target || !acceptsTeamArrangement(mode)) return null;
   const all = readAll(target);
-  const next = normalizeTeamArrangement(mode, arrangement);
+  // TEAM NATIONS is the per-player preference (writeTeamNations), never a per-mode copy a mode's reset could flip
+  const { teamNations: _preference, ...rest } = arrangement ?? {};
+  const next = normalizeTeamArrangement(mode, arrangement ? rest : null);
   if (next) all[mode] = next; else delete all[mode];
   try { target.setItem(TEAM_ARRANGEMENT_STORAGE_KEY, JSON.stringify(all)); } catch { /* storage full or blocked: the in-memory game keeps playing */ }
-  return next;
+  return readTeamArrangement(mode, target);
 }
 
 /** Mars mode settings (owner 2026-09-18 "boosts and settings"): the gravity world and the boost-cache cadence. */

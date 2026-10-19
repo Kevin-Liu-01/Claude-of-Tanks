@@ -118,7 +118,8 @@ import {
 import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
-  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetLoadout, type MatchRuleset,
+  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetBotDoctrine,
+  rulesetLoadout, type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from './matchPlacement.ts';
@@ -1068,6 +1069,8 @@ export function createAuthoritativeMatch({
     entity.aiCtl = createAI(entity, {
       // the seat's difficulty, stepped down for the Horde's zombies by the ruleset
       difficulty: rulesetBotDifficulty(ruleset, entity.team, playerRecordById.get(entity.id)?.difficulty || 'normal'),
+      // the side's doctrine, read live: an Infected convert plays the infected's table from its first tick
+      doctrine: () => rulesetBotDoctrine(ruleset, entity.team),
       rng: botRng,
       deps: {
         heightField,
@@ -1095,6 +1098,11 @@ export function createAuthoritativeMatch({
         },
         // bot philosophy r1: the mode's live objective ranks targets (objective → closest → weakest)
         getObjective: () => modeController.botObjective(entity),
+        // what the side knows (the honest search): its freshest sighting, else the enemy's deployment
+        intel: {
+          freshestContact: () => modeController.freshestSighting(entity),
+          enemyDeployment: () => modeController.enemyDeployment(entity),
+        },
         ...(navigation ? {
           planRoute: (start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
             options?: { requireGoalLevel?: boolean }) => planBotRoute({
@@ -1173,6 +1181,9 @@ export function createAuthoritativeMatch({
     spawn: MatchModeSpawn,
     healthScale = 1,
   ): void {
+    // a revived bot takes the next route push whatever its last destination was (gameplay-modes-228)
+    tank._modeTargetX = undefined;
+    tank._modeTargetZ = undefined;
     _spawn.set(spawn.x, heightField.getHeightAt(spawn.x, spawn.z), spawn.z);
     tank.state = createTankState(tank.spec, _spawn, spawn.yaw);
     tank.input = makeInput();
@@ -1202,12 +1213,14 @@ export function createAuthoritativeMatch({
     terrainHeight: (x, z) => heightField.getHeightAt(x, z),
     ballFloorHeight: (x, z, previousBottomY) => bridgeBallFloor(heightField, x, z, previousBottomY),
     emit,
+    // what each side has spotted (the honest hunt): the authority's own spotting, never sent anywhere
+    spotting: { isSpotted: (id, side) => spotting.isSpotted(id, side) },
   });
   for (const entity of entities) {
     initializeAerial(entity, ruleset);
     if (isGunship(entity)) setModeWeapon(entity, 'gunship');
   }
-  let nextModeRouteS = 0;
+  const nextModeRouteS = { alpha: 0, bravo: 0 };
 
   function applyNetworkInput(
     entity: AuthoritativeEntity,
@@ -2302,23 +2315,26 @@ export function createAuthoritativeMatch({
     return true;
   }
 
-  function isFastRouteMode(): boolean {
-    return normalizedGameMode === 'turbo_ball' || normalizedGameMode === 'endless_horde' || normalizedGameMode === 'mars';
-  }
-
+  /**
+   * The mode route push: each side on its doctrine's cadence (routeRefreshS) re-routes a bot whose destination moved
+   * routeMoveM or more (gameplay-modes-228: one rule for the authority and the solo battle, read from the ruleset).
+   */
   function refreshModeBotRoutes(): void {
-    if (normalizedGameMode === 'standard' || timeS < nextModeRouteS) return;
-    const fastRouteMode = isFastRouteMode();
-    nextModeRouteS = timeS + (fastRouteMode ? 1.25 : 3);
+    if (normalizedGameMode === 'standard') return;
+    const alphaDue = timeS >= nextModeRouteS.alpha, bravoDue = timeS >= nextModeRouteS.bravo;
+    if (!alphaDue && !bravoDue) return;
+    if (alphaDue) nextModeRouteS.alpha = timeS + rulesetBotDoctrine(ruleset, 'alpha').routeRefreshS;
+    if (bravoDue) nextModeRouteS.bravo = timeS + rulesetBotDoctrine(ruleset, 'bravo').routeRefreshS;
     for (const entity of entities) {
       if (!entity.bot || entity.modeActive === false || entity.combat.destroyed) continue;
+      if (entity.team === 'bravo' ? !bravoDue : !alphaDue) continue;
       const target = modeController.botTarget(entity);
       if (!target) continue;
       const moved = Math.hypot(
         target.x - (entity._modeTargetX ?? Infinity),
         target.z - (entity._modeTargetZ ?? Infinity),
       );
-      if (moved < 12 && !fastRouteMode) continue;
+      if (moved < rulesetBotDoctrine(ruleset, entity.team).routeMoveM) continue;
       entity._modeTargetX = target.x;
       entity._modeTargetZ = target.z;
       entity.aiCtl?.setWaypoints([[target.x, target.z]], { loop: false });

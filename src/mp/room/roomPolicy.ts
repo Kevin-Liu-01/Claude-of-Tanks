@@ -1,4 +1,4 @@
-import { arrangeModeRoster } from '../host/modeRoster.ts';
+import { planRoomBots, type RoomTeamNations } from './roomBots.ts';
 /**
  * Room policy: the pure state machine every room host runs (charter §5).
  * It encodes the first multiplayer's lobby rules (auto-balanced teams,
@@ -68,6 +68,8 @@ export interface RoomStartPlan {
   gameMode: string;
   seed: number;
   round: number;
+  /** TEAM NATIONS: the countries the bots were seated from and the fills (room/roomBots.ts). */
+  teamNations?: RoomTeamNations;
 }
 
 function cleanName(value: unknown): string {
@@ -126,6 +128,8 @@ function readArrangement(value: unknown): TeamArrangement | null {
     waveSize: pick('waveSize') as number | null, enemyNation: pick('enemyNation') as string | null,
     juggernautRole: pick('juggernautRole') as TeamArrangement['juggernautRole'],
     marsGravity: pick('marsGravity') as TeamArrangement['marsGravity'], marsCaches: pick('marsCaches') as TeamArrangement['marsCaches'],
+    // TEAM NATIONS (gameplay-modes-228): the host's choice rides the arrangement (normalize keeps only 'random')
+    teamNations: pick('teamNations') as TeamArrangement['teamNations'],
   };
 }
 
@@ -441,7 +445,11 @@ export function applyRoomCommand(
         room.settings.teamSize = Math.max(1, Math.min(ROOM_MAX_COOP_PLAYERS, Math.max(room.settings.teamSize, active.length)));
         for (const entry of active) entry.team = 'alpha';
       }
-      if (gameMode !== room.settings.gameMode) room.settings.arrangement = null;
+      // a new mode drops the old mode's arrangement but keeps the host's TEAM NATIONS choice (it is no mode's setting)
+      if (gameMode !== room.settings.gameMode) {
+        const teamNations = room.settings.arrangement?.teamNations ?? null;
+        room.settings.arrangement = teamNations ? normalizeTeamArrangement(gameMode, { teamNations }) : null;
+      }
       if (gameMode !== 'frontline_assault') room.settings.campaignOperationId = null;
       room.settings.gameMode = gameMode;
       resetReadiness(room);
@@ -519,16 +527,6 @@ export function canStart(room: RoomSnapshot): boolean {
   try { assertStartable(room); return room.phase === 'waiting'; } catch { return false; }
 }
 
-/** Bot vehicle for an empty slot: the most common spec on that side, else the first seated one. */
-function botSpecFor(plan: RoomStartPlan['seats'], team: 'alpha' | 'bravo', fallback: string): string {
-  const counts = new Map<string, number>();
-  for (const seat of plan) if (seat.team === team) counts.set(seat.specId, (counts.get(seat.specId) ?? 0) + 1);
-  let best: string | null = null;
-  let bestCount = 0;
-  for (const [specId, count] of counts) if (count > bestCount) { best = specId; bestCount = count; }
-  return best ?? plan[0]?.specId ?? fallback;
-}
-
 /**
  * Freeze the roster for a match: connected active players by seat, bots on the
  * empty slots (co-op modes leave the other side to the authority's own rules),
@@ -548,17 +546,9 @@ export function planStart(room: RoomSnapshot, { seed, now, botSpecFallback = 'm1
     });
   }
   const bots: RoomStartPlan['bots'] = [];
-  const coop = isCoopGameMode(room.settings.gameMode);
-  if (room.settings.botsFill && !coop) {
-    for (const team of ['alpha', 'bravo'] as const) {
-      const humans = seats.filter((seat) => seat.team === team).length;
-      for (let index = humans; index < room.settings.teamSize; index++) {
-        const ordinal = bots.length + 1;
-        bots.push({ playerId: `bot-${team}-${index + 1}`, name: `Bot ${ordinal}`, team, specId: botSpecFor(seats, team, botSpecFallback) });
-      }
-    }
-  }
-  arrangeModeRoster(room.settings.gameMode, room.settings.arrangement, seats, bots);
+  // every bot seat (the symmetric fill, the asymmetric roles, the co-op hostiles) and its vehicle: room/roomBots.ts, the
+  // p2p host's derivation (host/hostPlan.planFromRoom) calls it with the same match seed
+  const teamNations: RoomTeamNations = planRoomBots(room.settings, seats, bots, seed >>> 0);
   room.round += 1;
   room.phase = 'starting';
   room.settings.locked = true;
@@ -567,7 +557,7 @@ export function planStart(room: RoomSnapshot, { seed, now, botSpecFallback = 'm1
   // host, every seat's `match_start` and the room's match record name the same map (v1 resolved it the
   // same way from the lobby's match seed in privateMatchHandoff.ts).
   const mapId = resolveMapId(room.settings.mapId, seededUnit(seed >>> 0));
-  return { seats, bots, mapId, gameMode: room.settings.gameMode, seed: seed >>> 0, round: room.round };
+  return { seats, bots, mapId, gameMode: room.settings.gameMode, seed: seed >>> 0, round: room.round, teamNations };
 }
 
 /** v1's seeded unit generator (privateMatchHandoff.ts), kept bit-identical so a seed picks the same map on both. */

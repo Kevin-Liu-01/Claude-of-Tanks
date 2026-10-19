@@ -45,6 +45,7 @@ import type {
 // reload, ammunition, equipment slots, gravity, roster split and the clock (sim/matchRuleset.ts).
 import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap, rulesetBotDifficulty,
+  rulesetBotDoctrine,
   rulesetLoadout, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
@@ -152,7 +153,9 @@ import {
   autoCamoIdsForBattle,
   ensureTankVisual,
   pickBattleParticipants,
+  pickNationalBattle,
   rememberBattleBots,
+  type BattleTeamNations,
 } from './rosterState.ts';
 export { createBus, createGameState, mulberry32 } from './stateCore.ts';
 export { soloRosterPlan } from './soloRosterPlan.ts';
@@ -339,7 +342,11 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   openingRouteJobs: Array<() => void>;
   mapId: string;
   killcam?: KillcamRecorder | null;
-  _nextModeRouteS?: number;
+  /** The next mode route push per side (retargetObjectiveBots; the doctrine's routeRefreshS). */
+  _nextModeRouteS?: { player: number; enemy: number };
+  /** TEAM NATIONS: this battle's record (the countries, the fills) and MONO's allied seats (chooseBattleAllies). */
+  teamNations?: BattleTeamNations | null;
+  _nationalAllyIds?: Set<string> | null;
   /** Jev commander (2026-09-25): the brain setting this battle was set up with and the commander, when Jev's. */
   brains?: BrainSettings;
   jev?: JevCommander | null;
@@ -560,6 +567,8 @@ function isActiveSoloEntity(
 
 interface SoloDebugFlags {
   rosterExact?: boolean;
+  /** A pinned debug roster (rosterState.forcedBattleCandidates) bypasses TEAM NATIONS like every other draw. */
+  forceRoster?: string[];
 }
 
 function soloDebugFlags(): SoloDebugFlags | null {
@@ -788,9 +797,10 @@ function chooseBattleAllies(
   }
   // RULESETS (2026-09-14): the mode sets the split — Horde fields two allies, Frontline Assault
   // three, Standard keeps the 6 / 7 balance. The cap never exceeds the pool minus one enemy.
+  // MONO-NATION: the planner named the allied seats (pickNationalBattle); they are taken verbatim
+  if (game._nationalAllyIds) return candidates.filter((entity) => game._nationalAllyIds!.has(entity.id));
   const exactCap = soloDebugFlags()?.rosterExact && candidates.length < 13 ? 3 : 6;
   const allyCap = Math.min(rulesetAllyCap(game.ruleset, exactCap), Math.max(0, candidates.length - 1));
-  if (game.ruleset.alliedNation === 'player') return allyCap ? candidates.slice(-allyCap) : [];
   const enemyCap = candidates.length - allyCap;
   const byTier = candidates.slice()
     .sort((a, b) => tankTier(b.specId) - tankTier(a.specId));
@@ -1108,6 +1118,8 @@ function createBattleBot(
   const controller = createAI(entity, {
     // the battle's difficulty, stepped down for the Horde's zombies by the ruleset
     difficulty: rulesetBotDifficulty(context.game.ruleset, entity.team, getStoredDifficulty()),
+    // the side's doctrine, read live: an Infected convert plays the infected's table from its first tick
+    doctrine: () => rulesetBotDoctrine(context.game.ruleset, entity.team),
     rng: mulberry32(7000 + entityIndex),
     deps: {
       ...context.aiDependencies,
@@ -1141,6 +1153,11 @@ function createBattleBot(
       },
       // bot philosophy r1: the mode's live objective ranks targets (objective → closest → weakest)
       getObjective: () => context.game.matchModeController?.botObjective(entity) ?? null,
+      // what the side knows (the honest search): its freshest sighting, else the enemy's deployment
+      intel: {
+        freshestContact: () => context.game.matchModeController?.freshestSighting(entity) ?? null,
+        enemyDeployment: () => context.game.matchModeController?.enemyDeployment(entity) ?? null,
+      },
     },
   }) as SoloAiController;
   entity.aiCtl = controller;
@@ -1276,8 +1293,20 @@ export function setupBattle(
   // null state/combat — every sim/HUD/audio consumer guards on those).
   // campaign: the operation's formation leads the curated pool (rosterState.preferNations)
   const rosterPlan = battleRosterPlan(game.ruleset, game.campaignOperationId, !!opts.random);
-  game.tanks = pickBattleParticipants(game, playerSpecId, !!opts.random, game.battleCount,
-    rosterPlan.nations, rosterPlan.slots, rosterPlan.formationLead, rosterPlan.alliedSlots) as SoloEntity[];
+  // TEAM NATIONS (gameplay-modes-228): MONO seats each side from one country and names its allied seats explicitly;
+  // RANDOM (and a forced debug roster) keeps the era-ranked pool and the tier-balanced split
+  game._nationalAllyIds = null;
+  game.teamNations = rosterPlan.national === 'random' ? { teamNations: 'random', allied: null, enemy: null, notes: [] } : null;
+  const national = rosterPlan.national && rosterPlan.national !== 'random' && !soloDebugFlags()?.forceRoster?.length
+    ? pickNationalBattle(game, playerSpecId, game.battleCount, rosterPlan.national) : null;
+  if (national) {
+    game.tanks = national.participants as SoloEntity[];
+    game._nationalAllyIds = new Set(national.allies.map((entity) => entity.id));
+    game.teamNations = national.record;
+  } else {
+    game.tanks = pickBattleParticipants(game, playerSpecId, !!opts.random, game.battleCount,
+      rosterPlan.nations, rosterPlan.slots, rosterPlan.formationLead, rosterPlan.national) as SoloEntity[];
+  }
   for (const entity of game.tanks) if (entity.matchReinforcement) {
     game.allTanks.push(entity);
     game.tankById.set(entity.id, entity);
@@ -1434,11 +1463,16 @@ export function setupBattle(
     terrainHeight: (x, z) => world.heightField.getHeightAt(x, z),
     ballFloorHeight: (x, z, previousBottomY) => bridgeBallFloor(world.heightField, x, z, previousBottomY),
     emit: (type, payload) => game.modeEvents.push({ type, payload }),
+    // what each side has spotted (the honest hunt); the solo battle names its sides player / enemy
+    spotting: { isSpotted: (id, side) => (game.spotting ? game.spotting.isSpotted(id, side === 'alpha' ? 'player' : 'enemy') : true) },
     setActive(modeEntity, active) {
       modeEntity.modeActive = active;
       modeEntity.visual?.setVisible(active);
     },
     revive(ent: SoloEntity, spawn: MatchModeSpawn, healthScale: number) {
+      // a revived bot takes the next route push whatever its last destination was (gameplay-modes-228)
+      ent._modeTargetX = undefined;
+      ent._modeTargetZ = undefined;
       _spawnPos.set(spawn.x, world.heightField.getHeightAt(spawn.x, spawn.z), spawn.z);
       ent.state = createTankState(ent.spec, _spawnPos, spawn.yaw);
       ent.combat = createCombatState(ent.spec);
@@ -1476,7 +1510,7 @@ export function setupBattle(
     if (isGunship(entity)) setModeWeapon(entity, 'gunship');
   }
   game.matchModeState = game.matchModeController.state;
-  game._nextModeRouteS = 0;
+  game._nextModeRouteS = { player: 0, enemy: 0 };
   attachBattleCommander(game);
 }
 
@@ -2428,18 +2462,28 @@ function stepSpotting(game: SoloGameState, bus: EventBus): void {
   }
 }
 
+/**
+ * The mode route push: each side on its doctrine's cadence (routeRefreshS) re-routes a bot whose destination moved
+ * routeMoveM or more (gameplay-modes-228: one rule for the solo battle and the authority, read from the ruleset).
+ */
 function retargetObjectiveBots(game: SoloGameState): void {
-  if (game.gameMode === 'standard' || game.timeS < (game._nextModeRouteS || 0)) return;
-  game._nextModeRouteS = game.timeS + (game.gameMode === 'turbo_ball' ? 1.25 : 4);
+  if (game.gameMode === 'standard') return;
+  const due = game._nextModeRouteS ??= { player: 0, enemy: 0 };
+  const alphaDue = game.timeS >= due.player, bravoDue = game.timeS >= due.enemy;
+  if (!alphaDue && !bravoDue) return;
+  if (alphaDue) due.player = game.timeS + rulesetBotDoctrine(game.ruleset, 'player').routeRefreshS;
+  if (bravoDue) due.enemy = game.timeS + rulesetBotDoctrine(game.ruleset, 'enemy').routeRefreshS;
   for (const entity of game.tanks) {
     if (!entity.aiCtl || entity.modeActive === false || entity.combat.destroyed) continue;
+    const bravo = entity.team === 'enemy';
+    if (bravo ? !bravoDue : !alphaDue) continue;
     const target = game.matchModeController?.botTarget(entity);
     if (!target) continue;
     const moved = Math.hypot(
       target.x - (entity._modeTargetX ?? Infinity),
       target.z - (entity._modeTargetZ ?? Infinity),
     );
-    if (moved < 18 && game.gameMode !== 'turbo_ball') continue;
+    if (moved < rulesetBotDoctrine(game.ruleset, entity.team).routeMoveM) continue;
     entity._modeTargetX = target.x;
     entity._modeTargetZ = target.z;
     entity.aiCtl.setWaypoints([[target.x, target.z]], { loop: false });

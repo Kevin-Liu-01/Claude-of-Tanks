@@ -284,7 +284,8 @@ function gunPose(entity, launcher, index) {
 }
 function headlessVisual(entity) {
   return {
-    root: {}, contactGeom: null,
+    // aircraftOnly: an AC-130 battle keeps this visual for its gunship seat instead of building the aircraft model
+    root: { userData: { aircraftOnly: true } }, contactGeom: null,
     setVisible() {}, syncFromState() {}, dispose() {}, recoilKick() {}, setDestroyed() {}, resetDestroyed() {},
     gunMuzzleWorld(out, index, launcher) { gunPose(entity, launcher, index); out.copy(_muzzle); return out; },
     gunDirWorld(out, index, launcher) { gunPose(entity, launcher, index); out.copy(_gunDir); return out; },
@@ -739,7 +740,7 @@ const front = { lines: [], total: null, zoneSamples: { alpha: 0, bravo: 0 }, liv
 const horde = { waves: [], humanHpSamples: [], maxWave: 0, peakAlive: 0, spawnChecks: 0, spawnNear: 0, spawnSeen: 0, spawnMinM: Infinity,
   pendingArrivals: [] };
 // rams: bot-on-bot ram deaths and the hunter rams (a Horde / Infected hostile in a ram contact with an alpha hull)
-const ramStats = { botOnBotDeaths: 0, hunterRams: 0 };
+const ramStats = { botOnBotDeaths: 0, hunterRams: 0, hunterContacts: 0 };
 const sector1 = { kills: 0, done: false };
 const inf = { infections: 0, firstInfectionS: null, infectionTimes: [], survivors0: 0, infected0: 0, survivorsByMin: [],
   shots: { alpha: 0, bravo: 0 }, hits: { alpha: 0, bravo: 0 }, damage: { alpha: 0, bravo: 0 }, botSamples: { alpha: 0, bravo: 0 },
@@ -803,7 +804,16 @@ function onEvent(ev, t) {
     rams++;
     if ((mode === 'endless_horde' || mode === 'infected') && ev.aId && ev.bId) {
       const a = byId.get(ev.aId), b = byId.get(ev.bId);
-      if (a && b && normTeam(a.team) !== normTeam(b.team) && ((normTeam(a.team) === 'bravo' && !adapter.isHuman(a)) || (normTeam(b.team) === 'bravo' && !adapter.isHuman(b)))) ramStats.hunterRams++;
+      // a hunter's ram: a hostile bot in contact with an alpha hull while it was itself driving into it (its own
+      // velocity toward the other hull over 1 m/s); an alpha hull driving into a hostile is not the hunter's ram
+      const drivesInto = (h, o) => {
+        const dx = o.state.pos.x - h.state.pos.x, dz = o.state.pos.z - h.state.pos.z, d = Math.hypot(dx, dz) || 1;
+        return (Math.sin(h.state.yaw) * dx + Math.cos(h.state.yaw) * dz) / d * h.state.speed > 1;
+      };
+      if (a && b && normTeam(a.team) !== normTeam(b.team)) {
+        const hunter = normTeam(a.team) === 'bravo' && !adapter.isHuman(a) ? a : normTeam(b.team) === 'bravo' && !adapter.isHuman(b) ? b : null;
+        if (hunter) { ramStats.hunterContacts++; if (drivesInto(hunter, hunter === a ? b : a)) ramStats.hunterRams++; }
+      }
     }
   } else if (ev.kind === 'mode') {
     const type = ev.type;

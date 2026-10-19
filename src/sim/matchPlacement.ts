@@ -305,6 +305,12 @@ export interface MatchPlacement {
   spawn(point: PlacementSpawn, key: string, radius?: number, explicit?: boolean,
     occupied?: readonly OccupiedPlacement[]): PlacementSpawn;
   respawn(point: PlacementSpawn, key: string, occupied: readonly OccupiedPlacement[]): PlacementSpawn | null;
+  /**
+   * A respawn that stays near its point (gameplay-modes-228, the Horde's arrival ring): the same footprint, terrain and
+   * occupancy rules as `respawn`, searched only on the rings within `maxShiftM`, and null past them — never the
+   * map-wide lattice, which could put an arrival anywhere (beside the humans it was kept away from).
+   */
+  respawnNear(point: PlacementSpawn, key: string, occupied: readonly OccupiedPlacement[], maxShiftM: number): PlacementSpawn | null;
   pickup(point: PlacementPoint, occupied?: readonly OccupiedPlacement[]): PlacementPoint | null;
 }
 
@@ -336,10 +342,11 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
   }
 
   function find(preferred: PlacementPoint, footprint: Footprint, key: string, half = 0,
-    occupied: readonly (PlacementPoint & { radius: number })[] = []): PlacementPoint | null {
+    occupied: readonly (PlacementPoint & { radius: number })[] = [], maxShiftM = Infinity): PlacementPoint | null {
     if (acceptable(preferred, footprint, key, half, occupied)) return { x: preferred.x, z: preferred.z };
     const point = { x: 0, z: 0 };
     for (const radius of SEARCH_RADII) {
+      if (radius > maxShiftM) return null;
       const steps = Math.max(16, Math.ceil(radius * Math.PI * 2 / 16));
       for (let step = 0; step < steps; step++) {
         const angle = step / steps * Math.PI * 2;
@@ -423,14 +430,14 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
   };
 
   function resolveSpawn(point: PlacementSpawn, key: string, radius: number | undefined,
-    explicit: boolean, occupied: readonly OccupiedPlacement[]): PlacementSpawn | null {
+    explicit: boolean, occupied: readonly OccupiedPlacement[], maxShiftM = Infinity): PlacementSpawn | null {
     if (explicit) explicitKeys.add(key);
     const old = reservations.find(entry => entry.key === key);
     radius = radius ?? old?.radius ?? 4.5;
     const footprint = { radius, relief: 2, normalY: SPAWN_NORMAL_Y };
     const along = (point.x - originalMiddle.x) * ux + (point.z - originalMiddle.z) * uz;
     const half = Math.abs(along) > 60 ? Math.sign(along) : 0;
-    const found = explicitKeys.has(key) ? point : find(point, footprint, key, half, occupied);
+    const found = explicitKeys.has(key) ? point : find(point, footprint, key, half, occupied, maxShiftM);
     if (!found) return null;
     if (old) Object.assign(old, found, { radius });
     else reservations.push({ ...found, radius, key });
@@ -455,6 +462,7 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
       return found;
     },
     respawn: (point, key, occupied) => resolveSpawn(point, key, undefined, false, occupied),
+    respawnNear: (point, key, occupied, maxShiftM) => resolveSpawn(point, key, undefined, false, occupied, Math.max(0, maxShiftM)),
     pickup(point, occupied = []) {
       return find(point, { radius: 7, relief: 2, normalY: SPAWN_NORMAL_Y, solidOnly: true }, 'pickup', 0, occupied);
     },

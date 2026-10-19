@@ -20,6 +20,11 @@ export interface BotAbilityContext {
   contactM: number;
   /** The caller probes the landing corridor only when jumpEligible returns true. */
   safeJump: boolean;
+  /**
+   * An offensive jump is due (gameplay-modes-228, the Turbo Ball striker's `offensiveJump` doctrine): the ball close
+   * ahead on the ram line. The caller decides it; the cooldown, the ground and the landing checks stay these.
+   */
+  offensive?: boolean;
 }
 
 export function createBotAbilityPlanner(spec: { id: string }) {
@@ -34,7 +39,7 @@ export function createBotAbilityPlanner(spec: { id: string }) {
     return !!entity.combat && !entity.combat.destroyed && entity.modeActive !== false
       && (entity.modeJumpMps ?? 0) > 0 && timeS >= nextJumpS && timeS >= nextThinkS
       && entity.state.grounded && !entity.state.overturned && entity.state.speed > 3
-      && timeS - context.hitAtS < 2.5 && context.reloadS > 1.5 && context.retreating;
+      && (context.offensive === true || (timeS - context.hitAtS < 2.5 && context.reloadS > 1.5 && context.retreating));
   }
 
   function update(entity: AbilityEntity, timeS: number, context: BotAbilityContext): number {
