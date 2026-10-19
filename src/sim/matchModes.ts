@@ -1587,61 +1587,81 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     return ahead;
   }
 
-  // Capture the Flag bots (gameplay-modes-228; the ruleset's flagBots): the flags are run, not brawled over.
+  // Capture the Flag bots (gameplay-modes-228; the ruleset's flagBots): the flags are run, not brawled over. Roles are
+  // dealt per team once a second (and at once when a flag changes hands) in id order: with our flag away the nearest
+  // recoverMin recover first; with our carrier running the nearest `escorts` of the rest escort it; then, with our flag
+  // away, every other bot recovers too (huntWhenHomeFlagTaken: a capture needs it home); with no flag carried
+  // defendShare of a large squad guards home and the rest raid on lanes.
   const flagRules = ruleset.flagBots ?? matchRulesetFor('capture_the_flag').flagBots!;
+  type FlagRole = 'recover' | 'escort' | 'defend' | 'raid';
+  const flagRoles = new Map<string, { role: FlagRole; rank: number }>();
+  let flagRolesAt = -Infinity, flagRolesKey = '';
+  const byDistanceTo = (list: Entity[], x: number, z: number): Entity[] =>
+    list.slice().sort((a, b) => squaredDistance(a, x, z) - squaredDistance(b, x, z) || (a.id < b.id ? -1 : 1));
+  function assignFlagRoles(): void {
+    const key = flags.map((flag) => `${flag.status}:${flag.carrierId ?? ''}`).join('|');
+    if (placementTimeS < flagRolesAt + 1 && key === flagRolesKey) return;
+    flagRolesAt = placementTimeS; flagRolesKey = key;
+    flagRoles.clear();
+    for (const team of ['alpha', 'bravo'] as const) {
+      const ownFlag = flagForTeam(team), enemyFlag = flagForTeam(otherTeam(team));
+      if (!ownFlag || !enemyFlag) continue;
+      const squad = teams[team].filter((e) => e.bot && activeFriend(e, team) && !flagCarriedBy(e.id)).sort((a, b) => (a.id < b.id ? -1 : 1));
+      const free = new Set(squad);
+      const deal = (list: Entity[], role: FlagRole, count: number): void => {
+        let rank = 0;
+        for (const e of list) { if (rank >= count) break; if (!free.has(e)) continue; flagRoles.set(e.id, { role, rank: rank++ }); free.delete(e); }
+      };
+      const ownAway = ownFlag.status !== 'home';
+      if (ownAway) deal(byDistanceTo(squad, ownFlag.x, ownFlag.z), 'recover', flagRules.recoverMin);
+      if (enemyFlag.carrierId) deal(byDistanceTo(squad, enemyFlag.x, enemyFlag.z), 'escort', flagRules.escorts);
+      if (ownAway) {
+        const more = flagRules.huntWhenHomeFlagTaken ? Infinity : Math.max(0, Math.ceil(squad.length * flagRules.recoverShare) - flagRules.recoverMin);
+        deal(byDistanceTo(squad, ownFlag.x, ownFlag.z), 'recover', more);
+      }
+      if (enemyFlag.carrierId) { deal(byDistanceTo(squad, enemyFlag.x, enemyFlag.z), 'defend', Infinity); continue; }
+      const guards = squad.length >= flagRules.defendMinSquad ? Math.max(1, Math.round(squad.length * flagRules.defendShare)) : 0;
+      deal(byDistanceTo(squad, enemyFlag.x, enemyFlag.z).reverse(), 'defend', guards);
+      deal(byDistanceTo(squad, enemyFlag.x, enemyFlag.z), 'raid', Infinity);
+    }
+  }
   const flagBotTarget = (entity: Entity, team: ObjectiveTeam): BotDestination | null => {
     const home = centers[team];
     if (flagCarriedBy(entity.id)) return { x: home.x, z: home.z, mission: 'carrier' };
     const ownFlag = flagForTeam(team);
     const enemyFlag = flagForTeam(otherTeam(team));
-    if (!enemyFlag) return null;
-    let squadSize = 0;
-    for (const friend of teams[team]) if (friend.bot && activeFriend(friend, team)) squadSize++;
+    if (!enemyFlag || !ownFlag) return null;
+    assignFlagRoles();
+    const job = flagRoles.get(entity.id) ?? { role: 'raid' as FlagRole, rank: 0 };
     const dx = home.x - enemyFlag.x, dz = home.z - enemyFlag.z;
     const length = Math.hypot(dx, dz) || 1, nx = dx / length, nz = dz / length;
-    // Our carrier runs home: the escorts nearest it lead the way, ahead of it on its route at either side (and straight
-    // ahead for the third), clearing what waits on the road rather than trailing it.
-    if (enemyFlag.carrierId) {
-      const escortRank = responderRank(entity, team, enemyFlag);
-      if (escortRank < flagRules.escorts) {
-        const side = escortRank === 2 ? 0 : escortRank % 2 === 0 ? 1 : -1;
-        return { x: enemyFlag.x + nx * flagRules.escortAheadM + nz * side * flagRules.escortSideM,
-          z: enemyFlag.z + nz * flagRules.escortAheadM - nx * side * flagRules.escortSideM, mission: 'escort' };
+    const side = job.rank % 2 === 0 ? 1 : -1;
+    if (job.role === 'recover') {
+      // a carried flag is cut off at the point its carrier reaches interceptLeadS ahead on the line to its home
+      let x = ownFlag.x, z = ownFlag.z;
+      const carrier = ownFlag.status === 'carried' && ownFlag.carrierId ? entityById.get(ownFlag.carrierId) : null;
+      if (carrier) {
+        const theirHome = centers[otherTeam(team)];
+        const hx = theirHome.x - x, hz = theirHome.z - z, run = Math.hypot(hx, hz) || 1;
+        const lead = Math.min(run, Math.abs(carrier.state.speed) * flagRules.interceptLeadS);
+        x += hx / run * lead; z += hz / run * lead;
       }
+      return { x, z, mission: 'recover' };
     }
-    // Our flag is away: a capture needs it home, so recovery unlocks the score. Every free bot (huntWhenHomeFlagTaken)
-    // or recoverShare of the squad goes for it; a carried flag is cut off at the point its carrier reaches
-    // interceptLeadS ahead on the line to its home. Public flag markers supply this, never hidden tanks.
-    if (ownFlag && ownFlag.status !== 'home') {
-      const recoverers = flagRules.huntWhenHomeFlagTaken ? Infinity
-        : Math.max(flagRules.recoverMin, Math.ceil(squadSize * flagRules.recoverShare));
-      if (responderRank(entity, team, ownFlag) < recoverers) {
-        let x = ownFlag.x, z = ownFlag.z;
-        const carrier = ownFlag.status === 'carried' && ownFlag.carrierId ? entityById.get(ownFlag.carrierId) : null;
-        if (carrier) {
-          const theirHome = centers[otherTeam(team)];
-          const hx = theirHome.x - x, hz = theirHome.z - z, run = Math.hypot(hx, hz) || 1;
-          const lead = Math.min(run, Math.abs(carrier.state.speed) * flagRules.interceptLeadS);
-          x += hx / run * lead; z += hz / run * lead;
-        }
-        return { x, z, mission: 'recover' };
-      }
+    if (job.role === 'escort') {
+      // ahead of our carrier on its route home, either side, the third straight ahead: clearing the road, not trailing it
+      const lane = job.rank === 2 ? 0 : side;
+      return { x: enemyFlag.x + nx * flagRules.escortAheadM + nz * lane * flagRules.escortSideM,
+        z: enemyFlag.z + nz * flagRules.escortAheadM - nx * lane * flagRules.escortSideM, mission: 'escort' };
     }
-    const rank = responderRank(entity, team, enemyFlag);
-    const side = rank % 2 === 0 ? 1 : -1;
-    if (enemyFlag.carrierId) {
-      // our carrier runs with its flag home: the rest hold the return area, clear of the carrier's road
-      return { x: home.x - nx * 35 + nz * side * (18 + rank * 5),
-        z: home.z - nz * 35 - nx * side * (18 + rank * 5), mission: 'defend' };
-    }
-    const guards = squadSize >= flagRules.defendMinSquad ? Math.max(1, Math.round(squadSize * flagRules.defendShare)) : 0;
-    if (guards > 0 && rank >= squadSize - guards) {
-      return { x: home.x - nx * 28 + nz * side * 24,
-        z: home.z - nz * 28 - nx * side * 24, mission: 'defend' };
+    if (job.role === 'defend') {
+      // with our carrier running: the return area, clear of its road; otherwise in front of home
+      const back = enemyFlag.carrierId ? 35 : 28, spread = enemyFlag.carrierId ? 18 + job.rank * 5 : 24;
+      return { x: home.x - nx * back + nz * side * spread, z: home.z - nz * back - nx * side * spread, mission: 'defend' };
     }
     // One runner touches the flag; the other attackers approach on separated
     // lanes until nearby. This opens crossfire without sacrificing the runner.
-    const offset = rank > 0 && squaredDistance(entity, enemyFlag.x, enemyFlag.z) > 70 ** 2 ? side * 32 : 0;
+    const offset = job.rank > 0 && squaredDistance(entity, enemyFlag.x, enemyFlag.z) > 70 ** 2 ? side * 32 : 0;
     return { x: enemyFlag.x + nz * offset, z: enemyFlag.z - nx * offset, mission: 'raid' };
   };
 

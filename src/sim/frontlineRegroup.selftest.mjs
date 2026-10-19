@@ -1,8 +1,9 @@
 // Frontline regroup (bots lane, 2026-10-03). The last sector decided the frontline: its counter-attack wave met the
 // survivors of the second sector while the bots revived at the spawn arrived 40-80 s behind them and died alone
 // (Redrock Divide and Desert, 24 seeds each). When the attack takes the second-to-last sector, its bots hold that
-// sector until every living bot has come up (or 60 s pass, or a human leads the way), then attack the last one
-// together. The middle sector and the defenders are unchanged.
+// sector until every living bot has come up (or the ruleset's regroupMaxS pass — 25 s since gameplay-modes-228, 60 s
+// before — or a human leads the way), then attack the last one together. The middle sector and the defenders are
+// unchanged. An attack target is the sector's own plan (assaultBots): a flank lane, the edge or the centre.
 import assert from 'node:assert/strict';
 import { createMatchModeController } from './matchModes.ts';
 
@@ -50,11 +51,13 @@ function twoSectorsIn() {
 }
 
 const at = (target, point) => Math.hypot(target.x - point.x, target.z - point.z) < 1;
+// the attack on a sector (assaultBots): its centre, its edge (stageM out, spread) or a flank lane flankOffsetM off it
+const on = (target, point) => target.mission === 'assault' && Math.hypot(target.x - point.x, target.z - point.z) < 90;
 
 console.log('[1] after the second sector falls the bots hold it until the bots behind come up');
 {
   const { bots, enemies, match, step, line, middle } = twoSectorsIn();
-  assert.ok(middle.every((target) => at(target, line(1))), 'the middle sector is attacked at once (no regroup there)');
+  assert.ok(middle.every((target) => on(target, line(1))), 'the middle sector is attacked at once (no regroup there)');
   step(1.1);
   for (const bot of bots) {
     const target = match.botTarget(bot);
@@ -69,18 +72,18 @@ console.log('[1] after the second sector falls the bots hold it until the bots b
   assert.ok(bots.every((bot) => at(match.botTarget(bot), line(1))), 'the wait goes on while the two are still back');
   for (const bot of bots.slice(0, 2)) Object.assign(bot.state.pos, { x: line(1).x + 40, z: line(1).z - 50 });
   step(1.1);
-  for (const bot of bots) assert.ok(at(match.botTarget(bot), line(2)), `${bot.id} attacks the last sector together`);
+  for (const bot of bots) assert.ok(on(match.botTarget(bot), line(2)), `${bot.id} attacks the last sector together`);
   console.log('  ok  when the last two come within 80 m every bot attacks sector 3');
 }
 
 console.log('[2] the wait is bounded');
 {
   const { bots, match, until, line } = twoSectorsIn();
-  until(58);
-  assert.ok(bots.every((bot) => at(match.botTarget(bot), line(1))), 'still holding at 58 s');
-  until(61.5);
-  assert.ok(bots.every((bot) => at(match.botTarget(bot), line(2))), 'after 60 s they attack without the two');
-  console.log('  ok  with two bots never coming up, the attack goes in after 60 s');
+  until(23);
+  assert.ok(bots.every((bot) => at(match.botTarget(bot), line(1))), 'still holding at 23 s');
+  until(26.5);
+  assert.ok(bots.every((bot) => on(match.botTarget(bot), line(2))), 'after 25 s they attack without the two');
+  console.log('  ok  with two bots never coming up, the attack goes in after 25 s');
 }
 
 console.log('[3] a human leading the way ends the wait');
@@ -88,7 +91,7 @@ console.log('[3] a human leading the way ends the wait');
   const { human, bots, match, step, line } = twoSectorsIn();
   Object.assign(human.state.pos, { x: line(2).x, z: line(2).z - 200 });
   step(1.1);
-  assert.ok(bots.every((bot) => at(match.botTarget(bot), line(2))), 'the bots follow the human to the last sector');
+  assert.ok(bots.every((bot) => on(match.botTarget(bot), line(2))), 'the bots follow the human to the last sector');
   console.log('  ok  a human 200 m from sector 3: every bot attacks it');
 }
 
@@ -97,7 +100,7 @@ console.log('[4] a wreck does not hold the wait');
   const { bots, match, step, line } = twoSectorsIn();
   for (const bot of bots.slice(0, 2)) bot.combat.destroyed = true;
   step(1.1);
-  assert.ok(bots.slice(2).every((bot) => at(match.botTarget(bot), line(2))), 'the four living bots attack at once');
+  assert.ok(bots.slice(2).every((bot) => on(match.botTarget(bot), line(2))), 'the four living bots attack at once');
   console.log('  ok  the two bots behind destroyed: the four at sector 2 attack sector 3');
 }
 

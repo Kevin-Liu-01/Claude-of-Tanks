@@ -304,8 +304,10 @@ export function pickNationalSides(input: NationalSidesInput): NationalSidesPlan 
       }
       if (out.length >= seats) break;
     }
-    // repeats of the side's own contemporaries (the humans' own country vehicles included), then far eras
-    const repeatSource = own.length ? own : groups.flatMap((g) => g.rows);
+    // repeats of the side's own contemporaries — the side's own humans' vehicles when the country has no other (a lone
+    // WW2 hull's allies are its own type, not a far era) — then its allies' contemporaries, far eras last
+    const sideHumans = (side === 'alpha' ? humans : enemyHumans).filter((h) => !c || h.country === c);
+    const repeatSource = own.length ? own : sideHumans.length ? sideHumans : groups.flatMap((g) => g.rows);
     for (let k = 0; out.length < seats && repeatSource.length; k++) {
       out.push({ id: repeatSource[k % repeatSource.length]!.id, repeat: true });
       note(side, repeatSource[k % repeatSource.length]!.country, 'repeat');

@@ -756,6 +756,10 @@ const ZONE_LEG_STEP_M = 3;
 // long before the mission plans again (Cinder Junction frontline seed 72839: a Challenger 2 stood 494 s at its route
 // end, 192 m short of the line, its target in sight, the gate shut).
 const MISSION_RELEASE_S = 20;
+// The striker's shot at the ball (gameplay-modes-228): the gun within this of the ball's bearing, no teammate within this
+// of the line (and 2.5x of the ball).
+const BALL_SHOT_YAW_RAD = 0.05;
+const BALL_SHOT_CLEAR_M = 6;
 // Another level (bots lane, 2026-10-02; Cliffbridge pacing seed 53003: a T-90M on the gorge floor under the bridge
 // and one on its deck, 40 m apart vertically and 17-45 m on the map, stood engaged 570 s, neither gun able to lay
 // on the other, until the 900 s cap). A target on another level the gun cannot be laid on from here — more than
@@ -4383,10 +4387,47 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return hitChance < conserveThreshold() + (conserving ? CONSERVE_CLOSE_MARGIN : 0);
   }
 
+  /**
+   * The Turbo Ball striker's shot at the ball (gameplay-modes-228; the ball is public): when its objective says the ball
+   * lies toward the opponent goal (shootBall) and no enemy holds the gun, lay on the ball and fire (HE first) once the
+   * gun bears, the ball is in sight and no teammate stands by the ball or on the line to it.
+   */
+  let ballShots = 0;
+  function shootTheBall(input: AiInput, timeS: number): boolean {
+    const objective = getObjective?.();
+    const ball = objective?.shootBall ? objective.ball : null;
+    if (!ball) return false;
+    const st = entity.state;
+    if (heSlot >= 0 && slotHasAmmo(heSlot)) chosenSlot = heSlot;
+    input.shellSlot = clamp(chosenSlot, 0, spec.gun.shells.length - 1);
+    input.aimPoint.set(ball.x, ball.y, ball.z);
+    input.fire = false;
+    if ((entity.combat?.reload?.t ?? 0) > 1e-3) return true;
+    const dx = ball.x - st.pos.x, dz = ball.z - st.pos.z, distance = Math.hypot(dx, dz) || 1;
+    _hullEuler.set(-(st.visualPitch || 0), st.yaw, st.visualRoll || 0, 'YXZ');
+    _hullQuat.setFromEuler(_hullEuler);
+    _vF.set(Math.sin(st.turretYaw) * Math.cos(st.gunPitch), Math.sin(st.gunPitch), Math.cos(st.turretYaw) * Math.cos(st.gunPitch))
+      .applyQuaternion(_hullQuat).normalize();
+    if (Math.abs(wrapAngle(Math.atan2(dx, dz) - Math.atan2(_vF.x, _vF.z))) > BALL_SHOT_YAW_RAD) return true;
+    if (!hasLos(st.pos.x, st.pos.y + selfEyeM, st.pos.z, ball.x, ball.y, ball.z)) return true;
+    const friends = getAllies ? getAllies() : [];
+    for (let i = 0; i < friends.length; i++) {
+      const f = friends[i]!.state.pos;
+      const along = clamp(((f.x - st.pos.x) * dx + (f.z - st.pos.z) * dz) / (distance * distance), 0, 1);
+      const off = Math.hypot(st.pos.x + dx * along - f.x, st.pos.z + dz * along - f.z);
+      if (off < BALL_SHOT_CLEAR_M || Math.hypot(f.x - ball.x, f.z - ball.z) < BALL_SHOT_CLEAR_M * 2.5) return true;
+    }
+    input.fire = true;
+    lastFiredAtS = timeS;
+    ballShots++;
+    return true;
+  }
+
   function aimAndFire(input: AiInput, dt: number, timeS: number): void {
     if (!target || !enemyAlive(target)) {
-      setIdleScan(input, timeS);
       conserving = false;
+      if (shootTheBall(input, timeS)) return;
+      setIdleScan(input, timeS);
       return;
     }
     const shell = selectedShell(entity.combat);
@@ -6528,7 +6569,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       objectiveShiftZ: objectiveShifting ? +objectiveShiftPoint.z.toFixed(1) : null,
       zoneHoldX: Number.isFinite(zoneHoldForX) ? +zoneHold.x.toFixed(1) : null,
       zoneHoldZ: Number.isFinite(zoneHoldForZ) ? +zoneHold.z.toFixed(1) : null,
-      missionReleases, missionReleased: nowS < missionReleaseUntilS, offensiveJumps,
+      missionReleases, missionReleased: nowS < missionReleaseUntilS, offensiveJumps, ballShots,
       levelRouting, levelRoutes, unbearableVerdicts, unbearable: unbearableId, elevationLockT: +elevationLockT.toFixed(1),
       pressing: nowS < pressUntilS,
       pressPointX: passivePressing ? pressPoint.x : NaN, // round 67: the chosen press point (NaN while not pressing)

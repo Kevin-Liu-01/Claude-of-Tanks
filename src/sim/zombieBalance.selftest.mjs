@@ -10,7 +10,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createMatchModeController } from './matchModes.ts';
 import {
-  cacheHealChance, hordeHostileHull, hordeWaveHealthScale, hordeWaveSize, matchRulesetFor, modeCopyValues, rulesetBotDifficulty, rulesetLines,
+  cacheHealChance, hordeHostileHull, hordeMaxAlive, hordeWaveHealthScale, hordeWaveSize, hordeWaveTotal, matchRulesetFor, modeCopyValues,
+  rulesetBotDifficulty, rulesetBotDoctrine, rulesetLines,
 } from './matchRuleset.ts';
 
 const near = (a, b) => Math.abs(a - b) < 1e-9;
@@ -26,6 +27,7 @@ assert.equal(infected.enemies, 5, 'five initial infected: the outbreak comes on 
 assert.equal(matchRulesetFor('infected', null, { enemies: 8 }).enemies, 8, 'an arranged outbreak keeps its size');
 assert.equal(horde.hpScale, 2, 'Horde: the humans\' hull doubled'); assert.equal(horde.horde.hostileHpScale, 0.15, 'the zombies at 15 % of their own');
 assert.equal(horde.horde.hpPerWave, 0.02); assert.equal(horde.horde.hostileDifficultyStep, 1); assert.equal(horde.ammo, 'unlimited');
+assert.equal(horde.horde.hunt, 'spotted', 'the hunt routes on what the zombies spot, never on a hidden human');
 assert.equal(horde.allies, 4); assert.equal(horde.enemies, 20);
 
 // --- the invariants: zombies are fodder, humans are sturdy, numbers carry the pressure --------------------------------
@@ -39,6 +41,16 @@ for (let wave = 1; wave <= 10; wave++) {
 }
 assert.ok(hordeHostileHull(horde.horde, 50) < horde.hpScale / 4, 'fifty waves in, still a quarter of a human hull');
 assert.ok(hordeWaveSize(horde.horde, 2) - hordeWaveSize(horde.horde, 1) >= 2, 'each wave brings at least two more');
+// gameplay-modes-228: no glowing boss, no high-hull special — the swarm is weaker still, the runners only faster
+for (let wave = 1; wave <= 30; wave++) assert.ok(hordeHostileHull(horde.horde, wave) <= 0.4, `wave ${wave}: no hostile is ever a brute`);
+// "super aggressive" (owner 2026-10-18): the zombies charge; the infected charge too and only turn their hulls to a hit
+{
+  const zombie = rulesetBotDoctrine(horde, 'bravo'), infectedBot = rulesetBotDoctrine(infected, 'enemy'), survivor = rulesetBotDoctrine(infected, 'player');
+  assert.ok(zombie.rush && !zombie.openingRead && zombie.fallbackScale === 0 && zombie.hitReactions === 'none' && !zombie.spearheadGuard);
+  assert.ok(infectedBot.rush && infectedBot.hitReactions === 'angle' && infectedBot.fallbackScale === 0, 'the infected: second only to the zombies');
+  assert.ok(!survivor.rush && !survivor.conserveRounds && survivor.spearheadGuard && survivor.holdBandScale === 1, 'the survivors fight back at range');
+  assert.equal(zombie.searchRouting, 'spotted'); assert.equal(infectedBot.searchRouting, 'spotted'); assert.equal(survivor.searchRouting, 'spotted');
+}
 assert.deepEqual(rulesetLines(infected).slice(0, 3).map((line) => [line.key, line.values.value]), [['infection', undefined], ['hp', '+50 % / -70 %'], ['ammoUnlimited', undefined]],
   'the Infected card shows both hulls in one chip (own / hostile), no line of their own');
 assert.ok(rulesetLines(infected).every((line) => line.key !== 'hostileHull') && rulesetLines(horde).every((line) => line.key !== 'hostileHull'));
@@ -48,8 +60,8 @@ assert.deepEqual([modeCopyValues('infected').survivorHp, modeCopyValues('infecte
 function tank(id, team, x, z, bot = true) {
   return { id, team, bot, state: { pos: { x, y: 0, z }, yaw: 0, speed: 0 }, combat: { hp: 1000, maxHp: 1000, destroyed: false, ammo: [20], ammoCapacity: [20] } };
 }
-function controller(mode, entities) {
-  return createMatchModeController({ mode, entities, seed: 77, terrainHeight: () => 0,
+function controller(mode, entities, ruleset = undefined) {
+  return createMatchModeController({ mode, entities, seed: 77, terrainHeight: () => 0, ...(ruleset ? { ruleset } : {}),
     setActive(target, active) { target.modeActive = active; },
     // the authority's and the solo revive's ruleset stamp: a fresh hull times hpScale times the controller's scale
     revive(target, spawn, healthScale) {
@@ -63,12 +75,17 @@ function controller(mode, entities) {
   const zombie = tank('zombie', 'bravo', 50, 60), other = tank('other', 'bravo', -190, -150);
   const mode = controller('infected', [player, near1, far1, zombie, other]);
   assert.equal(near1.combat.maxHp, 1500); assert.equal(zombie.combat.maxHp, 300, 'the stamp: 150 % survivors, 30 % infected');
-  assert.deepEqual(mode.botTarget(zombie), { x: 40, z: -20 }, 'an infected bot drives at the nearest survivor');
-  assert.deepEqual(mode.botTarget(other), { x: -200, z: -200 });
-  assert.equal(mode.botTarget(near1), null, 'survivors roam free');
+  // the honest hunt (gameplay-modes-228): a labelled mission at a quarry its side has spotted (no spotting hook here: every
+  // living survivor counts as spotted), one hunter a quarry before any doubles up
+  assert.deepEqual(mode.botTarget(zombie), { x: 40, z: -20, mission: 'hunt' }, 'an infected bot hunts the nearest survivor');
+  assert.deepEqual(mode.botTarget(other), { x: -200, z: -200, mission: 'hunt' });
+  assert.equal(mode.botTarget(near1), null, 'a survivor near its own side holds where it fights');
   near1.combat.destroyed = true; mode.step(1 / 60, 1);
   assert.equal(near1.team, 'bravo', 'the survivor converts');
-  assert.deepEqual(mode.botTarget(zombie), { x: 300, z: -100 }, 'the hunt moves to the next nearest survivor, the human player included');
+  const next = mode.botTarget(zombie);
+  assert.equal(next.mission, 'hunt');
+  assert.ok(Math.hypot(next.x - 300, next.z + 100) < Math.hypot(next.x + 200, next.z + 200),
+    'the hunt moves on to the next survivor, the human player included (approached on a lane, not in a line)');
   mode.step(1 / 60, 1 + infected.respawnS);
   assert.equal(near1.combat.destroyed, false); assert.equal(near1.combat.maxHp, 300, 'a converted survivor returns as a fragile infected');
   assert.equal(near1.modeSpeedMultiplier, infected.infection.infectedSpeed);
@@ -76,16 +93,20 @@ function controller(mode, entities) {
 {
   const player = tank('player', 'alpha', 0, -150, false);
   const hostiles = Array.from({ length: 20 }, (_, i) => tank(`h${i}`, 'bravo', i * 6, 150));
-  const mode = controller('endless_horde', [player, ...hostiles]);
-  const active = () => hostiles.filter((h) => h.modeActive !== false);
+  // a flat test field puts every arrival in the humans' sight: the arrival law has its own receipt (hordeWaveLaw)
+  const open = { ...horde, horde: { ...horde.horde, spawnOutOfSight: false } };
+  const mode = controller('endless_horde', [player, ...hostiles], open);
+  const active = () => hostiles.filter((h) => h.modeActive !== false && !h.combat.destroyed);
   let clock = 0;
   for (let wave = 1; wave <= 4; wave++) {
-    assert.equal(active().length, Math.min(20, hordeWaveSize(horde.horde, wave)), `wave ${wave}: the wave law`);
+    assert.equal(active().length, Math.min(hordeMaxAlive(horde.horde, 1, 20), hordeWaveTotal(horde.horde, wave, 1)), `wave ${wave}: the wave law's opening field`);
     for (const h of active()) assert.equal(h.combat.maxHp, Math.round(1000 * horde.hpScale * hordeWaveHealthScale(horde, horde.horde, wave)));
     assert.ok(near(active()[0].combat.maxHp / 1000, Math.round(1000 * hordeHostileHull(horde.horde, wave)) / 1000), `wave ${wave}: the fodder hull`);
     assert.equal(mode.state.horde.healChance, cacheHealChance(horde, wave));
-    for (const h of active()) h.combat.destroyed = true;
-    clock += 0.5; mode.step(1 / 60, clock); clock += 6.01; mode.step(1 / 60, clock);
+    for (let guard = 0; guard < 400 && mode.state.horde.wave === wave; guard++) {
+      for (const h of active()) h.combat.destroyed = true;
+      clock += 0.5; mode.step(1 / 60, clock);
+    }
   }
   assert.equal(rulesetBotDifficulty(horde, 'bravo', 'normal'), 'easy', 'the zombies\' bots play a tier down (the step; zombieBotTier.selftest pins the builders)');
 }

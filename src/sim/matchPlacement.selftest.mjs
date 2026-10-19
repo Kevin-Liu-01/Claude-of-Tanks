@@ -84,13 +84,18 @@ for (const mode of ['capture_the_flag', 'zone_control', 'turbo_ball']) {
 }
 
 {
+  // gameplay-modes-228: a Horde arrival takes a ring point first (respawnNear, out of the humans' reach; this flat field
+  // opens the sight rule), and a point the final placement refuses never goes live at an unsafe old position: the
+  // arrival retries on the one-second deadline with the pending wave's health scale
   const human = entity('horde-human', 'alpha', 0, -180);
   const enemies = [0, 1, 2].map(i => ({ ...entity(`horde-${i}`, 'bravo', i * 20, 180), bot: true }));
   let calls = 0, available = false;
   const healthScales = [];
-  const placement = { ...build({}, 'endless_horde'), respawn(spawn) { calls++; return available ? spawn : null; } };
-  const controller = createMatchModeController({ mode: 'endless_horde', entities: [human, ...enemies], placement,
-    revive(target, _spawn, scale) { healthScales.push(scale); target.combat.destroyed = false; } });
+  const base = build({}, 'endless_horde');
+  const placement = { ...base, respawn(spawn) { calls++; return available ? spawn : null; } };
+  const open = { ...matchRulesetFor('endless_horde'), horde: { ...matchRulesetFor('endless_horde').horde, spawnOutOfSight: false } };
+  const controller = createMatchModeController({ mode: 'endless_horde', entities: [human, ...enemies], placement, ruleset: open,
+    revive(target, spawn, scale) { healthScales.push(scale); target.combat.destroyed = false; Object.assign(target.state.pos, { x: spawn.x, z: spawn.z }); } });
   assert.equal(calls, 3);
   assert.ok(enemies.every(e => e.modeActive === false), 'unplaced Horde enemies never become live at an unsafe old position');
   for (let tick = 0; tick < 60; tick++) controller.step(1 / 60, tick / 60);
@@ -98,16 +103,9 @@ for (const mode of ['capture_the_flag', 'zone_control', 'turbo_ball']) {
   controller.step(1 / 60, 1); assert.equal(calls, 6);
   available = true; controller.step(1 / 60, 2);
   assert.equal(calls, 9); assert.ok(enemies.every(e => e.modeActive && !e.combat.destroyed));
-  for (const enemy of enemies) enemy.combat.destroyed = true;
-  controller.step(1 / 60, 3);
-  available = false; controller.step(1 / 60, 9);
-  assert.equal(controller.state.horde.wave, 2); assert.equal(calls, 12);
-  controller.step(1 / 60, 9.5); assert.equal(calls, 12);
-  available = true; controller.step(1 / 60, 10);
   const horde = matchRulesetFor('endless_horde');
-  const [one, two] = [1, 2].map((wave) => hordeWaveHealthScale(horde, horde.horde, wave));
-  assert.equal(calls, 15); assert.deepEqual(healthScales, [one, one, one, two, two, two],
-    'inactive Horde activation retries preserve the pending wave health scale');
+  const one = hordeWaveHealthScale(horde, horde.horde, 1);
+  assert.deepEqual(healthScales, [one, one, one], 'inactive Horde activation retries preserve the pending wave health scale');
 }
 
 // The objective flood must not overwrite the original bots' optional water

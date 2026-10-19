@@ -23,7 +23,7 @@ const play = (gameMode, playerSpecId, ordinal, arrangement, rosterSeed = 0) => {
   for (const entity of game.allTanks) entity.visual = { root: {}, setVisible() {}, syncFromState() {}, dispose() {} };
   game.battleCount = ordinal;
   const plan = battleRosterPlan(matchRulesetFor(gameMode,null,arrangement),null,true);
-  const planned = planBattleParticipantIds(game, playerSpecId, true, plan.nations, plan.slots, plan.formationLead, plan.alliedSlots);
+  const planned = planBattleParticipantIds(game, playerSpecId, true, plan.nations, plan.slots, plan.formationLead, plan.national);
   setupBattle(game, playerSpecId, world, { gameMode, random: true, arrangement, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: true });
   const fielded = game.tanks.map((entity) => ({ id: entity.specId, uid: entity.id, nation: entity.spec.nation, isPlayer: entity.isPlayer, team: entity.team, x: entity.state.pos.x, z: entity.state.pos.z }));
   return {
@@ -31,6 +31,7 @@ const play = (gameMode, playerSpecId, ordinal, arrangement, rosterSeed = 0) => {
     enemies: fielded.filter((entry) => entry.team === 'enemy'),
     fielded,
     planned,
+    teams: game.teamNations,
   };
 };
 const seated = (battle, label) => {
@@ -60,10 +61,12 @@ try {
   // an unchanged profile must vary both sides and preload exactly their roster.
   const lineups = new Set();
   const sidesByVehicle = new Map();
+  // RANDOM (gameplay-modes-228 TEAM NATIONS): the vehicles rotate between the sides; MONO seats each side from one country
+  const randomFourteen = { ...SIDES_PRESETS['14v14'], teamNations: 'random' };
   for (let seed = 1; seed <= 16; seed++) {
-    const battle = play('standard', 'm1a3', 37, SIDES_PRESETS['14v14'], seed);
+    const battle = play('standard', 'm1a3', 37, randomFourteen, seed);
     assert.deepEqual(battle.fielded.map(entry => entry.id), battle.planned);
-    if (seed === 1) assert.deepEqual(play('standard', 'm1a3', 37, SIDES_PRESETS['14v14'], seed), battle,
+    if (seed === 1) assert.deepEqual(play('standard', 'm1a3', 37, randomFourteen, seed), battle,
       'explicitly seeded sessions reproduce both team assignments and spawn positions');
     assert.equal(battle.allies.length, 13);
     assert.equal(battle.enemies.length, 14);
@@ -84,11 +87,18 @@ try {
   assert.equal(capped.enemies.length, 30, 'the typed enemy count is kept under the field limit');
   assert.equal(capped.allies.length, BATTLE_FIELD_LIMIT - 1 - 30, 'the allied bots yield to the field limit');
 
+  // MONO-NATION (the default): every allied seat kept, the player's country first and only its listed fills behind it,
+  // the enemy one other country; a vehicle fielded twice is its own identity
   const korea = PRODUCTION_TANK_IDS.find(id=>getSpec(id).nation==='South Korea');
+  const countryOf = (nation) => ({ USA: 'usa', US: 'usa', Germany: 'germany', 'South Korea': 'south_korea' })[nation] ?? nation;
   for(const [id,count] of [['m1a1_abrams_hc',6],['leo2_improved',13],[korea,30]]) {
-    const battle=play('standard',id,12,{allies:count,enemies:7,alliedNation:'player'});
-    assert.equal(battle.allies.length,count,'same-nation teams keep every allied seat');
-    assert.ok(battle.allies.every(entry=>entry.nation===getSpec(id).nation));
+    const battle=play('standard',id,12,{allies:count,enemies:7});
+    assert.equal(battle.allies.length,count,'a national team keeps every allied seat');
+    const allowedAllies = new Set([battle.teams.allied, ...battle.teams.notes.filter(n => n.side === 'alpha').map(n => n.country)]);
+    assert.equal(battle.teams.allied, countryOf(getSpec(id).nation), 'the allies are the player\'s country');
+    assert.ok(battle.allies.every(entry=>allowedAllies.has(countryOf(entry.nation)) || allowedAllies.has(entry.nation.toLowerCase())),
+      `${id}: the allies are the player's country plus the listed fills`);
+    assert.notEqual(battle.teams.enemy, battle.teams.allied, 'the enemy is another country');
     assert.equal(battle.fielded.filter(entry=>entry.isPlayer).length,1);
     assert.equal(new Set(battle.fielded.map(entry=>entry.uid)).size,battle.fielded.length,'repeated tank types have distinct identities');
     assert.deepEqual(battle.fielded.map(entry=>entry.id),battle.planned,'loading and actual battle use the identical national roster');
@@ -99,7 +109,8 @@ try {
   const visual=()=>({root:{},setVisible(){},syncFromState(){},dispose(){}});
   for(const entity of reused.allTanks)entity.visual=visual();
   const options={gameMode:'standard',random:true,deferVisuals:true,deferCamoRepaint:true,deferOpeningRoutes:true};
-  setupBattle(reused,korea,world,{...options,arrangement:{allies:30,enemies:7,alliedNation:'player'}});
+  // a lone WW2 hull has no contemporaries of its own country: its allies are its own type again (clones), not a far era
+  setupBattle(reused,'jpz_e100',world,{...options,arrangement:{allies:6,enemies:7}});
   const extra=reused.tanks.filter(entity=>entity.id!==entity.specId);
   assert.ok(extra.length>0);
   assert.ok(extra.every(entity=>reused.tankById.get(entity.id)===entity));
@@ -108,12 +119,12 @@ try {
   let disposed=0;
   for(const entity of extra)entity.visual={...visual(),dispose(){disposed++;}};
   for(const entity of reused.allTanks)if(!entity.visual)entity.visual=visual();
-  setupBattle(reused,korea,world,{...options,arrangement:null});
+  setupBattle(reused,korea,world,{...options,arrangement:null}); // a battle whose sides fill without repeats
   assert.equal(disposed,extra.length,'next battle releases reinforcement visuals');
   assert.equal(reused.allTanks.length,stockCount,'reinforcements do not leak into the catalog');
   assert.ok(extra.every(entity=>!reused.tankById.has(entity.id)));
-  const nationalHorde=play('endless_horde','m1a1_abrams_hc',13,{allies:2,enemies:14,waveSize:5,enemyNation:'germany',alliedNation:'player'});
-  assert.ok(nationalHorde.allies.every(entry=>entry.nation==='USA'));
+  const nationalHorde=play('endless_horde','m1a1_abrams_hc',13,{allies:2,enemies:14,waveSize:5,enemyNation:'germany'});
+  assert.ok(nationalHorde.allies.every(entry=>entry.nation==='USA'), 'MONO: the allies are the player\'s country');
   assert.ok(nationalHorde.enemies.every(entry=>entry.nation==='Germany'),'enemy formation is kept separate');
   const horde = play('endless_horde', 'm1a1_abrams_hc', 5, { allies: 2, enemies: 14, waveSize: 5, enemyNation: 'germany' });
   assert.equal(horde.allies.length, 2, 'Horde keeps its arranged allied bots');
