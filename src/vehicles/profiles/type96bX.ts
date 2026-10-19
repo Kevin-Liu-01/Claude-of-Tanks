@@ -435,7 +435,9 @@ export function buildType96bX(P: TankBuilderPort): void {
     P.gunG.position.set(0, frame.gun[1] - frame.turret[1], frame.gun[2] - frame.turret[2]);
     buildType96Hull(P);
     buildType96Gear(P);
-    buildType96Turret(P, { bootFloor: TYPE96B_BOOT_FLOOR });
+    // Release 227: the box sight over the mantlet rides the pitching boot (boxSightOnGun); turret-fixed, the boot passed
+    // through it at every pitch.
+    buildType96Turret(P, { bootFloor: TYPE96B_BOOT_FLOOR, boxSightOnGun: true });
     addType96GunnerSightPlinth(P);
     preserveSourceStudyGunMountAppearance(P);
     addRearFieldStowage(P);
