@@ -142,6 +142,81 @@ if (command === 'report') {
   process.exit(0);
 }
 
+// ----------------------------------------------------------------------------------------------- compare (parent) ---
+// compare --base=DIR --dir=DIR --targets=FILE: every target row reads one field (a dot path) of the after report
+// (DIR/<sub>/report.json, the mode's aggregate or the roster census row) and the same field of the base, prints
+// before -> after and PASS / MISS, and exits 1 on any miss. Ops: <= >= < > == between [lo, hi], equalsBase (the
+// field, or the whole mode aggregate minus `ignore`, equals the base's), and the named checks in COMPARE_CHECKS.
+if (command === 'compare') {
+  const baseDir = arg('base', null), dir = arg('dir', '.'), targetsPath = arg('targets', 'tools/mode-aggression-targets.json');
+  const only = arg('only', null);
+  const spec = JSON.parse(readFileSync(targetsPath, 'utf8'));
+  const loaded = new Map();
+  const load = (root, sub) => {
+    if (!root) return null;
+    const path = sub ? `${root}/${sub}/report.json` : `${root}/report.json`;
+    if (!loaded.has(path)) { try { loaded.set(path, JSON.parse(readFileSync(path, 'utf8'))); } catch { loaded.set(path, null); } }
+    return loaded.get(path);
+  };
+  const dig = (object, path) => (path ? String(path).split('.') : []).reduce((o, k) => (o == null ? undefined : o[k]), object);
+  const strip = (value, ignore) => JSON.parse(JSON.stringify(value, (k, v) => (ignore.includes(k) ? undefined : v)));
+  const scope = (report, t) => {
+    if (!report) return undefined;
+    if (t.roster) return report.roster?.[t.mode]?.[t.arrangement];
+    if (t.mode) return report.modes?.[t.mode];
+    return report;
+  };
+  const COMPARE_CHECKS = {
+    // engaged-and-standing-still: the Horde's zombies <= the infected <= every other side in the batch
+    engagedStillRanking(report) {
+      const modes = report?.modes ?? {};
+      const zombies = modes.endless_horde?.bravo?.engagedStillShare, infected = modes.infected?.bravo?.engagedStillShare;
+      if (zombies == null || infected == null) return { value: null, pass: false };
+      const others = [];
+      for (const [name, a] of Object.entries(modes)) for (const team of ['alpha', 'bravo']) {
+        if ((name === 'endless_horde' || name === 'infected') && team === 'bravo') continue;
+        if (a[team]?.engagedStillShare != null && a[team].n !== 0) others.push(a[team].engagedStillShare);
+      }
+      return { value: `${zombies} <= ${infected} <= min(${others.length ? Math.min(...others) : '—'})`, pass: zombies <= infected && others.every((x) => infected <= x) };
+    },
+    // the Horde's wave law: every cleared wave fielded exactly what the ruleset's law says
+    hordeLaw(report) {
+      const law = report?.modes?.endless_horde?.horde?.law;
+      if (!law) return { value: null, pass: false };
+      return { value: `${law.clearedOnLaw}/${law.cleared} cleared waves on the law; arrivals ${JSON.stringify(law.arrivalsPerWave.slice(0, 12))}`, pass: law.cleared > 0 && law.clearedOnLaw === law.cleared };
+    },
+  };
+  let misses = 0, rows = 0;
+  for (const t of spec.targets) {
+    if (only && !t.id.startsWith(only)) continue;
+    rows++;
+    const after = load(dir, t.dir), before = load(baseDir, t.baseDir ?? t.dir);
+    let a, b, pass;
+    if (t.op === 'check') {
+      const res = COMPARE_CHECKS[t.check](after);
+      a = res.value; b = before ? COMPARE_CHECKS[t.check](before).value : null; pass = res.pass;
+    } else if (t.op === 'equalsBase') {
+      const ignore = t.ignore ?? ['wallMs', 'generated', 'dir'];
+      a = dig(scope(after, t), t.path); b = dig(scope(before, t), t.path);
+      pass = a !== undefined && b !== undefined && JSON.stringify(strip(a, ignore)) === JSON.stringify(strip(b, ignore));
+      a = pass ? 'identical' : (a === undefined ? 'missing' : 'differs'); b = b === undefined ? 'missing' : 'base';
+    } else {
+      a = dig(scope(after, t), t.path); b = dig(scope(before, t), t.path);
+      const v = t.value;
+      const num = typeof a === 'number' ? a : (a == null ? NaN : Number(a));
+      pass = a != null && Number.isFinite(num) && (
+        t.op === '<=' ? num <= v : t.op === '>=' ? num >= v : t.op === '<' ? num < v : t.op === '>' ? num > v
+          : t.op === '==' ? num === v : t.op === 'between' ? num >= v[0] && num <= v[1] : false);
+      if (t.op === 'deepEquals') pass = JSON.stringify(a) === JSON.stringify(v);
+    }
+    if (!pass && t.optional) { console.log(`skip ${t.id}: ${JSON.stringify(b)} -> ${JSON.stringify(a)} (optional) ${t.note ?? ''}`); continue; }
+    if (!pass) misses++;
+    console.log(`${pass ? 'PASS' : 'MISS'} ${t.id}: ${JSON.stringify(b ?? null)} -> ${JSON.stringify(a ?? null)}  (want ${t.op}${t.value === undefined ? '' : ` ${JSON.stringify(t.value)}`})${t.note ? `  ${t.note}` : ''}`);
+  }
+  console.log(`compare: ${rows - misses}/${rows} targets met${misses ? `, ${misses} missed` : ''}`);
+  process.exit(misses ? 1 : 0);
+}
+
 // ---------------------------------------------------------------------------------- simulation modules (children) ---
 const { ensureFullFleet } = await import(new URL('src/vehicles/fleetFactory.ts', ROOT).href);
 const { createGameState, setupBattle, simStep, createCollider, createBus } = await import(new URL('src/game/state.ts', ROOT).href);
@@ -158,6 +233,10 @@ const { totalAmmunition } = await import(new URL('src/sim/ammunition.ts', ROOT).
 const { usesLauncherMuzzles, launcherMuzzleIndex } = await import(new URL('src/sim/launcherPolicy.ts', ROOT).href);
 const { ENEMY_NATION_OPTIONS } = await import(new URL('src/game/teamArrangement.ts', ROOT).href);
 const { createAuthoritativeMatch } = await import(new URL('src/sim/authoritativeMatch.ts', ROOT).href);
+// optional on older trees (the integ/228 baseline has neither): the Horde's wave-total law and the matchmaking era bands
+const RULESET_MODULE = await import(new URL('src/sim/matchRuleset.ts', ROOT).href);
+const { ERA_NEIGHBOURS } = await import(new URL('src/game/matchmaking.ts', ROOT).href);
+const { vehicleEraForId } = await import(new URL('src/vehicles/taxonomy.ts', ROOT).href);
 const THREE = await import('three');
 await ensureFullFleet();
 
@@ -244,6 +323,49 @@ function setupSolo({ mode, seed, mapId, arrangement, world, deferOpeningRoutes }
   return { game, playerSpecId };
 }
 
+/** Seats outside the player's era band (the player's era plus its matchmaking neighbours), and repeated vehicles per side. */
+function rosterShape(seats, playerSpecId) {
+  const playerEra = vehicleEraForId(playerSpecId);
+  const band = playerEra ? (ERA_NEIGHBOURS[playerEra] ?? [playerEra]) : null;
+  let farEra = 0;
+  const repeats = { alpha: 0, bravo: 0 };
+  const seen = { alpha: new Set(), bravo: new Set() };
+  for (const s of seats) {
+    if (s.human) { seen[s.team].add(s.specId); continue; }
+    const era = vehicleEraForId(s.specId);
+    if (band && era && !band.includes(era)) farEra++;
+    if (seen[s.team].has(s.specId)) repeats[s.team]++;
+    seen[s.team].add(s.specId);
+  }
+  return { farEraSeats: farEra, repeatSeats: repeats };
+}
+
+/**
+ * TEAM NATIONS (gameplay-modes-228): a side is pure when it holds its primary country plus only the fill countries its
+ * plan's notes name. `plan` is the battle's own record (game.teamNations on the 228 tree; absent on older trees).
+ */
+function nationPlanCheck(seats, plan) {
+  if (!plan) return null;
+  const allowed = (side) => {
+    const set = new Set();
+    const primary = side === 'alpha' ? plan.allied : plan.enemy;
+    if (primary) set.add(primary);
+    for (const note of plan.notes ?? []) if (note.side === side && note.country) set.add(note.country);
+    return set;
+  };
+  const out = {};
+  for (const side of ['alpha', 'bravo']) {
+    const ok = allowed(side);
+    const list = seats.filter((s) => s.team === side && !s.human);
+    const outside = list.filter((s) => !ok.has(s.nation)).length;
+    out[side] = { primary: side === 'alpha' ? plan.allied : plan.enemy, seats: list.length, outsidePlan: outside,
+      primaryShare: list.length ? round(list.filter((s) => s.nation === (side === 'alpha' ? plan.allied : plan.enemy)).length / list.length, 3) : null };
+  }
+  out.teamNations = plan.teamNations ?? null;
+  out.notes = (plan.notes ?? []).map((n) => `${n.side}:${n.country}+${n.count}:${n.reason}`);
+  return out;
+}
+
 function rosterPurity(seats) {
   // seats: [{ team: 'alpha'|'bravo', nation, human }]
   const side = (team, includeHuman) => seats.filter((s) => s.team === team && (includeHuman || !s.human));
@@ -291,15 +413,26 @@ function pickEnemyNation(seed, playerNation) {
   return counts[Math.floor(mulberry(seed * 104729 + 7)() * counts.length)].id;
 }
 
-const { createRoom, joinRoom, planStart } = await import(new URL('src/mp/room/roomPolicy.ts', ROOT).href);
+const { createRoom, joinRoom, planStart, isCoopGameMode } = await import(new URL('src/mp/room/roomPolicy.ts', ROOT).href);
+const { planFromRoom } = await import(new URL('src/mp/host/hostPlan.ts', ROOT).href);
 /** One multiplayer roster: a private room (one human on alpha, or one a side), every seat ready, the room's start plan,
- *  then the authority's own seating (co-op hostiles, asymmetric roles), read back from its entities. */
-function mpRoster({ mode, seed, mapId, world, humans }) {
+ *  then the authority's own seating (co-op hostiles, asymmetric roles), read back from its entities. The p2p host's
+ *  own derivation (hostPlan.planFromRoom, the room snapshot and the match seed) must name the same bot vehicles. */
+function mpRoster({ mode, seed, mapId, world, humans, arrangement = null }) {
   const picks = [playerSpecFor(seed), playerSpecFor(seed + 1000)];
   const room = createRoom({ roomCode: 'HARN01', mode: 'private', creator: { id: 'p1', name: 'P1' }, selection: { specId: picks[0] }, settings: { gameMode: mode, mapId }, now: 0 });
-  if (humans > 1) joinRoom(room, { player: { id: 'p2', name: 'P2' }, selection: { specId: picks[1] }, team: 'bravo', now: 0 });
+  if (humans > 1 && !isCoopGameMode(mode)) joinRoom(room, { player: { id: 'p2', name: 'P2' }, selection: { specId: picks[1] }, team: 'bravo', now: 0 });
+  if (arrangement) room.settings.arrangement = { ...(room.settings.arrangement ?? {}), ...arrangement };
   for (const player of room.players) player.ready = true;
+  const snapshot = JSON.parse(JSON.stringify(room));
   const plan = planStart(room, { seed, now: 1 });
+  let hostBots = null;
+  try { hostBots = planFromRoom(snapshot, { seed: plan.seed }).bots.map((b) => `${b.team}:${b.specId}`); } catch (error) { hostBots = [`error:${error?.message ?? error}`]; }
+  const roomBots = plan.bots.map((b) => `${b.team}:${b.specId}`);
+  const parity = JSON.stringify(roomBots) === JSON.stringify(hostBots);
+  const seated = { alphaBots: plan.bots.filter((b) => b.team === 'alpha').length, bravoBots: plan.bots.filter((b) => b.team === 'bravo').length,
+    distinctBotSpecs: { alpha: new Set(plan.bots.filter((b) => b.team === 'alpha').map((b) => b.specId)).size, bravo: new Set(plan.bots.filter((b) => b.team === 'bravo').map((b) => b.specId)).size },
+    botsCloneHost: plan.bots.length > 0 && plan.bots.every((b) => b.specId === picks[0]) };
   const players = [
     ...plan.seats.filter((seat) => seat.team !== 'spectator').map((seat) => ({ id: seat.playerId, specId: seat.specId, team: seat.team })),
     ...plan.bots.map((bot) => ({ id: bot.playerId, specId: bot.specId, team: bot.team, bot: true, difficulty: 'normal' })),
@@ -314,7 +447,7 @@ function mpRoster({ mode, seed, mapId, world, humans }) {
   }
   // the first human leads: rosterPurity reads the player's nation from the first human seat
   entities.sort((a, b) => Number(b.human && b.specId === picks[0]) - Number(a.human && a.specId === picks[0]));
-  return { seats: entities, picks };
+  return { seats: entities, picks, seated, parity, plan: plan.teamNations ?? null };
 }
 
 // ------------------------------------------------------------------------------------------- roster census (child) ---
@@ -323,7 +456,7 @@ if (command === 'roster') {
   const seeds = parseSeeds(arg('seeds', '1-32'));
   const out = arg('out', '.');
   const which = arg('arrangements', DEFAULT_ARRANGEMENTS.join(',')).split(',').filter((name) => ARRANGEMENTS[name]);
-  const mpVariants = arg('mp', 'mp1,mp2').split(',').filter((name) => name === 'mp1' || name === 'mp2');
+  const mpVariants = arg('mp', 'mp1,mp2').split(',').filter((name) => name === 'mp1' || name === 'mp2' || name === 'coop');
   const rows = [];
   const worlds = new Map();
   for (const mode of modes) {
@@ -336,8 +469,12 @@ if (command === 'roster') {
       // multiplayer: the room's start plan (roomPolicy.planStart: bots fill a side with its humans' most common pick, the
       // co-op and asymmetric modes left to arrangeModeRoster and the authority), seated by the network authority
       for (const variant of mpVariants) {
-        const { seats, picks } = mpRoster({ mode, seed, mapId, world, humans: variant === 'mp2' ? 2 : 1 });
+        // the co-op row is one human in a co-operative mode (Horde, Frontline): what the room seats around them
+        if (variant === 'coop' && !isCoopGameMode(mode)) continue;
+        const { seats, picks, seated, parity, plan } = mpRoster({ mode, seed, mapId, world, humans: variant === 'mp2' ? 2 : 1 });
         rows.push({ mode, seed, mapId, arrangement: variant, arranged: null, playerSpecId: picks[0], ...rosterPurity(seats),
+          ...rosterShape(seats, picks[0]), seated, hostParity: parity, nationPlan: nationPlanCheck(seats, plan),
+          playerPickKept: seats.some((s) => s.human && s.specId === picks[0]),
           roster: { alpha: seats.filter((s) => s.team === 'alpha').map((s) => `${s.specId}:${s.nation}${s.human ? '*' : ''}`), bravo: seats.filter((s) => s.team === 'bravo').map((s) => `${s.specId}:${s.nation}${s.human ? '*' : ''}`) } });
       }
       for (const name of which) {
@@ -345,6 +482,8 @@ if (command === 'roster') {
         const { game, playerSpecId } = setupSolo({ mode, seed, mapId, arrangement, world, deferOpeningRoutes: true });
         const seats = game.tanks.map((e) => ({ team: normTeam(e.team), nation: nationKey(e.spec.nation), human: !!e.isPlayer, specId: e.specId }));
         rows.push({ mode, seed, mapId, arrangement: name, arranged: arrangement, playerSpecId, ...rosterPurity(seats),
+          ...rosterShape(seats, playerSpecId), nationPlan: nationPlanCheck(seats, game.teamNations ?? null),
+          playerPickKept: game.player?.specId === playerSpecId,
           roster: { alpha: seats.filter((s) => s.team === 'alpha').map((s) => `${s.specId}:${s.nation}${s.human ? '*' : ''}`), bravo: seats.filter((s) => s.team === 'bravo').map((s) => `${s.specId}:${s.nation}`) } });
       }
     }
@@ -365,7 +504,27 @@ if (command === 'roster') {
           pureRuns: list.filter((r) => r.enemies.distinct === 1).length,
           arrangedNationShare: list[0].arranged?.enemyNation ? round(mean(list.map((r) => (r.enemies.nations[r.arranged.enemyNation] ?? 0) / Math.max(1, r.enemies.n))), 3) : null },
         sharedNations: round(mean(list.map((r) => r.sharedNations)), 2),
+        sharedRuns: list.filter((r) => r.sharedNations > 0).length,
         enemiesOfPlayerNation: round(mean(list.map((r) => r.enemiesOfPlayerNation ?? 0)), 3),
+        enemyHoldsPlayerNationRuns: list.filter((r) => (r.enemiesOfPlayerNation ?? 0) > 0).length,
+        playerPickKeptRuns: list.filter((r) => r.playerPickKept).length,
+        farEraSeats: list.reduce((s, r) => s + (r.farEraSeats ?? 0), 0),
+        farEraRuns: list.filter((r) => (r.farEraSeats ?? 0) > 0).length,
+        repeatSeats: list.reduce((s, r) => s + (r.repeatSeats?.alpha ?? 0) + (r.repeatSeats?.bravo ?? 0), 0),
+        // TEAM NATIONS: seats outside the side's primary country and its listed fills (0 = every seat accounted for)
+        planned: list.some((r) => r.nationPlan) ? {
+          runs: list.filter((r) => r.nationPlan).length,
+          outsidePlanSeats: list.reduce((s, r) => s + (r.nationPlan ? r.nationPlan.alpha.outsidePlan + r.nationPlan.bravo.outsidePlan : 0), 0),
+          pureAllies: list.filter((r) => r.nationPlan && r.nationPlan.alpha.outsidePlan === 0 && !(r.nationPlan.notes ?? []).some((n) => n.startsWith('alpha:'))).length,
+          pureEnemies: list.filter((r) => r.nationPlan && r.nationPlan.bravo.outsidePlan === 0 && !(r.nationPlan.notes ?? []).some((n) => n.startsWith('bravo:'))).length,
+          withFillNotes: list.filter((r) => r.nationPlan?.notes?.length).length,
+        } : null,
+        ...(list.some((r) => r.seated) ? { seated: {
+          alphaBots: round(mean(list.map((r) => r.seated?.alphaBots ?? 0)), 2), bravoBots: round(mean(list.map((r) => r.seated?.bravoBots ?? 0)), 2),
+          distinctAlpha: round(mean(list.map((r) => r.seated?.distinctBotSpecs?.alpha ?? 0)), 2), distinctBravo: round(mean(list.map((r) => r.seated?.distinctBotSpecs?.bravo ?? 0)), 2),
+          botsCloneHostRuns: list.filter((r) => r.seated?.botsCloneHost).length,
+          hostParityRuns: list.filter((r) => r.hostParity).length,
+        } } : {}),
       };
     }
   }
@@ -408,7 +567,7 @@ if (engine === 'solo') {
       else if (name === 'shell:hit') recorded.push({ kind: 'hit', attackerId: payload.attackerId, targetId: payload.targetId, damage: payload.damage || 0 });
       else if (name === 'tank:destroyed') recorded.push({ kind: 'destroyed', id: payload.id, killerId: payload.killerId ?? null, cause: payload.cause });
       else if (name === 'tank:spotted') recorded.push({ kind: 'spotted', id: payload.id, team: payload.team });
-      else if (name === 'tank:ram') recorded.push({ kind: 'ram' });
+      else if (name === 'tank:ram') recorded.push({ kind: 'ram', aId: payload.aId ?? null, bId: payload.bId ?? null });
       else if (name.startsWith('mode:')) recorded.push({ kind: 'mode', type: name.slice(5), payload: { ...payload } });
     } catch { recorderErrors++; }
   });
@@ -518,7 +677,7 @@ if (engine === 'solo') {
         else if (ev.type === 'shell_hit') out.push({ kind: 'hit', attackerId: ev.attackerId ?? ev.shooterId, targetId: ev.targetId ?? null, damage: ev.damage || 0 });
         else if (ev.type === 'tank_destroyed') out.push({ kind: 'destroyed', id: ev.id, killerId: ev.killerId ?? null, cause: ev.cause });
         else if (ev.type === 'tank_spotted') out.push({ kind: 'spotted', id: ev.id, team: ev.team });
-        else if (ev.type === 'tank_ram') out.push({ kind: 'ram' });
+        else if (ev.type === 'tank_ram') out.push({ kind: 'ram', aId: ev.aId ?? null, bId: ev.bId ?? null });
         else if (ev.type.startsWith('mode_')) out.push({ kind: 'mode', type: ev.type.slice(5), payload: { ...ev } });
       }
       match.afterEventBroadcast();
@@ -539,6 +698,8 @@ const recOf = (e) => {
       move: { advance: 0, hold: 0, retreat: 0, lateral: 0 }, ai: {}, engage: { samples: 0, still: 0 },
       flags: { fallingBack: 0, kiting: 0, scooting: 0, settling: 0, reacting: 0, searching: 0, pressing: 0, passivePress: 0, missionReleased: 0, ramming: 0, samples: 0 },
       engageDistSum: 0, engageDistN: 0,
+      // guards: slow-while-free time (stuck), moving samples and the ones with a friendly inside 10 m (bunching)
+      slowT: 0, guardSamples: 0, stuckSamples: 0, movingSamples: 0, bunchedSamples: 0,
       prev: null, ranDry: false };
     recs.set(e.id, r);
   }
@@ -571,9 +732,15 @@ const ball = { touches: { alpha: 0, bravo: 0, unknown: 0 }, shotTouches: 0, ramT
   samples: 0, nearest: { alpha: 0, bravo: 0 }, meanDist: { alpha: 0, bravo: 0 }, within40: { alpha: 0, bravo: 0 }, botSamples: { alpha: 0, bravo: 0 }, strikerShare: { alpha: 0, bravo: 0 },
   // how close the ball comes to scoring: its distance to the nearer goal centre (a goal is scored inside 18 m), the
   // share of samples it sits in an end third of the goal axis, and the share it lies still (< 0.5 m/s)
-  goalSamples: 0, goalDistSum: 0, goalDistMin: Infinity, endThirdSamples: 0, stillSamples: 0, axisM: null, prev: { x: 0, z: 0, set: false } };
+  goalSamples: 0, goalDistSum: 0, goalDistMin: Infinity, endThirdSamples: 0, stillSamples: 0, axisM: null, prev: { x: 0, z: 0, set: false },
+  // crowd: samples where at most 3 bots of each team stand within 30 m of the ball; bot shells that touched the ball
+  crowdSamples: 0, crowdOk: 0, botShotTouches: 0 };
 const front = { lines: [], total: null, zoneSamples: { alpha: 0, bravo: 0 }, liveSamples: 0, alphaDistSum: 0, alphaDistN: 0, bravoDistSum: 0, bravoDistN: 0, maxIndex: 0 };
-const horde = { waves: [], humanHpSamples: [], maxWave: 0 };
+const horde = { waves: [], humanHpSamples: [], maxWave: 0, peakAlive: 0, spawnChecks: 0, spawnNear: 0, spawnSeen: 0, spawnMinM: Infinity,
+  pendingArrivals: [] };
+// rams: bot-on-bot ram deaths and the hunter rams (a Horde / Infected hostile in a ram contact with an alpha hull)
+const ramStats = { botOnBotDeaths: 0, hunterRams: 0 };
+const sector1 = { kills: 0, done: false };
 const inf = { infections: 0, firstInfectionS: null, infectionTimes: [], survivors0: 0, infected0: 0, survivorsByMin: [],
   shots: { alpha: 0, bravo: 0 }, hits: { alpha: 0, bravo: 0 }, damage: { alpha: 0, bravo: 0 }, botSamples: { alpha: 0, bravo: 0 },
   huntDistSum: 0, huntDistN: 0, huntWithin150: 0 };
@@ -594,6 +761,8 @@ function onEvent(ev, t) {
     const team = normTeam(e.team);
     if (mode === 'infected' && !adapter.isHuman(e)) inf.shots[team]++;
     if (first.shotByTeam[team] == null) first.shotByTeam[team] = t;
+    // a wave's first contact: the first round either side fires after it starts (nothing is left to shoot between waves)
+    if (lastWave && lastWave.firstShotS == null) lastWave.firstShotS = round(t - lastWave.atS, 2);
   } else if (ev.kind === 'hit') {
     if (!ev.targetId) return;
     const a = byId.get(ev.attackerId), b = byId.get(ev.targetId);
@@ -619,7 +788,9 @@ function onEvent(ev, t) {
     if (killer && normTeam(killer.team) !== victimTeam) {
       recOf(killer).kills++; kills[normTeam(killer.team)]++;
       if (first.killS == null) first.killS = t;
+      if (mode === 'frontline_assault' && !sector1.done) sector1.kills++;
     } else kills.self++;
+    if (String(ev.cause ?? '') === 'ram' && killer && !adapter.isHuman(killer) && !adapter.isHuman(e)) ramStats.botOnBotDeaths++;
     if (lastWave) { if (victimTeam === 'alpha') lastWave.humanDeaths++; else lastWave.zombieDeaths++; }
   } else if (ev.kind === 'spotted') {
     const victim = teamNow(ev.id);
@@ -630,10 +801,18 @@ function onEvent(ev, t) {
     }
   } else if (ev.kind === 'ram') {
     rams++;
+    if ((mode === 'endless_horde' || mode === 'infected') && ev.aId && ev.bId) {
+      const a = byId.get(ev.aId), b = byId.get(ev.bId);
+      if (a && b && normTeam(a.team) !== normTeam(b.team) && ((normTeam(a.team) === 'bravo' && !adapter.isHuman(a)) || (normTeam(b.team) === 'bravo' && !adapter.isHuman(b)))) ramStats.hunterRams++;
+    }
   } else if (ev.kind === 'mode') {
     const type = ev.type;
     const p = ev.payload || {};
     modeCounts[type] = (modeCounts[type] ?? 0) + 1;
+    if (type === 'respawn' && mode === 'endless_horde' && p.id) {
+      const who = byId.get(p.id);
+      if (who && normTeam(who.team) === 'bravo' && !adapter.isHuman(who)) horde.pendingArrivals.push(p.id);
+    }
     if (timeline.length < 600 && type !== 'pickup_spawned' && type !== 'respawn' && type !== 'ball_hit') timeline.push([round(t, 1), type, p.team ?? p.wave ?? p.line ?? p.by ?? null]);
     if (type === 'flag_taken') { ctf.taken[otherSide(p.team)]++; if (ctf.firstPickupS == null) ctf.firstPickupS = t; }
     else if (type === 'flag_dropped') ctf.dropped[otherSide(p.team)]++;
@@ -643,17 +822,19 @@ function onEvent(ev, t) {
       const by = p.by ? byId.get(p.by) : null;
       const team = by ? normTeam(by.team) : (p.team ? normTeam(p.team) : null);
       if (team) { ball.touches[team]++; if (ball.lastTeam && ball.lastTeam !== team) ball.possessionChanges++; ball.lastTeam = team; } else ball.touches.unknown++;
-      if (p.kind === 'shot') ball.shotTouches++; else ball.ramTouches++;
+      if (p.kind === 'shot') { ball.shotTouches++; if (by && !adapter.isHuman(by)) ball.botShotTouches++; } else ball.ramTouches++;
       if (ball.firstTouchS == null) ball.firstTouchS = t;
     } else if (type === 'goal_scored') { const team = p.team ? normFlagTeam(p.team) : null; if (team) ball.goals[team]++; }
-    else if (type === 'line_advanced') { front.lines.push({ line: p.line, atS: round(t, 1) }); front.total = p.total ?? front.total; front.maxIndex = Math.max(front.maxIndex, p.line ?? 0); }
+    else if (type === 'line_advanced') { front.lines.push({ line: p.line, atS: round(t, 1) }); front.total = p.total ?? front.total; front.maxIndex = Math.max(front.maxIndex, p.line ?? 0); sector1.done = true; }
     else if (type === 'wave_started') {
       const hostiles = ents.filter((e) => normTeam(e.team) === 'bravo' && alive(e));
       const humans = ents.filter((e) => normTeam(e.team) === 'alpha' && alive(e));
-      lastWave = { wave: p.wave, atS: round(t, 1), enemies: p.enemies, healthScale: round(p.healthScale, 3), clearedAtS: null,
+      const previous = lastWave;
+      lastWave = { wave: p.wave, atS: round(t, 1), enemies: p.enemies, total: p.total ?? p.enemies, special: p.special ?? null, healthScale: round(p.healthScale, 3), clearedAtS: null,
         hostileMaxHp: round(mean(hostiles.map((e) => e.combat.maxHp)), 0), hostileHullOfOwn: round(mean(hostiles.map((e) => e.combat.maxHp / hullOf(e.spec))), 3),
         humanMaxHp: round(mean(humans.map((e) => e.combat.maxHp)), 0), humanHpFracAtStart: round(mean(humans.map((e) => e.combat.hp / e.combat.maxHp)), 3), humansAlive: humans.length,
-        humanDeaths: 0, zombieDeaths: 0, dmgToHumans: 0, dmgToZombies: 0 };
+        humanDeaths: 0, zombieDeaths: 0, dmgToHumans: 0, dmgToZombies: 0, arrivals: 0, firstShotS: null, intermissionS: null, peakAlive: 0 };
+      if (previous && previous.clearedAtS != null && (mode === 'endless_horde')) previous.intermissionS = round(t - previous.clearedAtS, 2);
       if (mode === 'endless_horde' || mode === 'frontline_assault') horde.waves.push(lastWave);
       horde.maxWave = Math.max(horde.maxWave, p.wave ?? 0);
     } else if (type === 'wave_cleared') { if (lastWave) lastWave.clearedAtS = round(t, 1); }
@@ -728,7 +909,22 @@ function sample(t) {
       r.move[cls]++;
       if (!r.human) bk[cls]++;
       if (e.aiCtl?.state === 'engage') { r.engage.samples++; if (speed < MOVE_EPS_MPS) r.engage.still++; }
-    }
+      if (!r.human) {
+        // guards: stuck = under 0.5 m/s for over 10 s while not engaged and off its objective; bunching = a moving
+        // sample with a friendly hull inside 10 m (a conga line or a pile-up)
+        r.guardSamples++;
+        const onObjective = !!objective && Math.hypot(objective.x - x, objective.z - z) <= (objective.radiusM ?? 25);
+        if (speed < 0.5 && e.aiCtl?.state !== 'engage' && !onObjective) r.slowT += dt; else r.slowT = 0;
+        if (r.slowT > 10) r.stuckSamples++;
+        if (speed >= MOVE_EPS_MPS) {
+          r.movingSamples++;
+          for (const o of living) {
+            if (o === e || normTeam(o.team) !== team) continue;
+            if (Math.hypot(o.state.pos.x - x, o.state.pos.z - z) <= 10) { r.bunchedSamples++; break; }
+          }
+        }
+      }
+    } else r.slowT = 0;
     r.prev = { x, z, t };
     const ai = e.aiCtl;
     if (ai) {
@@ -755,17 +951,19 @@ function sample(t) {
       inf.botSamples[team]++;
       if (team === 'bravo' && nearest) { inf.huntDistSum += nearestD; inf.huntDistN++; if (nearestD <= 150) inf.huntWithin150++; }
     }
-    if ((mode === 'infected' || mode === 'endless_horde') && team === 'bravo' && !r.human && objective) {
+    // the Horde's allied bots hunt too (gameplay-modes-228): their objective may not name a hidden zombie either
+    if (((mode === 'infected' && team === 'bravo') || mode === 'endless_horde') && !r.human && objective) {
       let quarry = null, quarryD = Infinity;
       for (const o of living) {
-        if (normTeam(o.team) !== 'alpha') continue;
+        if (normTeam(o.team) === team) continue;
         const d = Math.hypot(o.state.pos.x - objective.x, o.state.pos.z - objective.z);
         if (d < quarryD) { quarryD = d; quarry = o; }
       }
       if (quarry && quarryD < 2) {
         hunt.samples++;
         const seen = adapter.isSpottedBy(e.team, quarry.id);
-        if (seen === null) hunt.unknown++; else if (!seen) hunt.unspotted++;
+        if (seen === null) hunt.unknown++; else if (!seen) { hunt.unspotted++; if (team === 'alpha') hunt.alliesUnspotted = (hunt.alliesUnspotted ?? 0) + 1; }
+        if (team === 'alpha') hunt.alliesSamples = (hunt.alliesSamples ?? 0) + 1;
       }
     }
     if (zone && !r.human) {
@@ -784,6 +982,19 @@ function sample(t) {
     }
   }
   if (b) for (const team of ['alpha', 'bravo']) if (Number.isFinite(ballNearest[team])) ball.nearest[team] += ballNearest[team];
+  if (b) {
+    const crowd = { alpha: 0, bravo: 0 };
+    for (const e of living) if (!adapter.isHuman(e) && Math.hypot(b.x - e.state.pos.x, b.z - e.state.pos.z) <= 30) crowd[normTeam(e.team)]++;
+    ball.crowdSamples++;
+    if (crowd.alpha <= 3 && crowd.bravo <= 3) ball.crowdOk++;
+  }
+  if (mode === 'endless_horde') {
+    let hostiles = 0;
+    for (const e of living) if (normTeam(e.team) === 'bravo' && !adapter.isHuman(e)) hostiles++;
+    if (hostiles > horde.peakAlive) horde.peakAlive = hostiles;
+    if (lastWave && hostiles > lastWave.peakAlive) lastWave.peakAlive = hostiles;
+    if (mstate?.horde && lastWave) { lastWave.remainingSeen = Math.max(lastWave.remainingSeen ?? 0, mstate.horde.remaining ?? 0); }
+  }
   for (const flag of carried) {
     const carrier = byId.get(flag.carrierId);
     if (!carrier) continue;
@@ -811,6 +1022,39 @@ function sample(t) {
   }
 }
 
+// Horde arrivals: every hostile revive this tick belongs to the wave live after the tick's events (a wave's opening burst
+// and its trickle alike). Each arrival is checked where it stands: the nearest living alpha hull, and whether any alpha
+// within 450 m sees it over the terrain (a height-field ray march at 8 m from an eye 2.4 m up to the hull 1.5 m up).
+function terrainSees(ax, ay, az, bx, by, bz) {
+  const d = Math.hypot(bx - ax, bz - az);
+  for (let s = 8; s < d - 4; s += 8) {
+    const f = s / d;
+    const ground = world.heightField.getHeightAt(ax + (bx - ax) * f, az + (bz - az) * f);
+    if (ground > ay + (by - ay) * f) return false;
+  }
+  return true;
+}
+function settleArrivals() {
+  const ids = horde.pendingArrivals.splice(0);
+  if (lastWave) lastWave.arrivals += ids.length;
+  for (const id of ids) {
+    const z = byId.get(id);
+    if (!z || !alive(z)) continue;
+    let nearest = Infinity, seen = false;
+    for (const h of ents) {
+      if (normTeam(h.team) !== 'alpha' || !alive(h)) continue;
+      const d = Math.hypot(h.state.pos.x - z.state.pos.x, h.state.pos.z - z.state.pos.z);
+      if (d < nearest) nearest = d;
+      if (!seen && d <= 450 && terrainSees(h.state.pos.x, h.state.pos.y + 2.4, h.state.pos.z, z.state.pos.x, z.state.pos.y + 1.5, z.state.pos.z)) seen = true;
+    }
+    horde.spawnChecks++;
+    if (nearest < horde.spawnMinM) horde.spawnMinM = nearest;
+    if (nearest < 150) horde.spawnNear++;
+    if (seen) horde.spawnSeen++;
+    if (lastWave) { lastWave.spawnNear = (lastWave.spawnNear ?? 0) + (nearest < 150 ? 1 : 0); lastWave.spawnSeen = (lastWave.spawnSeen ?? 0) + (seen ? 1 : 0); }
+  }
+}
+
 // --- the loop --------------------------------------------------------------------------------------------------------
 const ticks = Math.round(capS / SIM_DT);
 let result = null;
@@ -820,6 +1064,7 @@ for (; tick < ticks; tick++) {
   adapter.step();
   const t = adapter.timeS();
   for (const ev of adapter.drain()) onEvent(ev, t);
+  if (horde.pendingArrivals.length) settleArrivals();
   if (tick % SAMPLE_TICKS === 0) sample(t);
   const res = adapter.result();
   if (res) { result = res; break; }
@@ -861,8 +1106,13 @@ const sideSummary = (list) => {
     engageDistM: engageDistN ? Math.round(engageDist / engageDistN) : null,
     ranDry: list.filter((r) => r.ranDry).length,
     avgHull0: round(mean(list.map((r) => r.hull0).filter((x) => x != null)), 0),
+    stuckShare: round(list.reduce((s, r) => s + r.stuckSamples, 0) / Math.max(1, list.reduce((s, r) => s + r.guardSamples, 0)), 4),
+    bunchShare: round(list.reduce((s, r) => s + r.bunchedSamples, 0) / Math.max(1, list.reduce((s, r) => s + r.movingSamples, 0)), 4),
   };
 };
+// offensive jumps (Turbo Ball strikers), read from each controller's own count where the tree has one
+let offensiveJumps = 0;
+for (const e of ents) { try { offensiveJumps += Number(e.aiCtl?.debugInfo?.().offensiveJumps) || 0; } catch { /* measurement only */ } }
 const human = rows.find((r) => r.human);
 const summary = {
   tool: 'tools/mode-aggression-harness.mjs', engine, mode, seed, mapId, difficulty, arrangement, teamSurvival, playerSeat, playerSpecId: adapter.playerSpecId,
@@ -871,6 +1121,7 @@ const summary = {
     spotByTeam: { alpha: round(first.spotByTeam.alpha, 1), bravo: round(first.spotByTeam.bravo, 1) }, shotByTeam: { alpha: round(first.shotByTeam.alpha, 1), bravo: round(first.shotByTeam.bravo, 1) } },
   alpha: sideSummary(bots('alpha')), bravo: sideSummary(bots('bravo')),
   kills, deathCauses, killsPerMin: { alpha: round(kills.alpha / minutes, 2), bravo: round(kills.bravo / minutes, 2) }, damageBy: { alpha: Math.round(damageBy.alpha), bravo: Math.round(damageBy.bravo) }, rams,
+  ramStats: { ...ramStats },
   player: human ? { specId: human.specId, nation: human.nation, shots: human.shots, kills: human.kills, deaths: human.deaths, aliveS: round(human.aliveS, 0), ranDry: human.ranDry, move: human.move } : null,
   overTime: minuteBuckets.map((m, i) => ({ min: i,
     alphaObjM: m.alpha.objN ? Math.round(m.alpha.objSum / m.alpha.objN) : null, bravoObjM: m.bravo.objN ? Math.round(m.bravo.objSum / m.bravo.objN) : null,
@@ -900,7 +1151,8 @@ if (mode === 'turbo_ball') {
       within40Share: { alpha: round(ball.within40.alpha / Math.max(1, ball.botSamples.alpha), 3), bravo: round(ball.within40.bravo / Math.max(1, ball.botSamples.bravo), 3) },
       strikerShare: { alpha: round(ball.strikerShare.alpha / Math.max(1, ball.botSamples.alpha), 3), bravo: round(ball.strikerShare.bravo / Math.max(1, ball.botSamples.bravo), 3) } },
     goalApproach: ball.goalSamples ? { nearestGoalMinM: Math.round(ball.goalDistMin), nearestGoalMeanM: Math.round(ball.goalDistSum / ball.goalSamples),
-      endThirdShare: round(ball.endThirdSamples / ball.goalSamples, 3), stillShare: round(ball.stillSamples / Math.max(1, ball.samples - 1), 3), axisM: Math.round(ball.axisM) } : null };
+      endThirdShare: round(ball.endThirdSamples / ball.goalSamples, 3), stillShare: round(ball.stillSamples / Math.max(1, ball.samples - 1), 3), axisM: Math.round(ball.axisM) } : null,
+    crowdOkShare: round(ball.crowdOk / Math.max(1, ball.crowdSamples), 4), botShotTouches: ball.botShotTouches, offensiveJumps };
 }
 if (mode === 'frontline_assault') {
   const total = front.total ?? 0;
@@ -910,6 +1162,7 @@ if (mode === 'frontline_assault') {
     attackerZoneShare: round(front.zoneSamples.alpha / Math.max(1, front.alphaDistN), 3),
     attackerDistToLiveZoneM: front.alphaDistN ? Math.round(front.alphaDistSum / front.alphaDistN) : null,
     defenderDistToLiveZoneM: front.bravoDistN ? Math.round(front.bravoDistSum / front.bravoDistN) : null,
+    sector1Kills: sector1.kills, counterAttacks: modeCounts.counter_attack ?? 0,
     waves: horde.waves };
 }
 if (mode === 'endless_horde') {
@@ -919,6 +1172,21 @@ if (mode === 'endless_horde') {
     hostileMaxHp: round(mean(horde.waves.map((w) => w.hostileMaxHp).filter((x) => x != null)), 0), humanMaxHp0: round(humanHull0, 0),
     humanHpFracMean: round(mean(horde.humanHpSamples), 3), damage: { humansDealt: Math.round(damageBy.alpha), zombiesDealt: Math.round(damageBy.bravo) },
     zombieKillsPerHumanDeath: round(kills.alpha / Math.max(1, kills.bravo), 2), wavesCleared: horde.waves.filter((w) => w.clearedAtS != null).length };
+  // the wave law: arrivals per wave against the ruleset's own law (the 228 tree's hordeWaveTotal; before it, the wave
+  // size capped by the pool), judged on the waves that were cleared (a run's last wave ends early)
+  const pool = ents.filter((e) => normTeam(e.team) === 'bravo').length;
+  const lawFor = (w) => (typeof RULESET_MODULE.hordeWaveTotal === 'function'
+    ? RULESET_MODULE.hordeWaveTotal(rules.horde, w, 1) : Math.min(pool, RULESET_MODULE.hordeWaveSize(rules.horde, w)));
+  const cleared = horde.waves.filter((w) => w.clearedAtS != null);
+  summary.horde.law = {
+    arrivalsPerWave: horde.waves.map((w) => w.arrivals), expectedPerWave: horde.waves.map((w) => lawFor(w.wave)),
+    clearedOnLaw: cleared.filter((w) => w.arrivals === lawFor(w.wave)).length, cleared: cleared.length,
+    specials: horde.waves.map((w) => w.special ?? null),
+    peakAlive: horde.peakAlive, poolIdentities: pool,
+    spawnChecks: horde.spawnChecks, spawnNear: horde.spawnNear, spawnSeen: horde.spawnSeen, spawnMinM: Number.isFinite(horde.spawnMinM) ? Math.round(horde.spawnMinM) : null,
+    firstContactPerWave: horde.waves.map((w) => w.firstShotS), intermissionPerWave: horde.waves.map((w) => w.intermissionS),
+    hullPerWave: horde.waves.map((w) => w.hostileHullOfOwn),
+  };
 }
 if (mode === 'infected') {
   const botMin = (team) => Math.max(1e-6, inf.botSamples[team] * SAMPLE_TICKS * SIM_DT / 60);
@@ -931,7 +1199,8 @@ if (mode === 'infected') {
     huntDistToSurvivorM: inf.huntDistN ? Math.round(inf.huntDistSum / inf.huntDistN) : null, huntWithin150Share: round(inf.huntWithin150 / Math.max(1, inf.huntDistN), 3) };
 }
 if (mode === 'infected' || mode === 'endless_horde') {
-  summary.huntHonesty = { samples: hunt.samples, unspottedShare: hunt.samples - hunt.unknown ? round(hunt.unspotted / (hunt.samples - hunt.unknown), 3) : null, unknown: hunt.unknown };
+  summary.huntHonesty = { samples: hunt.samples, unspottedShare: hunt.samples - hunt.unknown ? round(hunt.unspotted / (hunt.samples - hunt.unknown), 3) : null, unknown: hunt.unknown,
+    alliesSamples: hunt.alliesSamples ?? 0, alliesUnspotted: hunt.alliesUnspotted ?? 0 };
 }
 world.release?.();
 console.log(JSON.stringify(summary));
@@ -950,6 +1219,8 @@ function aggregateMode(mode, list) {
     flags: (() => { const acc = {}; for (const r of list) for (const [k, v] of Object.entries(r[team].flags || {})) acc[k] = (acc[k] ?? 0) + v / list.length; return Object.fromEntries(Object.entries(acc).map(([k, v]) => [k, round(v, 3)])); })(),
     engagedStillShare: m((r) => r[team].engagedStillShare, 3), engageDistM: m((r) => r[team].engageDistM, 0),
     kills: m((r) => r[team].kills, 1), deaths: m((r) => r[team].deaths, 1), ranDry: m((r) => r[team].ranDry, 2), avgHull0: m((r) => r[team].avgHull0, 0),
+    stuckShare: m((r) => r[team].stuckShare, 4), bunchShare: m((r) => r[team].bunchShare, 4),
+    ranDryTotal: list.reduce((s, r) => s + (r[team].ranDry || 0), 0),
   });
   const results = {};
   for (const r of list) results[r.result ?? 'none'] = (results[r.result ?? 'none'] ?? 0) + 1;
@@ -980,9 +1251,14 @@ function aggregateMode(mode, list) {
     wallMs: { mean: m((r) => r.wallMs, 0) },
     recorderErrors: list.reduce((s, r) => s + (r.recorderErrors || 0), 0),
     playerRanDry: list.filter((r) => r.player?.ranDry).length,
+    ramStats: { botOnBotDeathsMean: m((r) => r.ramStats?.botOnBotDeaths, 2), botOnBotDeathsTotal: list.reduce((s, r) => s + (r.ramStats?.botOnBotDeaths ?? 0), 0),
+      hunterRamsTotal: list.reduce((s, r) => s + (r.ramStats?.hunterRams ?? 0), 0) },
+    winsAlpha: list.filter((r) => r.result === 'alpha').length, winsBravo: list.filter((r) => r.result === 'bravo').length,
+    draws: list.filter((r) => r.result === 'draw' || r.result == null).length,
   };
   if (mode === 'capture_the_flag') {
     out.ctf = { pickupsPerMatch: m((r) => r.ctf.pickups), capturesPerMatch: m((r) => r.ctf.captures), returnsPerMatch: m((r) => r.ctf.returns),
+      matchesWithCapture: list.filter((r) => r.ctf.captures > 0).length, matchesDecidedByCaptures: list.filter((r) => r.reason === 'flag_limit').length,
       autoReturnsPerMatch: m((r) => r.ctf.returnedAuto), dropsPerMatch: m((r) => r.ctf.dropped.alpha + r.ctf.dropped.bravo),
       firstPickupS: md((r) => r.ctf.firstPickupS), carriedShare: m((r) => r.ctf.carriedShare, 3), matchesWithNoPickup: list.filter((r) => !r.ctf.pickups).length,
       pursuit: { nearestPursuerM: m((r) => r.ctf.pursuit?.nearestPursuerM, 0), meanPursuerM: m((r) => r.ctf.pursuit?.meanPursuerM, 0),
@@ -992,6 +1268,9 @@ function aggregateMode(mode, list) {
     out.ball = { touchesPerMatch: m((r) => r.ball.totalTouches, 1), touchesPerMin: m((r) => r.ball.touchesPerMin), shotTouches: m((r) => r.ball.shotTouches, 1), ramTouches: m((r) => r.ball.ramTouches, 1),
       possessionChangesPerMatch: m((r) => r.ball.possessionChanges, 1), goalsPerMatch: m((r) => r.ball.totalGoals), firstTouchS: md((r) => r.ball.firstTouchS),
       matchesWithNoGoal: list.filter((r) => !r.ball.totalGoals).length,
+      matchesUnder40Touches: list.filter((r) => r.ball.totalTouches < 40).length,
+      touchesByMap: Object.fromEntries(list.map((r) => [r.mapId, r.ball.totalTouches])),
+      crowdOkShare: m((r) => r.ball.crowdOkShare, 4), botShotTouches: m((r) => r.ball.botShotTouches, 1), offensiveJumps: m((r) => r.ball.offensiveJumps, 1),
       pursuit: { nearestBotM: { alpha: m((r) => r.ball.pursuit.nearestBotM.alpha, 0), bravo: m((r) => r.ball.pursuit.nearestBotM.bravo, 0) },
         meanBotM: { alpha: m((r) => r.ball.pursuit.meanBotM.alpha, 0), bravo: m((r) => r.ball.pursuit.meanBotM.bravo, 0) },
         within40Share: { alpha: m((r) => r.ball.pursuit.within40Share.alpha, 3), bravo: m((r) => r.ball.pursuit.within40Share.bravo, 3) },
@@ -1006,6 +1285,8 @@ function aggregateMode(mode, list) {
       firstSectorS: md((r) => r.frontline.lines[0]?.atS), zoneTimeBotS: { alpha: m((r) => r.frontline.zoneTimeBotS.alpha, 0), bravo: m((r) => r.frontline.zoneTimeBotS.bravo, 0) },
       attackerZoneShare: m((r) => r.frontline.attackerZoneShare, 3), attackerDistToLiveZoneM: m((r) => r.frontline.attackerDistToLiveZoneM, 0),
       defenderDistToLiveZoneM: m((r) => r.frontline.defenderDistToLiveZoneM, 0),
+      sector1FightRuns: list.filter((r) => (r.frontline.sector1Kills ?? 0) > 0).length, counterAttacksMean: m((r) => r.frontline.counterAttacks, 2),
+      attackerWins: list.filter((r) => r.result === 'alpha').length, attackerWinShare: round(list.filter((r) => r.result === 'alpha').length / Math.max(1, list.length), 3),
       defendersPerWave: (() => { const acc = []; for (const r of list) r.frontline.waves.forEach((w, i) => { (acc[i] ??= []).push(w.enemies); }); return acc.map((xs) => round(mean(xs), 1)); })() };
   }
   if (list.some((r) => r.huntHonesty)) {
@@ -1018,6 +1299,7 @@ function aggregateMode(mode, list) {
       outbreakWins: list.filter((r) => r.reason === 'outbreak_complete').length, survivorWins: list.filter((r) => r.reason === 'survivors_extracted').length,
       firstInfectionS: md((r) => r.infected.firstInfectionS), infectionsPerMatch: m((r) => r.infected.infections, 1), infectionsPerMin: m((r) => r.infected.infectionsPerMin),
       survivorsLeft: m((r) => r.infected.survivorsLeft, 1),
+      outbreakEndMedianS: md((r) => (r.reason === 'outbreak_complete' ? r.endS : null), 0),
       survivorsByMin: (() => { const acc = []; for (const r of list) r.infected.survivorsByMin.forEach((v, i) => { if (v != null) (acc[i] ??= []).push(v); }); return acc.map((xs) => round(mean(xs), 1)); })(),
       survivors: side('survivors'), infectedSide: side('infectedSide'),
       huntDistToSurvivorM: m((r) => r.infected.huntDistToSurvivorM, 0), huntWithin150Share: m((r) => r.infected.huntWithin150Share, 3) };
@@ -1030,6 +1312,26 @@ function aggregateMode(mode, list) {
       hostileHullOfOwn: m((r) => r.horde.hostileHullOfOwn, 3), hostileMaxHp: m((r) => r.horde.hostileMaxHp, 0), humanMaxHp0: m((r) => r.horde.humanMaxHp0, 0),
       humanHpFracMean: m((r) => r.horde.humanHpFracMean, 3), humansDealt: m((r) => r.horde.damage.humansDealt, 0), zombiesDealt: m((r) => r.horde.damage.zombiesDealt, 0),
       zombieKillsPerHumanDeath: m((r) => r.horde.zombieKillsPerHumanDeath) };
+    const laws = list.map((r) => r.horde.law).filter(Boolean);
+    if (laws.length) {
+      const perIndex = (f) => { const acc = []; for (const l of laws) f(l).forEach((v, i) => { if (v != null) (acc[i] ??= []).push(v); }); return acc; };
+      const allContact = laws.flatMap((l) => l.firstContactPerWave).filter((v) => v != null);
+      const allInter = laws.flatMap((l) => l.intermissionPerWave).filter((v) => v != null);
+      out.horde.law = {
+        arrivalsPerWave: perIndex((l) => l.arrivalsPerWave).map((xs) => round(median(xs), 1)),
+        expectedPerWave: perIndex((l) => l.expectedPerWave).map((xs) => xs[0]),
+        clearedOnLaw: laws.reduce((s, l) => s + l.clearedOnLaw, 0), cleared: laws.reduce((s, l) => s + l.cleared, 0),
+        peakAliveMax: Math.max(...laws.map((l) => l.peakAlive)), poolIdentitiesMax: Math.max(...laws.map((l) => l.poolIdentities)),
+        spawnChecks: laws.reduce((s, l) => s + l.spawnChecks, 0), spawnNear: laws.reduce((s, l) => s + l.spawnNear, 0),
+        spawnSeen: laws.reduce((s, l) => s + l.spawnSeen, 0), spawnMinM: Math.min(...laws.map((l) => l.spawnMinM ?? Infinity)),
+        firstContactPerWave: perIndex((l) => l.firstContactPerWave).map((xs) => round(median(xs), 1)),
+        firstContactMinS: allContact.length ? round(Math.min(...allContact), 1) : null, firstContactMaxS: allContact.length ? round(Math.max(...allContact), 1) : null,
+        firstContactOutside8to25: allContact.filter((v) => v < 8 || v > 25).length, firstContactWaves: allContact.length,
+        intermissionMinS: allInter.length ? round(Math.min(...allInter), 2) : null, intermissionMaxS: allInter.length ? round(Math.max(...allInter), 2) : null,
+        hullPerWave: perIndex((l) => l.hullPerWave).map((xs) => round(mean(xs), 3)),
+        runsEndedBy15: list.filter((r) => r.result && r.horde.roundsReached <= 15).length,
+      };
+    }
   }
   return out;
 }
