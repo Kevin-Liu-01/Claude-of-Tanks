@@ -65,6 +65,14 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
   areas: [{
     id: 'friedensplatz',
     room: ROOM,
+    paved: { x0: -96, x1: -6, z0: -47.5, z1: 41.5 },
+    // the carriageways' gutters at 3.8 m either side of each street through the square, stopping short of the roundel
+    rinnen: [
+      { from: [ROOM.x0, -3.8], to: [-59.4, -3.8] }, { from: [ROOM.x0, 3.8], to: [-59.4, 3.8] },
+      { from: [-40.6, -3.8], to: [ROOM.x1, -3.8] }, { from: [-40.6, 3.8], to: [ROOM.x1, 3.8] },
+      { from: [-53.8, ROOM.z0], to: [-53.8, -9.6] }, { from: [-46.2, ROOM.z0], to: [-46.2, -9.6] },
+      { from: [-53.8, 9.6], to: [-53.8, ROOM.z1] }, { from: [-46.2, 9.6], to: [-46.2, ROOM.z1] },
+    ],
     vetoExempt: ['lamp'],
     // the Pfarrgarten behind the church's north-west corner (the orange-ringed crater that sat there)
     keepOuts: [{ x0: -116, x1: -92.4, z0: 19, z1: 48 }],
@@ -120,7 +128,7 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
         { x: -29.5, z: 21.5, grate: true }, { x: -79, z: -36, grate: true }, { x: -63, z: -36, grate: true },
         { x: -88.5, z: 34, grate: true }, { x: -88.5, z: -34, grate: true },
         // the north-east lot's screen, and the Pfarrgarten behind the church
-        { x: -8, z: 14 }, { x: -8, z: 21 }, { x: -8, z: 28 },
+        { x: -8, z: 14, grate: true }, { x: -8, z: 21, grate: true }, { x: -8, z: 28, grate: true },
         { x: -104, z: 24 }, { x: -112, z: 34 }, { x: -103, z: 44 },
       ],
     },

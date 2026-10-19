@@ -1211,7 +1211,7 @@ function stele(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry {
 // drum; the drums above it, the capital and the Victoria lie out along the fall, the stub standing on the pedestal.
 // No national emblem and no legible name (the plan's sensitivity rule): the arms are a town's tower, the words strokes.
 
-const COLUMN_STEPS = [2.30, 1.95, 1.60] as const, COLUMN_RISE = 0.18;
+const COLUMN_STEPS = [2.05, 1.8, 1.55] as const, COLUMN_RISE = 0.18;
 const COLUMN_STONE: Rgb = hexLin(0xb89e7a);
 const GILT_BRIGHT: Rgb = hexLin(0xc8a040), GILT_DEEP: Rgb = hexLin(0x8f7230), VERDIGRIS: Rgb = hexLin(0x5f8a74), BRONZE_DARK: Rgb = hexLin(0x6a5a3a);
 /** The column's heights (m over the ground): the steps' top, the die, the cornice, the shaft and the figure. */
@@ -1480,6 +1480,29 @@ function saeule(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry {
   for (let i = vs; i < m.mark; i += 3) low = Math.min(low, m.p[i + 1]);
   for (let i = vs; i < m.mark; i += 3) { m.p[i] += bx * d; m.p[i + 1] += 0.03 - low; m.p[i + 2] += bz * d; }
   return m.geometry();
+}
+
+/**
+ * The column's collision solid, the same on every tier: its octagonal steps, the pedestal and the shaft as three plain
+ * prisms. The props refit its records to this, not to the drawn stones: the steps' stone-by-stone slivers grew needles
+ * at the bots' clearance (a mitred margin) and closed the planner's diagonals past the column (the plan's seat keeps
+ * them 2.75 m clear of its octagon).
+ */
+export function memorialColumnSolid(): THREE.BufferGeometry {
+  const steps = new THREE.CylinderGeometry(COLUMN_STEPS[0], COLUMN_STEPS[0], COLUMN_Y.steps + 0.12, 8).toNonIndexed();
+  steps.translate(0, (COLUMN_Y.steps - 0.12) / 2, 0);
+  const pedestal = new THREE.BoxGeometry(2.04, COLUMN_Y.cornice - COLUMN_Y.steps, 2.04).toNonIndexed();
+  pedestal.translate(0, (COLUMN_Y.cornice + COLUMN_Y.steps) / 2, 0);
+  const shaft = new THREE.CylinderGeometry(SHAFT_R1, 0.62, COLUMN_Y.drum + 1.9 - COLUMN_Y.cornice, 12).toNonIndexed();
+  shaft.translate(0, (COLUMN_Y.drum + 1.9 + COLUMN_Y.cornice) / 2, 0);
+  const parts = [steps, pedestal, shaft];
+  const count = parts.reduce((n, g) => n + g.attributes.position.count, 0), pos = new Float32Array(count * 3), nrm = new Float32Array(count * 3);
+  let at = 0;
+  for (const g of parts) { pos.set(g.attributes.position.array as Float32Array, at * 3); nrm.set(g.attributes.normal.array as Float32Array, at * 3); at += g.attributes.position.count; g.dispose(); }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  return out;
 }
 
 /** The column's record height (m): the Victoria's wreath. */

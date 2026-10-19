@@ -422,14 +422,29 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
         { top: g + st.rise * (k + 1), ch: 0.02, embed: 0.08 });
     }
   }
+  // the bays: a row of paler setts, each its own stone with its joints, flush with the square (no paint)
   const bay = hexRgb(style.bands.bay);
   for (const b of area.bayMarks) {
-    const yaw = deg(b.yawDeg), ux = Math.sin(yaw), uz = Math.cos(yaw), n = Math.max(1, Math.round(b.length / 0.16));
+    const yaw = deg(b.yawDeg), ux = Math.sin(yaw), uz = Math.cos(yaw), n = Math.max(1, Math.round(b.length / 0.17));
     for (let k = 0; k < n; k++) {
-      const t0 = -b.length / 2 + (b.length * k) / n + 0.006, t1 = -b.length / 2 + (b.length * (k + 1)) / n - 0.006;
+      const t0 = -b.length / 2 + (b.length * k) / n + 0.014, t1 = -b.length / 2 + (b.length * (k + 1)) / n - 0.014;
       const P = (t: number, o: number): [number, number] => [b.x + ux * t - uz * o, b.z + uz * t + ux * o];
-      m.skin(P(t0, -0.08), P(t1, -0.08), P(t1, 0.08), P(t0, 0.08), SKIN + 0.004, toned(bay, t0 + b.x, b.z, 0.06, 40), 0.5);
+      m.skin(P(t0, -0.07), P(t1, -0.07), P(t1, 0.07), P(t0, 0.07), SKIN, toned(bay, t0 + b.x, b.z, 0.1, 40), 0.5);
     }
+  }
+  // the gutters: three rows of darker setts along each carriageway's edge, the middle row dished
+  const gut = hexRgb(style.gutter.hex), gw = style.gutter.width / style.gutter.rows;
+  for (const r of area.rinnen) {
+    const dx = r.to[0] - r.from[0], dz = r.to[1] - r.from[1], len = Math.hypot(dx, dz), ux = dx / len, uz = dz / len;
+    const P = (t: number, o: number): [number, number] => [r.from[0] + ux * t - uz * o, r.from[1] + uz * t + ux * o];
+    for (let row = 0; row < style.gutter.rows; row++) {
+      const o0 = -style.gutter.width / 2 + row * gw + 0.01, o1 = o0 + gw - 0.02, n = Math.max(1, Math.round(len / 0.3));
+      for (let k = 0; k < n; k++) {
+        const t0 = (len * k) / n + 0.012, t1 = (len * (k + 1)) / n - 0.012;
+        m.skin(P(t0, o0), P(t1, o0), P(t1, o1), P(t0, o1), SKIN - (row === 1 ? 0.004 : 0), toned(gut, t0 + r.from[0], row + r.from[1], 0.12, 43), 0.6);
+      }
+    }
+    census.rinneM = (census.rinneM ?? 0) + len;
   }
   // the trees' grates: an iron grate of concentric slots in a granite frame
   const iron = hexRgb(style.grate.iron), frame = hexRgb(style.grate.frame);

@@ -303,7 +303,7 @@ export const CIVIC_RECORDS = Object.freeze({
   telzelle: { cls: 'break', mat: 'baked', contact: 'ob', r: 0.82, h: TH, hw: 0.6, hl: 0.6, keep: 0.94, crushMin: 1.2 },
   poller: { cls: 'break', mat: 'baked', contact: 'ob', r: 0.15, h: 0.92, shape: 'circle', collisionR: 0.13, keep: 0.97 },
   pflanzkuebel: { cls: 'break', mat: 'baked', contact: 'ob', r: 0.66, h: 1.08, shape: 'circle', collisionR: 0.64, keep: 0.93 },
-  memorialcolumn: { cls: 'break', mat: 'stone', contact: 'ob', r: 2.3, h: 12.3, shape: 'circle', collisionR: 2.3, collider: true, keep: 0.35, crushMin: 999 },
+  memorialcolumn: { cls: 'break', mat: 'stone', contact: 'ob', r: 2.05, h: 12.3, shape: 'circle', collisionR: 2.05, collider: true, keep: 0.35, crushMin: 999 },
 } as const);
 
 /** The builders of the furniture kinds (the column's are wellKit's 'saeule', bound by props.ts on its kit's stone). */

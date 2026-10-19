@@ -52,7 +52,7 @@ export const CIVIC_STYLES: Readonly<Record<string, RegionalCivicStyle>> = Object
     kerb: { width: 0.25, face: 0.12, unit: [1.0, 1.4], hex: 0xa7a59e },
     pavement: { course: 0.5, length: [0.75, 1.0], hex: 0x9a958c, tone: 0.06, joint: 0x5e5b55 },
     gutter: { rows: 3, width: 0.45, dish: 0.02, hex: 0x6e6c66 },
-    bands: { granite: 0x8f8c85, basalt: 0x4a4946, sett: 0x8e8a82, bay: 0x9a968d },
+    bands: { granite: 0x8f8c85, basalt: 0x4a4946, sett: 0x8e8a82, bay: 0x9b978f },
     edging: {
       kerb: { width: 0.25, face: 0.15, hex: 0xa7a59e },
       wall: { width: 0.3, height: 0.25, hex: 0xb89e7a, coping: 0.03 },

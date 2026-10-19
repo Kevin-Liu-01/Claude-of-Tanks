@@ -81,6 +81,13 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
       assert.ok(collision.isFortifiedCoverKind(cols[0].ob.kind) && cols[0].ob.crushMin >= 999, `${tag}: the monument is fortified`);
       assert.ok(!collision.hullYieldingRecord(cols[0].ob), `${tag}: the bots steer round the monument`);
       assert.equal(built.destructibles.filter((d) => d.kind === 'monument' && d.slot >= 0).length, 0, `${tag}: no walked monument`);
+      // G3: the planner's grid with the monument is the grid without it (no edge closed, no bend added)
+      const { createBotNavigationGrid } = await import('../../sim/botRoutePlanner.ts');
+      const navOf = (obstacles) => createBotNavigationGrid({ heightField: field, queryObstacles: null, getObstacles: () => obstacles });
+      const withIt = navOf(built.obstacles), without = navOf(built.obstacles.filter((o) => o !== cols[0].ob));
+      assert.deepEqual([...withIt.hullBlockedEdges], [...without.hullBlockedEdges], `${tag}: the monument closes no planner edge`);
+      const bendsOf = (nav) => Array.from(nav.hullBends ?? [], (v) => (Number.isNaN(v) ? 0 : 1)).join('');
+      assert.equal(bendsOf(withIt), bendsOf(without), `${tag}: the monument adds no bend to the planner's lattice`);
     }
     // ---- the hold disc and the arms' carriageways (the monument is fortified, a solid the lanes keep off)
     for (const d of records) {

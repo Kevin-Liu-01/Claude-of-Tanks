@@ -36,7 +36,7 @@ export function civicLawns(mapId: string | null | undefined): readonly CivicRect
 
 /** The rooms a map's civic areas pave frontage to frontage (the terrain paints them paved, the grass keeps off). */
 export function civicPavedRooms(mapId: string | null | undefined): readonly CivicRect[] {
-  return civicPlanFor(mapId)?.areas.map((area) => area.room) ?? [];
+  return civicPlanFor(mapId)?.areas.map((area) => area.paved) ?? [];
 }
 
 /** The pads whose airfield dressing a civic area drops (hardstandDressing.ts), by index. */

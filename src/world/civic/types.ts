@@ -80,6 +80,11 @@ export interface CivicAreaPlan {
   readonly id: string;
   /** The square's frontage-to-frontage room: the later scatter passes keep out of it, and the fill measures read it. */
   readonly room: CivicRect;
+  /** The ground the terrain paves for the square (the room and out to the set-back facades round it; under the houses it
+   *  is never seen). */
+  readonly paved: CivicRect;
+  /** The square's gutters (Rinnen): three rows of setts along the carriageways' edges, segment by segment. */
+  readonly rinnen: ReadonlyArray<{ readonly from: CivicPoint; readonly to: CivicPoint }>;
   /** The kinds the room's veto leaves alone (the street lamps keep their posts: the lamps snap off the facades instead). */
   readonly vetoExempt: readonly string[];
   /** Ground beside the room the battle scars, the rubble and the hedgehogs keep off (a corner lot's garden), after their

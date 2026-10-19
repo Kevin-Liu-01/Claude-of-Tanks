@@ -97,7 +97,7 @@ import { paintStructureDetailBuffers, type StructureDetailBuffers } from './stru
 import { HAYSTACK_DESTRUCTIBLE_TYPES, HAYSTACK_STYLE_BY_MAP, HAYSTACK_STYLE_KINDS, type HaystackStyle } from './maps/haystackKit.ts';
 import { periodClutterTypes } from './maps/periodClutterKit.ts';
 import { GATE_KINDS, GATE_WIDTH, buildGate, gateKindForFence, gateStoneOf, gateStyleFor, type GateKind } from './maps/gateKit.ts'; // the looks lane: every fence family's own gate
-import { TIMBER_WELLS, buildMonument, buildWell, monumentFormFor, wellFormFor, wellStoneOf } from './maps/wellKit.ts'; // the looks lane: each place's well and monument
+import { TIMBER_WELLS, buildMonument, buildWell, memorialColumnSolid, monumentFormFor, wellFormFor, wellStoneOf } from './maps/wellKit.ts'; // the looks lane: each place's well and monument
 import { waysideTypes } from './maps/waysideKit.ts'; // the looks lane (r2 sweep): the wayside kinds in their region's form
 import { STRUCTURE_VARIANTS } from './maps/regional/ksarGate.ts'; // b16: the ksar gate post for the checkpoint hut
 import { applyMudWallHook, createMudWallDepthMaterial, mudShapeFor, MUD_SLUMP_M } from './mudWallShader.ts';
@@ -4513,7 +4513,7 @@ ${snowCap ? `
       ...(CIVIC_RECORDS.memorialcolumn as unknown as PropsDestructibleMeta), mat: mats.regionalStone ? 'regionalStone' : 'stone',
       build: () => buildMonument('saeule', ctx, false), broken: () => buildMonument('saeule', ctx, true),
       // (a phone's shaft is a plain twelve-gon: every tier refits the desktop column's records, one world for a mixed lobby)
-      collisionSolid: () => buildMonument('saeule', { ...ctx, mobile: false }, false),
+      collisionSolid: () => memorialColumnSolid(),
     };
     return out;
   }
