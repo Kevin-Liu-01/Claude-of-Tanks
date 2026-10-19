@@ -16,6 +16,8 @@ import {nationalLamp,nationalEye,nationalRoofSensor} from './nationalRoofSystems
 import {ukrainianDonorHull} from './nationalUkraine.ts';
 import {hetmanIIHullPackage} from './hetmanII.ts';
 import {hetmanIIProw,hetmanIIGlacis} from './ukraineFrontEra.ts';
+import {sectionLoft} from './eraModuleKit.ts';
+import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {addNationalUkraineProtection,NATIONAL_UKRAINE_GHILLIE} from './nationalUkraineProtection.ts';
 import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
 import {addVehicleGhillieSuit,type GhillieConfig} from '../ghillieSuit.ts';
@@ -183,7 +185,26 @@ function seatedEra(P:TankBuilderPort,S:TurretStock,origin:THREE.Vector3,dir:THRE
   if(!hit)throw new Error(`${P.spec.id}: ERA cassette has no permanent seat at ${origin.toArray()}`);
   const n=hit.n,x=across.clone().addScaledVector(n,-across.dot(n)).normalize();
   const center=hit.point.clone().addScaledVector(n,size[1]/2-.004);
-  eraCassette(P,'turret',`turret_era_${center.x<0?'L':'R'}`,center.toArray(),size,basisEuler(x,n));
+  if(P.spec.id==='t72b3m_hetman_ii')chamferedCassette(P,`turret_era_${center.x<0?'L':'R'}`,center.toArray(),size,basisEuler(x,n));
+  else eraCassette(P,'turret',`turret_era_${center.x<0?'L':'R'}`,center.toArray(),size,basisEuler(x,n));
+}
+
+/** Release 227, round 7 (cost: the brief's primitive rule, "never KIT.box for a part 6 cm or more in every dimension",
+ * and fleet-style-performance-priority.md): Hetman II's flank-cabinet cassettes as section lofts with a 12 mm chamfer
+ * round their face, 20 triangles where the rounded box drew 108, at the same seat, size, sector and outward face, with
+ * a flat lid plate on the face (sunk 1 mm). Their 1,850 triangles saved pay for the field net's whole glacis (its LED
+ * lenses no longer read as looking back over it) inside the gatefix2 baseline. The Hetman's and the Sich's cassettes
+ * are unchanged. */
+function chamferedCassette(P:TankBuilderPort,sector:string,center:readonly number[],size:V3,rotation:V3):void {
+  const [w,t,d]=size,c=.012;
+  const ring=(i:number):[number,number][]=>[[-w/2+i,-d/2+i],[w/2-i,-d/2+i],[w/2-i,d/2-i],[-w/2+i,d/2-i]];
+  const at=(y:number,i:number)=>({o:[0,y,0] as V3,out:[1,0,0] as V3,up:[0,0,1] as V3,ring:ring(i)});
+  const g=sectionLoft([at(-t/2,0),at(t/2-c,0),at(t/2,c)]);
+  const lid=new THREE.BoxGeometry(w-2*c-.01,.006,d-2*c-.01).translate(0,t/2+.002,0);
+  P.destructibleCluster(sector,()=>{
+    P.addExternalArmor('turret',markEraHitFaces(g,[0,1,0]),center[0],center[1],center[2],...rotation);
+    P.addExternalArmor('turret',markEraFurniture(lid),center[0],center[1],center[2],...rotation);
+  });
 }
 
 // ---------------------------------------------------------------------------------------------------------------

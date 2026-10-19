@@ -105,7 +105,8 @@ function fieldSuit(d: Layout, m: number): GhillieConfig {
     // the same net; the far tier (LOW) keeps 35 % of them (the Zubr II's LOW was already 75.4 % of its HIGH bare)
     garnishBudget: {clumpCards: .7, lowShare: .35},
     // release 227 (round 2): the Zubrs' Krata glacis fields and cheek grids: no card passes into a cassette or a riser
-    ...(d.id === 't72b3_zubr' || d.id === 't72b3_zubr_ii' ? {cardsClearOfArmour: true} : {}),
+    // (round 7: spent, the cloth and garnish over a sector's modules fall onto the stock under them: eraSpentDrape.ts)
+    ...(d.id === 't72b3_zubr' || d.id === 't72b3_zubr_ii' ? {cardsClearOfArmour: true, dropOverSpentEra: true} : {}),
     light: [0x68724b, 0x73744d, 0x657547, 0x747852][m]!, dark: 0x2f3a2c, netColor: 'rgba(49,61,37,0.88)', netTextureSeed: 1101,
     hull: {
       top: d.id === 't72b3_zubr_ii' ? [

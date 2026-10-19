@@ -16,7 +16,7 @@ interface LensDefinition {
   readonly tint?: 'red' | 'warm';
   /** A weapon searchlight boresighted with its station (release 227: the Zubr II's illuminator): its authored aperture
    * keeps its aim instead of a driving lamp's .08 drop, and it lights the runtime's narrow searchlight cone
-   * (nightLightingRuntime.ts searchlight, SEARCHLIGHT_CONE_RAD) at the headlight ceiling's intensity and reach. */
+   * (nightLightingRuntime.ts searchlight, SEARCHLIGHT_CONE_RAD) at 6,000 cd to 150 m (round 7). */
   readonly searchlight?: true;
 }
 
@@ -133,8 +133,11 @@ export function registerVehicleNightLensMesh(mesh: LensMesh, parts: readonly THR
     return {
       kind: definition.kind, ...place(apertureFrame(part, definition)),
       color: definition.kind === 'shtora' || definition.tint === 'red' ? NIGHT_SHTORA_COLOR : NIGHT_HEADLIGHT_COLOR,
-      intensity: definition.kind === 'headlight' ? searchlight ? 2000 : 1200 : 0,
-      range: definition.kind === 'headlight' ? searchlight ? 100 : 75 : 0,
+      // (round 7, the critic's UAPL-9: at 2,000 cd the Zubr II's station searchlight was "much weaker than the turret
+      // searchlight's pool ... at y0 it disappears into that pool": a weapon searchlight throws 6,000 cd to 150 m, its
+      // narrow pool standing out of the driving lamps' wide one wherever the station aims)
+      intensity: definition.kind === 'headlight' ? searchlight ? 6000 : 1200 : 0,
+      range: definition.kind === 'headlight' ? searchlight ? 150 : 75 : 0,
       ...(searchlight ? { searchlight, coneRad: SEARCHLIGHT_CONE_RAD } : {}),
       emission: { material, color: 0xffffff, intensity: 3 },
     };

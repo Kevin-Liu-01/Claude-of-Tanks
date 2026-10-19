@@ -289,7 +289,19 @@ function addPolygonToSlices(polygon, pointsBySlice, z0, z1, step) {
 // spare-link seat solver; it stays part of the hull's structural shell exactly as it was inside `hull`.
 const PRIMARY_BUCKETS = { hull: ['hull', 'hullGun'], turret: ['turret'] };
 
-function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices) {
+// Release 227, round 7 (2026-10-18; the critic's UAPL-R5C-5: "the main-armour polygon sits in front of the visible
+// upper-glacis ERA ... these modules are bound but can never act first"): the T-72B3 family's hull bucket carries its
+// fender sponsons beside the glacis plate, and a longitudinal slice's one convex cell bridged them, so the gameplay glacis
+// of these three hulls stood 5-29 cm in front of the plate and of the new frontal ERA laid on it. Their slices are also
+// cut at the glacis plate's edges (measured on the builds: the Zubrs' plate ends at |x| 1.105-1.110, Hetman II's at 1.125
+// back to z 2.9 and at 1.0 round its nose, where its fender sponsons run on 20 cm past the plate), each band its own convex cell; every other hull keeps one cell a slice.
+const HULL_LATERAL_CUTS = Object.freeze({
+  t72b3m_hetman_ii: [-1.125, -.995, .995, 1.125],
+  t72b3_zubr: [-1.104, 1.104],
+  t72b3_zubr_ii: [-1.104, 1.104],
+});
+
+function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices, lateralCuts = null) {
   if (!envelope) return [];
   root.updateMatrixWorld(true);
   owner.updateMatrixWorld(true);
@@ -308,6 +320,9 @@ function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices) 
   const b = new THREE.Vector3();
   const c = new THREE.Vector3();
 
+  // (lateral bands: the polygon clipped to each band between consecutive cuts, its own slices)
+  const bands = lateralCuts ? [-Infinity, ...lateralCuts, Infinity] : null;
+  const pointsByBand = bands ? bands.slice(1).map(() => Array.from({ length: sliceCount }, () => [])) : [pointsBySlice];
   for (const object of objects) {
     const position = object.geometry.getAttribute('position');
     if (!position) continue;
@@ -316,14 +331,19 @@ function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices) 
     const triangleCount = index ? index.count / 3 : position.count / 3;
     for (let triangle = 0; triangle < triangleCount; triangle++) {
       const polygon = trianglePolygon(object, triangle, relative, a, b, c, roofY);
-      addPolygonToSlices(polygon, pointsBySlice, z0, z1, step);
+      if (!bands) { addPolygonToSlices(polygon, pointsBySlice, z0, z1, step); continue; }
+      for (let k = 0; k < bands.length - 1; k++) {
+        let clipped = Number.isFinite(bands[k]) ? clipPolygonAxis(polygon, 0, bands[k], true) : polygon;
+        if (Number.isFinite(bands[k + 1])) clipped = clipPolygonAxis(clipped, 0, bands[k + 1], false);
+        addPolygonToSlices(clipped, pointsByBand[k], z0, z1, step);
+      }
     }
   }
 
   const cells = [];
-  for (const points of pointsBySlice) {
+  for (const slices of pointsByBand) for (const points of slices) {
     const cell = convexCell(points);
-    if (cell) cells.push(cell);
+    if (cell) cells.push(bands ? { ...cell, lateralBand: true } : cell);
   }
   return cells;
 }
@@ -593,7 +613,7 @@ function receiptFor(id) {
       hull,
       turret,
       hullCollision: stockCapture?.hullCollision ?? collisionCells(
-        tank.root, hullRig, 'hull', hull, HULL_SLICE_TARGET_M, MAX_HULL_SLICES,
+        tank.root, hullRig, 'hull', hull, HULL_SLICE_TARGET_M, MAX_HULL_SLICES, HULL_LATERAL_CUTS[id] ?? null,
       ),
       turretCollision: stockCapture?.turretCollision ?? (turret ? collisionCells(
         tank.root, turretRig, 'turret', turret, TURRET_SLICE_TARGET_M, MAX_TURRET_SLICES,

@@ -5,7 +5,7 @@
 // courses of deep blocks per side on two facets, each course set back .085 m as it rises, carried on a permanent welded
 // shelf, with jaw collars framing the mantlet, returns round the shoulders and a roof course of swept wedge blocks
 // behind the top course (round 6). The hull carries a framed chevron glacis (three sawtooth bands per side laid as
-// shingled wedge blocks between a keel and two side rails), a nose sill holding two recessed LED bars, three two-tier
+// shingled wedge blocks between a keel and two side rails), a nose sill holding two LED bars in raised dark bezels, three two-tier
 // hinged aprons a side on the lower front plate and two-layer bow modules on its front skirt banks. Every module is a lofted solid bound to an existing gameplay ERA sector with authored hit faces;
 // every carrier, sill, rail, keel, hinge and housing is permanent and survives stripEra/resetEra.
 //
@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {blindTube} from './measuredPrimitives.ts';
 import {Stock, sectionLoft, crosswiseSolid, eraModule, sectorOf, assertHullPart, assertTurretPart,
-  nightLens, tagFrontPart, type LoftStation, type V3} from './eraModuleKit.ts';
+  nightLens, tagFrontPart, refineHeights, type LoftStation, type V3} from './eraModuleKit.ts';
 import type {SectionPoint} from './sectionSolid.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {cylX, cylZ} = KIT;
@@ -74,7 +74,8 @@ const HALF_JOINT = JOINT.plate / 2 + JOINT.gap;
  * back leaves their chord by more than SEAT_TOL, so a back seated SEAT_IN into the casting at its stations stays from
  * 2.5 mm off it to 5.5 mm into it between them (round 6, the critic's UAPL-R5C-9: 1.5 mm seats, round 5's 2 mm left the
  * deepest block 7.0 mm in against the receipt's 7 mm limit). */
-const BLOCK_STEP = .22, LEDGE_STEP = .40, SEAT_TOL = .004, SEAT_IN = .0015;
+// (round 7, the critic's UAPL-R5C-6: measured at the blocks' corners, 2B2 stood 7.0 mm in: 1 mm seats)
+const BLOCK_STEP = .22, LEDGE_STEP = .40, SEAT_TOL = .004, SEAT_IN = .001;
 
 type P2 = readonly [number, number];
 /** A station frame in the (|x|, z) plan: its origin on the course's foot line, its u axis `out`, and the factor that
@@ -315,14 +316,38 @@ function shelf(P: TankBuilderPort, casting: Stock, side: number): void {
     {X: ret, Z: cornerZ, out: nC, scale: 1 / (nC[0] * nB[0] + nC[1] * nB[1])},
     ...[(cornerZ + RETURN_END) / 2, RETURN_END].map(Z => ({X: ret, Z, out: nR, scale: 1})),
   ];
-  const y = (SHELF.bottom + SHELF.top) / 2;
-  const stations: LoftStation[] = path.map(st => {
+  // Round 7 (2026-10-18; the critic's UAPL-R5C-7: "Hetman II prow shelf 21.7 mm" into the casting): the casting is met at
+  // the shelf's foot and top (2 mm inside it) at each station, so its back leans with the lower nose instead of standing
+  // vertical from its mid height, 1 mm into it; and along each facet a station is added between two whose back's chord
+  // leaves the casting by more than 4 mm (the lower nose bows out between the facet's stations)
+  const backAt = (st: Frame) => {
+    const o = new THREE.Vector3(side * st.X, 0, st.Z), out = new THREE.Vector3(side * st.out[0], 0, st.out[1]), uo = SHELF.proud * st.scale;
+    return (y: number) => {
+      const hit = casting.face(o.clone().addScaledVector(out, .2).setY(y).toArray() as unknown as V3, [-out.x, 0, -out.z]);
+      return Math.min(hit.point.clone().setY(0).sub(o).dot(out) - .001, uo - .01);
+    };
+  };
+  const ys = [SHELF.bottom + .002, SHELF.top - .002];
+  let frames = path;
+  for (let pass = 0; pass < 4; pass++) {
+    const next: Frame[] = [frames[0]];
+    let added = false;
+    for (let i = 0; i < frames.length - 1; i++) {
+      const a = frames[i], b = frames[i + 1];
+      if (dot2(a.out, b.out) > .9999 && Math.hypot(b.X - a.X, b.Z - a.Z) > .02) {
+        const m: Frame = {X: (a.X + b.X) / 2, Z: (a.Z + b.Z) / 2, out: a.out, scale: a.scale}, ua = backAt(a), ub = backAt(b), um = backAt(m);
+        if (ys.some(y => Math.abs(um(y) - (ua(y) + ub(y)) / 2) > .004)) { next.push(m); added = true; }
+      }
+      next.push(b);
+    }
+    frames = next;
+    if (!added) break;
+  }
+  const stations: LoftStation[] = frames.map(st => {
     const o = new THREE.Vector3(side * st.X, 0, st.Z), out = new THREE.Vector3(side * st.out[0], 0, st.out[1]);
-    const uo = SHELF.proud * st.scale;
-    const hit = casting.face(o.clone().addScaledVector(out, .2).setY(y).toArray() as unknown as V3, [-out.x, 0, -out.z]);
-    const ui = hit.point.clone().setY(0).sub(o).dot(out) - .004;
+    const uo = SHELF.proud * st.scale, ui = backAt(st);
     return {o: o.toArray() as unknown as V3, out: out.toArray() as unknown as V3, up: [0, 1, 0],
-      ring: [[ui, SHELF.bottom], [uo, SHELF.bottom], [uo, SHELF.top], [ui, SHELF.top]]};
+      ring: [[ui(ys[0]), SHELF.bottom], [uo, SHELF.bottom], [uo, SHELF.top], [ui(ys[1]), SHELF.top]]};
   });
   const g = sectionLoft(stations);
   assertTurretPart(ID, 'prow shelf', g);
@@ -360,16 +385,33 @@ function ledge(P: TankBuilderPort, casting: Stock, side: number, c: typeof COURS
 
 /** A shallow frame plate 12 mm thick in a boundary's plane: its back seated on the casting at the given heights, its
  * face FRAME_DEPTH off the casting at each (round 6). */
-function shallowPlate(casting: Stock, side: number, b: Boundary, ys: readonly number[]): THREE.BufferGeometry {
+function shallowPlate(casting: Stock, side: number, b: Boundary, keys: readonly number[], tangent = false): THREE.BufferGeometry {
   const m = perp(b.out);
+  const frameAt = (d: number): Frame => ({X: b.at[0] + m[0] * d, Z: b.at[1] + m[1] * d, out: b.out, scale: 1});
+  // (seated from in front of the plate's own frame, with no depth cap: the post stands where the casting falls back)
+  const seat = (f: Frame, y: number): number | null => {
+    const out = new THREE.Vector3(side * f.out[0], 0, f.out[1]), o = new THREE.Vector3(side * f.X, y, f.Z);
+    const hit = casting.tryFace(tupV(o.clone().addScaledVector(out, .3)), [-out.x, 0, -out.z]);
+    return hit ? hit.point.clone().sub(o).dot(out) - SEAT_IN : null;
+  };
+  // Round 7 (2026-10-18; the critic's UAPL-R5C-7: "cheek frame post 10.7, dividers 8.9-9.4 mm" into the casting): a
+  // height is added between two whose chord leaves the cast front by more than 3.5 mm on either face of the plate; or,
+  // `tangent` (a divider, deep in its joint), the plate keeps its two heights and its straight back stands out to touch
+  // the cast front where it bows furthest out (five heights sampled), its seat there, clear of it elsewhere
+  const ys = tangent ? [...keys] : refineHeights(y => {
+    const a = seat(frameAt(-JOINT.plate / 2), y), c = seat(frameAt(JOINT.plate / 2), y);
+    return a === null || c === null ? 0 : Math.min(a, c);
+  }, keys, .0035);
+  const tangentBack = (f: Frame): (number | null)[] => {
+    const y0 = ys[0], y1 = ys[ys.length - 1], u0 = seat(f, y0), u1 = seat(f, y1);
+    if (u0 === null || u1 === null) return [null];
+    let shift = 0;
+    for (const t of [.2, .4, .6, .8]) { const u = seat(f, y0 + (y1 - y0) * t); if (u !== null) shift = Math.max(shift, u - (u0 + (u1 - u0) * t)); }
+    return ys.map(y => u0 + (u1 - u0) * (y - y0) / (y1 - y0) + shift);
+  };
   const stations = [-JOINT.plate / 2, JOINT.plate / 2].map(d => {
-    const f: Frame = {X: b.at[0] + m[0] * d, Z: b.at[1] + m[1] * d, out: b.out, scale: 1};
-    // (seated from in front of the plate's own frame, with no depth cap: the post stands where the casting falls back)
-    const bk = ys.map(y => {
-      const out = new THREE.Vector3(side * f.out[0], 0, f.out[1]), o = new THREE.Vector3(side * f.X, y, f.Z);
-      const hit = casting.tryFace(tupV(o.clone().addScaledVector(out, .3)), [-out.x, 0, -out.z]);
-      return hit ? hit.point.clone().sub(o).dot(out) - SEAT_IN : null;
-    });
+    const f = frameAt(d);
+    const bk = tangent ? tangentBack(f) : ys.map(y => seat(f, y));
     if (bk.some(u => u === null)) throw new Error(`${ID}: a prow frame plate at ${b.at.map(v => v.toFixed(3))} leaves the casting`);
     const u = bk as number[], n = ys.length;
     const ring: SectionPoint[] = [[u[0], ys[0]], ...ys.map((y, k) => [u[k] + FRAME_DEPTH, y] as SectionPoint), [u[n - 1], ys[n - 1]]];
@@ -381,10 +423,11 @@ function shallowPlate(casting: Stock, side: number, b: Boundary, ys: readonly nu
 
 /** The divider plates in a course's joints (near tier). */
 function dividers(P: TankBuilderPort, casting: Stock, side: number, c: typeof COURSES[number], plan: CoursePlan): void {
-  // (two seat heights: over a course's 10 cm the casting bows under 2 mm, and the plate stands deep in its joint)
+  // (two seat heights, its back tangent to the cast front: round 7, the critic's UAPL-R5C-7, at the shoulder corner the
+  // casting bows out 13 mm between a course's foot and top)
   const yt = c.yt - JOINT.sink, backs = [c.yb + .002, yt - .002];
   for (const j of plan.joints) {
-    const g = shallowPlate(casting, side, j.b, backs);
+    const g = shallowPlate(casting, side, j.b, backs, true);
     assertTurretPart(ID, 'prow divider', g);
     P.addEquipment(FRAME_BUCKET, g);
   }
@@ -442,7 +485,8 @@ function jaws(P: TankBuilderPort, casting: Stock, side: number): void {
     // (seated like a prow block: heights refined at its middle, stations added where the casting bulges between two)
     const span: Span = {run: {start: [0, j.front], dir: [1, 0], n: nJ}, s0: JAW.x0, s1: POST_X - HALF_JOINT, out0: nJ, out1: nJ};
     const backs = spanSeatHeights(casting, side, span, j.yb, j.yt);
-    const list = spanStations(casting, span, f => rakedRing(casting, side, f, j.yb, j.yt, j.yb, backs), side, .10, backVertices(backs.length));
+    // (round 7: one span of stations 11 cm apart across the collar's 10.6 cm, more only where the casting bows)
+    const list = spanStations(casting, span, f => rakedRing(casting, side, f, j.yb, j.yt, j.yb, backs), side, .11, backVertices(backs.length));
     if (!list) throw new Error(`${ID}: jaw collar ${i + 1} leaves the casting`);
     const g = loftOf(side, list);
     eraModule(P, {owner: 'turret', sector: sectorOf('turret_era', side), geometry: g, outward: [0, Math.sin(.26), Math.cos(.26)],
@@ -455,7 +499,9 @@ function jaws(P: TankBuilderPort, casting: Stock, side: number): void {
  * back with the prow (an arrowhead in plan), 9 cm tall at the front (its top edge chamfered 2 cm) falling to 4 cm at the
  * rear, in 18 mm joints over gunmetal cleats, behind a gunmetal sill rail. Tops under .66 (E6, the gunner's sight's lower
  * ray over the left course). It replaces round 5's flat roof brow. */
-const ROOF = {x0: .40, x1: .98, front0: .985, sweep: .30, depth: .32, hFront: .09, hRear: .04, chamfer: .02, joint: .018,
+// (round 7: the course 5 mm further back, clear of the top course's block 3B1 (2.3 mm into it once the prow blocks took 1 mm
+// seats))
+const ROOF = {x0: .40, x1: .98, front0: .980, sweep: .30, depth: .32, hFront: .09, hRear: .04, chamfer: .02, joint: .018,
   rail: {w: .014, h: .024, gap: .003}, cleat: {w: .010, h: .022}};
 function roofCourse(P: TankBuilderPort, casting: Stock, side: number): void {
   const R = ROOF, zf = (X: number) => R.front0 - R.sweep * (X - R.x0), zr = (X: number) => zf(X) - R.depth;
@@ -475,19 +521,28 @@ function roofCourse(P: TankBuilderPort, casting: Stock, side: number): void {
     eraModule(P, {owner: 'turret', sector: sectorOf('turret_era', side), geometry: crosswiseSolid(stations), outward: [0, .866, .5],
       minDot: .45, name: `roof block ${k + 1}`, guard: (nm, geo) => assertTurretPart(ID, nm, geo)});
   }
-  // the sill rail 3 mm behind the course's rear edge, 4 mm into the roof
-  const rail = crosswiseSolid([R.x0, (R.x0 + R.x1) / 2, R.x1].map(X => {
-    const z1 = zr(X) - R.rail.gap, z0 = z1 - R.rail.w;
-    return {x: side * X, ring: [[z0, dome(X, z0) - .004], [z1, dome(X, z1) - .004], [z1, dome(X, z1) + R.rail.h], [z0, dome(X, z0) + R.rail.h]] as [number, number][]};
+  // the sill rail 3 mm behind the course's rear edge, 3 mm into the roof. Round 7 (2026-10-18; the critic's UAPL-R5C-7:
+  // "brow rails 8.5 mm" into the casting): a station is added wherever the dome falling away outboard leaves the rail's
+  // straight foot more than 1.5 mm off it between two
+  const railZ = (X: number): [number, number] => { const z1 = zr(X) - R.rail.gap; return [z1 - R.rail.w, z1]; };
+  const railXs = refineHeights(X => { const [z0, z1] = railZ(X); return Math.min(dome(X, z0), dome(X, z1)); }, [R.x0, (R.x0 + R.x1) / 2, R.x1], .0015);
+  const rail = crosswiseSolid(railXs.map(X => {
+    const [z0, z1] = railZ(X);
+    return {x: side * X, ring: [[z0, dome(X, z0) - .003], [z1, dome(X, z1) - .003], [z1, dome(X, z1) + R.rail.h], [z0, dome(X, z0) + R.rail.h]] as [number, number][]};
   }));
   assertTurretPart(ID, 'roof sill rail', rail);
   P.addEquipment(FRAME_BUCKET, rail);
-  // a cleat in each joint, from the rail to the course's front edge, its sides 4 mm clear of the blocks
+  // a cleat in each joint, from the rail 13 cm forward under the blocks' joint, its sides 4 mm clear of the blocks (round
+  // 7, the critic's UAPL-R5C-7: run to the course's front edge, its straight foot sank 11 mm into the dome's curve; its
+  // foot and top follow the dome, a point added wherever the dome's curve leaves the chord by more than 2.5 mm)
   for (let k = 1; k < n; k++) {
     const X = R.x0 + k * (w + R.joint) - R.joint / 2;
+    // (the same fractions of the cleat's run at both of its faces: a loft's stations keep one ring count)
+    const r0 = zr(X) - R.rail.gap, f0 = r0 + .13;
+    const ts = refineHeights(t => dome(X, r0 + (f0 - r0) * t), [0, 1], .0025);
     const cleat = crosswiseSolid([X - R.cleat.w / 2, X + R.cleat.w / 2].map(x => {
-      const r = zr(x) - R.rail.gap, f = zf(x) - .006, zs = [r, f];
-      return {x: side * x, ring: [...zs.map(z => [z, dome(x, z) - .004] as [number, number]),
+      const r = zr(x) - R.rail.gap, f = r + .13, zs = ts.map(t => r + (f - r) * t);
+      return {x: side * x, ring: [...zs.map(z => [z, dome(x, z) - .003] as [number, number]),
         ...[...zs].reverse().map(z => [z, dome(x, z) + R.cleat.h] as [number, number])]};
     }));
     assertTurretPart(ID, 'roof cleat', cleat);
@@ -501,11 +556,11 @@ function dazzlers(P: TankBuilderPort): void {
     const x = side * 1.50, y = .255, z = .70;
     P.addEquipment('turretDetail', tagFrontPart(new THREE.BoxGeometry(.08, y - .055 - SHELF.top + .004, .10), 'dazzler bracket', 'turret'), x, (SHELF.top - .004 + y - .055) / 2, z);
     // an open-mouthed hood: a 44 mm bore 16 mm deep in a 55 mm housing
-    const hood = blindTube(.055, .044, .11, .016, P.q ? 8 : 6);
+    const hood = blindTube(.055, .044, .11, .016, P.q ? 7 : 6);
     assertTurretPart(ID, 'dazzler hood', hood.clone().translate(x, y, z));
     P.addEquipment('turretDetail', tagFrontPart(hood, 'dazzler hood', 'turret'), x, y, z);
     // the lens's face 10 mm inside the hood's mouth (z + .055), lapping into the hood bore
-    P.addEquipment('turretGlass', tagFrontPart(nightLens(cylZ(.042, .012, 8), 'marker', 'red'), 'dazzler lens', 'turret'), x, y, z + .055 - .010 - .006);
+    P.addEquipment('turretGlass', tagFrontPart(nightLens(cylZ(.042, .012, 7), 'marker', 'red'), 'dazzler lens', 'turret'), x, y, z + .055 - .010 - .006);
   }
 }
 
@@ -532,8 +587,10 @@ export function hetmanIIProw(P: TankBuilderPort): void {
 // Hull: the framed chevron glacis, the nose sill and its LED bars, the lower-plate aprons and the bow modules
 
 const SILL = {x: 1.142, rear: 3.08, nose: 3.342, front: 3.357, bottom: .958, hoodY: 1.05, top: 1.07, hood: .03, rearTop: 1.14};
-const LED = {xs: [.60], half: .18, y: 1.015, slot: .03, depth: .015, lens: [.10, .040, .014] as V3, pitch: .12, recess: .012};
-const RAIL = {x0: 1.082, x1: 1.142, z0: 2.00, z1: 3.08, proud: .07};
+const LED = {xs: [.60], half: .18, y: 1.015, slot: .03, depth: .015, lens: [.096, .046, .015] as V3, pitch: .12};
+// (round 7, the critic's UAPL-R5C-7: "glacis side rails 9.5 mm" into the hull: the rail's outer 14 mm ran under the
+// fender's inner edge at x 1.128 over the glacis's rear; it now ends 4 mm inside that edge)
+const RAIL = {x0: 1.082, x1: 1.124, z0: 2.00, z1: 3.08, proud: .07};
 const KEEL = {half: .025, z0: 2.14, z1: 3.08, proud: .055};
 const BANDS = [
   {rear: [2.14, 2.00], front: [2.50, 2.22], lip: .10},
@@ -550,6 +607,8 @@ function sillSegments(P: TankBuilderPort, glacisAt: (z: number) => number): void
   const full: [number, number][] = [[s.rear, gb], brk, [s.nose, .963], [s.front, s.bottom], [s.front, s.hoodY], [s.front + s.hood, s.hoodY],
     [s.front + s.hood, s.top], [s.rear, s.rearTop]];
   const lo = LED.y - LED.slot, hi = LED.y + LED.slot, back = s.front - LED.depth;
+  // (round 7, the critic's UAPL-2: "flush, dark, recessed slits ... the feature only reads at night": the hood's lip
+  // stops at the LED bars, so daylight reaches each bar's raised bezel and lenses; it stays over the sill between them)
   const slot: [number, number][] = [[s.rear, gb], brk, [s.nose, .963], [s.front, s.bottom], [s.front, lo], [back, lo], [back, hi],
     [s.front, hi], [s.front, s.hoodY], [s.front + s.hood, s.hoodY], [s.front + s.hood, s.top], [s.rear, s.rearTop]];
   const cuts = [-s.x, ...LED.xs.flatMap(c => [-c - LED.half, -c + LED.half]).sort((a, b) => a - b),
@@ -562,22 +621,35 @@ function sillSegments(P: TankBuilderPort, glacisAt: (z: number) => number): void
   }
 }
 
-/** Two LED nose bars: three lens segments per bar between dark dividers and dark slot liners, each lens's face 12 mm
- * inside the sill's front face, its body lapping into the slot's back wall. */
+/** Two LED nose bars. Round 7 (2026-10-18; the critic's UAPL-2: "flush, dark, recessed slits with no visible lens,
+ * bezel or housing", the special lights read only at night): each bar is a dark bezel standing 15 mm out of its slot in
+ * the sill (a frame of four bars seated in the slot's walls) round three lens segments 5 mm inside the sill's face, the
+ * segments split by dark dividers 3 mm less proud than the frame (near tier); each lens's body laps 5 mm into the
+ * slot's back wall. */
+const BEZEL = {proud: .015, end: .010, opening: .048, divider: .020};
 function ledBars(P: TankBuilderPort): void {
-  const [lw, lh, lt] = LED.lens, face = SILL.front - LED.recess, back = SILL.front - LED.depth;
+  const [lw, lh, lt] = LED.lens, face = SILL.front - .005, back = SILL.front - LED.depth;
+  const lo = LED.y - LED.slot, hi = LED.y + LED.slot, z0 = back - .0005, z1 = SILL.front + BEZEL.proud;
+  const dark = (x0: number, x1: number, y0: number, y1: number, zFront: number, name: string) =>
+    P.addEquipment('hullDark', tagFrontPart(new THREE.BoxGeometry(x1 - x0, y1 - y0, zFront - z0), name, 'hull'), (x0 + x1) / 2, (y0 + y1) / 2, (z0 + zFront) / 2);
   for (const c of LED.xs) for (const side of SIDES) {
-    const cx = side * c;
+    const cx = side * c, a = cx - LED.half, b = cx + LED.half;
     for (const k of [-1, 0, 1]) {
       // (glass, though the T-72B3M hull had no glass bucket (one draw more): the field net opens only round Glass, Hatch
       // and Cupola stock, so a lens in another bucket would be netted over)
       P.addEquipment('hullGlass', tagFrontPart(nightLens(new THREE.BoxGeometry(lw, lh, lt), 'headlight'), 'LED bar lens', 'hull'), cx + k * LED.pitch, LED.y, face - lt / 2);
     }
-    // dividers between the lenses and liners along the slot's top and bottom: dark, beside (never in front of) a lens
-    const liner = (w: number, h: number, x: number, y: number) =>
-      P.addEquipment('hullDark', tagFrontPart(new THREE.BoxGeometry(w, h, LED.depth - .004), 'LED bar liner', 'hull'), x, y, back + (LED.depth - .004) / 2 - .002);
-    for (const k of [-.5, .5]) liner(LED.pitch - lw, lh, cx + k * LED.pitch, LED.y);
-    for (const dy of [-1, 1]) liner(2 * LED.half - .004, LED.slot - lh / 2 - .001, cx, LED.y + dy * (LED.slot + lh / 2) / 2);
+    // the bezel: its ends full height, 0.5 mm into the slot's end and top and bottom walls; its top and bottom bars
+    // between them, 0.5 mm into the walls, round a 48 mm opening
+    dark(a - .0005, a + BEZEL.end, lo - .0005, hi + .0005, z1, 'LED bar bezel');
+    dark(b - BEZEL.end, b + .0005, lo - .0005, hi + .0005, z1, 'LED bar bezel');
+    dark(a + BEZEL.end, b - BEZEL.end, LED.y + BEZEL.opening / 2, hi + .0005, z1, 'LED bar bezel');
+    dark(a + BEZEL.end, b - BEZEL.end, lo - .0005, LED.y - BEZEL.opening / 2, z1, 'LED bar bezel');
+    // the dividers between the lenses (near tier)
+    if (P.q) for (const k of [-.5, .5]) {
+      const x = cx + k * LED.pitch;
+      dark(x - BEZEL.divider / 2, x + BEZEL.divider / 2, LED.y - BEZEL.opening / 2, LED.y + BEZEL.opening / 2, z1 - .003, 'LED bar divider');
+    }
   }
 }
 

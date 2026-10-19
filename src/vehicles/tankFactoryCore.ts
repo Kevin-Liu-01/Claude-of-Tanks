@@ -1020,6 +1020,15 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
   eraCluster(plateName: string, fill: (put: EraPlacement) => void, turretLocal?: boolean): void;
   visualEraCluster(name: string, owner: VehicleOwner, fill: () => void): void;
   destructibleCluster(plateName: string, fill: () => void): void;
+  /**
+   * Release 227, round 7 (the critic's UAPL-R5C-4: with ERA spent and the field suit on, "the nets laid over the new ERA
+   * keep their height and float in the air over the empty bays"): the authored ERA cluster a merged mesh's vertex belongs
+   * to (null for permanent stock), and a drape bound to a cluster: when its plate is spent the listed vertices of a
+   * suit's mesh move to their spent positions (the cloth falls onto what stays), and back when the ERA is reset.
+   */
+  eraClusterAt(position: THREE.BufferAttribute | THREE.InterleavedBufferAttribute, vertex: number): string | null;
+  bindEraDrape(plateName: string, position: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
+    indices: ArrayLike<number>, spent: ArrayLike<number>): void;
 }
 
 interface RunningGearBuilderPort {
@@ -1261,9 +1270,18 @@ interface DestructibleGeometryRange {
   original: ReturnType<(THREE.BufferAttribute | THREE.InterleavedBufferAttribute)['array']['slice']>;
 }
 
+/** Release 227, round 7: a suit's vertices that fall onto the permanent stock when their cluster is spent. */
+interface DestructibleDrape {
+  position: THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
+  indices: Uint32Array;
+  original: Float32Array;
+  spent: Float32Array;
+}
+
 interface DestructibleCluster {
   ranges: DestructibleGeometryRange[];
   spent: boolean;
+  drapes?: DestructibleDrape[];
 }
 
 interface VisualEraCluster {
@@ -7796,6 +7814,22 @@ function* createTankOwnedSteps(
         activeDestructibleCluster = null;
       }
     },
+    eraClusterAt(position, vertex) {
+      for (const [name, cluster] of destructibleClusters) {
+        for (const range of cluster.ranges) {
+          if (range.position === position && vertex >= range.start && vertex < range.start + range.count) return name;
+        }
+      }
+      return null;
+    },
+    bindEraDrape(plateName, position, indices, spent) {
+      const cluster = destructibleClusters.get(plateName);
+      if (!cluster) throw new Error(`${specId}: no destructible ERA cluster ${plateName} for a drape`);
+      if (spent.length !== indices.length * 3) throw new Error(`${specId}: drape on ${plateName} has ${spent.length} spent coordinates for ${indices.length} vertices`);
+      const list = Uint32Array.from(indices), original = new Float32Array(list.length * 3);
+      list.forEach((v, k) => { original[k * 3] = position.getX(v); original[k * 3 + 1] = position.getY(v); original[k * 3 + 2] = position.getZ(v); });
+      (cluster.drapes ??= []).push({ position, indices: list, original, spent: Float32Array.from(spent) });
+    },
   };
 
   const builder = resolveBuilder(specId, spec);
@@ -10113,6 +10147,10 @@ function* createTankOwnedSteps(
           }
           range.position.needsUpdate = true;
         }
+        for (const drape of authored.drapes ?? []) {
+          drape.indices.forEach((v, k) => drape.position.setXYZ(v, drape.spent[k * 3], drape.spent[k * 3 + 1], drape.spent[k * 3 + 2]));
+          drape.position.needsUpdate = true;
+        }
       }
       return true;
     },
@@ -10130,6 +10168,10 @@ function* createTankOwnedSteps(
             range.start * range.position.itemSize,
           );
           range.position.needsUpdate = true;
+        }
+        for (const drape of cluster.drapes ?? []) {
+          drape.indices.forEach((v, k) => drape.position.setXYZ(v, drape.original[k * 3], drape.original[k * 3 + 1], drape.original[k * 3 + 2]));
+          drape.position.needsUpdate = true;
         }
       }
       return true;
@@ -10523,6 +10565,7 @@ function* createTankOwnedSteps(
       const pinnedPositions = new Set<THREE.BufferAttribute | THREE.InterleavedBufferAttribute>();
       for (const cluster of destructibleClusters.values()) {
         for (const range of cluster.ranges) pinnedPositions.add(range.position);
+        for (const drape of cluster.drapes ?? []) pinnedPositions.add(drape.position);
       }
       const shadowDetail = vehicleShadowDetailOf(root);
       const replaced = new Map<THREE.Object3D, VehicleMesh>();

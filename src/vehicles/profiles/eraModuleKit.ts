@@ -60,6 +60,29 @@ export class Stock {
   dispose(): void { this.material.dispose(); }
 }
 
+/** Round 7 (2026-10-18; the critic's UAPL-R5C-7: permanent plates seated at a few heights sank 9-23 mm into the cast
+ * front's curve between them): the heights (or any 1-D stations) at which a seated back's offset u is sampled. Starting
+ * from `seed`, the midpoint of two neighbours is added wherever u there leaves their chord by more than `tol` (up to
+ * `passes` times, never closer than 2 x `minStep`), so a straight back between two samples stays within `tol` of its seat
+ * (bar a bulge narrower than the spacing). */
+export function refineHeights(u: (y: number) => number, seed: readonly number[], tol: number, passes = 5, minStep = .004): number[] {
+  const cache = new Map<number, number>();
+  const at = (y: number): number => { let r = cache.get(y); if (r === undefined) cache.set(y, r = u(y)); return r; };
+  let ys = [...seed].sort((a, b) => a - b);
+  for (let pass = 0; pass < passes; pass++) {
+    const next = [ys[0]];
+    let added = false;
+    for (let i = 0; i < ys.length - 1; i++) {
+      const a = ys[i], b = ys[i + 1], m = (a + b) / 2;
+      if (b - a > 2 * minStep && Math.abs(at(m) - (at(a) + at(b)) / 2) > tol) { next.push(m); added = true; }
+      next.push(b);
+    }
+    ys = next;
+    if (!added) break;
+  }
+  return ys;
+}
+
 /** Closed loft through rings of 3D points (equal counts), every face wound outwards (convex rings only). */
 export function loft(rings: readonly (readonly V3[])[]): THREE.BufferGeometry {
   const positions: number[] = [];
