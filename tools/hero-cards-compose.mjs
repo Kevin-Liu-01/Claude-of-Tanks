@@ -20,8 +20,8 @@ import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
-  HERO_CAMERA, HERO_CARD_LAYOUT, HERO_ENCODE, HERO_FLAG_MASK, HERO_FRAME, HERO_GROUND,
-  HERO_POLICY_VERSION, HERO_RUNGS, flagMaskStops, heroFlagFiles, heroFlagPolicy, heroTankFiles, nameParts, placeTank,
+  HERO_CAMERA, HERO_CARD_LAYOUT, HERO_ENCODE, HERO_FLAG_MASK, HERO_FRAME, HERO_GROUND, HERO_GUN_SIDE,
+  HERO_POLICY_VERSION, HERO_POSE, HERO_RUNGS, flagMaskStops, heroFlagFiles, heroFlagPolicy, heroTankFiles, nameParts, placeTank,
 } from '../src/ui/heroCardPolicy.ts';
 import {
   FLAG_SVG_DIR, HERO_DIR, HERO_MANIFEST_PATH, fleetIds, fleetRecords, flagInputs, flagPolicyKey, planHeroCards,
@@ -443,10 +443,11 @@ function drawTierChip(ctx, tier, { x, right, y, size, font, scale }) {
 
 /**
  * Compose one card at `scale` (device pixel ratio): ground, masked flag, tank, then the name in the
- * band under the contact line (never over the hull), the tier chip in the gun-side top corner and the
- * frame. No eyebrow, no nation text: the flag is the nation.
+ * band under the contact line (never over the hull), the tier chip in the bow-side top corner (the flag
+ * holds the rear-top corner) and the frame. No eyebrow, no nation text: the flag is the nation. `gunSide`
+ * is the layer's measured gun side (the turret swung past the lens points it away from the bow).
  */
-export function composeCard(kind, { tank, bounds, flag, name, tier, font = 'Chakra Petch', dataFont = 'IBM Plex Mono', selected = false, facing = HERO_CAMERA.facing, ground = HERO_GROUND }, scale = 2) {
+export function composeCard(kind, { tank, bounds, flag, name, tier, font = 'Chakra Petch', dataFont = 'IBM Plex Mono', selected = false, facing = HERO_CAMERA.facing, gunSide = HERO_GUN_SIDE, ground = HERO_GROUND }, scale = 2) {
   const L = HERO_CARD_LAYOUT[kind];
   const w = L.width * scale, h = L.height * scale;
   const canvas = createCanvas(w, h);
@@ -456,7 +457,7 @@ export function composeCard(kind, { tank, bounds, flag, name, tier, font = 'Chak
   drawFlag(ctx, flag, 0, 0, w, h - band * HERO_FLAG_MASK.bandInset, { facing, selected });
   const artH = h - band;
   drawTank(ctx, tank, bounds, {
-    w, artH, baseline: artH + 2 * scale, coreShare: L.coreShare, coreHeight: L.coreHeight, centerX: L.centerX, facing,
+    w, artH, baseline: artH + 2 * scale, coreShare: L.coreShare, coreHeight: L.coreHeight, centerX: L.centerX, gunSide,
   });
   // A quiet floor under the name so the type never fights the flag's last fade.
   const floor = ctx.createLinearGradient(0, h - band - 6 * scale, 0, h);
@@ -485,15 +486,15 @@ export function composeCard(kind, { tank, bounds, flag, name, tier, font = 'Chak
 
 /**
  * 1200x630 social card: the tank with its gun into the open side, the flag behind its rear, the name
- * large in the top corner over the open side (variant hollow), the bottom lockup zone kept clear.
+ * large in the bow-side top corner (variant hollow), the bottom lockup zone kept clear.
  */
-export function composeOg({ tank, bounds, flag, name, font = 'Chakra Petch', facing = HERO_CAMERA.facing, ground = HERO_GROUND }) {
+export function composeOg({ tank, bounds, flag, name, font = 'Chakra Petch', facing = HERO_CAMERA.facing, gunSide = HERO_GUN_SIDE, ground = HERO_GROUND }) {
   const w = 1200, h = 630;
   const canvas = createCanvas(w, h);
   const ctx = canvas.getContext('2d');
   groundFill(ctx, w, h, ground);
   drawFlag(ctx, flag, facing === 'right' ? 0 : w * 0.18, 0, w * 0.82, h * 0.92, { facing });
-  drawTank(ctx, tank, bounds, { w, artH: h * 0.80, baseline: h * 0.88, coreShare: 0.64, coreHeight: 0.70, centerX: 0.60, facing });
+  drawTank(ctx, tank, bounds, { w, artH: h * 0.80, baseline: h * 0.88, coreShare: 0.64, coreHeight: 0.70, centerX: 0.60, gunSide });
   const { solid, variant } = nameParts(name);
   const pad = 64;
   const s = fitFont(ctx, solid, font, 600, 92, 460, 52);
@@ -613,13 +614,21 @@ async function ship() {
     if (!existsSync(metaPath)) throw new Error(`ship: no rendered layer for ${id} in ${layersDir}`);
     const meta = JSON.parse(readFileSync(metaPath, 'utf8'));
     if (meta.policyKey !== policyKey) throw new Error(`ship: ${id} was rendered under policy ${meta.policyKey || '-'}, not ${policyKey}`);
-    if (meta.facing !== HERO_CAMERA.facing) throw new Error(`ship: ${id} faces ${meta.facing}, the policy ${HERO_CAMERA.facing}`);
+    if (meta.facing !== HERO_CAMERA.facing || meta.bowSide !== HERO_CAMERA.facing) throw new Error(`ship: ${id} faces ${meta.facing} (bow measured ${meta.bowSide}), the policy ${HERO_CAMERA.facing}`);
+    if (meta.gunSide !== 'left' && meta.gunSide !== 'right') throw new Error(`ship: ${id} has no measured gun side (render it under the current page)`);
     const layer = await loadImage(resolve(layersDir, `${id}.png`));
     const written = writeLayerFiles(heroTankFiles(id), encodeLayer(layer));
     manifest.tanks[id] = {
       flag: record.flag,
       in: tankInputs(record),
       b: boundsArray(boundsFromMeta(meta, layer.width)),
+      // Measured by projection through the card lens: [bow side, gun side]; and the pose the layer shows:
+      // [unsigned traverse used (deg; 0 = gun on the hull axis), turret yaw (deg), gun pitch (deg)].
+      face: [meta.bowSide, meta.gunSide],
+      pose: [meta.pose.traverseDeg ?? 0, meta.pose.turretYawDeg, meta.pose.gunPitchDeg],
+      // Why a gun did not take the full policy traverse: no turret rig, a turretless mount, or a limited arc.
+      ...(!meta.pose.turret ? { mount: 'none' } : meta.pose.turretless ? { mount: 'turretless' }
+        : (meta.pose.traverseDeg ?? 0) < HERO_POSE.turretTowardCameraDeg ? { mount: 'arc' } : {}),
       ...written,
       fill: meta.coreFill,
       ...(meta.clipped ? { clipped: true } : {}),
@@ -660,14 +669,15 @@ async function sheet() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.font = `500 ${15 * scale}px "Chakra Petch"`;
   ctx.fillStyle = '#9A9A95';
-  ctx.fillText(`Tank hero cards: ${records.length} of ${fleetIds().length} vehicles, ${kind} ${L.width}x${L.height} at ${scale}x, policy v${manifest.policyVersion}, facing ${manifest.facing}, from the shipped AVIF layers`, gap, 28 * scale);
+  const gunCounts = records.reduce((acc, record) => { const side = manifest.tanks[record.id].face?.[1] || '?'; acc[side] = (acc[side] || 0) + 1; return acc; }, {});
+  ctx.fillText(`Tank hero cards: ${records.length} of ${fleetIds().length} vehicles, ${kind} ${L.width}x${L.height} at ${scale}x, policy v${manifest.policyVersion}, hulls facing ${manifest.facing}, guns ${Object.entries(gunCounts).map(([side, n]) => `${side} ${n}`).join(' / ')}, from the shipped AVIF layers`, gap, 28 * scale);
   for (const [index, record] of records.entries()) {
     const row = manifest.tanks[record.id];
     if (!flags.has(row.flag)) flags.set(row.flag, await loadImage(resolve(HERO_DIR, heroFlagFiles(row.flag)[rungIndex])));
     const tank = await loadImage(resolve(HERO_DIR, heroTankFiles(record.id)[rungIndex]));
     const card = composeCard(kind, {
       tank, bounds: boundsOf(row.b), flag: flags.get(row.flag), name: record.shortName, tier: record.tierNumeral,
-      selected: index === 0, facing: manifest.facing,
+      selected: index === 0, facing: manifest.facing, gunSide: row.face?.[1] ?? HERO_GUN_SIDE,
     }, scale);
     ctx.drawImage(card, gap + (index % cols) * (cw + gap), head + Math.floor(index / cols) * (ch + gap));
   }
@@ -694,7 +704,7 @@ async function board() {
     const meta = JSON.parse(readFileSync(resolve(layersDir, `${id}.json`), 'utf8'));
     const tank = await loadImage(resolve(layersDir, `${id}.png`));
     if (!flags.has(record.flag)) flags.set(record.flag, await renderFlagLayer(record.flag));
-    return { tank, bounds: boundsFromMeta(meta, tank.width), flag: flags.get(record.flag), name: record.shortName, tier: record.tierNumeral, facing: meta.facing };
+    return { tank, bounds: boundsFromMeta(meta, tank.width), flag: flags.get(record.flag), name: record.shortName, tier: record.tierNumeral, facing: meta.facing, gunSide: meta.gunSide ?? HERO_GUN_SIDE };
   };
   const gap = 40;
   const kinds = ['endScreen', 'deploy', 'galleryBrowse', 'roster', 'rosterCompact'];

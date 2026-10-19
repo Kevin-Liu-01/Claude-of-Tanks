@@ -11,7 +11,7 @@
 
 import './heroCard.css';
 import {
-  HERO_MANIFEST_FILE, HERO_POLICY_VERSION, HERO_PUBLIC_DIR, heroFlagFiles, heroFlagMaskCss, heroTankFiles,
+  HERO_GUN_SIDE, HERO_MANIFEST_FILE, HERO_POLICY_VERSION, HERO_PUBLIC_DIR, heroFlagFiles, heroFlagMaskCss, heroTankFiles,
   type HeroFacing,
 } from './heroCardPolicy.ts';
 
@@ -23,6 +23,8 @@ interface HeroTankRow extends HeroLayerRow {
   readonly flag: string;
   /** [cx, cw, ch, cb, fx0, fx1]: the dense core and the whole silhouette, as fractions of the layer width. */
   readonly b: readonly number[];
+  /** [bow side, gun side], measured through the card lens (a turretless gun stays on the bow's side). */
+  readonly face?: readonly HeroFacing[];
 }
 
 export interface HeroManifest {
@@ -85,6 +87,8 @@ export interface HeroCardOptions {
   readonly flagSizes: string;
   /** The selected card loads first. */
   readonly priority?: boolean;
+  /** A tank layer that fails to load (a missing or blocked file): the caller restores its own portrait. */
+  readonly onError?: () => void;
 }
 
 /**
@@ -101,9 +105,13 @@ export function decorateHeroCard(card: HTMLElement, specId: string, manifest: He
   const tank = layerPicture(heroTankFiles(specId), row, 'hc-tank', options.tankSizes, !!options.priority);
   const tankImg = tank.querySelector('img');
   if (tankImg) {
-    // placeTank's per-vehicle inputs; the per-kind shares and the name band come from the card's CSS.
-    tankImg.style.cssText = `--hc-cx:${cx};--hc-cw:${cw};--hc-ch:${ch};--hc-cb:${cb};--hc-fx0:${fx0};--hc-fx1:${fx1};--hc-fw:${Number((fx1 - fx0).toFixed(4))}`;
+    // placeTank's per-vehicle inputs; the per-kind shares and the name band come from the card's CSS, whose
+    // core centre is written for the policy's gun side: a gun on the other side (a turretless mount keeps it
+    // on the bow's side) mirrors it (--hc-gs:-1), leaving the open side to the gun.
+    const mirrored = (row.face?.[1] ?? HERO_GUN_SIDE) !== HERO_GUN_SIDE;
+    tankImg.style.cssText = `--hc-cx:${cx};--hc-cw:${cw};--hc-ch:${ch};--hc-cb:${cb};--hc-fx0:${fx0};--hc-fx1:${fx1};--hc-fw:${Number((fx1 - fx0).toFixed(4))}${mirrored ? ';--hc-gs:-1' : ''}`;
     tankImg.addEventListener('load', () => card.classList.add('hc-loaded'), { once: true });
+    if (options.onError) tankImg.addEventListener('error', options.onError, { once: true });
   }
   card.prepend(flag, tank);
   card.classList.add('cot-hc');
@@ -120,6 +128,7 @@ export async function mountRosterHeroCards(
   strip: HTMLElement,
   cards: ReadonlyMap<string, HTMLElement>,
   selectedId: string | null,
+  onError: (specId: string) => void,
 ): Promise<string[]> {
   const manifest = await loadHeroManifest();
   if (!manifest) return [...cards.keys()];
@@ -130,6 +139,7 @@ export async function mountRosterHeroCards(
       tankSizes: '180px',
       flagSizes: '240px',
       priority: specId === selectedId,
+      onError: () => onError(specId),
     });
     if (!decorated) missing.push(specId);
   }
@@ -142,14 +152,20 @@ export function heroCardFlagMask(manifest: HeroManifest): string {
 }
 
 /**
- * Decorate one stand-alone tile (the end screen's vehicle tile): the policy feather goes on the tile
- * itself. Resolves to false when there is no manifest or no row (the caller keeps its own image).
+ * Decorate one stand-alone tile (the end screen's vehicle tile) whose height follows its grid row: the
+ * layers go in a host that fills the tile (container units need a box whose height is not content-sized),
+ * with the policy feather on it. Resolves to false when there is no manifest or no row (the caller keeps
+ * its own image).
  */
 export async function decorateHeroTile(tile: HTMLElement, specId: string, options: HeroCardOptions): Promise<boolean> {
   const manifest = await loadHeroManifest();
   if (!manifest) return false;
-  tile.style.setProperty('--hc-flag-mask', heroCardFlagMask(manifest));
-  return decorateHeroCard(tile, specId, manifest, options);
+  const host = document.createElement('span');
+  host.className = 'hc-host';
+  host.style.setProperty('--hc-flag-mask', heroCardFlagMask(manifest));
+  if (!decorateHeroCard(host, specId, manifest, options)) return false;
+  tile.append(host);
+  return true;
 }
 
 /** Screenshot harness: load every displayed card's layers now instead of on approach. */

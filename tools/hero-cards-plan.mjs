@@ -5,7 +5,7 @@
 //   - look: the sha256 of that tank's packaged angle render in the same manifest, which moves when
 //     its paint or markings move (genIcons renders the finished vehicle);
 //   - flag: the nation's flag code (src/ui/flagCodes.ts), its flag-icons SVG bytes and the flag policy;
-//   - policy: HERO_POLICY_VERSION plus the camera, light, framing and encode numbers. A policy change
+//   - policy: HERO_POLICY_VERSION plus the camera, turret pose, light, framing and encode numbers. A policy change
 //     marks every card stale, and the renderer then needs an explicit --all (full fleet only on request).
 // First-party tooling: Kevin B. Liu (NOTICE.md).
 //
@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { flagIconCode } from '../src/ui/flagCodes.ts';
 import {
   HERO_CAMERA, HERO_ENCODE, HERO_FLAG, HERO_FLAG_FACING, HERO_FRAME, HERO_LIGHTS, HERO_MANIFEST_FILE,
-  HERO_POLICY_VERSION, HERO_PUBLIC_DIR, HERO_RUNGS,
+  HERO_POLICY_VERSION, HERO_POSE, HERO_PUBLIC_DIR, HERO_RUNGS,
 } from '../src/ui/heroCardPolicy.ts';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -59,7 +59,7 @@ export function fleetIds() {
 
 /** The tank layer's policy fingerprint: the numbers the GPU render and the encode read. */
 export function tankPolicyKey() {
-  return sha(JSON.stringify({ v: HERO_POLICY_VERSION, camera: HERO_CAMERA, lights: HERO_LIGHTS, frame: HERO_FRAME, encode: HERO_ENCODE, rungs: HERO_RUNGS }));
+  return sha(JSON.stringify({ v: HERO_POLICY_VERSION, camera: HERO_CAMERA, pose: HERO_POSE, lights: HERO_LIGHTS, frame: HERO_FRAME, encode: HERO_ENCODE, rungs: HERO_RUNGS }));
 }
 
 /** The flag layer's policy fingerprint (the cloth, its facing layout and the encode). */

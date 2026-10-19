@@ -2462,7 +2462,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   import('./heroCard.ts')
     .then((module) => {
       heroCards = module;
-      return module.mountRosterHeroCards(cardsEl, cardById, selectedId);
+      return module.mountRosterHeroCards(cardsEl, cardById, selectedId, (id) => legacyPortraits([id]));
     })
     .then(legacyPortraits, () => legacyPortraits([...cardById.keys()]));
 

@@ -1,5 +1,7 @@
 // Tank hero cards receipt (CPU only): the shipped layers under public/icons/hero/ and their manifest.
-//   - every fleet vehicle has a card row under the current policy, facing the policy's way;
+//   - every fleet vehicle has a card row under the current policy; measured through the card lens, its hull's
+//     bow faces the policy's way and its turret is swung past the lens so the gun points to the other side
+//     (owner 2026-10-18); only a turretless or limited-arc mount keeps its gun on the bow's side;
 //   - each row's flag is its nation's flag (src/ui/flagCodes.ts) and that flag layer is shipped;
 //   - every named file exists with the recorded sha256 prefix and byte count, and nothing else is there;
 //   - no layer was CLIPPED, and the whole tank fits every card kind inside the side margins;
@@ -13,8 +15,8 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
-  HERO_BUDGETS, HERO_CAMERA, HERO_CARD_LAYOUT, HERO_MANIFEST_FILE, HERO_POLICY_VERSION, HERO_SIDE_MARGIN,
-  heroFlagFiles, heroTankFiles, placeTank,
+  HERO_BUDGETS, HERO_CAMERA, HERO_CARD_LAYOUT, HERO_GUN_SIDE, HERO_MANIFEST_FILE, HERO_POLICY_VERSION, HERO_POSE,
+  HERO_SIDE_MARGIN, heroFlagFiles, heroGunSide, heroTankFiles, placeTank,
 } from '../src/ui/heroCardPolicy.ts';
 import { flagIconCode } from '../src/ui/flagCodes.ts';
 import {
@@ -53,8 +55,10 @@ const checkFiles = (label, files, row) => {
 };
 for (const [code, row] of Object.entries(manifest.flags || {})) checkFiles(`flag ${code}`, heroFlagFiles(code), row);
 
-// 3. Every fleet vehicle has its card, its nation's flag, a clean fit, and its bow on the policy's side.
-let bowSide = 0;
+// 3. Every fleet vehicle has its card, its nation's flag, a clean fit, its bow on the policy's side and its gun
+//    turned past the lens (sides measured by projection when the layer was rendered, never from a yaw sign).
+let gunsTurned = 0;
+const fixedMounts = [];
 const tankBytes = [[], [], []];
 for (const record of fleet.values()) {
   const row = manifest.tanks?.[record.id];
@@ -70,14 +74,28 @@ for (const record of fleet.values()) {
     fail(`${record.id}: bad bounds ${JSON.stringify(row.b)}`);
     continue;
   }
-  // The gun is the longest overhang past the dense core on almost every vehicle: count the bow side.
-  const bowOverhang = HERO_CAMERA.facing === 'right' ? fx1 - (cx + cw / 2) : (cx - cw / 2) - fx0;
-  const rearOverhang = HERO_CAMERA.facing === 'right' ? (cx - cw / 2) - fx0 : fx1 - (cx + cw / 2);
-  if (bowOverhang > rearOverhang) bowSide++;
+  const [bow, gunSide] = row.face || [];
+  const [traverse, yaw, pitch] = row.pose || [];
+  if (bow !== HERO_CAMERA.facing) fail(`${record.id}: the hull's bow points ${bow || '?'}, the policy ${HERO_CAMERA.facing}`);
+  if (![traverse, yaw, pitch].every(Number.isFinite)) fail(`${record.id}: no recorded pose ${JSON.stringify(row.pose)}`);
+  else if (!row.mount) {
+    if (traverse !== HERO_POSE.turretTowardCameraDeg) fail(`${record.id}: turret traversed ${traverse} deg, the policy ${HERO_POSE.turretTowardCameraDeg}`);
+    if (Math.abs(Math.abs(yaw) - traverse) > 0.5) fail(`${record.id}: turret yaw ${yaw} deg does not match its ${traverse} deg traverse`);
+    if (gunSide !== HERO_GUN_SIDE) fail(`${record.id}: the gun points ${gunSide || '?'}, the pose wants it ${HERO_GUN_SIDE} (turned past the lens)`);
+    else gunsTurned++;
+  } else {
+    if (!['none', 'turretless', 'arc'].includes(row.mount)) fail(`${record.id}: unknown mount ${row.mount}`);
+    if (!(traverse < HERO_POSE.turretTowardCameraDeg)) fail(`${record.id}: a ${row.mount} mount at the full ${traverse} deg traverse`);
+    if (gunSide !== heroGunSide(traverse)) fail(`${record.id}: a ${row.mount} mount's gun points ${gunSide || '?'}, its ${traverse} deg traverse puts it ${heroGunSide(traverse)}`);
+    fixedMounts.push(`${record.id} (${row.mount} ${traverse} deg)`);
+  }
+  // Level, or raised only where the spec's depression curve lifts it over the rear deck.
+  if (Number.isFinite(pitch) && pitch < HERO_POSE.gunPitchDeg - 0.01) fail(`${record.id}: gun pitch ${pitch} deg below the level pose`);
   for (const [kind, L] of Object.entries(HERO_CARD_LAYOUT)) {
     const artH = L.height - L.nameBand;
     const { k, dx, dy } = placeTank({ cx, cw, ch, cb, fx0, fx1 }, {
       w: L.width, artH, baseline: artH + 2, coreShare: L.coreShare, coreHeight: L.coreHeight, centerX: L.centerX,
+      gunSide: gunSide === 'left' || gunSide === 'right' ? gunSide : undefined,
     });
     const left = dx + fx0 * k, right = dx + fx1 * k;
     const margin = L.width * HERO_SIDE_MARGIN;
@@ -86,7 +104,8 @@ for (const record of fleet.values()) {
   }
 }
 const ids = Object.keys(manifest.tanks || {});
-if (fleet.size && bowSide < fleet.size * 0.9) fail(`only ${bowSide} of ${fleet.size} cards overhang furthest on the ${HERO_CAMERA.facing} (bow) side: the facing looks flipped`);
+// A turret rig the renderer could not find reads as a fixed mount: more than a handful means the pose broke.
+if (fixedMounts.length > Math.max(4, fleet.size * 0.03)) fail(`${fixedMounts.length} cards keep the gun on the hull axis (${fixedMounts.slice(0, 8).join(', ')}): expected only the turretless and limited-arc mounts`);
 
 // 4. Nothing unnamed in the directory (old renders and stray files leave with their rows).
 for (const file of readdirSync(HERO_DIR)) if (!named.has(file)) fail(`stray file public/icons/hero/${file}`);
@@ -123,5 +142,6 @@ if (failures.length) {
   if (failures.length > 60) console.error(`hero-cards check: ... ${failures.length - 60} more`);
   process.exit(1);
 }
-console.log(`hero-cards check: ok: ${ids.length} cards for ${fleet.size} vehicles, ${Object.keys(manifest.flags).length} flags, facing ${manifest.facing}, ` +
+console.log(`hero-cards check: ok: ${ids.length} cards for ${fleet.size} vehicles, ${Object.keys(manifest.flags).length} flags, hulls facing ${manifest.facing}, ` +
+  `${gunsTurned} turrets swung past the lens (gun ${HERO_GUN_SIDE}), ${fixedMounts.length} fixed mounts (${fixedMounts.join(', ') || 'none'}), ` +
   budgets.map(([label, value, budget]) => `${label} ${(value / 1024).toFixed(1)}/${(budget / 1024).toFixed(0)} KB`).join(', '));

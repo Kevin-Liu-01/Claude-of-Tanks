@@ -5,17 +5,18 @@ import { readFileSync } from 'node:fs';
 import { createCanvas } from '@napi-rs/canvas';
 import { GARAGE_CAMERA_AZIMUTH_RAD, GARAGE_CAMERA_PITCH_RAD } from '../src/game/garagePresentationPose.ts';
 import {
-  HERO_CAMERA, HERO_CARD_LAYOUT, HERO_FLAG, HERO_FLAG_MASK, HERO_SIDE_MARGIN, flagMaskStops, heroFlagMaskCss, heroFlagPolicy, placeTank,
+  HERO_CAMERA, HERO_CARD_LAYOUT, HERO_FLAG, HERO_FLAG_MASK, HERO_GUN_SIDE, HERO_POSE, HERO_SIDE_MARGIN, flagMaskStops,
+  heroCenterX, heroFlagMaskCss, heroFlagPolicy, heroGunSide, heroTurretTraverseDeg, heroTurretTraverseLimitDeg, placeTank,
 } from '../src/ui/heroCardPolicy.ts';
 import { applyFlagMask, drawTank, horizontalBands, measureBounds, renderFlagLayer } from './hero-cards-compose.mjs';
 
 const deg = (rad) => rad * 180 / Math.PI;
 const right = HERO_CAMERA.facing === 'right';
 
-// 1. The card faces the way the brand SPEC rules for the Garage roster (2026-10-17: "facing RIGHT in the garage
+// 1. The hull faces the way the brand SPEC rules for the Garage roster (2026-10-17: "facing RIGHT in the garage
 //    roster", the owner's reference direction), from a camera within 10 deg of the showroom camera's azimuth and
 //    2 deg of its pitch (front three-quarter: the glacis and the flank both show).
-assert.equal(HERO_CAMERA.facing, 'right', 'hero cards face right (bow and gun toward screen-right)');
+assert.equal(HERO_CAMERA.facing, 'right', 'hero card hulls face right (bow toward screen-right)');
 assert.ok(Math.abs(HERO_CAMERA.azimuthDeg - deg(GARAGE_CAMERA_AZIMUTH_RAD)) <= 10, `hero azimuth ${HERO_CAMERA.azimuthDeg} within 10 deg of the Garage camera`);
 assert.ok(HERO_CAMERA.azimuthDeg > 0 && HERO_CAMERA.azimuthDeg < 90, 'front three-quarter: the glacis and the flank both show');
 assert.ok(Math.abs(HERO_CAMERA.elevationDeg - deg(GARAGE_CAMERA_PITCH_RAD)) <= 2, `hero elevation ${HERO_CAMERA.elevationDeg} within 2 deg of the Garage pitch`);
@@ -48,26 +49,30 @@ assert.ok(heroFlagMaskCss(HERO_FLAG_MASK, 'left').includes(` at ${pct(HERO_FLAG_
   assert.ok(alpha(rear(2), 2) > alpha(rear(w / 2), 2) && alpha(rear(w / 2), 2) >= alpha(rear(w * 0.8), 2), 'fades toward the gun');
 }
 
-// 4. Cards never cut the gun: a synthetic layer (hull block + a long barrel on the bow side) fits every card kind.
-{
+// 4. Cards never cut the gun: a synthetic layer (hull block + a long barrel on the gun side) fits every card kind,
+//    for the turned turret's gun side and for a fixed mount's gun on the bow side; the core centre leaves the
+//    open side to the gun.
+for (const gunSide of ['left', 'right']) {
   const lw = 400, lh = 250;
   const layer = createCanvas(lw, lh);
   const lctx = layer.getContext('2d');
   lctx.fillStyle = '#7a7a62';
-  const flip = (x, width) => (right ? lw - x - width : x);
+  const flip = (x, width) => (gunSide === 'right' ? lw - x - width : x);
   lctx.fillRect(flip(120, 220), 120, 220, 90); // hull + turret mass (the dense core)
-  lctx.fillRect(flip(10, 120), 140, 120, 6); // the barrel, its muzzle 10 px from the bow-side edge
+  lctx.fillRect(flip(10, 120), 140, 120, 6); // the barrel, its muzzle 10 px from the gun-side edge
   const bounds = measureBounds(layer);
-  assert.ok(bounds.fx0 * lw <= (right ? 60 : 11) && bounds.fx1 * lw >= (right ? 389 : 339), 'full silhouette spans the barrel and the hull');
+  assert.ok(bounds.fx0 * lw <= (gunSide === 'right' ? 60 : 11) && bounds.fx1 * lw >= (gunSide === 'right' ? 389 : 339), 'full silhouette spans the barrel and the hull');
   assert.ok(bounds.cw * lw < 260, 'the dense core ignores the thin barrel');
   for (const [kind, L] of Object.entries(HERO_CARD_LAYOUT)) {
     const w = L.width * 2, h = L.height * 2, artH = h - L.nameBand * 2;
     const card = createCanvas(w, h);
-    const box = { w, artH, baseline: artH, coreShare: L.coreShare, coreHeight: L.coreHeight, centerX: L.centerX };
+    const box = { w, artH, baseline: artH, coreShare: L.coreShare, coreHeight: L.coreHeight, centerX: L.centerX, gunSide };
     const { k, dx } = drawTank(card.getContext('2d'), layer, bounds, box);
     const left = dx + bounds.fx0 * k, rightEdge = dx + bounds.fx1 * k;
-    assert.ok(left >= w * 0.035 - 0.5 && rightEdge <= w * 0.965 + 0.5, `${kind}: whole tank inside the card (${left.toFixed(1)}..${rightEdge.toFixed(1)} of ${w})`);
+    assert.ok(left >= w * 0.035 - 0.5 && rightEdge <= w * 0.965 + 0.5, `${kind} gun ${gunSide}: whole tank inside the card (${left.toFixed(1)}..${rightEdge.toFixed(1)} of ${w})`);
     assert.deepEqual(placeTank(bounds, box), { k, dx, dy: artH - bounds.cb * k }, `${kind}: drawTank is placeTank`);
+    const coreCentre = dx + bounds.cx * k;
+    assert.ok(gunSide === 'left' ? coreCentre >= w / 2 - 0.5 : coreCentre <= w / 2 + 0.5, `${kind} gun ${gunSide}: the core sits away from the gun's side`);
   }
 }
 
@@ -122,7 +127,7 @@ assert.ok(heroFlagMaskCss(HERO_FLAG_MASK, 'left').includes(` at ${pct(HERO_FLAG_
 {
   const layerCss = readFileSync(new URL('../src/ui/heroCard.css', import.meta.url), 'utf8');
   const garageCss = readFileSync(new URL('../src/ui/garage.css', import.meta.url), 'utf8');
-  const vars = (L) => `--hc-band:${L.nameBand}px;--hc-share:${L.coreShare};--hc-hshare:${L.coreHeight};--hc-cxr:${Number((right ? 1 - L.centerX : L.centerX).toFixed(2))};`;
+  const vars = (L) => `--hc-band:${L.nameBand}px;--hc-share:${L.coreShare};--hc-hshare:${L.coreHeight};--hc-cxr:${Number(heroCenterX(L.centerX).toFixed(2))};`;
   assert.ok(garageCss.includes(vars(HERO_CARD_LAYOUT.roster)), `roster card vars ${vars(HERO_CARD_LAYOUT.roster)}`);
   assert.ok(garageCss.includes(vars(HERO_CARD_LAYOUT.rosterCompact)), `compact card vars ${vars(HERO_CARD_LAYOUT.rosterCompact)}`);
   assert.match(garageCss, /\.cot-card\{[^}]*container-type:size;/, 'the roster card is a size container from its first paint (no shift when the layers arrive)');
@@ -132,9 +137,39 @@ assert.ok(heroFlagMaskCss(HERO_FLAG_MASK, 'left').includes(` at ${pct(HERO_FLAG_
   assert.match(layerCss, /\.cot-hc \.hc-flag\{[^}]*object-position:0 0;/, 'facing right: the flag anchors at the top-left (rear-top) corner');
   assert.match(layerCss, /\.cot-hc\[data-hero-facing='left'\] \.hc-flag\{object-position:100% 0;\}/, 'facing left mirrors the anchor');
   assert.match(layerCss, /--hc-k:min\(calc\(100cqw \* var\(--hc-share\) \/ var\(--hc-cw\)\),calc\(\(100cqh - var\(--hc-band\)\) \* var\(--hc-hshare\) \/ var\(--hc-ch\)\),calc\(100cqw \* 0\.93 \/ var\(--hc-fw\)\)\)/, 'tank width is placeTank\'s k');
-  assert.match(layerCss, /left:clamp\(calc\(100cqw \* 0\.035 - var\(--hc-fx0\) \* var\(--hc-k\)\),calc\(100cqw \* var\(--hc-cxr\) - var\(--hc-cx\) \* var\(--hc-k\)\),calc\(100cqw \* 0\.965 - var\(--hc-fx1\) \* var\(--hc-k\)\)\)/, 'tank x is placeTank\'s clamped dx');
+  assert.match(layerCss, /left:clamp\(calc\(100cqw \* 0\.035 - var\(--hc-fx0\) \* var\(--hc-k\)\),calc\(100cqw \* \(0\.5 \+ \(var\(--hc-cxr\) - 0\.5\) \* var\(--hc-gs,1\)\) - var\(--hc-cx\) \* var\(--hc-k\)\),calc\(100cqw \* 0\.965 - var\(--hc-fx1\) \* var\(--hc-k\)\)\)/, 'tank x is placeTank\'s clamped dx, the centre mirrored for a gun on the other side');
+  const cardTs = readFileSync(new URL('../src/ui/heroCard.ts', import.meta.url), 'utf8');
+  assert.match(cardTs, /\(row\.face\?\.\[1\] \?\? HERO_GUN_SIDE\) !== HERO_GUN_SIDE/, 'a row whose gun is on the other side mirrors the centre (--hc-gs)');
+  assert.match(cardTs, /--hc-gs:-1/, 'the mirror is the --hc-gs custom property');
   assert.match(layerCss, /top:calc\(100cqh - var\(--hc-band\) \+ 2px - var\(--hc-cb\) \* var\(--hc-k\)\)/, 'contact line 2 px under the art box');
   assert.equal(HERO_SIDE_MARGIN, 0.035, 'the CSS margins (0.035, 0.93, 0.965) are HERO_SIDE_MARGIN');
+}
+
+// 8. The turret pose (owner 2026-10-18: "the turrets should be turned towards you more and they should be facing left
+//    not right as their hulls are oriented rn"): hull bow right, the turret swung past the lens so the gun points
+//    left while still turned toward the viewer, the gun level; turretless mounts keep the gun on the hull axis and a
+//    limited arc turns as far as it legally can. The renderer picks the traverse side by the bore against the lens
+//    and records both sides by projection (the receipt checks every row), never by the yaw sign.
+{
+  const az = HERO_CAMERA.azimuthDeg;
+  const T = HERO_POSE.turretTowardCameraDeg;
+  assert.ok(T > az && T < az + 90, `traverse ${T} deg is past the lens (${az}) and still toward the viewer (< ${az + 90})`);
+  assert.ok(T >= 100 && T <= 130, `traverse ${T} deg: the turret face shows and the barrel keeps most of its length`);
+  assert.equal(HERO_POSE.gunPitchDeg, 0, 'the gun is level');
+  assert.equal(HERO_GUN_SIDE, 'left', 'hull bow right, gun left');
+  assert.equal(heroGunSide(T, 'right'), 'left');
+  assert.equal(heroGunSide(0, 'right'), 'right', 'a gun on the hull axis points with the bow');
+  assert.equal(heroGunSide(T, 'left'), 'right', 'the gun side mirrors with the facing');
+  assert.equal(heroTurretTraverseLimitDeg({ armor: {} }), Infinity, 'a turret traverses freely');
+  assert.equal(heroTurretTraverseDeg({ armor: {} }), T, 'a turret takes the policy traverse');
+  assert.equal(heroTurretTraverseDeg({ armor: { turretless: true } }), 0, 'turretless: the gun stays on the hull axis');
+  assert.equal(heroTurretTraverseDeg({ armor: { turretless: true }, gunArcDeg: 4 }), 0, 'a casemate arc is not a turret');
+  assert.equal(heroTurretTraverseDeg({ armor: {}, gunArcDeg: 30 }), 30, 'a limited turret arc turns as far as it legally can');
+  const page = readFileSync(new URL('./hero-cards-page.html', import.meta.url), 'utf8');
+  assert.match(page, /const bore = boreDirection\(turret, gun\)[\s\S]*?bore\.dot\(/, 'the traverse side is chosen by the bore against the lens vector');
+  assert.match(page, /minimumMechanicalGunPitch\(spec, yaw\)/, 'the gun rises only where the spec\'s rear-deck curve needs it');
+  assert.match(page, /gunSide: muzzle\.x >= pivot\.x \? 'right' : 'left'/, 'the gun side is measured by projecting the muzzle');
+  assert.match(page, /bowSide: hull1\.x >= hull0\.x \? 'right' : 'left'/, 'the bow side is measured by projecting the hull axis');
 }
 
 console.log('hero-cards selftest: ok');

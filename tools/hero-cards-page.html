@@ -4,9 +4,10 @@
 <body>
 <script type="module">
 // Offscreen studio for tools/genHeroCards.mjs: renders each vehicle's hero tank
-// layer (transparent, front three-quarter, bow toward the policy's facing) from
-// the shipped procedural build under one studio light rig, then places it on the
-// master layer by the dense-core framing rule. The flag and the card are composed
+// layer (transparent, front three-quarter, bow toward the policy's facing, the
+// turret swung past the lens by HERO_POSE) from the shipped procedural build under
+// one studio light rig, then places it on the master layer by the dense-core
+// framing rule. The flag and the card are composed
 // on the CPU (tools/hero-cards-compose.mjs); nothing here draws type or flags.
 // First-party tooling: Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
@@ -16,7 +17,10 @@ import { ensureInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { getSpec } from '/src/vehicles/specs.ts';
 import { geometryFingerprint } from '/src/vehicles/tankAssets.ts';
 import { measurePortraitCoreBounds } from '/src/ui/portraitFraming.ts';
-import { HERO_CAMERA, HERO_FRAME, HERO_LIGHTS, HERO_POLICY_VERSION } from '/src/ui/heroCardPolicy.ts';
+import { minimumMechanicalGunPitch } from '/src/sim/gunPitchLimits.ts';
+import {
+  HERO_CAMERA, HERO_FRAME, HERO_LIGHTS, HERO_POLICY_VERSION, HERO_POSE, heroCenterX, heroTurretTraverseDeg,
+} from '/src/ui/heroCardPolicy.ts';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -179,12 +183,82 @@ function solidTop(pixels, width, height, x0, x1, share, threshold = 8) {
   return 0;
 }
 
+/** The bore's world direction: the gun cradle's +Z (the turret's when a vehicle has no separate cradle). */
+function boreDirection(turret, gun) {
+  return (gun || turret).getWorldDirection(new THREE.Vector3());
+}
+
 /**
- * Render one vehicle's hero layer. `overrides` replaces fields of HERO_CAMERA / HERO_LIGHTS
- * (sample boards only; the shipped renderer passes none).
+ * Pose the vehicle for its card (HERO_POSE): traverse the turret by the policy angle within its legal arc,
+ * on the side whose bore points more toward the lens (chosen by the bore direction against the lens
+ * vector, never by the yaw sign), then lay the gun level, raised only to the spec's yaw-dependent
+ * mechanical minimum over the rear deck and never past its elevation limit. Children of the turret
+ * (roof stations, coaxial and secondary mounts) turn with it; hull-mounted stations stay at rest.
+ */
+function applyHeroPose(root, spec, pose, toLens) {
+  const turret = root.getObjectByName('rig_turret');
+  const gun = root.getObjectByName('rig_gun');
+  const restYaw = turret ? turret.rotation.y : 0;
+  const traverseDeg = turret ? heroTurretTraverseDeg(spec, pose) : 0;
+  let yaw = restYaw;
+  if (turret && traverseDeg > 0) {
+    let best = -Infinity;
+    for (const sign of [1, -1]) {
+      turret.rotation.y = restYaw + sign * deg(traverseDeg);
+      root.updateMatrixWorld(true);
+      const bore = boreDirection(turret, gun).setY(0).normalize();
+      const toward = bore.dot(new THREE.Vector3(toLens.x, 0, toLens.z).normalize());
+      if (toward > best) { best = toward; yaw = turret.rotation.y; }
+    }
+    turret.rotation.y = yaw;
+  }
+  const low = minimumMechanicalGunPitch(spec, yaw);
+  const high = deg(Math.abs(Number(spec.gunElevationDeg ?? 20)));
+  const pitch = Math.min(high, Math.max(deg(pose.gunPitchDeg), low));
+  if (gun) gun.rotation.x = -pitch;
+  root.updateMatrixWorld(true);
+  const round = (value) => Number((value * 180 / Math.PI).toFixed(2));
+  return {
+    turretYawDeg: round(yaw), restYawDeg: round(restYaw), gunPitchDeg: round(pitch),
+    traverseDeg: Number.isFinite(traverseDeg) ? traverseDeg : null, turret: !!turret, turretless: !!spec.armor?.turretless,
+  };
+}
+
+/**
+ * Screen sides by projection through the card lens (source pixels): the bow from the hull origin to a point
+ * ahead of it on hull +Z, the gun from its trunnion to its muzzle tip.
+ */
+function measureSides(root, visual, cam, sw, sh) {
+  const project = (world) => {
+    const p = world.clone().project(cam);
+    return { x: (p.x + 1) / 2 * sw, y: (1 - p.y) / 2 * sh };
+  };
+  const hull0 = project(root.localToWorld(new THREE.Vector3(0, 0, 0)));
+  const hull1 = project(root.localToWorld(new THREE.Vector3(0, 0, 4)));
+  const turret = root.getObjectByName('rig_turret');
+  const gun = root.getObjectByName('rig_gun') || turret;
+  const pivotWorld = gun ? gun.getWorldPosition(new THREE.Vector3()) : root.getWorldPosition(new THREE.Vector3());
+  let muzzleWorld = null;
+  try { muzzleWorld = visual.gunMuzzleWorld ? visual.gunMuzzleWorld(new THREE.Vector3()) : null; } catch { muzzleWorld = null; }
+  if (!muzzleWorld || !Number.isFinite(muzzleWorld.x) || muzzleWorld.distanceTo(pivotWorld) < 0.2) {
+    muzzleWorld = pivotWorld.clone().addScaledVector(boreDirection(turret || root, gun), 4);
+  }
+  const pivot = project(pivotWorld);
+  const muzzle = project(muzzleWorld);
+  return {
+    bowSide: hull1.x >= hull0.x ? 'right' : 'left',
+    gunSide: muzzle.x >= pivot.x ? 'right' : 'left',
+    pivot, muzzle,
+  };
+}
+
+/**
+ * Render one vehicle's hero layer. `overrides` replaces fields of HERO_CAMERA / HERO_POSE / HERO_LIGHTS /
+ * HERO_FRAME (sample boards only; the shipped renderer passes none).
  */
 function renderHero(id, overrides = {}) {
   const camera = { ...HERO_CAMERA, ...(overrides.camera || {}) };
+  const pose = { ...HERO_POSE, ...(overrides.pose || {}) };
   const rig = { ...HERO_LIGHTS, ...(overrides.lights || {}) };
   const frame = { ...HERO_FRAME, ...(overrides.frame || {}) };
   const shadows = overrides.shadows !== false;
@@ -195,10 +269,12 @@ function renderHero(id, overrides = {}) {
   try {
     root.updateMatrixWorld(true);
     const geometryHash = geometryFingerprint(root);
-    const gun = root.getObjectByName('rig_gun');
-    const elevationLimit = Math.abs(Number(spec.gunElevationDeg ?? camera.gunElevationDeg));
-    const gunElevationDeg = Math.min(camera.gunElevationDeg, elevationLimit);
-    if (gun && gunElevationDeg) gun.rotation.x = -deg(gunElevationDeg);
+    const mirror = camera.facing === 'right' ? -1 : 1;
+    const az = deg(camera.azimuthDeg);
+    const el = deg(camera.elevationDeg);
+    // Unit vector from the vehicle toward the lens (the hull's front three-quarter on the facing's flank).
+    const dir = new THREE.Vector3(Math.sin(az) * mirror * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+    const posed = applyHeroPose(root, spec, pose, dir);
     root.traverse((object) => {
       if (object.isMesh) { object.castShadow = shadows; object.receiveShadow = shadows; }
     });
@@ -215,13 +291,9 @@ function renderHero(id, overrides = {}) {
     );
     ground.position.y = box.min.y + 0.002;
     ground.visible = shadows;
-    const mirror = camera.facing === 'right' ? -1 : 1;
     configureLights(rig, center, mirror, radius);
     key.castShadow = shadows;
 
-    const az = deg(camera.azimuthDeg);
-    const el = deg(camera.elevationDeg);
-    const dir = new THREE.Vector3(Math.sin(az) * mirror * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
     const aspect = frame.width / frame.height;
     const vHalf = deg(camera.fovDeg) / 2;
     const hHalf = Math.atan(Math.tan(vHalf) * aspect);
@@ -269,7 +341,9 @@ function renderHero(id, overrides = {}) {
       (frame.height * frame.baselineRatio - fadePx) / Math.max(1, core.bottom - top),
     );
     const scale = Math.min(coreScale, fullScale);
-    const centerX = camera.facing === 'right' ? 1 - frame.centerXRatio : frame.centerXRatio;
+    // The gun's screen side, by projection through this lens, sets which side the framing leaves open.
+    const sides = measureSides(root, visual, cam, sw, sh);
+    const centerX = heroCenterX(frame.centerXRatio, sides.gunSide);
     let dx = frame.width * centerX - core.centerX * scale;
     // Slide (never scale) the silhouette back inside the layer when the gun or the rear overhangs an edge.
     dx = Math.min(dx, frame.width - clearPx - (full.x1 + 1) * scale);
@@ -309,7 +383,14 @@ function renderHero(id, overrides = {}) {
         geometryHash,
         paintHash: paintFingerprint(root),
         facing: camera.facing,
-        camera: { azimuthDeg: camera.azimuthDeg, elevationDeg: camera.elevationDeg, fovDeg: camera.fovDeg, gunElevationDeg },
+        camera: { azimuthDeg: camera.azimuthDeg, elevationDeg: camera.elevationDeg, fovDeg: camera.fovDeg },
+        pose: posed,
+        // Measured by projection through the card lens: the hull's bow side and the gun's side, with the
+        // trunnion and muzzle tip in layer pixels.
+        bowSide: sides.bowSide,
+        gunSide: sides.gunSide,
+        pivot: { x: Number((sides.pivot.x * scale + dx).toFixed(1)), y: Number((sides.pivot.y * scale + dy).toFixed(1)) },
+        muzzle: { x: Number((sides.muzzle.x * scale + dx).toFixed(1)), y: Number((sides.muzzle.y * scale + dy).toFixed(1)) },
         coreBounds: { x0: core.x0 * scale + dx, x1: (core.x1 + 1) * scale + dx, y0: core.y0 * scale + dy, bottom: core.bottom * scale + dy },
         coreFill: Number((scale / coreScale).toFixed(4)), // 1 = the core fills its share; < 1 = the silhouette limited it
         fullBounds: placed,

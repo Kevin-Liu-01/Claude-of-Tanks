@@ -8,17 +8,18 @@
 // unchanged ids never re-render.
 // First-party: Kevin B. Liu (NOTICE.md).
 
-export const HERO_POLICY_VERSION = 3;
+export const HERO_POLICY_VERSION = 4;
 
 export type HeroFacing = 'left' | 'right';
 
 /**
  * Camera. Vehicle forward is local +Z. `facing: 'right'` puts the camera on the hull's
- * -X flank so the bow and gun extend toward screen-right, the owner's reference
- * composition and the brand SPEC's Garage roster rule (2026-10-17: "make the tank icons
- * look like my image but obv facing the right direction in the garage"; SPEC: "facing
- * RIGHT in the garage roster"). Flipping the whole card set is this one field: the
- * light rig, the framing, the flag layout, the feather and the tier chip mirror with it.
+ * -X flank so the bow points toward screen-right, the owner's reference composition and
+ * the brand SPEC's Garage roster rule (2026-10-17: "make the tank icons look like my image
+ * but obv facing the right direction in the garage"; SPEC: "facing RIGHT in the garage
+ * roster"). The turret then swings past the lens to the other side (HERO_POSE). Flipping
+ * the whole card set is this one field: the light rig, the framing, the gun side, the flag
+ * layout, the feather and the tier chip mirror with it.
  */
 export const HERO_CAMERA = Object.freeze({
   facing: 'right' as HeroFacing,
@@ -28,9 +29,69 @@ export const HERO_CAMERA = Object.freeze({
   azimuthDeg: 50,
   elevationDeg: 5,
   fovDeg: 20, // a long lens: little perspective swell on the glacis
-  gunElevationDeg: 3, // "gun forward and slightly up"; clamped to the spec's elevation limit
   margin: 1.06,
 });
+
+/**
+ * Turret pose (owner 2026-10-18, on the right-facing roster: "the turrets should be turned towards you
+ * more and they should be facing left not right as their hulls are oriented rn"). The hull keeps the
+ * camera's front three-quarter view, bow to the facing side; the turret traverses past the lens so the
+ * gun points to the other side of the card with the turret face, mantlet and gun toward the viewer.
+ *   turretTowardCameraDeg: traverse from the hull's forward axis, on whichever side brings the gun round
+ *     past the lens (the renderer picks the sign by projecting the gun into the camera, never by the
+ *     yaw convention alone). With the 50 deg camera the gun passes the lens at 50 deg and lies exactly
+ *     across the card at 140; 115 keeps it 25 deg toward the lens: the turret face shows and the barrel
+ *     keeps ~90 % of its length.
+ *   gunPitchDeg: the gun is level (raised only where the spec's yaw-dependent depression curve needs it
+ *     over the rear deck).
+ * A turretless vehicle (casemate, hydraulic fixed gun) keeps its gun on the hull axis; a turreted mount with
+ * a limited arc turns as far toward the lens as its legal arc allows (heroTurretTraverseLimitDeg).
+ * Everything the turret carries (roof stations, secondary mounts on it) turns with it; hull-mounted
+ * stations stay at rest.
+ */
+export const HERO_POSE = Object.freeze({
+  turretTowardCameraDeg: 115,
+  gunPitchDeg: 0,
+});
+
+/** The traverse fields of a vehicle spec the hero pose reads (movement.ts gunArcRadFor's inputs). */
+export interface HeroTraverseSpec {
+  readonly armor?: { readonly turretless?: boolean };
+  readonly gunArcDeg?: number;
+}
+
+/**
+ * The traverse half-arc (deg) the hero pose may use: 0 for any turretless mount (the gun stays on the hull
+ * axis), a turreted mount's authored gunArcDeg when it has one (movement.ts gunArcRadFor), else unlimited.
+ * A card never shows a gun where the vehicle cannot lay it.
+ */
+export function heroTurretTraverseLimitDeg(spec: HeroTraverseSpec): number {
+  if (spec.armor?.turretless) return 0;
+  if (typeof spec.gunArcDeg === 'number') return Math.max(0, spec.gunArcDeg);
+  return Infinity;
+}
+
+/** The traverse (deg, unsigned) the hero pose gives a vehicle: the policy angle within its legal arc. */
+export function heroTurretTraverseDeg(spec: HeroTraverseSpec, pose: { readonly turretTowardCameraDeg: number } = HERO_POSE): number {
+  return Math.min(pose.turretTowardCameraDeg, heroTurretTraverseLimitDeg(spec));
+}
+
+/**
+ * The screen side a gun traversed `traverseDeg` toward the lens points to: the bow's side until it passes
+ * the lens (the camera azimuth, measured from the bow on the lens side), the other side after it. Between
+ * the azimuth and azimuth + 90 deg the gun points to the far side while still turned toward the viewer.
+ */
+export function heroGunSide(
+  traverseDeg: number = HERO_POSE.turretTowardCameraDeg,
+  facing: HeroFacing = HERO_CAMERA.facing,
+  azimuthDeg: number = HERO_CAMERA.azimuthDeg,
+): HeroFacing {
+  if (traverseDeg <= azimuthDeg) return facing;
+  return facing === 'right' ? 'left' : 'right';
+}
+
+/** The gun side of the policy's turreted vehicles (the cards' default; a row may carry its own). */
+export const HERO_GUN_SIDE: HeroFacing = heroGunSide();
 
 /**
  * Studio light rig (three units). Positions are relative to the tank centre, in metres, written
@@ -57,7 +118,8 @@ export const HERO_LIGHTS = Object.freeze({
  * Tank layer framing. The master layer is a transparent 16:10 canvas. The dense core
  * (portraitFraming's alpha-weighted quantiles, blind to antennas and whips) fills
  * `coreWidthRatio` of the width; the track contact line sits on `baselineRatio`;
- * the core centre sits at `centerXRatio` (mirrored for facing 'right'), leaving the gun room.
+ * the core centre sits at `centerXRatio` for a gun pointing left (mirrored for a gun pointing right),
+ * leaving the gun its room.
  */
 export const HERO_FRAME = Object.freeze({
   width: 1600,
@@ -83,9 +145,9 @@ export type HeroCardKind = 'roster' | 'rosterCompact' | 'galleryBrowse' | 'deplo
  * CSS container units, so any box size places the tank by these rules.
  *   nameBand: the band under the contact line that holds the name (never over the hull);
  *   coreShare / coreHeight: the tank's dense core as a share of the card width / art-box height;
- *   centerX: the core centre (mirrored for facing 'right'), leaving the gun its room;
+ *   centerX: the core centre for a gun pointing left (mirrored for a gun pointing right), leaving the gun its room;
  *   nameSize / minName: the display name (px); hollow: the variant suffix in tungsten outline;
- *   tier: the "Tier X" chip in the gun-side top corner.
+ *   tier: the "Tier X" chip in the bow-side top corner (the flag holds the rear-top corner).
  */
 export const HERO_CARD_LAYOUT = Object.freeze({
   roster: Object.freeze({ width: 156, height: 150, nameBand: 36, coreShare: 0.76, coreHeight: 0.80, centerX: 0.56, nameSize: 13.5, minName: 10.5, pad: 9, hollow: false, tier: true, tierSize: 8.5 }),
@@ -273,8 +335,14 @@ export interface HeroPlacementBox {
   readonly coreShare: number;
   readonly coreHeight: number;
   readonly centerX: number;
-  readonly facing?: HeroFacing;
+  /** The screen side the gun points to (the row's measured side; the policy's default when omitted). */
+  readonly gunSide?: HeroFacing;
   readonly sideMargin?: number;
+}
+
+/** A core-centre ratio written for a gun pointing left, mirrored for a gun pointing right. */
+export function heroCenterX(centerX: number, gunSide: HeroFacing = HERO_GUN_SIDE): number {
+  return gunSide === 'right' ? 1 - centerX : centerX;
 }
 
 /**
@@ -291,7 +359,7 @@ export function placeTank(bounds: HeroTankBounds, box: HeroPlacementBox): { k: n
     (box.artH * box.coreHeight) / bounds.ch,
     (box.w - 2 * margin) / fullW,
   );
-  const cx = ((box.facing ?? HERO_CAMERA.facing) === 'right' ? 1 - box.centerX : box.centerX) * box.w;
+  const cx = heroCenterX(box.centerX, box.gunSide) * box.w;
   let dx = cx - bounds.cx * k;
   dx = Math.min(dx, box.w - margin - bounds.fx1 * k);
   dx = Math.max(dx, margin - bounds.fx0 * k);
