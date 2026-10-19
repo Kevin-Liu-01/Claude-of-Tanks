@@ -8,9 +8,11 @@
 // AABB mudguard audit. Parts that never reach the largest part's component float; each island reports its clearance
 // to that component.
 //
-// Belly pits. Rays rise from below on a 40 mm grid between the track bands' inner faces. A cell whose first hit
-// stands BELLY_PIT_DEPTH_M above the lowest belly within BELLY_PIT_REACH_M both fore and aft of it, or that sees
-// through the hull with belly both sides, is a pit: an opening into the hull seen from under the tank.
+// Belly pits. Rays rise from below on a 40 mm grid between the track bands' inner faces, against the structural shell
+// only (hull and external-armour stock). A cell whose first hit stands BELLY_PIT_DEPTH_M above the lowest belly within
+// BELLY_PIT_REACH_M both fore and aft of it, or that sees through the shell with belly both sides, is a pit: an
+// opening into the hull seen from under the tank. A cell seeing through every hull part, with stock fore and aft of it,
+// is one too, whatever bounds it.
 //
 // Reads only. The census runs in Node on the factory's default high-quality build.
 import * as THREE from 'three';
@@ -297,6 +299,11 @@ export function floatingIslands(parts, tol = CONTACT_TOL_M, anchors = [() => tru
     const grown = parts[i].box.clone().expandByScalar(tol);
     for (let j = i + 1; j < parts.length; j++) {
       if (!grown.intersectsBox(parts[j].box)) continue;
+      // A wheel carries only what rides it (a hub cap, a bolt ring inside its bounds): a skirt brushing it still floats.
+      if (parts[i].gear !== parts[j].gear) {
+        const [wheel, other] = parts[i].gear ? [parts[i], parts[j]] : [parts[j], parts[i]];
+        if (!wheel.box.clone().expandByScalar(0.03).containsBox(other.box)) continue;
+      }
       if (partsTouch(parts[i], parts[j], tol)) { adjacency[i].push(j); adjacency[j].push(i); }
     }
   }
@@ -354,6 +361,7 @@ export function floatingIslands(parts, tol = CONTACT_TOL_M, anchors = [() => tru
 /** Openings into the hull seen from below, between the track bands' inner faces. */
 export function bellyPits(parts, trackInnerX, options = {}) {
   const step = options.step ?? BELLY_STEP_M, depth = options.depth ?? BELLY_PIT_DEPTH_M, reach = options.reach ?? BELLY_PIT_REACH_M;
+  const seeThroughOnly = options.seeThroughOnly === true;
   if (!trackInnerX) return [];
   // the fleet tub-wall standard stands 50 mm inside the band (leoHullV3 innerW); the lane beside it is sponson
   const half = trackInnerX - 0.06;
@@ -399,7 +407,7 @@ export function bellyPits(parts, trackInnerX, options = {}) {
       for (let n = k + 1; n <= Math.min(zs.length - 1, k + window); n++) right = Math.min(right, column[n]);
       if (!Number.isFinite(left) || !Number.isFinite(right)) continue;
       const rise = column[k] - Math.max(left, right);
-      if (rise > depth) pit[i][k] = Number.isFinite(column[k]) ? rise : Infinity;
+      if (seeThroughOnly ? !Number.isFinite(column[k]) : rise > depth) pit[i][k] = Number.isFinite(column[k]) ? rise : Infinity;
     }
   }
   const seen = xs.map(() => zs.map(() => false)), regions = [];
@@ -419,8 +427,8 @@ export function bellyPits(parts, trackInnerX, options = {}) {
     }
     const area = cells * step * step;
     if (area < BELLY_PIT_MIN_AREA_M2) continue;
-    regions.push({ x: [x0 - step / 2, x1 + step / 2], z: [za - step / 2, zb + step / 2], areaM2: area,
-      riseM: deepest, seeThroughCells: seeThrough });
+    regions.push({ kind: seeThroughOnly ? 'see-through' : 'rise', x: [x0 - step / 2, x1 + step / 2], z: [za - step / 2, zb + step / 2],
+      areaM2: area, riseM: deepest, seeThroughCells: seeThrough });
   }
   return regions;
 }
@@ -430,17 +438,29 @@ function gearAnchors(parts) {
   return parts.filter((part) => part.gear).map((gear) => (part) => part === gear);
 }
 
+/** Floating islands of one articulated body's stock, anchored as the census anchors them. */
+export function bodyIslands(parts, body) {
+  const own = parts.filter((part) => part.body === body);
+  const anchors = body === 'gun' ? [(part) => part.bucket === 'gun' || part.bucket.startsWith('gunBarrel'),
+    (part) => part.bucket !== 'gun' && !part.bucket.startsWith('gunBarrel')]
+    : body === 'hull' ? [(part) => !part.gear, ...gearAnchors(own)] : [() => true];
+  return own.length ? floatingIslands(own, CONTACT_TOL_M, anchors).map((island) => ({ body, ...island })) : [];
+}
+
+/** The hull's belly pits as the census reads them. */
+export function hullBellyPits(parts, trackInnerX) {
+  // Only the structural shell bounds an opening: stern stowage or a tow fitting hanging below an undercut is not a belly.
+  const shell = parts.filter((part) => part.body === 'hull' && !part.gear && part.source !== 'mudguard'
+    && (part.bucket === 'hull' || part.bucket === 'hullExternalArmor'));
+  // ... while a see-through cell (no stock at all over it, stock fore and aft) is an opening whatever bounds it.
+  return [...bellyPits(shell, trackInnerX),
+    ...bellyPits(parts.filter((part) => part.body === 'hull' && !part.gear), trackInnerX, { seeThroughOnly: true })];
+}
+
 /** One tank's census: each body's floating islands (tagged with the body) and the hull's belly pits. */
 export function hullContactCensus(id, options = {}) {
   const { parts, trackInnerX, hullScale, instanced } = collectStock(id, options);
-  const islands = [];
-  for (const body of ['hull', 'turret', 'gun']) {
-    const own = parts.filter((part) => part.body === body);
-    const anchors = body === 'gun' ? [(part) => part.bucket === 'gun' || part.bucket.startsWith('gunBarrel'),
-      (part) => part.bucket !== 'gun' && !part.bucket.startsWith('gunBarrel')]
-      : body === 'hull' ? [(part) => !part.gear, ...gearAnchors(own)] : [() => true];
-    if (own.length) for (const island of floatingIslands(own, CONTACT_TOL_M, anchors)) islands.push({ body, ...island });
-  }
-  const pits = bellyPits(parts.filter((part) => part.body === 'hull' && !part.gear), trackInnerX);
+  const islands = ['hull', 'turret', 'gun'].flatMap((body) => bodyIslands(parts, body));
+  const pits = hullBellyPits(parts, trackInnerX);
   return { id, parts: parts.length, instanced, trackInnerX, hullScale, islands, pits };
 }

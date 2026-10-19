@@ -3,7 +3,7 @@
 // rear flaps hung from the hull overhang, the KF51 EVO rear flaps hung from the fender plank.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { bellyPits, collectHullStock, floatingIslands, partsTouch, stockPart } from './hull-contact-census-lib.mjs';
+import { bodyIslands, collectHullStock, hullBellyPits, partsTouch, stockPart } from './hull-contact-census-lib.mjs';
 
 const at = (g, x, y, z, rx = 0) => g.rotateX(rx).translate(x, y, z);
 const box = (w, h, d, x, y, z, rx = 0) => stockPart('hull', at(new THREE.BoxGeometry(w, h, d), x, y, z, rx));
@@ -24,13 +24,13 @@ const inFlapEnvelope = (island) => Math.min(Math.abs(island.min[0]), Math.abs(is
 // KF51-U: the belly between the tub (ends z 1.50) and the nose fill (starts z 2.34) is closed.
 {
   const { parts, trackInnerX } = collectHullStock('kf51_u');
-  const pits = bellyPits(parts, trackInnerX).filter((pit) => pit.z[1] > 1.5 && pit.z[0] < 2.34);
+  const pits = hullBellyPits(parts, trackInnerX).filter((pit) => pit.z[1] > 1.5 && pit.z[0] < 2.34);
   assert.deepEqual(pits, [], 'kf51_u: no opening into the hull from below between the tub and the nose fill');
 }
 // Leopard 2A5M and KF51 EVO: no rear flap, hanger or mudguard plate floats.
 for (const id of ['leo2a5m', 'kf51_evo']) {
   const { parts } = collectHullStock(id);
-  const islands = floatingIslands(parts);
+  const islands = bodyIslands(parts, 'hull');
   assert.deepEqual(islands.filter((island) => island.flap || inFlapEnvelope(island))
     .map((island) => island.parts.map((part) => part.bucket)), [],
     `${id}: every flap, hanger and mudguard plate reaches the hull`);

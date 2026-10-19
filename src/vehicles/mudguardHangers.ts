@@ -35,6 +35,7 @@ const GRIP_M = 0.03;
 const TOUCH_M = 0.004;
 const STRAP_WIDTH_M = 0.05;
 const STATIONS = [0.22, 0.78] as const;
+const STATION_CANDIDATES = [0.22, 0.78, 0.1, 0.9, 0.35, 0.65, 0.5] as const;
 const CELL_M = 0.1;
 
 /** Triangles binned by their plan (x, z) cells, for vertical rays and footprint queries. */
@@ -42,7 +43,7 @@ class PlanGrid {
   private readonly cells = new Map<number, number[]>();
   private readonly soups: Float32Array[] = [];
   private key(i: number, k: number): number { return (i + 4096) * 8192 + (k + 4096); }
-  add(soup: Float32Array): void {
+  add(soup: Float32Array): number {
     const s = this.soups.push(soup) - 1, c = (v: number) => Math.floor(v / CELL_M);
     for (let o = 0; o < soup.length; o += 9) {
       const x0 = c(Math.min(soup[o], soup[o + 3], soup[o + 6])), x1 = c(Math.max(soup[o], soup[o + 3], soup[o + 6]));
@@ -54,13 +55,15 @@ class PlanGrid {
         list.push(s, o);
       }
     }
+    return s;
   }
-  /** Heights where the vertical line through (x, z) crosses a triangle, ascending. */
-  crossings(x: number, z: number): number[] {
+  /** Heights where the vertical line through (x, z) crosses a triangle (not of a skipped soup), ascending. */
+  crossings(x: number, z: number, skip?: ReadonlySet<number>): number[] {
     const list = this.cells.get(this.key(Math.floor(x / CELL_M), Math.floor(z / CELL_M)));
     const out: number[] = [];
     if (!list) return out;
     for (let n = 0; n < list.length; n += 2) {
+      if (skip?.has(list[n])) continue;
       const T = this.soups[list[n]], o = list[n + 1];
       const ax = T[o], az = T[o + 2], bx = T[o + 3], bz = T[o + 5], cx = T[o + 6], cz = T[o + 8];
       const d = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
@@ -72,7 +75,7 @@ class PlanGrid {
     return out.sort((a, b) => a - b);
   }
   /** Distance along a horizontal unit ray (dx, dz) from (x, y, z) to the first triangle within reach, or null. */
-  horizontal(x: number, y: number, z: number, dx: number, dz: number, reach: number): number | null {
+  horizontal(x: number, y: number, z: number, dx: number, dz: number, reach: number, skip?: ReadonlySet<number>): number | null {
     let best: number | null = null;
     const seen = new Set<number>();
     for (let t = 0; t <= reach + CELL_M; t += CELL_M * 0.5) {
@@ -80,7 +83,7 @@ class PlanGrid {
       if (!list) continue;
       for (let n = 0; n < list.length; n += 2) {
         const id = list[n] * 1e8 + list[n + 1];
-        if (seen.has(id)) continue;
+        if (seen.has(id) || skip?.has(list[n])) continue;
         seen.add(id);
         const T = this.soups[list[n]], o = list[n + 1];
         const e1x = T[o + 3] - T[o], e1y = T[o + 4] - T[o + 1], e1z = T[o + 5] - T[o + 2];
@@ -131,8 +134,8 @@ function soupOf(geometry: THREE.BufferGeometry, matrix?: THREE.Matrix4): Float32
 
 /**
  * Hangs every requested guard from the hull stock above it. `supports` are the hull rig's permanent parts in the hull
- * frame (no guards being hung, running gear, tracks or glass); `gear` is the hull rig's running-gear group, whose
- * meshes a strap may not cross; `addStrap` files each strap in its bucket as a guard part.
+ * frame (no running gear, tracks or glass); `hullG`'s running-gear meshes are what a strap may not cross; `addStrap`
+ * files each strap in its bucket as a guard part.
  */
 export function hangAuthoredMudguards(
   requests: readonly MudguardHangRequest[],
@@ -142,17 +145,14 @@ export function hangAuthoredMudguards(
 ): MudguardHangerReceipt[] {
   if (!requests.length) return [];
   const stock = new PlanGrid(), gear = new PlanGrid();
-  const hung = new Set(requests.map((request) => request.part));
-  const guardBoxes = requests.map((request) => {
-    if (!request.part.boundingBox) request.part.computeBoundingBox();
-    return request.part.boundingBox!.clone().expandByScalar(0.03);
-  });
-  for (const part of supports) {
-    if (hung.has(part)) continue;
+  // Every permanent hull part is stock, other hung guards included (a hem hangs from its hung board); each guard skips
+  // only itself and what it carries (below).
+  const stockIndex = new Map<THREE.BufferGeometry, number>(), stockBoxes: THREE.Box3[] = [];
+  for (const part of [...new Set([...supports, ...requests.map((request) => request.part)])]) {
     if (!part.boundingBox) part.computeBoundingBox();
-    // A small piece riding a hung guard (its painted strip, a bolt row) is the guard's, not stock to hang it from.
-    if (part.boundingBox && guardBoxes.some((box) => box.containsBox(part.boundingBox!))) continue;
-    stock.add(soupOf(part));
+    if (!part.boundingBox || part.boundingBox.isEmpty()) continue;
+    stockIndex.set(part, stock.add(soupOf(part)));
+    stockBoxes.push(part.boundingBox);
   }
   hullG.updateMatrixWorld(true);
   const toHull = new THREE.Matrix4().copy(hullG.matrixWorld).invert(), matrix = new THREE.Matrix4();
@@ -171,6 +171,19 @@ export function hangAuthoredMudguards(
   const receipts: MudguardHangerReceipt[] = [];
   for (const request of requests) {
     const position = request.part.getAttribute('position'), bounds = request.part.boundingBox!;
+    // What the guard carries is not stock to hang it from: a piece riding it (its painted strip, a bolt row) inside its
+    // bounds grown 30 mm, and a load resting on its top inside its plan (stowage on a fender board), whose plan the
+    // stations also keep clear of.
+    const own = stockIndex.get(request.part);
+    const skip = new Set<number>(own === undefined ? [] : [own]), loads: THREE.Box3[] = [];
+    const grown = bounds.clone().expandByScalar(0.03);
+    stockBoxes.forEach((box, index) => {
+      if (index === own) return;
+      const rests = box.min.y >= bounds.max.y - 0.03 && box.min.y <= bounds.max.y + 0.01
+        && box.min.x >= grown.min.x && box.max.x <= grown.max.x && box.min.z >= grown.min.z && box.max.z <= grown.max.z;
+      if (rests) loads.push(box);
+      if (rests || grown.containsBox(box)) skip.add(index);
+    });
     const alongX = bounds.max.x - bounds.min.x >= bounds.max.z - bounds.min.z;
     const band = Math.min(0.04, (bounds.max.y - bounds.min.y) * 0.3);
     const top: THREE.Vector3[] = [];
@@ -190,7 +203,17 @@ export function hangAuthoredMudguards(
     const edge = [...groups.values()].sort((p, q) => p.a - q.a);
     const a0 = edge[0].a, a1 = edge[edge.length - 1].a;
     const stations: MudguardHangerStation[] = [];
-    for (const t of STATIONS) {
+    // Two stations along the top edge, the first two candidates whose strap line stands clear of every load.
+    const underLoad = (t: number) => {
+      const a = a0 + (a1 - a0) * t, half = STRAP_WIDTH_M / 2;
+      return loads.some((box) => (alongX ? a + half >= box.min.x && a - half <= box.max.x : a + half >= box.min.z && a - half <= box.max.z));
+    };
+    const chosen: number[] = [];
+    for (const t of STATION_CANDIDATES) {
+      if (chosen.length === 2) break;
+      if (!underLoad(t) && chosen.every((u) => Math.abs(u - t) >= 0.25)) chosen.push(t);
+    }
+    for (const t of chosen.length === 2 ? chosen : STATIONS) {
       const a = a0 + (a1 - a0) * t;
       let i = 0;
       while (i < edge.length - 2 && edge[i + 1].a < a) i++;
@@ -199,7 +222,7 @@ export function hangAuthoredMudguards(
       const c0 = THREE.MathUtils.lerp(p.c0, q.c0, f), c1 = THREE.MathUtils.lerp(p.c1, q.c1, f), mid = (c0 + c1) / 2;
       // Over the guard's mid-thickness, or (when that line grazes a face edge) a quarter thickness toward the hull.
       const lineAt = (across: number) => {
-        const line = stock.crossings(alongX ? a : across, alongX ? across : a), above = line.filter((y) => y > topY - 0.001);
+        const line = stock.crossings(alongX ? a : across, alongX ? across : a, skip), above = line.filter((y) => y > topY - 0.001);
         return { across, line, above, stockY: above.length ? above[0] : null };
       };
       const towardHull = -Math.sign(mid) || -1;
@@ -217,7 +240,7 @@ export function hangAuthoredMudguards(
         // Nothing above: an arm from the top edge, inward across the guard toward the hull's centre line, into the
         // first stock beside it (a flap hung past the hull's end or outboard of its fender).
         const dir = towardHull, face = dir < 0 ? c0 : c1, armY = topY - GRIP_M / 2;
-        const reach = alongX ? stock.horizontal(a, armY, face, 0, dir, REACH_M) : stock.horizontal(face, armY, a, dir, 0, REACH_M);
+        const reach = alongX ? stock.horizontal(a, armY, face, 0, dir, REACH_M, skip) : stock.horizontal(face, armY, a, dir, 0, REACH_M, skip);
         if (reach === null) { stations.push({ x, z, topY, stockY, strap: false, reason: 'no-stock-above' }); continue; }
         if (reach <= TOUCH_M) { stations.push({ x, z, topY, stockY, strap: false, reason: 'touching' }); continue; }
         const end = face + dir * (reach + EMBED_M), centre = (mid + end) / 2, length = Math.abs(end - mid), height = GRIP_M;

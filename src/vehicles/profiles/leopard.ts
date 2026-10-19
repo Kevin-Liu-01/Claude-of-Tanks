@@ -11476,9 +11476,12 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
       P.add('hullDark', KIT.cylZ(0.028, 0.05, 8), s * 0.62, 1.06, 3.78);
       // rear mudflaps behind the sprocket wrap (far edge -3.74; flap plane
       // -3.79 clear) hung from the deck-band rear with a real hinge arm
-      P.hangMudguard('kf51u-rear-flap', 'hullRubber', box(0.44, 0.42, 0.028), s * 1.26, 0.72, -3.79);
+      P.addMudguard('kf51u-rear-flap', 'hullRubber', box(0.44, 0.42, 0.028), s * 1.26, 0.72, -3.79);
       P.add('hullDetail', box(0.44, 0.035, 0.05), s * 1.26, 0.945, -3.785);
-      P.add('hullDetail', box(0.05, 0.30, 0.05), s * 1.26, 1.075, -3.70);
+      // Owner 2026-10-19 ("the flaps often hang off many tanks"): the single post stopped 0.46 m under the deck
+      // overhang (1.685) and 35 mm forward of the clamp bar. Two posts rise from inside the clamp bar 20 mm into
+      // the overhang, 0.33 m behind the sprocket course.
+      for (const dx of [-0.15, 0.15]) P.add('hullDetail', box(0.04, 0.775, 0.04), s * 1.26 + dx, 1.3175, -3.775);
       // front mudguard wing + shortened flap (§B4: idler shoe orbit tops
       // 0.75 at z 3.79-3.81 — flap bottom 0.80 clears; wing rides above) +
       // connector strap back to the fore-fender end (floater law; strap

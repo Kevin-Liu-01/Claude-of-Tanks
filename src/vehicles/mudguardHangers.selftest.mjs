@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { hangAuthoredMudguards } from './mudguardHangers.ts';
-import { collectHullStock, floatingIslands } from '../../tools/hull-contact-census-lib.mjs';
+import { bodyIslands, collectHullStock } from '../../tools/hull-contact-census-lib.mjs';
 
 const hang = (guard, supports, gear = null) => {
   const hullG = new THREE.Group(), straps = [];
@@ -41,10 +41,11 @@ const flap = () => new THREE.BoxGeometry(0.6, 0.4, 0.04).translate(1.4, 0.8, -3.
   assert.equal(straps.length, 0, 'no strap crosses the running gear');
   assert.deepEqual(stations.map((s) => s.reason), ['running-gear', 'running-gear']);
 }
-// Built: the Merkava 4 and AMX-10P flaps the owner's sweep found floating are hung.
-for (const id of ['merkava4', 'amx10p']) {
+// Built: the flaps the owner's sweep found floating are hung (the owner named the Merkavas; the KF51-U's are hand-hung
+// on posts into its deck overhang).
+for (const id of ['merkava4', 'merkava1b', 'merkava2b', 'merkava3c', 'merkava3_baz', 'merkava4b', 'amx10p', 'kf51_u']) {
   const { parts } = collectHullStock(id);
-  assert.deepEqual(floatingIslands(parts).filter((island) => island.flap).map((island) => island.parts.map((p) => p.bucket)), [],
+  assert.deepEqual(bodyIslands(parts, 'hull').filter((island) => island.flap).map((island) => island.parts.map((p) => p.bucket)), [],
     `${id}: every flap reaches the hull`);
 }
-console.log('mudguardHangers.selftest: straps, arms, touching guards, the running-gear refusal and hung Merkava 4 / AMX-10P flaps pass');
+console.log('mudguardHangers.selftest: straps, arms, touching guards, the running-gear refusal and the hung Merkava, AMX-10P and KF51-U flaps pass');

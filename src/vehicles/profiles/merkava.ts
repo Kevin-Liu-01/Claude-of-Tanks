@@ -893,6 +893,15 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
             // the full-length rubber strip under the lip WAS the ruled dark hem
             // bar (61-76L across 6 m vs the ref's uniform 91-94 side) — deleted.
             if (!c.lipNoHem) P.hangMudguard('merkava-fender-hem', 'hullRubber', box(0.02, 0.10, z0 - z1 - 0.05), s * (fl.x - 0.012), fl.y - 0.06, (z0 + z1) / 2);
+            // Owner 2026-10-19 ("the flaps often hang off many tanks - check merkavas"): the 2B/2D skirt run (panels,
+            // hem, lip) hung 0.20 m under the fender plank with nothing between. c.lipHangerZ: flat steel hangers from
+            // the lip's centre line into the plank's, where the two overlap in plan, between the wheel stations.
+            if (c.lipHangerZ && c.fenderPlank && fl === c.fenderLip) {
+              const fp = c.fenderPlank, lo = Math.max(fl.x - fl.w, fp.x0), hi = Math.min(fl.x, fp.x1);
+              for (const hz of c.lipHangerZ) {
+                P.add('hullDetail', box(Math.min(0.02, hi - lo - 0.006), fp.y - fl.y, 0.12), s * (lo + hi) / 2, (fl.y + fp.y) / 2, hz);
+              }
+            }
             if (c.lipNoHem && fl === c.fenderLip) {
               // r8 housekeeping (critic r7: 1B rear-deck sub-55 census 3.3x ref —
               // the biggest class is the deck-to-lip shadow slot along both rear
@@ -917,7 +926,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
       for (const s2 of [-1, 1]) {
         const bz0 = Array.isArray(fb.z0) ? fb.z0[s2 < 0 ? 0 : 1] : fb.z0;
         const bx1 = Array.isArray(fb.x1) ? fb.x1[s2 < 0 ? 0 : 1] : fb.x1;
-        P.add('hull', box(bx1 - fb.x0, 0.05, bz0 - fb.z1), s2 * (fb.x0 + bx1) / 2, fb.y, (bz0 + fb.z1) / 2);
+        P.hangMudguard('merkava-front-board', 'hull', box(bx1 - fb.x0, 0.05, bz0 - fb.z1), s2 * (fb.x0 + bx1) / 2, fb.y, (bz0 + fb.z1) / 2);
         P.hangMudguard('merkava-bow-hem', 'hullRubber', box(bx1 - fb.x0 - 0.05, 0.14, 0.028), s2 * (fb.x0 + bx1) / 2, fb.y - 0.09, bz0 + 0.005, -0.25, 0, 0);
       }
     }
@@ -12523,6 +12532,8 @@ const MERKAVA_PROFILE_DATA = {
     podX: 0.62, podIn: -0.42, podY: 0.98, podSupport: true,
     fenderPlank: { x0: 1.40, x1: 1.80, z0: 2.94, z1: -4.02, y: 1.47 },
     fenderLip: { x: 1.84, w: 0.07, z0: 2.42, z1: -3.58, y: 1.22 },
+    // the skirt run hangs from the plank between the wheel stations (lipHangerZ, 2026-10-19)
+    lipHangerZ: [2.2, 1.32, 0.46, -0.40, -1.26, -2.12, -3.0],
     wheelZs: [1.75, 0.89, 0.03, -0.83, -1.69, -2.55],
     sprocket: { z: 2.52, y: 0.82, r: 0.29 }, idler: { z: -3.17, y: 0.70, r: 0.27 },
     runningGearRevision: 'terminal-course-reseat-r3',
@@ -12619,6 +12630,8 @@ const MERKAVA_PROFILE_DATA = {
     podX: 0.62, podIn: 0.0, podY: 0.98,
     fenderPlank: { x0: 1.40, x1: 1.80, z0: 2.94, z1: -4.00, y: 1.47 },
     fenderLip: { x: 1.84, w: 0.07, z0: 2.42, z1: -3.58, y: 1.22 },
+    // the skirt run hangs from the plank between the wheel stations (lipHangerZ, 2026-10-19)
+    lipHangerZ: [2.2, 1.32, 0.46, -0.40, -1.26, -2.12, -3.0],
     wheelZs: [1.75, 0.89, 0.03, -0.83, -1.69, -2.55],
     sprocket: { z: 2.52, y: 0.82, r: 0.29 }, idler: { z: -3.17, y: 0.70, r: 0.27 },
     runningGearRevision: 'terminal-course-reseat-r3',

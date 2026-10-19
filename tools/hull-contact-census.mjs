@@ -26,7 +26,7 @@ for (const id of ids) {
       + `[${f(island.min)} .. ${f(island.max)}] ${island.parts.map((p) => p.bucket).join(' ')}`);
   }
   for (const pit of row.pits) {
-    console.log(`   PIT x ${f(pit.x)} z ${f(pit.z)} area ${pit.areaM2.toFixed(2)} m2 rise ${pit.riseM.toFixed(2)} m see-through ${pit.seeThroughCells}`);
+    console.log(`   PIT ${pit.kind} x ${f(pit.x)} z ${f(pit.z)} area ${pit.areaM2.toFixed(2)} m2 rise ${pit.riseM.toFixed(2)} m see-through ${pit.seeThroughCells}`);
   }
   out.push(row);
 }
