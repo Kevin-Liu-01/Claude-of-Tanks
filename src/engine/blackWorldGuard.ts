@@ -26,7 +26,8 @@
  *    H1 re-assert state (the camera mask taken at reveal, scene visibility, no override, the canonical passes, the scene
  *    target's viewport, the battlefield and presentation roots, the live rare warm closed so its finally blocks run),
  *    H2 reallocate every composer target and reset the temporal histories, H3 MSAA off and (only when every CPU signal
- *    is healthy) the graphics-recovery preset, H4 (only then too) a context lose/restore through the renderer's recovery.
+ *    is healthy) the graphics-recovery preset, H4 (only then too) a context lose/restore through the renderer's recovery;
+ *    H3 waits for a black that has lasted a second, H4 three (a context restore blacks the frame for seconds itself).
  *    H1 and H2 change nothing on a healthy frame and only ever act on a frame that is already black.
  *
  * Installed on instances (post.render, post.sceneAA.render), never on a prototype; window.__COT_BLACK_GUARD.enabled is
@@ -58,6 +59,10 @@ export const FAILS_PER_STEP = 2;
 export const CPU_VERDICT_FRAMES = 4;
 /** One ladder per incident per this many ms. */
 export const LADDER_COOLDOWN_MS = 10_000;
+/** The device rungs wait for a black that has lasted: H3 (MSAA off, the recovery preset) and H4 (a context restore, which
+ * blacks the frame for seconds itself) never answer a transient black. */
+export const H3_AFTER_MS = 1000;
+export const H4_AFTER_MS = 3000;
 export const RECEIPT_RING = 8;
 /** Scene-pass draw calls under this are an empty scene pass. */
 export const MIN_SCENE_CALLS = 3;
@@ -780,7 +785,17 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     // non-finite value, which the histories' reset (H2) is the cure for
     const cpuHealthy = (cpuBits & CPU_DECISIVE) === 0 && incident.class !== 'nan-history';
     while (stepIndex < 4) {
-      const name = (['H1', 'H2', 'H3', 'H4'] as const)[stepIndex++];
+      const name = (['H1', 'H2', 'H3', 'H4'] as const)[stepIndex];
+      const age = t - incident.openedAtMs;
+      if ((name === 'H3' && age < H3_AFTER_MS) || (name === 'H4' && cpuHealthy && age < H4_AFTER_MS)) {
+        // too early for a device rung: the state again (invisible when healthy), the rung on a later failing verdict
+        incident.repeats = (incident.repeats ?? 0) + 1;
+        incident.lastStepAtMs = Math.round(t);
+        lastStep = 'H1';
+        try { healState(); } catch { /* the next verdict tries again */ }
+        return;
+      }
+      stepIndex++;
       if ((name === 'H4') && !cpuHealthy) {
         incident.steps.push({ step: 'H4', atMs: Math.round(t), note: incident.class === 'nan-history'
           ? 'skipped: a non-finite value a context restore cannot fix' : 'skipped: a CPU signal a context restore cannot fix' });

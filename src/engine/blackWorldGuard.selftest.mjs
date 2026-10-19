@@ -370,6 +370,20 @@ for (const [expected, healedBy, inject] of proofs) {
   assert.deepEqual(receipt.steps.map((s) => s.step), ['H1', 'H2', 'H3', 'H4']);
   assert.equal(h.rescues.count, 1, 'H3 takes the graphics-recovery preset on a CPU-healthy black');
   assert.equal(h.gpu.loseCalls, 1, 'H4 restores the context');
+  const at = (step) => receipt.steps.find((entry) => entry.step === step).atMs - receipt.openedAtMs;
+  assert.ok(at('H3') >= 1000 && at('H4') >= 3000, `the device rungs wait for a black that lasted (H3 +${at('H3')} ms, H4 +${at('H4')} ms)`);
+  h.guard.dispose();
+}
+
+{
+  // a transient GL-level black (1.5 s) never reaches the context restore
+  const h = createWorld();
+  h.frames(30);
+  h.frames(90, () => { h.gpu.glMasked = true; });
+  h.frames(60);
+  const [receipt] = h.guard.receipts;
+  assert.ok(!receipt.steps.some((entry) => entry.step === 'H4'), `no context restore for a 1.5 s black: ${receipt.steps.map((e) => e.step)}`);
+  assert.equal(h.gpu.loseCalls ?? 0, 0);
   assert.ok(h.rescues.cancelRare >= 1, 'H1 closes the live rare warm');
   h.guard.dispose();
 }
