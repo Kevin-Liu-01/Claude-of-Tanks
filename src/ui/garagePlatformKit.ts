@@ -54,7 +54,7 @@ export const GARAGE_PLATFORM_COLLARS: Readonly<Record<GarageVariant['architectur
   rail_roundhouse: { kind: 'brick-rail', body: 0x7a3e2e, accent: 0x7a7e82, plinth: 0x3a3634, drift: null, note: 'brick-faced collar with a circular running rail' },
   rain_canopy: { kind: 'grating-trench', body: 0x4a5048, accent: 0x2e3a3a, plinth: 0x6a6c64, drift: null, note: 'a steel-grating drainage trench holding water' },
   rock_cavern: { kind: 'melt-ring', body: 0x7e8488, accent: 0x464c50, plinth: 0x585e62, drift: null, note: 'heated melt ring with granite setts showing' },
-  recovery_yard: { kind: 'galvanised', body: 0x9a948c, accent: 0xa5603e, plinth: 0x8a6a54, drift: 0xb06a44, note: 'galvanised steel with red dust banked to windward' },
+  recovery_yard: { kind: 'galvanised', body: 0x8c8781, accent: 0xa5603e, plinth: 0x8a6a54, drift: 0xb06a44, note: 'dull galvanised steel, red dust climbing its face, a dust fillet at its foot' },
   factory_line: { kind: 'steel-plate', body: 0x4a4e52, accent: 0x5a6aa0, plinth: 0x3a3836, drift: null, note: 'heavy plate, heat-tinted edges, bolt heads, slag spatter' },
 });
 
@@ -152,14 +152,14 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
       // so the face reads as weathered metal rather than one flat band)
       const dusted = (a: number, y: number, amount: number): THREE.Color => {
         const windward = Math.max(0, Math.cos(a - wind));
-        const mottle = 0.94 + 0.12 * hash01(a * 17.3 + y * 5.1);
+        const mottle = 0.9 + 0.18 * hash01(a * 17.3 + y * 5.1);
         return sideTone.clone().multiplyScalar(mottle).lerp(dust, Math.min(0.85, amount * (0.55 + 0.45 * windward)));
       };
       const ym = 0.13;
       b.shadedQuad(at(sideR(yb), yb, a0), at(sideR(yb), yb, a1), at(sideR(ym), ym, a1), at(sideR(ym), ym, a0),
-        [dusted(a0, yb, 0.62), dusted(a1, yb, 0.62), dusted(a1, ym, 0.24), dusted(a0, ym, 0.24)], out);
+        [dusted(a0, yb, 0.8), dusted(a1, yb, 0.8), dusted(a1, ym, 0.36), dusted(a0, ym, 0.36)], out);
       b.shadedQuad(at(sideR(ym), ym, a0), at(sideR(ym), ym, a1), at(sideR(yt), yt, a1 + lean), at(sideR(yt), yt, a0 + lean),
-        [dusted(a0, ym, 0.24), dusted(a1, ym, 0.24), dusted(a1, yt, 0.04), dusted(a0, yt, 0.04)], out);
+        [dusted(a0, ym, 0.36), dusted(a1, ym, 0.36), dusted(a1, yt, 0.1), dusted(a0, yt, 0.1)], out);
     } else {
       b.polygon([at(sideR(yb), yb, a0), at(sideR(yb), yb, a1), at(sideR(yt), yt, a1 + lean), at(sideR(yt), yt, a0 + lean)], sideTone, out);
     }
@@ -223,26 +223,24 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
       }
     }
   }
-  // the drift: dust banked against the collar's foot, a mound with a scalloped, irregular edge that climbs the face to
-  // windward and thins to a dusting in the lee, its outer edge in the ground's own tone so it feathers into the yard
-  // instead of reading as a painted ring (the r9 blind critic: "a flat, untextured orange ring ... like plastic")
+  // the drift: a narrow dust fillet in the angle between the collar's foot and the yard, a little higher to windward,
+  // its outer edge in the ground's own shaded tone so it reads as the contact line rather than a band of its own (the r9
+  // blind critic: "a flat, untextured orange ring ... like plastic" against the textured ground; a wide vertex-coloured
+  // mound cannot carry the yard's grain, so it stays a fillet)
   if (dust) {
-    const groundTone = new THREE.Color(b.skin.ground).multiplyScalar(0.86);
-    const crestTone = dust.clone().lerp(new THREE.Color(0xffffff), 0.06);
+    const groundTone = new THREE.Color(b.skin.ground).multiplyScalar(0.62);
+    const crestTone = dust.clone().multiplyScalar(0.86);
     const scallop = (a: number): number => 0.5 + 0.5 * Math.sin(a * 7 + 1.3) * Math.sin(a * 3 - 0.4);
     const ring = (a: number): readonly [[number, number, number], [number, number, number], [number, number, number]] => {
       const windward = Math.max(0, Math.cos(a - wind));
       const edge = scallop(a);
-      const reach = 0.16 + 0.55 * windward * (0.7 + 0.6 * edge) + 0.05 * hash01(a * 31.7);
-      const crest = 0.012 + 0.1 * windward * (0.75 + 0.5 * edge);
-      return [at(sideR(crest) + 0.002, crest, a), at(sideR(0) + reach * 0.32, crest * 0.6, a), at(sideR(0) + reach, 0.004, a)];
+      const reach = 0.06 + 0.12 * windward * (0.7 + 0.6 * edge) + 0.02 * hash01(a * 31.7);
+      const crest = 0.018 + 0.05 * windward * (0.75 + 0.5 * edge);
+      return [at(sideR(crest) + 0.002, crest, a), at(sideR(0) + reach * 0.4, crest * 0.45, a), at(sideR(0) + reach, 0.004, a)];
     };
     const tones = (a: number): readonly [THREE.Color, THREE.Color, THREE.Color] => {
-      const windward = Math.max(0, Math.cos(a - wind));
-      const n = 0.93 + 0.12 * hash01(a * 13.1);
-      // in the lee the mound is a thin dusting: its crest leans toward the ground's tone too
-      return [crestTone.clone().multiplyScalar(n).lerp(groundTone, 0.35 * (1 - windward)),
-        dust.clone().multiplyScalar(n * 0.97).lerp(groundTone, 0.25 + 0.35 * (1 - windward)), groundTone];
+      const n = 0.92 + 0.14 * hash01(a * 13.1);
+      return [crestTone.clone().multiplyScalar(n), crestTone.clone().lerp(groundTone, 0.55).multiplyScalar(n), groundTone];
     };
     for (let s = 0; s < SEGMENTS; s += 1) {
       const a0 = (s / SEGMENTS) * Math.PI * 2, a1 = ((s + 1) / SEGMENTS) * Math.PI * 2;

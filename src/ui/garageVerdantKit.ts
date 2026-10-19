@@ -116,12 +116,21 @@ export function buildGarageVerdantKit(params: {
   // (garageAtmosphereKit.ts). The west wall keeps none: its slideshow, prints and station stay clear (the r9 blind critic
   // saw the first pass's shaft and motes "grey out half the image" of the one screen); the display placement receipt
   // checks every card against every display, banner and the slideshow.
-  const shaftProfile = [0.1, 0.55, 0.9, 1, 0.7, 0.25, 0] as const;
+  // Each beam is two crossed ribbons (one square to its lean, one along it), so it keeps its width from the orbit and
+  // the mezzanine views instead of thinning to a streak edge-on; the core peaks below full so the crossing stays soft.
+  const shaftProfile = [0.08, 0.5, 0.8, 0.86, 0.6, 0.22, 0] as const;
+  const beam = (top: readonly [number, number, number], bottom: readonly [number, number, number], width: number, phase: number) => {
+    const lean: readonly [number, number] = [bottom[0] - top[0], bottom[2] - top[2]];
+    return [
+      atmosphereShaft(top, bottom, width, phase, { profile: shaftProfile }),
+      atmosphereShaft(top, bottom, width, phase + 0.19, { profile: shaftProfile, facing: [-lean[1], lean[0]] }),
+    ];
+  };
   const atmosphereRecipe: GarageAtmosphereRecipe = {
     drift: 0.012,
     cards: [
-      atmosphereShaft([2.8, 9.7, -18.2], [4.0, 0.05, -15.0], 1.9, 0, { profile: shaftProfile }),
-      atmosphereShaft([5.6, 9.7, -16.4], [6.8, 0.05, -13.2], 2.0, 0.37, { profile: shaftProfile }),
+      ...beam([2.8, 9.7, -18.2], [4.0, 0.05, -15.0], 2.4, 0),
+      ...beam([5.6, 9.7, -16.4], [6.8, 0.05, -13.2], 2.5, 0.37),
     ],
   };
   const atmosphere = createGarageAtmosphere(atmosphereRecipe);
