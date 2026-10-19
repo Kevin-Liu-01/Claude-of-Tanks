@@ -1,6 +1,7 @@
 // garage r9 shared kit receipt: every kit piece builds headlessly, deterministically, inside its triangle budget, on the
-// ground, in every region skin; cranes are complete; the placement builds a Garage's minimum display set; the kit's
-// modules draw no random numbers and read no wall clock.
+// ground, in every region skin; cranes are complete; the placement builds a Garage's minimum display set; display hooks
+// stand down after their first render; a disposed pack releases its cascade materials; the kit's modules draw no random
+// numbers and read no wall clock.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -19,6 +20,9 @@ import { GARAGE_PLATFORM_COLLARS, buildGaragePlatformCollar, createGarageDeckPai
 import { buildGarageKitDressing, clearGarageKitCache } from './garageKitPlacement.ts';
 import { GARAGE_KIT_PLACEMENTS } from './garageKitPlacements.ts';
 import { GARAGE_SLIDESHOW_PLACEMENTS, garageSlideshowPose } from './garageSlideshowPlacement.ts';
+import {
+  buildGarageEnvironment, createGarageEnvironmentAssetLibrary, prepareGarageEnvironmentAssets,
+} from './garageEnvironmentKit.ts';
 
 const build = (architecture, body, seed = 7) => {
   const b = new KitBuilder(kitRandom(seed), GARAGE_KIT_SKINS[architecture]);
@@ -179,7 +183,35 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
     assert.ok(kit.slideshow, `${architecture}: the pack builds the slideshow frame`);
     for (let i = 0; i < 3; i += 1) assert.ok(Math.abs(kit.slideshow.position[i] - pose.position[i]) < 1e-6, `${architecture}: frame and screen share one pose`);
   }
+  // a display or decal mesh starts the atlas on its first render and then stands down: no work, no allocation per frame
+  for (const mesh of kit.meshes.filter((m) => /garage_kit_(displays|decals)/.test(m.name))) {
+    assert.notEqual(mesh.onBeforeRender, THREE.Object3D.prototype.onBeforeRender, `${architecture}: ${mesh.name} starts the atlas`);
+    mesh.onBeforeRender();
+    assert.equal(mesh.onBeforeRender, THREE.Object3D.prototype.onBeforeRender, `${architecture}: ${mesh.name} stands down after its first render`);
+  }
   for (const mesh of kit.meshes) { mesh.geometry.dispose(); }
+}
+
+// 6b. the pack hands every material it set up for the shadow cascades back when it is disposed (the engineering critic,
+// 2026-10-18: the kit's display material, and the pack's own, stayed registered after every switch)
+{
+  const registered = new Set();
+  const engineCtx = {
+    anisotropy: 4,
+    setupShadowMaterial(material) { registered.add(material); },
+    releaseShadowMaterial(material) { return registered.delete(material); },
+  };
+  const assets = createGarageEnvironmentAssetLibrary({});
+  const variant = GARAGE_VARIANTS.find((v) => v.architecture === 'naval_drydock');
+  await prepareGarageEnvironmentAssets(assets, variant);
+  clearGarageKitCache();
+  const pack = buildGarageEnvironment(engineCtx, assets, variant);
+  const display = [...registered].find((material) => material.name === 'garage:display-lit');
+  assert.ok(display, 'the kit display material joins the cascades');
+  assert.ok(registered.size >= 8, `the pack sets up its lit materials (${registered.size})`);
+  pack.dispose();
+  assert.equal(registered.size, 0, `the disposed pack left ${registered.size} materials on the cascades`);
+  assets.dispose();
 }
 
 // 7. determinism: no random numbers and no wall clock in the kit's geometry (the atmosphere's fallback clock and the

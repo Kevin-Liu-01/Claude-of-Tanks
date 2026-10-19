@@ -19,7 +19,9 @@ import {
   buildComputerStation, buildFabricBanner, buildFramedPrint, buildMetalPlate, buildMonitor, buildNameboard, buildNoticeBoard,
   buildPoster, buildPvcBanner, buildSlideshowFrame, type KitSlideshowMount,
 } from './garageDisplayKit.ts';
-import { createGarageDecalMaterial, createGarageDisplayMaterial, ensureGarageDisplayAtlas, garageDisplayRect } from './garageDisplayAtlas.ts';
+import {
+  createGarageDecalMaterial, createGarageDisplayMaterial, garageDisplayAtlasOnFirstRender, garageDisplayRect,
+} from './garageDisplayAtlas.ts';
 import { createGarageAtmosphere, type GarageAtmosphereRecipe } from './garageAtmosphereKit.ts';
 import { GARAGE_SLIDESHOW_PLACEMENTS } from './garageSlideshowPlacement.ts';
 
@@ -307,7 +309,7 @@ export function buildGarageKitDressing(params: {
       mesh.castShadow = false;
       mesh.matrixAutoUpdate = false;
       // the shared atlas loads on the first frame a display is drawn: after the Garage presents
-      mesh.onBeforeRender = () => { ensureGarageDisplayAtlas({ anisotropy: params.anisotropy }); };
+      mesh.onBeforeRender = garageDisplayAtlasOnFirstRender(params.anisotropy);
       meshes.push(mesh);
       materials.push(material);
     }
@@ -327,7 +329,7 @@ export function buildGarageKitDressing(params: {
       mesh.castShadow = false;
       mesh.receiveShadow = false;
       mesh.matrixAutoUpdate = false;
-      mesh.onBeforeRender = () => { ensureGarageDisplayAtlas({ anisotropy: params.anisotropy }); };
+      mesh.onBeforeRender = garageDisplayAtlasOnFirstRender(params.anisotropy);
       meshes.push(mesh);
       materials.push(material);
     }

@@ -69,6 +69,7 @@ import { arcWeight, GarageSkylineEmitter, type GarageSkyline } from './garageSky
 interface GarageEnvironmentEngineContext {
   anisotropy?: number;
   setupShadowMaterial?(material: THREE.Material, extraHook?: THREE.Material['onBeforeCompile'] | null): void;
+  releaseShadowMaterial?(material: THREE.Material): unknown;
 }
 
 interface GarageEnvironmentStats {
@@ -585,10 +586,11 @@ function createBackdropGeometry(
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     });
   })();
+  // (one lookup for every sample, not a closure per sample: the bands are built cold, on the switch path)
+  const at = (cx: number, cy: number): number => noiseGrid[Math.min(15, cy) * 128 + (cx % 128)];
   const noise = (u: number, v: number): number => {
     const x = (((u % 1) + 1) % 1) * 128, y = THREE.MathUtils.clamp(v, 0, 0.999) * 15;
     const ix = Math.floor(x), iy = Math.floor(y), tx = x - ix, ty = y - iy;
-    const at = (cx: number, cy: number): number => noiseGrid[Math.min(15, cy) * 128 + (cx % 128)];
     const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
     return (at(ix, iy) * (1 - sx) + at(ix + 1, iy) * sx) * (1 - sy) + (at(ix, iy + 1) * (1 - sx) + at(ix + 1, iy + 1) * sx) * sy;
   };
@@ -1220,6 +1222,20 @@ export function buildGarageEnvironment(
   requestRender: () => void = () => {},
   options: Readonly<{ kitPlacement?: GarageKitPlacement | null }> = {},
 ): GarageEnvironmentBuild {
+  // Every material this pack hands the shadow cascades is handed back when the pack is disposed (the engineering
+  // critic, 2026-10-18: the cascade registry grew on every switch, though only two packs stay cached). The pack's
+  // builders all set up through this context, so they need no change.
+  const shadowMaterials: THREE.Material[] = [];
+  const engine = engineCtx;
+  if (engine.setupShadowMaterial) {
+    engineCtx = {
+      anisotropy: engine.anisotropy,
+      setupShadowMaterial(material, extraHook) {
+        engine.setupShadowMaterial!(material, extraHook);
+        shadowMaterials.push(material);
+      },
+    };
+  }
   const recipe = GARAGE_ENVIRONMENT_RECIPES[variant.architecture]
     || GARAGE_ENVIRONMENT_RECIPES.field_shed;
   const patch = getGarageTerrainPatch(variant.mapId);
@@ -2660,6 +2676,8 @@ export function buildGarageEnvironment(
       handles.length = 0;
       for (const resource of disposables) resource.dispose();
       disposables.length = 0;
+      for (const material of shadowMaterials) engine.releaseShadowMaterial?.(material);
+      shadowMaterials.length = 0;
       root.clear();
     },
   };

@@ -5,7 +5,7 @@ import { KitBuilder, kitRandom, type KitBuildResult } from './garageKitGeometry.
 import { garageKitSkin } from './garageKitSkins.ts';
 import { buildComputerStation, buildFabricBanner, buildFramedPrint } from './garageDisplayKit.ts';
 import { buildGarageProp } from './garagePropKit.ts';
-import { createGarageDecalMaterial, createGarageDisplayMaterial, ensureGarageDisplayAtlas } from './garageDisplayAtlas.ts';
+import { createGarageDecalMaterial, createGarageDisplayMaterial, garageDisplayAtlasOnFirstRender } from './garageDisplayAtlas.ts';
 import { atmosphereMotes, atmosphereShaft, createGarageAtmosphere } from './garageAtmosphereKit.ts';
 
 /**
@@ -96,7 +96,7 @@ export function buildGarageVerdantKit(params: {
     materials.push(material);
     const mesh = new THREE.Mesh(displayGeometry, material);
     mesh.receiveShadow = true;
-    mesh.onBeforeRender = () => { ensureGarageDisplayAtlas({ anisotropy: params.anisotropy }); };
+    mesh.onBeforeRender = garageDisplayAtlasOnFirstRender(params.anisotropy);
     finish(mesh, 'garage_verdant_kit_displays');
   }
   const decalGeometry = decals.length ? mergeGeometries(decals, false) : null;

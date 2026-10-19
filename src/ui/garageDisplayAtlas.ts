@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 
+import { getDeviceTier } from '../engine/quality.ts';
 import { GARAGE_DISPLAY_ATLAS_MANIFEST } from './garageDisplayAtlas.generated.ts';
 import type { KitAtlasRect } from './garageKitGeometry.ts';
 
@@ -39,11 +40,22 @@ export function garageDisplayRectNames(group: string): readonly string[] {
   return Object.keys(rects).filter((name) => name.startsWith(`${group}.`)).sort();
 }
 
+/**
+ * The rect group of the battlefield stills. Never spell a still's name as a template that opens on the group
+ * (`media.${id}`): the i18n page scan reads such a template as a key pattern over the catalog's own `media.*` namespace
+ * and keeps every site caption in the game's boot catalogs (the engineering critic, 2026-10-18: +15.5 KB, check:bundle
+ * over budget). The display atlas receipt holds the kit's sources to that.
+ */
+const STILL_GROUP = 'media';
+const stillRect = (key: string): string => `${STILL_GROUP}.${key}`;
+
 /** The Garage's own still (its map's, or its sister map's). */
 export function garageMediaRectName(mapId: string): string {
-  if (rects[`media.${mapId}`]) return `media.${mapId}`;
+  const own = stillRect(mapId);
+  if (rects[own]) return own;
   const alias = (manifest.aliases as Readonly<Record<string, string>>)[mapId];
-  return alias && rects[`media.${alias}`] ? `media.${alias}` : 'media.verdant';
+  const sister = alias ? stillRect(alias) : '';
+  return alias && rects[sister] ? sister : stillRect('verdant');
 }
 
 let status: AtlasStatus = 'idle';
@@ -110,11 +122,17 @@ function loadTexture(url: string, options: { width: number; height: number }): P
   return new THREE.TextureLoader().loadAsync(url).then(finish);
 }
 
+/** A phone decodes the atlas at half size (the device tier the engine measured at boot). */
+export function garageDisplayAtlasLowTier(): boolean {
+  return getDeviceTier() === 'mobile';
+}
+
 /**
  * Start the one atlas load (idempotent). Called from a display's first render, never on the boot or switch path; a
- * headless build (no document) never loads it. `lowTier` decodes it at half size (2.8 MB instead of 11.2 MB).
+ * headless build (no document) never loads it. `lowTier` (by default a phone) decodes it at half size (2.8 MB instead of
+ * 11.2 MB resident).
  */
-export function ensureGarageDisplayAtlas({ anisotropy = 4, lowTier = false }: { anisotropy?: number; lowTier?: boolean } = {}): void {
+export function ensureGarageDisplayAtlas({ anisotropy = 4, lowTier = garageDisplayAtlasLowTier() }: { anisotropy?: number; lowTier?: boolean } = {}): void {
   if (status !== 'idle' || typeof document === 'undefined') return;
   status = 'loading';
   const scale = lowTier ? 0.5 : 1;
@@ -134,6 +152,21 @@ export function ensureGarageDisplayAtlas({ anisotropy = 4, lowTier = false }: { 
   }).catch(() => {
     status = 'failed';
   });
+}
+
+const standDown = THREE.Object3D.prototype.onBeforeRender;
+/**
+ * A display mesh's onBeforeRender: its first render starts the one atlas load, then the hook stands itself down, so a
+ * display does no work and allocates nothing on later frames (AGENTS.md: no per-frame allocation in hot loops; the
+ * engineering critic, 2026-10-18: seven Verdant hooks built an options object every frame, forever). One options object
+ * is made per hook, here.
+ */
+export function garageDisplayAtlasOnFirstRender(anisotropy = 4): (this: THREE.Object3D) => void {
+  const options = { anisotropy, lowTier: garageDisplayAtlasLowTier() };
+  return function startGarageDisplayAtlas(this: THREE.Object3D): void {
+    ensureGarageDisplayAtlas(options);
+    this.onBeforeRender = standDown;
+  };
 }
 
 /** The DISPLAY-LIT material for one pack (joins the shared cascade setup through `setup`). */
