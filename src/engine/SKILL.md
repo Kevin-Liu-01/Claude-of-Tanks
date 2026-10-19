@@ -42,7 +42,12 @@ presentation/shadow-only routing for authored proxy casters;
 `phaseSceneResidency.ts` detaches mutually exclusive Garage and battlefield
 roots while retaining their exact reusable objects;
 `phaseGpuResidency.ts` owns renewable WebGL suspension and covered restoration;
-`resourceLifetime.ts` owns phase/cache disposal. Inactive retained phases may
+`resourceLifetime.ts` owns phase/cache disposal. `blackWorldGuard.ts` (lazy; armed
+under the covered solo and network entries by `blackWorldGuardInstall.ts`) wraps
+`post.render` and `sceneAA.render` on their instances, probes the resolved scene
+every 12 frames and heals a black world (receipts in `window.__GL_DIAG.blackWorld`,
+telemetry `render-black-world:<class>:<step>`); `postLazyPasses.ts` is the post
+chain's demand-loaded half (SMAA and the first-frame warm). Inactive retained phases may
 release geometry buffers and textures, but preserve compiled materials and
 restore through a covered real render rather than isolated `compileAsync`;
 `cameraRig.ts` owns player/cinematic poses; settled showroom framing is pumped
@@ -87,6 +92,11 @@ GTAO/post composition before changing quality or refresh policy.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
+A warm that runs in a revealed battle (the deferred rare warm) restores every
+visibility, layer, cascade fit and pass flag before each yield: the frames
+between its steps are the player's (black-screen-228). A lazy module must not
+import a module the game entry carries (it splits that module into its own boot
+chunk): pass ports instead.
 Garage and battle have different active worlds/lights. A lower draw count is
 not a win if it causes first-use shader or transition spikes. Passive Garage
 dwell must not construct a battlefield or retain resources without a ceiling.

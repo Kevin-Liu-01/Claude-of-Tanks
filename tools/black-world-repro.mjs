@@ -638,6 +638,15 @@ function injectOnce(spec) {
     }
     else if (kind === 'override') { const m = findMaterial().clone(); m.colorWrite = false; S.overrideMaterial = m; }
     else if (kind === 'passes') P.sceneAA.enabled = false;
+    else if (kind === 'control') C.layers.mask = 1 << 30; // inv-repro's positive control: the camera sees the late-FX layer only
+    else if (kind === 'emptypass' && !R.__bwrEmptyPass) {
+      // the scene pass lands nothing while every CPU signal stays healthy (a GL-level loss of every world draw): three's
+      // render into the scene target returns before drawing for the fault's seconds
+      const render = R.render;
+      R.__bwrEmptyPass = render;
+      R.render = function (sceneArg, cameraArg) { if (R.getRenderTarget() === P.sceneAA.sceneTarget) return; return render.call(this, sceneArg, cameraArg); };
+      setTimeout(() => { R.render = render; delete R.__bwrEmptyPass; }, Math.max(1, seconds || 3) * 1000);
+    }
     else if (kind === 'viewport1') {
       // a 1 x 1 layout for ~120 ms (a window restore, Stage Manager): the container and the window report it, the layout
       // events fire, then the real size comes back
@@ -668,7 +677,7 @@ function injectOnce(spec) {
   };
   const injectAt = performance.now();
   const error = apply();
-  if (persist) {
+  if (persist && kind !== 'emptypass') {
     const until = injectAt + seconds * 1000;
     const loop = () => { if (performance.now() < until) { apply(); requestAnimationFrame(loop); } };
     requestAnimationFrame(loop);
@@ -1409,7 +1418,7 @@ try {
           log(`  samplerscan: ${row.samplerScan.scanned} programs, ${row.samplerScan.conflicts.length} with mixed-type samplers on one unit: ${JSON.stringify(row.samplerScan.conflicts.slice(0, 8))}`);
           writeFileSync(path.join(out, `${label}-samplerscan.json`), `${JSON.stringify(row.samplerScan, null, 1)}\n`);
           row.action = 'samplerscan';
-        } else if (step.action === 'inject' && /^(layers|roots|override|passes|viewport1|nancloud|nanscene|persist:)/.test(step.value)) {
+        } else if (step.action === 'inject' && /^(layers|roots|override|passes|control|viewport1|nancloud|nanscene|persist:)/.test(step.value)) {
           // (the fix lane) a fault applied once (or every frame for its seconds); the black-world guard must find and heal it
           row.inject = await page.evaluate(injectOnce, step.value);
           row.action = `inject-${step.value.replaceAll(':', '-')}`;
@@ -1457,6 +1466,8 @@ try {
             player: D.game?.player?.specId ?? null } : null;
         }).catch(() => null);
         log(`${label}: in battle after ${((row.entryMs ?? 0) / 1000).toFixed(1)} s ${JSON.stringify(row.entry)}`);
+        const incidentsAtStart = step.action === 'inject' ? null
+          : await page.evaluate(() => (window.__GL_DIAG?.blackWorld ?? []).length).catch(() => null);
         const w = await sampleWindow(page, label, { healthyDiag: r === 0 && step.action !== 'inject', inject: step.action === 'inject' });
         if (step.action === 'inject') {
           row.guardHeal = await page.evaluate(guardReceiptsSince).catch((e) => ({ error: String(e) }));
@@ -1472,10 +1483,13 @@ try {
         row.guard = await page.evaluate(() => {
           const g = window.__COT_BLACK_GUARD;
           const ring = window.__GL_DIAG?.blackWorld ?? [];
-          return { installed: !!g, stats: g ? g.stats() : null, incidents: ring.length,
+          return { installed: !!g, stats: g ? g.stats() : null, total: ring.length, incidents: ring.length,
             receipts: ring.slice(-4).map((r) => ({ class: r.class, healedBy: r.healedBy, steps: r.steps.map((x) => x.step), healMs: r.healMs,
               sinceRevealMs: r.sinceRevealMs, cpu: r.cpu, probe: r.probe, roots: r.roots, target: r.target, gl: r.gl, state: r.state, warm: r.warm })) };
         }).catch(() => null);
+        // a natural row counts only the receipts opened while it ran (a session's earlier injections are not its own)
+        if (row.guard && incidentsAtStart !== null) row.guard.incidents = Math.max(0, row.guard.total - incidentsAtStart);
+        if (row.guard && step.action === 'inject') row.guard.incidents = 0;
         if (row.guard?.incidents && step.action !== 'inject') log(`  GUARD INCIDENTS on a natural run: ${JSON.stringify(row.guard.receipts.map((r) => [r.class, r.healedBy]))}`);
         if (realEsc && row.escape) log(`  real Esc: ${JSON.stringify(row.escape)}`);
         row.verdict = w.blackCount ? 'BLACK-WORLD' : w.suspectCount ? 'suspect' : 'ok';

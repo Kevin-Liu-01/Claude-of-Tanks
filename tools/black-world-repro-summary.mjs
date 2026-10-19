@@ -66,10 +66,13 @@ export function summarizeParts(dirs) {
     const chrome = `${summary.chrome ?? 'puppeteer'}${summary.preset && summary.preset !== 'auto' ? ` ${summary.preset}` : ''}`;
     const scenario = `${summary.scenario}${summary.plain ? '+plain' : ''}${summary.drive ? '+drive' : ''}${summary.realEsc ? '+realesc' : ''}`
       + `${summary.realFocus ? '+realfocus' : ''}${summary.awayDuringLoadS ? `+away${summary.awayDuringLoadS}s` : ''}`;
+    // receipts the part's injected faults opened (a session's natural rows recorded before per-row counts carry them)
+    let injectedSoFar = 0;
     for (const run of summary.runs) {
       const detail = reports.get(run.label) ?? {};
       if (String(run.action ?? '').startsWith('inject-')) {
         const heal = detail.guardHeal ?? run.guardHeal ?? null;
+        injectedSoFar += heal?.receipts?.length ?? 0;
         const first = heal?.receipts?.[0] ?? null;
         injections.push({ part: path.basename(dir), map: run.map, fault: String(run.action).slice('inject-'.length),
           class: first?.class ?? null, healedBy: first?.healedBy ?? null, rungs: first?.steps ?? [], repeats: first?.repeats ?? 0,
@@ -95,9 +98,11 @@ export function summarizeParts(dirs) {
       const first = frames.find((frame) => frameIsBlack(frame, zeroFrac));
       if (first) row.firstAt.push(first.at);
       const guard = run.guard ?? detail.guard ?? null;
-      if (guard?.incidents) {
-        row.incidents += guard.incidents;
-        for (const receipt of guard.receipts ?? []) row.incidentClasses.push(`${receipt.class}:${receipt.healedBy}`);
+      // per-row counts (guard.total present) are the row's own; older rows held the page's running total
+      const own = guard ? (guard.total !== undefined ? guard.incidents : Math.max(0, (guard.incidents ?? 0) - injectedSoFar)) : 0;
+      if (own) {
+        row.incidents += own;
+        for (const receipt of (guard.receipts ?? []).slice(-own)) row.incidentClasses.push(`${receipt.class}:${receipt.healedBy}`);
       }
     }
   }
