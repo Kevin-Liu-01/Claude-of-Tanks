@@ -1,19 +1,32 @@
-// Tank hero cards, CPU part: waving-cloth flag layers (one per nation) and the
-// composed cards (roster, deploy, Gallery browse, end screen, OG) from a tank layer
-// rendered by tools/genHeroCards.mjs. No WebGL, no browser, no capture lock.
+// Tank hero cards, CPU part: waving-cloth flag layers (one per nation), the shipped encodes and
+// manifest rows, and composed cards and boards from tank layers rendered by tools/genHeroCards.mjs.
+// No WebGL, no browser, no capture lock. The numbers live in src/ui/heroCardPolicy.ts.
 // First-party tooling and generated images: Kevin B. Liu (NOTICE.md).
 //
-//   node tools/hero-cards-compose.mjs flags --codes=us,de,ru --out <dir>
-//   node tools/hero-cards-compose.mjs board --layers <dir> --flags <dir> --out <dir> [--font <ttf>]
+//   node tools/hero-cards-compose.mjs ship --layers <dir> [--ids=a,b | --plan | --all]
+//       encode the given ids' tank layers (and every stale flag layer) into public/icons/hero/ and
+//       write their hero-cards.json rows; unchanged rows and files stay byte-identical
+//   node tools/hero-cards-compose.mjs sheet --out <png> [--kind=roster] [--font <ttf>] [--data-font <ttf>]
+//       a contact sheet of every shipped card, composed from the shipped AVIF layers
+//   node tools/hero-cards-compose.mjs board --layers <dir> --out <dir> [--ids=a,b,c] [--strip=...]
+//       sample boards: every card size per id, a roster strip, the facing comparison
+//   node tools/hero-cards-compose.mjs flags --codes=us,de --out <dir>
 //
-// The flag art is the shipped flag-icons 4x3 SVG (src/ui/flags.ts); the cloth,
-// shading and feather are procedural and deterministic, so a flag layer changes
-// only when its SVG bytes or HERO_POLICY_VERSION change.
+// The flag art is the shipped flag-icons 4x3 SVG (src/ui/flags.ts); the cloth, shading and fly fade
+// are procedural and deterministic, so a flag layer changes only when its SVG bytes or the flag
+// policy change.
 
 import { createCanvas, loadImage, GlobalFonts } from '@napi-rs/canvas';
-import { mkdirSync, readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
-import { resolve, basename } from 'node:path';
-import { HERO_FLAG, HERO_FLAG_MASK, HERO_GROUND, HERO_GROUNDS, HERO_CARD_SIZES, HERO_RUNGS } from './hero-card-policy.mjs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import {
+  HERO_CAMERA, HERO_CARD_LAYOUT, HERO_ENCODE, HERO_FLAG_MASK, HERO_FRAME, HERO_GROUND,
+  HERO_POLICY_VERSION, HERO_RUNGS, flagMaskStops, heroFlagFiles, heroFlagPolicy, heroTankFiles, nameParts, placeTank,
+} from '../src/ui/heroCardPolicy.ts';
+import {
+  FLAG_SVG_DIR, HERO_DIR, HERO_MANIFEST_PATH, fleetIds, fleetRecords, flagInputs, flagPolicyKey, planHeroCards,
+  readHeroManifest, sha, tankInputs, tankPolicyKey,
+} from './hero-cards-plan.mjs';
 
 // ---------------------------------------------------------------------------
 // Flag art
@@ -57,10 +70,9 @@ function pathVertices(d) {
   return verts;
 }
 
-const FLAG_DIR = 'node_modules/flag-icons/flags/4x3';
 
 export async function flagImage(code, width, height) {
-  const svg = expandMarkers(readFileSync(resolve(FLAG_DIR, `${code}.svg`), 'utf8'))
+  const svg = expandMarkers(readFileSync(resolve(FLAG_SVG_DIR, `${code}.svg`), 'utf8'))
     .replace('<svg ', `<svg width="${width}" height="${height}" preserveAspectRatio="none" `);
   return loadImage(Buffer.from(svg));
 }
@@ -109,7 +121,7 @@ const hexRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
  * droops the fly and lifts crests; normals are analytic. `layout` 'reverse' samples the
  * art mirrored (the flag's reverse face); 'stream' bakes the old patch feather.
  */
-export async function renderFlagLayer(code, policy = HERO_FLAG, overrides = {}) {
+export async function renderFlagLayer(code, policy = heroFlagPolicy(), overrides = {}) {
   const p = { ...policy, ...overrides };
   const W = p.width, H = p.height;
   const FW = W * p.flagWidth;
@@ -262,24 +274,16 @@ export async function renderFlagLayer(code, policy = HERO_FLAG, overrides = {}) 
   return out;
 }
 
-/** The sample boards' alternative flag layouts (the shipped layer is HERO_FLAG as is). */
-export const FLAG_LAYOUTS = Object.freeze({
-  mirror: Object.freeze({}),
-  // The same obverse cloth for a right-facing card: hoist off the left edge, as in the owner's reference.
-  mirrorRight: Object.freeze({ hoistX: -0.06, flyFeather: 0.3 }),
-  reverse: Object.freeze({ layout: 'reverse', hoistX: -0.04, flagWidth: 0.80, topY: -0.06 }),
-  stream: Object.freeze({
-    layout: 'stream', hoistX: 0.36, topY: 0.035, flagWidth: 0.80, hoistFeather: 0.12, maxAlpha: 0.92,
-    feather: Object.freeze({ right: [0.62, 1.0], bottom: [0.48, 0.94] }),
-  }),
-});
+
+// ---------------------------------------------------------------------------
+// Masks and cards
 
 /**
- * Apply HERO_FLAG_MASK to a flag already drawn on `ctx` (w x h card box): an ellipse
- * anchored at the rear-top corner, opaque inside `inner`, smoothstep to clear at its
- * rim. The same stops drive the Garage's CSS mask-image (heroFlagMaskCss).
+ * Apply HERO_FLAG_MASK to a flag already drawn on `ctx` (w x h flag box): an ellipse anchored at
+ * the rear-top corner, opaque inside `inner`, smoothstep to clear at its rim. The same stops drive
+ * the runtime card's CSS mask-image (heroFlagMaskCss).
  */
-export function applyFlagMask(ctx, w, h, { facing = 'left', mask = HERO_FLAG_MASK, opacity = mask.opacity } = {}) {
+export function applyFlagMask(ctx, w, h, { facing = HERO_CAMERA.facing, mask = HERO_FLAG_MASK, opacity = mask.opacity } = {}) {
   const ax = (facing === 'right' ? 1 - mask.anchorX : mask.anchorX) * w;
   const ay = mask.anchorY * h;
   ctx.save();
@@ -293,29 +297,7 @@ export function applyFlagMask(ctx, w, h, { facing = 'left', mask = HERO_FLAG_MAS
   ctx.restore();
 }
 
-/** Mask stops: [t along the ellipse radius, alpha], a smoothstep from `inner` to the rim. */
-export function flagMaskStops(mask = HERO_FLAG_MASK) {
-  const stops = [[0, 1]];
-  for (let i = 0; i <= 8; i++) {
-    const t = mask.inner + (1 - mask.inner) * (i / 8);
-    const x = i / 8;
-    stops.push([Number(t.toFixed(4)), Number((1 - x * x * (3 - 2 * x)).toFixed(4))]);
-  }
-  return stops;
-}
-
-/** The Garage card's CSS for the same mask (the flag layer sits in a ::before). */
-export function heroFlagMaskCss(mask = HERO_FLAG_MASK, facing = 'left') {
-  const pct = (ratio) => Number((ratio * 100).toFixed(2));
-  const ax = pct(facing === 'right' ? 1 - mask.anchorX : mask.anchorX);
-  const stops = flagMaskStops(mask).map(([t, a]) => `rgba(0,0,0,${a}) ${(t * 100).toFixed(1)}%`).join(',');
-  return `radial-gradient(ellipse ${pct(mask.radiusX)}% ${pct(mask.radiusY)}% at ${ax}% ${pct(mask.anchorY)}%,${stops})`;
-}
-
-// ---------------------------------------------------------------------------
-// Cards
-
-function groundFill(ctx, w, h, ground = HERO_GROUND) {
+export function groundFill(ctx, w, h, ground = HERO_GROUND) {
   const grad = ctx.createLinearGradient(0, 0, 0, h);
   grad.addColorStop(0, ground.top);
   grad.addColorStop(0.55, ground.mid);
@@ -330,41 +312,24 @@ function groundFill(ctx, w, h, ground = HERO_GROUND) {
   ctx.fillRect(0, 0, w, h);
 }
 
-/** Split a display name into a solid part and a variant part (the last token) for the hollow treatment. */
-export function nameParts(name) {
-  const tokens = name.trim().split(/\s+/);
-  if (tokens.length < 2) return { solid: name, variant: '' };
-  return { solid: tokens.slice(0, -1).join(' '), variant: tokens[tokens.length - 1] };
-}
-
-function fitFont(ctx, text, family, weight, size, maxWidth, minSize) {
-  let s = size;
-  for (; s > minSize; s -= 0.5) {
-    ctx.font = `${weight} ${s}px "${family}"`;
-    if (ctx.measureText(text).width <= maxWidth) break;
-  }
-  ctx.font = `${weight} ${s}px "${family}"`;
-  return s;
-}
-
-/**
- * Card layouts (CSS px live in HERO_CARD_SIZES). coreShare: the tank's dense core as a share
- * of the card width; centerX: core centre (mirrored for facing 'right'), leaving the gun its
- * room; nameSize/minName: the display name; hollow: the variant suffix in tungsten outline.
- */
-const CARD_LAYOUT = Object.freeze({
-  roster: { coreShare: 0.74, coreHeight: 0.78, centerX: 0.56, nameSize: 14, minName: 10.5, pad: 9, hollow: false, tier: true },
-  rosterCompact: { coreShare: 0.78, coreHeight: 0.80, centerX: 0.55, nameSize: 10.5, minName: 8, pad: 6, hollow: false, tier: false },
-  galleryBrowse: { coreShare: 0.70, coreHeight: 0.76, centerX: 0.56, nameSize: 18, minName: 12, pad: 12, hollow: false, tier: true },
-  deploy: { coreShare: 0.66, coreHeight: 0.74, centerX: 0.56, nameSize: 30, minName: 20, pad: 16, hollow: true, tier: true },
-  endScreen: { coreShare: 0.64, coreHeight: 0.72, centerX: 0.56, nameSize: 50, minName: 32, pad: 24, hollow: true, tier: true },
-});
-
 const INK = '#F6F3EC';
 const TUNGSTEN = '#F0A030';
 
-/** Dense-core bounds of a transparent tank layer (portraitFraming's alpha quantiles, node side). */
-export function measureCore(image) {
+/** A tank layer's placement bounds (fractions of the layer width) from the renderer's meta. */
+export function boundsFromMeta(meta, layerWidth = HERO_FRAME.width) {
+  const c = meta.coreBounds, f = meta.fullBounds, W = layerWidth;
+  return { cx: (c.x0 + c.x1) / 2 / W, cw: (c.x1 - c.x0) / W, ch: (c.bottom - c.y0) / W, cb: c.bottom / W, fx0: f.x0 / W, fx1: f.x1 / W };
+}
+
+/** Manifest form of the bounds: [cx, cw, ch, cb, fx0, fx1], four decimals. */
+export const boundsArray = (b) => [b.cx, b.cw, b.ch, b.cb, b.fx0, b.fx1].map((v) => Number(v.toFixed(4)));
+export const boundsOf = ([cx, cw, ch, cb, fx0, fx1]) => ({ cx, cw, ch, cb, fx0, fx1 });
+
+/**
+ * Bounds measured from a transparent layer: portraitFraming's alpha-weighted quantiles for the dense
+ * core (blind to the barrel and whips) and every column with alpha > 8 for the whole silhouette.
+ */
+export function measureBounds(image) {
   const w = image.width, h = image.height;
   const c = createCanvas(w, h);
   const ctx = c.getContext('2d');
@@ -384,20 +349,18 @@ export function measureCore(image) {
     for (let i = 0; i < weights.length; i++) { acc += weights[i]; if (acc >= total * f) return i; }
     return weights.length - 1;
   };
-  const x0 = q(xs, 0.06), x1 = q(xs, 0.94), y0 = q(ys, 0.03), y1 = q(ys, 0.985);
-  // The complete silhouette (alpha > 8 in a column): the gun and the stowage decide the horizontal fit.
+  const x0 = q(xs, 0.06), x1 = q(xs, 0.94) + 1, y0 = q(ys, 0.03), bottom = q(ys, 0.985) + 1;
   let fx0 = w, fx1 = -1;
   for (let x = 0; x < w; x++) {
     let any = false;
-    for (let y = 0; y < h && !any; y++) any = px[(y * w + x) * 4 + 3] > 8 && y < y1 + 2;
+    for (let y = 0; y < h && !any; y++) any = px[(y * w + x) * 4 + 3] > 8;
     if (any) { if (x < fx0) fx0 = x; fx1 = x; }
   }
-  return { x0, x1, y0, bottom: y1 + 1, width: x1 - x0 + 1, height: y1 - y0 + 1, centerX: (x0 + x1 + 1) / 2,
-    full: { x0: fx0, x1: fx1 + 1 } };
+  return { cx: (x0 + x1) / 2 / w, cw: (x1 - x0) / w, ch: (bottom - y0) / w, cb: bottom / w, fx0: fx0 / w, fx1: (fx1 + 1) / w };
 }
 
 /** Draw the masked flag layer into a w x h box (cover, anchored at the rear-top corner). */
-export function drawFlag(ctx, flag, x, y, w, h, { facing = 'left', selected = false } = {}) {
+export function drawFlag(ctx, flag, x, y, w, h, { facing = HERO_CAMERA.facing, selected = false } = {}) {
   if (!flag) return;
   const box = createCanvas(Math.round(w), Math.round(h));
   const bctx = box.getContext('2d');
@@ -408,22 +371,23 @@ export function drawFlag(ctx, flag, x, y, w, h, { facing = 'left', selected = fa
   ctx.drawImage(box, x, y, w, h);
 }
 
-/** Place a tank layer so its dense core spans `coreShare` of `w`, its contact line on `baseline`. */
-export function drawTank(ctx, tank, core, { w, artH, baseline, coreShare, coreHeight, centerX, facing = 'left', sideMargin = 0.035 }) {
-  // The core fills its share unless the whole tank (muzzle to rear stowage) would leave the card: the gun is
-  // never cut. Thin whips may run off the top, as on the turntable.
-  const margin = w * sideMargin;
-  const fullW = core.full ? core.full.x1 - core.full.x0 : core.width;
-  const scale = Math.min((w * coreShare) / core.width, (artH * coreHeight) / core.height, (w - 2 * margin) / fullW);
-  const cx = (facing === 'right' ? 1 - centerX : centerX) * w;
-  let dx = cx - core.centerX * scale;
-  if (core.full) {
-    dx = Math.min(dx, w - margin - core.full.x1 * scale);
-    dx = Math.max(dx, margin - core.full.x0 * scale);
+/** Draw a tank layer placed by the policy's placeTank (the runtime card's CSS evaluates the same rule). */
+export function drawTank(ctx, tank, bounds, box) {
+  const placed = placeTank(bounds, box);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(tank, placed.dx, placed.dy, placed.k, placed.k * (tank.height / tank.width));
+  return placed;
+}
+
+function fitFont(ctx, text, family, weight, size, maxWidth, minSize) {
+  let s = size;
+  for (; s > minSize; s -= 0.5) {
+    ctx.font = `${weight} ${s}px "${family}"`;
+    if (ctx.measureText(text).width <= maxWidth) break;
   }
-  const dy = baseline - core.bottom * scale;
-  ctx.drawImage(tank, dx, dy, tank.width * scale, tank.height * scale);
-  return { scale, dx, dy };
+  ctx.font = `${weight} ${s}px "${family}"`;
+  return s;
 }
 
 function drawName(ctx, name, { x, y, size, minSize, maxWidth, font, hollow, scale }) {
@@ -440,19 +404,22 @@ function drawName(ctx, name, { x, y, size, minSize, maxWidth, font, hollow, scal
     ctx.strokeText(variant, x + sw, y);
     return;
   }
-  const s = fitFont(ctx, name, font, 600, size, maxWidth, minSize);
+  ctx.font = `600 ${size}px "${font}"`;
   ctx.fillStyle = INK;
-  if (ctx.measureText(name).width <= maxWidth || !variant) { ctx.fillText(name, x, y); return; }
-  // Two lines, never truncated.
-  const s2 = fitFont(ctx, solid, font, 600, Math.min(s, minSize * 1.1), maxWidth, minSize * 0.85);
-  ctx.fillText(solid, x, y - s2 * 1.04);
+  if (ctx.measureText(name).width <= maxWidth || !variant) {
+    fitFont(ctx, name, font, 600, size, maxWidth, minSize);
+    ctx.fillText(name, x, y);
+    return;
+  }
+  // Two lines, never truncated (the runtime card wraps the same way).
+  const lines = [solid, variant];
+  const s2 = Math.max(...lines.map((line) => fitFont(ctx, line, font, 600, size, maxWidth, minSize)));
+  ctx.font = `600 ${Math.min(size, s2)}px "${font}"`;
+  ctx.fillText(solid, x, y - Math.min(size, s2) * 1.05);
   ctx.fillText(variant, x, y);
 }
 
-/**
- * The tier badge, written "Tier X" (Premiere SPEC badge row: a lone "X" reads as a close button), in the data
- * face: the word in muted ink, the numeral in tungsten. The runtime card draws it as HTML in this slot.
- */
+/** The tier badge, written "Tier X" in the data face: the word in muted ink, the numeral in tungsten. */
 function drawTierChip(ctx, tier, { x, right, y, size, font, scale }) {
   ctx.font = `500 ${size}px "${font}"`;
   const word = 'Tier ';
@@ -475,23 +442,21 @@ function drawTierChip(ctx, tier, { x, right, y, size, font, scale }) {
 }
 
 /**
- * Compose one card at `scale` (device pixel ratio): ground, masked flag, tank, then the
- * name in the band under the contact line (never over the hull), the tier chip and the
+ * Compose one card at `scale` (device pixel ratio): ground, masked flag, tank, then the name in the
+ * band under the contact line (never over the hull), the tier chip in the gun-side top corner and the
  * frame. No eyebrow, no nation text: the flag is the nation.
  */
-export function composeCard(kind, { tank, core, flag, name, tier, font = 'Chakra Petch', dataFont = 'IBM Plex Mono', selected = false, facing = 'left', ground = HERO_GROUND }, scale = 2) {
-  const size = HERO_CARD_SIZES[kind];
-  const layout = CARD_LAYOUT[kind];
-  const w = size.width * scale, h = size.height * scale;
+export function composeCard(kind, { tank, bounds, flag, name, tier, font = 'Chakra Petch', dataFont = 'IBM Plex Mono', selected = false, facing = HERO_CAMERA.facing, ground = HERO_GROUND }, scale = 2) {
+  const L = HERO_CARD_LAYOUT[kind];
+  const w = L.width * scale, h = L.height * scale;
   const canvas = createCanvas(w, h);
   const ctx = canvas.getContext('2d');
   groundFill(ctx, w, h, ground);
-  const band = size.nameBandPx * scale;
-  drawFlag(ctx, flag, 0, 0, w, h - band * 0.35, { facing, selected });
+  const band = L.nameBand * scale;
+  drawFlag(ctx, flag, 0, 0, w, h - band * HERO_FLAG_MASK.bandInset, { facing, selected });
   const artH = h - band;
-  drawTank(ctx, tank, core || measureCore(tank), {
-    w, artH, baseline: artH + scale * 2, coreShare: layout.coreShare, coreHeight: layout.coreHeight,
-    centerX: layout.centerX, facing,
+  drawTank(ctx, tank, bounds, {
+    w, artH, baseline: artH + 2 * scale, coreShare: L.coreShare, coreHeight: L.coreHeight, centerX: L.centerX, facing,
   });
   // A quiet floor under the name so the type never fights the flag's last fade.
   const floor = ctx.createLinearGradient(0, h - band - 6 * scale, 0, h);
@@ -500,16 +465,16 @@ export function composeCard(kind, { tank, core, flag, name, tier, font = 'Chakra
   floor.addColorStop(1, 'rgba(11,14,17,0.8)');
   ctx.fillStyle = floor;
   ctx.fillRect(0, h - band - 6 * scale, w, band + 6 * scale);
-  const pad = layout.pad * scale;
+  const pad = L.pad * scale;
   drawName(ctx, name, {
-    x: pad, y: h - pad * 0.95, size: layout.nameSize * scale, minSize: layout.minName * scale,
-    maxWidth: w - pad * 2, font, hollow: layout.hollow, scale,
+    x: pad, y: h - pad * 0.95, size: L.nameSize * scale, minSize: L.minName * scale,
+    maxWidth: w - pad * 2, font, hollow: L.hollow, scale,
   });
-  if (layout.tier && tier) {
-    const ts = Math.round((kind === 'roster' ? 8.5 : kind === 'galleryBrowse' ? 10 : kind === 'deploy' ? 12 : 14) * scale);
-    // The badge takes the top corner on the gun side, clear of the flag (top-left for a left-facing card).
-    const chipX = facing === 'right' ? null : Math.round(pad * 0.7);
-    drawTierChip(ctx, tier, { x: chipX, right: w - Math.round(pad * 0.7), y: Math.round(pad * 0.7), size: ts, font: dataFont, scale });
+  if (L.tier && tier) {
+    const inset = Math.round(pad * 0.7);
+    drawTierChip(ctx, tier, {
+      x: facing === 'right' ? null : inset, right: w - inset, y: inset, size: Math.round(L.tierSize * scale), font: dataFont, scale,
+    });
   }
   ctx.lineWidth = selected ? 2 * scale : scale;
   ctx.strokeStyle = selected ? TUNGSTEN : 'rgba(246,243,236,0.13)';
@@ -519,32 +484,71 @@ export function composeCard(kind, { tank, core, flag, name, tier, font = 'Chakra
 }
 
 /**
- * 1200x630 social card: the tank right of centre with its gun into the open left, the flag
- * top-right behind its rear, the name large top-left (variant hollow), the bottom-left
- * lockup zone (360 x 120) kept clear.
+ * 1200x630 social card: the tank with its gun into the open side, the flag behind its rear, the name
+ * large in the top corner over the open side (variant hollow), the bottom lockup zone kept clear.
  */
-export function composeOg({ tank, core, flag, name, font = 'Chakra Petch', facing = 'left', ground = HERO_GROUND }) {
+export function composeOg({ tank, bounds, flag, name, font = 'Chakra Petch', facing = HERO_CAMERA.facing, ground = HERO_GROUND }) {
   const w = 1200, h = 630;
   const canvas = createCanvas(w, h);
   const ctx = canvas.getContext('2d');
   groundFill(ctx, w, h, ground);
-  drawFlag(ctx, flag, w * 0.18, 0, w * 0.82, h * 0.92, { facing });
-  drawTank(ctx, tank, core || measureCore(tank), {
-    w, artH: h * 0.80, baseline: h * 0.88, coreShare: 0.64, coreHeight: 0.70, centerX: 0.60, facing,
-  });
+  drawFlag(ctx, flag, facing === 'right' ? 0 : w * 0.18, 0, w * 0.82, h * 0.92, { facing });
+  drawTank(ctx, tank, bounds, { w, artH: h * 0.80, baseline: h * 0.88, coreShare: 0.64, coreHeight: 0.70, centerX: 0.60, facing });
   const { solid, variant } = nameParts(name);
   const pad = 64;
   const s = fitFont(ctx, solid, font, 600, 92, 460, 52);
+  const x = facing === 'right' ? w - pad - Math.max(ctx.measureText(solid).width, variant ? ctx.measureText(variant).width : 0) : pad;
   ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = INK;
-  ctx.fillText(solid, pad, 60 + s);
+  ctx.fillText(solid, x, 60 + s);
   if (variant) {
     ctx.lineWidth = Math.max(1.5, s / 26);
     ctx.lineJoin = 'round';
     ctx.strokeStyle = TUNGSTEN;
-    ctx.strokeText(variant, pad, 60 + s * 2.02);
+    ctx.strokeText(variant, x, 60 + s * 2.02);
   }
   return canvas;
+}
+
+// ---------------------------------------------------------------------------
+// Encodes
+
+/** A layer resampled to `width` (aspect kept), stepping down from the master for clean edges. */
+function rung(image, width) {
+  const height = Math.round(width * (image.height / image.width));
+  const c = createCanvas(width, height);
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(image, 0, 0, width, height);
+  return c;
+}
+
+/** @napi-rs/canvas's AVIF `quality` is a quantizer and toBuffer ignores options, so AVIF goes through encodeSync. */
+const encodeAvif = (canvas) => canvas.encodeSync('avif', { quality: HERO_ENCODE.avifQuantizer, alphaQuality: HERO_ENCODE.avifQuantizer, speed: HERO_ENCODE.avifSpeed });
+const encodeWebp = (canvas) => canvas.toBuffer('image/webp', HERO_ENCODE.webpQuality);
+
+/** [480 AVIF, 960 AVIF, 480 WebP] buffers of one layer (the order of heroTankFiles / heroFlagFiles). */
+function encodeLayer(image) {
+  const [small, large] = HERO_RUNGS.tank;
+  const big = rung(image, large);
+  const little = rung(big, small);
+  return [encodeAvif(little), encodeAvif(big), encodeWebp(little)];
+}
+
+function writeLayerFiles(names, buffers) {
+  mkdirSync(HERO_DIR, { recursive: true });
+  names.forEach((name, index) => writeFileSync(resolve(HERO_DIR, name), buffers[index]));
+  return { sha: buffers.map((buffer) => sha(buffer)), bytes: buffers.map((buffer) => buffer.length) };
+}
+
+/** The manifest as written: stable key order, one tank or flag per line, so a changed-only ship diffs by row. */
+export function formatHeroManifest(manifest) {
+  const row = (value) => JSON.stringify(value);
+  const block = (record) => Object.keys(record).sort().map((key) => `  ${JSON.stringify(key)}: ${row(record[key])}`).join(',\n');
+  return `{\n "schema": ${manifest.schema},\n "policyVersion": ${manifest.policyVersion},\n "facing": ${row(manifest.facing)},\n` +
+    ` "tankPolicyKey": ${row(manifest.tankPolicyKey)},\n "flagPolicyKey": ${row(manifest.flagPolicyKey)},\n` +
+    ` "flags": {\n${block(manifest.flags)}\n },\n "tanks": {\n${block(manifest.tanks)}\n }\n}\n`;
 }
 
 // ---------------------------------------------------------------------------
@@ -559,271 +563,192 @@ function opt(name, fallback = '') {
   return index >= 0 ? args[index + 1] : fallback;
 }
 
-function tankRecords() {
-  // Names, tiers and nations from the checked tank-asset manifest (read once; the
-  // shipped runtime reads specs instead).
-  const manifest = JSON.parse(readFileSync(resolve('public/icons/tank-assets.json'), 'utf8'));
-  return manifest.tanks;
-}
-
-async function flagLayerCached(code, dir, layout = 'mirror') {
-  const file = resolve(dir, layout === 'mirror' ? `flag-${code}.png` : `flag-${code}-${layout}.png`);
-  if (!existsSync(file)) {
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(file, (await renderFlagLayer(code, HERO_FLAG, FLAG_LAYOUTS[layout])).toBuffer('image/png'));
-  }
-  return loadImage(file);
-}
-
-function label(ctx, text, x, y, size = 22) {
-  ctx.font = `500 ${size}px "Chakra Petch"`;
-  ctx.fillStyle = '#9A9A95';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillText(text, x, y);
-}
-
-function sheetOf(width, height) {
-  const sheet = createCanvas(width, height);
-  const ctx = sheet.getContext('2d');
-  ctx.fillStyle = '#07090B';
-  ctx.fillRect(0, 0, width, height);
-  return { sheet, ctx };
-}
-
-/**
- * Shipped encodes. @napi-rs/canvas's AVIF `quality` is a quantizer (0 best, 100 worst; measured 2026-10-17:
- * 40 -> 8.9 KB, 30 -> 11.5 KB, 10 -> 15.9 KB for a 504 px layer) and toBuffer ignores the options, so the
- * encode goes through encodeSync. 30 is visually clean at 2x; WebP 82 is the fallback.
- */
-export const HERO_ENCODE = Object.freeze({ avifQuantizer: 30, avifSpeed: 5, webpQuality: 82 });
-function encodeReport(canvas) {
-  const avif = canvas.encodeSync('avif', { quality: HERO_ENCODE.avifQuantizer, alphaQuality: HERO_ENCODE.avifQuantizer, speed: HERO_ENCODE.avifSpeed });
-  const webp = canvas.toBuffer('image/webp', HERO_ENCODE.webpQuality);
-  return { avif, webp };
-}
-
-/**
- * Sample boards: the final compositions per tank, the angle study, the flag and ground study,
- * a Garage roster strip, the owner's reference beside ours, and the layer byte weights.
- *   --layers <dir>  tank layers (<id>__<pick>.png + tank-layers.json) from genHeroCards
- *   --pick az48     the job suffix the finals and the strip use
- *   --angles <id>   the id whose every layer job goes on the angle board
- */
-async function board() {
-  const layersDir = resolve(opt('layers'));
-  const out = resolve(opt('out'));
-  const flagsDir = resolve(opt('flags', resolve(out, 'flags')));
-  mkdirSync(out, { recursive: true });
+function registerFonts() {
   const font = opt('font');
   if (font) GlobalFonts.registerFromPath(font, 'Chakra Petch');
   const dataFont = opt('data-font');
   if (dataFont) GlobalFonts.registerFromPath(dataFont, 'IBM Plex Mono');
-  const records = tankRecords();
-  const pick = opt('pick', 'az48');
+}
+
+/**
+ * Ship: encode the requested ids' tank layers and every stale flag layer into public/icons/hero/ and
+ * record their manifest rows. Ids not requested keep their rows and files byte-identical. A layer
+ * rendered under another tank policy is refused, and a policy change ships only with --all.
+ */
+async function ship() {
+  const layersDir = resolve(opt('layers'));
+  const fleet = fleetRecords();
+  const plan = planHeroCards();
+  let ids;
+  if (opt('ids')) ids = opt('ids').split(',').map((id) => id.trim()).filter(Boolean);
+  else if (args.includes('--plan')) ids = plan.stale.map((row) => row.id);
+  else if (args.includes('--all')) ids = fleetIds();
+  else throw new Error('ship: pass --ids=<id,...>, --plan or --all');
+  const previous = readHeroManifest();
+  const policyKey = tankPolicyKey();
+  const policyMoved = !!previous && previous.tankPolicyKey !== policyKey;
+  if (policyMoved && !args.includes('--all')) throw new Error('ship: the tank policy moved; every card is stale and a full ship needs --all');
+  const manifest = {
+    schema: 1,
+    policyVersion: HERO_POLICY_VERSION,
+    facing: HERO_CAMERA.facing,
+    tankPolicyKey: policyKey,
+    flagPolicyKey: flagPolicyKey(),
+    flags: { ...(previous?.flags || {}) },
+    tanks: policyMoved ? {} : { ...(previous?.tanks || {}) },
+  };
+  const t0 = Date.now();
+  for (const { code, why } of plan.flags) {
+    const t = Date.now();
+    const layer = await renderFlagLayer(code);
+    const written = writeLayerFiles(heroFlagFiles(code), encodeLayer(layer));
+    manifest.flags[code] = { in: flagInputs(code), ...written };
+    console.log(`[hero-ship] flag ${code} (${why.join(', ')}) ${written.bytes.join('/')} B  ${Date.now() - t} ms`);
+  }
+  for (const id of ids) {
+    const record = fleet.get(id);
+    if (!record) throw new Error(`ship: ${id} is not in the fleet`);
+    const metaPath = resolve(layersDir, `${id}.json`);
+    if (!existsSync(metaPath)) throw new Error(`ship: no rendered layer for ${id} in ${layersDir}`);
+    const meta = JSON.parse(readFileSync(metaPath, 'utf8'));
+    if (meta.policyKey !== policyKey) throw new Error(`ship: ${id} was rendered under policy ${meta.policyKey || '-'}, not ${policyKey}`);
+    if (meta.facing !== HERO_CAMERA.facing) throw new Error(`ship: ${id} faces ${meta.facing}, the policy ${HERO_CAMERA.facing}`);
+    const layer = await loadImage(resolve(layersDir, `${id}.png`));
+    const written = writeLayerFiles(heroTankFiles(id), encodeLayer(layer));
+    manifest.tanks[id] = {
+      flag: record.flag,
+      in: tankInputs(record),
+      b: boundsArray(boundsFromMeta(meta, layer.width)),
+      ...written,
+      fill: meta.coreFill,
+      ...(meta.clipped ? { clipped: true } : {}),
+      ...(meta.whipsFaded ? { whips: true } : {}),
+      audit: [meta.geometryHash, meta.paintHash],
+    };
+    console.log(`[hero-ship] ${id} ${written.bytes.join('/')} B${meta.clipped ? '  CLIPPED' : ''}`);
+  }
+  for (const id of plan.extra) console.warn(`[hero-ship] row ${id} is no longer in the fleet (kept; remove it deliberately)`);
+  writeFileSync(HERO_MANIFEST_PATH, formatHeroManifest(manifest));
+  console.log(`[hero-ship] ${ids.length} tanks, ${plan.flags.length} flags in ${((Date.now() - t0) / 1000).toFixed(0)} s -> ${HERO_MANIFEST_PATH}`);
+}
+
+/** The fleet in the Garage's reading order: nation, then tier (high first), then name. */
+function sheetOrder(records) {
+  const tierValue = (numeral) => ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].indexOf(numeral) + 1;
+  return [...records].sort((a, b) => a.flag.localeCompare(b.flag) || tierValue(b.tierNumeral) - tierValue(a.tierNumeral) || a.name.localeCompare(b.name));
+}
+
+/** Contact sheet: every shipped card at one kind, composed from the shipped AVIF layers (what players load). */
+async function sheet() {
+  registerFonts();
+  const manifest = readHeroManifest();
+  if (!manifest) throw new Error('sheet: no hero manifest; ship first');
+  const kind = opt('kind', 'roster');
+  const scale = Number(opt('scale', '1'));
+  const L = HERO_CARD_LAYOUT[kind];
+  const records = sheetOrder([...fleetRecords().values()].filter((record) => manifest.tanks[record.id]));
+  const rungIndex = L.width * scale > 240 ? 1 : 0;
+  const flags = new Map();
+  const cols = Number(opt('cols', String(Math.min(16, Math.ceil(Math.sqrt(records.length * 1.6))))));
+  const gap = 8 * scale, head = 44 * scale;
+  const cw = L.width * scale, ch = L.height * scale;
+  const rows = Math.ceil(records.length / cols);
+  const canvas = createCanvas(cols * (cw + gap) + gap, head + rows * (ch + gap) + gap);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#07090B';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.font = `500 ${15 * scale}px "Chakra Petch"`;
+  ctx.fillStyle = '#9A9A95';
+  ctx.fillText(`Tank hero cards: ${records.length} of ${fleetIds().length} vehicles, ${kind} ${L.width}x${L.height} at ${scale}x, policy v${manifest.policyVersion}, facing ${manifest.facing}, from the shipped AVIF layers`, gap, 28 * scale);
+  for (const [index, record] of records.entries()) {
+    const row = manifest.tanks[record.id];
+    if (!flags.has(row.flag)) flags.set(row.flag, await loadImage(resolve(HERO_DIR, heroFlagFiles(row.flag)[rungIndex])));
+    const tank = await loadImage(resolve(HERO_DIR, heroTankFiles(record.id)[rungIndex]));
+    const card = composeCard(kind, {
+      tank, bounds: boundsOf(row.b), flag: flags.get(row.flag), name: record.shortName, tier: record.tierNumeral,
+      selected: index === 0, facing: manifest.facing,
+    }, scale);
+    ctx.drawImage(card, gap + (index % cols) * (cw + gap), head + Math.floor(index / cols) * (ch + gap));
+  }
+  const out = resolve(opt('out'));
+  writeFileSync(out, canvas.toBuffer('image/png'));
+  console.log(`[hero-sheet] ${records.length} cards -> ${out}`);
+}
+
+/**
+ * Sample boards from master layers (genHeroCards output): every card size per final id plus the OG
+ * card, and a roster strip at 2x and 1x.
+ */
+async function board() {
+  registerFonts();
+  const layersDir = resolve(opt('layers'));
+  const out = resolve(opt('out'));
+  mkdirSync(out, { recursive: true });
+  const fleet = fleetRecords();
   const ids = opt('ids', 'm1a2_abrams_sepv3,leo2a7v,t90m').split(',');
   const strip = opt('strip', '').split(',').filter(Boolean);
-  const angleId = opt('angles', ids[0]);
-  const reference = opt('reference');
-  const meta = existsSync(resolve(layersDir, 'tank-layers.json')) ? JSON.parse(readFileSync(resolve(layersDir, 'tank-layers.json'), 'utf8')) : {};
-  const weights = {};
-  const load = async (id, job = `${id}__${pick}`, layout = 'mirror') => {
-    const r = records[id];
-    const tank = await loadImage(resolve(layersDir, `${job}.png`));
-    const facingRight = meta[job]?.facing === 'right';
-    const flag = await flagLayerCached(r.countryCode, flagsDir, facingRight && layout === 'mirror' ? 'mirrorRight' : layout);
-    const core = measureCore(tank);
-    // The renderer's vehicle-only silhouette (measured without the shadow catcher) wins over the layer scan.
-    const fb = meta[job]?.fullBounds;
-    if (fb) core.full = { x0: fb.x0, x1: fb.x1 };
-    return { r, tank, core, flag, name: r.label.displayName, tier: r.tierNumeral, facing: meta[job]?.facing || 'left' };
+  const flags = new Map();
+  const load = async (id) => {
+    const record = fleet.get(id);
+    const meta = JSON.parse(readFileSync(resolve(layersDir, `${id}.json`), 'utf8'));
+    const tank = await loadImage(resolve(layersDir, `${id}.png`));
+    if (!flags.has(record.flag)) flags.set(record.flag, await renderFlagLayer(record.flag));
+    return { tank, bounds: boundsFromMeta(meta, tank.width), flag: flags.get(record.flag), name: record.shortName, tier: record.tierNumeral, facing: meta.facing };
   };
-
-  // 1. Final compositions, every size per tank.
+  const gap = 40;
   const kinds = ['endScreen', 'deploy', 'galleryBrowse', 'roster', 'rosterCompact'];
-  const finals = [];
+  const rowW = 2 * (HERO_CARD_LAYOUT.endScreen.width + HERO_CARD_LAYOUT.deploy.width + HERO_CARD_LAYOUT.galleryBrowse.width + HERO_CARD_LAYOUT.roster.width) + 5 * gap;
+  const rowH = 2 * HERO_CARD_LAYOUT.endScreen.height + gap + 315 + gap;
+  const canvas = createCanvas(rowW, ids.length * rowH + gap);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#07090B';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  let y = gap;
   for (const id of ids) {
     const card = await load(id);
-    const set = {};
-    for (const kind of kinds) {
-      set[kind] = composeCard(kind, { ...card, selected: kind === 'roster' }, 2);
-      writeFileSync(resolve(out, `${id}__${kind}@2x.png`), set[kind].toBuffer('image/png'));
-    }
-    set.rosterIdle = composeCard('roster', card, 2);
-    set.og = composeOg(card);
-    writeFileSync(resolve(out, `${id}__og.jpg`), set.og.toBuffer('image/jpeg', 86));
-    // Shipped layer weights: the transparent tank layer at each rung, the flag layer once per nation.
-    for (const width of HERO_RUNGS.tank) {
-      const height = Math.round(width / 1.6);
-      const c = createCanvas(width, height);
-      c.getContext('2d').drawImage(card.tank, 0, 0, width, height);
-      const { avif, webp } = encodeReport(c);
-      weights[`${id}:tank@${width}`] = { avif: avif.length, webp: webp.length };
-      writeFileSync(resolve(out, `${id}__tank-${width}.avif`), avif);
-      writeFileSync(resolve(out, `${id}__tank-${width}.webp`), webp);
-    }
-    for (const width of HERO_RUNGS.flag) {
-      const height = Math.round(width / 1.6);
-      const c = createCanvas(width, height);
-      c.getContext('2d').drawImage(card.flag, 0, 0, width, height);
-      const { avif, webp } = encodeReport(c);
-      weights[`${card.r.countryCode}:flag@${width}`] = { avif: avif.length, webp: webp.length };
-    }
-    weights[`${id}:og.jpg`] = { jpg: set.og.toBuffer('image/jpeg', 86).length };
-    finals.push({ id, card, set });
+    const set = Object.fromEntries(kinds.map((kind) => [kind, composeCard(kind, { ...card, selected: kind === 'roster' }, 2)]));
+    let x = gap;
+    for (const kind of ['endScreen', 'deploy', 'galleryBrowse']) { ctx.drawImage(set[kind], x, y); x += set[kind].width + gap; }
+    ctx.drawImage(set.roster, x, y);
+    ctx.drawImage(composeCard('roster', card, 2), x, y + set.roster.height + 16);
+    ctx.drawImage(set.rosterCompact, x, y + 2 * set.roster.height + 32);
+    const og = composeOg(card);
+    writeFileSync(resolve(out, `${id}__og.jpg`), og.toBuffer('image/jpeg', 86));
+    ctx.drawImage(og, gap, y + 2 * HERO_CARD_LAYOUT.endScreen.height + gap, 600, 315);
+    y += rowH;
   }
-  {
-    const gap = 40;
-    const rowW = 2 * (560 + 360 + 264 + 168) + 5 * gap;
-    const rowH = 2 * 360 + 90 + 2 * 630 * 0.5 + 70;
-    const { sheet, ctx } = sheetOf(rowW, finals.length * rowH + gap);
-    let y = gap;
-    for (const { card, set } of finals) {
-      label(ctx, `${card.name}  ·  end screen 560, deploy 360, Gallery 264, roster 168 selected / idle / compact 112  ·  2x`, gap, y + 4);
-      y += 24;
-      let x = gap;
-      for (const kind of ['endScreen', 'deploy', 'galleryBrowse']) { ctx.drawImage(set[kind], x, y); x += set[kind].width + gap; }
-      ctx.drawImage(set.roster, x, y);
-      ctx.drawImage(set.rosterIdle, x, y + set.roster.height + 16);
-      ctx.drawImage(set.rosterCompact, x, y + 2 * set.roster.height + 32);
-      y += 2 * 360 + 50;
-      ctx.drawImage(set.og, gap, y, 600, 315);
-      label(ctx, 'OG 1200x630 (shown at half size; the bottom-left lockup zone stays clear)', gap + 640, y + 30);
-      y += 315 + 76;
-    }
-    writeFileSync(resolve(out, 'board-final-compositions.png'), sheet.toBuffer('image/png'));
-  }
-
-  // 2. Angle study: deploy cards for every layer job of one id.
-  const angleJobs = readdirSync(layersDir).filter((f) => f.startsWith(`${angleId}__`) && f.endsWith('.png')).map((f) => basename(f, '.png')).sort();
-  if (angleJobs.length > 1) {
-    const cols = 4, cw = 2 * 360, ch = 2 * 240, gap = 36;
-    const { sheet, ctx } = sheetOf(cols * (cw + gap) + gap, Math.ceil(angleJobs.length / cols) * (ch + 76) + gap);
-    for (const [index, job] of angleJobs.entries()) {
-      const card = await load(angleId, job);
-      const x = gap + (index % cols) * (cw + gap), y = gap + Math.floor(index / cols) * (ch + 76);
-      ctx.drawImage(composeCard('deploy', card, 2), x, y);
-      const m = meta[job]?.camera;
-      label(ctx, `${job.split('__')[1]}${m ? `   az ${m.azimuthDeg}°  el ${m.elevationDeg}°  fov ${m.fovDeg}°  gun +${m.gunElevationDeg}°` : ''}${card.facing === 'right' ? '   FACING RIGHT' : ''}`, x, y + ch + 32);
-    }
-    writeFileSync(resolve(out, 'board-angle-study.png'), sheet.toBuffer('image/png'));
-  }
-
-  // 3. Flag and ground study (deploy cards of the first id).
-  {
-    const base = await load(ids[0]);
-    const today = createCanvas(1600, 1000);
-    {
-      const fc = today.getContext('2d');
-      fc.globalAlpha = 0.24;
-      fc.drawImage(await flagImage(base.r.countryCode, 1600, 1200), 0, -100, 1600, 1200);
-    }
-    const variants = [
-      ['mirror (shipped): obverse, fades toward the gun and the floor', { flag: base.flag }],
-      ['reverse: the reference mirrored outright (reverse face)', { flag: await flagLayerCached(base.r.countryCode, flagsDir, 'reverse') }],
-      ['stream: a free patch, visible hoist', { flag: await flagLayerCached(base.r.countryCode, flagsDir, 'stream'), raw: true }],
-      ["today's full-card flag at 24 %", { flag: today, raw: true }],
-      ['ground: graphite (Premiere)', { flag: base.flag, ground: HERO_GROUNDS.graphite }],
-      ['ground: reference flat #014061', { flag: base.flag, ground: HERO_GROUNDS.reference }],
-      ['no flag', { flag: null }],
-      ['selected (flag at full opacity, tungsten frame)', { flag: base.flag, selected: true }],
-    ];
-    const cols = 4, cw = 2 * 360, ch = 2 * 240, gap = 36;
-    const { sheet, ctx } = sheetOf(cols * (cw + gap) + gap, Math.ceil(variants.length / cols) * (ch + 76) + gap);
-    for (const [index, [title, v]] of variants.entries()) {
-      let card;
-      if (v.raw) {
-        // Patch layouts carry their own feather: draw unmasked.
-        card = composeCard('deploy', { ...base, flag: null, ground: v.ground }, 2);
-        const under = createCanvas(card.width, card.height);
-        const uctx = under.getContext('2d');
-        groundFill(uctx, card.width, card.height, v.ground || HERO_GROUND);
-        const s = Math.max(card.width / v.flag.width, card.height / v.flag.height);
-        uctx.drawImage(v.flag, card.width - v.flag.width * s, 0, v.flag.width * s, v.flag.height * s);
-        const top = composeCard('deploy', { ...base, flag: null, ground: { top: 'rgba(0,0,0,0)', mid: 'rgba(0,0,0,0)', bottom: 'rgba(0,0,0,0)', lift: 'rgba(0,0,0,0)' } }, 2);
-        uctx.drawImage(top, 0, 0);
-        card = under;
-      } else {
-        card = composeCard('deploy', { ...base, flag: v.flag, ground: v.ground, selected: v.selected }, 2);
-      }
-      const x = gap + (index % cols) * (cw + gap), y = gap + Math.floor(index / cols) * (ch + 76);
-      ctx.drawImage(card, x, y);
-      label(ctx, title, x, y + ch + 32);
-    }
-    writeFileSync(resolve(out, 'board-flag-study.png'), sheet.toBuffer('image/png'));
-  }
-
-  // 4. Garage roster strip (168 px cards; the first selected), at 1x and 2x.
+  writeFileSync(resolve(out, 'board-final-compositions.png'), canvas.toBuffer('image/png'));
   if (strip.length) {
     const cards = [];
     for (const [index, id] of strip.entries()) cards.push(composeCard('roster', { ...(await load(id)), selected: index === 0 }, 2));
-    const step = 2 * 168 + 16;
-    const { sheet, ctx } = sheetOf(cards.length * step + 48, 2 * 132 + 64 + 132 + 60);
-    cards.forEach((card, index) => ctx.drawImage(card, 32 + index * step, index === 0 ? 20 : 32));
-    const y1 = 2 * 132 + 76;
-    cards.forEach((card, index) => ctx.drawImage(card, 32 + index * (168 + 8), y1, 168, 132));
-    label(ctx, '1x (as the strip shows them on a 1x display)', 32 + cards.length * (168 + 8) + 20, y1 + 70);
-    writeFileSync(resolve(out, 'board-roster-strip.png'), sheet.toBuffer('image/png'));
+    const L = HERO_CARD_LAYOUT.roster;
+    const step = 2 * L.width + 16;
+    const s = createCanvas(cards.length * step + 48, 2 * L.height + 64 + L.height + 60);
+    const sctx = s.getContext('2d');
+    sctx.fillStyle = '#07090B';
+    sctx.fillRect(0, 0, s.width, s.height);
+    cards.forEach((card, index) => sctx.drawImage(card, 32 + index * step, index === 0 ? 20 : 32));
+    cards.forEach((card, index) => sctx.drawImage(card, 32 + index * (L.width + 8), 2 * L.height + 76, L.width, L.height));
+    writeFileSync(resolve(out, 'board-roster-strip.png'), s.toBuffer('image/png'));
   }
-
-  // 5. The owner's reference beside ours (end-screen size).
-  if (reference && existsSync(reference)) {
-    const ref = await loadImage(reference);
-    const ours = finals[0].set.endScreen;
-    const h = ours.height;
-    const rw = Math.round(ref.width * (h / ref.height));
-    const { sheet, ctx } = sheetOf(rw + ours.width + 3 * 40, h + 110);
-    ctx.drawImage(ref, 40, 40, rw, h);
-    ctx.drawImage(ours, rw + 80, 40);
-    label(ctx, "owner's reference (faces right)", 40, h + 82, 24);
-    label(ctx, 'ours: mirrored for the Garage (faces left), own render and own flag art', rw + 80, h + 82, 24);
-    writeFileSync(resolve(out, 'board-reference-compare.png'), sheet.toBuffer('image/png'));
-  }
-  // 6. Facing: the shipped left-facing card beside the same tank facing right (the reference's direction),
-  //    end-screen size, one row per final id, the owner's reference on top.
-  const rightPick = opt('right-pick');
-  if (rightPick) {
-    const gap = 40, cw = 2 * 560, ch = 2 * 360;
-    const ref = reference && existsSync(reference) ? await loadImage(reference) : null;
-    const refH = ref ? Math.round(ch * 0.8) : 0;
-    const { sheet, ctx } = sheetOf(2 * cw + 3 * gap, (ref ? refH + 76 : 0) + finals.length * (ch + 76) + gap);
-    let y = gap;
-    if (ref) {
-      ctx.drawImage(ref, gap, y, Math.round(ref.width * (refH / ref.height)), refH);
-      label(ctx, "owner's reference (faces right)", gap + Math.round(ref.width * (refH / ref.height)) + 24, y + 40, 24);
-      y += refH + 76;
-    }
-    for (const { id, set } of finals) {
-      if (!existsSync(resolve(layersDir, `${id}__${rightPick}.png`))) continue;
-      ctx.drawImage(set.endScreen, gap, y);
-      const right = await load(id, `${id}__${rightPick}`);
-      ctx.drawImage(composeCard('endScreen', right, 2), 2 * gap + cw, y);
-      label(ctx, `${pick}: faces left, as the Garage hall and the roster strip`, gap, y + ch + 34, 24);
-      label(ctx, `${rightPick}: faces right, as the reference`, 2 * gap + cw, y + ch + 34, 24);
-      y += ch + 76;
-    }
-    writeFileSync(resolve(out, 'board-facing-compare.png'), sheet.toBuffer('image/png'));
-  }
-  writeFileSync(resolve(out, 'weights.json'), `${JSON.stringify(weights, null, 2)}\n`);
   console.log(`[hero-board] ${out}`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const mode = args[0];
-  if (mode === 'flags') {
+  if (mode === 'ship') await ship();
+  else if (mode === 'sheet') await sheet();
+  else if (mode === 'board') await board();
+  else if (mode === 'flags') {
     const out = resolve(opt('out'));
     mkdirSync(out, { recursive: true });
     for (const code of opt('codes', 'us').split(',')) {
-      const t0 = Date.now();
       const layer = await renderFlagLayer(code);
       writeFileSync(resolve(out, `flag-${code}.png`), layer.toBuffer('image/png'));
-      console.log(`[hero-flags] ${code} ${Date.now() - t0} ms`);
+      console.log(`[hero-flags] ${code}`);
     }
-  } else if (mode === 'board') {
-    await board();
   } else {
-    console.error('usage: hero-cards-compose.mjs flags --codes=us,de --out <dir> | board --layers <dir> --out <dir> [--font <ttf>]');
+    console.error('usage: hero-cards-compose.mjs ship --layers <dir> [--ids=...|--plan|--all] | sheet --out <png> | board --layers <dir> --out <dir> | flags --codes=us --out <dir>');
     process.exit(1);
   }
 }
-
-export { CARD_LAYOUT, groundFill };

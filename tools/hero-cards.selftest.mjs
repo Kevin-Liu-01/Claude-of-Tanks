@@ -1,19 +1,21 @@
 // Tank hero cards: the policy and compositor invariants, CPU only (no WebGL, no capture lock).
 // First-party tooling: Kevin B. Liu (NOTICE.md).
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createCanvas } from '@napi-rs/canvas';
 import { GARAGE_CAMERA_AZIMUTH_RAD, GARAGE_CAMERA_PITCH_RAD } from '../src/game/garagePresentationPose.ts';
-import { HERO_CAMERA, HERO_FLAG, HERO_FLAG_MASK, HERO_CARD_SIZES } from './hero-card-policy.mjs';
 import {
-  CARD_LAYOUT, applyFlagMask, drawTank, flagMaskStops, heroFlagMaskCss, horizontalBands, measureCore, renderFlagLayer,
-} from './hero-cards-compose.mjs';
+  HERO_CAMERA, HERO_CARD_LAYOUT, HERO_FLAG, HERO_FLAG_MASK, flagMaskStops, heroFlagMaskCss, heroFlagPolicy, placeTank,
+} from '../src/ui/heroCardPolicy.ts';
+import { applyFlagMask, drawTank, horizontalBands, measureBounds, renderFlagLayer } from './hero-cards-compose.mjs';
 
 const deg = (rad) => rad * 180 / Math.PI;
+const right = HERO_CAMERA.facing === 'right';
 
-// 1. The card shows the tank much as the showroom does: bow to screen-left (the roster convention, owner
-//    2026-09-20), the camera on the Garage camera's flank, within 10 deg of its azimuth (the r4 pick leans toward
-//    the owner's more side-on reference) and 2 deg of its pitch.
-assert.equal(HERO_CAMERA.facing, 'left', 'hero cards face the Garage hero (bow toward screen-left)');
+// 1. The card faces the way the brand SPEC rules for the Garage roster (2026-10-17: "facing RIGHT in the garage
+//    roster", the owner's reference direction), from a camera within 10 deg of the showroom camera's azimuth and
+//    2 deg of its pitch (front three-quarter: the glacis and the flank both show).
+assert.equal(HERO_CAMERA.facing, 'right', 'hero cards face right (bow and gun toward screen-right)');
 assert.ok(Math.abs(HERO_CAMERA.azimuthDeg - deg(GARAGE_CAMERA_AZIMUTH_RAD)) <= 10, `hero azimuth ${HERO_CAMERA.azimuthDeg} within 10 deg of the Garage camera`);
 assert.ok(HERO_CAMERA.azimuthDeg > 0 && HERO_CAMERA.azimuthDeg < 90, 'front three-quarter: the glacis and the flank both show');
 assert.ok(Math.abs(HERO_CAMERA.elevationDeg - deg(GARAGE_CAMERA_PITCH_RAD)) <= 2, `hero elevation ${HERO_CAMERA.elevationDeg} within 2 deg of the Garage pitch`);
@@ -24,11 +26,12 @@ assert.deepEqual(stops[0], [0, 1]);
 assert.equal(stops.at(-1)[0], 1);
 assert.equal(stops.at(-1)[1], 0);
 for (let i = 1; i < stops.length; i++) assert.ok(stops[i][1] <= stops[i - 1][1], 'mask alpha falls monotonically');
-const css = heroFlagMaskCss();
 const pct = (ratio) => Number((ratio * 100).toFixed(2));
-assert.ok(css.startsWith(`radial-gradient(ellipse ${pct(HERO_FLAG_MASK.radiusX)}% ${pct(HERO_FLAG_MASK.radiusY)}% at ${pct(HERO_FLAG_MASK.anchorX)}% 0%`), css);
+const css = heroFlagMaskCss();
+const anchor = right ? 1 - HERO_FLAG_MASK.anchorX : HERO_FLAG_MASK.anchorX;
+assert.ok(css.startsWith(`radial-gradient(ellipse ${pct(HERO_FLAG_MASK.radiusX)}% ${pct(HERO_FLAG_MASK.radiusY)}% at ${pct(anchor)}% 0%`), css);
 for (const [t, a] of stops) assert.ok(css.includes(`rgba(0,0,0,${a}) ${(t * 100).toFixed(1)}%`), `css stop ${t}`);
-assert.ok(heroFlagMaskCss(HERO_FLAG_MASK, 'right').includes(` at ${pct(1 - HERO_FLAG_MASK.anchorX)}% 0%`), 'mask mirrors for facing right');
+assert.ok(heroFlagMaskCss(HERO_FLAG_MASK, 'left').includes(` at ${pct(HERO_FLAG_MASK.anchorX)}% 0%`), 'mask mirrors with the facing');
 
 // 3. The compositor mask: opaque at the rear-top corner, clear toward the gun side and the floor.
 {
@@ -39,51 +42,55 @@ assert.ok(heroFlagMaskCss(HERO_FLAG_MASK, 'right').includes(` at ${pct(1 - HERO_
   ctx.fillRect(0, 0, w, h);
   applyFlagMask(ctx, w, h, { opacity: 1 });
   const alpha = (x, y) => ctx.getImageData(x, y, 1, 1).data[3];
-  assert.ok(alpha(Math.round(w * HERO_FLAG_MASK.anchorX) - 1, 1) > 245, 'opaque at the anchor');
-  assert.equal(alpha(2, h - 2), 0, 'clear at the gun-side floor corner');
-  assert.ok(alpha(w - 2, 2) > alpha(w / 2, 2) && alpha(w / 2, 2) >= alpha(w * 0.2, 2), 'fades toward the gun');
+  const rear = (x) => (right ? x : w - 1 - x); // x measured from the rear edge
+  assert.ok(alpha(Math.round(rear(w * (1 - HERO_FLAG_MASK.anchorX))), 1) > 245, 'opaque at the anchor');
+  assert.equal(alpha(rear(w - 3), h - 2), 0, 'clear at the gun-side floor corner');
+  assert.ok(alpha(rear(2), 2) > alpha(rear(w / 2), 2) && alpha(rear(w / 2), 2) >= alpha(rear(w * 0.8), 2), 'fades toward the gun');
 }
 
-// 4. Cards never cut the gun: a synthetic layer (hull block + a long barrel to the left) fits every layout.
+// 4. Cards never cut the gun: a synthetic layer (hull block + a long barrel on the bow side) fits every card kind.
 {
   const lw = 400, lh = 250;
   const layer = createCanvas(lw, lh);
   const lctx = layer.getContext('2d');
   lctx.fillStyle = '#7a7a62';
-  lctx.fillRect(120, 120, 220, 90); // hull + turret mass (the dense core)
-  lctx.fillRect(10, 140, 120, 6); // the barrel, muzzle at x = 10
-  const core = measureCore(layer);
-  assert.ok(core.full.x0 <= 11 && core.full.x1 >= 339, 'full silhouette spans the barrel and the hull');
-  assert.ok(core.x0 > 60, 'the dense core ignores the thin barrel');
-  for (const [kind, layout] of Object.entries(CARD_LAYOUT)) {
-    const size = HERO_CARD_SIZES[kind];
-    const w = size.width * 2, h = size.height * 2, artH = h - size.nameBandPx * 2;
+  const flip = (x, width) => (right ? lw - x - width : x);
+  lctx.fillRect(flip(120, 220), 120, 220, 90); // hull + turret mass (the dense core)
+  lctx.fillRect(flip(10, 120), 140, 120, 6); // the barrel, its muzzle 10 px from the bow-side edge
+  const bounds = measureBounds(layer);
+  assert.ok(bounds.fx0 * lw <= (right ? 60 : 11) && bounds.fx1 * lw >= (right ? 389 : 339), 'full silhouette spans the barrel and the hull');
+  assert.ok(bounds.cw * lw < 260, 'the dense core ignores the thin barrel');
+  for (const [kind, L] of Object.entries(HERO_CARD_LAYOUT)) {
+    const w = L.width * 2, h = L.height * 2, artH = h - L.nameBand * 2;
     const card = createCanvas(w, h);
-    const { scale, dx } = drawTank(card.getContext('2d'), layer, core, {
-      w, artH, baseline: artH, coreShare: layout.coreShare, coreHeight: layout.coreHeight, centerX: layout.centerX,
-    });
-    const muzzle = dx + core.full.x0 * scale, rear = dx + core.full.x1 * scale;
-    assert.ok(muzzle >= w * 0.035 - 0.5 && rear <= w * 0.965 + 0.5, `${kind}: whole tank inside the card (${muzzle.toFixed(1)}..${rear.toFixed(1)} of ${w})`);
+    const box = { w, artH, baseline: artH, coreShare: L.coreShare, coreHeight: L.coreHeight, centerX: L.centerX };
+    const { k, dx } = drawTank(card.getContext('2d'), layer, bounds, box);
+    const left = dx + bounds.fx0 * k, rightEdge = dx + bounds.fx1 * k;
+    assert.ok(left >= w * 0.035 - 0.5 && rightEdge <= w * 0.965 + 0.5, `${kind}: whole tank inside the card (${left.toFixed(1)}..${rightEdge.toFixed(1)} of ${w})`);
+    assert.deepEqual(placeTank(bounds, box), { k, dx, dy: artH - bounds.cb * k }, `${kind}: drawTank is placeTank`);
   }
 }
 
-// 5. The flag is the obverse: the hoist (FR blue) lies toward the gun, the fly (FR red) toward the rear edge,
-//    and the fly runs off the layer's far edge (no visible end).
+// 5. The flag is the obverse with its hoist at the card's rear edge: facing right, the FR hoist (blue) sits at the
+//    left edge behind the rear, the fly (red) runs toward the gun and fades out inside the layer.
 {
   const w = 320, h = 200;
-  const flag = await renderFlagLayer('fr', HERO_FLAG, { width: w, height: h });
-  const fctx = flag.getContext('2d');
-  const row = Math.round(h * 0.35);
-  const px = fctx.getImageData(0, row, w, 1).data;
+  const flag = await renderFlagLayer('fr', heroFlagPolicy('right'), { width: w, height: h });
+  const px = flag.getContext('2d').getImageData(0, Math.round(h * 0.35), w, 1).data;
+  const at = (x) => [px[x * 4], px[x * 4 + 1], px[x * 4 + 2], px[x * 4 + 3]];
+  const [hr, , hb, ha] = at(Math.round(w * 0.04));
+  assert.ok(ha > 200 && hb > hr, 'hoist band is blue at the rear (left) edge');
+  let red = -1;
+  for (let x = Math.round(w * 0.3); x < w; x++) { const [r, g, b, a] = at(x); if (a > 200 && r > b + 60 && r > g + 40) { red = x; break; } }
+  assert.ok(red > 0, 'the fly band (red) shows toward the gun');
+  assert.ok(at(w - 2)[3] < 40, 'the fly fades out inside the layer');
+  // Facing left mirrors it: the hoist under the feather near hoistX, the fly off the far edge.
+  const left = await renderFlagLayer('fr', heroFlagPolicy('left'), { width: w, height: h });
+  const lp = left.getContext('2d').getImageData(0, Math.round(h * 0.35), w, 1).data;
   let first = -1;
-  for (let x = 0; x < w; x++) if (px[x * 4 + 3] > 200) { first = x; break; }
-  assert.ok(first > w * (HERO_FLAG.hoistX - 0.05), `the hoist sits near hoistX (first cloth at ${first})`);
-  const at = (x) => [px[x * 4], px[x * 4 + 1], px[x * 4 + 2]];
-  const [hr, , hb] = at(first + Math.round(w * 0.05));
-  const [fr, , fb] = at(w - 3);
-  assert.ok(hb > hr, 'hoist band is blue (obverse, toward the gun)');
-  assert.ok(fr > fb, 'fly band is red (toward the rear edge)');
-  assert.ok(px[(w - 1) * 4 + 3] > 200, 'the fly runs off the far edge');
+  for (let x = 0; x < w; x++) if (lp[x * 4 + 3] > 200) { first = x; break; }
+  assert.ok(first > w * (HERO_FLAG.hoistX - 0.05), `facing left: the hoist sits near hoistX (first cloth at ${first})`);
+  assert.ok(lp[(w - 1) * 4 + 3] > 200, 'facing left: the fly runs off the far edge');
 }
 
 // 6. Pure horizontal-band flags are detected from the art and drawn short enough that every band clears the hull:
@@ -95,9 +102,9 @@ assert.ok(heroFlagMaskCss(HERO_FLAG_MASK, 'right').includes(` at ${pct(1 - HERO_
   assert.equal(await horizontalBands('us'), 0, 'US: an emblem flag keeps its 4x3 art');
   assert.equal(await horizontalBands('fr'), 0, 'FR: vertical bands keep their 4x3 art');
   const w = 320, h = 200;
-  const flag = await renderFlagLayer('ru', HERO_FLAG, { width: w, height: h });
+  const flag = await renderFlagLayer('ru', heroFlagPolicy(), { width: w, height: h });
   const rows = Math.round(h * HERO_FLAG.bandFit.lowestBandCentreY) + 2;
-  const col = flag.getContext('2d').getImageData(Math.round(w * 0.9), 0, 1, rows).data;
+  const col = flag.getContext('2d').getImageData(Math.round(w * (right ? 0.1 : 0.9)), 0, 1, rows).data;
   const seen = { white: 0, blue: 0, red: 0 };
   for (let i = 0; i < col.length; i += 4) {
     if (col[i + 3] < 200) continue;
@@ -107,6 +114,22 @@ assert.ok(heroFlagMaskCss(HERO_FLAG_MASK, 'right').includes(` at ${pct(1 - HERO_
     else if (r > b + 60 && r > g + 40) seen.red++;
   }
   assert.ok(seen.white && seen.blue && seen.red, `RU bands above the floor line: ${JSON.stringify(seen)}`);
+}
+
+// 7. The Garage strip reads the same policy: its CSS places the tank layer with placeTank's expression in
+//    container units, at the roster and compact layouts' shares, and masks the flag box like the compositor.
+{
+  const garageCss = readFileSync(new URL('../src/ui/garage.css', import.meta.url), 'utf8');
+  const vars = (L) => `--hc-band:${L.nameBand}px;--hc-share:${L.coreShare};--hc-hshare:${L.coreHeight};--hc-cxr:${Number((right ? 1 - L.centerX : L.centerX).toFixed(2))};`;
+  assert.ok(garageCss.includes(vars(HERO_CARD_LAYOUT.roster)), `roster card vars ${vars(HERO_CARD_LAYOUT.roster)}`);
+  assert.ok(garageCss.includes(vars(HERO_CARD_LAYOUT.rosterCompact)), `compact card vars ${vars(HERO_CARD_LAYOUT.rosterCompact)}`);
+  assert.match(garageCss, /\.cot-card \.hc-flag\{[^}]*height:calc\(100% - var\(--hc-band\) \* 0\.35\)/, 'flag box ends bandInset of the band above the bottom');
+  assert.equal(HERO_FLAG_MASK.bandInset, 0.35);
+  assert.match(garageCss, /\.cot-card \.hc-flag\{[^}]*mask-image:var\(--hc-flag-mask\)/, 'the flag takes the policy mask');
+  assert.match(garageCss, new RegExp(`\\.cot-card \\.hc-flag\\{[^}]*object-position:${right ? '0 0' : '100% 0'}`), 'the flag anchors at the rear-top corner');
+  assert.match(garageCss, /--hc-k:min\(calc\(100cqw \* var\(--hc-share\) \/ var\(--hc-cw\)\),calc\(\(100cqh - var\(--hc-band\)\) \* var\(--hc-hshare\) \/ var\(--hc-ch\)\),calc\(100cqw \* 0\.93 \/ var\(--hc-fw\)\)\)/, 'tank width is placeTank\'s k');
+  assert.match(garageCss, /left:clamp\(calc\(100cqw \* 0\.035 - var\(--hc-fx0\) \* var\(--hc-k\)\),calc\(100cqw \* var\(--hc-cxr\) - var\(--hc-cx\) \* var\(--hc-k\)\),calc\(100cqw \* 0\.965 - var\(--hc-fx1\) \* var\(--hc-k\)\)\)/, 'tank x is placeTank\'s clamped dx');
+  assert.match(garageCss, /top:calc\(100cqh - var\(--hc-band\) \+ 2px - var\(--hc-cb\) \* var\(--hc-k\)\)/, 'contact line 2 px under the art box');
 }
 
 console.log('hero-cards selftest: ok');

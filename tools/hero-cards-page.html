@@ -16,7 +16,7 @@ import { ensureInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { getSpec } from '/src/vehicles/specs.ts';
 import { geometryFingerprint } from '/src/vehicles/tankAssets.ts';
 import { measurePortraitCoreBounds } from '/src/ui/portraitFraming.ts';
-import { HERO_CAMERA, HERO_FRAME, HERO_LIGHTS, HERO_POLICY_VERSION } from '/tools/hero-card-policy.mjs';
+import { HERO_CAMERA, HERO_FRAME, HERO_LIGHTS, HERO_POLICY_VERSION } from '/src/ui/heroCardPolicy.ts';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
 renderer.outputColorSpace = THREE.SRGBColorSpace;

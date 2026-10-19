@@ -1940,9 +1940,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-geometry.selftest.mjs',
     'tools/marketing-shots/battle-campaign.selftest.mjs',
     'tools/marketing-shots/showcase-r2.selftest.mjs',
-    // 2026-10-17 tank hero cards: the showroom camera, one flag mask for the compositor and the Garage CSS,
-    // the whole tank inside every card, the obverse flag with its fly off the far edge
+    // 2026-10-17 tank hero cards: the showroom camera facing right, one flag mask and one placement rule for the
+    // compositor and the Garage CSS, the whole tank inside every card, the obverse flag, band-fit tricolours
     'tools/hero-cards.selftest.mjs',
+    // 2026-10-18 tank hero cards: every fleet vehicle has its shipped card (its nation's flag, facing right, no clip,
+    // files matching the manifest, byte budgets); stale rows are reported for the changed-only re-render
+    'tools/hero-cards-check.mjs',
   ]),
   post: Object.freeze([
     'src/audio/lazyAudio.selftest.mjs',
