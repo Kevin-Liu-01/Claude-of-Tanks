@@ -114,10 +114,13 @@ smoke trail. Impacts use the munition recipes (the howitzer's and missile's plun
 pilot's lens no muzzle flash or propellant cloud is drawn; other views see a small gun-port flash on the airframe, which
 is visible in the killcam, the ending's replay and any camera that is not the pilot's lens. The missile is drawn
 leaving its rail under the port wing and joins its guided line within 120 m, so from the pilot's lens it enters from the
-frame's edge rather than appearing on the glass (round 2). Every missile's motor core is a soft glow that never grows past
-~0.23 degrees from the camera, and a heavy charge (the howitzer's shell, the missile's warhead) bursting on a hull draws
-the full detonation the ground burst does (a white-hot dome of fireball medium cooling inside its own smoke), not a plate
-flash.
+frame's edge rather than appearing on the glass (round 2); its smoke spreads less than the family's and thins out within
+70 m of the camera, so from the lens it reads as a line to the target. Every missile's motor core is a soft glow that
+never grows past ~0.23 degrees from the camera, and a heavy charge (the howitzer's shell, the missile's warhead) bursting
+on a hull draws the full detonation the ground burst does (a white-hot dome of fireball medium cooling inside its own
+smoke), not a plate flash. A heat-imaging lens (the gimbal's infrared and thermal views, a thermal sight) sees the
+rounds' burning compound at its night radiance whatever the daylight, and the 30 mm's day colour carries the
+strontium's orange so the dash reads against a bright sky.
 
 The airframe is a procedural C-130-proportioned model (`src/game/gunshipAirframe.ts`: lofted fuselage, high wing with
 dihedral, four turboprops, the port-side 30 mm and howitzer, the sensor ball) on one lit material in the shadow cascades.

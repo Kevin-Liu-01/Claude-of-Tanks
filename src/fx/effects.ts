@@ -625,7 +625,9 @@ const GUNSHIP_PYLON_LOCAL = new THREE.Vector3(7.5, 1.9, 1.6);
 const GUNSHIP_PYLON_MERGE_M = 120;
 /** (ac130-fx-228 r2) the gunship missile's smoke thins out within this distance of the camera (none within a fifth of
  *  it): seen from its own gimbal lens it is a line to the target, never a white wedge across the frame's edge */
-const GUNSHIP_TRAIL_NEAR_M = 30;
+const GUNSHIP_TRAIL_NEAR_M = 70;
+/** (ac130-fx-228 r2) its widest spread (m, the family's r1 capped) */
+const GUNSHIP_TRAIL_R1_M = 2.4;
 /** (ac130-fx-228 r2) the missile motor flare's sphere (m) and the widest it is ever drawn from the camera (rad, its
  *  radius): ~10 px at the gunship's 3.6x gimbal zoom, ~3 px at a tank's 60 deg view */
 const ATGM_FLARE_RADIUS_M = 0.25;
@@ -4491,12 +4493,17 @@ function* createFxSteps(
     trail.lastD = d;
   }
 
-  /** (ac130-fx-228 r2) the gunship missile's trail: its family's, fading within GUNSHIP_TRAIL_NEAR_M of the camera (one
-   *  derived look per family, made once) */
+  /** (ac130-fx-228 r2) the gunship missile's trail: its family's, fading within GUNSHIP_TRAIL_NEAR_M of the camera and
+   *  spreading to at most GUNSHIP_TRAIL_R1_M (one derived look per family, made once) */
   const gunshipTrails = new Map<MissileTrail, MissileTrail>();
   function gunshipTrailOf(base: MissileTrail): MissileTrail {
     let t = gunshipTrails.get(base);
-    if (!t) { t = Object.freeze({ ...base, nearM: GUNSHIP_TRAIL_NEAR_M }); gunshipTrails.set(base, t); }
+    // and spreads less as it hangs: seen from the orbit it lies along the gimbal's own line of sight, where a family's
+    // full spread (built for a trail seen side-on from the ground) widens into a cone toward the lens
+    if (!t) {
+      t = Object.freeze({ ...base, nearM: GUNSHIP_TRAIL_NEAR_M, r1: Math.min(base.r1, GUNSHIP_TRAIL_R1_M) });
+      gunshipTrails.set(base, t);
+    }
     return t;
   }
 
