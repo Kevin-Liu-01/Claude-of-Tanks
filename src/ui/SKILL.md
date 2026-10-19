@@ -180,8 +180,8 @@ components. Run `battleHudLayout.selftest.mjs` and the rendered matrix in
 Inspect the live rendered surface, locate event/callback ownership, change the
 smallest screen module, then run its selftest and browser verification.
 Vehicle cards (Garage roster, end-screen tile, Gallery list) take the offline
-tank hero layers through `heroCardAccess.ts` `loadHeroCards()` (module + CSS,
-lazy); numbers live in `heroCardPolicy.ts`, the layers are rendered changed-only
+tank hero layers through `import('./heroCard.ts')` with `import('./heroCard.css')`
+beside it (lazy, no static chunk on the game page); numbers live in `heroCardPolicy.ts`, the layers are rendered changed-only
 by the tools in `tools/SKILL.md`, and a missing row keeps the packaged portrait.
 
 ## Gotchas

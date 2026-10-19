@@ -18,7 +18,6 @@ import { flagIconHTML } from './flags.ts';
 import { flagIconCode } from './flagCodes.ts';
 import { iconUrl } from './icons.ts';
 import { ensureTankThumbs, drainTankThumbs, requeueTankThumbs } from './tankThumbs.ts';
-import { loadHeroCards, type HeroCardModule } from './heroCardAccess.ts';
 import { createCamoSwatchAccess } from './camoSwatchAccess.ts';
 import { createCustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import {
@@ -2448,7 +2447,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // Hero layers arrive with the lazy heroCard chunk and its manifest. A vehicle without a hero row (or
   // every vehicle, when the chunk or the manifest is unavailable) keeps the packaged portrait and a
   // flag chip: no per-card WebGL either way.
-  let heroCards: HeroCardModule | null = null;
+  let heroCards: typeof import('./heroCard.ts') | null = null;
   const legacyPortraits = (ids: readonly string[]): void => {
     if (!ids.length) return;
     for (const id of ids) {
@@ -2461,8 +2460,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
     ensureTankThumbs(allSpecs, { canWork: () => api.isOpen });
   };
-  loadHeroCards()
-    .then((module) => {
+  // The card module and its stylesheet load together at this lazy boundary (no static CSS import in a graph).
+  Promise.all([import('./heroCard.ts'), import('./heroCard.css')])
+    .then(([module]) => {
       heroCards = module;
       return module.mountRosterHeroCards(cardsEl, cardById, selectedId, (id) => legacyPortraits([id]));
     })

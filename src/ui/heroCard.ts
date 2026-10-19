@@ -1,4 +1,4 @@
-// Tank hero cards at runtime (a lazy chunk with its stylesheet: heroCardAccess.ts loadHeroCards()).
+// Tank hero cards at runtime (a lazy chunk: each surface imports it with its stylesheet, import() of both).
 // Each card is the owner's reference composition built from layers: a CSS ground,
 // the nation's waving-cloth flag layer under the policy feather (CSS mask-image),
 // the vehicle's transparent hero render placed by the policy's placeTank rule in

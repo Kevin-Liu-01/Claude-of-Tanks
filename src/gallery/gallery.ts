@@ -19,7 +19,6 @@ import {
 } from './catalog.ts';
 import type { GalleryRecord, GalleryVehicleSpec } from './catalog.ts';
 import type { HeroManifest } from '../ui/heroCard.ts';
-import { loadHeroCards, type HeroCardModule } from '../ui/heroCardAccess.ts';
 import { compareVehicleEras, VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
 import { createInspectionOverlay, inspectionLegend } from './overlays.ts';
 import type { InspectionMode } from './overlays.ts';
@@ -507,9 +506,9 @@ function renderLegend(): void {
   }));
 }
 
-let heroCards: { module: HeroCardModule; manifest: HeroManifest } | null = null;
-loadHeroCards()
-  .then(async (module) => {
+let heroCards: { module: typeof import('../ui/heroCard.ts'); manifest: HeroManifest } | null = null;
+Promise.all([import('../ui/heroCard.ts'), import('../ui/heroCard.css')])
+  .then(async ([module]) => {
     const manifest = await module.loadHeroManifest();
     if (!manifest) return;
     heroCards = { module, manifest };
