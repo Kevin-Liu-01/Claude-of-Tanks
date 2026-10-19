@@ -5,16 +5,16 @@ import { KitBuilder, kitRandom, type KitBuildResult } from './garageKitGeometry.
 import { garageKitSkin } from './garageKitSkins.ts';
 import { buildComputerStation, buildFabricBanner, buildFramedPrint } from './garageDisplayKit.ts';
 import { buildGarageProp } from './garagePropKit.ts';
-import { createGarageDecalMaterial, createGarageDisplayMaterial, ensureGarageDisplayAtlas } from './garageDisplayAtlas.ts';
-import { atmosphereMotes, atmosphereShaft, createGarageAtmosphere } from './garageAtmosphereKit.ts';
+import { armGarageDisplayAtlas, createGarageDecalMaterial, createGarageDisplayMaterial } from './garageDisplayAtlas.ts';
+import { atmosphereShaft, createGarageAtmosphere, type GarageAtmosphereRecipe } from './garageAtmosphereKit.ts';
 
 /**
  * Verdant's share of the garage r9 kit, in the dressing's frame (the hall's world-local axes: the west wall at x = -23
  * on the canonical frame's left, the wall behind the mezzanine at z = -23 on its right). The brand and the game's
  * battlefields on the hall's walls: two column banners in the frame's left and right thirds (the west wall beside the
  * slideshow; the far wall above the mezzanine rails, both hung high), the wordmark banner high on the far wall, a "hall
- * of fame" of framed prints with picture lights on a high rail right of the slideshow, a diagnostics station at the slideshow's foot, and daylight
- * shafts with dust motes under the roof lights clear of the hero.
+ * of fame" of framed prints with picture lights on a high rail right of the slideshow, a diagnostics station at the slideshow's foot, and two
+ * feathered daylight shafts in the frame's right band, clear of the hero and of every display.
  *
  * Built once with the dressing (static, Verdant only): one vertex-colour mesh, one DISPLAY-LIT mesh, one decal mesh and
  * one atmosphere mesh, each on a program the Verdant boot already compiles.
@@ -23,6 +23,8 @@ export function buildGarageVerdantKit(params: {
   readonly setupShadowMaterial?: ((material: THREE.Material) => void) | null;
   readonly anisotropy?: number;
 }): { readonly meshes: readonly THREE.Mesh[]; readonly materials: readonly THREE.Material[];
+  /** The atmosphere's cards (the display placement receipt keeps them off every display). */
+  readonly atmosphereCards: GarageAtmosphereRecipe['cards'];
   readonly stats: Readonly<{ triangles: number; brandPieces: number; tankImages: number; stations: number; stationMonitors: number }> } {
   const skin = garageKitSkin('field_shed');
   const pieces: Array<{ result: KitBuildResult; matrix: THREE.Matrix4 }> = [];
@@ -50,7 +52,7 @@ export function buildGarageVerdantKit(params: {
     for (const x of [-3.7, 3.7]) b.box(x, 0.02, -0.11, 0.06, 0.06, 0.22, 0x2a2c2e, { bevel: 0 });
   });
   // the hall of fame: the battlefields' own stills, framed, with picture lights, right of the slideshow on the west wall
-  const prints = ['media.desert', 'media.winter', 'media.coastal'] as const;
+  const prints = ['still.desert', 'still.winter', 'still.coastal'] as const;
   // a picture rail high on the wall, above the services and clear of the hero's halo
   prints.forEach((rect, index) => add(110 + index, WEST, 6.62, -2.5 - index * 1.95, Math.PI / 2, (b) => buildFramedPrint(b, rect, 1.6, 0.9)));
   // the diagnostics station at the slideshow's foot: readouts and the Verdant Fields map, cabled to its floor box
@@ -96,7 +98,7 @@ export function buildGarageVerdantKit(params: {
     materials.push(material);
     const mesh = new THREE.Mesh(displayGeometry, material);
     mesh.receiveShadow = true;
-    mesh.onBeforeRender = () => { ensureGarageDisplayAtlas({ anisotropy: params.anisotropy }); };
+    armGarageDisplayAtlas(mesh, params.anisotropy);
     finish(mesh, 'garage_verdant_kit_displays');
   }
   const decalGeometry = decals.length ? mergeGeometries(decals, false) : null;
@@ -108,19 +110,25 @@ export function buildGarageVerdantKit(params: {
     mesh.renderOrder = 2;
     finish(mesh, 'garage_verdant_kit_decals');
   }
-  // daylight shafts under the roof lights, left and right of the hero, with motes hanging in the left one
-  const atmosphere = createGarageAtmosphere({
+  // Daylight shafts in the frame's right band only (screen x 84-98 %, right of the far wall's wordmark banner): two
+  // parallel beams from the far wall's clerestories falling forward past the mezzanine's front, left of the east
+  // inspection overhang, each a feathered ribbon that fades in below the roof and out above the floor
+  // (garageAtmosphereKit.ts). The west wall keeps none: its slideshow, prints and station stay clear (the r9 blind critic
+  // saw the first pass's shaft and motes "grey out half the image" of the one screen); the display placement receipt
+  // checks every card against every display, banner and the slideshow.
+  const shaftProfile = [0.1, 0.55, 0.9, 1, 0.7, 0.25, 0] as const;
+  const atmosphereRecipe: GarageAtmosphereRecipe = {
     drift: 0.012,
     cards: [
-      atmosphereShaft([-17.8, 9.7, 2.2], [-15.9, 0.05, 5.6], 2.2),
-      atmosphereShaft([4.2, 9.7, -17.6], [5.6, 0.05, -14.2], 2.4, 0.37),
-      ...atmosphereMotes([-16.9, 3.2, 5.2], 2.4),
+      atmosphereShaft([2.8, 9.7, -18.2], [4.0, 0.05, -15.0], 1.9, 0, { profile: shaftProfile }),
+      atmosphereShaft([5.6, 9.7, -16.4], [6.8, 0.05, -13.2], 2.0, 0.37, { profile: shaftProfile }),
     ],
-  });
+  };
+  const atmosphere = createGarageAtmosphere(atmosphereRecipe);
   materials.push(atmosphere.material as THREE.Material);
   finish(atmosphere, 'garage_verdant_kit_atmosphere');
   return {
-    meshes, materials,
+    meshes, materials, atmosphereCards: atmosphereRecipe.cards,
     stats: Object.freeze({ triangles, brandPieces: 3, tankImages: prints.length, stations: 1, stationMonitors: 3 }),
   };
 }

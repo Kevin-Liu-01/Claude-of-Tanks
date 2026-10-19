@@ -71,6 +71,7 @@ import {
 interface GarageEnvironmentEngineContext {
   anisotropy?: number;
   setupShadowMaterial?(material: THREE.Material, extraHook?: THREE.Material['onBeforeCompile'] | null): void;
+  releaseShadowMaterial?(material: THREE.Material): unknown;
 }
 
 interface GarageEnvironmentStats {
@@ -1225,12 +1226,25 @@ function normalizeGeometry(source: THREE.BufferGeometry, vertexColors: boolean, 
 
 /** Build one authentic, renderer-only Garage scene pack. */
 export function buildGarageEnvironment(
-  engineCtx: GarageEnvironmentEngineContext,
+  outerEngineCtx: GarageEnvironmentEngineContext,
   assets: GarageEnvironmentAssetLibrary,
   variant: GarageVariant,
   requestRender: () => void = () => {},
   options: Readonly<{ kitPlacement?: GarageKitPlacement | null }> = {},
 ): GarageEnvironmentBuild {
+  // Every material the pack registers with the shadow cascades is noted, and the ones the pack owns (disposes) are
+  // released with it: the LRU keeps two packs, but the cascade registry grew on every switch (the garage r9 engineering
+  // critic counted 207 -> 377 registered materials over one cycle of the Garages; the kit's display material added more).
+  const cascadeMaterials = new Set<THREE.Material>();
+  const engineCtx: GarageEnvironmentEngineContext = outerEngineCtx.setupShadowMaterial
+    ? {
+        ...outerEngineCtx,
+        setupShadowMaterial(material, extraHook) {
+          cascadeMaterials.add(material);
+          outerEngineCtx.setupShadowMaterial!(material, extraHook);
+        },
+      }
+    : outerEngineCtx;
   const recipe = GARAGE_ENVIRONMENT_RECIPES[variant.architecture]
     || GARAGE_ENVIRONMENT_RECIPES.field_shed;
   const patch = getGarageTerrainPatch(variant.mapId);
@@ -2678,6 +2692,11 @@ export function buildGarageEnvironment(
       root.removeFromParent();
       for (const handle of handles) handle.release();
       handles.length = 0;
+      if (outerEngineCtx.releaseShadowMaterial) {
+        const owned = new Set<unknown>(disposables);
+        for (const material of cascadeMaterials) if (owned.has(material)) outerEngineCtx.releaseShadowMaterial(material);
+      }
+      cascadeMaterials.clear();
       for (const resource of disposables) resource.dispose();
       disposables.length = 0;
       root.clear();

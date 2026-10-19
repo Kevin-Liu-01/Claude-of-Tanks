@@ -1879,9 +1879,18 @@ export function createGarageDressing(
         uniform float uTransition;
         varying vec2 vUv;
 
+        // Each still is exposed for the panel by its own mean (its smallest mip, one texel): a night street or a
+        // furnace salvo lifts toward the bright fields shots instead of reading as a dark slab (the r9 blind critic: "a
+        // dark urban-street frame, much less legible than the bright tank still"); a bright still is left as it is.
+        vec3 exposed(sampler2D image, vec2 uv) {
+          vec3 mean = texture2D(image, vec2(0.5), 16.0).rgb;
+          float lift = clamp(log(0.2) / log(clamp(dot(mean, vec3(0.2126, 0.7152, 0.0722)), 0.01, 0.99)), 0.6, 1.0);
+          return pow(texture2D(image, uv).rgb, vec3(lift));
+        }
+
         void main() {
           vec2 uv = clamp(vUv, 0.001, 0.999);
-          vec3 color = mix(texture2D(uImageA, uv).rgb, texture2D(uImageB, uv).rgb, uTransition);
+          vec3 color = mix(exposed(uImageA, uv), exposed(uImageB, uv), uTransition);
           // an LED panel's faint fall-off toward its bezel
           vec2 centered = vUv * 2.0 - 1.0;
           color *= 1.0 - smoothstep(0.7, 1.6, dot(centered, centered)) * 0.18;

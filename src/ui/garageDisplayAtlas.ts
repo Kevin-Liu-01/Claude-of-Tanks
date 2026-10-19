@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 
+import { getDeviceTier } from '../engine/quality.ts';
 import { GARAGE_DISPLAY_ATLAS_MANIFEST } from './garageDisplayAtlas.generated.ts';
 import type { KitAtlasRect } from './garageKitGeometry.ts';
 
@@ -24,7 +25,7 @@ type AtlasStatus = 'idle' | 'loading' | 'ready' | 'failed';
 const manifest = GARAGE_DISPLAY_ATLAS_MANIFEST;
 const rects = manifest.rects as Readonly<Record<string, KitAtlasRect & { readonly px: readonly number[]; readonly kind: string }>>;
 
-/** A named rect of the atlas. `media.<map>` and `map.<map>` resolve a Garage without a still to its sister map's. */
+/** A named rect of the atlas. `still.<map>` and `map.<map>` resolve a Garage without a still to its sister map's. */
 export function garageDisplayRect(name: string): KitAtlasRect {
   const direct = rects[name];
   if (direct) return direct;
@@ -34,16 +35,20 @@ export function garageDisplayRect(name: string): KitAtlasRect {
   throw new Error(`garage display atlas has no rect '${name}'`);
 }
 
-/** Every rect name of one group ('media', 'readout', 'picto', 'name', ...). */
+/** Every rect name of one group ('still', 'readout', 'picto', 'name', ...). */
 export function garageDisplayRectNames(group: string): readonly string[] {
   return Object.keys(rects).filter((name) => name.startsWith(`${group}.`)).sort();
 }
 
-/** The Garage's own still (its map's, or its sister map's). */
-export function garageMediaRectName(mapId: string): string {
-  if (rects[`media.${mapId}`]) return `media.${mapId}`;
+/**
+ * The Garage's own still (its map's, or its sister map's). The group is `still.`, never the i18n media namespace: a
+ * template led by that namespace in the game graph keeps every media caption in the boot catalogs
+ * (tools/i18n-page-catalogs.mjs).
+ */
+export function garageStillRectName(mapId: string): string {
+  if (rects[`still.${mapId}`]) return `still.${mapId}`;
   const alias = (manifest.aliases as Readonly<Record<string, string>>)[mapId];
-  return alias && rects[`media.${alias}`] ? `media.${alias}` : 'media.verdant';
+  return alias && rects[`still.${alias}`] ? `still.${alias}` : 'still.verdant';
 }
 
 let status: AtlasStatus = 'idle';
@@ -112,7 +117,8 @@ function loadTexture(url: string, options: { width: number; height: number }): P
 
 /**
  * Start the one atlas load (idempotent). Called from a display's first render, never on the boot or switch path; a
- * headless build (no document) never loads it. `lowTier` decodes it at half size (2.8 MB instead of 11.2 MB).
+ * headless build (no document) never loads it. `lowTier` decodes it at half size (2.8 MB instead of 11.2 MB): every
+ * display armed by armGarageDisplayAtlas asks for it on a mobile device.
  */
 export function ensureGarageDisplayAtlas({ anisotropy = 4, lowTier = false }: { anisotropy?: number; lowTier?: boolean } = {}): void {
   if (status !== 'idle' || typeof document === 'undefined') return;
@@ -134,6 +140,20 @@ export function ensureGarageDisplayAtlas({ anisotropy = 4, lowTier = false }: { 
   }).catch(() => {
     status = 'failed';
   });
+}
+
+const disarmed = (): void => {};
+
+/**
+ * Arm a display, decal or lens mesh: its first render starts the one atlas load (half size on a mobile device), then the
+ * hook replaces itself with a no-op, so a drawn display costs nothing per frame afterwards (no options object, no call;
+ * AGENTS.md: no per-frame allocation in established hot loops).
+ */
+export function armGarageDisplayAtlas(mesh: THREE.Object3D, anisotropy = 4): void {
+  mesh.onBeforeRender = () => {
+    mesh.onBeforeRender = disarmed;
+    ensureGarageDisplayAtlas({ anisotropy, lowTier: getDeviceTier() === 'mobile' });
+  };
 }
 
 /** The DISPLAY-LIT material for one pack (joins the shared cascade setup through `setup`). */

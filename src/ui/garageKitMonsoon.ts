@@ -61,7 +61,7 @@ export const GARAGE_KIT_MONSOON: GarageKitPlacement = {
     // the crest hanging under the canopy's right eave, in the frame's right band
     { kind: 'sign', sign: 'hanging', rect: 'brand.crest.color', at: [13.5, 20.6], yaw: Math.PI / 4 + 0.2, y: 4.35, size: [0.8, 0.8] },
     // the bamboo-framed notice board with three prints, the frame's left
-    { kind: 'display', display: 'board', rects: ['media.monsoon', 'media.verdant', 'media.railyard'], at: [-16.4, 14.6], yaw: Math.PI / 2 - 0.25, size: [2.4, 1.05], posts: 0.95 },
+    { kind: 'display', display: 'board', rects: ['still.monsoon', 'still.verdant', 'still.railyard'], at: [-16.4, 14.6], yaw: Math.PI / 2 - 0.25, size: [2.4, 1.05], posts: 0.95 },
     { kind: 'display', display: 'nameboard', at: [-11.4, 6.6], yaw: Math.PI / 2 - 0.35, width: 2.4, posts: 1.1 },
     // sandbags along the right drain, a sealed case on them
     { kind: 'prop', name: 'sandbag', at: [14.9, 24.6], yaw: 0.1 },

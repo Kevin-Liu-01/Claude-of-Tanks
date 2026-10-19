@@ -126,12 +126,18 @@ rects of the one display atlas (`garageDisplayAtlas.generated.ts`, regenerated b
 pixels. Each Garage shows one slideshow: Verdant's west-wall panel, or the pose in `garageSlideshowPlacement.ts`
 where the pack builds the frame and the dressing hangs the same screen. No display, sign, banner or atmosphere card
 enters the hero's halo in the canonical frame (its screen box plus 8 %, `garageDisplayPlacement.selftest.mjs` with
-the measured canonical camera), which leaves the top band and the frame's outer edges for displays. The platform
-kit (collars, LED pucks, pedestal, the segmented deck) loads at Garage idle. `tools/garage-kit-sheet.html` stages
-every piece for review. Each Garage's arrangement lives in its own module (`garageKitRedrock.ts`,
-`garageKitGlacier.ts`, `garageKitFrosthollow.ts`, `garageKitMonsoon.ts`, ...), laid out in the opening view's frame
-(atmosphere cards too, through `atView`); the halo receipt tests each face and card by its own corners and the
-structure receipt by each face's oriented box, so a plate on a wall square to the view can sit 2 cm proud of it.
+the measured canonical camera), which leaves the top band and the frame's outer edges for displays, and no
+atmosphere card stands in front of a display, banner or the slideshow there (light shafts are feathered ribbons, never
+hard-edged panes). The atlas's battlefield stills are the `still.<map>` group, never `media.`: a `media.`-led
+template in the game graph keeps every media.* caption in the boot catalogs. A display mesh is armed with
+`armGarageDisplayAtlas` (its first render starts the half-size-on-mobile atlas load, then the hook removes itself:
+no per-frame call). A pack releases the cascade registrations of the materials it owns when it is disposed. The
+platform kit (collars, LED pucks, pedestal, the segmented deck, half size on mobile) loads at Garage idle.
+`tools/garage-kit-sheet.html` stages every piece for review. Each Garage's arrangement lives in its own module
+(`garageKitRedrock.ts`, `garageKitGlacier.ts`, `garageKitFrosthollow.ts`, `garageKitMonsoon.ts`, ...), laid out in the
+opening view's frame (atmosphere cards too, through `atView`); the halo receipt tests each face and card by its own
+corners and the structure receipt by each face's oriented box, so a plate on a wall square to the view can sit 2 cm
+proud of it.
 The outside environment comes from the map (K10): `tools/generate-garage-skylines.mjs` (`npm run
 garage:skylines:check`) bakes each map's near relief (ray-cast over its heightfield in three bands) and its landmarks
 at their compass bearings from the Garage's anchor (hinterland drafts, the map file's lakes, inselbergs, villages,
@@ -139,7 +145,9 @@ churches, sawmill, town, river, tea estate; an authored row only where a map has
 `garageSkylines.generated.ts`; `garageSkyline.ts` builds a Garage with a style row (Redrock, Glacier, Frosthollow,
 Monsoon) into the horizon's one vertex-colour draw: bearings kept, distance compressed onto the ring, elevation by one
 factor, nearest first with occluded far forms dropped, under 9,500 triangles. Add a Garage by giving it a style row
-and, where its draft lacks them, its map's rows in the generator.
+and, where its draft lacks them, its map's rows in the generator. An approach with `drapeM`
+(`garageEnvironmentRecipes.ts`) lies on the terrain mesh's own triangles and splits where the ground bends off a
+chord, its road one ribbon laid across the width every 2 m or less (Monsoon, Frosthollow, Glacier).
 The hero's outline from the Garage camera stays clear (garage critic panel and
 ruling, 2026-10-14: the current layout protects the hero's spot, the turntable,
 the camera and the UI, not the backdrop): no post, mast, leg, hook or lamp crosses

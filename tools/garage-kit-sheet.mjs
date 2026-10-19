@@ -146,8 +146,8 @@ place(build((b) => buildABoard(b, 'picto.forklift')), -36, 62, 0, 'aboard');
 place(build((b) => { b.translate(0, 1.6, 0); buildWallPlate(b, 'picto.firstaid', 0.4, 0.4); }), -34, 62, 0, 'plate');
 place(build((b) => buildGroundStencil(b, 'num.04', 2, 2)), -31, 62, 0, 'stencil');
 // displays
-place(build((b) => { b.translate(0, 1.7, 0); buildFramedPrint(b, 'media.desert', 1.6, 0.9); }), -27, 62, 0, 'print');
-place(build((b) => { b.translate(0, 1.5, 0); buildPoster(b, 'media.winter', 0.8, 1.2, 'board', [0.3, 0, 0.7, 1]); }), -24.5, 62, 0, 'poster');
+place(build((b) => { b.translate(0, 1.7, 0); buildFramedPrint(b, 'still.desert', 1.6, 0.9); }), -27, 62, 0, 'print');
+place(build((b) => { b.translate(0, 1.5, 0); buildPoster(b, 'still.winter', 0.8, 1.2, 'board', [0.3, 0, 0.7, 1]); }), -24.5, 62, 0, 'poster');
 place(build((b) => { b.translate(0, 5, 0); buildFabricBanner(b, 'brand.banner.v', 1.2, 4.5, { hang: 0.6 }); }), -22, 62, 0, 'banner-v');
 place(build((b) => { b.translate(0, 4, 0); buildFabricBanner(b, 'brand.banner.h', 8, 1.25); }), -15, 62, 0, 'banner-h');
 place(build((b) => buildPvcBanner(b, 'brand.banner.h', 4, 0.62, 2.0)), -8, 62, 0, 'pvc');

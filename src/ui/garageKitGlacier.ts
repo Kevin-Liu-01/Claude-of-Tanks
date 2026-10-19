@@ -29,7 +29,7 @@ export const GARAGE_KIT_GLACIER: GarageKitPlacement = {
     { kind: 'prop', name: 'extinguisher', at: [18.3, 13.9], yaw: 0 },
     { kind: 'sign', sign: 'post', rect: 'brand.crest.color', at: [18.8, 16.0], yaw: Math.PI / 4 - 0.3, size: [0.8, 0.8] },
     // the route board with three prints, the frame's left
-    { kind: 'display', display: 'board', rects: ['media.alpine', 'media.winter', 'media.coastal'], at: [-17.4, 17.6], yaw: Math.PI / 2 - 0.25, size: [2.6, 1.1], posts: 1.0 },
+    { kind: 'display', display: 'board', rects: ['still.alpine', 'still.winter', 'still.coastal'], at: [-17.4, 17.6], yaw: Math.PI / 2 - 0.25, size: [2.6, 1.1], posts: 1.0 },
     { kind: 'display', display: 'nameboard', at: [11.6, 9.6], yaw: Math.PI / 4 + 0.32, width: 2.4, posts: 1.1 },
     { kind: 'sign', sign: 'post', rect: 'picto.speed10', at: [-12.6, 4.8], yaw: Math.PI / 2 - 0.2, size: [0.55, 0.55] },
     // the heated fuel cell on the left: the bowser, its drums and spill kit, the no-smoking plate

@@ -20,7 +20,7 @@ export const GARAGE_KIT_FROSTHOLLOW: GarageKitPlacement = {
     { kind: 'display', display: 'plate', rect: 'brand.crest.metal', at: [17.4, 26.02], yaw: Math.PI / 4, y: 3.9, size: [0.9, 0.9] },
     // the duty office under the timber lean-to: the station, the notice board, the PVC banner on the lean-to's front
     { kind: 'display', display: 'station', at: [19.6, 22.6], yaw: Math.PI / 4 - 0.15, screens: ['readout.armor.abrams', 'map.winter'], width: 1.7 },
-    { kind: 'display', display: 'board', rects: ['media.winter', 'media.alpine', 'media.verdant'], at: [24.2, 19.6], yaw: Math.PI / 4 - 0.4, size: [2.2, 1.0], posts: 1.0 },
+    { kind: 'display', display: 'board', rects: ['still.winter', 'still.alpine', 'still.verdant'], at: [24.2, 19.6], yaw: Math.PI / 4 - 0.4, size: [2.2, 1.0], posts: 1.0 },
     { kind: 'display', display: 'pvc', rect: 'brand.banner.h', at: [19.8, 20.15], yaw: Math.PI / 4, y: 1.45, size: [4.6, 0.72], options: { gap: 0.3 } },
     // a monorail on its portal frame at work: a road-wheel station lifted over its stands
     { kind: 'crane', crane: 'monorail', at: [-16.2, 15.6], yaw: Math.PI / 2 - 0.2, params: { length: 5.2, height: 4.6, trolleyAt: 0.72, load: { kind: 'roadwheels' } } },
