@@ -56,10 +56,12 @@ import type * as THREE from 'three';
 // pad/inner materials are CLONES made inside buildRunningGear, and
 // Material.clone() does not carry onBeforeCompile, so they render floorless
 // (near-black) on every shade side while the hooked paint floats at ~57.
-// The kv2 build re-attaches the exported hook to its own per-build clones
-// (plain assignment, exactly the materials.js stub path — never the chained
-// CSM closure, which registers shaders under the SOURCE material key).
-import { vehicleAmbientFloorHook } from '../materials.ts';
+// The kv2 build re-attaches the exported hook to its own per-build clones.
+// 2026-10-17 (the wheel-band lane, round 2): through materials.ts
+// (cloneRehookedVehicleMaterial, cloneFloorlessVehicleMaterial), which give each
+// clone its own cascade registration — the plain assignment drew them untagged
+// (the ground occlusion's band under the belly line) and outside the cascades.
+import { cloneFloorlessVehicleMaterial, cloneRehookedVehicleMaterial, rehookVehicleMaterial } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec3Tuple = [number, number, number];
@@ -646,21 +648,16 @@ function addKV2RunningGear(P: SovietHeavyBuilderPort): void {
     // dark parts (teeth, root rings, idler contact rim) all share this one
     // per-tank material.
     P.mats.spareTrack.color.setHex(0x3f382c);
-    const wornDrum = P.mats.wheels.clone();                  // sprocket/idler drum steel:
+    const wornDrum = cloneRehookedVehicleMaterial(P.mats.wheels); // sprocket/idler drum steel:
     wornDrum.color.setHex(0x39352c);                         // dark worn drum, off the pale
     wornDrum.envMapIntensity = 0.25;                         // scheme paint ("dinner plate")
-    const pocketVoid = P.mats.rubber.clone();
+    const pocketVoid = cloneFloorlessVehicleMaterial(P.mats.rubber); // floorless, as the raw clone drew it
     pocketVoid.color.setHex(0x191715);                       // AO-dark pocket floors
     P.disposables.push(wornDrum, pocketVoid);
     // re-attach the readability floor the clones lost (see import note):
     // without it the pads render ~25 on the shade side while every hooked
     // material floats at ~55 — the exact 3.7x band split the critic scored.
-    const rehook = (m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
-      m.onBeforeCompile = vehicleAmbientFloorHook;
-      m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-      return m;
-    };
-    rehook(wornDrum);
+    const rehook = rehookVehicleMaterial;
     P.hullG.traverse((o) => {
       const object: MaterialSceneObject = o;
       if (!object.isMesh && !object.isInstancedMesh) return;
@@ -1038,7 +1035,7 @@ function addKV2GunAndFinish(P: SovietHeavyBuilderPort): void {
     // (TONE-SLOT MECHANICS). A bore is a HOLE: swap the disc to a floorless
     // void clone (Material.clone() drops onBeforeCompile — the same
     // certified sub-40 mechanism as this build's pocketVoid inserts).
-    const boreVoid = P.mats.rubber.clone();
+    const boreVoid = cloneFloorlessVehicleMaterial(P.mats.rubber); // floorless, as the raw clone drew it (2026-10-17)
     boreVoid.color.setHex(0x0a0a09);
     boreVoid.envMapIntensity = 0;
     P.disposables.push(boreVoid);

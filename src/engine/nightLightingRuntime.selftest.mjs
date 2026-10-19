@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
-import { createNightLightingRuntime, registerNightLightEmitters, HEADLIGHT_LOW_BEAM_DROP, HEADLIGHT_CONE_RAD } from './nightLightingRuntime.ts';
+import { createNightLightingRuntime, registerNightLightEmitters, HEADLIGHT_LOW_BEAM_DROP, HEADLIGHT_CONE_RAD, BUILDING_FOCUS_AHEAD_M } from './nightLightingRuntime.ts';
 // (EF.11) a driving lamp's beam is its authored aim dropped to a low beam in its vehicle's frame
 const lowBeam = (d) => { const v = new THREE.Vector3(...d); v.y -= HEADLIGHT_LOW_BEAM_DROP * Math.hypot(v.x, v.z); return v.normalize(); };
 
@@ -233,6 +233,27 @@ assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'glass', position
 assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', position: [NaN, 0, 0] }]), /finite/);
 assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', position: [0, 0, 0], direction: [0, 0, 0] }]), /nonzero/);
 assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', position: [0, 0, 0], intensity: 2001 }]), /intensity/);
+// (the looks lane, 228: Steinburg's streets dark at night) a town's street lamps share one instanced anchor and carry
+// world positions: each takes a pooled point light of its own (the one-lamp-per-side rule is a vehicle's headlights'),
+// two lamps in one place light it once, and the lamps ahead of the camera along its view take the lights
+{
+  const town = new THREE.Scene(), lamps = new THREE.Group(), lampMaterial = new THREE.MeshStandardMaterial();
+  town.add(lamps);
+  const at = [[-150, 4, 0], [-124, 4, 9], [-124.5, 4, 9.2], [-175, 4, 11], [-100, 4, -6]];
+  registerNightLightEmitters(lamps, at.map((position) => ({ kind: 'building', position, color: 0xffc889, intensity: 90, range: 17,
+    emission: { material: lampMaterial, color: 0xffffff, intensity: 3 } })));
+  const pool = createNightLightingRuntime(town, { spotLights: 1, pointLights: 2 });
+  pool.prepare([{ root: lamps }], true);
+  const lit = () => pool.lights.filter((light) => light.isPointLight && light.intensity > 0).map((light) => light.position.toArray().map(Math.round).join(','));
+  pool.update(new THREE.Vector3(-156, 8, 2), true);
+  assert.equal(lit().length, 2, 'two street lamps on one anchor and one side of the origin both take a point light');
+  pool.update(new THREE.Vector3(-156, 8, 2), true, new THREE.Vector3(1, -0.25, -0.1));
+  assert.deepEqual(lit().sort(), ['-124,4,9', '-150,4,0'], `the lamps within reach of the point ${BUILDING_FOCUS_AHEAD_M} m ahead along the view light, once each: ${lit()}`);
+  pool.update(new THREE.Vector3(-156, 8, 2), true, new THREE.Vector3(-1, -0.25, 0.3));
+  assert.ok(lit().includes('-175,4,11'), `looking back up the street, the lamp behind the camera lights: ${lit()}`);
+  pool.dispose(); lampMaterial.dispose();
+}
+
 const source = readFileSync(new URL('./nightLightingRuntime.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(source, /Math\.random\(|performance\.|setTimeout\(|requestAnimationFrame\(|needsUpdate\s*=/);
 assert.doesNotMatch(source, /from ['"].*(?:quality|fleet|tankFactory)/, 'runtime stays independent of fleet and quality overrides');

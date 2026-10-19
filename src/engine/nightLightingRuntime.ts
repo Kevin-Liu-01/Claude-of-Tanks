@@ -167,9 +167,17 @@ function belongsToVisibleScene(anchor: THREE.Object3D, scene: THREE.Scene, sourc
   return false;
 }
 
+/**
+ * (the looks lane, 228: Steinburg's lamps lit no ground) a town's lamps — the building emitters, pooled into a point
+ * light or two — are chosen round a point this far ahead of the camera along its view, on its own level: the lamps in
+ * front of it light the street it looks down, not the one behind or beside it. Headlights keep the camera's distance.
+ */
+export const BUILDING_FOCUS_AHEAD_M = 14;
+const _focus = new THREE.Vector3();
+
 function updateEmitter(
   state: EmitterState, scene: THREE.Scene, reference: THREE.Vector3Like,
-  seen: Map<THREE.Object3D, number>, frame: number,
+  seen: Map<THREE.Object3D, number>, frame: number, focus: THREE.Vector3Like = reference,
 ): void {
   state.active = (state.source.isActive?.() ?? true)
     && (state.emitter.isActive?.() ?? true)
@@ -180,7 +188,8 @@ function updateEmitter(
     seen.set(state.anchor, frame);
   }
   state.position.fromArray(state.emitter.position).applyMatrix4(state.anchor.matrixWorld);
-  const x = state.position.x - reference.x, y = state.position.y - reference.y, z = state.position.z - reference.z;
+  const from = state.emitter.kind === 'building' ? focus : reference;
+  const x = state.position.x - from.x, y = state.position.y - from.y, z = state.position.z - from.z;
   state.distanceSquared = x * x + y * y + z * z;
   if (state.emission) state.emission.active = true;
   if (state.emitter.kind === 'headlight') {
@@ -213,7 +222,12 @@ function assignedEarlier<T extends THREE.SpotLight | THREE.PointLight>(slots: Li
     // owner 2026-09-18 ("lights seem to only come from one headlight"): with two scene spot lights and a chase
     // camera offset to one flank, the two nearest lamps were both pods of the SAME headlight cluster. One lamp per
     // side of a vehicle: the next slot goes to the vehicle's other headlight before a farther vehicle's lamp.
-    if (taken.anchor === source.anchor && taken.emitter.kind === source.emitter.kind && lampSide(taken) === lampSide(source)) return true;
+    // (the looks lane, 228: Steinburg's streets dark at night) a vehicle's lamps only: a town's street lamps share one
+    // instanced anchor with world positions, and read as one vehicle's left side they gave a whole town one lit lamp
+    if (taken.emitter.kind === 'headlight' && taken.anchor === source.anchor && taken.emitter.kind === source.emitter.kind
+      && lampSide(taken) === lampSide(source)) return true;
+    // two lamps standing in one place (a square's lamp and the street's at its node) light it once
+    if (taken.emitter.kind === 'building' && source.emitter.kind === 'building' && taken.position.distanceToSquared(source.position) < 4) return true;
   }
   return false;
 }
@@ -313,7 +327,8 @@ export interface NightLightingRuntime {
   prepare(roots: readonly NightLightingRoot[], night: boolean): void;
   /** Explicit visual-construction event only, never call from the frame loop. */
   appendRoot(source: NightLightingRoot): void;
-  update(reference: THREE.Vector3Like, active?: boolean): void;
+  /** `forward`: the camera's view direction; a town's lamps are chosen round a point BUILDING_FOCUS_AHEAD_M ahead of it. */
+  update(reference: THREE.Vector3Like, active?: boolean, forward?: THREE.Vector3Like): void;
   reset(): void;
   dispose(): void;
 }
@@ -360,12 +375,15 @@ export function createNightLightingRuntime(scene: THREE.Scene, budget: NightLigh
     if (disposed) throw new Error('Night lighting is disposed');
     if (enabled) collectRoot(source, seen, emitters, emissions, emissionList);
   }
-  function update(reference: THREE.Vector3Like, active = true): void {
+  function update(reference: THREE.Vector3Like, active = true, forward?: THREE.Vector3Like): void {
     if (!enabled || disposed) return;
     if (!active) { darken(); return; }
     frame++;
+    _focus.set(reference.x, reference.y, reference.z);
+    const level = forward ? Math.hypot(forward.x, forward.z) : 0;
+    if (forward && level > 1e-6) _focus.x += forward.x / level * BUILDING_FOCUS_AHEAD_M, _focus.z += forward.z / level * BUILDING_FOCUS_AHEAD_M;
     for (const emission of emissionList) emission.active = false;
-    for (const emitter of emitters) updateEmitter(emitter, scene, reference, seen, frame);
+    for (const emitter of emitters) updateEmitter(emitter, scene, reference, seen, frame, _focus);
     for (const emission of emissionList) setEmission(emission, emission.active);
     updateSpots(spots, emitters);
     for (let index = 0; index < points.length; index++) {

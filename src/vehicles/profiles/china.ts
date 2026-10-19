@@ -574,8 +574,11 @@ function buildZTZ85III(P: ChinaBuilderPort): void {
   P.addGunExtra(cylZ(0.09, 0.13, 12), -0.38, 0.13, 0.24);
   P.addGunExtraDark(cylZ(0.094, 0.015, 12), -0.38, 0.13, 0.315);
   P.addGunExtraDark(box(0.05, 0.12, 0.05), -0.38, 0.015, 0.20);
+  // 227 gun-gaps (owner 2026-10-17, "fix any of these" with the C2 gun gap): the canvas collar's front cap stops at
+  // z 0.51 and the tube began at 0.52, a 10 mm see-through slit between them at every pose. The tube's rear now
+  // starts 30 mm inside the collar (0.48), so the collar seats on the tube; recoil only buries it deeper.
   tubeGun(P, [
-    [0.52, 1.50, 0.108], [1.50, 2.45, 0.098], [2.45, 3.05, 0.126],
+    [0.48, 1.50, 0.108], [1.50, 2.45, 0.098], [2.45, 3.05, 0.126],
     [3.05, 3.72, 0.094], [3.72, 4.03, 0.099],
   ], { rings: [[1.50, 0.112], [2.45, 0.129], [3.05, 0.129], [3.72, 0.103]], muzzle: 4.03 });
   muzzleBore(P, { r: 0.083 }); // §B3.1

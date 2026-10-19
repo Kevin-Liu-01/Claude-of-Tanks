@@ -143,7 +143,9 @@ worktree and never stage generated tank work wholesale.
   combat-anatomy procedure: `npm run tank:anatomy:update`,
   `npm run tank:anatomy:check`, then the targeted
   `npm run tank:release:check -- --ids=<ids> --gate`. The update deliberately
-  refreshes armor/module/crew receipts and all fleet technical diagrams.
+  refreshes armor/module/crew receipts and all fleet technical diagrams. After
+  the fleet geometry ledger rows move, re-measure the gun lines of those ids:
+  `node tools/gun-junction-census.mjs --ledger=docs/geometry-gate/gun-junction.json --update --ids=<ids>`.
 
 ## Gotchas / never-do-X
 <!-- agent-docs:fill:gotchas -->

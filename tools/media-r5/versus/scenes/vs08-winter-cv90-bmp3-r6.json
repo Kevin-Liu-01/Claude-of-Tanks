@@ -1,0 +1,341 @@
+{
+ "map": "winter",
+ "timeOfDay": "day",
+ "seed": 1908,
+ "light": {
+  "sunAzimuthDeg": 20,
+  "sunElevationDeg": 22
+ },
+ "actors": [
+  {
+   "id": "cv90_mkiv_x",
+   "name": "hero",
+   "pos": [
+    -213.88,
+    72.27
+   ],
+   "facingDeg": 50.23,
+   "turretDeg": -74.85,
+   "gunDeg": 0,
+   "camo": "winter",
+   "camoSeed": 7811,
+   "recoilAgeS": 0.04
+  },
+  {
+   "id": "bmp3",
+   "name": "foe0",
+   "pos": [
+    -217.13,
+    79.36
+   ],
+   "facingDeg": 73.05,
+   "turretDeg": -12,
+   "gunDeg": 2,
+   "camo": "winter",
+   "camoSeed": 7812
+  }
+ ],
+ "effects": [
+  {
+   "type": "dust",
+   "at": [
+    -229.16,
+    57.84
+   ],
+   "tMs": 5500,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 50.23
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -230.85,
+    59.87
+   ],
+   "tMs": 5500,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 50.23
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -225.47,
+    60.91
+   ],
+   "tMs": 5900,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 50.23
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -227.16,
+    62.94
+   ],
+   "tMs": 5900,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 50.23
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -222.24,
+    63.59
+   ],
+   "tMs": 6250,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 50.23
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -223.93,
+    65.63
+   ],
+   "tMs": 6250,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 50.23
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -219.48,
+    65.9
+   ],
+   "tMs": 6550,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 50.23
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -221.17,
+    67.93
+   ],
+   "tMs": 6550,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 50.23
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -217.35,
+    67.66
+   ],
+   "tMs": 6780,
+   "params": {
+    "count": 21,
+    "intensity": 1.3,
+    "dirDeg": 50.23
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -219.05,
+    69.69
+   ],
+   "tMs": 6780,
+   "params": {
+    "count": 21,
+    "intensity": 1.3,
+    "dirDeg": 50.23
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -216.16,
+    68.66
+   ],
+   "tMs": 6910,
+   "params": {
+    "count": 15,
+    "intensity": 1.3,
+    "dirDeg": 50.23
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -217.85,
+    70.69
+   ],
+   "tMs": 6910,
+   "params": {
+    "count": 15,
+    "intensity": 1.3,
+    "dirDeg": 50.23
+   }
+  },
+  {
+   "type": "burning",
+   "actor": "foe0",
+   "tMs": 4500,
+   "params": {}
+  },
+  {
+   "type": "impact",
+   "at": [
+    -216.34,
+    0.69,
+    77.63
+   ],
+   "tMs": 6750,
+   "params": {
+    "kind": "penetration",
+    "caliberMm": 30,
+    "normal": [
+     0.4,
+     0.24,
+     -0.88
+    ]
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -216.34,
+    0.69,
+    77.63
+   ],
+   "tMs": 6770,
+   "params": {
+    "count": 16,
+    "speedMps": 5,
+    "hot": 0.75,
+    "scale": 0.45
+   }
+  }
+ ],
+ "fxTime": 7000,
+ "timeScale": 0,
+ "storyboard": {
+  "version": 1,
+  "durationMs": 8500,
+  "shots": [],
+  "actorTracks": [
+   {
+    "actor": "hero",
+    "keys": [
+     {
+      "id": "hero-0",
+      "tMs": 4400,
+      "pos": [
+       -237.86,
+       52.31
+      ],
+      "facingDeg": 50.23,
+      "turretDeg": -74.85,
+      "gunDeg": 0,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-1",
+      "tMs": 7400,
+      "pos": [
+       -210.19,
+       75.34
+      ],
+      "facingDeg": 50.23,
+      "turretDeg": -74.85,
+      "gunDeg": 0,
+      "transition": "linear"
+     }
+    ]
+   }
+  ]
+ },
+ "picture": {
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "vignette": {
+   "amount": 0.36,
+   "roundness": 0.55,
+   "softness": 0.6
+  },
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0,
+  "exposure": -0.03,
+  "vibrance": 0.14,
+  "contrast": 1.05
+ },
+ "fx": {
+  "quality": "cinematic",
+  "trackDust": true
+ },
+ "autoPlace": false,
+ "meta": {
+  "id": "vs08-winter-cv90-bmp3-r6",
+  "kind": "versus-still",
+  "pair": "cv90_mkiv_x v bmp3",
+  "round": 6,
+  "idea": "the high three-quarter drone view: the CV90 racing down the snow at the burning, skidding BMP-3, its autocannon firing",
+  "lens": "a",
+  "pick": "vs08-winter-cv90-bmp3-r6:a"
+ },
+ "camera": {
+  "name": "a",
+  "pos": [
+   -196,
+   9.1,
+   76
+  ],
+  "lookAt": [
+   -217.49,
+   0,
+   75.25
+  ],
+  "fov": 23,
+  "rollDeg": 10,
+  "groundRel": true
+ },
+ "cameraVariants": [
+  {
+   "name": "a",
+   "pos": [
+    -196,
+    9.1,
+    76
+   ],
+   "lookAt": [
+    -217.49,
+    0,
+    75.25
+   ],
+   "fov": 23,
+   "rollDeg": 10,
+   "groundRel": true
+  }
+ ]
+}

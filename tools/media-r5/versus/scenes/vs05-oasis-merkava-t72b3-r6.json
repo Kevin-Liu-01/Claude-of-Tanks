@@ -1,0 +1,552 @@
+{
+ "map": "oasis",
+ "timeOfDay": "day",
+ "seed": 1905,
+ "light": {
+  "sunAzimuthDeg": 310.3,
+  "sunElevationDeg": 42
+ },
+ "actors": [
+  {
+   "id": "merkava4_x",
+   "name": "hero",
+   "pos": [
+    -395.92,
+    155.99
+   ],
+   "facingDeg": 343.65,
+   "turretDeg": 88.61,
+   "gunDeg": -6.34,
+   "camo": "factory",
+   "camoSeed": 7105,
+   "recoilAgeS": 0.04
+  },
+  {
+   "id": "t72b3_x",
+   "name": "foe0",
+   "pos": [
+    -381.76,
+    160.52
+   ],
+   "facingDeg": 254.88,
+   "turretDeg": -2.62,
+   "gunDeg": 2.72,
+   "camo": "factory",
+   "camoSeed": 7106
+  },
+  {
+   "id": "t72b3_x",
+   "name": "wreck0",
+   "pos": [
+    -354.81,
+    125.21
+   ],
+   "facingDeg": 250,
+   "turretDeg": 40,
+   "gunDeg": 0,
+   "state": "wrecked-burnt",
+   "stateAgeS": 45,
+   "camo": "factory",
+   "camoSeed": 7305
+  }
+ ],
+ "effects": [
+  {
+   "type": "dust",
+   "at": [
+    -390.97,
+    144.5
+   ],
+   "tMs": 5500,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 343.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -393.87,
+    143.65
+   ],
+   "tMs": 5500,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 343.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -391.65,
+    146.8
+   ],
+   "tMs": 5900,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 343.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -394.55,
+    145.95
+   ],
+   "tMs": 5900,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 343.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -392.24,
+    148.82
+   ],
+   "tMs": 6250,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 343.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -395.14,
+    147.97
+   ],
+   "tMs": 6250,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 343.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -392.75,
+    150.54
+   ],
+   "tMs": 6550,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 343.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -395.65,
+    149.69
+   ],
+   "tMs": 6550,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 343.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -393.14,
+    151.87
+   ],
+   "tMs": 6780,
+   "params": {
+    "count": 21,
+    "intensity": 1.3,
+    "dirDeg": 343.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -396.03,
+    151.02
+   ],
+   "tMs": 6780,
+   "params": {
+    "count": 21,
+    "intensity": 1.3,
+    "dirDeg": 343.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -393.36,
+    152.62
+   ],
+   "tMs": 6910,
+   "params": {
+    "count": 15,
+    "intensity": 1.3,
+    "dirDeg": 343.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -396.25,
+    151.76
+   ],
+   "tMs": 6910,
+   "params": {
+    "count": 15,
+    "intensity": 1.3,
+    "dirDeg": 343.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -375.92,
+    163.66
+   ],
+   "tMs": 6100,
+   "params": {
+    "count": 18,
+    "intensity": 1.3,
+    "dirDeg": 254.88
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -375.13,
+    160.75
+   ],
+   "tMs": 6100,
+   "params": {
+    "count": 18,
+    "intensity": 1.3,
+    "dirDeg": 254.88
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -377.46,
+    163.24
+   ],
+   "tMs": 6500,
+   "params": {
+    "count": 16,
+    "intensity": 1.3,
+    "dirDeg": 254.88
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -376.68,
+    160.33
+   ],
+   "tMs": 6500,
+   "params": {
+    "count": 16,
+    "intensity": 1.3,
+    "dirDeg": 254.88
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -378.62,
+    162.93
+   ],
+   "tMs": 6800,
+   "params": {
+    "count": 14,
+    "intensity": 1.3,
+    "dirDeg": 254.88
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -377.83,
+    160.02
+   ],
+   "tMs": 6800,
+   "params": {
+    "count": 14,
+    "intensity": 1.3,
+    "dirDeg": 254.88
+   }
+  },
+  {
+   "type": "muzzle_flash",
+   "actor": "hero",
+   "tMs": 6700,
+   "params": {
+    "caliberMm": 175
+   }
+  },
+  {
+   "type": "muzzle_flash",
+   "actor": "hero",
+   "tMs": 6958,
+   "params": {
+    "caliberMm": 175
+   }
+  },
+  {
+   "type": "impact",
+   "at": [
+    -384.26,
+    6.9,
+    159.72
+   ],
+   "tMs": 6750,
+   "params": {
+    "kind": "ricochet",
+    "caliberMm": 125,
+    "normal": [
+     0.25,
+     0.85,
+     0.43
+    ]
+   }
+  },
+  {
+   "type": "sparks",
+   "at": [
+    -384.26,
+    6.9,
+    159.72
+   ],
+   "tMs": 6770,
+   "params": {
+    "caliberMm": 120,
+    "normal": [
+     0.25,
+     0.85,
+     0.43
+    ]
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -384.26,
+    6.9,
+    159.72
+   ],
+   "tMs": 6760,
+   "params": {
+    "count": 14,
+    "speedMps": 8,
+    "hot": 0.9,
+    "scale": 0.45
+   }
+  },
+  {
+   "type": "engine_smoke",
+   "actor": "foe0",
+   "tMs": 5500,
+   "params": {}
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -293.08,
+    116.12
+   ],
+   "tMs": 0,
+   "params": {
+    "size": "huge"
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -292.48,
+    116.72
+   ],
+   "tMs": 1000,
+   "params": {
+    "size": "huge"
+   }
+  },
+  {
+   "type": "burning",
+   "actor": "wreck0",
+   "tMs": 0,
+   "params": {}
+  },
+  {
+   "type": "fire_field",
+   "at": [
+    -332.38,
+    148.05
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 4,
+    "durationS": 40,
+    "intensity": 1,
+    "smoke": true
+   }
+  },
+  {
+   "type": "embers",
+   "at": [
+    -332.38,
+    148.05
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 4,
+    "rate": 50,
+    "durationS": 20,
+    "rise": 3
+   }
+  }
+ ],
+ "fxTime": 7000,
+ "timeScale": 0,
+ "storyboard": {
+  "version": 1,
+  "durationMs": 8500,
+  "shots": [],
+  "actorTracks": [
+   {
+    "actor": "hero",
+    "keys": [
+     {
+      "id": "hero-0",
+      "tMs": 4400,
+      "pos": [
+       -391.53,
+       141.02
+      ],
+      "facingDeg": 343.65,
+      "turretDeg": 88.61,
+      "gunDeg": -6.34,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-1",
+      "tMs": 7400,
+      "pos": [
+       -396.6,
+       158.29
+      ],
+      "facingDeg": 343.65,
+      "turretDeg": 88.61,
+      "gunDeg": -6.34,
+      "transition": "linear"
+     }
+    ]
+   },
+   {
+    "actor": "foe0",
+    "keys": [
+     {
+      "id": "foe0-0",
+      "tMs": 4400,
+      "pos": [
+       -371.72,
+       163.23
+      ],
+      "facingDeg": 254.88,
+      "turretDeg": -2.62,
+      "gunDeg": 2.72,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-1",
+      "tMs": 7400,
+      "pos": [
+       -383.3,
+       160.1
+      ],
+      "facingDeg": 254.88,
+      "turretDeg": -2.62,
+      "gunDeg": 2.72,
+      "transition": "linear"
+     }
+    ]
+   }
+  ]
+ },
+ "picture": {
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "vignette": {
+   "amount": 0.36,
+   "roundness": 0.55,
+   "softness": 0.6
+  },
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0,
+  "exposure": 0.3,
+  "vibrance": 0.14,
+  "contrast": 1.05
+ },
+ "fx": {
+  "quality": "cinematic",
+  "trackDust": true
+ },
+ "autoPlace": false,
+ "meta": {
+  "id": "vs05-oasis-merkava-t72b3-r6",
+  "kind": "versus-still",
+  "pair": "merkava4_x v t72b3_x",
+  "round": 6,
+  "idea": "the crest: the Merkava claws up the dune face at a tilted lens, its gun laid on the T-72B3 climbing after it, the spring beyond",
+  "lens": "a",
+  "pick": "vs05-oasis-merkava-t72b3-r6:a"
+ },
+ "camera": {
+  "name": "a",
+  "pos": [
+   -404,
+   1,
+   164
+  ],
+  "lookAt": [
+   -378.93,
+   1.75,
+   147.53
+  ],
+  "fov": 42,
+  "rollDeg": 9,
+  "groundRel": true
+ },
+ "cameraVariants": [
+  {
+   "name": "a",
+   "pos": [
+    -404,
+    1,
+    164
+   ],
+   "lookAt": [
+    -378.93,
+    1.75,
+    147.53
+   ],
+   "fov": 42,
+   "rollDeg": 9,
+   "groundRel": true
+  }
+ ]
+}

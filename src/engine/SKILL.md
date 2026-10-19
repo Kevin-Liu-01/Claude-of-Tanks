@@ -69,6 +69,10 @@ triangles independently with `npm run perf:resources:gate`.
 Studio picture passes must stay out of the battle composer: never import
 `cinemaPost.ts` from boot or battle modules, and keep its stage gating in
 `game/studioPicture.ts` so the neutral picture stays byte-identical.
+The entry chunk is budgeted (`tools/bundle-budget.mjs` entryRaw): one map's
+sky data loads with that map's world, never statically from `sky.ts`. The
+Moon's land mask (`earthLandMask.ts`) goes through `earthLandAccess.ts`, which
+`world/map.ts` awaits before the world exists.
 Keep each rate-capped far-cascade projection paired with the depth map rendered
 from that pose. Do not move its light fit on an unscheduled frame. Shadow visual
 changes must pass both the raw CSM motion comparison and composed temporal-AO

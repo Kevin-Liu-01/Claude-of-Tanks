@@ -2157,7 +2157,8 @@ function* createFxSteps(
       const seed = (s.seed % 65536) / 65536;
       if (laid.dug[i]) {
         const [p1, p2, p3] = craterWobblePhases(s.seed);
-        mapCraterMarks.crater({ x: s.x, z: s.z, radiusM: s.radiusM, p1, p2, p3, surface, climate, explosive: true, kind: 'he',
+        // (the Earthrise 228 rebuild) the Moon's pre-placed craters are impacts, not shell holes: no soot in the regolith
+        mapCraterMarks.crater({ x: s.x, z: s.z, radiusM: s.radiusM, p1, p2, p3, surface, climate, explosive: climate !== 'regolith', kind: 'he',
           seed, birth }, deformedGroundY);
       } else {
         mapCraterMarks.stamp(s.x, s.z, s.radiusM, surface, 'he', seed, birth, deformedGroundY, climate);
@@ -2168,6 +2169,7 @@ function* createFxSteps(
   function groundClimate(): CraterClimate {
     const mapId = world?.()?.mapId ?? null;
     if (mapId === 'caldera') return 'ash';
+    if (mapId === 'moon') return 'regolith'; // (the Earthrise 228 rebuild: the regolith's grey, never the sand's tan)
     return resolveGroundReduxProfile(mapId).climate;
   }
 

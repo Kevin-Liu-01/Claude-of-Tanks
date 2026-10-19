@@ -116,7 +116,7 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 <td width="50%"><img src="public/media/feature-evidence-r2/mechanic-mbt70-missile.webp" alt="MBT-70 firing a guided Shillelagh missile"><br><sub><b>Guided weapons:</b> the MBT-70 fires the Shillelagh as its primary round. IFVs carry vehicle-specific TOW, MILAN, Spike, Konkurs, Arkan, and Jyu-MAT launchers.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/showcase-r2/13_gallery_modules.webp" alt="Leclerc XLR internal modules and crew shown in the current Tank Gallery"><br><sub><b>Internal anatomy:</b> the Gallery shows crew, gun, turret ring, engine, fuel, ammunition, tracks, optics, radio, and vehicle-specific feed or missile systems.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/13_gallery_modules.webp" alt="Leclerc SXXI internal modules and crew shown in the current Tank Gallery"><br><sub><b>Internal anatomy:</b> the Gallery shows crew, gun, turret ring, engine, fuel, ammunition, tracks, optics, radio, and vehicle-specific feed or missile systems.</sub></td>
 <td width="50%"><img src="public/media/showcase-r2/01_garage_verdant.webp" alt="Current Claude of Tanks Garage displaying a K2 in Verdant Motor Pool"><br><sub><b>One shared fleet:</b> battle, garage, Gallery, Studio, bots, icons, diagrams, and technical dossiers read the same vehicle specifications—220 in production and local development.</sub></td>
 </tr>
 </table>
@@ -238,7 +238,7 @@ interpolation, reliable fire edges, reconnectable room state, and separate contr
 7v7 battle responsive without giving the client authority.
 
 <p align="center">
-  <img src="public/media/multiplayer-r1/dual-perspective.webp" alt="Side-by-side live browser multiplayer screens showing an M1A2 Abrams and T-90M Proryv facing each other from opposing player perspectives">
+  <img src="public/media/multiplayer-r1/dual-perspective.webp" alt="Side-by-side live browser multiplayer screens showing an M1A1 Abrams HC and a T-90AM facing each other from opposing player perspectives">
 </p>
 <p align="center"><sub><b>Two screens, opposing sights:</b> paired live 1v1 captures preserve the real battle HUD, authoritative simulation, filtered snapshots, and each commander's view.</sub></p>
 

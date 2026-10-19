@@ -1800,6 +1800,61 @@
    "kind": "take",
    "take": "s59-strv103b-farm-charge",
    "sequence": 168
+  },
+  {
+   "src": "/media/site50-r14/stills/s225-verdant-duel.webp",
+   "previewSrc": "/media/site50-r14/stills/s225-verdant-duel-thumb.webp",
+   "alt": "A Leopard 2A7V races a T-90M across Verdant Fields at golden hour, trading broadsides",
+   "feature": "Key moment",
+   "map": "Verdant Fields",
+   "title": "A Leopard 2A7V races a T-90M across Verdant Fields at golden hour, trading broadsides",
+   "kind": "take",
+   "take": "s225-verdant-duel",
+   "sequence": 169
+  },
+  {
+   "src": "/media/site50-r14/stills/s226-church-duel.webp",
+   "previewSrc": "/media/site50-r14/stills/s226-church-duel-thumb.webp",
+   "alt": "A Challenger 3 Prototype and a T-80U trade rounds down a snowy village street",
+   "feature": "Key moment",
+   "map": "Frosthollow",
+   "title": "A Challenger 3 Prototype and a T-80U trade rounds down a snowy village street",
+   "kind": "take",
+   "take": "s226-church-duel",
+   "sequence": 170
+  },
+  {
+   "src": "/media/site50-r14/stills/s226-church-duel-close.webp",
+   "previewSrc": "/media/site50-r14/stills/s226-church-duel-close-thumb.webp",
+   "alt": "A Challenger 3 Prototype and a T-80U trade rounds down a snowy village street",
+   "feature": "Close portrait",
+   "map": "Frosthollow",
+   "title": "A Challenger 3 Prototype and a T-80U trade rounds down a snowy village street",
+   "kind": "take",
+   "take": "s226-church-duel",
+   "sequence": 171
+  },
+  {
+   "src": "/media/site50-r14/stills/s227-oasis-duel.webp",
+   "previewSrc": "/media/site50-r14/stills/s227-oasis-duel-thumb.webp",
+   "alt": "An M1A2 Abrams SEPv3 knocks out a T-14 Armata by the caravanserai at sunset",
+   "feature": "Key moment",
+   "map": "Sunscar Oasis",
+   "title": "An M1A2 Abrams SEPv3 knocks out a T-14 Armata by the caravanserai at sunset",
+   "kind": "take",
+   "take": "s227-oasis-duel",
+   "sequence": 172
+  },
+  {
+   "src": "/media/site50-r14/stills/s228-street-1v2.webp",
+   "previewSrc": "/media/site50-r14/stills/s228-street-1v2-thumb.webp",
+   "alt": "An AbramsX takes on a T-90M and a T-72B3 down Steinburg's main street at night",
+   "feature": "Key moment",
+   "map": "Steinburg",
+   "title": "An AbramsX takes on a T-90M and a T-72B3 down Steinburg's main street at night",
+   "kind": "take",
+   "take": "s228-street-1v2",
+   "sequence": 173
   }
  ]
 }

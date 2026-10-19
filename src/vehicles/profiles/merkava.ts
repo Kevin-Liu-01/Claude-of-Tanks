@@ -23,7 +23,7 @@ import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, MUDGUARDS, convexSlab, muzzleBore, orientedSlab } from './kit.ts';
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
-import { vehicleAmbientFloorHook } from '../materials.ts';
+import { cloneRehookedVehicleMaterial, setVehicleMaterialFloorless } from '../materials.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -7974,7 +7974,11 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
             P.mats.spareTrack.roughness = 0.98;
             P.mats.spareTrack.metalness = 0.0;
             P.mats.spareTrack.envMapIntensity = 0.0;
-            P.mats.spareTrack.onBeforeCompile = () => {};
+            // 2026-10-17 (the wheel-band lane, round 2): the floors go, the registration stays
+            // (setVehicleMaterialFloorless) — the empty hook this assigned dropped the set material's cascade hook with
+            // them (USE_CSM stayed, its uniforms never bound) and its vehicle tag, so the ground occlusion took the
+            // pockets and the end-wheel hardware on this steel for ground
+            setVehicleMaterialFloorless(P.mats.spareTrack);
             P.mats.spareTrack.customProgramCacheKey = () => 'mk-void-r4';
             // hookless renders 2.7 (true black) — a small emissive floor parks
             // the pockets AT the ref's 26 band (sampled iteration, sRGB law)
@@ -8086,10 +8090,8 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
               const zNear = Math.abs(ob.position.z - p.sprocket.z) < 0.12 || Math.abs(ob.position.z - p.idler.z) < 0.12;
               if (!zNear || Math.abs(ob.position.x) < 0.8) return;
               if (!gdlMat) {
-                gdlMat = P.mats.spareTrack.clone();
+                gdlMat = cloneRehookedVehicleMaterial(P.mats.spareTrack);
                 gdlMat.color.setHex(p.gearDarkLift);
-                gdlMat.onBeforeCompile = vehicleAmbientFloorHook;
-                gdlMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
                 P.disposables.push(gdlMat);
               }
               ob.material = gdlMat;
