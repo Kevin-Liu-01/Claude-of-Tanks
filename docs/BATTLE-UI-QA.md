@@ -115,12 +115,21 @@ under everything above it: the rack or struck round, the countdown, the warning
 chip and the range tag where it hangs over the line. The line and the zoom plate
 keep 3 px from the ring's stroke, or drop below the ring
 (`sniperReadoutStack`). Where the line's resting place would put it any higher,
-whatever sits above it wins. On a screen over 430 px tall where that would take
-the zoom plate down onto the controls row, a rack's countdown moves beside the
-rack, the zoom plate moves up beside the readout line, and then the warning chip
-joins that row, left of the line. On the short landscape scope stack the round
-leads the ammo readout line instead, and a rack's countdown sits beside the rack
-when the ring keeps clear of it there. A
+whatever sits above it wins. Where that would take the zoom plate down onto the
+controls row (3 px clear of its top: a wide tray seats it 120 px over the floor,
+a landscape phone's systems row starts 99 px up), the zoom plate moves up beside
+the readout line, and then the warning chip joins that row, left of the line. On
+a screen over 430 px tall a rack's countdown also moves beside the rack. Where
+that row still reaches the controls, the chip moves above the ring. Where the
+column under the marker still leaves no room (a rack or struck round dropped
+below a ring just wide enough to cross it, with the countdown under it), the line
+and the zoom plate move right of that column, 16 px apart. On the short landscape
+scope stack the round leads the ammo readout line instead, and a rack's countdown
+sits beside the rack when the ring keeps clear of it there. The scope's vision switch sits beside the
+sight, level with the marker and past the widest ring, where no readout goes. A
+mouse layout seats it right of the sight, also past the range tag beside a small
+ring. A mouse window under 540 px wide uses the compact plate there. Touch seats
+it left of the sight, clear of the ammo and consumables column and FIRE. A
 rack shows spent slots for rounds stowage cannot load, and an empty rack is
 struck through. The range tag starts past the rack and its strike. Between two
 rounds of a clip or a salvo rack, the round being chambered fills as the group
@@ -162,6 +171,17 @@ tray's own canvas rule replaced the raise with a centred, scaled shell, and the
 2 px and APFSDS|0 by 5.6 px at 900 px). The r5 capture had no stacked case, so
 it never measured them. The capture now covers those trays at 900 px and 640 px.
 
+Round r8 put the switch under the sight, at 50% + 145 px. It ran under the tray
+slots, the consumables and the controls row on short mouse windows (700x460,
+800x500, 1280x480). With the gun travel warning, the readouts and the chip landed
+on it at 520 to 600 px tall (13.8 px at 700x580), and a wide ring's stack landed
+on it on taller windows too. The r8 receipt modelled the controls row 112 px over
+the floor, but it starts 120 px up. The receipt skipped the 431 to 450 px windows
+with the warning, and its rings (1, 11, 16, 24 and 40 m) missed 26 to 31 m, where
+the rack or struck round drops below the ring. There the readouts ran as much as
+6.5 px into the row. The receipt now models the row where it is and sweeps those
+rings, and the capture adds the warning, the widest ring and those windows.
+
 Round r7 said the scope readout line and the canvas aim warning start under the
 countdown. That held only on screens over about 525 px tall. From 431 to about
 525 px the line's resting place (`h - 176`) won over the countdown, and the line
@@ -181,15 +201,25 @@ shade, about 2:1 on its panel (`rgb(67,70,74)` on `rgb(11,10,10)`), while the
 geometry and the ring, rack and countdown gaps, all in `npm test`. Its scope
 sweep runs every reticle state, with and without the gun travel warning, over
 rings of 11 px up to the ceiling, on the short mouse windows (stacked and wide,
-431 to 600 px tall), a phone and two landscape phones. For the rendered frames
+431 to 600 px tall, and taller, with the rings that drop the marks below the
+ring on the short wide ones), narrow mouse windows, a phone, landscape phones and
+small touch screens. Every mark under the marker, and a ring centred on it, keeps
+3 px from the vision switch where the sheet seats it. For the rendered frames
 (it takes the capture lease), run the command below. It covers a 1440 px
-desktop, the stacked mouse trays at 900 px and 640 px, four short mouse windows
-(800x500, 900x480, 700x460 and 1280x480), a portrait phone and three landscape
-phones, and the tray states on the two 44 px tall touch slots (320x568 and
-568x290). It checks pixels, recorded canvas geometry and the tray's computed
-styles: every mark under the marker keeps 3 px from the ring's stroke, every
-text there keeps 3 px from the rack, and none lands on a control or the scope's
-vision switch. It then reads each saved frame (`tools/hud-ammo-frame-ink.mjs`):
+desktop, the stacked mouse trays at 900 px and 640 px, six short mouse windows
+(800x500, 900x480, 700x460, 1280x480, 800x560 and 1280x440), a 480 px wide mouse
+window, a portrait phone and three landscape phones, and the tray states on the
+two 44 px tall touch slots (320x568 and 568x290). The mouse windows add the gun
+travel warning and the widest ring to the scope's states. It checks pixels,
+recorded canvas geometry and the tray's computed styles: every mark under the
+marker keeps 3 px from the ring's stroke, every text there keeps 3 px from the
+rack, and every mark of the sight, the warning chip included, keeps 3 px from
+every control and from the scope's vision switch. The switch keeps 3 px from
+every HUD panel and control and stays on the screen. A wide tray's controls row
+must start where the HUD models it (120 px over the floor). No capture stage
+shows a shot report or the combat log: on mouse windows under about 1200 px wide,
+where the right lane reaches the sight, the report and an open log can cover the
+switch (the I key still switches the view). It then reads each saved frame (`tools/hud-ammo-frame-ink.mjs`):
 every mark the DOM says a visible slot shows must be in the frame's pixels. That
 covers its count, type label and empty strike, the touch chevron and an opaque
 top edge, and a white count must read at full brightness, not under the reload
@@ -200,7 +230,17 @@ receipt breaks each of these on a mouse tray and on a touch tray. With a camera
 on the frame, the paint receipt also turns the gun off the camera's aim, so the
 ring sits left, right, above and below the marker; every gap holds there too.
 One older placement remains: the range tag hangs off the screen centre's 4:30,
-not the gun ring's, so a far-displaced ring can cross it.
+not the gun ring's, so a far-displaced ring can cross it. With the widest rings,
+a wide tray under 420 px tall and a landscape phone under about 370 px tall leave
+the ring, the tag and the readouts no room above the controls row. The worst
+cases are 4.5 px into the row at 1024x400 and 25.5 px at 568x290. Before r9 the
+compact stack under 431 px tall had no floor at all, and ran as much as 34 px
+into a wide tray's row. A probe outside the capture found three older touch
+placements. On a portrait phone 360 px wide or less, the scope readouts land on
+the left FIRE button (29 px at 320x568, 3.8 px at 360x640). The portrait gun
+travel warning, a DOM chip fixed at 50% + 48 px, meets the countdown (1.2 px)
+and, under a wide ring, the dropped rack (18 px) and the range tag (5.9 px). At
+568x290 the readouts sit under 1 px from the systems row.
 Nothing touches the page between the DOM read and the frame. The ink gaps
 between count, label, key and icon are measured after the frame, from
 full-viewport shots. The tool takes no clipped screenshot. Its flow lives in

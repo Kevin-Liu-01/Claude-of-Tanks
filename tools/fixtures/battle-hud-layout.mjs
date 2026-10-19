@@ -74,13 +74,27 @@ const AMMO_STAGES = {
   // The ×8 sight (critic r3: on a landscape phone the struck round and the rack sat on the scope's ammo readout).
   'ammo-reload-sniper': {spec:'m1a1_abrams_hc', reload:{t:3.2,totalS:6,kind:'shell'}, sniper:true},
   'ammo-dry-cannon-sniper': {spec:'m1a1_abrams_hc', ammo:[0,0,0], reload:{t:3.2,totalS:6,kind:'shell'}, sniper:true},
-  'ammo-reload-autoloader-sniper': {spec:'m1a3', ammo:[12,4,10], magazineRounds:0,
+  // (14 rounds stowed, so the readout's count never reads as the 12 s countdown beside it; critic r8)
+  'ammo-reload-autoloader-sniper': {spec:'m1a3', ammo:[14,4,10], magazineRounds:0,
     reload:{t:12,totalS:21,kind:'magazine'}, sniper:true},
   'ammo-dry-autoloader-sniper': {spec:'m1a3', ammo:[0,0,0], magazineRounds:0, reload:{t:12,totalS:21,kind:'magazine'},
     sniper:true},
+  // critic r8: the gun travel warning's chip on the sight (a mouse layout paints it on the canvas), with the default ring
+  // and with the widest one (ring: the multiple of the default 5% of the short side; 3 reaches the 15% ceiling), where a
+  // rack reloading under it left the chip's row no room above the controls on windows 431 to 450 px tall; the same rack
+  // without the warning (its countdown joins the readout row there); and an empty rack under the widest ring, which drops
+  // the rack and the readouts below it
+  'ammo-reload-sniper-warn': {spec:'m1a1_abrams_hc', reload:{t:3.2,totalS:6,kind:'shell'}, sniper:true, warning:true},
+  'ammo-reload-autoloader-sniper-warn-wide': {spec:'m1a3', ammo:[14,4,10], magazineRounds:0,
+    reload:{t:12,totalS:21,kind:'magazine'}, sniper:true, warning:true, ring:3},
+  'ammo-reload-autoloader-sniper-wide': {spec:'m1a3', ammo:[14,4,10], magazineRounds:0,
+    reload:{t:12,totalS:21,kind:'magazine'}, sniper:true, ring:3},
+  'ammo-dry-autoloader-sniper-wide': {spec:'m1a3', ammo:[0,0,0], magazineRounds:0, reload:{t:12,totalS:21,kind:'magazine'},
+    sniper:true, ring:3},
 };
 let ammoSniper = false;
 let ammoUnlimited = false;
+let ammoRing = 1;
 const ammoAim = createAimController({
   getGame: () => ({player, tanks:[player]}),
   getRig: () => ({aimPoint:new Vector3(0, 2, 200), aimDist:200, mode:ammoSniper ? 'SNIPER' : 'CHASE', zoom:ammoSniper ? 8 : 1}),
@@ -91,7 +105,7 @@ const ammoAim = createAimController({
   getShellCards: () => player.spec.gun.shells.map((shell) => ({name:shell.name, type:shell.guided === true ? 'ATGM' : shell.type,
     dmg:shell.dmg, penLabel:`${Math.round(shell.pen100Mm)} mm`, count:0, ...(ammoUnlimited ? {unlimited:true} : {})})),
   // Sized to the fixture's default ring (5% of the short side) at the 200 m aim distance and the HUD's 60° fallback FOV.
-  computeDispersion: (_spec, _state, distM) => 0.05 * Math.min(innerWidth, innerHeight) * Math.tan(Math.PI / 6) * distM
+  computeDispersion: (_spec, _state, distM) => ammoRing * 0.05 * Math.min(innerWidth, innerHeight) * Math.tan(Math.PI / 6) * distM
     / (innerHeight * 0.5),
   now: () => 0,
 });
@@ -111,6 +125,8 @@ function stageAmmo(name) {
   delete player.aerial; // a ground seat (the AC-130's gunship alone is aerial)
   ammoUnlimited = rulesetUnlimitedFor(ruleset, player);
   ammoSniper = stage.sniper === true;
+  ammoRing = stage.ring ?? 1;
+  player.state.gunLimitSpec = stage.warning === true;
   const aim = {singleReticle:false, point:new Vector3(), distM:0, dispersionRadM:0, gunLimitSpec:false,
     reload:{t:0, totalS:0}, magazine:{rounds:0, capacity:0, launcher:false}, shellSlot:0, shells:[], zoom:1, gunDistM:0,
     gunTargetId:null, gunMarker:new Vector3(), blockedDistM:null, blockedLabel:false, penRatio:null};

@@ -319,9 +319,16 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
 .cot-drone-signal-loss[hidden],.cot-scope-vision[hidden]{display:none!important}
 @keyframes drone-signal-grain{to{background-position:41px 27px}}
 @media(prefers-reduced-motion:reduce){.cot-drone-signal-loss::before{animation:none}}
+/* The scope's vision switch sits beside the sight, level with the marker, past the widest dispersion ring (hud.ts
+   RET_CEIL_FRAC: 15% of the short side), where none of the scope's readouts ever go (critic r8: seated under the sight,
+   at 50% + 145px, it ran under the tray and the controls row on mouse windows under 616 px tall, and the readouts, the
+   warning chip and a rack dropped below a wide ring landed on it). A mouse layout seats it right of the sight, past the
+   range tag beside a small ring too (80 px); a mouse window under 540 px wide, with no room there for the full plate,
+   takes the compact touch plate in the same seat. Touch seats it left of the sight (below), clear of the ammo and
+   consumables column and FIRE on the right. */
 .cot-hud .cot-scope-vision{
  --scope-accent:#ffc46b;--scope-cut:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);
- position:absolute;left:50%;top:calc(50% + 145px);transform:translateX(-50%);isolation:isolate;
+ position:absolute;left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px));top:50%;transform:translateY(-50%);isolation:isolate;
  display:flex;gap:9px;align-items:center;justify-content:center;min-width:156px;min-height:48px;
  padding:7px 19px;pointer-events:auto;border:0;border-radius:0;background:none;color:#e8f0f1;
  font:inherit;font-size:11px;line-height:1.15;cursor:pointer;filter:drop-shadow(0 2px 5px #0009);-webkit-tap-highlight-color:transparent;
@@ -346,10 +353,14 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
 .scope-vision-step.active{background:var(--scope-accent);box-shadow:0 0 5px color-mix(in srgb,var(--scope-accent) 55%,transparent)}
 .cot-scope-vision .flight-key{color:#d2dde0;border-color:#71868d;min-width:18px;height:19px}
 .scope-vision-cycle{display:flex;color:var(--scope-accent)}.scope-vision-cycle svg{width:13px;height:13px}
-@media(pointer:coarse){
+@media(pointer:coarse),(max-width:539px){
  .cot-scope-vision .flight-key,.scope-vision-cycle{display:none}
- .cot-hud .cot-scope-vision{left:min(calc(50% + 68px),calc(100% - 108px - env(safe-area-inset-right)));top:calc(50% - 3px);transform:none;width:104px;min-width:104px;min-height:46px;padding:6px 12px;gap:6px;font-size:9px}
+ .cot-hud .cot-scope-vision{left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px));width:104px;min-width:104px;min-height:46px;padding:6px 12px;gap:6px;font-size:9px}
  .scope-vision-emblem svg{width:16px;height:16px}.scope-vision-label{letter-spacing:0}
  .cot-scope-vision .scope-vision-copy{gap:5px}.scope-vision-step{min-width:7px}
+}
+@media(pointer:coarse){
+ /* (left of the sight, its right edge 8 px past the widest ring; a portrait under 343 px wide narrows it to fit) */
+ .cot-hud .cot-scope-vision{left:auto;right:calc(50% + 15vmin + 8px);width:min(104px,calc(50% - 15vmin - 16px - env(safe-area-inset-left)));min-width:88px}
 }
 @media(forced-colors:active){.cot-hud .cot-scope-vision{outline:1px solid ButtonText}.cot-scope-vision:focus-visible{outline:3px solid Highlight}.scope-vision-step.active{background:Highlight}}

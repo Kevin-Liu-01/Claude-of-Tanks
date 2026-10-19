@@ -320,14 +320,14 @@ function renderFrame(document, { strip = false } = {}) {
   return image;
 }
 /** The fake page's document and window globals, for one case. */
-function fakeDocument({ touch, slots, paintLog = [] }) {
+function fakeDocument({ touch, slots, paintLog = [], extra = {}, tray = 'inline' }) {
   const canvas = new FakeElement({ classes: ['cot-ret'], box: { x0: 0, y0: 0, x1: VIEW.width, y1: VIEW.height } });
   Object.assign(canvas, { width: VIEW.width * SCALE, height: VIEW.height * SCALE,
     getContext: () => ({ getImageData: (x, y, w, h) => ({ data: new Uint8ClampedArray(Math.max(0, w * h * 4)) }) }) });
   const fire = touch ? [0, 1].map(() => new FakeElement({ box: { x0: 0, y0: 0, x1: 1, y1: 1 }, style: { opacity: '1', borderTopColor: 'rgb(1, 2, 3)' } })) : [];
-  const bySelector = { '.cot-ret': [canvas], '.cot-shell': slots, '.cot-touch .fire': fire };
+  const bySelector = { '.cot-ret': [canvas], '.cot-shell': slots, '.cot-touch .fire': fire, ...extra };
   return {
-    body: { classList: { contains: (name) => name === 'cot-touch-layout' && touch }, dataset: { hudTray: 'inline' } },
+    body: { classList: { contains: (name) => name === 'cot-touch-layout' && touch }, dataset: { hudTray: tray } },
     querySelector: (selector) => bySelector[selector]?.[0] ?? null,
     querySelectorAll: (selector) => bySelector[selector] ?? [],
     createRange: () => ({ node: null, selectNodeContents(node) { this.node = node; },
@@ -584,6 +584,54 @@ const FLOW_ISSUES = ['saved frame:', 'the DOM read names', 'tray count', 'tray l
   assert.ok(both.some((line) => line === '"3" 2.45 px from the ring'), `a countdown 3.2 px under the ink but inside the halo's gap fails (${both.join('; ')})`);
 }
 
+// 5b. The scope's vision switch and the sight's marks against the HUD's panels (critic r8: seated under the sight, the
+// switch ran under the tray slots and the controls row on short mouse windows, and the readouts and the warning chip
+// landed on it; the stack's foot ran 4.77 px into a controls row modelled 112 px up, and the row starts 120 px up). The
+// switch over a tray slot, 2 px from one, off the screen; a readout 2 px over a controls button; the warning chip over a
+// control and over a readout; a wide tray's row where hud.ts does not model it: each is a line of the report, and the
+// clear layout reads none. 400x300 CSS, the sight at 200,150.
+{
+  const el = (box) => new FakeElement({ box, style: { opacity: '1' } });
+  const read = ({ paintLog = [], extra = {}, tray = 'inline', slots = [] }) => {
+    const document = fakeDocument({ touch: false, slots, paintLog, extra, tray });
+    installGlobals(document);
+    Object.assign(globalThis, { innerWidth: 400, innerHeight: 300 });
+    return readHud(RULES).overlaps;
+  };
+  const row = (top) => el({ x0: 120, y0: top, x1: 280, y1: top + 32 });
+  const clearRow = { '.cot-vehicle-controls': [row(180)], '.cot-vehicle-controls>button': [row(180)] };
+  const slot = () => [fakeSlot({ x: 260, y: 236, type: 'HE', count: '12' })]; // (260,236)-(324,300)
+  const switchAt = (x0, y0) => ({ '.cot-scope-vision': [el({ x0, y0, x1: x0 + 156, y1: y0 + 48 })] });
+  // clear: the switch beside the sight, 3 px or more from the slot and the row
+  assert.deepEqual(read({ extra: { ...clearRow, ...switchAt(230, 126) }, slots: slot() }), [], 'a clear switch reads no line');
+  const over = read({ extra: { ...clearRow, ...switchAt(200, 220) }, slots: slot() });
+  assert.ok(over.some((line) => /^the vision switch -[\d.]+ px from \.cot-shell$/.test(line)), `the switch over a tray slot fails (${over.join('; ')})`);
+  const near = read({ extra: { ...clearRow, ...switchAt(230, 186) }, slots: slot() });
+  assert.ok(near.includes('the vision switch 2 px from .cot-shell'), `the switch 2 px from a slot fails (${near.join('; ')})`);
+  const off = read({ extra: { ...clearRow, ...switchAt(300, 126) } });
+  assert.ok(off.includes('the vision switch leaves the screen'), `a switch off the screen fails (${off.join('; ')})`);
+  const onRow = read({ extra: { ...clearRow, ...switchAt(150, 160) } });
+  assert.ok(onRow.some((line) => /^the vision switch -[\d.]+ px from \.cot-vehicle-controls>button$/.test(line)), `the switch on the row fails (${onRow.join('; ')})`);
+  // a readout under the marker 2 px over a controls button (the r8 stack's foot at a row modelled 112 px up)
+  const text = (value, x0, baseline, w, size = 13.5) => ({ op: 'text', text: value, style: 'rgba(226,236,244,0.92)',
+    box: { x0, y0: baseline - size * 0.74, x1: x0 + w, y1: baseline + size * 0.08 } });
+  const foot = read({ paintLog: [text('14 ', 185, 178 - 13.5 * 0.08, 20)], extra: clearRow });
+  assert.ok(foot.includes('"14 " 2 px from .cot-vehicle-controls>button'), `a readout 2 px over the row fails (${foot.join('; ')})`);
+  assert.deepEqual(read({ paintLog: [text('14 ', 185, 177 - 13.5 * 0.08, 20)], extra: clearRow }), [], 'a readout 3 px over the row passes');
+  // the warning chip (its six-point outline around its text) over a control, and over a readout
+  const chip = (cx, y, w = 130) => [{ op: 'stroke', style: 'rgba(170,180,190,.55)', lineWidth: 1, n: 6, ring: false, circle: null,
+    box: { x0: cx - w / 2, y0: y - 14, x1: cx + w / 2, y1: y + 10 } }, text('GUN TRAVEL LIMIT', cx - w / 2 + 36, y + 1, 80, 10.5)];
+  const chipOnRow = read({ paintLog: chip(200, 178), extra: clearRow });
+  assert.ok(chipOnRow.some((line) => /^the warning chip -[\d.]+ px from \.cot-vehicle-controls>button$/.test(line)), `the chip on the row fails (${chipOnRow.join('; ')})`);
+  const chipOnText = read({ paintLog: [...chip(200, 170), text('14 ', 185, 182, 20)], extra: { '.cot-vehicle-controls': [row(260)] } });
+  assert.ok(chipOnText.includes('the warning chip over "14 "'), `the chip over a readout fails (${chipOnText.join('; ')})`);
+  assert.deepEqual(read({ paintLog: chip(200, 100), extra: { '.cot-vehicle-controls': [row(180)] } }), [], 'a chip above the ring passes');
+  // a wide mouse tray's row 112 px over the floor (where hud.ts no longer models it); a stacked tray's row may sit anywhere
+  const model = read({ extra: { '.cot-vehicle-controls': [row(188)] } });
+  assert.ok(model.includes('the controls row starts 112 px over the floor, hud.ts models 120'), `a row off the model fails (${model.join('; ')})`);
+  assert.deepEqual(read({ extra: { '.cot-vehicle-controls': [row(188)] }, tray: 'stacked' }), [], 'a stacked tray\'s row is not modelled');
+}
+
 // 6. The command line hands the flow its browser and lock and takes no screenshot of its own.
 {
   const cli = readFileSync(new URL('./hud-ammo-states.browser.mjs', import.meta.url), 'utf8');
@@ -595,4 +643,5 @@ console.log('hud-ammo-frame-ink.selftest: PNG rows decode exactly (RGB and RGBA,
   + 'sums); a stripped tray slot fails the saved-frame read mark by mark, the empty 0 by its hue, the strike without the '
   + '0, a count under the reload shade as dimmed; the capture flow, run against a recording browser, names every mark off '
   + 'its ink box, fails each missing descriptor mark on mouse and touch, clips no shot, reads its frame before any ink '
-  + 'shot and fails every finding; the reticle checks catch the r6 countdown and clip on the ring');
+  + 'shot and fails every finding; the reticle checks catch the r6 countdown and clip on the ring; the vision switch over, '
+  + 'near or off a panel, a readout or the warning chip near a control and a controls row off the model fail');

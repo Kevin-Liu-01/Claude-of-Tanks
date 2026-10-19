@@ -1494,8 +1494,9 @@ export function createAudio({
     // Owner 2026-10-17 (out of ammo): an empty gun still runs its post-shot cycle in the simulation, but the crew loads
     // nothing — no loader cues, no latch, no "reloaded" call; the half-played plan is dropped, so a cycle that resumes
     // starts afresh. The mode's unlimited rounds never read spent where this entity really refills (sim/matchRuleset
-    // rulesetUnlimitedFor, the read the HUD's cards carry: an AC-130 escort runs dry, the gunship never does).
-    const unlimitedRounds = rulesetUnlimitedFor(matchRulesetFor((getGameMode?.() || 'standard') as GameModeId), latestPlayer);
+    // rulesetUnlimitedFor, the read the HUD's cards carry: an AC-130 escort runs dry, the gunship never does). No mode
+    // reads as the standard ruleset (matchRulesetFor's own fallback): no mode literal here.
+    const unlimitedRounds = rulesetUnlimitedFor(matchRulesetFor(getGameMode?.() as GameModeId), latestPlayer);
     if (selectedWeaponSpent(latestPlayer?.combat, unlimitedRounds)) {
       reload.active = false;
       reloadCalled = false;

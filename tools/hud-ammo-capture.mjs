@@ -6,8 +6,10 @@
 // AMMO_STAGES): a normal reload, an empty cannon, an autoloader short of stowage and one empty between clips and
 // mid-clip, an empty guided salvo rack, an empty ATGM launcher, Juggernaut with unlimited rounds, an AC-130 escort out
 // of rounds, and the ×8 sight reloading and empty — on a 1440 px desktop, two stacked mouse trays (900 and 640 px,
-// critic r6), the sight and a reload on four short mouse windows (800x500, 900x480, 700x460 and 1280x480, critic r7),
-// a portrait phone and three landscape phones, and the tray states on the two 44 px tall touch slots.
+// critic r6), the sight and a reload on six short mouse windows (800x500, 900x480, 700x460 and 1280x480, critic r7;
+// 800x560 and 1280x440, critic r8) and a 480 px wide one, a portrait phone and three landscape phones, and the tray
+// states on the two 44 px tall touch slots. The mouse windows' sight adds the gun travel warning (the canvas chip) and
+// the widest ring, a rack reloading and empty under it (critic r8).
 // Each frame is checked five ways:
 //  - pixels on the reticle canvas (no amber reload sweep, countdown or ready shell on a dry weapon; the danger-ink
 //    empty state present);
@@ -16,8 +18,10 @@
 //    shells (their dark contours), the countdown and the scope readouts — keeps 3 px from the dispersion ring's stroke
 //    (its halo), and every text there keeps 3 px from the rack (critic r6: the desktop scope's countdown sat on the
 //    ring and its digits touched the clip; a phone's clip touched the ring); the readouts never overlap each other,
-//    and none of the sight's furniture lands on a DOM control; on a portrait phone the systems row stays clear of the
-//    sight's band (battleHudLayout SIGHT_BAND_*);
+//    and every mark of the sight, the warning chip included, keeps 3 px from every DOM control and the scope's vision
+//    switch (critic r8: the stack's foot ran into the controls row, and onto the switch seated under the sight); the
+//    switch keeps 3 px from every HUD panel and control, on the screen; a wide tray's controls row starts where hud.ts
+//    models it; on a portrait phone the systems row stays clear of the sight's band (battleHudLayout SIGHT_BAND_*);
 //  - the DOM: struck controls, ∞ counts at the numeral's size, every empty tray slot struck on a danger edge with its
 //    0 in the danger ink (the phone's collapsed slot without its amber frame), and a dry gun's FIRE buttons dimmed on a
 //    touch layout; every visible slot's descriptor names the marks the slot shows — its count, type label, the mouse
@@ -34,20 +38,32 @@ import { resolve } from 'node:path';
 import { cropImage, decodePng, encodePng, inkGap, slotFrameFindings } from './hud-ammo-frame-ink.mjs';
 
 const SNIPER = ['ammo-reload-sniper', 'ammo-dry-cannon-sniper', 'ammo-reload-autoloader-sniper', 'ammo-dry-autoloader-sniper'];
+// critic r8: the gun travel warning's chip on the sight (the canvas paints it on a mouse layout, a DOM chip on touch), with
+// the default ring and with the widest (the ring's 15% ceiling), and a rack reloading or empty under the widest ring
+const SNIPER_WIDE = ['ammo-reload-sniper-warn', 'ammo-reload-autoloader-sniper-warn-wide', 'ammo-reload-autoloader-sniper-wide',
+  'ammo-dry-autoloader-sniper-wide'];
 const BATTLE = ['ammo-reload', 'ammo-dry-cannon', 'ammo-low-autoloader', 'ammo-dry-autoloader', 'ammo-dry-autoloader-midclip',
   'ammo-dry-salvo', 'ammo-dry-atgm', 'ammo-unlimited', 'ammo-escort-dry'];
 const TRAY = ['ammo-reload', 'ammo-dry-cannon', 'ammo-dry-atgm', 'ammo-unlimited'];
 const CASES = Object.freeze([
-  { name: 'desktop', width: 1440, height: 900, touch: false, scale: 2, stages: [...BATTLE, ...SNIPER], crop: true },
+  { name: 'desktop', width: 1440, height: 900, touch: false, scale: 2, stages: [...BATTLE, ...SNIPER, ...SNIPER_WIDE], crop: true },
   // critic r6: every mouse tray under 1000 px stacks (battleHudLayout data-hud-tray), 48x52 slots at 900 px, 44x52 at 640
-  { name: 'stacked-900', width: 900, height: 700, touch: false, scale: 2, stages: [...BATTLE, ...SNIPER], crop: true },
-  { name: 'stacked-640', width: 640, height: 720, touch: false, scale: 2, stages: [...BATTLE, ...SNIPER], crop: true },
+  { name: 'stacked-900', width: 900, height: 700, touch: false, scale: 2, stages: [...BATTLE, ...SNIPER, ...SNIPER_WIDE], crop: true },
+  { name: 'stacked-640', width: 640, height: 720, touch: false, scale: 2, stages: [...BATTLE, ...SNIPER, ...SNIPER_WIDE], crop: true },
   // critic r7: from 431 to about 525 px tall the scope's readout line sat on the rack's countdown; three stacked windows
-  // the critic measured and a wide one, where the controls row sits under the sight
-  { name: 'short-800', width: 800, height: 500, touch: false, scale: 2, stages: ['ammo-reload', ...SNIPER], crop: true },
-  { name: 'short-900', width: 900, height: 480, touch: false, scale: 2, stages: ['ammo-reload', ...SNIPER], crop: true },
-  { name: 'short-700', width: 700, height: 460, touch: false, scale: 2, stages: ['ammo-reload', ...SNIPER], crop: true },
-  { name: 'short-1280', width: 1280, height: 480, touch: false, scale: 2, stages: ['ammo-reload', ...SNIPER], crop: true },
+  // the critic measured and a wide one, where the controls row sits under the sight. Critic r8: the scope's vision switch
+  // ran under the tray and the controls row on these, and the readouts and the warning chip landed on it at 800x560; at
+  // 1280x440 a rack reloading under the widest ring left the row no room above the controls
+  { name: 'short-800', width: 800, height: 500, touch: false, scale: 2, stages: ['ammo-reload', ...SNIPER, ...SNIPER_WIDE], crop: true },
+  { name: 'short-900', width: 900, height: 480, touch: false, scale: 2, stages: ['ammo-reload', ...SNIPER, ...SNIPER_WIDE], crop: true },
+  { name: 'short-700', width: 700, height: 460, touch: false, scale: 2, stages: ['ammo-reload', ...SNIPER, ...SNIPER_WIDE], crop: true },
+  { name: 'short-1280', width: 1280, height: 480, touch: false, scale: 2, stages: ['ammo-reload', ...SNIPER, ...SNIPER_WIDE], crop: true },
+  { name: 'short-800-560', width: 800, height: 560, touch: false, scale: 2, stages: [...SNIPER, ...SNIPER_WIDE], crop: true },
+  { name: 'short-1280-440', width: 1280, height: 440, touch: false, scale: 2, stages: [...SNIPER, ...SNIPER_WIDE], crop: true },
+  // a mouse window under 540 px wide: the compact vision switch beside the sight
+  { name: 'narrow-480', width: 480, height: 640, touch: false, scale: 2, stages: [...SNIPER, ...SNIPER_WIDE], crop: true },
+  // (touch: the vision switch left of the sight, clear of the ammo and consumables column; the sweep of the wider rings and
+  // the gun travel warning stays on the mouse layouts, where the canvas paints the warning's chip)
   { name: 'phone', width: 390, height: 844, touch: true, scale: 2, stages: [...BATTLE, ...SNIPER], crop: true },
   // critic r3 measured the scope readout overlap at these three landscape phones
   { name: 'landscape-844', width: 844, height: 390, touch: true, scale: 2, stages: [...BATTLE, ...SNIPER], crop: true },
@@ -75,9 +91,13 @@ const EXPECT = Object.freeze({
   'ammo-reload-autoloader-sniper': { amberMin: 10, dangerMax: 4 },
   // the scope may hide the controls row: its struck controls are the battle stages' (null skips the control checks)
   'ammo-dry-autoloader-sniper': { noReloadInk: true, dangerMin: 20, struckControl: null, dryMark: true },
+  'ammo-reload-sniper-warn': { amberMin: 20, dangerMax: 4, warning: true },
+  'ammo-reload-autoloader-sniper-warn-wide': { amberMin: 10, dangerMax: 4, warning: true },
+  'ammo-reload-autoloader-sniper-wide': { amberMin: 10, dangerMax: 4 },
+  'ammo-dry-autoloader-sniper-wide': { noReloadInk: true, dangerMin: 20, struckControl: null, dryMark: true },
 });
 // hud.ts RETICLE_AMMO_INK.dry / RELOAD_ACCENT; battleHudLayout.ts SIGHT_BAND_ABOVE / SIGHT_BAND_BELOW (the scope's
-// readouts are checked against the row as furniture)
+// readouts are checked against the row as furniture); hud.ts WIDE_TRAY_CONTROLS_TOP
 export const RULES = Object.freeze({
   DRY_INK: 'rgba(240,90,90,0.92)',
   RELOAD_INK: 'rgba(240,160,48,0.95)',
@@ -89,6 +109,9 @@ export const RULES = Object.freeze({
    *  ring). Sub-pixel slack for the recorded boxes' rounding. */
   FURNITURE_GAP: 3,
   SLACK: 0.05,
+  /** Where hud.ts models a wide mouse tray's controls row (its top this far over the floor), which the scope stack keeps
+   *  FURNITURE_GAP over (critic r8: modelled 112 px up, the row's top measured 120). */
+  WIDE_TRAY_CONTROLS_TOP: 120,
 });
 /** The least ink gap between any two of a tray slot's count, type label, key and shell icon (critic r4: the phone's 180
  *  ran into the dart; r4b: APFSDS crossed the dart's tail; r6: the stacked trays' ∞ and 0 printed over the label). */
@@ -144,7 +167,7 @@ export function recordReticle() {
 
 /** Runs in the page: what the HUD shows, read off the DOM and the reticle's recorded paint (see the header). */
 export function readHud(rules) {
-  const { DRY_INK, RELOAD_INK, SIGHT_BAND, STRIKE_TEXT_GAP, FURNITURE_GAP, SLACK } = rules;
+  const { DRY_INK, RELOAD_INK, SIGHT_BAND, STRIKE_TEXT_GAP, FURNITURE_GAP, SLACK, WIDE_TRAY_CONTROLS_TOP } = rules;
   const canvas = document.querySelector('.cot-ret');
   const ctx = canvas.getContext('2d');
   const sx = canvas.width / innerWidth;
@@ -221,16 +244,49 @@ export function readHud(rules) {
     rackGaps.push({ text: text.text, gap: round(g) });
     if (g < FURNITURE_GAP - SLACK) overlaps.push(`"${text.text}" ${round(g)} px from the rack`);
   }
-  const furniture = [...dry, ...rack, ...readouts];
-  // (.cot-scope-vision: the scope's vision switch, which the aerial sheet seats under the sight, or beside it on touch;
-  // .flight-identity: the flight HUD's identity block)
+  // the canvas warning chip, wherever it sits (under the marker, beside the readout line or above the ring): its outline,
+  // the six-point stroke around its text
+  const contains = (outer, inner) => outer.x0 <= inner.x0 && outer.x1 >= inner.x1 && outer.y0 <= inner.y0 && outer.y1 >= inner.y1;
+  const chips = paint.filter((op) => op.op === 'stroke' && op.n === 6 && !op.ring && texts.some((text) => contains(op.box, text.box)));
+  for (const chip of chips) for (const text of readouts) {
+    if (!contains(chip.box, text.box) && hit(chip.box, text.box)) overlaps.push(`the warning chip over "${text.text}"`);
+  }
+  const furniture = [...dry, ...rack, ...readouts, ...chips];
+  // (.cot-scope-vision: the scope's vision switch, which the aerial sheet seats beside the sight; .flight-identity: the
+  // flight HUD's identity block)
   const controls = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-dp',
     '.cot-aim-warning:not([hidden])', '.cot-scope-vision', '.flight-identity'].flatMap((selector) => [...document.querySelectorAll(selector)].filter(visible)
     .map((el) => ({ name: selector, box: rect(el) })));
+  // every mark of the sight keeps FURNITURE_GAP from every control (critic r8: the stack's foot 4.77 px into the row)
   for (const item of furniture) for (const control of controls) {
-    if (hit(item.box, control.box)) overlaps.push(`${item.op === 'text' ? `"${item.text}"` : 'sight mark'} over ${control.name}`);
+    const g = apart(item.box, control.box);
+    if (g < FURNITURE_GAP - SLACK) {
+      overlaps.push(`${item.op === 'text' ? `"${item.text}"` : item.n === 6 ? 'the warning chip' : 'sight mark'} ${round(g)} px from ${control.name}`);
+    }
+  }
+  // The scope's vision switch keeps FURNITURE_GAP from every other HUD panel and control, on the screen (critic r8: seated
+  // under the sight it ran under the tray slots, the consumables and the controls row on short mouse windows; beside the
+  // sight on the right, touch met the ammo and consumables column). The shot report and the open combat log share the
+  // right lane: no capture stage shows them.
+  const vision = [...document.querySelectorAll('.cot-scope-vision')].filter(visible).map(rect);
+  const panels = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy',
+    '.cot-touch.on .quick', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show', '.cot-ear.l', '.cot-ear.r',
+    '.cot-aim-warning:not([hidden])', '.cot-si-cardhost:not(:empty)', '.cot-si-log.open', '.flight-identity']
+    .flatMap((selector) => [...document.querySelectorAll(selector)].filter(visible).map((el) => ({ name: selector, box: rect(el) })))
+    .filter((panel) => panel.box.x1 - panel.box.x0 >= 1 && panel.box.y1 - panel.box.y0 >= 1);
+  for (const box of vision) {
+    if (box.x0 < 0 || box.y0 < 0 || box.x1 > innerWidth || box.y1 > innerHeight) overlaps.push('the vision switch leaves the screen');
+    for (const panel of panels) {
+      const g = apart(box, panel.box);
+      if (g < FURNITURE_GAP - SLACK) overlaps.push(`the vision switch ${round(g)} px from ${panel.name}`);
+    }
   }
   const row = document.querySelector('.cot-vehicle-controls');
+  // a wide mouse tray's controls row starts where hud.ts models it (the scope stack keeps 3 px over that line)
+  const wideTray = !document.body.classList.contains('cot-touch-layout') && document.body.dataset.hudTray === 'inline';
+  if (wideTray && row && visible(row) && Math.abs(rect(row).y0 - (innerHeight - WIDE_TRAY_CONTROLS_TOP)) > 0.5) {
+    overlaps.push(`the controls row starts ${round(innerHeight - rect(row).y0)} px over the floor, hud.ts models ${WIDE_TRAY_CONTROLS_TOP}`);
+  }
   const portrait = innerWidth < innerHeight && document.body.classList.contains('cot-touch-layout');
   const band = { x0: cx - SIGHT_BAND.half, x1: cx + SIGHT_BAND.half, y0: cy - SIGHT_BAND.above, y1: cy + SIGHT_BAND.below };
   if (portrait && row && visible(row) && hit(rect(row), band)) overlaps.push('the systems row crosses the sight band');
@@ -321,8 +377,9 @@ export function readHud(rules) {
       zIndex: getComputedStyle(unlimitedSlot.querySelector('.cnt')).zIndex } : null,
     numeralSize: numeral ? parseFloat(getComputedStyle(numeral.querySelector('.cnt')).fontSize) : null,
     paintOps: paint.length, dryMarks: dry.length, reloadInk, countdown: countdown.map((op) => op.text).join(''),
-    readouts: readouts.map((op) => op.text), ringGaps, rackGaps, overlaps,
-    row: row && visible(row) ? rect(row) : null,
+    readouts: readouts.map((op) => op.text), ringGaps, rackGaps, overlaps, chips: chips.map((op) => op.box),
+    row: row && visible(row) ? rect(row) : null, vision: vision[0] ?? null,
+    warning: chips.length > 0 || [...document.querySelectorAll('.cot-aim-warning:not([hidden])')].some(visible),
   };
 }
 
@@ -437,6 +494,8 @@ async function captureStage({ page, c, stage, out, writeFile }) {
   if (expect.dryMark && !hud.dryMarks) issues.push('no struck empty mark was painted');
   if (expect.noReloadInk && hud.reloadInk) issues.push(`a dry sight still paints ${hud.reloadInk} reload-ink marks`);
   if (expect.noCountdown && hud.countdown) issues.push(`a clip cycle prints a countdown (${hud.countdown})`);
+  if (expect.warning && !hud.warning) issues.push('the gun travel warning shows no chip');
+  if (stage.includes('sniper') && !hud.vision) issues.push('the scope shows no vision switch');
   if (!hud.paintOps) issues.push('no reticle paint was recorded');
   if (expect.struckControl === true && !hud.struck.some((row) => row.strike && row.disabled)) issues.push('no struck, disabled launcher/magazine control');
   if (expect.struckControl === undefined && hud.struck.length) issues.push(`unexpected struck control ${JSON.stringify(hud.struck)}`);
