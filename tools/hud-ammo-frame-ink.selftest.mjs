@@ -626,6 +626,17 @@ const FLOW_ISSUES = ['saved frame:', 'the DOM read names', 'tray count', 'tray l
   const chipOnText = read({ paintLog: [...chip(200, 170), text('14 ', 185, 182, 20)], extra: { '.cot-vehicle-controls': [row(260)] } });
   assert.ok(chipOnText.includes('the warning chip over "14 "'), `the chip over a readout fails (${chipOnText.join('; ')})`);
   assert.deepEqual(read({ paintLog: chip(200, 100), extra: { '.cot-vehicle-controls': [row(180)] } }), [], 'a chip above the ring passes');
+  // the zoom plate's rule 2 px from the speedometer, its text on it, and a readout row set right of the column (its plate
+  // centred 200 px from the marker) on the minimap (critic r8 round: a 480 px window's plate touched the speedometer)
+  const rule = (x0, y) => ({ op: 'stroke', style: 'rgba(170,240,178,0.5)', lineWidth: 1.2, n: 4, ring: false, circle: null,
+    box: { x0, y0: y - 6.1, x1: x0 + 20, y1: y - 4.9 } });
+  const drive = { '.cot-drive': [el({ x0: 100, y0: 200, x1: 181, y1: 281 })] };
+  const ruleNear = read({ paintLog: [rule(183, 220)], extra: drive });
+  assert.ok(ruleNear.includes('a zoom rule 2 px from .cot-drive'), `a zoom rule 2 px from the speedometer fails (${ruleNear.join('; ')})`);
+  const plateOn = read({ paintLog: [text('×8.0', 170, 230, 28, 16)], extra: drive });
+  assert.ok(plateOn.some((line) => /^"×8.0" -[\d.]+ px from \.cot-drive$/.test(line)), `the zoom plate on the speedometer fails (${plateOn.join('; ')})`);
+  const far = read({ paintLog: [text('×8.0', 386, 230, 28, 16)], extra: { '.cot-minimap': [el({ x0: 380, y0: 200, x1: 400, y1: 300 })] } });
+  assert.ok(far.some((line) => /^"×8.0" -[\d.]+ px from \.cot-minimap$/.test(line)), `a plate 200 px right of the marker on the minimap fails (${far.join('; ')})`);
   // a wide mouse tray's row 112 px over the floor (where hud.ts no longer models it); a stacked tray's row may sit anywhere
   const model = read({ extra: { '.cot-vehicle-controls': [row(188)] } });
   assert.ok(model.includes('the controls row starts 112 px over the floor, hud.ts models 120'), `a row off the model fails (${model.join('; ')})`);
@@ -644,4 +655,5 @@ console.log('hud-ammo-frame-ink.selftest: PNG rows decode exactly (RGB and RGBA,
   + '0, a count under the reload shade as dimmed; the capture flow, run against a recording browser, names every mark off '
   + 'its ink box, fails each missing descriptor mark on mouse and touch, clips no shot, reads its frame before any ink '
   + 'shot and fails every finding; the reticle checks catch the r6 countdown and clip on the ring; the vision switch over, '
-  + 'near or off a panel, a readout or the warning chip near a control and a controls row off the model fail');
+  + 'near or off a panel, a readout, a zoom rule or the warning chip near a control (the speedometer and the minimap among '
+  + 'them, a row set right of the column too) and a controls row off the model fail');

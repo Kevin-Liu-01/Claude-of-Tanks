@@ -753,6 +753,14 @@ const WIDE_TRAY_CONTROLS_TOP = 120;
 /** How far over the floor a landscape phone's systems row starts: the health strip's 39 px 8 px up, the layout's 8 px gap
  *  and the row's 44 px buttons (battleHudLayout systemsTop, between the driving instruments and the aim buttons). */
 const TOUCH_LANDSCAPE_CONTROLS_TOP = 99;
+/** A stacked mouse tray's speedometer (battleHudLayout .cot-drive), the damage panel left of it: its right edge and its
+ *  top over the floor, 768 to 999 px wide and under 768 px wide (measured from 431 to 900 px tall). A scope row reaching
+ *  past the right edge keeps over the top; the chip beside the line, which also reaches the damage panel (up to 311 px
+ *  over the floor), stays off it. */
+const STACKED_SPEEDO_RIGHT = 292;
+const STACKED_SPEEDO_TOP = 236;
+const NARROW_SPEEDO_RIGHT = 221;
+const NARROW_SPEEDO_TOP = 209;
 /** How the scope's readout row sets its zoom plate and the warning chip, and where its line goes (sniperReadoutStack). */
 type SniperRowMode = 'stack' | 'zoomBeside' | 'chipBeside' | 'rowBeside';
 /** The struck round that leads the compact sniper readout line (paintSniperAmmoReadout). */
@@ -4349,7 +4357,8 @@ export function initHud(bus: EventBus): HudRuntime {
    * (sniperRowFits; critic r8: the compact stack under 431 px tall had no such check, and on a wide mouse tray ran as
    * much as 34 px into the row), the plate moves up beside the line, right of it, TAG_GROUP_GAP apart;
    * where the canvas aim warning's chip over the row would still take the row there, the chip joins the row, left of the
-   * line; where even that row reaches the controls (critic r8: 1024 to 1440 px wide, 431 to 450 px tall, a rack
+   * line (never on a stacked mouse tray where it would reach the speedometer and the damage panel); where even that row
+   * reaches the controls (critic r8: 1024 to 1440 px wide, 431 to 450 px tall, a rack
    * reloading under a wide ring), the chip moves above the ring (sniperChipAboveY) and the row settles without it; and
    * where the column under the marker (the rack or the struck round, dropped below a ring just wide enough to cross it,
    * and the countdown under it) still leaves the row no room (a wide tray 410 to 445 px tall), the line and the zoom
@@ -4470,11 +4479,27 @@ export function initHud(bus: EventBus): HudRuntime {
 
   /** Whether the scope row with its baseline at `y` keeps its foot (sniperRowFoot) 3 px over the vehicle controls row:
    *  a landscape phone's (TOUCH_LANDSCAPE_CONTROLS_TOP), else a wide mouse tray's (WIDE_TRAY_CONTROLS_TOP; a stacked
-   *  tray's row sits lower or beside the sight, a portrait phone's above or beside it). */
+   *  tray's row sits lower or beside the sight, a portrait phone's above or beside it); and on a stacked mouse tray, 3 px
+   *  over the speedometer where the row reaches it (critic r8 round: the chip beside the line ran 32 px into it at
+   *  900x480, and a 480 px window's zoom plate touched it). */
   function sniperRowFits(y: number, mode: SniperRowMode): boolean {
-    const landscapePhone = w > h && h < 550 && document.body.classList.contains('cot-touch-layout');
-    return y + sniperRowFoot(mode)
-      <= h - (landscapePhone ? TOUCH_LANDSCAPE_CONTROLS_TOP : WIDE_TRAY_CONTROLS_TOP) - SIGHT_MARK_RING_GAP;
+    const foot = y + sniperRowFoot(mode);
+    const touch = document.body.classList.contains('cot-touch-layout');
+    const landscapePhone = touch && w > h && h < 550;
+    if (foot > h - (landscapePhone ? TOUCH_LANDSCAPE_CONTROLS_TOP : WIDE_TRAY_CONTROLS_TOP) - SIGHT_MARK_RING_GAP) return false;
+    if (touch || w >= 1000 || sniperRowLeft(mode) >= (w < 768 ? NARROW_SPEEDO_RIGHT : STACKED_SPEEDO_RIGHT) + SIGHT_MARK_RING_GAP) {
+      return true;
+    }
+    return mode !== 'chipBeside' && foot <= h - (w < 768 ? NARROW_SPEEDO_TOP : STACKED_SPEEDO_TOP) - SIGHT_MARK_RING_GAP;
+  }
+
+  /** How far left the scope row reaches in `mode` (sniperRowPlace has seated it): the wider of the line and the zoom plate
+   *  hung under it, the line beside its plate, the chip left of the line, the line past the column. */
+  function sniperRowLeft(mode: SniperRowMode): number {
+    const row = sniperRowScratch;
+    // (hung under the centred line, the plate is centred too)
+    return mode === 'stack' ? row.lineLeft + Math.min(0, (row.lineW - row.zoomW) / 2)
+      : mode === 'chipBeside' ? row.chipRight - row.chipW : row.lineLeft;
   }
 
   /** The warning chip's baseline above the sight (the scope's last resort, sniperReadoutStack): its foot 3 px over the

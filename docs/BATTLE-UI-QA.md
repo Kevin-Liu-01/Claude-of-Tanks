@@ -119,8 +119,11 @@ whatever sits above it wins. Where that would take the zoom plate down onto the
 controls row (3 px clear of its top: a wide tray seats it 120 px over the floor,
 a landscape phone's systems row starts 99 px up), the zoom plate moves up beside
 the readout line, and then the warning chip joins that row, left of the line. On
-a screen over 430 px tall a rack's countdown also moves beside the rack. Where
-that row still reaches the controls, the chip moves above the ring. Where the
+a screen over 430 px tall a rack's countdown also moves beside the rack. On a
+stacked mouse tray the row also keeps 3 px over the speedometer where it reaches
+it, and the chip never joins the row there, since it would reach the speedometer
+and the damage panel. Where that row still reaches the controls, the chip moves
+above the ring. Where the
 column under the marker still leaves no room (a rack or struck round dropped
 below a ring just wide enough to cross it, with the countdown under it), the line
 and the zoom plate move right of that column, 16 px apart. On the short landscape
@@ -213,8 +216,9 @@ two 44 px tall touch slots (320x568 and 568x290). The mouse windows add the gun
 travel warning and the widest ring to the scope's states. It checks pixels,
 recorded canvas geometry and the tray's computed styles: every mark under the
 marker keeps 3 px from the ring's stroke, every text there keeps 3 px from the
-rack, and every mark of the sight, the warning chip included, keeps 3 px from
-every control and from the scope's vision switch. The switch keeps 3 px from
+rack, and every mark of the sight, the warning chip and the zoom plate's rules
+included, keeps 3 px from every control (the speedometer and the minimap among
+them) and from the scope's vision switch. The switch keeps 3 px from
 every HUD panel and control and stays on the screen. A wide tray's controls row
 must start where the HUD models it (120 px over the floor). No capture stage
 shows a shot report or the combat log: on mouse windows under about 1200 px wide,

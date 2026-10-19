@@ -18,8 +18,9 @@
 //    shells (their dark contours), the countdown and the scope readouts — keeps 3 px from the dispersion ring's stroke
 //    (its halo), and every text there keeps 3 px from the rack (critic r6: the desktop scope's countdown sat on the
 //    ring and its digits touched the clip; a phone's clip touched the ring); the readouts never overlap each other,
-//    and every mark of the sight, the warning chip included, keeps 3 px from every DOM control and the scope's vision
-//    switch (critic r8: the stack's foot ran into the controls row, and onto the switch seated under the sight); the
+//    and every mark of the sight, the warning chip and the zoom rules included, keeps 3 px from every DOM control (the
+//    speedometer and the minimap among them) and the scope's vision switch (critic r8: the stack's foot ran into the
+//    controls row, and onto the switch seated under the sight); the
 //    switch keeps 3 px from every HUD panel and control, on the screen; a wide tray's controls row starts where hud.ts
 //    models it; on a portrait phone the systems row stays clear of the sight's band (battleHudLayout SIGHT_BAND_*);
 //  - the DOM: struck controls, ∞ counts at the numeral's size, every empty tray slot struck on a danger edge with its
@@ -201,8 +202,11 @@ export function readHud(rules) {
   // the rack under the marker: its shells' dark contours (seven-point outlines, 3 px wide), where its ink ends
   const rack = paint.filter((op) => op.op === 'stroke' && op.n === 7 && op.lineWidth >= 2.5 && ink(op) !== DRY_INK
     && op.box.y0 > cy && op.box.x1 - op.box.x0 < 26 && Math.abs((op.box.x0 + op.box.x1) / 2 - cx) < 60);
-  // the countdown, the scope's readout line and zoom plate, and its range tag off the ring's 4:30 rim
-  const readouts = texts.filter((op) => op.box.y0 > cy && Math.abs((op.box.x0 + op.box.x1) / 2 - cx) < 110);
+  // the countdown, the scope's readout line and zoom plate, and its range tag off the ring's 4:30 rim (a cramped scope
+  // sets the row right of the column under the marker: its zoom plate centres as far as 220 px from the marker)
+  const readouts = texts.filter((op) => op.box.y0 > cy && Math.abs((op.box.x0 + op.box.x1) / 2 - cx) < 240);
+  // the zoom plate's rules either side of its text (hud.ts paintSniperZoom)
+  const zoomRules = paint.filter((op) => op.op === 'stroke' && ink(op) === 'rgba(170,240,178,0.5)');
   const overlaps = [];
   for (const mark of dry) for (const text of texts) if (hit(mark.box, text.box)) overlaps.push(`empty mark over "${text.text}"`);
   // the strike (the 1.5 px danger diagonal over its dark contour) keeps its distance from every text
@@ -227,7 +231,7 @@ export function readHud(rules) {
     };
     const marks = [...dry.map((op) => ({ what: op.lineWidth === 1.5 ? 'the empty strike' : 'an empty mark', box: op.box })),
       ...rack.map((op) => ({ what: 'a rack shell', box: op.box })),
-      ...readouts.map((op) => ({ what: `"${op.text}"`, box: op.box }))];
+      ...readouts.map((op) => ({ what: `"${op.text}"`, box: op.box })), ...zoomRules.map((op) => ({ what: 'a zoom rule', box: op.box }))];
     for (const mark of marks) {
       const g = gap(mark.box);
       ringGaps.push({ what: mark.what, gap: round(g) });
@@ -251,17 +255,18 @@ export function readHud(rules) {
   for (const chip of chips) for (const text of readouts) {
     if (!contains(chip.box, text.box) && hit(chip.box, text.box)) overlaps.push(`the warning chip over "${text.text}"`);
   }
-  const furniture = [...dry, ...rack, ...readouts, ...chips];
+  const furniture = [...dry, ...rack, ...readouts, ...zoomRules, ...chips];
   // (.cot-scope-vision: the scope's vision switch, which the aerial sheet seats beside the sight; .flight-identity: the
   // flight HUD's identity block)
-  const controls = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-dp',
-    '.cot-aim-warning:not([hidden])', '.cot-scope-vision', '.flight-identity'].flatMap((selector) => [...document.querySelectorAll(selector)].filter(visible)
+  const controls = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-dp', '.cot-drive',
+    '.cot-minimap', '.cot-aim-warning:not([hidden])', '.cot-scope-vision', '.flight-identity'].flatMap((selector) => [...document.querySelectorAll(selector)].filter(visible)
     .map((el) => ({ name: selector, box: rect(el) })));
   // every mark of the sight keeps FURNITURE_GAP from every control (critic r8: the stack's foot 4.77 px into the row)
   for (const item of furniture) for (const control of controls) {
     const g = apart(item.box, control.box);
     if (g < FURNITURE_GAP - SLACK) {
-      overlaps.push(`${item.op === 'text' ? `"${item.text}"` : item.n === 6 ? 'the warning chip' : 'sight mark'} ${round(g)} px from ${control.name}`);
+      const what = item.op === 'text' ? `"${item.text}"` : item.n === 6 ? 'the warning chip' : zoomRules.includes(item) ? 'a zoom rule' : 'sight mark';
+      overlaps.push(`${what} ${round(g)} px from ${control.name}`);
     }
   }
   // The scope's vision switch keeps FURNITURE_GAP from every other HUD panel and control, on the screen (critic r8: seated

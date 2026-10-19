@@ -928,6 +928,17 @@ function visionSwitchBox(width, height, touch) {
   const x0 = Math.min(width / 2 + Math.max(0.15 * vmin + 8, 80), width - 180);
   return { x0, y0: height / 2 - 24, x1: x0 + 156, y1: height / 2 + 24 };
 }
+// A stacked mouse tray's speedometer and the damage panel left of it rise beside the tray, under the sight's left
+// (battleHudLayout .cot-drive and .cot-dp, measured from 431 to 900 px tall): 768 to 999 px wide the speedometer
+// [184, h - 236, 292, h - 128] and the panel [12, h - 311, 172, h - 128] at its tallest; narrower [140, h - 209, 221,
+// h - 128] and [8, h - 265, 128, h - 128] (critic r8 round: the chip beside the line ran 32 px into the speedometer at
+// 900x480, and the zoom plate touched it at 480x640). A wide tray keeps them under its controls row.
+function leftCluster(width, height) {
+  if (width >= 1000) return [];
+  return width < 768
+    ? [{ x0: 140, y0: height - 209, x1: 221, y1: height - 128 }, { x0: 8, y0: height - 265, x1: 128, y1: height - 128 }]
+    : [{ x0: 184, y0: height - 236, x1: 292, y1: height - 128 }, { x0: 12, y0: height - 311, x1: 172, y1: height - 128 }];
+}
 /** The settled paint: the ring eases at exp(-14 dt), so 0.1 s HUD frames (the HUD's dt ceiling) settle it in a few. */
 function quickPaint(tank, mode = 'sniper') {
   let ops = null;
@@ -1012,6 +1023,7 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false }
   scope = true;
   for (const [width, height, touch] of sizes) {
     resize(width, height);
+    documentStub.body.classes[touch ? 'add' : 'delete']('cot-touch-layout');
     // (a wide tray's short window also sweeps the rings just wide enough to cross the rack or the struck round, which drop
     // them below the ring: 26 to 31 m put the readouts as much as 6.5 px into the controls row before rowBeside)
     for (const metres of (!touch && width >= 1000 && height <= 470) || (touch && width > height)
@@ -1021,11 +1033,18 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false }
         const tank = make();
         tank.state.gunLimitSpec = warn;
         const at = `${width}x${height} scope, ${metres} m, ${label}${warn ? ', gun travel warning' : ''}`;
-        const { ring, chip, line, zoom, stack, countdown, furniture } = reticleGaps(quickPaint(tank), at,
+        const { ring, chip, line, zoom, stack, tag, furniture } = reticleGaps(quickPaint(tank), at,
           { warn, scoped: true, vision: visionSwitchBox(width, height, !!touch), ringClear: true });
         if (Math.abs(zoom.box.y1 - line[0].box.y1) < 3) modes[chip && Math.abs(chip.box.y1 - line[0].box.y1 - 8.4) < 3 ? 'chipBeside' : 'zoomBeside']++;
         if (chip && chip.box.y1 < ring.y - ring.r) modes.chipAbove++;
-        if (line[0].box.x0 > width / 2) modes.rowBeside++;
+        if (line[0].box.x0 > width / 2) {
+          // beside the column under the marker, the row keeps a group gap (16 px) from every mark on its level
+          modes.rowBeside++;
+          const left = Math.min(...stack.map((op) => op.box.x0));
+          for (const op of furniture.filter((item) => item !== tag && Math.min(item.box.y1, line[0].box.y1) > Math.max(item.box.y0, line[0].box.y0 - 10))) {
+            assert.ok(left - op.box.x1 >= 16 - 0.5, `${at}: the row beside the column keeps ${(left - op.box.x1).toFixed(2)} px from a mark on its level`);
+          }
+        }
         // A wide mouse tray's controls row starts 120 px over the floor, a landscape phone's systems row 99 px (both under
         // the sight); every mark under the marker keeps 3 px over it: the stack, the countdown, the rack, the empty marks,
         // the range tag and the chip. (Known limit: under 420 px tall on a wide tray, and under about 370 px on a
@@ -1036,10 +1055,17 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false }
           const foot = Math.max(...stack.map((op) => op.box.y1), ...furniture.map((op) => op.box.y1));
           assert.ok(foot <= height - row - 3 + 1e-6, `${at}: the stack's foot keeps ${(height - row - foot).toFixed(2)} px over the controls row`);
         }
+        for (const panel of touch ? [] : leftCluster(width, height)) {
+          for (const op of [...stack, ...furniture]) {
+            const gap = Math.max(op.box.x0 - panel.x1, panel.x0 - op.box.x1, op.box.y0 - panel.y1, panel.y0 - op.box.y1);
+            assert.ok(gap >= 3 - 1e-6, `${at}: ${op.text ? `"${op.text}"` : 'a mark'} keeps ${gap.toFixed(2)} px from the speedometer or the damage panel`);
+          }
+        }
       }
     }
   }
   assert.ok(Object.values(modes).every((n) => n > 0), `the cramped rows ran (${JSON.stringify(modes)})`);
+  documentStub.body.classes.delete('cot-touch-layout');
   scope = false;
   dispersionM = 8;
   resize(WIDTH, HEIGHT);
@@ -1055,6 +1081,7 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false }
   const ringAt = { left: 0, right: 0, above: 0, below: 0 };
   for (const [width, height, touch] of sizes) {
     resize(width, height);
+    documentStub.body.classes[touch ? 'add' : 'delete']('cot-touch-layout');
     camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 5000);
     camera.position.set(0, 2, 0);
     camera.lookAt(0, 2, 200);
@@ -1082,6 +1109,7 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false }
     }
   }
   assert.ok(Object.values(ringAt).every((n) => n > 0), `the gun's ring sat off the centre every way (${JSON.stringify(ringAt)})`);
+  documentStub.body.classes.delete('cot-touch-layout');
   camera = null;
   scope = false;
   dispersionM = 8;
@@ -1093,5 +1121,6 @@ console.log('hudAmmoOutPaint.selftest: the live HUD paints no sweep, countdown o
   + 'a clip or salvo fills the round being chambered; unlimited rounds never read dry; the clip and the countdown keep '
   + '3 px from the ring and from each other; on short mouse windows the scope readouts keep 3 px from every mark under the '
   + 'marker, the warning chip, the range tag and the ring, 3 px over a wide tray\'s controls row and a landscape phone\'s '
-  + 'systems row (the chip above the ring, then the row beside the column under the marker, when nothing else fits), '
+  + 'systems row and off a stacked tray\'s speedometer and damage panel (the chip above the ring, then the row beside the '
+  + 'column under the marker, when nothing else fits), '
   + 'wherever the gun\'s ring sits, and every mark and a centred ring keep 3 px from the vision switch beside the sight');
