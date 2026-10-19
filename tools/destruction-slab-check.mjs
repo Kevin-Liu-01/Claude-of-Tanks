@@ -561,7 +561,13 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
       const debrisAtRest = /^fx-(structure-rubble|collapse-baked|fracture-heap)-/.test(p.d.name)
         || (settled && /^fx-(collapse-roof|fracture-body|rubble-body|landmark-piece)/.test(p.d.name));
       const topUp = s.max[1] - groundC;
-      if (debrisAtRest && vertical && !p.grounded && topUp >= SLAB.onEndM && !reasons.length) {
+      // (a face of a larger piece it lies in — a slumped set piece's shopfront on its house, a clump's skin — is that piece's)
+      const backed = debrisAtRest && vertical && boxes.some((b, k) => k !== idx && pieces[k].gid !== p.gid
+        && b.max[0] - b.min[0] >= 1 && b.max[1] - b.min[1] >= 1 && b.max[2] - b.min[2] >= 1
+        && b.min[0] <= s.min[0] + 0.3 && b.min[1] <= s.min[1] + 0.3 && b.min[2] <= s.min[2] + 0.3
+        && b.max[0] >= s.max[0] - 0.3 && b.max[1] >= s.max[1] - 0.3 && b.max[2] >= s.max[2] - 0.3);
+      if (backed) attributes.push('a face of the larger piece it lies in');
+      if (debrisAtRest && vertical && !p.grounded && !backed && topUp >= SLAB.onEndM && !reasons.length) {
         reasons.push(`on end: a debris plate standing upright, its top ${topUp.toFixed(1)} m up (${(s.ext[0] * s.ext[1]).toFixed(1)} m², ${(outsideShare * 100).toFixed(0)} % past the walls)`);
       }
       // (the owner's 2026-10-17 frame) a fallen roof's slab lying flat across the wall heads, 2 m or more up, reads as a

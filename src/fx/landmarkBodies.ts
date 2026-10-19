@@ -278,6 +278,13 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
     // lands on its base and holds the plate upright) falls as a tween to its broad side, never as that box
     const plate = plateAxis(byMat);
     if (plate && Math.abs(plate[1]) < 0.5 && Math.max(Math.abs(plate[0]), Math.abs(plate[2])) < 0.9) kinematic = true;
+    // (round 4; the census's delta #9: a farmhouse's roof slope, 12.6 x 4.1 m at 43 degrees across a box near square in
+    // section, rolled on landing and stood on its edge in a late joiner's page) a plate its box does not lie along — the
+    // box's thinnest axis not its own — falls as a tween to its broad side too
+    if (plate && !kinematic) {
+      const thin = hx <= hy && hx <= hz ? 0 : hy <= hz ? 1 : 2;
+      if (Math.abs(plate[thin]) < 0.9) kinematic = true;
+    }
     // the body: its box, its density; spawned where it stood, turned as the set piece is
     const massKg = 8 * hx * hy * hz * rule.density;
     const shape = createRigidBox(hx, hy, hz, rule.density, { restitution: 0.12, friction: 0.7, rolling: 0.3, forceSleepS: 8 });
@@ -304,7 +311,7 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
       // laid in a late joiner's page standing on its edge — its box read thin upright) a flat piece lies on its broad side
       // whatever its heading: its drawing's least axis turned up
       let half = Math.min(hx, hy, hz);
-      if (plate && Math.abs(plate[1]) < 0.5) {
+      if (plate) {
         _pn.set(plate[0], plate[1], plate[2]);
         _q.multiply(_tq.setFromUnitVectors(_pn, _pu.set(0, plate[1] >= 0 ? 1 : -1, 0)));
         half = plate[3];

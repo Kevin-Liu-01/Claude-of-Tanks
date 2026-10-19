@@ -936,6 +936,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // destruction-slabs 227 round 3: what a building's damage leaves hanging comes down (a roof's chimney and ladder, a mill's
     // sails, a loose room or face piece)
     'src/fx/structureHanging.selftest.mjs',
+    // destruction-slabs 227 round 4: no debris plate rests on its edge, no remnant stands over the building as drawn
+    'src/fx/uprightPlates.selftest.mjs',
     'src/fx/structureStagesPieceHides.selftest.mjs', // 2026-10-16 props lane B (227 co-hold): a live run's named-piece hides wait for its wreck's birth, a settled run's apply at once
     'src/fx/structureDebris.selftest.mjs', // 2026-10-12: thrown pieces lie where their flight meets the ground; still pieces belong to their building
     'src/fx/rubbleBodies.selftest.mjs', // 2026-10-12: a building's larger falling pieces are bodies of the one physics engine

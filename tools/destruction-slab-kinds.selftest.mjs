@@ -18,6 +18,7 @@
 // fingerprint a clean run (no finding at all) passed before is not run again: a world change runs the kinds it changed, a
 // change to the destruction code runs them all. Each map is still built (what a kind is comes from its build).
 //   COT_SLAB_KINDS_WORKERS=<n> (default a third of the CPUs, at most 6); COT_SLAB_KINDS_MAPS=<map,...> (a subset);
+//   COT_SLAB_KINDS_MAP_MIN=<minutes> (a map's worker's limit, default 25);
 //   COT_SLAB_KINDS_DUMP=<file> (write the runs' findings) and COT_SLAB_KINDS_FROM=<file> (judge a dump, no runs: KNOWN's edits);
 //   COT_SELFTEST_CACHE=0 or --all: every kind runs
 import assert from 'node:assert/strict';
@@ -138,6 +139,8 @@ if (!isMainThread) {
   }
   const maps = process.env.COT_SLAB_KINDS_MAPS ? process.env.COT_SLAB_KINDS_MAPS.split(',') : [...MAP_IDS];
   const workers = Math.max(1, Number(process.env.COT_SLAB_KINDS_WORKERS ?? Math.min(6, Math.max(1, Math.floor(os.availableParallelism() / 3)))));
+  // (round 4: a loaded machine took ruinspires past 25 min) a map's worker's limit, minutes (COT_SLAB_KINDS_MAP_MIN)
+  const MAP_MIN = Math.max(5, Number(process.env.COT_SLAB_KINDS_MAP_MIN ?? 25));
   const queue = process.env.COT_SLAB_KINDS_FROM ? [] : [...maps];
   const results = process.env.COT_SLAB_KINDS_FROM ? JSON.parse(readFileSync(process.env.COT_SLAB_KINDS_FROM, 'utf8')).filter((r) => maps.includes(r.mapId)) : [];
   await Promise.all(Array.from({ length: Math.min(workers, queue.length) }, () => new Promise((resolve) => {
@@ -149,7 +152,7 @@ if (!isMainThread) {
       current = queue.shift() ?? null;
       if (current === null) { worker.postMessage(null); return; }
       // (a map that hangs is reported, not waited on: its worker goes and the rest finish)
-      timer = setTimeout(() => { results.push({ mapId: current, error: 'timed out (25 min)' }); current = null; worker.terminate(); }, 25 * 60 * 1000);
+      timer = setTimeout(() => { results.push({ mapId: current, error: `timed out (${MAP_MIN} min)` }); current = null; worker.terminate(); }, MAP_MIN * 60 * 1000);
       worker.postMessage(current);
     };
     worker.on('message', (m) => {
