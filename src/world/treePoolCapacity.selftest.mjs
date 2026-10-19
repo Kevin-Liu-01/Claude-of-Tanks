@@ -21,6 +21,7 @@ import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
 import { resolveLandUseProfile } from './landUse.ts';
 import { markShadowOnly, setShadowCasterProfile } from '../engine/renderLayers.ts';
 import { deploymentClearings } from '../sim/matchPlacement.ts';
+import { civicLawnTest, civicPavedRooms, civicTreeStations } from './civic/plans/index.ts';
 
 // Actual seeded tree placement, allocation, full/incremental partition and LOD
 // transition code. Tiny immutable geometry avoids unrelated atlas/mesh baking.
@@ -47,7 +48,9 @@ const dependencies = { THREE, mulberry32, TREE_ARCHETYPES, treeTrunkCollisionRad
   // (2026-10-07) the hedge trees' land use (vegetation.ts plantHedgeTrees), as the authored placement sandbox carries it
   resolveLandUseProfile,
   // symmetric deployments (modes lane 2026-10-08): the slots' clearings
-  deploymentClearings };
+  deploymentClearings,
+  // (the maps lane, 228) a civic plan's trees and lawns (world/civic)
+  civicTreeStations, civicLawnTest, civicPavedRooms };
 
 function compile(legacy) {
   const pools = legacy ? poolCode.replace(capacityLine, 'const capacity = trees.length;') : poolCode;
