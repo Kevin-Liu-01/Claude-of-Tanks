@@ -321,9 +321,10 @@
     "wallMs",
     "generated",
     "dir",
-    "arrangement"
+    "arrangement",
+    "hunterContacts"
    ],
-   "note": "classic doctrine: the row under TEAM NATIONS RANDOM (the old roster path) reproduces the integ/228 baseline field for field"
+   "note": "classic doctrine: the row under TEAM NATIONS RANDOM (the old roster path) reproduces the integ/228 baseline field for field (hunterContacts: a measurement field newer than the baseline)"
   },
   {
    "id": "guard.classic.juggernaut",
@@ -335,9 +336,10 @@
     "wallMs",
     "generated",
     "dir",
-    "arrangement"
+    "arrangement",
+    "hunterContacts"
    ],
-   "note": "classic doctrine: the row under TEAM NATIONS RANDOM (the old roster path) reproduces the integ/228 baseline field for field"
+   "note": "classic doctrine: the row under TEAM NATIONS RANDOM (the old roster path) reproduces the integ/228 baseline field for field (hunterContacts: a measurement field newer than the baseline)"
   },
   {
    "id": "horde.law",

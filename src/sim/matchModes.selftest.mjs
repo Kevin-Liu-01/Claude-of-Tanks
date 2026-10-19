@@ -301,7 +301,11 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   const ally = entity('ally', 'alpha', 10, -150, { bot: true });
   const enemies = Array.from({ length: 6 }, (_, index) =>
     entity(`enemy-${index}`, 'bravo', index * 8, 150, { bot: true }));
-  const { match, events } = controller('frontline_assault', [player, ally, ...enemies], 6000);
+  // this compressed front (300 m, sectors 90 m apart) keeps the defenders where they stand: on a real front the line
+  // (70-110 m behind a sector) lies between sectors, here it would fall inside the next one (frontlineDefenders pins it)
+  const fl = matchRulesetFor('frontline_assault');
+  const { match, events } = controller('frontline_assault', [player, ally, ...enemies], 6000,
+    { ruleset: { ...fl, assault: { ...fl.assault, defendersStartOnLine: false } } });
   assert.equal(match.usesElimination, false);
   assert.deepEqual(match.state.line, { index: 0, total: 3, holdS: 0 });
   assert.deepEqual(match.state.zones.map((zone) => Math.round(zone.z)), [-75, 15, 105],

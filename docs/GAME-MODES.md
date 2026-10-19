@@ -189,7 +189,7 @@ Frontline Assault's opening wave is the same fresh draw; every captured sector t
 the line (owner 2026-09-17: "capturing bases … shouldnt reset tanks"): defenders still alive keep
 their identity, position and damage, and only the shortfall to `initialActive (4) + extraDefenders + sector`
 defenders arrives as fresh identities (rested first, that sector's wrecks last), on the sector's line
-(`defendersStartOnLine`: 30–70 m behind its centre, facing the attack; the opening wave too) with
+(`defendersStartOnLine`: 70–110 m behind its centre, clear of the zone, facing the attack; the opening wave too) with
 `1 + 0.16 × sector + difficultyHp` hull; a campaign operation of difficulty *d* adds
 `floor((d − 1) / 2)` defenders and `(d − 1) × 6 %` hull. A level score when the clock
 expires is a draw under Standard rules and a defeat for the attackers in Frontline
@@ -352,8 +352,8 @@ authority now refuses to start a wave on an empty pool). Campaign progress stays
 
 Respawning modes (Capture the Flag, Zone Control, Turbo Ball, Mars, Gun Game, Drone, Infected and the Juggernaut
 hunters) revive the player through `mode:respawn`; Endless Horde and Frontline Assault never revive a human (their
-allied bots come back when a round is cleared or a sector falls, and with Frontline's `allyReviveS` behind the last
-sector taken). The killcam
+allied bots come back when a round is cleared or a sector falls, and in Frontline 30 s after a death too (`allyReviveS`,
+behind the last sector taken)). The killcam
 cancels its spectate and any pending ghost replay on the local player's revive so the
 camera returns to the tank instead of holding the wreck view (batch 27). Since
 2026-09-15 the death hand-off to the ally chase and its garage bar never starts while the

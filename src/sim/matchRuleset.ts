@@ -820,10 +820,12 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     // trickle from the rear while a sector is contested; the attackers push in groups on flank lanes, the defenders
     // sortie at the attackers they see within 80 m of their line
     assault: Object.freeze({ initialActive: 4, extraDefenders: 0, hpPerLine: 0.16, finalLineHp: 1.15, difficultyHp: 0, holdS: 20,
-      defendersStartOnLine: true, lineBandM: Object.freeze([30, 70] as const),
+      // the line 70-110 m behind the centre: clear of the zone (30 m), so the attack can stand in it and fight for it
+      // (30-70 put the near defenders on the zone's own edge: the round-1 A/B's shield seat never took sector 1 in 12:00)
+      defendersStartOnLine: true, lineBandM: Object.freeze([70, 110] as const),
       counterAttack: Object.freeze({ squad: 2, afterCaptureS: 8, forS: 40 }),
       reinforceTrickleS: 30, reinforceExtra: 2, reinforceRearM: 140,
-      regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: null, hostileDifficultyStep: 1 }),
+      regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: 30, hostileDifficultyStep: 1 }),
     assaultBots: Object.freeze({ pushAfterS: 15, pushMinGroup: 2, pushGroupM: 80, stageM: 20, flankShare: 0.4, flankOffsetM: 60,
       flankConvergeM: 80 }),
     bots: Object.freeze({ alpha: ASSAULT_ATTACKER_DOCTRINE, bravo: ASSAULT_DEFENDER_DOCTRINE }),

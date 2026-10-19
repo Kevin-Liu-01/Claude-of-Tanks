@@ -189,8 +189,8 @@ assert.equal(assault.timeLimitS, 720); assert.equal(assault.allies, 3); assert.e
 assert.equal(assault.enemies, 12, 'twelve defenders in the formation pool'); assert.equal(assault.enemyNation, null, 'a free sortie names no nation unless arranged');
 assert.deepEqual({ ...assault.assault, lineBandM: [...assault.assault.lineBandM], counterAttack: { ...assault.assault.counterAttack } }, {
   initialActive: 4, extraDefenders: 0, hpPerLine: 0.16, finalLineHp: 1.15, difficultyHp: 0, holdS: 20,
-  defendersStartOnLine: true, lineBandM: [30, 70], counterAttack: { squad: 2, afterCaptureS: 8, forS: 40 },
-  reinforceTrickleS: 30, reinforceExtra: 2, reinforceRearM: 140, regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: null,
+  defendersStartOnLine: true, lineBandM: [70, 110], counterAttack: { squad: 2, afterCaptureS: 8, forS: 40 },
+  reinforceTrickleS: 30, reinforceExtra: 2, reinforceRearM: 140, regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: 30,
   hostileDifficultyStep: 1,
 }, 'gameplay-modes-228: every sector fought for — defenders on the line, a counter-attack, a trickle, a 25 s regroup');
 assert.deepEqual({ ...assault.assaultBots }, { pushAfterS: 15, pushMinGroup: 2, pushGroupM: 80, stageM: 20, flankShare: 0.4, flankOffsetM: 60, flankConvergeM: 80 });

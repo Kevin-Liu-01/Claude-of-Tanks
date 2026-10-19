@@ -74,4 +74,13 @@ const before = live().length;
 step(rules.assault.reinforceTrickleS * 2 + 1);
 assert.ok(live().length > before, 'the contested line takes reinforcements from the rear');
 assert.ok(events.some((e) => e.type === 'mode_line_reinforced'));
-console.log('frontlineDefenders.selftest: the line dug in from the start, reinforcements on their own line, the counter-attack, the rear trickle, grouped pushes');
+// the allied revive (allyReviveS): a destroyed allied bot comes back allyReviveS later, behind the last sector taken; the
+// human never does (the sortie's one life)
+const downed = allies[0];
+downed.combat.destroyed = true;
+step(rules.assault.allyReviveS - 1);
+assert.equal(downed.combat.destroyed, true, 'not before allyReviveS');
+step(2.5);
+assert.equal(downed.combat.destroyed, false, `an allied bot revives ${rules.assault.allyReviveS} s after its death`);
+assert.ok(downed.state.pos.z < zone(0).z, 'behind the last sector taken');
+console.log('frontlineDefenders.selftest: the line dug in from the start, reinforcements on their own line, the counter-attack, the rear trickle, grouped pushes, the allied revive');
