@@ -734,7 +734,6 @@ export function createSoloBattleDeploymentRuntime(
           totalMs: forwardBatchMs.reduce((sum, ms) => sum + ms, 0),
         };
         mark('forwardPrograms');
-        for (const airframe of airframes) airframe.visible = false;
 
         // 2026-10-15 (the perf lane): the vision (thermal) variants are no longer linked under the cover. They are only
         // drawn when the player turns a vision mode on; the deferred countdown owner warms them for the whole roster
@@ -746,6 +745,9 @@ export function createSoloBattleDeploymentRuntime(
         mark('postPasses');
         battleLoad.progress(0.97, 'Priming deployment view');
         optionalWarmCompleted = true;
+        // (ac130-fx-228 r2) the staged airframes hide again once the forward and post warms have drawn them (the first
+        // live frame poses and shows them by the rig's own-vehicle visibility)
+        for (const airframe of airframes) airframe.visible = false;
       } catch (error) {
         if (error === STALE_DEPLOYMENT || !stillCurrent(generation)) {
           throw new Error('Solo battle deployment was superseded');

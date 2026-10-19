@@ -96,9 +96,11 @@ const src = (path) => readFileSync(resolve(ROOT, path), 'utf8');
   const deploy = src('src/game/soloBattleDeploymentRuntime.ts');
   const stageAt = deploy.indexOf('await stageGunshipAirframes(game.tanks)');
   const earlyAt = deploy.indexOf("mark('earlyPrograms')");
-  const forwardAt = deploy.indexOf("mark('forwardPrograms');\n        for (const airframe of airframes) airframe.visible = false;");
-  assert.ok(stageAt > 0 && earlyAt > stageAt && forwardAt > earlyAt,
-    'the covered deployment stages the airframes before its scene compile and hides them after its forward warm');
+  const forwardAt = deploy.indexOf("mark('forwardPrograms');");
+  const hideAt = deploy.indexOf('optionalWarmCompleted = true;\n        // (ac130-fx-228 r2) the staged airframes hide again');
+  assert.ok(stageAt > 0 && earlyAt > stageAt && forwardAt > earlyAt && hideAt > forwardAt
+    && deploy.indexOf('for (const airframe of airframes) airframe.visible = false;', hideAt) > hideAt,
+    'the covered deployment stages the airframes before its scene compile and hides them after its forward and post warms');
 }
 
 // ---- the lens: the pilot's own airframe and the gimbal's sight key off the rig's own-vehicle visibility ----
