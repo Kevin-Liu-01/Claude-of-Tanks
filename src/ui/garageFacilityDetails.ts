@@ -363,11 +363,17 @@ function cameraPoint(side: number, depth: number): { readonly x: number; readonl
  * chamfer on the ones nearest the camera within `bevelTriangles` (a chamfered box costs 32 more triangles). The far ones
  * and the large textured panels (a face over 4 m²) stay instanced on their textured classes. A lane adds its row.
  */
-const FACILITY_KIT_NEAR: Readonly<Partial<Record<GarageVariant['architecture'], { readonly bevelTriangles: number }>>> = Object.freeze({
+const FACILITY_KIT_NEAR: Readonly<Partial<Record<GarageVariant['architecture'], {
+  readonly bevelTriangles: number;
+  /** Classes whose every small primitive becomes kit geometry at any range, so the class's instanced draw goes. */
+  readonly allOf?: readonly PrimitiveInstance['materialClass'][];
+}>>> = Object.freeze({
   recovery_yard: { bevelTriangles: 1900 },
   rock_cavern: { bevelTriangles: 1100 },
   repair_bunker: { bevelTriangles: 3800 },
-  rain_canopy: { bevelTriangles: 7600 },
+  // (garage r9 g1 r4: the canopy's roofing keeps its own textured draw now; Monsoon's painted boxes all join the kit to
+  // hold main's draw count)
+  rain_canopy: { bevelTriangles: 7600, allOf: ['painted'] },
 });
 const FACILITY_KIT_NEAR_RADIUS_M = 25;
 const FACILITY_KIT_MIN_EXTENT_M = 0.25;
@@ -400,15 +406,18 @@ function kitNearFacilityPrimitives(
   const keptCylinders = new Map<number, PrimitiveInstance[]>();
   const consider = (instance: PrimitiveInstance, kind: Piece['kind'], segments: number): boolean => {
     instance.matrix.decompose(position, quaternion, scale);
-    if (Math.hypot(position.x, position.z) > FACILITY_KIT_NEAR_RADIUS_M) return false;
+    const whole = config.allOf?.includes(instance.materialClass) ?? false;
+    const near = Math.hypot(position.x, position.z) <= FACILITY_KIT_NEAR_RADIUS_M;
+    if (!near && !whole) return false;
     const s = new THREE.Vector3(Math.abs(scale.x), Math.abs(scale.y), Math.abs(scale.z));
     const dims = kind === 'box' ? [s.x, s.y, s.z] : [s.x * 2, s.y, s.z * 2];
-    if (Math.max(...dims) <= FACILITY_KIT_MIN_EXTENT_M) return false;
+    if (!whole && Math.max(...dims) <= FACILITY_KIT_MIN_EXTENT_M) return false;
     dims.sort((a, b) => b - a);
-    if (kind === 'box' && instance.materialClass !== 'equipment' && dims[0] * dims[1] > FACILITY_KIT_KEEP_FACE_M2) return false;
+    if (!whole && kind === 'box' && instance.materialClass !== 'equipment' && dims[0] * dims[1] > FACILITY_KIT_KEEP_FACE_M2) return false;
     const toCamera = Math.max(4, Math.hypot(position.x - camera.x, position.z - camera.z));
+    // chamfers only on the near pieces (a whole class's far members stay plain boxes)
     pieces.push({ instance, kind, segments, p: position.clone(), e: euler.setFromQuaternion(quaternion, 'XYZ').clone(), s,
-      priority: kind === 'box' && dims[2] >= 0.05 ? dims[0] / toCamera : -1, bevel: 0 });
+      priority: near && kind === 'box' && dims[2] >= 0.05 ? dims[0] / toCamera : -1, bevel: 0 });
     return true;
   };
   for (const instance of boxes) if (!consider(instance, 'box', 0)) keptBoxes.push(instance);
