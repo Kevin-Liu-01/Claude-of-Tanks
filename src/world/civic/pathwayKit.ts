@@ -306,7 +306,7 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
   }
 
   // ------------------------------------------------------------------------------------------- lay a run
-  const kerbTopAt =(x: number, z: number, nx: number, nz: number, face: number): number => ctx.ground(x + nx * K, z + nz * K) + face;
+  const kerbTopAt = (x: number, z: number, nx: number, nz: number, face: number): number => ctx.ground(x + nx * K, z + nz * K) + face;
   const mouthRamp = (x: number, z: number): number => {
     // the face over the last 2 m before a square's walk: down to 2 cm at the walk
     let f = 1;
