@@ -4512,6 +4512,8 @@ ${snowCap ? `
     out.memorialcolumn = {
       ...(CIVIC_RECORDS.memorialcolumn as unknown as PropsDestructibleMeta), mat: mats.regionalStone ? 'regionalStone' : 'stone',
       build: () => buildMonument('saeule', ctx, false), broken: () => buildMonument('saeule', ctx, true),
+      // (a phone's shaft is a plain twelve-gon: every tier refits the desktop column's records, one world for a mixed lobby)
+      collisionSolid: () => buildMonument('saeule', { ...ctx, mobile: false }, false),
     };
     return out;
   }
@@ -9252,6 +9254,7 @@ ${snowCap ? `
         streetKerbFootprints.push(setConvexShape({ min: [0, f.foot, 0], max: [0, f.foot + 0.45, 0], kind: 'kerb' }, convexHull2(f.pts)));
       }
       group.userData.pathways = { census: built.census, debugPolys: built.debug };
+      group.userData.pathwayFootprints = built.footprints.map((f) => ({ pts: f.pts.map(([x, z]) => [+x.toFixed(3), +z.toFixed(3)]) }));
       return;
     }
     // r6: urban kerbs/pavements read as CONCRETE, not planks — the urban

@@ -70,12 +70,13 @@ function kioskNear(rng: Rng): THREE.BufferGeometry {
   for (const s of [-1, 1]) upright(m, s * hx, hd, hatch0, hatch1, 0.04, 0.05, ALU, 0.006);
   railX(m, -hx, hx, hatch1 - 0.02, hd, 0.05, 0.04, ALU);
   bar(m, [-hx - 0.05, hatch0 - 0.02, hd - 0.05], [hx + 0.05, hatch0 - 0.02, hd - 0.05], 0.42, 0.04, Z, mul(TRIM, 1.1), 0.01);
-  railX(m, -hw + 0.12, hw - 0.12, 0.85, -0.2, 0.5, 0.04, mul(ENAMEL, 0.7));
-  railX(m, -hw + 0.12, hw - 0.12, 1.5, -hd + 0.25, 0.3, 0.03, mul(ENAMEL, 0.7));
+  // the inner counter (wall to wall) and the shelf on the back wall, the papers and sweets on it
+  railX(m, -hw + 0.06, hw - 0.06, 0.85, -0.2, 0.5, 0.04, mul(ENAMEL, 0.7));
+  railX(m, -hw + 0.06, hw - 0.06, 1.5, -hd + 0.21, 0.3, 0.03, mul(ENAMEL, 0.7));
   for (let k = 0; k < 7; k++) {
     // the papers and the sweets on the shelf behind the hatch: little blocks of colour
     const x = -0.6 + k * 0.2, c = POSTERS[k % POSTERS.length];
-    bar(m, [x, 1.53, -hd + 0.25], [x, 1.53 + 0.12 + (k % 3) * 0.04, -hd + 0.25], 0.14, 0.18, Z, mul(c, 0.85), 0.004);
+    bar(m, [x, 1.515, -hd + 0.21], [x, 1.515 + 0.12 + (k % 3) * 0.04, -hd + 0.21], 0.14, 0.18, Z, mul(c, 0.85), 0.004);
   }
   bar(m, [-0.5, 0.87, -0.2], [-0.5, 1.0, -0.2], 0.4, 0.3, Z, mul(POSTERS[3], 0.8), 0.004);
   // the awning over the hatch, pitched out, its valance; its two arms back to the wall
@@ -91,7 +92,7 @@ function kioskNear(rng: Rng): THREE.BufferGeometry {
   for (const s of [-1, 1]) bar(m, [-hw + 0.3, KH - 0.17, s * (hd + 0.045)], [hw - 0.3, KH - 0.17, s * (hd + 0.045)], 0.012, 0.18, Z, ENAMEL, 0.003);
   bar(m, [-hw - 0.15, KH - 0.01, 0], [hw + 0.15, KH - 0.01, 0], KD + 0.3, 0.06, Z, ROOF, 0.015);
   // the stand of papers at its side
-  for (const s of [-1, 1]) pole(m, [hw + 0.25, 0.15, s * 0.25], [hw + 0.25, 1.1, s * 0.25], 0.012, 4, ALU, true);
+  for (const s of [-1, 1]) pole(m, [hw + 0.25, 0, s * 0.25], [hw + 0.25, 1.1, s * 0.25], 0.012, 4, ALU, true);
   for (let k = 0; k < 3; k++) railZ(m, -0.3, 0.3, 0.45 + k * 0.28, hw + 0.25, 0.04, 0.24, mul(POSTERS[(k + 2) % POSTERS.length], 0.9), 0.004);
   return finish(m);
 }
@@ -188,7 +189,7 @@ function telzelleNear(rng: Rng): THREE.BufferGeometry {
       bar(m, [-h + 0.07, (0.08 + kick) / 2, off], [h - 0.07, (0.08 + kick) / 2, off], 0.03, kick - 0.08, Z, mul(YELLOW, 0.95), 0.004);
       bar(m, [-h + 0.07, (kick + TH - 0.28) / 2, off], [h - 0.07, (kick + TH - 0.28) / 2, off], solid ? 0.03 : 0.012, TH - 0.28 - kick, Z, solid ? mul(ALU, 0.9) : GLASS, 0);
       railX(m, -h + 0.07, h - 0.07, 1.35, off + s * 0.01, 0.03, 0.035, YELLOW);
-      if (side === 'pz') { pole(m, [h - 0.16, 0.95, off + 0.04], [h - 0.16, 1.15, off + 0.04], 0.012, 4, ALU, true); }
+      if (side === 'pz') { pole(m, [h - 0.16, 0.95, off + 0.018], [h - 0.16, 1.15, off + 0.018], 0.012, 4, ALU, true); }
     }
     void n;
   }
@@ -230,19 +231,20 @@ function pflanzkuebelNear(rng: Rng): THREE.BufferGeometry {
 }
 
 function pflanzkuebelBroken(rng: Rng): THREE.BufferGeometry {
-  // the tub burst: three wall pieces still standing round the soil, two fallen out, the shrub torn out and lying over
+  // the tub burst: four wall pieces still standing round the soil (two of them broken low), two fallen out, the shrub
+  // torn out and lying over the rim
   const m = newMesh();
   for (let k = 0; k < 6; k++) {
     const a = (k / 6) * Math.PI * 2 + Math.PI / 6, b = ((k + 1) / 6) * Math.PI * 2 + Math.PI / 6, am = (a + b) / 2;
     const P: V3 = [Math.sin(a) * 0.6, 0, Math.cos(a) * 0.6], Q: V3 = [Math.sin(b) * 0.6, 0, Math.cos(b) * 0.6];
+    const h = k % 3 === 0 ? 0.5 : k % 3 === 1 ? 0.28 : 0.42;
     const s0 = m.mark;
-    bar(m, [(P[0] + Q[0]) / 2, 0.25, (P[2] + Q[2]) / 2], [(P[0] + Q[0]) / 2, 0.25 + (k % 2 ? 0.25 : 0.04), (P[2] + Q[2]) / 2], 0.6, 0.08, [Math.cos(am), 0, -Math.sin(am)], mul(CONCRETE, 0.9 + rng() * 0.08), 0.01);
-    bar(m, [(P[0] + Q[0]) / 2, 0, (P[2] + Q[2]) / 2], [(P[0] + Q[0]) / 2, 0.25, (P[2] + Q[2]) / 2], 0.6, 0.08, [Math.cos(am), 0, -Math.sin(am)], mul(CONCRETE, 0.9), 0.01);
+    bar(m, [(P[0] + Q[0]) / 2, 0, (P[2] + Q[2]) / 2], [(P[0] + Q[0]) / 2, h, (P[2] + Q[2]) / 2], 0.6, 0.08, [Math.cos(am), 0, -Math.sin(am)], mul(CONCRETE, 0.9 + rng() * 0.08), 0);
     if (k === 1 || k === 4) m.tilt(s0, [P[0], 0, P[2]], [Q[0] - P[0], 0, Q[2] - P[2]], 1.35);
   }
-  lathe(m, [[0.55, 0], [0.5, 0.25], [0.2, 0.36], [0, 0.38]], 8, () => SOIL, { faceted: true });
+  lathe(m, [[0.55, 0], [0.5, 0.25], [0.2, 0.36], [0, 0.38]], 6, () => SOIL, { faceted: true });
   const s0 = m.mark;
-  lathe(m, [[0.1, 0.0], [0.36, 0.1], [0.42, 0.26], [0.36, 0.42], [0.22, 0.52], [0, 0.55]], 8, (k) => (k % 2 ? SHRUB : SHRUB_DARK), { faceted: true });
+  lathe(m, [[0.1, 0.0], [0.38, 0.14], [0.36, 0.4], [0.18, 0.52], [0, 0.55]], 6, (k) => (k % 2 ? SHRUB : SHRUB_DARK), { faceted: true });
   m.tilt(s0, [0, 0, 0], [1, 0, 0], 1.25);
   for (let i = s0; i < m.mark; i += 3) { m.p[i + 2] += 0.75; m.p[i + 1] += 0.36; }
   return finish(m);

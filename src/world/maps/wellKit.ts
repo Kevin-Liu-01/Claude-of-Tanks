@@ -1388,14 +1388,15 @@ function leaningWreath(m: Mesh, x: number, y: number, z: number, rad: number): v
 
 /** The town's arms in relief over a face's tablet: a shield of the die's stone, a tower with its gate on it. */
 function armsRelief(m: Mesh, ctx: WellBuildContext, face: number, y: number): void {
-  const shade = weathered(ctx, 1.06, { lichen: 0.3, base: COLUMN_STONE });
+  // (carved in the die's own stone: on its print, a shade lighter where it stands proud)
+  const shade = weathered(ctx, 1.08, { lichen: 0.3 }), K: Rgb = [1.08, 1.08, 1.08];
   const z0 = face - 0.004, z1 = face + 0.025;
-  member(m, [-0.2, y, (z0 + z1) / 2], [0.2, y, (z0 + z1) / 2], z1 - z0, 0.24, [0, 0, 1], COLUMN_STONE, FLAT, { shade });
-  for (const s of [-1, 1]) member(m, [s * 0.2, y - 0.12, (z0 + z1) / 2], [0, y - 0.36, (z0 + z1) / 2], z1 - z0, 0.18, [0, 0, 1], COLUMN_STONE, FLAT, { shade });
+  member(m, [-0.2, y, (z0 + z1) / 2], [0.2, y, (z0 + z1) / 2], z1 - z0, 0.24, [0, 0, 1], K, MASON, { shade });
+  for (const s of [-1, 1]) member(m, [s * 0.2, y - 0.12, (z0 + z1) / 2], [0, y - 0.36, (z0 + z1) / 2], z1 - z0, 0.18, [0, 0, 1], K, MASON, { shade });
   // the tower: its body, three merlons, the gate's arch a step back
-  const zt = z1 + 0.012;
-  member(m, [0, y - 0.25, zt], [0, y + 0.06, zt], 0.13, 0.022, [1, 0, 0], mul(COLUMN_STONE, 1.08), FLAT, { shade });
-  for (const s of [-1, 0, 1]) member(m, [s * 0.045, y + 0.06, zt], [s * 0.045, y + 0.1, zt], 0.03, 0.022, [1, 0, 0], mul(COLUMN_STONE, 1.08), FLAT, { shade });
+  const zt = z1 + 0.012, T: Rgb = [1.14, 1.14, 1.14];
+  member(m, [0, y - 0.25, zt], [0, y + 0.06, zt], 0.13, 0.022, [1, 0, 0], T, MASON, { shade: weathered(ctx, 1.14, { lichen: 0.2 }) });
+  for (const s of [-1, 0, 1]) member(m, [s * 0.045, y + 0.06, zt], [s * 0.045, y + 0.1, zt], 0.03, 0.022, [1, 0, 0], T, MASON, { shade: weathered(ctx, 1.14, { lichen: 0.2 }) });
 }
 
 function saeule(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry {

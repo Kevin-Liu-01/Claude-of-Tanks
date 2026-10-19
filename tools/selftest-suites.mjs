@@ -1614,6 +1614,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsMaterialGeometry.selftest.mjs',
     'src/world/crushableClutter.selftest.mjs',
     'src/world/smallPropsDestructible.selftest.mjs', // 2026-10-13: the village well, the square's monument and the rail yard's coal break under a hull and a round
+    // (the maps lane, 228) the civic-area and pathway kit (world/civic): its plans and generality, every planned map's areas
+    // (filled, seated, lit, stream-neutral against the map without its plan) and pathways (fronted, clear, continuous)
+    'src/world/civic/civicPlans.selftest.mjs',
+    'src/world/civic/civicFurniture.selftest.mjs',
+    'src/world/civic/civicArea.selftest.mjs',
+    'src/world/civic/civicPathways.selftest.mjs',
     'src/world/maps/wellKit.selftest.mjs', // 2026-10-13 the looks lane: each place's village well and square monument
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
