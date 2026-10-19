@@ -549,24 +549,37 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
       // past the walls by nature: past them it is judged only well up (2.5 m) or floating; a run stands where it was laid
       const debrisRest = IN_FLIGHT.test(p.d.name) || /^fx-(collapse-baked|fracture-heap)-/.test(p.d.name);
       const highEnough = debrisRest ? lift >= SLAB.debrisLiftM || vertical : elevated || vertical;
+      const debrisAtRest = /^fx-(structure-rubble|collapse-baked|fracture-heap)-/.test(p.d.name)
+        || (settled && /^fx-(collapse-roof|fracture-body|rubble-body|landmark-piece)/.test(p.d.name));
+      // (round 4) an upright face of a fallen object (a windmill's cap on the ground, a slumped set piece's shopfront on its
+      // house): another piece drawn right behind it (0.35 m either side of it) over most of it — that object's side, not a
+      // plate standing in the open (a roof slab stood on the heap has the heap under its foot only)
+      let backed = false;
+      if ((debrisRest || debrisAtRest) && vertical) {
+        const nx = s.axes[2][0], ny = s.axes[2][1], nz = s.axes[2][2];
+        let wb = 0, wt = 0;
+        for (let i = 0; i < ns; i++) {
+          const x = samples[i * 4], z = samples[i * 4 + 1], y = samples[i * 4 + 2], w = samples[i * 4 + 3];
+          wt += w;
+          for (const sg of [0.35, -0.35]) {
+            const qx = x + nx * sg, qy = y + ny * sg, qz = z + nz * sg;
+            if (boxes.some((b, k) => k !== idx && pieces[k].gid !== p.gid && qx >= b.min[0] - 0.05 && qx <= b.max[0] + 0.05
+              && qy >= b.min[1] - 0.05 && qy <= b.max[1] + 0.05 && qz >= b.min[2] - 0.05 && qz <= b.max[2] + 0.05)) { wb += w; break; }
+          }
+        }
+        backed = wt > 0 && wb >= 0.6 * wt;
+      }
+      if (backed) attributes.push('a face of the fallen object drawn behind it');
       if (p.grounded) attributes.push('a side of a fallen object lying on the ground');
       else if (debrisRest && elevated && !highEnough && outsideShare >= SLAB.outsideShare) attributes.push(`on the pile past the walls, ${lift.toFixed(1)} m up`);
-      else if (highEnough && outsideShare >= SLAB.outsideShare && outside >= SLAB.outsideAreaM2) {
+      else if (highEnough && !backed && outsideShare >= SLAB.outsideShare && outside >= SLAB.outsideAreaM2) {
         reasons.push(`outside: ${outside.toFixed(1)} m² (${(outsideShare * 100).toFixed(0)} %) past the intact walls${planNote}, ${lift.toFixed(1)} m up`);
       }
       if (restedRoof) attributes.push('a fallen roof slab at rest');
       // (destruction-slabs 227 round 4; caldera #28's warehouse: six plates of its fallen roof stood bolt upright in a row
       // over its heap, inside its walls, where no rule looked) debris at rest standing on its end — a plate upright, its top
       // 2.2 m or more over the ground — inside the walls or past them: a billboard in the ruin, never a heap's piece
-      const debrisAtRest = /^fx-(structure-rubble|collapse-baked|fracture-heap)-/.test(p.d.name)
-        || (settled && /^fx-(collapse-roof|fracture-body|rubble-body|landmark-piece)/.test(p.d.name));
       const topUp = s.max[1] - groundC;
-      // (a face of a larger piece it lies in — a slumped set piece's shopfront on its house, a clump's skin — is that piece's)
-      const backed = debrisAtRest && vertical && boxes.some((b, k) => k !== idx && pieces[k].gid !== p.gid
-        && b.max[0] - b.min[0] >= 1 && b.max[1] - b.min[1] >= 1 && b.max[2] - b.min[2] >= 1
-        && b.min[0] <= s.min[0] + 0.3 && b.min[1] <= s.min[1] + 0.3 && b.min[2] <= s.min[2] + 0.3
-        && b.max[0] >= s.max[0] - 0.3 && b.max[1] >= s.max[1] - 0.3 && b.max[2] >= s.max[2] - 0.3);
-      if (backed) attributes.push('a face of the larger piece it lies in');
       if (debrisAtRest && vertical && !p.grounded && !backed && topUp >= SLAB.onEndM && !reasons.length) {
         reasons.push(`on end: a debris plate standing upright, its top ${topUp.toFixed(1)} m up (${(s.ext[0] * s.ext[1]).toFixed(1)} m², ${(outsideShare * 100).toFixed(0)} % past the walls)`);
       }
