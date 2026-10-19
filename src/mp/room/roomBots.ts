@@ -31,7 +31,7 @@ export interface RoomTeamNations {
   readonly notes: readonly NationNote[];
 }
 
-export interface RoomBotSettings {
+interface RoomBotSettings {
   readonly gameMode: string;
   readonly arrangement: TeamArrangement | null | undefined;
   readonly campaignOperationId?: string | null;
@@ -89,7 +89,7 @@ function randomSides(rows: readonly NationRow[], humans: readonly NationRow[], a
  * The vehicles for `counts` bot seats per side, from the seats' humans and the room's settings, seeded by the match
  * seed. MONO-NATION through pickNationalSides; RANDOM through randomSides.
  */
-export function fillRoomBots(
+function fillRoomBots(
   seats: readonly PlanSeat[],
   settings: Pick<RoomBotSettings, 'arrangement' | 'campaignOperationId' | 'gameMode'>,
   seed: number,

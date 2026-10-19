@@ -114,13 +114,13 @@ export interface NationNote {
   readonly reason: 'ally' | 'repeat' | 'far-era' | 'clash' | 'humans' | 'budget';
 }
 
-export interface NationalSeat {
+interface NationalSeat {
   readonly id: string;
   /** The same vehicle again on this side (solo: a clone entity; multiplayer: a duplicate spec id, which is valid). */
   readonly repeat: boolean;
 }
 
-export interface NationalSidesPlan {
+interface NationalSidesPlan {
   readonly allied: CountryId | null;
   readonly enemy: CountryId | null;
   /** Bot seats, the humans excluded, in seat order. */
@@ -129,7 +129,7 @@ export interface NationalSidesPlan {
   readonly notes: readonly NationNote[];
 }
 
-export interface NationalSidesInput {
+interface NationalSidesInput {
   /** Candidate vehicles in preference order (seeded, recency-rotated; the humans' picks excluded or not, either way). */
   readonly rows: readonly NationRow[];
   /** The allied side's humans (solo: the player), seat order; their picks are kept and never replaced. */

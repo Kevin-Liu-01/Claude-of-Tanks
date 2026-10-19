@@ -248,7 +248,7 @@ export interface PendingBattlefield {
  * TEAM NATIONS (gameplay-modes-228): each side's country (a spec nation for its flag) and the countries that filled it
  * ("+UK"), or null for RANDOM / no country.
  */
-export interface BattleLoadTeams {
+interface BattleLoadTeams {
   readonly allied: string | null;
   readonly enemy: string | null;
   readonly alliedFills: readonly string[];
