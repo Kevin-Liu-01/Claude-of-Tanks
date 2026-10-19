@@ -14,7 +14,6 @@
 
 import { FONT_STACK, FONT_COND } from './fonts.ts';
 import { iconUrl } from './icons.ts';
-import { flagIconHTML } from './flags.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { tierNumeral } from '../vehicles/tier.ts';
 import { t } from './i18n.ts';
@@ -382,9 +381,19 @@ export function createBattleLoadScreen(): BattleLoadScreen {
 
   const allyFlags = requiredElement<HTMLSpanElement>(root, '.team.ally .flags');
   const foeFlags = requiredElement<HTMLSpanElement>(root, '.team.foe .flags');
-  /** A side's country flag and its fills, small (owner UI rules: flags over words). */
+  /**
+   * A side's country flag and its fills, small (owner UI rules: flags over words). The flag module (its SVG assets) is
+   * the garage's, already loaded in the browser; it is imported on demand so this screen's module stays Node-loadable.
+   */
+  let flagsPass = 0;
   function fillFlags(host: HTMLElement, nation: string | null, fills: readonly string[]): void {
-    host.innerHTML = nation ? flagIconHTML(nation, 18, 13) + fills.map((fill) => `<i>+</i>${flagIconHTML(fill, 14, 10)}`).join('') : '';
+    const pass = String(++flagsPass);
+    host.dataset.flagsPass = pass;
+    if (!nation) { host.innerHTML = ''; return; }
+    void import('./flags.ts').then(({ flagIconHTML }) => {
+      if (host.dataset.flagsPass !== pass) return; // a later roster took this side
+      host.innerHTML = flagIconHTML(nation, 18, 13) + fills.map((fill) => `<i>+</i>${flagIconHTML(fill, 14, 10)}`).join('');
+    });
   }
 
   function fillTeam(
