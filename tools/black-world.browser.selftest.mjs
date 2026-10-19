@@ -86,7 +86,8 @@ try {
     assert.ok(end.active, `${label}: the guard is active`);
     assert.ok(end.probes - start.probes >= 5, `${label}: the guard probes (${end.probes - start.probes} in 3 s)`);
     assert.equal(end.incidents, 0, `${label}: no black-world incident`);
-    assert.ok(end.lastBlack < 130, `${label}: the last probe saw a lit world (${end.lastBlack} black cells of 144)`);
+    assert.equal(end.lastLit, true, `${label}: the last probe's lit query kept cells (the world drew)`);
+    assert.equal(end.lastNan, false, `${label}: no non-finite cell`);
     assert.ok(zero < 0.8, `${label}: the world region is not black (${zero.toFixed(3)} exactly zero)`);
   };
   await judge('battle start');
