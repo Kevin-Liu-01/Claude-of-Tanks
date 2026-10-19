@@ -3,23 +3,24 @@
 // effects — the 30 mm and the 152 mm in the projectile tracers (the howitzer's the wider heavy class), the missile as the
 // hellfire airframe with its smoke trail — that a networked snapshot round (no reload group) draws the same, that no
 // pre-October ribbon object exists, and that a reset clears them. Desktop and a 480x270 touch viewport, under the shared
-// capture lock (normal band).
+// capture lock (normal band). Runs over a built dist (`npm run build`; `--dist=<dir>`, default dist/): the probe's
+// configless dev server cannot serve the game's virtual i18n modules.
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createCaptureLock } from './capture-lock.mjs';
-import { withMapProbeSession, openGamePage, beginSoloBattle } from './map-probe-runtime.mjs';
+import { withDistProbeSession, openGamePage, beginSoloBattle } from './map-probe-runtime.mjs';
 
 const out = resolve('.qa-dev/gunship-fx'); mkdirSync(out, { recursive: true });
+const dist = resolve(process.argv.find((a) => a.startsWith('--dist='))?.slice(7) ?? 'dist');
 const GROUPS = ['gunship-cannon', 'gunship-howitzer', 'gunship-missile'];
 const lock = createCaptureLock(); let heartbeat; const results = [];
 try {
   await lock.acquire(); heartbeat = setInterval(() => lock.refresh(), 30000); console.log('gunship-fx: acquired GPU slot');
-  await withMapProbeSession({ root: process.cwd(), launch: { executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' } }, async ({ browser, port }) => {
+  await withDistProbeSession({ root: process.cwd(), dist, launch: { executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' } }, async ({ browser, port }) => {
     for (const viewport of [{ width: 1280, height: 800 }, { width: 480, height: 270, isMobile: true, hasTouch: true }]) {
       const { page, errors } = await openGamePage(browser, { port, viewport });
       page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-      await page.evaluate(async () => { const { writeTeamArrangement } = await import('/src/game/teamArrangement.ts'); writeTeamArrangement('ac130', { allies: 4, enemies: 4 }); });
       await beginSoloBattle(page, { specId: 'm1a1_abrams_hc', mapId: 'verdant', gameMode: 'ac130' });
       assert.equal(await page.evaluate(() => !!window.__DEBUG.fx.group.getObjectByName('Ballistic tracer ribbons and heads')), false,
         'the pre-October ribbon block is gone');
