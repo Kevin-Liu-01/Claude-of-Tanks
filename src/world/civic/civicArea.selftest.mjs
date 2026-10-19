@@ -8,7 +8,10 @@
 //   - the green (AC2): its trees all planted, 6.5 m apart; its benches;
 //   - the monument (AC3): one, at its seat, fortified; no walked monument;
 //   - the parked vehicles (AC4): at their seats, none moved by the separation pass;
-//   - the lanes (G1, G2): nothing in the roundel's hold disc, nothing on the arms' carriageways;
+//   - the lanes (G1, G2, C12, C13): nothing in the roundel's hold disc, nothing on the arms' carriageways; the arms as
+//     the built square measures them at least the narrowest street feeding the square across (12.25 m), the ring lanes
+//     round the green their width (9 m: two hulls abreast) free of every piece and trunk; a 6 m pivot disc clear of
+//     every piece at each of the square's mouths;
 //   - the lamps (AC12, G6): the map's count does not fall, a dozen round the crossing, none in a structure;
 //   - every piece seated on the ground and out of every structure.
 import assert from 'node:assert/strict';
@@ -110,7 +113,10 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
     const lawn = area.lawns.reduce((a, r) => a + (r.x1 - r.x0) * (r.z1 - r.z0), 0);
     assert.ok(lawn >= 900, `${tag}: ${lawn.toFixed(0)} m² of green (900)`);
     // ---- the fill: room cells more than 4 m from anything (records, trees, beds, paving), the arms and the roundel aside
-    const things = [...records.map((d) => [d.x, d.z, d.r]), ...trees.map((t) => [t.x, t.z, 0.6])];
+    // (the census's things: every collision record's footprint box by the room — the furniture, a light building poking
+    // into a corner, a house's corner — and the trunks)
+    const things = [...built.obstacles.filter((o) => o.min && o.max && o.max[0] > room.x0 - 5 && o.min[0] < room.x1 + 5 && o.max[2] > room.z0 - 5 && o.min[2] < room.z1 + 5)
+      .map((o) => [o.min[0], o.max[0], o.min[2], o.max[2]]), ...trees.map((t) => [t.x - 0.6, t.x + 0.6, t.z - 0.6, t.z + 0.6])];
     let open = 0, cells = 0, largest = 0;
     const segDist = (x, z, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz || 1;
       const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / l2)); return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t); };
@@ -118,14 +124,71 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
     // ---- the corridors (G2): no crushable on the bots' measured lanes across the area
     for (const d of records) assert.ok(!inCorridor(d.x, d.z, d.r * 0.5), `${tag}: ${d.kind} at (${d.x.toFixed(1)}, ${d.z.toFixed(1)}) on a traffic corridor`);
     for (const t of trees) assert.ok(!inCorridor(t.x, t.z, 0.5), `${tag}: a tree at (${t.x.toFixed(1)}, ${t.z.toFixed(1)}) on a traffic corridor`);
+    // ---- the lanes (C12): each measured across at every half metre along it, the widest span no piece or trunk enters
+    // (a lamp, a bollard or a railing module on a long edge's kerb line aside: they stand on the kerb, not in the lane)
+    // (every collision record's footprint box — the houses, the light buildings, the furniture — and the trunks)
+    const blockers = [...built.obstacles.filter((o) => o.min && o.max).map((o) => ({ x0: o.min[0], x1: o.max[0], z0: o.min[2], z1: o.max[2], kind: o.kind })),
+      ...flora._trees.map((t) => ({ x0: t.x - 0.6, x1: t.x + 0.6, z0: t.z - 0.6, z1: t.z + 0.6, kind: 'tree' }))];
+    const EDGE_KINDS = new Set(['lamp', 'poller', 'fenceiron']);
+    const freeSpan = (r, alongX, at, edgeKinds) => {
+      // the blocked intervals across the lane on the line at `at` along it
+      const lo = alongX ? r.z0 : r.x0, hi = alongX ? r.z1 : r.x1, cuts = [];
+      for (const b of blockers) {
+        const a0 = alongX ? b.x0 : b.z0, a1 = alongX ? b.x1 : b.z1, c0 = alongX ? b.z0 : b.x0, c1 = alongX ? b.z1 : b.x1;
+        if (at < a0 || at > a1 || c1 <= lo || c0 >= hi) continue;
+        if (edgeKinds.has(b.kind) && Math.min(c1 - lo, hi - c0) < 0.6) continue;
+        cuts.push([c0, c1]);
+      }
+      cuts.sort((a, b) => a[0] - b[0]);
+      let best = 0, from = lo;
+      for (const [a, b] of cuts) { best = Math.max(best, a - from); from = Math.max(from, b); }
+      return Math.max(best, hi - from);
+    };
+    const laneWidth = (r, edgeKinds) => {
+      const alongX = r.x1 - r.x0 >= r.z1 - r.z0, a0 = alongX ? r.x0 : r.z0, a1 = alongX ? r.x1 : r.z1;
+      let min = Infinity;
+      for (let at = a0 + 0.25; at < a1; at += 0.5) min = Math.min(min, freeSpan(r, alongX, at, edgeKinds));
+      return min;
+    };
+    const widths = {};
+    for (const arm of area.arms) {
+      // an arm's carriageway as long as it crosses the room, its lamps on the frontage line aside
+      const r = { x0: Math.max(arm.x0, room.x0), x1: Math.min(arm.x1, room.x1), z0: Math.max(arm.z0, room.z0), z1: Math.min(arm.z1, room.z1) };
+      const w = laneWidth(r, new Set(['lamp']));
+      widths[`arm ${(r.x1 - r.x0).toFixed(0)}x${(r.z1 - r.z0).toFixed(0)}`] = +w.toFixed(2);
+      assert.ok(w >= 12.25, `${tag}: an arm ${w.toFixed(2)} m clear across (the narrowest street feeding the square, 12.25 m)`);
+    }
+    for (const lane of area.lanes) {
+      const w = laneWidth(lane.rect, EDGE_KINDS);
+      widths[lane.id] = +w.toFixed(2);
+      assert.ok(w >= lane.minWidth - 0.01, `${tag}: lane ${lane.id} ${w.toFixed(2)} m clear across (${lane.minWidth})`);
+    }
+    // ---- the pivot discs (C13): 6 m round each of the square's mouths clear of every piece and trunk (the street's own
+    // lamps on its frontage line aside)
+    for (const [mx, mz] of plan.pathways?.mouths ?? []) {
+      for (const b of blockers) {
+        if (b.kind === 'lamp' || b.kind === 'structure') continue; // (the street's lamps; the frontage the mouth opens between)
+        const d = Math.hypot(Math.max(b.x0 - mx, 0, mx - b.x1), Math.max(b.z0 - mz, 0, mz - b.z1));
+        assert.ok(d >= 6, `${tag}: ${b.kind} at (${((b.x0 + b.x1) / 2).toFixed(1)}, ${((b.z0 + b.z1) / 2).toFixed(1)}) ${d.toFixed(2)} m from the mouth (${mx}, ${mz}) (a 6 m pivot disc)`);
+      }
+    }
+    // ---- the objective holds past the roundel (C13): their discs clear of every piece and trunk
+    for (const h of area.holds) {
+      for (const b of blockers) {
+        if (b.kind === 'structure') continue;
+        const d = Math.hypot(Math.max(b.x0 - h.x, 0, h.x - b.x1), Math.max(b.z0 - h.z, 0, h.z - b.z1));
+        assert.ok(d >= h.r, `${tag}: ${b.kind} at (${((b.x0 + b.x1) / 2).toFixed(1)}, ${((b.z0 + b.z1) / 2).toFixed(1)}) in the ${h.id} disc (${d.toFixed(2)} m, ${h.r})`);
+      }
+    }
+    const inLane = (x, z) => area.lanes.some((l) => inRect(l.rect, x, z)) || area.holds.some((h) => Math.hypot(x - h.x, z - h.z) < h.r);
     for (let x = room.x0 + 0.5; x < room.x1; x += 1) for (let z = room.z0 + 0.5; z < room.z1; z += 1) {
       let d = Infinity;
-      for (const [tx, tz, tr] of things) d = Math.min(d, Math.hypot(x - tx, z - tz) - tr);
+      for (const [x0, x1, z0, z1] of things) d = Math.min(d, Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(z0 - z, 0, z - z1)));
       for (const r of [...area.beds.map((b) => b.rect), ...area.paving.map((p) => p.rect)]) {
         d = Math.min(d, Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1)));
       }
       d = Math.min(d, x - room.x0, room.x1 - x, z - room.z0, room.z1 - z);
-      if (area.arms.some((a) => inRect(a, x, z)) || Math.hypot(x - C.x, z - C.z) < C.ringR[1] + 2 || inCorridor(x, z)) continue;
+      if (area.arms.some((a) => inRect(a, x, z)) || Math.hypot(x - C.x, z - C.z) < C.ringR[1] + 2 || inCorridor(x, z) || inLane(x, z)) continue;
       largest = Math.max(largest, d);
       cells++;
       if (d > 4) open++;
@@ -143,11 +206,11 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
     const g = dressing.buildHardstandDressing([pad], config.splat, field, field._layout.roads, field._layout.village, 2002, new Set([0]));
     assert.equal(g, null, `${tag}: no lip, gully or patch on the square's pad`);
     console.log(`${tag}: ${records.length} records in the room, ${civicTrees.length} trees, ${benches} benches, ${lamps.length} lamps (${roundCrossing} round the crossing), `
-      + `open share ${(share * 100).toFixed(1)} %, largest free disc r ${largest.toFixed(1)} m, vetoed ${JSON.stringify(built.group.userData.civic?.vetoed ?? {})}`);
+      + `open share ${(share * 100).toFixed(1)} %, largest free disc r ${largest.toFixed(1)} m, lanes ${JSON.stringify(widths)}, vetoed ${JSON.stringify(built.group.userData.civic?.vetoed ?? {})}`);
     // (live records: the props' destructibles and the trees' trunks)
     assert.ok(records.length + civicTrees.length >= 150, `${tag}: ${records.length} records and ${civicTrees.length} trunks in the room (150)`);
-    assert.ok(share <= 0.03, `${tag}: ${(share * 100).toFixed(1)} % of the room's paving more than 4 m from anything (off the arms, the roundel and the corridors)`);
-    assert.ok(largest <= 9.0, `${tag}: the largest free disc ${largest.toFixed(1)} m off the arms and the corridors (9)`);
+    assert.ok(share <= 0.02, `${tag}: ${(share * 100).toFixed(1)} % of the room's paving more than 4 m from anything (off the arms, the roundel, the corridors and the lanes; 2 %)`);
+    assert.ok(largest <= 9.0, `${tag}: the largest free disc ${largest.toFixed(1)} m off the arms, the corridors and the lanes (9)`);
   }
 }
 console.log(`civicArea.selftest: ${plans.CIVIC_PLAN_MAPS.join(', ')} — the areas filled, seated, lit and stream-neutral — ok`);

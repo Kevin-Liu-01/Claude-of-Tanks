@@ -97,6 +97,12 @@ export interface CivicAreaPlan {
   /** The bots' measured traffic corridors across the area (routeheat): segments and their half widths, kept clear of
    *  every crushable (G2). */
   readonly corridors: ReadonlyArray<{ readonly from: CivicPoint; readonly to: CivicPoint; readonly half: number }>;
+  /** The ring lanes round the green (C12: two hulls abreast): rectangles kept free of every piece and tree, a lamp or a
+   *  bollard on a long edge's kerb line aside, `minWidth` m across at their narrowest. */
+  readonly lanes: ReadonlyArray<{ readonly id: string; readonly rect: CivicRect; readonly minWidth: number }>;
+  /** The objective seats the area keeps clear past its roundel (matchPlacement's: an extraction's convoy disc), each a
+   *  disc no piece or trunk enters (C13). */
+  readonly holds: ReadonlyArray<{ readonly id: string; readonly x: number; readonly z: number; readonly r: number }>;
   /** The roundel at the crossing: its ring band and its rose, flush. */
   readonly centre: { readonly x: number; readonly z: number; readonly ringR: readonly [number, number]; readonly roseR: number; readonly rays: number };
   readonly beds: readonly CivicBed[];

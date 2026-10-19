@@ -83,6 +83,16 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       { from: [-22, 0], to: [-22, 24], half: 4 }, { from: [-22, 24], to: [-36, 38], half: 4 },
       { from: [-50, 0], to: [-39.1, -9.7], half: 4 },
     ],
+    // the ring lanes round the green (C12: 9 m, two hulls abreast): the west walk from the corner lot's garage north to the
+    // church, the walks between the quarters and the church and the south frontage
+    lanes: [
+      { id: 'west-walk', rect: { x0: ROOM.x0, x1: NW.x0, z0: -34.0, z1: ROOM.z1 }, minWidth: 9.0 },
+      { id: 'north-walk', rect: { x0: NW.x0, x1: NW.x1, z0: NW.z1, z1: ROOM.z1 }, minWidth: 9.0 },
+      { id: 'south-walk', rect: { x0: SW.x0, x1: SW.x1, z0: ROOM.z0, z1: SW.z0 }, minWidth: 9.0 },
+    ],
+    // the ac130 extraction's seat (matchPlacement: the 8 m ring search's solid-free disc east of the crossing; the study's
+    // modes probe), its convoy's 8 m kept clear of every piece and trunk
+    holds: [{ id: 'ac130-extraction', x: -39.1, z: -9.7, r: 8 }],
     centre: { x: -50, z: 0, ringR: [8.5, 9.0], roseR: 3, rays: 8 },
     beds: [
       {
@@ -121,12 +131,12 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
         ...OAK_X.flatMap((x) => [{ x, z: -11.1 }, { x, z: -29.4 }]),
         // the pits in the paving east of the trade road, and its east side
         { x: -38.5, z: 11, grate: true }, { x: -30.5, z: 11, grate: true }, { x: -15.5, z: 11, grate: true },
-        { x: -31, z: -11, grate: true }, { x: -24, z: -11, grate: true }, { x: -17, z: -11, grate: true },
+        // (the south three half a metre east of the review's seats: the first's trunk clear of the extraction's 8 m disc)
+        { x: -30.5, z: -11, grate: true }, { x: -24, z: -11, grate: true }, { x: -17.5, z: -11, grate: true },
         { x: -40, z: 33, grate: true }, { x: -40, z: -25, grate: true }, { x: -40, z: -33, grate: true },
-        // (the fill, 228 r1: the stretches the green and the Platz left blank) a pit tree in the Platz's north-east quarter,
-        // two before the south frontage, two in the green's west walk
-        { x: -29.5, z: 21.5, grate: true }, { x: -79, z: -36, grate: true }, { x: -63, z: -36, grate: true },
-        { x: -88.5, z: 34, grate: true }, { x: -88.5, z: -34, grate: true },
+        // (the fill, 228 r1) pit trees in the Platz's north-east quarter, before the north row and on the trade road's
+        // east side south of the extraction's disc (the walks round the green stay lanes: C12)
+        { x: -29.5, z: 21.5, grate: true }, { x: -23.5, z: 33.5, grate: true }, { x: -40, z: -18.4, grate: true },
         // the north-east lot's screen, and the Pfarrgarten behind the church
         { x: -8, z: 14, grate: true }, { x: -8, z: 21, grate: true }, { x: -8, z: 28, grate: true },
         { x: -104, z: 24 }, { x: -112, z: 34 }, { x: -103, z: 44 },
@@ -138,11 +148,10 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       // the Ehrenhain's benches facing its axis
       { kind: 'bench', x: -67.0, z: -16.6, yawDeg: 180 }, { kind: 'bench', x: -76.0, z: -16.6, yawDeg: 180 },
       { kind: 'bench', x: -67.0, z: -23.0, yawDeg: 0 }, { kind: 'bench', x: -76.0, z: -23.0, yawDeg: 0 },
-      // round the new pit trees and along the south and west walks
+      // round the new pit tree
       { kind: 'bench', x: -29.5, z: 18.4, yawDeg: 180 }, { kind: 'bench', x: -29.5, z: 24.6, yawDeg: 0 },
-      { kind: 'bench', x: -74.0, z: -36.2, yawDeg: 0 }, { kind: 'bench', x: -68.0, z: -36.2, yawDeg: 0 },
-      { kind: 'bench', x: -87.6, z: 25.5, yawDeg: 90 }, { kind: 'bench', x: -87.6, z: -25.5, yawDeg: 90 },
-      { kind: 'pflanzkuebel', x: -34.0, z: -14.0, yawDeg: 0 }, { kind: 'trashcan', x: -71.2, z: -36.6, yawDeg: 0 },
+      // a bench under the north row's pit tree, facing the square
+      { kind: 'bench', x: -21.0, z: 35.6, yawDeg: 200 },
       // the Brunnenplatz: two benches against the church's east flank, facing the Marktbrunnen
       { kind: 'bench', x: -69.0, z: 45.5, yawDeg: 90 }, { kind: 'bench', x: -69.0, z: 48.5, yawDeg: 90 },
       ...POLLER,

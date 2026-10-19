@@ -62,6 +62,28 @@ for (const mapId of CIVIC_PLAN_MAPS) {
         if (inCivicRect(arm, p.x, p.z)) assert.ok(across > half - 0.2, `${tag}: ${p.kind} at (${p.x}, ${p.z}) on an arm's carriageway`);
       }
     }
+    // the ring lanes round the green (C12): inside the room, their width, and no piece or tree station planned in them (a
+    // lamp or a bollard on a long edge's kerb line aside)
+    for (const lane of area.lanes) {
+      const r = lane.rect, across = Math.min(r.x1 - r.x0, r.z1 - r.z0), alongX = r.x1 - r.x0 >= r.z1 - r.z0;
+      assert.ok(across >= lane.minWidth - 1e-9, `${tag}: lane ${lane.id} ${across.toFixed(2)} m across (${lane.minWidth})`);
+      assert.ok(inCivicRect(room, r.x0, r.z0, 0.01) && inCivicRect(room, r.x1, r.z1, 0.01), `${tag}: lane ${lane.id} inside its room`);
+      const edge = (x, z) => (alongX ? Math.min(z - r.z0, r.z1 - z) : Math.min(x - r.x0, r.x1 - x)) < 0.6;
+      for (const p of pieces) {
+        if (!inCivicRect(r, p.x, p.z)) continue;
+        assert.ok((p.kind === 'lamp' || p.kind === 'poller') && edge(p.x, p.z), `${tag}: ${p.kind} at (${p.x}, ${p.z}) in lane ${lane.id}`);
+      }
+      for (const t of area.trees.stations) assert.ok(!inCivicRect(r, t.x, t.z, 0.6), `${tag}: a tree at (${t.x}, ${t.z}) in lane ${lane.id}`);
+      for (const bed of area.beds) {
+        const b = bed.rect, overlap = Math.min(b.x1, r.x1) - Math.max(b.x0, r.x0) > 0.01 && Math.min(b.z1, r.z1) - Math.max(b.z0, r.z0) > 0.01;
+        assert.ok(!overlap, `${tag}: bed ${bed.id} keeps off lane ${lane.id}`);
+      }
+    }
+    // the objective holds past the roundel (C13): no piece or tree station planned in their discs
+    for (const h of area.holds) {
+      for (const p of pieces) assert.ok(Math.hypot(p.x - h.x, p.z - h.z) >= h.r + 0.3, `${tag}: ${p.kind} at (${p.x}, ${p.z}) in the ${h.id} disc`);
+      for (const t of area.trees.stations) assert.ok(Math.hypot(t.x - h.x, t.z - h.z) >= h.r + 0.6, `${tag}: a tree at (${t.x}, ${t.z}) in the ${h.id} disc`);
+    }
     // the trees: 6.5 m apart, 9 m off every authored road
     const st = area.trees.stations;
     for (let i = 0; i < st.length; i++) {
