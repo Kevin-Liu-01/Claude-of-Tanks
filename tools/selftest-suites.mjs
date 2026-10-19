@@ -1319,6 +1319,21 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/matchModes.selftest.mjs',
     // 2026-10-03 (bots lane): the frontline attack regroups before the last sector.
     'src/sim/frontlineRegroup.selftest.mjs',
+    // 2026-10-18 (owner, gameplay-modes-228): per-mode bot doctrine (classic byte-identical), the Horde's wave law and
+    // arrival ring, the honest hunt, Frontline's line and counter-attack, CTF and Turbo Ball roles, the revived bot's
+    // fresh route, a mission owns its waypoints, TEAM NATIONS (planner, nation index, room seating) and the harness gate
+    'src/sim/botDoctrine.selftest.mjs',
+    'src/sim/hordeWaveLaw.selftest.mjs',
+    'src/sim/honestHunt.selftest.mjs',
+    'src/sim/frontlineDefenders.selftest.mjs',
+    'src/sim/flagBots.selftest.mjs',
+    'src/sim/ballIntercept.selftest.mjs',
+    'src/sim/reviveClearsModeTarget.selftest.mjs',
+    'src/game/ai.missionOwnership.selftest.mjs',
+    'src/sim/teamNations.selftest.mjs',
+    'src/sim/nationIndex.selftest.mjs',
+    'src/mp/room/roomBots.selftest.mjs',
+    'tools/mode-aggression-harness.selftest.mjs',
     'src/sim/matchRuleset.selftest.mjs',
     'src/sim/assaultLines.selftest.mjs',
     'src/sim/matchPlacement.selftest.mjs',

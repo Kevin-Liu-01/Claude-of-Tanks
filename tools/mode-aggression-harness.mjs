@@ -146,8 +146,10 @@ if (command === 'report') {
 // ----------------------------------------------------------------------------------------------- compare (parent) ---
 // compare --base=DIR --dir=DIR --targets=FILE: every target row reads one field (a dot path) of the after report
 // (DIR/<sub>/report.json, the mode's aggregate or the roster census row) and the same field of the base, prints
-// before -> after and PASS / MISS, and exits 1 on any miss. Ops: <= >= < > == between [lo, hi], equalsBase (the
-// field, or the whole mode aggregate minus `ignore`, equals the base's), and the named checks in COMPARE_CHECKS.
+// before -> after and PASS / MISS, and exits 1 on any miss. Ops: <= >= < > == between [lo, hi], <=base (at most the
+// base's value x `value` + `plus`), deepEquals, equalsBase (the field, or the whole mode aggregate minus `ignore`,
+// equals the base's), and the named checks in COMPARE_CHECKS. `dir` / `baseDir` pick the sub-batch; `optional` rows
+// print but never fail; `default` reads an absent field (a flag never sampled) as that value.
 if (command === 'compare') {
   const baseDir = arg('base', null), dir = arg('dir', '.'), targetsPath = arg('targets', 'tools/mode-aggression-targets.json');
   const only = arg('only', null);
@@ -180,6 +182,17 @@ if (command === 'compare') {
       }
       return { value: `${zombies} <= ${infected} <= min(${others.length ? Math.min(...others) : '—'})`, pass: zombies <= infected && others.every((x) => infected <= x) };
     },
+    // the Horde's zombie hull per wave (waves 1-10 in [lo, hi] but the swarm waves, every `swarmEvery`th, which field
+    // their lighter hull by design; wave 15, when a run reaches it, at most `late`)
+    hordeHull(report, t) {
+      const hull = report?.modes?.endless_horde?.horde?.law?.hullPerWave;
+      if (!hull) return { value: null, pass: false };
+      const [lo, hi] = t.band, every = t.swarmEvery ?? 0;
+      const early = hull.slice(0, 10).filter((_, i) => !every || (i + 1) % every !== 0);
+      const late = hull[14];
+      return { value: `waves 1-10 (no swarm) ${Math.min(...early)}-${Math.max(...early)}${late != null ? `, wave 15 ${late}` : ''}`,
+        pass: early.length > 0 && early.every((h) => h >= lo - 1e-9 && h <= hi + 1e-9) && (late == null || late <= t.late + 1e-9) };
+    },
     // the Horde's wave law: every cleared wave fielded exactly what the ruleset's law says
     hordeLaw(report) {
       const law = report?.modes?.endless_horde?.horde?.law;
@@ -194,8 +207,8 @@ if (command === 'compare') {
     const after = load(dir, t.dir), before = load(baseDir, t.baseDir ?? t.dir);
     let a, b, pass;
     if (t.op === 'check') {
-      const res = COMPARE_CHECKS[t.check](after);
-      a = res.value; b = before ? COMPARE_CHECKS[t.check](before).value : null; pass = res.pass;
+      const res = COMPARE_CHECKS[t.check](after, t);
+      a = res.value; b = before ? COMPARE_CHECKS[t.check](before, t).value : null; pass = res.pass;
     } else if (t.op === 'equalsBase') {
       const ignore = t.ignore ?? ['wallMs', 'generated', 'dir'];
       a = dig(scope(after, t), t.path); b = dig(scope(before, t), t.path);
@@ -203,10 +216,14 @@ if (command === 'compare') {
       a = pass ? 'identical' : (a === undefined ? 'missing' : 'differs'); b = b === undefined ? 'missing' : 'base';
     } else {
       a = dig(scope(after, t), t.path); b = dig(scope(before, t), t.path);
-      const v = t.value;
+      // a flag share the batch never sampled is absent from the aggregate: `default` reads it as that value
+      if (a === undefined && t.default !== undefined && scope(after, t) !== undefined) a = t.default;
+      if (b === undefined && t.default !== undefined && scope(before, t) !== undefined) b = t.default;
+      // '<=base': at most the base's value times `value`, plus `plus` (the guards' "no more than baseline + 10 %")
+      const v = t.op === '<=base' ? (Number(b) * t.value + (t.plus ?? 0)) : t.value;
       const num = typeof a === 'number' ? a : (a == null ? NaN : Number(a));
       pass = a != null && Number.isFinite(num) && (
-        t.op === '<=' ? num <= v : t.op === '>=' ? num >= v : t.op === '<' ? num < v : t.op === '>' ? num > v
+        t.op === '<=' || t.op === '<=base' ? num <= v : t.op === '>=' ? num >= v : t.op === '<' ? num < v : t.op === '>' ? num > v
           : t.op === '==' ? num === v : t.op === 'between' ? num >= v[0] && num <= v[1] : false);
       if (t.op === 'deepEquals') pass = JSON.stringify(a) === JSON.stringify(v);
     }

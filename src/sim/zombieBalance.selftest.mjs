@@ -73,7 +73,10 @@ function controller(mode, entities, ruleset = undefined) {
 {
   const near1 = tank('near', 'alpha', 40, -20), far1 = tank('far', 'alpha', -200, -200), player = tank('player', 'alpha', 300, -100, false);
   const zombie = tank('zombie', 'bravo', 50, 60), other = tank('other', 'bravo', -190, -150);
-  const mode = controller('infected', [player, near1, far1, zombie, other]);
+  // the infected rise on their arrival ring (infectionBots.arrival; infectedLifecycle pins it): off here, so the hunt's
+  // quarry choice reads from the seats as placed
+  const seated = { ...infected, infectionBots: { ...infected.infectionBots, arrival: null } };
+  const mode = controller('infected', [player, near1, far1, zombie, other], seated);
   assert.equal(near1.combat.maxHp, 1500); assert.equal(zombie.combat.maxHp, 300, 'the stamp: 150 % survivors, 30 % infected');
   // the honest hunt (gameplay-modes-228): a labelled mission at a quarry its side has spotted (no spotting hook here: every
   // living survivor counts as spotted), one hunter a quarry before any doubles up
