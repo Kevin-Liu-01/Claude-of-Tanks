@@ -355,6 +355,11 @@ export const RIDING_CRADLE_RECOIL_M = 0.012;
  * outer radius is 20 mm, 2 mm behind the knob's stem at full recoil. The cradle (cheeks, floor, carrier bars) is painted
  * with the vehicle (`cradleSlot`, critic CN-4: the weapon steel's grain read as a crumpled silver sheet from below); the
  * pin stays steel.
+ *
+ * Release 227 land stage (visual critic CN-D1: "the traverse ring, the post collar and the yoke all use a bright,
+ * unpainted metal that looks like crumpled foil ... a chrome toy gear on a matte military mount"): the yaw stage (flange
+ * and its bolts, column, riser sleeve, yoke base, side arm and its bearing ring) is painted with the vehicle too, in the
+ * cradle's slot, as a real cupola pintle mount is; only the gun, its pin and the pin's head stay weapon steel.
  */
 export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunParts, cradleSlot = 'detail'): void {
   if (context.mount === 'external-cradle') throw new Error('addPintleRidingCradle: a pintle mount only');
@@ -373,16 +378,18 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
   if (baseY < 0.014 + Math.max(0, context.riser > 0.03 ? context.riser + 0.02 : 0) + 0.010 * s) throw new Error('addPintleRidingCradle: no room for the yoke base over the riser');
   const armIn = pinIn + pinT + 0.004 * s, armT = 0.012 * s, armX = -f * (armIn + armT / 2);
   const ringIn = 0.011 * s, ringOut = 0.020 * s, pinR = 0.009 * s, armD = 2 * ringOut;
-  // yaw stage: flange, column, riser sleeve, the base and the side arm with its bearing ring round the pin
-  addPintleFlange(context);
+  // yaw stage: flange, column, riser sleeve, the base and the side arm with its bearing ring round the pin, all in the
+  // vehicle's paint (the cradle's slot; land stage, critic CN-D1)
+  const painted = { ...context, supportSlot: cradleSlot, weaponSlot: cradleSlot };
+  addPintleFlange(painted);
   const colH = baseY - 0.014;
-  parts.add(weaponSlot, cylY(0.018 * s, 0.023 * s, colH, near ? 12 : 8), 0, 0.014 + colH / 2, 0);
-  addPintleRiserSleeve(context);
+  parts.add(cradleSlot, cylY(0.018 * s, 0.023 * s, colH, near ? 12 : 8), 0, 0.014 + colH / 2, 0);
+  addPintleRiserSleeve(painted);
   const baseIn = 0.045 * s, baseX0 = -f * (armIn + armT), baseX1 = f * baseIn;
-  parts.add(weaponSlot, block(Math.abs(baseX1 - baseX0), baseH, baseFront - baseRear), (baseX0 + baseX1) / 2, baseY + baseH / 2, (baseRear + baseFront) / 2);
+  parts.add(cradleSlot, block(Math.abs(baseX1 - baseX0), baseH, baseFront - baseRear), (baseX0 + baseX1) / 2, baseY + baseH / 2, (baseRear + baseFront) / 2);
   const armTop = recY - ringOut + 0.004 * s;
-  parts.add(weaponSlot, block(armT, armTop - baseTop + 0.002 * s, armD), armX, (armTop + baseTop - 0.002 * s) / 2, recZ);
-  parts.add(weaponSlot, place(machinedRing(ringIn, ringOut, armT, 0.002 * s, near ? 24 : 16), 0, 0, 0, 0, 0, Math.PI / 2),
+  parts.add(cradleSlot, block(armT, armTop - baseTop + 0.002 * s, armD), armX, (armTop + baseTop - 0.002 * s) / 2, recZ);
+  parts.add(cradleSlot, place(machinedRing(ringIn, ringOut, armT, 0.002 * s, near ? 24 : 16), 0, 0, 0, 0, 0, Math.PI / 2),
     armX + armT / 2, recY, recZ);
   // pitch group: the cheeks (the pin side's front 3 mm ahead of the pin; the feed side's 2 mm behind the can tray's arm
   // under the receiver at full recoil, addPintleAmmo), the floor under the receiver, the pin and its head
@@ -881,7 +888,7 @@ export function addPintleShield(context: PintleLayout,
  * pedestal read as loose rubber hoses, not machined ring mounts"): a flat-faced machined ring with chamfered edges,
  * its bolt heads and the brackets that carry it, in the mount's paint, instead of a round 22 mm torus.
  */
-export function addPintleRing(context: PintleLayout, slot?: 'dark'): void {
+export function addPintleRing(context: PintleLayout, slot?: 'dark' | 'detail'): void {
   const { parts, ring, s, tone } = context;
   if (ring) {
     const rr = (ring.r || 0.20) * s;

@@ -155,6 +155,56 @@ export function transferVehicleNightLenses(sources: readonly LensMesh[], batch: 
   if (lamps.length) registerSources(batch, lamps);
 }
 
+/**
+ * Release 227 land stage (geometry critic UAPL-R6C-1: the Zubr II illuminator's 6.3-degree cone took in the main gun's
+ * barrel at 0.1-1.5 % of the station's poses, aimed just across the gun's line, so the station-pose must-check held only
+ * at rest): a weapon searchlight's own-vehicle mask, as a remote station's illuminator blanks over its own vehicle's
+ * structure. While its cone (widened by the barrel's radius as seen from the lamp) takes in any point of its vehicle's
+ * main-gun barrel within its reach, the lamp is dark: no spot and no lens glow, so the beam never lights its own barrel.
+ * The barrel is measured once here (its rig's gun mesh in the gun frame: a line of stations along its bore and its
+ * largest radius); the per-frame test reads the last rendered world matrices and allocates nothing.
+ */
+export const SEARCHLIGHT_MASK_STATIONS = 12;
+function maskSearchlightsOffOwnGun(root: THREE.Object3D): void {
+  const gun = root.getObjectByName('rig_gun');
+  if (!gun) return;
+  const anchors: THREE.Object3D[] = [];
+  root.traverse(object => { if ((SOURCES.get(object) ?? []).some(lamp => lamp.searchlight)) anchors.push(object); });
+  if (!anchors.length) return;
+  root.updateMatrixWorld(true);
+  const toGun = new THREE.Matrix4().copy(gun.matrixWorld).invert(), box = new THREE.Box3(), part = new THREE.Box3();
+  gun.traverse(object => {
+    if (!(object instanceof THREE.Mesh) || object.name !== 'gun' || !object.geometry?.getAttribute('position')) return;
+    object.geometry.computeBoundingBox();
+    box.union(part.copy(object.geometry.boundingBox!).applyMatrix4(new THREE.Matrix4().multiplyMatrices(toGun, object.matrixWorld)));
+  });
+  if (box.isEmpty()) return;
+  const radius = Math.max(box.max.x - box.min.x, box.max.y - box.min.y) / 2, cx = (box.min.x + box.max.x) / 2, cy = (box.min.y + box.max.y) / 2;
+  const stations = Array.from({ length: SEARCHLIGHT_MASK_STATIONS }, (_, k) =>
+    new THREE.Vector3(cx, cy, box.min.z + (box.max.z - box.min.z) * k / (SEARCHLIGHT_MASK_STATIONS - 1)));
+  for (const anchor of anchors) {
+    const emitters = (SOURCES.get(anchor) ?? []).map(lamp => {
+      if (!lamp.searchlight) return lamp;
+      const at = new THREE.Vector3(), aim = new THREE.Vector3(), point = new THREE.Vector3();
+      const cone = lamp.coneRad ?? SEARCHLIGHT_CONE_RAD, reach = (lamp.range ?? 100) + radius, own = lamp.isActive;
+      const clearOfGun = (): boolean => {
+        at.fromArray(lamp.position).applyMatrix4(anchor.matrixWorld);
+        aim.fromArray(lamp.direction ?? [0, 0, 1]).transformDirection(anchor.matrixWorld);
+        for (const station of stations) {
+          point.copy(station).applyMatrix4(gun.matrixWorld).sub(at);
+          const distance = point.length();
+          if (distance > reach) continue;
+          if (distance <= radius) return false;
+          if (point.dot(aim) >= distance * Math.cos(Math.min(Math.PI / 2, cone + Math.asin(radius / distance)))) return false;
+        }
+        return true;
+      };
+      return { ...lamp, isActive: own ? () => own() && clearOfGun() : clearOfGun };
+    });
+    registerSources(anchor, emitters);
+  }
+}
+
 export function vehicleNightLightEmittersFor(anchor: THREE.Object3D): readonly NightLightEmitter[] {
   return SOURCES.get(anchor) ?? [];
 }
@@ -165,6 +215,7 @@ export function vehicleNightLightEmittersFor(anchor: THREE.Object3D): readonly N
 export function finalizeVehicleNightLighting(root: THREE.Object3D): void {
   const counts = { headlights: 0, shtora: 0 };
   let markers = 0;
+  maskSearchlightsOffOwnGun(root);
   root.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return;
     const materials: THREE.Material[] = Array.isArray(object.material) ? object.material : [object.material];

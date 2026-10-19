@@ -1569,11 +1569,12 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
     if (opts.ridingCradle) addPintleRidingCradle(context,weapon);
     addPintleMgReceiver(gunContext);addPintleMgBarrel(gunContext);addPintleMgAmmo(gunContext);
     // a riding cradle carries its shield on the pitch group (its vision recesses in the gun's steel, no extra material)
-    // and its race ring in the mount's steel (the yaw stage is one mesh). It rides 12 mm lower than the fleet's yaw-stage
+    // and any race ring in the mount's paint (the yaw stage is one mesh, painted with the vehicle: land stage, critic
+    // CN-D1). It rides 12 mm lower than the fleet's yaw-stage
     // shield: its top line comes level with the leaf sight's (the emplacement's height is the sight's), its top beam
     // still 50 mm over the barrel's support collar.
     if (opts.ridingCradle) {
-      addPintleShield({...weaponContext,recY:weaponContext.recY-.012*context.s},{braces:false,recessSlot:'dark'});addPintleRing(context,'dark');
+      addPintleShield({...weaponContext,recY:weaponContext.recY-.012*context.s},{braces:false,recessSlot:'dark'});addPintleRing(context,'detail');
       pitchFrameParts([weapon,gun],context.recY,0,context.recZ);
       RIDING_CRADLE_PARTS.set(key,storeFittingParts([context.parts,weapon,gun]));
     }
@@ -1858,10 +1859,12 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
  * fixed construction's receipts read these names (americanModernization, awSecondWaveGeometry).
  */
 function nameWorkingStation(fitting: THREE.Group, body: string, mount: string, ammo?: string): void {
-  for (const child of fitting.children) if (child.userData.fittingSlot === 'dark') child.name = mount;
   const pitch = fitting.getObjectByName('auxiliaryWeaponPitch');
-  // a riding cradle (round 4): the gun's steel is its recoil group's, the cradle's steel (pin and head) the pitch group's
+  // a riding cradle (round 4): the gun's steel is its recoil group's, the cradle's steel (pin and head) the pitch group's;
+  // its yaw stage is one painted mesh (land stage, critic CN-D1), the fleet mount's the steel one
   const recoil = pitch?.getObjectByName('auxiliaryWeaponRecoil');
+  const mountSlot = recoil ? 'detail' : 'dark';
+  for (const child of fitting.children) if (child.userData.fittingSlot === mountSlot) child.name = mount;
   if (recoil) for (const child of pitch?.children ?? []) if (child.userData.fittingSlot === 'dark') {
     child.name = 'browningDerivedMachineGunCradle'; child.userData.appearanceRole = 'machineGun';
   }

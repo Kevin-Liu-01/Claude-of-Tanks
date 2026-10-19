@@ -15,8 +15,14 @@
 // (`auxiliaryWeaponRecoil`, 12 mm along its axis) and the presentation moves that group and nothing else; through the
 // whole pitch range and the whole stroke no triangle of a moving part crosses its yaw stage and the moving parts keep
 // 1.5 mm from it, the recoiling gun crosses nothing of its cradle and bears on its floor; the whole pitch group recoiled
-// 25 mm (the pre-round-4 runtime) must fail. Round 5 (critic CN5-01): the floor stands 0.5 mm under the receiver (a slide
-// fit), so an exact triangle test finds no coincident faces at any pitch or recoil.
+// 25 mm (the pre-round-4 runtime) must fail.
+// Round 4 (critics D10, S1: the pintle column stood on the commander's hatch lid, so the hatch could not open): each
+// cupola emplacement stands in a socket post at its cupola's rim, the post welded into the fixed ring and seated in the
+// roof, the flange on the post's collar, and the pintle's foot keeps 10 mm outside the lid at every yaw; on the Type 96B
+// cupola, which draws its lid's hinge, the lid swings open past the emplacement at rest and, with the gun elevated where
+// its barrel lies back over the cupola, at every yaw.
+// Round 5 (critic CN5-01): the cradle's floor stands 0.5 mm under the receiver (a slide fit), so an exact triangle test
+// finds no coincident faces at any pitch or recoil.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
@@ -25,15 +31,16 @@ import { AUXILIARY_INVENTORY } from './auxiliaryInventory.generated.ts';
 import { AUXILIARY_ROOF_GUNS } from './auxiliaryRoofGuns.generated.ts';
 import { INERT_DRAWN_WEAPONS } from './inertDrawnWeapons.generated.ts';
 import { NATIONAL_ROOF_LOADOUTS } from './nationalRoofConfig.ts';
+import { NATIONAL_DONOR_TURRETS } from './nationalDonorTurrets.ts';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 import { stepRoofGun, auxiliaryState } from '../sim/auxiliarySystems.ts';
 import { createAuxiliaryPresentation } from '../fx/auxiliaryPresentation.ts';
 import { FITTINGS } from './profiles/kit.ts';
 import { RIDING_CRADLE_RECOIL_M } from './machineGunGeometry.ts';
-import { stationSelfClearance } from './cnTurretGeometry.test-support.mjs';
+import { stationSelfClearance, SurfaceGrid, meshTriangles } from './cnTurretGeometry.test-support.mjs';
 
 const EXPECT = {
-  t72b3_qilin: { name: 'Qilin cupola QJC-88', pintle: true, shield: 'standard', arc: true, table: true, excluded: -69 },
+  t72b3_qilin: { name: 'Qilin cupola QJC-88', pintle: true, shield: 'standard', arc: true, table: true, excluded: -84 },
   t72b3m_kunlun: { name: 'Kunlun cupola QJC-88', pintle: true, shield: 'standard', arc: false, table: false },
   t80u_yun: { name: 'Yun faceted station', pintle: false, arc: true, table: false, excluded: 147.5 },
 };
@@ -106,6 +113,68 @@ for (const [id, want] of Object.entries(EXPECT)) {
       // negative control: the whole pitch group recoiled 25 mm (the pre-round-4 runtime) pulls the pin through its bearing
       const whole = stationSelfClearance(station, pitch, { ...range, travel: .025, wholeRecoil: true });
       assert.ok(whole.d < .0015 && whole.crossings > 0, `${id}: negative control: the whole pitch group recoiling carries the pin through its bearing (${(whole.d * 1000).toFixed(1)} mm, ${whole.crossings} pairs)`);
+      // round 4 (critics D10, S1: the pintle column stood on the commander's hatch lid, so the hatch could not open): the
+      // pintle stands in a socket post at the cupola's rim, welded into its fixed ring, and its foot (the turning stage's
+      // flange and column up to 60 mm, under the yoke) keeps 10 mm outside the lid's circle at every yaw
+      const donor = NATIONAL_DONOR_TURRETS[id], socket = donor.socket;
+      assert.ok(socket, `${id}: the emplacement stands in a rim socket`);
+      assert.ok(Math.abs(station.position.x - donor.station[0]) < 1e-9 && Math.abs(station.position.z - donor.station[1]) < 1e-9, `${id}: the pintle stands at its socket`);
+      const off = Math.hypot(station.position.x - socket.cupola[0], station.position.z - socket.cupola[1]);
+      assert.ok(Math.abs(off - (socket.ringR + socket.postR - .004)) < 1e-9, `${id}: the socket post is welded 4 mm into the cupola's fixed ring`);
+      let turning = 0; const sv = new THREE.Vector3();
+      station.traverse((o) => { if (!o.isMesh) return; for (let q = o; q; q = q.parent) if (q === pitch) return;
+        const M = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld), p = o.geometry.attributes.position;
+        for (let i = 0; i < p.count; i++) { sv.fromBufferAttribute(p, i).applyMatrix4(M); if (sv.y <= .06) turning = Math.max(turning, Math.hypot(sv.x, sv.z)); } });
+      assert.ok(turning > .03 && off - turning >= socket.lidR + .010, `${id}: the pintle's foot stays 10 mm outside the hatch lid at every yaw (${((off - turning - socket.lidR) * 1000).toFixed(1)} mm)`);
+      // the flange's seat is the post's collar (2 mm in), and the post stands on the roof (8 mm in) clear of the lid
+      // double-sided proxies, so a ray meets a cap from inside too
+      const sides = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), fixed = [];
+      turret.traverse((o) => { if (!o.isMesh) return; for (let q = o; q; q = q.parent) if (q === station) return;
+        const m = new THREE.Mesh(o.geometry, sides); m.matrixAutoUpdate = false; m.matrix.copy(o.matrixWorld); m.matrixWorld.copy(o.matrixWorld); fixed.push(m); });
+      const seatW = station.getWorldPosition(new THREE.Vector3());
+      const down = (dx, dz, from) => new THREE.Raycaster(new THREE.Vector3(seatW.x + dx, seatW.y + from, seatW.z + dz), new THREE.Vector3(0, -1, 0), 0, 2).intersectObjects(fixed, false);
+      const column = down(0, 0, .3);
+      assert.ok(column[0] && Math.abs(column[0].point.y - (seatW.y + .002)) < .001, `${id}: the pintle's flange sits 2 mm into the socket's collar`);
+      // just outboard of the collar the ray meets the roof; the post's foot lies 2-20 mm under it
+      const out = Math.atan2(station.position.x - socket.cupola[0], station.position.z - socket.cupola[1]), clear = socket.postR + .006 + .012;
+      const roof = down(Math.sin(out) * clear, Math.cos(out) * clear, 0)[0];
+      assert.ok(roof && seatW.y - roof.point.y > .05, `${id}: the socket post rises from the turret roof (${roof ? ((seatW.y - roof.point.y) * 1000).toFixed(0) : '-'} mm)`);
+      assert.ok(column.some((h) => roof.point.y - h.point.y >= .002 && roof.point.y - h.point.y <= .020), `${id}: the socket post's foot is seated in the roof`);
+      sides.dispose();
+      // the Type 96B cupola draws its lid's rear hinge (type96bX.ts addType96Cupola: the hinge pins at source z -.107,
+      // turret z .043, y .877): its lid (r .276, top .886) swings open to upright past the emplacement, 10 mm clear, at every
+      // yaw with the gun at rest or, where its barrel lies back over the cupola, elevated (the 99A2 cupola draws no hinge:
+      // its lid is held to the foot receipt above)
+      if (donor.donor === 'type96b') {
+        const hinge = [.043, .877], lidPts = [];
+        for (let x = -socket.lidR; x <= socket.lidR; x += .02) for (let z = -socket.lidR; z <= socket.lidR; z += .02) {
+          if (Math.hypot(x, z) > socket.lidR || socket.cupola[1] + z < hinge[0]) continue;
+          for (const y of [.886, .856]) lidPts.push([socket.cupola[0] + x, y, socket.cupola[1] + z]);
+        }
+        const tInv = new THREE.Matrix4().copy(turret.matrixWorld).invert(), restYaw = station.rotation.y, elevation = auxiliaryWeaponProfile(12.7, id).elevationRad;
+        const swing = (yd, el) => {
+          station.rotation.y = restYaw + yd * Math.PI / 180; pitch.rotation.x = -el; tank.root.updateMatrixWorld(true);
+          const own = []; station.traverse((o) => { if (o.isMesh && !/Shadow/.test(o.name)) own.push(o); });
+          const grid = new SurfaceGrid(meshTriangles(own, tInv), { cell: .04, rq: .1 });
+          let d = Infinity;
+          for (let a = 0; a <= 90; a += 10) {
+            const c = Math.cos(a * Math.PI / 180), sn = Math.sin(a * Math.PI / 180);
+            for (const [x, y, z] of lidPts) { const dz = z - hinge[0], dy = y - hinge[1]; d = Math.min(d, grid.distance(x, hinge[1] + dy * c + dz * sn, hinge[0] + dz * c - dy * sn)); }
+          }
+          return d;
+        };
+        let lidWorst = { d: Infinity }, elevated = 0;
+        for (let yd = -180; yd < 180; yd += 10) {
+          let d = swing(yd, 0);
+          if (d < .010) { d = swing(yd, elevation); elevated++; }
+          if (d < lidWorst.d) lidWorst = { d, yd };
+        }
+        const rest = swing(0, 0);
+        station.rotation.y = restYaw; pitch.rotation.x = 0; tank.root.updateMatrixWorld(true);
+        assert.ok(rest >= .010, `${id}: the commander's lid opens past the emplacement at its rest bearing (${(rest * 1000).toFixed(1)} mm)`);
+        assert.ok(lidWorst.d >= .010, `${id}: the commander's lid opens past the emplacement at every yaw (${(lidWorst.d * 1000).toFixed(1)} mm at yaw ${lidWorst.yd})`);
+        console.log(`${id}: the commander's lid swings open past the emplacement at every yaw (${elevated} of 36 with the gun elevated), ${(lidWorst.d * 1000).toFixed(1)} mm at worst, ${(rest * 1000).toFixed(1)} mm at rest`);
+      }
       // the presentation fires it: the gun group slides back its stroke, the cradle (pitch group) holds its trunnion
       {
         const scene = new THREE.Group(); scene.add(tank.root);
@@ -162,7 +231,7 @@ for (const [id, want] of Object.entries(EXPECT)) {
   const mat = () => new THREE.MeshStandardMaterial();
   const mats = { dark: mat(), detail: mat(), shadow: mat(), glass: mat(), hull: mat() };
   const e = NATIONAL_ROOF_LOADOUTS.t72b3_qilin.emplacement;
-  const fleet = FITTINGS.pintleMG({ mats, cls: e.cls, scale: 1, tone: 'two-tone', elev: .08, shield: e.shield, ammo: true, ring: { ...e.ring },
+  const fleet = FITTINGS.pintleMG({ mats, cls: e.cls, scale: 1, tone: 'two-tone', elev: .08, shield: e.shield, ammo: true, ring: e.ring ? { ...e.ring } : false,
     riser: e.riserM, working: true, datumBarrel: false });
   fleet.updateMatrixWorld(true);
   const self = stationSelfClearance(fleet, fleet.getObjectByName('auxiliaryWeaponPitch'), { depression: .087, elevation: .75 });

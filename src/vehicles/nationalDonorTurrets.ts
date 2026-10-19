@@ -23,6 +23,8 @@ export interface NationalDonorTurret {
    * or a roof seat of its own beside it (release 227: the Yun's faceted station keeps its left-roof seat apart from the
    * Type 96B cupola, as on its cast turret). */
   station: readonly [number, number];
+  /** The pintle socket a cupola emplacement (loadout mount 'pintle') stands in, at `station` on the cupola's rim. */
+  socket?: NationalPintleSocket;
   /** National turret ERA sectors the kit adds where the donor turret has no ERA plate of that name. */
   addedTurretEra?: readonly string[];
   /** The main gun's mechanical depression stops over the rear deck (sim/gunPitchLimits.ts: absolute hull-relative yaw
@@ -33,6 +35,35 @@ export interface NationalDonorTurret {
   /** Extra options for the donor's own turret builder; each defaults to the donor's own output (e.g. antennaSeats for the
    * ZTZ-99A2: whips moved out of the concept station's sweep). */
   builderOptions?: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * Release 227, round 4 (geometry critic D10, visual critic S1: the emplacement's pintle column stood on the commander's
+ * hatch lid, so the hatch could not open): a classic rim mount. The pintle stands in a socket post on the turret roof
+ * at the cupola's rim, welded 4 mm into the cupola's fixed ring, its top collar the pintle flange's seat; the lid inside
+ * the ring stays free. Turret frame, metres.
+ */
+export interface NationalPintleSocket {
+  /** The cupola's centre in plan. */
+  cupola: readonly [number, number];
+  /** The commander's hatch lid's radius round the cupola's centre (the post and the pintle's foot stay outside it). */
+  lidR: number;
+  /** The outer radius of the cupola's fixed ring the post is welded to. */
+  ringR: number;
+  /** The socket's top (the pintle flange's seat). */
+  topY: number;
+  /** The post's radius (its collar is 6 mm wider). */
+  postR: number;
+  /** A web plate welding a tall post to the cupola under its ring's top edge: its inner end's radius (in the cupola's
+   * stock) and its top. */
+  web?: { readonly innerR: number; readonly topY: number };
+}
+
+/** A socket at `bearingDeg` round the cupola (0 = turret forward, +Z; positive toward +X), welded 4 mm into its ring. */
+function rimSocket(cupola: readonly [number, number], bearingDeg: number, s: Omit<NationalPintleSocket, 'cupola'>):
+  { station: readonly [number, number]; socket: NationalPintleSocket } {
+  const a = bearingDeg * Math.PI / 180, r = s.ringR + s.postR - .004;
+  return { station: [cupola[0] + Math.sin(a) * r, cupola[1] + Math.cos(a) * r], socket: { cupola, ...s } };
 }
 
 // The T-72B3 and T-72B3M rings sit exactly where their own hulls carry them. A T-72B3M turret on the T-72B3 hull keeps
@@ -65,6 +96,15 @@ const T72B3_CUPOLA_RING = [-.61355 - .0000002374, -.363 - .065591405 - .07] as c
 const T72B3M_CUPOLA = [-.62689 - .0000072471277, -.24424 - .1143146502203] as const;
 const ZTZ99A2_CUPOLA = [.52, -.88] as const;
 const TYPE96B_CUPOLA = [-.592, -.045 + .15] as const;
+// Release 227, round 4 (critics D10, S1): the QJC-88 emplacements' pintle sockets on the cupolas' rims, off the hatch
+// lids. Each stands 22.5 degrees off the turret's forward line toward the gun's feed side (+X), so the ammunition can
+// faces away from the hatch: on the 99A2 cupola (ring r .279 over its lid's .251) clear of its periscope at the inboard
+// rim; on the Type 96B cupola (fixed ring r .377, lid inside the periscope ring at r .276) between its forward and its
+// forward-inboard periscopes and beside the lid's forward latch. The 96B's roof falls away ahead of the cupola, so the
+// Kunlun's post stands 0.25 m tall, welded to the cupola's base and ring by a web plate up to 7 mm under the ring's top.
+const QILIN_SOCKET = rimSocket(ZTZ99A2_CUPOLA, 22.5, { lidR: .251, ringR: .279, topY: .905, postR: .046 });
+const KUNLUN_SOCKET = rimSocket(TYPE96B_CUPOLA, 22.5, { lidR: .276, ringR: .377, topY: .91, postR: .046,
+  web: { innerR: .352, topY: .822 } });
 
 /** The Qilin's bustle cut (metres): 10 % of the ZTZ-99A2 body's 3.954 m front-to-rear length. */
 export const QILIN_BUSTLE_CUT_M = .395;
@@ -75,7 +115,7 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
   // moved forward as one piece, nothing ahead of z -1.27 moved); its rear flank fit gives way to the Qilin's own flank
   // sleeves (chinaDonorTurretKit.ts), and both whips stand on the right rear roof edge, at least 1.6 m from the
   // cupola emplacement and clear of the drone's dock on the right rear roof.
-  t72b3_qilin: { donor: 'ztz99a2', pivot: ZTZ99A2_ON_T72B3, roofY: .83, station: ZTZ99A2_CUPOLA, heightM: 3.213,
+  t72b3_qilin: { donor: 'ztz99a2', pivot: ZTZ99A2_ON_T72B3, roofY: .83, ...QILIN_SOCKET, heightM: 3.213,
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
     // Release 227: its ring collar turns in place on the pivot, its skirt at r 1.08 inside the B3 deck's edge (x 1.11)
     // and 25 mm clear of the fenders' inner edge (the 99A2's own 1.14 m collar, 0.12 m behind the pivot, swept 11 mm
@@ -90,7 +130,7 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
   // the skirts' tops at 111-114 deg (5.3 deg) and, aft of 133 deg, the hull deck's rear edge, the skirts' rear ends and
   // the engine deck's cooling panels (3.4-5.7 deg): the Type 96B's trunnion stands 0.26 m over the ring, and at -6 deg
   // the barrel meets the deck itself there.
-  t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, station: TYPE96B_CUPOLA, heightM: 3.35,
+  t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, ...KUNLUN_SOCKET, heightM: 3.35,
     gunPitchByYawDeg: [[0, -6], [110, -6], [111, -5.3], [114, -5.3], [116, -6], [133, -5.7], [139, -4.2], [145, -3.4], [148, -3.4], [153, -3.8],
       [155, -4.9], [158, -4.8], [162, -3.8], [163, -3.7], [166, -3.7], [178, -4], [180, -4.5]],
     addedTurretEra: ['turret_era_L', 'turret_era_R'],

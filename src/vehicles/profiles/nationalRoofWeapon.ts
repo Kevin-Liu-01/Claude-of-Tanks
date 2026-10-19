@@ -8,6 +8,7 @@ import {captureAuxiliaryStock} from './auxiliaryStation.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
 import {crosswiseSolid} from './eraModuleKit.ts';
 import {nationalStationWidth,type NationalRoofLoadout,type NationalRoofMount} from '../nationalRoofConfig.ts';
+import type {NationalPintleSocket} from '../nationalDonorTurrets.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {tankSeedId} from '../tankIdAliases.ts';
 type Point=readonly[number,number,number];
@@ -33,10 +34,14 @@ export function nationalRoofWeapon(P:TankBuilderPort,rws:Point,cupola:Point|null
  gun.add('turretDetail',orientedSlab(
   [x-.15,pb,z-.14],[x+.15,pb,z-.14],[x+.15,pb,z+.14],[x-.15,pb,z+.14],
   [x-.12,pt,z-.06],[x+.12,pt,z-.06],[x+.12,pt,z+.06],[x-.12,pt,z+.06]),0,0,0);
- gun.add('turretDetail',box(half*2+.10,.08,.12),x,y-.34,z);
- for(const side of [-1,1]) {
-  gun.add('turretDetail',box(.044,.40,.12),x+side*(half+.028),y-.16,z);
-  gun.add('turretDark',cylX(.073,.065,20),x+side*(half+.045),y,z);
+ const bored=mount.boredTrunnion===true;
+ if(bored)boredYoke(gun,x,y,z,half);
+ else {
+  gun.add('turretDetail',box(half*2+.10,.08,.12),x,y-.34,z);
+  for(const side of [-1,1]) {
+   gun.add('turretDetail',box(.044,.40,.12),x+side*(half+.028),y-.16,z);
+   gun.add('turretDark',cylX(.073,.065,20),x+side*(half+.045),y,z);
+  }
  }
  mount.yaw?.(gun,l,x,b,y,z,w);
  gun.stage('pitch');
@@ -53,6 +58,8 @@ export function nationalRoofWeapon(P:TankBuilderPort,rws:Point,cupola:Point|null
  (mount.sight??sight)(gun,l,x,y,z,w);
  mount.pitch?.(gun,l,x,y,z,w);
  const root=gun.finish();root.userData.nationalRoofLoadout=l.name;
+ // a bored trunnion's pitch group recoils inside its bearing's air only (the presentation's whole-group recoil)
+ if(bored)root.userData.auxiliaryRecoilM=TRUNNION.air/2;
  if(l.yawArc)root.userData.yawArc=[...l.yawArc];
  if(l.depressionByYaw)root.userData.depressionByYaw=l.depressionByYaw.map(r=>[...r]);
  mount.finish?.(P,l,x,y,z,w);
@@ -70,12 +77,14 @@ export function nationalRoofWeapon(P:TankBuilderPort,rws:Point,cupola:Point|null
  * There is no second cupola and no collar: any riser is the pintle's own sleeve and clamp. Round 3 (critic D4): its
  * cradle, trunnion pin and shield ride the gun on a low yoke with one side arm (FittingOptions.ridingCradle), so the
  * moving gun never passes through its own mount; its race ring and shield recesses take the mount's and the gun's steel.
+ * Round 4 (critics D10, S1): on a rim socket (nationalPintleSocket) the foot is the socket's collar and the emplacement
+ * draws no race ring of its own.
  */
 export function nationalCupolaPintle(P:TankBuilderPort,seat:Point,l:NationalRoofLoadout):THREE.Group {
  const e=l.emplacement;
  if(l.mount!=='pintle'||!e)throw new Error(`${P.spec?.id}: ${l.name} is not a pintle emplacement`);
  const fitting=FITTINGS.pintleMG({mats:P.mats,cls:e.cls,scale:1,tone:'two-tone',elev:.08,shield:e.shield,ammo:true,
-  ring:{...e.ring},riser:e.riserM,working:e.crewServed,remoteControlled:!e.crewServed,datumBarrel:false,ridingCradle:true,
+  ring:e.ring?{...e.ring}:false,riser:e.riserM,working:e.crewServed,remoteControlled:!e.crewServed,datumBarrel:false,ridingCradle:true,
   seed:emplacementSeed(l.name)}) as THREE.Group;
  if(fitting.userData.caliberMm!==l.caliber)throw new Error(`${P.spec?.id}: ${l.name} draws a ${fitting.userData.caliberMm} mm gun`);
  fitting.name=l.name;
@@ -85,6 +94,34 @@ export function nationalCupolaPintle(P:TankBuilderPort,seat:Point,l:NationalRoof
  if(l.depressionByYaw)fitting.userData.depressionByYaw=l.depressionByYaw.map(r=>[...r]);
  mount(P,'turret',fitting,seat[0],seat[1],seat[2]);
  return fitting;
+}
+
+/**
+ * Release 227, round 4 (geometry critic D10, visual critic S1: "the pintle column stands on the hatch lid, so the hatch
+ * could not open"): the emplacement's socket post at the cupola's rim, a classic hatch-side pintle socket. A turned
+ * post stands 8 mm into the turret roof under it (`seat`: its plan seat and that roof's height) and 4 mm into the
+ * cupola's fixed ring, with a clamp collar 6 mm wider at its top (the pintle flange's seat, `socket.topY`) and the
+ * collar's lock bolt facing outboard; a tall post (`socket.web`) is welded to the cupola by a web plate on the radial.
+ * It is turret stock in the turret's detail paint; the pintle turns in it and the hatch lid inside the ring stays free.
+ * Returns the seat's height.
+ */
+export function nationalPintleSocket(P:TankBuilderPort,seat:Point,socket:NationalPintleSocket):number {
+ const [x,roof,z]=seat,{topY,postR}=socket,collarH=.024,collarR=postR+.006,bottom=roof-.008,postH=topY-collarH-bottom;
+ if(postH<.02)throw new Error(`${P.spec?.id}: no room for the pintle socket's post (roof ${roof.toFixed(3)}, top ${topY})`);
+ const seg=P.q?20:12,out=Math.atan2(x-socket.cupola[0],z-socket.cupola[1]),ox=Math.sin(out),oz=Math.cos(out);
+ P.add('turretDetail',cylY(postR,postR+.004,postH,seg),x,bottom+postH/2,z);
+ P.add('turretDetail',cylY(collarR,collarR,collarH,seg),x,topY-collarH/2,z);
+ // the lock bolt: its stem 18 mm into the collar, its head 7 mm proud of it (cylX turned onto the outboard radial)
+ const boltY=topY-collarH/2,ry=out-Math.PI/2;
+ P.add('turretDark',cylX(.006,.022,8),x+ox*(collarR-.007),boltY,z+oz*(collarR-.007),0,ry,0);
+ P.add('turretDark',cylX(.011,.007,6),x+ox*(collarR+.0035),boltY,z+oz*(collarR+.0035),0,ry,0);
+ // a tall post's web plate (22 mm thick) on the radial, from inside the cupola's stock to the post's axis
+ if(socket.web){
+  const {innerR,topY:webTop}=socket.web,outerR=Math.hypot(x-socket.cupola[0],z-socket.cupola[1]),h=webTop-bottom,mid=(innerR+outerR)/2;
+  if(h<.02||outerR-innerR<postR)throw new Error(`${P.spec?.id}: the pintle socket's web plate has no room`);
+  P.add('turretDetail',box(.022,h,outerR-innerR),socket.cupola[0]+ox*mid,bottom+h/2,socket.cupola[1]+oz*mid,0,out,0);
+ }
+ return topY;
 }
 
 /** A stable fitting seed from the loadout's name (FITTINGS seeds only small finish variations). */
@@ -190,6 +227,22 @@ function feed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):v
  feedBridge(g,side,half,x,y,y+.19,z);
 }
 
+/** The wedge station's box (release 227 land stage, geometry critic CN4-2: the box rides the pitch stage and its inner
+ * face passed 22.5 mm through the yoke's trunnion boss at every pitch, as the Zubrs' did before UAPL-R5C-7): its inner
+ * face stands 12.5 mm clear of the bearing housing (half + .09; the housing's outer end at half + .0775) and its outer
+ * face, lid edge and latches stay where the plain feed's are (half + .305), so the station's swept envelope does not
+ * grow (the Yun's arc and every 360-degree sweep keep their clearances); 21.5 cm wide, its lid with it; the bridge's
+ * column stands 2 mm inside the bridge's front and back faces. */
+function wedgeFeed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
+ const half=supportHalfWidth(l,w),inner=half+.09,outer=half+.305,bw=outer-inner;
+ const side=l.feedSide,fx=x+side*(inner+outer)/2,cannon=l.caliber===30;
+ const h=cannon?.30:.23;
+ g.add('turretAmmo',box(bw,h,.38),fx,y+.045,z-.15);
+ g.add('turretAmmo',box(bw+.019,.026,.399),fx,y+.045+h/2,z-.15);
+ for(const dz of [-.26,-.04])g.add('turretDark',box(.036,.048,.032),x+side*(half+.31),y+.015,z+dz);
+ feedBridge(g,side,half,x,y,y+.19,z,.116);
+}
+
 /** The drum-fed station's ammunition drum with its end cap, and the feed bridge into the receiver. */
 function drumFeed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
  const half=supportHalfWidth(l,w);
@@ -199,9 +252,11 @@ function drumFeed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:numbe
  feedBridge(g,side,half,x,y,y+.17,z);
 }
 
-function feedBridge(g:Gun,side:number,half:number,x:number,y:number,bridgeY:number,z:number):void {
+/** The link chute over the yoke into the receiver and its column. `columnDepth` .116 sets the column 2 mm inside the
+ * chute's front and back faces (land stage 227, UAPL-R6C-3: the two shared those planes); the fleet rows keep .12. */
+function feedBridge(g:Gun,side:number,half:number,x:number,y:number,bridgeY:number,z:number,columnDepth=.12):void {
  g.add('turretDark',box(.22,.07,.12),x+side*(half+.06),bridgeY,z-.05);
- g.add('turretDark',box(.065,.15,.12),x+side*(half-.025),y+.125,z-.05);
+ g.add('turretDark',box(.065,.15,columnDepth),x+side*(half-.025),y+.125,z-.05);
 }
 
 function sight(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
@@ -269,7 +324,7 @@ function cradleFeed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:num
  g.add('turretAmmo',box(.20,.17,.30),fx,y+.03,z-.12);
  g.add('turretAmmo',box(.214,.02,.314),fx,y+.125,z-.12);
  for(const dz of [-.22,-.02])g.add('turretDark',box(.03,.04,.028),fx+side*.105,y+.04,z+dz);
- feedBridge(g,side,half,x,y,y+.153,z);
+ feedBridge(g,side,half,x,y,y+.153,z,.116);
 }
 
 /** The Zubr II's armoured emplacement. Round 4 (2026-10-17; the critic's D1: "the casemate is not a closed armoured box.
@@ -290,10 +345,13 @@ function casemateHousing(g:Gun,_l:NationalRoofLoadout,x:number,y:number,z:number
  const plate=(x0:number,x1:number,v0:number,v1:number)=>g.add('turretDetail',orientedSlab(
   at(x0,v0,c.rear),at(x1,v0,c.rear),at(x1,v0,seat(v0)),at(x0,v0,seat(v0)),
   at(x0,v1,c.rear),at(x1,v1,c.rear),at(x1,v1,seat(v1)),at(x0,v1,seat(v1))),0,0,0);
- const wallTop=c.top-c.roof;
- for(const s of [-1,1])plate(Math.min(s*c.xIn,s*c.xOut),Math.max(s*c.xIn,s*c.xOut),c.bottom,wallTop);
- plate(-c.xOut,c.xOut,wallTop,c.top);
- plate(-c.xIn,c.xIn,c.bottom,c.bottom+c.floor);
+ // land stage 227 (UAPL-R6C-3: the side and floor plates' undersides lay in the front plate's underside over their 2 mm
+ // seats, and the roof plate's top in the front plate's top over its seat, z-fights): the undersides stand 1 mm over the
+ // front plate's foot and the roof's top 1 mm under the front plate's top
+ const wallTop=c.top-c.roof,under=c.bottom+.001;
+ for(const s of [-1,1])plate(Math.min(s*c.xIn,s*c.xOut),Math.max(s*c.xIn,s*c.xOut),under,wallTop);
+ plate(-c.xOut,c.xOut,wallTop,c.top-.001);
+ plate(-c.xIn,c.xIn,under,c.bottom+c.floor);
  // the front plate: four pieces between its back and front faces round the port
  const piece=(x0:number,x1:number,v0:number,v1:number)=>g.add('turretDetail',orientedSlab(
   at(x0,v0,backZ(v0)),at(x1,v0,backZ(v0)),at(x1,v1,backZ(v1)),at(x0,v1,backZ(v1)),
@@ -332,9 +390,12 @@ function casemateFeed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:n
  g.add('turretAmmo',box(B.w+.014,B.lid,z1-c+.004-(z0-.007)),fx,y1-.002+B.lid/2,(z1-c+.004+z0-.007)/2);
  // the hinge along the lid's rear edge, the carry handle on its inner half, the latches on the outer face
  g.add('turretDark',cylX(.011,B.w*.8,P_SEG),fx,y1+.006,z0-.012);
- const hx=fx-side*.06,ht=y1-.002+B.lid;
- for(const dz of [-.055,.055])g.add('turretDark',box(.012,.032,.012),hx,ht+.014,z0+.11+dz);
- g.add('turretDark',box(.012,.012,.122),hx,ht+.034,z0+.11);
+ // (land stage 227, UAPL-R6C-3: the posts 1 mm proud of the bar's sides, the bar's ends 2 mm inside the posts' outer
+ // faces: no shared planes; the handle 25 mm further aft, its front post and bar 4-6 mm behind the link chute's rear
+ // face, where they stood 17-19 mm inside the chute)
+ const hx=fx-side*.06,ht=y1-.002+B.lid,hz=z0+.085;
+ for(const dz of [-.055,.055])g.add('turretDark',box(.014,.032,.012),hx,ht+.014,hz+dz);
+ g.add('turretDark',box(.012,.012,.118),hx,ht+.034,hz);
  for(const dz of [-.26,-.04])g.add('turretDark',box(.036,.048,.032),fx+side*.13,y+.015,z+dz);
  // the illuminator's housing on the lid's outer front: its foot 4 mm into the lid, its mouth 6 mm past the lid's front
  // edge over the chamfer's crest (no shared face)
@@ -388,6 +449,36 @@ function supportHalfWidth(l:NationalRoofLoadout,w:number):number {
  return w*nationalMount(l.mount).halfShare;
 }
 
+/**
+ * Release 227 land stage (geometry critic CN4-2 on the Yun's faceted station, and the same yoke under the Hetman II's,
+ * the Wilk's and both Zubrs' stations: "its trunnion is modelled through solid uprights, and the whole pitch group
+ * recoils 25 mm through them"; UAPL-R6C-2: the Zubr's sight foot slid through the cheek's top; UAPL-R6C-3: the cheeks'
+ * outer and end faces lay in the cross-beam's planes): the yoke of a bored-trunnion row. Each cheek stops 5 mm under
+ * the pitch group's trunnion pin (r .055); a bearing housing (a bored ring, r .058 to .073, capped at its outer end)
+ * sits 13 mm into the cheek's top round the pin, so the pin turns in 3 mm of air and the pitch group never passes
+ * through its yoke; the cross-beam ends 2 mm inside the cheeks' outer faces and its front and back faces 2 mm inside
+ * theirs. The pitch group recoils 1.5 mm (`auxiliaryRecoilM`), half that air, so the pin keeps 1.5 mm from its bore. The plain yoke's
+ * span, heights and the bosses' outer form are kept, so the station's silhouette does not change.
+ */
+const TRUNNION = {pin: .055, air: .003, outer: .073, length: .065, cap: .003, cheekTop: -.060, sides: 16} as const;
+function boredYoke(g:Gun,x:number,y:number,z:number,half:number):void {
+ // the bore's flats stand the air off the pin's (circumscribed) radius
+ const T=TRUNNION,cheekBottom=-.36,bore=(T.pin+T.air)/Math.cos(Math.PI/T.sides);
+ g.add('turretDetail',box(half*2+.096,.08,.116),x,y-.34,z);
+ for(const side of [-1,1]) {
+  g.add('turretDetail',box(.044,T.cheekTop-cheekBottom,.12),x+side*(half+.028),y+(T.cheekTop+cheekBottom)/2,z);
+  // the bored housing (a plain lathe tube along +Y turned onto X, 16 sides) and its end cap, a disc 3 mm inside the
+  // bore's mouth whose rim meets the bore's corners, 27 mm off the pin's end: one yaw-stage piece a side, as the solid
+  // boss was, and no heavier (the Hetman II's triangle budget, frontEraPackages)
+  const tube=[[bore,0],[T.outer,0],[T.outer,T.length],[bore,T.length],[bore,0]].map(([r,h])=>new THREE.Vector2(r,h));
+  const lathe=new THREE.LatheGeometry(tube,T.sides),ring=lathe.toNonIndexed().rotateZ(-side*Math.PI/2).translate(-side*T.length/2,0,0);
+  lathe.dispose();
+  const disc=new THREE.CircleGeometry(bore,T.sides,Math.PI/2),cap=disc.toNonIndexed().rotateY(side*Math.PI/2).translate(side*(T.length/2-T.cap),0,0);
+  disc.dispose();
+  g.add('turretDark',KIT.mergeAll([ring,cap]),x+side*(half+.045),y,z);
+ }
+}
+
 type StationPart=(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number)=>void;
 /** One row per mount type (nationalRoofConfig.ts NationalRoofMount). Release 227 S0 (2026-10-16): the per-mount
  * pieces that were branches on l.mount are table rows, so a new mount adds a row and changes no existing station. */
@@ -408,15 +499,17 @@ interface NationalMountRow {
  finish?:(P:TankBuilderPort,l:NationalRoofLoadout,x:number,y:number,z:number,w:number)=>void;
  /** false: the 12.7 mm gun is laid without the open cradle's tray and rails (the mount carries its own). */
  cradle?:boolean;
+ /** The yoke carries the trunnion pin in bored, capped bearing housings with 2 mm of air (boredYoke; land stage 227). */
+ boredTrunnion?:boolean;
 }
 const NATIONAL_MOUNTS:Readonly<Partial<Record<NationalRoofMount,NationalMountRow>>>={
  fork:{halfShare:.5,housing:forkHousing},
  shield:{halfShare:.5,housing:shieldHousing},
- wedge:{halfShare:.74,housing:wedgeHousing},
+ wedge:{halfShare:.74,housing:wedgeHousing,feed:wedgeFeed,boredTrunnion:true},
  drum:{halfShare:.74,housing:drumHousing,feed:drumFeed},
- cradle:{halfShare:.5,housing:cradleShield,feed:cradleFeed},
+ cradle:{halfShare:.5,housing:cradleShield,feed:cradleFeed,boredTrunnion:true},
  casemate:{halfShare:.74,housing:casemateHousing,feed:casemateFeed,sight:casemateSight,bearing:casemateBearing,
-  finish:casemateIlluminator},
+  finish:casemateIlluminator,boredTrunnion:true},
 };
 function nationalMount(mount:NationalRoofMount):NationalMountRow {
  // the classic cupola emplacement has no station row: fitDonorTurret builds it with nationalCupolaPintle
