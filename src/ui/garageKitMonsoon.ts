@@ -83,7 +83,8 @@ export const GARAGE_KIT_MONSOON: GarageKitPlacement = {
     drift: 0.022,
     cards: [
       // drips off the canopy's right gutter (the left one stands behind the hero in the frame)
-      atmosphereDrips(atView(13.8, 5.05, 19.6), atView(13.8, 5.05, 24.6), 1.0),
+      // (r4: from behind the hanging crest on, never a curtain in front of it)
+      atmosphereDrips(atView(13.8, 5.05, 22.0), atView(13.8, 5.05, 25.6), 1.0),
       // steam rising off the sunlit laterite, the yard's left and right
       atmosphereStreamer(atView(-30, 0.1, 4), atView(-18, 0.1, -10), 'mist'),
       atmosphereStreamer(atView(20, 0.1, 6), atView(32, 0.1, -10), 'mist', 0.5),

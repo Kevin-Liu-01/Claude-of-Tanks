@@ -60,7 +60,8 @@ export const GARAGE_KIT_REDROCK: GarageKitPlacement = {
     cards: [
       // ankle-height red-dust streamers across the yard's left and right, never across the hero
       atmosphereStreamer(atView(-34, 0, 9), atView(-19, 0, 21), 'reddust'),
-      atmosphereStreamer(atView(23, 0, 31), atView(36, 0, 17), 'reddust', 0.4),
+      // (r4: the right one ran in front of the HESCO's banner wall: it streams past the wall's end now)
+      atmosphereStreamer(atView(39, 0, 21), atView(50, 0, 9), 'reddust', 0.4),
       atmosphereStreamer(atView(-30, 0, -14), atView(-14, 0, -26), 'reddust', 0.7),
       // haze staging the jebels' feet in the out-ring's directions (the canonical frame keeps its sky clear)
       atmosphereBand(atView(-74, 0.5, -10), atView(-66, 0.5, 34), 8, 'reddust'),
