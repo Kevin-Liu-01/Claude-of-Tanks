@@ -728,8 +728,9 @@ export class KitBuilder {
     solid.setAttribute('normal', new THREE.Float32BufferAttribute(this.normals, 3));
     solid.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     solid.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(count * 2), 2));
+    // a box (the placement's footprints read it); no sphere: a pack merges the pieces and bounds the merged mesh, and a
+    // piece drawn alone (the platform collar) gets its sphere from the renderer on first use
     solid.computeBoundingBox();
-    solid.computeBoundingSphere();
     const atlasGeometry = (positions: number[], normals: number[], uvs: number[]): THREE.BufferGeometry | null => {
       if (!positions.length) return null;
       const geometry = new THREE.BufferGeometry();
@@ -737,7 +738,6 @@ export class KitBuilder {
       geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
       geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
       geometry.computeBoundingBox();
-      geometry.computeBoundingSphere();
       return geometry;
     };
     const display = atlasGeometry(this.displayPositions, this.displayNormals, this.displayUvs);

@@ -241,24 +241,24 @@ export function buildGarageKitDressing(params: {
   for (const item of items) {
     const piece = buildGarageKitPiece(item, variant.architecture, variant.mapId);
     const yaw = kitItemMatrix(item, groundAtWorld, matrix);
-    const solid = piece.result.solid.clone().applyMatrix4(matrix);
+    const solid = placedCopy(piece.result.solid, matrix);
     if (item.kind === 'wall') seatOnGround(solid, groundAtWorld, item.y ?? 0);
     (buckets.baked ||= []).push(solid);
     kitTriangles += piece.result.solidTriangles;
     for (const [bucket, surface] of piece.result.surfaces) {
-      const placed = surface.clone().applyMatrix4(matrix);
+      const placed = placedCopy(surface, matrix);
       if (item.kind === 'wall') seatOnGround(placed, groundAtWorld, item.y ?? 0);
       ((buckets as Record<string, THREE.BufferGeometry[]>)[bucket] ||= []).push(placed);
       kitTriangles += surface.getAttribute('position').count / 3;
     }
     if (piece.result.display) {
-      const placed = piece.result.display.clone().applyMatrix4(matrix);
+      const placed = placedCopy(piece.result.display, matrix);
       if (item.kind === 'wall') seatOnGround(placed, groundAtWorld, item.y ?? 0);
       displays.push(placed);
       displayTriangles += piece.result.displayTriangles;
     }
     if (piece.result.decal) {
-      const placed = piece.result.decal.clone().applyMatrix4(matrix);
+      const placed = placedCopy(piece.result.decal, matrix);
       if (item.kind === 'wall') seatOnGround(placed, groundAtWorld, item.y ?? 0);
       decals.push(placed);
       decalTriangles += piece.result.decalTriangles;
@@ -436,6 +436,18 @@ export function garageKitItemBounds(variant: GarageVariant, placement: GarageKit
 }
 
 /** Seat a wall run's vertices on the terrain (each vertex rises by the ground under its own x/z). */
+/**
+ * A cached piece's geometry placed by `matrix`, without bounds: placed copies only feed the pack's merge, which bounds
+ * the merged mesh, and a copy carrying the piece's bounds recomputed both on every transform (garage r9 g1 r4: a tenth
+ * of a cold pack bake).
+ */
+function placedCopy(geometry: THREE.BufferGeometry, matrix: THREE.Matrix4): THREE.BufferGeometry {
+  const copy = geometry.clone();
+  copy.boundingBox = null;
+  copy.boundingSphere = null;
+  return copy.applyMatrix4(matrix);
+}
+
 function seatOnGround(geometry: THREE.BufferGeometry, groundAtWorld: (x: number, z: number) => number, lift: number): void {
   const position = geometry.getAttribute('position') as THREE.BufferAttribute;
   // seat by module: group vertices by a 0.6 m cell so a module stays rigid on sloping ground
@@ -445,6 +457,7 @@ function seatOnGround(geometry: THREE.BufferGeometry, groundAtWorld: (x: number,
     position.setY(i, position.getY(i) + groundAtWorld(cx, cz) + lift);
   }
   position.needsUpdate = true;
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
+  // bounds stay as the copy had them (none: placedCopy); the merge bounds the pack's mesh
+  if (geometry.boundingBox) geometry.computeBoundingBox();
+  if (geometry.boundingSphere) geometry.computeBoundingSphere();
 }
