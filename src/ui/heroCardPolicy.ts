@@ -40,8 +40,11 @@ export const HERO_CAMERA = Object.freeze({
  *   turretTowardCameraDeg: traverse from the hull's forward axis, on whichever side brings the gun round
  *     past the lens (the renderer picks the sign by projecting the gun into the camera, never by the
  *     yaw convention alone). With the 50 deg camera the gun passes the lens at 50 deg and lies exactly
- *     across the card at 140; 115 keeps it 25 deg toward the lens: the turret face shows and the barrel
- *     keeps ~90 % of its length.
+ *     across the card at 140. Fixed by pose study r1 (100/115/130 deg on 16 vehicles,
+ *     samples/pose-r1): 130 lays the gun nearly flat across the card and hides the turret face, 100
+ *     shows the most turret face but shortens the gun over the hull; 105 keeps it 35 deg toward the
+ *     lens (the turret face and mantlet show, the barrel keeps ~82 % of its length, the same
+ *     foreshortening the forward pose had, mirrored).
  *   gunPitchDeg: the gun is level (raised only where the spec's yaw-dependent depression curve needs it
  *     over the rear deck).
  * A turretless vehicle (casemate, hydraulic fixed gun) keeps its gun on the hull axis; a turreted mount with
@@ -50,7 +53,7 @@ export const HERO_CAMERA = Object.freeze({
  * stations stay at rest.
  */
 export const HERO_POSE = Object.freeze({
-  turretTowardCameraDeg: 115,
+  turretTowardCameraDeg: 105,
   gunPitchDeg: 0,
 });
 
