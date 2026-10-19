@@ -324,7 +324,7 @@ assert.equal(submission.staged, true);
 assert.deepEqual(shellOrigin?.toArray(), [12, 4.4, -4],
   'deployment FX stages around the exact player field');
 assert.equal(combatFx.group.visible, true);
-assert.ok(combatFx.calls.includes('update:1'), 'the live tracer ribbon is allocated');
+assert.ok(combatFx.calls.includes('update:1'), 'the live projectile tracers are allocated');
 assert.ok(combatFx.calls.includes('prop:drumblast'), 'rare prop pools are included');
 // (EF.04) a solo battle's first missile launch compiled the missile body and smoke trail programs mid-battle
 assert.ok(combatFx.calls.indexOf('projectile-presentation') > combatFx.calls.indexOf('update:1'),

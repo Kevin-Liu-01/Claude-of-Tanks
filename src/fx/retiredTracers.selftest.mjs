@@ -30,7 +30,7 @@ const textFile = /\.(ts|mjs|js|md|json|html|css)$/;
 // ---- no reference to the retired pieces ----
 const RETIRED = /aerialTracer|aerial-tracers|Ballistic tracer ribbons|TRACER_PRESETS|writeShellBolt|staticTracers|writeGuidedShell|rememberShellTrail|_atgmCore|_atgmGlow|COMPOSE_VELOCITY|writeGuidedTrail\b|appendGuidedTrailPoint|commitTracerInstances/;
 // (r2) and no prose still describes the ribbon as live (the engineering critic's three stale descriptions)
-const STALE_PROSE = /tracer ribbons rebuilt|ribbon used by supersonic|fx preset key \(shells doc|ribbon vanished when/;
+const STALE_PROSE = /tracer ribbons rebuilt|ribbon used by supersonic|fx preset key \(shells doc|ribbon vanished when|tracer ribbons\/lights|the live tracer ribbon|FX \(tracer ribbons/;
 const hits = [];
 for (const top of ['src', 'tools', 'docs']) {
   for (const path of walk(join(ROOT, top))) {
