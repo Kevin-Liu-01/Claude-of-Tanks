@@ -27,7 +27,8 @@ import { damageRng, damageSeed } from '../world/destructionKit.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import type { DebrisPhysics } from './debrisPhysics.ts';
 import { emitDebrisLanding } from './clock.ts';
-import { layUprightPlates } from './uprightPlates.ts';
+import { createPlateHold, layPerchedPlates, layUprightPlates } from './uprightPlates.ts';
+import type { RigidEnvironment } from '../sim/rigidBody.ts';
 
 /** A body a builder's piece becomes: its stage, how it groups (one body a group), its density and how it leaves. */
 interface PieceRule {
@@ -66,6 +67,8 @@ interface LandmarkBodiesOptions {
   onLanding?(x: number, y: number, z: number, speedMps: number, massKg: number, structureIdx: number): void;
   /** A record box of the structure its pieces start over is no longer solid (the deck a leaf was): world x/z bounds. */
   pass(structureIdx: number, minX: number, minZ: number, maxX: number, maxZ: number): void;
+  /** (round 5) The world's records the bodies meet: what holds a piece's plate where it comes to rest (uprightPlates). */
+  environment?(): RigidEnvironment | null;
 }
 
 export interface LandmarkBodies {
@@ -99,6 +102,8 @@ interface LiveBody { handle: number; meshes: THREE.Mesh[]; structureIdx: number;
 interface Layout { names: string[]; sizes: number[] }
 
 const BAKE_STILL_S = 1.5, BAKE_AGE_S = 30;
+/** (round 5) A body this old moving slower than these (m/s, rad/s) lies where it is (it rocks on the heap, never asleep). */
+const CREEP_AGE_S = 6, CREEP_MPS = 0.3, CREEP_RADS = 0.5;
 
 const _pn = new THREE.Vector3(), _pu = new THREE.Vector3();
 /** A symmetric 3×3's (xx xy xz yy yz zz) least eigenvector (Jacobi), or null. */
@@ -129,6 +134,17 @@ function leastAxis3(cv: readonly number[]): [number, number, number] | null {
 export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
   /** The ground a piece laid flat lies on (uprightPlates.ts). */
   const groundOf = (x: number, z: number): number => o.groundAt(x, z);
+  /**
+   * (destruction-slabs 227 round 5; the census's airfield #8 fire station on the phone, every face: a 4 m square plate of
+   * what its sweep dropped, laid where its middle met the heap's flank, lay 1 m up with half of it over nothing to the end)
+   * a piece laid on the ground under where it stood — no body to bring it to rest — lies as a plate coming to rest does:
+   * none of it on its edge, none perched over nothing (tilted off what holds it to the ground, or lowered onto it).
+   */
+  const plateHold = createPlateHold(() => o.environment?.() ?? null, o.pool.world);
+  const layDown = (meshes: readonly THREE.Mesh[]): void => {
+    for (const m of meshes) layUprightPlates(m.geometry, m.matrix, groundOf);
+    layPerchedPlates(meshes.map((m) => ({ geometry: m.geometry, matrix: m.matrix, body: 0 })), [], groundOf, plateHold);
+  };
   const live: LiveBody[] = [];
   /** Hanging parts falling to where they lie (no body): world centre, heights, turns, clock. */
   const tweens: Array<{ meshes: THREE.Mesh[]; x: number; z: number; y0: number; y1: number; q0: THREE.Quaternion; q1: THREE.Quaternion;
@@ -143,6 +159,7 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
   const _v = new THREE.Vector3(), _n = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(1, 1, 1);
   const _m = new THREE.Matrix4(), _inst = new THREE.Matrix4(), _nm = new THREE.Matrix3();
   const _up = new THREE.Vector3(0, 1, 0), _fwd = new THREE.Vector3(0, 0, 1), _right = new THREE.Vector3(1, 0, 0), _tq = new THREE.Quaternion();
+  const _vel = new Float64Array(6);
   let lastSound = -1, clock = 0;
 
   o.pool.onImpact((x, y, z, speed, mass, handle) => {
@@ -329,7 +346,7 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
       } else _m.compose(_v.set(wcx, restY, wcz), _q, _s);
       for (const m of meshes) { m.matrix.copy(_m); m.matrixWorldNeedsUpdate = true; }
       // (round 4) laid at rest: no piece of its drawing stands upright on its edge (uprightPlates.ts)
-      if (!(kinematic && !settled)) for (const m of meshes) layUprightPlates(m.geometry, m.matrix, groundOf);
+      if (!(kinematic && !settled)) layDown(meshes);
       baked++;
       return true;
     }
@@ -522,7 +539,7 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
         _m.compose(_v.set(w.x, w.y0 + (w.y1 - w.y0) * u * u, w.z), _tq, _s);
         for (const m of w.meshes) { m.matrix.copy(_m); m.matrixWorldNeedsUpdate = true; }
         if (u >= 1) {
-          for (const m of w.meshes) layUprightPlates(m.geometry, m.matrix, groundOf);
+          layDown(w.meshes);
           o.onLanding?.(w.x, w.y1, w.z, Math.min(9, 9.81 * w.T), w.massKg, w.structureIdx);
           tweens[i] = tweens[tweens.length - 1]!; tweens.length--;
         }
@@ -537,9 +554,14 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
         // well, before the bake came round) asleep a moment: no piece of its drawing stands upright
         if (b.still >= 0.2 && !b.laid) { b.laid = true; for (const m of b.meshes) layUprightPlates(m.geometry, m.matrix, groundOf); }
         // still: it stays drawn where it lies, its body gone from the pool
-        if (b.still >= BAKE_STILL_S || b.age >= BAKE_AGE_S) {
+        // (round 5: the census's airfield #8 fire station on the phone — a piece's body rocking on the heap for good, never
+        // asleep, its plate held a metre up on the body's box) one in the world that has all but stopped a while on lies where it is
+        const creeping = b.age >= CREEP_AGE_S && o.pool.inWorld(b.handle) && o.pool.velocity(b.handle, _vel) && Math.hypot(_vel[0]!, _vel[1]!, _vel[2]!) < CREEP_MPS
+          && Math.hypot(_vel[3]!, _vel[4]!, _vel[5]!) < CREEP_RADS;
+        if (b.still >= BAKE_STILL_S || b.age >= BAKE_AGE_S || creeping) {
           o.pool.release(b.handle); unlist(b); baked++;
-          for (const m of b.meshes) layUprightPlates(m.geometry, m.matrix, groundOf);
+          // (round 5: the same fire station's 4 m plate came to rest on a body a metre thick, half of it over nothing)
+          layDown(b.meshes);
         }
       }
     },

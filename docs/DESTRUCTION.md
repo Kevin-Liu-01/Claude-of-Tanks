@@ -1359,3 +1359,81 @@ its wall heads once its roof has fallen and it stands breached: the film's round
 roofless for ten seconds, the Node check's bring it down by 6.15 s, so no receipt sees it (a CPU-rendered page did not boot
 in 25 min; a look inside the game needs a capture hold). The sweep's frame cost under load (above). The phone's late sweep.
 The three transients above, and fjord #0's post.
+
+**Round 5 (2026-10-20, the round-4 critics: three of the owner's floating plates at fresh seeds, the roofless storey's dark
+lid in the films, the open items, polders' collision changed for a drawing, the world-events flake, the ruin probe, the
+churches never taken to their end, the mills' pops).** The branch carries `origin/integ/228` (ac0a12960c, nothing new).
+
+- *A heap's plate held when it baked is watched* (airfield #0's tower, R narrow, seed 1147584926: a 3.7 x 3.2 m plate of its
+  heap 1.3 m up, 62-95 % over nothing from 6.45 s to 10.9 s as the storeys under it fell). The fracture's merged heap keeps
+  each vertex's body (`heapBody`) and the plates `layPerchedPlates` finds held as they bake (`watch`: their vertices and
+  triangles); they are judged again five times a second while the building changes (a strike, a face's or a storey's
+  fall, its release) and once a second after, and one whose hold went is laid down as a plate coming to rest is. A body's
+  contact sphere holds a plate only from under it (its middle below the sample, within 0.15 m of it in plan) and only
+  moving under 1.5 m/s: the tower's chunks falling past the plate read 79 % of it held, the slab check 38 %.
+- *A roof body's plates are judged past the walls each by itself* (badlands #0's caravanserai, A narrow, 725095366: a roof
+  sheet whose body's box ran 15 m along the heap — its middle 0.6 m up — drew a 4.2 x 4.1 m plate at its end lying flat
+  2 m up across the wall heads, 75 % past them, for a second after the collapse). `highPastWalls` reads each flat plate the
+  body draws (4 m² and more) as the slab check does: its underside 1.5 m or more over the ground at its middle and 5 % or
+  more of its surface past the walls at its height send it to the shove or the break-up.
+- *A young sweep starts over when its building changes* (blackglass #3's civic hall, R narrow-back, 978345481: a sweep begun
+  before its section's faces were drawn ran on 1.3 s blind to them, the next took 1.6 s more, and a dark face piece the
+  redraw cut loose hung 2.5 s). A sweep under 0.8 s old over a building that changes again is dropped for a fresh one, twice
+  running at most (a barrage cannot starve it); the piece now goes 1.6 s after its redraw.
+- *The roofless storey is open to the sky* (the films' tavern #7 and depot #8 on reservoir and urban church #15: the top
+  storey under one flat dark plane). It was the storey's room — laid dim (0.55-0.6: an interior glimpsed through a hole),
+  its ceiling at the wall heads — read from above as one dark lid; its ceiling went only when a wall fell after the roof.
+  With the roof's fall the top storey's rooms open at once (`openTopRooms`; the fracture's `roofFell`): their ceilings go and
+  they are lit as the sky lights them (a kit room's walls 0.95, its floor 0.85; the fracture's without ROOM_SHADE); rooms
+  laid after the fall are laid so. A room's floor stands 2 cm over its floor line (the storey under it draws its top there:
+  the two fought). The slab check reads it now (`open room`): once a roof has fallen, a top-storey room that draws a
+  ceiling or stands in an interior's shade is the lid. On the round-4 runtime (9f60f6522f) reservoir #7's and #8's roof
+  passes flag (a 134.6 m² ceiling, rooms in shade); at the head they pass.
+- *A set piece's pieces fall into their place* (polders #46's tower mill lost its upper shaft, cap and sails in one 100 ms
+  step, their wreck already on the ground; verdant #17's post mill swapped its body and lost its sails the same way). The
+  E12 kit reports each piece it lays at rest by one rigid turn (`DamageStageResult.falls`); a live stage shows a copy of the
+  piece's own triangles turning and dropping to that pose over gravity's time (0.45-1.6 s, eased in), and the stage's laid
+  copy shows when the fall ends (`structureDebris.showFrom`); a late joiner's settled stage lays them at once.
+- *Polders' collision is integ/228's again* (the critic: round 2 regenerated the tower mill's shards — 100 colliders and 2
+  obstacles, each course's solid 16-sided record replaced by about 30 chunk prisms over a third of its footprint — for a
+  change that was the drawing's alone). A landmark builder may hand the composer its collision's own parts
+  (`LandmarkBuild.collision`): the tower mill's are its upper shaft's closed revolve (the drawing's chunks out) and its
+  windshaft first in its bucket, finished (weathered) as the drawing is. `polders.json`, `polders@assault-trenches.json`
+  and `index.json` are integ/228's bytes; `--check` passes both variants.
+- *The churches' end.* Verdant #9 and #18, polders #48 and saltwind #18 are set pieces over LIGHT_SETPIECE_MAX_M3, so
+  landmarks (`setPieceMassClass`, sim/structureDamage.ts: collapsible false, breach-only by §3.2): no round brings one
+  down in battle, and their end is the breached stage with every named piece down. The census takes them there (240
+  rounds, the late joiner's replay of that end). Urban #15 (a franconian regional church, collapsible) goes through its
+  collapse, settled ruin and late joiner in the census's A passes, and the coverage film runs it 28 s.
+
+- *A collapse carries the fracture's faces down with the walls* (the round-3 critic's film: verdant #8's mill lost its upper
+  storey between two frames as it fell, nothing falling, only its dust over the gap). With sections on a collapse is the
+  mask's — the walls crumble along a front for COLLAPSE_S and fold — and the faces the fracture had redrawn were taken away
+  at the collapse's event. Every face and room the fracture draws now carries its building's stage-run tag (aDamage: it
+  falls with the collapse, no hole cuts it) and its bucket's patched depth material; a collapse keeps them drawn
+  (COLLAPSE_S + 2 s) while the mask carries them down and folds them; a late joiner's settled collapse lets them go at once.
+- *A part over the eaves stands only held over three quarters of it* once the roof has fallen (half before; the slab check
+  calls a quarter less than it was held hanging): fjord #0's 1.41 m truss beam 6.6 m up, 40 % held, goes with the roof at
+  seed 421748. R passes on verdant, reservoir, frontier and urban at one seed: 67 → 75, 64 → 64, 72 → 87, 120 → 123 parts go.
+- *A heap's watched plates are judged only while their building changes* (and 20 s after): nothing under them moves else.
+- *A set piece's body that rocks on the heap lies where it is* (the census: airfield #8's fire station on the phone, every
+  face at two seeds — a 4 m square plate of what its sweep dropped lay 1 m up with half of it over nothing to the end: its
+  body rocked on the heap, never asleep, and never baked before BAKE_AGE_S). A landmark body six seconds old moving under
+  0.3 m/s and 0.5 rad/s bakes where it is, and a landmark piece laid at rest — baked, its tween ended, or laid with no body —
+  is laid as a heap's plate is (`layPerchedPlates` with the bodies' contact holds): none of it perched over nothing.
+
+What stays open after round 5:
+
+- fjord #0's truss beam at two seeds of three (`R narrow-back` 1114308791, 854166144): the hanging sweep's intact reading
+  has it 40 % held (it never bore), the slab check's 100 %; the roof-furniture pass holds it by its neighbours.
+- The sweep's frame cost (thread CPU per frame with sweep work at 4edd9817a9, load ~120, `r5/perf/sweepframe.txt`): verdant
+  #9 p99 9.2 ms (round 4: 9.5), urban #15 p99 15.0 ms, 2 frames over 16.7 ms, its total 739 ms over a 24 s barrage (623: a
+  restarted sweep's work is redone), skybridge #27 p99 11.9 ms (14.2). Weighing its units at their cost is still to do.
+- The anti-raft ruin probe's ten below the floors that integ/228 kept above them (round 4's list): none is a raft. Skybridge
+  #12's broadcast tower (0.079 of its intact p90) is its 3.7 m hut's ruin against a 32 m mast's p90 — integ/228's 0.413 was
+  the 13 m stone stub round 2 took out from under the lattice mast; the moon's relay repeaters (0.09-0.10), its Apollo site
+  and fjord #65's rack read as frames now and lie as lattice wrecks; steppe #0's water tower (0.224), the moon's ISRU works
+  (0.243) and dome (0.247) stand a hair under; longleaf #11 (0.235) is a ruin already; whiteout #19's tank farm falls
+  inside its plan (footprint 0.584).
+
+@CENSUS5@

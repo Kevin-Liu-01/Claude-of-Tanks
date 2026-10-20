@@ -267,7 +267,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
     },
   });
   const landmarks: LandmarkBodies = createLandmarkBodies({
-    pool, group: o.group, groundAt: o.groundAt, onLanding: o.onLanding,
+    pool, group: o.group, groundAt: o.groundAt, onLanding: o.onLanding, environment,
     keepSpan: (span) => host?.keep(span),
     pass(structureIdx, minX, minZ, maxX, maxZ) {
       let list = passes.get(structureIdx);
