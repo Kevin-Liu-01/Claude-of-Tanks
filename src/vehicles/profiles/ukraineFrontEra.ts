@@ -624,12 +624,12 @@ function sillSegments(P: TankBuilderPort, glacisAt: (z: number) => number): void
 /** Two LED nose bars. Round 7 (2026-10-18; the critic's UAPL-2: "flush, dark, recessed slits with no visible lens,
  * bezel or housing") gave each a raised dark bezel in a slot under the sill's hood. Round 10 (2026-10-19; the blind
  * critic's UAPL-R8-01: "the special lights only read at night ... by day the same lip shows only a plain plate edge"):
- * each bar is an armoured lamp box standing 5 cm proud of the sill's flat face (3 mm into it), welded plate in the hull's
- * paint: a top wall running on as a 15 mm visor, a bottom wall and two end cheeks round a dark mouth 2 mm over and under
- * the lenses, its gunmetal back plate (3 mm into the sill) carrying three lens segments 7 mm inside the mouth and 22 mm
- * inside the visor's lip (each lapping 5 mm into the back plate), split by gunmetal dividers (near tier). Lit from above,
- * the visor's top and the box's walls frame a black mouth and throw their own shadow on the sill: a fitting, not a plate
- * edge. */
+ * each bar is an armoured lamp box standing 5 cm proud of the sill's flat face (3 mm into it): a top wall running on as a
+ * 15 mm visor, a bottom wall and two end cheeks round a mouth 2 mm over and under the lenses, a back plate (3 mm into the
+ * sill) carrying three lens segments 7 mm inside the mouth and 22 mm inside the visor's lip (each lapping 5 mm into the
+ * back plate), split by dividers (near tier). The whole housing is the dark gunmetal of a light bar's body, not the hull's
+ * paint (the first round-10 captures showed camouflaged walls lost in the digital pattern as the slot had been): a crisp
+ * dark box with a lit visor top, throwing its own shadow on the sill. */
 const LAMP_BOX = {wall: .018, cheek: .012, seat: .003, mouth: .050, visor: .015, lensIn: .007, y0: .967, y1: 1.063, divider: .020,
   dividerProud: .003};
 function ledBars(P: TankBuilderPort): void {
@@ -643,13 +643,13 @@ function ledBars(P: TankBuilderPort): void {
   const oy0 = B.y0 + B.wall, oy1 = B.y1 - B.wall;
   for (const c of LED.xs) for (const side of SIDES) {
     const cx = side * c, a = cx - LED.half + .001, b = cx + LED.half - .001;
-    // the box: top wall and visor, bottom wall, end cheeks (between the walls), in the hull's paint
-    add('hullExternalArmor', a, b, oy1, B.y1, zSeat, zMouth + B.visor, 'LED lamp box');
-    add('hullExternalArmor', a, b, B.y0, oy0, zSeat, zMouth, 'LED lamp box');
+    // the box: top wall and visor, bottom wall, end cheeks (between the walls)
+    add('hullDark', a, b, oy1, B.y1, zSeat, zMouth + B.visor, 'LED lamp box');
+    add('hullDark', a, b, B.y0, oy0, zSeat, zMouth, 'LED lamp box');
     // (the cheeks' outer faces 0.5 mm inside the walls' ends and their backs 0.5 mm shallower, the back plate's 1 mm: no
     // two faces of the box share a plane)
-    add('hullExternalArmor', a + .0005, a + B.cheek, oy0 - .001, oy1 + .001, zSeat + .0005, zMouth - .002, 'LED lamp box');
-    add('hullExternalArmor', b - B.cheek, b - .0005, oy0 - .001, oy1 + .001, zSeat + .0005, zMouth - .002, 'LED lamp box');
+    add('hullDark', a + .0005, a + B.cheek, oy0 - .001, oy1 + .001, zSeat + .0005, zMouth - .002, 'LED lamp box');
+    add('hullDark', b - B.cheek, b - .0005, oy0 - .001, oy1 + .001, zSeat + .0005, zMouth - .002, 'LED lamp box');
     // the back plate, between the cheeks and walls (0.5 mm into each)
     add('hullDark', a + B.cheek - .0005, b - B.cheek + .0005, oy0 - .0005, oy1 + .0005, zSeat + .001, zPlate, 'LED lamp back plate');
     for (const k of [-1, 0, 1]) {
