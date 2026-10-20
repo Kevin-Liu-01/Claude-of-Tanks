@@ -21,8 +21,8 @@ assert.ok(THERMAL_BLOOM_NIGHT_K > 0 && THERMAL_BLOOM_NIGHT_K < 0.5, 'the night h
 
 // ---- the wiring: the frame's own lens and night level, exactly the old strength and radius when the cut is 0 ----
 const post = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
-assert.match(post, /const heatNight = heatLensNight\(grade\.uniforms\.uThermal\.value, \(scene\.userData\.lightModel as LightModel \| undefined\)\?\.night \?\? 0\);\s*bloom\.strength = lightTune\('BLOOM_STRENGTH', BLOOM_STRENGTH\) \* \(1 - 0\.5 \* scopeWeight\) \* \(1 - \(1 - THERMAL_BLOOM_NIGHT_K\) \* heatNight\);\s*bloom\.threshold = lightTune\('BLOOM_THRESHOLD', BLOOM_THRESHOLD\);\s*bloom\.radius = lightTune\('BLOOM_RADIUS', BLOOM_RADIUS\) \* \(1 - heatNight\);/,
-  'the bloom reads the cut from this frame\'s lens and night level');
+assert.match(post, /const heatNight = heatLensNight\(grade\.uniforms\.uThermal\.value, \(scene\.userData\.lightModel as LightModel \| undefined\)\?\.night \?\? 0\)\s*\* lightTune\('THERMAL_BLOOM_CUT', 1\);\s*bloom\.strength = lightTune\('BLOOM_STRENGTH', BLOOM_STRENGTH\) \* \(1 - 0\.5 \* scopeWeight\) \* \(1 - \(1 - THERMAL_BLOOM_NIGHT_K\) \* heatNight\);\s*bloom\.threshold = lightTune\('BLOOM_THRESHOLD', BLOOM_THRESHOLD\);\s*bloom\.radius = lightTune\('BLOOM_RADIUS', BLOOM_RADIUS\) \* \(1 - heatNight\);/,
+  'the bloom reads the cut from this frame\'s lens and night level (the QA hook THERMAL_BLOOM_CUT, 1 unless a QA run sets it)');
 const frame = post.slice(post.indexOf('  function renderFrame('));
 assert.ok(frame.indexOf('grade.uniforms.uThermal.value =') < frame.indexOf('updateScopeGrade();'), 'the lens code is set before the bloom reads it');
 const STRENGTH = Number(post.match(/^const BLOOM_STRENGTH = ([0-9.]+);/m)[1]), RADIUS = Number(post.match(/^const BLOOM_RADIUS = ([0-9.]+);/m)[1]);

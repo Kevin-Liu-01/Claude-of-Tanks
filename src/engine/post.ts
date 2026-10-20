@@ -2968,8 +2968,10 @@ export function createPost(
       * Math.min(1, Math.max(0, (16 - camera.fov) / 10));
     const scopeWeight = grade.uniforms.uScope.value;
     // 2026-10-04 (the sun-bloom lane): the bloom's strength, threshold and radius through the light model's QA hook;
-    // (fx-ir-lens-bloom-229) cut to its tight mips under a heat lens at night (THERMAL_BLOOM_NIGHT_K; 1 and 1 otherwise)
-    const heatNight = heatLensNight(grade.uniforms.uThermal.value, (scene.userData.lightModel as LightModel | undefined)?.night ?? 0);
+    // (fx-ir-lens-bloom-229) cut to its tight mips under a heat lens at night (THERMAL_BLOOM_NIGHT_K; 1 and 1 otherwise;
+    // the QA hook's THERMAL_BLOOM_CUT 0 restores the old bloom for a same-build A/B)
+    const heatNight = heatLensNight(grade.uniforms.uThermal.value, (scene.userData.lightModel as LightModel | undefined)?.night ?? 0)
+      * lightTune('THERMAL_BLOOM_CUT', 1);
     bloom.strength = lightTune('BLOOM_STRENGTH', BLOOM_STRENGTH) * (1 - 0.5 * scopeWeight) * (1 - (1 - THERMAL_BLOOM_NIGHT_K) * heatNight);
     bloom.threshold = lightTune('BLOOM_THRESHOLD', BLOOM_THRESHOLD);
     bloom.radius = lightTune('BLOOM_RADIUS', BLOOM_RADIUS) * (1 - heatNight);
