@@ -73,7 +73,9 @@ export interface CivicBed {
 export interface CivicFurniture { readonly kind: string; readonly x: number; readonly z: number; readonly yawDeg: number; readonly scale?: number }
 
 /** A tree station: its seat, and a cast-iron grate in a granite frame round its foot (a pit in the paving). */
-export interface CivicTreeStation { readonly x: number; readonly z: number; readonly grate?: boolean }
+export interface CivicTreeStation { readonly x: number; readonly z: number; readonly grate?: boolean;
+  /** (229 b3 r1) its own scale (a twin's tree the same height as its pair); absent: drawn in the area's band */
+  readonly scale?: number }
 
 /** A strip of flush paving (a frontage walk, a granite band, a church's path): its rectangle and its course. */
 export interface CivicPaving {

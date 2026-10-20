@@ -32,9 +32,10 @@ const TRACK_YAW = 13.5;
 const PALMS_EAST: ReadonlyArray<readonly [number, number]> = [[35.5, -6], [36.5, 6], [37.5, 18]];
 // and two in the islands of sand the lanes leave between them (a smaller planter: the lanes either side)
 const PALMS_ISLAND: ReadonlyArray<readonly [number, number]> = [[19.4, 4.0], [3.4, 19.8]];
-const withTwins = (list: ReadonlyArray<readonly [number, number]>) => list.flatMap(([x, z]) => {
-  const [tx, tz] = rot(x, z);
-  return [{ x, z }, { x: tx, z: tz }];
+// (229 b3 r1, the critic's D9: a palm and its twin each the same height, the pairs a little apart)
+const withTwins = (list: ReadonlyArray<readonly [number, number]>) => list.flatMap(([x, z], i) => {
+  const [tx, tz] = rot(x, z), scale = +(0.96 + ((i * 37) % 13) / 100).toFixed(2);
+  return [{ x, z, scale }, { x: tx, z: tz, scale }];
 });
 const PALMS = withTwins([...PALMS_EAST, [-12, 34]]), ISLANDS = withTwins(PALMS_ISLAND);
 /** A palm's block planter: a square bed `size` m across (its wall the planter's), closed. */

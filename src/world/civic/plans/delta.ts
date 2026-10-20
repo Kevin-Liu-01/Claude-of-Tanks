@@ -65,15 +65,17 @@ export const DELTA_CIVIC_PLAN: CivicPlan = {
     // the brick soling: corner to corner across the haat, north to south (the bots' lane) and west to east (between the
     // bot-tolas)
     strips: [
-      { from: [CX, CZ + 35], to: [CX, CZ - 35], width: 2.6, kind: 'brick' },
-      { from: [CX - 35, CZ], to: [CX + 35, CZ], width: 2.6, kind: 'brick' },
+      // (229 b3 r1, the critic's D4: the south end ran under the longhouse) 30 m out each way
+      { from: [CX, CZ + 30], to: [CX, CZ - 30], width: 2.6, kind: 'brick' },
+      { from: [CX - 33, CZ], to: [CX + 33, CZ], width: 2.6, kind: 'brick' },
     ],
     platforms: [{ x: TOLA.x, z: TOLA.z, half: 2.8, height: 0.5, yawDeg: 45 }, { x: rot(TOLA.x, TOLA.z)[0], z: rot(TOLA.x, TOLA.z)[1], half: 2.8, height: 0.5, yawDeg: 45 }],
     monument: null,
     trees: {
       // the bot-tolas' trees (the acacia's umbrella stands in for a raintree)
       species: 'acacia', scale: [1.45, 1.6],
-      stations: [{ x: TOLA.x, z: TOLA.z }, { x: rot(TOLA.x, TOLA.z)[0], z: rot(TOLA.x, TOLA.z)[1] }],
+      // (229 b3 r1, the critic's D9) both the same height
+      stations: [{ x: TOLA.x, z: TOLA.z, scale: 1.52 }, { x: rot(TOLA.x, TOLA.z)[0], z: rot(TOLA.x, TOLA.z)[1], scale: 1.52 }],
     },
     furniture: twins([
       // the tea stalls toward the haat, the bamboo benches facing the bot-tola, the tubewell

@@ -60,7 +60,9 @@ export const AUTUMN_CIVIC_PLAN: CivicPlan = {
       feature: null,
     }],
     // the church's parvis in pavés before its door, up to its south front (which runs back north-west of the door)
-    paving: [{ rect: { x0: -107.5, x1: -98, z0: 113, z1: 121.8 }, kind: 'setts' }, { rect: { x0: -98, x1: -90, z0: 116, z1: 119.8 }, kind: 'setts' }],
+    // (229 b3 r1, the critic's D4: a corner ran under the church) stepped back with its front
+    paving: [{ rect: { x0: -107.5, x1: -102.5, z0: 113, z1: 121.2 }, kind: 'setts' }, { rect: { x0: -102.5, x1: -98, z0: 113, z1: 119.5 }, kind: 'setts' },
+      { rect: { x0: -98, x1: -90, z0: 116, z1: 119.3 }, kind: 'setts' }],
     monument: { kind: 'monument', x: MONUMENT.x, z: MONUMENT.z, faceX: -110, faceZ: 100 },
     trees: {
       // limes (the oak's form stands in): a row down the bed's west side and one at its south-east, and one by the market
