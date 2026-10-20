@@ -64,6 +64,14 @@ function mapStyle(id: string): string {
   const art = battleMapArt(id);
   return art ? ` style="--battle-map:url('${art}')"` : '';
 }
+/** (ac130-fx-228 r3) a battle flown in the AC-130 shows the aircraft (its icon, its name), never the garage tank */
+function battleVehicleArt(entry: { vehicleId: string; aircraft?: boolean }): string {
+  return entry.aircraft ? `<span class="cot-record-vehicle aircraft">${uiIconSVG('modeAc130', 40)}</span>` : vehicleArt(entry.vehicleId);
+}
+function battleVehicleName(entry: { vehicleId: string; aircraft?: boolean }, names: RecordViewNames): string {
+  return entry.aircraft ? (killSourceIdentity('ac130')?.label ?? names.vehicle(entry.vehicleId)) : names.vehicle(entry.vehicleId);
+}
+
 function vehicleArt(id: string, className = 'cot-record-vehicle'): string {
   return /^[a-zA-Z0-9_-]+$/.test(id)
     ? `<img class="${className}" src="${iconUrl(id, 'angle')}" alt="" loading="lazy" decoding="async">` : '';
@@ -167,10 +175,10 @@ function overview(view: ServiceRecordView, names: RecordViewNames): string {
   let lastBattle = `<div class="cot-record-empty">${t('garage.record.empty')}</div>`;
   if (record.lastBattle) {
     const last = record.lastBattle;
-    lastBattle = `<div class="cot-last-battle"${mapStyle(last.mapId)}>${vehicleArt(last.vehicleId)}<div class="cot-last-battle-head">` +
+    lastBattle = `<div class="cot-last-battle"${mapStyle(last.mapId)}>${battleVehicleArt(last)}<div class="cot-last-battle-head">` +
       `<strong>${safe(resultLabel(last.result))}</strong><time>${safe(when(last.completedAt))}</time></div>` +
       `<div class="cot-last-battle-grid">` +
-      `<div>${statLabel(t('garage.record.deployment'), 'map')}<b>${safe(names.vehicle(last.vehicleId))} · ${safe(names.map(last.mapId))}</b></div>` +
+      `<div>${statLabel(t('garage.record.deployment'), 'map')}<b>${safe(battleVehicleName(last, names))} · ${safe(names.map(last.mapId))}</b></div>` +
       `<div>${statLabel(t('garage.record.damage'), 'damage')}<b>${num(last.damage)}</b></div>` +
       `<div>${statLabel(t('garage.record.kills'), 'skull')}<b>${num(last.kills)}</b></div>` +
       `<div>${statLabel(t('garage.record.duration'), 'clock')}<b>${clock(last.durationS)}</b></div></div></div>`;
@@ -261,8 +269,8 @@ function history(view: ServiceRecordView, names: RecordViewNames): string {
     }).join('');
     const accuracy = battle.shots ? `${num(battle.hits)}/${num(battle.shots)}` : '—';
     return `<li><details class="cot-record-battle result-${battle.result}"${mapStyle(battle.mapId)}>` +
-      `<summary tabindex="0"><span class="cot-record-battle-row">${vehicleArt(battle.vehicleId)}<span class="cot-record-result">${resultLabel(battle.result)}</span>` +
-      `<span class="cot-record-battle-what"><b>${safe(names.vehicle(battle.vehicleId))}</b>` +
+      `<summary tabindex="0"><span class="cot-record-battle-row">${battleVehicleArt(battle)}<span class="cot-record-result">${resultLabel(battle.result)}</span>` +
+      `<span class="cot-record-battle-what"><b>${safe(battleVehicleName(battle, names))}</b>` +
       `<small>${uiIconSVG(names.modeIcon(battle.mode), 11)}${safe(names.map(battle.mapId))} · ${safe(t(`playMenu.matchMode.${battle.mode}.label`))}</small></span>` +
       `<span class="cot-record-battle-num kills"><b>${num(battle.kills)}</b><small>${statLabel(t('garage.record.kills'), 'skull')}</small></span>` +
       `<span class="cot-record-battle-num damage"><b>${num(battle.damage)}</b><small>${statLabel(t('garage.record.damage'), 'damage')}</small></span>` +

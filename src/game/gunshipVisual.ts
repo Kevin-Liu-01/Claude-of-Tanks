@@ -24,6 +24,8 @@ export function loadGunshipAirframe(): Promise<void> {
 }
 
 const aircraft = new WeakMap<THREE.Object3D, Airframe>();
+/** (ac130-fx-228 r3) a camera nearer the airframe's origin than this is inside it (half its 40.4 m span, and a margin) */
+const GUNSHIP_HULL_CLEAR_M = 24;
 /** the pylon turn's bank: the port wing (+x, the guns' side) down toward the orbit's centre */
 export const GUNSHIP_BANK_RAD = -0.3;
 
@@ -47,11 +49,15 @@ function airframeOf(tankRoot: THREE.Object3D): Airframe | null {
  *  The anchor (`tankRoot`, an empty group) keeps the visibility the camera rig and the streamer give it: the rig hides
  *  the pilot's own vehicle on every frame its gimbal lens (inside the airframe, at the orbit centre) is the camera and
  *  shows it for an external pose (the killcam, the ending's replay and orbit), so the caller passes it straight on. */
-export function syncGunshipVisual(tankRoot: THREE.Object3D, position: THREE.Vector3, yaw: number, dt: number, visible: boolean): void {
+export function syncGunshipVisual(tankRoot: THREE.Object3D, position: THREE.Vector3, yaw: number, dt: number, visible: boolean,
+  eye: THREE.Vector3 | null = null): void {
   const model = airframeOf(tankRoot);
   if (model) {
     if (tankRoot.parent && model.root.parent !== tankRoot.parent) tankRoot.parent.add(model.root);
-    model.root.visible = visible;
+    // (ac130-fx-228 r3, the engineering critic: every AC-130 ending's camera blends out from the gimbal lens, at the
+    // airframe's own origin, so its first second filmed the plane from inside) a camera inside the hull never draws it;
+    // leaving, it looks away from the aircraft toward the ending's focus, so the airframe is behind it when it returns
+    model.root.visible = visible && !(eye && eye.distanceToSquared(position) < GUNSHIP_HULL_CLEAR_M * GUNSHIP_HULL_CLEAR_M);
     model.root.position.copy(position);
     model.root.rotation.set(0, yaw, GUNSHIP_BANK_RAD);
     model.spin(dt);

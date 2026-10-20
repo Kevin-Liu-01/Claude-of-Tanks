@@ -279,7 +279,8 @@ export function createBattlePresentationRuntime({
     // replay and orbit, an external camera): before, it was never drawn for the player, so a replay of a gunship kill
     // showed an empty sky. (r2) The rig's own-vehicle visibility says which: its aerial branch hides the gunship pilot's
     // vehicle every lens frame, an external pose shows it (engine/cameraRig.ts applyPlayerVisibility)
-    if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0, visual.root.visible);
+    // (r3) and never while the camera is inside its hull (the ending's first beat leaves from the lens)
+    if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0, visual.root.visible, camera.position);
     else hideGunshipVisual(visual.root);
   };
 

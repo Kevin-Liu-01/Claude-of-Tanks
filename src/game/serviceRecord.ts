@@ -152,6 +152,8 @@ export interface ServiceBattle {
   mode: string;
   mapId: string;
   vehicleId: string;
+  /** (ac130-fx-228 r3) the player flew the AC-130 that battle (its end roster's own row): the row names the aircraft */
+  aircraft?: boolean;
   kills: number;
   damage: number;
   durationS: number;
@@ -342,6 +344,7 @@ function sanitizeBattle(value: RuntimeValue): ServiceBattle | null {
     mode: text(source.mode) || 'standard',
     mapId: text(source.mapId),
     vehicleId: text(source.vehicleId),
+    ...(source.aircraft === true ? { aircraft: true } : {}),
     kills: count(source.kills),
     damage: count(source.damage),
     durationS: count(source.durationS),
@@ -761,8 +764,11 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     addUnique(store.nations, ctx.playerNation(), 64);
     addUnique(store.modes, mode, 32);
     const achievements = evaluateAchievements(store, now);
+    // (ac130-fx-228 r3, the engineering critic: an AC-130 battle's row showed the garage tank beside its kills) the end
+    // roster's own row says the player flew the gunship (state.ts / battlePresentation.ts resultRoster)
+    const aircraft = ownRow?.aircraft === true;
     store.history.unshift({
-      at: now, result, mode, mapId, vehicleId: tracker.vehicleId,
+      at: now, result, mode, mapId, vehicleId: tracker.vehicleId, ...(aircraft ? { aircraft: true } : {}),
       kills: tracker.kills, damage: Math.round(tracker.damage), durationS: Math.round(durationS), survived: alive,
       shots: tracker.aimedShots, hits: tracker.aimedHits, bestChain: tracker.bestChain,
       medals, achievements, trace: tracker.trace,

@@ -122,6 +122,16 @@ const src = (path) => readFileSync(resolve(ROOT, path), 'utf8');
   for (let frame = 0; frame < 3; frame++) syncGunshipVisual(anchor.root, pos, 0, 1 / 60, anchor.root.visible);
   assert.equal(anchor.root.visible, true, "the sync never overwrites the rig's visibility");
   assert.equal(model.visible, true, 'drawn for the external pose, on every frame after it');
+  // (r3, the engineering critic: the ending's first beat leaves from the lens, inside the airframe) a camera inside the
+  // hull never draws it, an external one clear of it does
+  syncGunshipVisual(anchor.root, pos, 0, 1 / 60, true, new THREE.Vector3(0, 240.12, 90));
+  assert.equal(model.visible, false, 'a camera at its origin (the lens, the ending leaving it) does not see it from inside');
+  syncGunshipVisual(anchor.root, pos, 0, 1 / 60, true, new THREE.Vector3(18, 236, 90));
+  assert.equal(model.visible, false, 'nor one within its wingspan');
+  syncGunshipVisual(anchor.root, pos, 0, 1 / 60, true, new THREE.Vector3(60, 250, 40));
+  assert.equal(model.visible, true, 'a camera clear of it sees it');
+  assert.match(src('src/game/battlePresentationRuntime.ts'), /syncGunshipVisual\(visual\.root, state\.pos, state\.yaw, dtFrame \?\? 0, visual\.root\.visible, camera\.position\)/,
+    'the battle passes its camera');
   anchor.dispose();
   const rig = src('src/engine/cameraRig.ts');
   assert.match(rig, /if \(aerialCamera\.update\(player, camInput, dt\)\) \{[\s\S]{0,400}applyPlayerVisibility\(player, player\.aerial\?\.kind !== 'gunship'\);/,
@@ -129,8 +139,8 @@ const src = (path) => readFileSync(resolve(ROOT, path), 'utf8');
   assert.match(rig.slice(rig.indexOf('setExternalPose(pos: THREE.Vector3')), /^[\s\S]{0,600}applyPlayerVisibility\(getPlayer\(\), true\);/,
     'an external pose (the ending, a replay) shows it');
   assert.match(src('src/game/battlePresentationRuntime.ts'),
-    /if \(entity\.aerial\?\.kind === 'gunship'\) syncGunshipVisual\(visual\.root, state\.pos, state\.yaw, dtFrame \?\? 0, visual\.root\.visible\);/,
-    "the presentation passes the rig's visibility straight on (never a distance test)");
+    /if \(entity\.aerial\?\.kind === 'gunship'\) syncGunshipVisual\(visual\.root, state\.pos, state\.yaw, dtFrame \?\? 0, visual\.root\.visible, camera\.position\);/,
+    "the presentation passes the rig's visibility straight on (the lens is the rig's call), with its camera for the hull test only");
   assert.doesNotMatch(src('src/game/gunshipVisual.ts'), /tankRoot\.visible = false/, "the sync never hides the anchor itself");
   assert.match(src('src/ui/hud.ts'), /flier\?\.aerial\?\.kind !== 'gunship' \|\| flier\.visual\?\.root\?\.visible === false/,
     "the gimbal's sight shows only through the lens");

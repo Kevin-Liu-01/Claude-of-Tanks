@@ -72,6 +72,11 @@ assert.match(hud, /vehicleName\(tank\)/, 'the HUD rosters name a gunship pilot t
 assert.match(killcam, /attackerLabel\(event\)/, "the killcam's header and lines");
 assert.match(killcam, /killSourceIdentity\(event\.attackerSource\)/, "the killcam's killer card");
 assert.match(shotInfo, /attackerLabel\(ev\)/, 'the battle report');
+// (r3, the engineering critic's mutations M9 and M11 passed the text checks above) the killcam reads the shooter's own
+// vehicle name only as the killer card's fallback after the source's label, and the battle report never reads it bare
+assert.deepEqual(killcam.match(/event\.attackerName/g), ['event.attackerName'], "the killcam reads the attacker's vehicle name once");
+assert.match(killcam, /const killerName = source\?\.label \|\| event\.attackerName \|\|/, "the killer card: the source's label first");
+assert.equal(/\bev\.attackerName\b/.test(shotInfo), false, "the battle report names the attacker through attackerLabel only");
 assert.match(battleLoad, /killSourceIdentity\('ac130'\)/, 'the loading roster');
 assert.match(record, /killSourceIdentity\(step\.source\)/, 'the service record');
 assert.match(endScreen, /result\.aircraft/, 'the end screen draws the aircraft icon');
