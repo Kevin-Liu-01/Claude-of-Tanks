@@ -46,6 +46,12 @@ export interface PathwayPlan {
   /** (229 b1 r1) inside the town too, only the fronted stretches, joined over open gaps of up to this many metres (a town
    *  without a wall: no pavement along open ground or a long vacant lot); absent: inside, every stretch corner to corner. */
   readonly openGapM?: number;
+  /** (229 b2 r3) the pavement's outer edge changes by at most this many metres per metre along the street (a front set
+   *  back next to an open lot: no zig-zag of flags); absent: the 3-tap ease only. */
+  readonly walkEase?: number;
+  /** (229 b2 r3) runs shorter than this many metres are not laid (no stub of flags between a junction and a house);
+   *  absent: 3 m. */
+  readonly minRunM?: number;
   /** Where a main street's pavement meets a square's flush walk: its kerb ramps down over 2 m to flush. */
   readonly mouths: readonly CivicPoint[];
 }

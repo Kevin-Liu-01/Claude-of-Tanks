@@ -360,10 +360,17 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
             samples[k].outer = Math.min(samples[a].outer, samples[b].outer);
           }
         }
-        if ((j - i) * step >= 3) {
+        if ((j - i) * step >= (plan.minRunM ?? 3)) {
           // the outer edge eased to its narrower neighbour's (no flag's corner into a house where a front steps)
           const outer = samples.slice(i, j + 1).map((s) => s.outer);
           for (let k = i; k <= j; k++) samples[k].outer = Math.min(outer[k - i], outer[Math.max(0, k - i - 1)], outer[Math.min(j - i, k - i + 1)]);
+          // (229 b2 r3, the blind critics: "a zig-zag, wedge-ended slab" where fronts and open lots alternate) the edge's
+          // change along the street capped both ways: it narrows only as fast as it may widen
+          if (plan.walkEase !== undefined) {
+            const d = plan.walkEase * step;
+            for (let k = i + 1; k <= j; k++) samples[k].outer = Math.min(samples[k].outer, samples[k - 1].outer + d);
+            for (let k = j - 1; k >= i; k--) samples[k].outer = Math.min(samples[k].outer, samples[k + 1].outer + d);
+          }
           runsByRoad.push({ ri, side, samples, from: i, to: j });
         }
         i = j + 1;

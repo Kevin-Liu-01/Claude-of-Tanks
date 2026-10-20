@@ -22,6 +22,10 @@ export const BLACKGLASS_CIVIC_PLAN: CivicPlan = {
     // pavements out to the facades up to 5 m back
     maxWalkM: 5.0,
     openWalkM: 2.0,
+    // (229 b2 r3, the blind critics' physical major: a zig-zag slab on the tram street's corner lot, a stub of kerb on the
+    // carriageway) the edge eased at 0.35 m a metre, no run under 8 m
+    walkEase: 0.35,
+    minRunM: 8,
     lane: { face: 0.10, maxWalkM: 1.6, openWalkM: 1.2 },
     exclude: [],
     gates: [],

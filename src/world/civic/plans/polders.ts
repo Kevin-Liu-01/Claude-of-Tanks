@@ -46,6 +46,8 @@ export const POLDERS_CIVIC_PLAN: CivicPlan = {
     // (229 b2 r2, the blind critics: the stoep ran on as a loose ribbon across the open green) only before the fronts,
     // joined over a farmyard's gap of up to 6 m
     openGapM: 6,
+    // (229 b2 r3, the critics: a loose klinker patch on the lane) no stoep under 6 m
+    minRunM: 6,
     exclude: [ROOM],
     gates: [],
     inside: [[[-178, -96], [68, -96], [68, 122], [-178, 122]]],
@@ -101,9 +103,9 @@ export const POLDERS_CIVIC_PLAN: CivicPlan = {
       { rect: { x0: -75, x1: -48.6, z0: -1.2, z1: 1.2 }, kind: 'setts' },
       { rect: { x0: -31.4, x1: -15.5, z0: -1.2, z1: 1.2 }, kind: 'setts' },
       { rect: { x0: NW.x1 + 1.2, x1: -17.5, z0: ROSE.z - 1.2, z1: ROSE.z + 1.2 }, kind: 'setts' },
-      // hard standings under the hay wagon and the Traction Avant (the critics: "parked on the grass of the green")
+      // the hay wagon's hard standing (229 b2 r3, the critics: the Traction Avant's own pad "reads as a parking bay": the car
+      // stands on the verge by the causeway without one)
       { rect: { x0: -41.5, x1: -35.5, z0: 32.6, z1: 35.8 }, kind: 'setts' },
-      { rect: { x0: -21, x1: -15, z0: 11.4, z1: 15.6 }, kind: 'setts' },
     ],
     monument: null,
     trees: {
