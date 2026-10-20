@@ -5,7 +5,9 @@
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { SELFTEST_GRAPH_GUARD } from './run-selftests.mjs';
+// The runner's flag (tools/run-selftests.mjs SELFTEST_GRAPH_GUARD, held there by run-selftests.selftest); spelled here so
+// this receipt's inputs stay the guard alone.
+const SELFTEST_GRAPH_GUARD = `--import=${new URL('./assert-graph-guard.mjs', import.meta.url).href}`;
 
 const run = (body) => spawnSync(process.execPath, ['--max-old-space-size=512', '--input-type=module', '-e', body], {
   encoding: 'utf8', timeout: 60_000,

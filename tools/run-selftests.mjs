@@ -69,6 +69,19 @@ export const SELFTEST_FRESH_FILES = Object.freeze([
   'src/mp/wire/wireFuzz.selftest.mjs',
 ]);
 
+// Receipts the cache would run live (a browser or git tool is in their closure) that never drive one against this
+// checkout: keyed by their inputs like any other receipt (229; tools/selftest-cache.mjs fixtureLive).
+export const SELFTEST_FIXTURE_LIVE_FILES = Object.freeze([
+  // the changed-only chain, resolver and world keys run on fixture repositories they make in tmpdir
+  'tools/changed-only/chain.selftest.mjs',
+  'tools/changed-only/resolver.selftest.mjs',
+  'tools/changed-only/world.selftest.mjs',
+  // a static partition of this checkout's sources (reads only files; the step tools are data to it, never run)
+  'tools/changed-only/fleet-partition.selftest.mjs',
+  // the release plan and its CLI driven with fake runners; the planned tools are argument lists
+  'tools/tank-release-plan.selftest.mjs',
+]);
+
 // Test-speed R9a (2026-10-16): a judge merges the records other receipts of the same run wrote
 // and plays whatever nobody else plays in the run. server/battlePacing.selftest.mjs judges the
 // 132 matches its eight one-thread shards (server/battlePacingShard<n>.selftest.mjs) played. The
@@ -346,7 +359,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     // Gate P18: proofs are keyed on the root commit; the first run adopts the URL-keyed store.
     const cacheLocation = resolveSelftestCacheDir(REPO_ROOT, childEnv);
     if (cacheLocation.adoption === 'linked') console.log(`[selftests] result cache now keyed on the ${cacheLocation.identity}; adopted ${cacheLocation.legacyDir}`);
-    const cache = createSelftestCache({ alwaysRun: SELFTEST_FRESH_FILES, env: selftestCacheEnv(childEnv), cacheDir: cacheLocation.dir });
+    const cache = createSelftestCache({ alwaysRun: SELFTEST_FRESH_FILES, fixtureLive: SELFTEST_FIXTURE_LIVE_FILES,
+      env: selftestCacheEnv(childEnv), cacheDir: cacheLocation.dir });
     const runtimes = createRuntimeIndex(cacheLocation.dir);
     if (command.shard) console.log(`[selftests] shard ${command.shard.index}/${command.shard.count}: ${command.shard.receipts} of ${command.shard.selected} selected receipts (~${(command.shard.loadMs / 60_000).toFixed(1)} min weighted; partition ${command.shard.partition})`);
     else if (command.only.length) console.log(`[selftests] --only=${command.only.join(',')}: ${suite.length} receipts`);

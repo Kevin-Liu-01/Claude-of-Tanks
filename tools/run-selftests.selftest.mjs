@@ -5,7 +5,7 @@ import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
-import { runSelftestFile, runSelftestSuite, SELFTEST_GRAPH_GUARD, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
+import { runSelftestFile, runSelftestSuite, SELFTEST_FIXTURE_LIVE_FILES, SELFTEST_GRAPH_GUARD, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
   selftestCacheEnv, selftestRunDirectory, SELFTEST_LAST_FILES, SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
 import { createSelftestCache } from './selftest-cache.mjs';
 // The runners read COT_SHOTS_LOCK_TIMEOUT_MS (landing chains export three hours); this receipt pins the default wait.
@@ -344,6 +344,14 @@ assert.equal(selftestChildEnv(selftestChildEnv(capped)).NODE_OPTIONS, selftestCh
 assert.equal(capped.NODE_OPTIONS, '--max-old-space-size=4096', 'never mutate parent environment');
 assert.deepEqual(selftestCacheEnv(selftestChildEnv(capped)).NODE_OPTIONS, '--max-old-space-size=4096', 'the guard never keys a proof');
 assert.equal('NODE_OPTIONS' in selftestCacheEnv(selftestChildEnv({})), false);
+assert.equal(SELFTEST_GRAPH_GUARD, `--import=${new URL('./assert-graph-guard.mjs', import.meta.url).href}`,
+  'assert-graph-guard.selftest spells the same flag');
+// every fixture-live receipt is registered (a stale entry would silently key nothing)
+{
+  const { SELFTEST_SUITES } = await import('./selftest-suites.mjs');
+  const registered = new Set(Object.values(SELFTEST_SUITES).flat());
+  for (const file of SELFTEST_FIXTURE_LIVE_FILES) assert.ok(registered.has(file), `${file} is a registered receipt`);
+}
 const originalEnv = { EXAMPLE: 'preserved' }, cachedEnv = selftestChildEnv(originalEnv);
 assert.equal(cachedEnv.EXAMPLE, 'preserved');
 assert.equal(originalEnv.NODE_COMPILE_CACHE, undefined, 'never mutate parent environment');

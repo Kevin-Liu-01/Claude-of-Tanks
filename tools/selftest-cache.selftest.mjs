@@ -158,6 +158,15 @@ assert.equal(make().lookup('src/environment-object.selftest.mjs').key, undefined
   const browser = make(), key = browser.inputKey('src/browser.selftest.mjs').key;
   browser.recordPass('src/browser.selftest.mjs', key);
   assert.equal(make().lookup('src/browser.selftest.mjs').skip, false, 'real browser checks cannot be certified by a stale source-only PASS');
+  // 229: a receipt that only names a browser or git tool (a plan, a fixture repository) is keyed when it is listed
+  write('src/plan.selftest.mjs', 'import "./browser.selftest.mjs";');
+  const listed = make({ fixtureLive: ['src/plan.selftest.mjs'] }), planKey = listed.lookup('src/plan.selftest.mjs').key;
+  assert.ok(planKey, 'a listed receipt is keyed');
+  listed.recordPass('src/plan.selftest.mjs', planKey);
+  assert.equal(make({ fixtureLive: ['src/plan.selftest.mjs'] }).lookup('src/plan.selftest.mjs').skip, true, 'and reuses its PASS');
+  assert.equal(make().lookup('src/plan.selftest.mjs').skip, false, 'an unlisted one stays live');
+  write('src/browser.selftest.mjs', 'import browser from "puppeteer"; export const b = 2;');
+  assert.equal(make({ fixtureLive: ['src/plan.selftest.mjs'] }).lookup('src/plan.selftest.mjs').skip, false, 'its inputs still key it');
 }
 // 2026-10-16 (the 226 audit): only node:path joins name files. `parts.join('')`, an array join and a Promise resolve
 // name none; a named, aliased, namespace or posix path join still does.

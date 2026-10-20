@@ -39,10 +39,13 @@ export function defaultSelftestCacheDir(root, env = process.env) {
 }
 
 export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.env,
-  argv = process.argv, nodeVersion = process.version, alwaysRun = [] } = {}) {
+  argv = process.argv, nodeVersion = process.version, alwaysRun = [], fixtureLive = [] } = {}) {
   cacheDir ??= defaultSelftestCacheDir(root, env);
   const enabled = env.COT_SELFTEST_CACHE !== '0' && !argv.includes('--all');
   const freshFiles = new Set(alwaysRun);
+  // Receipts whose closure holds a browser or git tool they never drive against this checkout (fixtures, plans):
+  // keyed by their inputs like any other receipt (run-selftests.mjs SELFTEST_FIXTURE_LIVE_FILES names why).
+  const keyedLive = new Set(fixtureLive);
   const fileHashes = new Map(), dirFingerprints = new Map(), edges = new Map(), closures = new Map();
   const executableEdges = new Map();
   const metadata = new Map();
@@ -203,7 +206,7 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     if (!enabled) return { skip: false, reason: 'cache disabled' };
     if (freshFiles.has(receipt)) return { skip: false, reason: 'fresh environment/timing check' };
     const closure = closureOf(resolve(root, receipt));
-    if ([...closure].some(file => metadata.get(file)?.browser || metadata.get(file)?.git)) {
+    if (!keyedLive.has(receipt) && [...closure].some(file => metadata.get(file)?.browser || metadata.get(file)?.git)) {
       return { skip: false, reason: 'browser or Git state must be checked live' };
     }
     if ([...closure].some(file => metadata.get(file)?.opaqueImport || metadata.get(file)?.opaqueEnvironment || unresolvedImports.has(file))) {
