@@ -123,13 +123,13 @@ function inPlot(p: CivicPlot, x: number, z: number, m = 0): boolean {
   return Math.abs(dx * c - dz * s) <= p.w / 2 + m && Math.abs(dx * s + dz * c) <= p.d / 2 + m;
 }
 
-/** A road resampled every STEP metres along its length: points, unit tangents, and the running length. */
-function resample(road: Road): { p: Array<[number, number]>; t: Array<[number, number]>; s: number[] } {
+/** A road resampled every `step` metres along its length: points, unit tangents, and the running length. */
+function resample(road: Road, step = STEP): { p: Array<[number, number]>; t: Array<[number, number]>; s: number[] } {
   const p: Array<[number, number]> = [], t: Array<[number, number]> = [], s: number[] = [];
   let acc = 0;
   for (let i = 0; i + 1 < road.length; i++) {
     const [ax, az] = road[i], [bx, bz] = road[i + 1], len = Math.hypot(bx - ax, bz - az);
-    const n = Math.max(1, Math.round(len / STEP));
+    const n = Math.max(1, Math.round(len / step));
     for (let k = i ? 1 : 0; k <= n; k++) {
       const f = k / n;
       p.push([ax + (bx - ax) * f, az + (bz - az) * f]);
@@ -168,6 +168,8 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
   const debug: PathwayBuild['debug'] = [];
   const footprints: PathwayFootprint[] = [];
   const m = new CivicMesh(ctx.ground), lean = ctx.tier === 'mobile';
+  // (229) the style's sample step along a street and its flags' courses at most (a city's big cast slabs: fewer, longer)
+  const step = style.pavement.step ?? STEP, maxCourses = style.pavement.maxCourses ?? Infinity;
   const K = plan.kerbM, KW = style.kerb.width, W0 = K + KW;
   const [fNear, fFar] = plan.frontage;
   const kerbCol = hexRgb(style.kerb.hex), flagCol = hexRgb(style.pavement.hex), jointCol = hexRgb(style.pavement.joint);
@@ -245,7 +247,7 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
   // ---------------------------------------------------------------------------------------------- the runs
   const runsByRoad: Array<{ ri: number; side: number; samples: Sample[]; from: number; to: number }> = [];
   for (const ri of kerbed) {
-    const road = ctx.roads[ri], rs = resample(road), pr = prof(ri);
+    const road = ctx.roads[ri], rs = resample(road, step), pr = prof(ri);
     for (const side of [-1, 1]) {
       const samples: Sample[] = rs.p.map(([x, z], i) => {
         const [tx, tz] = rs.t[i];
@@ -388,9 +390,9 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
     // its kerb units and its flags, sample to sample
     const n = run.to - run.from;
     census.runs = (census.runs ?? 0) + 1;
-    census.kerbM = (census.kerbM ?? 0) + n * STEP;
+    census.kerbM = (census.kerbM ?? 0) + n * step;
     const course = style.pavement.course, gap = 0.008, face = prof(run.ri).face;
-    census[classOf(run.ri) === 'main' ? 'kerbMainM' : 'kerbLaneM'] = (census[classOf(run.ri) === 'main' ? 'kerbMainM' : 'kerbLaneM'] ?? 0) + n * STEP;
+    census[classOf(run.ri) === 'main' ? 'kerbMainM' : 'kerbLaneM'] = (census[classOf(run.ri) === 'main' ? 'kerbMainM' : 'kerbLaneM'] ?? 0) + n * step;
     for (let k = run.from; k < run.to; k++) {
       const a = S[k], b = S[k + 1];
       const fa = face * mouthRamp(a.x + a.nx * K, a.z + a.nz * K), fb = face * mouthRamp(b.x + b.nx * K, b.z + b.nz * K);
@@ -398,7 +400,7 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
       const ga = ta - fa, gb = tb - fb;
       // the kerb: its unit's joint every other sample (units of about 1.0-1.4 m), its arris on the road side rounded
       const ka: [number, number] = [a.x + a.nx * (K + KW / 2), a.z + a.nz * (K + KW / 2)], kb: [number, number] = [b.x + b.nx * (K + KW / 2), b.z + b.nz * (K + KW / 2)];
-      const joint = (k - run.from) % 2 === 1;
+      const joint = step >= 1.8 || (k - run.from) % 2 === 1;
       const kbj: [number, number] = joint ? [kb[0] - (kb[0] - ka[0]) * 0.006, kb[1] - (kb[1] - ka[1]) * 0.006] : kb;
       const side: [number, number] = [a.nx, a.nz];
       const col = toned(kerbCol, Math.floor((k - run.from) / 2), run.ri * 7 + run.side, 0.06, 51);
@@ -426,7 +428,7 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
       m.quad([A1[0], surf(a, oa, ta, oa), A1[1]], [B1[0], surf(b, ob, tb, ob), B1[1]], [B1[0], footB, B1[1]], [A1[0], footA, A1[1]],
         scaleRgb(jointCol, 1.2), [a.nx, 0, a.nz]);
       // the flags in courses along the street, each course's joints broken against the next
-      const width = Math.min(oa, ob) - W0, courses = lean ? 1 : Math.max(1, Math.round(width / course)), cw = width / courses;
+      const width = Math.min(oa, ob) - W0, courses = lean ? 1 : Math.min(maxCourses, Math.max(1, Math.round(width / course))), cw = width / courses;
       for (let q = 0; q < courses; q++) {
         const o0 = W0 + q * cw + gap, o1 = W0 + (q + 1) * cw - gap;
         const split = !lean && ((k - run.from) + q) % 2 === 0;
@@ -442,7 +444,7 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
             [q11[0], yA1 + (yB1 - yA1) * u1, q11[1]], [q01[0], yA1 + (yB1 - yA1) * u0, q01[1]], fc);
         }
       }
-      census.walkM2 = (census.walkM2 ?? 0) + STEP * width;
+      census.walkM2 = (census.walkM2 ?? 0) + step * width;
       footprints.push({ pts: [P(a, K), P(b, K), P(b, Math.max(ob, W0 + 0.3)), P(a, Math.max(oa, W0 + 0.3))], foot: Math.min(ga, gb) - 0.1 });
     }
     const s0 = S[run.from], s1 = S[run.to];

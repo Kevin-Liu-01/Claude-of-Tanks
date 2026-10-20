@@ -3,9 +3,13 @@
 // mask and the receipts read the plans in Node).
 import type { CivicAreaPlan, CivicPlan, CivicRect } from '../types.ts';
 import { URBAN_CIVIC_PLAN } from './urban.ts';
+import { RUINSPIRES_CIVIC_PLAN } from './ruinspires.ts';
+import { CLIFFBRIDGE_CIVIC_PLAN } from './cliffbridge.ts';
 
 const PLANS: Readonly<Record<string, CivicPlan>> = Object.freeze({
   urban: URBAN_CIVIC_PLAN,
+  ruinspires: RUINSPIRES_CIVIC_PLAN,
+  cliffbridge: CLIFFBRIDGE_CIVIC_PLAN,
 });
 
 /** The maps with a civic plan (the receipts iterate them). */
@@ -67,7 +71,7 @@ export function civicLawnTest(mapId: string | null | undefined, inset = 0.65): (
         if (Math.hypot(x - p.from[0] - dx * t, z - p.from[1] - dz * t) < p.width / 2 + 0.25) return false;
       }
       const f = bed.feature;
-      if (f?.kind === 'flowerRondell' && Math.hypot(x - f.x, z - f.z) < f.ring + 0.2) return false;
+      if ((f?.kind === 'flowerRondell' || f?.kind === 'fountain') && Math.hypot(x - f.x, z - f.z) < f.ring + 0.2) return false;
       if (f?.kind === 'hedgeArc' && Math.abs(Math.hypot(x - f.x, z - f.z) - f.r) < 0.45) return false;
       return !monuments.some((mo) => Math.hypot(x - mo.x, z - mo.z) < 3.1);
     }

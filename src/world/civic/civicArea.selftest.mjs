@@ -117,9 +117,10 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
     assert.equal(civicTrees.length, area.trees.stations.length, `${tag}: the trees stand at their stations`);
     const benches = built.destructibles.filter((d) => d.kind === 'bench' && d.slot >= 0
       && area.furniture.some((f) => f.kind === 'bench' && Math.hypot(f.x - d.x, f.z - d.z) < 0.05)).length;
-    assert.ok(benches >= 10, `${tag}: ${benches} benches (10)`);
+    const T = area.targets;
+    assert.ok(benches >= T.benches, `${tag}: ${benches} benches (${T.benches})`);
     const lawn = area.lawns.reduce((a, r) => a + (r.x1 - r.x0) * (r.z1 - r.z0), 0);
-    assert.ok(lawn >= 900, `${tag}: ${lawn.toFixed(0)} m² of green (900)`);
+    assert.ok(lawn >= T.lawnM2, `${tag}: ${lawn.toFixed(0)} m² of green (${T.lawnM2})`);
     // ---- the fill: room cells more than 4 m from anything (records, trees, beds, paving), the arms and the roundel aside
     // (the census's things: every collision record's footprint box by the room — the furniture, a light building poking
     // into a corner, a house's corner — and the trunks)
@@ -207,7 +208,7 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
     const baseLamps = base.built.destructibles.filter((d) => d.kind === 'lamp' && d.slot >= 0).length;
     assert.ok(lamps.length >= baseLamps + area.lamps.length, `${tag}: lamps ${lamps.length} (the map's ${baseLamps} and the area's ${area.lamps.length})`);
     const roundCrossing = lamps.filter((l) => Math.hypot(l.x - C.x, l.z - C.z) <= 45).length;
-    assert.ok(roundCrossing >= 12, `${tag}: ${roundCrossing} lamps within 45 m of the crossing (12)`);
+    assert.ok(roundCrossing >= T.lampsAround, `${tag}: ${roundCrossing} lamps within 45 m of the crossing (${T.lampsAround})`);
     for (const l of lamps) assert.ok(!inStructure(l.x, l.z, 0.3), `${tag}: the lamp at (${l.x.toFixed(1)}, ${l.z.toFixed(1)}) out of every structure`);
     // ---- the pad's airfield dressing off
     if (area.pad >= 0) {
@@ -218,9 +219,9 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
     console.log(`${tag}: ${records.length} records in the room, ${civicTrees.length} trees, ${benches} benches, ${lamps.length} lamps (${roundCrossing} round the crossing), `
       + `open share ${(share * 100).toFixed(1)} %, largest free disc r ${largest.toFixed(1)} m, lanes ${JSON.stringify(widths)}, vetoed ${JSON.stringify(built.group.userData.civic?.vetoed ?? {})}`);
     // (live records: the props' destructibles and the trees' trunks)
-    assert.ok(records.length + civicTrees.length >= 150, `${tag}: ${records.length} records and ${civicTrees.length} trunks in the room (150)`);
-    assert.ok(share <= 0.02, `${tag}: ${(share * 100).toFixed(1)} % of the room's paving more than 4 m from anything (off the arms, the roundel, the corridors and the lanes; 2 %)`);
-    assert.ok(largest <= 9.0, `${tag}: the largest free disc ${largest.toFixed(1)} m off the arms, the corridors and the lanes (9)`);
+    assert.ok(records.length + civicTrees.length >= T.records, `${tag}: ${records.length} records and ${civicTrees.length} trunks in the room (${T.records})`);
+    assert.ok(share <= T.openShare, `${tag}: ${(share * 100).toFixed(1)} % of the room's paving more than 4 m from anything (off the arms, the roundel, the corridors and the lanes; ${(T.openShare * 100).toFixed(0)} %)`);
+    assert.ok(largest <= T.largestDisc, `${tag}: the largest free disc ${largest.toFixed(1)} m off the arms, the corridors and the lanes (${T.largestDisc})`);
   }
 }
 console.log(`civicArea.selftest: ${plans.CIVIC_PLAN_MAPS.join(', ')} — the areas filled, seated, lit and stream-neutral — ok`);

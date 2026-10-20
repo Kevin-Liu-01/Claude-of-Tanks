@@ -126,6 +126,8 @@ export const LAMP_FORMS: Readonly<Record<string, LampSpec>> = Object.freeze({
   blackglass: { form: 'bund-column', kind: 'victorian', metal: 0x2a3a2e }, foundry: { form: 'gaslaterne', kind: 'gas', metal: 0x3a3a38 },
   railyard: { form: 'yard-floods', kind: 'yard', metal: 0x7a7a76 }, urban: { form: 'gaslaterne', kind: 'gas', metal: 0x2e302e, candela: 100 },
   ruinspires: { form: 'cobra-head-shot-out', kind: 'cobra', metal: 0x8a8c8a, broken: true },
+  // (229 b1) Ronda's plazas: the cast-iron column lamp (the farola fernandina's line), black iron
+  cliffbridge: { form: 'bund-column', kind: 'victorian', metal: 0x1c1c1c },
 });
 const LAMP_DEFAULT: LampSpec = { form: 'peitschenmast', kind: 'whip', metal: 0x9aa0a0 };
 /** The map's lamp as a form (props.ts's toppled posts lie in it: streetForms.ts toppledLamp). */

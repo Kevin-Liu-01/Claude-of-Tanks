@@ -63,6 +63,8 @@ export interface CivicBed {
   /** a round flower bed with its gravel ring at the paths' crossing, or a memorial grove's forecourt and hedge */
   readonly feature: { readonly kind: 'flowerRondell'; readonly x: number; readonly z: number; readonly r: number; readonly ring: number }
     | { readonly kind: 'hedgeArc'; readonly x: number; readonly z: number; readonly r: number; readonly height: number; readonly fromDeg: number; readonly toDeg: number }
+    /** (229) a parterre's fountain (an Andalusian glorieta): its stone basin `r` across its rim, its gravel ring to `ring` */
+    | { readonly kind: 'fountain'; readonly x: number; readonly z: number; readonly r: number; readonly ring: number }
     | null;
 }
 
@@ -134,6 +136,11 @@ export interface CivicAreaPlan {
   readonly steps: ReadonlyArray<{ readonly x: number; readonly z: number; readonly width: number; readonly yawDeg: number; readonly count: number; readonly rise: number }>;
   /** The beds' and lots' ground the terrain paints lawn, not paving (the terrain's mask reads these). */
   readonly lawns: readonly CivicRect[];
+  /** (229) the area's own fill and dressing targets the receipt holds it to (each square its size and place: Steinburg's
+   *  green asks 900 m² of lawn, a Sarajevo plaza less): records and trunks in the room, benches, lawn (m²), lamps within
+   *  45 m of the centre, the open share's ceiling and the largest free disc's (m) */
+  readonly targets: { readonly records: number; readonly benches: number; readonly lawnM2: number; readonly lampsAround: number;
+    readonly openShare: number; readonly largestDisc: number };
 }
 
 /** A map's civic plan: its pathway architecture and its civic areas. */

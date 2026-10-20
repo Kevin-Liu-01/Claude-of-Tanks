@@ -211,5 +211,6 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
     fountainRing: { x: -62, z: 47, r: 5.5 },
     steps: [{ x: -75.8, z: 39.9, width: 6, yawDeg: 180, count: 2, rise: 0.12 }],
     lawns: [NW, SW],
+    targets: { records: 150, benches: 10, lawnM2: 900, lampsAround: 12, openShare: 0.02, largestDisc: 9 },
   }],
 };

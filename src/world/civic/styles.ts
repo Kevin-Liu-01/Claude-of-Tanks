@@ -20,6 +20,9 @@ export interface RegionalCivicStyle {
   readonly pavement: {
     /** flag courses: across (m) and the run of lengths along (m) */
     readonly course: number; readonly length: readonly [number, number];
+    /** (229) the run's sample step along its street (m; absent 1.0) and its courses at most across (absent: as the width
+     *  takes them): a city's cast slabs drawn as a few long courses, not 40 cm flags */
+    readonly step?: number; readonly maxCourses?: number;
     readonly hex: number;
     /** each flag's tone spread (±) */
     readonly tone: number;
@@ -65,6 +68,48 @@ export const CIVIC_STYLES: Readonly<Record<string, RegionalCivicStyle>> = Object
     hedge: 0x2c4a24,
     grate: { iron: 0x2a2a28, frame: 0x7f7c75 },
     steps: 0xb8a07c,
+  }),
+  // (229 b1) Sarajevo's Yugoslav precast (Ruinspires, 1992-96): concrete kerbs, 40 cm cast slabs, a concrete channel, the
+  // planter beds' cast walls (no railing), worn lawns
+  sarajevo: Object.freeze<RegionalCivicStyle>({
+    id: 'sarajevo',
+    kerb: { width: 0.18, face: 0.15, unit: [1.0, 1.0], hex: 0x9c9a94 },
+    pavement: { course: 0.4, length: [0.4, 0.4], hex: 0x8e8b84, tone: 0.08, joint: 0x55524c, step: 2.0, maxCourses: 2 },
+    gutter: { rows: 1, width: 0.30, dish: 0.015, hex: 0x6f6d68 },
+    bands: { granite: 0x8a8780, basalt: 0x4c4a47, sett: 0x7e7a72, bay: 0x9a968e },
+    edging: {
+      kerb: { width: 0.15, face: 0.25, hex: 0x9c9a94 },
+      wall: { width: 0.25, height: 0.45, hex: 0x8a8780, coping: 0.02 },
+      pier: { size: 0.35, height: 0.6, hex: 0x8a8780 },
+      railing: null,
+    },
+    path: { hex: 0x7c7a74, edgeHex: 0x8e8b84, worn: 0x6e6a60 },
+    lawn: { bare: 0x6e6248, greens: [0x4f6230, 0x58683a, 0x5e6e3c, 0x55663a] },
+    flowers: [0xb84a3a, 0x9a3a32, 0xc8a040, 0xe0d8c8],
+    hedge: 0x34482a,
+    grate: { iron: 0x2c2c2a, frame: 0x8a8780 },
+    steps: 0x9a978f,
+  }),
+  // (229 b1) Ronda's plazas (Aegis Crossing, 1972): granite bordillos, small pressed tiles, albero sand paths, whitewashed
+  // bed walls under a low wrought-iron rail
+  andalusian: Object.freeze<RegionalCivicStyle>({
+    id: 'andalusian',
+    kerb: { width: 0.20, face: 0.12, unit: [0.8, 1.2], hex: 0xa8a49a },
+    pavement: { course: 0.2, length: [0.2, 0.2], hex: 0x9a958a, tone: 0.06, joint: 0x6a665e, step: 1.5, maxCourses: 2 },
+    gutter: { rows: 2, width: 0.30, dish: 0.03, hex: 0x8a8270 },
+    bands: { granite: 0x9a968c, basalt: 0x5a554c, sett: 0xb5a98f, bay: 0xc8bca2 },
+    edging: {
+      kerb: { width: 0.20, face: 0.18, hex: 0xb0a48a },
+      wall: { width: 0.35, height: 0.45, hex: 0xe8e2d4, coping: 0.04 },
+      pier: { size: 0.45, height: 0.9, hex: 0xe8e2d4 },
+      railing: { kind: 'fenceiron', pitch: 2.2, scale: 0.8 },
+    },
+    path: { hex: 0xc8b48c, edgeHex: 0xa8a090, worn: 0xb09a70 },
+    lawn: { bare: 0x9a8460, greens: [0x5e6a34, 0x66703a, 0x707a40, 0x627038] },
+    flowers: [0xc83050, 0xe86a2a, 0xf2efe6, 0xa0306a],
+    hedge: 0x2e4a26,
+    grate: { iron: 0x262624, frame: 0xa8a49a },
+    steps: 0xc8bca2,
   }),
 });
 

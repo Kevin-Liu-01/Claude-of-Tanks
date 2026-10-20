@@ -238,7 +238,7 @@ function composeBed(m: CivicMesh, bed: CivicBed, style: RegionalCivicStyle, piec
   }
   // the gravel paths, their edges a row of setts
   const pathCol = hexRgb(style.path.hex), edgeCol = hexRgb(style.path.edgeHex);
-  const ring = bed.feature?.kind === 'flowerRondell' ? bed.feature : null;
+  const ring = bed.feature?.kind === 'flowerRondell' || bed.feature?.kind === 'fountain' ? bed.feature : null;
   for (const p of bed.paths) {
     const dx = p.to[0] - p.from[0], dz = p.to[1] - p.from[1], len = Math.hypot(dx, dz), ux = dx / len, uz = dz / len;
     const nx = -uz, nz = ux, hw = p.width / 2;
@@ -265,7 +265,24 @@ function composeBed(m: CivicMesh, bed: CivicBed, style: RegionalCivicStyle, piec
       census.pathM2 = (census.pathM2 ?? 0) + (s1 - s0) * p.width;
     }
   }
-  if (ring) {
+  if (ring?.kind === 'fountain') {
+    // (229) the glorieta: its gravel ring, the basin's rim of dressed stone in sixteen units, its water, the pedestal in
+    // the middle with its bowl and its cap (render only: a hull drives over the bed's lawn and through the basin's rim)
+    m.skinRing(ring.x, ring.z, ring.r, ring.ring, 40, SKIN, (k) => toned(pathCol, k, ring.x, 0.05, 14));
+    const rim = hexRgb(style.edging.wall.hex), water = hexRgb(0x2c4a4e), g = m.ground(ring.x, ring.z);
+    for (let k = 0; k < 16; k++) {
+      const a0 = (k / 16) * Math.PI * 2, a1 = ((k + 0.96) / 16) * Math.PI * 2, rr = ring.r - 0.17;
+      const p0: [number, number] = [ring.x + Math.sin(a0) * rr, ring.z + Math.cos(a0) * rr], p1: [number, number] = [ring.x + Math.sin(a1) * rr, ring.z + Math.cos(a1) * rr];
+      const mid = (a0 + a1) / 2, out: [number, number] = [Math.sin(mid), Math.cos(mid)];
+      m.run(p0, p1, out, () => [[-0.17, g - 0.1], [0.17, g - 0.1], [0.17, g + 0.42], [0.13, g + 0.46], [-0.13, g + 0.46], [-0.17, g + 0.42]],
+        (face) => toned(face === 3 ? scaleRgb(rim, 1.06) : rim, k, 4, 0.05, 15));
+    }
+    m.skinRing(ring.x, ring.z, 0, ring.r - 0.32, 32, 0.32, (k) => toned(water, k, 1, 0.04, 16));
+    m.block(ring.x, ring.z, Math.PI / 4, 0.22, 0.22, 1.05, toned(rim, 1, 2, 0.04, 17), { level: true, ch: 0.03, embed: 0.1 });
+    m.skinRing(ring.x, ring.z, 0, 0.62, 16, 1.05, () => scaleRgb(rim, 1.04));
+    m.block(ring.x, ring.z, 0, 0.12, 0.12, 1.4, scaleRgb(rim, 1.08), { level: true, ch: 0.02, embed: 0.1 });
+    census.fountains = (census.fountains ?? 0) + 1;
+  } else if (ring) {
     // the gravel ring, the flower bed's sandstone edge, its soil and its begonias in rings, red and white
     m.skinRing(ring.x, ring.z, ring.r, ring.ring, 40, SKIN, (k) => toned(pathCol, k, ring.x, 0.05, 14));
     const edge = hexRgb(style.edging.wall.hex);
