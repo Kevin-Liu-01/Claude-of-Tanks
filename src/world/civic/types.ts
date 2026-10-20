@@ -43,6 +43,9 @@ export interface PathwayPlan {
   /** The town's inside (one polygon a town; a map of two towns names two): past its line a main street keeps its
    *  pavement only where houses front it (a suburb outside a gate), and no kerb runs along the line itself. */
   readonly inside: ReadonlyArray<readonly CivicPoint[]>;
+  /** (229 b1 r1) inside the town too, only the fronted stretches, joined over open gaps of up to this many metres (a town
+   *  without a wall: no pavement along open ground or a long vacant lot); absent: inside, every stretch corner to corner. */
+  readonly openGapM?: number;
   /** Where a main street's pavement meets a square's flush walk: its kerb ramps down over 2 m to flush. */
   readonly mouths: readonly CivicPoint[];
 }

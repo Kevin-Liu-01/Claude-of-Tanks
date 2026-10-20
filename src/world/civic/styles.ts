@@ -105,7 +105,9 @@ export const CIVIC_STYLES: Readonly<Record<string, RegionalCivicStyle>> = Object
       kerb: { width: 0.20, face: 0.18, hex: 0xb0a48a },
       wall: { width: 0.35, height: 0.45, hex: 0xe8e2d4, coping: 0.04 },
       pier: { size: 0.45, height: 0.9, hex: 0xe8e2d4 },
-      railing: { kind: 'fenceiron', pitch: 2.2, scale: 0.8 },
+      // (229 b1 r1, the gameplay critic's D2: 320 iron rail modules put the plazas over both triangle budgets) the whitewashed
+      // walls alone
+      railing: null,
     },
     path: { hex: 0xc8b48c, edgeHex: 0xa8a090, worn: 0xb09a70 },
     lawn: { bare: 0x9a8460, greens: [0x5e6a34, 0x66703a, 0x707a40, 0x627038] },
