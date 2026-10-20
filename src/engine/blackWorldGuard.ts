@@ -664,6 +664,8 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     downWanted = false;
     active = isActive();
     originalPostRender.call(post, dt, frameWallDtSeconds);
+    // (a frame whose late-FX pass never ran leaves no downstream probe pending for a warm's lone late-FX render)
+    downWanted = false;
     if (active) afterFrame();
     else {
       if (failStreak) { failStreak = 0; lastFailClass = null; }
