@@ -64,7 +64,7 @@ export const MAP_PAVED_SURFACES: Readonly<Record<string, PavedSurfaceConfig>> = 
     patches: 1, cracks: 1, covers: 1, puddles: 0.6, markings: 1, tone: 0.92,
     // (the maps lane, 228; the owner: the square "a huge EMPTY grey asphalt expanse") the Friedensplatz's setts the pale
     // grey granite of a Franconian square, not the streets' dark stone
-    squareTone: 1.5,
+    squareTone: 1.4,
     // (228 r2, the blind critics: the square's fan "a stamped, moire-like repeat at eye level", its joints a black grid)
     squareJoint: 0.55, squareArc: [3.6, 2.4] as const }),
   // Ruinspires (Sarajevo, 1992–96): the shelled city's asphalt, patched and cracked; its styled paths keep their own classes

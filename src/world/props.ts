@@ -6173,6 +6173,7 @@ ${snowCap ? `
     for (const area of civicPlan.areas) {
       const built = composeCivicArea(area, style, {
         ground: (x, z) => heightField.getHeightAt(x, z), tier: mobileProps ? 'mobile' : 'desktop', plots: civicPlots(),
+        pathways: civicPlan.pathways,
       });
       if (built.geometry) buckets.baked.push(built.geometry);
       civicPieces.push(...built.pieces);

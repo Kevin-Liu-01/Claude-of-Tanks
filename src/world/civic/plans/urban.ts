@@ -67,9 +67,10 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       { x: -51.839, z: 100.564, halfWidth: 4.1, yawDeg: 2 },
       { x: -48.339, z: -101.256, halfWidth: 4.1, yawDeg: 184 },
     ],
-    // the town wall's line (props.wallRuns' town stretches), west gate round to the west gate
-    inside: [[-226, 18], [-216, 50], [-188, 80], [-150, 96], [-104, 104], [-64, 101], [-36, 100], [0, 94], [34, 80], [58, 56], [68, 22],
-      [68, -26], [58, -64], [34, -90], [-2, -104], [-38, -102], [-66, -100], [-104, -104], [-156, -98], [-196, -76], [-218, -44], [-226, -12]],
+    // the town wall's line (props.wallRuns' town stretches), west gate round to the west gate, and (228 r3: the blind pairs
+    // lost the gate road to the legacy strips) the suburb outside the west gate, its houses either side of the Hauptstrasse
+    inside: [[-262, 22], [-226, 18], [-216, 50], [-188, 80], [-150, 96], [-104, 104], [-64, 101], [-36, 100], [0, 94], [34, 80], [58, 56], [68, 22],
+      [68, -26], [58, -64], [34, -90], [-2, -104], [-38, -102], [-66, -100], [-104, -104], [-156, -98], [-196, -76], [-218, -44], [-226, -12], [-262, -14]],
     mouths: [[ROOM.x0, 0], [ROOM.x1, 0], [-50, ROOM.z1], [-50, ROOM.z0]],
   },
   areas: [{
@@ -90,7 +91,9 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
     // (228 r2) round the room: the settlement's service garage on the south-west corner (behind the column) and its
     // checkpoint hut by the south gap, the oil drums, pallets and barrels at the fountain and the frontages
     clears: [{ rect: { x0: -100, x1: 0, z0: -56, z1: 56 },
-      kinds: ['servicegarage', 'checkpointhut', 'drum', 'drumred', 'pallet', 'barrel', 'gasbottle', 'jerrycan', 'cablespool'] }],
+      kinds: ['servicegarage', 'checkpointhut', 'drum', 'drumred', 'pallet', 'barrel', 'gasbottle', 'jerrycan', 'cablespool'] },
+    // (228 r3, the blind critics: "an out-of-place oil drum is left on the new pavements") the town's streets' oil drums
+    { rect: { x0: -262, x1: 72, z0: -104, z1: 104 }, kinds: ['drum', 'drumred'] }],
     pad: 0,
     arms: [{ x0: ROOM.x0, x1: ROOM.x1, z0: -9, z1: 9 }, { x0: -58.5, x1: -41.5, z0: -41, z1: 41 }],
     // the study's routeheat (C11): the north-east diagonal to frontline line-2 and the spur to the ac130 extraction
@@ -108,7 +111,7 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
     // the ac130 extraction's seat (matchPlacement: the 8 m ring search's solid-free disc east of the crossing; the study's
     // modes probe), its convoy's 8 m kept clear of every piece and trunk
     holds: [{ id: 'ac130-extraction', x: -39.1, z: -9.7, r: 8 }],
-    centre: { x: -50, z: 0, ringR: [8.5, 9.0], roseR: 3, rays: 8 },
+    centre: { x: -50, z: 0, ringR: [8.0, 9.0], roseR: 3, rays: 8 },
     beds: [
       {
         id: 'blumenrondell', rect: NW,
@@ -141,7 +144,7 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
     monument: { kind: 'memorialcolumn', x: COLUMN.x, z: COLUMN.z, faceX: -50, faceZ: 0 },
     trees: {
       // (228 r2: 1.45-1.6 stood the crowns over the column's figure and the church; the trunks read as wide orange posts)
-      species: 'oak', scale: [1.2, 1.32],
+      species: 'oak', scale: [1.1, 1.22],
       stations: [
         // the north quarter's rows, its church-side east corner left open (the church's front seen across the green)
         ...OAK_X.filter((x) => x < -61.5).map((x) => ({ x, z: OAK_N })),
@@ -188,7 +191,8 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       { kind: 'crate', x: -27.9, z: 16.2, yawDeg: 31 }, { kind: 'crate', x: -27.8, z: 19.7, yawDeg: 4 },
       { kind: 'crate', x: -32.9, z: -26.0, yawDeg: 17 }, { kind: 'crate', x: -25.8, z: -26.1, yawDeg: -11 },
       { kind: 'kiosk', x: -15.5, z: -14.5, yawDeg: -45 },
-      { kind: 'litfass', x: -31.5, z: -15.5, yawDeg: 0 }, { kind: 'litfass', x: -16.5, z: 12.5, yawDeg: 20 },
+      // (228 r3: the north-east one stood on its tree's grate) off the grate, by the planter at the east mouth
+      { kind: 'litfass', x: -31.5, z: -15.5, yawDeg: 0 }, { kind: 'litfass', x: -13.0, z: 9.4, yawDeg: 20 },
       { kind: 'telzelle', x: -11.0, z: -21.0, yawDeg: -90 }, { kind: 'telzelle', x: -15.0, z: 33.5, yawDeg: -90 },
       { kind: 'handcart', x: -35.6, z: 27.6, yawDeg: 70 },
     ],
@@ -204,9 +208,10 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
     bayMarks: [],
     // (228 r2: the column's pair out on the granite band either side of its forecourt, wide of the plaques; the north
     // quarter's corner lamp between its trunks; the Brunnenplatz's off the basin's rim; the east one off the kerb parking)
+    // (228 r3: the column's pair stood in its entry views) behind the column now, either side of its hedge's ends
     lamps: [
-      [-73.4, 30.4], [-59.6, 22.45], [-82.8, 18.05], [-58.75, -26.0], [-82.8, -22.45], [-56.8, 42.4],
-      [-41.0, 9.9], [-27.5, -11.0], [-15.8, 18.4], [-64.5, 9.25], [-58.75, -13.6],
+      [-73.4, 30.4], [-59.6, 22.45], [-82.8, 18.05], [-61.2, -23.8], [-82.8, -22.45], [-56.8, 42.4],
+      [-41.0, 9.9], [-27.5, -11.0], [-15.8, 18.4], [-64.5, 9.25], [-66.66, -20.37],
     ].map(([x, z]) => ({ kind: 'lamp', x, z, yawDeg: 0 })),
     fountainRing: { x: -62, z: 47, r: 5.5 },
     steps: [{ x: -75.8, z: 39.9, width: 6, yawDeg: 180, count: 2, rise: 0.12 }],

@@ -2,6 +2,7 @@
 // kit by a plan here; every other map builds exactly what it built before. Leaf module: no three.js (the terrain's lawn
 // mask and the receipts read the plans in Node).
 import type { CivicAreaPlan, CivicPlan, CivicRect } from '../types.ts';
+import { CIVIC_STYLES } from '../styles.ts';
 import { URBAN_CIVIC_PLAN } from './urban.ts';
 
 const PLANS: Readonly<Record<string, CivicPlan>> = Object.freeze({
@@ -73,6 +74,57 @@ export function civicLawnTest(mapId: string | null | undefined, inset = 0.65): (
     }
     return false;
   };
+}
+
+/**
+ * (228 r3) Whether (x, z) lies in a kerbed street's pavement band: from a hand inside the kerb's line out past the widest
+ * pavement, along a street the plan kerbs (its main streets and lanes), inside the town (the grass keeps off the flags:
+ * the vegetation grows before the props lay the runs). A raster at half a metre over the town, built once a map; null on a
+ * map without pathways.
+ */
+const paveCache = new Map<string, ((x: number, z: number) => boolean) | null>();
+export function civicPavementTest(mapId: string | null | undefined, roads: ReadonlyArray<ReadonlyArray<readonly [number, number]>>):
+  ((x: number, z: number) => boolean) | null {
+  const plan = civicPlanFor(mapId), pw = plan?.pathways;
+  if (!plan || !pw || !mapId) return null;
+  const hit = paveCache.get(mapId);
+  if (hit !== undefined) return hit;
+  const kw = CIVIC_STYLES[plan.style]?.kerb.width ?? 0.25;
+  const bands = Object.entries(pw.classes).filter(([, c]) => c === 'main' || c === 'gasse').map(([i, c]) => ({
+    road: roads[Number(i)] ?? [], lo: pw.kerbM - 0.35, hi: pw.kerbM + kw + (c === 'main' ? pw.maxWalkM : pw.lane.maxWalkM) + 0.3,
+  }));
+  const polys = [pw.inside];
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const poly of polys) for (const [px, pz] of poly) { x0 = Math.min(x0, px); x1 = Math.max(x1, px); z0 = Math.min(z0, pz); z1 = Math.max(z1, pz); }
+  const C = 0.5, nx = Math.ceil((x1 - x0) / C) + 1, nz = Math.ceil((z1 - z0) / C) + 1, grid = new Uint8Array(nx * nz);
+  const inPoly = (poly: readonly (readonly [number, number])[], x: number, z: number): boolean => {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, zi] = poly[i], [xj, zj] = poly[j];
+      if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+    }
+    return inside;
+  };
+  // each band's segments stamped into the cells within its reach (a segment's box, then the exact distance)
+  for (const b of bands) for (let s = 0; s + 1 < b.road.length; s++) {
+    const [ax, az] = b.road[s], [bx, bz] = b.road[s + 1], dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+    const i0 = Math.max(0, Math.floor((Math.min(ax, bx) - b.hi - x0) / C)), i1 = Math.min(nx - 1, Math.ceil((Math.max(ax, bx) + b.hi - x0) / C));
+    const j0 = Math.max(0, Math.floor((Math.min(az, bz) - b.hi - z0) / C)), j1 = Math.min(nz - 1, Math.ceil((Math.max(az, bz) + b.hi - z0) / C));
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const x = x0 + i * C, z = z0 + j * C, t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l2));
+      const d = Math.hypot(x - ax - dx * t, z - az - dz * t);
+      const k = j * nx + i;
+      if (d < b.lo) grid[k] = 2; // a carriageway (another street's band never paves it)
+      else if (d <= b.hi && grid[k] !== 2) grid[k] = 1;
+    }
+  }
+  const test = (x: number, z: number): boolean => {
+    const i = Math.round((x - x0) / C), j = Math.round((z - z0) / C);
+    if (i < 0 || j < 0 || i >= nx || j >= nz || grid[j * nx + i] !== 1) return false;
+    return polys.some((poly) => inPoly(poly, x, z)) && !pw.exclude.some((r) => inCivicRect(r, x, z));
+  };
+  paveCache.set(mapId, test);
+  return test;
 }
 
 /** A map's civic tree stations with their species and scale band (vegetation.ts plants them on a stream of their own). */

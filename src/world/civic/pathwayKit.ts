@@ -172,6 +172,8 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
     nAc: [number, number]; t0: number; O: [number, number]; TA: [number, number]; TB: [number, number];
     /** the lane's normal toward the street's run, and the lane's tangent point's distance along it from the junction */
     nBc: [number, number]; tB: number;
+    /** (228 r3) the pavements' outer edges at the corner (from each street's centreline), once a run meets it */
+    outerA?: number; outerB?: number;
   }
   const dot2 = (p: readonly number[], q: readonly number[]) => p[0] * q[0] + p[1] * q[1];
   const corners: Corner[] = [];
@@ -269,15 +271,18 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
         }
         const near = plotsNear(kx, kz, W0 + pr.maxWalk + 3);
         const built = (px: number, pz: number, m: number): boolean => near.some((p) => inPlot(p, px, pz, m)) || ctx.solidAt?.(px, pz, m) === true;
-        // a structure at the kerb (0.65 m clear of it) or on the pavement's first 0.3 m (a gate's pier, a house stepping
-        // out): no run
-        for (let o = K - 0.05; o <= W0 + 0.3; o += 0.1) {
+        // a structure within 0.62 m of the kerb's face, or on the kerb or the pavement's first 0.15 m (a gate's pier, a
+        // house stepping out to the street): no run. (228 r3: the run stood off 0.65 m from the kerb's back, and the
+        // houses at the square's south mouth, 0.9 m behind the kerb, cut the owner's chase street's pavement 13 m short:
+        // a narrow pavement runs to their fronts now)
+        if (built(kx, kz, 0.62)) return why('structure');
+        for (let o = K; o <= W0 + 0.15; o += 0.05) {
           const px = x + nx * o, pz = z + nz * o;
-          if (built(px, pz, o < W0 ? 0.65 : 0.02)) return why('structure');
+          if (built(px, pz, 0.02)) return why('structure');
         }
         // a house fronting it: the pavement out to its facade (at most the widest); none: the open walk
         out.state = 'open';
-        for (let o = W0 + 0.3; o <= Math.max(W0 + pr.maxWalk + 0.05, out.past ? K + fFar : 0); o += 0.1) {
+        for (let o = W0 + 0.15; o <= Math.max(W0 + pr.maxWalk + 0.05, out.past ? K + fFar : 0); o += 0.1) {
           const px = x + nx * o, pz = z + nz * o;
           if (built(px, pz, 0.02)) {
             if (!out.past || o >= K + fNear - 0.6) { out.state = 'fronted'; out.outer = Math.min(o - 0.05, W0 + pr.maxWalk); }
@@ -345,6 +350,7 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
         for (let q = end + dir; q !== k + dir; q += dir) S[q] = { ...S[q], state: e.state === 'blocked' ? 'open' : e.state, outer: e.outer };
         if (dir === 1) run.to = k; else run.from = k;
         census.carried = (census.carried ?? 0) + Math.abs(k - end);
+        if (isA) c.outerA = e.outer; else c.outerB = e.outer;
         met.add(c);
         break;
       }
@@ -466,6 +472,34 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
           || [c0, c1, c2, c3].some((pt) => ctx.solidAt?.(pt[0], pt[1], 0.05))) break;
         const y = (pt: [number, number]) => ctx.ground(...pt) + faceA + (faceB - faceA) * ((k + 0.5) / segs);
         m.quad([c0[0], y(c0), c0[1]], [c1[0], y(c1), c1[1]], [c2[0], y(c2), c2[1]], [c3[0], y(c3), c3[1]], toned(flagCol, k, ring + c.other, style.pavement.tone, 54));
+      }
+    }
+    // (228 r3, the blind critics: "the rounded corner islands are filled with orange dirt and weed tufts") the corner paved
+    // whole: from the kerb's back round the arc out to where the two pavements' outer edges meet, a fan of flags from
+    // that corner point (each flag kept off the houses)
+    {
+      const oA = c.outerA ?? W0 + prof(c.road).openWalk, oB = c.outerB ?? W0 + prof(c.other).openWalk;
+      const J: [number, number] = [c.jx, c.jz];
+      // Q = J + dA s + nAc oA = J + dB t + nBc oB
+      const rx = c.nBc[0] * oB - c.nAc[0] * oA, rz = c.nBc[1] * oB - c.nAc[1] * oA;
+      const det = c.dA[0] * -c.dB[1] - c.dA[1] * -c.dB[0];
+      if (Math.abs(det) > 0.2) {
+        const s = (rx * -c.dB[1] - rz * -c.dB[0]) / det;
+        const Q: [number, number] = [J[0] + c.dA[0] * s + c.nAc[0] * oA, J[1] + c.dA[1] * s + c.nAc[1] * oA];
+        if (Math.hypot(Q[0] - O[0], Q[1] - O[1]) < 8) {
+          const PA: [number, number] = [J[0] + c.dA[0] * c.t0 + c.nAc[0] * oA, J[1] + c.dA[1] * c.t0 + c.nAc[1] * oA];
+          const PB: [number, number] = [J[0] + c.dB[0] * c.tB + c.nBc[0] * oB, J[1] + c.dB[1] * c.tB + c.nBc[1] * oB];
+          const rim: Array<[number, number]> = [PA];
+          for (let k = 0; k <= segs; k++) rim.push(at(a0 + (da * k) / segs, R - KW));
+          rim.push(PB);
+          const y = (pt: readonly [number, number]) => ctx.ground(pt[0], pt[1]) + faceA - 0.003;
+          for (let k = 0; k + 1 < rim.length; k++) {
+            const p = rim[k], q = rim[k + 1], cx = (p[0] + q[0] + Q[0]) / 3, cz = (p[1] + q[1] + Q[1]) / 3;
+            if (near.some((pl) => inPlot(pl, cx, cz, 0.05)) || ctx.solidAt?.(cx, cz, 0.05)) continue;
+            m.tri([Q[0], y(Q), Q[1]], [p[0], y(p), p[1]], [q[0], y(q), q[1]], toned(flagCol, k, c.road + c.other, style.pavement.tone, 55));
+          }
+          census.cornersPaved = (census.cornersPaved ?? 0) + 1;
+        }
       }
     }
     census.returns = (census.returns ?? 0) + 1;
