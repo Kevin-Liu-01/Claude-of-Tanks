@@ -281,6 +281,23 @@ for (const v of VIEWPORTS) for (const rosters of v.earL ? [7, 14, 20] : [7]) for
   }
 }
 
+// 4d. No window is too small for the countdown and the revive count to keep off the resting sight: the 768 x 600 census
+//     boxes squeezed down to 380 px tall (bottom-anchored boxes moved up; no real layout comes here) still place both,
+//     on a notice's place or over an instrument as the last resorts, never on main's own place on the aim point.
+{
+  const v = VIEWPORTS.find((x) => x.vp[0] === 768 && x.vp[1] === 600);
+  for (let H = 380; H < 600; H += 4) for (const objective of [true, false]) {
+    const dh = H - 600, up = (b) => b && [b[0], b[1] + dh, b[2], b[3]];
+    const squeezed = { ...v, vp: [768, H], map: up(v.map), dp: up(v.dp), drive: up(v.drive), sys: up(v.sys), ammo: up(v.ammo), card: up(v.card),
+      lanes: [v.lanes[0], v.lanes[1] + dh, v.lanes[2], v.lanes[3] + dh] };
+    const plan = planMouseNotices(inputFor(squeezed, { objective }));
+    for (const label of ['countdown', 'revive']) {
+      assert.ok(plan[label], `768x${H}${objective ? '' : 's'}: the ${label} has a place`);
+      assert.ok(intrusion(plan[label], mouseReticleFootprint(768, H, 0)) <= 0, `768x${H}${objective ? '' : 's'}: the ${label} keeps off the resting sight`);
+    }
+  }
+}
+
 // 5. Main's placements where they were fine: a centred stack under the score from 1280 x 800 up, the detection at
 //    main's own top; the flank beside the scope's centre-line arm where only one notice fits above it.
 const at = (w, h, objective = true) => planMouseNotices(inputFor(VIEWPORTS.find((v) => v.vp[0] === w && v.vp[1] === h), { objective }));

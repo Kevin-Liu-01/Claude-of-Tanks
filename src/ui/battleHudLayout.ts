@@ -12,6 +12,8 @@ type PlanBox = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
 /** The scope flag hud.ts sets on the document element (not on the observed HUD root: a scope toggle relayouts nothing,
  *  unless a queued medal card waits on it). */
 const SCOPED_ATTRIBUTE = 'data-cot-scoped';
+/** A planned x rounded away from the screen's centre line: a place beside the scope's centre-line arm keeps its margin. */
+const outward = (x: number, width: number) => x < width / 2 ? Math.floor(x) : x > width / 2 ? Math.ceil(x) : x;
 
 /** Matches the scoreboard polygon; the objective clears each bottom corner by 8px. */
 export const SCORE_BOTTOM_INSET = 25;
@@ -304,14 +306,16 @@ export function installBattleHudLayout(root: HTMLElement): void {
   }
   /** Writes the plan; the countdown, the revive count and the medal card only while they are up (`up`), as the plan
    *  places those when first read. */
-  function writeMousePlan(plan: MouseNoticePlan, up: { countdown: boolean; revive: boolean; medal: boolean }, medalWaits: boolean) {
+  function writeMousePlan(plan: MouseNoticePlan, up: { countdown: boolean; revive: boolean; medal: boolean }, width: number,
+    medalWaits: boolean) {
     const { detection, alert } = plan;
-    setBodyVar('--hud-notice-x', `${Math.round(detection.x + detection.w / 2)}px`);
-    setBodyVar('--hud-alert-x', `${Math.round(alert.x)}px`);
+    // (centres and inner edges round away from the centre line, never into a keep-out's margin)
+    setBodyVar('--hud-notice-x', `${outward(detection.x + detection.w / 2, width)}px`);
+    setBodyVar('--hud-alert-x', `${alert.anchor === 'start' ? Math.ceil(alert.x) : alert.anchor === 'end' ? Math.floor(alert.x) : outward(alert.x, width)}px`);
     setBodyVar('--hud-alert-width', `${Math.floor(alert.w)}px`);
     setBodyVar('--hud-alert-shift', alert.anchor === 'start' ? '0%' : alert.anchor === 'end' ? '-100%' : '-50%');
     const medal = up.medal ? plan.medal : null;
-    if (up.medal) setBodyVar('--hud-banner-x', medal ? `${Math.round(medal.x + medal.w / 2)}px` : '50%');
+    if (up.medal) setBodyVar('--hud-banner-x', medal ? `${outward(medal.x + medal.w / 2, width)}px` : '50%');
     // The keep-out each element clears (mouseNoticePlan.ts tiers: 2 everything the reticle draws, 1 the battle sight at
     // full bloom, 0 the resting sight, - none, ? not up; s: it shares a notice's place; w: the medal card waits), for the
     // browser receipt.
@@ -323,7 +327,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (!up[name]) continue;
       const place = plan[name];
       setBodyVar(`--hud-${name}-top`, place ? `${Math.round(place.y)}px` : name === 'countdown' ? '22%' : '30%');
-      setBodyVar(`--hud-${name}-x`, place ? `${Math.round(place.x + place.w / 2)}px` : '50%');
+      setBodyVar(`--hud-${name}-x`, place ? `${outward(place.x + place.w / 2, width)}px` : '50%');
       setBodyVar(`--hud-${name}-scale`, place ? String(place.scale) : '1');
     }
   }
@@ -622,7 +626,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         if (movesPlanInputs.has(name)) planInputs = true;
       }
     }
-    if (plan) writeMousePlan(plan, { countdown: !!countdown, revive: !!root.querySelector('.cot-revive.on'), medal: !!banner?.childElementCount }, medalWaiting);
+    if (plan) writeMousePlan(plan, { countdown: !!countdown, revive: !!root.querySelector('.cot-revive.on'), medal: !!banner?.childElementCount }, width, medalWaiting);
     const rosterProperty = '--hud-roster-top-right';
     const rosterPixels = rosterTopRight === null ? '' : `${rosterTopRight}px`;
     if (document.body.style.getPropertyValue(rosterProperty) !== rosterPixels) {

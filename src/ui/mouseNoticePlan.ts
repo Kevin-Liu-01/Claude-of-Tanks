@@ -820,9 +820,18 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     if (!size || size.w <= 0 || size.h <= 0) return null;
     const yPref = Math.max(Math.ceil(input.top + MOUSE_NOTICE_GAP_PX), Math.ceil(input.height * yFrac));
     const ladder = (tier: number) => tier ? SCALES : LAST_SCALES;
-    const tier = place((share, t) => ladder(t).map((s, i) => [size.w * s, size.h * s, LAST_SCALE_COSTS[i], share ? alertOnly : notices] as const),
+    let tier = place((share, t) => ladder(t).map((s, i) => [size.w * s, size.h * s, LAST_SCALE_COSTS[i], share ? alertOnly : notices] as const),
       yPref, price, shareDetection);
-    if (tier < 0) return null;
+    // The last resorts (a window too small for any of those; the census never comes here): a place clear of the resting
+    // sight on either notice's place, then over an instrument or a lane, never main's own place on the aim point.
+    if (tier < 0) {
+      const envs = envsAt(TIERS.indexOf(0));
+      chosen = LAST_SCALES.map((s, i) => [size.w * s, size.h * s, LAST_SCALE_COSTS[i], NONE] as const);
+      if (!placeOne(envs[envs.length - 1], chosen, yPref, price, hasLanes ? both : null, found)
+        && !placeOne(makeEnv(TIERS.length * 2, { ...input, obstacles: NONE, lanes: [null, null] }, keeps[TIERS.indexOf(0)], 'block'),
+          chosen, yPref, price, null, found)) return null;
+      tier = 0;
+    }
     const s = ladder(tier)[found.option], w = size.w * s, h = size.h * s, x = found.s.x - w / 2, y = found.s.y;
     return { x, y, w, h, scale: s, clearance: tier as 2 | 1 | 0, sharesNotices: overlapsAny({ x, y, w, h }, notices), giveWay: giveWayOf(found.s.giveWay, 0) };
   };
