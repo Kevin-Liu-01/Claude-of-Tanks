@@ -36,7 +36,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
-import { parseSeeThroughAccepts, sealedLedgerVerdict, updatedSealedLedger } from './sealed-ledger-policy.mjs';
+import { parseReasonedIds, parseSeeThroughAccepts, recordedSealedFrame, sealedLedgerVerdict, updatedSealedLedger } from './sealed-ledger-policy.mjs';
 import { userInfo } from 'node:os';
 import { createCanvas, Path2D as NapiPath2D, ImageData as NapiImageData, Image as NapiImage } from '@napi-rs/canvas';
 
@@ -64,6 +64,11 @@ const MIN_AREA = Number(opt('min-area', '6'));
 const outDir = resolve(opt('out', '.qa-dev/out/sealed'));
 const writeImages = flag('images');
 
+// Each view is framed on the row's recorded census frame (frame: [x, y, z, radius] in the tank root, guards 229 critic
+// round 2): an unrelated extremity edit (a longer gun, an antenna, a stowage box) no longer moves the pixel grid under
+// unchanged parts, so every column reproduces exactly. A tank without a row (or re-framed with --reframe=<id>:<reason>)
+// is framed on its build's bounding sphere, snapped and grown by at least 10 cm (recordedSealedFrame); a build that
+// reaches past its row's frame fails with REFRAME until it is re-framed on purpose.
 // --ledger=path gates each tank against the committed census: a sealed tank must stay sealed, no tank may add more
 // than max(12 px, 10 %) of true openings or of see-through over its ledger row, and its netting px stay within
 // max(12 px, 2 %) of the row either way; a new vehicle must be sealed with no see-through cluster. --update-ledger
@@ -77,9 +82,17 @@ const ledgerPath = opt('ledger', '');
 const ledger = ledgerPath ? JSON.parse(readFileSync(resolve(ledgerPath), 'utf8')) : null;
 const updateMode = flag('update-ledger') ? 'rows' : opt('update-ledger', '');
 if (updateMode && !['rows', 'see-through'].includes(updateMode)) { console.error(`--update-ledger=${updateMode}: use --update-ledger or --update-ledger=see-through`); process.exit(2); }
-let acceptSeeThrough;
-try { acceptSeeThrough = parseSeeThroughAccepts(opt('accept-see-through', '')); } catch (error) { console.error(error.message); process.exit(2); }
-if (acceptSeeThrough.size && !(ledger && updateMode)) { console.error('--accept-see-through re-baselines rows: it needs --ledger and --update-ledger, and never relaxes a gate'); process.exit(2); }
+// every argument is a --flag: a reason left unquoted would arrive cut at its first space, its tail as stray words
+const strayArgs = args.filter((a) => !a.startsWith('--'));
+if (strayArgs.length) { console.error(`unexpected argument(s) ${strayArgs.map((a) => JSON.stringify(a)).join(' ')}: quote a multi-word reason as one argument`); process.exit(2); }
+let acceptSeeThrough, reframe;
+try {
+  acceptSeeThrough = parseSeeThroughAccepts(opt('accept-see-through', ''));
+  reframe = parseReasonedIds(opt('reframe', ''), '--reframe');
+} catch (error) { console.error(error.message); process.exit(2); }
+// --tighten-ledger=<ids>: the only way an update lowers a row (openings and see-through to min(row, measured))
+const tighten = new Set(opt('tighten-ledger', '').split(',').map((id) => id.trim()).filter(Boolean));
+if ((acceptSeeThrough.size || reframe.size || tighten.size) && !(ledger && updateMode)) { console.error('--accept-see-through, --reframe and --tighten-ledger change rows: they need --ledger and --update-ledger'); process.exit(2); }
 const acceptedBy = process.env.COT_LANE || userInfo().username;
 import { collectTriangles } from './tank-surface-collect.mjs';
 
@@ -317,12 +330,19 @@ if (flag('self-test')) {
   glass.name = 'selftestVisionBlock'; glass.position.set(1.3, 0.25, 0); root.add(glass);
   const frame = boundingSphere(collectTriangles(root).tris);
   const declared = { continuityRole: 'open-lattice', combatHitboxRole: 'nonArmor' };
-  const census = (label, { netDeclared = true, netShown = true, liftedShown = false, twinShown = false, sunkShown = false, geometry = box.geometry, glassShown = false } = {}) => {
+  // an unrelated extremity: a 1 mm speck 5 cm past the net's far edge (the 226-class add-on a longer gun is to the frame)
+  const speck = new THREE.Mesh(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, 0.56, 2.15, 0.001, 0.56, 2.15, 0, 0.561, 2.151], 3)),
+    new THREE.MeshStandardMaterial({ side: THREE.DoubleSide }));
+  speck.name = 'selftestExtremitySpeck'; speck.visible = false; root.add(speck);
+  const census = (label, { netDeclared = true, netShown = true, liftedShown = false, twinShown = false, sunkShown = false, geometry = box.geometry, glassShown = false, speckShown = false, aabbFrame = false } = {}) => {
     net.userData = netDeclared ? { ...declared } : {}; for (const m of [lifted, twin, sunk]) m.userData = { ...declared };
     net.visible = netShown; lifted.visible = liftedShown; twin.visible = twinShown; sunk.visible = sunkShown; glass.visible = glassShown; box.geometry = geometry;
+    speck.visible = speckShown;
     const { tris, meshes } = collectTriangles(root); let open = 0, through = 0, netting = 0, throughViews = 0;
+    // the fixed frame (a ledger row's) unless the case asks for the pre-229 framing on each build's own bounding sphere
+    const viewFrame = aabbFrame ? boundingSphere(tris) : frame;
     for (const view of VIEWS) {
-      const r = rasterizeView(tris, meshes, frame, view); open += r.holePx + r.invertedPx; through += r.throughPx; netting += r.netPx;
+      const r = rasterizeView(tris, meshes, viewFrame, view); open += r.holePx + r.invertedPx; through += r.throughPx; netting += r.netPx;
       if (r.clusters.some((c) => c.kind === 'see-through')) throughViews++;
     }
     return { label, open, through, netting, throughViews };
@@ -344,6 +364,13 @@ if (flag('self-test')) {
     census('net doubled', { twinShown: true }),
     census('net sunk into the box', { netShown: false, sunkShown: true }),
   ];
+  // Framing (guards 229 critic round 2): with the row's fixed frame the speck 5 cm past the net leaves every column
+  // exactly as it was; framed on each build's own bounding sphere (the pre-229 census) the same speck moves the grid
+  // under the unchanged net and re-aliases its count (the negative control: the band would call it a regression).
+  const fixedPlain = census('fixed frame'), fixedSpeck = census('fixed frame, a speck 5 cm past the net', { speckShown: true });
+  const aabbPlain = census('own-AABB frame', { aabbFrame: true }), aabbSpeck = census('own-AABB frame, a speck 5 cm past the net', { speckShown: true, aabbFrame: true });
+  const framingOk = ['open', 'through', 'netting'].every((k) => fixedSpeck[k] === fixedPlain[k]) && aabbSpeck.netting !== aabbPlain.netting;
+  for (const c of [fixedPlain, fixedSpeck, aabbPlain, aabbSpeck]) console.log(`self-test ${c.label}: open ${c.open}, see-through ${c.through}, netting ${c.netting}`);
   // every case gates against the declared net's row: sealed, no see-through, its netting count
   const row = { sealed: true, openPx: 0, seeThroughPx: 0, netSeeThroughPx: cases[0].netting };
   for (const c of cases) {
@@ -357,7 +384,7 @@ if (flag('self-test')) {
     && glassBare.through > 0 && glassNetted.through === glassBare.through && glassNetted.netting > 0 && !glassNetted.gate
     && [liftedNet, doubledNet].every((c) => c.open === 0 && c.through === 0 && c.netting > netted.netting && !c.gate)
     && sunkNet.open === 0 && sunkNet.through === 0 && sunkNet.netting < netted.netting && !sunkNet.gate;
-  const ok = netOk && boreOk && closed.open === 0 && closed.inverted === 0 && (insideOut.open + insideOut.inverted) > 0 && insideOut.viewsOpen === VIEWS.length && mirrored.open === 0 && mirrored.inverted === 0;
+  const ok = netOk && framingOk && boreOk && closed.open === 0 && closed.inverted === 0 && (insideOut.open + insideOut.inverted) > 0 && insideOut.viewsOpen === VIEWS.length && mirrored.open === 0 && mirrored.inverted === 0;
   console.log(ok ? 'self-test PASS' : 'self-test FAIL'); process.exit(ok ? 0 : 1);
 }
 // The fleet factory loads only for a tank census (guards 229: --self-test never builds a tank, so it skips the import).
@@ -374,7 +401,15 @@ for (const id of ids) {
   // shipped materials by default (side/alphaTest/transparent decide what the player sees through); --receipt uses the lightweight receipt build
   try { tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: flag('receipt') }); } catch (error) { console.log(`${id}: build failed: ${error.message}`); failures++; continue; }
   const { tris, meshes } = collectTriangles(tank.root);
-  const sphere = boundingSphere(tris);
+  const listed = ledger?.tanks?.[id];
+  const fixedFrame = Array.isArray(listed?.frame) && !reframe.has(id);
+  const frame = fixedFrame ? listed.frame : recordedSealedFrame(boundingSphere(tris));
+  const sphere = { center: new THREE.Vector3(frame[0], frame[1], frame[2]), radius: frame[3] };
+  let reachM = 0;
+  for (const t of tris) for (const [x, y, z] of [[t.ax, t.ay, t.az], [t.bx, t.by, t.bz], [t.cx, t.cy, t.cz]]) {
+    const r = Math.hypot(x - frame[0], y - frame[1], z - frame[2]); if (r > reachM) reachM = r;
+  }
+  const frameExceeded = fixedFrame && reachM > frame[3];
   const bores = flag('no-bore-mask') ? [] : collectBores(tank.root);
   if (flag('materials')) {
     const rows = new Map();
@@ -421,15 +456,15 @@ for (const id of ids) {
   // surface hides an opening.
   const sealed = holeViews === 0;
   let ledgerVerdict = '';
-  const census = { sealed, holeViews, holePx, throughPx, throughViews, netPx };
+  const census = { sealed, holeViews, holePx, throughPx, throughViews, netPx, frameExceeded };
   if (ledger) {
     // an id the update re-baselines (--accept-see-through) is judged at its measured see-through and netting; its
     // openings still gate (a row's baseline, or a new vehicle's sealed rule)
-    const verdict = sealedLedgerVerdict(ledger.tanks?.[id], census, { acceptSeeThrough: acceptSeeThrough.has(id) });
+    const verdict = sealedLedgerVerdict(ledger.tanks?.[id], census, { acceptSeeThrough: acceptSeeThrough.has(id), reframe: reframe.has(id) });
     ledgerVerdict = verdict.message;
     if (!verdict.pass) failures++;
   } else if (!sealedLedgerVerdict(undefined, census).pass) failures++;
-  report.push({ id, interiorFillRecordLoaded: hasInteriorFills(id), tris: tris.length, radiusM: +sphere.radius.toFixed(2), sealed, holeViews, invertedViews, throughViews, netViews, holePx, invertedPx, throughPx, netPx, bores: bores.length, borePx, topMeshes, views: views.filter((v) => v.clusters.length) });
+  report.push({ id, interiorFillRecordLoaded: hasInteriorFills(id), tris: tris.length, radiusM: +sphere.radius.toFixed(2), frame, frameSource: fixedFrame ? 'ledger' : 'build', reachM: +reachM.toFixed(3), frameExceeded, sealed, holeViews, invertedViews, throughViews, netViews, holePx, invertedPx, throughPx, netPx, bores: bores.length, borePx, topMeshes, views: views.filter((v) => v.clusters.length) });
   console.log(`${id}: ${sealed ? 'SEALED' : 'OPEN'} — ${tris.length} tris, open px ${holePx} in ${holeViews}/${views.length} views, inside-out px ${invertedPx} in ${invertedViews} views, see-through px ${throughPx} in ${throughViews} views, netting px ${netPx} in ${netViews} views, bore px ${borePx} masked in ${bores.length} bore(s)${topMeshes.length ? ' — ' + topMeshes.join(', ') : ''}${ledgerVerdict ? ' — ' + ledgerVerdict : ''} (${((performance.now() - started) / 1000).toFixed(1)} s)`);
   if (worst) console.log(`   worst view ${worst.name}: ${worst.clusters.filter((c) => c.kind !== 'netting').slice(0, 4).map((c) => `${c.kind} ${c.area}px world(${(c.world || []).join(',')}) ${c.meshes.join('/')}`).join(' | ')}`);
   if (flag('clusters')) for (const v of views) for (const c of v.clusters) console.log(`   ${v.name}: ${c.kind} ${c.area}px world(${(c.world || []).join(',')}) ${c.meshes.join('/')}`);
@@ -437,8 +472,9 @@ for (const id of ids) {
 }
 if (ledger && updateMode) {
   try {
-    const updated = updatedSealedLedger(ledger, report, new Date().toISOString(), ids, { acceptSeeThrough, seeThroughOnly: updateMode === 'see-through', by: acceptedBy });
+    const updated = updatedSealedLedger(ledger, report, new Date().toISOString(), ids, { acceptSeeThrough, reframe, tighten, seeThroughOnly: updateMode === 'see-through', by: acceptedBy });
     writeFileSync(resolve(ledgerPath), JSON.stringify(updated, null, 1) + '\n');
+    for (const id of reframe.keys()) console.log(`   re-framed: ${id} [${(ledger.tanks?.[id]?.frame ?? []).join(', ')}] -> [${updated.tanks[id].frame.join(', ')}], every column re-measured`);
     for (const id of acceptSeeThrough.keys()) {
       const was = ledger.tanks?.[id], now = updated.tanks[id];
       console.log(`   see-through ${was ? `re-baselined: ${id} ${was.seeThroughPx} -> ${now.seeThroughPx} px, netting ${was.netSeeThroughPx ?? '-'} -> ${now.netSeeThroughPx} px` : `accepted on a new row: ${id} ${now.seeThroughPx} px, netting ${now.netSeeThroughPx} px`}`);

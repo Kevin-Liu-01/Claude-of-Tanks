@@ -1,10 +1,12 @@
 /** A row may grow by max(12 px, 10 %) over its baseline before the gate calls it a regression (open and see-through px
  * alike: the census is deterministic, the slack absorbs re-tessellation of an unchanged part). */
 const allowance = (baseline) => baseline + Math.max(12, baseline * .1);
-/** Netting px hold to a two-sided band of max(12 px, 2 %) around the row. An unchanged suit reproduces its count exactly
- * (all 220 rows on 16aeab482), so the band only absorbs float noise; a suit that grows, lifts off its hull, is doubled,
- * sinks into it or goes missing moves the count, and the row must be re-baselined on purpose. Two-sided, so the column
- * cannot go stale: a net that shrank and later drifts back out is still held to what was last measured. */
+/** Netting px hold to a two-sided band of max(12 px, 2 %) around the row. The census frames every view on the row's
+ * recorded frame (guards 229 critic round 2: framed on each build's AABB, an unrelated extremity edit, a 5 cm longer gun
+ * or a 1 mm speck past the bow, moved the pixel grid under an unchanged net and re-aliased its count by 2-10 %). In the
+ * fixed frame an unchanged suit reproduces its count exactly whatever an extremity does, so the band only absorbs float
+ * noise; a suit that grows, lifts off its hull, is doubled, sinks into it or goes missing moves the count, and the row
+ * must be re-baselined on purpose. Two-sided, so the column cannot go stale. */
 const nettingSlack = (baseline) => Math.max(12, baseline * .02);
 
 /** New vehicles have no historical opening or see-through allowance. Existing baseline rows retain their original
@@ -17,9 +19,16 @@ const nettingSlack = (baseline) => Math.max(12, baseline * .02);
  * the row's see-through and netting baselines are taken at the measurement, and a vehicle without a row may bring a
  * see-through cluster. Openings are never accepted this way: a new vehicle must still be sealed, an existing row still
  * holds its opening baseline. */
-export function sealedLedgerVerdict(row, { sealed, holeViews, holePx, throughPx, throughViews, netPx }, { acceptSeeThrough = false } = {}) {
+export function sealedLedgerVerdict(row, { sealed, holeViews, holePx, throughPx, throughViews, netPx, frameExceeded = false }, { acceptSeeThrough = false, reframe = false } = {}) {
   if (![throughPx, throughViews, netPx].every(Number.isFinite)) {
     throw new Error('sealedLedgerVerdict: the see-through census (throughPx, throughViews, netPx) is required');
+  }
+  // the row's frame no longer holds the build (an extremity grew past its margin): its pixels are not comparable
+  if (row && frameExceeded && !reframe) return { pass: false,
+    message: 'REFRAME: the build reaches past the row\'s census frame; re-record it with --update-ledger --reframe=<id>:<reason> (every column is re-measured in the new frame)' };
+  if (row && reframe) {
+    if (row.sealed && !sealed) return { pass: false, message: `REGRESSION: ledger sealed, now ${holeViews} open views` };
+    return { pass: true, message: 'ledger: re-framed, every column re-measured' };
   }
   if (!row) {
     if (!sealed) return { pass: false, message: `new vehicle: ${holeViews} open views without an approved baseline` };
@@ -56,55 +65,78 @@ function nettingVerdict(baseline, measured) {
 const localDate = () => new Date().toLocaleDateString('en-CA');
 
 /**
- * `--accept-see-through=<id>[,<id>]:<reason>`: the ids whose see-through and netting baselines an update may set at
- * their measurement, and why (at least 12 characters, saying what moved and why). Returns Map(id -> reason); '' is none.
- * Bare ids are refused: an accept without a reason leaves no trail (guards 229 critic round 1).
+ * A census frame from a build's bounding sphere, recorded on the row so later censuses frame every view the same way
+ * whatever an unrelated edit does to the extremities: the centre snapped to 5 cm, the radius grown by at least 10 cm and
+ * rounded up to 10 cm. An extremity that later reaches past the radius asks for an explicit --reframe.
  */
-export function parseSeeThroughAccepts(spec) {
-  const accepts = new Map();
+export function recordedSealedFrame({ center, radius }) {
+  const snap = (v) => Math.round(v / 0.05) * 0.05;
+  return [snap(center.x), snap(center.y), snap(center.z), Math.ceil((radius + 0.1) / 0.1) * 0.1].map((v) => Number(v.toFixed(3)));
+}
+
+/**
+ * `<id>[,<id>]:<reason>` specs (--accept-see-through, --reframe), ';'-separated: Map(id -> reason). A reason is at least
+ * 12 characters saying what moved and why; an id named twice is refused (the second reason would silently replace the
+ * first); bare ids are refused. '' is none.
+ */
+export function parseReasonedIds(spec, flag = '--accept-see-through') {
+  const out = new Map();
   for (const part of String(spec ?? '').split(';').map((s) => s.trim()).filter(Boolean)) {
     const colon = part.indexOf(':');
     const ids = (colon < 0 ? '' : part.slice(0, colon)).split(',').map((id) => id.trim()).filter(Boolean);
     const reason = colon < 0 ? '' : part.slice(colon + 1).trim();
     if (!ids.length || reason.length < 12) {
-      throw new Error(`--accept-see-through "${part}": write <id>[,<id>]:<reason>, the reason saying what moved and why `
-        + '(at least 12 characters), e.g. ajax:designation decal stands 2 cm off the glacis edge');
+      throw new Error(`${flag} "${part}": write <id>[,<id>]:<reason>, the reason saying what moved and why `
+        + '(at least 12 characters, quoted as one argument), e.g. ajax:designation decal stands 2 cm off the glacis edge');
     }
-    for (const id of ids) accepts.set(id, reason);
+    for (const id of ids) {
+      if (out.has(id)) throw new Error(`${flag}: ${id} is named twice; give each id one reason`);
+      out.set(id, reason);
+    }
   }
-  return accepts;
+  return out;
 }
+/** --accept-see-through specs (parseReasonedIds). */
+export const parseSeeThroughAccepts = (spec) => parseReasonedIds(spec, '--accept-see-through');
+
+const asMap = (value, what) => {
+  if (Array.isArray(value)) throw new Error(`${what} needs a reason per id (parseReasonedIds); ledger unchanged`);
+  return value instanceof Map ? value : new Map(Object.entries(value ?? {}));
+};
+const columnsOf = (row) => ({ sealed: row.sealed, openPx: row.openPx, seeThroughPx: row.seeThroughPx ?? null,
+  netSeeThroughPx: row.netSeeThroughPx ?? null, ...(row.frame ? { frame: row.frame } : {}) });
 
 /** Validate the whole update before returning a new ledger. A rejected new
- * opening must never become a historical allowance on the next invocation,
- * and an update never raises an allowance it was not asked to (guards 229
- * critic round 1: six passing plain updates walked marder1a3's see-through
- * 113 -> 199 px). For an existing row:
- * - openings only tighten: sealed stays sealed, an open row that measures
- *   sealed becomes sealed, and openPx/openViews take the measurement only
- *   when it is lower;
- * - see-through takes min(row, measurement) and netting keeps the row's
- *   value, unless the id is accepted (`acceptSeeThrough`: Map id -> reason,
- *   parseSeeThroughAccepts), when both take the measurement and the row
- *   records seeThroughAccepted {reason, by, date, from} (the old values);
- * - inside-out px and the triangle count are reports and take the measurement.
- * A new row (rows mode only) is the measurement; it must be sealed, and with a
- * see-through cluster it must be accepted (its note's from: 'no earlier row').
- * seeThroughOnly leaves every opening column as it was. Every id must pass the
- * verdict (an accepted id judged at its measured see-through and netting). */
+ * opening must never become a historical allowance on the next invocation.
+ * A plain update never changes an existing row (guards 229 critic rounds 1
+ * and 2: raising walked baselines up, and tightening to one sample walked
+ * them into the census's low tail); it gates every id and records new rows.
+ * Existing rows change only by name:
+ * - `tighten` (Set of ids, --tighten-ledger): openings and see-through to
+ *   min(row, measured), sealed once it measures sealed; netting kept;
+ * - `acceptSeeThrough` (Map id -> reason): see-through and netting at the
+ *   measurement, openings still held;
+ * - `reframe` (Map id -> reason): a new census frame (the build outgrew the
+ *   row's) and every column re-measured in it; a sealed row must stay sealed.
+ * An accept or a re-frame appends {kind, reason, by, date, from} to the row's
+ * `accepts` history (the old values), never replacing an earlier note. A new
+ * row (rows mode only) is the measurement and its frame; it must be sealed,
+ * and with a see-through cluster it must be accepted (from: 'no earlier row').
+ * seeThroughOnly refuses new rows. */
 export function updatedSealedLedger(ledger, reports, generatedAt, requestedIds,
-  { acceptSeeThrough = new Map(), seeThroughOnly = false, by = 'unknown', date = localDate() } = {}) {
-  if (Array.isArray(acceptSeeThrough)) throw new Error('See-through acceptance needs a reason per id (parseSeeThroughAccepts); ledger unchanged');
-  const accepted = acceptSeeThrough instanceof Map ? acceptSeeThrough : new Map(Object.entries(acceptSeeThrough));
+  { acceptSeeThrough = new Map(), reframe = new Map(), tighten = new Set(), seeThroughOnly = false, by = 'unknown', date = localDate() } = {}) {
+  const accepted = asMap(acceptSeeThrough, 'See-through acceptance');
+  const reframed = asMap(reframe, 'A re-frame');
+  const tightened = new Set(tighten);
   // A build failure produces no measurement row. Never save the surviving
   // subset as though the requested batch had been measured completely.
   const expected = new Set(requestedIds);
   const measured = new Set();
   if (!expected.size) throw new Error('No requested vehicles; ledger unchanged');
-  const stray = [...accepted.keys()].filter((id) => !expected.has(id));
-  if (stray.length) throw new Error(`See-through acceptance for unrequested ids: ${stray.join(', ')}; ledger unchanged`);
-  for (const [id, reason] of accepted) {
-    if (String(reason ?? '').trim().length < 12) throw new Error(`${id}: a see-through acceptance needs a reason of at least 12 characters; ledger unchanged`);
+  const stray = [...accepted.keys(), ...reframed.keys(), ...tightened].filter((id) => !expected.has(id));
+  if (stray.length) throw new Error(`See-through acceptance, re-frame or tighten for unrequested ids: ${stray.join(', ')}; ledger unchanged`);
+  for (const [id, reason] of [...accepted, ...reframed]) {
+    if (String(reason ?? '').trim().length < 12) throw new Error(`${id}: an accept or re-frame needs a reason of at least 12 characters; ledger unchanged`);
   }
   for (const { id } of reports) {
     if (!expected.has(id) || measured.has(id)) {
@@ -117,32 +149,41 @@ export function updatedSealedLedger(ledger, reports, generatedAt, requestedIds,
   const tanks = { ...ledger.tanks };
   for (const result of reports) {
     const row = ledger.tanks?.[result.id];
-    const reason = accepted.get(result.id);
+    const reason = accepted.get(result.id), reframeReason = reframed.get(result.id);
     if (seeThroughOnly && !row) throw new Error(`${result.id}: a see-through re-baseline needs an existing row (record a new row with --update-ledger); ledger unchanged`);
-    const verdict = sealedLedgerVerdict(row, result, { acceptSeeThrough: reason !== undefined });
+    const verdict = sealedLedgerVerdict(row, result, { acceptSeeThrough: reason !== undefined, reframe: reframeReason !== undefined });
     if (!verdict.pass) throw new Error(`${result.id}: ${verdict.message}; ledger unchanged`);
-    const { sealed, holePx, holeViews, invertedPx, throughPx, netPx, tris } = result;
+    const { sealed, holePx, holeViews, invertedPx, throughPx, netPx, tris, frame } = result;
     if (!row) {
+      if (!Array.isArray(frame)) throw new Error(`${result.id}: a new row needs the census frame; ledger unchanged`);
       tanks[result.id] = { sealed, openPx: holePx, openViews: holeViews, insideOutPx: invertedPx, seeThroughPx: throughPx,
-        netSeeThroughPx: netPx, tris, ...(reason === undefined ? {} : { seeThroughAccepted: { reason, by, date, from: 'no earlier row' } }) };
+        netSeeThroughPx: netPx, tris, frame,
+        ...(reason === undefined ? {} : { accepts: [{ kind: 'see-through', reason, by, date, from: 'no earlier row' }] }) };
       continue;
     }
-    const raise = reason !== undefined && (row.seeThroughPx !== throughPx || row.netSeeThroughPx !== netPx);
-    const seeThrough = raise
-      ? { seeThroughPx: throughPx, netSeeThroughPx: netPx,
-        seeThroughAccepted: { reason, by, date, from: { seeThroughPx: row.seeThroughPx ?? null, netSeeThroughPx: row.netSeeThroughPx ?? null } } }
-      : { seeThroughPx: Math.min(row.seeThroughPx, throughPx), netSeeThroughPx: row.netSeeThroughPx,
-        ...(row.seeThroughAccepted ? { seeThroughAccepted: row.seeThroughAccepted } : {}) };
-    const tighter = holePx < row.openPx;
-    const openings = seeThroughOnly
-      ? { sealed: row.sealed, openPx: row.openPx, openViews: row.openViews, insideOutPx: row.insideOutPx }
-      : { sealed: row.sealed || sealed, openPx: tighter ? holePx : row.openPx, openViews: tighter ? holeViews : row.openViews, insideOutPx: invertedPx };
-    const { seeThroughAccepted: _note, ...rest } = row;
-    tanks[result.id] = { ...rest, ...openings, seeThroughPx: seeThrough.seeThroughPx, netSeeThroughPx: seeThrough.netSeeThroughPx,
-      tris: seeThroughOnly ? row.tris : tris, ...(seeThrough.seeThroughAccepted ? { seeThroughAccepted: seeThrough.seeThroughAccepted } : {}) };
-    if (tanks[result.id].tris === undefined) delete tanks[result.id].tris;
-    if (tanks[result.id].openViews === undefined) delete tanks[result.id].openViews;
-    if (tanks[result.id].insideOutPx === undefined) delete tanks[result.id].insideOutPx;
+    const history = [...(row.accepts ?? [])];
+    let next = { ...row };
+    if (reframeReason !== undefined) {
+      if (!Array.isArray(frame)) throw new Error(`${result.id}: a re-frame needs the census frame; ledger unchanged`);
+      history.push({ kind: 'reframe', reason: reframeReason, by, date, from: columnsOf(row) });
+      next = { ...next, sealed: row.sealed || sealed, openPx: holePx, openViews: holeViews, insideOutPx: invertedPx,
+        seeThroughPx: throughPx, netSeeThroughPx: netPx, tris, frame };
+    } else {
+      if (reason !== undefined && (row.seeThroughPx !== throughPx || row.netSeeThroughPx !== netPx)) {
+        history.push({ kind: 'see-through', reason, by, date,
+          from: { seeThroughPx: row.seeThroughPx ?? null, netSeeThroughPx: row.netSeeThroughPx ?? null } });
+        next = { ...next, seeThroughPx: throughPx, netSeeThroughPx: netPx };
+      }
+      if (tightened.has(result.id) && !seeThroughOnly) {
+        const lower = holePx < row.openPx;
+        next = { ...next, sealed: row.sealed || sealed, openPx: lower ? holePx : row.openPx, openViews: lower ? holeViews : row.openViews,
+          seeThroughPx: Math.min(next.seeThroughPx, throughPx) };
+      } else if (tightened.has(result.id)) {
+        next = { ...next, seeThroughPx: Math.min(next.seeThroughPx, throughPx) };
+      }
+    }
+    if (history.length) next.accepts = history;
+    tanks[result.id] = next;
   }
   return { ...ledger, generatedAt, tanks };
 }

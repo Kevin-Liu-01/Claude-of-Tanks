@@ -504,10 +504,11 @@ alpha-cut, `combatHitboxRole: 'nonArmor'`, and `continuityRole: 'open-lattice'`
 (the ghillie suit) or a `decor_<frame>_net|foliage` bucket
 (`alphaCutNetting` in `tools/tank-surface-collect.mjs`). A new alpha-cut part
 without that declaration fails its row; a hole behind netting is still a hole.
-Every playable id has a row; a new vehicle must be sealed with no see-through
-cluster. `--update-ledger[=see-through]` never raises a row: openings and
-see-through only tighten to the measurement, netting keeps the row's value.
-Raise a row's see-through or netting, or record a new vehicle whose
-see-through cluster is accepted, only with
-`--update-ledger[=see-through] --accept-see-through=<id>:<reason>` (the row
-keeps the reason, who, when and the old values as `seeThroughAccepted`).
+Every playable id has a row, measured in the census frame recorded on it (an
+extremity edit never re-aliases its counts); a new vehicle must be sealed with
+no see-through cluster. `--update-ledger` never changes an existing row;
+`--tighten-ledger=<ids>` lowers one to its measurement. Raise a row's
+see-through or netting, or record a new vehicle whose see-through cluster is
+accepted, only with `--update-ledger --accept-see-through=<id>:<reason>`;
+re-frame a build that outgrew its frame with `--reframe=<id>:<reason>`. Each
+appends the reason, who, when and the old values to the row's `accepts`.

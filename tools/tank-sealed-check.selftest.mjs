@@ -45,6 +45,11 @@ for (const label of ['net lifted off the roof', 'net doubled']) {
   assert.deepEqual([open, through, gate], ['0', '0', 'FAIL'], `${label}: no opening, no see-through, and the netting column fails it`);
   assert.ok(Number(netting) > Number(nNet), `${label}: more netting px than the declared net's baseline`);
 }
+// The census frame (guards 229 critic round 2): with a row's fixed frame a speck 5 cm past the net leaves every column
+// as it was; framed on each build's own bounding sphere (the pre-229 census) the same speck re-aliases the netting.
+const framed = (label) => selfTest.stdout.match(new RegExp(`self-test ${label}: open (\\d+), see-through (\\d+), netting (\\d+)\\n`))?.slice(1).map(Number);
+assert.deepEqual(framed('fixed frame, a speck 5 cm past the net'), framed('fixed frame'), 'a fixed frame: an unrelated extremity moves nothing');
+assert.notEqual(framed('own-AABB frame, a speck 5 cm past the net')[2], framed('own-AABB frame')[2], 'the own-AABB frame re-aliases (the negative control)');
 const sunk = net('net sunk into the box');
 assert.deepEqual([sunk[0], sunk[1], sunk[3]], ['0', '0', 'FAIL'], 'a net sunk into its hull fails the two-sided netting band');
 assert.ok(Number(sunk[2]) < Number(nNet), 'the sunk net shows fewer netting px than its baseline');
@@ -73,6 +78,8 @@ const sealedCount = Object.values(ledger.tanks).filter((row) => row.sealed).leng
 assert.ok(sealedCount >= 150, `at least 150 sealed tanks in the ledger (${sealedCount})`);
 for (const [id, row] of Object.entries(ledger.tanks)) {
   assert.ok(Number.isFinite(row.seeThroughPx) && Number.isFinite(row.netSeeThroughPx), `${id}: every row carries see-through and netting baselines`);
+  assert.ok(Array.isArray(row.frame) && row.frame.length === 4 && row.frame.every(Number.isFinite) && row.frame[3] > 1,
+    `${id}: every row carries its census frame [x, y, z, radius]`);
 }
 const netted = Object.entries(ledger.tanks).filter(([, row]) => row.netSeeThroughPx > 0).map(([id]) => id);
 assert.ok(netted.length >= 35 && netted.includes('kf51_u'), `the ghillie rows are re-baselined with netting apart (${netted.length})`);
