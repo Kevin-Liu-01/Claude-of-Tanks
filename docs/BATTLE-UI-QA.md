@@ -236,9 +236,9 @@ window, a portrait phone, a 360x640 phone, four landscape phones (844x390,
 932x430, 667x375 and 740x360), and the tray states on the two 44 px tall touch
 slots (320x568 and 568x290). The mouse windows, the phones and the landscape
 phones add the gun travel warning and the widest ring to the scope's states;
-the desktop, both stacked trays, 800x500 and the touch layouts add unlimited
-rounds through the scope, and the mouse layouts a shot report and the open
-combat log over the right lane. It checks pixels,
+the desktop, both stacked trays, 800x500, the 390x844 phone and the 844x390 and
+667x375 landscape phones add unlimited rounds through the scope, and those four
+mouse windows a shot report and the open combat log over the right lane. It checks pixels,
 recorded canvas geometry and the tray's computed styles: every mark under the
 marker keeps 3 px from the ring's stroke, every text there keeps 3 px from the
 rack, and every mark of the sight, the warning chip and the zoom plate's rules
@@ -258,17 +258,22 @@ receipt breaks each of these on a mouse tray and on a touch tray. With a camera
 on the frame, the paint receipt also turns the gun off the camera's aim, so the
 ring sits left, right, above and below the marker; every gap holds there too.
 One older placement remains: the range tag hangs off the screen centre's 4:30,
-not the gun ring's, so a far-displaced ring can cross it. With the widest rings,
-a wide tray under 420 px tall and a landscape phone under about 370 px tall leave
-the ring, the tag and the readouts no room above the controls row. The worst
-cases are 4.5 px into the row at 1024x400 and 25.5 px at 568x290. Before r9 the
-compact stack under 431 px tall had no floor at all, and ran as much as 34 px
-into a wide tray's row. A probe outside the capture found three older touch
-placements. On a portrait phone 360 px wide or less, the scope readouts land on
-the left FIRE button (29 px at 320x568, 3.8 px at 360x640). The portrait gun
-travel warning, a DOM chip fixed at 50% + 48 px, meets the countdown (1.2 px)
-and, under a wide ring, the dropped rack (18 px) and the range tag (5.9 px). At
-568x290 the readouts sit under 1 px from the systems row.
+not the gun ring's, so a far-displaced ring can cross it. Three windows leave no
+place where every mark keeps 3 px from the furniture under the widest rings:
+568x290, 320x568 and 360x640. There each mark takes the place that reaches least
+far into it. That is 3.34 px into the score at 568x290 (a rack set over a 43 px
+ring), 26.28 px at 320x568 and 7.84 px at 360x640. The worst two are the
+portrait warning chip over the sight on the systems row, with a rack reloading
+under the widest ring and the left FIRE button under the sight. Every other swept
+window, the listed capture sizes among them, keeps 3 px. Round r9 left 568x290
+25.5 px into its systems row and 1024x400 4.5 px into its controls row, put the
+portrait chip on the countdown and a dropped rack, and the 667x375 zoom plate
+12 px into the consumables. Before r9 the compact stack under 431 px tall had no
+floor at all, and ran as much as 34 px into a wide tray's row. The reticle never
+dodges the shot report, the open combat log or the centre notices, which come
+and go. On a mouse window about 640 px wide the right lane's report itself
+reaches over the sight, the ring's right side included, in battle as in the
+scope. That is the report's own dock, older than this item.
 Nothing touches the page between the DOM read and the frame. The ink gaps
 between count, label, key and icon are measured after the frame, from
 full-viewport shots. The tool takes no clipped screenshot. Its flow lives in
