@@ -285,6 +285,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/standard-continuity-policy.selftest.mjs',
     // 2026-10-16 (guards 227): the §B2 hull-anchored contiguity lattice; AABB-only add-ons never move a hole (226 class)
     'tools/contig-grid.selftest.mjs',
+    // 2026-10-19 (guards 229): the fleet hidden-gap audit, committed (docs/geometry-gate/contig-hidden.json): listed gaps
+    // are known work orders, an unlisted, second or grown gap fails §B2; pure plan rectangles and the ledger JSON
+    'tools/contig-hidden-gaps.selftest.mjs',
     'tools/concept-fixture-runner.selftest.mjs',
     'tools/source-equipment-policy.selftest.mjs',
     'tools/photo-reference-policy.selftest.mjs',

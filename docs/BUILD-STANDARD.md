@@ -775,7 +775,15 @@ cells, so an AABB change no longer invalidates them either. Fleet census
 of what the old raster hid: `node tools/contig-phase-audit.mjs --ids=<ids>`
 (the page's `legacy=1` reproduces the pre-227 raster from the same build;
 `--prove=<id>` sweeps a 1 cm add-on past the bow and side and must leave the
-anchored scan identical).
+anchored scan identical). The fleet audit is committed (guards 229):
+`docs/geometry-gate/contig-hidden.json` lists, per id, every gap the lattice
+reads on integ/229 that the old raster never saw, as exact 2 cm vehicle-frame
+pixel boxes (`tools/contig-hidden-gaps.mjs`). The gate reads a listed gap as a
+known work order and prints it; any other gap, or a listed one grown past its
+box, fails. A gap the old raster also saw was red before and is never listed.
+Close a listed gap, then `--prune` it from a fresh `contig-phase-audit` row;
+a new gap is fixed, not listed (`--accept=<id>:<reason>` is the explicit
+exception).
 
 ## §B3.1 addendum — MUZZLE BORE (owner directive 2026-08-06, with
 ## screenshot: "make tips of guns have holes, bruh")

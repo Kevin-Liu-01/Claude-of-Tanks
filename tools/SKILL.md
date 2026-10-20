@@ -143,7 +143,9 @@ are unavailable on a fused source mesh.
 The §B2 contiguity scan reads `contig-grid.mjs`: a 6 cm lattice fixed in the
 vehicle frame and re-binned at all nine sub-cell phases, so an add-on that only
 moves the AABB cannot hide or reveal a gap. Never frame a scan from the AABB;
-census hidden gaps with `contig-phase-audit.mjs --ids=<ids>`.
+census hidden gaps with `contig-phase-audit.mjs --ids=<ids>`. The gaps the old
+raster missed are listed in `docs/geometry-gate/contig-hidden.json`
+(`contig-hidden-gaps.mjs --report`): the gate passes those and fails any other.
 
 `gen-interior-fills.mjs` applies the explicit body-boundary recipes in
 `interior-fill-body-policy.mjs` before voxelization. A separately mounted cage,
