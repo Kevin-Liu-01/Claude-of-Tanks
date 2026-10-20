@@ -177,12 +177,12 @@ assert.throws(()=>updatedSealedLedger(ledger,[{...closed,id:'existing',sealed:fa
     [{...pass1[1],throughPx:38,netPx:8531}],'u5',['griffin_viper'],{acceptSeeThrough:A('griffin_viper'),...NOTE});
   assert.deepEqual(kept.tanks.griffin_viper.accepts.map((a)=>a.reason),['earlier note'],'an accept that changes nothing keeps the row and its history');
 }
-// The census frame (critic rounds 2-4). A row's recorded frame frames every view and is fixed: the frame the build
-// needs (recordedSealedFrame of its own bounding sphere) may drift from it by min(1 m, 25 % of the radius) in radius or
-// centre, and the build is judged in the row's frame with no re-frame (a 1.5 m longer gun: 5.6 -> 6.3 m). Past that the
-// gate fails OUT OF FRAME, or FRAME STALE when the build lies well inside a frame too large for it. --reframe is only
-// for those two, never past half again the radius, and the build's census in the row's frame may not exceed the row in
-// any column (no slack), see-through and netting being free there only with --accept-see-through for the id.
+// The census frame (critic rounds 2-5). A row's recorded frame frames every view and is fixed: the frame the build
+// needs (recordedSealedFrame of its own bounding sphere) may drift from it by min(0.5 m, 15 % of the radius) in radius
+// and centre, and the build is judged in the row's frame with no re-frame. Past that the gate fails OUT OF FRAME, or
+// FRAME STALE when the build lies well inside a frame too large for it. --reframe is only for those two, never past half
+// again the row's first recorded frame, and the build's census in the row's frame may not exceed the row in any column
+// (no slack; a refusal names the views), see-through and netting being free there only with --accept-see-through.
 {
   const F = [0,1.65,1.2,5.6];
   const row = {sealed:true,openPx:0,openViews:0,insideOutPx:115,seeThroughPx:0,netSeeThroughPx:7352,tris:129781,frame:F};
@@ -190,22 +190,43 @@ assert.throws(()=>updatedSealedLedger(ledger,[{...closed,id:'existing',sealed:fa
   const same = {sealed:true,holeViews:0,holeViewNames:[],holePx:0,throughPx:0,throughViews:0,netPx:7352};
   const base = {id:'t72b3_sich',...same,invertedPx:115,tris:129800};
   const R = (why='selftest: a 1.5 m longer gun') => new Map([['t72b3_sich',why]]);
-  assert.deepEqual([frameBound(5.6),frameBound(3.2)],[1,0.8]);
-  // a 1.5 m longer gun (critic r4 A10): fits; judged in the row's frame, where its columns are the row's; nothing to re-frame
+  assert.deepEqual([frameBound(5.6),frameBound(3.2)],[0.5,0.48]);
+  // a 0.4 m longer gun fits: judged in the row's frame, where its columns are the row's; nothing to re-frame
+  const gun04 = [0,1.65,1.4,5.8];
+  assert.equal(frameFit(F,gun04).fit,'fits');
+  assert.match(sealedLedgerVerdict(row,{...same,needFrame:gun04}).message,/^ledger: sealed, holds; see-through 0 px \(ledger 0\), holds; netting 7352 px \(ledger 7352\), holds$/);
+  assert.throws(()=>updatedSealedLedger(book,[{...base,needFrame:gun04,frame:gun04,oldFrame:same}],'u',['t72b3_sich'],{reframe:R(),...NOTE}),
+    /REFRAME refused: the build fits its row's frame \(radius \+0.2 m, centre 0.2 m off, within 0.5 m\)/);
+  // a 1.5 m longer gun (critic r4 A10, 5.6 -> 6.3 m) is past the 0.5 m band: OUT OF FRAME, then a named, exact re-frame
   const gun = [0,1.65,1.95,6.3];
-  assert.equal(frameFit(F,gun).fit,'fits');
-  assert.match(sealedLedgerVerdict(row,{...same,needFrame:gun}).message,/^ledger: sealed, holds/);
-  assert.throws(()=>updatedSealedLedger(book,[{...base,needFrame:gun,frame:gun,oldFrame:same}],'u',['t72b3_sich'],{reframe:R(),...NOTE}),
-    /REFRAME refused: the build fits its row's frame \(radius \+0.7 m, centre 0.75 m off, within 1 m\)/);
-  // an edge speck 1 mm past the frame (A4b, the ratchet's first step) fits too, so no re-frame can take the slack in
-  assert.equal(frameFit(F,[0.05,1.65,1.7,6.1]).fit,'fits');
+  assert.equal(frameFit(F,gun).fit,'out');
+  assert.match(sealedLedgerVerdict(row,{...same,needFrame:gun}).message,/^OUT OF FRAME: .*radius \+0.7 m, centre 0.75 m off; the row's frame holds up to 0.5 m/);
+  const regunned = updatedSealedLedger(book,[{...base,needFrame:gun,frame:gun,netPx:5545,oldFrame:same}],'u',['t72b3_sich'],{reframe:R(),...NOTE});
+  assert.deepEqual([regunned.tanks.t72b3_sich.frame,regunned.tanks.t72b3_sich.accepts[0].from.frame,regunned.tanks.t72b3_sich.accepts[0].to],[gun,F,gun],
+    'the history keeps the frame it came from and the one it went to');
+  // an edge speck 1 mm past the frame (A4b, the ratchet's first step) is out too, and its re-frame takes no slack in
+  const edge = [0.05,1.65,1.7,6.1];
+  assert.equal(frameFit(F,edge).fit,'out');
+  assert.throws(()=>updatedSealedLedger(book,[{...base,needFrame:edge,frame:edge,oldFrame:{...same,holePx:11}}],'u',['t72b3_sich'],{reframe:R(),...NOTE}),/exceeds the row: open px 11 > ledger 0/);
+  // a rise the plain gate tolerates is printed as drift with its views (critic round 5 #3: a later re-frame allows none)
+  const seam = {...same,holePx:7,views:[{name:'ring12_2',holePx:4,throughPx:0},{name:'cube_1_0_0',holePx:3,throughPx:0}],needFrame:F};
+  assert.match(sealedLedgerVerdict(row,seam).message,/^ledger: sealed, holds; .*holds; drift, tolerated here \(a re-frame allows none\): open px 7 above the row's 0 \(ring12_2 4, cube_1_0_0 3\)$/);
+  assert.match(sealedLedgerVerdict(row,{...seam,holePx:0,netPx:7340}).message,/drift, tolerated here \(a re-frame allows none\): netting px 7340 against the row's 7352$/);
   // a 1 mm speck 20 m out (A8): OUT OF FRAME for the plain gate and a plain update, and refused as a re-frame
   const far = [0,1.65,11.7,15.5];
   assert.equal(frameFit(F,far).fit,'out');
   assert.match(sealedLedgerVerdict(row,{...same,needFrame:far}).message,/^OUT OF FRAME: .*radius \+9.9 m.*fix the build/);
   assert.throws(()=>updatedSealedLedger(book,[{...base,needFrame:far,frame:far}],'u',['t72b3_sich']),/t72b3_sich: OUT OF FRAME/);
   assert.throws(()=>updatedSealedLedger(book,[{...base,needFrame:far,frame:far,oldFrame:same}],'u',['t72b3_sich'],{reframe:R('selftest: the far part is real'),...NOTE}),
-    /REFRAME refused: the build needs a frame \[0, 1.65, 11.7, 15.5\], past half again its row's .* a build defect/,'critic round 4: the far speck is refused');
+    /REFRAME refused: the build needs a frame \[0, 1.65, 11.7, 15.5\], past half again its row's first recorded frame \[0, 1.65, 1.2, 5.6\]: that is a build defect/,'critic round 4: the far speck is refused');
+  // critic round 5 #2: the limit is against the row's FIRST frame, so a chain of re-frames cannot walk it 5.6 -> 8.1 -> 11.8
+  const step1Frame = [0,1.65,3.7,8.1], step2Frame = [0,1.65,7.4,11.8];
+  const step1 = updatedSealedLedger(book,[{...base,needFrame:step1Frame,frame:step1Frame,netPx:3500,oldFrame:same}],'u',['t72b3_sich'],{reframe:R('selftest: a far part, step one'),...NOTE});
+  assert.deepEqual(step1.tanks.t72b3_sich.frame,step1Frame,'one re-frame up to half again the first frame is accepted');
+  assert.throws(()=>updatedSealedLedger(step1,[{...base,needFrame:step2Frame,frame:step2Frame,netPx:1700,oldFrame:{...same,netPx:3500}}],'u',['t72b3_sich'],{reframe:R('selftest: a far part, step two'),...NOTE}),
+    /REFRAME refused: the build needs a frame \[0, 1.65, 7.4, 11.8\], past half again its row's first recorded frame \[0, 1.65, 1.2, 5.6\]/,'the second step is measured against the first frame');
+  const back = updatedSealedLedger(step1,[{...base,needFrame:F,frame:F,oldFrame:{...same,netPx:3500}}],'u',['t72b3_sich'],{reframe:R('selftest: the far part is gone'),...NOTE});
+  assert.deepEqual([back.tanks.t72b3_sich.frame,back.tanks.t72b3_sich.accepts.map((a)=>a.to)],[F,[step1Frame,F]],'and a tighten back to it is not limited');
   // a frame already that large (A8's row) goes stale once the speck is gone (B7), so the 15 cm panel that passed there fails
   const inflated = {...row,frame:far,netSeeThroughPx:931};
   assert.equal(frameFit(far,F).fit,'stale');
@@ -215,7 +236,10 @@ assert.throws(()=>updatedSealedLedger(ledger,[{...closed,id:'existing',sealed:fa
   const tightened = updatedSealedLedger({generatedAt:'old',tanks:{t72b3_sich:inflated}},[{...base,needFrame:F,frame:F,oldFrame:{...same,netPx:931}}],'u',['t72b3_sich'],{reframe:R('selftest: the far speck is gone'),...NOTE});
   assert.deepEqual([tightened.tanks.t72b3_sich.frame,tightened.tanks.t72b3_sich.netSeeThroughPx,tightened.tanks.t72b3_sich.accepts[0].kind],[F,7352,'reframe']);
   assert.throws(()=>updatedSealedLedger({generatedAt:'old',tanks:{t72b3_sich:inflated}},[{...base,needFrame:F,frame:F,holePx:123,sealed:false,holeViews:12,oldFrame:{...same,netPx:931,holePx:7}}],'u',['t72b3_sich'],{reframe:R('selftest: the far speck is gone'),...NOTE}),
-    /REFRAME refused: in its row's frame the build exceeds the row \(open px 7 > ledger 0\)/,'the panel rides no tightening');
+    /REFRAME refused: in its row's frame the build exceeds the row: open px 7 > ledger 0\. A re-frame records no change: fix the build \(run the gate without --reframe and with --images --images-all/,'the panel rides no tightening');
+  // a refusal names the views holding the excess pixels (critic round 5 #3: 7 px below --min-area form no cluster)
+  assert.throws(()=>updatedSealedLedger({generatedAt:'old',tanks:{t72b3_sich:inflated}},[{...base,needFrame:F,frame:F,oldFrame:{...seam,netPx:931}}],'u',['t72b3_sich'],{reframe:R('selftest: the far speck is gone'),...NOTE}),
+    /exceeds the row: open px 7 > ledger 0 \(ring12_2 4, cube_1_0_0 3\)\. .*moved with the change/);
   // a real growth past the bound (a 3 m longer gun) is the reasoned re-frame, judged with no slack (critic round 4 #2)
   const long = [0,1.65,2.7,7.1];
   assert.equal(frameFit(F,long).fit,'out');
@@ -226,7 +250,7 @@ assert.throws(()=>updatedSealedLedger(ledger,[{...closed,id:'existing',sealed:fa
   for (const [old,why] of [[{...same,holePx:11},'open px 11 > ledger 0'],[{...same,throughPx:1},'see-through px 1 > ledger 0'],
     [{...same,netPx:7353},'netting px 7353 outside ledger 7352'],[{...same,netPx:7173},'netting px 7173 outside ledger 7352']]) {
     assert.throws(()=>updatedSealedLedger(book,[{...base,needFrame:long,frame:long,oldFrame:old}],'u',['t72b3_sich'],{reframe:R(),...NOTE}),
-      (error)=>error.message.includes(`REFRAME refused: in its row's frame the build exceeds the row (${why}`),`no slack in a re-frame: ${why}`);
+      (error)=>error.message.includes(`REFRAME refused: in its row's frame the build exceeds the row: ${why}`),`no slack in a re-frame: ${why}`);
   }
   // critic round 4 #3: a growth that moved the netting too (the drape follows the gun) is recorded with both flags
   assert.throws(()=>updatedSealedLedger(book,[{...base,needFrame:long,frame:long,oldFrame:{...same,netPx:7173}}],'u',['t72b3_sich'],{reframe:R(),...NOTE}),
@@ -250,11 +274,12 @@ assert.throws(()=>updatedSealedLedger(ledger,[{...closed,id:'existing',sealed:fa
   assert.match(sealedLedgerVerdict(leo,{...leoCensus,holeViewNames:['cube_-1_0_-1'],holePx:29}).message,/^REGRESSION: holes in cube_-1_0_-1, outside the row's views \(cube_1_0_-1\): a new hole cluster/);
   assert.match(sealedLedgerVerdict(leo,{...leoCensus,holeViews:2,holeViewNames:['cube_1_0_-1','ring12_3'],holePx:20}).message,/holes in ring12_3/);
   assert.match(sealedLedgerVerdict({...leo,openViewNames:undefined},{...leoCensus,holeViews:2,holePx:20}).message,/^REGRESSION: open in 2 views > ledger 1/,'a row without names holds its count');
-  // critic round 3 L2 (a 1.5 m gun and a 40 cm opening on leo2a4): the gun fits the frame, so the plain gate judges it there
+  // critic round 3 L2 (a 1.5 m gun and a 40 cm opening on leo2a4): the plain gate fails it, and its re-frame is refused in the row's frame
   const leoGun = {...leoCensus,holeViews:12,holeViewNames:Array.from({length:12},(_,i)=>`v${i}`),holePx:495,needFrame:[0,1.45,2.4,6.8]};
-  assert.match(sealedLedgerVerdict(leo,leoGun).message,/^REGRESSION: open px 495 > ledger 17/);
+  assert.match(sealedLedgerVerdict(leo,leoGun).message,/^OUT OF FRAME/);
+  assert.match(sealedLedgerVerdict(leo,{...leoGun,needFrame:leo.frame}).message,/^REGRESSION: open px 495 > ledger 17/);
   assert.throws(()=>updatedSealedLedger({generatedAt:'old',tanks:{leo2a4:leo}},[{...leoGun,id:'leo2a4',invertedPx:211,tris:131680,frame:leoGun.needFrame,oldFrame:{...leoGun,holePx:480}}],'u',['leo2a4'],
-    {reframe:new Map([['leo2a4','selftest: a 1.5 m longer gun']]),...NOTE}),/REFRAME refused: the build fits its row's frame/);
+    {reframe:new Map([['leo2a4','selftest: a 1.5 m longer gun']]),...NOTE}),/REFRAME refused: in its row's frame the build exceeds the row: open px 480 > ledger 17/);
   // tightening an open row keeps its names in step: lower openings record the measured views, a sealed row none
   const tightLeo = updatedSealedLedger({generatedAt:'old',tanks:{leo2a4:leo}},[{...leoCensus,id:'leo2a4',holePx:9,invertedPx:211,tris:131680}],'u',['leo2a4'],{tighten:new Set(['leo2a4'])});
   assert.deepEqual([tightLeo.tanks.leo2a4.openPx,tightLeo.tanks.leo2a4.openViewNames],[9,['cube_1_0_-1']]);
@@ -270,4 +295,4 @@ assert.deepEqual([...parseSeeThroughAccepts('ajax,griffin_viper:marking specks o
 assert.equal(parseSeeThroughAccepts('').size,0);
 for (const spec of ['ajax','ajax:short',':a long enough reason here']) assert.throws(()=>parseSeeThroughAccepts(spec),/<id>\[,<id>\]:<reason>/,`refused: ${spec}`);
 assert.equal(JSON.stringify(ledger),snapshot);
-console.log('sealed-ledger-policy: incomplete batches, unregistered openings, see-through and netting regressions fail; see-through re-baselines, re-frames and new rows with see-through are explicit per id with a reason kept in a history; a plain update never changes a row (no raise, no walk down), --tighten-ledger lowers by name; a row\'s frame is fixed: a build within min(1 m, 25 %) of it needs no re-frame, OUT OF FRAME and FRAME STALE fail, --reframe serves only those (never half again the radius) with no slack in the row\'s frame and an accept honoured there; open rows hold their hole views by name; historical thresholds and sealed regressions preserved');
+console.log('sealed-ledger-policy: incomplete batches, unregistered openings, see-through and netting regressions fail; see-through re-baselines, re-frames and new rows with see-through are explicit per id with a reason kept in a history; a plain update never changes a row (no raise, no walk down), --tighten-ledger lowers by name; a row\'s frame is fixed: a build within min(0.5 m, 15 %) of it needs no re-frame, OUT OF FRAME and FRAME STALE fail, --reframe serves only those (never past half again the row\'s first frame) with no slack in the row\'s frame, the excess views named, and an accept honoured there; a tolerated rise prints as drift; open rows hold their hole views by name; historical thresholds and sealed regressions preserved');

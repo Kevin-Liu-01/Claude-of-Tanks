@@ -507,14 +507,14 @@ without that declaration fails its row; a hole behind netting is still a hole.
 Every playable id has a row, measured in the census frame recorded on it (an
 extremity edit never re-aliases its counts); a new vehicle must be sealed with
 no see-through cluster. The frame is fixed: a build whose own frame stays
-within min(1 m, 25 % of the radius) of it (a longer gun, an antenna) is judged
-in it with no re-frame; past that it fails OUT OF FRAME (a part thrown metres
-out: fix the build) or FRAME STALE. `--update-ledger` never changes an existing
+within min(0.5 m, 15 % of the radius) of it (an antenna, a slightly longer
+gun) is judged in it with no re-frame; past that it fails OUT OF FRAME (a part
+thrown metres out: fix the build) or FRAME STALE. `--update-ledger` never changes an existing
 row; `--tighten-ledger=<ids>` lowers one to its measurement. Raise a row's
 see-through or netting, or record a new vehicle whose see-through cluster is
 accepted, only with `--update-ledger --accept-see-through=<id>:<reason>`;
 no flag accepts an opening. `--reframe=<id>:<reason>` serves only OUT OF FRAME
-(at most half again the radius) and FRAME STALE, and the build may not exceed
+(at most half again the row's first frame) and FRAME STALE, and the build may not exceed
 its row in the row's frame in any column (with `--accept-see-through` for the
 id, see-through and netting may move there; openings never). Open rows list
 their hole views: a hole in another view fails. Each appends the reason, who,

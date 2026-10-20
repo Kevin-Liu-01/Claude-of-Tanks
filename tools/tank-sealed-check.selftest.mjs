@@ -87,6 +87,15 @@ for (const [id, row] of Object.entries(ledger.tanks)) {
 const netted = Object.entries(ledger.tanks).filter(([, row]) => row.netSeeThroughPx > 0).map(([id]) => id);
 assert.ok(netted.length >= 35 && netted.includes('kf51_u'), `the ghillie rows are re-baselined with netting apart (${netted.length})`);
 
+// the rows are 256 px / min-area 6 counts: a gate or an update at other units is refused before any build (critic
+// round 5: --res=128 printed "no verdict" and passed a 40 cm opening)
+for (const units of [['--res=128'], ['--min-area=400']]) {
+  for (const mode of ['--gate', '--update-ledger']) {
+    const refused = run('--ids=cv9040c', '--ledger=docs/geometry-gate/sealed.json', mode, ...units);
+    assert.equal(refused.status, 2, `${mode} ${units}: exit ${refused.status}\n${refused.stdout}\n${refused.stderr}`);
+    assert.match(refused.stderr, /the ledger's rows are in 256 px \/ min-area 6 units/);
+  }
+}
 const gate = run('--ids=cv9040c', '--ledger=docs/geometry-gate/sealed.json', '--gate');
 assert.equal(gate.status, 0, `ledger gate exit ${gate.status}\n${gate.stdout}\n${gate.stderr}`);
 const cv90 = gate.stdout.match(/^cv9040c: SEALED — .* see-through px (\d+) in \d+ views, netting px (\d+) in \d+ views, .* ledger: sealed, holds; see-through (\d+) px \(ledger (\d+)\), holds; netting (\d+) px \(ledger (\d+)\), holds/m);
@@ -97,4 +106,4 @@ assert.ok(netting > 3000 && judgedNetting === netting && judgedThrough === throu
 
 const plan = readFileSync('tools/tank-release-plan.mjs', 'utf8');
 assert.match(plan, /cpu\('tank-sealed-check',selected,'--ledger=docs\/geometry-gate\/sealed.json'/, 'the release plan runs the sealed check with the ledger');
-console.log(`tank-sealed-check.selftest: rasteriser self-test with netting, hole-behind-netting, glass, lifted, doubled and sunk net cases, netting predicate, ledger (${sealedCount} sealed of ${Object.keys(ledger.tanks).length}, ${netted.length} netted rows), cv9040c gate and release-plan wiring PASS`);
+console.log(`tank-sealed-check.selftest: rasteriser self-test with netting, hole-behind-netting, glass, lifted, doubled and sunk net cases, netting predicate, ledger (${sealedCount} sealed of ${Object.keys(ledger.tanks).length}, ${netted.length} netted rows), units refusals, cv9040c gate and release-plan wiring PASS`);

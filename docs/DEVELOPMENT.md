@@ -572,20 +572,23 @@ support went with it. Visual change detection lives in generated ledgers that on
   row (`tank-sealed-check.selftest` holds the ledger's ids to the fleet manifest), measured in the census frame recorded
   on it (`frame: [x, y, z, radius]`), so an unrelated extremity edit never moves the pixel grid under unchanged parts.
   The frame is fixed: the frame a build needs (its own bounding sphere, as a new row records it) may differ from the
-  row's by min(1 m, 25 % of the radius) in radius or centre and the build is judged in the row's frame, geometry past
-  it clipped laterally and drawn wherever it projects into the window (a 1.5 m longer gun needs 5.6 -> 6.3 m: no
-  re-frame). Past that the gate fails `OUT OF FRAME` (usually a part thrown metres out: fix the build) or `FRAME STALE`
-  (the build lies well inside a frame too large for it). `--update-ledger` never changes an existing row (it records
+  row's by min(0.5 m, 15 % of the radius) in radius and in centre (together a part reaches about 1 m past the frame)
+  and the build is judged in the row's frame, geometry past it clipped laterally and drawn wherever it projects into
+  the window. Past that the gate fails `OUT OF FRAME` (usually a part thrown metres out: fix the build; a 1.5 m longer
+  gun needs 5.6 -> 6.3 m and is re-framed) or `FRAME STALE` (the build lies well inside a frame too large for it). `--update-ledger` never changes an existing row (it records
   new vehicles' rows; `=see-through` refuses new rows); `--tighten-ledger=<ids>` lowers openings and see-through to the
   measurement by name; a see-through or netting raise, or a sealed new vehicle's row with a see-through cluster, needs
   `--accept-see-through=<id>[,<id>]:<reason>`; no flag accepts an opening. `--reframe=<id>:<reason>` serves only
-  OUT OF FRAME (never to more than half again the radius) and FRAME STALE: the build's census in the row's frame may
-  not exceed the row in any column, with no slack, before every column is re-measured in its own frame; with
+  OUT OF FRAME (never past half again the row's first recorded frame, however many re-frames) and FRAME STALE: the
+  build's census in the row's frame may not exceed the row in any column, with no slack (a refusal lists the views
+  holding the excess pixels; a rise the plain gate tolerates is printed as drift with its views when it lands), before
+  every column is re-measured in its own frame; with
   `--accept-see-through` for the same id its see-through and netting are free there (both entries recorded), openings
   never. Each accept or re-frame appends {kind, reason, by, date, from} to the row's `accepts` history. The six open
   rows list their hole views (`openViewNames`): a hole in any other view fails; within a listed view the row keeps
-  only a pixel count. Rows are pixel counts at the ledger's `res` and `minArea` (256, 6): an update at another
-  `--res`/`--min-area` is refused, and a gate there uses the rows' frames and gives no verdict. The framed re-base that
+  only a pixel count. Rows are pixel counts at the ledger's `res` and `minArea` (256, 6): an update or a `--gate` at
+  another `--res`/`--min-area` is refused (exit 2); a look there without `--gate` uses the rows' frames and gives no
+  verdict. The framed re-base that
   introduced the frames (guards 229) wrote its own entries, kind `rebaseline`: leo2a4's 1 cm turret-roof slit is the
   one opening it recorded, and the 256 px aliasing it found on type90, leclerc_sxxi and leo2a6_ua is noted on their
   rows.

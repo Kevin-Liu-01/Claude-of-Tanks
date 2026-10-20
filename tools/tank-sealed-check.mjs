@@ -65,13 +65,15 @@ const outDir = resolve(opt('out', '.qa-dev/out/sealed'));
 const writeImages = flag('images');
 
 // Each view is framed on the row's recorded census frame (frame: [x, y, z, radius] in the tank root, guards 229 critic
-// rounds 2 and 4): an unrelated extremity edit (a longer gun, an antenna, a stowage box) never moves the pixel grid under
+// rounds 2, 4 and 5): an unrelated extremity edit (a longer gun, an antenna, a stowage box) never moves the pixel grid under
 // unchanged parts, so every column reproduces exactly; geometry past the frame is clipped laterally and drawn wherever it
 // projects into the window. A tank without a row (or re-framed with --reframe=<id>:<reason>) is framed on its build's
 // bounding sphere, snapped and grown by at least 10 cm (recordedSealedFrame). That is also the frame each build needs:
-// within min(1 m, 25 % of the row's radius) of the row's frame it is judged in the row's frame with no re-frame; past
-// it the gate fails OUT OF FRAME (a part metres out, usually a build defect) or FRAME STALE (the row's frame is that much
-// larger than the build needs), and only those two can be re-framed.
+// within min(0.5 m, 15 % of the row's radius) of the row's frame, in radius and in centre (together about 1 m of reach),
+// it is judged in the row's frame with no re-frame; past it the gate fails OUT OF FRAME (a part metres out, usually a
+// build defect) or FRAME STALE (the row's frame is that much larger than the build needs), and only those two can be
+// re-framed, never past half again the row's first recorded frame. A rise the gate tolerates is printed as drift with
+// its views: a later re-frame allows none.
 // --ledger=path gates each tank against the committed census: a sealed tank must stay sealed, an open one may not open
 // in more views, no tank may add more than max(12 px, 10 %) of true openings or of see-through over its ledger row, and
 // its netting px stay within max(12 px, 2 %) of the row either way; a new vehicle must be sealed with no see-through
@@ -86,8 +88,8 @@ const writeImages = flag('images');
 //                                netting are free there, openings never), then every column is re-measured in the
 //                                build's own frame
 // --update-ledger=see-through refuses new rows, leaves openings alone and refuses --reframe. Every flag needs --ledger and
-// --update-ledger, and an update runs at the ledger's --res and --min-area (its rows' units); a gate at other units
-// uses the rows' frames and gives no verdict.
+// --update-ledger. An update or a --gate runs at the ledger's --res and --min-area (its rows' units); without --gate,
+// a look at other units uses the rows' frames and gives no verdict.
 const ledgerPath = opt('ledger', '');
 const ledger = ledgerPath ? JSON.parse(readFileSync(resolve(ledgerPath), 'utf8')) : null;
 const updateMode = flag('update-ledger') ? 'rows' : opt('update-ledger', '');
@@ -107,6 +109,8 @@ if ((acceptSeeThrough.size || reframe.size || tighten.size) && !(ledger && updat
 const ledgerUnits = !ledger || ((ledger.res ?? 256) === RES && (ledger.minArea ?? 6) === MIN_AREA);
 if (reframe.size && updateMode === 'see-through') { console.error('--reframe re-measures every column: use --update-ledger, not --update-ledger=see-through'); process.exit(2); }
 if (!ledgerUnits && updateMode) { console.error(`--update-ledger at --res=${RES} --min-area=${MIN_AREA}: the ledger's rows are in ${ledger.res ?? 256} px / min-area ${ledger.minArea ?? 6} units`); process.exit(2); }
+// a gate at other units would judge nothing and pass (critic round 5: a 40 cm opening at --res=128 exited 0)
+if (!ledgerUnits && flag('gate')) { console.error(`--gate --ledger at --res=${RES} --min-area=${MIN_AREA}: the ledger's rows are in ${ledger.res ?? 256} px / min-area ${ledger.minArea ?? 6} units; gate at those, or look without --gate`); process.exit(2); }
 const acceptedBy = process.env.COT_LANE || userInfo().username;
 import { collectTriangles } from './tank-surface-collect.mjs';
 
@@ -411,14 +415,15 @@ const report = []; let failures = 0;
 /** The gated totals of the 33 views in one frame (a re-frame's census in the row's frame). */
 function frameCensus(tris, meshes, frame, bores) {
   const sphere = { center: new THREE.Vector3(frame[0], frame[1], frame[2]), radius: frame[3] };
-  let holePx = 0, throughPx = 0, netPx = 0, throughViews = 0; const holeViewNames = [];
+  let holePx = 0, throughPx = 0, netPx = 0, throughViews = 0; const holeViewNames = [], views = [];
   for (const view of VIEWS) {
     const r = rasterizeView(tris, meshes, sphere, view, bores);
     holePx += r.holePx; throughPx += r.throughPx; netPx += r.netPx;
     if (r.clusters.some((c) => c.kind === 'hole')) holeViewNames.push(r.name);
     if (r.clusters.some((c) => c.kind === 'see-through')) throughViews++;
+    if (r.holePx || r.throughPx) views.push({ name: r.name, holePx: r.holePx, throughPx: r.throughPx });
   }
-  return { sealed: !holeViewNames.length, holeViews: holeViewNames.length, holeViewNames, holePx, throughPx, throughViews, netPx };
+  return { sealed: !holeViewNames.length, holeViews: holeViewNames.length, holeViewNames, holePx, throughPx, throughViews, netPx, views };
 }
 for (const id of ids) {
   await ensureInteriorFills([id]);
@@ -486,7 +491,9 @@ for (const id of ids) {
   // surface hides an opening.
   const sealed = holeViews === 0;
   let ledgerVerdict = '';
-  const census = { sealed, holeViews, holeViewNames, holePx, throughPx, throughViews, netPx, needFrame, oldFrame };
+  // per-view px name where a refusal's or a drift note's pixels lie
+  const viewPx = views.filter((v) => v.holePx || v.throughPx).map((v) => ({ name: v.name, holePx: v.holePx, throughPx: v.throughPx }));
+  const census = { sealed, holeViews, holeViewNames, holePx, throughPx, throughViews, netPx, needFrame, oldFrame, views: viewPx };
   if (ledger && !ledgerUnits) ledgerVerdict = `no verdict: --res=${RES} --min-area=${MIN_AREA} are not the ledger's units (${ledger.res ?? 256} px, min-area ${ledger.minArea ?? 6}); the row's frame is used`;
   else if (ledger) {
     // an id the update re-baselines (--accept-see-through) is judged at its measured see-through and netting; its

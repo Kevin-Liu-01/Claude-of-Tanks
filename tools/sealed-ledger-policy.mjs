@@ -9,26 +9,49 @@ const allowance = (baseline) => baseline + Math.max(12, baseline * .1);
  * must be re-baselined on purpose. Two-sided, so the column cannot go stale. */
 const nettingSlack = (baseline) => Math.max(12, baseline * .02);
 
-/** A row's census frame is fixed (guards 229 critic round 4): the build's own frame (recordedSealedFrame of its bounding
- * sphere) may drift from it by up to min(1 m, 25 % of the row's radius), in radius either way or in centre, and the
- * census still judges the build in the row's frame: an extremity edit (a 1.5 m longer gun moves the frame it needs from
- * 5.6 to 6.3 m) never needs a re-frame, and a frame never ratchets. Past the bound the build no longer fits its row. */
-export const frameBound = (radius) => Math.min(1, radius * 0.25);
+/** A row's census frame is fixed (guards 229 critic rounds 4 and 5): the build's own frame (recordedSealedFrame of its
+ * bounding sphere) may drift from it by up to min(0.5 m, 15 % of the row's radius), in radius either way or in centre,
+ * and the census still judges the build in the row's frame, so a small extremity edit (an antenna, a 0.4 m longer gun)
+ * needs no re-frame and a frame never ratchets. Radius and centre add: a fitting part reaches at most about 1 m past
+ * the frame. Past the bound the build no longer fits its row. The critic's history (integ/225 to 228 against the 229
+ * rows) needed one re-frame at this band in four days, the T-72B3 family rebuild, and none at 1 m. */
+export const frameBound = (radius) => Math.min(0.5, radius * 0.15);
 
 /** The frame a build needs against its row's: 'fits' when its radius and centre are within frameBound of the row's;
- * 'stale' when it lies inside the row's frame and needs one smaller by more than the bound (the row's census is coarser
- * than the build allows); otherwise 'out' (a part metres out, or the build moved in its root). */
+ * 'stale' when it is centred inside the row's frame and needs one smaller by more than the bound (the row's census is
+ * coarser than the build allows); otherwise 'out' (a part metres out, or the build moved in its root). */
 export function frameFit(rowFrame, needFrame) {
   const bound = frameBound(rowFrame[3]);
   const grow = +(needFrame[3] - rowFrame[3]).toFixed(3);
   const shift = +Math.hypot(needFrame[0] - rowFrame[0], needFrame[1] - rowFrame[1], needFrame[2] - rowFrame[2]).toFixed(3);
   const fit = Math.abs(grow) <= bound && shift <= bound ? 'fits'
-    : grow < -bound && shift + needFrame[3] <= rowFrame[3] + bound ? 'stale' : 'out';
+    : grow < -bound && shift < rowFrame[3] ? 'stale' : 'out';
   return { fit, bound, grow, shift };
 }
-/** The most a re-frame may grow a frame: half again the row's radius, its centre moved by at most half of it. A build
- * that needs more is not an outgrown extremity (critic round 4: a 1 mm speck 20 m out asked for a 15.5 m frame). */
-const reframeLimit = (rowFrame, needFrame, shift) => needFrame[3] <= rowFrame[3] * 1.5 && shift <= rowFrame[3] * 0.5;
+/** A row's first recorded frame: the oldest re-frame's `from.frame` in its history, else its frame. */
+const firstFrame = (row) => (row.accepts ?? []).find((entry) => entry.kind === 'reframe' && Array.isArray(entry.from?.frame))?.from.frame ?? row.frame;
+/** The most re-frames may grow a frame, in total: half again the row's FIRST recorded frame's radius, the centre at most
+ * half that radius from its centre (critic round 5: three named re-frames, each half again the last, walked 5.6 -> 8.1
+ * -> 11.8 -> 17.6 m). A build that needs more is not an outgrown extremity (critic round 4: a 1 mm speck 20 m out asked
+ * for a 15.5 m frame). */
+const reframeLimit = (base, needFrame) => needFrame[3] <= base[3] * 1.5
+  && Math.hypot(needFrame[0] - base[0], needFrame[1] - base[1], needFrame[2] - base[2]) <= base[3] * 0.5;
+/** Where a column's pixels lie in a census: its per-view counts (census.views: [{name, holePx, throughPx, netPx}]),
+ * largest first, so a refusal or a drift note names the views to look at (--images --images-all draws them). */
+function where(census, key) {
+  const hits = (census.views ?? []).filter((view) => view[key] > 0).sort((a, b) => b[key] - a[key]);
+  if (!hits.length) return '';
+  return ` (${hits.slice(0, 8).map((view) => `${view.name} ${view[key]}`).join(', ')}${hits.length > 8 ? `, ${hits.length - 8} more views` : ''})`;
+}
+/** A plain gate's tolerated rise (critic round 5): the gate keeps its slack, but a re-frame later allows none, so a rise
+ * within the slack is printed with its views when it lands. */
+function driftNote(row, census, judged) {
+  const notes = [];
+  if (census.holePx > row.openPx) notes.push(`open px ${census.holePx} above the row's ${row.openPx}${where(census, 'holePx')}`);
+  if (census.throughPx > judged.seeThroughPx) notes.push(`see-through px ${census.throughPx} above the row's ${judged.seeThroughPx}${where(census, 'throughPx')}`);
+  if (census.netPx !== judged.netSeeThroughPx) notes.push(`netting px ${census.netPx} against the row's ${judged.netSeeThroughPx}`);
+  return notes.length ? `; drift, tolerated here (a re-frame allows none): ${notes.join('; ')}` : '';
+}
 
 /** An open row's hole views: a hole in a view the row does not list (openViewNames, recorded on the open rows) fails,
  * so a hole that moves to another view is a new hole; a row without the names holds its view count. Within a listed view
@@ -68,8 +91,8 @@ export function sealedLedgerVerdict(row, census, { acceptSeeThrough = false, ref
     const { fit, bound, grow, shift } = frameFit(row.frame, needFrame);
     if (fit === 'out') return { pass: false, message: `OUT OF FRAME: the build needs a census frame [${needFrame.join(', ')}] against `
       + `its row's [${row.frame.join(', ')}] (radius ${grow >= 0 ? '+' : ''}${grow} m, centre ${shift} m off; the row's frame holds `
-      + `up to ${bound} m). A part this far out is usually a build defect: fix the build. A real growth this large (up to half again the radius) is re-framed by `
-      + 'name with --update-ledger --reframe=<id>:<reason>, adding --accept-see-through=<id>:<reason> when its see-through or netting moved with it' };
+      + `up to ${bound} m). A part this far out is usually a build defect: fix the build. A real change this large (up to half again the row's first frame) is re-framed by `
+      + 'name with --update-ledger --reframe=<id>:<reason>, adding --accept-see-through=<id>:<reason> when its see-through or netting moved with the change' };
     if (fit === 'stale') return { pass: false, message: `FRAME STALE: the build needs a census frame of radius ${needFrame[3]} m, `
       + `its row's is ${row.frame[3]} m (${-grow} m larger than it needs, past ${bound} m): its census is coarser than the build allows. `
       + 'Tighten the frame by name with --update-ledger --reframe=<id>:<reason>' };
@@ -91,12 +114,13 @@ export function sealedLedgerVerdict(row, census, { acceptSeeThrough = false, ref
   if (!seeThrough.pass) return seeThrough;
   const netting = nettingVerdict(judged.netSeeThroughPx, netPx);
   if (!netting.pass) return netting;
-  return { pass: true, message: `${row.sealed ? 'ledger: sealed, holds' : `ledger: ${row.openPx} px allowed, holds`}; ${seeThrough.message}; ${netting.message}` };
+  return { pass: true, message: `${row.sealed ? 'ledger: sealed, holds' : `ledger: ${row.openPx} px allowed, holds`}; ${seeThrough.message}; ${netting.message}${driftNote(row, census, judged)}` };
 }
 
-/** --reframe=<id>:<reason> (critic rounds 3 and 4): only for a build that no longer fits its row's frame (OUT OF FRAME
- * or FRAME STALE); a build that fits is judged in its row's frame and has nothing to re-frame, and a growth past half
- * again the row's radius (reframeLimit) is refused as a build defect. The build's census in the
+/** --reframe=<id>:<reason> (critic rounds 3 to 5): only for a build that no longer fits its row's frame (OUT OF FRAME
+ * or FRAME STALE); a build that fits is judged in its row's frame and has nothing to re-frame, and a frame past half
+ * again the row's first recorded frame (reframeLimit; a tighten of a stale frame only shrinks it) is refused as a build
+ * defect. The build's census in the
  * row's frame (geometry past it is clipped laterally and drawn wherever it projects into the window) may not exceed the
  * row in any column, without the normal gate's slack: a re-measured row would otherwise take that slack in as its new
  * baseline. With --accept-see-through for the same id the see-through and netting are free there; openings never are.
@@ -108,26 +132,28 @@ function reframeVerdict(row, { sealed, holeViews, needFrame, oldFrame = null }, 
   const { fit, bound, grow, shift } = frameFit(row.frame, needFrame);
   if (fit === 'fits') return refuse(`the build fits its row's frame (radius ${grow >= 0 ? '+' : ''}${grow} m, centre ${shift} m off, `
     + `within ${bound} m): the census already judges it there; nothing to re-frame`);
-  if (fit === 'out' && !reframeLimit(row.frame, needFrame, shift)) return refuse(`the build needs a frame [${needFrame.join(', ')}], `
-    + `past half again its row's [${row.frame.join(', ')}]: that is a build defect (a part thrown metres out), not an outgrown extremity; fix the build`);
+  const base = firstFrame(row);
+  if (fit === 'out' && !reframeLimit(base, needFrame)) return refuse(`the build needs a frame [${needFrame.join(', ')}], past half again its row's first `
+    + `recorded frame [${base.join(', ')}]: that is a build defect (a part thrown metres out), not an outgrown extremity; fix the build`);
   const exact = withinRow(row, oldFrame, acceptSeeThrough);
-  if (!exact.pass) return refuse(`in its row's frame the build exceeds the row (${exact.message}); a re-frame records no change: `
-    + (acceptSeeThrough ? 'fix the build' : 'fix the build, or, when its see-through or netting moved with the growth, give '
-      + '--reframe=<id>:<reason> and --accept-see-through=<id>:<reason> together'));
+  if (!exact.pass) return refuse(`in its row's frame the build exceeds the row: ${exact.message}. A re-frame records no change: fix the build `
+    + '(run the gate without --reframe and with --images --images-all to see those pixels in the row\'s frame)'
+    + (acceptSeeThrough ? '' : ', or, when its see-through or netting moved with the change, give --reframe=<id>:<reason> and '
+      + '--accept-see-through=<id>:<reason> together'));
   if (row.sealed && !sealed) return { pass: false, message: `REGRESSION: ledger sealed, now ${holeViews} open views in the new frame` };
-  return { pass: true, message: `ledger: re-framed (${fit === 'out' ? 'grown' : 'tightened'}); in its row's frame ${exact.message}` };
+  return { pass: true, message: `ledger: re-framed (${grow > 0 ? 'grown' : grow < 0 ? 'tightened' : 'moved'}); in its row's frame ${exact.message}` };
 }
 
 /** The census in the row's frame against the row with no slack (reframeVerdict). */
 function withinRow(row, census, acceptSeeThrough) {
   const { sealed, holeViews, holePx, throughPx, netPx } = census;
-  if (row.sealed && !sealed) return { pass: false, message: `open in ${holeViews} views, ledger sealed` };
-  if (holePx > row.openPx) return { pass: false, message: `open px ${holePx} > ledger ${row.openPx}` };
+  if (row.sealed && !sealed) return { pass: false, message: `open in ${holeViews} views, ledger sealed${where(census, 'holePx')}` };
+  if (holePx > row.openPx) return { pass: false, message: `open px ${holePx} > ledger ${row.openPx}${where(census, 'holePx')}` };
   const moved = newHoleViews(row, census);
-  if (moved) return { pass: false, message: moved };
+  if (moved) return { pass: false, message: `${moved}${where(census, 'holePx')}` };
   if (acceptSeeThrough) return { pass: true, message: `open px ${holePx} <= ${row.openPx}; see-through ${throughPx} and netting ${netPx} px accepted` };
   if (![row.seeThroughPx, row.netSeeThroughPx].every(Number.isFinite)) return { pass: false, message: 'the row has no see-through or netting baseline' };
-  if (throughPx > row.seeThroughPx) return { pass: false, message: `see-through px ${throughPx} > ledger ${row.seeThroughPx}` };
+  if (throughPx > row.seeThroughPx) return { pass: false, message: `see-through px ${throughPx} > ledger ${row.seeThroughPx}${where(census, 'throughPx')}` };
   const floor = row.netSeeThroughPx - nettingSlack(row.netSeeThroughPx);
   if (netPx > row.netSeeThroughPx || netPx < floor) return { pass: false,
     message: `netting px ${netPx} outside ledger ${row.netSeeThroughPx} (${+floor.toFixed(1)}..${row.netSeeThroughPx}: an extremity only hides net)` };
@@ -264,7 +290,7 @@ export function updatedSealedLedger(ledger, reports, generatedAt, requestedIds,
     if (reframeReason !== undefined) {
       if (!Array.isArray(frame)) throw new Error(`${result.id}: a re-frame needs the census frame; ledger unchanged`);
       const old = result.oldFrame;
-      history.push({ kind: 'reframe', reason: reframeReason, by, date, from: columnsOf(row),
+      history.push({ kind: 'reframe', reason: reframeReason, by, date, from: columnsOf(row), to: frame,
         oldFrameCensus: { sealed: old.sealed, openPx: old.holePx, openViews: old.holeViews, ...(old.holeViewNames ? { openViewNames: old.holeViewNames } : {}),
           seeThroughPx: old.throughPx, seeThroughViews: old.throughViews, netSeeThroughPx: old.netPx } });
       if (reason !== undefined) history.push({ kind: 'see-through', reason, by, date,
