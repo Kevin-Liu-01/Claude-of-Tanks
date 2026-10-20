@@ -404,7 +404,7 @@ export function addGarageFacilityDetails({
   const cylinderInstances = new Map<number, PrimitiveInstance[]>();
   // Two cylinder resolutions, one draw each (2026-10-11: the four or five segment counts each drew alone, and the
   // building surfaces needed those draws): pipes and posts at ten sides, drums, tanks and rollers at sixteen.
-  const cylinderTier = (segments: number): number => (segments > 10 ? 16 : 10);
+  const cylinderTier = (_segments: number): number => 12;
   const unitCylinder = (segments: number): THREE.CylinderGeometry => {
     let geometry = unitCylinders.get(segments);
     if (!geometry) {
@@ -4417,8 +4417,36 @@ export function addGarageFacilityDetails({
       meshes.push(mesh);
     }
   }
+  // a small textured surface that shares its maps with a larger one (a strip of sheeting under a roof of the same
+  // profile) joins that one's draw and takes its tint, so keeping the textures costs no extra draw
+  {
+    const trianglesOf = (list: readonly THREE.BufferGeometry[]): number => list.reduce((sum, geometry) => (
+      sum + (geometry.index ? geometry.index.count : geometry.getAttribute('position').count) / 3), 0);
+    for (const [surface, geometries] of surfaceGeometries) {
+      const maps = surfaceLook[surface].maps;
+      const size = trianglesOf(geometries);
+      if (!maps || !geometries.length || size >= 300) continue;
+      let host: FacilitySurface | null = null, hostSize = size;
+      for (const [other, list] of surfaceGeometries) {
+        if (other === surface || !list.length || surfaceLook[other].maps !== maps) continue;
+        const otherSize = trianglesOf(list);
+        if (otherSize >= hostSize) { host = other; hostSize = otherSize; }
+      }
+      if (!host) continue;
+      surfaceGeometries.get(host)!.push(...geometries);
+      geometries.length = 0;
+    }
+  }
   for (const [surface, geometries] of surfaceGeometries) {
     if (!geometries.length) continue;
+    // a small untextured surface (a strip of glazing, under 300 triangles) rides the pack's plain dark metal bucket
+    // instead of drawing alone (garage r9: the kit's display and decal draws are funded this way); a textured one keeps
+    // its draw, so a canopy's corrugated roofing never turns into flat blue-grey metal (Redrock's shade canopies did)
+    const surfaceTriangles = geometries.reduce((sum, geometry) => sum + (geometry.index ? geometry.index.count : geometry.getAttribute('position').count) / 3, 0);
+    if (surfaceTriangles < 300 && !surfaceLook[surface].maps && (buckets.dark?.length ?? 0) > 0) {
+      buckets.dark!.push(...geometries);
+      continue;
+    }
     const merged = mergeGeometries(geometries, false);
     for (const geometry of geometries) geometry.dispose();
     if (!merged) continue;

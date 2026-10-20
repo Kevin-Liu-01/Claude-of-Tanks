@@ -304,6 +304,12 @@ export function makeHazardTexture(): HTMLCanvasElement {
  *            stats:()=>import('./garageArchitecture.ts').GarageArchitectureStats,
  *            dispose:Function}}
  */
+/** The platform kit and the display atlas runtime, loaded at Garage idle (never on the boot path). */
+const loadPlatformKit = async () => {
+  const [platform, atlas] = await Promise.all([import('./garagePlatformKit.ts'), import('./garageDisplayAtlas.ts')]);
+  return { platform, atlas };
+};
+
 export function createGarageStage(
   engineCtx: GarageStageEngineContext,
   pos: THREE.Vector3,
@@ -419,6 +425,12 @@ export function createGarageStage(
   );
   addOutdoorSeed('baked', seedStandard({
     color: 0xffffff, vertexColors: true, roughness: 0.88, metalness: 0.06,
+  }));
+  // the garage r9 kit's DISPLAY-LIT key (garageDisplayAtlas.ts: banners, prints, plates, readouts, lenses), the wall
+  // signs' map + emissive map program, so a boot that starts outdoors never compiles it on its first visit
+  addOutdoorSeed('display-lit', seedStandard({
+    color: 0xffffff, map: outdoorSeedColor, emissive: 0xffffff, emissiveMap: outdoorSeedColor, emissiveIntensity: 1,
+    roughness: 0.6, metalness: 0.1,
   }));
   addOutdoorSeed('glass', seedStandard({
     color: 0x6b8790, roughness: 0.16, metalness: 0.08, transparent: true, opacity: 0.78,
@@ -747,6 +759,117 @@ export function createGarageStage(
   podSideMat.emissive = new THREE.Color(0xffffff);
   podSideMat.emissiveMap = hazTex;
   podSideMat.emissiveIntensity = 0.3;
+
+  // --- the garage r9 platform kit (garagePlatformKit.ts) -----------------------------------------------------------
+  // The turntable's contract is untouched; the kit dresses it: one collar finish per Garage over the podium's side (the
+  // hazard chevrons survive only in Verdant, on yellow epoxy), a dark slewing gap and a polished ring at the deck's edge,
+  // 48 warm LED pucks set in the collar top (they replace the emissive rim torus), a trench cover to a control pedestal
+  // off the hero's halo, and a segmented steel deck (1024 px albedo, 512 px normal) painted in idle slices and shared by
+  // every Garage. The kit loads at idle, never on the boot path; the deck carries a flat normal until its own is painted,
+  // so it compiles the outdoor seed's map + normal program from the start and the swap changes no program.
+  podTopMat.normalMap = outdoorSeedNormal;
+  podTopMat.normalScale = new THREE.Vector2(0.6, 0.6);
+  const platformCollars = new Map<string, THREE.Group>();
+  let platformKit: Awaited<ReturnType<typeof loadPlatformKit>> | null = null;
+  let platformCollarShown: THREE.Group | null = null;
+  let platformCollarWanted = getGarageVariant(initialVariantId).architecture as string;
+  const platformCollarSolid = track(shadowMat(new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.62, metalness: 0.3,
+  })));
+  platformCollarSolid.name = 'garage:platform-collar';
+  let platformCollarDisplay: THREE.Material | null = null;
+  const buildPlatformCollar = (kit: NonNullable<typeof platformKit>, architecture: string): THREE.Group => {
+    let collar = platformCollars.get(architecture);
+    if (!collar) {
+      const built = kit.platform.buildGaragePlatformCollar(architecture as Parameters<typeof kit.platform.buildGaragePlatformCollar>[0],
+        { pedestalAngle: 2.0, windAngle: 0.8 });
+      collar = new THREE.Group();
+      collar.name = `garage_platform_collar_${architecture}`;
+      const solid = new THREE.Mesh(track(built.solid), platformCollarSolid);
+      solid.receiveShadow = true;
+      solid.castShadow = true;
+      collar.add(solid);
+      if (built.display) {
+        platformCollarDisplay ||= track(kit.atlas.createGarageDisplayMaterial(shadowMat));
+        const lights = new THREE.Mesh(track(built.display), platformCollarDisplay);
+        lights.name = 'garage_platform_pucks';
+        kit.atlas.armGarageDisplayAtlas(lights, aniso);
+        collar.add(lights);
+      }
+      for (const mesh of collar.children) { mesh.matrixAutoUpdate = false; mesh.updateMatrix(); }
+      collar.visible = false;
+      platformCollars.set(architecture, collar);
+      group.add(collar);
+    }
+    return collar;
+  };
+  const showPlatformCollar = (architecture: string): void => {
+    platformCollarWanted = architecture;
+    if (!platformKit) return;
+    const collar = buildPlatformCollar(platformKit, architecture);
+    if (platformCollarShown !== collar) {
+      if (platformCollarShown) platformCollarShown.visible = false;
+      collar.visible = true;
+      platformCollarShown = collar;
+    }
+    rimRing.visible = false;
+    group.userData.platformCollar = architecture;
+    requestRender();
+  };
+  {
+    const idle = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    const later = (work: () => void, timeout: number): void => {
+      if (typeof idle === 'function') idle(work, { timeout });
+      else setTimeout(work, Math.min(timeout, 200));
+    };
+    const paintDeck = (): void => {
+      if (!platformKit) return;
+      // a mobile device paints the deck at half size (1 MB albedo instead of 4 MB; the display atlas decodes at half size
+      // there too)
+      const painter = platformKit.platform.createGarageDeckPainter(getDeviceTier() === 'mobile' ? 512 : 1024, 0);
+      const step = (): void => {
+        if (!painter.step(10)) { later(step, 300); return; }
+        const albedo = track(new THREE.DataTexture(painter.albedo, painter.size, painter.size, THREE.RGBAFormat));
+        albedo.colorSpace = THREE.SRGBColorSpace;
+        albedo.generateMipmaps = true;
+        albedo.minFilter = THREE.LinearMipmapLinearFilter;
+        albedo.magFilter = THREE.LinearFilter;
+        albedo.anisotropy = aniso >= 8 ? 16 : aniso;
+        albedo.needsUpdate = true;
+        const normal = track(new THREE.DataTexture(painter.normal, painter.size / 2, painter.size / 2, THREE.RGBAFormat));
+        normal.generateMipmaps = true;
+        normal.minFilter = THREE.LinearMipmapLinearFilter;
+        normal.magFilter = THREE.LinearFilter;
+        normal.needsUpdate = true;
+        const previous = podTopMat.map;
+        podTopMat.map = albedo;
+        podTopMat.normalMap = normal;
+        previous?.dispose();
+        group.userData.platformDeck = `segmented-steel-${painter.size}`;
+        requestRender();
+      };
+      later(step, 300);
+    };
+    if (typeof document !== 'undefined') {
+      later(() => {
+        void loadPlatformKit().then((kit) => {
+          platformKit = kit;
+          showPlatformCollar(platformCollarWanted);
+          paintDeck();
+          // the other Garages' collars, one per idle slice, so a switch never builds one
+          const queue = Object.keys(kit.platform.GARAGE_PLATFORM_COLLARS).filter((key) => !platformCollars.has(key));
+          const prebuild = (): void => {
+            const next = queue.shift();
+            if (!next) return;
+            buildPlatformCollar(kit, next);
+            later(prebuild, 300);
+          };
+          // all of it settles within a few seconds of the Garage presenting (the timing harness's warm frames follow)
+          later(prebuild, 300);
+        }).catch(() => {});
+      }, 3000);
+    }
+  }
 
   // --- the hall: walls, roof and openings (garageVerdantHall.ts) --------------------------------------------------------
   // GA.05 (2026-10-14): the four painted wall planes and the flat ceiling became a building: a concrete upstand, profiled
@@ -1510,6 +1633,7 @@ export function createGarageStage(
   ): void => {
     const isVerdant = variantId === 'verdant_motor_pool';
     for (const object of indoorStageObjects) object.visible = isVerdant;
+    showPlatformCollar(getGarageVariant(variantId).architecture);
     // Keep the light objects present in both modes so Three's light-count
     // defines stay invariant. Removing the Verdant fixtures forced every hero
     // tank and decoration material to synchronously relink on first reveal.

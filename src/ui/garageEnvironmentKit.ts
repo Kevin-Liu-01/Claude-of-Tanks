@@ -62,10 +62,13 @@ import {
   addGarageApproachDetails,
   type GarageApproachStats,
 } from './garageApproachDetails.ts';
+import { buildGarageKitDressing, type GarageKitBuild, type GarageKitPlacement } from './garageKitPlacement.ts';
+import { GARAGE_KIT_PLACEMENTS } from './garageKitPlacements.ts';
 
 interface GarageEnvironmentEngineContext {
   anisotropy?: number;
   setupShadowMaterial?(material: THREE.Material, extraHook?: THREE.Material['onBeforeCompile'] | null): void;
+  releaseShadowMaterial?(material: THREE.Material): unknown;
 }
 
 interface GarageEnvironmentStats {
@@ -135,12 +138,16 @@ interface GarageEnvironmentStats {
   readonly maxGroundContactErrorM: number;
   readonly platformGroundClearanceM: number;
   readonly triangles: number;
+  /** The garage r9 kit's receipt (garageKitPlacement.ts), or null where the Garage places no kit yet. */
+  readonly kit: (GarageKitBuild['stats'] & { readonly slideshow: GarageKitBuild['slideshow'] }) | null;
 }
 
 export interface GarageEnvironmentBuild {
   readonly root: THREE.Group;
   readonly stats: GarageEnvironmentStats;
   readonly texturesReady?: Promise<void>;
+  /** The pack's graded terrain under a world-local point (the kit's placement receipts seat pieces with it). */
+  readonly groundAtWorld?: (x: number, z: number) => number;
   dispose(): void;
 }
 
@@ -1189,11 +1196,25 @@ function normalizeGeometry(source: THREE.BufferGeometry, vertexColors: boolean):
 
 /** Build one authentic, renderer-only Garage scene pack. */
 export function buildGarageEnvironment(
-  engineCtx: GarageEnvironmentEngineContext,
+  outerEngineCtx: GarageEnvironmentEngineContext,
   assets: GarageEnvironmentAssetLibrary,
   variant: GarageVariant,
   requestRender: () => void = () => {},
+  options: Readonly<{ kitPlacement?: GarageKitPlacement | null }> = {},
 ): GarageEnvironmentBuild {
+  // Every material the pack registers with the shadow cascades is noted, and the ones the pack owns (disposes) are
+  // released with it: the LRU keeps two packs, but the cascade registry grew on every switch (the garage r9 engineering
+  // critic counted 207 -> 377 registered materials over one cycle of the Garages; the kit's display material added more).
+  const cascadeMaterials = new Set<THREE.Material>();
+  const engineCtx: GarageEnvironmentEngineContext = outerEngineCtx.setupShadowMaterial
+    ? {
+        ...outerEngineCtx,
+        setupShadowMaterial(material, extraHook) {
+          cascadeMaterials.add(material);
+          outerEngineCtx.setupShadowMaterial!(material, extraHook);
+        },
+      }
+    : outerEngineCtx;
   const recipe = GARAGE_ENVIRONMENT_RECIPES[variant.architecture]
     || GARAGE_ENVIRONMENT_RECIPES.field_shed;
   const patch = getGarageTerrainPatch(variant.mapId);
@@ -2209,6 +2230,30 @@ export function buildGarageEnvironment(
   };
   const { facilityDetails, approachDetails } = buildFacilityPresentation();
 
+  // The garage r9 kit (garageKitPlacement.ts): this Garage's placed cranes, walls, signs, displays, clutter and
+  // atmosphere. Solids join the baked bucket and surfaces their own buckets before the merge below; the kit's display,
+  // decal and atmosphere meshes are the pack's only new draws.
+  // (the placement receipts pass their own: an empty one measures the scene the kit must keep clear of)
+  const kitPlacement = options.kitPlacement !== undefined ? options.kitPlacement : GARAGE_KIT_PLACEMENTS[variant.architecture];
+  const kit = kitPlacement
+    ? buildGarageKitDressing({
+        variant,
+        placement: kitPlacement,
+        buckets: combined,
+        groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
+        setupShadowMaterial: engineCtx.setupShadowMaterial ? (material) => engineCtx.setupShadowMaterial!(material) : null,
+        anisotropy: engineCtx.anisotropy,
+      })
+    : null;
+  if (kit) {
+    for (const mesh of kit.meshes) {
+      track(mesh.geometry);
+      mesh.updateMatrix();
+      root.add(mesh);
+    }
+    for (const material of kit.materials) track(material);
+  }
+
   const materialForBucket = (key: BucketKey): THREE.Material => {
     // Source albedo already contains its own value range. Keep the material
     // multiplier close to white so shaded facades retain readable PBR detail.
@@ -2289,6 +2334,22 @@ export function buildGarageEnvironment(
     combined.baked!.push(geometry);
   };
   addPodiumDrift();
+  // The plaster family's tinted variants draw alone; one that carries only a few facade fixtures folds into the largest
+  // of the family (garage r9: the kit's display and decal draws are paid for here and by the facility cylinders' one
+  // tier), losing a tint only on pieces of a couple of hundred triangles.
+  const foldTinyPlasterBuckets = (): void => {
+    const family = (['plaster', 'plaster2', 'plaster3'] as const).filter((key) => (combined[key] || []).length);
+    if (family.length < 2) return;
+    const trianglesOf = (key: typeof family[number]): number => (combined[key] || []).reduce((sum, geometry) => (
+      sum + (geometry.index ? geometry.index.count : geometry.getAttribute('position').count) / 3), 0);
+    const largest = family.reduce((best, key) => (trianglesOf(key) > trianglesOf(best) ? key : best), family[0]);
+    for (const key of family) {
+      if (key === largest || trianglesOf(key) >= 240) continue;
+      (combined[largest] ||= []).push(...(combined[key] || []));
+      combined[key] = [];
+    }
+  };
+  foldTinyPlasterBuckets();
   const addMergedStructures = (): void => {
     for (const key of BUCKET_KEYS) {
       const sources = combined[key] || [];
@@ -2360,7 +2421,9 @@ export function buildGarageEnvironment(
         Math.hypot(x - terrace.x, z - terrace.z)
           < Math.max(terrace.radiusSide, terrace.radiusDepth) + 4.2
       ));
-      return !nearStructure && !nearFacility
+      // no grove grows through a placed kit piece (garage r9: the LED trailer, the cells, the cranes)
+      const nearKit = (kit?.footprints ?? []).some((footprint) => Math.hypot(x - footprint.x, z - footprint.z) < footprint.radius + 3.6);
+      return !nearStructure && !nearFacility && !nearKit
         && !grovePoints.some((point) => point !== self && Math.hypot(x - point.x, z - point.z) < 7.0);
     };
     for (let attempt = 0;
@@ -2547,6 +2610,7 @@ export function buildGarageEnvironment(
     maxGroundContactErrorM: Number(maxGroundContactErrorM.toFixed(4)),
     platformGroundClearanceM: Number(platformGroundClearanceM.toFixed(4)),
     triangles: Math.round(triangles),
+    kit: kit ? Object.freeze({ ...kit.stats, slideshow: kit.slideshow }) : null,
   });
   Object.assign(root.userData, stats);
 
@@ -2556,12 +2620,18 @@ export function buildGarageEnvironment(
     root,
     stats,
     texturesReady,
+    groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
     dispose() {
       if (disposed) return;
       disposed = true;
       root.removeFromParent();
       for (const handle of handles) handle.release();
       handles.length = 0;
+      if (outerEngineCtx.releaseShadowMaterial) {
+        const owned = new Set<unknown>(disposables);
+        for (const material of cascadeMaterials) if (owned.has(material)) outerEngineCtx.releaseShadowMaterial(material);
+      }
+      cascadeMaterials.clear();
       for (const resource of disposables) resource.dispose();
       disposables.length = 0;
       root.clear();
