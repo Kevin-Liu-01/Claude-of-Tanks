@@ -6,7 +6,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { runSelftestFile, runSelftestSuite, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
-  SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
+  selftestCacheEnv, selftestRunDirectory, SELFTEST_LAST_FILES, SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
+import { createSelftestCache } from './selftest-cache.mjs';
 // The runners read COT_SHOTS_LOCK_TIMEOUT_MS (landing chains export three hours); this receipt pins the default wait.
 process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
 
@@ -341,6 +342,40 @@ assert.equal(cachedEnv.EXAMPLE, 'preserved');
 assert.equal(originalEnv.NODE_COMPILE_CACHE, undefined, 'never mutate parent environment');
 assert.match(cachedEnv.NODE_COMPILE_CACHE, /cot-selftest-compile-/);
 
+// Test-speed R9a (2026-10-16): the run's directory for records a judge merges (COT_SELFTEST_RUN_DIR) is fresh for each
+// invocation unless the caller exported one, which it keeps; a judge is registered after the receipts it merges (the
+// serial path) and the pool admits it last (tools/selftest-schedule.mjs admissionOrder `last`).
+assert.deepEqual(selftestRunDirectory({ COT_SELFTEST_RUN_DIR: '/gate/run' }, () => assert.fail('made a directory')),
+  { dir: '/gate/run', created: false }, 'a gate\'s exported directory is used and kept');
+assert.deepEqual(selftestRunDirectory({}, () => '/tmp/cot-selftest-run-x'), { dir: '/tmp/cot-selftest-run-x', created: true });
+const madeRunDirectory = selftestRunDirectory({});
+try { assert.match(madeRunDirectory.dir, /cot-selftest-run-/); } finally { rmSync(madeRunDirectory.dir, { recursive: true, force: true }); }
+const registry = Object.values(SELFTEST_SUITES).flat();
+assert.deepEqual(SELFTEST_LAST_FILES, ['server/battlePacing.selftest.mjs']);
+for (const judge of SELFTEST_LAST_FILES) assert.ok(registry.includes(judge), `${judge} is registered`);
+const shardIndices = registry.map((file, index) => (/^server\/battlePacingShard\d\.selftest\.mjs$/.test(file) ? index : -1))
+  .filter((index) => index >= 0);
+assert.equal(shardIndices.length, 8, 'the eight battlePacing shards are registered');
+assert.ok(shardIndices.every((index) => index < registry.indexOf('server/battlePacing.selftest.mjs')),
+  'the shards precede their judge in registry order');
+// the result cache keys a receipt on the variables its files read, but not on the run directory: its path changes every
+// run (keyed, a receipt that reads it would never be reused), and a receipt reads only what its own run wrote there
+const cacheEnvRoot = mkdtempSync(join(tmpdir(), 'cot-selftest-run-dir-key-'));
+try {
+  writeFileSync(join(cacheEnvRoot, 'judge.selftest.mjs'),
+    'console.log(process.env.COT_SELFTEST_RUN_DIR, process.env.COT_PACING_JOBS);\n');
+  const keyWith = (env) => createSelftestCache({ root: cacheEnvRoot, cacheDir: join(cacheEnvRoot, '.cache'), env, argv: [],
+    nodeVersion: 'v-test' }).inputKey('judge.selftest.mjs').key;
+  const runA = { COT_SELFTEST_RUN_DIR: '/tmp/cot-selftest-run-a', COT_PACING_JOBS: '4', NODE_COMPILE_CACHE: '/c' };
+  const runB = { ...runA, COT_SELFTEST_RUN_DIR: '/tmp/cot-selftest-run-b' };
+  assert.notEqual(keyWith(runA), keyWith(runB), 'the raw environment keys on the run directory (the defect left out below)');
+  assert.equal(keyWith(selftestCacheEnv(runA)), keyWith(selftestCacheEnv(runB)), 'two runs\' directories, one key');
+  assert.notEqual(keyWith(selftestCacheEnv(runA)), keyWith(selftestCacheEnv({ ...runA, COT_PACING_JOBS: '1' })),
+    'every other variable a receipt reads still keys it');
+  assert.deepEqual(selftestCacheEnv(runA), { COT_PACING_JOBS: '4', NODE_COMPILE_CACHE: '/c' });
+  assert.equal(runA.COT_SELFTEST_RUN_DIR, '/tmp/cot-selftest-run-a', 'the caller\'s environment is left alone');
+} finally { rmSync(cacheEnvRoot, { recursive: true, force: true }); }
+
 // Real fresh processes prove that compiled code reuse does not cache test
 // results/global state and that editing the source cannot reuse a stale pass.
 const cacheFixture = mkdtempSync(join(tmpdir(), 'cot-compile-regression-'));
@@ -380,6 +415,24 @@ try {
   const realLog = join(logFixture, 'speaks.log');
   assert.deepEqual(await runSelftestFile(script, { logFile: realLog }), { status: 3, error: undefined });
   assert.equal(readFileSync(realLog, 'utf8'), 'to stdout\nto stderr\n', 'a fresh child writes both streams to its log');
+  // test-speed R9a: the runner sets the run directory on its own environment after it built the cache, and every child
+  // it launches then reads it (a judge finds its shards' records there), with or without a preset compile cache
+  const runDirProbe = join(logFixture, 'run-dir-probe.mjs');
+  writeFileSync(runDirProbe, "process.exitCode = process.env.COT_SELFTEST_RUN_DIR === '/tmp/cot-selftest-run-probe' ? 0 : 7;\n");
+  const savedRunDir = process.env.COT_SELFTEST_RUN_DIR, savedCompileCache = process.env.NODE_COMPILE_CACHE;
+  try {
+    for (const compileCache of [undefined, join(logFixture, 'compile')]) {
+      if (compileCache === undefined) delete process.env.NODE_COMPILE_CACHE; else process.env.NODE_COMPILE_CACHE = compileCache;
+      delete process.env.COT_SELFTEST_RUN_DIR;
+      assert.equal((await runSelftestFile(runDirProbe, { logFile: join(logFixture, 'probe.log') })).status, 7);
+      process.env.COT_SELFTEST_RUN_DIR = '/tmp/cot-selftest-run-probe';
+      assert.equal((await runSelftestFile(runDirProbe, { logFile: join(logFixture, 'probe.log') })).status, 0,
+        `a child reads the run directory (compile cache ${compileCache ? 'preset' : 'the runner\'s'})`);
+    }
+  } finally {
+    if (savedRunDir === undefined) delete process.env.COT_SELFTEST_RUN_DIR; else process.env.COT_SELFTEST_RUN_DIR = savedRunDir;
+    if (savedCompileCache === undefined) delete process.env.NODE_COMPILE_CACHE; else process.env.NODE_COMPILE_CACHE = savedCompileCache;
+  }
   assert.equal(selftestCommand(['--logs=/tmp/receipt-logs']).logs, '/tmp/receipt-logs');
   assert.throws(() => selftestCommand(['--write-durations', '--logs=/tmp/x']), /records the whole registry/);
 } finally { rmSync(logFixture, { recursive: true, force: true }); }

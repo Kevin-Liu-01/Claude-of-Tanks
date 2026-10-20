@@ -34,6 +34,12 @@ tree with the cutover of 2026-09-29 (`docs/MULTIPLAYER-V2.md` §13.10).
 - `pacingRoster.test-support.ts` is the battle-pacing gate's roster fixture
   (`battlePacing.selftest.mjs`, `tools/pacing-trace.mjs`): the seeded
   era-matched bot fill the gate's bands were measured over.
+- The core pacing run plays in eight one-thread receipts,
+  `battlePacingShard1.selftest.mjs` to `battlePacingShard8.selftest.mjs`
+  (2026-10-16, test-speed R9a). `battlePacing.selftest.mjs` merges their records
+  from the run's directory (`COT_SELFTEST_RUN_DIR`) and judges all 132. Each share
+  is claimed by one live process, and the judge plays any share nobody plays
+  (`battlePacingRun.test-support.mjs`; docs/DEVELOPMENT.md, "The pacing tail").
 - `relayCredentials.ts` mints a seated player's short-lived TURN credentials
   inside the room (2026-10-02, `docs/MULTIPLAYER-V2.md` §13.14): the rooms Worker
   and the LAN helper hand it to the room actor's `relayCredentials` port, one

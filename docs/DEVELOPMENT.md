@@ -411,6 +411,15 @@ failures and reused results to `node_modules/.cache/cot-selftests/latest-run.jso
 separately from test execution time so resource contention is not mistaken for
 slow game code.
 
+Each invocation gives its receipts a fresh run directory, `COT_SELFTEST_RUN_DIR`,
+and removes it afterwards. A caller can export its own directory instead, and the
+runner keeps it. A judge receipt (`SELFTEST_LAST_FILES` in
+`tools/run-selftests.mjs`) merges records that other receipts of the same run
+wrote there. The pool admits a judge after everything else. The judge plays any
+share that nobody else plays in the run. The result cache does not key on the
+directory's path, which changes every run (`selftestCacheEnv`). The battlePacing
+shards are the first users; see "The pacing tail".
+
 Result reuse is based on source syntax and file contents:
 
 - Runtime imports, exports and dynamic import directories are followed,
@@ -606,6 +615,49 @@ same matches.
 | `npm test` (core) | the 132 matches: samples 0–3 on every map | at most one match |
 | `npm run test:pacing:tail` | the 264 matches: the 132 plus samples 4–7 | at most 0.5 % (one of 264) |
 | `node tools/pacing-tail.mjs --merge=… --baseline=…` | the tail played in shards, on the candidate and the PR head | 0.5 %, and no more than the head's share |
+
+**The core run in shards (test-speed R9a, 2026-10-16).** The core run used to play on four worker threads inside one
+receipt, which every pool counted as one slot. Eight receipts now play it,
+`server/battlePacingShard1.selftest.mjs` to `server/battlePacingShard8.selftest.mjs`. Each one plays the maps at its
+index modulo 8 on one thread, with every per-match assertion, and writes the records into the run's directory,
+`COT_SELFTEST_RUN_DIR`. `server/battlePacing.selftest.mjs` then merges those records. Every map's samples must appear
+exactly once, at their seeds, played on this tree. It judges the 132 by the same gate and prints the same lines in
+`MAP_IDS` order.
+
+- **Who makes the directory.** `tools/run-selftests.mjs` makes a fresh directory for each invocation. A gate that runs
+  the receipts with its own pool must export one fresh directory for each pool invocation, for example
+  `export COT_SELFTEST_RUN_DIR=$(mktemp -d $G/selftest-run.XXXX)` before `pool.mjs`. A directory reused by a later
+  invocation would hand it the records an earlier invocation played, on whatever the tree held then (records name
+  their tree's path, not its contents). The pool should also admit the judges
+  (`SELFTEST_LAST_FILES` in `tools/run-selftests.mjs`) after the rest. Without a directory the judge cannot see the
+  shards' records and plays all 132 again on four threads; it says so in its log. Separate `--shard=i/n` invocations
+  are separate runs too: they share records only through one exported directory.
+- **Records do not outlive their run.** No run reuses another run's records. Each tree writes into its own
+  subdirectory.
+- **Each share is played once.** A share is played by whichever process claims it first. A claim is created
+  atomically and names its pid. A shard whose share already has records from this run, or whose claim the live judge
+  holds, has nothing to play and passes; the judge plays and judges those matches. A shard whose match fails its
+  assertion releases its claim before it fails, so the judge plays that share at once (and fails on it too) without
+  trusting the dead shard's pid, which the system may hand to another process. The claim of a holder killed outright
+  (a memory cap or a timeout) is taken over once its pid is dead.
+- **Ordering.** The runner admits the judge after every other receipt, so in `npm test` it only merges. A pool that
+  orders receipts some other way still plays each share once. The judge waits while a live process holds a share's
+  claim, however long it plays; a pool's timeout bounds a hung one, whose claim then dies. It gives an unclaimed share
+  10 s in case a shard is starting, and then claims and plays what is left, one share at a time on its own thread, so
+  it never runs more threads than the one slot a pool counts (`COT_PACING_JOBS=n` plays n shares at once on worker
+  threads).
+- **Missing shares.** The judge always judges all 132. Without a run directory, as in
+  `node server/battlePacing.selftest.mjs`, it plays them all itself, on `COT_PACING_JOBS` worker threads (by default
+  a quarter of the cores, at most four).
+- **The protocol's receipt.** `server/battlePacingRun.selftest.mjs` covers the partition, the report check, the merge,
+  the claims and the hand-over, on fixtures.
+- **Cost (measured 2026-10-16 and 2026-10-17, beside each other on a loaded host).** The eight shards and the old
+  receipt played byte-identical records: the same 132 matches, per-map lines and median (212.2 s). CPU time is
+  unchanged: 1,032-1,053 s for the shards against 973-1,016 s for the old receipt. Each shard runs one thread at
+  0.47-0.88 GB; the old receipt ran four threads in one process at 2.45 GB. A one-thread receipt's wall on a quiet
+  core is its CPU time: shard 2 takes the longest, 196 CPU-s, because Blackglass's matches run to the 900 s cap, and
+  shard 8 the shortest, 89 CPU-s. The old receipt's best was 318 s on four threads. The judge merges in 0.9 s
+  (78 MB).
 
 The tail takes a few hours in one process, so play it in shards. Every seed is keyed to its map's index in `MAP_IDS`,
 so a shard plays exactly the full run's matches (`COT_PACING_MAPS` used to key seeds to the filtered list and played
