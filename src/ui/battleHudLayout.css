@@ -393,3 +393,17 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d{display:inline-flex;align
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-kill-cause=ammorack]{background:#291717eb;border:1px solid #d79568}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-kill-cause=ammorack] .d{color:#ffbc83;font-weight:800}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-relation=friendly] .relation{color:#ffb25e}
+
+/* r10e: a touch layout's centre notices and medal card take the places battleHudLayout finds off the reticle's footprint
+   and the HUD's panels (touchNoticePlan.ts): each one's centre and top, the alert's slot width, the compact pair (the short
+   landscapes' 136 px notice) where only that keeps clear. Their entry slides stay vertical. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-sixth{left:var(--hud-touch-notice-cx,50%);top:var(--hud-notice-top);transform:translate(-50%,-6px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-sixth.on{transform:translate(-50%,0)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{left:var(--hud-touch-alert-cx,50%);top:var(--hud-alert-top);bottom:auto;width:auto;max-width:var(--hud-touch-alert-w,214px);transform:translate(-50%,7px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert.show{transform:translate(-50%,0)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='notice-compact'] .cot-sixth{width:136px;min-height:32px;padding-block:4px;font-size:9px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='notice-compact'] .cot-sixth .sub{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert{box-sizing:border-box;font-size:8px;line-height:1.2;padding:4px 12px;min-height:28px}
+/* (the card's own width wherever it sits: a fixed box shrinks to the room right of its left edge, and the plan measures it) */
+body.cot-touch-layout[data-touch-notices] .cot-medal-toasts{left:var(--hud-touch-banner-cx,50%);width:max-content}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation].cot-touch-layout[data-touch-notices] .cot-prebattle{left:var(--hud-touch-countdown-cx,50%);top:var(--hud-touch-countdown-top);transform:translateX(-50%) scale(var(--hud-touch-countdown-scale,1));transform-origin:50% 0}

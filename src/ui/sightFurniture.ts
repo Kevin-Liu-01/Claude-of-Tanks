@@ -34,7 +34,27 @@ export function addSightFurniture(x0: number, y0: number, x1: number, y1: number
   box.x0 = x0; box.y0 = y0; box.x1 = x1; box.y1 = y1;
 }
 
-/** Ends a pass: the version steps when its boxes differ from the last pass's. */
+/** The sixth-sense notice's settled box while it shows on a touch layout (battleHudLayout): the warning chip the reticle
+ *  seats there is a DOM chip like the notice, and yields to it (r10e: at 320x568 the chip seated over the sight sat under
+ *  the DETECTED notice). The canvas's marks never dodge a notice, which comes and goes. */
+export const sightNotice = { on: false, x0: 0, y0: 0, x1: 0, y1: 0 };
+
+/** Sets this pass's notice (between clearSightFurniture and settleSightFurniture); `on` false clears it. */
+export function setSightNotice(on: boolean, x0 = 0, y0 = 0, x1 = 0, y1 = 0): void {
+  const notice = sightNotice;
+  if (notice.on === on && (!on || (notice.x0 === x0 && notice.y0 === y0 && notice.x1 === x1 && notice.y1 === y1))) return;
+  notice.on = on;
+  notice.x0 = x0; notice.y0 = y0; notice.x1 = x1; notice.y1 = y1;
+  passChanged = true;
+}
+
+/** How far the box keeps from the notice (negative: it runs into it; Infinity: none shows). */
+export function sightNoticeGap(x0: number, y0: number, x1: number, y1: number): number {
+  const notice = sightNotice;
+  return notice.on ? Math.max(notice.x0 - x1, x0 - notice.x1, notice.y0 - y1, y0 - notice.y1) : Infinity;
+}
+
+/** Ends a pass: the version steps when its boxes (or the notice) differ from the last pass's. */
 export function settleSightFurniture(): void {
   if (passChanged || sightFurniture.count !== passPrevious) sightFurniture.version++;
   passChanged = false;

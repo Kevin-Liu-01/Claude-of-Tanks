@@ -9,6 +9,8 @@
 // elsewhere; r10 critic: the standard stage alone missed them at 568x290), each measured
 // once the fonts and the tray's transitions have settled (r10 critic: a box caught mid-transition differed by
 // up to 2.3 px between two recordings). Each box is named by the first panel with its rect (for the receipt's messages).
+// On a touch layout it also records where the sixth-sense notice settles on each stage (`notices`), which the warning
+// chip the reticle seats there yields to (r10e: at 320x568 the chip sat under the DETECTED notice).
 // No screenshot; accepts an existing dev server:
 // node tools/hud-sight-furniture.browser.mjs --url=http://127.0.0.1:5189 [--out=tools/fixtures/hud-sight-furniture.json]
 import { writeFile } from 'node:fs/promises';
@@ -33,6 +35,7 @@ const NAMES = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-t
 
 const browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--disable-gpu'] });
 const sizes = {};
+const notices = {};
 try {
   for (const [width, height, touch = false] of SIZES) {
     const context = await browser.newContext({ viewport: { width, height }, hasTouch: touch, isMobile: touch, deviceScaleFactor: 1,
@@ -67,7 +70,20 @@ try {
         });
       }, NAMES);
       sizes[key + suffix] = measured;
-      console.log(`${key}${suffix}: ${measured.length} boxes`);
+      if (touch) {
+        // (the notice as the HUD shows it when an enemy spots the tank; the layout publishes its settled box)
+        await page.evaluate(() => document.querySelector('.cot-sixth').classList.add('on'));
+        for (let i = 0; i < 4; i++) await page.evaluate(() => new Promise(requestAnimationFrame));
+        await page.waitForTimeout(400);
+        notices[key + suffix] = await page.evaluate(() => {
+          const { sightNotice } = window.__HUD_LAYOUT;
+          if (!sightNotice.on) throw new Error('the layout published no notice');
+          return [sightNotice.x0, sightNotice.y0, sightNotice.x1, sightNotice.y1].map((v) => Math.round(v * 100) / 100);
+        });
+        await page.evaluate(() => document.querySelector('.cot-sixth').classList.remove('on'));
+        for (let i = 0; i < 4; i++) await page.evaluate(() => new Promise(requestAnimationFrame));
+      }
+      console.log(`${key}${suffix}: ${measured.length} boxes${touch ? `, notice ${notices[key + suffix]}` : ''}`);
     }
     await context.close();
   }
@@ -75,9 +91,11 @@ try {
   await browser.close();
 }
 const note = 'battleHudLayout\'s published sight furniture (src/ui/sightFurniture.ts) on tools/fixtures/battle-hud-layout.html, '
-  + `stages ${STAGES.map(([suffix, stage]) => `${stage} (${suffix || 'standard'})`).join(' and ')}; recorded by tools/hud-sight-furniture.browser.mjs for `
+  + `stages ${STAGES.map(([suffix, stage]) => `${stage} (${suffix || 'standard'})`).join(' and ')}, and on touch the sixth-sense notice's `
+  + `settled box (notices); recorded by tools/hud-sight-furniture.browser.mjs for `
   + 'src/ui/hudAmmoOutPaint.selftest.mjs';
 // one line a box
 const body = Object.entries(sizes).map(([key, boxes]) => ` ${JSON.stringify(key)}: [\n${boxes.map((box) => `  ${JSON.stringify(box)}`).join(',\n')}\n ]`);
-await writeFile(out, `{"note": ${JSON.stringify(note)}, "sizes": {\n${body.join(',\n')}\n}}\n`);
+const noticeBody = Object.entries(notices).map(([key, box]) => ` ${JSON.stringify(key)}: ${JSON.stringify(box)}`);
+await writeFile(out, `{"note": ${JSON.stringify(note)}, "sizes": {\n${body.join(',\n')}\n},\n"notices": {\n${noticeBody.join(',\n')}\n}}\n`);
 console.log(`${Object.keys(sizes).length} sizes: ${out}`);

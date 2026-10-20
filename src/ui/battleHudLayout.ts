@@ -2,7 +2,8 @@ import { layoutViewportSize } from './responsiveLayout.ts';
 import {
   mouseAlertBox, mouseMedalWaits, planMouseNotices, type MouseNoticeInput, type MouseNoticePlan, type PlanLane, type PlanRect,
 } from './mouseNoticePlan.ts';
-import { addSightFurniture, clearSightFurniture, settleSightFurniture } from './sightFurniture.ts';
+import { addSightFurniture, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
+import { planTouchNotices, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
 
 /** A resize whose sizes arrive closer than this is still in progress. */
 const RESIZE_SETTLE_MS = 150;
@@ -90,6 +91,28 @@ export function portraitSightClearTop(top: number, height: number, centerY: numb
 const SIGHT_FURNITURE = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy',
   '.cot-touch.on .quick', '.cot-touch-aim.on .aimhint', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
   '.cot-scope-vision', '.cot-aim-warning:not([hidden]):not([data-seat])', '.flight-identity', '.cot-ear'].join(',');
+/** What a touch layout's centre notices, countdown and medal card keep clear of besides the reticle's footprint
+ *  (touchNoticePlan.ts): the controls, the ammunition and consumables, the instruments, the vision plate, the warning
+ *  chip (seated or parked) and a shot report or open combat log (the systems row by its new place); and the map, the
+ *  score and the objective, the rosters, the network readouts and the feed lanes (`soft`). */
+const TOUCH_NOTICE_OBSTACLES = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-touch.on .round,.cot-touch.on .joy,'
+  + '.cot-touch.on .quick,.cot-touch-aim.on .aimhint,.cot-dp,.cot-drive,.cot-scope-vision,'
+  + '.cot-aim-warning:not([hidden]),.flight-identity,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,'
+  + '.cot-touch.on .scope,.cot-touch.on .fire,.cot-shells,.cot-cons,.cot-si-cardhost:not(:empty),.cot-si-log.open';
+const TOUCH_NOTICE_SOFT = '.cot-minimap,.cot-top,.cot-mode-status.show,.cot-ear,.cot-net,.cot-mp-status.battle,'
+  + '.cot-si-toasthost,.cot-room-chat:not([hidden]),.cot-spec.show';
+/** The alert's height while none shows (two lines at the touch type size in the detection's width), so places hold. */
+const TOUCH_ALERT_RESERVE_H = 40;
+/** The sixth-sense notice, which a touch layout's seated warning chip yields to (sightFurniture.ts sightNotice). */
+const SIXTH_SENSE = '.cot-sixth.on';
+/** The properties whose transition end measures a furniture again (installBattleHudLayout): a fade decides whether it is
+ *  furniture at all (shownBox); a slide or a press is measured as it lands by the pass its own change asks for. */
+const FURNITURE_SETTLES = new Set(['opacity', 'visibility']);
+/** The vertical part of an element's transform, in CSS px (0 when it has none). */
+function translationY(node: Element): number {
+  const transform = getComputedStyle(node).transform;
+  return transform && transform !== 'none' && typeof DOMMatrixReadOnly === 'function' ? new DOMMatrixReadOnly(transform).m42 : 0;
+}
 /** The left lane's feeds, which the scope's vision switch keeps clear of in its mirror seat (seatScopeVision). */
 const LEFT_LANE = '.cot-kill-lane.l .cot-kf:not([hidden]),.cot-si-toasthost .cot-si-toast:not([hidden]),.cot-room-chat:not([hidden])';
 /** What covers the vision switch's seat right of the sight on a mouse layout (critic r9: under about 1200 px wide): a shot
@@ -233,13 +256,22 @@ export function installBattleHudLayout(root: HTMLElement): void {
       else delete document.body.dataset.scopeVision;
     }
   }
-  /** Measures the furniture the reticle keeps clear of (sightFurniture.ts), once per relayout. */
-  function publishSightFurniture(): void {
+  /** Measures the furniture the reticle keeps clear of (sightFurniture.ts), once per relayout, and on a touch layout the
+   *  sixth-sense notice its seated warning chip yields to. */
+  function publishSightFurniture(touch: boolean): void {
     clearSightFurniture();
     for (const node of document.querySelectorAll(SIGHT_FURNITURE)) {
       const box = shownBox(node);
       if (box) addSightFurniture(box.left, box.top, box.right, box.bottom);
     }
+    // (the notice's settled box: it slides 6 px down as it shows (cotDetectedIn) and fades in from nothing, and a pass can
+    // land on any frame of that, its first included; r10e)
+    const notice = touch ? document.querySelector<HTMLElement>(SIXTH_SENSE) : null;
+    if (notice && notice.getClientRects().length && getComputedStyle(notice).visibility !== 'hidden') {
+      const box = notice.getBoundingClientRect();
+      const slide = translationY(notice);
+      setSightNotice(true, box.left, box.top - slide, box.right, box.bottom - slide);
+    } else setSightNotice(false);
     settleSightFurniture();
   }
   // The multiplayer v2 network strip with every cell shown, measured whenever it is not folded to its ping.
@@ -450,6 +482,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     if (!visible) {
       clearSightFurniture();
+      setSightNotice(false);
       settleSightFurniture();
       return;
     }
@@ -694,9 +727,50 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     const stack = battleSideStack(leftEnd - leftTop, chat, toastCount);
     setRows(toastHost, stack.toastRows);
+    // r10e: a touch layout's centre notices and medal card keep off the reticle's footprint and the HUD's panels
+    // (touchNoticePlan.ts); integ's place stays wherever it keeps clear
+    let touchPlan = null;
+    if (touch) {
+      const boxes = (selector: string): TouchBox[] => {
+        const out: TouchBox[] = [];
+        for (const node of document.querySelectorAll(selector)) {
+          const box = shownBox(node);
+          if (box) out.push({ x0: box.left, y0: box.top, x1: box.right, y1: box.bottom });
+        }
+        return out;
+      };
+      const obstacles = boxes(TOUCH_NOTICE_OBSTACLES);
+      if (systems) obstacles.push({ x0: systemsLeft, y0: systemsTop, x1: systemsLeft + dockWidth, y1: systemsTop + systemsHeight });
+      // (the countdown's own box, unscaled: the plan sets its scale)
+      const countdownNode = document.querySelector<HTMLElement>('.cot-prebattle.on');
+      const touchCountdown = countdownNode && shownBox(countdownNode) ? { w: countdownNode.offsetWidth, h: countdownNode.offsetHeight } : null;
+      // (the alert's slot is the detection's width; its wrapped height measured there, while it shows in that form)
+      const compactNow = document.body.dataset.touchNotices ?? '';
+      const noticeSize: TouchSize = !compactNow.includes('notice-compact') && notice ? { w: notice.width, h: notice.height } : { w: 214, h: 48 };
+      const alertBox = compactNow.includes('alert-compact') ? null : read('.cot-alert.show');
+      // (the card's layout box: it enters scaled)
+      const bannerBox = banner?.childElementCount ? { width: banner.offsetWidth, height: banner.offsetHeight } : null;
+      // (the kill lanes by the places and heights this pass gives them, while they hold a row)
+      const soft = boxes(TOUCH_NOTICE_SOFT);
+      if (killsLeft) soft.push({ x0: 0, y0: leftAnchor, x1: sideWidth, y1: leftAnchor + killHeightLeft });
+      if (killsRight) soft.push({ x0: width - sideWidth, y0: rightAnchor, x1: width, y1: rightAnchor + killHeightRight });
+      touchPlan = planTouchNotices({ width, height, top, obstacles, soft,
+        scope: !!read('.cot-scope-vision'), seated: !(width > height && height < 550), notice: noticeSize,
+        alert: { w: noticeSize.w, h: alertBox?.height ?? TOUCH_ALERT_RESERVE_H },
+        countdown: touchCountdown,
+        banner: bannerBox ? { w: bannerBox.width, h: bannerBox.height } : null, fallbackTop: noticeTop });
+      noticeTop = touchPlan.noticeTop;
+      alertTop = touchPlan.alertTop;
+    }
+    const touchNotices = touchPlan ? ['plan', touchPlan.noticeCompact ? 'notice-compact' : '', touchPlan.alertCompact ? 'alert-compact' : '',
+      touchPlan.cleared ? '' : 'uncleared'].filter(Boolean).join(' ') : '';
+    if ((document.body.dataset.touchNotices ?? '') !== touchNotices) {
+      if (touchNotices) document.body.dataset.touchNotices = touchNotices;
+      else delete document.body.dataset.touchNotices;
+    }
     // Awards use the center lane only when the actual visible HUD leaves room.
     // Keep the card measurable while deferred; no per-frame polling is needed.
-    let bannerTop = Math.ceil(top + 16);
+    let bannerTop = Math.ceil(touchPlan ? touchPlan.bannerTop : top + 16);
     if (plan) {
       // Mouse: the card has its own place off the reticle (medalReady above), placed once a card is queued.
       const slot = banner?.childElementCount ? plan.medal : null;
@@ -711,6 +785,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
           banner.dataset.placement = placement;
           banner.dispatchEvent(new Event('cot-banner-placement'));
         }
+      }
+    } else if (banner?.childElementCount && touchPlan) {
+      // Touch: the card's place off the reticle and the notices (touchNoticePlan.ts), or it waits
+      const placement = touchPlan.bannerReady ? 'ready' : 'deferred';
+      if (banner.dataset.placement !== placement) {
+        banner.dataset.placement = placement;
+        banner.dispatchEvent(new Event('cot-banner-placement'));
       }
     } else if (banner?.childElementCount) {
       const bounds = banner.getBoundingClientRect();
@@ -748,6 +829,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
       'portrait-countdown-top': systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
       'notice-top': noticeTop, 'alert-top': alertTop,
+      // (the touch plan's own names: the mouse layout's planner writes its own, on its side of the split)
+      'touch-notice-cx': touchPlan?.noticeCx ?? width / 2, 'touch-alert-cx': touchPlan?.alertCx ?? width / 2,
+      'touch-alert-w': touchPlan?.alertW ?? width - 24, 'touch-banner-cx': touchPlan?.bannerCx ?? width / 2,
+      'touch-countdown-cx': touchPlan?.countdownCx ?? width / 2, 'touch-countdown-top': touchPlan?.countdownTop ?? top + 8,
       'objective-top': scoreBottom, 'objective-bottom': top, 'banner-top': bannerTop,
       'objective-width': objectiveWidth(score?.width || 344) - (touch && network && width > height ? 52 : 0),
       'objective-left': score ? score.left + score.width / 2 : width / 2,
@@ -769,6 +854,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
       }
     }
     if (plan) writeMousePlan(plan, { countdown: !!countdown, revive: !!root.querySelector('.cot-revive.on'), medal: !!banner?.childElementCount }, width, medalWaiting, medalFeedWait);
+    // (the touch countdown's scale, unitless: touchNoticePlan.ts)
+    const countdownScale = String(touchPlan?.countdownScale ?? 1);
+    if (document.body.style.getPropertyValue('--hud-touch-countdown-scale') !== countdownScale) {
+      document.body.style.setProperty('--hud-touch-countdown-scale', countdownScale);
+    }
     const rosterProperty = '--hud-roster-top-right';
     const rosterPixels = rosterTopRight === null ? '' : `${rosterTopRight}px`;
     if (document.body.style.getPropertyValue(rosterProperty) !== rosterPixels) {
@@ -778,7 +868,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const toastRows = String(stack.toastRows);
     if (root.dataset.toastRows !== toastRows) root.dataset.toastRows = toastRows;
     seatScopeVision(width, height, touch);
-    publishSightFurniture();
+    publishSightFurniture(touch);
   }
   function schedule() {
     if (!frame) frame = requestAnimationFrame(refresh);
@@ -795,8 +885,18 @@ export function installBattleHudLayout(root: HTMLElement): void {
   window.addEventListener('cot:layoutchange', schedule);
   // Transforms (notably the spectator tray's entrance) do not resize the
   // border box. Measure the settled position without polling its animation.
+  // A pass that lands mid-fade measures the reticle's furniture where its fade has it, so the end of a furniture's own fade
+  // measures it again (r10e: the touch tray's two collapsed shell slots, fading out behind the selected one, stayed
+  // published until some later relayout). Only the furniture's own opacity or visibility: a child's transition bubbling
+  // up, or any other property (the same slots' slower scale, which ended inside the layout receipt's idle window), asks
+  // for nothing, and every end in a frame shares its one relayout.
   const transitionFinished = (event: Event) => {
-    if (observed.has(event.target as Element)) { planInput(event.target as Element); schedule(); }
+    const target = event.target as Element;
+    if (observed.has(target)
+      || (FURNITURE_SETTLES.has((event as TransitionEvent).propertyName) && target.matches?.(SIGHT_FURNITURE))) {
+      planInput(target);
+      schedule();
+    }
   };
   window.addEventListener('transitionend', transitionFinished);
   window.addEventListener('transitioncancel', transitionFinished);

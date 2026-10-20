@@ -2013,6 +2013,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/battleHudLayout.selftest.mjs',
     // 2026-10-16 (desk notices): the mouse centre notices clear the reticle, the instruments and the lanes on every census size.
     'src/ui/mouseNoticePlan.selftest.mjs',
+    // r10e: a touch layout's centre notices keep off the reticle's footprint and the HUD's panels
+    'src/ui/touchNoticePlan.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',
     'src/ui/fonts.selftest.mjs',
