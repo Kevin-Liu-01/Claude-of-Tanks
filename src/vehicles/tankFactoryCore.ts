@@ -6664,8 +6664,9 @@ function ammoCan(
     addEquipmentLocal(P, dark, block(0.042, 0.04, 0.005), x, y, z, yaw, side * 0.045, 0.072, -0.153); // hinge leaves
     addEquipmentLocal(P, bucket, block(0.012, 0.15, 0.22), x, y, z, yaw, side * 0.073, -0.005, 0); // pressed side ribs
   }
+  // 2026-10-19 (owner float sweep): the handle's feet stood 24 mm over the lid (offset 0.03); they now sit 3 mm into it
   addEquipmentLocal(P, dark, sweptTube([[0, 0.125, -0.045], [0, 0.15, -0.03], [0, 0.15, 0.03], [0, 0.125, 0.045]], 0.007, 4, 6),
-    x, y, z, yaw, 0, 0.03, 0);                                                                       // folding carry handle
+    x, y, z, yaw, 0, 0.003, 0);                                                                      // folding carry handle
 }
 function shovelTool(builder: object, x: number, y: number, z: number, len = 0.95): void {
   const P = requireGeometryAddPort(builder);

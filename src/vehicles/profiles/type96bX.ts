@@ -136,7 +136,7 @@ function buildType96Hull(P: TankBuilderPort): void {
         equipment(P, 'hull', 'Detail', box(.87, .035, 1.04), x, 1.443, 2.12, -.16);
     hatch(P, 'hull', 0, 1.60, 1.50, .32);
     for (const x of [-.25, 0, .25])
-        optic(P, 'hull', x, 1.66, 1.73, .18, .06, .08);
+        optic(P, 'hull', x, 1.650, 1.73, .18, .06, .08);   // on the deck (they stood 8 mm over it; 2026-10-19 owner float sweep)
     addType96RearDeck(P);
 }
 function buildType96Gear(P: TankBuilderPort): void {
@@ -247,8 +247,15 @@ export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptio
     addSecondaryHatch(P);
     equipment(P, 'turret', 'Detail', cylY(.205, .205, .145, P.q ? 26 : 14), -.766, 2.291, -.994);
     equipment(P, 'turret', 'Detail', cylY(.122, .122, .140, P.q ? 24 : 14), .897, 2.291, -.719);
+    // 2026-10-19 (owner float sweep): the sight head stood 24-60 mm over the roof; it sits on an armoured base
+    equipment(P, 'turret', 'Detail', box(.40, .075, .24), .649, 2.296, .36);
     optic(P, 'turret', .649, 2.436, .36, .51, .214, .28);
     optic(P, 'turret', 0, 2.278, 1.540, .25, .236, .396);
+    // 2026-10-19 (owner float sweep): this sensor stood 113 mm over the roof, resting only on the pitching mantlet boot;
+    // a bridge of two posts outboard of the boot and a crossbar under the housing carries it on the turret
+    for (const side of [-1, 1])
+        equipment(P, 'turret', 'Detail', box(.06, .235, .10), side * .30, 2.1275, 1.54);
+    equipment(P, 'turret', 'Detail', box(.66, .03, .10), 0, 2.23, 1.54);
     // Object_12's mast is supported by a finite stem and two square collars.
     // Retain the original upper rod; the omitted lower stock caused a real
     // 173 mm air gap to the native turret roof, not a comparison artifact.

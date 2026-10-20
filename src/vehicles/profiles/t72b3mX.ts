@@ -127,9 +127,12 @@ function deckEquipment(P:TankBuilderPort):void {
   P.addEquipment('hullDetail',cylY(.374,.043,32),-.079,1.540,1.720);
   P.addEquipment('hullDark',box(.39,.027,.085),.002,1.491,2.03);
   // each headlight with its guard is seated on the glacis (it stood 5 cm off it; owner 2026-10-19 sweep)
+  // 2026-10-19 (owner float sweep): the lamp still stood 51 mm in front of its guard after that seat; it sits back on a
+  // crossbar between the guard bars
   for(const x of [-.863,.868])P.snapGroup('t72b3m-headlight',()=>{
-    P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.076,.105,24),'headlight'),x,1.318,2.999);
+    P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.076,.105,24),'headlight'),x,1.318,2.9355);
     for(const dx of [-.118,.118])P.addEquipment('hullDetail',beamBetween([x+dx,1.12,3.007],[x+dx,1.38,2.85],.009));
+    P.addEquipment('hullDetail',beamBetween([x-.118,1.318,2.8874],[x+.118,1.318,2.8874],.009));
   },{reachM:.07});
   // each louvre slat is seated on the falling stern deck (it stood 3 cm over it; owner 2026-10-19 sweep)
   for(const x of [-.193,.596])for(let i=0;i<8;i++)P.snapGroup('t72b3m-stern-slat',()=>P.addEquipment('hullDetail',box(.061,.012,.24),x-.315+i*.089,1.542,-3.214,.244),{reachM:.05});
@@ -270,11 +273,22 @@ function machineGun(P:TankBuilderPort):void {
   const yaw=-.25575;
   topPart(P,'turretDetail',box(.403,.296,.154).rotateY(yaw),-1.17,2.685,.013);
   topPart(P,'turretDetail',box(.413,.041,.164).rotateY(yaw),-1.17,2.837,.013);
-  for(const x of [-.903,-.787])topPart(P,'turretDetail',beamBetween([x,2.54,.18],[x,2.895,.11],.021),0,0,0);
   const mg=sourceMachineGun(P,YAW),axis=new THREE.Vector3(-.21215,.54465,.81139).normalize();
   const pivot=new THREE.Vector3(-.75156,2.85947,.10957),q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),axis);
   mg.add('turretDark',box(.080,.134,.64).applyQuaternion(q),...pivot.toArray());
   const tip=new THREE.Vector3(-1.0939276,3.7383842,1.4189293),base=new THREE.Vector3(-.8321749,3.0664378,.4178961);
+  // 2026-10-19 (owner float sweep): the Kord stood 0.40 m over the cupola ring on two posts that began beyond its edge,
+  // and the ammunition box beside them touched nothing. A trunnion pin crosses the receiver at the trunnion the station
+  // levels about (30 % of the gun's length from its back, stationFromDrawnGun); the posts rise from inside the ring into
+  // the pin's ends and a stay carries the box.
+  const back=-.32,front=tip.clone().sub(pivot).dot(axis),trunnion=pivot.clone().addScaledVector(axis,back+.3*(front-back));
+  const heading=Math.atan2(axis.x,axis.z),across=new THREE.Vector3(Math.cos(heading),0,-Math.sin(heading));
+  const feet=[new THREE.Vector3(-.70,2.50,.10),new THREE.Vector3(-.90,2.50,0)];
+  const ends=[trunnion.clone().addScaledVector(across,.13),trunnion.clone().addScaledVector(across,-.13)];
+  for(let i=0;i<2;i++)topPart(P,'turretDetail',beamBetween(feet[i].toArray(),ends[i].toArray(),.021),0,0,0);
+  const stay=feet[1].clone().lerp(ends[1],(2.70-feet[1].y)/(ends[1].y-feet[1].y));
+  topPart(P,'turretDetail',beamBetween([stay.x-.11,2.70,stay.z],[stay.x+.01,2.70,stay.z],.016),0,0,0);
+  mg.add('turretDark',cylX(.022,.30,14).applyQuaternion(q),...trunnion.toArray());
   mg.add('turretDark',beamBetween(base.toArray(),tip.clone().addScaledVector(axis,-.030).toArray(),.0198,20),0,0,0);
   mg.add('turretDetail',beamBetween(base.toArray(),base.clone().addScaledVector(axis,.39).toArray(),.030,20),0,0,0);
   mg.add('turretDark',beamBetween(tip.clone().addScaledVector(axis,-.030).toArray(),tip.toArray(),.027,20),0,0,0);

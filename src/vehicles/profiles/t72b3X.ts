@@ -100,16 +100,18 @@ function runningGear(P:TankBuilderPort):void {
 }
 
 function engineDeck(P:TankBuilderPort):void {
-  P.addEquipment('hullDetail',box(1.874,.039,.619),.00315,1.4905,-1.71335);
-  for(const x of [-.455,.46]){
+  // 2026-10-19 (owner float sweep): the engine-deck plate stood 66 mm over the deck behind the ring step (14 mm off its
+  // edge), the louvre grilles 15-20 mm and a fender plate 34 mm over theirs; each is dropped onto the deck under it
+  P.snapGroup('t72b3-engine-plate',()=>P.addEquipment('hullDetail',box(1.874,.039,.619),.00315,1.4905,-1.71335),{reachM:.08,mode:'down'});
+  for(const x of [-.455,.46])P.snapGroup('t72b3-engine-grille',()=>{
     P.addEquipment('hullDetail',box(.856,.043,.995),x,1.4352,-2.590);
     for(let i=0;i<17;i++)P.addEquipment('hullDark',box(.794,.006,.016),x,1.4598,-3.04+i*.055);
-  }
+  },{reachM:.04,mode:'down'});
   for(const [x,z,w,d,y]of [[-1.42,-2.44,.50,.92,1.428],[1.42,-1.7,.51,1.04,1.489],
-    [-1.42,-.22,.48,2.64,1.441],[1.43,-.63,.49,.98,1.447],[1.43,.91,.47,1.13,1.439]]){
+    [-1.42,-.22,.48,2.64,1.441],[1.43,-.63,.49,.98,1.447],[1.43,.91,.47,1.13,1.439]])P.snapGroup('t72b3-fender-plate',()=>{
     P.addEquipment('hullDetail',box(w,.022,d),x,y,z);
     for(const dz of [-d*.38,d*.38])P.addEquipment('hullDetail',box(.075,.024,.043),x,y+.021,z+dz);
-  }
+  },{reachM:.05,mode:'down'});
   P.addEquipment('hullDark',box(.173,.106,.654),1.752,1.3365,-1.70625);
   for(const z of [-1.934,-1.79,-1.646,-1.502])P.addEquipment('hullDetail',box(.024,.122,.029),1.837,1.336,z);
   P.addEquipment('hullDetail',cylY(.338,.036,32),-.0429,1.4813,1.61995);
@@ -117,7 +119,9 @@ function engineDeck(P:TankBuilderPort):void {
   for(const x of [-.859,.866]){
     P.snapGroup('t72-headlight',()=>{
       P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.082,.104,24),'headlight'),x,1.144,2.777);
-      for(const dx of [-.093,.093])P.addEquipment('hullDetail',beamBetween([x+dx,1.11,2.699],[x+dx,1.30,2.79],.008));
+      // 2026-10-19 (owner float sweep): the outer guard bar passed 11 mm clear of the lamp (25 mm off the glacis); both bars
+      // close in onto the lamp's barrel
+      for(const dx of [-.085,.085])P.addEquipment('hullDetail',beamBetween([x+dx,1.11,2.699],[x+dx,1.30,2.79],.008));
     },{reachM:.06});
   }
 }
@@ -125,7 +129,8 @@ function engineDeck(P:TankBuilderPort):void {
 function rearFittings(P:TankBuilderPort):void {
   addT72B3RearDrums(P);
   P.addEquipment('hullDetail',cylX(.1156,3.1592,24),-.0002,.8958,-3.15755);
-  for(const x of [-.760,.768])P.addEquipment('hullDetail',torus(.070,.021,20,8),x,.720,-2.944);
+  // 2026-10-19 (owner float sweep): the towing rings hung 28-42 mm clear of the beam cradles; each is seated on its cradle
+  for(const x of [-.760,.768])P.snapGroup('t72b3-tow-ring',()=>P.addEquipment('hullDetail',torus(.070,.021,20,8),x,.720,-2.944),{reachM:.06});
   // One retained physical rear mount, not its five coincident source options.
   // its cradles run aft into the unditching beam they carry (owner 2026-10-19 sweep: the beam hung 6 cm behind them)
   P.addEquipment('hullDetail',box(.54,.19,.228),-.364,.817,-2.946);
@@ -166,8 +171,14 @@ function sideCassette(P:TankBuilderPort,side:number,z:number,y:number,planeDista
   const center=point.clone().addScaledVector(normal,-.006);
   P.destructibleCluster(`skirt_era_${side<0?'L':'R'}`,()=>P.addExternalArmor('hull',
     markEraHitFaces(new THREE.BoxGeometry(.012,.488,.637),[side,0,0]).applyQuaternion(rotation),...center.toArray()));
-  for(const dz of [-.27,.27])P.addEquipment('hullDetail',beamBetween([side*1.67,y+.18,z+dz],
-    [backing.x,y+.18,z+dz],.014));
+  // 2026-10-19 (owner float sweep): the struts ended 12 mm short of the raked carrier (each cassette stood 9-41 mm off
+  // the skirt) and on the low bow cassette 14 mm under the inner apron, the right fore one past its end; each runs from
+  // inside the apron onto the carrier's mid-plane
+  const sy=Math.max(y+.18,1.236);
+  for(const dz of [-.27,.27]){
+    const sz=Math.min(z+dz,2.585),sx=(planeDistance-.0157-normal.y*sy-normal.z*sz)/normal.x;
+    P.addEquipment('hullDetail',beamBetween([side*1.67,sy,sz],[sx,sy,sz],.014));
+  }
 }
 
 function casting(P:TankBuilderPort):void {
@@ -264,6 +275,8 @@ function roofEra(P:TankBuilderPort):void {
 function roofEquipment(P:TankBuilderPort):void {
   P.addCupola('turret',cylY(.405,.111,32),-.6042,2.285-YAW[1],-.265-YAW[2]);
   turretPart(P,'turretDetail',cylY(.358,.078,28),-.61355,2.411,-.363);
+  // 2026-10-19 (owner float sweep): this upper race stood 32 mm over the cupola; a collar carries it
+  turretPart(P,'turretDetail',cylY(.30,.036,28),-.61355,2.356,-.363);
   P.addCupola('turret',cylY(.345,.068,28),.56485,2.205-YAW[1],-.462-YAW[2]);
   turretPart(P,'turretDetail',cylY(.323,.033,28),.56485,2.274,-.462);
   turretPart(P,'turretDetail',box(.402,.077,.337),.0657,2.271,-.75675);

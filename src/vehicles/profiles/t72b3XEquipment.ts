@@ -102,6 +102,8 @@ function commanderOptic(P:TankBuilderPort):void{
     [.07835,-.7003,-.5267,2.4021,2.4021]],.026));
   add(P,roofSheet([[-.16395,-.8581,-.3694,2.462,2.462],[-.12875,-.8581,-.3694,2.4894,2.4894],
     [-.09355,-.8581,-.3694,2.462,2.462]],.0273));
+  // 2026-10-19 (owner float sweep): the sight stood 50 mm over its saddle; a pedestal carries it
+  add(P,KIT.box(.10,.09,.07),-.61415,2.445,.035);
 }
 function sosnaHousing(P:TankBuilderPort):void{
   // Tall optical head only occupies the rear/right course. Front courses are

@@ -69,7 +69,8 @@ function addAftSideLampsAndTowEyes(P: TankBuilderPort, side: number): void {
     equipment(P, 'hull', 'Glass', markVehicleNightLens(cylZ(.054, .006, P.q ? 20 : 12), 'headlight'), side * 1.399, 1.260, 3.708);
     equipment(P, 'hull', 'Detail', box(.052, .20, .055), side * 1.608, 1.405, 3.678);
     // Upright fore/aft towing eyes retain real air and their measured brackets.
-    equipment(P, 'hull', 'Detail', box(.056, .10, .067), side * .940, .867, 3.490);
+    // 2026-10-19 (owner float sweep): the bow eye's bracket hung 73 mm under the lower glacis; it rises into the plate
+    equipment(P, 'hull', 'Detail', box(.056, .10, .067), side * .940, .990, 3.490);
     equipment(P, 'hull', 'Detail', new THREE.TorusGeometry(.075, .021, 8, P.q ? 20 : 12)
         .rotateY(Math.PI / 2), side * .940, .977, 3.613);
     equipment(P, 'hull', 'Detail', box(.055, .104, .065), side * .788, .716, -3.180);
@@ -86,9 +87,11 @@ function addAftSkirtPanels(P: TankBuilderPort, side: number): void {
             { z: z + .60, ring: [[-.012, low], [.012, low], [.012, 1.23], [-.012, 1.23]] },
         ]);
         P.hangMudguard(`aft-side-${side}-${i}`, 'hull', g, side * 1.635, 0, 0);
+        // 2026-10-19 (owner float sweep): the hanger clips stood 13-145 mm off the raked upper side; each is seated on it
         if (P.q)
             for (const y of [1.36, 1.80]) {
-                equipment(P, 'hull', 'Detail', box(.018, .026, .066), side * 1.646, y, z);
+                P.snapGroup('aft-skirt-clip', () => equipment(P, 'hull', 'Detail', box(.018, .026, .066), side * 1.646, y, z),
+                    { reachM: .16, direction: [-side, 0, 0] });
             }
     }
 }
@@ -108,8 +111,9 @@ function addAftHullSides(P: TankBuilderPort): void {
         equipment(P, 'hull', 'Detail', box(.318, .034, .043), side * 1.424, 1.809, -3.625);
         equipment(P, 'hull', 'Detail', cylZ(.120, .049, P.q ? 24 : 14), side * 1.016, .706, -3.204);
         equipment(P, 'hull', 'Dark', cylZ(.091, .007, P.q ? 24 : 14), side * 1.016, .706, -3.232);
+        // 2026-10-19 (owner float sweep): the roof cleats stood 9 mm (rear) and 46 mm (fore, over the falling roof) up
         for (const z of [-2.95, -2.10, 1.55]) {
-            equipment(P, 'hull', 'Detail', box(.15, .045, .035), side * 1.32, z > 1 ? 1.944 : 1.979, z);
+            equipment(P, 'hull', 'Detail', box(.15, .045, .035), side * 1.32, z > 1 ? 1.892 : 1.969, z);
         }
     }
 }
@@ -138,13 +142,15 @@ function buildAftHull(P: TankBuilderPort): void {
     panel(P, 'hull', .896, 1.874, 1.839, .820, .725, .055, .15, .165);
     panel(P, 'hull', .896, 1.915, 1.752, .784, .501, .030, .12, .155);
     panel(P, 'hull', .773, 1.970, .066, .60, .77, .042, .09);
-    panel(P, 'hull', -.109, 1.982, .928, 1.06, .585, .032, .018);
+    // 2026-10-19 (owner float sweep): this panel stood 18-55 mm over the roof's kink at z .90; it lies on it, raked
+    // with the falling fore roof, and each grab handle sits on its own panel (they stood 12-33 mm over them)
+    panel(P, 'hull', -.109, 1.960, .928, 1.06, .585, .032, .018, .06);
     panel(P, 'hull', -1.262, 1.985, .674, .552, 1.05, .074, .035);
     panel(P, 'hull', -.767, 2.106, -.449, .610, .360, .362, .030);
-    for (const [x, z, w] of [[.895, 1.49, .51], [.773, -.29, .35], [-.109, .64, .74], [-1.262, .18, .31]]) {
+    for (const [x, z, w, handleY] of [[.895, 1.49, .51, 1.942], [.773, -.29, .35, 2.005], [-.109, .64, .74, 1.990], [-1.262, .18, .31, 2.026]]) {
         for (const side of [-1, 1])
             equipment(P, 'hull', 'Detail', cylX(.022, .115, 10), x + side * w * .38, z > 1.4 ? 1.952 : 2.002, z);
-        equipment(P, 'hull', 'Detail', box(.15, .032, .032), x, z > 1.4 ? 1.976 : 2.026, z + .28);
+        equipment(P, 'hull', 'Detail', box(.15, .032, .032), x, handleY, z + .28);
     }
     for (const x of [.666, 1.125])
         optic(P, 'hull', x, 1.866, 2.009, .161, .080, .122);
@@ -181,6 +187,8 @@ function addAftMissileCanister(P: TankBuilderPort, side: number, column: number,
         P.addEquipment('gun', box(.445, .445, .055), x, y, z);
         P.addEquipment('gunDark', box(.33, .33, .009), x, y, z + .031);
         P.addEquipment('gun', box(.305, .305, .012), x, y, z + .038);
+        // 2026-10-19 (owner float sweep): the upper row stood 30 mm clear of the lower; a stacking spacer joins their caps
+        if (row === 0) P.addEquipment('gun', box(.445, .034, .055), x, y + .2375, z);
     }
     // Open side lifting handles and separate latch feet, never solid decals.
     for (const z of [-.69, .87])
@@ -244,14 +252,20 @@ function buildAftLauncher(P: TankBuilderPort): void {
         brace(P, 'turret', [side * .766, 2.12, -1.90], [side * .766, 2.43, -1.19], .135, .12);
         equipment(P, 'turret', 'Detail', box(.15, .18, .20), side * .766, 2.14, -1.92);
         P.add('turret', cylX(.17, .20, P.q ? 24 : 14), side * .71, .725, 0);
+        // 2026-10-19 (owner float sweep): the trunnion bosses stood 0.29 m over the turret; a yoke cheek in the gap
+        // between the canister columns rises from the race into each boss
+        P.add('turret', box(.05, .80, .26), side * .765, .40, 0);
         // Object_11 rear support loops, measured 0.146 x 0.460 x 0.597 m.
         const loop = aftRearCradleLoop(Boolean(P.q));
         equipment(P, 'turret', 'Detail', loop, side * .5405, 2.3537, -2.7087);
-        equipment(P, 'turret', 'Detail', box(.146, .062, .27), side * .5405, 2.146, -2.62);
+        // 2026-10-19 (owner float sweep): the loop's foot ended 0.19 m behind the turret; it runs forward into its rear face
+        equipment(P, 'turret', 'Detail', box(.146, .062, .46), side * .5405, 2.146, -2.525);
         brace(P, 'turret', [side * .54, 2.42, -2.67], [side * .54, 2.56, -2.42], .115, .10);
-        equipment(P, 'turret', 'Detail', box(.635, .076, .098), side * 1.155, 2.436, -2.555);
+        // 2026-10-19 (owner float sweep): the mast arm ended 0.30 m short of the rear support and the whip stood 10 mm
+        // over its post; the arm runs inboard into the support's brace and the whip's foot sits on the post
+        equipment(P, 'turret', 'Detail', box(.9125, .076, .098), side * 1.01625, 2.436, -2.555);
         equipment(P, 'turret', 'Detail', box(.14, .54, .11), side * 1.414, 2.71, -2.489);
-        antenna(P, side * 1.43, 2.99, -2.49, 5.27079);
+        antenna(P, side * 1.43, 2.978, -2.49, 5.27079);
     }
     weaponAssembly(P, () => addAftMissileCanisters(P));
     P.addEquipment('gunMount', box(2.49, .08, .20), 0, -.275, -.83);

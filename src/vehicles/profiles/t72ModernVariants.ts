@@ -79,7 +79,9 @@ export function buildJaguarModern(P:TankBuilderPort):void {
     P.addEquipment('turretDetail',box(.29,.028,.58),side*1.20,.445,-.47,0,side*.15);
   }
   supportedSensor(P,[.43,.99,-.34],.69);
-  attachedCage(P,'turret',[0,.32,-2.04],1.98,.49,.50);
-  strappedPack(P,'turret',[0,.38,-1.77],[1.15,.22,.35]);
+  // 2026-10-19 (owner float sweep): the cage stood 0.19 m behind the turret and the pack 14 mm off the rear case; the
+  // cage's top rails run on into the side cases and the pack sits against the case
+  attachedCage(P,'turret',[0,.32,-2.04],1.98,.49,.70);
+  strappedPack(P,'turret',[0,.38,-1.754],[1.15,.22,.35]);
   P.hullG.userData.familyRebuild={donor:'t72b3',revision:1,variant:'jaguar'};
 }
