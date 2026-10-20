@@ -1,3 +1,5 @@
+import { hypot2 } from './scalarHypot.ts';
+
 /** Downward translation that keeps a complete finite straight span below a
  * circular road-wheel envelope. Solve the minimum of the lower semicircle
  * minus the line analytically, not with sampled points at the axles. */
@@ -8,7 +10,7 @@ export function loadedSpanDrop(
   const hi=Math.min(Math.max(z0,z1),wheelZ+radius);
   if(lo>=hi||Math.abs(z1-z0)<1e-10)return 0;
   const slope=(y1-y0)/(z1-z0);
-  const z=Math.max(lo,Math.min(hi,wheelZ+slope*radius/Math.sqrt(1+slope*slope)));
+  const z=Math.max(lo,Math.min(hi,wheelZ+slope*radius/hypot2(1,slope)));
   const underside=wheelY-Math.sqrt(Math.max(0,radius*radius-(z-wheelZ)**2));
   return Math.max(0,y0+slope*(z-z0)-underside);
 }
@@ -44,7 +46,8 @@ export function fitLoadedTrackContact(
    * never pulls them back toward their authored tire gap; the clearance passes still push them out of a tire */
   pinned:Uint8Array|null=null,
 ):void {
-  // per-frame on every loaded band: scratch only (no Math.hypot either: V8's allocates its argument array per call)
+  // per-frame on every loaded band: scratch only, and hypot2 for Math.hypot (V8's allocates its argument array per call;
+  // hypot2 is the same number bit for bit, src/vehicles/scalarHypot.ts)
   const {y,z,drop,lower}=scratch,n=y.length;drop.fill(0);lower.fill(0);
   for(let i=0;i<n;i++) {
     const base=i*72;
@@ -160,7 +163,7 @@ export function fitLoadedTrackContact(
   for(let pass=0;pass<2;pass++)for(let step=0;step<n;step++) {
     const i=pass?n-1-step:step,j=(i+1)%n;
     if(!lower[i]||!lower[j])continue;
-    const limit=MAX_FIT_SLOPE*Math.sqrt((z[j]-z[i])*(z[j]-z[i])+(y[j]-y[i])*(y[j]-y[i]));
+    const limit=MAX_FIT_SLOPE*hypot2(z[j]-z[i],y[j]-y[i]);
     if(drop[j]>drop[i]+limit)drop[i]=drop[j]-limit;
     if(drop[i]>drop[j]+limit)drop[j]=drop[i]-limit;
   }
