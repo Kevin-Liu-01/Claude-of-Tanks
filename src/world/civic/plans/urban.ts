@@ -194,6 +194,8 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       ...[-34.5, -31.0, -27.5].map((x) => ({ kind: 'stall', x, z: -24.0, yawDeg: 0 })),
       { kind: 'crate', x: -38.7, z: 16.3, yawDeg: 12 }, { kind: 'crate', x: -38.6, z: 19.8, yawDeg: -8 },
       { kind: 'crate', x: -32.9, z: -26.0, yawDeg: 17 }, { kind: 'crate', x: -26.0, z: -26.1, yawDeg: -11 },
+      // (228 r3b) a bench facing the Hauptstrasse where the north-east pit oak stood, off the bots' diagonal
+      { kind: 'bench', x: -16.8, z: 10.3, yawDeg: 180 },
       // where the south row's fourth stall and the east kerb's cars stood: a bench and a planter
       { kind: 'bench', x: -12.5, z: -30.0, yawDeg: -90 }, { kind: 'pflanzkuebel', x: -12.5, z: -26.5, yawDeg: 0 },
       { kind: 'kiosk', x: -15.5, z: -14.5, yawDeg: -45 },
@@ -218,6 +220,8 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
     lamps: [
       [-73.4, 30.4], [-59.6, 22.45], [-82.8, 18.05], [-61.2, -23.8], [-82.8, -22.45], [-56.8, 42.4],
       [-41.0, 9.9], [-27.5, -11.0], [-16.5, 26.0], [-64.5, 9.25], [-66.66, -20.37],
+      // (228 r3b) a lantern on the strip of paving between the bots' two routes north (no crushable stands on either)
+      [-26.6, 21.2],
     ].map(([x, z]) => ({ kind: 'lamp', x, z, yawDeg: 0 })),
     fountainRing: { x: -62, z: 47, r: 5.5 },
     steps: [{ x: -75.8, z: 39.9, width: 6, yawDeg: 180, count: 2, rise: 0.12 }],
