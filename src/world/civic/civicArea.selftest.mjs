@@ -141,12 +141,41 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
       .map((o) => [o.min[0], o.max[0], o.min[2], o.max[2]]), ...trees.map((t) => [t.x - 0.6, t.x + 0.6, t.z - 0.6, t.z + 0.6]),
       // (229 b3) the trees' platforms
       ...(area.platforms ?? []).map((pf) => { const r = pf.half * 1.42; return [pf.x - r, pf.x + r, pf.z - r, pf.z + r]; })];
-    let open = 0, cells = 0, largest = 0;
+    let open = 0, cells = 0, largest = 0, largestAt = [0, 0];
     const segDist = (x, z, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz || 1;
       const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / l2)); return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t); };
     const inCorridor = (x, z, m = 0) => area.corridors.some((c) => segDist(x, z, c.from, c.to) <= c.half + m);
     // ---- the corridors (G2): no crushable on the bots' measured lanes across the area
-    for (const d of records) assert.ok(!inCorridor(d.x, d.z, d.r * 0.5), `${tag}: ${d.kind} at (${d.x.toFixed(1)}, ${d.z.toFixed(1)}) on a traffic corridor`);
+    // (228 r4, the gameplay critic's D8: a centre test let a bench's, a stall's and a car's footprints into the corridors)
+    // each record's collision footprint (its convex shape, else its box) kept off each corridor's band
+    const footprintOf = (d) => {
+      const o = d.ob;
+      if (o?.shape2?.points?.length >= 6) { const p = o.shape2.points, out = []; for (let i = 0; i + 1 < p.length; i += 2) out.push([p[i], p[i + 1]]); return out; }
+      if (o?.min && o?.max) return [[o.min[0], o.min[2]], [o.max[0], o.min[2]], [o.max[0], o.max[2]], [o.min[0], o.max[2]]];
+      return [[d.x, d.z]];
+    };
+    const cross = (a, b, c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+    const segsMeet = (a, b, c, e) => cross(a, b, c) * cross(a, b, e) < 0 && cross(c, e, a) * cross(c, e, b) < 0;
+    const inPoly = (poly, x, z) => { let inside = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, zi] = poly[i], [xj, zj] = poly[j]; if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside; } return inside; };
+    const polySegDist = (poly, a, b) => {
+      if (poly.length === 1) return segDist(poly[0][0], poly[0][1], a, b);
+      if (inPoly(poly, a[0], a[1]) || inPoly(poly, b[0], b[1])) return 0;
+      let best = Infinity;
+      for (let i = 0; i < poly.length; i++) {
+        const p = poly[i], q = poly[(i + 1) % poly.length];
+        if (segsMeet(p, q, a, b)) return 0;
+        best = Math.min(best, segDist(p[0], p[1], a, b), segDist(a[0], a[1], p, q), segDist(b[0], b[1], p, q));
+      }
+      return best;
+    };
+    for (const d of records) {
+      const fp = footprintOf(d);
+      for (const c of area.corridors) {
+        const gap = polySegDist(fp, c.from, c.to) - c.half;
+        assert.ok(gap > 0, `${tag}: ${d.kind} at (${d.x.toFixed(1)}, ${d.z.toFixed(1)}) ${(-gap).toFixed(2)} m into the traffic corridor (${c.from}) -> (${c.to})`);
+      }
+    }
     for (const t of trees) assert.ok(!inCorridor(t.x, t.z, 0.5), `${tag}: a tree at (${t.x.toFixed(1)}, ${t.z.toFixed(1)}) on a traffic corridor`);
     // ---- the lanes (C12): each measured across at every half metre along it, the widest span no piece or trunk enters
     // (a lamp, a bollard or a railing module on a long edge's kerb line aside: they stand on the kerb, not in the lane)
@@ -197,9 +226,14 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
       }
     }
     // ---- the objective holds past the roundel (C13): their discs clear of every piece and trunk
+    // (228 r4) what stands in a hold on the map without the plan too (the town's own street lamp at line-2's point) is the
+    // map's, not the plan's
+    const baseKey = (o) => `${o.kind}@${((o.min[0] + o.max[0]) / 2).toFixed(1)},${((o.min[2] + o.max[2]) / 2).toFixed(1)}`;
+    const baseBlockers = new Set(base.built.obstacles.filter((o) => o.min && o.max).map(baseKey));
     for (const h of area.holds) {
       for (const b of blockers) {
         if (b.kind === 'structure') continue;
+        if (b.kind !== 'tree' && baseBlockers.has(`${b.kind}@${((b.x0 + b.x1) / 2).toFixed(1)},${((b.z0 + b.z1) / 2).toFixed(1)}`)) continue;
         const d = Math.hypot(Math.max(b.x0 - h.x, 0, h.x - b.x1), Math.max(b.z0 - h.z, 0, h.z - b.z1));
         assert.ok(d >= h.r, `${tag}: ${b.kind} at (${((b.x0 + b.x1) / 2).toFixed(1)}, ${((b.z0 + b.z1) / 2).toFixed(1)}) in the ${h.id} disc (${d.toFixed(2)} m, ${h.r})`);
       }
@@ -216,7 +250,7 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
       for (const st of area.strips ?? []) d = Math.min(d, Math.max(0, segDist(x, z, st.from, st.to) - st.width / 2));
       d = Math.min(d, rhx - Math.abs(u), rhz - Math.abs(v));
       if (area.arms.some((a) => inRect(a, x, z)) || Math.hypot(x - C.x, z - C.z) < C.ringR[1] + 2 || inCorridor(x, z) || inLane(x, z)) continue;
-      largest = Math.max(largest, d);
+      if (d > largest) { largest = d; largestAt = [x, z]; }
       cells++;
       if (d > 4) open++;
     }
@@ -239,7 +273,7 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
     // (live records: the props' destructibles and the trees' trunks)
     assert.ok(records.length + civicTrees.length >= T.records, `${tag}: ${records.length} records and ${civicTrees.length} trunks in the room (${T.records})`);
     assert.ok(share <= T.openShare, `${tag}: ${(share * 100).toFixed(1)} % of the room's paving more than 4 m from anything (off the arms, the roundel, the corridors and the lanes; ${(T.openShare * 100).toFixed(0)} %)`);
-    assert.ok(largest <= T.largestDisc, `${tag}: the largest free disc ${largest.toFixed(1)} m off the arms, the corridors and the lanes (${T.largestDisc})`);
+    assert.ok(largest <= T.largestDisc, `${tag}: the largest free disc ${largest.toFixed(1)} m at (${largestAt[0].toFixed(1)}, ${largestAt[1].toFixed(1)}) off the arms, the corridors and the lanes (${T.largestDisc})`);
   }
 }
 console.log(`civicArea.selftest: ${plans.CIVIC_PLAN_MAPS.join(', ')} — the areas filled, seated, lit and stream-neutral — ok`);

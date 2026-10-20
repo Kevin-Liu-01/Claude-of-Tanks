@@ -111,7 +111,10 @@ export function civicPavementTest(mapId: string | null | undefined, roads: Reado
   ((x: number, z: number) => boolean) | null {
   const plan = civicPlanFor(mapId), pw = plan?.pathways;
   if (!plan || !pw || !mapId) return null;
-  const hit = paveCache.get(mapId);
+  // (228 r4, the critic's D11) keyed by the roads it was built from as well as the map (a first call with another road list
+  // no longer fixes the raster for the process)
+  const key = `${mapId}:${roads.length}:${roads.map((r) => `${r.length}@${r[0]?.[0] ?? ''},${r[0]?.[1] ?? ''}`).join(';')}`;
+  const hit = paveCache.get(key);
   if (hit !== undefined) return hit;
   const kw = CIVIC_STYLES[plan.style]?.kerb.width ?? 0.25;
   const bands = Object.entries(pw.classes).filter(([, c]) => c === 'main' || c === 'gasse').map(([i, c]) => ({
@@ -147,7 +150,7 @@ export function civicPavementTest(mapId: string | null | undefined, roads: Reado
     if (i < 0 || j < 0 || i >= nx || j >= nz || grid[j * nx + i] !== 1) return false;
     return polys.some((poly) => inPoly(poly, x, z)) && !pw.exclude.some((r) => inCivicRect(r, x, z));
   };
-  paveCache.set(mapId, test);
+  paveCache.set(key, test);
   return test;
 }
 
