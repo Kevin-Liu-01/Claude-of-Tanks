@@ -10,21 +10,25 @@
 // The launch time sets the drone's gust phase (aerialCombat.ts: born * .73 rad), so it is drawn over one full gust cycle
 // (2 pi / .73 = 8.6 s) after a second's settle instead of the old harness's 10-60 s of idle stepping.
 //
-// Callers: src/sim/counterDroneEngagement.selftest.mjs (the owner's outcome band) and tools/counter-drone-engage.mjs
-// (the --ids entry point the 227 turret work calls for new stations). The tuning workflow's original harness
+// Callers: src/sim/counterDroneEngagement.selftest.mjs (the owner's outcome band and the pinned hovers),
+// src/sim/weaponReload.selftest.mjs (the solo battle's hover, through soloHoverCounterDrone: that receipt already loads
+// game/state.ts) and tools/counter-drone-engage.mjs (the --ids entry point the 227 turret work calls for new stations).
+// The tuning workflow's original harness
 // (~/cot-launch-state/streams/counter-drone/harness/cdh.mjs) composed the same modules outside the authority and agreed
 // with it on 160 of 160 runs; this one is the authority itself.
 import { createHash } from 'node:crypto';
-import { Quaternion, Vector3 } from 'three';
+import { Group, Quaternion, Vector3 } from 'three';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 import { AUXILIARY_INVENTORY } from '../vehicles/auxiliaryInventory.generated.ts';
 import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { encodeAimIntent } from './aimIntent.ts';
+import { initializeAerial } from './aerialCombat.ts';
 import { createAuxiliaryState, roofStationCount } from './auxiliarySystems.ts';
-import { AERIAL_RULES } from './matchRuleset.ts';
-import { SIM_DT } from './movement.ts';
+import { createCombatState } from './damage.ts';
+import { AERIAL_RULES, matchRulesetFor } from './matchRuleset.ts';
+import { createTankState, SIM_DT } from './movement.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
 
 /** The pilot's approaches: a level run at the hull's front, side (either, by seed) or rear, or a steep dive. */
@@ -38,7 +42,7 @@ export const COUNTER_DRONE_APPROACHES = Object.freeze({
 export const LEVEL_APPROACHES = Object.freeze(['direct_front', 'direct_side', 'direct_rear']);
 /** The pilot's tank, its front to the target: no roof station spends a round on the KV-2's front (stationAccepts: not a
  * quarter of it defeatable, even by a 30 mm at 30 m), and it has no roof station of its own. */
-export const DEFAULT_CARRIER = 'kv2';
+const DEFAULT_CARRIER = 'kv2';
 const MAX_FLIGHT_S = AERIAL_RULES.drone.batteryS + 4;
 const FPV_SHELL = 'FPV shaped charge';
 
@@ -48,7 +52,7 @@ function mulberry32(a) {
 const seedOf = (...parts) => createHash('sha256').update(parts.join('|')).digest().readUInt32LE(0);
 
 /** One seed's geometry for an approach: always the same draws in the same order, whatever the vehicles. */
-export function counterDroneGeometry(approach, seedIndex) {
+function counterDroneGeometry(approach, seedIndex) {
   const ap = COUNTER_DRONE_APPROACHES[approach];
   if (!ap) throw new Error(`unknown approach ${approach} (${Object.keys(COUNTER_DRONE_APPROACHES).join(', ')})`);
   const rnd = mulberry32(seedOf('cdx-v1', approach, seedIndex));
@@ -102,20 +106,59 @@ function elevationReachDeg(gun, elevationRad) {
   return reach * 180 / Math.PI;
 }
 
-/** A vehicle's roof stations, as the authority steps them (guns[0] first): calibre, counter-drone range, capped share,
- * burst, and the world elevation the barrel reaches against the profile's. */
+/** The profile numbers that set what a station does to a drone: its reach, its share per round, its cadence, its slew. */
+const COUNTER_DRONE_FIELDS = Object.freeze(['counterDroneRangeM', 'droneHitAt100', 'droneHitMax', 'burstRounds', 'shotIntervalS',
+  'burstPauseS', 'elevationRad', 'yawRateRadS', 'pitchRateRadS']);
+const numbers = (counterDroneRangeM, droneHitAt100, droneHitMax, burstRounds, shotIntervalS, burstPauseS, elevationRad, yawRateRadS,
+  pitchRateRadS) => Object.freeze({ counterDroneRangeM, droneHitAt100, droneHitMax, burstRounds, shotIntervalS, burstPauseS, elevationRad,
+  yawRateRadS, pitchRateRadS });
+/**
+ * The owner's rule per profile class, as literals (owner 2026-10-16 on the 226 preview: "i think machine guns targeting
+ * drones is a lil too punishinng"; 226: AERIAL_RULES.drone.hitsToDown 1 -> 1.1). `numbers`: the counter-drone numbers
+ * every roof station of the class carries at 226 (vehicles/auxiliaryWeapons.ts: the generic profile and each vehicle's
+ * cartridge copy of it). `capped`: the rounds a lone station of the class lands before a drone hovering about 33 m off
+ * its bow falls (every round at droneHitMax); `survivesBurst`: that drone outlives the station's first capped burst
+ * (the owner's rule for a lone 12.7 or 30 mm); `downsInsideBurst`: it falls inside that burst (the owner's rule for a
+ * lone 7.62: still lethal at point blank; the Rh 202 does too, measured, unruled).
+ * `at100`: the rounds before a drone hovering about 102 m off the bow falls (every round below the cap, droneHitAt100
+ * over the range squared), on the class's anchor (another hull of the class reads it or one more: its mount sits
+ * nearer or further). At the 226 defect (hitsToDown 1): capped 7 / 5 / 3 / 3, at100 42 / 36 / 17 / 18. They are literals,
+ * not the profile's arithmetic: a rule derived from the profile only tests the profile.
+ */
+export const COUNTER_DRONE_CLASSES = Object.freeze({
+  rifle: Object.freeze({ calibreMm: [0, 10], anchor: 'm1a1', numbers: numbers(150, .025, .15, 8, .09, 1.25, .75, 1.7, 1),
+    capped: 8, survivesBurst: false, downsInsideBurst: true, at100: 46 }),
+  heavy: Object.freeze({ calibreMm: [10, 20], anchor: 't90a_2004', numbers: numbers(200, .03, .2, 5, .12, 1.4, .75, 1.7, 1),
+    capped: 6, survivesBurst: true, at100: 39 }),
+  rh202: Object.freeze({ calibreMm: [20, 20.5], anchor: 'mbt70', numbers: numbers(280, .045, .3, 5, .1, 1.6, .9, 1.4, .9),
+    capped: 4, survivesBurst: false, at100: 26 }),
+  cannon: Object.freeze({ calibreMm: [20, 100], anchor: 't72b3m_hetman', numbers: numbers(300, .06, .35, 3, .2, 1.8, .75, 1.2, .8),
+    capped: 4, survivesBurst: true, at100: 20 }),
+});
+/** The class the owner's rule holds a station to: its calibre alone (the first class whose range takes it), whatever
+ * numbers its profile carries, so a re-tuned profile is still judged by the rule and never by its own arithmetic. */
+function counterDroneRuleClass(caliberMm) {
+  for (const [name, c] of Object.entries(COUNTER_DRONE_CLASSES)) if (caliberMm >= c.calibreMm[0] && caliberMm < c.calibreMm[1]) return name;
+  return null;
+}
+/** The class whose calibres and numbers a station carries, or null (a station off every class). */
+function counterDroneClassOf(caliberMm, profile) {
+  for (const [name, c] of Object.entries(COUNTER_DRONE_CLASSES)) {
+    if (caliberMm >= c.calibreMm[0] && caliberMm < c.calibreMm[1] && COUNTER_DRONE_FIELDS.every((f) => profile[f] === c.numbers[f])) return name;
+  }
+  return null;
+}
+
+/** A vehicle's roof stations, as the authority steps them (guns[0] first): calibre, counter-drone numbers and class,
+ * and the world elevation the barrel reaches against the profile's. */
 export function roofStations(specId) {
   const guns = AUXILIARY_INVENTORY[specId]?.guns ?? [];
   return guns.slice(0, roofStationCount(TANK_SPECS[specId])).map((gun) => {
     const p = auxiliaryWeaponProfile(gun.caliberMm, specId);
-    return { name: gun.name, caliberMm: gun.caliberMm, counterDroneRangeM: p.counterDroneRangeM, droneHitMax: p.droneHitMax,
-      burstRounds: p.burstRounds, profileElevationDeg: p.elevationRad * 180 / Math.PI, elevationReachDeg: elevationReachDeg(gun, p.elevationRad) };
+    return { name: gun.name, caliberMm: gun.caliberMm, ...Object.fromEntries(COUNTER_DRONE_FIELDS.map((f) => [f, p[f]])),
+      droneClass: counterDroneClassOf(gun.caliberMm, p), ruleClass: counterDroneRuleClass(gun.caliberMm), profileElevationDeg: p.elevationRad * 180 / Math.PI,
+      elevationReachDeg: elevationReachDeg(gun, p.elevationRad) };
   });
-}
-
-/** The rounds a lone station lands at capped range before a drone falls: the rule the point-blank hover answers to. */
-export function hoverRuleRounds(stations) {
-  return stations.map((s) => Math.ceil(AERIAL_RULES.drone.hitsToDown / s.droneHitMax - 1e-9));
 }
 
 /** A vehicle's counter-drone class: its station count and, for one station, a machine gun (to 14.5 mm) or a cannon. */
@@ -221,14 +264,16 @@ export function engageCounterDrone({ specIds, approach, seed, carrierId = DEFAUL
 }
 
 /**
- * The point-blank engagement: the pilot's tank parks `distanceM` from the target off its bow (by `bearingDeg`), launches,
- * and the drone hovers (throttle 0, no climb: only the gusts move it) where its launch left it, about 12 m up. Every
- * station of the target engages it at capped range, so the rounds that bring it down are the airframe's threshold in
- * capped shares (AERIAL_RULES.drone.hitsToDown over each profile's droneHitMax) as the real authority fires and charges
- * them: its station slew, bursts and pauses, the GunContext's droneHit and strikeDrone. Returns the rounds each station
- * fired before the drone fell, the time from the first round to the fall, and whether it fell inside the first burst.
+ * The hover: the pilot's tank parks `distanceM` from the target off its bow (by `bearingDeg`), launches, and the drone
+ * hovers (throttle 0, no climb: only the gusts move it) where its launch left it, about 12 m up. Every station of the
+ * target engages it, so the rounds that bring it down are the airframe's threshold (AERIAL_RULES.drone.hitsToDown) in
+ * the shares the stations land at that range (at about 33 m every round is capped at droneHitMax; at about 100 m every
+ * round is below the cap) as the real authority fires and charges them: its station slew, bursts and pauses, the
+ * GunContext's droneHit and strikeDrone. With `flights` > 1 the pilot relaunches as soon as the cooldown allows and the
+ * next flight is engaged the same way (a flight starts with no strikes on it). Returns the first flight's rounds per
+ * station, the time from its first round to the fall, whether it fell inside the first burst, and every flight's.
  */
-export function hoverCounterDrone({ specId, distanceM = 30, bearingDeg = 0, carrierId = DEFAULT_CARRIER, seconds = 12 }) {
+export function hoverCounterDrone({ specId, distanceM = 30, bearingDeg = 0, carrierId = DEFAULT_CARRIER, seconds = 12, flights = 1 }) {
   const b = bearingDeg * Math.PI / 180, cx = Math.sin(b) * distanceM, cz = Math.cos(b) * distanceM;
   const match = createAuthoritativeMatch({ players: [
     { id: 't0', specId, team: 'alpha', spawn: { x: 0, z: 0, yaw: 0 } },
@@ -238,34 +283,68 @@ export function hoverCounterDrone({ specId, distanceM = 30, bearingDeg = 0, carr
   const target = match.entityById.get('t0'), pilot = match.entityById.get('pilot');
   target.state.pos.set(0, 0, 0); target.state.yaw = 0; target.state.turretYaw = 0;
   pilot.state.pos.set(cx, 0, cz); pilot.state.yaw = b + Math.PI; // its front to the target: no station spends a round on it
-  const aux = target.combat.auxiliary ??= createAuxiliaryState(target.spec), count = roofStationCount(target.spec);
-  const stationsOf = () => [aux, ...(aux.stations ?? [])].slice(0, count);
+  const aux = target.combat.auxiliary ??= createAuxiliaryState(target.spec);
   const inputs = new Map([['t0', null]]);
-  const rounds = stationsOf().map(() => 0), firstBurst = roofStations(specId).map((s) => s.burstRounds);
-  let firstShotAt = null, downAt = null, range = null, launched = false;
-  for (let tick = 1; tick <= seconds / SIM_DT && downAt === null; tick++) {
+  return hoverFlights({ specId, target, pilot, stations: [aux, ...(aux.stations ?? [])].slice(0, roofStationCount(target.spec)), seconds, flights,
+    step(input) { inputs.set('pilot', input); match.step({ dt: SIM_DT, inputs }); },
+    downed() { let down = false; for (const ev of match.eventsForViewer('__counter_drone__')) if (ev.type === 'drone_down' && ev.id === 'pilot') down = true; match.afterEventBroadcast(); return down; },
+    aimInput: (v) => ({ ...idle, throttle: 0, brake: false, aimLocked: false, ...encodeAimIntent(v, target.state.pos) }),
+    launchInput: () => ({ ...idle, throttle: 0, brake: false, actionBits: PLAYER_ACTION_BITS.DRONE }) });
+}
+
+/** The hover's flights, whichever sim steps them: a launch press while the drone is docked, the aim once it flies. */
+function hoverFlights({ specId, target, pilot, stations, seconds, flights, step, downed, aimInput, launchInput }) {
+  const burst = roofStations(specId).map((s) => s.burstRounds), done = [];
+  let flight = null;
+  for (let tick = 1; tick <= seconds / SIM_DT && done.length < flights; tick++) {
     const t = tick * SIM_DT, v = pilot.aerial;
-    const input = launched ? { ...idle, throttle: 0, brake: false, aimLocked: false, ...encodeAimIntent(v, target.state.pos) }
-      : { ...idle, throttle: 0, brake: false, actionBits: PLAYER_ACTION_BITS.DRONE };
-    inputs.set('pilot', input);
-    const before = stationsOf().map((s) => s.shots);
-    match.step({ dt: SIM_DT, inputs });
-    if (pilot.aerial?.active) launched = true;
-    stationsOf().forEach((s, i) => {
-      const fired = s.shots - before[i];
-      if (fired > 0 && firstShotAt === null) { firstShotAt = t; range = Math.hypot(v.x, v.y - target.spec.dims.heightM, v.z); }
-      rounds[i] += fired;
+    step(v?.active ? aimInput(v) : launchInput());
+    if (pilot.aerial?.active && !flight) flight = { rounds: stations.map(() => 0), shots: stations.map((s) => s.shots), firstShotAt: null, rangeM: null };
+    if (flight) stations.forEach((s, i) => {
+      const fired = s.shots - flight.shots[i]; flight.shots[i] = s.shots;
+      if (fired > 0 && flight.firstShotAt === null) { flight.firstShotAt = t; flight.rangeM = Math.hypot(v.x, v.y - target.spec.dims.heightM, v.z); }
+      flight.rounds[i] += fired;
     });
-    for (const ev of match.eventsForViewer('__counter_drone__')) if (ev.type === 'drone_down' && ev.id === 'pilot') downAt = t;
-    match.afterEventBroadcast();
+    if (downed() && flight) { done.push({ rounds: flight.rounds, downAt: t, firstShotAt: flight.firstShotAt, rangeM: flight.rangeM }); flight = null; }
   }
-  return { specId, rounds, totalRounds: rounds.reduce((a, b2) => a + b2, 0), firstShotAt, downAt, rangeM: range,
-    downedS: downAt === null || firstShotAt === null ? null : downAt - firstShotAt,
-    insideFirstBurst: downAt !== null && rounds.every((n, i) => n <= firstBurst[i]) };
+  const rows = done.map((f) => ({ ...f, totalRounds: f.rounds.reduce((a, n) => a + n, 0), downedS: f.firstShotAt === null ? null : f.downAt - f.firstShotAt,
+    insideFirstBurst: f.rounds.every((n, i) => n <= burst[i]) }));
+  const first = rows[0] ?? { rounds: stations.map(() => 0), totalRounds: 0, downAt: null, firstShotAt: null, rangeM: null, downedS: null, insideFirstBurst: false };
+  return { specId, ...first, flights: rows };
+}
+
+/**
+ * The same hover in the solo battle (game/state.ts simStep: its own GunContext, droneHit and 'drone:down'), for a
+ * receipt that already loads that module (`solo`: its createGameState, createBus and simStep; this module never
+ * imports it). The two sims share stepAerial, the stations and strikeDrone; this is where they could part.
+ */
+export function soloHoverCounterDrone({ specId, solo, distanceM = 30, carrierId = DEFAULT_CARRIER, seconds = 12 }) {
+  const game = solo.createGameState();
+  game.ruleset = matchRulesetFor('drone');
+  const tank = (id, sid, team, x, z, yaw) => {
+    const spec = TANK_SPECS[sid], combat = createCombatState(spec);
+    combat.equipMults = {};
+    return { id, specId: sid, spec, isPlayer: false, team, combat, state: createTankState(spec, new Vector3(x, 0, z), yaw),
+      input: { ...idle, aimPoint: new Vector3() },
+      visual: { root: new Group(), gunMuzzleWorld: (out) => out.set(x, 2, z), gunDirWorld: (out) => out.set(0, 0, 1), recoilKick() {}, setDestroyed() {} } };
+  };
+  const target = tank('t0', specId, 'player', 0, 0, 0), pilot = tank('pilot', carrierId, 'enemy', 0, distanceM, Math.PI);
+  game.tanks = [target, pilot]; game.allTanks = [target, pilot];
+  for (const e of game.tanks) { game.tankById.set(e.id, e); initializeAerial(e, game.ruleset); }
+  const aux = target.combat.auxiliary ??= createAuxiliaryState(target.spec);
+  let down = false;
+  const bus = solo.createBus((name, payload) => { if (name === 'drone:down' && payload.id === 'pilot') down = true; });
+  const collider = { setSelf() {}, collide: () => false, pendingCrush: [], pendingRams: [], queueRam() {} };
+  const world = { heightField: flatField, raycast: () => null };
+  return hoverFlights({ specId, target, pilot, stations: [aux, ...(aux.stations ?? [])].slice(0, roofStationCount(target.spec)), seconds, flights: 1,
+    step(input) { Object.assign(pilot.input, input); pilot.input.auxiliaryBits = input.actionBits; solo.simStep(game, bus, world, null, collider); },
+    downed() { const d = down; down = false; return d; },
+    aimInput: () => { pilot.input.aimPoint.copy(target.state.pos); return { ...idle, throttle: 0, brake: false, aimLocked: false }; },
+    launchInput: () => ({ ...idle, throttle: 0, brake: false, actionBits: PLAYER_ACTION_BITS.DRONE }) });
 }
 
 /** Wilson 95 % interval for k of n, in percent. */
-export function wilson(k, n) {
+function wilson(k, n) {
   if (!n) return [NaN, NaN];
   const z = 1.96, p = k / n, d = 1 + z * z / n, c = p + z * z / (2 * n), h = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n));
   return [100 * (c - h) / d, 100 * (c + h) / d];

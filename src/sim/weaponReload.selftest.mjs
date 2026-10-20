@@ -6,6 +6,7 @@ import { createCombatState, selectShell, startMagazineReload, startPostShotReloa
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { createTankState, SIM_DT } from './movement.ts';
 import { createGameState, createBus, simStep } from '../game/state.ts';
+import { COUNTER_DRONE_CLASSES, soloHoverCounterDrone } from './counterDroneEngagement.test-support.mjs';
 
 const near = (actual, expected, message) => assert.ok(Math.abs(actual - expected) < 1e-8,
   `${message}: ${actual} vs ${expected}`);
@@ -135,4 +136,13 @@ for (const [name, createHarness] of [['solo', soloHarness], ['authority', author
     }
   }
 }
-console.log('weaponReload: shared-gun ammo, magazine preservation, concurrent weapons, BMP-3 dual guns, solo/authority and snapshots PASS');
+// VH.15 counter-drone in the solo battle (227 guards): game/state.ts's own GunContext (its droneHit and 'drone:down')
+// downs a drone hovering 33 m off an M1A1's bow in the 8 capped 7.62 rounds, 42 ticks after the first, that the
+// authority takes (counterDroneEngagement.selftest pins the authority's; owner 2026-10-16 on the 226 preview: "machine
+// guns targeting drones is a lil too punishinng", hitsToDown 1.1).
+{
+  const h = soloHoverCounterDrone({ specId: 'm1a1', solo: { createGameState, createBus, simStep } });
+  assert.deepEqual([h.rounds, Math.round(h.downedS / SIM_DT), h.insideFirstBurst], [[COUNTER_DRONE_CLASSES.rifle.capped], 42, true],
+    `solo: a lone 7.62 downs the hovering drone in the authority's 8 rounds and 42 ticks (measured ${JSON.stringify(h.rounds)}, ${h.downedS} s)`);
+}
+console.log('weaponReload: shared-gun ammo, magazine preservation, concurrent weapons, BMP-3 dual guns, solo/authority and snapshots, the solo counter-drone hover PASS');
