@@ -275,6 +275,19 @@ for (const v of VIEWPORTS) for (const rosters of v.earL ? [7, 14, 20] : [7]) for
     medalCases++;
     if (waits) medalWaits++;
   }
+  // it waits on the detection's 8 s lamp only where no place for it down the centre line, below the lamp and above the aim
+  // point, clears the whole keep-out, every instrument and both notices (main showed its card at once just below the lamp)
+  if (overlap(medal, plan.detection, MOUSE_NOTICE_GAP_PX - .01)) {
+    const [w0, h0] = v.vp, keep = mouseReticleFootprint(w0, h0);
+    for (const [cw, ch] of [[medal.w, medal.h]]) {
+      for (let y = Math.ceil(plan.detection.y + plan.detection.h + MOUSE_NOTICE_GAP_PX); y + ch <= h0 / 2; y++) {
+        const box = { x: w0 / 2 - cw / 2, y, w: cw, h: ch };
+        const clear = intrusion(box, keep) <= 0 && !input.obstacles.some((o) => overlap(box, o, MOUSE_NOTICE_GAP_PX - .01))
+          && !overlap(box, plan.detection, MOUSE_NOTICE_GAP_PX - .01) && !overlap(box, alertBox(plan.alert), MOUSE_NOTICE_GAP_PX - .01);
+        assert.ok(!clear, `${name}: the card waits on the lamp though ${cw} x ${ch} at y ${y} on the centre line below it is clear`);
+      }
+    }
+  }
   const [W] = v.vp, mainCard = { x: W / 2 - input.medal.w / 2, y: Math.ceil(input.top + 16), w: input.medal.w, h: input.medal.h };
   if (intrusion(mainCard, mouseReticleFootprint(W, v.vp[1])) <= 0 && !input.obstacles.some((o) => overlap(mainCard, o, MOUSE_NOTICE_GAP_PX - .01))) {
     assert.equal(medal.compact, false, `${name}: main's full card clears everything here, so the card is the full card`);

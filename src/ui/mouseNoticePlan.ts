@@ -213,9 +213,12 @@ const SCALE_COSTS = [0, 80, 160, 240, 320, 1200] as const;
 const LAST_SCALES = [...SCALES, .45, .4] as const;
 const LAST_SCALE_COSTS = [...SCALE_COSTS, 2400, 3600] as const;
 /** The medal card waits (keeping its time) while anything shown meets its place (mouseMedalWaits), so sharing a notice's
- *  place costs only the wait: the alert's (2.4 s) a little, the detection's (8 s) more, both the most. The full card in
- *  any place clear of a keep-out beats the compact card at that keep-out (main's look wherever the full card fits). */
-const MEDAL_SHARE_ALERT_COST = 60, MEDAL_SHARE_DETECTION_COST = 150, MEDAL_SHARE_BOTH_COST = 180;
+ *  place costs only the wait: the alert's (2.4 s) a little; the detection's (its 8 s lamp; main showed the card at once
+ *  just below it) more than any move down the centre line to a place clear of the reticle, so the card waits on the
+ *  lamp only where no such place exists. A px sideways costs 4 (main's card is centred: it goes down the centre line
+ *  before it goes aside). The full card in any place clear of a keep-out beats the compact card at that keep-out (main's
+ *  look wherever the full card fits). */
+const MEDAL_SHARE_ALERT_COST = 60, MEDAL_SHARE_DETECTION_COST = 600, MEDAL_SHARE_BOTH_COST = 630, MEDAL_SHIFT_COST = 4;
 const MEDAL_COMPACT_COST = 1e6;
 
 const rowsIn = (h: number) => Math.min(8, Math.max(0, Math.floor((h + 3) / 29)));
@@ -525,7 +528,7 @@ const single = (): Single => ({ y: 0, x: 0, cost: Infinity, lane: 0, giveWay: [N
 /** The cheapest place for one `w` x `h` box (x: its centre) from `yPref` off `avoid`; its cost includes `base`
  *  (Infinity when none beats `bound`), `lane` the part the lanes' yielding makes up. */
 function singleBest(env: Env, w: number, h: number, yPref: number, base: number, bound: number, out: Single,
-  avoid: readonly PlanRect[] = NONE, price: LanePrice = BATTLE_LANES, partner: readonly number[] | null = null): Single {
+  avoid: readonly PlanRect[] = NONE, price: LanePrice = BATTLE_LANES, partner: readonly number[] | null = null, shift = SHIFT_COST): Single {
   const { input } = env;
   const cx = input.width / 2;
   out.cost = Infinity; out.lane = 0;
@@ -545,7 +548,7 @@ function singleBest(env: Env, w: number, h: number, yPref: number, base: number,
       for (let i = 0; i < 4; i++) { jointScratch[i] = partner[i]; jointScratch[4 + i] = yieldScratch[i]; }
       lane += jointRows(input, jointScratch, price);
     }
-    const cost = base + yCost + SHIFT_COST * Math.abs(m - cx) + lane + (env.soft.length ? softCost(env, m - w / 2, y, w, h) : 0);
+    const cost = base + yCost + shift * Math.abs(m - cx) + lane + (env.soft.length ? softCost(env, m - w / 2, y, w, h) : 0);
     if (cost < out.cost) {
       out.cost = cost; out.x = m; out.y = y; out.lane = lane;
       for (let i = 0; i < 4; i++) out.giveWay[i] = env.lanes === 'yield' ? yieldScratch[i] : NaN;
@@ -725,16 +728,16 @@ function searchPair(input: MouseNoticeInput, envs: readonly Env[]): PairResult |
 
 const placeScratch = single();
 /** A candidate box for placeOne: its size, base cost and the notice places it keeps off. */
-type Option = readonly [w: number, h: number, base: number, avoid: readonly PlanRect[]];
+type Option = readonly [w: number, h: number, base: number, avoid: readonly PlanRect[], shift?: number];
 /** The cheapest place for any of `options` from `yPref` in `env` (its keep-out; the lanes blocking or yielding). */
 function placeOne(env: Env, options: readonly Option[], yPref: number, price: LanePrice, partner: readonly number[] | null,
   out: { cost: number; option: number; s: Single }): boolean {
   const one = placeScratch;
   out.cost = Infinity;
   for (let i = 0; i < options.length; i++) {
-    const [w, h, base, avoid] = options[i];
+    const [w, h, base, avoid, shift] = options[i];
     if (base >= out.cost) continue;
-    singleBest(env, w, h, yPref, base, out.cost, one, avoid, price, partner);
+    singleBest(env, w, h, yPref, base, out.cost, one, avoid, price, partner, shift);
     if (one.cost < out.cost) {
       out.cost = one.cost; out.option = i;
       out.s.x = one.x; out.s.y = one.y; out.s.cost = one.cost; out.s.lane = one.lane;
@@ -840,11 +843,12 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
   const { medal: full, medalCompact: compact } = input;
   const detOnly = [det];
   const medalOptions = (): readonly Option[] => [
-    [full.w, full.h, 0, notices], [full.w, full.h, MEDAL_SHARE_ALERT_COST, detOnly],
-    [full.w, full.h, MEDAL_SHARE_DETECTION_COST, alertOnly], [full.w, full.h, MEDAL_SHARE_BOTH_COST, NONE],
-    [compact.w, compact.h, MEDAL_COMPACT_COST, notices], [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_ALERT_COST, detOnly],
-    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_DETECTION_COST, alertOnly],
-    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_BOTH_COST, NONE]];
+    [full.w, full.h, 0, notices, MEDAL_SHIFT_COST], [full.w, full.h, MEDAL_SHARE_ALERT_COST, detOnly, MEDAL_SHIFT_COST],
+    [full.w, full.h, MEDAL_SHARE_DETECTION_COST, alertOnly, MEDAL_SHIFT_COST], [full.w, full.h, MEDAL_SHARE_BOTH_COST, NONE, MEDAL_SHIFT_COST],
+    [compact.w, compact.h, MEDAL_COMPACT_COST, notices, MEDAL_SHIFT_COST],
+    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_ALERT_COST, detOnly, MEDAL_SHIFT_COST],
+    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_DETECTION_COST, alertOnly, MEDAL_SHIFT_COST],
+    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_BOTH_COST, NONE, MEDAL_SHIFT_COST]];
   const placeMedal = (): PlannedMedal | null => {
     // (its sharing is in its options: the steps are the keep-outs alone)
     const medalTier = place(medalOptions, Math.ceil(input.top + 16), BATTLE_LANES, false);
