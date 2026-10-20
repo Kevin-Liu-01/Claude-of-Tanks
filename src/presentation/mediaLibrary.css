@@ -41,6 +41,9 @@
 .media-library-controls{display:flex;align-items:center;gap:6px;flex:none}
 .media-library-controls output{min-width:76px;color:var(--library-muted);font:700 10px/1 ui-monospace,SFMono-Regular,monospace;text-align:center}
 .media-library-controls button{min-width:42px;min-height:42px;border:1px solid var(--library-line);background:transparent;color:var(--library-gold);cursor:pointer;font-size:20px;transition:border-color .14s ease,background-color .14s ease}
+body[data-cot-width='phone'] .media-library-tabs,body[data-cot-width='compact'] .media-library-tabs{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding-bottom:2px}
+body[data-cot-width='phone'] .media-library-tabs::-webkit-scrollbar,body[data-cot-width='compact'] .media-library-tabs::-webkit-scrollbar{display:none}
+body[data-cot-width='phone'] .media-library-tabs button,body[data-cot-width='compact'] .media-library-tabs button{flex:none}
 body[data-cot-width='phone'] .media-library-intro{grid-template-columns:minmax(0,1fr)}
 body[data-cot-width='phone'] .media-library-intro output{grid-column:1;grid-row:auto}
 body[data-cot-width='phone'] .media-library-viewer figcaption{flex-wrap:wrap;padding:12px}
