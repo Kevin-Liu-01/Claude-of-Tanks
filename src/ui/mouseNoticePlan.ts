@@ -26,13 +26,14 @@
  * Cheapest is highest (from main's own top), then most central, then widest (fewest alert lines), with the rows a lane
  * yields while the notice shows priced in. The alert keeps main's type size everywhere (9 px only where main's own
  * small-window rule sets it). The countdown, the revive count and the medal card then take one place each, off both
- * notices' places (the countdown and the revive count scaled down to 60 % where they must; the medal card compact where
- * the full card cannot fit); only where no such place exists does one share a notice's place, and only one it never
- * shows with: the countdown the detection's (nothing spots the player before the roll-out), the medal card the alert's
- * (it waits, keeping its time, while the alert is up); the revive count never (an alert, or a detection lit before the
- * death, can show with it). Where no place clears everything (very small windows) a reduced keep-out is tried (the
- * battle sight at full bloom, then the resting sight, where the countdown and the revive count may shrink to 40 %), so
- * nothing ever sits on the aim point or on another notice.
+ * notices' places (the countdown and the revive count scaled down to 60 % where they must); only where no such place
+ * exists does the countdown or the revive count share a notice's place, and only one it never shows with: the countdown
+ * the detection's (nothing spots the player before the roll-out); the revive count never (an alert, or a detection lit
+ * before the death, can show with it). The medal card is the full card wherever a place for it clears the keep-out
+ * (the compact card only where none does), and it waits, keeping its time, while anything shown meets its place: a
+ * notice whose place it shares, the revive count (mouseMedalWaits). Where no place clears everything (very small
+ * windows) a reduced keep-out is tried (the battle sight at full bloom, then the resting sight, where the countdown and
+ * the revive count may shrink to 40 %), so nothing ever sits on the aim point or shows on another notice.
  *
  * DOM-free and deterministic; battleHudLayout.ts measures the inputs and caches the plan by them.
  * mouseNoticePlan.selftest.mjs checks every viewport of the census, and tools/battle-hud-layout.browser.mjs measures
@@ -76,6 +77,8 @@ interface PlannedAlert extends PlannedNotice { readonly anchor: 'centre' | 'star
  *  `sharesNotices`: it covers a notice's place (only where no other place exists). */
 interface PlannedScaled extends PlannedNotice { readonly scale: number; readonly clearance: 2 | 1 | 0; readonly sharesNotices: boolean }
 interface PlannedMedal extends PlannedNotice { readonly compact: boolean; readonly sharesNotices: boolean; readonly clearance: 2 | 1 | 0 }
+/** What shows with the medal card, as the layout owner reads it. */
+export interface MouseMedalCompany { readonly detection: boolean; readonly alert: boolean; readonly revive: boolean; readonly scoped: boolean }
 
 export interface MouseNoticePlan {
   readonly arrangement: 'stack' | 'flank' | 'split' | 'fallback';
@@ -209,9 +212,11 @@ const SCALES = [1, .9, .8, .7, .6, .5] as const;
 const SCALE_COSTS = [0, 80, 160, 240, 320, 1200] as const;
 const LAST_SCALES = [...SCALES, .45, .4] as const;
 const LAST_SCALE_COSTS = [...SCALE_COSTS, 2400, 3600] as const;
-/** The compact card costs as much as moving 200 px down; sharing the alert's place (waiting out its 2.4 s) is kept for
- *  where nothing else clears the reticle. */
-const MEDAL_COMPACT_COST = 200, MEDAL_SHARE_ALERT_COST = 600;
+/** The medal card waits (keeping its time) while anything shown meets its place (mouseMedalWaits), so sharing a notice's
+ *  place costs only the wait: the alert's (2.4 s) a little, the detection's (8 s) more, both the most. The full card in
+ *  any place clear of a keep-out beats the compact card at that keep-out (main's look wherever the full card fits). */
+const MEDAL_SHARE_ALERT_COST = 60, MEDAL_SHARE_DETECTION_COST = 150, MEDAL_SHARE_BOTH_COST = 180;
+const MEDAL_COMPACT_COST = 1e6;
 
 const rowsIn = (h: number) => Math.min(8, Math.max(0, Math.floor((h + 3) / 29)));
 const overlapsAny = (r: PlanRect, list: readonly PlanRect[]) => list.some((o) => r.x < o.x + o.w && r.x + r.w > o.x && r.y < o.y + o.h && r.y + r.h > o.y);
@@ -821,16 +826,19 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     const s = ladder(tier)[found.option], w = size.w * s, h = size.h * s, x = found.s.x - w / 2, y = found.s.y;
     return { x, y, w, h, scale: s, clearance: tier as 2 | 1 | 0, sharesNotices: overlapsAny({ x, y, w, h }, notices), giveWay: giveWayOf(found.s.giveWay, 0) };
   };
-  // The medal card: the full card, then the compact one; off both notices, or (a little dearer) off the detection only,
-  // waiting out a 2.4 s alert rather than an 8 s detection.
+  // The medal card: the full card wherever a place clears the keep-out, off both notices or (waiting while it is up) on
+  // the alert's place, the detection's or both; the compact card only where the full one has no place at that keep-out.
   const { medal: full, medalCompact: compact } = input;
   const detOnly = [det];
-  const medalOptions = (share: boolean): readonly Option[] => share
-    ? [[full.w, full.h, 0, NONE], [compact.w, compact.h, MEDAL_COMPACT_COST, NONE]]
-    : [[full.w, full.h, 0, notices], [full.w, full.h, MEDAL_SHARE_ALERT_COST, detOnly],
-      [compact.w, compact.h, MEDAL_COMPACT_COST, notices], [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_ALERT_COST, detOnly]];
+  const medalOptions = (): readonly Option[] => [
+    [full.w, full.h, 0, notices], [full.w, full.h, MEDAL_SHARE_ALERT_COST, detOnly],
+    [full.w, full.h, MEDAL_SHARE_DETECTION_COST, alertOnly], [full.w, full.h, MEDAL_SHARE_BOTH_COST, NONE],
+    [compact.w, compact.h, MEDAL_COMPACT_COST, notices], [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_ALERT_COST, detOnly],
+    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_DETECTION_COST, alertOnly],
+    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_BOTH_COST, NONE]];
   const placeMedal = (): PlannedMedal | null => {
-    const medalTier = place(medalOptions, Math.ceil(input.top + 16), BATTLE_LANES);
+    // (its sharing is in its options: the steps are the keep-outs alone)
+    const medalTier = place(medalOptions, Math.ceil(input.top + 16), BATTLE_LANES, false);
     if (medalTier < 0) return null;
     const [w, h, base] = chosen[found.option];
     const box = { x: found.s.x - w / 2, y: found.s.y, w, h };
@@ -853,4 +861,27 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     get countdown() { return countdown(); },
     get revive() { return revive(); },
   };
+}
+
+/** The alert's box from its slot (its anchor: centre, left edge or right edge). */
+export function mouseAlertBox(a: MouseNoticePlan['alert']): PlanRect {
+  return { x: a.anchor === 'centre' ? a.x - a.w / 2 : a.anchor === 'start' ? a.x : a.x - a.w, y: a.y, w: a.w, h: a.h };
+}
+/** Two places closer than MOUSE_NOTICE_GAP_PX. */
+const meets = (a: PlanRect, b: PlanRect) => a.x < b.x + b.w + MOUSE_NOTICE_GAP_PX && a.x + a.w > b.x - MOUSE_NOTICE_GAP_PX
+  && a.y < b.y + b.h + MOUSE_NOTICE_GAP_PX && a.y + a.h > b.y - MOUSE_NOTICE_GAP_PX;
+/**
+ * Whether the medal card waits (keeping its time; medalToast.ts) rather than show with what is up: it has no place, the
+ * scope is up where its place clears the battle sight only, or a shown element's place meets its own: a notice whose
+ * place it shares, or the revive count (a medal can arrive after the death: a shell still in flight, a mutual kill).
+ * The revive count's place is read (made) only while it shows.
+ */
+export function mouseMedalWaits(plan: MouseNoticePlan, up: MouseMedalCompany): boolean {
+  const slot = plan.medal;
+  if (!slot) return true;
+  if (up.scoped && slot.clearance < 2) return true;
+  if (up.detection && meets(slot, plan.detection)) return true;
+  if (up.alert && meets(slot, mouseAlertBox(plan.alert))) return true;
+  const revive = up.revive ? plan.revive : null;
+  return !!revive && meets(slot, revive);
 }

@@ -1,5 +1,7 @@
 import { layoutViewportSize } from './responsiveLayout.ts';
-import { planMouseNotices, type MouseNoticeInput, type MouseNoticePlan, type PlanLane, type PlanRect } from './mouseNoticePlan.ts';
+import {
+  mouseAlertBox, mouseMedalWaits, planMouseNotices, type MouseNoticeInput, type MouseNoticePlan, type PlanLane, type PlanRect,
+} from './mouseNoticePlan.ts';
 
 /** A resize whose sizes arrive closer than this is still in progress. */
 const RESIZE_SETTLE_MS = 150;
@@ -7,8 +9,9 @@ const RESIZE_SETTLE_MS = 150;
 const PHONE_STRIP_WIDTH = 96, PHONE_STRIP_HEIGHT = 30;
 /** A measured box, as getBoundingClientRect gives one. */
 type PlanBox = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
-const alertBox = (a: MouseNoticePlan['alert']): PlanRect =>
-  ({ x: a.anchor === 'centre' ? a.x - a.w / 2 : a.anchor === 'start' ? a.x : a.x - a.w, y: a.y, w: a.w, h: a.h });
+/** The scope flag hud.ts sets on the document element (not on the observed HUD root: a scope toggle relayouts nothing,
+ *  unless a queued medal card waits on it). */
+const SCOPED_ATTRIBUTE = 'data-cot-scoped';
 
 /** Matches the scoreboard polygon; the objective clears each bottom corner by 8px. */
 export const SCORE_BOTTOM_INSET = 25;
@@ -62,6 +65,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
   // Relayouts caused only by kill rows, toasts, chat, the shot log and report, the medal card or the notices themselves
   // leave the mouse notice plan's inputs as they were: those reuse the plan without measuring its inputs again.
   let planInputs = true;
+  /** A queued medal card whose place clears the battle sight only: the scope flag decides whether it shows. */
+  let medalScopeSensitive = false;
   const transientParts = ['cot-kill-lane', 'cot-si-toasthost', 'cot-room-chat', 'cot-si-log', 'cot-si-cardhost', 'cot-medal-toasts', 'cot-sixth', 'cot-alert'];
   const planInput = (target: Element) => { if (!transientParts.some((part) => target.classList?.contains(part))) planInputs = true; };
   const movesPlanInputs = new Set(['fps-top', 'network-top', 'network-corner-right', 'roster-left-height', 'roster-right-height',
@@ -84,6 +89,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const name = record.attributeName;
       if (name === null) continue;
       const target = record.target as Element;
+      // the scope flag moves nothing; it matters only to a queued medal card placed clear of the battle sight only
+      if (target === document.documentElement) { if (medalScopeSensitive) changed = true; continue; }
       const previous = attributes.get(target);
       const value = target.getAttribute(name);
       if (previous?.get(name) !== value) { changed = true; planInput(target); }
@@ -297,7 +304,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
   }
   /** Writes the plan; the countdown, the revive count and the medal card only while they are up (`up`), as the plan
    *  places those when first read. */
-  function writeMousePlan(plan: MouseNoticePlan, up: { countdown: boolean; revive: boolean; medal: boolean }) {
+  function writeMousePlan(plan: MouseNoticePlan, up: { countdown: boolean; revive: boolean; medal: boolean }, medalWaits: boolean) {
     const { detection, alert } = plan;
     setBodyVar('--hud-notice-x', `${Math.round(detection.x + detection.w / 2)}px`);
     setBodyVar('--hud-alert-x', `${Math.round(alert.x)}px`);
@@ -306,10 +313,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const medal = up.medal ? plan.medal : null;
     if (up.medal) setBodyVar('--hud-banner-x', medal ? `${Math.round(medal.x + medal.w / 2)}px` : '50%');
     // The keep-out each element clears (mouseNoticePlan.ts tiers: 2 everything the reticle draws, 1 the battle sight at
-    // full bloom, 0 the resting sight, - none, ? not up; s: it shares a notice's place), for the browser receipt.
+    // full bloom, 0 the resting sight, - none, ? not up; s: it shares a notice's place; w: the medal card waits), for the
+    // browser receipt.
     const tier = (shown: boolean, place: { clearance: number; sharesNotices: boolean } | null) =>
       !shown ? '?' : place ? `${place.clearance}${place.sharesNotices ? 's' : ''}` : '-';
-    const tiers = `d${plan.clearance} a${plan.clearance} c${tier(up.countdown, up.countdown ? plan.countdown : null)} r${tier(up.revive, up.revive ? plan.revive : null)} m${tier(up.medal, medal)}`;
+    const tiers = `d${plan.clearance} a${plan.clearance} c${tier(up.countdown, up.countdown ? plan.countdown : null)} r${tier(up.revive, up.revive ? plan.revive : null)} m${tier(up.medal, medal)}${medal && medalWaits ? 'w' : ''}`;
     if (document.body.dataset.hudNoticeTiers !== tiers) document.body.dataset.hudNoticeTiers = tiers;
     for (const name of ['countdown', 'revive'] as const) {
       if (!up[name]) continue;
@@ -457,16 +465,16 @@ export function installBattleHudLayout(root: HTMLElement): void {
             Math.max(0, report.top - rosterStart - 32)) : 0],
         systemsLeft, systemsTop, dockWidth, systemsHeight, sideWidth, planLeftAnchor, planLeftBottom, planRightAnchor, Math.min(rightBottom, rightKillFloor), report);
     }
-    // The medal card waits (keeping its time) while a notice whose place it shares is up, where it has no place, and
-    // while the scope is up where its place clears the battle sight only (a short window: hud.ts marks the scope).
-    let medalReady = false;
+    // The medal card waits (keeping its time) where it has no place, while anything shown meets its place (a notice
+    // whose place it shares, the revive count) and while the scope is up where its place clears the battle sight only
+    // (a short window: hud.ts flags the scope on the document element, which relayouts only while such a card waits).
+    let medalReady = false, medalWaiting = false;
+    medalScopeSensitive = false;
     if (plan && banner?.childElementCount) {
-      const slot = plan.medal;
-      medalReady = !!slot && !(slot.clearance < 2 && root.classList.contains('cot-scoped'));
-      if (slot?.sharesNotices) {
-        const meets = (box: PlanRect) => box.x < slot.x + slot.w && box.x + box.w > slot.x && box.y < slot.y + slot.h && box.y + box.h > slot.y;
-        if ((root.querySelector('.cot-sixth.on') && meets(plan.detection)) || (root.querySelector('.cot-alert.show') && meets(alertBox(plan.alert)))) medalReady = false;
-      }
+      medalWaiting = mouseMedalWaits(plan, { detection: !!root.querySelector('.cot-sixth.on'), alert: !!root.querySelector('.cot-alert.show'),
+        revive: !!root.querySelector('.cot-revive.on'), scoped: document.documentElement.hasAttribute(SCOPED_ATTRIBUTE) });
+      medalReady = !medalWaiting;
+      medalScopeSensitive = !!plan.medal && plan.medal.clearance < 2;
     }
     // A placed element crossing a side lane takes the lane's band from the plan while it shows (its rows start below it
     // or end above it); the lanes hold all their rows while nothing is up. Held Tab rosters stop short of it too.
@@ -483,7 +491,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         if (rt === rt) rightAnchor = Math.max(rightAnchor, rt);
         if (rb === rb) rightEnd = Math.min(rightEnd, rb);
         if (!expanded) continue;
-        const box = place === plan.alert ? alertBox(plan.alert) : place;
+        const box = place === plan.alert ? mouseAlertBox(plan.alert) : place;
         if (earLeft && box.y < earLeft.bottom + 8 && box.y + box.h > earLeft.top - 8) wideLeft = Math.min(wideLeft, box.x - 8 - earLeft.left);
         if (earRight && box.y < earRight.bottom + 8 && box.y + box.h > earRight.top - 8) wideRight = Math.min(wideRight, earRight.right - box.x - box.w - 8);
       }
@@ -606,7 +614,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         if (movesPlanInputs.has(name)) planInputs = true;
       }
     }
-    if (plan) writeMousePlan(plan, { countdown: !!countdown, revive: !!root.querySelector('.cot-revive.on'), medal: !!banner?.childElementCount });
+    if (plan) writeMousePlan(plan, { countdown: !!countdown, revive: !!root.querySelector('.cot-revive.on'), medal: !!banner?.childElementCount }, medalWaiting);
     const rosterProperty = '--hud-roster-top-right';
     const rosterPixels = rosterTopRight === null ? '' : `${rosterTopRight}px`;
     if (document.body.style.getPropertyValue(rosterProperty) !== rosterPixels) {
@@ -621,6 +629,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
   }
   watchAttributes(document.body, ['class'], true);
   watchAttributes(root, ['style', 'class'], true);
+  changes.observe(document.documentElement, { attributes: true, attributeFilter: [SCOPED_ATTRIBUTE] });
   window.addEventListener('resize', schedule, { passive: true });
   // (a relayout request may come from anything, the network strip mounting outside the HUD root among them: it is a new
   // plan input too)

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  alertReserve, detectionHeight, MOUSE_NOTICE_GAP_PX, MOUSE_RETICLE, MOUSE_RETICLE_MARGIN_PX, mouseNoticePlanWork, mouseReticleFootprint,
-  planMouseNotices,
+  alertReserve, detectionHeight, MOUSE_NOTICE_GAP_PX, MOUSE_RETICLE, MOUSE_RETICLE_MARGIN_PX, mouseMedalWaits, mouseNoticePlanWork,
+  mouseReticleFootprint, planMouseNotices,
 } from './mouseNoticePlan.ts';
 import { battleRosterHeight } from './battleHudLayout.ts';
 
@@ -139,10 +139,10 @@ assert.equal(detectionHeight(248, true), 32);
 // 4. Every viewport, with and without the objective: the detection and the alert clear everything the reticle draws
 //    (main's own type size, the detection's second line wherever main shows it); the countdown, the revive count and
 //    the medal card each have a place (none falls back to the CSS defaults) clear of the keep-out its tier names, off
-//    both notices' places (sharing only a place it never shows with: the countdown the detection's where SHARED lists
-//    it, as nothing spots the player before the roll-out, the medal card the alert's, waiting it out; never the revive
-//    count, nor the countdown the alert's, as an alert can show with either); nothing leaves the screen or touches an
-//    instrument;
+//    both notices' places (the countdown sharing only the detection's where SHARED lists it, as nothing spots the player
+//    before the roll-out; never the revive count, nor the countdown the alert's, as an alert can show with either; the
+//    medal card may share either, as it waits while anything shown meets it: 4c); nothing leaves the screen or touches
+//    an instrument;
 //    a lane an element crosses keeps a row while it shows (and while the detection and the alert show together), and
 //    keeps all its rows while nothing shows (the plan holds no lane change outside `giveWay`).
 const SHARED = { '768x600': ['countdown'] };
@@ -155,8 +155,8 @@ const LOW_TIER = { '844x390': { countdown: 0, revive: 0, medal: 1 }, '768x600': 
 // (a row needs 26 px; beside the left lane's damage toasts 62, where the lane is that tall: mouseNoticePlan.ts laneRowPx)
 const rowPx = (side, lane) => side === 0 && lane.bottom - lane.top >= 62 ? 62 : 26;
 // (844 x 390's left lane is one row deep, and every place off both notices clear of the resting sight crosses it)
-const EMPTIED = ['844x390 revive l', '768x600 alert l', '768x600 medal l', '768x600 detection+alert l', '768x600s revive l', '768x600s medal l',
-  '481x700 alert r', '481x700 detection+alert r'];
+const EMPTIED = ['844x390 revive l', '768x600 alert l', '768x600 detection+alert l', '768x600s revive l', '481x700 alert r',
+  '481x700 detection+alert r'];
 const emptied = [];
 let plans = 0, slowest = 0, ms = 0, work = 0, mostWork = 0;
 for (const v of VIEWPORTS) {
@@ -194,12 +194,11 @@ for (const v of VIEWPORTS) {
       if (!fixedTier) {
         const shares = overlap(r, det, MOUSE_NOTICE_GAP_PX - .01) || overlap(r, alert, MOUSE_NOTICE_GAP_PX - .01);
         assert.equal(r.sharesNotices, shares, `${name}: the ${label} reports whether it shares a notice's place`);
-        // the medal card may wait out a 2.4 s alert in the alert's place, never the 8 s detection; the countdown may take
-        // only the detection's place; the revive count neither
-        const sharesDet = overlap(r, det, MOUSE_NOTICE_GAP_PX - .01), sharesAlert = overlap(r, alert, MOUSE_NOTICE_GAP_PX - .01);
+        // the countdown may take only the detection's place; the revive count neither (the medal card waits: 4c)
+        const sharesAlert = overlap(r, alert, MOUSE_NOTICE_GAP_PX - .01);
         if (label === 'countdown') assert.ok(!sharesAlert, `${name}: the countdown keeps off the alert's place (H, R and E raise alerts before the roll-out)`);
         if (label === 'revive') assert.ok(!shares, `${name}: the revive count keeps off both notices' places`);
-        if (label === 'medal' ? sharesDet : shares) assert.ok(SHARED[vp]?.includes(label), `${name}: the ${label} shares a notice's place`);
+        if (label !== 'medal' && shares) assert.ok(SHARED[vp]?.includes(label), `${name}: the ${label} shares a notice's place`);
       }
       // the lanes' bands while it shows: off the box, each keeping a row
       for (let side = 0; side < 2; side++) {
@@ -248,11 +247,38 @@ for (const v of VIEWPORTS.filter((x) => x.earL)) for (const rosters of [14, 20])
   const plan = planMouseNotices(input);
   assert.equal(plan.clearance, 2, `${v.vp.join('x')} r${rosters}: the notices clear the reticle`);
   assert.equal(plan.alert.small, input.smallAlert, `${v.vp.join('x')} r${rosters}: main's type size`);
-  // the countdown off the alert's place, the revive count off both notices', the medal card off the detection's
+  // the countdown off the alert's place, the revive count off both notices' (the medal card waits: 4c)
   const det = plan.detection, alert = alertBox(plan.alert), gap = MOUSE_NOTICE_GAP_PX - .01;
   for (const label of ['countdown', 'revive', 'medal']) assert.ok(plan[label], `${v.vp.join('x')} r${rosters}: the ${label} has a place`);
-  assert.ok(!overlap(plan.countdown, alert, gap) && !overlap(plan.revive, alert, gap) && !overlap(plan.revive, det, gap)
-    && !overlap(plan.medal, det, gap), `${v.vp.join('x')} r${rosters}: no element takes a place it can show with`);
+  assert.ok(!overlap(plan.countdown, alert, gap) && !overlap(plan.revive, alert, gap) && !overlap(plan.revive, det, gap),
+    `${v.vp.join('x')} r${rosters}: no element takes a place it can show with`);
+}
+
+// 4c. The medal card never shows on anything shown with it: with every mix of the detection, the alert, the revive count
+//     (a medal can arrive after the death) and the scope up, mouseMedalWaits holds it back wherever its place meets a
+//     shown element's (or the scope is up where it clears the battle sight only), and shows it whenever nothing does.
+//     It is the full card wherever main's own card (centred, 16 px under the objective) clears the whole keep-out and
+//     every instrument: main's look, waiting where it shares a notice's place (owner: prefer main's look when safe).
+let medalCases = 0, medalWaits = 0;
+for (const v of VIEWPORTS) for (const rosters of v.earL ? [7, 14, 20] : [7]) for (const objective of [true, false]) {
+  const input = inputFor(v, { objective, rosters });
+  const plan = planMouseNotices(input);
+  const name = `${v.vp.join('x')} r${rosters}${objective ? '' : ' (standard)'}`, medal = plan.medal;
+  assert.ok(medal, `${name}: the medal card has a place`);
+  const shownBoxes = { detection: plan.detection, alert: alertBox(plan.alert), revive: plan.revive };
+  for (let mask = 0; mask < 16; mask++) {
+    const up = { detection: !!(mask & 1), alert: !!(mask & 2), revive: !!(mask & 4), scoped: !!(mask & 8) };
+    const waits = mouseMedalWaits(plan, up);
+    const meets = ['detection', 'alert', 'revive'].filter((k) => up[k] && overlap(medal, shownBoxes[k], MOUSE_NOTICE_GAP_PX - .01));
+    const mustWait = meets.length > 0 || (up.scoped && medal.clearance < 2);
+    assert.equal(waits, mustWait, `${name} [${Object.keys(up).filter((k) => up[k]).join('+') || 'nothing'} up]: the medal card ${waits ? 'waits' : 'shows'}${meets.length ? ` (it meets the ${meets.join(', ')})` : ''}`);
+    medalCases++;
+    if (waits) medalWaits++;
+  }
+  const [W] = v.vp, mainCard = { x: W / 2 - input.medal.w / 2, y: Math.ceil(input.top + 16), w: input.medal.w, h: input.medal.h };
+  if (intrusion(mainCard, mouseReticleFootprint(W, v.vp[1])) <= 0 && !input.obstacles.some((o) => overlap(mainCard, o, MOUSE_NOTICE_GAP_PX - .01))) {
+    assert.equal(medal.compact, false, `${name}: main's full card clears everything here, so the card is the full card`);
+  }
 }
 
 // 5. Main's placements where they were fine: a centred stack under the score from 1280 x 800 up, the detection at
@@ -289,5 +315,10 @@ assert.doesNotMatch(css, /:not\(\.cot-touch-layout\):is\(\[data-cot-width='phone
 assert.match(layout, /const shown = \[root\.querySelector\('\.cot-sixth\.on'\) && plan\.detection, root\.querySelector\('\.cot-alert\.show'\) && plan\.alert,\s+countdown && plan\.countdown, root\.querySelector\('\.cot-revive\.on'\) && plan\.revive, medalReady && plan\.medal\];/);
 assert.match(css, /\.rosters-expanded \.cot-ear\.l\{width:min\(320px,calc\(50vw - 184px\),var\(--hud-roster-wide-left,320px\)\)\}/);
 assert.doesNotMatch(css, /data-hud-alert-type/, 'the alert never drops below main\'s type size');
+// the layout holds the medal card by mouseMedalWaits with everything it can show with (4c); hud.ts flags the scope on the
+// document element, outside the observed HUD root, so a scope toggle relayouts nothing (battleHudLayout.selftest.mjs)
+assert.match(layout, /medalWaiting = mouseMedalWaits\(plan, \{ detection: !!root\.querySelector\('\.cot-sixth\.on'\), alert: !!root\.querySelector\('\.cot-alert\.show'\),\s+revive: !!root\.querySelector\('\.cot-revive\.on'\), scoped: document\.documentElement\.hasAttribute\(SCOPED_ATTRIBUTE\) \}\);\s+medalReady = !medalWaiting;/);
+assert.match(hud, /document\.documentElement\.toggleAttribute\('data-cot-scoped', mode === 'sniper'\);/);
+assert.doesNotMatch(hud, /root\.classList\.toggle\('cot-scoped'/, 'no scope class on the observed HUD root');
 
-console.log(`mouseNoticePlan.selftest: ${plans} mouse plans clear the reticle, the instruments and the lanes (${Math.round(work / plans)} bands, ${(ms / plans).toFixed(1)} ms a plan; slowest ${slowest.toFixed(1)} ms)`);
+console.log(`mouseNoticePlan.selftest: ${plans} mouse plans clear the reticle, the instruments and the lanes (${Math.round(work / plans)} bands, ${(ms / plans).toFixed(1)} ms a plan; slowest ${slowest.toFixed(1)} ms); the medal card waits in ${medalWaits} of ${medalCases} company mixes, exactly where its place meets a shown element's`);

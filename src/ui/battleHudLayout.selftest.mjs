@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { battleSideStack, battleNotificationRows, battleRosterHeight, installBattleHudLayout, objectiveWidth, battleReportDock, REPORT_MAP_GAP } from './battleHudLayout.ts';
+import { mouseNoticePlanWork } from './mouseNoticePlan.ts';
 
 for (const space of [0, 80, 124, 320, 500]) {
   const height = battleRosterHeight(600, space, 124);
@@ -233,6 +234,70 @@ try {
     if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];
   }
 }
+// The notice plan in a deterministic DOM with real class lists (desk-notices 229): a scope toggle relayouts nothing
+// unless a queued medal card waits on it.
+{
+  const saved=new Map(['document','window','ResizeObserver','MutationObserver','requestAnimationFrame','getComputedStyle',
+    'setTimeout','clearTimeout'].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
+  const rect=(left,top,width,height)=>({left,top,width,height,right:left+width,bottom:top+height,x:left,y:top});
+  function harness({width=1366,height=768,touch=false,tab=false,elements={},inRoot={},extra=()=>({})}={}){
+    const frames=new Map();let nextFrame=1;let observer=null;const properties=new Map();
+    const classes=list=>{const set=new Set(list);return {set,contains:c=>set.has(c),add:c=>set.add(c),remove:c=>set.delete(c),
+      toggle(c,on){const want=on??!set.has(c);if(want)set.add(c);else set.delete(c);return want;}};};
+    const node=(list=[],box=null)=>({attrs:{},dataset:{},childElementCount:0,classList:classes(list),offsetWidth:0,offsetHeight:0,
+      style:{getPropertyValue:k=>properties.get(k)||'',setProperty:(k,v)=>properties.set(k,v),removeProperty:k=>properties.delete(k)},
+      getAttribute(k){return this.attrs[k]??null;},hasAttribute(k){return k in this.attrs;},
+      toggleAttribute(k,on){const want=on??!(k in this.attrs);if(want)this.attrs[k]='';else delete this.attrs[k];return want;},
+      getClientRects(){return [{}];},getBoundingClientRect(){return typeof box==='function'?box():box??rect(0,0,0,0);},
+      dispatchEvent(){return true;},querySelector(){return null;},querySelectorAll(){return [];}});
+    const root=node(tab?['cot-hud','rosters-expanded']:['cot-hud']);root.querySelector=sel=>inRoot[sel]?.()??null;
+    const body=node(touch?['cot-touch-layout']:[]);const html=node();html.clientWidth=width;
+    const parts={'.cot-top':node([],rect(width/2-172,0,344,62)),...Object.fromEntries(Object.entries(elements).map(([k,f])=>[k,node([],()=>f(root))])),...extra(node)};
+    globalThis.document={body,documentElement:html,querySelector:sel=>parts[sel]??null,querySelectorAll:()=>[]};
+    globalThis.window={innerWidth:width,innerHeight:height,visualViewport:{width,height,scale:1},document:globalThis.document,addEventListener(){}};
+    globalThis.getComputedStyle=()=>({visibility:'visible'});
+    globalThis.requestAnimationFrame=fn=>{const id=nextFrame++;frames.set(id,fn);return id;};
+    globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};
+    globalThis.ResizeObserver=class{observe(){}};
+    globalThis.MutationObserver=class{constructor(fn){observer=fn;}observe(){}};
+    installBattleHudLayout(root);
+    const flush=()=>{const work=[...frames.values()];frames.clear();for(const fn of work)fn();};
+    flush();
+    return {root,body,html,properties,frames,flush,mutate:records=>observer(records),node,parts};
+  }
+  try {
+    // the mouse layout of the same window plans and carries it (the check above is not blind)
+    mouseNoticePlanWork.bands=-1;
+    const mouse=harness();
+    assert.ok(mouseNoticePlanWork.bands>0,'the mouse layout plans');
+    assert.equal(mouse.body.hasAttribute('data-hud-notices'),true);
+    assert.match(mouse.body.dataset.hudNoticeTiers,/^d2 a2 /);
+    // the scope flag (hud.ts, on the document element) schedules nothing while no medal card waits
+    mouse.mutate([{type:'attributes',target:mouse.html,attributeName:'data-cot-scoped'}]);
+    assert.equal(mouse.frames.size,0,'a scope toggle relayouts nothing');
+    // A medal card queued while the revive count shows (a medal can arrive after the death) waits exactly where the two
+    // places meet: the written places (the card's centre and top, the count's centre, top and scale) decide it.
+    let met=0,apart=0;
+    const px=v=>parseFloat(v);
+    for(const [w,h] of [[1366,768],[1920,1080],[1024,600],[1280,720],[1600,900],[1024,768],[1440,900],[2560,1440]]){
+      const revive={offsetWidth:Math.min(390,w-32),offsetHeight:129};let banner=null;
+      const run=harness({width:w,height:h,inRoot:{'.cot-revive':()=>revive,'.cot-revive.on':()=>revive},
+        extra:node=>{banner=node();banner.childElementCount=1;return {'.cot-medal-toasts':banner};}});
+      const P=k=>run.properties.get(`--hud-${k}`);
+      const compact=banner.dataset.size==='compact',cw=compact?Math.min(250,w-24):Math.min(380,w-32),ch=compact?40:(w>640?85:76);
+      const card={x:px(P('banner-x'))-cw/2,y:px(P('banner-top')),w:cw,h:ch};
+      const s=Number(P('revive-scale')),count={x:px(P('revive-x'))-revive.offsetWidth*s/2,y:px(P('revive-top')),w:revive.offsetWidth*s,h:revive.offsetHeight*s};
+      const meet=card.x<count.x+count.w+8&&card.x+card.w>count.x-8&&card.y<count.y+count.h+8&&card.y+card.h>count.y-8;
+      if(meet)met++;else apart++;
+      assert.equal(banner.dataset.placement,meet?'deferred':'ready',`${w}x${h}: the medal card ${meet?'waits on':'shows beside'} the revive count`);
+      assert.equal(run.body.dataset.hudNoticeTiers.endsWith('w'),meet,`${w}x${h}: the tiers mark the waiting card`);
+    }
+    assert.ok(met>0,`the medal card met the revive count somewhere (${met} met, ${apart} apart)`);
+  } finally {
+    for(const [key,descriptor] of saved){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}
+  }
+}
+
 const layout=readFileSync(new URL('./battleHudLayout.ts',import.meta.url),'utf8');
 const hud=readFileSync(new URL('./hud.ts',import.meta.url),'utf8');
 assert.match(layout,/new ResizeObserver\(\(entries\) => \{[^}]*?\n[^}]*?\n\s*schedule\(\);\n\s*\}\);/,'map zoom and roster size changes relayout the lanes (and mark the mouse notice plan\'s inputs)');
