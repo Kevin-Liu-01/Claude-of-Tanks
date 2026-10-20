@@ -142,7 +142,7 @@ assert.ok(a.parent.getObjectByName('frontline-aircraft-0'), 'aircraft slot exist
   // (ac130-fx-228 r2) the AA rounds draw through the effects runtime's projectile tracers (the world/fx seam, destructibles.ts), not a
   // shader of this layer's own: the latest front registers its rounds, they fly from the guns at the tracer speed,
   // capped by the slot ring, in the gun's ammunition lineage; dispose withdraws the source
-  assert.equal(a.parent.getObjectByName('frontline-aa-tracers'), undefined, 'the September tracer mesh is gone');
+  assert.ok(a.parent.getObjectByName('frontline-aa-tracers') === undefined, 'the September tracer mesh is gone');
   for (const [mapId, east] of [['verdant', true], ['frontier', false]]) {
     const front = make();
     front.runtime.prepare(1337, mapId);

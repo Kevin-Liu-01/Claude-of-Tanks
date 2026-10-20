@@ -92,7 +92,7 @@ const src = (path) => readFileSync(resolve(ROOT, path), 'utf8');
   hideGunshipVisual(anchor.root);
   assert.equal(staged.visible, false);
   anchor.dispose();
-  assert.equal(staged.parent, null, 'released with its anchor');
+  assert.ok(staged.parent === null, 'released with its anchor');
   const deploy = src('src/game/soloBattleDeploymentRuntime.ts');
   const stageAt = deploy.indexOf('await stageGunshipAirframes(game.tanks)');
   const earlyAt = deploy.indexOf("mark('earlyPrograms')");
@@ -157,10 +157,10 @@ const src = (path) => readFileSync(resolve(ROOT, path), 'utf8');
   const state = { label: 'Escort', perspectiveTeam: 'alpha', respawns: true, target: null, score: { alpha: 0, bravo: 0 },
     flags: [], ball: null, goals: [], horde: null, pickups: [], playerAmmo: null, playerAmmoCapacity: null,
     id: 'zone_control', zones: [{ id: 'a', x: -40, y: 1, z: 7, control: 0.5, owner: 'alpha', contested: false }] };
-  assert.equal(view.root.getObjectByName('capture-zone-1'), undefined, 'nothing built before a state');
+  assert.ok(view.root.getObjectByName('capture-zone-1') === undefined, 'nothing built before a state');
   assert.equal(stageMatchModeObjectives(battle, state, 0), 1, "only the battle scene's presentation is staged");
   assert.ok(view.root.getObjectByName('capture-zone-1'), 'its markers are built for the covered compile');
-  assert.equal(elsewhere.root.getObjectByName('capture-zone-1'), undefined);
+  assert.ok(elsewhere.root.getObjectByName('capture-zone-1') === undefined);
   assert.equal(stageMatchModeObjectives(battle, null, 0), 0, 'no state, nothing staged');
   view.dispose(); elsewhere.dispose();
   assert.equal(stageMatchModeObjectives(battle, state, 0), 0, 'a disposed presentation leaves the live set');
