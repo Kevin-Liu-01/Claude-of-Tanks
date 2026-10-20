@@ -319,7 +319,7 @@ function hashLaunch(seed: number, id: string, tick: number): number {
 }
 
 /** The way a hull died, as the launch reads it. */
-type WreckTurretCause = 'ammorack' | 'ammo_rack' | 'shot' | 'fire' | 'ram' | string;
+export type WreckTurretCause = 'ammorack' | 'ammo_rack' | 'shot' | 'fire' | 'ram' | string;
 
 /** The cook-off's work on the turret per kilogram of its charge (J/kg): a 66.8 t M1A2's 10 kg throws its 16.6 t
  * turret at about 14 m/s, some 10 m over the ring (6–14 m by the draw). */
@@ -445,7 +445,7 @@ export function wreckGroundSampler(field: {
   return field.getHeightAt.bind(field);
 }
 
-interface WreckTurretBodyState {
+export interface WreckTurretBodyState {
   /** The turret frame's world pose (origin on the ring) and whether it lies settled. */
   x: number; y: number; z: number; qx: number; qy: number; qz: number; qw: number;
   asleep: boolean;
@@ -478,7 +478,7 @@ export interface WreckTurrets {
   ids(): readonly string[];
 }
 
-interface WreckTurretOptions {
+export interface WreckTurretOptions {
   seed?: number;
   gravity?: number;
   capacity?: number;
