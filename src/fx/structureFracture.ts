@@ -30,6 +30,7 @@ import type { StructureDamageSeam, StructureSpan } from '../world/structureDamag
 import type { DebrisPhysics } from './debrisPhysics.ts';
 import { emitDebrisLanding } from './clock.ts';
 import { profEnd, profStart } from './fxProf.ts';
+import { STAGE_RUN_TAG } from './structureMask.ts';
 import { createPlateHold, layPerchedPlates, layUprightPlates, type PlateDrawing, type WatchedPlate } from './uprightPlates.ts';
 import {
   CELL_CRACKED, CELL_FALLEN, CELL_GONE, CELL_OPENING, CELL_SPALLED, CELL_VOID, CRACK_AT, SPALL_AT, cellRect, createWallFracture,
@@ -114,8 +115,9 @@ export interface StructureFracture {
   roofFell(structureIdx: number): void;
   /** Pieces of its faces cut loose (structureHanging.ts: touching nothing that stands): their cells fall as a body each. */
   dropPieces(structureIdx: number, pieces: ReadonlyArray<{ mesh: THREE.Mesh; tris: readonly number[] }>): void;
-  /** The building came down: its standing faces leave (the collapse drew them); its bodies and heaps stay. */
-  release(structureIdx: number): void;
+  /** The building came down: its standing faces leave (the collapse drew them); its bodies and heaps stay. `keepS` (round 5):
+   *  they stay drawn that long first, for the mask's collapse to carry them down with the walls (maskTag). */
+  release(structureIdx: number, keepS?: number): void;
   /** A storey dropped (sections on): the rooms laid in it and over it go (destruction-slabs 227: they stood in the air). */
   dropRooms(structureIdx: number, fromStorey: number, only?: boolean): void;
   /**
@@ -269,6 +271,8 @@ interface Live {
   watchedAt: number;
   /** When the building last changed here (a strike, a face's fall, a storey's, its release; fx s). */
   touchedAt: number;
+  /** (round 5) Its world materials' patched depth materials (maskTag), read off its spans once each. */
+  depthFor: Map<THREE.Material, THREE.Material | null>;
   strikes: number;
   /** Its faces' redraws so far (collapseBodies' cut laid before the last is stale). */
   version: number;
@@ -359,6 +363,8 @@ function neutral(name: string): number {
 
 export function createStructureFracture(o: StructureFractureOptions): StructureFracture {
   const lives = new Map<number, Live>();
+  /** (round 5) Faces and rooms of buildings come down, drawn until the mask has carried them down (release keepS). */
+  const releasing: Array<{ meshes: THREE.Mesh[]; at: number }> = [];
   const bodies = new Map<number, LiveBody>();
   /** The live bodies in a list as well (the update walks it: no iterator a frame); a body leaves it by swap. */
   const list: LiveBody[] = [];
@@ -1043,6 +1049,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       mesh.userData.structureFractureFace = true;
       mesh.userData.cellRanges = ranges;
       mesh.name = `fx-fracture-face-${live.seam.structureIdx}`;
+      maskTag(live, mesh);
       o.group.add(mesh);
       draw.meshes.push(mesh);
     }
@@ -1074,6 +1081,30 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   function bodyToWorld(live: Live, out: THREE.Matrix4): THREE.Matrix4 {
     const { x, y, z, yaw } = live.seam.anatomy.placement;
     return out.compose(_v.set(x, y, z), _q.setFromAxisAngle(_up, yaw), _s);
+  }
+  /**
+   * (destruction-slabs 227 round 5; the round-3 critic's film: verdant #8's mill lost its upper storey between two frames as
+   * it fell, only its dust over the gap) a face or room drawn here is its building's own stage run to the mask (its tag,
+   * structureMask.ts: it falls with the building's collapse, no hole cuts it) and casts through its bucket's patched depth
+   * material: the mask's collapse carries it down and folds it with the walls, where it was taken away at the collapse's
+   * event while the walls round it crumbled for four seconds.
+   */
+  function maskTag(live: Live, mesh: THREE.Mesh): void {
+    const g = mesh.geometry as THREE.BufferGeometry, n = g.getAttribute('position')?.count ?? 0;
+    if (!n) return;
+    const tag = STAGE_RUN_TAG + live.seam.structureIdx + 1;
+    g.setAttribute('aDamage', new THREE.BufferAttribute(new Uint16Array(n).fill(tag), 1));
+    g.userData.stageTag = tag;
+    let depth = live.depthFor.get(mesh.material as THREE.Material);
+    if (depth === undefined) {
+      depth = null;
+      for (const span of live.seam.spans) {
+        const sm = span.mesh as THREE.Mesh;
+        if (sm.material === mesh.material && sm.customDepthMaterial) { depth = sm.customDepthMaterial; break; }
+      }
+      live.depthFor.set(mesh.material as THREE.Material, depth);
+    }
+    if (depth) mesh.customDepthMaterial = depth;
   }
 
   // ---- the room behind a holed storey -------------------------------------------------------------------------------
@@ -1127,6 +1158,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     if (!list.length) return;
     const mesh = new THREE.Mesh(interleavedOf(layout, Float32Array.from(list)), material);
     mesh.name = `fx-fracture-room-${live.seam.structureIdx}`;
+    maskTag(live, mesh);
     mesh.userData.storey = storey;
     mesh.userData.roomKey = interior.key;
     mesh.userData.ceilFrom = ceilFrom;
@@ -2020,7 +2052,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       live = { seam, wall: createWallFracture(a), faces: new Map(), sag: new Map(), roofCorners: null, sagSignature: '', released: false,
         claiming: new Map(), sortAt: [0, 0], sorting: null, byFace: null, room: [], roomStoreys: new Set(), baked: [], bakedPending: [],
         sunk: new Float32Array(a.storeys.length), flight: new Float32Array(a.storeys.length),
-        bakedMerged: new Map(), mergedAt: 0, heapBody: new Map(), watch: [], watchedAt: -1e9, touchedAt: -1e9,
+        bakedMerged: new Map(), mergedAt: 0, heapBody: new Map(), watch: [], watchedAt: -1e9, touchedAt: -1e9, depthFor: new Map(),
         strikes: 0, version: 0, lastX: 0, lastY: 0, lastZ: 0, lastAt: -1e9 };
       lives.set(seam.structureIdx, live);
     }
@@ -2199,15 +2231,19 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       o.group.remove(mesh); mesh.geometry.dispose();
       live.room.splice(i, 1);
     },
-    release(structureIdx) {
+    release(structureIdx, keepS = 0) {
       const live = lives.get(structureIdx);
       if (!live) return;
       live.released = true;
       live.touchedAt = o.now();
-      for (const d of live.faces.values()) for (const m of d.meshes) { o.group.remove(m); m.geometry.dispose(); }
-      for (const m of live.room) { o.group.remove(m); m.geometry.dispose(); }
+      const meshes: THREE.Mesh[] = [];
+      for (const d of live.faces.values()) for (const m of d.meshes) meshes.push(m);
+      for (const m of live.room) meshes.push(m);
       live.faces.clear();
       live.room.length = 0;
+      // (round 5) kept while the mask carries them down with the walls (maskTag), then gone
+      if (keepS > 0) { releasing.push({ meshes, at: o.now() + keepS }); return; }
+      for (const m of meshes) { o.group.remove(m); m.geometry.dispose(); }
     },
     dropRooms(structureIdx, fromStorey, only = false) {
       const live = lives.get(structureIdx);
@@ -2278,6 +2314,12 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       while (cracking.length) crackBody(cracking.pop()!);
     },
     update() {
+      if (releasing.length) {
+        const now = o.now();
+        let k = 0;
+        for (const r of releasing) { if (now >= r.at) for (const m of r.meshes) { o.group.remove(m); m.geometry.dispose(); } else releasing[k++] = r; }
+        releasing.length = k;
+      }
       const tWork = profStart();
       if (work.length) advanceWork(workUnits);
       profEnd('fr.work', tWork);
@@ -2347,6 +2389,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       lives.clear();
       work.length = 0;
       bakedCount = 0;
+      for (const r of releasing) for (const m of r.meshes) { o.group.remove(m); m.geometry.dispose(); }
+      releasing.length = 0;
     },
     stats() {
       let faces = 0;

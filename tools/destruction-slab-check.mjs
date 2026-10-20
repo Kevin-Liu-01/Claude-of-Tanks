@@ -1271,7 +1271,8 @@ export async function runSlabCheck({
     const accept = (m) => {
       // (round 2: every structure's collapse pieces were taken, a neighbour's roof slabs on its own walls judged against this
       // building's plan) the fx group's meshes of this building only
-      if (m.parent === fxGroup) return own.test(m.name);
+      // (round 5) and a fracture face or room the mask carries down with the collapse (its stage run's tag) goes with it
+      if (m.parent === fxGroup) return own.test(m.name) && !(gone && m.geometry?.userData?.stageTag === runTag);
       if (gone?.has(m)) return false;
       return m.parent === debris.group ? ownRun(m) : true;
     };

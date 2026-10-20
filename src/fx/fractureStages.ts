@@ -37,7 +37,7 @@ import { createLandmarkBodies, type LandmarkBodies } from './landmarkBodies.ts';
 import { createStructureFracture, type StructureFracture } from './structureFracture.ts';
 import { createHangingSweep, type HangingResult } from './structureHanging.ts';
 import { breachBlowFor } from './structureFx.ts';
-import { STAGE_RUN_TAG, type StructureMask } from './structureMask.ts';
+import { COLLAPSE_S, STAGE_RUN_TAG, type StructureMask } from './structureMask.ts';
 import type { StructureDebris } from './structureDebris.ts';
 import type { StructureScars } from './structureScars.ts';
 
@@ -296,6 +296,9 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
    *  section's faces were drawn ran on 1.3 s blind to them, and the one after it took 1.6 s more, a dark face piece 2.1 m
    *  up cut loose by the redraw hanging 2.5 s. */
   const HANGING_RESTART_S = 0.8, HANGING_RESTARTS = 2;
+  /** (round 5) A collapse's redrawn faces stay drawn this long (s) for the mask to carry them down and fold them (its fall
+   *  takes COLLAPSE_S; a toppling shaft lies a little longer before its fold). */
+  const RELEASE_KEEP_S = COLLAPSE_S + 2;
   const hangingRestarts = new Map<number, number>();
   /** Steps of the sweep a frame (each about structureHanging's SLICE units of work: under a millisecond on a desktop). */
   const HANGING_STEPS = Math.max(1, Math.floor(o.hangingSteps ?? 4));
@@ -554,8 +557,9 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
           hangingDue.delete(idx);
           if (!settled && !sections && collapseAsBodies(e, seam)) return 1;
           // the mask's collapse (settled, sections on, a cut declined): the redrawn faces go with the building (its kit's
-          // remnant stands), the bodies already thrown stay where they lie
-          fracture.release(idx);
+          // remnant stands), the bodies already thrown stay where they lie — (round 5) carried down by the mask with the
+          // walls round them (they are its stage runs), gone once it has folded them; a settled one at once
+          fracture.release(idx, settled ? 0 : RELEASE_KEEP_S);
           unwant(idx);
           bodies.forget(idx);
           bodies.dropFloor(idx, 0);

@@ -166,11 +166,18 @@ function sectionsRun() {
   const down = [...named(r, 'fx-collapse-roof'), ...named(r, 'fx-collapse-baked')].map(boxOf);
   // the final collapse (after the cascade): the redrawn faces go with the building, the kit's remnant stands
   r.stages.stage(stageEvent('collapsed', 'breached', { sections: true }), seam);
+  // (destruction-slabs 227 round 5: verdant #8's upper storey, drawn by the fracture, vanished in one frame at the collapse while
+  // the walls round it crumbled for four seconds) the faces stay drawn as the mask's own stage runs (its tag on every vertex:
+  // the collapse carries them down and folds them with the walls), and go once it has
+  const facesAtEvent = r.group.children.filter((m) => m.userData.structureFractureFace);
+  const tag = STAGE_RUN_TAG + seam.structureIdx + 1;
+  const carried = facesAtEvent.every((m) => m.geometry.userData.stageTag === tag && m.geometry.getAttribute('aDamage')?.array.every((v) => v === tag));
+  r.step(7);
   const facesAfter = named(r, 'fx-collapse-roof').length >= 0 ? r.group.children.filter((m) => m.userData.structureFractureFace).length : -1;
   const digest = resting(r).map((m) => Array.from(m.matrix.elements, (v) => v.toFixed(3)).join(',')).join('|');
   const stats = r.fx.stats();
   r.stages.reset(); r.fx.reset(); r.mask.reset(); r.debris.reset();
-  return { holes, faces, thrown, panel, stub, roofPieces, onFloor, down, facesAfter, digest, stats, left: r.group.children.length };
+  return { holes, faces, thrown, panel, stub, roofPieces, onFloor, down, facesAtEvent: facesAtEvent.length, carried, facesAfter, digest, stats, left: r.group.children.length };
 }
 const before = H.snapshot();
 const A = sectionsRun();
@@ -197,7 +204,8 @@ for (const b of A.down) {
   assert.ok(b.min.y < GROUND + 2.0, `its storey dropped, nothing of it hovers (its lowest ${(b.min.y - GROUND).toFixed(2)} m over the ground)`);
   assert.ok(b.max.y < eaveWorld - 0.5, `it came down from the eaves (its top ${(b.max.y - GROUND).toFixed(2)} m, the eaves ${(eaveWorld - GROUND).toFixed(2)} m)`);
 }
-assert.equal(A.facesAfter, 0, 'the final collapse lets the redrawn faces go (the kit\'s remnant stands)');
+assert.ok(A.facesAtEvent > 0 && A.carried, `the final collapse's redrawn faces fall with the mask (${A.facesAtEvent} faces, its stage-run tag on each)`);
+assert.equal(A.facesAfter, 0, 'and go once it has folded them (the kit\'s remnant stands)');
 H.snapshot().forEach((arr, i) => assert.deepEqual(arr, before[i], `the reset stands bucket ${i} up byte for byte`));
 const B = sectionsRun();
 assert.equal(B.digest, A.digest, 'the same cascade twice lays the same poses');
