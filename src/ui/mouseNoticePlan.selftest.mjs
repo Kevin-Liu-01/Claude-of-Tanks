@@ -70,6 +70,14 @@ function inputFor(v, { objective = true, rosters = 7 } = {}) {
 }
 
 const overlap = (a, b, gap = 0) => a.x < b.x + b.w + gap && a.x + a.w > b.x - gap && a.y < b.y + b.h + gap && a.y + a.h > b.y - gap;
+/** A census viewport's boxes moved with their anchors to a w x h window (centred, right-hand and bottom-anchored boxes
+ *  follow; the lanes' bottoms follow the height). */
+function movedTo(v, w, h) {
+  const dw = w - v.vp[0], dh = h - v.vp[1], c = (b) => b && [b[0] + dw / 2, b[1], b[2], b[3]], r = (b) => b && [b[0] + dw, b[1], b[2], b[3]];
+  const down = (b) => b && [b[0], b[1] + dh, b[2], b[3]];
+  return { ...v, vp: [w, h], score: c(v.score), obj: c(v.obj), earR: r(v.earR), map: down(r(v.map)), dp: down(v.dp), drive: down(v.drive),
+    sys: down(c(v.sys)), ammo: down(c(v.ammo)), card: down(r(v.card)), net: r(v.net), lanes: [v.lanes[0], v.lanes[1] + dh, v.lanes[2], v.lanes[3] + dh] };
+}
 /** How far `r` reaches into the footprint (with the reticle margin), 0 when clear. */
 function intrusion(r, keep) {
   let worst = 0;
@@ -362,15 +370,40 @@ for (const v of VIEWPORTS) for (const rosters of v.earL ? [7, 14, 20] : [7]) for
   const std = planMouseNotices(inputFor(v, { objective: false }));
   assert.ok(std.medal.y === 295 && std.medal.sharesNotices && !std.medal.cutsLanes.some(Boolean),
     `844x390 (standard): the card takes the narrow band at y 295 (it is at ${Math.round(std.medal.x)},${std.medal.y}, cuts ${std.medal.cutsLanes})`);
-  const moved = (w, h) => {
-    const dw = w - 844, dh = h - 390, c = (b) => [b[0] + dw / 2, b[1], b[2], b[3]], r = (b) => [b[0] + dw, b[1], b[2], b[3]], down = (b) => [b[0], b[1] + dh, b[2], b[3]];
-    return { ...v, vp: [w, h], score: c(v.score), obj: c(v.obj), map: down(r(v.map)), dp: down(v.dp), drive: down(v.drive), sys: down(c(v.sys)),
-      ammo: down(c(v.ammo)), card: down(r(v.card)), net: r(v.net), lanes: [v.lanes[0], v.lanes[1] + dh, v.lanes[2], v.lanes[3] + dh] };
-  };
   for (const objective of [true, false]) {
-    const plan = planMouseNotices(inputFor(moved(820, 400), { objective }));
+    const plan = planMouseNotices(inputFor(movedTo(v, 820, 400), { objective }));
     assert.ok(!plan.medal.cutsLanes.some(Boolean), `820x400${objective ? '' : ' (standard)'}: the card cuts no lane (${Math.round(plan.medal.x)},${plan.medal.y})`);
   }
+}
+
+// 4f. Off the census by a few px (the safe bands are narrow: 1024 x 758..762 once cut a lane, 764 did not): every census
+//     window 2 to 16 px shorter and taller, with and without an objective. The card cuts a lane only where no place for
+//     it at its keep-out (full or compact, on a notice's place or not) keeps every lane whole; its price counts every row
+//     a lane would give up, as its wait does (a cut priced free held the card back on every kill row of that lane).
+{
+  const laneFree = (input, tier) => {
+    const keep = mouseReticleFootprint(input.width, input.height, tier), g = MOUSE_NOTICE_GAP_PX - .01;
+    for (const [w, h] of [[input.medal.w, input.medal.h], [input.medalCompact.w, input.medalCompact.h]])
+      for (let y = Math.ceil(input.top + MOUSE_NOTICE_GAP_PX); y + h <= input.height - 12; y++) for (let x = 12; x + w <= input.width - 12; x += 2) {
+        const b = { x, y, w, h };
+        if (input.lanes.some((l) => l && overlap(b, { x: l.x, y: l.top, w: l.w, h: l.bottom - l.top }, g))) continue;
+        if (input.obstacles.some((o) => overlap(b, o, g)) || intrusion(b, keep) > 0) continue;
+        return b;
+      }
+    return null;
+  };
+  let near = 0, cut = 0;
+  for (const v of VIEWPORTS) for (let dh = -16; dh <= 16; dh += 2) for (const objective of [true, false]) {
+    if (!dh) continue;
+    const [w0, h0] = v.vp, input = inputFor(movedTo(v, w0, h0 + dh), { objective });
+    const medal = planMouseNotices(input).medal;
+    near++;
+    if (!medal.cutsLanes.some(Boolean)) continue;
+    cut++;
+    const free = laneFree(input, medal.clearance);
+    assert.ok(!free, `${w0}x${h0 + dh}${objective ? '' : ' (standard)'}: the card cuts a lane at ${Math.round(medal.x)},${medal.y} though ${free && JSON.stringify(free)} keeps every lane whole`);
+  }
+  assert.ok(near > 600, 'the neighbours were planned');
 }
 
 // 5. Main's placements where they were fine: a centred stack under the score from 1280 x 800 up, the detection at

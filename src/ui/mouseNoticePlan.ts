@@ -233,13 +233,13 @@ const MEDAL_SHARE_ALERT_COST = 60, MEDAL_SHARE_DETECTION_COST = 600, MEDAL_SHARE
 /* Where the card still waits on the lamp (2026-10-20; with these prices, MEDAL_LANES and MEDAL_COMPACT_COST): no place
    down the centre line between the lamp and the aim point clears the keep-out, the instruments, both notices and the
    kill lanes. "s": without an objective; the census at 7, 14 and 20 a side (mouseNoticePlan.selftest.mjs VIEWPORTS):
-     768 x 600, 820 x 1180, 1024 x 768, 1152 x 648, 1280 x 800, 1366 x 768, 1440 x 900, 1536 x 864 and 1600 x 900 (each
-     with and without an objective), 1280 x 720 s, and 390 x 844 and 844 x 390 (with and without);
-   the critic's off-census windows (synthesised from the census boxes, p229/critic-r2-harness/census.mjs):
-     769 x 551, 800 x 600, 911 x 512, 960 x 600, 1242 x 698, 1280 x 689, 1309 x 818, 1440 x 789, 1463 x 823,
-     1536 x 864, 1680 x 939, 1707 x 960, 1745 x 982, 1920 x 940, 1920 x 970 (1080p browser windows), 1966 x 823 and
-     2293 x 960 (with and without), 1000 x 400, and 1093 x 614 s, 1097 x 617 s, 1152 x 720 s, 1280 x 720 s, 1366 x 625 s,
-     1366 x 657 s and 1536 x 753 s. */
+     768 x 600, 1024 x 768, 1152 x 648, 1280 x 800, 1366 x 768, 1440 x 900, 1536 x 864 and 1600 x 900 (each with and
+     without an objective), 1280 x 720 s, and 390 x 844 and 844 x 390 (with and without);
+   the critics' off-census windows (synthesised from the census boxes, p229/critic-planner-harness/base.mjs synth):
+     500 x 900, 769 x 551, 800 x 600, 911 x 512, 960 x 600, 1242 x 698, 1280 x 689, 1309 x 818, 1440 x 789,
+     1463 x 823, 1536 x 864, 1680 x 939, 1707 x 960, 1745 x 982, 1920 x 940, 1920 x 970 (1080p browser windows),
+     1966 x 823 and 2293 x 960 (with and without), 1000 x 400 (with an objective), and 1093 x 614 s, 1097 x 617 s,
+     1152 x 720 s, 1280 x 720 s, 1366 x 625 s, 1366 x 657 s and 1536 x 753 s. */
 const MEDAL_COMPACT_COST = 1e6;
 
 const rowsIn = (h: number) => Math.min(8, Math.max(0, Math.floor((h + 3) / 29)));
@@ -474,7 +474,9 @@ function yieldLanes(input: MouseNoticeInput, x: number, y: number, w: number, h:
     out[o + side * 2] = NaN; out[o + side * 2 + 1] = NaN;
     const lane = input.lanes[side];
     if (!lane || !(x < lane.x + lane.w + g && x + w > lane.x - g && y < lane.bottom + g && y + h + g > lane.top)) continue;
-    const clear = Number.isNaN(laneClear[side]) ? lane.bottom : laneClear[side];
+    // (the medal card's wait counts every row a lane gives up, so its price does too, not only the rows clear of the
+    // bloomed battle sight: mouseMedalWaits waits on a cut the price had called free)
+    const clear = price === MEDAL_LANES || Number.isNaN(laneClear[side]) ? lane.bottom : laneClear[side];
     const before = rowsIn(clear - lane.top);
     const below = Math.ceil(y + h + g), above = Math.floor(y - g);
     const need = laneRowPx(side, lane);
@@ -575,6 +577,11 @@ function singleBest(env: Env, w: number, h: number, yPref: number, base: number,
       edgeScratch.push(Math.ceil(cy + reach), Math.floor(cy - reach - hh));
     }
     for (const o of avoid) edgeScratch.push(Math.ceil(o.y + o.h + MOUSE_NOTICE_GAP_PX), Math.floor(o.y - MOUSE_NOTICE_GAP_PX - hh));
+    // the lowest row, and (the lanes yielding rather than blocking) each lane's own edges
+    edgeScratch.push(input.height - EDGE_PX - hh);
+    if (env.lanes === 'yield') for (const lane of input.lanes) {
+      if (lane) edgeScratch.push(Math.ceil(lane.bottom + MOUSE_NOTICE_GAP_PX), Math.floor(lane.top - MOUSE_NOTICE_GAP_PX - hh));
+    }
   }
   walkFine(yPref, Math.ceil(input.top + MOUSE_NOTICE_GAP_PX), input.height - EDGE_PX - hh, () => Math.min(bound, out.cost) - base, (y, yCost) => {
     let extra: number[] | null = null;
