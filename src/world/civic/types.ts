@@ -43,6 +43,9 @@ export interface PathwayPlan {
   /** The town's inside (a polygon): past the wall line a main street keeps its pavement only where houses front it (a
    *  suburb outside a gate), and no kerb runs along the wall line itself. */
   readonly inside: readonly CivicPoint[];
+  /** (228 r6, the blind critics: "rounded kerb corners enclose dirt with grass tufts") a corner's paving carried this much
+   *  past where the two pavements' outer edges meet, into a vacant corner lot (each flag still kept off the houses); absent 0 */
+  readonly cornerDepthM?: number;
   /** Where a main street's pavement meets a square's flush walk: its kerb ramps down over 2 m to flush. */
   readonly mouths: readonly CivicPoint[];
 }
@@ -89,6 +92,11 @@ export interface CivicAreaPlan {
   /** The ground the terrain paves for the square (the room and out to the set-back facades round it; under the houses it
    *  is never seen). */
   readonly paved: CivicRect;
+  /** (228 r6) Flush street work in the open paving (the coordinator: "gutters and drains, manholes ... leaf litter"):
+   *  cast-iron manhole covers at their seats; leaf litter under the trees (litterR m round each station, 0: none). The
+   *  gutters (rinnen) take their gully grates every 12 m of their own. */
+  readonly covers?: ReadonlyArray<{ readonly x: number; readonly z: number }>;
+  readonly litterR?: number;
   /** The square's gutters (Rinnen): three rows of setts along the carriageways' edges, segment by segment. */
   readonly rinnen: ReadonlyArray<{ readonly from: CivicPoint; readonly to: CivicPoint }>;
   /** The kinds the room's veto leaves alone (the street lamps keep their posts: the lamps snap off the facades instead). */

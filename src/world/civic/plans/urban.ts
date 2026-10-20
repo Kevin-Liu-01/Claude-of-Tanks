@@ -71,9 +71,12 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
     kerbM: 3.8,
     frontage: [1.2, 3.5],
     returnR: 3.0,
-    maxWalkM: 2.5,
+    // (228 r6, the blind critics: "weedy dirt strips behind the new pavements") the fronted pavement out to a front standing
+    // anywhere in the frontage band
+    maxWalkM: 3.3,
     openWalkM: 2.0,
-    lane: { face: 0.08, maxWalkM: 1.8, openWalkM: 1.4 },
+    cornerDepthM: 2.5,
+    lane: { face: 0.08, maxWalkM: 2.8, openWalkM: 1.4 },
     exclude: [ROOM],
     gates: [
       { x: -51.839, z: 100.564, halfWidth: 4.1, yawDeg: 2 },
@@ -134,7 +137,9 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
     // (228 r4) and frontline line-2's point, where the attackers jostle once inside its 30 m capture disc (the critic's
     // crush traces: within about 15 m of it), clear of every piece and trunk
     holds: [{ id: 'ac130-extraction', x: -39.1, z: -9.7, r: 8 }, { id: 'frontline-line-2', x: -36, z: 37.9, r: 15 }],
-    centre: { x: -50, z: 0, ringR: [8.0, 9.0], roseR: 3, rays: 8 },
+    // (228 r6, the blind critics: "a flat ring with a small medallion ... reads as a traffic-roundabout marking") the rose a
+    // wide compass of setts within the ring
+    centre: { x: -50, z: 0, ringR: [8.0, 9.0], roseR: 6.2, rays: 8 },
     beds: [
       {
         id: 'blumenrondell', rect: NW,
@@ -160,10 +165,18 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       { rect: { x0: SW.x1, x1: -58.5, z0: SW_AXIS + 3, z1: SW.z1 }, kind: 'granite' },
       // the Ehrenhof: the trade road's small setts carried in as the column's forecourt
       { rect: { x0: COLUMN.x - 2.9, x1: -58.5, z0: SW_AXIS - 3, z1: SW_AXIS + 3 }, kind: 'setts' },
-      // the Kirchweg from the church's west door to the green's north mouth
-      { rect: { x0: -77.0, x1: -74.6, z0: 31.25, z1: 39.4 }, kind: 'flags' },
-      { rect: { x0: -74.6, x1: -69.9, z0: 31.25, z1: 33.65 }, kind: 'flags' },
+      // (228 r6, the blind critics: the Kirchweg's pale flags lay on the setts as a floating slab) left out
+      // (228 r6, the coordinator: the open arms filled with flat work) granite slab walks (Plattenläufer) across the arms at
+      // the greens' mouths and the Ehrenhof's axis, and across the Hauptstrasse's east arm between the markets
+      { rect: { x0: MID_X - 1.2, x1: MID_X + 1.2, z0: -9.0, z1: 9.0 }, kind: 'granite' },
+      { rect: { x0: -58.5, x1: -41.5, z0: NW_Z - 1.2, z1: NW_Z + 1.2 }, kind: 'granite' },
+      { rect: { x0: -58.5, x1: -41.5, z0: SW_AXIS - 1.2, z1: SW_AXIS + 1.2 }, kind: 'granite' },
+      { rect: { x0: -29.2, x1: -26.8, z0: -9.0, z1: 9.0 }, kind: 'granite' },
     ],
+    // (228 r6) the manholes in the arms, and the leaves under the oaks
+    covers: [{ x: -86, z: 1.5 }, { x: -78, z: -1.5 }, { x: -22, z: 1.5 }, { x: -14, z: -1.5 }, { x: -50, z: -29 }, { x: -48.6, z: 26 },
+      { x: -51.2, z: -18.5 }],
+    litterR: 3.2,
     monument: { kind: 'memorialcolumn', x: COLUMN.x, z: COLUMN.z, faceX: -50, faceZ: 0 },
     trees: {
       // (228 r2: 1.45-1.6 stood the crowns over the column's figure and the church; the trunks read as wide orange posts)
@@ -204,8 +217,8 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       // the Brunnenplatz: two benches against the church's east flank, facing the Marktbrunnen
       { kind: 'bench', x: -69.0, z: 45.5, yawDeg: 90 }, { kind: 'bench', x: -69.0, z: 48.5, yawDeg: 90 },
       ...POLLER,
-      { kind: 'trashcan', x: -60.2, z: 17.6, yawDeg: 0 }, { kind: 'trashcan', x: -60.2, z: -27.5, yawDeg: 0 },
-      { kind: 'trashcan', x: -66.5, z: 41.2, yawDeg: 0 }, { kind: 'trashcan', x: -29.0, z: -19.5, yawDeg: 0 },
+      { kind: 'abfallkorb', x: -60.2, z: 17.6, yawDeg: 0 }, { kind: 'abfallkorb', x: -60.2, z: -27.5, yawDeg: 0 },
+      { kind: 'abfallkorb', x: -66.5, z: 41.2, yawDeg: 0 }, { kind: 'abfallkorb', x: -29.0, z: -19.5, yawDeg: 0 },
       ...[[-64.0, 41.5], [-60.0, 41.5], [-29.5, -17.0], [-23.0, -17.0], [-10.8, -9.6]].map(([x, z]) => ({ kind: 'pflanzkuebel', x, z, yawDeg: 0 })),
       // (228 r2) the Wochenmarkt: two rows of Franconian stalls facing across their aisle north of the Hauptstrasse, their
       // head stall at the aisle's north end, and a short row by the south frontage facing the square; crates at their backs
@@ -247,7 +260,8 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
     // quarter's corner lamp between its trunks; the Brunnenplatz's off the basin's rim; the east one off the kerb parking)
     // (228 r3: the column's pair stood in its entry views) behind the column now, either side of its hedge's ends
     lamps: [
-      [-73.4, 30.4], [-59.6, 22.45], [-82.8, 18.05], [-61.2, -23.8], [-82.8, -22.45], [-56.8, 42.4],
+      // (228 r6, the blind critics: the Brunnenplatz's lamp stood before the fountain's column in the view) east of the basin
+      [-73.4, 30.4], [-59.6, 22.45], [-82.8, 18.05], [-61.2, -23.8], [-82.8, -22.45], [-53.6, 44.0],
       [-41.0, 9.9], [-27.5, -11.0], [-16.5, 26.0], [-64.5, 9.25], [-66.66, -20.37],
     ].map(([x, z]) => ({ kind: 'lamp', x, z, yawDeg: 0 })),
     fountainRing: { x: -62, z: 47, r: 5.5 },

@@ -57,11 +57,11 @@ const inRect = (r: CivicRect, x: number, z: number, m = 0): boolean => x >= r.x0
 
 /** Flags in courses over a rectangle: courses `course` m across the long axis, flags of lengths in `len` along it, each
  *  its own tone, laid on a joint bed. */
-function flagRect(m: CivicMesh, r: CivicRect, style: RegionalCivicStyle, lift = SKIN, salt = 1): void {
+function flagRect(m: CivicMesh, r: CivicRect, style: RegionalCivicStyle, lift = SKIN, salt = 1, cell = 2.0): void {
   const base = hexRgb(style.pavement.hex), joint = hexRgb(style.pavement.joint);
   const alongX = r.x1 - r.x0 >= r.z1 - r.z0;
   const L = alongX ? r.x1 - r.x0 : r.z1 - r.z0, W = alongX ? r.z1 - r.z0 : r.x1 - r.x0;
-  m.skinRect(r.x0, r.z0, r.x1, r.z1, lift - 0.004, joint, 2.0);
+  m.skinRect(r.x0, r.z0, r.x1, r.z1, lift - 0.004, joint, cell);
   const courses = Math.max(1, Math.round(W / style.pavement.course)), cw = W / courses, gap = 0.012;
   const [l0, l1] = style.pavement.length;
   for (let k = 0; k < courses; k++) {
@@ -74,8 +74,8 @@ function flagRect(m: CivicMesh, r: CivicRect, style: RegionalCivicStyle, lift = 
       const b = Math.min(L, a + len);
       const u0 = a + gap / 2, u1 = b - gap / 2, v0 = k * cw + gap / 2, v1 = (k + 1) * cw - gap / 2;
       const col = toned(base, a + r.x0, k + r.z0, style.pavement.tone, salt);
-      if (alongX) m.skinRect(r.x0 + u0, r.z0 + v0, r.x0 + u1, r.z0 + v1, lift, col, 1.2);
-      else m.skinRect(r.x0 + v0, r.z0 + u0, r.x0 + v1, r.z0 + u1, lift, col, 1.2);
+      if (alongX) m.skinRect(r.x0 + u0, r.z0 + v0, r.x0 + u1, r.z0 + v1, lift, col, Math.min(1.2, cell));
+      else m.skinRect(r.x0 + v0, r.z0 + u0, r.x0 + v1, r.z0 + u1, lift, col, Math.min(1.2, cell));
       a = b;
     }
   }
@@ -429,7 +429,9 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
           : { x0: room.x1 - depth, x1: room.x1, z0: mz + a, z1: mz + b };
         const hits = (q: CivicRect) => q.x0 < r.x1 && q.x1 > r.x0 && q.z0 < r.z1 && q.z1 > r.z0;
         if (area.beds.some((bed) => hits(bed.rect)) || area.paving.some((p) => hits(p.rect))) continue;
-        flagRect(m, r, style, SKIN + 0.002, 7);
+        // (228 r6, the blind critics: "pale torn slab patches" — the street's camber poked up through the coarse bed) laid
+        // on the ground every 0.3 m, a hand proud
+        flagRect(m, r, style, SKIN + 0.012, 7, 0.3);
         census.mouthAprons = (census.mouthAprons ?? 0) + 1;
       }
     }
@@ -460,6 +462,7 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
   }
   // the gutters: three rows of darker setts along each carriageway's edge, the middle row dished
   const gut = hexRgb(style.gutter.hex), gw = style.gutter.width / style.gutter.rows;
+  const gridIron = hexRgb(style.grate.iron);
   for (const r of area.rinnen) {
     const dx = r.to[0] - r.from[0], dz = r.to[1] - r.from[1], len = Math.hypot(dx, dz), ux = dx / len, uz = dz / len;
     const P = (t: number, o: number): [number, number] => [r.from[0] + ux * t - uz * o, r.from[1] + uz * t + ux * o];
@@ -471,6 +474,42 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
       }
     }
     census.rinneM = (census.rinneM ?? 0) + len;
+    // (228 r6) its gully grates every 12 m: a cast-iron grate of bars across the gutter in a granite frame
+    for (let t = 6; t < len - 3; t += 12) {
+      const gx = r.from[0] + ux * t, gz = r.from[1] + uz * t, hl = 0.32, hw = 0.24;
+      const Q = (a: number, o: number): [number, number] => [gx + ux * a - uz * o, gz + uz * a + ux * o];
+      m.skin(Q(-hl - 0.08, -hw - 0.08), Q(hl + 0.08, -hw - 0.08), Q(hl + 0.08, hw + 0.08), Q(-hl - 0.08, hw + 0.08), SKIN + 0.002, toned(granite, gx, gz, 0.05, 44), 1);
+      m.skin(Q(-hl, -hw), Q(hl, -hw), Q(hl, hw), Q(-hl, hw), SKIN + 0.004, scaleRgb(gridIron, 0.55), 1);
+      for (let b = 0; b < 6; b++) {
+        const a0 = -hl + 0.04 + b * ((2 * hl - 0.08) / 6), a1 = a0 + 0.045;
+        m.skin(Q(a0, -hw + 0.03), Q(a1, -hw + 0.03), Q(a1, hw - 0.03), Q(a0, hw - 0.03), SKIN + 0.006, scaleRgb(gridIron, 1.5), 1);
+      }
+      census.gullies = (census.gullies ?? 0) + 1;
+    }
+  }
+  // (228 r6) the manhole covers: a round cast-iron lid with its rings and its frame
+  for (const c of area.covers ?? []) {
+    m.skinRing(c.x, c.z, 0.31, 0.39, 20, SKIN + 0.003, (k) => toned(granite, k, c.x, 0.05, 45));
+    m.skinRing(c.x, c.z, 0, 0.31, 20, SKIN + 0.004, () => scaleRgb(gridIron, 0.9));
+    for (const rr of [0.08, 0.16, 0.24]) m.skinRing(c.x, c.z, rr, rr + 0.025, 20, SKIN + 0.006, () => scaleRgb(gridIron, 1.6));
+    census.covers = (census.covers ?? 0) + 1;
+  }
+  // (228 r6) the leaves fallen under the trees: small flat leaves in the season's browns and ochres, scattered thinner
+  // toward the edge of each crown's shade
+  if ((area.litterR ?? 0) > 0) {
+    const leafCols = [0x6a4a22, 0x8a6a2a, 0x5a5a2a, 0x7a3e1e, 0x9a7a3a].map(hexRgb);
+    for (const t of area.trees.stations) {
+      const n = ctx.tier === 'mobile' ? 30 : 90;
+      for (let i = 0; i < n; i++) {
+        const h1 = civicHash(t.x * 7 + i, t.z, 61), h2 = civicHash(t.z * 5 - i, t.x, 62), h3 = civicHash(i, t.x + t.z, 63);
+        const rr = area.litterR! * Math.sqrt(h1), a = h2 * Math.PI * 2, lx = t.x + Math.sin(a) * rr, lz = t.z + Math.cos(a) * rr;
+        if (area.beds.some((b) => inRect(b.rect, lx, lz, 0.2))) continue;
+        const sz = 0.07 + h3 * 0.08, yaw = h3 * 6.28, cc = Math.cos(yaw), ss = Math.sin(yaw);
+        const L = (u: number, v: number): [number, number] => [lx + u * cc + v * ss, lz - u * ss + v * cc];
+        m.skin(L(-sz, -sz * 0.6), L(sz, -sz * 0.6), L(sz, sz * 0.6), L(-sz, sz * 0.6), SKIN + 0.005, leafCols[Math.floor(h1 * 997) % leafCols.length], 1);
+      }
+      census.litter = (census.litter ?? 0) + n;
+    }
   }
   // the trees' grates: an iron grate of concentric slots in a granite frame
   const iron = hexRgb(style.grate.iron), frame = hexRgb(style.grate.frame);
