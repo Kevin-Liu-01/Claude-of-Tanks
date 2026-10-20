@@ -218,6 +218,8 @@ void main() {
   #include <fog_fragment>
 }`;
 
+/** (ac130-fx-228 r3) one round in this many of a front gun's belt is a tracer */
+const AA_TRACER_EVERY = 3;
 /** The front's guns firing Soviet-lineage ammunition (maps/fieldworksKit.ts AA_FORMS): the 61-K, the S-60, the ZU-23-2 */
 const EAST_AA: ReadonlySet<string> = new Set(['k61', 's60', 'zu23']);
 
@@ -346,7 +348,10 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
       const speed = FRONTLINE_LIMITS.tracerSpeedMps, life = FRONTLINE_LIMITS.tracerLifeS;
       for (let i = 0; i < tracerCap; i++) {
         const born = roundBorn[i]!;
-        if (born < 0) continue;
+        // (ac130-fx-228 r3, the blind critic: "dozens of dashes scattered over the whole sky, like confetti rather than a
+        // belt") a gun's belt carries a tracer every AA_TRACER_EVERY rounds (the slots fill shot by shot): a burst reads
+        // as a spaced stream of dashes along its line
+        if (born < 0 || i % AA_TRACER_EVERY !== 0) continue;
         const age = time - born;
         if (age < 0 || age > life) continue;
         // the charge burns its flight out, dimming over its last 30 % (the old layer's fade)

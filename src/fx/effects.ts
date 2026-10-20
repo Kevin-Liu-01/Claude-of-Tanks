@@ -624,8 +624,11 @@ const GUNSHIP_LENS_M = 25;
 const GUNSHIP_PYLON_LOCAL = new THREE.Vector3(7.5, 1.9, 1.6);
 const GUNSHIP_PYLON_MERGE_M = 120;
 /** (ac130-fx-228 r2) the gunship missile's smoke thins out within this distance of the camera (none within a fifth of
- *  it): seen from its own gimbal lens it is a line to the target, never a white wedge across the frame's edge */
+ *  it): seen from its own gimbal lens it is a line to the target, never a white wedge across the frame's edge. (r3) Only
+ *  from aloft: a camera more than GUNSHIP_LENS_TRAIL_M above the ground (the gimbal lens, the killcam's orbit round the
+ *  airframe) gets the fade and the width cap (missileTrails.ts); a camera near the ground sees the whole trail */
 const GUNSHIP_TRAIL_NEAR_M = 70;
+const GUNSHIP_LENS_TRAIL_M = 120;
 /** (ac130-fx-228 r2) its widest spread (m, the family's r1 capped) */
 const GUNSHIP_TRAIL_R1_M = 2.4;
 /** (ac130-fx-228 r2) the missile motor flare's sphere (m) and the widest it is ever drawn from the camera (rad, its
@@ -1496,6 +1499,10 @@ function* createFxSteps(
     });
     const m = new THREE.Mesh(shockGeo, mat);
     m.visible = false;
+    // (ac130-fx-228 r3, first-use-who probe: the first on-screen pressure ring linked its late-pass program mid-battle,
+    // 8-107 ms) never culled, as the tracers and the motor flares are not: the covered warm spawns one wherever the
+    // player's field is (under an AC-130's orbit, outside its gimbal's view) and its draw must still reach the late pass
+    m.frustumCulled = false;
     m.renderOrder = 20;
     m.layers.set(LATE_FX_LAYER);
     group.add(m);
@@ -1560,6 +1567,7 @@ function* createFxSteps(
     });
     const m = new THREE.Mesh(muzzleRingGeo, mat);
     m.visible = false;
+    m.frustumCulled = false; // (ac130-fx-228 r3) as the pressure rings: its covered warm draw reaches the late pass
     m.renderOrder = 23;
     m.layers.set(LATE_FX_LAYER);
     group.add(m);
@@ -4506,6 +4514,13 @@ function* createFxSteps(
     }
     return t;
   }
+  /** (ac130-fx-228 r3) this frame's camera: is it aloft (a gunship's lens, the killcam's orbit round the airframe)? The
+   *  derived looks' near fade is on for it and off for a camera near the ground, which sees the whole trail */
+  function setGunshipTrailNear(cam: THREE.Vector3): void {
+    if (!gunshipTrails.size) return;
+    const aloft = cam.y - groundY(cam.x, cam.z) > GUNSHIP_LENS_TRAIL_M;
+    for (const look of gunshipTrails.values()) smokeTrails.setNear(look, aloft ? GUNSHIP_TRAIL_NEAR_M : 0);
+  }
 
   /** the live presentation entity a shooter id names (the Studio's actors first, else the battle's) */
   function subjectFor(id: ShellId): FxEntity | null {
@@ -4714,12 +4729,13 @@ function* createFxSteps(
   function writeLiveShellTracers(shells: LiveShell[], camera: THREE.Camera): void {
     camera.getWorldPosition(_flareCam);
     flareCamSet = true;
+    setGunshipTrailNear(_flareCam);
     // the grade's own vision code (engine/post.ts uThermal): 1 infrared, 2 thermal (heat); 0 daylight, 3 intensified
     const ud = camera.userData as { sensorVision?: number; thermalFlight?: boolean; flightVision?: number };
     const vision = ud.sensorVision ?? (ud.thermalFlight === true ? (ud.flightVision ?? 1) : 0);
     heatCamera = vision > 0.5 && vision < 2.5;
     drones.begin(particles.getTime(), camera.position);
-    tracers.begin(); // atmospherics lane
+    tracers.begin(_flareCam); // atmospherics lane; (ac130-fx-228 r3) the eye, for the gunship's lens clearance
     liveAtgmCount = 0;
     bodies.begin();
     renderedAtgmTrailSegments = 0;

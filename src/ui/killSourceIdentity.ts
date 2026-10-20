@@ -6,8 +6,9 @@
 // names it. A gunship pilot's vehicle is the AC-130 (its icon, no tier), never the garage tank modeLoadout.ts keeps under
 // the gunship's guns.
 //
-// (r2) Its own module, not icons.ts: the identity reads the i18n catalog, and icons.ts ships with the boot set. The HUD
-// asks for these every frame: each identity is made once per locale and reused (no allocation per call).
+// (r2) Its own module beside icons.ts: vite.config.ts builds the two into one chunk (the game's boot reads it for the
+// loading roster, so it costs no boot request of its own). The HUD asks for these every frame: each identity is made
+// once per locale and reused (no allocation per call).
 import { getLocale, t } from './i18n.ts';
 
 interface SourceIdentity {

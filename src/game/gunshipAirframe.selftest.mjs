@@ -163,6 +163,10 @@ const src = (path) => readFileSync(resolve(ROOT, path), 'utf8');
   const fx = src('src/fx/effects.ts');
   const opening = fx.slice(fx.indexOf('    warmOpeningEffects('), fx.indexOf('    warmProjectilePresentation('));
   assert.match(opening, /spawnShockRing\(pos\.x, pos\.z, 0\);/, "the ground's pressure ring is warmed whatever the pilot's height");
+  // (r3, first-use-who probe) the warmed ring is spawned under the orbit, outside the gimbal's view: it must not be culled,
+  // or its covered draw never reaches the late pass and the first on-screen ring links that program mid-battle
+  const rings = fx.slice(fx.indexOf('const shockRings'), fx.indexOf('let muzzleRingCursor'));
+  assert.equal((rings.match(/m\.frustumCulled = false;/g) || []).length, 2, 'the pressure rings and muzzle rings are never culled');
   assert.match(opening, /spawnScorch\(pos\.x, pos\.z, 2\.4\);/, "and the burst's scorch decal");
   assert.match(fx.slice(fx.indexOf('    resetAll(')), /for \(const m of scorchMeshes\) m\.visible = false;/, 'which resetAll clears');
 }

@@ -54,7 +54,7 @@ let now = 5;
 const shooters = { pilot: { id: 't90am', nation: 'Russia', gun: { caliberMm: 125, shells: [] } } };
 const tr = createProjectileTracers({ shooter: (id) => shooters[id] ?? null, scene: new THREE.Scene(), now: () => now,
   gunship: (id) => id === 'pilot', capacity: 64 });
-const geo = tr.mesh.geometry, head = geo.getAttribute('aHead'), core = geo.getAttribute('aCore');
+const geo = tr.mesh.geometry, head = geo.getAttribute('aHead'), core = geo.getAttribute('aCore'), tail = geo.getAttribute('aTail');
 const round = (id, spec, distM) => ({ id, shooterId: 'pilot', pos: new THREE.Vector3(0, 100, distM), vel: new THREE.Vector3(0, -400, 700),
   ageS: distM / 800, distM, spec });
 tr.begin(); tr.write(round(1, { type: 'HE', guided: false }, 120)); tr.end();
@@ -66,6 +66,22 @@ tr.begin(); for (let i = 0; i < 6; i++) tr.write(round(10 + i, { type: 'AP', rel
 assert.equal(geo.instanceCount, 3, 'the 30 mm belt: every second round lit');
 assert.ok(core.getX(0) > 2 * core.getY(0) && core.getY(0) > 3 * core.getZ(0), 'NATO red-orange, not the pilot tank lineage green');
 tr.reset();
+// (r3, the blind critic's "needle" from the gimbal lens) a gunship round seen from the camera at its own muzzle lights 45 m
+// out (a dash converging on the aim point); any other camera sees it light at its gun
+{
+  const dir = new THREE.Vector3(0, -0.6, 0.8), O = new THREE.Vector3(0, 240, 0);
+  const flying = (id, d, net = false) => ({ id, shooterId: 'pilot', pos: O.clone().addScaledVector(dir, d), vel: dir.clone().multiplyScalar(1300),
+    ageS: d / 1300, ...(net ? {} : { distM: d }), spec: { type: 'AP', reloadGroup: 'gunship-cannon', caliberMm: 30 } });
+  const drawn = (eye, d, net) => { tr.reset(); tr.begin(eye); tr.write(flying(100, d, net)); tr.end(); return geo.instanceCount; };
+  const lensEye = { x: 0, y: 240.12, z: 0 }, groundEye = { x: 60, y: 2, z: 180 };
+  assert.equal(drawn(lensEye, 20), 0, 'from its own lens a round 20 m out draws nothing (no needle across the lens)');
+  assert.equal(drawn(lensEye, 20, true), 0, 'nor a networked round, which carries only its age');
+  assert.equal(drawn(groundEye, 20), 1, 'a camera elsewhere sees it lit at its gun');
+  assert.equal(drawn(lensEye, 80), 1, 'from the lens it draws once clear of it');
+  const t = new THREE.Vector3(tail.getX(0), tail.getY(0), tail.getZ(0));
+  assert.ok(t.distanceTo(new THREE.Vector3(lensEye.x, lensEye.y, lensEye.z)) >= 44.9, 'its dash never reaches back inside the clearance');
+  tr.reset();
+}
 // the composer: a pooled static round, full for 0.3 s, gone by 0.9 s, shifted with the clock
 tr.begin(); tr.compose(0, 2, 3.4, 0, 2, 1.2, 120, now); tr.end();
 assert.equal(geo.instanceCount, 1, 'the composed round draws');

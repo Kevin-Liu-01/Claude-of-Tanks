@@ -153,6 +153,8 @@ assert.ok(a.parent.getObjectByName('frontline-aircraft-0'), 'aircraft slot exist
     const drawn = [];
     source.drawRounds((hx, hy, hz, dx, dy, dz, speed, flown, k, lineageEast) => drawn.push({ hx, hy, hz, dx, dy, dz, speed, flown, k, lineageEast }));
     assert.ok(drawn.length > 0 && drawn.length <= FRONTLINE_LIMITS.tracerCap, `${mapId}: ${drawn.length} AA rounds in flight, capped by the ring`);
+    // (r3, the blind critic's "confetti") a belt: one round in three carries the tracer
+    assert.ok(drawn.length <= Math.ceil(FRONTLINE_LIMITS.tracerCap / 3), `${mapId}: one tracer in three rounds (${drawn.length} drawn)`);
     for (const r of drawn) {
       assert.ok(Math.abs(Math.hypot(r.dx, r.dy, r.dz) - 1) < 1e-4, 'a unit direction');
       assert.ok(r.speed === FRONTLINE_LIMITS.tracerSpeedMps && r.flown > 0 && r.k > 0 && r.k <= 1);

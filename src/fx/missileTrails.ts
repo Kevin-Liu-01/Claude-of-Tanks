@@ -63,6 +63,9 @@ export interface MissileTrails {
   readonly mesh: THREE.Mesh;
   /** The shader's index of a trail look (registered once). */
   lookIndex(look: MissileTrail): number;
+  /** (ac130-fx-228 r3) A registered look's near fade (m from the camera; 0 none), set for this frame's camera: the
+   *  gunship's own missile thins out near its gimbal lens and nowhere else (no-op for a look not yet registered). */
+  setNear(look: MissileTrail, nearM: number): void;
   /** Start a trail for `key` (any number: a round's id hash); returns its slot. */
   begin(key: number, look: number, seed: number): number;
   /** The slot `key` holds, or -1. */
@@ -175,6 +178,13 @@ void main() {
   float zf = 0.5 * uViewport.w / 1080.0;
   tA *= smoothstep( 0.4, 2.5, -eA.z ) * ( 1.0 - smoothstep( 70.0 * zf, 300.0 * zf, pA ) ) * ( 1.0 - smoothstep( 0.05, 0.16, rpA / uViewport.w ) );
   tB *= smoothstep( 0.4, 2.5, -eB.z ) * ( 1.0 - smoothstep( 70.0 * zf, 300.0 * zf, pB ) ) * ( 1.0 - smoothstep( 0.05, 0.16, rpB / uViewport.w ) );
+  // (ac130-fx-228 r3, the blind critic: from the gimbal lens the trail "keeps swelling into a wedge at the frame edge")
+  // a look with a near fade is the gunship's own missile seen from aloft: a stretch wider than ~2 % of the frame (the
+  // part nearest the lens, seen down its length) thins out, so the smoke reads as a line to the target
+  if ( L3.w > 0.0 ) {
+    tA *= 1.0 - smoothstep( 0.010, 0.022, rpA / uViewport.w );
+    tB *= 1.0 - smoothstep( 0.010, 0.022, rpB / uViewport.w );
+  }
   // nothing left to draw (faded at the lens, dissolved at both ends): no quad
   if ( max( tA, tB ) < 0.004 ) { gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 ); return; }
   // the strip: a screen-space band through the projected points, its joints mitred on the neighbours' projections so
@@ -512,6 +522,10 @@ export function createMissileTrails(light: SceneLightUniforms, depth: SceneDepth
       v[i * 6 + 5].set(look.c1[0], look.c1[1], look.c1[2], 0);
       lifeOfLook[i] = look.life;
       return i;
+    },
+    setNear(look, nearM) {
+      const i = looks.get(look);
+      if (i !== undefined) uLook.value[i * 6 + 3].w = nearM;
     },
     begin(key, look, seed) {
       // its own slot, else the lowest free one, else the trail whose newest smoke dissolves soonest

@@ -99,6 +99,8 @@ interface TracerClass {
   dayWidthK?: number;
   /** (ac130-fx-228 r2) its own day colour over its lineage's (the gunship's cannon: read from the ground against the sky) */
   dayRgb?: readonly number[];
+  /** (ac130-fx-228 r3) seen from a camera at its own muzzle (the gunship's lens), it lights this far out (m) */
+  lensClearM?: number;
 }
 
 // Classes by calibre: rifle and heavy machine guns, autocannons, tank guns.
@@ -122,11 +124,15 @@ const TANK: TracerClass = { beltEvery: 1, burnS: 3.6, halfWidthPx: 1.35, haloPx:
 // orange, so the additive dash reads hot orange-red against sky and cloud, not a pink line
 const GUNSHIP_CANNON_DAY: readonly number[] = [1.0, 0.38, 0.08];
 const GUNSHIP_CANNON: TracerClass = { beltEvery: 2, burnS: 3.4, halfWidthPx: 1.5, haloPx: 9, core: 3.4, halo: 0.24,
-  igniteM: 6, streakMaxM: 24, dayK: 2.3, dayWidthK: 1.0, dayRgb: GUNSHIP_CANNON_DAY };
+  igniteM: 6, streakMaxM: 24, dayK: 2.3, dayWidthK: 1.0, dayRgb: GUNSHIP_CANNON_DAY, lensClearM: 45 };
 const GUNSHIP_HOWITZER: TracerClass = { beltEvery: 1, burnS: 6, halfWidthPx: 2.3, haloPx: 14, core: 5.6, halo: 0.34,
-  igniteM: 8, streakMaxM: 24, heavy: true, bead: 2.8 };
+  igniteM: 8, streakMaxM: 24, heavy: true, bead: 2.8, lensClearM: 45 };
+/** (ac130-fx-228 r3) a camera within this of a round's muzzle is that gun's own lens */
+const LENS_EYE_M = 12;
 /** (ac130-fx-228) the screenshot composer's frozen rounds held at once (pooled; the oldest reused past it) */
 const STATIC_CAPACITY = 8;
+/** (ac130-fx-228 r3) a distant backdrop round's radiance by day, as a share of its night radiance */
+const AMBIENT_DAY_K = 0.35;
 /** the halo's share by day (a bright scene: the spark alone reads; r2: enough of it to tint the point) */
 const HALO_DAY = 0.5;
 /** (r2, wave 310a: "by day a pale pinprick or a white orb, no warm colour") by day the core burns at this share of its
@@ -374,8 +380,8 @@ void main() {
 
 interface ProjectileTracers {
   readonly mesh: THREE.Mesh;
-  /** start a frame's write */
-  begin(): void;
+  /** start a frame's write; (ac130-fx-228 r3) `eye` is this frame's camera (world m), for the gunship's lens clearance */
+  begin(eye?: { x: number; y: number; z: number } | null): void;
   /** one round in flight this frame (non-guided, non-aerial): its tracer when it carries one */
   write(shell: TracerShell): void;
   /** close the frame: rounds not seen draw their last streak once more, then go */
@@ -458,6 +464,8 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
   const beltCount = new Map<number, number>();
   let n = 0;
   let dark = 0;
+  /** (ac130-fx-228 r3) this frame's camera, when the caller gave it */
+  let eyeX = 0, eyeY = 0, eyeZ = 0, eyeSet = false;
   let drawnLast = 0;
 
   function lightLevel(): number {
@@ -636,8 +644,10 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
 
   return {
     mesh,
-    begin() {
+    begin(eye) {
       n = 0;
+      eyeSet = !!eye;
+      if (eye) { eyeX = eye.x; eyeY = eye.y; eyeZ = eye.z; }
       // (ac130-fx-228 r2, the motion critic: in the default daylight infrared lens "the 30 mm rounds and impacts show as
       // 1-2 px dots") a heat-imaging camera sees the burning compound as the night does: hot cores, halos, sparks
       dark = o.thermal?.() === true ? 1 : lightLevel();
@@ -667,8 +677,22 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       }
       const exposureS = EXPOSURE_DAY_S + (EXPOSURE_NIGHT_S - EXPOSURE_DAY_S) * dark;
       // (r2) the charge lights a little past the muzzle: dark before, and the smear never reaches back past that point
-      const flown = Number.isFinite(shell.distM) ? (shell.distM as number) : Infinity;
-      const alight = flown - r.cls.igniteM;
+      let flown = Number.isFinite(shell.distM) ? (shell.distM as number) : Infinity;
+      let ignite = r.cls.igniteM;
+      // (ac130-fx-228 r3, the blind critic: from the gimbal lens a 30 mm round read as "a thin needle", "more ribbon than
+      // tracer") a gunship round seen from the camera at its own muzzle (its lens rides at the orbit centre the round
+      // leaves): it flies almost down the line of sight, so its first metres smear across the lens; it draws once it is
+      // LENS_CLEAR_M out, a dash converging on the aim point. Any other camera sees it light at its gun as before
+      if (r.cls.lensClearM && eyeSet && speed > 1e-3) {
+        // a networked round carries its age, not its distance: its flight so far is its age at its speed
+        const f = Number.isFinite(flown) ? flown / speed : age;
+        const ox = shell.pos.x - v.x * f - eyeX, oy = shell.pos.y - v.y * f - eyeY, oz = shell.pos.z - v.z * f - eyeZ;
+        if (Number.isFinite(f) && ox * ox + oy * oy + oz * oz < LENS_EYE_M * LENS_EYE_M) {
+          ignite = Math.max(ignite, r.cls.lensClearM);
+          flown = f * speed;
+        }
+      }
+      const alight = flown - ignite;
       if (!(alight > 0)) { r.k = 0; return; }
       const len = Math.min(STREAK_MAX_M, r.cls.streakMaxM, speed * exposureS, Math.max(0.05, alight));
       const inv = speed > 1e-3 ? len / speed : 0;
@@ -743,6 +767,9 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       for (const sp of sparks) if (sp.life > 0) sp.t0 += delta;
     },
     ambient(hx, hy, hz, dx, dy, dz, speedMps, travelledM, k, east) {
+      // (ac130-fx-228 r3, the blind critic: the backdrop's AA rounds read "like confetti" over a day sky) the front's guns
+      // fire 0.4-0.9 km off: by day their trace is a faint point at that range, at night the streams the camera opens to
+      k *= AMBIENT_DAY_K + (1 - AMBIENT_DAY_K) * dark;
       if (!(k > 0.001)) return;
       const cls = AUTOCANNON;
       const alight = travelledM - cls.igniteM;
