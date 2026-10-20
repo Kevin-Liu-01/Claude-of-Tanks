@@ -47,14 +47,19 @@ const reports=[];const errors=[];
 // - overlap no other HUD part (rosters, held Tab rosters too, score, objective, kill lanes, damage toasts, chat, minimap,
 //   damage panel, drive, systems, ammunition, consumables, report, network readouts, the scope-vision toggle and the
 //   flight console, with the aerial sheet loaded as in battle) and no other element it is shown with (only where its
-//   plan marks it sharing a notice's place, tier 's', and only a pair that never shows together: the countdown on the
-//   detection's place, the medal card on the alert's);
+//   plan marks it sharing a notice's place, tier 's', and only the pair that never shows together: the countdown on the
+//   detection's place; the medal card never shows on anything: it waits, tier 'w');
 // - the detection and the alert clear the whole reticle (tier 2: a plan fallen back to main's places fails), and a shown
 //   countdown or revive count has a planned place;
-// - the medal card waits in the scope where its place clears the battle sight only (a short window);
+// - the medal card waits exactly where its place meets a shown element's (a notice, the revive count: a medal can arrive
+//   after the death) or in the scope where its place clears the battle sight only (a short window), and shows otherwise;
 // and the side lanes keep every kill row main shows while nothing is up, and at least one while anything is (but where
 // every place clear of the reticle crosses a lane whole: EMPTY_LANES_OK).
 const recordMain = arg('record-main','');
+// --notices-only: the mouse cases run the centre-notice stages alone (as the lite cases do); --stages=<regex>: only the
+// notice stages whose key matches (a focused re-run, or recording main's numbers for new stages)
+const noticesOnly = process.argv.includes('--notices-only');
+const stageFilter = arg('stages','') ? new RegExp(arg('stages','')) : null;
 const MAIN_NOTICES = recordMain ? null : JSON.parse(await readFile(new URL('./fixtures/battle-hud-layout.main-notices.json', import.meta.url),'utf8'));
 const mainRecord = {};
 const noticeTable = [];
@@ -98,6 +103,9 @@ function noticeStages(){
   // beside both notices
   for(const set of ['det+countdown','alert:wave123+countdown','alert:armorOn+countdown','det+alert:atgmSelected+countdown',
     'det+alert:wave123+medal','det+alert:wave123+revive'])out.push([`k3|${set}|battle`,'idle',null,null,set,'battle',false]);
+  // a medal arriving after the death (a shell still in flight, a mutual kill) while the revive count shows: the card
+  // waits wherever their places meet (with and without an objective, where the count rises under the score)
+  for(const [ctx,state] of [['k3','idle'],['std','mode-standard']])out.push([`${ctx}|medal+revive|battle`,state,null,null,'medal+revive','battle',false]);
   // Tab held (wider, taller rosters): the same boxes as without it, clear of the rosters
   for(const set of ['det+alert:wave123','det+medal','countdown','det+alert:wave123+revive'])out.push([`tab|${set}|battle`,'idle',null,null,set,'battle',true]);
   out.push(['tab14|det+alert:wave123|battle','idle',null,14,'det+alert:wave123','battle',true]);
@@ -214,6 +222,9 @@ function noticeMeasure(){
   const els={d:document.querySelector('.cot-sixth.on'),a:document.querySelector('.cot-alert.show'),c:document.querySelector('.cot-prebattle.on'),
     m:document.querySelector('.cot-medal-toasts[data-placement="ready"] .cot-medal-toast'),r:document.querySelector('.cot-revive.on')};
   const out={tiers:document.body.dataset.hudNoticeTiers??null,notices:{},failures:[],lanes:{}};
+  // a waiting card keeps its planned place, hidden: where it would show
+  const waiting=document.querySelector('.cot-medal-toasts[data-placement="deferred"] .cot-medal-toast')?.getBoundingClientRect();
+  out.waitingMedal=waiting&&waiting.width>1?[waiting.x,waiting.y,waiting.width,waiting.height].map(v=>Math.round(v*10)/10):null;
   for(const side of ['l','r']){
     const lane=document.querySelector(`.cot-kill-lane.${side}`);
     if(lane)out.lanes[side]={staged:lane.children.length,shown:[...lane.children].filter(c=>!c.hidden&&c.getClientRects().length).length};
@@ -325,7 +336,7 @@ try {
       const pinned=MAIN_NOTICES?.cases?.[name];
       if(!recordMain&&!pinned)errors.push(`${name}: no main notice numbers pinned (tools/fixtures/battle-hud-layout.main-notices.json)`);
       const seen=new Map();
-      for(const [key,...stage] of noticeStages()){
+      for(const [key,...stage] of noticeStages().filter(([key])=>!stageFilter||stageFilter.test(key))){
         await page.evaluate(noticeStage,stage);
         await page.evaluate(async()=>{for(let i=0;i<3;i++)await new Promise(requestAnimationFrame);
           const running=document.getAnimations().filter(a=>a.playState==='running'&&Number.isFinite(a.effect?.getComputedTiming().endTime));
@@ -353,10 +364,16 @@ try {
         // the medal card waits only on a notice whose place it shares, where its plan has no place at all, and in the
         // scope where its place clears the battle sight only
         const scopedShort=stage[4]==='scope'&&tier('m')<2;
+        // The medal card waits (tier 'w', mouseMedalWaits) exactly where its place meets a shown element's, or in the scope
+        // where its place clears the battle sight only: a hidden card must be marked waiting, with its (hidden) place on a
+        // shown element or the scope as its cause, and a shown card must not be marked.
+        const marked=/m\d?s?w/.test(got.tiers??'');
         if(set.includes('medal')&&!got.notices.m&&tier('m')>=0){
-          const waits=(shares('m')&&(got.notices.d||got.notices.a))||scopedShort;
-          if(!waits)failures.push('the medal card has a place but is not shown');
+          const near=(b,n)=>!!n&&b[0]<n.box[0]+n.box[2]+8&&b[0]+b[2]>n.box[0]-8&&b[1]<n.box[1]+n.box[3]+8&&b[1]+b[3]>n.box[1]-8;
+          const cause=scopedShort||(!!got.waitingMedal&&['d','a','r'].some(k=>near(got.waitingMedal,got.notices[k])));
+          if(!marked||!cause)failures.push(`the medal card has a place but is not shown (${marked?'marked waiting':'not marked waiting'}, ${cause?'with':'without'} a shown element in its place)`);
         }
+        if(got.notices.m&&marked)failures.push('the medal card shows while marked waiting');
         if(set.includes('medal')&&got.notices.m&&scopedShort)failures.push(`the medal card shows in the scope where its place clears the battle sight only (tier ${tier('m')})`);
         for(const [k,n] of Object.entries(got.notices)){
           const what={d:'detection',a:'alert',c:'countdown',m:'medal',r:'revive count'}[k];
@@ -369,13 +386,13 @@ try {
           // '-', or cleared less), and a shown countdown or revive count has a planned place (not the CSS defaults)
           if((k==='d'||k==='a')&&t!==2)failures.push(`the ${what}'s plan clears tier ${t<0?'-':t}, not the whole reticle`);
           if((k==='c'||k==='r')&&t<0)failures.push(`the ${what} is shown without a planned place`);
-          // only an element its plan marks as sharing a notice's place (tier 's') may meet that notice, and only the pairs
-          // that never show together: the countdown and the detection (nothing can spot the player before the roll-out),
-          // the medal card and the alert (the card waits it out). An alert shows during the countdown (H, R, E) and with
-          // the revive count, and a detection lit before a death burns on under the revive count.
+          // only an element its plan marks as sharing a notice's place (tier 's') may meet that notice, and only the pair
+          // that never shows together: the countdown and the detection (nothing can spot the player before the roll-out).
+          // An alert shows during the countdown (H, R, E) and with the revive count, a detection lit before a death burns
+          // on under the revive count, and the medal card waits while anything shown meets its place.
           const sharing=hit=>{const m=hit.match(/^notice ([dacmr])$/);if(!m)return false;
             const pair=[k,m[1]].sort().join('');
-            return (pair==='cd'&&shares('c'))||(pair==='am'&&shares('m'));};
+            return pair==='cd'&&shares('c');};
           // a place that clears the battle sight only (tier 1 or 0: the countdown on a 481 px portrait, the revive count on a
           // short window) is not kept off the scope's furniture; its ink is held to main's above
           const scopeFurniture=hit=>hit.startsWith('.cot-scope-vision')&&t<2;
@@ -411,7 +428,7 @@ try {
       }
       await page.evaluate(()=>{window.__stretchTimers=false;window.__HUD_LAYOUT.bus.emit('battle:presented');window.__HUD_LAYOUT.state('idle');});
     }
-    if(!touch&&(recordMain||options.lite)){await centreNotices();await context.close();continue;}
+    if(!touch&&(recordMain||options.lite||noticesOnly)){await centreNotices();await context.close();continue;}
     async function check(state){
       const result=await page.evaluate(measure,state);
       const score=result.rects.find(r=>r.name==='cot-top');
