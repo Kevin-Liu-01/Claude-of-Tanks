@@ -7,14 +7,12 @@
   "vs01-desert-abrams-t90m-r6",
   "vs02-verdant-challenger-t80u-r6",
   "vs03-reservoir-k2-ztz99-r6",
+  "vs04-railyard-leclerc-t14-r6",
   "vs05-oasis-merkava-t72b3-r6",
   "vs06-coastal-type10-ztz99a2-r6",
   "vs07-autumn-ariete-t62-r6",
   "vs08-winter-cv90-bmp3-r6",
-  "vs09-alpine-strv122-t80bv-r6"
- ],
- "held": {
-  "vs04-railyard-leclerc-t14-r6": "a night scene: ships once 227's night sky is back (stars, night clouds, lit windows and street lamps), re-rendered on it",
-  "vs10-steppe-chieftain-t64-r6": "a night scene: ships once 227's night sky is back (stars, night clouds, lit windows and street lamps), re-rendered on it"
- }
+  "vs09-alpine-strv122-t80bv-r6",
+  "vs10-steppe-chieftain-t64-r6"
+ ]
 }
