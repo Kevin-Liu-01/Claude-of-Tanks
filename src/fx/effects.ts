@@ -629,6 +629,10 @@ const GUNSHIP_PYLON_MERGE_M = 120;
  *  airframe) gets the fade and the width cap (missileTrails.ts); a camera near the ground sees the whole trail */
 const GUNSHIP_TRAIL_NEAR_M = 70;
 const GUNSHIP_LENS_TRAIL_M = 120;
+/** (ac130-fx-228 r3) a camera this far above the ground is aloft (the gunship's gimbal, the killcam round it): the kill
+ *  legibility boost (distBoost) reads its apparent distance, its zoom taken against the gimbal's own 55 deg */
+const AERIAL_BOOST_ALOFT_M = 120;
+const AERIAL_REFERENCE_FOV_DEG = 55;
 /** (ac130-fx-228 r2) its widest spread (m, the family's r1 capped) */
 const GUNSHIP_TRAIL_R1_M = 2.4;
 /** (ac130-fx-228 r2) the missile motor flare's sphere (m) and the widest it is ever drawn from the camera (rad, its
@@ -3842,7 +3846,15 @@ function* createFxSteps(
     const cam = engineCtx && engineCtx.camera;
     if (!cam) return 1;
     _camV.set(x, y, z);
-    const d = cam.position.distanceTo(_camV);
+    let d = cam.position.distanceTo(_camV);
+    // (ac130-fx-228 r3, the blind critic's "full-lens tan wash" the frame after a gunship kill) a camera aloft is the
+    // gunship's gimbal (or the killcam's orbit round it), a telephoto at up to 6x: it already magnifies, so the boost
+    // reads the apparent distance (the distance over its zoom against the gimbal's 55 deg); boosted twice, a kill's
+    // fireball and soot cards filled the zoomed lens with their hot emission. A camera near the ground is unchanged
+    const fov = (cam as THREE.PerspectiveCamera).fov;
+    if (Number.isFinite(fov) && fov > 0 && cam.position.y - groundY(cam.position.x, cam.position.z) > AERIAL_BOOST_ALOFT_M) {
+      d /= Math.max(1, AERIAL_REFERENCE_FOV_DEG / fov);
+    }
     // 1 inside 90 m, up to ~1.9 at 300 m (applied to SIZE; alpha untouched)
     return Math.pow(THREE.MathUtils.clamp(d / 90, 1, 2.4), 0.75);
   }

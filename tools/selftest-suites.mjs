@@ -52,6 +52,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // credited to the AC-130 (the drone's to the drone) on every surface
     'src/fx/gunshipRounds.selftest.mjs',
     'src/fx/retiredTracers.selftest.mjs',
+    'src/fx/aerialDistBoost.selftest.mjs',
     'src/sim/killSource.selftest.mjs',
     'src/ui/killSurfaces.selftest.mjs',
     // (r2) the AC-130's airframe, its own chunk staged under the cover, hidden only in its own lens; the warm path
