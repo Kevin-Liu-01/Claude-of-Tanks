@@ -566,6 +566,15 @@ support went with it. Visual change detection lives in generated ledgers that on
   the old values, the reason, who and when. A new tank's row is seeded by its first regen (only an id the committed
   calibration has never measured: a calibrated tank whose row went missing fails and is compared with its committed
   calibration, never re-seeded as a first measurement); `--prune` drops retired ids.
+- `docs/geometry-gate/sealed.json` see-through columns (guards 227/229) — `tools/tank-sealed-check.mjs --ledger --gate`
+  (in `tank:release:check`) holds each row's `seeThroughPx` (glass, markings, undeclared alpha-cut parts) to max(12 px,
+  10 %) and its `netSeeThroughPx` (sky between declared netting) to max(12 px, 2 %) either way; every playable id has a
+  row. Re-baseline columns only with `--update-ledger[=see-through] --accept-see-through=<ids>` (a sealed new vehicle's
+  row is recorded the same way).
+- `docs/geometry-gate/contig-hidden.json` (guards 229) — the §B2 fleet hidden-gap audit: per tank, the plan gaps the
+  hull-anchored lattice reads and the pre-227 raster missed, as exact vehicle-frame pixel boxes
+  (`tools/contig-hidden-gaps.mjs`, from `tools/contig-phase-audit.mjs` rows). `tank-standard-check` passes those as
+  known work orders and fails any other gap; `--prune` a closed gap, fix a new one.
 
 A new receipt asserts properties of the current build. When a change needs a reviewed before/after record, capture it
 (screenshots or a ledger diff) in the change itself rather than pinning bytes in a receipt.
