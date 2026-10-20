@@ -19,7 +19,7 @@
 import type * as THREE from 'three';
 import { CivicMesh, hexRgb, mixRgb, scaleRgb, toned, civicHash, civicNoise, type Rgb } from './civicMesh.ts';
 import type { RegionalCivicStyle } from './styles.ts';
-import type { CivicAreaPlan, CivicBed, CivicRect } from './types.ts';
+import type { CivicAreaPlan, CivicBed, CivicRect, PathwayPlan } from './types.ts';
 
 /** A placed building's plot (props buildingFeatures): centre, full width (local x) and depth (local z), heading. */
 export interface CivicPlot { readonly x: number; readonly z: number; readonly w: number; readonly d: number; readonly rot: number }
@@ -29,6 +29,8 @@ export interface CivicAreaContext {
   tier: 'desktop' | 'mobile';
   /** the plots standing when the area is composed: the frontage walks run along the ones that front its room */
   plots: readonly CivicPlot[];
+  /** (228 r3) the map's pathway plan: its streets' pavements turn into the room's frontage walks at its mouths */
+  pathways?: PathwayPlan | null;
 }
 
 /** One props destructible the area adds: its kind, world seat, heading (radians) and scale. */
@@ -401,8 +403,10 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
   const granite = hexRgb(style.bands.granite), basalt = hexRgb(style.bands.basalt);
   // the roundel: its ring band in granite units, the basalt rose and its rays
   const C = area.centre;
-  m.skinRing(C.x, C.z, C.ringR[0], C.ringR[1], 64, SKIN, (k) => toned(granite, k, 1, 0.07, 31));
-  m.skinRing(C.x, C.z, C.ringR[0] - 0.22, C.ringR[0] - 0.02, 64, SKIN, (k) => toned(basalt, k, 9, 0.06, 30));
+  // (228 r3, the blind critics: "a thin pale circle ... reads like a roundabout or helipad marking") the ring band a dark
+  // basalt inlay in units, its inner line granite
+  m.skinRing(C.x, C.z, C.ringR[0], C.ringR[1], 64, SKIN, (k) => toned(basalt, k, 1, 0.09, 31));
+  m.skinRing(C.x, C.z, C.ringR[0] - 0.22, C.ringR[0] - 0.02, 64, SKIN, (k) => toned(granite, k, 9, 0.06, 30));
   m.skinRing(C.x, C.z, C.roseR, C.roseR + 0.16, 32, SKIN, (k) => toned(basalt, k, 2, 0.06, 32));
   const rays = C.rays * 2;
   for (let k = 0; k < rays; k++) {
@@ -426,6 +430,27 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
     debug.push({ pts: [p.rect.x0, p.rect.z0, p.rect.x1, p.rect.z0, p.rect.x1, p.rect.z1, p.rect.x0, p.rect.z1], col: [130, 130, 130] });
   }
   frontageWalks(m, area, ctx.plots, style, census, debug);
+  // (228 r3, the blind critics: the streets' pavements "end abruptly" in "pale wedge slabs" at the square's mouths) each
+  // mouth's corners paved flush: from the street's kerb line out past its widest pavement, as deep into the room as a
+  // frontage walk and its gutter, so the street's dropped kerb runs on into the room's walks
+  if (ctx.pathways) {
+    const pw = ctx.pathways, room = area.room, K = pw.kerbM, outer = K + style.kerb.width + pw.maxWalkM, depth = 2.45;
+    for (const [mx, mz] of pw.mouths) {
+      const edge = Math.abs(mx - room.x0) < 1 ? 'w' : Math.abs(mx - room.x1) < 1 ? 'e' : Math.abs(mz - room.z0) < 1 ? 's' : Math.abs(mz - room.z1) < 1 ? 'n' : null;
+      if (!edge) continue;
+      for (const sgn of [-1, 1]) {
+        const a = sgn < 0 ? -outer : K, b = sgn < 0 ? -K : outer;
+        const r: CivicRect = edge === 's' ? { x0: mx + a, x1: mx + b, z0: room.z0, z1: room.z0 + depth }
+          : edge === 'n' ? { x0: mx + a, x1: mx + b, z0: room.z1 - depth, z1: room.z1 }
+          : edge === 'w' ? { x0: room.x0, x1: room.x0 + depth, z0: mz + a, z1: mz + b }
+          : { x0: room.x1 - depth, x1: room.x1, z0: mz + a, z1: mz + b };
+        const hits = (q: CivicRect) => q.x0 < r.x1 && q.x1 > r.x0 && q.z0 < r.z1 && q.z1 > r.z0;
+        if (area.beds.some((bed) => hits(bed.rect)) || area.paving.some((p) => hits(p.rect))) continue;
+        flagRect(m, r, style, SKIN + 0.002, 7);
+        census.mouthAprons = (census.mouthAprons ?? 0) + 1;
+      }
+    }
+  }
   if (area.fountainRing) {
     const f = area.fountainRing;
     m.skinRing(f.x, f.z, f.r - 0.5, f.r, 56, SKIN, (k) => toned(granite, k, 6, 0.07, 37));

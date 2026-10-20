@@ -64,7 +64,7 @@ import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
 import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from './crownShadowDapple.ts';
 import { markShadowOnly, setShadowCasterCascades, setShadowCasterDynamicMask, setShadowCasterProfile, shadowCasterCascadesOf, shadowCasterDynamicMaskOf, shadowCasterProfileOf, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
-import { civicLawnTest, civicPavedRooms, civicTreeStations } from './civic/plans/index.ts';
+import { civicLawnTest, civicPavedRooms, civicPavementTest, civicTreeStations } from './civic/plans/index.ts';
 import { advanceGrassChunkWork, createGrassChunkWork,
   type GrassChunkWork, type GrassChunkBuffer, type GrassChunkWorkState } from './grassChunkWork.ts';
 import { createGrassCarpetWork, advanceGrassCarpetWork,
@@ -4384,6 +4384,8 @@ function* vegetationBuildSteps(
   const yardWeedsAt = heightField._yardWeedsAt ?? null;
   const civicLawnAt = civicLawnTest((cfg as { id?: string } | null)?.id);
   const civicRooms = civicPavedRooms((cfg as { id?: string } | null)?.id);
+  // (228 r3) and the kerbed streets' pavement bands: no tuft through the flags
+  const civicPave = civicPavementTest((cfg as { id?: string } | null)?.id, heightField._layout?.roads ?? []);
   function terrainDryness(
     x: number,
     z: number,
@@ -4394,6 +4396,7 @@ function* vegetationBuildSteps(
     if (civicLawnAt !== null && civicLawnAt(x, z)) return 0;
     // (and the square's paving round it, out to the houses, grows none)
     for (const r of civicRooms) if (x > r.x0 - 1 && x < r.x1 + 1 && z > r.z0 - 1 && z < r.z1 + 1) return -1;
+    if (civicPave !== null && civicPave(x, z)) return -1;
     if ((noVeg(x, z) || heightField._railBerth?.(x, z)) && !batterAdmits(x, z)) return -1; // + a clearance rail berth
     const groundType = heightField.getGroundType(x, z);
     // ground lane (2026-10-03): the turf's edge along a road dissolves over a metre and a half (a position hash, inline:
