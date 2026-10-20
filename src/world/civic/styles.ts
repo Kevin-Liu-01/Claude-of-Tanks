@@ -114,6 +114,47 @@ export const CIVIC_STYLES: Readonly<Record<string, RegionalCivicStyle>> = Object
     grate: { iron: 0x262624, frame: 0xa8a49a },
     steps: 0xc8bca2,
   }),
+  // (229 b2) the International Settlement, 1937 (Suzhou Creek): granite kerbstones, concrete flags, red-brick garden walls
+  shanghai: Object.freeze<RegionalCivicStyle>({
+    id: 'shanghai',
+    kerb: { width: 0.30, face: 0.15, unit: [1.0, 1.5], hex: 0x9a978f },
+    pavement: { course: 0.6, length: [0.6, 0.9], hex: 0x8c8880, tone: 0.06, joint: 0x55524c, step: 2.0, maxCourses: 2 },
+    gutter: { rows: 1, width: 0.35, dish: 0.02, hex: 0x6a6862 },
+    bands: { granite: 0x8f8c85, basalt: 0x4a4946, sett: 0x7a766e, bay: 0x8e8a82 },
+    edging: {
+      kerb: { width: 0.25, face: 0.15, hex: 0x9a978f },
+      wall: { width: 0.30, height: 0.35, hex: 0x8a5a48, coping: 0.03 },
+      pier: { size: 0.40, height: 1.0, hex: 0x8a5a48 },
+      railing: { kind: 'fenceiron', pitch: 2.4, scale: 0.9 },
+    },
+    path: { hex: 0xa89878, edgeHex: 0x8a867e, worn: 0x8e7e60 },
+    lawn: { bare: 0x6a5e44, greens: [0x4a6230, 0x52683a, 0x5a6e3a, 0x50663a] },
+    flowers: [0xd8c040, 0xe8e4dc, 0xc8303a, 0xf2efe6],
+    hedge: 0x2a4422,
+    grate: { iron: 0x2a2a28, frame: 0x8f8c85 },
+    steps: 0x9a968e,
+  }),
+  // (229 b2) a Zeeland village, autumn 1944 (Tidegate Polders): a klinker stoep on a brick-on-edge kerb, a brick goot,
+  // blue hardstone edging round the brink's green, shell paths
+  polder: Object.freeze<RegionalCivicStyle>({
+    id: 'polder',
+    kerb: { width: 0.12, face: 0.05, unit: [0.21, 0.21], hex: 0x7a3e2c },
+    pavement: { course: 0.30, length: [0.40, 0.60], hex: 0x8a4a34, tone: 0.08, joint: 0x4a3a30, step: 1.0, maxCourses: 3 },
+    gutter: { rows: 2, width: 0.25, dish: 0.02, hex: 0x5a3a2e },
+    bands: { granite: 0x6a6c6e, basalt: 0x3e3e3c, sett: 0x8a4a34, bay: 0x9a6a50 },
+    edging: {
+      kerb: { width: 0.12, face: 0.08, hex: 0x6a6c6e },
+      wall: { width: 0.22, height: 0.30, hex: 0x8a4a34, coping: 0.02 },
+      pier: { size: 0.35, height: 0.8, hex: 0x8a4a34 },
+      railing: null,
+    },
+    path: { hex: 0xd2c8b4, edgeHex: 0x7a4a3a, worn: 0xa89880 },
+    lawn: { bare: 0x6a5a40, greens: [0x4f6a34, 0x5a7438, 0x627a3c, 0x567036] },
+    flowers: [0xe8d040, 0xc83a2a, 0xf2efe6, 0xe0a030],
+    hedge: 0x2c4a24,
+    grate: { iron: 0x2a2a28, frame: 0x6a6c6e },
+    steps: 0x6a6c6e,
+  }),
 });
 
 /** A plan's style row (throws on an unknown key: a plan must name a row that exists). */

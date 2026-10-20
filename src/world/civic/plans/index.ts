@@ -6,11 +6,15 @@ import { CIVIC_STYLES } from '../styles.ts';
 import { URBAN_CIVIC_PLAN } from './urban.ts';
 import { RUINSPIRES_CIVIC_PLAN } from './ruinspires.ts';
 import { CLIFFBRIDGE_CIVIC_PLAN } from './cliffbridge.ts';
+import { BLACKGLASS_CIVIC_PLAN } from './blackglass.ts';
+import { POLDERS_CIVIC_PLAN } from './polders.ts';
 
 const PLANS: Readonly<Record<string, CivicPlan>> = Object.freeze({
   urban: URBAN_CIVIC_PLAN,
   ruinspires: RUINSPIRES_CIVIC_PLAN,
   cliffbridge: CLIFFBRIDGE_CIVIC_PLAN,
+  blackglass: BLACKGLASS_CIVIC_PLAN,
+  polders: POLDERS_CIVIC_PLAN,
 });
 
 /** The maps with a civic plan (the receipts iterate them). */
