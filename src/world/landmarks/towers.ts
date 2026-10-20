@@ -4,7 +4,8 @@
 // belfry, the Dalmatian campanile, the fire lookout and a reservoir's valve tower with its footbridge. Sizes from the
 // type: a railway water tower of the 1880s stands 16-20 m, a smock mill's cap 10-12 m with sails of 9-10 m, a campanile
 // 25-45 m, the Roer dams' valve towers 15-20 m over the water.
-import { LocalFrame, PartSink, faceBox, facePoint, normalize3, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
+import type { BufferGeometry } from 'three';
+import { LocalFrame, PartSink, faceBox, facePoint, normalize3, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import { archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, cross, dome, drum, extrude, moulding, railing, revolve, smoothRender, tentRoof, type ArchHole, LIMEWASH_UV } from './kit.ts';
 import { ageWall } from './age.ts';
@@ -85,6 +86,9 @@ export const windmill: LandmarkBuilder = (ctx) => {
   const base = -0.6 - ctx.groundFall;
   const turn = ctx.variant() * Math.PI / 2;
   const cloth = ctx.variant() < 0.5 ? 0 : 0.35 + ctx.variant() * 0.5;
+  /** (destruction-slabs 227 round 5) The tower mill's upper shaft as its collision has it: the closed brick revolve its
+   *  records were derived from before the shaft was drawn in chunks (towerCollision, after the build). */
+  let shaftTwin: RegionalParts | null = null;
   if (style === 'post') {
     const bw = 3.8, bd = 4.6, bh = 5.0, lift = Math.max(3.2, H - bh - 1.8);
     // (227, lane B; the anti-raft floor: the mill fell as a heap at its feet, 13 % of its height) the trestle on its stone
@@ -190,6 +194,14 @@ export const windmill: LandmarkBuilder = (ctx) => {
     // wall: two courses of four, each a quarter of the shaft's ring with the wall's thickness, ragged where it broke (its
     // top and bottom stepped course by course, its two broken ends jagged), its window and surround with it; each falls
     // out over the side it stood on, clear of the stump
+    // (round 5; the round-4 critic: the chunks re-derived the mill's records — 100 colliders and 2 obstacles of polders'
+    // tower mill, each course's solid 16-sided record replaced by about 30 chunk prisms over a third of its footprint — for
+    // a change that was the drawing's alone) the collision keeps the upper shaft as it was: one closed revolve
+    {
+      const twin = new PartSink(sink.uvOffset);
+      revolve(twin, 'stone', 0, 0, [[0, sy + 0.3], shaft(sy + 0.3), shaft(capY), [0, capY]], 16, {}, F);
+      shaftTwin = twin.finish();
+    }
     const ROWS = 2, SECTORS = 4, wall = 0.55, N = 16;
     const winY = capY * 0.62;
     // (the break between the courses clear of the windows' surrounds and of the ragged course: over them where the top
@@ -326,8 +338,37 @@ export const windmill: LandmarkBuilder = (ctx) => {
   };
   if (tower) piece(sink, { name: 'tail', kind: 'detach', at: 'breached', fall: 'flat', toward: [0, -1], clear: 0.8 }, gear);
   else piece(sink, { name: 'tail', kind: 'lattice', at: 'collapse', fall: 'topple' }, gear);
-  return { parts: finishLandmark(sink) };
+  const parts = finishLandmark(sink);
+  const twin = shaftTwin;
+  return twin ? { parts, collision: (finished, finish) => towerCollision(finished, finish(twin)) } : { parts };
 };
+
+/**
+ * (destruction-slabs 227 round 5) A tower mill's collision parts as they were before its upper shaft was drawn in chunks
+ * (integ/228's records, byte for byte: tools/capture-world-collision-manifests.mjs --check): the chunks' solids out and the
+ * closed revolve (`twin`, finished as the parts were) in at the first one's place in its bucket, and the windshaft — a
+ * piece of its own now, riding the cap — first among the solids of its bucket, where it stood when it was no piece.
+ */
+function towerCollision(parts: RegionalParts, twin: RegionalParts): { parts: RegionalParts; made: BufferGeometry[] } {
+  const out = { ...parts } as RegionalParts;
+  const made: BufferGeometry[] = [];
+  for (const bucket of Object.keys(out) as RegionalBucket[]) {
+    const list = out[bucket];
+    if (!list?.length) continue;
+    const chunk = (g: BufferGeometry): boolean => !g.userData.noCollision && String(g.userData.damagePiece ?? '').startsWith('tower-top-');
+    const at = list.findIndex(chunk);
+    let next = list;
+    if (at >= 0) {
+      const own = twin[bucket] ?? [];
+      made.push(...own);
+      next = [...list.slice(0, at).filter((g) => !chunk(g)), ...own, ...list.slice(at).filter((g) => !chunk(g))];
+    }
+    const shaftIdx = next.findIndex((g) => !g.userData.noCollision && g.userData.damagePiece === 'windshaft');
+    if (shaftIdx > 0) next = [next[shaftIdx]!, ...next.slice(0, shaftIdx), ...next.slice(shaftIdx + 1)];
+    out[bucket] = next;
+  }
+  return { parts: out, made };
+}
 
 // ---------------------------------------------------------------------------------------------------------- bell towers
 

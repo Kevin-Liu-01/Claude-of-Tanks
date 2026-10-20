@@ -371,6 +371,9 @@ const PERCH_LIFT_M = 0.9, PERCH_SHARE = 0.3, PERCH_BAND_M = 0.8, PERCH_STEEP = 0
 const PERCH_NEAR_M = 0.45;
 /** A drawn mesh of a roof body judged for its perch draws this much or more (the detector's slab: 8 m² and more). */
 const PERCH_PLATE_M2 = 4;
+/** (round 5) A flat plate a roof body draws lies high past the walls with this share of it past them (the slab check: 5 %
+ *  and a square metre). */
+const PLATE_PAST_SHARE = 0.05;
 const _boxMid: [number, number] = [0, 0];
 const _boxHalf = [0, 0, 0];
 /** panelsStanding's body frame (one, reused: it runs each frame of a collapse's first 40 s). */
@@ -1165,10 +1168,23 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
   }
   /**
    * Whether a body at `at` (world pose) with extents `half` (its frame's) lies 1.5 m or more over the ground and a tenth or
-   * more of its plan outside the top storey's drawn walls (structureEnclosure: the building's walls and what they enclose).
+   * more of its plan outside the top storey's drawn walls (structureEnclosure: the building's walls and what they enclose),
+   * or (round 5) one of the flat plates it draws (`meshes`) does, a twentieth of it past them.
    */
-  function highPastWalls(c: LiveCollapse, at: ArrayLike<number>, box: readonly number[]): boolean {
+  function highPastWalls(c: LiveCollapse, at: ArrayLike<number>, box: readonly number[], meshes: readonly THREE.Mesh[] | null = null): boolean {
     const a = c.seam.anatomy;
+    // (round 5; the round-4 critic's badlands #0 caravanserai, A narrow, seed 725095366: a roof sheet whose body's box ran
+    // 15 m along the heap, its middle 0.6 m over it, drew a 4.2 x 4.1 m plate at its end lying flat 2 m up across the wall
+    // heads, 75 % of it past the walls, for a second after the collapse) each flat plate it draws judged by itself first,
+    // as the slab check reads it: its underside over the ground at its middle, its surface past the walls at its height
+    if (meshes) for (const m of meshes) {
+      const comps = componentsOf(m);
+      for (let k = 0; k < comps; k++) {
+        if (!drawnSamples(m, k) || drawnLevel < PERCH_STEEP) continue;
+        if (!(pb[1]! - env.groundAt((pb[0]! + pb[3]!) / 2, (pb[2]! + pb[5]!) / 2) >= 1.5)) continue;
+        if (pastWallsShare(c) >= PLATE_PAST_SHARE) return true;
+      }
+    }
     // (round 2) at the body's box: its middle over the ground, its plan sampled across it
     _hq.set(at[3], at[4], at[5], at[6]);
     _hv.set((box[0]! + box[3]!) / 2, (box[1]! + box[4]!) / 2, (box[2]! + box[5]!) / 2).applyQuaternion(_hq);
@@ -1195,6 +1211,23 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       if (enclosedAt(a, bx, bz, 0.3, band) === false || drawnOverAt(a, bx, bz, 1) < yb - 1.5) out++;
     }
     return out >= 0.1 * n;
+  }
+  /** (round 5) The share of the last drawnSamples' plate (perchSamples, by area) past the walls of the band at its height
+   *  (a standing building's top storey; a fallen one's where it lies), or over a spot drawn 1.5 m and more under it. */
+  function pastWallsShare(c: LiveCollapse): number {
+    const a = c.seam.anatomy, f = frameOf(a);
+    const top = Math.max(0, a.storeys.length - 1), fallen = fallenUnder(c);
+    let total = 0, out = 0;
+    for (let s = 0; s < perchSamples.length; s += 4) {
+      const wx = perchSamples[s]!, wy = perchSamples[s + 1]!, wz = perchSamples[s + 2]!, wt = perchSamples[s + 3]!;
+      const yb = wy - a.placement.y;
+      let band = top;
+      if (fallen) for (let k = 0; k < a.storeys.length; k++) if (yb < a.storeys[k]!.y1) { band = k; break; }
+      const bx = (wx - f.x) * f.c - (wz - f.z) * f.s, bz = (wx - f.x) * f.s + (wz - f.z) * f.c;
+      total += wt;
+      if (enclosedAt(a, bx, bz, 0.3, band) === false || drawnOverAt(a, bx, bz, 1) < yb - 1.5) out += wt;
+    }
+    return total > 0 ? out / total : 0;
   }
   /**
    * Whether a roof body at rest (pose `at`, `box` in its frame; `self` its handle) is perched (PERCH_*): the engineering
@@ -1889,7 +1922,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
   /** A roof slab at rest looked at (its pose in `pose`): left where it belongs, or shoved off a rest high past the walls,
    *  or (shoved enough) broken into its sheets or laid on the ground under it. True when it was moved. */
   function lookAtRoof(c: LiveCollapse, p: LivePiece): boolean {
-    if (!highPastWalls(c, pose, p.box)) {
+    if (!highPastWalls(c, pose, p.box, piecesMeshes(p))) {
       // (round 4) perched over nothing, or on its edge high over the heap: a slab of several sheets cracks into them (each
       // looked at in turn), a one-sheet slab breaks up where it lies
       if (perchedAt(pose, p.box, p.handle, piecesMeshes(p))) {
@@ -1951,7 +1984,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
   function lookAtSheet(c: LiveCollapse, p: LivePiece, k: number): boolean {
     const part = p.parts[k]!, spec = p.piece.parts[k]!;
     const pbox = part.box ?? [-spec.half[0], -spec.half[1], -spec.half[2], spec.half[0], spec.half[1], spec.half[2]];
-    if (!highPastWalls(c, pose, pbox)) {
+    if (!highPastWalls(c, pose, pbox, part.meshes)) {
       // (round 4) perched over nothing, or on its edge high over the heap: it breaks up where it lies
       if (perchedAt(pose, pbox, part.handle, part.meshes)) {
         part.shoves = -1;

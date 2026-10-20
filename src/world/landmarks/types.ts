@@ -7,6 +7,7 @@
 // (maps/regional/geometry.ts), so a set piece is the region's masonry, render and roofing under the same weathering and
 // merges into the same material buckets as the houses: no draw call of its own.
 import type { SimpleCollisionShape } from '../collision.ts';
+import type { BufferGeometry } from 'three';
 import type { RegionalParts } from '../maps/regional/geometry.ts';
 import type { WeatherTints } from '../maps/regional/weather.ts';
 
@@ -162,6 +163,14 @@ interface LandmarkBuild {
   destructibles?: ReadonlyArray<{ kind: string; x: number; z: number; yawDeg: number; scale?: number }>;
   /** Pieces it carries (a square's centre piece), in its frame: placed after it, from streams of their own. */
   children?: readonly LandmarkPlacement[];
+  /**
+   * (destruction-slabs 227 round 5) The parts its collision is derived from, when they are not the parts it draws: a set
+   * piece drawn anew for its damage (a tower mill's upper shaft in courses of brick chunks) whose records stand as they
+   * were (DESTRUCTION.md §19: collision is touched only where a record is wrong). Given the parts as the composer finished
+   * them (weathered, a phone's left out) and that weathering to finish its own the same way; returns the collision's parts
+   * and the geometries it made for them alone (disposed once the collision is derived). Absent: the parts.
+   */
+  collision?: (parts: RegionalParts, finish: (own: RegionalParts) => RegionalParts) => { parts: RegionalParts; made: BufferGeometry[] };
 }
 
 export type LandmarkBuilder = (ctx: LandmarkBuildContext) => LandmarkBuild;

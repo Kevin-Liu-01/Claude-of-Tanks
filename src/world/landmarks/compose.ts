@@ -383,23 +383,33 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
         parts[name] = list.filter((g) => !g.userData.fine);
       }
     }
+    // (destruction-slabs 227 round 5) the parts finished as they are drawn: a builder's own collision parts are finished so too
+    let finishParts: (own: RegionalParts) => RegionalParts;
     if (ctx.architecture) {
       // the map kit's weathering: each piece its own tint (or the builder's), damp at the wall foot, moss on the roofs
       const palette = ctx.architecture.weather ?? DEFAULT_WEATHER;
       const tints = { ...pickWeatherTints(palette, streamFrom(hashSeed(`landmark:weather:${ctx.mapId}:${placement.kind}`, ...identity))), ...built.tints,
         ...authoredTints(placement) };
-      parts = weatherRegionalParts(parts, tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
+      finishParts = (own) => weatherRegionalParts(own, tints, { damp: palette.damp, moss: palette.moss, mossTint: palette.mossTint });
     } else {
       // a map without a kit draws the plain buckets (no vertex colour there): the occlusion record never reaches the merge
-      for (const geometry of partList(parts)) if (geometry.getAttribute('shade')) geometry.deleteAttribute('shade');
+      finishParts = (own) => {
+        for (const geometry of partList(own)) if (geometry.getAttribute('shade')) geometry.deleteAttribute('shade');
+        return own;
+      };
     }
+    parts = finishParts(parts);
+    // (round 5) what the collision is derived from: the parts, or the builder's own (a set piece drawn anew for its damage
+    // whose records stand as they were)
+    const collisionOf = built.collision?.(parts, finishParts) ?? null;
+    const solids = collisionOf?.parts ?? parts;
     // the collision, derived from the solids at the piece's pose (a bridge's deck is its own movement record); a piece
     // that is all dressing (a square's paths and fence) publishes none
     const baseY = ground.y;
     let records = 0;
     // (the obstacles the passes before this piece made: its approaches test their ground against these, not its own)
     const obstacleStart = ctx.obstacles.length, colliderStart = ctx.colliders.length;
-    if (hasStructure(parts)) try {
+    if (hasStructure(solids)) try {
       let shell;
       const movement: CollisionRecord[] = [];
       if (built.movement?.length) {
@@ -411,9 +421,9 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
           movement.push(movementRecord(built.movement.slice(i, i + MOVEMENT_PART_LIMIT), placement.x, baseY, placement.z, yaw));
         }
         ctx.obstacles.push(...movement);
-        shell = deriveRuntimeStructureShellBands(parts);
+        shell = deriveRuntimeStructureShellBands(solids);
       } else {
-        const profile = deriveRuntimeStructureCollisionProfile(parts);
+        const profile = deriveRuntimeStructureCollisionProfile(solids);
         appendStructureCollisionBand(ctx.obstacles, profile.contact, placement.x, baseY, placement.z, yaw).kind = 'structure';
         shell = profile.shell;
       }
@@ -445,9 +455,11 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
       }
     } catch (error) {
       for (const geometry of partList(parts)) geometry.dispose();
+      for (const geometry of collisionOf?.made ?? []) geometry.dispose();
       skip(`collision: ${(error as Error).message}`);
       continue;
     }
+    for (const geometry of collisionOf?.made ?? []) geometry.dispose();
     entry.triangles = partList(parts).reduce((n, g) => n + (g.index ? g.index.count : g.getAttribute('position').count) / 3, 0);
     _matrix.compose(_position.set(placement.x, baseY, placement.z), _quaternion.setFromAxisAngle(_up, yaw), _scale);
     ctx.merge(parts, _matrix);

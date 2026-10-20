@@ -30,7 +30,7 @@ import type { StructureDamageSeam, StructureSpan } from '../world/structureDamag
 import type { DebrisPhysics } from './debrisPhysics.ts';
 import { emitDebrisLanding } from './clock.ts';
 import { profEnd, profStart } from './fxProf.ts';
-import { createPlateHold, layPerchedPlates, layUprightPlates, type PlateDrawing } from './uprightPlates.ts';
+import { createPlateHold, layPerchedPlates, layUprightPlates, type PlateDrawing, type WatchedPlate } from './uprightPlates.ts';
 import {
   CELL_CRACKED, CELL_FALLEN, CELL_GONE, CELL_OPENING, CELL_SPALLED, CELL_VOID, CRACK_AT, SPALL_AT, cellRect, createWallFracture,
   createWallStrikeOutcome, dropFace, gableTopAt, strikeWall, struckFace, type FaceGrid, type WallFracture, type WallStrikeKind,
@@ -259,6 +259,16 @@ interface Live {
   bakedPending: THREE.Mesh[];
   bakedMerged: Map<string, THREE.Mesh>;
   mergedAt: number;
+  /** (destruction-slabs 227 round 5) Per merged heap (its key), each vertex's body (its bake's count): a body's pieces do
+   *  not hold one another up there either. */
+  heapBody: Map<string, Int32Array>;
+  /** (round 5; the round-4 critic's airfield #0 tower, seed 1147584926: a 3.7 x 3.2 m plate of its heap 1.3 m up, held
+   *  when it baked by the tower's standing storey, 62-95 % over nothing for 4.5 s as the storeys under it fell) the heap's
+   *  plates held when they baked, judged again: five times a second while the building changes, once a second after. */
+  watch: Array<WatchedPlate & { key: string }>;
+  watchedAt: number;
+  /** When the building last changed here (a strike, a face's fall, a storey's, its release; fx s). */
+  touchedAt: number;
   strikes: number;
   /** Its faces' redraws so far (collapseBodies' cut laid before the last is stale). */
   version: number;
@@ -270,6 +280,8 @@ interface Live {
 }
 
 const BAKE_STILL_S = 1;
+/** (round 5) A heap's watched plates are judged this often (fx s) while their building changes and this long after. */
+const WATCH_EVERY_S = 0.2, WATCH_AFTER_S = 6;
 /** A fracture body's rigid shape options: masonry lands dead and grips, rolls little and stops turning soon; one that
  *  still creeps four seconds on sleeps where it lies (integ's engine: rubbleBodies' law), so a heap leaves the solver
  *  within seconds (2026-10-15, the port's house probe: a heap of a hundred awake clumps was most of the frame). */
@@ -296,6 +308,8 @@ const CRACK_MPS = 3;
 const DUST_COAT = 0.42;
 /** A room's light behind a breach (its walls; the floor and ceiling by their own shade): the wall's colour in shade. */
 const ROOM_SHADE = 0.6;
+/** (round 5) A room's floor this far over its floor line (m): the storey under it draws its own top there. */
+const ROOM_FLOOR_LIFT_M = 0.02;
 const CRACK_MIN_CELLS = 6;
 /** A gable's void cell's home (cutIntoCells): its row's nearest cell that is no void, else the nearest in the rows under it;
  *  none (STATIC_CELL) when the face has no such cell. */
@@ -1095,12 +1109,15 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     const col = room ? draw.core.tint : a.interior.color;
     const list: number[] = [];
     // inward-facing walls, floor and ceiling of the storey's room
-    const q = (p0: number[], p1: number[], p2: number[], p3: number[], n: number[], shade: number) =>
-      pushQuad(list, layout, p0, p1, p2, p3, n, col, room ? shade * ROOM_SHADE : shade);
-    for (const [ax, az, bx, bz, nx, nz] of interior.walls) q([ax, y0, az], [bx, y0, bz], [bx, y1, bz], [ax, y1, az], [nx, 0, nz], Math.abs(nx) > 0.5 ? 0.9 : 1);
-    // (round 4, tavern #7) the top storey's room under a roof that has fallen has no ceiling: open to the sky, never a lid
+    // (round 4, tavern #7) the top storey's room under a roof that has fallen has no ceiling: open to the sky, never a lid —
+    // (round 5) and lit as the sky lights it, not in an interior's shade
     const open = storey === a.storeys.length - 1 && !!a.roof && roofGone.has(live.seam.structureIdx);
-    for (const [x0, z0, x1, z1] of interior.rects) q([x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [0, 1, 0], 0.9);
+    const q = (p0: number[], p1: number[], p2: number[], p3: number[], n: number[], shade: number) =>
+      pushQuad(list, layout, p0, p1, p2, p3, n, col, room && !open ? shade * ROOM_SHADE : shade);
+    for (const [ax, az, bx, bz, nx, nz] of interior.walls) q([ax, y0, az], [bx, y0, bz], [bx, y1, bz], [ax, y1, az], [nx, 0, nz], Math.abs(nx) > 0.5 ? 0.9 : 1);
+    // (round 5) its floor a hand over the floor line, where the storey under it draws its top
+    const fy = y0 + ROOM_FLOOR_LIFT_M;
+    for (const [x0, z0, x1, z1] of interior.rects) q([x0, fy, z0], [x1, fy, z0], [x1, fy, z1], [x0, fy, z1], [0, 1, 0], 0.9);
     // (the ceilings last: a roof that falls after this room was laid takes them by the draw range)
     const ceilFrom = list.length / layout.stride;
     if (!open) for (const [x0, z0, x1, z1] of interior.rects) q([x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1], [0, -1, 0], 0.7);
@@ -1110,6 +1127,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     mesh.userData.storey = storey;
     mesh.userData.roomKey = interior.key;
     mesh.userData.ceilFrom = ceilFrom;
+    mesh.userData.roomShade = room && !open ? ROOM_SHADE : 1;
     mesh.matrixAutoUpdate = false;
     bodyToWorld(live, mesh.matrix);
     mesh.matrix.elements[13] -= (live.sunk[storey] ?? 0) + (live.flight[storey] ?? 0);
@@ -1712,11 +1730,15 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     // nothing) nor lies perched: held by what it lies on (the heap, the building's collapse lying still, the records, the
     // bodies) or laid down onto the ground — never by its own body's other pieces beside it (fourth pass: the same tower at
     // another seed, a clump's skin and its dark interior plate each holding the other 1.7 m up)
+    // (round 5) and what it lies on now may go: the plates held now are watched (their vertices in the merged heap)
+    const held: Array<WatchedPlate & { e: number }> = [];
     if (o.groundAt) {
       const also: PlateDrawing[] = [];
-      for (const m of [...live.baked, ...live.bakedMerged.values(), ...(o.statics?.(live.seam.structureIdx) ?? [])]) also.push({ geometry: m.geometry, matrix: m.matrix });
-      layPerchedPlates(live.bakedPending.map((m) => ({ geometry: m.geometry, matrix: m.matrix, body: pendingBody.get(m) })), also, (x, z) => o.groundAt!(x, z), plateHold);
+      for (const m of [...live.baked, ...(o.statics?.(live.seam.structureIdx) ?? [])]) also.push({ geometry: m.geometry, matrix: m.matrix });
+      for (const [key, m] of live.bakedMerged) also.push({ geometry: m.geometry, matrix: m.matrix, bodyOf: live.heapBody.get(key) });
+      layPerchedPlates(live.bakedPending.map((m) => ({ geometry: m.geometry, matrix: m.matrix, body: pendingBody.get(m) })), also, (x, z) => o.groundAt!(x, z), plateHold, held);
     }
+    const placed = new Map<THREE.Mesh, { key: string; base: number }>();
     for (const mesh of live.bakedPending) {
       const pos = mesh.geometry.getAttribute('position') as THREE.InterleavedBufferAttribute;
       const data = pos?.data;
@@ -1734,8 +1756,13 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const out = new Float32Array((oldData ? oldData.array.length : 0) + g.floats);
       let at = 0;
       if (oldData) { out.set(oldData.array as Float32Array, 0); at = oldData.array.length; }
+      const oldBody = live.heapBody.get(key);
+      const bodyOf = new Int32Array(out.length / g.stride);
+      if (oldBody) bodyOf.set(oldBody.subarray(0, Math.min(oldBody.length, bodyOf.length)), 0);
       for (const mesh of g.meshes) {
         const src = (mesh.geometry.getAttribute('position') as THREE.InterleavedBufferAttribute).data.array as Float32Array;
+        placed.set(mesh, { key, base: at / g.stride });
+        bodyOf.fill(pendingBody.get(mesh) ?? -1, at / g.stride, (at + src.length) / g.stride);
         out.set(src, at);
         _mN.getNormalMatrix(mesh.matrix);
         for (let i = at; i < at + src.length; i += g.stride) {
@@ -1766,8 +1793,37 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       o.group.add(mesh);
       if (old) { o.group.remove(old); old.geometry.dispose(); }
       live.bakedMerged.set(key, mesh);
+      live.heapBody.set(key, bodyOf);
+    }
+    // the held plates, in their heap's vertices now (a pending mesh is non-indexed: triangle t is its vertices 3t..3t+2)
+    for (const h of held) {
+      const at = placed.get(live.bakedPending[h.e]!);
+      if (!at) continue;
+      live.watch.push({ key: at.key, verts: h.verts.map((i) => i + at.base), tris: h.tris.map((t) => t + at.base / 3), body: h.body });
     }
     live.bakedPending.length = 0;
+  }
+
+  /**
+   * (round 5) The heap's watched plates judged again (the records, the bodies and the drawings as they lie now): one
+   * whose hold went is laid down as a plate coming to rest is; the rest stay watched.
+   */
+  function judgeWatched(live: Live): void {
+    live.watchedAt = o.now();
+    if (!live.watch.length || !o.groundAt) return;
+    const byKey = new Map<string, WatchedPlate[]>();
+    for (const w of live.watch) { let l = byKey.get(w.key); if (!l) byKey.set(w.key, l = []); l.push(w); }
+    const edit: PlateDrawing[] = [], keys: string[] = [], also: PlateDrawing[] = [];
+    for (const [key, m] of live.bakedMerged) {
+      const ws = byKey.get(key), bodyOf = live.heapBody.get(key);
+      if (ws) { edit.push({ geometry: m.geometry, matrix: m.matrix, bodyOf, pieces: ws }); keys.push(key); } else also.push({ geometry: m.geometry, matrix: m.matrix, bodyOf });
+    }
+    for (const m of live.baked) also.push({ geometry: m.geometry, matrix: m.matrix });
+    for (const m of live.bakedPending) also.push({ geometry: m.geometry, matrix: m.matrix, body: pendingBody.get(m) });
+    for (const m of o.statics?.(live.seam.structureIdx) ?? []) also.push({ geometry: m.geometry, matrix: m.matrix });
+    const still: Array<WatchedPlate & { e: number }> = [];
+    if (layPerchedPlates(edit, also, (x, z) => o.groundAt!(x, z), plateHold, still)) live.seam.touchShadows();
+    live.watch = still.map((w) => ({ key: keys[w.e]!, verts: w.verts, tris: w.tris, body: w.body }));
   }
 
   function densityOf(material: string): number {
@@ -1961,7 +2017,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       live = { seam, wall: createWallFracture(a), faces: new Map(), sag: new Map(), roofCorners: null, sagSignature: '', released: false,
         claiming: new Map(), sortAt: [0, 0], sorting: null, byFace: null, room: [], roomStoreys: new Set(), baked: [], bakedPending: [],
         sunk: new Float32Array(a.storeys.length), flight: new Float32Array(a.storeys.length),
-        bakedMerged: new Map(), mergedAt: 0, strikes: 0, version: 0, lastX: 0, lastY: 0, lastZ: 0, lastAt: -1e9 };
+        bakedMerged: new Map(), mergedAt: 0, heapBody: new Map(), watch: [], watchedAt: -1e9, touchedAt: -1e9,
+        strikes: 0, version: 0, lastX: 0, lastY: 0, lastZ: 0, lastAt: -1e9 };
       lives.set(seam.structureIdx, live);
     }
     return live;
@@ -1997,6 +2054,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       if (!live) return null;
       // the same burst's breach stage a moment after its round's own strike (or the reverse): that round, once
       const t = o.now();
+      live.touchedAt = t;
       // (a late joiner's settled log lays every hole at one instant: each its own)
       if (!settled && t - live.lastAt < 1 && Math.hypot(live.lastX - x, live.lastY - y, live.lastZ - z) < 0.5) return null;
       // the round in the body frame
@@ -2020,6 +2078,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     dropFace(seam, storey, faceIndex, stubV, dirX, dirZ, settled = false) {
       const live = liveOf(seam);
       if (!live) return false;
+      live.touchedAt = o.now();
       const f = live.wall.faces.findIndex((g) => g.storey === storey && g.faceIndex === faceIndex);
       if (f < 0 || live.wall.faces[f]!.notWall) return false;
       const yaw = seam.anatomy.placement.yaw, c = Math.cos(yaw), s = Math.sin(yaw);
@@ -2034,7 +2093,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     },
     holdStoreys(structureIdx, seam) {
       const live = lives.get(structureIdx) ?? liveOf(seam);
-      if (live) live.wall.floorsHold = true;
+      if (live) { live.wall.floorsHold = true; live.touchedAt = o.now(); }
     },
     idle(structureIdx) {
       for (let i = 0; i < work.length; i++) if (work[i].live.seam.structureIdx === structureIdx) return false;
@@ -2060,11 +2119,25 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const live = lives.get(structureIdx);
       if (!live) return;
       const top = live.seam.anatomy.storeys.length - 1;
-      for (const m of live.room) if (m.userData.storey === top && Number.isFinite(m.userData.ceilFrom)) m.geometry.setDrawRange(0, m.userData.ceilFrom as number);
+      for (const m of live.room) {
+        if (m.userData.storey !== top || !Number.isFinite(m.userData.ceilFrom)) continue;
+        m.geometry.setDrawRange(0, m.userData.ceilFrom as number);
+        // (round 5; the round-4 critics' films: tavern #7, depot #8, urban church #15 — the roofless storey under one flat dark
+        // plane, its room's walls and floor laid in an interior's shade) open to the sky, lit as the sky lights it
+        const shade = Number(m.userData.roomShade ?? 1);
+        if (m.userData.openToSky === true || !(shade < 1)) continue;
+        m.userData.openToSky = true;
+        const col = m.geometry.getAttribute('color') as THREE.InterleavedBufferAttribute | undefined;
+        if (!col) continue;
+        const n = m.userData.ceilFrom as number;
+        for (let i = 0; i < n; i++) col.setXYZ(i, col.getX(i) / shade, col.getY(i) / shade, col.getZ(i) / shade);
+        col.data.needsUpdate = true;
+      }
     },
     dropPieces(structureIdx, pieces) {
       const live = lives.get(structureIdx);
       if (!live) return;
+      live.touchedAt = o.now();
       // per mesh: the cells its loose pieces lie in, and what of its standing-with-the-face content they are
       const byMesh = new Map<THREE.Mesh, { draw: FaceDraw; f: number; cells: Set<number>; caps: Set<number>; still: Map<number, Set<number>> }>();
       for (const { mesh, tris } of pieces) {
@@ -2127,6 +2200,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const live = lives.get(structureIdx);
       if (!live) return;
       live.released = true;
+      live.touchedAt = o.now();
       for (const d of live.faces.values()) for (const m of d.meshes) { o.group.remove(m); m.geometry.dispose(); }
       for (const m of live.room) { o.group.remove(m); m.geometry.dispose(); }
       live.faces.clear();
@@ -2135,6 +2209,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     dropRooms(structureIdx, fromStorey, only = false) {
       const live = lives.get(structureIdx);
       if (!live) return;
+      live.touchedAt = o.now();
       for (let i = live.room.length - 1; i >= 0; i--) {
         const m = live.room[i];
         const st = m.userData.storey as number;
@@ -2147,6 +2222,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     lowerOver(structureIdx, storey, dropM, baked) {
       const live = lives.get(structureIdx);
       if (!live || !(dropM > 0)) return;
+      live.touchedAt = o.now();
       const over = (st: number): boolean => st > storey;
       if (!baked) {
         // in flight: shown lowered, the data as it stood
@@ -2212,6 +2288,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const tMerge = profStart();
       for (const live of lives.values()) {
         if (live.bakedPending.length && (live.bakedPending.length >= 6 || t - live.mergedAt > 1)) { mergeBaked(live); live.mergedAt = t; }
+        // (round 5) its watched plates while it changes (and a while after: the bodies under them settle), five times a
+        // second; once a second for good while any is watched (a body under one can still be cleared off)
+        if (live.watch.length && t - live.watchedAt >= (t - live.touchedAt <= WATCH_AFTER_S ? WATCH_EVERY_S : 1)) judgeWatched(live);
       }
       profEnd('fr.merge', tMerge);
       if (!list.length) return;

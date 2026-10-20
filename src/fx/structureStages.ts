@@ -113,6 +113,11 @@ function rubbleOnly(out: DamageWriters): DamageWriters {
  *  (the owner: "shooting buildings should cause destruction too"): every burst and every armour-piercing round leaves its
  *  hole, a dozen hits a building before it falls (it went from three, the rest of a battle's hits showing nothing). */
 const STRIKE_HOLES = 9;
+/** (destruction-slabs 227 round 5) A top storey's room open to the sky (its roof fallen): its walls and floor lit as the
+ *  outside is (laid dim, 0.55-0.6, they read as one flat dark plane over the roofless storey: the critics' tavern lid). */
+const OPEN_ROOM_WALL = 0.95, OPEN_ROOM_FLOOR = 0.85;
+/** A room's floor this far over its floor line (m): the storey under it draws its own top there. */
+const ROOM_FLOOR_LIFT_M = 0.02;
 /** A tank round's hole through a wall (no charge: the shot's own): a ragged pierce sized by its calibre, its rim spalled. */
 function pierceHoleRadius(munition: MunitionClass, caliberMm: number): number {
   if (munition !== 'kinetic') return 0;
@@ -710,6 +715,22 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (m.userData.room !== true || (m.userData.runOwner as RunOwner | undefined)?.storey !== top) continue;
       const g = m.geometry, ix = g.index, nrm = g.getAttribute('normal') as THREE.BufferAttribute | undefined;
       if (!ix || !nrm) continue;
+      // (round 5; the round-4 critics' tavern #7, depot #8 and urban church #15 in the game's films: the roofless top storey
+      // under one flat dark plane — its room's walls and floor, laid dim for a glimpse through a hole, open to the sky now)
+      // lit as the sky lights it, once
+      if (m.userData.openToSky !== true) {
+        m.userData.openToSky = true;
+        const col = g.getAttribute('color') as THREE.BufferAttribute | undefined;
+        if (col) {
+          for (let i = 0; i < col.count; i++) {
+            const ny = nrm.getY(i);
+            const k = ny > 0.9 ? OPEN_ROOM_FLOOR / 0.55 : Math.abs(ny) < 0.5 ? OPEN_ROOM_WALL / (Math.abs(nrm.getX(i)) > 0.5 ? 0.56 : 0.6) : 1;
+            if (k !== 1) col.setXYZ(i, col.getX(i) * k, col.getY(i) * k, col.getZ(i) * k);
+          }
+          col.needsUpdate = true;
+          changed = true;
+        }
+      }
       const tris: number[] = [];
       for (let t = 0; t * 3 + 2 < ix.count; t++) {
         const v = ix.getX(t * 3);
@@ -1070,18 +1091,21 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       m.end();
     };
     const wt = wallSlot.tint, wb = wallSlot.bucket;
+    // (destruction-slabs 227 round 4, the visual and the engineering critics' tavern #7: a hole on the top storey after the
+    // roof fell laid a room whose ceiling stood as a flat dark plane at the wall heads, the roofless tavern read as a box with
+    // a lid) no ceiling under a roof that has fallen — (round 5) and open to the sky it is lit as the sky lights it
+    const open = !above && !!a.roof && !!fallenSections.get(seam.structureIdx)?.has(a.roof.section);
     // its walls, facing in along the room's drawn boundary
     for (const [ax, az, bx, bz, nx, nz] of room.walls) {
       // (round 3: the owner's "dark grey-navy slabs" — a room's walls at 0.4 of the render read as one flat dark plane through
       // a blown-out facade) in shade, its texture readable
-      quad(wb, wt, Math.abs(nx) > 0.5 ? 0.56 : 0.6, [nx!, 0, nz!], [[ax!, y0, az!], [bx!, y0, bz!], [bx!, y1, bz!], [ax!, y1, az!]]);
+      quad(wb, wt, open ? OPEN_ROOM_WALL : Math.abs(nx) > 0.5 ? 0.56 : 0.6, [nx!, 0, nz!], [[ax!, y0, az!], [bx!, y0, bz!], [bx!, y1, bz!], [ax!, y1, az!]]);
     }
-    // its floor (up) and its ceiling (down), rectangle by rectangle — (destruction-slabs 227 round 4, the visual and the
-    // engineering critics' tavern #7: a hole on the top storey after the roof fell laid a room whose ceiling stood as a flat
-    // dark plane at the wall heads, the roofless tavern read as a box with a lid) no ceiling under a roof that has fallen
-    const open = !above && !!a.roof && !!fallenSections.get(seam.structureIdx)?.has(a.roof.section);
+    // its floor (up) and its ceiling (down), rectangle by rectangle; (round 5) the floor a hand over the floor line (the
+    // storey under it draws its top there: the two fought, a dark and a pale floor flickering through each other)
+    const fy = y0 + ROOM_FLOOR_LIFT_M;
     for (const [x0, z0, x1, z1] of room.rects) {
-      quad(floorSlot.bucket, floorSlot.tint, 0.55, [0, 1, 0], [[x0!, y0, z1!], [x1!, y0, z1!], [x1!, y0, z0!], [x0!, y0, z0!]]);
+      quad(floorSlot.bucket, floorSlot.tint, open ? OPEN_ROOM_FLOOR : 0.55, [0, 1, 0], [[x0!, fy, z1!], [x1!, fy, z1!], [x1!, fy, z0!], [x0!, fy, z0!]]);
       if (!open) quad(ceilSlot.bucket, ceilSlot.tint, 0.4, [0, -1, 0], [[x0!, y1, z0!], [x1!, y1, z0!], [x1!, y1, z1!], [x0!, y1, z1!]]);
     }
     const made = debris.commit();
@@ -1565,6 +1589,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           // patch over walls the live fall took down as bodies
           run(seam, 0, settled, (out) => seam.sectionDown(roof.section, damageSeed(a.seed, roof.section, 255), settled ? rubbleOnly(out) : out), true,
             { section: roof.section, storey: -1 }, slabs, slabs);
+          // (round 5) the top storey's rooms open to the sky with the roof (their ceilings went only with a later wall's fall)
+          changed = openTopRooms(seam) || changed;
         }
       } else {
         const spec = seam.holeAt(e.x, e.y, e.z, 0.01, 0, 0, e.munition, cause, 255);

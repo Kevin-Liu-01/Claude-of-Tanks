@@ -290,7 +290,13 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
   /** The sweep in progress (one at a time, in steps over the frames: a big building's is a few hundred thousand samples'
    *  work), the meshes it reads kept for its result. */
   let hangingJob: { idx: number; due: { seam: StructureDamageSeam; settled: boolean }; runs: THREE.Mesh[]; rooms: THREE.Mesh[];
-    gen: Generator<void, HangingResult, void> } | null = null;
+    gen: Generator<void, HangingResult, void>; at: number } | null = null;
+  /** (round 5) A sweep this young (fx s) over a building that changes again starts over, at most HANGING_RESTARTS times
+   *  running: the round-4 critic's blackglass #3 civic hall (R narrow-back, seed 978345481) — a sweep begun just before its
+   *  section's faces were drawn ran on 1.3 s blind to them, and the one after it took 1.6 s more, a dark face piece 2.1 m
+   *  up cut loose by the redraw hanging 2.5 s. */
+  const HANGING_RESTART_S = 0.8, HANGING_RESTARTS = 2;
+  const hangingRestarts = new Map<number, number>();
   /** Steps of the sweep a frame (each about structureHanging's SLICE units of work: under a millisecond on a desktop). */
   const HANGING_STEPS = Math.max(1, Math.floor(o.hangingSteps ?? 4));
   /** The phone's stages (o.sweepOnly): the kit draws every break; the fracture only reads what hangs. */
@@ -298,6 +304,17 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
   function markHanging(seam: StructureDamageSeam, settled: boolean): void {
     if (fallen.has(seam.structureIdx)) return;
     hangingChain.delete(seam.structureIdx);
+    const job = hangingJob;
+    if (job && job.idx === seam.structureIdx && o.now() - job.at < HANGING_RESTART_S) {
+      const n = hangingRestarts.get(job.idx) ?? 0;
+      if (n < HANGING_RESTARTS) {
+        hangingRestarts.set(job.idx, n + 1);
+        hangingJob = null;
+        const was = hangingDue.get(job.idx);
+        hangingDue.set(job.idx, { seam, settled: settled && job.due.settled && (was ? was.settled : true) });
+        return;
+      }
+    }
     // (a sweep in progress over a structure that changed runs on — a barrage would start it again for ever — and another
     // reads the change after it: what the first takes was hanging when it read it)
     const was = hangingDue.get(seam.structureIdx);
@@ -311,7 +328,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       if (host?.falling?.(job.idx)) { hangingJob = null; if (!hangingDue.has(job.idx)) hangingDue.set(job.idx, job.due); return; }
       for (let n = 0; n < HANGING_STEPS; n++) {
         const r = job.gen.next();
-        if (r.done) { hangingJob = null; applyHanging(job.idx, job.due, job.runs, job.rooms, r.value); return; }
+        if (r.done) { hangingJob = null; hangingRestarts.delete(job.idx); applyHanging(job.idx, job.due, job.runs, job.rooms, r.value); return; }
       }
       return;
     }
@@ -324,7 +341,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       const all = host ? host.o.debris.standingRuns(tag) : [];
       const runs = all.filter((m) => m.userData.room !== true);
       const rooms = [...all.filter((m) => m.userData.room === true), ...fracture.rooms(idx)];
-      hangingJob = { idx, due, runs, rooms, gen: hangingSweep.steps(due.seam, { faces: fracture.standing(idx), runs, rooms }) };
+      hangingJob = { idx, due, runs, rooms, gen: hangingSweep.steps(due.seam, { faces: fracture.standing(idx), runs, rooms }), at: o.now() };
       sweepHanging();
       return;
     }
@@ -687,6 +704,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       hangingDue.clear();
       toPrepare.clear();
       hangingChain.clear();
+      hangingRestarts.clear();
       hangingJob = null;
       fallen.clear();
       last = o.now();

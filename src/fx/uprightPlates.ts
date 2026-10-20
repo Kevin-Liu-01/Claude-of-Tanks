@@ -243,8 +243,12 @@ const TILT_MAX = 0.87;
 const TOP_CELL_M = 0.25;
 /** A piece of the plate's own body holds it only reaching this much lower than the plate's lowest point (m). */
 const OWN_LOWER_M = 0.3;
-/** A body's contact sphere holds a sample this far round it in plan (m), as collapseBodies' perch reads it. */
-const SPHERE_NEAR_M = 0.45;
+/** A body's contact sphere holds a sample over it in plan, this far past its edge (m). (Round 5: 0.45 m past its edge,
+ *  and a sphere beside the plate at its height held it — airfield #0's heap plate read 79 % held by the chunks lying and
+ *  falling round it, the slab check 38 %.) */
+const SPHERE_NEAR_M = 0.15;
+/** A body moving faster than this (m/s) holds nothing up: it is falling past. */
+const SPHERE_STILL_MPS = 1.5;
 
 /** What holds a perched plate besides the drawings and the ground: the world's solid records and the pool's bodies. */
 interface PlateHold {
@@ -269,6 +273,7 @@ export function createPlateHold(environment: () => RigidEnvironment | null, worl
         if (!world.active[slot]) continue;
         const sh = world.shape(slot);
         if (!sh) continue;
+        if (!world.asleep[slot] && Math.hypot(world.vx[slot]!, world.vy[slot]!, world.vz[slot]!) > SPHERE_STILL_MPS) continue;
         const cx = world.px[slot]!, cy = world.py[slot]!, cz = world.pz[slot]!, r = sh.radius + SPHERE_NEAR_M;
         if (cx + r < x0 || cx - r > x1 || cz + r < z0 || cz - r > z1 || cy - sh.radius > y1 + 0.1 || cy + sh.radius < y0 - PERCH_BAND_M) continue;
         q.set(world.qx[slot]!, world.qy[slot]!, world.qz[slot]!, world.qw[slot]!);
@@ -285,7 +290,8 @@ export function createPlateHold(environment: () => RigidEnvironment | null, worl
       }
       for (let k = 0; k < spheres.length; k += 4) {
         const sr = spheres[k + 3]!;
-        if (Math.hypot(spheres[k]! - x, spheres[k + 2]! - z) <= SPHERE_NEAR_M + sr && spheres[k + 1]! + sr >= y - bandM && spheres[k + 1]! - sr <= y + 0.1) return true;
+        // (under the sample: its top in the band under it, its middle below it)
+        if (Math.hypot(spheres[k]! - x, spheres[k + 2]! - z) <= SPHERE_NEAR_M + sr && spheres[k + 1]! + sr >= y - bandM && spheres[k + 1]! <= y + 0.05) return true;
       }
       return false;
     },
@@ -299,6 +305,20 @@ export interface PlateDrawing {
   /** The rigid body it was drawn for (its meshes share it; absent: a drawing of its own). A body's pieces do not hold one
    *  another up: a piece of it holds a plate of it only reaching lower than the plate (a slab on its own stub). */
   body?: number;
+  /** (round 5) Per vertex, the body it was drawn for: a merged heap, many bodies in one drawing (wins over `body`; a
+   *  triangle of the plate's own body holds it only reaching lower than it). */
+  bodyOf?: Int32Array;
+  /** (round 5) Judge these pieces of it alone (a merged heap's watched plates), not every connected piece of it. */
+  pieces?: readonly WatchedPlate[];
+}
+
+/** (round 5) A plate a drawing came to rest with, held when it was judged: its vertices and its triangles (non-indexed
+ *  drawings: triangle t is vertices 3t..3t+2; an indexed one's corners through its index) and its body. What holds it can
+ *  go later (the building's own walls, a storey's records, a body under it), so its drawing's owner judges it again. */
+export interface WatchedPlate {
+  verts: Int32Array;
+  tris: Int32Array;
+  body: number;
 }
 
 /** A drawing's vertices in world space. */
@@ -355,7 +375,7 @@ const _pq = new THREE.Quaternion(), _pa = new THREE.Vector3(), _pe1 = new THREE.
  * plates were laid. Visual only and deterministic, as layUprightPlates.
  */
 export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly PlateDrawing[], groundAt: (x: number, z: number) => number,
-  hold: PlateHold | null = null): number {
+  hold: PlateHold | null = null, watch: Array<WatchedPlate & { e: number }> | null = null): number {
   const all = [...edit, ...also];
   const worlds: Array<Float64Array | null> = all.map(() => null);
   const worldOf = (k: number): Float64Array => (worlds[k] ??= worldPositions(all[k]!));
@@ -381,11 +401,21 @@ export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly P
     if (!pos || pos.count < 6) continue;
     const w = worldOf(e);
     const index = d.geometry.getIndex();
-    const { pieces, tri } = splitOf(e);
     const corner = (t: number, c: number): number => (index ? index.getX(t * 3 + c) : t * 3 + c);
     const changed = new Uint8Array(pos.count);
     let any = false;
-    for (const [root, list] of pieces) {
+    // the pieces judged: a watched drawing's own (round 5: a merged heap's plates held when they baked), else every
+    // connected piece of it, each with its triangles
+    type Candidate = { root: number; list: number[] | Int32Array; tris: number[] | Int32Array; body: number | undefined };
+    const candidates: Candidate[] = [];
+    if (d.pieces) for (const p of d.pieces) candidates.push({ root: -1, list: p.verts, tris: p.tris, body: p.body });
+    else {
+      const { pieces, tri } = splitOf(e);
+      const trisOf = new Map<number, number[]>();
+      for (let t = 0; t < tri.length; t++) { let l = trisOf.get(tri[t]!); if (!l) trisOf.set(tri[t]!, l = []); l.push(t); }
+      for (const [root, list] of pieces) candidates.push({ root, list, tris: trisOf.get(root) ?? [], body: d.body });
+    }
+    for (const { root, list, tris: pieceTris, body: plateBody } of candidates) {
       if (list.length < 4) continue;
       let mx = 0, my = 0, mz = 0, x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
       for (const i of list) {
@@ -421,8 +451,8 @@ export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly P
       if (thick > THIN_M || eu < SIDE_M || ev < SIDE_M || eu * ev < AREA_M2) continue;
       // its surface sampled by area (the slab check's reading), each sample held or over nothing
       const samples: number[] = [];
-      for (let t = 0; t < tri.length; t++) {
-        if (tri[t] !== root) continue;
+      for (let ti = 0; ti < pieceTris.length; ti++) {
+        const t = pieceTris[ti]!;
         const a = corner(t, 0), b = corner(t, 1), c = corner(t, 2);
         _pe1.set(w[b * 3]! - w[a * 3]!, w[b * 3 + 1]! - w[a * 3 + 1]!, w[b * 3 + 2]! - w[a * 3 + 2]!);
         _pe2.set(w[c * 3]! - w[a * 3]!, w[c * 3 + 1]! - w[a * 3 + 1]!, w[c * 3 + 2]! - w[a * 3 + 2]!);
@@ -455,13 +485,16 @@ export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly P
         // (round 4, fourth pass; the census's airfield #0 tower at a fourth seed: a clump's skin and the dark interior plate
         // behind it, both 1.7 m up, each read as holding the other) a piece of the plate's own body holds it only reaching
         // lower than it (a slab on its own stub), never its twin beside it
-        const ownBody = k === e || (d.body !== undefined && all[k]!.body === d.body);
+        // (round 5: a merged heap carries its bodies per vertex) its own body's triangles hold it only reaching lower
+        const bodyOfK = all[k]!.bodyOf;
+        const ownBody = !bodyOfK && (k === e || (plateBody !== undefined && all[k]!.body === plateBody));
         const own = ownBody ? splitOf(k) : null;
         for (let t = 0; t < n; t++) {
           if (own && !(own.low.get(own.tri[t]!)! < y0 - OWN_LOWER_M)) continue;
           const a = idx ? idx.getX(t * 3) : t * 3, b = idx ? idx.getX(t * 3 + 1) : t * 3 + 1, c = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
           const ax_ = ww[a * 3]!, ay = ww[a * 3 + 1]!, az = ww[a * 3 + 2]!, bx = ww[b * 3]!, by = ww[b * 3 + 1]!, bz = ww[b * 3 + 2]!;
           const cx = ww[c * 3]!, cy = ww[c * 3 + 1]!, cz = ww[c * 3 + 2]!;
+          if (bodyOfK && (plateBody === undefined ? k === e : bodyOfK[a] === plateBody) && !(Math.min(ay, by, cy) < y0 - OWN_LOWER_M)) continue;
           if (Math.max(ax_, bx, cx) < gx0 || Math.min(ax_, bx, cx) > gx1 || Math.max(az, bz, cz) < gz0 || Math.min(az, bz, cz) > gz1) continue;
           if (Math.max(ay, by, cy) < yLo || Math.min(ay, by, cy) > yHi) continue;
           stamp(ax_, ay, az); stamp(bx, by, bz); stamp(cx, cy, cz);
@@ -498,7 +531,11 @@ export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly P
         heldFlags.push(held);
         if (held) { hw += wt; hx += x * wt; hz += z * wt; hy += y * wt; } else { free += wt; fx += x * wt; fz += z * wt; fw += wt; }
       }
-      if (!(total > 0) || free < PERCH_SHARE * total) continue;
+      if (!(total > 0) || free < PERCH_SHARE * total) {
+        // (round 5) held now: its owner judges it again when what holds it may have gone
+        if (watch && total > 0 && plateBody !== undefined) watch.push({ e, verts: Int32Array.from(list), tris: Int32Array.from(pieceTris), body: plateBody });
+        continue;
+      }
       // laid down: tilted off the edge of what holds it until its free side meets the ground, else lowered flat
       let tilted = false;
       if (hw >= 0.1 * total) {
@@ -568,7 +605,7 @@ export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly P
       // (its lowest point as laid: what its body's other pieces read of it)
       let low = Infinity;
       for (const i of list) if (w[i * 3 + 1]! < low) low = w[i * 3 + 1]!;
-      split[e]!.low.set(root, low);
+      if (root >= 0) split[e]?.low.set(root, low);
       any = true;
       laid++;
     }
