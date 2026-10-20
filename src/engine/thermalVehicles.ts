@@ -46,7 +46,8 @@ export function driveHeatStep(heat:number,speedMps:number,dtS:number):number{
 }
 /** The gun heat (0..1): each shot adds GUN_SHOT_HEAT (and more for a heavier calibre), cooling over GUN_COOL_S — in
  * closed form on the shots' own simulation times (`shell:fired`'s timeS). */
-export const GUN_SHOT_HEAT = 0.12, GUN_SHOT_CALIBRE_HEAT = 0.25, GUN_COOL_S = 40;
+const GUN_SHOT_HEAT = 0.12, GUN_SHOT_CALIBRE_HEAT = 0.25;
+export const GUN_COOL_S = 40;
 export function gunShotHeat(caliberMm:number):number{
   return GUN_SHOT_HEAT+GUN_SHOT_CALIBRE_HEAT*Math.min(1,Math.max(0,((caliberMm||0)-30)/122));
 }
