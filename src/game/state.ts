@@ -1453,6 +1453,7 @@ export function setupBattle(
     allyIndex: 0,
   };
   spawnBattleEntities(spawnContext);
+  const modeGround = groundFor(world).field;
   game.matchModeController = createMatchModeController<SoloEntity>({
     mode: game.gameMode,
     ruleset: game.ruleset,
@@ -1460,8 +1461,11 @@ export function setupBattle(
     seed: COMBAT_SEED + game.battleCount,
     setWeaponStage: setModeWeapon,
     placement,
-    terrainHeight: (x, z) => world.heightField.getHeightAt(x, z),
-    ballFloorHeight: (x, z, previousBottomY) => bridgeBallFloor(world.heightField, x, z, previousBottomY),
+    // the match's ground (the map's pre-placed craters and every crater since), as the authority's controller reads it
+    // (round 2: the raw height field put a CTF flag base on a crater's rim 0.28 m off the authority's; matchPlacement
+    // receipt's solo/server parity)
+    terrainHeight: (x, z) => modeGround.getHeightAt(x, z),
+    ballFloorHeight: (x, z, previousBottomY) => bridgeBallFloor(modeGround, x, z, previousBottomY),
     emit: (type, payload) => game.modeEvents.push({ type, payload }),
     // what each side has spotted (the honest hunt); the solo battle names its sides player / enemy
     spotting: { isSpotted: (id, side) => (game.spotting ? game.spotting.isSpotted(id, side === 'alpha' ? 'player' : 'enemy') : true) },
