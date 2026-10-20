@@ -370,9 +370,9 @@ try {
         const marked=/m\d?s?w/.test(got.tiers??'');
         if(set.includes('medal')&&!got.notices.m&&tier('m')>=0){
           const near=(b,n)=>!!n&&b[0]<n.box[0]+n.box[2]+8&&b[0]+b[2]>n.box[0]-8&&b[1]<n.box[1]+n.box[3]+8&&b[1]+b[3]>n.box[1]-8;
-          // (or, on a phone-width window where every place for it cuts a lane, a lane under it showing a kill row)
+          // (or, where every place for it would cut a side lane, that lane showing a kill row: the card never hides one)
           const feed=!!got.waitingMedal&&Object.values(got.lanes).some(l=>l.staged>0&&l.x&&got.waitingMedal[0]<l.x[1]+8&&got.waitingMedal[0]+got.waitingMedal[2]>l.x[0]-8);
-          const cause=scopedShort||(!!got.waitingMedal&&['d','a','r'].some(k=>near(got.waitingMedal,got.notices[k])))||(feed&&width<520);
+          const cause=scopedShort||(!!got.waitingMedal&&['d','a','r'].some(k=>near(got.waitingMedal,got.notices[k])))||feed;
           if(!marked||!cause)failures.push(`the medal card has a place but is not shown (${marked?'marked waiting':'not marked waiting'}, ${cause?'with':'without'} a shown element in its place)`);
         }
         if(got.notices.m&&marked)failures.push('the medal card shows while marked waiting');
@@ -420,7 +420,10 @@ try {
         // a kill burst and Tab move nothing: the same set and sight in k0, k3, the burst and Tab share every box
         const [ctx,,sight]=key.split('|');
         if(['k0','k3','burst','tab'].includes(ctx)&&set){
-          const sig=`${set}|${sight}`,boxes=JSON.stringify(Object.fromEntries(Object.entries(got.notices).map(([k,n])=>[k,n.box])));
+          // (a waiting medal card keeps its place, hidden: its place is compared, not whether a kill row holds it back)
+          const placed=Object.fromEntries(Object.entries(got.notices).map(([k,n])=>[k,n.box]));
+          if(!placed.m&&got.waitingMedal&&/m\d?s?w/.test(got.tiers??''))placed.m=got.waitingMedal;
+          const sig=`${set}|${sight}`,boxes=JSON.stringify(Object.fromEntries(Object.entries(placed).sort()));
           const before=seen.get(sig);
           if(before&&before.boxes!==boxes)failures.push(`a notice moved between ${before.ctx} and ${ctx}: ${before.boxes} -> ${boxes}`);
           if(!before)seen.set(sig,{ctx,boxes});
