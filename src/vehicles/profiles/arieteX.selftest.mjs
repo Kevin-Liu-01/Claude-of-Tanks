@@ -111,8 +111,8 @@ for (const quality of ['high', 'low']) {
     });
     const hull = get('hull'), turret = get('turret'), yaw = get('rig_turret');
     const gun = get('rig_gun'), recoil = get('rig_recoil'), muzzle = get('rig_muzzle');
-    assert.equal(get('gunMount').parent, gun, 'actual cradle pitches');
-    assert.equal(get('gun').parent, recoil, 'authored stock/sleeve/muzzle recoil together');
+    assert.ok(get('gunMount').parent === gun, 'actual cradle pitches');
+    assert.ok(get('gun').parent === recoil, 'authored stock/sleeve/muzzle recoil together');
     near(worldBounds([turret]).max.y, PUBLISHED.roof, 1e-6, 'published structural turret roof');
     near(worldBounds([hull]).max.y, PUBLISHED.hullRoof, 1e-6, 'published hull height');
     near(ray([hull], [0, 0, 0], [0, 1, 0])?.point.y, PUBLISHED.clearance, 1e-6,

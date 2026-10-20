@@ -203,7 +203,7 @@ assert.equal(contactShadowSunShare(0.8, 1, 0, amb, 0.9, 0), 0, 'no sun, no share
   scene.userData.cloudShadeUniforms = cloud;
   updateContactShadowUniforms(u, camera, scene, true);
   assert.equal(u.uContactSeam.value, 0.12, 'the published seam');
-  assert.equal(u.tCotCloudShade.value, cloud.tCotCloudShade.value, 'the lit materials\' cloud map');
+  assert.ok(u.tCotCloudShade.value === cloud.tCotCloudShade.value, 'the lit materials\' cloud map');
   assert.deepEqual(u.uCotCloudShade.value.toArray(), [10, 20, 1 / 12000, 1]);
   assert.deepEqual(u.uCotCloudSun.value.toArray(), cloud.uCotCloudSun.value.toArray());
   // the QA lever: main's march for an A/B frame (its ramp, the binary hit, no fade)

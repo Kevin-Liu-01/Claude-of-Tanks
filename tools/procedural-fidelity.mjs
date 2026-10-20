@@ -11,6 +11,7 @@ import puppeteer from 'puppeteer';
 import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
 import {validateSelectedIds,partitionConceptIds} from './first-party-concept-policy.mjs';
 import {readConceptDesign} from './first-party-concept-record.mjs';
+import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from './tool-page-load.mjs';
 
 const ROOT = process.cwd();
 const REPORT_DIR = path.join(ROOT, '.qa-dev', 'reports');
@@ -55,7 +56,9 @@ try {
     cacheDir,
     optimizeDeps: { noDiscovery: true },
     logLevel: 'error',
-    server: { port: 6700 + Math.floor(Math.random() * 220), strictPort:false, hmr:false, watch:null },
+    // R4c (2026-10-16): the requested port is only a start; the URLs use the address really bound (a moved port used
+    // to leave them on the requested one, and `localhost` could reach another checkout's server)
+    server: toolServerOptions(6700, { span: 220 }),
   });
   await server.listen();
   browser = await puppeteer.launch({
@@ -72,9 +75,11 @@ try {
     if (text.includes('glb swap failed')) browserErrors.push(text);
   });
 
-  const urlFor = (id) => `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}${COMPONENTS ? '&components=1' : ''}`;
-  await page.goto(`${urlFor(requestedPartition?.comparisons[0] || 'm1a1_abrams_hc')}&registry=1`, { waitUntil:'domcontentloaded', timeout:90000 });
-  await page.waitForFunction('Array.isArray(window.__REFERENCE_IDS)', { timeout:90000 });
+  const origin = boundOrigin(server);
+  const urlFor = (id) => `${origin}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}${COMPONENTS ? '&components=1' : ''}`;
+  // the first load compiles the page cold: 180 s and one retry of a timeout (tools/tool-page-load.mjs)
+  await loadReadyPage(page, `${urlFor(requestedPartition?.comparisons[0] || 'm1a1_abrams_hc')}&registry=1`,
+    { label: 'procedural-fidelity', ready: 'Array.isArray(window.__REFERENCE_IDS)', budget: pageLoadBudget({ readyTimeoutMs: 90000 }) });
   const discovered = await page.evaluate('window.__REFERENCE_IDS');
   // Use the same registration boundary as geometry-gate: an unregistered
   // first-party vehicle has no comparison target, while a registered target

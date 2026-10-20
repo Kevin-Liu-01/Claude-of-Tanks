@@ -1,4 +1,5 @@
 import {isPhotoReference} from './photo-reference-policy.mjs';
+import { uniqueIds } from './id-list.mjs';
 import {validateSelectedIds} from './first-party-concept-policy.mjs';
 // tools/geometry-gate.mjs — THE authoritative geometric gate.
 //
@@ -18,13 +19,14 @@ import {validateSelectedIds} from './first-party-concept-policy.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
+import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from './tool-page-load.mjs';
 import { unavailableOracleReport } from './geometry-gate-policy.mjs';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
 
 const ROOT = process.cwd();
 const args = process.argv.slice(2);
 const eq = args.find((a) => a.startsWith('--ids='));
-const requested = eq ? eq.slice(6).split(',').map((s) => s.trim()).filter(Boolean) : null;
+const requested = eq ? uniqueIds(eq.slice(6).split(',').map((s) => s.trim()).filter(Boolean), 'geometry-gate --ids') : null;
 const CHECK = args.includes('--check');
 const OUT = path.join(ROOT, 'docs', 'geometry-gate');
 fs.mkdirSync(OUT, { recursive: true });
@@ -70,7 +72,8 @@ function selectedReferenceIds(referenceIds,referenceSources,referenceQualityBars
 await withIsolatedCaptureBrowser({
   root: ROOT,
   logLevel: 'error',
-  server: { port: 7400 + Math.floor(Math.random() * 200), strictPort: false, hmr: false, watch: null },
+  // R4c (2026-10-16): 127.0.0.1 and the address really bound, never `localhost` (an IPv6 bind can leave 127.0.0.1 to another server)
+  server: toolServerOptions(7400),
 }, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
@@ -84,14 +87,16 @@ page.on('console', message => {
     console.error(`[geo console] ${message.text()}`);
 });
 page.setDefaultTimeout(150000);
-const urlFor = (id) => `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}&geo=1`;
-const registryUrl = `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=m1a1_abrams_hc&registry=1`;
+const origin = boundOrigin(server);
+const urlFor = (id) => `${origin}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}&geo=1`;
+const registryUrl = `${origin}/tools/procedural-fidelity.html?id=m1a1_abrams_hc&registry=1`;
 
   // Discover eligible IDs without loading an optional local comparison file.
   // Worktrees intentionally omit quarantined GLBs, so registry discovery must
   // not depend on any one source asset being present.
-  await page.goto(registryUrl, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction('Array.isArray(window.__REFERENCE_IDS)');
+  // 180 s for the first navigation, 150 s for the registry, one retry of a load that timed out (R4c)
+  await loadReadyPage(page, registryUrl, { label: 'geo', ready: 'Array.isArray(window.__REFERENCE_IDS)',
+    budget: pageLoadBudget({ readyTimeoutMs: 150000 }) });
   const referenceIds = await page.evaluate('window.__REFERENCE_IDS');
   if(requested)validateSelectedIds(requested,await page.evaluate('window.__PLAYABLE_IDS'));
   const referenceSources = await page.evaluate('window.__REFERENCE_SOURCES');
@@ -151,12 +156,17 @@ const all = [...byId.values()].sort((a, b) => a.geoMin - b.geoMin);
 const passed = all.filter((r) => r.gatePassed).length;
 // A requested set can legitimately contain only first-party/procedural tanks.
 // Do not churn the ledger timestamp when no comparison row was evaluated.
+// A rerun that changes no row keeps the file byte-identical (2026-10-16): a fresh timestamp alone used to invalidate every
+// receipt that hashes docs/ (573 in 226).
 if (rows.length) {
-  fs.writeFileSync(ledgerPath, `${JSON.stringify({
-    generatedAt: new Date().toISOString(),
+  const body = {
     gate: 'every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity',
     passed, total: all.length, rows: all,
-  }, null, 1)}\n`);
+  };
+  let previous = null;
+  try { previous = JSON.parse(fs.readFileSync(ledgerPath, 'utf8')); } catch { /* first run */ }
+  const unchanged = previous && (({ generatedAt, ...rest }) => JSON.stringify(rest))(previous) === JSON.stringify(body);
+  if (!unchanged) fs.writeFileSync(ledgerPath, `${JSON.stringify({ generatedAt: new Date().toISOString(), ...body }, null, 1)}\n`);
 }
 const runSorted = rows.slice().sort((a, b) => a.geoMin - b.geoMin);
 const runPassed = rows.filter((r) => r.gatePassed).length;

@@ -258,7 +258,7 @@ function fieldPackage(tank, all) {
     turret.rotation.y=yaw*Math.PI/180;tank.root.updateMatrixWorld(true);
     for(const mesh of moving){
       let owner=mesh.parent;while(owner&&owner!==turret)owner=owner.parent;
-      assert.equal(owner,turret,'baskets and cargo belong to turret yaw');
+      assert.ok(owner === turret,'baskets and cargo belong to turret yaw');
       const positions=mesh.geometry.attributes.position;
       for(let i=0;i<positions.count;i+=3){
         sample.fromBufferAttribute(positions,i).applyMatrix4(mesh.matrixWorld);

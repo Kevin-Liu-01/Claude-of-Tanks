@@ -26,7 +26,7 @@ for(const quality of ['high','low']) {
     tank.root.updateMatrixWorld(true);
     const gun=tank.root.getObjectByName('gun'),recoil=tank.root.getObjectByName('rig_recoil');
     assert.ok(gun?.isMesh&&recoil,`${quality}: actual native barrel exists`);
-    assert.equal(gun.parent,recoil,`${quality}: complete collar shares barrel recoil ownership`);
+    assert.ok(gun.parent === recoil,`${quality}: complete collar shares barrel recoil ownership`);
     const collar=collarVertices(gun);
     near(collar.min.z,5.452418073,.000003,`${quality}: source collar aft edge`);
     near(collar.max.z,5.655017121,.000003,`${quality}: source collar forward edge`);
@@ -43,7 +43,7 @@ for(const quality of ['high','low']) {
     // the factory's old seated bore lip, which the carved cannon bores (a28e4d8e6) no longer add.
     assertHollowMuzzle(tank.root,6.89969993);
     const rim=bore.getObjectByName('muzzleBoreInnerWallAndBackstop');
-    assert.equal(rim.parent,bore,'recess stays recoil-owned');
+    assert.ok(rim.parent === bore,'recess stays recoil-owned');
     const seat=bore.userData.muzzleSeatReceipt;
     near(seat.supportOuterRadiusM,.0892,.000002,'native neck radius');
     const tubeEnd=new THREE.Box3().setFromObject(gun).max.z;

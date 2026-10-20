@@ -38,7 +38,7 @@ function canvasFixture() {
 }
 
 function legacyShapeContract(geometry) {
-  assert.equal(geometry.index, null);
+  assert.ok(geometry.index === null);
   assert.deepEqual(Object.keys(geometry.attributes).filter(k => k !== 'aFadeI' && k !== 'aLodF').sort(), ['aFlex', 'color', 'normal', 'position', 'uv']);
   const p = geometry.attributes.position;
   assert.equal(p.count, 120, 'ten folded sprays of twelve vertices');
@@ -92,13 +92,13 @@ function produce(id, extra = {}) {
     const clusters = world._clusters;
     const tier = getDeviceTier();
     if (tier === 'mobile') {
-      assert.equal(mesh, undefined, `${id}: the mobile tier plants no understorey`);
+      assert.ok(mesh === undefined, `${id}: the mobile tier plants no understorey`);
       return { id, tier, instances: 0 };
     }
     assert.ok(mesh?.isInstancedMesh, `${id}: one understorey mesh`);
     assert.ok(mesh.count > 0 && mesh.count === mesh.instanceMatrix.count, `${id}: a filled pool`);
-    assert.strictEqual(mesh.material, bushes[0].material, 'the bush species\' foliage material');
-    assert.strictEqual(mesh.customDepthMaterial, bushes[0].customDepthMaterial, 'and its alpha-tested shadow material');
+    assert.ok(mesh.material === bushes[0].material, 'the bush species\' foliage material');
+    assert.ok(mesh.customDepthMaterial === bushes[0].customDepthMaterial, 'and its alpha-tested shadow material');
     assert.ok(mesh.castShadow && mesh.receiveShadow && mesh.userData.aoExclude === true && !mesh.matrixAutoUpdate);
     assert.ok(mesh.geometry.userData.understorey === true);
     for (const key of ['aFadeI', 'aLodF']) {

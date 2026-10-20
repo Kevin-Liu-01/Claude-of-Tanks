@@ -35,7 +35,7 @@ for(const quality of ['high','low']) {
     near(top(tank.root.getObjectByName('hullDetail'),-.65,2.4),1.4436,.004,
       `${quality}: port service plate follows the glacis plane`);
     const pivot=tank.root.getObjectByName('rig_gun');
-    assert.equal(mount.parent,pivot,`${quality}: shaped armor moves with the actual trunnion`);
+    assert.ok(mount.parent === pivot,`${quality}: shaped armor moves with the actual trunnion`);
   } finally {tank.dispose();}
 }
 console.log('k2XDetail: measured mantlet slopes, real optic cavity/glazing and source-seated hull fittings pass in both LODs');

@@ -243,7 +243,7 @@ function buildPlots(mapId, seed) {
     autumnCropRows, captureAutumnCropRow,
     cropRowSegmentIsSupported, mergeGeometries, engineCtx: { setupShadowMaterial(material) { buildMips(material.map, .42); } },
   });
-  assert.equal(api, group); assert.equal(group.children.length, 1);
+  assert.ok(api === group); assert.equal(group.children.length, 1);
   if (autumnCropRows) assert.ok(autumnCropRows.length > 0, 'Autumn executes the real emitted-row observer');
   return group.children[0];
 }
@@ -259,7 +259,7 @@ function checkRows() {
           }
           assert.deepEqual(actual.geometry.index.array, old.geometry.index.array, 'plot admission/row spans unchanged');
           for (const key of ['alphaTest', 'alphaToCoverage', 'side', 'vertexColors', 'roughness', 'metalness',
-            'envMapIntensity', 'transparent', 'depthWrite']) assert.equal(actual.material[key], old.material[key], key);
+            'envMapIntensity', 'transparent', 'depthWrite']) assert.ok(actual.material[key] === old.material[key], key);
           assert.equal(actual.material.customProgramCacheKey(), 'world-crop-authored-normal-v1');
           assert.equal(Object.values(actual.material).filter(v => v?.isTexture).length, 1);
           assert.deepEqual([actual.castShadow, actual.receiveShadow, actual.matrixAutoUpdate], [false, false, false]);

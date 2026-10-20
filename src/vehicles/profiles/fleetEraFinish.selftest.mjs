@@ -82,7 +82,7 @@ for (const id of ERA_VEHICLE_IDS) {
     assert.ok(armorMesh?.isMesh && !armorMesh.isInstancedMesh,
       `${id} ${owner} ERA is one ordinary merged mesh`);
     assert.ok(bodyMesh?.isMesh, `${id} retains its ${owner} paint mesh`);
-    assert.equal(armorMesh.material, bodyMesh.material,
+    assert.ok(armorMesh.material === bodyMesh.material,
       `${id} ${owner} ERA shares the vehicle paint material`);
     assert.ok(armorMesh.material.map,
       `${id} ${owner} ERA receives the vehicle camouflage texture`);

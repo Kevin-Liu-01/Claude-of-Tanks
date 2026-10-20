@@ -74,7 +74,7 @@ for (const quality of ['high', 'low']) {
       assert.equal(expanded.receipt.plates.length, 4, 'expanded headers do not multiply exact zone receipts');
       assert.deepEqual(expanded.receipt.plates.map(row => [key(row), row.fittedSurfaces]), surfaces,
         'all exact faces, winding, positions and order survive expanded/reversed input frames');
-      assert.equal(expanded.geometry, baseline.geometry, 'receipt compression never changes visible geometry');
+      assert.ok(expanded.geometry === baseline.geometry, 'receipt compression never changes visible geometry');
       assert.ok(JSON.stringify(expanded.receipt).length < 100000,
         '231 real faces must not expand to the former 23,245 entries / 5.7 MB');
       for (const row of expanded.receipt.plates) {

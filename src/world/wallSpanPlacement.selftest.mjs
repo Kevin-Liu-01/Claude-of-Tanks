@@ -471,8 +471,8 @@ for (const seed of [1337, 2049, 7719]) {
   assert.equal(pool.imI.count, authoredSlots);
   assert.equal(group.children.length, 2, 'one intact and one existing broken pool, no added draw families');
   assert.equal(pool.imB.count, 0);
-  assert.equal(pool.imI.material, material);
-  assert.equal(pool.imB.material, material, 'no extra material or shader variant');
+  assert.ok(pool.imI.material === material);
+  assert.ok(pool.imB.material === material, 'no extra material or shader variant');
   assert.equal(fixture.draws, drawCount, 'fitting consumes no placement RNG');
   assertGeometryEqual(pool.imI.geometry, expectedIntact, 'unchanged intact geometry');
   assertGeometryEqual(pool.imB.geometry, expectedBroken, 'unchanged broken geometry');
@@ -600,12 +600,12 @@ for (const method of ['prepare', 'finalize']) {
   assert.ok(test.geometries.every(item => item.disposals === 0), 'successful transfer does not dispose live geometry');
   if (method === 'prepare') {
     assertUnpublished(test);
-    assert.equal(step.value.geoI, test.geometries[0].geometry);
+    assert.ok(step.value.geoI === test.geometries[0].geometry);
     assert.equal(step.value.groundCoverDetail, null, 'walls do not allocate building-only solid profiles');
   } else {
     assert.equal(test.owner.group.children.length, 2);
-    assert.equal(test.pool.imI.geometry, test.geometries[0].geometry);
-    assert.equal(test.pool.imB.geometry, test.geometries[1].geometry);
+    assert.ok(test.pool.imI.geometry === test.geometries[0].geometry);
+    assert.ok(test.pool.imB.geometry === test.geometries[1].geometry);
   }
   for (const item of test.geometries) item.geometry.dispose();
   iterator.return();

@@ -42,7 +42,7 @@ const field = createWaterRippleField(renderer, { tier: 'desktop' });
 assert.ok(field, 'desktop tier with a renderer builds the field');
 assert.equal(field.params.x, WATER_RIPPLE_WINDOW_M);
 assert.equal(field.params.w, 0, 'inactive until the first step');
-assert.equal(field.stateUniform.value, null, 'no state texture before the first step');
+assert.ok(field.stateUniform.value === null, 'no state texture before the first step');
 assert.ok(Math.abs(field.texel.x - 1 / WATER_RIPPLE_TEXELS) < 1e-12 && Math.abs(field.texel.y - WATER_RIPPLE_WINDOW_M / WATER_RIPPLE_TEXELS) < 1e-12,
   'texel size in uv and in metres');
 const dx = WATER_RIPPLE_WINDOW_M / WATER_RIPPLE_TEXELS;

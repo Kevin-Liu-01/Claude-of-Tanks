@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const elements = new Map();
 const appendedStyles = [];
@@ -28,6 +29,6 @@ const parent = document.createElement('section');
 const child = createElement('button', 'test-button', parent);
 assert.equal(child.tagName, 'BUTTON');
 assert.equal(child.className, 'test-button');
-assert.deepEqual(parent.children, [child]);
+assert.deepEqual(graphLabels(parent.children), graphLabels([child]));
 
 console.log('dom.selftest: shared style and element gates passed');

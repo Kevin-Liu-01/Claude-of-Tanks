@@ -134,8 +134,8 @@ try {
   });
   // Critic panel 2026-10-15 on the owner markup: the sight column carries the PERI RTWL head (no open-yoke station), and
   // the Puma S1 carries no roof weapon (VH.14; its compact 12.7 mm remote station is gone)
-  assert.equal(tank.root.getObjectByName('pumaS1K2bStyleRoofOptics'), undefined, 'no open-yoke optics station');
-  assert.equal(tank.root.getObjectByName('pumaS1CompactRoofRws'), undefined, 'no roof weapon station');
+  assert.ok(tank.root.getObjectByName('pumaS1K2bStyleRoofOptics') === undefined, 'no open-yoke optics station');
+  assert.ok(tank.root.getObjectByName('pumaS1CompactRoofRws') === undefined, 'no roof weapon station');
   assert.deepEqual(turret.userData.pumaS1RoofOpticsReceipt, {
     sight: 'PERI RTWL commander panoramic periscope',
     mountLocal: [0.62, 0.8925, 0.52],

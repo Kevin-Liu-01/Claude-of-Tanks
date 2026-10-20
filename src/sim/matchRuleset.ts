@@ -10,6 +10,10 @@
 import type { GameModeId } from './matchModes.ts';
 import { shell } from './shellSpec.ts';
 import type { DestructionRules } from './destructionEvents.ts';
+import { DRONE_LAUNCH_HEIGHT_M } from './droneDockRules.ts';
+
+// The dock's launch column (a leaf, so the decor keep-out reads it without the ruleset: src/sim/droneDockRules.ts).
+export { DRONE_LAUNCH_HEIGHT_M } from './droneDockRules.ts';
 
 /** Mode weapons are fictional gameplay loadouts; they never mutate the fleet catalog. */
 export const GUN_GAME_WEAPONS = Object.freeze([
@@ -27,7 +31,7 @@ export const AERIAL_RULES = Object.freeze({
   // burst (3 x .35 = 1.05) no longer downs a drone alone, a 7.62's (8 x .15 = 1.2) still does, and shares from several
   // stations still add, so a lone gun downs a quarter to a third fewer drones and two or three stations nearly as many.
   // Kept clear of every exact burst sum.
-  drone: Object.freeze({ launchS: 2.4, responseHz: 4.5, spotRangeM: 350, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: 12, hitsToDown: 1.1,
+  drone: Object.freeze({ launchS: 2.4, responseHz: 4.5, spotRangeM: 350, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: DRONE_LAUNCH_HEIGHT_M, hitsToDown: 1.1,
     /**
      * The recall (owner 2026-10-14: "dont be able to instantly call it back, only be able to call back once weve entered
      * screen, and if we do, show the landing animation and we should be able to launch it again after a shorter
@@ -904,6 +908,19 @@ export function applyRulesetToCombat(
 export function rulesetLoadout(ruleset: MatchRuleset, ids: readonly string[] | null | undefined): string[] {
   const list = Array.isArray(ids) ? ids.slice() : [];
   return ruleset.equipmentSlots >= 3 ? list : list.slice(0, ruleset.equipmentSlots);
+}
+
+/**
+ * Whether one entity's rounds are unlimited under a ruleset: the one read for both refill sites (the solo battle's and
+ * the authority's), both shell-card builders and the loader audio. The AC-130 refills only the gunship (its escorts'
+ * rounds are what the gunship's airdrop is for), so an escort shows the real empty states (critic r3). The gunship test
+ * is sim/aerialCombat isGunship, read structurally here (that module imports this one).
+ */
+export function rulesetUnlimitedFor(
+  ruleset: { readonly ammo?: string; readonly aerial?: string | null } | null | undefined,
+  entity: { readonly aerial?: { readonly kind?: string } | null } | null | undefined,
+): boolean {
+  return ruleset?.ammo === 'unlimited' && (ruleset.aerial !== 'gunship' || entity?.aerial?.kind === 'gunship');
 }
 
 /** After a shot under unlimited ammunition, refill the fired channel (the HUD keeps the loadout shape). */

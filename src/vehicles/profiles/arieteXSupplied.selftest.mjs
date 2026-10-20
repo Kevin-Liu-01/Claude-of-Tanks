@@ -80,8 +80,8 @@ function poseAndEnvelope(t,all) {
   const root=t.root,yaw=root.getObjectByName('rig_turret'),gun=root.getObjectByName('rig_gun'),recoil=root.getObjectByName('rig_recoil');
   for(const [rig,datum] of [[yaw,yawDatum],[gun,gunDatum]]) near(rig.getWorldPosition(new THREE.Vector3())
     .distanceTo(new THREE.Vector3(...datum).multiplyScalar(S)),0,2e-6,'uniformly enlarged source functional joint');
-  assert.equal(root.getObjectByName('gunMount').parent,gun);
-  assert.equal(root.getObjectByName('gun').parent,recoil);
+  assert.ok(root.getObjectByName('gunMount').parent === gun);
+  assert.ok(root.getObjectByName('gun').parent === recoil);
   const bounds=new THREE.Box3(),v=new THREE.Vector3(),m=new THREE.Matrix4();
   for(const o of all) for(let j=0;j<(o.isInstancedMesh?o.count:1);j++) {
     if(o.isInstancedMesh){o.getMatrixAt(j,m);m.premultiply(o.matrixWorld);}else m.copy(o.matrixWorld);

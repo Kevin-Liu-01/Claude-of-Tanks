@@ -181,7 +181,7 @@ assert.deepEqual(worldLoads, [['winter', worldProgress, { precompile: false, atm
   let failedBake = false;
   const applySelected = mainCallback('applyPreset', {
     sky: { sunDir: 'moon-direction', applyPreset(preset, target) {
-      assert.equal(target, scene);
+      assert.ok(target === scene);
       effects.push(['bake', preset]);
       if (failedBake) throw new Error('environment bake failed');
     } },

@@ -24,7 +24,13 @@
  * Server and build code that needs both full catalogs synchronously imports
  * `i18nCatalog.ts`, which registers them here; browser code must not
  * (src/ui/i18nLazyCatalog.selftest.mjs).
+ *
+ * A chunk the meta names loads through `importCatalogChunk`, which only a Vite document resolves to the URL import
+ * (i18nChunkImport.browser.ts): this module holds no computed import(), so every receipt that imports the locale
+ * runtime stays reusable (src/ui/i18nChunkImport.selftest.mjs).
  */
+import { importCatalogChunk } from './i18nChunkImport.ts';
+
 export type CatalogLocale = 'en-US' | 'zh-CN';
 type Dictionary = Readonly<Record<string, string>>;
 
@@ -58,7 +64,7 @@ let lazyWanted = false;
 function loadLazyLocale(locale: CatalogLocale): Promise<void> {
   const url = lazyCatalogUrl(locale);
   if (!url || !loaded[locale]) return Promise.resolve();
-  return lazyLoads[locale] ??= (import(/* @vite-ignore */ url) as Promise<{ default: Dictionary }>).then((module) => {
+  return lazyLoads[locale] ??= importCatalogChunk(url).then((module) => {
     loaded[locale] = { ...loaded[locale], ...module.default };
   }, (error: unknown) => {
     delete lazyLoads[locale]; // a later import() retries
@@ -99,7 +105,7 @@ export function localeDictionary(locale: CatalogLocale): Dictionary | undefined 
 export function loadLocaleDictionary(locale: CatalogLocale): Promise<void> {
   if (loaded[locale]) return Promise.resolve();
   const url = pageCatalogUrl(locale);
-  return pending[locale] ??= (url ? import(/* @vite-ignore */ url) as Promise<{ default: Dictionary }> : FULL_CATALOGS[locale]())
+  return pending[locale] ??= (url ? importCatalogChunk(url) : FULL_CATALOGS[locale]())
     .then((module) => {
       loaded[locale] = module.default;
       // (a locale switched to in place after a lazy module loaded takes the page's lazy chunk too; English for those

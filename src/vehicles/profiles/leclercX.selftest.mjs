@@ -168,8 +168,8 @@ for (const quality of ['high', 'low']) {
     near(trunnion.y, 1.8791055, 1e-6, 'independently cut physical bore Y');
     near(trunnion.z, 1.998880, 1e-6, 'source rear gun housing station');
     near(muzzle.getWorldPosition(new THREE.Vector3()).z, 6.239235, 1e-6, 'actual source muzzle station');
-    assert.equal(get('gunMount').parent, gun, 'physical housing pitches');
-    assert.equal(get('gun').parent, recoil, 'barrel and muzzle reference recoil together');
+    assert.ok(get('gunMount').parent === gun, 'physical housing pitches');
+    assert.ok(get('gun').parent === recoil, 'barrel and muzzle reference recoil together');
     const rotatingArmor = get('turret');
     near(ray([rotatingArmor], [3, 1.35, .72122934], [-1, 0, 0])?.point.x,
       .86942112, .001, 'actual source rotating collar right side');

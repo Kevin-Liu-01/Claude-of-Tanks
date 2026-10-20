@@ -175,7 +175,7 @@ const chunkSplits = (hf, cx0, cz0) => {
   const verdant = createHeightField(1337, getMapConfig('verdant'));
   const { geometry, flipped } = chunkSplits(verdant, -128, -128);
   assert.equal(flipped, 0, 'Verdant\'s centre has no folded steep cell');
-  assert.equal(geometry.index, pool.get(96).attribute, 'a chunk with no steep cell keeps the pooled index itself');
+  assert.ok(geometry.index === pool.get(96).attribute, 'a chunk with no steep cell keeps the pooled index itself');
   geometry.dispose();
 }
 
