@@ -201,7 +201,7 @@ function makeWallTexture(rng: RandomSource): HTMLCanvasElement {
 // service equipment, and amber remains the general caution accent.
 // Monument Grotesk has no condensed cut: bake at 44px but shrink-to-fit against the
 // plate's inner width (the old 79%-width face fit 'NO SMOKING' at 44px flat).
-export const SIGN_FONT = "700 44px 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif";
+const SIGN_FONT = "700 44px 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif";
 export function makeSignTexture(rng: RandomSource, text: string): HTMLCanvasElement {
   const W = 256, H = 128;
   const c = document.createElement('canvas');

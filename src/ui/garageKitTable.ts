@@ -16,6 +16,15 @@ export const GARAGE_KIT_CELL_ARCHITECTURES: ReadonlySet<GarageVariant['architect
   'shade_depot', 'brick_arsenal',
 ]);
 
+/**
+ * The Garages whose kit tables stock the two shelter flanks beside the turntable with their own pieces (a gas cage, a
+ * pallet with drums or stores): the facility counts those stations (purposes, stock, the secured cage) but emits no
+ * primitive for them (garageFacilityDetails.ts). A Garage is in at most one of these two sets.
+ */
+export const GARAGE_KIT_FLANK_ARCHITECTURES: ReadonlySet<GarageVariant['architecture']> = new Set<GarageVariant['architecture']>([
+  'naval_drydock', 'rail_roundhouse', 'factory_line',
+]);
+
 /** The canonical camera's ground point in the opening view's frame (side, depth). */
 const GARAGE_CANONICAL_CAMERA_VIEW: readonly [number, number] = [0, -19.03];
 

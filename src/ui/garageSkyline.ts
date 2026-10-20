@@ -773,6 +773,8 @@ export interface GarageSkylineLandmarkReceipt {
 }
 
 const skylineCache = new Map<string, THREE.BufferGeometry>();
+/** Bakes kept, most recent last: two, like the pack cache (the r9 engineering critic: no bake held all session). */
+const SKYLINE_CACHE_MAPS = 2;
 
 /**
  * A Garage's horizon for its pack: the bake is deterministic, so each map's is built once and every pack build takes its
@@ -785,9 +787,14 @@ export function createGarageSkylineBackdrop(mapId: string): THREE.BufferGeometry
 /** Bake a map's skyline into the session cache ahead of its pack build (idempotent); returns the cached bake. */
 export function prepareGarageSkyline(mapId: string): THREE.BufferGeometry {
   let geometry = skylineCache.get(mapId);
-  if (!geometry) {
-    geometry = buildGarageSkyline(mapId);
-    skylineCache.set(mapId, geometry);
+  if (geometry) skylineCache.delete(mapId);
+  else geometry = buildGarageSkyline(mapId);
+  skylineCache.set(mapId, geometry);
+  // a pack takes its own copy, so an older bake leaves the cache without touching any built pack
+  while (skylineCache.size > SKYLINE_CACHE_MAPS) {
+    const [oldest, bake] = skylineCache.entries().next().value!;
+    skylineCache.delete(oldest);
+    bake.dispose();
   }
   return geometry;
 }

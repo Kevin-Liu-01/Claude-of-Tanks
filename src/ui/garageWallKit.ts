@@ -1,4 +1,4 @@
-import { KitBuilder, type KitVec } from './garageKitGeometry.ts';
+import { KitBuilder } from './garageKitGeometry.ts';
 import { garageDisplayRect } from './garageDisplayAtlas.ts';
 
 /**
@@ -242,5 +242,3 @@ export function buildShadowBoard(b: KitBuilder, w: number, h: number): number {
   return b.triangleCount - start;
 }
 
-/** Re-export for builders that place wall runs from view-frame points. */
-export type KitWallPoint = KitVec;

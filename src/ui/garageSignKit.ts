@@ -66,13 +66,3 @@ export function buildGroundStencil(b: KitBuilder, rect: string, w: number, d: nu
   b.pop();
   return 2;
 }
-
-/** The pictograms a fuel point, an ammo point, a weld cell and a hall door carry (the placement tables pick from these). */
-export const GARAGE_SIGN_SETS = Object.freeze({
-  fuel: Object.freeze(['picto.nosmoking', 'picto.flammable', 'picto.extinguisher']),
-  ammo: Object.freeze(['picto.nosmoking', 'picto.flammable', 'stencil.diamond']),
-  weld: Object.freeze(['picto.eye', 'picto.gloves', 'picto.ear']),
-  crane: Object.freeze(['picto.overhead', 'picto.head']),
-  yard: Object.freeze(['picto.speed10', 'picto.tankcrossing', 'picto.forklift']),
-  door: Object.freeze(['picto.exit', 'picto.firstaid']),
-} as const);

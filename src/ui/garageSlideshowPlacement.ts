@@ -13,9 +13,9 @@ import { kitYawToward } from './garageKitTable.ts';
  * dressing's own freestanding installation on the hall's west wall and has no row here.
  */
 
-export type GarageSlideshowMount = 'freestanding' | 'wall' | 'column' | 'trailer';
+type GarageSlideshowMount = 'freestanding' | 'wall' | 'column' | 'trailer';
 
-export interface GarageSlideshowPlacement {
+interface GarageSlideshowPlacement {
   readonly at: readonly [number, number];
   readonly yaw: number;
   /** Screen width (m); 16:9. */
@@ -73,7 +73,7 @@ export function garageSlideshowBottomY(mount: GarageSlideshowMount, bottomY?: nu
 }
 
 /** The slideshow frame's screen centre in the frame's own coordinates (its face plane 52 mm proud of the bezel's centre). */
-export function garageSlideshowMountCenter(placement: GarageSlideshowPlacement): readonly [number, number, number] {
+function garageSlideshowMountCenter(placement: GarageSlideshowPlacement): readonly [number, number, number] {
   const height = placement.width * 9 / 16;
   return [0, garageSlideshowBottomY(placement.mount, placement.bottomY) + (height + 0.16) / 2, 0.052];
 }

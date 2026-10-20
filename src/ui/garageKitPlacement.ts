@@ -123,6 +123,45 @@ interface CachedPiece {
 }
 
 const pieceCache = new Map<string, CachedPiece>();
+/**
+ * The maps whose pieces the session cache holds, oldest first, and each one's keys. Two, like the pack cache
+ * (garageArchitecture.ts CACHE_LIMIT): a tour of every Garage keeps at most two Garages' pieces resident (the r9
+ * engineering critic measured 13 MB of pieces held for the whole session). A pack places copies, so dropping a map's
+ * pieces never touches a built pack; a revisit after its pack left the cache rebuilds them, as it rebuilds the pack.
+ */
+const PIECE_CACHE_MAPS = 2;
+const pieceCacheMaps = new Map<string, Set<string>>();
+const pieceCacheCounts = { hits: 0, misses: 0 };
+
+function disposePiece(piece: CachedPiece): void {
+  piece.result.solid.dispose();
+  piece.result.display?.dispose();
+  piece.result.decal?.dispose();
+  for (const surface of piece.result.surfaces.values()) surface.dispose();
+}
+
+/** Mark a map's pieces the most recent; past the limit the oldest map's pieces leave the cache. */
+function touchPieceCacheMap(mapId: string): Set<string> {
+  let keys = pieceCacheMaps.get(mapId);
+  if (keys) pieceCacheMaps.delete(mapId);
+  else keys = new Set();
+  pieceCacheMaps.set(mapId, keys);
+  while (pieceCacheMaps.size > PIECE_CACHE_MAPS) {
+    const [oldest, oldKeys] = pieceCacheMaps.entries().next().value!;
+    pieceCacheMaps.delete(oldest);
+    for (const key of oldKeys) {
+      const piece = pieceCache.get(key);
+      if (piece) disposePiece(piece);
+      pieceCache.delete(key);
+    }
+  }
+  return keys;
+}
+
+/** The session cache's hit and miss counts and the maps it holds, oldest first (the receipts). */
+export function garageKitCacheStats(): { readonly hits: number; readonly misses: number; readonly maps: readonly string[] } {
+  return { hits: pieceCacheCounts.hits, misses: pieceCacheCounts.misses, maps: [...pieceCacheMaps.keys()] };
+}
 
 /** The stocked spares a placed prop carries (drums, cans, crates, sandbags, wheels ...) for the facility receipt. */
 const KIT_LOOSE_PARTS: Readonly<Record<string, number>> = Object.freeze({
@@ -138,8 +177,11 @@ function buildGarageKitPiece(item: GarageKitItem, architecture: GarageVariant['a
   const skin = garageKitSkin(architecture);
   const { at: _at, yaw: _yaw, y: _y, ...shape } = item as GarageKitItem & { at?: unknown; yaw?: unknown; y?: unknown };
   const key = `${skin.id}|${mapId}|${item.kind === 'piece' ? `piece:${item.key}` : JSON.stringify(shape)}`;
+  const mapKeys = touchPieceCacheMap(mapId);
   const cached = pieceCache.get(key);
-  if (cached) return cached;
+  if (cached) { pieceCacheCounts.hits += 1; return cached; }
+  pieceCacheCounts.misses += 1;
+  mapKeys.add(key);
   const b = new KitBuilder(kitRandom(hash(key)), skin);
   let crane: KitCraneReceipt | undefined;
   let slideshow: KitSlideshowMount | undefined;
@@ -256,13 +298,9 @@ export function garageKitPads(variant: GarageVariant, placement: GarageKitPlacem
 
 /** Drop the session cache (tests). */
 export function clearGarageKitCache(): void {
-  for (const piece of pieceCache.values()) {
-    piece.result.solid.dispose();
-    piece.result.display?.dispose();
-    piece.result.decal?.dispose();
-    for (const surface of piece.result.surfaces.values()) surface.dispose();
-  }
+  for (const piece of pieceCache.values()) disposePiece(piece);
   pieceCache.clear();
+  pieceCacheMaps.clear();
 }
 
 /**

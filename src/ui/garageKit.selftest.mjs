@@ -17,8 +17,12 @@ import {
 import { GARAGE_WALL_BUDGETS, buildWallRun, buildIndoorWallBay } from './garageWallKit.ts';
 import { buildComputerStation, buildFabricBanner, buildNameboard, buildNoticeBoard, buildSlideshowFrame } from './garageDisplayKit.ts';
 import { GARAGE_PLATFORM_COLLARS, buildGaragePlatformCollar, createGarageDeckPainter } from './garagePlatformKit.ts';
-import { buildGarageKitDressing, clearGarageKitCache } from './garageKitPlacement.ts';
-import { GARAGE_KIT_PLACEMENTS } from './garageKitPlacements.ts';
+import { buildGarageKitDressing, clearGarageKitCache, garageKitCacheStats } from './garageKitPlacement.ts';
+import { GARAGE_KIT_PLACEMENTS, GARAGE_KIT_SKYLINES } from './garageKitPlacements.ts';
+import { garageSkylineEnabled } from './garageSkyline.ts';
+import { garageHorizonLandmarks } from './garageHorizonLandmarks.ts';
+import { buildGarageVerdantKit } from './garageVerdantKit.ts';
+import { GARAGE_KIT_CELL_ARCHITECTURES, GARAGE_KIT_FLANK_ARCHITECTURES } from './garageKitTable.ts';
 import { GARAGE_SLIDESHOW_PLACEMENTS, garageSlideshowPose } from './garageSlideshowPlacement.ts';
 import { armGarageDisplayAtlas } from './garageDisplayAtlas.ts';
 import { GARAGE_DISPLAY_ATLAS_MANIFEST } from './garageDisplayAtlas.generated.ts';
@@ -162,16 +166,11 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
   clearGarageKitCache();
   const variant = GARAGE_VARIANTS.find((v) => v.architecture === architecture);
   const buckets = {};
-  const t0 = performance.now();
+  const cold = garageKitCacheStats();
   const kit = buildGarageKitDressing({ variant, placement, buckets, groundAtWorld: () => 0 });
-  const coldMs = performance.now() - t0;
-  // the faster of two cached builds (one collector pause under a loaded machine read as a cache miss)
-  let warmMs = Infinity;
-  for (let pass = 0; pass < 2; pass += 1) {
-    const t1 = performance.now();
-    buildGarageKitDressing({ variant, placement, buckets: {}, groundAtWorld: () => 0 });
-    warmMs = Math.min(warmMs, performance.now() - t1);
-  }
+  const built = garageKitCacheStats();
+  buildGarageKitDressing({ variant, placement, buckets: {}, groundAtWorld: () => 0 });
+  const warm = garageKitCacheStats();
   assert.ok(kit.stats.cranes.some((crane) => crane.atWork && crane.load), `${architecture}: a crane at work with a real load`);
   assert.ok(kit.stats.brandPieces >= 2, `${architecture}: brand pieces ${kit.stats.brandPieces}`);
   assert.ok(kit.stats.tankImages >= 3, `${architecture}: tank images ${kit.stats.tankImages}`);
@@ -182,7 +181,11 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
   assert.ok(kit.stats.kitTriangles + kit.stats.displayTriangles <= 20000, `${architecture}: kit ${kit.stats.kitTriangles} tris`);
   assert.ok(kit.stats.atmosphereTriangles <= 2500, `${architecture}: atmosphere ${kit.stats.atmosphereTriangles} tris`);
   assert.ok(kit.meshes.length <= 3, `${architecture}: the kit adds at most three draws (display, decal, atmosphere)`);
-  assert.ok(warmMs < coldMs, `${architecture}: a second build reuses the session cache (${warmMs.toFixed(1)} vs ${coldMs.toFixed(1)} ms)`);
+  // the session cache, counted rather than timed (the r9 engineering critic: a wall-clock comparison failed at the
+  // machine's normal load): the cold build fills it, a second build of the same Garage builds no piece again
+  assert.ok(built.misses > cold.misses, `${architecture}: the cold build fills the session cache`);
+  assert.equal(warm.misses, built.misses, `${architecture}: a second build reuses every piece from the session cache`);
+  assert.ok(warm.hits - built.hits >= kit.stats.kitPieces, `${architecture}: a second build hits the cache for each placed item`);
   assert.ok((buckets.baked || []).length > 0, `${architecture}: the solids join the baked bucket`);
   if (GARAGE_SLIDESHOW_PLACEMENTS[architecture]) {
     const pose = garageSlideshowPose(architecture);
@@ -218,6 +221,44 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
   pack.dispose();
   assert.equal(registered.size, 0, `the disposed pack left ${registered.size} materials on the cascades`);
   assets.dispose();
+}
+
+// 6c. the session cache holds two Garages' pieces, like the pack cache: a tour of every Garage keeps no more resident
+// (the r9 engineering critic: 13 MB of pieces held all session), and a pack built from evicted pieces is unaffected
+{
+  clearGarageKitCache();
+  const order = Object.keys(GARAGE_KIT_PLACEMENTS);
+  for (const architecture of order) {
+    const variant = GARAGE_VARIANTS.find((v) => v.architecture === architecture);
+    const kit = buildGarageKitDressing({ variant, placement: GARAGE_KIT_PLACEMENTS[architecture], buckets: {}, groundAtWorld: () => 0 });
+    assert.ok(garageKitCacheStats().maps.length <= 2, `after ${architecture}: ${garageKitCacheStats().maps.length} Garages' pieces resident`);
+    for (const mesh of kit.meshes) mesh.geometry.dispose();
+  }
+  const last = order.slice(-2).map((architecture) => GARAGE_VARIANTS.find((v) => v.architecture === architecture).mapId);
+  assert.deepEqual(garageKitCacheStats().maps, last, 'the two most recent Garages stay resident');
+  clearGarageKitCache();
+}
+
+// 6d. one horizon source per Garage: the map skyline (garageSkyline.ts), a kit skyline (GARAGE_KIT_SKYLINES) or the map
+// landmarks (garageHorizonLandmarks.ts) chain in one backdrop builder, so no Garage may carry two of them
+for (const variant of GARAGE_VARIANTS) {
+  const sources = [garageSkylineEnabled(variant.mapId) && 'map skyline', GARAGE_KIT_SKYLINES[variant.architecture] && 'kit skyline',
+    garageHorizonLandmarks(variant.architecture) && 'landmarks'].filter(Boolean);
+  assert.ok(sources.length <= 1, `${variant.id}: ${sources.join(' + ')}`);
+  if (variant.architecture !== 'field_shed') assert.equal(sources.length, 1, `${variant.id}: its outside is built from its map`);
+  // and one way the facility drops its primitive station piles
+  assert.ok(!(GARAGE_KIT_CELL_ARCHITECTURES.has(variant.architecture) && GARAGE_KIT_FLANK_ARCHITECTURES.has(variant.architecture)),
+    `${variant.id}: kit cells and kit flanks both replace its stations`);
+}
+
+// 6e. Verdant's kit (the hall's banners, prints, stations and finish) stays inside its budget: three draws on programs the
+// hall already compiles and 14k triangles
+{
+  const kit = buildGarageVerdantKit({});
+  assert.ok(kit.meshes.length <= 3, `Verdant kit: ${kit.meshes.length} draws`);
+  assert.ok(kit.stats.triangles <= 14000, `Verdant kit: ${kit.stats.triangles} triangles`);
+  assert.ok(kit.stats.tankImages >= 3 && kit.stats.brandPieces >= 2 && kit.stats.stations >= 1, 'Verdant kit: prints, brand, a station');
+  for (const mesh of kit.meshes) mesh.geometry.dispose();
 }
 
 // 7. determinism: no random numbers and no wall clock in the kit's geometry (the atmosphere's fallback clock and the

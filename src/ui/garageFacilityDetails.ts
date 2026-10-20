@@ -17,7 +17,7 @@ import {
   type GarageWorkshopBayPose,
 } from '../game/garageWorkshopLayout.ts';
 import { garageContactShadowTexture } from './garageYardWear.ts';
-import { GARAGE_KIT_CELL_ARCHITECTURES } from './garageKitTable.ts';
+import { GARAGE_KIT_CELL_ARCHITECTURES, GARAGE_KIT_FLANK_ARCHITECTURES } from './garageKitTable.ts';
 import { GARAGE_FACILITY_GRIME_KEY, garageFacilityGrimeHook } from './garageGrimeProgram.ts';
 import { buildConifers, buildEarthMound, buildRockFace, buildTalusApron, buildTropicalPlants } from './garageRockKit.ts';
 import { KitBuilder, kitRandom, type KitVec } from './garageKitGeometry.ts';
@@ -3090,8 +3090,7 @@ export function addGarageFacilityDetails({
   // pallet with drums or stores), so the stations are counted (their purposes, stock and secured cage stand) but emit no
   // primitive (the engineering critic, 2026-10-18: building them and truncating the instance arrays afterwards cost every
   // Garage's cold build a snapshot per station)
-  const kitFlanks = variant.architecture === 'naval_drydock' || variant.architecture === 'rail_roundhouse'
-    || variant.architecture === 'factory_line';
+  const kitFlanks = GARAGE_KIT_FLANK_ARCHITECTURES.has(variant.architecture);
   // (garage r9: a Garage whose kit table lays out its own working cells drops these primitive station piles; the cells
   // carry the same purposes in authored pieces: garageSiroccoKit.ts)
   const kitCellsReplaceStations = GARAGE_KIT_CELL_ARCHITECTURES.has(variant.architecture);

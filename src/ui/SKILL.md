@@ -134,7 +134,10 @@ template in the game graph keeps every media.* caption in the boot catalogs. A d
 no per-frame call). A pack releases the cascade registrations of the materials it owns when it is disposed. The
 platform kit (collars, LED pucks, pedestal, the segmented deck, the hall's two signs, half size on mobile) loads at
 Garage idle together with the atlas runtime: no boot-graph module (`garageStage.ts`) imports `garageDisplayAtlas.ts`
-statically.
+statically. `npm run garage:atlas:check` fails when this tool, its font, the layout or the files moved and only warns
+when another lane's pictures did (a tank lane's readout re-render, new site stills, the brand marks); a rebrand or a
+release that wants current pictures runs `npm run garage:atlas:check -- --strict`, then `npm run garage:atlas:update`.
+The kit's piece cache and the skyline bakes keep the two most recent Garages, like the pack cache.
 `tools/garage-kit-sheet.html` stages every piece for review. Each Garage's arrangement lives in its own module
 (`garageKitRedrock.ts`, `garageKitGlacier.ts`, `garageKitFrosthollow.ts`, `garageKitMonsoon.ts`, ...), laid out in the
 opening view's frame (atmosphere cards too, through `atView`); the halo receipt tests each face and card by its own

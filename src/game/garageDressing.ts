@@ -663,7 +663,9 @@ export function createGarageDressing(
   ): void {
     // the plate's picture is a pictogram, numeral or readout of the Garages' one display atlas (garage r9 K3: "less
     // text, more pictograms"; type comes from the atlas generator, never the browser's canvas). The old canvas plate drew
-    // its wear from this dressing's random stream: the same draws are spent so every later piece keeps its place.
+    // its wear from this dressing's random stream and its 1,300 draws are still spent; the r9 shadow boards draw nothing
+    // where the canvas pegboards drew some 42k, so the pieces placed after them (drum yaws, stains) take the r9 layout's
+    // draws, not the pre-r9 ones. Deterministic either way.
     for (let draw = 0; draw < 1300; draw += 1) rng();
     const rectName = garageDisplaySignRect(text);
     const rect = garageDisplayRect(rectName);

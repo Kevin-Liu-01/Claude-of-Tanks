@@ -22,8 +22,13 @@
 //   src/ui/garageDisplayAtlas.generated.ts               the manifest: every rect by name, the input hash
 //
 // Usage: node tools/generate-garage-display-atlas.mjs           (regenerate; launches Chrome for the brand SVGs)
-//        node tools/generate-garage-display-atlas.mjs --check   (receipt: inputs unchanged since the last run, layout
-//                                                                and files consistent; no browser, no rendering)
+//        node tools/generate-garage-display-atlas.mjs --check   (receipt: this tool and its font unchanged since the
+//                                                                last run, layout and files consistent; no browser)
+//        node tools/generate-garage-display-atlas.mjs --check --strict   (also: no picture input changed)
+// The pictures are other lanes' files (the brand marks, the site stills, the fleet's readout icons, the map thumbs):
+// a tank lane's tank:anatomy:update re-renders the readouts, so the plain check only WARNS when they moved (the r9
+// engineering critic: the core suite went red on every foreign re-render) and names the refresh. A rebrand or a
+// release that wants the atlas current runs the strict check, then garage:atlas:update.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -183,6 +188,16 @@ function inputHash(items) {
   return hash.digest('hex');
 }
 
+/** This tool and its font: a change here changes how the atlas is drawn, so it always needs a re-run. */
+function toolHash() {
+  const hash = crypto.createHash('sha256');
+  for (const file of [SELF, FONT].map((f) => path.relative(ROOT, path.resolve(ROOT, f))).sort()) {
+    hash.update(file);
+    hash.update(fs.readFileSync(path.join(ROOT, file)));
+  }
+  return hash.digest('hex');
+}
+
 function manifestOf(items, placed, hash, bytes) {
   const rects = {};
   for (const item of [...items].sort((a, b) => a.name.localeCompare(b.name))) {
@@ -195,7 +210,7 @@ function manifestOf(items, placed, hash, bytes) {
     };
   }
   return { url: `/${OUT_ALBEDO.replace(/^public\//, '')}`, emissiveUrl: `/${OUT_EMISSIVE.replace(/^public\//, '')}`,
-    width: W, height: H, emissiveWidth: EW, emissiveHeight: EH, inputHash: hash, bytes, aliases: MEDIA_ALIASES,
+    width: W, height: H, emissiveWidth: EW, emissiveHeight: EH, inputHash: hash, toolHash: toolHash(), bytes, aliases: MEDIA_ALIASES,
     garages: GARAGES.map((garage) => garage.map), rects };
 }
 
@@ -228,14 +243,20 @@ function webpSize(file) {
   throw new Error(`${file}: unknown webp chunk ${chunk}`);
 }
 
-function check() {
+function check(strict) {
   const items = atlasItems();
   const placed = pack(items);
   const stored = readManifest();
   const failures = [];
+  const warnings = [];
   if (!stored) failures.push(`${OUT_MANIFEST} is missing or unreadable`);
   const hash = inputHash(items);
-  if (stored && stored.inputHash !== hash) failures.push('an atlas input changed since the last generation (re-run the tool)');
+  if (stored && stored.toolHash !== toolHash()) failures.push('this tool or its font changed since the last generation (re-run the tool)');
+  else if (stored && stored.inputHash !== hash) {
+    (strict ? failures : warnings).push('a picture input changed since the last generation (brand marks, stills, readouts or map thumbs):'
+      + ' run npm run garage:atlas:update to show the current pictures');
+  }
+  for (const file of inputFiles(items)) if (!fs.existsSync(path.join(ROOT, file))) failures.push(`input ${file} is missing`);
   if (stored) {
     const expected = manifestOf(items, placed, hash, stored.bytes);
     if (JSON.stringify(expected.rects) !== JSON.stringify(stored.rects)) failures.push('the packed layout differs from the manifest');
@@ -256,7 +277,8 @@ function check() {
     console.error(`garage display atlas check FAILED:\n  ${failures.join('\n  ')}`);
     process.exit(1);
   }
-  console.log(`garage display atlas check: ${items.length} rects, inputs ${hash.slice(0, 12)}, files within budget`);
+  for (const warning of warnings) console.warn(`garage display atlas check WARNING: ${warning}`);
+  console.log(`garage display atlas check: ${items.length} rects, inputs ${hash.slice(0, 12)}${warnings.length ? ' (pictures moved since the bake)' : ''}, files within budget`);
 }
 
 // ----------------------------------------------------------------------------------------------- drawing
@@ -804,5 +826,5 @@ async function generate() {
   }
 }
 
-if (process.argv.includes('--check')) check();
+if (process.argv.includes('--check')) check(process.argv.includes('--strict'));
 else await generate();
