@@ -230,22 +230,34 @@ export function selftestCpuLease(env = process.env) {
 
 /**
  * Without the lease nothing serializes suites machine-wide, so each CPU child waits until Headroom
- * (`headroom can-start --gb N`, the house memory gate) says N GB fit; COT_SELFTEST_MEMORY_GB sets N (default 6, 0
- * turns it off). A "yes" is reused for 20 s; a "no" is asked again every 20 s. Without the CLI the gate is open.
+ * (`headroom can-start --gb N`, the house memory gate, exit 0 yes / 1 no) says N GB fit; COT_SELFTEST_MEMORY_GB sets N
+ * (default 6; 0 turns it off). A yes is reused for 5 s; a no is asked again every 15 s and logged every 10 minutes.
+ * After 30 minutes of noes, or on any other answer (no CLI, a usage error), the child starts and the gate says so:
+ * memory is Headroom's to report and memguard's to enforce, never a reason to hang a suite.
  */
 export function selftestMemoryGate(env = process.env, { ask = (gb) => spawnSync('headroom', ['can-start', '--gb', String(gb)],
   { stdio: 'ignore', timeout: 20_000 }), sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)), clock = () => Date.now(),
   log = console.log } = {}) {
-  const gb = Number(env.COT_SELFTEST_MEMORY_GB ?? 6);
+  const raw = env.COT_SELFTEST_MEMORY_GB;
+  const gb = raw === undefined || raw === '' ? 6 : Number(raw);
   if (!Number.isFinite(gb) || gb <= 0) return async () => {};
-  let openUntil = 0, available = true, said = false;
+  let openUntil = 0, available = true;
   return async () => {
+    const waitedFrom = clock();
+    let loggedAt = -Infinity;
     while (available && clock() >= openUntil) {
       const answer = ask(gb);
-      if (answer.error?.code === 'ENOENT') { available = false; break; }
-      if (answer.status === 0) { openUntil = clock() + 20_000; break; }
-      if (!said) { log(`[selftests] waiting for ${gb} GB (headroom can-start); COT_SELFTEST_MEMORY_GB=0 turns this off`); said = true; }
-      await sleep(20_000);
+      if (answer.status === 0) { openUntil = clock() + 5_000; return; }
+      if (answer.error || answer.status !== 1) {
+        available = false;
+        log(`[selftests] memory gate off: headroom can-start answered ${answer.error?.code ?? `exit ${answer.status}`}`);
+        return;
+      }
+      if (clock() - waitedFrom >= 30 * 60_000) { log(`[selftests] memory gate: ${gb} GB not free after 30 min; starting anyway`); return; }
+      if (clock() - loggedAt >= 10 * 60_000) {
+        log(`[selftests] waiting for ${gb} GB (headroom can-start); COT_SELFTEST_MEMORY_GB=0 turns this off`); loggedAt = clock();
+      }
+      await sleep(15_000);
     }
   };
 }

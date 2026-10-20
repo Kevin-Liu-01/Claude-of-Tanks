@@ -184,6 +184,15 @@ assert.equal(make().lookup('src/environment-object.selftest.mjs').key, undefined
   assert.equal(make(declare).lookup('src/fixture.selftest.mjs').key, declaredKey, 'an undeclared file never re-keys it');
   write('src/kit/b.mjs', 'export const b = 3;');
   assert.notEqual(make(declare).lookup('src/fixture.selftest.mjs').key, declaredKey, 'a declared file re-keys it');
+  // the environment a declared file reads keys it whatever was looked up first (229, critic r3)
+  write('src/kit/env.mjs', 'export const mode = process.env.KIT_MODE;');
+  write('src/env-reader.selftest.mjs', 'import "./kit/env.mjs";');
+  const alone = make({ ...declare, env: { KIT_MODE: 'a' } }).lookup('src/fixture.selftest.mjs').key;
+  const ordered = make({ ...declare, env: { KIT_MODE: 'a' } });
+  ordered.lookup('src/env-reader.selftest.mjs');
+  assert.equal(ordered.lookup('src/fixture.selftest.mjs').key, alone, 'the same key alone and after another lookup');
+  assert.notEqual(make({ ...declare, env: { KIT_MODE: 'b' } }).lookup('src/fixture.selftest.mjs').key, alone,
+    'a variable a declared file reads keys it');
   write('src/browser.selftest.mjs', 'import browser from "puppeteer"; export const b = 2;');
   assert.equal(make({ fixtureKeyed: ['src/plan.selftest.mjs'] }).lookup('src/plan.selftest.mjs').skip, false, 'its inputs still key it');
 }

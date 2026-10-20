@@ -1,7 +1,7 @@
 // Generator freshness at resolver cost (test-speed R8d): every fleet generator's committed outputs are current for the
 // committed fingerprint manifest (release/fingerprints.tsv), so a lane that edits a builder, a kit, a spec, a generator
 // or its flags without running `npm run tank:regen:changed` turns this red, naming the ids and why. No tank is built
-// (about 15 s). A toolchain difference (Node, lockfiles) is reported, not failed: the nightly
+// (one fingerprint state: about 55-75 s warm, more cold or loaded). A toolchain difference (Node, lockfiles) is reported, not failed: the nightly
 // `tank:regen:changed -- --check --all` re-runs every generator's own --check and covers it, and any resolver miss.
 // Without a manifest (before the release's bootstrap commit) it reports that and passes.
 // First-party tooling: Kevin B. Liu.

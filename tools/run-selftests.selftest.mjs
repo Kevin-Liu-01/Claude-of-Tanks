@@ -123,21 +123,32 @@ for (const concurrency of [1, 3]) {
   assert.equal(status, 0);
   assert.deepEqual(events.filter((event) => event !== 'release').sort(), ['a', 'b', 'browser', 'c'], `concurrency ${concurrency}`);
 }
-// the memory gate: a yes is reused for 20 s, a no is asked again every 20 s, no CLI or 0 GB opens it; the pool awaits it
-// once per CPU child when there is no lease
+// the memory gate: a yes is reused for 5 s, a no is asked again every 15 s; no CLI, a usage error or 0 GB opens it; 30
+// minutes of noes start the child anyway; the pool awaits it once per CPU child when there is no lease
 {
   let clock = 0, asks = 0, answers = [0, 1, 1, 0];
   const waits = [], said = [];
   const gate = selftestMemoryGate({}, { ask: (gb) => { asks++; assert.equal(gb, 6); return { status: answers.shift() }; },
     sleep: async (ms) => { waits.push(ms); clock += ms; }, clock: () => clock, log: (line) => said.push(line) });
   await gate(); await gate(); assert.equal(asks, 1, 'a yes is reused');
-  clock += 20_000; await gate();
-  assert.equal(asks, 4, 'after 20 s it asks again and waits through two noes'); assert.deepEqual(waits, [20_000, 20_000]);
-  assert.equal(said.length, 1, 'the wait is logged once');
+  clock += 5_000; await gate();
+  assert.equal(asks, 4, 'after 5 s it asks again and waits through two noes'); assert.deepEqual(waits, [15_000, 15_000]);
+  assert.equal(said.length, 1, 'the wait is logged once in ten minutes');
   let missing = 0;
-  const absent = selftestMemoryGate({}, { ask: () => { missing++; return { error: Object.assign(new Error('x'), { code: 'ENOENT' }) }; } });
+  const absent = selftestMemoryGate({}, { ask: () => { missing++; return { error: Object.assign(new Error('x'), { code: 'ENOENT' }) }; },
+    log: () => {} });
   await absent(); await absent(); assert.equal(missing, 1, 'no headroom CLI: the gate opens for good');
+  const usage = selftestMemoryGate({ COT_SELFTEST_MEMORY_GB: '200' }, { ask: () => ({ status: 2 }), log: () => {},
+    sleep: async () => assert.fail('a usage error never waits') });
+  await usage();
+  let slept = 0, now = 0;
+  const stuck = selftestMemoryGate({}, { ask: () => ({ status: 1 }), sleep: async (ms) => { slept++; now += ms; }, clock: () => now,
+    log: () => {} });
+  await stuck(); assert.equal(slept, 120, '30 minutes of noes, then the child starts');
   await selftestMemoryGate({ COT_SELFTEST_MEMORY_GB: '0' }, { ask: () => assert.fail('asked with the gate off') })();
+  let defaulted = 0;
+  await selftestMemoryGate({ COT_SELFTEST_MEMORY_GB: '' }, { ask: (gb) => { defaulted = gb; return { status: 0 }; } })();
+  assert.equal(defaulted, 6, 'an empty setting is the default, not off');
   let gated = 0;
   const lock = { async acquire() { assert.fail('no lease'); }, release() {}, refresh() {}, waiting: () => 0 };
   for (const concurrency of [1, 2]) {
@@ -157,6 +168,20 @@ for (const concurrency of [1, 3]) {
   const result = await runSelftestFile(script, { nice: 10, signals: { on() {}, removeListener() {} } });
   assert.equal(result.status, 0);
   assert.ok(Number((await import('node:fs')).readFileSync(out, 'utf8')) >= 10, 'the child runs at nice 10 or lower priority');
+}
+// the CLI wiring: a real one-receipt run takes no capture lease and passes (the memory gate off, a scratch cache)
+{
+  const { spawnSync: run } = await import('node:child_process');
+  const { mkdtempSync: temp } = await import('node:fs');
+  const { tmpdir: tmp } = await import('node:os');
+  const { join: joinPath } = await import('node:path');
+  const scratch = temp(joinPath(tmp(), 'cot-runner-cli-'));
+  const cli = run(process.execPath, ['tools/run-selftests.mjs', 'all', '--only=tools/assert-graph-guard.selftest.mjs',
+    `--report=${joinPath(scratch, 'report.json')}`], { encoding: 'utf8', timeout: 120_000,
+    env: { ...process.env, COT_SELFTEST_CACHE_DIR: joinPath(scratch, 'cache'), COT_SELFTEST_MEMORY_GB: '0', COT_SELFTEST_WORKERS: '2' } });
+  assert.equal(cli.status, 0, cli.stdout + cli.stderr);
+  assert.match(cli.stdout, /CPU receipts take no capture lease; browser receipts queue for the GPU themselves/);
+  assert.match(cli.stdout, /PASS tools\/assert-graph-guard\.selftest\.mjs/);
 }
 assert.equal(selftestCpuLease({}), false, 'the runner takes no CPU lease by default');
 assert.equal(selftestCpuLease({ COT_SELFTEST_CPU_LEASE: '1' }), true, 'COT_SELFTEST_CPU_LEASE=1 restores the shared lease');
@@ -416,7 +441,7 @@ assert.equal(SELFTEST_GRAPH_GUARD, `--import=${new URL('./assert-graph-guard.mjs
 // every declared-input receipt names all the code it runs: each declared file's relative imports, and every repository
 // path a receipt joins onto the checkout, are declared too (a missed edge would reuse a PASS the code no longer earns)
 {
-  const { readFileSync: read, readdirSync: list, existsSync: exists } = await import('node:fs');
+  const { readFileSync: read, readdirSync: list, existsSync: exists, statSync: statOf } = await import('node:fs');
   const { dirname: dir, join: joinPath, relative: rel, resolve: res } = await import('node:path');
   const root = res(import.meta.dirname, '..');
   const { SELFTEST_SUITES } = await import('./selftest-suites.mjs');
@@ -432,8 +457,14 @@ assert.equal(SELFTEST_GRAPH_GUARD, `--import=${new URL('./assert-graph-guard.mjs
     for (const file of declared) {
       const text = read(joinPath(root, file), 'utf8');
       // the parsed imports (static and literal dynamic), never import text inside a fixture's source strings
-      const edges = [...collectSelftestInputs(text, file).imports].filter((specifier) => /^\.{1,2}\//.test(specifier))
-        .map((specifier) => rel(root, res(root, dir(file), specifier)));
+      // parsed relative imports (never import text inside a fixture's source strings), and files the code reads by
+      // new URL('./x', import.meta.url)
+      const code = text.split('\n').filter((line) => !/^\s*(?:\/\/|\*|\/\*)/.test(line)).join('\n'); // comment lines name no file
+      const urls = [...code.matchAll(/new URL\(\s*['"](\.{1,2}\/[^'"]+)['"]\s*,\s*import\.meta\.url/g)].map((match) => match[1]);
+      const edges = [...new Set([...collectSelftestInputs(text, file).imports, ...urls])].filter((specifier) => /^\.{1,2}\//.test(specifier))
+        .map((specifier) => rel(root, res(root, dir(file), specifier)))
+        // a directory named to find the checkout (resolve(import.meta.dirname, '../..')) reads no file itself
+        .filter((edge) => !(exists(joinPath(root, edge)) && statOf(joinPath(root, edge)).isDirectory()));
       if (file === receipt) edges.push(...[...text.matchAll(/join\(repo,\s*'([^']+)'\)/g)].map((match) => match[1]));
       for (const edge of edges) assert.ok(declared.has(edge), `${receipt}: ${file} reaches ${edge}, which its declaration leaves out`);
     }

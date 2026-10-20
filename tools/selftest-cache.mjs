@@ -195,7 +195,12 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
   const closureOf = file => {
     if (closures.has(file)) return closures.get(file);
     const declared = relative(root, file);
-    if (Object.hasOwn(declaredInputs, declared)) { closures.set(file, declaredClosure(declared)); return closures.get(file); }
+    if (Object.hasOwn(declaredInputs, declared)) {
+      const files = declaredClosure(declared);
+      // inspected for the environment they read, so the key never depends on which receipts were looked up first
+      for (const member of files) if (SOURCE_EXTENSIONS.has(extname(member)) && isFile(member)) inspect(member);
+      closures.set(file, files); return files;
+    }
     const seen = new Set(), expanded = new Set(), stack = [[file, true]];
     while (stack.length) {
       const [current, execute] = stack.pop(); seen.add(current);
