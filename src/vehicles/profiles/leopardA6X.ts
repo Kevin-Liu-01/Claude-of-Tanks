@@ -247,7 +247,9 @@ function bowFurniture(P: TankBuilderPort, side: number): void {
     P.addEquipment('hullDetail', openConnector(.11759, .225), side * absoluteX, 1.284375, 3.355885, -.813);
   }
   P.addEquipment('hullDetail', openConnector(.11759, .225), side * .38272, 1.139655, 3.507075, -.813);
-  for (const [y, z] of [[1.1587735, 3.5457855], [1.301956, 3.3917025]]) {
+  // 2026-10-19 (owner float sweep): the two plates (and their ribs) stood 23 mm off the glacis; moved 25 mm along its
+  // normal onto it.
+  for (const [y, z] of [[1.1405735, 3.5285855], [1.283756, 3.3745025]]) {
     P.addEquipment('hullDetail', box(.23937, .048, .220), side * .14926, y, z, .758);
     for (const dx of [-.070, .070]) P.addEquipment('hullDark', box(.024, .052, .19),
       side * .14926 + dx, y + .012, z + .012, .758);
@@ -399,7 +401,7 @@ function smokeTube(P: TankBuilderPort, mouth: Point, direction: Point): void {
   // Small original saddle joins the measured stock to the permanent flank.
   // Its concealed root is a construction allowance, not a source landmark.
   const root = back.clone();
-  root.x = mouth[0] < 0 ? -1.262 : 1.165;
+  root.x = mouth[0] < 0 ? -1.12 : 1.165;                                         // 2026-10-19 (owner float sweep): left roots ended 21-89 mm off the flank (was -1.262)
   const path = new THREE.LineCurve3(root, back);
   P.addEquipment('turretDetail', local(new THREE.TubeGeometry(path, 1, .024, 8, false), D.turretPivot));
 }

@@ -96,7 +96,7 @@ function buildTmlTurretArmor(P: TankBuilderPort, py: number, pz: number): void {
   ],py,pz));
   for(const side of [-1,1]) {
     smokeBank(P,side,1.13,1.98,.31,4);
-    smokeBank(P,side,.94,2.23,-2.02,3);
+    P.snapGroup(`tml-rear-smoke-${side}`,()=>smokeBank(P,side,.94,2.23,-2.02,3),{reachM:.04}); // 2026-10-19 (owner float sweep): the left bank stood 29 mm off
     for(const z of [-1.57,-1.03,-.48]) {
       turretEquipment(P,'turretDetail',box(.07,.12,.36),side*1.115,1.92,z);
       turretEquipment(P,'turretDetail',box(.035,.15,.045),side*1.15,1.93,z-.16);
@@ -108,14 +108,18 @@ function buildTmlTurretArmor(P: TankBuilderPort, py: number, pz: number): void {
 
 function buildTmlRoofFittings(P: TankBuilderPort, py: number, pz: number): void {
   // Broad, low source cupola and polygonal cover; no thin generic sight tower.
-  P.addCupola('turret',cylY(.48,.51,.145,10).scale(1,1,1.055),-.471,2.386-py,-.885-pz);
-  P.addHatch('turret',cylY(.435,.455,.075,8).scale(1,1,.87),-.472,2.524-py,-.99-pz);
-  for(const [x,z,ry]of[[-.80,-.785,-1.1],[-.766,-1.162,-2.2],[-.205,-1.24,2.5],[-.09,-.91,1.4]]) {
-    turretEquipment(P,'turretDetail',box(.18,.09,.12),x,2.486,z,0,ry);
-    turretEquipment(P,'turretGlass',box(.13,.045,.014),x+Math.sin(ry)*.064,2.49,z+Math.cos(ry)*.064,0,ry);
-  }
-  turretEquipment(P,'turretDetail',cylX(.031,.43,P.q?16:8),-.455,2.568,-1.27);
-  optic(P,-.314,2.645,-.615,.273,.17,.19);
+  // 2026-10-19 (owner float sweep): the cupola with its hatch, blocks, rail and sight stood 34 mm over the roof; the
+  // station drops onto it as one.
+  P.snapGroup('tml-cupola-station',()=>{
+    P.addCupola('turret',cylY(.48,.51,.145,10).scale(1,1,1.055),-.471,2.386-py,-.885-pz);
+    P.addHatch('turret',cylY(.435,.455,.075,8).scale(1,1,.87),-.472,2.524-py,-.99-pz);
+    for(const [x,z,ry]of[[-.80,-.785,-1.1],[-.766,-1.162,-2.2],[-.205,-1.24,2.5],[-.09,-.91,1.4]]) {
+      turretEquipment(P,'turretDetail',box(.18,.09,.12),x,2.486,z,0,ry);
+      turretEquipment(P,'turretGlass',box(.13,.045,.014),x+Math.sin(ry)*.064,2.49,z+Math.cos(ry)*.064,0,ry);
+    }
+    turretEquipment(P,'turretDetail',cylX(.031,.43,P.q?16:8),-.455,2.568,-1.27);
+    optic(P,-.314,2.645,-.615,.273,.17,.19);
+  },{reachM:.05,mode:'down'});
   P.addHatch('turret',box(.49,.046,.49),.548,2.313-py,-.303-pz);
   for(const x of [.365,.735])turretEquipment(P,'turretDetail',box(.044,.035,.13),x,2.348,-.49);
   turretEquipment(P,'turretDetail',box(.21,.023,.035),.564,2.352,-.13);

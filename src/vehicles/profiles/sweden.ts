@@ -308,7 +308,9 @@ function addStrv122Package(P: SwedishBuilderPort): void {
 
     // Flush turret-side protection and supported rear-corner returns.
     for (let i = 0; i < 5; i++) {
-      plate(P, 'turret', side * 1.50, 0.42 + (i & 1) * 0.025,
+      // 2026-10-19 (owner float sweep): the left 3rd/4th plates stood 34/41 mm off the narrowing turret side; inset.
+      const inset = side < 0 ? [0, 0, 0.037, 0.044, 0][i] : 0;
+      plate(P, 'turret', side * (1.50 - inset), 0.42 + (i & 1) * 0.025,
         0.08 - i * 0.43, 0.13, 0.40, 0.36, [0, 0, side * 0.08], true);
     }
     P.add('turret', slab(
@@ -343,8 +345,10 @@ function addStrv122Package(P: SwedishBuilderPort): void {
     [0.17, -0.50, -0.12], [0.40, -0.43, -0.04], [0.65, -0.52, 0.10],
     [-0.52, -0.48, 0.14], [-0.73, -0.62, 0.22], [-0.08, -0.45, -0.12],
   ]) {
-    P.add('turretDetail', box(0.14, 0.048, 0.078), x, 0.94, z, 0, ry, 0);
-    P.add('turretGlass', box(0.098, 0.022, 0.014), x, 0.968, z + 0.036, 0, ry, 0);
+    // 2026-10-19 (owner float sweep): the two centre heads (off the side plates) stood 27 mm over the roof; seated.
+    const py = Math.abs(x) < 0.3 ? 0.911 : 0.94;
+    P.add('turretDetail', box(0.14, 0.048, 0.078), x, py, z, 0, ry, 0);
+    P.add('turretGlass', box(0.098, 0.022, 0.014), x, py + 0.028, z + 0.036, 0, ry, 0);
   }
   P.add('turret', box(0.34, 0.12, 0.42), 0.78, 0.95, -1.22);
   P.add('turretDark', box(0.28, 0.018, 0.34), 0.78, 1.02, -1.22);
@@ -361,8 +365,10 @@ function addStrv122Package(P: SwedishBuilderPort): void {
   // station; the second shielded Ksp 58 here is gone.
   P.add('turret', box(0.38, 0.08, 0.38), -0.58, 0.96, -0.62);
   P.add('turretDetail', cylY(0.14, 0.17, 0.32, 16), -0.58, 1.15, -0.62);
-  P.add('turretGlass', box(0.21, 0.10, 0.024), -0.58, 1.16, -0.43);
-  addSwedishRadioPair(P, 'turret', 0.73, -2.18, 12230);
+  // 2026-10-19 (owner float sweep): the panorama window stood 24 mm ahead of its head and the radio bases 20 mm over
+  // the 0.68 roof; window set into the head, bases onto the roof.
+  P.add('turretGlass', box(0.21, 0.10, 0.024), -0.58, 1.16, -0.462);
+  addSwedishRadioPair(P, 'turret', 0.708, -2.18, 12230);
 
   // Connected rear basket/slat complex. Every rail meets a post, and the
   // posts return into the backed bustle armor.

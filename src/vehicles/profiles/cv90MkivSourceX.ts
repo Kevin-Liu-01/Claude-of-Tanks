@@ -61,7 +61,7 @@ function buildCv90RearRamp(P: TankBuilderPort): void {
     P.addEquipment('hullDetail',box(.10,.016,.034),.18,y,-3.277);
     for(const x of [.135,.225])P.addEquipment('hullDetail',box(.014,.022,.040),x,y,-3.263);
   }
-  for(const x of [-.73,.77])P.addEquipment('hullDetail',cylX(.043,.14,P.q?16:8),x,.69,-3.245);
+  for(const x of [-.7125,.7525])P.addEquipment('hullDetail',cylX(.043,.175,P.q?16:8),x,.69,-3.245); // 2026-10-19 (owner float sweep): 35 mm longer inboard; ended 30 mm short of the bracket
   for(const side of [-1,1]) {
     P.addEquipment('hullDetail',box(.47,.024,.07),side*1.12,1.678,-3.192);
     P.addEquipment('hullGlass',box(.22,.074,.012),side*(side<0?1.46:1.39),1.654,-3.197);
@@ -273,7 +273,7 @@ function buildCv90RoofSights(P: TankBuilderPort, px: number, py: number, pz: num
     }
   }
   turretEquipment(P,'turretDetail',cylY(.055,.072,.575,P.q?16:8),.313,2.367,-1.737);
-  antenna(P,-.71,2.28,3.85279,-.65);antenna(P,1.10,2.28,3.72,-.65);
+  antenna(P,-.71,2.28,3.85279,-.65);antenna(P,1.10,2.149,3.72,-.65); // 2026-10-19 (owner float sweep): right base was 128 mm over the roof
 }
 
 function buildCv90MissileCanisters(P: TankBuilderPort): void {

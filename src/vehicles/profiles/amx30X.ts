@@ -92,12 +92,15 @@ function hull(P: TankBuilderPort): void {
     equipment(P, 'hullDark', cylZ(.05556, 1.1523, 24), s * 1.2011, 1.4758, -2.4740);
     for (let i = 0; i < 16; i++) equipment(P, 'hullDetail', box(.017, .160, .020), s * 1.421, 1.447, -2.96 + i * .07, 0, 0, s * .68);
     // Paired bow lamps sit on two legs, under their own open guard.
+    // 2026-10-19 (owner float sweep): the inner lamp's legs ended 74 mm over the falling glacis and the guard posts 19 mm;
+    // both now reach it.
     for (const [x,r,y] of [[.83167,.05973,1.39096],[1.02767,.07356,1.39702]]) {
-      equipment(P, 'hullDetail', box(.024, .120, .038), s * x, 1.329, 2.654);
+      if (x < .9) equipment(P, 'hullDetail', box(.024, .219, .038), s * x, 1.2795, 2.654);
+      else equipment(P, 'hullDetail', box(.024, .120, .038), s * x, 1.329, 2.654);
       equipment(P, 'hullDark', cylZ(r, .100, 20), s * x, y, 2.650);
       equipment(P, 'hullGlass', markVehicleNightLens(cylZ(r*.83, .006, 24), 'headlight'), s * x, y, 2.704);
     }
-    for (const x of [.737, 1.108]) equipment(P, 'hullDetail', box(.018, .196, .024), s * x, 1.373, 2.733);
+    for (const x of [.737, 1.108]) equipment(P, 'hullDetail', box(.018, .218, .024), s * x, 1.362, 2.733);
     equipment(P, 'hullDetail', box(.390, .018, .022), s * .9226, 1.471, 2.733);
     equipment(P, 'hullDetail', box(.0846,.0334,.0801),s*.83167,1.4297,2.7407);
   }
@@ -111,7 +114,7 @@ function hull(P: TankBuilderPort): void {
   for (const x of [.1430, .6552]) equipment(P, 'hullDetail', box(.491, .3745, .1977), x, 1.4249, -3.2204);
   // Central drawbar reaches beyond the rear boxes, leaving its pinned throat
   // open. The barrel-inclusive vehicle length includes this actual fitting.
-  equipment(P, 'hullDetail', box(.067, .065, .205), -.0015, .669, -3.2815);
+  equipment(P, 'hullDetail', box(.067, .065, .236), -.0015, .669, -3.2655);     // 2026-10-19 (owner float sweep): reaches the plate (was 28 mm short)
   for (const x of [-.027, .027]) equipment(P, 'hullDetail', box(.014, .178, .173), x, .6635, -3.4678);
   equipment(P, 'hullDark', cylX(.022, .080, 16), -.001, .67, -3.504);
   for (const x of [-.54, .54]) {
@@ -186,6 +189,9 @@ function roof(P: TankBuilderPort): void {
   const guard = new THREE.ExtrudeGeometry(arc, {depth:.176,bevelEnabled:false,steps:1}).rotateX(Math.PI / 2);
   equipment(P, 'turretDetail', guard, -.553, 2.794, -.235);
   equipment(P, 'turretDetail', cylY(.390, .390, .021, 32), -.553, 2.628, -.235);
+  // 2026-10-19 (owner float sweep): three vision blocks on the 0.43 m circle stood 64 mm over the 0.39 m ring; a low
+  // collar under the circle carries all ten.
+  equipment(P, 'turretDetail', cylY(.445, .445, .07, 32), -.553, 2.672, -.235);
   for (const [x,w,z,depth] of [[-.55787,.24894,.03597,.12208],[-.73657,.10847,.03338,.17865]]) {
     equipment(P, 'turretDetail', box(w,.2578,depth),x,2.74327,z);
   }
@@ -268,10 +274,11 @@ function basket(P: TankBuilderPort): void {
   equipment(P,'turretDetail',box(.974,.027,.697),0,2.130,-1.879,-.226);
   for(const x of[-.468,0,.468])equipment(P,'turretDetail',box(.012,.022,.814),x,2.110,-1.885,-.217);
   for(const x of[-.482,.482])equipment(P,'turretDark',box(.016,.284,.057),x,1.900,-2.280,-.10);
-  for (const side of [-1, 1]) for (let i = 0; i < 2; i++) {
+  // 2026-10-19 (owner float sweep): the inner left discharger stood 42 mm off the casting; each one seats.
+  for (const side of [-1, 1]) for (let i = 0; i < 2; i++) P.snapGroup(`amx30-discharger-${side}-${i}`, () => {
     equipment(P, 'turretDetail', box(.065, .10, .065), side * (.85 - i * .15), 1.948, -1.41 - i * .17);
     equipment(P, 'turretDetail', cylY(.050, .056, .255, 16), side * (.85 - i * .15), 2.033, -1.43 - i * .17, -.65, side * .2);
-  }
+  }, { reachM: .05 });
 }
 
 function gun(P: TankBuilderPort): void {
@@ -292,8 +299,11 @@ function gun(P: TankBuilderPort): void {
   for (const x of [.839, 1.317]) add('gunMount', box(.027, .529, .25), x, 2.061, 1.657);
   for (const y of [1.810, 2.320]) add('gunMount', box(.501, .025, .25), 1.078, y, 1.657);
   add('gunMount', box(.501, .529, .024), 1.078, 2.061, 1.521);
-  add('gunMountDark', box(.451, .469, .009), 1.078, 2.062, 1.665);
-  add('gunMountGlass', box(.421, .430, .004), 1.078, 2.062, 1.678);
+  // 2026-10-19 (owner float sweep): the hood stood 174 mm outboard of the mantlet and its window panel only met the
+  // walls edge-on; a bracket arm carries the hood and the panel runs into the walls.
+  add('gunMount', box(.27, .12, .16), .715, 1.95, 1.60);
+  add('gunMountDark', box(.46, .469, .009), 1.078, 2.062, 1.665);
+  add('gunMountGlass', box(.421, .430, .004), 1.078, 2.062, 1.6705);
   // Separate coax tube and its through-mantlet socket.
   add('gunMountDark', cylZ(.054, .23, 20), .412, 1.859, 1.919);
   add('gunMountDark', cylZ(.032, .91, 20), .412, 1.859, 2.453);

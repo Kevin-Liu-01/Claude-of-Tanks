@@ -158,7 +158,7 @@ function pantherSkirts(P: TankBuilderPort): void {
     for(let j=0;j<7;j++)P.addEquipment('hullDetail',box(.5225,.0052,.005),side*1.26435,1.525+j*.010,-3.807);
     P.addEquipment('hullDetail',torus(.058,.020,12,6),side*.81,.75,-3.26);
     const towEye=torus(.098,.024,16,8);towEye.scale(.62,1,1);
-    P.addEquipment('hullDetail',towEye,side*.661,.675,3.535,0,Math.PI/2);
+    P.addEquipment('hullDetail',towEye,side*.661,.773,3.535,0,Math.PI/2);             // 2026-10-19 (owner float sweep): hung 96 mm under its block
     P.addEquipment('hullDetail',box(.098,.084,.098),side*.661,.837,3.513);
     // Source front lamps sit in the broad shallow berth at Z3.66..3.83.
     P.addEquipment('hullDetail',box(.557,.148,.171),side*1.2635,1.144,3.7445);
@@ -242,7 +242,7 @@ function pantherRoof(P: TankBuilderPort): void {
   for(const side of[-1,1]){
     fitting(P,'turretDetail',box(.15,.090,2.41),side*1.14,2.515,-1.21);
     fitting(P,'turretDetail',box(.115,.095,.42),side*1.02,2.515,.10,0,side*.42);
-    fitting(P,'turretDetail',cylY(.057,.17,14),side*1.02234,2.679,-2.13537);
+    fitting(P,'turretDetail',cylY(.057,.207,14),side*1.02234,2.6605,-2.13537);         // 2026-10-19 (owner float sweep): base reaches the crown (was 34 mm short)
     // The source has a vertical lower neck, then an aft-leaning upper rod.
     // Keeping the bend at Y3.00752 retains the actual tip and base datums.
     fitting(P,'turretDark',cylY(.01257,.259,10),side*1.02234,2.87802,-2.13537);
@@ -274,7 +274,7 @@ function pantherRoof(P: TankBuilderPort): void {
     {z:-2.218,ring:[[-.2366,2.789],[.2366,2.789],[.17,2.961],[-.2366,2.961]]},
     {z:-2.086,ring:[[-.15,2.812],[.15,2.812],[.15,2.89],[-.15,2.89]]},
   ].map(station=>({z:station.z,ring:station.ring.map(([x,y])=>[x,y] as [number,number])}))),.3337,0,0);
-  fitting(P,'turretDetail',box(.3072,.3922,.618),-.1625,2.811,-2.8592);
+  fitting(P,'turretDetail',box(.3402,.3922,.618),-.146,2.811,-2.8592);             // 2026-10-19 (owner float sweep): ran 30 mm short of the left yoke cheek
   fitting(P,'turretDetail',box(.0988,.3321,.5312),.7163,2.643,-2.752);
   // Measured right-hand RWS trunnion cover extends beyond the slim ammo bay.
   fitting(P,'turretDetail',orientedSlab(
@@ -291,7 +291,7 @@ function pantherRoof(P: TankBuilderPort): void {
   for(const side of[-1,1]){
     fitting(P,'turretDetail',box(.025,.4044,.5533),side*1.3337,2.1022,-2.53415);
     for(const y of[1.94295,2.1843])fitting(P,'turretDark',cylX(.0165,.033,12),side*1.3643,y,-2.2314);
-    fitting(P,'turretDetail',box(.0446,.1532,.0258),side*1.319,2.2279,-2.8835);
+    fitting(P,'turretDetail',box(.0446,.1532,.0258),side*1.287,2.2279,-2.8835);     // 2026-10-19 (owner float sweep): stood 25-30 mm off the bustle
   }
 }
 
@@ -326,8 +326,11 @@ export function buildKF51X(P: TankBuilderPort): void {
   }
   P.addEquipment('hullDetail',box(.54,.050,.68),-.57,1.505,2.12,.18);
   for(let i=0;i<3;i++){
-    P.addEquipment('hullDark',box(.13,.074,.13),-.75+i*.18,1.632,1.82);
-    P.addEquipment('hullGlass',box(.095,.042,.009),-.75+i*.18,1.638,1.891);
+    // 2026-10-19 (owner float sweep): the heads stood 5-22 mm over the raked plate's rear edge; each drops onto it.
+    P.snapGroup(`kf51-driver-periscope-${i}`,()=>{
+      P.addEquipment('hullDark',box(.13,.074,.13),-.75+i*.18,1.632,1.82);
+      P.addEquipment('hullGlass',box(.095,.042,.009),-.75+i*.18,1.638,1.887);
+    },{reachM:.04,mode:'down'});
   }
   P.add('turret',sectionSolid([
     turretRing(-3.079,1.21,1.13,2.085,2.416),

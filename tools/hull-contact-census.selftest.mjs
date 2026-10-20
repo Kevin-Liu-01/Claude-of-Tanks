@@ -14,6 +14,9 @@ assert.ok(partsTouch(box(1, 1, 1, 0, 0, 0), box(.2, .2, .2, 0, .6, 0)), 'a block
 assert.ok(partsTouch(box(1, 1, 1, 0, 0, 0), box(.2, .2, .2, 0, .55, 0)), 'an embedded block touches');
 assert.ok(!partsTouch(box(1, 1, 1, 0, 0, 0), box(.2, .2, .2, 0, .605, 0)), '5 mm of air is not contact');
 assert.ok(partsTouch(box(1, .02, .02, 0, 0, 0), box(.02, 1, .02, 0, 0, 0)), 'two bars crossing through each other touch');
+// Face on face with no corner over the other's face (a slab under a cross beam, 0.5 mm apart) touches; 5 mm does not.
+assert.ok(partsTouch(box(1, .1, .1, 0, 0, 0), box(.1, .1, 1, 0, .1005, 0)), 'crossed slabs half a millimetre apart touch');
+assert.ok(!partsTouch(box(1, .1, .1, 0, 0, 0), box(.1, .1, 1, 0, .105, 0)), 'crossed slabs 5 mm apart do not');
 const shell = stockPart('hull', at(new THREE.TorusGeometry(1, .05, 8, 24), 0, 0, 0, Math.PI / 2));
 assert.ok(!partsTouch(shell, box(.1, .1, .1, 0, 0, 0)), 'a part inside another\'s bounds but clear of it does not touch');
 

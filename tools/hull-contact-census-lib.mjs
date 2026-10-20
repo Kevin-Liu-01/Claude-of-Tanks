@@ -174,8 +174,27 @@ export function partsTouch(a, b, tol = CONTACT_TOL_M) {
     }
     return false;
   };
-  return edgesCross(a, b) || edgesCross(b, a);
+  if (edgesCross(a, b) || edgesCross(b, a)) return true;
+  // Face on face with neither part's corner over the other's face (a pedestal top under a chamfered beam's inset flat,
+  // two crossed slabs): each face's point nearest the overlap's centre, and its centroid, within reach of the other part.
+  const centre = overlap.getCenter(new THREE.Vector3());
+  const facesNear = (from, into) => {
+    const T = from.T;
+    for (let o = 0; o < T.length; o += 9) {
+      if (Math.max(T[o], T[o + 3], T[o + 6]) < overlap.min.x || Math.min(T[o], T[o + 3], T[o + 6]) > overlap.max.x
+        || Math.max(T[o + 1], T[o + 4], T[o + 7]) < overlap.min.y || Math.min(T[o + 1], T[o + 4], T[o + 7]) > overlap.max.y
+        || Math.max(T[o + 2], T[o + 5], T[o + 8]) < overlap.min.z || Math.min(T[o + 2], T[o + 5], T[o + 8]) > overlap.max.z) continue;
+      faceTriangle.a.set(T[o], T[o + 1], T[o + 2]); faceTriangle.b.set(T[o + 3], T[o + 4], T[o + 5]);
+      faceTriangle.c.set(T[o + 6], T[o + 7], T[o + 8]);
+      for (const point of [faceTriangle.closestPointToPoint(centre, facePoint), faceTriangle.getMidpoint(faceMid)]) {
+        if (overlap.containsPoint(point) && nearSurface(into, point.x, point.y, point.z, tol)) return true;
+      }
+    }
+    return false;
+  };
+  return facesNear(a, b) || facesNear(b, a);
 }
+const faceTriangle = new THREE.Triangle(), facePoint = new THREE.Vector3(), faceMid = new THREE.Vector3();
 
 function makePart(bucket, source, T) {
   if (!T.length) return null;

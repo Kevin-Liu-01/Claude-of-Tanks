@@ -367,10 +367,13 @@ function smokeBank(P: TankBuilderPort, d: Datum, side: number, x: number, y: num
     const row = Math.floor(i / 4), col = i % 4;
     const zz = z + (col - 1.5) * .18 + row * .13;
     const yy = y + row * .17;
-    equip(P, d, 'turretDark', box(.10, .12, .13), side * (x - .045), yy - .045, zz);
-    const launcher = cappedSmokeLauncherGeometry(.043, .22, .034, .012, 12);
-    equip(P, d, 'turretDetail', launcher.body, side * x, yy, zz, -.48, side * 1.00);
-    equip(P, d, 'turretDark', launcher.cap, side * x, yy, zz, -.48, side * 1.00);
+    // 2026-10-19 (owner float sweep): launchers stood 23-50 mm off the narrowing flank (leo2a7v); each slides in onto it.
+    P.snapGroup(`leo-x-smoke-${side}-${x}-${i}`, () => {
+      equip(P, d, 'turretDark', box(.10, .12, .13), side * (x - .045), yy - .045, zz);
+      const launcher = cappedSmokeLauncherGeometry(.043, .22, .034, .012, 12);
+      equip(P, d, 'turretDetail', launcher.body, side * x, yy, zz, -.48, side * 1.00);
+      equip(P, d, 'turretDark', launcher.cap, side * x, yy, zz, -.48, side * 1.00);
+    }, { reachM: .10, direction: [-side, 0, 0] });
   }
 }
 
@@ -651,7 +654,7 @@ function a5HullShell(P:TankBuilderPort): void {
 function a5BowSpare(P:TankBuilderPort,x:number,y:number,z:number): void {
   const slope=.637;
   P.addEquipment('hullDetail',box(.1207,.018,.239),x,y-.0295,z-.012,slope);
-  P.addEquipment('hullDark',box(.105,.025,.056),x,y+.012,z-.004,slope);
+  P.addEquipment('hullDark',box(.105,.025,.056),x,y-.003,z-.015,slope);          // 2026-10-19 (owner float sweep): stood 17 mm off its plate
   for(const k of [-1,1]) {
     const along=k*.094;
     P.addEquipment('hullDetail',cylX(.014,.130,10),x,
@@ -681,8 +684,10 @@ function a7Stern(P:TankBuilderPort): void {
     1.548+i*.0366,-3.723-i*.00696,-.18);
   for(const side of [-1,1]) {
     for(const x of [.527,1.223]) P.addEquipment('hullDark',box(.038,.425,.030),side*x,1.735,-3.787,-.18);
-    P.addEquipment('hullDark',cylZ(.098,.08,16),side*1.219,1.353,-3.738);
-    P.addEquipment('hullDetail',torus(.068,.025,14,6),side*.94,1.162,-3.754,Math.PI/2);
+    // 2026-10-19 (owner float sweep): stern light and tow eye stood 46-61 mm off the stern; the eye slides forward onto the
+    // plate, the light (outboard of it) seats on the mudguard bracket behind it.
+    P.snapGroup(`a7v-stern-light-${side}`,()=>P.addEquipment('hullDark',cylZ(.098,.08,16),side*1.219,1.353,-3.738),{reachM:.06});
+    P.snapGroup(`a7v-stern-eye-${side}`,()=>P.addEquipment('hullDetail',torus(.068,.025,14,6),side*.94,1.162,-3.754,Math.PI/2),{reachM:.30,direction:[0,0,1]});
     const path=new THREE.CatmullRomCurve3([
       new THREE.Vector3(side*1.31,2.018,-3.076),
       new THREE.Vector3(side*1.31,2.018,-3.60),
@@ -694,7 +699,7 @@ function a7Stern(P:TankBuilderPort): void {
     ]);
     recoveryCable(P,`leo2a7v_xRecoveryCable_${side}`,path,40);
   }
-  P.addEquipment('hullDetail',box(.34,.16,.17),0,1.28,-3.69);
+  P.snapGroup('a7v-stern-box',()=>P.addEquipment('hullDetail',box(.34,.16,.17),0,1.28,-3.69),{reachM:.08}); // 2026-10-19 (owner float sweep): stood 63 mm off the stern
 }
 
 function a6Stern(P:TankBuilderPort): void {
@@ -711,7 +716,7 @@ function a6Stern(P:TankBuilderPort): void {
   for(let i=0;i<12;i++)P.addEquipment('hullDetail',box(3.23-i*.0052,.023,.037),
     .00765,1.418+i*.0335,-3.745-i*.00275,-.38);
   for(const side of [-1,1]) {
-    P.addEquipment('hullDark',cylZ(.127,.047,20),side*.844,1.197,-3.662);
+    P.snapGroup(`a6-stern-light-${side}`,()=>P.addEquipment('hullDark',cylZ(.127,.047,20),side*.844,1.197,-3.662),{reachM:.07}); // 2026-10-19 (owner float sweep): stood 55 mm under the stern lip
     P.addEquipment('hullDetail',torus(.079,.023,18,7),side*.916,.840,-3.650,Math.PI/2);
     P.addEquipment('hullDetail',box(.083,.11,.10),side*.916,.928,-3.59);
     a6RecoveryCable(P,side);
@@ -927,9 +932,14 @@ function a5SmokeBanks(P:TankBuilderPort,d:Datum): void {
     [-1.325,2.071,-1.443,-.47],[-1.343,2.071,-1.215,-.47],
     [-1.355,2.073,-.850,-.39],[-1.375,2.074,-.629,-.30],
   ]) {
-    equip(P,d,'turretDetail',markSmokeTube(cylZ(.044,.26,14)),x,y,z,-.79,yaw);
-    equip(P,d,'turretDark',cylZ(.034,.012,14),x+Math.sin(yaw)*.10,y+.097,z+.09,-.79,yaw);
-    equip(P,d,'turretDetail',box(.11,.068,.13),x-Math.sign(x)*.014,y-.089,z-.031);
+    // 2026-10-19 (owner float sweep): the lower bank stood 31-68 mm off the casting and the splayed tubes' caps 22 mm
+    // off their muzzles; the caps follow the tube axis and each discharger seats on the casting.
+    const ax=[Math.sin(yaw),Math.sin(.79)*Math.cos(yaw),Math.cos(.79)*Math.cos(yaw)];
+    P.snapGroup(`a5-discharger-${x}-${z}`,()=>{
+      equip(P,d,'turretDetail',markSmokeTube(cylZ(.044,.26,14)),x,y,z,-.79,yaw);
+      equip(P,d,'turretDark',cylZ(.034,.012,14),x+ax[0]*.134,y+ax[1]*.134,z+ax[2]*.134,-.79,yaw);
+      equip(P,d,'turretDetail',box(.11,.068,.13),x-Math.sign(x)*.014,y-.089,z-.031);
+    },{reachM:.12});
   }
 }
 
@@ -980,15 +990,21 @@ function a7CurvedWhip(P:TankBuilderPort,d:Datum,x:number,bottom:number,top:numbe
 }
 
 function a6Whip(P:TankBuilderPort,d:Datum,x:number): void {
-  equip(P,d,'turretDetail',cylY(.0306,.0306,.0722,12),x,2.562,-1.87188);
-  equip(P,d,'turretDark',cylY(.00348,.0171,.047,10),x,2.6215,-1.8716);
-  equip(P,d,'turretDark',cylY(.00348,.00348,.74385,10),x,3.016925,-1.8716);
+  // 2026-10-19 (owner float sweep): the foot stood 74 mm off the bustle roof's edge; the whip seats on it.
+  P.snapGroup(`a6-whip-${x}`,()=>{
+    equip(P,d,'turretDetail',cylY(.0306,.0306,.0722,12),x,2.562,-1.87188);
+    equip(P,d,'turretDark',cylY(.00348,.0171,.047,10),x,2.6215,-1.8716);
+    equip(P,d,'turretDark',cylY(.00348,.00348,.74385,10),x,3.016925,-1.8716);
+  },{reachM:.09});
 }
 
 function a6RoofEquipment(P:TankBuilderPort,d:Datum): void {
-  equip(P,d,'turretDetail',cylY(.2135,.2135,.06,28),-.2614,2.69,-.282);
-  equip(P,d,'turretDetail',cylY(.195,.195,.1215,28),-.2614,2.757,-.282);
-  a6PanoramaHead(P,d);
+  // 2026-10-19 (owner float sweep): the panorama stood 59 mm over its roof plate; it drops onto it.
+  P.snapGroup('a6-panorama',()=>{
+    equip(P,d,'turretDetail',cylY(.2135,.2135,.06,28),-.2614,2.69,-.282);
+    equip(P,d,'turretDetail',cylY(.195,.195,.1215,28),-.2614,2.757,-.282);
+    a6PanoramaHead(P,d);
+  },{reachM:.08,mode:'down'});
   // The 33.6 mm source island includes its foot; actual shaft rays measure
   // only 6.94 mm through Y 2.7–3.35. Do not extrude the foot up the whip.
   a6Whip(P,d,-.9885);
@@ -1316,9 +1332,12 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
   a5Stern(P);
   // Rear hull marker rod, present in the supplied x_root_107 node; unlike
   // the roof masts it stays on the hull when the turret turns.
-  P.addEquipment('hullDetail',cylY(.018,.020,.062,12),-.085,1.87,-3.75);
-  P.addEquipment('hullDetail',cylY(.0034,.0034,.49,8),-.085,2.135,-3.802,-.213);
-  P.addEquipment('hullDetail',cylY(.009,.009,.019,10),-.085,2.37,-3.855);
+  // 2026-10-19 (owner float sweep): the rod's foot stood 92 mm off the stern deck edge; the rod seats on it.
+  P.snapGroup('a5-stern-marker-rod',()=>{
+    P.addEquipment('hullDetail',cylY(.018,.020,.062,12),-.085,1.87,-3.75);
+    P.addEquipment('hullDetail',cylY(.0034,.0034,.49,8),-.085,2.135,-3.802,-.213);
+    P.addEquipment('hullDetail',cylY(.009,.009,.019,10),-.085,2.37,-3.855);
+  },{reachM:.10});
   shell(P,d,[[-2.725,-.56,.21,2.35,2.405],[-2.64,-.56,.50,1.92,2.414],
     [-2.48,-.68,.76,1.92,2.431],
     [-1.72,-1.10,1.18,1.869,2.511],[-1.50,-1.16,1.225,1.866,2.519],
