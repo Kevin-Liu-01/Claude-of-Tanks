@@ -77,7 +77,7 @@ const CASES = Object.freeze([
   { name: 'landscape-932', width: 932, height: 430, touch: true, scale: 2, stages: SNIPER, crop: true },
   { name: 'landscape-667', width: 667, height: 375, touch: true, scale: 2, stages: [...BATTLE, ...SNIPER, ...SNIPER_WIDE, 'ammo-unlimited-sniper'], crop: true },
   // r10: a small portrait phone (its FIRE button under the sight) and a landscape phone under a browser's bars
-  { name: 'phone-360', width: 360, height: 640, touch: true, scale: 2, stages: [...SNIPER, ...SNIPER_WIDE], crop: true },
+  { name: 'phone-360', width: 360, height: 640, touch: true, scale: 2, stages: [...SNIPER, ...SNIPER_WIDE], crop: true, tight: -9 },
   { name: 'landscape-740', width: 740, height: 360, touch: true, scale: 2, stages: [...SNIPER, ...SNIPER_WIDE], crop: true },
   // the 44 px tall touch slots (a portrait under 341 px wide, a landscape under 300 px tall; the r6 critic's probe)
   { name: 'portrait-320', width: 320, height: 568, touch: true, scale: 2, stages: TRAY, crop: true },
@@ -243,9 +243,13 @@ export function readHud(rules) {
       const far = Math.max(...[[box.x0, box.y0], [box.x1, box.y0], [box.x0, box.y1], [box.x1, box.y1]].map(([px, py]) => Math.hypot(px - x, py - y)));
       return Math.max(near - (r + reach), r - reach - far);
     };
+    // (r10 critic: the canvas warning chip's outline too, which came 2.5 px from the ring)
+    const chipOutlines = paint.filter((op) => op.op === 'stroke' && op.n === 6 && !op.ring && texts.some((text) => op.box.x0 <= text.box.x0
+      && op.box.x1 >= text.box.x1 && op.box.y0 <= text.box.y0 && op.box.y1 >= text.box.y1));
     const marks = [...dry.map((op) => ({ what: op.lineWidth === 1.5 ? 'the empty strike' : 'an empty mark', box: op.box })),
       ...rack.map((op) => ({ what: 'a rack shell', box: op.box })),
-      ...readouts.map((op) => ({ what: `"${op.text}"`, box: op.box })), ...zoomRules.map((op) => ({ what: 'a zoom rule', box: op.box }))];
+      ...readouts.map((op) => ({ what: `"${op.text}"`, box: op.box })), ...zoomRules.map((op) => ({ what: 'a zoom rule', box: op.box })),
+      ...chipOutlines.map((op) => ({ what: 'the warning chip', box: op.box }))];
     for (const mark of marks) {
       const g = gap(mark.box);
       ringGaps.push({ what: mark.what, gap: round(g) });
@@ -496,6 +500,20 @@ const amberish = (color) => {
 };
 
 /**
+ * A window disclosed as tight (`floor`, a case's `tight`): a mark no deeper into a control than the floor is a note, not
+ * a failure (hudAmmoOutPaint.selftest TIGHT_FLOOR, docs/BATTLE-UI-QA.md); every other finding stays one.
+ */
+export function tightFindings(overlaps, floor) {
+  const kept = [];
+  const tight = [];
+  for (const line of overlaps) {
+    const gap = Number(/ (-?[\d.]+) px from \./.exec(line)?.[1]);
+    (floor != null && Number.isFinite(gap) && gap >= floor ? tight : kept).push(line);
+  }
+  return { kept, tight };
+}
+
+/**
  * One stage of one case: stage it, let the tray settle, read the DOM, save the frame with nothing in between, read the
  * frame, then measure the ink gaps. Returns the stage's report row (its `issues` are failures).
  */
@@ -517,7 +535,8 @@ async function captureStage({ page, c, stage, out, writeFile }) {
   const hud = await page.evaluate(readHud, RULES);
   const file = `${c.name}-${stage}.png`;
   const frame = decodePng(await page.screenshot({ path: resolve(out, file) }));
-  const issues = [...hud.overlaps, ...slotDescriptorIssues(hud.slots, { touch: c.touch })];
+  const { kept: overlaps, tight } = tightFindings(hud.overlaps, c.tight);
+  const issues = [...overlaps, ...slotDescriptorIssues(hud.slots, { touch: c.touch })];
   if (hud.touch !== c.touch) issues.push(`the page's touch layout is ${hud.touch}, the case's ${c.touch}`);
   if (!c.touch && (hud.tray === 'stacked') !== c.width < 1000) issues.push(`a ${c.width} px mouse tray is ${hud.tray}`);
   if (expect.amberMin != null && hud.amber < expect.amberMin) issues.push(`reload amber ${hud.amber} < ${expect.amberMin}`);
@@ -588,7 +607,7 @@ async function captureStage({ page, c, stage, out, writeFile }) {
       issues.push(`the collapsed empty slot is not struck on a danger edge (${JSON.stringify(hud.emptySlot)})`);
     }
   }
-  return { case: c.name, stage, file, ...hud, settled, frameFindings, trayInk, issues };
+  return { case: c.name, stage, file, ...hud, settled, frameFindings, trayInk, tight, issues };
 }
 
 /**
@@ -615,6 +634,8 @@ export async function runCapture({ chromium, lock, url, out, cases = CASES, stag
       page.on('pageerror', (error) => failures.push(`${c.name}: ${error.message}`));
       await page.goto(`${url}/tools/fixtures/battle-hud-layout.html?locale=en-US`, { waitUntil: 'networkidle' });
       await page.waitForFunction(() => !!window.__HUD_LAYOUT);
+      // the HUD's faces loaded before the first stage (r10 critic: the first stage's countdown was in the fallback face)
+      await page.evaluate(() => document.fonts?.ready);
       for (const stage of c.stages.filter((name) => !stageFilter || stageFilter.split(',').includes(name))) {
         const report = await captureStage({ page, c, stage, out, writeFile });
         reports.push(report);

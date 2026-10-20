@@ -748,9 +748,11 @@ const COUNTDOWN_RACK_GAP = 3;
 /** How far the scope's range tag keeps beside a countdown on its row: twice the tag's own word space (about 8 px
  *  between 200 and m), so the two read as two groups (critic r7: "3.2 s200 m"). Nearer, the countdown drops under it. */
 const TAG_GROUP_GAP = 16;
-/** The canvas aim warning's chip: its top over the text baseline, its foot under it (paintAimWarning). */
-const AIM_WARNING_CHIP_ABOVE = 13.5;
-const AIM_WARNING_CHIP_BELOW = 9.5;
+/** The aim warning's chip: how far its ink, its 1 px outline included, reaches over the text baseline and under it
+ *  (paintAimWarning strokes a path 0.5 px inside these; r10 critic: the outline's ink came 2.5 px from the ring). The
+ *  touch chip seated under the sight is this box, 24 px tall (battleHudLayout.css data-seat). */
+const AIM_WARNING_CHIP_ABOVE = 14;
+const AIM_WARNING_CHIP_BELOW = 10;
 /** Half the scope vision switch's height: aerialHud.css seats it beside the sight, level with the marker (48 px tall on
  *  a mouse layout, 46 on touch). The warning chip set above the sight keeps over its band (sniperChipAboveY): a wide
  *  chip reaches past the switch's inner edge (80 px from the marker on a short window). */
@@ -759,7 +761,7 @@ const SCOPE_VISION_HALF_H = 24;
 type SniperRowMode = 'stack' | 'zoomBeside' | 'chipBeside' | 'rowBeside' | 'rowAbove';
 /** The touch warning chip the reticle seats under the sight (placeAimWarning): its width (a portrait under 375 px wide
  *  narrows it, clear of the speedometer beside the sight at 360x640), its height the canvas chip's
- *  (AIM_WARNING_CHIP_ABOVE + _BELOW; battleHudLayout.css data-seat). */
+ *  (AIM_WARNING_CHIP_ABOVE + _BELOW, 24 px; battleHudLayout.css data-seat). */
 const TOUCH_WARNING_W = 180;
 const TOUCH_WARNING_NARROW_W = 156;
 /** The scope row's places, tried in order (sniperReadoutStack): its mode, the warning chip set over the sight (else under
@@ -3931,6 +3933,9 @@ export function initHud(bus: EventBus): HudRuntime {
     magazineLauncher: false, magazineFeed: -1,
     shellType: '', shellCount: 0, shellUnlimited: false, reloading: false, furniture: -1, drawnR: 0,
   };
+  // A reticle at rest reuses its paint; a face that finishes loading after that paint (measured and drawn in the
+  // fallback) repaints it (r10 critic: a scope readout painted before the webfont kept the condensed fallback face).
+  document.fonts?.addEventListener?.('loadingdone', () => { reticlePaint.valid = false; });
   /** The reticle's weapon is the selected card (renderShells runs before the canvas paints). */
   function selectedWeaponDry(view: HudAimView): boolean {
     return reticleWeaponDry((lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0], view.ammoSelectionPending);
@@ -4016,7 +4021,8 @@ export function initHud(bus: EventBus): HudRuntime {
     reticlePaint.magazineFeed = magazineFeedKey(mag);
     reticlePaint.shellType = shell.type || ''; reticlePaint.shellCount = shellCount(shell);
     reticlePaint.shellUnlimited = shell.unlimited === true;
-    reticlePaint.reloading = reloadHudFraction(view.reload, view.ammoSelectionPending, selectedWeaponDry(view)) > 0;
+    // (the reuse check's own reading: a shell switch's SWITCHING window repaints only as the reload it shows runs)
+    reticlePaint.reloading = reloadHudFraction(view.reload, false, selectedWeaponDry(view)) > 0;
     reticlePaint.drawnR = lastDrawnR;
   }
 
@@ -4066,6 +4072,9 @@ export function initHud(bus: EventBus): HudRuntime {
     state.single = anchor.single;
     const targetRadius = reticleTargetR(view);
     smoothRadPx += (targetRadius - smoothRadPx) * (1 - Math.exp(-14 * dt));
+    // (the ease's last hundredth of a pixel snaps: its tail would move every mark placed off the ring, and the seated
+    // touch chip's style, by 1e-8 px a frame for good; r10 critic)
+    if (Math.abs(targetRadius - smoothRadPx) < 0.01) smoothRadPx = targetRadius;
     state.radius = clampRetR(smoothRadPx);
     state.circleX = view.gunX ?? state.cx;
     state.circleY = view.gunY ?? state.cy;
@@ -4872,11 +4881,11 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.fillStyle = danger ? 'rgba(36,10,10,.92)' :
       recovery ? 'rgba(33,22,8,.94)' : 'rgba(12,17,22,.9)';
     ctx.beginPath();
-    ctx.moveTo(chipX + 8, y - AIM_WARNING_CHIP_ABOVE);
-    ctx.lineTo(chipX + chipW - 8, y - AIM_WARNING_CHIP_ABOVE);
+    ctx.moveTo(chipX + 8, y - AIM_WARNING_CHIP_ABOVE + 0.5);
+    ctx.lineTo(chipX + chipW - 8, y - AIM_WARNING_CHIP_ABOVE + 0.5);
     ctx.lineTo(chipX + chipW - 0.5, y - 2);
-    ctx.lineTo(chipX + chipW - 8, y + AIM_WARNING_CHIP_BELOW);
-    ctx.lineTo(chipX + 8, y + AIM_WARNING_CHIP_BELOW);
+    ctx.lineTo(chipX + chipW - 8, y + AIM_WARNING_CHIP_BELOW - 0.5);
+    ctx.lineTo(chipX + 8, y + AIM_WARNING_CHIP_BELOW - 0.5);
     ctx.lineTo(chipX + 0.5, y - 2);
     ctx.closePath();
     ctx.fill();

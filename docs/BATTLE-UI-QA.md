@@ -258,22 +258,38 @@ receipt breaks each of these on a mouse tray and on a touch tray. With a camera
 on the frame, the paint receipt also turns the gun off the camera's aim, so the
 ring sits left, right, above and below the marker; every gap holds there too.
 One older placement remains: the range tag hangs off the screen centre's 4:30,
-not the gun ring's, so a far-displaced ring can cross it. Three windows leave no
-place where every mark keeps 3 px from the furniture under the widest rings:
-568x290, 320x568 and 360x640. There each mark takes the place that reaches least
-far into it. That is 3.34 px into the score at 568x290 (a rack set over a 43 px
-ring), 26.28 px at 320x568 and 7.84 px at 360x640. The worst two are the
-portrait warning chip over the sight on the systems row, with a rack reloading
-under the widest ring and the left FIRE button under the sight. Every other swept
-window, the listed capture sizes among them, keeps 3 px. Round r9 left 568x290
-25.5 px into its systems row and 1024x400 4.5 px into its controls row, put the
+not the gun ring's, so a far-displaced ring can cross it. A few small windows
+leave no place where every mark keeps 3 px from the furniture under the widest
+rings. There each mark takes the place that reaches least far into it. The paint
+receipt pins how far that is (`TIGHT_FLOOR`), measured in its model and on the
+rendered fixture:
+
+- 568x290: 3.34 px into the score in a standard battle (a rack set over a 43 px
+  ring). Under Juggernaut it is 21.18 px. Its objective panel sits over the
+  sight and its systems row under it, so the rack has no room above or below
+  the ring; only the space right of the ring is free.
+- 320x568: 25.28 px (25.52 rendered). The readout row or the 156 px warning
+  chip sits on the systems row, and the left FIRE button sits under the sight.
+- 360x640: 8.84 px (8.64 rendered), the chip on the systems row's grey
+  underlines.
+- 375x667: 7.34 px, `0 ` on the systems row with the warning under the widest
+  ring; under Juggernaut it keeps 0.78 px.
+- 1024x400 under Juggernaut: 7.62 px, the warning chip set over the widest ring
+  into the objective panel.
+
+The capture reports these windows' gaps as notes (its case's `tight` floor),
+not failures. Every other swept window keeps 3 px in a standard battle and under
+Juggernaut, the listed capture sizes among them. Round r9 left 568x290 25.5 px
+into its systems row and 1024x400 4.5 px into its controls row. It put the
 portrait chip on the countdown and a dropped rack, and the 667x375 zoom plate
 12 px into the consumables. Before r9 the compact stack under 431 px tall had no
-floor at all, and ran as much as 34 px into a wide tray's row. The reticle never
-dodges the shot report, the open combat log or the centre notices, which come
-and go. On a mouse window about 640 px wide the right lane's report itself
-reaches over the sight, the ring's right side included, in battle as in the
-scope. That is the report's own dock, older than this item.
+floor at all, and ran as much as 34 px into a wide tray's row.
+
+The reticle never dodges the shot report, the open combat log or the centre
+notices, which come and go. On a mouse window 480 to about 640 px wide, the
+right lane's report and the open log reach over the sight, the ring's right
+side included, in battle as in the scope. That is the right lane's own dock,
+older than this item.
 Nothing touches the page between the DOM read and the frame. The ink gaps
 between count, label, key and icon are measured after the frame, from
 full-viewport shots. The tool takes no clipped screenshot. Its flow lives in

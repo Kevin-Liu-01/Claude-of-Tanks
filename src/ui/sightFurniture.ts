@@ -5,7 +5,7 @@
  * 667x375, the left FIRE button on small portrait phones and the touch warning chip; the floors hud.ts modelled as
  * constants missed every one of them).
  */
-export interface SightFurnitureBox { x0: number; y0: number; x1: number; y1: number }
+interface SightFurnitureBox { x0: number; y0: number; x1: number; y1: number }
 
 const CAPACITY = 48;
 /** The latest relayout's furniture, in CSS px; `count` boxes are live (the rest are spare, reused by the next pass).

@@ -178,7 +178,7 @@ const HEIGHT = 720;
 const documentStub = Object.assign(new EventTarget(), {
   head: new StubElement('head'), body: new StubElement('body'), documentElement: new StubElement('html'),
   visibilityState: 'visible', hidden: false, readyState: 'complete', pointerLockElement: null, fullscreenElement: null,
-  fonts: { ready: Promise.resolve(), add() {}, load: async () => [] },
+  fonts: Object.assign(new EventTarget(), { ready: Promise.resolve(), add() {}, load: async () => [] }),
   createElement: (tag) => new StubElement(tag), createElementNS: (_ns, tag) => new StubElement(tag),
   createTextNode: (text) => Object.assign(new EventTarget(), { nodeType: 3, textContent: String(text), remove() {} }),
   createDocumentFragment: () => new StubElement('fragment'),
@@ -593,7 +593,8 @@ for (const [id, slots, fired] of [['m1a3', 4, 2], ['ztz100_prototype', 2, 1], ['
 }
 
 // 13c. A frame at rest is reused until something it shows changes; a relayout that moves the furniture is such a change
-// (sightFurniture.version: the readouts may have to move), and a pass that measures the same boxes is not.
+// (sightFurniture.version: the readouts may have to move), and a pass that measures the same boxes is not; so is a face
+// that finishes loading after the paint (r10 critic: a reticle painted in the fallback face kept it).
 {
   const tank = tankOf('m1a1_abrams_hc', [0, 0, 0]);
   settledFrame(tank);
@@ -609,6 +610,15 @@ for (const [id, slots, fired] of [['m1a3', 4, 2], ['ztz100_prototype', 2, 1], ['
   addSightFurniture(10, 10, 60, 40);
   settleSightFurniture();
   assert.equal(frame(tank).painted, false, 'the same box measured again: reused');
+  clearSightFurniture();
+  addSightFurniture(10, 12, 60, 42);
+  settleSightFurniture();
+  assert.equal(frame(tank).painted, true, 'the same count of boxes, one moved: repainted');
+  assert.equal(frame(tank).painted, false, '... then reused again');
+  // ... and a face that finishes loading repaints it (drawn before, the canvas measured and painted in the fallback)
+  documentStub.fonts.dispatchEvent(new Event('loadingdone'));
+  assert.equal(frame(tank).painted, true, 'a font that loads: repainted');
+  assert.equal(frame(tank).painted, false, '... then reused again');
   clearSightFurniture();
   settleSightFurniture();
   frame(tank);
@@ -984,9 +994,10 @@ function visionSwitchBox(width, height, touch) {
 // buttons, the score, the map, the vision switch. (The constant floors hud.ts once modelled missed the consumables at
 // 667x375, a small portrait phone's left FIRE button and the touch warning chip.)
 const FURNITURE = JSON.parse(readFileSync(new URL('../../tools/fixtures/hud-sight-furniture.json', import.meta.url), 'utf8'));
-/** Publishes the recorded furniture of `width`x`height` (as the layout pass would) and returns its boxes. */
-function installFurniture(width, height, touch) {
-  const boxes = FURNITURE.sizes[`${width}x${height}${touch ? 't' : ''}`];
+/** Publishes the recorded furniture of `width`x`height` (as the layout pass would; `variant` ':juggernaut' for that mode's
+ *  stage) and returns its boxes. */
+function installFurniture(width, height, touch, variant = '') {
+  const boxes = FURNITURE.sizes[`${width}x${height}${touch ? 't' : ''}${variant}`];
   assert.ok(boxes?.length, `${width}x${height}${touch ? ' touch' : ''}: recorded furniture`);
   clearSightFurniture();
   for (const [, x0, y0, x1, y1] of boxes) addSightFurniture(x0, y0, x1, y1);
@@ -994,13 +1005,13 @@ function installFurniture(width, height, touch) {
   return boxes.map(([name, x0, y0, x1, y1]) => ({ name, x0, y0, x1, y1 }));
 }
 /** The touch warning chip the reticle seats under the sight (hud.ts seatTouchWarning), read off its custom properties;
- *  null where it is hidden or not seated. 23 px tall, as the canvas chip (battleHudLayout.css data-seat). */
+ *  null where it is hidden or not seated. 24 px tall, as the canvas chip's ink (battleHudLayout.css data-seat). */
 const touchChip = created.find((element) => element.classes.has('cot-aim-warning'));
 function seatedChipBox() {
   if (!touchChip || touchChip.hidden || touchChip.dataset.seat !== 'sight') return null;
   const px = (name) => parseFloat(touchChip.style.getPropertyValue(name));
   const x0 = px('--hud-aim-warning-x'); const y0 = px('--hud-aim-warning-y');
-  return { x0, y0, x1: x0 + px('--hud-aim-warning-w'), y1: y0 + 23 };
+  return { x0, y0, x1: x0 + px('--hud-aim-warning-w'), y1: y0 + 24 };
 }
 /** The settled paint: the ring eases at exp(-14 dt), so 0.1 s HUD frames (the HUD's dt ceiling) settle it in a few. */
 function quickPaint(tank, mode = 'sniper') {
@@ -1024,8 +1035,9 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
   // (a touch layout's chip is the DOM chip the reticle seats, where it sits under the sight; a short landscape parks it
   // in the left lane, with the furniture)
   const seated = touch ? seatedChipBox() : null;
+  // (the canvas chip by its 1 px outline's ink, not its fill: r10 critic, the outline came 2.5 px from the ring)
   const chip = seated ? { op: 'dom', box: seated }
-    : warningText && ops.find((op) => op.op === 'fill' && op.box && op.path.length === 6 && contains(op.box, warningText.box));
+    : warningText && ops.find((op) => op.op === 'stroke' && op.box && op.path.length === 6 && contains(op.box, warningText.box));
   assert.ok(!warn || chip || (touch && windowStub.innerWidth > windowStub.innerHeight && windowStub.innerHeight < 550), `${at}: the warning's chip is seated`);
   assert.ok(touch || !warningText === !warn, `${at}: the canvas paints the warning only on a mouse layout`);
   const countdown = ops.filter((op) => op.op === 'fillText' && op.style === INK.reload && op.text.trim() && !op.text.startsWith('+'));
@@ -1076,11 +1088,17 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
 }
 /** The smallest windows, where the widest rings with the column under the marker (and on a portrait phone the warning
  *  chip) leave no place for every mark that keeps 3 px from the furniture: there the row, the chip and the column take
- *  the places that reach least far into it, and this is how far that is at worst (r10, measured: 568x290 3.34 px into
- *  the score, a rack set over a 43 px ring; 320x568 26.28 px, the 156 px warning chip over the sight on the systems row
- *  with a rack reloading under the widest ring, its left FIRE button under the sight; 360x640 7.84 px, the same chip.
- *  Round r9 left 568x290 25.5 px into its systems row). Every other swept window keeps 3 px. */
-const TIGHT_FLOOR = { '568x290t': -3.5, '320x568t': -26.5, '360x640t': -8 };
+ *  the places that reach least far into it, and this is how far that is at worst, with a margin for the browser's own
+ *  text metrics (r10, measured here and on the rendered fixture). 568x290: 3.34 px, a rack set over a 43 px ring under
+ *  the score; under Juggernaut 21.18 px, its objective panel over the sight and its systems row under it leaving the
+ *  rack no room (only right of the ring is free). 320x568: 25.28 px here, 25.52 rendered, the readout row or the 156 px
+ *  warning chip on the systems row, the left FIRE button under the sight. 360x640: 8.84 px (8.64 rendered), the chip on
+ *  the systems row's underlines. 375x667: 7.34 px, '0 ' on the systems row with the warning under the widest ring.
+ *  1024x400 under Juggernaut: 7.62 px, the warning chip set over the widest ring into the objective panel. Round r9 left 568x290 25.5 px into its systems row in a standard battle. Every
+ *  other swept window, the listed capture sizes among them, keeps 3 px in a standard battle and under Juggernaut. */
+const TIGHT_FLOOR = { '568x290t': -3.5, '320x568t': -26, '360x640t': -9, '375x667t': -7.5,
+  '568x290t:juggernaut': -21.5, '320x568t:juggernaut': -26, '360x640t:juggernaut': -9, '375x667t:juggernaut': 0.5,
+  '1024x400:juggernaut': -8 };
 const tightWorst = {};
 /** Every mark keeps 3 px from every recorded panel and control (sightFurniture.ts), or on the smallest windows no less
  *  than their floor (TIGHT_FLOOR). */
@@ -1110,7 +1128,7 @@ function assertFurnitureClear(items, boxes, at, key = null) {
     [800, 560], [700, 580], [800, 580], [1440, 600], [900, 720], [1440, 900], [540, 720], [390, 844], [480, 640], [520, 900],
     [1280, 420], [1440, 425], [900, 700], [640, 720], [1024, 400],
     [390, 844, 'touch'], [844, 390, 'touch'], [667, 375, 'touch'], [568, 290, 'touch'], [320, 568, 'touch'],
-    [360, 640, 'touch'], [932, 430, 'touch'], [740, 360, 'touch'], [640, 360, 'touch']];
+    [360, 640, 'touch'], [932, 430, 'touch'], [740, 360, 'touch'], [640, 360, 'touch'], [375, 667, 'touch']];
   const modes = { zoomBeside: 0, chipBeside: 0, chipAbove: 0, rowBeside: 0, rowAbove: 0, noZoom: 0, seatedChip: 0 };
   scope = true;
   for (const [width, height, touch] of sizes) {
@@ -1164,7 +1182,7 @@ function assertFurnitureClear(items, boxes, at, key = null) {
   }
   assert.ok(Object.values(modes).every((n) => n > 0) && modes.risen === 1, `the cramped rows ran (${JSON.stringify(modes)})`);
   // (the floors bind: each tight window does reach into its furniture, by no more than its floor allows)
-  for (const [key, floor] of Object.entries(TIGHT_FLOOR)) {
+  for (const [key, floor] of Object.entries(TIGHT_FLOOR).filter(([name]) => !name.includes(':'))) {
     assert.ok(tightWorst[key] < 3 && tightWorst[key] >= floor - 1e-6, `${key}: the least gap is ${tightWorst[key]?.toFixed(2)} (floor ${floor})`);
   }
   documentStub.body.classes.delete('cot-touch-layout');
@@ -1193,15 +1211,83 @@ function assertFurnitureClear(items, boxes, at, key = null) {
         const at = `${width}x${height} touch battle, ${metres} m, ${label}, gun travel warning`;
         const { ring, chip, furniture } = reticleGaps(quickPaint(tank, 'battle'), at, { warn: true, scoped: false, touch: true });
         assert.equal(chip?.op, 'dom', `${at}: the chip is seated under the sight`);
+        // (a portrait under 375 px wide narrows it to 156 px, clear of the speedometer beside the sight at 360x640)
+        assert.equal(chip.box.x1 - chip.box.x0, width < 375 ? 156 : 180, `${at}: the seated chip's width`);
         if (chip.box.y1 < ring.y - ring.r) over++;
         assertFurnitureClear(furniture, boxes, at, `${width}x${height}t`);
       }
     }
   }
   assert.ok(over > 0, 'the smallest phone seats the chip over the sight');
+  // a reload repaints the reticle every frame; once the ring has eased onto its target the seated chip's place is
+  // written no more (r10 critic: the ease's tail rewrote its style every frame, by 1e-8 px)
+  resize(390, 844);
+  documentStub.body.classes.add('cot-touch-layout');
+  installFurniture(390, 844, true);
+  dispersionM = 16;
+  const reloading = scopeStates['rack reload']();
+  reloading.state.gunLimitSpec = true;
+  quickPaint(reloading, 'battle');
+  const setProperty = touchChip.style.setProperty;
+  let writes = 0;
+  touchChip.style.setProperty = (...args) => { writes++; return setProperty(...args); };
+  let painted = 0;
+  for (let i = 0; i < 30; i++) if (frame(reloading).painted) painted++;
+  touchChip.style.setProperty = setProperty;
+  assert.equal(painted, 30, 'the reload repaints every frame');
+  assert.equal(writes, 0, 'the seated chip is not rewritten while it stays put');
   documentStub.body.classes.delete('cot-touch-layout');
   clearSightFurniture();
   settleSightFurniture();
+  dispersionM = 8;
+  resize(WIDTH, HEIGHT);
+}
+
+// 19c. r10 critic: Juggernaut (unlimited rounds, the owner's own example) shows its objective panel, which on a short
+// landscape phone sits right over the sight, and seats its controls row, map and quick buttons elsewhere; its furniture
+// is recorded on its own stage. Through the scope, with and without the gun travel warning, over the rings: the ∞
+// readout, a rack cycling or refilling and a gun reloading keep every gap of section 19 and 3 px from that furniture,
+// or no more than a tight window's floor.
+{
+  const sizes = [[1440, 900], [900, 700], [640, 720], [800, 500], [1024, 400], [390, 844, 'touch'], [844, 390, 'touch'],
+    [667, 375, 'touch'], [740, 360, 'touch'], [568, 290, 'touch'], [360, 640, 'touch'], [320, 568, 'touch'], [375, 667, 'touch']];
+  const states = {
+    'rack mid-cycle': () => { const tank = tankOf('m1a3'); tank.combat.magazine.rounds = 3;
+      Object.assign(tank.combat.reload, { t: 1.4, totalS: 2.5, kind: 'intraClip' }); return tank; },
+    'rack refill': () => { const tank = tankOf('m1a3'); tank.combat.magazine.rounds = 0;
+      Object.assign(tank.combat.reload, { t: 12, totalS: 21, kind: 'magazine' }); return tank; },
+    'gun reload': () => { const tank = tankOf('m1a1_abrams_hc'); Object.assign(tank.combat.reload, { t: 3.2, totalS: 6, kind: 'shell' }); return tank; },
+  };
+  unlimitedRounds = true;
+  scope = true;
+  let endless = 0;
+  for (const [width, height, touch] of sizes) {
+    resize(width, height);
+    documentStub.body.classes[touch ? 'add' : 'delete']('cot-touch-layout');
+    const key = `${width}x${height}${touch ? 't' : ''}:juggernaut`;
+    const boxes = installFurniture(width, height, !!touch, ':juggernaut');
+    for (const metres of [1, 16, 24, 28, 33, 40]) {
+      dispersionM = metres;
+      for (const [label, make] of Object.entries(states)) for (const warn of [false, true]) {
+        const tank = make();
+        tank.state.gunLimitSpec = warn;
+        const at = `${width}x${height}${touch ? ' touch' : ''} Juggernaut scope, ${metres} m, ${label}${warn ? ', gun travel warning' : ''}`;
+        const { line, stack, furniture } = reticleGaps(quickPaint(tank), at,
+          { warn, scoped: true, vision: visionSwitchBox(width, height, !!touch), ringClear: true, touch: !!touch });
+        if (line.some((op) => op.text === '∞ ')) endless++;
+        assertFurnitureClear([...stack, ...furniture], boxes, at, key);
+      }
+    }
+  }
+  assert.ok(endless > 0, 'the scope reads ∞ under Juggernaut');
+  for (const key of Object.keys(TIGHT_FLOOR).filter((name) => name.endsWith(':juggernaut'))) {
+    assert.ok(tightWorst[key] < 3 && tightWorst[key] >= TIGHT_FLOOR[key] - 1e-6, `${key}: the least gap is ${tightWorst[key]?.toFixed(2)} (floor ${TIGHT_FLOOR[key]})`);
+  }
+  unlimitedRounds = false;
+  documentStub.body.classes.delete('cot-touch-layout');
+  clearSightFurniture();
+  settleSightFurniture();
+  scope = false;
   dispersionM = 8;
   resize(WIDTH, HEIGHT);
 }

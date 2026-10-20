@@ -11,6 +11,7 @@ import '../../src/ui/aerialHud.css';
 import { Vector3 } from 'three';
 import { installResponsiveLayout } from '../../src/ui/responsiveLayout.ts';
 import { createBus } from '../../src/game/stateCore.ts';
+import { sightFurniture } from '../../src/ui/sightFurniture.ts';
 import { createInput } from '../../src/game/input.ts';
 import { installMedalToasts } from '../../src/ui/medalToast.ts';
 import { initHud } from '../../src/ui/hud.ts';
@@ -218,7 +219,8 @@ function roster(allies, enemies) {
   frame.rosterTanks=entries; frame.tanks=entries;
   hud.update(frame);
 }
-window.__HUD_LAYOUT = {multiplayer,state, roster, hud, bus, touch, settings, hit, frame, tanks, ammoStages:Object.keys(AMMO_STAGES)};
+// (the layout's published sight furniture, the HUD's own module instance: tools/hud-sight-furniture.browser.mjs reads it)
+window.__HUD_LAYOUT = {multiplayer,state, roster, hud, bus, touch, settings, hit, frame, tanks, sightFurniture, ammoStages:Object.keys(AMMO_STAGES)};
 const params = new URLSearchParams(location.search);
 state(params.get('state') || 'idle');
 if(params.has('allies'))roster(Number(params.get('allies')),Number(params.get('enemies')));

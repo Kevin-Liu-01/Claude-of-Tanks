@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { crc32, deflateSync } from 'node:zlib';
 import { cropImage, decodePng, encodePng, inkGap, markInk, slotFrameFindings } from './hud-ammo-frame-ink.mjs';
-import { framesInPage, readHud, recordReticle, RULES, runCapture, settleTray, showTrayMarks, stageInPage,
+import { framesInPage, readHud, recordReticle, RULES, runCapture, settleTray, showTrayMarks, stageInPage, tightFindings,
   TRAY_INK_GAP } from './hud-ammo-capture.mjs';
 
 const chunk = (type, body) => {
@@ -654,6 +654,17 @@ const FLOW_ISSUES = ['saved frame:', 'the DOM read names', 'tray count', 'tray l
   const seatedNear = read({ extra: seatedAt(205) });
   assert.ok(seatedNear.includes('the seated warning chip 2 px from .cot-touch.on .round'), `a seated chip 2 px from FIRE fails (${seatedNear.join('; ')})`);
   assert.deepEqual(read({ extra: seatedAt(204) }), [], 'a seated chip 3 px from FIRE passes');
+  // the canvas chip's outline against the ring's halo (r10 critic: 2.5 px from it at 800x400): 2 px fails, 3 passes
+  const halo = { op: 'stroke', style: 'rgba(0,0,0,0.62)', lineWidth: 3, n: 2, ring: true, circle: { x: 200, y: 150, r: 40 },
+    box: { x0: 158.5, y0: 108.5, x1: 241.5, y1: 191.5 } };
+  const ringChip = read({ paintLog: [halo, ...chip(200, 191.5 + 2 + 14)] });
+  assert.ok(ringChip.some((line) => /^the warning chip 2 px from the ring$/.test(line)), `a chip 2 px under the ring fails (${ringChip.join('; ')})`);
+  assert.ok(!read({ paintLog: [halo, ...chip(200, 191.5 + 3 + 14)] }).some((line) => line.includes('from the ring')), 'a chip 3 px under it passes');
+  // a window disclosed as tight: findings no deeper than its floor are notes, deeper ones and other kinds stay failures
+  const lines = ['the seated warning chip -8.64 px from .cot-vehicle-controls>button', '"14 " -9.5 px from .cot-touch.on .round',
+    '"14 " 2.5 px from the rack', 'an empty slot does not read OUT ({})'];
+  assert.deepEqual(tightFindings(lines, -9), { kept: lines.slice(1), tight: lines.slice(0, 1) }, 'the tight floor sorts findings');
+  assert.deepEqual(tightFindings(lines, undefined), { kept: lines, tight: [] }, 'no floor: every finding fails');
 }
 
 // 6. The command line hands the flow its browser and lock and takes no screenshot of its own.

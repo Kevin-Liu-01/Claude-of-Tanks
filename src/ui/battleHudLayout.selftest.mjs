@@ -378,6 +378,15 @@ try {
       return box(left, height / 2 - 24, left + 166, height / 2 + 24); };
     const base = { '.cot-shell': [box(12, 636, 76, 688)], '.cot-top': [box(287, 0, 613, 62)], '.cot-dp': [box(12, 389, 172, 572)],
       '.cot-drive': [box(184, 464, 292, 572)], '.cot-aim-warning:not([hidden]):not([data-seat])': [box(8, 118, 114, 142)] };
+    // every kind of furniture the reticle keeps clear of is published (r10 critic: dropping .cot-con, the 667x375 defect,
+    // went unnoticed): one box a selector, nowhere near the seats
+    const kinds = ['.cot-vehicle-controls>button', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy', '.cot-touch.on .quick',
+      '.cot-touch-aim.on .aimhint', '.cot-minimap', '.cot-mode-status.show', '.flight-identity', '.cot-ear'];
+    const every = Object.fromEntries(kinds.map((selector, i) => [selector, [box(300 + i * 30, 600, 320 + i * 30, 620)]]));
+    const published = solve(900, 700, { ...every, '.cot-scope-vision': [right(900, 700)] }).boxes;
+    for (const [i, selector] of kinds.entries()) {
+      assert.ok(published.some((got) => got[0] === 300 + i * 30 && got[1] === 600), `${selector} is furniture`);
+    }
     let solved = solve(900, 700, { ...base, '.cot-scope-vision': [right(900, 700)] });
     assert.equal(solved.seat, '', '900x700: nothing over the seat right of the sight, the switch stays');
     for (const b of [[12, 636, 76, 688], [287, 0, 613, 62], [12, 389, 172, 572], [184, 464, 292, 572], [8, 118, 114, 142],
@@ -403,6 +412,19 @@ try {
     assert.equal(solved.seat, '', 'touch keeps its own seat left of the sight');
     assert.ok(!layoutSourceR10.includes("'.cot-aim-warning:not([hidden])',") && layoutSourceR10.includes(".cot-aim-warning:not([hidden]):not([data-seat])"),
       'the seated touch chip is the reticle\'s mark, not furniture');
+    // the sheets seat what the solver measures: the touch chip under the sight is the canvas chip's ink box, 24 px tall,
+    // placed by its custom properties; the vision switch's mirror seat mirrors the mouse seat (its 180 px edge, 112 px
+    // for the compact plate), and waits hidden (r10 critic: no receipt read either rule)
+    const layoutCss = readFileSync(new URL('./battleHudLayout.css', import.meta.url), 'utf8');
+    const aerialCss = readFileSync(new URL('./aerialHud.css', import.meta.url), 'utf8');
+    assert.ok(layoutCss.includes(".cot-aim-warning[data-seat='sight']:not([hidden]){left:var(--hud-aim-warning-x);top:var(--hud-aim-warning-y);"
+      + 'width:var(--hud-aim-warning-w);height:24px;min-height:0;padding-block:0;transform:none;'), 'the seated chip\'s rule');
+    assert.ok(aerialCss.includes("body[data-scope-vision='left'] .cot-hud .cot-scope-vision{left:auto;right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px))}")
+      && aerialCss.includes("@media(max-width:539px){body[data-scope-vision='left'] .cot-hud .cot-scope-vision{right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px))}}")
+      && aerialCss.includes("body[data-scope-vision='none'] .cot-hud .cot-scope-vision{visibility:hidden}")
+      && aerialCss.includes('left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px))'), 'the switch\'s seats mirror each other');
+    assert.ok(layoutSourceR10.includes('const edge = width < 540 ? 112 : 180;') && layoutSourceR10.includes('const reach = Math.max(Math.min(width, height) * 0.15 + 8, 80);'),
+      'the solver models those seats');
   } finally {
     for (const [key, descriptor] of saved) {
       if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];
