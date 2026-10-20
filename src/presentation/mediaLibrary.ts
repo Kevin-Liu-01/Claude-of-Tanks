@@ -62,9 +62,14 @@ async function pictureUrl(collection: LibraryCollection, item: LibraryItem): Pro
   return url;
 }
 
-const thumbScale = (): number => {
-  const width = document.body?.dataset.cotWidth;
-  return width === 'phone' ? 0.62 : width === 'compact' ? 0.74 : 1;
+/** The thumbnails' scale: a row of 16:9 cells (240 px in the sheets, 3 px apart) fills the panel's width exactly. */
+const THUMB_CELL = 240;
+const THUMB_GAP = 3;
+const thumbScale = (width: number): number => {
+  if (!(width > 0)) return 1;
+  const columns = Math.max(2, Math.ceil((width + THUMB_GAP) / (THUMB_CELL + THUMB_GAP)));
+  // a pixel of slack a cell, so rounded widths never push a full row onto two lines
+  return Math.min(1.25, (width - (columns - 1) * THUMB_GAP - columns) / (columns * THUMB_CELL));
 };
 
 const pictureTitle = (name: string): string => name.replace(/-/g, ' ');
@@ -218,7 +223,7 @@ export async function mountMediaLibrary(root: HTMLElement | null | undefined): P
     }));
     loadCollection(key).then((collection) => {
       if (active !== key) return;
-      const scale = thumbScale();
+      const scale = thumbScale(panel.clientWidth);
       const intro = document.createElement('header');
       intro.className = 'media-library-intro';
       intro.innerHTML = `<h3></h3><p></p><output></output>`;
