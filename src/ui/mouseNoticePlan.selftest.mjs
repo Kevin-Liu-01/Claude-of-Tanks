@@ -246,6 +246,11 @@ for (const v of VIEWPORTS.filter((x) => x.earL)) for (const rosters of [14, 20])
   const plan = planMouseNotices(input);
   assert.equal(plan.clearance, 2, `${v.vp.join('x')} r${rosters}: the notices clear the reticle`);
   assert.equal(plan.alert.small, input.smallAlert, `${v.vp.join('x')} r${rosters}: main's type size`);
+  // the countdown off the alert's place, the revive count off both notices', the medal card off the detection's
+  const det = plan.detection, alert = alertBox(plan.alert), gap = MOUSE_NOTICE_GAP_PX - .01;
+  for (const label of ['countdown', 'revive', 'medal']) assert.ok(plan[label], `${v.vp.join('x')} r${rosters}: the ${label} has a place`);
+  assert.ok(!overlap(plan.countdown, alert, gap) && !overlap(plan.revive, alert, gap) && !overlap(plan.revive, det, gap)
+    && !overlap(plan.medal, det, gap), `${v.vp.join('x')} r${rosters}: no element takes a place it can show with`);
 }
 
 // 5. Main's placements where they were fine: a centred stack under the score from 1280 x 800 up, the detection at
