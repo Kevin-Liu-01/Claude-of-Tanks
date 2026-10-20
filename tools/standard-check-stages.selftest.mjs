@@ -134,7 +134,11 @@ const redirects = {
       let id = null;
       const page = {
         setDefaultTimeout() {}, on() {},
-        async goto(url) { id = new URL(url).searchParams.get('id'); note('render.txt', id); },
+        async goto(url) {
+          // the page loads from the address the server bound (boundOrigin), never from a configured port
+          if (new URL(url).origin !== 'http://127.0.0.1:1') throw new Error('page loaded from ' + new URL(url).origin);
+          id = new URL(url).searchParams.get('id'); note('render.txt', id);
+        },
         async waitForFunction() {},
         async evaluate(expression) {
           if (expression === 'window.__STANDARD') return scenario.standard[id] ?? { error: 'no stub result for ' + id };
@@ -143,7 +147,7 @@ const redirects = {
       };
       // the CLI builds its page URL from the address the server really bound (tools/tool-page-load.mjs boundOrigin)
       const address = { address: '127.0.0.1', family: 'IPv4', port: 1 };
-      return run({ server: { config: { server: { port: 1 } }, httpServer: { address: () => address } },
+      return run({ server: { httpServer: { address: () => address } },
         browser: { newPage: async () => page } });
     }
   `),
@@ -211,6 +215,7 @@ const ALL_GREEN = {
   geometry: { [COMPARISON]: PASSING_PACKET }, clip: { [COMPARISON]: [0, 0, 0, 0] }, standard: { [COMPARISON]: render(0, 1) },
 };
 
+const HANG_GUARD_MS = 600_000;
 function runScenario(name, scenario, args, prewritten = {}) {
   const cwd = path.join(scratch, name);
   mkdirSync(path.join(cwd, 'tools'), { recursive: true });
@@ -231,7 +236,11 @@ function runScenario(name, scenario, args, prewritten = {}) {
     // A hang guard only: a scenario finishes in seconds, so the bound is generous enough that machine load (the gate
     // runs at load 200+) can never cut a healthy child short; a killed child is named in every assertion message.
     let killed = false;
-    const timer = setTimeout(() => { killed = true; child.kill('SIGKILL'); }, 600_000);
+    const timer = setTimeout(() => {
+      killed = true; child.kill('SIGKILL');
+      // a hung grandchild (the stubs inherit these pipes) would otherwise hold 'close' open past the guard
+      child.stdout.destroy(); child.stderr.destroy();
+    }, HANG_GUARD_MS);
     child.once('error', reject);
     child.once('close', code => {
       clearTimeout(timer);
@@ -243,7 +252,7 @@ function runScenario(name, scenario, args, prewritten = {}) {
   });
 }
 const rowsOf = report => Object.fromEntries(report.rows.map(row => [row.id, row.stages]));
-const explain = result => `${result.name}: exit ${result.code}${result.killed ? ' (killed by the 600 s hang guard)' : ''}\n${result.stdout}\n${result.stderr}`;
+const explain = result => `${result.name}: exit ${result.code}${result.killed ? ` (killed by the ${HANG_GUARD_MS / 1000} s hang guard)` : ''}\n${result.stdout}\n${result.stderr}`;
 
 try {
   const ids = `--ids=${COMPARISON},${CONCEPT},${PHOTO}`;
