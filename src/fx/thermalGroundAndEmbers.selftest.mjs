@@ -5,7 +5,8 @@
 //     luminance over ~1.55, so the ground reads hot for 10-20 s; no other lens evaluates it, no other mark kind has it.
 //  2. the night: "the night 152 mm smoke column holds its height for about 4 s ... light it so it reads" — the gunship
 //     class's heavy bursts (the starburst on the ground, a hull burst of 8 kg and up) lay one ember light (volumeMedia
-//     ember: its own two slots, the night level only, slow to fade) on their column; every other burst lays none.
+//     ember: its own two slots, the night level only, slow to fade) on their column; every other burst lays none. A
+//     heat-imaging lens sees no ember (its blind critic: the lens's fire gain on the ember light veiled the target at night).
 // Read on the real runtime (createFx) and through a recording blast context.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -29,8 +30,9 @@ const craterSrc = readFileSync(new URL('./craterMarks.ts', import.meta.url), 'ut
 assert.match(craterSrc, /if \( uHeatView > 0\.5 && kind > 3\.5 && kind < 4\.5 \) \{\s*col \+= vec3\( \$\{CRATER_HEAT_PEAK\.toFixed\(2\)\} \) \* exp\( -age \/ \$\{CRATER_HEAT_S\.toFixed\(2\)\} \)/,
   'only the rayed kind, only under the heat lens, by its age');
 
-function runtime(userData) {
+function runtime(userData, night = false) {
   const scene = new THREE.Scene();
+  if (night) scene.userData.lightRig = { sunIntensity: 0.6 };
   const camera = new THREE.PerspectiveCamera(55 / 3.6, 16 / 9, 0.5, 5000);
   camera.position.set(0, 240, -90); camera.lookAt(0, 0, 0); camera.updateMatrixWorld(true);
   Object.assign(camera.userData, userData);
@@ -46,7 +48,7 @@ function runtime(userData) {
   const crater = fx.group.getObjectByName('fx-crater-marks')?.material;
   let ember = null;
   fx.group.getObjectByName('fx-volume-media')?.traverse((o) => { if (!ember && o.material?.uniforms?.uEmberK) ember = o.material.uniforms; });
-  return { heatView: crater?.uniforms?.uHeatView?.value, ember };
+  return { heatView: crater?.uniforms?.uHeatView?.value, ember, emberLevel: ember?.uGrade2?.value.z };
 }
 assert.equal(runtime({ thermalFlight: true, flightVision: 1 }).heatView, 1, 'the infrared lens sees the ground heat');
 assert.equal(runtime({ thermalFlight: true, flightVision: 2 }).heatView, 1, 'so does the thermal lens');
@@ -61,8 +63,20 @@ const live = day.ember.uEmberK.value.filter((k) => k.z > 0);
 assert.equal(live.length, 1, 'the gunship\'s 152 mm lays one ember light');
 assert.ok(Math.abs(live[0].z - 4.5) < 1e-9 && live[0].y > 0, `for ${live[0].z} s`);
 const vol = readFileSync(new URL('./volumeMedia.ts', import.meta.url), 'utf8');
-assert.match(vol, /if \( uGrade2\.y > 0\.0 \) \{\s*for \( int i = 0; i < \$\{EMBER_SLOTS\}; i\+\+ \)/, 'the embers light only at night (the night level)');
-assert.match(vol, /gl \+= uGrade2\.y \* ek\.y \* \( 1\.0 - f \* f \)/, 'scaled by the night level, slow to fade');
+assert.match(vol, /if \( uGrade2\.z > 0\.0 \) \{\s*for \( int i = 0; i < \$\{EMBER_SLOTS\}; i\+\+ \)/, 'the embers light only at their level');
+assert.match(vol, /gl \+= uGrade2\.z \* ek\.y \* \( 1\.0 - f \* f \)/, 'scaled by it, slow to fade');
+// their level: the night level, for every camera but a heat-imaging one
+assert.equal(day.emberLevel, 0, 'by day the embers are dark');
+const nightLevel = runtime({}, true).ember.uGrade2.value.y;
+assert.ok(nightLevel > 0.99, `the night rig reads as night (${nightLevel})`);
+for (const [name, u] of [['a ground camera', {}], ['the daylight lens', { thermalFlight: true, flightVision: 0 }],
+  ['the image intensifier', { thermalFlight: true, flightVision: 3 }]]) {
+  assert.equal(runtime(u, true).emberLevel, nightLevel, `${name} sees the night embers`);
+}
+for (const [name, u] of [['the infrared lens', { thermalFlight: true, flightVision: 1 }], ['the thermal lens', { thermalFlight: true, flightVision: 2 }],
+  ['a sensor imaging heat', { sensorVision: 1 }]]) {
+  assert.equal(runtime(u, true).emberLevel, 0, `${name} sees no ember at night (no veil over the target)`);
+}
 
 function mulberry(seed) { let a = seed >>> 0; return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function embersOf(run) {
@@ -82,4 +96,4 @@ for (const [name, n] of [['a field howitzer', g('howitzer', 6.8, false)], ['a pl
   ['an earth-only burst', g('howitzer', 12, true, true)], ['a light hull hit', h('howitzer', 6.8)], ['a SAM on a hull', h('missile', 0.62)]]) {
   assert.equal(n, 0, `${name} lays no ember`);
 }
-console.log(`thermalGroundAndEmbers: a 152 mm crater reads hot to the heat lens for ${hotFor.toFixed(1)} s (white-hot ${whiteFor.toFixed(1)} s), no other lens or mark; the gunship's heavy bursts light their column at night for 4.5 s, no other burst`);
+console.log(`thermalGroundAndEmbers: a 152 mm crater reads hot to the heat lens for ${hotFor.toFixed(1)} s (white-hot ${whiteFor.toFixed(1)} s), no other lens or mark; the gunship's heavy bursts light their column at night for 4.5 s, no other burst, and no heat lens sees it`);

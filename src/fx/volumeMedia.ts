@@ -187,7 +187,7 @@ uniform vec4 uGlowK[ ${GLOW_SLOTS} ];  // its radius (m), peak, duration (s), un
 uniform float uHeatCool;  // (ac130-fx-228 r3) the fire's cooling rate for this camera: a heat-imaging lens sees it cool slower
 uniform vec4 uEmberP[ ${EMBER_SLOTS} ]; // (ac130-fx-228 follow-up) a heavy burst's embers: centre xyz, birth (fx clock)
 uniform vec4 uEmberK[ ${EMBER_SLOTS} ]; // their radius (m), peak, duration (s), unused
-uniform vec4 uGrade2;     // (as the fragment's) .y the night level: 0 by day, 1 at night
+uniform vec4 uGrade2;     // (as the fragment's) .y the night level: 0 by day, 1 at night; .z the embers' level
 varying float vGlow;
 varying vec2 vUvA;
 varying vec2 vUvB;
@@ -312,8 +312,9 @@ void main() {
   }
   // (ac130-fx-228 follow-up, the coordinator: "the night 152 mm smoke column holds its height for about 4 s ... light it
   // so it reads at night") a heavy burst's embers light its column from the burning ground for a few seconds — at night
-  // only (the night level; by day nothing is added, and with no ember live nothing either), slow to fade (1 - f^2)
-  if ( uGrade2.y > 0.0 ) {
+  // only (the night level; by day nothing is added, and with no ember live nothing either), slow to fade (1 - f^2); a
+  // heat-imaging lens sees none (its blind critic: a pale veil over the target — the lens's fire gain on the ember light)
+  if ( uGrade2.z > 0.0 ) {
     for ( int i = 0; i < ${EMBER_SLOTS}; i++ ) {
       vec4 ep = uEmberP[ i ];
       vec4 ek = uEmberK[ i ];
@@ -321,7 +322,7 @@ void main() {
       if ( ek.z <= 0.0 || ea < 0.0 || ea > ek.z ) continue;
       float f = ea / ek.z;
       vec3 ed = center - ep.xyz;
-      gl += uGrade2.y * ek.y * ( 1.0 - f * f ) * exp( -dot( ed, ed ) / max( ek.x * ek.x, 1e-3 ) );
+      gl += uGrade2.z * ek.y * ( 1.0 - f * f ) * exp( -dot( ed, ed ) / max( ek.x * ek.x, 1e-3 ) );
     }
   }
   vGlow = gl;
@@ -905,6 +906,9 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     // (EF.11) the night level: the rig's sun (Verdant: day 4.5, sunset 2.8, night 0.6) under ~2.2 fades in the night floor
     { const sunI = rig ? (rig.sunIntensity ?? 4.5) : 4.5; const k = Math.min(1, Math.max(0, (sunI - 0.9) / 1.3));
       uGrade2.value.y = 1 - k * k * (3 - 2 * k); }
+    // (ac130-fx-228 follow-up) the embers' level: the night level, but dark to a heat-imaging camera (its raised fire gain):
+    // the ember is the column's firelight for the eye; the heat lens images the gas's own heat and the crater's
+    uGrade2.value.z = heatK > 1 ? 0 : uGrade2.value.y;
     uDetailK.value = tune.detail;
     uWarpK.value = tune.warp;
     refreshWorldWind(ud);
