@@ -213,8 +213,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/sealed-ledger-policy.selftest.mjs',
     'tools/muzzle-seat-policy.selftest.mjs',
     'tools/receipt-repin.selftest.mjs',
-    // the shared receipt kit (near, nearStrict, geometryHash) about 110 receipts import
+    // the shared receipt kit (near, nearStrict, geometryHash, graphLabels) about 150 receipts import
     'tools/receipt-kit.selftest.mjs',
+    // 2026-10-16 (test-speed R10): no assert equality on three.js graph objects in any receipt (the 226 T-72 receipts
+    // dumped and diffed two scene graphs to 28-40 GB); a per-file byte-keyed cache keeps an unchanged tree under 1 s
+    'tools/object3d-assert-lint.selftest.mjs',
+    // 229: the runtime half (every child preloads it): a failing graph-object assert fails fast with labels.
+    'tools/assert-graph-guard.selftest.mjs',
     'tools/muzzle-bore-inventory.selftest.mjs',
     'tools/source-x-oracle.selftest.mjs',
     'src/vehicles/eraAuthoredFaces.selftest.mjs',

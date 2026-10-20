@@ -162,7 +162,7 @@ try {
     'KF51B movement contact metadata follows the enlarged visual hierarchy');
   assert.equal(proportions?.trackHitGeometryScaled, true,
     'KF51B track hit geometry follows the enlarged visual hierarchy');
-  assert.equal(gun?.parent, turret,
+  assert.ok(gun?.parent === turret,
     'KF51B gun remains owned by the translated turret rig');
   assert.equal(gunHousing?.profile, 'kf51b-panther-angular-mantlet-r3');
   assert.equal(gunHousing?.movingWithGun, true,
@@ -214,7 +214,7 @@ try {
       'KF51B track loop has no consecutive duplicate crown vertices');
   }
 
-  assert.equal(rws?.parent, turret,
+  assert.ok(rws?.parent === turret,
     'KF51B open-yoke weapon tower remains turret-owned');
   assert.equal(rws?.userData.designFamily, 'abramsx-open-yoke-v1',
     'KF51B tower shares the Leopard 2A6M open-yoke mechanism');

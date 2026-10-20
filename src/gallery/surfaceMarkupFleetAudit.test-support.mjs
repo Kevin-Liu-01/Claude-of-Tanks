@@ -43,7 +43,7 @@ export function createSurfaceMarkupFleetAudit() {
           `${id}/${primitive.name || primitive.type}: rendered primitive remains Gallery-selectable`);
       }
       for (const [primitive, state] of sourceState) {
-        assert.equal(primitive.parent, state.parent,
+        assert.ok(primitive.parent === state.parent,
           `${id}/${primitive.name || primitive.type}: Gallery collection preserves source parentage`);
         assert.equal(primitive.visible, state.visible,
           `${id}/${primitive.name || primitive.type}: Gallery collection preserves source visibility`);

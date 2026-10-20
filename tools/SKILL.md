@@ -46,6 +46,12 @@ avoid editing generated evidence manually. Combat-anatomy generation always
 uses `ALL_TANK_IDS`; donor/retired spec rows are not part of the playable gate.
 Receipts import `near`, `nearStrict` and `geometryHash` from
 `receipt-kit.test-support.mjs` instead of defining their own copies.
+Never `assert.equal`/`deepEqual` three.js objects (Object3D, geometry,
+attribute, material, texture): a failure dumps and diffs both graphs whole
+(the 226 T-72 receipts reached 40 GB). Assert a boolean (`assert.ok(a === b)`)
+or compare `graphLabels(...)`, uuids or names; `object3d-assert-lint.mjs`
+fails the suite otherwise (`--fix` rewrites, `--types` audits with the checker,
+`// object3d-assert-ok: <reason>` accepts a false positive).
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

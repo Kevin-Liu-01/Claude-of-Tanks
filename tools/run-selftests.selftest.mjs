@@ -5,7 +5,7 @@ import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
-import { runSelftestFile, runSelftestSuite, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
+import { runSelftestFile, runSelftestSuite, SELFTEST_GRAPH_GUARD, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
   selftestCacheEnv, selftestRunDirectory, SELFTEST_LAST_FILES, SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
 import { createSelftestCache } from './selftest-cache.mjs';
 // The runners read COT_SHOTS_LOCK_TIMEOUT_MS (landing chains export three hours); this receipt pins the default wait.
@@ -335,8 +335,15 @@ assert.deepEqual(timings, [
 ], 'execution and FIFO time stay separate, and the files after a failure are still measured');
 
 for (const env of [{ NODE_DISABLE_COMPILE_CACHE: '1' }, { NODE_COMPILE_CACHE: '/explicit' }, { NODE_V8_COVERAGE: '/coverage' }]) {
-  assert.equal(selftestChildEnv(env), env, 'respect caller opt-out, explicit cache and coverage');
+  assert.deepEqual(selftestChildEnv(env), { ...env, NODE_OPTIONS: SELFTEST_GRAPH_GUARD },
+    'respect caller opt-out, explicit cache and coverage (only the graph guard is added)');
 }
+const capped = { NODE_OPTIONS: '--max-old-space-size=4096' };
+assert.equal(selftestChildEnv(capped).NODE_OPTIONS, `--max-old-space-size=4096 ${SELFTEST_GRAPH_GUARD}`, 'the heap cap is kept');
+assert.equal(selftestChildEnv(selftestChildEnv(capped)).NODE_OPTIONS, selftestChildEnv(capped).NODE_OPTIONS, 'the guard is added once');
+assert.equal(capped.NODE_OPTIONS, '--max-old-space-size=4096', 'never mutate parent environment');
+assert.deepEqual(selftestCacheEnv(selftestChildEnv(capped)).NODE_OPTIONS, '--max-old-space-size=4096', 'the guard never keys a proof');
+assert.equal('NODE_OPTIONS' in selftestCacheEnv(selftestChildEnv({})), false);
 const originalEnv = { EXAMPLE: 'preserved' }, cachedEnv = selftestChildEnv(originalEnv);
 assert.equal(cachedEnv.EXAMPLE, 'preserved');
 assert.equal(originalEnv.NODE_COMPILE_CACHE, undefined, 'never mutate parent environment');

@@ -116,7 +116,7 @@ const forestOf = (group) => {
 };
 const ruins = getMapConfig('ruinspires');
 const ruinsRing = buildHorizonRing(null, ruins, 1337, createHeightField(1337, ruins));
-assert.equal(ruinsRing.getObjectByName('border-farmsteads'), undefined, 'Ruin Spires: no farm past the edge');
+assert.ok(ruinsRing.getObjectByName('border-farmsteads') === undefined, 'Ruin Spires: no farm past the edge');
 const withFarms = { ...ruins, terrain: { ...ruins.terrain, border: { ...(ruins.terrain.border ?? {}), farmBuildings: true } } };
 const farmRing = buildHorizonRing(null, withFarms, 1337, createHeightField(1337, withFarms));
 assert.ok(farmRing.getObjectByName('border-farmsteads'), 'the farms\' sites are still chosen (a twin with buildings raises them)');

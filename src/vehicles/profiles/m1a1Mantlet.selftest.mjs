@@ -56,7 +56,7 @@ for(const quality of ['high','low'])for(const id of ids){
     }
     const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');
     const recoil=tank.root.getObjectByName('rig_recoil'),mount=tank.root.getObjectByName('gunMount');
-    assert.equal(mount.parent,gun,`${id}: shield pitches without recoiling`);
+    assert.ok(mount.parent === gun,`${id}: shield pitches without recoiling`);
     const fixed=new Mesh(tank.root.getObjectByName('turret').geometry,mat);
     const moving=new Mesh(mount.geometry,mat);
     fixed.updateMatrixWorld(true);moving.updateMatrixWorld(true);
@@ -117,7 +117,7 @@ for(const quality of ['high','low'])for(const id of ids){
     const dark=new Mesh(tank.root.getObjectByName('gunMountDark').geometry,mat);
     dark.updateMatrixWorld(true);
     ray.set(new Vector3(-.265,-.095,1),new Vector3(0,0,-1));ray.far=1.1;
-    assert.equal(ray.intersectObjects([moving,dark])[0]?.object,dark,
+    assert.ok(ray.intersectObjects([moving,dark])[0]?.object === dark,
       `${id}: recessed receiver is visible through the coax aperture`);
     ray.set(new Vector3(-.264,-.094,1),new Vector3(0,0,-1));ray.far=1.2;
     const supportFront=ray.intersectObject(moving)[0].point.z;

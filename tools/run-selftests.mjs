@@ -85,20 +85,32 @@ export function selftestRunDirectory(env = process.env, make = () => mkdtempSync
   return { dir: make(), created: true };
 }
 
+// Every child also preloads tools/assert-graph-guard.mjs: an equality assert on a three.js graph object fails with
+// identity labels instead of node's whole-graph inspect and diff (the 226 T-72 receipts reached 40 GB).
+export const SELFTEST_GRAPH_GUARD = `--import=${new URL('./assert-graph-guard.mjs', import.meta.url).href}`;
+
 // The environment the result cache keys receipts on: a copy taken before the run directory is
 // set, without it. The directory's path changes every run and a receipt reads only what its own
 // run wrote there, so it is not an input; keyed, it would make every receipt that reads it miss.
 export function selftestCacheEnv(env = process.env) {
   const { COT_SELFTEST_RUN_DIR: _runDirectory, ...keyed } = env;
+  // The graph guard decides only failing asserts on graph objects, and its URL names this checkout: it never keys a
+  // proof (worktrees share one store).
+  if (keyed.NODE_OPTIONS?.includes(SELFTEST_GRAPH_GUARD)) {
+    const options = keyed.NODE_OPTIONS.replace(SELFTEST_GRAPH_GUARD, '').trim();
+    if (options) keyed.NODE_OPTIONS = options; else delete keyed.NODE_OPTIONS;
+  }
   return keyed;
 }
 
 // This caches compilation, NEVER test results or module instances. Every file
 // still executes all assertions in a fresh process. Node validates source and
-// engine versions. Respect explicit cache/coverage settings and opt-outs.
+// engine versions. Respect explicit cache/coverage settings and opt-outs; the graph guard is always preloaded.
 export function selftestChildEnv(env = process.env) {
-  if (env.NODE_COMPILE_CACHE || env.NODE_DISABLE_COMPILE_CACHE || env.NODE_V8_COVERAGE) return env;
-  return { ...env, NODE_COMPILE_CACHE: join(tmpdir(), `cot-selftest-compile-${process.getuid?.() ?? 'user'}`) };
+  const options = env.NODE_OPTIONS ?? '';
+  const guarded = options.includes(SELFTEST_GRAPH_GUARD) ? env : { ...env, NODE_OPTIONS: `${options} ${SELFTEST_GRAPH_GUARD}`.trim() };
+  if (env.NODE_COMPILE_CACHE || env.NODE_DISABLE_COMPILE_CACHE || env.NODE_V8_COVERAGE) return guarded;
+  return { ...guarded, NODE_COMPILE_CACHE: join(tmpdir(), `cot-selftest-compile-${process.getuid?.() ?? 'user'}`) };
 }
 
 // Bounded fresh CPU children; real browser regressions remain exclusive.

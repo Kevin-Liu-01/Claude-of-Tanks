@@ -13,7 +13,7 @@ const ray=new Ray(new Vector3(),new Vector3(0,-1,0)),hit=new Vector3();
 function nativeRows(stock){const rows=new Map();for(const bucket of stock.grid.values())for(const row of bucket)rows.set(row.id,row);return [...rows.values()];}
 function nativeParts(mesh,turret){
  const transform=turret.matrixWorld.clone().invert().multiply(mesh.matrixWorld),p=mesh.geometry.attributes.position;
- assert.equal(mesh.geometry.index,null,'finite receiver boxes remain directly inspectable');
+ assert.ok(mesh.geometry.index === null,'finite receiver boxes remain directly inspectable');
  assert.equal(p.count%36,0);
  return Array.from({length:p.count/36},(_,i)=>{
   const box=new Box3();for(let v=i*36;v<(i+1)*36;v++)box.expandByPoint(new Vector3().fromBufferAttribute(p,v).applyMatrix4(transform));return box;
@@ -56,7 +56,7 @@ let cases=0,partsChecked=0;
 for(const id of ids)for(const quality of['high','low']){
  const spec=getSpec(id),tank=createTank(id,null,{quality,camoSeed:4242,proceduralOnly:true,geometryReceipt:true});tank.root.updateMatrixWorld(true);
  const receiver=tank.root.getObjectByName('turretMissionReceiver'),turret=tank.root.getObjectByName('rig_turret');
- assert(receiver?.isMesh,`${id}: actual permanent receiver exists`);assert.equal(receiver.parent,turret,`${id}: receiver follows native turret`);
+ assert(receiver?.isMesh,`${id}: actual permanent receiver exists`);assert.ok(receiver.parent === turret,`${id}: receiver follows native turret`);
  const parts=nativeParts(receiver,turret);assert.equal(parts.length,counts[id]);partsChecked+=parts.length;
  const stock=collectMissionStock(tank,'turret',-Infinity,false,spec),rows=nativeRows(stock),host=rows.filter(row=>anchorStock(id,row));
  for(const i of anchorIndexes(id)){

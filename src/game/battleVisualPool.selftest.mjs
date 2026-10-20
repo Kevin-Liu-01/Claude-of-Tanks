@@ -26,7 +26,7 @@ const t90_1992 = makeVisual('t90a_2004');
 assert.equal(pool.release(t90_1992), true, 'desktop pool accepts a clean bot visual');
 assert.equal(t90_1992.resets, 1, 'pooled visuals are reset before storage');
 assert.equal(t90_1992.visible, false, 'pooled visuals are hidden');
-assert.equal(t90_1992.root.parent, null, 'pooled visuals are detached from the scene');
+assert.ok(t90_1992.root.parent === null, 'pooled visuals are detached from the scene');
 assert.deepEqual(pool.stats(), { size: 1, capacity: 2, ids: ['t90a_2004'] });
 
 assert.equal(pool.take('t90a_2004'), t90_1992, 'the next matching battle reuses the visual');

@@ -154,12 +154,12 @@ const water = createShallowWaterSurface(surface.geometry, mask, waves, field.siz
   const routed = createShallowWaterSurface(surface.geometry, mask, waves, field.size, 'coastal', [0.4, 0.78],
     (material, hook) => handed.push({ material, hook }));
   assert.equal(handed.length, 1, 'one material joins the cascade setup');
-  assert.equal(handed[0].material, routed.mesh.material);
+  assert.ok(handed[0].material === routed.mesh.material);
   assert.equal(routed.mesh.material.onBeforeCompile.toString().includes('uWaterMask'), false,
     'the module leaves onBeforeCompile to the engine when a setup hook is given');
   const probe = { uniforms: {}, vertexShader: ShaderLib.standard.vertexShader, fragmentShader: ShaderLib.standard.fragmentShader };
   handed[0].hook(probe);
-  assert.equal(probe.uniforms.uWaterMask.value, mask, 'the handed hook is the water shader patch');
+  assert.ok(probe.uniforms.uWaterMask.value === mask, 'the handed hook is the water shader patch');
   routed.mesh.material.dispose();
   const terrain = terrainSourceText();
   // round 66 (2026-09-24): the call gained the FFT ocean as its last argument (was `: null);`)
@@ -193,8 +193,8 @@ assert.equal(water.mesh.material.envMapIntensity, 1, 'the sheet takes the sky\'s
 assert.equal(water.mesh.material.forceSinglePass, true, 'one draw, not the two-pass transparent default');
 const shader = { uniforms: {}, vertexShader: ShaderLib.standard.vertexShader, fragmentShader: ShaderLib.standard.fragmentShader };
 water.mesh.material.onBeforeCompile(shader);
-assert.equal(shader.uniforms.uWaterMask.value, mask);
-assert.equal(shader.uniforms.uWaterWave.value, waves, 'shares already-owned terrain textures');
+assert.ok(shader.uniforms.uWaterMask.value === mask);
+assert.ok(shader.uniforms.uWaterWave.value === waves, 'shares already-owned terrain textures');
 assert.match(shader.fragmentShader, /if \(wet < 0\.015\) discard/);
 // (2026-10-04: seaOpacity is the material's opacity wherever the coast's shelf law is off — every lake, river and marsh —
 // so those shallows still reach full body quickly; an FFT coast's shelf is clear, the sea's turquoise over its sand)
@@ -384,7 +384,7 @@ assert.match(fx, /printCenters\.fill\(1e9\)/, 'rematch reset clears wake admissi
   assert.equal(at(16), 4, 'the first wet cell: one cell (4 m) from the last dry one');
   assert.equal(at(40), 100, '24 cells (96 m) further: 100 m');
   assert.equal(at(63), 192, 'and on to the far edge');
-  assert.equal(shoreDistanceTexture({ image: { width: 8, height: 8 } }, 256, 0.3), null, 'no CPU data, no field (the law stays off)');
+  assert.ok(shoreDistanceTexture({ image: { width: 8, height: 8 } }, 256, 0.3) === null, 'no CPU data, no field (the law stays off)');
 }
 assert.match(shader.fragmentShader, /seaShoreM = seaShore\.x \+ \(uSeaShelf\.x > 0\.0 \? max\(pastEdgeM, 0\.0\) : 0\.0\);[\s\S]{0,200}seaShelfM = mix\(uSeaShelf\.y, max\(seaShore\.y \* uSeaLook\.z, 4\.0\), uSeaLook\.y \* step\(0\.5, seaShore\.y\)\);\s*waterDeep = mix\(waterDeep, 1\.0 - exp\(-seaShoreM \/ seaShelfM\), uSeaShelf\.x\);/,
   'the body\'s share rises over the shelf, metres from the shore (past the edge, plus the metres out — never minus inside the square)');
