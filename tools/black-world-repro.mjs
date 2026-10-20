@@ -111,6 +111,49 @@ const gldiag = flag('gldiag');
 // BATTLE with document.hasFocus() false + a window blur (+ document.hidden with --away-hidden), then back
 const awayDuringLoadS = Number(opt('away-during-load', '0'));
 const awayHidden = flag('away-hidden');
+// (critic-repro, 2026-10-19) adversarial variations of the entry:
+//   --cpu-throttle=N            CDP Emulation.setCPUThrottlingRate N from BATTLE to the end of the run (stretches the
+//                               load and the deferred combat warm into the revealed battle)
+//   --throttle-entry=KBPS:MS    CDP network throttle from BATTLE until the cover lifts (stretches the load)
+//   --resize-during-load=S:WxH  S s after BATTLE the viewport becomes WxH for 1.5 s, then back
+//   --esc-during-cover=S:N      S s after BATTLE, N real Esc key presses (CDP) 200 ms apart while the cover shows
+//   session steps escspam:N (N real Esc presses 70 ms apart, then resumed), bounce:<map>:<s> (leave to the Garage,
+//   BATTLE, leave again s s after the reveal, BATTLE again, then the window), inject:aerialblack[:s] / persist
+const cpuThrottle = Number(opt('cpu-throttle', '0'));
+const throttleEntry = opt('throttle-entry', '');
+const resizeDuringLoad = opt('resize-during-load', '');
+const escDuringCover = opt('esc-during-cover', '');
+async function cdpKey(page, key = 'Escape', code = 'Escape', vk = 27) {
+  const cdp = await page.createCDPSession();
+  try {
+    await cdp.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
+    await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
+  } finally { await cdp.detach().catch(() => {}); }
+}
+/** After a perturbation: a pause panel or resume veil left open is closed the way a player does (RESUME / a click). */
+async function ensureResumed(page) {
+  const st = await page.evaluate(() => ({ settings: !!document.querySelector('.cot-settings.open'), resume: (() => { const b = document.querySelector('.cot-set-btn.resume'); return !!b && b.offsetParent !== null; })(),
+    veil: !!document.querySelector('.cot-resume-veil.on, .cot-resume.on'), locked: !!document.pointerLockElement })).catch(() => null);
+  if (st?.resume) { try { await page.click('.cot-set-btn.resume'); } catch { await page.evaluate(() => document.querySelector('.cot-set-btn.resume')?.click()); } await sleep(400); }
+  else if (st?.veil) { await page.mouse.click(vw / 2, vh / 2); await sleep(400); }
+  return st;
+}
+let entryCdp = null;
+async function applyEntryThrottle(page) {
+  if (!cpuThrottle && !throttleEntry) return;
+  entryCdp ??= await page.createCDPSession();
+  if (cpuThrottle) await entryCdp.send('Emulation.setCPUThrottlingRate', { rate: cpuThrottle });
+  if (throttleEntry) {
+    const [kbps, latency] = throttleEntry.split(':').map(Number);
+    await entryCdp.send('Network.enable');
+    await entryCdp.send('Network.emulateNetworkConditions', { offline: false, latency: latency || 0,
+      downloadThroughput: (kbps || 4000) * 1024 / 8, uploadThroughput: (kbps || 4000) * 1024 / 8 });
+  }
+}
+async function clearNetworkThrottle() {
+  if (!entryCdp || !throttleEntry) return;
+  try { await entryCdp.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 }); } catch { /* gone */ }
+}
 // --away-at=S: S seconds after BATTLE (default 1)
 const awayAtS = Number(opt('away-at', '1'));
 // --garage-dwell=S: seconds in the Garage (after the boot, and after a return) before the map card and BATTLE — a player
@@ -152,7 +195,14 @@ async function acquire() {
   if (!useLock || holdingSince) return;
   log('waiting for the capture lock (normal band)');
   const t0 = Date.now();
-  await lock.acquire(6 * 3600 * 1000);
+  // (critic-repro) --ticket-stamp=<ms>: the first hold rejoins the queue at this part's own earlier ticket (a relaunch keeps
+  // its place, tools/capture-lock.mjs ticketAt); later holds take fresh tickets
+  const stampArg = Number(opt('ticket-stamp', '0'));
+  if (stampArg > 0 && !acquire.usedStamp) {
+    acquire.usedStamp = true;
+    const { ticketAt } = await import('./capture-lock.mjs');
+    await lock.acquire(6 * 3600 * 1000, { ticket: ticketAt(stampArg) });
+  } else await lock.acquire(6 * 3600 * 1000);
   holdingSince = Date.now();
   refresher = setInterval(() => lock.refresh(), 30_000);
   log(`capture lock held after ${Math.round((Date.now() - t0) / 1000)} s`);
@@ -436,6 +486,40 @@ async function waitForCoverLift(page, timeoutMs = 240_000, retry = null) {
 /** After BATTLE: wait for the cover to lift, leaving the window for --away-during-load seconds meanwhile. */
 async function enterAndWait(page, map, row) {
   const waiting = waitForCoverLift(page, 240_000, () => selectMapAndBattle(page, map, false));
+  // (critic-repro) timed perturbations of the load, beside the wait
+  const tBattle = Date.now();
+  const perturb = (async () => {
+    const acts = [];
+    if (resizeDuringLoad) { const [s, wh] = resizeDuringLoad.split(':'); acts.push({ at: Number(s), kind: 'resize', wh: wh || '900x560' }); }
+    if (escDuringCover) { const [s, n] = escDuringCover.split(':'); acts.push({ at: Number(s), kind: 'esc', n: Number(n || 1) }); }
+    acts.sort((a, b) => a.at - b.at);
+    const done = [];
+    for (const act of acts) {
+      const wait = tBattle + act.at * 1000 - Date.now();
+      if (wait > 0) await sleep(wait);
+      const cover = await page.evaluate(() => !!document.querySelector('.cot-bl.on')).catch(() => null);
+      if (act.kind === 'resize') {
+        const [rw, rh] = act.wh.split('x').map(Number);
+        await page.setViewport({ width: rw, height: rh, deviceScaleFactor: dsf });
+        await sleep(1500);
+        await page.setViewport({ width: vw, height: vh, deviceScaleFactor: dsf });
+        done.push({ kind: 'resize', to: act.wh, at: +((Date.now() - tBattle) / 1000).toFixed(1), cover });
+      } else if (act.kind === 'esc') {
+        for (let i = 0; i < act.n; i++) { await cdpKey(page); await sleep(200); }
+        const after = await page.evaluate(() => ({ cover: !!document.querySelector('.cot-bl.on'), settings: !!document.querySelector('.cot-settings.open') })).catch(() => null);
+        done.push({ kind: 'esc', n: act.n, at: +((Date.now() - tBattle) / 1000).toFixed(1), cover, after });
+      }
+    }
+    return done;
+  })().catch((error) => [{ error: String(error?.message ?? error).slice(0, 200) }]);
+  if (resizeDuringLoad || escDuringCover) {
+    const lift = await waiting;
+    row.perturb = await perturb;
+    await clearNetworkThrottle();
+    row.afterPerturb = await ensureResumed(page);
+    log(`  perturbations: ${JSON.stringify(row.perturb)}; after the lift ${JSON.stringify(row.afterPerturb)}`);
+    return lift;
+  }
   if (awayDuringLoadS > 0) {
     await sleep(awayAtS * 1000);
     const before = await page.evaluate(() => ({ cover: !!document.querySelector('.cot-bl.on'), phase: window.__DEBUG?.game?.phase ?? null })).catch(() => null);
@@ -445,7 +529,9 @@ async function enterAndWait(page, map, row) {
     row.away = { atS: awayAtS, forS: awayDuringLoadS, hidden: awayHidden, before, after, observed: observed ?? null };
     log(`  away during the load ${awayDuringLoadS} s${awayHidden ? ' (hidden)' : ''}: before ${JSON.stringify(before)} after ${JSON.stringify(after)}${observed ? ` page ${JSON.stringify(observed)}` : ''}`);
   }
-  return waiting;
+  const lift = await waiting;
+  await clearNetworkThrottle();
+  return lift;
 }
 
 /** --real-esc: a real click locks the pointer, CDP sends the browser's Esc (the unlock gesture), RESUME relocks. */
@@ -642,6 +728,33 @@ function injectOnce(spec) {
     else if (kind === 'override') { const m = findMaterial().clone(); m.colorWrite = false; S.overrideMaterial = m; }
     else if (kind === 'passes') P.sceneAA.enabled = false;
     else if (kind === 'control') C.layers.mask = 1 << 30; // inv-repro's positive control: the camera sees the late-FX layer only
+    else if (kind === 'aerialblack' && !P.aerial.__bwrBlack) {
+      // (critic-repro) downstream of the guard's probe: the aerial pass stays enabled and draws, then its destination
+      // (the late-FX target in the direct-colour path, else the write buffer) is cleared to 0, so the late-FX cards draw
+      // over a finite black world (the owner's signature) while the scene target the probe reads stays lit
+      const aerialRender = P.aerial.render;
+      P.aerial.__bwrBlack = aerialRender;
+      let ColorCtor = null;
+      S.traverse((o) => { if (!ColorCtor && o.material && !Array.isArray(o.material) && o.material.color?.isColor) ColorCtor = o.material.color.constructor; });
+      const savedColor = new ColorCtor();
+      P.aerial.render = function (renderer, writeBuffer, readBuffer, deltaTime, maskActive) {
+        const result = aerialRender.call(this, renderer, writeBuffer, readBuffer, deltaTime, maskActive);
+        try {
+          const target = this.directColorReadBuffer === writeBuffer ? P.lateFx.target : (this.renderToScreen ? null : writeBuffer);
+          const prev = renderer.getRenderTarget();
+          renderer.getClearColor(savedColor);
+          const alpha = renderer.getClearAlpha();
+          renderer.setRenderTarget(target);
+          renderer.setClearColor(0x000000, 1);
+          renderer.clear(true, false, false);
+          renderer.setClearColor(savedColor, alpha);
+          window.__bwrAerialBlackTarget = target ? (target.texture?.name || `${target.width}x${target.height}`) : 'screen';
+          renderer.setRenderTarget(prev);
+        } catch (error) { window.__bwrAerialBlackError = String(error).slice(0, 200); }
+        return result;
+      };
+      setTimeout(() => { P.aerial.render = aerialRender; delete P.aerial.__bwrBlack; }, Math.max(1, seconds || 3) * 1000);
+    }
     else if (kind === 'emptypass' && !R.__bwrEmptyPass) {
       // the scene pass lands nothing while every CPU signal stays healthy (a GL-level loss of every world draw): three's
       // render into the scene target returns before drawing for the fault's seconds
@@ -711,7 +824,7 @@ function injectOnce(spec) {
   };
   const injectAt = performance.now();
   const error = apply();
-  if (persist && kind !== 'emptypass' && kind !== 'nanscene') {
+  if (persist && kind !== 'emptypass' && kind !== 'nanscene' && kind !== 'aerialblack') {
     const until = injectAt + seconds * 1000;
     const loop = () => { if (performance.now() < until) { apply(); requestAnimationFrame(loop); } };
     requestAnimationFrame(loop);
@@ -1348,7 +1461,7 @@ try {
       const [action, m] = token.split(':');
       const whole = token.slice(action.length + 1);
       // value steps (preset:<name>, away:<s>, esclong:<s>, inject:<fault> / inject:persist:<fault>:<s>) keep the current map
-      if (['preset', 'away', 'awayhidden', 'esclong', 'inject', 'dynflap'].includes(action)) { steps.push({ action, value: action === 'inject' ? whole : m, map: steps.at(-1)?.map ?? maps[0] }); continue; }
+      if (['preset', 'away', 'awayhidden', 'esclong', 'inject', 'dynflap', 'escspam', 'bounce'].includes(action)) { steps.push({ action, value: action === 'inject' || action === 'bounce' ? whole : m, map: action === 'bounce' ? m : (steps.at(-1)?.map ?? maps[0]) }); continue; }
       steps.push({ action: action === 'enter' ? 'boot' : action, map: m ?? steps.at(-1)?.map ?? maps[0] });
     }
   } else {
@@ -1383,10 +1496,38 @@ try {
           Object.assign(row, { boot: b });
           log(`${label}: booted in ${(b.bootMs / 1000).toFixed(1)} s, ${b.version}, ${b.browser}, gpu ${b.gpu}, webdriver ${b.webdriver}, preset ${b.preset}`);
           if (!plain) await page.evaluate(installDiagnostics);
+          entryCdp = null;
+          await applyEntryThrottle(page);
           const t0 = Date.now();
           await selectMapAndBattle(page, map);
           const lift = await enterAndWait(page, map, row);
           row.entryMs = Date.now() - t0; row.lift = lift;
+          if (cpuThrottle || throttleEntry) row.throttle = { cpu: cpuThrottle || null, net: throttleEntry || null };
+        } else if (step.action === 'escspam') {
+          // (critic-repro) a player hammering Esc: N real presses 70 ms apart, then back in the battle
+          const n = Number(step.value ?? 10);
+          await page.bringToFront();
+          await page.mouse.click(vw / 2, vh / 2);
+          await sleep(300);
+          for (let i = 0; i < n; i++) { await cdpKey(page); await sleep(70); }
+          await sleep(600);
+          row.escspam = { n, before: await ensureResumed(page) };
+          row.escspam.after = await page.evaluate(() => ({ settings: !!document.querySelector('.cot-settings.open'), locked: !!document.pointerLockElement })).catch(() => null);
+          row.action = `escspam-${n}`;
+          log(`  escspam ${n}: ${JSON.stringify(row.escspam)}`);
+        } else if (step.action === 'bounce') {
+          // (critic-repro) leave while the reveal's deferred warm still runs: leave, BATTLE, leave again s s after the
+          // reveal, BATTLE again; the window samples the second entry
+          const [bm, bs] = String(step.value).split(':');
+          await leaveToGarage(page);
+          await selectMapAndBattle(page, bm || map);
+          await enterAndWait(page, bm || map, row);
+          await sleep(Number(bs ?? 2) * 1000);
+          await leaveToGarage(page);
+          const t0 = Date.now();
+          await selectMapAndBattle(page, bm || map);
+          const lift = await enterAndWait(page, bm || map, row);
+          row.entryMs = Date.now() - t0; row.lift = lift; row.action = `bounce-${bs ?? 2}s`;
         } else if (step.action === 'tier' || step.action === 'recover') {
           // the live governor's escalation (or its recovery) on demand: the auto tier steps one notch mid-battle and
           // every engine module retargets live (quality.ts reportSustainedOverload / reportSustainedRecovery)
@@ -1460,7 +1601,7 @@ try {
           log(`  samplerscan: ${row.samplerScan.scanned} programs, ${row.samplerScan.conflicts.length} with mixed-type samplers on one unit: ${JSON.stringify(row.samplerScan.conflicts.slice(0, 8))}`);
           writeFileSync(path.join(out, `${label}-samplerscan.json`), `${JSON.stringify(row.samplerScan, null, 1)}\n`);
           row.action = 'samplerscan';
-        } else if (step.action === 'inject' && /^(layers|roots|override|passes|control|viewport1|nancloud|nanscene|persist:)/.test(step.value)) {
+        } else if (step.action === 'inject' && /^(layers|roots|override|passes|control|viewport1|nancloud|nanscene|aerialblack|persist:)/.test(step.value)) {
           // (the fix lane) a fault applied once (or every frame for its seconds); the black-world guard must find and heal it
           row.inject = await page.evaluate(injectOnce, step.value);
           row.action = `inject-${step.value.replaceAll(':', '-')}`;
