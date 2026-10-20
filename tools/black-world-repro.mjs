@@ -510,8 +510,14 @@ async function waitForCoverLift(page, timeoutMs = 240_000, retry = null) {
       const hud = document.querySelector('.cot-hud');
       const hs = hud ? getComputedStyle(hud) : null;
       const D = window.__DEBUG;
+      // (round 2, D5) what holds a cover that never lifts: an open pause panel, the warm pending, the battle clocks
+      const trace = window.__BATTLE_COUNTDOWN_WARM;
       return { cover: !!bl?.classList.contains('on'), hud: !!hs && hs.display !== 'none' && hs.visibility !== 'hidden',
-        phase: D?.game?.phase ?? null, failed: !!document.querySelector('.cot-bl .err, .cot-bl.failed') };
+        phase: D?.game?.phase ?? null, failed: !!document.querySelector('.cot-bl .err, .cot-bl.failed'),
+        settings: !!document.querySelector('.cot-settings.open, .cot-set.open'), preS: D?.game?.preBattleS ?? null,
+        timeS: D?.game?.timeS ?? null, warm: trace ? { done: !!trace.done, phase: trace.phase ?? null,
+          stages: Object.keys(trace.stages ?? {}).slice(-4) } : null,
+        progress: document.querySelector('.cot-bl .stat, .cot-bl .lbl, .cot-bl [data-progress]')?.textContent?.slice(0, 60) ?? null };
     }).catch(() => null);
     if (last?.cover) sawCover = true;
     if (sawCover && last && !last.cover && last.hud) return { liftMs: Date.now() - t0, sawCover, retries };
