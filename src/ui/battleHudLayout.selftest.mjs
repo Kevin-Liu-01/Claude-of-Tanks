@@ -315,10 +315,15 @@ try {
     const tab=(h,on)=>{if(on)h.root.classList.add('rosters-expanded');else h.root.classList.remove('rosters-expanded');
       h.mutate([{type:'attributes',target:h.root,attributeName:'class'}]);};
     const rest=tabRun(false),still=placed(rest);
+    // the plan's resting rosters are the real resting ones: the left lane (from 250 px: the resting roster's 52 + 190, and
+    // 8) gives way to the revive count from 292 px; the held height in the plan (52 + 232) would leave the count no band
+    // and start the rows at 250, under it
+    assert.equal(rest.properties.get('--hud-kill-left-top'),'292px','the left kill rows give way to the revive count at rest');
     tab(rest,true);rest.flush();assert.equal(placed(rest),still,'pressing Tab moves no notice (its first relayout)');
     rest.settle();assert.equal(placed(rest),still,'nor once the held rosters have resized');
     tab(rest,false);rest.flush();assert.equal(placed(rest),still,'releasing Tab moves no notice (its first relayout still measures the held height)');
     rest.settle();assert.equal(placed(rest),still,'nor once the rosters are back at rest');
+    assert.equal(rest.properties.get('--hud-kill-left-top'),'292px','and the left kill rows give way to it again after the release');
     const held=tabRun(true);
     assert.equal(held.root.classList.contains('rosters-expanded'),true,'the class is back on after the resting read');
     assert.equal(placed(held),still,'the plan made while Tab is held from the first pass is the resting one');

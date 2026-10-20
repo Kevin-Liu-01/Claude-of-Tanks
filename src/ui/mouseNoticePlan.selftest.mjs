@@ -307,6 +307,20 @@ for (const v of VIEWPORTS) for (const rosters of v.earL ? [7, 14, 20] : [7]) for
       assert.ok(mouseMedalWaits(plan, { ...none, feeds }) && !mouseMedalWaits(plan, { ...none, feeds: [false, false] }), `${what}: it waits while that lane shows a row, and only then`);
     }
   }
+  // it keeps main's centred card wherever a place for the full card on the centre line, off the alert's place (sharing the
+  // detection's at most), clears the keep-out, every instrument and the kill lanes (a card aside shows sooner, but the
+  // owner keeps main's look: MEDAL_SHIFT_COST)
+  if (!medal.compact) {
+    const [w0, h0] = v.vp, keep = mouseReticleFootprint(w0, h0), cw = input.medal.w, ch = input.medal.h;
+    for (let y = Math.ceil(input.top + MOUSE_NOTICE_GAP_PX); y + ch <= h0 / 2; y++) {
+      const box = { x: w0 / 2 - cw / 2, y, w: cw, h: ch };
+      if (intrusion(box, keep) > 0 || input.obstacles.some((o) => overlap(box, o, MOUSE_NOTICE_GAP_PX - .01))
+        || overlap(box, alertBox(plan.alert), MOUSE_NOTICE_GAP_PX - .01)
+        || input.lanes.some((l) => l && overlap(box, { x: l.x, y: l.top, w: l.w, h: l.bottom - l.top }, MOUSE_NOTICE_GAP_PX - .01))) continue;
+      assert.ok(Math.abs(medal.x + medal.w / 2 - w0 / 2) < 1, `${name}: the card sits ${Math.round(medal.x + medal.w / 2 - w0 / 2)} px off the centre line though y ${y} on it is clear`);
+      break;
+    }
+  }
   const [W] = v.vp, mainCard = { x: W / 2 - input.medal.w / 2, y: Math.ceil(input.top + 16), w: input.medal.w, h: input.medal.h };
   if (intrusion(mainCard, mouseReticleFootprint(W, v.vp[1])) <= 0 && !input.obstacles.some((o) => overlap(mainCard, o, MOUSE_NOTICE_GAP_PX - .01))) {
     assert.equal(medal.compact, false, `${name}: main's full card clears everything here, so the card is the full card`);
