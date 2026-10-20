@@ -523,7 +523,7 @@ the round-1 critic's 16 seeds and maps: 101-108 on Winter, Autumn, Steppe, Coast
 Desert, then Frontier, Railyard, Alpine and Delta two seeds each; the Horde's team survival and Frontline's park and
 shield seats on 101-112; the shared authority on 101-104 for parity. Before is integ/228 (93559dfe8, the round-1
 critic's runs; Frontline's fight seat re-run at ac0a12960 with round 2's harness, whose fight seat plays the objective).
-The runs, scripts and compare output live in `cot-launch-state/streams/gameplay-modes-228/metrics/round2` (`final3m`):
+The runs, scripts and compare output live in `cot-launch-state/streams/gameplay-modes-228/metrics/round2/final3`:
 
 | Mode | Measure | Before | After | Target |
 | --- | --- | --- | --- | --- |
