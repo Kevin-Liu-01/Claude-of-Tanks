@@ -29,7 +29,7 @@ interface SoloBattleGame {
   mapId: string;
   phase: string;
   player?: SoloBattlePlayer | null;
-  tanks: Array<{ specId: string }>;
+  tanks: Array<{ specId: string; isPlayer?: boolean }>;
 }
 
 interface SoloBattleWorld {
@@ -222,7 +222,8 @@ export function createSoloBattleStartRuntime({
       mark('playerCamo');
       state.setCamoSweep(round.applyRosterCamo({
         priorityIds: gameMode === 'ac130' ? [] : [specId],
-        onlySpecIds: game.tanks.filter(entity => gameMode !== 'ac130' || entity.specId !== specId).map((entity) => entity.specId),
+        // (ac130-fx-228) the pilot's own entity only: a bot sharing the pilot's garage spec still gets its camo
+        onlySpecIds: game.tanks.filter(entity => gameMode !== 'ac130' || !entity.isPlayer).map((entity) => entity.specId),
       }));
       mark('scheduleRosterCamo');
 

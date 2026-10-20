@@ -768,6 +768,39 @@ export interface CombatFxSubmission {
   restore(): void;
 }
 
+interface LateFxCopyPort {
+  lateFx?: {
+    copyMaterial?: { uniforms: { tDiffuse: { value: unknown } } };
+    copyQuad?: { render(renderer: WebGLRenderer): void };
+    target?: { texture: unknown };
+    sceneTarget?: { texture: unknown };
+  };
+  composer?: { renderer?: WebGLRenderer };
+}
+
+/**
+ * (ac130-fx-228 r2) The late pass's copy program, linked under the cover with the FX (prepareSoftParticles has made its
+ * targets): it compiled at a battle's first late-pass frame, which in an AC-130 battle is its first cannon burst mid-fight
+ * (139-157 ms in the critics' cold runs). One full-screen copy of the scene target into the late target, which every late
+ * frame clears or overwrites first.
+ */
+function warmLateFxCopy(post: BattlePostPort): void {
+  const port = post as BattlePostPort & LateFxCopyPort;
+  const pass = port.lateFx, renderer = port.composer?.renderer;
+  if (!renderer || !pass?.copyMaterial || !pass.copyQuad || !pass.target || !pass.sceneTarget) return;
+  const prior = renderer.getRenderTarget();
+  const source = pass.copyMaterial.uniforms.tDiffuse.value;
+  try {
+    pass.copyMaterial.uniforms.tDiffuse.value = pass.sceneTarget.texture;
+    renderer.setRenderTarget(pass.target as Parameters<WebGLRenderer['setRenderTarget']>[0]);
+    pass.copyQuad.render(renderer);
+  } catch (_) { /* warm only */ }
+  finally {
+    pass.copyMaterial.uniforms.tDiffuse.value = source;
+    renderer.setRenderTarget(prior);
+  }
+}
+
 /** Stage every first-combat FX pool behind the covered deployment compile. */
 export function stageCombatFxProgramSubmission({
   game,
@@ -818,6 +851,7 @@ export function stageCombatFxProgramSubmission({
     // missile body, its smoke trail and wire join the covered render here too, as the network staging does (after update())
     try { fx.warmProjectilePresentation?.(position, direction); } catch (_) { /* warm only */ }
     post.prepareSoftParticles();
+    warmLateFxCopy(post);
     camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
     fx.group.visible = true;
     staged = true;

@@ -17,6 +17,7 @@ import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { tierNumeral } from '../vehicles/tier.ts';
 import { t } from './i18n.ts';
+import { killSourceIdentity } from './killSourceIdentity.ts';
 import { isImagePreloaded, preloadImage } from './imagePreload.ts';
 import { mapCardFor } from './mapBackdrop.ts';
 import { MAP_THUMBS } from './mapThumbs.ts';
@@ -380,13 +381,15 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       tier.textContent = r.kind === 'aircraft' ? '' : r.tier || tierNumeral(r.id);
       const sil = document.createElement('div');
       sil.className = 'sil';
-      if (r.kind === 'aircraft') {
-        sil.innerHTML = uiIconSVG('modeAc130', 25);
+      // (ac130-fx-228) an aircraft row: the AC-130's one identity (its name and icon), as every kill surface shows it
+      const aircraft = r.kind === 'aircraft' ? killSourceIdentity('ac130') : null;
+      if (aircraft) {
+        sil.innerHTML = uiIconSVG(aircraft.icon, 25);
         sil.style.display = 'grid'; sil.style.placeItems = 'center';
       } else sil.style.backgroundImage = `url(${iconUrl(r.id, 'side_silhouette')})`;
       const nm = document.createElement('div');
       nm.className = 'nm';
-      nm.textContent = r.name || r.id;
+      nm.textContent = aircraft?.label || r.name || r.id;
       el.append(tier, sil, nm);
       host.appendChild(el);
     }

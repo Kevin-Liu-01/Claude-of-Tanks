@@ -716,7 +716,7 @@ export function installModeBattleDirector() {
       style = document.createElement('style');
       style.id = 'mb-hud-style';
       style.textContent = [
-        'html.mb-hud-noreticle .cot-hud > .cot-ret{visibility:hidden!important}',
+        'html.mb-hud-noreticle .cot-hud > .cot-ret,html.mb-hud-noreticle .cot-hud > .cot-hitmark{visibility:hidden!important}',
         'html.mb-hud-hidden .cot-hud,html.mb-hud-hidden .cot-dp,html.mb-hud-hidden .cot-si-stats,',
         'html.mb-hud-hidden .cot-hints,html.mb-hud-hidden .cot-medal-toasts,html.mb-hud-hidden #cot-perfhud,',
         'html.mb-hud-hidden .cot-touch,html.mb-hud-hidden .cot-mode-status,html.mb-hud-hidden .cot-mp-strip{display:none!important}',

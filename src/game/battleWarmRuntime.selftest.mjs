@@ -325,7 +325,7 @@ assert.equal(submission.staged, true);
 assert.deepEqual(shellOrigin?.toArray(), [12, 4.4, -4],
   'deployment FX stages around the exact player field');
 assert.equal(combatFx.group.visible, true);
-assert.ok(combatFx.calls.includes('update:1'), 'the live tracer ribbon is allocated');
+assert.ok(combatFx.calls.includes('update:1'), 'the live projectile tracers are allocated');
 assert.ok(combatFx.calls.includes('prop:drumblast'), 'rare prop pools are included');
 // (EF.04) a solo battle's first missile launch compiled the missile body and smoke trail programs mid-battle
 assert.ok(combatFx.calls.indexOf('projectile-presentation') > combatFx.calls.indexOf('update:1'),
@@ -530,7 +530,8 @@ try {
         mesh.geometry?.type === 'PlaneGeometry' && mesh.renderOrder === 23);
       assert.ok(rings.some((mesh) => mesh.visible && frustum.intersectsObject(mesh)),
         'a real muzzle ring passes BOTH the angle gate and production camera frustum');
-      stagedTracer = fx.group.children.find((mesh) => mesh.geometry?.getAttribute('aA'));
+      // (ac130-fx-228) the composer's frozen round is the projectile tracers' static (the pre-October ribbon is retired)
+      stagedTracer = fx.group.children.find((mesh) => mesh.name === 'Projectile tracers');
       assert.ok(stagedTracer.geometry.instanceCount > 0,
         'the real tracer issues a nonzero instanced draw, not compile-only zero instances');
       assert.equal(flarePool.count, bodyPools.length, 'the warm stages one flare per airframe');

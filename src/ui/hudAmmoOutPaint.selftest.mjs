@@ -19,7 +19,7 @@ import { matchRulesetFor, refillUnlimitedAmmunition } from '../sim/matchRuleset.
 import { createAimController } from '../game/aimController.ts';
 import { createBus } from '../game/stateCore.ts';
 import { aimWarningState, initHud, RETICLE_AMMO_INK as INK } from './hud.ts';
-import { addSightFurniture, clearSightFurniture, settleSightFurniture } from './sightFurniture.ts';
+import { addSightFurniture, clearSightFurniture, setSightNotice, settleSightFurniture, sightNotice } from './sightFurniture.ts';
 
 // --- a minimal DOM: elements remember classes, attributes, styles and their queried children; canvases record ---
 const created = [];
@@ -1045,7 +1045,9 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
   // (the canvas chip by its 1 px outline's ink, not its fill: r10 critic, the outline came 2.5 px from the ring)
   const chip = seated ? { op: 'dom', box: seated }
     : warningText && ops.find((op) => op.op === 'stroke' && op.box && op.path.length === 6 && contains(op.box, warningText.box));
-  assert.ok(!warn || chip || (touch && windowStub.innerWidth > windowStub.innerHeight && windowStub.innerHeight < 550), `${at}: the warning's chip is seated`);
+  // (or, while the sixth-sense notice shows, waits hidden where its place would run into the notice: r10e, section 19e)
+  assert.ok(!warn || chip || (touch && windowStub.innerWidth > windowStub.innerHeight && windowStub.innerHeight < 550)
+    || (touch && touchChip.hidden && sightNotice.on), `${at}: the warning's chip is seated`);
   assert.ok(touch || !warningText === !warn, `${at}: the canvas paints the warning only on a mouse layout`);
   const countdown = ops.filter((op) => op.op === 'fillText' && op.style === INK.reload && op.text.trim() && !op.text.startsWith('+'));
   const rack = ops.filter((op) => op.op === 'stroke' && op.lineWidth === 3 && op.path.length === 7 && op.style !== INK.dry);
@@ -1102,13 +1104,13 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
  *  rack no room (only right of the ring is free). 320x568: 25.25 px here, 25.52 rendered, the readout row or the 156 px
  *  warning chip on the systems row, the left FIRE button under the sight. 360x640: 8.87 px (9.64 rendered), the 24 px
  *  chip on the systems row's underlines. 375x667: 7.34 px, '0 ' on the systems row with the warning under the widest
- *  ring. 740x360 with the objective panel: 0.37 px, an empty rack under the widest ring on the systems row. 1024x400 with
+ *  ring. 740x360 and 640x360 with the objective panel: 0.37 px, an empty rack under the widest ring on the systems row. 1024x400 with
  *  the objective panel: 7.62 px, the warning chip set over the widest ring into the panel (the render keeps 3 px). Round
  *  r9 left 568x290 25.5 px into its systems row in a standard battle. Every other swept window, the listed capture sizes
  *  among them, keeps 3 px in a standard battle and in every mode. */
 const TIGHT_FLOOR = { '568x290t': -3.5, '320x568t': -26, '360x640t': -9, '375x667t': -7.5,
   '568x290t:objective': -23, '320x568t:objective': -26, '360x640t:objective': -9, '375x667t:objective': -7.5,
-  '740x360t:objective': -0.5, '1024x400:objective': -8 };
+  '740x360t:objective': -0.5, '640x360t:objective': -0.5, '1024x400:objective': -8 };
 const tightWorst = {};
 /** Every mark keeps 3 px from every recorded panel and control (sightFurniture.ts), or on the smallest windows no less
  *  than their floor (TIGHT_FLOOR). */
@@ -1272,7 +1274,8 @@ function assertFurnitureClear(items, boxes, at, key = null) {
 // from that furniture, or no more than a tight window's floor.
 {
   const sizes = [[1440, 900], [900, 700], [640, 720], [800, 500], [1024, 400], [390, 844, 'touch'], [844, 390, 'touch'],
-    [667, 375, 'touch'], [740, 360, 'touch'], [568, 290, 'touch'], [360, 640, 'touch'], [320, 568, 'touch'], [375, 667, 'touch']];
+    [667, 375, 'touch'], [740, 360, 'touch'], [640, 360, 'touch'], [568, 290, 'touch'], [360, 640, 'touch'], [320, 568, 'touch'],
+    [375, 667, 'touch']];
   const states = {
     'rack mid-cycle': [true, () => { const tank = tankOf('m1a3'); tank.combat.magazine.rounds = 3;
       Object.assign(tank.combat.reload, { t: 1.4, totalS: 2.5, kind: 'intraClip' }); return tank; }],
@@ -1345,6 +1348,75 @@ function assertFurnitureClear(items, boxes, at, key = null) {
     assert.ok(chip.box.y1 < ring.y - ring.r && chip.box.x1 > tag.box.x0, `${at}: the chip sits over the sight, over the tag's columns`);
     assertFurnitureClear([...stack, ...furniture], [panel], at);
   }
+  clearSightFurniture();
+  settleSightFurniture();
+  scope = false;
+  dispersionM = 8;
+  resize(WIDTH, HEIGHT);
+}
+
+// 19e. r10e (the rendered layout receipt on integ ce8b634668, tools/battle-hud-layout.browser.mjs: at 320x568 the warning
+// chip the reticle seats over the sight sat under the DETECTED notice, 82-238 x 233-257 under 70-250 x 215-262.9): on
+// every touch size the seated chip yields to the sixth-sense notice, in battle and through the scope, on the standard
+// stage and on a mode's objective stage, over the rings, for every reticle state; it keeps 3 px from the notice where
+// the layout records it (tools/fixtures/hud-sight-furniture.json `notices`, where the touch plan sets it; a short
+// landscape parks the chip in the left lane, unseated) and where integ centred it over the sight, or waits hidden where
+// its place runs into the notice. The notice never moves the chip or any mark (it
+// comes and goes, and the places clear of it ran into the furniture instead: at 320x568 the left FIRE button, 22 px deep
+// at 16 m), so each frame paints as it does without the notice, the chip shown where it was or hidden.
+{
+  let seated = 0;
+  const yielded = {};
+  const opsWithout = (ops) => ops.map((op) => JSON.stringify(op)).join('\n');
+  // (where the layout now plans the notice, touchNoticePlan.ts, and where integ centred it over the sight, the defect's
+  // place: 320x568 measured by the notices session's receipt, the rest from the r10e fixture before the plan)
+  const INTEG_NOTICES = { '320x568t': [70, 215, 250, 262.88], '360x640t': [73, 264, 287, 306], '375x667t': [80.5, 277, 294.5, 319],
+    '390x844t': [88, 208, 302, 250] };
+  const notices = [...Object.entries(FURNITURE.notices).map(([key, box]) => [key, box, '']),
+    ...Object.entries(INTEG_NOTICES).map(([key, box]) => [key, box, ' (integ\'s place)'])];
+  for (const [key, notice, integ] of notices) {
+    const [, width, height, variant] = /^(\d+)x(\d+)t(.*)$/.exec(key).map((v, i) => (i && i < 3 ? Number(v) : v));
+    resize(width, height);
+    documentStub.body.classes.add('cot-touch-layout');
+    installFurniture(width, height, true, variant);
+    for (const scoped of [false, true]) for (const metres of [1, 11, 16, 24, 40]) {
+      scope = scoped;
+      dispersionM = metres;
+      for (const [label, make] of Object.entries(scopeStates)) {
+        const at = `${key} ${scoped ? 'scope' : 'battle'}, ${metres} m, ${label}, gun travel warning, the DETECTED notice${integ}`;
+        setSightNotice(false);
+        settleSightFurniture();
+        const plain = make();
+        plain.state.gunLimitSpec = true;
+        const before = opsWithout(quickPaint(plain, scoped ? 'sniper' : 'battle'));
+        const place = seatedChipBox();
+        setSightNotice(true, ...notice);
+        settleSightFurniture();
+        const tank = make();
+        tank.state.gunLimitSpec = true;
+        const ops = quickPaint(tank, scoped ? 'sniper' : 'battle');
+        assert.equal(opsWithout(ops), before, `${at}: the reticle paints as it does without the notice`);
+        reticleGaps(ops, at, { warn: true, scoped, touch: true });
+        const chip = seatedChipBox();
+        if (!chip) {
+          if (place) {
+            yielded[key + integ] = (yielded[key + integ] ?? 0) + 1;
+            const gap = Math.max(notice[0] - place.x1, place.x0 - notice[2], notice[1] - place.y1, place.y0 - notice[3]);
+            assert.ok(gap < 3, `${at}: the chip hides only where its place runs into the notice (${gap.toFixed(2)} px)`);
+          }
+          continue;
+        }
+        seated++;
+        assert.deepEqual(chip, place, `${at}: the notice never moves the chip`);
+        const gap = Math.max(notice[0] - chip.x1, chip.x0 - notice[2], notice[1] - chip.y1, chip.y0 - notice[3]);
+        assert.ok(gap >= 3 - 1e-6, `${at}: the seated chip keeps ${gap.toFixed(2)} px from the notice`);
+      }
+    }
+  }
+  assert.ok(seated > 0 && Object.keys(yielded).some((key) => key.endsWith('(integ\'s place)')),
+    `the chips were seated, and yielded to integ's place (${JSON.stringify(yielded)})`);
+  setSightNotice(false);
+  documentStub.body.classes.delete('cot-touch-layout');
   clearSightFurniture();
   settleSightFurniture();
   scope = false;

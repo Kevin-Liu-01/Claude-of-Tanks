@@ -107,7 +107,32 @@ buttons in the dedicated flight console: a rapid 30 mm cannon, a 152 mm explosiv
 The weapon channels reload independently. Missiles follow the sight; cannon and
 howitzer rounds travel through the normal ballistic and armor simulation.
 
-The autocannon uses short, bright streaks; the howitzer leaves a broader, longer wake; guided missiles retain a curved exhaust trail. Each round has a small hot head that remains visible when viewed directly from behind. Tracer size follows scope zoom and distance, with a limit to prevent oversized glows. These effects follow the actual projectiles and disappear on impact.
+The gunship's rounds use the same effects as every other round (lane ac130-fx-228, 2026-10-19): the 30 mm autocannon
+fires a NATO red tracer belt (every second round lit), the 152 mm howitzer a heavy traced shell wider and brighter than a
+tank round's, and the guided missile is a Hellfire-class rail missile with its own airframe, motor flare and dense white
+smoke trail. Impacts use the munition recipes (the howitzer's and missile's plunging starburst and rayed crater). From the
+pilot's lens no muzzle flash or propellant cloud is drawn; other views see a small gun-port flash on the airframe, which
+is visible in the killcam, the ending's replay and any camera that is not the pilot's lens. The missile is drawn
+leaving its rail under the port wing and joins its guided line within 120 m, so from the pilot's lens it enters from the
+frame's edge rather than appearing on the glass (round 2); its smoke spreads less than the family's and thins out within
+70 m of the camera, so from the lens it reads as a line to the target. Every missile's motor core is a soft glow that
+never grows past ~0.23 degrees from the camera, and a heavy charge (the howitzer's shell, the missile's warhead) bursting
+on a hull draws the full detonation the ground burst does (a white-hot dome of fireball medium cooling inside its own
+smoke), not a plate flash. A heat-imaging lens (the gimbal's infrared and thermal views, a thermal sight) sees the
+rounds' burning compound at its night radiance whatever the daylight, and the 30 mm's day colour carries the
+strontium's orange so the dash reads against a bright sky.
+
+The airframe is a procedural C-130-proportioned model (`src/game/gunshipAirframe.ts`: lofted fuselage, high wing with
+dihedral, four turboprops, the port-side 30 mm and howitzer, the sensor ball) on one lit material in the shadow cascades.
+It is its own chunk: an AC-130 battle loads it, and the covered deployment builds it and compiles its programs before
+the reveal. The camera rig hides the pilot's own vehicle on every frame its gimbal lens is the camera and shows it for an
+external pose, so the airframe draws in the killcam, the ending's replay and orbit, and never inside the lens; the
+gimbal's sight and fire solution leave the HUD with the lens.
+
+A kill made with the gunship is credited to the pilot (kills, score and medals) and shown as the **AC-130**'s: the kill
+feed, the killcam, the battle report, the final blow, the end rosters, the service record and the crew radio all name the
+aircraft and show its icon, never the tank chosen in the garage. The authority stamps the source on the hit and the
+destruction (`sim/aerialCombat.ts` `killSourceOf`); a drone's kill reads as the FPV drone's the same way.
 
 Four allied ground vehicles accompany the gunship by default. They have 90% of their normal hull strength, slower reloads and reduced speed, and use normal navigation to reach the green **E** extraction area. Enemies pursue the convoy. Save at least half; killing enemies alone does not complete the mission. The objective shows allies still on the field, the number extracted, the rescue requirement and route progress. Casualties do not respawn. An eight-minute timeout or losing too many escorts fails the operation. Multiplayer pilots all provide air support, with separate friendly bots reserved for the escort. Extraction and casualty state survive host migration.
 
@@ -149,9 +174,11 @@ exercises garage entry, real flight input, the orbit and narrow-screen HUDs.
 controls with deterministic drone telemetry (no WebGL): every sensor view, the
 infrared and thermal switches and a single return. Four native regressions run
 under the shared GPU queue beside it:
-`tools/aerial-tracers.browser.mjs` fires the AC-130's real weapons, holds a
-mid-flight frame of each tracer (one head, a bounded ribbon) and checks the
-cleanup when live flight resumes; `tools/drone-details.browser.mjs` renders the
+`tools/gunship-fx.browser.mjs` fires the AC-130's real weapons, holds a
+mid-flight frame of each round and checks it draws through the October effects
+(the 30 mm and the 152 mm in the projectile tracers, the missile as the hellfire
+airframe and trail), that a networked snapshot round draws the same, and the
+cleanup on reset; `tools/drone-details.browser.mjs` renders the
 drone's dock and flight airframe kit (merged materials, full detail);
 `tools/garage-mode-preview.browser.mjs` selects modes in the Garage, swaps
 tanks, runs the idle animation and returns cleanly from battle; and
