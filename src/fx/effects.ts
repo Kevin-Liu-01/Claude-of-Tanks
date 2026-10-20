@@ -1512,6 +1512,10 @@ function* createFxSteps(
   const SHOCK_COLOR = new THREE.Color(0x90887a);
   const SHOCK_BURST_LIT = new THREE.Color(1.0, 0.78, 0.52);
   const SHOCK_BURST_K = 0.7;
+  // (ac130-fx-228 r3, the r5 blind critic: "a hard-edged grey arc band sweeping in" through the thermal lens) dust at the
+  // ground's own temperature barely shows to a heat-imaging lens (the grade images luminance): a quarter of its opacity,
+  // never the burst's light
+  const SHOCK_HEAT_K = 0.25;
   for (let i = 0; i < 2; i++) {
     const mat = new THREE.MeshBasicMaterial({
       map: shockTex,
@@ -1546,8 +1550,8 @@ function* createFxSteps(
     // 400 ms"): faster radial launch + ~50% more opacity so the ring reads
     // against road/dirt at the 20 m kill framing before it dies at 400 ms.
     r.mesh.scale.setScalar((1.6 + 14.5 * k) * (r.scaleK || 1));
-    r.mat.opacity = 0.45 * (r.alphaK || 1) * Math.pow(1 - t, 1.5);
-    const tint = particles.sharing.uLightTint.value, lit = SHOCK_BURST_K * Math.pow(1 - t, 2.5);
+    r.mat.opacity = 0.45 * (r.alphaK || 1) * Math.pow(1 - t, 1.5) * (heatCamera ? SHOCK_HEAT_K : 1);
+    const tint = particles.sharing.uLightTint.value, lit = heatCamera ? 0 : SHOCK_BURST_K * Math.pow(1 - t, 2.5);
     r.mat.color.setRGB(SHOCK_COLOR.r * Math.max(tint.r, lit * SHOCK_BURST_LIT.r), SHOCK_COLOR.g * Math.max(tint.g, lit * SHOCK_BURST_LIT.g),
       SHOCK_COLOR.b * Math.max(tint.b, lit * SHOCK_BURST_LIT.b));
     r.mesh.visible = true;
@@ -2129,8 +2133,11 @@ function* createFxSteps(
       const info = (id != null ? shellMunitions.get(id) : null) ?? heByCaliber(r.caliberMm);
       if (id != null) shellMunitions.delete(id);
       const gy = groundY(r.x, r.z);
+      // (ac130-fx-228 r3) a heavy charge (the gunship's howitzer shell, a missile's warhead) on a roof still throws the
+      // ground's earth: it reaches the ground from a turret's top, a light charge from a hull's side only
+      const reach = info.munition === 'howitzer' || info.munition === 'missile' ? 4 : 2.5;
       plateBurst(blast, { x: r.x, y: r.y, z: r.z, nx: r.nx, ny: r.ny, nz: r.nz, munition: info.munition,
-        chargeKg: Math.max(0.3, info.chargeKg), ground: r.y - gy < 2.5 ? classifyTerrain(heightField, r.x, r.z) : null,
+        chargeKg: Math.max(0.3, info.chargeKg), ground: r.y - gy < reach ? classifyTerrain(heightField, r.x, r.z) : null,
         birthOffset: bo });
     }
     pendingHeCount = 0;

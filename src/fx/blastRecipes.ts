@@ -356,6 +356,9 @@ interface GroundBurstInput {
   birthOffset?: number;
   /** the round's travel direction (unit) when known: a shaped charge's jet flashes back along it */
   dx?: number; dy?: number; dz?: number;
+  /** (ac130-fx-228 r3) the earth only: no flash, fireball, light or fireball smoke (a heavy charge bursting on a hull that
+   *  sits on this ground draws those itself, heavyHullBurst) — the fountain, the column, the clods, the dust and the ring */
+  earthOnly?: boolean;
 }
 
 /**
@@ -409,16 +412,16 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // fireball medium: born white-hot at most of the charge's width, cooling to an orange heart within two frames and to
   // soot inside a third. The additive flash is only the air's glow round the dome — soft, dim, gone within a frame —
   // and the additive fire is a few small tongues at the heart (never a sprite pair over the dome)
-  lightPuff(C, 'flash', I.x, by + 0.45 * D, I.z, 0, 0.6, 0, 0.07, 1.0 * D * dk, 1.45 * D * dk, FLASH_WHITE, FLASH_ORANGE,
-    0.42, 0, bo);
-  const fireN = shaped ? 1 : heavy ? 3 : 2;
+  if (!I.earthOnly) lightPuff(C, 'flash', I.x, by + 0.45 * D, I.z, 0, 0.6, 0, 0.07, 1.0 * D * dk, 1.45 * D * dk, FLASH_WHITE,
+    FLASH_ORANGE, 0.42, 0, bo);
+  const fireN = I.earthOnly ? 0 : shaped ? 1 : heavy ? 3 : 2;
   for (let i = 0; i < fireN; i++) {
     const a = R() * TAU, v = (1.5 + R() * 2) * sq;
     lightPuff(C, 'fire', I.x + Math.cos(a) * 0.08 * D, by + 0.3 * D, I.z + Math.sin(a) * 0.08 * D,
       Math.cos(a) * v, v * 0.8 + 1, Math.sin(a) * v, 0.12 + R() * 0.05, 0.2 * D * dk, (0.38 + R() * 0.1) * D * dk,
       FIRE_DEEP, FIRE_DEEP, 0.55, 1.5, bo + 0.01);
   }
-  const ballN = thermobaric ? 5 : heavy ? 4 : shaped ? 2 : 3;
+  const ballN = I.earthOnly ? 0 : thermobaric ? 5 : heavy ? 4 : shaped ? 2 : 3;
   // (fx 8) the fireball's own soot is the burst's smoke, not a brown ball of soil beside it
   const ballC0: Rgb = SOOT;
   for (let i = 0; i < ballN; i++) {
@@ -441,9 +444,11 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // the light: on the ground for a moment (a bright ground takes far less of it) and inside the burst's own medium for
   // a moment — (fx 8) brief and dim enough that no orange disc stands on the ground or over the sheet after the flash
   const albedoK = I.surface === 'snow' ? 0.3 : I.surface === 'sand' ? 0.5 : hard ? 0.6 : 1;
-  C.lightPulse(I.x, by + 0.6 * D, I.z, Math.min(0.45, 0.15 + 0.09 * s) * albedoK, 0, heavy ? 0.2 : shaped ? 0.1 : 0.13,
-    BURST_LIGHT_HEX);
-  C.glow(I.x, by + 0.45 * D, I.z, 0.9 * D, heavy ? 0.6 : shaped ? 0.4 : 0.5, heavy ? 0.24 : shaped ? 0.12 : 0.16, bo);
+  if (!I.earthOnly) {
+    C.lightPulse(I.x, by + 0.6 * D, I.z, Math.min(0.45, 0.15 + 0.09 * s) * albedoK, 0, heavy ? 0.2 : shaped ? 0.1 : 0.13,
+      BURST_LIGHT_HEX);
+    C.glow(I.x, by + 0.45 * D, I.z, 0.9 * D, heavy ? 0.6 : shaped ? 0.4 : 0.5, heavy ? 0.24 : shaped ? 0.12 : 0.16, bo);
+  }
 
   // 1b. (round 7c, DVIDS 954922: by +0.3 s the fireball is inside its own smoke, a lobed grey-brown cloud that keeps
   // climbing on its heat for seconds, leaning downwind and thinning; b8a's stopped as a tan haystack on the ground) the
@@ -455,7 +460,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // up to 35 % larger and a quarter shorter-lived, so the salvo's smoke keeps its mass with far fewer overlapping cards;
   // a lone burst (and a pair) is untouched. Decided by burst count, never by frame time.
   const crowd = C.crowd ? C.crowd(I.x, I.z) : 0;
-  const smokeN = Math.max(3, Math.round((thermobaric || heavy ? 16 : shaped ? 6 : 14) * (1 - 0.7 * crowd)));
+  const smokeN = I.earthOnly ? 0 : Math.max(3, Math.round((thermobaric || heavy ? 16 : shaped ? 6 : 14) * (1 - 0.7 * crowd)));
   const crowdSize = 1 + 0.35 * crowd, crowdLife = 1 - 0.25 * crowd;
   // (on snow, the dark soil it throws from under the snow: HE on snow is dark smoke over white powder)
   const snowy = I.surface === 'snow';
@@ -1010,12 +1015,18 @@ function heavyHullBurst(C: BlastContext, I: PlateBurstInput, nx: number, ny: num
     heat(m, 0.3, 4.5);
     C.media(m);
   }
+  // (ac130-fx-228 r3, the r5 blind critic: the gunship's 152 mm on a hull "undersized ... gone by f6" against the same
+  // shell on the ground, and no hot signature in the infrared lens; measured: 41 media bodies, the largest 28.7 m, where
+  // the ground burst draws 182 and 45.6 m) a hull sitting on the ground takes the burst a metre or two above it: the
+  // charge still throws the ground's earth — the heavy round's fountain and column, its clods, the dust sheet and the
+  // ring — at HULL_EARTH_SHARE of the charge (the plate takes the rest), round the hull's own fireball and smoke
   if (I.ground) {
-    const gy = C.groundY(I.x, I.z);
-    C.shockRing(I.x, I.z, 0.5 + 0.38 * s, Math.min(1.3, 0.55 + 0.28 * s), Math.max(0, -bo));
-    dustSurge(C, I.x, gy, I.z, Math.max(0.8, s * 0.8), I.ground, bo + 0.02);
+    groundBurst(C, { x: I.x, y: C.groundY(I.x, I.z), z: I.z, munition: I.munition, chargeKg: kg * HULL_EARTH_SHARE,
+      surface: I.ground, birthOffset: bo, earthOnly: true });
   }
 }
+/** (ac130-fx-228 r3) the share of a heavy hull burst's charge that throws the ground's earth round the hull */
+const HULL_EARTH_SHARE = 0.6;
 
 /** The kinetic results on armour that armorHit draws (the battle's shell:hit kinds; HE and shaped charges are plateBurst). */
 export type ArmorHitKind = 'pen' | 'nonpen' | 'ricochet' | 'spaced' | 'era';

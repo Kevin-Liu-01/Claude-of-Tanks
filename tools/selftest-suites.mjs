@@ -54,7 +54,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/retiredTracers.selftest.mjs',
     'src/fx/shockRingLight.selftest.mjs',
     'src/fx/thermalFireGain.selftest.mjs',
+    'src/fx/hullBurstEarth.selftest.mjs',
     'src/ui/aerialHitMark.selftest.mjs',
+    'src/ui/killFeedSource.selftest.mjs',
     'src/sim/killSource.selftest.mjs',
     'src/ui/killSurfaces.selftest.mjs',
     // (r2) the AC-130's airframe, its own chunk staged under the cover, hidden only in its own lens; the warm path

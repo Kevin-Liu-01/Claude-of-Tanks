@@ -45,7 +45,7 @@ function ringsUnder(lightRig, id, frames) {
   for (let i = 0; i < frames; i++) fx.update(1 / 60, [], camera, () => null);
   const rings = [];
   fx.group.traverse((o) => { if (o.isMesh && o.visible && o.geometry?.type === 'CircleGeometry' && o.material?.map)
-    rings.push({ color: o.material.color.clone(), scale: o.scale.x }); });
+    rings.push({ color: o.material.color.clone(), scale: o.scale.x, opacity: o.material.opacity }); });
   fx.resetAll();
   return rings;
 }
@@ -75,6 +75,16 @@ for (const m of wide) {
   assert.ok(lum(m.color) < 0.2 * lum(base) && m.color.b > m.color.r, `the spread night ring is dim and moonlit (${m.color.getHexString()})`);
   assert.ok(lum(m.color) <= lum(base.clone().multiply(tint)) * 1.25, 'the spread night ring is (about) the pools\' moonlit tint');
 }
+// through a heat-imaging lens (the gunship's infrared): dust at the ground's temperature, a quarter of its opacity and
+// never the burst's light (the r5 critic's "hard-edged grey arc band" in the thermal lens)
+const dayYoung = ringsUnder(DAY, 'day-ref', 3);
+camera.userData.thermalFlight = true; camera.userData.flightVision = 1;
+const heatYoung = ringsUnder(NIGHT, 'heat-young', 3);
+const heatDay = ringsUnder(DAY, 'heat-day', 3);
+camera.userData.thermalFlight = false; camera.userData.flightVision = 0;
+assert.ok(heatYoung.length >= 1 && heatDay.length >= 1, 'the heat lens still sees the ring launch');
+for (const m of heatDay) assert.ok(m.opacity <= dayYoung[0].opacity * 0.26, `the heat lens draws the ring at a quarter of its opacity (${m.opacity.toFixed(3)} vs ${dayYoung[0].opacity.toFixed(3)})`);
+for (const m of heatYoung) same(m.color, base.clone().multiply(tint), 'through the heat lens the night ring takes no burst light');
 // the next day's burst is tan again (the colour is set every frame, never left at the night's)
 const again = ringsUnder(DAY, 'again', 3);
 assert.ok(again.length >= 1 && again.every((m) => m.color.getHex() === base.getHex()), 'back under the day rig, the ring is its own tan');
