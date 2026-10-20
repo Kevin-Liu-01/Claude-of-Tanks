@@ -182,43 +182,49 @@ function roofHurtChance(target: AuxiliaryEntity, from: Vector3, at: Vector3, pro
   return chance;
 }
 /**
- * VH.14 hold fire (the critic's third round, 2026-10-19): a line priced alone can hurt only along itself — a turret
- * roof's edge, a curved tube's grazing face, a hull mid-turn — while the round flies a hair off it or the target turns a
- * little more or less than its rate says. A round's chance is its worst over the line and four beside it (the arrival
- * point moved ROBUST_M — what the drop's curve and the sums leave between the priced line and the flown one at a
- * standing target — plus ROBUST_SPEED of a moving target's travel over the flight, to either side and up and down) and, on
- * a turning target, over TURN_SHARES of its yaw rates; under HURT_FLOOR on any, it is held. Up to seven estimates: per
- * shot or refusal, never per tick.
+ * VH.14 hold fire (the critic's third and fourth rounds, 2026-10-19/20): a line priced alone can hurt only along itself
+ * — a turret roof's edge, a curved tube's grazing face, a hull mid-turn — while the round flies a hair off it or the
+ * target turns a little more or less than its rate says. A round's chance is its expected chance over where it may
+ * really meet the target: the mean over the line and four beside it (the arrival point moved ROBUST_M — past the few
+ * millimetres the drop's curve leaves between the priced chord and the flown arc at a standing target — plus
+ * ROBUST_SPEED of a moving target's travel over the flight, about the dead reckoning's typical miss, to either side and
+ * up and down) and, on a turning target, over the dead reckoning at TURN_SHARES of its rates; the line itself must reach
+ * HURT_FLOOR as well. The mean is settled as soon as the lines left cannot carry it across HURT_FLOOR, so a round that
+ * clearly hurts costs one estimate. Per shot or refusal, never per tick.
  */
-const ROBUST_M = .02, ROBUST_SPEED = .1, TURN_SHARES = [.5, 1.5] as const;
+const ROBUST_M = .01, ROBUST_SPEED = .1, TURN_SHARES = [.5, 1.5] as const;
 const ROBUST_STEPS: readonly (readonly [number, number])[] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const robustAt = new Vector3(), robustSide = new Vector3();
 function robustHurtChance(target: AuxiliaryEntity, from: Vector3, at: Vector3, profile: AuxiliaryWeaponProfile): number {
-  let worst = roofHurtChance(target, from, at, profile);
-  if (worst < HURT_FLOOR || !target.spec.armor || !mainPlates(target.spec.armor).length) return worst;
+  const line = roofHurtChance(target, from, at, profile);
+  if (line < HURT_FLOOR || !target.spec.armor || !mainPlates(target.spec.armor).length) return line;
   const s = target.state, flight = from.distanceTo(at) / profile.shell.velocityMps;
+  const turning = Math.max(Math.abs(s.yawRate ?? 0), Math.abs(s.turretYawRate ?? 0)) * flight > .004;
+  const lines = 1 + ROBUST_STEPS.length + (turning ? TURN_SHARES.length : 0), need = HURT_FLOOR * lines;
+  let sum = line, left = lines - 1;
+  if (sum >= need) return sum / lines;
   const reach = ROBUST_M + ROBUST_SPEED * Math.abs(s.speed ?? 0) * flight;
   robustSide.set(at.z - from.z, 0, from.x - at.x);
   const side = Math.hypot(robustSide.x, robustSide.z);
   if (side > 1e-6) robustSide.multiplyScalar(1 / side);
   for (const [across, up] of ROBUST_STEPS) {
     robustAt.copy(at).addScaledVector(robustSide, across * reach); robustAt.y += up * reach;
-    worst = Math.min(worst, roofHurtChance(target, from, robustAt, profile));
-    if (worst < HURT_FLOOR) return worst;
+    sum += roofHurtChance(target, from, robustAt, profile); left--;
+    if (sum >= need || sum + left < need) return sum / lines;
   }
-  if (Math.max(Math.abs(s.yawRate ?? 0), Math.abs(s.turretYawRate ?? 0)) * flight > .004) {
-    for (const share of TURN_SHARES) {
-      arrivalTurn = share;
-      worst = Math.min(worst, roofHurtChance(target, from, at, profile));
-      arrivalTurn = 1;
-      if (worst < HURT_FLOOR) return worst;
-    }
+  for (let i = 0; turning && i < TURN_SHARES.length; i++) {
+    arrivalTurn = TURN_SHARES[i]!;
+    sum += roofHurtChance(target, from, at, profile); left--;
+    arrivalTurn = 1;
+    if (sum >= need || sum + left < need) return sum / lines;
   }
-  return worst;
+  return sum / lines;
 }
 /** The aim grid on each face the target turns towards the station: along the face and up it, as fractions of its half
- * length (or width) and of its height. */
-const AIM_ALONG = [0, -.35, .35, -.7, .7, -.9, .9] as const, AIM_UP = [.5, .3, .75, .15, .92] as const;
+ * length (or width) and of its height; the core (|along| <= .7, up .3 to .92) is searched first, the outer columns and
+ * the low row only when it holds nothing. */
+const AIM_ALONG = [0, -.35, .35, -.7, .7, -.9, .9] as const, AIM_UP = [.5, .3, .75, .92, .15] as const;
+const aimCore = (along: number, up: number): boolean => Math.abs(along) <= .7 && up >= .3;
 /** aimSearch verifies its best AIM_VERIFY points by nominal chance (robustHurtChance, lanes), best first. */
 const AIM_VERIFY = 6;
 const aimTop = new Float64Array(AIM_VERIFY * 4);
@@ -227,7 +233,7 @@ const aimWorld = new Vector3(), aimFrom = new Vector3(), aimArrive = new Vector3
 let aimX = 0, aimY = 0, aimZ = 0, aimChance = 0;
 /**
  * VH.14 hold fire: when the round at the target's centre cannot hurt it, the point on the faces it turns towards the
- * station (the hull box: its dims) where one most likely does — a 7 x 5 grid on each face, each point where the target
+ * station (the hull box: its dims) where one most likely does — a 7 x 5 grid on each face (its core first), each point where the target
  * will stand when the round arrives, priced along the line the round would really fly once the station lays on it
  * (laidLine: the muzzle beside the mount's axis, the drop; roofHurtChance); the nearer the face's middle the better
  * among near-equal chances. The AIM_VERIFY best are then tried best first and the first taken whose lane is clear
@@ -238,8 +244,13 @@ let aimX = 0, aimY = 0, aimZ = 0, aimChance = 0;
  */
 function aimSearch(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, shooter: AuxiliaryEntity, target: AuxiliaryEntity,
   from: Vector3, context: GunContext): boolean {
-  const s = target.state, dims = target.spec.dims, dx = from.x - s.pos.x, dz = from.z - s.pos.z, reach = Math.hypot(dx, dz);
   aimChance = 0;
+  return aimPass(gun, profile, shooter, target, from, context, true) || aimPass(gun, profile, shooter, target, from, context, false);
+}
+/** One pass of aimSearch over the grid's core (`core`) or its outer points. */
+function aimPass(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, shooter: AuxiliaryEntity, target: AuxiliaryEntity,
+  from: Vector3, context: GunContext, core: boolean): boolean {
+  const s = target.state, dims = target.spec.dims, dx = from.x - s.pos.x, dz = from.z - s.pos.z, reach = Math.hypot(dx, dz);
   if (reach < 1e-6) return false;
   const c = Math.cos(s.yaw), n = Math.sin(s.yaw), lx = (dx * c - dz * n) / reach, lz = (dx * n + dz * c) / reach;
   // the spec's dims carry the mode's scale already (sim/juggernautScale.ts); arrivalPoint scales hull-frame points
@@ -251,6 +262,7 @@ function aimSearch(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, shooter: 
     const facing = face ? lz : lx;
     if (Math.abs(facing) <= .2) continue;
     for (const along of AIM_ALONG) for (const up of AIM_UP) {
+      if (aimCore(along, up) !== core) continue;
       const prior = -.05 * (Math.abs(along) + Math.abs(up - .5));
       // a point no chance can lift into the kept best is not traced
       if (kept === AIM_VERIFY && 1 + prior <= aimTop[(AIM_VERIFY - 1) * 4]!) continue;
@@ -456,17 +468,19 @@ function laidLine(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, shooter: A
  * holds the target: the scan skips it and takes the next target it can hurt. A hold stands while the target stands as
  * it was refused — the shooter's bearing in its hull and turret frames within HOLD_TURN_RAD, its range within
  * HOLD_RANGE, the share of its presented armour the round defeats (defeatableShare) no more than HOLD_SHARE_RISE above
- * the refused one — for HOLD_S; when it lapses the station judges the target again in place, from the mount, without
- * laying on it (judgeInPlace: the centre, then the faces), so a refused target never draws the gun off the one it is
- * hurting. An aim point stands AIM_S after its last round while the bearings stay within AIM_TURN_RAD. Module memory
+ * the refused one — for HOLD_S (HOLD_MOVING_S on a moving target); when it lapses the station judges the target again
+ * in place, from the mount, without laying on it (judgeInPlace: the centre, then the faces; one judgement in JUDGE_GAP_S
+ * a station, the rest held on till then), so a refused target never draws the gun off the one it is hurting. An aim point stands AIM_S after its last round while the bearings stay within AIM_TURN_RAD. Module memory
  * keyed by the station's own state, in fixed reused slots (never on the wire: the auxiliary row is unchanged); both
  * authorities run the same law, and a migrated host starts with none and learns again at its first refused round.
  */
 interface StationHold { target: AuxiliaryEntity | null; untilS: number; aim: boolean; x: number; y: number; z: number;
   hull: number; turret: number; range: number; share: number }
-const HOLD_SLOTS = 4, HOLD_S = 4, HOLD_MOVING_S = 1, AIM_S = 4, HOLD_TURN_RAD = .3, AIM_TURN_RAD = .14, HOLD_RANGE = .25,
-  HOLD_SHARE_RISE = .15;
+const HOLD_SLOTS = 4, HOLD_S = 4, HOLD_MOVING_S = 1.5, AIM_S = 4, HOLD_TURN_RAD = .3, AIM_TURN_RAD = .14, HOLD_RANGE = .25,
+  HOLD_SHARE_RISE = .15, JUDGE_GAP_S = .5;
 const stationHolds = new WeakMap<AuxiliaryStationState, StationHold[]>();
+/** When each station last judged a lapsed hold in place: one judgement in JUDGE_GAP_S a station, the rest held on. */
+const stationJudged = new WeakMap<AuxiliaryStationState, number>();
 let holdHull = 0, holdTurret = 0, holdRange = 0;
 /** The shooter's bearing in the target's hull and turret frames and its range (module scratch holdHull/Turret/Range). */
 function holdGeometry(shooter: AuxiliaryEntity, target: AuxiliaryEntity): void {
@@ -504,7 +518,12 @@ function stationHold(station: AuxiliaryStationState, shooter: AuxiliaryEntity, t
     const turned = Math.max(Math.abs(wrap(holdHull - slot.hull)), Math.abs(wrap(holdTurret - slot.turret)));
     if (now < slot.untilS && Math.abs(holdRange - slot.range) <= HOLD_RANGE * Math.max(slot.range, 10)
       && (slot.aim ? turned <= AIM_TURN_RAD : turned <= HOLD_TURN_RAD && !(share > slot.share + HOLD_SHARE_RISE))) return slot;
-    if (!slot.aim && gun && profile && context) return judgeInPlace(slot, station, shooter, target, now, share, gun, profile, context);
+    if (!slot.aim && gun && profile && context) {
+      const judged = stationJudged.get(station);
+      if (judged !== undefined && now - judged < JUDGE_GAP_S) { slot.untilS = judged + JUDGE_GAP_S; return slot; }
+      stationJudged.set(station, now);
+      return judgeInPlace(slot, station, shooter, target, now, share, gun, profile, context);
+    }
     slot.target = null;
     return null;
   }
