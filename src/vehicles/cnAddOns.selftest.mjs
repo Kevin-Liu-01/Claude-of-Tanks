@@ -49,7 +49,11 @@ const INVENTORY = {
     'flank-sleeve': [2, 0], 'brow-chevron': [16, 8], 'flank-tile': [12, 6], 'rail-post': [4, 0],
     'rear-box-seam': [2, 0], 'rear-box-mark': [2, 0], 'bustle-plate': [1, 0], rack: [7, 0], 'flat-eye': [4, 0], 'split-sensor': [3, 0],
     lamp: [2, 0], camera: [3, 0], 'field-box': [1, 0], 'tool-chest': [1, 0], roll: [4, 0], carrier: [3, 0], cable: [2, 0],
-    'cage-root': [2, 0], 'cage-front-post': [2, 0], 'cage-side-rail': [2, 0], 'cage-post': [2, 0], 'cage-rear-rail': [3, 0], 'cage-floor': [4, 0],
+    // round 8 (owner 2026-10-19: "the rear of qilinns turret is exposed and nnot filled"): the bustle floor, the full-width
+    // stowage rack and its load, the rear camera; and (critic CN8-08) the feet under the 99A2's two warning heads
+    'bustle-floor': [1, 0], 'cage-root': [2, 0], 'cage-front-post': [2, 0], 'cage-side-rail': [2, 0], 'cage-post': [3, 0],
+    'cage-rear-rail': [3, 0], 'cage-floor': [10, 0], 'net-roll': [3, 0], 'ammo-case': [6, 0], 'kit-bag': [2, 0], 'tarp-bundle': [3, 0],
+    'spare-case': [4, 0], 'rear-camera': [5, 0], 'warning-head-foot': [2, 0],
   },
   // round 3 (critic D3): the Kunlun's 226 package on its Type 96B, its lamps now riding the Shtora heads' hoods
   t72b3m_kunlun: {
@@ -71,8 +75,9 @@ const family = (role) => (/^(cage-|dock-)/.test(role) ? 'cage' : role);
 // end 30 mm inside the wall plus their own radius; a thin part (cable, post, strip, seam, mark) crosses a face by no more
 // than its own half-thickness and a few millimetres (a gun band's bore is 2 mm inside the barrel's skin);
 // a shaped foot (6 mm into the roof at its corners) swallows the roof's camber under it up to 16 mm, 22 mm where the
-// split sensor's foot welds over the chevron's raised upper root.
-const HOUSINGS = new Set(['wrap-housing', 'flank-sleeve', 'bustle-module']);
+// split sensor's foot welds over the chevron's raised upper root. The Qilin's bustle floor (round 8) runs 25 mm into the shell's
+// underside and the rear armour box's bottom.
+const HOUSINGS = new Set(['wrap-housing', 'flank-sleeve', 'bustle-module', 'bustle-floor']);
 const THIN = new Set(['cable', 'rail-post', 'rear-band', 'rear-box-seam', 'rear-box-mark', 'marking-board', 'muzzle-strip', 'gun-band']);
 function allowance(p) {
   if (HOUSINGS.has(p.role)) return .40;
@@ -281,7 +286,8 @@ for (const quality of ['high', 'low']) {
     if (p.tri[i + 2] >= ZTZ99A2_BUSTLE_CUT_FRONT_Z && !fleetCollar(p.tri[i], p.tri[i + 1], p.tri[i + 2])) fleetShell.add(key(p.tri[i], p.tri[i + 1], p.tri[i + 2]));
   fleet.tank.dispose();
 
-  for (const id of Object.keys(INVENTORY)) {
+  // CN_ADDONS_IDS=<ids> limits a local run (the suite runs all three)
+  for (const id of (process.env.CN_ADDONS_IDS ?? Object.keys(INVENTORY).join(',')).split(',')) {
     const { tank, parts } = build(id, quality);
     try {
       // ---- inventory
@@ -446,7 +452,8 @@ for (const quality of ['high', 'low']) {
         }
         assert.equal(NATIONAL_DONOR_TURRETS.t72b3_qilin.builderOptions.bustleCutM, QILIN_BUSTLE_CUT_M);
         assert.ok(Math.abs(bustleCutZ(-2.265, QILIN_BUSTLE_CUT_M) - body.min.z) < .006, 'Qilin: the rear armour assembly moved forward by the cut');
-        // the turret as drawn (the gun aside) is 10 % shorter than the 226 cast Qilin's 4.228 m too: the basket is 0.27 m deep
+        // the turret as drawn (the gun aside) is 10 % shorter than the 226 cast Qilin's 4.228 m too: the rear rack (round 8, the
+        // 226 basket grown to the rear box's width) keeps the basket's 0.27 m depth
         const turret = tank.root.getObjectByName('rig_turret'), gun = tank.root.getObjectByName('rig_gun');
         const drawn = new THREE.Box3(), inv = new THREE.Matrix4().copy(turret.matrixWorld).invert();
         turret.traverse((o) => { if (!o.isMesh || /Shadow|^vehicleMarking/.test(o.name)) return; for (let q = o; q; q = q.parent) if (q === gun) return;

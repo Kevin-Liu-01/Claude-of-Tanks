@@ -337,9 +337,11 @@ function kunlun(P:TankBuilderPort):void {
 // and its rear flank housing in place of the 99A2's rear cassette and stowage box, carrying its rail and three flat
 // tiles, welded into one loft), the rear box seams, the bustle roof plate with its small rack and roll, the flat eye,
 // the split-panel sensor on its own central seat, and the 226 field fit (round lamps, side camera, field box, tool
-// chest, carrier, cable, basket) moved onto the cut bustle. The 99A2's chevrons, face ERA, smoke banks, cupola, sights and whips stay as emitted. Not re-added: the cast
-// bustle box, rear box, central sight, antenna and four-tube smoke (the 99A2's armoured bustle, rear box, sights, whips
-// and five-tube banks are the same equipment at full size).
+// chest, carrier, cable) moved onto the cut bustle; round 8 closes the bustle's underside and hangs a loaded full-width
+// stowage rack (the cast Qilin's basket grown) and a rear camera on its rear armour box (qilinBustleFloor). The 99A2's
+// chevrons, face ERA, smoke banks, cupola, sights and whips stay as emitted. Not re-added: the cast bustle box, rear box,
+// central sight, antenna and four-tube smoke (the 99A2's armoured bustle, rear box, sights, whips and five-tube banks are
+// the same equipment at full size).
 const QILIN_MODEL=2;
 type FlankRow=readonly [z:number,inner:number,outer:number,bottom:number,top:number];
 // Release 227 (M2): the flank sleeve, one welded loft a side in place of the 226 brow and rear flank housing (two
@@ -455,7 +457,11 @@ function qilin(P:TankBuilderPort):void {
     rollCrew.addEquipment('turretDark',cylX(.082,.028,16),x,y+.070,-1.40);
   }
   qilinRack(tagged(P,QILIN_MODEL,'rack'),deck);
-  qilinRearBasket(P);
+  qilinWarningHeadFeet(tagged(P,QILIN_MODEL,'warning-head-foot'),permanentParts(P,['turret']));
+  // Round 8: the bustle floor first (the rack's floor roots in its rear face), then the rack and its load.
+  qilinBustleFloor(tagged(P,QILIN_MODEL,'bustle-floor'));
+  qilinRackLoad(P,qilinRearRack(P));
+  qilinRearCamera(tagged(P,QILIN_MODEL,'rear-camera'),deck);
 }
 
 /** The Qilin's flat tiles on each flank sleeve's rear wall (turret-local z of their centres). */
@@ -516,37 +522,137 @@ function qilinRack(P:TankBuilderPort,deck:readonly THREE.BufferGeometry[]):void 
   P.addEquipment('turretDetail',beamBetween([-.42,railY,-1.55],[.42,railY,-1.55],.013));
 }
 
-/** Qilin's small open tool basket on the cut 99A2's rear armour box (the cast Qilin's compact basket, 0.27 m deep as
- * the coordinator's plan sets it): its roots end 30 mm inside that permanent box, a front post a side stands at the
- * join, a rear post a side, three rear rails and four floor bars passing under the box's dark rear plate and between
- * its vertical ribs (x = -0.9 + 0.3 i). The drone docks on the roof's right rear (missionAttachmentSeats), not here. */
-function qilinRearBasket(P:TankBuilderPort):void {
-  const shell=new Stock(P,['turret','turretExternalArmor']);
+// Round 8 (owner 2026-10-19: "the rear of qilinns turret is exposed and nnot filled tho which is why it needs a bunch of
+// extra work there and decoraitons and stuff"). The 99A2's bustle underside climbs 0.42 m to clear its own raised engine
+// deck; over the T-72B3's low deck the cut bustle left the ring collar bare as a shelf behind and under its shortened rear
+// wall, and the cast Qilin's compact tool basket hung empty on the rear box. The rear is now closed and loaded: a welded
+// bustle floor shuts the underside, and a full-width stowage rack on the rear armour box, its floor rooted in that
+// floor's rear face, carries the crew's kit (a camouflage-net roll, a folded tarpaulin, two ammunition cases, a
+// spare-parts case and a kit bag), each resting on the rack's floor bars. The rack keeps the 226 basket's rear plane, so
+// the drawn turret stays a tenth shorter than the 226 cast turret.
+
+/** The bustle floor (turret frame): its flat underside (y), half-width and lower chamfer, its stations (the last is its
+ * rear face, under the rear armour box), and how far its top runs inside the first permanent surface over it (the
+ * shell's underside, and at the rear the armour box's bottom) at every section. Its underside stands 85 mm or more over
+ * the B3's deck at every yaw (the deck tops out at -0.019 in this frame within the turret's reach), 40 mm over the
+ * ring collar's top. */
+const QILIN_BUSTLE_FLOOR={y:.06,half:1.00,chamfer:.04,burial:.025,z:[-1.74,-1.60,-1.44,-1.36,-1.28,-1.12,-.90,-.66]} as const;
+/** Where the floor's top follows the underside across its width (the underside falls 70 mm from the centre to x 1). */
+const QILIN_BUSTLE_FLOOR_X=[1.00,.70,.35,0,-.35,-.70,-1.00] as const;
+
+function qilinBustleFloor(P:TankBuilderPort):void {
+  const f=QILIN_BUSTLE_FLOOR,stock=new Stock(P,['turret','turretExternalArmor']),up=new THREE.Vector3(0,1,0);
   try {
-    const wall=(x:number,y:number)=>{
-      const hit=shell.hit(new THREE.Vector3(x,y,-3.5),new THREE.Vector3(0,0,1),3);
-      if(!hit)throw new Error(`${P.spec.id}: no 99A2 rear box for the tool basket at ${x},${y}`);
-      return hit.point.z;
+    // the first permanent surface over the collar's top (y 0.02): rays start 10 mm over it
+    const ceiling=(x:number,z:number)=>{
+      const hit=stock.hit(new THREE.Vector3(x,.03,z),up,1.5);
+      if(!hit)throw new Error(`${P.spec.id}: no bustle underside over the floor at ${x},${z}`);
+      return hit.point.y+f.burial;
     };
-    const half=.52,bottom=.45,top=.70,rear=wall(0,bottom)-.27;
-    const put=(g:THREE.BufferGeometry,role:string)=>{g.userData.chineseModernization={model:QILIN_MODEL,role};P.addEquipment('turretOpenLattice',g);};
-    for(const side of [-1,1]){
-      const x=side*half,joinLow=wall(x,bottom),joinTop=wall(x,top);
-      put(beamBetween([x,bottom,joinLow+.03],[x,bottom,rear],.019),'cage-root');
-      put(beamBetween([x,top,joinTop+.03],[x,top,rear],.016),'cage-side-rail');
-      put(beamBetween([x,bottom,rear],[x,top,rear],.017),'cage-post');
-      // the front post against the box's dark rear plate (3 mm into it), its ends on the root and the side rail
-      const plate=new Stock(P,['turretDark']);
-      const face=plate.hit(new THREE.Vector3(x,(bottom+top)/2,-3.5),new THREE.Vector3(0,0,1),3)?.point.z??Math.min(joinLow,joinTop);
-      plate.dispose();
-      const fz=face-.016+.003;
-      put(beamBetween([x,bottom,fz],[x,top,fz],.016),'cage-front-post');
-    }
-    for(const y of [bottom,(bottom+top)/2,top])put(beamBetween([-half,y,rear],[half,y,rear],y===bottom||y===top?.019:.012),'cage-rear-rail');
-    for(const x of [-.45,-.15,.15,.45])put(beamBetween([x,bottom,wall(x,bottom)+.03],[x,bottom,rear],.013),'cage-floor');
-  }finally{shell.dispose();}
+    P.addExternalArmor('turret',sectionSolid(f.z.map(z=>({z,ring:[[-f.half+f.chamfer,f.y],[f.half-f.chamfer,f.y],[f.half,f.y+f.chamfer],
+      ...QILIN_BUSTLE_FLOOR_X.map(x=>[x,ceiling(x,z)] as SectionPoint),[-f.half,f.y+f.chamfer]] as SectionPoint[]}))));
+  }finally{stock.dispose();}
 }
 
+/** The stowage rack: half-width (its outer frames 55 mm inboard of the rear box's ends, clear of the flank sleeves' rear
+ * ends and outboard of the box's outer ribs at x 0.9), floor and top heights, depth behind the rear box's face at
+ * y 0.45 (the 226 basket's rear plane), and the floor bars' x. */
+const QILIN_RACK={half:.97,floor:.13,top:.62,depth:.27,floorX:[-.88,-.70,-.52,-.32,-.14,.14,.32,.52,.70,.88]} as const;
+
+/** The rack (cage family; turretOpenLattice): a frame a side (the floor root 30 mm into the bustle floor's rear face, a
+ * front post from it up 16 mm into the shell's underside 4 mm into that face, the top side rail 30 mm into the rear box),
+ * three rear posts and three rear rails on the rear plane, ten floor bars rooted like the root. Returns the rear plane. */
+function qilinRearRack(P:TankBuilderPort):number {
+  const r=QILIN_RACK,stock=new Stock(P,['turret','turretExternalArmor']),seg=P.q?6:4;
+  try {
+    const wall=(x:number,y:number)=>{
+      const hit=stock.hit(new THREE.Vector3(x,y,-3.5),new THREE.Vector3(0,0,1),3);
+      if(!hit)throw new Error(`${P.spec.id}: no rear face for the stowage rack at ${x},${y}`);
+      return hit.point.z;
+    };
+    const rear=wall(0,.45)-r.depth,F=r.floor,T=r.top;
+    const put=(g:THREE.BufferGeometry,role:string)=>{g.userData.chineseModernization={model:QILIN_MODEL,role};P.addEquipment('turretOpenLattice',g);};
+    for(const side of [-1,1]){
+      const x=side*r.half,face=wall(x,F),postZ=face-.016+.004;
+      put(beamBetween([x,F,face+.03],[x,F,rear],.019,seg),'cage-root');
+      put(beamBetween([x,T,wall(x,T)+.03],[x,T,rear],.016,seg),'cage-side-rail');
+      const over=stock.hit(new THREE.Vector3(x,F,postZ),new THREE.Vector3(0,1,0),1);
+      if(!over)throw new Error(`${P.spec.id}: no bustle underside over the rack's front post at ${x}`);
+      put(beamBetween([x,F,postZ],[x,over.point.y+.016,postZ],.016,seg),'cage-front-post');
+    }
+    for(const x of [-r.half,0,r.half])put(beamBetween([x,F,rear],[x,T,rear],.017,seg),'cage-post');
+    for(const y of [F,(F+T)/2,T])put(beamBetween([-r.half,y,rear],[r.half,y,rear],y===F||y===T?.019:.012,seg),'cage-rear-rail');
+    // the floor's square bars (24 mm, a flat top under the load)
+    for(const x of r.floorX){const z0=wall(x,F)+.03;put(box(.024,.024,z0-rear).translate(x,F,(z0+rear)/2),'cage-floor');}
+    return rear;
+  }finally{stock.dispose();}
+}
+
+/** A soft pack (a chamfered loft along z, its two ends drawn in towards a fuller middle): x0..x1, y0..y1, z0..z1. */
+function softPack(x0:number,x1:number,y0:number,y1:number,z0:number,z1:number,c:number,inset:number):THREE.BufferGeometry {
+  const ring=(d:number):SectionPoint[]=>{
+    const a=x0+d,b=x1-d,t=y1-d*1.5;
+    return [[a,y0+c],[a+c,y0],[b-c,y0],[b,y0+c],[b,t-c],[b-c,t],[a+c,t],[a,t-c]];
+  };
+  return sectionSolid([{z:z0,ring:ring(inset)},{z:(z0+z1)/2,ring:ring(0)},{z:z1,ring:ring(inset)}]);
+}
+
+/** The rack's load (each item resting 1 mm into the floor bars' flat tops; its straps, 3-5 mm proud of it, share its role). Front row, under
+ * the rear box's lip (the shell's underside at 0.43): the net roll on the left, two ammunition cases and the kit bag on
+ * the right. Back row, against the rear rails behind the box's ribs: the folded tarpaulin and the spare-parts case. */
+function qilinRackLoad(P:TankBuilderPort,rear:number):void {
+  const y0=QILIN_RACK.floor+.012-.001,seg=P.q?16:12,front=QILIN_BUSTLE_FLOOR.z[0]-.015,back=rear+.019+.002;
+  const kit=(role:string)=>tagged(P,QILIN_MODEL,role);
+  // the camouflage-net roll, cinched by two straps (its sides a multiple of four: a vertex line rests on the bars)
+  const roll=kit('net-roll'),rr=.105,rz=front-rr;
+  roll.addEquipment('turretCloth',cylX(rr,.84,seg),.50,y0+rr,rz);
+  for(const x of [.26,.74])roll.addEquipment('turretDark',cylX(rr+.004,.032,P.q?12:8),x,y0+rr,rz);
+  // two ammunition cases (0.30 x 0.20 x 0.17), each with its lid seam and carry handle
+  for(const x of [-.23,-.59]){
+    const ammo=kit('ammo-case'),h=.20,d=.17,cz=front-d/2;
+    ammo.addEquipment('turretDetail',box(.30,h,d),x,y0+h/2,cz);
+    ammo.addEquipment('turretDark',box(.306,.014,d+.006),x,y0+h-.032,cz);
+    ammo.addEquipment('turretDark',box(.11,.018,.024),x,y0+h+.007,cz);
+  }
+  // the kit bag beside them, a band round its middle
+  const bag=kit('kit-bag');
+  bag.addEquipment('turretCloth',softPack(-.94,-.78,y0,y0+.26,front-.305,front,.035,.016));
+  bag.addEquipment('turretDark',box(.166,.266,.030),-.86,y0+.130,front-.1525);
+  // the folded tarpaulin standing against the rear rails, two straps over it
+  const tarp=kit('tarp-bundle'),tz1=back+.112;
+  tarp.addEquipment('turretCloth',softPack(.10,.90,y0,y0+.40,back,tz1,.04,.018));
+  for(const x of [.30,.70])tarp.addEquipment('turretDark',box(.035,.410,.118),x,y0+.200,(back+tz1)/2);
+  // the spare-parts case behind the ammunition cases: chamfered, a lid seam and two latches on its rear face
+  const spare=kit('spare-case'),sx0=-.74,sx1=-.08,sh=.30,sz0=back+.007,sz1=sz0+.14,c=.022;
+  const ring:SectionPoint[]=[[sx0,y0+c],[sx0+c,y0],[sx1-c,y0],[sx1,y0+c],[sx1,y0+sh-c],[sx1-c,y0+sh],[sx0+c,y0+sh],[sx0,y0+sh-c]];
+  spare.addEquipment('turretDetail',sectionSolid([{z:sz0,ring},{z:sz1,ring}]));
+  spare.addEquipment('turretDark',box(sx1-sx0+.006,.014,.146),(sx0+sx1)/2,y0+sh-.055,(sz0+sz1)/2);
+  for(const x of [-.24,-.58])spare.addEquipment('turretDark',box(.034,.050,.010),x,y0+sh-.085,sz0-.004);
+}
+
+/** Round 8: a rear-view camera on the rear armour box's top (right of centre, clear of the bustle marks and the drone's
+ * dock), looking aft over the rack under a short rain hood: its body on a shaped foot, a dark bezel and its glass on the
+ * rear face. */
+function qilinRearCamera(P:TankBuilderPort,deck:readonly THREE.BufferGeometry[]):void {
+  const x=-.30,z=-1.79,w=.13,h=.085,d=.10,base=equipmentFoot(P,deck,x,z,w*.9,d*.9)-.003;
+  P.addEquipment('turretDetail',box(w,h,d),x,base+h/2,z);
+  P.addEquipment('turretDetail',box(w+.03,.014,d+.035),x,base+h+.004,z-.012);
+  P.addEquipment('turretDark',box(w*.78,.058,.010),x,base+.040,z-d/2-.004);
+  P.addModuleVisual('optics','turretGlass',box(w*.6,.042,.010),x,base+.040,z-d/2-.009);
+}
+
+/** Round 8 (critic CN8-08): the 99A2's two low laser-warning heads (0.17 x 0.08 x 0.15 at x +-0.96, z 0.025-0.175, their
+ * floors at y 0.80) stand 3-16 mm over the crown, which falls away under them (on the left, by 80 mm at the head's front
+ * edge): each gets a shaped foot under its rear two thirds, its underside 4 mm into the crown under its corners, its
+ * flat top 2 mm into the head's floor; the front of the head reaches forward off it as a bracketed sensor's does. */
+function qilinWarningHeadFeet(P:TankBuilderPort,crown:readonly THREE.BufferGeometry[]):void {
+  const w=.15,d=.09,z=.075,top=.802;
+  for(const side of [-1,1]){
+    const x=side*.96;
+    P.addEquipment('turretDetail',sectionSolid([z-d/2,z+d/2].map(zz=>({z:zz,ring:[[x-w/2,roofAt(crown,x-w/2,zz)-.004],
+      [x+w/2,roofAt(crown,x+w/2,zz)-.004],[x+w/2,top],[x-w/2,top]] as SectionPoint[]}))));
+  }
+}
 
 // ---------------------------------------------------------------------------------------------------------------
 // Yun (release 227, owner 2026-10-16: "make the yun keep all its extra add ons and modifications but altered slightly to

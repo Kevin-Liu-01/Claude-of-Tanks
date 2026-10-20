@@ -93,6 +93,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // the ring collars, the roof stations over their arcs, the box sights on the boots): about 300 s of CPU unloaded
     // (Qilin ~110-170 s, Kunlun ~130 s, Yun ~50-190 s; 430-830 s wall on a loaded box)
     'src/vehicles/cnClearance.selftest.mjs',
+    // 2026-10-19 (release 227 CN round 8, owner: "the rear of qilinns turret is exposed and nnot filled"): the Qilin's cut
+    // bustle closed underneath (the ring collar hidden from behind) and its full-width rear rack loaded
+    'src/vehicles/qilinRearFill.selftest.mjs',
     // 2026-10-18 (release 227 land stage; critics CN4-2, UAPL-R6C-1/2/3): the bored-trunnion yoke under the wedge, cradle
     // and casemate stations (no moving part through its yoke over pitch and recoil), and the Zubr II illuminator's
     // own-gun mask (its beam never lights its own barrel)
