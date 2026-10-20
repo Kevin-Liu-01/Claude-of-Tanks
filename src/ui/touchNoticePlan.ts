@@ -24,7 +24,8 @@
  * then the detection, then both in their compact form (the short landscapes' 136 px notice, the alert in 8 px type). The
  * alert's slot is the detection's width, so its wrapped height holds. Where no place keeps clear (the smallest phones),
  * each element takes the least intrusive one, reaching into the footprint (modelled at full bloom) before it covers any
- * panel or control, and over a button's label before the footprint (`cleared` false). The medal card takes the highest free place off them all, or waits (`bannerReady` false), keeping its time.
+ * panel or control, and over a button's label before the footprint, each block counted out to its gap, the detection and
+ * the alert in the order that reaches least far in all (`cleared` false). The medal card takes the highest free place off them all, or waits (`bannerReady` false), keeping its time.
  *
  * DOM-free and deterministic; battleHudLayout.ts measures the inputs on each relayout. touchNoticePlan.selftest.mjs checks
  * every recorded touch size; tools/hud-touch-notices.browser.mjs measures the rendered boxes against the reticle's ink.
@@ -83,8 +84,6 @@ export function touchSightKeepOut(width: number, height: number, scope: boolean,
 }
 
 const apart = (a: TouchBox, b: TouchBox) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
-const overlap = (a: TouchBox, b: TouchBox) =>
-  Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
 const grow = (box: TouchBox, by: number): TouchBox => ({ x0: box.x0 - by, y0: box.y0 - by, x1: box.x1 + by, y1: box.y1 + by });
 const boxOf = (cx: number, y: number, size: TouchSize): TouchBox => ({ x0: cx - size.w / 2, y0: y, x1: cx + size.w / 2, y1: y + size.h });
 
@@ -118,17 +117,29 @@ export function touchFreePlace(size: TouchSize, cx: number, top: number, width: 
   return null;
 }
 
-/** Where a box of `size` reaches least far into the blocks, each layer by its weight. */
+/** Where a box of `size` reaches least far into the blocks, each layer by its weight, and how far (its cost). Each block
+ *  counts out to TOUCH_NOTICE_GAP, as touchFreePlace keeps it: a place that only touches its neighbours costs (r10g: the
+ *  smallest phones' notices sat 0 px from the systems row and the quick buttons). */
 function leastIntrusive(size: TouchSize, cx: number, top: number, width: number, height: number,
-  layers: readonly (readonly [readonly TouchBox[], number])[]): { cx: number; y: number } {
-  let best = { cx, y: top };
-  let bestCost = Infinity;
+  layers: readonly (readonly [readonly TouchBox[], number])[]): { cx: number; y: number; cost: number } {
+  const grown: { box: TouchBox; weight: number }[] = [];
+  for (const [blocks, weight] of layers) for (const block of blocks) grown.push({ box: grow(block, TOUCH_NOTICE_GAP), weight });
+  let best = { cx, y: top, cost: Infinity };
+  // (per row band, the blocks that reach into it, each by its overlapping height and weight)
+  const band: { x0: number; x1: number; area: number }[] = [];
   for (let y = Math.max(top, TOUCH_NOTICE_GAP); y + size.h <= height - TOUCH_NOTICE_GAP; y += 4) {
+    band.length = 0;
+    for (const { box, weight } of grown) {
+      const rows = Math.min(y + size.h, box.y1) - Math.max(y, box.y0);
+      if (rows > 0) band.push({ x0: box.x0, x1: box.x1, area: rows * weight });
+    }
     for (let x = TOUCH_NOTICE_GAP; x + size.w <= width - TOUCH_NOTICE_GAP; x += 4) {
-      const box = { x0: x, y0: y, x1: x + size.w, y1: y + size.h };
       let cost = Math.abs(x + size.w / 2 - cx) * 0.01;
-      for (const [blocks, weight] of layers) for (const block of blocks) cost += overlap(box, block) * weight;
-      if (cost < bestCost) { bestCost = cost; best = { cx: x + size.w / 2, y }; }
+      for (const block of band) {
+        const columns = Math.min(x + size.w, block.x1) - Math.max(x, block.x0);
+        if (columns > 0) cost += columns * block.area;
+      }
+      if (cost < best.cost) best = { cx: x + size.w / 2, y, cost };
     }
   }
   return best;
@@ -251,14 +262,21 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     found = true;
   }
   if (!found) {
-    // the smallest phones: each in its compact form where it reaches least far (the detection, then the alert off it)
+    // the smallest phones: each in its compact form where it reaches least far, one off the other, in the order that
+    // reaches least far in all (r10g: the detection first took the one free place at 640x360, and the alert went onto the
+    // scope's zoom plate)
     plan.cleared = false;
     plan.noticeCompact = plan.alertCompact = true;
     plan.alertW = TOUCH_COMPACT_ALERT.w;
-    const first = leastIntrusive(TOUCH_COMPACT_NOTICE, cx, start, width, height, layers(placed));
-    const second = leastIntrusive(TOUCH_COMPACT_ALERT, cx, start, width, height,
-      layers([...placed, boxOf(first.cx, first.y, TOUCH_COMPACT_NOTICE)]));
-    plan.noticeCx = first.cx; plan.noticeTop = first.y; plan.alertCx = second.cx; plan.alertTop = second.y;
+    const pair = (firstSize: TouchSize, secondSize: TouchSize) => {
+      const first = leastIntrusive(firstSize, cx, start, width, height, layers(placed));
+      const second = leastIntrusive(secondSize, cx, start, width, height, layers([...placed, boxOf(first.cx, first.y, firstSize)]));
+      return { first, second, cost: first.cost + second.cost };
+    };
+    const noticeFirst = pair(TOUCH_COMPACT_NOTICE, TOUCH_COMPACT_ALERT);
+    const alertFirst = pair(TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE);
+    const [notice, alert] = alertFirst.cost < noticeFirst.cost ? [alertFirst.second, alertFirst.first] : [noticeFirst.first, noticeFirst.second];
+    plan.noticeCx = notice.cx; plan.noticeTop = notice.y; plan.alertCx = alert.cx; plan.alertTop = alert.y;
   }
   if (input.banner) {
     const notice = plan.noticeCompact ? TOUCH_COMPACT_NOTICE : input.notice;

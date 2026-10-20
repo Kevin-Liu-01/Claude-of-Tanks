@@ -6793,8 +6793,9 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function showAlert(text: string, { tone = 'warning', icon = 'info' }: AlertOptions = {}): void {
-    // (a wrapped alert breaks before its separator, never after it: the dot keeps its following word, r10f)
-    alertCopyEl.textContent = text.replace(/ · /g, ' ·\u00a0');
+    // (a wrapped alert breaks before its separator, never after it: a word joiner after the space keeps the dot with its
+    // following word, r10f; a no-break space there set narrower than the space before the dot, "EMPTY ·SELECT", r10g)
+    alertCopyEl.textContent = text.replace(/ · /g, ' · \u2060');
     alertIconEl.innerHTML = uiIconSVG(icon, 18);
     alertEl.classList.remove('danger', 'warning', 'success', 'info');
     alertEl.classList.add(tone);

@@ -550,9 +550,15 @@ detection, compact, above the map and the alert under the systems row. With the
 fallback, the alert had sat on the AUTO AIM and SCOPE labels at 375x667. Those
 labels hang under the round buttons, outside the buttons' boxes, so the plan
 keeps clear of them too. Where nothing clears, a notice covers a label before the
-sight's footprint (`labels`, a quarter of the footprint's cost per px²). The
-rendered receipt now also measures every notice against the controls, their
-labels, the panels, the map and the score. The uncleared windows are 320x568 in
+sight's footprint (`labels`, a quarter of the footprint's cost per px²). Where
+nothing clears, every block now counts out to its 6 px gap, so a fallback place
+no longer sits 0 px from the systems row or the quick buttons. The detection and
+the alert are also placed in whichever order reaches least far in all. Placing
+the detection first had taken the one free place at 640x360 and sent the alert
+onto the scope's zoom plate. The scan reads only the blocks that cross each row
+band, about 4 ms a plan on the smallest windows. The rendered receipt now also
+measures every notice against the controls, their labels, the panels, the map
+and the score. The uncleared windows are 320x568 in
 every scene, the pre-battle countdown at 360x640, 375x667 and 768x1024, the
 568 px landscapes, and the scope at 640x360 and 667x375.
 
@@ -574,7 +580,9 @@ furniture.
 The same critic found three text and layout defects:
 
 - **Alert separator.** The ammunition alert left its "·" at a line end (1024x600
-  and the phones). It now breaks before the separator.
+  and the phones). It now breaks before the separator. A word joiner after the
+  space keeps the dot with its next word. The no-break space r10f first used
+  rendered narrower than the space before the dot ("EMPTY ·SELECT").
 - **Medal wrap.** The medal card's description left "last." alone on its last
   line, so it wraps evenly now (`text-wrap: pretty`).
 - **Tray gap.** A mouse layout's inline tray sat 4 px from the drive gauge at
@@ -584,7 +592,8 @@ The same critic found three text and layout defects:
 `tools/hud-polish.browser.mjs` checks these defects and the r10g systems row
 with no screenshot:
 
-- the tray gap, the alert's line ends and the medal's last line;
+- the tray gap, the alert's line ends and the separator's spacing, and the
+  medal's last line;
 - at 320x568, 360x640 and 375x667 through the scope, at full bloom and at rest,
   with the gun travel warning: the systems row shows whole, the reticle's ink
   and the seated chip keep 3 px from its buttons, and the ink keeps 3 px from

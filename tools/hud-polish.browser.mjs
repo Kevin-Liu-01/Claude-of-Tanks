@@ -4,7 +4,8 @@
 // - A mouse layout's inline tray keeps 12 px from the drive gauge (the damage panel's gap to it): at 1024 wide the gauge
 //   sat 4 px from the APFSDS slot.
 // - A wrapped alert breaks before its "·" separator, never after it: "AMMUNITION TYPE EMPTY ·" ended a line at 1024x600
-//   and on the phones.
+//   and on the phones; and the separator sits midway between its words (r10g: the no-break space that kept it with the
+//   next word was set narrower, "EMPTY ·SELECT").
 // - The medal card's description never leaves one word on its last line ("last." alone at 1920x1080).
 // - A small portrait phone's systems row shows whole (at 320 wide it scrolled "Auto gun" off the screen), and through the
 //   scope, at full bloom and at rest, with the gun travel warning, the reticle's ink and the seated chip keep 3 px from its
@@ -29,8 +30,8 @@ const CASES = [
   [667, 375, true, ['alert']], [844, 390, true, ['alert']],
 ];
 
-/** In the page: the visual lines of an element's text, as the words that end each line. */
-function lineEnds(selector) {
+/** In the page: the visual lines of an element's text, as its words (`boxes`: each word's left and right too). */
+function lineEnds(selector, boxes = false) {
   const node = document.querySelector(selector);
   if (!node || !node.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) return null;
   const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
@@ -43,13 +44,14 @@ function lineEnds(selector) {
       range.setStart(text, match.index);
       range.setEnd(text, match.index + match[0].length);
       const rect = range.getClientRects()[0];
-      if (rect) words.push({ word: match[0], top: Math.round(rect.top) });
+      if (rect) words.push({ word: match[0], top: Math.round(rect.top), x0: rect.left, x1: rect.right });
     }
   }
   const lines = [];
-  for (const { word, top } of words) {
-    const line = lines.find((l) => Math.abs(l.top - top) < 3);
-    if (line) line.words.push(word); else lines.push({ top, words: [word] });
+  for (const entry of words) {
+    const line = lines.find((l) => Math.abs(l.top - entry.top) < 3);
+    const item = boxes ? entry : entry.word;
+    if (line) line.words.push(item); else lines.push({ top: entry.top, words: [item] });
   }
   return lines.sort((a, b) => a.top - b.top).map((l) => l.words);
 }
@@ -93,12 +95,25 @@ try {
         for (let i = 0; i < 30; i++) { f.frame.timeS += 1 / 60; f.hud.update(f.frame); }
         for (let i = 0; i < 6; i++) await new Promise(requestAnimationFrame);
         await new Promise((done) => setTimeout(done, 400));
-        return lineEnds('.cot-alert.show .cot-alert-copy');
+        return lineEnds('.cot-alert.show .cot-alert-copy', true);
       }, lineEnds.toString());
       if (!report.alert) failures.push(`${size}: no alert shown`);
-      else for (const words of report.alert.slice(0, -1)) {
-        if (words[words.length - 1] === '·') failures.push(`${size}: the alert's line ends with its separator: "${words.join(' ')}"`);
+      else for (const [index, words] of report.alert.entries()) {
+        const text = words.map((w) => w.word.replace(/\u2060/g, '')).join(' ');
+        if (index < report.alert.length - 1 && words[words.length - 1].word === '·') {
+          failures.push(`${size}: the alert's line ends with its separator: "${text}"`);
+        }
+        // (a separator between two words on its line sits midway: the spaces either side within a pixel and a half)
+        for (let i = 1; i < words.length - 1; i++) {
+          if (words[i].word !== '·') continue;
+          const before = words[i].x0 - words[i - 1].x1;
+          const after = words[i + 1].x0 - words[i].x1;
+          if (Math.abs(before - after) > 1.5) {
+            failures.push(`${size}: the alert's separator sits off its middle, ${before.toFixed(1)} px after "${words[i - 1].word}" and ${after.toFixed(1)} px before "${words[i + 1].word.replace(/\u2060/g, '')}"`);
+          }
+        }
       }
+      report.alert = report.alert?.map((words) => words.map((w) => w.word));
     }
     if (checks.includes('medal')) {
       report.medal = await page.evaluate(async (lineEndsSource) => {
