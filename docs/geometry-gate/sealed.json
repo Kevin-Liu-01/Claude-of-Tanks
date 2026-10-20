@@ -995,6 +995,17 @@
     1.4,
     1.35,
     5.6
+   ],
+   "accepts": [
+    {
+     "kind": "rebaseline",
+     "reason": "framed re-base: open px 6 -> 18 is mostly aliasing of two real ~1 cm hullDark slits at (+-1.04, 1.44, 2.30) m (6 px each at 1024 px, seen from either side; under one 256 px pixel each): a vehicle-lane work order",
+     "by": "guards-229",
+     "date": "2026-10-20",
+     "from": {
+      "openPx": 6
+     }
+    }
    ]
   },
   "leclerc_xlr": {
@@ -1118,8 +1129,8 @@
    ],
    "accepts": [
     {
-     "kind": "reframe",
-     "reason": "a turret gap at (0.63, 2.57, -0.27) m, 2 px under the old AABB frame (below the 6 px cluster size), reads one 6 px hole in view cube_1_0_-1 of its recorded frame (17 px in all): a real gap, recorded open for the vehicle lanes",
+     "kind": "rebaseline",
+     "reason": "framed re-base recorded this row open (seethrough/apply-rebaseline3.mjs, not --reframe): a real slit about 1 cm tall along the turret roof line at y 2.56 m, x 0.51..0.63, z -0.30..-0.07 (back-facing turret facets 14 cm before any front face; 9-17 px in the four level front, rear and front-diagonal views at 1024 px), one 6 px hole cluster in view cube_1_0_-1 at 256 px (2 px under the old frame, below the cluster size). The row holds its one hole view: a new hole cluster fails. A vehicle-lane work order: close the slit, then --tighten-ledger=leo2a4.",
      "by": "guards-229",
      "date": "2026-10-20",
      "from": {
@@ -1249,6 +1260,17 @@
     1.7,
     1.75,
     6.4
+   ],
+   "accepts": [
+    {
+     "kind": "rebaseline",
+     "reason": "framed re-base: open px 2 -> 18 is aliasing of real ~1 cm hullDark slits along the front at (+-0.59..0.95, 1.58..1.62, 2.26..2.62) m and (+-2.95, 1.84, -1.20) m (4-10 px each at 1024 px in 10 views; sub-pixel at 256): a vehicle-lane work order",
+     "by": "guards-229",
+     "date": "2026-10-20",
+     "from": {
+      "openPx": 2
+     }
+    }
    ]
   },
   "leo2a6m": {
@@ -3001,6 +3023,17 @@
     2.35,
     0.85,
     5.9
+   ],
+   "accepts": [
+    {
+     "kind": "rebaseline",
+     "reason": "framed re-base: open px 0 -> 26 is grid aliasing, not a gap: at 1024 px in this frame the build is sealed (18 px of seam slivers, about 1 px at 256, in no cluster); the 256 px count moves with the grid",
+     "by": "guards-229",
+     "date": "2026-10-20",
+     "from": {
+      "openPx": 0
+     }
+    }
    ]
   },
   "type90_kyumaru": {
