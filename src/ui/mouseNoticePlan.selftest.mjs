@@ -226,7 +226,9 @@ assert.equal(detectionHeight(248, true), 32);
 // (481 x 700: the scope's heaviest case seats its row with the chip over the sight, its drive gauge under the stacked
 // zoom plate (r10), so the band over the ring is the reticle's; the detection takes the one place left under the sight
 // and the countdown, which no enemy sees before the roll-out, shares it)
-const SHARED = { '768x600': ['countdown'], '481x700': ['countdown'] };
+// (844 x 390: on the detection's place the countdown clears the whole reticle at 45 %, where off both notices it cleared
+// only the resting sight)
+const SHARED = { '768x600': ['countdown'], '481x700': ['countdown'], '844x390': ['countdown'] };
 const TIER_FLOOR = { countdown: 2, revive: 1, medal: 1 };
 // (844 x 390's notices take the one band clear of the bloomed sight: its countdown and revive count clear the resting
 // sight, off both notices, rather than cover one. 768 x 600's drive gauge ends at the widest gun-limit chip's left edge

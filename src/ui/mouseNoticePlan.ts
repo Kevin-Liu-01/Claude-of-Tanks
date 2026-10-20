@@ -525,7 +525,8 @@ const Y_STEP = 8;
 /** The countdown and revive count shrink in these steps, each 10 % costing as much as moving 80 px down; 60 % keeps the
  *  countdown's 17 px kicker at 10 px, and half size (8.5 px) is the last resort before sharing a notice's place. Clear
  *  of the resting sight only (tier 0, a short window whose notices take the one band beside the bloomed sight: 844 x
- *  390), they may go on down to 40 % (the count's numeral still 34 px) rather than cover a notice. */
+ *  390), they may go on down to 40 % (the count's numeral still 34 px) rather than cover a notice; so may the countdown on
+ *  the detection's place, before it leaves the bloomed sight (768 x 600 since the HUD's out-of-ammo chip over the sight). */
 const SCALES = [1, .9, .8, .7, .6, .5] as const;
 const SCALE_COSTS = [0, 80, 160, 240, 320, 1200] as const;
 const LAST_SCALES = [...SCALES, .45, .4] as const;
@@ -1179,8 +1180,10 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
   const scaled = (size: PlanSize | null, yFrac: number, price: LanePrice, shareDetection: boolean): PlannedScaled | null => {
     if (!size || size.w <= 0 || size.h <= 0) return null;
     const yPref = Math.max(Math.ceil(input.top + MOUSE_NOTICE_GAP_PX), Math.ceil(input.height * yFrac));
-    const ladder = (tier: number) => tier ? SCALES : LAST_SCALES;
-    let tier = place((share, t) => ladder(t).map((s, i) => [size.w * s, size.h * s, LAST_SCALE_COSTS[i], share ? alertOnly : notices] as const),
+    // (on the detection's place the countdown may go down to 40 % too, before it leaves the bloomed sight: the HUD's
+    // out-of-ammo chip over the sight left 768 x 600's half-size countdown no room on it)
+    const ladder = (tier: number, share: boolean) => tier && !share ? SCALES : LAST_SCALES;
+    let tier = place((share, t) => ladder(t, share).map((s, i) => [size.w * s, size.h * s, LAST_SCALE_COSTS[i], share ? alertOnly : notices] as const),
       yPref, price, shareDetection);
     // The last resorts (a window too small for any of those; the census never comes here): a place clear of the resting
     // sight on either notice's place, then over an instrument or a lane, never main's own place on the aim point.
@@ -1192,7 +1195,7 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
           chosen, yPref, price, null, found)) return null;
       tier = 0;
     }
-    const s = ladder(tier)[found.option], w = size.w * s, h = size.h * s, x = found.s.x - w / 2, y = found.s.y;
+    const s = chosen[found.option][0] / size.w, w = size.w * s, h = size.h * s, x = found.s.x - w / 2, y = found.s.y;
     return { x, y, w, h, scale: s, clearance: tier as 2 | 1 | 0, sharesNotices: overlapsAny({ x, y, w, h }, notices), giveWay: giveWayOf(found.s.giveWay, 0) };
   };
   // The medal card: the full card wherever a place clears the keep-out, off both notices or (waiting while it is up) on

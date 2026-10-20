@@ -45,7 +45,9 @@ const reports=[];const errors=[];
 //   bloom (tier 1) or at rest (tier 0);
 // - never cover more of it, nor of the resting crosshair, than main does in the same stage (main's numbers are pinned
 //   in tools/fixtures/battle-hud-layout.main-notices.json; --record-main=<file> --main-label=<commit> against a server
-//   of main's tree measures them again);
+//   of main's tree measures them again). "Main" is the tree the notices land on, main's notice places under its HUD:
+//   since the HUD's out-of-ammo marks (r10) it is integ/229 ce8b634668, recorded with these masks (3b760c602 never drew
+//   those marks, so its numbers could not weigh them);
 // - show its whole text (no clamp, nothing outside its six-sided frame; the alert in main's type size or larger; the
 //   detection's second line wherever main shows it, above 550 px tall);
 // - keep its box through a kill burst and while Tab is held (k0, k3, the burst and Tab stage the same box);
@@ -94,7 +96,13 @@ const EMPTY_LANES_OK={'mouse-768x600':/alert|revive|medal/,'mouse-481x700':/aler
   // off both notices' places: every such place clear of the resting sight crosses the left lane whole (one row deep with
   // an objective, two without)
   'phone-mouse':/alert:[^|]*\+revive/,'chinese-phone-mouse':/alert:[^|]*\+revive/,
-  'short-mouse':/^[^|]*\|(?![^|]*medal)[^|]*revive/,'chinese-short-mouse':/^[^|]*\|(?![^|]*medal)[^|]*revive/};
+  // Since the HUD's out-of-ammo marks (r10; mouseNoticePlan.selftest EMPTIED): on 844 x 390 the systems row sits under the
+  // widest gun-limit chip and the scope's stacked zoom plate, so the chip goes over the sight and the plate beside the
+  // line, and every place for the detection clear of the whole reticle crosses the left lane whole (with the alert, the
+  // medal card, or alone); on 800 x 400 the two 376 px lanes leave a 48 px centre between them and the band over the ring
+  // is the marks', so every alert, and the revive count, crosses the left lane whole
+  'short-mouse':/^[^|]*\|(det|[^|]*revive)/,'chinese-short-mouse':/^[^|]*\|(det|[^|]*revive)/,
+  'mouse-800x400':/^[^|]*\|[^|]*(alert|revive)/};
 // [key, fixture state, kill rows kept (null: as staged), rosters a side (null: 7), notice set ('' none), sight, Tab held]
 function noticeStages(){
   const out=[];
@@ -426,7 +434,10 @@ try {
           const t=tier(k),main=mainStage?.[k]??[0,0,0];
           const own=t===2?n.union:t===1?n.battle:t===0?n.rest:0;
           if(t>=0&&own>0)failures.push(`the ${what} covers ${own} px of reticle ink its plan clears (tier ${t}; ${n.box.join(',')})`);
-          if(n.union>main[0]||n.rest>main[2])failures.push(`the ${what} covers more reticle ink than main (${n.union}/${n.rest} px; main ${main[0]}/${main[2]})`);
+          // (a medal card whose place clears the battle sight only waits whenever the scope is up, scopedShort above, so no
+          // scope ink is ever under it: its ink is the battle sight's, held to main's battle ink)
+          const [shown,mainShown]=k==='m'&&t>=0&&t<2?[n.battle,main[1]]:[n.union,main[0]];
+          if(shown>mainShown||n.rest>main[2])failures.push(`the ${what} covers more reticle ink than main (${n.union}/${n.battle}/${n.rest} px; main ${main[0]}/${main[1]}/${main[2]})`);
           if(k==='m'&&t<0)failures.push('the medal card is shown where its plan has no place');
           // a dropped plan fails: the detection and the alert clear the whole reticle (the plan fell back to main's places,
           // '-', or cleared less), and a shown countdown or revive count has a planned place (not the CSS defaults)
