@@ -210,14 +210,14 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
       }
     }
     // ---- the objective holds past the roundel (C13): their discs clear of every piece and trunk
-    // (228 r4) what stands in a hold on the map without the plan too (the town's own street lamp at line-2's point) is the
-    // map's, not the plan's
+    // (228 r4) a street lamp standing in a hold on the map without the plan too (the town's own lamp at line-2's point) is
+    // the map's, not the plan's (228 r5, the critic's D13: lamps only)
     const baseKey = (o) => `${o.kind}@${((o.min[0] + o.max[0]) / 2).toFixed(1)},${((o.min[2] + o.max[2]) / 2).toFixed(1)}`;
     const baseBlockers = new Set(base.built.obstacles.filter((o) => o.min && o.max).map(baseKey));
     for (const h of area.holds) {
       for (const b of blockers) {
         if (b.kind === 'structure') continue;
-        if (b.kind !== 'tree' && baseBlockers.has(`${b.kind}@${((b.x0 + b.x1) / 2).toFixed(1)},${((b.z0 + b.z1) / 2).toFixed(1)}`)) continue;
+        if (b.kind === 'lamp' && baseBlockers.has(`${b.kind}@${((b.x0 + b.x1) / 2).toFixed(1)},${((b.z0 + b.z1) / 2).toFixed(1)}`)) continue;
         const d = Math.hypot(Math.max(b.x0 - h.x, 0, h.x - b.x1), Math.max(b.z0 - h.z, 0, h.z - b.z1));
         assert.ok(d >= h.r, `${tag}: ${b.kind} at (${((b.x0 + b.x1) / 2).toFixed(1)}, ${((b.z0 + b.z1) / 2).toFixed(1)}) in the ${h.id} disc (${d.toFixed(2)} m, ${h.r})`);
       }
