@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { battleSideStack, battleNotificationRows, battleRosterHeight, installBattleHudLayout, objectiveWidth, battleReportDock, REPORT_MAP_GAP,
   portraitSightClearTop, SIGHT_BAND_ABOVE, SIGHT_BAND_BELOW, SCOPE_BAND_BELOW } from './battleHudLayout.ts';
+import { detectionHeight, MOUSE_NOTICE_GAP_PX, mouseNoticePlanWork } from './mouseNoticePlan.ts';
 import { sightFurniture } from './sightFurniture.ts';
 const layoutSourceR10 = readFileSync(new URL('./battleHudLayout.ts', import.meta.url), 'utf8');
 
@@ -95,7 +96,7 @@ assert.match(layoutSource, /Math\.min\(laneSystemsTop, systemsTop\) - 8/, 'the s
 // Observer lifecycle in a deterministic DOM: no-op attribute records must not
 // turn layout into a per-frame job, but real state/viewport changes still do.
 const originals = new Map(['document','window','ResizeObserver','MutationObserver',
-  'requestAnimationFrame','getComputedStyle'].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
+  'requestAnimationFrame','getComputedStyle','setTimeout','clearTimeout'].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
 try {
   const frames=new Map(); let nextFrame=1; let measures=0; let writes=0;
   const callbacks={}; const watched=[]; const listeners=new Map();
@@ -121,6 +122,9 @@ try {
     addEventListener:(type,fn)=>listeners.set(type,fn)};
   globalThis.getComputedStyle=()=>({visibility:'visible'});
   globalThis.requestAnimationFrame=fn=>{const id=nextFrame++;frames.set(id,fn);return id;};
+  const timers=new Map(); let nextTimer=1;
+  globalThis.setTimeout=fn=>{const id=nextTimer++;timers.set(id,fn);return id;};
+  globalThis.clearTimeout=id=>{timers.delete(id);};
   globalThis.ResizeObserver=class{constructor(fn){callbacks.resize=fn;}observe(){}};
   globalThis.MutationObserver=class{constructor(fn){callbacks.mutation=fn;}observe(target,options){watched.push({target,options});}};
   const flush=()=>{const work=[...frames.values()];frames.clear();for(const fn of work)fn();};
@@ -252,11 +256,192 @@ try {
   }
   map.getBoundingClientRect=()=>rect(8,100,8,100);callbacks.resize();flush();
   assert.equal(properties.get('--hud-flight-right-clearance'),'12px','a top-left mobile map releases the lower rack lane');
+  // The sizes above arrived in one rapid run: the mouse notice plan (mouseNoticePlan.ts) waited for it to settle, on one
+  // timer, and the settled window relayouts once.
+  assert.equal(timers.size,1,'a resize in progress leaves the notice plan to one settle timer');
+  for(const fn of [...timers.values()])fn();timers.clear();
+  assert.equal(frames.size,1,'the settled resize relayouts once');flush();
 } finally {
   for(const [key,descriptor] of originals){
     if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];
   }
 }
+// The notice plan in a deterministic DOM with real class lists (desk-notices 229): the touch layout never plans and
+// writes none of the plan's attributes; a scope toggle relayouts nothing unless a queued medal card waits on it; the
+// first plan made while Tab is held is the one releasing Tab keeps.
+{
+  const saved=new Map(['document','window','ResizeObserver','MutationObserver','requestAnimationFrame','getComputedStyle',
+    'setTimeout','clearTimeout'].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
+  const rect=(left,top,width,height)=>({left,top,width,height,right:left+width,bottom:top+height,x:left,y:top});
+  function harness({width=1366,height=768,touch=false,tab=false,elements={},inRoot={},extra=()=>({}),bodyData={}}={}){
+    const frames=new Map();let nextFrame=1;let observer=null;const properties=new Map();
+    const classes=list=>{const set=new Set(list);return {set,contains:c=>set.has(c),add:c=>set.add(c),remove:c=>set.delete(c),
+      toggle(c,on){const want=on??!set.has(c);if(want)set.add(c);else set.delete(c);return want;}};};
+    const node=(list=[],box=null)=>({attrs:{},dataset:{},childElementCount:0,classList:classes(list),offsetWidth:0,offsetHeight:0,
+      style:{getPropertyValue:k=>properties.get(k)||'',setProperty:(k,v)=>properties.set(k,v),removeProperty:k=>properties.delete(k)},
+      getAttribute(k){return k==='class'?[...this.classList.set].join(' '):this.attrs[k]??null;},hasAttribute(k){return k in this.attrs;},
+      toggleAttribute(k,on){const want=on??!(k in this.attrs);if(want)this.attrs[k]='';else delete this.attrs[k];return want;},
+      getClientRects(){return [{}];},getBoundingClientRect(){return typeof box==='function'?box():box??rect(0,0,0,0);},
+      dispatchEvent(){return true;},querySelector(){return null;},querySelectorAll(){return [];}});
+    const root=node(tab?['cot-hud','rosters-expanded']:['cot-hud']);root.querySelector=sel=>inRoot[sel]?.()??null;
+    const body=node(touch?['cot-touch-layout']:[]);Object.assign(body.dataset,bodyData);const html=node();html.clientWidth=width;
+    const parts={'.cot-top':node([],rect(width/2-172,0,344,62)),...Object.fromEntries(Object.entries(elements).map(([k,f])=>[k,node([],()=>f(root))])),...extra(node,{root,properties})};
+    globalThis.document={body,documentElement:html,querySelector:sel=>parts[sel]??null,querySelectorAll:()=>[]};
+    globalThis.window={innerWidth:width,innerHeight:height,visualViewport:{width,height,scale:1},document:globalThis.document,addEventListener(){}};
+    globalThis.getComputedStyle=()=>({visibility:'visible'});
+    globalThis.requestAnimationFrame=fn=>{const id=nextFrame++;frames.set(id,fn);return id;};
+    globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};
+    let resized=null;
+    globalThis.ResizeObserver=class{constructor(fn){resized=fn;}observe(){}};
+    globalThis.MutationObserver=class{constructor(fn){observer=fn;}observe(){}};
+    installBattleHudLayout(root);
+    const flush=()=>{const work=[...frames.values()];frames.clear();for(const fn of work)fn();};
+    flush();
+    // a frame's layout: the ResizeObserver reports each measured part whose box changed since the last one, as browsers do
+    const boxes=new Map();const sized=()=>{const changed=[];for(const part of Object.values(parts)){if(!part.getBoundingClientRect)continue;const b=JSON.stringify(part.getBoundingClientRect());
+      if(boxes.has(part)&&boxes.get(part)!==b)changed.push({target:part});boxes.set(part,b);}return changed;};
+    sized();
+    const settle=()=>{flush();for(let i=0;i<4;i++){const changed=sized();if(!changed.length)break;resized(changed);flush();}};
+    return {root,body,html,properties,frames,flush,settle,mutate:records=>observer(records),node,parts};
+  }
+  try {
+    // touch: no plan (mouseNoticePlanWork untouched), no plan attribute, variable or class, and main's own notice tops
+    mouseNoticePlanWork.bands=-1;
+    const touch=harness({touch:true});
+    assert.equal(mouseNoticePlanWork.bands,-1,'the touch layout makes no notice plan');
+    assert.equal(touch.body.hasAttribute('data-hud-notices'),false,'the touch layout carries no plan attribute');
+    assert.equal(touch.body.dataset.hudNoticeTiers,undefined,'nor the receipt\'s tiers');
+    for(const name of ['notice-x','alert-x','alert-width','alert-shift','banner-x','countdown-x','countdown-top','countdown-scale',
+      'revive-x','revive-top','revive-scale','roster-wide-left','roster-wide-right'])
+      assert.equal(touch.properties.has(`--hud-${name}`),false,`the touch layout writes no --hud-${name}`);
+    assert.deepEqual([...touch.root.classList.set].sort(),['cot-hud'],'nor a class on the HUD root');
+    // main's rule: under the score at 12 % of the height (no instrument in the way), the alert 8 px under a 48 px detection
+    assert.equal(touch.properties.get('--hud-notice-top'),`${Math.floor(Math.max(62+8,768*.12))}px`);
+    assert.equal(touch.properties.get('--hud-alert-top'),`${Math.floor(Math.max(62+8,768*.12)+48+8)}px`);
+    // the mouse layout of the same window plans and carries it (the check above is not blind)
+    mouseNoticePlanWork.bands=-1;
+    const mouse=harness();
+    assert.ok(mouseNoticePlanWork.bands>0,'the mouse layout plans');
+    assert.equal(mouse.body.hasAttribute('data-hud-notices'),true);
+    assert.match(mouse.body.dataset.hudNoticeTiers,/^d2 a2 /);
+    // the scope flag (hud.ts, on the document element) schedules nothing while no medal card waits
+    mouse.mutate([{type:'attributes',target:mouse.html,attributeName:'data-cot-scoped'}]);
+    assert.equal(mouse.frames.size,0,'a scope toggle relayouts nothing');
+    // Tab, with the rosters sized as the CSS sizes them: their width by the class, their height by
+    // --hud-roster-*-height, which a pass writes after it has read them (so the pass just after a release still measures
+    // the held height, 30 px a row against 24). With 1366 x 768's census instruments and both notices and the revive
+    // count up, no notice moves when Tab is pressed or released, nor when it was held for the first plan.
+    const tabRun=(firstHeld)=>{
+      const revive={offsetWidth:390,offsetHeight:129},shown={};let ears=[];
+      const run=harness({tab:firstHeld,inRoot:{'.cot-revive':()=>revive,'.cot-revive.on':()=>revive,'.cot-sixth.on':()=>shown,'.cot-alert.show':()=>shown,
+        '.cot-ear.l':()=>ears[0],'.cot-ear.r':()=>ears[1]},extra:(node,{root,properties})=>{
+        const ear=(side)=>{const e=node(['cot-ear',side],()=>{const w=root.classList.contains('rosters-expanded')?Math.min(320,1366/2-184):194;
+          return rect(side==='l'?0:1366-w,52,w,parseFloat(properties.get(`--hud-roster-${side==='l'?'left':'right'}-height`))||.28*768);});
+          e.dataset.count='7';return e;};
+        ears=[ear('l'),ear('r')];
+        return {'.cot-ear.l':ears[0],'.cot-ear.r':ears[1],'.cot-mode-status.show':node([],rect(544,62,278,41)),'.cot-dp':node([],rect(12,573,160,183)),
+          '.cot-drive':node([],rect(184,648,108,108)),'.cot-vehicle-controls':node([],rect(491,648,382,32)),'.cot-shells':node([],rect(467,688,433,64)),
+          '.cot-si-cardhost':node([],rect(1050,260,300,260)),'.cot-net':node([],rect(1229,8,127,28)),'.cot-minimap':node([],rect(1130,532,220,220))};}});
+      run.settle();return run;};
+    const placed=h=>['revive-x','revive-top','revive-scale','notice-x','notice-top','alert-x','alert-top'].map(k=>h.properties.get(`--hud-${k}`)).join(' ');
+    const tab=(h,on)=>{if(on)h.root.classList.add('rosters-expanded');else h.root.classList.remove('rosters-expanded');
+      h.mutate([{type:'attributes',target:h.root,attributeName:'class'}]);};
+    const rest=tabRun(false),still=placed(rest);
+    // the plan's resting rosters are the real resting ones: the left lane (from 250 px: the resting roster's 52 + 190, and
+    // 8) gives way to the revive count from 292 px; the held height in the plan (52 + 232) would leave the count no band
+    // and start the rows at 250, under it
+    assert.equal(rest.properties.get('--hud-kill-left-top'),'292px','the left kill rows give way to the revive count at rest');
+    tab(rest,true);rest.flush();assert.equal(placed(rest),still,'pressing Tab moves no notice (its first relayout)');
+    rest.settle();assert.equal(placed(rest),still,'nor once the held rosters have resized');
+    tab(rest,false);rest.flush();assert.equal(placed(rest),still,'releasing Tab moves no notice (its first relayout still measures the held height)');
+    rest.settle();assert.equal(placed(rest),still,'nor once the rosters are back at rest');
+    assert.equal(rest.properties.get('--hud-kill-left-top'),'292px','and the left kill rows give way to it again after the release');
+    const held=tabRun(true);
+    assert.equal(held.root.classList.contains('rosters-expanded'),true,'the class is back on after the resting read');
+    assert.equal(placed(held),still,'the plan made while Tab is held from the first pass is the resting one');
+    tab(held,false);held.flush();assert.equal(placed(held),still,'and releasing it moves nothing');
+    // Planned places round away from the centre line (writeMousePlan): 1366 x 768's flank puts the detection's centre at
+    // 548.5, its right edge on the scope arm's 4 px margin (672.5); the nearest px (549) would sit 0.5 px inside it.
+    {
+      const run=harness({extra:node=>({'.cot-mode-status.show':node([],rect(544,62,278,41)),'.cot-dp':node([],rect(12,573,160,183)),
+        '.cot-drive':node([],rect(184,648,108,108)),'.cot-vehicle-controls':node([],rect(491,648,382,32)),'.cot-shells':node([],rect(467,688,433,64)),
+        '.cot-si-cardhost':node([],rect(1050,260,300,260)),'.cot-net':node([],rect(1229,8,127,28)),'.cot-minimap':node([],rect(1130,532,220,220))})});
+      assert.equal(run.properties.get('--hud-alert-shift'),'0%','1366 x 768 flanks the arm (the detection left of it)');
+      assert.equal(run.properties.get('--hud-notice-x'),'548px','the detection\'s centre 548.5 rounds away from the centre line');
+    }
+    // A queued card placed clear of the battle sight only (a cramped 800 x 380 window: tier 0) waits while the scope is up:
+    // the scope flag on the document element relayouts then, and only then (above: no such card, no relayout).
+    {
+      let banner;
+      const run=harness({width:800,height:380,extra:node=>({'.cot-medal-toasts':(banner=node(),banner.childElementCount=1,banner),
+        '.cot-mode-status.show':node([],rect(261,62,278,41)),'.cot-dp':node([],rect(12,185,160,183)),'.cot-drive':node([],rect(184,260,108,108)),
+        '.cot-vehicle-controls':node([],rect(208,260,382,32)),'.cot-shells':node([],rect(184,300,433,64)),'.cot-si-cardhost':node([],rect(480,110,300,150)),
+        '.cot-net':node([],rect(663,8,127,28)),'.cot-minimap':node([],rect(564,144,220,220))})});
+      assert.match(run.body.dataset.hudNoticeTiers,/ m[01]/,'the card here clears less than the whole reticle');
+      assert.equal(banner.dataset.placement,'ready','and shows with the scope down');
+      const scope=on=>{run.html.toggleAttribute('data-cot-scoped',on);run.mutate([{type:'attributes',target:run.html,attributeName:'data-cot-scoped'}]);};
+      scope(true);
+      assert.equal(run.frames.size,1,'the scope coming up relayouts while such a card is queued');run.flush();
+      assert.equal(banner.dataset.placement,'deferred','the card waits in the scope');
+      assert.match(run.body.dataset.hudNoticeTiers,/ m[01]s?w$/,'marked waiting');
+      scope(false);
+      assert.equal(run.frames.size,1,'the scope going down relayouts too');run.flush();
+      assert.equal(banner.dataset.placement,'ready','and the card shows again');
+    }
+    // The layout marks a wait on the feed ('f') only where the card's place cuts the lane that shows a row: at 390 x 844
+    // (the phone's census boxes, the bottom filled by a stretched ammunition rail so that, as on the census, every place
+    // for the card cuts the right lane) a right-lane kill row holds the card, marked, and a left-lane row alone neither
+    // holds nor marks it (the receipt's medalWaitCause trusts this mark).
+    {
+      const feed=(left,right,detected=false)=>{
+        let banner;const lane=n=>({childElementCount:n,children:Array.from({length:n},()=>({hidden:false})),classList:{contains:()=>false}});
+        const run=harness({width:390,height:844,bodyData:{cotWidth:'phone'},
+          inRoot:{'.cot-kill-lane.l':()=>lane(left),'.cot-kill-lane.r':()=>lane(right),'.cot-sixth.on':()=>detected?{}:null},
+          extra:node=>({'.cot-medal-toasts':(banner=node(),banner.childElementCount=1,banner),'.cot-mode-status.show':node([],rect(77,61,236,41)),
+            '.cot-dp':node([],rect(8,579,120,137)),'.cot-drive':node([],rect(140,635,81,81)),'.cot-vehicle-controls':node([],rect(12,744,366,32)),
+            '.cot-shells':node([],rect(12,500,366,332)),'.cot-si-cardhost':node([],rect(203,375,175,260)),'.cot-net':node([],rect(120,109,88,20)),
+            '.cot-minimap':node([],rect(8,109,104,104))})});
+        return [run.body.dataset.hudNoticeTiers.split(' ').pop(),banner.dataset.placement,run.properties,banner.dataset.size];
+      };
+      const [right,rightPlace]=feed(0,3),[left,leftPlace]=feed(3,0),[none,nonePlace]=feed(0,0);
+      assert.match(right,/^m\d\w*wf$/,`a right-lane kill row holds the card, marked as the feed's (${right})`);
+      assert.equal(rightPlace,'deferred');
+      assert.ok(!/w/.test(left)&&leftPlace==='ready',`a left-lane row alone neither holds nor marks it (${left}, ${leftPlace})`);
+      assert.ok(!/w/.test(none)&&nonePlace==='ready','nor does an empty feed');
+      // with the detection lit while only the lane it leaves whole shows rows: it waits exactly where its written place meets
+      // the detection's, never marked as the feed's (before the HUD's out-of-ammo marks moved the scope-vision toggle beside
+      // the sight its place here was the detection's; it now has one of its own above it, so it shows)
+      const [lit,litPlace,props,size]=feed(3,0,true);
+      const px=v=>parseFloat(props.get(v)),dw=px('--hud-center-notice-width'),cw=size==='compact'?250:Math.min(380,390-32);
+      const det={x:px('--hud-notice-x')-dw/2,y:px('--hud-notice-top'),w:dw,h:detectionHeight(dw,false)};
+      const card={x:px('--hud-banner-x')-cw/2,y:px('--hud-banner-top'),w:cw,h:size==='compact'?40:76},g=MOUSE_NOTICE_GAP_PX;
+      const meets=card.x<det.x+det.w+g&&card.x+card.w>det.x-g&&card.y<det.y+det.h+g&&card.y+card.h>det.y-g;
+      assert.ok(!/f$/.test(lit)&&(litPlace==='deferred')===meets&&/w$/.test(lit)===meets,
+        `the lit detection holds the card exactly where their places meet, never marked as the feed's (${lit}, ${litPlace}, meets ${meets})`);
+    }
+    // A medal card queued while the revive count shows (a medal can arrive after the death) waits exactly where the two
+    // places meet: the written places (the card's centre and top, the count's centre, top and scale) decide it.
+    let met=0,apart=0;
+    const px=v=>parseFloat(v);
+    for(const [w,h] of [[1366,768],[1920,1080],[1024,600],[1280,720],[1600,900],[1024,768],[1440,900],[2560,1440]]){
+      const revive={offsetWidth:Math.min(390,w-32),offsetHeight:129};let banner=null;
+      const run=harness({width:w,height:h,inRoot:{'.cot-revive':()=>revive,'.cot-revive.on':()=>revive},
+        extra:node=>{banner=node();banner.childElementCount=1;return {'.cot-medal-toasts':banner};}});
+      const P=k=>run.properties.get(`--hud-${k}`);
+      const compact=banner.dataset.size==='compact',cw=compact?Math.min(250,w-24):Math.min(380,w-32),ch=compact?40:(w>640?85:76);
+      const card={x:px(P('banner-x'))-cw/2,y:px(P('banner-top')),w:cw,h:ch};
+      const s=Number(P('revive-scale')),count={x:px(P('revive-x'))-revive.offsetWidth*s/2,y:px(P('revive-top')),w:revive.offsetWidth*s,h:revive.offsetHeight*s};
+      const meet=card.x<count.x+count.w+8&&card.x+card.w>count.x-8&&card.y<count.y+count.h+8&&card.y+card.h>count.y-8;
+      if(meet)met++;else apart++;
+      assert.equal(banner.dataset.placement,meet?'deferred':'ready',`${w}x${h}: the medal card ${meet?'waits on':'shows beside'} the revive count`);
+      assert.equal(run.body.dataset.hudNoticeTiers.endsWith('w'),meet,`${w}x${h}: the tiers mark the waiting card`);
+    }
+    assert.ok(met>0,`the medal card met the revive count somewhere (${met} met, ${apart} apart)`);
+  } finally {
+    for(const [key,descriptor] of saved){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}
+  }
+}
+
 // Touch portrait, solved end to end (critic r3: the source pins above let the wiring drift). The measured 390x844
 // phone (tools/fixtures/battle-hud-layout.html in Chrome, layout-r3): the tray's collapsed slot at 468-520 parks the
 // systems row at 416, across the sight centred at 422; the lower cluster (speedometer 594, left FIRE 628, stick 702)
@@ -264,7 +449,8 @@ try {
 // the moved row. A taller portrait moves the row below the scope readouts, level with the tray and left of it, and the
 // lanes keep the floor the row's natural place gave them: a moved row lends them nothing.
 {
-  const saved = new Map(['document','window','ResizeObserver','MutationObserver','requestAnimationFrame','getComputedStyle']
+  const saved = new Map(['document','window','ResizeObserver','MutationObserver','requestAnimationFrame','getComputedStyle',
+    'setTimeout','clearTimeout']
     .map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
   const box = (top,bottom,left,right) => ({top,bottom,left,right,width:right-left,height:bottom-top,x:left,y:top});
   function solvePortrait(width, height, rects, rowWidth) {
@@ -286,6 +472,8 @@ try {
       addEventListener() {} };
     globalThis.getComputedStyle = () => ({ visibility: 'visible' });
     globalThis.requestAnimationFrame = (fn) => { frame = fn; return 1; };
+    // (a mouse pass arms the notice plan's resize-settle timer, mouseNoticePlan.ts: it must not outlive these stubs)
+    globalThis.setTimeout = () => 0; globalThis.clearTimeout = () => {};
     globalThis.ResizeObserver = class { observe() {} };
     globalThis.MutationObserver = class { observe() {} };
     const root = { getClientRects: () => [{}], dataset: {}, classList: { contains: () => false, toggle() {} },
@@ -342,7 +530,8 @@ try {
 // the left lane's speedometer sits level with the marker (800x400: 184-292 x 164-272) it waits hidden. Touch never moves
 // it, and the touch chip the reticle seats under the sight (data-seat) is the reticle's own mark, never furniture.
 {
-  const saved = new Map(['document','window','ResizeObserver','MutationObserver','requestAnimationFrame','getComputedStyle']
+  const saved = new Map(['document','window','ResizeObserver','MutationObserver','requestAnimationFrame','getComputedStyle',
+    'setTimeout','clearTimeout']
     .map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
   const box = (left,top,right,bottom) => ({top,bottom,left,right,width:right-left,height:bottom-top,x:left,y:top});
   function solve(width, height, rects, { touch = false, hidden = false } = {}) {
@@ -364,6 +553,8 @@ try {
       addEventListener() {} };
     globalThis.getComputedStyle = () => ({ visibility: 'visible', opacity: '1' });
     globalThis.requestAnimationFrame = (fn) => { frame = fn; return 1; };
+    // (a mouse pass arms the notice plan's resize-settle timer, mouseNoticePlan.ts: it must not outlive these stubs)
+    globalThis.setTimeout = () => 0; globalThis.clearTimeout = () => {};
     globalThis.ResizeObserver = class { observe() {} };
     globalThis.MutationObserver = class { observe() {} };
     const root = { getClientRects: () => [{}], dataset: {}, classList: { contains: () => false, toggle() {} },
@@ -433,7 +624,7 @@ try {
 }
 const layout=readFileSync(new URL('./battleHudLayout.ts',import.meta.url),'utf8');
 const hud=readFileSync(new URL('./hud.ts',import.meta.url),'utf8');
-assert.match(layout,/new ResizeObserver\(schedule\)/,'map zoom and roster size changes relayout the lanes');
+assert.match(layout,/new ResizeObserver\(\(entries\) => \{[^}]*?\n[^}]*?\n\s*schedule\(\);\n\s*\}\);/,'map zoom and roster size changes relayout the lanes (and mark the mouse notice plan\'s inputs)');
 assert.match(layout,/window\.addEventListener\('cot:layoutchange', schedule\)/,'virtual keyboard/visual viewport changes reflow through the shared layout event');
 assert.match(layout,/layoutViewportSize\(window\)/,'lanes measure the shared pinch-independent viewport');
 assert.doesNotMatch(layout,/visualViewport\?\.(width|height)/,'no raw visual viewport size (a pinch shrinks it)');
@@ -450,6 +641,25 @@ const browserProbe=readFileSync(new URL('../../tools/battle-hud-layout.browser.m
 const measureStart=browserProbe.indexOf('function measure(state){');
 const measureEnd=browserProbe.indexOf('\ntry {',measureStart);
 assert.ok(measureStart>=0&&measureEnd>measureStart);
+// The receipt's reading of a waiting medal card (medalWaitCause): a hidden card needs a cause the layout can name. A wait
+// on a kill row stands only where the layout marked it ('f': a lane its place cuts shows a row), on a phone-width window,
+// with the lane's shown rows meeting the card's place; a card held back by any kill row elsewhere (critic M7) fails.
+{
+  const start=browserProbe.indexOf('function medalWaitCause(');
+  const end=browserProbe.indexOf('\nfunction noticeMeasure(',start);
+  assert.ok(start>=0&&end>start,'the receipt names why a medal card waits in one function');
+  const cause=runInNewContext(`${browserProbe.slice(start,end)}\nmedalWaitCause`,{});
+  const lane=(x0,x1,y0,y1,shown)=>({staged:shown||3,shown,x:[x0,x1],y:[y0,y1]});
+  const stage=(tiers,lanes,notices={})=>({tiers,waitingMedal:[120,148,250,40],notices,lanes});
+  const phoneLanes={l:lane(0,171,221,308,3),r:lane(219,390,148,235,3)};
+  assert.equal(cause(stage('d2 a2 c? r? m2swf',phoneLanes),false,390),true,'a phone-width card waits on the rows of the lane its place cuts');
+  assert.equal(cause(stage('d2 a2 c? r? m2sw',phoneLanes),false,390),false,'not without the layout\'s mark (critic M7: a card held by any kill row)');
+  assert.equal(cause(stage('d2 a2 c? r? m2swf',phoneLanes),false,844),false,'nor on a desktop window (the receipt\'s desktop cases always leave the card a place that keeps the lanes whole: mouseNoticePlan.selftest.mjs 4c, 4f)');
+  assert.equal(cause(stage('d2 a2 c? r? m2swf',{l:lane(0,171,221,308,3),r:lane(219,390,148,235,0)}),false,390),false,'nor on a lane showing no row');
+  assert.equal(cause(stage('d2 a2 c? r? m2swf',{l:lane(0,171,221,308,3),r:lane(219,390,260,347,3)}),false,390),false,'nor on rows clear of its place');
+  assert.equal(cause(stage('d2 a2 c? r? m2sw',phoneLanes,{d:{box:[56,150,164,48]}}),false,390),true,'a shown notice on its place is a cause');
+  assert.equal(cause(stage('d2 a2 c? r? m1w',{}),true,844),true,'so is the scope over a place that clears the battle sight only');
+}
 function measurementFixture(nodes){
   const queries=[];let styleReads=0;
   const dataset={mode:'battle'};

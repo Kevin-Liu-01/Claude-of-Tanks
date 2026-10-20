@@ -2007,6 +2007,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout
     'src/ui/vehicleControlOrder.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',
+    // 2026-10-16 (desk notices): the mouse centre notices clear the reticle, the instruments and the lanes on every census size.
+    'src/ui/mouseNoticePlan.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',
     'src/ui/fonts.selftest.mjs',
