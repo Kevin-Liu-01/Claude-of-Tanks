@@ -9,10 +9,21 @@
 // Friedenssäule at its head, its forecourt open to the square. Thirteen oaks in rows on the two quarters, inside their
 // railings (the north quarter's church-side corner and the column's two left open: the church's front and the column
 // stand clear), more in iron grates in the paving east of the trade road, three screening the north-east lot. East of
-// the trade road, the Platz: the Wochenmarkt's row of Franconian stalls along the trade road's arm, a short row by the
-// south frontage, a kiosk, two Litfaßsäulen, two phone boxes, and the period cars parked at the kerb along the south
-// and east frontages (the 1980s' Golfs and W123 estates; no painted bays). Eleven gas lanterns join the town's: twelve
-// stand within 45 m of the crossing.
+// the trade road, the Platz: the Wochenmarkt's Franconian stalls, a row in the north-east lot and a short row by the
+// south frontage, a kiosk, two Litfaßsäulen, two phone boxes, and the period cars parked at the kerb along the south frontage and in the
+// lot (the 1980s' Golfs and W123 estates; no painted bays). Eleven gas lanterns join the town's: twelve stand within 45 m
+// of the crossing.
+// (228 r4, the gameplay critic's frontline battles: the attackers drive north over x -33..-38 into line-2's disc and
+// jostle within about 15 m of its point (-36, 37.9); the north market stood on that line and was crushed in every seed.
+// The north side's hull-high pieces stand off the driven line and every corridor's footprint, line-2's jostle disc is a
+// hold, and the cover across the Hauptstrasse is within a piece both counted narrow (stalls, kiosk, cars: north 4, south
+// 5) and wide (every piece 1.3 m and taller: north 6, south 7). The lane's ruling (the owner's free hand): in Frontline a
+// line's 30 m capture disc is the fight's ground, and its dressing is there to be used up as the craters and rubble are;
+// the balance across the Hauptstrasse is held at the start of every mode.)
+// (228 r5, the critic on r4, its two amendments taken into the ruling: the consumable ground is where the fight is, not
+// the lanes the hulls drive to and from it — no piece on a driven line — and the balance is held where each symmetric
+// mode fights: zone 2's 30 m disc (zone control, mars; the turbo kickoff the same seat) holds no hull-high piece either
+// side, its oaks north 3, south 4; the room-wide count stands as before.)
 // (228 r2, the blind critics on r1: the bay lines read as the car park the owner rejected, the oaks stood on the railing
 // lines, the church and the column were hidden behind crowns, the market was thin, a modern garage, a checkpoint hut and
 // oil drums stood about the room: each answered below.)
@@ -99,12 +110,17 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
     arms: [{ x0: ROOM.x0, x1: ROOM.x1, z0: -9, z1: 9 }, { x0: -58.5, x1: -41.5, z0: -41, z1: 41 }],
     // the study's routeheat (C11): the north-east diagonal to frontline line-2 and the spur to the ac130 extraction
     corridors: [
-      { from: [-22, 0], to: [-22, 24], half: 4 }, { from: [-22, 24], to: [-36, 38], half: 4 },
+      // (228 r5, the critic's D9: a hull cuts a lane's corner by its half-diagonal and the seeds' spread) the north-east
+      // lanes as wide as the driven tracks
+      { from: [-22, 0], to: [-22, 24], half: 5 }, { from: [-22, 24], to: [-36, 38], half: 4 },
       { from: [-50, 0], to: [-39.1, -9.7], half: 4 },
       // (228 r3, the gameplay critic: 108 of 140 seeded routes to frontline line-2 ran here, over the north market and
       // the north-east kerb row) the bots' two measured routes to line-2
       // (a half metre wider than the drawn ones: the routes' band is the seeds' spread)
-      { from: [0, 0], to: [-25, 25], half: 4.5 }, { from: [-25, 0], to: [-36, 37.9], half: 4.5 },
+      { from: [0, 0], to: [-25, 25], half: 6 }, { from: [-25, 0], to: [-36, 37.9], half: 5.5 },
+      // (228 r4, the gameplay critic's frontline battles: the hulls leave the Hauptstrasse at x -21..-27 and drive north
+      // along x -33..-38 into line-2's disc, over where the north market stood) the driven line
+      { from: [-24, 6], to: [-35.5, 14], half: 5 }, { from: [-35.5, 14], to: [-35.5, 37.9], half: 6 },
     ],
     // the ring lanes round the green (C12: 9 m, two hulls abreast): the west walk from the corner lot's garage north to the
     // church, the walks between the quarters and the church and the south frontage
@@ -115,7 +131,9 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
     ],
     // the ac130 extraction's seat (matchPlacement: the 8 m ring search's solid-free disc east of the crossing; the study's
     // modes probe), its convoy's 8 m kept clear of every piece and trunk
-    holds: [{ id: 'ac130-extraction', x: -39.1, z: -9.7, r: 8 }],
+    // (228 r4) and frontline line-2's point, where the attackers jostle once inside its 30 m capture disc (the critic's
+    // crush traces: within about 15 m of it), clear of every piece and trunk
+    holds: [{ id: 'ac130-extraction', x: -39.1, z: -9.7, r: 8 }, { id: 'frontline-line-2', x: -36, z: 37.9, r: 15 }],
     centre: { x: -50, z: 0, ringR: [8.0, 9.0], roseR: 3, rays: 8 },
     beds: [
       {
@@ -159,11 +177,13 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
         // the pits in the paving east of the trade road, and its east side (228 r3: the north three stood on the bots'
         // routes to line-2; they are left out)
         // (the south three half a metre east of the review's seats: the first's trunk clear of the extraction's 8 m disc)
-        { x: -30.5, z: -11, grate: true }, { x: -24, z: -11, grate: true }, { x: -17.5, z: -11, grate: true },
-        { x: -40, z: 33, grate: true }, { x: -40, z: -25, grate: true }, { x: -40, z: -33, grate: true },
+        // (228 r5, the critic's D12: zone 2's 30 m disc held north 3 oaks, south 6) the two west of these left out
+        { x: -17.5, z: -11, grate: true },
+        { x: -40, z: -25, grate: true }, { x: -40, z: -33, grate: true },
         // (the fill, 228 r1) a pit tree before the north row and on the trade road's east side south of the extraction's
         // disc (the walks round the green stay lanes: C12)
-        { x: -23.5, z: 33.5, grate: true }, { x: -40, z: -18.4, grate: true },
+        // (228 r4: the north row's two pits stood in line-2's jostle disc; left out)
+        { x: -40, z: -18.4, grate: true },
         // (228 r2) the south market's shade behind its stalls, and the south-west corner the garage left
         { x: -26, z: -30, grate: true }, { x: -19.3, z: -30, grate: true }, { x: -88.5, z: -37.5, grate: true },
         // the north-east lot's screen, and the Pfarrgarten behind the church
@@ -178,9 +198,9 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       { kind: 'bench', x: -67.0, z: -16.6, yawDeg: 180 }, { kind: 'bench', x: -76.0, z: -16.6, yawDeg: 180 },
       { kind: 'bench', x: -67.0, z: -23.0, yawDeg: 0 }, { kind: 'bench', x: -76.0, z: -23.0, yawDeg: 0 },
       // a bench under the north row's pit tree, facing the square
-      { kind: 'bench', x: -21.0, z: 35.6, yawDeg: 200 },
+      { kind: 'bench', x: -19.4, z: 35.2, yawDeg: 200 },
       // (228 r2) one by the north-east kerb parking facing the market, one behind the south row facing the square
-      { kind: 'bench', x: -17.8, z: 29.5, yawDeg: -90 }, { kind: 'bench', x: -33.0, z: -30.6, yawDeg: 0 },
+      { kind: 'bench', x: -17.8, z: 29.5, yawDeg: 90 },
       // the Brunnenplatz: two benches against the church's east flank, facing the Marktbrunnen
       { kind: 'bench', x: -69.0, z: 45.5, yawDeg: 90 }, { kind: 'bench', x: -69.0, z: 48.5, yawDeg: 90 },
       ...POLLER,
@@ -191,28 +211,36 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       // head stall at the aisle's north end, and a short row by the south frontage facing the square; crates at their backs
       // (228 r3: one row by the trade road's arm, west of the bots' routes to line-2; the south row three, the cover across
       // the Hauptstrasse within a piece)
-      ...[11.0, 14.5, 18.0, 21.5].map((z) => ({ kind: 'stall', x: -37.0, z, yawDeg: 90 })),
-      ...[-34.5, -31.0, -27.5].map((x) => ({ kind: 'stall', x, z: -24.0, yawDeg: 0 })),
-      { kind: 'crate', x: -38.7, z: 16.3, yawDeg: 12 }, { kind: 'crate', x: -38.6, z: 19.8, yawDeg: -8 },
-      { kind: 'crate', x: -32.9, z: -26.0, yawDeg: 17 }, { kind: 'crate', x: -26.0, z: -26.1, yawDeg: -11 },
-      // (228 r3b) a bench facing the Hauptstrasse where the north-east pit oak stood, off the bots' diagonal
-      { kind: 'bench', x: -17.5, z: 9.8, yawDeg: 180 },
+      // (228 r4, the gameplay critic: the bots drive north over x -33..-38 into line-2's disc and crushed the row there in
+      // every seed) the north row three stalls in the north-east lot facing the square, off the driven line and every
+      // corridor's footprint
+      // (228 r5: a metre and a half further from the diagonal lane, which the arriving hulls cut)
+      ...[24.5, 28.0, 31.5].map((z) => ({ kind: 'stall', x: -12.5, z, yawDeg: -90 })),
+      // (228 r5, the critic's D12: in zone control the south row stood in zone 2's 30 m disc as the north's cover did not)
+      // the south row back toward the frontage, out of the disc
+      ...[-34.5, -31.0].map((x) => ({ kind: 'stall', x, z: -29.0, yawDeg: 0 })),
+      // (228 r4: the cover across the Hauptstrasse within a piece) a bench where the south row's third stall stood
+      { kind: 'bench', x: -27.5, z: -24.6, yawDeg: 0 },
+      { kind: 'crate', x: -33.6, z: -31.3, yawDeg: 17 }, { kind: 'crate', x: -29.6, z: -31.2, yawDeg: -11 },
       // where the south row's fourth stall and the east kerb's cars stood: a bench and a planter
       { kind: 'bench', x: -12.5, z: -30.0, yawDeg: -90 }, { kind: 'pflanzkuebel', x: -12.5, z: -26.5, yawDeg: 0 },
       { kind: 'kiosk', x: -15.5, z: -14.5, yawDeg: -45 },
+      // (228 r4: the cover across the Hauptstrasse within a piece, the north market's row in the lot) planters where the
+      // south kerb's east two cars stood, a bench toward the kiosk
+      { kind: 'bench', x: -20.5, z: -23.0, yawDeg: 0 },
+      { kind: 'pflanzkuebel', x: -22.4, z: -37.2, yawDeg: 0 }, { kind: 'pflanzkuebel', x: -16.7, z: -37.2, yawDeg: 0 },
       // (228 r3: the north-east one stood on its tree's grate, then on the bots' route) by the north-east kerb parking
-      { kind: 'litfass', x: -31.5, z: -15.5, yawDeg: 0 }, { kind: 'litfass', x: -9.6, z: 24.0, yawDeg: 20 },
-      { kind: 'telzelle', x: -11.0, z: -21.0, yawDeg: -90 }, { kind: 'telzelle', x: -15.0, z: 33.5, yawDeg: -90 },
-      { kind: 'handcart', x: -39.2, z: 25.5, yawDeg: 160 },
+      // (228 r5: the south one out of zone 2's disc, by the planters)
+      { kind: 'litfass', x: -24.0, z: -21.0, yawDeg: 0 }, { kind: 'litfass', x: -17.0, z: 36.5, yawDeg: 20 },
+      { kind: 'telzelle', x: -11.0, z: -21.0, yawDeg: -90 }, { kind: 'telzelle', x: -10.0, z: 31.5, yawDeg: -90 },
     ],
     // (228 r2) the cars parked at the kerb, nose to tail along the south frontage and the east, a little off true (no
     // painted bays: the owner's "parking-lot lines" and the critics' "modern car park")
     parking: [
       { kind: 'wagon', x: -34.0, z: -37.2, yawDeg: 91.5 }, { kind: 'sedan', x: -28.3, z: -37.3, yawDeg: 88.5 },
-      { kind: 'wagon', x: -22.4, z: -37.15, yawDeg: 90.8 }, { kind: 'sedan', x: -16.7, z: -37.3, yawDeg: 89.2 },
       // (228 r3: the north-east row 3 m and more off the bots' diagonal to line-2; the east kerb's two left out)
-      { kind: 'sedan', x: -12.6, z: 21.5, yawDeg: 1.2 }, { kind: 'wagon', x: -12.55, z: 27.2, yawDeg: -0.8 },
-      { kind: 'wagon', x: -12.7, z: 32.9, yawDeg: 0.6 },
+      // (228 r4: the lot is the north market's now) one car at its north end
+      { kind: 'sedan', x: -14.2, z: 36.4, yawDeg: 0.6 },
     ],
     bayMarks: [],
     // (228 r2: the column's pair out on the granite band either side of its forecourt, wide of the plaques; the north
