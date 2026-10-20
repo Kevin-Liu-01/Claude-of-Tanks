@@ -25,7 +25,7 @@ function referenceTarget(entity, context, rangeM, from) {
   return target;
 }
 /** The lane: no ally in the friendly-fire corridor and (2026-10-19, roof guns hold fire where their rounds cannot hurt)
- * no wreck or seen enemy hull box the round would strike first. The hull box (its dims, yaw and mode scale) tested by
+ * no ally's, wreck's or seen enemy's hull box the round would strike first. The hull box (its dims, yaw and mode scale) tested by
  * separating axes, independently of the station's slab clipping. */
 function referenceLaneClear(shooter, target, context, a, b) {
   const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z, length = dx * dx + dy * dy + dz * dz;
@@ -35,6 +35,7 @@ function referenceLaneClear(shooter, target, context, a, b) {
       const p = other.state.pos, y = p.y + (other.spec.dims?.heightM ?? 2.5) * 0.5;
       const t = ((p.x - a.x) * dx + (y - a.y) * dy + (p.z - a.z) * dz) / (length || 1);
       if (t > 0 && t < 1 && (a.x + t * dx - p.x) ** 2 + (a.z + t * dz - p.z) ** 2 < 9 && Math.abs(a.y + t * dy - y) < 2.5) return false;
+      if (segmentCrossesBox(other, a, b)) return false;
       continue;
     }
     if (!other.combat.destroyed && !context.visible(other, shooter)) continue;
@@ -100,7 +101,8 @@ for (let n = 0; n < 4000; n++) {
   } else none++;
 }
 assert.ok(chosen > 1000 && none > 300, `both outcomes covered (${chosen} chosen, ${none} none)`);
-assert.ok(ties > 5, `equal distances covered (${ties})`);
+// (allies' hull boxes block some of the grid's lanes since 2026-10-19: five random ties, and two built below)
+assert.ok(ties >= 5, `equal distances covered (${ties})`);
 // the hull boxes in the lane (2026-10-19): rosters strung along the line to a far enemy, each hull within a few metres
 // of it at any yaw, footprint and mode scale — wrecks, seen and hidden enemies, allies — so the hull-box law decides
 let laneRosters = 0, hullBlocked = 0, hiddenPassed = 0;
