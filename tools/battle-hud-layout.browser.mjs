@@ -79,10 +79,11 @@ const LONG_ALERTS = ['wave123','autoAimLong','flagDroppedEnemy','ammoEmpty'];
 // (mouseNoticePlan.selftest.mjs lists the same: its last resort before any reticle ink).
 // Matched against the stage key ('<context>|<set>|<sight>').
 const EMPTY_LANES_OK={'mouse-768x600':/alert|revive|medal/,'mouse-481x700':/alert/,
-  // three up at once (the revive count beside both notices) on a phone; the medal card and the revive count on a short
-  // window without an objective (its left lane is one row deep)
+  // three up at once (the revive count beside both notices) on a phone; on a short window (its left lane one row deep)
+  // the medal card without an objective, and the revive count, which keeps off both notices' places: every such place
+  // clear of the resting sight crosses that lane
   'phone-mouse':/alert:[^|]*\+revive/,'chinese-phone-mouse':/alert:[^|]*\+revive/,
-  'short-mouse':/^std\|[^|]*(medal|revive)/,'chinese-short-mouse':/^std\|[^|]*(medal|revive)/};
+  'short-mouse':/^std\|[^|]*medal|revive/,'chinese-short-mouse':/^std\|[^|]*medal|revive/};
 // [key, fixture state, kill rows kept (null: as staged), rosters a side (null: 7), notice set ('' none), sight, Tab held]
 function noticeStages(){
   const out=[];

@@ -152,8 +152,10 @@ const TIER_FLOOR = { countdown: 2, revive: 1, medal: 1 };
 const LOW_TIER = { '844x390': { countdown: 0, revive: 0, medal: 1 }, '768x600': { revive: 0 }, '481x700': { countdown: 1, revive: 1 } };
 // A lane gives up its last row only where every place clear of the reticle crosses it (and only while the element
 // shows): the plan prices that as its last resort before any reticle ink.
-const ROW_PX = [62, 26];
-const EMPTIED = ['768x600 alert l', '768x600 medal l', '768x600 detection+alert l', '768x600s revive l', '768x600s medal l',
+// (a row needs 26 px; beside the left lane's damage toasts 62, where the lane is that tall: mouseNoticePlan.ts laneRowPx)
+const rowPx = (side, lane) => side === 0 && lane.bottom - lane.top >= 62 ? 62 : 26;
+// (844 x 390's left lane is one row deep, and every place off both notices clear of the resting sight crosses it)
+const EMPTIED = ['844x390 revive l', '768x600 alert l', '768x600 medal l', '768x600 detection+alert l', '768x600s revive l', '768x600s medal l',
   '481x700 alert r', '481x700 detection+alert r'];
 const emptied = [];
 let plans = 0, slowest = 0, ms = 0, work = 0, mostWork = 0;
@@ -208,7 +210,7 @@ for (const v of VIEWPORTS) {
         assert.ok(top >= lane.top && bottom <= lane.bottom, `${name}: the ${label}'s band lies in the lane`);
         // a row needs 26 px; beside the left lane's damage toasts 62
         // (the countdown runs before the first kill: its lanes hold none to keep)
-        if (label !== 'countdown' && bottom - top < ROW_PX[side] && lane.bottom - lane.top >= ROW_PX[side]) emptied.push(`${vp}${objective ? '' : 's'} ${label} ${side ? 'r' : 'l'}`);
+        if (label !== 'countdown' && bottom - top < rowPx(side, lane)) emptied.push(`${vp}${objective ? '' : 's'} ${label} ${side ? 'r' : 'l'}`);
         else assert.ok(!overlap(r, { x: lane.x, y: top, w: lane.w, h: bottom - top }, MOUSE_NOTICE_GAP_PX - .01), `${name}: the ${label} keeps off the ${side ? 'right' : 'left'} lane`);
       }
     }
@@ -219,7 +221,7 @@ for (const v of VIEWPORTS) {
       const pick = (v2, fallback, f) => Number.isNaN(v2) ? fallback : v2;
       const top = Math.max(pick(det.giveWay[side * 2], lane.top), pick(plan.alert.giveWay[side * 2], lane.top));
       const bottom = Math.min(pick(det.giveWay[side * 2 + 1], lane.bottom), pick(plan.alert.giveWay[side * 2 + 1], lane.bottom));
-      if (bottom - top < ROW_PX[side] && lane.bottom - lane.top >= ROW_PX[side]) emptied.push(`${vp}${objective ? '' : 's'} detection+alert ${side ? 'r' : 'l'}`);
+      if (bottom - top < rowPx(side, lane)) emptied.push(`${vp}${objective ? '' : 's'} detection+alert ${side ? 'r' : 'l'}`);
     }
     // Tab: a held roster widens up to the nearest element beside it, never narrower than it is
     for (const [ear, side] of [[v.earL, 0], [v.earR, 1]]) {
