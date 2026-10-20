@@ -43,13 +43,36 @@ assert.match(threeMark, /viewBox="0 0 226\.77 226\.77"/,
 
 assert.equal(manifest.libraryId, 'claude-of-tanks-landing-r1');
 assert.equal(manifest.schemaVersion, 1);
-assert.equal(manifest.hero.length, 6, 'hero has six reviewed in-engine stills');
-assert.deepEqual(manifest.hero.map((slide) => slide.id), picks.home.hero.map((slide) => slide.id),
-  'the hero shows the site fifty picks in their order');
-assert.ok(manifest.hero.every((slide) => slide.src.startsWith(`${site50}/stills/`)),
-  'every hero frame is a site fifty still (owner, 2026-10-11: replace the old media with the new)');
-assert.equal(new Set(manifest.hero.map((slide) => picks.takes[slide.id].map)).size, manifest.hero.length,
-  'each hero frame opens on a different battlefield');
+// (2026-10-19, the owner: "all our new frames need to go up with no removals of old ones"): the hero opens on six versus
+// stills (public/media/versus-r1) and keeps the six site fifty stills it showed before them; the screenshot rail adds the
+// combat round's duels and the 226/227 fleet takes before the eleven it had
+const versusManifest = JSON.parse(await readFile(resolve(root, 'public/media/versus-r1/manifest.json'), 'utf8'));
+const versusById = new Map(versusManifest.items.map((item) => [item.id, item]));
+const KEPT_HERO = ['s21-fields-assault', 's39-lakeside-village', 's26-minaret-fire', 's38-church-knockout', 's18-street-knockout',
+  's07-lake-shellfire'];
+const KEPT_RAIL = ['s05-barn-advance', 's26-minaret-fire', 's20-road-return-fire', 's21-fields-assault', 's24-ice-duel',
+  's23-village-crossroads', 's19-roof-tiles', 's06-farm-charge', 's08-market-push', 's27-caravanserai-kill', 's34-furnace-salvo'];
+assert.equal(manifest.hero.length, 12, 'the hero has twelve reviewed in-engine stills');
+assert.deepEqual(manifest.hero.map((slide) => slide.versus ?? slide.id), picks.home.hero.map((slide) => slide.versus ?? slide.id),
+  'the hero shows the picks in their order');
+assert.equal(manifest.hero.filter((slide) => slide.versus).length, 6, 'six versus stills');
+// (the owner, 2026-10-19: "the heroes should use the recommended i liked like the abrams", and of six duels in a row
+// "gets reptitive"): the SEPv3 opens, then a versus still and a site fifty slide in turn
+assert.equal(manifest.hero[0].versus, 'vs01-desert-abrams-t90m-r6', 'the hero opens on the SEPv3');
+manifest.hero.forEach((slide, i) => assert.equal(Boolean(slide.versus), i % 2 === 0,
+  `hero slide ${i + 1}: the versus stills and the site fifty slides take turns`));
+for (const slide of manifest.hero) {
+  if (slide.versus) assert.equal(slide.src, versusById.get(slide.versus)?.path, `${slide.versus} is a published versus still`);
+  else assert.ok(slide.src.startsWith(`${site50}/stills/`), `${slide.id} is a site fifty still`);
+}
+for (const id of KEPT_HERO) assert.ok(manifest.hero.some((slide) => slide.id === id), `${id} stays in the hero (no removals)`);
+const heroMap = (slide) => (slide.versus ? versusById.get(slide.versus).map : picks.takes[slide.id].map);
+assert.equal(new Set(manifest.hero.filter((slide) => slide.versus).map(heroMap)).size, 6, 'the versus slides open on six battlefields');
+assert.equal(new Set(manifest.hero.filter((slide) => !slide.versus).map(heroMap)).size, 6, 'the site fifty slides open on six battlefields');
+manifest.hero.forEach((slide, i) => {
+  const next = manifest.hero[(i + 1) % manifest.hero.length];
+  assert.notEqual(heroMap(slide), heroMap(next), `hero slides ${i + 1} and ${(i + 1) % manifest.hero.length + 1} show different battlefields`);
+});
 
 const heroMarkup = home.match(/<div class="v5-hero-rail"[^>]*>([\s\S]*?)<\/div>/)?.[1] || '';
 assert.equal(heroMarkup.includes('<video'), false, 'hero uses stills, not video');
@@ -59,10 +82,55 @@ assert.equal((heroMarkup.match(/data-hero-slide src=/g) || []).length, 1,
 assert.equal((heroMarkup.match(/data-hero-slide data-src=/g) || []).length, manifest.hero.length - 1,
   'rotating hero frames are hydrated only when their turn approaches');
 for (const slide of manifest.hero) {
-  assert.equal(heroMarkup.includes(`src="${slide.src}"`), true, `${slide.id} is mounted in the hero`);
+  const name = slide.versus ?? slide.id;
+  assert.equal(heroMarkup.includes(`src="${slide.src}"`), true, `${name} is mounted in the hero`);
   const file = resolve(root, 'public', slide.src.replace(/^\//, ''));
-  assert.ok((await stat(file)).size > 50_000, `${slide.id} is a substantial image`);
+  assert.ok((await stat(file)).size > 50_000, `${name} is a substantial image`);
 }
+assert.equal(home.includes(`<link rel="preload" href="${manifest.hero[0].src}" as="image" type="image/webp" fetchpriority="high">`), true,
+  'the first hero slide is the preloaded LCP image');
+
+// the screenshot rail: the picks in their order, the eleven of 2026-10-19 kept after the new ones
+const railMarkup = home.match(/<div class="v5-shot-rail"[^>]*>([\s\S]*?)<\/div>/)?.[1] || '';
+assert.deepEqual(manifest.rail.map((shot) => shot.id), picks.home.rail, 'the rail shows the picks in their order');
+assert.equal((railMarkup.match(/<figure>/g) || []).length, picks.home.rail.length);
+for (const id of KEPT_RAIL) assert.ok(picks.home.rail.includes(id), `${id} stays in the rail (no removals)`);
+assert.ok(picks.home.rail.length > KEPT_RAIL.length, 'the rail adds the new renders');
+assert.match(home, new RegExp(`<span data-shot-position aria-live="polite">1 / ${picks.home.rail.length}</span>`));
+for (const shot of manifest.rail) {
+  assert.equal(railMarkup.includes(`data-deferred-src="${shot.src}"`), true, `${shot.id} is mounted in the rail`);
+  assert.ok((await stat(resolve(root, 'public', shot.src.slice(1)))).size > 50_000, `${shot.id} is a substantial image`);
+}
+
+// the versus wall: every versus still, lazily loaded, with its matchup and its place
+const versusMarkup = home.match(/<div class="v5-versus-wall">([\s\S]*?)\n[ \t]*<\/div>/)?.[1] || '';
+assert.deepEqual(manifest.versus.map((v) => v.id), picks.home.versus, 'the versus wall shows the picks in their order');
+assert.deepEqual([...picks.home.versus].sort(), versusManifest.items.map((item) => item.id).sort(), 'every versus still is on the wall');
+assert.equal((versusMarkup.match(/<figure>/g) || []).length, picks.home.versus.length);
+for (const v of manifest.versus) {
+  assert.equal(v.src, versusById.get(v.id).path);
+  assert.match(versusMarkup, new RegExp(`<img src="${v.src}" alt="[^"]+" data-i18n-alt="media\\.versus\\.title\\.[A-Za-z0-9]+" width="\\d+" height="\\d+" loading="lazy" decoding="async"><figcaption><b data-i18n="media\\.versus\\.match\\.[A-Za-z0-9]+">[^<]+</b><span data-i18n="media\\.versus\\.place\\.[A-Za-z0-9]+">[^<]+</span></figcaption>`),
+    `${v.id} is on the wall with its caption`);
+}
+
+// the trailers row: each trailer plays on a click and loads nothing before the row nears the viewport (no poster
+// attribute in the markup, preload none; publicPages.ts sets the poster)
+const trailerMarkup = home.match(/<div class="v5-trailer-grid" data-trailer-row>([\s\S]*?)\n[ \t]*<\/div>/)?.[1] || '';
+assert.deepEqual(manifest.trailers.map((f) => f.film), picks.home.trailers);
+assert.ok(picks.home.trailers.every((film) => picks.films.includes(film)), 'the row plays the films the site ships');
+assert.equal((trailerMarkup.match(/<video /g) || []).length, picks.home.trailers.length);
+for (const film of manifest.trailers) {
+  const tag = trailerMarkup.match(new RegExp(`<video [^>]*data-poster="${film.poster}"[^>]*>`))?.[0] || '';
+  assert.ok(tag.includes('controls') && tag.includes('preload="none"') && tag.includes('data-trailer'), `${film.film} plays on a click`);
+  assert.equal(/\sposter=/.test(tag), false, `${film.film} loads its poster only near the viewport`);
+  assert.equal(trailerMarkup.includes(`<source src="${film.webm}" type="video/webm"><source src="${film.mp4}" type="video/mp4">`), true,
+    `${film.film}: its webm, then its mp4`);
+  for (const path of [film.webm, film.mp4, film.poster]) assert.ok((await stat(resolve(root, 'public', path.slice(1)))).size > 100_000, `${path} ships`);
+}
+assert.match(publicPages, /function mountTrailerRow\(row(?:: HTMLElement)?\)/, 'the trailers row loads its posters and plays one at a time');
+// every other landing video is an autoplay loop gated on the viewport
+assert.equal([...home.matchAll(/<video (?![^>]*data-trailer)[^>]*>/g)].every((m) => m[0].includes('data-autoplay-video')), true,
+  'every video outside the trailers row is a viewport-gated loop');
 
 assert.equal(manifest.featureReel.video, `${site50}/films/reel.mp4`);
 // the reel's light web encode (2026-10-14): 1600x900 under its 4.3 Mbit/s cap; site-media-wire.mjs records the file's size
