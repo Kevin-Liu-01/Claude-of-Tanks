@@ -54,6 +54,10 @@ export interface MouseNoticeInput {
   readonly top: number;
   /** Fixed instruments the notices keep MOUSE_NOTICE_GAP_PX off (each roster down to its Tab-expanded height). */
   readonly obstacles: readonly PlanRect[];
+  /** The HUD's panels and controls among them that the reticle's marks keep clear of (sightFurniture.ts: not the report,
+   *  the network readouts or the flight console); where one sits under the sight the keep-out takes the places the marks
+   *  move to (mouseReticleFootprint). None: the marks in their first places. */
+  readonly furniture?: readonly PlanRect[];
   /** [left, right]; null where the lane cannot hold one row. */
   readonly lanes: readonly [PlanLane | null, PlanLane | null];
   /** main sets the alert in 9 px type here (h <= 550 or w <= 480). */
@@ -109,65 +113,364 @@ export const MOUSE_RETICLE_MARGIN_PX = 4;
 const EDGE_PX = 12;
 
 /**
- * The reticle as hud.ts draws it on .cot-ret (CSS px offsets from the aim point). mouseNoticePlan.selftest.mjs pins
- * each source line these restate, and the browser receipt checks the rendered ink lies inside the footprint.
+ * The reticle as hud.ts draws it on .cot-ret (CSS px offsets from the aim point), after the out-of-ammo rounds (r10):
+ * the marks under the marker, the gun-limit chip and the scope's readout row each keep 3 px from the ring, from one
+ * another and from the HUD's panels and controls (sightFurniture.ts), so where the furniture sits under the sight the HUD
+ * moves them over the ring or beside the column under the marker (mouseReticleFootprint replays those choices).
+ * mouseNoticePlan.selftest.mjs pins each source line these restate, and the browser receipt checks the rendered ink,
+ * out-of-ammo marks included, lies inside the footprint.
  */
 export const MOUSE_RETICLE = Object.freeze({
   /** RET_FLOOR_PX, RET_CEIL_FRAC: the dispersion ring's radius range; the dashed stroke and its halo add 2.5 px. */
   ringFloorPx: 11, ringCeilFraction: .15, ringStrokePx: 2.5,
-  /** paintAutoloaderMagazine / paintReloadCountdown under the marker in both sights (SWITCHING is the widest). */
-  stackTopPx: 8, stackBottomPx: 70, stackHalfWidthPx: 58,
-  /** paintAimWarning: the chip's centre at cy + max(62, r + 24), its box 16 px above and 13 below; text + 50 wide. */
-  chipMinPx: 62, chipRingPx: 24, chipAbovePx: 16, chipBelowPx: 13, chipHalfWidthPx: 92,
+  /** RING_STROKE_REACH, SIGHT_MARK_RING_GAP: how far hud.ts reckons the ring's stroke past its radius, and the gap its marks
+   *  keep from the ring, from each other and from the furniture. Those extents place the marks; their ink reaches further:
+   *  the countdown, the chip, the scope's readouts and range tag are painted under shadowBlur 3 (inkPadPx past each side,
+   *  the measured ink 16 px over the chip's baseline and 13 under), the zoom plate's ink 9 px under its baseline, and the
+   *  marks' antialiasing 1 px. */
+  ringReachPx: 1.5, markGapPx: 3, inkPadPx: 3, zoomInkBelowPx: 9,
+  /** centerClearanceRadius: 14 px in the battle sight, 14 + (zoomScale - 1) * 9 in the scope (zoomScale at most 1.8). */
+  clearCentrePx: 14, scopeClearCentrePx: 21.2,
+  /** The column under the marker (paintAutoloaderMagazine, paintDryRound, paintReloadCountdown): SWITCHING and the countdown
+   *  under a small ring (stack*); the empty mark 6 px under the clear centre, or 3 px under a ring that crosses it
+   *  (sightMarkTop, belowRing), its strike 3 px over its top: a struck round 17 px tall (19 in the scope) or a struck rack
+   *  (2.25 px arc, 14 / 16 px shells; four 5.5 / 6.5 px shells 3.5 / 4 px apart: 24 px either side with the strike); the
+   *  countdown, 16 px type (13.12 px of ink; SWITCHING about 76 px wide), 3 px under it, or set beside a rack, left: 76 px
+   *  from the centre to the rack's side. */
+  stackTopPx: 8, stackBottomPx: 70, stackHalfWidthPx: 58, markHalfWidthPx: 24, countdownPx: 13.12, countdownHalfWidthPx: 40,
+  besideCountdownPx: 76,
+  /** placeAimWarning: the chip's baseline at cy + max(62, r + 24), or 3 px under the column's marks (its ink 14 px over
+   *  the baseline, AIM_WARNING_CHIP_ABOVE, and 10 under); text + 50 wide. */
+  chipMinPx: 62, chipRingPx: 24, chipAbovePx: 14, chipBelowPx: 10, chipHalfWidthPx: 92,
   /** drawScope: arms from the ring to 1.55 r + 3, a 2.4 px under-stroke and mil ticks either side. */
   armFactor: 1.55, armPx: 3 + 1.3, armHalfWidthPx: 6.5,
-  /** paintSniperAmmoReadout / paintSniperZoom: ammunition then zoom 24 px (18 at <= 300 tall) under it. */
-  readoutHalfWidthPx: 62, readoutAbovePx: 15, readoutBelowPx: 9,
-  /** paintSniperDistance: "1500 m" off the ring's 4:30 point. */
-  rangeWidthPx: 60, rangeAbovePx: 13, rangeBelowPx: 6,
-  /** .cot-scope-vision (aerialHud.css): top 50% + 145px, min-height 48, on every scoped frame. */
-  visionTopPx: 145, visionHeightPx: 50, visionHalfWidthPx: 100,
+  /** sniperReadoutStack: the readout line (digits 10 px over the baseline; a leading struck round 14.7 over and 4.7 under)
+   *  centred under the marker, about 124 px wide; the zoom plate 24 px (18 at <= 300 tall) under it, or 16 px right of it
+   *  (TAG_GROUP_GAP), 11.9 px over its baseline and 1.3 under, about 105 px wide. */
+  readoutHalfWidthPx: 62, readoutAbovePx: 14.7, readoutBelowPx: 4.7, zoomHalfWidthPx: 53, zoomWidthPx: 105,
+  zoomAbovePx: 11.9, zoomBelowPx: 1.3, rowGroupPx: 16,
+  /** sniperDistanceTag: "1500 m" off the ring's 4:30 point, past a rack (its half width + 6: 25 px), or hung at the 1:30
+   *  (3.5 px over the marker's offset) where the furniture sits at the 4:30. */
+  rangeWidthPx: 60, rangeAbovePx: 13, rangeBelowPx: 6, rangeRackPx: 25, rangeOverPx: 3.5,
+  /** .cot-scope-vision (aerialHud.css): beside the sight, level with the marker (48 px tall, SCOPE_VISION_HALF_H), its
+   *  left edge at min(50% + max(15vmin + 8px, 80px), 100% - 180px) (100% - 112px for the 104 px plate under 540 px wide),
+   *  or the mirror seat left of the sight (battleHudLayout seatScopeVision). */
+  visionReachPx: 8, visionMinReachPx: 80, visionEdgePx: 180, visionCompactEdgePx: 112, visionWidthPx: 168,
+  visionCompactWidthPx: 104, visionHalfHeightPx: 24,
 });
 
-/** sniperAmmoReadoutY (hud.ts): the scope's ammunition baseline below the aim point for ring radius `r`. */
-function ammoOffset(height: number, r: number): number {
+/** The scope readout line's rest under the aim point at ring radius `r` (sniperReadoutStack: 32 px at <= 300 tall, 48 at
+ *  <= 430, else over the controls). */
+function readoutRest(height: number, r: number): number {
   if (height <= 300) return 32;
-  if (height <= 430) return 44;
+  if (height <= 430) return 48;
   return Math.min(Math.max(r * 1.02 + 24, r * 1.55 + 18, 96), height - 176 - height / 2);
 }
 
+/** How far a box keeps from the nearest furniture box (Infinity with none), as sightFurnitureGap reckons it. */
+function furnitureGap(furniture: readonly PlanRect[], x0: number, y0: number, x1: number, y1: number): number {
+  let gap = Infinity;
+  for (const f of furniture) gap = Math.min(gap, Math.max(f.x - x1, x0 - (f.x + f.w), f.y - y1, y0 - (f.y + f.h)));
+  return gap;
+}
+
+/** The scope row's places, in hud.ts's order (SNIPER_ROW_PLACES): mode, the chip set over the sight, the zoom plate left
+ *  out, a place only a chip makes different. */
+const ROW_PLACES = [
+  ['stack', false, false, false], ['zoomBeside', false, false, false], ['chipBeside', false, false, true],
+  ['stack', true, false, true], ['zoomBeside', true, false, true], ['rowBeside', false, false, false],
+  ['rowAbove', false, false, false], ['rowAbove', true, false, true], ['stack', false, true, false], ['stack', true, true, true],
+  ['rowAbove', false, true, false], ['rowAbove', true, true, true],
+] as const;
+type RowMode = typeof ROW_PLACES[number][0];
+
+/** The choices a sight's heaviest case makes at the widest ring (sightMarks), replayed at the smallest; `rows`: how many of
+ *  ROW_PLACES it tried, the last the one it seated. */
+interface SightChoices { markUp: boolean; countdown: 'under' | 'beside' | 'over'; chipUp: boolean; tagUp: boolean; rows: number }
+
+/**
+ * The marks of one sight at ring radius `r`, pushed as boxes [x0, y0, x1, y1] into `boxes`: its heaviest case (a struck
+ * mark or a reloading rack with its countdown, the chip with `chip`, the scope's range tag and readout row with `scope`)
+ * where hud.ts places them. With `choose` the choices are made from `furniture` and written to `made`; otherwise `made`
+ * is replayed, so the same boxes come out in the same order. The row's boxes are those of every place tried, the last the
+ * one seated. The range tag is left to the caller (it moves diagonally with the bloom).
+ */
+function sightMarks(boxes: number[], width: number, height: number, r: number, scope: boolean, chip: boolean,
+  furniture: readonly PlanRect[], choose: boolean, made: SightChoices): void {
+  const R = MOUSE_RETICLE, g = R.markGapPx, cx = width / 2, cy = height / 2;
+  const gap = (x0: number, y0: number, x1: number, y1: number) => furnitureGap(furniture, x0, y0, x1, y1);
+  const room = (x0: number, y0: number, x1: number, y1: number) => Math.min(gap(x0, y0, x1, y1), x0, y0, width - x1, height - y1);
+  const pad = R.inkPadPx;
+  const push = (x0: number, y0: number, x1: number, y1: number, ink: number = pad) => { boxes.push(x0 - ink, y0 - ink, x1 + ink, y1 + ink); };
+  const ring = r + R.ringReachPx;
+  /** How far a box keeps from the ring's stroke (ringGap: negative where the ring runs through it). */
+  const ringGap = (x0: number, y0: number, x1: number, y1: number) => {
+    const near = Math.hypot(Math.max(x0 - cx, 0, cx - x1), Math.max(y0 - cy, 0, cy - y1));
+    const far = Math.max(Math.hypot(x0 - cx, y0 - cy), Math.hypot(x1 - cx, y0 - cy), Math.hypot(x0 - cx, y1 - cy), Math.hypot(x1 - cx, y1 - cy));
+    return Math.max(near - ring, r - R.ringReachPx - far);
+  };
+  const belowRing = cy + ring + g;
+  const centre = scope ? R.scopeClearCentrePx : R.clearCentrePx;
+  // aboveSightTop: the ring's stroke, the marker's clear centre and any mark already set over the ring
+  let aboveTop = cy - Math.max(ring, centre);
+  // the empty mark (sightColumnTop), over the ring where the furniture sits under it and over it keeps clear; the compact
+  // scope stack (compactSniperStack: 430 px tall or less) leads its readout line with the struck round instead, so its
+  // column holds a rack at most (2.25 px arc, 16 px shells, 3 px strike)
+  const compact = scope && height <= 430;
+  const markH = compact ? 2.25 + 16 + g : (scope ? 19 : 17) + g, half = R.markHalfWidthPx;
+  let top = cy + centre + 6;
+  if (ringGap(cx - half, top - g, cx + half, top + markH) < g) top = belowRing + g;
+  // (a choice this sight or case never makes stays as a lighter case makes it, so runs of rings compare by what matters)
+  if (choose) { made.tagUp = false; made.chipUp = false; made.rows = 1; }
+  if (choose) {
+    const up = aboveTop - g - markH;
+    made.markUp = gap(cx - half, top - g, cx + half, top + markH) < g && gap(cx - half, up - g, cx + half, up + markH) >= g;
+  }
+  if (made.markUp) { top = aboveTop - g - markH; aboveTop = top - g; }
+  push(cx - half, top - g, cx + half, top + markH, 1);
+  const markBottom = top + markH;
+  // the range tag (sniperDistanceTag): the countdown, the chip and the row keep off it
+  const offset = .7071 * (r + 9), tagX = cx + Math.max(offset, R.rangeRackPx) + 4;
+  let tagY = cy + offset + 12, tagTop = Infinity;
+  if (scope) {
+    if (choose) {
+      const y = cy - offset - R.rangeOverPx - 1;
+      made.tagUp = gap(tagX, tagY - 9, tagX + R.rangeWidthPx, tagY + 1) < g && gap(tagX, y - 9, tagX + R.rangeWidthPx, y + 1) >= g;
+    }
+    if (made.tagUp) { tagY = cy - offset - R.rangeOverPx - 1; tagTop = tagY - 9; }
+  }
+  // the countdown 3 px under the mark; beside the rack, left, or over the sight where the furniture sits under it
+  const ch = R.countdownPx, cw = R.countdownHalfWidthPx;
+  const sideTop = markBottom - g - 2 - ch, overTop = () => Math.min(aboveTop, tagTop - g) - g - ch;
+  if (choose) {
+    // beside the rack, left, in the compact stack or where under it the readout line would sink past its rest
+    // (underRackSinks), where the ring keeps clear of it there
+    const sinks = scope && markBottom + g + ch + 3 + 10 > height - 176;
+    made.countdown = (compact || sinks) && ringGap(cx - R.besideCountdownPx, sideTop, cx - half, sideTop + ch) >= g ? 'beside' : 'under';
+    const under = Math.max(markBottom + g, ringGap(cx - cw, markBottom + g, cx + cw, markBottom + g + ch) < g ? belowRing : 0);
+    if (made.countdown === 'under' && gap(cx - cw, under, cx + cw, under + ch) < g) {
+      if (gap(cx - R.besideCountdownPx, sideTop, cx - half, sideTop + ch) >= g) made.countdown = 'beside';
+      else if (gap(cx - cw, overTop(), cx + cw, overTop() + ch) >= g) made.countdown = 'over';
+    }
+  }
+  let cdTop = markBottom + g;
+  if (ringGap(cx - cw, cdTop, cx + cw, cdTop + ch) < g) cdTop = Math.max(cdTop, belowRing);
+  if (made.countdown === 'beside') push(cx - R.besideCountdownPx, sideTop, cx - half, sideTop + ch);
+  else {
+    if (made.countdown === 'over') { cdTop = overTop(); aboveTop = Math.min(aboveTop, cdTop); }
+    push(cx - cw, cdTop, cx + cw, cdTop + ch);
+  }
+  const cdBottom = made.countdown === 'under' ? cdTop + ch : 0;
+  // the chip under the marker and 3 px under the column's marks and a tag at the 4:30; over the sight (sniperChipAboveY)
+  // where the furniture sits under it and over it reaches less far into it
+  const chipHalf = R.chipHalfWidthPx;
+  const chipOver = Math.min(aboveTop, cy - R.visionHalfHeightPx, tagTop) - g - R.chipBelowPx;
+  let chipBase = 0;
+  if (chip) {
+    chipBase = Math.max(cy + Math.max(R.chipMinPx, r + R.chipRingPx), markBottom + g + R.chipAbovePx,
+      cdBottom && cdBottom + g + R.chipAbovePx, scope && !made.tagUp ? tagY + 1 + g + R.chipAbovePx : 0);
+    if (ringGap(cx - chipHalf, chipBase - R.chipAbovePx, cx + chipHalf, chipBase + R.chipBelowPx) < g) {
+      chipBase = Math.max(chipBase, belowRing + R.chipAbovePx);
+    }
+    if (choose) {
+      const under = gap(cx - chipHalf, chipBase - R.chipAbovePx, cx + chipHalf, chipBase + R.chipBelowPx);
+      made.chipUp = under < g && gap(cx - chipHalf, chipOver - R.chipAbovePx, cx + chipHalf, chipOver + R.chipBelowPx) > under;
+    }
+    if (made.chipUp) chipBase = chipOver;
+    push(cx - chipHalf, chipBase - R.chipAbovePx, cx + chipHalf, chipBase + R.chipBelowPx);
+  }
+  if (!scope) return;
+  // The readout row (sniperReadoutStack), each place in order until one keeps 3 px from the furniture and the screen's
+  // edges: every place tried is one a lighter case (a smaller ring, fewer marks) may seat.
+  const rest = cy + readoutRest(height, r), drop = height <= 300 ? 18 : 24;
+  const lineHalf = R.readoutHalfWidthPx, group = R.rowGroupPx, chipW = chipHalf * 2;
+  const columnRight = cx + Math.max(half, cw) + group;
+  const parts = ROW_PARTS;
+  const rowParts = (mode: RowMode, noZoom: boolean, y: number) => {
+    parts.length = 0;
+    const x0 = mode === 'rowBeside' ? columnRight : cx - lineHalf, x1 = x0 + lineHalf * 2;
+    parts.push(x0, y - R.readoutAbovePx, x1, y + R.readoutBelowPx);
+    if (!noZoom && mode === 'stack') {
+      parts.push(cx - R.zoomHalfWidthPx, y + drop - R.zoomAbovePx, cx + R.zoomHalfWidthPx, y + drop + R.zoomBelowPx);
+    } else if (!noZoom) parts.push(x1 + group, y - R.zoomAbovePx, x1 + group + R.zoomWidthPx, y + R.zoomBelowPx);
+    if (mode === 'chipBeside') parts.push(cx - lineHalf - group - chipW, y - R.chipAbovePx, cx - lineHalf - group, y + R.chipBelowPx);
+  };
+  const rowTop = (mode: RowMode) => mode === 'chipBeside' ? Math.max(R.readoutAbovePx, R.chipAbovePx) : R.readoutAbovePx;
+  /** sightFurnitureRise over the row's parts: the baseline at or over `y` keeping 3 px over the furniture under them. */
+  const rise = (mode: RowMode, noZoom: boolean, y: number) => {
+    for (let pass = 0; pass < 4; pass++) {
+      rowParts(mode, noZoom, y);
+      let moved = false;
+      for (let i = 0; i < parts.length && !moved; i += 4) {
+        const x0 = parts[i], x1 = parts[i + 2], up = y - parts[i + 1], foot = parts[i + 3] - y;
+        for (const f of furniture) {
+          if (f.x - x1 >= g || x0 - (f.x + f.w) >= g || f.y + f.h + g <= y - up || f.y - g >= y + foot || f.y < y - up) continue;
+          y = f.y - g - foot; moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+    return y;
+  };
+  let tried = 0;
+  const places = choose ? ROW_PLACES.length : made.rows;
+  for (let i = 0; i < places; i++) {
+    const [mode, over, noZoom, needsChip] = ROW_PLACES[i];
+    if (needsChip && !chip) continue;
+    // (rowBeside sets a chip over the sight)
+    const chipAbove = over || (mode === 'rowBeside' && chip);
+    let y: number, chipY = chipAbove ? chipOver : chipBase;
+    if (mode === 'rowAbove') {
+      // its foot 3 px over the ring, the marker's clear centre, the marks set over it, the vision switch level with the
+      // marker and a tag hung at the 1:30; the chip over it
+      // (over a chip placeAimWarning set over the sight already)
+      y = Math.min(aboveTop, cy - R.visionHalfHeightPx, tagTop, made.chipUp && chip ? chipBase - R.chipAbovePx : Infinity)
+        - g - R.readoutBelowPx;
+      if (chipAbove) chipY = Math.min(y - R.readoutAbovePx, tagTop) - g - R.chipBelowPx;
+    } else {
+      // risen from its rest past the furniture under it, then 3 px under the column's marks, the chip, a tag at the 4:30
+      // over its columns and the ring
+      const column = mode !== 'rowBeside', chipInColumn = chip && mode !== 'chipBeside' && !chipAbove;
+      const t = rowTop(mode);
+      rowParts(mode, noZoom, 0);
+      let right = -Infinity;
+      for (let p = 0; p < parts.length; p += 4) right = Math.max(right, parts[p + 2]);
+      y = Math.max(rise(mode, noZoom, rest), column ? markBottom + g + t : 0, column && cdBottom ? cdBottom + g + t : 0,
+        chipInColumn ? chipBase + R.chipBelowPx + g + t : 0, scope && !made.tagUp && tagX < right + g ? tagY + 1 + g + t : 0);
+      rowParts(mode, noZoom, y);
+      for (let p = 0; p < parts.length; p += 4) {
+        if (ringGap(parts[p], parts[p + 1], parts[p + 2], parts[p + 3]) < g) { y = Math.max(y, belowRing + t); break; }
+      }
+    }
+    rowParts(mode, noZoom, y);
+    let clear = Infinity;
+    for (let p = 0; p < parts.length; p += 4) {
+      // (the zoom plate, the row's second part where it has one, inks 9 px under its baseline)
+      const zoom = p === 4 && !noZoom, inkFoot = zoom ? (mode === 'stack' ? y + drop : y) + R.zoomInkBelowPx - pad : parts[p + 3];
+      push(parts[p], parts[p + 1], parts[p + 2], Math.max(parts[p + 3], inkFoot));
+      clear = Math.min(clear, room(parts[p], parts[p + 1], parts[p + 2], parts[p + 3]));
+    }
+    if (chip && mode !== 'chipBeside') {
+      push(cx - chipHalf, chipY - R.chipAbovePx, cx + chipHalf, chipY + R.chipBelowPx);
+      clear = Math.min(clear, room(cx - chipHalf, chipY - R.chipAbovePx, cx + chipHalf, chipY + R.chipBelowPx));
+    }
+    tried = i + 1;
+    if (choose && clear >= g) break;
+  }
+  if (choose) made.rows = tried;
+}
+
+const ROW_PARTS: number[] = [];
+const SIGHT_BOXES: number[] = [];
+/** The rings the heaviest case's choices are made at, between the smallest and the widest (mouseReticleFootprint). */
+const RADII = 8;
+const CHOICES: SightChoices[] = Array.from({ length: RADII + 1 }, () => ({ markUp: false, countdown: 'under', chipUp: false, tagUp: false, rows: 0 }));
+const sameChoices = (a: SightChoices, b: SightChoices) => a.markUp === b.markUp && a.countdown === b.countdown && a.chipUp === b.chipUp
+  && a.tagUp === b.tagUp && a.rows === b.rows;
+
 /**
  * The reticle's keep-out at `tier`: 2 everything either sight draws at any bloom (the default), 1 the battle sight
- * at full bloom with its readouts and gun-limit chip, 0 the resting battle sight with its readouts.
+ * at full bloom with its readouts and gun-limit chip, 0 the resting battle sight with its readouts. `furniture` is what the
+ * HUD's marks keep 3 px from (battleHudLayout measures the same panels and controls for sightFurniture.ts): each sight's
+ * heaviest case makes hud.ts's choices at the tier's widest ring (a mark or the countdown over the ring, the chip over
+ * the sight, the range tag at the 1:30, the readout row's places in order), and each place it takes or tries is swept
+ * down to the smallest ring; the marks in their first places are swept too, as a lighter case seats them, and so are
+ * the chip and the row with nothing over them.
  */
-export function mouseReticleFootprint(width: number, height: number, tier: 0 | 1 | 2 = 2, out: PlanKeepOut[] = []): PlanKeepOut[] {
+export function mouseReticleFootprint(width: number, height: number, tier: 0 | 1 | 2 = 2, out: PlanKeepOut[] = [],
+  furniture: readonly PlanRect[] = NONE): PlanKeepOut[] {
   const R = MOUSE_RETICLE;
   out.length = 0;
   const cx = width / 2, cy = height / 2;
   const floor = R.ringFloorPx;
   const ceil = Math.max(floor, R.ringCeilFraction * Math.min(width, height));
-  out.push({ cx, cy, r: (tier === 0 ? floor : ceil) + R.ringStrokePx });
-  out.push({ x: cx - R.stackHalfWidthPx, y: cy + R.stackTopPx, w: R.stackHalfWidthPx * 2, h: R.stackBottomPx - R.stackTopPx });
-  if (tier === 0) return out;
-  const chipTop = cy + R.chipMinPx - R.chipAbovePx;
-  out.push({ x: cx - R.chipHalfWidthPx, y: chipTop, w: R.chipHalfWidthPx * 2,
-    h: cy + Math.max(R.chipMinPx, ceil + R.chipRingPx) + R.chipBelowPx - chipTop });
-  if (tier === 1) return out;
-  const arm = ceil * R.armFactor + R.armPx;
-  out.push({ x: cx - R.armHalfWidthPx, y: cy - arm, w: R.armHalfWidthPx * 2, h: arm * 2 });
-  out.push({ x: cx - arm, y: cy - R.armHalfWidthPx, w: arm * 2, h: R.armHalfWidthPx * 2 });
-  const zoomGap = height <= 300 ? 18 : 24;
-  const readTop = cy + ammoOffset(height, floor) - R.readoutAbovePx;
-  out.push({ x: cx - R.readoutHalfWidthPx, y: readTop, w: R.readoutHalfWidthPx * 2,
-    h: cy + ammoOffset(height, ceil) + zoomGap + R.readoutBelowPx - readTop });
-  // The range tag rides the ring outward as it blooms: four boxes span the sweep exactly.
-  const tagX = (r: number) => cx + .7071 * (r + 9) + 4, tagY = (r: number) => cy + .7071 * (r + 9) + 12;
-  for (let k = 0; k < 4; k++) {
-    const a = floor + (ceil - floor) * k / 4, b = floor + (ceil - floor) * (k + 1) / 4;
-    out.push({ x: tagX(a) - 3, y: tagY(a) - R.rangeAbovePx, w: tagX(b) + R.rangeWidthPx - tagX(a) + 3,
-      h: tagY(b) + R.rangeBelowPx - tagY(a) + R.rangeAbovePx });
+  const widest = tier === 0 ? floor : ceil;
+  const rect = (x0: number, y0: number, x1: number, y1: number) => { out.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }); };
+  out.push({ cx, cy, r: widest + R.ringStrokePx });
+  rect(cx - R.stackHalfWidthPx, cy + R.stackTopPx, cx + R.stackHalfWidthPx, cy + R.stackBottomPx);
+  // the chip with nothing over it
+  if (tier > 0) rect(cx - R.chipHalfWidthPx - R.inkPadPx, cy + R.chipMinPx - R.chipAbovePx - R.inkPadPx, cx + R.chipHalfWidthPx + R.inkPadPx,
+    cy + Math.max(R.chipMinPx, widest + R.chipRingPx) + R.chipBelowPx + R.inkPadPx);
+  let scopeFurniture = furniture;
+  if (tier === 2) {
+    const arm = ceil * R.armFactor + R.armPx;
+    rect(cx - R.armHalfWidthPx, cy - arm, cx + R.armHalfWidthPx, cy + arm);
+    rect(cx - arm, cy - R.armHalfWidthPx, cx + arm, cy + R.armHalfWidthPx);
+    // the vision switch's seat right of the sight, which the scope's marks keep clear of, and its mirror
+    const compact = width < 540;
+    const reach = Math.max(R.ringCeilFraction * Math.min(width, height) + R.visionReachPx, R.visionMinReachPx);
+    const vw = compact ? R.visionCompactWidthPx : R.visionWidthPx;
+    const vx = Math.min(cx + reach, width - (compact ? R.visionCompactEdgePx : R.visionEdgePx));
+    const seat: PlanRect = { x: vx, y: cy - R.visionHalfHeightPx, w: vw, h: R.visionHalfHeightPx * 2 };
+    out.push(seat, { ...seat, x: width - vx - vw });
+    scopeFurniture = [...furniture, seat];
+    // the row with nothing over it, at its rest
+    const drop = height <= 300 ? 18 : 24;
+    rect(cx - R.readoutHalfWidthPx - R.inkPadPx, cy + readoutRest(height, floor) - R.readoutAbovePx - R.inkPadPx,
+      cx + R.readoutHalfWidthPx + R.inkPadPx, cy + readoutRest(height, widest) + drop + R.zoomInkBelowPx);
   }
-  out.push({ x: cx - R.visionHalfWidthPx, y: cy + R.visionTopPx, w: R.visionHalfWidthPx * 2, h: R.visionHeightPx });
+  for (let s = 0; s < (tier === 2 ? 2 : 1); s++) {
+    const scope = s === 1, marks = scope ? scopeFurniture : furniture, chip = tier > 0;
+    /** Sweeps the places `choices` sets from ring r0 to ring r1. */
+    const sweep = (choices: SightChoices, r0: number, r1: number, around: readonly PlanRect[]) => {
+      const boxes = SIGHT_BOXES;
+      boxes.length = 0;
+      sightMarks(boxes, width, height, r1, scope, chip, around, false, choices);
+      const wide = boxes.length;
+      sightMarks(boxes, width, height, r0, scope, chip, around, false, choices);
+      for (let i = 0; i < wide; i += 4) {
+        const j = wide + i;
+        rect(Math.min(boxes[i], boxes[j]), Math.min(boxes[i + 1], boxes[j + 1]), Math.max(boxes[i + 2], boxes[j + 2]),
+          Math.max(boxes[i + 3], boxes[j + 3]));
+      }
+    };
+    // The heaviest case's choices at each of RADII + 1 rings from the smallest to the widest, among the furniture and
+    // without it (where a lighter case keeps its first places); a run of rings making the same choices sweeps those places
+    // from the ring before the run to the ring after it, so the ring where a choice flips, between two samples, is inside.
+    const made = CHOICES;
+    let tagUp = false;
+    for (const around of [NONE, marks]) {
+      for (let k = 0; k <= RADII; k++) {
+        sightMarks(SIGHT_BOXES, width, height, floor + (widest - floor) * k / RADII, scope, chip, around, true, made[k]);
+        tagUp ||= made[k].tagUp;
+      }
+      const r = (i: number) => floor + (widest - floor) * Math.min(RADII, Math.max(0, i)) / RADII;
+      for (let k = 0; k <= RADII;) {
+        let j = k;
+        while (j < RADII && sameChoices(made[j + 1], made[k])) j++;
+        sweep(made[k], r(k - 1), r(j + 1), around);
+        k = j + 1;
+      }
+    }
+    // the range tag rides the ring outward as it blooms (past a rack, or not): four boxes span each sweep; hung at the
+    // 1:30 too where the heaviest case hangs it there
+    if (!scope) continue;
+    const tagX = (r: number, rack: boolean) => cx + Math.max(.7071 * (r + 9), rack ? R.rangeRackPx : 0) + 4;
+    for (const up of tagUp ? [false, true] : [false]) {
+      const tagY = (r: number) => up ? cy - .7071 * (r + 9) - R.rangeOverPx - 1 : cy + .7071 * (r + 9) + 12;
+      for (let k = 0; k < 4; k++) {
+        const a = floor + (widest - floor) * k / 4, b = floor + (widest - floor) * (k + 1) / 4;
+        const ya = tagY(a), yb = tagY(b);
+        rect(tagX(a, false) - 3, Math.min(ya, yb) - R.rangeAbovePx, tagX(b, true) + R.rangeWidthPx, Math.max(ya, yb) + R.rangeBelowPx);
+      }
+    }
+  }
+  // (a box inside another adds nothing: where the furniture moves nothing the replayed places repeat the first ones)
+  let kept = 0;
+  for (let i = 0; i < out.length; i++) {
+    const a = out[i];
+    let inside = false;
+    if (!('r' in a)) {
+      for (let j = 0; j < out.length && !inside; j++) {
+        const b = out[j];
+        if (j === i || 'r' in b) continue;
+        inside = a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h
+          && (j < i || a.x > b.x || a.y > b.y || a.x + a.w < b.x + b.w || a.y + a.h < b.y + b.h);
+      }
+    }
+    if (!inside) out[kept++] = a;
+  }
+  out.length = kept;
   return out;
 }
 
@@ -819,7 +1122,7 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
   const id = ++plansMade;
   let pair: PairResult | null = null;
   let clearance: MouseNoticePlan['clearance'] = -1;
-  const keeps = TIERS.map((tier) => mouseReticleFootprint(input.width, input.height, tier));
+  const keeps = TIERS.map((tier) => mouseReticleFootprint(input.width, input.height, tier, [], input.furniture));
   const clear: [number, number] = [NaN, NaN];
   for (let side = 0; side < 2; side++) {
     const lane = input.lanes[side];
@@ -901,10 +1204,8 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_ALERT_COST, detOnly, MEDAL_SHIFT_COST, true],
     [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_DETECTION_COST, alertOnly, MEDAL_SHIFT_COST, true],
     [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_BOTH_COST, NONE, MEDAL_SHIFT_COST, true]];
-  const placeMedal = (): PlannedMedal | null => {
-    // (its sharing is in its options: the steps are the keep-outs alone)
-    const medalTier = place(medalOptions, Math.ceil(input.top + 16), MEDAL_LANES, false);
-    if (medalTier < 0) return null;
+  /** The card at the place `found` holds (its option in `chosen`), clear of the keep-out at `tier`. */
+  const medalAt = (tier: number): PlannedMedal => {
     const [w, h, base] = chosen[found.option];
     const box = { x: found.s.x - w / 2, y: found.s.y, w, h };
     const giveWay = giveWayOf(found.s.giveWay, 0);
@@ -914,8 +1215,24 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
       const t = Number.isNaN(giveWay[side * 2]) ? lane.top : giveWay[side * 2], b = Number.isNaN(giveWay[side * 2 + 1]) ? lane.bottom : giveWay[side * 2 + 1];
       return rowsIn(b - t) < rowsIn(lane.bottom - lane.top);
     };
-    return { ...box, compact: base >= MEDAL_COMPACT_COST, clearance: medalTier as 2 | 1 | 0,
+    return { ...box, compact: base >= MEDAL_COMPACT_COST, clearance: tier as 2 | 1 | 0,
       sharesNotices: overlapsAny(box, notices), giveWay, cutsLanes: [cuts(0), cuts(1)] };
+  };
+  const placeMedal = (): PlannedMedal | null => {
+    // (its sharing is in its options: the steps are the keep-outs alone)
+    const medalTier = place(medalOptions, Math.ceil(input.top + 16), MEDAL_LANES, false);
+    if (medalTier < 0) return null;
+    const medal = medalAt(medalTier);
+    // The lane decides (owner, 2026-10-20): a place that leaves a side lane fewer rows makes the card wait while that lane
+    // shows a kill, so where the whole reticle leaves the card only such places, one clear of the battle sight at full
+    // bloom that keeps both lanes whole wins (that card waits only while the scope is up). The HUD's out-of-ammo marks
+    // under a short window's sight made that choice real (844 x 390 without an objective).
+    if (medalTier !== 2 || !(medal.cutsLanes[0] || medal.cutsLanes[1])) return medal;
+    const envs = envsAt(TIERS.indexOf(1));
+    chosen = medalOptions();
+    if (!placeOne(envs[envs.length - 1], chosen, Math.ceil(input.top + 16), MEDAL_LANES, hasLanes ? both : null, found)) return medal;
+    const kept = medalAt(1);
+    return kept.cutsLanes[0] || kept.cutsLanes[1] ? medal : kept;
   };
   // The countdown, the revive count and the medal card are placed when first asked for (a battle shows one or two of
   // them; the layout owner asks for one only while it is up), then kept.

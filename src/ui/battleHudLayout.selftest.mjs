@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { battleSideStack, battleNotificationRows, battleRosterHeight, installBattleHudLayout, objectiveWidth, battleReportDock, REPORT_MAP_GAP,
   portraitSightClearTop, SIGHT_BAND_ABOVE, SIGHT_BAND_BELOW, SCOPE_BAND_BELOW } from './battleHudLayout.ts';
-import { mouseNoticePlanWork } from './mouseNoticePlan.ts';
+import { detectionHeight, MOUSE_NOTICE_GAP_PX, mouseNoticePlanWork } from './mouseNoticePlan.ts';
 import { sightFurniture } from './sightFurniture.ts';
 const layoutSourceR10 = readFileSync(new URL('./battleHudLayout.ts', import.meta.url), 'utf8');
 
@@ -401,16 +401,23 @@ try {
             '.cot-dp':node([],rect(8,579,120,137)),'.cot-drive':node([],rect(140,635,81,81)),'.cot-vehicle-controls':node([],rect(12,744,366,32)),
             '.cot-shells':node([],rect(12,500,366,332)),'.cot-si-cardhost':node([],rect(203,375,175,260)),'.cot-net':node([],rect(120,109,88,20)),
             '.cot-minimap':node([],rect(8,109,104,104))})});
-        return [run.body.dataset.hudNoticeTiers.split(' ').pop(),banner.dataset.placement];
+        return [run.body.dataset.hudNoticeTiers.split(' ').pop(),banner.dataset.placement,run.properties,banner.dataset.size];
       };
       const [right,rightPlace]=feed(0,3),[left,leftPlace]=feed(3,0),[none,nonePlace]=feed(0,0);
       assert.match(right,/^m\d\w*wf$/,`a right-lane kill row holds the card, marked as the feed's (${right})`);
       assert.equal(rightPlace,'deferred');
       assert.ok(!/w/.test(left)&&leftPlace==='ready',`a left-lane row alone neither holds nor marks it (${left}, ${leftPlace})`);
       assert.ok(!/w/.test(none)&&nonePlace==='ready','nor does an empty feed');
-      // held by the detection on its place while only the lane it leaves whole shows rows: waiting, not on the feed
-      const [lit,litPlace]=feed(3,0,true);
-      assert.ok(/w$/.test(lit)&&litPlace==='deferred',`the lit detection on its place holds it, not marked as the feed's (${lit})`);
+      // with the detection lit while only the lane it leaves whole shows rows: it waits exactly where its written place meets
+      // the detection's, never marked as the feed's (before the HUD's out-of-ammo marks moved the scope-vision toggle beside
+      // the sight its place here was the detection's; it now has one of its own above it, so it shows)
+      const [lit,litPlace,props,size]=feed(3,0,true);
+      const px=v=>parseFloat(props.get(v)),dw=px('--hud-center-notice-width'),cw=size==='compact'?250:Math.min(380,390-32);
+      const det={x:px('--hud-notice-x')-dw/2,y:px('--hud-notice-top'),w:dw,h:detectionHeight(dw,false)};
+      const card={x:px('--hud-banner-x')-cw/2,y:px('--hud-banner-top'),w:cw,h:size==='compact'?40:76},g=MOUSE_NOTICE_GAP_PX;
+      const meets=card.x<det.x+det.w+g&&card.x+card.w>det.x-g&&card.y<det.y+det.h+g&&card.y+card.h>det.y-g;
+      assert.ok(!/f$/.test(lit)&&(litPlace==='deferred')===meets&&/w$/.test(lit)===meets,
+        `the lit detection holds the card exactly where their places meet, never marked as the feed's (${lit}, ${litPlace}, meets ${meets})`);
     }
     // A medal card queued while the revive count shows (a medal can arrive after the death) waits exactly where the two
     // places meet: the written places (the card's centre and top, the count's centre, top and scale) decide it.

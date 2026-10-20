@@ -313,22 +313,25 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const countdown = root.querySelector<HTMLElement>('.cot-prebattle');
     const revive = root.querySelector<HTMLElement>('.cot-revive');
     nextKey.push(width, height, Math.round(top), countdown?.offsetWidth ?? 0, countdown?.offsetHeight ?? 0, revive?.offsetWidth ?? 0, revive?.offsetHeight ?? 0);
-    const box = (x: number, y: number, w: number, h: number) => { if (w > 0 && h > 0) nextKey.push(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
-    const add = (r: PlanBox | null) => { if (r) box(r.left, r.top, r.width, r.height); };
-    // score, objective, minimap, ammunition rail and network strip, as refresh() read them
-    for (const r of seen) add(r);
+    // each box [x, y, w, h, 1 where the reticle's marks keep clear of it (SIGHT_FURNITURE) else 0]
+    const box = (x: number, y: number, w: number, h: number, sight = 0) => {
+      if (w > 0 && h > 0) nextKey.push(Math.round(x), Math.round(y), Math.round(w), Math.round(h), sight);
+    };
+    const add = (r: PlanBox | null, sight = 0) => { if (r) box(r.left, r.top, r.width, r.height, sight); };
+    // score, objective, minimap and ammunition rail, then the network strip, as refresh() read them
+    for (let i = 0; i < seen.length; i++) add(seen[i], i < 4 ? 1 : 0);
     // each roster down to its height while Tab is held (its width then stops short of anything shown)
     for (let side = 0; side < 4; side += 2) {
       const ear = rosters[side] as DOMRect | null;
-      if (ear) box(ear.left, ear.top, ear.width, Math.max(ear.height, rosters[side + 1] as number));
+      if (ear) box(ear.left, ear.top, ear.width, Math.max(ear.height, rosters[side + 1] as number), 1);
     }
     const panel = read('.cot-dp');
-    add(panel);
+    add(panel, 1);
     // the damage panel's status strip rises into the 36 px above it (leftFloor keeps the same band)
     if (panel) box(panel.left, Math.round(panel.top) - 36, panel.width, 36);
-    add(read('.cot-drive'));
-    if (systemsHeight > 0) box(systemsLeft, systemsTop, systemsWidth, systemsHeight);
-    add(read('.cot-cons'));
+    add(read('.cot-drive'), 1);
+    if (systemsHeight > 0) box(systemsLeft, systemsTop, systemsWidth, systemsHeight, 1);
+    add(read('.cot-cons'), 1);
     const host = read('.cot-si-cardhost');
     if (host && report.height > 0) box(host.left, report.top, host.width, report.height);
     // The fps/ping readout: below 768 px its place is fixed under the objective (battleHudLayout.css, 88 x 20 at
@@ -363,12 +366,16 @@ export function installBattleHudLayout(root: HTMLElement): void {
         planInputs = true;
         return planned;
       }
-      const obstacles: PlanRect[] = [];
-      for (let i = 7; i < boxesEnd; i += 4) obstacles.push({ x: nextKey[i], y: nextKey[i + 1], w: nextKey[i + 2], h: nextKey[i + 3] });
+      const obstacles: PlanRect[] = [], furniture: PlanRect[] = [];
+      for (let i = 7; i < boxesEnd; i += 5) {
+        const r = { x: nextKey[i], y: nextKey[i + 1], w: nextKey[i + 2], h: nextKey[i + 3] };
+        obstacles.push(r);
+        if (nextKey[i + 4]) furniture.push(r);
+      }
       const lane = (i: number): PlanLane | null => nextKey[i] < 0 && nextKey[i + 1] < 0 ? null
         : { x: nextKey[i], w: nextKey[i + 1], top: nextKey[i + 2], bottom: nextKey[i + 3] };
       const input: MouseNoticeInput = {
-        width, height, top: nextKey[2], obstacles, lanes: [lane(boxesEnd), lane(boxesEnd + 4)],
+        width, height, top: nextKey[2], obstacles, furniture, lanes: [lane(boxesEnd), lane(boxesEnd + 4)],
         smallAlert: height <= 550 || width <= 480, compactDetection: height <= 550,
         countdown: countdown ? { w: nextKey[3], h: nextKey[4] } : null,
         revive: revive ? { w: nextKey[5], h: nextKey[6] } : null,
@@ -379,7 +386,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       };
       planned = planMouseNotices(input);
       if (boxesEnd > plain && planned.clearance < 2) {
-        const without = planMouseNotices({ ...input, obstacles: obstacles.slice(0, (plain - 7) / 4) });
+        const without = planMouseNotices({ ...input, obstacles: obstacles.slice(0, (plain - 7) / 5) });
         if (without.clearance > planned.clearance) planned = without;
       }
       plannedSize = size;

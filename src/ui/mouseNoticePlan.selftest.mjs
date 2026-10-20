@@ -59,8 +59,10 @@ function inputFor(v, { objective = true, rosters = 7 } = {}) {
     leftTop = Math.max(top, width < 768 && v.net[1] < height / 2 ? v.net[1] + v.net[3] : 0, v.map[0] < width / 2 ? v.map[1] + v.map[3] : 0) + 8;
     rightTop = phone ? top + 46 : top + 8;
   }
+  // the HUD's panels and controls the reticle's marks keep clear of (battleHudLayout.ts: not the report or the readouts)
+  const furniture = [v.score, ...(objective ? [v.obj] : []), earL, earR, v.map, v.dp, v.drive, v.sys, v.ammo].filter(Boolean).map(box);
   return {
-    width, height, top, obstacles,
+    width, height, top, obstacles, furniture,
     lanes: [lane(0, leftTop, v.lanes[1]), lane(width - side, rightTop, v.lanes[3])],
     smallAlert: height <= 550 || width <= 480, compactDetection: height <= 550,
     countdown: { w: v.cd[0], h: v.cd[1] }, revive: { w: Math.min(390, width - 32), h: 129 },
@@ -94,22 +96,82 @@ function intrusion(r, keep) {
 }
 const alertBox = (a) => ({ x: a.anchor === 'centre' ? a.x - a.w / 2 : a.anchor === 'start' ? a.x : a.x - a.w, y: a.y, w: a.w, h: a.h, giveWay: a.giveWay });
 
-// 1. The footprint restates hud.ts and aerialHud.css; a change there fails here until MOUSE_RETICLE follows.
+// 1. The footprint restates hud.ts and aerialHud.css as the out-of-ammo rounds left them (r10); a change there fails here
+//    until MOUSE_RETICLE and mouseReticleFootprint follow.
 const hud = readFileSync(new URL('./hud.ts', import.meta.url), 'utf8');
 const aerialCss = readFileSync(new URL('./aerialHud.css', import.meta.url), 'utf8');
-assert.match(hud, /const RET_FLOOR_PX = 11;/);
-assert.match(hud, /const RET_CEIL_FRAC = 0\.15;/);
-assert.equal(MOUSE_RETICLE.ringFloorPx, 11);
-assert.equal(MOUSE_RETICLE.ringCeilFraction, .15);
-assert.match(hud, /const armEnd = radius \* 1\.55 \+ 3;/, 'scope arms reach 1.55 r + 3');
-assert.match(hud, /paintScopeCrossArms\(cx, cy, gap, armEnd, 'rgba\(4,7,6,0\.38\)', 2\.4\);/, 'the arms\' under-stroke is 2.4 px');
-assert.match(hud, /if \(h <= 300\) return draw\.cy \+ 32;\s+if \(h <= 430\) return draw\.cy \+ 44;\s+return Math\.min\(\s+draw\.cy \+ Math\.max\(draw\.radius \* 1\.02 \+ 24, draw\.radius \* 1\.55 \+ 18, 96\),\s+h - 176,\s+\);/,
-  'sniperAmmoReadoutY is the footprint\'s ammoOffset');
-assert.match(hud, /const y = sniperAmmoReadoutY\(draw\) \+ \(h <= 300 \? 18 : 24\);/, 'the zoom plate sits 24 px (18) under the ammunition');
-assert.match(hud, /const y = draw\.cy \+ Math\.max\(62, draw\.radius \+ 24\);/, 'the gun-limit chip sits at cy + max(62, r + 24)');
-assert.match(hud, /const offset = 0\.7071 \* \(draw\.radius \+ 9\);/, 'the range tag rides the ring\'s 4:30 point');
-assert.match(aerialCss, /\.cot-hud \.cot-scope-vision\{[^}]*top:calc\(50% \+ 145px\)[^}]*min-height:48px/, 'the scope-vision toggle opens 145 px under the aim point');
-assert.equal(MOUSE_RETICLE.visionTopPx, 145);
+const R = MOUSE_RETICLE;
+const pins = [
+  // the ring, the gap every mark keeps, the marker's clear centre
+  [/const RET_FLOOR_PX = 11;/, R.ringFloorPx === 11], [/const RET_CEIL_FRAC = 0\.15;/, R.ringCeilFraction === .15],
+  [/const RING_STROKE_REACH = 1\.5;/, R.ringReachPx === 1.5], [/const SIGHT_MARK_RING_GAP = 3;/, R.markGapPx === 3],
+  [/state\.zoomScale = state\.sniper\s+\? Math\.min\(1\.8, 1\.1 \+ 0\.085 \* \(view\.zoom \|\| 8\)\)/, R.scopeClearCentrePx === 14 + .8 * 9],
+  [/state\.centerClearanceRadius = 14 \+ \(state\.zoomScale - 1\) \* 9;/, R.clearCentrePx === 14],
+  [/const armEnd = radius \* 1\.55 \+ 3;/, R.armFactor === 1.55],
+  [/paintScopeCrossArms\(cx, cy, gap, armEnd, 'rgba\(4,7,6,0\.38\)', 2\.4\);/, R.armPx === 3 + 1.3],
+  // the column under the marker: a rack (four shells) or a struck round, dropped below a ring that crosses it, the
+  // countdown under it or beside the rack; over the ring where the furniture sits under it
+  [/export const AUTOLOADER_HUD_SHELLS = 4;/, true], [/const AUTOLOADER_HUD_ARC_DEPTH = 2\.25;/, true],
+  [/const shellW = draw\.sniper \? 6\.5 : 5\.5;\s+const shellH = draw\.sniper \? 16 : 14;\s+const gap = draw\.sniper \? 4 : 3\.5;/,
+    R.markHalfWidthPx >= (4 * 6.5 + 3 * 4) / 2 + 5 && R.rangeRackPx === (4 * 6.5 + 3 * 4) / 2 + 6],
+  [/totalW \* 0\.5 \+ 5, AUTOLOADER_HUD_ARC_DEPTH \+ shellH \+ 3/, 2.25 + 16 + 3 <= 19 + 3],
+  [/const shellW = draw\.sniper \? 8 : 7;\s+const shellH = draw\.sniper \? 19 : 17;/, R.markHalfWidthPx >= 8 / 2 + 6],
+  [/const top = draw\.cy \+ draw\.centerClearanceRadius \+ 6;/, true], [/belowRing\(draw\) \+ 3 : top/, true],
+  [/return draw\.circleY \+ draw\.radius \+ RING_STROKE_REACH \+ SIGHT_MARK_RING_GAP;/, true],
+  [/return Math\.min\(draw\.circleY - draw\.radius - RING_STROKE_REACH, draw\.cy - draw\.centerClearanceRadius, draw\.aboveTopY\);/, true],
+  [/const above = aboveSightTop\(draw\) - SIGHT_MARK_RING_GAP - markH;/, true],
+  [/const COUNTDOWN_SIZE = 16;/, R.countdownPx >= 16 * (.74 + .08) - .01], [/const COUNTDOWN_RACK_GAP = 3;/, true],
+  [/let top = draw\.magazine \? draw\.magazineInkBottomY \+ COUNTDOWN_RACK_GAP/, true],
+  [/const sideX = draw\.cx - draw\.magazineHalfW - 7 - textW - unitW;/, R.besideCountdownPx >= 19 + 7 + 50],
+  // the chip: under the marker and the column's marks, or over the sight
+  [/const AIM_WARNING_CHIP_ABOVE = 14;/, R.chipAbovePx === 14], [/const AIM_WARNING_CHIP_BELOW = 10;/, R.chipBelowPx === 10],
+  [/draw\.warningW = ctx\.measureText\(warning\.text\)\.width \+ 50;/, R.chipHalfWidthPx === 92],
+  [/let y = Math\.max\(draw\.cy \+ Math\.max\(62, draw\.radius \+ 24\),/, R.chipMinPx === 62 && R.chipRingPx === 24],
+  [/const top = Math\.min\(aboveSightTop\(draw\), draw\.cy - SCOPE_VISION_HALF_H, draw\.tagTopY\);\s+return top - SIGHT_MARK_RING_GAP - AIM_WARNING_CHIP_BELOW;/, true],
+  [/const SCOPE_VISION_HALF_H = 24;/, R.visionHalfHeightPx === 24],
+  // the scope's readout row and its places
+  [/const rest = h <= 300 \? draw\.cy \+ 32\s+: h <= 430 \? draw\.cy \+ 48\s+: Math\.min\(draw\.cy \+ Math\.max\(draw\.radius \* 1\.02 \+ 24, draw\.radius \* 1\.55 \+ 18, 96\), sniperReadoutFloor\(\)\);/, true],
+  [/function sniperReadoutFloor\(\): number \{\s+return h - 176;/, true], [/return h <= 300 \? 18 : 24;/, true],
+  [/row\.lineTop = line\.round \? 14\.7 : 10;\s+row\.lineFoot = line\.round \? 4\.7 : 1\.1;/, R.readoutAbovePx === 14.7 && R.readoutBelowPx === 4.7],
+  [/out\.top = 11\.9 - drop; out\.foot = drop \+ 1\.3;/, R.zoomAbovePx === 11.9 && R.zoomBelowPx === 1.3],
+  [/\.width \+ 24 \+ 40 \+ 1\.2;/, true], [/const TAG_GROUP_GAP = 16;/, R.rowGroupPx === 16],
+  [new RegExp(String.raw`const SNIPER_ROW_PLACES: readonly \(readonly \[SniperRowMode, boolean, boolean, boolean\]\)\[\] = \[\s+\['stack', false, false, false\], \['zoomBeside', false, false, false\], \['chipBeside', false, false, true\],\s+\['stack', true, false, true\], \['zoomBeside', true, false, true\], \['rowBeside', false, false, false\],\s+\['rowAbove', false, false, false\], \['rowAbove', true, false, true\], \['stack', false, true, false\], \['stack', true, true, true\],\s+\['rowAbove', false, true, false\], \['rowAbove', true, true, true\],\s+\];`), true],
+  // the range tag at the 4:30, past a rack, or at the 1:30
+  [/const offset = 0\.7071 \* \(draw\.radius \+ 9\);/, true], [/const rackClear = draw\.magazine \? draw\.magazineHalfW \+ 10 - 4 : 0;/, true],
+  [/tag\.x0 = draw\.cx \+ Math\.max\(offset, rackClear\) \+ 4;\s+tag\.y = draw\.cy \+ offset \+ 12;/, true],
+  [/const y = draw\.cy - offset - 3\.5 - 11\.5 \* 0\.08;/, R.rangeOverPx === 3.5],
+];
+for (const [pattern, restated] of pins) {
+  assert.match(hud, pattern);
+  assert.ok(restated, `MOUSE_RETICLE restates ${pattern}`);
+}
+// the vision switch beside the sight (its mirror seat battleHudLayout's)
+assert.match(aerialCss, /\.cot-hud \.cot-scope-vision\{[^}]*left:min\(calc\(50% \+ max\(15vmin \+ 8px,80px\)\),calc\(100% - 180px\)\);top:50%;transform:translateY\(-50%\)[^}]*min-height:48px/,
+  'the scope-vision switch sits beside the sight, level with the marker');
+assert.match(aerialCss, /\.cot-hud \.cot-scope-vision\{left:min\(calc\(50% \+ max\(15vmin \+ 8px,80px\)\),calc\(100% - 112px\)\);width:104px/, 'the compact plate under 540 px wide');
+// The furniture moves the marks: at 1280 x 431 (the HUD's recorded furniture, tools/fixtures/hud-sight-furniture.json)
+// the controls row sits under the battle sight's chip at full bloom, so the chip goes over the sight and the keep-out
+// reaches over the ring (the scope's row and chip too); on the 1024 x 600 census the heaviest scope case seats its row with the chip beside it, under
+// the ring, and nothing goes over it.
+{
+  const fixture = JSON.parse(readFileSync(new URL('../../tools/fixtures/hud-sight-furniture.json', import.meta.url), 'utf8'));
+  const furnitureOf = (key) => fixture.sizes[key].filter(([selector]) => selector !== '.cot-scope-vision')
+    .map(([, x0, y0, x1, y1]) => ({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }));
+  // (a box whose top reaches over the widest ring in the column under the marker, other than the scope's arm)
+  const overRing = (keep, w, h, tier) => keep.some((k) => !('r' in k) && k.y < h / 2 - (tier ? .15 * Math.min(w, h) : 11) - 2.5
+    && k.x < w / 2 + 92 && k.x + k.w > w / 2 - 92 && k.w > 2 * R.armHalfWidthPx + .01);
+  // (the scope's row also keeps 3 px from the screen's edges, so at 431 px tall its heaviest case goes over the ring with
+  // no furniture at all; the battle sight's marks heed the furniture alone)
+  for (const tier of [1, 2]) {
+    assert.ok(overRing(mouseReticleFootprint(1280, 431, tier, [], furnitureOf('1280x431')), 1280, 431, tier), `1280x431 tier ${tier}: the chip goes over the sight`);
+  }
+  assert.ok(!overRing(mouseReticleFootprint(1280, 431, 1), 1280, 431, 1), '1280x431 battle sight without furniture: nothing over the ring');
+  const v = VIEWPORTS.find((c) => c.vp[0] === 1024 && c.vp[1] === 600);
+  const census = [v.score, v.obj, v.earL, v.earR, v.map, v.dp, v.drive, v.sys, v.ammo].map(box);
+  const keep = mouseReticleFootprint(1024, 600, 2, [], census);
+  assert.ok(!overRing(keep, 1024, 600, 2), '1024x600: the heaviest scope case keeps under the ring');
+  assert.ok(keep.some((k) => !('r' in k) && k.x <= 512 - 62 - 16 - 184 + .01), '1024x600: the chip beside the row is inside');
+}
 
 // 2. The footprint covers the census's measured ink (union of every .cot-ret pixel, alpha >= 12, readouts and the
 //    gun-limit chip included; x0, y0, x1, y1) at every viewport: battle full bloom, scope full bloom.
@@ -161,19 +223,30 @@ assert.equal(detectionHeight(248, true), 32);
 //    an instrument;
 //    a lane an element crosses keeps a row while it shows (and while the detection and the alert show together), and
 //    keeps all its rows while nothing shows (the plan holds no lane change outside `giveWay`).
-const SHARED = { '768x600': ['countdown'] };
+// (481 x 700: the scope's heaviest case seats its row with the chip over the sight, its drive gauge under the stacked
+// zoom plate (r10), so the band over the ring is the reticle's; the detection takes the one place left under the sight
+// and the countdown, which no enemy sees before the roll-out, shares it)
+const SHARED = { '768x600': ['countdown'], '481x700': ['countdown'] };
 const TIER_FLOOR = { countdown: 2, revive: 1, medal: 1 };
 // (844 x 390's notices take the one band clear of the bloomed sight: its countdown and revive count clear the resting
-// sight, off both notices, rather than cover one)
-const LOW_TIER = { '844x390': { countdown: 0, revive: 0, medal: 1 }, '768x600': { revive: 0 }, '481x700': { countdown: 1, revive: 1 } };
+// sight, off both notices, rather than cover one. 768 x 600's drive gauge ends at the widest gun-limit chip's left edge
+// at full bloom, so the HUD sets that chip over the sight (r10, placeAimWarning); between the rosters no place for the
+// countdown clears it, and the countdown clears the resting sight. 481 x 700's band over the ring is the scope's (its
+// heaviest case seats the row with the chip over the sight), so the revive count clears the resting sight there.)
+const LOW_TIER = { '844x390': { countdown: 0, revive: 0, medal: 1 }, '768x600': { countdown: 0, revive: 0 }, '481x700': { countdown: 1, revive: 0 } };
 // A lane gives up its last row only where every place clear of the reticle crosses it (and only while the element
 // shows): the plan prices that as its last resort before any reticle ink.
 // (a row needs 26 px; beside the left lane's damage toasts 62, where the lane is that tall: mouseNoticePlan.ts laneRowPx)
 const rowPx = (side, lane) => side === 0 && lane.bottom - lane.top >= 62 ? 62 : 26;
 // (844 x 390's revive count: every place for it off both notices crosses the left lane whole, one row deep with an
 // objective and two without, so the lane yields them while the count shows: the plan's last resort before reticle ink)
-const EMPTIED = ['844x390 revive l', '844x390s revive l', '768x600 alert l', '768x600 detection+alert l', '768x600s revive l',
-  '481x700 alert r', '481x700 detection+alert r'];
+// (844 x 390's notices since the HUD's out-of-ammo marks (r10): its systems row sits under the widest gun-limit chip at
+// full bloom and under the scope's stacked zoom plate, so the chip goes over the sight and the plate right of the
+// readout line, where the notices sat; every place for them clear of the whole reticle crosses the left lane whole)
+// (and its revive count without an objective: between the score and the bloomed sight it now crosses both lanes)
+const EMPTIED = ['844x390 detection l', '844x390 revive l', '844x390 detection+alert l', '844x390s alert l', '844x390s revive l',
+  '844x390s revive r', '844x390s detection+alert l',
+  '768x600 alert l', '768x600 detection+alert l', '768x600s revive l', '481x700 alert r', '481x700 detection+alert r'];
 const emptied = [];
 let plans = 0, slowest = 0, ms = 0, work = 0, mostWork = 0;
 for (const v of VIEWPORTS) {
@@ -192,7 +265,7 @@ for (const v of VIEWPORTS) {
     const vp = v.vp.join('x'), name = `${vp}${objective ? '' : ' (standard)'}`;
     assert.equal(plan.clearance, 2, `${name}: the notices clear the whole reticle`);
     assert.ok(!('laneTop' in plan), 'no lane moves while nothing shows');
-    const keep = mouseReticleFootprint(input.width, input.height);
+    const keep = mouseReticleFootprint(input.width, input.height, 2, [], input.furniture);
     const det = plan.detection, alert = alertBox(plan.alert);
     assert.equal(det.h, detectionHeight(det.w, input.compactDetection));
     assert.ok(det.w >= 164 && det.w <= 248, `${name}: the detection is between 164 and 248 wide`);
@@ -204,7 +277,7 @@ for (const v of VIEWPORTS) {
       const tier = fixedTier ?? r.clearance;
       const floor = LOW_TIER[vp]?.[label] !== undefined ? Math.min(LOW_TIER[vp][label], TIER_FLOOR[label] ?? 2) : (TIER_FLOOR[label] ?? 2);
       assert.ok(tier >= (fixedTier ? 2 : objective ? floor : Math.min(floor, 1)), `${name}: the ${label} clears tier ${tier}`);
-      assert.ok(intrusion(r, tier === 2 ? keep : mouseReticleFootprint(input.width, input.height, tier)) <= 0,
+      assert.ok(intrusion(r, tier === 2 ? keep : mouseReticleFootprint(input.width, input.height, tier, [], input.furniture)) <= 0,
         `${name}: the ${label} keeps ${MOUSE_RETICLE_MARGIN_PX} px off the reticle (tier ${tier})`);
       assert.ok(r.x >= 11.5 && r.y >= 0 && r.x + r.w <= input.width - 11.5 && r.y + r.h <= input.height - 11.5, `${name}: the ${label} stays on screen`);
       for (const o of input.obstacles) assert.ok(!overlap(r, o, MOUSE_NOTICE_GAP_PX - .01), `${name}: the ${label} keeps ${MOUSE_NOTICE_GAP_PX} px off ${JSON.stringify(o)}`);
@@ -296,7 +369,7 @@ for (const v of VIEWPORTS) for (const rosters of v.earL ? [7, 14, 20] : [7]) for
   // point, clears the whole keep-out, every instrument, both notices and the kill lanes (main showed its card at once
   // just below the lamp)
   if (overlap(medal, plan.detection, MOUSE_NOTICE_GAP_PX - .01)) {
-    const [w0, h0] = v.vp, keep = mouseReticleFootprint(w0, h0);
+    const [w0, h0] = v.vp, keep = mouseReticleFootprint(w0, h0, 2, [], input.furniture);
     for (const [cw, ch] of [[medal.w, medal.h]]) {
       for (let y = Math.ceil(plan.detection.y + plan.detection.h + MOUSE_NOTICE_GAP_PX); y + ch <= h0 / 2; y++) {
         const box = { x: w0 / 2 - cw / 2, y, w: cw, h: ch };
@@ -328,7 +401,7 @@ for (const v of VIEWPORTS) for (const rosters of v.earL ? [7, 14, 20] : [7]) for
   // detection's at most), clears the keep-out, every instrument and the kill lanes (a card aside shows sooner, but the
   // owner keeps main's look: MEDAL_SHIFT_COST)
   if (!medal.compact) {
-    const [w0, h0] = v.vp, keep = mouseReticleFootprint(w0, h0), cw = input.medal.w, ch = input.medal.h;
+    const [w0, h0] = v.vp, keep = mouseReticleFootprint(w0, h0, 2, [], input.furniture), cw = input.medal.w, ch = input.medal.h;
     for (let y = Math.ceil(input.top + MOUSE_NOTICE_GAP_PX); y + ch <= h0 / 2; y++) {
       const box = { x: w0 / 2 - cw / 2, y, w: cw, h: ch };
       if (intrusion(box, keep) > 0 || input.obstacles.some((o) => overlap(box, o, MOUSE_NOTICE_GAP_PX - .01))
@@ -339,7 +412,7 @@ for (const v of VIEWPORTS) for (const rosters of v.earL ? [7, 14, 20] : [7]) for
     }
   }
   const [W] = v.vp, mainCard = { x: W / 2 - input.medal.w / 2, y: Math.ceil(input.top + 16), w: input.medal.w, h: input.medal.h };
-  if (intrusion(mainCard, mouseReticleFootprint(W, v.vp[1])) <= 0 && !input.obstacles.some((o) => overlap(mainCard, o, MOUSE_NOTICE_GAP_PX - .01))) {
+  if (intrusion(mainCard, mouseReticleFootprint(W, v.vp[1], 2, [], input.furniture)) <= 0 && !input.obstacles.some((o) => overlap(mainCard, o, MOUSE_NOTICE_GAP_PX - .01))) {
     assert.equal(medal.compact, false, `${name}: main's full card clears everything here, so the card is the full card`);
   }
 }
@@ -353,23 +426,27 @@ for (const v of VIEWPORTS) for (const rosters of v.earL ? [7, 14, 20] : [7]) for
     const dh = H - 600, up = (b) => b && [b[0], b[1] + dh, b[2], b[3]];
     const squeezed = { ...v, vp: [768, H], map: up(v.map), dp: up(v.dp), drive: up(v.drive), sys: up(v.sys), ammo: up(v.ammo), card: up(v.card),
       lanes: [v.lanes[0], v.lanes[1] + dh, v.lanes[2], v.lanes[3] + dh] };
-    const plan = planMouseNotices(inputFor(squeezed, { objective }));
+    const input = inputFor(squeezed, { objective }), plan = planMouseNotices(input);
     for (const label of ['countdown', 'revive']) {
       assert.ok(plan[label], `768x${H}${objective ? '' : 's'}: the ${label} has a place`);
-      assert.ok(intrusion(plan[label], mouseReticleFootprint(768, H, 0)) <= 0, `768x${H}${objective ? '' : 's'}: the ${label} keeps off the resting sight`);
+      assert.ok(intrusion(plan[label], mouseReticleFootprint(768, H, 0, [], input.furniture)) <= 0, `768x${H}${objective ? '' : 's'}: the ${label} keeps off the resting sight`);
     }
   }
 }
 
-// 4e. The card's search finds a band narrower than its coarse step: 844 x 390 without an objective has one clear place
-//     for it off the lanes, y 295..296 between the gun-limit chip and the scope-vision toggle (on both notices' places,
-//     waiting while they show); stepping over it put the card over the left lane, held back by every kill row. 820 x 400
-//     (the 844 x 390 boxes moved with their anchors) likewise: no card cuts a lane there.
+// 4e. 844 x 390 without an objective: no place clear of the whole reticle keeps the lanes whole. Before the HUD's
+//     out-of-ammo marks one did, a band at y 295..296 between the gun-limit chip and the scope-vision toggle (then 145 px
+//     under the sight), which the card's fine search had to find (stepping over it put the card over the left lane,
+//     held back by every kill row); the r10 scope column (a struck mark dropped below the ring, the countdown, the chip,
+//     the row under them) now runs through it and the toggle sits beside the sight. The lane decides: the card takes the
+//     place clear of the battle sight at full bloom that keeps both lanes whole, and waits only while the scope is up.
+//     820 x 400 (the 844 x 390 boxes moved with their anchors) likewise: no card cuts a lane there.
 {
   const v = VIEWPORTS.find((x) => x.vp[0] === 844 && x.vp[1] === 390);
   const std = planMouseNotices(inputFor(v, { objective: false }));
-  assert.ok(std.medal.y === 295 && std.medal.sharesNotices && !std.medal.cutsLanes.some(Boolean),
-    `844x390 (standard): the card takes the narrow band at y 295 (it is at ${Math.round(std.medal.x)},${std.medal.y}, cuts ${std.medal.cutsLanes})`);
+  assert.ok(std.medal.clearance === 1 && !std.medal.cutsLanes.some(Boolean),
+    `844x390 (standard): the card keeps both lanes whole, clear of the bloomed battle sight (it is at ${Math.round(std.medal.x)},${std.medal.y}, tier ${std.medal.clearance}, cuts ${std.medal.cutsLanes})`);
+  assert.ok(mouseMedalWaits(std, { detection: false, alert: false, revive: false, scoped: true }), '844x390 (standard): it waits while the scope is up');
   for (const objective of [true, false]) {
     const plan = planMouseNotices(inputFor(movedTo(v, 820, 400), { objective }));
     assert.ok(!plan.medal.cutsLanes.some(Boolean), `820x400${objective ? '' : ' (standard)'}: the card cuts no lane (${Math.round(plan.medal.x)},${plan.medal.y})`);
@@ -382,7 +459,7 @@ for (const v of VIEWPORTS) for (const rosters of v.earL ? [7, 14, 20] : [7]) for
 //     a lane would give up, as its wait does (a cut priced free held the card back on every kill row of that lane).
 {
   const laneFree = (input, tier) => {
-    const keep = mouseReticleFootprint(input.width, input.height, tier), g = MOUSE_NOTICE_GAP_PX - .01;
+    const keep = mouseReticleFootprint(input.width, input.height, tier, [], input.furniture), g = MOUSE_NOTICE_GAP_PX - .01;
     for (const [w, h] of [[input.medal.w, input.medal.h], [input.medalCompact.w, input.medalCompact.h]])
       for (let y = Math.ceil(input.top + MOUSE_NOTICE_GAP_PX); y + h <= input.height - 12; y++) for (let x = 12; x + w <= input.width - 12; x += 2) {
         const b = { x, y, w, h };
