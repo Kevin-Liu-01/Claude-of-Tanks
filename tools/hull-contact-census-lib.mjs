@@ -355,7 +355,7 @@ export function floatingIslands(parts, tol = CONTACT_TOL_M, anchors = [() => tru
       if (gap <= reach) break;
     }
     const members_ = members.map((i) => parts[i]);
-    return {
+    const island = {
       parts: members_.map((part) => ({ bucket: part.bucket, source: part.source, min: part.box.min.toArray(), max: part.box.max.toArray(),
         ...(part.where ? { where: part.where } : {}) })),
       min: box.min.toArray(), max: box.max.toArray(),
@@ -364,7 +364,30 @@ export function floatingIslands(parts, tol = CONTACT_TOL_M, anchors = [() => tru
       nearest: from ? { from, to, bucket: toPart.bucket, ...(toPart.where ? { where: toPart.where } : {}) } : null,
       flap: members_.some((part) => part.source === 'mudguard' || part.bucket === 'hullRubber' || /mudguard/i.test(part.bucket)),
     };
+    islandMembers.set(island, members_);
+    return island;
   });
+}
+
+const islandMembers = new WeakMap();
+
+/** Whether an island stands enclosed in the vehicle's own closed armour (hull or turret structure): its bounds' centre
+ * and eight inset corners nearly all inside some other part's solid. Hidden carriers and fills read as floating to the
+ * contact law but nobody sees them. */
+function islandEnclosed(island, parts) {
+  const own = new Set(islandMembers.get(island) ?? []);
+  const solids = parts.filter((part) => !own.has(part) && !part.gear && /^(hull|turret)(ExternalArmor)?$/.test(part.bucket));
+  const min = island.min, max = island.max, c = min.map((v, k) => (v + max[k]) / 2);
+  const points = [c];
+  for (const dx of [-1, 1]) for (const dy of [-1, 1]) for (const dz of [-1, 1]) {
+    points.push([0, 1, 2].map((k) => c[k] + [dx, dy, dz][k] * (max[k] - min[k]) * 0.4));
+  }
+  let inside = 0;
+  for (const [x, y, z] of points) {
+    if (solids.some((part) => x >= part.box.min.x && x <= part.box.max.x && y >= part.box.min.y && y <= part.box.max.y
+      && z >= part.box.min.z && z <= part.box.max.z && insideSolid(part, x, y, z))) inside++;
+  }
+  return inside >= points.length - 1;
 }
 
 /** Openings into the hull seen from below, between the track bands' inner faces. */
@@ -454,7 +477,11 @@ export function bodyIslands(parts, body) {
   const anchors = body === 'gun' ? [(part) => part.bucket === 'gun' || part.bucket.startsWith('gunBarrel'),
     (part) => part.bucket !== 'gun' && !part.bucket.startsWith('gunBarrel')]
     : body === 'hull' ? [(part) => !part.gear, ...gearAnchors(own)] : [() => true];
-  return own.length ? floatingIslands(own, CONTACT_TOL_M, anchors).map((island) => ({ body, ...island })) : [];
+  return own.length ? floatingIslands(own, CONTACT_TOL_M, anchors).map((island) => {
+    const tagged = { body, ...island };
+    islandMembers.set(tagged, islandMembers.get(island));
+    return tagged;
+  }) : [];
 }
 
 /** The hull's belly pits as the census reads them. */
@@ -473,6 +500,7 @@ export function hullBellyPits(parts, trackInnerX) {
 export function hullContactCensus(id, options = {}) {
   const { parts, trackInnerX, hullScale, instanced } = collectStock(id, options);
   const islands = ['hull', 'turret', 'gun'].flatMap((body) => bodyIslands(parts, body));
+  for (const island of islands) if ((island.gapM ?? 1) >= VISIBLE_FLOAT_GAP_M && islandEnclosed(island, parts)) island.enclosed = true;
   const pits = hullBellyPits(parts, trackInnerX);
   return { id, parts: parts.length, instanced, trackInnerX, hullScale, islands, pits };
 }

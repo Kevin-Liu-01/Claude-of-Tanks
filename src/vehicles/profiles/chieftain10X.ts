@@ -153,9 +153,10 @@ function engineDeck(P: TankBuilderPort): void {
   for (const side of [-1, 1]) {
     for (const [x, w] of [[.21137, .42194], [.68115, .53869]]) {
       P.addEquipment('hullDetail', box(w, .047, .79641), side * x, 1.702, -2.80787);
+      // slats and end bar sit on the grille plate (1.7255 top; they stood 10-19 mm over it; owner 2026-10-19 sweep)
       for (let i = 0; i < 13; i++) P.addEquipment('hullDark', box(w - .024, .022, .028),
-        side * x, 1.747, -3.167 + i * .059);
-      P.addEquipment('hullDetail', box(w, .028, .024), side * x, 1.75859, -3.194);
+        side * x, 1.735, -3.167 + i * .059);
+      P.addEquipment('hullDetail', box(w, .028, .024), side * x, 1.738, -3.194);
     }
     P.addEquipment('hullDetail', box(.74087, .052, .27939), side * .579792, 1.704, -1.88927);
     for (let i = 0; i < 5; i++) P.addEquipment('hullDark', box(.71, .018, .025),

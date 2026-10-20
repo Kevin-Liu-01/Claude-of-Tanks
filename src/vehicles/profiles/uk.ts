@@ -1,3 +1,4 @@
+import type { SnapGroupOptions } from '../tankFactoryCore.ts';
 import { weaponAssembly } from './weaponStock.ts';
 // British family procedural profiles — FROM-SCRATCH rebuild (2026-07-31).
 // Authored against the measured silhouette curves in
@@ -150,6 +151,7 @@ export interface UKBuilderPort {
   scaleDecals(scale: number): void;
   /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
   hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  snapGroup(label: string, build: () => void, options?: SnapGroupOptions): void;
 }
 
 function applyCompleteVehicleScale(
@@ -1961,7 +1963,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
       // 12 x 0.4675 panels (station end-cap law §C: a cap in every 0.539
       // station window keeps the plate visible in every slice).
       for (let k = 0; k < 12; k++) {
-        P.add('hull', box(0.020, 0.50, 0.4675), s * 1.649, 1.06, -2.85625 + k * 0.4675);
+        P.add('hull', box(0.020, 0.54, 0.4675), s * 1.649, 1.08, -2.85625 + k * 0.4675);   // top 1.35, into the 1.33 fender strip (it stopped 20 mm under it)
       }
       for (const bz of [-1.766, -1.227, -0.149, 0.390, 1.468, 2.007]) {
         P.add('hullDetail', box(0.031, 0.42, 0.25), s * 1.674, 1.00, bz);
@@ -4628,13 +4630,15 @@ function buildChieftainUpper2026(
   const radioShoeY = 0.54;
   const radios = [[-0.92, -1.62, 0.76], [0.82, -1.73, 0.66], [0.18, -1.92, 0.54]];
   const buildChieftainUpper2026MarkingsStage1 = (): void => {
-    for (const [x, z, h] of radios) {
+    // each antenna stack stands on the falling rear roof under its shoe (owner 2026-10-19 sweep: at the common 0.54
+    // shoe height the outer two hovered up to 0.27 m over it)
+    for (const [x, z, h] of radios) P.snapGroup('chieftain-radio-mast', () => {
       P.add('turret', box(0.13, 0.10, 0.15), x, radioShoeY, z);
       P.add('turretDetail', cylY(0.055, 0.065, 0.12, 12), x, radioShoeY + 0.10, z);
       P.add('turretDark', cylY(0.018, 0.012, h, 10), x, radioShoeY + 0.22 + h * 0.5, z);
       P.add('turretDetail', box(0.035, 0.20, 0.035), x + 0.07,
         radioShoeY + 0.16, z + 0.05, 0.35, 0, -0.25);
-    }
+    }, { reachM: 0.35, mode: 'down' });
 
     // L11A5 thermal-sleeved cannon, fume extractor and recessed muzzle bore.
     buildGun(P, { len: 6.35, r: 0.115, sleeve: true, evac: 0.60, evacR: 1.42,

@@ -500,10 +500,14 @@ function merkavaSourceRearFinish(P: TankBuilderPort, c: MerkavaChassisConfig): v
 
   const centerH = Math.min(0.34, height * 0.40);
   const centerY = bot + centerH * 0.68;
-  P.add('hull', box(0.48, centerH, 0.045), 0, centerY, zFace - 0.004);
-  P.add('hullDark', box(0.32, 0.022, 0.020), 0, centerY + centerH * 0.30, zFace - 0.034);
-  P.add('hullDark', box(0.18, 0.11, 0.16), 0, bot + 0.065, zFace - 0.085);
-  P.add('hullDetail', cylZ(0.040, 0.18, 12), 0, bot + 0.065, zFace - 0.18);
+  // the centre plate, its handle bar and the tow block sit on the recessed stern between the bays (owner 2026-10-19
+  // sweep: at the bays' face line they floated up to 0.8 m behind it, in the open stern bay)
+  P.snapGroup('merkava-stern-centre', () => {
+    P.add('hull', box(0.48, centerH, 0.045), 0, centerY, zFace - 0.004);
+    P.add('hullDark', box(0.32, 0.022, 0.020), 0, centerY + centerH * 0.30, zFace - 0.034);
+    P.add('hullDark', box(0.18, 0.11, 0.16), 0, bot + 0.065, zFace - 0.085);
+    P.add('hullDetail', cylZ(0.040, 0.18, 12), 0, bot + 0.065, zFace - 0.18);
+  }, { reachM: 0.90, direction: [0, 0, 1] });
   P.add('hullDark', box(halfW * 0.82, 0.028, 0.028), 0, top - 0.035, zFace - 0.050);
 }
 

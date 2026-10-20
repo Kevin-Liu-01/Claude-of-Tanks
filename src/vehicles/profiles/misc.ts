@@ -508,7 +508,7 @@ export function buildAriete(P: MiscBuilderPort): void {
     // +-1.80 (WIDTH GUARD; ref stations read ~3.54-3.60 the whole run).
     // Band 0.60..1.42 under the deck edge; courses segmented ~0.47 (SS C).
     fenders(P, 1.20, 1.56, 1.41, -3.55, 2.45, 0.028);                            // fenders END at the glacis knee (the 3.30 run printed a 1.44 shelf over the ref's bare 1.26-1.38 glacis line)
-    fenders(P, 1.55, 1.67, 1.400, -3.71, 2.45, 0.024);                          // trench fill to the skirt inner face (turret-fix round: the bare 1.56..1.735 strip read as a black trench over the track top at every 3/4 angle — SS-B2). Top 1.412 stays UNDER both the 1.42 skirt line and the 1.424 fender top: the first 1.41-seat fill printed one extra side-row pixel line (side_hull 69.5 -> 68.9)
+    fenders(P, 1.55, 1.71, 1.400, -3.71, 2.45, 0.024);                          // trench fill to the skirt inner face (owner 2026-10-19 sweep: it stopped at 1.67, 3.6 cm short of the 1.706 face, and every skirt panel floated) (turret-fix round: the bare 1.56..1.735 strip read as a black trench over the track top at every 3/4 angle — SS-B2). Top 1.412 stays UNDER both the 1.42 skirt line and the 1.424 fender top: the first 1.41-seat fill printed one extra side-row pixel line (side_hull 69.5 -> 68.9)
     for (const s of [-1, 1]) {
       for (let k = 0; k < 12; k++) {                                             // restore the authored seven-wheel read: retain the original panel crowns,
         P.add('hull', box(0.0265, 0.62, 0.455), s * 1.71925, 1.11, -2.98 + k * 0.4775); // but lift the hem above the road-wheel crowns instead of hiding the
@@ -1069,7 +1069,9 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     for (const sx of [-1, 1]) P.add('hullCloth', box(0.05, 0.09, 0.10), sx * 0.885, 1.345, -3.51); // strap-end rolls to -3.56 EXACTLY the bag line — GRID LAW: the first -3.587 seat grew the shared box, shifted every 96-col grid (side dAlong 0 -> -0.057, a ref-only col at -3.654 appeared and the whole roof spike field paid the tax). Box z-min stays the bags' -3.56.
     P.add('hullDetail', box(0.32, 0.16, 0.145), 1.495, 1.38, -3.4325);           // right pannier shelf x 1.335..1.655, z -3.36..-3.505
     P.add('hullDark', box(0.30, 0.012, 0.125), 1.495, 1.462, -3.4325);           // shelf lid seam
-    for (const vx of [-0.78, -0.375, 0.10, 0.42, 0.79]) P.add('hullDetail', box(0.03, 0.18, 0.14), vx, 1.41, -3.46);
+    // rack uprights span both rails and the top cross-rail and run forward into the rear plate (owner 2026-10-19 sweep:
+    // the 0.18 m posts stopped 1-4 cm short of the rails and 3 cm off the plate, so the whole rack floated)
+    for (const vx of [-0.78, -0.375, 0.10, 0.42, 0.79]) P.add('hullDetail', box(0.03, 0.30, 0.20), vx, 1.4175, -3.455);
     for (const [rxc, rw] of [[-0.78, 0.24], [-0.375, 0.25], [0.26, 0.54], [0.79, 0.22]]) {
       P.add('hullDetail', box(rw, 0.035, 0.07), rxc, 1.5525, -3.525);            // 90-ladder r1: rack rear top cross-rail SEGMENTED like the lower rails (top 1.570, z -3.49..-3.56 — side cols -3.461/-3.575 wanted the ref's 1.571 tail line; the first SOLID rail filled the print's plan gaps at x -0.6/-0.15/+0.62 and printed -3.56 on the ±0.17/±0.61 plan cols: 0.177 x3. BOX LAW: rear face -3.56 = the bag line)
     }
@@ -3161,7 +3163,7 @@ function buildType74(P: MiscBuilderPort): void {
     // §I fittings: full-height whip antenna on the bustle flank plus the
     // 3-tube smoke-discharge bank on the dome rear quarter (real 2x3 JGSDF fit)
     const whipF = FITTINGS.antennaWhip({ mats: P.mats, h: 0.98, rake: s * 0.05, seed: 3 + s });
-    whipF.position.set(s * 0.94, 0.44, -1.43);
+    whipF.position.set(s * 0.80, 0.44, -1.43);                                 // on the roof edge inboard of the basket (at 0.94 it stood over the gap beside it; the factory seats it on the roof)
     P.turretG.add(whipF);
     const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 3, splay: s * 1.12, seed: 9 });
     smoke.position.set(s * 0.84, 0.40, -0.70);

@@ -49,21 +49,28 @@ function sponson(P:TankBuilderPort,side:number):void{
 function engineRoof(P:TankBuilderPort):void{
   P.add('hull',slab([[-194.8425,50.72,49.5,68.65],[-125,50.72,49.5,69.0],
     [-111,43.2,49.5,66.5],[-83,37.1,49.5,65.05]]));
+  // each roof fitting stands on the engine roof under it (owner 2026-10-19 sweep: the supplied heights left caps, rails,
+  // grille fields and boxes 1-10 cm over this roof's slab)
+  const seat=(build:()=>void):void=>P.snapGroup('c1-engine-roof-fitting',build,{reachM:.12,mode:'down'});
   for(const side of [-1,1]){
-    for(const z of [-179.4,-121.3]){
+    for(const z of [-179.4,-121.3])seat(()=>{
       equipment(P,cylY(m(5.6),m(5.6),m(1.1),24),side*58.9,66.4,z);
       caseBox(P,side*58.9,67.15,z,2.8,.55,2.4);
-    }
-    equipment(P,cylZ(m(.6),m(100),12),side*66.2,68.1,-147.0);
-    for(const z of [-182,-166,-140,-116])caseBox(P,side*66.2,66.8,z,1.4,2.8,2.4);
-    caseBox(P,side*29.2,68.85,-145.1,33.4,.25,40.8);
-    for(let i=0;i<12;i++)caseBox(P,side*29.2,69.0,-162.5+i*3.1,31,.15,.6);
+    });
+    seat(()=>{
+      equipment(P,cylZ(m(.6),m(100),12),side*66.2,68.1,-147.0);
+      for(const z of [-182,-166,-140,-116])caseBox(P,side*66.2,66.8,z,1.4,2.8,2.4);
+    });
+    seat(()=>{
+      caseBox(P,side*29.2,68.85,-145.1,33.4,.25,40.8);
+      for(let i=0;i<12;i++)caseBox(P,side*29.2,69.0,-162.5+i*3.1,31,.15,.6);
+    });
     for(const x of [17.5,26.5,35.5,44.5]){
-      caseBox(P,side*x,70.0,-190.7,6.9,1.35,4.1);
-      caseBox(P,side*x,70.0,-168.4,3.3,2.1,4.2);
+      seat(()=>caseBox(P,side*x,70.0,-190.7,6.9,1.35,4.1));
+      seat(()=>caseBox(P,side*x,70.0,-168.4,3.3,2.1,4.2));
     }
   }
-  caseBox(P,0,70.0,-182.5,27.8,2.0,3.0);
+  seat(()=>caseBox(P,0,70.0,-182.5,27.8,2.0,3.0));
   caseBox(P,0,67.9,-199.7,12.6,3.4,9.7);
   caseBox(P,0,65.8,-198.2,28.8,.9,11.1);
   for(const x of [-6.2,6.2])P.addEquipment('hullDetail',beamBetween(p(x,58.8,-208),p(x,69.2,-193),m(.9)));
@@ -137,6 +144,11 @@ function appliquePanel(P:TankBuilderPort,side:number,back:number,front:number,
   // raised edges. Export labels alone do not establish reactive gameplay.
   const inset=outer-.43307,midY=(high+low)/2,midZ=(front+back)/2;
   P.addExternalArmor('hull',box(m(inset-inner),m(high-low),m(front-back)),...p(side*(inner+inset)/2,midY,midZ));
+  // A backer band carries the panel off the sponson's 67.9 in outer wall, over the shared height (owner 2026-10-19
+  // sweep: every panel stood 7 cm off it, held by nothing).
+  const bandLo=Math.max(low,50),bandHi=Math.min(high,58);
+  if(bandHi>bandLo)P.add('hull',box(m(inner+.3-67.4),m(bandHi-bandLo),m(front-back-.5)),
+    ...p(side*(inner+.3+67.4)/2,(bandLo+bandHi)/2,midZ));
   for(const y of[low+.64961,high-.64961])P.addExternalArmor('hull',
     box(m(.43307),m(1.29922),m(front-back)),...p(side*(inset+outer)/2,y,midZ));
   for(const z of[back+1.24,front-1.24])P.addExternalArmor('hull',
@@ -156,6 +168,8 @@ function sideApplique(P:TankBuilderPort,side:number):void{
       .map(([x,y])=>[p(side*x,0,0)[0],p(0,y,0)[1]] as [number,number]);
     if(side<0)ring.reverse();return{z:p(0,0,z)[2],ring};
   })));
+  // its backer: the course's top runs 0.5 in over the sponson's wall foot, 2.3 in outboard of it
+  P.add('hull',box(m(70.45-67.3),m(.45),m(80-43)),...p(side*(70.45+67.3)/2,49.425,(80+43)/2));
   for(const z of[-105.315,-90.827,-76.378]){
     equipment(P,cylX(m(1.25),m(.65),12),side*76.0,26.18,z);
     caseBox(P,side*73.1,26.18,z,5.2,4.4,1.95);

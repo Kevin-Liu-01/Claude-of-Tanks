@@ -186,9 +186,12 @@ function addKurganetsDeckFittings(P: TankBuilderPort): void {
         [1.35622, 2.37517, -.57962, .96474, -.26319],
         [1.35966, 2.37517, -.36095, .98560, .16907],
     ];
-    for (const [x, y, z, ax, az] of fan) {
-        P.addEquipment('hullDetail', cylZ(.062, .4043, P.q ? 16 : 9), x, y, z, 0, Math.atan2(ax, az));
-    }
+    // the fan stands on the deck under it (owner 2026-10-19 sweep: it hovered 0.12 m over it)
+    P.snapGroup('kurganets-deck-fan', () => {
+        for (const [x, y, z, ax, az] of fan) {
+            P.addEquipment('hullDetail', cylZ(.062, .4043, P.q ? 16 : 9), x, y, z, 0, Math.atan2(ax, az));
+        }
+    }, { reachM: .15, mode: 'down' });
     for (const side of [-1, 1]) {
         // Owner markup 2026-10-14 on these blank deck blocks (critic panel 10-15: a low chest on the same footprint still
         // read as the same block): they are gone, and the deck beside the turret ring is clear; the decor keeps out of

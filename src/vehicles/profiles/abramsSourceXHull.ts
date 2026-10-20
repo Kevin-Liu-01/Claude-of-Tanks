@@ -293,7 +293,7 @@ function skirtStock(P: TankBuilderPort, side: number): void {
     addAbramsPaintedHullPanel(P, side, stock,
       side * centerX, (top + bottom) / 2, (z0 + z1) / 2);
     for (const z of [z0 + .04, z1 - .04]) {
-      P.addEquipment('hullDetail', cylX(.014, .009, 6), side * 1.847, top - .036, z);
+      P.addEquipment('hullDetail', cylX(.014, .009, 6), side * 1.832, top - .036, z);   // heads on the skirt face (13 mm off it at 1.847; owner 2026-10-19 sweep)
     }
   }
   const aft: CrossSection[] = [
@@ -387,8 +387,9 @@ function bowEquipment(P: TankBuilderPort): void {
     P.addEquipment('hullDetail', roundMember([x - .139, 1.17, 3.798], [x - .139, 1.313, 3.798], .011));
     P.addEquipment('hullDetail', roundMember([x + .139, 1.17, 3.798], [x + .139, 1.313, 3.798], .011));
     P.addEquipment('hullDetail', roundMember([x - .139, 1.313, 3.798], [x + .139, 1.313, 3.798], .011));
+    // each step block is seated on the glacis under it (1-4 cm over it; owner 2026-10-19 sweep)
     for (let k = 0; k < 5; k++) {
-      P.addEquipment('hullDetail', box(.075, .042, .173), side * .92, 1.302 + k * .027, 3.10 - k * .21);
+      P.snapGroup('abrams-glacis-step', () => P.addEquipment('hullDetail', box(.075, .042, .173), side * .92, 1.302 + k * .027, 3.10 - k * .21), { reachM: .06 });
     }
   }
 }

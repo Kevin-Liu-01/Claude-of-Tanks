@@ -125,9 +125,19 @@ function sideArmorCourse(P: AfvBuilderPort, o: SideArmorOptions = {}): void {
   const count = o.count || 7;
   for (const side of [-1, 1]) for (let i = 0; i < count; i++) {
     const z = (o.front ?? 2.35) - i * (o.step ?? 0.78);
-    armorTile(P, 'hull', side * (o.x ?? 1.68), o.y ?? 1.17, z,
-      o.w ?? 0.08, o.h ?? 0.50, o.d ?? 0.66,
-      [0, 0, side * (o.rz ?? 0.018)], o.cap !== false);
+    const x = side * (o.x ?? 1.68), y = o.y ?? 1.17, w = o.w ?? 0.08, h = o.h ?? 0.50, d = o.d ?? 0.66;
+    const rz = side * (o.rz ?? 0.018);
+    // Spaced side armour stands off the hull on brackets (owner 2026-10-19 sweep: the tiles floated up to 0.19 m
+    // beside the hull side with nothing joining them): each tile hangs from the stock over or beside its top edge
+    // (mudguardHangers.ts), the dark cap riding its top.
+    P.hangMudguard('afv-side-armor-tile', 'hull', KIT.box(w, h, d), x, y, z, 0, 0, rz);
+    if (o.cap !== false) P.add('hullDark', KIT.box(w * 0.72, 0.016, Math.max(0.025, d * 0.08)),
+      x, y + h * 0.50 + 0.010, z + d * 0.22, 0, 0, rz);
+    // a backing strap behind each joint ties the course together, so the bow tile (no stock over or beside it at the
+    // falling nose) rides its neighbour; it laps 20 mm into each tile's back
+    const step = o.step ?? 0.78;
+    if (i < count - 1) P.add('hull', KIT.box(0.02, h * 0.5, step - d + 0.04),
+      side * ((o.x ?? 1.68) - w / 2 + 0.006), y, z - step / 2, 0, 0, rz);
   }
 }
 

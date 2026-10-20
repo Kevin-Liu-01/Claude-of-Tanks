@@ -194,9 +194,11 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
   // plates are thin armor OVER the approach ramps, not a deep solid through
   // the tracks: keep their undersides above the measured shoe envelope and
   // overlap the central shoulder + existing ±1.77 guard roof.
+  // (inner front corners run to z 3.475, 7 mm into the nose lip's raked back face: at 3.46 they stopped 8 mm short
+  // of it, the seam that split the whole upper hull from the belly and nose; owner 2026-10-19 sweep)
   for (const s of [-1, 1]) P.add('hull', slab(
-    [s * 1.05, 1.16, 2.72], [s * 1.77, 1.14, 2.78], [s * 1.77, 1.13, 3.42], [s * 1.05, 1.14, 3.46],
-    [s * 1.05, 1.23, 2.72], [s * 1.77, 1.15, 2.78], [s * 1.77, 1.10, 3.42], [s * 1.05, 1.21, 3.46]));
+    [s * 1.05, 1.16, 2.72], [s * 1.77, 1.14, 2.78], [s * 1.77, 1.13, 3.42], [s * 1.05, 1.14, 3.475],
+    [s * 1.05, 1.23, 2.72], [s * 1.77, 1.15, 2.78], [s * 1.77, 1.10, 3.42], [s * 1.05, 1.21, 3.475]));
   // The frontal shoulder faces are canted across the track lanes.  Surface
   // planes sit on the certified cap front (no new envelope) and replace the
   // old dead-horizontal shelf read with the oracle's inward-high rake.
@@ -283,9 +285,9 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
       // and an offset connector pair on the right.  These enrich dead-rear
       // read without manufacturing new stern silhouette pixels.
       const brace = new THREE.PlaneGeometry(0.34, 0.022); brace.rotateY(Math.PI); brace.rotateZ(-0.42);
-      P.add('hullDetail', brace, -0.74, 1.34, -3.746);
+      P.add('hullDetail', brace, -0.74, 1.34, -3.7425);
       const latch = new THREE.PlaneGeometry(0.10, 0.055); latch.rotateY(Math.PI);
-      P.add('hullDetail', latch, -0.05, 1.34, -3.746);
+      P.add('hullDetail', latch, -0.05, 1.34, -3.7425);
       for (const [x, y, r] of [[0.56, 1.31, 0.032], [0.70, 1.38, 0.026]]) {
         P.add('hullDetail', cylZ(r, 0.010, 10), x, y, -3.746);
         P.add('hullDark', cylZ(r * 0.50, 0.012, 10), x, y, -3.751);
@@ -300,12 +302,12 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
     P.add('hullDetail', box(0.07, 0.05, 0.16), s * 1.40, 1.42, -3.64);         // flap hangers
     const convoyFace = new THREE.PlaneGeometry(s < 0 ? 0.32 : 0.26, s < 0 ? 0.21 : 0.18);
     convoyFace.rotateY(Math.PI);
-    P.add('hullDark', convoyFace, s * 1.25, s < 0 ? 1.42 : 1.38, -3.766);
+    P.add('hullDark', convoyFace, s * 1.25, s < 0 ? 1.42 : 1.38, -3.741);      // 1 mm off the stern face (-3.740; it stood 26 mm off)
     if (s < 0) for (let k = -1; k <= 1; k++) {
       const convoyStripe = new THREE.PlaneGeometry(0.22, 0.025);
       convoyStripe.rotateY(Math.PI);
       convoyStripe.rotateZ(-0.65);
-      P.add('hullDetail', convoyStripe, -1.25 + k * 0.010, 1.42 + k * 0.050, -3.769);
+      P.add('hullDetail', convoyStripe, -1.25 + k * 0.010, 1.42 + k * 0.050, -3.742);
     }
   }
   P.add('hullDetail', box(0.30, 0.18, 0.04), 0, 1.43, -3.728);                 // convoy plate
@@ -355,14 +357,14 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
     fenderBreak.rotateZ(s * 0.16);
     P.add('hullDark', fenderBreak, s * 1.56, 1.075, 3.718);
     const lampWell = new THREE.PlaneGeometry(0.105, 0.055);
-    P.add('hullDark', lampWell, s * 1.17, 1.205, 3.719);
+    P.add('hullDark', lampWell, s * 1.17, 1.205, 3.716);
     const lampLens = new THREE.PlaneGeometry(0.070, 0.030);
-    P.add('hullGlass', lampLens, s * 1.17, 1.205, 3.721);
+    P.add('hullGlass', lampLens, s * 1.17, 1.205, 3.717);
     P.add('hull', box(0.03, 0.10, 0.09), s * 1.785, 0.95, 3.775);              // physical guard leading lip
     P.add('hullDark', box(0.025, 0.42, 0.035), s * 1.802, 1.10, 3.47, 0.12, 0, 0); // transition seam
     hullRubberLane(s, box(0.025, 0.50, 0.35), s * 1.725, 1.05, -3.30);         // outer rear guard retucks the end wheel
   }
-  P.add('hull', box(0.22, 0.62, 0.15), 0, 1.01, 3.75);                        // one-column structural bow datum bracket
+  P.add('hull', box(0.22, 0.62, 0.28), 0, 1.01, 3.685);                       // one-column structural bow datum bracket (front 3.825; runs back 10 mm into the nose lip, which it stood 12 cm ahead of)
   P.add('hull', box(0.04, 0.68, 1.76), 1.72, 1.01, 2.50);                    // asymmetric right front skirt stringer
   };
   buildFrontGuards();
@@ -418,7 +420,7 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
     P.add('hullDetail', box(0.020, 0.018, 2.20), s * 1.69, 1.552, -1.60);       // short physical deck-edge rail
   }
   P.add('hullDetail', box(0.03, 0.08, 2.90), 1.785, 1.13, 2.18);               // measured surviving right fender strip
-  P.add('hullDetail', box(0.03, 0.06, 0.50), -1.790, 1.13, 1.94);              // left station fender lip closes the measured ±1.80 bow lane
+  P.add('hullDetail', box(0.09, 0.06, 0.50), -1.760, 1.13, 1.94);              // left station fender lip closes the measured ±1.80 bow lane (outer 1.805; inner face laps the front skirt block's 1.72 face)
   };
   buildK2Skirts();
   const buildK2HullFurniture = (): void => {
@@ -430,10 +432,12 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
   P.add('hullDark', torus(0.27, 0.014, P.q ? 20 : 12), -0.42, 1.552, 2.02);
   periscope(P, 'hullDetail', -0.58, 1.625, 1.52);
   periscope(P, 'hullDetail', -0.30, 1.635, 1.50);
+  // The splash V stands on the glacis plate (surface 1.24 + 0.188 (3.53 - z)), 10 mm into it: authored 0.21 m lower,
+  // it hung inside the hull under the plate (owner 2026-10-19 sweep)
   for (const s of [-1, 1]) {
-    P.add('hullDetail', box(0.95, 0.06, 0.09), s * 0.52, 1.23, 2.58, 0.19, s * 0.35, 0); // splash rail follows low crest
+    P.add('hullDetail', box(0.95, 0.06, 0.09), s * 0.52, 1.439, 2.58, 0.19, s * 0.35, 0); // splash rail follows low crest
   }
-  P.add('hullDetail', box(0.14, 0.055, 0.10), 0, 1.29, 2.24, 0.19, 0, 0);      // V apex block
+  P.add('hullDetail', box(0.14, 0.055, 0.10), 0, 1.50, 2.24, 0.19, 0, 0);      // V apex block
   {
     for (const s of [-1, 1]) {
       P.add('hull', box(0.26, 0.13, 0.11), s * 1.36, 1.25, 3.375);             // headlight housing
@@ -471,7 +475,7 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
   // deck shadow lane around the ring (critic r1 carve: the visible deck
   // shelf between turret wall and hull edge reads turret-ON-hull)
   for (const s of [-1, 1]) {
-    P.add('hullDetail', box(0.08, 0.010, 1.25), s * 1.57, 1.664, -0.35);
+    P.add('hullDetail', box(0.08, 0.010, 1.25), s * 1.57, 1.564, -0.35);     // on the 1.56 mid deck (it hung 0.10 m over it)
   }
   };
   buildK2HullFurniture();
@@ -1226,7 +1230,7 @@ function buildK1A1Hull(P: Modern3BuilderPort) {
   // hull: belly tub, sponson band with the print's TWO deck levels (raised
   // 1.61 engine deck aft of −2.00, 1.475 forward deck), §B1 ONE 6.4°
   // glacis plane to the 1.24 bow lip, pointed prow over the 40° chin.
-  P.add('hull', box(1.96, 0.60, 6.90), 0, 0.70, -0.05);                        // closed belly ±0.98: stays inside both native track lanes through the terminal wraps
+  P.add('hull', box(1.96, 0.60, 7.02), 0, 0.70, -0.11);                        // closed belly ±0.98: stays inside both native track lanes through the terminal wraps; runs to -3.62, 10 mm into the rear lower plate (owner 2026-10-19 sweep: the 0.11 m between them stood open from below)
   // Structural lower-side closure. The former pair of full-length dark
   // wheel-well liners sat directly behind the shoes and read as artificial
   // panels. Remove those liners entirely and close the real hull instead:
@@ -1698,7 +1702,7 @@ function buildType10Native2026(
     for (const s of [-1, 1]) P.add('hull', box(0.22, 0.025, 0.22), s * 1.14, 1.0875, 3.59);
     for (const s of [-1, 1]) {
       P.add('hull', box(0.077, 0.11, 0.44), s * 1.7435, 0.561, 2.442);            // §D WIDTH ANCHOR lobe x 1.705..1.782 at the ref's side band ×1.10 — widthM 3.56 anchor, both station caps inside one slab
-      P.add('hull', box(0.0605, 0.11, 5.731), s * 1.7133, 0.561, 0.2365);         // low guard strip x 1.683..1.744, z -2.63..3.10
+      P.add('hull', box(0.086, 0.11, 5.731), s * 1.701, 0.561, 0.2365);           // low guard strip x 1.658..1.744, z -2.63..3.10: its inner face laps the skirt's 1.661 outer face (owner 2026-10-19 sweep: it stood 22 mm off it)
       P.add('hull', box(0.044, 0.066, 0.44), s * 1.6357, 1.122, 3.465);           // bow guard tip strip
       P.add('hull', box(0.10, 0.04, 0.58), s * 0.995, 1.06, 3.39);                // inner fender ledge over the idler (the print's own fender-lobe mass at |x| 0.81-1.13 ×1.10): closes the beak-flank/band top-down channel (§B2 9-cell receipt); outer face 1.045 = 3.1 cm clear of the 1.0758 band inner face (§B4 voxel-margin receipt: 1.070 read 36 band vox)
     }
@@ -1715,7 +1719,7 @@ function buildType10Native2026(
       P.add('hull', slab(                                                         // front stepped panel, raked leading edge (one plane, §B1); top 1.301 meets the fender underside (§5.364 bow-quarter window seal)
         [s * 1.622, 0.572, 2.882], [s * 1.6605, 0.572, 2.882], [s * 1.6605, 0.572, 1.705], [s * 1.622, 0.572, 1.705],
         [s * 1.622, 1.301, 3.168], [s * 1.6605, 1.301, 3.168], [s * 1.6605, 1.301, 1.705], [s * 1.622, 1.301, 1.705]));
-      P.add('hull', box(0.0385, 0.572, 0.132), s * 1.7023, 0.825, -3.245);        // compact rear panel (inner 1.683 rides 8.8 cm outside the raised wrap band)
+      P.add('hull', box(0.0615, 0.572, 0.132), s * 1.69125, 0.825, -3.245);      // compact rear panel (outer 1.722; its inner face laps the skirt course's 1.661 outer face, 8.5 cm outside the raised wrap band: owner 2026-10-19 sweep, it stood 23 mm off the course)
       for (const zs of [0.792, -0.462, -1.716, -2.574]) P.add('hullDark', box(0.0462, 0.308, 0.0176), s * 1.6424, 0.96, zs); // module seams (aft seam -2.574 — the raised sprocket wrap corridor [-3.49..-2.80] is §B4-clear)
       if (P.q) for (let k = 0; k < 7; k++) {
         P.add('hullDark', cylX(0.0154, 0.0198, 6), s * 1.6693, 1.089, 1.408 - k * 0.572); // bolt studs

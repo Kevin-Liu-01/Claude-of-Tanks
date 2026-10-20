@@ -23,6 +23,9 @@ function buildHull(P: TankBuilderPort): void {
     for (let i = 0; i < 6; i++) {
       const z = -2.30 + i * .85;
       sideWall(P, side, 1.505, 1.545, [[z-.412, .67, 1.26], [z+.412, .67, 1.26]]);
+      // a hinge web across the 11 cm between the hull's 1.40 shoulder and the section's top edge, over the track's
+      // top run (owner 2026-10-19 sweep: every section floated beside the hull)
+      P.add('hull', box(.13, .045, .80), side * 1.445, 1.2375, z);
       P.addEquipment('hullDetail', box(.043, .035, .64), side*1.545, 1.27, z);
       for (const dz of [-.29, .29]) {
         P.addEquipment('hullDetail', box(.025, .15, .035), side*1.545, .64, z+dz);
@@ -36,10 +39,10 @@ function buildHull(P: TankBuilderPort): void {
     P.addEquipment('hullDetail', box(.29,.045,.25), side*1.15,1.505,2.99);
     for (const z of [-2.52,-1.69]) P.addHatch('hull',box(.77,.032,.67),side*.75,1.772,z);
     // Stern stowage rails are attached at every upright, not floating wires.
-    for (const z of [-2.91,-2.25,-1.56]) P.addEquipment('hullDetail',cylY(.015,.015,.27,8),side*1.24,1.89,z);
+    for (const z of [-2.91,-2.25,-1.56]) P.addEquipment('hullDetail',cylY(.015,.015,.28,8),side*1.24,1.885,z); // feet 5 mm into the 1.75 roof (they stood 5 mm over it)
     P.addEquipment('hullDetail',cylZ(.015,1.38,8),side*1.24,2.025,-2.235);
     for (const z of [-2.91,-1.56]) P.addEquipment('hullDetail',cylX(.015,.26,8),side*1.12,2.025,z);
-    for (const z of [-2.7,2.38]) KIT.liftEye(P,'hullDetail',side*1.19,z>0?1.49:1.79,z);
+    for (const z of [-2.7,2.38]) KIT.liftEye(P,'hullDetail',side*1.19,z>0?1.475:1.775,z); // seated: they stood 15 mm off
   }
   // Right-side engine grille and the left-front driver cover establish Dardo's asymmetry.
   P.addEquipment('hullDark',box(.027,.40,1.61),1.413,1.50,.23);

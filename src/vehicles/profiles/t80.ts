@@ -133,7 +133,7 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
       // plan column reads rear -2.91 on the left while the right reads
       // -3.35 (print asymmetry, t80 fender class).)
       P.add('hull', box(s < 0 ? 0.82 : 0.85, 0.305, 0.12), s * (s < 0 ? 1.21 : 1.225), 1.56 + hy, -3.33);  // lip 1.405..1.71 to -3.39
-      P.add('hull', box(0.885, 0.155, 0.11), s * 1.2125, 1.7125 + hy, -2.90);  // 1.79 fwd step z -2.955..-2.845
+      P.add('hull', box(0.885, 0.155, 0.215), s * 1.2125, 1.7125 + hy, -2.9525);  // 1.79 fwd step z -3.06..-2.845 (runs back 5 mm into the box behind it, which it stood 10 cm ahead of)
       // (r27c: plate rear face pulled off the -3.15 column boundary,
       // BODY-EDGE PIN)
       P.add('hull', box(0.90, 0.39, 0.19), s * 1.21, 1.215, -3.045);  // rear plate 1.02..1.41, z -3.14..-2.95

@@ -115,8 +115,12 @@ function buildSabraHull(P: TankBuilderPort): void {
     for(let i=0;i<9;i++) {
       const z=-2.64+i*.646;
       const outer=z>.4?1.79+(z-.4)*.031:1.769;
-      P.addExternalArmor('hull',box(.014,.645,.623),side*(outer-.007),1.092,z);
-      for(const y of [.83,1.36])P.addEquipment('hullDetail',box(.035,.062,.094),side*(z>.4?1.868:1.814),y,z);
+      // owner 2026-10-19 sweep: the panels stood 7-16 cm outboard of the shelf and 5 mm under it, their bolts 2-4 cm
+      // off their faces. Each panel now rises 10 mm into a hanger rail run out from the shelf, and its bolts sit in
+      // its face.
+      P.addExternalArmor('hull',box(.014,.655,.623),side*(outer-.007),1.0975,z);
+      P.add('hull',box(outer-.014-1.685+.01,.03,.56),side*((outer-.014+1.685)/2+.005),1.415,z);
+      for(const y of [.83,1.36])P.addEquipment('hullDetail',box(.035,.062,.094),side*(outer+.0145),y,z);
     }
     for(const z of [-2.48,-1.59])P.addEquipment('hullDetail',box(.48,.25,.68),side*1.37,1.678,z);
     // Owner 2026-10-19 (flaps sweep): flap and clamp 38 mm wider inboard, into the hull side they stood 33 mm off

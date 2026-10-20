@@ -1,3 +1,4 @@
+import type { SnapGroupOptions } from '../tankFactoryCore.ts';
 import { tankSeedId } from '../tankIdAliases.ts';
 import { addModernFieldCage } from './modernFieldCage.ts';
 import {addRearFieldStowage} from './rearFieldStowage.ts';
@@ -53,6 +54,7 @@ interface AbramsGear {
 }
 
 interface AbramsBuilderPort {
+  snapGroup(label: string, build: () => void, options?: SnapGroupOptions): void;
   forEachBucketPart(names:string|string[],visitor:(geometry:THREE.BufferGeometry,box:THREE.Box3|null,bucket:string)=>void):void;
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
@@ -7013,9 +7015,10 @@ function buildAbramsX(P: AbramsBuilderPort): void {
                     P.add('hullShadow', box(0.008, 0.018, 0.235), side * 1.800,
                       bj + 0.066, zJ + ds * 0.095, ds * 0.56, 0, 0);
                   }
-                  P.add('hullDetail', box(0.010, 0.055, 0.032), side * 1.798,
+                  // the joint clips sit on the leaned skirt face (at 1.798 they stood 25 mm off it; owner 2026-10-19 sweep)
+                  P.add('hullDetail', box(0.010, 0.055, 0.032), side * 1.770,
                     tj - 0.11, zJ - 0.035);
-                  P.add('hullDetail', box(0.010, 0.055, 0.032), side * 1.798,
+                  P.add('hullDetail', box(0.010, 0.055, 0.032), side * 1.770,
                     tj - 0.11, zJ + 0.035);
                 }
                 // AXDED-R1 sponson shadow channel (per segment — follows the
@@ -7040,7 +7043,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
                   for (let bk = 0; bk < nB; bk++) {
                     const bz = zR + ((bk + 0.5) / nB) * (zF - zR);
                     const by = skTop(bz) - 0.10 - 0.20 * (skTop(bz) - skBot(bz));
-                    P.add('hullDark', cylX(0.010, 0.008, 6), side * 1.782, by, bz);
+                    P.add('hullDark', cylX(0.010, 0.008, 6), side * 1.777, by, bz);   // heads on the leaned face (5 mm off it at 1.782)
                   }
                 }
               }
@@ -7669,8 +7672,8 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     P.add('turretDark', box(0.014, 0.009, 1.28), -0.368, 0.517, 0.514);
     P.add('turretDark', box(0.014, 0.009, 1.28), 0.368, 0.517, 0.514);
     if (P.q) for (const side of [-1, 1]) for (let ri = 0; ri < 9; ri++) {
-      P.add('turretDetail', cylY(0.009, 0.009, 0.010, 6), side * 1.075,
-        0.457, -1.45 + ri * 0.31);
+      P.snapGroup('abramsx-roof-rivet', () => P.add('turretDetail', cylY(0.009, 0.009, 0.010, 6), side * 1.075,
+        0.457, -1.45 + ri * 0.31), { reachM: 0.04, mode: 'down' });
     }
     P.add('turretDark', box(1.30, 0.055, 0.026), 0, 0.16, -2.18);
     P.add('turretDetail', box(0.69, 0.014, 0.026), 0, 0.523, 1.015);
@@ -8119,6 +8122,11 @@ function addM1A3HullCagesAndPowerpack(P: AbramsBuilderPort): void {
   }
   for (const y of M1A3_CAGE_RAIL_YS) {
     P.addExternalArmor('hull', box(3.96, 0.035, 0.035), 0, y, -4.16);
+  }
+  // stand-offs from the stern plate carry the stern cage (owner 2026-10-19 sweep: it hung 11 cm behind the hull, joined
+  // to nothing)
+  for (const x of [-1.38, -0.28, 0.28, 1.38]) for (const y of [0.91, 1.43]) {
+    P.addExternalArmor('hull', box(0.04, 0.04, 0.15), x, y, -4.09);
   }
   for (const x of [-1.92, -1.38, -0.84, -0.28, 0.28, 0.84, 1.38, 1.92]) {
     P.addExternalArmor('hull', box(0.035, 0.82, 0.035), x, 1.17, -4.16);

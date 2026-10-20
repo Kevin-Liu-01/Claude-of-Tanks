@@ -24,15 +24,23 @@ function buildHull(P: TankBuilderPort): void {
     for (let i=0;i<6;i++) {
       const z=-2.73+i*.93, roof=z>1?2.02-(z-1)*.12:2.05;
       sideWall(P,side,1.61,1.685,[[z-.45,.84,roof-.025],[z+.45,.84,roof-.025]]);
+      // The cassette stands 8 cm off the sloped hull side: a backer from the 1.31 knee up to its roof edge follows the
+      // slope from the 1.53 shoulder in to the 1.40 roof edge and runs 10 mm into the cassette's back (owner 2026-10-19
+      // sweep: every cassette floated beside the hull).
+      {
+        const top = roof - 0.05, ring = [[1.52, 1.31], [1.62, 1.31], [1.62, top], [1.40, top]] as [number, number][];
+        const backer = sectionSolid([{ z: z - .44, ring }, { z: z + .44, ring }]);
+        P.add('hull', side < 0 ? mirrorX(backer) : backer);
+      }
       P.addEquipment('hullDark',box(.008,.016,.89),side*1.69,1.28,z);
       for (const dz of [-.31,.31]) {
         P.addEquipment('hullDark',cylX(.053,.010,16),side*1.693,roof-.17,z+dz);
         P.addEquipment('hullDetail',cylX(.020,.017,8),side*1.703,roof-.17,z+dz);
-        P.addEquipment('hullDetail',box(.035,.13,.07),side*1.71,1.18,z+dz);
+        P.addEquipment('hullDetail',box(.035,.13,.07),side*1.70,1.18,z+dz);   // 2.5 mm into the cassette face (it stood 7 mm off)
       }
     }
     // End cells taper upward to remain clear of the complete moving shoes.
-    sideWall(P,side,1.625,1.68,[[-3.65,1.36,2.04],[-3.19,.84,2.04]]);
+    sideWall(P,side,1.625,1.68,[[-3.65,1.36,2.04],[-3.17,.84,2.04]]);   // laps 10 mm onto the first cassette
     sideWall(P,side,1.50,1.66,[[2.39,1.29,1.85],[3.54,1.54,1.64]]);
     P.addMudguard(`borsuk-front-${side}`,'hullRubber',box(.53,.25,.028),side*1.34,1.27,3.61,-.57);
     P.hangMudguard(`borsuk-rear-${side}`,'hullRubber',box(.51,.28,.028),side*1.34,.96,-3.41,.10);

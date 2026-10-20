@@ -18,9 +18,12 @@ for (const id of ids) {
   let row;
   try { row = hullContactCensus(id, { where: process.argv.includes('--where') }); }
   catch (error) { console.log(`${id}: ERROR ${error.message}`); out.push({ id, error: String(error.message) }); continue; }
-  const visible = row.islands.filter((island) => island.gapM === null || island.gapM >= VISIBLE_FLOAT_GAP_M);
+  // visible: clear of the hull by VISIBLE_FLOAT_GAP_M or more and not enclosed in the vehicle's own armour
+  const floating = row.islands.filter((island) => island.gapM === null || island.gapM >= VISIBLE_FLOAT_GAP_M);
+  const visible = floating.filter((island) => !island.enclosed);
   console.log(`${id}: ${row.parts} parts, ${row.islands.length} islands (${visible.length} visible, `
-    + `${visible.filter((i) => i.flap).length} flap), ${row.pits.length} belly pits (${((performance.now() - started) / 1000).toFixed(1)} s)`);
+    + `${visible.filter((i) => i.flap).length} flap, ${floating.length - visible.length} enclosed), ${row.pits.length} belly pits `
+    + `(${((performance.now() - started) / 1000).toFixed(1)} s)`);
   for (const island of allIslands ? row.islands : visible) {
     console.log(`   ${island.body} ${island.flap ? 'FLAP ' : ''}float gap ${island.gapM === null ? '>0.8' : (island.gapM * 1000).toFixed(0)} mm `
       + `[${f(island.min)} .. ${f(island.max)}] ${island.parts.map((p) => p.bucket).join(' ')}`);

@@ -74,6 +74,10 @@ interface RussiaGunMountPort extends RussiaGeometryPort {
   addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
+interface RussiaSkirtPort extends RussiaGeometryPort {
+  hangMudguard?(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+}
+
 interface RussiaMudguardPort extends RussiaGeometryPort {
   addMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
@@ -993,13 +997,20 @@ export function ruDeck(P: RussiaGeometryPort, o: DeckOptions): void {
 // o.th: panel thickness (default 0.04) — front-view columns only register
 // the band when the face is >1-2 mask pixels deep (t62_1975 r6 lesson).
 function addRuSkirtPanel(
-  P: RussiaGeometryPort,
+  P: RussiaSkirtPort,
   options: SkirtBandOptions,
   side: number,
   index: number,
   panelD: number,
+  last: boolean,
 ): void {
   const { box } = KIT;
+  // owner 2026-10-19 sweep: on most of the T-72/T-80/T-90 courses the panels' tops stopped 2-10 cm under the fender
+  // and nothing held them; each upper panel is hung from the fender over it (mudguardHangers.ts)
+  const panel = (slot: string, geometry: THREE.BufferGeometry, x: number, y: number, z: number): void => {
+    if (P.hangMudguard) P.hangMudguard('ru-skirt-panel', slot, geometry, x, y, z);
+    else P.add(slot, geometry, x, y, z);
+  };
   const z = options.z0 + panelD * (index + 0.5);
   const panelYBot = index === 0 && options.firstYBot !== undefined
     ? options.firstYBot
@@ -1013,12 +1024,12 @@ function addRuSkirtPanel(
   // r25 order 2); default 0 keeps the single-box call byte-identical.
   const rubberBottomH = options.rubberBotH ?? 0;
   if (rubberBottomH > 0) {
-    P.add('hull', box(options.th ?? 0.04, panelH - rubberBottomH, panelD * 0.94),
+    panel('hull', box(options.th ?? 0.04, panelH - rubberBottomH, panelD * 0.94),
       side * options.x, panelYMid + rubberBottomH / 2, z);
     P.add('hullRubber', box(options.th ?? 0.04, rubberBottomH, panelD * 0.94),
       side * options.x, panelYBot + rubberBottomH / 2, z);
   } else {
-    P.add('hull', box(options.th ?? 0.04, panelH, panelD * 0.94),
+    panel('hull', box(options.th ?? 0.04, panelH, panelD * 0.94),
       side * options.x, panelYMid, z);
   }
   // dressIn (pt91m r25, opt-in): pull the seam battens/bolt heads inboard
@@ -1027,6 +1038,14 @@ function addRuSkirtPanel(
   const dressIn = options.dressIn ?? 0;
   P.add('hullDark', box(0.048, panelH * 0.9, 0.02),
     side * (options.x + 0.003 - dressIn), panelYMid, z + panelD / 2);
+  // A backing strip behind each joint carries the panels as one course and the joint's batten with them (owner
+  // 2026-10-19 sweep: the 6 % joints left every panel, and every batten, on its own, and a panel with no fender over
+  // it floated). It laps 20 mm into each panel's back and stays 19 mm inside the outer face line.
+  if (!last) {
+    const th = options.th ?? 0.04, inner = options.x - th / 2 - 0.009, outer = options.x - Math.min(0.019, th / 2 - 0.001);
+    P.add('hull', box(outer - inner, panelH * 0.5, panelD * 0.06 + 0.04),
+      side * (inner + outer) / 2, panelYMid, z + panelD / 2);
+  }
   P.add('hullDark', KIT.cylZ(0.014, 0.014, 8),
     side * (options.x + 0.015 - dressIn), options.yTop - 0.07, z,
     0, side * Math.PI / 2, 0);
@@ -1042,12 +1061,12 @@ function addRuSkirtPanel(
     z);
 }
 
-export function ruSkirtBand(P: RussiaGeometryPort, o: SkirtBandOptions): void {
+export function ruSkirtBand(P: RussiaSkirtPort, o: SkirtBandOptions): void {
   const panels = o.panels ?? 7;
   const panelD = (o.z1 - o.z0) / panels;
   for (const s of [-1, 1]) {
     for (let i = 0; i < panels; i++) {
-      addRuSkirtPanel(P, o, s, i, panelD);
+      addRuSkirtPanel(P, o, s, i, panelD, i === panels - 1);
     }
   }
 }

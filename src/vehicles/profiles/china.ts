@@ -713,8 +713,9 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // stern to bow shoulder — segmented plates bridge sponson edge to the
   // skirt hanger line.
   ([-1, 1] as const).forEach((s) => {
+    // a plate the falling bow leaves over air is seated on the hanger line under it (the fore two stood 2-5 cm over it)
     for (let i = 0; i < 12; i++) {
-      P.add('hull', box(0.20, 0.032, 0.52), s * 1.755, 1.60, -3.70 + i * 0.575);
+      P.snapGroup('ztz99-fender-plate', () => P.add('hull', box(0.20, 0.032, 0.52), s * 1.755, 1.60, -3.70 + i * 0.575), { reachM: 0.06 });
     }
     // lower tub side strakes: the print's hull side wall hangs to ~0.34
     // at the sponson line while the centre belly stays at 0.46 — real
@@ -825,9 +826,10 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // ---- rear deck + transom: louvre field, service transom, twin fuel drums
   // on real angle brackets and a center rack (print band 1.5..2.1 at the
   // stern — the silhouette rows in specs carry this overhang).
+  // each slat is seated on the falling deck (level, the aft ones stood up to 4 cm over it; owner 2026-10-19 sweep)
   Array.from({ length: 7 }, (_, index) => index).forEach((i) => {
-    P.add('hullDark', box(2.50, 0.018, 0.075), 0, 1.712, -2.10 - i * 0.24);
-    P.add('hullDetail', box(2.50, 0.028, 0.026), 0, 1.735, -2.22 - i * 0.24);
+    P.snapGroup('ztz99-deck-slat', () => P.add('hullDark', box(2.50, 0.018, 0.075), 0, 1.712, -2.10 - i * 0.24), { reachM: 0.05 });
+    P.snapGroup('ztz99-deck-rib', () => P.add('hullDetail', box(2.50, 0.028, 0.026), 0, 1.735, -2.22 - i * 0.24), { reachM: 0.05 });
   });
   ([[-0.85, -1.75], [0.72, -1.88]] as const).forEach(([x, z]) => {
     P.add('hullDetail', cylY(0.095, 0.095, 0.032, 10), x, 1.725, z);

@@ -191,8 +191,10 @@ function skirtSupports(P: TankBuilderPort, side: number): void {
 function thinSkirtRows(P: TankBuilderPort, side: number): void {
   for (let i = 0; i < 6; i++) {
     const z = 1.124 - i * .874;
-    P.addExternalArmor('hull', box(.0354, i === 5 ? .2226 : .41069, .82275),
-      side * 1.7232, i === 5 ? 1.18644 : 1.092395, z);
+    // tops 1.325 and inner faces 1.6905, into the fender edge (1.695) over them (owner 2026-10-19 sweep: they stopped
+    // 24 mm under it and 11 mm outboard)
+    P.addExternalArmor('hull', box(.0504, i === 5 ? .2503 : .43839, .82275),
+      side * 1.7157, i === 5 ? 1.19999 : 1.10624, z);
     for (const dz of [-.33, .33]) P.addEquipment('hullDetail', cylX(.015, .012, 8),
       side * 1.748, 1.247, z + dz);
   }

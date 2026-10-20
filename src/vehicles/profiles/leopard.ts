@@ -1959,12 +1959,15 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
       const segL = (F.z1 - F.z0) / segN;
       const th = F.y1 - F.y0;
       const drop = F.drop ?? 0.005;            // fender top below the deck line
+      // The planks run inboard into the body side (owner 2026-10-19 sweep: on the 2A3 their 1.622 inner edge stood 6 cm
+      // off the 1.56 body, every plank floating); the dark top keeps its authored outboard band.
+      const x0 = Math.min(F.x0, H.bodyHW - 0.01);
       for (const s of [-1, 1] as const) {
         for (let k = 0; k < segN; k++) {
           const zc = F.z0 + segL * (k + 0.5);
           const yTop = F.followDeck === false ? F.y1 : Math.min(F.y1, deckYAt(deck, zc) - drop);
-          P.add('hull', box(F.x1 - F.x0, th, segL - 0.02),
-            s * (F.x0 + F.x1) / 2, yTop - th / 2, zc);
+          P.add('hull', box(F.x1 - x0, th, segL - 0.02),
+            s * (x0 + F.x1) / 2, yTop - th / 2, zc);
           P.add('hullDark', box((F.x1 - F.x0) * 0.7, 0.012, segL - 0.06),
             s * (F.x0 + F.x1) / 2, yTop + 0.006, zc);
         }
@@ -7256,12 +7259,14 @@ function buildLeo2A7V(P: TankBuilderPort) {
       // The A7V transom is a shallow service face above the terminal course,
       // not a deep rectangular apron between the tracks.
       rear: { wallZ: -3.78, lipZ: -3.86, yTop: 1.60, yBot: 0.75 },
-      fender: { x0: 1.84, x1: 1.955, y0: 1.60, y1: 1.665, z0: -3.66, z1: 2.60 },
+      // owner 2026-10-19 sweep: the fender planks (and the skirt course hung from them) stood 80 mm off the 1.76 body
+      // side; their inner edge now runs 10 mm into it
+      fender: { x0: 1.75, x1: 1.955, y0: 1.60, y1: 1.665, z0: -3.66, z1: 2.60 },
       // A7V deep modular skirt courses at ±2.00 EXACT (the width guard),
       // hanging to 0.55 — the deep side-protection read with the lower
       // wheel halves still visible (photo class).
       frontSkirt: { x: 2.00, z0: 0.90, z1: 3.18, y0: 0.55, y1: 1.30, th: 0.12 },
-      rearSkirt: { x: 2.00, z0: -3.10, z1: 0.90, y0: 0.55, y1: 1.28, th: 0.12 },
+      rearSkirt: { x: 2.00, z0: -3.10, z1: 0.90, y0: 0.55, y1: 1.29, th: 0.12 },  // top 5 mm into the cassettes over it
       // §B6: raised idler AND sprocket at the real Leopard 2 end-wheel
       // geometry (the print-frame 0.56/0.64 centers gave a near-flat run).
       wheelR: 0.395, wheelY: 0.42, span: [2.60, -2.40],
@@ -7293,7 +7298,7 @@ function buildLeo2A7V(P: TankBuilderPort) {
       // Continuous supported cap/hinge line tying the cassette course into
       // the existing fender. The outer face remains at the certified ±2.00m
       // width and is clear of the native track lane at every station.
-      P.add('hullDark', box(0.045, 0.035, 5.54), s * 1.9775, 1.585, -0.24);
+      P.add('hullDark', box(0.055, 0.035, 5.54), s * 1.9725, 1.585, -0.24);      // inner edge 10 mm under the fender planks' outer edge
       for (const z of [-2.72, -1.50, -0.28, 0.94, 2.16]) {
         P.add('hullDetail', box(0.05, 0.055, 0.12), s * 1.975, 1.555, z);
       }
@@ -12081,6 +12086,11 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       [0.80, upperGlacisFrontY + 0.06, upperGlacisFrontZ],
       [-0.80, upperGlacisFrontY + 0.06, upperGlacisFrontZ]));
     P.add('hull', box(2.50, 0.60, 0.15), 0, 1.21, -3.47);
+    // lower rear plate: the belly rises from its rear edge (z -3.26, y 0.41) to the rear plate's foot (z -3.395,
+    // y 0.91) (owner 2026-10-19 sweep: the slot between them stood open from below up to the deck), 30 mm into each
+    P.add('hull', slab(
+      [-0.944, 0.416, -3.23], [0.944, 0.416, -3.23], [0.944, 0.916, -3.425], [-0.944, 0.916, -3.425],
+      [-0.944, 0.496, -3.23], [0.944, 0.496, -3.23], [0.944, 0.996, -3.425], [-0.944, 0.996, -3.425]));
     P.add('hull', box(2.62, 0.06, 0.20), 0, 1.50, -3.43);
 
     // The source's fenders are a continuous structural shelf, not two thin

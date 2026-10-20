@@ -604,6 +604,9 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
       const top = 1.46;
       P.addExternalArmor('hull', box(0.11, height, 0.91), side * 1.58,
         top - height * 0.5, skirtPanelZ[index]);
+      // its top hanger laps the hull's 1.496 side (owner 2026-10-19 sweep: the whole TTS skirt, its ERA and cage stood
+      // 29 mm off the hull)
+      P.add('hull', box(0.04, 0.05, 0.85), side * 1.51, top - 0.025, skirtPanelZ[index]);
       P.add('hullDetail', box(0.020, height * 0.82, 0.055), side * 1.646,
         top - height * 0.5, skirtPanelZ[index] + 0.43);
     }

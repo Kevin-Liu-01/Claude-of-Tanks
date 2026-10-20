@@ -1380,6 +1380,8 @@ function requireMaterialMap(value: RuntimeValue, type: string): Record<string, R
 }
 
 // Merge one mesh per material slot, stamp markers + local AABB, return group.
+const SEATED_FITTINGS = new Set(['lightCluster', 'stowageRack', 'towCable', 'unditchingLog', 'jerryCans']);
+
 function fitAssemble(type: string, parts: FittingParts, opts: FittingOptions): THREE.Group {
   const mats = requireMaterialMap(opts.mats, type);
   const g = new THREE.Group();
@@ -1427,6 +1429,10 @@ function fitAssemble(type: string, parts: FittingParts, opts: FittingOptions): T
   }
   g.userData.fitting = type;
   g.userData.fittingRoot = true;
+  // Bolt-on dressing seats itself on the plate it is mounted to: the factory moves it along its shortest gap when it
+  // hovers up to 6 cm off its rig's stock (fittingSnap.ts; owner 2026-10-19 sweep: lamp clusters, racks, cables and
+  // logs floated off their plates on a dozen tanks). Weapons and smoke banks keep their authored seats.
+  if (SEATED_FITTINGS.has(type)) g.userData.seatOnRig = { mode: 'nearest', reachM: 0.06 };
   g.userData.combatHitboxRole = 'equipment';
   g.userData.surfaceMarkupSelectable = true;
   if (opts.rotation) g.rotation.set(opts.rotation[0] || 0, opts.rotation[1] || 0, opts.rotation[2] || 0);
@@ -3099,7 +3105,12 @@ function fittingAntennaWhip(opts: FittingOptions = {}): THREE.Group {
   const whip = whipAntennaParts({ h, r, rake, seed: opts.seed ?? 1, spring: pot });
   parts.add(slot, whip.rod, 0, baseTop, 0);
   if (whip.spring) parts.add('dark', whip.spring, 0, baseTop, 0);
-  return fitAssemble('antennaWhip', parts, opts);
+  const group = fitAssemble('antennaWhip', parts, opts);
+  // A whip on its base pot stands on the roof: the factory drops it onto the stock under its foot when it is mounted
+  // upright on a rig and hovers up to 0.70 m over it (fittingSnap.ts; owner 2026-10-19 sweep: whips hovered 2-24 cm
+  // over their roofs on a dozen tanks).
+  if (pot) group.userData.seatOnRig = { mode: 'down', reachM: 0.70 };
+  return group;
 }
 
 /**

@@ -201,6 +201,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/hull-contact-census.selftest.mjs',
     // the build-time flap hangers (P.hangMudguard) and the fleet flaps they hang
     'src/vehicles/mudguardHangers.selftest.mjs',
+    // the build-time fitting snap (P.snapGroup, seatOnRig): floating fittings seated onto the hull/turret stock
+    'src/vehicles/fittingSnap.selftest.mjs',
     'tools/reference-supplement.selftest.mjs',
     'tools/fidelity-component-floor.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',

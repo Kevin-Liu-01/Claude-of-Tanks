@@ -3305,7 +3305,9 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
           P.hullG.add(lights);
           const whip = FITTINGS.antennaWhip({ mats: P.mats, h: mark === 'm47' ? 0.78 : 0.64,
             r: 0.009, rake: side * 0.055, seed: side > 0 ? 472 : 468 });
-          whip.position.set(side * 0.82, 2.54 - cfg.ring[0], -1.12 - cfg.ring[1]);
+          // on the roof's rear corners, inboard of the falling flank (at 0.82 it hung over the flank, 0.3-0.5 m up; the
+          // factory seats the base on the roof)
+          whip.position.set(side * 0.62, 2.54 - cfg.ring[0], -1.12 - cfg.ring[1]);
           P.turretG.add(whip);
         }
         const electronics = FITTINGS.stowageRack({
@@ -4765,6 +4767,9 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
       P.add('hullDetail', slab(
         [side * 1.10, 1.10, 3.44], [side * 1.78, 1.10, 3.44], [side * 1.78, 1.10, 3.53], [side * 1.10, 1.10, 3.53],
         [side * 1.10, 1.278, 3.44], [side * 1.78, 1.278, 3.44], [side * 1.78, 1.264, 3.53], [side * 1.10, 1.264, 3.53]));
+      // its inboard hanger rises into the toe plate over it (owner 2026-10-19 sweep: the flap hung 11 cm under it, held
+      // by nothing)
+      P.add('hullDetail', box(0.04, 0.14, 0.05), side * 1.12, 1.335, 3.485);
       // twin lamp pods (r3: "headlights are dark sockets, not lights" — the
       // reference carries a second smaller IR lamp inboard and PALE lenses;
       // the pale read comes from the lifted per-instance glass material)

@@ -127,7 +127,20 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel, paintAmmoVertexColours, prepareWeaponFinishGeometry } from './weaponFinish.ts';
 import { ditherPaintTone, relaxFlatFans } from './surfaceFinish.ts';
 import { seatAuthoredSpareTracks } from './spareTrackSeatPass.ts';
-import { hangAuthoredMudguards, type MudguardHangRequest } from './mudguardHangers.ts';
+import { hangAuthoredMudguards, runningGearTest, type MudguardHangRequest } from './mudguardHangers.ts';
+import { snapFittings, type SnapGroupRequest, type SnapReceipt } from './fittingSnap.ts';
+
+/** Options for P.snapGroup (fittingSnap.ts). */
+export interface SnapGroupOptions {
+  /** Farthest the fitting may move, metres (default 0.04). */
+  readonly reachM?: number;
+  /** 'down' drops the fitting straight onto the stock under its lowest band (a mast on a roof); `direction` moves it
+   * along that direction instead (a door plate onto its recessed face). */
+  readonly mode?: 'nearest' | 'down';
+  readonly direction?: readonly [number, number, number];
+  /** Hears the move (for receipts that carry the fitting's positions). */
+  readonly onMove?: (move: readonly [number, number, number]) => void;
+}
 import { spareLinkBlock } from './spareLinkGeometry.ts';
 import { resetSpareTrackRunSerial, seatRoleForBucket, seatRoleForPart, spareTrackRunTag, type SeatRole } from './spareTrackSeat.ts';
 
@@ -1002,6 +1015,11 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
     geometry: THREE.BufferGeometry,
     ...transform: TransformNumbers
   ): void;
+  /** Authors a fitting (every part `build` adds to a bucket, and every object it adds to a rig group) that is seated on
+   * its rig group's other stock once the profile is done (fittingSnap.ts): when it floats up to reachM (default
+   * 0.04 m) off it, it moves along that shortest gap (mode 'down': straight down onto the stock under it), and onMove
+   * hears the move (for receipts that carry the fitting's positions). */
+  snapGroup(label: string, build: () => void, options?: SnapGroupOptions): void;
   addHatch(bucket: string, geometry: THREE.BufferGeometry, ...transform: TransformNumbers): void;
   addExternalArmor(bucket: string, geometry: THREE.BufferGeometry, ...transform: TransformNumbers): void;
   clear(...names: Array<string | string[]>): void;
@@ -6290,7 +6308,14 @@ function headlight(
   P.add('hullDark', xform(box(0.02, r * 2.3, 0.02), 0, 0, r * 0.5), x, y, z, rx, 0, 0); // brush guard rib
 }
 
-// Lifting eye: small torus stood on a foot plate.
+/** A small fitting the builder's port seats on its stock (P.snapGroup, fittingSnap.ts) when it has one. */
+function seated(builder: object, label: string, build: () => void): void {
+  const port = builder as { snapGroup?: (label: string, build: () => void) => void };
+  if (typeof port.snapGroup === 'function') port.snapGroup(label, build);
+  else build();
+}
+
+// Lifting eye: small torus stood on a foot plate, seated on the plate it is welded to.
 function liftEye(
   builder: object,
   bucket: string,
@@ -6300,8 +6325,10 @@ function liftEye(
   ry = 0,
 ): void {
   const P = requireGeometryAddPort(builder);
-  P.add(bucket, xform(torus(0.045, 0.016, 12), 0, 0.04, 0, Math.PI / 2, 0, 0), x, y, z, 0, ry, 0);
-  P.add(bucket, box(0.09, 0.03, 0.06), x, y - 0.01, z, 0, ry, 0);
+  seated(builder, 'lift-eye', () => {
+    P.add(bucket, xform(torus(0.045, 0.016, 12), 0, 0.04, 0, Math.PI / 2, 0, 0), x, y, z, 0, ry, 0);
+    P.add(bucket, box(0.09, 0.03, 0.06), x, y - 0.01, z, 0, ry, 0);
+  });
 }
 
 // Fixed periscope block with glass slit (driver / roof optics).
@@ -6314,9 +6341,11 @@ function periscope(
   ry = 0,
 ): void {
   const P = requireModuleVisualBuilderPort(builder);
-  P.addModuleVisual('optics', bucket, box(0.14, 0.07, 0.1), x, y, z, 0, ry, 0);
-  const glassB = bucket.startsWith('turret') ? 'turretGlass' : 'hullGlass';
-  P.addModuleVisual('optics', glassB, box(0.11, 0.028, 0.102), x, y + 0.012, z, 0, ry, 0);
+  seated(builder, 'periscope', () => {
+    P.addModuleVisual('optics', bucket, box(0.14, 0.07, 0.1), x, y, z, 0, ry, 0);
+    const glassB = bucket.startsWith('turret') ? 'turretGlass' : 'hullGlass';
+    P.addModuleVisual('optics', glassB, box(0.11, 0.028, 0.102), x, y + 0.012, z, 0, ry, 0);
+  });
 }
 
 function pintleMG(builder: object, x: number, y: number, z: number, big = true): void {
@@ -7438,6 +7467,15 @@ function* createTankOwnedSteps(
   const smokeTubesForFittingPaint = new Set<THREE.BufferGeometry>();
   const mudguardParts: MudguardPart[] = [];
   const mudguardHangRequests: MudguardHangRequest[] = [];
+  const snapRequests: Array<{ label: string; parts: Array<readonly [string, THREE.BufferGeometry]>;
+    objects: Array<readonly [RigGroupKey, THREE.Object3D]>; reachM: number;
+    onMove?: (move: readonly [number, number, number]) => void; mode?: 'nearest' | 'down';
+    direction?: readonly [number, number, number] }> = [];
+  const rigGroupsForSnap = (): Array<readonly [RigGroupKey, THREE.Object3D]> => {
+    const rigs: Array<readonly [RigGroupKey, THREE.Object3D]> = [['hullG', hullG], ['turretG', turretG], ['recoilG', recoilG], ['gunG', gunG]];
+    barrelGs.forEach((group, i) => { if (group && i < 2) rigs.push([i === 0 ? 'barrel0G' : 'barrel1G', group]); });
+    return rigs;
+  };
   const moduleVisualParts = new Map<THREE.BufferGeometry, string>();
   // The frame bars cut from a sight pane (armouredGlassSurround) ride the housing's painted fitting bucket; each
   // remembers the pane's own bucket, and the pane remembers its bars, so the pane's combat receipt still covers the whole
@@ -7599,6 +7637,21 @@ function* createTankOwnedSteps(
       rx = 0, ry = 0, rz = 0, s = 1) {
       P.addMudguard(label, bucket, geo, x, y, z, rx, ry, rz, s);
       mudguardHangRequests.push({ label, part: mudguardParts[mudguardParts.length - 1].part, strapBucket: 'hullDetail' });
+    },
+    snapGroup(label, build, options = {}) {
+      const before = new Map(Object.entries(buckets).map(([bucket, list]) => [bucket, list.length]));
+      const rigs = rigGroupsForSnap(), childrenBefore = rigs.map(([, rig]) => rig.children.length);
+      build();
+      const parts: Array<readonly [string, THREE.BufferGeometry]> = [];
+      for (const [bucket, list] of Object.entries(buckets)) {
+        for (const part of list.slice(before.get(bucket) ?? 0)) parts.push([bucket, part]);
+      }
+      const objects: Array<readonly [RigGroupKey, THREE.Object3D]> = [];
+      rigs.forEach(([key, rig], i) => { for (const child of rig.children.slice(childrenBefore[i])) objects.push([key, child]); });
+      if (parts.length || objects.length) {
+        snapRequests.push({ label, parts, objects, reachM: options.reachM ?? 0.04, onMove: options.onMove, mode: options.mode,
+          direction: options.direction });
+      }
     },
     // Painted fittings sometimes share the hull/turret material, but they do
     // not own armor. Keep them in a separate semantic bucket so geometry
@@ -7866,6 +7919,43 @@ function* createTankOwnedSteps(
       mudguardParts.push({ label: `${request.label}-hanger`, bucket: request.strapBucket, part: strap });
       partCensus?.(request.strapBucket, strap, 'mudguard');
     }, structural);
+  }
+  // Owner 2026-10-19 ("check for any floating tank parts on hull and turret, as well as floating tank decorations and
+  // props"): each fitting authored in P.snapGroup is seated on its rig group's other stock (fittingSnap.ts).
+  // Fittings that ask to stand on their rig (userData.seatOnRig: an antenna whip on its base pot, bolt-on dressing) are
+  // seated too when mounted straight on the rig group (a whip only when upright).
+  const upright = new THREE.Vector3();
+  for (const [key, rig] of rigGroupsForSnap()) for (const child of rig.children) {
+    const seat = child.userData.seatOnRig as { mode?: 'nearest' | 'down'; reachM?: number } | undefined;
+    if (!seat || (seat.mode === 'down' && upright.set(0, 1, 0).applyQuaternion(child.quaternion).y < 0.94)) continue;
+    snapRequests.push({ label: child.name || 'fitting', parts: [], objects: [[key, child]], reachM: seat.reachM ?? 0.04,
+      mode: seat.mode });
+  }
+  if (snapRequests.length) {
+    const snapParts = new Set(snapRequests.flatMap(({ parts }) => parts.map(([, part]) => part)));
+    const byGroup = new Map<RigGroupKey, SnapGroupRequest[]>();
+    const snapReceipts: SnapReceipt[] = [];
+    for (const request of snapRequests) {
+      const live = request.parts.filter(([bucket, part]) => buckets[bucket]?.includes(part));
+      const objects = request.objects.filter(([, object]) => object.parent);
+      const groups = new Set([...live.map(([bucket]) => BUCKET_DEF[bucket]?.[0]), ...objects.map(([key]) => key)]);
+      const [group] = groups;
+      if ((!live.length && !objects.length) || groups.size !== 1 || !group) continue;
+      let list = byGroup.get(group);
+      if (!list) byGroup.set(group, list = []);
+      list.push({ label: request.label, parts: live.map(([, part]) => part), objects: objects.map(([, object]) => object),
+        reachM: request.reachM, onMove: request.onMove, mode: request.mode, direction: request.direction });
+    }
+    for (const [group, requests] of byGroup) {
+      const stock: THREE.BufferGeometry[] = [];
+      for (const [bucket, list] of Object.entries(buckets)) {
+        if (BUCKET_DEF[bucket]?.[0] !== group || /track|runninggear|shadow|glass/i.test(bucket)) continue;
+        for (const part of list) if (!snapParts.has(part)) stock.push(part);
+      }
+      const rig = rigGroupsForSnap().find(([key]) => key === group)?.[1] ?? null;
+      snapReceipts.push(...snapFittings(requests, stock, group === 'hullG' ? runningGearTest(hullG) : undefined, rig));
+    }
+    root.userData.fittingSnaps = snapReceipts;
   }
   // VEH-13 (2026-10-15): every authored spare-link run (fittings, strips, registered hand-drawn courses) is measured on
   // the finished, unmerged armour (spareTrackSeatPass.ts): a passing run stays exactly as built, a failing one is

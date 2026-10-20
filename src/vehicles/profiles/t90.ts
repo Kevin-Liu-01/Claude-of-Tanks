@@ -1082,7 +1082,8 @@ function addT90ALegacyHull(P: T90BuilderPort): void {
   // fender tips held behind the loft bow (they merge with the gun band)
   for (const s of [-1, 1]) P.add('hull', box(0.64, 0.07, 0.26), s * 1.43, 1.08, 3.02);
   // fender lips: thin shelves at the ref's 1.14-1.22 outer band (segmented
-  // per the r7c prism law so station slices see end faces)
+  // per the r7c prism law so station slices see end faces). Their inner edge runs 10 mm into the 1.60 hull side (owner
+  // 2026-10-19 sweep: at 1.62 the whole fender course, and the skirt hung from it, stood 20 mm off the hull).
   for (const s of [-1, 1]) for (let i = 0; i < 11; i++) {
     // Independent front/side station truth: this is the low outer fender
     // band (1.14..1.22 m), not the inner 1.36 m engine deck.  The old seat
@@ -1097,18 +1098,18 @@ function addT90ALegacyHull(P: T90BuilderPort): void {
       // z -2.82 left open air between the seat and the track, a pocket enclosed in plan: 2 hole cells on the T-90A and
       // 8 on the BMPT T-90 at its 1.05 size in the standard check's top-down scan.
       const seatFront = T90A_REAR_SEAT_FRONT_Z_M;
-      P.add('hull', box(0.16, 0.05, seatFront + 3.00), s * 1.70, 1.17, (seatFront - 3.00) / 2);
+      P.add('hull', box(0.19, 0.05, seatFront + 3.00), s * 1.685, 1.17, (seatFront - 3.00) / 2);
       P.add('hull', box(0.056, 0.05, -2.50 - seatFront), s * 1.752, 1.17, (seatFront - 2.50) / 2);
     } else if (i === 1) {
       // The rear climb passes under this segment. Keep the original plan
       // footprint, but seat the shelf on the deck/fender datum instead of
       // through the rising native course.
       P.add('hull', box(0.056, 0.05, 0.255), s * 1.752, 1.27, -2.3275);
-      P.add('hull', box(0.16, 0.05, 0.245), s * 1.70, 1.27, -2.0775);
+      P.add('hull', box(0.19, 0.05, 0.245), s * 1.685, 1.27, -2.0775);
     } else {
       // The matching forward transition is i=9. Raise only that supported
       // shelf; the long mid-run course and every side-armor panel stay put.
-      P.add('hull', box(0.16, 0.05, 0.50), s * 1.70, i === 9 ? 1.27 : 1.17, -2.75 + i * 0.545);
+      P.add('hull', box(0.19, 0.05, 0.50), s * 1.685, i === 9 ? 1.27 : 1.17, -2.75 + i * 0.545);
     }
   }
 }

@@ -140,6 +140,31 @@ function vertexTouchesStock(v: THREE.Vector3, stock: PlanGrid, skip: ReadonlySet
   return false;
 }
 
+/** Every running-gear mesh under hullG, in hullG's frame. */
+function addRunningGear(gear: PlanGrid, hullG: THREE.Object3D): void {
+  hullG.updateMatrixWorld(true);
+  const toHull = new THREE.Matrix4().copy(hullG.matrixWorld).invert(), matrix = new THREE.Matrix4();
+  hullG.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.userData.runningGear) return;
+    matrix.multiplyMatrices(toHull, mesh.matrixWorld);
+    const instanced = mesh as unknown as THREE.InstancedMesh;
+    if (!instanced.isInstancedMesh) { gear.add(soupOf(mesh.geometry, matrix)); return; }
+    const instance = new THREE.Matrix4(), combined = new THREE.Matrix4();
+    for (let i = 0; i < instanced.count; i++) {
+      instanced.getMatrixAt(i, instance);
+      gear.add(soupOf(mesh.geometry, combined.multiplyMatrices(matrix, instance)));
+    }
+  });
+}
+
+/** Whether a box in hullG's frame meets the running gear (triangle bounds: conservative). */
+export function runningGearTest(hullG: THREE.Object3D): (box: THREE.Box3) => boolean {
+  const gear = new PlanGrid();
+  addRunningGear(gear, hullG);
+  return (box) => gear.touchesBox(box);
+}
+
 function soupOf(geometry: THREE.BufferGeometry, matrix?: THREE.Matrix4): Float32Array {
   const position = geometry.getAttribute('position'), index = geometry.index;
   const count = index ? index.count : position.count, out = new Float32Array(count * 3), v = new THREE.Vector3();
@@ -176,20 +201,7 @@ export function hangAuthoredMudguards(
     stockBoxes.push(part.boundingBox);
     if (structural.has(part)) structuralIndex.add(index);
   }
-  hullG.updateMatrixWorld(true);
-  const toHull = new THREE.Matrix4().copy(hullG.matrixWorld).invert(), matrix = new THREE.Matrix4();
-  hullG.traverse((object) => {
-    const mesh = object as THREE.Mesh;
-    if (!mesh.isMesh || !mesh.userData.runningGear) return;
-    matrix.multiplyMatrices(toHull, mesh.matrixWorld);
-    const instanced = mesh as unknown as THREE.InstancedMesh;
-    if (!instanced.isInstancedMesh) { gear.add(soupOf(mesh.geometry, matrix)); return; }
-    const instance = new THREE.Matrix4(), combined = new THREE.Matrix4();
-    for (let i = 0; i < instanced.count; i++) {
-      instanced.getMatrixAt(i, instance);
-      gear.add(soupOf(mesh.geometry, combined.multiplyMatrices(matrix, instance)));
-    }
-  });
+  addRunningGear(gear, hullG);
   const receipts: MudguardHangerReceipt[] = [], scratch = new THREE.Vector3();
   // Touching another guard anchors a guard only once that guard is itself anchored (hung, or touching stock): a hem and
   // its board touching each other would otherwise both stand as authored, floating together.

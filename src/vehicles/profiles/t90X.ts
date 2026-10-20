@@ -493,11 +493,11 @@ function eraWedge(P: TankBuilderPort,d: Datum,x: number,z: number,rotation: numb
   ]);
   bindEra(P,sector,x-d.yaw[0],()=> {
     P.addExternalArmor('turret',hitFace?eraHitFaces(g):eraFurniture(g),x-d.yaw[0],-d.yaw[1],z-d.yaw[2],0,rotation);
-    if(d===A) {
-      const seam=box(p.w*.70,.018,.043).rotateX(Math.atan2(p.high-p.nose,p.depth))
-        .translate(0,p.high+(p.nose-p.high)*.13+.012,-p.depth*.37).rotateY(rotation);
-      onTurret(P,d,'turretDetail',eraFurniture(seam),x,0,z);
-    } else onTurret(P,d,'turretDetail',eraFurniture(box(p.w*.70,.018,.043)),x,p.high+.007,z-p.depth*.37,0,rotation);
+    // the seam strip lies on the module's sloped top on every datum (level at the back height, it stood up to 4 cm
+    // over the falling top of the T-90M/SM/B3M modules; owner 2026-10-19 sweep)
+    const seam=box(p.w*.70,.018,.043).rotateX(Math.atan2(p.high-p.nose,p.depth))
+      .translate(0,p.high+(p.nose-p.high)*.13+.007,-p.depth*.37).rotateY(rotation);
+    onTurret(P,d,'turretDetail',eraFurniture(seam),x,0,z);
   });
 }
 

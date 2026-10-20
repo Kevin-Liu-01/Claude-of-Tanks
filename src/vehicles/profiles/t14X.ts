@@ -84,8 +84,9 @@ function addSternFittings(P: TankBuilderPort): void {
     P.addEquipment('hullDetail', box(.30, .14, .06), side * .62, 1.06, -3.77);
     KIT.towCable(P, [[side * .30, 1.34, -3.90], [side * 1.05, 1.31, -3.87],
       [side * 1.17, 1.10, -3.79], [side * .90, .81, -3.67], [side * .46, .85, -3.72]], .022);
-    for (let i = 0; i < 4; i++) P.addEquipment('hullDark', box(.19, .08, .065),
-      side * .14, .94 + i * .10, -3.77 - i * .045);
+    // each step is seated on the raked stern plate behind it (owner 2026-10-19 sweep: 3-5 cm off it)
+    for (let i = 0; i < 4; i++) P.snapGroup('t14-stern-step', () => P.addEquipment('hullDark', box(.19, .08, .065),
+      side * .14, .94 + i * .10, -3.77 - i * .045), { reachM: .06 });
   }
 }
 
@@ -474,12 +475,13 @@ function addTurret(P: TankBuilderPort): void {
       P.addEquipment('turretDetail', box(.14, .43, .61), side * 1.145, localY(2.34), localZ(-1.05 - i * .65));
       for (const y of [2.19, 2.48]) P.addEquipment('turretDark', cylZ(.012, .018, 8), side * 1.225, localY(y), localZ(-1.04 - i * .65), 0, side * Math.PI / 2);
     }
+    // each launcher cap stands on the roof or box top under it (owner 2026-10-19 sweep: they hovered 1-21 cm over it)
     for (let row = 0; row < 2; row++) for (let col = 0; col < 6; col++) {
-      P.addEquipment('turretDark', cylY(.039, .039, .013, 12), side * (1.04 - row * .105), localY(2.57), localZ(-.91 - col * .105));
+      P.snapGroup('t14-roof-cap', () => P.addEquipment('turretDark', cylY(.039, .039, .013, 12), side * (1.04 - row * .105), localY(2.57), localZ(-.91 - col * .105)), { reachM: .25, mode: 'down' });
     }
     P.addEquipment('turretDetail', box(.45, .32, .12), side * 1.015, localY(2.68), localZ(-.48));
     for (let row = 0; row < 3; row++) for (let col = 0; col < 4; col++) {
-      P.addEquipment('turretDark', cylZ(.039, .01, 12), side * (1.015 + (col - 1.5) * .094), localY(2.59 + row * .091), localZ(-.41));
+      P.addEquipment('turretDark', cylZ(.039, .01, 12), side * (1.015 + (col - 1.5) * .094), localY(2.59 + row * .091), localZ(-.418));   // 3 mm into the box face (5 mm off it)
     }
   }
 }
@@ -487,10 +489,13 @@ function addTurret(P: TankBuilderPort): void {
 function addRoofEquipment(P: TankBuilderPort): void {
   for (let row = 0; row < 3; row++) for (let col = 0; col < 3; col++) {
     const x = (col - 1) * .48, z = .12 - row * .49;
-    P.addEquipment('turretDetail', box(.46, .017, .465), x, localY(2.563), localZ(z));
-    for (const dx of [-.18, .18]) for (const dz of [-.17, .17]) {
-      P.addEquipment('turretDark', cylY(.011, .011, .012, 6), x + dx, localY(2.578), localZ(z + dz));
-    }
+    // each roof panel and its bolts lie on the roof under them (owner 2026-10-19 sweep: up to 5 cm over it)
+    P.snapGroup('t14-roof-panel', () => {
+      P.addEquipment('turretDetail', box(.46, .017, .465), x, localY(2.563), localZ(z));
+      for (const dx of [-.18, .18]) for (const dz of [-.17, .17]) {
+        P.addEquipment('turretDark', cylY(.011, .011, .012, 6), x + dx, localY(2.574), localZ(z + dz));
+      }
+    }, { reachM: .06, mode: 'down' });
   }
   // Source rear roof station: drum-shaped panoramic bearing, tall armored
   // remote gun support beside it, level MG rigidly attached to that cradle.

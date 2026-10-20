@@ -50,7 +50,11 @@ function rearCase(P:TankBuilderPort):void{
   for(const x of [-.2123,.03855,.28945])add(P,KIT.box(.0469,.0074,.0857),x,2.1586,-1.53850);
 }
 export function addT72B3Stowage(P:TankBuilderPort):void{
-  sideCase(P,-1);sideCase(P,1);rearCase(P);
+  // Each case is seated on the turret wall it stood 5-13 cm off (the source's wall sits outside this turret's; owner
+  // 2026-10-19 sweep: the cases floated beside the turret).
+  P.snapGroup('t72b3-side-case',()=>sideCase(P,-1),{reachM:.14});
+  P.snapGroup('t72b3-side-case',()=>sideCase(P,1),{reachM:.14});
+  P.snapGroup('t72b3-rear-case',()=>rearCase(P),{reachM:.14});
 }
 
 type MachineGun=ReturnType<typeof sourceMachineGun>;

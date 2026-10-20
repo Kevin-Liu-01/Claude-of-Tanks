@@ -135,7 +135,8 @@ interface RoofSeatReceipt {
 
 interface SmokeMouthReceipt {
   readonly side: number;
-  readonly tubeCenter: readonly number[];
+  /** Moves with its bank when the bank is seated (P.snapGroup). */
+  tubeCenter: readonly number[];
   readonly rotation: readonly number[];
   readonly mouthOffsetZ: number;
 }
@@ -2632,7 +2633,7 @@ function buildChallenger3XSkirts(
       for (let row = 0; row < 3; row++) {
         for (let station = 0; station < 13; station++) {
           place(
-            side * 1.965, 0.79 + row * 0.235, 3.18 - station * 0.55,
+            side * 1.943, 0.79 + row * 0.235, 3.18 - station * 0.55,   // backs 2 mm into the skirt's 1.90 face (22 mm off it)
             0, side * Math.PI / 2, 0,
             1.72, 1.42, 1.22,
           );
@@ -2657,7 +2658,11 @@ function buildChallenger3XGlacisEra(
         for (let station = 0; station < 5; station++) {
           const point = new THREE.Vector3(side * (0.18 + station * 0.29), surfaceY, z)
             .addScaledVector(glacisFrame.normal, 0.020);
-          place(point.x, point.y, point.z, ...glacisFrame.rotation, 0.94, 1.76, 0.80);
+          // seated along the plate normal on this hull's glacis, which runs 14 cm under the CR2 surface line the
+          // stations follow (owner 2026-10-19 sweep)
+          const n = glacisFrame.normal;
+          P.snapGroup('c3-glacis-era', () => place(point.x, point.y, point.z, ...glacisFrame.rotation, 0.94, 1.76, 0.80),
+            { reachM: 0.20, direction: [-n.x, -n.y, -n.z] });
           receipt.glacisEraCassettes++;
         }
       }
@@ -2696,12 +2701,13 @@ function buildChallenger3XTurretEra(
     P.eraCluster(sideSector, (place) => {
       for (let row = 0; row < 3; row++) {
         for (let station = 0; station < 8; station++) {
-          place(
-            side * 1.75, turretPivotY + 0.20 + row * 0.205,
+          // each cassette backs onto the falling turret side behind it (owner 2026-10-19 sweep: 8-43 mm off it)
+          P.snapGroup('c3-turret-side-era', () => place(
+            side * 1.74, turretPivotY + 0.20 + row * 0.205,
             turretPivotZ - 2.90 + station * 0.37,
             0, side * Math.PI / 2, 0,
             1.24, 1.30, 1.20,
-          );
+          ), { reachM: 0.06 });
           receipt.turretSideEraCassettes++;
         }
       }
@@ -3059,8 +3065,9 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
         P.add('hullDetail', box(0.010, 0.15, 0.05), sx(1.750), 1.24, z);
         P.add('hullDark', box(0.012, 0.025, 0.20), sx(1.701), 1.07, z + 0.08);
       }
+      // lower tabs hang from the skirt faces' 0.73 bottom edge (owner 2026-10-19 sweep: authored 0.115 m under it)
       for (const z of [2.38, 1.28, 0.18, -0.92, -2.02]) {
-        P.add('hull', box(0.05, 0.13, 0.30), sx(1.660), 0.55, z);
+        P.add('hull', box(0.05, 0.26, 0.30), sx(1.660), 0.615, z);
       }
     }
 
@@ -3078,8 +3085,9 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
         // rake at 10 mm thickness instead of crossing the outer top edge.
         [sx(1.18), 1.48, -0.55], [sx(shoulderOuter), side < 0 ? 1.47 : 1.46, -0.55],
         [sx(shoulderOuter), side < 0 ? 1.47 : 1.46, 0.55], [sx(1.18), 1.48, 0.55],
-        [sx(1.18), 1.49, -0.55], [sx(shoulderOuter), side < 0 ? 1.48 : 1.47, -0.55],
-        [sx(shoulderOuter), side < 0 ? 1.48 : 1.47, 0.55], [sx(1.18), 1.49, 0.55]));
+        // top 20 mm higher, into the ring landing's 1.5075 underside (it stood 18 mm under it, nothing else holding it)
+        [sx(1.18), 1.51, -0.55], [sx(shoulderOuter), side < 0 ? 1.50 : 1.49, -0.55],
+        [sx(shoulderOuter), side < 0 ? 1.50 : 1.49, 0.55], [sx(1.18), 1.51, 0.55]));
       // These were accidentally authored as 1.54 m VERTICAL rubber strips.
       // Lay the same rails longitudinally on the fender shoulder instead.
       // The slight fore/aft rake follows the live deck course at z +/-0.77.
@@ -3096,8 +3104,8 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     // actual load surface (centered on armorChallenger2.turretPivot.z), not a
     // second turret silhouette; it closes the former visual/physical seam.
     P.add('hull', box(2.75, 0.035, 1.00), 0, 1.525, 1.00);
-    for (const side of [-1, 1]) P.add('hull', box(0.025, 0.12, 0.12), side * 1.005, 0.435, 0);
-    P.add('hull', box(0.04, 0.04, 0.12), 1.72, 1.42, 0);
+    for (const side of [-1, 1]) P.add('hull', box(0.06, 0.12, 0.12), side * 0.99, 0.435, 0);   // from the 0.96 belly side out
+    P.snapGroup('cr2-fender-lug', () => P.add('hull', box(0.04, 0.04, 0.12), 1.72, 1.42, 0), { reachM: 0.06 });
 
     // Glacis/deck furniture and the characteristic CR2 engine field. All are
     // seated on the measured profile and remain inside its silhouette except
@@ -4296,11 +4304,15 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
       // The former upright dark discs were only approximated in world space and
       // visibly hovered beside the pitched tube ends.
       const buildChallenger2TurretStage76 = (): void => {
-        for (const side of [-1, 1]) {
+        // Each five-tube bank is seated on the turret wall it stood 65 mm off (owner 2026-10-19 sweep); its mouth
+        // receipts move with it.
+        for (const side of [-1, 1]) P.snapGroup('cr2-smoke-bank', () => {
           const x = side * 1.08;
           const y = 0.38;
           const z = 1.25;
           const yaw = side * 0.82;
+          // the bank's mounting plate runs under all five tubes, so the bank is one assembly
+          P.add('turretDark', box(0.52, 0.03, 0.10), x, y - 0.04, z, 0, yaw, 0);
           for (let k = 0; k < 5; k++) {
             const f = k - 2;
             const angle = yaw + f * (0.65 / 5);
@@ -4314,7 +4326,11 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
             smokeMouths.push({ side, tubeCenter: [tubeX, y, tubeZ], rotation: [-0.5, angle, 0],
               mouthOffsetZ: 0.124 });
           }
-        }
+        }, { reachM: 0.08, onMove: (move) => {
+          for (const mouth of smokeMouths.filter((entry) => entry.side === side && entry.mouthOffsetZ === 0.124)) {
+            mouth.tubeCenter = mouth.tubeCenter.map((v, i) => v + move[i]);
+          }
+        } });
       };
       buildChallenger2TurretStage76();
     };
@@ -4646,6 +4662,8 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       // P95 datum carrier: one attached rear guard keeps the published
       // 8.33 m hull datum without bloating the armored stern courses.
       P.add('hullDetail', box(0.05, 0.66, 0.04), s * 0.98, 1.36, -4.21);
+      // its bracket runs back from the stern lug (the bar stood 0.24 m behind it with nothing holding it)
+      P.add('hullDetail', box(0.22, 0.05, 0.30), s * 0.895, 1.45, -4.075);
     }
     P.add('hullDetail', box(0.30, 0.16, 0.04), 0, 1.20, -3.785);                 // convoy plate on the center plate
     P.add('hullDetail', box(0.12, 0.14, 0.22), 0, 1.20, -3.89);                  // center tow pintle preserves the print's narrow -3.98 plan tip

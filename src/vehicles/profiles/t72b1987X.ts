@@ -88,7 +88,7 @@ function engineDeck(P:TankBuilderPort):void {
   for(const [x,z,w,d,y]of [[-.35,-3.14,.71,.244,1.283],[.61,-3.14,.71,.244,1.283],
     [1.396,-2.74,.393,.777,1.420],[1.395,-.81,.402,.991,1.416],[1.41,.98,.35,.971,1.372],
     [1.375,2.06,.397,.84,1.293],[-1.34,-2.7,.55,.8,1.335],[-1.34,-1.86,.55,.82,1.335]]) {
-    P.addEquipment('hullDetail',box(w,.07,d),x,y,z);P.addEquipment('hullDetail',box(w+.012,.009,d+.009),x,y+.04,z);
+    P.snapGroup('t72b1987-deck-plate',()=>{P.addEquipment('hullDetail',box(w,.07,d),x,y,z);P.addEquipment('hullDetail',box(w+.012,.009,d+.009),x,y+.04,z);},{reachM:.20,mode:'down'});
   }
   for(const side of [-1,1])for(const z of [-2.29,-1.47,.40,1.54])P.addEquipment('hullDetail',box(.559,.029,.078),side*1.34,1.43,z);
   for(const x of [-.592,.592]) {
