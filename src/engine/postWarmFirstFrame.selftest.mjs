@@ -2,7 +2,9 @@
 // black-screen-228 RC4). It used to switch every pass off for the whole warm and await between passes with them off: a
 // frame presented between two steps drew nothing, and a second warm that overlapped the first snapshotted the all-off
 // flags and restored them, leaving the chain off for good. Now each pass renders alone inside one synchronous
-// transaction and every flag is back before each await; an overlapping call returns the running warm.
+// transaction and every flag is back before each await. Round 2 (2026-10-20): an overlapping call runs its own warm, and
+// a superseded caller's rejection never reaches another caller (sharing the first call's promise made the entry that
+// replaced a superseded one inherit its stale rejection and never reveal).
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { warmPostFirstFrame, renderPassAlone } from './postLazyPasses.ts';
@@ -48,21 +50,27 @@ function chain() {
 }
 
 {
-  // two overlapping warms: the second returns the running one, and the chain ends canonical
+  // two overlapping warms, the first superseded mid-way (its yield rejects, as a stale covered entry's does): the second
+  // runs its own warm to the end, never takes the first one's rejection, and the chain ends canonical
   const c = chain();
   const before = c.canonical();
-  let release;
-  const gate = new Promise((resolve) => { release = resolve; });
+  let reject;
+  const gate = new Promise((_, fail) => { reject = fail; });
+  const stale = Symbol('stale deployment');
   const first = warmPostFirstFrame(c.composer, c.grade, async () => { await gate; });
-  const second = warmPostFirstFrame(c.composer, c.grade, async () => { throw new Error('the second warm must not run'); });
-  assert.equal(second, first, 'an overlapping call returns the running warm');
-  assert.deepEqual(c.canonical(), before, 'a frame during the overlap draws the whole chain');
-  release();
-  await Promise.all([first, second]);
+  const secondLabels = [];
+  const second = warmPostFirstFrame(c.composer, c.grade, async (label) => {
+    assert.deepEqual(c.canonical(), before, `overlap (${label}): a frame between steps draws the whole chain`);
+    secondLabels.push(label);
+    await Promise.resolve();
+  });
+  assert.notEqual(second, first, 'each call runs its own warm');
+  reject(stale);
+  await assert.rejects(first, (error) => error === stale, 'the superseded caller sees its own rejection');
+  const timings = await second;
+  assert.equal(timings.length, 6, 'the second caller warmed every pass itself');
+  assert.equal(secondLabels[0], 'SceneAAPass');
   assert.deepEqual(c.canonical(), before, 'two overlapping warms end canonical');
-  const third = warmPostFirstFrame(c.composer, c.grade, null);
-  assert.notEqual(third, first, 'a finished warm releases its slot');
-  await third;
 }
 
 {
@@ -87,4 +95,4 @@ function chain() {
   assert.doesNotMatch(post, /createVisionWarmSteps/, 'the vision warm left the entry with the first-frame warm');
 }
 
-console.log('postWarmFirstFrame.selftest: one pass per synchronous transaction, canonical flags between steps, overlapping warms share one run and end canonical');
+console.log('postWarmFirstFrame.selftest: one pass per synchronous transaction, canonical flags between steps, overlapping warms each run their own and end canonical, a superseded caller never fails another');

@@ -9,7 +9,10 @@
  * drew nothing, and a second warm that overlapped the first snapshotted the all-off flags and restored them, leaving the
  * chain off for good. Now each step is one synchronous transaction: only the warmed pass is on inside its own
  * composer.render, and every flag (and renderToScreen) is back before the call returns, so every frame between steps
- * sees the canonical chain. A second call while one runs returns the first call's promise.
+ * sees the canonical chain, and two warms that overlap are each safe. (Round 2, 2026-10-20: a second call used to return
+ * the first call's promise, so it inherited that caller's fate: a superseded covered entry's warm rejected with its stale
+ * marker, and the entry that replaced it took the rejection for its own supersession and never revealed. Every call now
+ * runs its own warm.)
  */
 import type { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import type { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
@@ -25,8 +28,6 @@ export interface PostWarmTiming {
 type WarmComposer = Pick<EffectComposer, 'passes' | 'renderToScreen' | 'render'>;
 type GradePass = Pass & { uniforms: Record<string, { value: unknown }> };
 type YieldBeforePass = ((label: string) => Promise<void>) | null | undefined;
-
-const running = new WeakMap<object, Promise<PostWarmTiming[]>>();
 
 /** Render `pass` alone through the composer; every flag and renderToScreen restored before returning. */
 export function renderPassAlone(composer: WarmComposer, pass: Pass): void {
@@ -65,13 +66,7 @@ async function warmPasses(composer: WarmComposer, grade: GradePass, yieldBeforeP
   return timings;
 }
 
-/** The chain's first-frame warm (post.warmFirstFrame); one at a time per composer. */
+/** The chain's first-frame warm (post.warmFirstFrame): each call its own, with its own yields and its own outcome. */
 export function warmPostFirstFrame(composer: WarmComposer, grade: GradePass, yieldBeforePass: YieldBeforePass): Promise<PostWarmTiming[]> {
-  const current = running.get(composer);
-  if (current) return current;
-  const warm = warmPasses(composer, grade, yieldBeforePass);
-  running.set(composer, warm);
-  const release = (): void => { if (running.get(composer) === warm) running.delete(composer); };
-  warm.then(release, release);
-  return warm;
+  return warmPasses(composer, grade, yieldBeforePass);
 }
