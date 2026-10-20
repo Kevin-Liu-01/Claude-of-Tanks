@@ -54,6 +54,29 @@ export function collectSelftestInputs(text, filename) {
       return clause?.isTypeOnly || (!clause?.name && bindings && ts.isNamedImports(bindings)
         && bindings.elements.length && bindings.elements.every(item => item.isTypeOnly));
     };
+    // `join`/`resolve` name files only as node:path functions (2026-10-16, the 226 audit): `parts.join('')` in
+    // materials.ts read as "the directory src/vehicles" and put the whole vehicle tree into ~600 receipts' keys, and a
+    // Promise's `resolve('x')` read as a file. A path call counts when its callee is bound by an import from node:path
+    // (a named join/resolve, or a member of its default, namespace, posix or win32 binding), and only literal segments
+    // that carry a letter or digit can name a file ('', '/' and '..' alone name none).
+    const pathModules = new Set(), pathFunctions = new Set();
+    for (const statement of source.statements) {
+      if (!ts.isImportDeclaration(statement) || !/^(?:node:)?path(?:\/(?:posix|win32))?$/.test(literal(statement.moduleSpecifier) ?? '')) continue;
+      const clause = statement.importClause;
+      if (!clause || clause.isTypeOnly) continue;
+      if (clause.name) pathModules.add(clause.name.text);
+      const bindings = clause.namedBindings;
+      if (bindings && ts.isNamespaceImport(bindings)) pathModules.add(bindings.name.text);
+      if (bindings && ts.isNamedImports(bindings)) for (const element of bindings.elements) {
+        const imported = (element.propertyName ?? element.name).text;
+        if (imported === 'join' || imported === 'resolve') pathFunctions.add(element.name.text);
+        if (imported === 'posix' || imported === 'win32' || imported === 'default') pathModules.add(element.name.text);
+      }
+    }
+    const pathModule = node => ts.isIdentifier(node) ? pathModules.has(node.text)
+      : ts.isPropertyAccessExpression(node) && ['posix', 'win32'].includes(node.name.text) && pathModule(node.expression);
+    const isPathCall = callee => ts.isIdentifier(callee) ? pathFunctions.has(callee.text)
+      : ts.isPropertyAccessExpression(callee) && ['join', 'resolve'].includes(callee.name.text) && pathModule(callee.expression);
     const readImportCall = arg => {
       const value = literal(arg);
       if (value != null) imported(value);
@@ -67,9 +90,9 @@ export function collectSelftestInputs(text, filename) {
       if (['execFileSync', 'execSync', 'spawnSync', 'spawn', 'execFile', 'exec'].includes(name)
         && /^git(?:\s|$)/.test(literal(node.arguments[0]) ?? '')) git = true;
       if (node.expression.kind === ts.SyntaxKind.ImportKeyword) readImportCall(node.arguments[0]);
-      if (name === 'join' || name === 'resolve') {
+      if (isPathCall(node.expression)) {
         const segments = node.arguments.map(literal).filter(value => value !== null);
-        if (segments.length) joined.push(segments);
+        if (segments.some(value => /[A-Za-z0-9]/.test(value))) joined.push(segments);
       }
     };
     const readEnvironmentBinding = pattern => {

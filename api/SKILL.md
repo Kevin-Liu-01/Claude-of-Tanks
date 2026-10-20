@@ -1,6 +1,6 @@
 ---
 name: api-skill
-description: Maintain the deprecated STUN-only ICE answer, telemetry, Jev proxy and public GitHub-count HTTP entrypoints.
+description: Maintain the telemetry, Jev proxy and public GitHub-count HTTP entrypoints.
 ---
 
 # claude-of-tanks / api
@@ -12,13 +12,9 @@ adapters thin; room policy belongs to `src/mp/room` and `server/`, not browser c
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-`ice.ts` is DEPRECATED (2026-10-02, `docs/MULTIPLAYER-V2.md` §13.14): relay
-credentials are minted inside the room for its seated players
-(`server/relayCredentials.ts`, the rooms Worker's `room_relay`), and for one
-release this route answers the official STUN servers (`OFFICIAL_STUN_URLS` of
-`_lib/policy.ts`) to tabs loaded before the move — no TURN, no secret, no
-provider call; the new client never calls it. Delete it (and
-`server/ice.selftest.mjs`) with the next release. `github-stars.ts` logs
+Relay credentials are minted inside the room for its seated players
+(`server/relayCredentials.ts`, the rooms Worker's `room_relay`); no route here
+answers ICE servers (`docs/MULTIPLAYER-V2.md` §13.14). `github-stars.ts` logs
 `cot-github-stars` lines per upstream failure. `github-stars.ts` proxies the public repository
 count with bounded upstream requests and cache headers. `telemetry.ts` is the
 entry-telemetry fallback sink (`docs/ENTRY-RESILIENCE.md`), used only while
@@ -56,7 +52,7 @@ multiplayer (`api/signal.ts`) left the tree with the cutover of 2026-09-29
 
 - TURN configuration: the room's issuer, `server/relayCredentials.ts` (`node
   server/relayCredentials.selftest.mjs`; the Worker's `npm --prefix
-  cloudflare/rooms test`); the deprecated route: `node server/ice.selftest.mjs`.
+  cloudflare/rooms test`).
 - Star-count responses: run `node server/githubStars.selftest.mjs`; inspect
   `src/ui/githubStars.ts` for the loading/error presentation contract.
 - Telemetry beacon: run `node server/telemetryRecord.selftest.mjs`,

@@ -149,7 +149,7 @@ interface VistaMaterialData { uniforms: Record<string, { value: unknown }>; base
 
 /** The ring atlas's gradient share (terrain v2's subordinate fine relief) and its shading share (the mountains lane:
  * the folds' occlusion and the ridges' cast shadows at 0.7 x their baked strength). */
-export const RING_RELIEF_GRADIENT = 0.18;
+const RING_RELIEF_GRADIENT = 0.18;
 export const RING_RELIEF_SHADE = HORIZON_RELIEF_SHADE; // the bake encodes the landcover against it (horizonRelief.ts)
 
 /** Terrain v3: the slope band (1 - n.y of the ring face) over which the atlas gradient fades, per relief character. */

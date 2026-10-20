@@ -1,6 +1,17 @@
 // Independent source scalar calipers, not source topology or runtime geometry.
 // See docs/history/research/ariete-rear-openings-20260921.md for evidence and limits.
-export const ARIETE_OPENING_RASTERS = {"c1_ariete":{"high":{"gridW":79,"gridH":180,"bounds":{"x0":-2.3437598896026612,"x1":2.3437598896026612,"z0":-4.439010257720947,"z1":6.3146120699000985},"cells":[[38,174],[38,175],[38,176],[39,176],[39,175]]},"low":{"gridW":79,"gridH":180,"bounds":{"x0":-2.3437598896026612,"x1":2.3437598896026612,"z0":-4.439010257720947,"z1":6.315212069601902},"cells":[[38,174],[38,175],[38,176],[39,176],[39,175]]}},"c2_ariete":{"high":{"gridW":79,"gridH":196,"bounds":{"x0":-2.3437598896026612,"x1":2.3437598896026612,"z0":-4.439010257720947,"z1":7.313811937148634},"cells":[[38,190],[38,191],[38,192],[39,192],[39,191]]},"low":{"gridW":79,"gridH":196,"bounds":{"x0":-2.3437598896026612,"x1":2.3437598896026612,"z0":-4.439010257720947,"z1":7.314411937121467},"cells":[[38,190],[38,191],[38,192],[39,192],[39,191]]}}};
+import {isLatticeCellCenter,latticeSubpixelCenter,scanMatchesLatticeCells} from './contig-grid.mjs';
+// The approved rear-coupler air as hull-frame lattice cells [kx, kz] of the §B2 raster (tools/contig-grid.mjs:
+// cell k spans [k, k + 1) x 6 cm from the tank root, never from the AABB), per scan quality.
+// Measured 2026-10-17 on main 16aeab482 from the page's own gate scans (C1 high and LOW read the same cells).
+// Through 226 the pin carried the AABB-framed raster's gridW/gridH/bounds, so any change that moved the AABB
+// invalidated the approved opening whether or not the coupler changed (C2's AABB on main 16aeab482 reaches
+// 9.7 cm further to +x than when it was pinned).
+// C2 carries C1's retained rear coupler under the same registration and witness set, so its approved cells
+// are C1's. On main 16aeab482 C2's native coupler is partly filled (hullDetail under the C at y 0.80, interior fill in
+// the lower hook throat, the ghillie hull net 2.6 cm proud of the flared root): its raster reads 1 of the 4 cells and
+// four witnesses fail, an inherited red the vehicle lanes own (hidden-gaps.md, guards 227).
+export const ARIETE_OPENING_RASTERS = {"c1_ariete":{"high":{"cells":[[-2,-70],[-1,-70],[0,-70],[-1,-71]]},"low":{"cells":[[-2,-70],[-1,-70],[0,-70],[-1,-71]]}},"c2_ariete":{"high":{"cells":[[-2,-70],[-1,-70],[0,-70],[-1,-71]]},"low":{"cells":[[-2,-70],[-1,-70],[0,-70],[-1,-71]]}}};
 const ARIETE_REAR_WITNESSES = [
   {
     "key": "upper-head-0",
@@ -451,29 +462,18 @@ export function validArieteOpeningSource(id,configuration,receipt) {
     && receipt?.verified===true && receipt.id===id && receipt.path===SOURCE.path && receipt.sha256===SOURCE.sha256
     && receipt.scope===expected.scope && arieteOpeningSourceReceipt(id,receipt.inputs).verified;
 }
-function raster(id,quality) { return ARIETE_OPENING_RASTERS[id]?.[quality]; }
-function center(scan,gx,gy,sx=1,sy=1) {
-  return [scan.bounds.x0+(gx+(sx+.5)/3)*(scan.bounds.x1-scan.bounds.x0)/scan.gridW,
-    scan.bounds.z1-(gy+(sy+.5)/3)*(scan.bounds.z1-scan.bounds.z0)/scan.gridH];
-}
+function cells(id,quality) { return ARIETE_OPENING_RASTERS[id]?.[quality]?.cells; }
 export function validArieteOpeningRaster(id,scan,quality='high') {
-  const expected=raster(id,quality);
-  if(!expected || !scan || scan.holeCells!==expected.cells.length || scan.cellM!==.06
-      || scan.gridW!==expected.gridW || scan.gridH!==expected.gridH
-      || !Array.isArray(scan.samples) || scan.samples.length!==expected.cells.length) return false;
-  if(!Object.entries(expected.bounds).every(([k,v])=>Math.abs(scan.bounds?.[k]-v)<=1e-9)) return false;
-  return scan.samples.every(s=>expected.cells.some(([gx,gy])=>s.gx===gx&&s.gy===gy));
+  return scanMatchesLatticeCells(scan,cells(id,quality));
 }
 export function arieteOpeningCell(id,x,z,quality='high') {
-  const expected=raster(id,quality);
-  return Boolean(expected?.cells.some(([gx,gy])=>{
-    const [cx,cz]=center(expected,gx,gy);return Math.abs(x-cx)<=1e-9&&Math.abs(z-cz)<=1e-9;
-  }));
+  return isLatticeCellCenter(x,z,cells(id,quality));
 }
 export function arieteOpeningWitnesses(id,quality='high') {
-  const expected=raster(id,quality);if(!expected)return [];
-  const air=expected.cells.flatMap(([gx,gy],i)=>Array.from({length:9},(_,p)=>{
-    const [x,z]=center(expected,gx,gy,p%3,Math.floor(p/3));
+  const expected=cells(id,quality);if(!expected)return [];
+  // Every page pixel centre of every pinned cell must be air in the complete source and the native build.
+  const air=expected.flatMap((cell,i)=>Array.from({length:9},(_,p)=>{
+    const [x,z]=latticeSubpixelCenter(cell,p%3,Math.floor(p/3));
     return {key:`raster-${i}-subpixel-${p}`,origin:[x,6,z],direction:[0,-1,0],far:20,expect:'air'};
   }));
   return [...ARIETE_REAR_WITNESSES,...air];

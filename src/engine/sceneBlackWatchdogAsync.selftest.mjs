@@ -217,8 +217,8 @@ function fixture({ asyncSamples = [12], syncSamples = [], shadows = true, enviro
     clear() { event('clear'); },
     render(renderScene, renderCamera) {
       assertCurrent('render');
-      assert.equal(renderScene, scene);
-      assert.equal(renderCamera, camera);
+      assert.ok(renderScene === scene);
+      assert.ok(renderCamera === camera);
       layerMasks.push(['render', renderCamera.layers.mask]);
       event('render', { ...compatibility });
       const sample = asyncSamples[buffers.length];
@@ -246,8 +246,8 @@ function fixture({ asyncSamples = [12], syncSamples = [], shadows = true, enviro
     };
     renderer.compile = (compileScene, compileCamera) => {
       assertCurrent('compile');
-      assert.equal(compileScene, scene);
-      assert.equal(compileCamera, camera);
+      assert.ok(compileScene === scene);
+      assert.ok(compileCamera === camera);
       layerMasks.push(['compile', compileCamera.layers.mask]);
       assert.ok(targets.some((owned) => owned.target === target), 'stage programs are submitted into the probe target');
       event('compile', { ...compatibility });
@@ -488,7 +488,7 @@ for (const changed of ['shadows', 'environment', 'fog']) {
     f.compatibility[changed] = value;
     await clock.resume();
     assert.deepEqual(await pending, healthy(24));
-    assert.equal(f.compatibility[changed], value, 'fresh check preserves the current compatibility owner');
+    assert.ok(f.compatibility[changed] === value, 'fresh check preserves the current compatibility owner');
     f.assertReleased(2, 1);
   });
 }
@@ -828,14 +828,14 @@ await test('a newer owner\'s compatibility state survives a cancelled stage (com
   const observed = pending.then(value => ({ value }), error => ({ error }));
   await clock.resume(); // the PBO fence; shadows-off links
   await clock.resume(); // shadows-off judged (black); environment-off applied and linking
-  assert.equal(f.compatibility.environment, null);
+  assert.ok(f.compatibility.environment === null);
   const next = new THREE.Texture();
   f.compatibility.environment = next; // the next phase installs its own environment
   current = false;
   await clock.resume();
   const result = await observed;
   assert.match(String(result.error?.message), /watchdog owner changed/);
-  assert.equal(f.compatibility.environment, next, 'the stale stage never clobbers the newer environment');
+  assert.ok(f.compatibility.environment === next, 'the stale stage never clobbers the newer environment');
   assert.equal(f.compatibility.shadows, f.initial.shadows);
   f.assertReleased(2, 3);
 });

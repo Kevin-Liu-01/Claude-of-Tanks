@@ -15,7 +15,7 @@ import { lyingDrum } from './shaft.ts';
 type Writers = { mesh: DamageMeshWriter; pieces: DamagePieceWriter };
 
 /** A box in the building's frame: its corners' least and most x, y, z. */
-export interface WreckBox { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number }
+interface WreckBox { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number }
 
 /** The run as glencanyon.ts penstockRun built it, in the building's frame. */
 export interface PenstockWreck {

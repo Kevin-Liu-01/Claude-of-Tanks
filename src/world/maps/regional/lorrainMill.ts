@@ -277,7 +277,7 @@ function vanne(ctx: RegionalBuildContext, p: SluiceParams): RegionalParts {
 }
 
 /** Where a mill structure stands: its world base and yaw (three's rotateY), the map, its seed and the ground. */
-export interface MillPlacement {
+interface MillPlacement {
   x: number;
   y: number;
   z: number;

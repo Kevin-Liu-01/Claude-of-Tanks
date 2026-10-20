@@ -41,7 +41,7 @@ export interface EscarpmentSettings {
   strength?: number;
 }
 
-export interface EscarpmentRingInput {
+interface EscarpmentRingInput {
   columns: number;
   rowCount: number;
   positions: Float32Array;
@@ -78,7 +78,7 @@ function valueNoise(x: number, z: number, seed: number): number {
   return (a + (b - a) * ux + (c - a) * uz + (a - b - c + d) * ux * uz) * 2 - 1;
 }
 
-export interface EscarpmentField {
+interface EscarpmentField {
   settings: EscarpmentSettings;
   /** The stepped height for an input height at (x, z), above `floor`; `slopeWeight` (0..1) scales the plan meander
    * (nil on a flat cap or floor, so a cap stays one level and only the cliff lines wander). */

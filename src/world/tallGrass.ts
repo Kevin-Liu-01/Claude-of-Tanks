@@ -84,7 +84,7 @@ interface TallGrassOptions {
   candidatesPerUpdate?: number;
 }
 
-export interface TallGrassRingState {
+interface TallGrassRingState {
   cellX: number;
   cellZ: number;
   cells: number;
@@ -96,7 +96,7 @@ export interface TallGrassRingState {
   truncated: number;
 }
 
-export interface TallGrassState {
+interface TallGrassState {
   enabled: boolean;
   quality: number;
   near: TallGrassRingState;

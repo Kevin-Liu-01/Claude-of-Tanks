@@ -12,6 +12,7 @@ import {createTankState} from '../../sim/movement.ts';
 import {leopardReturnRollers} from './leopardReturnRollers.ts';
 import {matrix,finiteClearance,continuousShoeClearance,moving,rollerSuspensionFixtures} from '../returnRollerPhysicsTest.mjs';
 import {auditVisibleReturnRollerContact} from '../returnRollerContactTest.mjs';
+import { graphLabels } from '../../../tools/receipt-kit.test-support.mjs';
 
 const cases=[['leo2a7v',buildLeopard2A7VX],['leo2a5m',buildLeopard2A4MX],
  ['leo2a5',buildLeopard2A5X],['leo2_revolution',buildLeopardRevolution],['kf51_panther',buildKF51X]];
@@ -79,10 +80,10 @@ function body(root){const out=[];root.traverse(o=>{
 });return out;}
 function rollerBounds(c){
  const tire=c.port.hullG.getObjectByName('gearReturnRollerRotors');
- assert.equal(tire.count,8);assert.deepEqual(tire.material,[c.port.mats.rubber,c.port.mats.wheels]);
+ assert.equal(tire.count,8);assert.deepEqual(graphLabels(tire.material),graphLabels([c.port.mats.rubber,c.port.mats.wheels]));
  assert.equal(tire.userData.appearanceRole,undefined);assert.equal(tire.visible,true);
- assert.equal(c.port.hullG.getObjectByName('gearReturnRollerTires'),undefined);
- assert.equal(c.port.hullG.getObjectByName('gearReturnRollerDiscs'),undefined);
+ assert.ok(c.port.hullG.getObjectByName('gearReturnRollerTires') === undefined);
+ assert.ok(c.port.hullG.getObjectByName('gearReturnRollerDiscs') === undefined);
  const bounds=[];
  for(let i=0;i<8;i++){
   const m=matrix(tire,i,c.port.hullG),center=new T.Vector3().setFromMatrixPosition(m),box=new T.Box3();let radius=0;
@@ -102,8 +103,8 @@ function mounts(c,bounds){
  const mesh=c.port.hullG.getObjectByName('gearReturnRollerSpindles');
  assert.equal(mesh.count,8);assert.equal(mesh.geometry.parameters.radiusTop,.027);
  assert.equal(mesh.geometry.parameters.radialSegments,c.port.q?8:4);assert.equal(mesh.geometry.parameters.openEnded,false);
- assert.equal(mesh.material,c.port.mats.wheels);assert.equal(mesh.userData.runningGear,true);
- assert.equal(mesh.parent,c.port.hullG,'Mounts share the roller assembly owner, not a disposable detail LOD');
+ assert.ok(mesh.material === c.port.mats.wheels);assert.equal(mesh.userData.runningGear,true);
+ assert.ok(mesh.parent === c.port.hullG,'Mounts share the roller assembly owner, not a disposable detail LOD');
  const panther=c.port.spec.id==='kf51_panther';let oldRootGap=Infinity;
  for(const [i,b]of bounds.entries()){
   const g=mesh.geometry.clone().applyMatrix4(matrix(mesh,i,c.port.hullG));g.computeBoundingBox();const box=g.boundingBox,side=Math.sign(b.center.x);g.dispose();
@@ -164,7 +165,7 @@ for(const [id,build]of selected)for(const quality of['high','low']){
  const omitted=id==='leo2a5'?null:capture(id,build,quality,false,true);
  try{
   if(omitted){
-   assert.equal(omitted.port.hullG.getObjectByName('gearReturnRollerTires'),undefined,'Roller-free twin has no rollers');
+   assert.ok(omitted.port.hullG.getObjectByName('gearReturnRollerTires') === undefined,'Roller-free twin has no rollers');
    assert.deepEqual(current.emissions,omitted.emissions,'Rollers add or change no authored emission (live roller-free twin)');
    assert.deepEqual(body(current.tank.root),body(omitted.tank.root),'Hull/turret/gun armor, finish and rig unchanged by the rollers');
    for(const name of['rig_hull','rig_turret','rig_gun'])assert.deepEqual(current.tank.root.getObjectByName(name).matrixWorld.elements,
@@ -249,12 +250,12 @@ for(const quality of['high','low']){
  const control=createTank('leo2a6m',null,{quality,proceduralOnly:true,geometryReceipt:true});stats.builds++;
  try{
   assert.equal(control.root.getObjectByName('gearReturnRollerTires').count,8,'Existing A6M rollers retained');
-  assert.equal(control.root.getObjectByName('gearReturnRollerSpindles'),undefined,'No blanket A6M opt-in or station donor');
+  assert.ok(control.root.getObjectByName('gearReturnRollerSpindles') === undefined,'No blanket A6M opt-in or station donor');
  }finally{control.dispose();}
  const rollerless=createTank('t62mv1',null,{quality,proceduralOnly:true,geometryReceipt:true});stats.builds++;
  try{
   for(const name of['gearReturnRollerRotors','gearReturnRollerTires','gearReturnRollerDiscs','gearReturnRollerSpindles'])
-   assert.equal(rollerless.root.getObjectByName(name),undefined,'FM100-2-3: T-62 remains a real rollerless vehicle');
+   assert.ok(rollerless.root.getObjectByName(name) === undefined,'FM100-2-3: T-62 remains a real rollerless vehicle');
  }finally{rollerless.dispose();}
 }
 for(const stations of[[],[-2,-1,1],[-2,1,1,2],[-2,0,NaN,2],[-4,-1,1,2]]){

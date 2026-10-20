@@ -450,7 +450,7 @@ const ruin: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const POLDER_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const POLDER_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => brickHouse(ctx),
   farmhouse: boerderij,
   tavern: (ctx) => brickHouse(ctx, { storeys: 2 }),

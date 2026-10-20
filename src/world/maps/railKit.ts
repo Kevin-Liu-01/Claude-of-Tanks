@@ -110,7 +110,7 @@ function worldBox(x0: number, y0: number, z0: number, x1: number, y1: number, z1
 
 /** A hole through a hall's wall: its centre along the wall (`at`: z on the ±x walls, x on the ±z walls), its width, sill
  *  and head. */
-export interface WallHole { at: number; w: number; y0: number; y1: number }
+interface WallHole { at: number; w: number; y0: number; y1: number }
 
 /**
  * A rectangular hall's walls `t` thick round its core, the holes cut through them (props census #13 and #4, lane B
@@ -150,10 +150,10 @@ function cutWalls(out: THREE.BufferGeometry[], w: number, d: number, h: number, 
   wall('x', -w / 2 + t, w / 2 - t, -d / 2, -d / 2 + t, 'pz', holes.nz);
 }
 
-export type HallHoles = { px: WallHole[]; nx: WallHole[]; pz: WallHole[]; nz: WallHole[] };
+type HallHoles = { px: WallHole[]; nx: WallHole[]; pz: WallHole[]; nz: WallHole[] };
 /** A part a cut hall's opening holds (a pane, a shutter, a catalog plate): laid on the face as the old build laid it (the
  *  catalog pass reads it there) and moved to `offset` before the core's face by settleCatalogCuts. */
-export interface HallUnit { g: THREE.BufferGeometry; side: 'px' | 'nx' | 'pz' | 'nz'; offset: number }
+interface HallUnit { g: THREE.BufferGeometry; side: 'px' | 'nx' | 'pz' | 'nz'; offset: number }
 type HallSide = keyof HallHoles;
 const SIDE_OF = (b: THREE.Box3, w: number, d: number): HallSide | null => {
   const cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2;

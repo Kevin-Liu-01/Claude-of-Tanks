@@ -17,10 +17,10 @@ for (const quality of ['high','low']) {
     const recoil=tank.root.getObjectByName('rig_recoil');
     const muzzle=tank.root.getObjectByName('rig_muzzle');
     const state=createTankState(spec,new THREE.Vector3(),0);
-    assert.equal(gun.parent,turret);
-    assert.equal(mount.parent,gun);
-    assert.equal(recoil.parent,gun);
-    assert.equal(tank.root.getObjectByName('revolutionPrototypeMachineGun').parent,turret);
+    assert.ok(gun.parent === turret);
+    assert.ok(mount.parent === gun);
+    assert.ok(recoil.parent === gun);
+    assert.ok(tank.root.getObjectByName('revolutionPrototypeMachineGun').parent === turret);
     assert.ok(!tank.root.getObjectByName('rig_decor_turret'), 'authored prototype roof has no duplicate generic cargo or weapons');
     assert.deepEqual(turret.position.toArray(),spec.armor.turretPivot);
     assert.deepEqual(gun.position.toArray(),spec.armor.gunPivot);

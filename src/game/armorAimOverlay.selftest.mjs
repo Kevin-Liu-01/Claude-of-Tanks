@@ -122,9 +122,9 @@ overlay.update({ enabled: false, scoped: true, targets: [target, secondTarget], 
 assert(entry.frames.every((frame) => !frame.mesh.visible), 'setting disables the overlay immediately');
 assert(secondEntry.frames.every((frame) => !frame.mesh.visible), 'setting hides every scoped overlay');
 overlay.clear();
-assert.equal(hull.getObjectByName('armor_flashlight_hull'), undefined,
+assert.ok(hull.getObjectByName('armor_flashlight_hull') === undefined,
   'battle cleanup detaches generated overlay meshes');
-assert.equal(secondHull.getObjectByName('armor_flashlight_hull'), undefined,
+assert.ok(secondHull.getObjectByName('armor_flashlight_hull') === undefined,
   'battle cleanup detaches every generated overlay mesh');
 overlay.dispose();
 

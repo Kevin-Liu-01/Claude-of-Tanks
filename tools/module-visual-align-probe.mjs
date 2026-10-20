@@ -25,10 +25,12 @@
 
 import { writeFileSync } from 'node:fs';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
+import { uniqueIds } from './id-list.mjs';
+import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from './tool-page-load.mjs';
 
 const args = process.argv.slice(2);
 const eq = args.find((a) => a.startsWith('--ids='));
-const requested = eq ? eq.slice(6).split(',').map((s) => s.trim()).filter(Boolean) : null;
+const requested = eq ? uniqueIds(eq.slice(6).split(',').map((s) => s.trim()).filter(Boolean), 'module-visual-align-probe --ids') : null;
 const jsonIdx = args.indexOf('--json');
 const jsonOut = jsonIdx >= 0 ? args[jsonIdx + 1] : '';
 const gate = args.includes('--gate');
@@ -40,7 +42,8 @@ const pageErrors = [];
 const rows = [];
 await withIsolatedCaptureBrowser({
   root: process.cwd(), logLevel: 'error',
-  server: { port: 7300 + Math.floor(Math.random() * 200), strictPort: false, hmr: false, watch: null },
+  // R4c (2026-10-16): 127.0.0.1 and the address really bound, never `localhost` (an IPv6 bind can leave 127.0.0.1 to another server)
+  server: toolServerOptions(7300),
 }, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
@@ -50,10 +53,10 @@ await withIsolatedCaptureBrowser({
   page.setDefaultTimeout(45000);
   page.on('pageerror', (e) => pageErrors.push(String(e)));
 
-  await page.goto(`http://localhost:${server.config.server.port}/?nosplash`, {
-    waitUntil: 'domcontentloaded', timeout: 120000,
+  // 180 s for the first navigation, 120 s for the game, one retry of a load that timed out (R4c)
+  await loadReadyPage(page, `${boundOrigin(server)}/?nosplash`, {
+    label: 'mod-align', ready: 'window.__GAME_READY === true', budget: pageLoadBudget({ readyTimeoutMs: 120000 }),
   });
-  await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
 
   const manifest = await page.evaluate(async () => {
     const { ALL_TANK_IDS, TANK_SPECS, MODEL_SOURCE } = await import('/src/vehicles/specs.ts');

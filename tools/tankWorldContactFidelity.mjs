@@ -16,13 +16,13 @@ import { installWorldBuildFixture } from './headlessWorldCollision.mjs';
 import { auditMapWorld, buildPropsSoup, kindTotals, rayTriangles } from './worldColliderAudit.mjs';
 
 /** A support top further than this from the visible top is felt (the hull floats or sinks by it). */
-export const SUPPORT_ERROR_M = 0.15;
+const SUPPORT_ERROR_M = 0.15;
 /** Sample spacing over a record's footprint (m) and the most points one record takes. */
 const SUPPORT_STEP_M = 0.75;
 const SUPPORT_MAX_POINTS = 96;
 
 /** The census class and group a standable record's support is judged under. */
-export function supportGroup(record) {
+function supportGroup(record) {
   if (record.kind === 'structure' || record.structureIdx != null) return ['roofs', 'building'];
   if (record.kind === 'tank-wreck' || record.kind === 'tram-wreck') return ['objects', 'wreck'];
   if (record.kind === 'bridge') return ['objects', 'bridge'];

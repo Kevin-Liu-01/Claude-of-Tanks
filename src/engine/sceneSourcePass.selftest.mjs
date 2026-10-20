@@ -47,7 +47,7 @@ function fixture(samples = 0) {
       if (kind === throwOn) throw new Error('owned render failure');
       if (isScene) {
         assert.equal(current, target);
-        assert.equal(view, camera);
+        assert.ok(view === camera);
         assert.equal(camera.layers.mask, initialLayers & ~(1 << LATE_FX_LAYER));
         assert.equal(renderer.autoClear, false);
         lineage.set(target.texture, `scene-${++frame}`);
@@ -89,8 +89,8 @@ for (const samples of [0, 2, 4]) {
     assert.equal(f.draws.filter(d => d.kind === 'SceneAAPass.Copy').length, 0);
     const aerialDraw = f.draws.find(d => d.kind === 'AerialProbe');
     assert.ok(aerialDraw, 'the enabled aerial consumer submits its draw');
-    assert.equal(aerialDraw.source, f.target.texture);
-    assert.equal(f.aerial.uniforms.tDepth.value, f.target.depthTexture);
+    assert.ok(aerialDraw.source === f.target.texture);
+    assert.ok(f.aerial.uniforms.tDepth.value === f.target.depthTexture);
     assert.equal(f.target.samples, samples);
     assert.equal(f.renderer.autoClear, true);
     assert.equal(f.camera.layers.mask, f.initialLayers);
@@ -125,8 +125,8 @@ for (const samples of [0, 2, 4]) {
   f.composer.setSize(1440, 900);
   assert.deepEqual([f.target.width, f.target.height], [2160, 1350]);
   assert.equal(f.aerial.sceneTarget, f.target);
-  assert.equal(f.target.texture, originalTexture);
-  assert.equal(f.target.depthTexture, originalDepth);
+  assert.ok(f.target.texture === originalTexture);
+  assert.ok(f.target.depthTexture === originalDepth);
   let disposed = 0;
   f.target.addEventListener('dispose', () => disposed++);
   f.scenePass.setSamples(4);
@@ -134,8 +134,8 @@ for (const samples of [0, 2, 4]) {
   f.scenePass.setSamples(2);
   assert.equal(disposed, 1);
   f.composer.render(1 / 60);
-  assert.equal(f.aerial.uniforms.tDiffuse.value, originalTexture);
-  assert.equal(f.aerial.uniforms.tDepth.value, originalDepth);
+  assert.ok(f.aerial.uniforms.tDiffuse.value === originalTexture);
+  assert.ok(f.aerial.uniforms.tDepth.value === originalDepth);
   f.aerial.dispose();
   assert.equal(disposed, 1, 'aerial borrows, but does not own, the scene target');
 }

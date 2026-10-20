@@ -41,13 +41,13 @@ import { Mesh, WOOD_UV_PER_M, X, Y, Z, hexLin, member, mix, mul, norm, pole, str
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
 
 export const FENCE_KINDS = ['fenceplank', 'fencepicket', 'fencewattle', 'fencerail'] as const;
-export type FenceKind = typeof FENCE_KINDS[number];
+type FenceKind = typeof FENCE_KINDS[number];
 type PlankForm = 'zabor' | 'sztachety' | 'lattenzaun' | 'tarred' | 'hekwerk' | 'fourboard' | 'drift' | 'rubble' | 'larch';
 type RailForm = 'skigard' | 'zherdyna' | 'postrail' | 'ranchwire' | 'cedarbamboo' | 'concrete' | 'stonepost';
 type PicketForm = 'white' | 'staketen';
 type WattleForm = 'hurdle' | 'tyn' | 'coyote' | 'bamboo' | 'yotsume' | 'palm' | 'cane';
 /** One region's fences (the gate's region: GATE_STYLES's keys, an architecture kit's id or a kit-less map's id). */
-export interface FenceForms { plank: PlankForm; rail: RailForm; picket: PicketForm; wattle: WattleForm; stone?: number }
+interface FenceForms { plank: PlankForm; rail: RailForm; picket: PicketForm; wattle: WattleForm; stone?: number }
 const DEFAULT_FORMS: FenceForms = { plank: 'zabor', rail: 'postrail', picket: 'white', wattle: 'hurdle' };
 const forms = (o: Partial<FenceForms>): FenceForms => ({ ...DEFAULT_FORMS, ...o });
 /** Each region's fences, keyed as GATE_STYLES is (gateKit.ts gateStyleFor), so a fence and its gate agree. */
@@ -661,7 +661,7 @@ export function drawnRecordBand(g: THREE.BufferGeometry): StructureCollisionRunt
 }
 
 /** A fence kind's record on the structure wood (props.ts PropsDestructibleMeta: any material by name). */
-export type FenceType = Omit<DestructiblePropType, 'mat'> & { mat: 'structureWood'; ownBroken?: boolean };
+type FenceType = Omit<DestructiblePropType, 'mat'> & { mat: 'structureWood'; ownBroken?: boolean };
 
 /**
  * The map's timber fence kinds in its region's build (props.ts LOCAL_TYPES): each kind's record, class, contact and

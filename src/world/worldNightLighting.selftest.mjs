@@ -5,6 +5,7 @@ import { createNightLightingRuntime } from '../engine/nightLightingRuntime.ts';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
 import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.ts';
 import { MAP_IDS } from './maps/catalog.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const scene = new THREE.Scene(), root = new THREE.Group();
 scene.add(root);
@@ -76,7 +77,7 @@ try {
   assert.equal(curtain.version, originalVersion, 'emission changes do not recompile the material');
   assert.equal(curtain.customProgramCacheKey(), originalProgramKey);
   assert.strictEqual(curtain.onBeforeCompile, originalHook, 'same installed mask shader, no new variants');
-  assert.deepEqual(root.children, originalChildren, 'intensity inputs add no scene owners');
+  assert.deepEqual(graphLabels(root.children), graphLabels(originalChildren), 'intensity inputs add no scene owners');
   assert.equal(runtime.lights.length, 3, 'original two-spot/one-point pool only');
   assert.ok(runtime.lights.every(light => !light.castShadow && !light.shadow.map), 'no new shadow budget');
   for (const [key, bytes] of Object.entries(originalAttributes)) assert.deepEqual(geometry.getAttribute(key).array, bytes, `${key}: exact authored geometry and masks`);
@@ -105,7 +106,7 @@ try {
   assert.equal(runtime.emitterCount, 0, 'Garage return releases retained map/record references');
   runtime.prepare([{ root }], false);
   runtime.update(expected);
-  assert.equal(runtime.group.parent, null, 'day maps carry no light pool');
+  assert.ok(runtime.group.parent === null, 'day maps carry no light pool');
 
   for (const mapId of MAP_IDS) {
     const mapRoot = new THREE.Group();

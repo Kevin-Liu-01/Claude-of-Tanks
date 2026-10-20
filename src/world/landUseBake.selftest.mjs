@@ -175,7 +175,7 @@ for (const [W, n] of [[512, 512], [1536, 512], [256, 256]]) {
 {
   const ground = new THREE.DataTexture(new Uint8Array(64 * 64 * 4), 64, 64, THREE.RGBAFormat);
   const st = stackLandUseBake(ground, null, 64);
-  assert.equal(st.texture, ground, 'a map without a field system keeps its mask texture as it was');
+  assert.ok(st.texture === ground, 'a map without a field system keeps its mask texture as it was');
   assert.deepEqual(st.stack.toArray(), [1, 0.5 / 64, 1 - 0.5 / 64, 1 / 64]);
 }
 

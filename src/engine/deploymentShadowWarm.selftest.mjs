@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { createDeploymentShadowWarmOwner } from './deploymentShadowWarm.ts';
 import { installArticulatedShadowBatch } from './articulatedShadowBatch.ts';
 import { markShadowOnly, routeShadowOnlyLayer, SHADOW_ONLY_LAYER } from './renderLayers.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 function preparable(render) {
   return Object.assign(render, { *prepareProgramsSteps() { return { status: 'complete', pending: 0 }; } });
@@ -161,7 +162,7 @@ for (const failureStage of [null, 'upload', 'yield']) {
   try {
     const prime = owner.prime(async covered => {
       assert.equal(covered, true);
-      assert.equal(scene.overrideMaterial, priorOverride);
+      assert.ok(scene.overrideMaterial === priorOverride);
       assert.deepEqual(meshes.map(mesh => mesh.layers.mask), masks);
       if (++yields === 2 && failureStage === 'yield') throw failure;
     });
@@ -174,14 +175,14 @@ for (const failureStage of [null, 'upload', 'yield']) {
     } else {
       const receipt = await prime;
       assert.equal(batches, 3, '27 visible objects cannot be uploaded in one blocking render');
-      assert.deepEqual(seen, meshes, 'batching preserves every production object and ordering');
+      assert.deepEqual(graphLabels(seen), graphLabels(meshes), 'batching preserves every production object and ordering');
       assert.equal(receipt.geometryUploadBatchMs.length, batches);
       assert.equal(receipt.geometryUploadMs, receipt.geometryUploadBatchMs.reduce((a, b) => a + b, 0));
       assert.equal(receipt.geometryUploadBatchMaxMs, Math.max(...receipt.geometryUploadBatchMs));
       assert.equal(shadowCalls, 1);
       assert.equal(preserved, true);
     }
-    assert.equal(scene.overrideMaterial, priorOverride);
+    assert.ok(scene.overrideMaterial === priorOverride);
     assert.deepEqual(meshes.map(mesh => mesh.layers.mask), masks);
   } finally {
     owner.dispose(); priorOverride.dispose();
@@ -271,9 +272,9 @@ for (const failureStage of [null, 'render', 'yield', 'dispose']) {
     setRenderTarget(value) { target = value; },
     shadowMap: {
       render(actualLights, actualScene, actualCamera) {
-        assert.equal(actualLights, lights);
-        assert.equal(actualScene, scene);
-        assert.notEqual(actualCamera, camera, 'use the production offscreen shadow-only camera');
+        assert.ok(actualLights === lights);
+        assert.ok(actualScene === scene);
+        assert.ok(actualCamera !== camera, 'use the production offscreen shadow-only camera');
         assert.equal(actualCamera.layers.mask, cameraMask | (1 << SHADOW_ONLY_LAYER));
         const active = lights.filter(light => light.shadow.needsUpdate);
         assert.equal(active.length, 1, 'only the requested native cascade updates');
@@ -326,12 +327,12 @@ for (const failureStage of [null, 'render', 'yield', 'dispose']) {
       assert.equal(receipt.casterBatches, 5, 'both the 12-object and 45k-weight boundaries apply to layer29');
       const batches = renders.slice(0, receipt.casterBatches);
       assert.deepEqual(batches.map(batch => batch.casters.length), [12, 12, 4, 1, 1]);
-      assert.deepEqual(batches.flatMap(batch => batch.casters), eligible,
+      assert.deepEqual(graphLabels(batches.flatMap(batch => batch.casters)), graphLabels(eligible),
         'every eligible caster warms exactly once, including the batch but not its original proxies');
       assert.ok(batches.every(batch => batch.light === lights[0]));
       const cascades = renders.slice(receipt.casterBatches);
-      assert.deepEqual(cascades.map(cascade => cascade.light), lights);
-      for (const cascade of cascades) assert.deepEqual(cascade.casters, eligible,
+      assert.deepEqual(graphLabels(cascades.map(cascade => cascade.light)), graphLabels(lights));
+      for (const cascade of cascades) assert.deepEqual(graphLabels(cascade.casters), graphLabels(eligible),
         'each of the four final native cascades retains complete exact caster coverage');
       assert.equal(preserved, true);
       assert.ok(lights.every(light => !light.shadow.autoUpdate && !light.shadow.needsUpdate));
@@ -412,7 +413,7 @@ function observationFixture({ inherited = false, locked = false, fail = '',
     getRenderTarget() { return priorTarget; },
     setRenderTarget(target) { priorTarget = target; },
     render(actualScene, forwardCamera) {
-      assert.equal(actualScene, scene);
+      assert.ok(actualScene === scene);
       renders++;
       if (locked) assert.equal(renderer.renderBufferDirect, original);
       clock += 3;
@@ -421,8 +422,8 @@ function observationFixture({ inherited = false, locked = false, fail = '',
         const args = [selectedCamera, index === 1 ? scene : null, geometry, scene.overrideMaterial ?? depth, object, group];
         const value = renderer.renderBufferDirect.apply(receiver, args);
         assert.equal(value, result, 'the observer preserves the original return value');
-        assert.deepEqual(received.at(-1), args);
-        for (let arg = 0; arg < args.length; arg++) assert.equal(received.at(-1)[arg], args[arg]);
+        assert.deepEqual(graphLabels(received.at(-1)), graphLabels(args));
+        for (let arg = 0; arg < args.length; arg++) assert.ok(received.at(-1)[arg] === args[arg]);
         if (index === 0) clock += 2;
         if (index === 1) clock += 1;
       }

@@ -53,16 +53,16 @@ const alone = new THREE.InstancedMesh(box, other, 2);
 root.add(merged, poolA, poolB, coloured, multi, alone);
 const first = splitProgramVariants(root);
 assert.deepEqual(first, { materials: 2, split: 1, twins: 2, objects: 4 }, JSON.stringify(first));
-assert.equal(merged.material, shared, 'the plain variant keeps the original');
-assert.notEqual(poolA.material, shared);
-assert.equal(poolA.material, poolB.material, 'one twin per variant, shared by its objects');
-assert.equal(multi.material[0], poolA.material, 'a material array splits per slot');
-assert.notEqual(coloured.material, poolA.material, 'instance colours have their own twin');
-assert.equal(programVariantOrigin(poolA.material), shared);
-assert.equal(programVariantOrigin(shared), shared);
+assert.ok(merged.material === shared, 'the plain variant keeps the original');
+assert.ok(poolA.material !== shared);
+assert.ok(poolA.material === poolB.material, 'one twin per variant, shared by its objects');
+assert.ok(multi.material[0] === poolA.material, 'a material array splits per slot');
+assert.ok(coloured.material !== poolA.material, 'instance colours have their own twin');
+assert.ok(programVariantOrigin(poolA.material) === shared);
+assert.ok(programVariantOrigin(shared) === shared);
 // `other`: drawn instanced only by `alone` and `multi` — one variant, but its plain variant is absent: kept on the most
-assert.equal(alone.material, other);
-assert.equal(multi.material[1], other);
+assert.ok(alone.material === other);
+assert.ok(multi.material[1] === other);
 assert.deepEqual(splitProgramVariants(root), { materials: 4, split: 0, twins: 0, objects: 0 }, 'a second pass changes nothing');
 // (2026-10-19) a re-seat after an unwrap put the original back on a twin's object: only materials a pass split before
 {
@@ -90,7 +90,7 @@ shared.color.setHex(0x112233);
 assert.equal(twin.color.getHex(), 0x112233, 'a colour change reaches the twin');
 const map = new THREE.Texture();
 shared.map = map;
-assert.equal(twin.map, map, 'a new map reaches the twin');
+assert.ok(twin.map === map, 'a new map reaches the twin');
 shared.defines = { ...(shared.defines ?? {}), COT_TEST: '' };
 assert.ok('COT_TEST' in twin.defines, 'new defines reach the twin');
 const priorKey = shared.customProgramCacheKey;

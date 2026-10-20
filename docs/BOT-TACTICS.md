@@ -106,7 +106,9 @@ retaliation, hidden-contact safety and engagement of a sole survivor.
   ballistic canisters and their spotting obstruction are the player system.
 - A roof gun toggles on for a clear spotted nearby contact, holds through a brief
   contact loss, then switches off. Its fire still obeys range, aim and obstruction
-  checks. Roof-gun bounces do not contaminate cannon penetration feedback.
+  checks, and the station's own hold-fire law (the player's too): no round where
+  it cannot hurt (`src/sim/roofHoldFire.selftest.mjs`). Roof-gun bounces do not
+  contaminate cannon penetration feedback.
 - Jump-capable modes permit a defensive jump while moving and reloading under
   fire, only with a clear, affordable landing corridor. No repeated airborne
   boosting; the local planner enforces ten seconds between requests.

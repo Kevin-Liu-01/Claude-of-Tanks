@@ -47,7 +47,7 @@ export const EYE8 = Object.freeze([
 export const RECORDED_EXCEPTIONS = Object.freeze({
   verdant: Object.freeze({ C6: 'Kursk is flat: no far layer stands over the ring; the inhabited near band compensates (H1 §5.2)' }),
 });
-export const EYE_INSET_M = 80;
+const EYE_INSET_M = 80;
 export const EYE_M = 2.5;
 export const CENTRE_EYE_M = 3;
 
@@ -169,7 +169,7 @@ const FAMILY = Object.freeze({
 });
 
 /** The deck (S1): today's far-country deck from the legacy keys against the cloud layer's resolved base. */
-export function deckColumns(cfg, regimes) {
+function deckColumns(cfg, regimes) {
   const scape = cfg.clouds ?? null;
   const legacy = cfg.sky?.cloudAltM;
   const today = Math.min(scape?.baseM ?? Infinity, legacy ?? Infinity, ...(scape?.baseM === undefined && legacy === undefined ? [1400] : []));

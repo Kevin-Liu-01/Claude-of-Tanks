@@ -63,10 +63,10 @@ function fixture({ count = 1, yaw = 0, frame = 'turret', role = 'nonArmor', mark
   const originalUv = uv.array.slice();
   assert.equal(f.damage.apply(event), true);
   assert.equal(f.geometry.id, geometryId, 'existing merged draw geometry retained');
-  assert.equal(f.geometry.getAttribute('position'), f.position, 'no buffer replacement at impact');
-  assert.equal(f.geometry.getAttribute('normal'), f.normal);
+  assert.ok(f.geometry.getAttribute('position') === f.position, 'no buffer replacement at impact');
+  assert.ok(f.geometry.getAttribute('normal') === f.normal);
   assert.deepEqual(uv.array, originalUv, 'texture coordinates do not move');
-  assert.equal(f.geometry.index, null, 'unchanged nonindexed topology');
+  assert.ok(f.geometry.index === null, 'unchanged nonindexed topology');
   let changed = 0;
   for (let vertex = 0; vertex < f.position.count; vertex++) {
     const first = vertex * 3;

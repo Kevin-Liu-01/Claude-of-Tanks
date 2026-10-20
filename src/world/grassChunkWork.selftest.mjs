@@ -208,7 +208,7 @@ function publication(failAttribute = false) {
     assert.throws(() => publish(chunk, work.buffers), /attribute failure/);
     assert.equal(group.children.length, 0);
     assert.equal(disposedMeshes, created.length);
-    assert.equal(chunk.built, false); assert.equal(chunk.meshes, null);
+    assert.equal(chunk.built, false); assert.ok(chunk.meshes === null);
   } else {
     publish(chunk, work.buffers);
     assert.equal(chunk.built, true);

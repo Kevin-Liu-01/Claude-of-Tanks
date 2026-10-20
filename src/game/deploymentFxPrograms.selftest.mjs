@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createOffscreenSceneWarmer } from '../engine/offscreenWarm.ts';
 import { prepareDeploymentFxPrograms } from './deploymentFxPrograms.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const complete = { status: 'complete', pending: 0 };
 const incomplete = reason => ({ status: 'incomplete', pending: null, reason });
@@ -40,8 +41,8 @@ function selectionFixture() {
     scene, root, ancestor, camera, expected, foreign,
     assertUnchanged() {
       for (const state of states) {
-        assert.equal(state.object.parent, state.parent);
-        assert.equal(state.object.material, state.material);
+        assert.ok(state.object.parent === state.parent);
+        assert.ok(state.object.material === state.material);
         assert.equal(state.object.visible, state.visible);
         assert.equal(state.object.layers.mask, state.mask);
       }
@@ -77,7 +78,7 @@ function selectionFixture() {
       ...f, assertCurrent: f.assertUnchanged, now: () => time,
       warmRender: {
         *prepareProgramsSteps(objects, timing) {
-          assert.deepEqual(objects, f.expected, 'only actual eligible FX objects are selected');
+          assert.deepEqual(graphLabels(objects), graphLabels(f.expected), 'only actual eligible FX objects are selected');
           assert.equal(new Set(objects.map(object => object.material)).size < objects.length, true,
             'shared materials do not collapse object-dependent program variants');
           try {
@@ -271,7 +272,7 @@ for (const mode of ['complete', 'dispose', 'hide', 'reflection-error']) {
     render() { assert.fail('program preparation does not draw'); },
     compileAsync() { assert.fail('strict preparation cannot use unguarded compileAsync'); },
     compile(selection, camera, targetScene) {
-      assert.equal(camera, f.camera); assert.equal(targetScene, f.scene);
+      assert.ok(camera === f.camera); assert.ok(targetScene === f.scene);
       assert.equal(activeTarget.texture.name, 'CombatWarm.color');
       assert.equal(activeTarget.texture.type, THREE.HalfFloatType);
       assert.equal(activeTarget.texture.colorSpace, THREE.LinearSRGBColorSpace);
@@ -290,7 +291,7 @@ for (const mode of ['complete', 'dispose', 'hide', 'reflection-error']) {
           properties.set(material, { programs: new Map([[material.id, program]]), currentProgram: null });
         }
       });
-      assert.deepEqual(selected, f.expected);
+      assert.deepEqual(graphLabels(selected), graphLabels(f.expected));
       return materials;
     },
   };

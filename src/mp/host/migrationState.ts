@@ -137,7 +137,7 @@ export function chunkMigrationBlob(kind: typeof MIGRATION_EVENT_KIND[keyof typeo
 // ------------------------------------------------------------ the boot configuration blob
 
 /** The configuration without the secret (the secret never rides the wire, sealed or not). */
-export type SealedBootConfig = Omit<HostBootConfig, 'hostSecret' | 'resume' | 'manifestBase'>;
+type SealedBootConfig = Omit<HostBootConfig, 'hostSecret' | 'resume' | 'manifestBase'>;
 
 export function encodeBootConfig(config: HostBootConfig): Uint8Array {
   const { hostSecret: _secret, resume: _resume, manifestBase: _base, ...rest } = config;

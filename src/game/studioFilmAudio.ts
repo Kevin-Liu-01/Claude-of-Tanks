@@ -141,7 +141,7 @@ export interface FilmSoundCue {
   readonly cause?: 'ammorack' | 'shot' | 'fire';
 }
 
-export interface FilmSoundLayer {
+interface FilmSoundLayer {
   /** A recording id of FILM_SFX. */
   readonly name: string;
   /** Which of its variants (public/audio/sfx/<group>/<name>_<variant>.webm). */
@@ -154,7 +154,7 @@ export interface FilmSoundLayer {
   readonly maxDurS?: number;
 }
 
-export interface FilmSoundVoice {
+interface FilmSoundVoice {
   readonly gain: number;
   /** Extra air absorption distance for the lowpass (m). */
   readonly lowpassBiasM: number;
@@ -239,12 +239,12 @@ export function filmSoundVoice(cue: FilmSoundCue, distanceM: number, random: () 
 }
 
 /** Camera pose at a timeline instant (position, right axis, forward axis). */
-export interface FilmListener {
+interface FilmListener {
   x: number; y: number; z: number;
   rightX: number; rightY: number; rightZ: number;
 }
 
-export interface FilmSoundPorts {
+interface FilmSoundPorts {
   listenerAt(timelineMs: number, out: FilmListener): void;
   /** Timeline ms -> film ms from the film's first frame (speed ramps included). */
   filmMsAt(timelineMs: number): number;
@@ -252,7 +252,7 @@ export interface FilmSoundPorts {
   speedAt(timelineMs: number): number;
 }
 
-export interface FilmSoundOptions {
+interface FilmSoundOptions {
   readonly durationS: number;
   readonly sampleRate?: number;
   readonly seed?: number;

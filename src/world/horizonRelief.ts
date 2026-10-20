@@ -96,7 +96,7 @@ export interface HorizonReliefSettings {
  * (horizonMassif.ts erosionOctave): couloirs whose spacing and depth follow the slope, each finer octave turned by the
  * coarser ones, so they branch, bend round the spurs and stop on the floors.
  */
-export interface HorizonReliefDrainage {
+interface HorizonReliefDrainage {
   /** Couloir spacing (m) of the coarsest octave; each further octave halves it. */
   wavelengthM: number;
   octaves: number;

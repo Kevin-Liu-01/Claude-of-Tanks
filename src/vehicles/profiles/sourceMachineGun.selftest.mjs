@@ -25,7 +25,7 @@ for (const quality of ['high', 'low']) for (const [id, stationName, x, y, muzzle
     const exact = tank.root.getObjectByName('fitting_pintleMG_exact');
     const fitting = exact ?? station;
     assert.ok(fitting?.userData.fittingRoot && fitting.userData.fittingExact, `${id}: actual exact weapon fitting`);
-    if (exact) assert.equal(exact, weapon, `${id}: the exact fitting is the pitching weapon`);
+    if (exact) assert.ok(exact === weapon, `${id}: the exact fitting is the pitching weapon`);
     else assert.ok(weapon, `${id}: the exact station carries the pitching weapon`);
     assert.deepEqual(weapon.userData.barrelAxisLocal, [0, 0, 1]);
     assert.equal(weapon.userData.barrelElevationRad, 0);

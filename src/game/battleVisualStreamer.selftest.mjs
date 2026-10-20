@@ -56,7 +56,7 @@ const streamer = createBattleVisualStreamer({
   },
   forwardProgramWarm: { compile(root) { compiled.push(root); } },
   onVisualReady(entity) {
-    assert.equal(entity.visual.root.parent, scene,
+    assert.ok(entity.visual.root.parent === scene,
       'late emitter registration sees the staged scene-attached visual');
     assert.equal(compiled.includes(entity.visual.root), false,
       'late emitter registration precedes its forward-program warm');
@@ -105,7 +105,7 @@ assert.equal(initializedTextures.length, 3, 'deferral preserves the exact player
 assert.deepEqual(registered, ['alpha', 'bravo', 'early-player']);
 assert.deepEqual(primed, ['alpha', 'bravo', 'early-player']);
 assert.equal(restored, 3, 'armor warm visibility is restored even without a program submission');
-assert.strictEqual(player.visual.root.parent, scene);
+assert.ok(player.visual.root.parent === scene);
 assert.equal(player.visual.root.visible, true);
 assert.equal(player.visual.root.userData.loadStaged, true);
 const repeated = await streamer.stageBattleVisualReveal(player, async () => {});

@@ -109,7 +109,7 @@ for (const id of ['m551_sheridan', 'm46_patton', 'm47_patton', 'm60a1', 'm60a3']
     // paint every shared gun's can takes (browningMachineGunStandard), never the host camouflage.
     assert.equal(ammoBox?.userData.fittingSlot, 'ammoCan',
       `${id}: ammunition can is the shared construction's fitting-paint can`);
-    assert.equal(ammoBox?.material?.map ?? null, null, `${id}: ammunition can does not inherit the camouflage`);
+    assert.ok((ammoBox?.material?.map ?? null) === null, `${id}: ammunition can does not inherit the camouflage`);
     assert.equal(gun.children.some((object) => object.userData.fittingSlot === 'detail'), false,
       `${id}: no M2 component is routed through camouflaged fitting paint`);
     gun.traverse((object) => {
@@ -244,7 +244,7 @@ for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] 
   const paintedShield = loader[0].children.find(
     (object) => object.userData.fittingSlot === 'hull');
   if (expectedShield === 'open') {
-    assert.equal(paintedShield, undefined, `${id}: open Browning does not invent an armor shield`);
+    assert.ok(paintedShield === undefined, `${id}: open Browning does not invent an armor shield`);
   } else {
     assert.equal(paintedShield?.userData.camoProjection, 'continuous-fitting-box-uv',
       `${id}: Browning shield receives one natural-scale camouflage projection`);

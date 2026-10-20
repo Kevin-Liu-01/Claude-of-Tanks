@@ -726,7 +726,7 @@ const ruin: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const NAVAJO_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const NAVAJO_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   adobe: hogan,
   compound: camp,
   caravanserai: tradingPost,

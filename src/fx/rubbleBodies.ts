@@ -58,7 +58,7 @@ const INSTANCES = 160;
 /** The wall tile density (repeats a metre) the bodies' box projection uses. */
 const TILE_PER_M = 0.5;
 
-export interface RubbleBodiesOptions {
+interface RubbleBodiesOptions {
   now(): number;
   /** What the bodies meet: the ground as drawn (its craters and heaps) and the world's records. Null: they wait. */
   environment(): RigidEnvironment | null;

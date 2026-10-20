@@ -35,7 +35,7 @@ for (const { mesh, cells } of batches) {
   // (facades lane, 2026-10-05: the facade craft's metalwork and render work batch too, on a desktop build)
   assert.match(mesh.name, /^props-bucket-(structureWood|regionalStone|structureMetal|regionalPlaster)-batch$/,
     'a batch is a timber, stone, metal or render dressing bucket');
-  assert.equal(mesh.parent, dressing.group, `${mesh.name}: in the props group`);
+  assert.ok(mesh.parent === dressing.group, `${mesh.name}: in the props group`);
   assert.equal(mesh.castShadow, false, `${mesh.name}: casts no shadow`);
   assert.equal(mesh.receiveShadow, true, `${mesh.name}: receives the sun's`);
   // culled whole by its own sphere (three's per-instance culling would walk and re-upload the draw list every frame)

@@ -9,7 +9,8 @@ export interface ShellCard {
   dmg: number;
   penLabel: string;
   count: number;
-  /** round 32: the ruleset carries unlimited rounds (Turbo Ball) — the HUD prints ∞ */
+  /** round 32: the ruleset carries unlimited rounds (Turbo Ball) — the HUD prints ∞. Per entity (critic r3): the
+   * AC-130 refills only the gunship, so an escort's cards carry no mark (sim/matchRuleset rulesetUnlimitedFor). */
   unlimited?: boolean;
 }
 
@@ -29,6 +30,7 @@ type ActionRules = Pick<BattleClientAccess,
   | 'startConsumableCooldown'
   | 'requestTankSelfRight'
   | 'requestTankJump'
+  | 'rulesetUnlimitedFor'
 >;
 type ActionCombat = Parameters<ActionRules['selectShell']>[0];
 type ActionSpec = NonNullable<Parameters<ActionRules['selectShell']>[2]>;
@@ -56,6 +58,8 @@ interface BattleActionEntity extends Omit<
   modeJumpMps?: number | null;
   /** Ruleset gravity stamped by the mode controller: the rocket boost's ceiling reads it. */
   modeGravityScale?: number;
+  /** Drone and AC-130 modes: the gunship this entity is (sim/aerialCombat); unlimited rounds are the gunship's only. */
+  aerial?: { readonly kind?: string } | null;
 }
 
 interface BattleActionGame<TEntity extends BattleActionEntity> {
@@ -63,7 +67,7 @@ interface BattleActionGame<TEntity extends BattleActionEntity> {
   timeS: number;
   player: TEntity | null;
   /** The ruleset in force (sim/matchRuleset.ts); Turbo Ball switches consumables off. */
-  ruleset?: { consumables: boolean; ammo?: string } | null;
+  ruleset?: { consumables: boolean; ammo?: string; aerial?: string | null } | null;
 }
 
 interface ActionInput {
@@ -142,10 +146,12 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     const player = game.player;
     return hasLiveCombat(player) ? player : null;
   };
+  /** The local entity's rounds are unlimited (the ruleset's mark, per entity: matchRuleset rulesetUnlimitedFor). */
+  const unlimitedCards = (): boolean => rules.rulesetUnlimitedFor(game.ruleset, game.player);
   const syncShellCards = (): void => {
     const combat = game.player?.combat;
     if (!combat || !Array.isArray(combat.ammo)) return;
-    const unlimited = game.ruleset?.ammo === 'unlimited';
+    const unlimited = unlimitedCards();
     const shells = game.player?.spec.gun.shells;
     if (shells && shells !== lastShells) {
       lastShells = shells; shellCards.length = 0;
@@ -154,7 +160,9 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
     }
     for (let slot = 0; slot < shellCards.length; slot++) {
       shellCards[slot].count = Math.max(0, Math.floor(combat.ammo[slot] || 0));
-      if (unlimited) shellCards[slot].unlimited = true; // finite loadouts carry no mark (cards are rebuilt per tank)
+      // finite loadouts carry no mark; the entity's own read can change with the seat (an AC-130 respawn)
+      if (unlimited) shellCards[slot].unlimited = true;
+      else if (shellCards[slot].unlimited) delete shellCards[slot].unlimited;
     }
   };
 
@@ -422,8 +430,9 @@ export function createPlayerBattleActions<TEntity extends BattleActionEntity>({
           dmg: shell.dmg,
           penLabel: `${Math.round(shell.pen100Mm)} mm`,
           count: rules.shellAmmunitionCapacity(shell),
-          // round 32 (owner 2026-09-21, Turbo Ball): unlimited rounds mark the card so the HUD prints ∞
-          ...(game.ruleset?.ammo === 'unlimited' ? { unlimited: true } : {}),
+          // round 32 (owner 2026-09-21, Turbo Ball): unlimited rounds mark the card so the HUD prints ∞ — where this
+          // entity really refills (the AC-130's escorts do not)
+          ...(unlimitedCards() ? { unlimited: true } : {}),
         });
       }
       return shellCards;

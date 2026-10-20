@@ -1984,6 +1984,7 @@ playerBattleActions = createPlayerBattleActions({
     specialActionKind: battleClientAccess.specialActionKind,
     hasAmmunition: battleClientAccess.hasAmmunition,
     shellAmmunitionCapacity: battleClientAccess.shellAmmunitionCapacity,
+    rulesetUnlimitedFor: battleClientAccess.rulesetUnlimitedFor,
     hasConsumableRule: battleClientAccess.hasConsumableRule,
     cooldownRemaining: battleClientAccess.cooldownRemaining,
     resetConsumableCooldowns: battleClientAccess.resetConsumableCooldowns,

@@ -19,7 +19,7 @@ export interface YardStructure {
   rot: number;
 }
 
-export interface YardField {
+interface YardField {
   getHeightAt(x: number, z: number): number;
   getNormalAt(x: number, z: number): { y: number };
   _roadDist(x: number, z: number): number;
@@ -52,7 +52,7 @@ export interface YardPlan {
   attempts: number;
 }
 
-export interface YardPlanOptions {
+interface YardPlanOptions {
   /** Hard cap on placed pieces (a map's yardDressing budget). */
   budget: number;
   /** Half-extent of the square the dressing stays inside (the playable square's rim margin). */

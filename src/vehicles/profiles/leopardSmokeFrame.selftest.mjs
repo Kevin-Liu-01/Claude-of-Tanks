@@ -115,7 +115,7 @@ function nativeRetained(c){
         available.set(row,count-1);
       }
       all.push([o.name,[...available].filter(([,count])=>count).sort()]);capMeshes++;
-      assert.equal(o.material,c.darkMaterial,'Exact existing dark-role material identity from the live builder');
+      assert.ok(o.material === c.darkMaterial,'Exact existing dark-role material identity from the live builder');
       let owner=o;while(owner&&owner.name!=='rig_turret')owner=owner.parent;
       assert.ok(owner,'Native merged caps remain owned by the rotating turret');
     }else all.push([o.name,hash(o.geometry)]);

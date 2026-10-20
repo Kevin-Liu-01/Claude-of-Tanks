@@ -4,6 +4,7 @@ import { inspectNightHeadlight, inspectNightShtora, inspectNightWindow } from '.
 import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh } from '../vehicles/vehicleNightLighting.ts';
 import { markWorldWindowPane, markWorldBeacon, ensureWorldNightEmissionMask } from '../world/worldNightEmissionGeometry.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const root = new THREE.Group(), material = new THREE.MeshStandardMaterial();
 material.userData.nightLightKind = 'window';
@@ -27,7 +28,7 @@ const toCamera = new THREE.Vector3().fromArray(seat.camera).sub(new THREE.Vector
 assert(Math.abs(toCamera.dot(expectedNormal) - 4) < 1e-8,
   'reverse ray does not mutate the returned external camera into a near-clipped pane');
 assert(Math.abs(toCamera.length() - Math.hypot(4, .65, .25)) < 1e-8);
-assert.deepEqual(root.children, before, 'inspection adds no lights, markers or extra geometry');
+assert.deepEqual(graphLabels(root.children), graphLabels(before), 'inspection adds no lights, markers or extra geometry');
 
 const obstructionGeometry = new THREE.BoxGeometry(2, 3, .1).translate(5, 2, .3);
 const obstruction = new THREE.Mesh(obstructionGeometry, new THREE.MeshBasicMaterial());
@@ -66,7 +67,7 @@ lens.dispose(); redMaterial.dispose();
   const wallGeometry = new THREE.BoxGeometry(.5, .5, .1), wallMaterial = new THREE.MeshBasicMaterial();
   const wall = new THREE.Mesh(wallGeometry, wallMaterial); wall.position.set(2, 0, .08); root.add(wall);
   assert.equal(inspectNightHeadlight(root, reference), null, 'buried authored driving lamp fails closed');
-  wall.removeFromParent(); assert.deepEqual(root.children, before);
+  wall.removeFromParent(); assert.deepEqual(graphLabels(root.children), graphLabels(before));
   mesh.visible = false; assert.equal(inspectNightHeadlight(root, reference), null);
   for (const part of [...parts, geometry, wallGeometry]) part.dispose();
   material.dispose(); wallMaterial.dispose();
