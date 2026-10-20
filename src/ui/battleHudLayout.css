@@ -414,10 +414,11 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 
 /* r10g (the r10e critic: at 320 wide the systems row scrolled out of sight, "Auto g"; at 320x568 and 360x640 it sat in
    the band the scope's marks take over the sight): on a portrait phone under 720 px tall the layout seats the row in the
-   top slot right of the map (data-systems-slot), compact: the slot's width shared by its buttons, each its icon over its
-   label, 40 px tall, without the keyboard's key badges a touch screen has no use for */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls{width:var(--hud-systems-width);overflow:visible}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button{flex:1 1 0;width:auto!important;min-width:0;height:40px!important;min-height:40px;grid-template-columns:minmax(0,1fr);grid-template-rows:17px 13px;row-gap:1px;padding:4px 1px}
+   top slot right of the map (data-systems-slot), compact: the slot's width shared by its buttons, --hud-systems-per-row a
+   row (the layout's count: a five-control kit at 320 wide wraps to two rows), each 44 px tall and wide at the least (the
+   touch target), its icon over its label, without the keyboard's key badges a touch screen has no use for */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls{width:var(--hud-systems-width);overflow:visible;flex-wrap:wrap}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button{flex:1 1 calc((100% - (var(--hud-systems-per-row,3) - 1) * 3px) / var(--hud-systems-per-row,3));width:auto!important;min-width:44px;height:44px!important;min-height:44px;grid-template-columns:minmax(0,1fr);grid-template-rows:17px 13px;row-gap:2px;padding:5px 1px 6px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .si{grid-column:1;grid-row:1}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .sl{grid-column:1;grid-row:2;max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:8px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .sk{display:none}

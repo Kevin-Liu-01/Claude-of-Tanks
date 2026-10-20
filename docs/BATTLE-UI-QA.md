@@ -193,9 +193,12 @@ shows its real empty states. On a portrait phone a systems row that crosses the
 sight (`portraitSightClearTop`) moves below the scope readouts when there is
 room, otherwise above the ring. The sight's band covers the countdown, the rack,
 the struck round and the aim warning. On a portrait phone under 720 px tall the
-row takes the top slot instead: right of the map, under the touch chrome, in a
-compact form (icons over labels, no key badges, the slot's width shared:
-`body[data-systems-slot='top']`). Round r10e's critic found the row clipped at
+row takes the top slot instead: right of the map, 4 px under the touch chrome, in
+a compact form (icons over labels, no key badges, the slot's width shared:
+`body[data-systems-slot='top']`). Each button keeps the 44 px touch target. A kit
+wider than the slot wraps to balanced rows, so the five-control kit at 320 wide
+takes two. A 44 px row 8 px under the chrome left the scope's notices no clear
+band under it at 360x640, so the slot sits 4 px under the chrome. Round r10e's critic found the row clipped at
 320 wide ("Auto g"), the scope's readouts on its labels and the rack and struck
 round on the left FIRE button at 320x568, and the gun travel chip on its key
 badges at 360x640. Over the ring, the marks set there (the readout row, the chip,

@@ -108,6 +108,9 @@ const TOUCH_NOTICE_SOFT = '.cot-minimap,.cot-top,.cot-mode-status.show,.cot-ear,
 const TOUCH_ALERT_RESERVE_H = 40;
 /** Below this height a portrait phone's systems row leaves the band over the sight for the top slot (r10g). */
 const PORTRAIT_SIGHT_ROOM_H = 720;
+/** A touch target's least side (battle-hud-layout.browser.mjs) and the systems row's gap (battleHudLayout.css). */
+const TOUCH_TARGET = 44;
+const SYSTEMS_GAP = 3;
 /** How far a mouse layout's inline tray keeps from the drive gauge: the damage panel's gap to it (r10f). */
 const TRAY_GAUGE_GAP = 12;
 /** The sixth-sense notice, which a touch layout's seated warning chip yields to (sightFurniture.ts sightNotice). */
@@ -535,7 +538,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       touch && width > height ? read('.cot-aim-warning:not([hidden])')?.bottom || 0 : 0,
       map && map.left < width / 2 ? map.bottom : 0) + 8;
     const systems = read('.cot-vehicle-controls');
-    const systemsHeight = systems?.height ?? 0;
+    let systemsHeight = systems?.height ?? 0;
     const ammo = read('.cot-shells');
     let systemsWidth = Math.min(440, width - 24);
     let systemsTop = (ammo?.top ?? height - 80) - systemsHeight - 8;
@@ -583,16 +586,30 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // the top slot right of the map, under the touch chrome, in its compact form (icons over labels, no key badges, the
     // slot's width shared: battleHudLayout.css data-systems-slot), wherever that slot is higher than its own place (with
     // an objective panel the chrome drops under it, and the slot is as high as the row already was: compact there, it
-    // no longer runs off the screen)
+    // no longer runs off the screen). Its buttons keep the 44 px touch target, as many a row as the slot's width holds,
+    // the rows balanced (a five-control kit at 320 wide takes two), 4 px under the chrome (at 8 px a 44 px row left the
+    // scope's notices no clear band under it at 360x640).
     let systemsSlot = '';
+    let systemsPerRow = 0;
     if (touch && width < height && height < PORTRAIT_SIGHT_ROOM_H && systemsHeight && map && map.left < width / 2) {
-      const slotTop = Math.max(touchChrome?.bottom ?? 0, top) + 8;
+      const slotTop = Math.max(touchChrome?.bottom ?? 0, top) + 4;
       if (slotTop <= systemsTop) {
         systemsSlot = 'top';
         systemsTop = slotTop;
         systemsLeft = map.right + 8;
         systemsWidth = dockWidth = Math.max(52, width - systemsLeft - 12);
       }
+    }
+    let systemsCount = 0;
+    const slotRows = () => {
+      const fits = Math.max(1, Math.floor((systemsWidth + SYSTEMS_GAP) / (TOUCH_TARGET + SYSTEMS_GAP)));
+      const rows = Math.max(1, Math.ceil(systemsCount / fits));
+      systemsPerRow = Math.max(1, Math.ceil(systemsCount / rows));
+      systemsHeight = rows * TOUCH_TARGET + (rows - 1) * SYSTEMS_GAP;
+    };
+    if (systemsSlot) {
+      for (const button of systemsElement?.children ?? []) if (button.checkVisibility()) systemsCount++;
+      slotRows();
     }
     if ((document.body.dataset.systemsSlot ?? '') !== systemsSlot) {
       if (systemsSlot) document.body.dataset.systemsSlot = systemsSlot;
@@ -602,6 +619,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       && systemsTop < ammo.bottom && systemsLeft < ammo.left) {
       systemsWidth = Math.max(52, ammo.left - systemsLeft - 8);
       dockWidth = Math.min(systemsWidth, naturalWidth);
+      // (the top slot's rows in the width the ammo column leaves it)
+      if (systemsSlot) { dockWidth = systemsWidth; slotRows(); }
     }
     const sideWidth = Math.min(400, width / 2 - 24);
     const chat = !!read('.cot-room-chat:not([hidden])');
@@ -891,10 +910,15 @@ export function installBattleHudLayout(root: HTMLElement): void {
       }
     }
     if (plan) writeMousePlan(plan, { countdown: !!countdown, revive: !!root.querySelector('.cot-revive.on'), medal: !!banner?.childElementCount }, width, medalWaiting, medalFeedWait);
-    // (the touch countdown's scale, unitless: touchNoticePlan.ts)
+    // (the touch countdown's scale and the top slot's buttons a row, unitless)
     const countdownScale = String(touchPlan?.countdownScale ?? 1);
     if (document.body.style.getPropertyValue('--hud-touch-countdown-scale') !== countdownScale) {
       document.body.style.setProperty('--hud-touch-countdown-scale', countdownScale);
+    }
+    const perRow = systemsPerRow ? String(systemsPerRow) : '';
+    if (document.body.style.getPropertyValue('--hud-systems-per-row') !== perRow) {
+      if (perRow) document.body.style.setProperty('--hud-systems-per-row', perRow);
+      else document.body.style.removeProperty('--hud-systems-per-row');
     }
     const rosterProperty = '--hud-roster-top-right';
     const rosterPixels = rosterTopRight === null ? '' : `${rosterTopRight}px`;
