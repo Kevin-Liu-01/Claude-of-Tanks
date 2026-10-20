@@ -159,6 +159,18 @@ assert.equal(make().lookup('src/environment-object.selftest.mjs').key, undefined
   browser.recordPass('src/browser.selftest.mjs', key);
   assert.equal(make().lookup('src/browser.selftest.mjs').skip, false, 'real browser checks cannot be certified by a stale source-only PASS');
 }
+// 2026-10-16 (the 226 audit): only node:path joins name files. `parts.join('')`, an array join and a Promise resolve
+// name none; a named, aliased, namespace or posix path join still does.
+{
+  write('src/nopath.selftest.mjs', "const hex = [1, 2].map(String).join('');\nconst words = ['profiles', 'one'].join('/');\nnew Promise((resolve) => resolve('profiles'));\nexport { hex, words };\n");
+  write('src/aliases.selftest.mjs', "import { readFileSync } from 'node:fs';\nimport { join as j } from 'node:path';\nimport * as p from 'node:path';\nimport path from 'node:path';\nconst here = new URL('.', import.meta.url).pathname;\nreadFileSync(j(here, 'one.json'));\nreadFileSync(p.resolve(here, 'two.json'));\nreadFileSync(path.posix.join(here, 'three.json'));\n");
+  for (const name of ['one', 'two', 'three']) write(`src/${name}.json`, '{}\n');
+  const cache = make();
+  assert.deepEqual(rel(cache, 'src/nopath.selftest.mjs'), ['src/nopath.selftest.mjs'], 'non-path joins name no file or directory');
+  // (the bare names also watch the root, as every bare filename literal does)
+  assert.deepEqual(rel(cache, 'src/aliases.selftest.mjs'), ['one.json', 'src/aliases.selftest.mjs', 'src/one.json', 'src/three.json',
+    'src/two.json', 'three.json', 'two.json'], 'aliased, namespace and posix node:path joins still name their files');
+}
 rmSync(root, { recursive: true, force: true });
 
 // the real repository: the receipts that moved during batch 28 see their inputs
@@ -177,6 +189,10 @@ rmSync(root, { recursive: true, force: true });
   // file reads stay in the receipt's closure through the support module.
   assert.ok([...cache.closureOf(join(REPO_ROOT, 'src/vehicles/fleetPassDefault.selftest.mjs'))].some((p) => p === join(REPO_ROOT, 'public/icons')),
     'the icon audit observes its templated icon files without pulling in unrelated maps');
+  for (const file of ['src/vehicles/materials.ts', 'src/vehicles/ghillieSuit.ts']) {
+    assert.equal(cache.dependenciesOf(join(REPO_ROOT, file)).has(join(REPO_ROOT, 'src/vehicles')), false,
+      `${file}: a string join is not the vehicle directory`);
+  }
   assert.ok(!cache.lookup('tools/selftest-cache.selftest.mjs').skip || cache.lookup('tools/selftest-cache.selftest.mjs').key,
     'lookup returns a key for the running receipt');
 }

@@ -8,6 +8,11 @@
 // Usage:
 //   node tools/fleet-freeze-snapshot.mjs
 //   node tools/fleet-freeze-snapshot.mjs --check
+//   node tools/fleet-freeze-snapshot.mjs [--check] --ids=a,b
+//
+// --ids (2026-10-16, changed-only): capture only those tanks and keep every other row exactly as recorded (an id with no
+// row is always captured), so a scoped run writes the bytes a whole-fleet run would when the other rows are current;
+// --check --ids verifies those tanks. The freeze is a nightly or explicit whole-fleet record, not a release step.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
@@ -21,6 +26,11 @@ const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 // Every saved record has an icon-manifest row since the hidden fleet retired
 // (2026-09-23); the geometry freeze covers exactly the manifest.
 const ids = Object.keys(manifest.tanks || {}).sort();
+const idsArg = process.argv.find((arg) => arg.startsWith('--ids='))?.slice(6) ?? '';
+const scoped = idsArg && idsArg !== 'all' ? new Set(idsArg.split(',').filter(Boolean)) : null;
+if (scoped) for (const id of scoped) if (!ids.includes(id)) throw new Error(`[fleet-freeze] unknown id ${id} (not in public/icons/tank-assets.json)`);
+const previous = scoped ? JSON.parse(readFileSync(outputPath, 'utf8')).tanks ?? {} : {};
+const capturing = ids.filter((id) => !scoped || scoped.has(id) || !Object.hasOwn(previous, id));
 
 const server = await createServer({
   root,
@@ -53,6 +63,7 @@ async function capture(id, seed, assetMode = false) {
 
 try {
   for (const id of ids) {
+    if (!capturing.includes(id)) { tanks[id] = previous[id]; continue; }
     const result = await capture(id, 4242);
     const assetResult = await capture(id, 4100, true);
     const manifestHash = manifest.tanks[id]?.geometryHash;
@@ -94,9 +105,9 @@ if (check) {
     console.error('[fleet-freeze] FAIL — docs/FLEET-FREEZE-CURRENT.json is stale');
     process.exitCode = 1;
   } else {
-    console.log(`[fleet-freeze] PASS — ${ids.length} first-party tanks match both geometry fingerprints`);
+    console.log(`[fleet-freeze] PASS — ${capturing.length} first-party tank(s) captured, ${ids.length} rows match both geometry fingerprints`);
   }
 } else {
   writeFileSync(outputPath, serialized);
-  console.log(`[fleet-freeze] wrote ${ids.length} tanks to docs/FLEET-FREEZE-CURRENT.json`);
+  console.log(`[fleet-freeze] wrote ${ids.length} tanks (${capturing.length} captured) to docs/FLEET-FREEZE-CURRENT.json`);
 }

@@ -2,6 +2,7 @@
 // Generate interior fill solids for tank bodies so every hull and turret is watertight by construction.
 //
 //   node tools/gen-interior-fills.mjs --ids=a,b | --all [--voxel=0.025] [--cell=2] [--out=src/vehicles/generated/interiorFills.generated.ts] [--stats]
+//   node tools/gen-interior-fills.mjs --ids=a,b | --all --merge-from=partA,partB   # write parts measured with --out-dir
 //
 // For each tank the body is voxelised (tools/tank-voxel-body.mjs), the exterior flood-filled and the deep interior
 // found exactly as tools/tank-watertight-check.mjs does. Every deep-interior voxel the water reaches (a leak) is a
@@ -18,7 +19,7 @@
 // the air this generator leaves for the moving gun apart from a leak.
 // The generated module is consumed by tankFactory at build time (applyInteriorFills) and excluded from the authored
 // geometry fingerprints.
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { stripTypeScriptTypes } from 'node:module';
 import { VEHICLE_SIZE_FACTORS } from '../src/vehicles/vehicleSizePolicy.ts';
@@ -118,9 +119,34 @@ async function uniformRecord(id) {
     ...(prior.g ? { g: prior.g.map(v => v * factor) } : {}) };
   return { record, factor };
 }
+// --merge-from=dirA,dirB (2026-10-16, changed-only regen): records that parallel scoped runs measured into scratch
+// --out-dir directories (each run's moving-clearance-air.json beside its shards) are written as though this run had
+// measured them, through the same merge and serializer, so N parts write exactly the bytes one process writes.
+const mergeFrom = opt('merge-from', null)?.split(',').filter(Boolean) ?? null;
+const mergedRecords = new Map(), mergedClearance = new Map();
+if (mergeFrom) for (const dir of mergeFrom) {
+  for (const name of readdirSync(resolve(dir)).sort()) {
+    if (!name.endsWith('.generated.ts')) continue;
+    const records = (await import(pathToFileURL(resolve(dir, name)).href)).INTERIOR_FILLS;
+    for (const [id, record] of Object.entries(records)) {
+      if (mergedRecords.has(id)) throw new Error(`${id}: measured by more than one --merge-from part`);
+      mergedRecords.set(id, record);
+    }
+  }
+  const partClearance = resolve(dir, 'moving-clearance-air.json');
+  if (existsSync(partClearance)) for (const [id, record] of Object.entries(JSON.parse(readFileSync(partClearance, 'utf8')).tanks ?? {})) mergedClearance.set(id, record);
+}
 const out = {}; const stats = []; const clearanceAir = {};
 for (const id of ids) {
   const t0 = performance.now();
+  if (mergeFrom) {
+    const record = mergedRecords.get(id);
+    if (!record) throw new Error(`${id}: no measured record in --merge-from`);
+    out[id] = { ...record }; clearanceAir[id] = mergedClearance.get(id) ?? null;
+    const boxes = ['hull', 'turret', 'gun'].reduce((n, key) => n + (record[key] ? Buffer.from(record[key], 'base64').length / 12 : 0), 0);
+    stats.push({ id, boxes, tris: boxes * 12, leakL: 0, residualL: 0, merged: true });
+    continue;
+  }
   if (uniformCommit) {
     const { record, factor } = await uniformRecord(id);
     out[id] = record; clearanceAir[id] = null; // a replayed lattice carries no measured clearance cells

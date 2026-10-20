@@ -139,13 +139,17 @@ worktree and never stage generated tank work wholesale.
   hash-pinned sources (vehicle profiles, terrain, sky, impact decals, the authority,
   match placement) to their receipts.
 - Add focused `*.selftest.mjs` coverage and include it in `npm test`.
-- Any playable tank addition or geometry/profile change must run the complete
-  combat-anatomy procedure: `npm run tank:anatomy:update`,
-  `npm run tank:anatomy:check`, then the targeted
-  `npm run tank:release:check -- --ids=<ids> --gate`. The update deliberately
-  refreshes armor/module/crew receipts and all fleet technical diagrams. After
-  the fleet geometry ledger rows move, re-measure the gun lines of those ids:
-  `node tools/gun-junction-census.mjs --ledger=docs/geometry-gate/gun-junction.json --update --ids=<ids>`.
+- Any playable tank addition or geometry/profile change regenerates with
+  `npm run tank:regen:changed`: every fleet generator (controls, fills, seats,
+  spare-track, anatomy, marking, ledger, gun lines, centering, icons) runs only
+  on the ids whose inputs or outputs moved, in dependency order, then the world
+  steps (wreck plan, collision and trench shards) only on the maps whose config,
+  world core or wreck donors moved, until the final resolve is empty
+  (`npm run tank:changed -- --explain` says why an id or map is marked). Then
+  `npm run tank:anatomy:check` and the targeted
+  `npm run tank:release:check -- --ids=<ids> --gate`. `--all` (and
+  `npm run tank:anatomy:update`) stay the whole-fleet forms; see
+  docs/DEVELOPMENT.md "Changed-only regeneration".
 
 ## Gotchas / never-do-X
 <!-- agent-docs:fill:gotchas -->

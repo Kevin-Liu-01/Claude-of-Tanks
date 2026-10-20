@@ -683,7 +683,79 @@ Re-pin it after an intended geometry change and review the diff:
 
     npm run tank:geometry:update -- --ids=<ids>
 
-The browser-era `npm run tank:freeze:check` ledger (`docs/FLEET-FREEZE-CURRENT.json`) is no longer maintained.
+The browser-era `npm run tank:freeze:check` ledger (`docs/FLEET-FREEZE-CURRENT.json`) is no longer maintained. It is
+not a release step: a nightly or explicit refresh may scope it with `--ids=<ids>` (other rows kept as recorded).
+
+### Changed-only regeneration (2026-10-16)
+
+The owner's rule (226): "no regenerating for tanks or anything else that didn't change". After a tank change run
+
+    npm run tank:regen:changed                 # changed ids only, then the final resolve must be empty
+    npm run tank:regen:changed -- --verify     # then each step's check on exactly the ids it ran
+    npm run tank:changed -- --explain=<id>     # which steps would re-run an id, and why (no tank is built)
+
+The chain (`tools/tank-regen-changed.mjs`) regenerates the paint catalog and legacy specs, then runs controls, fills,
+seats, spare-track, anatomy and marking to a fixpoint (seats read the fills and roof guns; the dock seats feed the
+spare-track keep-out), then the geometry ledger, the manual reference, centering and icons (capture lock, holds of at
+most 20 minutes; centering re-runs the CPU steps for any id whose anchors moved). Every CPU child runs
+`nice -n 10 node --max-old-space-size=4096` after `headroom can-start`; fills run as `--jobs` parallel parts merged by
+the tool itself (`gen-interior-fills --merge-from`). Options: `--dry-run`, `--steps=a,b`, `--no-gpu`, `--jobs=N`,
+`--all` (every step on the whole fleet first: bootstrap or explicit full) and `--check --all` (nightly: every step's
+whole-fleet `--check`, writes nothing, exits 1 on a stale step). Fills have no check mode of their own:
+`tools/changed-only/fills-check.mjs` measures the ids into scratch with the generator's code and flags and compares
+each record and its moving-clearance cells (`--ids=<ids>` or `--all`, `--jobs=N`).
+
+How an id is chosen (`tools/changed-ids.mjs`, `tools/changed-only/`): each (step, id) has an input key and an output
+key in `release/fingerprints.tsv`, written as soon as the step finishes. The input key covers the step's tool (its
+static import closure, canonical flags from `tools/changed-only/steps.mjs`, declared dynamic reads, the environment
+variables it reads), the toolchain (Node, platform, both lockfiles, NODE_OPTIONS minus heap flags), the shared fleet
+core (every file the fleet entries reach outside a group's builder registration: specs, factory, kits, materials,
+generated spec data, index/loader maps), the builder groups on the id's spec chain (visualBase, variantOf, donors) and
+the rows of every per-id table the fleet reads for those ids. The output key is the id's rows in the tables the step
+writes. An id re-runs when its row is missing or either key moved; a hand edit to one output row marks that id.
+
+It fails closed: an undeclared directory read, child process, computed import or whole-environment read in a step's
+closure runs that step on every id; a roster change, a missing manifest, an unreadable table or an output file edited
+outside its rows runs the step whole-fleet. Dynamic reads are declared in `steps.mjs` (`DECLARED_DYNAMIC`) and pinned
+to their exact call sites: editing such a call turns `tools/changed-only/fleet-partition.selftest.mjs` red and the
+step runs on every id until the declaration is reviewed and re-pinned. A change to the shared core (for example
+`tankFactoryCore.ts` or `profiles/kit.ts`) marks every id: changed-only then means one ordered pass, not a skip.
+
+Proofs: `tools/changed-only/resolver.selftest.mjs` (fixture: skips, shared kits, tool/flag/toolchain/roster edits,
+undeclared reads, hand-edited rows), `fleet-partition.selftest.mjs` (the real fleet decomposes, pins hold, the demand
+loaders match the eager factory, the Ukrainian donor kit marks all of national modernization, seats after fills and
+controls) and `chain.selftest.mjs` (the real chain on a fixture fleet: changed-only outputs and manifest byte-identical
+to a whole-fleet regen). `node tools/changed-only/closure-trace.mjs` (about 40 child-minutes) loads each builder group
+alone and fails on any module outside its keyed closure; `node tools/changed-only/parity.mjs --changed=<C> --full=<F>
+--base=<B>` compares a changed-only tree with a whole-fleet regen of the same commit and proves the resolver's sets
+covered every row that moved. `fresh.selftest.mjs` is the gate's generator-freshness receipt (about 15 s, no builds):
+once a release commits `release/fingerprints.tsv` (the bootstrap: `npm run tank:regen:changed -- --all`, outputs and
+manifest committed together), any builder, kit, spec, generator or flag edit landed without its regeneration turns it
+red with the ids and the reasons; a toolchain difference is reported, not failed (the nightly covers it).
+
+The independent tripwires keep full keys: `fleetPassHigh`, `fleetPassLow` (ledger rows), `fleetPassDefault`,
+`fleetLazy`, `fleetFloorClearance` and the nightly `--check --all` never use the resolver, so a resolver miss still
+turns the gate red.
+
+World steps (2026-10-17). After the tank steps the chain runs the wreck bake plan (`tools/wreck-bake-plan.mjs --write`),
+the collision shards (`tools/capture-world-collision-manifests.mjs --node`) and the assault-trench shards
+(`--variant=assault-trenches`) per map, on the maps whose keys moved (`--no-world` skips them;
+`--steps=wreckPlan,collision,trenches` runs them alone; `npm run tank:changed -- --maps` reports them). A map's key
+(`tools/changed-only/world.mjs`) holds the step's world core (the tool's closure stopped at the fleet entry modules, with
+the map registry's config imports dropped: about 500 files, so a world-core edit marks every map), the map's own config
+closure (one to five files; a config another config imports marks both), the fleet core and roster (every map reads
+spec data), and per wreck donor (the wreck plan's rows, plus any roster id the config names) its builder key and
+build-read rows. A tank edit therefore recaptures only the maps that bake that tank (a t90am builder edit: coastal).
+World files that reach the fleet are pinned in `FLEET_API_USERS`; the world outputs are never inputs. A frame edit of
+the index or the plan file, a map roster change or a missing record runs the step on every map.
+
+Runtime proofs (scratch trees, niced): `node tools/changed-only/trace-check.mjs --root=<tree> --ids=<ids>` runs each CPU
+step under the read trace (`trace-reads.mjs`) and fails on any repository read outside the step's key (module loads of
+other groups' builders, which the eager factory registers without running, are reported apart; spare-track's profile
+lint is declared verdict-only). `node tools/changed-only/world-trace.mjs --steps=collision` builds every map through
+the step's own `--check` (writes nothing) and fails when a map loads a builder group outside its donors' chains or reads
+a file its key does not hold. `world.selftest.mjs` covers the world keys on a fixture world, and `chain.selftest.mjs` runs
+a world step end to end (a kit edit rebuilds only the map whose donor is built on it).
 
 Run a targeted release check:
 

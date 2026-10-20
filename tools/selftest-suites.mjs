@@ -660,6 +660,16 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/frame-budget-probe.selftest.mjs',
     'tools/capture-command.selftest.mjs',
     'tools/tank-release-plan.selftest.mjs',
+    // 2026-10-16 (227, owner: "no regenerating for tanks or anything else that didn't change"): the changed-only
+    // resolver on a fixture fleet, then the real fleet's partition, pinned dynamic reads and the chain order.
+    'tools/changed-only/resolver.selftest.mjs',
+    'tools/changed-only/fleet-partition.selftest.mjs',
+    // The world steps' per-map keys on a fixture world (map configs, world core, wreck donors, fail-closed reads).
+    'tools/changed-only/world.selftest.mjs',
+    // The real chain end to end on a fixture fleet: changed-only == whole-fleet regen byte for byte, order, --verify.
+    'tools/changed-only/chain.selftest.mjs',
+    // Generator freshness at resolver cost (R8d): committed fleet outputs current for release/fingerprints.tsv.
+    'tools/changed-only/fresh.selftest.mjs',
     'src/app/checkedIntegrationPort.selftest.mjs',
     'src/app/lazyRuntimeOwner.selftest.mjs',
     'src/app/lazyImportRetry.selftest.mjs',
