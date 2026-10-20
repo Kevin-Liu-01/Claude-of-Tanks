@@ -10189,9 +10189,17 @@ ${snowCap ? `
     const against = (x: number, z: number, m: number): boolean => solids.some((o) => x > o.min[0] - m && x < o.max[0] + m
       && z > o.min[2] - m && z < o.max[2] + m && collisionFootprintContainsPoint(o, x, z, m));
     const moved: Array<{ from: [number, number]; to: [number, number]; road: number } | { at: [number, number]; kept: true }> = [];
+    // (229 b2 r1, the batch-2 critic's D4: three lamps on Suzhou Creek's bridge parapets slid 2 m in onto the decks) a lamp
+    // on a bridge's span keeps its parapet seat
+    const decks = heightField.bridgeDecks ?? [];
+    const onSpan = (x: number, z: number): boolean => decks.some((deck) => {
+      const ox = x - deck.x, oz = z - deck.z;
+      return Math.abs(ox * deck.ux + oz * deck.uz) < deck.halfLength + 1 && Math.abs(ox * deck.uz - oz * deck.ux) < deck.halfWidth + 2;
+    });
     for (const rec of destructibles) {
       if (rec.kind !== 'lamp' || rec.slot < 0 || !rec.ob || !against(rec.x, rec.z, 0.3)) continue;
       if (civicPieces.some((p) => p.kind === 'lamp' && Math.hypot(p.x - rec.x, p.z - rec.z) < 0.05)) continue;
+      if (onSpan(rec.x, rec.z)) { moved.push({ at: [rec.x, rec.z], kept: true }); continue; }
       let best = { d: Infinity, x: 0, z: 0, ri: -1 };
       for (let ri = 0; ri < roads.length; ri++) {
         const cls = pw.classes[ri];

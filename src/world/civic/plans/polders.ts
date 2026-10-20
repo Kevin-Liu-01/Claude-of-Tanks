@@ -17,8 +17,11 @@ import type { CivicPlan, CivicRect } from '../types.ts';
 
 const ROOM = { x0: -75, x1: -12, z0: -30, z1: 36 } as const;
 const SW = { x0: -72, x1: -46, z0: -28, z1: -10 } as const;
-const NW = { x0: -64, x1: -36, z0: 18, z1: 34 } as const;
-const PUMP = { x: -59, z: -19 } as const, ROSE = { x: -50, z: 26 } as const;
+// (229 b2 r1, the gameplay critic's D1: the north lawn stood on the hulls' lines along z 22 and z 30 and lost 11 of its 12
+// pieces a match) the north lawn in the band the battles leave quiet (the lane's track grids over 6 base battles: z 26..35,
+// x -55..-37)
+const NW = { x0: -55, x1: -37, z0: 26, z1: 35 } as const;
+const PUMP = { x: -59, z: -19 } as const, ROSE = { x: -46.5, z: 30.5 } as const;
 const facing = (x: number, z: number, tx: number, tz: number): number => +(Math.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
 /** A klinker walk round a lawn: four strips 1.2 m wide outside its kerb. */
 const walk = (r: CivicRect): Array<{ rect: CivicRect; kind: 'setts' }> => [
@@ -63,6 +66,8 @@ export const POLDERS_CIVIC_PLAN: CivicPlan = {
       { from: [-12, 4], to: [-75, 4], half: 5 },
       { from: [-80, 20], to: [-58, 4], half: 5 },
       { from: [-38, -33], to: [-9.2, 5.1], half: 6 },
+      // (229 b2 r1, the track grids) the hulls' line west along z 22, and the west edge's run north at x -60
+      { from: [-76, 22], to: [-24, 22], half: 3.5 }, { from: [-60, 24], to: [-59, 36], half: 3 },
     ],
     lanes: [],
     holds: [{ id: 'ac130-extraction', x: -52.7, z: 3.8, r: 8 }],
@@ -78,7 +83,7 @@ export const POLDERS_CIVIC_PLAN: CivicPlan = {
         id: 'brink-north', rect: NW,
         mouths: [{ side: 's', at: ROSE.x, width: 2.6 }, { side: 'e', at: ROSE.z, width: 2.6 }],
         paths: [{ from: [ROSE.x, NW.z0], to: [ROSE.x, NW.z1 - 0.6], width: 2.6 }, { from: [NW.x0 + 0.6, ROSE.z], to: [NW.x1, ROSE.z], width: 2.6 }],
-        feature: { kind: 'flowerRondell', x: ROSE.x, z: ROSE.z, r: 2.0, ring: 3.8 },
+        feature: { kind: 'flowerRondell', x: ROSE.x, z: ROSE.z, r: 1.6, ring: 2.6 },
       },
     ],
     paving: [...walk(SW), ...walk(NW)],
@@ -86,18 +91,20 @@ export const POLDERS_CIVIC_PLAN: CivicPlan = {
     trees: {
       species: 'oak', scale: [1.0, 1.12],
       stations: [
-        ...[-70, -63.4, -56.8, -50.2].flatMap((x) => [{ x, z: -25.5 }, { x, z: -12.5 }]),
-        ...[-61.5, -54.9, -48.3, -41.7].flatMap((x) => [{ x, z: 20.5 }, { x, z: 31.5 }]),
+        // (229 b2 r1: six south, five north — the halves' trees within one)
+        ...[-63.4, -56.8, -50.2].flatMap((x) => [{ x, z: -25.5 }, { x, z: -12.5 }]),
+        ...[-53, -46.5, -40].map((x) => ({ x, z: 27 })), ...[-49.75, -43.25].map((x) => ({ x, z: 33.5 })),
       ],
     },
     furniture: [
       // the village pump at the south lawn's crossing, its benches about it facing it
       { kind: 'well', x: PUMP.x, z: PUMP.z, yawDeg: 0 },
       ...[[-62, -16], [-56, -16], [-62, -22], [-56, -22]].map(([x, z]) => ({ kind: 'bench', x, z, yawDeg: facing(x, z, PUMP.x, PUMP.z) })),
-      // the north lawn's benches round its tulip bed
-      ...[[-53, 23], [-47, 23], [-53, 29], [-47, 29]].map(([x, z]) => ({ kind: 'bench', x, z, yawDeg: facing(x, z, ROSE.x, ROSE.z) })),
-      // the farm carts by the east road
-      { kind: 'haycart', x: -19, z: 22, yawDeg: 20 }, { kind: 'handcart', x: -17, z: 30, yawDeg: -40 },
+      // the north lawn's benches either side of its tulip bed
+      { kind: 'bench', x: -50.5, z: 30.5, yawDeg: 90 }, { kind: 'bench', x: -42.5, z: 30.5, yawDeg: -90 },
+      // (229 b2 r1: the haycart off the hulls' z 22 line, the handcart off the mill lane's roadway: the critic's D3) the hay
+      // wagon in the quiet north band, the handcart by the pump
+      { kind: 'haycart', x: -38.5, z: 34.2, yawDeg: 90 }, { kind: 'handcart', x: -66.5, z: -19, yawDeg: 15 },
     ],
     parking: [{ kind: 'sedan', x: -18, z: 13.5, yawDeg: 15 }],
     bayMarks: [],
@@ -106,6 +113,7 @@ export const POLDERS_CIVIC_PLAN: CivicPlan = {
     steps: [],
     lawns: [SW, NW],
     // (a village green: the grass between its lawns stays open by design)
-    targets: { records: 25, benches: 8, lawnM2: 900, lampsAround: 0, openShare: 0.18, largestDisc: 18 },
+    // (229 b2 r1: the green between the lawns is where the hulls drive in both modes — the open share is that grass)
+    targets: { records: 20, benches: 6, lawnM2: 600, lampsAround: 0, openShare: 0.3, largestDisc: 18 },
   }],
 };
