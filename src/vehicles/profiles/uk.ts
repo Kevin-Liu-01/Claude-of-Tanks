@@ -232,6 +232,7 @@ interface UKCenturionPort extends UKMaterialPort {
   addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
   /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
   hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  snapGroup(label: string, build: () => void, options?: SnapGroupOptions): void;
 }
 
 interface TrackWheel {

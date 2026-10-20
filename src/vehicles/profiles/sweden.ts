@@ -12,6 +12,7 @@ import { centurionBuild } from './uk.ts';
 import { buildLeo2A5 } from './leopard.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import type { SnapGroupOptions } from '../tankFactoryCore.ts';
 import { mount } from './fittingMount.ts';
 import { withSeatRole } from '../spareTrackSeat.ts';
 
@@ -79,6 +80,7 @@ interface SwedishBuilderPort {
   ): void;
   /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
   hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  snapGroup(label: string, build: () => void, options?: SnapGroupOptions): void;
 }
 
 function plate(
