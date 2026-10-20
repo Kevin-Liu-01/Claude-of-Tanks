@@ -76,6 +76,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/roofStations.selftest.mjs',
     // 2026-10-19 (owner): roof guns hold fire where their rounds cannot hurt; every round judged where it lands, host = solo
     'src/sim/roofHoldFire.selftest.mjs',
+    // 2026-10-16 (227 guards; guards 229): counter-drone as the owner's 226 rule: the levers as data (keyable, ~0.5 s),
+    // then every pinned pilot run on the authority (~7 s; keyed on its closure with item/tests-speed-229's i18nChunkImport)
+    'src/sim/counterDroneEngagement.selftest.mjs',
+    'src/sim/counterDroneRuns.selftest.mjs',
     'src/vehicles/remoteGunFleet.selftest.mjs',
     'src/vehicles/profiles/mbt70Rh202.selftest.mjs',
     'src/vehicles/roofWeaponPolicy.selftest.mjs',
@@ -295,6 +299,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/standard-continuity-policy.selftest.mjs',
     // 2026-10-16 (test-speed R4b part 1): tank-standard-check --stages runs and reports every stage after a red one
     'tools/standard-check-stages.selftest.mjs',
+    // 2026-10-16 (guards 227): the §B2 hull-anchored contiguity lattice; AABB-only add-ons never move a hole (226 class)
+    'tools/contig-grid.selftest.mjs',
+    // 2026-10-19 (guards 229): the fleet hidden-gap audit, committed (docs/geometry-gate/contig-hidden.json): listed gaps
+    // are known work orders, an unlisted, second or grown gap fails §B2; pure plan rectangles and the ledger JSON
+    'tools/contig-hidden-gaps.selftest.mjs',
     'tools/concept-fixture-runner.selftest.mjs',
     'tools/source-equipment-policy.selftest.mjs',
     'tools/photo-reference-policy.selftest.mjs',
@@ -629,6 +638,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/fleetPass.selftest.mjs',
     // 2026-10-01: the fleet geometry ledger (one full-fleet HIGH+LOW sweep) replaces the frozen per-receipt geometry pins.
     'src/vehicles/fleetGeometryLedger.selftest.mjs',
+    // 2026-10-17 (227 guards, after the 226 T-90M blade): every tank's belly pan, track bottom and combat hull box within
+    // 5 cm of docs/geometry-gate/sim-floors.json, read from the committed calibration (data only; a drifting id is built
+    // once to name the parts responsible); gen-combat-anatomy gates its own fresh measurement the same way.
+    'tools/anatomy-floor-drift.selftest.mjs',
     // 2026-10-01: one fleet on every path (each facade alone, every saved spec digested).
     'src/vehicles/fleetParity.selftest.mjs',
     'tools/media-production/pipeline.selftest.mjs',

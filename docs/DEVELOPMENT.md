@@ -656,6 +656,48 @@ support went with it. Visual change detection lives in generated ledgers that on
 - `npm run fx:textures:bake` rewrites the committed particle atlases and `src/fx/particleAtlases.ledger.json`
   (`COT_UPDATE_LEDGER=1 node src/fx/particleTextureAssets.selftest.mjs` rewrites the ledger from the committed PNGs).
 - `npm run tank:anatomy:update` and `tank:anatomy:check` keep the combat anatomy ledger as before.
+- `docs/geometry-gate/sim-floors.json` (2026-10-17, after the 226 T-90M blade) — each tank's belly pan
+  (`trackContact.panYM`), track bottom, combat hull box and combat turret floor (`turret.min[1]`, schema 2, 2026-10-19),
+  the authority inputs a visual accessory can move unnoticed.
+  `tools/gen-combat-anatomy.mjs` holds every tank it measures to its row in both modes: a move over 5 cm fails and
+  names the parts responsible with their builder call sites (the write mode writes its outputs, then exits 3, so a
+  regen chain stops there). `npm test` runs `tools/anatomy-floor-drift.selftest.mjs` on the committed calibration
+  (data only, ~0.3 s). Fix the geometry, or record an intended move with a reason:
+  `node tools/anatomy-floor-drift.mjs --accept=<ids>:<what moved and why>` after the regen, or
+  `--accept-floor=<ids>:<reason>` on gen-combat-anatomy (`COT_ACCEPT_FLOOR_DRIFT` through an npm chain). The row keeps
+  the old values, the reason, who and when. A new tank's row is seeded by its first regen (only an id the committed
+  calibration has never measured: a calibrated tank whose row went missing fails and is compared with its committed
+  calibration, never re-seeded as a first measurement); `--prune` drops retired ids.
+- `docs/geometry-gate/sealed.json` see-through columns (guards 227/229) — `tools/tank-sealed-check.mjs --ledger --gate`
+  (in `tank:release:check`) holds each row's `seeThroughPx` (glass, markings, undeclared alpha-cut parts) to max(12 px,
+  10 %) and its `netSeeThroughPx` (sky between declared netting) to max(12 px, 2 %) either way; every playable id has a
+  row (`tank-sealed-check.selftest` holds the ledger's ids to the fleet manifest), measured in the census frame recorded
+  on it (`frame: [x, y, z, radius]`), so an unrelated extremity edit never moves the pixel grid under unchanged parts.
+  The frame is fixed: the frame a build needs (its own bounding sphere, as a new row records it) may differ from the
+  row's by min(0.5 m, 15 % of the radius) in radius and in centre (together a part reaches about 1 m past the frame)
+  and the build is judged in the row's frame, geometry past it clipped laterally and drawn wherever it projects into
+  the window. Past that the gate fails `OUT OF FRAME` (usually a part thrown metres out: fix the build; a 1.5 m longer
+  gun needs 5.6 -> 6.3 m and is re-framed) or `FRAME STALE` (the build lies well inside a frame too large for it). `--update-ledger` never changes an existing row (it records
+  new vehicles' rows; `=see-through` refuses new rows); `--tighten-ledger=<ids>` lowers openings and see-through to the
+  measurement by name; a see-through or netting raise, or a sealed new vehicle's row with a see-through cluster, needs
+  `--accept-see-through=<id>[,<id>]:<reason>`; no flag accepts an opening. `--reframe=<id>:<reason>` serves only
+  OUT OF FRAME (never past half again the row's first recorded frame, however many re-frames) and FRAME STALE: the
+  build's census in the row's frame may not exceed the row in any column, with no slack (a refusal lists the views
+  holding the excess pixels; a rise the plain gate tolerates is printed as drift with its views when it lands), before
+  every column is re-measured in its own frame; with
+  `--accept-see-through` for the same id its see-through and netting are free there (both entries recorded), openings
+  never. Each accept or re-frame appends {kind, reason, by, date, from} to the row's `accepts` history. The six open
+  rows list their hole views (`openViewNames`): a hole in any other view fails; within a listed view the row keeps
+  only a pixel count. Rows are pixel counts at the ledger's `res` and `minArea` (256, 6): an update or a `--gate` at
+  another `--res`/`--min-area` is refused (exit 2); a look there without `--gate` uses the rows' frames and gives no
+  verdict. The framed re-base that
+  introduced the frames (guards 229) wrote its own entries, kind `rebaseline`: leo2a4's 1 cm turret-roof slit is the
+  one opening it recorded, and the 256 px aliasing it found on type90, leclerc_sxxi and leo2a6_ua is noted on their
+  rows.
+- `docs/geometry-gate/contig-hidden.json` (guards 229) — the §B2 fleet hidden-gap audit: per tank, the plan gaps the
+  hull-anchored lattice reads and the pre-227 raster missed, as exact vehicle-frame pixel boxes
+  (`tools/contig-hidden-gaps.mjs`, from `tools/contig-phase-audit.mjs` rows). `tank-standard-check` passes those as
+  known work orders and fails any other gap; `--prune` a closed gap, fix a new one.
 
 A new receipt asserts properties of the current build. When a change needs a reviewed before/after record, capture it
 (screenshots or a ledger diff) in the change itself rather than pinning bytes in a receipt.

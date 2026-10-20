@@ -14,6 +14,8 @@ import { isArieteOpeningTarget } from './ariete-source-openings.mjs';
 import { runCapturedCommand } from './capture-command.mjs';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { createStageRunner, formatStageSummary, stageStatus, summarizeStages } from './standard-check-stages.mjs';
+import { contiguityPassed } from './contig-grid.mjs';
+import { CONTIG_HIDDEN_LEDGER, applyHiddenGaps, readHiddenLedger } from './contig-hidden-gaps.mjs';
 // TANK STANDARD CHECK v2 (docs/BUILD-STANDARD.md §F.3) — one command that
 // aggregates the standard's machine-checkable gates per tank:
 //   A.  geometry-gate components (latest docs/geometry-gate/<id>.json,
@@ -21,7 +23,15 @@ import { createStageRunner, formatStageSummary, stageStatus, summarizeStages } f
 //   B4. track containment (tools/track-clip-audit.mjs --exact)
 //   B2. CONTIGUITY (v2): top-down ~6 cm scan on the procedural build via
 //       tools/standard-check-page.html — enclosed sky cells inside the plan
-//       silhouette remain raw holes. Every approved exterior opening must
+//       silhouette remain raw holes. The grid is the hull-anchored lattice of
+//       tools/contig-grid.mjs (2026-10-16): fixed 6 cm cells in the vehicle
+//       frame, so an add-on that only moves the AABB cannot hide or reveal a
+//       gap, scanned at every sub-cell phase; a phase-only hole (one the
+//       primary raster misses) fails like an unexpected hole. The gaps the
+//       lattice finds and the pre-227 raster never saw are listed per id in
+//       docs/geometry-gate/contig-hidden.json (guards 229, the fleet audit):
+//       known work orders, reported on every run; any other gap, or a listed
+//       one grown past its box, fails. Every approved exterior opening must
 //       match complete-source air and finite stock witnesses; unexpected
 //       holes remain zero. FrontSide render truth doubles as
 //       the winding audit.
@@ -174,6 +184,7 @@ async function readLowQualityScan(page,base,id) {
   }
 }
 const standard = new Map(); // id -> { census, holes } | { error }
+const hiddenLedger = readHiddenLedger();
 let fixture = null;
 if ((ids.length && !noRender) || wantFixture) await stages.run('render', async () => {
   await acquireLock(20 * 60 * 1000);
@@ -224,6 +235,11 @@ if ((ids.length && !noRender) || wantFixture) await stages.run('render', async (
       sourceReceipts.set(id, sourceReceipt);
       const result = standard.get(id);
       if (!result || result.error || !result.holes) return;
+      // the fleet audit's hidden gaps (tools/contig-hidden-gaps.mjs): listed gaps are known, anything else still fails
+      const hidden = applyHiddenGaps(result.holes, hiddenLedger?.rows?.[id]);
+      result.latticeHoles = result.holes;
+      result.holes = hidden.scan;
+      result.hiddenGaps = { listed: hidden.listed.length, removedPrimary: hidden.removedPrimary, closed: hidden.closed };
       try {
         openingReports.set(id, await measureSourceOpenings(id, result.holes, configuration, sourceReceipt, result.qualityScans));
       } catch (error) {
@@ -317,11 +333,25 @@ for (const id of ids) {
     } else {
       const holes = st.holes.holeCells;
       const opening = openingReports.get(id);
-      contigOk = opening?.passed === true;
-      contigStr = opening?.intentionalCells
-        ? `${opening.unexpectedCells} unexpected/${holes} raw${contigOk ? ' ✓' : ' ✗'}`
-        : `${holes}${contigOk ? ' ✓' : ' ✗'}`;
+      const phaseOnly = st.holes.phaseOnlyCells;
+      contigOk = contiguityPassed(st.holes, opening);
+      contigStr = (opening?.intentionalCells
+        ? `${opening.unexpectedCells} unexpected/${holes} raw`
+        : `${holes}`) + (phaseOnly ? `+${phaseOnly}φ` : '') + (contigOk ? ' ✓' : ' ✗');
       if (opening?.reason) console.error(`[standard-check] ${id}: ${opening.reason}`);
+      if (phaseOnly !== 0) {
+        console.error(`[standard-check] ${id} phase-only holes (the primary 6 cm raster misses them; another sub-cell ` +
+          `phase of the hull-anchored lattice sees them; ${CONTIG_HIDDEN_LEDGER} does not list them): ` + (st.holes.phaseOnlyGaps ?? [])
+          .map((g) => `(x ${g.x}, z ${g.z}) ${g.w}x${g.d} m gap ${g.gap} m`).join(', '));
+      }
+      if (st.hiddenGaps?.listed) {
+        console.error(`[standard-check] ${id}: ${st.hiddenGaps.listed} known hidden gap(s) listed in ${CONTIG_HIDDEN_LEDGER} ` +
+          `(the fleet audit's vehicle-lane work orders; node tools/contig-hidden-gaps.mjs --report)`);
+      }
+      if (st.hiddenGaps?.closed?.length) {
+        console.error(`[standard-check] ${id}: ${st.hiddenGaps.closed.length} listed hidden gap(s) no longer read: closed, ` +
+          'prune them (node tools/contig-phase-audit.mjs --ids=<id>, then node tools/contig-hidden-gaps.mjs --from=<audit.jsonl> --prune --ids=<id>)');
+      }
       decorOk = roofEquipmentVerdict(id, st.census, configurations[id], sourceReceipts.get(id)).passed;
       decorStr = `mg${st.census?.mg}+${st.census?.dressing}d${decorOk ? ' ✓' : ' ✗'}`;
       if (!contigOk && st.holes.clusters?.length) {
@@ -345,7 +375,7 @@ for (const id of ids) {
 }
 if (ids.length) {
   console.log(`\n[standard-check] ${ids.length - fails}/${ids.length} pass the machine-checkable gates ` +
-    `(registered gate floor 90 fleet / 92 exemplar; --gate requires fresh registered oracles + clip<=${CLIP_BAND}${noRender ? '' : ' + unexpected holes=0 + verified equipment configuration'}).`);
+    `(registered gate floor 90 fleet / 92 exemplar; --gate requires fresh registered oracles + clip<=${CLIP_BAND}${noRender ? '' : ' + unexpected holes=0 at every hull-anchored phase (φ = phase-only) + verified equipment configuration'}).`);
   if (!noRender) {
     console.log('[standard-check] decor censuses KIT.fittings markers only (§B3): hand-authored ' +
       'decoration predating the fittings library reads mg0+0d — migrate the profile to ' +

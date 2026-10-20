@@ -60,3 +60,11 @@ Vehicle and decor code never imports `matchRuleset.ts`: a rule a vehicle build
 also reads (the drone dock's launch height) lives in a leaf the ruleset reads and
 re-exports (`droneDockRules.ts`), so a ruleset edit does not re-run some 600
 vehicle receipts (`node src/sim/droneDockRules.selftest.mjs`).
+Counter-drone (roof stations, the weapon profiles' drone fields, `AERIAL_RULES.drone`)
+holds the owner's 226 rule: run `node src/sim/counterDroneEngagement.selftest.mjs` (data
+only: every station carries its class's 226 numbers, the elevation ratchet),
+`node src/sim/weaponReload.selftest.mjs` (the pinned hovers on the authority and in the
+solo battle) and `node src/sim/counterDroneRuns.selftest.mjs` (every pinned pilot run
+exactly, the owner's band), and for new or re-armed stations
+`node tools/counter-drone-engage.mjs --ids=<ids> --check` (per vehicle: class, hovers
+against the owner's literal counts, attack runs, elevation reach, the pins).

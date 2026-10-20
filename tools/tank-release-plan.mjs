@@ -2,6 +2,9 @@ import {isPhotoReference} from './photo-reference-policy.mjs';
 import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
 import {validateSelectedIds,partitionConceptIds} from './first-party-concept-policy.mjs';
 import {uniqueIds} from './id-list.mjs';
+/** The vehicles whose counter-drone pilot runs are pinned (src/sim/counterDroneStations.test-support.mjs COUNTER_DRONE_PINS;
+ * tank-release-plan.selftest holds the two lists equal). */
+export const COUNTER_DRONE_PINNED_IDS=Object.freeze(['m1a1','t90a_2004','leo2a7v','leo2a5','leo2_revolution','leclerc_xlr']);
 /**
  * The command line of tools/tank-release-check.mjs, parsed here so the selftest exercises it.
  * `--lane` (lane mode, 2026-10-16, test-speed R8e) skips the embedded `npm test` and
@@ -32,6 +35,7 @@ export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = fal
   // a repeated id fails by name before any step (2026-10-16, test-speed R4c; tools/id-list.mjs)
   const selectedIds=validateSelectedIds(uniqueIds(ids.split(','),'tank:release:check --ids'),Object.keys(FLEET_GROUP_BY_ID));
   const comparisons=partitionConceptIds(selectedIds).comparisons.filter(id=>!isPhotoReference(id));
+  const counterDronePinned=selectedIds.filter(id=>COUNTER_DRONE_PINNED_IDS.includes(id));
   const selected=`--ids=${ids}`;
   // Fleet construction and builds share the resource queue with rendering.
   // Only children that already queue their own phases bypass this wrapper.
@@ -70,6 +74,9 @@ export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = fal
     gpu('track-duplicate-audit',selected),
     gpu('muzzle-bore-probe',selected),
     gpu('turret-barrel-circularity',selected),
+    // guards 229: a release naming a counter-drone pinned vehicle re-flies its pinned runs and the owner's rule (CPU only,
+    // no capture lease; npm test flies every pin in src/sim/counterDroneRuns.selftest.mjs)
+    ...counterDronePinned.length ? [{command:node,args:['tools/counter-drone-engage.mjs',`--ids=${counterDronePinned.join(',')}`,'--check'],capture:false}] : [],
     // Integrator mode only: lane mode leaves the whole suite and the build to the release gate.
     ...(lane ? [] : [
       {command:'npm',args:['test'],capture:false},

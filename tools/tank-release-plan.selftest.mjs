@@ -21,6 +21,7 @@ assert.deepEqual(steps.map(step=>[step.command,...step.args].join(' ')),[
   'node-test tools/track-duplicate-audit.mjs --ids=leo2a7v,t14_armata',
   'node-test tools/muzzle-bore-probe.mjs --ids=leo2a7v,t14_armata',
   'node-test tools/turret-barrel-circularity.mjs --ids=leo2a7v,t14_armata',
+  'node-test tools/counter-drone-engage.mjs --ids=leo2a7v --check',
   'npm test',
   'npm run build:private',
 ], 'fail-fast ordering retains every existing command, assertion flag and complete ID scope exactly once');
@@ -57,12 +58,22 @@ assert.equal(steps.find(step=>step.command==='npm'&&step.args[1]==='build:privat
 assert.equal(tankReleaseSteps('m1a1_abrams_hc',false).some(step=>step.args[0]==='tools/procedural-fidelity.mjs'),false,
   'non-source release does not require an unavailable reference');
 assert.equal(tankReleaseSteps('m1a1_abrams_hc',false).length,17,'non-source release retains all other checks (2026-09-13: + the sealed-hull ledger check; 2026-10-11: + ledger and mission-seat checks; 2026-10-15: + the spare-track ledger; 2026-10-17: + the material registration; 2026-10-18: + the gun-junction ledger)');
+// guards 229: the counter-drone step only for a release naming a pinned vehicle, on those ids, CPU only (no capture lease)
+assert.equal(byTool('counter-drone-engage').capture,false,'the counter-drone pilot runs build no geometry: no capture lease');
+assert.deepEqual(tankReleaseSteps('m1a1,t14_armata,leclerc_xlr',false,'n').find(step=>step.args[0]==='tools/counter-drone-engage.mjs').args,
+  ['tools/counter-drone-engage.mjs','--ids=m1a1,leclerc_xlr','--check'],'it re-flies the pinned vehicles the release names');
+assert.equal(tankReleaseSteps('t14_armata',false).some(step=>step.args[0]==='tools/counter-drone-engage.mjs'),false,'a release naming none skips it');
+{
+  const { COUNTER_DRONE_PINS } = await import('../src/sim/counterDroneStations.test-support.mjs');
+  const { COUNTER_DRONE_PINNED_IDS } = await import('./tank-release-plan.mjs');
+  assert.deepEqual([...COUNTER_DRONE_PINNED_IDS].sort(),Object.keys(COUNTER_DRONE_PINS.runs).sort(),'the release plan names exactly the pinned vehicles');
+}
 for(const ids of ['',',','t14_armata,'])assert.throws(()=>tankReleaseSteps(ids,true),/nonempty/);
 // Fast checks (2026-09-15): the same steps, staged — serial browser scoring first, then every
 // remaining probe beside the receipt suite and the build, four at a time.
 const stages=tankReleaseStages('leo2a7v,t14_armata',true,'node-test');
 assert.deepEqual(stages.map(stage=>[stage.name,stage.concurrency,stage.steps.length]),
-  [['scoring',1,3],['fleet probes, receipts and build',4,15]]);
+  [['scoring',1,3],['fleet probes, receipts and build',4,16]]);
 assert.deepEqual(stages[0].steps.map(step=>step.args[0]),
   ['tools/tank-standard-check.mjs','tools/tank-sealed-check.mjs','tools/procedural-fidelity.mjs'],
   'the load-sensitive scoring stays serial and first');
@@ -93,7 +104,7 @@ assert.deepEqual(tankReleaseSteps('leo2a7v,t14_armata',true,'node-test',{lane:fa
 assert.deepEqual(tankReleaseSteps('m1a1_abrams_hc',false,'node-test',{lane:true}),withoutNpm(tankReleaseSteps('m1a1_abrams_hc',false,'node-test')),
   'without --gate or a reference, lane mode still keeps every other step');
 const laneStages=tankReleaseStages('leo2a7v,t14_armata',true,'node-test',{lane:true});
-assert.deepEqual(laneStages.map(stage=>[stage.name,stage.concurrency,stage.steps.length]),[['scoring',1,3],['fleet probes',4,13]]); // the integrator stage's 15 less npm test and build:private
+assert.deepEqual(laneStages.map(stage=>[stage.name,stage.concurrency,stage.steps.length]),[['scoring',1,3],['fleet probes',4,14]]); // the integrator stage's 15 less npm test and build:private
 assert.deepEqual(laneStages.flatMap(stage=>stage.steps),lane,'lane staging reorders nothing and drops nothing');
 assert.deepEqual(tankReleaseStages('leo2a7v,t14_armata',true,'node-test',{lane:false}),stages,'integrator staging unchanged');
 
@@ -127,7 +138,7 @@ assert.match(tankReleaseInvocation(['--lane','--dry-run']).usage ?? '',/^usage: 
 assert.deepEqual(tankReleasePlanLines(laneRun).filter(line=>line.startsWith('  ')),lane.map(step=>`  ${tankReleaseLabel(step)}`),
   '--dry-run prints every lane step');
 assert.deepEqual(tankReleasePlanLines(fullRun).filter(line=>line.startsWith('[tank-release] stage ')),
-  ['[tank-release] stage "scoring": 3 step(s), 1 at a time','[tank-release] stage "fleet probes, receipts and build": 15 step(s), 4 at a time']);
+  ['[tank-release] stage "scoring": 3 step(s), 1 at a time','[tank-release] stage "fleet probes, receipts and build": 16 step(s), 4 at a time']);
 
 // The note's claims, pinned where they live. The gate (tools/gate.mjs) runs every receipt and `npm run build`;
 // `npm run build` runs build:private's commands with the same prebuild, then the public strip and provenance.

@@ -325,6 +325,11 @@ For every added or changed playable tank, run this required sequence:
 1. `npm run tank:anatomy:update` — remeasure the complete playable fleet and
    regenerate every tank's armor, module, and crew cards.
 2. `npm run tank:anatomy:check` — fail on stale receipts or visual drift.
+   Both steps also hold each tank's belly pan, track bottom, combat hull box and turret floor to
+   `docs/geometry-gate/sim-floors.json`: a move over 5 cm fails and names the part and
+   its builder line. Keep accessories above the belly and out of the structural
+   buckets; accept an intended move only with a reason
+   (`node tools/anatomy-floor-drift.mjs --accept=<ids>:<reason>`).
 3. `npm run tank:release:check -- --ids=<changed ids> --gate` — assets,
    tracks, muzzle, geometry, full tests and private build. A lane adds
    `--lane`: the same steps without the full tests and the private build,
@@ -492,3 +497,28 @@ camera; bind slabs through `orientedSlab`, hand twisted rings to `convexSlab`,
 and prove the result with `node tools/tank-sealed-check.mjs --ids=<id>
 --ledger=docs/geometry-gate/sealed.json` (0 open views) — the audit and the
 per-family causes are in `docs/tank-generation/chassis-closure-audit-20260925.md`.
+See-through gates too (227 guards, 2026-10-16): the sealed check holds each
+row's `seeThroughPx` (world seen through glass, markings or any undeclared
+alpha-cut part) to max(12 px, 10 %), and counts sky between declared netting
+apart as `netSeeThroughPx`, held to max(12 px, 2 %) either way (an unchanged
+suit reproduces it exactly; a suit that floats, doubles, sinks or goes missing
+moves it). Netting must declare itself:
+alpha-cut, `combatHitboxRole: 'nonArmor'`, and `continuityRole: 'open-lattice'`
+(the ghillie suit) or a `decor_<frame>_net|foliage` bucket
+(`alphaCutNetting` in `tools/tank-surface-collect.mjs`). A new alpha-cut part
+without that declaration fails its row; a hole behind netting is still a hole.
+Every playable id has a row, measured in the census frame recorded on it (an
+extremity edit never re-aliases its counts); a new vehicle must be sealed with
+no see-through cluster. The frame is fixed: a build whose own frame stays
+within min(0.5 m, 15 % of the radius) of it (an antenna, a slightly longer
+gun) is judged in it with no re-frame; past that it fails OUT OF FRAME (a part
+thrown metres out: fix the build) or FRAME STALE. `--update-ledger` never changes an existing
+row; `--tighten-ledger=<ids>` lowers one to its measurement. Raise a row's
+see-through or netting, or record a new vehicle whose see-through cluster is
+accepted, only with `--update-ledger --accept-see-through=<id>:<reason>`;
+no flag accepts an opening. `--reframe=<id>:<reason>` serves only OUT OF FRAME
+(at most half again the row's first frame) and FRAME STALE, and the build may not exceed
+its row in the row's frame in any column (with `--accept-see-through` for the
+id, see-through and netting may move there; openings never). Open rows list
+their hole views: a hole in another view fails. Each appends the reason, who,
+when and the old values to the row's `accepts`.

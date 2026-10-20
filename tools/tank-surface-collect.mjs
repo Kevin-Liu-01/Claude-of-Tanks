@@ -26,7 +26,22 @@ export function materialClass(material, decal = false) {
   return { transparent, side: material.side ?? THREE.FrontSide };
 }
 
-/** Flatten the visible tank into world-space triangles with per-triangle class and owner. */
+/** An alpha-cut net or leaf surface: suspended dressing whose cut-outs show the world by design, so the sealed check
+ * reports the sky seen between its strands apart from see-through the hull itself owes. It must declare itself (the
+ * builder, not a guess from the picture): non-armour, cut by an alpha test or map rather than blended, and either an
+ * open lattice (ghillieSuit.ts tags the suit's net and garnish meshes continuityRole 'open-lattice') or the decor's
+ * net and cut-branch buckets (decorations.ts names them decor_<frame>_net / _foliage). A blended glass, a marking, an
+ * undeclared alpha-cut part or anything armour is never netting: its see-through stays on the hull's account. */
+export function alphaCutNetting(object, material) {
+  if (!object || !material || !(material.alphaTest > 0 || material.alphaMap)) return false;
+  if (material.transparent && material.opacity < 0.98) return false;
+  const userData = object.userData || {};
+  if (userData.combatHitboxRole !== 'nonArmor') return false;
+  return userData.continuityRole === 'open-lattice' || /^decor_(hull|turret)_(net|foliage)(_coarse)?$/.test(object.name || '');
+}
+
+/** Flatten the visible tank into world-space triangles with per-triangle class and owner. A triangle of an alpha-cut
+ * net or leaf surface (alphaCutNetting) carries net: true; it is transparent like any alpha-cut surface. */
 export function collectTriangles(root) {
   root.updateMatrixWorld(true);
   const tris = []; // {a,b,c (Vector3), cls, mesh}
@@ -45,6 +60,7 @@ export function collectTriangles(root) {
     if (o.isBatchedMesh) {
       // BatchedMesh: each instance draws one geometry range of the shared buffer through its own matrix
       const cls = materialClass(materials[0], decal); if (!cls) return;
+      const net = !decal && cls.transparent && alphaCutNetting(o, materials[0]);
       const range = {}; const im = new THREE.Matrix4();
       for (let i = 0; i < o.instanceCount; i++) {
         if (o.getVisibleAt && !o.getVisibleAt(i)) continue;
@@ -53,7 +69,7 @@ export function collectTriangles(root) {
         for (let k = range.start; k + 2 < range.start + range.count; k += 3) {
           const i0 = index ? index[k] : k, i1 = index ? index[k + 1] : k + 1, i2 = index ? index[k + 2] : k + 2;
           a.fromBufferAttribute(pos, i0).applyMatrix4(world); b.fromBufferAttribute(pos, i1).applyMatrix4(world); c.fromBufferAttribute(pos, i2).applyMatrix4(world);
-          tris.push({ ax: a.x, ay: a.y, az: a.z, bx: b.x, by: b.y, bz: b.z, cx: c.x, cy: c.y, cz: c.z, transparent: cls.transparent, side: cls.side, mesh: meshIndex, flip });
+          tris.push({ ax: a.x, ay: a.y, az: a.z, bx: b.x, by: b.y, bz: b.z, cx: c.x, cy: c.y, cz: c.z, transparent: cls.transparent, net, side: cls.side, mesh: meshIndex, flip });
         }
       }
       return;
@@ -62,7 +78,9 @@ export function collectTriangles(root) {
     if (o.isInstancedMesh) { for (let i = 0; i < o.count; i++) { const im = new THREE.Matrix4(); o.getMatrixAt(i, im); instanceMatrices.push(im.premultiply(o.matrixWorld)); } }
     else instanceMatrices.push(o.matrixWorld);
     for (const group of groups) {
-      const cls = materialClass(materials[group.materialIndex] ?? materials[0], decal); if (!cls) continue;
+      const material = materials[group.materialIndex] ?? materials[0];
+      const cls = materialClass(material, decal); if (!cls) continue;
+      const net = !decal && cls.transparent && alphaCutNetting(o, material);
       const startTri = Math.floor(group.start / 3), endTri = Math.min(triCount, Math.floor((group.start + group.count) / 3));
       for (const world of instanceMatrices) {
         const flip = world.determinant() < 0;
@@ -71,7 +89,7 @@ export function collectTriangles(root) {
           a.fromBufferAttribute(pos, i0).applyMatrix4(world);
           b.fromBufferAttribute(pos, i1).applyMatrix4(world);
           c.fromBufferAttribute(pos, i2).applyMatrix4(world);
-          tris.push({ ax: a.x, ay: a.y, az: a.z, bx: b.x, by: b.y, bz: b.z, cx: c.x, cy: c.y, cz: c.z, transparent: cls.transparent, side: cls.side, mesh: meshIndex, flip });
+          tris.push({ ax: a.x, ay: a.y, az: a.z, bx: b.x, by: b.y, bz: b.z, cx: c.x, cy: c.y, cz: c.z, transparent: cls.transparent, net, side: cls.side, mesh: meshIndex, flip });
         }
       }
     }
