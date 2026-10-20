@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   SGO_BASE_WRAP_M, SGO_HALF_M, SGO_REACH_H, SGO_REACH_MAX_M, SGO_SIZE, SGO_TEXEL_M, bakeStructureGroundOcclusion, packOccluders,
-  prismSkyOcclusion, sgoRectOf, shapeFootprint,
+  packRecordOccluders, prismSkyOcclusion, sgoRectOf, shapeFootprint,
 } from './structureGroundOcclusionBake.ts';
 import { STRUCTURE_GROUND_OCCLUSION_GLSL, SGO_GATE_M, SGO_RETURN } from './structureGroundOcclusion.ts';
 import { loadGroundedLightModel, resolveDeckBeam, resolveLightModel, luminance } from './lightModelCore.ts';
@@ -71,6 +71,18 @@ const broken = { min: [80, 3, 80], max: [84, 6, 84], crushed: true };
 const packed = packOccluders([house, tree, kerb, broken]);
 assert.equal(packed[0], 4, 'the house: one four-cornered part');
 assert.equal(packed.length, 4 + 8, 'trees, kerbs under 0.3 m and broken solids are not occluders');
+// 2026-10-19: the runtime keeps each solid's parts (packRecordOccluders) and re-packs by the destroyed flags alone
+{
+  const parts = [house, tree, kerb, broken].map(packRecordOccluders);
+  assert.deepEqual(parts.map((p) => p?.length ?? null), [12, null, null, 12], 'a tree and a kerb hide nothing; a broken solid keeps its parts');
+  assert.deepEqual([...packOccluders([house, tree, kerb, broken], parts)], [...packed], 'the kept parts pack exactly as a fresh pack');
+  broken.crushed = false;
+  assert.deepEqual([...packOccluders([house, tree, kerb, broken], parts)], [...packOccluders([house, tree, kerb, broken])], 'a restored solid too');
+  broken.crushed = true;
+  const runtime = read('./structureGroundOcclusion.ts');
+  assert.match(runtime, /const parts = scale > 0 \? records\.map\(packRecordOccluders\) : \[\];/, 'the handle packs each solid once');
+  assert.match(runtime, /for \(let i = 0; i < records\.length; i\+\+\) \{\s*if \(!parts\[i\]\) continue;/, 'a solid that hides no sky re-bakes nothing');
+}
 const full = bakeStructureGroundOcclusion(packed);
 const at = (x, z) => {
   const i = Math.floor((x + SGO_HALF_M) / SGO_TEXEL_M), j = Math.floor((z + SGO_HALF_M) / SGO_TEXEL_M);
