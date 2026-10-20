@@ -237,8 +237,8 @@ const aimCore = (along: number, up: number): boolean => Math.abs(along) <= .7 &&
 const AIM_VERIFY = 6;
 const aimTop = new Float64Array(AIM_VERIFY * 4);
 const aimWorld = new Vector3(), aimFrom = new Vector3(), aimArrive = new Vector3();
-/** The best aim point aimSearch found (target-local, hull frame before the mode's scale) and its chance. */
-let aimX = 0, aimY = 0, aimZ = 0, aimChance = 0;
+/** The best aim point aimSearch found (target-local, hull frame before the mode's scale). */
+let aimX = 0, aimY = 0, aimZ = 0;
 /**
  * VH.14 hold fire: when the round at the target's centre cannot hurt it, the point on the faces it turns towards the
  * station (the hull box: its dims) where one most likely does — a 7 x 5 grid on each face (its core first), each point where the target
@@ -246,13 +246,12 @@ let aimX = 0, aimY = 0, aimZ = 0, aimChance = 0;
  * (laidLine: the muzzle beside the mount's axis, the drop; roofHurtChance); the nearer the face's middle the better
  * among near-equal chances. The AIM_VERIFY best are then tried best first and the first taken whose lane is clear
  * (laneClear: no ally, ally hull, wreck or seen hull before it; the world; hullsClear: no vehicle's armour on the
- * falling round's flight) and whose chance holds beside the line (robustHurtChance). Leaves it in aimX/Y/Z and
- * aimChance; false when none does. `from`: where the station stands (the faces it sees). At a refusal or a lapsed hold
+ * falling round's flight) and whose chance holds beside the line (robustHurtChance). Leaves it in aimX/Y/Z; false
+ * when none does. `from`: where the station stands (the faces it sees). At a refusal or a lapsed hold
  * only, never per tick.
  */
 function aimSearch(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, shooter: AuxiliaryEntity, target: AuxiliaryEntity,
   from: Vector3, context: GunContext): boolean {
-  aimChance = 0;
   return aimPass(gun, profile, shooter, target, from, context, true) || aimPass(gun, profile, shooter, target, from, context, false);
 }
 /** One pass of aimSearch over the grid's core (`core`) or its outer points. */
@@ -292,9 +291,8 @@ function aimPass(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, shooter: Au
     if (!laidLine(gun, profile, shooter, aimWorld, aimFrom, aimArrive)) continue;
     if (!laneClear(shooter, target, context, aimFrom, aimWorld) || !context.clear(aimFrom, aimWorld)
       || !hullsClear(shooter, target, context, aimFrom, layDir, aimFrom.distanceTo(aimWorld), profile)) continue;
-    const chance = robustHurtChance(target, aimFrom, aimArrive, profile);
-    if (chance < HURT_FLOOR) continue;
-    aimChance = chance; aimX = x; aimY = y; aimZ = z;
+    if (robustHurtChance(target, aimFrom, aimArrive, profile) < HURT_FLOOR) continue;
+    aimX = x; aimY = y; aimZ = z;
     return true;
   }
   return false;
