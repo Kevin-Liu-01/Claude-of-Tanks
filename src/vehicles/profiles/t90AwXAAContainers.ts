@@ -47,12 +47,16 @@ function forwardCanister(P:TankBuilderPort):void{
   // Source principal side planes are 154mm apart and run at the opposite
   // yaw to the former placeholder. Both upper and lower courses crossfall.
   const shear=new THREE.Matrix4().set(1,0,0,0,-.01084,1,0,-.01084,0,0,1,0,0,0,0,1);
+  // 2026-10-19 (owner float sweep): the canister and its channel stood 37 mm clear of the support beams; they are
+  // seated on them as one group.
+  P.snapGroup('t90aw-forward-canister',()=>{
   part(P,KIT.box(.466,.2315,.154).translate(-.861,2.64713,.5665).applyMatrix4(shear),yaw);
   part(P,KIT.box(.4754,.04460,.1650).translate(-.8598,2.78508,.5666).applyMatrix4(shear),yaw);
   // Actual receiving channel under the forward canister intersects the
   // existing rear canister, rather than a new tall pedestal through roof air.
   const channel=KIT.box(.2587,.0054,.1685).translate(-.75635,2.52958,.56631);
   part(P,channel,yaw);
+  },{reachM:.05});
   part(P,beamBetween([-.8481,2.55,.1119],[-.682,2.55,.1564],.017));
   part(P,beamBetween([-.773,2.501,.000],[ -.742,2.666,.032],.009));
 }

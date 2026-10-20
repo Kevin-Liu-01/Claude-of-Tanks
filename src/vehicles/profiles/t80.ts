@@ -15,6 +15,7 @@ import {
   eraRuCheeks,
 } from './russia.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import type { SnapGroupOptions } from '../tankFactoryCore.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -53,6 +54,8 @@ interface T80BuilderPort {
     owner: VehicleAssemblyOwner,
     build: () => void,
   ): void;
+  /** Seats the fittings authored in `build` on their rig group's stock once the profile is done (fittingSnap.ts). */
+  snapGroup(label: string, build: () => void, options?: SnapGroupOptions): void;
 }
 
 interface EraSurfaceSeat {
@@ -206,7 +209,8 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
   };
   buildT80LineHullStage1();
   const buildT80LineRunningGearStage1 = (): void => {
-    KIT.towCable(P, [[-1.02, 1.30, 2.72], [0, 1.34, 2.42], [1.02, 1.30, 2.72]]);
+    // 2026-10-19 (owner float sweep): the glacis cable stood 15 mm off the plate; it is seated on it.
+    P.snapGroup('t80-glacis-cable', () => KIT.towCable(P, [[-1.02, 1.30, 2.72], [0, 1.34, 2.42], [1.02, 1.30, 2.72]]), { reachM: 0.03 });
     // §B3.2 DENSITY (owner directive 2026-08-06): common kit FLUSH on the
     // deck lines (t84 recipe — hull mask is hull-only, no tall deck kit).
     // §H.4 VARIANT VARIETY: mirrored seats + seeds per mark so the three
@@ -446,7 +450,8 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
   const buildT80LineTurretStage4 = (): void => {
     P.add('turretDetail', box(0.34, 0.13, 0.25), 0.88, roofTopY - 0.015, -0.75, 0, -0.06, 0);
     P.add('turretDark', box(0.30, 0.020, 0.20), 0.88, roofTopY + 0.058, -0.75, 0, -0.06, 0);
-    P.add('turretDetail', box(0.18, 0.055, 0.11), -0.78, roofTopY + 0.010, -0.70, 0, 0.15, 0);
+    // 2026-10-19 (owner float sweep): the sight box stood 19-22 mm off the stepped roof; it is seated on it.
+    P.snapGroup('t80-roof-box', () => P.add('turretDetail', box(0.18, 0.055, 0.11), -0.78, roofTopY + 0.010, -0.70, 0, 0.15, 0), { reachM: 0.04 });
     // Collar-supported radio whip, raised with the rest of the corrected roof.
     P.add('turret', cylY(0.070, 0.076, 0.090, 12), -0.78, roofTopY - 0.015, -0.86);
     P.add('turretDark', cylY(0.042, 0.046, 0.060, 10), -0.78, roofTopY + 0.055, -0.86);
@@ -665,9 +670,13 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
       // Raised fender bridge caps close the visible plan seams at the idler
       // and sprocket transitions. Their 1.37 m undersides remain above the
       // measured 1.352 m animated shoe envelope, preserving a true gap.
+      // 2026-10-19 (owner float sweep): the caps stood 110 mm over the fender with nothing between; a riser plate at
+      // each cap's fender end (over the fender, clear of the raised shoes) steps the fender up into the cap.
       for (const s of [-1, 1]) {
         P.add('hull', box(0.32, 0.04, 0.50), s * 1.58, 1.39, 2.65);
         P.add('hull', box(0.32, 0.04, 0.70), s * 1.58, 1.39, -2.25);
+        P.add('hull', box(0.32, 0.14, 0.03), s * 1.58, 1.315, 2.41);
+        P.add('hull', box(0.32, 0.14, 0.03), s * 1.58, 1.315, -1.925);
       }
       P.hullG.userData.t80bvFenderBridgeReceipt = Object.freeze({
         planSeamsOpen: 0,

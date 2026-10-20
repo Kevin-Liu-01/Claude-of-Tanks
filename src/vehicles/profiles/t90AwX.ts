@@ -74,26 +74,31 @@ function hullEra(P:TankBuilderPort):void{
 function deck(P:TankBuilderPort):void{
   addT90AWExhaust(P);
   P.addEquipment('hullDetail',box(1.8472,.0694,.665),-.00855,1.5132,-1.66945);
-  for(const x of [-.4734,.47275]){
+  // 2026-10-19 (owner float sweep): the two grille sheets stood 24-32 mm over the falling deck; each is dropped onto it.
+  for(const x of [-.4734,.47275])P.snapGroup('t90aw-deck-grille',()=>{
     P.addEquipment('hullDetail',roofSheet([[-2.748,x-.433,x+.433,1.543,1.543],[-2.170,x-.433,x+.433,1.5303,1.5303]],.014));
     for(let i=0;i<15;i++)P.addEquipment('hullDark',box(.82,.007,.014),x,1.544-i*.0008,-2.724+i*.038);
-  }
+  },{reachM:.05,mode:'down'});
   for(const [x,z,w,d,y,pitch]of [[1.4619,.8719,.254,1.0921,1.4717,.0413],[1.4171,-.6027,.291,.9744,1.5152,.0221],
     [1.3853,2.063,.335,.7803,1.4102,.066],[-1.39,-2.45,.50,.71,1.514,-.017],[-1.36,-1.47,.52,.83,1.512,.012],
     [-1.36,-.45,.53,1.1,1.508,.017],[-1.36,.75,.53,1.10,1.471,.041],[-1.36,1.94,.53,.85,1.414,.066]]){
     P.addEquipment('hullDetail',box(w,.031,d).rotateX(pitch),x,y,z);
-    for(const dz of [-d*.4,d*.4])P.addEquipment('hullDetail',box(w*.84,.014,.024).rotateX(pitch),x,y+.023,z+dz);
+    // 2026-10-19 (owner float sweep): the tread ribs kept the plate's mid height, so on pitched plates the forward rib
+    // stood 19-57 mm proud and the aft one sank in; each now follows the plate's pitch, 1.5 mm into its face.
+    for(const dz of [-d*.4,d*.4])P.addEquipment('hullDetail',box(w*.84,.014,.024).rotateX(pitch),x,y+.021-dz*Math.tan(pitch),z+dz);
   }
-  for(const x of [-.18135,.5563]){
+  // 2026-10-19 (owner float sweep): the two louvre boxes stood 63-73 mm off the falling stern deck; each is seated on it.
+  for(const x of [-.18135,.5563])P.snapGroup('t90aw-stern-louvre',()=>{
     P.addEquipment('hullDetail',box(.6958,.090,.1816).rotateX(.37),x,1.57665,-3.04785);
     for(let i=0;i<6;i++)P.addEquipment('hullDark',box(.025,.007,.145).rotateX(.37),x-.26+i*.10,1.625,-3.04785);
-  }
+  },{reachM:.09});
   P.addEquipment('hullDetail',cylY(.294,.038,32).scale(1,1,.83),-.0561,1.494,1.6091);
   for(const x of [-.774,.771]){
     P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.066,.11,24),'headlight'),x,1.108,2.858);
     for(const dx of [-.095,.095])P.addEquipment('hullDetail',beamBetween([x+dx,1.015,2.874],[x+dx,1.245,2.73],.009));
   }
-  P.addEquipment('hullDetail',box(1.85,.03,.028),0,1.187,2.593);
+  // 2026-10-19 (owner float sweep): the glacis strip stood 33 mm off the plate; it is seated on it.
+  P.snapGroup('t90aw-glacis-strip',()=>P.addEquipment('hullDetail',box(1.85,.03,.028),0,1.187,2.593),{reachM:.05});
 }
 function rear(P:TankBuilderPort):void{
   // Original reference has empty drum cradles, not mounted fuel drums.
@@ -126,14 +131,19 @@ function roofEra(P:TankBuilderPort):void{
     [.2188,2.2043,.5003,.137,.18],[.2902,2.2458,.194,.137,.125],[.1416,2.2541,.1945,.137,.12],
     [.0701,2.2117,.5017,.137,.18],[-.0784,2.2149,.5021,.137,.18],[-.2319,2.2174,.4664,.137,.18],
     [-.3822,2.2048,.4642,.137,.2],[-.0097,2.2585,.1946,.137,.114],[.0621,2.2815,-.1163,.137,.035],
-    [.0574,2.2021,-.9252,.142,-.315],[-.113,2.218,-.841,.14,-.26],[.218,2.218,-.841,.14,-.26]];
+    [.0574,2.1821,-.9252,.142,-.315],[-.113,2.218,-.841,.14,-.26],[.218,2.218,-.841,.14,-.26]];
+  // 2026-10-19 (owner float sweep): the rear centre cell stood 20 mm over the roof (y 2.2021); it is seated 2 mm in.
   for(const [x,y,z,w,pitch]of cells)P.destructibleCluster(`turret_era_${x<0?'L':'R'}`,()=>P.addExternalArmor('turret',markEraHitFaces(box(w,.058,.295),[0,1,0]).rotateX(pitch),x-YAW[0],y-YAW[1],z-YAW[2]));
 }
 function casesAndOptics(P:TankBuilderPort):void{
   addT90AWRearStowage(P);
   addT90AWRearCases(P);
-  top(P,'turretDetail',cylX(.09535,1.2363,28),-.0444,1.92913,-1.63583);
-  for(const x of [-.706,.606])top(P,'turretDetail',torus(.12,.016,24,8).rotateZ(Math.PI/2),x,1.9296,-1.6356);
+  // 2026-10-19 (owner float sweep): the rear roll stood 43 mm off the stowage and its two straps hung 28 mm past its
+  // ends; the straps now grip the roll and the roll is seated on the stowage.
+  P.snapGroup('t90aw-rear-roll',()=>{
+    top(P,'turretDetail',cylX(.09535,1.2363,28),-.0444,1.92913,-1.63583);
+    for(const x of [-.60,.50])top(P,'turretDetail',torus(.104,.016,24,8).rotateZ(Math.PI/2),x,1.9296,-1.6356);
+  },{reachM:.06});
   P.addCupola('turret',cylY(.352,.115,32),-.603-YAW[0],2.323-YAW[1],-.30873-YAW[2]);
   top(P,'turretDetail',cylY(.345,.038,32).scale(1,1,.73),-.603,2.438,-.30873);
   P.addCupola('turret',cylY(.3394,.10,32).scale(1,1,.707),.47555-YAW[0],2.174-YAW[1],-.39108-YAW[2]);
@@ -143,7 +153,8 @@ function casesAndOptics(P:TankBuilderPort):void{
     [-.593,2.40608,.16547,.2427,.1304,.0818],[-.8325,2.46833,-.01003,.2207,.0977,.116],
     [-.8918,2.47738,-.15923,.2065,.187,.1354],[.73705,2.23878,-.76763,.271,.1504,.249]])top(P,'turretDetail',box(w,h,d),x,y,z);
   addT90AWApsHousings(P);
-  antenna(P,-.27255,2.18015,-.89241);antenna(P,1.05213,1.99952,.52246);
+  // 2026-10-19 (owner float sweep): the rear mast's foot stood 26 mm over the roof (y 2.18015); it stands 2 mm in.
+  antenna(P,-.27255,2.152,-.89241);antenna(P,1.05213,1.99952,.52246);
   addT90AWMeteo(P);
   addT90AWProjectors(P);
   addT90AWOpticalHeads(P);
@@ -157,7 +168,8 @@ function antenna(P:TankBuilderPort,x:number,y:number,z:number):void{
 function smokeAndAA(P:TankBuilderPort):void{
   for(const side of [-1,1]){
     for(const[x,y,z,yaw]of [[1.4693,2.07198,.00827,.24],[1.3404,2.06818,.01427,.24],
-      [1.44095,1.93033,.02657,.54],[1.5713,1.92373,-.02658,.54],[1.58,1.79,-.035,.72],[1.45,1.80,.05,.72]])
+      // 2026-10-19 (owner float sweep): the middle pair stood 20-27 mm over its shelf (y 1.93033/1.92373); seated 2 mm in.
+      [1.44095,1.90133,.02657,.54],[1.5713,1.90173,-.02658,.54],[1.58,1.79,-.035,.72],[1.45,1.80,.05,.72]])
       top(P,'turretDark',markSmokeTube(blindTube(.048,.031,.24,.10,20),[0,0,1],true).rotateX(-.32).rotateY(side*yaw),side*x,y,z);
     top(P,'turretDetail',box(.35,.03,.235),side*1.3755,2.025,-.10543);
     top(P,'turretDetail',box(.4,.03,.245),side*1.39,1.805,-.11553);

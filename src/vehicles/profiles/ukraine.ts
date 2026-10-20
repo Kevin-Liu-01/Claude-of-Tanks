@@ -1,7 +1,7 @@
 import {resizeAuthoredVehicle} from './vehicleSize.ts';
 import {upgradeOplotFieldEquipment} from './fieldProtectionPack.ts';
 import { buildT64Modern } from './t72ModernVariants.ts';
-import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import type { SnapGroupOptions, TankBuilderPort } from '../tankFactoryCore.ts';
 // Ukrainian tracked-vehicle family — §5.248 GROUND-UP REBUILDS (ukraine wave).
 //
 // Every build below is a first-party procedural §K construction measured from
@@ -97,6 +97,8 @@ interface UkraineBuilderPort {
   offsetBuckets: TankBuilderPort['offsetBuckets'];
   /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
   hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  /** Seats the fittings authored in `build` on their rig group's stock once the profile is done (fittingSnap.ts). */
+  snapGroup(label: string, build: () => void, options?: SnapGroupOptions): void;
 }
 
 interface CassetteOptions {
@@ -370,6 +372,9 @@ function addFacetedT80FrontERA(P: UkraineBuilderPort, variant: T80ModernizationV
 // use the equipment path so they cannot enlarge combat hit volumes.
 function addModernizedT80BustleBasket(P: UkraineBuilderPort): void {
   const { box, cylX } = KIT;
+  // 2026-10-19 (owner float sweep): the rail frame stood 44 mm clear of the bustle (and its side posts stopped 2.5 mm
+  // under the top rail); the posts now reach the rail and the whole frame is seated on the bustle as one group.
+  P.snapGroup('t80-ua-bustle-basket', () => {
   for (const y of [0.28, 0.43, 0.57]) {
     P.addEquipment('turret', box(1.92, 0.025, 0.035), 0, y, -1.94);
   }
@@ -378,9 +383,10 @@ function addModernizedT80BustleBasket(P: UkraineBuilderPort): void {
   }
   for (const side of [-1, 1]) {
     P.addEquipment('turret', box(0.035, 0.025, 0.82), side * 0.95, 0.57, -1.58);
-    P.addEquipment('turret', box(0.035, 0.25, 0.025), side * 0.95, 0.43, -1.72);
-    P.addEquipment('turret', box(0.035, 0.25, 0.025), side * 0.95, 0.43, -1.36);
+    P.addEquipment('turret', box(0.035, 0.26, 0.025), side * 0.95, 0.435, -1.72);
+    P.addEquipment('turret', box(0.035, 0.26, 0.025), side * 0.95, 0.435, -1.36);
   }
+  }, { reachM: 0.08 });
   P.addEquipment('turret', box(0.46, 0.20, 0.34), -0.38, 0.39, -1.56);
   P.addEquipment('turret', box(0.36, 0.16, 0.30), 0.42, 0.37, -1.58);
   P.addEquipment('turret', cylX(0.08, 0.74, 12), 0.28, 0.61, -1.64);
@@ -575,7 +581,8 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
   // box + -3.14 main box buried the bo4ki pair into a squared shelf).
   for (const s of [-1, 1]) {
     P.add('hull', box(0.875, 0.42, 0.24), s * 1.2175, 1.63, -2.84);
-    P.add('hull', box(0.885, 0.15, 0.11), s * 1.2125, 1.70, -2.64);
+    // 2026-10-19 (owner float sweep): the hump's top lip stood 25 mm ahead of the hump; it now bears on its face.
+    P.add('hull', box(0.885, 0.15, 0.11), s * 1.2125, 1.70, -2.667);
     P.add('hull', box(0.90, 0.38, 0.19), s * 1.21, 1.20, -3.06);
     P.add('hull', box(0.475, 0.030, 4.35), s * 1.4775, 1.245, 0.22);
     P.add('hull', box(0.060, 0.030, 4.35), s * 1.22, 1.215, 0.22);
@@ -641,8 +648,6 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
   P.add('hullDark', box(1.80, 0.30, 0.035), 0, 1.35, -3.36);
   for (let i = 0; i < 5; i++) P.add('hullDetail', box(0.30, 0.13, 0.025), -0.72 + i * 0.36, 1.35, -3.375);
   for (const s of [-1, 1]) {
-    P.add('hullDark', KIT.torus(0.075, 0.018, 12), s * 0.85, 0.62, -3.365, Math.PI / 2, 0, 0);
-    P.add('hullDark', box(0.07, 0.24, 0.08), s * 0.85, 0.78, -3.33);
     // rear fender tips carry the published width to the tail station
     P.add('hull', box(0.30, 0.08, 0.42), s * 1.568, 1.20, -3.14);
     P.add('hullRubber', box(0.30, 0.24, 0.04), s * 1.568, 1.04, -3.34);
@@ -668,11 +673,17 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
     P.add('hull', box(0.84, 0.15, 0.13), s * 1.215, 1.515, -3.335);
   }
   P.add('hullDark', box(0.10, 0.30, 0.34), 0, 1.42, -3.13);              // center gap saddle post
-  {
+  // 2026-10-19 (owner float sweep): the recovery eyes, their brackets and the log slung on them stood 161 mm behind
+  // the raked lower stern plate; the three are seated on it as one group.
+  P.snapGroup('t80bv-ua-stern-recovery', () => {
+    for (const s of [-1, 1]) {
+      P.add('hullDark', KIT.torus(0.075, 0.018, 12), s * 0.85, 0.62, -3.365, Math.PI / 2, 0, 0);
+      P.add('hullDark', box(0.07, 0.24, 0.08), s * 0.85, 0.78, -3.33);
+    }
     const log = FITTINGS.unditchingLog({ mats: P.mats, len: 2.30, r: 0.10, straps: 3, seed: 8801 });
     log.position.set(0, 0.50, -3.32);
     P.hullG.add(log);
-  }
+  }, { reachM: 0.17 });
   };
   buildBVStern();
 
@@ -870,7 +881,8 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
   for (const s of [-1, 1]) {
     P.add('hull', box(0.875, 0.42, 0.24), s * 1.2175, 1.63, -3.25);
     P.add('hull', box(0.84, 0.30, 0.12), s * 1.215, 1.55, -3.44);
-    P.add('hull', box(0.885, 0.15, 0.11), s * 1.2125, 1.70, -3.05);
+    // 2026-10-19 (owner float sweep): the hump's top lip stood 25 mm ahead of the hump; it now bears on its face.
+    P.add('hull', box(0.885, 0.15, 0.11), s * 1.2125, 1.70, -3.077);
     P.add('hull', box(0.90, 0.38, 0.19), s * 1.21, 1.20, -3.17);
     P.add('hull', box(0.475, 0.030, 4.50), s * 1.4775, 1.245, 0.22);
     P.add('hull', box(0.060, 0.030, 4.50), s * 1.22, 1.215, 0.22);
@@ -1187,8 +1199,9 @@ function buildUAOplotM(P: TankBuilderPort): void {
     [-0.86, 0.45, 3.02], [0.86, 0.45, 3.02], [0.82, 0.45, 3.50], [-0.82, 0.45, 3.50],
     [-0.86, 1.09, 3.02], [0.86, 1.09, 3.02], [0.82, 0.82, 3.50], [-0.82, 0.82, 3.50]));
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.34, 0.10, 0.05), s * 0.47, 1.12, 3.30, 0, -s * 0.26, 0);
-    P.add('hull', box(0.58, 0.10, 0.05), s * 0.85, 1.12, 3.42, 0, -s * 0.60, 0);
+    // 2026-10-19 (owner float sweep): the two bow V-bars stood 69-95 mm over the nose plate; each is seated on it.
+    P.snapGroup('oplot-m-bow-bar', () => P.add('hull', box(0.34, 0.10, 0.05), s * 0.47, 1.12, 3.30, 0, -s * 0.26, 0), { reachM: 0.10 });
+    P.snapGroup('oplot-m-bow-bar', () => P.add('hull', box(0.58, 0.10, 0.05), s * 0.85, 1.12, 3.42, 0, -s * 0.60, 0), { reachM: 0.10 });
     // §5.272 MUST-FIX (1): the 0.945-wide transverse tip bar (x to 1.745,
     // air under both ends) is DELETED — the bow now carries a real fender
     // run stepping down the glacis edge to a fender-line tip plate with the
@@ -1204,8 +1217,8 @@ function buildUAOplotM(P: TankBuilderPort): void {
     P.add('hullRubber', box(0.34, 0.26, 0.045), s * 1.36, 0.92, -3.47);
   }
 
-  // Driver station.
-  P.add('hull', cylY(0.23, 0.23, 0.04, 14), 0, 1.44, 1.55);
+  // Driver station. 2026-10-19 (owner float sweep): the hatch stood 24 mm over the deck (y 1.44); seated 1 mm in.
+  P.add('hull', cylY(0.23, 0.23, 0.04, 14), 0, 1.415, 1.55);
   KIT.periscope(P, 'hullDetail', -0.14, 1.45, 1.80);
   KIT.periscope(P, 'hullDetail', 0.14, 1.45, 1.80);
   };
@@ -1494,7 +1507,9 @@ function buildUAOplotM(P: TankBuilderPort): void {
   // shaft + head housing with the WINDOW FACE forward + lens hood + cap
   // plate. Cap held at the published 2.80 band; z-span <=0.34 keeps the
   // single p95 spike window <=2.5 columns.
-  P.add('turret', box(0.36, 0.05, 0.24), -0.14, 0.845, -1.04);
+  // 2026-10-19 (owner float sweep): the plinth stood 25 mm over the roof and the shaft 20 mm over the plinth; the
+  // plinth now runs from 2 mm into the roof up into the shaft's foot.
+  P.add('turret', box(0.36, 0.099, 0.24), -0.14, 0.8425, -1.04);
   P.add('turretDetail', box(0.28, 0.28, 0.20), -0.14, 1.03, -1.04);
   P.add('turretDark', box(0.30, 0.035, 0.22), -0.14, 1.19, -1.04);
   P.add('turretDetail', box(0.40, 0.21, 0.24), -0.14, 1.245, -1.04);
@@ -1502,7 +1517,7 @@ function buildUAOplotM(P: TankBuilderPort): void {
   P.add('turretDark', box(0.30, 0.030, 0.055), -0.14, 1.325, -0.918);
   P.add('turretDetail', box(0.34, 0.022, 0.22), -0.14, 1.36, -1.04);
   P.add('turretDark', box(0.10, 0.05, 0.09), -0.14, 1.10, -0.92);
-  P.add('turretDark', box(0.05, 0.05, 0.05), 0.30, 0.875, -1.05);
+  P.add('turretDark', box(0.05, 0.05, 0.05), 0.30, 0.818, -1.05); // (2026-10-19 float sweep: was y 0.875, 55 mm up)
   for (const [x, z, ry] of [[-0.28, 0.30, 0.06], [0.28, 0.26, -0.06], [0.02, 0.48, 0]]) {
     P.add('turret', box(0.13, 0.045, 0.11), x, 0.808, z, 0, ry, 0);
     P.add('turretGlass', box(0.09, 0.036, 0.02), x, 0.83, z + 0.05, 0, ry, 0);
@@ -1666,12 +1681,13 @@ function buildUAOplotM(P: TankBuilderPort): void {
     P.add('turretDetail', box(0.075, 0.028, 0.028), 1.352, 0.62, -0.84);
     P.add('turretDetail', box(0.095, 0.028, 0.028), 1.312, 0.62, -1.00);
   }
-  for (const s of [-1, 1]) {
+  // 2026-10-19 (owner float sweep): each whip base stood 38 mm outboard of the bustle corner; base and whip are seated.
+  for (const s of [-1, 1]) P.snapGroup('oplot-m-whip-base', () => {
     P.add('turretDark', box(0.06, 0.07, 0.06), s * 0.94, 0.40, -1.98);
     seat(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats,
       h: 0.20, r: 0.012, rake: -s * 0.85, seed: 8420 + (s > 0 ? 1 : 0) }),
       s * 0.94, 0.44, -1.98);
-  }
+  }, { reachM: 0.05 });
   };
   buildOplotSideFinish();
 
@@ -1959,8 +1975,12 @@ function addAbramsDroneCage(P: UkraineBuilderPort): void {
   // below the canopy crown.
   addCageBar(P, 0.72, 0.10, 0.20, 0, 1.15, 0.74);
   P.add('turretGlass', box(0.28, 0.095, 0.026), 0, 1.17, 0.855);
-  P.addEquipment('turret', box(0.24, 0.20, 0.20), -0.96, 1.04, -1.62);
-  P.add('turretGlass', box(0.13, 0.07, 0.024), -0.96, 1.07, -1.505);
+  // 2026-10-19 (owner float sweep): the sensor box stood 165 mm over the roof (its window 3 mm off its face); the
+  // window now lies on the face and the pair stands on the roof.
+  P.snapGroup('ua-m1a1-cage-sensor', () => {
+    P.addEquipment('turret', box(0.24, 0.20, 0.20), -0.96, 1.04, -1.62);
+    P.add('turretGlass', box(0.13, 0.07, 0.024), -0.96, 1.07, -1.509);
+  }, { reachM: 0.18, mode: 'down' });
   P.decal('turret', 'number', 'UA M1', 0.24, [-1.48, 0.32, -0.80], -Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.48);
 }

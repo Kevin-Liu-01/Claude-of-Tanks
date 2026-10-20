@@ -1,4 +1,4 @@
-import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import type { SnapGroupOptions, TankBuilderPort } from '../tankFactoryCore.ts';
 import { withSeatRole, withSpareTrackRun } from '../spareTrackSeat.ts';
 import { spareLinkBlock } from '../spareLinkGeometry.ts';
 import { buildT64Modern } from './t72ModernVariants.ts';
@@ -63,6 +63,14 @@ interface RussiaGeometryPort {
     position: Vec3Tuple,
     ...orientation: number[]
   ): void;
+  /** Seats the fittings authored in `build` on their rig group's stock once the profile is done (fittingSnap.ts). */
+  snapGroup?(label: string, build: () => void, options?: SnapGroupOptions): void;
+}
+
+// Owner float sweep 2026-10-19: seat a small fitting on its stock when the port can (P.snapGroup, fittingSnap.ts).
+function seatRu(P: RussiaGeometryPort, label: string, build: () => void, options: SnapGroupOptions): void {
+  if (P.snapGroup) P.snapGroup(label, build, options);
+  else build();
 }
 
 interface RussiaGunPort extends RussiaGeometryPort {
@@ -966,9 +974,11 @@ export function ruGlacisKit(P: RussiaGeometryPort, o: GlacisKitOptions): void {
   // shadow-olive clones at the same seats (SHADOW-TONE order — the merged
   // hullDetail/hullDark drums rendered unmovable near-black at the bow
   // corners). Default byte-identical.
+  // 2026-10-19 (owner float sweep): on the T-80 line the lamps stood 54-243 mm clear of the bow (ahead of the falling
+  // sponsons); each lamp is seated on the nearest bow stock (a lamp already touching stays where it is).
   if (o.lights !== false) {
-    headlight(P, -(o.hlX ?? o.w * 0.44), o.hlY ?? (yG + 0.10), zG + 0.14, -0.30, 0.05);
-    headlight(P, (o.hlX ?? o.w * 0.44), o.hlY ?? (yG + 0.10), zG + 0.14, -0.30, 0.05);
+    seatRu(P, 'ru-headlight', () => headlight(P, -(o.hlX ?? o.w * 0.44), o.hlY ?? (yG + 0.10), zG + 0.14, -0.30, 0.05), { reachM: 0.25 });
+    seatRu(P, 'ru-headlight', () => headlight(P, (o.hlX ?? o.w * 0.44), o.hlY ?? (yG + 0.10), zG + 0.14, -0.30, 0.05), { reachM: 0.25 });
   }
 }
 
@@ -978,8 +988,12 @@ export function ruDeck(P: RussiaGeometryPort, o: DeckOptions): void {
   // hatchY (r10): hatch seat on the LOCAL deck line when it differs from the
   // grille plateau (t72b3m_2022 glacis hatch sits at 1.34, plateau 1.40)
   const hY = o.hatchY ?? o.deckY;
-  P.add('hull', cylY(0.24, 0.24, 0.04, 14), o.hatchX ?? 0, hY + 0.025, o.hatchZ);
-  P.add('hullDark', cylY(0.247, 0.247, 0.012, 14), o.hatchX ?? 0, hY + 0.032, o.hatchZ);
+  // 2026-10-19 (owner float sweep): where the deck falls under the hatch seat the hatch stood up to 15 mm over it; it
+  // drops onto the deck (a hatch already on it stays).
+  seatRu(P, 'ru-driver-hatch', () => {
+    P.add('hull', cylY(0.24, 0.24, 0.04, 14), o.hatchX ?? 0, hY + 0.025, o.hatchZ);
+    P.add('hullDark', cylY(0.247, 0.247, 0.012, 14), o.hatchX ?? 0, hY + 0.032, o.hatchZ);
+  }, { reachM: 0.03, mode: 'down' });
   // periY: near-flush driver periscopes (t72b3m_2022 r6 — ref deck line is clean)
   KIT.periscope(P, 'hullDetail', (o.hatchX ?? 0) - 0.16, o.periY ?? (o.deckY + 0.05), o.hatchZ + 0.30);
   KIT.periscope(P, 'hullDetail', (o.hatchX ?? 0) + 0.16, o.periY ?? (o.deckY + 0.05), o.hatchZ + 0.30);
@@ -987,9 +1001,11 @@ export function ruDeck(P: RussiaGeometryPort, o: DeckOptions): void {
   // for refs whose engine deck reads FLUSH (the t90am ref holds a clean
   // 1.365-1.368 line over its whole grille run; the default +0.026 ribs
   // printed 1.402 across five side cols). Defaults byte-identical.
+  // 2026-10-19 (owner float sweep): the grille plates and ribs keep one flat seat, so where the deck falls aft they
+  // stood 9-42 mm over it; each plate and rib drops onto the deck (those already on it stay).
   for (let i = 0; i < (o.grilles ?? 6); i++) {
-    P.add('hullDark', box(o.gw ?? 1.5, 0.018, 0.075), o.gx ?? 0, (o.gY ?? o.deckY) + 0.012, o.gz - i * 0.24);
-    P.add('hullDetail', box(o.gw ?? 1.5, 0.028, 0.026), o.gx ?? 0, (o.ribY ?? ((o.gY ?? o.deckY) + 0.026)), o.gz - 0.12 - i * 0.24);
+    seatRu(P, 'ru-deck-grille', () => P.add('hullDark', box(o.gw ?? 1.5, 0.018, 0.075), o.gx ?? 0, (o.gY ?? o.deckY) + 0.012, o.gz - i * 0.24), { reachM: 0.05, mode: 'down' });
+    seatRu(P, 'ru-deck-rib', () => P.add('hullDetail', box(o.gw ?? 1.5, 0.028, 0.026), o.gx ?? 0, (o.ribY ?? ((o.gY ?? o.deckY) + 0.026)), o.gz - 0.12 - i * 0.24), { reachM: 0.05, mode: 'down' });
   }
 }
 
@@ -1036,8 +1052,13 @@ function addRuSkirtPanel(
   // so the panel FACE is the station-widest course (the default battens
   // print o.x+0.027 and owned five station slices at +1.9 cm/side).
   const dressIn = options.dressIn ?? 0;
+  // 2026-10-19 (owner float sweep): a deep dressIn pulled the batten and bolt heads clear behind the panel (15-22 mm
+  // off it), and the course's last batten stood 16 mm past its panel's end with no backing strip; the dressed seats
+  // stop 2 mm inside the panel's inner face, and the last batten caps its own panel's end.
+  const thick = options.th ?? 0.04;
   P.add('hullDark', box(0.048, panelH * 0.9, 0.02),
-    side * (options.x + 0.003 - dressIn), panelYMid, z + panelD / 2);
+    side * Math.max(options.x + 0.003 - dressIn, options.x - thick / 2 - 0.022), panelYMid,
+    last ? z + panelD * 0.47 - 0.008 : z + panelD / 2);
   // A backing strip behind each joint carries the panels as one course and the joint's batten with them (owner
   // 2026-10-19 sweep: the 6 % joints left every panel, and every batten, on its own, and a panel with no fender over
   // it floated). It laps 20 mm into each panel's back and stays 19 mm inside the outer face line.
@@ -1047,7 +1068,7 @@ function addRuSkirtPanel(
       side * (inner + outer) / 2, panelYMid, z + panelD / 2);
   }
   P.add('hullDark', KIT.cylZ(0.014, 0.014, 8),
-    side * (options.x + 0.015 - dressIn), options.yTop - 0.07, z,
+    side * Math.max(options.x + 0.015 - dressIn, options.x - thick / 2 - 0.005), options.yTop - 0.07, z,
     0, side * Math.PI / 2, 0);
   // bottom lip segmented per panel (edge-on prism law: a full-length strip
   // has no station-visible faces mid-span). Explicit seats let individual
@@ -1182,16 +1203,21 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
   // remains inboard of the front track wraps.
   KIT.headlight(P, -0.506, 1.12, 2.92, -0.28, 0.07);
   KIT.headlight(P, 0.506, 1.12, 2.92, -0.28, 0.07);
+  // 2026-10-19 (owner float sweep): at the default seats (the T-62 lines) the stiffeners stood 112-122 mm and the
+  // recovery points 159 mm ahead of the raked lower plate; each is seated on the bow stock (Type 59's explicit seats
+  // already bear on it and stay).
   [-0.792, -0.264, 0.264, 0.792].forEach((x) => {
-    P.add('hullDetail', box(0.13, 0.15, 0.035), x,
+    seatRu(P, 't62-bow-stiffener', () => P.add('hullDetail', box(0.13, 0.15, 0.035), x,
       bowService.stiffenerY ?? 0.66, bowService.stiffenerZ ?? 3.555,
-      bowService.stiffenerPitch ?? -0.05, 0, 0);
+      bowService.stiffenerPitch ?? -0.05, 0, 0), { reachM: 0.13 });
   });
   [-1, 1].forEach((s) => {
-    P.add('hullDark', box(0.16, 0.10, 0.08), s * 1.012,
-      bowService.recoveryY ?? 0.55, bowService.recoveryBodyZ ?? 3.515);
-    P.add('hullDetail', cylZ(0.065, 0.035, 10), s * 1.012,
-      bowService.recoveryY ?? 0.55, bowService.recoveryEyeZ ?? 3.570);
+    seatRu(P, 't62-bow-recovery', () => {
+      P.add('hullDark', box(0.16, 0.10, 0.08), s * 1.012,
+        bowService.recoveryY ?? 0.55, bowService.recoveryBodyZ ?? 3.515);
+      P.add('hullDetail', cylZ(0.065, 0.035, 10), s * 1.012,
+        bowService.recoveryY ?? 0.55, bowService.recoveryEyeZ ?? 3.570);
+    }, { reachM: 0.17 });
   });
   P.hullG.userData.t62BowServiceReceipt = Object.freeze({
     stiffenerCount: 4,
@@ -1256,7 +1282,8 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
   });
   [-1, 1].forEach((s) => {
     P.add('hullDark', cylZ(0.10, 0.05, 12), s * 1.232, 1.08, -3.205);
-    P.add('hullDetail', KIT.torus(0.085, 0.018, 10), s * 0.902, 0.48, -3.225, Math.PI / 2, 0, 0);
+    // 2026-10-19 (owner float sweep): the eye stood 27 mm aft of the lower rear plate; it now sits 2 mm into it.
+    P.add('hullDetail', KIT.torus(0.085, 0.018, 10), s * 0.902, 0.48, -3.196, Math.PI / 2, 0, 0);
   });
   // rear flap rails (plan rear -3.13 at |x| 1.20..1.54, ref line)
   [-1, 1].forEach((s) => {
@@ -1319,7 +1346,9 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
       P.add('hullDark', box(0.055, 0.25, 0.02), s * 1.7754, 1.333, -1.908 + i * 0.4816 + 0.232);
     });
     P.add('hull', box(0.0605, 0.25, 0.39), s * 1.7732, 1.26, -2.60, 0.08, 0, 0);  // aft rake bin
-    P.add('hull', box(0.055, 0.10, 0.46), s * 1.76, 1.42, -3.00);               // aft fender bracket
+    // 2026-10-19 (owner float sweep): the bracket (and the aft bin on it) stood 27 mm outboard of the hull side; its
+    // inner face now runs 2 mm into the side (outer face unchanged).
+    P.add('hull', box(0.0845, 0.10, 0.46), s * 1.745, 1.42, -3.00);               // aft fender bracket
     P.add('hull', box(0.0605, 0.24, 0.315), s * 1.7732, 1.325, 2.519, -0.05, 0, 0); // glacis bin
     P.add('hull', box(0.0605, 0.24, 0.30), s * 1.7732, 1.26, 2.86, -0.10, 0, 0);
     P.add('hull', box(0.484, 0.055, 0.54), s * 1.518, 1.335, 2.75, -0.20, 0, 0);   // front corner guards above shoe crown
@@ -1376,11 +1405,12 @@ export function buildT62Obr1975(P: RussiaBuilderPort): void {
   // Paired low side stowage/lamps on planted cheek brackets. Their ribbed,
   // painted end caps match the source's outboard rolls rather than reading
   // as oversized blue optics.
-  for (const s of [-1, 1]) {
+  // 2026-10-19 (owner float sweep): each side roll and its bracket stood 38 mm off the casting; seated on it.
+  for (const s of [-1, 1]) seatRu(P, 't62-cheek-roll', () => {
     P.add('turret', box(0.176, 0.18, 0.26), s * 1.364, 0.47, 0.41, -0.05, 0, 0);
     P.add('turret', cylZ(0.13, 0.09, 14), s * 1.43, 0.47, 0.57);
     P.add('turretDark', cylZ(0.10, 0.015, 14), s * 1.43, 0.47, 0.62);
-  }
+  }, { reachM: 0.05 });
   // One DShK station only.  A previous round retained a hand-built receiver,
   // post and ring underneath the complete `pintleMG` fitting below, producing
   // two overlapping weapons and an oversized roof mask.  The source carries
@@ -1406,8 +1436,11 @@ export function buildT62Obr1975(P: RussiaBuilderPort): void {
     [-0.495, 0.99, -0.02, 0.10], [0.374, 0.94, -0.03, -0.12],
     [0.836, 0.98, -0.05, 0.24], [1.089, 0.88, -0.27, 0.42],
   ]) {
-    P.add('turret', box(0.16, 0.055, 0.14), x, y - 0.035, z, 0, ry, 0);
-    P.add('turretGlass', box(0.12, 0.055, 0.025), x, y, z + 0.065, 0, ry, 0);
+    // 2026-10-19 (owner float sweep): one pad stood 37 mm over the casting; each pad and head is seated on it.
+    seatRu(P, 't62-roof-periscope', () => {
+      P.add('turret', box(0.16, 0.055, 0.14), x, y - 0.035, z, 0, ry, 0);
+      P.add('turretGlass', box(0.12, 0.055, 0.025), x, y, z + 0.065, 0, ry, 0);
+    }, { reachM: 0.05 });
   }
   P.add('turret', cylY(0.30, 0.32, 0.055, 18), 0.286, 0.86, 0.02);
   P.add('turretDark', box(0.462, 0.035, 0.06), 0.286, 0.90, 0.02, 0, -0.22, 0);

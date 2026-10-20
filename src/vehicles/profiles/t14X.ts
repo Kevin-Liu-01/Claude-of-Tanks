@@ -166,6 +166,9 @@ function addRearLattice(P: TankBuilderPort, side: number): void {
     for (let j = 0; j < 5; j++) {
       P.addEquipment('hullOpenLattice', box(.86, .022, .025), side * 1.08, 1.15 + j * .12, -4.27);
     }
+    // 2026-10-19 (owner float sweep): the two lowest slats of the stern lattice stood 20-91 mm clear of everything; two
+    // stiles tie all five slats together, so the low ones hang from the upper ones on the stern fixtures.
+    for (const x of [.665, 1.495]) P.addEquipment('hullOpenLattice', box(.035, .53, .025), side * x, 1.39, -4.27);
 }
 
 function addSideFixtures(P: TankBuilderPort, side: number): void {
@@ -225,7 +228,8 @@ function addGlacisPanels(P: TankBuilderPort): void {
 function addGlacisServiceFittings(P: TankBuilderPort): void {
   // Source's asymmetric low hatch and hinge lie on the broad central plate.
   glacisPanel(P,-.44632,-.10105,2.93907,3.14507,1.5602,1.5052,.043);
-  P.addEquipment('hullDetail',cylZ(.01945,.19714,12),-.27368,1.57488,3.15888,0,Math.PI/2);
+  // 2026-10-19 (owner float sweep): the hinge pin stood 52 mm over the plate; it is seated on it.
+  P.snapGroup('t14-hatch-hinge',()=>P.addEquipment('hullDetail',cylZ(.01945,.19714,12),-.27368,1.57488,3.15888,0,Math.PI/2),{reachM:.06});
   P.addEquipment('hullDetail',box(.043,.049,.105),-.372,1.522,2.876,Math.atan(.27));
   glacisPanel(P,.63899,.9201,2.55943,2.68812,1.62486,1.596,.14);
   for (const x of [-.736,-.368,0,.368,.7315]) {

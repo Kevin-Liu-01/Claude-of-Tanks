@@ -43,10 +43,13 @@ function planPrism(plan:readonly Pair[],bottom:(x:number)=>number,top:(x:number)
 }
 function leftHead(P:TankBuilderPort):void{
   const frame=leftFrame();
+  // 2026-10-19 (owner float sweep): the wedge side, strap and end plates (one connected piece, apart from the right
+  // side prism) stood 30 mm clear of the casting and the prism 9 mm; each piece is seated.
   // Two differently shaped sides of the source head flank a thin raised
   // central strap. Their unequal plan outlines are not a mirrored box.
   const right:Pair[]=[[-.006,-.0905],[.026,-.0905],[.1191,-.024],[.1191,.0986],[-.006,.0986]];
-  emit(P,planPrism(right,x=>Math.max(-.07053,-.08298+.4559*x),()=>.0431736).applyMatrix4(frame));
+  P.snapGroup('t90aw-left-optic-prism',()=>emit(P,planPrism(right,x=>Math.max(-.07053,-.08298+.4559*x),()=>.0431736).applyMatrix4(frame)),{reachM:.03});
+  P.snapGroup('t90aw-left-optic-head',()=>{
   emit(P,leftWedge().applyMatrix4(frame));
   // The narrow raised central strap is solid in the supplied source. Its
   // clipped ends do not occupy the bounding rectangle's corner air.
@@ -54,6 +57,7 @@ function leftHead(P:TankBuilderPort):void{
     [-.009,.1273],[-.039,.1273],[-.053,.105]];
   emit(P,planPrism(strap,()=>-.0778,()=>.05025).applyMatrix4(frame));
   leftReturns(P);
+  },{reachM:.05});
   leftFeet(P);
 }
 function leftFeet(P:TankBuilderPort):void{
