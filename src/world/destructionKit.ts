@@ -370,10 +370,25 @@ export interface DamageHide {
   piece?: string;
 }
 
+/**
+ * (destruction-slabs 227 round 5) A set piece's named piece laid at rest by one rigid turn (body frame): each point v of it
+ * where it stood lies at r (v - pivot) + pivot + t (r a 3 x 3 rotation, row by row). The presentation shows it falling
+ * there over gravity's time before the stage's laid copy shows (the films: a tower mill's upper shaft, cap and sails were
+ * there one frame and lying on the ground the next).
+ */
+export interface DamageFall {
+  piece: string;
+  r: readonly number[];
+  pivot: readonly [number, number, number];
+  t: readonly [number, number, number];
+}
+
 /** What a stage returns beside what it wrote. */
 export interface DamageStageResult {
   cuts: StructureCut[];
   hides: DamageHide[];
+  /** (round 5) The pieces it laid at rest by one rigid turn each (a set piece's named pieces coming off). */
+  falls?: DamageFall[];
 }
 
 /** A breach to dress (StructureBreachEvent in the body frame) and what made it. */

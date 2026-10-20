@@ -101,4 +101,57 @@ const laid = (before) => debris.group.children.filter((m) => !before.has(m) && m
   assert.ok(s.standing(), 'reset drops the held hides');
 }
 
-console.log('structureStagesPieceHides selftest: a live run\'s piece stands until its wreck shows, a settled run\'s goes at once');
+// ---- (destruction-slabs 227 round 5; the round-4 critic's films: a tower mill's upper shaft, cap and sails there one frame
+// and lying on the ground the next) a live stage that lays a piece at rest by one rigid turn shows it falling there: the
+// piece's spans go at the event, a copy of its own triangles turns and drops over gravity's time to the pose the stage laid
+// it at, and the laid copy shows when the fall ends (never neither, never both apart); a settled stage lays it at once
+{
+  const fallSeam = (id, x) => {
+    const s = structure(id, x);
+    // the frame (0.4 x 12 x 0.4 m standing from 4 m) laid on its side: turned 90 degrees about z at its foot, down to the ground
+    const c = Math.cos(Math.PI / 2), sn = Math.sin(Math.PI / 2);
+    const fall = { piece: 'frame', r: [c, -sn, 0, sn, c, 0, 0, 0, 1], pivot: [x, 4, 0], t: [0, -3.8, 0] };
+    const damaged = (seed, out) => {
+      // the stage's laid copy: one quad where the turned frame lies (enough for the visibility checks)
+      if (out.mesh.begin('structureMetal', 'rubble')) {
+        const ids = [[x - 12, 0.2, -0.2], [x, 0.2, -0.2], [x, 0.2, 0.2], [x - 12, 0.2, 0.2]].map(([px, py, pz]) => out.mesh.vertex(px - x, py, pz, 0, 1, 0, 0, 0, 1, 1, 1));
+        out.mesh.triangle(ids[0], ids[2], ids[1]); out.mesh.triangle(ids[0], ids[3], ids[2]);
+        out.mesh.end();
+      }
+      return { cuts: [], hides: [{ section: null, partClass: null, piece: 'frame' }], falls: [fall] };
+    };
+    return { ...s, seam: { ...s.seam, damaged }, event: { ...s.event, stage: 'damaged', previous: 'intact' } };
+  };
+  const s = fallSeam(8, 120);
+  const before = new Set(debris.group.children);
+  const t0 = now;
+  stages.stage(s.event, s.seam);
+  const falling = () => debris.group.children.filter((m) => m.name.startsWith('fx-landmark-piece-fall-8-frame'));
+  const copy = laid(before).filter((m) => !m.name.startsWith('fx-landmark-piece-fall-'));
+  assert.ok(!s.standing(), 'the piece\'s spans go at the event');
+  assert.equal(falling().length, 1, 'its fall shows in its place');
+  assert.ok(copy.length > 0 && copy.every((m) => !m.visible), 'the laid copy waits for the fall');
+  const box = new THREE.Box3();
+  const top = () => { const m = falling()[0]; box.setFromBufferAttribute(m.geometry.getAttribute('position')).applyMatrix4(m.matrix); return box.max.y; };
+  assert.ok(Math.abs(top() - 16) < 0.05, `the fall starts where the piece stood (top ${top().toFixed(2)} m)`);
+  let last = Infinity, endAt = null;
+  for (let f = 1; f <= 180; f++) {
+    now = t0 + f / 60;
+    stages.update();
+    debris.update();
+    const shown = copy.some((m) => m.visible), mid = falling().length;
+    assert.ok(shown || mid, `frame ${f}: the piece is neither falling nor laid`);
+    assert.ok(!(shown && mid), `frame ${f}: the fall and the laid copy show together`);
+    if (mid) { const y = top(); assert.ok(y <= last + 1e-6, `frame ${f}: the piece rises as it falls`); last = y; }
+    if (shown && endAt === null) endAt = (now - t0);
+  }
+  assert.ok(endAt !== null && endAt >= 0.45 && endAt <= 1.6, `the fall takes gravity's time (${endAt?.toFixed(2)} s)`);
+  // settled (a late joiner): laid at once, no fall
+  const t = fallSeam(9, 160);
+  const before2 = new Set(debris.group.children);
+  stages.stage({ ...t.event, settled: true }, t.seam);
+  assert.equal(debris.group.children.filter((m) => m.name.startsWith('fx-landmark-piece-fall-9')).length, 0, 'a settled stage shows no fall');
+  assert.ok(laid(before2).length > 0 && laid(before2).every((m) => m.visible), 'and its laid copy at once');
+}
+
+console.log('structureStagesPieceHides selftest: a live run\'s piece stands until its wreck shows, a settled run\'s goes at once; a live stage\'s laid piece falls into its place first');

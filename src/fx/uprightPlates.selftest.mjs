@@ -146,8 +146,46 @@ const pc2 = perch([...box(0, 0, 0, 1.6, 1.6, 3), ...box(0.2, 1.62, 0, 4.2, 1.7, 
 layPerchedPlates(pc2.d, [], flat0);
 assert.deepEqual(Array.from(pc2.g.getAttribute('position').array), Array.from(pc.g.getAttribute('position').array), 'perched: bit-identical');
 
+// (round 5; the round-4 critic's airfield #0 tower, R narrow seed 1147584926: a heap plate held when it baked, 62-95 % over
+// nothing for 4.5 s as the storeys under it fell) a plate held now is handed back to be watched (its vertices, triangles and
+// body); judged again once its hold is gone, it is laid. In a merged heap (bodies per vertex) a body's twin a hand apart holds
+// nothing; another body's piece under it holds it.
+{
+  let alive = true;
+  const hold = { prepare() {}, held: (x, y, z, band) => alive && x >= 0 && x <= 4.2 && z >= 0 && z <= 3.3 && y - band <= 1.0 };
+  const heapTris = [...box(0, 1.3, 0, 4.2, 1.5, 3.3), ...box(8, 0, 8, 9, 1, 9)];
+  const heapG = geometryOf(heapTris);
+  const bodyOf = new Int32Array(heapG.getAttribute('position').count).fill(4);
+  for (let i = 36; i < bodyOf.length; i++) bodyOf[i] = 5;
+  const watch = [];
+  assert.equal(layPerchedPlates([{ geometry: heapG, matrix: null, bodyOf }], [], flat0, hold, null), 0, 'a merged heap plate a hold holds stays');
+  assert.equal(layPerchedPlates([{ geometry: heapG, matrix: null, body: 4 }], [], flat0, hold, watch), 0, 'and is handed back to be watched');
+  assert.equal(watch.length, 1, `one plate watched (${watch.length})`);
+  assert.equal(watch[0].verts.length, 36, 'its vertices');
+  assert.equal(watch[0].tris.length, 12, 'its triangles');
+  const pieces = watch.map(({ verts, tris, body }) => ({ verts, tris, body }));
+  assert.equal(layPerchedPlates([{ geometry: heapG, matrix: null, bodyOf, pieces }], [], flat0, hold), 0, 'judged again while held: stays');
+  alive = false;
+  const still = [];
+  assert.equal(layPerchedPlates([{ geometry: heapG, matrix: null, bodyOf, pieces }], [], flat0, hold, still), 1, 'its hold gone: laid');
+  assert.equal(still.length, 0, 'and watched no more');
+  assert.ok(boxes(heapG)[0].lo[1] < 0.06, `on the ground (${boxes(heapG)[0].lo[1].toFixed(3)} m)`);
+  assert.ok(Math.abs(boxes(heapG)[1].lo[1]) < 1e-6, 'the heap\'s other piece untouched');
+  // a merged heap's twins (one body, a hand apart) hold neither; another body's piece under one holds it
+  const twinG = geometryOf([...box(0, 1.7, 0, 4.2, 2.15, 3.3), ...box(0.05, 1.75, 0.05, 4.15, 2.1, 3.25)]);
+  const twinBody = new Int32Array(twinG.getAttribute('position').count).fill(9);
+  const twinPieces = [0, 1].map((k) => ({ verts: Int32Array.from({ length: 36 }, (_, i) => k * 36 + i), tris: Int32Array.from({ length: 12 }, (_, i) => k * 12 + i), body: 9 }));
+  assert.equal(layPerchedPlates([{ geometry: twinG, matrix: null, bodyOf: twinBody, pieces: twinPieces }], [], flat0), 2, 'a merged body\'s twins hold neither');
+  const underG = geometryOf([...box(0, 1.7, 0, 4.2, 2.15, 3.3), ...box(0, 0, 0, 4.2, 1.7, 3.3)]);
+  const underBody = new Int32Array(underG.getAttribute('position').count).fill(9);
+  for (let i = 36; i < underBody.length; i++) underBody[i] = 10;
+  assert.equal(layPerchedPlates([{ geometry: underG, matrix: null, bodyOf: underBody, pieces: [twinPieces[0]] }], [], flat0), 0,
+    'another body\'s piece under it in the heap holds it');
+}
+
 console.log('uprightPlates selftest: an upright plate beside a block laid on its broad side at its foot (the block untouched), '
   + 'flat plates and tiles left alone, a body plate laid in world space, deterministic; a remnant pier cut to half a metre over '
   + 'the drawn form, a held member and an unknown spot left as drawn; a perched plate tilted off its block onto the ground, one over '
   + 'nothing lowered flat, plates held by their block, a hold, the ground or another drawing left alone; a body\'s twin pieces '
-  + '(its skin and its interior plate) hold neither each other up, its own block reaching down does');
+  + '(its skin and its interior plate) hold neither each other up, its own block reaching down does; a heap plate held now is '
+  + 'watched and laid once its hold goes; a merged heap\'s twins hold neither, another body under it does');

@@ -448,6 +448,8 @@ function detach(a: StructureDamageAnatomy, plan: LandmarkPlan, p: KeptPiece, out
   // (destruction-slabs 227, Polders' tower mill: its upper tower took the stage's room, and the sails left standing on the
   // fallen tower's hub hung in the air) a piece the stage has no room to lay still comes off: gone in its chips
   res.hides.push({ section: null, partClass: null, piece: p.name } satisfies DamageHide);
+  // (round 5) laid by one rigid turn: the presentation shows its fall there
+  if (ok && !drape) (res.falls ??= []).push({ piece: p.name, r: pose.r, pivot: [pose.px, pose.py, pose.pz], t: [pose.tx, pose.ty, pose.tz] });
   chips(p, a, out, ok ? 6 : 12);
 }
 

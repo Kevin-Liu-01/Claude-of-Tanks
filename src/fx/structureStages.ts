@@ -26,7 +26,7 @@
 import * as THREE from 'three';
 import type { MunitionClass, StructureBreachEvent, StructureStageEvent } from '../sim/destructionEvents.ts';
 import {
-  anatomyCentre, damageRng, damageSeed, type DamageFace, type DamageRole, type DamageStageResult, type DamageStorey, type DamageWriters,
+  anatomyCentre, damageRng, damageSeed, type DamageFace, type DamageFall, type DamageRole, type DamageStageResult, type DamageStorey, type DamageWriters,
   type DebrisShape, type FractureMaterial, type FractureSlot, type StructureDamageAnatomy,
 } from '../world/destructionKit.ts';
 import { clearOverEaves, drawnOverAt, faceSetback, faceSetbackMedian, roofFurnitureAt, storeyInterior } from '../world/structureEnclosure.ts';
@@ -113,6 +113,9 @@ function rubbleOnly(out: DamageWriters): DamageWriters {
  *  (the owner: "shooting buildings should cause destruction too"): every burst and every armour-piercing round leaves its
  *  hole, a dozen hits a building before it falls (it went from three, the rest of a battle's hits showing nothing). */
 const STRIKE_HOLES = 9;
+/** (round 5) A set piece's piece falls over gravity's time from its middle's drop, this much slower (it turns as it
+ *  goes), never quicker or longer than these (s). */
+const FALL_SLOW = 1.25, FALL_MIN_S = 0.45, FALL_MAX_S = 1.6;
 /** (destruction-slabs 227 round 5) A top storey's room open to the sky (its roof fallen): its walls and floor lit as the
  *  outside is (laid dim, 0.55-0.6, they read as one flat dark plane over the roofless storey: the critics' tavern lid). */
 const OPEN_ROOM_WALL = 0.95, OPEN_ROOM_FLOOR = 0.85;
@@ -960,6 +963,119 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     : Math.max(2, Math.min(STRIKE_BODIES_MAX, Math.round(2 + 1.6 * Math.sqrt(Math.max(0, chargeKg)))));
   /** A live run's named-piece hides, held to its wreck's birth (227, lane B co-hold: a piece laid after the run's delay stood till it shows). */
   const heldHides: { seam: StructureDamageSeam; hides: DamageStageResult['hides']; at: number }[] = [];
+
+  /**
+   * (destruction-slabs 227 round 5; the round-4 critic's films: polders #46's tower mill lost its upper shaft, cap and sails
+   * in one 100 ms step, a stump with chunks already on the ground in their place; verdant #17's post mill swapped its body's
+   * silhouette and lost its sails the same way) the E12 kit lays a set piece's pieces at rest at once: each laid by one
+   * rigid turn (DamageFall) is shown falling there — a copy of its own triangles turned and dropped over gravity's time,
+   * its turn eased in as a fall's is — and the stage's laid copy shows when the fall ends, where the fall ends.
+   */
+  interface PieceFall { seam: StructureDamageSeam; meshes: THREE.Mesh[]; axis: THREE.Vector3; angle: number; pivot: THREE.Vector3; t: THREE.Vector3;
+    t0: number; T: number }
+  const pieceFalls: PieceFall[] = [];
+  const _fq = new THREE.Quaternion(), _fm = new THREE.Matrix4(), _fb = new THREE.Matrix4(), _fbi = new THREE.Matrix4(), _fv = new THREE.Vector3();
+  const _fr = new THREE.Matrix4(), _fp = new THREE.Vector3(), _fs = new THREE.Vector3(1, 1, 1), _fup = new THREE.Vector3(0, 1, 0);
+  /** A body-frame fall's pose `k` of the way (0..1) as a world matrix into _fm (the meshes' vertices are in the world). */
+  function fallMatrix(f: PieceFall, k: number): THREE.Matrix4 {
+    const { x, y, z, yaw } = f.seam.anatomy.placement;
+    _fb.compose(_fp.set(x, y, z), _fq.setFromAxisAngle(_fup, yaw), _fs);
+    _fbi.copy(_fb).invert();
+    _fq.setFromAxisAngle(f.axis, f.angle * k);
+    _fr.makeRotationFromQuaternion(_fq);
+    // body frame: v -> R_k (v - pivot) + pivot + t k
+    _fv.copy(f.pivot).applyQuaternion(_fq).negate().add(f.pivot).addScaledVector(f.t, k);
+    _fr.setPosition(_fv);
+    return _fm.copy(_fb).multiply(_fr).multiply(_fbi);
+  }
+  function startPieceFalls(seam: StructureDamageSeam, falls: readonly DamageFall[], made: readonly THREE.Mesh[]): void {
+    let until = 0;
+    const { x: px, y: py, z: pz, yaw } = seam.anatomy.placement;
+    const c = Math.cos(yaw), sn = Math.sin(yaw);
+    for (const fall of falls) {
+      const spans = seam.spans.filter((sp) => sp.piece === fall.piece && sp.count >= 3 && !flattenedSpans.has(sp));
+      if (!spans.length) continue;
+      // its own triangles as they stand (world), per material; its middle (body frame) for its drop
+      const byMat = new Map<THREE.Material, { geometry: THREE.BufferGeometry; names: string[]; data: number[][] }>();
+      let mx = 0, my = 0, mz = 0, n = 0;
+      for (const span of spans) {
+        const mesh = span.mesh as THREE.Mesh;
+        const geometry = mesh.geometry as THREE.BufferGeometry;
+        const material = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as THREE.Material;
+        let e = byMat.get(material);
+        if (!e) {
+          const names = Object.keys(geometry.attributes).filter((nm) => nm !== 'position' && nm !== 'aDamage');
+          e = { geometry, names, data: [[], ...names.map(() => [])] };
+          byMat.set(material, e);
+        }
+        spanMatrices(span);
+        const arr = span.position.array as Float32Array;
+        const start = span.first + ((3 - (span.first % 3)) % 3);
+        const end = start + Math.floor((span.first + span.count - start) / 3) * 3;
+        for (let i = start; i < end; i++) {
+          _fv.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+          e.data[0]!.push(_fv.x, _fv.y, _fv.z);
+          const wx = _fv.x - px, wz = _fv.z - pz;
+          mx += wx * c - wz * sn; my += _fv.y - py; mz += wx * sn + wz * c; n++;
+          e.names.forEach((nm, j) => {
+            const attr = e!.geometry.getAttribute(nm) as THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
+            for (let q = 0; q < attr.itemSize; q++) e!.data[j + 1]!.push(attr.getComponent(i, q));
+          });
+        }
+      }
+      if (!n) continue;
+      mx /= n; my /= n; mz /= n;
+      const meshes: THREE.Mesh[] = [];
+      for (const [material, e] of byMat) {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(e.data[0]!, 3));
+        e.names.forEach((nm, j) => {
+          const attr = e.geometry.getAttribute(nm) as THREE.BufferAttribute;
+          g.setAttribute(nm, new THREE.Float32BufferAttribute(e.data[j + 1]!, attr.itemSize, attr.normalized));
+        });
+        g.computeBoundingSphere();
+        const mesh = new THREE.Mesh(g, material);
+        mesh.name = `fx-landmark-piece-fall-${seam.structureIdx}-${fall.piece}`;
+        mesh.matrixAutoUpdate = false;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        debris.group.add(mesh);
+        meshes.push(mesh);
+      }
+      // the turn as an axis and an angle; its middle's drop sets the fall's time
+      _fr.set(fall.r[0]!, fall.r[1]!, fall.r[2]!, 0, fall.r[3]!, fall.r[4]!, fall.r[5]!, 0, fall.r[6]!, fall.r[7]!, fall.r[8]!, 0, 0, 0, 0, 1);
+      _fq.setFromRotationMatrix(_fr).normalize();
+      const angle = 2 * Math.acos(Math.min(1, Math.abs(_fq.w)));
+      const sw = _fq.w < 0 ? -1 : 1, sl = Math.sqrt(Math.max(0, 1 - _fq.w * _fq.w));
+      const axis = sl > 1e-6 ? new THREE.Vector3(sw * _fq.x / sl, sw * _fq.y / sl, sw * _fq.z / sl) : new THREE.Vector3(0, 1, 0);
+      const pivot = new THREE.Vector3(fall.pivot[0], fall.pivot[1], fall.pivot[2]), t = new THREE.Vector3(fall.t[0], fall.t[1], fall.t[2]);
+      _fv.set(mx, my, mz).sub(pivot).applyMatrix4(_fr).add(pivot).add(t);
+      const drop = Math.max(0.3, my - _fv.y);
+      const T = Math.min(FALL_MAX_S, Math.max(FALL_MIN_S, Math.sqrt(2 * drop / 9.81) * FALL_SLOW));
+      const f: PieceFall = { seam, meshes, axis, angle, pivot, t, t0: o.now(), T };
+      fallMatrix(f, 0);
+      for (const m of meshes) { m.matrix.copy(_fm); m.matrixWorldNeedsUpdate = true; }
+      pieceFalls.push(f);
+      until = Math.max(until, f.t0 + T);
+    }
+    if (until > 0) for (const m of made) debris.showFrom(m, until);
+  }
+  function stepPieceFalls(): void {
+    if (!pieceFalls.length) return;
+    const now = o.now();
+    let k = 0;
+    for (const f of pieceFalls) {
+      // (gone the moment the laid copy shows: the debris reads the same sum)
+      if (now >= f.t0 + f.T) { for (const m of f.meshes) { m.removeFromParent(); m.geometry.dispose(); } f.seam.touchShadows(); continue; }
+      const u = Math.min(1, Math.max(0, (now - f.t0) / f.T));
+      // (a fall gathers speed: its turn and its drop eased in)
+      fallMatrix(f, u * u);
+      for (const m of f.meshes) { m.matrix.copy(_fm); m.matrixWorldNeedsUpdate = true; }
+      f.seam.touchShadows();
+      pieceFalls[k++] = f;
+    }
+    pieceFalls.length = k;
+  }
   /** A stage's builder through the writers. `standing`: its runs belong to the standing building (a breach's rim and
    *  room, a spall's units) and fall with it; a collapse's own stubs and pile stay where they lie. */
   function run(seam: StructureDamageSeam, delayS: number, settled: boolean, build: (out: DamageWriters) => DamageStageResult,
@@ -993,6 +1109,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     let result: DamageStageResult | null = null;
     try { result = build(writers); } catch { result = null; }
     const made = debris.commit();
+    // (round 5) a set piece's pieces the stage laid at rest are seen falling there first (a live stage laid at once)
+    if (!settled && !(delayS > 0) && result?.falls?.length) startPieceFalls(seam, result.falls, made);
     // (destruction-slabs 227 round 4) no remnant stands taller than the building was drawn where it stands
     for (const mesh of made) if (mesh.name.startsWith('fx-structure-remnant-')) clampRemnantTops(mesh, seam.anatomy);
     if (owner) for (const mesh of made) mesh.userData.runOwner = owner;
@@ -1646,6 +1764,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (changed) seam.touchShadows();
     },
     update() {
+      stepPieceFalls();
       if (heldHides.length) { let k = 0; for (const h of heldHides) if (o.now() >= h.at) apply(h.seam, { cuts: [], hides: h.hides }); else heldHides[k++] = h; heldHides.length = k; }
       if (pendingStrikes.length) {
         const t = o.now();
@@ -1680,9 +1799,12 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       for (const h of heldHides) h.at += delta;
       for (const f of falling) f.until += delta;
       for (const f of storeyFalls) f.t0 += delta;
+      for (const f of pieceFalls) f.t0 += delta;
     },
     reset() {
       storeyFalls.length = 0;
+      for (const f of pieceFalls) for (const m of f.meshes) { m.removeFromParent(); m.geometry.dispose(); }
+      pieceFalls.length = 0;
       for (const [span, saved] of originals) {
         const pos = span.position;
         (pos.array as Float32Array).set(saved, span.first * 3);
