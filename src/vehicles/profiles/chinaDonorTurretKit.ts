@@ -531,11 +531,11 @@ function qilinRack(P:TankBuilderPort,deck:readonly THREE.BufferGeometry[]):void 
 // spare-parts case and a kit bag), each resting on the rack's floor bars. The rack keeps the 226 basket's rear plane, so
 // the drawn turret stays a tenth shorter than the 226 cast turret.
 
-/** The bustle floor (turret frame): its flat underside (y), half-width and lower chamfer, its stations (the last is its
- * rear face, under the rear armour box), and how far its top runs inside the first permanent surface over it (the
- * shell's underside, and at the rear the armour box's bottom) at every section. Its underside stands 85 mm or more over
- * the B3's deck at every yaw (the deck tops out at -0.019 in this frame within the turret's reach), 40 mm over the
- * ring collar's top. */
+/** The bustle floor (turret frame; welded structure): its flat underside (y), half-width and lower chamfer, its stations
+ * (the first is its rear face, under the rear armour box), and how far its top runs inside the first permanent surface
+ * over it (the shell's underside, and at the rear the armour box's bottom) at every section. Its underside stands 79 mm
+ * over the highest hull surface its footprint sweeps at any yaw (the deck tops out at y -0.019 in this frame) and 40 mm
+ * over the ring collar's top (qilinRearFill.selftest.mjs). */
 const QILIN_BUSTLE_FLOOR={y:.06,half:1.00,chamfer:.04,burial:.025,z:[-1.74,-1.60,-1.44,-1.36,-1.28,-1.12,-.90,-.66]} as const;
 /** Where the floor's top follows the underside across its width (the underside falls 70 mm from the centre to x 1). */
 const QILIN_BUSTLE_FLOOR_X=[1.00,.70,.35,0,-.35,-.70,-1.00] as const;
@@ -544,12 +544,17 @@ function qilinBustleFloor(P:TankBuilderPort):void {
   const f=QILIN_BUSTLE_FLOOR,stock=new Stock(P,['turret','turretExternalArmor']),up=new THREE.Vector3(0,1,0);
   try {
     // the first permanent surface over the collar's top (y 0.02): rays start 10 mm over it
-    const ceiling=(x:number,z:number)=>{
+    const under=(x:number,z:number)=>{
       const hit=stock.hit(new THREE.Vector3(x,.03,z),up,1.5);
       if(!hit)throw new Error(`${P.spec.id}: no bustle underside over the floor at ${x},${z}`);
-      return hit.point.y+f.burial;
+      return hit.point.y;
     };
-    P.addExternalArmor('turret',sectionSolid(f.z.map(z=>({z,ring:[[-f.half+f.chamfer,f.y],[f.half-f.chamfer,f.y],[f.half,f.y+f.chamfer],
+    // the floor is a mirrored weldment: at each |x| its top takes the higher of the two sides' undersides (the 99A2's
+    // underside is not quite symmetric there, by up to 8 mm), so it is buried at least `burial` on both
+    const ceiling=(x:number,z:number)=>Math.max(under(Math.abs(x),z),under(-Math.abs(x),z))+f.burial;
+    // welded turret structure (the 'turret' bucket): the combat anatomy's turret collision takes it in, so a round under
+    // the bustle meets the floor, not the deck below it
+    P.add('turret',sectionSolid(f.z.map(z=>({z,ring:[[-f.half+f.chamfer,f.y],[f.half-f.chamfer,f.y],[f.half,f.y+f.chamfer],
       ...QILIN_BUSTLE_FLOOR_X.map(x=>[x,ceiling(x,z)] as SectionPoint),[-f.half,f.y+f.chamfer]] as SectionPoint[]}))));
   }finally{stock.dispose();}
 }
