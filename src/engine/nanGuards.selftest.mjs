@@ -11,6 +11,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { CLOUD2_RESOLVE_FRAGMENT } from './cloudShaders.ts';
+import { parseGlsl, runGlsl, stripComments } from '../world/glslSubset.test-support.mjs';
 
 const read = (path) => readFile(new URL(path, import.meta.url), 'utf8');
 const [clouds, post, effects] = await Promise.all([read('./volumetricClouds.ts'), read('./post.ts'), read('../fx/effects.ts')]);
@@ -39,6 +40,21 @@ const SEMANTICS = {
 {
   // the dome's history read: a non-finite read is clear sky, never an opaque black dome
   assert.match(clouds, /vec4 c = cloudsCatmullRom\( uv, uHistorySize \);\s*\/\/[^\n]*\n\s*c = all\( lessThan\( abs\( c \), vec4\( 6e4 \) \) \) \? max\( c, vec4\( 0\. \) \) : vec4\( 0\., 0\., 0\., 1\. \);/);
+  // (round 2, eng D5) the shipped dome read itself, from its history fetch to the line before the horizon mask, run by
+  // the GLSL subset (a read without the guard, as before round 1, keeps the NaN: max(NaN, 0) under propagate semantics)
+  const readAt = clouds.indexOf('vec4 c = cloudsCatmullRom( uv, uHistorySize );');
+  const readEnd = clouds.indexOf('float above', readAt);
+  assert.ok(readAt > 0 && readEnd > readAt, 'the dome read and the horizon mask after it');
+  // (the declaration becomes an assignment to a variable the runner hands back)
+  const readChunk = parseGlsl(stripComments(clouds.slice(readAt, readEnd)).replace(/^vec4 c =/, 'c ='));
+  const taken = new Set();
+  for (const history of [[NaN, 0.2, 0.3, 0.4], [Infinity, 0, 0, 1], [NaN, NaN, NaN, NaN]]) {
+    const { c } = runGlsl(readChunk, { uv: [0.5, 0.5], uHistorySize: [480, 270], c: [0, 0, 0, 0] }, { cloudsCatmullRom: () => history }, taken);
+    assert.deepEqual(c, [0, 0, 0, 1], `the shipped dome read turns a non-finite history ${JSON.stringify(history.map(String))} into clear sky`);
+  }
+  assert.deepEqual(runGlsl(readChunk, { uv: [0.5, 0.5], uHistorySize: [480, 270], c: [0, 0, 0, 0] }, { cloudsCatmullRom: () => [0.1, -0.2, 0.3, 0.6] }, taken).c,
+    [0.1, 0, 0.3, 0.6], 'a finite history keeps the old max');
+  assert.equal(taken.size, 2, 'both branches of the guard ran');
   const dome = (c) => (c.every(finite) ? c.map((v) => Math.max(v, 0)) : [0, 0, 0, 1]);
   const alpha = (c) => 1 - Math.min(dome(c)[3], 1); // float alpha = ( 1.0 - min( c.a, 1.0 ) ) * above;
   assert.equal(alpha([NaN, NaN, NaN, NaN]), 0, 'a NaN history draws nothing over the sky');
