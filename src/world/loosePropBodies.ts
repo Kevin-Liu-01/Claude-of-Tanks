@@ -27,7 +27,7 @@ export const LOOSE_BODY_CAPACITY = 32;
 /** Steps a body sleeps in the engine before it leaves it (its pose stays the prop's). */
 const LEAVE_AFTER_SLEEP_STEPS = 45;
 
-export interface LoosePropBodies {
+interface LoosePropBodies {
   readonly world: RigidWorld;
   /** Whether a body of this kind runs on the engine (the cone keeps its ground-constrained law). */
   handles(b: LoosePropBody): boolean;

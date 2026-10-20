@@ -5,12 +5,12 @@
 // Dependency-free: plain numbers in, plain numbers out.
 
 /** A row's plot: metres across (x, the street frontage) and deep (z, from the back edge to the pavement line). */
-export interface TerracePlot {
+interface TerracePlot {
   w: number;
   d: number;
 }
 
-export interface TerraceLayout {
+interface TerraceLayout {
   /** the plot, clamped to the contract (11-44 m across, 9-13 m deep) */
   w: number;
   d: number;
@@ -33,7 +33,7 @@ export interface TerraceLayout {
 export const TERRACE_DEFAULT_PLOT: Readonly<TerracePlot> = Object.freeze({ w: 22, d: 9.6 });
 
 /** A house's nominal frontage: the row takes as many as fit, between two and eight. */
-export const TERRACE_UNIT_M = 5.5;
+const TERRACE_UNIT_M = 5.5;
 
 export function terraceLayout(plot: TerracePlot | undefined): TerraceLayout {
   const w = Math.max(11, Math.min(44, plot?.w ?? TERRACE_DEFAULT_PLOT.w));

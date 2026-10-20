@@ -21,7 +21,7 @@ import { YARD_FAMILY_MATERIAL } from './maps/yardClutterKit.ts';
 
 export const STEEL_ATLAS_SIZE = 512;
 /** Metres of sheet one atlas width covers (a 20' container side) and one strip covers up (its height). */
-export const STEEL_ATLAS_SPAN_M = 6.1;
+const STEEL_ATLAS_SPAN_M = 6.1;
 export const STEEL_ATLAS_STRIP_M = 2.6;
 export const STEEL_ATLAS_STRIP_COUNT = 4;
 /** Rows kept clear at every strip edge (at the 512 px reference) so bilinear filtering never reads the neighbouring strip. */
@@ -327,35 +327,6 @@ export function mapBoxFaceUv(
     const fu = uv.getX(i), fv = uv.getY(i);
     const a = swap ? fv : fu, b = swap ? fu : fv;
     uv.setXY(i, uRange[0] + a * (uRange[1] - uRange[0]), vRange[0] + b * (vRange[1] - vRange[0]));
-  }
-  geometry.userData.atlasUv = true;
-  return geometry;
-}
-
-/**
- * A rectangle of the strip for a face that is a fraction of the strip's 6.1 m across; the face reads left to
- * right (its u) from an atlas position u0 in metres.
- */
-export function stripSpanU(fromM: number, widthM: number): readonly [number, number] {
-  return [fromM / STEEL_ATLAS_SPAN_M, (fromM + widthM) / STEEL_ATLAS_SPAN_M];
-}
-
-/**
- * Sheet UVs for a lathe / cylinder body (tanks, drums): u along the circumference in metres of sheet, v within the
- * plain strip along the length, so the ribs run around the shell. The geometry's uv must be the unit cylinder
- * parametrisation (u around, v along); widthM the circumference, lengthM the length.
- */
-export function mapSheetUv(
-  geometry: THREE.BufferGeometry,
-  circumferenceM: number,
-  lengthM: number,
-  strip: SteelStrip = 'plain',
-): THREE.BufferGeometry {
-  const uv = geometry.attributes.uv;
-  const [v0, v1] = STEEL_STRIP_V[strip];
-  const spanV = Math.min(1, lengthM / STEEL_ATLAS_STRIP_M);
-  for (let i = 0; i < uv.count; i++) {
-    uv.setXY(i, uv.getX(i) * circumferenceM / STEEL_ATLAS_SPAN_M, v0 + (v1 - v0) * (0.5 - spanV / 2 + uv.getY(i) * spanV));
   }
   geometry.userData.atlasUv = true;
   return geometry;

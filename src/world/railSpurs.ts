@@ -63,7 +63,7 @@ export interface RailSpurConfig {
 }
 
 /** A cut of coupled vehicles on a spur. */
-export interface RailStockCut {
+interface RailStockCut {
   /** Distance along the path from its first point to the cut's first buffer (m). */
   atM: number;
   /** The vehicles in order along the path (rollingStock.ts kinds). */
@@ -108,7 +108,7 @@ export function railStockPlacements(spur: RailSpurConfig, lengths: Readonly<Reco
   return out;
 }
 
-export interface RailCoalStageConfig {
+interface RailCoalStageConfig {
   side: 1 | -1;
   fromM: number;
   toM: number;
@@ -143,7 +143,7 @@ export function railCoalStageStations(spur: RailSpurConfig): { x: number; z: num
   return out;
 }
 
-export interface RailCuttingConfig {
+interface RailCuttingConfig {
   /**
    * The portal: a point on the spur's LAST edge where the graded bed leaves the ground. The cutting runs from here
    * along that edge, through the path's end and on into the outland; the rule fades in over RAIL_CUTTING_PORTAL_M
@@ -458,7 +458,7 @@ export function resolveRailOpenLine(cut: RailCutting, portalY: number, groundAt:
 
 /** A point in a cutting's frame: the run from the portal (the bed's argument), the lateral distance, the floor's
  * half-width there and the batter of its faces (run per metre of rise). */
-export interface RailCuttingTerms {
+interface RailCuttingTerms {
   along: number;
   lateral: number;
   halfFloor: number;
@@ -472,7 +472,7 @@ const _cuttingTerms: RailCuttingTerms = { along: 0, lateral: 0, halfFloor: 0, ba
  * fan went with the tunnel). Null before the fade's start (RAIL_CUTTING_PORTAL_M before the portal) and past the open
  * line's run — nothing to do there.
  */
-export function railCuttingTermsAt(cut: RailCutting, x: number, z: number): RailCuttingTerms | null {
+function railCuttingTermsAt(cut: RailCutting, x: number, z: number): RailCuttingTerms | null {
   const dx = x - cut.px, dz = z - cut.pz;
   const along = dx * cut.ux + dz * cut.uz;
   if (along <= -RAIL_CUTTING_PORTAL_M || along >= cut.endAlong + RAIL_OPEN_RUN_M) return null;

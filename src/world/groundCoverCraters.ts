@@ -78,7 +78,7 @@ export interface GroundCoverStaticLift {
 }
 
 /** The ring round a presentation hole the tall grass lies low in (×r), and its height there at r. */
-export const CRATER_COVER_RING = 1.6;
+const CRATER_COVER_RING = 1.6;
 const RING_SQUASH = 0.42;
 
 export function createGroundCoverCraters(): GroundCoverCraters {
