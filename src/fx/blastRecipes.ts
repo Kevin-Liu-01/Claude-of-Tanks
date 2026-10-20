@@ -68,6 +68,8 @@ export interface BlastContext {
   lightPulse(x: number, y: number, z: number, peakK: number, delayS: number, durS?: number, hex?: number): void;
   /** the burst's light inside the media round it (volumeMedia glow sources): centre, radius m, peak, duration s */
   glow(x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset: number): void;
+  /** (ac130-fx-228 follow-up) a heavy burst's embers lighting its column at night only. Absent (captures, receipts): none. */
+  ember?(x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset: number): void;
   /** camera-distance size boost (1 inside ~90 m) so far blasts still read */
   distBoost(x: number, y: number, z: number): number;
   /** (the salvo governor) how crowded this burst's patch is with other bursts in the last second (0..1); it records this
@@ -113,6 +115,10 @@ const _col: [number, number, number] = [0, 0, 0];
  *  starburst on the ground; a heavy charge of HEAVY_COLUMN_MIN_KG and up on a hull) stand a denser column: more puffs, a
  *  fuller density, born darker with the charge's soot. Every other burst's smoke is unchanged. */
 const HEAVY_COLUMN_N = 24, HEAVY_HULL_COLUMN_N = 18, HEAVY_COLUMN_DENSITY = 0.92, HEAVY_COLUMN_SOOT = 0.3, HEAVY_COLUMN_MIN_KG = 8;
+/** (ac130-fx-228 follow-up, the coordinator: the night 152 mm column "fades within 1.5 s ... light it so it reads at night")
+ *  the same heavy rounds' embers light their column from the burning ground at night (volumeMedia ember: the night level
+ *  only): reaching EMBER_REACH_D of the fireball's width round a point EMBER_HEIGHT_D up it, for EMBER_S seconds */
+const EMBER_PEAK = 0.35, EMBER_S = 4.5, EMBER_REACH_D = 1.8, EMBER_HEIGHT_D = 1.0;
 function mixInto(out: [number, number, number], a: Rgb, b: Rgb, t: number): Rgb {
   out[0] = a[0] + (b[0] - a[0]) * t; out[1] = a[1] + (b[1] - a[1]) * t; out[2] = a[2] + (b[2] - a[2]) * t;
   return out;
@@ -456,6 +462,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     C.lightPulse(I.x, by + 0.6 * D, I.z, Math.min(0.45, 0.15 + 0.09 * s) * albedoK, 0, heavy ? 0.2 : shaped ? 0.1 : 0.13,
       BURST_LIGHT_HEX);
     C.glow(I.x, by + 0.45 * D, I.z, 0.9 * D, heavy ? 0.6 : shaped ? 0.4 : 0.5, heavy ? 0.24 : shaped ? 0.12 : 0.16, bo);
+    if (starburst) C.ember?.(I.x, by + EMBER_HEIGHT_D * D, I.z, EMBER_REACH_D * D * dk, EMBER_PEAK, EMBER_S, bo);
   }
 
   // 1b. (round 7c, DVIDS 954922: by +0.3 s the fireball is inside its own smoke, a lobed grey-brown cloud that keeps
@@ -1005,6 +1012,7 @@ function heavyHullBurst(C: BlastContext, I: PlateBurstInput, nx: number, ny: num
   }
   C.lightPulse(cx, cy + 0.3 * D, cz, Math.min(0.45, 0.15 + 0.09 * s), 0, 0.2, BURST_LIGHT_HEX);
   C.glow(cx, cy + 0.2 * D, cz, 0.9 * D, 0.6, 0.24, bo);
+  if (kg >= HEAVY_COLUMN_MIN_KG) C.ember?.(cx, cy + EMBER_HEIGHT_D * D, cz, EMBER_REACH_D * D * dk, EMBER_PEAK, EMBER_S, bo);
   // the casing's (or the warhead's) fragments off the plate
   sparkSpray(C, I.x, I.y, I.z, nx, ny, nz, Math.round(14 + 8 * s), 20 * Math.sqrt(s), 1.2, 0.45, 0.026, bo);
   sparkSpray(C, I.x, I.y, I.z, nx, ny, nz, Math.round(24 + 6 * s), 55, 1.4, 0.35, 0.022, bo, FRAG_HOT, -9);
