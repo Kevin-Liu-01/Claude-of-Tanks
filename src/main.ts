@@ -9,8 +9,8 @@ import type { RuntimeValue } from './runtimeTypes.ts';
  *
  * Startup order (locked): createRenderer → createSky → bakeEnvironment →
  * createLighting (CSM before any material compiles) → EngineCtx →
- * spawn tanks → createFx → HUD/garage → createAudio → createCameraRig →
- * applyFog → warm frames → window.__GAME_READY.
+ * applyFog (before the first program submission) → spawn tanks → createFx →
+ * HUD/garage → createAudio → createCameraRig → warm frames → window.__GAME_READY.
  *
  * BOOT SCREENS (boot r8): the module body is now a STAGED, frame-yielding boot
  * sequence (top-level await between stages) behind the branded entry/loading
@@ -1062,7 +1062,11 @@ const sniperFill = createSniperFillRuntime(scene, camera, {
 // its phase spots, the sniper fill above). The post stage's warm then finds them in three's cache and compiles the
 // hero's own. Boot r9's compileAsync overlap targeted the canvas after the hero's build (the canvas keys, no overlap);
 // this one has neither problem. ?bootprecompile=0 keeps the old order for the A/B; the receipt records both light sets.
-const bootLightCount = (): number => { let n = 0; scene.traverseVisible((object) => { if ((object as THREE.Light).isLight) n++; }); return n; };
+// 2026-10-19 (the 229 perf pass): the fog first (ARCHITECTURE.md §4: applyFog before any compile). Applied after this
+// submission, it re-keyed every fogged program (USE_FOG, FOG_EXP2) and the hero's warm below: 25 programs linked twice
+// at boot, 2.1 MB of shader source (perf-boot 10-17).
+sky.applyFog(scene);
+const bootLightCount =(): number => { let n = 0; scene.traverseVisible((object) => { if ((object as THREE.Light).isLight) n++; }); return n; };
 if (!STUDIO_BOOT_INTENT && !/[?&]bootprecompile=0(&|$)/.test(location.search)) {
   const probeTarget = new THREE.WebGLRenderTarget(1, 1);
   const previousTarget = renderer.getRenderTarget();
@@ -1601,7 +1605,6 @@ createCombatFeedbackRuntime({
   getDeviceTier,
 });
 
-sky.applyFog(scene);
 // High-zoom de-fog (WoT sniper behavior): remember the base density so the
 // render loop can scale it by FOV without mutating the sky's baseline.
 let baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
