@@ -260,7 +260,7 @@ function validateKitKiosk(body, buckets, geometry, field) {
     const g = parts[0], p = g.attributes.position;
     assert.ok(buckets[family].includes(g), `${name}: in the ${family} family`);
     assert.deepEqual(Object.keys(g.attributes).sort(), attributes[family], `${name}: the family's attributes`);
-    assert.equal(g.index, null); assert.equal(p.count % 3, 0);
+    assert.ok(g.index === null); assert.equal(p.count % 3, 0);
     for (const a of Object.values(g.attributes)) assert.ok([...a.array].every(Number.isFinite));
     if (family === 'regionalStone' || family === 'regionalRoof') assert.ok([...g.attributes.color.array].every(c => c > 0.3 && c <= 1.2), `${name}: weathered tints`);
     else if (g.attributes.color) assert.ok([...g.attributes.color.array].every(c => c > 0 && c <= 1.2), `${name}: its paint`);

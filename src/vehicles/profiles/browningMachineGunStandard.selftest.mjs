@@ -100,11 +100,11 @@ try {
     // paint (FSP-06 small painted accessories); the pale issue canvas stays the desert/IDF soft-kit role.
     const ammo = weapon.children.find((node) => node.userData.fittingSlot === 'ammoCan');
     assert.ok(ammo?.isMesh, `${weaponClass}: exposes a connected ammunition can`);
-    assert.equal(ammo.material, mats.detail,
+    assert.ok(ammo.material === mats.detail,
       `${weaponClass}: the ammunition can resolves to the fitting paint, never host camouflage`);
     const rounds = weapon.children.find((node) => node.userData.fittingSlot === 'cartridge');
     assert.ok(rounds?.isMesh, `${weaponClass}: the belt carries its rounds`);
-    assert.equal(rounds.material, mats.detail, `${weaponClass}: the rounds resolve to the fitting paint`);
+    assert.ok(rounds.material === mats.detail, `${weaponClass}: the rounds resolve to the fitting paint`);
 
     for (const node of weapon.children) {
       assert.equal(node.userData.combatHitboxRole, 'equipment',

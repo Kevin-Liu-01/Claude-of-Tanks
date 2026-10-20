@@ -39,7 +39,7 @@ function checkPaint(root, id, fullSceneVisibility = true) {
   for (const mark of marks) {
     assert.equal(mark.parent.name, `rig_${owner}`, 'paint belongs to its actual receiving armor owner');
     assert.equal(mark.userData.surfaceOwner, owner);
-    assert.equal(mark.userData.surfaceMesh, receiver);
+    assert.ok(mark.userData.surfaceMesh === receiver);
     assert.equal(mark.userData.surfaceSupported, true);
     assert.equal(mark.userData.visibilityClearSamples, STYLE.visibilitySampleCount);
     assert.ok(Number.isFinite(mark.userData.maximumSurfaceErrorM));

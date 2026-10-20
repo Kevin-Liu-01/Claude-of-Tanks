@@ -248,7 +248,7 @@ for(const quality of ['high','low']){
       const m=c.tank.root.getObjectByName(name);
       assert.ok(m?.isMesh&&m.visible&&m.userData.trackGuard);
       assert.equal(m.userData.appearanceRole,'armorPaint');assert.equal(m.userData.combatHitboxRole,'nonArmor');
-      assert.equal(m.material,hullMesh.material,'Native body camo material, not black rubber or equipment cloth');
+      assert.ok(m.material === hullMesh.material,'Native body camo material, not black rubber or equipment cloth');
       assert.equal(m.parent.name,'rig_hull');
       const beforeCount=m.geometry.attributes.position.count;
       for(const era of c.tank.root.userData.eraClusterNames??[])c.tank.stripEra(era);

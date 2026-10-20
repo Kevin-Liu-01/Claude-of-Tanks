@@ -45,7 +45,7 @@ for (const [id, receipt, weaponName] of variants) {
       `${id}: only the BV carrier opens an articulated Luna-lamp relief`);
     assert.equal(frontERA.omittedCarrierSurfaces, id === 'ua_t80bv' ? 1 : 0,
       `${id}: relief-cuts exactly the requested carrier surface`);
-    assert.equal(turretRig.getObjectByName('turretTrack'), undefined,
+    assert.ok(turretRig.getObjectByName('turretTrack') === undefined,
       `${id}: obsolete spare-track-steel frontal blocks are removed`);
 
     shell.geometry.computeBoundingBox();

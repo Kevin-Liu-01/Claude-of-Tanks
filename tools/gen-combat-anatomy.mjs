@@ -6,6 +6,7 @@
 //   node tools/gen-combat-anatomy.mjs --check  # fail when a tank changed
 
 import { createHash } from 'node:crypto';
+import { uniqueIds } from './id-list.mjs';
 import {
   existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync,
 } from 'node:fs';
@@ -36,7 +37,7 @@ const check = process.argv.includes('--check');
 // regen and the gate's --check stay fleet-wide).
 const onlyIds = (() => {
   const arg = process.argv.find((a) => a.startsWith('--ids='));
-  return arg ? new Set(arg.slice(6).split(',').filter(Boolean)) : null;
+  return arg ? new Set(uniqueIds(arg.slice(6).split(',').filter(Boolean), 'gen-combat-anatomy --ids')) : null;
 })();
 const COMBAT_ANATOMY_CALIBRATIONS = check || onlyIds
   ? (await import('../src/vehicles/combatAnatomyCalibrations.ts')).COMBAT_ANATOMY_CALIBRATIONS

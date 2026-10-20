@@ -61,7 +61,7 @@ for(const quality of ['high','low']) for(const row of rows) {
         assert.ok(rail,`${quality}: open bay retains its physical upper rail`);
         if(degrees===0) {
           const buried=cast([turret,mount],gun,[-2*.9,.05*.9,-.30*.9],[1,0,0],2*.9);
-          assert.equal(buried?.object,turret,`${quality}: root rear is buried inside turret stock`);
+          assert.ok(buried?.object === turret,`${quality}: root rear is buried inside turret stock`);
         }
         const oldShroud=new T.Mesh(new T.BoxGeometry(.6*.9,.42*.9,1.4*.9),mount.material);
         oldShroud.position.z=.85*.9;gun.add(oldShroud);tank.root.updateMatrixWorld(true);

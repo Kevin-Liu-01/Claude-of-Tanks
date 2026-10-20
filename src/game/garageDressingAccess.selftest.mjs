@@ -26,8 +26,8 @@ const access = createGarageDressingAccess(engineCtx, pos, {
         constructions++;
         assert.equal(receivedEngine, engineCtx);
         assert.equal(receivedPos, pos);
-        assert.equal(existing.group, access.group);
-        assert.equal(existing.bayFill.parent, access.group);
+        assert.ok(existing.group === access.group);
+        assert.ok(existing.bayFill.parent === access.group);
         assert.equal(existing.workshopFleet, workshopFleet);
         return {
           group: existing.group,
@@ -50,7 +50,7 @@ assert.equal(access.current, null);
 const first = access.preload();
 const shared = access.preload();
 assert.equal(first, shared);
-assert.equal((await first).group, access.group);
+assert.ok((await first).group === access.group);
 assert.equal(attempts, 2);
 assert.equal(constructions, 1);
 assert.equal(preparations, 1);

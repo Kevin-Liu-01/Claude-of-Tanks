@@ -7,7 +7,7 @@ import {
 
 const scaled = new THREE.PlaneGeometry(2, 2);
 const scaledBefore = Array.from(scaled.attributes.uv.array);
-assert.equal(scaleUV(scaled, 3, 5), scaled);
+assert.ok(scaleUV(scaled, 3, 5) === scaled);
 for (let i = 0; i < scaledBefore.length; i += 2) {
   assert.equal(scaled.attributes.uv.array[i], Math.fround(scaledBefore[i] * 3));
   assert.equal(scaled.attributes.uv.array[i + 1], Math.fround(scaledBefore[i + 1] * 5));
@@ -63,7 +63,7 @@ const jittered = new THREE.PlaneGeometry(2, 2);
 const jitterBefore = Array.from(jittered.attributes.uv.array);
 const draws = [0.1, 0.2, 0.3, 0.4];
 let drawIndex = 0;
-assert.equal(jitterUV(jittered, () => draws[drawIndex++]), jittered);
+assert.ok(jitterUV(jittered, () => draws[drawIndex++]) === jittered);
 assert.equal(drawIndex, 4, 'UV jitter consumes exactly four seeded random draws');
 for (let i = 0; i < jitterBefore.length; i += 2) {
   assert.equal(jittered.attributes.uv.array[i], Math.fround(jitterBefore[i] * 0.95 + 0.731));

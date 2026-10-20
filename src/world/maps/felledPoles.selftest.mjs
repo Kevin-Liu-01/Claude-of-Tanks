@@ -32,7 +32,7 @@ for (const [mapId, ox, oz, yaw, h, lean, len] of [
   const s = site(mapId, ox, oz, yaw, h, lean, len);
   const g = felledPoleDebris(s);
   assert.deepEqual(Object.keys(g.attributes).sort(), ['color', 'normal', 'position', 'uv'], `${mapId}: the baked family's attributes`);
-  assert.equal(g.index, null, `${mapId}: unindexed like the baked family's other parts`);
+  assert.ok(g.index === null, `${mapId}: unindexed like the baked family's other parts`);
   const p = g.attributes.position, c = g.attributes.color, n = g.attributes.normal, tris = p.count / 3;
   assert.ok(tris >= 600 && tris <= 2400, `${mapId}: ${tris} triangles`);
   let wire = 0, green = 0, white = 0, low = Infinity;

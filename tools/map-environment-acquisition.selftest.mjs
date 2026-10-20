@@ -267,7 +267,7 @@ try {
   actualWorld.visible = false;
   const browserPhase = Function(`return (${captureTimingPhaseOwnership.toString()})`)();
   assert.deepEqual(browserPhase(), phaseReceipt(true), 'actual Three parent and visibility proof');
-  assert.equal(actualDressing.parent, actualScene, 'capture does not change scene ownership');
+  assert.ok(actualDressing.parent === actualScene, 'capture does not change scene ownership');
   actualScene.add(actualWorld);
   assert.throws(() => requireTimingPhaseOwnership(browserPhase(), 'garage', 'verdant'), /root/,
     'claimed Garage-only flags do not hide an attached world');

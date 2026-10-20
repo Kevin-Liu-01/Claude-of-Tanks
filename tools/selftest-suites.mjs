@@ -171,6 +171,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/moving-clearance-air.selftest.mjs',
     // 2026-10-02: the fleet watertight gate's own controls (the gate itself runs in fleetPassDefault)
     'src/vehicles/watertightAudit.selftest.mjs',
+    // 2026-10-16 (test-speed R7c): the gate's named carries (docs/geometry-gate/watertight-carry.json) and their rules
+    'tools/watertight-carry.selftest.mjs',
     'tools/barak-rear-bay-fill-policy.selftest.mjs',
     'src/vehicles/profiles/kurganetsRearDoorStock.selftest.mjs',
     'src/vehicles/profiles/kurganetsBowStock.selftest.mjs',
@@ -210,11 +212,19 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/source-comparison-cameras.selftest.mjs',
     'tools/native-interior-fill-policy.selftest.mjs',
     'tools/interior-fill-selection.selftest.mjs',
+    // 2026-10-16 (test-speed R4c): duplicate ids fail loudly in every fleet tool; browser tools' ports and first loads
+    'tools/id-list.selftest.mjs',
+    'tools/tool-page-load.selftest.mjs',
     'tools/sealed-ledger-policy.selftest.mjs',
     'tools/muzzle-seat-policy.selftest.mjs',
     'tools/receipt-repin.selftest.mjs',
-    // the shared receipt kit (near, nearStrict, geometryHash) about 110 receipts import
+    // the shared receipt kit (near, nearStrict, geometryHash, graphLabels) about 150 receipts import
     'tools/receipt-kit.selftest.mjs',
+    // 2026-10-16 (test-speed R10): no assert equality on three.js graph objects in any receipt (the 226 T-72 receipts
+    // dumped and diffed two scene graphs to 28-40 GB); a per-file byte-keyed cache keeps an unchanged tree under 1 s
+    'tools/object3d-assert-lint.selftest.mjs',
+    // 229: the runtime half (every child preloads it): a failing graph-object assert fails fast with labels.
+    'tools/assert-graph-guard.selftest.mjs',
     'tools/muzzle-bore-inventory.selftest.mjs',
     'tools/source-x-oracle.selftest.mjs',
     'src/vehicles/eraAuthoredFaces.selftest.mjs',
@@ -283,6 +293,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-clip-result.selftest.mjs',
     'tools/track-clip-options.selftest.mjs',
     'tools/standard-continuity-policy.selftest.mjs',
+    // 2026-10-16 (test-speed R4b part 1): tank-standard-check --stages runs and reports every stage after a red one
+    'tools/standard-check-stages.selftest.mjs',
     'tools/concept-fixture-runner.selftest.mjs',
     'tools/source-equipment-policy.selftest.mjs',
     'tools/photo-reference-policy.selftest.mjs',
@@ -662,6 +674,16 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/frame-budget-probe.selftest.mjs',
     'tools/capture-command.selftest.mjs',
     'tools/tank-release-plan.selftest.mjs',
+    // 2026-10-16 (227, owner: "no regenerating for tanks or anything else that didn't change"): the changed-only
+    // resolver on a fixture fleet, then the real fleet's partition, pinned dynamic reads and the chain order.
+    'tools/changed-only/resolver.selftest.mjs',
+    'tools/changed-only/fleet-partition.selftest.mjs',
+    // The world steps' per-map keys on a fixture world (map configs, world core, wreck donors, fail-closed reads).
+    'tools/changed-only/world.selftest.mjs',
+    // The real chain end to end on a fixture fleet: changed-only == whole-fleet regen byte for byte, order, --verify.
+    'tools/changed-only/chain.selftest.mjs',
+    // Generator freshness at resolver cost (R8d): committed fleet outputs current for release/fingerprints.tsv.
+    'tools/changed-only/fresh.selftest.mjs',
     'src/app/checkedIntegrationPort.selftest.mjs',
     'src/app/lazyRuntimeOwner.selftest.mjs',
     'src/app/lazyImportRetry.selftest.mjs',
@@ -669,6 +691,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/i18n.selftest.mjs',
     'src/ui/i18nRuntime.selftest.mjs',
     'src/ui/i18nLazyCatalog.selftest.mjs',
+    // 2026-10-16 (test-speed): the registry's chunk import keeps the locale runtime's receipts reusable
+    'src/ui/i18nChunkImport.selftest.mjs',
     'tools/i18n-page-catalogs.selftest.mjs',
     'src/dev/mapCaptureReadiness.selftest.mjs',
     'src/dev/debugTelemetry.selftest.mjs',
@@ -825,6 +849,8 @@ export const SELFTEST_SUITES = Object.freeze({
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
     'src/vehicles/decorDockKeepOut.selftest.mjs',
+    // 2026-10-16 (test-speed): the dock's launch column is the ruleset's value, read from a leaf by the decor path
+    'src/sim/droneDockRules.selftest.mjs',
     'src/sim/missionDockSeats.selftest.mjs',
     'src/vehicles/equipmentPrimitives.selftest.mjs',
     'src/vehicles/fleetBalance.selftest.mjs',
@@ -1239,7 +1265,18 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/authoritativeBots.selftest.mjs',
     'server/botModes.selftest.mjs',
     'server/botObjectives.selftest.mjs',
+    // 2026-10-16 (test-speed R9a): the 132 pacing matches play in eight one-thread shards; battlePacing merges their
+    // records and judges them (the runner admits it last; it plays any share without records from this run).
+    'server/battlePacingShard1.selftest.mjs',
+    'server/battlePacingShard2.selftest.mjs',
+    'server/battlePacingShard3.selftest.mjs',
+    'server/battlePacingShard4.selftest.mjs',
+    'server/battlePacingShard5.selftest.mjs',
+    'server/battlePacingShard6.selftest.mjs',
+    'server/battlePacingShard7.selftest.mjs',
+    'server/battlePacingShard8.selftest.mjs',
     'server/battlePacing.selftest.mjs',
+    'server/battlePacingRun.selftest.mjs', // the shards' partition, report check, merge and hand-over, on fixtures
     // 2026-10-05 (owner: "floor as a tail rate"): the pacing gate's arithmetic and the tail's shard merge.
     'tools/pacing-tail.selftest.mjs',
     'server/roadCrossingSweep.selftest.mjs', // 2026-10-03: the maps lane's road crossings, driven both ways (nothing standing in a carriageway)

@@ -25,6 +25,7 @@
 // tube's outer radius (the carved rim's seam with the outer wall), each grown by one pixel's footprint, is counted as
 // borePx and is never an opening. --no-bore-mask restores the raw census.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
 import { sealedLedgerVerdict, updatedSealedLedger } from './sealed-ledger-policy.mjs';
@@ -62,7 +63,7 @@ import { collectTriangles } from './tank-surface-collect.mjs';
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const { ensureInteriorFills, hasInteriorFills } = await import('../src/vehicles/interiorFills.ts');
 const { ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
-const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', 'abramsx').split(',').filter(Boolean);
+const ids = flag('all') ? [...ALL_TANK_IDS] : uniqueIds(opt('ids', 'abramsx').split(',').filter(Boolean), 'tank-sealed-check --ids');
 if (writeImages) mkdirSync(outDir, { recursive: true });
 
 function viewDirections() {
@@ -332,8 +333,14 @@ for (const id of ids) {
 if (ledger && flag('update-ledger')) {
   try {
     const updated = updatedSealedLedger(ledger, report, new Date().toISOString(), ids);
-    writeFileSync(resolve(ledgerPath), JSON.stringify(updated, null, 1) + '\n');
-    console.log(`ledger updated: ${ledgerPath}`);
+    // Unchanged rows keep the file byte-identical (2026-10-16): a timestamp-only rewrite invalidated every receipt
+    // that hashes docs/.
+    const strip = ({ generatedAt, ...rest }) => JSON.stringify(rest);
+    if (strip(updated) === strip(ledger)) console.log(`ledger unchanged: ${ledgerPath}`);
+    else {
+      writeFileSync(resolve(ledgerPath), JSON.stringify(updated, null, 1) + '\n');
+      console.log(`ledger updated: ${ledgerPath}`);
+    }
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

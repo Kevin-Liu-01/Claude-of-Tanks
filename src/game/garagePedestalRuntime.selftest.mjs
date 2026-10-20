@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createGaragePedestalRuntime } from './garagePedestalRuntime.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 function deferred() {
   let resolve;
@@ -239,8 +240,8 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   assert.equal(h.compileCalls, 1, 'cold interactive hero must submit its exact programs');
   assert.equal(h.frameCalls, 2, 'shader submission must settle behind two painted frames');
   assert.equal(h.visuals[0].root.visible, false, 'outgoing hero must be parked after reveal');
-  assert.equal(h.visuals[0].root.parent, null, 'parked hero leaves the active scene graph');
-  assert.deepEqual(h.scene.children, [h.runtime.current.root]);
+  assert.ok(h.visuals[0].root.parent === null, 'parked hero leaves the active scene graph');
+  assert.deepEqual(graphLabels(h.scene.children), graphLabels([h.runtime.current.root]));
   let attachedObjects = 0;
   h.scene.traverse(() => { attachedObjects += 1; });
   assert.equal(attachedObjects, 3, 'scene + current root + mesh, down from 5 with an attached parked root');
@@ -255,8 +256,8 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   assert.equal(h.visuals.length, built, 'warm LRU selection must not rebuild the hero');
   assert.equal(h.runtime.current?.specId, 'alpha');
   assert.equal(h.runtime.current, h.visuals[0], 'cached reveal restores the exact original visual');
-  assert.deepEqual(h.scene.children, [h.visuals[0].root]);
-  assert.equal(h.visuals[1].root.parent, null);
+  assert.deepEqual(graphLabels(h.scene.children), graphLabels([h.visuals[0].root]));
+  assert.ok(h.visuals[1].root.parent === null);
   assert.equal(h.compileCalls, 1, 'cached reattachment requires no shader rewarm');
   assert.deepEqual(h.releasedResources, []);
   assert.equal(h.presentationInvalidations, 4,
@@ -277,7 +278,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   h.setPlayer({ visual: fielded });
   assert.equal(h.runtime.adoptBattlePlayer('delta'), true);
   assert.equal(h.runtime.current, fielded);
-  assert.deepEqual(h.scene.children, [fielded.root], 'return mounts the fielded hero, not cached alternatives');
+  assert.deepEqual(graphLabels(h.scene.children), graphLabels([fielded.root]), 'return mounts the fielded hero, not cached alternatives');
   assert.deepEqual(fielded.root.rotation.toArray(), [
     0,
     Math.PI / 3,
@@ -376,7 +377,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   assert.equal(h.runtime.hasCached('alpha'), false, 'external disposal invalidates an intentionally parked entry');
   await h.runtime.set('alpha');
   assert.notEqual(h.runtime.current, original);
-  assert.notEqual(h.runtime.current.root.children[0].geometry, resources.geometry);
+  assert.ok(h.runtime.current.root.children[0].geometry !== resources.geometry);
   assert.deepEqual(h.disposed, ['alpha']);
   original.dispose();
   assert.equal(h.runtime.hasCached('alpha'), true, 'old identity disposal cannot invalidate its replacement');
@@ -403,7 +404,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
   foreignOwner.add(original.root);
   await h.runtime.set('alpha');
   assert.notEqual(h.runtime.current, original);
-  assert.equal(original.root.parent, foreignOwner, 'an externally reparented visual is not stolen');
+  assert.ok(original.root.parent === foreignOwner, 'an externally reparented visual is not stolen');
   original.dispose();
   assert.equal(h.runtime.hasCached('alpha'), true);
   h.runtime.dispose();
@@ -426,8 +427,8 @@ async function flushMicrotasks() { for (let i = 0; i < 12; i++) await Promise.re
   frame.resolve();
   await pending;
   assert.equal(h.runtime.current.specId, 'charlie');
-  assert.equal(incoming.root.parent, null, 'superseded completed warm root detaches');
-  assert.deepEqual(h.scene.children, [h.runtime.current.root]);
+  assert.ok(incoming.root.parent === null, 'superseded completed warm root detaches');
+  assert.deepEqual(graphLabels(h.scene.children), graphLabels([h.runtime.current.root]));
   h.runtime.dispose();
 }
 {
@@ -444,7 +445,7 @@ async function flushMicrotasks() { for (let i = 0; i < 12; i++) await Promise.re
   await Promise.all([first, repeated]);
   assert.equal(h.runtime.current, incoming, 'newest cached warm continuation reuses the same object');
   assert.equal(h.visuals.length, 2);
-  assert.deepEqual(h.scene.children, [incoming.root]);
+  assert.deepEqual(graphLabels(h.scene.children), graphLabels([incoming.root]));
   assert.deepEqual(h.releasedResources, []);
   h.runtime.dispose();
 }
@@ -470,13 +471,13 @@ async function flushMicrotasks() { for (let i = 0; i < 12; i++) await Promise.re
   assert.deepEqual(player.root.position.toArray(), [84, 19, 121]);
   assert.deepEqual(player.root.rotation.toArray().slice(0, 3), [.2, .5, -.3]);
   assert.ok(player.root.matrix.equals(pose));
-  assert.equal(player.root.parent, h.scene);
+  assert.ok(player.root.parent === h.scene);
   h.runtime.trim(1);
   assert.deepEqual(h.disposed, []);
   h.setPhase('garage');
   assert.equal(h.runtime.adoptBattlePlayer('alpha'), true);
   assert.equal(h.runtime.current, player);
-  assert.deepEqual(h.scene.children, [player.root]);
+  assert.deepEqual(graphLabels(h.scene.children), graphLabels([player.root]));
   h.runtime.dispose();
 }
 {
@@ -506,8 +507,8 @@ async function flushMicrotasks() { for (let i = 0; i < 12; i++) await Promise.re
   h.runtime.dispose();
   frame.resolve(); await pending;
   assert.equal(h.runtime.current, current);
-  assert.equal(incoming.root.parent, null);
-  assert.deepEqual(h.scene.children, [current.root]);
+  assert.ok(incoming.root.parent === null);
+  assert.deepEqual(graphLabels(h.scene.children), graphLabels([current.root]));
   assert.deepEqual(h.releasedResources, []);
   await h.runtime.set('charlie');
   h.watchdog.callback();
@@ -526,7 +527,7 @@ async function flushMicrotasks() { for (let i = 0; i < 12; i++) await Promise.re
   frame.resolve(); await pending;
   assert.equal(h.runtime.current.specId, 'alpha');
   assert.equal(h.runtime.hasCached('bravo'), false);
-  assert.deepEqual(h.scene.children, [h.runtime.current.root]);
+  assert.deepEqual(graphLabels(h.scene.children), graphLabels([h.runtime.current.root]));
   h.runtime.dispose();
 }
 
@@ -546,8 +547,8 @@ async function flushMicrotasks() { for (let i = 0; i < 12; i++) await Promise.re
   frame.resolve(); await pending;
   assert.equal(h.runtime.current, replacement, 'old same-spec producer cannot replace or retire its new identity');
   assert.equal(h.runtime.hasCached('bravo'), true);
-  assert.equal(discarded.root.parent, null);
-  assert.deepEqual(h.scene.children, [replacement.root]);
+  assert.ok(discarded.root.parent === null);
+  assert.deepEqual(graphLabels(h.scene.children), graphLabels([replacement.root]));
   assert.deepEqual(h.disposed, ['bravo']);
   h.runtime.dispose();
 }
@@ -562,28 +563,28 @@ async function flushMicrotasks() { for (let i = 0; i < 12; i++) await Promise.re
   h.entities.set('bravo', {});
   assert.equal(h.runtime.lendToBattle('bravo'), false);
   assert.deepEqual(h.releasedForBattle, [], 'a hero that is not lent keeps its dormant presentation');
-  assert.equal(hero.root.parent, null, 'a different battle selection detaches the unborrowed podium hero');
+  assert.ok(hero.root.parent === null, 'a different battle selection detaches the unborrowed podium hero');
   assert.equal(hero.root.visible, false);
   assert.equal(h.runtime.current, hero, 'detachment retains the cache identity for return');
   assert.deepEqual(h.releasedResources, [], 'scene detachment preserves the warm GPU lease');
   h.setPhase('battle');
-  assert.deepEqual(h.scene.children, [], 'the unborrowed hero contributes no battle scene resources');
+  assert.deepEqual(graphLabels(h.scene.children), graphLabels([]), 'the unborrowed hero contributes no battle scene resources');
   h.setPhase('garage');
   const parkedY = hero.root.position.y;
   h.runtime.poseCurrent();
   assert.equal(hero.root.position.y, parkedY, 'environment activation preserves the parked ownership sentinel');
   await h.runtime.set('alpha');
   assert.equal(h.runtime.current, hero);
-  assert.equal(hero.root.parent, h.scene);
+  assert.ok(hero.root.parent === h.scene);
   assert.equal(hero.root.visible, true);
-  assert.equal(hero.root.children[0].geometry, geometry);
+  assert.ok(hero.root.children[0].geometry === geometry);
   assert.equal(h.visuals.length, built, 'return reuses the exact cached geometry without rebuilding');
   h.entities.set('alpha', {});
   assert.equal(h.runtime.lendToBattle('alpha'), true);
   assert.equal(h.entities.get('alpha').visual, hero, 'matching handoff still lends the visible actor');
   assert.deepEqual(h.releasedForBattle, ['alpha'],
     'the lent hero leaves its dormant presentation before the battle warm (every entry path, not only ui:battleStart)');
-  assert.equal(hero.root.parent, h.scene);
+  assert.ok(hero.root.parent === h.scene);
   h.runtime.dispose();
 }
 
@@ -598,9 +599,9 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   const pending = h.runtime.set('bravo');
   await flushMicrotasks();
   const privateVisual = h.visuals[1];
-  assert.equal(privateVisual.root.parent, null, `${reason}: unfinished graph stays private`);
+  assert.ok(privateVisual.root.parent === null, `${reason}: unfinished graph stays private`);
   assert.deepEqual(h.runtime.cacheIds, ['alpha']);
-  assert.deepEqual(h.scene.children, [outgoing.root]);
+  assert.deepEqual(graphLabels(h.scene.children), graphLabels([outgoing.root]));
   if (reason === 'selection' || reason === 'same-id' || reason === 'return-current') {
     await h.runtime.set(reason === 'selection' ? 'charlie' : reason === 'same-id' ? 'bravo' : 'alpha');
   } else if (reason === 'battle') {
@@ -614,9 +615,9 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   await pending;
   assert.equal(h.runtime.current, latest, `${reason}: stale completion cannot replace the hero`);
   assert.deepEqual(h.disposed, ['bravo'], `${reason}: canceled resources are disposed exactly once`);
-  assert.equal(privateVisual.root.parent, null);
+  assert.ok(privateVisual.root.parent === null);
   assert.equal(h.runtime.cacheIds.includes('bravo'), reason === 'same-id');
-  assert.deepEqual(h.scene.children, [latest.root]);
+  assert.deepEqual(graphLabels(h.scene.children), graphLabels([latest.root]));
   h.runtime.dispose();
 }
 {
@@ -632,7 +633,7 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   assert.equal(timing.maxBuildStepMs, 7);
   assert.equal(h.buildClosures, 1);
   assert.deepEqual(h.disposed, []);
-  assert.deepEqual(h.scene.children, [h.runtime.current.root]);
+  assert.deepEqual(graphLabels(h.scene.children), graphLabels([h.runtime.current.root]));
   h.runtime.dispose();
 }
 {
@@ -642,7 +643,7 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   h.setBootComplete(true);
   await assert.rejects(h.runtime.set('bravo'), /frame budget failure/);
   assert.equal(h.runtime.current, outgoing);
-  assert.deepEqual(h.scene.children, [outgoing.root]);
+  assert.deepEqual(graphLabels(h.scene.children), graphLabels([outgoing.root]));
   assert.deepEqual(h.runtime.cacheIds, ['alpha']);
   assert.deepEqual(h.disposed, ['bravo']);
   assert.equal(h.buildClosures, 1, 'failed frame wait closes the private factory iterator');
@@ -718,7 +719,7 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   assert.ok(h.runtime.hasCached('bravo'), 'the adjacent card was constructed ahead');
   assert.equal(h.runtime.current?.specId, 'alpha', 'the speculative hero is never shown on its own');
   const speculative = h.visuals.find((visual) => visual.specId === 'bravo');
-  assert.equal(speculative.root.parent, null, 'a speculative hero waits parked and detached');
+  assert.ok(speculative.root.parent === null, 'a speculative hero waits parked and detached');
   assert.equal(speculative.root.visible, false);
   assert.equal(h.prebakes.at(-1), 'ai', 'the speculative build uses the Garage texture tier');
   const record = h.debugTarget.__GARAGE_SWITCH.find((row) => row.id === 'bravo');
@@ -771,8 +772,8 @@ console.log('garagePedestalRuntime.selftest: private sliced construction, cancel
 {
  const h=createHarness();await h.runtime.set('alpha');const tank=h.runtime.current;
  assert.equal(h.runtime.lendToBattle('alpha',false),false);
- assert.equal(tank.root.parent,null,'aircraft entry detaches the retained garage tank');
+ assert.ok(tank.root.parent === null,'aircraft entry detaches the retained garage tank');
  assert.equal(tank.root.visible,false);
- await h.runtime.set('alpha');assert.equal(tank.root.parent,h.scene);assert.equal(tank.root.visible,true);
+ await h.runtime.set('alpha');assert.ok(tank.root.parent === h.scene);assert.equal(tank.root.visible,true);
  h.runtime.dispose();
 }

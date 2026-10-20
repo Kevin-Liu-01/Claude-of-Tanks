@@ -90,7 +90,7 @@ for(const fixture of fixtures)for(const quality of['high','low']){
  const rotorVolume=closed(rotor),spindleVolume=closed(spindle);groups(rotor);
  tangentContacts.push(tangentContact(rotor,fixture,quality));
  const count=fixture.count,rotors=new T.InstancedMesh(rotor,[rubber,paint],count),shafts=new T.InstancedMesh(spindle,paint,count);
- assert.equal(rotors.material[0],rubber);assert.equal(rotors.material[1],paint);assert.equal(shafts.material,paint);
+ assert.ok(rotors.material[0] === rubber);assert.ok(rotors.material[1] === paint);assert.ok(shafts.material === paint);
  const budget=quality==='high'?160:80,complete=triangles(rotor)+triangles(spindle);
  assert.equal(complete,budget);assert.equal(triangles(rotors.geometry)*rotors.count+triangles(shafts.geometry)*shafts.count,budget*count);
  const bb=rotor.boundingBox;

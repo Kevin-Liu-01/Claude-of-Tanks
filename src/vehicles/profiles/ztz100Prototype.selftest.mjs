@@ -237,7 +237,7 @@ try {
         checkOptics(tank.root, gun, turret);
         gap = Math.min(gap, checkDeckClearance(gun, turret));
         const mount = tank.root.getObjectByName('gunMount'), before = mount.matrix.clone();
-        assert.equal(mount.parent, gun, 'launch stock belongs to the pitching, non-recoiling frame');
+        assert.ok(mount.parent === gun, 'launch stock belongs to the pitching, non-recoiling frame');
         for (let i = 0; i < spec.gun.launcherMuzzles.length; i++) {
           const expected = new THREE.Vector3(...Object.values(spec.gun.launcherMuzzles[i]));
           near(gun.worldToLocal(tank.gunMuzzleWorld(new THREE.Vector3(), i, true)).distanceTo(expected), 0, 1e-6, 'actual indexed missile firing anchor');

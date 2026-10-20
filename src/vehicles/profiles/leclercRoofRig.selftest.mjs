@@ -105,14 +105,14 @@ for (const id of ['leclerc_s2', 'leclerc_sxxi', 'leclerc_s1']) {
     // Leclerc keeps the second roof gun (the old §5.14 M2, latterly a GPMG).
     const anf1 = turretRig.getObjectByName('leclercRoofAnf1');
     if (id === 'leclerc_sxxi' || id === 'leclerc_s1') {
-      assert.equal(anf1, undefined, `${id} carries no ANF1: its roof RWS takes the roof 7.62's place`);
+      assert.ok(anf1 === undefined, `${id} carries no ANF1: its roof RWS takes the roof 7.62's place`);
     } else {
       assert.ok(anf1?.userData.barrelBridge,
         `${id} ANF1 barrel has a receiver-to-barrel bridge`);
       assert.ok(near(anf1.position.y, 0.610) && near(anf1.userData.roofContactY, 0.610),
         `${id} ANF1 pintle foot is seated on the mid roof`);
     }
-    assert.equal(turretRig.getObjectByName('leclercRoofGpmg'), undefined, `${id} carries no second roof gun`);
+    assert.ok(turretRig.getObjectByName('leclercRoofGpmg') === undefined, `${id} carries no second roof gun`);
 
     if (id === 'leclerc_sxxi' || id === 'leclerc_s1') {
       assert.deepEqual(turretRig.userData.leclercVariantRoofStations, {

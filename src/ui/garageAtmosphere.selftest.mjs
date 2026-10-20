@@ -43,7 +43,7 @@ assert.notEqual(mesh.material.map.offset.x, first, 'the strips drift with the cl
 setGarageAtmosphereClock(null);
 // two Garages scroll their own transforms over shared pixels
 const other = createGarageAtmosphere({ cards: [atmosphereShaft([0, 9, 0], [1, 0, 1], 1)] });
-assert.notEqual(other.material.map, mesh.material.map);
+assert.ok(other.material.map !== mesh.material.map, 'each Garage scrolls its own strip texture');
 assert.equal(other.material.map.source, mesh.material.map.source, 'one strip texture uploaded, whatever the Garage');
 
 const source = await readFile(new URL('./garageAtmosphereKit.ts', import.meta.url), 'utf8');

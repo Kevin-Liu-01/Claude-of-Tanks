@@ -42,7 +42,7 @@ const field = createGroundPressureField(renderer, { tier: 'desktop' });
 assert.ok(field, 'desktop tier with a renderer builds the field');
 assert.equal(field.params.x, GROUND_PRESSURE_WINDOW_M);
 assert.equal(field.params.w, 0, 'inactive until the first step');
-assert.equal(field.stateUniform.value, null, 'no state texture before the first step');
+assert.ok(field.stateUniform.value === null, 'no state texture before the first step');
 assert.equal(field.steps, 0);
 const dx = GROUND_PRESSURE_WINDOW_M / GROUND_PRESSURE_TEXELS;
 assert.ok(dx <= 0.4, `a track lane spans several texels (dx ${dx} m)`);
@@ -112,7 +112,7 @@ for (const bad of [[Number.NaN, 0, 0], [0, 0, 0], [-1, 0, 0], [1 / 60, Number.Na
 }
 assert.equal(field.steps, 2, 'a broken dt or anchor is a no-op');
 field.clear();
-assert.equal(field.params.w, 0); assert.equal(field.stateUniform.value, null);
+assert.equal(field.params.w, 0); assert.ok(field.stateUniform.value === null);
 field.step(1 / 60, 0, 0);
 assert.equal(field.params.w, 1, 'the field runs again after a clear');
 field.dispose(); field.dispose();

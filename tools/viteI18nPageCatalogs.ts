@@ -27,6 +27,12 @@
 // The build fails on a scan issue (a key a page could show raw) and on a catalog chunk it cannot find; the dev server
 // warns and serves what it has.
 //
+// The catalog chunk import (2026-10-16, the test-speed lane): the registry imports the URL a page names through
+// `./i18nChunkImport.ts`, which Node and every receipt resolve to a module with no computed import() (one would make the
+// self-test runner key no receipt that reaches the locale runtime: tools/selftest-cache.mjs); this plugin, which names the
+// URLs, aliases that specifier to src/ui/i18nChunkImport.browser.ts, the URL import, for the documents it builds and serves.
+// The build fails when the boot chunk does not hold that module.
+//
 // The boot runtime every document runs (the locale runtime and routing, static-markup localization, responsive layout,
 // Vite's modulepreload polyfill) is one chunk (vite.config.ts `codeSplitting`): the game's English catalog left the
 // shared runtime chunk, and one boot chunk keeps the game at its request count. Vite's preload helper keeps its own
@@ -34,6 +40,7 @@
 // another module or a worker entry reaches it.
 import { readFileSync } from 'node:fs';
 import { relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseAst } from 'rolldown/parseAst';
 import type { OutputBundle, OutputChunk } from 'rolldown';
 import type { HtmlTagDescriptor, Plugin } from 'vite';
@@ -45,7 +52,16 @@ import { LOCALE_CATALOG_META } from '../src/presentation/localizedHtml.ts';
 import type { CatalogLocale } from '../src/ui/i18nDictionaries.ts';
 
 /** The modules every document runs at boot, bundled as one chunk. */
-export const BOOT_RUNTIME_MODULES = /(?:[\\/]src[\\/]ui[\\/](?:i18n|i18nDictionaries|localeRouting|responsiveLayout)\.ts|[\\/]src[\\/]presentation[\\/]staticI18n\.ts|^\0vite\/modulepreload-polyfill\.js)$/;
+export const BOOT_RUNTIME_MODULES = /(?:[\\/]src[\\/]ui[\\/](?:i18n|i18nDictionaries|i18nChunkImport\.browser|localeRouting|responsiveLayout)\.ts|[\\/]src[\\/]presentation[\\/]staticI18n\.ts|^\0vite\/modulepreload-polyfill\.js)$/;
+/**
+ * The registry's import of its chunk importer (src/ui/i18nDictionaries.ts), aliased for a document to the module that
+ * imports the URL; Node resolves it to src/ui/i18nChunkImport.ts.
+ */
+export const CHUNK_IMPORT_ALIAS = Object.freeze({
+  find: /^\.\/i18nChunkImport\.ts$/,
+  replacement: fileURLToPath(new URL('../src/ui/i18nChunkImport.browser.ts', import.meta.url)),
+});
+const BROWSER_CHUNK_IMPORT_RE = /[\\/]src[\\/]ui[\\/]i18nChunkImport\.browser\.ts$/;
 /** Vite's dynamic-import preload helper, which keeps a chunk of its own. */
 export const VITE_PRELOAD_HELPER = /^\0vite\/preload-helper\.js$/;
 const LOCALES: readonly CatalogLocale[] = ['en-US', 'zh-CN'];
@@ -171,8 +187,9 @@ export function catalogChunkFiles(bundle: OutputBundle, catalog: string, lazy = 
 }
 
 /**
- * Problems with the boot chunk of a bundle: a module outside the boot runtime inside it, or a non-HTML entry (a shared
- * worker) that statically reaches it. Empty when the bundle is sound.
+ * Problems with the boot chunk of a bundle: a module outside the boot runtime inside it, the document's chunk importer
+ * (CHUNK_IMPORT_ALIAS) missing from it, or a non-HTML entry (a shared worker) that statically reaches it. Empty when the
+ * bundle is sound.
  */
 export function bootChunkProblems(bundle: OutputBundle): string[] {
   const all = chunks(bundle);
@@ -180,6 +197,10 @@ export function bootChunkProblems(bundle: OutputBundle): string[] {
   if (!boot) return ['the locale runtime (src/ui/i18n.ts) is in no chunk'];
   const problems = boot.moduleIds.filter((id) => !BOOT_RUNTIME_MODULES.test(id))
     .map((id) => `${boot.fileName} holds ${id.replace(/\0/g, '\\0')}, which is not boot runtime`);
+  if (!boot.moduleIds.some((id) => BROWSER_CHUNK_IMPORT_RE.test(id))) {
+    problems.push(`${boot.fileName} lacks src/ui/i18nChunkImport.browser.ts: a page could not import its catalog chunk `
+      + '(the page catalog plugin aliases the registry\'s ./i18nChunkImport.ts to it)');
+  }
   const byName = new Map(all.map((output) => [output.fileName, output]));
   for (const entry of all) {
     if (!entry.isEntry || !entry.facadeModuleId || entry.facadeModuleId.endsWith('.html')) continue;
@@ -226,6 +247,10 @@ export function i18nPageCatalogs(): Plugin & { api: { gameCatalogKeys(): readonl
       gameCatalogKeys(): readonly string[] | null {
         return build ? scanned().catalogs[FULL_CATALOG]?.keys ?? null : null;
       },
+    },
+    config() {
+      // (every document this plugin builds or serves imports the chunk URLs it names through the URL import)
+      return { resolve: { alias: [{ ...CHUNK_IMPORT_ALIAS }] } };
     },
     configResolved(config) {
       root = config.root;

@@ -6,6 +6,7 @@
 //   node tools/fleet-battle-views.mjs --out=/tmp/fleet-before
 //   node tools/fleet-battle-views.mjs --ids=m1a1_abrams_hc,t90am --distances=40,60,90
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -19,7 +20,7 @@ const option = (name, fallback = '') => {
 };
 const root = process.cwd();
 const outDir = resolve(option('out', '.qa-device/fleet-battle-views'));
-const selectedIds = option('ids').split(',').map((id) => id.trim()).filter(Boolean);
+const selectedIds = uniqueIds(option('ids').split(',').map((id) => id.trim()).filter(Boolean), 'fleet-battle-views --ids');
 const distances = option('distances', '40,60,90,180').split(',')
   .map(Number).filter((distance) => Number.isFinite(distance) && distance > 0);
 const vectorOption = (name) => {

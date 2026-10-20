@@ -99,12 +99,12 @@ assert.equal(usedClasses.size, 4, 'the catalog exercises every class');
 const library = createLeafDetailLibrary(2001, true);
 assert.equal(library.textures.length, 0);
 const oak = library.texture(library.classOf('oak', {}));
-assert.strictEqual(library.texture('broadleaf'), oak, 'one tile per class');
+assert.ok(library.texture('broadleaf') === oak, 'one tile per class');
 assert.equal(library.textures.length, 1);
 library.texture('conifer');
 assert.deepEqual(library.textures.map(t => t.name), ['leafDetail:broadleaf', 'leafDetail:conifer']);
 const mobile = createLeafDetailLibrary(2001, false);
-assert.equal(mobile.texture('broadleaf'), null); assert.equal(mobile.textures.length, 0); assert.equal(mobile.enabled, false);
+assert.ok(mobile.texture('broadleaf') === null); assert.equal(mobile.textures.length, 0); assert.equal(mobile.enabled, false);
 for (const texture of library.textures) texture.dispose();
 
 console.log(JSON.stringify({ rows, classesByMap: Object.fromEntries(Object.entries(byMap).map(([id, row]) => [id, [...new Set(Object.values(row))].sort()])) }));

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 globalThis.window = globalThis.window || {};
 
@@ -32,7 +33,7 @@ function registeredMaterial() {
   const dead = registeredMaterial().material;
   const csm = { shaders: new Map([[keep, null], [dead, null]]) };
   releaseCsmShaderMaterial(csm, dead);
-  assert.deepEqual([...csm.shaders.keys()], [keep], 'unrelated live registrations survive');
+  assert.deepEqual(graphLabels([...csm.shaders.keys()]), graphLabels([keep]), 'unrelated live registrations survive');
   assert.equal(typeof keep.onBeforeCompile, 'function');
 }
 

@@ -107,7 +107,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
         calls.push(['terrain']);
       },
       primeOpeningTerrainPresentation: async options => {
-        assert.strictEqual(options.camera, camera);
+        assert.ok(options.camera === camera);
         assert.equal(typeof options.assertCurrent, 'function', 'solo supplies its generation owner to terrain');
         assert.deepEqual(camera.position.toArray(), [20, 6, -0.3], 'ground cover consumes the snapped pose');
         calls.push(['groundCover']);

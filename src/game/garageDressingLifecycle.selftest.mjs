@@ -314,7 +314,7 @@ for (let bay = 1; bay <= 5; bay++) {
   await f.runtime.pump(() => valid);
   assert.equal(creates, 1, 'return reuses the exact completed transfer');
   assert.equal(resets, 1, 'retained visuals are not reset twice');
-  assert.equal(f.group.children[0], visual.root);
+  assert.ok(f.group.children[0] === visual.root);
   assert.equal(visual.root.visible, false, 'assembly still precedes its separate quiet reveal');
   valid = false; await f.runtime.pump(() => valid);
   assert.equal(visual.root.visible, false);

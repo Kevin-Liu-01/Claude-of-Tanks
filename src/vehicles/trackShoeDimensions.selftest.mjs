@@ -66,7 +66,7 @@ const tank=createTank('t90m',null,{proceduralOnly:true,quality:'high',geometryRe
 try {
   const shoes=tank.root.getObjectByName('gearTrackPads');
   assert.ok(shoes?.isInstancedMesh&&shoes.count>=80);
-  assert.equal(tank.root.getObjectByName('gearTrackInnerLinks'),undefined);
+  assert.ok(tank.root.getObjectByName('gearTrackInnerLinks') === undefined);
   const geometry=shoes.geometry;
   geometry.computeBoundingBox();
   const bounds=geometry.boundingBox;

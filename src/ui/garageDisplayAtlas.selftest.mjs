@@ -90,12 +90,12 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
 assert.ok(packMaterials.length >= 2, 'the placed Garages carry display and decal materials');
 hooks.inject(fixtureAlbedo, fixtureEmissive);
 assert.ok(before.every((texture) => texture !== fixtureAlbedo && texture !== fixtureEmissive), 'placeholders before the atlas arrives');
-assert.equal(display.map, fixtureAlbedo);
-assert.equal(display.emissiveMap, fixtureEmissive);
-assert.equal(decal.map, fixtureAlbedo);
-for (const material of packMaterials) assert.equal(material.map, fixtureAlbedo, `${material.name}: follows the swapped atlas`);
+assert.ok(display.map === fixtureAlbedo, 'the display wears the swapped atlas albedo');
+assert.ok(display.emissiveMap === fixtureEmissive, 'the display wears the swapped atlas emissive');
+assert.ok(decal.map === fixtureAlbedo, 'the decal wears the swapped atlas albedo');
+for (const material of packMaterials) assert.ok(material.map === fixtureAlbedo, `${material.name}: follows the swapped atlas`);
 // a material created after the atlas arrived starts on it
-assert.equal(createGarageDisplayMaterial().map, fixtureAlbedo);
+assert.ok(createGarageDisplayMaterial().map === fixtureAlbedo, 'a material made after the atlas arrived starts on it');
 hooks.reset();
 // the atlas runtime stays off the game's boot path: the boot-graph stage never imports it statically (it arrives with the
 // platform kit at Garage idle), and no Garage source spells a still's rect name as a 'media.' template or prefix, which

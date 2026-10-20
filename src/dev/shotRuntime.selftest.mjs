@@ -224,7 +224,7 @@ for (const releaseTextures of [false, true]) {
   assert.equal(constrained.restoreCount, 3, 'two successful returns plus one failed attempt');
   await capture('garage');
   assert.equal(constrained.restoreCount, 3, 'same resident Garage does not add another warm frame');
-  assert.equal(constrained.stageMesh.geometry, constrained.geometry);
+  assert.ok(constrained.stageMesh.geometry === constrained.geometry);
   assert.equal(constrained.geometry.attributes.position.array, positions);
   assert.deepEqual(positions, positionBytes, 'GPU release/restore preserves authored CPU geometry bytes');
 

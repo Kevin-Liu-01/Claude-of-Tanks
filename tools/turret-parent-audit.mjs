@@ -1,4 +1,5 @@
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { uniqueIds } from './id-list.mjs';
 // Turret-furniture parenting audit driver (owner law 2026-08-04,
 // BUILD-STANDARD §B5): fleet driver for tools/turret-parent-audit.html.
 // STRANDED = hull-parented mesh overlapping the turret casting envelope
@@ -11,6 +12,8 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
+// A repeated --ids entry fails before the capture hold (2026-10-16, test-speed R4c)
+uniqueIds(process.argv.find((a) => a.startsWith('--ids='))?.slice(6).split(','), 'turret-parent-audit --ids');
 await acquireLock(45 * 60 * 1000);
 process.on('exit', releaseLock);
 const refresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);

@@ -138,8 +138,8 @@ function inspectNativeBindings(mesh) {
 
 function verifyTransferredAttributes(visual, wire) {
   const [first, second, ordinary, packed] = visual.root.children;
-  assert.equal(first.geometry, ordinary.geometry, 'shared wire geometry stays shared within its visual');
-  assert.equal(first.material, second.material, 'native palette identity remains shared');
+  assert.ok(first.geometry === ordinary.geometry, 'shared wire geometry stays shared within its visual');
+  assert.ok(first.material === second.material, 'native palette identity remains shared');
   for (const [mesh, node] of [[first, wire.nodes[1]], [second, wire.nodes[2]], [packed, wire.nodes[4]]]) {
     assert.ok(mesh instanceof THREE.InstancedMesh);
     assert.equal(mesh.count, node.count);
@@ -201,7 +201,7 @@ function verifyTransferredAttributes(visual, wire) {
   assert.equal(clone.instanceColor.isInstancedBufferAttribute, true, 'cloned gear keeps instanced colors');
   assert.equal(clone.instanceColor.normalized, true);
   clone.dispose();
-  assert.equal(second.instanceColor, null, 'an absent color must not allocate an attribute');
+  assert.ok(second.instanceColor === null, 'an absent color must not allocate an attribute');
   assert.equal(second.geometry.index.array, wire.geometries[1].index.array);
   assert.equal(first.geometry.getAttribute('position').count, 888);
   assert.equal(first.instanceMatrix.array.byteLength, 14 * 64);
@@ -263,8 +263,8 @@ try {
   visuals.forEach((visual, index) => verifyTransferredAttributes(visual, workers[0].fixtures[index]));
   const [first, second] = visuals;
   const sharedMaterial = first.root.children[0].material;
-  assert.equal(sharedMaterial, second.root.children[0].material, 'matching finishes retain one palette lease');
-  assert.notEqual(first.root.children[0].geometry, second.root.children[0].geometry,
+  assert.ok(sharedMaterial === second.root.children[0].material, 'matching finishes retain one palette lease');
+  assert.ok(first.root.children[0].geometry !== second.root.children[0].geometry,
     'separate transfers retain independent geometry ownership');
   // the suit's net is the exhibit's cloth, the cans its fitting paint, never a white fallback; the remaining fallback
   // joins the cascade registration (unregistered, three's plain loop summed all four cascade suns on it)
@@ -279,7 +279,7 @@ try {
   const parent = new THREE.Group();
   parent.add(first.root, second.root);
   first.dispose(); first.dispose();
-  assert.equal(first.root.parent, null);
+  assert.ok(first.root.parent === null);
   assert.ok([...firstDisposal.geometry.values()].every(count => count === 1),
     'every transferred geometry is disposed once even when multiple meshes share it');
   assert.equal(firstDisposal.material.get(sharedMaterial), 0, 'live second visual protects shared palette');

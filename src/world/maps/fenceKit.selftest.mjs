@@ -26,7 +26,7 @@ for (const key of regions) {
   for (const kind of FENCE_KINDS) {
     const g = buildFence(kind, gate, forms), label = `${key ?? 'default'}/${kind}/${g.userData.fenceForm}`;
     assert.deepEqual(Object.keys(g.attributes).sort(), ['color', 'normal', 'position', 'uv'], `${label}: the structure wood's attributes`);
-    assert.equal(g.index, null, `${label}: unindexed`);
+    assert.ok(g.index === null, `${label}: unindexed`);
     const p = g.attributes.position, n = p.count / 3;
     assert.ok(n >= 12 && n <= FENCE_TRIANGLE_CAP[kind], `${label}: ${n} triangles (cap ${FENCE_TRIANGLE_CAP[kind]})`);
     tris[`${g.userData.fenceForm}/${kind}`] = n;
