@@ -46,7 +46,7 @@ for(const quality of ['high','low']) {
         assert(ray.intersectObject(proxy).length>0,'cheek carrier and bustle arms root inside the solid turret');
       }
       const bank=turret.getObjectByName(`pl01_105_forward_smoke_${s}`);
-      assert.equal(bank.parent,turret,'extra smoke pod follows the turret');
+      assert.ok(bank.parent === turret,'extra smoke pod follows the turret');
       const neutral=bank.getWorldPosition(new Vector3());
       turret.rotation.y=1.1;tank.root.updateMatrixWorld(true);
       assert(bank.getWorldPosition(new Vector3()).distanceTo(neutral)>1,'equipment traverses with turret');

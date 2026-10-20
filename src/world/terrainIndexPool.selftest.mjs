@@ -6,7 +6,7 @@ const nearA = acquireTerrainChunkIndex(pool, 96);
 const nearB = acquireTerrainChunkIndex(pool, 96);
 const far = acquireTerrainChunkIndex(pool, 24);
 
-assert.equal(nearA, nearB,
+assert.ok(nearA === nearB,
   'equal terrain resolutions share one immutable topology attribute');
 assert.ok(nearA.array instanceof Uint16Array,
   'the largest terrain grid uses exact 16-bit indices');

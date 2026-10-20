@@ -50,7 +50,7 @@ if (typeof window !== 'undefined') (window as unknown as { __SWARD_TONE?: { valu
 export interface SwardPatch { r: number; g: number; b: number; cured: number; value: number }
 
 /** The kinds whose sward carries russet stands (a reed bed, a dune's marram and the tundra's sedge do not). */
-export type SwardPatchKind = 'meadow' | 'steppe' | 'savanna' | 'reed' | 'tundra' | 'verge' | 'dune';
+type SwardPatchKind = 'meadow' | 'steppe' | 'savanna' | 'reed' | 'tundra' | 'verge' | 'dune';
 
 /**
  * The sward's patch at (x, z): fresh regrowth (an 11 m hue field's top quarter: greener, less red and blue), last

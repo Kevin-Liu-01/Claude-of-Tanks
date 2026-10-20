@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createPhaseSceneResidency } from './phaseSceneResidency.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const scene = {
   children: [],
@@ -29,7 +30,7 @@ scene.add(stage, dressing);
 const residency = createPhaseSceneResidency({ scene, garageRoots: [stage, dressing] });
 assert.equal(residency.stats.garageMounted, true);
 residency.setGarageActive(false);
-assert.deepEqual(scene.children, []);
+assert.deepEqual(graphLabels(scene.children), graphLabels([]));
 assert.equal(stage.visible, false);
 assert.equal(dressing.visible, false);
 
@@ -37,18 +38,18 @@ const firstWorld = root('verdant');
 const secondWorld = root('desert');
 scene.add(firstWorld);
 residency.setWorldActive(firstWorld, false);
-assert.equal(firstWorld.parent, null, 'dormant worlds leave the active scene graph');
+assert.ok(firstWorld.parent === null, 'dormant worlds leave the active scene graph');
 residency.setWorldActive(firstWorld, true);
-assert.equal(firstWorld.parent, scene);
+assert.ok(firstWorld.parent === scene);
 residency.swapWorld(firstWorld, secondWorld);
-assert.equal(firstWorld.parent, null);
+assert.ok(firstWorld.parent === null);
 assert.equal(firstWorld.visible, false);
-assert.equal(secondWorld.parent, scene);
+assert.ok(secondWorld.parent === scene);
 assert.equal(secondWorld.visible, true);
 
 residency.setWorldActive(secondWorld, false);
 residency.setGarageActive(true);
-assert.deepEqual(scene.children, [stage, dressing]);
+assert.deepEqual(graphLabels(scene.children), graphLabels([stage, dressing]));
 assert.equal(residency.stats.garageMounted, true);
 assert.equal(residency.stats.worldMounted, false);
 

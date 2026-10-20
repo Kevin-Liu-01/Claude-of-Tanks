@@ -16,7 +16,7 @@
 //
 // Pure: no DOM and no three.js. Buffers out; props.ts makes the textures, the receipt reads the buffers.
 
-export interface FieldMudBuffers {
+interface FieldMudBuffers {
   size: number;
   /** sRGB albedo, RGBA8. */
   px: Uint8ClampedArray;
@@ -26,7 +26,7 @@ export interface FieldMudBuffers {
   loss: Uint8Array;
 }
 
-export interface FieldMudSlice { fine: true; stage: string }
+interface FieldMudSlice { fine: true; stage: string }
 
 /** Courses and bricks a tile (one tile is 3 m: 9.4 cm courses, 30 cm bricks). */
 const COURSES = 32, BRICKS = 10;
@@ -228,4 +228,4 @@ export function tintFieldMudToEarth(px: Uint8ClampedArray, size: number, earth: 
 }
 
 /** How far a wall's render goes toward its earth (the render's straw and its drying keep it a little its own). */
-export const EARTH_WALL = 0.7;
+const EARTH_WALL = 0.7;

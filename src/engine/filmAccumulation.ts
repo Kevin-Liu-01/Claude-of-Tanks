@@ -54,7 +54,7 @@ function accumulationTarget(width: number, height: number, name: string): THREE.
   return target;
 }
 
-export type FilmAccumulateMode = 'accumulate' | 'resolve';
+type FilmAccumulateMode = 'accumulate' | 'resolve';
 
 export class FilmAccumulatePass extends Pass {
   /** Weight of the next sample (equal-weight samples use 1 / N). */

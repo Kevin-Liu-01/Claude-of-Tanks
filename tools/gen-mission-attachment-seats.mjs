@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import path from 'node:path';
 import {Matrix4,Quaternion,Vector3} from 'three';
 import {createTank} from '../src/vehicles/tankFactory.ts';
@@ -11,7 +12,7 @@ import {missionAttachmentCandidates,missionAttachmentMotionClear,missionAttachme
 import {authoredSupportCandidates,collectMissionStock,nativeSupportedSeat,nativeMissionCollision,nativeMissionTakeoffCollision,nativeRoofHeight,missionStockFingerprint} from './mission-attachment-geometry.mjs';
 import {missionSeatTrials} from './mission-attachment-seat-trials.mjs';
 const args=process.argv.slice(2),value=(name,fallback)=>args.find(a=>a.startsWith(name+'='))?.slice(name.length+1)??fallback;
-const check=args.includes('--check'),dryRun=args.includes('--dry-run'),ids=value('--ids',Object.keys(TANK_SPECS).join(',')).split(',');
+const check=args.includes('--check'),dryRun=args.includes('--dry-run'),ids=uniqueIds(value('--ids',Object.keys(TANK_SPECS).join(',')).split(','),'gen-mission-attachment-seats --ids');
 const seeds=value('--seeds','4000,4242,8191').split(',').map(Number),qualities=value('--qualities','high,low').split(',');
 const reportPath=value('--report','.qa-dev/drone-dock/native-seats-report.json');
 // Authored stands taller than the standard rises reach; a --hints row for the same id replaces one. The BMPT's braced

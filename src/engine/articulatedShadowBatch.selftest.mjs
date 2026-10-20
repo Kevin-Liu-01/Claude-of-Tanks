@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installArticulatedShadowBatch } from './articulatedShadowBatch.ts';
 import { markShadowOnly, SHADOW_ONLY_LAYER } from './renderLayers.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 // Real pinned Three.js batching/culling, with no renderer, canvas, GPU or clock.
 // This establishes CPU ownership and exact authored data, not native draw savings.
@@ -65,7 +66,7 @@ function unchanged(receipt, castShadow = receipt.castShadow) {
   }
   assert.equal(source.castShadow, castShadow, `${source.name}: expected casting state`);
   assert.equal(source.layers.mask, receipt.layers, 'source routing is unchanged');
-  assert.equal(source.geometry.index, receipt.index, 'source index identity is retained');
+  assert.ok(source.geometry.index === receipt.index, 'source index identity is retained');
   if (receipt.indexValues) assert.deepEqual(Array.from(source.geometry.index.array), receipt.indexValues);
   assert.deepEqual(source.geometry.groups, receipt.groups);
   assert.deepEqual(source.geometry.drawRange, receipt.drawRange);
@@ -73,7 +74,7 @@ function unchanged(receipt, castShadow = receipt.castShadow) {
   assert.equal(source.geometry.boundingSphere, receipt.boundingSphere, 'borrowed sphere remains untouched');
   assert.deepEqual(Object.keys(source.geometry.attributes), Object.keys(receipt.attributes));
   for (const [name, attr] of Object.entries(receipt.attributes)) {
-    assert.equal(source.geometry.attributes[name], attr.attribute);
+    assert.ok(source.geometry.attributes[name] === attr.attribute);
     assert.equal(source.geometry.attributes[name].array, attr.array);
     assert.equal(source.geometry.attributes[name].version, attr.version);
     assert.deepEqual(Array.from(attr.array), attr.values, `${name}: input bytes never change`);
@@ -121,7 +122,7 @@ function verifyPackedGeometry(batch, sources) {
       assert.deepEqual(Array.from(packed, value => value - range.vertexStart),
         Array.from(source.geometry.index.array), 'indices preserve exact winding and triangle order');
     } else {
-      assert.equal(batch.geometry.index, null, 'non-indexed inputs remain non-indexed');
+      assert.ok(batch.geometry.index === null, 'non-indexed inputs remain non-indexed');
       assert.equal(range.count, source.geometry.attributes.position.count);
     }
   });
@@ -140,12 +141,12 @@ for (const count of [2, 3]) for (const indexed of [false, true]) {
   const sourceArray = Object.freeze([...f.sources]);
   const batch = installArticulatedShadowBatch(f.root, sourceArray);
   assert.ok(batch instanceof THREE.BatchedMesh, 'uses real pinned BatchedMesh');
-  assert.equal(batch.parent, f.root);
+  assert.ok(batch.parent === f.root);
   assert.equal(batch.castShadow, true);
   assert.equal(batch.frustumCulled, false, 'aggregate bounds must never drop articulated casters');
   assert.equal(batch.perObjectFrustumCulled, true, 'each shadow camera retains per-proxy culling');
-  assert.equal(batch.material, f.material);
-  assert.equal(batch.customDepthMaterial, f.depthMaterial);
+  assert.ok(batch.material === f.material);
+  assert.ok(batch.customDepthMaterial === f.depthMaterial);
   assert.equal(batch.layers.mask, 1 << SHADOW_ONLY_LAYER);
   assert.equal(batch.layers.test(cameraAt().layers), false, 'presentation camera excludes the batch');
   assert.equal(f.root.children.length, count + 1, 'only the batch is appended');
@@ -158,7 +159,7 @@ for (const count of [2, 3]) for (const indexed of [false, true]) {
   assert.deepEqual(hits, [], 'authored shadow-only geometry cannot acquire raycast hits');
   batch.dispose();
   before.forEach(receipt => unchanged(receipt));
-  assert.deepEqual(f.root.children, [...f.owners, batch], 'dispose preserves traversal-stable child order');
+  assert.deepEqual(graphLabels(f.root.children), graphLabels([...f.owners, batch]), 'dispose preserves traversal-stable child order');
   assert.equal(batch.visible, false, 'disposed batch remains inert in the retained hierarchy');
   assert.equal(batch.castShadow, false);
   disposeFixture(f);
@@ -183,7 +184,7 @@ for (const count of [2, 3]) for (const indexed of [false, true]) {
     shadow(batch, camera);
     assert.equal(batch._multiDrawCount, expectedCounts[index], `cascade ${index}: actual pinned culling`);
   });
-  assert.deepEqual(seen, cameras, 'the pinned base hook receives all four distinct shadow cameras');
+  assert.deepEqual(graphLabels(seen), graphLabels(cameras), 'the pinned base hook receives all four distinct shadow cameras');
   const afterInitialSync = writes;
   cameras.forEach(camera => shadow(batch, camera));
   assert.equal(writes, afterInitialSync, 'unchanged articulation never rewrites matrix texture');
@@ -255,7 +256,7 @@ for (const count of [2, 3]) for (const indexed of [false, true]) {
   shadow(batch, broad);
   assert.equal(batch.getVisibleAt(2), true, 'reattached original source resumes casting');
   f.root.removeFromParent();
-  assert.equal(batch.parent, f.root, 'phase detachment retains the reusable batch');
+  assert.ok(batch.parent === f.root, 'phase detachment retains the reusable batch');
   f.scene.add(f.root);
   f.scene.updateMatrixWorld(true);
   shadow(batch, broad);
@@ -291,8 +292,8 @@ for (const [label, mutate] of rejectionCases) {
   const originalSources = [...f.sources];
   mutate(f);
   const before = f.sources.map(snapshot), children = [...f.root.children];
-  assert.equal(installArticulatedShadowBatch(f.root, Object.freeze([...f.sources])), null, label);
-  assert.deepEqual(f.root.children, children, `${label}: no partial batch attached`);
+  assert.ok(installArticulatedShadowBatch(f.root, Object.freeze([...f.sources])) === null, label);
+  assert.deepEqual(graphLabels(f.root.children), graphLabels(children), `${label}: no partial batch attached`);
   before.forEach(receipt => unchanged(receipt));
   // Test-created replacements are ours; admission must not dispose them.
   for (const source of new Set(f.sources)) {
@@ -304,7 +305,7 @@ for (const [label, mutate] of rejectionCases) {
 }
 for (const count of [0, 1]) {
   const f = fixture(count);
-  assert.equal(installArticulatedShadowBatch(f.root, f.sources), null, 'no batch for fewer than two proxies');
+  assert.ok(installArticulatedShadowBatch(f.root, f.sources) === null, 'no batch for fewer than two proxies');
   assert.equal(f.root.children.length, count);
   disposeFixture(f);
 }
@@ -340,7 +341,7 @@ for (const count of [0, 1]) {
   assert.equal(released.size, 3, 'real partial batch resources were observed');
   for (const count of released.values()) assert.equal(count, 1, 'partial batch resource released exactly once');
   assert.equal(sourceReleases, 0, 'failure cannot release borrowed inputs');
-  assert.deepEqual(f.root.children, children);
+  assert.deepEqual(graphLabels(f.root.children), graphLabels(children));
   before.forEach(receipt => unchanged(receipt));
   disposeFixture(f);
 }
@@ -367,13 +368,13 @@ for (const count of [0, 1]) {
     if (object === batch) batch.dispose();
   }), 'batch disposal is safe inside the native root.traverse');
   assert.ok(visited.includes(unrelated), 'the mesh following the batch is still visited');
-  assert.equal(batch.parent, f.root, 'dispose cannot detach during owner traversal');
+  assert.ok(batch.parent === f.root, 'dispose cannot detach during owner traversal');
   assert.equal(batch.visible, false);
   assert.equal(batch.castShadow, false);
   assert.equal(borrowedReleased, 0, 'source geometry/material/depth identities stay alive');
   assert.ok(f.sources.every(source => source.castShadow), 'owned originals resume native casting');
   assert.equal(unrelated.castShadow, false, 'disposal never sweeps unrelated meshes');
-  assert.equal(unrelated.parent, f.root);
+  assert.ok(unrelated.parent === f.root);
   for (const count of released.values()) assert.equal(count, 1);
   f.sources[0].castShadow = false;
   assert.doesNotThrow(() => batch.dispose());
@@ -391,9 +392,9 @@ for (const reflected of ['source', 'owner']) {
   (reflected === 'source' ? f.sources[1] : f.owners[1]).scale.x = -1;
   f.scene.updateMatrixWorld(true);
   const before = f.sources.map(snapshot), children = [...f.root.children];
-  assert.equal(installArticulatedShadowBatch(f.root, f.sources), null,
+  assert.ok(installArticulatedShadowBatch(f.root, f.sources) === null,
     `${reflected}: reject an initial relative reflection atomically`);
-  assert.deepEqual(f.root.children, children);
+  assert.deepEqual(graphLabels(f.root.children), graphLabels(children));
   before.forEach(receipt => unchanged(receipt));
   disposeFixture(f);
 }
@@ -450,7 +451,7 @@ for (const reflected of ['source', 'owner']) {
     assert.equal(directCalls.length, index + 1, 'one reflected-source native draw per eligible cascade');
     const call = directCalls[index];
     assert.equal(call.receiver, renderer, 'renderBufferDirect retains its renderer receiver');
-    assert.deepEqual(call.args, [camera, null, batch.geometry, suppliedDepth, mirror, expectedGroup],
+    assert.deepEqual(graphLabels(call.args), graphLabels([camera, null, batch.geometry, suppliedDepth, mirror, expectedGroup]),
       'fallback uses the uploaded exact packed range, current depth material and original object winding');
     if (index > 0) assert.equal(call.args[5], directCalls[0].args[5],
       'all cascades reuse the cold-precomputed geometry group');
@@ -527,7 +528,7 @@ for (const reflected of ['source', 'owner']) {
     disposeFixture(f);
     const g = fixture();
     g.sources[1].onBeforeShadow = function (...args) { return nativeBefore.apply(this, args); };
-    assert.equal(installArticulatedShadowBatch(g.root, g.sources), null, 'an own-property hook still keeps the original draw under the patched prototype');
+    assert.ok(installArticulatedShadowBatch(g.root, g.sources) === null, 'an own-property hook still keeps the original draw under the patched prototype');
     disposeFixture(g);
     assert.equal(patchedCalls, 0, 'admission never invokes the hooks');
   } finally {

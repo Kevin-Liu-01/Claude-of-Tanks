@@ -36,7 +36,7 @@ const overlay = createEndOverlayRuntime({
   ownerDocument,
 });
 
-assert.equal(body.children[0], overlay.root);
+assert.ok(body.children[0] === overlay.root);
 assert.equal(overlay.root.className, 'cot-end');
 assert.equal(overlay.root.style.display, undefined);
 overlay.show('victory');

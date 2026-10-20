@@ -20,17 +20,17 @@ import { ASSAULT_TRENCH, planAssaultTrenchLines } from '../../../sim/assaultLine
 import type { YardStyle } from './types.ts';
 
 /** A placed plot (props buildingFeatures): centre, size along its local x and z, yaw. */
-export interface YardPlot { x: number; z: number; w: number; d: number; rot: number; kind?: string }
+interface YardPlot { x: number; z: number; w: number; d: number; rot: number; kind?: string }
 /** A hard solid's world box (props obstacles). */
 export interface YardSolid { min: ArrayLike<number>; max: ArrayLike<number> }
 /** A destructible already standing (props records). */
-export interface YardDestructible { x: number; z: number; r: number; kind: string }
+interface YardDestructible { x: number; z: number; r: number; kind: string }
 /** The layout's footprints a yard keeps off: discs [x, z, r] and oriented rectangles. */
 export interface YardKeepOut {
   discs: ReadonlyArray<readonly [number, number, number]>;
   rects: ReadonlyArray<{ x: number; z: number; ux: number; uz: number; halfAlong: number; halfAcross: number }>;
 }
-export interface YardGround {
+interface YardGround {
   roadDist(x: number, z: number): number;
   water(x: number, z: number): number;
   normalY(x: number, z: number): number;

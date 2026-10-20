@@ -8,7 +8,8 @@
  * clamped to [0, MAX_REWIND_TICKS] (15 ticks = 250 ms). R is fixed for the
  * shell's whole flight, so a shot lands where the shooter's reticle was at
  * every range; a rewound target is at most 250 ms "in the past" for the
- * victim. Bots and spectators never rewind. HE bursts and damage localization
+ * victim. Bots and spectators never rewind, nor does a roof station's round (the authority lays the station on where
+ * the target will be in its own time: rewinding it would undo that lead; 2026-10-19). HE bursts and damage localization
  * inside the sweep read the same rewound poses; the live poses are restored
  * before the next shell (authoritativeMatch's `shellRewind` seam).
  */
@@ -114,7 +115,7 @@ export function createLagCompensation({ entities }: { entities: readonly Authori
       }
     },
     begin(shell: DamageShell) {
-      if (active) return;
+      if (active || shell.roofStation) return;
       const rewind = rewindByShooter.get(shell.shooterId) ?? 0;
       if (rewind <= 0) return;
       const targetTick = currentTick - rewind;

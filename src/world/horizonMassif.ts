@@ -39,7 +39,7 @@ export interface MassifSettings {
   smoothM: number;
 }
 
-export interface MassifField {
+interface MassifField {
   settings: MassifSettings;
   /** The landform multiplier at (x, z): mean one over the annulus, within [1 - contrast, 1 + contrast]. */
   multiplier(x: number, z: number): number;
@@ -211,7 +211,7 @@ export function createMassifField(seed: number, settings: MassifSettings, annulu
 }
 
 /** The ring grid the pass works on (maps/horizon.ts HorizonRingGeometry) plus each row's floor and whether it moves. */
-export interface MassifRingInput {
+interface MassifRingInput {
   columns: number;
   rowCount: number;
   positions: Float32Array;

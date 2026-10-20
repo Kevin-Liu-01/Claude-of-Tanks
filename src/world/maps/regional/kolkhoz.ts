@@ -536,7 +536,7 @@ const burnt: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const KOLKHOZ_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const KOLKHOZ_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => khata(ctx),
   farmhouse: (ctx) => khata(ctx, { long: true }),
   barn: korovnik,

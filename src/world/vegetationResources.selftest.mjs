@@ -68,7 +68,7 @@ for (const mapId of MAP_IDS) {
   const classes = new Set(species.map(sp => leafDetail.classOf(sp, {})));
   assert.equal(tiles.length, classes.size, `${mapId}: one detail tile per foliage class the species use`);
   for (const sp of species) {
-    assert.strictEqual(foliageMats[sp].normalMap, leafDetail.texture(leafDetail.classOf(sp, {})), `${sp}: its class's tile`);
+    assert.ok(foliageMats[sp].normalMap === leafDetail.texture(leafDetail.classOf(sp, {})), `${sp}: its class's tile`);
     assert.equal(foliageMats[sp].normalScale.x, LEAF_DETAIL_NORMAL_SCALE);
   }
   const textures = [detail, bark.map, bark.normalMap, ...Object.values(foliageTex), ...grassTextures, ...tiles];
@@ -95,8 +95,8 @@ for (const mapId of MAP_IDS) {
     grassMesh.geometry = cycle === 0 ? grassVariants[0].geo : grassVariants[0].geoFar;
     assert.deepEqual(releaseObject3DGpuResources(group), expected,
       `${mapId}: GPU release includes active, previously selected and unused LOD resources once`);
-    assert.equal(group.parent, parent);
-    assert.equal(mesh.customDepthMaterial, foliageDepthMats[species[0]]);
+    assert.ok(group.parent === parent);
+    assert.ok(mesh.customDepthMaterial === foliageDepthMats[species[0]]);
     mats.forEach((material, index) => assert.equal(material.onBeforeCompile, hooks[index]));
     textures.forEach((value, index) => assert.equal(value.image, images[index]));
     assert.equal(csm.shaders.size, 6 + species.length, 'suspension preserves registration for lazy resume');
@@ -105,7 +105,7 @@ for (const mapId of MAP_IDS) {
     onDispose(kind, resource) { if (kind === 'material') releaseCsmShaderMaterial(csm, resource); },
   }), expected, `${mapId}: final eviction releases hidden and visible resources together`);
   assert.equal(csm.shaders.size, 0);
-  assert.equal(group.parent, null);
+  assert.ok(group.parent === null);
   for (const count of counts.values()) assert.equal(count, 3, 'shared atlas references are deduplicated');
 }
 console.log(`vegetationResources self-test passed: all ${MAP_IDS.length} biome species libraries, custom depth/detail, the round-77b leaf-detail tiles, selected/unselected grass LODs and exact suspend/eviction budgets`);

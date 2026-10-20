@@ -167,7 +167,7 @@ interface ShotFrameAim {
   atGunLimit: boolean;
   gunLimitSpec: boolean;
   reload: { t: number; totalS: number; kind: string };
-  magazine: { rounds: number; capacity: number };
+  magazine: { rounds: number; capacity: number; feed?: number };
   shellSlot: number;
   shells: readonly RuntimeValue[];
   zoom: number;
@@ -351,6 +351,7 @@ function createRecipeHelpers(context: ShotRuntimeContext) {
     aim.reload.kind = forcedAim.reload.kind || 'shell';
     aim.magazine.rounds = forcedAim.magazine?.rounds || 0;
     aim.magazine.capacity = forcedAim.magazine?.capacity || 0;
+    aim.magazine.feed = aim.magazine.capacity; // a staged rack is fully stowed (the live frame's feed must not leak in)
     aim.shellSlot = forcedAim.shellSlot;
     aim.shells = context.getShellCards();
     aim.zoom = forcedAim.zoom || 1;

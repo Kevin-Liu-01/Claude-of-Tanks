@@ -28,7 +28,7 @@ export interface P2pHostReport {
 }
 
 /** What the p2p host reads from the room it serves; the actor binds it once. */
-export interface P2pRoomView {
+interface P2pRoomView {
   room(): RoomSnapshot | null;
   /** True while the seat holds a live room socket. */
   isConnected(playerId: string): boolean;
@@ -36,7 +36,7 @@ export interface P2pRoomView {
   now(): number;
 }
 
-export type P2pHostHealth = 'alive' | 'absent' | 'silent' | 'none';
+type P2pHostHealth = 'alive' | 'absent' | 'silent' | 'none';
 
 /** Seated, connected commanders (never spectators), minus `exclude` and minus `skip` (P1b: seats that stepped down). */
 export function hostCandidates(room: RoomSnapshot, exclude: string | null = null, skip?: ReadonlySet<string>): RoomPlayer[] {

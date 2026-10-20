@@ -648,7 +648,7 @@ const guildHall: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const SHANGHAI_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const SHANGHAI_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   rowhouse,
   ruin,
   depot: tramDepot,

@@ -21,7 +21,18 @@ of the vehicle that launched them.
 
 An enabled remote roof station aims at spotted opponents within 240 m, checks
 terrain and friendly firing lanes, and fires five-round bursts. Its ammunition
-and timing are independent of the main cannon. The authored yaw/pitch hierarchy
+and timing are independent of the main cannon. It holds fire where its rounds
+cannot hurt (2026-10-19): each round is judged where it would land, from the
+muzzle along the bore with its drop, against the target where it will stand when
+the round arrives, by the damage model's own walk (`estimateHurtChance`: the pen
+roll, the modules and crew the round reaches — all that counts in Realistic —
+one ricochet). A round with less than one chance in five to hurt is not fired;
+the station lays on the point of the target's faces where a round hurts (priced
+along the line it really flies from the muzzle, with a clear lane), or holds that
+target and takes the next one it can hurt, judging a held target again in place
+without swinging to it. Wrecks, seen hulls and any vehicle's armour in the line
+(an ally's gun barrel included) hold it too; drones in reach are still engaged,
+never through an ally. The authored yaw/pitch hierarchy
 also drives recoil, muzzle flashes and pooled ejected cases. Only remotely
 controlled modeled stations qualify; a manually crewed pintle or a vehicle's
 primary remote turret does not become an extra automatic gun.

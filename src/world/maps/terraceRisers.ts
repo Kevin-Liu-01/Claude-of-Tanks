@@ -24,7 +24,7 @@ export interface TerraceRiserZone {
   settlement?: number;
 }
 
-export interface TerraceRiserOptions {
+interface TerraceRiserOptions {
   /** the ground's height (the props' height field) */
   ground: (x: number, z: number) => number;
   /** where nothing stands (a building, a lane): false skips a stone there */
@@ -61,7 +61,7 @@ function edgeDistance(poly: TerraceRiserZone['polygon'], x: number, z: number): 
 }
 
 /** What the risers built: the parts (regionalStone, fine dressing) and a count of their stones. */
-export interface TerraceRiserResult { parts: RegionalParts; coping: number; tumble: number; metres: number }
+interface TerraceRiserResult { parts: RegionalParts; coping: number; tumble: number; metres: number }
 
 /** A checkpoint of the trace (props.ts PropsBuildSlice's shape: the loading slices it, no progress claimed). */
 interface RiserSlice { fine: true; progress: false; stage: string }

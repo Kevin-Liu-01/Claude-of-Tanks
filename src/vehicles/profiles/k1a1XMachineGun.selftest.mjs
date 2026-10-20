@@ -15,7 +15,7 @@ for(const quality of ['high','low']){
   try{
     tank.root.updateMatrixWorld(true);
     const gun=tank.root.getObjectByName('k1a1XPhotoRoofMachineGun');
-    assert.equal(gun.parent,tank.root.getObjectByName('rig_turret'));
+    assert.ok(gun.parent === tank.root.getObjectByName('rig_turret'));
     assert.equal(gun.userData.fitting,'pintleMG');assert.equal(gun.userData.fittingRoot,true);
     assert.equal(gun.userData.reference,'DVIDS3912303-photo-inferred-dimensions');
     const barrel=gun.getObjectByName('sourceMachineGun_turretDark');

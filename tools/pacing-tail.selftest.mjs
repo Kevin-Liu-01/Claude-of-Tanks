@@ -2,8 +2,7 @@
 // simulation. server/battlePacing.selftest plays the matches; this holds the arithmetic both it and
 // tools/pacing-tail.mjs judge them by.
 import assert from 'node:assert/strict';
-import { pacingSeed, pacingStats, pacingVerdicts, sub90Allowed, sub120Allowed } from '../server/battlePacing.test-support.mjs';
-import { mergeShardReports } from './pacing-tail.mjs';
+import { mergeShardReports, pacingSeed, pacingStats, pacingVerdicts, sub90Allowed, sub120Allowed } from '../server/battlePacing.test-support.mjs';
 
 const maps = ['a', 'b', 'c'];
 // the seed of a map's match is keyed to its index in the full list, whatever subset a run plays

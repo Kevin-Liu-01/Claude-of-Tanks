@@ -15,7 +15,7 @@ import { PartSink, type EmitOptions, type RegionalBucket, type Rgb, type Vec3 } 
 import { GATE_WIDTH, gateKindForFence } from '../maps/gateKit.ts';
 
 /** The ground over the piece's base at a point of its frame (LandmarkBuildContext.ground; flat when absent). */
-export type GroundAt = ((lx: number, lz: number) => number) | undefined;
+type GroundAt = ((lx: number, lz: number) => number) | undefined;
 
 /** A set-piece destructible (types.ts LandmarkBuild.destructibles). */
 export interface GroundsDestructible { kind: string; x: number; z: number; yawDeg: number; scale?: number }
@@ -29,7 +29,7 @@ const MODULE_LENGTH: Readonly<Record<string, number>> = Object.freeze({
  * left for it. */
 const GATE_SPAN = GATE_WIDTH.gate, GATE_GAP = 2.3;
 
-export interface FenceRunOptions {
+interface FenceRunOptions {
   /** a gate's gap centred this far along the run (m) */
   gateAt?: number;
   /** the destructible hung in the gap ('gate'), or null for an open gap */
@@ -92,7 +92,7 @@ export function enclosure(out: GroundsDestructible[], kind: string, rect: { cx: 
   }
 }
 
-export interface DrapeOptions {
+interface DrapeOptions {
   /** the surface's height over the ground (m; default 0.05) */
   lift?: number;
   /** the grid's cell (m; default 1) */

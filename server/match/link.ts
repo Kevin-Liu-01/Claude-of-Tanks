@@ -18,7 +18,7 @@ export interface ClientLink {
 }
 
 /** The client-side end of an in-memory link (tests, in-process soaks). */
-export interface LoopbackClientEnd {
+interface LoopbackClientEnd {
   send(bytes: Uint8Array): void;
   onMessage(listener: (bytes: Uint8Array) => void): void;
   onClose(listener: (reason: CloseReasonId, detail: string) => void): void;

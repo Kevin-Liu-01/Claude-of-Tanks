@@ -35,7 +35,7 @@ function referenceLine(id) {
 }
 
 /** The draft block for a map. */
-export async function draftHinterland(id) {
+async function draftHinterland(id) {
   const [{ getMapConfig }, { createHeightField }, horizon, border, edge, relief, pano, regions] = await Promise.all([
     import('../src/world/maps/index.ts'), import('../src/world/terrain.ts'), import('../src/world/maps/horizon.ts'),
     import('../src/world/borderLandform.ts'), import('../src/world/edgeWater.ts'), import('../src/world/horizonRelief.ts'),

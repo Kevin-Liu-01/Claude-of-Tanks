@@ -20,7 +20,7 @@ for(const [id,nation,caliber,tubes,remote] of configurations){
       assert(size.toArray().every(n=>Number.isFinite(n)&&n>0));
       assert.equal(censusEquipment(tank.root).mg,0,'photographed configuration has no separate roof RWS');
       const gun=tank.root.getObjectByName('rig_gun'),mount=tank.root.getObjectByName('gunMount');
-      assert.equal(mount.parent,gun,'mantlet follows elevation');
+      assert.ok(mount.parent === gun,'mantlet follows elevation');
       const before=new Vector3(),after=new Vector3();tank.gunMuzzleWorld(before);
       gun.rotation.x=-.30;tank.root.updateMatrixWorld(true);tank.gunMuzzleWorld(after);
       assert(after.y>before.y+.3,'elevates from real trunnion');

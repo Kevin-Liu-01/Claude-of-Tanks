@@ -11,13 +11,13 @@ import * as THREE from 'three';
 import { normalTextureFromHeight as normalFromHeight, textureFromRgbaPixels as toTexture } from './proceduralTexture.ts';
 import type { ConcreteSurfaceKind, RoofSurfaceKind, StoneSurfaceKind } from './maps/regional/types.ts';
 
-export interface RegionalSurfaceTextures {
+interface RegionalSurfaceTextures {
   albedo: THREE.Texture;
   normal: THREE.Texture;
   surface: THREE.Texture;
 }
 
-export interface SurfaceSlice { fine: true; stage: string }
+interface SurfaceSlice { fine: true; stage: string }
 
 type Tint = readonly [number, number, number];
 
@@ -670,7 +670,7 @@ function recipeOf(kind: StoneSurfaceKind, dressed: boolean, weathered = false): 
 }
 
 /** One course of a stone tile's layout: its rows (canvas px, from the top) and its blocks' columns. */
-export interface MasonryCourse { y0: number; y1: number; blocks: ReadonlyArray<{ x0: number; x1: number; split: boolean }> }
+interface MasonryCourse { y0: number; y1: number; blocks: ReadonlyArray<{ x0: number; x1: number; split: boolean }> }
 /** A stone tile's block layout (masonryLayout). */
 export interface MasonryLayout { size: number; mortar: number; wobble: number; courses: readonly MasonryCourse[] }
 

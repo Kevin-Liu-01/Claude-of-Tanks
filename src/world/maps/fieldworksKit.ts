@@ -533,7 +533,7 @@ export function bBarbedWireBroken(rng: Rng): THREE.BufferGeometry {
 
 // --- the family's seams in props.ts ---------------------------------------------------------------------------------
 /** A field work's drawn part and the props bucket it rides. */
-export interface FieldworksPart {
+interface FieldworksPart {
   bucket: 'dark' | 'baked' | 'stone';
   geometry: THREE.BufferGeometry;
 }

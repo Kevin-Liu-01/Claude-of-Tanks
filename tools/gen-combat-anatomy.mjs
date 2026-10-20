@@ -4,15 +4,27 @@
 //
 //   node tools/gen-combat-anatomy.mjs          # regenerate the full fleet
 //   node tools/gen-combat-anatomy.mjs --check  # fail when a tank changed
+//
+// Both modes also hold every measured tank's belly pan, track bottom and combat hull box to
+// docs/geometry-gate/sim-floors.json (tools/anatomy-floor-ledger.mjs): a move over 5 cm fails, naming the parts
+// responsible, unless accepted with a reason (--accept-floor=<id>[,<id>]:<reason>, or COT_ACCEPT_FLOOR_DRIFT through
+// an npm chain). The write mode still writes its outputs first, then exits 3, so the regen chain stops there.
 
 import { createHash } from 'node:crypto';
+import { uniqueIds } from './id-list.mjs';
 import {
   existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync,
 } from 'node:fs';
+import { userInfo } from 'node:os';
 import { join, resolve } from 'node:path';
 import * as THREE from 'three';
 import { ConvexHull } from 'three/addons/math/ConvexHull.js';
 import { weaponCollisionReceipts } from './weapon-collision-receipts.mjs';
+import { rigidHullFrame } from './rigid-hull-frame.mjs';
+import {
+  acceptFloorRows, acceptHint, compareFloorRows, floorRowOf, formatFloorDrift, parseFloorAccepts, readCommittedCalibrations,
+  readFloorLedger, seedFloorRows, writeFloorLedger,
+} from './anatomy-floor-ledger.mjs';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import {
   enableCombatAnatomyMeasurementMode,
@@ -36,7 +48,7 @@ const check = process.argv.includes('--check');
 // regen and the gate's --check stay fleet-wide).
 const onlyIds = (() => {
   const arg = process.argv.find((a) => a.startsWith('--ids='));
-  return arg ? new Set(arg.slice(6).split(',').filter(Boolean)) : null;
+  return arg ? new Set(uniqueIds(arg.slice(6).split(',').filter(Boolean), 'gen-combat-anatomy --ids')) : null;
 })();
 const COMBAT_ANATOMY_CALIBRATIONS = check || onlyIds
   ? (await import('../src/vehicles/combatAnatomyCalibrations.ts')).COMBAT_ANATOMY_CALIBRATIONS
@@ -555,20 +567,8 @@ function receiptFor(id) {
     const hullRig = tank.root.getObjectByName('rig_hull');
     const turretRig = tank.root.getObjectByName('rig_turret');
     if (!hullRig || !turretRig) throw new Error(`${id}: articulation rigs missing`);
-    if (id === 'leo2_improved') {
-      // The Improved's owner-requested narrowing lives on the hull rig so
-      // suspension also samples the narrower lane. Combat coordinates have
-      // no scale, so measure its children in a rigid metre frame. Preserve
-      // their full matrices (including shear), not decomposed transforms.
-      const widthTransform = new THREE.Matrix4().makeScale(hullRig.scale.x, 1, 1);
-      for (const child of hullRig.children) {
-        if (child.matrixAutoUpdate) child.updateMatrix();
-        child.matrix.premultiply(widthTransform);
-        child.matrixAutoUpdate = false;
-      }
-      hullRig.scale.x = 1;
-      tank.root.updateMatrixWorld(true);
-    }
+    // The Improved's narrowing lives on the hull rig's scale; combat coordinates have none (tools/rigid-hull-frame.mjs).
+    rigidHullFrame(tank, id);
     // Only the explicitly structural armor buckets calibrate shell collision.
     // Painted equipment can share the same material, but its semantic role
     // keeps MGs, sights, antennas, launchers and stowage out of these bounds.
@@ -671,7 +671,68 @@ const staleGroupPaths = existsSync(groupOutputDir)
     .filter((filePath) => !(filePath in outputs))
   : [];
 
+// Sim floors (227, the guards stream): the 226 T-90M blade moved two tanks' combat hull floor and belly pan 22 cm
+// through a routine-looking regen. Compare this run's measurement with the ledger before anything is written.
+const measuredIds = ALL_TANK_IDS.filter((id) => !onlyIds || onlyIds.has(id));
+const floorLedger = readFloorLedger();
+const floorAccepts = parseFloorAccepts(process.argv, process.env, '--accept-floor=');
+if (check && floorAccepts.length) throw new Error('[combat-anatomy] --accept-floor / COT_ACCEPT_FLOOR_DRIFT records new values: run it without --check');
+const floorBy = process.env.COT_LANE || userInfo().username;
+// The calibration on disk before this run writes: only an id it has never measured is new. A calibrated tank whose
+// ledger row is missing is compared with that committed calibration and fails; it is never seeded (guards 229).
+const committedFloorRows = readCommittedCalibrations();
+const floorLedgerChanges = [];
+if (!check) {
+  const { changed } = acceptFloorRows(floorLedger, rows, floorAccepts, { by: floorBy });
+  if (changed.length) floorLedgerChanges.push(`accepted ${changed.join(', ')}`);
+  const { seeded } = seedFloorRows(floorLedger, rows, measuredIds, { committed: committedFloorRows, by: floorBy });
+  if (seeded.length) floorLedgerChanges.push(`first rows for ${seeded.join(', ')}`);
+  if (!onlyIds) {
+    const gone = Object.keys(floorLedger.rows).filter((id) => !ALL_TANK_IDS.includes(id));
+    for (const id of gone) delete floorLedger.rows[id];
+    if (gone.length) floorLedgerChanges.push(`dropped rows of retired ids ${gone.join(', ')}`);
+  }
+}
+const floorResult = compareFloorRows(
+  floorLedger.rows,
+  Object.fromEntries(measuredIds.map((id) => [id, floorRowOf(rows[id], id)])),
+  { ids: measuredIds, fleetIds: onlyIds ? null : ALL_TANK_IDS, toleranceM: floorLedger.toleranceM },
+);
+const floorReport = [];
+if (floorResult.drifts.size) {
+  const { blameFloorDrift } = await import('./anatomy-floor-blame.mjs');
+  floorReport.push(`[combat-anatomy] SIM FLOOR DRIFT: ${floorResult.drifts.size} tank(s) moved a sim floor or the combat hull box `
+    + `by more than ${floorLedger.toleranceM * 100} cm against docs/geometry-gate/sim-floors.json:`);
+  for (const [id, moved] of floorResult.drifts) {
+    let culprits = null;
+    try { culprits = blameFloorDrift(id, moved); } catch (error) { floorReport.push(`  ${id}: blame build failed: ${error.message}`); }
+    floorReport.push(...formatFloorDrift(id, moved, culprits));
+  }
+  const drifting = [...floorResult.drifts.keys()];
+  floorReport.push('  Fix the geometry (nothing below the belly line; equipment out of the structural buckets), or record an');
+  floorReport.push(check
+    ? `  intended move with the regen: node tools/gen-combat-anatomy.mjs --ids=${drifting.join(',')} --accept-floor=${drifting.join(',')}:'<what moved and why>'`
+    : `  intended move: ${acceptHint(drifting)} (these outputs are written), or re-run with --accept-floor=`
+      + `${drifting.join(',')}:'<what moved and why>' (COT_ACCEPT_FLOOR_DRIFT through an npm chain)`);
+}
+if (floorResult.missing.length) {
+  floorReport.push(`[combat-anatomy] SIM FLOOR: no ledger row for ${floorResult.missing.join(', ')}: a calibrated tank's row `
+    + 'is never re-seeded (the write mode seeds only an id the committed calibration has never measured); restore the row '
+    + `from git, or record it: ${acceptHint(floorResult.missing)}`);
+  // what the lost row would have caught: the fresh measurement against the committed calibration
+  for (const id of floorResult.missing.filter((id) => committedFloorRows[id])) {
+    const against = compareFloorRows({ [id]: floorRowOf(committedFloorRows[id], id) }, { [id]: floorRowOf(rows[id], id) },
+      { ids: [id], toleranceM: floorLedger.toleranceM });
+    const moved = against.drifts.get(id);
+    floorReport.push(moved ? `  ${id} against its committed calibration:` : `  ${id}: within ${floorLedger.toleranceM * 100} cm of its committed calibration`);
+    if (moved) floorReport.push(...formatFloorDrift(id, moved));
+  }
+}
+if (floorResult.extra.length) floorReport.push(`[combat-anatomy] SIM FLOOR: ledger rows for ids no longer in the fleet: `
+  + `${floorResult.extra.join(', ')} (node tools/anatomy-floor-drift.mjs --prune)`);
+
 if (check) {
+  for (const line of floorReport) console.error(line);
   const staleOutputs = Object.entries(outputs)
     .filter(([filePath, expected]) => !existsSync(filePath) || readFileSync(filePath, 'utf8') !== expected)
     .map(([filePath]) => filePath);
@@ -684,10 +745,20 @@ if (check) {
     for (const filePath of [...staleOutputs, ...staleGroupPaths]) console.error(`  ${filePath}`);
     process.exit(2);
   }
-  console.log(`[combat-anatomy] PASS — ${ALL_TANK_IDS.length} receipts across ${groupNames.length} demand groups are current`);
+  if (floorReport.length) process.exit(2);
+  console.log(`[combat-anatomy] PASS — ${ALL_TANK_IDS.length} receipts across ${groupNames.length} demand groups are current; `
+    + `${measuredIds.length} measured sim floors within ${floorLedger.toleranceM * 100} cm of their ledger rows`);
 } else {
   mkdirSync(groupOutputDir, { recursive: true });
   for (const [filePath, contents] of Object.entries(outputs)) writeFileSync(filePath, contents);
   for (const filePath of staleGroupPaths) unlinkSync(filePath);
   console.log(`[combat-anatomy] wrote ${ALL_TANK_IDS.length} rows across ${groupNames.length} demand groups`);
+  if (floorLedgerChanges.length) {
+    writeFloorLedger(floorLedger);
+    console.log(`[combat-anatomy] sim-floor ledger: ${floorLedgerChanges.join('; ')}`);
+  }
+  if (floorReport.length) {
+    for (const line of floorReport) console.error(line);
+    process.exit(3);
+  }
 }

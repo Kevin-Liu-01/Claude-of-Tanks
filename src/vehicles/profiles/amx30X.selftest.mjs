@@ -44,7 +44,7 @@ function checkRunningGear(tank,quality) {
   const band=tank.root.getObjectByName('gearTrackBandR');
   band.geometry.computeBoundingBox();
   close(band.geometry.boundingBox.min.y,.0375,1e-6,'one thin backing carrier seated within the shoe web');
-  assert.equal(tank.root.getObjectByName('gearTrackInnerLinks'),undefined,'no second decorative course');
+  assert.ok(tank.root.getObjectByName('gearTrackInnerLinks') === undefined,'no second decorative course');
 }
 
 function checkVisibleWheelFaces(tank, quality) {

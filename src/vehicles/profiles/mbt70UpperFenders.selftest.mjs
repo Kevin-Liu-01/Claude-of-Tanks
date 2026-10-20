@@ -223,8 +223,8 @@ for(const quality of ['high','low']){
   // The battle build folds the two contiguous guard buckets into one draw (staticDrawMerge.ts): read each through the side table.
   const guardParts=['hullTrackGuardL','hullTrackGuardR'].map(name=>findStaticMergePart(current.port.hullG,name));
   const guards=guardParts.map(found=>found.mesh);
-  guardParts.forEach(({mesh:guard,part})=>{const data=part?part.userData:guard.userData;assert.equal(guard.parent,current.port.hullG);
-   assert.equal(data.combatHitboxRole,'nonArmor');assert.equal(guard.material,current.port.mats.hull);
+  guardParts.forEach(({mesh:guard,part})=>{const data=part?part.userData:guard.userData;assert.ok(guard.parent === current.port.hullG);
+   assert.equal(data.combatHitboxRole,'nonArmor');assert.ok(guard.material === current.port.mats.hull);
    assert.equal(data.appearanceRole,'armorPaint');assert.equal(data.trackGuard,true);
    assert.ok(guard.geometry.attributes.uv&&guard.geometry.attributes.color,'Native merged camouflage projection and dirt color retained');});
   const state=createTankState(getSpec('mbt70'),new T.Vector3(),0);

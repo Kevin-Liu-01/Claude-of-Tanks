@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import { renderCoveredComposerWarm } from './coveredComposerWarm.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 let clock = 0;
 const savedPerformance = Object.getOwnPropertyDescriptor(globalThis, 'performance');
@@ -165,8 +166,8 @@ try {
     for (const call of f.calls.filter((call) => call.owner)) {
       assert.strictEqual(call.owner, call.name.startsWith('get') ? f.gl : f.renderer);
     }
-    assert.deepEqual(f.calls.filter((call) => call.name === 'render').map((call) => call.args),
-      [[f.scene, f.camera], [f.scene, f.camera, null]], 'native argument arity and identities stay exact');
+    assert.deepEqual(graphLabels(f.calls.filter((call) => call.name === 'render').map((call) => call.args)),
+      graphLabels([[f.scene, f.camera], [f.scene, f.camera, null]]), 'native argument arity and identities stay exact');
     assert.doesNotMatch(JSON.stringify(result), /PRIVATE/);
     f.assertOperationsRestored();
     const before = JSON.stringify(result);

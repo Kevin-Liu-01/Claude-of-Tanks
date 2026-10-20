@@ -51,7 +51,7 @@ interface SupportObstacleSource {
  * origin alone dropped the roof from under a hull pivoting off its edge (belly on the edge, origin already behind and
  * below it): the hull fell into the building, which the solver then judged it to be standing on.
  */
-export type HullSupportPose = HullFootprint;
+type HullSupportPose = HullFootprint;
 
 export interface StructureSupportField extends SupportHeightField {
   /** Select the hull about to be stepped: gathers the primitives within reach and its belly line (and, with a pose,
@@ -163,7 +163,7 @@ export function structureTopAt(
 }
 
 /** A hull's track plane for the drawn-top rule (structureTopAt): its height at (cx, cz) and its rise per metre in x, z. */
-export interface SupportPlane { y: number; cx: number; cz: number; slopeX: number; slopeZ: number }
+interface SupportPlane { y: number; cx: number; cz: number; slopeX: number; slopeZ: number }
 
 type PoseSpec = Parameters<typeof tankContactRect>[0];
 interface PoseState { pos: { x: number; z: number }; yaw: number; visualPitch?: number; visualRoll?: number }

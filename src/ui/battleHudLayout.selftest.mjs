@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { battleSideStack, battleNotificationRows, battleRosterHeight, installBattleHudLayout, objectiveWidth, battleReportDock, REPORT_MAP_GAP } from './battleHudLayout.ts';
+import { battleSideStack, battleNotificationRows, battleRosterHeight, installBattleHudLayout, objectiveWidth, battleReportDock, REPORT_MAP_GAP,
+  portraitSightClearTop, SIGHT_BAND_ABOVE, SIGHT_BAND_BELOW, SCOPE_BAND_BELOW } from './battleHudLayout.ts';
 import { mouseNoticePlanWork } from './mouseNoticePlan.ts';
+import { sightFurniture } from './sightFurniture.ts';
+const layoutSourceR10 = readFileSync(new URL('./battleHudLayout.ts', import.meta.url), 'utf8');
 
 for (const space of [0, 80, 124, 320, 500]) {
   const height = battleRosterHeight(600, space, 124);
@@ -60,6 +63,35 @@ for (const bottom of [120,240,480,800]) for (const ceiling of [80,180,400]) for 
   assert.ok(dock.height>=0&&dock.height<=(compact?160:260));
   assert.ok(dock.height===0||dock.top>=ceiling);
 }
+
+// Owner 2026-10-17 (out of ammo, critic r3): a portrait phone's systems row never crosses the sight's band — its
+// countdown, rack, struck empty round, aim warning and scope readouts. Measured portrait phones (tools/fixtures/
+// battle-hud-layout.html, Chrome): 390x844 parks the row at 416 above its tray (468), across the 422 centre; 360x640
+// parks it at 212, clear; 430x932 at 504, across 466; the 768x1024 tablet at 596, under the battle furniture (cy+80).
+// The floor is the lower cluster (speedometer, fire, aim hint).
+{
+  const crossing = (top, height, centre) => top < centre + SIGHT_BAND_BELOW && top + height > centre - SIGHT_BAND_ABOVE;
+  assert.equal(portraitSightClearTop(212, 44, 320, 406, 208), 212, '360x640: already clear, untouched');
+  assert.equal(portraitSightClearTop(596, 44, 512, 689, 232), 596, '768x1024: already clear of the sight, untouched');
+  const tall = portraitSightClearTop(416, 44, 422, 560, 208);
+  assert.ok(!crossing(tall, 44, 422) && tall >= 208, `390x844: the row leaves the band within the free space (${tall})`);
+  assert.equal(tall, 422 - SIGHT_BAND_ABOVE - 44, 'no room under the scope readouts above the cluster: above the ring');
+  assert.ok(!crossing(portraitSightClearTop(504, 44, 466, 626, 208), 44, 466), '430x932: clear too');
+  assert.equal(portraitSightClearTop(560, 44, 520, 900, 208), 520 + SCOPE_BAND_BELOW,
+    'a tall portrait moves it below the scope readouts too, nearer the thumbs');
+  assert.equal(portraitSightClearTop(300, 44, 300, 380, 280), 300, 'no room on either side: the row stays');
+  for (let centre = 280; centre <= 560; centre += 7) for (let top = 100; top <= 700; top += 13) {
+    const placed = portraitSightClearTop(top, 44, centre, 760, 160);
+    if (placed !== top) {
+      assert.ok(crossing(top, 44, centre) && placed >= 160 && placed + 44 <= 760
+        && (placed >= centre + SCOPE_BAND_BELOW || placed + 44 <= centre - SIGHT_BAND_ABOVE), `moved rows land clear (${top}, ${centre})`);
+    } else if (crossing(top, 44, centre)) assert.ok(centre + SCOPE_BAND_BELOW + 44 > 760 && centre - SIGHT_BAND_ABOVE - 44 < 160);
+  }
+}
+const layoutSource = readFileSync(new URL('./battleHudLayout.ts', import.meta.url), 'utf8');
+assert.match(layoutSource, /if \(touch && width < height && systemsHeight\) \{[\s\S]{0,600}portraitSightClearTop\(systemsTop, systemsHeight, height \/ 2, floor, ceiling\)/,
+  'the solver applies it to touch portraits, centred on the screen-centre sight');
+assert.match(layoutSource, /Math\.min\(laneSystemsTop, systemsTop\) - 8/, 'the side lanes never gain the row\'s old space');
 
 // Observer lifecycle in a deterministic DOM: no-op attribute records must not
 // turn layout into a per-frame job, but real state/viewport changes still do.
@@ -403,6 +435,186 @@ try {
   }
 }
 
+// Touch portrait, solved end to end (critic r3: the source pins above let the wiring drift). The measured 390x844
+// phone (tools/fixtures/battle-hud-layout.html in Chrome, layout-r3): the tray's collapsed slot at 468-520 parks the
+// systems row at 416, across the sight centred at 422; the lower cluster (speedometer 594, left FIRE 628, stick 702)
+// leaves no room under the scope readouts, so the row moves above the ring (314). The side kill lanes then end above
+// the moved row. A taller portrait moves the row below the scope readouts, level with the tray and left of it, and the
+// lanes keep the floor the row's natural place gave them: a moved row lends them nothing.
+{
+  const saved = new Map(['document','window','ResizeObserver','MutationObserver','requestAnimationFrame','getComputedStyle',
+    'setTimeout','clearTimeout']
+    .map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
+  const box = (top,bottom,left,right) => ({top,bottom,left,right,width:right-left,height:bottom-top,x:left,y:top});
+  function solvePortrait(width, height, rects, rowWidth) {
+    const props = new Map(); let frame = null;
+    const element = (rect, extra={}) => ({ getClientRects: () => [rect], getBoundingClientRect: () => rect, children: [],
+      childElementCount: 0, dataset: {}, getAttribute: () => null, hasAttribute: () => false, toggleAttribute() {}, ...extra });
+    const lane = (rect) => { const children = Array.from({length:8}, () => ({hidden:false}));
+      return element(rect, {children, childElementCount: children.length}); };
+    const nodes = Object.fromEntries(Object.entries(rects).map(([selector, rect]) => [selector, element(rect)]));
+    nodes['.cot-vehicle-controls'] = element(rects['.cot-vehicle-controls'], {scrollWidth: rowWidth - 2});
+    const kills = {'.cot-kill-lane.l': lane(box(0,84,0,171)), '.cot-kill-lane.r': lane(box(0,84,219,390))};
+    const body = { dataset: {}, classList: { contains: (name) => name === 'cot-touch-layout' },
+      style: { getPropertyValue: (key) => props.get(key) ?? '', setProperty: (key, value) => props.set(key, value),
+        removeProperty: (key) => props.delete(key) },
+      hasAttribute: () => true, toggleAttribute() {}, getAttribute: () => '' };
+    globalThis.document = { body, documentElement: { clientWidth: width },
+      querySelector: (selector) => nodes[selector] ?? kills[selector] ?? null, querySelectorAll: () => [] };
+    globalThis.window = { innerWidth: width, innerHeight: height, visualViewport: { width, height }, document: globalThis.document,
+      addEventListener() {} };
+    globalThis.getComputedStyle = () => ({ visibility: 'visible' });
+    globalThis.requestAnimationFrame = (fn) => { frame = fn; return 1; };
+    // (a mouse pass arms the notice plan's resize-settle timer, mouseNoticePlan.ts: it must not outlive these stubs)
+    globalThis.setTimeout = () => 0; globalThis.clearTimeout = () => {};
+    globalThis.ResizeObserver = class { observe() {} };
+    globalThis.MutationObserver = class { observe() {} };
+    const root = { getClientRects: () => [{}], dataset: {}, classList: { contains: () => false, toggle() {} },
+      getAttribute: () => null, querySelector: (selector) => kills[selector] ?? null };
+    installBattleHudLayout(root);
+    frame();
+    const px = (name) => parseFloat(props.get(`--hud-${name}`));
+    return { px, kills };
+  }
+  try {
+    // 390x844, the measured phone
+    const phone = solvePortrait(390, 844, {
+      '.cot-top': box(0,62,23,367), '.cot-mode-status.show': box(62,103,56,334), '.cot-minimap': box(111,203,8,100),
+      '.cot-touch.on .mobile-chrome': box(111,155,240,380), '.cot-shells': box(468,520,332,380),
+      '.cot-vehicle-controls': box(416,460,12,378), '.cot-drive': box(593.76,678,14,98.24),
+      '.cot-touch.on .fire.alt': box(628,684,137,193), '.cot-touch.on .joy': box(702,820,14,132),
+      '.cot-dp': box(797,836,136.5,253.5), '.cot-net': box(822,842,14,102),
+    }, 366);
+    const centre = 844 / 2;
+    assert.equal(phone.px('systems-top'), centre - SIGHT_BAND_ABOVE - 44, '390x844: the row moves above the ring (314)');
+    assert.deepEqual([phone.px('systems-left'), phone.px('systems-width')], [12, 366], '390x844: whole, where it was across');
+    // the kill lanes end 8 px above the moved row (306): three rows a side under the map and the touch chrome
+    assert.equal(phone.px('kill-left-top'), 211, 'the left lane starts under the map');
+    assert.equal(phone.px('kill-left-height'), 3 * 29 - 3, '390x844: the left kill lane stops above the moved row');
+    assert.equal(phone.px('kill-right-top'), 163, 'the right lane starts under the touch chrome');
+    assert.equal(phone.px('kill-right-height'), 5 * 29 - 3, '390x844: the right kill lane stops above the moved row');
+    assert.deepEqual(phone.kills['.cot-kill-lane.l'].children.map((row) => row.hidden).filter((hidden) => !hidden).length, 3,
+      'the left lane shows only the rows that fit');
+    // a taller portrait: room under the scope readouts above the cluster, level with the tray (the map and the touch
+    // chrome expanded, so the lanes hold fewer than their eight rows and their floor shows)
+    const tall = solvePortrait(430, 1000, {
+      '.cot-top': box(0,62,43,387), '.cot-minimap': box(111,403,8,300), '.cot-touch.on .mobile-chrome': box(111,400,280,420),
+      '.cot-shells': box(620,672,374,422), '.cot-vehicle-controls': box(568,612,52,418), '.cot-drive': box(820,904,14,98),
+      '.cot-touch.on .fire.alt': box(850,906,137,193), '.cot-touch.on .joy': box(860,978,14,132), '.cot-dp': box(952,991,156,274),
+    }, 366);
+    assert.equal(tall.px('systems-top'), 500 + SCOPE_BAND_BELOW, 'tall: the row moves below the scope readouts (640)');
+    assert.deepEqual([tall.px('systems-left'), tall.px('systems-width')], [12, 374 - 12 - 8],
+      'tall: level with the tray, the row sits left of it, whole within the space');
+    // the lanes keep the row's natural floor (568 - 8 = 560), not the moved row's (632): five rows from 411 and 408
+    assert.deepEqual([tall.px('kill-left-top'), tall.px('kill-right-top')], [411, 408], 'tall: under the map and the chrome');
+    assert.equal(tall.px('kill-left-height'), 5 * 29 - 3, 'tall: the left kill lane keeps the natural floor');
+    assert.equal(tall.px('kill-right-height'), 5 * 29 - 3, 'tall: the right kill lane keeps the natural floor');
+  } finally {
+    for (const [key, descriptor] of saved) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];
+    }
+  }
+}
+// r10 (critic r9; owner 2026-10-17, out of ammo): every pass measures the furniture the reticle keeps clear of
+// (sightFurniture.ts), so the scope readouts follow the stylesheet; and it seats the scope's vision switch. A mouse
+// layout keeps the switch right of the sight; a shot report's host (it takes the pointer over its whole box while it
+// holds a card) or the open combat log over that seat sends it to the mirror seat left of the sight when nothing there
+// comes within 3 px (900x700, measured: the card at 584-884 x 196-452, the switch 166x48 at 563-729 x 326-374); where
+// the left lane's speedometer sits level with the marker (800x400: 184-292 x 164-272) it waits hidden. Touch never moves
+// it, and the touch chip the reticle seats under the sight (data-seat) is the reticle's own mark, never furniture.
+{
+  const saved = new Map(['document','window','ResizeObserver','MutationObserver','requestAnimationFrame','getComputedStyle',
+    'setTimeout','clearTimeout']
+    .map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
+  const box = (left,top,right,bottom) => ({top,bottom,left,right,width:right-left,height:bottom-top,x:left,y:top});
+  function solve(width, height, rects, { touch = false, hidden = false } = {}) {
+    const nodes = new Map();
+    for (const [selector, list] of Object.entries(rects)) nodes.set(selector, list.map((rect) => ({ rect, hidden: false,
+      offsetWidth: rect.width, offsetHeight: rect.height, getClientRects: () => [rect], getBoundingClientRect: () => rect,
+      contains(other) { return other === this; }, children: [], childElementCount: 0, dataset: {}, getAttribute: () => null,
+      hasAttribute: () => false, toggleAttribute() {} })));
+    const vision = nodes.get('.cot-scope-vision')?.[0];
+    if (vision) vision.hidden = hidden;
+    const all = (selector) => [...new Set(selector.split(',').flatMap((part) => nodes.get(part.trim()) ?? []))];
+    const body = { dataset: {}, classList: { contains: (name) => touch && name === 'cot-touch-layout' },
+      style: { getPropertyValue: () => '', setProperty() {}, removeProperty() {} },
+      hasAttribute: () => true, toggleAttribute() {}, getAttribute: () => '' };
+    let frame = null;
+    globalThis.document = { body, documentElement: { clientWidth: width },
+      querySelector: (selector) => all(selector)[0] ?? null, querySelectorAll: all };
+    globalThis.window = { innerWidth: width, innerHeight: height, visualViewport: { width, height }, document: globalThis.document,
+      addEventListener() {} };
+    globalThis.getComputedStyle = () => ({ visibility: 'visible', opacity: '1' });
+    globalThis.requestAnimationFrame = (fn) => { frame = fn; return 1; };
+    // (a mouse pass arms the notice plan's resize-settle timer, mouseNoticePlan.ts: it must not outlive these stubs)
+    globalThis.setTimeout = () => 0; globalThis.clearTimeout = () => {};
+    globalThis.ResizeObserver = class { observe() {} };
+    globalThis.MutationObserver = class { observe() {} };
+    const root = { getClientRects: () => [{}], dataset: {}, classList: { contains: () => false, toggle() {} },
+      getAttribute: () => null, querySelector: () => null };
+    installBattleHudLayout(root);
+    frame();
+    return { seat: body.dataset.scopeVision ?? '', boxes: sightFurniture.boxes.slice(0, sightFurniture.count)
+      .map((b) => [b.x0, b.y0, b.x1, b.y1]) };
+  }
+  try {
+    const right = (width, height) => { const left = Math.min(width / 2 + Math.max(Math.min(width, height) * 0.15 + 8, 80), width - 180);
+      return box(left, height / 2 - 24, left + 166, height / 2 + 24); };
+    const base = { '.cot-shell': [box(12, 636, 76, 688)], '.cot-top': [box(287, 0, 613, 62)], '.cot-dp': [box(12, 389, 172, 572)],
+      '.cot-drive': [box(184, 464, 292, 572)], '.cot-aim-warning:not([hidden]):not([data-seat])': [box(8, 118, 114, 142)] };
+    // every kind of furniture the reticle keeps clear of is published (r10 critic: dropping .cot-con, the 667x375 defect,
+    // went unnoticed): one box a selector, nowhere near the seats
+    const kinds = ['.cot-vehicle-controls>button', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy', '.cot-touch.on .quick',
+      '.cot-touch-aim.on .aimhint', '.cot-minimap', '.cot-mode-status.show', '.flight-identity', '.cot-ear'];
+    const every = Object.fromEntries(kinds.map((selector, i) => [selector, [box(300 + i * 30, 600, 320 + i * 30, 620)]]));
+    const published = solve(900, 700, { ...every, '.cot-scope-vision': [right(900, 700)] }).boxes;
+    for (const [i, selector] of kinds.entries()) {
+      assert.ok(published.some((got) => got[0] === 300 + i * 30 && got[1] === 600), `${selector} is furniture`);
+    }
+    let solved = solve(900, 700, { ...base, '.cot-scope-vision': [right(900, 700)] });
+    assert.equal(solved.seat, '', '900x700: nothing over the seat right of the sight, the switch stays');
+    for (const b of [[12, 636, 76, 688], [287, 0, 613, 62], [12, 389, 172, 572], [184, 464, 292, 572], [8, 118, 114, 142],
+      [right(900, 700).left, 326, right(900, 700).right, 374]]) {
+      assert.ok(solved.boxes.some((got) => got.every((v, i) => Math.abs(v - b[i]) < 1e-9)), `the furniture holds ${b}`);
+    }
+    assert.equal(solved.boxes.length, 6, 'one box a shown panel');
+    solved = solve(900, 700, { ...base, '.cot-scope-vision': [right(900, 700)], '.cot-si-cardhost:not(:empty)': [box(584, 196, 884, 452)] });
+    assert.equal(solved.seat, 'left', '900x700: a shot report over the seat sends the switch left of the sight');
+    solved = solve(900, 700, { ...base, '.cot-scope-vision': [right(900, 700)], '.cot-si-log.open': [box(584, 74, 884, 452)] });
+    assert.equal(solved.seat, 'left', '900x700: so does the open combat log');
+    solved = solve(900, 700, { ...base, '.cot-scope-vision': [right(900, 700)], '.cot-si-cardhost:not(:empty)': [box(584, 196, 884, 452)],
+      '.cot-kill-lane.l .cot-kf:not([hidden])': [box(0, 330, 240, 356)] });
+    assert.equal(solved.seat, 'none', '900x700: a kill notice level with the marker leaves no mirror seat: hidden');
+    solved = solve(800, 400, { '.cot-drive': [box(184, 164, 292, 272)], '.cot-scope-vision': [right(800, 400)],
+      '.cot-si-cardhost:not(:empty)': [box(484, 74, 784, 244)] });
+    assert.equal(solved.seat, 'none', '800x400: the speedometer beside the marker on the left: hidden while the report is up');
+    solved = solve(900, 700, { ...base, '.cot-scope-vision': [right(900, 700)], '.cot-si-cardhost:not(:empty)': [box(584, 196, 884, 452)] },
+      { hidden: true });
+    assert.equal(solved.seat, '', 'no scope (the switch hidden): no seat');
+    solved = solve(390, 844, { '.cot-scope-vision': [box(25, 399, 129, 445)], '.cot-si-cardhost:not(:empty)': [box(12, 380, 378, 520)] },
+      { touch: true });
+    assert.equal(solved.seat, '', 'touch keeps its own seat left of the sight');
+    assert.ok(!layoutSourceR10.includes("'.cot-aim-warning:not([hidden])',") && layoutSourceR10.includes(".cot-aim-warning:not([hidden]):not([data-seat])"),
+      'the seated touch chip is the reticle\'s mark, not furniture');
+    // the sheets seat what the solver measures: the touch chip under the sight is the canvas chip's ink box, 24 px tall,
+    // placed by its custom properties; the vision switch's mirror seat mirrors the mouse seat (its 180 px edge, 112 px
+    // for the compact plate), and waits hidden (r10 critic: no receipt read either rule)
+    const layoutCss = readFileSync(new URL('./battleHudLayout.css', import.meta.url), 'utf8');
+    const aerialCss = readFileSync(new URL('./aerialHud.css', import.meta.url), 'utf8');
+    assert.ok(layoutCss.includes(".cot-aim-warning[data-seat='sight']:not([hidden]){left:var(--hud-aim-warning-x);top:var(--hud-aim-warning-y);"
+      + 'width:var(--hud-aim-warning-w);height:24px;min-height:0;padding-block:0;transform:none;'), 'the seated chip\'s rule');
+    assert.ok(aerialCss.includes("body[data-scope-vision='left'] .cot-hud .cot-scope-vision{left:auto;right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px))}")
+      && aerialCss.includes("@media(max-width:539px){body[data-scope-vision='left'] .cot-hud .cot-scope-vision{right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px))}}")
+      && aerialCss.includes("body[data-scope-vision='none'] .cot-hud .cot-scope-vision{visibility:hidden}")
+      && aerialCss.includes('left:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px))'), 'the switch\'s seats mirror each other');
+    assert.ok(layoutSourceR10.includes('const edge = width < 540 ? 112 : 180;') && layoutSourceR10.includes('const reach = Math.max(Math.min(width, height) * 0.15 + 8, 80);'),
+      'the solver models those seats');
+  } finally {
+    for (const [key, descriptor] of saved) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];
+    }
+  }
+}
 const layout=readFileSync(new URL('./battleHudLayout.ts',import.meta.url),'utf8');
 const hud=readFileSync(new URL('./hud.ts',import.meta.url),'utf8');
 assert.match(layout,/new ResizeObserver\(\(entries\) => \{[^}]*?\n[^}]*?\n\s*schedule\(\);\n\s*\}\);/,'map zoom and roster size changes relayout the lanes (and mark the mouse notice plan\'s inputs)');

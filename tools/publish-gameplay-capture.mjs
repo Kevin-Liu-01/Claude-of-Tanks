@@ -97,7 +97,7 @@ function publicationFor(report, files, source, review, staged, toolHash) {
       outcomeNotice: `The recorded player shell resolved as ${report.battleReceipt.lastShell.hitKind} for ${report.battleReceipt.lastShell.damage} damage. A later target destruction is not independently attributed by this receipt.`, webEncodes: staged.encodes } };
 }
 
-export function publishGameplay(argv) {
+function publishGameplay(argv) {
   const args = parseArgs(argv), toolHash = digest(readFileSync('tools/feature-promo-capture.mjs'));
   if (existsSync(args.out)) throw Error('Refusing existing work directory');
   if (!existsSync('public/media/director-r4/manifest.json')) throw Error('Publish reviewed cinematic campaign first');

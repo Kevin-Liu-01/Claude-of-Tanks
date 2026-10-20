@@ -1,4 +1,5 @@
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { uniqueIds } from './id-list.mjs';
 // RENDER-TRUTH AUDIT driver (BUILD-STANDARD §C.1, owner order 2026-08-06;
 // law banked 1017339, yaw-stranded amendment 8e1de63). Official fleet tool:
 // drives tools/winding-audit.html per procedural-source id and reports
@@ -37,6 +38,8 @@ refresher.unref();
 // ---- CLI ----
 const arg = (k) => { const a = process.argv.find((x) => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : null; };
 const idArg = arg('ids');
+// A repeated --ids entry fails before the server, the browser and any capture hold (2026-10-16, test-speed R4c)
+uniqueIds(idArg?.split(','), 'winding-audit --ids');
 const viewsArg = arg('views');
 const sizeArg = arg('size');
 const CHECK = process.argv.includes('--check');

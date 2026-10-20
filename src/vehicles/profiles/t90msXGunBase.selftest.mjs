@@ -36,13 +36,13 @@ function openings(meshes){
 }
 function ownership(tank){
   const mount=tank.root.getObjectByName('gunMount'),pitch=tank.root.getObjectByName('rig_gun'),recoil=tank.root.getObjectByName('rig_recoil');
-  assert.equal(mount.parent,pitch,'source fixed shell is pitching, not recoil-owned');
+  assert.ok(mount.parent === pitch,'source fixed shell is pitching, not recoil-owned');
   const geometry=mount.geometry,point=new THREE.Vector3(.023, .296, .058),before=point.clone().applyMatrix4(mount.matrixWorld);
   recoil.position.z=-.2;tank.root.updateMatrixWorld(true);
   assert.ok(before.distanceTo(point.clone().applyMatrix4(mount.matrixWorld))<1e-9,'barrel recoil leaves shell fixed');
   pitch.rotation.x=-.15;tank.root.updateMatrixWorld(true);
   assert.ok(before.distanceTo(point.clone().applyMatrix4(mount.matrixWorld))>.02,'shell follows actual pitch');
-  assert.equal(mount.geometry,geometry,'pose updates preserve cold-created mesh buffers');
+  assert.ok(mount.geometry === geometry,'pose updates preserve cold-created mesh buffers');
 }
 for(const quality of ['high','low']){
   const t=createTank('t90ms_tagil',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});

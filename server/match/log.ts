@@ -1,5 +1,5 @@
 /** JSON-lines structured logger for the match service. One object per line, never a credential. */
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 type LogFields = Record<string, string | number | boolean | null | undefined>;
 
 export interface Logger {

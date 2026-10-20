@@ -39,7 +39,7 @@ for(const quality of ['high','low']) {
     const meshes=[];tank.root.traverse(m=>{if(m.isMesh&&!m.name.startsWith('procShadow_')&&!m.userData.vehicleMarking)meshes.push(m);});
     const hull=tank.root.getObjectByName('hull'),turret=tank.root.getObjectByName('rig_turret');
     const gun=tank.root.getObjectByName('rig_gun'),mount=tank.root.getObjectByName('gunMount');
-    assert.equal(mount.parent,gun,'entire rounded boot and cast support belong to gun pitch');
+    assert.ok(mount.parent === gun,'entire rounded boot and cast support belong to gun pitch');
     for(const side of [-1,1]) {
       const heights=[1.1,1.35,1.6,1.8].map(x=>cast([hull],[side*x,3,2.9],[0,-1,0],3)?.point.y);
       for(const y of heights)assert.ok(y>1.48&&y<1.52,'shared shoulder/glacis section has no missing span or slab step');

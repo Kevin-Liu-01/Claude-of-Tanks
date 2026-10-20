@@ -166,7 +166,7 @@ for (const id of ['pl01', 'pl01_105']) {
     `${id} must retain exactly one linked track course per side`);
 
   // 2026-10-08 (the owner's field standard, main 6763d7cc0): the remote module is the PL-01's only secondary weapon
-  assert.equal(tank.root.getObjectByName('pl01_loader_mg'), undefined,
+  assert.ok(tank.root.getObjectByName('pl01_loader_mg') === undefined,
     `${id} carries no loader machine gun beside its remote station`);
   assert.ok(tank.root.getObjectByName('turretCupola'),
     `${id} must expose structural cupola geometry`);
@@ -188,12 +188,12 @@ for (const id of ['pl01', 'pl01_105']) {
       'PL-01 105 CROWS must be seated on the corrected roof');
     assert.equal(crows.rotation.y, 0,
       'PL-01 105 CROWS must rest aimed forward');
-    assert.equal(rws, undefined,
+    assert.ok(rws === undefined,
       'PL-01 105 must not inherit the base low-observable RWS');
   } else {
-    assert.equal(spareLinks, undefined,
+    assert.ok(spareLinks === undefined,
       'base PL-01 must not inherit the 105 glacis protection pack');
-    assert.equal(crows, undefined,
+    assert.ok(crows === undefined,
       'base PL-01 keeps its own low-observable RWS');
     assert.ok(rws?.parent === turret && near(rws.position.y, 0.76208),
       'base PL-01 RWS must be seated on the corrected roof');

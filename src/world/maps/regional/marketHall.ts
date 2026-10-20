@@ -184,7 +184,7 @@ export function timberHalle(sink: PartSink, spec: HalleSpec): { rg: RoofGeometry
 
 /** What a hall's roof frame stands on: its roof, the tie beams' half span (`px`) and their places along it (`zs`), the
  *  ties' top, the eave, the roof's depth along the ridge, the oak. */
-export interface RoofFrame { rg: RoofGeometry; roof: RoofSpec; px: number; zs: readonly number[]; tieTop: number; eaveY: number; rd: number; timber: Rgb; mobile: boolean }
+interface RoofFrame { rg: RoofGeometry; roof: RoofSpec; px: number; zs: readonly number[]; tieTop: number; eaveY: number; rd: number; timber: Rgb; mobile: boolean }
 
 /**
  * The carpentry under a hall's covering, the roof's frame centred on the emitting frame's origin (the ridge along z): on

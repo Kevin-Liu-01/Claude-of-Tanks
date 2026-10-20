@@ -14,9 +14,8 @@ dressingGroup.userData = {
   workshopFamilies: ['abrams'],
   workshopSourceVehicleIds: ['m1a2_sep_v3'],
   battleScreenVisible: true,
-  battleScreenDisplayCount: 2,
-  battleScreenSecondaryImage: '/media/battle-secondary.webp',
-  battleScreenSecondaryFacing: 'inward-to-hero',
+  battleScreenDisplayCount: 1,
+  battleScreenFacing: 'inward-to-hero',
   verdantHeroHoistOffsetM: 4.8,
   verdantHoistStationCount: 3,
   verdantHoistChainRuns: 20,
@@ -101,9 +100,8 @@ assert.equal(stats.optimizedTriangles, 4321);
 assert.equal(stats.optimizedTriangleParity, true);
 assert.equal(stats.environment.worldMounted, true);
 assert.equal(stats.environment.retainedWorldMapId, 'verdant');
-assert.equal(stats.battleScreenDisplayCount, 2);
-assert.equal(stats.battleScreenSecondaryImage, '/media/battle-secondary.webp');
-assert.equal(stats.battleScreenSecondaryFacing, 'inward-to-hero');
+assert.equal(stats.battleScreenDisplayCount, 1);
+assert.equal(stats.battleScreenFacing, 'inward-to-hero');
 assert.equal(stats.verdantHeroHoistOffsetM, 4.8);
 assert.equal(stats.verdantHoistStationCount, 3);
 assert.equal(stats.verdantHoistChainRuns, 20);
