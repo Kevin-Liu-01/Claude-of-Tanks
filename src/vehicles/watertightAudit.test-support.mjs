@@ -10,8 +10,8 @@
 // declared finite clearance's cut cells) is reported apart too; a declared record whose lattice no longer matches the
 // build fails the gate, as a stale fill record does.
 // 2026-10-16 (test-speed R7c): named carries (tools/watertight-carry.mjs, docs/geometry-gate/watertight-carry.json). A
-// leaking hull passes only while it is listed and measures at or below its listed litres; an unlisted leak, a listed
-// hull that leaks more, and a listed hull that now holds water (a stale row) fail the gate, so the 32 inherited leakers
+// leaking hull passes only while it is listed and measures exactly its listed litres; an unlisted leak, a listed
+// hull that leaks more or less (lower the row), and a listed hull that now holds water (a stale row) fail the gate, so the 32 inherited leakers
 // no longer keep fleetPassDefault red and hide new leaks behind them.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';

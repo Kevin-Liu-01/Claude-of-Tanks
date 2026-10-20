@@ -537,8 +537,8 @@ the former receipts' checks, with their assertions unchanged, in `*Audit.test-su
   through `applyInteriorFills` and removes them again; it costs about 1 s of CPU a hull (209 s for the fleet) and no
   extra build. A stale fill record fails by name with its regeneration command. Named carries (2026-10-16,
   `tools/watertight-carry.mjs`): `docs/geometry-gate/watertight-carry.json` lists each inherited leaking hull with its
-  leak volume in litres, an owner, a date and a cause. A listed hull passes at or below its litres; the gate fails on
-  any unlisted leak, any listed hull that leaks more, and any listed hull that now holds water (delete its row in the
+  leak volume in litres, an owner, a date and a cause. A listed hull passes at exactly its litres (0.01 L); the gate fails on
+  any unlisted leak, any listed hull that leaks more or less (lower its row: a ratchet), and any listed hull that now holds water (delete its row in the
   commit that seals it). Lower or delete rows; never raise one to turn a red green.
 
 The builds stay separate where the checks read different models: camo seeds move seeded stowage, the generated seats
@@ -584,8 +584,9 @@ substitute for the map/contact, shadow-motion and real Garage/battle review.
 work changed; every selected receipt still runs every assertion in a fresh process.
 
 - (229) CPU receipts take no capture lease: they run at nice 10 and each waits for
-  `headroom can-start --gb 6` (`COT_SELFTEST_MEMORY_GB`, 0 turns it off), and the capture lock is for
-  the GPU. The exclusive CPU receipts still run alone and first within this suite (at the runner's
+  `headroom can-start --gb 6` (`COT_SELFTEST_MEMORY_GB`, 0 turns it off; a yes is reused 5 s, a no is
+  asked again every 15 s; no CLI or an error turns the gate off with a log line, and after 30 minutes of
+  noes it opens for the rest of the run), and the capture lock is for the GPU. The exclusive CPU receipts still run alone and first within this suite (at the runner's
   priority); the self-leasing browser receipts run alone and last, queueing for the lock themselves,
   so no CPU receipt waits behind the GPU queue (on 2026-10-19 it held 45 tickets and two cold suites
   timed out at 30 min without starting). The trade-off: nothing holds other sessions' suites or GPU

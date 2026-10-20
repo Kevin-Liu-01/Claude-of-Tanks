@@ -138,13 +138,15 @@ for (const concurrency of [1, 3]) {
   const absent = selftestMemoryGate({}, { ask: () => { missing++; return { error: Object.assign(new Error('x'), { code: 'ENOENT' }) }; },
     log: () => {} });
   await absent(); await absent(); assert.equal(missing, 1, 'no headroom CLI: the gate opens for good');
-  const usage = selftestMemoryGate({ COT_SELFTEST_MEMORY_GB: '200' }, { ask: () => ({ status: 2 }), log: () => {},
+  const usage = selftestMemoryGate({}, { ask: () => ({ status: 2 }), log: () => {},
     sleep: async () => assert.fail('a usage error never waits') });
   await usage();
   let slept = 0, now = 0;
-  const stuck = selftestMemoryGate({}, { ask: () => ({ status: 1 }), sleep: async (ms) => { slept++; now += ms; }, clock: () => now,
-    log: () => {} });
+  // (headroom can-start --gb 200 on a 128 GB machine answers 1, a no, for ever)
+  const stuck = selftestMemoryGate({ COT_SELFTEST_MEMORY_GB: '200' }, { ask: () => ({ status: 1 }),
+    sleep: async (ms) => { slept++; now += ms; }, clock: () => now, log: () => {} });
   await stuck(); assert.equal(slept, 120, '30 minutes of noes, then the child starts');
+  await stuck(); await stuck(); assert.equal(slept, 120, 'and the gate stays open for the rest of the run');
   await selftestMemoryGate({ COT_SELFTEST_MEMORY_GB: '0' }, { ask: () => assert.fail('asked with the gate off') })();
   let defaulted = 0;
   await selftestMemoryGate({ COT_SELFTEST_MEMORY_GB: '' }, { ask: (gb) => { defaulted = gb; return { status: 0 }; } })();
@@ -168,6 +170,7 @@ for (const concurrency of [1, 3]) {
   const result = await runSelftestFile(script, { nice: 10, signals: { on() {}, removeListener() {} } });
   assert.equal(result.status, 0);
   assert.ok(Number((await import('node:fs')).readFileSync(out, 'utf8')) >= 10, 'the child runs at nice 10 or lower priority');
+  (await import('node:fs')).rmSync(dir, { recursive: true, force: true });
 }
 // the CLI wiring: a real one-receipt run takes no capture lease and passes (the memory gate off, a scratch cache)
 {
@@ -176,12 +179,20 @@ for (const concurrency of [1, 3]) {
   const { tmpdir: tmp } = await import('node:os');
   const { join: joinPath } = await import('node:path');
   const scratch = temp(joinPath(tmp(), 'cot-runner-cli-'));
-  const cli = run(process.execPath, ['tools/run-selftests.mjs', 'all', '--only=tools/assert-graph-guard.selftest.mjs',
-    `--report=${joinPath(scratch, 'report.json')}`], { encoding: 'utf8', timeout: 120_000,
-    env: { ...process.env, COT_SELFTEST_CACHE_DIR: joinPath(scratch, 'cache'), COT_SELFTEST_MEMORY_GB: '0', COT_SELFTEST_WORKERS: '2' } });
-  assert.equal(cli.status, 0, cli.stdout + cli.stderr);
-  assert.match(cli.stdout, /CPU receipts take no capture lease; browser receipts queue for the GPU themselves/);
-  assert.match(cli.stdout, /PASS tools\/assert-graph-guard\.selftest\.mjs/);
+  try {
+    // the lease setting pinned off and a 1 GB memory gate, whatever the caller's environment says; 10 min under load
+    const cli = run(process.execPath, ['tools/run-selftests.mjs', 'all', '--only=tools/assert-graph-guard.selftest.mjs',
+      `--report=${joinPath(scratch, 'report.json')}`], { encoding: 'utf8', timeout: 600_000,
+      env: { ...process.env, COT_SELFTEST_CACHE_DIR: joinPath(scratch, 'cache'), COT_SELFTEST_CPU_LEASE: '', COT_SELFTEST_MEMORY_GB: '1',
+        COT_SELFTEST_WORKERS: '2' } });
+    assert.equal(cli.status, 0, cli.stdout + cli.stderr);
+    assert.match(cli.stdout, /PASS tools\/assert-graph-guard\.selftest\.mjs/);
+    const { options } = JSON.parse((await import('node:fs')).readFileSync(joinPath(scratch, 'report.json'), 'utf8'));
+    assert.equal(options.cpuLease, false, 'the CLI ran without the capture lease');
+    assert.equal(options.memoryGb, 1, 'the CLI built the memory gate from COT_SELFTEST_MEMORY_GB');
+    assert.ok(options.memoryAsks >= 1 || /memory gate off/.test(cli.stdout), 'and the pool consulted it before the CPU child');
+    assert.equal(options.childNice, 10);
+  } finally { (await import('node:fs')).rmSync(scratch, { recursive: true, force: true }); }
 }
 assert.equal(selftestCpuLease({}), false, 'the runner takes no CPU lease by default');
 assert.equal(selftestCpuLease({ COT_SELFTEST_CPU_LEASE: '1' }), true, 'COT_SELFTEST_CPU_LEASE=1 restores the shared lease');
@@ -460,7 +471,8 @@ assert.equal(SELFTEST_GRAPH_GUARD, `--import=${new URL('./assert-graph-guard.mjs
       // parsed relative imports (never import text inside a fixture's source strings), and files the code reads by
       // new URL('./x', import.meta.url)
       const code = text.split('\n').filter((line) => !/^\s*(?:\/\/|\*|\/\*)/.test(line)).join('\n'); // comment lines name no file
-      const urls = [...code.matchAll(/new URL\(\s*['"](\.{1,2}\/[^'"]+)['"]\s*,\s*import\.meta\.url/g)].map((match) => match[1]);
+      const urls = [...code.matchAll(/new URL\(\s*['"`](\.{1,2}\/[^'"`$]+)['"`]\s*,\s*import\.meta\.url/g),
+        ...code.matchAll(/join\(\s*import\.meta\.dirname\s*,\s*['"`](\.{1,2}\/[^'"`$]+)['"`]\s*\)/g)].map((match) => match[1]);
       const edges = [...new Set([...collectSelftestInputs(text, file).imports, ...urls])].filter((specifier) => /^\.{1,2}\//.test(specifier))
         .map((specifier) => rel(root, res(root, dir(file), specifier)))
         // a directory named to find the checkout (resolve(import.meta.dirname, '../..')) reads no file itself

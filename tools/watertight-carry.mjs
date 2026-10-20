@@ -7,7 +7,7 @@
 //
 // docs/geometry-gate/watertight-carry.json names each inherited leaker with its leak volume in litres (at the
 // measurement's own 0.01 L resolution), an owner, the date it was carried and its cause. The gate passes a leaking hull
-// only while it is listed and measures at or below its listed volume. It fails on:
+// only while it is listed and measures exactly its listed volume (0.01 L). It fails on:
 //   - any leaking hull without a row (a new leak);
 //   - any listed hull that measures more than its row (a carried leak that grew);
 //   - any listed hull that now holds water (the row is stale: delete it, so it can never excuse a later leak).
