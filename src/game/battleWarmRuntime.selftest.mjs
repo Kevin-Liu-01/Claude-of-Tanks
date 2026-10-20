@@ -992,7 +992,7 @@ assert.deepEqual(await wreckLifetimeProbe('abort', 3), { renders: 1, queries: 1,
 assert.deepEqual(await wreckLifetimeProbe('query-failure'), { renders: 1, queries: 1, uniforms: 0 },
   'failed readiness never permits speculative reflection, and the real fallback draw remains');
 
-function hiddenProgramFixture({ pendingQueries = 1, extension = true } = {}) {
+function hiddenProgramFixture({ pendingQueries = 1, extension = true, wreck = false } = {}) {
   const priorWindow = globalThis.window;
   globalThis.window = {};
   const root = new Group(), world = new Group();
@@ -1006,6 +1006,7 @@ function hiddenProgramFixture({ pendingQueries = 1, extension = true } = {}) {
     getExtension: () => extension ? { COMPLETION_STATUS_KHR: 0x91B1 } : null,
     getProgramParameter() {
       state.queries++;
+      events.push('query');
       state.onQuery?.();
       return state.queries > pendingQueries;
     },
@@ -1018,8 +1019,11 @@ function hiddenProgramFixture({ pendingQueries = 1, extension = true } = {}) {
     return {};
   }, getAttributes: () => ({}) };
   const renderer = { info: { programs: [retained] }, getContext: () => gl, initTexture() {} };
+  // wreck: a fielded hull with a destroyed state (the rare warm's wreck stage compiles it first)
+  const visual = wreck ? { root, setDestroyed() { events.push('destroyed'); }, resetDestroyed() { events.push('reset'); } } : { root };
   const context = {
-    game: { tanks: [{ visual: { root } }] }, renderer, camera: new PerspectiveCamera(),
+    game: { tanks: [{ specId: wreck ? 'wreck-fixture' : undefined, visual }] }, renderer, camera: new PerspectiveCamera(),
+    *prebakeBurntSteps() {}, anisotropy: 1,
     world: () => ({ group: world }), fx: { group: new Group() },
     isOpeningReady: () => true, isRareReady: () => owner.isRareReady(),
     markRareReady: () => owner.markRareReady(), isDestructionWarmed: () => true,
@@ -1027,7 +1031,7 @@ function hiddenProgramFixture({ pendingQueries = 1, extension = true } = {}) {
     forwardProgramWarm: {
       compile(object) {
         assert.equal(object.visible, true);
-        events.push(object === actor ? 'actor' : 'terrain');
+        events.push(object === actor ? 'actor' : object === root ? 'wreck' : 'terrain');
         if (!renderer.info.programs.includes(program)) renderer.info.programs.push(program);
       },
       *linkerBreathingSlices() {},
@@ -1061,7 +1065,7 @@ function hiddenProgramFixture({ pendingQueries = 1, extension = true } = {}) {
     assert.equal(fixture.state.reflections, 1, 'the second object reuses the already prepared program');
     assert.equal(fixture.state.renders, 3, 'base and both scope variants still render');
     assert.equal(fixture.owner.isRareReady(), true);
-    assert.deepEqual(fixture.events.filter(event => event !== 'uniform'), ['actor', 'terrain']);
+    assert.deepEqual(fixture.events.filter(event => event !== 'uniform' && event !== 'query'), ['actor', 'terrain']);
     const detail = globalThis.window.__COMBAT_RARE_WARM.hiddenDetail;
     assert.ok(Number.isFinite(detail.startedAt) && detail.finishedAt >= detail.startedAt,
       'exact stage timestamps support direct overlap with callback-gap receipts');
@@ -1118,6 +1122,30 @@ for (const change of ['later-program', 'removed', 'replaced', 'query-failure', '
       `${change}: reflect only current submitted pairs, preserving the unsupported-extension fallback`);
     assert.equal(fixture.state.renders, 3);
     fixture.assertRestored();
+  } finally { fixture.dispose(); }
+}
+
+// 2026-10-19 (the 229 perf pass): the wreck stage polls readiness in the deferred warm, as the hidden variants do (the
+// burnt fallback's synchronous LINK_STATUS wait held the main thread 0.5-0.6 s into every battle); its drain reflects at once
+{
+  const fixture = hiddenProgramFixture({ wreck: true });
+  try {
+    await fixture.owner.warmRareChunked(6, async () => { fixture.assertRestored(); });
+    assert.equal(fixture.state.cold, 0, 'the deferred wreck stage reflects only linked programs');
+    assert.equal(fixture.state.reflections, 1, 'the hidden variants reuse the wreck stage\'s prepared program');
+    const order = fixture.events.filter((event) => event !== 'uniform');
+    assert.deepEqual(order.slice(0, 3), ['destroyed', 'wreck', 'reset'], 'compiled in its wreck state, reset before any wait');
+    assert.ok(order.indexOf('query') > order.indexOf('reset'), 'the readiness polls follow the reset');
+    assert.equal(fixture.owner.isRareReady(), true);
+  } finally { fixture.dispose(); }
+}
+{
+  const fixture = hiddenProgramFixture({ wreck: true });
+  try {
+    fixture.owner.drain();
+    assert.equal(fixture.state.queries, 0, 'a drained wreck stage reflects directly');
+    assert.equal(fixture.state.reflections, 1);
+    assert.equal(fixture.owner.isRareReady(), true);
   } finally { fixture.dispose(); }
 }
 

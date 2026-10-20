@@ -208,6 +208,8 @@ export function createMissileWires(light: SceneLightUniforms): MissileWires {
     renderer.getCurrentViewport(_vp);
     uViewport.value.set(Math.max(1, _vp.z), Math.max(1, _vp.w));
   };
+  // the callback reads the viewport alone: the late pass may draw it through its view (engine/lateFxSceneView.ts)
+  mesh.userData.lateFxSceneAgnostic = true;
 
   // a slot's round (its key may be any number, negative too: whether a slot is taken is its own flag)
   const keys = new Float64Array(WIRE_SLOTS);

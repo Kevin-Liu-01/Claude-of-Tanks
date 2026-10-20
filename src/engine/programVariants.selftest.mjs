@@ -6,7 +6,8 @@
 // 3. The twin: the original's id, uuid, maps, colours, defines, hooks and program key read through, live; an
 //    original.needsUpdate bumps the twin's version, a twin's own needsUpdate only the twin's; disposing the original
 //    disposes the twin (three's release of the twin's program).
-// 4. The wiring: map.ts splits the assembled world once, after its last material patch at assembly.
+// 4. The wiring: map.ts splits the assembled world once, after its last material patch at assembly; tankFactoryCore.ts
+//    splits battle builds before their depth layers; the vehicles resolve a twin's original for clones and burns.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -63,6 +64,18 @@ assert.ok(programVariantOrigin(shared) === shared);
 assert.ok(alone.material === other);
 assert.ok(multi.material[1] === other);
 assert.deepEqual(splitProgramVariants(root), { materials: 4, split: 0, twins: 0, objects: 0 }, 'a second pass changes nothing');
+// (2026-10-19) a re-seat after an unwrap put the original back on a twin's object: only materials a pass split before
+{
+  poolA.material = shared; // an unwrap that restored the original
+  const whole = new THREE.MeshBasicMaterial(), g2 = new THREE.Group();
+  g2.add(new THREE.Mesh(box, whole), new THREE.InstancedMesh(box, whole, 2));
+  root.add(g2);
+  const reseat = splitProgramVariants(root, { onlyAlreadySplit: true });
+  assert.equal(poolA.material, poolB.material, 'the original\'s object takes its twin back');
+  assert.equal(g2.children[1].material, whole, 'a material no pass split stays whole');
+  assert.deepEqual([reseat.split, reseat.twins, reseat.objects], [1, 0, 1], 'one re-seat, no new twin');
+  root.remove(g2); whole.dispose();
+}
 
 // ---- 3. the twin reads the original, live
 const twin = poolA.material;
@@ -100,6 +113,13 @@ assert.equal(twin.version, t0 + 3, 'and the original\'s next one still reaches i
   assert.equal(p2.uniforms, p1.uniforms, 'the twin\'s program keeps the original\'s uniform map');
   assert.equal(p1.uniforms.a.value, 1, 'the first program\'s objects stay');
   assert.equal(p1.uniforms.b.value, 3, 'a uniform a later program adds joins the map');
+  // a clone compiled through the original's chain (the vehicles' runVehicleHookChain: hook.call(clone)) keeps its own
+  const clone = shared.clone();
+  const p3 = { uniforms: { a: { value: 4 }, c: { value: 5 } }, fragmentShader: '', vertexShader: '' };
+  shared.onBeforeCompile.call(clone, p3, null);
+  assert.notEqual(p3.uniforms, p1.uniforms, 'a clone compiled through the original\'s hook keeps its own uniform map');
+  assert.equal(p3.uniforms.a.value, 4);
+  assert.ok(!('c' in p1.uniforms), 'and adds nothing to the original\'s');
 }
 // a material without its own program key keeps its hook's source as its key (three's default)
 {
@@ -124,5 +144,12 @@ assert.equal(released, 1, 'disposing the original disposes the twin');
 const mapSource = readFileSync(new URL('../world/map.ts', import.meta.url), 'utf8');
 assert.match(mapSource, /import \{ splitProgramVariants \} from '\.\.\/engine\/programVariants\.ts';/);
 assert.match(mapSource, /const programVariants = splitProgramVariants\(props\.group\);/, 'the assembled world\'s props are split once (their hooks keep no uniform map of their own)');
+// 2026-10-19: the battle and Garage-hero tank builds, before their depth layers capture each mesh's material
+const factorySource = readFileSync(new URL('../vehicles/tankFactoryCore.ts', import.meta.url), 'utf8');
+assert.match(factorySource, /if \(batchStatic\) root\.userData\.programVariants = splitProgramVariants\(root\);(?:\s*\/\/[^\n]*)*\s*let depthLayers = collectCoplanarDepthLayers\(root\);/,
+  'battle tank builds split before the depth layers record the drawn materials');
+const materialsSource = readFileSync(new URL('../vehicles/materials.ts', import.meta.url), 'utf8');
+assert.match(materialsSource, /VEHICLE_REGISTRATION\.get\(programVariantOrigin\(source\)\)\?\.family\.setup/, 'a twin\'s clone registers through its original');
+assert.match(materialsSource, /mat = programVariantOrigin\(mat\);\s*\/\/ shared-material guard/, 'the wreck burn patches the original');
 
 console.log('programVariants.selftest: the variant is three\'s needsProgramChange object terms; the plain variant keeps the material, every other variant one live prototype twin (id, key, hooks, maps, defines, versions and disposal through the original); a second pass changes nothing');

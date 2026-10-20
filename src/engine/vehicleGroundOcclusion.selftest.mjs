@@ -940,7 +940,7 @@ const fac5 = here('../vehicles/tankFactoryCore.ts'), mats5 = here('../vehicles/m
 assert.ok(fac5.includes('const padMat = cloneVehicleMaterial(mats.trackLink || mats.dark);')
   // (2026-10-18, the wheel-band lane, round 3: a clone re-registers through its source's family, one registration record)
   && mats5.includes('VEHICLE_REGISTRATION.set(material, { family, hook: registration });')
-  && mats5.includes('VEHICLE_REGISTRATION.get(source)?.family.setup') && mats5.includes('gl_FragColor.a += ${VEHICLE_ALPHA_TAG.toFixed(1)};'),
+  && mats5.includes('VEHICLE_REGISTRATION.get(programVariantOrigin(source))?.family.setup') && mats5.includes('gl_FragColor.a += ${VEHICLE_ALPHA_TAG.toFixed(1)};'),
   'the shoes are tagged vehicle pixels');
 const lane5 = { x: 1.5, y: 0.08, z: 0 };
 assert.ok(isRunShoe(lane5, T, true), 'a card in the lane over the floor: the old law called it a shoe');

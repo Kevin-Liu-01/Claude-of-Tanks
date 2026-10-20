@@ -15,6 +15,7 @@ import { cloneVehicleMaterial, vehicleAmbientFloorHook } from './materials.ts';
 import { createTank } from './tankFactory.ts';
 import { getSpec } from './specs.ts';
 import { clearJuggernautVisual, prepareGarageTankEnergyVisual } from '../game/juggernautVisual.ts';
+import { programVariantOrigin } from '../engine/programVariants.ts';
 
 function installCanvasFixture() {
   const documentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
@@ -119,7 +120,8 @@ const visuals = [];
 const seenKinds = new Map();
 const note = (kind, id) => seenKinds.set(kind, (seenKinds.get(kind) ?? new Set()).add(id));
 const assertRegistered = (material, label) => {
-  assert.ok(registered.has(material), `${label}: joins the cascade registration`);
+  // a battle build's program-variant twin (engine/programVariants.ts) holds its original's registration
+  assert.ok(registered.has(programVariantOrigin(material)), `${label}: joins the cascade registration`);
   assert.equal(material.defines.USE_CSM, 1, `${label}: compiles the cascade branch`);
   assert.equal(material.defines.CSM_CASCADES, 4, `${label}: with the cascade count`);
   assert.ok('CSM_FADE' in material.defines, `${label}: and the cascade fade`);
@@ -133,9 +135,13 @@ const assertRegistered = (material, label) => {
 };
 try {
   // m1a1_abrams_hc: the shoes; m60a1: a profile's track-band finish; t72b3m_2022: tyre rubber isolated from gunmetal
-  for (const id of ['m1a1_abrams_hc', 'm60a1', 't72b3m_2022']) {
-    const visual = createTank(id, engineCtx, { proceduralOnly: true, quality: 'low', geometryQuality: 'high' });
+  // 2026-10-19: and the Abrams as the Garage pedestal and the battle build it (batchStatic), whose running gear draws
+  // through program-variant twins: each twin's skin registers through its original, under its own cascade entry
+  let twinSkins = 0;
+  for (const [id, extra] of [['m1a1_abrams_hc', null], ['m60a1', null], ['t72b3m_2022', null], ['m1a1_abrams_hc', { batchStatic: true }]]) {
+    const visual = createTank(id, engineCtx, { proceduralOnly: true, quality: 'low', geometryQuality: 'high', ...extra });
     visuals.push(visual);
+    if (extra?.batchStatic) assert.ok(visual.root.userData.programVariants?.twins > 0, `${id}: the battle build splits its program variants`);
     const pads = [];
     visual.root.traverse((object) => {
       if (!object.isMesh) return;
@@ -171,10 +177,17 @@ try {
     visual.root.traverse((object) => { if (object.isMesh) sourceOf.set(object, object.material); });
     prepareGarageTankEnergyVisual(visual.root, getSpec(id).dims);
     const skins = new Map();
+    // (2026-10-19) a program-variant twin wears its original's skin: one skin per material, as before the split
+    const skinOfOrigin = new Map();
     visual.root.traverse((object) => {
       const source = sourceOf.get(object);
       if (!object.isMesh || !source || object.material === source || Array.isArray(source)) return;
-      if (registered.has(source)) skins.set(object.material, source);
+      if (!registered.has(programVariantOrigin(source))) return;
+      if (!skins.has(object.material)) skins.set(object.material, programVariantOrigin(source));
+      const origin = programVariantOrigin(source);
+      if (origin !== source) twinSkins++;
+      assert.equal(skinOfOrigin.get(origin) ?? object.material, object.material, `${id}: a twin and its original wear one skin (${origin.name})`);
+      skinOfOrigin.set(origin, object.material);
     });
     let wheelPaint = 0;
     for (const [clone, source] of skins) {
@@ -192,11 +205,13 @@ try {
       const sourceShader = shaderFor(source);
       // round 2 (2026-10-17): a profile's patch over a set material (the Abrams' pad grime over its track bands and
       // spare-track steel) chains after its registration (chainVehicleMaterialHook); the skin compiles that chain
-      const entry = cascadeShaders.get(source), cascaded = entry === sourceShader;
+      const origin = programVariantOrigin(source);
+      const entry = cascadeShaders.get(origin), cascaded = entry === sourceShader;
       if (!cascaded) { replacedHooks.add(`${id}:${source.name}`); }
       const shader = shaderFor(clone);
       assert.equal(cascadeShaders.get(clone), cascaded ? shader : null, `${label}: the cascade refreshes the clone's compile under the clone`);
-      assert.equal(cascadeShaders.get(source), entry, `${label}: and leaves the source's entry as it was`);
+      assert.equal(cascadeShaders.get(origin), entry, `${label}: and leaves the source's entry as it was`);
+      assert.notEqual(shader.uniforms, sourceShader.uniforms, `${label}: its own uniform map, never its source's shared one`);
       assert.equal(!!shader.uniforms.CSM_cascades, cascaded, `${label}: the cascade uniforms bind as the source's do`);
       assert.ok(shader.fragmentShader.includes('float vehFill'), `${label}: the readability floor chains after it`);
       assert.ok(shader.fragmentShader.includes('gl_FragColor.a += 2.0;'), `${label}: and the vehicle tag`);
@@ -228,6 +243,7 @@ try {
     ['energySkin', ['m1a1_abrams_hc', 'm60a1', 't72b3m_2022']]]) {
     for (const id of ids) assert.ok(seenKinds.get(kind)?.has(id), `${id}: a ${kind} clone was covered`);
   }
+  assert.ok(twinSkins > 0, `the battle build's twin-drawn meshes wear their originals' skins (${twinSkins})`);
 } finally {
   for (const visual of visuals) visual.dispose();
   restoreCanvas();

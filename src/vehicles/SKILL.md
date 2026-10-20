@@ -445,6 +445,11 @@ Merkava's tracks drew near-black). Every opaque lit material a tank draws holds 
 drawn material (registered, its cascade entry bound under its own key, the vehicle tag written, released on dispose);
 `tools/vehicle-material-registration.mjs --ids=…|all` sweeps the fleet the same way and runs in `tank:release:check`;
 `vehicleMaterialRawClone.selftest.mjs` bans a set member's raw clone, a hand re-hook and an emptied hook.
+Program-variant twins (2026-10-19, the 229 perf pass): a battle or Garage-hero build (`batchStatic`) gives each further
+program variant of a material (instanced, batched) a prototype twin (`engine/programVariants.ts`), so a mesh may draw
+an object that is not `P.mats.x` itself. Code that patches, clones or looks up a mesh's material by its registration
+resolves `programVariantOrigin(material)` first (the burn hook, `cloneVehicleMaterial`, the registration check do);
+an identity test against `P.mats.x` belongs in the build, before the split.
 Round 3 (2026-10-18): every opaque material a tank draws carries the tag, lit or not. The light-immune flat class (an
 opaque `MeshBasicMaterial`: the KF51's mud flaps and fender boards, the bore discs) never takes the cascade setup and wrote
 a card's alpha, so the KF51's flaps kept the straight edge at the belly + 2 cm; the factory now runs

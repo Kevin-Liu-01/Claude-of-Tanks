@@ -250,6 +250,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/efficientReturnRoller.selftest.mjs',
     'src/vehicles/pairedRunningGearStock.selftest.mjs',
     'src/vehicles/loadedTrackContact.selftest.mjs',
+    // 229 perf: the allocation-free hypot the per-frame track paths use equals Math.hypot bit for bit
+    'src/vehicles/scalarHypot.selftest.mjs',
     'src/vehicles/roadWheelTrackSpan.selftest.mjs',
     'src/vehicles/runningGearGroundRun.selftest.mjs',
     'src/vehicles/restPoseBatchedGear.selftest.mjs',
