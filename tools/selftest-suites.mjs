@@ -55,6 +55,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/shockRingLight.selftest.mjs',
     'src/fx/thermalFireGain.selftest.mjs',
     'src/fx/hullBurstEarth.selftest.mjs',
+    'src/fx/heavyColumn.selftest.mjs',
     'src/ui/aerialHitMark.selftest.mjs',
     'src/ui/killFeedSource.selftest.mjs',
     'src/ui/endScreenAircraft.selftest.mjs',

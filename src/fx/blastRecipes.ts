@@ -107,6 +107,12 @@ const _e: [number, number, number] = [0, 0, 0];
 const _f: [number, number, number] = [0, 0, 0];
 const _g: [number, number, number] = [0, 0, 0];
 const _h: [number, number, number] = [0, 0, 0];
+const _col: [number, number, number] = [0, 0, 0];
+/** (ac130-fx-228 r3, the r5 blind critic 4 at a matched 300 m: the gunship's 152 mm "too short, no column" — its smoke was
+ *  there for seconds but too thin to read as a column through the steep lens) the gunship class's heavy rounds (the
+ *  starburst on the ground; a heavy charge of HEAVY_COLUMN_MIN_KG and up on a hull) stand a denser column: more puffs, a
+ *  fuller density, born darker with the charge's soot. Every other burst's smoke is unchanged. */
+const HEAVY_COLUMN_N = 24, HEAVY_HULL_COLUMN_N = 18, HEAVY_COLUMN_DENSITY = 0.92, HEAVY_COLUMN_SOOT = 0.3, HEAVY_COLUMN_MIN_KG = 8;
 function mixInto(out: [number, number, number], a: Rgb, b: Rgb, t: number): Rgb {
   out[0] = a[0] + (b[0] - a[0]) * t; out[1] = a[1] + (b[1] - a[1]) * t; out[2] = a[2] + (b[2] - a[2]) * t;
   return out;
@@ -462,7 +468,8 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // up to 35 % larger and a quarter shorter-lived, so the salvo's smoke keeps its mass with far fewer overlapping cards;
   // a lone burst (and a pair) is untouched. Decided by burst count, never by frame time.
   const crowd = I.crowd ?? (C.crowd ? C.crowd(I.x, I.z) : 0);
-  const smokeN = I.earthOnly ? 0 : Math.max(3, Math.round((thermobaric || heavy ? 16 : shaped ? 6 : 14) * (1 - 0.7 * crowd)));
+  const smokeN = I.earthOnly ? 0 : Math.max(3, Math.round((starburst ? HEAVY_COLUMN_N : thermobaric || heavy ? 16 : shaped ? 6 : 14)
+    * (1 - 0.7 * crowd)));
   const crowdSize = 1 + 0.35 * crowd, crowdLife = 1 - 0.25 * crowd;
   // (on snow, the dark soil it throws from under the snow: HE on snow is dark smoke over white powder)
   const snowy = I.surface === 'snow';
@@ -509,7 +516,8 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     shape(m, life, 0.4 * D * dk, (1.6 + 0.4 * u + 0.35 * R()) * D * dk * crowdSize, 6, R);
     // (fx 8i: "never thins") its erosion starts at a third of its life (~3-4 s), so the cloud thins as it climbs
     // (8j) a body you see into at its edges, not a wall: a little thinner
-    look(m, cloudC0, smokeAged, 0.78, 0.0, 0.33);
+    look(m, starburst ? mixInto(_col, cloudC0, SOOT, HEAVY_COLUMN_SOOT) : cloudC0, smokeAged, starburst ? HEAVY_COLUMN_DENSITY : 0.78,
+      0.0, 0.33);
     book(m, 'billow', R, life);
     heat(m, 0.3, 4.5);
     C.media(m);
@@ -1002,8 +1010,9 @@ function heavyHullBurst(C: BlastContext, I: PlateBurstInput, nx: number, ny: num
   sparkSpray(C, I.x, I.y, I.z, nx, ny, nz, Math.round(24 + 6 * s), 55, 1.4, 0.35, 0.022, bo, FRAG_HOT, -9);
   // the smoke: born out of the cooling fireball, climbing on its heat into one lobed mass (the ground burst's palette)
   const crowd = C.crowd ? C.crowd(I.x, I.z) : 0;
-  const smokeN = Math.max(3, Math.round(12 * (1 - 0.7 * crowd)));
-  const smokeC0 = mixInto(_e, BLAST_RESIDUE, SOOT, 0.3);
+  const column = kg >= HEAVY_COLUMN_MIN_KG;
+  const smokeN = Math.max(3, Math.round((column ? HEAVY_HULL_COLUMN_N : 12) * (1 - 0.7 * crowd)));
+  const smokeC0 = column ? mixInto(_e, mixInto(_col, BLAST_RESIDUE, SOOT, 0.3), SOOT, HEAVY_COLUMN_SOOT) : mixInto(_e, BLAST_RESIDUE, SOOT, 0.3);
   for (let i = 0; i < smokeN; i++) {
     const u = (i + R()) / smokeN;
     const a = R() * TAU, r = R() * 0.3 * D;
@@ -1012,7 +1021,7 @@ function heavyHullBurst(C: BlastContext, I: PlateBurstInput, nx: number, ny: num
     move(m, Math.cos(a) * out, (2.2 + 2.4 * u) * sq * 1.3, Math.sin(a) * out, 1.3, (0.42 + 0.14 * u) * Math.sqrt(sq), 0.85, 0);
     const life = (9 + 4 * R()) * 1.2 * (1 - 0.25 * crowd);
     shape(m, life, 0.4 * D * dk, (1.5 + 0.4 * u + 0.35 * R()) * D * dk * (1 + 0.35 * crowd), 6, R);
-    look(m, smokeC0, SMOKE_AGED, 0.78, 0.0, 0.33);
+    look(m, smokeC0, SMOKE_AGED, column ? HEAVY_COLUMN_DENSITY : 0.78, 0.0, 0.33);
     book(m, 'billow', R, life);
     heat(m, 0.3, 4.5);
     C.media(m);
