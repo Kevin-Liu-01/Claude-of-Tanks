@@ -8,9 +8,12 @@
  *
  * The reticle (mouseReticleFootprint) is everything hud.ts draws around the screen-centre aim point in the battle sight
  * and the scope, at rest and at full bloom: the dispersion ring at 15 % of the shorter side, the magazine / reload /
- * SWITCHING readouts under the marker, the canvas gun-limit chip, the scope's cross arms (1.55 r + 3 from the centre,
- * so its upper arm runs up the centre line towards the score), its ammunition, zoom and range readouts and the DOM
- * scope-vision toggle. Every notice keeps MOUSE_RETICLE_MARGIN_PX off all of it.
+ * SWITCHING readouts and the out-of-ammo marks (a struck round or rack) under the marker, the canvas gun-limit chip, the
+ * scope's cross arms (1.55 r + 3 from the centre, so its upper arm runs up the centre line towards the score), its
+ * ammunition, zoom and range readouts and the DOM scope-vision toggle beside the sight. Since the out-of-ammo rounds
+ * (r10) those marks keep 3 px from the HUD's panels and controls and go over the ring or beside the column under the
+ * marker where those sit under it; the footprint replays the HUD's choices among the same furniture
+ * (MouseNoticeInput.furniture). Every notice keeps MOUSE_RETICLE_MARGIN_PX off all of it.
  *
  * Every place is chosen from the viewport and the fixed instruments only (score, objective, rosters down to their
  * Tab-expanded height, minimap, damage panel and its status strip, drive gauge, systems strip, ammunition rail,
@@ -370,7 +373,8 @@ const sameChoices = (a: SightChoices, b: SightChoices) => a.markUp === b.markUp 
 
 /**
  * The reticle's keep-out at `tier`: 2 everything either sight draws at any bloom (the default), 1 the battle sight
- * at full bloom with its readouts and gun-limit chip, 0 the resting battle sight with its readouts. `furniture` is what the
+ * at full bloom with its readouts and gun-limit chip, 0 the resting battle sight with its readouts and chip (the browser
+ * receipt's resting mask has always held the chip; the r10 marks under a resting sight made it matter). `furniture` is what the
  * HUD's marks keep 3 px from (battleHudLayout measures the same panels and controls for sightFurniture.ts): each sight's
  * heaviest case makes hud.ts's choices at the tier's widest ring (a mark or the countdown over the ring, the chip over
  * the sight, the range tag at the 1:30, the readout row's places in order), and each place it takes or tries is swept
@@ -388,8 +392,8 @@ export function mouseReticleFootprint(width: number, height: number, tier: 0 | 1
   const rect = (x0: number, y0: number, x1: number, y1: number) => { out.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }); };
   out.push({ cx, cy, r: widest + R.ringStrokePx });
   rect(cx - R.stackHalfWidthPx, cy + R.stackTopPx, cx + R.stackHalfWidthPx, cy + R.stackBottomPx);
-  // the chip with nothing over it
-  if (tier > 0) rect(cx - R.chipHalfWidthPx - R.inkPadPx, cy + R.chipMinPx - R.chipAbovePx - R.inkPadPx, cx + R.chipHalfWidthPx + R.inkPadPx,
+  // the chip with nothing over it (at rest too: a gun-limit warning shows whatever the bloom)
+  rect(cx - R.chipHalfWidthPx - R.inkPadPx, cy + R.chipMinPx - R.chipAbovePx - R.inkPadPx, cx + R.chipHalfWidthPx + R.inkPadPx,
     cy + Math.max(R.chipMinPx, widest + R.chipRingPx) + R.chipBelowPx + R.inkPadPx);
   let scopeFurniture = furniture;
   if (tier === 2) {
@@ -410,7 +414,7 @@ export function mouseReticleFootprint(width: number, height: number, tier: 0 | 1
       cx + R.readoutHalfWidthPx + R.inkPadPx, cy + readoutRest(height, widest) + drop + R.zoomInkBelowPx);
   }
   for (let s = 0; s < (tier === 2 ? 2 : 1); s++) {
-    const scope = s === 1, marks = scope ? scopeFurniture : furniture, chip = tier > 0;
+    const scope = s === 1, marks = scope ? scopeFurniture : furniture, chip = true;
     /** Sweeps the places `choices` sets from ring r0 to ring r1. */
     const sweep = (choices: SightChoices, r0: number, r1: number, around: readonly PlanRect[]) => {
       const boxes = SIGHT_BOXES;

@@ -313,13 +313,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const countdown = root.querySelector<HTMLElement>('.cot-prebattle');
     const revive = root.querySelector<HTMLElement>('.cot-revive');
     nextKey.push(width, height, Math.round(top), countdown?.offsetWidth ?? 0, countdown?.offsetHeight ?? 0, revive?.offsetWidth ?? 0, revive?.offsetHeight ?? 0);
-    // each box [x, y, w, h, 1 where the reticle's marks keep clear of it (SIGHT_FURNITURE) else 0]
-    const box = (x: number, y: number, w: number, h: number, sight = 0) => {
-      if (w > 0 && h > 0) nextKey.push(Math.round(x), Math.round(y), Math.round(w), Math.round(h), sight);
+    // each box [x, y, w, h, role]: 0 an instrument the notices keep off, 2 a panel or control the reticle's marks keep clear
+    // of (SIGHT_FURNITURE, as publishSightFurniture measures it), 1 both
+    const box = (x: number, y: number, w: number, h: number, role = 0) => {
+      if (w > 0 && h > 0) nextKey.push(Math.round(x), Math.round(y), Math.round(w), Math.round(h), role);
     };
-    const add = (r: PlanBox | null, sight = 0) => { if (r) box(r.left, r.top, r.width, r.height, sight); };
-    // score, objective, minimap and ammunition rail, then the network strip, as refresh() read them
-    for (let i = 0; i < seen.length; i++) add(seen[i], i < 4 ? 1 : 0);
+    const add = (r: PlanBox | null, role = 0) => { if (r) box(r.left, r.top, r.width, r.height, role); };
+    // score, objective and minimap, then the ammunition rail and the network strip, as refresh() read them
+    for (let i = 0; i < seen.length; i++) add(seen[i], i < 3 ? 1 : 0);
     // each roster down to its height while Tab is held (its width then stops short of anything shown)
     for (let side = 0; side < 4; side += 2) {
       const ear = rosters[side] as DOMRect | null;
@@ -330,8 +331,20 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // the damage panel's status strip rises into the 36 px above it (leftFloor keeps the same band)
     if (panel) box(panel.left, Math.round(panel.top) - 36, panel.width, 36);
     add(read('.cot-drive'), 1);
-    if (systemsHeight > 0) box(systemsLeft, systemsTop, systemsWidth, systemsHeight, 1);
-    add(read('.cot-cons'), 1);
+    if (systemsHeight > 0) box(systemsLeft, systemsTop, systemsWidth, systemsHeight);
+    add(read('.cot-cons'));
+    // The marks keep clear of the controls row's buttons, the tray's shells and the consumables (not of the strip's or the
+    // rail's spare width): each where this pass puts it (the buttons move with the strip, whose place is written below).
+    const strip = read('.cot-vehicle-controls');
+    const dx = strip ? systemsLeft - strip.left : 0, dy = strip ? systemsTop - strip.top : 0;
+    for (const node of document.querySelectorAll('.cot-vehicle-controls>button')) {
+      const b = shownBox(node);
+      if (b) box(b.left + dx, b.top + dy, b.width, b.height, 2);
+    }
+    for (const node of document.querySelectorAll('.cot-shell,.cot-con,.flight-identity')) {
+      const b = shownBox(node);
+      if (b) box(b.left, b.top, b.width, b.height, 2);
+    }
     const host = read('.cot-si-cardhost');
     if (host && report.height > 0) box(host.left, report.top, host.width, report.height);
     // The fps/ping readout: below 768 px its place is fixed under the objective (battleHudLayout.css, 88 x 20 at
@@ -367,10 +380,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
         return planned;
       }
       const obstacles: PlanRect[] = [], furniture: PlanRect[] = [];
+      let plainObstacles = 0;
       for (let i = 7; i < boxesEnd; i += 5) {
-        const r = { x: nextKey[i], y: nextKey[i + 1], w: nextKey[i + 2], h: nextKey[i + 3] };
-        obstacles.push(r);
-        if (nextKey[i + 4]) furniture.push(r);
+        const r = { x: nextKey[i], y: nextKey[i + 1], w: nextKey[i + 2], h: nextKey[i + 3] }, role = nextKey[i + 4];
+        if (role !== 2) { obstacles.push(r); if (i < plain) plainObstacles++; }
+        if (role) furniture.push(r);
       }
       const lane = (i: number): PlanLane | null => nextKey[i] < 0 && nextKey[i + 1] < 0 ? null
         : { x: nextKey[i], w: nextKey[i + 1], top: nextKey[i + 2], bottom: nextKey[i + 3] };
@@ -386,7 +400,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       };
       planned = planMouseNotices(input);
       if (boxesEnd > plain && planned.clearance < 2) {
-        const without = planMouseNotices({ ...input, obstacles: obstacles.slice(0, (plain - 7) / 5) });
+        const without = planMouseNotices({ ...input, obstacles: obstacles.slice(0, plainObstacles) });
         if (without.clearance > planned.clearance) planned = without;
       }
       plannedSize = size;

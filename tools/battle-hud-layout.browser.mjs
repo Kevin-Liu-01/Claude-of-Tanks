@@ -26,6 +26,9 @@ const cases = [
   // odd windows: 1366 x 768 at 125 % zoom, a 1080p window at 150 % zoom less the browser's chrome, a squat ultrawide, the
   // compact-detection edge, a 768-wide landscape, a 481-wide portrait at the 9 px edge
   ...[[1093,614],[1280,609],[2560,1080],[1000,551],[768,600],[481,700]].map(([w,h])=>[`mouse-${w}x${h}`,w,h,false,'en-US',{lite:true}]),
+  // the HUD's out-of-ammo marks among its furniture (r10, tools/fixtures/hud-sight-furniture.json): a mid ring's marks
+  // reach the consumables at 800 x 400, and at 1280 x 431 the controls row sends the gun-limit chip over the sight
+  ...[[800,400],[1280,431]].map(([w,h])=>[`mouse-${w}x${h}`,w,h,false,'en-US',{lite:true}]),
 ];
 const states = ['idle','feed-burst','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','ended'];
 const reports=[];const errors=[];
@@ -37,7 +40,9 @@ const reports=[];const errors=[];
 // mouseNoticePlan.ts: main has none, so main fails here), and each element must
 // - cover no reticle ink at the keep-out its plan clears (2 unless the plan says otherwise): the ink is the canvas's own
 //   pixels (alpha >= 12), the union of both sights at rest and at full bloom with the magazine, SWITCHING and gun-limit
-//   readouts (tier 2), the battle sight alone at full bloom (tier 1) or at rest (tier 0);
+//   readouts and the HUD's out-of-ammo marks (a struck round, a struck rack, a rack reloading under its countdown, each
+//   with and without the chip, where the HUD seats them among its furniture) (tier 2), the battle sight alone at full
+//   bloom (tier 1) or at rest (tier 0);
 // - never cover more of it, nor of the resting crosshair, than main does in the same stage (main's numbers are pinned
 //   in tools/fixtures/battle-hud-layout.main-notices.json; --record-main=<file> --main-label=<commit> against a server
 //   of main's tree measures them again);
@@ -136,38 +141,64 @@ async function noticePrep(alerts){
   window.__stretchTimers=true;
   return true;
 }
-// The reticle's ink, once per case: hud.ts paints .cot-ret at the screen-centre aim point; the scope's vignette
-// (two full-canvas gradient fills) is shade, not ink, and is skipped while the masks are read.
-async function noticeMasks(){
+// The reticle's ink, once per case and furniture context: hud.ts paints .cot-ret at the screen-centre aim point, and since
+// the out-of-ammo rounds (r10) seats its marks 3 px from the HUD's panels and controls, which move with the objective panel
+// (every mode but the standard battle shows one, each its own size). So the masks are read in each context the notice
+// stages use (NOTICE_MASK_CONTEXTS: the mars objective of 'idle' and 'feed-burst', the standard battle without one, capture
+// the flag's), the out-of-ammo states under that context's panel, and each stage is weighed against its own (noticeStage).
+// The scope's vignette (two full-canvas gradient fills) is shade, not ink, and is skipped while the masks are read.
+const NOTICE_MASK_CONTEXTS=['idle','mode-standard','mode-capture_the_flag'];
+async function noticeMasks(contexts){
   const f=window.__HUD_LAYOUT,N=window.__NOTICE,c=document.querySelector('.cot-ret'),ctx=c.getContext('2d',{willReadFrequently:true});
   const cssW=c.getBoundingClientRect().width,W=c.width,H=c.height,n=W*H;
   const proto=CanvasRenderingContext2D.prototype,fill=proto.fillRect;
   proto.fillRect=function(x,y,w,h){if(this.canvas===c&&this.fillStyle instanceof CanvasGradient&&w>=cssW-1)return;return fill.call(this,x,y,w,h);};
-  const union=new Uint8Array(n),battle=new Uint8Array(n),rest=new Uint8Array(n);
   const restAim=()=>{for(const k of Object.keys(f.frame.aim))if(!(k in N.restingAim))delete f.frame.aim[k];Object.assign(f.frame.aim,N.restingAim);};
+  const masks={};
   try{
-    f.state('idle');
-    for(const sight of ['battle','scope'])for(const bloom of ['rest','full'])for(const readout of ['none','magazine','switching','warn']){
-      f.frame.mode=sight==='scope'?'sniper':'battle';f.hud.setMode(f.frame.mode);restAim();
-      Object.assign(f.frame.aim,{zoom:sight==='scope'?25:1,distM:1500,dispersionRadM:bloom==='full'?1e4:1e-4,
-        magazine:readout==='magazine'?{capacity:12,rounds:7}:null,
-        reload:readout==='magazine'?{t:12.6,totalS:15,kind:'magazine'}:readout==='switching'?{t:2,totalS:4,kind:'shell'}:{t:0,totalS:6},
-        ammoSelectionPending:readout==='switching',gunLimitSpec:readout==='warn'});
-      for(let i=0;i<150;i++){f.frame.timeS+=1/60;f.hud.update(f.frame);}
-      await new Promise(r=>setTimeout(r,170)); // the scope's fade-in runs on the wall clock
-      f.frame.aim.distM+=.3;f.frame.timeS+=1/60;f.hud.update(f.frame);
-      const d=ctx.getImageData(0,0,W,H).data;
-      for(let i=0;i<n;i++)if(d[i*4+3]>=12){union[i]=1;if(sight==='battle'){battle[i]=1;if(bloom==='rest')rest[i]=1;}}
+    for(const context of contexts){
+      const union=new Uint8Array(n),battle=new Uint8Array(n),rest=new Uint8Array(n);
+      // (the panels settle on the next frames: the reticle reads the furniture the last relayout published)
+      const read=async(sight,bloom)=>{
+        for(let i=0;i<150;i++){f.frame.timeS+=1/60;f.hud.update(f.frame);}
+        await new Promise(r=>setTimeout(r,170)); // the scope's fade-in runs on the wall clock
+        f.frame.aim.distM+=.3;f.frame.timeS+=1/60;f.hud.update(f.frame);
+        const d=ctx.getImageData(0,0,W,H).data;
+        for(let i=0;i<n;i++)if(d[i*4+3]>=12){union[i]=1;if(sight==='battle'){battle[i]=1;if(bloom==='rest')rest[i]=1;}}
+      };
+      f.state(context);
+      const modeState=f.frame.matchModeState;
+      for(const sight of ['battle','scope'])for(const bloom of ['rest','full'])for(const readout of ['none','magazine','switching','warn']){
+        f.frame.mode=sight==='scope'?'sniper':'battle';f.hud.setMode(f.frame.mode);restAim();
+        Object.assign(f.frame.aim,{zoom:sight==='scope'?25:1,distM:1500,dispersionRadM:bloom==='full'?1e4:1e-4,
+          magazine:readout==='magazine'?{capacity:12,rounds:7}:null,
+          reload:readout==='magazine'?{t:12.6,totalS:15,kind:'magazine'}:readout==='switching'?{t:2,totalS:4,kind:'shell'}:{t:0,totalS:6},
+          ammoSelectionPending:readout==='switching',gunLimitSpec:readout==='warn'});
+        await read(sight,bloom);
+      }
+      // The out-of-ammo marks (owner 2026-10-17, HUD r10): the fixture's real combat states composed by the real aim
+      // controller (a dry cannon's struck round, a struck rack, a rack reloading under its 12 s countdown), each with and
+      // without the gun-limit chip, in both sights at rest and at the widest ring, under this context's panel.
+      for(const stage of ['ammo-dry-cannon','ammo-dry-autoloader','ammo-reload-autoloader-sniper'])
+        for(const sight of ['battle','scope'])for(const bloom of ['rest','full'])for(const warn of [false,true]){
+          f.state(stage);f.frame.matchModeState=modeState;
+          f.frame.mode=sight==='scope'?'sniper':'battle';f.hud.setMode(f.frame.mode);
+          Object.assign(f.frame.aim,{zoom:sight==='scope'?25:1,distM:1500,dispersionRadM:bloom==='full'?1e4:1e-4,gunLimitSpec:warn});
+          await read(sight,bloom);
+        }
+      masks[context]={union,battle,rest};
     }
   }finally{
-    proto.fillRect=fill;restAim();f.frame.timeS=N.restingTime;f.frame.mode='battle';f.hud.setMode('battle');f.hud.update(f.frame);
+    proto.fillRect=fill;f.state('idle');restAim();f.frame.timeS=N.restingTime;f.frame.mode='battle';f.hud.setMode('battle');f.hud.update(f.frame);
   }
-  window.__noticeMasks={W,H,scale:W/cssW,union,battle,rest};
-  let count=0;for(let i=0;i<n;i++)count+=union[i];
+  window.__noticeMasks={W,H,scale:W/cssW,masks};
+  let count=0;for(let i=0;i<n;i++)count+=masks[contexts[0]].union[i];
   return Math.round(count/(W/cssW)**2);
 }
 function noticeStage([state,kills,rosters,set,sight,tab]){
   const f=window.__HUD_LAYOUT,N=window.__NOTICE;
+  // the ink this stage is weighed against: its furniture context's (noticeMasks)
+  window.__noticeMaskContext=state==='mode-standard'||state==='mode-capture_the_flag'?state:'idle';
   document.querySelector('.cot-hud').classList.remove('rosters-expanded');
   f.bus.emit('battle:presented');
   f.frame.mode='battle';
@@ -215,7 +246,7 @@ function medalWaitCause(got,scopedShort,width){
   return /m\d?s?wf/.test(got.tiers??'')&&width<520&&Object.values(got.lanes).some(l=>l.shown>0&&l.x&&l.y&&meets(l.x,l.y));
 }
 function noticeMeasure(){
-  const m=window.__noticeMasks;
+  const all=window.__noticeMasks,m={...all,...all.masks[window.__noticeMaskContext??'idle']};
   const vis=e=>!!e&&e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})&&e.getBoundingClientRect().width>1&&e.getBoundingClientRect().height>1;
   const ink=(bits,r)=>{let n=0;const s=m.scale;
     const xa=Math.max(0,Math.floor(r.x*s)),xb=Math.min(m.W,Math.ceil((r.x+r.w)*s)),ya=Math.max(0,Math.floor(r.y*s)),yb=Math.min(m.H,Math.ceil((r.y+r.h)*s));
@@ -347,7 +378,7 @@ try {
     // The centre notices on a fresh page (record mode measures main's on one too).
     async function centreNotices(){
       await page.evaluate(noticePrep,NOTICE_ALERTS);
-      const inked=await page.evaluate(noticeMasks);
+      const inked=await page.evaluate(noticeMasks,NOTICE_MASK_CONTEXTS);
       if(inked<200)errors.push(`${name}: the reticle drew too little ink (${inked} px) to weigh the notices against`);
       const pinned=MAIN_NOTICES?.cases?.[name];
       if(!recordMain&&!pinned)errors.push(`${name}: no main notice numbers pinned (tools/fixtures/battle-hud-layout.main-notices.json)`);
