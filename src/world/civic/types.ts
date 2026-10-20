@@ -82,6 +82,8 @@ export interface CivicPaving {
   readonly kind: 'flags' | 'granite' | 'basalt' | 'setts';
   /** a gutter (Rinne) of three sett rows along one long side */
   readonly gutter?: 'n' | 's' | 'e' | 'w';
+  /** (228 r7) flags laid on the ground every this many metres (a street's camber; the default 2 m) */
+  readonly cell?: number;
 }
 
 /** A town square's civic area (civicAreaKit.ts). */
@@ -121,7 +123,9 @@ export interface CivicAreaPlan {
    *  disc no piece or trunk enters (C13). */
   readonly holds: ReadonlyArray<{ readonly id: string; readonly x: number; readonly z: number; readonly r: number }>;
   /** The roundel at the crossing: its ring band and its rose, flush. */
-  readonly centre: { readonly x: number; readonly z: number; readonly ringR: readonly [number, number]; readonly roseR: number; readonly rays: number };
+  /** The roundel: its ring band, its rose and rays; `fill` lays the ground between the rose and the ring in concentric
+   *  courses of the style's setts (a klinker roundel on a green with no paved square under it). */
+  readonly centre: { readonly x: number; readonly z: number; readonly ringR: readonly [number, number]; readonly roseR: number; readonly rays: number; readonly fill?: boolean };
   readonly beds: readonly CivicBed[];
   /** The flush granite bands between a bed's kerb and the arms. */
   readonly paving: readonly CivicPaving[];

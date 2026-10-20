@@ -391,6 +391,16 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
   m.skinRing(C.x, C.z, C.ringR[0], C.ringR[1], 64, SKIN, (k) => toned(basalt, k, 1, 0.09, 31));
   m.skinRing(C.x, C.z, C.ringR[0] - 0.22, C.ringR[0] - 0.02, 64, SKIN, (k) => toned(granite, k, 9, 0.06, 30));
   m.skinRing(C.x, C.z, C.roseR, C.roseR + 0.16, 32, SKIN, (k) => toned(basalt, k, 2, 0.06, 32));
+  if (C.fill) {
+    // (229 b2 r2, the blind critics: "a small grey disc on a darker square patch", "a pale bluish puddle" at night) the
+    // roundel laid in klinker: concentric courses of setts from the rose out to the ring's granite line, each course its
+    // own tone, a touch under the bands so they read on top
+    const sett = hexRgb(style.bands.sett), r0 = C.roseR + 0.16, r1 = C.ringR[0] - 0.22, n = Math.max(1, Math.round((r1 - r0) / 0.5));
+    for (let q = 0; q < n; q++) {
+      const a = r0 + ((r1 - r0) * q) / n, b = r0 + ((r1 - r0) * (q + 1)) / n;
+      m.skinRing(C.x, C.z, a, b - 0.015, 64, SKIN - 0.003, (k) => toned(sett, k + q * 64, q, 0.09, 35));
+    }
+  }
   const rays = C.rays * 2;
   for (let k = 0; k < rays; k++) {
     const a0 = (k / rays) * Math.PI * 2, a1 = ((k + 1) / rays) * Math.PI * 2, am = (a0 + a1) / 2;
@@ -407,7 +417,7 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
     debug.push({ pts: [r.x0, r.z0, r.x1, r.z0, r.x1, r.z1, r.x0, r.z1], col: [40, 140, 40], fill: [170, 205, 150] });
   }
   for (const p of area.paving) {
-    if (p.kind === 'flags') flagRect(m, p.rect, style, SKIN, 3);
+    if (p.kind === 'flags') flagRect(m, p.rect, style, p.cell ? SKIN + 0.012 : SKIN, 3, p.cell ?? 2.0);
     else if (p.kind === 'setts') settRect(m, p.rect, style.bands.sett, SKIN);
     else graniteRect(m, p.rect, p.kind === 'basalt' ? style.bands.basalt : style.bands.granite, SKIN);
     debug.push({ pts: [p.rect.x0, p.rect.z0, p.rect.x1, p.rect.z0, p.rect.x1, p.rect.z1, p.rect.x0, p.rect.z1], col: [130, 130, 130] });
