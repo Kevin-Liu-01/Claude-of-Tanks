@@ -36,6 +36,7 @@
 // Changed-only: name the ids whose stations changed; nothing here builds geometry (the authority reads specs: about
 // 3 s to load, then roughly 0.1 s a run).
 import { writeFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { SIM_DT } from '../src/sim/movement.ts';
 import {
   COUNTER_DRONE_APPROACHES, COUNTER_DRONE_BANDS, COUNTER_DRONE_CLASSES, COUNTER_DRONE_SETS, LEVEL_APPROACHES, counterDroneCell,
@@ -45,7 +46,8 @@ import {
 
 const arg = (name, fallback = null) => { const a = process.argv.find((x) => x.startsWith(`--${name}=`)); return a ? a.slice(name.length + 3) : fallback; };
 const flag = (name) => process.argv.includes(`--${name}`);
-const ids = (arg('ids') ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+// a repeated --ids entry fails by name (tools/id-list.mjs); the named sets below add only ids not listed yet
+const ids = uniqueIds((arg('ids') ?? '').split(',').map((s) => s.trim()).filter(Boolean), 'counter-drone-engage --ids');
 for (const set of (arg('set') ?? '').split(',').filter(Boolean)) {
   if (!COUNTER_DRONE_SETS[set]) { console.error(`unknown set ${set} (${Object.keys(COUNTER_DRONE_SETS).join(', ')})`); process.exit(2); }
   for (const id of COUNTER_DRONE_SETS[set]) if (!ids.includes(id)) ids.push(id);

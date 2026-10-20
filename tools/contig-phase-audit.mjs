@@ -16,6 +16,7 @@ import path from 'node:path';
 import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 import { CONTIG_CELL_M } from './contig-grid.mjs';
+import { uniqueIds } from './id-list.mjs';
 
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const outDir = path.resolve(arg('out') ?? '.qa-dev/reports/contig-audit');
@@ -197,7 +198,7 @@ if (!idArg && !process.argv.includes('--all')) {
   console.error('usage: node tools/contig-phase-audit.mjs --ids=a,b | --all [--out=<dir>] [--report=<md>] | --prove=<id> | --report=<md> --from=<jsonl>');
   process.exit(1);
 }
-const ids = idArg ? idArg.split(',') : await fleetIds();
+const ids = idArg ? uniqueIds(idArg.split(','), 'contig-phase-audit --ids') : await fleetIds();
 if (ids.some((id) => !/^[a-z0-9_]+$/.test(id))) throw new Error('Expected tank ids');
 const jsonl = path.join(outDir, 'audit.jsonl');
 const done = new Set(readRows(jsonl).filter((r) => !r.error).map((r) => r.id));
