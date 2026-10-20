@@ -44,7 +44,7 @@ const SEMANTICS = {
   assert.equal(alpha([NaN, NaN, NaN, NaN]), 0, 'a NaN history draws nothing over the sky');
   assert.equal(alpha([0, 0, 0, 0]), 1, 'a zero (unresolved) history is opaque: the dome waits for a resolved one');
   // (the dome shows only over a resolved history)
-  assert.match(clouds, /this\.dome\.visible = this\.historyValid;/);
+  assert.match(clouds, /this\.dome\.visible = this\.historyValid \|\| \(this\.frozen && this\.historyHeld\);/);
   assert.doesNotMatch(clouds, /this\.framesShown\+\+;\s*this\.dome\.visible = true;/);
 }
 

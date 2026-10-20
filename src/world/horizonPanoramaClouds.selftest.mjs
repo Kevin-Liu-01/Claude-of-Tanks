@@ -86,7 +86,7 @@ const traceSlot = functionBody(clouds, '  private traceSlot(slot: number): void 
 assert.ok(traceSlot.includes('this.domeMaterial.uniforms.tClouds.value = next.texture;'), 'each trace resolves the history the dome composites');
 const beforeScene = functionBody(clouds, '  beforeSceneRender(', 'volumetricClouds.ts');
 // (2026-10-19, black-screen-228 P2: the dome draws over a resolved history only)
-assert.ok(beforeScene.includes('this.traceSlot(') && beforeScene.includes('this.dome.visible = this.historyValid;'), 'the frame\'s traces resolve before the scene, and the dome draws');
+assert.ok(beforeScene.includes('this.traceSlot(') && beforeScene.includes('this.dome.visible = this.historyValid || (this.frozen && this.historyHeld);'), 'the frame\'s traces resolve before the scene, and the dome draws');
 const post = readFileSync(new URL('../engine/post.ts', import.meta.url), 'utf8');
 // (the call itself, a statement of the frame: not a closure or a comment that names it)
 const hookAt = post.search(/^ {4}scene\.userData\.volumetricClouds\?\.beforeSceneRender\(renderer, camera,/m);
