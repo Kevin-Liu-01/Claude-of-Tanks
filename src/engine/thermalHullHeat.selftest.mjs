@@ -141,6 +141,15 @@ assert.equal(kB.x, 0, 'the standing hull\'s are cold');
 const g2 = (gunShotHeat(120) * Math.exp(-2 / GUN_COOL_S) + gunShotHeat(120)) * Math.exp(-4 / GUN_COOL_S);
 assert.ok(Math.abs(kA.y - g2) < 1e-9, `its barrel warmed by two shots, cooling since (${kA.y.toFixed(3)})`);
 assert.equal(kB.y, 0);
+// B drives 20 s and stands 10 s, the lens down all the while: raised, it sees running gear warmed and cooling since
+// (the drive heat follows the hull every battle frame, not only the lens's)
+B.state.speed = DRIVE_HOT_MPS;
+for (let t = 36 + 1 / 60; t <= 56; t += 1 / 60) frame([B], false, t);
+B.state.speed = 0;
+for (let t = 56 + 1 / 60; t <= 66; t += 1 / 60) frame([B], false, t);
+frame([B], true, 66);
+const bWarm = (1 - Math.exp(-20 / DRIVE_WARM_S)) * Math.exp(-10 / DRIVE_COOL_S);
+assert.ok(Math.abs(kB.x - bWarm) < 2e-3, `warm from the drive the lens never saw (${kB.x.toFixed(3)} ~ ${bWarm.toFixed(3)})`);
 // the same history, a second runtime at another frame rate: the same heats
 const h2 = hull(), C = actorOf('a', h2), heat2 = createThermalVehicles();
 scene.add(h2.root);
