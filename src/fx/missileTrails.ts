@@ -63,6 +63,9 @@ export interface MissileTrails {
   readonly mesh: THREE.Mesh;
   /** The shader's index of a trail look (registered once). */
   lookIndex(look: MissileTrail): number;
+  /** (ac130-fx-228 r3) A registered look's near fade (m from the camera; 0 none), set for this frame's camera: the
+   *  gunship's own missile thins out near its gimbal lens and nowhere else (no-op for a look not yet registered). */
+  setNear(look: MissileTrail, nearM: number): void;
   /** Start a trail for `key` (any number: a round's id hash); returns its slot. */
   begin(key: number, look: number, seed: number): number;
   /** The slot `key` holds, or -1. */
@@ -108,6 +111,7 @@ varying vec4 vE;     // a knot's A and B on screen (px)
 varying vec4 vF;     // a knot's half widths at A and B (px), knot (1) or band (0)
 varying vec3 vAmb;
 varying vec3 vSun;
+varying float vNear; // (ac130-fx-228 r2) the look's near fade (m from the camera), 0 none
 float h1( float p ) { p = fract( p * 0.1031 ); p *= p + 33.33; p *= p + p; return fract( p ); }
 float vn1( float x ) { float i = floor( x ), f = fract( x ); return mix( h1( i ), h1( i + 1.0 ), f * f * ( 3.0 - 2.0 * f ) ); }
 // the air takes a point: the wind (eased in as the exhaust's push dies), a slow rise, and its line wandering as the air
@@ -137,6 +141,7 @@ void main() {
   vAmb = vec3( 0.0 ); vSun = vec3( 0.0 );
   int li = int( iK.x + 0.5 ) * 6;
   vec4 L0 = uLook[ li ], L1 = uLook[ li + 1 ], L2 = uLook[ li + 2 ], L3 = uLook[ li + 3 ], C0 = uLook[ li + 4 ], C1 = uLook[ li + 5 ];
+  vNear = L3.w;
   float ageA = uTime - iA.w, ageB = uTime - iB.w;
   // unwritten, not yet born, or dissolved: no area
   if ( iA.w < -1.0e8 || ageB < 0.0 || ageB >= L1.x ) { gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 ); return; }
@@ -173,6 +178,13 @@ void main() {
   float zf = 0.5 * uViewport.w / 1080.0;
   tA *= smoothstep( 0.4, 2.5, -eA.z ) * ( 1.0 - smoothstep( 70.0 * zf, 300.0 * zf, pA ) ) * ( 1.0 - smoothstep( 0.05, 0.16, rpA / uViewport.w ) );
   tB *= smoothstep( 0.4, 2.5, -eB.z ) * ( 1.0 - smoothstep( 70.0 * zf, 300.0 * zf, pB ) ) * ( 1.0 - smoothstep( 0.05, 0.16, rpB / uViewport.w ) );
+  // (ac130-fx-228 r3, the blind critic: from the gimbal lens the trail "keeps swelling into a wedge at the frame edge")
+  // a look with a near fade is the gunship's own missile seen from aloft: a stretch wider than ~2 % of the frame (the
+  // part nearest the lens, seen down its length) thins out, so the smoke reads as a line to the target
+  if ( L3.w > 0.0 ) {
+    tA *= 1.0 - smoothstep( 0.010, 0.022, rpA / uViewport.w );
+    tB *= 1.0 - smoothstep( 0.010, 0.022, rpB / uViewport.w );
+  }
   // nothing left to draw (faded at the lens, dissolved at both ends): no quad
   if ( max( tA, tB ) < 0.004 ) { gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 ); return; }
   // the strip: a screen-space band through the projected points, its joints mitred on the neighbours' projections so
@@ -257,6 +269,7 @@ varying vec4 vE;
 varying vec4 vF;
 varying vec3 vAmb;
 varying vec3 vSun;
+varying float vNear;
 #ifdef USE_FOG
   uniform vec3 fogColor;
   #ifdef FOG_EXP2
@@ -306,6 +319,9 @@ void main() {
   float across = exp( -0.5 * pow( ys, kx ) ) * ( 1.0 - smoothstep( 0.85, 1.0, abs( side ) ) );
   // a fresh trail's first metres fade in where its motor lit (no hard end across it)
   float T = tau * ( 1.0 + vL.x * 0.8 * b ) * across * vM.x * smoothstep( 0.0, max( 1.5, 1.5 * rw ), along );
+  // (ac130-fx-228 r2, the motion critic: from the gunner's lens the Hellfire's trail "reads as a widening searchlight
+  // cone") a trail born beside the eye thins out near it: none within a fifth of its near distance, full past it
+  if ( vNear > 0.0 ) T *= smoothstep( 0.2 * vNear, vNear, vR.z );
   if ( T < 0.002 ) discard;
   // its own turbulence, in its own frame (it grows as the smoke does): a clumped body, torn edges
   vec2 nq = vec2( along / ( 2.2 * rw * rk ), 0.5 * ys * sign( side ) ) + vec2( vL.w * 17.0 - age * 0.2, vL.w * 5.3 );
@@ -326,10 +342,12 @@ void main() {
   }
   float a = 1.0 - exp( -min( T, 8.0 ) );
   if ( a < 0.003 ) discard;
-  // lit: dense smoke shows its shaded side; thin smoke is lit through
+  // lit: dense smoke shows its shaded side; thin smoke is lit through. (ac130-fx-228 r2, the motion critic: "at night it
+  // fades by breaking into separate round puffs with dark donut-like centres") the weight is this pixel's own depth, not
+  // the young trail's: a dissolving wisp is thin smoke, lit through, never a shaded core inside a lit rim
   float sN = clamp( sign( side ) * ys / 2.2, -1.0, 1.0 );
   float ndl = vM.y * sN + vM.z * sqrt( 1.0 - sN * sN );
-  float shade = mix( 1.0, 0.45 + 0.75 * max( ndl, 0.0 ), clamp( tau * 0.8, 0.0, 1.0 ) );
+  float shade = mix( 1.0, 0.45 + 0.75 * max( ndl, 0.0 ), clamp( T * 0.8, 0.0, 1.0 ) );
   vec3 col = vAmb + vSun * shade + vec3( 1.0, 0.52, 0.18 ) * vR.w;
   #ifdef USE_FOG
     #ifdef FOG_EXP2
@@ -501,11 +519,15 @@ export function createMissileTrails(light: SceneLightUniforms, depth: SceneDepth
       v[i * 6].set(look.r0, look.rJet, look.r1, look.growS);
       v[i * 6 + 1].set(look.life, look.tau, look.boostS, look.boostK);
       v[i * 6 + 2].set(look.boostW, look.puff, look.puffM, look.churn);
-      v[i * 6 + 3].set(look.rise, look.windK, look.glow, 0);
+      v[i * 6 + 3].set(look.rise, look.windK, look.glow, look.nearM ?? 0);
       v[i * 6 + 4].set(look.c0[0], look.c0[1], look.c0[2], 0);
       v[i * 6 + 5].set(look.c1[0], look.c1[1], look.c1[2], 0);
       lifeOfLook[i] = look.life;
       return i;
+    },
+    setNear(look, nearM) {
+      const i = looks.get(look);
+      if (i !== undefined) uLook.value[i * 6 + 3].w = nearM;
     },
     begin(key, look, seed) {
       // its own slot, else the lowest free one, else the trail whose newest smoke dissolves soonest

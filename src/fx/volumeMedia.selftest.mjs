@@ -520,7 +520,9 @@ function captureContext(seed) {
     assert.ok(!('tCotCloudShade' in mat.uniforms), 'no cloud-shade sampler on the media');
     // (fx 8r) an unheated puff by a wall asks for a wider soft-depth feather (a negative cool, its scale 1-3); a heated one
     // keeps its cooling, and every puff that asks nothing keeps the feather it had
-    assert.match(mat.vertexShader, /vHeat = aHT\.x > 0\.0 \? aHT\.x \* exp\( -aHT\.y \* age \) : 0\.0;/, 'only a heated puff burns');
+    // (ac130-fx-228 r3) its cooling at the camera's factor (a heat-imaging lens sees the gas cool slower; 1 everywhere else)
+    assert.match(mat.vertexShader, /vHeat = aHT\.x > 0\.0 \? aHT\.x \* exp\( -aHT\.y \* uHeatCool \* age \) : 0\.0;/, 'only a heated puff burns');
+    assert.equal(mat.uniforms.uHeatCool.value, 1, 'at its own rate unless a heat-imaging camera asks');
     assert.match(mat.vertexShader, /float featherK = aHT\.x > 0\.0 \? 1\.0 : clamp\( -aHT\.y, 1\.0, 3\.0 \);[\s\S]*?vFeather = clamp\( size \* \( 0\.22 \+ 0\.33 \* lowB \) \* featherK, 0\.5 \+ 0\.7 \* lowB, 6\.0 \* featherK \);/,
       'the wall feather, opt-in');
     assert.match(mat.fragmentShader, /vec3 amb = mix\( amb0, amb1 \* \( lum0 \/ max\( lum1, 1e-5 \) \), smoothstep\( 0\.45, 0\.65, albedoL \) \* warmG \* uGrade2\.x \);/,

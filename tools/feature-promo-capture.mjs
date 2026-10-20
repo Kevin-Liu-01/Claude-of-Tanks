@@ -221,7 +221,7 @@ async function recordBattleCanvas(page, name, durationMs, action = null) {
     style.textContent = [
       'html,body{background:transparent!important}',
       '#app>canvas{visibility:hidden!important}',
-      '.cot-ret{visibility:hidden!important}',
+      '.cot-ret,.cot-hitmark{visibility:hidden!important}',
       '.cot-prebattle{display:none!important}',
     ].join('');
     document.head.append(style);

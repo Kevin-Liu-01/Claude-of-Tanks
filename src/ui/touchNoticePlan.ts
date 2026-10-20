@@ -36,6 +36,8 @@ export interface TouchSize { w: number; h: number }
 /** How far the notices keep from the obstacles and each other, and from the footprint (itself at full bloom). */
 export const TOUCH_NOTICE_GAP = 6;
 const TOUCH_SIGHT_GAP = 4;
+/** Integ's alert under its detection (battleHudLayout's own touch rule), kept wherever its place clears. */
+const INTEG_STACK_GAP = 8;
 /** The shorter side's share the dispersion ring is capped at (hud.ts RET_CEIL_FRAC). */
 const RING_CEILING = 0.15;
 /** The compact notice and alert (battleHudLayout.css data-touch-notices). */
@@ -181,7 +183,7 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
   const blocks = [...input.obstacles, ...input.soft, ...keep];
   const start = top + gap;
   const plan: TouchNoticePlan = { noticeCx: cx, noticeTop: input.fallbackTop, alertCx: cx,
-    alertTop: input.fallbackTop + input.notice.h + gap, alertW: input.alert.w, noticeCompact: false, alertCompact: false,
+    alertTop: input.fallbackTop + input.notice.h + INTEG_STACK_GAP, alertW: input.alert.w, noticeCompact: false, alertCompact: false,
     countdownCx: cx, countdownTop: start, countdownScale: 1, cleared: true, bannerCx: cx, bannerTop: start, bannerReady: false };
   // (where nothing clears, a notice reaches into the footprint before it covers a panel or a control: the footprint is
   // modelled at full bloom, and the panels are there whole)
@@ -216,7 +218,7 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     plan.alertCx = place.cx; plan.alertTop = place.y;
     placed.push(boxOf(place.cx, place.y, alert ? input.alert : TOUCH_COMPACT_ALERT));
   }
-  const stack = { w: Math.max(input.notice.w, input.alert.w), h: input.notice.h + gap + input.alert.h };
+  const stack = { w: Math.max(input.notice.w, input.alert.w), h: input.notice.h + INTEG_STACK_GAP + input.alert.h };
   let found = !!input.countdown || clearOf(boxOf(cx, input.fallbackTop, stack), placed);
   for (let i = 0; i < CANDIDATES.length && !found; i++) {
     const [together, noticeCompact, alertCompact] = CANDIDATES[i];

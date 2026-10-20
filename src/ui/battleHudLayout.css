@@ -351,11 +351,37 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
   body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-sixth .sub{display:none}
 }
 
-/* A narrow mouse window has no center lane beside the ballistic report.
-   Reserve notices in the left column, above the driving/status instruments. */
-body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) :is(.cot-sixth,.cot-alert){
-  left:12px;transform:none;animation:none;width:calc(50vw - 36px);max-width:248px;white-space:normal;
+/* Mouse centre notices: battleHudLayout.ts places each from mouseNoticePlan.ts, off everything the reticle draws in
+   the battle sight and the scope at any bloom and off the fixed instruments; a side lane it crosses yields while it
+   shows. The alert keeps main's type size and wraps inside its slot (never clamped); its anchor is its centre, or its
+   inner edge beside the scope's centre-line arm. The countdown and the revive count scale from their top centre.
+   Touch keeps its own rules. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-sixth{
+  top:var(--hud-notice-top);left:var(--hud-notice-x,50%);width:var(--hud-center-notice-width,248px);max-width:none;
 }
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-alert{
+  top:var(--hud-alert-top);bottom:auto;left:var(--hud-alert-x,50%);width:max-content;max-width:var(--hud-alert-width,calc(100vw - 32px));
+  white-space:normal;transform:translate(var(--hud-alert-shift,-50%),7px);
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-alert.show{transform:translate(var(--hud-alert-shift,-50%),0)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-alert-copy{overflow-wrap:anywhere}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-prebattle{
+  top:var(--hud-countdown-top,22%);left:var(--hud-countdown-x,50%);transform:translateX(-50%) scale(var(--hud-countdown-scale,1));transform-origin:50% 0;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-revive{
+  top:var(--hud-revive-top,30%);left:var(--hud-revive-x,50%);transform:translateX(-50%) scale(var(--hud-revive-scale,1));transform-origin:50% 0;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-medal-toasts{left:var(--hud-banner-x,50%);width:max-content}
+/* Held Tab rosters widen as before but stop short of any planned notice shown beside them (battleHudLayout.ts). */
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .rosters-expanded .cot-ear.l{width:min(320px,calc(50vw - 184px),var(--hud-roster-wide-left,320px))}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .rosters-expanded .cot-ear.r{width:min(320px,calc(50vw - 184px),var(--hud-roster-wide-right,320px))}
+/* The compact card (short landscape's own form): the name in 12 px beside a 24 px medal, no description. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-medal-toasts[data-size='compact'] .cot-medal-toast{
+  min-width:0;max-width:min(250px,calc(100vw - 24px));gap:8px;padding:4px 20px;
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-medal-toasts[data-size='compact'] .cot-medal-art{width:24px;height:auto}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-medal-toasts[data-size='compact'] strong{font-size:12px;overflow-wrap:anywhere}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-medal-toasts[data-size='compact'] small{display:none}
 
 /* Inner-edge tallies keep both rosters mirrored, including compact icon tiles. */
 .cot-hud .cot-er .kills{flex:0 0 auto;min-width:14px;text-align:center;color:#ffd18a;font-weight:800;font-variant-numeric:tabular-nums;font-size:11px;line-height:1}

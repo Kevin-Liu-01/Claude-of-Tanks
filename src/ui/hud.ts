@@ -2,7 +2,8 @@ import { isRapidFireHit } from '../game/weaponHitKind.ts';
 import { tankSeedId } from '../vehicles/tankIdAliases.ts';
 import { accumulateDamage, canAccumulateDamage, DAMAGE_BURST_GAP_MS, type DamageNumberBurst } from './damageNumberBurst.ts';
 import { BattleKillLedger } from '../game/battleEventStats.ts';
-import { killPresentation, isDroneStrike } from './killPresentation.ts';
+import { killPresentation } from './killPresentation.ts';
+import { killSourceIdentity, vehicleName } from './killSourceIdentity.ts';
 import { createVehicleStatusStrip } from './vehicleStatus.ts';
 import { drawAerialMinimap } from './aerialMinimap.ts';
 import { createAerialHud } from './aerialHud.ts';
@@ -194,6 +195,8 @@ interface HudAimView {
 
 interface HudTankVisual {
   turretTopWorld?(out: THREE.Vector3): void;
+  /** (ac130-fx-228 r2) the camera rig hides the player's own vehicle while its lens (a scope, the gunship's gimbal) is the camera */
+  root?: { visible: boolean };
 }
 
 export interface HudTank {
@@ -349,6 +352,8 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   name?: string;
   vehicle?: string;
   cause?: 'shot' | 'fire' | 'ammorack' | 'ram' | 'impact' | 'fall';
+  /** (ac130-fx-228) what the kill was made with when not the killer's vehicle (the authority's sim/aerialCombat.ts killSourceOf) */
+  source?: 'ac130' | 'drone';
   timeS?: number;
   on?: boolean;
   shells?: string[];
@@ -793,6 +798,9 @@ const AUTOLOADER_HUD_ARC_DEPTH = 2.25;
 const AUTOLOADER_HUD_OUTER_ROTATION = 0.14;
 const AUTOLOADER_SHELL_RELOADING = RETICLE_AMMO_INK.cycling;
 export const HIT_CONFIRM_LIFETIME_S = 1.4;
+/** (ac130-fx-228 r3) the gunship's hit-confirm canvas (CSS px, square): the mark reaches ~40 px from its centre (the
+ *  entry shards 29 + 8.5 + the 2.1 pad; the blocked-round diamond at +30/-37) */
+const HIT_MARK_BOX_PX = 96;
 
 /** Exact value printed on an incoming direction arc. */
 export function directionalHitAmount(
@@ -1418,6 +1426,9 @@ const HUD_CSS = `
   -webkit-user-select:none;user-select:none;color:var(--hud-text);overflow:hidden;}
 .cot-hud *{box-sizing:border-box;margin:0;padding:0;}
 .cot-ret{position:absolute;z-index:var(--hud-layer-sight);inset:0;width:100%;height:100%;display:block;}
+/* (ac130-fx-228 r3) the gunship's hit-confirm mark: its own small canvas on the sight (hud.ts paintAerialHitMark) */
+.cot-hitmark{position:absolute;z-index:var(--hud-layer-sight);left:0;top:0;width:${HIT_MARK_BOX_PX}px;height:${HIT_MARK_BOX_PX}px;
+  display:none;pointer-events:none;}
 .cot-top{position:absolute;z-index:var(--hud-layer-score);top:0;left:50%;transform:translateX(-50%);width:min(344px,calc(100vw - 24px));
   min-height:62px;display:grid;grid-template-columns:minmax(78px,1fr) 86px minmax(78px,1fr);
   align-items:stretch;padding:0 25px 8px;isolation:isolate;overflow:hidden;
@@ -1633,6 +1644,8 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-kf .c{color:#f0b04a;font-size:10px;letter-spacing:.1em;font-weight:700;flex:0 0 auto;}
 .cot-kf .d>svg,.cot-kf .relation>svg{display:block;flex:none;}
 .cot-kf .si{width:30px;height:12px;flex:0 0 auto;align-self:center;display:inline-block;}
+.cot-kf .si.src{display:inline-flex;align-items:center;justify-content:center;height:16px;}
+.cot-kf .si.src>svg{display:block;flex:none;}
 .cot-dmglayer{position:absolute;z-index:calc(var(--hud-layer-world) + 1);inset:0;}
 ${spectatorSwitcherStyles}
 /* while spectating, the DEAD player's own-tank furniture is meaningless and
@@ -1641,7 +1654,7 @@ ${spectatorSwitcherStyles}
    information a spectator wants). Removed with the bar (spectate:end). */
 body.cot-spectating .cot-shells,body.cot-spectating .cot-special,body.cot-spectating .cot-dp,
 body.cot-spectating .cot-drive,
-body.cot-spectating .cot-ret{display:none !important;}
+body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !important;}
 .cot-dmgnum{position:absolute;font-family:${FONT_COND};font-weight:900;font-size:18px;
   letter-spacing:-.02em;color:#ffd166;white-space:nowrap;text-transform:uppercase;
   text-shadow:-1px 0 #05080b,1px 0 #05080b,0 -1px #05080b,0 2px #05080b;
@@ -2004,6 +2017,9 @@ export function initHud(bus: EventBus): HudRuntime {
   touchAimWarning.setAttribute('role', 'status');
   const retCanvas = el('canvas', 'cot-ret', root);
   const ctx = requireCanvasContext(retCanvas);
+  const markCanvas = el('canvas', 'cot-hitmark', root);
+  const markCtx = requireCanvasContext(markCanvas);
+  let markShown = false, markX = NaN, markY = NaN;
   const on = (event: string, listener: (payload: HudEventPayload) => void): (() => void) =>
     bus.on(event, (payload) => listener(payload as HudEventPayload));
   const reducedMotionQuery = typeof window.matchMedia === 'function'
@@ -2210,7 +2226,8 @@ export function initHud(bus: EventBus): HudRuntime {
     list.addEventListener('keyup', event => { if (!document.pointerLockElement) event.stopPropagation(); });
   }
   const killLedger = new BattleKillLedger();
-  const lethalDroneTargets = new Set<string>();
+  /** (ac130-fx-228) the combatants flying the gunship: their vehicle is the AC-130 (its icon in the silhouette's place) */
+  const aircraftById = new Set<string>();
   const earRows = new Map<string, EarRow>(); // tank id -> { root, hp, dead, name }
   window.addEventListener('keydown', event => {
     if (event.code !== 'Tab' || mode === 'hidden' || isAnyModalOpen() || document.querySelector('.cot-settings.open') ||
@@ -2828,6 +2845,8 @@ export function initHud(bus: EventBus): HudRuntime {
     retCanvas.width = Math.round(w * dpr);
     retCanvas.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    markCanvas.width = markCanvas.height = Math.round(HIT_MARK_BOX_PX * dpr);
+    markCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     scopeGrad = null;
     scopeChromGrad = null;
     scopeGradZoom = -1;
@@ -3054,14 +3073,15 @@ export function initHud(bus: EventBus): HudRuntime {
       `<span class="veh"><i class="tier"></i><span class="vn"></span><i class="brain" hidden></i></span></span>` +
       `<span class="kills" hidden></span><div class="hpm"><i></i></div>`;
     const iconEl = requireElement<HTMLElement>(rootEl, '.ic');
-    const gunship=tank.aerial?.kind==='gunship';
-    if(gunship)iconEl.innerHTML=uiIconSVG('modeAc130',24,ally?PEN_GREEN:PEN_RED);
+    const aircraft = tank.aerial?.kind === 'gunship' ? killSourceIdentity('ac130') : null;
+    const vehicle = vehicleName(tank);
+    if (aircraft) iconEl.innerHTML = uiIconSVG(aircraft.icon, 24, ally ? PEN_GREEN : PEN_RED);
     else maskIcon(iconEl, spec.id, 'side_silhouette', ally ? PEN_GREEN : PEN_RED);
     if (tank.isPlayer) rootEl.classList.add('me');
-    requireElement<HTMLElement>(rootEl, '.tier').textContent = gunship ? '' : tierNumeral(spec.id) || '–';
+    requireElement<HTMLElement>(rootEl, '.tier').textContent = aircraft ? '' : tierNumeral(spec.id) || '–';
     requireElement<HTMLElement>(rootEl, '.nick').textContent = nickFor(tank);
-    requireElement<HTMLElement>(rootEl, '.vn').textContent = gunship ? 'AC-130' : spec.name;
-    rootEl.title = `${nickFor(tank)} · ${gunship?'AC-130':spec.name}`;
+    requireElement<HTMLElement>(rootEl, '.vn').textContent = vehicle;
+    rootEl.title = `${nickFor(tank)} · ${vehicle}`;
     // Jev commander (2026-09-25): a bot under Jev's orders carries a small tag beside its vehicle
     const brainEl = requireElement<HTMLElement>(rootEl, '.brain');
     brainEl.textContent = t('hud.brain.jev');
@@ -3091,7 +3111,7 @@ export function initHud(bus: EventBus): HudRuntime {
       row.kills.textContent = String(kills);
       row.kills.hidden = kills === 0;
       row.kills.setAttribute('aria-label', t('hud.roster.kills', { count: kills }));
-      row.root.title = `${nickFor(tank)} · ${tank.aerial?.kind === 'gunship' ? 'AC-130' : tank.spec?.name} · ${t('hud.roster.kills', { count: kills })}`;
+      row.root.title = `${nickFor(tank)} · ${vehicleName(tank)} · ${t('hud.roster.kills', { count: kills })}`;
     }
     if (dead !== row.wasDead) {
       row.root.classList.toggle('dead', dead);
@@ -3818,7 +3838,8 @@ export function initHud(bus: EventBus): HudRuntime {
 
   // Hit-confirm marker: four tapered lock shards snapping toward the reticle
   // when one of the player's shells connects (amber = damage, steel = block).
-  function drawHitMark(view: HudAimView, timeS: number): void {
+  // Drawn into `g` about (cx, cy): the full-screen sight, or the gunship's own bounded mark canvas (paintAerialHitMark).
+  function drawHitMark(g: CanvasRenderingContext2D, cx: number, cy: number, timeS: number): void {
     if (!hitMark) return;
     const age = timeS - hitMark.t0;
     const visual = hitConfirmVisualState(
@@ -3827,47 +3848,47 @@ export function initHud(bus: EventBus): HudRuntime {
 
     const baseColor = hitMark.bounced ? '202,218,232' : '255,166,48';
     const highlightColor = hitMark.bounced ? '241,247,252' : '255,235,190';
-    ctx.save();
-    ctx.lineJoin = 'miter';
+    g.save();
+    g.lineJoin = 'miter';
     if (hitMark.blockedRapid) {
-      const x = view.cx + 30, y = view.cy - 30;
-      ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(x + 6, y - 3);
-      ctx.lineTo(x + 5, y + 3); ctx.lineTo(x, y + 7);
-      ctx.lineTo(x - 5, y + 3); ctx.lineTo(x - 6, y - 3); ctx.closePath();
-      ctx.fillStyle = `rgba(5,8,12,${visual.opacity})`; ctx.fill();
-      ctx.strokeStyle = `rgba(202,218,232,${visual.opacity})`; ctx.lineWidth = 1.5; ctx.stroke();
+      const x = cx + 30, y = cy - 30;
+      g.beginPath(); g.moveTo(x, y - 6); g.lineTo(x + 6, y - 3);
+      g.lineTo(x + 5, y + 3); g.lineTo(x, y + 7);
+      g.lineTo(x - 5, y + 3); g.lineTo(x - 6, y - 3); g.closePath();
+      g.fillStyle = `rgba(5,8,12,${visual.opacity})`; g.fill();
+      g.strokeStyle = `rgba(202,218,232,${visual.opacity})`; g.lineWidth = 1.5; g.stroke();
     }
 
     // A padded near-black silhouette keeps the confirmation clean over snow,
     // muzzle flash and bright sand without turning it into a heavy black X.
-    ctx.fillStyle = `rgba(5,8,12,${(visual.opacity * 0.86).toFixed(3)})`;
+    g.fillStyle = `rgba(5,8,12,${(visual.opacity * 0.86).toFixed(3)})`;
     for (let q = 0; q < 4; q++) {
       const ang = Math.PI / 4 + q * Math.PI / 2;
       const ca = Math.cos(ang), sa = Math.sin(ang);
-      hitConfirmShardPath(ctx, view.cx, view.cy, ca, sa,
+      hitConfirmShardPath(g, cx, cy, ca, sa,
         visual.radius, visual.length, visual.halfWidth, 2.1);
-      ctx.fill();
+      g.fill();
     }
 
-    ctx.fillStyle = `rgba(${baseColor},${visual.opacity.toFixed(3)})`;
+    g.fillStyle = `rgba(${baseColor},${visual.opacity.toFixed(3)})`;
     for (let q = 0; q < 4; q++) {
       const ang = Math.PI / 4 + q * Math.PI / 2;
       const ca = Math.cos(ang), sa = Math.sin(ang);
-      hitConfirmShardPath(ctx, view.cx, view.cy, ca, sa,
+      hitConfirmShardPath(g, cx, cy, ca, sa,
         visual.radius, visual.length, visual.halfWidth);
-      ctx.fill();
+      g.fill();
 
       // A short hot facet gives each shard depth while retaining a compact,
       // instrument-like silhouette instead of a soft mobile-game glow.
       const px = -sa, py = ca;
       const hi0 = visual.radius + visual.length * 0.3;
       const hi1 = visual.radius + visual.length * 0.72;
-      ctx.strokeStyle = `rgba(${highlightColor},${(visual.opacity * 0.9).toFixed(3)})`;
-      ctx.lineWidth = 1.1;
-      ctx.beginPath();
-      ctx.moveTo(view.cx + ca * hi0 + px * 0.65, view.cy + sa * hi0 + py * 0.65);
-      ctx.lineTo(view.cx + ca * hi1 + px * 0.25, view.cy + sa * hi1 + py * 0.25);
-      ctx.stroke();
+      g.strokeStyle = `rgba(${highlightColor},${(visual.opacity * 0.9).toFixed(3)})`;
+      g.lineWidth = 1.1;
+      g.beginPath();
+      g.moveTo(cx + ca * hi0 + px * 0.65, cy + sa * hi0 + py * 0.65);
+      g.lineTo(cx + ca * hi1 + px * 0.25, cy + sa * hi1 + py * 0.25);
+      g.stroke();
     }
 
     // Brief center spark marks the exact impact acknowledgement. It vanishes
@@ -3875,19 +3896,19 @@ export function initHud(bus: EventBus): HudRuntime {
     if (visual.flash > 0.001) {
       const sparkAlpha = visual.opacity * visual.flash;
       const sparkR = 3.5 + 2.5 * visual.flash;
-      ctx.strokeStyle = `rgba(5,8,12,${(sparkAlpha * 0.75).toFixed(3)})`;
-      ctx.lineWidth = 3.2;
-      ctx.beginPath();
-      ctx.moveTo(view.cx - sparkR, view.cy - sparkR);
-      ctx.lineTo(view.cx + sparkR, view.cy + sparkR);
-      ctx.moveTo(view.cx + sparkR, view.cy - sparkR);
-      ctx.lineTo(view.cx - sparkR, view.cy + sparkR);
-      ctx.stroke();
-      ctx.strokeStyle = `rgba(${highlightColor},${sparkAlpha.toFixed(3)})`;
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
+      g.strokeStyle = `rgba(5,8,12,${(sparkAlpha * 0.75).toFixed(3)})`;
+      g.lineWidth = 3.2;
+      g.beginPath();
+      g.moveTo(cx - sparkR, cy - sparkR);
+      g.lineTo(cx + sparkR, cy + sparkR);
+      g.moveTo(cx + sparkR, cy - sparkR);
+      g.lineTo(cx - sparkR, cy + sparkR);
+      g.stroke();
+      g.strokeStyle = `rgba(${highlightColor},${sparkAlpha.toFixed(3)})`;
+      g.lineWidth = 1.2;
+      g.stroke();
     }
-    ctx.restore();
+    g.restore();
   }
 
   // WoT dual-element system: a fixed central GUN MARKER (pen-color-coded)
@@ -6501,23 +6522,29 @@ export function initHud(bus: EventBus): HudRuntime {
 
   // ---------- bus feeds ----------
   function pushKill(payload: HudEventPayload): void {
-    const killer = (payload.killerId ? nameById.get(payload.killerId) : null) || t('hud.enemy');
+    // (ac130-fx-228) the kill's source as the authority stamped it: an AC-130's or a drone's kill names its platform (and
+    // shows its icon), the player keeping the kill; a gunship pilot's own vehicle is the AC-130 whatever the source
+    const source = killSourceIdentity(payload.source)
+      ?? (payload.killerId && aircraftById.has(payload.killerId) ? killSourceIdentity('ac130') : null);
+    const killer = source?.label || (payload.killerId ? nameById.get(payload.killerId) : null) || t('hud.enemy');
     const victim = (payload.id ? nameById.get(payload.id) : null) || payload.specId || t('hud.tankFallback');
     const ownTeam = teamById.get(playerId || '');
     const alliedKill = ownTeam !== undefined && !!payload.killerId && teamById.get(payload.killerId) === ownTeam;
     const lane = alliedKill ? killLeft : killRight;
     const item = el('div', 'cot-kf', lane);
-    const presentation = killPresentation({ cause: payload.cause, drone: lethalDroneTargets.has(payload.id || ''),
+    const presentation = killPresentation({ cause: payload.cause, drone: source?.source === 'drone',
       killerId: payload.killerId, victimId: payload.id || '', playerId,
       killerTeam: teamById.get(payload.killerId || ''), victimTeam: teamById.get(payload.id || '') });
     item.dataset.killCause = presentation.cause;
+    if (source) item.dataset.killSource = source.source;
     if (presentation.relation) item.dataset.relation = presentation.relation;
     item.title = [presentation.label, presentation.relationLabel].filter(Boolean).join(' · ');
-    // side-profile silhouettes of the actual tanks flank the names
-    const kSpec = payload.killerId ? specIdById.get(payload.killerId) : null;
+    // side-profile silhouettes of the actual tanks flank the names (the platform's icon for a gunship's or drone's kill)
+    const kSpec = source ? null : payload.killerId ? specIdById.get(payload.killerId) : null;
     const vSpec = (payload.id ? specIdById.get(payload.id) : null) || payload.specId;
     item.innerHTML =
-      (kSpec ? `<span class="si ksi"></span>` : '') + `<span class="k"></span>` +
+      (source ? `<span class="si ksi src" aria-hidden="true">${uiIconSVG(source.icon, 16, '#cfe3f4')}</span>`
+        : kSpec ? `<span class="si ksi"></span>` : '') + `<span class="k"></span>` +
       `<span class="d" aria-label="${presentation.label}">${uiIconSVG(presentation.icon, 16)}${presentation.cause === 'ammorack' ? `<b>${presentation.label}</b>` : ''}</span>` +
       (vSpec ? `<span class="si vsi"></span>` : '') + `<span class="v"></span>` +
       (presentation.relation ? `<span class="relation" aria-label="${presentation.relationLabel}">${uiIconSVG(presentation.relationIcon, 13)}</span>` : '');
@@ -6736,7 +6763,6 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!p.id || !killLedger.record(p.id, p.killerId, teamById.get(p.id), teamById.get(p.killerId || ''))) return;
     spotById.delete(p.id);
     pushKill(p);
-    lethalDroneTargets.delete(p.id);
     reviveCountdown.onDestroyed(p.id);
   });
   // Shell hotkeys route through input.ts actions only (main.ts emits this) —
@@ -6949,7 +6975,7 @@ export function initHud(bus: EventBus): HudRuntime {
     });
   });
   on('mode:respawn', ({ id }) => {
-    if (id) { killLedger.respawn(id); lethalDroneTargets.delete(id); }
+    if (id) killLedger.respawn(id);
     // All tanks, not just the player: events can skip the intermediate dead frame.
     if (id) spotById.delete(id);
     if (playerId != null && id !== playerId) return;
@@ -6992,7 +7018,6 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   on('shell:hit', (hit) => {
     if (!isHudHitEvent(hit)) return;
-    if (hit.destroyed && hit.targetId && isDroneStrike(hit)) lethalDroneTargets.add(hit.targetId);
     if (playerId != null && hit.attackerId === playerId && hit.targetId && hit.targetId !== playerId) {
       pushDamageNumber(hit);
       // Zero-damage and pass-through outcomes use the steel confirmation;
@@ -7113,13 +7138,38 @@ export function initHud(bus: EventBus): HudRuntime {
     // actual canvas remained blank.
     if (mode === 'hidden') {
       reticlePaint.valid = false;
+      hideAerialHitMark();
       return;
     }
-    if (mode === 'sniper' && !playerRef?.aerial?.active) drawScope(aimView);
+    const aerial = !!playerRef?.aerial?.active;
+    if (mode === 'sniper' && !aerial) drawScope(aimView);
     drawHitIndicators(lastTimeS);
-    if (!playerRef?.aerial?.active) drawReticle(aimView, dt);
-    drawHitMark(aimView, lastTimeS);
+    if (!aerial) drawReticle(aimView, dt);
+    if (aerial) paintAerialHitMark(lastTimeS);
+    else { hideAerialHitMark(); drawHitMark(ctx, aimView.cx, aimView.cy, lastTimeS); }
     captureReticlePaint(aimView);
+  }
+
+  // (ac130-fx-228 r3, the critic's "tan wash while the 30 mm fires", on the base build too) through the gunship's lens the
+  // full-screen sight canvas holds nothing but the hit-confirm mark, and in the films (under load) the compositor showed
+  // that canvas for a frame or two as one magnified patch of the mark's centre spark — the spark's cream over its dark
+  // under-stroke (0.75 of its alpha) to within 1 % at day and night — a flat cream veil over the lens and the gunship's
+  // console. The gunship's mark draws into its own small canvas on the sight instead, so nothing it paints, or the
+  // compositor makes of it, can leave that box; the ground sight keeps the full-screen canvas it always fills.
+  function paintAerialHitMark(timeS: number): void {
+    if (!hitMark) { hideAerialHitMark(); return; }
+    markCtx.clearRect(0, 0, HIT_MARK_BOX_PX, HIT_MARK_BOX_PX);
+    drawHitMark(markCtx, HIT_MARK_BOX_PX / 2, HIT_MARK_BOX_PX / 2, timeS);
+    if (!hitMark) { hideAerialHitMark(); return; }
+    const x = Math.round(aimView.cx - HIT_MARK_BOX_PX / 2), y = Math.round(aimView.cy - HIT_MARK_BOX_PX / 2);
+    if (x !== markX || y !== markY) { markX = x; markY = y; markCanvas.style.transform = `translate(${x}px,${y}px)`; }
+    if (!markShown) { markShown = true; markCanvas.style.display = 'block'; }
+  }
+  function hideAerialHitMark(): void {
+    if (!markShown) return;
+    markShown = false;
+    markCanvas.style.display = 'none';
+    markCtx.clearRect(0, 0, HIT_MARK_BOX_PX, HIT_MARK_BOX_PX);
   }
 
   // Sniper keeps the ARCADE grading untouched: real WoT sniper mode is the
@@ -7146,6 +7196,9 @@ export function initHud(bus: EventBus): HudRuntime {
   function applyMode(): void {
     if (mode === 'hidden') {document.documentElement.classList.remove('cot-thermal-flight');document.documentElement.dataset.flight='';markGunDry(false);}
     root.style.display = mode === 'hidden' ? 'none' : 'block';
+    // the layout owner holds a medal card placed clear of the battle sight only while the scope is up (battleHudLayout.ts);
+    // the flag sits on the document element, so a scope toggle relayouts nothing unless such a card waits on it
+    document.documentElement.toggleAttribute('data-cot-scoped', mode === 'sniper');
     // scope shadow fades in over ~0.1 s on ENTERING sniper (movement §9.2)
     if (mode === 'sniper' && scopePrevMode !== 'sniper') scopeFadeMs = performance.now();
     scopePrevMode = mode;
@@ -7169,9 +7222,12 @@ export function initHud(bus: EventBus): HudRuntime {
     for (let i = 0; i < tanks.length; i++) {
       const tank = tanks[i];
       if (!tank?.spec) continue;
-      nameById.set(tank.id, tank.spec.name);
+      // (ac130-fx-228) one identity for every row: a gunship pilot's vehicle is the AC-130
+      const gunship = tank.aerial?.kind === 'gunship';
+      nameById.set(tank.id, gunship ? vehicleName(tank) : tank.spec.name);
       teamById.set(tank.id, tank.team);
       specIdById.set(tank.id, tank.spec.id);
+      if (gunship) aircraftById.add(tank.id);
     }
   }
 
@@ -7204,7 +7260,9 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     root.classList.toggle('realistic-mode', frame.matchModeState?.id === 'realistic');
     updateSpecialAction(frame.player || playerRef, frame.aim);
-    aerialHud.update(frame.player || playerRef,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone || 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision || 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort);
+    const flier = frame.player || playerRef;
+    aerialHud.update(flier,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone || 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision || 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort,
+      flier?.aerial?.kind !== 'gunship' || flier.visual?.root?.visible === false);
     updateDriveReadout(frame.player || playerRef, frame.timeS);
     updateDamagePanelPose(state.camera);
     shotInfo.setPlayer(playerId);
@@ -7368,6 +7426,7 @@ export function initHud(bus: EventBus): HudRuntime {
         preBattleOverlay.reset();
         setTouchAmmoOpen(false);
         ctx.clearRect(0, 0, w, h);
+        hideAerialHitMark();
         aimTargetId = null;
         if (tgtShown) { tgtEl.style.display = 'none'; tgtShown = false; }
         // spectate bar never survives leaving the battlefield
@@ -7381,7 +7440,7 @@ export function initHud(bus: EventBus): HudRuntime {
       if (m === 'battle' && wasHidden) shotInfo.reset();
       if (m === 'battle' && wasHidden) {
         resetCombatPresentation();
-        killLedger.clear(); lethalDroneTargets.clear();
+        killLedger.clear(); aircraftById.clear();
         // fresh battle: drop spotting memory, nicknames and team rosters
         spotById.clear();
         nickById.clear();
@@ -7418,7 +7477,7 @@ export function initHud(bus: EventBus): HudRuntime {
       const cursorReleased = !document.pointerLockElement;
       if (specCursorHint.hidden !== cursorReleased) specCursorHint.hidden = cursorReleased;
       const state = prepareHudFrame(frame);
-      if (mode === 'hidden') { ctx.clearRect(0, 0, w, h); return; }
+      if (mode === 'hidden') { ctx.clearRect(0, 0, w, h); hideAerialHitMark(); return; }
       updateHudWorldPanels(frame, state.camera);
       updateAimPresentation(frame, state);
       updateMinimapIfDue(frame);

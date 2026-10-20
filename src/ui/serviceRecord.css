@@ -51,6 +51,8 @@
 .cot-record-battle summary{padding:14px 18px;position:relative}
 .cot-record-battle-row{grid-template-columns:100px 84px minmax(120px,1fr) 48px 80px auto;gap:12px}
 .cot-record-vehicle{display:block;width:100px;height:76px;object-fit:contain;filter:drop-shadow(0 6px 7px #0008)}
+/* (ac130-fx-228 r3) a battle flown in the AC-130: the aircraft's icon in the vehicle picture's place */
+.cot-record-vehicle.aircraft{display:grid;place-items:center;color:#d6e2e8}.cot-record-vehicle.aircraft svg{width:62%;height:62%}
 .cot-record-battle-row>.cot-record-vehicle{grid-row:1/3}
 .cot-record-battle time{grid-column:2/-1;color:#b0bfca}
 .cot-record-battle-what small{flex-wrap:wrap;color:#bccbd4}

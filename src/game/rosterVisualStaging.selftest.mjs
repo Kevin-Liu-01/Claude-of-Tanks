@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
-import { createGunshipBattleVisual, syncGunshipVisual } from './gunshipVisual.ts';
+import { createGunshipBattleVisual, loadGunshipAirframe, syncGunshipVisual } from './gunshipVisual.ts';
 import { rosterVisualAttempts } from './rosterVisualFallback.ts';
 
 const candidateSource = readFileSync(new URL('./rosterState.ts', import.meta.url), 'utf8');
@@ -160,6 +160,8 @@ for (const fail of ['factory', 'scene', 'ground', 'pose']) {
 }
 console.log('roster staging: PASS recorded synchronous policy parity, private graph publication, cancellation, stale lifetimes, pools, failure cleanup and fail-soft retry');
 
+// (ac130-fx-228 r2) the airframe is its own chunk (gunshipAirframe.ts), loaded with an AC-130 battle
+await loadGunshipAirframe();
 for (const staged of [false, true]) {
   const f = fixture({ player: true }); f.game.ruleset = { aerial: 'gunship' };
   const visual = staged ? drain(f.api.ensureTankVisualSteps(f.game, f.ent)) : f.api.ensureTankVisual(f.game, f.ent);
