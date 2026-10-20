@@ -510,5 +510,7 @@ no see-through cluster. `--update-ledger` never changes an existing row;
 `--tighten-ledger=<ids>` lowers one to its measurement. Raise a row's
 see-through or netting, or record a new vehicle whose see-through cluster is
 accepted, only with `--update-ledger --accept-see-through=<id>:<reason>`;
-re-frame a build that outgrew its frame with `--reframe=<id>:<reason>`. Each
-appends the reason, who, when and the old values to the row's `accepts`.
+no flag accepts an opening. Re-frame a build that outgrew its frame with
+`--reframe=<id>:<reason>`: refused inside the frame, and the build must pass
+its row in the old frame first, so a re-frame changes units, never accepts.
+Each appends the reason, who, when and the old values to the row's `accepts`.

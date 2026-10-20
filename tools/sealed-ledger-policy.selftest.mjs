@@ -178,19 +178,38 @@ assert.throws(()=>updatedSealedLedger(ledger,[{...closed,id:'existing',sealed:fa
   assert.deepEqual(kept.tanks.griffin_viper.accepts.map((a)=>a.reason),['earlier note'],'an accept that changes nothing keeps the row and its history');
 }
 // The census frame (critic round 2): a row's recorded frame frames every view; a build that reaches past it fails with
-// REFRAME until --reframe re-records the frame and every column in it (with a reason, kept in the history); a sealed row
-// must still measure sealed. recordedSealedFrame snaps the centre to 5 cm and grows the radius by 10 to 20 cm.
+// REFRAME. A re-frame (critic round 3) is refused unless the build outgrew the frame, and the build's census in the old
+// frame (where the outgrown part is only clipped) must pass the row's normal gate: openings, see-through and the netting
+// band. Then every column is re-measured in the new frame (history keeps the old ones); a sealed row must stay sealed.
+// recordedSealedFrame snaps the centre to 5 cm and grows the radius by 10 to 20 cm.
 {
   const row = {sealed:true,openPx:0,openViews:0,insideOutPx:10,seeThroughPx:4,netSeeThroughPx:3218,tris:90650,frame:[0,1.2,0.05,4.8]};
   const book = {generatedAt:'old',tanks:{type96b:row}};
+  const sameOld = {sealed:true,holeViews:0,holePx:0,throughPx:4,throughViews:0,netPx:3218};
   const out = {id:'type96b',sealed:true,holeViews:0,holePx:0,invertedPx:12,throughPx:4,throughViews:0,netPx:3218,tris:90700,frame:[0,1.2,0.05,4.8],frameExceeded:true};
+  const R = new Map([['type96b','selftest: a 1.5 m longer gun outgrew the frame']]);
   assert.match(sealedLedgerVerdict(row,out).message,/^REFRAME: the build reaches past the row's census frame/);
   assert.throws(()=>updatedSealedLedger(book,[out],'u',['type96b']),/type96b: REFRAME/);
-  const re = updatedSealedLedger(book,[{...out,frame:[0,1.2,0.1,5],netPx:3100,holePx:3}],'u',['type96b'],{reframe:new Map([['type96b','selftest: a 30 cm longer gun outgrew the frame']]),...NOTE});
-  assert.deepEqual([re.tanks.type96b.frame,re.tanks.type96b.netSeeThroughPx,re.tanks.type96b.openPx,re.tanks.type96b.accepts[0].kind,re.tanks.type96b.accepts[0].from.frame],
-    [[0,1.2,0.1,5],3100,3,'reframe',[0,1.2,0.05,4.8]],'a re-frame records the new frame, every column and the old ones in the history');
-  assert.throws(()=>updatedSealedLedger(book,[{...out,sealed:false,holeViews:1}],'u',['type96b'],{reframe:new Map([['type96b','selftest: a 30 cm longer gun outgrew the frame']]),...NOTE}),
+  const re = updatedSealedLedger(book,[{...out,frame:[0,1.2,0.1,5.6],netPx:3100,holePx:3,oldFrame:sameOld}],'u',['type96b'],{reframe:R,...NOTE});
+  assert.deepEqual([re.tanks.type96b.frame,re.tanks.type96b.netSeeThroughPx,re.tanks.type96b.openPx,re.tanks.type96b.accepts[0].kind,re.tanks.type96b.accepts[0].from.frame,re.tanks.type96b.accepts[0].oldFrameCensus.netSeeThroughPx],
+    [[0,1.2,0.1,5.6],3100,3,'reframe',[0,1.2,0.05,4.8],3218],'a re-frame records the new frame, every column, the old ones and what the old frame read');
+  assert.throws(()=>updatedSealedLedger(book,[{...out,frameExceeded:false,oldFrame:sameOld}],'u',['type96b'],{reframe:R,...NOTE}),
+    /REFRAME refused: the build stays inside the row's census frame/,'a build inside its frame cannot be re-framed (it would launder a change)');
+  assert.throws(()=>updatedSealedLedger(book,[{...out,oldFrame:{...sameOld,throughPx:400,throughViews:3}}],'u',['type96b'],{reframe:R,...NOTE}),
+    /REFRAME refused: in its old frame the build fails its row \(REGRESSION: see-through px 400 > ledger 4\)/,'a re-frame that also raises see-through fails');
+  assert.throws(()=>updatedSealedLedger(book,[{...out,oldFrame:{...sameOld,netPx:1600}}],'u',['type96b'],{reframe:R,...NOTE}),
+    /in its old frame the build fails its row \(REGRESSION: netting px 1600 < ledger 3218/,'or moves its netting');
+  assert.throws(()=>updatedSealedLedger(book,[out],'u',['type96b'],{reframe:R,...NOTE}),/needs the census in the row's old frame/);
+  assert.throws(()=>updatedSealedLedger(book,[{...out,sealed:false,holeViews:1,oldFrame:sameOld}],'u',['type96b'],{reframe:R,...NOTE}),
     /REGRESSION: ledger sealed, now 1 open views/,'a re-frame never opens a sealed row');
+  // an open row (leo2a4's turret slit) holds its openings in the old frame too, and its hole views everywhere
+  const leo = {sealed:false,openPx:17,openViews:1,insideOutPx:211,seeThroughPx:7,netSeeThroughPx:0,tris:131680,frame:[0,1.75,0.4,5.3]};
+  assert.throws(()=>updatedSealedLedger({generatedAt:'old',tanks:{leo2a4:leo}},[{...out,id:'leo2a4',sealed:false,holeViews:12,holePx:495,throughPx:7,netPx:0,
+    oldFrame:{sealed:false,holeViews:12,holePx:480,throughPx:7,throughViews:0,netPx:0}}],'u',['leo2a4'],{reframe:new Map([['leo2a4','selftest: a 1.5 m longer gun outgrew the frame']]),...NOTE}),
+    /in its old frame the build fails its row \(REGRESSION: open px 480 > ledger 17\)/,'critic round 3 L2: a 40 cm opening rides no re-frame');
+  assert.match(sealedLedgerVerdict(leo,{sealed:false,holeViews:2,holePx:20,throughPx:7,throughViews:0,netPx:0}).message,/^REGRESSION: open in 2 views > ledger 1 \(a new hole cluster\)/,
+    'a new hole cluster on an open row fails, within its px allowance');
+  assert.equal(sealedLedgerVerdict(leo,{sealed:false,holeViews:1,holePx:17,throughPx:7,throughViews:0,netPx:0}).pass,true);
   assert.deepEqual(recordedSealedFrame({center:{x:0.012,y:1.237,z:-0.031},radius:4.513}),[0,1.25,-0.05,4.7]);
   assert.deepEqual(recordedSealedFrame({center:{x:0,y:1,z:0},radius:4.6}),[0,1,0,4.7],'at least 10 cm of margin');
 }
@@ -201,4 +220,4 @@ assert.deepEqual([...parseSeeThroughAccepts('ajax,griffin_viper:marking specks o
 assert.equal(parseSeeThroughAccepts('').size,0);
 for (const spec of ['ajax','ajax:short',':a long enough reason here']) assert.throws(()=>parseSeeThroughAccepts(spec),/<id>\[,<id>\]:<reason>/,`refused: ${spec}`);
 assert.equal(JSON.stringify(ledger),snapshot);
-console.log('sealed-ledger-policy: incomplete batches, unregistered openings, see-through and netting regressions fail; see-through re-baselines, re-frames and new rows with see-through are explicit per id with a reason kept in a history; a plain update never changes a row (no raise, no walk down), --tighten-ledger lowers by name; a build past its frame asks for --reframe; historical thresholds and sealed regressions preserved');
+console.log('sealed-ledger-policy: incomplete batches, unregistered openings, see-through and netting regressions fail; see-through re-baselines, re-frames and new rows with see-through are explicit per id with a reason kept in a history; a plain update never changes a row (no raise, no walk down), --tighten-ledger lowers by name; a build past its frame asks for --reframe, which needs an outgrown frame and the row\'s gate in the old frame; historical thresholds and sealed regressions preserved');

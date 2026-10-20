@@ -69,15 +69,18 @@ const writeImages = flag('images');
 // unchanged parts, so every column reproduces exactly. A tank without a row (or re-framed with --reframe=<id>:<reason>)
 // is framed on its build's bounding sphere, snapped and grown by at least 10 cm (recordedSealedFrame); a build that
 // reaches past its row's frame fails with REFRAME until it is re-framed on purpose.
-// --ledger=path gates each tank against the committed census: a sealed tank must stay sealed, no tank may add more
-// than max(12 px, 10 %) of true openings or of see-through over its ledger row, and its netting px stay within
-// max(12 px, 2 %) of the row either way; a new vehicle must be sealed with no see-through cluster. --update-ledger
-// rewrites the rows for the checked ids (and records a new vehicle's row) and refuses any regression; it only ever
-// tightens an existing row (openings and see-through to min(row, measured), the netting kept: sealed-ledger-policy.mjs
-// updatedSealedLedger). --update-ledger=see-through touches only existing rows' see-through columns, never an opening.
-// --accept-see-through=<id>[,<id>]:<reason> (a subset of --ids, the reason at least 12 characters) lets either update
-// set those ids' see-through and netting at their measurement, and lets a new vehicle's row carry a see-through
-// cluster; the row records seeThroughAccepted {reason, by (COT_LANE or the user), date, from}. Openings are still held.
+// --ledger=path gates each tank against the committed census: a sealed tank must stay sealed, an open one may not open
+// in more views, no tank may add more than max(12 px, 10 %) of true openings or of see-through over its ledger row, and
+// its netting px stay within max(12 px, 2 %) of the row either way; a new vehicle must be sealed with no see-through
+// cluster. Rows change only by name (sealed-ledger-policy.mjs updatedSealedLedger), each change appended to the row's
+// `accepts` history {kind, reason, by (COT_LANE or the user), date, from}:
+//   --update-ledger              records new vehicles' rows; never changes an existing row, up or down
+//   --tighten-ledger=<ids>       lowers those rows' openings and see-through to the measurement
+//   --accept-see-through=<id>[,<id>]:<reason>   sets those rows' see-through and netting at the measurement (and lets a
+//                                new vehicle's row carry a see-through cluster); no flag accepts an opening
+//   --reframe=<id>[,<id>]:<reason>   only for a build that reaches past its row's frame: its census in the old frame must
+//                                pass the row's normal gate, then every column is re-measured in a new frame
+// --update-ledger=see-through refuses new rows and leaves openings alone. Every flag needs --ledger and --update-ledger.
 const ledgerPath = opt('ledger', '');
 const ledger = ledgerPath ? JSON.parse(readFileSync(resolve(ledgerPath), 'utf8')) : null;
 const updateMode = flag('update-ledger') ? 'rows' : opt('update-ledger', '');
@@ -394,6 +397,18 @@ const { ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
 const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', 'abramsx').split(',').filter(Boolean);
 if (writeImages) mkdirSync(outDir, { recursive: true });
 const report = []; let failures = 0;
+/** The gated totals of the 33 views in one frame (a re-frame's census in the row's old frame). */
+function frameCensus(tris, meshes, frame, bores) {
+  const sphere = { center: new THREE.Vector3(frame[0], frame[1], frame[2]), radius: frame[3] };
+  let holePx = 0, throughPx = 0, netPx = 0, holeViews = 0, throughViews = 0;
+  for (const view of VIEWS) {
+    const r = rasterizeView(tris, meshes, sphere, view, bores);
+    holePx += r.holePx; throughPx += r.throughPx; netPx += r.netPx;
+    if (r.clusters.some((c) => c.kind === 'hole')) holeViews++;
+    if (r.clusters.some((c) => c.kind === 'see-through')) throughViews++;
+  }
+  return { sealed: holeViews === 0, holeViews, holePx, throughPx, throughViews, netPx };
+}
 for (const id of ids) {
   await ensureInteriorFills([id]);
   const started = performance.now();
@@ -402,15 +417,22 @@ for (const id of ids) {
   try { tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: flag('receipt') }); } catch (error) { console.log(`${id}: build failed: ${error.message}`); failures++; continue; }
   const { tris, meshes } = collectTriangles(tank.root);
   const listed = ledger?.tanks?.[id];
-  const fixedFrame = Array.isArray(listed?.frame) && !reframe.has(id);
-  const frame = fixedFrame ? listed.frame : recordedSealedFrame(boundingSphere(tris));
+  const rowFrame = Array.isArray(listed?.frame) ? listed.frame : null;
+  const reframing = reframe.has(id);
+  const fixedFrame = Boolean(rowFrame) && !reframing;
+  const frame = fixedFrame ? rowFrame : recordedSealedFrame(boundingSphere(tris));
   const sphere = { center: new THREE.Vector3(frame[0], frame[1], frame[2]), radius: frame[3] };
+  // the build's reach from the row's frame centre: past its radius the row's pixels no longer hold the whole build
+  const yard = rowFrame ?? frame;
   let reachM = 0;
   for (const t of tris) for (const [x, y, z] of [[t.ax, t.ay, t.az], [t.bx, t.by, t.bz], [t.cx, t.cy, t.cz]]) {
-    const r = Math.hypot(x - frame[0], y - frame[1], z - frame[2]); if (r > reachM) reachM = r;
+    const r = Math.hypot(x - yard[0], y - yard[1], z - yard[2]); if (r > reachM) reachM = r;
   }
-  const frameExceeded = fixedFrame && reachM > frame[3];
+  const frameExceeded = Boolean(rowFrame) && reachM > rowFrame[3];
   const bores = flag('no-bore-mask') ? [] : collectBores(tank.root);
+  // a re-frame is checked in the row's old frame first (critic round 3: geometry past the frame is only clipped there,
+  // so every unchanged column reproduces exactly; anything new still has to pass the row's normal gate)
+  const oldFrame = reframing && rowFrame ? frameCensus(tris, meshes, rowFrame, bores) : null;
   if (flag('materials')) {
     const rows = new Map();
     tank.root.traverseVisible((o) => { if (!o.isMesh) return; for (const m of (Array.isArray(o.material) ? o.material : [o.material])) { if (!m) continue; const key = `${o.name || o.type} :: ${m.name || m.type}#${m.uuid.slice(0, 6)} side=${m.side} transparent=${m.transparent} opacity=${m.opacity} alphaTest=${m.alphaTest} depthWrite=${m.depthWrite}${Object.keys(m.userData || {}).length ? ' ud:' + Object.keys(m.userData).join('/') : ''}`; rows.set(key, (rows.get(key) || 0) + 1); } });
@@ -456,7 +478,7 @@ for (const id of ids) {
   // surface hides an opening.
   const sealed = holeViews === 0;
   let ledgerVerdict = '';
-  const census = { sealed, holeViews, holePx, throughPx, throughViews, netPx, frameExceeded };
+  const census = { sealed, holeViews, holePx, throughPx, throughViews, netPx, frameExceeded, oldFrame };
   if (ledger) {
     // an id the update re-baselines (--accept-see-through) is judged at its measured see-through and netting; its
     // openings still gate (a row's baseline, or a new vehicle's sealed rule)
@@ -464,7 +486,7 @@ for (const id of ids) {
     ledgerVerdict = verdict.message;
     if (!verdict.pass) failures++;
   } else if (!sealedLedgerVerdict(undefined, census).pass) failures++;
-  report.push({ id, interiorFillRecordLoaded: hasInteriorFills(id), tris: tris.length, radiusM: +sphere.radius.toFixed(2), frame, frameSource: fixedFrame ? 'ledger' : 'build', reachM: +reachM.toFixed(3), frameExceeded, sealed, holeViews, invertedViews, throughViews, netViews, holePx, invertedPx, throughPx, netPx, bores: bores.length, borePx, topMeshes, views: views.filter((v) => v.clusters.length) });
+  report.push({ id, interiorFillRecordLoaded: hasInteriorFills(id), tris: tris.length, radiusM: +sphere.radius.toFixed(2), frame, frameSource: fixedFrame ? 'ledger' : 'build', reachM: +reachM.toFixed(3), frameExceeded, oldFrame, sealed, holeViews, invertedViews, throughViews, netViews, holePx, invertedPx, throughPx, netPx, bores: bores.length, borePx, topMeshes, views: views.filter((v) => v.clusters.length) });
   console.log(`${id}: ${sealed ? 'SEALED' : 'OPEN'} — ${tris.length} tris, open px ${holePx} in ${holeViews}/${views.length} views, inside-out px ${invertedPx} in ${invertedViews} views, see-through px ${throughPx} in ${throughViews} views, netting px ${netPx} in ${netViews} views, bore px ${borePx} masked in ${bores.length} bore(s)${topMeshes.length ? ' — ' + topMeshes.join(', ') : ''}${ledgerVerdict ? ' — ' + ledgerVerdict : ''} (${((performance.now() - started) / 1000).toFixed(1)} s)`);
   if (worst) console.log(`   worst view ${worst.name}: ${worst.clusters.filter((c) => c.kind !== 'netting').slice(0, 4).map((c) => `${c.kind} ${c.area}px world(${(c.world || []).join(',')}) ${c.meshes.join('/')}`).join(' | ')}`);
   if (flag('clusters')) for (const v of views) for (const c of v.clusters) console.log(`   ${v.name}: ${c.kind} ${c.area}px world(${(c.world || []).join(',')}) ${c.meshes.join('/')}`);

@@ -571,11 +571,15 @@ support went with it. Visual change detection lives in generated ledgers that on
   10 %) and its `netSeeThroughPx` (sky between declared netting) to max(12 px, 2 %) either way; every playable id has a
   row (`tank-sealed-check.selftest` holds the ledger's ids to the fleet manifest), measured in the census frame recorded
   on it (`frame: [x, y, z, radius]`), so an unrelated extremity edit never moves the pixel grid under unchanged parts.
-  `--update-ledger[=see-through]` never changes an existing row (it records new rows); `--tighten-ledger=<ids>` lowers
-  openings and see-through to the measurement by name; a see-through or netting raise, or a sealed new vehicle's row
-  with a see-through cluster, needs `--accept-see-through=<id>[,<id>]:<reason>`; a build that outgrows its frame needs
-  `--reframe=<id>:<reason>` (every column re-measured). Each accept or re-frame appends {kind, reason, by, date, from} to
-  the row's `accepts` history.
+  `--update-ledger` never changes an existing row (it records new vehicles' rows; `=see-through` refuses new rows);
+  `--tighten-ledger=<ids>` lowers openings and see-through to the measurement by name; a see-through or netting raise,
+  or a sealed new vehicle's row with a see-through cluster, needs `--accept-see-through=<id>[,<id>]:<reason>`; no flag
+  accepts an opening. A build that outgrows its frame needs `--reframe=<id>:<reason>`, refused for a build inside its
+  frame: the build's census in the old frame must pass the row's normal gate before every column is re-measured in the
+  new one. Each accept or re-frame appends {kind, reason, by, date, from} to the row's `accepts` history. The framed
+  re-base that introduced the frames (guards 229) wrote its own entries, kind `rebaseline`: leo2a4's 1 cm turret-roof
+  slit is the one opening it recorded (open in one view, so a new hole cluster fails), and the 256 px aliasing it found
+  on type90, leclerc_sxxi and leo2a6_ua is noted on their rows.
 - `docs/geometry-gate/contig-hidden.json` (guards 229) — the §B2 fleet hidden-gap audit: per tank, the plan gaps the
   hull-anchored lattice reads and the pre-227 raster missed, as exact vehicle-frame pixel boxes
   (`tools/contig-hidden-gaps.mjs`, from `tools/contig-phase-audit.mjs` rows). `tank-standard-check` passes those as

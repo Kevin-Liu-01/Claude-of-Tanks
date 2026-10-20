@@ -17,18 +17,28 @@ const nettingSlack = (baseline) => Math.max(12, baseline * .02);
  *
  * acceptSeeThrough is the explicit per-id re-baseline (--accept-see-through, honoured only while updating the ledger):
  * the row's see-through and netting baselines are taken at the measurement, and a vehicle without a row may bring a
- * see-through cluster. Openings are never accepted this way: a new vehicle must still be sealed, an existing row still
- * holds its opening baseline. */
-export function sealedLedgerVerdict(row, { sealed, holeViews, holePx, throughPx, throughViews, netPx, frameExceeded = false }, { acceptSeeThrough = false, reframe = false } = {}) {
+ * see-through cluster. No flag accepts an opening: a new vehicle must still be sealed, an existing row still holds its
+ * opening baseline and hole views (the one open row, leo2a4, came from the 229 framed re-base, history kind
+ * 'rebaseline'). reframe judges the build in the row's old frame by this same gate (see below). */
+export function sealedLedgerVerdict(row, { sealed, holeViews, holePx, throughPx, throughViews, netPx, frameExceeded = false, oldFrame = null }, { acceptSeeThrough = false, reframe = false } = {}) {
   if (![throughPx, throughViews, netPx].every(Number.isFinite)) {
     throw new Error('sealedLedgerVerdict: the see-through census (throughPx, throughViews, netPx) is required');
   }
   // the row's frame no longer holds the build (an extremity grew past its margin): its pixels are not comparable
   if (row && frameExceeded && !reframe) return { pass: false,
     message: 'REFRAME: the build reaches past the row\'s census frame; re-record it with --update-ledger --reframe=<id>:<reason> (every column is re-measured in the new frame)' };
+  // A re-frame (critic round 3) is the remedy for an outgrown frame only, and it accepts nothing new: the build must
+  // reach past the row's frame, and its census in that old frame (where the outgrown geometry is merely clipped, so
+  // every unchanged column reproduces exactly) must pass the row's normal gate, openings, see-through and netting band
+  // alike. Only then is every column re-measured in the new frame, where a sealed row must still be sealed.
   if (row && reframe) {
-    if (row.sealed && !sealed) return { pass: false, message: `REGRESSION: ledger sealed, now ${holeViews} open views` };
-    return { pass: true, message: 'ledger: re-framed, every column re-measured' };
+    if (!Array.isArray(row.frame)) return { pass: false, message: 'REFRAME refused: the row records no census frame' };
+    if (!frameExceeded) return { pass: false, message: 'REFRAME refused: the build stays inside the row\'s census frame; there is nothing to re-frame' };
+    if (!oldFrame) return { pass: false, message: 'REFRAME refused: a re-frame needs the census in the row\'s old frame' };
+    const inOld = sealedLedgerVerdict(row, { ...oldFrame, frameExceeded: false });
+    if (!inOld.pass) return { pass: false, message: `REFRAME refused: in its old frame the build fails its row (${inOld.message})` };
+    if (row.sealed && !sealed) return { pass: false, message: `REGRESSION: ledger sealed, now ${holeViews} open views in the new frame` };
+    return { pass: true, message: `ledger: re-framed; in the old frame ${inOld.message}` };
   }
   if (!row) {
     if (!sealed) return { pass: false, message: `new vehicle: ${holeViews} open views without an approved baseline` };
@@ -40,6 +50,9 @@ export function sealedLedgerVerdict(row, { sealed, holeViews, holePx, throughPx,
     message: `REGRESSION: ledger sealed, now ${holeViews} open views` };
   if (holePx > allowance(row.openPx)) return { pass: false,
     message: `REGRESSION: open px ${holePx} > ledger ${row.openPx}` };
+  // an open row still holds its hole views: a new hole cluster in another view fails (critic round 3, leo2a4)
+  if (!row.sealed && Number.isFinite(row.openViews) && holeViews > row.openViews) return { pass: false,
+    message: `REGRESSION: open in ${holeViews} views > ledger ${row.openViews} (a new hole cluster)` };
   const judged = acceptSeeThrough ? { seeThroughPx: Math.max(throughPx, row.seeThroughPx ?? 0), netSeeThroughPx: netPx } : row;
   const seeThrough = seeThroughVerdict(judged.seeThroughPx, throughPx);
   if (!seeThrough.pass) return seeThrough;
@@ -116,8 +129,10 @@ const columnsOf = (row) => ({ sealed: row.sealed, openPx: row.openPx, seeThrough
  *   min(row, measured), sealed once it measures sealed; netting kept;
  * - `acceptSeeThrough` (Map id -> reason): see-through and netting at the
  *   measurement, openings still held;
- * - `reframe` (Map id -> reason): a new census frame (the build outgrew the
- *   row's) and every column re-measured in it; a sealed row must stay sealed.
+ * - `reframe` (Map id -> reason): only for a build that outgrew the row's
+ *   frame and whose census in that old frame passes the row's normal gate;
+ *   then a new census frame and every column re-measured in it (a sealed row
+ *   must stay sealed): a re-frame changes units, never accepts anything new.
  * An accept or a re-frame appends {kind, reason, by, date, from} to the row's
  * `accepts` history (the old values), never replacing an earlier note. A new
  * row (rows mode only) is the measurement and its frame; it must be sealed,
@@ -165,7 +180,8 @@ export function updatedSealedLedger(ledger, reports, generatedAt, requestedIds,
     let next = { ...row };
     if (reframeReason !== undefined) {
       if (!Array.isArray(frame)) throw new Error(`${result.id}: a re-frame needs the census frame; ledger unchanged`);
-      history.push({ kind: 'reframe', reason: reframeReason, by, date, from: columnsOf(row) });
+      history.push({ kind: 'reframe', reason: reframeReason, by, date, from: columnsOf(row),
+        oldFrameCensus: { sealed: result.oldFrame.sealed, openPx: result.oldFrame.holePx, seeThroughPx: result.oldFrame.throughPx, netSeeThroughPx: result.oldFrame.netPx } });
       next = { ...next, sealed: row.sealed || sealed, openPx: holePx, openViews: holeViews, insideOutPx: invertedPx,
         seeThroughPx: throughPx, netSeeThroughPx: netPx, tris, frame };
     } else {
