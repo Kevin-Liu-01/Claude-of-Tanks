@@ -52,8 +52,10 @@ const INVENTORY = {
     // round 8 (owner 2026-10-19: "the rear of qilinns turret is exposed and nnot filled"): the bustle floor, the full-width
     // stowage rack and its load, the rear camera; and (critic CN8-08) the feet under the 99A2's two warning heads
     'bustle-floor': [1, 0], 'cage-root': [2, 0], 'cage-front-post': [2, 0], 'cage-side-rail': [2, 0], 'cage-post': [3, 0],
-    'cage-rear-rail': [3, 0], 'cage-floor': [10, 0], 'net-roll': [3, 0], 'ammo-case': [6, 0], 'kit-bag': [2, 0], 'tarp-bundle': [3, 0],
-    'spare-case': [4, 0], 'rear-camera': [5, 0], 'warning-head-foot': [2, 0],
+    'cage-rear-rail': [3, 0], 'cage-floor': [12, 0], 'net-roll': [3, 0], 'ammo-case': [8, 0], 'kit-bag': [2, 0], 'tarp-bundle': [3, 0],
+    'spare-case': [5, 0], 'rear-camera': [5, 0], 'warning-head-foot': [2, 0],
+    // round 9 (visual critic CN-R7-2): the seat under the 99A2 cupola's fixed ring
+    'ring-seat': [1, 0],
   },
   // round 3 (critic D3): the Kunlun's 226 package on its Type 96B, its lamps now riding the Shtora heads' hoods
   t72b3m_kunlun: {
@@ -70,19 +72,27 @@ const TURRET_LENSES = { t80u_yun: 2, t72b3_qilin: 2, t72b3m_kunlun: 4 };
 
 // The welded rear cage and the dock's bearers are one item: their beams cross at every joint.
 const family = (role) => (/^(cage-|dock-)/.test(role) ? 'cage' : role);
-// Burial allowances (m), the larger of the two parts' when both are tagged. Welded armour housings are built into the
-// shell (their inner edges at least 20 mm in, the bustle module 50 mm into the 96B's rear cap); cage roots and floor bars
-// end 30 mm inside the wall plus their own radius; a thin part (cable, post, strip, seam, mark) crosses a face by no more
-// than its own half-thickness and a few millimetres (a gun band's bore is 2 mm inside the barrel's skin);
-// a shaped foot (6 mm into the roof at its corners) swallows the roof's camber under it up to 16 mm, 22 mm where the
-// split sensor's foot welds over the chevron's raised upper root. The Qilin's bustle floor (round 8) runs 25 mm into the shell's
-// underside and the rear armour box's bottom.
+// The Qilin's rack load (round 8): each item rests 1 mm into the floor bars' flat tops and touches nothing else.
+const LOAD = new Set(['net-roll', 'ammo-case', 'kit-bag', 'tarp-bundle', 'spare-case']);
+// Burial allowances (m) of a tagged part `p` against the part `q` it crosses, the larger of the pair's when both are
+// tagged. Welded armour housings are built into the shell (their inner edges at least 20 mm in, the bustle module 50 mm
+// into the 96B's rear cap); cage roots and floor bars end 30 mm inside the wall plus their own radius; a thin part
+// (cable, post, strip, seam, mark) crosses a face by no more than its own half-thickness and a few millimetres (a gun
+// band's bore is 2 mm inside the barrel's skin); a shaped foot (6 mm into the roof at its corners) swallows the roof's
+// camber under it up to 16 mm, 22 mm where the split sensor's foot welds over the chevron's raised upper root. The
+// Qilin's bustle floor (round 8) runs 25 mm into the shell's underside and the rear armour box's bottom; its cupola's
+// ring seat (round 9) is buried 19.5 mm in the cupola. Round 9 (critic CN9-01: a pair with a cage member was allowed
+// 46 mm, so a case driven 22 mm through the rear rails, or a bundle 12 mm into the net roll, passed): a load item and
+// anything it meets, rack or load, is allowed only its 1 mm rest on the bars' flat tops.
 const HOUSINGS = new Set(['wrap-housing', 'flank-sleeve', 'bustle-module', 'bustle-floor']);
 const THIN = new Set(['cable', 'rail-post', 'rear-band', 'rear-box-seam', 'rear-box-mark', 'marking-board', 'muzzle-strip', 'gun-band']);
-function allowance(p) {
+const LOAD_REST = .0015;
+function allowance(p, q) {
+  if (LOAD.has(p.role) || LOAD.has(q?.role)) return LOAD_REST;
   if (HOUSINGS.has(p.role)) return .40;
   if (family(p.role) === 'cage') return .046;
   if (p.role === 'ring-race') return .040;
+  if (p.role === 'ring-seat') return .022;
   if (THIN.has(p.role)) return .013;
   if (p.role === 'split-sensor') return .022;
   return .016;
@@ -385,6 +395,13 @@ for (const quality of ['high', 'low']) {
           const around = turretParts.filter((p) => sensor.some((q) => q.box.clone().expandByScalar(.10).intersectsBox(p.box)));
           const lifted = around.map((p) => (p.role === 'split-sensor' && p !== foot ? shifted(p, .03) : p));
           assert.ok(seatingCensus(lifted, { allowance, family }).some((s) => s.startsWith('FLOAT split-sensor')), 'negative control: the split sensor lifted 30 mm off its foot floats');
+          // round 9 (critic CN9-01, seeds S5 and S6): the spare-parts case moved 31 mm aft (the rack's rear rails 22 mm
+          // inside it) and the tarpaulin moved 12 mm forward into the net roll must cross
+          const rackSide = (sel) => turretParts.filter((q) => sel.some((r) => r.box.clone().expandByScalar(.06).intersectsBox(q.box)));
+          for (const [role, dz, hit] of [['spare-case', -.031, 'cage-rear-rail'], ['tarp-bundle', .012, 'net-roll']]) {
+            const item = turretParts.filter((q) => q.role === role), scene = rackSide(item).map((q) => (q.role === role ? moved(q, 0, 0, dz) : q));
+            assert.ok(seatingCensus(scene, { allowance, family }).some((s) => s.startsWith('CROSS') && s.includes(role) && s.includes(hit)), `negative control: the ${role} moved ${Math.round(Math.abs(dz) * 1000)} mm ${dz < 0 ? 'aft' : 'forward'} crosses the ${hit}`);
+          }
         }
       }
       // ---- M3: the Yun's horseshoe corner round the bustle module: its rear end 30 mm ahead of the module's rear face, its
