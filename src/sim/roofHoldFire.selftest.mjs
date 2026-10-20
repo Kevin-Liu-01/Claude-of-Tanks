@@ -20,7 +20,8 @@
 // round on armour that leaves modules and crew untouched), case 9 (an M551A1 broadside and a CV90 rear-on at 200 m, a
 // BMP-2 20 degrees off: every 30 mm round wasted at the middle), case 10 (rounds where the K6 hurts nothing beside an
 // ally; rounds into an ally's and a wreck's barrel across the line), case 11 (a human seat's 30 mm under lag
-// compensation's rewind), case 12 (rounds on an AMX-10P braking hard). The cases and halves marked GUARD held before and
+// compensation's rewind), case 12 (rounds on an AMX-10P braking hard), case 13 (rounds on a BMP-2 whose driver wanders).
+// The cases and halves marked GUARD held before and
 // must hold after: a station still fires where the damage model lets its round hurt (a driving target, a track, a gun
 // behind a glancing glacis), the K6 on the turning BMP-2, the Leopard 1 gathering its pivot, the seat's cannon still
 // rewinding, the same rounds twice, the pillbox, host and solo shot for shot (a driving target too).
@@ -329,7 +330,23 @@ for (const [targetId, aspect, range, least] of [['m551a1_tts', 90, 200, 6], ['cv
   assert.deepEqual(wasted(braking), [], 'no round where it cannot hurt on an AMX-10P braking hard');
   assert.ok(expected(braking) >= 6, `the K6 still hurts the braking AMX-10P (${expected(braking).toFixed(1)} of ${braking.length})`);
 }
-// 13. GUARD: a pillbox (fortified cover, world/collision.ts) between a station and the BMP-2 behind it, on Foundry's own
+// 13. A driver's throttle and steering: a BMP-2 30 degrees off at 210 m whose speed (6 +- 3 m/s), turn (+-0.5 rad/s) and
+//     turret slew (+-0.8 rad/s) wander on periods of 2 to 3 s — the dead reckoning is right only on average. Against
+//     the scene as it really went: no round where it cannot hurt, and the K6 still hurts it.
+{
+  const shooter = vehicle('s', 'k1e1', 'blue', 0, 0), target = vehicle('t', 'bmp2', 'red', 0, 210, 30);
+  shooter.state.yaw = 0;
+  const rounds = battle(shooter, [shooter, target], 6, (tick) => {
+    const t = tick / 60;
+    target.state.speed = 6 + 3 * Math.sin(2 * Math.PI * t / 3);
+    target.state.yawRate = .5 * Math.sin(2 * Math.PI * t / 2.5);
+    target.state.turretYawRate = .8 * Math.sin(2 * Math.PI * t / 2);
+    target.state.turretYaw += target.state.turretYawRate / 60;
+  });
+  assert.deepEqual(wasted(rounds), [], 'no round where it cannot hurt on a wandering BMP-2');
+  assert.ok(expected(rounds) >= 4, `the K6 hurts the wandering BMP-2 (${expected(rounds).toFixed(1)} of ${rounds.length})`);
+}
+// 14. GUARD: a pillbox (fortified cover, world/collision.ts) between a station and the BMP-2 behind it, on Foundry's own
 //    collision shard and the multiplayer host's authority: no round goes into the bunker; the BMP-2 driven clear of it
 //    draws fire.
 {
@@ -360,7 +377,7 @@ for (const [targetId, aspect, range, least] of [['m551a1_tts', 90, 200, 6], ['cv
   assert.ok(shots() > 0, `the BMP-2 clear of the pillbox draws fire (${shots()})`);
   world.release?.();
 }
-// 14. GUARD: host and solo agree: the TTS against a turning BMP-2 and a quartering Leopard 1, stepped by the multiplayer host's
+// 15. GUARD: host and solo agree: the TTS against a turning BMP-2 and a quartering Leopard 1, stepped by the multiplayer host's
 //    authority and by the solo battle (both read the same pure roof-station law), poses pinned and hulls kept whole each
 //    tick: the same rounds from the same stations on the same ticks, and the same lays. And again with the BMP-2 driving
 //    and turning, its turret slewing (the speed and the hull and turret yaw rates each authority's movement leaves on it

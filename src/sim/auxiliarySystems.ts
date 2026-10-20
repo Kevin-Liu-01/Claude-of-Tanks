@@ -181,16 +181,21 @@ function roofHurtChance(target: AuxiliaryEntity, from: Vector3, at: Vector3, pro
   hurtTarget.spec.armor = null; hurtTarget.combat = noCombat;
   return chance;
 }
+/** A target driving, turning or slewing its turret: its pose on the round's arrival is dead reckoned, not known. */
+const movingTarget = (s: AuxiliaryEntity['state']): boolean =>
+  Math.abs(s.speed ?? 0) > .5 || Math.abs(s.yawRate ?? 0) > .05 || Math.abs(s.turretYawRate ?? 0) > .05;
 /**
- * VH.14 hold fire (the critic's third and fourth rounds, 2026-10-19/20): a line priced alone can hurt only along itself
- * — a turret roof's edge, a curved tube's grazing face, a hull mid-turn — while the round flies a hair off it or the
- * target turns a little more or less than its rate says. A round's chance is its expected chance over where it may
- * really meet the target: the mean over the line and four beside it (the arrival point moved ROBUST_M — past the few
- * millimetres the drop's curve leaves between the priced chord and the flown arc at a standing target — plus
- * ROBUST_SPEED of a moving target's travel over the flight, about the dead reckoning's typical miss, to either side and
- * up and down) and, on a turning target, over the dead reckoning at TURN_SHARES of its rates; the line itself must reach
- * HURT_FLOOR as well. The mean is settled as soon as the lines left cannot carry it across HURT_FLOOR, so a round that
- * clearly hurts costs one estimate. Per shot or refusal, never per tick.
+ * VH.14 hold fire (the critic's third to fifth rounds, 2026-10-19/20): a line priced alone can hurt only along itself —
+ * a turret roof's edge, a curved tube's grazing face, a hull mid-turn — while the round flies a hair off it or the
+ * target turns a little more or less than its rate says. A round is priced over the line and four beside it (the
+ * arrival point moved ROBUST_M — past the few millimetres the drop's curve leaves between the priced chord and the flown
+ * arc — plus ROBUST_SPEED of a moving target's travel over the flight, about the dead reckoning's typical miss, to
+ * either side and up and down) and, on a turning target, the dead reckoning at TURN_SHARES of its rates; the line itself
+ * must reach HURT_FLOOR. A standing target, whose pose on the round's arrival is known, takes the mean over them (the
+ * round's expected chance: a line that grazes one neighbour still flies where it is priced); a moving one (movingTarget)
+ * takes the worst, since where it really meets the round is a dead reckoning that a driver's throttle and steering
+ * break. Settled as soon as the lines left cannot change the verdict, so a round that clearly hurts a standing target
+ * costs one estimate. Per shot or refusal, never per tick.
  */
 const ROBUST_M = .01, ROBUST_SPEED = .1, TURN_SHARES = [.5, 1.5] as const;
 const ROBUST_STEPS: readonly (readonly [number, number])[] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -198,27 +203,30 @@ const robustAt = new Vector3(), robustSide = new Vector3();
 function robustHurtChance(target: AuxiliaryEntity, from: Vector3, at: Vector3, profile: AuxiliaryWeaponProfile): number {
   const line = roofHurtChance(target, from, at, profile);
   if (line < HURT_FLOOR || !target.spec.armor || !mainPlates(target.spec.armor).length) return line;
-  const s = target.state, flight = from.distanceTo(at) / profile.shell.velocityMps;
+  const s = target.state, flight = from.distanceTo(at) / profile.shell.velocityMps, moving = movingTarget(s);
   const turning = Math.max(Math.abs(s.yawRate ?? 0), Math.abs(s.turretYawRate ?? 0)) * flight > .004;
   const lines = 1 + ROBUST_STEPS.length + (turning ? TURN_SHARES.length : 0), need = HURT_FLOOR * lines;
-  let sum = line, left = lines - 1;
-  if (sum >= need) return sum / lines;
+  let sum = line, worst = line, left = lines - 1;
+  if (!moving && sum >= need) return sum / lines;
   const reach = ROBUST_M + ROBUST_SPEED * Math.abs(s.speed ?? 0) * flight;
   robustSide.set(at.z - from.z, 0, from.x - at.x);
   const side = Math.hypot(robustSide.x, robustSide.z);
   if (side > 1e-6) robustSide.multiplyScalar(1 / side);
-  for (const [across, up] of ROBUST_STEPS) {
-    robustAt.copy(at).addScaledVector(robustSide, across * reach); robustAt.y += up * reach;
-    sum += roofHurtChance(target, from, robustAt, profile); left--;
-    if (sum >= need || sum + left < need) return sum / lines;
+  for (let i = 0; i < lines - 1; i++) {
+    let chance: number;
+    if (i < ROBUST_STEPS.length) {
+      const [across, up] = ROBUST_STEPS[i]!;
+      robustAt.copy(at).addScaledVector(robustSide, across * reach); robustAt.y += up * reach;
+      chance = roofHurtChance(target, from, robustAt, profile);
+    } else {
+      arrivalTurn = TURN_SHARES[i - ROBUST_STEPS.length]!;
+      chance = roofHurtChance(target, from, at, profile);
+      arrivalTurn = 1;
+    }
+    sum += chance; worst = Math.min(worst, chance); left--;
+    if (moving ? worst < HURT_FLOOR : sum >= need || sum + left < need) return moving ? worst : sum / lines;
   }
-  for (let i = 0; turning && i < TURN_SHARES.length; i++) {
-    arrivalTurn = TURN_SHARES[i]!;
-    sum += roofHurtChance(target, from, at, profile); left--;
-    arrivalTurn = 1;
-    if (sum >= need || sum + left < need) return sum / lines;
-  }
-  return sum / lines;
+  return moving ? worst : sum / lines;
 }
 /** The aim grid on each face the target turns towards the station: along the face and up it, as fractions of its half
  * length (or width) and of its height; the core (|along| <= .7, up .3 to .92) is searched first, the outer columns and
@@ -554,8 +562,7 @@ function rememberHold(station: AuxiliaryStationState, shooter: AuxiliaryEntity, 
  * slewing its turret, whose faces come round sooner; an aim point, after each round into it, for AIM_S). */
 function refreshHold(slot: StationHold, shooter: AuxiliaryEntity, target: AuxiliaryEntity, now: number): StationHold {
   holdGeometry(shooter, target);
-  const s = target.state, moving = Math.abs(s.speed ?? 0) > .5 || Math.abs(s.yawRate ?? 0) > .05 || Math.abs(s.turretYawRate ?? 0) > .05;
-  slot.untilS = now + (slot.aim ? AIM_S : moving ? HOLD_MOVING_S : HOLD_S);
+  slot.untilS = now + (slot.aim ? AIM_S : movingTarget(target.state) ? HOLD_MOVING_S : HOLD_S);
   slot.hull = holdHull; slot.turret = holdTurret; slot.range = holdRange;
   return slot;
 }
