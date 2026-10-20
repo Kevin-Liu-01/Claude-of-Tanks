@@ -82,7 +82,7 @@ import {
   presentationFrameBudgetMs,
 } from './frameLoopScheduler.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
-import { SceneAAPass, SceneAerialPass } from './sceneSourcePass.ts';
+import { SceneAAPass, SceneAerialPass, sizeDepthWithTarget } from './sceneSourcePass.ts';
 import { ATMOSPHERE_SKY_GLSL, ATMO_GROUND_KM } from './atmosphere.ts';
 import type { AtmospherePublishedState } from './sky.ts';
 import { TemporalAAPass, applyProjectionJitter, taaJitterOffset } from './temporalAA.ts';
@@ -1983,6 +1983,7 @@ export class LateFxPass extends Pass {
     width = Math.max(1, Math.floor(width));
     height = Math.max(1, Math.floor(height));
     this.target.setSize(width, height);
+    sizeDepthWithTarget(this.target);
     if (this.softState) this.softState.uSoftViewport.value.set(width, height);
     this.prepared = false;
   }

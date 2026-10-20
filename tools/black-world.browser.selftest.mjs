@@ -6,6 +6,13 @@
 //  - after Esc and Resume: the same;
 //  - an injected camera without layer 0 (the owner's signature: the scene pass lands nothing, the late FX and the HUD
 //    still draw) is named camera-layer-mask and healed by H1 within half a second.
+// Round 2 (2026-10-20):
+//  - the guard's probe programs linked before the reveal (no first-probe compile on a presented frame);
+//  - the scene target stays complete across a resize whose depth texture is first bound by a sampler (D1: the stale
+//    depth storage left FRAMEBUFFER_INCOMPLETE_DIMENSIONS and every world draw dropped; fails on the round-1 head);
+//  - Esc, LEAVE BATTLE, the Garage, BATTLE again (the owner's "esc out and come back in"): a complete scene target, no
+//    incident, the world drawn;
+//  - a late composite cleared to zero over a healthy scene target (D2) is named downstream-black.
 // It takes the capture lock itself (an owned lease, run-selftests.mjs) and the hardware ANGLE path.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
@@ -49,6 +56,20 @@ const guardState = () => {
     mask: window.__DEBUG.camera.layers.mask, phase: window.__DEBUG.game.phase } : null;
 };
 
+/** The scene target's framebuffer status (resolve and MSAA) as the next scene pass binds it. */
+const sceneTargetStatus = () => {
+  const R = window.__DEBUG.renderer, st = window.__DEBUG.post.sceneAA.sceneTarget, gl = R.getContext();
+  const previous = R.getRenderTarget();
+  R.setRenderTarget(st);
+  const props = R.properties.get(st);
+  const status = (fb) => { if (!fb) return null; gl.bindFramebuffer(gl.FRAMEBUFFER, fb); return gl.checkFramebufferStatus(gl.FRAMEBUFFER); };
+  const out = { resolve: status(props.__webglFramebuffer), msaa: status(props.__webglMultisampledFramebuffer),
+    size: [st.width, st.height], depthImage: [st.depthTexture.image.width, st.depthTexture.image.height] };
+  R.setRenderTarget(null);
+  R.setRenderTarget(previous);
+  return out;
+};
+
 const lock = createCaptureLock();
 const report = { errors: [], checks: {} };
 let server, browser, refresh;
@@ -76,6 +97,9 @@ try {
   // the cover lifted and the guard armed by the covered entry
   await page.waitForFunction(() => window.__DEBUG.game.phase === 'battle' && !document.querySelector('.cot-bl.on')
     && window.__COT_BLACK_GUARD?.stats().active === true, { timeout: 420_000, polling: 250 });
+  // (round 2) the probe's programs linked under the cover: the first probe never compiles on a presented frame
+  report.checks.probeReadyAtReveal = await page.evaluate(() => window.__COT_BLACK_GUARD.stats().probeReady);
+  assert.equal(report.checks.probeReadyAtReveal, true, 'the probe programs linked before the reveal');
 
   const judge = async (label) => {
     const start = await page.evaluate(guardState);
@@ -98,6 +122,53 @@ try {
   await page.evaluate(() => document.querySelector('.cot-set-btn.resume')?.click());
   await sleep(1000);
   await judge('after resume');
+
+  // (round 2, D1) a resize whose depth texture is first bound by a sampler (renderer.initTexture: three's sampler path,
+  // as a soft particle, the cloud trace or a lone warm pass binds it) must leave the scene target complete
+  report.checks.depthResize = await page.evaluate(async (statusSource) => {
+    const status = new Function(`return (${statusSource})()`);
+    const P = window.__DEBUG.post, R = window.__DEBUG.renderer;
+    const css = { x: 0, y: 0, set(x, y) { this.x = x; this.y = y; return this; } };
+    R.getSize(css);
+    const rows = [];
+    for (const scale of [0.75, 1]) {
+      P.setSize(Math.round(css.x * scale), Math.round(css.y * scale));
+      R.initTexture(P.sceneAA.sceneTarget.depthTexture);
+      rows.push({ scale, ...status() });
+    }
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return rows;
+  }, sceneTargetStatus.toString());
+  for (const row of report.checks.depthResize) {
+    assert.equal(row.resolve, 0x8cd5, `a sampler-first depth bind after a resize to ${row.scale}: the scene target is complete (${JSON.stringify(row)})`);
+    if (row.msaa !== null) assert.equal(row.msaa, 0x8cd5, 'and its multisampled framebuffer too');
+  }
+  await judge('after the depth resize');
+
+  // (round 2, D1) Esc, LEAVE BATTLE, the Garage, BATTLE again: the scene target complete, no incident, the world drawn
+  {
+    const before = await page.evaluate(guardState);
+    await page.keyboard.press('Escape');
+    await sleep(800);
+    await page.evaluate(() => document.querySelector('.cot-set-btn.leave')?.click());
+    await sleep(500);
+    await page.evaluate(() => {
+      const confirm = [...document.querySelectorAll('button')].find((b) => /^(leave|confirm|yes)/i.test(b.textContent.trim())
+        && b.offsetParent !== null && !b.classList.contains('leave'));
+      confirm?.click();
+    });
+    await page.waitForFunction(() => window.__DEBUG.game.phase === 'garage', { timeout: 120_000, polling: 250 });
+    await sleep(1500);
+    await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 't72b3m_bulat_m', mapId: 'badlands' }), 0); });
+    await page.waitForFunction(() => window.__DEBUG.game.phase === 'battle' && !document.querySelector('.cot-bl.on')
+      && window.__COT_BLACK_GUARD?.stats().active === true, { timeout: 420_000, polling: 250 });
+    await sleep(600);
+    const status = await page.evaluate(sceneTargetStatus);
+    report.checks.reentry = { status, before: before.incidents };
+    assert.equal(status.resolve, 0x8cd5, `re-entry: the scene target is complete (${JSON.stringify(status)})`);
+    await judge('after leave and re-entry');
+    assert.equal((await page.evaluate(guardState)).incidents, before.incidents, 're-entry: no incident since the leave');
+  }
 
   // the owner's signature, injected: the camera loses layer 0 (the scene pass lands nothing)
   const healed = await page.evaluate(async () => {
@@ -122,6 +193,37 @@ try {
   assert.ok(healed.afterMs <= 500, `healed within half a second (${healed.afterMs} ms, ${healed.frames} frames)`);
   assert.equal(healed.mask & 1, 1, 'the camera sees layer 0 again');
   assert.ok(await worldZeroShare(page) < 0.8, 'the world is back');
+
+  // (round 2, D2) downstream of the scene target: the aerial pass draws, then its destination (the late composite's
+  // input) is cleared to zero for 2 s, the scene target healthy (the critic's aerialblack): named downstream-black
+  const downstream = await page.evaluate(async () => {
+    const P = window.__DEBUG.post, S = window.__DEBUG.scene;
+    const before = (window.__GL_DIAG?.blackWorld ?? []).length;
+    let ColorCtor = null;
+    S.traverse((o) => { if (!ColorCtor && o.material && !Array.isArray(o.material) && o.material.color?.isColor) ColorCtor = o.material.color.constructor; });
+    const saved = new ColorCtor();
+    const until = performance.now() + 2000;
+    const original = P.aerial.render;
+    P.aerial.render = function (renderer, writeBuffer, readBuffer, ...rest) {
+      const result = original.call(this, renderer, writeBuffer, readBuffer, ...rest);
+      if (performance.now() < until) {
+        const target = this.directColorReadBuffer === writeBuffer ? P.lateFx.target : writeBuffer;
+        const previous = renderer.getRenderTarget();
+        renderer.getClearColor(saved);
+        const alpha = renderer.getClearAlpha();
+        renderer.setRenderTarget(target); renderer.setClearColor(0x000000, 1); renderer.clear(true, false, false);
+        renderer.setClearColor(saved, alpha); renderer.setRenderTarget(previous);
+      }
+      return result;
+    };
+    try {
+      while (performance.now() < until + 1500) await new Promise((resolve) => requestAnimationFrame(resolve));
+    } finally { P.aerial.render = original; }
+    const ring = window.__GL_DIAG?.blackWorld ?? [];
+    return { opened: ring.slice(before).map((r) => ({ class: r.class, healedBy: r.healedBy, closed: r.closed })) };
+  });
+  report.checks.downstream = downstream;
+  assert.ok(downstream.opened.some((r) => r.class === 'downstream-black'), `the cleared late composite is named downstream-black (${JSON.stringify(downstream)})`);
 } catch (error) {
   report.errors.push(String(error?.stack ?? error).slice(0, 1200));
 } finally {
