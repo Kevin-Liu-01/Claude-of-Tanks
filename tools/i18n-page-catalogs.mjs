@@ -44,10 +44,10 @@ const CATALOG_NAME_RE = /^[a-z][A-Za-z0-9]*$/;
 // Runtime modules whose `t` / `catalogText` take a key; catalogText takes the locale first.
 const I18N_MODULES = new Set(['src/ui/i18n.ts', 'src/ui/i18nDictionaries.ts', 'src/ui/i18nCatalog.ts']);
 const KEY_ARGUMENT = Object.freeze({ t: 0, catalogText: 1 });
-// The catalogs themselves: data, not consumers. The scan neither reads nor follows them, and the registry's
-// import of the chunk a document names (a computed specifier) loads one of them.
+// The catalogs themselves: data, not consumers. The scan neither reads nor follows them. (The registry imports the chunk
+// a document names through src/ui/i18nChunkImport.ts, which holds no import(); only a document's alias reaches the URL
+// import, src/ui/i18nChunkImport.browser.ts, so no module the scan follows has a computed specifier to excuse.)
 const CATALOG_MODULE_RE = /^src\/ui\/i18nCatalog(?:\.[a-zA-Z-]+\.json|EnUS\.ts|ZhCN\.ts)$/;
-const CATALOG_LOADER = 'src/ui/i18nDictionaries.ts';
 const SCRIPT_RE = /\.(?:[cm]?[jt]s)$/;
 const NAMESPACE_RE = /^[A-Za-z][\w-]*\./;
 const PREFIX_LITERAL_RE = /^[A-Za-z][\w-]*(?:\.[\w-]+)*\.$/;
@@ -314,7 +314,7 @@ export function analyzeModuleSource(source, file, { root = ROOT, keys }) {
       if (literal !== null) {
         addImport(literal);
         if (literal.startsWith('./') || literal.startsWith('../')) result.dynamicImports.push(literal);
-      } else if (file !== CATALOG_LOADER) {
+      } else {
         result.issues.push(`${at(node)}: import() with a computed specifier (${snippet(node)}); the key scan cannot follow it`);
       }
     } else if (node.type === 'MemberExpression' && node.object?.type === 'MetaProperty'

@@ -56,6 +56,11 @@ full catalogs, which the build restricts to the keys the game's graph and worker
 can show, a public page the page catalog its HTML declares, built from
 `tools/i18n-page-catalogs.mjs`, and its lazy chunk before each module it reaches
 only through `import()`); a key a public page could show raw fails the build.
+The registry loads a page's chunk through `i18nChunkImport.ts`, which holds no
+URL import; the page catalog plugin aliases it to `i18nChunkImport.browser.ts`
+for every document. Never put a computed `import()` back into the registry: the
+self-test runner cannot key a receipt whose graph holds one, and about 380
+receipts reach the locale runtime (`node src/ui/i18nChunkImport.selftest.mjs`).
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
