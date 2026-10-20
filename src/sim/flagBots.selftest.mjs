@@ -73,4 +73,23 @@ const jobs = () => squad.map((b) => mode.botObjective(b));
   theirs.status = 'carried'; theirs.carrierId = squad[1].id;
   assert.notEqual(jobs().map((j) => j.mission).join(), before, 'a flag taken re-deals the roles at once');
 }
-console.log('flagBots.selftest: the recovery share and the raid back, the intercept ahead of the carrier, three escorts leading it home and the rest behind, one guard, the raid');
+// the pitch (round 2, flagPitch.baseAxisM): each flag base stands on the axis at the middle ± half the span, in front of
+// its spawn; the carrier heads for its own base and scores there (not at its deployment centre)
+{
+  const span = matchRulesetFor('capture_the_flag').flagPitch.baseAxisM;
+  const a = tank('pa', 'alpha', 0, -400), b = tank('pb', 'bravo', 0, 400);
+  const pitch = createMatchModeController({ mode: 'capture_the_flag', entities: [a, b], seed: 3, terrainHeight: () => 0,
+    setActive(t, on) { t.modeActive = on; }, revive(t, s) { Object.assign(t.state.pos, { x: s.x, z: s.z }); t.combat.destroyed = false; } });
+  const [fa, fb] = ['alpha', 'bravo'].map((team) => pitch.state.flags.find((f) => f.team === team));
+  assert.ok(span > 0 && span < 800, 'a finite span inside the deployment centres');
+  assert.ok(Math.abs(fa.baseZ + span / 2) < 1e-6 && Math.abs(fb.baseZ - span / 2) < 1e-6 && Math.abs(fa.baseX) < 1e-6, `bases at ±${span / 2} m`);
+  // alpha takes bravo's flag and drives it to its own base
+  Object.assign(a.state.pos, { x: fb.baseX, z: fb.baseZ }); pitch.step(1 / 60, 1);
+  assert.equal(fb.status, 'carried', 'the flag is taken at its base');
+  assert.deepEqual(pitch.botObjective(a) && { x: pitch.botTarget(a).x, z: pitch.botTarget(a).z }, { x: fa.baseX, z: fa.baseZ }, 'the carrier heads for its own flag base');
+  Object.assign(a.state.pos, { x: 0, z: -400 }); pitch.step(1 / 60, 2);
+  assert.equal(pitch.state.score.alpha, 0, 'no capture at the deployment centre');
+  Object.assign(a.state.pos, { x: fa.baseX, z: fa.baseZ }); pitch.step(1 / 60, 3);
+  assert.equal(pitch.state.score.alpha, 1, 'the capture at the own flag base');
+}
+console.log('flagBots.selftest: the recovery share and the raid back, the intercept ahead of the carrier, three escorts leading it home and the rest behind, one guard, the raid; the flag bases in front of the spawns');

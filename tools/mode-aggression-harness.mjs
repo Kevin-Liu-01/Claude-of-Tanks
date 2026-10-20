@@ -131,9 +131,11 @@ if (command === 'batch') {
 // ------------------------------------------------------------------------------------------------ report (parent) ---
 if (command === 'report') {
   const dir = arg('dir', '.');
-  const rows = readdirSync(`${dir}/runs`).filter((f) => f.endsWith('.json'))
+  // a census-only directory (roster.json, no runs/) reports its census alone
+  const runFiles = existsSync(`${dir}/runs`) ? readdirSync(`${dir}/runs`) : [];
+  const rows = runFiles.filter((f) => f.endsWith('.json'))
     .map((f) => { try { return JSON.parse(readFileSync(`${dir}/runs/${f}`, 'utf8')); } catch { return null; } }).filter(Boolean);
-  const errors = readdirSync(`${dir}/runs`).filter((f) => f.endsWith('.err'));
+  const errors = runFiles.filter((f) => f.endsWith('.err'));
   const byMode = new Map();
   for (const row of rows) { if (!byMode.has(row.mode)) byMode.set(row.mode, []); byMode.get(row.mode).push(row); }
   const report = { tool: 'tools/mode-aggression-harness.mjs', dir, generated: new Date().toISOString(), errors, modes: {} };
@@ -215,6 +217,25 @@ if (command === 'compare') {
     if (t.op === 'check') {
       const res = COMPARE_CHECKS[t.check](after, t);
       a = res.value; b = before ? COMPARE_CHECKS[t.check](before, t).value : null; pass = res.pass;
+    } else if (t.op === 'equalsBase' && t.perRun) {
+      // run for run: every after run of the mode equals the base's run of the same seed, minus `ignore` (an aggregate
+      // the base's older harness built can differ by fields the runs themselves never held)
+      const ignore = t.ignore ?? ['wallMs', 'generated', 'dir'];
+      const runsOf = (root, sub) => {
+        const at = sub ? `${root}/${sub}/runs` : `${root}/runs`;
+        return existsSync(at) ? readdirSync(at).filter((f) => f.startsWith(`${t.mode}.`) && f.endsWith('.json')).map((f) => `${at}/${f}`) : [];
+      };
+      const afterRuns = runsOf(dir, t.dir), baseRoot = baseDir, baseSub = t.baseDir ?? t.dir;
+      let same = 0, differs = 0, missing = 0;
+      for (const path of afterRuns) {
+        const name = path.slice(path.lastIndexOf('/') + 1);
+        const basePath = baseSub ? `${baseRoot}/${baseSub}/runs/${name}` : `${baseRoot}/runs/${name}`;
+        if (!existsSync(basePath)) { missing++; continue; }
+        const x = strip(JSON.parse(readFileSync(path, 'utf8')), ignore), y = strip(JSON.parse(readFileSync(basePath, 'utf8')), ignore);
+        if (JSON.stringify(x) === JSON.stringify(y)) same++; else differs++;
+      }
+      pass = same > 0 && differs === 0 && missing === 0;
+      a = `${same} identical, ${differs} differ, ${missing} without a base run`; b = 'base runs';
     } else if (t.op === 'equalsBase') {
       const ignore = t.ignore ?? ['wallMs', 'generated', 'dir'];
       a = dig(scope(after, t), t.path); b = dig(scope(before, t), t.path);

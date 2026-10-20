@@ -2380,9 +2380,12 @@ RANDOM room back to MONO without a word); a new room already takes the host's re
 (`playMenu.connectRoom` sends `readTeamArrangement`, which folds `cot.game.teamNations.v1` in; `roomPolicy.createRoom`
 keeps it — pinned by `roomBots.selftest`). The Worker's own copy of the protocol is unchanged by this round; RANDOM in a
 room still needs the Worker release named above (no protocol version moves: an older Worker drops the field and its rooms
-play MONO, the default). The loading screen's TEAMS flags in a room (`RoomStartPlan.teamNations`) are not yet sent to the
-seats: the match-start payload would carry them, a protocol addition left for that Worker release (open).
-Receipts: `hordeWaveLaw.selftest` (a migrated host fields the same wave, total, queue, kind and resting identities).
+play MONO, the default). The loading screen's TEAMS flags in a room read off the seated vehicles: each side's most common
+country and, by count, the countries that filled it (`sim/countries.ts` `sideFlags`, called by
+`mp/session/browserComposition.ts` `showRoundLoad` under MONO-NATION; RANDOM shows none) — under MONO-NATION those are
+exactly the side's country and its noted fills, so no plan record leaves the host and no protocol field is added.
+Receipts: `hordeWaveLaw.selftest` (a migrated host fields the same wave, total, queue, kind and resting identities),
+`teamNations.selftest` (`sideFlags`).
 
 ## 10. Decisions for the owner
 

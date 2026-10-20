@@ -44,6 +44,7 @@ import { ACTION_BITS, VERDICT } from '../wire/index.ts';
 import type { VerdictId, WelcomeMessage, WireEvent } from '../wire/index.ts';
 import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
 import { getSpec } from '../../vehicles/specs.ts';
+import { sideFlags } from '../../sim/countries.ts';
 import type { SerializedLobby } from '../room/lobbyShape.ts';
 import { MATCH_BUILD, matchRefusalCodeOf, matchRefusalMessage, type MatchRefusalCode } from '../wire/matchBuild.ts';
 
@@ -75,7 +76,8 @@ export interface BrowserLoadScreen {
     mapName: string; thumb?: string; biome?: string; mode?: string;
     allies: readonly BrowserRosterRow[]; enemies: readonly BrowserRosterRow[];
   }): void;
-  rosters(allies: readonly BrowserRosterRow[], enemies: readonly BrowserRosterRow[]): void;
+  rosters(allies: readonly BrowserRosterRow[], enemies: readonly BrowserRosterRow[],
+    teams?: { allied: string | null; enemy: string | null; alliedFills: readonly string[]; enemyFills: readonly string[] } | null): void;
   progress(fraction: number, label?: string): void;
   hide(): Promise<void>;
 }
@@ -1006,14 +1008,17 @@ export function createBrowserComposition({
   const showRoundLoad = (viewerId: string, players: BrowserRosterPlayer[], own: { team?: string } | null, mapId: string | null, mode: string, roundNumber: number, fallback: string, gameMode?: string): void => {
     const map = mapId ? roster.getMap(mapId) : { name: fallback, thumb: '', biome: 'none' };
     const displayTeam = own?.team === 'spectator' ? 'alpha' : String(own?.team || 'alpha');
-    load.battleLoad.show({
-      mapName: map.name,
-      thumb: map.thumb,
-      biome: mapId ? map.biome : 'none',
-      mode: modeLabelFor(mode, roundNumber),
-      allies: roster.rows(players, displayTeam, viewerId, gameMode),
-      enemies: roster.rows(players, displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId, gameMode),
-    });
+    const allies = roster.rows(players, displayTeam, viewerId, gameMode);
+    const enemies = roster.rows(players, displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId, gameMode);
+    load.battleLoad.show({ mapName: map.name, thumb: map.thumb, biome: mapId ? map.biome : 'none', mode: modeLabelFor(mode, roundNumber), allies, enemies });
+    // TEAM NATIONS (round 2, E10): each side's flag and fills read off its seated vehicles under MONO-NATION (the host's
+    // plan record stays on the host); RANDOM shows none
+    if (latestRoom?.settings?.arrangement?.teamNations !== 'random') {
+      const flagsOf = (team: string) => sideFlags(players.filter((player) => String(player.team || 'alpha') === team)
+        .map((player) => ({ id: player.specId, nation: getSpec(player.specId)?.nation ?? null })));
+      const own = flagsOf(displayTeam), foe = flagsOf(displayTeam === 'alpha' ? 'bravo' : 'alpha');
+      load.battleLoad.rosters(allies, enemies, { allied: own.country, enemy: foe.country, alliedFills: own.fills, enemyFills: foe.fills });
+    }
   };
 
   const lobbyPlayers = (players: ReadonlyArray<{ id: string; specId?: string | null; team?: string; name?: string }> | undefined): BrowserRosterPlayer[] => (

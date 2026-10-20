@@ -297,6 +297,12 @@ export interface ArrivalRules {
   readonly sightEyeM: number;
   readonly sightHullM: number;
   readonly sightMarginM: number;
+  /**
+   * The approach stays hidden too: the point `sightLeadM` from the arrival toward the humans' centroid must be out of
+   * every human's sight as well (round 2: arrivals hidden only where they stood came over the crest at once, first
+   * contact inside 8 s on 19 of 80 waves); 0 checks the arrival point alone.
+   */
+  readonly sightLeadM: number;
   readonly spawnCandidates: number;
 }
 
@@ -454,6 +460,14 @@ interface BallPitchRules {
   readonly goalAxisM: number | null;
   /** A ball nobody has touched this long goes back to the kick-off spot (null: never). */
   readonly idleResetS: number | null;
+}
+/**
+ * Capture the Flag pitch rules (gameplay-modes-228 round 2: with the flags on the deployment centres a carrier picked its
+ * flag up among the enemy's 6 s respawns and ran 800 m home: 18.7 pickups a match, 0.56 captures): each team's flag base
+ * stands at the middle ± baseAxisM / 2 along the axis, in front of its spawn (null: on the deployment centre).
+ */
+interface FlagPitchRules {
+  readonly baseAxisM: number | null;
 }
 /** Infected survivors: unengaged survivors close on their own living centroid and hold together within this. */
 interface InfectionBotRules {
@@ -748,6 +762,7 @@ export interface MatchRuleset {
   readonly flagBots?: FlagBotRules;
   readonly ballBots?: BallBotRules;
   readonly ball?: BallPitchRules;
+  readonly flagPitch?: FlagPitchRules;
   readonly infectionBots?: InfectionBotRules;
   /**
    * The battlefield variant the mode plays on (null: the base map). Frontline Assault's 'assault-trenches' carves the
@@ -836,9 +851,11 @@ const ASSAULT_DEFENDER_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   openingRead: false, conserveRounds: false, missionSpeed: 1, missionBreakOffHp: 0.15, missionLocalReachM: 60, zoneSortieM: 80, coverScale: 0.75,
   fallbackScale: 0.5, hitReactions: 'angle', holdBandScale: 0.7, stalemateSilentS: 6, routeRefreshS: 1.25, routeMoveM: 8,
 });
+// round 2: no shoot-and-scoot and a quarter of the fallback (the A/B: 33 % of samples scooting and 11 % falling back;
+// off, the flags were run, not traded from cover)
 const FLAG_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   missionOwnsRoute: true,
-  openingRead: false, missionSpeed: 1, missionBreakOffHp: 0, missionLocalReachM: 60, fallbackScale: 0.5, coverScale: 0.5, hitReactions: 'angle',
+  openingRead: false, missionSpeed: 1, missionBreakOffHp: 0, missionLocalReachM: 60, fallbackScale: 0.25, scoot: false, coverScale: 0.5, hitReactions: 'angle',
   stalemateSilentS: 8, searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8,
 });
 const FAST_ROUTE_DOCTRINE: Partial<BotDoctrine> = Object.freeze({ routeRefreshS: 1.25, routeMoveM: 0 });
@@ -859,11 +876,15 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // gameplay-modes-228 (owner 2026-10-18: "increase aggression of bots trying to capturing flag"): the flags are run,
   // not brawled over — half the squad recovers a taken home flag (a capture needs it home) and the rest raid back,
   // the carrier's team escorts it home with one guard left on its own flag, recoverers cut the carrier off (round 2:
-  // all-out recovery left the robbed side never raiding); no opening read, full pace, no mission break-off
+  // all-out recovery left the robbed side never raiding); no opening read, full pace, no mission break-off, no scoot.
+  // Round 2: the flag bases stand 400 m apart on the axis (flagPitch), in front of the spawns — picked up among the
+  // enemy's 6 s respawns and run 800 m home, a flag was taken 19 times a match and captured 0.75 (A/B over seeds
+  // 101-108: 480 m 1.5 captures, 400 m 2.25, with first pickup 102 s -> 62 s and ram deaths 22 -> 16 a match)
   capture_the_flag: Object.freeze({ ...STANDARD, mode: 'capture_the_flag', respawnS: 6,
     bots: Object.freeze({ alpha: FLAG_DOCTRINE, bravo: FLAG_DOCTRINE }),
     flagBots: Object.freeze({ recoverShare: 0.5, recoverMin: 2, huntWhenHomeFlagTaken: false, escorts: 3, carrierGuards: 1,
-      escortAheadM: 24, escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5 }) }),
+      escortAheadM: 24, escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5 }),
+    flagPitch: Object.freeze({ baseAxisM: 400 }) }),
   // Zones: respawning hold-the-ground play; the 750-point target resolves inside the clock.
   zone_control: Object.freeze({ ...STANDARD, mode: 'zone_control', respawnS: 6 }),
   // Turbo Ball: arcade physics — 0.6 g so hulls and shells fly, 1.85× speed, tough hulls, half
@@ -895,9 +916,12 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // gameplay-modes-228 (owner 2026-10-18: "make it work a lot more properly like youd expect, more enemies per round, and
   // then increase aggression in that game mode too because of what it implies"): a wave TOTAL that grows every round
   // without a cap (6, 9, 13, 18, 24, 30, 37 …), at most sixteen on the field at once (the twenty pool identities rest
-  // and rotate, trickling back in every 1.5 s), arriving 170-300 m round the humans, out of their sight, from three
+  // and rotate, trickling back in every 1.5 s), arriving 320-440 m round the humans, out of their sight, from three
   // sectors; an 8 s lull; runner waves every fourth, swarm waves every fifth; the zombies charge (RUSH_DOCTRINE) on
-  // what they have spotted, and the allied bots stay within reach of the humans
+  // what they have spotted, and the allied bots stay within reach of the humans.
+  // Round 2 (critic: team survival fell to 6 rounds, first contact inside 8 s on 19 of 80 waves): an arrival's first
+  // 60 m of approach is out of sight too (sightLeadM), and the zombies' guns reload x2.2 (was x1.8: a wave's pressure is
+  // its numbers; the A/B over seeds 103-108, team survival: 5.4 -> 6.8 rounds, every first contact 8-25 s)
   endless_horde: Object.freeze({
     ...STANDARD, mode: 'endless_horde', hpScale: 2, ammo: 'unlimited', respawnS: null, timeLimitS: null,
     allies: 4, enemies: 20,
@@ -905,12 +929,12 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
       waveSize: 6, waveStep: 3, waveCurve: 0.35, perHumanTotal: 0.25, maxAlive: 16, maxAlivePerHuman: 1, maxAliveCap: 20,
       trickleS: 1.5, stallTrickles: 4, recycleAfterS: 6, strandedS: 40, strandedGainM: 20, strandedContactM: 50, spawnRingM: Object.freeze([320, 440] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
       spawnMinHumanM: 150, spawnOutOfSight: true, sightRangeM: 450, sightStepM: 8, sightEyeM: 2.4, sightHullM: 1.5, sightMarginM: 1,
-      spawnCandidates: 12,
+      sightLeadM: 60, spawnCandidates: 12,
       intermissionS: 8, waveRepair: 0.3,
       hostileHpScale: 0.15, hpPerWave: 0.02, hpPerWaveLate: 0.06, lateFromWave: 11,
       runnerEvery: 4, runnerSpeed: 1.25, swarmEvery: 5, swarmTrickleScale: 0.5, swarmHull: 0.10,
       speedPerWave: 0.045, speedPerWaveMax: 0.55, cacheHeal: Object.freeze({ first: 0.62, perWave: 0.055, floor: 0.08 }),
-      hostileDifficultyStep: 1, hostileReloadScale: 1.8, hunt: 'spotted', allyLeashM: 120,
+      hostileDifficultyStep: 1, hostileReloadScale: 2.2, hunt: 'spotted', allyLeashM: 120,
     }),
     bots: Object.freeze({ bravo: RUSH_DOCTRINE, alpha: HORDE_ALLY_DOCTRINE }),
   }),
@@ -962,7 +986,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     infectionBots: Object.freeze({ survivorRallyM: 90, arrival: Object.freeze({
       spawnRingM: Object.freeze([90, 150] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
       spawnMinHumanM: 80, spawnOutOfSight: true, sightRangeM: 450, sightStepM: 8, sightEyeM: 2.4, sightHullM: 1.5,
-      sightMarginM: 1, spawnCandidates: 12 }) }) }),
+      sightMarginM: 1, sightLeadM: 0, spawnCandidates: 12 }) }) }),
   realistic: Object.freeze({ ...STANDARD, mode: 'realistic', alwaysVisible: false, moduleOnlyDamage: true, consumables: false }),
   gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', respawnS: 4, ammo: 'unlimited', timeLimitS: 900,
     gunGame: Object.freeze({ killsPerWeapon: 2 }) }),

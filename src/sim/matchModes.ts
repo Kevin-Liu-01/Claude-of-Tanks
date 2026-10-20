@@ -544,19 +544,31 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     mults.reload = (mults.reload ?? 1) * ruleset.juggernaut.reloadScale;
   }
   if (ruleset.gunGame) for (const entity of entities) setWeaponStage(entity, 0);
-  const flags: FlagState[] = id === 'capture_the_flag'
+  // a point on the axis through the middle, half of `axisM` toward the team's side (the Turbo Ball goals, the CTF flag
+  // bases); null, or a span at least the deployment centres' own, is the team's deployment centre
+  const axisPoint = (team: ObjectiveTeam, axisM: number | null): { x: number; z: number } => (axisM == null || axisM >= axisLength
+    ? centers[team] : {
+      x: midX + axisX * (team === 'alpha' ? -0.5 : 0.5) * axisM,
+      z: midZ + axisZ * (team === 'alpha' ? -0.5 : 0.5) * axisM,
+    });
+  // the flag bases (the ruleset's flagPitch.baseAxisM; round 2): in front of each spawn, not on it
+  const flagBases = id === 'capture_the_flag'
+    ? { alpha: axisPoint('alpha', ruleset.flagPitch?.baseAxisM ?? null), bravo: axisPoint('bravo', ruleset.flagPitch?.baseAxisM ?? null) }
+    : null;
+  const flags: FlagState[] = flagBases
     ? (['alpha', 'bravo'] as const).map((team) => ({
       team,
-      baseX: centers[team].x,
-      baseY: terrainHeight(centers[team].x, centers[team].z) + 0.08,
-      baseZ: centers[team].z,
-      x: centers[team].x,
-      y: terrainHeight(centers[team].x, centers[team].z) + 2.5,
-      z: centers[team].z,
+      baseX: flagBases[team].x,
+      baseY: terrainHeight(flagBases[team].x, flagBases[team].z) + 0.08,
+      baseZ: flagBases[team].z,
+      x: flagBases[team].x,
+      y: terrainHeight(flagBases[team].x, flagBases[team].z) + 2.5,
+      z: flagBases[team].z,
       status: 'home',
       carrierId: null,
       returnAtS: null,
     })) : [];
+  const flagHome: Readonly<Record<ObjectiveTeam, { x: number; z: number }>> = flagBases ?? centers;
   const zones: ZoneState[] = objective === 'zone_control'
     ? [-105, 0, 105].map((offset, index) => {
       const x = placement?.zones[index]?.x ?? midX + lateralX * offset;
@@ -589,10 +601,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   // the goals: the deployment centres, or (the ruleset's ball.goalAxisM; gameplay-modes-228) the middle ± half of it
   // along the axis — the ball's best approach to the deployment centres 794 m apart was 196 m
   const goalAxisM = ball ? ruleset.ball?.goalAxisM ?? null : null;
-  const goalAt = (team: ObjectiveTeam): { x: number; z: number } => (goalAxisM == null ? centers[team] : {
-    x: midX + axisX * (team === 'alpha' ? -0.5 : 0.5) * goalAxisM,
-    z: midZ + axisZ * (team === 'alpha' ? -0.5 : 0.5) * goalAxisM,
-  });
+  const goalAt = (team: ObjectiveTeam): { x: number; z: number } => axisPoint(team, goalAxisM);
   const goals: GoalState[] = id === 'turbo_ball'
     ? (['alpha', 'bravo'] as const).map((team) => {
       const at = goalAt(team);
@@ -774,14 +783,24 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    * bearing to the hostile base and ±sectorSpreadDeg), out of every human's reach and terrain sight; else null (the
    * hostile base). The arrival is a game-director decision of the authority: no bot reads it and no client is sent it.
    */
-  /** No living human within spawnMinHumanM of (x, z), nor (spawnOutOfSight, unless `ignoreSight`) seeing it over the terrain. */
-  const arrivalClear = (x: number, z: number, rules: ArrivalRules, ignoreSight = false): boolean => {
+  /**
+   * No living human within spawnMinHumanM of (x, z), nor (spawnOutOfSight, unless `ignoreSight`) seeing it over the
+   * terrain — nor (sightLeadM) the point that far on toward (towardX, towardZ), the arrival's first stretch of approach.
+   */
+  const arrivalClear = (x: number, z: number, rules: ArrivalRules, ignoreSight = false,
+    towardX = x, towardZ = z): boolean => {
     const minSq = rules.spawnMinHumanM ** 2, sightSq = rules.sightRangeM ** 2;
+    let leadX = x, leadZ = z;
+    const lead = rules.sightLeadM ?? 0, run = Math.hypot(towardX - x, towardZ - z);
+    if (lead > 0 && run > 1) { const f = Math.min(1, lead / run); leadX = x + (towardX - x) * f; leadZ = z + (towardZ - z) * f; }
+    const checkLead = leadX !== x || leadZ !== z;
     for (const human of teams.alpha) {
       if (human.modeActive === false || human.combat.destroyed) continue;
       const dSq = squaredDistance(human, x, z);
       if (dSq < minSq) return false;
-      if (!ignoreSight && rules.spawnOutOfSight && dSq <= sightSq && terrainSees(human, x, z, rules)) return false;
+      if (ignoreSight || !rules.spawnOutOfSight) continue;
+      if (dSq <= sightSq && terrainSees(human, x, z, rules)) return false;
+      if (checkLead && squaredDistance(human, leadX, leadZ) <= sightSq && terrainSees(human, leadX, leadZ, rules)) return false;
     }
     return true;
   };
@@ -808,7 +827,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       const z = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, cz + Math.cos(angle) * radius));
       const yaw = Math.atan2(cx - x, cz - z);
       const point = placement ? placement.respawnNear({ x, z, yaw }, entity.id, occupiedBy(entity), rules.spawnRingM[0] * 0.15) : { x, z, yaw };
-      if (!point || !arrivalClear(point.x, point.z, rules, ignoreSight)) continue;
+      if (!point || !arrivalClear(point.x, point.z, rules, ignoreSight, cx, cz)) continue;
       spawnSector = (sector + 1) % sectors;
       return { x: point.x, z: point.z, yaw };
     }
@@ -1318,8 +1337,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const enemyFlag = flagCarriedBy(entity.id);
     const ownFlag = flagForTeam(team);
     if (!enemyFlag || !ownFlag || ownFlag.status !== 'home') return null;
-    const base = centers[team];
-    if (squaredDistance(entity, base.x, base.z) > FLAG_CAPTURE_RADIUS_M ** 2) return null;
+    // the capture is made at the own flag's base (flagPitch: in front of the spawn)
+    if (squaredDistance(entity, ownFlag.baseX, ownFlag.baseZ) > FLAG_CAPTURE_RADIUS_M ** 2) return null;
     score[team]++;
     resetFlag(enemyFlag);
     stampPhysics(entity);
@@ -1766,11 +1785,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
   }
   const flagBotTarget = (entity: Entity, team: ObjectiveTeam): BotDestination | null => {
-    const home = centers[team];
-    if (flagCarriedBy(entity.id)) return { x: home.x, z: home.z, mission: 'carrier' };
     const ownFlag = flagForTeam(team);
     const enemyFlag = flagForTeam(otherTeam(team));
     if (!enemyFlag || !ownFlag) return null;
+    // home is the own flag's base, where a capture is made (flagPitch)
+    const home = flagHome[team];
+    if (flagCarriedBy(entity.id)) return { x: home.x, z: home.z, mission: 'carrier' };
     assignFlagRoles();
     const job = flagRoles.get(entity.id) ?? { role: 'raid' as FlagRole, rank: 0 };
     const dx = home.x - enemyFlag.x, dz = home.z - enemyFlag.z;
@@ -1781,7 +1801,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       let x = ownFlag.x, z = ownFlag.z;
       const carrier = ownFlag.status === 'carried' && ownFlag.carrierId ? entityById.get(ownFlag.carrierId) : null;
       if (carrier) {
-        const theirHome = centers[otherTeam(team)];
+        const theirHome = flagHome[otherTeam(team)];
         const hx = theirHome.x - x, hz = theirHome.z - z, run = Math.hypot(hx, hz) || 1;
         const lead = Math.min(run, Math.abs(carrier.state.speed) * flagRules.interceptLeadS);
         x += hx / run * lead; z += hz / run * lead;

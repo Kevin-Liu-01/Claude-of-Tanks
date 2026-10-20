@@ -324,7 +324,8 @@
     "arrangement",
     "hunterContacts"
    ],
-   "note": "classic doctrine: the row under TEAM NATIONS RANDOM (the old roster path) reproduces the integ/228 baseline field for field (hunterContacts: a measurement field newer than the baseline)"
+   "note": "classic doctrine: every run under TEAM NATIONS RANDOM (the old roster path) reproduces its integ/228 baseline run field for field (hunterContacts: a measurement field newer than the baseline)",
+   "perRun": true
   },
   {
    "id": "guard.classic.juggernaut",
@@ -339,7 +340,8 @@
     "arrangement",
     "hunterContacts"
    ],
-   "note": "classic doctrine: the row under TEAM NATIONS RANDOM (the old roster path) reproduces the integ/228 baseline field for field (hunterContacts: a measurement field newer than the baseline)"
+   "note": "classic doctrine: every run under TEAM NATIONS RANDOM (the old roster path) reproduces its integ/228 baseline run field for field (hunterContacts: a measurement field newer than the baseline)",
+   "perRun": true
   },
   {
    "id": "horde.law",

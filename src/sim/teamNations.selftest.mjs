@@ -9,6 +9,7 @@ import { NATION_INDEX } from './nationIndex.generated.ts';
 import { COUNTRIES, COUNTRY_ALLIES, ERA_NEIGHBOURS, countryBloc, countryFlag, countryOfNation, countryOfVehicle, majorityCountry,
   pickNationalSides, teamNationsFlags, teamNationsSeed } from './teamNations.ts';
 import { TEAM_NATIONS_RULES } from './matchRuleset.ts';
+import { sideFlags } from './countries.ts';
 
 const rows = NATION_INDEX.map(([id, country, era, tier]) => ({ id, country, era, tier }));
 assert.ok(rows.length >= 200, 'the index lists the production fleet');
@@ -145,5 +146,10 @@ assert.ok(cases >= 250, `${cases} country x era x shape cases`);
 assert.deepEqual(teamNationsFlags({ teamNations: 'mono', allied: 'usa', enemy: 'russia', notes: [{ side: 'alpha', country: 'uk', count: 2, reason: 'ally' }] }),
   { allied: 'USA', enemy: 'Russia', alliedFills: ['UK'], enemyFills: [] });
 assert.equal(teamNationsFlags({ teamNations: 'random', allied: null, enemy: null, notes: [] }), null);
+// a room's loading screen reads each side's flags off its seated vehicles (round 2, E10): the most common country, then
+// the fills by count (the first seat breaks a tie), the operator's country for the Canadian Leopard
+assert.deepEqual(sideFlags([{ id: 'x', nation: 'UK' }, { id: 'y', nation: 'USA' }, { id: 'z', nation: 'USA' }, { id: 'leo2a4m_can', nation: 'Germany' }]),
+  { country: 'USA', fills: ['UK', 'Canada'] });
+assert.deepEqual(sideFlags([]), { country: null, fills: [] });
 console.log(`teamNations.selftest: ${cases} country x era x shape cases — one country a side, no country on both, the picks kept, `
   + `fills only as noted (${filled} filled; e.g. ${fills.slice(0, 3).join('; ')}); the operation, the arrangement, the humans, the tier pairing and the budget`);

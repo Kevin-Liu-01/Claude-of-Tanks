@@ -62,6 +62,15 @@ try {
   assert.equal(missing.status, 1, 'a missed target fails the gate');
   assert.match(missing.stdout, /MISS over: 2 -> 2\.1/);
   assert.match(missing.stdout, /MISS hullTight/);
+  // equalsBase run for run (the classic guard): every after run equals the base's run of its seed, minus `ignore`
+  const run1 = { mode: 'standard', seed: 1, endS: 300, wallMs: 5 };
+  for (const [dir, row] of [['base', run1], ['after', { ...run1, wallMs: 9 }]]) {
+    mkdirSync(join(scratch, dir, 'runs'), { recursive: true }); writeFileSync(join(scratch, dir, 'runs', 'standard.1.json'), JSON.stringify(row));
+  }
+  const same = compare([{ id: 'classic', mode: 'standard', op: 'equalsBase', perRun: true, ignore: ['wallMs'] }]);
+  assert.equal(same.status, 0, same.stdout); assert.match(same.stdout, /PASS classic: "base runs" -> "1 identical, 0 differ, 0 without a base run"/);
+  writeFileSync(join(scratch, 'after', 'runs', 'standard.1.json'), JSON.stringify({ ...run1, endS: 301 }));
+  assert.equal(compare([{ id: 'classic', mode: 'standard', op: 'equalsBase', perRun: true, ignore: ['wallMs'] }]).status, 1, 'a run that moved fails it');
 } finally {
   rmSync(scratch, { recursive: true, force: true });
 }

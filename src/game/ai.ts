@@ -6229,7 +6229,6 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function finishStep(input: AiInput, dt: number, timeS: number): void {
     avoidAllies(input, dt, timeS);
-    holdOffEnemyHulls(input);
     if (liquidSafe && entity.state.grounded) {
       const st = entity.state;
       const speed = Math.abs(st.speed);
@@ -6304,6 +6303,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       terrainBlocked = false;
       terrainCheckAtS = -Infinity;
     }
+    // the no-ram lane last of the drivers (round 2: run before the terrain escape, the escape's creep throttle drove a
+    // rushing hull into the stationary hull ahead of it — the hunter rams the guard still counted, at 2-3 m/s)
+    holdOffEnemyHulls(input);
     supportContext.safeToReloadMagazine = !target || !losClear || mode === 'seekCover';
     supportContext.wantsSuspensionAim = !!target && losClear
       && Math.abs(entity.state.speed) < 1.5

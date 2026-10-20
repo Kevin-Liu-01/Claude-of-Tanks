@@ -78,6 +78,25 @@ export function countryNation(id: string | null | undefined): string | null {
 }
 
 /**
+ * A seated side's flags read off its vehicles (gameplay-modes-228 round 2, the critic's E10: a room's loading screen
+ * showed no flags — the host's TEAM NATIONS record never leaves the host): the side's most common country (ties to the
+ * first seated) as a spec nation for its flag, and the other countries present in order of count, first seat breaking
+ * ties. Under MONO-NATION those are exactly the side's country and its printed fills; an empty side is null.
+ */
+export function sideFlags(vehicles: readonly { readonly id: string | null | undefined; readonly nation: string | null | undefined }[]):
+  { readonly country: string | null; readonly fills: readonly string[] } {
+  const counts = new Map<CountryId, { n: number; first: number }>();
+  vehicles.forEach((vehicle, index) => {
+    const id = countryOfVehicle(vehicle.id, vehicle.nation);
+    if (!id) return;
+    const seen = counts.get(id);
+    if (seen) seen.n++; else counts.set(id, { n: 1, first: index });
+  });
+  const ranked = [...counts].sort((a, b) => b[1].n - a[1].n || a[1].first - b[1].first).map(([id]) => countryNation(id)!);
+  return { country: ranked[0] ?? null, fills: ranked.slice(1) };
+}
+
+/**
  * Each country's closest allied countries, in order: the fills a short side draws from before it repeats a vehicle
  * (teamNations.selftest pins it). East fills only from east; west from west first.
  */
