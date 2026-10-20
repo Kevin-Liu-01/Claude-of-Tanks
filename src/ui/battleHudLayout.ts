@@ -1,4 +1,14 @@
 import { layoutViewportSize } from './responsiveLayout.ts';
+import { planMouseNotices, type MouseNoticeInput, type MouseNoticePlan, type PlanLane, type PlanRect } from './mouseNoticePlan.ts';
+
+/** A resize whose sizes arrive closer than this is still in progress. */
+const RESIZE_SETTLE_MS = 150;
+/** The phone-width network strip's folded ping (multiplayerStatus.ts), at most. */
+const PHONE_STRIP_WIDTH = 96, PHONE_STRIP_HEIGHT = 30;
+/** A measured box, as getBoundingClientRect gives one. */
+type PlanBox = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
+const alertBox = (a: MouseNoticePlan['alert']): PlanRect =>
+  ({ x: a.anchor === 'centre' ? a.x - a.w / 2 : a.anchor === 'start' ? a.x : a.x - a.w, y: a.y, w: a.w, h: a.h });
 
 /** Matches the scoreboard polygon; the objective clears each bottom corner by 8px. */
 export const SCORE_BOTTOM_INSET = 25;
@@ -49,7 +59,19 @@ export function installBattleHudLayout(root: HTMLElement): void {
   let frame = 0;
   const observed = new Set<Element>();
   const attributes = new WeakMap<Element, Map<string, string | null>>();
-  const resize = new ResizeObserver(schedule);
+  // Relayouts caused only by kill rows, toasts, chat, the shot log and report, the medal card or the notices themselves
+  // leave the mouse notice plan's inputs as they were: those reuse the plan without measuring its inputs again.
+  let planInputs = true;
+  const transientParts = ['cot-kill-lane', 'cot-si-toasthost', 'cot-room-chat', 'cot-si-log', 'cot-si-cardhost', 'cot-medal-toasts', 'cot-sixth', 'cot-alert'];
+  const planInput = (target: Element) => { if (!transientParts.some((part) => target.classList?.contains(part))) planInputs = true; };
+  const movesPlanInputs = new Set(['fps-top', 'network-top', 'network-corner-right', 'roster-left-height', 'roster-right-height',
+    'systems-top', 'systems-width', 'systems-left', 'objective-top', 'objective-bottom', 'objective-width', 'objective-left',
+    'report-right', 'flight-right-clearance']);
+  const resize = new ResizeObserver((entries) => {
+    if (entries?.length) for (const entry of entries) planInput(entry.target);
+    else planInputs = true;
+    schedule();
+  });
   // DOMTokenList.remove() still emits an attribute record when the class was
   // already absent (the special-action HUD clears `pending` every frame).
   // A pulse can also remove then re-add the same class within one task. Compare
@@ -58,13 +80,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
   const changes = new MutationObserver(records => {
     let changed = false;
     for (const record of records) {
-      if (record.type === 'childList') { changed = true; continue; }
+      if (record.type === 'childList') { changed = true; planInput(record.target as Element); continue; }
       const name = record.attributeName;
       if (name === null) continue;
       const target = record.target as Element;
       const previous = attributes.get(target);
       const value = target.getAttribute(name);
-      if (previous?.get(name) !== value) changed = true;
+      if (previous?.get(name) !== value) { changed = true; planInput(target); }
       previous?.set(name, value);
     }
     // Process every record, even after finding a real change, so another
@@ -78,10 +100,18 @@ export function installBattleHudLayout(root: HTMLElement): void {
     changes.observe(target, { attributes: true,
       attributeFilter: names, childList });
   };
+  // Mouse relayouts read each fixed instrument once: nothing a relayout writes moves these before it reads them again.
+  const steadyReads = new Set(['.cot-dp', '.cot-drive', '.cot-spec.show', '.cot-cons', '.cot-shells', '.cot-minimap', '.cot-si-cardhost',
+    '.cot-vehicle-controls', '.cot-vehicle-status:not([hidden])', '.cot-flight-hud:not([hidden]) .flight-console']);
+  const readsThisPass = new Map<string, DOMRect | null>();
+  let reuseReads = false;
   const read = (selector: string) => {
+    const keep = reuseReads && steadyReads.has(selector);
+    if (keep) { const seen = readsThisPass.get(selector); if (seen !== undefined) return seen; }
     const node = document.querySelector<HTMLElement>(selector);
-    if (!node || !node.getClientRects().length || getComputedStyle(node).visibility === 'hidden') return null;
-    return node.getBoundingClientRect();
+    const box = !node || !node.getClientRects().length || getComputedStyle(node).visibility === 'hidden' ? null : node.getBoundingClientRect();
+    if (keep) readsThisPass.set(selector, box);
+    return box;
   };
   const observe = (selector: string, content = false) => {
     for (const node of document.querySelectorAll(selector)) {
@@ -103,10 +133,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     return bottom;
   }
-  function leftFloor(height: number, touch: boolean): number {
+  /** The left lane's floor; `steady`: without the vehicle-status strip (it comes and goes with damage), for the plan. */
+  function leftFloor(height: number, touch: boolean, steady = false): number {
     const status = read('.cot-dp');
     return Math.min(height - 12,
-      status ? Math.min(status.top - (touch ? 8 : 36), (statusDockBottom() ?? height) - (read('.cot-vehicle-status:not([hidden])')?.height ?? 0)) : height,
+      status ? Math.min(status.top - (touch ? 8 : 36), steady ? height : (statusDockBottom() ?? height) - (read('.cot-vehicle-status:not([hidden])')?.height ?? 0)) : height,
       read('.cot-spec.show')?.top ?? height,
       touch ? read('.cot-touch.on .joy')?.top ?? height : height,
       touch ? read('.cot-touch.on .fire.alt')?.top ?? (height <= 340 ? height - 206 : height) : height,
@@ -145,6 +176,149 @@ export function installBattleHudLayout(root: HTMLElement): void {
       read('.cot-spec.show')?.top ?? height,
       width < 768 ? read('.cot-drive')?.top ?? height : height);
   }
+  // The mouse plan, cached by its inputs: kill rows, toasts, chat and the notices' own text never enter them, so a
+  // burst of kills cannot move a notice. The plan itself is DOM-free (mouseNoticePlan.ts); the last few are kept, so
+  // a toggle (minimap zoom, spectator tray, the network strip) and back costs nothing.
+  let planned: MouseNoticePlan | null = null;
+  let plannedSize = -1;
+  const planKey: number[] = [];
+  const nextKey: number[] = [];
+  const recentPlans: { key: number[]; size: number; plan: MouseNoticePlan }[] = [];
+  // A window being resized (sizes arriving within RESIZE_SETTLE_MS of each other) replans once it settles, while nothing
+  // planned is on screen; a single change (a keyboard, a rotation) replans at once.
+  let settleTimer: ReturnType<typeof setTimeout> | 0 = 0, settled = false, lastSize = -1, lastSizeAt = -Infinity, inRun = false;
+  // The rosters as they stand without Tab, for this window and these rosters: the plan sees them while Tab is held, so
+  // holding it moves nothing (the held rosters stop short of what is shown instead).
+  let restingEars: { size: number; left: DOMRect | null; right: DOMRect | null; counts: number } | null = null;
+  /** Whether anything the plan places (or the Tab rosters it bounds) is on screen. */
+  const planShown = () => root.classList.contains('rosters-expanded') || !!root.querySelector('.cot-sixth.on,.cot-alert.show,.cot-prebattle.on,.cot-revive.on')
+    || !!document.querySelector('.cot-medal-toasts')?.childElementCount;
+  function mouseNoticePlan(width: number, height: number, top: number, seen: readonly (PlanBox | null)[], net: DOMRect | null, map: DOMRect | null,
+    rosters: readonly [DOMRect | null, number, DOMRect | null, number],
+    systemsLeft: number, systemsTop: number, systemsWidth: number, systemsHeight: number, sideWidth: number,
+    leftTop: number, leftBottom: number, rightTop: number, rightBottom: number,
+    report: { top: number; height: number }): MouseNoticePlan {
+    const size = width * 65536 + height;
+    const now = performance.now();
+    // a size that came hard on the last one starts (or continues) a run; the run lasts until sizes stop coming, and the
+    // settled window is measured once more (instruments that only move, not resize, report no change of their own)
+    if (size !== lastSize) {
+      inRun = now - lastSizeAt < RESIZE_SETTLE_MS; lastSize = size; lastSizeAt = now;
+      if (settleTimer) clearTimeout(settleTimer);
+      settleTimer = setTimeout(() => { settleTimer = 0; settled = true; planInputs = true; schedule(); }, RESIZE_SETTLE_MS);
+    }
+    const resizing = inRun && now - lastSizeAt < RESIZE_SETTLE_MS;
+    // The key: the size, the countdown's and revive count's boxes, then each fixed box (x, y, w, h), then the lanes. A
+    // relayout whose key matches the last plan's builds nothing more.
+    nextKey.length = 0;
+    const countdown = root.querySelector<HTMLElement>('.cot-prebattle');
+    const revive = root.querySelector<HTMLElement>('.cot-revive');
+    nextKey.push(width, height, Math.round(top), countdown?.offsetWidth ?? 0, countdown?.offsetHeight ?? 0, revive?.offsetWidth ?? 0, revive?.offsetHeight ?? 0);
+    const box = (x: number, y: number, w: number, h: number) => { if (w > 0 && h > 0) nextKey.push(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
+    const add = (r: PlanBox | null) => { if (r) box(r.left, r.top, r.width, r.height); };
+    // score, objective, minimap, ammunition rail and network strip, as refresh() read them
+    for (const r of seen) add(r);
+    // each roster down to its height while Tab is held (its width then stops short of anything shown)
+    for (let side = 0; side < 4; side += 2) {
+      const ear = rosters[side] as DOMRect | null;
+      if (ear) box(ear.left, ear.top, ear.width, Math.max(ear.height, rosters[side + 1] as number));
+    }
+    const panel = read('.cot-dp');
+    add(panel);
+    // the damage panel's status strip rises into the 36 px above it (leftFloor keeps the same band)
+    if (panel) box(panel.left, Math.round(panel.top) - 36, panel.width, 36);
+    add(read('.cot-drive'));
+    if (systemsHeight > 0) box(systemsLeft, systemsTop, systemsWidth, systemsHeight);
+    add(read('.cot-cons'));
+    const host = read('.cot-si-cardhost');
+    if (host && report.height > 0) box(host.left, report.top, host.width, report.height);
+    // The fps/ping readout: below 768 px its place is fixed under the objective (battleHudLayout.css, 88 x 20 at
+    // --hud-network-left), kept whether it shows or not (it is opt-in, and hides for 30 frames on a sight change);
+    // wider, it sits in the top-right corner row, by the score
+    if (width < 768) box(width > height ? Math.max(122, (map?.right ?? 104) + 8) : (map?.right ?? 104) + 8, top + 8, 88, 20);
+    else add(net);
+    add(read('.cot-spec.show'));
+    // the drone's and the gunship's flight console while their view is up (a view change, like the spectator tray),
+    // where keeping off it costs no reticle clearance (below)
+    const plain = nextKey.length;
+    add(read('.cot-flight-hud:not([hidden]) .flight-console'));
+    const boxesEnd = nextKey.length;
+    const laneKey = (x: number, from: number, to: number) => {
+      if (to - from >= 26) nextKey.push(Math.round(x), Math.round(sideWidth), Math.round(from), Math.round(to));
+      else nextKey.push(-1, -1, -1, -1);
+    };
+    laneKey(0, leftTop, leftBottom);
+    laneKey(width - sideWidth, rightTop, rightBottom);
+    const same = (key: readonly number[]) => {
+      if (key.length !== nextKey.length) return false;
+      for (let i = 0; i < key.length; i++) if (key[i] !== nextKey[i]) return false;
+      return true;
+    };
+    if (planned && same(planKey)) return planned;
+    const kept = recentPlans.find((entry) => same(entry.key));
+    if (kept) {
+      planned = kept.plan; plannedSize = kept.size;
+    } else {
+      // Mid-resize, with nothing planned on screen, the last plan stands until the window settles.
+      if (planned && plannedSize !== size && resizing && !settled && !planShown()) {
+        planInputs = true;
+        return planned;
+      }
+      const obstacles: PlanRect[] = [];
+      for (let i = 7; i < boxesEnd; i += 4) obstacles.push({ x: nextKey[i], y: nextKey[i + 1], w: nextKey[i + 2], h: nextKey[i + 3] });
+      const lane = (i: number): PlanLane | null => nextKey[i] < 0 && nextKey[i + 1] < 0 ? null
+        : { x: nextKey[i], w: nextKey[i + 1], top: nextKey[i + 2], bottom: nextKey[i + 3] };
+      const input: MouseNoticeInput = {
+        width, height, top: nextKey[2], obstacles, lanes: [lane(boxesEnd), lane(boxesEnd + 4)],
+        smallAlert: height <= 550 || width <= 480, compactDetection: height <= 550,
+        countdown: countdown ? { w: nextKey[3], h: nextKey[4] } : null,
+        revive: revive ? { w: nextKey[5], h: nextKey[6] } : null,
+        // medalToast.ts: the full card up to 380 px wide (84 px tall with its description; 74 without it at <= 640),
+        // the compact card 250
+        medal: { w: Math.min(380, width - 32), h: width > 640 ? 85 : 76 },
+        medalCompact: { w: Math.min(250, width - 24), h: 40 },
+      };
+      planned = planMouseNotices(input);
+      if (boxesEnd > plain && planned.clearance < 2) {
+        const without = planMouseNotices({ ...input, obstacles: obstacles.slice(0, (plain - 7) / 4) });
+        if (without.clearance > planned.clearance) planned = without;
+      }
+      plannedSize = size;
+      recentPlans.unshift({ key: nextKey.slice(), size, plan: planned });
+      if (recentPlans.length > 4) recentPlans.pop();
+    }
+    settled = false;
+    planKey.length = 0;
+    for (const v of nextKey) planKey.push(v);
+    return planned;
+  }
+  function setBodyVar(name: string, value: string) {
+    if (document.body.style.getPropertyValue(name) !== value) document.body.style.setProperty(name, value);
+  }
+  /** Writes the plan; the countdown, the revive count and the medal card only while they are up (`up`), as the plan
+   *  places those when first read. */
+  function writeMousePlan(plan: MouseNoticePlan, up: { countdown: boolean; revive: boolean; medal: boolean }) {
+    const { detection, alert } = plan;
+    setBodyVar('--hud-notice-x', `${Math.round(detection.x + detection.w / 2)}px`);
+    setBodyVar('--hud-alert-x', `${Math.round(alert.x)}px`);
+    setBodyVar('--hud-alert-width', `${Math.floor(alert.w)}px`);
+    setBodyVar('--hud-alert-shift', alert.anchor === 'start' ? '0%' : alert.anchor === 'end' ? '-100%' : '-50%');
+    const medal = up.medal ? plan.medal : null;
+    if (up.medal) setBodyVar('--hud-banner-x', medal ? `${Math.round(medal.x + medal.w / 2)}px` : '50%');
+    // The keep-out each element clears (mouseNoticePlan.ts tiers: 2 everything the reticle draws, 1 the battle sight at
+    // full bloom, 0 the resting sight, - none, ? not up; s: it shares a notice's place), for the browser receipt.
+    const tier = (shown: boolean, place: { clearance: number; sharesNotices: boolean } | null) =>
+      !shown ? '?' : place ? `${place.clearance}${place.sharesNotices ? 's' : ''}` : '-';
+    const tiers = `d${plan.clearance} a${plan.clearance} c${tier(up.countdown, up.countdown ? plan.countdown : null)} r${tier(up.revive, up.revive ? plan.revive : null)} m${tier(up.medal, medal)}`;
+    if (document.body.dataset.hudNoticeTiers !== tiers) document.body.dataset.hudNoticeTiers = tiers;
+    for (const name of ['countdown', 'revive'] as const) {
+      if (!up[name]) continue;
+      const place = plan[name];
+      setBodyVar(`--hud-${name}-top`, place ? `${Math.round(place.y)}px` : name === 'countdown' ? '22%' : '30%');
+      setBodyVar(`--hud-${name}-x`, place ? `${Math.round(place.x + place.w / 2)}px` : '50%');
+      setBodyVar(`--hud-${name}-scale`, place ? String(place.scale) : '1');
+    }
+  }
   function refresh() {
     frame = 0;
     const visible = !!root.getClientRects().length;
@@ -153,6 +327,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     if (!visible) return;
     observe('.cot-vehicle-status,.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
+    // the revive count is placed (mouse) as it shows
+    if (!document.body.classList.contains('cot-touch-layout')) observe('.cot-revive');
     observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane,.cot-medal-toasts,.cot-si-cardhost,.cot-si-log', true);
     // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
     // asks for a relayout when it mounts, and the lanes seat it in the corner row (networkCornerRight).
@@ -161,18 +337,22 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // measure the same viewport the HUD root is sized to: a pinch leaves both unchanged.
     const { width, height } = layoutViewportSize(window);
     const touch = document.body.classList.contains('cot-touch-layout');
+    readsThisPass.clear();
+    reuseReads = !touch;
+    // a new window size (a resize, a keyboard, a toolbar) is a new plan input
+    if (width * 65536 + height !== lastSize) planInputs = true;
     const tray = width < 1000 ? 'stacked' : 'inline';
-    const sideNotices = !touch && width < 768;
-    const activeAlert = read('.cot-alert.show');
-    const noticeReserve = sideNotices && (read('.cot-sixth.on') || activeAlert)
-      ? (read('.cot-sixth')?.height ?? 48) + (activeAlert ? activeAlert.height + 8 : 0) + 16 : 0;
     if (document.body.dataset.hudTray !== tray) document.body.dataset.hudTray = tray;
+    // The mouse layout's centre notices are planned off the reticle (mouseNoticePlan.ts); touch keeps its own rules.
+    if (document.body.hasAttribute('data-hud-notices') === touch) document.body.toggleAttribute('data-hud-notices', !touch);
     const map = read('.cot-minimap');
     const score = read('.cot-top');
     const scoreBottom = score?.bottom || 64;
-    const top = Math.max(scoreBottom, read('.cot-mode-status.show')?.bottom || 0);
+    const objective = read('.cot-mode-status.show');
+    const top = Math.max(scoreBottom, objective?.bottom || 0);
     const telemetry = read('.cot-net');
-    const leftAnchor = Math.max(top, read('.cot-ear.l')?.bottom || 0,
+    const earLeft = read('.cot-ear.l');
+    let leftAnchor = Math.max(top, earLeft?.bottom || 0,
       !touch && width < 768 && telemetry && telemetry.top < height / 2 ? telemetry.bottom : 0,
       touch && width > height ? read('.cot-aim-warning:not([hidden])')?.bottom || 0 : 0,
       map && map.left < width / 2 ? map.bottom : 0) + 8;
@@ -224,18 +404,6 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const killRight = root.querySelector('.cot-kill-lane.r');
     const leftBottom = Math.min(leftFloor(height, touch),
       systemsHeight && systemsLeft < sideWidth + 12 ? systemsTop - 8 : height);
-    const countdown = read('.cot-prebattle.on');
-    const leftKillBottom = countdown && countdown.left < sideWidth
-      && countdown.bottom > leftAnchor ? Math.min(leftBottom - noticeReserve, countdown.top - 8) : leftBottom - noticeReserve;
-    const leftSpace = Math.max(0, leftKillBottom - leftAnchor);
-    // Keep incoming damage and an open chat usable during a burst of kills.
-    const chatReserve = chat ? Math.min(leftSpace, Math.max(62, Math.min(140, leftSpace * .4))) : 0;
-    const damageReserve = toastCount ? Math.min(116, Math.max(0, (leftSpace - chatReserve) * .45)) : 0;
-    const killRowsLeft = battleNotificationRows(leftSpace - chatReserve - damageReserve - (chat || toastCount ? 8 : 0), killLeft?.childElementCount || 0);
-    setRows(killLeft, killRowsLeft);
-    const killHeightLeft = Math.max(0, killRowsLeft * 29 - 3);
-    const killsLeft = Math.min(killHeightLeft, read('.cot-kill-lane.l')?.height || 0);
-    const leftTop = leftAnchor + (killsLeft ? killsLeft + 8 : 0);
     const earRight = read('.cot-ear.r');
     const networkRight = networkCornerRight(width, touch, telemetry, score);
     const strip = read('.cot-mp-status.battle');
@@ -247,7 +415,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // A phone-width mouse window has no roster above the right-hand feeds: they start below the strip's lane, which
     // follows the objective's bottom measured in this pass.
     const networkBottom = strip && !touch && document.body.dataset.cotWidth === 'phone' ? top + 8 + strip.height : 0;
-    const rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0, networkBottom) + 8;
+    let rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0, networkBottom) + 8;
     const rightBottom = Math.min(rightFloor(height, width, map),
       systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? systemsTop - 8 : height);
     const rosterStart = rosterTopRight ?? earRight?.top ?? scoreBottom + 8;
@@ -257,35 +425,132 @@ export function installBattleHudLayout(root: HTMLElement): void {
       Math.max(top + 12, rosterStart + rosterMinimum + (earRight ? 32 : 0), networkBottom + 8),
       root.classList.contains('compact-shot-report'));
     const dockReport = !touch;
-    root.classList.toggle('tight-shot-report', dockReport && report.height < 220);
     const rightKillFloor = dockReport ? report.top - 8 : rightBottom;
-    const rightKillBottom = countdown && countdown.right > width - sideWidth
+    const countdown = read('.cot-prebattle.on');
+    // Mouse: one plan from the viewport, the fixed instruments and the lanes' bands (mouseNoticePlan.ts).
+    const banner = document.querySelector<HTMLElement>('.cot-medal-toasts');
+    const expanded = root.classList.contains('rosters-expanded');
+    let plan: MouseNoticePlan | null = null;
+    if (!touch && !planInputs && planned) plan = planned;
+    else if (!touch) {
+      planInputs = false;
+      const rosterCountLeft = Number(root.querySelector<HTMLElement>('.cot-ear.l')?.dataset.count) || 0;
+      const size = width * 65536 + height, counts = rosterCountLeft * 4096 + rosterCount;
+      if (!expanded) restingEars = { size, left: earLeft, right: earRight, counts };
+      const resting = expanded && restingEars?.size === size && restingEars.counts === counts ? restingEars : null;
+      const planLeft = resting ? resting.left : earLeft, planRight = resting ? resting.right : earRight;
+      // the lanes as they start below the resting rosters
+      const planLeftAnchor = planLeft === earLeft ? leftAnchor : Math.max(top, planLeft?.bottom || 0,
+        width < 768 && telemetry && telemetry.top < height / 2 ? telemetry.bottom : 0, map && map.left < width / 2 ? map.bottom : 0) + 8;
+      // A phone-width window keeps the network strip's corner of the right lane for it, there or not (multiplayerStatus.ts:
+      // its folded ping under the objective), so the strip coming and going (a reconnect) moves no notice.
+      const phone = document.body.dataset.cotWidth === 'phone';
+      const stripLane: PlanBox | null = phone ? { left: width - NETWORK_CORNER_RIGHT - PHONE_STRIP_WIDTH, top: top + 8, width: PHONE_STRIP_WIDTH, height: PHONE_STRIP_HEIGHT } : null;
+      const planNetworkBottom = phone ? Math.max(networkBottom, top + 8 + PHONE_STRIP_HEIGHT) : networkBottom;
+      const planRightAnchor = planRight === earRight && planNetworkBottom === networkBottom ? rightAnchor
+        : Math.max(top, planRight ? (rosterTopRight ?? planRight.top) + planRight.height : 0, planNetworkBottom) + 8;
+      // the left lane's floor without the vehicle-status strip, which comes and goes with damage
+      const planLeftBottom = Math.min(leftFloor(height, touch, true), systemsHeight && systemsLeft < sideWidth + 12 ? systemsTop - 8 : height);
+      plan = mouseNoticePlan(width, height, top, [score, objective, map, ammo, phone ? stripLane : strip], telemetry, map,
+        [planLeft, planLeft ? battleRosterHeight(height, planLeftBottom - planLeft.top, root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48, rosterCountLeft, true) : 0,
+          planRight, planRight ? Math.min(battleRosterHeight(height, rightBottom - rosterStart, root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, rosterCount, true),
+            Math.max(0, report.top - rosterStart - 32)) : 0],
+        systemsLeft, systemsTop, dockWidth, systemsHeight, sideWidth, planLeftAnchor, planLeftBottom, planRightAnchor, Math.min(rightBottom, rightKillFloor), report);
+    }
+    // The medal card waits (keeping its time) while a notice whose place it shares is up, where it has no place, and
+    // while the scope is up where its place clears the battle sight only (a short window: hud.ts marks the scope).
+    let medalReady = false;
+    if (plan && banner?.childElementCount) {
+      const slot = plan.medal;
+      medalReady = !!slot && !(slot.clearance < 2 && root.classList.contains('cot-scoped'));
+      if (slot?.sharesNotices) {
+        const meets = (box: PlanRect) => box.x < slot.x + slot.w && box.x + box.w > slot.x && box.y < slot.y + slot.h && box.y + box.h > slot.y;
+        if ((root.querySelector('.cot-sixth.on') && meets(plan.detection)) || (root.querySelector('.cot-alert.show') && meets(alertBox(plan.alert)))) medalReady = false;
+      }
+    }
+    // A placed element crossing a side lane takes the lane's band from the plan while it shows (its rows start below it
+    // or end above it); the lanes hold all their rows while nothing is up. Held Tab rosters stop short of it too.
+    let leftEnd = leftBottom, rightEnd = Math.min(rightBottom, rightKillFloor);
+    let wideLeft = Infinity, wideRight = Infinity;
+    if (plan) {
+      const shown = [root.querySelector('.cot-sixth.on') && plan.detection, root.querySelector('.cot-alert.show') && plan.alert,
+        countdown && plan.countdown, root.querySelector('.cot-revive.on') && plan.revive, medalReady && plan.medal];
+      for (const place of shown) {
+        if (!place) continue;
+        const [lt, lb, rt, rb] = place.giveWay;
+        if (lt === lt) leftAnchor = Math.max(leftAnchor, lt);
+        if (lb === lb) leftEnd = Math.min(leftEnd, lb);
+        if (rt === rt) rightAnchor = Math.max(rightAnchor, rt);
+        if (rb === rb) rightEnd = Math.min(rightEnd, rb);
+        if (!expanded) continue;
+        const box = place === plan.alert ? alertBox(plan.alert) : place;
+        if (earLeft && box.y < earLeft.bottom + 8 && box.y + box.h > earLeft.top - 8) wideLeft = Math.min(wideLeft, box.x - 8 - earLeft.left);
+        if (earRight && box.y < earRight.bottom + 8 && box.y + box.h > earRight.top - 8) wideRight = Math.min(wideRight, earRight.right - box.x - box.w - 8);
+      }
+      setBodyVar('--hud-roster-wide-left', wideLeft < Infinity ? `${Math.floor(wideLeft)}px` : '');
+      setBodyVar('--hud-roster-wide-right', wideRight < Infinity ? `${Math.floor(wideRight)}px` : '');
+    }
+    // (on mouse the plan's countdown band above already keeps the lanes off it)
+    const leftKillBottom = !plan && countdown && countdown.left < sideWidth
+      && countdown.bottom > leftAnchor ? Math.min(leftEnd, countdown.top - 8) : leftEnd;
+    const leftSpace = Math.max(0, leftKillBottom - leftAnchor);
+    // Keep incoming damage and an open chat usable during a burst of kills.
+    const chatReserve = chat ? Math.min(leftSpace, Math.max(62, Math.min(140, leftSpace * .4))) : 0;
+    const damageReserve = toastCount ? Math.min(116, Math.max(0, (leftSpace - chatReserve) * .45)) : 0;
+    const killRowsLeft = battleNotificationRows(leftSpace - chatReserve - damageReserve - (chat || toastCount ? 8 : 0), killLeft?.childElementCount || 0);
+    setRows(killLeft, killRowsLeft);
+    const killHeightLeft = Math.max(0, killRowsLeft * 29 - 3);
+    const killsLeft = Math.min(killHeightLeft, read('.cot-kill-lane.l')?.height || 0);
+    const leftTop = leftAnchor + (killsLeft ? killsLeft + 8 : 0);
+
+    root.classList.toggle('tight-shot-report', dockReport && report.height < 220);
+    const rightKillBottom = !plan && countdown && countdown.right > width - sideWidth
       && countdown.bottom > rightAnchor ? Math.min(rightBottom, countdown.top - 8) : rightBottom;
-    const killRowsRight = battleNotificationRows(Math.min(rightKillBottom, rightKillFloor) - rightAnchor, killRight?.childElementCount || 0);
+    const killRowsRight = battleNotificationRows(Math.min(rightKillBottom, rightKillFloor, rightEnd) - rightAnchor, killRight?.childElementCount || 0);
     setRows(killRight, killRowsRight);
     const killHeightRight = Math.max(0, killRowsRight * 29 - 3);
     const killsRight = Math.min(killHeightRight, read('.cot-kill-lane.r')?.height || 0);
     const rightTop = dockReport ? report.top : rightAnchor + (killsRight ? killsRight + 8 : 0);
     const notice = read('.cot-sixth');
-    // Center notices below the score. On narrow screens their horizontal
-    // footprint also crosses the team feeds, so clear those occupied lanes.
-    const noticeLeft = (width - (notice?.width ?? 248)) / 2;
-    let noticeTop = Math.max(top + 8, height * .12);
-    if (noticeLeft < sideWidth + 14) noticeTop = Math.max(noticeTop, leftTop, rightAnchor + (killsRight ? killsRight + 8 : 0));
-    if (systems && noticeTop < systemsTop + systemsHeight + 8
-      && noticeTop + (notice?.height ?? 48) > systemsTop - 8
-      && noticeLeft < systemsLeft + dockWidth && width - noticeLeft > systemsLeft) {
-      noticeTop = systemsTop + systemsHeight + 8;
+    let noticeTop: number, alertTop: number;
+    if (plan) {
+      noticeTop = plan.detection.y;
+      alertTop = plan.alert.y;
+    } else {
+      // Center notices below the score. On narrow screens their horizontal
+      // footprint also crosses the team feeds, so clear those occupied lanes.
+      const noticeLeft = (width - (notice?.width ?? 248)) / 2;
+      noticeTop = Math.max(top + 8, height * .12);
+      if (noticeLeft < sideWidth + 14) noticeTop = Math.max(noticeTop, leftTop, rightAnchor + (killsRight ? killsRight + 8 : 0));
+      if (systems && noticeTop < systemsTop + systemsHeight + 8
+        && noticeTop + (notice?.height ?? 48) > systemsTop - 8
+        && noticeLeft < systemsLeft + dockWidth && width - noticeLeft > systemsLeft) {
+        noticeTop = systemsTop + systemsHeight + 8;
+      }
+      if (touch && width > height && height <= 340) noticeTop = Math.max(top + 16, scoreBottom + 52);
+      alertTop = noticeTop + (notice?.height ?? 48) + 8;
     }
-    const stack = battleSideStack(leftBottom - noticeReserve - leftTop, chat, toastCount);
+    const stack = battleSideStack(leftEnd - leftTop, chat, toastCount);
     setRows(toastHost, stack.toastRows);
-    if (touch && width > height && height <= 340) noticeTop = Math.max(top + 16, scoreBottom + 52);
-    if (sideNotices) noticeTop = Math.max(top + 8, leftBottom - noticeReserve + 8);
     // Awards use the center lane only when the actual visible HUD leaves room.
     // Keep the card measurable while deferred; no per-frame polling is needed.
-    const banner = document.querySelector<HTMLElement>('.cot-medal-toasts');
     let bannerTop = Math.ceil(top + 16);
-    if (banner?.childElementCount) {
+    if (plan) {
+      // Mouse: the card has its own place off the reticle (medalReady above), placed once a card is queued.
+      const slot = banner?.childElementCount ? plan.medal : null;
+      if (slot) bannerTop = slot.y;
+      const size = slot?.compact ? 'compact' : '';
+      if (banner && (banner.dataset.size ?? '') !== size) {
+        if (size) banner.dataset.size = size; else delete banner.dataset.size;
+      }
+      if (banner?.childElementCount) {
+        const placement = medalReady ? 'ready' : 'deferred';
+        if (banner.dataset.placement !== placement) {
+          banner.dataset.placement = placement;
+          banner.dispatchEvent(new Event('cot-banner-placement'));
+        }
+      }
+    } else if (banner?.childElementCount) {
       const bounds = banner.getBoundingClientRect();
       const crosses = (box: DOMRect) => bounds.left < box.right + 8 && bounds.right > box.left - 8;
       for (const selector of ['.cot-kill-lane.l', '.cot-kill-lane.r', '.cot-sixth.on', '.cot-alert.show']) {
@@ -307,10 +572,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       }
     }
     const network = !!read('.cot-mp-status.battle');
-    const reportBounds = read('.cot-si-cardhost');
     const properties = {
       'status-lift': Math.max(5, (read('.cot-dp')?.top ?? 0) - (statusDockBottom() ?? height)),
-      'center-notice-width': !touch && width >= 768 && reportBounds ? Math.max(136, Math.min(248, (reportBounds.left - width / 2 - 12) * 2)) : 248,
+      'center-notice-width': plan ? plan.detection.w : 248,
       'flight-right-clearance': map && map.left > width / 2 && map.bottom > height / 2 ? width - map.left + 12 : 12,
       'network-left': width > height ? Math.max(122, (map?.right ?? 104) + 8) : (map?.right ?? 104) + 8,
       'aim-warning-top': width > height ? (map?.bottom ?? 114) + 4 : height * .5 + 48,
@@ -321,13 +585,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'roster-right-height': Math.min(battleRosterHeight(height, rightBottom - rosterStart, root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, rosterCount, root.classList.contains('rosters-expanded')), dockReport ? Math.max(0, report.top - rosterStart - 32) : Infinity),
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
       'portrait-countdown-top': systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
-      'notice-top': noticeTop, 'alert-top': noticeTop + (notice?.height ?? 48) + 8,
+      'notice-top': noticeTop, 'alert-top': alertTop,
       'objective-top': scoreBottom, 'objective-bottom': top, 'banner-top': bannerTop,
       'objective-width': objectiveWidth(score?.width || 344) - (touch && network && width > height ? 52 : 0),
       'objective-left': score ? score.left + score.width / 2 : width / 2,
       'kill-left-top': leftAnchor, 'kill-right-top': rightAnchor,
       'kill-left-height': killHeightLeft, 'kill-right-height': killHeightRight,
-      'left-top': leftTop, 'left-height': Math.max(0, leftBottom - noticeReserve - leftTop),
+      'left-top': leftTop, 'left-height': Math.max(0, leftEnd - leftTop),
       'right-top': rightTop, 'right-height': Math.max(0, rightBottom - rightTop),
       'report-right': map && map.left > width / 2 && map.bottom > height / 2 ? width - map.right : 12,
       'toast-height': stack.toastHeight, 'chat-top': leftTop + stack.chatOffset,
@@ -338,8 +602,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const pixels = `${name === 'objective-top' ? value : Math.floor(value)}px`;
       if (document.body.style.getPropertyValue(property) !== pixels) {
         document.body.style.setProperty(property, pixels);
+        // an instrument the mouse plan keeps off moves with this write: the next relayout measures its inputs again
+        if (movesPlanInputs.has(name)) planInputs = true;
       }
     }
+    if (plan) writeMousePlan(plan, { countdown: !!countdown, revive: !!root.querySelector('.cot-revive.on'), medal: !!banner?.childElementCount });
     const rosterProperty = '--hud-roster-top-right';
     const rosterPixels = rosterTopRight === null ? '' : `${rosterTopRight}px`;
     if (document.body.style.getPropertyValue(rosterProperty) !== rosterPixels) {
@@ -355,13 +622,16 @@ export function installBattleHudLayout(root: HTMLElement): void {
   watchAttributes(document.body, ['class'], true);
   watchAttributes(root, ['style', 'class'], true);
   window.addEventListener('resize', schedule, { passive: true });
+  // (a relayout request may come from anything, the network strip mounting outside the HUD root among them: it is a new
+  // plan input too)
+  window.addEventListener('cot-hud-relayout', () => { planInputs = true; });
   window.addEventListener('cot-hud-relayout', schedule);
   // Keyboard and toolbar changes of the visible height arrive here once responsiveLayout.ts has resized the root.
   window.addEventListener('cot:layoutchange', schedule);
   // Transforms (notably the spectator tray's entrance) do not resize the
   // border box. Measure the settled position without polling its animation.
   const transitionFinished = (event: Event) => {
-    if (observed.has(event.target as Element)) schedule();
+    if (observed.has(event.target as Element)) { planInput(event.target as Element); schedule(); }
   };
   window.addEventListener('transitionend', transitionFinished);
   window.addEventListener('transitioncancel', transitionFinished);
