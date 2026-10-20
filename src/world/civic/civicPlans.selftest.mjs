@@ -94,7 +94,10 @@ for (const mapId of CIVIC_PLAN_MAPS) {
     }
     // the monument: off its planner cell's six segments and its nodes
     if (area.monument) {
-      const mo = area.monument, rec = CIVIC_RECORDS[mo.kind];
+      // (229 b3) or the map's own walked monument moved to the area's seat (overlay.monumentKind; placeCentralMonument's
+      // legacy collision: a 2.6 m box)
+      const MAP_MONUMENTS = { monument: { collisionR: 1.3 } };
+      const mo = area.monument, rec = CIVIC_RECORDS[mo.kind] ?? (plan.overlay.monumentKind === mo.kind ? MAP_MONUMENTS[mo.kind] : null);
       assert.ok(rec, `${tag}: the monument's kind ${mo.kind} is the kit's`);
       const x0 = Math.floor(mo.x / LATTICE) * LATTICE, z0 = Math.floor(mo.z / LATTICE) * LATTICE, x1 = x0 + LATTICE, z1 = z0 + LATTICE;
       const segs = [[x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, x0, z1], [x0, z1, x0, z0], [x0, z0, x1, z1], [x1, z0, x0, z1]];

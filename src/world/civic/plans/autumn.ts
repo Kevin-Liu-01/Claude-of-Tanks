@@ -22,8 +22,9 @@ import type { CivicPlan, CivicRect } from '../types.ts';
 
 const ROOM = { x0: -127, x1: -84, z0: 74, z1: 119.5 } as const;
 // the monument's bed in the south-east quarter, between the coach road south and the north lane east
-const BED: CivicRect = { x0: -97, x1: -86, z0: 82, z1: 98 };
-const MONUMENT = { x: -91.5, z: 90 } as const;
+// (the monument in its planner cell's north triangle, 5 m off the cell's diagonals: it closes no lattice edge)
+const BED: CivicRect = { x0: -97, x1: -84, z0: 82, z1: 99 };
+const MONUMENT = { x: -87.5, z: 94.6 } as const;
 const facing = (x: number, z: number, tx: number, tz: number): number => +(Math.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
 
 export const AUTUMN_CIVIC_PLAN: CivicPlan = {
@@ -55,20 +56,20 @@ export const AUTUMN_CIVIC_PLAN: CivicPlan = {
       id: 'monument-bed', rect: BED,
       // the gate toward the crossing, its path to the monument's gravel
       mouths: [{ side: 'w', at: MONUMENT.z, width: 2.4 }],
-      paths: [{ from: [BED.x0, MONUMENT.z], to: [MONUMENT.x - 2.8, MONUMENT.z], width: 2.4 }],
+      paths: [{ from: [BED.x0, MONUMENT.z], to: [MONUMENT.x - 2.9, MONUMENT.z], width: 2.4 }],
       feature: null,
     }],
     // the church's parvis in pavés before its door, up to its south front (which runs back north-west of the door)
     paving: [{ rect: { x0: -107.5, x1: -98, z0: 113, z1: 121.8 }, kind: 'setts' }, { rect: { x0: -98, x1: -90, z0: 116, z1: 119.8 }, kind: 'setts' }],
     monument: { kind: 'monument', x: MONUMENT.x, z: MONUMENT.z, faceX: -110, faceZ: 100 },
     trees: {
-      // limes (the oak's form stands in): the bed's four corners, and one by the market
+      // limes (the oak's form stands in): a row down the bed's west side and one at its south-east, and one by the market
       species: 'oak', scale: [0.95, 1.08],
-      stations: [{ x: -95, z: 96 }, { x: -88, z: 96 }, { x: -95, z: 84 }, { x: -88, z: 84 }, { x: -116.5, z: 78.5 }],
+      stations: [{ x: -95, z: 97 }, { x: -95, z: 90.5 }, { x: -95, z: 84 }, { x: -88.5, z: 84 }, { x: -116.5, z: 78.5 }],
     },
     furniture: [
       // the benches in the bed, on its diagonals, facing the monument; and two on the parvis facing the place
-      ...[[-95, 86.5], [-88, 86.5], [-95, 93.5], [-88, 93.5]].map(([x, z]) => ({ kind: 'bench', x, z, yawDeg: facing(x, z, MONUMENT.x, MONUMENT.z) })),
+      ...[[-90.5, 91.6], [-90.5, 97.6], [-87.5, 90.0], [-91.5, 86.5]].map(([x, z]) => ({ kind: 'bench', x, z, yawDeg: facing(x, z, MONUMENT.x, MONUMENT.z) })),
       { kind: 'bench', x: -105, z: 115.5, yawDeg: 160 }, { kind: 'bench', x: -98.5, z: 114, yawDeg: 200 },
       // one against the farmhouse's gable, facing the bed
       { kind: 'bench', x: -85.2, z: 101.5, yawDeg: -90 },
@@ -84,6 +85,8 @@ export const AUTUMN_CIVIC_PLAN: CivicPlan = {
     fountainRing: null,
     steps: [],
     lawns: [BED],
-    targets: { records: 30, benches: 7, lawnM2: 150, lampsAround: 0, openShare: 0.1, largestDisc: 8 },
+    // (the largest free disc stands in the 2 m sliver between the bots' line down the inn's front and the north arm, where
+    // nothing may stand)
+    targets: { records: 30, benches: 7, lawnM2: 150, lampsAround: 0, openShare: 0.1, largestDisc: 9 },
   }],
 };

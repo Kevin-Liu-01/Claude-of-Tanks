@@ -50,8 +50,11 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
   const key = (d) => `${d.kind}@${d.x.toFixed(1)},${d.z.toFixed(1)}`;
   const seats = plan.areas.flatMap((a) => [...a.furniture, ...a.parking, ...a.lamps]);
   const ownSeat = (d) => seats.some((p) => p.kind === d.kind && Math.hypot(p.x - d.x, p.z - d.z) < 0.05);
+  // (229 b3) the map's walked monument, when the plan seats it in its area (overlay.monumentKind), moves from wherever the
+  // walk left it (Amberford's market cross at the edge of town)
+  const walkedMoves = plan.areas.some((a) => a.monument) && plan.overlay.monumentKind === 'monument';
   const outside = (b) => new Set(b.destructibles.filter((d) => d.slot >= 0 && !inAnyRoom(d.x, d.z) && !VEHICLES.has(d.kind) && d.kind !== 'hedgehog'
-    && !ownSeat(d)).map(key));
+    && !ownSeat(d) && !(walkedMoves && d.kind === 'monument')).map(key));
   const before = outside(base.built), after = outside(built);
   // (228 r2: the pieces the plan clears from round its room — pinned by kind and rectangle in the plan — the only others)
   const clears = plan.areas.flatMap((a) => a.clears);
@@ -102,9 +105,12 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
       const cols = built.destructibles.filter((d) => d.kind === area.monument.kind && d.slot >= 0);
       assert.equal(cols.length, 1, `${tag}: one ${area.monument.kind}`);
       assert.ok(Math.hypot(cols[0].x - area.monument.x, cols[0].z - area.monument.z) < 0.05, `${tag}: the monument at its seat`);
-      assert.ok(collision.isFortifiedCoverKind(cols[0].ob.kind) && cols[0].ob.crushMin >= 999, `${tag}: the monument is fortified`);
-      assert.ok(!collision.hullYieldingRecord(cols[0].ob), `${tag}: the bots steer round the monument`);
-      assert.equal(built.destructibles.filter((d) => d.kind === 'monument' && d.slot >= 0).length, 0, `${tag}: no walked monument`);
+      // (a kit monument is fortified cover; a map's own walked monument moved to the seat keeps its own class)
+      if (area.monument.kind !== 'monument') {
+        assert.ok(collision.isFortifiedCoverKind(cols[0].ob.kind) && cols[0].ob.crushMin >= 999, `${tag}: the monument is fortified`);
+        assert.ok(!collision.hullYieldingRecord(cols[0].ob), `${tag}: the bots steer round the monument`);
+      }
+      if (area.monument.kind !== 'monument') assert.equal(built.destructibles.filter((d) => d.kind === 'monument' && d.slot >= 0).length, 0, `${tag}: no walked monument`);
       // G3: the planner's grid with the monument is the grid without it (no edge closed, no bend added)
       const { createBotNavigationGrid } = await import('../../sim/botRoutePlanner.ts');
       const navOf = (obstacles) => createBotNavigationGrid({ heightField: field, queryObstacles: null, getObstacles: () => obstacles });

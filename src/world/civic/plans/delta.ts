@@ -91,6 +91,8 @@ export const DELTA_CIVIC_PLAN: CivicPlan = {
     fountainRing: null,
     steps: [],
     lawns: [],
-    targets: { records: 18, benches: 4, lawnM2: 0, lampsAround: 0, openShare: 0.08, largestDisc: 8 },
+    // (the largest free disc stands in the islands of earth the routes into the middle leave between them, where nothing may
+    // stand)
+    targets: { records: 18, benches: 4, lawnM2: 0, lampsAround: 0, openShare: 0.08, largestDisc: 9 },
   }],
 };

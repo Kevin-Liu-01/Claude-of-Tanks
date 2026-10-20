@@ -31,7 +31,7 @@ const TRACK_YAW = 13.5;
 // the date palms along the fort's front (east) and the souq's (west, the twins), and one each in the north and south bands
 const PALMS_EAST: ReadonlyArray<readonly [number, number]> = [[35.5, -6], [36.5, 6], [37.5, 18]];
 // and two in the islands of sand the lanes leave between them (a smaller planter: the lanes either side)
-const PALMS_ISLAND: ReadonlyArray<readonly [number, number]> = [[19.4, 4.0], [3.8, 19.8]];
+const PALMS_ISLAND: ReadonlyArray<readonly [number, number]> = [[19.4, 4.0], [3.4, 19.8]];
 const withTwins = (list: ReadonlyArray<readonly [number, number]>) => list.flatMap(([x, z]) => {
   const [tx, tz] = rot(x, z);
   return [{ x, z }, { x: tx, z: tz }];
