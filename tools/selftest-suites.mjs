@@ -615,6 +615,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/fleetPass.selftest.mjs',
     // 2026-10-01: the fleet geometry ledger (one full-fleet HIGH+LOW sweep) replaces the frozen per-receipt geometry pins.
     'src/vehicles/fleetGeometryLedger.selftest.mjs',
+    // 2026-10-17 (227 guards, after the 226 T-90M blade): every tank's belly pan, track bottom and combat hull box within
+    // 5 cm of docs/geometry-gate/sim-floors.json, read from the committed calibration (data only; a drifting id is built
+    // once to name the parts responsible); gen-combat-anatomy gates its own fresh measurement the same way.
+    'tools/anatomy-floor-drift.selftest.mjs',
     // 2026-10-01: one fleet on every path (each facade alone, every saved spec digested).
     'src/vehicles/fleetParity.selftest.mjs',
     'tools/media-production/pipeline.selftest.mjs',

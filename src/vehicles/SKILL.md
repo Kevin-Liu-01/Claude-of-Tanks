@@ -325,6 +325,11 @@ For every added or changed playable tank, run this required sequence:
 1. `npm run tank:anatomy:update` — remeasure the complete playable fleet and
    regenerate every tank's armor, module, and crew cards.
 2. `npm run tank:anatomy:check` — fail on stale receipts or visual drift.
+   Both steps also hold each tank's belly pan, track bottom and combat hull box to
+   `docs/geometry-gate/sim-floors.json`: a move over 5 cm fails and names the part and
+   its builder line. Keep accessories above the belly and out of the structural
+   buckets; accept an intended move only with a reason
+   (`node tools/anatomy-floor-drift.mjs --accept=<ids>:<reason>`).
 3. `npm run tank:release:check -- --ids=<changed ids> --gate` — assets,
    tracks, muzzle, geometry, full tests and private build.
 
