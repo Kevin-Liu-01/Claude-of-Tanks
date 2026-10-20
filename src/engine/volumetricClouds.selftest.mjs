@@ -153,7 +153,7 @@ function channelMean(bytes, channel) {
   let warmed = 0, bound = 0;
   Object.assign(layer, {
     renderer, preset: {}, atmosphere: { active: true }, noise: { weather: {}, streets: {}, blue: {}, local: {} }, volumes: null,
-    trace: 'trace-target', traceMaterial: new THREE.ShaderMaterial({ name: 'trace' }), resolveMaterial: new THREE.ShaderMaterial({ name: 'resolve' }),
+    trace: 'trace-target', traceMaterial: new THREE.ShaderMaterial({ name: 'trace', uniforms: { tSceneDepth: { value: 'last-battle-depth' }, uSceneDepthOn: { value: 1 } } }), resolveMaterial: new THREE.ShaderMaterial({ name: 'resolve' }),
     bsmMaterial: new THREE.ShaderMaterial({ name: 'bsm' }), shadeMaterial: new THREE.ShaderMaterial({ name: 'shade' }),
     linkPending: null, dome: { visible: true }, sceneDepthReady: true,
     syncTier() { calls.push(['tier']); }, bindNoise() { bound++; }, warm() { warmed++; }, dropCloudShade() {},
@@ -171,6 +171,10 @@ function channelMean(bytes, channel) {
   layer.beforeSceneRender(renderer, {}, 0.016, 4, 4);
   assert.equal(layer.dome.visible, false, 'nothing draws while the programs link (a draw would read their link synchronously)');
   assert.equal(layer.sceneDepthReady, false);
+  // (2026-10-20, black-screen-228 round 2, D1) a layer that does not trace binds no scene depth: the last battle's depth
+  // stayed bound across the Garage and the next entry's covered warm sampled it before the resized target was set up
+  assert.equal(layer.traceMaterial.uniforms.tSceneDepth.value, null, 'an idle layer releases the scene depth');
+  assert.equal(layer.traceMaterial.uniforms.uSceneDepthOn.value, 0);
   assert.equal(layer.volumes, null, 'nor does a linking layer bake its volumes on the main thread');
   assert.equal(calls.filter(([k]) => k === 'draw').length, 0);
   assert.equal(warmed, 0, 'warm() waits for the link');

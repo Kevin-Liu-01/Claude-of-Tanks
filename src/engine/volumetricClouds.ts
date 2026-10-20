@@ -1018,6 +1018,20 @@ export class VolumetricCloudLayer {
     return true;
   }
 
+  /**
+   * (2026-10-20, black-screen-228 round 2, D1) the trace stops reading the scene's depth until a live frame hands it a
+   * resolved one again. A paused or inactive layer (the Garage) kept the last battle's scene depth bound to its trace,
+   * and the covered warm's trace on the next entry sampled it before any scene pass had set the resized target up: a
+   * sampler-first bind that allocated the depth's storage at the stale size (engine/sceneSourcePass.ts
+   * sizeDepthWithTarget closes that for every binder; the layer no longer binds a depth it does not read).
+   */
+  private releaseSceneDepth(): void {
+    this.sceneDepthReady = false;
+    const t = this.traceMaterial.uniforms;
+    if (t.tSceneDepth) t.tSceneDepth.value = null;
+    if (t.uSceneDepthOn) t.uSceneDepthOn.value = 0;
+  }
+
   /** Forget the history: the next frames rebuild it at four slots a frame. */
   resetHistory(): void {
     this.rebuild = 0;
@@ -1383,12 +1397,12 @@ export class VolumetricCloudLayer {
     // ensureVolumes() after it, so a linking layer never bakes its volumes on the main thread
     if (!preset || !this.active || renderer !== this.renderer || this.linkPending || !this.ensureVolumes()) {
       this.dome.visible = false;
-      this.sceneDepthReady = false;
+      this.releaseSceneDepth();
       this.dropCloudShade();
       return;
     }
     this.refreshLifetime();
-    if (this.context?.isContextLost()) { this.dome.visible = false; this.sceneDepthReady = false; return; }
+    if (this.context?.isContextLost()) { this.dome.visible = false; this.releaseSceneDepth(); return; }
     this.syncTier();
     // 2026-10-14 (the SKY lane; the horizons lane's bird frames over Polders, 400 m up and 1.3 km off the centre: the
     // cloud field cut by straight walls with a clear hole over the map): the dome was a 3.4 km sphere about the world
@@ -1849,6 +1863,8 @@ export class VolumetricCloudLayer {
     if (!prevW || !prevH) this.resize(16, 16);
     try {
       this.syncTier();
+      // (round 2, D1) the warm's 1 x 1 trace never samples a live target's depth
+      this.releaseSceneDepth();
       this.renderQuad(this.traceMaterial, this.trace);
       this.resolveMaterial.uniforms.tTrace.value = this.trace.textures[0];
       this.resolveMaterial.uniforms.tTraceDepth.value = this.trace.textures[1];
