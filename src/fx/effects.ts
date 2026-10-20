@@ -2073,6 +2073,10 @@ function* createFxSteps(
       if (replaySuppressed) return;
       vol?.glow(x, y, z, radiusM, peak, durS, birthOffset);
     },
+    ember: (x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset: number) => {
+      if (replaySuppressed) return;
+      vol?.ember(x, y, z, radiusM, peak, durS, birthOffset);
+    },
     distBoost: (x: number, y: number, z: number) => distBoost(x, y, z),
     tier: 1,
     m: makeVolumePuff(),
@@ -5872,6 +5876,7 @@ function* createFxSteps(
       rubble?.update();
       vol?.update(camera ?? engineCtx.camera ?? null);
       chunks?.update();
+      craters?.setHeatView(imagesHeat(camera ?? engineCtx.camera ?? null));
       craters?.update(particles.getTime(), engineCtx.scene ?? null);
       layMapCraters();
       mapCraterMarks?.update(particles.getTime(), engineCtx.scene ?? null);

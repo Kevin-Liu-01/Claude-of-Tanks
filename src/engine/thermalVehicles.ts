@@ -5,12 +5,40 @@ interface ThermalActor {
   combat?:{destroyed?:boolean}|null;
   visual?:{root?:Object3D|null}|null;
 }
+/** (ac130-fx-228 follow-up, the coordinator: "a killed vehicle goes dark at once in thermal") a destroyed hull keeps its
+ * heat and cools: its stand-in's emission falls as exp(-age / WRECK_COOL_S) from the battle (sim) time it was first
+ * seen destroyed, in WRECK_HEAT_LEVELS steps (the same heat program: no new link), until under 1 / WRECK_HEAT_LEVELS it is
+ * the cold wreck's own material. Render-only and deterministic: the age is the simulation clock's. */
+export const WRECK_COOL_S = 20;
+export const WRECK_HEAT_LEVELS = 12;
+/** The wreck's heat share (0..1, quantised; 0 = cold) `ageS` seconds after it was destroyed. */
+export function wreckHeatLevel(ageS:number):number{
+  if(!(ageS>=0))return 0;
+  const level=Math.round(Math.exp(-ageS/WRECK_COOL_S)*WRECK_HEAT_LEVELS);
+  return level>=1?level/WRECK_HEAT_LEVELS:0;
+}
+/** The heat stand-ins' one program (the live variants' and the cooling wrecks' alike). */
+function installHeatProgram(m:MeshStandardMaterial):void {
+  // 2026-10-18 (the wheel-band lane, round 3): the heat stand-ins write the vehicle alpha (tagUnlitVehiclePixels),
+  // or the aerial pass's ground occlusion took a hot hull's running gear under the belly line for ground and
+  // cooled it below a straight edge at the belly + 2 cm
+  m.onBeforeCompile=shader=>{
+    shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',
+      '#include <emissivemap_fragment>\n totalEmissiveRadiance *= 0.62 + 0.38 * abs(normal.z);');
+    tagUnlitVehiclePixels(shader);
+  };
+  m.customProgramCacheKey=()=> 'thermal-vehicle-v2';
+}
 /** Temporary render-only materials: preserve geometry, depth, alpha cutouts and
  * spotting visibility. Never change a shared fleet material or reveal an actor. */
 export function createThermalVehicles(){
   const meshes=new WeakMap<Object3D,Mesh[]>();
   let warmed = new WeakSet<Object3D>();
   const materials=new WeakMap<Material,[Material,Material]>();
+  /** (follow-up) a wreck's cooling stand-ins, per source material and side: index = the level - 1 */
+  const wreckMaterials=new WeakMap<Material,[Material[],Material[]]>();
+  /** (follow-up) the battle time each hull was first seen destroyed */
+  const destroyedAt=new WeakMap<Object3D,number>();
   const changed:Mesh[]=[];const originals:Array<Material|Material[]>=[];
   function variant(source:Material,enemy:boolean):Material {
     if(!(source instanceof MeshStandardMaterial)||!source.colorWrite)return source;
@@ -22,15 +50,7 @@ export function createThermalVehicles(){
         m.name='Thermal vehicle '+(i?'hostile':'friendly');m.color.setRGB(.035,.035,.035);
         m.emissive.setRGB(i?4:2.2,i?4:2.2,i?4:2.2);m.emissiveIntensity=1;m.emissiveMap=null;
         m.metalness=0;m.roughness=1;
-        // 2026-10-18 (the wheel-band lane, round 3): the heat stand-ins write the vehicle alpha (tagUnlitVehiclePixels),
-        // or the aerial pass's ground occlusion took a hot hull's running gear under the belly line for ground and
-        // cooled it below a straight edge at the belly + 2 cm
-        m.onBeforeCompile=shader=>{
-          shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',
-            '#include <emissivemap_fragment>\n totalEmissiveRadiance *= 0.62 + 0.38 * abs(normal.z);');
-          tagUnlitVehiclePixels(shader);
-        };
-        m.customProgramCacheKey=()=> 'thermal-vehicle-v2';
+        installHeatProgram(m);
       }
       const owned=pair;
       source.addEventListener('dispose',()=>{for(const m of owned)m.dispose();});
@@ -38,15 +58,34 @@ export function createThermalVehicles(){
     }
     return pair[enemy?1:0]!;
   }
+  /** a wreck's stand-in at heat share `heat` (one of the quantised levels): the live variant's emission scaled */
+  function wreckVariant(source:Material,enemy:boolean,heat:number):Material {
+    const live=variant(source,enemy);
+    if(live===source)return source;
+    let sets=wreckMaterials.get(source);
+    if(!sets){sets=[[],[]];wreckMaterials.set(source,sets);}
+    const list=sets[enemy?1:0]!,index=Math.round(heat*WRECK_HEAT_LEVELS)-1;
+    let m=list[index];
+    if(!m){
+      const cooled=(live as MeshStandardMaterial).clone();
+      // a clone shares its onBeforeCompile and program key: the same heat program, only the emission differs
+      cooled.name=(live as MeshStandardMaterial).name+' (cooling)';
+      installHeatProgram(cooled); // Material.copy() carries no onBeforeCompile: the clone takes the same heat program
+      cooled.emissive.multiplyScalar(heat);
+      list[index]=m=cooled;
+      source.addEventListener('dispose',()=>cooled.dispose());
+    }
+    return m;
+  }
   function meshList(root:Object3D):Mesh[] {
     let list=meshes.get(root);
     if(!list){list=[];root.traverse(o=>{if(o instanceof Mesh)list!.push(o);});meshes.set(root,list);}
     return list;
   }
-  function apply(root:Object3D,enemy:boolean):void {
+  function apply(root:Object3D,enemy:boolean,heat=1):void {
     for(const mesh of meshList(root)) {
       if(Array.isArray(mesh.material))continue;
-      const material=variant(mesh.material,enemy);
+      const material=heat<1?wreckVariant(mesh.material,enemy,heat):variant(mesh.material,enemy);
       if(material===mesh.material)continue;
       changed.push(mesh);originals.push(mesh.material);mesh.material=material;
     }
@@ -89,12 +128,23 @@ export function createThermalVehicles(){
       }
     },
     invalidateWarm(){warmed=new WeakSet<Object3D>();},
-    begin(actors:Iterable<ThermalActor>,active:boolean,team?:string){
-      if(!active)return;
+    /** `timeS`: the battle's simulation clock (wrecks cool by it; without it a wreck is cold, as before) */
+    begin(actors:Iterable<ThermalActor>,active:boolean,team?:string,timeS?:number){
+      const clocked=typeof timeS==='number'&&Number.isFinite(timeS);
+      // nothing to light and no battle clock to note kills by (the garage, a menu): no walk at all, as before
+      if(!actors||(!active&&!clocked))return;
       for(const actor of actors){
         const root=actor.visual?.root;
-        if(!root||!root.visible||!root.parent||actor.networkVisible===false||actor.combat?.destroyed)continue;
-        apply(root,actor.team!==team);
+        if(!root)continue;
+        const destroyed=!!actor.combat?.destroyed;
+        // every frame, lens or not: the time a hull is first seen destroyed (its wreck cools from there)
+        if(destroyed&&clocked&&!destroyedAt.has(root))destroyedAt.set(root,timeS);
+        else if(!destroyed&&destroyedAt.has(root))destroyedAt.delete(root);
+        if(!active||!root.visible||!root.parent||actor.networkVisible===false)continue;
+        if(!destroyed){apply(root,actor.team!==team);continue;}
+        if(!clocked)continue;
+        const heat=wreckHeatLevel(timeS-(destroyedAt.get(root)??timeS));
+        if(heat>0)apply(root,actor.team!==team,heat);
       }
     },
     end,
