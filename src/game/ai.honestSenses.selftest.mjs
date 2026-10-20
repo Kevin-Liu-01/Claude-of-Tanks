@@ -114,5 +114,63 @@ console.log('[3] the zone sortie: never at an attacker the team no longer spots'
   ok(hidden.gained != null && hidden.gained < 5, `once hidden, no sortie drives at it (${hidden.gained?.toFixed(1)} m closed after)`);
 }
 
+console.log('[4] the no-ram rule: a rusher never drives its hull into another hull (round 3, the critic\'s E-R2-2)');
+{
+  // footprints as oriented rectangles (an independent separating-axis test), and the rusher's own speed toward the other
+  const corners = (e) => {
+    const l = (e.spec.dims.hullLengthM || e.spec.dims.lengthM || 6) / 2, w = (e.spec.dims.widthM || 3) / 2;
+    const fx = Math.sin(e.state.yaw), fz = Math.cos(e.state.yaw);
+    return [[l, w], [l, -w], [-l, -w], [-l, w]].map(([a, b]) => [e.state.pos.x + fx * a + fz * b, e.state.pos.z + fz * a - fx * b]);
+  };
+  const overlap = (a, b) => {
+    const ca = corners(a), cb = corners(b);
+    for (const poly of [ca, cb]) for (let i = 0; i < 4; i++) {
+      const [x0, z0] = poly[i], [x1, z1] = poly[(i + 1) % 4], nx = z1 - z0, nz = x0 - x1;
+      const pa = ca.map(([x, z]) => x * nx + z * nz), pb = cb.map(([x, z]) => x * nx + z * nz);
+      if (Math.max(...pa) < Math.min(...pb) || Math.max(...pb) < Math.min(...pa)) return false;
+    }
+    return true;
+  };
+  const closing = (h, o) => {
+    const dx = o.state.pos.x - h.state.pos.x, dz = o.state.pos.z - h.state.pos.z, d = Math.hypot(dx, dz) || 1;
+    return (Math.sin(h.state.yaw) * dx + Math.cos(h.state.yaw) * dz) / d * h.state.speed;
+  };
+  const rush = rulesetBotDoctrine(matchRulesetFor('endless_horde'), 'bravo');
+  const scenarios = [
+    // a hull broadside in the lane, the hunt point beyond it
+    { label: 'a seen enemy hull broadside 30 m ahead', other: () => tank('in-lane', 'm1a1_abrams_hc', 'alpha', 0, 30, Math.PI / 2), enemy: true },
+    // an enemy hull crossing the lane at 7 m/s
+    { label: 'an enemy hull crossing the lane', other: () => { const t = tank('crosser', 'm1a1_abrams_hc', 'alpha', -28, 34, Math.PI / 2); t.state.speed = 7; t.input.throttle = 0.6; return t; }, enemy: true },
+    // a friend of the pack stopped in the lane (a fodder hull dies to a friend's bump as to an enemy's)
+    // the orbit round its quarry runs into the quarry's neighbours, standing on the ring either side of it
+    { label: 'the orbit past the quarry\'s neighbours on its ring', other: () => tank('quarry', 'm1a1_abrams_hc', 'alpha', 0, 34, Math.PI),
+      extra: () => [tank('left', 'm1a1_abrams_hc', 'alpha', -27, 30, 0), tank('right', 'm1a1_abrams_hc', 'alpha', 27, 30, 0)], enemy: true },
+    // (the pack's own hulls are the ally avoidance's, which yields: no contact, and the rolling is not asked of it)
+    { label: 'a stopped friend of the pack 26 m ahead', other: () => tank('friend', 'm1a1_abrams_hc', 'bravo', 0, 26, Math.PI / 2), enemy: false, yields: true },
+  ];
+  for (const sc of scenarios) {
+    const bot = tank('rusher', 'm1a1_abrams_hc', 'bravo', 0, 0, 0);
+    bot.state.speed = 11;
+    const other = sc.other(), extra = sc.extra?.() ?? [], hulls = [other, ...extra];
+    let rams = 0, minGap = Infinity, moving = 0, ticks = 0;
+    const ctl = createAI(bot, { difficulty: 'normal', rng: mulberry32(5), doctrine: () => rush, deps: {
+      heightField: field, raycast: () => null, getEnemies: () => (sc.enemy ? hulls : []), getAllies: () => (sc.enemy ? [] : hulls),
+      getObstacles: () => [], spotting: { isSpotted: () => true }, getObjective: () => ({ x: 0, z: 220, radiusM: 12, mission: 'hunt' }),
+    } });
+    for (let i = 0; i < 7 / SIM_DT; i++) {
+      ctl.update(SIM_DT, 1 + i * SIM_DT);
+      updateTank(bot, field, SIM_DT, null);
+      for (const h of hulls) {
+        updateTank(h, field, SIM_DT, null);
+        minGap = Math.min(minGap, Math.hypot(bot.state.pos.x - h.state.pos.x, bot.state.pos.z - h.state.pos.z));
+        if (overlap(bot, h) && closing(bot, h) > 1) rams++;
+      }
+      ticks++; if (Math.abs(bot.state.speed) > 0.75) moving++;
+    }
+    ok(rams === 0, `${sc.label}: no contact while driving into it (${rams} ticks; closest ${minGap.toFixed(1)} m between centres)`);
+    if (!sc.yields) ok(moving / ticks > 0.8, `${sc.label}: the rusher keeps rolling, round it or on (moving ${(100 * moving / ticks).toFixed(0)} % of the time)`);
+  }
+}
+
 if (failures) { console.error(`ai.honestSenses.selftest: ${failures} failure(s)`); process.exit(1); }
 console.log('ai.honestSenses.selftest: the honest kite, the no-ram lane and the sortie act only on what the team spots');

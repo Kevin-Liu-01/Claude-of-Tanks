@@ -76,8 +76,8 @@ try {
 }
 
 // ------------------------------------------------------------------------------------- two short seeded battles ---
-const run = (mode, capS) => new Promise((resolve, reject) => {
-  const child = spawn(process.execPath, ['--max-old-space-size=4096', HARNESS, 'run', `--mode=${mode}`, '--seed=1', `--capS=${capS}`], { stdio: ['ignore', 'pipe', 'pipe'] });
+const run = (mode, capS, seed = 1) => new Promise((resolve, reject) => {
+  const child = spawn(process.execPath, ['--max-old-space-size=4096', HARNESS, 'run', `--mode=${mode}`, `--seed=${seed}`, `--capS=${capS}`], { stdio: ['ignore', 'pipe', 'pipe'] });
   let out = '', err = '';
   child.stdout.on('data', (d) => { out += d; });
   child.stderr.on('data', (d) => { err = (err + d).slice(-4000); });
@@ -86,7 +86,10 @@ const run = (mode, capS) => new Promise((resolve, reject) => {
     resolve(JSON.parse(out.trim().split('\n').pop()));
   });
 });
-const [horde, infected] = await Promise.all([run('endless_horde', 45), run('infected', 60)]);
+// round 3: one short battle of each objective mode too (the owner's 10-18 asks: Frontline's aggression, the flag and ball
+// chased hard), all at once
+const [horde, infected, front, flags, pitch] = await Promise.all([run('endless_horde', 45), run('infected', 60),
+  run('frontline_assault', 90, 4), run('capture_the_flag', 120, 5), run('turbo_ball', 120, 7)]);
 
 // Endless Horde, seed 1 (Verdant), the fight seat with its four allies, 45 s: the first wave
 const rules = matchRulesetFor('endless_horde');
@@ -123,6 +126,21 @@ assert.ok(hunters.flags.fallingBack <= 0.02 && hunters.flags.scooting <= 0.05, '
 assert.equal(infected.ramStats.hunterRams, 0, 'the infected never ram');
 assert.ok(infected.huntHonesty.unspottedShare <= 0.02, 'the infected hunt only what their side spots');
 
+// Frontline Assault, seed 4 (Desert), 90 s: the first sector is fought for — its defenders stand on their line out of the
+// attack's reach and sight at the start, and nobody on either side falls back far or scoots
+assert.equal(front.frontline.placedNear, 0, 'no defender is placed within 300 m of an attacker');
+assert.equal(front.frontline.placedSeen, 0, "no defender is placed in an attacker's terrain sight");
+assert.ok(front.frontline.sector1Kills > 0 || !(front.frontline.lines[0]?.atS < 45), `sector 1 is contested (kills ${front.frontline.sector1Kills}, taken at ${front.frontline.lines[0]?.atS ?? '—'} s)`);
+for (const side of ['alpha', 'bravo']) assert.equal(front[side].flags.scooting ?? 0, 0, `Frontline ${side}: no shoot-and-scoot`);
+// Capture the Flag, seed 5 (Winter), 120 s: the flags are run — a flag is lifted inside two minutes
+assert.ok(flags.ctf.pickups >= 1, `a flag is taken inside 120 s (${flags.ctf.pickups}; first at ${flags.ctf.firstPickupS} s)`);
+assert.ok((flags.alpha.flags.missionReleased ?? 0) <= 0.02 && (flags.bravo.flags.missionReleased ?? 0) <= 0.02, 'flag missions keep their hulls');
+// Turbo Ball, seed 7 (Steppe), 120 s: the ball is pursued — touched, struck at and contested by both sides
+assert.ok(pitch.ball.totalTouches >= 20, `the ball is played (${pitch.ball.totalTouches} touches in 120 s)`);
+assert.ok(pitch.ball.touches.alpha > 0 && pitch.ball.touches.bravo > 0, 'both sides touch it');
+assert.ok(pitch.ball.pursuit.strikerShare.alpha > 0.2 && pitch.ball.pursuit.strikerShare.bravo > 0.2, 'two strikers a side are on it');
+
 console.log(`mode-aggression-harness.selftest: ${spec.targets.length} targets parse; compare passes and fails as stated; Horde wave 1 `
   + `${wave1.enemies} on the law (first contact ${wave1.firstShotS} s, zombies ${zombies.engageDistM} m, advance ${zombies.move.advance}); `
-  + `infected ${infected.infected.huntDistToSurvivorM} m from the survivors`);
+  + `infected ${infected.infected.huntDistToSurvivorM} m from the survivors; Frontline sector 1 kills ${front.frontline.sector1Kills}; `
+  + `CTF first pickup ${flags.ctf.firstPickupS} s; Turbo Ball ${pitch.ball.totalTouches} touches`);

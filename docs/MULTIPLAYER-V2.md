@@ -2387,6 +2387,18 @@ exactly the side's country and its noted fills, so no plan record leaves the hos
 Receipts: `hordeWaveLaw.selftest` (a migrated host fields the same wave, total, queue, kind and resting identities),
 `teamNations.selftest` (`sideFlags`).
 
+**Round 3 (2026-10-20, the critic's E-R2-5, E-R2-6 and E-R2-8).** AUTO never draws a country an allied human drives,
+the majority's or not (a room of 2 American humans and 1 Russian drew an all-Russian enemy in 74 of 400 seeds; now 0, and
+an arranged minority clash is noted), pinned by `teamNations.selftest`. The WELCOME's ruleset string grew with the
+doctrine tables (the widest table 885 → 2,100 bytes of `MAX_RULESET_JSON_BYTES` = 4,096, the codec throws past it):
+`hostRuleset.selftest` now holds every mode × arrangement (sides presets, the extremes, TEAMS, an enemy country, the
+juggernaut roles, Mars settings) × campaign operation under the cap and prints the widest. The checkpoint's Horde state
+adds the straggler count (`waves.horde.stranded`, optional, read as 0 from an older host). **Release dependency:** the
+rooms Worker bundle imports `roomPolicy` → `roomBots` → `teamNations` / `nationIndex`, so a room run by the deployed
+Worker (cot-rooms, 2026-10-13 at 5797d9750) keeps the old `planStart` bots and drops `teamNations` (MONO) until a
+`node tools/release.mjs workers <sha> --only=rooms` release after this lands (docs/DEPLOYS.md); the Vercel deploy does
+not ship the Worker. No protocol or room version moves.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers

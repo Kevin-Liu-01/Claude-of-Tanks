@@ -45,7 +45,7 @@ import type {
 // reload, ammunition, equipment slots, gravity, roster split and the clock (sim/matchRuleset.ts).
 import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap, rulesetBotDifficulty,
-  rulesetBotDoctrine, rulesetRoutePush, rulesetVerdictSide,
+  rulesetBotDoctrine, rulesetObjectiveAxisM, rulesetRoutePush, rulesetVerdictSide,
   rulesetLoadout, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
@@ -1380,7 +1380,7 @@ export function setupBattle(
     anchors: matchPlacementAnchors({
       player: { x: sp.player.pos[0], z: sp.player.pos[2], yaw: sp.player.yaw },
       enemies: sp.enemies.map(point => ({ x: point.pos[0], z: point.pos[2], yaw: point.yaw })),
-    }), mode: game.gameMode,
+    }), mode: game.gameMode, objectiveAxisM: rulesetObjectiveAxisM(game.ruleset),
     // index-aligned sectors (null where a trench was dropped) so sector k never takes line k+1's centre
     assaultLines: world.heightField.assaultTrenchLines?.sectors ?? world.heightField.assaultTrenchLines?.lines ?? null,
   });

@@ -124,6 +124,18 @@ assert.ok(cases >= 250, `${cases} country x era x shape cases`);
   const same = pickNationalSides({ rows, alliedHumans: [us[0]], enemyHumans: [us[1]], alliedSeats: 6, enemySeats: 6, seed: 9, rivalBlocWeight: 3 });
   assert.notEqual(same.enemy, 'usa', 'both sides\' humans American: the bravo bots take another country');
   assert.ok(same.notes.some((n) => n.reason === 'humans'), 'and the receipt notes the humans keep their picks');
+  // round 3 (the critic's E-R2-5): allied humans in different countries (2x US, 1x RU) — AUTO never draws a country an
+  // allied human drives, whatever the seed (the RU player never faces an all-Russian enemy)
+  for (let seed = 1; seed <= 400; seed++) {
+    const mixed = pickNationalSides({ rows, alliedHumans: [us[0], us[1], ru], alliedSeats: 4, enemySeats: 7, seed, rivalBlocWeight: 3,
+      autoNeedsContemporaries: true, distinctPerSide: 6 });
+    assert.equal(mixed.allied, 'usa');
+    assert.ok(mixed.enemy !== 'usa' && mixed.enemy !== 'russia', `seed ${seed}: AUTO enemy ${mixed.enemy} is no allied human's country`);
+  }
+  // an arranged enemy that is an allied human's minority country is kept (the arrangement chose it) and noted
+  const minority = pickNationalSides({ rows, alliedHumans: [us[0], us[1], ru], alliedSeats: 4, enemySeats: 7, arrangedEnemy: 'russia', seed: 4, rivalBlocWeight: 3 });
+  assert.equal(minority.enemy, 'russia');
+  assert.ok(minority.notes.some((n) => n.side === 'bravo' && n.country === 'russia' && n.reason === 'humans'), 'the minority clash is noted');
   const budget = pickNationalSides({ rows, alliedHumans: [us[0]], alliedSeats: 13, enemySeats: 14, seed: 9, rivalBlocWeight: 3, distinctPerSide: 6 });
   assert.ok(new Set(budget.enemies.map((s) => s.id)).size <= 6 && new Set(budget.allies.map((s) => s.id)).size <= 6, 'the multiplayer profile budget');
 }

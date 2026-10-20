@@ -48,8 +48,10 @@ const tank=(id,team='alpha',bot=false)=>({id,team,bot,spec,state:{pos:new Vector
 }
 {
  const a=tank('s'),b=tank('i','bravo');createMatchModeController({mode:'infected',entities:[a,b],revive(){}});
- // owner 2026-10-17: sturdy survivors, fragile infected (25 % since gameplay-modes-228; zombieBalance pins the table)
- assert.equal(a.combat.maxHp,Math.round(spec.hp*1.5));assert.equal(b.combat.maxHp,Math.round(spec.hp*.25));
+ // owner 2026-10-17: sturdy survivors, fragile infected (the ruleset's scales; zombieBalance pins the table)
+ const infection=matchRulesetFor('infected').infection;
+ assert.ok(infection.survivorHpScale>1&&infection.infectedHpScale<0.5,'sturdy survivors, fragile infected');
+ assert.equal(a.combat.maxHp,Math.round(spec.hp*infection.survivorHpScale));assert.equal(b.combat.maxHp,Math.round(spec.hp*infection.infectedHpScale));
  assert.equal(matchRulesetFor('infected').enemies,5);assert.equal(matchRulesetFor('infected',null,{enemies:1}).enemies,3);
 }
 {

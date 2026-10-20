@@ -119,7 +119,7 @@ import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
   applyRulesetToCombat, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetBotDoctrine,
-  rulesetLoadout, rulesetRoutePush, type MatchRuleset,
+  rulesetLoadout, rulesetObjectiveAxisM, rulesetRoutePush, type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from './matchPlacement.ts';
@@ -934,7 +934,7 @@ export function createAuthoritativeMatch({
     // the map's own ground, as the solo step places on it (state.ts): the match's pre-placed craters (world/mapCraters.ts)
     // must not move a deployment slot (deploymentParity)
     heightField: baseHeightField, obstacles: staticObstacles, queryObstacles: worldCollision?.queryObstacles,
-    anchors: matchPlacementAnchors(layout.spawns), mode: normalizedGameMode,
+    anchors: matchPlacementAnchors(layout.spawns), mode: normalizedGameMode, objectiveAxisM: rulesetObjectiveAxisM(ruleset),
     // index-aligned carved sectors (null where the terrain dropped a line), exactly as the solo path passes them
     assaultLines: (trenchLines?.sectors ?? trenchLines?.lines ?? null) as never,
   });

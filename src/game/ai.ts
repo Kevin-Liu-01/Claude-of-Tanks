@@ -1222,6 +1222,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let shotsFromSpot = 0;
   const scootPoint = { x: 0, z: 0 };
   let scootUntilS = -1;
+  // the pocket escape drives the scoot leg too, but it is navigation (a hull boxed in), not a relocation after a shot:
+  // the probes read the two apart (debugInfo scooting / escaping)
+  let pocketEscapeUntilS = -1;
   let scootLine = 0;          // a casemate's scoot along its line of fire: -1 back, +1 up, 0 a free leg
   let lineScootUp = false;    // the casemate's next scoot goes up the line (it last backed off it)
   let relocations = 0;   // probe-visible shoot-and-scoot counter
@@ -3113,6 +3116,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     scootPoint.x = bx;
     scootPoint.z = bz;
     scootUntilS = nowS + 6;
+    pocketEscapeUntilS = scootUntilS;
     scootLine = 0;
     routeTimer = 0;
     return true;
@@ -3503,7 +3507,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function updateEngagementSettle(timeS: number): void {
     const reload = entity.combat && entity.combat.reload;
     if (conserving || emptyRack) return; // round 62: the silence is a held round or an empty rack, not a bad lay
-    if (doctrineOf().rush) return;       // a rusher fires on the move: it never halts for a settled shot
+    // a rusher fires on the move: it never halts for a settled shot; nor does a side whose doctrine fires on the move
+    if (doctrineOf().rush || !doctrineOf().settleShots) return;
     if (!triggerStarved(timeS) || timeS < settleUntilS ||
         timeS < settleCdUntilS || !reload || reload.t > 0.5) return;
     settleStreak = timeS - settleUntilS < 1.5 ? settleStreak + 1 : 0;
@@ -5999,8 +6004,24 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       return false;
     }
     if (!offObjective && driveObjectiveShift(input)) return true;
+    // the holder's jockey (doctrine holdJockeyM; round 3): on its objective with a target in sight it circles its hold
+    // point at that radius, the turret laid, a moving firing position rather than a parked one
+    const jockey = doctrine.holdJockeyM;
+    if (jockey > 0 && !offObjective && target && losClear && enemyAlive(target) && isVisibleToTeam(target)) {
+      const st = entity.state, d = Math.hypot(st.pos.x - hold.x, st.pos.z - hold.z) || 1;
+      circleAround(input, hold.x, hold.z, d, jockey, doctrine.missionSpeed);
+      return true;
+    }
     drivePatrol(input);
     return true;
+  }
+  /** A circuit round (cx, cz) at `ring` (the holder's jockey): toward the ring, then along its tangent. */
+  function circleAround(input: AiInput, cx: number, cz: number, dist: number, ring: number, throttle: number): void {
+    const st = entity.state;
+    const rx = (st.pos.x - cx) / dist, rz = (st.pos.z - cz) / dist;
+    const tx = -rz * orbitSide, tz = rx * orbitSide;
+    driveToXZ(input, cx + rx * ring + tx * ring, cz + rz * ring + tz * ring, throttle);
+    input.brake = false;
   }
 
   /** Drive the scoot leg under way; where it arrives is the new firing spot. */
@@ -6188,20 +6209,44 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   /**
    * The rush's no-ram rule (RUSH_DRIVE.noRamM): a rushing hunter never drives its hull into an enemy hull, whichever
-   * driver set the throttle (the orbit, the hunt route, the engagement's press). An enemy hull inside the lane ahead,
-   * out to noRamM plus the stopping distance, brakes the hull and turns it off the line; the orbit then takes it round.
+   * driver set the throttle (the orbit, the hunt route, the engagement's press; its own pack is the ally avoidance's).
+   * Every seen enemy hull whose footprint reaches the hull's path ahead (its centre within the two half-widths
+   * plus laneMarginM across the line, now or `lookaheadS` on along its own motion) is measured by the gap left before the
+   * two footprints touch. Inside the stopping distance plus `brakeGapM` the hull stops (it backs off inside `backOffGapM`);
+   * inside the doctrine's buffer beyond that it keeps rolling at `swerveThrottle` and turns off the line, so a hunter
+   * swerves round a hull rather than braking to a stand in the fight (round 3, the critic's E-R2-2: braking alone still
+   * met hulls at 2-3 m/s, and stood the zombies still).
    */
   let ramHoldOffs = 0;
+  let ramGap = Infinity, ramCross = 0;
+  function laneGap(other: AiEntity, fx: number, fz: number, buffer: number, stopM: number): void {
+    const st = entity.state, od = other.spec?.dims;
+    const otherHalf = Math.hypot((od?.hullLengthM || od?.lengthM || 6) * 0.5, (od?.widthM || 3) * 0.5);
+    const halfLane = (spec.dims.widthM || 3) * 0.5 + otherHalf + RUSH_DRIVE.laneMarginM;
+    const os = other.state.speed || 0, oyaw = other.state.yaw || 0;
+    for (let k = 0; k < 2; k++) {
+      const lead = k === 0 ? 0 : RUSH_DRIVE.lookaheadS;
+      const rx = other.state.pos.x + Math.sin(oyaw) * os * lead - st.pos.x;
+      const rz = other.state.pos.z + Math.cos(oyaw) * os * lead - st.pos.z;
+      const along = rx * fx + rz * fz, cross = fz * rx - fx * rz;
+      if (along <= 0 || Math.abs(cross) > halfLane) continue;
+      const gap = along - ownHalfLengthM() - otherHalf;
+      if (gap > buffer + stopM || gap >= ramGap) continue;
+      ramGap = gap; ramCross = cross;
+    }
+  }
   function holdOffEnemyHulls(input: AiInput): void {
     const doctrine = doctrineOf();
     if (!(doctrine.rush || doctrine.noRamLane) || !entity.state.grounded) return;
     // the Turbo Ball is played for: a hull contesting it is no ram to avoid
     const ball = doctrine.noRamLane ? getObjective?.()?.ball ?? null : null;
     const st = entity.state, speed = st.speed;
-    if (speed <= 1 && input.throttle <= 0) return;
-    const fx = Math.sin(st.yaw), fz = Math.cos(st.yaw);
-    const reach = ownHalfLengthM() + RUSH_DRIVE.noRamM + Math.max(0, speed) ** 2 / (2 * SOLID_STOP_MPS2);
-    const lane = (spec.dims.widthM || 3) + RUSH_DRIVE.laneMarginM;
+    if (speed <= 0.5 && input.throttle <= 0) return;
+    // moving backwards the lane is behind the hull
+    const sign = speed < -0.5 || (speed <= 0.5 && input.throttle < 0) ? -1 : 1;
+    const fx = Math.sin(st.yaw) * sign, fz = Math.cos(st.yaw) * sign;
+    const stopM = Math.abs(speed) ** 2 / (2 * SOLID_STOP_MPS2);
+    ramGap = Infinity; ramCross = 0;
     const list = deps.getEnemies();
     for (let i = 0; i < list.length; i++) {
       const other = list[i];
@@ -6210,21 +6255,24 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       // have and gave the bush away; inside the spotting's 50 m proximity floor every hull is seen)
       if (!isVisibleToTeam(other)) continue;
       if (ball && Math.hypot(other.state.pos.x - ball.x, other.state.pos.z - ball.z) < BALL_SHOT.contestM) continue;
-      // where the other hull is now, and where its own motion puts it RUSH_DRIVE.lookaheadS on (a hull crossing the lane)
-      const os = other.state.speed || 0, oyaw = other.state.yaw || 0;
-      let rx = other.state.pos.x - st.pos.x, rz = other.state.pos.z - st.pos.z;
-      let along = rx * fx + rz * fz, cross = fz * rx - fx * rz;
-      if (along <= 0 || along > reach || Math.abs(cross) > lane) {
-        rx += Math.sin(oyaw) * os * RUSH_DRIVE.lookaheadS; rz += Math.cos(oyaw) * os * RUSH_DRIVE.lookaheadS;
-        along = rx * fx + rz * fz; cross = fz * rx - fx * rz;
+      laneGap(other, fx, fz, RUSH_DRIVE.noRamM, stopM);
+    }
+    if (!Number.isFinite(ramGap)) return;
+    ramHoldOffs++;
+    input.steer = (Math.sign(-ramCross) || orbitSide) * sign;
+    if (ramGap <= stopM + RUSH_DRIVE.brakeGapM) {
+      // slow already: back off the hull (turning off its line) rather than stand at it
+      if (Math.abs(speed) <= RUSH_DRIVE.backOffMps) {
+        input.throttle = -sign * RUSH_DRIVE.backOffThrottle;
+        input.brake = false;
+      } else {
+        input.throttle = 0;
+        input.brake = Math.abs(speed) > 0.5;
       }
-      if (along <= 0 || along > reach || Math.abs(cross) > lane) continue;
-      input.throttle = Math.min(input.throttle, 0);
-      input.brake = speed > 1;
-      input.steer = Math.sign(-cross) || orbitSide;
-      ramHoldOffs++;
       return;
     }
+    input.throttle = sign > 0 ? Math.min(input.throttle, RUSH_DRIVE.swerveThrottle) : Math.max(input.throttle, -RUSH_DRIVE.swerveThrottle);
+    input.brake = false;
   }
 
   function finishStep(input: AiInput, dt: number, timeS: number): void {
@@ -6625,7 +6673,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       role, relocations, shotsFromSpot, terrainBlocked, terrainAvoiding: nowS < terrainAvoidUntilS,
       // bot philosophy r1: live hit reaction, count, and the unseen gun the hull is turning onto
       reaction, reactions, suspectId: suspect && nowS < suspectUntilS ? suspect.id : null,
-      scooting: nowS < scootUntilS,
+      scooting: nowS < scootUntilS && nowS >= pocketEscapeUntilS,
+      escaping: nowS < scootUntilS && nowS < pocketEscapeUntilS,
       kiting: nowS < kiteUntilS,
       settling: nowS < settleUntilS,
       colliderStops,

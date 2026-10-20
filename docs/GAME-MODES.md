@@ -589,7 +589,9 @@ MONO-NATION seats:
    own contemporaries (or its humans' vehicles); a far era comes last. Every fill, repeat and clash is a note on the plan
    (`notes`), which the receipts and the census read.
 4. No country sits on both sides. When a room's two sides' humans share a country, bravo's bots take another and the plan
-   notes it.
+   notes it. AUTO never draws a country any allied human drives, the majority's or not (round 3, the critic's E-R2-5: a
+   room of two American humans and one Russian drew an all-Russian enemy in 74 of 400 seeds); an arranged enemy that is
+   an allied human's minority country is kept, and noted (`reason: 'humans'`).
 5. A room seats at most six distinct bot vehicles a side (`mpDistinctBotSpecsPerSide`: each is a profile every seat
    loads). Bot ids stay `bot-<team>-<n>` / `mode-<team>-<n>`, never a vehicle id; duplicate picks are valid.
 6. A vehicle fights for its operator (`countryOfVehicle`, `sim/countries.ts`): the Leopard 2A4M CAN, whose spec names its

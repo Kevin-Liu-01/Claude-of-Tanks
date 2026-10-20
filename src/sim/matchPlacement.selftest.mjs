@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createMatchPlacement, matchPlacementAnchors, placementTerrainSafe } from './matchPlacement.ts';
 import { createMatchModeController } from './matchModes.ts';
-import { hordeWaveHealthScale, matchRulesetFor } from './matchRuleset.ts';
+import { hordeWaveHealthScale, matchRulesetFor, rulesetObjectiveAxisM } from './matchRuleset.ts';
 import { createObjectiveAccess } from './matchPlacementAccess.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
 import { MAP_IDS } from '../world/maps/index.ts';
@@ -263,8 +263,14 @@ for (const mapId of MAP_IDS) {
       getHeightAt(x, z) { heightReads++; return field.getHeightAt(x, z); },
       getNormalAt(x, z) { normalReads++; return field.getNormalAt(x, z); },
       getWaterMaskAt: (x, z) => field.getWaterMaskAt(x, z), getGroundType: (x, z) => field.getGroundType(x, z) };
-    const layout = createMatchPlacement({ ...worldOptions, mode, heightField: measuredField,
+    // the mode's own objective span (gameplay-modes-228 round 3: the CTF flag bases and the Turbo Ball goals stand on the
+    // axis, reserved by the placement; the critic's E-R2-1 found bare axis points in water and inside houses)
+    const objectiveAxisM = rulesetObjectiveAxisM(matchRulesetFor(mode));
+    const layout = createMatchPlacement({ ...worldOptions, mode, heightField: measuredField, objectiveAxisM,
       queryObstacles(...args) { obstacleQueries++; return world.queryObstacles(...args); } });
+    if (mode === 'capture_the_flag' || mode === 'turbo_ball') {
+      assert.ok(objectiveAxisM == null || layout.objectives, `${mapId}/${mode}: the axis objectives are reserved`);
+    }
     // Fixed operation ceilings, not noisy wall-time thresholds. These include
     // the reused original bot grid and private objective connectivity setup.
     // (2026-10-03: the grid reads the side slope across each edge at its three interior samples, two reads each:
@@ -272,9 +278,21 @@ for (const mapId of MAP_IDS) {
     assert.ok(heightReads <= 98304 && normalReads <= 32768 && obstacleQueries <= 6000,
       `${mapId}/${mode}: bounded construction reads ${heightReads}/${normalReads}/${obstacleQueries}`);
     construction.push({ mapId, mode, heightReads, normalReads, obstacleQueries });
+    // the points the controller plays on: the axis objectives when the ruleset sets a span, else the bases
+    const bases = Object.values(layout.objectives ?? layout.centers);
     const objectives = mode === 'zone_control' ? layout.zones.map(p => [p, 30, 7])
-      : mode === 'capture_the_flag' ? Object.values(layout.centers).map(p => [p, 12, 5])
-        : mode === 'turbo_ball' ? [...Object.values(layout.centers).map(p => [p, 18, 5]), [layout.middle, 12, 3]] : [];
+      : mode === 'capture_the_flag' ? bases.map(p => [p, 12, 5])
+        : mode === 'turbo_ball' ? [...bases.map(p => [p, 18, 5]), [layout.middle, 12, 3]] : [];
+    if (layout.objectives) {
+      // the controller reads exactly these points (its flag bases / goals), not a bare axis point
+      const probe = createMatchModeController({ mode, entities: [entity('axis-a', 'alpha', 0, 0), entity('axis-b', 'bravo', 0, 10)],
+        placement: { ...layout, respawn: spawn => spawn }, terrainHeight: (x, z) => field.getHeightAt(x, z), revive() {},
+        ruleset: matchRulesetFor(mode) });
+      const used = mode === 'capture_the_flag' ? probe.state.flags.map(f => ({ team: f.team, x: f.baseX, z: f.baseZ }))
+        : probe.state.goals.map(g => ({ team: g.team, x: g.x, z: g.z }));
+      for (const point of used) assert.deepEqual({ x: point.x, z: point.z }, { x: layout.objectives[point.team].x, z: layout.objectives[point.team].z },
+        `${mapId}/${mode}/${point.team}: the controller's objective is the reserved one`);
+    }
     for (const [point, radius, relief] of objectives) {
       assertFootprint(world, point, radius, relief, .94, `${mapId}/${mode}`);
       if (mode === 'turbo_ball') assert.ok(Math.max(Math.abs(point.x), Math.abs(point.z)) + radius <= MATCH_MODE_ARENA_HALF_EXTENT_M,

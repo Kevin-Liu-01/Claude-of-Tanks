@@ -189,8 +189,16 @@ export function pickNationalSides(input: NationalSidesInput): NationalSidesPlan 
     else if (theirs) notes.push({ side: 'bravo', country: theirs, count: enemyHumans.length, reason: 'humans' });
   }
   if (!enemy) {
+    // AUTO never draws a country an allied human drives (round 3, the critic's E-R2-5: alpha humans 2x US and 1x RU drew
+    // an all-Russian enemy in 74 of 400 rooms), nor the allied country's planned fills
     const exclude = new Set<CountryId>(allied ? [allied, ...plannedFills(allied, alliedSeats, new Set())] : []);
+    for (const human of humans) if (human.country) exclude.add(human.country);
     enemy = autoCountry(exclude, enemySeats, allied);
+  }
+  // an enemy country the arrangement or the enemy humans fixed may still be an allied human's own (a minority pick):
+  // the humans keep their picks and the receipt says so
+  if (enemy && enemy !== allied && humans.some((h) => h.country === enemy)) {
+    notes.push({ side: 'bravo', country: enemy, count: humans.filter((h) => h.country === enemy).length, reason: 'humans' });
   }
 
   // 3. the fills

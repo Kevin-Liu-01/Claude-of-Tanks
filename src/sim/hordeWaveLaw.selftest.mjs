@@ -7,7 +7,7 @@
 // queued, remaining = alive + queued, the special); the same seed replays it; a migrated host takes the wave up.
 import assert from 'node:assert/strict';
 import { createMatchModeController } from './matchModes.ts';
-import { hordeMaxAlive, hordeTrickleS, hordeWaveTotal, matchRulesetFor } from './matchRuleset.ts';
+import { hordeMaxAlive, hordeTrickleS, hordeWaveSpeedScale, hordeWaveTotal, matchRulesetFor } from './matchRuleset.ts';
 
 const horde = matchRulesetFor('endless_horde');
 const RIDGE_R = 200;
@@ -136,6 +136,50 @@ for (const arrival of a.arrivals) {
   assert.ok(d.events.filter((e) => e.type === 'mode_horde_recycled').every((e) => e.payload.id !== fighter.id), 'the one in the fight stays');
   assert.equal(d.mode.state.horde.remaining, 6, 'the wave still owes all six (queued again, never lost)');
   assert.ok(d.arrivals.length > 6, 'the benched re-arrive on the ring');
+}
+// the approach stays hidden too (sightLeadM; round 3, the critic's E-R2-3: with the lead check disabled every receipt
+// passed): the humans stand on a plain ringed by a 30 m-deep moat 280-470 m out. An arrival anywhere in the moat is out
+// of sight, but its first sightLeadM toward the humans (that stretch times the wave's speed scale) must be too — so every
+// arrival stands at least that far beyond the moat's inner rim, the plain's edge in sight of every human
+{
+  const human = { x: 0, z: -150 };
+  const moat = (x, z) => { const r = Math.hypot(x - human.x, z - human.z); return r > 280 && r < 470 ? -30 : 0; };
+  for (const [seed, waves] of [[41, 1], [42, 4]]) {
+    const m = run(seed, moat);
+    for (let w = 1; w < waves; w++) {
+      for (let guard = 0; guard < 400 && m.mode.state.horde.wave === w; guard++) {
+        for (const z of live(m.pool)) z.combat.destroyed = true;
+        m.clock += 0.5; m.mode.step(1 / 60, m.clock);
+      }
+    }
+    const wave = m.mode.state.horde.wave;
+    const lead = horde.horde.sightLeadM * hordeWaveSpeedScale(horde.horde, wave);
+    const arrived = m.arrivals.filter((r) => r.wave === wave);
+    assert.ok(arrived.length > 0, `wave ${wave}: arrivals in the moat`);
+    for (const arrival of arrived) {
+      const r = Math.hypot(arrival.x - human.x, arrival.z - human.z);
+      assert.ok(r - lead >= 280 - 1, `wave ${wave} ${arrival.id}: ${r.toFixed(0)} m out, its ${lead.toFixed(0)} m approach stays in the moat`);
+    }
+  }
+}
+// a benched straggler re-arrives on the nearer strandedRingM (round 3, the critic's M1: re-arrived 320-440 m out, a lone
+// zombie never found the humans again), still out of reach and sight
+{
+  // a tighter bowl: a 40 m ridge ring 132-148 m round the humans hides the whole nearer ring
+  const tight = (x, z) => { const r = Math.hypot(x, z + 150); return r > 132 && r < 148 ? 40 : 0; };
+  const g = run(43, tight);
+  const opening = live(g.pool);
+  const before = g.arrivals.length;
+  for (let i = 0; i < 2 * (horde.horde.strandedS + 2); i++) { g.clock += 0.5; g.mode.step(1 / 60, g.clock); }
+  const back = g.arrivals.slice(before);
+  assert.ok(back.length > 0 && opening.length === 6, 'the stranded opening is benched and re-arrives');
+  const [lo, hi] = horde.horde.strandedRingM;
+  const cx = g.humans.reduce((s, h) => s + h.state.pos.x, 0) / g.humans.length, cz = g.humans.reduce((s, h) => s + h.state.pos.z, 0) / g.humans.length;
+  for (const arrival of back) {
+    const r = Math.hypot(arrival.x - cx, arrival.z - cz);
+    assert.ok(r >= lo * 0.85 - 1 && r <= hi + lo * 0.15 + 1, `${arrival.id}: re-arrived ${r.toFixed(0)} m out (the nearer ring ${lo}-${hi})`);
+    for (const human of g.humans) assert.ok(!sees(human, arrival.x, arrival.z, tight), `${arrival.id}: out of sight`);
+  }
 }
 // the same seed replays the same arrivals
 {

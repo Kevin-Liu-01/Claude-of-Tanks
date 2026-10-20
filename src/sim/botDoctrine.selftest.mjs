@@ -10,7 +10,8 @@ import { CLASSIC_BOT_DOCTRINE, HUNT_RULES, RUSH_DRIVE, STRIKER_JUMP, matchRulese
 assert.deepEqual({ ...CLASSIC_BOT_DOCTRINE }, {
   openingRead: true, holdBandScale: 1, engageRangeScale: 1, coverScale: 1, fallbackScale: 1, hitReactions: 'all',
   scoutKite: true, scoot: true, spearheadGuard: true, conserveRounds: true, stalemateSilentS: 12, missionSpeed: 0.85,
-  missionBreakOffHp: 0.25, missionOwnsRoute: false, missionLocalReachM: 0, zoneSortieM: 0, rush: false, noRamLane: false, offensiveJump: false, searchRouting: 'live',
+  missionBreakOffHp: 0.25, missionOwnsRoute: false, missionLocalReachM: 0, zoneSortieM: 0, holdJockeyM: 0, settleShots: true,
+  rush: false, noRamLane: false, offensiveJump: false, searchRouting: 'live',
   routeRefreshS: null, routeMoveM: null, claimRangeM: null,
 }, 'CLASSIC is the controller as it stood on integ/228: every multiplier 1, every gate as it was, each builder\'s own route push');
 assert.ok(Object.isFrozen(CLASSIC_BOT_DOCTRINE));
@@ -91,7 +92,8 @@ assert.equal(CLASSIC_BOT_DOCTRINE.missionOwnsRoute, false, 'classic: the search 
 assert.equal(rulesetBotDoctrine(matchRulesetFor('turbo_ball'), 'alpha').offensiveJump, true, 'strikers jump at the ball');
 // the drive and hunt tables the controller and the mode controller read
 assert.deepEqual({ ...RUSH_DRIVE }, { directM: 70, orbitInM: 35, orbitMinM: 25, orbitMaxM: 35, noRamM: 12, tangentLeadM: 18, closingLeadM: 6,
-  laneMarginM: 2, lookaheadS: 0.6 });
+  laneMarginM: 2, lookaheadS: 0.6, brakeGapM: 3, backOffMps: 2, backOffThrottle: 0.5, swerveThrottle: 0.45 });
+assert.ok(RUSH_DRIVE.swerveThrottle > 0 && RUSH_DRIVE.backOffThrottle > 0, 'the no-ram rule swerves on with way on, and backs off rather than stands');
 assert.ok(RUSH_DRIVE.orbitMinM > RUSH_DRIVE.noRamM, 'the orbit always stands off the hull: a rusher steers off a ram');
 assert.equal(HUNT_RULES.lastSeenMaxS, 45); assert.equal(HUNT_RULES.assignEveryS, 1);
 assert.ok(STRIKER_JUMP.rangeM === 25 && STRIKER_JUMP.coneRad > 0);
