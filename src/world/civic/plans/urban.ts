@@ -241,8 +241,9 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       ],
     },
     furniture: [
-      // the flower roundel's benches on the diagonals, facing in
-      ...[[-75.16, 24.21], [-67.24, 24.21], [-75.16, 16.29], [-67.24, 16.29]].map(([x, z]) => ({ kind: 'bench', x, z, yawDeg: facing(x, z, MID_X, NW_Z) })),
+      // the flower roundel's benches on the diagonals, facing in (228 r9, the blind critics: their ends over the roundel's
+      // gravel ring) 6.2 m out from its middle
+      ...[[-75.58, 24.63], [-66.82, 24.63], [-75.58, 15.87], [-66.82, 15.87]].map(([x, z]) => ({ kind: 'bench', x, z, yawDeg: facing(x, z, MID_X, NW_Z) })),
       // the Ehrenhain's benches facing its axis
       { kind: 'bench', x: -67.0, z: -16.6, yawDeg: 180 }, { kind: 'bench', x: -76.0, z: -16.6, yawDeg: 180 },
       { kind: 'bench', x: -67.0, z: -23.0, yawDeg: 0 }, { kind: 'bench', x: -76.0, z: -23.0, yawDeg: 0 },
@@ -305,8 +306,12 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       // (228 r7, the blind critics: a lamp head inside the north row's canopy; the column's pair "pressed against the plinth")
       // the north quarter's corner lamp left out; the column's pair 5.5 m out on the same bearings
       // (228 r8: the greens' lamps stood on the railing's line, at its piers) a metre and a half into the lawns
-      [-61.1, 22.45], [-81.6, 18.05], [-60.8, -25.05], [-81.6, -22.45], [-53.6, 44.0],
-      [-41.0, 9.9], [-27.5, -11.0], [-16.5, 26.0], [-64.5, 11.0], [-67.95, -20.55],
+      // (228 r9, the blind critics' physical major: lamp heads inside the oaks' crowns, posts against trunks, the column's
+      // plinth and the gate piers) every lamp 5.5 m and more from every trunk, 2.5 m from the piers, the column's lamp 7 m
+      // out: the north green's east one, a second in its south-east lawn, the Ehrenhof's behind the column; the greens'
+      // west-edge pair and the column's west one out, three in the market (its west aisle and its east edge) instead
+      [-61.1, 22.45], [-61.5, 15.0], [-61.0, -26.6], [-53.6, 44.0],
+      [-41.0, 9.9], [-27.5, -11.0], [-16.5, 26.0], [-34.0, -21.0], [-14.0, -24.0], [-12.0, -17.5],
       // (228 r7) the twelfth round the crossing by the south market's planters, out of the extraction's disc
       [-31.5, -13.8],
     ].map(([x, z]) => ({ kind: 'lamp', x, z, yawDeg: 0 })),
