@@ -1419,7 +1419,8 @@ export function* createCombatOpeningWarmSteps(
   markEffectDetail('start');
   if (live) {
     effectDetail.live = true;
-    try { yield* context.forwardProgramWarm.initializeSteps(fx.group); }
+    // (round 2, eng D4) the idle pools too: a shock ring, a muzzle ring or a smoke volume sits hidden until it fires
+    try { yield* context.forwardProgramWarm.initializeSteps(fx.group, null, { includeHidden: true }); }
     catch (error) { console.warn('[warm] live fx programs failed (continuing):', error); }
     markEffectDetail('livePrograms');
   } else {
@@ -1510,7 +1511,7 @@ function* warmCombatDestructionEffectSteps(
   const startedAt = performance.now();
   if (warmsBetweenLiveFrames(context, execution)) {
     let failure: RuntimeValue = null;
-    try { yield* context.forwardProgramWarm.initializeSteps(fx.group); }
+    try { yield* context.forwardProgramWarm.initializeSteps(fx.group, null, { includeHidden: true }); }
     catch (cause) { failure = cause; console.warn('[warm] live destruction programs failed (continuing):', cause); }
     if (!failure) context.setDestructionWarmed(true);
     return { cached: false, live: true, batches: 0, totalMs: Math.round(performance.now() - startedAt),

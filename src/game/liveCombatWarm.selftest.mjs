@@ -20,7 +20,7 @@ function stubContext({ phase = 'battle' } = {}) {
   live.name = 'live-dust';
   group.add(live);
   scene.add(group);
-  const record = { spawns: 0, resets: 0, initialized: [], fits: [] };
+  const record = { spawns: 0, resets: 0, initialized: [], initOptions: [], fits: [] };
   const spawn = () => { record.spawns++; };
   const fx = {
     group, warmTextures() {}, muzzleFlash: spawn, impact: spawn, dust: spawn, exhaust: spawn, warmStructures: spawn,
@@ -36,7 +36,7 @@ function stubContext({ phase = 'battle' } = {}) {
     world: () => null, warmRender() {}, anisotropy: 1,
     deploymentShadowWarm: { *warmDepthProgramSteps() { yield; } },
     forwardProgramWarm: {
-      *initializeSteps(root) { record.initialized.push(root.name); yield; yield; },
+      *initializeSteps(root, _stats, options) { record.initialized.push(root.name); record.initOptions.push(options ?? null); yield; yield; },
       compile() {}, *linkerBreathingSlices() {},
     },
     lighting: { updateFrustums() { record.fits.push(camera.fov); } },
@@ -69,6 +69,8 @@ function drive(steps, atYield) {
   assert.equal(record.spawns, 0, 'no warm volley spawns in a live battle');
   assert.equal(record.resets, 0);
   assert.deepEqual(record.initialized, ['fx', 'fx'], 'the opening and destruction programs compile on the effect root in place');
+  // (round 2, eng D4) the idle pools' programs too: they sit hidden until they fire, and the warm marks them warmed
+  assert.ok(record.initOptions.every((options) => options?.includeHidden === true), 'the live warm compiles the hidden idle pools as well');
   assert.equal(context.isOpeningReady(), true);
   assert.equal(context.isDestructionWarmed(), true);
   assert.equal(globalThis.__COMBAT_RARE_WARM_STEP, null, 'the live step label clears when the rare warm ends');
