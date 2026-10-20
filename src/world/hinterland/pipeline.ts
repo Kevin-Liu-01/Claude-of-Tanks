@@ -13,7 +13,7 @@ import {
 import type { HinterlandSpec } from './spec.ts';
 
 /** The ground the pipeline continues: the height field, with its road exits past the edge. */
-export interface HinterlandPipelineGround extends HinterlandGround {
+interface HinterlandPipelineGround extends HinterlandGround {
   _roadExitLines?(): readonly { xs: ArrayLike<number>; zs: ArrayLike<number>; length: number }[];
 }
 
@@ -29,12 +29,8 @@ export interface HinterlandBuild {
 }
 
 /** The relief terms the field adds (term 4, the landforms; term 5, the far forms). */
-export type HinterlandTermFactory = (spec: HinterlandSpec, seed: number) => HinterlandReliefTerm | null;
+type HinterlandTermFactory = (spec: HinterlandSpec, seed: number) => HinterlandReliefTerm | null;
 const TERM_FACTORIES: HinterlandTermFactory[] = [createLandformRelief, createFarRelief];
-/** Register a relief term's factory (far.ts registers the far forms). */
-export function registerHinterlandTerm(factory: HinterlandTermFactory): void {
-  if (!TERM_FACTORIES.includes(factory)) TERM_FACTORIES.push(factory);
-}
 
 /** The planning grid: 40 m out to 3 km (the sites' footprints, the roads' routes, the water), 320 m to 15 km. */
 const PLANNING_LEVELS: readonly HinterlandLevelSpec[] = Object.freeze([{ texelM: 40, halfM: 3080 }, { texelM: 320, halfM: 15360 }]);

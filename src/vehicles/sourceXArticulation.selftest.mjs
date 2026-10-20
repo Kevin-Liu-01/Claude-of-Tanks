@@ -59,8 +59,8 @@ for (const id of SOURCE_X_IDS) for (const quality of ['high', 'low']) {
     assertFrame(tank, spec, turret, gun);
     const recoil = root.getObjectByName('rig_recoil');
     const mount = gun?.getObjectByName('gunMount');
-    assert.equal(gun?.parent, turret, 'gun pitches under turret');
-    assert.equal(recoil?.parent, gun, 'barrel recoils under gun');
+    assert.ok(gun?.parent === turret, 'gun pitches under turret');
+    assert.ok(recoil?.parent === gun, 'barrel recoils under gun');
     assert.ok(mount?.isMesh && mount.geometry.attributes.position.count > 0,
       'real visible pitching gunMount mesh required');
     const geometry = mount.geometry;
@@ -72,7 +72,7 @@ for (const id of SOURCE_X_IDS) for (const quality of ['high', 'low']) {
       const c = new THREE.Box3().setFromObject(turret.getObjectByName('turret'), true);
       assert.ok(gap(a, b) <= .10, `barrel attachment gap ${gap(a, b)} at ${pitch}deg`);
       assert.ok(gap(a, c) <= .125, `turret attachment gap ${gap(a, c)} at ${pitch}deg`);
-      assert.equal(mount.geometry, geometry, 'pitch does not reconstruct geometry');
+      assert.ok(mount.geometry === geometry, 'pitch does not reconstruct geometry');
     }
   } catch (error) { failures.push(`${id}/${quality}: ${error.message}`); }
   finally { tank.dispose(); }

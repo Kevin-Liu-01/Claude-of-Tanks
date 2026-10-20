@@ -30,6 +30,80 @@ export function pacingSeed(mapIds, mapId, sample) {
   return PACING_SEED_BASE + index * 1000 + sample;
 }
 
+// The core run in shards (test-speed R9a, 2026-10-16): the 132 matches used to play on four worker threads inside one
+// receipt, four threads counted as one slot by every pool, for 318 s on a quiet gate. Each of the eight
+// server/battlePacingShard<n>.selftest.mjs receipts now plays one share of the maps on one thread and writes its
+// records into the run's directory; server/battlePacing.selftest.mjs merges the eight (every map's samples exactly once)
+// and judges the 132 by the same gate. Every map and seed still plays in every run.
+/** The core run's shard count: server/battlePacingShard1.selftest.mjs ... server/battlePacingShard8.selftest.mjs. */
+export const PACING_SHARDS = 8;
+
+/** Shard `shard` (1-based) of `count`: the maps whose index in `mapIds` is `shard - 1` modulo `count`. */
+export function pacingShardMaps(mapIds, shard, count = PACING_SHARDS) {
+  if (!Number.isInteger(shard) || shard < 1 || shard > count) throw new Error(`battlePacing: no shard ${shard} of ${count}`);
+  return mapIds.filter((_id, index) => index % count === shard - 1);
+}
+
+/** One map's log line from its records, in sample order (the receipt prints one per map, in MAP_IDS order). */
+export function pacingMapLine(mapId, records, samples) {
+  const own = records.filter((record) => record.mapId === mapId).sort((a, b) => a.sample - b.sample);
+  return `${mapId}: ${own.map((record) => record.timeS.toFixed(0)).join('/')}s `
+    + `timeouts=${own.filter((record) => record.result === 'time_limit').length}/${samples}`;
+}
+
+/**
+ * The merged match records of shard reports, checked to hold every map's samples exactly once: tools/pacing-tail.mjs
+ * merges the tail's shards with it, and server/battlePacing.selftest.mjs the core run's.
+ */
+export function mergeShardReports(reports, mapIds) {
+  const samples = new Set(reports.map((report) => report.samples));
+  if (samples.size !== 1) throw new Error(`pacing-tail: shards played different sample counts (${[...samples].join(', ')})`);
+  const [perMap] = samples;
+  const seen = new Map();
+  for (const report of reports) {
+    for (const match of report.matches) {
+      if (seen.has(match.seed)) throw new Error(`pacing-tail: seed ${match.seed} (${match.mapId}) is in two shards`);
+      seen.set(match.seed, match);
+    }
+  }
+  const missing = mapIds.filter((mapId) => ![...seen.values()].some((match) => match.mapId === mapId));
+  if (missing.length) throw new Error(`pacing-tail: no shard played ${missing.join(', ')}`);
+  if (seen.size !== mapIds.length * perMap) {
+    throw new Error(`pacing-tail: ${seen.size} matches merged, ${mapIds.length * perMap} expected`);
+  }
+  return [...seen.values()];
+}
+
+/** Records in the one-thread run's order: MAP_IDS order, then sample order. */
+export function pacingRunOrder(mapIds, records) {
+  return [...records].sort((a, b) => (mapIds.indexOf(a.mapId) - mapIds.indexOf(b.mapId)) || (a.sample - b.sample));
+}
+
+/**
+ * Why a shard's report cannot stand for that shard in this run, or null when it can: it must name the shard, the shard
+ * count, the sample count and the tree, and hold exactly its maps' matches at their seeds, each with a finite time and
+ * a result. mergeShardReports then holds every map's samples exactly once across the shards.
+ */
+export function pacingShardReportProblem(report, { mapIds, shard, count = PACING_SHARDS, samples, root }) {
+  if (!report || typeof report !== 'object') return 'no report';
+  if (report.mode !== 'core') return `mode ${report.mode}, not core`;
+  if (report.shard !== shard || report.count !== count) return `shard ${report.shard} of ${report.count}, not ${shard} of ${count}`;
+  if (report.samples !== samples) return `${report.samples} samples a map, not ${samples}`;
+  if (report.root !== root) return `played on ${report.root}, not ${root}`;
+  const maps = pacingShardMaps(mapIds, shard, count);
+  if (JSON.stringify(report.maps) !== JSON.stringify(maps)) return `maps ${report.maps}, not ${maps.join(',')}`;
+  if (!Array.isArray(report.matches) || report.matches.length !== maps.length * samples) {
+    return `${report.matches?.length} matches, not ${maps.length * samples}`;
+  }
+  for (const [position, match] of report.matches.entries()) {
+    const mapId = maps[Math.floor(position / samples)], sample = position % samples;
+    if (match?.mapId !== mapId || match.sample !== sample) return `match ${position} is ${match?.mapId}/${match?.sample}, not ${mapId}/${sample}`;
+    if (match.seed !== pacingSeed(mapIds, mapId, sample)) return `${mapId}/${sample} played seed ${match.seed}`;
+    if (!Number.isFinite(match.timeS) || typeof match.result !== 'string') return `${mapId}/${sample} has no time or result`;
+  }
+  return null;
+}
+
 /** The distribution of match records ({ mapId, seed, timeS, result }). */
 export function pacingStats(matches) {
   const times = matches.map((match) => match.timeS).sort((a, b) => a - b);

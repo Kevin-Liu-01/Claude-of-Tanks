@@ -10,7 +10,7 @@ import { bindFachwerk, type FachwerkPalette } from './hessian.ts';
 import { facadeOn, trimRing, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
-export const EIFEL_PALETTE: FachwerkPalette = Object.freeze({
+const EIFEL_PALETTE: FachwerkPalette = Object.freeze({
   // Monschau framing is near black over white infill; some houses tar their timbers brown
   timbers: [0x3e352f, 0x463b33, 0x352e29, 0x55473b].map(rgb),
   frame: rgb(0xd2cec4),
@@ -154,7 +154,7 @@ const waterTower: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const EIFEL_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const EIFEL_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   ...bindFachwerk(EIFEL_PALETTE, ['cottage', 'tavern', 'farmhouse', 'barn', 'granary', 'woodshed', 'depot', 'ruin', 'church', 'chapel', 'rangerlodge']),
   foundryoffice: companyOffice,
   warehouse: stoneHall,

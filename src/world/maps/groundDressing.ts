@@ -38,7 +38,7 @@ interface TimberGroundingReceipt {
 }
 
 /** createProps's own state the field timber reads and fills. */
-export interface FieldTimberHost {
+interface FieldTimberHost {
   P: { logs: boolean; logCount?: number };
   mapId: string;
   rng: Rng;

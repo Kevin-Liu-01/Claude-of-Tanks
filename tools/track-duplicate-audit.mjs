@@ -6,6 +6,8 @@
 // track-like course fails. This tool is report-only and never edits geometry.
 
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
+import { uniqueIds } from './id-list.mjs';
+import { boundOrigin, toolServerOptions } from './tool-page-load.mjs';
 
 // Loading the factory initializes every extension pack before the roster is
 // read, matching the provenance audit's complete-fleet discovery order.
@@ -15,7 +17,7 @@ const { ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
 const idArg = process.argv.find((arg) => arg.startsWith('--ids='));
 const wheelOverlaysOnly = process.argv.includes('--wheel-overlays-only');
 const ids = idArg
-  ? idArg.slice('--ids='.length).split(',').map((id) => id.trim()).filter(Boolean)
+  ? uniqueIds(idArg.slice('--ids='.length).split(',').map((id) => id.trim()).filter(Boolean), 'track-duplicate-audit --ids')
   : [...ALL_TANK_IDS];
 
 const failures = [];
@@ -23,17 +25,19 @@ const layered = [];
 await withIsolatedCaptureBrowser({
   root: process.cwd(),
   logLevel: 'error',
-  server: { port: 7680 + Math.floor(Math.random() * 120), strictPort: false, hmr: false, watch: null },
+  // R4c (2026-10-16): 127.0.0.1 and the address really bound, never `localhost` (an IPv6 bind can leave 127.0.0.1 to another server)
+  server: toolServerOptions(7680, { span: 120 }),
 }, {
   headless: 'new',
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 }, async ({ server, browser }) => {
   const page = await browser.newPage();
   page.setDefaultTimeout(120000);
+  const origin = boundOrigin(server);
 
   for (const id of ids) {
     await page.goto(
-      `http://localhost:${server.config.server.port}/tools/track-duplicate-audit.html?id=${encodeURIComponent(id)}`,
+      `${origin}/tools/track-duplicate-audit.html?id=${encodeURIComponent(id)}`,
       { waitUntil: 'domcontentloaded' },
     );
     await page.waitForFunction('window.__TRACK_DUPLICATE_READY === true', { polling: 50 });

@@ -34,7 +34,7 @@ import type { TerrainDeformation } from './terrainDeformation.ts';
 import type { StructureMaterial } from './structureMaterial.ts';
 
 
-export interface DestructionMatchOptions {
+interface DestructionMatchOptions {
   rules: DestructionRules | null | undefined;
   /** The match world's movement records and shell/sight records (the same objects its grids hold). */
   obstacles: readonly CollisionRecord[];

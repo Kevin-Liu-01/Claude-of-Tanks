@@ -27,7 +27,7 @@ export const DRONE_DESIGNS = {
  Korea:{name:'Mae',charge:0x535f4c,wrap:0x2b3035,payload:'pg7',link:'radio'},
  Ukraine:{name:'Sokil',charge:0x5a5a3a,wrap:0x232b34,payload:'pg7',link:'radio'},
 } as const;
-export type DroneNation=keyof typeof DRONE_DESIGNS;
+type DroneNation=keyof typeof DRONE_DESIGNS;
 /** Field paint of the carrier-mounted dock per service: the steel takes the vehicle fleet's own colour, not the drone's. */
 export const DRONE_DOCK_PAINT:Readonly<Record<DroneNation,number>> = {
  USA:0x6f6447, Russia:0x4a5440, USSR:0x4a5440, Germany:0x4c5345, Britain:0x4f5641, France:0x535747, China:0x56604c,
@@ -125,7 +125,7 @@ function createCarbonTwill(sheen = false):THREE.DataTexture {
  return texture;
 }
 /** The landing spin-down's disc strengths, strongest first (droneArrival.ts steps through them). */
-export const DRONE_ROTOR_FADE_STEPS = Object.freeze([.82, .64, .46, .3, .16]);
+const DRONE_ROTOR_FADE_STEPS = Object.freeze([.82, .64, .46, .3, .16]);
 /** One twill tile every 10 mm of finished airframe. */
 const TWILL_REPEATS = DRONE_AIRFRAME_SCALE / .01;
 
@@ -472,7 +472,7 @@ function createRotorBlur(radius:number,strength=1):THREE.BufferGeometry {
  * material keeps the ribbon only near edge-on — its alpha falls from full within about 7 degrees of the rotor plane
  * to nothing by about 20 degrees — so a side view keeps a soft line and every other view shows the plain disc.
  * Chained after the engine's shader hooks (call it after their setup), for instanced and single meshes alike. */
-export function installDiscRibbonFade(material:THREE.Material):void {
+function installDiscRibbonFade(material:THREE.Material):void {
  if (material.userData.cotDiscRibbonFade) return;
  material.userData.cotDiscRibbonFade = true;
  (material.defines ??= {}).COT_DISC_RIBBON = '';
@@ -550,7 +550,7 @@ function buildDroneModelKit(design:DroneDesign):DroneModelKit {
   } };
 }
 /** Engine lit-material registration (cascaded shadows), installed once by the battle FX and the Garage preview. */
-export interface DroneMaterialHooks { setup?(material:THREE.Material):unknown; release?(material:THREE.Material):unknown }
+interface DroneMaterialHooks { setup?(material:THREE.Material):unknown; release?(material:THREE.Material):unknown }
 let materialHooks:DroneMaterialHooks = {};
 export function configureDroneMaterials(hooks:DroneMaterialHooks):void { materialHooks = hooks; }
 export function droneMaterialHooks():DroneMaterialHooks { return materialHooks; }

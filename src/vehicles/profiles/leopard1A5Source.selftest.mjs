@@ -54,7 +54,7 @@ for (const band of trackBands) {
 const trackPads = visual.root.getObjectByName('gearTrackPads');
 assert.ok(trackPads?.isInstancedMesh && trackPads.count >= 220,
   'the rebuilt course uses a fine-pitch linked shoe chain on both sides');
-assert.equal(visual.root.getObjectByName('gearTrackInnerLinks'), undefined,
+assert.ok(visual.root.getObjectByName('gearTrackInnerLinks') === undefined,
   'connector and guide detail is integrated into one physical track shoe');
 trackPads.geometry.computeBoundingBox();
 const trackShoeBounds = trackPads.geometry.boundingBox;

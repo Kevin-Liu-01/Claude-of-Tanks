@@ -130,13 +130,13 @@ for (const [id, tier, caliber, turretCrew] of [['amx10p','IX',20,2],['amx10p_25'
           const fitting=tank.root.getObjectByName(name);
           assert(fitting,`${quality}: physical ${name} present`);
           for(let parent=fitting;parent;parent=parent.parent) {
-            assert.notEqual(parent,gun,'stowage must not pitch with the autocannon');
+            assert.ok(parent !== gun,'stowage must not pitch with the autocannon');
             if(parent===turretRig) break;
             assert(parent.parent,'turret equipment must remain owned by the yaw rig');
           }
         }
       }
-      assert.equal(tank.root.getObjectByName('gunMount').parent,gun,'mantlet pitches with gun');
+      assert.ok(tank.root.getObjectByName('gunMount').parent === gun,'mantlet pitches with gun');
       const before=new Vector3(),after=new Vector3(); tank.gunMuzzleWorld(before);
       gun.rotation.x=-.30; tank.root.updateMatrixWorld(true); tank.gunMuzzleWorld(after);
       assert(after.y>before.y+.40,'muzzle follows elevated barrel');

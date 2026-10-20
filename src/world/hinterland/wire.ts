@@ -2,7 +2,7 @@
 // 2026-10-13): the height pyramid's levels, the surface atlas, and the outland plan (its trees and buildings packed into
 // float arrays, its settlements, roads and verticals as plain records), with the few spec facts the page's builder reads.
 import type { HinterlandBuild } from './pipeline.ts';
-import type { HinterlandBuilding, HinterlandRoad, HinterlandSettlement, HinterlandTree, HinterlandVertical } from './outland.ts';
+import type { HinterlandRoad, HinterlandSettlement, HinterlandTree, HinterlandVertical } from './outland.ts';
 import type { HinterlandLevel, HinterlandPyramid } from './pyramid.ts';
 import type { HinterlandSurfaceLevel } from './surface.ts';
 import type { HinterlandOutlandGeometry, HinterlandShapeArrays } from './outlandGeometry.ts';
@@ -12,7 +12,7 @@ import type { HinterlandOutlandGeometry, HinterlandShapeArrays } from './outland
 export const HL_EDGE_OFFSET_M = 256;
 export const HL_EDGE_SCALE = 128;
 export const HINTERLAND_TREE_STRIDE = 9; // x, z, height, crown, tone, leaf, species index, form index, ground height
-export const HINTERLAND_BUILDING_STRIDE = 7; // x, z, yaw, width, depth, kind index, settlement
+const HINTERLAND_BUILDING_STRIDE = 7; // x, z, yaw, width, depth, kind index, settlement
 export const HINTERLAND_FORMS: readonly HinterlandTree['form'][] = Object.freeze(['columnar', 'broad', 'pollard', 'conifer']);
 /** A tree with the drawn land's height under it before the woods' canopy rose (the worker's list). */
 export type HinterlandGroundedTree = HinterlandTree & { y: number; woods?: boolean };
@@ -105,14 +105,6 @@ export function wireTrees(wire: HinterlandWire): HinterlandTree[] {
   for (let i = 0; i < wire.trees.length; i += HINTERLAND_TREE_STRIDE) {
     const t = wire.trees;
     out.push({ x: t[i], z: t[i + 1], heightM: t[i + 2], crownM: t[i + 3], tone: t[i + 4], leaf: t[i + 5], species: wire.species[t[i + 6]], form: HINTERLAND_FORMS[t[i + 7]] });
-  }
-  return out;
-}
-export function wireBuildings(wire: HinterlandWire): HinterlandBuilding[] {
-  const out: HinterlandBuilding[] = [];
-  for (let i = 0; i < wire.buildings.length; i += HINTERLAND_BUILDING_STRIDE) {
-    const b = wire.buildings;
-    out.push({ x: b[i], z: b[i + 1], yaw: b[i + 2], width: b[i + 3], depth: b[i + 4], kind: wire.buildingKinds[b[i + 5]], settlement: b[i + 6] });
   }
   return out;
 }

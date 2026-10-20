@@ -13,7 +13,7 @@ import { applyHinterlandTreeImpostors, hinterlandTreeBinding } from './trees.ts'
 
 export type { HinterlandRequest } from './worker.ts';
 
-export interface HinterlandLoadStats {
+interface HinterlandLoadStats {
   source: 'kept' | 'worker' | 'none';
   failed: boolean;
   message: string | null;
@@ -30,7 +30,7 @@ let kept: { key: string; wire: HinterlandWire } | null = null;
 
 type Port = Pick<Worker, 'postMessage' | 'terminate' | 'onmessage' | 'onerror'>;
 
-export interface HinterlandSource extends HinterlandSupply {
+interface HinterlandSource extends HinterlandSupply {
   readonly stats: HinterlandLoadStats;
   settled(): Promise<void>;
   dispose(): void;
@@ -106,9 +106,4 @@ export function startHinterlandBuild(
     },
     dispose() { if (worker) finish(); },
   };
-}
-
-/** Forget the kept answer (a receipt's fresh start). */
-export function forgetHinterland(): void {
-  kept = null;
 }

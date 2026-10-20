@@ -43,8 +43,8 @@ import {
 
 /** The maps the default run measures: the four thin-needle atlases (pine, Aleppo pine, pinyon, red pine), the
  * longleaf, and the far-view gate's maps (Verdant, Autumn, Longleaf, Frontier). */
-export const IMPOSTOR_COVERAGE_MAPS = Object.freeze(['airfield', 'orchard', 'skybridge', 'caldera', 'longleaf', 'verdant', 'autumn', 'frontier']);
-export const IMPOSTOR_COVERAGE_DISTANCES = Object.freeze([300, 450, 600, 900]);
+const IMPOSTOR_COVERAGE_MAPS = Object.freeze(['airfield', 'orchard', 'skybridge', 'caldera', 'longleaf', 'verdant', 'autumn', 'frontier']);
+const IMPOSTOR_COVERAGE_DISTANCES = Object.freeze([300, 450, 600, 900]);
 /** The screen the distances are measured on: a 60° vertical field of view on a 1440 px tall view. */
 const VIEW_H = 1440, FOCAL = VIEW_H / (2 * Math.tan(Math.PI / 6));
 /** The leaf atlas' anisotropy (vegetation.ts foliage textures). */

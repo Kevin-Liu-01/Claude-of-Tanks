@@ -38,7 +38,7 @@ export const TREE_IMPOSTOR_VARIANTS = 3;
 /** The gutter each side of a tile, as a share of the cell: keeps the mips of one tile out of its neighbours. */
 export const TREE_IMPOSTOR_MARGIN = 0.06;
 export const TREE_IMPOSTOR_BUDGET_BYTES = 6 * 1024 * 1024;
-export const TREE_IMPOSTOR_TILES = Object.freeze([128, 96, 64] as const);
+const TREE_IMPOSTOR_TILES = Object.freeze([128, 96, 64] as const);
 export const TREE_IMPOSTOR_MAX_ROWS = 16;
 export const TREE_IMPOSTOR_PROGRAM_KEY = 'world-tree-impostor-v3'; // round 77c: the elevated ring; p2 trees lane: the gust lift
 /** The bake's own law version, folded into the bake-input digest (the bake program is a ShaderMaterial, keyed by its
@@ -68,9 +68,9 @@ export const TREE_IMPOSTOR_BAKE_MIP_MAX = 3.5;
 export const TREE_IMPOSTOR_MIP_BOOST = 0.25;
 export const TREE_IMPOSTOR_MIP_MAX = 3.5;
 /** The quad's top flutters like a lobe crown top (paintCanopy's flexTop band). */
-export const TREE_IMPOSTOR_TOP_FLEX = 0.3;
+const TREE_IMPOSTOR_TOP_FLEX = 0.3;
 
-export interface TreeImpostorRowSource {
+interface TreeImpostorRowSource {
   species: string;
   variant: number;
   trunk: THREE.BufferGeometry;
@@ -82,7 +82,7 @@ export interface TreeImpostorRowSource {
   needle?: boolean;
 }
 
-export interface TreeImpostorRow {
+interface TreeImpostorRow {
   species: string;
   variant: number;
   /** The tile's edge in world metres at instance scale 1 (the tree plus the gutters). */
@@ -109,7 +109,7 @@ export interface TreeImpostorRenderer {
   xr?: { enabled: boolean };
 }
 
-export interface TreeImpostorOptions {
+interface TreeImpostorOptions {
   /** Species × variant rows in atlas order (row 0 at the atlas bottom). */
   rows: readonly TreeImpostorRowSource[];
   /** The bark sheet the trunks bake with. */

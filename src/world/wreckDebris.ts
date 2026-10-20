@@ -28,7 +28,7 @@ const RUBBER = material('rubber', [0.028, 0.026, 0.024], 0.9, 0, 0, 1);
 const CANVAS = material('canvas', linearHex(0x3a362c), 0.95, 0, 0, 1);
 
 /** One piece in the hulk's frame: where it lies (x, z), its heading, and its footprint's half extents for the seat. */
-export interface WreckDebrisPiece {
+interface WreckDebrisPiece {
   geo: THREE.BufferGeometry;
   x: number;
   z: number;
@@ -37,12 +37,12 @@ export interface WreckDebrisPiece {
   hl: number;
 }
 
-export interface WreckDebris {
+interface WreckDebris {
   pieces: WreckDebrisPiece[];
   tris: number;
 }
 
-export interface WreckDebrisOptions {
+interface WreckDebrisOptions {
   /** A post-war vehicle (rubber-tyred wheels, end connectors, a roof machine gun); wartime: all-steel, single horns. */
   modern?: boolean;
   /** The hulk's ground contact in its frame [minX, maxX, minZ, maxZ] (wrecks.ts WreckBake.contact): the debris lies round

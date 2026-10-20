@@ -10,6 +10,7 @@
 //
 // The arc is the widest interval round the station's rest bearing (0) with no blocked yaw, in mount-local radians.
 import * as THREE from 'three';
+import { uniqueIds } from './id-list.mjs';
 import { pathToFileURL } from 'node:url';
 import './tank-surface-collect.mjs'; // node canvas shim for the builders' canvas textures
 
@@ -181,7 +182,7 @@ const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv
 if (isMain && process.argv.includes('--dock')) {
   const arg = (n, f) => { const h = process.argv.find((a) => a.startsWith(`--${n}=`)); return h ? h.slice(n.length + 3) : f; };
   const { MISSION_ATTACHMENT_SEATS } = await import('../src/sim/missionAttachmentSeats.generated.ts');
-  for (const id of arg('ids', '').split(',').filter(Boolean)) {
+  for (const id of uniqueIds(arg('ids', '').split(',').filter(Boolean), 'roof-station-arcs --ids')) {
     console.log(id, JSON.stringify(await dockClearArcs(id, MISSION_ATTACHMENT_SEATS[id])));
   }
 } else if (isMain) {
@@ -189,7 +190,7 @@ if (isMain && process.argv.includes('--dock')) {
   const { createTank } = await import('../src/vehicles/tankFactory.ts');
   const { auxiliaryWeaponProfile } = await import('../src/vehicles/auxiliaryWeapons.ts');
   const rows = [];
-  for (const id of arg('ids', 'm551a1_tts').split(',').filter(Boolean)) {
+  for (const id of uniqueIds(arg('ids', 'm551a1_tts').split(',').filter(Boolean), 'roof-station-arcs --ids')) {
     const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true, decor: true });
     tank.root.updateMatrixWorld(true);
     for (const station of stationsOf(tank.root).stations) {

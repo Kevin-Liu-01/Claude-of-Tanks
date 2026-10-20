@@ -45,8 +45,8 @@ export function jettyFormForCoast(boatType: string): JettyForm {
   }
 }
 
-export const JETTY_STATION_M = 1.9;
-export const JETTY_SUPPORT_S_M = 0.65;
+const JETTY_STATION_M = 1.9;
+const JETTY_SUPPORT_S_M = 0.65;
 export const JETTY_HALF_WIDTH_M = 0.75;
 /** The deck top over the caller's y (the old kit's deck centre 0.82 and half its 0.09 planks). */
 export const JETTY_DECK_TOP_OVER_Y = 0.865;
@@ -59,15 +59,15 @@ export function legacyJettyDraws(len: number): number {
   return 10 * (n + 1) + 4 * n;
 }
 
-export interface JettyGround {
+interface JettyGround {
   getHeightAt(x: number, z: number): number;
   getWaterMaskAt?(x: number, z: number): number;
   getWaterDepthAt?(x: number, z: number): number;
 }
-export interface JettyPileReceipt { kind: string; x: number; y: number; z: number; baseClearance?: number; supportMin?: number; supportMax?: number }
-export interface JettyBuckets { wood: BG[]; stone: BG[]; baked?: BG[] }
+interface JettyPileReceipt { kind: string; x: number; y: number; z: number; baseClearance?: number; supportMin?: number; supportMax?: number }
+interface JettyBuckets { wood: BG[]; stone: BG[]; baked?: BG[] }
 
-export interface JettySupport { k: number; side: 1 | -1; x: number; z: number; ground: number; base: number }
+interface JettySupport { k: number; side: 1 | -1; x: number; z: number; ground: number; base: number }
 export interface JettyFrame {
   form: JettyForm;
   spans: number;

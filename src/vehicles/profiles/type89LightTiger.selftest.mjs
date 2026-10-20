@@ -117,11 +117,11 @@ try {
     concaveSurfaceCount: 0,
   });
   const roofOptics = tank.root.getObjectByName('type89K2bStyleRoofOptics');
-  assert.equal(roofOptics?.parent, turret,
+  assert.ok(roofOptics?.parent === turret,
     'Light Tiger K2B-style panoramic station remains turret-owned');
   assert.equal(roofOptics?.userData.hasWeapon, false,
     'Light Tiger roof optics station contains no secondary weapon');
-  assert.equal(roofOptics?.getObjectByName('openYokeRwsMachineGun'), undefined,
+  assert.ok(roofOptics?.getObjectByName('openYokeRwsMachineGun') === undefined,
     'Light Tiger roof optics station contains no hidden barrel or receiver mesh');
   let roofWeaponMesh = false;
   roofOptics?.traverse((node) => {
@@ -142,7 +142,7 @@ try {
     turretOwned: true,
   });
   const roofRws = tank.root.getObjectByName('type89LightTigerCompactRoofRws');
-  assert.equal(roofRws?.parent, turret,
+  assert.ok(roofRws?.parent === turret,
     'Light Tiger compact machine-gun station remains turret-owned');
   assert.equal(roofRws?.userData.hasWeapon, true,
     'Light Tiger compact station retains its independent machine gun');

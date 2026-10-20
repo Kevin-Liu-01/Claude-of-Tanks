@@ -70,6 +70,10 @@ const CSS = `
   letter-spacing:.13em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px #000;}
 .cot-touch .fire.alt{left:166px;right:auto;bottom:156px;width:64px;height:64px;opacity:.86;}
 .cot-touch .fire.alt svg{width:20px;height:34px}.cot-touch .fire.alt .lb{display:none}
+/* out of ammo (owner 2026-10-17; critic r3 advisory): the selected gun is dry (hud.ts marks the body), so both FIRE
+   buttons dim to a muted shell on a danger rim, in colour only */
+body.cot-gun-dry .cot-touch .fire{color:var(--hud-muted,#93a3af);border-color:rgba(240,90,90,.5);opacity:.62;
+  background:radial-gradient(circle at 38% 27%,rgba(78,84,90,.86),rgba(26,30,34,.97) 48%,rgba(10,10,9,.98) 76%);}
 .cot-touch .fire.aiming{border-color:#ffd27a;box-shadow:0 0 0 5px rgba(240,160,48,.13),
   0 0 22px rgba(240,150,40,.45),inset 0 2px 7px rgba(0,0,0,.65);}
 .cot-touch .fire.autofire{border-color:#ffbd5c;box-shadow:0 0 0 5px rgba(255,179,74,.16),
@@ -137,7 +141,9 @@ body.cot-touch-layout .cot-shell.sel::after{content:'‹';position:absolute;left
 body.cot-touch-layout .cot-shells.touch-open .cot-shell{opacity:1;pointer-events:auto;
   transform:translateX(var(--touch-ammo-x,0));}
 body.cot-touch-layout .cot-shells.touch-open .cot-shell.sel::after{content:'›';}
-body.cot-touch-layout .cot-shell canvas{transform:translate(-50%,-50%) scale(.76);}
+/* The type label sits on the slot's floor, and so does the shell: scaled from its base 11 px up, its tail keeps 3 px
+   from the label at every touch slot height (critic r4b: APFSDS crossed the dart's tail) */
+body.cot-touch-layout .cot-shell canvas{top:auto;bottom:11px;transform:translateX(-50%) scale(.76);transform-origin:50% 100%;}
 body.cot-touch-layout .cot-shell .key,body.cot-touch-layout .cot-con .key{display:none;}
 body.cot-touch-layout .cot-shell .tip{display:none!important;}
 body.cot-touch-layout .cot-shell .ty{font-size:7px}
@@ -148,6 +154,15 @@ body.cot-touch-layout .cot-shell.sel{border-color:#ffbd5c;border-bottom-color:#f
   background:linear-gradient(180deg,rgba(58,42,17,.97),rgba(30,20,9,.97));
   box-shadow:inset 0 0 0 1px rgba(255,196,107,.5),0 0 16px rgba(240,160,48,.5);}
 body.cot-touch-layout .cot-shell.sel .ty{font-size:8px;}
+/* out of ammo (owner 2026-10-17): the collapsed tray shows only the selected slot, so its empty state outranks the frame */
+body.cot-touch-layout .cot-shell.sel.empty{border-color:var(--hud-edge);border-bottom-color:var(--hud-danger);
+  background:var(--hud-panel);box-shadow:inset 0 -2px 0 var(--hud-danger);}
+/* ... struck through like a spent launcher control, its count in the danger ink (critic r3: it still read as selected) */
+body.cot-touch-layout .cot-shell.sel.empty::before{content:'';position:absolute;left:11px;right:11px;top:calc(50% - .75px);
+  height:1.5px;border-radius:1px;background:var(--hud-danger);box-shadow:0 0 0 1px #05080bd9;transform:rotate(-45deg);z-index:2;}
+body.cot-touch-layout .cot-shell.sel.empty .cnt{color:var(--hud-danger);}
+/* endless ammo (owner 2026-10-17): the ∞ at the numeral's size, not the consumables' small mark */
+body.cot-touch-layout .cot-shell.unlimited .cnt{font-size:16px;line-height:11px;}
 /* MOBILE-UX r1 (owner: "move equipment to right side in a vertical column"):
    the consumable tray re-parks on the RIGHT EDGE as a thumb-reachable
    column sitting above the FIRE cluster. 48 px targets; the selection/used/
@@ -214,6 +229,11 @@ body.cot-touch-layout .cot-sixth .sub{font-size:7px;letter-spacing:.12em;}
    (11px overlap, both bottom-anchored). The keycap badge is hidden on touch,
    so its top-right corner is free: the count moves there. */
 body.cot-touch-layout .cot-shell .cnt{top:2px;right:3px;bottom:auto;}
+/* A three-digit count (an autocannon's 180) reaches the slot's centre: it sets smaller in the corner and the shell
+   shrinks and steps left, out from under it (critic r4: the dart's tip ran into the 1; r4b: the 1 met it on a
+   landscape slot), standing 1 px higher so the stepped fins keep 3 px from the label (r6: 2.5 px on the phone). */
+body.cot-touch-layout .cot-shell.wide .cnt{top:1px;right:2px;font-size:10px;}
+body.cot-touch-layout .cot-shell.wide canvas{bottom:12px;transform:translateX(calc(-50% - 5px)) scale(.6);}
 /* Touch-target floor for garage chrome the phone shares with desktop. */
 body.cot-touch-layout .nv{padding:9px 14px;}
 body.cot-touch-layout .cot-country-chip{padding:9px 12px;}

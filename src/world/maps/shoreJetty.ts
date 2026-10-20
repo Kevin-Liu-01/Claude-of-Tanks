@@ -21,7 +21,7 @@ export interface ShoreJettyField extends StrandHeightField {
   getWaterDepthAt?(x: number, z: number): number;
 }
 
-export interface ShoreJettyOptions {
+interface ShoreJettyOptions {
   /** Complete 1.9 m spans (an authored pier); omitted, the deck is sized to the shelf within 4–10 spans. */
   spans?: number;
   /** Playable half-extent for dressing (the coastal kit's 470 m). */
@@ -70,10 +70,10 @@ export const JETTY_BANK_CLEARANCE_M = 0.30; // the ground under every station pa
 export const JETTY_BANK_LANDING_M = 0.05; // on a bank shore the deck lands where the ground comes this close to its underside
 export const JETTY_CORE_SEARCH_M = 12; // how far inside the water's edge the planar core is looked for
 export const GANGWAY_MIN_RISE_M = 0.40; // a shore end higher than this over the ground gets a gangway
-export const GANGWAY_GRADE = 0.36; // rise per metre of run (~20°)
+const GANGWAY_GRADE = 0.36; // rise per metre of run (~20°)
 export const GANGWAY_MIN_RUN_M = 1.9;
 export const GANGWAY_MAX_RUN_M = 4.2;
-export const MOORED_BOAT_HALF_LENGTH_M = 2.9; // the kit's longest clinker hull
+const MOORED_BOAT_HALF_LENGTH_M = 2.9; // the kit's longest clinker hull
 export const MOORED_BOAT_HALF_BEAM_M = 0.8;
 export const MOORED_BOAT_GAP_M = 0.35; // fender gap between the deck edge and the hull
 export const MOORED_BOAT_DRAFT_M = 0.28; // the hull bottom below the surface (the bed lies 0.72 m under it)

@@ -25,7 +25,7 @@ for(const quality of ['high','low']) {
   const wheels=root.getObjectByName('gearRoadWheelTires');
   assert.equal(wheels.count,14,'seven physical wheels per side');
   assert.equal(censusEquipment(root).mg,0,'coax remains part of gun; no invented roof weapon');
-  assert.equal(root.getObjectByName('rig_launcher_tip_0'),undefined);
+  assert.ok(root.getObjectByName('rig_launcher_tip_0') === undefined);
   const ext=new Box3().setFromObject(root,true).getSize(new Vector3());
   assert.ok(ext.x>3.70&&ext.x<3.97,`full skirt width ${ext.x}`);
   assert.ok(ext.z>8.43&&ext.z<8.81,`long cannon/body envelope ${ext.z}`);
@@ -36,7 +36,7 @@ for(const quality of ['high','low']) {
   assert.ok(Math.abs(turretBox.min.z+1.395)<.00001,'turret bustle reduced from 1.55 m to 1.395 m');
   assert.deepEqual(s.armor.turretPivot,[0,2.02,-.48],'bearing location is unchanged');
   for(const owner of [hull,turret,gun]) assert.deepEqual(owner.scale.toArray(),[1,1,1],'canonical owner rigs stay unit scale');
-  const mount=root.getObjectByName('gunMount');assert.equal(mount.parent,gun);
+  const mount=root.getObjectByName('gunMount');assert.ok(mount.parent === gun);
   // The main body must stop behind the rocking mask, not fill its elevation bay.
   const opening=new Raycaster(turret.localToWorld(new Vector3(0,.486,1.17)),
     new Vector3(0,0,-1).transformDirection(turret.matrixWorld),0,1.2);

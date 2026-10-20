@@ -90,7 +90,7 @@ export interface LandmarkPlacement {
 }
 
 /** One door's worn ground (LandmarkPlacement.approaches). */
-export interface LandmarkApproach {
+interface LandmarkApproach {
   /** The face the door is in, in the piece's frame at its footprint's edge: front +z, back -z, right +x, left -x. */
   side: 'front' | 'back' | 'left' | 'right';
   /** The door's offset along that face from its middle (m): toward +x on the front and back, toward +z on the sides. */

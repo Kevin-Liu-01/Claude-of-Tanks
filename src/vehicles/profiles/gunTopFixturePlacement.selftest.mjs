@@ -73,7 +73,7 @@ for (const fixture of cases) {
   assert.equal(receipt.bodyBucket, fixture.bodyBucket);
   assert.equal(receipt.faceBucket, fixture.faceBucket);
   assert.ok(body, `${fixture.id}: audited muzzle-reference body exists as authored`);
-  assert.equal(body.parent, fixture.owner, `${fixture.id}: body remains in the expected articulated bucket`);
+  assert.ok(body.parent === fixture.owner, `${fixture.id}: body remains in the expected articulated bucket`);
 
   const bodyCenter = centerOf(body);
   assert.ok(near(bodyCenter[0], 0),
@@ -84,7 +84,7 @@ for (const fixture of cases) {
   assert.ok(bodyCenter[1] > fixture.supportRadiusM,
     `${fixture.id}: housing mass sits above the gun axis`);
   if (face) {
-    assert.equal(face.parent, fixture.owner, `${fixture.id}: face remains in the expected articulated bucket`);
+    assert.ok(face.parent === fixture.owner, `${fixture.id}: face remains in the expected articulated bucket`);
     const faceCenter = centerOf(face);
     assert.ok(near(faceCenter[0], 0),
       `${fixture.id}: reference face is centered with its housing`);

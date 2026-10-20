@@ -3,7 +3,7 @@
 // runner. Node-only, no dependencies.
 
 import { spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 
 export function s16ToFloat(buf) {
   const n = buf.length >> 1;
@@ -212,10 +212,6 @@ export function bandEnergy(samples, sampleRate, bands) {
     bands.forEach(([lo, hi], i) => { if (hz >= lo && hz < hi) sums[i] += e; });
   }
   return sums.map((s) => (total > 0 ? s / total : 0));
-}
-
-export function readS16File(file) {
-  return s16ToFloat(readFileSync(file));
 }
 
 /**

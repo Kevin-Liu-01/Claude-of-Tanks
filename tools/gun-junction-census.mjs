@@ -54,6 +54,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
 import { collectTriangles } from './tank-surface-collect.mjs';
+import { uniqueIds } from './id-list.mjs';
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -93,7 +94,7 @@ const HULL_GUN_MIN_BORE_M = 0.015;
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const { ensureInteriorFills } = await import('../src/vehicles/interiorFills.ts');
 const { ALL_TANK_IDS, getSpec } = await import('../src/vehicles/specs.ts');
-const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', LEDGER_PATH ? '' : 'c2_ariete').split(',').filter(Boolean);
+const ids = flag('all') ? [...ALL_TANK_IDS] : uniqueIds(opt('ids', LEDGER_PATH ? '' : 'c2_ariete').split(',').filter(Boolean), 'gun-junction-census --ids');
 if (LEDGER_PATH && !ids.length) { console.error('gun-junction ledger: pass --ids=<a,b> or --all'); process.exit(2); }
 if (LEDGER_PATH && flag('update') === flag('check')) { console.error('gun-junction ledger: pass exactly one of --update or --check'); process.exit(2); }
 

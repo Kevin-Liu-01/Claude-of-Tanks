@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { createGroundLitter, GROUND_LITTER, groundLitterFadeSource, groundLitterProfile, groundLitterProfileIds, resolveGroundLitterConfig } from './groundLitter.ts';
 import { MAP_IDS } from './maps/catalog.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 // environment density pass (2026-09-12): stones, clods and splinters strewn
 // under the camera — deterministic cells, exclusions, shoulders, fade, wiring.
@@ -165,13 +166,13 @@ for (const [id, form] of [['urban', 'brick'], ['ruinspires', 'brick'], ['foundry
   const released = [];
   const csm = createGroundLitter(field, { seed: 5, setupMaterial: (material, hook) => { calls.push({ material, hook }); material.onBeforeCompile = hook; }, releaseMaterial: (m) => released.push(m) });
   assert.equal(calls.length, 1, 'one shared material is set up once');
-  assert.equal(calls[0].material, csm.meshes[0].material);
+  assert.ok(calls[0].material === csm.meshes[0].material);
   assert.equal(typeof calls[0].hook, 'function');
   const shader = { uniforms: {}, vertexShader: '#include <common>\n#include <begin_vertex>', fragmentShader: '' };
   calls[0].hook(shader);
   assert.match(shader.vertexShader, /uLitterFade/, 'the fade hook is what the engine composes after its own patch');
   csm.dispose();
-  assert.deepEqual(released, [calls[0].material], 'dispose releases the material from the shadow setup');
+  assert.deepEqual(graphLabels(released), graphLabels([calls[0].material]), 'dispose releases the material from the shadow setup');
 }
 assert.match(map, /setupMaterial: \(material, hook\) => engineCtx\.setupShadowMaterial\?\.\(material, hook\)/, 'the world folds the litter material into the cascaded-shadow setup');
 assert.match(map, /releaseMaterial: \(material\) => engineCtx\.releaseShadowMaterial\?\.\(material\)/, 'and releases it with the world');

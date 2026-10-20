@@ -37,7 +37,7 @@ export interface LampSpec {
   dz?: number;
 }
 
-export interface FaceSpec {
+interface FaceSpec {
   lamps: readonly LampSpec[];
   grille?: { x?: number; y: number; w: number; h: number; style: 'vbars' | 'hbars' | 'mesh' | 'slots'; bars: number;
     chrome?: boolean; frame?: 'chrome' | 'black' | 'body' };
@@ -117,14 +117,14 @@ export interface CarModel {
   roofRack?: boolean;
 }
 
-export interface BuildOptions {
+interface BuildOptions {
   coarse: boolean;
   burnt: boolean;
   paint?: VehicleMaterial;
 }
 
 /** A car, a van, an estate or a utility body on the car loft. */
-export function buildCar(mesh: VehicleMesh, m: CarModel, o: BuildOptions): void {
+function buildCar(mesh: VehicleMesh, m: CarModel, o: BuildOptions): void {
   const paint = o.paint ?? PAINT;
   const spec: CarBodySpec = { ...m.body, coarse: o.coarse };
   const prof = carBody(mesh, spec, paint);
@@ -242,7 +242,7 @@ export interface PickupModel {
 }
 
 /** A pickup: the car-built front and cab, an open bed with its arches, a tailgate. */
-export function buildPickup(mesh: VehicleMesh, m: PickupModel, o: BuildOptions): void {
+function buildPickup(mesh: VehicleMesh, m: PickupModel, o: BuildOptions): void {
   const paint = o.paint ?? PAINT;
   const spec: CarBodySpec = { ...m.cab, rearAxle: -40, rear: 'estate', coarse: o.coarse };
   mesh.push().translate(0, 0, m.cabZ);
@@ -328,7 +328,7 @@ export interface JeepModel {
 }
 
 /** An open utility car: a flat-sided tub, a bonnet, flat wings, a windscreen frame, seats, a spare, a canvas top. */
-export function buildOpenJeep(mesh: VehicleMesh, m: JeepModel, o: BuildOptions): void {
+function buildOpenJeep(mesh: VehicleMesh, m: JeepModel, o: BuildOptions): void {
   const paint = o.paint ?? PAINT;
   const coarse = o.coarse;
   const zNose = m.length / 2, zTail = -m.length / 2;
@@ -524,7 +524,7 @@ export interface PeriodCarModel {
 }
 
 /** A 1930s-40s car: the body between separate wings, running boards, an upright grille, lamps on stalks. */
-export function buildPeriodCar(mesh: VehicleMesh, m: PeriodCarModel, o: BuildOptions): void {
+function buildPeriodCar(mesh: VehicleMesh, m: PeriodCarModel, o: BuildOptions): void {
   const paint = o.paint ?? PAINT;
   const coarse = o.coarse;
   const full: CarBodySpec = { ...m.body, archR: 0.001, coarse };
@@ -644,7 +644,7 @@ export function buildPeriodCar(mesh: VehicleMesh, m: PeriodCarModel, o: BuildOpt
 
 // ---------------------------------------------------------------------------------------------------- trucks
 
-export interface TruckCabSpec {
+interface TruckCabSpec {
   zF: number;
   zB: number;
   hw: number;
@@ -672,9 +672,9 @@ export interface TruckCabSpec {
   intoBody?: boolean;
 }
 
-export type TruckBodyType = 'tilt' | 'dropside' | 'box' | 'flatbed' | 'tanker' | 'logs';
+type TruckBodyType = 'tilt' | 'dropside' | 'box' | 'flatbed' | 'tanker' | 'logs';
 
-export interface TruckBodySpec {
+interface TruckBodySpec {
   type: TruckBodyType;
   zF: number;
   zB: number;
@@ -756,7 +756,7 @@ function driveshaft(mesh: VehicleMesh, y0: number, z0: number, y1: number, z1: n
 }
 
 /** A truck: chassis, wheels, the front (narrow, wide or forward control), the cab, the cargo body, the hardware. */
-export function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): void {
+function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): void {
   const paint = o.paint ?? PAINT;
   const coarse = o.coarse;
   const zNose = m.length / 2, zTail = -m.length / 2;

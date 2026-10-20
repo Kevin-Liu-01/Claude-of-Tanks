@@ -69,8 +69,8 @@ function batchFixture(geometry, material) {
     },
     inspectPreparedClone() {
       const record = clones.at(-1);
-      assert.notStrictEqual(record.node.geometry, ownedGeometry, 'batch clones own their packed geometry');
-      assert.strictEqual(record.node.material, material, 'batch material remains borrowed');
+      assert.ok(record.node.geometry !== ownedGeometry, 'batch clones own their packed geometry');
+      assert.ok(record.node.material === material, 'batch material remains borrowed');
       for (const original of originals) {
         const texture = record.node[original.field];
         assert(texture, `the colored batch retains ${original.field}`);
@@ -85,8 +85,8 @@ function batchFixture(geometry, material) {
       }
     },
     assertSourceUntouched() {
-      assert.strictEqual(mesh.geometry, ownedGeometry);
-      assert.strictEqual(mesh.material, material);
+      assert.ok(mesh.geometry === ownedGeometry);
+      assert.ok(mesh.material === material);
       assert.equal(sourceDisposals, 0, 'mask job never disposes the live batch');
       assert.equal(geometryDisposals, 0, 'mask job never disposes live packed geometry');
       for (const original of originals) {
@@ -162,12 +162,12 @@ function sourceVisual(id, withBatch = false) {
     const cloned = THREE.Object3D.prototype.clone.apply(root, args);
     cloned.traverse((node) => {
       if (!node.isInstancedMesh) return;
-      assert.notStrictEqual(node, instance);
-      assert.notStrictEqual(node.instanceMatrix, instance.instanceMatrix);
-      assert.notStrictEqual(node.instanceColor, instance.instanceColor);
-      assert.notStrictEqual(node.morphTexture, instance.morphTexture);
-      assert.strictEqual(node.geometry, geometry);
-      assert.strictEqual(node.material, material);
+      assert.ok(node !== instance);
+      assert.ok(node.instanceMatrix !== instance.instanceMatrix);
+      assert.ok(node.instanceColor !== instance.instanceColor);
+      assert.ok(node.morphTexture !== instance.morphTexture);
+      assert.ok(node.geometry === geometry);
+      assert.ok(node.material === material);
       const record = { node, disposals: 0, morphDisposals: 0, fixtureOwned: !!cloneFailureAfter };
       node.addEventListener('dispose', () => record.disposals++);
       node.morphTexture.addEventListener('dispose', () => record.morphDisposals++);
@@ -215,8 +215,9 @@ function sourceVisual(id, withBatch = false) {
         'one listener guards each unique borrowed material, including queued work');
     },
     assertUntouched() {
-      assert.strictEqual(root.parent, parent, 'the live visual is never reparented');
+      assert.ok(root.parent === parent, 'the live visual is never reparented');
       assert.deepEqual(snapshot(), before, 'live pose, visibility and matrices remain untouched');
+      // object3d-assert-ok: externalDisposals.geometry and .material are disposal counts
       assert.deepEqual([disposals, geometryDisposals, materialDisposals],
         [0, externalDisposals.geometry, externalDisposals.material],
         'only explicit source-owner disposal may release borrowed resources');
@@ -269,10 +270,10 @@ function fakeRenderer(sources) {
     const root = scene.children[0];
     const source = sources.get(root.name);
     assert(source, 'every test render uses the requested source visual');
-    assert.notStrictEqual(root, source.root, 'render work owns a hierarchy clone');
+    assert.ok(root !== source.root, 'render work owns a hierarchy clone');
     const mesh = root.getObjectByName('test-hull');
-    assert.strictEqual(mesh.geometry, source.geometry);
-    assert.strictEqual(mesh.material, topMaskCoverageMaterial(source.material),
+    assert.ok(mesh.geometry === source.geometry);
+    assert.ok(mesh.material === topMaskCoverageMaterial(source.material),
       'a mask pass draws the coverage stand-in of the borrowed material, never the material itself');
     return { id: root.name, layer: root.getObjectByName('rig_turret').visible ? 'turret' : 'hull' };
   };
@@ -857,7 +858,7 @@ try {
     assert.equal(live.clones, 1);
     assert.equal(serialized, 0, 'the mask clone serializes no live object through toJSON');
     assert.strictEqual(live.root.userData.nearShadowDetail, record, 'the source keeps its own userData');
-    assert.strictEqual(part.userData.live.detail, detail);
+    assert.ok(part.userData.live.detail === detail);
     assert((await settle(request))?.ready, 'the mask still builds from the clone');
     live.assertUntouched();
   }
@@ -1117,7 +1118,7 @@ try {
       const entry = await settle(prepareTopDownMasks(spec('mask-shadow-batch'), source.visual));
       assert.ok(entry?.ready, 'actual shadow batching must not prevent the player diagram');
       assert.equal(cloneCalls, 0, 'shadow-only helpers never enter the presentation clone');
-      assert.equal(batch.parent, root, 'live shadow helper stays attached');
+      assert.ok(batch.parent === root, 'live shadow helper stays attached');
       assert.ok(proxies.every(mesh => mesh.parent), 'live shadow sources stay attached');
     } finally {
       batch.dispose(); batch.removeFromParent();

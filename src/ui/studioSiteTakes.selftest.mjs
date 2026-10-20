@@ -25,13 +25,19 @@ const siteTakes = index.takes.filter((take) => take.group !== 'fleet');
 const fleetTakes = index.takes.filter((take) => take.group === 'fleet');
 assert.equal(new Set(index.takes.map((take) => take.id)).size, index.takes.length, 'one entry per take');
 // (2026-10-18) in the picks' own order: the site fifty, the owner's nine, then the combat round's takes (s225-s228); a
-// sort by id would slot s225 between s22 and s23
-assert.deepEqual(siteTakes.map((take) => take.id), Object.keys(picks.takes), 'every take of the site fifty, in order');
+// sort by id would slot s225 between s22 and s23. (2026-10-19) A tank's own take the picks publish for its stills
+// (picks.takes[id].fleet, the 226/227 fleet takes) stays in the fleet group.
+const pickedSiteTakes = Object.keys(picks.takes).filter((id) => !picks.takes[id].fleet);
+assert.deepEqual(siteTakes.map((take) => take.id), pickedSiteTakes, 'every take of the site fifty, in order');
+for (const id of Object.keys(picks.takes).filter((id) => picks.takes[id].fleet)) {
+  assert.ok(!siteTakes.some((take) => take.id === id), `${id}: a fleet take stays out of the site's list`);
+}
 const sha = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
 const fleetVehicles = new Set();
 for (const take of fleetTakes) {
   assert.ok(typeof take.vehicle === 'string' && take.vehicle && !fleetVehicles.has(take.vehicle), `${take.id}: one fleet take per vehicle`);
   fleetVehicles.add(take.vehicle);
+  // object3d-assert-ok: take.scene is a Studio scene id string, not a THREE.Scene
   assert.equal(sceneLinkPath(take.scene), take.scene, `${take.id}: its scene is a scene link on this site`);
   const scene = JSON.parse(readFileSync(join(ROOT, 'public', take.scene), 'utf8'));
   assert.equal(scene.map, take.map, `${take.id}: the card names the scene's map`);
@@ -43,6 +49,7 @@ for (const take of fleetTakes) {
   assert.ok(take.title.en && take.title.zh && take.short.en && take.short.zh, `${take.id}: titled in both languages`);
 }
 for (const take of siteTakes) {
+  // object3d-assert-ok: take.scene is a Studio scene id string, not a THREE.Scene
   assert.equal(sceneLinkPath(take.scene), take.scene, `${take.id}: its scene is a scene link on this site`);
   const scene = JSON.parse(readFileSync(join(ROOT, 'public', take.scene), 'utf8'));
   assert.equal(scene.map, take.map, `${take.id}: the card names the scene's map`);

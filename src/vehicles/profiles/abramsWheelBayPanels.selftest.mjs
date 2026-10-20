@@ -22,7 +22,7 @@ for (const id of OPEN_WHEEL_BAY_IDS) {
   try {
     const hull = tank.root.getObjectByName('rig_hull');
     assert.ok(hull, `${id}: retains the canonical hull rig`);
-    assert.equal(hull.getObjectByName('gear_wheelBayAO'), undefined,
+    assert.ok(hull.getObjectByName('gear_wheelBayAO') === undefined,
       `${id}: leaves the wheel bays open without flat AO side panels`);
     assert.ok(hull.getObjectByName('gear_endWheelDress_dark')
       && hull.getObjectByName('gear_endWheelDress_detail'),

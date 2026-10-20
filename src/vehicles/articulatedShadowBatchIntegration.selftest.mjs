@@ -24,7 +24,7 @@ for (const id of ['m1a1_abrams_hc', 'jpz_e100']) {
     assert(sources.length >= 2, `${id}: fixture owns articulated source proxies`);
     assert(batch?.isBatchedMesh, `${id}: actual battle factory installs the batch`);
     assert.equal(batch.instanceCount, sources.length);
-    assert.equal(batch.parent, root);
+    assert.ok(batch.parent === root);
     const parents = sources.map(source => source.parent);
     const positions = sources.map(source => Array.from(source.geometry.attributes.position.array));
     const sourceDisposals = sources.map(() => 0);
@@ -37,7 +37,7 @@ for (const id of ['m1a1_abrams_hc', 'jpz_e100']) {
       batch.onBeforeShadow({}, root, camera, lightCamera, batch.geometry, batch.customDepthMaterial, null);
       inverse.copy(batch.matrixWorld).invert();
       sources.forEach((source, i) => {
-        assert.equal(source.parent, parents[i], `${label}: retained articulation owner`);
+        assert.ok(source.parent === parents[i], `${label}: retained articulation owner`);
         assert.equal(source.castShadow, false, `${label}: no duplicate caster`);
         assert.deepEqual(Array.from(source.geometry.attributes.position.array), positions[i], `${label}: authored geometry unchanged`);
         expected.multiplyMatrices(inverse, source.matrixWorld);
@@ -74,7 +74,7 @@ for (const id of ['m1a1_abrams_hc', 'jpz_e100']) {
 
 const authoring = createTank('m1a1_abrams_hc', null, { ...options, batchStatic: false, battleDetailLod: false });
 try {
-  assert.equal(authoring.root.getObjectByName('articulatedShadowBatch'), undefined,
+  assert.ok(authoring.root.getObjectByName('articulatedShadowBatch') === undefined,
     'unbatched authoring/Gallery construction remains unchanged');
   for (const name of ['hull', 'turret', 'gun']) {
     assert.equal(authoring.root.getObjectByName(`procShadow_${name}`).castShadow, true);

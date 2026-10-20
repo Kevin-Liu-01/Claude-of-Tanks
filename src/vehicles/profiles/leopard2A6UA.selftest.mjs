@@ -110,7 +110,7 @@ assert.ok(eraMeshes.every((mesh) => mesh.userData.combatHitboxRole === 'external
 const equipment = tank.root.getObjectByName('turretEquipment');
 assert.equal(equipment?.userData.combatHitboxRole, 'equipment',
   'RWS receiver bodies cannot inflate the armor hitbox');
-assert.equal(turret.getObjectByName('turretEquipment'), equipment,
+assert.ok(turret.getObjectByName('turretEquipment') === equipment,
   'both RWS towers remain children of the rotating turret rig');
 const equipmentPositions = equipment.geometry.getAttribute('position');
 for (const station of receipt.remoteStations) {

@@ -66,7 +66,7 @@ export interface StudioDestruction {
   reset(): void;
 }
 
-export interface StudioDestructionOptions {
+interface StudioDestructionOptions {
   /** The battle's destruction block to film (the standard ruleset's). */
   rules: DestructionRules;
   /**

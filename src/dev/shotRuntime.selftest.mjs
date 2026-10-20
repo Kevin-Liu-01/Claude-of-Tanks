@@ -224,9 +224,38 @@ for (const releaseTextures of [false, true]) {
   assert.equal(constrained.restoreCount, 3, 'two successful returns plus one failed attempt');
   await capture('garage');
   assert.equal(constrained.restoreCount, 3, 'same resident Garage does not add another warm frame');
-  assert.equal(constrained.stageMesh.geometry, constrained.geometry);
+  assert.ok(constrained.stageMesh.geometry === constrained.geometry);
   assert.equal(constrained.geometry.attributes.position.array, positions);
   assert.deepEqual(positions, positionBytes, 'GPU release/restore preserves authored CPU geometry bytes');
 
+}
+// A forced HUD frame stages its own rack (critic r3): the live frame's stowage feed (owner 2026-10-17, out of ammo:
+// how many of the rack's rounds stowage can still load) must not leak into a capture, so the staged frame's feed is
+// its staged capacity. The player_view recipe paints over a live frame whose rack was short of stowage.
+{
+  const staged = createFixture();
+  const aim = { point: new Vector3(), gunMarker: new Vector3(), reload: { t: 0, totalS: 0, kind: 'ready' },
+    magazine: { rounds: 1, capacity: 4, feed: 1, launcher: false }, shellSlot: 0, shells: [] };
+  const painted = [];
+  const hud = {
+    setMode: () => staged.assertOwned(),
+    update(frame) { painted.push({ ...frame.aim.magazine }); },
+    forceAimDisplay() {},
+  };
+  Object.assign(staged.context, {
+    getHud: () => hud,
+    frameInfo: { aim },
+    refreshSpotFrame() {},
+    computeDispersionRadM: () => 0.5,
+  });
+  Object.assign(staged.context.rig, { aimPoint: new Vector3(0, 2, 120), snapArcade() {} });
+  Object.assign(staged.context.game.player, { state: { yaw: 0, pos: new Vector3() } });
+  staged.context.game.player.spec.armor = {};
+  staged.context.game.player.visual.gunMuzzleWorld = (out) => out.set(0, 2, 0);
+  staged.setTarget('player_view');
+  await setShotView('player_view', staged.context);
+  assert.equal(painted.length, 1, 'the player view paints one forced HUD frame');
+  assert.equal(painted[0].feed, painted[0].capacity, `the staged rack is fully stowed (${JSON.stringify(painted[0])})`);
+  assert.equal(painted[0].rounds, 0, 'and holds the staged rounds, not the live ones');
 }
 console.log(`shotRuntime: ${SHOT_VIEWS.length} phase owners; desktop and constrained disposal/awaited restore/failure/retry passed`);

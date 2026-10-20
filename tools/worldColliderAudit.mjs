@@ -33,8 +33,8 @@ export const CONTACT_BAND = Object.freeze([0.2, 1.4]);
 /** Slice spacing through the band (m). */
 const SLICE_STEP_M = 0.1;
 /** Shell rays: horizontal, at these heights above the ground under the record's centre (hull to turret roof). */
-export const SHELL_HEIGHTS = Object.freeze([0.6, 1.0, 1.4, 1.8, 2.2, 2.6]);
-export const SHELL_AZIMUTHS = 16;
+const SHELL_HEIGHTS = Object.freeze([0.6, 1.0, 1.4, 1.8, 2.2, 2.6]);
+const SHELL_AZIMUTHS = 16;
 /** Lateral spacing of the parallel rays of one azimuth (m). */
 const SHELL_LANE_M = 0.2;
 
@@ -320,7 +320,7 @@ const _rayNormal = new THREE.Vector3();
 
 /** Nearest hit of a ray on the records (the game's own shell/LOS test), or -1. */
 /** Is (x, y, z) inside a record: a part's footprint over it and the height within the part's extent (the record's). */
-export function insideRecord3(record, x, y, z) {
+function insideRecord3(record, x, y, z) {
   if (y < record.min[1] || y > record.max[1]) return false;
   const sh = record.shape2;
   const parts = sh?.kind === 'compound' ? sh.parts : [sh ?? null];
@@ -462,7 +462,7 @@ export function rayTerrainReach(groundAt, ox, y, oz, dx, dz, len, step = 0.05) {
 
 /** A phantom or a leak counts as visible past this (m): a shell passing a stone by less, or clipping less of it, is not
  * a miss anyone can see. */
-export const VISIBLE_RAY_ERROR_M = 0.1;
+const VISIBLE_RAY_ERROR_M = 0.1;
 
 /** Nearest crossing of the 2D ray (ox, oz) + t (dx, dz), 0 <= t <= len, with the segments, or -1. */
 export function raySegments2(segments, ox, oz, dx, dz, len) {
@@ -489,7 +489,7 @@ function visibleChain(object) {
 }
 
 /** The audit family of a props mesh (null: not a solid a hull or a shell meets — decals, wires, shadows, LOD twins). */
-export function classifyPropsMesh(mesh) {
+function classifyPropsMesh(mesh) {
   if (!mesh.isMesh || !visibleChain(mesh)) return null;
   if (mesh.userData?.terrainDecal || mesh.userData?.groundContactDecal) return null;
   const name = mesh.name || '';

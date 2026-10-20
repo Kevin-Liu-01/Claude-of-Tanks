@@ -111,8 +111,8 @@ assert.equal(pedestalPoseCount, 1,
 assert.equal(cameraPoseCount, 1, 'battle placement must not steal the live camera');
 
 runtime.setActive(false);
-assert.equal(stageRoot.parent, null);
-assert.equal(dressingRoot.parent, null);
+assert.ok(stageRoot.parent === null);
+assert.ok(dressingRoot.parent === null);
 assert.deepEqual(calls.find(([name]) => name === 'farDormant'), ['farDormant', false]);
 assert.equal(runtime.diagnostics().scene.garageMounted, false);
 assert.equal(runtime.diagnostics().gpu.suspended, true);
@@ -124,8 +124,8 @@ assert.equal(calls.filter(([name]) => name === 'farDormant').length, 1,
   'idempotent phase requests must not repeat lighting work');
 
 runtime.setActive(true);
-assert.equal(stageRoot.parent, scene);
-assert.equal(dressingRoot.parent, scene);
+assert.ok(stageRoot.parent === scene);
+assert.ok(dressingRoot.parent === scene);
 assert.equal(runtime.diagnostics().gpu.suspended, true,
   'scene remount precedes the covered GPU restore');
 const firstRestore = await runtime.restoreGpu();
@@ -173,12 +173,12 @@ assert.equal(warmCount, 4);
 const worldA = new THREE.Group();
 const worldB = new THREE.Group();
 runtime.swapWorld(null, worldA);
-assert.equal(worldA.parent, scene);
+assert.ok(worldA.parent === scene);
 runtime.swapWorld(worldA, worldB);
-assert.equal(worldA.parent, null);
-assert.equal(worldB.parent, scene);
+assert.ok(worldA.parent === null);
+assert.ok(worldB.parent === scene);
 runtime.setWorldActive(worldB, false);
-assert.equal(worldB.parent, null);
+assert.ok(worldB.parent === null);
 
 assert.throws(() => createGaragePhasePresentationRuntime({}),
   /requires every scene lifecycle port/);

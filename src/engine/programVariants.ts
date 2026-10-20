@@ -19,7 +19,9 @@
 // variant (the one runtime-built meshes — fragments, thrown wheels — take), else with the most objects.
 // A hook that keeps a reference to its compile's own uniform map on the material (terrain.ts splatUniforms,
 // shallowWater.ts waterShader) would follow only one of them: split only a subtree whose hooks keep none (map.ts splits
-// the props).
+// the props; since 2026-10-19 tankFactoryCore.ts splits every battle and Garage-hero build before its depth layers).
+// A twin is another object to code that keys or compares materials: whoever patches or clones a mesh's material by
+// its registration resolves the original first (programVariantOrigin: the vehicles' burn hook and registered clones).
 import type { Material, Object3D } from 'three';
 
 type VariantObject = Object3D & {
@@ -71,6 +73,9 @@ function shareUniforms(original: Material): void {
   const hook = original.onBeforeCompile;
   const wrapper = function (this: Material, shader: Parameters<Material['onBeforeCompile']>[0], renderer: Parameters<Material['onBeforeCompile']>[1]) {
     hook.call(this, shader, renderer);
+    // only the original's and its twins' programs share: a clone compiled through the original's chain (the vehicles'
+    // runVehicleHookChain: the Garage energy skin) keeps the map its own compile made, as before the split
+    if (this !== original && twinOrigin.get(this) !== original) return;
     const compiled = shader as unknown as CompileShader;
     if (!shared) { shared = compiled.uniforms; return; }
     for (const key of Object.keys(compiled.uniforms)) if (!(key in shared)) shared[key] = compiled.uniforms[key];
@@ -111,9 +116,12 @@ function twinOf(original: Material, variant: string): Material {
 
 /**
  * Give every further program variant of each material drawn under `root` its own twin (above). Idempotent: a second
- * pass finds one variant per material. Returns the counts.
+ * pass finds one variant per material. `onlyAlreadySplit` re-seats the twins of materials a pass split before and splits
+ * nothing new. Returns the counts.
  */
-export function splitProgramVariants(root: Object3D): { materials: number; split: number; twins: number; objects: number } {
+export function splitProgramVariants(
+  root: Object3D, { onlyAlreadySplit = false }: { onlyAlreadySplit?: boolean } = {},
+): { materials: number; split: number; twins: number; objects: number } {
   interface Slot { object: VariantObject; index: number }
   const uses = new Map<Material, Map<string, Slot[]>>();
   root.traverse((node) => {
@@ -133,6 +141,8 @@ export function splitProgramVariants(root: Object3D): { materials: number; split
   let split = 0, made = 0, objects = 0;
   for (const [material, byVariant] of uses) {
     if (byVariant.size < 2) continue;
+    // a re-seat (onlyAlreadySplit: the energy skin's unwrap) never splits a material the build left whole
+    if (onlyAlreadySplit && !keptVariant.has(programVariantOrigin(material))) continue;
     split++;
     // the original keeps the plain variant, else the most drawn one (the first of a tie: traversal order)
     let keep = byVariant.has('') ? '' : null;

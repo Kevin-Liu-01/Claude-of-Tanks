@@ -726,7 +726,7 @@ const shelled: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const CHOUF_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const CHOUF_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   // the dar: two storeys under red tiles, the triple arch over the door
   farmhouse: (ctx) => dar(ctx, { storeys: 2, roof: 'tile', qanatir: true }),
   rangerlodge: (ctx) => dar(ctx, { storeys: 2, roof: 'tile', qanatir: true, stair: true }),
