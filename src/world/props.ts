@@ -9278,9 +9278,23 @@ ${snowCap ? `
     // (the maps lane, 228) a civic plan's pathway architecture (civic/pathwayKit.ts) in place of the legacy strips: kerbs
     // and pavements only where houses front a main street, the lanes in setts wall to wall; the legacy draws spent first
     if (civicPlan?.pathways) {
+      // (228 r2) the structures' and walls' own contact footprints, gridded: a run keeps off a jettied front or a step
+      // that stands out past its plot (the footprints the pathway receipt holds it to)
+      const solidGrid = new Map<string, CollisionRecord[]>();
+      const cellOf = (v: number) => Math.floor(v / 8);
+      for (const o of obstacles) {
+        if (o.kind !== 'structure' && o.kind !== 'wallstone' && o.structureIdx == null) continue;
+        for (let i = cellOf(o.min[0] - 1); i <= cellOf(o.max[0] + 1); i++) for (let j = cellOf(o.min[2] - 1); j <= cellOf(o.max[2] + 1); j++) {
+          const key = `${i},${j}`;
+          const list = solidGrid.get(key);
+          if (list) list.push(o); else solidGrid.set(key, [o]);
+        }
+      }
+      const solidAt = (x: number, z: number, m: number): boolean => (solidGrid.get(`${cellOf(x)},${cellOf(z)}`) ?? []).some((o) =>
+        x > o.min[0] - m && x < o.max[0] + m && z > o.min[2] - m && z < o.max[2] + m && collisionFootprintContainsPoint(o, x, z, m));
       const built = buildPathwayNetwork(civicPlan.pathways, civicStyle(civicPlan.style), {
         roads, ground: (x, z) => heightField.getHeightAt(x, z), plots: civicPlots(), rng, town, distToOtherRoads,
-        tier: mobileProps ? 'mobile' : 'desktop',
+        tier: mobileProps ? 'mobile' : 'desktop', solidAt,
       });
       if (built.geometry) buckets.baked.push(built.geometry);
       for (const f of built.footprints) {

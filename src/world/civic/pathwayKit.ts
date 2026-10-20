@@ -37,6 +37,9 @@ export interface PathwayContext {
   distToOtherRoads(x: number, z: number, skip: number): number;
   /** a phone lays the lean runs: square-arrised kerbs, a flag a sample across the pavement's width (absent: desktop) */
   tier?: 'desktop' | 'mobile';
+  /** (228 r2) whether a structure's or a wall's own collision footprint (its ground contact, `m` metres grown) stands at
+   *  (x, z): a jettied front or a shop's step stands out past its plot; absent, the plots alone */
+  solidAt?(x: number, z: number, m: number): boolean;
 }
 
 export interface PathwayFootprint { pts: Array<[number, number]>; foot: number }
@@ -229,8 +232,15 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
     const road = ctx.roads[ri], rs = resample(road), pr = prof(ri);
     for (const side of [-1, 1]) {
       const samples: Sample[] = rs.p.map(([x, z], i) => {
-        const [tx, tz] = rs.t[i], nx = -tz * side, nz = tx * side;
-        const kx = x + nx * K, kz = z + nz * K;
+        const [tx, tz] = rs.t[i];
+        let nx = -tz * side, nz = tx * side, kx = x + nx * K, kz = z + nz * K;
+        // (228 r2: a lane's bends) on the inside of a bend the normal's kerb point comes nearer the next segment than the
+        // kerb's line: the normal mitred out until the kerb stands its distance off the street (at most a quarter more)
+        const dk = nearestOnRoad(road, kx, kz).d;
+        if (dk < K - 0.005) {
+          const f = Math.min(1.25, K / Math.max(0.1, dk));
+          nx *= f; nz *= f; kx = x + nx * K; kz = z + nz * K;
+        }
         const out: Sample = { x, z, nx, nz, state: 'blocked', outer: W0 + pr.openWalk };
         const why = (r: string): Sample => { census[`sample:${r}`] = (census[`sample:${r}`] ?? 0) + 1; out.why = r; return out; };
         // the wall line itself (its modules, a gate's passage), and a lane past it
@@ -258,17 +268,18 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
           }
         }
         const near = plotsNear(kx, kz, W0 + pr.maxWalk + 3);
+        const built = (px: number, pz: number, m: number): boolean => near.some((p) => inPlot(p, px, pz, m)) || ctx.solidAt?.(px, pz, m) === true;
         // a structure at the kerb (0.65 m clear of it) or on the pavement's first 0.3 m (a gate's pier, a house stepping
         // out): no run
         for (let o = K - 0.05; o <= W0 + 0.3; o += 0.1) {
           const px = x + nx * o, pz = z + nz * o;
-          if (near.some((p) => inPlot(p, px, pz, o < W0 ? 0.65 : 0))) return why('structure');
+          if (built(px, pz, o < W0 ? 0.65 : 0.02)) return why('structure');
         }
         // a house fronting it: the pavement out to its facade (at most the widest); none: the open walk
         out.state = 'open';
         for (let o = W0 + 0.3; o <= Math.max(W0 + pr.maxWalk + 0.05, out.past ? K + fFar : 0); o += 0.1) {
           const px = x + nx * o, pz = z + nz * o;
-          if (near.some((p) => inPlot(p, px, pz))) {
+          if (built(px, pz, 0.02)) {
             if (!out.past || o >= K + fNear - 0.6) { out.state = 'fronted'; out.outer = Math.min(o - 0.05, W0 + pr.maxWalk); }
             break;
           }
@@ -437,7 +448,8 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
     for (let k = 0; k < segs; k++) {
       const p = a0 + (da * k) / segs, q = a0 + (da * (k + 1)) / segs - (k < segs - 1 ? 0.004 : 0);
       const pa = at(p, R - KW / 2), pb = at(q, R - KW / 2), mid = (p + q) / 2;
-      if (near.some((pl) => inPlot(pl, pa[0], pa[1], 0.3) || inPlot(pl, pb[0], pb[1], 0.3))) continue;
+      if (near.some((pl) => inPlot(pl, pa[0], pa[1], 0.3) || inPlot(pl, pb[0], pb[1], 0.3))
+        || ctx.solidAt?.(pa[0], pa[1], 0.3) || ctx.solidAt?.(pb[0], pb[1], 0.3)) continue;
       const out: [number, number] = [-Math.sin(mid), -Math.cos(mid)]; // toward O: the kerb's back
       const ga = ctx.ground(...at(p, R)), gb = ctx.ground(...at(q, R));
       const col = toned(kerbCol, k, c.road + c.other * 3, 0.06, 53);
@@ -450,7 +462,8 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
         const r0 = R - KW - ring * 0.6 - 0.01, r1 = Math.max(0.05, R - KW - (ring + 1) * 0.6 + 0.01);
         if (r0 <= 0.1) break;
         const c0 = at(p, r0), c1 = at(q, r0), c2 = at(q, r1), c3 = at(p, r1);
-        if (near.some((pl) => [c0, c1, c2, c3].some((pt) => inPlot(pl, pt[0], pt[1], 0.05)))) break;
+        if (near.some((pl) => [c0, c1, c2, c3].some((pt) => inPlot(pl, pt[0], pt[1], 0.05)))
+          || [c0, c1, c2, c3].some((pt) => ctx.solidAt?.(pt[0], pt[1], 0.05))) break;
         const y = (pt: [number, number]) => ctx.ground(...pt) + faceA + (faceB - faceA) * ((k + 0.5) / segs);
         m.quad([c0[0], y(c0), c0[1]], [c1[0], y(c1), c1[1]], [c2[0], y(c2), c2[1]], [c3[0], y(c3), c3[1]], toned(flagCol, k, ring + c.other, style.pavement.tone, 54));
       }

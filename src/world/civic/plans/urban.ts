@@ -171,6 +171,8 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       { kind: 'bench', x: -67.0, z: -23.0, yawDeg: 0 }, { kind: 'bench', x: -76.0, z: -23.0, yawDeg: 0 },
       // a bench under the north row's pit tree, facing the square
       { kind: 'bench', x: -21.0, z: 35.6, yawDeg: 200 },
+      // (228 r2) one by the north-east kerb parking facing the market, one behind the south row facing the square
+      { kind: 'bench', x: -17.8, z: 29.5, yawDeg: -90 }, { kind: 'bench', x: -33.0, z: -30.6, yawDeg: 0 },
       // the Brunnenplatz: two benches against the church's east flank, facing the Marktbrunnen
       { kind: 'bench', x: -69.0, z: 45.5, yawDeg: 90 }, { kind: 'bench', x: -69.0, z: 48.5, yawDeg: 90 },
       ...POLLER,
@@ -188,7 +190,7 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       { kind: 'kiosk', x: -15.5, z: -14.5, yawDeg: -45 },
       { kind: 'litfass', x: -31.5, z: -15.5, yawDeg: 0 }, { kind: 'litfass', x: -16.5, z: 12.5, yawDeg: 20 },
       { kind: 'telzelle', x: -11.0, z: -21.0, yawDeg: -90 }, { kind: 'telzelle', x: -15.0, z: 33.5, yawDeg: -90 },
-      { kind: 'handcart', x: -35.6, z: 27.6, yawDeg: 70 }, { kind: 'handcart', x: -21.0, z: -26.6, yawDeg: -60 },
+      { kind: 'handcart', x: -35.6, z: 27.6, yawDeg: 70 },
     ],
     // (228 r2) the cars parked at the kerb, nose to tail along the south frontage and the east, a little off true (no
     // painted bays: the owner's "parking-lot lines" and the critics' "modern car park")
