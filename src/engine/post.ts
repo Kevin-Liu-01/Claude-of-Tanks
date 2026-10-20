@@ -262,6 +262,19 @@ const BLOOM_THRESHOLD = 1.78;
 // headroom (up to ~5.15) must reach the bloom pass or the halo cannot scale
 // with core heat; still far below the 5-20 raw stack values that flooded.
 const BLOOM_INPUT_CLAMP = 2.6;
+// (item fx-ir-lens-bloom-229, the coordinator: "several white-hot live hulls in the IR/thermal lens lift the whole frame's
+// ground level", median ~35 -> 61 on the airfield at night) a heat-imaging lens (uThermal 1 infrared, 2 thermal) grades
+// each pixel's display level into its cool grey, and the night exposure lifts whatever the bloom laid there: every
+// white-hot hull's halo on the wide mips, summed, read as warm ground across the frame (the film: the ground fell 92 -> 72
+// -> 61 -> 40 levels from 25 to 240+ px off the hot pixels, and the old build's did the same). Under a heat lens at night
+// the bloom keeps THERMAL_BLOOM_NIGHT_K of its strength on its tightest mips only (radius 0): a hull keeps a rim of glow,
+// the ground its own level. By day (the light model's night 0), in the daylight lens, the intensifier and every other
+// camera the bloom is untouched.
+export const THERMAL_BLOOM_NIGHT_K = 0.25;
+/** How far the heat lens's night bloom cut applies (0 none .. 1 full): the night level under a heat-imaging grade code. */
+export function heatLensNight(thermalCode: number, night: number): number {
+  return thermalCode > 0.5 && thermalCode < 2.5 ? Math.min(1, Math.max(0, night)) : 0;
+}
 const HIGH_PASS_ANCHOR = 'gl_FragColor = mix( outputColor, texel, alpha );';
 // AO radius must be vehicle-scale (~1 m) to ground hulls/building bases;
 // 0.3 m read as nothing at gameplay camera distances. r3: radius 1.0 → 1.3,
@@ -2954,10 +2967,14 @@ export function createPost(
       * 0.95
       * Math.min(1, Math.max(0, (16 - camera.fov) / 10));
     const scopeWeight = grade.uniforms.uScope.value;
-    // 2026-10-04 (the sun-bloom lane): the bloom's strength, threshold and radius through the light model's QA hook
-    bloom.strength = lightTune('BLOOM_STRENGTH', BLOOM_STRENGTH) * (1 - 0.5 * scopeWeight);
+    // 2026-10-04 (the sun-bloom lane): the bloom's strength, threshold and radius through the light model's QA hook;
+    // (fx-ir-lens-bloom-229) cut to its tight mips under a heat lens at night (THERMAL_BLOOM_NIGHT_K; 1 and 1 otherwise;
+    // the QA hook's THERMAL_BLOOM_CUT 0 restores the old bloom for a same-build A/B)
+    const heatNight = heatLensNight(grade.uniforms.uThermal.value, (scene.userData.lightModel as LightModel | undefined)?.night ?? 0)
+      * lightTune('THERMAL_BLOOM_CUT', 1);
+    bloom.strength = lightTune('BLOOM_STRENGTH', BLOOM_STRENGTH) * (1 - 0.5 * scopeWeight) * (1 - (1 - THERMAL_BLOOM_NIGHT_K) * heatNight);
     bloom.threshold = lightTune('BLOOM_THRESHOLD', BLOOM_THRESHOLD);
-    bloom.radius = lightTune('BLOOM_RADIUS', BLOOM_RADIUS);
+    bloom.radius = lightTune('BLOOM_RADIUS', BLOOM_RADIUS) * (1 - heatNight);
     // (2026-10-15) the shoulder's defaults follow the look (tone r1 turns it on; TONE_R1 0 = off, as before)
     const shoulderTone = toneFor((scene.userData.lightModel as LightModel | undefined)?.night ?? 0);
     (grade.uniforms.uShoulder.value as THREE.Vector4).set(lightTune('GRADE_SHOULDER_SLOPE', shoulderTone.shoulderSlope),
