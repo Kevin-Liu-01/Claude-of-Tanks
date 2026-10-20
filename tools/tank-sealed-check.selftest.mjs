@@ -80,6 +80,9 @@ for (const [id, row] of Object.entries(ledger.tanks)) {
   assert.ok(Number.isFinite(row.seeThroughPx) && Number.isFinite(row.netSeeThroughPx), `${id}: every row carries see-through and netting baselines`);
   assert.ok(Array.isArray(row.frame) && row.frame.length === 4 && row.frame.every(Number.isFinite) && row.frame[3] > 1,
     `${id}: every row carries its census frame [x, y, z, radius]`);
+  // an open row names its hole views (guards 229 critic round 4): a hole in any other view fails it
+  if (!row.sealed) assert.ok(Array.isArray(row.openViewNames) && row.openViewNames.length === row.openViews && row.openViews > 0,
+    `${id}: an open row lists its ${row.openViews} hole view(s) by name`);
 }
 const netted = Object.entries(ledger.tanks).filter(([, row]) => row.netSeeThroughPx > 0).map(([id]) => id);
 assert.ok(netted.length >= 35 && netted.includes('kf51_u'), `the ghillie rows are re-baselined with netting apart (${netted.length})`);

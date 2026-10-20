@@ -571,15 +571,24 @@ support went with it. Visual change detection lives in generated ledgers that on
   10 %) and its `netSeeThroughPx` (sky between declared netting) to max(12 px, 2 %) either way; every playable id has a
   row (`tank-sealed-check.selftest` holds the ledger's ids to the fleet manifest), measured in the census frame recorded
   on it (`frame: [x, y, z, radius]`), so an unrelated extremity edit never moves the pixel grid under unchanged parts.
-  `--update-ledger` never changes an existing row (it records new vehicles' rows; `=see-through` refuses new rows);
-  `--tighten-ledger=<ids>` lowers openings and see-through to the measurement by name; a see-through or netting raise,
-  or a sealed new vehicle's row with a see-through cluster, needs `--accept-see-through=<id>[,<id>]:<reason>`; no flag
-  accepts an opening. A build that outgrows its frame needs `--reframe=<id>:<reason>`, refused for a build inside its
-  frame: the build's census in the old frame must pass the row's normal gate before every column is re-measured in the
-  new one. Each accept or re-frame appends {kind, reason, by, date, from} to the row's `accepts` history. The framed
-  re-base that introduced the frames (guards 229) wrote its own entries, kind `rebaseline`: leo2a4's 1 cm turret-roof
-  slit is the one opening it recorded (open in one view, so a new hole cluster fails), and the 256 px aliasing it found
-  on type90, leclerc_sxxi and leo2a6_ua is noted on their rows.
+  The frame is fixed: the frame a build needs (its own bounding sphere, as a new row records it) may differ from the
+  row's by min(1 m, 25 % of the radius) in radius or centre and the build is judged in the row's frame, geometry past
+  it clipped laterally and drawn wherever it projects into the window (a 1.5 m longer gun needs 5.6 -> 6.3 m: no
+  re-frame). Past that the gate fails `OUT OF FRAME` (usually a part thrown metres out: fix the build) or `FRAME STALE`
+  (the build lies well inside a frame too large for it). `--update-ledger` never changes an existing row (it records
+  new vehicles' rows; `=see-through` refuses new rows); `--tighten-ledger=<ids>` lowers openings and see-through to the
+  measurement by name; a see-through or netting raise, or a sealed new vehicle's row with a see-through cluster, needs
+  `--accept-see-through=<id>[,<id>]:<reason>`; no flag accepts an opening. `--reframe=<id>:<reason>` serves only
+  OUT OF FRAME (never to more than half again the radius) and FRAME STALE: the build's census in the row's frame may
+  not exceed the row in any column, with no slack, before every column is re-measured in its own frame; with
+  `--accept-see-through` for the same id its see-through and netting are free there (both entries recorded), openings
+  never. Each accept or re-frame appends {kind, reason, by, date, from} to the row's `accepts` history. The six open
+  rows list their hole views (`openViewNames`): a hole in any other view fails; within a listed view the row keeps
+  only a pixel count. Rows are pixel counts at the ledger's `res` and `minArea` (256, 6): an update at another
+  `--res`/`--min-area` is refused, and a gate there uses the rows' frames and gives no verdict. The framed re-base that
+  introduced the frames (guards 229) wrote its own entries, kind `rebaseline`: leo2a4's 1 cm turret-roof slit is the
+  one opening it recorded, and the 256 px aliasing it found on type90, leclerc_sxxi and leo2a6_ua is noted on their
+  rows.
 - `docs/geometry-gate/contig-hidden.json` (guards 229) — the §B2 fleet hidden-gap audit: per tank, the plan gaps the
   hull-anchored lattice reads and the pre-227 raster missed, as exact vehicle-frame pixel boxes
   (`tools/contig-hidden-gaps.mjs`, from `tools/contig-phase-audit.mjs` rows). `tank-standard-check` passes those as
