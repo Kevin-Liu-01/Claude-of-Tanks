@@ -112,15 +112,15 @@ function fixture(mode) {
     properties: { get: target => properties.get(target) },
     compile(root, actualCamera, targetScene) {
       compiles++;
-      assert.equal(actualCamera, camera); assert.equal(targetScene, scene);
+      assert.ok(actualCamera === camera); assert.ok(targetScene === scene);
       assert.equal(active.texture.colorSpace, THREE.LinearSRGBColorSpace);
       assert.equal(active.texture.type, THREE.HalfFloatType);
-      assert.equal(scene.overrideMaterial, priorOverride);
-      assert.equal(targetScene.environment, scene.environment);
+      assert.ok(scene.overrideMaterial === priorOverride);
+      assert.ok(targetScene.environment === scene.environment);
       if (mode === 'compile-throws') throw failure;
       const materials = new Set();
       root.traverse(object => {
-        assert.notEqual(object, hidden, 'compilation cannot visit an unselected descendant');
+        assert.ok(object !== hidden, 'compilation cannot visit an unselected descendant');
         assert.ok(objects.includes(object), 'compile actual selected objects');
         const selectedMaterial = object.material;
         assert.equal(selectedMaterial.name, 'DeploymentBufferUpload');
@@ -170,12 +170,12 @@ function fixture(mode) {
   });
   const assertRestored = (checkLod = true) => {
     assert.equal(active, priorTarget); assert.equal(face, 3); assert.equal(mip, 2);
-    assert.equal(scene.overrideMaterial, priorOverride);
+    assert.ok(scene.overrideMaterial === priorOverride);
     if (checkLod) assert.equal(lod.autoUpdate, true);
     assert.deepEqual(camera.toJSON(), cameraState);
     objects.forEach((object, index) => {
-      assert.equal(object.material, states[index].material);
-      assert.equal(object.parent, states[index].parent);
+      assert.ok(object.material === states[index].material);
+      assert.ok(object.parent === states[index].parent);
       assert.equal(object.layers.mask, states[index].mask);
       assert.equal(object.visible, states[index].visible);
     });

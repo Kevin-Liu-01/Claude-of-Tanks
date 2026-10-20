@@ -19,7 +19,7 @@ import type { StructureShellReply, StructureShellRequest } from './structureShel
 type GeometryBuckets = Parameters<typeof packStructureShellWire>[0];
 type WorkerPort = Pick<Worker, 'postMessage' | 'terminate' | 'onmessage' | 'onerror' | 'onmessageerror'>;
 
-export interface StructureShellPool {
+interface StructureShellPool {
   /** Post one structure's geometry (copied now, before its placement transform); returns the job. */
   post(buckets: GeometryBuckets): number;
   /** The job's bands when its answer arrived, else null (the caller derives from `wire(job)`). */

@@ -20,7 +20,7 @@ import * as THREE from 'three';
 
 export type Vec3 = [number, number, number];
 
-export type MaterialRole =
+type MaterialRole =
   | 'paint' | 'glass' | 'chrome' | 'rubber' | 'trim' | 'lamp' | 'lampRed' | 'lampAmber' | 'wood' | 'canvas'
   | 'steel' | 'under' | 'interior' | 'plate' | 'cargo' | 'rust';
 
@@ -51,7 +51,7 @@ export function linearHex(hex: number, scale = 1): [number, number, number] {
 }
 
 /** The weathering a build bakes into its colours (vehicleWeathering's output). */
-export interface VehicleWeathering {
+interface VehicleWeathering {
   /** Soil splashed up the lower body (linear) and how much (0..1). */
   readonly dirtRgb: readonly [number, number, number];
   readonly dirt: number;

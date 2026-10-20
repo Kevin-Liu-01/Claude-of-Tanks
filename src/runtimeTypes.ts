@@ -12,7 +12,3 @@
 // evaluates to undefined, TypeScript gives it deliberately stricter
 // assignability rules that make a top-value alias unsound at callback seams.
 export type RuntimeValue = {} | null | undefined;
-
-/** Values that can cross the game's JSON network and persistence boundaries. */
-type JsonPrimitive = null | string | number | boolean;
-type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };

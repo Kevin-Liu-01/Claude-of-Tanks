@@ -96,7 +96,7 @@ for (const quality of ['high', 'low']) {
   const ax = createTank('abramsx', null, {proceduralOnly:true, quality, geometryReceipt:true});
   const shell = ax.root.getObjectByName('turret');
   assert.ok(shell?.isMesh);
-  assert.equal(ax.root.getObjectByName('hullRunningGearTrack'), undefined,
+  assert.ok(ax.root.getObjectByName('hullRunningGearTrack') === undefined,
     `${quality}: no static underside strips duplicate the animated track`);
   // Probe the actual carrier below the shell from every azimuth. A broad
   // front frustum can pass an AABB check, but cannot pass these radial rays.
@@ -125,7 +125,7 @@ for (const quality of ['high', 'low']) {
   const turret = m1.root.getObjectByName('rig_turret');
   assert.ok(Math.abs(turret.position.y-(1.67 + .128 + .012))<1e-8, 'complete M1A3 turret reseated to leave a 50 mm ring seam');
   assert.equal(turret.position.z,.15, 'earlier forward seat preserved');
-  assert.equal(m1.root.getObjectByName('rig_gun').parent,turret);
+  assert.ok(m1.root.getObjectByName('rig_gun').parent === turret);
   assert.ok(m1.root.getObjectByName('turretExternalArmor').geometry.attributes.position.count>0);
   const bearing = m1.root.getObjectByName('turret').geometry.attributes.position;
   let bearingBottom=Infinity, bearingTop=-Infinity;

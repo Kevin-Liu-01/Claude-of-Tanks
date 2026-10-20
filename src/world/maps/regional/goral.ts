@@ -725,7 +725,7 @@ const spalona: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const GORAL_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const GORAL_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => chalupa(ctx),
   logcabin: (ctx) => chalupa(ctx),
   alpine: (ctx) => chalupa(ctx, { big: true }),

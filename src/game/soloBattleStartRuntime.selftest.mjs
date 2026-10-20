@@ -178,7 +178,7 @@ for (const deferVisuals of [false, true]) {
   const harness = createHarness({
     visual,
     onMaskStart(borrowed) {
-      assert.strictEqual(borrowed.material, material);
+      assert.ok(borrowed.material === material);
       assert.equal(hookCalls, 1, 'install the disarmed hook before requesting masks');
       assert.match(material.customProgramCacheKey(), /\|burn-r7$/);
       submittedRevision = { version: material.version, key: material.customProgramCacheKey() };

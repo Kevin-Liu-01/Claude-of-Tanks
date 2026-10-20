@@ -192,6 +192,7 @@ control = false;
 const after = await build();
 assert.deepEqual(after.rng, before.rng, 'all production RNG call counts and tails exact');
 assert.deepEqual(after.captured.totalBudget, before.captured.totalBudget);
+// object3d-assert-ok: meshes are plain {name, program key, counts} records, not meshes
 assert.deepEqual(after.meshes, before.meshes, 'actual merged/instanced mesh counts, buffers, materials and every unrelated instance transform exact');
 assert.notDeepEqual(after.props.features.buildings[0], before.props.features.buildings[0]);
 assert.equal(originalCompose('polders', field, null, undefined, [], null, []), null, 'non-Mangrove no-op');

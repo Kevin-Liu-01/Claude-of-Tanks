@@ -38,8 +38,8 @@ for (const quality of ['high', 'low']) {
     const root = tank.root, pitch = root.getObjectByName('rig_gun');
     const yaw = root.getObjectByName('rig_turret'), recoil = root.getObjectByName('rig_recoil');
     const mount = root.getObjectByName('gunMount'), gun = root.getObjectByName('gun');
-    assert.equal(mount.parent, pitch, 'real shield and linkage belong to the pitching cradle');
-    assert.equal(gun.parent, recoil, 'source breech cap belongs to the recoiling tube/breech');
+    assert.ok(mount.parent === pitch, 'real shield and linkage belong to the pitching cradle');
+    assert.ok(gun.parent === recoil, 'source breech cap belongs to the recoiling tube/breech');
     for (const [heading, elevation] of [[0, 0], [.63, -.12], [-.45, .15]]) {
       yaw.rotation.y = heading; pitch.rotation.x = elevation;
       recoil.position.z = -.13; root.updateMatrixWorld(true);

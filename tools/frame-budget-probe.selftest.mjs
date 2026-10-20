@@ -138,6 +138,7 @@ function fakePage() {
     assert.equal(page.renderer.shadowMap.render, originals.shadow);
     assert.equal(page.renderer.setRenderTarget, originals.srt);
     assert.equal(page.clouds.beforeSceneRender, originals.clouds);
+    // object3d-assert-ok: originals.scene is the original render function, not a THREE.Scene
     assert.equal(page.passes[0].render, originals.scene);
     assert.equal(window.__FRAME_PASS_TIMER, undefined);
   } finally {

@@ -14,7 +14,7 @@ const rope = visual.root.getObjectByName('strv103a_side_tow_rope');
 const gameManifest = decorManifestFor(getSpec('strv103a'), () => 0.5);
 
 assert.ok(hull && rope, 'Strv 103A owns a named recovery rope on the hull rig');
-assert.equal(rope.parent, hull, 'recovery rope follows the fixed hull rather than a virtual turret');
+assert.ok(rope.parent === hull, 'recovery rope follows the fixed hull rather than a virtual turret');
 assert.equal(rope.userData.orientation, 'longitudinal', 'recovery rope records its intended side orientation');
 assert.equal(rope.userData.fixedToFender, true, 'recovery rope is a fixed fender assembly');
 assert.equal(rope.children.length, 3, 'recovery rope uses three short longitudinal segments');

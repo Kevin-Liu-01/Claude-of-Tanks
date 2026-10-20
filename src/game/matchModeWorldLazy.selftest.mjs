@@ -17,7 +17,7 @@ const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve()
     whenIdle: (run) => { idle = run; },
     load: () => { loads++; return new Promise((resolve) => { resolveLoad = resolve; }); },
   });
-  assert.equal(lazy.root.parent, scene, 'one stable root in the scene from the start');
+  assert.ok(lazy.root.parent === scene, 'one stable root in the scene from the start');
   lazy.update(null, 1);
   assert.equal(loads, 0, 'a Garage frame (no mode) loads nothing');
   idle();
@@ -31,7 +31,7 @@ const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve()
   assert.equal(loads, 1, 'never fetched twice');
   resolveLoad({
     createMatchModeWorldPresentation(parent, options) {
-      assert.equal(parent, lazy.root, 'the real presentation hangs under the stable root');
+      assert.ok(parent === lazy.root, 'the real presentation hangs under the stable root');
       assert.equal(options.mapId(), 'verdant', 'with the options it was given');
       const root = new THREE.Group(); parent.add(root);
       return { root, update: (s, t) => updates.push([s, t]), dispose: () => disposed.push(true) };
@@ -45,7 +45,7 @@ const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve()
   assert.deepEqual(updates.at(-1), [null, 3], 'then every frame goes straight through');
   lazy.dispose();
   assert.deepEqual(disposed, [true]);
-  assert.equal(lazy.root.parent, null, 'disposal leaves the scene');
+  assert.ok(lazy.root.parent === null, 'disposal leaves the scene');
 }
 
 {

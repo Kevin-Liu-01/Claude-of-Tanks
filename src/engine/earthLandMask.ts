@@ -12,7 +12,7 @@ import * as THREE from 'three';
 type Ring = readonly (readonly [number, number])[];
 
 /** Land outlines: [longitude, latitude] in degrees, each ring closed implicitly. */
-export const EARTH_LAND: readonly Ring[] = [
+const EARTH_LAND: readonly Ring[] = [
   // Africa
   [[-5.9, 35.8], [-1.9, 35.1], [3.0, 36.8], [10.2, 37.2], [11.1, 35.2], [10.5, 33.7], [15.2, 32.3], [19.9, 30.9], [20.1, 32.1],
     [23.1, 32.6], [25.1, 31.6], [29.9, 31.2], [32.3, 31.3], [32.6, 29.9], [34.0, 27.0], [35.6, 23.9], [37.3, 21.0], [38.6, 18.0],
@@ -97,7 +97,7 @@ export const EARTH_LAND: readonly Ring[] = [
 ];
 
 /** The seas the land outlines enclose, cut back out. */
-export const EARTH_INLAND_SEAS: readonly Ring[] = [
+const EARTH_INLAND_SEAS: readonly Ring[] = [
   // the Baltic with the gulfs of Bothnia and Finland
   [[11.0, 57.6], [12.0, 56.2], [12.6, 55.6], [11.0, 55.0], [10.0, 54.6], [11.0, 54.0], [14.0, 54.0], [16.0, 54.5], [18.6, 54.6],
     [21.0, 55.5], [21.0, 57.2], [23.5, 57.0], [24.3, 57.8], [23.5, 58.8], [24.5, 59.5], [28.0, 59.6], [30.0, 60.0], [27.0, 60.5],
@@ -119,8 +119,8 @@ export const EARTH_INLAND_SEAS: readonly Ring[] = [
   [[-95, 59], [-92, 57], [-87, 55.5], [-82, 53], [-80, 55], [-77, 58], [-78, 61], [-85, 63], [-90, 63.5], [-94, 61]],
 ];
 
-export const EARTH_MASK_WIDTH = 1024;
-export const EARTH_MASK_HEIGHT = 512;
+const EARTH_MASK_WIDTH = 1024;
+const EARTH_MASK_HEIGHT = 512;
 
 /** The rings' coverage of each texel (even-odd; two sample rows and two sample columns a texel, a quarter each). */
 function fillRings(coverage: Float32Array, rings: readonly Ring[], value: number): void {
@@ -156,7 +156,7 @@ function fillRings(coverage: Float32Array, rings: readonly Ring[], value: number
 }
 
 /** The land's coverage, one byte a texel (0 sea, 255 land), rows from the north pole down, columns from 180° W. */
-export function rasteriseEarthLand(): Uint8Array {
+function rasteriseEarthLand(): Uint8Array {
   const coverage = new Float32Array(EARTH_MASK_WIDTH * EARTH_MASK_HEIGHT);
   fillRings(coverage, EARTH_LAND, 1);
   fillRings(coverage, EARTH_INLAND_SEAS, -1);

@@ -131,8 +131,8 @@ function fixture(castShadow = false, fragmented = false) {
     assertRestored() {
       assert.deepEqual(geometry.drawRange, { start: 0, count: Infinity });
       assert.equal(bytes(), original, 'every position/normal/UV/index/group byte remains unchanged');
-      assert.strictEqual(mesh.geometry, originalGeometry);
-      assert.strictEqual(mesh.material, originalMaterial);
+      assert.ok(mesh.geometry === originalGeometry);
+      assert.ok(mesh.material === originalMaterial);
       assert.equal(owner.children.length, 1, 'no additional mesh/draw owners');
     },
     dispose() { geometry.dispose(); material.dispose(); for (const pass of composer.passes) pass.dispose(); composer.dispose(); },
@@ -301,7 +301,7 @@ for (const [caster, fragmented] of [[true, false], [false, true]]) {
     canClone:m=>m!==material,setup:()=>assert.fail('mutable material cannot be cloned'),release:()=>{},
   }});
   const batch=owner.getObjectByName('workshop_display_merge_1');
-  assert.ok(batch&&!batch.isBatchedMesh);assert.strictEqual(batch.material,material);
+  assert.ok(batch&&!batch.isBatchedMesh);assert.ok(batch.material === material);
   material.color.setHex(0xff9900);assert.equal(batch.material.color.getHex(),0xff9900);
   for(const resource of root.userData.optimizationDisposables)resource.dispose();material.dispose();
 }

@@ -8,7 +8,7 @@ import { NO_TICK, TICK_HZ } from '../../src/mp/wire/constants.ts';
 import { buildSnapshotPacket, encodeMessage } from '../../src/mp/wire/codec.ts';
 import type { SnapshotFrame } from '../../src/mp/wire/messages.ts';
 
-export const KEYFRAME_INTERVAL_TICKS = TICK_HZ * 2;
+const KEYFRAME_INTERVAL_TICKS = TICK_HZ * 2;
 const HISTORY_FRAMES = 64;
 
 export interface ViewerPublisher {

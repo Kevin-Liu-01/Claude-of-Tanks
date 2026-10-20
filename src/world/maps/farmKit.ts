@@ -15,7 +15,7 @@ import { baleBroken, baleNear, silageNear, troughBroken, troughFar, troughNear, 
 type Hex = number;
 type Build = (rng: () => number) => THREE.BufferGeometry;
 /** clutterKit.ts's entry, its material named (the hay's 'straw', else 'baked'). */
-export type FarmEntry = (kind: string, mapId: string, near: Build, far: (() => THREE.BufferGeometry) | null, broken: Build | null,
+type FarmEntry = (kind: string, mapId: string, near: Build, far: (() => THREE.BufferGeometry) | null, broken: Build | null,
   mat: DestructiblePropType['mat']) => DestructiblePropType;
 const lin = (hex: Hex): Rgb => hexLin(hex);
 
@@ -23,7 +23,7 @@ interface BaleSpec { form: string; kind: BaleForm['kind']; cock?: BaleForm['cock
 const COCK: BaleSpec = { form: 'hay-cock', kind: 'cock' };
 const SQUARE: BaleSpec = { form: 'square-ricklet', kind: 'square' };
 const ROUND: BaleSpec = { form: 'round-bale', kind: 'round' };
-export const BALE_FORMS: Readonly<Record<string, BaleSpec>> = Object.freeze({
+const BALE_FORMS: Readonly<Record<string, BaleSpec>> = Object.freeze({
   // Prokhorovka's kopna; the Podhale's hay hung up its ostrewki; the rice straw of Kohima's terraces and the Jamuna's chars
   verdant: { ...COCK, form: 'kopna', cock: 'kopna' }, winter: { ...COCK, form: 'ostrewka', cock: 'ostrewka' },
   autumn: COCK, polders: COCK, reservoir: COCK, alpine: COCK,
@@ -38,7 +38,7 @@ const LOG: TroughSpec = { form: 'hollowed-log', kind: 'log', body: 0x6a5440, tri
 const STONE: TroughSpec = { form: 'carved-stone', kind: 'stone', body: 0x9a948a, trim: 0x8a8478 };
 const TANK: TroughSpec = { form: 'stock-tank', kind: 'tank', body: 0x9aa0a0, trim: 0x7a8080 };
 const CONCRETE: TroughSpec = { form: 'concrete-float-valve', kind: 'concrete', body: 0xa8a49a, trim: 0x5a5a56 };
-export const TROUGH_FORMS: Readonly<Record<string, TroughSpec>> = Object.freeze({
+const TROUGH_FORMS: Readonly<Record<string, TroughSpec>> = Object.freeze({
   alpine: LOG, winter: LOG, fjord: LOG, verdant: LOG, steppe: LOG,
   saltwind: { ...STONE, body: 0xc8c0b0 }, orchard: { ...STONE, body: 0xc8b8a0 }, cliffbridge: { ...STONE, body: 0xb8a890 }, desert: { ...STONE, body: 0xb89a78 },
   oasis: { ...STONE, body: 0xb8a080 }, badlands: { ...STONE, body: 0xa87a5a }, autumn: { ...STONE, body: 0x9a9488 },

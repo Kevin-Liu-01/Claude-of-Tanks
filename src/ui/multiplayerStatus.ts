@@ -30,9 +30,9 @@ interface StorageLike {
   setItem(key: string, value: string): void;
 }
 
-export type MultiplayerStatusHost = 'battle' | 'lobby';
+type MultiplayerStatusHost = 'battle' | 'lobby';
 
-export interface MultiplayerStatusSurfaceOptions {
+interface MultiplayerStatusSurfaceOptions {
   /** `battle`: fixed bare text in the top-right corner row, beside the fps/ping plate; `lobby`: inline in `container`. */
   host?: MultiplayerStatusHost;
   container?: HTMLElement | null;
@@ -43,7 +43,7 @@ export interface MultiplayerStatusSurfaceOptions {
   leaveConfirmMs?: number;
 }
 
-export interface MultiplayerStatusSurface {
+interface MultiplayerStatusSurface {
   readonly root: HTMLElement;
   readonly panelOpen: boolean;
   /** Paint a sample (the model's cadence, never per frame). */
@@ -155,7 +155,7 @@ const pingOf = (s: Readonly<NetworkStatusSnapshot>): number | null => (s.attache
 const round = (value: number): number => Math.round(value);
 const kb = (bytesPerS: number): string => (bytesPerS / 1024).toFixed(1);
 
-export interface StripText {
+interface StripText {
   health: NetworkHealth;
   ping: string;
   pingUnit: string;

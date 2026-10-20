@@ -24,11 +24,11 @@ import { recordShed, type ShedWreck } from './shedFall.ts';
 const DEG = Math.PI / 180;
 
 /** A covering's courses: shingle, slate and lauze lap across the slope; tiles and sheet run down it as well. */
-export type ShedCovering = 'shingle' | 'slate' | 'lauze' | 'plaintile' | 'canal' | 'pantile' | 'sheet' | 'thatch';
+type ShedCovering = 'shingle' | 'slate' | 'lauze' | 'plaintile' | 'canal' | 'pantile' | 'sheet' | 'thatch';
 /** The cladding: boards standing with gaps (air for the wood), boards with battens over their joints, or lapped boards. */
-export type ShedCladding = 'gapped' | 'batten' | 'lapped';
+type ShedCladding = 'gapped' | 'batten' | 'lapped';
 
-export interface ShedDialect {
+interface ShedDialect {
   /** sills, plates, braces and rafters */
   timber: Rgb;
   /** the posts' section (square, or round poles) and their paint (default the timber's) */
@@ -57,7 +57,7 @@ export interface ShedDialect {
   thatch?: RoofSpec['thatch'];
 }
 
-export interface ShedPlan {
+interface ShedPlan {
   /** across (back to front) and along, the frame's outer faces */
   W: number;
   D: number;
@@ -103,7 +103,7 @@ export interface ShedPlan {
 }
 
 /** What `openShed` laid, for its snow and for the shed's wreck (posts, roof, cladding: the building's frame). */
-export interface ShedReading {
+interface ShedReading {
   W: number;
   D: number;
   /** the posts' feet and heads and their section */
@@ -622,13 +622,8 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
   };
 }
 
-/** The covering's top over the deck (a snow load laid over the courses lies this much higher). */
-export function coveringRise(covering: ShedCovering): number {
-  return COURSES[covering].butt + 0.01;
-}
-
 /** A round dry-stone or brick body (a kažun, an oven's dome): see `coursedRound`. */
-export interface RoundSpec {
+interface RoundSpec {
   /** the centre, the wall's outer radius, height and thickness */
   cx: number;
   cz: number;

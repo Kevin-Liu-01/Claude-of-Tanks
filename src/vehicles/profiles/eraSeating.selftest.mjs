@@ -36,7 +36,7 @@ for (const id of ['t80', 't80b', 't80bv']) {
       && centroid.y > 0.15 && centroid.y < 0.75 && centroid.z > 0.70) : [];
   assert.equal(continuousBars.length, 0,
     `${id} has no redundant continuous turret ERA bar`);
-  assert.equal(track, undefined,
+  assert.ok(track === undefined,
     `${id} cheek protection inherits turret camouflage instead of generic gray track steel`);
   tank.dispose();
 }
@@ -45,9 +45,9 @@ const oplot = createTank('t84bm_oplot_m', null, {
   proceduralOnly: true,
   geometryReceipt: true,
 });
-assert.equal(oplot.root.getObjectByName('turretTrack'), undefined,
+assert.ok(oplot.root.getObjectByName('turretTrack') === undefined,
   'Oplot Duplet modules inherit the turret camouflage palette');
-assert.equal(oplot.root.getObjectByName('hullTrack'), undefined,
+assert.ok(oplot.root.getObjectByName('hullTrack') === undefined,
   'Oplot Nozh modules inherit the hull camouflage palette');
 const eraReceipt = oplot.root.getObjectByName('rig_turret')?.userData.uaOplotMERAReceipt;
 assert.ok(eraReceipt, 'Oplot-M exposes a carrier-contact ERA receipt');

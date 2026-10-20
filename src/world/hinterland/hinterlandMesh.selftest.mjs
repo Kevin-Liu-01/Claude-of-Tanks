@@ -226,7 +226,7 @@ assert.ok(ostats.buildingTris + ostats.nearTreeTris + ostats.farTreeTris < 26000
   scene.add(dome);
   air.update(scene);
   assert.equal(air.uniforms.uHlSkyOn.value, 1);
-  assert.equal(air.uniforms.tAtmoSky.value, skyView, 'the dome\'s own lookup');
+  assert.ok(air.uniforms.tAtmoSky.value === skyView, 'the dome\'s own lookup');
   assert.equal(air.uniforms.uAtmoIntensity.value, 0.8);
   assert.ok(Math.abs(air.uniforms.uAtmoSun.value.y - 1) < 1e-9, 'the sun normalised');
   assert.equal(air.uniforms.uHlDeckClosed.value, 0.25, 'the deck greying the dome uses');

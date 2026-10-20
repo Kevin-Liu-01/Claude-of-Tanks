@@ -46,6 +46,23 @@ avoid editing generated evidence manually. Combat-anatomy generation always
 uses `ALL_TANK_IDS`; donor/retired spec rows are not part of the playable gate.
 Receipts import `near`, `nearStrict` and `geometryHash` from
 `receipt-kit.test-support.mjs` instead of defining their own copies.
+Never `assert.equal`/`deepEqual` three.js objects (Object3D, geometry,
+attribute, material, texture): a failure dumps and diffs both graphs whole
+(the 226 T-72 receipts reached 40 GB). Assert a boolean (`assert.ok(a === b)`)
+or compare `graphLabels(...)`, uuids or names; `object3d-assert-lint.mjs`
+fails the suite otherwise (`--fix` rewrites, `--types` audits with the checker,
+`// object3d-assert-ok: <reason>` accepts a false positive).
+
+Fleet tool defaults (2026-10-16, test-speed R4c/R4d): every `--ids` reader
+passes its list through `uniqueIds` (`id-list.mjs`), so a repeated id fails by
+name before any server, browser or capture hold (`id-list.selftest` scans
+`tools/*.mjs`). Browser tools take their Vite `server` from `toolServerOptions`
+(127.0.0.1, strictPort false), build URLs with `boundOrigin(server)` (never
+`localhost`), and load their first page with `loadReadyPage` (180 s navigation,
+one retry of a timeout; `COT_NAV_TIMEOUT_MS`, `COT_READY_TIMEOUT_MS`,
+`COT_NAV_RETRIES`) from `tool-page-load.mjs`. `gen-interior-fills.mjs`
+generates at the shipped records' flags by default (`--rounds=8 --min-fine=1`,
+also spelled `--release`); exploration passes its own rounds explicitly.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
@@ -140,6 +157,12 @@ aggregate score must reach 92, not merely the legacy 90 fleet floor. Keep that
 floor quality-bar-aware through geometry packets and `tank-standard-check`;
 never replace it with a favorable average or waive it because component masks
 are unavailable on a fused source mesh.
+The §B2 contiguity scan reads `contig-grid.mjs`: a 6 cm lattice fixed in the
+vehicle frame and re-binned at all nine sub-cell phases, so an add-on that only
+moves the AABB cannot hide or reveal a gap. Never frame a scan from the AABB;
+census hidden gaps with `contig-phase-audit.mjs --ids=<ids>`. The gaps the old
+raster missed are listed in `docs/geometry-gate/contig-hidden.json`
+(`contig-hidden-gaps.mjs --report`): the gate passes those and fails any other.
 
 `gen-interior-fills.mjs` applies the explicit body-boundary recipes in
 `interior-fill-body-policy.mjs` before voxelization. A separately mounted cage,

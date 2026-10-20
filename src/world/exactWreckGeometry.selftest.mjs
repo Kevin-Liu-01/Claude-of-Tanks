@@ -91,10 +91,10 @@ function assertMetadata(geometry, before) {
 }
 
 function assertUntouched(geometry, before) {
-  assertMetadata(geometry, before); assert.equal(geometry.index, before.index);
+  assertMetadata(geometry, before); assert.ok(geometry.index === before.index);
   assert.deepEqual(Object.keys(geometry.attributes), before.attributes.map(row => row.name));
   for (const row of before.attributes) {
-    assert.equal(geometry.attributes[row.name], row.attribute); assert.equal(attributeArray(row.attribute), row.array);
+    assert.ok(geometry.attributes[row.name] === row.attribute); assert.equal(attributeArray(row.attribute), row.array);
     assert.deepEqual(new Uint8Array(row.array.buffer, row.array.byteOffset, row.array.byteLength), row.bytes);
     for (const [key, value] of Object.entries(row.metadata)) assert.deepEqual(row.attribute[key], value, `unchanged ${row.name}/${key}`);
   }
@@ -103,7 +103,7 @@ function assertUntouched(geometry, before) {
 function assertCompactsExactly(geometry, expectedUnique) {
   const before = snapshot(geometry), streams = orderedWords(geometry), corners = cornerCount(geometry);
   const beforeBytes = before.attributes.reduce((sum, row) => sum + row.array.byteLength, 0);
-  assert.equal(compactWreckGeometry(geometry), geometry, 'compaction preserves geometry identity');
+  assert.ok(compactWreckGeometry(geometry) === geometry, 'compaction preserves geometry identity');
   assert.ok(geometry.index, 'fixture must exercise actual compaction, not silent fallback');
   assert.equal(geometry.attributes.position.count, expectedUnique);
   assert.equal(cornerCount(geometry), corners, 'triangle budgeting counts original corners, never unique vertices');
@@ -113,7 +113,7 @@ function assertCompactsExactly(geometry, expectedUnique) {
   let afterBytes = geometry.index.array.byteLength;
   for (const row of before.attributes) {
     const attribute = geometry.attributes[row.name];
-    for (const key of ['itemSize', 'normalized', 'name', 'usage', 'gpuType']) assert.equal(attribute[key], row.attribute[key]);
+    for (const key of ['itemSize', 'normalized', 'name', 'usage', 'gpuType']) assert.ok(attribute[key] === row.attribute[key]);
     assert.deepEqual(new Uint8Array(row.array.buffer, row.array.byteOffset, row.array.byteLength), row.bytes,
       'compaction never writes into the original source buffer');
     afterBytes += attribute.array.byteLength;
@@ -259,7 +259,7 @@ function checkPrePaintCases() {
   assert.ok(narrowSaving.index, 'future RGB makes a real saving that P/N-only byte accounting would reject');
   const naive = paintInput(28, 30); compactWreckGeometry(naive);
   assert.equal(naive.index, null, 'negative control proves this threshold fixture is discriminating');
-  assert.equal(checkPrePaintCompaction(34, 36).geometry.index, null,
+  assert.ok(checkPrePaintCompaction(34, 36).geometry.index === null,
     'equal retained/source bytes keep the original non-indexed representation');
   for (const unique of [65535, 65536]) checkPrePaintCompaction(unique, unique * 3);
   for (const modify of [
@@ -289,7 +289,7 @@ try {
   mesh.layers.set(2); mesh.position.set(3, 4, 5); mesh.updateMatrix();
   const matrix = mesh.matrix.clone(), layerMask = mesh.layers.mask;
   assertCompactsExactly(geometry, 3);
-  assert.equal(mesh.geometry, geometry); assert.equal(mesh.material, material); assert.equal(mesh.parent, parent);
+  assert.ok(mesh.geometry === geometry); assert.ok(mesh.material === material); assert.ok(mesh.parent === parent);
   assert.deepEqual(mesh.matrix, matrix); assert.equal(mesh.layers.mask, layerMask); material.dispose();
 
   for (const [name, component, replacement] of [
@@ -327,7 +327,7 @@ try {
   ];
   for (const [label, change] of unsupported) {
     const g = triangleFixture(); change(g); const before = snapshot(g);
-    assert.equal(compactWreckGeometry(g), g, label); assertUntouched(g, before);
+    assert.ok(compactWreckGeometry(g) === g, label); assertUntouched(g, before);
   }
   const instanced = own(new THREE.InstancedBufferGeometry().copy(triangleFixture()));
   const instancedBefore = snapshot(instanced); compactWreckGeometry(instanced); assertUntouched(instanced, instancedBefore);

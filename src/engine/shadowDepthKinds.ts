@@ -27,7 +27,7 @@ import * as THREE from 'three';
  * colour texture, three's `_colorsTexture`: USE_BATCHING_COLOR); 30 skinned. Each flips a shared material's program at
  * every switch.
  */
-export type CasterKind = number;
+type CasterKind = number;
 
 interface CasterLike {
   isInstancedMesh?: boolean;

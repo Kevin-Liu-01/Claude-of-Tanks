@@ -20,7 +20,7 @@ import { caprockGap } from './caprockRim.ts';
 type Rng = () => number;
 
 /** A trench landform's walls to relieve. */
-export interface CanyonWallSpec {
+interface CanyonWallSpec {
   /** The trench's centre, length, width (its search reaches 0.75 of it out from the axis) and bearing (degrees from +x
    * toward +z). */
   x: number;

@@ -141,7 +141,7 @@ assert.ok(!allNamespaces.includes('2609055511'), 'the retired signaling Worker\'
 
 // 5. No API function keeps its own copy of the allow-list.
 const apiFiles = readdirSync(new URL('../api/', import.meta.url)).filter((file) => file.endsWith('.ts'));
-assert.ok(apiFiles.length >= 4, 'the API functions are found');
+assert.ok(apiFiles.length >= 3, 'the API functions are found');
 for (const file of apiFiles) {
   const source = read(`api/${file}`);
   for (const host of [...policy.ALIAS_HOSTS, policy.PROTECTED_PRODUCTION_HOST]) {

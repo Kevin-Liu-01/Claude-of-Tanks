@@ -137,7 +137,7 @@ function channelMean(bytes, channel) {
 // thread); the volumes are baked and warm() runs once they are linked; without compileAsync it is warm() at once
 {
   const layer = Object.create(VolumetricCloudLayer.prototype);
-  const calls = [];
+  const calls = [], normals = [];
   let finishCompile = null;
   const renderer = {
     xr: { enabled: true }, toneMapping: THREE.ACESFilmicToneMapping, autoClear: true,
@@ -147,6 +147,7 @@ function channelMean(bytes, channel) {
     getContext: () => ({}), properties: { get: () => ({}) }, state: { bindTexture() {}, unbindTexture() {} },
     compileAsync: (scene) => {
       calls.push(['compile', scene.children.map((mesh) => mesh.material.name), renderer.toneMapping, renderer.xr.enabled]);
+      normals.push(scene.children.map((mesh) => !!mesh.geometry.getAttribute('normal')));
       return new Promise((resolve) => { finishCompile = resolve; });
     },
   };
@@ -167,6 +168,9 @@ function channelMean(bytes, channel) {
   ], 'every program the warm draws, and the volume bakes, submitted at the quad\'s variant (the tier first), the renderer restored');
   assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
   assert.equal(renderer.xr.enabled, true);
+  // 2026-10-19: each at the geometry it draws (HAS_NORMAL is in the program key): the passes through FullScreenQuad's
+  // normal-less triangle, the bakes through their plane
+  assert.deepEqual(normals[0], [false, false, false, false, true, true, true], 'the passes link without normals, the bakes with theirs');
   assert.equal(layer.warmAsync(), pending, 'one link in flight');
   layer.beforeSceneRender(renderer, {}, 0.016, 4, 4);
   assert.equal(layer.dome.visible, false, 'nothing draws while the programs link (a draw would read their link synchronously)');

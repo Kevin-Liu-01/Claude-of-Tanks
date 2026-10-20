@@ -109,7 +109,7 @@ for (const species of GROWTH_SPECIES) {
       const style = Math.floor((wuv.getX(i) - 2) / 2);
       assert.equal(style, profile.bark, `${species}: every grown bark face selects its style (u ${wuv.getX(i)})`);
     }
-    assert.equal(wood.index, null, 'flat wood (the pool merges it with the flare and roots)');
+    assert.ok(wood.index === null, 'flat wood (the pool merges it with the flare and roots)');
     // the hull covers the crown: most spray centres fall inside its bounding box
     const hb = new THREE.Box3();
     for (let i = 0; i < hull.length; i += 3) hb.expandByPoint(new THREE.Vector3(hull[i], hull[i + 1], hull[i + 2]));
@@ -128,6 +128,7 @@ for (const species of GROWTH_SPECIES) {
         if (Math.min(...skeleton.branches[b].nodes.map((n) => n.y)) < GROWTH_LOWEST_WOOD_M) hidden = true;
       }
       if (hidden) { hiddenSprays++; return; }
+      // object3d-assert-ok: b is a branch index: a growth skeleton branch .parent is a number
       assert.equal(b, site.branch, `${species}/${variant}: spray ${k} grows from drawn wood (branch ${site.branch})`);
       const girth = Math.max(...skeleton.branches[b].nodes.map((n) => n.r));
       assert.ok(attachments[k].gap <= girth + 0.01, `${species}/${variant}: spray ${k} inside its branch (${attachments[k].gap.toFixed(3)} m under the bark, girth ${girth.toFixed(3)})`);
@@ -386,7 +387,7 @@ try {
       assert.ok(welded.index, `${species}: the weld indexes`);
       assert.deepEqual(corners(welded), corners(flat), `${species}: the welded triangle list is the flat one`);
       assert.ok(welded.getAttribute('position').count <= flat.getAttribute('position').count * 0.55, `${species}: the weld shares vertices`);
-      assert.equal(weldGrownGeometry(welded), welded, 'an indexed geometry passes through');
+      assert.ok(weldGrownGeometry(welded) === welded, 'an indexed geometry passes through');
       assert.equal(sha(weldGrownGeometry(flat).index.array), sha(welded.index.array), 'the weld is deterministic');
     }
   }

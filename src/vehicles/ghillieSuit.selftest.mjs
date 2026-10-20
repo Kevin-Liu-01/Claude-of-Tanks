@@ -23,7 +23,7 @@ for (const id of ['t90a_2004', 'strv121', 't84bm_oplot_m']) {
     geometryReceipt: true,
     quality: 'high',
   });
-  assert.equal(control.root.getObjectByName(`${tankSeedId(id)}_ghillie_hull_net`), undefined,
+  assert.ok(control.root.getObjectByName(`${tankSeedId(id)}_ghillie_hull_net`) === undefined,
     `${id} remains net-free instead of inheriting a generic family blanket`);
   control.dispose();
 }
@@ -175,7 +175,7 @@ for (const id of ids) {
     }
     if (cfg.foliage === false) {
       for (const layer of ['leaves']) {
-        assert.equal(tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_${owner}_${layer}`), undefined,
+        assert.ok(tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_${owner}_${layer}`) === undefined,
           `${id} keeps the carrier net but has no artificial leaf layer`);
       }
     }

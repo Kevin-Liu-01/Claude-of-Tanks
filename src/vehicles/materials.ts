@@ -49,6 +49,7 @@ import { isPostwarVehicleEra } from './taxonomy.ts';
 // The painters are all canvas.width-relative, so this is a pure resolution
 // change — identical feature plan, quarter the pixels at scale 0.5.
 import { texSize } from '../engine/quality.ts';
+import { programVariantOrigin } from '../engine/programVariants.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 
 type Rng = () => number;
@@ -2801,7 +2802,7 @@ export function runVehicleHookChain(
 
 /** Whether a material holds its own vehicle registration (vehicleMaterialSetup; the fleet registration audit reads it). */
 export function isVehicleMaterialRegistered(material: THREE.Material): boolean {
-  return VEHICLE_REGISTRATION.has(material);
+  return VEHICLE_REGISTRATION.has(programVariantOrigin(material));
 }
 
 /** What the bare readability hook binds (vehicleAmbientFloorHook): the scene's whole sky light. */
@@ -2869,7 +2870,8 @@ export function cloneVehicleMaterial<T extends THREE.Material>(source: T, config
     target.defines = { ...target.defines, [key]: sourceDefines[key] };
   }
   configure?.(clone);
-  const setup = VEHICLE_REGISTRATION.get(source)?.family.setup;
+  // a battle build's program-variant twin (engine/programVariants.ts) registers through its original
+  const setup = VEHICLE_REGISTRATION.get(programVariantOrigin(source))?.family.setup;
   if (setup) return setup(clone);
   // a material from outside vehicleMaterialSetup (a stub's, a receipt's, a profile's hook-only material): it keeps its
   // hooks, which a plain clone drops; a cascade registration cannot follow it there
@@ -2897,7 +2899,7 @@ const VEHICLE_BARE_HOOK_KEY = 'veh-ambient-floor-v2';
 export function cloneRehookedVehicleMaterial<T extends THREE.Material>(source: T, configure?: (clone: T) => void): T {
   const clone = source.clone() as T;
   configure?.(clone);
-  const family = VEHICLE_REGISTRATION.get(source)?.family;
+  const family = VEHICLE_REGISTRATION.get(programVariantOrigin(source))?.family;
   if (!family && import.meta.env?.DEV !== false) reportUnregisteredCascadeClone(source);
   return registerVehicleMaterial(family?.engineCtx, clone, VEHICLE_BARE_HOOK_KEY, !!family?.cascaded);
 }
@@ -3731,6 +3733,9 @@ export function applyBurnHook(
   burnU: BurnUniforms,
 ): boolean {
   if (!mat || !('isMeshStandardMaterial' in mat) || mat.isMeshStandardMaterial !== true) return false;
+  // a program-variant twin (engine/programVariants.ts) burns through its original: the hook, the key and the version
+  // reach the twin from there, whichever of the two the wreck pass meets first
+  mat = programVariantOrigin(mat);
   // shared-material guard: if some cache path ever hands two visuals the
   // same material instance, only the first owns the burn driver — the
   // second visual must not hijack it (its wreck falls back to mats.burnt).

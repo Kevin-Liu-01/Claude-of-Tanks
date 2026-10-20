@@ -48,7 +48,8 @@ const dictionariesSource = readFileSync(resolve(ROOT, 'src/ui/i18nDictionaries.t
 assert.match(dictionariesSource, /import\('\.\/i18nCatalogZhCN\.ts'\)/);
 assert.match(dictionariesSource, /import\('\.\/i18nCatalogEnUS\.ts'\)/);
 assert.doesNotMatch(dictionariesSource, /import\(\s*['"][^'"]+\.json['"]/, 'no dynamic JSON import in browser code');
-assert.doesNotMatch(dictionariesSource, /^import\b/m, 'the registry ships no catalog: it has no static import');
+assert.deepEqual(dictionariesSource.match(/^import\b.*$/gm), ["import { importCatalogChunk } from './i18nChunkImport.ts';"],
+  'the registry ships no catalog: its one static import is the chunk importer (src/ui/i18nChunkImport.selftest.mjs)');
 
 // 3. Runtime: an English boot leaves zh-CN unloaded; Chinese text appears only once its dictionary is resident.
 const stored = new Map();

@@ -230,7 +230,7 @@ const BW = 4.6, BD = 11.0, BH = 3.1, BPARAPET = 0.5;
 
 /** The Desert Patrol's barrack block: doors and barred windows down its +x side, a palm-rib shade over the middle door, high
  *  windows in the back, a black tank on the roof. */
-export function buildRumBarrack(rng: Rng): THREE.BufferGeometry {
+function buildRumBarrack(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   const door = DOORS[Math.floor(rng() * DOORS.length)];
   parts.push(block(BW + 0.24, 0.85, BD + 0.24, 0, -0.3, 0, STONE, rng, 0.05));
@@ -260,7 +260,7 @@ export function buildRumBarrack(rng: Rng): THREE.BufferGeometry {
 }
 
 /** The barrack shelled: its walls broken to stumps over the footing, the slab fallen in, the rubble of both. */
-export function buildRumBarrackBroken(rng: Rng): THREE.BufferGeometry {
+function buildRumBarrackBroken(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [block(BW + 0.24, 0.6, BD + 0.24, 0, -0.3, 0, STONE, rng, 0.05)];
   for (const s of [-1, 1]) for (let z = -BD / 2 + 0.6; z < BD / 2 - 0.7; z += 1.7) {
     if (rng() < 0.35) continue;
@@ -280,7 +280,7 @@ const PW = 3.4, PD = 4.4, PH = 2.6, PPARAPET = 0.36;
 
 /** The Desert Patrol's fuel and water post: its door and a barred window on +z under a palm-rib shade, a window in each
  *  side wall, a tank on the roof, the fuel drums stood and lying against its +x wall. */
-export function buildRumPost(rng: Rng): THREE.BufferGeometry {
+function buildRumPost(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   const door = DOORS[Math.floor(rng() * DOORS.length)];
   parts.push(block(PW + 0.2, 0.8, PD + 0.2, 0, -0.3, 0, STONE, rng, 0.05));
@@ -317,7 +317,7 @@ const SW = 8.6, SD = 11.6, SH = 3.5;
 
 /** The Desert Patrol's vehicle shade (round 11, the motor pool's family on Redrock): a rendered block back wall, low side
  *  walls, timber posts along the open front, a timber frame under a palm-rib roof falling to the front, drums and a box. */
-export function buildRumShed(rng: Rng): THREE.BufferGeometry {
+function buildRumShed(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   const back = -SW / 2;
   // the back wall and the side walls: stone cores on their footing, the render broken on their outer faces
@@ -362,7 +362,7 @@ export function buildRumShed(rng: Rng): THREE.BufferGeometry {
  * across the floor, the roof come down in mats of ribs lying over the drums and the box (its whole plan, a heap, not a
  * raft: the r2 standard), loose ribs and timber strewn, the drums down.
  */
-export function buildRumShedBroken(rng: Rng): THREE.BufferGeometry {
+function buildRumShedBroken(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [block(0.7, 0.5, SD + 0.2, -SW / 2 + 0.25, -0.3, 0, STONE, rng, 0.05)];
   for (let z = -SD / 2 + 0.8; z < SD / 2 - 0.8; z += 2.0) {
     if (rng() < 0.35) continue;
@@ -394,7 +394,7 @@ export function buildRumShedBroken(rng: Rng): THREE.BufferGeometry {
   return merge(parts.map((g) => dampFoot(g, 0.8)));
 }
 
-export function buildRumPostBroken(rng: Rng): THREE.BufferGeometry {
+function buildRumPostBroken(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [block(PW + 0.2, 0.55, PD + 0.2, 0, -0.3, 0, STONE, rng, 0.05)];
   parts.push(block(1.4, 1.5, 0.36, -PW / 2 + 0.7, 0, -PD / 2 + 0.18, RENDER, rng, 0.04));
   parts.push(block(0.36, 1.1, 1.3, -PW / 2 + 0.18, 0, -PD / 2 + 0.9, RENDER, rng, 0.04));

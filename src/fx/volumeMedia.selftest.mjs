@@ -1054,7 +1054,7 @@ function captureContext(seed) {
   debris.commit();
   const rim = debris.group.children.find((c) => c.isMesh && c.name === 'fx-structure-rim-stone');
   assert.ok(rim && rim.geometry.getAttribute('aDamage').array.every((v) => v === 32774), 'the rim carries its building\'s run tag');
-  assert.equal(rim.customDepthMaterial, depthMat, 'its shadow falls with the building');
+  assert.ok(rim.customDepthMaterial === depthMat, 'its shadow falls with the building');
   debris.reset();
   // the phone tier throws fewer pieces (its static runs are the same world state)
   const phone = createStructureDebris({ now: () => now, groundY: () => 0, poolCapacity: 24, pieceCap: 3 });

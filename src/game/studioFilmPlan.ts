@@ -21,14 +21,14 @@
  * so the timeline only ever advances (effects cannot step backward).
  */
 
-export const FILM_FRAME_RATES = [24, 30, 60] as const;
-export type FilmFps = typeof FILM_FRAME_RATES[number];
-export const FILM_SPEED_EASES = ['smooth', 'linear', 'step'] as const;
-export type FilmSpeedEase = typeof FILM_SPEED_EASES[number];
-export const FILM_FILTERS = ['gaussian', 'box'] as const;
+const FILM_FRAME_RATES = [24, 30, 60] as const;
+type FilmFps = typeof FILM_FRAME_RATES[number];
+const FILM_SPEED_EASES = ['smooth', 'linear', 'step'] as const;
+type FilmSpeedEase = typeof FILM_SPEED_EASES[number];
+const FILM_FILTERS = ['gaussian', 'box'] as const;
 export type FilmFilter = typeof FILM_FILTERS[number];
 
-export const FILM_MIN_SPEED = 0.05;
+const FILM_MIN_SPEED = 0.05;
 export const FILM_MAX_SPEED = 8;
 export const FILM_MAX_SAMPLES = 64;
 /** Ceiling for motion-adaptive sampling (fast pans, shakes, close passes). */
@@ -41,7 +41,7 @@ export const FILM_MAX_SPEED_KEYS = 32;
 /** Standard deviation of the Gaussian reconstruction filter, in output pixels. */
 export const FILM_GAUSSIAN_SIGMA_PX = 0.42;
 
-export interface FilmSpeedKey {
+interface FilmSpeedKey {
   readonly tMs: number;
   readonly speed: number;
   /** Shape of the ramp INTO this key from the previous one. */
@@ -145,7 +145,7 @@ interface SpeedSegment {
   readonly ease: FilmSpeedEase | 'constant';
 }
 
-export interface FilmTimeMap {
+interface FilmTimeMap {
   /** Timeline start/end (ms) the film covers. */
   readonly startMs: number;
   readonly endMs: number;
@@ -338,7 +338,7 @@ export function adaptiveSampleCount(pathPx: number, settings: Pick<FilmSettings,
 }
 
 /** How far before a camera cut a clamped sample lands (timeline ms). */
-export const FILM_CUT_EPSILON_MS = 1e-3;
+const FILM_CUT_EPSILON_MS = 1e-3;
 
 /** Longest exposure a motion-blur still integrates (timeline ms). */
 export const FILM_MAX_EXPOSURE_MS = 1000;
@@ -489,7 +489,6 @@ export function filmJitter(samples: number, filter: FilmFilter, out: Float64Arra
 // --- output sizes -----------------------------------------------------------------
 
 export const FILM_RESOLUTIONS = [1080, 1440, 2160] as const;
-export type FilmResolution = typeof FILM_RESOLUTIONS[number];
 
 /** Native export size for a production format at a short-side resolution. */
 export function filmOutputSize(

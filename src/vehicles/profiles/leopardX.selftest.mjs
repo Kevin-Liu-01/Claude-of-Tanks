@@ -69,13 +69,13 @@ for (const [id, source] of Object.entries(sources)) {
       return object;
     };
     const hull=get('rig_hull'), turret=get('rig_turret'), gun=get('rig_gun');
-    assert.equal(gun.parent,turret,`${id}: independent cannon pitches inside turret yaw`);
+    assert.ok(gun.parent === turret,`${id}: independent cannon pitches inside turret yaw`);
     const body=get('hull'), shell=get('turret'), barrel=get('gun');
     const mount=get('gunMount'), recoil=get('rig_recoil');
     assert.ok(mount.isMesh&&mount.geometry.getAttribute('position').count>=24,
       `${id}: real existing mantlet/cradle is in the pitching gunMount bucket`);
-    assert.equal(mount.parent,gun,`${id}: physical gun housing pitches without barrel recoil`);
-    assert.equal(barrel.parent,recoil,`${id}: barrel and muzzle-reference fixtures recoil together`);
+    assert.ok(mount.parent === gun,`${id}: physical gun housing pitches without barrel recoil`);
+    assert.ok(barrel.parent === recoil,`${id}: barrel and muzzle-reference fixtures recoil together`);
     for (const mesh of [body,shell,barrel]) {
       assert.ok(mesh.isMesh && mesh.geometry.getAttribute('position').count>=24,
         `${id}/${mesh.name}: actual authored multi-plane geometry exists`);
@@ -133,13 +133,13 @@ for (const [id, source] of Object.entries(sources)) {
     assert.ok(shoes.isInstancedMesh,`${id}: moving linked shoes exist`);
     near(instancedVertexBounds(shoes).min.y,0,.018,
       `${id}: actual lowest linked shoe meets source ground zero`);
-    assert.equal(tank.root.getObjectByName('gearTrackInnerLinks'),undefined,`${id}: no second static shoe course`);
+    assert.ok(tank.root.getObjectByName('gearTrackInnerLinks') === undefined,`${id}: no second static shoe course`);
 
     const roofGun=get(`${tankSeedId(id)}RoofMachineGun`);
     const crewFixture=roofGun;
     let owner=crewFixture;
     while(owner && owner!==turret)owner=owner.parent;
-    assert.equal(owner,turret,`${id}: actual crew fixture has turret ownership`);
+    assert.ok(owner === turret,`${id}: actual crew fixture has turret ownership`);
     const muzzle=get('rig_muzzle');
     const pivot=turret.getWorldPosition(new THREE.Vector3());
     const before=muzzle.getWorldPosition(new THREE.Vector3()).sub(pivot);
@@ -163,7 +163,7 @@ for (const [id, source] of Object.entries(sources)) {
         assert.equal(rope.geometry.type,'TubeGeometry',`${id}: exterior role belongs to actual thin rope, not armor`);
         assert.ok(rope.geometry.parameters.radius<=.018,`${id}: no broad surface hidden in the cable role`);
         assert.ok(isOpenLatticeMesh(rope),`${id}: actual rope loop encloses source exterior air`);
-        assert.equal(rope.parent,hull,`${id}: hull-owned rope remains in whole and hull source silhouettes`);
+        assert.ok(rope.parent === hull,`${id}: hull-owned rope remains in whole and hull source silhouettes`);
         assert.ok(rope.visible&&rope.material.visible&&rope.material.colorWrite!==false,
           `${id}: source-fidelity whole silhouette still renders the real rope`);
         assert.notEqual(rope.userData.runningGear,true,`${id}: rope still undergoes strict track clearance`);
@@ -204,7 +204,7 @@ for (const [id, source] of Object.entries(sources)) {
           `${id}: actual source positive cheek crossfall at x=${x}, z=${z}`);
       }
       const rack=get('leo2a7v_xFrontalRack');
-      assert.equal(rack.parent,turret,`${id}: two-row frontal rack yaws with the physical turret`);
+      assert.ok(rack.parent === turret,`${id}: two-row frontal rack yaws with the physical turret`);
       const tubes=rack.children.filter(o=>o.name.startsWith('leo2a7v_xFrontalTube_'));
       assert.equal(tubes.length,17,`${id}: actual source nine-plus-eight staggered tube census`);
       for(const tube of tubes) {
@@ -289,7 +289,7 @@ for (const [id, source] of Object.entries(sources)) {
       near(ray(get('turretDetail'),[-.9885,2.58,0],[0,0,-1])?.z??NaN,-1.84127,.0018,
         `${id}: source antenna foot is a small seated cylinder`);
       const sourceRail=get('leo2a6m_xCrewHatchRail');
-      assert.equal(sourceRail.parent,turret,`${id}: measured unarmed source rail remains turret-owned`);
+      assert.ok(sourceRail.parent === turret,`${id}: measured unarmed source rail remains turret-owned`);
       const railBox=new THREE.Box3().setFromObject(sourceRail);
       near(railBox.max.y,2.73974,.01,`${id}: measured crew rail top`);
       near(railBox.min.z,.50033,.012,`${id}: measured crew rail station`);

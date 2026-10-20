@@ -23,7 +23,7 @@ export function ringSolid(sink: PartSink, bucket: RegionalBucket, c: Vec3, ax: V
   }
 }
 
-export interface WaterWheelSpec {
+interface WaterWheelSpec {
   /** rim radius and the half width over the shrouds' middles (m) */
   R: number;
   half: number;
@@ -94,7 +94,7 @@ export function millAxle(sink: PartSink, z0: number, z1: number, oak: Rgb, iron:
   for (const z of bands) sink.cylinder('structureMetal', [0, 0, z - 0.03], 'z', 0.06, 0.19, 8, { colour: iron, decor: true });
 }
 
-export interface LaunderSpec {
+interface LaunderSpec {
   /** the trough's centre line at x, its floor's top at y, from z0 to z1 (along z) */
   x: number;
   y: number;
@@ -178,7 +178,7 @@ export function weatherboards(sink: PartSink, face: { origin: Vec3; u: Vec3; out
   }
 }
 
-export interface SailsSpec {
+interface SailsSpec {
   /** the sails' tip radius, the heel (the lattice's first bar) and the bar pitch (m) */
   length: number;
   heel: number;

@@ -108,7 +108,7 @@ export function groundBounceIrradiance(
   );
 }
 
-export interface GroundBounceUniforms {
+interface GroundBounceUniforms {
   uCotBounceRad: THREE.IUniform<THREE.Vector3>;
   uCotBounceHemi: THREE.IUniform<THREE.Vector3>;
   uCotBounceSun: THREE.IUniform<THREE.Vector3>;
@@ -178,7 +178,7 @@ export function attachGroundBounceUniforms(
   shader.uniforms.uCotShadowDepth = uniforms.uCotShadowDepth;
 }
 
-export interface GroundBounceRigInput {
+interface GroundBounceRigInput {
   enabled: boolean;
   sunDir: Vec3Like;
   sunColor: THREE.Color;

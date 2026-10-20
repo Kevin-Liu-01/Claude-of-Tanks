@@ -14,7 +14,7 @@ import { crateFormOf, palletFormOf, spoolFormOf } from './clutterKit.ts';
 
 export type YardMaterial = 'steel' | 'wood' | 'baked';
 
-export interface YardFamilyGeometry {
+interface YardFamilyGeometry {
   family: YardFamily;
   material: YardMaterial;
   geometry: THREE.BufferGeometry;

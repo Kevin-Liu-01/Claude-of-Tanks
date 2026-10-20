@@ -26,7 +26,7 @@ export interface MuxColor {
   readonly fullRange: boolean;
 }
 
-export interface Mp4VideoTrack {
+interface Mp4VideoTrack {
   readonly width: number;
   readonly height: number;
   /** Constant integer frame rate. */
@@ -282,7 +282,7 @@ function efloat(id: number, value: number): Bytes {
   return element(id, bytes);
 }
 
-export interface WebmVideoTrack {
+interface WebmVideoTrack {
   readonly width: number;
   readonly height: number;
   readonly fps: number;

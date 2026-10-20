@@ -81,8 +81,8 @@ function fixture(samples, { shadows = true, environment = true, fog = true, faul
       maybeThrow('clear', renders + 1);
     },
     render(renderScene, renderCamera) {
-      assert.equal(renderScene, scene, 'measure the actual caller scene');
-      assert.equal(renderCamera, camera, 'measure the actual caller camera');
+      assert.ok(renderScene === scene, 'measure the actual caller scene');
+      assert.ok(renderCamera === camera, 'measure the actual caller camera');
       renders++;
       draws.push(snapshot());
       maybeThrow('render', renders);

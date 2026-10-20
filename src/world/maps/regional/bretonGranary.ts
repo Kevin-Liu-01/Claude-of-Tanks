@@ -7,7 +7,7 @@ import { doorUnit } from './openings.ts';
 import type { RegionalBuildContext } from './types.ts';
 
 /** What the granary borrows from the Breton kit (breton.ts): its uv offset, state, roof, dialect, parapets and quoins. */
-export interface BretonGranaryKit<S extends { rng: () => number; litShare: number; paint: Rgb }> {
+interface BretonGranaryKit<S extends { rng: () => number; litShare: number; paint: Rgb }> {
   uvOffset(ctx: RegionalBuildContext): [number, number];
   stateFor(ctx: RegionalBuildContext): S;
   slate(pitch: number): RoofSpec;

@@ -20,7 +20,7 @@
  */
 import * as THREE from 'three';
 import {
-  SGO_BASE_WRAP_M, SGO_HALF_M, SGO_REACH_MAX_M, SGO_SIZE, bakeStructureGroundOcclusion, packOccluders, sgoRectOf,
+  SGO_BASE_WRAP_M, SGO_HALF_M, SGO_REACH_MAX_M, SGO_SIZE, bakeStructureGroundOcclusion, packOccluders, packRecordOccluders, sgoRectOf,
   type SgoRecord, type SgoRect,
 } from './structureGroundOcclusionBake.ts';
 import { VEHICLE_ALPHA_MIN } from './vehicleOcclusion.ts';
@@ -132,6 +132,9 @@ export function createStructureGroundOcclusion(
   const stats = { parts: 0, bakeMs: 0, rebakes: 0, patches: 0, worker: false };
   const flags = new Uint8Array(records.length);
   for (let i = 0; i < records.length; i++) flags[i] = records[i]?.dead || records[i]?.crushed ? 1 : 0;
+  // each solid's parts, packed once (the shapes hold still; only the destroyed flags change): null hides no sky, so a
+  // tree or a kerb that breaks re-bakes nothing
+  const parts = scale > 0 ? records.map(packRecordOccluders) : [];
   let ready = false, disposed = false, instant = false, fade = 0, pollT = 0, nextId = 1;
   let uploadedOnce = false;
   const pending: { rect: SgoRect; rg: Uint8Array }[] = [];
@@ -151,7 +154,7 @@ export function createStructureGroundOcclusion(
 
   function request(rect: SgoRect | null): void {
     if (disposed || scale <= 0) return;
-    const packed = packOccluders(records);
+    const packed = packOccluders(records, parts);
     if (worker) {
       const id = nextId++;
       inflight.set(id, true);
@@ -185,7 +188,7 @@ export function createStructureGroundOcclusion(
       try { worker.terminate(); } catch { /* gone */ }
       stats.worker = false;
       if (!ready) {
-        const result = bakeStructureGroundOcclusion(packOccluders(records), null);
+        const result = bakeStructureGroundOcclusion(packOccluders(records, parts), null);
         stats.bakeMs += result.ms; stats.parts = result.parts;
         land(result.rect, result.rg, true);
         ready = true; resolveReady(true);
@@ -197,6 +200,7 @@ export function createStructureGroundOcclusion(
   function poll(): void {
     const rects: SgoRect[] = [];
     for (let i = 0; i < records.length; i++) {
+      if (!parts[i]) continue;
       const r = records[i];
       const f = r?.dead || r?.crushed ? 1 : 0;
       if (f !== flags[i]) { flags[i] = f; rects.push(recordRect(r)); }

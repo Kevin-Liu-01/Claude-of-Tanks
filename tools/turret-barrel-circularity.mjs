@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 import { createTank } from '../src/vehicles/tankFactory.ts';
+import { uniqueIds } from './id-list.mjs';
 import { DEVELOPMENT_TANK_IDS, getSpec } from '../src/vehicles/specs.ts';
 import { measureTurretBarrelCircularity } from '../src/vehicles/turretBarrelCircularity.ts';
 
 const idsArg = process.argv.find((arg) => arg.startsWith('--ids='));
 const ids = idsArg
-  ? idsArg.slice('--ids='.length).split(',').map((id) => id.trim()).filter(Boolean)
+  ? uniqueIds(idsArg.slice('--ids='.length).split(',').map((id) => id.trim()).filter(Boolean), 'turret-barrel-circularity --ids')
   : [...DEVELOPMENT_TANK_IDS];
 const failures = [];
 let measuredCount = 0;

@@ -12,7 +12,7 @@ import type { ReverbId } from './mixPolicy.ts';
 type GunTail = 'open' | 'forest' | 'urban' | 'mountain' | 'none';
 
 /** How a map's towers ring: a Western bell swung to a slow toll, or an Orthodox tower's struck bells. */
-export type BellTradition = 'western' | 'orthodox';
+type BellTradition = 'western' | 'orthodox';
 
 export interface EnvironmentScene {
   readonly bed: string;

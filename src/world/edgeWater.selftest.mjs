@@ -98,7 +98,7 @@ assert.deepEqual(scanEdgeWater(synthetic((x, z) => x > 500 && Math.abs(z) < 200)
     const ux = position.getX(tri[1]) - ax, uz = position.getZ(tri[1]) - az, vx = position.getX(tri[2]) - ax, vz = position.getZ(tri[2]) - az;
     assert.ok(uz * vx - ux * vz > 0, `triangle ${t / 3} winds counter-clockwise seen from above`);
   }
-  assert.equal(buildSeaApronGeometry([], 512), null, 'no openings, no apron');
+  assert.ok(buildSeaApronGeometry([], 512) === null, 'no openings, no apron');
   geometry.dispose();
 }
 
@@ -260,7 +260,7 @@ for (const id of ['coastal', 'saltwind', 'fjord']) {
   // without a contour query the fan is the fallback
   const fan = buildOutlandWaterGeometry(east, null, 512, 1400, { depthM: 0.72 });
   assert.ok(fan && fan.getAttribute('position').count < position.count, 'no contour: the sector fan');
-  assert.equal(buildOutlandWaterGeometry([], bay), null, 'no openings: no apron');
+  assert.ok(buildOutlandWaterGeometry([], bay) === null, 'no openings: no apron');
   grid.dispose(); fan.dispose();
 }
 

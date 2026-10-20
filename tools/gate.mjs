@@ -321,7 +321,8 @@ async function compareWithBaseline({ root, ref, failed, out, strict, echo, lockF
       ]);
       return { here: { ...here, log: logs.here }, base: { ...base, log: logs.base } };
     };
-    // the pairs hold the capture lease like any receipt run (browser receipts take it themselves)
+    // the pairs hold the capture lease (cpuLease defaults on in runSelftestSuite; the npm test CLI turns it off unless
+    // COT_SELFTEST_CPU_LEASE=1): a red receipt's here/base timing pair never shares the machine with a capture
     await runSelftestSuite('baseline-pairs', failed.map((row) => row.file), {
       lock: lockFactory(), ownedLeaseFiles: SELFTEST_OWNED_LEASE_FILES, concurrency: 1, log: () => {},
       runFile: async (file) => {

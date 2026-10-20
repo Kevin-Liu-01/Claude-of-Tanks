@@ -92,7 +92,7 @@ for(const quality of ['high','low']){
   try{
     const root=tank.root,gun=root.getObjectByName('rig_gun'),mount=root.getObjectByName('gunMount');
     const recoil=root.getObjectByName('rig_recoil'),tube=root.getObjectByName('gun');
-    assert.equal(mount.parent,gun,'casting pitches without recoiling');
+    assert.ok(mount.parent === gun,'casting pitches without recoiling');
     near(gun.position.x,-.06,1e-7,'preserved horizontal trunnion');
     near(gun.position.y,.392,1e-7,'gun sits 100 mm lower within the turret cheeks');
     near(gun.position.z,.78,1e-7,'preserved repaired gun setback');

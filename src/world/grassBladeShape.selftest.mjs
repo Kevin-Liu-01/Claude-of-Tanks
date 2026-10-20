@@ -60,7 +60,7 @@ function materialContract(api, texture) {
   const make = api.grassShapeMaterial({ setupShadowMaterial: (mat, hook) => calls.push([mat, hook]) }, () => extra);
   const mat = make(texture, 150, 'world-grass-wind-v6');
   try {
-    assert.ok(mat instanceof THREE.MeshLambertMaterial); assert.strictEqual(mat.map, texture);
+    assert.ok(mat instanceof THREE.MeshLambertMaterial); assert.ok(mat.map === texture);
     assert.deepEqual([mat.alphaTest, mat.alphaToCoverage, mat.side, mat.transparent, mat.depthWrite], [.44, true, THREE.DoubleSide, false, true]);
     assert.deepEqual(calls, [[mat, extra]]); assert.equal(mat.customProgramCacheKey(), 'world-grass-wind-v6');
     assert.deepEqual(Object.values(mat).filter(value => value?.isTexture), [texture]);

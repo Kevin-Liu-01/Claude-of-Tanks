@@ -28,9 +28,18 @@
 //    list entirely, so battle frames never cull or draw any of this.
 import * as THREE from 'three';
 import {
-  mulberry32, canvasTexture, dither, makeSignTexture, makeHazardTexture, SIGN_FONT,
+  mulberry32, canvasTexture, makeHazardTexture,
 } from '../ui/garageStage.ts';
 import { FEATURED_SHOTS } from '../ui/featuredShots.ts';
+import { garageSlideshowPose } from '../ui/garageSlideshowPlacement.ts';
+import { buildGarageVerdantKit } from '../ui/garageVerdantKit.ts';
+import {
+  createGarageDecalMaterial, createGarageDisplayMaterial, garageDisplayRectHasAlpha, garageDisplaySignRect, garageDisplayRect,
+  armGarageDisplayAtlas,
+} from '../ui/garageDisplayAtlas.ts';
+import { KitBuilder, kitRandom } from '../ui/garageKitGeometry.ts';
+import { garageKitSkin } from '../ui/garageKitSkins.ts';
+import { buildShadowBoard } from '../ui/garageWallKit.ts';
 import { DECOR_KITS } from '../vehicles/decorations.ts';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 import { getGarageVariant, type GarageVariant } from './garageVariants.ts';
@@ -145,15 +154,17 @@ const SHARED_MAINTENANCE_BAY_QUADRANTS = Object.freeze({
   outdoor: Object.freeze(['north-east', 'north', 'south-west', 'north-west'] as const),
 });
 
-// The workshop monitor is a field archive, not a location preview. Reuse the
-// canonical player-facing captures so filenames cannot drift from disk, but
-// keep the rotation compact: only one current and one incoming texture are
-// resident at a time.
+// The slideshow is a field archive, not a location preview. Reuse the canonical player-facing captures so filenames
+// cannot drift from disk. Every captured battlefield still with a map (garage r9: the slideshow opens on its own Garage's map still, so the
+// rotation carries all of them); one current and, for the crossfade only, one incoming texture are resident.
 const GARAGE_BATTLE_SCREEN_SHOTS = Object.freeze(
-  FEATURED_SHOTS.filter((shot) => shot.maps?.length).slice(0, 6),
+  FEATURED_SHOTS.filter((shot) => shot.maps?.length),
 );
 const BATTLE_SCREEN_HOLD_MS = 6_500;
 const BATTLE_SCREEN_SCROLL_MS = 720;
+const BATTLE_SCREEN_PANEL_W = 5.86;
+const BATTLE_SCREEN_DECODE_W = 1024;
+const BATTLE_SCREEN_DECODE_H = 576;
 
 /** Load only the real fleet families used by the optional workshop. */
 export async function prepareGarageDressing(
@@ -234,7 +245,6 @@ export function createGarageDressing(
     disposables.push(o);
     return o;
   };
-  const signTextures: THREE.Texture[] = [];
   const workshopVisuals: GarageWorkshopVisual[] = [];
   const workshopFleet = existing.workshopFleet;
   const preparedVehicleIds = new Set<string>();
@@ -244,8 +254,8 @@ export function createGarageDressing(
   let pendingTankReveal: THREE.Object3D | null = null;
   let abramsServiceFloorRoot: THREE.Group | null = null;
   let abramsBayRoot: THREE.Group | null = null;
-  // The two freestanding battle-archive monitors stand in Verdant's hall only (2026-10-11, the redesign; waves 393 and
-  // 398: "a battle-footage monitor on stands in every yard", "blank navy wall panels"): their own owner, shown there.
+  // The slideshow panel stands in Verdant's hall only (2026-10-11, the redesign; waves 393 and 398: "a battle-footage
+  // monitor on stands in every yard", "blank navy wall panels"): its own owner, shown there. One panel since garage r9.
   const battleScreenOwner = new THREE.Group();
   battleScreenOwner.name = 'garage_battle_archive_displays';
   // Verdant's workshop furniture that the outdoor yards replace with their own kit (2026-10-11, waves 398 and 402: "the
@@ -333,75 +343,6 @@ export function createGarageDressing(
   // --- tiny canvas textures ---------------------------------------------------
   // pegboard: dark board, peg-hole grid, painted hanging-tool silhouettes —
   // one textured quad reads as a whole wall of wrenches/hammers/pliers.
-  function makePegboardTexture(): HTMLCanvasElement {
-    const W = 256, H = 160;
-    const c = document.createElement('canvas');
-    c.width = W; c.height = H;
-    const g = c.getContext('2d')!;
-    g.fillStyle = '#2e3236';
-    g.fillRect(0, 0, W, H);
-    g.strokeStyle = '#1a1d20';
-    g.lineWidth = 6;
-    g.strokeRect(3, 3, W - 6, H - 6);
-    g.fillStyle = 'rgba(14,16,18,0.8)';
-    for (let y = 14; y < H - 8; y += 12) {
-      for (let x = 12; x < W - 8; x += 12) g.fillRect(x, y, 2.4, 2.4);
-    }
-    // painted tool shadows first (slight offset), then the tools
-    const tool = (draw: () => void): void => {
-      g.save(); g.translate(2, 3); g.strokeStyle = 'rgba(0,0,0,0.45)'; g.fillStyle = 'rgba(0,0,0,0.45)'; draw(); g.restore();
-      g.strokeStyle = '#83898f'; g.fillStyle = '#83898f'; draw();
-    };
-    g.lineWidth = 5;
-    // open-end wrenches (angled bars with C heads)
-    for (const [x, y, l, a] of [[30, 26, 52, 0.12], [58, 24, 66, 0.06], [86, 28, 46, 0.16]]) {
-      tool(() => {
-        g.beginPath();
-        g.moveTo(x, y); g.lineTo(x + Math.sin(a) * 14, y + l);
-        g.stroke();
-        g.beginPath(); g.arc(x, y - 3, 6, 0.6, Math.PI * 1.6); g.stroke();
-      });
-    }
-    // hammer
-    tool(() => {
-      g.fillRect(120, 22, 8, 56);
-      g.fillRect(108, 18, 32, 12);
-    });
-    // pliers (two arcs)
-    tool(() => {
-      g.beginPath(); g.moveTo(160, 26); g.quadraticCurveTo(154, 60, 150, 82); g.stroke();
-      g.beginPath(); g.moveTo(166, 26); g.quadraticCurveTo(172, 60, 176, 82); g.stroke();
-      g.beginPath(); g.arc(163, 24, 7, 0, Math.PI * 2); g.stroke();
-    });
-    // hand saw
-    tool(() => {
-      g.beginPath();
-      g.moveTo(196, 30); g.lineTo(240, 30); g.lineTo(238, 44); g.lineTo(196, 40);
-      g.closePath(); g.fill();
-      g.fillRect(190, 26, 8, 22);
-    });
-    // hex keys + screwdrivers row
-    g.lineWidth = 3.5;
-    for (let i = 0; i < 7; i++) {
-      const x = 34 + i * 14;
-      tool(() => {
-        g.beginPath(); g.moveTo(x, 104); g.lineTo(x, 128 + (i % 3) * 6); g.stroke();
-      });
-    }
-    // coiled air hose
-    tool(() => {
-      g.lineWidth = 4;
-      for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(196, 116, 14 - i * 4, 0, Math.PI * 2); g.stroke(); }
-    });
-    // grime
-    for (let i = 0; i < 240; i++) {
-      g.fillStyle = rng() < 0.6 ? 'rgba(12,14,16,0.25)' : 'rgba(140,148,156,0.08)';
-      g.fillRect(rng() * W, rng() * H, 1 + rng() * 2, 1 + rng() * 2);
-    }
-    dither(g, W, H, rng, 0.05);
-    return c;
-  }
-
   // soft radial pool for faked lamp light / under-bay work light
   function makePoolTexture(
     r0 = 'rgba(255,236,200,0.26)',
@@ -609,34 +550,12 @@ export function createGarageDressing(
   }
 
   /** worn steel workbench with clutter (vice, welder box, grinder, cans). */
-  function workbench(x: number, z: number, ry: number): THREE.Group {
-    const b = new THREE.Group();
-    b.position.set(x, 0, z);
-    b.rotation.y = ry;
-    group.add(b);
-    put(track(new THREE.BoxGeometry(3.1, 0.11, 0.95)), mat.timber, 0, 0.98, 0, 0, 0, 0, 1, b);
-    put(track(new THREE.BoxGeometry(3.0, 0.07, 0.85)), mat.steelDark, 0, 0.5, 0, 0, 0, 0, 1, b); // lower shelf
-    const legG = track(new THREE.BoxGeometry(0.09, 0.98, 0.09));
-    for (const [lx, lz] of [[-1.42, -0.38], [1.42, -0.38], [-1.42, 0.38], [1.42, 0.38]]) {
-      put(legG, mat.steelMid, lx, 0.49, lz, 0, 0, 0, 1, b);
-    }
-    // vice: base + jaw blocks + spindle
-    put(track(new THREE.BoxGeometry(0.16, 0.1, 0.22)), mat.steelDark, -1.05, 1.09, 0.18, 0, 0, 0, 1, b);
-    put(track(new THREE.BoxGeometry(0.22, 0.18, 0.14)), mat.blueSteel, -1.05, 1.22, 0.18, 0, 0, 0, 1, b);
-    put(track(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 8)), mat.steelBright, -1.05, 1.2, 0.34, 0, Math.PI / 2, 0, 1, b);
-    // stick welder box w/ dial + handle
-    put(track(new THREE.BoxGeometry(0.52, 0.34, 0.4)), mat.redCab, 0.15, 1.21, -0.05, 0.15, 0, 0, 1, b);
-    put(track(new THREE.CylinderGeometry(0.06, 0.06, 0.03, 12)), mat.steelBright, 0.15, 1.27, 0.17, 0, 1.42, 0, 1, b);
-    // angle grinder on its side
-    put(track(new THREE.CylinderGeometry(0.055, 0.065, 0.34, 10)), mat.blueSteel, 0.95, 1.09, 0.22, 0, 0, Math.PI / 2, 1, b);
-    put(track(new THREE.CylinderGeometry(0.11, 0.11, 0.018, 14)), mat.steelBright, 1.18, 1.09, 0.22, 0, 0.2, Math.PI / 2, 1, b);
-    // oil can + rag pile
-    put(track(new THREE.CylinderGeometry(0.07, 0.08, 0.2, 10)), mat.olive, 1.32, 1.14, -0.18, 0, 0, 0, 1, b);
-    put(track(new THREE.BoxGeometry(0.3, 0.05, 0.24)), mat.timberDark, -0.42, 1.07, -0.24, 0.5, 0, 0, 1, b);
-    return b;
-  }
-
-  /** pegboard quad + backing plate flush against a wall. */
+  // the shadow boards' one vertex-colour material (the Verdant kit's key), made with the first board
+  let shadowBoardMaterial: THREE.MeshStandardMaterial | null = null;
+  /**
+   * A shadow tool board flush against a wall (garage r9 K2, replacing the flat canvas pegboards): its backing plate and
+   * the kit's board, each tool hung in its own painted outline, built through the shared KitBuilder.
+   */
   function pegboard(
     x: number,
     y: number,
@@ -646,20 +565,21 @@ export function createGarageDressing(
     h = 1.55,
     wallBayId = '',
   ): void {
-    const tex = track(canvasTexture(makePegboardTexture(), { aniso }));
-    const m = track(shadowMat(new THREE.MeshStandardMaterial({
-      map: tex, roughness: 0.7, metalness: 0.15,
-      emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.05,
-    })));
     const back = put(track(new THREE.BoxGeometry(w + 0.1, h + 0.1, 0.05)), mat.steelDark, x, y, z, ry, 0, 0, 1, group, false);
     back.castShadow = false;
     back.userData.wallBayId = wallBayId;
-    const boardGeo = track(new THREE.PlaneGeometry(w, h));
-    const board = new THREE.Mesh(boardGeo, m);
+    const builder = new KitBuilder(kitRandom(0x5bd + wallBayId.length * 97), garageKitSkin('field_shed'));
+    buildShadowBoard(builder, w, h);
+    const built = builder.build(-10); // a wall piece: no ground AO
+    shadowBoardMaterial ||= track(shadowMat(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.08 })));
+    const board = new THREE.Mesh(track(built.solid), shadowBoardMaterial);
+    built.display?.dispose(); built.decal?.dispose();
     board.position.set(x, y, z);
     board.rotation.y = ry;
-    board.translateZ(0.032);
+    board.translateZ(0.04);
     board.userData.wallBayId = wallBayId;
+    board.castShadow = false;
+    board.receiveShadow = true;
     group.add(board);
   }
 
@@ -715,7 +635,20 @@ export function createGarageDressing(
     return t;
   }
 
-  /** wall sign: steel plate + stencil board (garageStage language). */
+  // the plates' one DISPLAY-LIT material (the wall signs' program key), made with the first plate
+  let signMaterial: THREE.MeshStandardMaterial | null = null;
+  function signDisplayMaterial(): THREE.MeshStandardMaterial {
+    signMaterial ||= track(createGarageDisplayMaterial((material) => { shadowMat(material); }));
+    return signMaterial;
+  }
+  // a bay numeral is paint with alpha: the decal material lays it on the dark plate
+  let signDecal: THREE.MeshBasicMaterial | null = null;
+  function signDecalMaterial(): THREE.MeshBasicMaterial {
+    signDecal ||= track(createGarageDecalMaterial());
+    return signDecal;
+  }
+
+  /** wall sign: a steel plate carrying its atlas pictogram (garageStage language). */
   function wallSign(
     text: string,
     x: number,
@@ -728,12 +661,16 @@ export function createGarageDressing(
     parent: THREE.Object3D = group,
     freestanding = parent === legacyVerdantRoot,
   ): void {
-    const tex = track(canvasTexture(makeSignTexture(rng, text), { aniso }));
-    signTextures.push(tex);
-    const m = track(shadowMat(new THREE.MeshStandardMaterial({
-      map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.13,
-      roughness: 0.6, metalness: 0.2,
-    })));
+    // the plate's picture is a pictogram, numeral or readout of the Garages' one display atlas (garage r9 K3: "less
+    // text, more pictograms"; type comes from the atlas generator, never the browser's canvas). The old canvas plate drew
+    // its wear from this dressing's random stream and its 1,300 draws are still spent; the r9 shadow boards draw nothing
+    // where the canvas pegboards drew some 42k, so the pieces placed after them (drum yaws, stains) take the r9 layout's
+    // draws, not the pre-r9 ones. Deterministic either way.
+    for (let draw = 0; draw < 1300; draw += 1) rng();
+    const rectName = garageDisplaySignRect(text);
+    const rect = garageDisplayRect(rectName);
+    const painted = garageDisplayRectHasAlpha(rectName);
+    const m = painted ? signDecalMaterial() : signDisplayMaterial();
     const mount = new THREE.Group();
     mount.position.set(x, 0, z);
     mount.rotation.y = ry;
@@ -744,10 +681,20 @@ export function createGarageDressing(
       ? 'grounded-freestanding-frame'
       : 'wall-supported';
     parent.add(mount);
-    const back = put(track(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.05)), mat.steelDark,
+    // the picture at its own aspect inside the w x h bay, and the plate fitted round it with a narrow steel margin (garage
+    // r9 g3, the blind critic: a square pictogram centred on a full-width plate read as a dark blank panel)
+    const aspect = (rect.u1 - rect.u0) / (rect.v1 - rect.v0) * 2;
+    const fitW = Math.min(w * 0.94, h * 0.9 * aspect), fitH = fitW / aspect;
+    const plateW = fitW + 0.12;
+    const back = put(track(new THREE.BoxGeometry(plateW, fitH + 0.12, 0.05)), mat.steelDark,
       0, y, 0, 0, 0, 0, 1, mount, false);
     back.userData.wallBayId = wallBayId;
-    const board = new THREE.Mesh(track(new THREE.PlaneGeometry(w, h)), m);
+    const boardGeometry = track(new THREE.PlaneGeometry(fitW, fitH));
+    const uv = boardGeometry.getAttribute('uv') as THREE.BufferAttribute;
+    for (let i = 0; i < uv.count; i += 1) uv.setXY(i, rect.u0 + uv.getX(i) * (rect.u1 - rect.u0), rect.v0 + uv.getY(i) * (rect.v1 - rect.v0));
+    const board = new THREE.Mesh(boardGeometry, m);
+    armGarageDisplayAtlas(board, aniso);
+    if (painted) board.renderOrder = 2;
     board.position.set(0, y, 0.032);
     board.translateZ(0.032);
     board.userData.wallBayId = wallBayId;
@@ -761,7 +708,7 @@ export function createGarageDressing(
       const postGeometry = track(new THREE.BoxGeometry(0.10, postHeight, 0.10));
       const footGeometry = track(new THREE.BoxGeometry(0.62, 0.08, 0.46));
       const braceGeometry = track(new THREE.BoxGeometry(0.08, 1.18, 0.08));
-      const supportOffset = Math.max(0.38, w / 2 - 0.22);
+      const supportOffset = Math.max(0.38, plateW / 2 - 0.28);
       for (const side of [-1, 1]) {
         const post = put(postGeometry, mat.steelDark,
           side * supportOffset, postHeight / 2, 0, 0, 0, 0, 1, mount, false);
@@ -773,7 +720,7 @@ export function createGarageDressing(
           side * (supportOffset - 0.16), 0.72, 0, 0, 0, side * 0.24, 1, mount, false);
         brace.name = 'garage_service_sign_connected_brace';
       }
-      const tie = put(track(new THREE.BoxGeometry(w - 0.18, 0.10, 0.10)), mat.steelMid,
+      const tie = put(track(new THREE.BoxGeometry(supportOffset * 2 + 0.10, 0.10, 0.10)), mat.steelMid,
         0, Math.max(0.48, postHeight * 0.42), 0, 0, 0, 0, 1, mount, false);
       tie.name = 'garage_service_sign_lower_tie';
       mount.userData.supportConnections = 9;
@@ -1251,39 +1198,95 @@ export function createGarageDressing(
     return mg;
   }
 
+  // The Garage's one slideshow (garage r9, 2026-10-17; the owner: "remove that screen glitching through the floor ... we
+  // already have one"): the old primary archive monitor stood inside Verdant's back-wall mezzanine, its deck slicing the
+  // picture, so it is not built at all; the west-wall panel the owner kept is the only display and owns the driver. It is
+  // a flat LED panel now (the CRT curvature, raster lines and roll are gone), still dimmed and drained toward grey (the re-judge, 2026-10-15),
+  // and its stills are decoded at 1024 x 576 (createImageBitmap resize, a canvas where that is missing): 3.1 MB resident
+  // each instead of 10.55 MB, the current image alone at rest and the next one only for the 720 ms crossfade.
   let battleScreenMaterial: THREE.ShaderMaterial | null = null;
   let battleScreenMesh: THREE.Mesh | null = null;
-  let battleScreenSecondaryMaterial: THREE.ShaderMaterial | null = null;
-  let battleScreenSecondaryMesh: THREE.Mesh | null = null;
+  // Verdant's panel (its legs, bezel and cabinet) and the yard mount the outdoor Garages hang the same screen on, at the
+  // pose their pack builds its frame (garageSlideshowPlacement.ts): one screen, one material, one driver
+  let battleScreenVerdantRoot: THREE.Group | null = null;
+  const battleScreenYardRoot = new THREE.Group();
+  battleScreenYardRoot.name = 'garage_slideshow_yard_mount';
+  battleScreenYardRoot.visible = false;
+  group.add(battleScreenYardRoot);
+  let battleScreenShown = false;
   let battleScreenFallbackTexture: THREE.Texture | null = null;
   let battleScreenCurrentTexture: THREE.Texture | null = null;
   let battleScreenNextTexture: THREE.Texture | null = null;
-  let battleScreenSecondaryTexture: THREE.Texture | null = null;
   let battleScreenTimer: number | null = null;
   let battleScreenFrame: number | null = null;
   let battleScreenGeneration = 0;
   let battleScreenIndex = 0;
   let battleScreenLoading = false;
   let battleScreenTransitionStartedAt = 0;
-  const battleScreenLoader = new THREE.TextureLoader();
+  // the arriving Garage's own still, taken the moment the screen is free (an arrival during a load or a crossfade used to
+  // leave the previous Garage's still up for a whole hold and then cycle past its own)
+  let battleScreenWanted: number | null = null;
+
+  function disposeBattleScreenTexture(texture: THREE.Texture | null): void {
+    if (!texture || texture === battleScreenFallbackTexture) return;
+    const image = texture.image as { close?: () => void } | null;
+    texture.dispose();
+    if (image && typeof image.close === 'function') image.close();
+  }
+
+  function decodeBattleScreenImage(src: string): Promise<THREE.Texture | null> {
+    const finish = (texture: THREE.Texture): THREE.Texture => {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = Math.min(4, aniso);
+      texture.minFilter = THREE.LinearMipmapLinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      texture.generateMipmaps = true;
+      texture.userData.archiveSource = src;
+      texture.needsUpdate = true;
+      return texture;
+    };
+    const viaCanvas = (): Promise<THREE.Texture | null> => new Promise((resolve) => {
+      const image = new Image();
+      image.decoding = 'async';
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = BATTLE_SCREEN_DECODE_W;
+        canvas.height = BATTLE_SCREEN_DECODE_H;
+        const context = canvas.getContext('2d');
+        if (!context) { resolve(null); return; }
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(finish(new THREE.CanvasTexture(canvas)));
+      };
+      image.onerror = () => resolve(null);
+      image.src = src;
+    });
+    if (typeof createImageBitmap !== 'function' || typeof fetch !== 'function') return viaCanvas();
+    return fetch(src)
+      .then((response) => (response.ok ? response.blob() : Promise.reject(new Error(`archive ${response.status}`))))
+      .then((blob) => createImageBitmap(blob, {
+        resizeWidth: BATTLE_SCREEN_DECODE_W,
+        resizeHeight: BATTLE_SCREEN_DECODE_H,
+        resizeQuality: 'high',
+        imageOrientation: 'flipY',
+      }))
+      .then((bitmap) => {
+        const texture = new THREE.Texture(bitmap as unknown as HTMLImageElement);
+        texture.flipY = false; // flipped at decode
+        return finish(texture);
+      })
+      .catch(() => viaCanvas());
+  }
 
   function loadBattleScreenTexture(index: number): Promise<THREE.Texture | null> {
     const shot = GARAGE_BATTLE_SCREEN_SHOTS[index];
     if (!shot) return Promise.resolve(null);
     const generation = battleScreenGeneration;
-    return new Promise((resolve) => {
-      battleScreenLoader.load(shot.img, (texture) => {
-        if (generation !== battleScreenGeneration) {
-          texture.dispose();
-          resolve(null);
-          return;
-        }
-        texture.colorSpace = THREE.SRGBColorSpace;
-        texture.anisotropy = Math.min(4, aniso);
-        texture.minFilter = THREE.LinearMipmapLinearFilter;
-        texture.magFilter = THREE.LinearFilter;
-        resolve(texture);
-      }, undefined, () => resolve(null));
+    return decodeBattleScreenImage(shot.img).then((texture) => {
+      if (texture && generation !== battleScreenGeneration) {
+        disposeBattleScreenTexture(texture);
+        return null;
+      }
+      return texture;
     });
   }
 
@@ -1295,40 +1298,36 @@ export function createGarageDressing(
       // The garage phase owner removes this whole root from the scene during
       // battle. Stop here instead of polling; onBeforeRender restarts the
       // archive on the first garage-return frame, preserving zero battle cost.
-      if (!group.parent || !group.visible || !battleScreenOwner.visible || document.hidden) return;
+      if (!group.parent || !group.visible || !battleScreenShown || document.hidden) return;
       void advanceBattleScreen();
     }, delay);
   }
 
   function finishBattleScreenTransition(nextIndex: number): void {
     if (!battleScreenMaterial || !battleScreenNextTexture) return;
-    const previousCurrent = battleScreenCurrentTexture;
-    if (battleScreenSecondaryTexture
-        && battleScreenSecondaryTexture !== battleScreenFallbackTexture
-        && battleScreenSecondaryTexture !== previousCurrent
-        && battleScreenSecondaryTexture !== battleScreenNextTexture) {
-      battleScreenSecondaryTexture.dispose();
-    }
-    battleScreenSecondaryTexture = previousCurrent;
+    disposeBattleScreenTexture(battleScreenCurrentTexture);
     battleScreenCurrentTexture = battleScreenNextTexture;
     battleScreenNextTexture = null;
     battleScreenIndex = nextIndex;
     battleScreenMaterial.uniforms.uImageA.value = battleScreenCurrentTexture;
     battleScreenMaterial.uniforms.uImageB.value = battleScreenCurrentTexture;
     battleScreenMaterial.uniforms.uTransition.value = 0;
-    if (battleScreenSecondaryMaterial && battleScreenSecondaryTexture) {
-      battleScreenSecondaryMaterial.uniforms.uImageA.value = battleScreenSecondaryTexture;
-      battleScreenSecondaryMaterial.uniforms.uImageB.value = battleScreenSecondaryTexture;
-      battleScreenSecondaryMaterial.uniforms.uTransition.value = 0;
-    }
     battleScreenFrame = null;
-    group.userData.battleScreenResidentImageCount = battleScreenSecondaryTexture ? 2 : 1;
-    group.userData.battleScreenCurrentImage =
-      GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex]?.img || '';
-    group.userData.battleScreenSecondaryImage =
-      GARAGE_BATTLE_SCREEN_SHOTS[(battleScreenIndex - 1 + GARAGE_BATTLE_SCREEN_SHOTS.length)
-        % GARAGE_BATTLE_SCREEN_SHOTS.length]?.img || '';
-    if (group.parent && group.visible && !document.hidden) scheduleBattleScreenAdvance();
+    group.userData.battleScreenResidentImageCount = 1;
+    group.userData.battleScreenCurrentImage = GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex]?.img || '';
+    if (group.parent && group.visible && !document.hidden && !takeWantedBattleScreen()) scheduleBattleScreenAdvance();
+  }
+
+  /** The screen is free: show the arriving Garage's still now (true), or carry on the cycle (false). */
+  function takeWantedBattleScreen(): boolean {
+    const wanted = battleScreenWanted;
+    if (wanted === null || wanted === battleScreenIndex) {
+      battleScreenWanted = null;
+      return false;
+    }
+    if (battleScreenTimer !== null) { window.clearTimeout(battleScreenTimer); battleScreenTimer = null; }
+    void advanceBattleScreen(wanted); // which clears the wanted still as it takes it
+    return true;
   }
 
   function animateBattleScreenTransition(now: number, nextIndex: number): void {
@@ -1352,20 +1351,23 @@ export function createGarageDressing(
     });
   }
 
-  async function advanceBattleScreen(): Promise<void> {
+  async function advanceBattleScreen(targetIndex: number | null = null): Promise<void> {
     if (!battleScreenMaterial || !battleScreenCurrentTexture
         || battleScreenFrame !== null || battleScreenLoading
         || GARAGE_BATTLE_SCREEN_SHOTS.length < 2) return;
-    const nextIndex = (battleScreenIndex + 1) % GARAGE_BATTLE_SCREEN_SHOTS.length;
+    const nextIndex = targetIndex ?? battleScreenWanted ?? (battleScreenIndex + 1) % GARAGE_BATTLE_SCREEN_SHOTS.length;
+    const takesWanted = nextIndex === battleScreenWanted;
+    if (takesWanted) battleScreenWanted = null;
     battleScreenLoading = true;
     const texture = await loadBattleScreenTexture(nextIndex);
     battleScreenLoading = false;
     if (!texture || !battleScreenMaterial) {
+      if (takesWanted && battleScreenWanted === null) battleScreenWanted = nextIndex; // the retry tries it again
       if (group.parent && group.visible && !document.hidden) scheduleBattleScreenAdvance(1_500);
       return;
     }
     battleScreenNextTexture = texture;
-    group.userData.battleScreenResidentImageCount = battleScreenSecondaryTexture ? 3 : 2;
+    group.userData.battleScreenResidentImageCount = 2;
     battleScreenMaterial.uniforms.uImageB.value = texture;
     battleScreenTransitionStartedAt = performance.now();
     battleScreenFrame = window.requestAnimationFrame((time) => {
@@ -1373,28 +1375,70 @@ export function createGarageDressing(
     });
   }
 
+  /** The slideshow opens on its Garage's own battlefield still (FEATURED_SHOTS' maps field), then cycles. */
+  function battleScreenStartIndex(mapId: string): number {
+    const index = GARAGE_BATTLE_SCREEN_SHOTS.findIndex((shot) => shot.maps?.includes(mapId));
+    return index >= 0 ? index : 0;
+  }
+
   async function startBattleScreen(fallback: THREE.Texture): Promise<void> {
-    if (!battleScreenMaterial || !battleScreenSecondaryMaterial
-        || !GARAGE_BATTLE_SCREEN_SHOTS.length) return;
+    if (!battleScreenMaterial || !GARAGE_BATTLE_SCREEN_SHOTS.length) return;
     battleScreenCurrentTexture = fallback;
+    battleScreenIndex = battleScreenStartIndex(currentVariant.mapId);
+    group.userData.battleScreenWantedImage = GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex].img;
     battleScreenLoading = true;
-    const texture = await loadBattleScreenTexture(0);
+    const texture = await loadBattleScreenTexture(battleScreenIndex);
     battleScreenLoading = false;
     if (!texture || !battleScreenMaterial) return;
     battleScreenCurrentTexture = texture;
     battleScreenMaterial.uniforms.uImageA.value = texture;
     battleScreenMaterial.uniforms.uImageB.value = texture;
     group.userData.battleScreenResidentImageCount = 1;
-    group.userData.battleScreenCurrentImage = GARAGE_BATTLE_SCREEN_SHOTS[0].img;
-    const secondaryIndex = Math.floor(GARAGE_BATTLE_SCREEN_SHOTS.length / 2);
-    const secondaryTexture = await loadBattleScreenTexture(secondaryIndex);
-    if (secondaryTexture && battleScreenSecondaryMaterial) {
-      battleScreenSecondaryTexture = secondaryTexture;
-      battleScreenSecondaryMaterial.uniforms.uImageA.value = secondaryTexture;
-      battleScreenSecondaryMaterial.uniforms.uImageB.value = secondaryTexture;
-      group.userData.battleScreenResidentImageCount = 2;
-      group.userData.battleScreenSecondaryImage =
-        GARAGE_BATTLE_SCREEN_SHOTS[secondaryIndex]?.img || '';
+    group.userData.battleScreenCurrentImage = GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex].img;
+    if (!takeWantedBattleScreen()) scheduleBattleScreenAdvance();
+  }
+
+  /** Hang the one screen on Verdant's panel, or on the yard mount at an outdoor Garage's slideshow pose. */
+  function placeSlideshowScreen(isVerdant: boolean): boolean {
+    const pose = isVerdant ? null : garageSlideshowPose(currentVariant.architecture);
+    if (battleScreenMesh) {
+      if (pose) {
+        battleScreenYardRoot.position.set(pose.position[0], pose.position[1], pose.position[2]);
+        battleScreenYardRoot.rotation.set(0, pose.yaw, 0);
+        battleScreenYardRoot.add(battleScreenMesh);
+        battleScreenMesh.position.set(0, 0, 0);
+        battleScreenMesh.scale.setScalar(pose.width / BATTLE_SCREEN_PANEL_W);
+      } else if (battleScreenVerdantRoot) {
+        battleScreenVerdantRoot.add(battleScreenMesh);
+        battleScreenMesh.position.set(0, 0, 0.115);
+        battleScreenMesh.scale.setScalar(1);
+      }
+      // the workshop optimizer freezes every static matrix under the dressing (matrixAutoUpdate off): a moved mount
+      // and screen write their own
+      battleScreenYardRoot.updateMatrix();
+      battleScreenMesh.updateMatrix();
+    }
+    battleScreenYardRoot.visible = pose !== null;
+    group.userData.battleScreenPlacement = pose ? 'yard-pose' : isVerdant ? 'verdant-west-wall' : 'none';
+    return isVerdant || pose !== null;
+  }
+
+  /**
+   * On arriving in a Garage the slideshow opens on that Garage's own map still, then cycles. During a load or a crossfade
+   * the still waits as the wanted one and is taken the moment the screen is free.
+   */
+  function openSlideshowOnGarage(): void {
+    const start = battleScreenStartIndex(currentVariant.mapId);
+    group.userData.battleScreenWantedImage = GARAGE_BATTLE_SCREEN_SHOTS[start]?.img || '';
+    if (battleScreenFrame !== null || battleScreenLoading) {
+      battleScreenWanted = start;
+      return;
+    }
+    battleScreenWanted = null;
+    if (start !== battleScreenIndex) {
+      if (battleScreenTimer !== null) { window.clearTimeout(battleScreenTimer); battleScreenTimer = null; }
+      void advanceBattleScreen(start);
+      return;
     }
     scheduleBattleScreenAdvance();
   }
@@ -1427,13 +1471,14 @@ export function createGarageDressing(
     // environment's landmark. Verdant alone keeps wall-mounted interior
     // clutter because only its enclosed shell provides real supporting walls;
     // all four authored service bays are part of this shared root and remain
-    // visible in every Garage. The archive monitors stand in Verdant only.
+    // visible in every Garage. The slideshow panel stands in Verdant only.
     legacyVerdantRoot.visible = true;
     verdantInteriorRoot.visible = isVerdant;
     battleScreenOwner.visible = isVerdant;
     for (const owner of verdantKitOwners) owner.visible = isVerdant;
-    group.userData.battleScreenVisible = isVerdant;
-    if (isVerdant && battleScreenCurrentTexture) scheduleBattleScreenAdvance();
+    battleScreenShown = placeSlideshowScreen(isVerdant);
+    group.userData.battleScreenVisible = battleScreenShown;
+    if (battleScreenShown && battleScreenCurrentTexture) openSlideshowOnGarage();
     group.userData.verdantOriginalVisible = legacyVerdantRoot.children.length > 0;
     group.userData.workshopTriangleCount = group.userData.verdantOriginalTriangleCount || 0;
     group.userData.activeWorkshopTriangleCount =
@@ -1739,51 +1784,45 @@ export function createGarageDressing(
   // CHUNK 1 — static workshop clutter on every wall + floor decals
   // ==========================================================================
   function buildBattleArchiveMonitors(): number {
-    // One freestanding field-record monitor scrolls through the canonical
-    // battle archive in every Garage. It is centered on the hero's local -Z
-    // axis, so the tank rear points physically toward it while the camera sees
-    // the glacis. A shader moves two resident textures; it never uploads a
-    // canvas every frame, and the timer sleeps completely while the garage is
-    // detached for battle.
+    // The Garage's one slideshow panel (garage r9). The old primary stood at (0, 4.15, -18.25) inside the back-wall
+    // mezzanine, whose deck, column and rails cut through its picture (the owner's screenshot, 2026-10-17): it is not
+    // built, so neither its parts nor the static merge's copies of them exist. The west-wall installation the owner kept
+    // stands free on its legs and feet, its lit face turned back into the yard (+X) toward the hero; a flat LED panel
+    // in a slim bezel with a service cabinet behind, not a CRT. A shader crossfades two resident textures; it never
+    // uploads a canvas every frame, and the timer sleeps completely while the garage is detached for battle.
     const screenRoot = new THREE.Group();
-    screenRoot.name = 'garage_battle_archive_monitor';
-    screenRoot.position.set(0, 4.15, -18.25);
-    screenRoot.rotation.y = 0;
-    screenRoot.userData.mountMode = 'freestanding-verdant';
+    screenRoot.name = 'garage_slideshow_panel';
+    screenRoot.position.set(-18.35, 4.15, 2.4);
+    // Local +Z is the lit face. The west-side installation must point that face back into the service yard (+X),
+    // otherwise the camera sees only the cabinet and the panel reads as a black slab.
+    screenRoot.rotation.y = Math.PI / 2;
+    screenRoot.userData.mountMode = 'freestanding-west';
+    screenRoot.userData.displayFacing = 'inward-to-hero';
+    group.userData.battleScreenFacing = 'inward-to-hero';
     legacyVerdantRoot.add(battleScreenOwner);
     battleScreenOwner.add(screenRoot);
-
-    put(track(new THREE.BoxGeometry(6.8, 3.82, 0.22)), mat.steelDark,
-      0, 0, 0, 0, 0, 0, 1, screenRoot, false);
-    put(track(new THREE.BoxGeometry(6.26, 3.50, 0.08)), mat.rubber,
-      -0.22, 0, 0.13, 0, 0, 0, 1, screenRoot, false);
-    put(track(new THREE.BoxGeometry(2.35, 0.14, 0.07)), mat.safety,
-      -1.65, 1.74, 0.17, 0, 0, 0, 1, screenRoot, false);
-    put(track(new THREE.BoxGeometry(0.42, 2.92, 0.10)), mat.steelMid,
-      3.04, 0, 0.14, 0, 0, 0, 1, screenRoot, false);
-    for (const y of [0.95, 0.38, -0.19, -0.76]) {
-      put(track(new THREE.BoxGeometry(0.22, 0.08, 0.05)), mat.steelBright,
-        3.04, y, 0.22, 0, 0, 0, 1, screenRoot, false);
-    }
-    const statusLedMaterial = track(new THREE.MeshBasicMaterial({ color: 0x78d891 }));
-    for (const y of [1.38, -1.25]) {
-      put(track(new THREE.SphereGeometry(0.055, 8, 6)), statusLedMaterial,
-        3.04, y, 0.22, 0, 0, 0, 1, screenRoot, false);
-    }
-    // Connected legs, crossbar, feet and rear braces make this an honest
-    // outdoor installation instead of a wall panel floating in scene packs.
+    battleScreenVerdantRoot = screenRoot;
+    // bezel, the cabinet behind it, and a status LED at the bezel's foot
+    put(track(new THREE.BoxGeometry(6.06, 3.5, 0.1)), mat.steelDark,
+      0, 0, 0.06, 0, 0, 0, 1, screenRoot, false);
+    put(track(new THREE.BoxGeometry(5.2, 2.8, 0.18)), mat.steelMid,
+      0, 0, -0.08, 0, 0, 0, 1, screenRoot, false);
+    const statusLedMaterial = track(new THREE.MeshBasicMaterial({ color: 0x5f9f72 }));
+    put(track(new THREE.BoxGeometry(0.05, 0.02, 0.01)), statusLedMaterial,
+      2.78, -1.7, 0.115, 0, 0, 0, 1, screenRoot, false);
+    // Connected legs, crossbar, feet and rear braces make this an honest freestanding installation.
     const displayPostGeometry = track(new THREE.BoxGeometry(0.18, 2.45, 0.18));
-    for (const x of [-2.65, 2.65]) {
+    for (const x of [-2.4, 2.4]) {
       put(displayPostGeometry, mat.steelMid,
-        x, -3.04, -0.02, 0, 0, 0, 1, screenRoot);
+        x, -3.0, -0.08, 0, 0, 0, 1, screenRoot);
       put(track(new THREE.BoxGeometry(1.15, 0.14, 1.05)), mat.steelDark,
-        x, -4.08, -0.02, 0, 0, 0, 1, screenRoot);
+        x, -4.08, -0.08, 0, 0, 0, 1, screenRoot);
       const brace = put(track(new THREE.BoxGeometry(0.13, 2.55, 0.13)), mat.steelDark,
-        x, -3.05, -0.48, 0, 0.38, 0, 1, screenRoot);
+        x, -3.05, -0.54, 0, 0.38, 0, 1, screenRoot);
       brace.castShadow = true;
     }
-    put(track(new THREE.BoxGeometry(5.55, 0.16, 0.20)), mat.steelMid,
-      0, -1.86, -0.02, 0, 0, 0, 1, screenRoot);
+    put(track(new THREE.BoxGeometry(5.0, 0.16, 0.2)), mat.steelMid,
+      0, -1.82, -0.08, 0, 0, 0, 1, screenRoot);
 
     const fallbackTexture = track(new THREE.DataTexture(
       new Uint8Array([10, 20, 18, 255]), 1, 1, THREE.RGBAFormat,
@@ -1792,62 +1831,41 @@ export function createGarageDressing(
     fallbackTexture.colorSpace = THREE.SRGBColorSpace;
     fallbackTexture.needsUpdate = true;
     battleScreenMaterial = track(new THREE.ShaderMaterial({
-      side: THREE.DoubleSide,
       toneMapped: false,
       uniforms: {
         uImageA: { value: fallbackTexture },
         uImageB: { value: fallbackTexture },
         uTransition: { value: 0 },
-        uTime: { value: 0 },
       },
       vertexShader: `
         varying vec2 vUv;
         void main() {
           vUv = uv;
-          vec3 curved = position;
-          vec2 centered = uv * 2.0 - 1.0;
-          curved.z += (1.0 - dot(centered, centered) * 0.45) * 0.065;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(curved, 1.0);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
       fragmentShader: `
         uniform sampler2D uImageA;
         uniform sampler2D uImageB;
         uniform float uTransition;
-        uniform float uTime;
         varying vec2 vUv;
 
-        vec2 bendUv(vec2 uv) {
-          vec2 centered = uv * 2.0 - 1.0;
-          centered *= 1.0 + dot(centered, centered) * 0.035;
-          return centered * 0.5 + 0.5;
-        }
-
-        vec3 screenSample(sampler2D image, vec2 uv) {
-          float inside = step(0.0, uv.x) * step(uv.x, 1.0)
-            * step(0.0, uv.y) * step(uv.y, 1.0);
-          return texture2D(image, clamp(uv, 0.001, 0.999)).rgb * inside;
+        // Each still is exposed for the panel by its own mean (its smallest mip, one texel): a night street or a
+        // furnace salvo lifts toward the bright fields shots instead of reading as a dark slab (the r9 blind critic: "a
+        // dark urban-street frame, much less legible than the bright tank still"); a bright still is left as it is.
+        vec3 exposed(sampler2D image, vec2 uv) {
+          vec3 mean = texture2D(image, vec2(0.5), 16.0).rgb;
+          float lift = clamp(log(0.2) / log(clamp(dot(mean, vec3(0.2126, 0.7152, 0.0722)), 0.01, 0.99)), 0.6, 1.0);
+          return pow(texture2D(image, uv).rgb, vec3(lift));
         }
 
         void main() {
-          vec2 uv = bendUv(vUv);
-          vec2 outgoingUv = uv + vec2(0.0, uTransition);
-          vec2 incomingUv = uv + vec2(0.0, uTransition - 1.0);
-          vec3 color = screenSample(uImageA, outgoingUv)
-            + screenSample(uImageB, incomingUv);
-
-          float scanline = 0.92 + 0.08 * sin(gl_FragCoord.y * 3.14159);
-          float grille = 0.975 + 0.025 * sin(gl_FragCoord.x * 2.0944);
-          float flicker = 0.992 + 0.008 * sin(uTime * 33.0);
-          float rollY = fract(vUv.y + uTime * 0.055);
-          float rollDistance = (rollY - 0.5) * 15.0;
-          float rollingGlow = exp(-(rollDistance * rollDistance)) * 0.06;
+          vec2 uv = clamp(vUv, 0.001, 0.999);
+          vec3 color = mix(exposed(uImageA, uv), exposed(uImageB, uv), uTransition);
+          // an LED panel's faint fall-off toward its bezel
           vec2 centered = vUv * 2.0 - 1.0;
-          float vignette = 1.0 - smoothstep(0.45, 1.45, dot(centered, centered)) * 0.48;
-          color *= scanline * grille * flicker * vignette;
-          color += color * rollingGlow;
-          color *= vec3(0.95, 1.02, 0.98);
-          // dimmed and drained toward grey beside the hero (the re-judge, 2026-10-15: the two screens were "the brightest
+          color *= 1.0 - smoothstep(0.7, 1.6, dot(centered, centered)) * 0.18;
+          // dimmed and drained toward grey beside the hero (the re-judge, 2026-10-15: the screens were "the brightest
           // and most saturated rectangles in the frame after the tank")
           float luma = dot(color, vec3(0.299, 0.587, 0.114));
           color = mix(vec3(luma), color, 0.55) * 0.62;
@@ -1856,80 +1874,28 @@ export function createGarageDressing(
         }
       `,
     }));
-    const screenGeometry = track(new THREE.PlaneGeometry(5.70, 3.20, 24, 14));
+    battleScreenMaterial.name = 'garage_slideshow_material';
+    // 16:9 at 5.86 x 3.296 m inside the bezel
+    const screenGeometry = track(new THREE.PlaneGeometry(BATTLE_SCREEN_PANEL_W, BATTLE_SCREEN_PANEL_W * 9 / 16));
     battleScreenMesh = put(screenGeometry, battleScreenMaterial,
-      -0.22, 0, 0.20, 0, 0, 0, 1, screenRoot, false);
-    battleScreenMesh.name = 'garage_battle_archive_screen';
+      0, 0, 0.115, 0, 0, 0, 1, screenRoot, false);
+    battleScreenMesh.name = 'garage_slideshow_screen';
     battleScreenMesh.userData.keepWorkshopMesh = true;
-    battleScreenMesh.userData.mountMode = 'freestanding-shared';
+    battleScreenMesh.userData.mountMode = 'freestanding-west';
     battleScreenMesh.onBeforeRender = () => {
-      if (!battleScreenMaterial) return;
-      battleScreenMaterial.uniforms.uTime.value = performance.now() * 0.001;
       if (battleScreenTimer === null && battleScreenFrame === null
           && group.userData.battleScreenCurrentImage) scheduleBattleScreenAdvance();
     };
-
-    // A second archive stands on the opposite service-yard wall. It shows the
-    // previous/offset campaign frame while the primary screen advances, so two
-    // different battle stories are visible without a second slideshow timer.
-    // Both displays share the same bounded two-image steady-state lifecycle;
-    // the transition peak is three resident images for only 720 ms.
-    battleScreenSecondaryMaterial = track(battleScreenMaterial.clone());
-    battleScreenSecondaryMaterial.name = 'garage_battle_archive_secondary_material';
-    const secondaryRoot = new THREE.Group();
-    secondaryRoot.name = 'garage_battle_archive_monitor_secondary';
-    secondaryRoot.position.set(-18.35, 4.15, 2.4);
-    // Local +Z is the illuminated CRT face. The west-side installation must
-    // point that face back into the service yard (+X), otherwise the camera
-    // sees only the steel rear casing and the live shader reads as a black
-    // panel in outdoor environments.
-    secondaryRoot.rotation.y = Math.PI / 2;
-    secondaryRoot.userData.mountMode = 'freestanding-west-shared';
-    secondaryRoot.userData.displayFacing = 'inward-to-hero';
-    group.userData.battleScreenSecondaryFacing = 'inward-to-hero';
-    battleScreenOwner.add(secondaryRoot);
-    put(track(new THREE.BoxGeometry(6.8, 3.82, 0.22)), mat.steelDark,
-      0, 0, 0, 0, 0, 0, 1, secondaryRoot, false);
-    put(track(new THREE.BoxGeometry(6.26, 3.50, 0.08)), mat.rubber,
-      -0.22, 0, 0.13, 0, 0, 0, 1, secondaryRoot, false);
-    put(track(new THREE.BoxGeometry(2.35, 0.14, 0.07)), mat.safety,
-      1.38, 1.74, 0.17, 0, 0, 0, 1, secondaryRoot, false);
-    put(track(new THREE.BoxGeometry(0.42, 2.92, 0.10)), mat.steelMid,
-      3.04, 0, 0.14, 0, 0, 0, 1, secondaryRoot, false);
-    for (const y of [0.95, 0.38, -0.19, -0.76]) {
-      put(track(new THREE.BoxGeometry(0.22, 0.08, 0.05)), mat.steelBright,
-        3.04, y, 0.22, 0, 0, 0, 1, secondaryRoot, false);
-    }
-    for (const y of [1.38, -1.25]) {
-      put(track(new THREE.SphereGeometry(0.055, 8, 6)), statusLedMaterial,
-        3.04, y, 0.22, 0, 0, 0, 1, secondaryRoot, false);
-    }
-    for (const x of [-2.65, 2.65]) {
-      put(displayPostGeometry, mat.steelMid,
-        x, -3.04, -0.02, 0, 0, 0, 1, secondaryRoot);
-      put(track(new THREE.BoxGeometry(1.15, 0.14, 1.05)), mat.steelDark,
-        x, -4.08, -0.02, 0, 0, 0, 1, secondaryRoot);
-      put(track(new THREE.BoxGeometry(0.13, 2.55, 0.13)), mat.steelDark,
-        x, -3.05, -0.48, 0, 0.38, 0, 1, secondaryRoot);
-    }
-    put(track(new THREE.BoxGeometry(5.55, 0.16, 0.20)), mat.steelMid,
-      0, -1.86, -0.02, 0, 0, 0, 1, secondaryRoot);
-    battleScreenSecondaryMesh = put(screenGeometry, battleScreenSecondaryMaterial,
-      -0.22, 0, 0.20, 0, 0, 0, 1, secondaryRoot, false);
-    battleScreenSecondaryMesh.name = 'garage_battle_archive_screen_secondary';
-    battleScreenSecondaryMesh.userData.keepWorkshopMesh = true;
-    battleScreenSecondaryMesh.userData.mountMode = 'freestanding-west-shared';
-    battleScreenSecondaryMesh.onBeforeRender = () => {
-      if (!battleScreenSecondaryMaterial) return;
-      battleScreenSecondaryMaterial.uniforms.uTime.value = performance.now() * 0.001;
-    };
     group.userData.mapImageCount = 0;
-    group.userData.battleScreenMode = 'crt-scroll-slideshow';
-    group.userData.battleScreenWallBay = 'dual-freestanding-shared';
-    group.userData.battleScreenDisplayCount = 2;
+    group.userData.battleScreenMode = 'led-crossfade-slideshow';
+    group.userData.battleScreenWallBay = 'west-freestanding';
+    group.userData.battleScreenDisplayCount = 1;
     group.userData.battleScreenImageCount = GARAGE_BATTLE_SCREEN_SHOTS.length;
-    group.userData.battleScreenResidentImageLimit = 3;
+    group.userData.battleScreenResidentImageLimit = 2;
     group.userData.battleScreenResidentImageCount = 0;
+    group.userData.battleScreenDecodeSize = [BATTLE_SCREEN_DECODE_W, BATTLE_SCREEN_DECODE_H];
+    battleScreenShown = placeSlideshowScreen(currentVariant.id === 'verdant_motor_pool');
+    group.userData.battleScreenVisible = battleScreenShown;
     void startBattleScreen(fallbackTexture);
     const interiorChildrenStart = group.children.length;
     return interiorChildrenStart;
@@ -2471,7 +2437,7 @@ export function createGarageDressing(
 
   function buildWorkshopClutter(interiorChildrenStart: number): void {
     // --- EAST WALL (left of frame from the hero cam) ------------------------
-    workbench(21.95, -7, -Math.PI / 2);
+    // (garage r9: the bench under the shadow board is the kit's working bench, garageVerdantKit.ts)
     pegboardAt('east_tools');
     workLamp(21.6, -7);
     // steel locker pair
@@ -2637,10 +2603,9 @@ export function createGarageDressing(
       // drip tray under it
       put(track(new THREE.BoxGeometry(0.8, 0.05, 0.6)), mat.steelDark, 0, 0.03, 1.38, 0, 0, 0, 1, eh);
     }
-    // NORTH wall: second bench + red chest + engine on pallet + lamp
-    workbench(3.2, -21.85, 0);
+    // NORTH wall: the shadow board over the kit's second bench and roll cab (garage r9, garageVerdantKit.ts), the engine
+    // on its pallet, the lamp
     pegboardAt('north_tools');
-    toolChest(6.6, -21.4, 0.15, mat.redCab, mat.redCabDark);
     workLamp(3.2, -21.2);
     {
       put(track(new THREE.BoxGeometry(1.2, 0.11, 0.95)), mat.timberDark, 10.3, 0.06, -20.9, -0.15);
@@ -2709,7 +2674,23 @@ export function createGarageDressing(
     const interiorChildrenStart = buildBattleArchiveMonitors();
     buildVerdantFactoryArchitecture();
     buildWorkshopClutter(interiorChildrenStart);
+    buildVerdantR9Kit();
   });
+
+  // Verdant's share of the garage r9 kit (garageVerdantKit.ts): column and wordmark banners, the hall of fame's framed
+  // prints, a diagnostics station, the mezzanine finish and the service cells, on its own Verdant-only owner in the
+  // hall's world frame
+  function buildVerdantR9Kit(): void {
+    const owner = new THREE.Group();
+    owner.name = 'garage_verdant_kit_r9';
+    owner.visible = currentVariant.id === 'verdant_motor_pool';
+    const kit = buildGarageVerdantKit({ setupShadowMaterial: shadowMat, anisotropy: aniso });
+    for (const mesh of kit.meshes) { track(mesh.geometry); owner.add(mesh); }
+    for (const material of kit.materials) track(material);
+    group.add(owner);
+    verdantKitOwners.push(owner);
+    group.userData.verdantKitStats = kit.stats;
+  }
 
   // ==========================================================================
   // CHUNK 2 — ORIGINAL VERDANT BAY A: T-90A Burlak on jack stands with its
@@ -3603,14 +3584,6 @@ export function createGarageDressing(
     // above preserves the exact static composition for subsequent variants.
   });
 
-  // sign plates bake before the webfont settles — refresh them once it lands
-  // (same contract as garageStage's own signs)
-  if (document.fonts && !document.fonts.check(SIGN_FONT)) {
-    document.fonts.load(SIGN_FONT)
-      .then(faces => { if (!disposed && faces.length) for (const t of signTextures) t.needsUpdate = true; })
-      .catch(() => {});
-  }
-
   let next = 0;
   let pendingPump: Promise<boolean> | null = null;
 
@@ -3712,25 +3685,19 @@ export function createGarageDressing(
       battleScreenTimer = null;
       battleScreenFrame = null;
       battleScreenLoading = false;
-      const battleScreenTextures = new Set([
-        battleScreenCurrentTexture,
-        battleScreenNextTexture,
-        battleScreenSecondaryTexture,
-      ]);
-      for (const texture of battleScreenTextures) {
-        if (texture && texture !== battleScreenFallbackTexture) texture.dispose();
+      for (const texture of new Set([battleScreenCurrentTexture, battleScreenNextTexture])) {
+        if (!texture || texture === battleScreenFallbackTexture) continue;
+        const image = texture.image as { close?: () => void } | null;
+        texture.dispose();
+        if (image && typeof image.close === 'function') image.close();
       }
       battleScreenCurrentTexture = null;
       battleScreenNextTexture = null;
-      battleScreenSecondaryTexture = null;
       battleScreenFallbackTexture = null;
       group.userData.battleScreenResidentImageCount = 0;
       if (battleScreenMesh) battleScreenMesh.onBeforeRender = () => {};
-      if (battleScreenSecondaryMesh) battleScreenSecondaryMesh.onBeforeRender = () => {};
       battleScreenMesh = null;
-      battleScreenSecondaryMesh = null;
       battleScreenMaterial = null;
-      battleScreenSecondaryMaterial = null;
       for (const visual of workshopVisuals) visual.dispose();
       workshopVisuals.length = 0;
       preparedVisual = null;

@@ -131,8 +131,8 @@ for (const quality of ['high', 'low']) {
     const hull = get('hull'), turret = get('turret'), rig = get('rig_turret');
     const gun = get('rig_gun'), recoil = get('rig_recoil'), barrel = get('gun');
     const mount = get('gunMount'), muzzle = get('rig_muzzle');
-    assert.equal(mount.parent, gun, 'actual mantlet pitches, independently of barrel recoil');
-    assert.equal(barrel.parent, recoil, 'all physical barrel segments recoil');
+    assert.ok(mount.parent === gun, 'actual mantlet pitches, independently of barrel recoil');
+    assert.ok(barrel.parent === recoil, 'all physical barrel segments recoil');
     vectorNear(rig.getWorldPosition(new THREE.Vector3()), SOURCE.pivot, 1e-6, 'source yaw origin');
     vectorNear(gun.getWorldPosition(new THREE.Vector3()), SOURCE.trunnion, 1e-6, 'actual bore pitch axis');
     vectorNear(muzzle.getWorldPosition(new THREE.Vector3()), SOURCE.muzzle, 1e-6, 'source muzzle');
