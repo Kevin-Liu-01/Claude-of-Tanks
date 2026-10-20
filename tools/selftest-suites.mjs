@@ -48,7 +48,25 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/thermalVehicles.selftest.mjs',
     'src/engine/visionWarm.selftest.mjs',
     'src/game/juggernautVisual.selftest.mjs',
-    'src/fx/aerialTracers.selftest.mjs',
+    // 2026-10-19 (owner): the AC-130 on the October tracers and missile looks, the old ribbon retired, and its kills
+    // credited to the AC-130 (the drone's to the drone) on every surface
+    'src/fx/gunshipRounds.selftest.mjs',
+    'src/fx/retiredTracers.selftest.mjs',
+    'src/fx/shockRingLight.selftest.mjs',
+    'src/fx/thermalFireGain.selftest.mjs',
+    'src/fx/hullBurstEarth.selftest.mjs',
+    'src/fx/heavyColumn.selftest.mjs',
+    'src/fx/thermalGroundAndEmbers.selftest.mjs',
+    'src/engine/thermalWreckCooling.selftest.mjs',
+    'src/engine/thermalHullHeat.selftest.mjs',
+    'src/engine/thermalLensBloom.selftest.mjs',
+    'src/ui/aerialHitMark.selftest.mjs',
+    'src/ui/killFeedSource.selftest.mjs',
+    'src/ui/endScreenAircraft.selftest.mjs',
+    'src/sim/killSource.selftest.mjs',
+    'src/ui/killSurfaces.selftest.mjs',
+    // (r2) the AC-130's airframe, its own chunk staged under the cover, hidden only in its own lens; the warm path
+    'src/game/gunshipAirframe.selftest.mjs',
     'src/fx/timeOfDayMarks.selftest.mjs',
     'src/fx/localLights.selftest.mjs',
     'src/fx/worldWindPalette.selftest.mjs',
@@ -2013,6 +2031,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout
     'src/ui/vehicleControlOrder.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',
+    // 2026-10-16 (desk notices): the mouse centre notices clear the reticle, the instruments and the lanes on every census size.
+    'src/ui/mouseNoticePlan.selftest.mjs',
+    // r10e: a touch layout's centre notices keep off the reticle's footprint and the HUD's panels
+    'src/ui/touchNoticePlan.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',
     'src/ui/fonts.selftest.mjs',
@@ -2088,6 +2110,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/docs/referenceTakes.selftest.mjs',
     'src/ui/garageFleetTake.selftest.mjs',
     'tools/marketing-shots/landing-media.selftest.mjs',
+    // 2026-10-19: the media library (public/media/library-r1): every picture of the media rounds, by pack range and sheet
+    'tools/marketing-shots/media-library.selftest.mjs',
     // home r2 (2026-10-12): the home page's feature, mechanic and mode slots, their picks and the modes' registry order
     'tools/marketing-shots/home-shots.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',

@@ -122,7 +122,12 @@ controls row and the tray, a stacked tray's speedometer and damage panel, a
 landscape phone's consumables column and systems row, a portrait phone's FIRE
 buttons, the score, the map and the vision switch. Round r9 modelled some of
 these as constant floors in `hud.ts`, and missed the consumables at 667x375 and
-the left FIRE button at 360x640. The line rests no lower than that furniture
+the left FIRE button at 360x640. A pass can land while a panel fades or slides,
+for example the touch tray's two collapsed shell slots fading out behind the
+selected one. The end of a furniture's own opacity, visibility or transform
+transition measures it again. Before r10e, those two slots stayed published as
+furniture until some later relayout, and a recording caught them at 8 touch
+sizes. The line rests no lower than that furniture
 lets it. Where the row would still reach a panel, the zoom plate moves up beside
 the line, then the warning chip joins that row left of the line, then the chip
 moves above the ring. Then the line and the zoom plate move right of the column
@@ -136,8 +141,15 @@ keeps 3 px over the tag there. On a screen over 430 px tall a rack's
 countdown also moves beside the rack. On a portrait phone the reticle seats the
 touch warning chip under the sight, where a mouse layout paints its canvas chip,
 and the scope's readouts start under it. At 50% + 48 px it met the countdown and
-a rack dropped below a wide ring. A short landscape keeps it in the left lane
-under the map. On the short landscape
+a rack dropped below a wide ring. Where its seat under the sight meets the
+furniture, it first rises to just under the ring and the marks there, before
+it goes over the sight. The chip yields to the sixth-sense notice: the layout
+publishes the notice's settled box on a touch layout, and where the chip's place
+runs into it, the chip waits hidden until the notice goes. The notice never
+moves the chip or any other mark. Moving it ran the chip into the furniture
+instead: 22 px into the left FIRE button at 320x568 and 16 m. Round r10 set the
+chip over the sight at 320x568, under the DETECTED notice. A short landscape
+keeps it in the left lane under the map. On the short landscape
 scope stack the round leads the ammo readout line instead, and a rack's countdown
 sits beside the rack when the ring keeps clear of it there. The scope's vision switch sits beside the
 sight, level with the marker and past the widest ring, where no readout goes. A
@@ -277,8 +289,8 @@ empty racks, finite and endless rounds:
   underlines.
 - 375x667: 7.34 px, `0 ` on the systems row with the warning under the widest
   ring, in every mode.
-- 740x360 with the objective panel: 0.37 px, an empty rack under the widest ring
-  on the systems row.
+- 740x360 and 640x360 with the objective panel: 0.37 px, an empty rack under the
+  widest ring on the systems row.
 - 1024x400 with the objective panel: 7.62 px, the warning chip set over the
   widest ring into the panel. The rendered fixture keeps 3 px.
 
@@ -475,6 +487,46 @@ placed below the joystick, with a separate spectator position; multiplayer
 latency remains in the connection control. Mobile physical gun warnings use a
 measured DOM notice instead of painting over controls on the reticle canvas.
 The geometry gate includes those notices alongside detection and damage alerts.
+
+### Touch centre notices (r10e)
+
+A touch layout places its centre notices against the reticle and the measured
+furniture (`src/ui/touchNoticePlan.ts`, called by the layout on each relayout).
+These are the detection, the alert, the pre-battle countdown and the medal
+card. Integ stacked the detection and the alert centred under the systems row.
+On every phone but the tallest, that put them on the aim point, the ring, the
+struck round and rack, the scope's circle, readouts and vision plate. The alert
+also sat on the countdown's digit, and the medal card on the scope's readout
+row. The notices session's critic found this on integ ce8b634668.
+
+The plan keeps 4 px from the reticle's footprint and 6 px from the panels,
+controls and feeds. The footprint is what the reticle can draw at full bloom,
+so nothing moves as the ring breathes:
+
+- the ring at 15 % of the shorter side;
+- in battle, the column under it and over it (rack, struck round, countdown,
+  seated chip);
+- through the scope, the circle at 1.55 r + 3, the readout row and zoom plate
+  over and under it, and the range tag.
+
+The countdown goes first, in the detection's place, scaled down to 60 % where
+it must. The detection and the alert then take integ's place where that keeps
+clear. Otherwise they take the highest free place, as a stack, then apart, then
+compact (the 136 px notice, the alert in 8 px type). The medal card takes the
+highest free place off all of them, or waits with its time kept. A phone's aim
+hint sets its "LANDSCAPE RECOMMENDED" advice on its own right-aligned line. On
+one line it ran under the speedometer and the left FIRE button at 360x640.
+
+Where no place keeps clear, each notice takes the least intrusive place.
+`body[data-touch-notices~='uncleared']` marks this. The notice reaches into the
+footprint before it covers any panel or control. This happens on the 568 px
+landscapes (568x256, 568x290, 568x320) and in the scope at 640x360 at rest.
+
+`src/ui/touchNoticePlan.selftest.mjs` plans every recorded touch size and stage.
+`tools/hud-touch-notices.browser.mjs` stages the critic's scenes at 15 touch
+sizes and measures each notice against the reticle's recorded ink, the seated
+chip, the vision plate and the hint, with no screenshot. It notes the uncleared
+windows rather than failing them.
 
 ### Verified local run — 2026-10-01
 

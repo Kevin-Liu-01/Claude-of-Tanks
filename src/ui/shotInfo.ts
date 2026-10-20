@@ -55,6 +55,7 @@ import { t } from './i18n.ts';
 import { campaignDebrief, type CampaignDebrief } from '../game/campaignDebrief.ts';
 import { getLastBattleAwards } from '../game/serviceRecord.ts';
 import { resolveFinalBlow, type FinalBlowDestroyed, type FinalBlowLethal } from './finalBlow.ts';
+import { attackerLabel, killSourceIdentity } from './killSourceIdentity.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
 
@@ -73,6 +74,8 @@ interface ShotHitEvent extends HitEventPresentation, ShotDiagramEvent {
   readonly attackerId?: EntityId | null;
   readonly attackerName?: string | null;
   readonly attackerSpecId?: string | null;
+  /** (ac130-fx-228) the attacker's platform when not its vehicle (the authority's sim/aerialCombat.ts killSourceOf) */
+  readonly attackerSource?: string | null;
   readonly targetId: EntityId;
   readonly targetName?: string | null;
   readonly targetSpecId?: string | null;
@@ -114,6 +117,7 @@ interface TankDestroyedEvent {
   readonly killerId?: EntityId | null;
   readonly specId: string;
   readonly cause?: string | null;
+  readonly source?: string | null;
 }
 
 interface EndRosterRow {
@@ -121,6 +125,8 @@ interface EndRosterRow {
   readonly vehicle?: string | null;
   readonly name?: string | null;
   readonly specId?: string | null;
+  /** (ac130-fx-228) the combatant flew the AC-130: its vehicle reads as the aircraft (its icon, no tank silhouette) */
+  readonly aircraft?: boolean;
   readonly team?: string;
   readonly alive?: boolean;
   readonly isPlayer?: boolean;
@@ -149,6 +155,8 @@ interface BattleEndedEvent {
 interface Combatant {
   name: string | null;
   specId: string | null;
+  /** (ac130-fx-228) flew the AC-130 (an attacker whose hits the authority stamped 'ac130') */
+  aircraft?: boolean;
   dmg: number;
   kills: number;
   /** Deaths this battle — a stat, not a state: a revive keeps the count and clears `dead`. */
@@ -499,7 +507,7 @@ body.cot-si-report .cot-net,body.cot-si-report .cot-camoind,
 body.cot-si-report .cot-shells,body.cot-si-report .cot-minimap,
 body.cot-si-report .cot-hpbars,body.cot-si-report .cot-dmglayer,
 body.cot-si-report .cot-dp,body.cot-si-report .cot-si-log,
-body.cot-si-report .cot-ret{display:none !important;}
+body.cot-si-report .cot-ret,body.cot-si-report .cot-hitmark{display:none !important;}
 .cot-si-ban{font-family:${FONT_COND};font-weight:800;font-size:56px;
   letter-spacing:.34em;text-indent:.34em;line-height:1;text-shadow:0 2px 22px rgba(0,0,0,.85);}
 .cot-si-ban.v{color:#7ee87e;}.cot-si-ban.d{color:#f05a5a;}.cot-si-ban.n{color:#cfd9e2;}
@@ -958,6 +966,8 @@ export function mergeEndRosterRow(
     row.name = rosterRow.vehicle || rosterRow.name || null;
   }
   if (!row.specId && rosterRow.specId) row.specId = rosterRow.specId;
+  // (ac130-fx-228) a gunship pilot's row names the AC-130, whatever tank the pilot's garage held
+  if (rosterRow.aircraft) { row.aircraft = true; row.name = killSourceIdentity('ac130')?.label ?? row.name; }
   if (rosterRow.team) row.side = rosterRow.team === 'enemy' ? 'enemy' : 'ally';
   if (rosterRow.alive === false) row.dead = true;
   else if (revives && rosterRow.alive === true) row.dead = false;
@@ -1351,7 +1361,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     const group = appendIncomingHit(previous?.group ?? null, ev.attackerId,
       ev.damage || 0, cls, performance.now());
     const attacker = ev.attackerId ? combatants.get(ev.attackerId) : null;
-    const name = ev.attackerName || attacker?.name || t('hud.enemy');
+    const source = killSourceIdentity(ev.attackerSource);
+    const name = attackerLabel(ev) || attacker?.name || t('hud.enemy');
     let toast: HTMLElement;
     if (previous?.group === group) {
       toast = previous.element;
@@ -1363,7 +1374,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
         '<span class="attacker"></span><b></b></div>';
       const silhouette = toast.querySelector<HTMLElement>('.si')!;
       const specId = ev.attackerSpecId || attacker?.specId;
-      if (specId) maskIcon(silhouette, specId, 'side_silhouette', '#f28f8f');
+      if (source) silhouette.innerHTML = uiIconSVG(source.icon, 12, '#f28f8f');
+      else if (specId) maskIcon(silhouette, specId, 'side_silhouette', '#f28f8f');
       else silhouette.remove();
       toastHost.prepend(toast);
     }
@@ -1412,6 +1424,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
         id,
         name: combatantRow.name,
         specId: combatantRow.specId,
+        ...(combatantRow.aircraft ? { aircraft: true } : {}),
         dmg: Math.round(combatantRow.dmg),
         kills: combatantRow.kills,
         deaths: combatantRow.deaths,
@@ -1500,6 +1513,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       reason: endInfo?.reason || null,
       playerVehicle: me?.name || '',
       playerSpecId: me?.specId || null,
+      // (ac130-fx-228) the pilot flew the AC-130: the debrief shows the aircraft, not the garage tank
+      ...(me?.aircraft ? { playerAircraft: true } : {}),
       playerDead: !!me?.dead,
       playerDeaths: me?.deaths ?? 0,
       playerKills: playerId ? killLedger.count(playerId) : 0,
@@ -1560,7 +1575,10 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
 
   function recordHitCombatants(ev: ShotHitEvent): void {
     if (ev.attackerId == null || ev.targetId == null || ev.attackerId === ev.targetId) return;
-    const attacker = combatant(ev.attackerId, ev.attackerName, ev.attackerSpecId);
+    // (ac130-fx-228) a gunship's hits are the AC-130's: its name and icon, never the pilot's garage tank
+    const aircraft = killSourceIdentity(ev.attackerSource)?.source === 'ac130';
+    const attacker = combatant(ev.attackerId, attackerLabel(ev), aircraft ? null : ev.attackerSpecId);
+    if (aircraft) { attacker.aircraft = true; attacker.name = attackerLabel(ev) ?? attacker.name; }
     attacker.dmg += ev.damage || 0;
     const target = combatant(ev.targetId, ev.targetName, ev.targetSpecId);
     if (ev.destroyed) target.dead = true;
@@ -1623,7 +1641,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       dmg: ev.damage || 0,
       kind: ev.kind,
       aid: ev.attackerId,
-      attacker: ev.attackerName || 'Enemy',
+      attacker: attackerLabel(ev) || 'Enemy',
       shellType: ev.shellType || '',
       mods,
       outcome,
@@ -1669,7 +1687,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     if (ev.destroyed && ev.targetId != null) {
       lastLethalHit = {
         attackerId: ev.attackerId == null ? null : String(ev.attackerId),
-        attackerName: ev.attackerName || null,
+        attackerName: attackerLabel(ev) || null,
         targetId: String(ev.targetId),
         targetName: ev.targetName || null,
         shellName: shellDisplayName(ev) || null,
@@ -1688,7 +1706,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     if (!killLedger.record(p.id, p.killerId, teamOf(p.id), p.killerId ? teamOf(p.killerId) : undefined)) return;
     // team-wide roster bookkeeping (fire deaths included — no shell:hit fires)
     recordCombatantDestroyed(combatant(p.id, null, p.specId));
-    lastDestroyedRow = { id: String(p.id), killerId: p.killerId == null ? null : String(p.killerId), cause: p.cause ?? null };
+    lastDestroyedRow = { id: String(p.id), killerId: p.killerId == null ? null : String(p.killerId), cause: p.cause ?? null,
+      source: p.source ?? null };
     if (p.killerId != null && p.killerId !== p.id) {
       combatant(p.killerId).kills = killLedger.count(p.killerId);
       linkOpposed(p.killerId, p.id);
