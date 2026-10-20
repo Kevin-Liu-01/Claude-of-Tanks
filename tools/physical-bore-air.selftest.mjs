@@ -102,9 +102,11 @@ assert.ok(report.high.boreAirL > 0, `HIGH: the 0.9 bore column is the bore air r
 const capping = { v: .025, o: [-1.605, .3966, -3.5994], t: [0, 1.8, -1.08], g: [0, 2.03265, .387], gun: 'PgBBAEIBPgBBAEcB' };
 const tmp = mkdtempSync(join(tmpdir(), 'physical-bore-air-'));
 try {
-  const run = spawnSync(process.execPath, ['tools/gen-interior-fills.mjs', `--ids=${id}`, '--rounds=8', '--min-fine=1',
+  // --release is the shipped records' --rounds=8 --min-fine=1 (2026-10-16, test-speed R4c)
+  const run = spawnSync(process.execPath, ['tools/gen-interior-fills.mjs', `--ids=${id}`, '--release',
     `--out-dir=${join(tmp, 'groups')}`, `--loader=${join(tmp, 'loader.ts')}`], { encoding: 'utf8' });
   assert.equal(run.status, 0, `generator: exit ${run.status}\n${run.stdout}\n${run.stderr}`);
+  assert.match(run.stdout, /^\[interior-fills\] release preset: --rounds=8 --min-fine=1$/m, 'the generator runs the release preset');
   assert.match(run.stdout, new RegExp(`^${id}: .*declared bore air left open [\\d.]+ L`, 'm'), 'the generator reports the bore air it left open');
   const generated = (await import(pathToFileURL(join(tmp, 'groups', 'bmp3mDragun125X.generated.ts')).href)).INTERIOR_FILLS[id];
   assert.ok(generated, 'the generator wrote the Dragun record');

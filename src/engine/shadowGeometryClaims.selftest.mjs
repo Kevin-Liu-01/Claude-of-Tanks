@@ -239,7 +239,7 @@ function buildDiscardedWorld(sharedGeometry) {
   const library = new Map([['cached-pole', shared]]);
   const refs = buildDiscardedWorld(shared);
   await requireCollected(refs, 'discarded owner, its proxies and its world');
-  assert.equal(library.get('cached-pole'), shared, 'the shared geometry itself stays strongly alive');
+  assert.ok(library.get('cached-pole') === shared, 'the shared geometry itself stays strongly alive');
   shadows.update(lights, world, true);
   assert.ok(shadows.owners.every((ref) => ref.deref() !== undefined), 'the per-frame pass prunes dead owners');
 }

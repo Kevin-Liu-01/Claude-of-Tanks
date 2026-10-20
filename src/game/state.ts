@@ -46,7 +46,7 @@ import type {
 // reload, ammunition, equipment slots, gravity, roster split and the clock (sim/matchRuleset.ts).
 import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap, rulesetBotDifficulty,
-  rulesetLoadout, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
+  rulesetLoadout, rulesetUnlimitedFor, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
   DEFAULT_BRAIN_SETTINGS, readBrainSettings, readTeamArrangement, type BrainSettings,
@@ -2090,7 +2090,8 @@ function tryFire(
   // ruleset gravity rides the shooter's stamp (Turbo Ball: 0.6 g lobs); unlimited rounds refill the channel
   shell.rocket = isUnguidedRocket(entity.spec.gun, shellSpec);
   shell.gravityMps2 = shellGravityMps2(shellSpec) * (Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1);
-  if(game.ruleset.aerial!=='gunship'||isGunship(entity))refillUnlimitedAmmunition(game.ruleset, entity.combat, firedSlot);
+  // ... only where the entity really refills (the AC-130's escorts never do: sim/matchRuleset rulesetUnlimitedFor)
+  if (rulesetUnlimitedFor(game.ruleset, entity)) refillUnlimitedAmmunition(game.ruleset, entity.combat, firedSlot);
   game.shells.push(shell);
   const recoilScale = shotRecoilScale(entity.spec, shellSpec);
   if (!isGunship(entity)) applyShotFeedback(entity, shellSpec, muzzleIndex, recoilScale, rig);

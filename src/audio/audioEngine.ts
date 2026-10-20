@@ -44,12 +44,13 @@ import {
   structureSoundOf, structureStageSounds, type RubbleShareLike, type StructureSound,
 } from './destructionSounds.ts';
 import type { MunitionClass, StructureBreachEvent, StructureStageEvent } from '../sim/destructionEvents.ts';
+import type { GameModeId } from '../sim/matchModes.ts';
 import { BUDGETS, BUS_LEVELS, CONCUSSION, SNAPSHOTS, VEHICLE_LOD, type DeviceTier, type SettingsChannel } from './mixPolicy.ts';
 import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
 import { cueProfile } from './soundCues.ts';
 import { onDebrisLanding, onTurretLanding } from '../fx/clock.ts';
-import { AERIAL_RULES } from '../sim/matchRuleset.ts';
+import { AERIAL_RULES, matchRulesetFor, rulesetUnlimitedFor } from '../sim/matchRuleset.ts';
 import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
 import { resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type VehicleAudioIdentity } from './vehicleAudioProfiles.ts';
 import type { ModuleHealth, SurfaceId, VehicleAudioInput } from './vehicleAudioModel.ts';
@@ -225,6 +226,17 @@ function toEntity(value: RuntimeValue): AudioEntity | null {
   if (typeof e.id !== 'string' || !e.state?.pos || typeof e.state.pos.x !== 'number'
     || typeof e.state.pos.y !== 'number' || typeof e.state.pos.z !== 'number' || typeof e.state.speed !== 'number') return null;
   return value as AudioEntity;
+}
+
+/** The selected weapon holds no round, loaded or stowed (the simulation only leaves an empty slot selected once every
+ * channel is spent). A state without an inventory never reads spent, and neither does the ruleset's unlimited-rounds
+ * mark, whatever the counters say — the HUD's read (the shell cards carry the same mark). */
+function selectedWeaponSpent(combat: AudioEntity['combat'] | null | undefined, unlimited = false): boolean {
+  if (unlimited) return false;
+  const ammo = combat?.ammo;
+  const slot = combat?.shellSlot;
+  if (!ammo || slot == null || !Number.isInteger(slot) || slot < 0 || slot >= ammo.length) return false;
+  return !((ammo[slot] ?? 0) >= 1);
 }
 
 function moduleHealth(entity: AudioEntity, name: string): ModuleHealth {
@@ -1484,6 +1496,17 @@ export function createAudio({
 
   function onReload(event: ReloadEvent): void {
     if (!ctx || phase !== 'battle' || battleOver) return;
+    // Owner 2026-10-17 (out of ammo): an empty gun still runs its post-shot cycle in the simulation, but the crew loads
+    // nothing — no loader cues, no latch, no "reloaded" call; the half-played plan is dropped, so a cycle that resumes
+    // starts afresh. The mode's unlimited rounds never read spent where this entity really refills (sim/matchRuleset
+    // rulesetUnlimitedFor, the read the HUD's cards carry: an AC-130 escort runs dry, the gunship never does). No mode
+    // reads as the standard ruleset (matchRulesetFor's own fallback): no mode literal here.
+    const unlimitedRounds = rulesetUnlimitedFor(matchRulesetFor(getGameMode?.() as GameModeId), latestPlayer);
+    if (selectedWeaponSpent(latestPlayer?.combat, unlimitedRounds)) {
+      reload.active = false;
+      reloadCalled = false;
+      return;
+    }
     const total = Math.max(0.05, Number(event.total) || 0.05);
     const kind = event.kind || 'shell';
     const caliber = Math.max(12, Number(event.caliberMm) || 100);

@@ -42,6 +42,9 @@ type WorkerReply = WorkerReplyBase & (
 
 type MaterialPalette = GarageWorkshopMaterialPalette;
 
+/** The engine's cascade registration, which a fallback material joins and leaves like the palette's. */
+type FallbackShadowHooks = Pick<GarageDressingEngineContext, 'setupShadowMaterial' | 'releaseShadowMaterial'>;
+
 type MaterialPaletteKey = Exclude<
   keyof MaterialPalette,
   'dispose' | 'finishKey' | 'textureCount' | 'materialCount'
@@ -62,6 +65,12 @@ const ROLE_MATERIAL_KEYS: Readonly<Record<string, MaterialPaletteKey>> = {
 };
 
 const NAME_MATERIAL_KEYS: ReadonlyArray<readonly [RegExp, MaterialPaletteKey]> = [
+  // garage r9 (the T-90M glare): a ghillie suit's net and garnish, a decor net and a crate's wood take their colour from
+  // vertex colours and maps the wire omits, so their wire colour is the white those multiply (the suit's foliage
+  // material, configureFoliageMaterial) or a pale map base: rebuilt as plain fallbacks they rendered pure white and
+  // clipped on the T-90M's turret in every Garage. They are the exhibit's cloth and its wood.
+  [/ghillie|_net(_|$)|leaves|garnish/i, 'canvasCloth'],
+  [/wood/i, 'wood'],
   [/glass/i, 'glass'],
   [/runninggeardetail|wheeldisc/i, 'wheels'],
   [/runninggeardark|shadow/i, 'shadow'],
@@ -120,6 +129,7 @@ function materialForWire(
   palette: MaterialPalette,
   fallbacks: THREE.Material[],
   fallbackCache: Map<string, THREE.Material>,
+  shadow: FallbackShadowHooks,
 ): THREE.Material {
   const role = source.role;
   if (role === 'wheelPaint') {
@@ -130,9 +140,13 @@ function materialForWire(
 
   const nameMaterialKey = NAME_MATERIAL_KEYS.find(([pattern]) => pattern.test(objectName))?.[1];
   if (nameMaterialKey) return palette[nameMaterialKey];
+  // any other near-white wire colour is likewise the base of a dropped vertex-colour or map paint (a jerrycan's): the
+  // exhibit's fitting paint, never a white part
+  const color = source.color ?? 0x4a5040;
+  if (((color >> 16) & 0xff) >= 0xe0 && ((color >> 8) & 0xff) >= 0xe0 && (color & 0xff) >= 0xe0) return palette.detail;
 
   const fallbackKey = [
-    source.color ?? 0x4a5040,
+    color,
     source.roughness ?? 0.75,
     source.metalness ?? 0.1,
     source.opacity,
@@ -143,7 +157,7 @@ function materialForWire(
   const cached = fallbackCache.get(fallbackKey);
   if (cached) return cached;
   const material = new THREE.MeshStandardMaterial({
-    color: source.color ?? 0x4a5040,
+    color,
     roughness: source.roughness ?? 0.75,
     metalness: source.metalness ?? 0.1,
     opacity: source.opacity,
@@ -152,6 +166,9 @@ function materialForWire(
     depthWrite: source.depthWrite,
     vertexColors: false,
   });
+  // the fallback joins the Garage's cascade registration like the palette's materials: unregistered, three's plain
+  // directional loop lit it with all four cascade suns at once (about four times the sun on a lit face)
+  shadow.setupShadowMaterial?.(material);
   fallbacks.push(material);
   fallbackCache.set(fallbackKey, material);
   return material;
@@ -164,9 +181,10 @@ function rebuildNodeObject(
   palette: MaterialPalette,
   fallbacks: THREE.Material[],
   fallbackCache: Map<string, THREE.Material>,
+  shadow: FallbackShadowHooks,
 ): THREE.Object3D {
   const resolvedMaterials = source.materials.map((index) =>
-    materialForWire(materials[index], source.name, palette, fallbacks, fallbackCache));
+    materialForWire(materials[index], source.name, palette, fallbacks, fallbackCache, shadow));
   let object: THREE.Object3D;
   if (source.kind === 'instanced') {
     const mesh = new THREE.InstancedMesh(
@@ -206,6 +224,7 @@ async function rebuildNodeTree(
   palette: MaterialPalette,
   fallbacks: THREE.Material[],
   fallbackCache: Map<string, THREE.Material>,
+  shadow: FallbackShadowHooks,
 ): Promise<THREE.Object3D> {
   if (!nodes.length) throw new Error('Garage workshop worker returned an empty node tree');
   const objects: THREE.Object3D[] = [];
@@ -219,6 +238,7 @@ async function rebuildNodeTree(
       palette,
       fallbacks,
       fallbackCache,
+      shadow,
     );
     objects.push(object);
     if (source.parentIndex >= 0) {
@@ -248,6 +268,7 @@ async function visualFromWire(
     palette: GarageWorkshopMaterialPalette;
     release(): void;
   },
+  shadow: FallbackShadowHooks = {},
 ): Promise<GarageWorkshopVisual> {
   const timings: Record<string, number> = { startedAt: Math.round(performance.now()) };
   const geometries: THREE.BufferGeometry[] = [];
@@ -277,6 +298,7 @@ async function visualFromWire(
     palette,
     fallbackMaterials,
     fallbackCache,
+    shadow,
   ) as THREE.Group;
   timings.nodesAt = Math.round(performance.now());
   root.userData.workerGeometryBuildMs = wire.buildMs;
@@ -301,7 +323,10 @@ async function visualFromWire(
       disposed = true;
       if (root.parent) root.parent.remove(root);
       for (const geometry of geometries) geometry.dispose();
-      for (const material of fallbackMaterials) material.dispose();
+      for (const material of fallbackMaterials) {
+        shadow.releaseShadowMaterial?.(material);
+        material.dispose();
+      }
       paletteLease.release();
     },
   };
@@ -397,7 +422,7 @@ export function createGarageWorkshopTransfer(
       request.reject(new Error('Garage workshop worker transfer was incomplete'));
       return;
     }
-    void visualFromWire(request.wire, acquirePalette)
+    void visualFromWire(request.wire, acquirePalette, engineCtx)
       .then(request.resolve, request.reject);
   };
   const handleError = (event: ErrorEvent): void => {

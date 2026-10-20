@@ -14,6 +14,8 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { presentationNumberSource as numberSource, presentationReceiptErrors, rekeyPresentationSource, syncAssetProjectionSource, updateSelectedPresentationSource } from './presentation-receipt.mjs';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
+import { uniqueIds } from './id-list.mjs';
+import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
 import { TANK_PRESENTATION_ANCHORS, TANK_PRESENTATION_PROJECTIONS } from '../src/vehicles/presentationAnchors.generated.ts';
 
 const args = process.argv.slice(2);
@@ -43,7 +45,7 @@ function opt(name, fallback = '') {
   return index >= 0 ? (args[index + 1] ?? fallback) : fallback;
 }
 
-const selectedIds = opt('ids').split(',').map((id) => id.trim()).filter(Boolean);
+const selectedIds = uniqueIds(opt('ids').split(',').map((id) => id.trim()).filter(Boolean), 'presentation-centering --ids');
 if (args.some(arg => arg === '--ids' || arg.startsWith('--ids=')) && !selectedIds.length) {
   console.error('[presentation-centering] an explicit --ids scope must not be empty');
   process.exit(2);
@@ -115,34 +117,14 @@ const server = await createServer({
   cacheDir,
   logLevel: 'error',
   optimizeDeps: { noDiscovery: true },
-  server: {
-    host: '127.0.0.1',
-    port: 7600 + (process.pid % 200),
-    strictPort: true,
-    hmr: false,
-    watch: null,
-  },
+  server: toolServerOptions(7600),
 });
 await server.listen();
-const address = server.httpServer.address();
-const port = typeof address === 'object' && address ? address.port : server.config.server.port;
-// Page load under machine load (CPU budget 2026-10-08, rule 5): COT_NAV_TIMEOUT_MS and COT_READY_TIMEOUT_MS raise the
-// icons page's navigation and ready waits from their defaults, and COT_NAV_RETRIES retries a load that timed out.
-const NAV_TIMEOUT_MS = Number(process.env.COT_NAV_TIMEOUT_MS) || 30000;
-const READY_TIMEOUT_MS = Number(process.env.COT_READY_TIMEOUT_MS) || 60000;
-const NAV_RETRIES = Math.max(0, Math.floor(Number(process.env.COT_NAV_RETRIES) || 0));
-async function loadIconsPage(page, url) {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT_MS });
-      await page.waitForFunction('window.__ICONS_READY === true', { timeout: READY_TIMEOUT_MS });
-      return;
-    } catch (error) {
-      if (attempt >= NAV_RETRIES || !/timeout/i.test(String(error?.message ?? error))) throw error;
-      console.warn(`[presentation-centering] icons page load timed out (attempt ${attempt + 1} of ${NAV_RETRIES + 1}); retrying`);
-    }
-  }
-}
+const origin = boundOrigin(server);
+// Page load under machine load (CPU budget 2026-10-08, rule 5; R4c 2026-10-16): 180 s for the icons page's first
+// navigation and one retry of a load that timed out by default; COT_NAV_TIMEOUT_MS, COT_READY_TIMEOUT_MS and
+// COT_NAV_RETRIES override them (tools/tool-page-load.mjs).
+const loadIconsPage = (page, url) => loadReadyPage(page, url, { label: 'presentation-centering', ready: 'window.__ICONS_READY === true' });
 const browser = await puppeteer.launch({
   headless: 'new',
   protocolTimeout: 15 * 60 * 1000,
@@ -160,7 +142,7 @@ page.on('console', (message) => {
 
 let failed = false;
 try {
-  const url = `http://127.0.0.1:${port}/tools/icons-page.html`;
+  const url = `${origin}/tools/icons-page.html`;
   await loadIconsPage(page, url);
   const fleetIds = await page.evaluate(() => [...window.__FLEET_IDS]);
   const unknown = selectedIds.filter((id) => !fleetIds.includes(id));

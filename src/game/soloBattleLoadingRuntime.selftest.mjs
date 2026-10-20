@@ -328,7 +328,7 @@ async function runComposed({ fail = '', cancel = '' } = {}) {
       warmBattleTerrainTiles: async () => {},
       primeOpeningTerrainPresentation,
       stageCombatFxProgramSubmission: async () => {
-        assert.equal(fxGroup.parent, scene, 'the composed loading fixture owns its staged root');
+        assert.ok(fxGroup.parent === scene, 'the composed loading fixture owns its staged root');
         events.push('fx:staged');
         if (cancel === 'fx') generation++;
         return { staged: false, restore() { events.push('fx:restored'); } };

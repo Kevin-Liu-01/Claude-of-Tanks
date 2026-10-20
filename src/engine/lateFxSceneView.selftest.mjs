@@ -108,7 +108,7 @@ function fixture() {
   const late = f.roots.filter(row => row.target === f.lateTarget);
   assert.equal(new Set(main.map(row => row.version)).size, 1, 'main light version must remain stable');
   assert.equal(new Set(late.map(row => row.version)).size, 1, 'late light version must remain stable');
-  assert.notEqual(main[0].root, late[0].root);
+  assert.ok(main[0].root !== late[0].root);
   assert.equal(new Set(late.map(row => row.root)).size, 1, 'one retained view, not a per-frame scene');
   assert.ok(main.every(row => row.directions === 1 && row.hemispheres === 1));
   assert.ok(late.every(row => row.directions === 0 && row.hemispheres === 0));
@@ -130,9 +130,9 @@ function fixture() {
   const view = f.roots.at(-1).root;
   const ownKeys = Reflect.ownKeys(view);
   assert.deepEqual(ownKeys, ['updateMatrixWorld']);
-  assert.equal(Object.getPrototypeOf(view), f.scene);
-  assert.equal(view.children, f.scene.children);
-  assert.equal(f.fx.parent, f.parent);
+  assert.ok(Object.getPrototypeOf(view) === f.scene);
+  assert.ok(view.children === f.scene.children);
+  assert.ok(f.fx.parent === f.parent);
   assert.equal(graphEvents, 0);
   const newFx = new THREE.Mesh(f.geometry, f.material);
   newFx.layers.set(LATE_FX_LAYER);
@@ -148,35 +148,35 @@ function fixture() {
   f.draws.length = 0;
   f.frame();
   const [mainDraw, lateDraw] = f.draws;
-  assert.equal(lateDraw.object, newFx);
-  assert.equal(mainDraw.object, f.main);
-  assert.equal(lateDraw.geometry, f.geometry);
-  assert.equal(lateDraw.material, mainDraw.material);
-  assert.equal(lateDraw.material, f.material);
-  assert.equal(lateDraw.camera, f.camera);
+  assert.ok(lateDraw.object === newFx);
+  assert.ok(mainDraw.object === f.main);
+  assert.ok(lateDraw.geometry === f.geometry);
+  assert.ok(lateDraw.material === mainDraw.material);
+  assert.ok(lateDraw.material === f.material);
+  assert.ok(lateDraw.camera === f.camera);
   assert.equal(lateDraw.target, f.lateTarget);
   assert.equal(lateDraw.fog, f.scene.fog);
-  assert.equal(lateDraw.environment, f.scene.environment);
+  assert.ok(lateDraw.environment === f.scene.environment);
   assert.equal(lateDraw.intensity, 1.3);
   assert.equal(lateDraw.rotation, f.scene.environmentRotation);
   assert.deepEqual(lateDraw.matrix, mainDraw.matrix);
   assert.deepEqual(lateDraw.matrix.slice(12, 15), [4, 2, 1]);
   assert.equal(f.scene.background, background);
-  assert.equal(f.roots.at(-1).root, view);
+  assert.ok(f.roots.at(-1).root === view);
   assert.equal(f.material.version, version);
   assert.equal(resourceDisposals, 0);
   assert.equal(graphEvents, 0);
   assert.deepEqual(Reflect.ownKeys(view), ownKeys, 'no inherited field becomes unintended own state');
   f.scene.overrideMaterial = new THREE.MeshBasicMaterial();
   f.frame();
-  assert.equal(f.draws.at(-1).material, f.scene.overrideMaterial);
-  assert.equal(f.roots.at(-1).root, view);
+  assert.ok(f.draws.at(-1).material === f.scene.overrideMaterial);
+  assert.ok(f.roots.at(-1).root === view);
   // Even replacement of the whole live children array remains visible.
   f.scene.clear();
   f.scene.children = [];
   const children = f.scene.children;
   f.frame();
-  assert.equal(view.children, children);
+  assert.ok(view.children === children);
   assert.equal(view.children.length, 0);
 }
 
@@ -187,7 +187,7 @@ for (const reuse of [false, true]) {
   let updates = 0;
   const update = f.scene.updateMatrixWorld;
   f.scene.updateMatrixWorld = function (force) {
-    assert.equal(this, f.scene);
+    assert.ok(this === f.scene);
     assert.equal(arguments.length, 0, 'native no-argument root update remains no-argument');
     updates++;
     return update.call(this, force);
@@ -219,18 +219,18 @@ for (const hook of ['scene-before', 'scene-after', 'object-before', 'object-afte
   const key = hook.endsWith('after') ? 'onAfterRender' : 'onBeforeRender';
   const previous = receiver[key];
   receiver[key] = function (renderer, scene, camera) {
-    assert.equal(this, receiver);
+    assert.ok(this === receiver);
     assert.equal(renderer, f.renderer);
-    assert.equal(scene, f.scene);
-    assert.equal(camera, f.camera);
+    assert.ok(scene === f.scene);
+    assert.ok(camera === f.camera);
     if (camera.layers.mask === (1 << LATE_FX_LAYER)) calls++;
   };
   f.frame();
   assert.equal(calls, 1);
-  assert.equal(f.roots.at(-1).root, f.scene);
+  assert.ok(f.roots.at(-1).root === f.scene);
   receiver[key] = previous;
   f.frame();
-  assert.equal(f.roots.at(-1).root, view);
+  assert.ok(f.roots.at(-1).root === view);
 }
 
 {
@@ -239,9 +239,9 @@ for (const hook of ['scene-before', 'scene-after', 'object-before', 'object-afte
   const background = f.scene.background;
   const callback = f.fx.onBeforeRender;
   f.fx.onBeforeRender = function (renderer, scene) {
-    assert.equal(this, f.fx);
+    assert.ok(this === f.fx);
     assert.equal(renderer, f.renderer);
-    assert.equal(scene, f.scene);
+    assert.ok(scene === f.scene);
     throw failure;
   };
   assert.throws(f.frame, error => error === failure, 'the original callback error survives');
@@ -252,7 +252,7 @@ for (const hook of ['scene-before', 'scene-after', 'object-before', 'object-afte
   assert.equal(f.renderer.autoClear, true);
   f.fx.onBeforeRender = callback;
   f.frame();
-  assert.notEqual(f.roots.at(-1).root, f.scene);
+  assert.ok(f.roots.at(-1).root !== f.scene);
 }
 
 // Eligibility only inspects layer-visible renderables, yet traverses through
@@ -271,21 +271,21 @@ for (const hook of ['scene-before', 'scene-after', 'object-before', 'object-afte
   f.scene.add(hidden);
   f.main.onBeforeRender = () => { throw new Error('main-layer hook inspected'); };
   const view = owner.select(f.camera);
-  assert.notEqual(view, f.scene);
-  assert.equal(view.children, f.scene.children);
+  assert.ok(view !== f.scene);
+  assert.ok(view.children === f.scene.children);
   f.fx.onBeforeRender = () => {};
-  assert.equal(owner.select(f.camera), f.scene, 'layer-zero parent does not hide a late child callback');
+  assert.ok(owner.select(f.camera) === f.scene, 'layer-zero parent does not hide a late child callback');
   f.fx.onBeforeRender = THREE.Object3D.prototype.onBeforeRender;
   hidden.visible = true;
   assert.throws(() => owner.select(f.camera), /hidden hook inspected/);
   hidden.visible = false;
   f.fx.material = [f.material, new THREE.MeshBasicMaterial()];
   f.fx.material[1].onBeforeRender = () => {};
-  assert.equal(owner.select(f.camera), f.scene, 'array materials preserve callbacks');
+  assert.ok(owner.select(f.camera) === f.scene, 'array materials preserve callbacks');
   f.fx.material = f.material;
   f.scene.overrideMaterial = new THREE.MeshBasicMaterial();
   f.scene.overrideMaterial.onBeforeRender = () => {};
-  assert.equal(owner.select(f.camera), f.scene, 'override callbacks preserve identity');
+  assert.ok(owner.select(f.camera) === f.scene, 'override callbacks preserve identity');
 }
 
 for (const unsupported of ['lod', 'shadow-light', 'transmission', 'background', 'camera-layers']) {
@@ -307,7 +307,7 @@ for (const unsupported of ['lod', 'shadow-light', 'transmission', 'background', 
   if (unsupported === 'transmission') f.fx.material = new THREE.MeshPhysicalMaterial({ transmission: 1 });
   if (unsupported === 'background') f.scene.background = new THREE.Texture();
   if (unsupported === 'camera-layers') f.camera.layers.enable(0);
-  assert.equal(owner.select(f.camera), f.scene, `${unsupported} keeps the original path`);
+  assert.ok(owner.select(f.camera) === f.scene, `${unsupported} keeps the original path`);
 }
 
 // Empty activity skips selection/render; exceptions still restore pass-owned
@@ -319,7 +319,7 @@ for (const unsupported of ['lod', 'shadow-light', 'transmission', 'background', 
   const view = f.roots.at(-1).root;
   f.setActive(false);
   f.frame();
-  assert.equal(f.roots.at(-1).root, f.scene);
+  assert.ok(f.roots.at(-1).root === f.scene);
   f.setActive(true);
   f.setFailure(true);
   assert.throws(() => f.pass.render(f.renderer, f.output, f.output), /owned FX draw failure/);
@@ -329,7 +329,7 @@ for (const unsupported of ['lod', 'shadow-light', 'transmission', 'background', 
   assert.equal(f.renderer.autoClear, true);
   f.setFailure(false);
   f.frame();
-  assert.equal(f.roots.at(-1).root, view);
+  assert.ok(f.roots.at(-1).root === view);
 }
 
 // Three owns the per-renderer/context weak caches. Reset/disposal rebuilds

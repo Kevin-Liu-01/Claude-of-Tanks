@@ -13,6 +13,7 @@ import {
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { MAP_IDS } from './maps/catalog.ts';
 import { PRESETS } from '../engine/quality.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const height = (x, z) => 0.4 * Math.sin(x * 0.1) + 0.2 * Math.cos(z * 0.13);
 const field = {
@@ -97,7 +98,7 @@ for (const mesh of [grass.near, grass.mid, grass.far]) {
   assert.equal(mesh.receiveShadow, true, 'blades receive shadow (at the root)');
   assert.equal(mesh.frustumCulled, false);
   assert.ok(mesh.material.isMeshLambertMaterial && mesh.material.side === THREE.DoubleSide, 'an opaque, textureless, double-sided Lambert strip');
-  assert.equal(mesh.material.map, null); assert.equal(mesh.material.alphaTest, 0);
+  assert.ok(mesh.material.map === null); assert.equal(mesh.material.alphaTest, 0);
 }
 assert.equal(grass.near.material.customProgramCacheKey(), TALL_GRASS.near.programKey);
 assert.equal(grass.mid.material.customProgramCacheKey(), TALL_GRASS.mid.programKey);
@@ -391,7 +392,7 @@ for (const ring of [grass.mid, grass.far]) {
   const csm = createTallGrass(field, { seed: 5, tier: 'desktop', biome: meadow, qualityScale: () => 1,
     setupMaterial: (material, hook) => { calls.push({ material, hook }); material.onBeforeCompile = hook; }, releaseMaterial: (m) => released.push(m) });
   assert.equal(calls.length, 3, 'the near, the mid and the far material are set up once each');
-  assert.deepEqual(calls.map((c) => c.material), [csm.near.material, csm.mid.material, csm.far.material]);
+  assert.deepEqual(graphLabels(calls.map((c) => c.material)), graphLabels([csm.near.material, csm.mid.material, csm.far.material]));
   const freshShader = () => ({ uniforms: {}, vertexShader: '#include <common>\n#include <beginnormal_vertex>\n#include <begin_vertex>\n#include <shadowmap_vertex>', fragmentShader: '#include <common>\n#include <normal_fragment_begin>\n#include <color_fragment>' });
   const shader = freshShader();
   calls[0].hook(shader);
@@ -418,8 +419,8 @@ for (const ring of [grass.mid, grass.far]) {
   csm.setSniperFade(0); csm.update(1, cam); assert.ok(shader.uniforms.uSniperFade.value < 0.01, 'the fade eases out');
   csm.setWindTime(7); assert.equal(shader.uniforms.uWindTime.value, 7);
   csm.dispose();
-  assert.deepEqual(released, [csm.near.material, csm.mid.material, csm.far.material], 'dispose releases every material from the shadow setup');
-  assert.equal(csm.group.parent, null);
+  assert.deepEqual(graphLabels(released), graphLabels([csm.near.material, csm.mid.material, csm.far.material]), 'dispose releases every material from the shadow setup');
+  assert.ok(csm.group.parent === null);
 }
 grass.dispose();
 

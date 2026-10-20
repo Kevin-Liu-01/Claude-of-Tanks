@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { STRICT_DRAIN_STALL_MS, createForwardProgramWarmOwner } from './programWarm.ts';
 import { prepareGarageModePrograms } from '../app/garageModePreviewRuntime.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 let passed = 0;
 function test(name, run) {
@@ -148,12 +149,12 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
     },
     compile(root, compileCamera, targetScene) {
       assertActive('native compile');
-      assert.equal(compileCamera, camera);
-      assert.equal(targetScene, scene, 'the real scene owns lighting/environment/fog');
-      assert.notEqual(root, scene, 'each bounded submission uses a compile-only facade');
+      assert.ok(compileCamera === camera);
+      assert.ok(targetScene === scene, 'the real scene owns lighting/environment/fog');
+      assert.ok(root !== scene, 'each bounded submission uses a compile-only facade');
       assert.ok(root instanceof THREE.Object3D, 'facade retains the native compile object contract');
-      assert.equal(root.parent, null);
-      assert.deepEqual(root.children, [], 'original objects are never attached to the facade');
+      assert.ok(root.parent === null);
+      assert.deepEqual(graphLabels(root.children), graphLabels([]), 'original objects are never attached to the facade');
       const expectedTarget = layered && camera.layers.mask === 1 << LATE_FX_LAYER
         ? lateTarget : targetPolicy === 'hdr' ? hdrTarget : priorTarget;
       assert.equal(target, expectedTarget,
@@ -177,7 +178,7 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
         root.traverse((object) => {
           if (!(object.isMesh || object.isPoints || object.isLine || object.isSprite)) return;
           assert.ok(renderables.includes(object), 'shader selection receives the original renderable');
-          assert.equal(object.parent, snapshots.find((entry) => entry.object === object).parent);
+          assert.ok(object.parent === snapshots.find((entry) => entry.object === object).parent);
           visits.push(object);
           passVisits.push({ object, mask: camera.layers.mask, target, lights: [...lights] });
           batch.push(object);
@@ -238,15 +239,15 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
     assertUntouched() {
       for (const entry of snapshots) {
         const object = entry.object;
-        assert.equal(object.parent, entry.parent);
-        assert.deepEqual(object.children, entry.children);
+        assert.ok(object.parent === entry.parent);
+        assert.deepEqual(graphLabels(object.children), graphLabels(entry.children));
         assert.equal(object.visible, entry.visible);
         assert.equal(object.layers.mask, entry.layer);
         assert.deepEqual(object.position.toArray(), entry.position);
         assert.deepEqual(object.quaternion.toArray(), entry.quaternion);
         assert.deepEqual(object.scale.toArray(), entry.scale);
-        assert.equal(object.material, entry.material);
-        assert.equal(object.geometry, entry.geometry);
+        assert.ok(object.material === entry.material);
+        assert.ok(object.geometry === entry.geometry);
       }
       assert.equal(transparent.side, THREE.DoubleSide);
       assert.equal(camera.layers.mask, cameraMask, 'restore the caller camera mask before every checkpoint');
@@ -266,8 +267,8 @@ function fixture({ targetPolicy = 'hdr', onVisit = null, compileFailure = null, 
           if (renderables.includes(object)) retained.push(object);
         });
         assert.deepEqual(retained, [], 'settled facade cannot revisit its former batch references');
-        assert.equal(facade.parent, null);
-        assert.deepEqual(facade.children, []);
+        assert.ok(facade.parent === null);
+        assert.deepEqual(graphLabels(facade.children), graphLabels([]));
       }
     },
   };
@@ -310,8 +311,8 @@ for (const targetPolicy of ['hdr', 'null']) {
     assert.ok(f.visits.includes(f.hiddenMesh));
     assert.ok(f.visits.includes(f.layerExcluded), 'native compile does not filter renderables by camera layers');
     assert.ok(f.visits.includes(f.instance) && f.instance.isInstancedMesh);
-    assert.deepEqual(f.materialVisits.filter(({ object }) => object === f.child).map(({ material }) => material),
-      f.child.material, 'material arrays retain original identities and order');
+    assert.deepEqual(graphLabels(f.materialVisits.filter(({ object }) => object === f.child).map(({ material }) => material)),
+      graphLabels(f.child.material), 'material arrays retain original identities and order');
     assert.ok(f.batches.length > 1);
     assert.ok(Object.values(timing).every((value) => Number.isFinite(value) && value >= 0));
   });
@@ -984,7 +985,7 @@ console.log(`sceneProgramWarm.selftest: ${passed} scene submission, identity and
   const post=composed?{composer:{},sceneAA:{sceneTarget:{}},lateFx:{target:{}}}:null;
   let prepared=0;const root=new THREE.Group();
   await run({*prepareSceneSteps(options){
-   prepared++;assert.equal(options.visibleRoot,root);assert.equal(options.strict,true);
+   prepared++;assert.ok(options.visibleRoot === root);assert.equal(options.strict,true);
    assert.deepEqual(options.passes,composed?[
     {layerMask:camera.layers.mask&~(1<<LATE_FX_LAYER),target:post.sceneAA.sceneTarget},
     {layerMask:1<<LATE_FX_LAYER,target:post.lateFx.target},

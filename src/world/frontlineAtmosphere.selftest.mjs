@@ -71,7 +71,7 @@ gapsWithin(a.runtime.log, 'flyover', FRONTLINE_LIMITS.flyoverIntervalS);
 
 // owner 2026-09-15 (evening, "remove the smoke in distance"): the front renders no smoke columns.
 // It keeps its artillery anchors (a fan beyond the playable half-map), flashes, flak, aircraft and AA.
-assert.equal(a.parent.getObjectByName('frontline-smoke-columns'), undefined, 'no smoke column mesh');
+assert.ok(a.parent.getObjectByName('frontline-smoke-columns') === undefined, 'no smoke column mesh');
 assert.ok(!Object.hasOwn(FRONTLINE_LIMITS, 'columnPuffs'), 'no plume limits remain');
 // owner 2026-09-17 ("distant explosions visible everywhere"): the front fan still carries most of the
 // artillery, but the rest of the horizon flashes too — no bearing is silent

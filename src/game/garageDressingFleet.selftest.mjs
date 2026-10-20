@@ -228,27 +228,48 @@ assert.match(dressing, /verdantInteriorRoot\.rotation\.y = Math\.PI/,
 assert.doesNotMatch(dressing, /legacyVerdantRoot\.rotation\.y = Math\.PI/,
   'the shared bays and archive display must not rotate with the Verdant room');
 assert.match(dressing, /legacyVerdantRoot\.add\(battleScreenOwner\);\s*battleScreenOwner\.add\(screenRoot\)/,
-  'the battle display lives on its own owner inside the unrotated workshop root');
-assert.match(dressing, /battleScreenOwner\.add\(secondaryRoot\)/,
-  'the second battle display shares that owner');
-assert.match(dressing, /secondaryRoot\.rotation\.y = Math\.PI \/ 2/,
-  'the west CRT must face inward so its live image is visible instead of its rear casing');
-assert.match(dressing, /battleScreenSecondaryFacing = 'inward-to-hero'/,
-  'Garage diagnostics must receipt the corrected second-display orientation');
-assert.match(dressing, /screenRoot\.position\.set\(0, 4\.15, -18\.25\)/,
-  'the tank rear must point toward the shared physical display');
-// 2026-10-11, the redesign (waves 393 and 398: "a battle-footage monitor on stands in every yard"): the two archive
-// monitors stand in Verdant's hall only, their own static owner, and their slideshow sleeps elsewhere
-assert.match(dressing, /battleScreenOwner\.visible = isVerdant;[\s\S]{0,120}group\.userData\.battleScreenVisible = isVerdant;/,
-  'the battle displays show in Verdant only');
-assert.match(dressing, /if \(isVerdant && battleScreenCurrentTexture\) scheduleBattleScreenAdvance\(\);/,
-  'the archive slideshow never runs where its monitors are hidden');
+  'the slideshow panel lives on its own owner inside the unrotated workshop root');
+assert.match(dressing, /screenRoot\.rotation\.y = Math\.PI \/ 2/,
+  'the west panel must face inward so its live image is visible instead of its cabinet');
+assert.match(dressing, /battleScreenFacing = 'inward-to-hero'/,
+  'Garage diagnostics must receipt the panel orientation');
+assert.match(dressing, /screenRoot\.position\.set\(-18\.35, 4\.15, 2\.4\)/,
+  'the kept slideshow stands free on the west wall');
+// garage r9 (the owner, 2026-10-17: "remove that screen glitching through the floor ... we already have one"): the old
+// primary stood inside the back-wall mezzanine at (0, 4.15, -18.25); it is not built at all, so the static merge cannot
+// bake a copy of its frame into the deck either
+assert.doesNotMatch(dressing, /position\.set\(0, 4\.15, -18\.25\)/,
+  'no display stands inside the mezzanine deck');
+assert.doesNotMatch(dressing, /garage_battle_archive_monitor|garage_battle_archive_screen/,
+  'the two-display archive names are gone');
+assert.equal((dressing.match(/new THREE\.ShaderMaterial\(/g) || []).length, 1,
+  'one slideshow material, never a clone for a second screen');
+assert.doesNotMatch(dressing, /battleScreenMaterial\.clone\(\)/);
+// 2026-10-11, the redesign (waves 393 and 398: "a battle-footage monitor on stands in every yard"): the slideshow stands
+// in Verdant's hall only, on its own static owner, and sleeps elsewhere
+assert.match(dressing, /battleScreenOwner\.visible = isVerdant;[\s\S]{0,160}battleScreenShown = placeSlideshowScreen\(isVerdant\);\s*group\.userData\.battleScreenVisible = battleScreenShown;/,
+  'Verdant\'s panel shows in Verdant only; the screen shows where the Garage places a slideshow');
+assert.match(dressing, /if \(battleScreenShown && battleScreenCurrentTexture\) openSlideshowOnGarage\(\);/,
+  'the slideshow never runs where its screen is hidden');
+assert.match(dressing, /const pose = isVerdant \? null : garageSlideshowPose\(currentVariant\.architecture\);/,
+  'outdoor Garages hang the one screen on the pose their pack builds the frame at');
+assert.match(dressing, /battleScreenYardRoot\.updateMatrix\(\);\s*battleScreenMesh\.updateMatrix\(\);/,
+  'the optimizer freezes static matrices: a moved screen and its mount must write theirs (a boot outdoors then Verdant hid it)');
+assert.doesNotMatch(dressing, /new THREE\.PlaneGeometry\(BATTLE_SCREEN_PANEL_W[^\n]*\n[\s\S]*new THREE\.PlaneGeometry\(BATTLE_SCREEN_PANEL_W/,
+  'one screen mesh, moved between mounts, never a second slideshow');
 // 2026-10-11, waves 398 and 402 ("the same red box and drawer cabinet in every yard"): Verdant's chests are its own
 assert.match(dressing, /for \(const owner of verdantKitOwners\) owner\.visible = isVerdant;/, 'Verdant\'s workshop chests show in Verdant only');
-assert.match(dressing, /battleScreenDisplayCount = 2/,
-  'two physically separate battle displays must surround the Garage');
-assert.match(dressing, /battleScreenResidentImageLimit = 3/,
-  'dual displays must keep a bounded three-image transition peak');
+assert.match(dressing, /battleScreenDisplayCount = 1/,
+  'exactly one slideshow display');
+assert.match(dressing, /battleScreenResidentImageLimit = 2/,
+  'one current image at rest and the incoming one only for the crossfade');
+assert.match(dressing, /resizeWidth: BATTLE_SCREEN_DECODE_W,[\s\S]{0,60}resizeHeight: BATTLE_SCREEN_DECODE_H/,
+  'stills decode at the panel size, never at their 1920 x 1080 source');
+assert.match(dressing, /const BATTLE_SCREEN_DECODE_W = 1024;\nconst BATTLE_SCREEN_DECODE_H = 576;/);
+assert.doesNotMatch(dressing, /scanline|rollingGlow|bendUv/,
+  'the panel is a flat LED panel, not a CRT');
+assert.match(dressing, /color = mix\(vec3\(luma\), color, 0\.55\) \* 0\.62;/,
+  'the slideshow stays dimmed and drained toward grey (the re-judge, 2026-10-15)');
 assert.doesNotMatch(dressing, /currentVariant\.id !== 'verdant_motor_pool'/,
   'the shared display must not stop rotating outside Verdant');
 assert.match(dressing,
@@ -385,13 +406,19 @@ assert.doesNotMatch(dressing, /garage_map_location_preview/,
   'the old location-preview wall mesh must be removed');
 assert.match(dressing, /import \{ FEATURED_SHOTS \} from '\.\.\/ui\/featuredShots\.ts'/,
   'the wall monitor reuses the canonical checked-in battle archive');
-assert.match(dressing, /FEATURED_SHOTS\.filter\(\(shot\) => shot\.maps\?\.length\)\.slice\(0, 6\)/,
-  'the CRT rotation must include current battlefield captures while excluding editor/studio frames');
-assert.match(dressing, /garage_battle_archive_screen/);
-assert.match(dressing, /battleScreenMode = 'crt-scroll-slideshow'/);
-assert.match(dressing, /uTransition[\s\S]*scanline[\s\S]*rollingGlow/,
-  'the archive changes images with a shader scroll and visible CRT treatment');
-assert.match(dressing, /if \(!group\.parent \|\| !group\.visible \|\| !battleScreenOwner\.visible \|\| document\.hidden\) return/,
+assert.match(dressing, /FEATURED_SHOTS\.filter\(\(shot\) => shot\.maps\?\.length\),/,
+  'the slideshow rotation must include current battlefield captures while excluding editor/studio frames');
+assert.match(dressing, /garage_slideshow_screen/);
+assert.match(dressing, /battleScreenMode = 'led-crossfade-slideshow'/);
+assert.match(dressing, /mix\(exposed\(uImageA, uv\), exposed\(uImageB, uv\), uTransition\)/,
+  'the slideshow crossfades between its two resident images');
+// garage r9 (the blind critic: "a dark urban-street frame, much less legible than the bright tank still"): each still is
+// exposed by its own mean, read from its one-texel mip, lifting dark stills and leaving bright ones alone
+assert.match(dressing, /vec3 mean = texture2D\(image, vec2\(0\.5\), 16\.0\)\.rgb;[\s\S]{0,200}clamp\(log\(0\.2\) \/ log\([\s\S]{0,80}\), 0\.6, 1\.0\)/,
+  'a dark still is lifted (never past a 0.6 power), a bright one left as it is');
+assert.match(dressing, /shot\.maps\?\.includes\(mapId\)/,
+  'the slideshow opens on its Garage\'s own map still');
+assert.match(dressing, /if \(!group\.parent \|\| !group\.visible \|\| !battleScreenShown \|\| document\.hidden\) return/,
   'the screen timer must stop instead of polling during battle or background tabs');
 assert.match(access, /prepareGarageDressing\?\./,
   'the access boundary prepares fleet builders before the quiet chunk pump');

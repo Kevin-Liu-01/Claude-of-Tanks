@@ -5,6 +5,7 @@
 //   node tools/fleet-geometry-audit.mjs --modes=gallery,battle-bot-far
 //   node tools/fleet-geometry-audit.mjs --ids=m1a1_abrams_hc,t90am --out=/tmp/audit.json
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -16,7 +17,7 @@ const option = (name, fallback = '') => {
   const index = args.indexOf(`--${name}`);
   return index >= 0 ? args[index + 1] : fallback;
 };
-const selectedIds = option('ids').split(',').map((id) => id.trim()).filter(Boolean);
+const selectedIds = uniqueIds(option('ids').split(',').map((id) => id.trim()).filter(Boolean), 'fleet-geometry-audit --ids');
 const modes = option('modes', 'gallery,garage,battle-player,battle-bot-near,battle-bot-far,battle-mobile-player-far')
   .split(',').map((mode) => mode.trim()).filter(Boolean);
 const requestedWorkers = Number.parseInt(option('workers', '4'), 10);

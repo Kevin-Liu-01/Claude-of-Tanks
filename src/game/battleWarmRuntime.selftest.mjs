@@ -30,6 +30,7 @@ import { missileTailM } from '../fx/missileBodies.ts';
 import { registerWorldDestructibles } from '../world/destructibles.ts';
 import { createCameraRig } from '../engine/cameraRig.ts';
 import { createCombatWarmCoordinator } from './combatWarmCoordinator.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 let warmedTerrainPoints = null;
 let terrainYieldCount = 0;
@@ -552,7 +553,7 @@ try {
   await warmNetworkOpeningEffects(options);
   assert.ok(compiledWarmLights.every((lights) => new Set(lights).size === lights.length),
     'covered FX warming must not compile a duplicated-light variant from the scene-attached FX root');
-  assert.deepEqual(compiledWarmRoots, [scarRoot],
+  assert.deepEqual(graphLabels(compiledWarmRoots), graphLabels([scarRoot]),
     'retain only the lazy vehicle scar compile; the exact compositor draw warms existing FX pools');
   assert.equal(nativeSubmissionCalls, 1);
   assert.equal(submissionValidated, true, 'real staged resources satisfy submission assertions');
@@ -564,12 +565,12 @@ try {
   assert.equal(stagedTracer.geometry.instanceCount, 0, 'no warm tracer leaks into live battle');
   assert.ok(guidedPools.every((mesh) => mesh.count === 0), 'no warm missile survives reset');
   assert.equal(scarRoot.visible, false);
-  assert.equal(scarRoot.getObjectByName('fx_impactDecals'), undefined);
+  assert.ok(scarRoot.getObjectByName('fx_impactDecals') === undefined);
   assert.deepEqual([scarRoot.position.toArray(), scarRoot.quaternion.toArray(), scarRoot.scale.toArray()],
     scarTransform, 'scar staging preserves the exact authored vehicle transform');
   assert.equal(fx.impactDecalStats().pooled, 1, 'one submitted scar returns to the shared pool');
   fx.armorScar(scarVisual, new Vector3(12, 4, -24), new Vector3(0, 1, 0), 120);
-  assert.equal(scarRoot.getObjectByName('fx_impactDecals'), submittedScarMesh,
+  assert.ok(scarRoot.getObjectByName('fx_impactDecals') === submittedScarMesh,
     'the first real impact reuses the exact submitted mesh, geometry and shared atlas');
   {
     // Live scars cull with their own quads (P21): only the covered warm draw above lifts
@@ -632,7 +633,7 @@ try {
         assert.equal(injected, true, `${failureAt} failure fixture reached its intended boundary`);
         assert.equal(scarRoot.visible, initialVisibility, `${failureAt} failure restores exact visibility`);
         assert.equal(scarRoot.parent === fxScene, true, `${failureAt} failure preserves scene ownership`);
-        assert.equal(scarRoot.getObjectByName('fx_impactDecals'), undefined,
+        assert.ok(scarRoot.getObjectByName('fx_impactDecals') === undefined,
           `${failureAt} failure detaches the temporary scar`);
         assert.deepEqual([scarRoot.position.toArray(), scarRoot.quaternion.toArray(), scarRoot.scale.toArray()],
           scarTransform, `${failureAt} failure preserves the exact vehicle transform`);
@@ -666,7 +667,7 @@ try {
     await assert.rejects(warmNetworkOpeningEffects(options), /decal cleanup failed/);
     assert.equal(failedCleanupResets, 1, 'a throwing scar cleanup cannot skip final FX reset');
     assert.equal(scarRoot.visible, true, 'throwing cleanup restores an originally visible root');
-    assert.equal(scarRoot.getObjectByName('fx_impactDecals'), undefined, 'FX reset removes the scar anyway');
+    assert.ok(scarRoot.getObjectByName('fx_impactDecals') === undefined, 'FX reset removes the scar anyway');
     assert.equal(camera.layers.mask, initialMask);
     assert.equal(fx.group.visible, false);
   } finally {
@@ -841,7 +842,7 @@ await warmNetworkWrecks({
     const probe = scene.getObjectByName('WreckFallbackWarmProbe:0');
     assert.ok(probe, 'one isolated fallback probe is mounted for the real draw');
     assert.equal(probe.frustumCulled, false);
-    assert.equal(probe.material, fallbackMaterial);
+    assert.ok(probe.material === fallbackMaterial);
     assert.equal(probe.castShadow, true);
     assert.equal(unrelatedSceneRoot.visible, false,
       'the fallback draw does not resubmit the complete battlefield');
@@ -850,12 +851,12 @@ await warmNetworkWrecks({
   },
 });
 assert.equal(realWarmFrames, 1);
-assert.equal(wreckRoot.parent, bridgeRoot, 'bridge ownership is restored after warming');
-assert.deepEqual(bridgeRoot.children, [siblingBefore, wreckRoot, siblingAfter],
+assert.ok(wreckRoot.parent === bridgeRoot, 'bridge ownership is restored after warming');
+assert.deepEqual(graphLabels(bridgeRoot.children), graphLabels([siblingBefore, wreckRoot, siblingAfter]),
   'temporary scene staging preserves exact sibling order');
 assert.equal(wreckRoot.visible, false);
 assert.equal(wreckMesh.frustumCulled, true);
-assert.equal(wreckMesh.material, intactMaterial);
+assert.ok(wreckMesh.material === intactMaterial);
 assert.equal(unrelatedSceneRoot.visible, true);
 assert.equal(shadowLight.shadow.autoUpdate, false);
 assert.equal(shadowLight.shadow.needsUpdate, false,
@@ -1192,7 +1193,7 @@ for (const checkpoint of [1, 2]) {
     anisotropy: 1,
     prebakeBurntSteps: function* () {},
     forwardProgramWarm: { compile(candidate) {
-      assert.equal(candidate, root);
+      assert.ok(candidate === root);
       assert.equal(destroyed, true);
       assert.equal(root.visible, true);
       events.push('compile');
@@ -1287,8 +1288,8 @@ async function scarFirstUseProbe({ initialVisible = false, change = '', readyAft
       fx, post: { prepareSoftParticles() {} }, camera, shells: [],
       decalVisual: { root }, renderer, signal: controller.signal, timing,
       compilePrograms(candidate) {
-        assert.equal(candidate, root);
-        assert.equal(scar.parent, root);
+        assert.ok(candidate === root);
+        assert.ok(scar.parent === root);
         if (change === 'no-new-program') return;
         renderer.info.programs.push({ program: {}, getUniforms() {
           assert.equal(root.visible, expectedRootVisible);
@@ -1298,7 +1299,7 @@ async function scarFirstUseProbe({ initialVisible = false, change = '', readyAft
         } });
       },
       warmRender() {
-        assert.equal(scar.parent, root, 'the final compositor consumes the exact compiled pooled mesh');
+        assert.ok(scar.parent === root, 'the final compositor consumes the exact compiled pooled mesh');
         assert.equal(scar.visible, true);
         assert.equal(root.visible, true);
         if (!change) assert.equal(uniforms, 1, 'new scar uniforms must be ready before the first draw');
@@ -1308,14 +1309,14 @@ async function scarFirstUseProbe({ initialVisible = false, change = '', readyAft
     if (change === 'abort' || change === 'visibility-abort') await assert.rejects(promise, { name: 'AbortError' });
     else await promise;
     if (change === 'reuse-other' || change === 'reuse-same') {
-      assert.equal(scar.parent, change === 'reuse-other' ? nextRoot : root);
+      assert.ok(scar.parent === (change === 'reuse-other' ? nextRoot : root));
       assert.equal(scar.visible, false, 'stale cleanup cannot overwrite a newer scar owner');
       assert.equal(root.visible, true);
       assert.ok(!fx.calls.includes('clear') && !fx.calls.includes('reset'));
       scar.removeFromParent();
       assert.equal(scar.visible, false, 'terminal cleanup removes the temporary removal listener');
     } else {
-      assert.equal(scar.parent, null);
+      assert.ok(scar.parent === null);
       assert.equal(scar.visible, true, 'returned pooled scars retain their own original drawable visibility');
       assert.equal(root.visible, expectedRootVisible);
     }

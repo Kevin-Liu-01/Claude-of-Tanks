@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { collectNightWindowCensus } from './night-window-census.mjs';
 import { inspectNightWindow } from '../src/dev/nightWindowInspection.ts';
 import { markWorldWindowPane } from '../src/world/worldNightEmissionGeometry.ts';
+import { graphLabels } from './receipt-kit.test-support.mjs';
 
 const root = new THREE.Group(), material = new THREE.MeshStandardMaterial();
 material.userData.nightLightKind = 'window';
@@ -32,7 +33,7 @@ try {
   assert.equal(result.rows[66].reverse, null);
   const row = result.rows[66];
   assert(Math.abs(new THREE.Vector3().fromArray(row.camera).distanceTo(new THREE.Vector3().fromArray(row.point)) - Math.hypot(4, .65, .25)) < 1e-8);
-  assert.deepEqual(root.children, before, 'census does not add/remove scene owners');
+  assert.deepEqual(graphLabels(root.children), graphLabels(before), 'census does not add/remove scene owners');
   assert.equal((await collectNightWindowCensus({ moduleUrl: 'three', limit: 64 })).firstPassingRank, null);
   await assert.rejects(collectNightWindowCensus({ moduleUrl: 'three', limit: 257 }), /1–256/);
 } finally { globalThis.window = previous; }
