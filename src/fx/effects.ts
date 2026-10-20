@@ -1493,10 +1493,15 @@ function* createFxSteps(
   const shockGeo = new THREE.CircleGeometry(1, 48);
   shockGeo.rotateX(-Math.PI / 2); // face up
   const shockRings: ShockRingState[] = [];
+  // (ac130-fx-228 r3, the blind critic's night "full-lens tan wash" through the gunship's lens, the base build's too) the
+  // ring is dust, not light: unlit, it drew its daylight tan at every hour, and at night the camera's exposure lifted it
+  // into a glowing band; through the 3.6x lens its 20-26 m sweep crossed the whole frame. It takes the pools' light tint
+  // (update() below: white by day, so the daylight ring is unchanged; a dim blue at night) as the prints and the scars do.
+  const SHOCK_COLOR = new THREE.Color(0x90887a);
   for (let i = 0; i < 2; i++) {
     const mat = new THREE.MeshBasicMaterial({
       map: shockTex,
-      color: 0x90887a,
+      color: SHOCK_COLOR,
       transparent: true,
       opacity: 0,
       depthWrite: false,
@@ -5835,11 +5840,12 @@ function* createFxSteps(
       // (EF.12) the map's ground colour for the earth dust (the grounded light model's ground albedo)
       setMapGroundAlbedo((engineCtx.scene?.userData?.lightModel as { groundAlbedo?: ArrayLike<number> } | undefined)?.groundAlbedo);
       // (EF.09, MASTER 18) the unlit marks and bodies take the same light: the hull scars, the track prints and the wake's
-      // foam, and a missile's painted body (its motor's flare stays emissive)
+      // foam, a missile's painted body (its motor's flare stays emissive) and the blasts' pressure rings
       {
         const tint = particles.sharing.uLightTint.value;
         printUniforms.uTint.value.copy(tint);
         impactDecals.material.color.copy(tint);
+        for (const ring of shockRings) ring.mat.color.copy(SHOCK_COLOR).multiply(tint);
       }
       particles.update(dt);
       structMask?.setClock(particles.getTime());
