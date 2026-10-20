@@ -71,8 +71,8 @@ assert.deepEqual(splitProgramVariants(root), { materials: 4, split: 0, twins: 0,
   g2.add(new THREE.Mesh(box, whole), new THREE.InstancedMesh(box, whole, 2));
   root.add(g2);
   const reseat = splitProgramVariants(root, { onlyAlreadySplit: true });
-  assert.equal(poolA.material, poolB.material, 'the original\'s object takes its twin back');
-  assert.equal(g2.children[1].material, whole, 'a material no pass split stays whole');
+  assert.ok(poolA.material === poolB.material, 'the original\'s object takes its twin back');
+  assert.ok(g2.children[1].material === whole, 'a material no pass split stays whole');
   assert.deepEqual([reseat.split, reseat.twins, reseat.objects], [1, 0, 1], 'one re-seat, no new twin');
   root.remove(g2); whole.dispose();
 }

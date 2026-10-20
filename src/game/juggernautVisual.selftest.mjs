@@ -85,14 +85,14 @@ geometry.dispose();batch.dispose();source.dispose();wreck.dispose();glassMateria
   const tank=new T.Group(),paint=new T.MeshStandardMaterial({color:0x445533}),box=new T.BoxGeometry();
   const plate=new T.Mesh(box,paint),wheels=new T.InstancedMesh(box,paint,4);tank.add(plate,wheels);
   tank.userData.programVariants=splitProgramVariants(tank);
-  const twin=wheels.material;assert.notEqual(twin,paint,'the instanced draw has its own twin');
+  const twin=wheels.material;assert.ok(twin !== paint,'the instanced draw has its own twin');
   syncJuggernautVisual(tank,dims,1.12,100,100,.016);
-  const skin=plate.material;assert.notEqual(skin,paint);assert.equal(wheels.material,skin,'the twin wears its original\'s skin');
+  const skin=plate.material;assert.ok(skin !== paint);assert.ok(wheels.material === skin,'the twin wears its original\'s skin');
   syncJuggernautVisual(tank,dims,1.12,0,100,.016);
-  assert.equal(plate.material,paint);assert.equal(wheels.material,twin,'the kill ends the skin: each mesh its own material');
+  assert.ok(plate.material === paint);assert.ok(wheels.material === twin,'the kill ends the skin: each mesh its own material');
   plate.material=skin;wheels.material=skin; // the wreck snapshot taken while skinned puts the skins back
   clearJuggernautVisual(tank,true);
-  assert.equal(plate.material,paint);assert.equal(wheels.material,twin,'the Garage handoff re-seats the twin, never the original');
+  assert.ok(plate.material === paint);assert.ok(wheels.material === twin,'the Garage handoff re-seats the twin, never the original');
   box.dispose();paint.dispose();
 }
 
