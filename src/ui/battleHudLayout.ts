@@ -1,5 +1,5 @@
 import { layoutViewportSize } from './responsiveLayout.ts';
-import { addSightFurniture, clearSightFurniture, settleSightFurniture } from './sightFurniture.ts';
+import { addSightFurniture, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
 
 /** Matches the scoreboard polygon; the objective clears each bottom corner by 8px. */
 export const SCORE_BOTTOM_INSET = 25;
@@ -75,6 +75,15 @@ export function portraitSightClearTop(top: number, height: number, centerY: numb
 const SIGHT_FURNITURE = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy',
   '.cot-touch.on .quick', '.cot-touch-aim.on .aimhint', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
   '.cot-scope-vision', '.cot-aim-warning:not([hidden]):not([data-seat])', '.flight-identity', '.cot-ear'].join(',');
+/** The sixth-sense notice, which a touch layout's seated warning chip yields to (sightFurniture.ts sightNotice). */
+const SIXTH_SENSE = '.cot-sixth.on';
+/** The properties whose transition end measures a furniture again (installBattleHudLayout). */
+const FURNITURE_SETTLES = new Set(['opacity', 'visibility', 'transform']);
+/** The vertical part of an element's transform, in CSS px (0 when it has none). */
+function translationY(node: Element): number {
+  const transform = getComputedStyle(node).transform;
+  return transform && transform !== 'none' && typeof DOMMatrixReadOnly === 'function' ? new DOMMatrixReadOnly(transform).m42 : 0;
+}
 /** The left lane's feeds, which the scope's vision switch keeps clear of in its mirror seat (seatScopeVision). */
 const LEFT_LANE = '.cot-kill-lane.l .cot-kf:not([hidden]),.cot-si-toasthost .cot-si-toast:not([hidden]),.cot-room-chat:not([hidden])';
 /** What covers the vision switch's seat right of the sight on a mouse layout (critic r9: under about 1200 px wide): a shot
@@ -193,13 +202,22 @@ export function installBattleHudLayout(root: HTMLElement): void {
       else delete document.body.dataset.scopeVision;
     }
   }
-  /** Measures the furniture the reticle keeps clear of (sightFurniture.ts), once per relayout. */
-  function publishSightFurniture(): void {
+  /** Measures the furniture the reticle keeps clear of (sightFurniture.ts), once per relayout, and on a touch layout the
+   *  sixth-sense notice its seated warning chip yields to. */
+  function publishSightFurniture(touch: boolean): void {
     clearSightFurniture();
     for (const node of document.querySelectorAll(SIGHT_FURNITURE)) {
       const box = shownBox(node);
       if (box) addSightFurniture(box.left, box.top, box.right, box.bottom);
     }
+    // (the notice's settled box: it slides 6 px down as it shows (cotDetectedIn) and fades in from nothing, and a pass can
+    // land on any frame of that, its first included; r10e)
+    const notice = touch ? document.querySelector<HTMLElement>(SIXTH_SENSE) : null;
+    if (notice && notice.getClientRects().length && getComputedStyle(notice).visibility !== 'hidden') {
+      const box = notice.getBoundingClientRect();
+      const slide = translationY(notice);
+      setSightNotice(true, box.left, box.top - slide, box.right, box.bottom - slide);
+    } else setSightNotice(false);
     settleSightFurniture();
   }
   // The multiplayer v2 network strip with every cell shown, measured whenever it is not folded to its ping.
@@ -243,6 +261,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     if (!visible) {
       clearSightFurniture();
+      setSightNotice(false);
       settleSightFurniture();
       return;
     }
@@ -460,7 +479,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const toastRows = String(stack.toastRows);
     if (root.dataset.toastRows !== toastRows) root.dataset.toastRows = toastRows;
     seatScopeVision(width, height, touch);
-    publishSightFurniture();
+    publishSightFurniture(touch);
   }
   function schedule() {
     if (!frame) frame = requestAnimationFrame(refresh);
@@ -473,8 +492,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
   window.addEventListener('cot:layoutchange', schedule);
   // Transforms (notably the spectator tray's entrance) do not resize the
   // border box. Measure the settled position without polling its animation.
+  // A pass that lands mid-fade measures the reticle's furniture where its fade has it, so the end of a furniture's own fade
+  // or slide measures it again (r10e: the touch tray's two collapsed shell slots, fading out behind the selected one,
+  // stayed published until some later relayout). Only the furniture's own opacity, visibility or transform: a child's
+  // transition bubbling up, or any other property, asks for nothing, and every end in a frame shares its one relayout.
   const transitionFinished = (event: Event) => {
-    if (observed.has(event.target as Element)) schedule();
+    const target = event.target as Element;
+    if (observed.has(target)) schedule();
+    else if (FURNITURE_SETTLES.has((event as TransitionEvent).propertyName) && target.matches?.(SIGHT_FURNITURE)) schedule();
   };
   window.addEventListener('transitionend', transitionFinished);
   window.addEventListener('transitioncancel', transitionFinished);

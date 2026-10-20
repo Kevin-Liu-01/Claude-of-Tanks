@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { battleSideStack, battleNotificationRows, battleRosterHeight, installBattleHudLayout, objectiveWidth, battleReportDock, REPORT_MAP_GAP,
   portraitSightClearTop, SIGHT_BAND_ABOVE, SIGHT_BAND_BELOW, SCOPE_BAND_BELOW } from './battleHudLayout.ts';
-import { sightFurniture } from './sightFurniture.ts';
+import { sightFurniture, sightNotice } from './sightFurniture.ts';
 const layoutSourceR10 = readFileSync(new URL('./battleHudLayout.ts', import.meta.url), 'utf8');
 
 for (const space of [0, 80, 124, 320, 500]) {
@@ -342,15 +342,20 @@ try {
 // the left lane's speedometer sits level with the marker (800x400: 184-292 x 164-272) it waits hidden. Touch never moves
 // it, and the touch chip the reticle seats under the sight (data-seat) is the reticle's own mark, never furniture.
 {
-  const saved = new Map(['document','window','ResizeObserver','MutationObserver','requestAnimationFrame','getComputedStyle']
-    .map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
+  const saved = new Map(['document','window','ResizeObserver','MutationObserver','requestAnimationFrame','getComputedStyle',
+    'DOMMatrixReadOnly'].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
   const box = (left,top,right,bottom) => ({top,bottom,left,right,width:right-left,height:bottom-top,x:left,y:top});
-  function solve(width, height, rects, { touch = false, hidden = false } = {}) {
+  // (`styles`: a selector's computed style (or one a node), where it differs from shown, opaque and unmoved; the solver's window keeps its
+  // listeners, and `dispatch` sends one an event on the selector's node and runs the relayout it asks for, if any)
+  function solve(width, height, rects, { touch = false, hidden = false, styles = {} } = {}) {
     const nodes = new Map();
-    for (const [selector, list] of Object.entries(rects)) nodes.set(selector, list.map((rect) => ({ rect, hidden: false,
+    for (const [selector, list] of Object.entries(rects)) nodes.set(selector, list.map((rect, i) => ({ rect, hidden: false,
       offsetWidth: rect.width, offsetHeight: rect.height, getClientRects: () => [rect], getBoundingClientRect: () => rect,
       contains(other) { return other === this; }, children: [], childElementCount: 0, dataset: {}, getAttribute: () => null,
-      hasAttribute: () => false, toggleAttribute() {} })));
+      hasAttribute: () => false, toggleAttribute() {},
+      computed: (Array.isArray(styles[selector]) ? styles[selector][i] : styles[selector]) ?? null,
+      matches: (list) => list.split(',').some((part) => part.trim() === selector) })));
+    const listeners = new Map();
     const vision = nodes.get('.cot-scope-vision')?.[0];
     if (vision) vision.hidden = hidden;
     const all = (selector) => [...new Set(selector.split(',').flatMap((part) => nodes.get(part.trim()) ?? []))];
@@ -361,8 +366,9 @@ try {
     globalThis.document = { body, documentElement: { clientWidth: width },
       querySelector: (selector) => all(selector)[0] ?? null, querySelectorAll: all };
     globalThis.window = { innerWidth: width, innerHeight: height, visualViewport: { width, height }, document: globalThis.document,
-      addEventListener() {} };
-    globalThis.getComputedStyle = () => ({ visibility: 'visible', opacity: '1' });
+      addEventListener(type, listener) { listeners.set(type, listener); } };
+    globalThis.getComputedStyle = (node) => node?.computed ?? { visibility: 'visible', opacity: '1', transform: 'none' };
+    globalThis.DOMMatrixReadOnly = class { constructor(text) { this.m42 = Number(/matrix\((.*)\)/.exec(text)[1].split(',')[5]); } };
     globalThis.requestAnimationFrame = (fn) => { frame = fn; return 1; };
     globalThis.ResizeObserver = class { observe() {} };
     globalThis.MutationObserver = class { observe() {} };
@@ -370,8 +376,16 @@ try {
       getAttribute: () => null, querySelector: () => null };
     installBattleHudLayout(root);
     frame();
-    return { seat: body.dataset.scopeVision ?? '', boxes: sightFurniture.boxes.slice(0, sightFurniture.count)
-      .map((b) => [b.x0, b.y0, b.x1, b.y1]) };
+    const read = () => ({ seat: body.dataset.scopeVision ?? '', boxes: sightFurniture.boxes.slice(0, sightFurniture.count)
+      .map((b) => [b.x0, b.y0, b.x1, b.y1]), notice: sightNotice.on ? [sightNotice.x0, sightNotice.y0, sightNotice.x1, sightNotice.y1] : null,
+      version: sightFurniture.version });
+    return { ...read(), nodes, dispatch(type, selector, index = 0, propertyName = 'opacity') {
+      frame = null;
+      listeners.get(type)?.({ target: nodes.get(selector)[index], propertyName });
+      if (!frame) return null;
+      frame();
+      return read();
+    } };
   }
   try {
     const right = (width, height) => { const left = Math.min(width / 2 + Math.max(Math.min(width, height) * 0.15 + 8, 80), width - 180);
@@ -412,6 +426,30 @@ try {
     assert.equal(solved.seat, '', 'touch keeps its own seat left of the sight');
     assert.ok(!layoutSourceR10.includes("'.cot-aim-warning:not([hidden])',") && layoutSourceR10.includes(".cot-aim-warning:not([hidden]):not([data-seat])"),
       'the seated touch chip is the reticle\'s mark, not furniture');
+    // r10e: the sixth-sense notice is published for the touch chip to yield to (320x568, measured: the DETECTED notice at
+    // 70-250 x 215-262.9, the chip seated over the sight at 82-238 x 233-257 under it), at its settled place whatever frame
+    // of its 6 px slide the pass lands on; never on a mouse layout, whose canvas marks never dodge a notice
+    const detected = { '.cot-sixth.on': [box(70, 211, 250, 258.875)] };
+    const sliding = { '.cot-sixth.on': { visibility: 'visible', opacity: '0', transform: 'matrix(1, 0, 0, 1, -90, -4)' } };
+    const before = solve(320, 568, base, { touch: true });
+    assert.equal(before.notice, null, '320x568 touch: no notice, none published');
+    solved = solve(320, 568, { ...base, ...detected }, { touch: true, styles: sliding });
+    assert.deepEqual(solved.notice, [70, 215, 250, 262.875], '320x568 touch: the notice published where it settles');
+    assert.ok(solved.version > before.version, 'the notice repaints the reticle');
+    assert.equal(solved.boxes.length, before.boxes.length, 'the notice is no furniture: the canvas marks never dodge it');
+    assert.equal(solve(900, 700, { ...base, ...detected }, { styles: sliding }).notice, null, 'a mouse layout never publishes it');
+    // r10e: a pass that lands while the touch tray's collapsed shell slots fade out (opacity on its way to 0, scale .94)
+    // measures them; the end of their fade measures again, and they are gone (two "panel" boxes the furniture recorder
+    // caught at 8 touch sizes on integ ce8b634668, at 390x844: 334.57-380 x 469.39-518.61)
+    const fading = { visibility: 'visible', opacity: '0.4', transform: 'matrix(0.94, 0, 0, 0.94, 0, 0)' };
+    const slots = [box(332, 468, 380, 520), box(334.57, 469.39, 380, 518.61), box(334.57, 469.39, 380, 518.61)];
+    const tray = solve(390, 844, { ...base, '.cot-shell': slots }, { touch: true, styles: { '.cot-shell': [null, fading, fading] } });
+    assert.equal(tray.boxes.filter((b) => b[0] > 330).length, 3, 'mid-fade, the pass measures the selected slot and the fading two');
+    fading.opacity = '0';
+    assert.equal(tray.dispatch('transitionend', '.cot-shell', 1, 'background-color'), null, 'another property\'s end asks for nothing');
+    const settled = tray.dispatch('transitionend', '.cot-shell', 1);
+    assert.ok(settled, 'the end of a furniture\'s fade asks for a relayout');
+    assert.deepEqual(settled.boxes.filter((b) => b[0] > 330), [[332, 468, 380, 520]], 'and only the selected slot is furniture');
     // the sheets seat what the solver measures: the touch chip under the sight is the canvas chip's ink box, 24 px tall,
     // placed by its custom properties; the vision switch's mirror seat mirrors the mouse seat (its 180 px edge, 112 px
     // for the compact plate), and waits hidden (r10 critic: no receipt read either rule)

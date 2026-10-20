@@ -1152,7 +1152,7 @@ import { tierNumeral } from '../vehicles/tier.ts';
 // SHOT-INFO SECTION: combat-intelligence panels (shot cards, armor diagrams,
 // incoming toasts, shot log, session stats) — logic lives in src/ui/shotInfo.ts.
 import { createShotInfo } from './shotInfo.ts';
-import { sightFurniture, sightFurnitureGap, sightFurnitureRise } from './sightFurniture.ts';
+import { sightFurniture, sightFurnitureGap, sightFurnitureRise, sightNoticeGap } from './sightFurniture.ts';
 import { hitOutcomeFor, incomingHitFeedbackFor } from './hitEventFormat.ts';
 import {
   SPECIAL_ACTION_KINDS,
@@ -4826,22 +4826,30 @@ export function initHud(bus: EventBus): HudRuntime {
       draw.warningW = ctx.measureText(warning.text).width + 50;
     }
     draw.warningX = draw.cx;
-    let y = Math.max(draw.cy + Math.max(62, draw.radius + 24),
-      draw.magazineBottomY ? draw.magazineBottomY + (draw.dry ? 3 : 2) + 3 + AIM_WARNING_CHIP_ABOVE : 0,
+    const marks = Math.max(draw.magazineBottomY ? draw.magazineBottomY + (draw.dry ? 3 : 2) + 3 + AIM_WARNING_CHIP_ABOVE : 0,
       draw.countdownBottomY ? draw.countdownBottomY + 3 + AIM_WARNING_CHIP_ABOVE : 0,
       tag ? tag.y1 + 3 + AIM_WARNING_CHIP_ABOVE : 0);
+    let y = Math.max(draw.cy + Math.max(62, draw.radius + 24), marks);
     // ... and 3 px from the ring's stroke wherever the ring sits (the gun's ring follows a lagging lay off the centre)
     const half = draw.warningW / 2;
     if (ringGap(draw, draw.cx - half, y - AIM_WARNING_CHIP_ABOVE, draw.cx + half, y + AIM_WARNING_CHIP_BELOW) < SIGHT_MARK_RING_GAP) {
       y = Math.max(y, belowRing(draw) + AIM_WARNING_CHIP_ABOVE);
     }
     // ... and over the sight where the HUD's furniture sits there and over it reaches less far into it (critic r9: a small
-    // portrait phone's left FIRE button under the sight); the scope's row may still move it (sniperReadoutStack)
-    const under = sightFurnitureGap(draw.cx - half, y - AIM_WARNING_CHIP_ABOVE, draw.cx + half, y + AIM_WARNING_CHIP_BELOW);
-    if (under < SIGHT_MARK_RING_GAP) {
+    // portrait phone's left FIRE button under the sight); the scope's row may still move it (sniperReadoutStack). A touch
+    // chip first rises to just under the ring, the marker's clear centre and the marks under it (r10e: at 320x568 the seat
+    // over the sight, where the DETECTED notice shows, was taken for a small ring that leaves room under it)
+    let best = sightFurnitureGap(draw.cx - half, y - AIM_WARNING_CHIP_ABOVE, draw.cx + half, y + AIM_WARNING_CHIP_BELOW);
+    if (best < SIGHT_MARK_RING_GAP && touch) {
+      const near = Math.max(belowRing(draw) + AIM_WARNING_CHIP_ABOVE,
+        draw.cy + draw.centerClearanceRadius + 6 + AIM_WARNING_CHIP_ABOVE, marks);
+      const clear = sightFurnitureGap(draw.cx - half, near - AIM_WARNING_CHIP_ABOVE, draw.cx + half, near + AIM_WARNING_CHIP_BELOW);
+      if (near < y && clear > best) { best = clear; y = near; }
+    }
+    if (best < SIGHT_MARK_RING_GAP) {
       const over = sniperChipAboveY(draw);
       if (sightFurnitureGap(draw.cx - half, over - AIM_WARNING_CHIP_ABOVE, draw.cx + half, over + AIM_WARNING_CHIP_BELOW)
-        > under) y = over;
+        > best) y = over;
     }
     draw.warningY = y;
   }
@@ -4867,11 +4875,18 @@ export function initHud(bus: EventBus): HudRuntime {
   function paintAimWarning(view: HudAimView, draw: ReticleDrawState): void {
     const warning = aimWarningState(view, aimWarningScratch);
     const touchWarning = document.body.classList.contains('cot-touch-layout') && warning.visible;
-    if (touchAimWarning.hidden === touchWarning) touchAimWarning.hidden = !touchWarning;
+    const seated = touchWarning && draw.warningY > 0 && touchWarningSeated();
+    // A seated chip yields to the sixth-sense notice (sightFurniture.ts sightNotice, published on a touch layout only):
+    // where its place runs into the notice it waits hidden until the notice goes. The notice never moves it: it comes and
+    // goes, and the places clear of it ran into the furniture instead (r10e: at 320x568 the left FIRE button, 22 px deep
+    // at 16 m, 33 at 24 m)
+    const yielded = seated && sightNoticeGap(draw.warningX - draw.warningW / 2, draw.warningY - AIM_WARNING_CHIP_ABOVE,
+      draw.warningX + draw.warningW / 2, draw.warningY + AIM_WARNING_CHIP_BELOW) < SIGHT_MARK_RING_GAP;
+    if (touchAimWarning.hidden === (touchWarning && !yielded)) touchAimWarning.hidden = !touchWarning || yielded;
     if (touchWarning) {
       if (touchAimWarning.textContent !== warning.text) touchAimWarning.textContent = warning.text;
       if (touchAimWarning.dataset.kind !== warning.kind) touchAimWarning.dataset.kind = warning.kind;
-      seatTouchWarning(draw.warningY > 0 && touchWarningSeated(), draw);
+      seatTouchWarning(seated, draw);
       return;
     }
     if (!warning.visible) return;

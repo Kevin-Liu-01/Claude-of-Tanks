@@ -1,4 +1,4 @@
-{"note": "battleHudLayout's published sight furniture (src/ui/sightFurniture.ts) on tools/fixtures/battle-hud-layout.html, stages ammo-reload-sniper-warn (standard) and ammo-unlimited-sniper (:objective); recorded by tools/hud-sight-furniture.browser.mjs for src/ui/hudAmmoOutPaint.selftest.mjs", "sizes": {
+{"note": "battleHudLayout's published sight furniture (src/ui/sightFurniture.ts) on tools/fixtures/battle-hud-layout.html, stages ammo-reload-sniper-warn (standard) and ammo-unlimited-sniper (:objective), and on touch the sixth-sense notice's settled box (notices); recorded by tools/hud-sight-furniture.browser.mjs for src/ui/hudAmmoOutPaint.selftest.mjs", "sizes": {
  "800x400": [
   [".cot-top",237,0,563,62],
   [".cot-drive",184,164,292,272],
@@ -1637,4 +1637,26 @@
   [".cot-touch.on .round",209,508,263,562],
   [".cot-touch.on .round",273,563,355,645]
  ]
+},
+"notices": {
+ "390x844t": [88,208,302,250],
+ "390x844t:objective": [88,211,302,253],
+ "844x390t": [315,150,529,182],
+ "844x390t:objective": [315,122,529,154],
+ "667x375t": [226.5,150,440.5,182],
+ "667x375t:objective": [226.5,122,440.5,154],
+ "568x290t": [122,114,258,146],
+ "568x290t:objective": [122,119,258,151],
+ "320x568t": [70,215,250,262.88],
+ "320x568t:objective": [70,215,250,262.88],
+ "360x640t": [73,264,287,306],
+ "360x640t:objective": [73,264,287,306],
+ "932x430t": [359,150,573,182],
+ "932x430t:objective": [359,122,573,154],
+ "740x360t": [263,150,477,182],
+ "740x360t:objective": [263,122,477,154],
+ "640x360t": [213,150,427,182],
+ "640x360t:objective": [213,122,427,154],
+ "375x667t": [80.5,277,294.5,319],
+ "375x667t:objective": [80.5,277,294.5,319]
 }}

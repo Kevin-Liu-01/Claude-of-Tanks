@@ -122,7 +122,12 @@ controls row and the tray, a stacked tray's speedometer and damage panel, a
 landscape phone's consumables column and systems row, a portrait phone's FIRE
 buttons, the score, the map and the vision switch. Round r9 modelled some of
 these as constant floors in `hud.ts`, and missed the consumables at 667x375 and
-the left FIRE button at 360x640. The line rests no lower than that furniture
+the left FIRE button at 360x640. A pass can land while a panel fades or slides,
+for example the touch tray's two collapsed shell slots fading out behind the
+selected one. The end of a furniture's own opacity, visibility or transform
+transition measures it again. Before r10e, those two slots stayed published as
+furniture until some later relayout, and a recording caught them at 8 touch
+sizes. The line rests no lower than that furniture
 lets it. Where the row would still reach a panel, the zoom plate moves up beside
 the line, then the warning chip joins that row left of the line, then the chip
 moves above the ring. Then the line and the zoom plate move right of the column
@@ -136,8 +141,15 @@ keeps 3 px over the tag there. On a screen over 430 px tall a rack's
 countdown also moves beside the rack. On a portrait phone the reticle seats the
 touch warning chip under the sight, where a mouse layout paints its canvas chip,
 and the scope's readouts start under it. At 50% + 48 px it met the countdown and
-a rack dropped below a wide ring. A short landscape keeps it in the left lane
-under the map. On the short landscape
+a rack dropped below a wide ring. Where its seat under the sight meets the
+furniture, it first rises to just under the ring and the marks there, before
+it goes over the sight. The chip yields to the sixth-sense notice: the layout
+publishes the notice's settled box on a touch layout, and where the chip's place
+runs into it, the chip waits hidden until the notice goes. The notice never
+moves the chip or any other mark. Moving it ran the chip into the furniture
+instead: 22 px into the left FIRE button at 320x568 and 16 m. Round r10 set the
+chip over the sight at 320x568, under the DETECTED notice. A short landscape
+keeps it in the left lane under the map. On the short landscape
 scope stack the round leads the ammo readout line instead, and a rack's countdown
 sits beside the rack when the ring keeps clear of it there. The scope's vision switch sits beside the
 sight, level with the marker and past the widest ring, where no readout goes. A
@@ -277,8 +289,8 @@ empty racks, finite and endless rounds:
   underlines.
 - 375x667: 7.34 px, `0 ` on the systems row with the warning under the widest
   ring, in every mode.
-- 740x360 with the objective panel: 0.37 px, an empty rack under the widest ring
-  on the systems row.
+- 740x360 and 640x360 with the objective panel: 0.37 px, an empty rack under the
+  widest ring on the systems row.
 - 1024x400 with the objective panel: 7.62 px, the warning chip set over the
   widest ring into the panel. The rendered fixture keeps 3 px.
 
