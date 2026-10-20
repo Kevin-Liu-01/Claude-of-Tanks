@@ -294,11 +294,16 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
     b.push().rotateY(-a + Math.PI / 2);
     // in this frame the pedestal's radial direction is +Z
     for (let k = 0; k < 3; k += 1) b.box(0, 0.012, r1 + 0.15 + k * 0.4, 0.34, 0.024, 0.38, 0x50555a, { bevel: 0.004, noBottom: true });
-    b.box(0, 0.04, 7.5, 0.5, 0.08, 0.4, b.skin.concrete, { bevel: 0.01, noBottom: true });
-    b.box(0, 0.55, 7.5, 0.26, 0.95, 0.22, 0x2a2e32, { bevel: 0.015 });
-    b.push().translate(0, 1.08, 7.42).rotateX(-0.55).rotateY(Math.PI);
-    b.box(0, 0, 0, 0.44, 0.3, 0.05, 0x1c1f22, { bevel: 0.01 });
-    b.uprightFace(0, 0, 0.026, 0.38, 0.24, garageDisplayRect('readout.armor.abrams'));
+    // a squat control console, wider than it is tall, in the platform's grey-blue steel with a yellow kick strip (the r9
+    // blind critics: the first pass's 1.1 m slim dark post read from the hero's camera as an orphan post or a standing
+    // figure in six Garages)
+    b.box(0, 0.04, 7.5, 0.95, 0.08, 0.66, b.skin.concrete, { bevel: 0.01, noBottom: true });
+    b.box(0, 0.42, 7.5, 0.82, 0.68, 0.52, 0x56606a, { bevel: 0.02 });
+    b.box(0, 0.13, 7.5 - 0.265, 0.82, 0.08, 0.012, 0xd29a2a, { bevel: 0 });
+    b.box(0, 0.13, 7.5 + 0.265, 0.82, 0.08, 0.012, 0xd29a2a, { bevel: 0 });
+    b.push().translate(0, 0.84, 7.46).rotateX(-0.42).rotateY(Math.PI);
+    b.box(0, 0, 0, 0.8, 0.4, 0.06, 0x23272b, { bevel: 0.012 });
+    b.uprightFace(0, 0, 0.031, 0.62, 0.32, garageDisplayRect('readout.armor.abrams'));
     b.pop();
     b.pop();
     void c; void sn;

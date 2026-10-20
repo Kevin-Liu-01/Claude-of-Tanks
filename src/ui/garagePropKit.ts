@@ -312,7 +312,8 @@ const spillBin: PropBuilder = (b) => {
 
 /** A skip: its sloped ends, rim and lifting lugs. */
 const skip: PropBuilder = (b, params = {}) => {
-  const color = b.jitter(params.color ?? b.skin.paint, 0.04);
+  // a hire skip's own safety orange (the r9 blind critic: in the skin's grey it read as a plain slab)
+  const color = b.jitter(params.color ?? 0xc0772a, 0.04);
   const bw = 1.7, tw = 1.9, bl = 1.6, tl = 3.2, h = 1.1;
   const B = (x: number, z: number): [number, number, number] => [x, 0.08, z];
   const T = (x: number, z: number): [number, number, number] => [x, h, z];
@@ -324,6 +325,12 @@ const skip: PropBuilder = (b, params = {}) => {
   b.box(0, h, 0, tw + 0.08, 0.08, tl + 0.08, color, { bevel: 0.01 });
   for (const x of [-1, 1]) b.box(x * (tw / 2 + 0.06), h - 0.3, 0, 0.1, 0.16, 0.5, color, { bevel: 0.01 });
   for (const z of [-0.6, 0.6]) b.box(0, 0.04, z, bw, 0.08, 0.16, 0x2a2b2c, { bevel: 0, noBottom: true });
+  // the pressed ribs on its long sides, standing on the flared side at its mid height
+  for (const side of [-1, 1]) {
+    for (const z of [-0.95, 0, 0.95]) {
+      b.box(side * ((bw + tw) / 4 + 0.03), 0.08 + h * 0.5, z * (bl + tl) / (2 * tl), 0.06, h * 0.8, 0.08, color, { bevel: 0 });
+    }
+  }
   // its scrap
   for (let i = 0; i < 5; i += 1) b.box(-0.6 + i * 0.3, h - 0.06, -0.8 + (i % 2) * 1.2, 0.5, 0.06, 0.12, 0x5a4a40, { bevel: 0 });
 };
