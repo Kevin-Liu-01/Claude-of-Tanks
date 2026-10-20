@@ -17,7 +17,7 @@
 // Pathways: the city's streets are kerbed by the kit in place of the legacy strips (1,376 pieces, 84 % of them under
 // houses, without frontage or on the squares): the boulevard, the trunk roads and the terrace streets are main streets,
 // the cross streets lanes; there is no wall, so the town's inside is the valley floor's rectangle.
-import type { CivicFurniture, CivicPlan, CivicRect } from '../types.ts';
+import type { CivicAreaPlan, CivicBed, CivicFurniture, CivicPlan, CivicRect } from '../types.ts';
 
 /** A point's rotation twin about the centre (the map's symmetry). */
 const rot = (p: { x: number; z: number; yawDeg?: number }) => ({ x: -p.x, z: -p.z, yawDeg: ((p.yawDeg ?? 0) + 180) % 360 });
@@ -46,6 +46,79 @@ const BED_NW = {
 
 const facing = (x: number, z: number, tx: number, tz: number): number => +(Math.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
 
+/** (229 b1 r1, the blind critics: "a second Ruinspires square is left completely empty") the west square (pad 1 at
+ *  (-225, 0); zone 1) as a smaller plaza of the same make, and the east square (pad 2; zone 3) its rotation twin. The
+ *  bots' routes (the 229 routeheat probe: 168 of 560 cross it) come in from the south-east trunk road's mouth to the
+ *  zone, along the boulevard's east arm and up x = -225 from the south: the beds stand in the north quarters and the
+ *  south-west one, the routes' quarter left open. */
+function sideSquare(id: string, pad: number, twin: boolean): CivicAreaPlan {
+  const P = (x: number, z: number): [number, number] => (twin ? [-x, -z] : [x, z]);
+  const R = (r: CivicRect): CivicRect => (twin ? rotRect(r) : r);
+  const F = (f: CivicFurniture): CivicFurniture => (twin ? { ...f, ...rot(f) } : f);
+  const room = R({ x0: -263, x1: -187, z0: -30, z1: 30 });
+  const NWB = { x0: -258, x1: -234, z0: 13, z1: 27 }, SWB = { x0: -258, x1: -238, z0: -27, z1: -13 };
+  const bed = (bid: string, r: CivicRect, side: 's' | 'n'): CivicBed => {
+    const mx = (r.x0 + r.x1) / 2, mz = (r.z0 + r.z1) / 2, rr = R(r), [cx, cz] = P(mx, mz);
+    const flip = twin ? (side === 's' ? 'n' : 's') : side;
+    return {
+      id: bid, rect: rr,
+      mouths: [{ side: flip, at: cx, width: 3 }, { side: twin ? 'w' : 'e', at: cz, width: 3 }],
+      paths: [{ from: [cx, rr.z0 + 0.6], to: [cx, rr.z1 - 0.6], width: 3 }, { from: [rr.x0 + 0.6, cz], to: [rr.x1 - 0.6, cz], width: 3 }],
+      feature: { kind: 'flowerRondell', x: cx, z: cz, r: 2.0, ring: 3.8 },
+    };
+  };
+  const beds = [bed(`${id}-nw`, NWB, 's'), bed(`${id}-sw`, SWB, 'n')];
+  const ring = (r: CivicRect) => { const mx = (r.x0 + r.x1) / 2, mz = (r.z0 + r.z1) / 2;
+    return [[mx - 3.4, mz - 3.4], [mx + 3.4, mz - 3.4], [mx - 3.4, mz + 3.4], [mx + 3.4, mz + 3.4]].map(([x, z]) => ({ kind: 'bench', x, z, yawDeg: facing(x, z, mx, mz) })); };
+  const furniture: CivicFurniture[] = [
+    ...ring(NWB), ...ring(SWB),
+    ...[[-258.8, 12.2], [-233.2, 12.2], [-258.8, -12.2], [-237.2, -12.2]].map(([x, z]) => ({ kind: 'pflanzkuebel', x, z, yawDeg: 0 })),
+    // the north-east quarter's planes in their grates, benches under them facing the boulevard
+    { kind: 'bench', x: -219.5, z: 12.4, yawDeg: 180 }, { kind: 'bench', x: -212.5, z: 12.4, yawDeg: 180 },
+    { kind: 'trashcan', x: -216, z: 12.6, yawDeg: 0 },
+  ].map(F);
+  return {
+    id, room,
+    paved: R({ x0: -267, x1: -183, z0: -34, z1: 34 }),
+    rinnen: [],
+    vetoExempt: ['lamp'],
+    keepOuts: [],
+    clears: [],
+    pad,
+    arms: [R({ x0: -263, x1: -187, z0: -10, z1: 10 }), R({ x0: -207, x1: -193, z0: -30, z1: -10 })],
+    corridors: [
+      { from: P(-200, -25), to: P(-225, 0), half: 5 }, { from: P(-225, -25), to: P(-225, 0), half: 5 },
+      { from: P(-205, -30), to: P(-225, -25), half: 4 }, { from: P(-200, -25), to: P(-195, -5), half: 4 },
+      { from: P(-200, 0), to: P(-200, 30), half: 4 },
+    ],
+    lanes: [],
+    holds: [],
+    centre: { x: P(-225, 0)[0], z: P(-225, 0)[1], ringR: [8.5, 9.0], roseR: 3, rays: 8 },
+    beds,
+    paving: [
+      { rect: R({ x0: NWB.x0, x1: NWB.x1, z0: 10, z1: NWB.z0 }), kind: 'granite' },
+      { rect: R({ x0: SWB.x0, x1: SWB.x1, z0: SWB.z1, z1: -10 }), kind: 'granite' },
+    ],
+    monument: null,
+    trees: {
+      species: 'oak', scale: [1.05, 1.2],
+      stations: [[-252.5, 16], [-239.5, 16], [-252.5, 24], [-239.5, 24], [-252.5, -16], [-243.5, -16], [-252.5, -24], [-243.5, -24],
+        [-219.5, 17], [-212.5, 17], [-219.5, 24], [-212.5, 24]].map(([x, z], i) => {
+        const [px, pz] = P(x, z);
+        return i >= 8 ? { x: px, z: pz, grate: true } : { x: px, z: pz };
+      }),
+    },
+    furniture,
+    parking: [],
+    bayMarks: [],
+    lamps: [F({ kind: 'lamp', x: -233.2, z: 11.0, yawDeg: 0 }), F({ kind: 'lamp', x: -209, z: 11.0, yawDeg: 0 })],
+    fountainRing: null,
+    steps: [],
+    lawns: [R(NWB), R(SWB)],
+    targets: { records: 30, benches: 8, lawnM2: 500, lampsAround: 0, openShare: 0.08, largestDisc: 10 },
+  };
+}
+
 export const RUINSPIRES_CIVIC_PLAN: CivicPlan = {
   mapId: 'ruinspires',
   style: 'sarajevo',
@@ -65,6 +138,9 @@ export const RUINSPIRES_CIVIC_PLAN: CivicPlan = {
     // no wall: the valley floor, its edges well off the terrace streets and their ends
     inside: [[[-330, -200], [330, -200], [330, 200], [-330, 200]]],
     mouths: [[ROOM.x0, 0], [ROOM.x1, 0], [-25, ROOM.z0], [25, ROOM.z1], [-263, 0], [-187, 0], [187, 0], [263, 0], [-200, -30], [200, 30]],
+    // (229 b1 r1, the blind critics: pavements floating on open ground along the vacant lots) only the fronted stretches,
+    // joined over gaps of up to 20 m
+    openGapM: 20,
   },
   areas: [{
     id: 'trg-republike',
@@ -106,6 +182,8 @@ export const RUINSPIRES_CIVIC_PLAN: CivicPlan = {
         { x: -35.5, z: -13, grate: true }, { x: -35.5, z: -20, grate: true }, { x: 35.5, z: 13, grate: true }, { x: 35.5, z: 20, grate: true },
         // the paving between each trunk mouth's diagonal route and the x = +-4 run: a plane in its grate
         { x: -9, z: -21, grate: true }, { x: 9, z: 21, grate: true },
+        // (229 b1 r1) a row of planes in their grates along the square's open south-east edge, and its twin
+        ...[13, 19.5, 26, 32.5].flatMap((x) => [{ x, z: -33.5, grate: true }, { x: -x, z: 33.5, grate: true }]),
       ],
     },
     furniture: twins([
@@ -118,12 +196,11 @@ export const RUINSPIRES_CIVIC_PLAN: CivicPlan = {
       { kind: 'trashcan', x: 11.6, z: -11.6, yawDeg: 0 }, { kind: 'trashcan', x: 33.0, z: -28.6, yawDeg: 0 },
       // under the plane between the routes: a bench facing it and a planter
       { kind: 'bench', x: -6, z: -18, yawDeg: facing(-6, -18, -9, -21) }, { kind: 'pflanzkuebel', x: -12.5, z: -22, yawDeg: 0 },
+      // (229 b1 r1) benches between the south edge's planes, facing the square
+      { kind: 'bench', x: 16.25, z: -33.5, yawDeg: 0 }, { kind: 'bench', x: 29.25, z: -33.5, yawDeg: 0 },
     ]),
-    // the city's own cars parked at the kerb along the trunk-side frontages, nose to tail (the yugoslav1990s fleet)
-    parking: twins([
-      { kind: 'sedan', x: 12.5, z: -32.6, yawDeg: 90.8 }, { kind: 'wagon', x: 18.3, z: -32.7, yawDeg: 89.4 },
-      { kind: 'sedan', x: 24.0, z: -32.55, yawDeg: 90.5 }, { kind: 'pickup', x: 30.2, z: -32.7, yawDeg: 89.6 },
-    ]),
+    // (229 b1 r1, the blind critics: the cars in a row on open paving south of the bed "read like a car-park row") none
+    parking: [],
     bayMarks: [],
     // a post of the city's own (shot-out) lamps at each trunk mouth's corner, beside its diagonal route
     lamps: twins([{ kind: 'lamp', x: -17.8, z: -10.6, yawDeg: 0 }]),
@@ -131,5 +208,5 @@ export const RUINSPIRES_CIVIC_PLAN: CivicPlan = {
     steps: [],
     lawns: [SE, NW],
     targets: { records: 30, benches: 8, lawnM2: 600, lampsAround: 0, openShare: 0.06, largestDisc: 10 },
-  }],
+  }, sideSquare('trg-zapad', 1, false), sideSquare('trg-istok', 2, true)],
 };

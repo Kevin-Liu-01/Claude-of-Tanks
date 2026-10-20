@@ -316,16 +316,19 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
       while (i < samples.length) {
         if (samples[i].state === 'blocked') { i++; continue; }
         let j = i;
-        if (!samples[i].past) {
+        const zone = samples[i].past;
+        if (!zone && plan.openGapM === undefined) {
           // inside the wall: every laid stretch, corner to corner
           while (j + 1 < samples.length && samples[j + 1].state !== 'blocked' && !samples[j + 1].past) j++;
         } else {
-          // past it: the fronted stretches, joined over open gaps of up to 7 m
+          // past it: the fronted stretches, joined over open gaps of up to 7 m; (229 b1 r1) inside a town without a wall
+          // (plan.openGapM) the same over its own gaps: no pavement along open ground, a vacant lot's short gap bridged
           if (samples[i].state !== 'fronted') { i++; continue; }
+          const gap = zone ? 7 : Math.max(1, Math.round(plan.openGapM! / step));
           for (;;) {
             let k = j + 1;
-            while (k < samples.length && samples[k].past && samples[k].state === 'open' && k - j <= 7) k++;
-            if (k < samples.length && samples[k].past && samples[k].state === 'fronted' && k - j <= 8) { j = k; continue; }
+            while (k < samples.length && samples[k].past === zone && samples[k].state === 'open' && k - j <= gap) k++;
+            if (k < samples.length && samples[k].past === zone && samples[k].state === 'fronted' && k - j <= gap + 1) { j = k; continue; }
             break;
           }
           for (let k = i; k <= j; k++) if (samples[k].state === 'open') {
