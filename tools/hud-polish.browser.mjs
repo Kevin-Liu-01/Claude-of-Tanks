@@ -11,6 +11,10 @@
 //   scope, at full bloom and at rest, with the gun travel warning, the reticle's ink and the seated chip keep 3 px from its
 //   buttons (the readouts landed on its labels at 320x568, the chip on its key badges at 360x640) and the ink keeps 3 px
 //   from the round touch buttons (the rack and the struck round sat on the left FIRE button at 320x568).
+// - A portrait phone 340 px wide or less parks the gun travel chip under the map (the coordinator, r10g: seated by the
+//   sight it ran 12 px into the left FIRE button at 320x568), in battle and through the scope, at full bloom and at rest:
+//   it keeps 3 px from the reticle's ink, the controls and the panels, and the struck round or rack is painted with no
+//   DOM chip, notice or panel over it. At 360x640 the chip stays seated by the sight.
 // No screenshot. node tools/hud-polish.browser.mjs --url=http://127.0.0.1:5189 [--out=outputs/hud-polish]
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -21,11 +25,15 @@ const url = arg('url', 'http://127.0.0.1:5189');
 const out = resolve(arg('out', 'outputs/hud-polish'));
 const { chromium } = await import(arg('playwright-module', 'playwright'));
 // [width, height, touch, checks]
+// the controls and panels a parked chip keeps clear of (hud-touch-notices.browser.mjs FURNITURE)
+const FURNITURE = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .round>.lb',
+  '.cot-touch.on .joy', '.cot-touch.on .quick', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
+  '.cot-ear', '.flight-identity', '.cot-scope-vision'];
 const CASES = [
   [1000, 600, false, ['tray', 'alert', 'medal']], [1024, 600, false, ['tray', 'alert', 'medal']],
   [1024, 768, false, ['tray', 'alert', 'medal']], [1280, 720, false, ['tray', 'alert', 'medal']],
   [1366, 768, false, ['alert', 'medal']], [1920, 1080, false, ['alert', 'medal']],
-  [320, 568, true, ['alert', 'systems']], [360, 640, true, ['alert', 'systems']], [375, 667, true, ['systems']],
+  [320, 568, true, ['alert', 'systems', 'chip']], [360, 640, true, ['alert', 'systems', 'chip']], [375, 667, true, ['systems']],
   [390, 844, true, ['alert']], [740, 360, true, ['alert']],
   [667, 375, true, ['alert']], [844, 390, true, ['alert']],
 ];
@@ -181,6 +189,63 @@ try {
         for (const [gap, what] of [seen.least, seen.control]) {
           if (gap < 3 - 1e-6) failures.push(`${size} ${stage} at ${bloom} bloom: ${what} keep ${gap.toFixed(2)} px apart`);
         }
+      }
+    }
+    if (checks.includes('chip')) {
+      report.chip = [];
+      const parks = width <= 340 && height >= width;
+      for (const [stage, sight, bloom] of [['ammo-dry-cannon', 'battle', 'full'], ['ammo-dry-cannon', 'scope', 'rest'],
+        ['ammo-dry-autoloader', 'battle', 'rest'], ['ammo-dry-autoloader', 'scope', 'full']]) {
+        const seen = await page.evaluate(async ([stage, sight, bloom, furniture]) => {
+          const f = window.__HUD_LAYOUT;
+          f.state(stage);
+          f.frame.mode = sight === 'scope' ? 'sniper' : 'battle';
+          f.hud.setMode(f.frame.mode);
+          Object.assign(f.frame.aim, { zoom: sight === 'scope' ? 25 : 1, distM: 1500, dispersionRadM: bloom === 'full' ? 1e4 : 1e-4, gunLimitSpec: true });
+          for (let i = 0; i < 90; i++) { f.frame.timeS += 1 / 60; f.hud.update(f.frame); }
+          window.dispatchEvent(new Event('cot-hud-relayout'));
+          for (let i = 0; i < 6; i++) await new Promise(requestAnimationFrame);
+          await new Promise((done) => setTimeout(done, 400));
+          f.frame.timeS += 1 / 60;
+          f.hud.update(f.frame);
+          for (let i = 0; i < 3; i++) await new Promise(requestAnimationFrame);
+          const apart = (a, b) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
+          const box = (node) => { const r = node.getBoundingClientRect(); return { x0: r.left, y0: r.top, x1: r.right, y1: r.bottom }; };
+          const shown = (node) => node.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
+          const chipNode = document.querySelector('.cot-aim-warning:not([hidden])');
+          if (!chipNode || !shown(chipNode)) return { chip: null };
+          const chip = box(chipNode);
+          const map = document.querySelector('.cot-minimap');
+          // (a scope tick keeps 2 px from what it passes, hud.ts SCOPE_TICK_GAP; every other mark 3)
+          const ink = window.__RETICLE_LOG.paint.filter((op) => op.box).map((op) => ({ ...op.box, what: op.text ?? (op.ring ? 'ring' : op.op),
+            shell: op.n === 7, keep: op.op === 'stroke' && op.n === 2 ? 2 : 3 }));
+          const blocks = furniture.flatMap((selector) => [...document.querySelectorAll(selector)].filter(shown)
+            .map((node) => ({ ...box(node), what: selector, keep: 3 })));
+          // (the least gap less what that mark keeps, and the gap itself)
+          let least = [Infinity, '', Infinity];
+          for (const other of [...ink, ...blocks]) {
+            const gap = apart(chip, other);
+            if (gap - other.keep < least[0]) least = [gap - other.keep, other.what, gap];
+          }
+          // (the empty gun's marks: the struck round's or the rack's shells, magazineShellPath, and what covers them)
+          const shells = ink.filter((mark) => mark.shell);
+          const covers = [];
+          for (const node of document.querySelectorAll('.cot-aim-warning:not([hidden]),.cot-sixth.on,.cot-alert.show,.cot-prebattle.on,.cot-medal-toast,.cot-vehicle-controls>button,.cot-touch.on .round,.cot-touch.on .round>.lb,.cot-scope-vision')) {
+            if (!shown(node)) continue;
+            const b = box(node);
+            for (const mark of shells) if (apart(b, mark) < 0) { covers.push(node.className); break; }
+          }
+          return { chip, seated: chipNode.dataset.seat === 'sight', underMap: !!map && chip.y0 >= map.getBoundingClientRect().bottom,
+            least, shells: shells.length, covers };
+        }, [stage, sight, bloom, FURNITURE]);
+        report.chip.push({ stage, sight, bloom, ...seen });
+        const at = `${size} ${stage} ${sight} at ${bloom} bloom`;
+        if (!seen.chip) { failures.push(`${at}: no gun travel chip shown`); continue; }
+        if (parks && (seen.seated || !seen.underMap)) failures.push(`${at}: the gun travel chip is ${seen.seated ? 'seated by the sight' : 'not under the map'}, not parked under the map`);
+        if (!parks && !seen.seated) failures.push(`${at}: the gun travel chip left its seat by the sight`);
+        if (seen.least[0] < -1e-6) failures.push(`${at}: the gun travel chip keeps ${seen.least[2].toFixed(2)} px from ${seen.least[1]}`);
+        if (!seen.shells) failures.push(`${at}: no struck round or rack painted`);
+        if (seen.covers.length) failures.push(`${at}: the struck round or rack lies under ${seen.covers.join(', ')}`);
       }
     }
     reports.push(report);

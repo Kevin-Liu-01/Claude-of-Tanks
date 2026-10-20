@@ -67,7 +67,8 @@ for (const [key, recorded] of Object.entries(FURNITURE.sizes)) {
   const fallbackTop = Math.max(top + 8, height * 0.12);
   const narrow = width <= 340 && height > width;
   const notice = narrow ? { w: 180, h: 48 } : { w: 214, h: height <= 550 ? 32 : 42 };
-  const seated = !(width > height && height < 550);
+  // (battleHudLayout touchChipParked: a short landscape and a portrait phone 340 px wide or less park the chip)
+  const seated = !((width > height && height < 550) || (height >= width && width <= 340));
   for (const scope of [false, true]) for (const countdown of [null, { w: Math.min(228, width - 24), h: 136 }])
     for (const banner of [null, { w: Math.min(250, width - 32), h: 64 }]) {
       const at = `${key} ${scope ? 'scope' : 'battle'}${countdown ? ', countdown' : ''}${banner ? ', medal' : ''}`;

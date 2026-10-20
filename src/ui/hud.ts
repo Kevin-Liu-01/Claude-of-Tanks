@@ -4863,7 +4863,10 @@ export function initHud(bus: EventBus): HudRuntime {
   /** Whether a touch layout's warning chip sits under the sight, seated by the reticle (a portrait, or a landscape 550 px
    *  tall or more; a shorter landscape parks it in the left lane under the map: battleHudLayout.css). */
   function touchWarningSeated(): boolean {
-    return document.body.classList.contains('cot-touch-layout') && !(w > h && h < 550);
+    // (a short landscape parks it beside the map, and so does a portrait phone 340 px wide or less, where every seat by
+    // the sight met the left FIRE button, the map or the speedometer: r10g, the coordinator; the struck round or rack
+    // still shows the empty gun there)
+    return document.body.classList.contains('cot-touch-layout') && !(w > h && h < 550) && !(h >= w && w <= 340);
   }
 
   /**
@@ -4872,7 +4875,8 @@ export function initHud(bus: EventBus): HudRuntime {
    * countdown and, on the scope, the range tag, and 3 px from the ring. The scope's readout line and zoom plate then
    * start under the chip. A mouse layout paints the chip on the canvas; a touch layout shows a DOM chip, which the
    * reticle seats in the same place, the same height (critic r9: at 50% + 48 px the phone's chip met the scope's
-   * countdown and a rack dropped below a wide ring), unless a short landscape parks it beside the map.
+   * countdown and a rack dropped below a wide ring), unless a short landscape or a portrait phone 340 px wide or less
+   * parks it under the map.
    */
   function placeAimWarning(view: HudAimView, draw: ReticleDrawState): void {
     const warning = aimWarningState(view, aimWarningScratch);

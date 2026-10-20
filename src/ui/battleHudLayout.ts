@@ -108,6 +108,10 @@ const TOUCH_NOTICE_SOFT = '.cot-minimap,.cot-top,.cot-mode-status.show,.cot-ear,
 const TOUCH_ALERT_RESERVE_H = 40;
 /** Below this height a portrait phone's systems row leaves the band over the sight for the top slot (r10g). */
 const PORTRAIT_SIGHT_ROOM_H = 720;
+/** Where a touch layout parks the gun travel chip under the map instead of seating it by the sight (hud.ts
+ *  touchWarningSeated): a short landscape, and a portrait phone 340 px wide or less (r10g: every seat by the sight met the
+ *  left FIRE button, the map or the speedometer at 320x568). */
+const touchChipParked = (width: number, height: number) => (width > height && height < 550) || (height >= width && width <= 340);
 /** A touch target's least side (battle-hud-layout.browser.mjs) and the systems row's gap (battleHudLayout.css). */
 const TOUCH_TARGET = 44;
 const SYSTEMS_GAP = 3;
@@ -535,7 +539,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const earLeft = read('.cot-ear.l');
     let leftAnchor = Math.max(top, earLeft?.bottom || 0,
       !touch && width < 768 && telemetry && telemetry.top < height / 2 ? telemetry.bottom : 0,
-      touch && width > height ? read('.cot-aim-warning:not([hidden])')?.bottom || 0 : 0,
+      touch && touchChipParked(width, height) ? read('.cot-aim-warning:not([hidden])')?.bottom || 0 : 0,
       map && map.left < width / 2 ? map.bottom : 0) + 8;
     const systems = read('.cot-vehicle-controls');
     let systemsHeight = systems?.height ?? 0;
@@ -811,7 +815,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (killsLeft) soft.push({ x0: 0, y0: leftAnchor, x1: sideWidth, y1: leftAnchor + killHeightLeft });
       if (killsRight) soft.push({ x0: width - sideWidth, y0: rightAnchor, x1: width, y1: rightAnchor + killHeightRight });
       touchPlan = planTouchNotices({ width, height, top, obstacles, soft, labels: boxes(TOUCH_NOTICE_LABELS),
-        scope: !!read('.cot-scope-vision'), seated: !(width > height && height < 550), notice: noticeSize,
+        scope: !!read('.cot-scope-vision'), seated: !touchChipParked(width, height), notice: noticeSize,
         alert: { w: noticeSize.w, h: alertBox?.height ?? TOUCH_ALERT_RESERVE_H },
         countdown: touchCountdown,
         banner: bannerBox ? { w: bannerBox.width, h: bannerBox.height } : null, fallbackTop: noticeTop });
@@ -876,7 +880,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'center-notice-width': plan ? plan.detection.w : 248,
       'flight-right-clearance': map && map.left > width / 2 && map.bottom > height / 2 ? width - map.left + 12 : 12,
       'network-left': width > height ? Math.max(122, (map?.right ?? 104) + 8) : (map?.right ?? 104) + 8,
-      'aim-warning-top': width > height ? (map?.bottom ?? 114) + 4 : height * .5 + 48,
+      'aim-warning-top': width > height || touchChipParked(width, height) ? (map?.bottom ?? 114) + 4 : height * .5 + 48,
       'fps-top': (read('.cot-spec.show')?.top ?? 36) - 28,
       'network-top': width > height ? scoreBottom + 4 : (chrome?.top ?? top + 8),
       'network-corner-right': networkRight,
