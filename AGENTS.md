@@ -150,6 +150,10 @@ worktree and never stage generated tank work wholesale.
   `npm run tank:release:check -- --ids=<ids> --gate`. `--all` (and
   `npm run tank:anatomy:update`) stay the whole-fleet forms; see
   docs/DEVELOPMENT.md "Changed-only regeneration".
+  A tank lane adds `--lane`: the same steps minus the embedded `npm test` and
+  `npm run build:private` (its PASS is not a suite or build pass); the
+  integrator's run keeps both and the release gate runs every receipt and
+  `npm run build` (`docs/DEVELOPMENT.md` "Fast checks").
 
 ## Gotchas / never-do-X
 <!-- agent-docs:fill:gotchas -->

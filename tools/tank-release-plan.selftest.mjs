@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { tankReleaseSteps, tankReleaseStages } from './tank-release-plan.mjs';
+import { readFileSync } from 'node:fs';
+import { TANK_RELEASE_LANE_NOTE, runTankRelease, tankReleaseArgs, tankReleaseInvocation, tankReleaseLabel, tankReleasePlanLines,
+  tankReleaseSteps, tankReleaseStages } from './tank-release-plan.mjs';
 const steps=tankReleaseSteps('leo2a7v,t14_armata',true,'node-test');
 const byTool=tool=>steps.find(step=>step.args[0]===`tools/${tool}.mjs`);
 assert.deepEqual(steps.map(step=>[step.command,...step.args].join(' ')),[
@@ -70,6 +72,183 @@ assert.ok(stages[1].steps.some(step=>step.command==='npm'&&step.args[1]==='build
 const plain=tankReleaseStages('m1a1_abrams_hc',false,'node-test');
 assert.deepEqual(plain.map(stage=>stage.steps.length),[2,15],'without a reference the scoring stage has no fidelity step');
 console.log('tank-release-plan: strict fidelity plus geometry, complete scope, CPU phases, nonnested capture locks and staged concurrency pass');
+
+// Lane mode (2026-10-16, test-speed R8e): a lane landing skips exactly the embedded `npm test` and
+// `npm run build:private`. Every other step, the fleet-wide combat-anatomy check included, is the
+// integrator mode's byte for byte (scoping that check to the ids would compare every other row with
+// itself, so a shared-builder edit could leave other tanks' rows stale; COVERAGE RULE).
+const lane=tankReleaseSteps('leo2a7v,t14_armata',true,'node-test',{lane:true});
+const withoutNpm=list=>list.filter(step=>step.command!=='npm');
+assert.deepEqual(lane,withoutNpm(steps),'lane mode = the integrator steps minus npm test and build:private, nothing else');
+assert.deepEqual(steps.map(tankReleaseLabel).filter(label=>!lane.map(tankReleaseLabel).includes(label)),['npm test','npm run build:private'],
+  'lane mode drops exactly the suite and the private build');
+assert.deepEqual(lane.find(step=>step.args[0]==='tools/gen-combat-anatomy.mjs').args,['tools/gen-combat-anatomy.mjs','--check'],
+  'the lane anatomy freshness check stays fleet-wide: no --ids');
+for(const [gate,laneFlag] of [[true,false],[false,false],[true,true],[false,true]]){
+  const anatomy=tankReleaseSteps('m1a1_abrams_hc',gate,'node-test',{lane:laneFlag}).find(step=>step.args[0]==='tools/gen-combat-anatomy.mjs');
+  assert.deepEqual(anatomy.args,['tools/gen-combat-anatomy.mjs','--check'],`gate=${gate} lane=${laneFlag}: the anatomy check is fleet-wide`);
+}
+assert.deepEqual(tankReleaseSteps('leo2a7v,t14_armata',true,'node-test',{}),steps,'the integrator mode is the default');
+assert.deepEqual(tankReleaseSteps('leo2a7v,t14_armata',true,'node-test',{lane:false}),steps);
+assert.deepEqual(tankReleaseSteps('m1a1_abrams_hc',false,'node-test',{lane:true}),withoutNpm(tankReleaseSteps('m1a1_abrams_hc',false,'node-test')),
+  'without --gate or a reference, lane mode still keeps every other step');
+const laneStages=tankReleaseStages('leo2a7v,t14_armata',true,'node-test',{lane:true});
+assert.deepEqual(laneStages.map(stage=>[stage.name,stage.concurrency,stage.steps.length]),[['scoring',1,3],['fleet probes',4,13]]); // the integrator stage's 15 less npm test and build:private
+assert.deepEqual(laneStages.flatMap(stage=>stage.steps),lane,'lane staging reorders nothing and drops nothing');
+assert.deepEqual(tankReleaseStages('leo2a7v,t14_armata',true,'node-test',{lane:false}),stages,'integrator staging unchanged');
+
+// The command line: --lane alone selects lane mode; --ids= and --tanks= spell the ids.
+assert.deepEqual(tankReleaseArgs(['--ids=a,b','--gate','--lane']),{ids:'a,b',gate:true,lane:true,dryRun:false});
+assert.deepEqual(tankReleaseArgs(['--tanks=a','--dry-run']),{ids:'a',gate:false,lane:false,dryRun:true});
+assert.deepEqual(tankReleaseArgs(['--gate']),{ids:null,gate:true,lane:false,dryRun:false});
+for(const flag of ['--lane=0','--lanes','-lane','lane'])assert.equal(tankReleaseArgs(['--ids=a',flag]).lane,false,`${flag} is not lane mode`);
+const LANE_NOTE='npm test and npm run build:private NOT RUN (lane mode): the integrator mode runs both; '
+  +'the release gate runs every receipt and npm run build (the same vite build and localized pages, plus the public strip)';
+assert.equal(TANK_RELEASE_LANE_NOTE,LANE_NOTE);
+// Every flag combination: mode, header, notes and stages follow --lane and --gate alone.
+for(const gate of [false,true])for(const laneFlag of [false,true]){
+  const argv=['--ids=m1a1_abrams_hc',...(gate?['--gate']:[]),...(laneFlag?['--lane']:[])];
+  const invocation=tankReleaseInvocation(argv,'node-test');
+  const tag=argv.join(' ');
+  assert.equal(invocation.mode,laneFlag?'lane':'integrator',tag);
+  assert.equal(invocation.header,`${laneFlag?'lane':'integrator'} mode${gate?' --gate':''}: m1a1_abrams_hc`,tag);
+  assert.deepEqual(invocation.notes,laneFlag?[LANE_NOTE]:[],`${tag}: a lane run always says what it skipped; the integrator run skips nothing`);
+  assert.deepEqual(invocation.stages,tankReleaseStages('m1a1_abrams_hc',gate,'node-test',{lane:laneFlag}),tag);
+  const npm=invocation.stages.flatMap(stage=>stage.steps).filter(step=>step.command==='npm').map(tankReleaseLabel);
+  assert.deepEqual(npm,laneFlag?[]:['npm test','npm run build:private'],`${tag}: the suite and the private build run exactly in the integrator mode`);
+}
+const laneRun=tankReleaseInvocation(['--ids=leo2a7v,t14_armata','--gate','--lane','--dry-run'],'node-test');
+assert.deepEqual(laneRun.stages,laneStages,'the lane CLI runs the lane stages');
+assert.equal(laneRun.dryRun,true);
+const fullRun=tankReleaseInvocation(['--ids=leo2a7v,t14_armata','--gate'],'node-test');
+assert.deepEqual(fullRun.stages,stages,'the integrator CLI runs every step, the suite and the build');
+assert.equal(fullRun.dryRun,false);
+assert.match(tankReleaseInvocation(['--lane','--dry-run']).usage ?? '',/^usage: .*--ids=a,b \[--gate\] \[--lane\] \[--dry-run\]$/,'ids stay mandatory');
+assert.deepEqual(tankReleasePlanLines(laneRun).filter(line=>line.startsWith('  ')),lane.map(step=>`  ${tankReleaseLabel(step)}`),
+  '--dry-run prints every lane step');
+assert.deepEqual(tankReleasePlanLines(fullRun).filter(line=>line.startsWith('[tank-release] stage ')),
+  ['[tank-release] stage "scoring": 3 step(s), 1 at a time','[tank-release] stage "fleet probes, receipts and build": 15 step(s), 4 at a time']);
+
+// The note's claims, pinned where they live. The gate (tools/gate.mjs) runs every receipt and `npm run build`;
+// `npm run build` runs build:private's commands with the same prebuild, then the public strip and provenance.
+// The two differ only by VITE_PUBLIC_BUILD=1, a key no source read on 2026-10-16 (docs/DEVELOPMENT.md "Fast checks").
+const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
+assert.equal(pkg.scripts['tank:release:check'],'node tools/tank-release-check.mjs');
+assert.ok(pkg.scripts.build.startsWith(`VITE_PUBLIC_BUILD=1 ${pkg.scripts['build:private']} && `),
+  `npm run build runs build:private's commands first (build: ${pkg.scripts.build}; build:private: ${pkg.scripts['build:private']})`);
+for(const hook of ['pre','post'])assert.equal(pkg.scripts[`${hook}build`],pkg.scripts[`${hook}build:private`],`the ${hook}build hooks match`);
+const gateSource=readFileSync(new URL('./gate.mjs',import.meta.url),'utf8');
+assert.match(gateSource,/GATE_STEPS = Object\.freeze\(\[[^\]]*'build'[^\]]*'receipts'[^\]]*\]\)/,'the gate runs the build and the receipts');
+assert.match(gateSource,/if \(step === 'build'\) return \{ step, commands: \[\[npm, 'run', 'build'\]\]/,'the gate build is npm run build');
+assert.match(gateSource,/if \(step === 'receipts'\) \{\s*return \{ step, commands: \[\['node', 'tools\/run-selftests\.mjs', 'all'/,'the gate receipts are every receipt');
+assert.equal(pkg.scripts.test,'node tools/run-selftests.mjs all','npm test is the same every-receipt run');
+
+// The CLI is exactly runTankRelease plus the spawning runners and the exit status: any other statement fails here.
+const cliSource=readFileSync(new URL('./tank-release-check.mjs',import.meta.url),'utf8');
+const cliCode=cliSource.split('\n').map(line=>line.trim()).filter(line=>line&&!line.startsWith('//')&&!line.startsWith('#!'));
+assert.deepEqual(cliCode,[
+  "import { runCommand, runCapturedCommand } from './capture-command.mjs';",
+  "import { runTankRelease } from './tank-release-plan.mjs';",
+  'const status = await runTankRelease(process.argv.slice(2), { runCommand, runCapturedCommand });',
+  'if (status) process.exit(status);',
+],'the CLI holds no logic of its own');
+assert.match(readFileSync(new URL('./capture-command.mjs',import.meta.url),'utf8'),
+  /reject\(Object\.assign\(new Error\(`\$\{command\} exited \$\{code \?\? signal\}`\),\{status:code \?\? 128\}\)\)/,
+  'a failed child rejects with its exit status, which runTankRelease returns');
+
+// runTankRelease with fake children: the real control flow, output order, failure reporting and exit status.
+async function fakeRelease(argv,{fail={},slow=false}={}){
+  const out=[],calls=[];
+  let inFlight=0,maxInFlight=0;
+  const child=capture=>async(command,args)=>{
+    const label=tankReleaseLabel({command,args});
+    inFlight++; maxInFlight=Math.max(maxInFlight,inFlight);
+    calls.push({label,capture,inFlight});
+    try{
+      if(slow)await new Promise(resolve=>setTimeout(resolve,1));
+      if(label in fail)throw Object.assign(new Error(`${command} exited ${fail[label]}`),{status:fail[label]});
+    }finally{inFlight--;}
+  };
+  let tick=0;
+  const status=await runTankRelease(argv,{node:'node-test',runCommand:child(false),runCapturedCommand:child(true),
+    log:line=>out.push(['log',line]),error:line=>out.push(['error',line]),now:()=>(tick+=1000)});
+  return {status,out,calls,maxInFlight,text:out.map(([,line])=>line).join('\n')};
+}
+const laneArgv=['--ids=leo2a7v,t14_armata','--gate','--lane'];
+const lanePass=await fakeRelease(laneArgv,{slow:true});
+assert.equal(lanePass.status,0,'a passing lane run exits 0');
+assert.deepEqual(lanePass.calls.map(call=>call.label),lane.map(tankReleaseLabel),'a lane run starts every lane step once, in plan order');
+assert.deepEqual(lanePass.calls.map(call=>call.capture),lane.map(step=>step.capture),'each step runs through the runner its capture flag names');
+assert.equal(lanePass.calls.some(call=>call.label.startsWith('npm ')),false,'a lane run never starts npm test or the build');
+assert.equal(lanePass.maxInFlight,4,'the probes stage runs four at a time');
+assert.deepEqual(lanePass.calls.slice(0,4).map(call=>call.inFlight),[1,1,1,1],
+  'the scoring steps run one at a time, and the probes start only after the scoring stage finished');
+const laneLines=lanePass.out.map(([,line])=>line.trim());
+assert.equal(laneLines[0],'[tank-release] lane mode --gate: leo2a7v,t14_armata');
+assert.equal(laneLines[1],`[tank-release] ${LANE_NOTE}`,'the note precedes the run');
+const passIndex=laneLines.findIndex(line=>line.startsWith('[tank-release] PASS'));
+assert.match(laneLines[passIndex],/^\[tank-release\] PASS \(lane mode\) leo2a7v,t14_armata \(\d+\.\d min\)$/);
+assert.deepEqual(laneLines.slice(passIndex+1),[`[tank-release] ${LANE_NOTE}`],'a lane PASS repeats the note and ends there');
+assert.equal(lanePass.out.some(([kind])=>kind==='error'),false);
+const integratorPass=await fakeRelease(['--ids=leo2a7v,t14_armata','--gate'],{slow:true});
+assert.equal(integratorPass.status,0);
+assert.deepEqual(integratorPass.calls.map(call=>call.label),steps.map(tankReleaseLabel),'an integrator run starts every step, the suite and the build included');
+const plainIntegrator=await fakeRelease(['--ids=m1a1_abrams_hc']);
+assert.equal(plainIntegrator.status,0);
+assert.deepEqual(plainIntegrator.calls.filter(call=>call.label.startsWith('npm ')).map(call=>[call.label,call.capture]),
+  [['npm test',false],['npm run build:private',true]],'without --gate the integrator mode still runs the suite and the private build');
+assert.match(plainIntegrator.text,/\[tank-release\] PASS \(integrator mode\) m1a1_abrams_hc/);
+assert.doesNotMatch(plainIntegrator.text,/NOT RUN/,'an integrator run claims nothing was skipped');
+const plainLane=await fakeRelease(['--ids=m1a1_abrams_hc','--lane']);
+assert.equal(plainLane.status,0);
+assert.equal(plainLane.text.split('\n').filter(line=>line===`[tank-release] ${LANE_NOTE}`).length,2,'without --gate a lane run still prints the note before and after');
+assert.equal(plainLane.calls.some(call=>call.label.startsWith('npm ')),false);
+// Failures: a lane failure exits with the earliest failed step's status, every failure of the stage is listed in plan
+// order, no PASS line is printed and no later stage starts.
+const scoringFail=await fakeRelease(laneArgv,{fail:{[tankReleaseLabel(lane[1])]:7}});
+assert.equal(scoringFail.status,7,'a failed lane step fails the lane run with its status');
+assert.deepEqual(scoringFail.calls.map(call=>call.label),lane.slice(0,3).map(tankReleaseLabel),'the scoring stage finishes; the probes never start');
+assert.doesNotMatch(scoringFail.text,/PASS/);
+assert.equal(scoringFail.text.split('\n').filter(line=>line===`[tank-release] ${LANE_NOTE}`).length,1,'no closing note after a failure');
+assert.equal(scoringFail.out.at(-1)[1],'\n[tank-release] FAIL (lane mode) leo2a7v,t14_armata','the FAIL line is the last output');
+assert.deepEqual(scoringFail.out.filter(([kind])=>kind==='error').map(([,line])=>line.trim()),[
+  `[tank-release] FAILED step: ${tankReleaseLabel(lane[1])} (node-test exited 7)`,
+  '[tank-release] FAIL (lane mode) leo2a7v,t14_armata',
+]);
+const probeFails=await fakeRelease(laneArgv,{slow:true,fail:{[tankReleaseLabel(lane[9])]:5,[tankReleaseLabel(lane[4])]:3}});
+assert.equal(probeFails.status,3,'the earliest failed step in plan order sets the status');
+assert.equal(probeFails.calls.length,lane.length,'a stage runs every step before it reports');
+assert.deepEqual(probeFails.out.filter(([kind])=>kind==='error').map(([,line])=>line.trim()),[
+  `[tank-release] FAILED step: ${tankReleaseLabel(lane[4])} (node-test exited 3)`,
+  `[tank-release] FAILED step: ${tankReleaseLabel(lane[9])} (node-test exited 5)`,
+  '[tank-release] FAIL (lane mode) leo2a7v,t14_armata',
+],'every failure of the stage is reported, in plan order');
+const npmFail=await fakeRelease(['--ids=m1a1_abrams_hc','--gate'],{fail:{'npm test':1}});
+assert.equal(npmFail.status,1,'an integrator suite failure fails the run');
+assert.match(npmFail.text,/FAILED step: npm test \(npm exited 1\)\n\n\[tank-release\] FAIL \(integrator mode\) m1a1_abrams_hc$/);
+const statusless=await fakeRelease(laneArgv,{fail:{[tankReleaseLabel(lane[0])]:0}});
+assert.equal(statusless.status,2,'a failure without a status exits 2');
+// Before any step: --dry-run runs nothing; usage exits 1; a bad id is a FAIL line with status 2, not a stack trace.
+const dry=await fakeRelease([...laneArgv,'--dry-run']);
+assert.equal(dry.status,0);
+assert.deepEqual(dry.calls,[],'--dry-run starts no child');
+assert.deepEqual(dry.out.map(([,line])=>line),['[tank-release] lane mode --gate: leo2a7v,t14_armata',`[tank-release] ${LANE_NOTE}`,...tankReleasePlanLines(laneRun)]);
+const usage=await fakeRelease(['--lane']);
+assert.equal(usage.status,1);
+assert.deepEqual(usage.calls,[]);
+assert.match(usage.out[0][1],/^usage: /);
+for(const [argv,message] of [[['--ids=nope','--lane'],/^\n\[tank-release\] FAIL \(lane mode\) nope: .*known playable/],
+  [['--ids=m1a1_abrams_hc,m1a1_abrams_hc','--gate','--lane'],/^\n\[tank-release\] FAIL \(lane mode\) m1a1_abrams_hc,m1a1_abrams_hc: Expected unique known playable tank IDs$/],
+  [['--ids=m1a1_abrams_hc,'],/^\n\[tank-release\] FAIL \(integrator mode\) m1a1_abrams_hc,: release requires nonempty tank IDs$/]]){
+  const bad=await fakeRelease(argv);
+  assert.equal(bad.status,2,`${argv.join(' ')} exits 2`);
+  assert.deepEqual(bad.calls,[]);
+  assert.equal(bad.out.length,1);
+  assert.equal(bad.out[0][0],'error');
+  assert.match(bad.out[0][1],message);
+}
+console.log('tank-release-plan: lane mode skips exactly npm test and build:private, the anatomy check stays fleet-wide; '
+  +'command line, CLI, output, failure reporting and exit status pass');
 
 const concept=tankReleaseSteps('ztz100_prototype,object695',true,'node-test');
 assert.equal(concept.some(s=>s.args[0]==='tools/procedural-fidelity.mjs'),false,'obsolete comparisons are not run');
