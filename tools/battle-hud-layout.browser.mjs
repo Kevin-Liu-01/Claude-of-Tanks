@@ -82,13 +82,14 @@ const NOTICE_ALERTS = [
 const LONG_ALERTS = ['wave123','autoAimLong','flagDroppedEnemy','ammoEmpty'];
 // Where every place clear of the reticle crosses a side lane whole, that lane holds no row while the element shows
 // (mouseNoticePlan.selftest.mjs lists the same: its last resort before any reticle ink).
-// Matched against the stage key ('<context>|<set>|<sight>').
+// Matched against the stage key ('<context>|<set>|<sight>'), its set reduced to the elements that can have emptied the
+// lane (those shown; the medal card only where it crosses the lane's column).
 const EMPTY_LANES_OK={'mouse-768x600':/alert|revive|medal/,'mouse-481x700':/alert/,
   // three up at once (the revive count beside both notices) on a phone; on a short window the revive count, which keeps
   // off both notices' places: every such place clear of the resting sight crosses the left lane whole (one row deep with
   // an objective, two without)
   'phone-mouse':/alert:[^|]*\+revive/,'chinese-phone-mouse':/alert:[^|]*\+revive/,
-  'short-mouse':/revive/,'chinese-short-mouse':/revive/};
+  'short-mouse':/^[^|]*\|(?![^|]*medal)[^|]*revive/,'chinese-short-mouse':/^[^|]*\|(?![^|]*medal)[^|]*revive/};
 // [key, fixture state, kill rows kept (null: as staged), rosters a side (null: 7), notice set ('' none), sight, Tab held]
 function noticeStages(){
   const out=[];
@@ -199,10 +200,12 @@ function noticeStage([state,kills,rosters,set,sight,tab]){
   window.dispatchEvent(new Event('cot-hud-relayout'));
 }
 // Why a hidden (waiting) medal card waits, from what the stage measured: its hidden place on a shown notice or the revive
-// count; the scope up where its place clears the battle sight only (`scopedShort`); or, on a phone-width window (the
-// only windows where every place for the card cuts a side lane: mouseNoticePlan.selftest.mjs 4c), the layout's 'f'
-// mark (a lane its place cuts shows a kill row) with that lane's shown rows meeting its place. Exercised without a
-// browser in battleHudLayout.selftest.mjs.
+// count; the scope up where its place clears the battle sight only (`scopedShort`); or, on a phone-width window, the
+// layout's 'f' mark (a lane its place cuts shows a kill row) with that lane's shown rows meeting its place. Among the
+// receipt's cases only the phone-width ones leave the card no place that keeps the lanes whole (mouseNoticePlan.selftest
+// 4c and 4f, on and near the census); off the census some desktop windows do too (768 x 592, 844 x 404, 960 x 410,
+// 740 x 360), and a case staged there would need a planner-side flag rather than the width. Exercised without a browser
+// in battleHudLayout.selftest.mjs.
 function medalWaitCause(got,scopedShort,width){
   const b=got.waitingMedal;
   if(scopedShort)return true;
@@ -417,14 +420,18 @@ try {
           if(k==='d'&&n.sub!==(height>550))failures.push(`the detection's second line is ${n.sub?'shown':'hidden'} at ${height} px tall (main: ${height>550?'shown':'hidden'})`);
           noticeTable.push({name,key,k,box:n.box,union:n.union,rest:n.rest,main:main[0],tier:t});
         }
-        // the lanes: every row main shows while nothing is up; at least one while anything is
+        // the lanes: every row main shows while nothing is up; at least one while anything is (an exemption is matched
+        // against the elements that can have emptied that lane: those shown, the medal card only over the lane's column)
+        const kindOf=part=>part==='det'?'d':part.startsWith('alert:')?'a':part==='countdown'?'c':part==='medal'?'m':part==='revive'?'r':'';
+        const laneKey=lane=>`${key.split('|')[0]}|${set.split('+').filter(part=>{const n=got.notices[kindOf(part)];
+          return n&&(part!=='medal'||!lane.x||(n.box[0]<lane.x[1]+8&&n.box[0]+n.box[2]>lane.x[0]-8));}).join('+')}|${key.split('|')[2]}`;
         for(const [i,side] of [[0,'l'],[1,'r']]){
           const lane=got.lanes[side];
           if(!lane||!lane.staged)continue;
           const mainRows=mainStage?._l?.[i]??-1;
           if(!set&&lane.shown<mainRows)failures.push(`the ${side==='l'?'left':'right'} lane shows ${lane.shown} kill rows with nothing up (main ${mainRows})`);
           // (the countdown runs before the first kill: its lanes hold none to keep)
-          if(set&&!set.includes('countdown')&&lane.shown<1&&(mainRows<0||mainRows>0)&&!EMPTY_LANES_OK[name]?.test(key))
+          if(set&&!set.includes('countdown')&&lane.shown<1&&(mainRows<0||mainRows>0)&&!EMPTY_LANES_OK[name]?.test(laneKey(lane)))
             failures.push(`the ${side==='l'?'left':'right'} lane shows no kill row while ${set} is up`);
         }
         // a kill burst and Tab move nothing: the same set and sight in k0, k3, the burst and Tab share every box

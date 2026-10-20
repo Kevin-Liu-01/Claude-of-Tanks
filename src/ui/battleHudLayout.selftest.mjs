@@ -241,7 +241,7 @@ try {
   const saved=new Map(['document','window','ResizeObserver','MutationObserver','requestAnimationFrame','getComputedStyle',
     'setTimeout','clearTimeout'].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
   const rect=(left,top,width,height)=>({left,top,width,height,right:left+width,bottom:top+height,x:left,y:top});
-  function harness({width=1366,height=768,touch=false,tab=false,elements={},inRoot={},extra=()=>({})}={}){
+  function harness({width=1366,height=768,touch=false,tab=false,elements={},inRoot={},extra=()=>({}),bodyData={}}={}){
     const frames=new Map();let nextFrame=1;let observer=null;const properties=new Map();
     const classes=list=>{const set=new Set(list);return {set,contains:c=>set.has(c),add:c=>set.add(c),remove:c=>set.delete(c),
       toggle(c,on){const want=on??!set.has(c);if(want)set.add(c);else set.delete(c);return want;}};};
@@ -252,7 +252,7 @@ try {
       getClientRects(){return [{}];},getBoundingClientRect(){return typeof box==='function'?box():box??rect(0,0,0,0);},
       dispatchEvent(){return true;},querySelector(){return null;},querySelectorAll(){return [];}});
     const root=node(tab?['cot-hud','rosters-expanded']:['cot-hud']);root.querySelector=sel=>inRoot[sel]?.()??null;
-    const body=node(touch?['cot-touch-layout']:[]);const html=node();html.clientWidth=width;
+    const body=node(touch?['cot-touch-layout']:[]);Object.assign(body.dataset,bodyData);const html=node();html.clientWidth=width;
     const parts={'.cot-top':node([],rect(width/2-172,0,344,62)),...Object.fromEntries(Object.entries(elements).map(([k,f])=>[k,node([],()=>f(root))])),...extra(node,{root,properties})};
     globalThis.document={body,documentElement:html,querySelector:sel=>parts[sel]??null,querySelectorAll:()=>[]};
     globalThis.window={innerWidth:width,innerHeight:height,visualViewport:{width,height,scale:1},document:globalThis.document,addEventListener(){}};
@@ -356,6 +356,30 @@ try {
       assert.equal(run.frames.size,1,'the scope going down relayouts too');run.flush();
       assert.equal(banner.dataset.placement,'ready','and the card shows again');
     }
+    // The layout marks a wait on the feed ('f') only where the card's place cuts the lane that shows a row: at 390 x 844
+    // (the phone's census boxes, the bottom filled by a stretched ammunition rail so that, as on the census, every place
+    // for the card cuts the right lane) a right-lane kill row holds the card, marked, and a left-lane row alone neither
+    // holds nor marks it (the receipt's medalWaitCause trusts this mark).
+    {
+      const feed=(left,right,detected=false)=>{
+        let banner;const lane=n=>({childElementCount:n,children:Array.from({length:n},()=>({hidden:false})),classList:{contains:()=>false}});
+        const run=harness({width:390,height:844,bodyData:{cotWidth:'phone'},
+          inRoot:{'.cot-kill-lane.l':()=>lane(left),'.cot-kill-lane.r':()=>lane(right),'.cot-sixth.on':()=>detected?{}:null},
+          extra:node=>({'.cot-medal-toasts':(banner=node(),banner.childElementCount=1,banner),'.cot-mode-status.show':node([],rect(77,61,236,41)),
+            '.cot-dp':node([],rect(8,579,120,137)),'.cot-drive':node([],rect(140,635,81,81)),'.cot-vehicle-controls':node([],rect(12,744,366,32)),
+            '.cot-shells':node([],rect(12,500,366,332)),'.cot-si-cardhost':node([],rect(203,375,175,260)),'.cot-net':node([],rect(120,109,88,20)),
+            '.cot-minimap':node([],rect(8,109,104,104))})});
+        return [run.body.dataset.hudNoticeTiers.split(' ').pop(),banner.dataset.placement];
+      };
+      const [right,rightPlace]=feed(0,3),[left,leftPlace]=feed(3,0),[none,nonePlace]=feed(0,0);
+      assert.match(right,/^m\d\w*wf$/,`a right-lane kill row holds the card, marked as the feed's (${right})`);
+      assert.equal(rightPlace,'deferred');
+      assert.ok(!/w/.test(left)&&leftPlace==='ready',`a left-lane row alone neither holds nor marks it (${left}, ${leftPlace})`);
+      assert.ok(!/w/.test(none)&&nonePlace==='ready','nor does an empty feed');
+      // held by the detection on its place while only the lane it leaves whole shows rows: waiting, not on the feed
+      const [lit,litPlace]=feed(3,0,true);
+      assert.ok(/w$/.test(lit)&&litPlace==='deferred',`the lit detection on its place holds it, not marked as the feed's (${lit})`);
+    }
     // A medal card queued while the revive count shows (a medal can arrive after the death) waits exactly where the two
     // places meet: the written places (the card's centre and top, the count's centre, top and scale) decide it.
     let met=0,apart=0;
@@ -411,7 +435,7 @@ assert.ok(measureStart>=0&&measureEnd>measureStart);
   const phoneLanes={l:lane(0,171,221,308,3),r:lane(219,390,148,235,3)};
   assert.equal(cause(stage('d2 a2 c? r? m2swf',phoneLanes),false,390),true,'a phone-width card waits on the rows of the lane its place cuts');
   assert.equal(cause(stage('d2 a2 c? r? m2sw',phoneLanes),false,390),false,'not without the layout\'s mark (critic M7: a card held by any kill row)');
-  assert.equal(cause(stage('d2 a2 c? r? m2swf',phoneLanes),false,844),false,'nor on a desktop window, where some place for it always clears the lanes');
+  assert.equal(cause(stage('d2 a2 c? r? m2swf',phoneLanes),false,844),false,'nor on a desktop window (the receipt\'s desktop cases always leave the card a place that keeps the lanes whole: mouseNoticePlan.selftest.mjs 4c, 4f)');
   assert.equal(cause(stage('d2 a2 c? r? m2swf',{l:lane(0,171,221,308,3),r:lane(219,390,148,235,0)}),false,390),false,'nor on a lane showing no row');
   assert.equal(cause(stage('d2 a2 c? r? m2swf',{l:lane(0,171,221,308,3),r:lane(219,390,260,347,3)}),false,390),false,'nor on rows clear of its place');
   assert.equal(cause(stage('d2 a2 c? r? m2sw',phoneLanes,{d:{box:[56,150,164,48]}}),false,390),true,'a shown notice on its place is a cause');
