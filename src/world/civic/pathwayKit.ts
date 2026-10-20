@@ -274,7 +274,9 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
         // a junction's mouth: another road's carriageway at the kerb
         let other = Infinity;
         for (let rj = 0; rj < ctx.roads.length; rj++) {
-          if (rj === ri || classOf(rj) === 'none') continue;
+          // (229 b1 r1, the batch-2 critic's D2: an unkerbed road crossing a kerbed one is a junction too — a run stopped
+          // across a causeway's roadway)
+          if (rj === ri) continue;
           other = Math.min(other, nearestOnRoad(ctx.roads[rj], kx, kz).d - clearOf(rj));
         }
         if (other < 0) return why('junction');
@@ -302,10 +304,12 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
         }
         // a house fronting it: the pavement out to its facade (at most the widest); none: the open walk
         out.state = 'open';
-        for (let o = W0 + 0.15; o <= Math.max(W0 + pr.maxWalk + 0.05, out.past ? K + fFar : 0); o += 0.1) {
+        // (229 b1 r1) a town without a wall under the open-gap rule reads its fronts as past the wall does: the frontage band
+        const far = out.past || plan.openGapM !== undefined;
+        for (let o = W0 + 0.15; o <= Math.max(W0 + pr.maxWalk + 0.05, far ? K + fFar : 0); o += 0.1) {
           const px = x + nx * o, pz = z + nz * o;
           if (built(px, pz, 0.02)) {
-            if (!out.past || o >= K + fNear - 0.6) { out.state = 'fronted'; out.outer = Math.min(o - 0.05, W0 + pr.maxWalk); }
+            if (!far || o >= K + fNear - 0.6) { out.state = 'fronted'; out.outer = Math.min(o - 0.05, W0 + pr.maxWalk); }
             break;
           }
         }
@@ -324,7 +328,8 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
           // past it: the fronted stretches, joined over open gaps of up to 7 m; (229 b1 r1) inside a town without a wall
           // (plan.openGapM) the same over its own gaps: no pavement along open ground, a vacant lot's short gap bridged
           if (samples[i].state !== 'fronted') { i++; continue; }
-          const gap = zone ? 7 : Math.max(1, Math.round(plan.openGapM! / step));
+          // (229 b1 r1, the critic's D7: the gaps in metres, not samples, now a style's step is not a metre)
+          const gap = Math.max(1, Math.round((zone ? 7 : plan.openGapM!) / step));
           for (;;) {
             let k = j + 1;
             while (k < samples.length && samples[k].past === zone && samples[k].state === 'open' && k - j <= gap) k++;
@@ -338,7 +343,7 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
             samples[k].outer = Math.min(samples[a].outer, samples[b].outer);
           }
         }
-        if (j - i >= 3) {
+        if ((j - i) * step >= 3) {
           // the outer edge eased to its narrower neighbour's (no flag's corner into a house where a front steps)
           const outer = samples.slice(i, j + 1).map((s) => s.outer);
           for (let k = i; k <= j; k++) samples[k].outer = Math.min(outer[k - i], outer[Math.max(0, k - i - 1)], outer[Math.min(j - i, k - i + 1)]);
@@ -366,8 +371,10 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
         const met = isA ? metA : metB, T = isA ? c.TA : c.TB, n = isA ? c.nAc : c.nBc;
         if (met.has(c) || Math.hypot(e.x + e.nx * K - T[0], e.z + e.nz * K - T[1]) >= 6) continue;
         let k = end + dir;
-        while (k >= 0 && k < S.length && Math.abs(k - end) <= 7 && S[k].state !== 'blocked') k += dir;
-        if (k < 0 || k >= S.length || S[k].why !== 'return' || Math.abs(k - end) > 8) continue;
+        // (the reach to the corner's return: 7 m, in the street's samples)
+        const reach = Math.max(1, Math.round(7 / step));
+        while (k >= 0 && k < S.length && Math.abs(k - end) <= reach && S[k].state !== 'blocked') k += dir;
+        if (k < 0 || k >= S.length || S[k].why !== 'return' || Math.abs(k - end) > reach + 1) continue;
         // the first return sample moves onto the corner's tangent point (its street point the kerb's line back from it)
         S[k] = { ...S[k], x: T[0] - n[0] * K, z: T[1] - n[1] * K, nx: n[0], nz: n[1] };
         for (let q = end + dir; q !== k + dir; q += dir) S[q] = { ...S[q], state: e.state === 'blocked' ? 'open' : e.state, outer: e.outer };
