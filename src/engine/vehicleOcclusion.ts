@@ -123,7 +123,7 @@ export function vehicleOcclusionShade(occ: number, sunShare: number, rangeFade =
   return 1 - o * strength * (amb + (1 - amb) * directShare);
 }
 
-export interface VehicleOcclusionUniforms {
+interface VehicleOcclusionUniforms {
   uVehOcc: { value: number };
   uVehOccStrength: { value: number };
   uVehOccDirect: { value: number };

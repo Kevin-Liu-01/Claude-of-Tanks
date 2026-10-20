@@ -74,15 +74,10 @@ function carrierSurfaceAt(spec: MissionCarrierSpec,frame: Frame,x: number,z: num
   }
   return height;
 }
-export function hullSurfaceAt(spec: MissionCarrierSpec, x: number, z: number): number { return carrierSurfaceAt(spec,'hull',x,z); }
-export function missionAttachmentFrame(spec: MissionCarrierSpec): Frame { return missionAttachmentFor(spec).frame; }
 /** The generated equipment inventory records the native rig datum. Some older
  * armor reference pivots differ from their renderer's actual rotating owner. */
 export function missionAttachmentTurretPivot(spec:MissionCarrierSpec):Vec3Tuple {
   return auxiliaryCapabilities(spec)?.turretPivot??spec.armor.turretPivot;
-}
-export function missionSurfaceAt(spec: MissionCarrierSpec, x: number, z: number): number {
-  return carrierSurfaceAt(spec,missionAttachmentFrame(spec),x,z);
 }
 function plateBounds(plate: SurfacePlate): Bounds {
   const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];

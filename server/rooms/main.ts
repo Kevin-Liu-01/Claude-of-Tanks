@@ -35,7 +35,7 @@ function integerEnv(name: string, fallback: number, low: number, high: number): 
   return value;
 }
 
-export async function startRoomsServerFromEnv(env: NodeJS.ProcessEnv = process.env) {
+async function startRoomsServerFromEnv(env: NodeJS.ProcessEnv = process.env) {
   const log = createLogger({ level: parseLogLevel(env.COT_MATCH_LOG_LEVEL) });
   let seatSecret = env.COT_MATCH_SEAT_SECRET ?? '';
   if (seatSecret.length < 16) {

@@ -122,7 +122,7 @@ export function readDestructionEntries(reader: ByteReader): DestructionLogEntry[
 }
 
 /** The same entry (by what it records; a crater by its id, a breach by its structure, section and slot). */
-export function sameDestructionEntry(a: DestructionLogEntry, b: DestructionLogEntry): boolean {
+function sameDestructionEntry(a: DestructionLogEntry, b: DestructionLogEntry): boolean {
   if (a.kind !== b.kind) return false;
   if (a.kind === 'stage' && b.kind === 'stage') return a.structureId === b.structureId && a.stage === b.stage;
   if (a.kind === 'breach' && b.kind === 'breach') return a.structureId === b.structureId && a.section === b.section && a.hole === b.hole;

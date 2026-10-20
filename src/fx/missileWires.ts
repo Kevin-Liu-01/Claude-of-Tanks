@@ -49,7 +49,7 @@ const SLACK_V = 1.6, SLACK_T = 0.45, FADE0 = 2.2, FADE1 = 3.6;
 /** the two strands of a twin-wire round ride this far apart (m) */
 const STRAND_GAP = 0.035;
 
-export interface MissileWires {
+interface MissileWires {
   readonly mesh: THREE.Mesh;
   /** A wire for round `key`, `strands` (1 or 2), paid out from the tube mouth at (x, y, z) at fx time `now`. */
   begin(key: number, strands: number, x: number, y: number, z: number, now: number): number;

@@ -125,7 +125,7 @@ export type RigidPartSpec =
     contacts?: boolean;
   };
 
-export interface RigidShapeOptions {
+interface RigidShapeOptions {
   /** Body restitution (0..1, default 0.3) and friction (default 0.6). */
   restitution?: number;
   friction?: number;
@@ -182,7 +182,7 @@ export interface RigidEnvironment {
   isSolid?(record: CollisionRecord): boolean;
 }
 
-export interface RigidWorldOptions {
+interface RigidWorldOptions {
   /** Body slots (default 32). */
   capacity?: number;
   /** Kinematic box slots (default 128). */

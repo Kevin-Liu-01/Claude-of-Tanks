@@ -65,9 +65,6 @@ export interface CineEnv {
   nowS: number;
 }
 
-/** Light pulse scheduled by a recipe: the explosion light flashes at `atS`. */
-export interface CinePulse { atS: number; x: number; y: number; z: number; peak: number }
-
 /** Continuous fire light contribution (wrecks, fire fields, flares). */
 export interface CineLight {
   x: number; y: number; z: number;
@@ -437,7 +434,7 @@ export function muzzleBlast(
   ctx.shockRing(px + fx * 1.4, pz + fz * 1.4, (7 + 6 * groundK) * s, 0.7 * groundK, 0);
 }
 
-export interface FireballOptions {
+interface FireballOptions {
   /** Overall size: 1 = an MBT ammunition fireball. */
   scale: number;
   /** Extra seconds of rising roll for big blasts. */
