@@ -282,6 +282,9 @@ interface Live {
 const BAKE_STILL_S = 1;
 /** (round 5) A heap's watched plates are judged this often (fx s) while their building changes and this long after. */
 const WATCH_EVERY_S = 0.2, WATCH_AFTER_S = 6;
+/** (round 5) And at all only this long after its building last changed (fx s): what holds a plate then is its building's
+ *  heap and remnants at rest, which change only with the building (a touch watches its plates again). */
+const WATCH_KEEP_S = 20;
 /** A fracture body's rigid shape options: masonry lands dead and grips, rolls little and stops turning soon; one that
  *  still creeps four seconds on sleeps where it lies (integ's engine: rubbleBodies' law), so a heap leaves the solver
  *  within seconds (2026-10-15, the port's house probe: a heap of a hundred awake clumps was most of the frame). */
@@ -2288,9 +2291,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const tMerge = profStart();
       for (const live of lives.values()) {
         if (live.bakedPending.length && (live.bakedPending.length >= 6 || t - live.mergedAt > 1)) { mergeBaked(live); live.mergedAt = t; }
-        // (round 5) its watched plates while it changes (and a while after: the bodies under them settle), five times a
-        // second; once a second for good while any is watched (a body under one can still be cleared off)
-        if (live.watch.length && t - live.watchedAt >= (t - live.touchedAt <= WATCH_AFTER_S ? WATCH_EVERY_S : 1)) judgeWatched(live);
+        // (round 5) its watched plates while it changes, five times a second, and once a second for a while after (the
+        // bodies under them settle)
+        if (live.watch.length && t - live.touchedAt <= WATCH_KEEP_S && t - live.watchedAt >= (t - live.touchedAt <= WATCH_AFTER_S ? WATCH_EVERY_S : 1)) judgeWatched(live);
       }
       profEnd('fr.merge', tMerge);
       if (!list.length) return;

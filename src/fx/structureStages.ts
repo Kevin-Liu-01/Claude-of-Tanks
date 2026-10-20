@@ -116,6 +116,9 @@ const STRIKE_HOLES = 9;
 /** (round 5) A set piece's piece falls over gravity's time from its middle's drop, this much slower (it turns as it
  *  goes), never quicker or longer than these (s). */
 const FALL_SLOW = 1.25, FALL_MIN_S = 0.45, FALL_MAX_S = 1.6;
+/** (round 5) A part over the eaves stands with the roof gone when what stands under it holds this share of its lowest
+ *  points (the slab check: a part held a quarter less than it was in the intact building hangs). */
+const HOLD_OVER_EAVES = 0.75;
 /** (destruction-slabs 227 round 5) A top storey's room open to the sky (its roof fallen): its walls and floor lit as the
  *  outside is (laid dim, 0.55-0.6, they read as one flat dark plane over the roofless storey: the critics' tavern lid). */
 const OPEN_ROOM_WALL = 0.95, OPEN_ROOM_FLOOR = 0.85;
@@ -817,7 +820,10 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
             }
             if (t >= y - 0.8) ok++;
           }
-          if (low.size && ok * 2 >= low.size) {
+          // (round 5; the census's fjord #0 fishery, R narrow-back: a 1.4 m beam of its roof's frame 6.6 m up, held over half
+          // its cells, hung 40 % held once the roof fell — the slab check calls a quarter less than it was held hanging) held
+          // over three quarters of its lowest points, it stands
+          if (low.size && ok >= HOLD_OVER_EAVES * low.size) {
             mine.delete(root); held++;
             samples(ps, (r) => r === root, (cell, y) => { if (y > top[cell]!) top[cell] = y; });
           }
