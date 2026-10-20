@@ -49,7 +49,8 @@ const facing = (x: number, z: number, tx: number, tz: number): number => +(Math.
 export const RUINSPIRES_CIVIC_PLAN: CivicPlan = {
   mapId: 'ruinspires',
   style: 'sarajevo',
-  overlay: { plazaNest: false, hedgehogsAtApproaches: true },
+  // (the plaza's sandbag nest is left out by the room's veto after its draws: the overlay keeps its pass running)
+  overlay: { hedgehogsAtApproaches: true },
   pathways: {
     // the boulevard, the trunk roads and the terrace streets main; the cross streets lanes
     classes: { 0: 'main', 1: 'main', 2: 'main', 3: 'main', 4: 'main', 5: 'main', 6: 'main', 7: 'gasse', 8: 'gasse', 9: 'gasse', 10: 'gasse' },
@@ -103,6 +104,8 @@ export const RUINSPIRES_CIVIC_PLAN: CivicPlan = {
         { x: 15.5, z: -16 }, { x: 29, z: -16 }, { x: 15.5, z: -24 }, { x: 29, z: -24 },
         { x: -15.5, z: 16 }, { x: -29, z: 16 }, { x: -15.5, z: 24 }, { x: -29, z: 24 },
         { x: -35.5, z: -13, grate: true }, { x: -35.5, z: -20, grate: true }, { x: 35.5, z: 13, grate: true }, { x: 35.5, z: 20, grate: true },
+        // the paving between each trunk mouth's diagonal route and the x = +-4 run: a plane in its grate
+        { x: -9, z: -21, grate: true }, { x: 9, z: 21, grate: true },
       ],
     },
     furniture: twins([
@@ -113,6 +116,8 @@ export const RUINSPIRES_CIVIC_PLAN: CivicPlan = {
       // the concrete planters at the bed's corners and along the room's trunk-side frontage east of the routes
       ...[[9.2, -12.4], [34.8, -12.4], [9.2, -27.8], [34.8, -27.8]].map(([x, z]) => ({ kind: 'pflanzkuebel', x, z, yawDeg: 0 })),
       { kind: 'trashcan', x: 11.6, z: -11.6, yawDeg: 0 }, { kind: 'trashcan', x: 33.0, z: -28.6, yawDeg: 0 },
+      // under the plane between the routes: a bench facing it and a planter
+      { kind: 'bench', x: -6, z: -18, yawDeg: facing(-6, -18, -9, -21) }, { kind: 'pflanzkuebel', x: -12.5, z: -22, yawDeg: 0 },
     ]),
     // the city's own cars parked at the kerb along the trunk-side frontages, nose to tail (the yugoslav1990s fleet)
     parking: twins([
@@ -120,10 +125,11 @@ export const RUINSPIRES_CIVIC_PLAN: CivicPlan = {
       { kind: 'sedan', x: 24.0, z: -32.55, yawDeg: 90.5 }, { kind: 'pickup', x: 30.2, z: -32.7, yawDeg: 89.6 },
     ]),
     bayMarks: [],
-    lamps: [],
+    // a post of the city's own (shot-out) lamps at each trunk mouth's corner, beside its diagonal route
+    lamps: twins([{ kind: 'lamp', x: -17.8, z: -10.6, yawDeg: 0 }]),
     fountainRing: null,
     steps: [],
     lawns: [SE, NW],
-    targets: { records: 50, benches: 8, lawnM2: 600, lampsAround: 0, openShare: 0.06, largestDisc: 10 },
+    targets: { records: 30, benches: 8, lawnM2: 600, lampsAround: 0, openShare: 0.06, largestDisc: 10 },
   }],
 };

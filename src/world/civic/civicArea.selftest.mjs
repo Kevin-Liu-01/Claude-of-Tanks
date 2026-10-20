@@ -36,7 +36,9 @@ async function build(mapId, off) {
 const inRect = (r, x, z, m = 0) => x >= r.x0 - m && x <= r.x1 + m && z >= r.z0 - m && z <= r.z1 + m;
 const VEHICLES = new Set(['sedan', 'wagon', 'pickup', 'van', 'jeep', 'truck', 'truckbox', 'truckflatbed', 'handcart', 'haycart', 'sled']);
 
-for (const mapId of plans.CIVIC_PLAN_MAPS) {
+// (COT_CIVIC_MAPS=a,b runs those plans only: a lane's own iteration; the gate runs every plan)
+const ONLY = process.env.COT_CIVIC_MAPS ? new Set(process.env.COT_CIVIC_MAPS.split(',')) : null;
+for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
   const plan = plans.civicPlanFor(mapId);
   const base = await build(mapId, true), civic = await build(mapId, false);
   const { built, flora, field, config } = civic;

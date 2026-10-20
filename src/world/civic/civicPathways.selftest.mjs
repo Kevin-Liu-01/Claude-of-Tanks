@@ -38,7 +38,9 @@ const insidePolygon = (poly, x, z) => {
   return inside;
 };
 
-for (const mapId of plans.CIVIC_PLAN_MAPS) {
+// (COT_CIVIC_MAPS=a,b runs those plans only: a lane's own iteration; the gate runs every plan)
+const ONLY = process.env.COT_CIVIC_MAPS ? new Set(process.env.COT_CIVIC_MAPS.split(',')) : null;
+for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
   const plan = plans.civicPlanFor(mapId), pw = plan.pathways;
   if (!pw) continue;
   const config = maps.getMapConfig(mapId);
@@ -50,7 +52,9 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
   const report = built.group.userData.pathways;
   assert.ok(report, `${mapId}: the pathway kit ran`);
   const { census } = report;
-  assert.ok(census.legacyPieces > 0, `${mapId}: the legacy pass's draws spent (${census.legacyPieces} pieces)`);
+  // (229: a map that never laid the legacy kerbs spends none)
+  if (config.props?.curbs) assert.ok(census.legacyPieces > 0, `${mapId}: the legacy pass's draws spent (${census.legacyPieces} pieces)`);
+  else assert.equal(census.legacyPieces, 0, `${mapId}: no legacy kerbs, no draws spent`);
   const kerbs = built.group.userData.pathwayFootprints;
   assert.ok(Array.isArray(kerbs) && kerbs.length > 0, `${mapId}: the runs' footprints published`);
   const solids = built.obstacles.filter((o) => o.kind === 'structure' || o.kind === 'wallstone' || o.structureIdx != null);

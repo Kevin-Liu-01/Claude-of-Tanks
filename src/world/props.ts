@@ -10208,6 +10208,17 @@ ${snowCap ? `
       let tx = rec.x, tz = rec.z;
       if (pw.classes[best.ri] === 'main') { tx = best.x + nx * (pw.kerbM + 0.5); tz = best.z + nz * (pw.kerbM + 0.5); }
       else for (let o = best.d; o > 1.0 && against(tx, tz, 0.45); o -= 0.05) { tx = best.x + nx * o; tz = best.z + nz * o; }
+      // (229) a house fronting the lamp line itself: the post slides along the street (the line's own direction, either
+      // way, half a metre at a time to 6 m) to the nearest seat clear of every front
+      if (against(tx, tz, 0.3)) {
+        const ax = -nz, az = nx;
+        for (let d = 0.5; d <= 6 && against(tx, tz, 0.3); d += 0.5) {
+          for (const sgn of [1, -1]) {
+            const sx = tx + ax * d * sgn, sz = tz + az * d * sgn;
+            if (!against(sx, sz, 0.3)) { tx = sx; tz = sz; break; }
+          }
+        }
+      }
       if (against(tx, tz, 0.3)) { moved.push({ at: [rec.x, rec.z], kept: true }); continue; }
       moved.push({ from: [+rec.x.toFixed(2), +rec.z.toFixed(2)], to: [+tx.toFixed(2), +tz.toFixed(2)], road: best.ri });
       relocateParkedVehicleRecord(destructibleContext, rec, tx, tz);
