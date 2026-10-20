@@ -182,6 +182,7 @@ uniform vec2 uNearFade;
 uniform vec4 uBandWarp[ ${VOLUME_ATLAS.bands} ]; // per band: 1/gamma, unused...
 uniform vec4 uGlowP[ ${GLOW_SLOTS} ];  // a burst's light inside the medium: centre xyz, birth (fx clock)
 uniform vec4 uGlowK[ ${GLOW_SLOTS} ];  // its radius (m), peak, duration (s), unused
+uniform float uHeatCool;  // (ac130-fx-228 r3) the fire's cooling rate for this camera: a heat-imaging lens sees it cool slower
 varying float vGlow;
 varying vec2 vUvA;
 varying vec2 vUvB;
@@ -291,7 +292,7 @@ void main() {
   float scr = 0.5 * size * projectionMatrix[1][1] / max( -mvC.z, 0.5 );
   float big = lowB * smoothstep( 0.15, 0.45, scr ) * ( 1.0 - smoothstep( 12.0, 18.0, distance( center, cameraPosition ) ) );
   vColor = vec4( mix( aCA.rgb, aCB.rgb, smoothstep( 0.0, 1.0, t ) ), aCA.w * fadeIn * near * ( 1.0 - 0.75 * big ) );
-  vHeat = aHT.x > 0.0 ? aHT.x * exp( -aHT.y * age ) : 0.0;
+  vHeat = aHT.x > 0.0 ? aHT.x * exp( -aHT.y * uHeatCool * age ) : 0.0;
   // the bursts' light inside the medium: each recent burst lights the puffs round it for a moment, falling off with the
   // distance from its heart (its own fireball and soil, and the dust of an earlier burst it landed in)
   float gl = 0.0;
@@ -560,6 +561,8 @@ interface VolumeMediaOptions {
   capacity?: number;
   /** (ac130-fx-228 r3) the fire's emission gain for this frame's camera (a heat-imaging lens reads hot gas as hot) */
   heatGain?: (camera: THREE.Camera | null | undefined) => number;
+  /** (ac130-fx-228 r3) the fire's cooling-rate factor for this frame's camera (a heat-imaging lens sees the gas cool slower) */
+  heatCool?: (camera: THREE.Camera | null | undefined) => number;
 }
 
 /** How far the detail tear eats into a puff's thin rim (0 off). */
@@ -693,6 +696,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
   const uGroundCol = { value: new THREE.Vector3(0.14, 0.13, 0.11) };
   const uGrade = { value: new THREE.Vector4(1, 1, DEFAULT_TUNE.back, DEFAULT_TUNE.ms) };
   const uGrade2 = { value: new THREE.Vector4(DEFAULT_TUNE.ground, 0, 0, 0) };
+  const uHeatCool = { value: 1 };
   const totalRows = VOLUME_ATLAS.bands * VOLUME_ATLAS.rowsPerBand;
   const bandWarp: THREE.Vector4[] = [];
   for (let b = 0; b < VOLUME_ATLAS.bands; b++) bandWarp.push(new THREE.Vector4(1, 0, 0, 0));
@@ -713,7 +717,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     vertexShader: VOLUME_VERT,
     fragmentShader: VOLUME_FRAG,
     uniforms: Object.assign(THREE.UniformsUtils.clone(THREE.UniformsLib.fog), {
-      uTime, uWind, uSunDir, uSunCol, uSkyCol, uGroundCol, uGrade, uGrade2,
+      uTime, uWind, uSunDir, uSunCol, uSkyCol, uGroundCol, uGrade, uGrade2, uHeatCool,
       uMapA: mapA, uMapB: mapB,
       uAtlas: { value: new THREE.Vector4(VOLUME_ATLAS.columns, totalRows, VOLUME_ATLAS.rowsPerBand, VOLUME_ATLAS.frames) },
       uFlowScale: { value: VOLUME_ATLAS.flowScale },
@@ -894,6 +898,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
       return;
     }
     heatK = o.heatGain ? o.heatGain(camera) : 1;
+    uHeatCool.value = o.heatCool ? o.heatCool(camera) : 1;
     refreshLight();
     // live set (birth <= now <= birth + life), keeping last frame's order for an almost-sorted start
     let n = 0;

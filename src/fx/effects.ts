@@ -58,7 +58,7 @@ import { mapTintHex, setMapGroundAlbedo } from './mapPalette.ts';
 import { createDebrisChunks, makeChunkPiece, type DebrisChunks } from './debrisChunks.ts';
 import {
   armorHit, blastScale, columnPuff as mediaColumnPuff, exhaustPuff, exhaustSpacing, craterEjecta, dustSurge, fragmentStrike,
-  groundBurst, isExplosive, kineticStrike, killDust, killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst,
+  groundBurst, HULL_EARTH_MIN_KG, isExplosive, kineticStrike, killDust, killFireball, muzzleBlast as mediaMuzzleBlast, plateBurst,
   smolderPuff as mediaSmolderPuff, trackSkirt, trackSkirtSpacing, waterBurst,
   type BlastContext,
 } from './blastRecipes.ts';
@@ -635,6 +635,10 @@ const GUNSHIP_LENS_TRAIL_M = 120;
  *  long-wave sensor still sees the hot gas white. Under a heat-imaging camera the media's fire emission (its blackbody
  *  heart and the burst's light inside it, volumeMedia.ts uGrade.y) is this much brighter; every other camera unchanged */
 const THERMAL_FIRE_GAIN = 4;
+/** (ac130-fx-228 r3, the r5 critic 3: "no 152 mm burst keeps hot gas after the flash" in the heat lens) the fireball's
+ *  gas cools to the eye in ~0.15 s (its dome's heat e-folds at 7/s) but stays hot to a long-wave sensor for most of a
+ *  second: under a heat-imaging camera the media's fire cools at this share of its rate (volumeMedia.ts uHeatCool) */
+const THERMAL_FIRE_COOL = 0.3;
 /** the grade's own vision code (engine/post.ts uThermal): 1 infrared, 2 thermal (heat); 0 daylight, 3 intensified */
 function imagesHeat(camera: THREE.Camera | null | undefined): boolean {
   const ud = camera?.userData as { sensorVision?: number; thermalFlight?: boolean; flightVision?: number } | undefined;
@@ -1098,7 +1102,7 @@ function* createFxSteps(
   const landingGround = createLatticeGround((x, z) => deformedGroundY(x, z), groundRevision, (x, z) => baseCellFlipped(x, z));
   const vol: VolumeMedia | null = mediaTier
     ? createVolumeMedia({ soft: particles.softParticles, now: () => particles.getTime(), scene: engineCtx.scene ?? null,
-      heatGain: (camera) => (imagesHeat(camera) ? THERMAL_FIRE_GAIN : 1) })
+      heatGain: (camera) => (imagesHeat(camera) ? THERMAL_FIRE_GAIN : 1), heatCool: (camera) => (imagesHeat(camera) ? THERMAL_FIRE_COOL : 1) })
     : null;
   const chunks: DebrisChunks | null = mediaTier
     ? createDebrisChunks({ seed, now: () => particles.getTime(), scene: engineCtx.scene ?? null, groundAt: landingGround })
@@ -2135,7 +2139,7 @@ function* createFxSteps(
       const gy = groundY(r.x, r.z);
       // (ac130-fx-228 r3) a heavy charge (the gunship's howitzer shell, a missile's warhead) on a roof still throws the
       // ground's earth: it reaches the ground from a turret's top, a light charge from a hull's side only
-      const reach = info.munition === 'howitzer' || info.munition === 'missile' ? 4 : 2.5;
+      const reach = (info.munition === 'howitzer' || info.munition === 'missile') && info.chargeKg >= HULL_EARTH_MIN_KG ? 4 : 2.5;
       plateBurst(blast, { x: r.x, y: r.y, z: r.z, nx: r.nx, ny: r.ny, nz: r.nz, munition: info.munition,
         chargeKg: Math.max(0.3, info.chargeKg), ground: r.y - gy < reach ? classifyTerrain(heightField, r.x, r.z) : null,
         birthOffset: bo });

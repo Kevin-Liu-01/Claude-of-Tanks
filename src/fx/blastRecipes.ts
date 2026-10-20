@@ -359,6 +359,8 @@ interface GroundBurstInput {
   /** (ac130-fx-228 r3) the earth only: no flash, fireball, light or fireball smoke (a heavy charge bursting on a hull that
    *  sits on this ground draws those itself, heavyHullBurst) — the fountain, the column, the clods, the dust and the ring */
   earthOnly?: boolean;
+  /** (ac130-fx-228 r3) the patch's crowding the caller already recorded (its own burst counted once with the governor) */
+  crowd?: number;
 }
 
 /**
@@ -398,7 +400,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   const hard = I.surface === 'rock' || I.surface === 'concrete' || I.surface === 'metal';
   // (FX-05) the gunship's howitzer and missile, and any heavy HE plunging in from above: the starburst
   const plunge = I.dy !== undefined && (I.dy ?? 0) < -0.55;
-  const starburst = (I.munition === 'howitzer' || I.munition === 'missile') && (kg >= 8 || plunge);
+  const starburst = !I.earthOnly && (I.munition === 'howitzer' || I.munition === 'missile') && (kg >= 8 || plunge);
   const dustK = L.dustK * (shaped ? 0.6 : 1);
   // the fireball's width: an open-air TNT fireball is ~3.9 kg^0.32 m across (the drone's 1.2 kg ~4 m, the 125 mm's
   // 3.5 kg ~5.8 m, the gunship's 20 kg ~10 m); a shaped charge's explosive drives its jet, its ball is smaller
@@ -459,7 +461,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // a 25 m cell that already took two in the same second pools its cloud into the salvo's: up to 70 % fewer bodies, each
   // up to 35 % larger and a quarter shorter-lived, so the salvo's smoke keeps its mass with far fewer overlapping cards;
   // a lone burst (and a pair) is untouched. Decided by burst count, never by frame time.
-  const crowd = C.crowd ? C.crowd(I.x, I.z) : 0;
+  const crowd = I.crowd ?? (C.crowd ? C.crowd(I.x, I.z) : 0);
   const smokeN = I.earthOnly ? 0 : Math.max(3, Math.round((thermobaric || heavy ? 16 : shaped ? 6 : 14) * (1 - 0.7 * crowd)));
   const crowdSize = 1 + 0.35 * crowd, crowdLife = 1 - 0.25 * crowd;
   // (on snow, the dark soil it throws from under the snow: HE on snow is dark smoke over white powder)
@@ -1020,13 +1022,21 @@ function heavyHullBurst(C: BlastContext, I: PlateBurstInput, nx: number, ny: num
   // the ground burst draws 182 and 45.6 m) a hull sitting on the ground takes the burst a metre or two above it: the
   // charge still throws the ground's earth — the heavy round's fountain and column, its clods, the dust sheet and the
   // ring — at HULL_EARTH_SHARE of the charge (the plate takes the rest), round the hull's own fireball and smoke
-  if (I.ground) {
+  // (the engineering critic's m1-m3) the earth only: no second flash, starburst or light, and the patch's crowding counted
+  // once; a light warhead (a 0.6 kg SAM) keeps the dust surge and the ring
+  if (I.ground && kg >= HULL_EARTH_MIN_KG) {
     groundBurst(C, { x: I.x, y: C.groundY(I.x, I.z), z: I.z, munition: I.munition, chargeKg: kg * HULL_EARTH_SHARE,
-      surface: I.ground, birthOffset: bo, earthOnly: true });
+      surface: I.ground, birthOffset: bo, earthOnly: true, crowd });
+  } else if (I.ground) {
+    C.shockRing(I.x, I.z, 0.5 + 0.38 * s, Math.min(1.3, 0.55 + 0.28 * s), Math.max(0, -bo));
+    dustSurge(C, I.x, C.groundY(I.x, I.z), I.z, Math.max(0.8, s * 0.8), I.ground, bo + 0.02);
   }
 }
 /** (ac130-fx-228 r3) the share of a heavy hull burst's charge that throws the ground's earth round the hull */
 const HULL_EARTH_SHARE = 0.6;
+/** (ac130-fx-228 r3) the least charge (kg) whose hull burst throws the ground's earth, and reaches it from a roof
+ *  (effects.ts): the howitzers' and the 152 mm missiles' shells, never a light SAM's warhead */
+export const HULL_EARTH_MIN_KG = 4;
 
 /** The kinetic results on armour that armorHit draws (the battle's shell:hit kinds; HE and shaped charges are plateBurst). */
 export type ArmorHitKind = 'pen' | 'nonpen' | 'ricochet' | 'spaced' | 'era';

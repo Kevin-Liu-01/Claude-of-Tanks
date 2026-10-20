@@ -26,7 +26,7 @@ function tank(id, specId, team, extra = {}) {
 }
 const pilot = tank('player', 'm1a1_abrams_hc', 'alpha', { aerial: { kind: 'gunship', active: true, launching: false, x: 0, y: 240, z: 0, yaw: 0, pitch: -1, batteryS: 0, cooldownS: 0 } });
 const carrier = tank('ally-1', 'type90', 'alpha');
-const foes = ['foe-1', 'foe-2', 'foe-3'].map((id) => tank(id, 'm1a3', 'bravo'));
+const foes = ['foe-1', 'foe-2', 'foe-3', 'foe-4'].map((id) => tank(id, 'm1a3', 'bravo'));
 const tanks = [pilot, carrier, ...foes];
 const aim = { singleReticle: false, point: new THREE.Vector3(0, 0, 100), distM: 100, dispersionRadM: 1, gunLimitSpec: false,
   reload: { t: 0, totalS: 0 }, magazine: { rounds: 0, capacity: 0, launcher: false }, shellSlot: 0, shells: [], zoom: 1,
@@ -34,10 +34,8 @@ const aim = { singleReticle: false, point: new THREE.Vector3(0, 0, 100), distM: 
 let timeS = 20;
 const frame = () => { timeS += 1 / 60; hud.update({ timeS, mode: 'battle', player: pilot, tanks, spotting: { isSpotted: () => true }, aim, camera: null, auxiliaryKeyLabels: { missile: 'E' } }); };
 frame(); frame();
-const feedKiller = () => {
-  const items = created.filter((e) => e.classes.has('cot-kf'));
-  return items.at(-1)?.querySelector('.k').textContent ?? null;
-};
+const feedItem = () => created.filter((e) => e.classes.has('cot-kf')).at(-1);
+const feedKiller = () => feedItem()?.querySelector('.k').textContent ?? null;
 bus.emit('tank:destroyed', { id: 'foe-1', specId: 'm1a3', killerId: 'player', cause: 'shot', source: 'ac130', pos: [0, 0, 0] });
 frame();
 assert.equal(feedKiller(), killSourceIdentity('ac130').label, 'an AC-130 pilot\'s kill names the AC-130');
@@ -47,5 +45,12 @@ assert.equal(feedKiller(), killSourceIdentity('drone').label, 'a drone\'s kill n
 bus.emit('tank:destroyed', { id: 'foe-3', specId: 'm1a3', killerId: 'ally-1', cause: 'shot', pos: [0, 0, 0] });
 frame();
 const own = feedKiller();
+// a pilot's kill with no source stamped (a burning hull finishing, the authority naming only the killer) is the AC-130's
+bus.emit('tank:destroyed', { id: 'foe-4', specId: 'm1a3', killerId: 'player', cause: 'fire', pos: [0, 0, 0] });
+frame();
+assert.equal(feedKiller(), killSourceIdentity('ac130').label, 'a gunship pilot\'s sourceless kill still names the AC-130');
+assert.equal(feedItem().dataset.killSource, 'ac130', 'and carries the AC-130 as its source');
+assert.ok(feedItem().innerHTML.includes('class="si ksi src"') && !feedItem().innerHTML.includes('<span class="si ksi"></span>'),
+  'with the aircraft\'s icon, never the garage tank\'s silhouette');
 assert.ok(own && own !== killSourceIdentity('drone').label && own !== killSourceIdentity('ac130').label, `a tank's own kill keeps its vehicle (${own})`);
 console.log(`killFeedSource: the kill feed names the AC-130 and the drone for their kills (${killSourceIdentity('ac130').label}, ${killSourceIdentity('drone').label}) and the tank for its own (${own})`);

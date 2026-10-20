@@ -113,7 +113,8 @@ const placed = () => markEl.style.transform;
 
 // (A) the gunship pilot's hit: the mark canvas shown, sized, placed on the aim point, cleared then drawn inside its box
 const gunship = pilot(true);
-frame(gunship); frame(gunship);
+// (the critic's H10) the sight settles first: a steady, reusable sight must still paint a fresh hit
+for (let i = 0; i < 90; i++) frame(gunship);
 assert.notEqual(markEl.style.display, 'block', 'no mark before a hit (the CSS keeps it hidden)');
 hit(); frame(gunship);
 assert.equal(markEl.style.display, 'block', 'a gunship hit shows the mark canvas');
@@ -158,7 +159,10 @@ camera = null;
 
 // (D) a tank's hit: the mark on the full-screen sight as before, the mark canvas unused
 const tank = pilot(false);
-frame(tank); frame(tank);
+// (the critic's H10) the ground sight settles until it is reused (nothing repainted), then a hit must still paint the mark
+let settled = false;
+for (let i = 0; i < 600 && !settled; i++) { frame(tank); settled = sightOps.length === 0; }
+assert.ok(settled, 'the steady ground sight is reused (nothing repainted)');
 hit(); frame(tank);
 assert.ok(markInk(sightOps).length >= 4, 'a tank\'s hit draws the mark on the full-screen sight');
 assert.notEqual(markEl.style.display, 'block', 'the mark canvas stays hidden for a tank');
