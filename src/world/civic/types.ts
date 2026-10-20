@@ -129,7 +129,9 @@ export interface CivicAreaPlan {
   readonly lanes: ReadonlyArray<{ readonly id: string; readonly rect: CivicRect; readonly minWidth: number }>;
   /** The objective seats the area keeps clear past its roundel (matchPlacement's: an extraction's convoy disc), each a
    *  disc no piece or trunk enters (C13). */
-  readonly holds: ReadonlyArray<{ readonly id: string; readonly x: number; readonly z: number; readonly r: number }>;
+  /** Objective discs nothing hull-high stands in; `planOnly` (229 b3 r2: a zone's 30 m disc) holds the plan's own pieces
+   *  out of it and leaves the map's (a hedgehog, a shed the map stands there without the plan) to the map. */
+  readonly holds: ReadonlyArray<{ readonly id: string; readonly x: number; readonly z: number; readonly r: number; readonly planOnly?: boolean }>;
   /** The roundel at the crossing: its ring band and its rose, flush; (229 b3) `inlay: false` lays none (a village place's
    *  crossing, a char's haat: the open disc is kept, nothing is set in its ground). */
   readonly centre: { readonly x: number; readonly z: number; readonly ringR: readonly [number, number]; readonly roseR: number; readonly rays: number;

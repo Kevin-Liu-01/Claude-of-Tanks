@@ -130,10 +130,15 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
     }
     for (const t of trees) assert.ok(Math.hypot(t.x - C.x, t.z - C.z) > C.ringR[1], `${tag}: a tree in the hold disc`);
     // ---- the green
-    const census = flora.group.userData.civicTrees;
+    // (229 b3 r2) a map whose areas plant no tree writes no census
+    const census = flora.group.userData.civicTrees ?? { stations: 0, planted: 0, refused: {} };
     assert.equal(census.planted, census.stations, `${tag}: every tree station planted (${JSON.stringify(census)})`);
     const civicTrees = flora._trees.filter((t) => area.trees.stations.some((s) => Math.hypot(s.x - t.x, s.z - t.z) < 0.01));
-    assert.equal(civicTrees.length, area.trees.stations.length, `${tag}: the trees stand at their stations`);
+    const astray = area.trees.stations.filter((s) => !flora._trees.some((t) => Math.hypot(s.x - t.x, s.z - t.z) < 0.01)).map((s) => {
+      const near = flora._trees.reduce((b, t) => (Math.hypot(s.x - t.x, s.z - t.z) < Math.hypot(s.x - b.x, s.z - b.z) ? t : b), flora._trees[0]);
+      return `(${s.x}, ${s.z}): nearest tree (${near?.x?.toFixed(2)}, ${near?.z?.toFixed(2)})`;
+    });
+    assert.equal(civicTrees.length, area.trees.stations.length, `${tag}: the trees stand at their stations ${astray.join('; ')}`);
     const benches = built.destructibles.filter((d) => d.kind === 'bench' && d.slot >= 0
       && area.furniture.some((f) => f.kind === 'bench' && Math.hypot(f.x - d.x, f.z - d.z) < 0.05)).length;
     const T = area.targets;
@@ -239,7 +244,10 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
     for (const h of area.holds) {
       for (const b of blockers) {
         if (b.kind === 'structure') continue;
-        if (b.kind === 'lamp' && baseBlockers.has(`${b.kind}@${((b.x0 + b.x1) / 2).toFixed(1)},${((b.z0 + b.z1) / 2).toFixed(1)}`)) continue;
+        const onBase = baseBlockers.has(`${b.kind}@${((b.x0 + b.x1) / 2).toFixed(1)},${((b.z0 + b.z1) / 2).toFixed(1)}`);
+        if (b.kind === 'lamp' && onBase) continue;
+        // (229 b3 r2) a plan-only hold (a zone's 30 m disc) leaves what the map stands there without the plan to the map
+        if (h.planOnly && onBase) continue;
         const d = Math.hypot(Math.max(b.x0 - h.x, 0, h.x - b.x1), Math.max(b.z0 - h.z, 0, h.z - b.z1));
         assert.ok(d >= h.r, `${tag}: ${b.kind} at (${((b.x0 + b.x1) / 2).toFixed(1)}, ${((b.z0 + b.z1) / 2).toFixed(1)}) in the ${h.id} disc (${d.toFixed(2)} m, ${h.r})`);
       }

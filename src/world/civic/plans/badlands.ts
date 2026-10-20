@@ -24,20 +24,21 @@ const twins = (list: readonly CivicFurniture[]): CivicFurniture[] => list.flatMa
   return [f, { ...f, x, z, yawDeg: (f.yawDeg + 180) % 360 }];
 });
 const corridor = (from: CivicPoint, to: CivicPoint, half: number) => [{ from, to, half }, { from: rot(from[0], from[1]), to: rot(to[0], to[1]), half }];
-const facing = (x: number, z: number, tx: number, tz: number): number => +(Math.atan2(tx - x, tz - z) * 180 / Math.PI).toFixed(2);
 // the track's own heading (the village's frame: u along the track toward the north mouth)
 const TRACK_YAW = 13.5;
 
 // the date palms along the fort's front (east) and the souq's (west, the twins), and one each in the north and south bands
-const PALMS_EAST: ReadonlyArray<readonly [number, number]> = [[35.5, -6], [36.5, 6], [37.5, 18]];
-// and two in the islands of sand the lanes leave between them (a smaller planter: the lanes either side)
-const PALMS_ISLAND: ReadonlyArray<readonly [number, number]> = [[19.4, 4.0], [3.4, 19.8]];
+// (229 b3 r2, the coordinator's ruling: no piece on a driven line; probes/pace's six zone and six Frontline base battles)
+// the fort front's south palm (its twin on the zone's lines) to the north-east corner, the north band's to its west end,
+// the islands' palms between the lanes left out (the hulls cross them)
+const PALMS_EAST: ReadonlyArray<readonly [number, number]> = [[36.5, 6], [37.5, 18], [38.5, 26]];
+const PALMS_ISLAND: ReadonlyArray<readonly [number, number]> = [];
 // (229 b3 r1, the critic's D9: a palm and its twin each the same height, the pairs a little apart)
 const withTwins = (list: ReadonlyArray<readonly [number, number]>) => list.flatMap(([x, z], i) => {
   const [tx, tz] = rot(x, z), scale = +(0.96 + ((i * 37) % 13) / 100).toFixed(2);
   return [{ x, z, scale }, { x: tx, z: tz, scale }];
 });
-const PALMS = withTwins([...PALMS_EAST, [-12, 34]]), ISLANDS = withTwins(PALMS_ISLAND);
+const PALMS = withTwins([...PALMS_EAST, [-17.5, 33.5]]), ISLANDS = withTwins(PALMS_ISLAND);
 /** A palm's block planter: a square bed `size` m across (its wall the planter's), closed. */
 const planter = (x: number, z: number, id: string, size = 2.6): CivicBed => {
   const h = size / 2;
@@ -85,15 +86,15 @@ export const BADLANDS_CIVIC_PLAN: CivicPlan = {
     trees: { species: 'palm', scale: [0.95, 1.1], stations: [...PALMS, ...ISLANDS] },
     furniture: twins([
       // the mastaba benches between the palms along the fort's front, facing the square
-      { kind: 'bench', x: 36.4, z: 0, yawDeg: -90 + TRACK_YAW }, { kind: 'bench', x: 37.3, z: 12, yawDeg: -90 + TRACK_YAW },
+      { kind: 'bench', x: 36.4, z: 0, yawDeg: -90 + TRACK_YAW }, { kind: 'bench', x: 38.5, z: 14.5, yawDeg: -90 + TRACK_YAW },
       // and in the north band under its palm
-      { kind: 'bench', x: -8.5, z: 34, yawDeg: 180 },
-      // one in the north-east corner facing the middle, two on the lane's edge before the palms
-      { kind: 'bench', x: 31.5, z: 29, yawDeg: facing(31.5, 29, CX, CZ) },
-      { kind: 'bench', x: 30.9, z: 13, yawDeg: -90 }, { kind: 'bench', x: 30.9, z: 20, yawDeg: -90 },
+      { kind: 'bench', x: -19.5, z: 32.5, yawDeg: 180 },
+      // one on the lane's edge before the palms
+      { kind: 'bench', x: 30.9, z: 20, yawDeg: -90 },
     ]),
-    // the guides' Hilux and Land Cruiser at the square's north edge (their twins at the south)
-    parking: twins([{ kind: 'pickup', x: -2, z: 34.5, yawDeg: 90 }, { kind: 'jeep', x: 4.5, z: 35, yawDeg: 90 }]),
+    // the guides' Hilux and Land Cruiser parked along the fort's front north of its gate (their twins before the souq)
+    // (229 b3 r2: the north band was the Frontline's line; 26-28 hits a pair)
+    parking: twins([{ kind: 'pickup', x: 40, z: 9.5, yawDeg: 180 + TRACK_YAW }, { kind: 'jeep', x: 40, z: 3.5, yawDeg: 180 + TRACK_YAW }]),
     bayMarks: [],
     lamps: [],
     fountainRing: null,
@@ -101,6 +102,8 @@ export const BADLANDS_CIVIC_PLAN: CivicPlan = {
     // (the planters draw their own soil and sward: no terrain lawn, so the pad keeps its own paint)
     lawns: [],
     // (the lanes cross the square's middle: the sand they leave beside their edges is the open share)
-    targets: { records: 16, benches: 12, lawnM2: 0, lampsAround: 0, openShare: 0.1, largestDisc: 8 },
+    // (229 b3 r2: the islands and the north and south bands cleared off the battles' lines — the open sand they leave is
+    // the zone's own)
+    targets: { records: 12, benches: 8, lawnM2: 0, lampsAround: 0, openShare: 0.3, largestDisc: 21 },
   }],
 };
