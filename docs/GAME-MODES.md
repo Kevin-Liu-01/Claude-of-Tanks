@@ -642,7 +642,7 @@ numbers:
 | Human hull | 30 % | 150 % | 125 % | 200 % |
 | Zombie hull | 125 % | 25 % (30 % until gameplay-modes-228) | 125 % + 16 % a wave | 15 % + 2 % a round (+6 % from round 11; a swarm round 10 %) |
 | Zombie speed | +40 % | +30 % | +4.5 % a wave (cap +55 %) | unchanged |
-| Zombie reload | ×0.7 | ×1.8 reload time (`infectedReloadScale`, gameplay-modes-228 round 2; ×1 on 10-17) | ×1 | ×1.8 reload time (`hostileReloadScale`, gameplay-modes-228) |
+| Zombie reload | ×0.7 | ×1.8 reload time (`infectedReloadScale`, gameplay-modes-228 round 2; ×1 on 10-17) | ×1 | ×2.2 reload time (`hostileReloadScale`, gameplay-modes-228 round 2; ×1.8 in round 1) |
 | Zombie numbers | 4 to start, 3 s respawn, every dead survivor converts | 5 to start, 5 s respawn on a ring 90–150 m round the survivors (120–200 m until round 2), every dead survivor converts; a five-minute round (seven until round 2) | waves 5 / +1, pool 14 | rounds of round(6 + 3(w − 1) + 0.35(w − 1)²), at most 16 alive, pool 20 (gameplay-modes-228; 10-17: waves 6 / +2, surge every 3rd, capped at the pool) |
 | Zombie bots | roam | rush the survivors they spot (the RUSH doctrine, hits angled; gameplay-modes-228) | hunt the nearest human | rush the humans they spot (the RUSH doctrine), one difficulty tier below the battle's (`hostileDifficultyStep`) |
 | Allies / rounds | 9 survivors, spec | 9 survivors, unlimited | 2 allies, spec | 4 allies, unlimited |
@@ -684,6 +684,8 @@ rounds recorded (Infected 1-16 and 101-108, Horde 1-8 and 101-108, the before ro
 | Infected, round 2, hold-out (32) | 22 / 32 | 276 s | 224 s / 240 s | 13.14 | 1.54 | 8.52 | — |
 | Endless Horde, round 2 (31 seeds; the 320-440 m ring, the trickle) | 0 / 31 | 415 s | 415 s / 427 s | 9.44 | 0.61 | 15.37 | 5.19 (8) |
 | Endless Horde, round 2, hold-out (16) | 0 / 16 | 435 s | 435 s / 450 s | 9.65 | 0.58 | 16.71 | 5.5 (7) |
+| Endless Horde, round 2 final (32 seeds; the approach out of sight, reload ×2.2) | 0 / 32 | 465 s | 465 s / 483 s | 9.27 | 0.58 | 15.88 | 5.31 (8) |
+| Endless Horde, round 2 final, hold-out (16) | 0 / 16 | 496 s | 496 s / 530 s | 9.22 | 0.53 | 17.50 | 5.5 (8) |
 
 The humans now cut through the zombies — four to ten zombies for every human lost — and the numbers still decide:
 the outbreak takes two rounds in three (the survivors won 6 of the 16 tuning seeds, 16 of 48 on seeds 17-64 and 2 of 8
@@ -713,6 +715,14 @@ wave law and ring (31 seeds: seed 107 hit the probe's 40-minute wall cap under a
 1-8 and 101-108, hold-out 9-24): 6:55 and 5.2 rounds a run, 15.4 zombies a loss, every run overrun. Seed 1 of the Horde
 re-run on the final tree matched the earlier tree's row field for field, so the r5 rows 1-12 stand beside the final
 tree's 13-24 and 101-108 (`metrics/round2/zombie-balance`).
+
+The round's final Horde table (an arrival's first 60 m of approach out of sight, the zombies' guns at ×2.2) is measured
+again on all 32 seeds through the authority at d35378e038 (the later commits touch only Frontline's table and the solo
+controller; `metrics/round2/final/zombie-balance`; six seeds hit the probe's
+40-minute wall cap under a load of 250-500 and were re-run with a two-hour cap): 7:45 and 5.3 rounds a run, 15.9
+zombies a loss, every run overrun (hold-out 8:16, 5.5 rounds). The Infected record stands on its rules, which did not
+move; the controller change since (the no-ram lane after the terrain escape) kept the harness's Infected results seed
+for seed (survivors 7 of the critic's 16 both before and after it, the mean round 256 s, the first conversion 114 -> 105 s).
 
 Re-measure (about 1.5-4 minutes of wall time per seed under load; gate on `headroom can-start`):
 
