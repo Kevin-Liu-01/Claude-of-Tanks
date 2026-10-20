@@ -494,3 +494,13 @@ camera; bind slabs through `orientedSlab`, hand twisted rings to `convexSlab`,
 and prove the result with `node tools/tank-sealed-check.mjs --ids=<id>
 --ledger=docs/geometry-gate/sealed.json` (0 open views) — the audit and the
 per-family causes are in `docs/tank-generation/chassis-closure-audit-20260925.md`.
+See-through gates too (227 guards, 2026-10-16): the sealed check holds each
+row's `seeThroughPx` (world seen through glass, markings or any undeclared
+alpha-cut part) to max(12 px, 10 %), and counts sky between declared netting
+apart as `netSeeThroughPx` (reported, never gated). Netting must declare itself:
+alpha-cut, `combatHitboxRole: 'nonArmor'`, and `continuityRole: 'open-lattice'`
+(the ghillie suit) or a `decor_<frame>_net|foliage` bucket
+(`alphaCutNetting` in `tools/tank-surface-collect.mjs`). A new alpha-cut part
+without that declaration fails its row; a hole behind netting is still a hole.
+Re-baseline a row the gate never held only with
+`--update-ledger --accept-see-through=<ids>`.
