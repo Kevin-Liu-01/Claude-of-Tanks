@@ -759,6 +759,24 @@ under-glacis voids are orders on every tank.
   both read mast-inclusive p95 above the published roof datum, a dims-0
   row is a datum-reconciliation work order, not a shape defect.
 
+## §B2 MACHINE SCAN — HULL-ANCHORED LATTICE (2026-10-16, guards 227)
+`tank-standard-check`'s plan-view hole scan lays its 6 cm cells on a lattice
+fixed in the vehicle frame (`tools/contig-grid.mjs`): cell edges at whole
+multiples of 6 cm from the tank root, never from the AABB. Through 226 the
+grid started at each build's AABB, so an unrelated add-on that moved the
+AABB (VH.04's guns 1.2-2 cm longer, a proud spare-link run) re-phased every
+cell and hid or revealed real 6-7 cm hull gaps: nine 226 "regressions" were
+pre-existing gaps. The one render is also re-binned at all nine sub-cell
+phases, so every enclosed gap at least 6 cm wide in both plan directions is
+found wherever it sits; a hole that only another phase sees (a *phase-only*
+hole, `+Nφ` in the table) fails exactly like an unexpected hole. Approved
+openings (Ariete rear coupler, Barak bow) are pinned as hull-frame lattice
+cells, so an AABB change no longer invalidates them either. Fleet census
+of what the old raster hid: `node tools/contig-phase-audit.mjs --ids=<ids>`
+(the page's `legacy=1` reproduces the pre-227 raster from the same build;
+`--prove=<id>` sweeps a 1 cm add-on past the bow and side and must leave the
+anchored scan identical).
+
 ## §B3.1 addendum — MUZZLE BORE (owner directive 2026-08-06, with
 ## screenshot: "make tips of guns have holes, bruh")
 No gun ends in a solid capped tip. Every muzzle face carries a visible

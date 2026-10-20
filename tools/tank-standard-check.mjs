@@ -12,6 +12,7 @@ import { measureSourceOpenings } from './source-opening-check.mjs';
 import { isArieteOpeningTarget } from './ariete-source-openings.mjs';
 import { runCapturedCommand } from './capture-command.mjs';
 import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
+import { contiguityPassed } from './contig-grid.mjs';
 // TANK STANDARD CHECK v2 (docs/BUILD-STANDARD.md §F.3) — one command that
 // aggregates the standard's machine-checkable gates per tank:
 //   A.  geometry-gate components (latest docs/geometry-gate/<id>.json,
@@ -19,7 +20,11 @@ import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 //   B4. track containment (tools/track-clip-audit.mjs --exact)
 //   B2. CONTIGUITY (v2): top-down ~6 cm scan on the procedural build via
 //       tools/standard-check-page.html — enclosed sky cells inside the plan
-//       silhouette remain raw holes. Every approved exterior opening must
+//       silhouette remain raw holes. The grid is the hull-anchored lattice of
+//       tools/contig-grid.mjs (2026-10-16): fixed 6 cm cells in the vehicle
+//       frame, so an add-on that only moves the AABB cannot hide or reveal a
+//       gap, scanned at every sub-cell phase; a phase-only hole (one the
+//       primary raster misses) fails like an unexpected hole. Every approved exterior opening must
 //       match complete-source air and finite stock witnesses; unexpected
 //       holes remain zero. FrontSide render truth doubles as
 //       the winding audit.
@@ -281,11 +286,17 @@ for (const id of ids) {
     } else {
       const holes = st.holes.holeCells;
       const opening = openingReports.get(id);
-      contigOk = opening?.passed === true;
-      contigStr = opening?.intentionalCells
-        ? `${opening.unexpectedCells} unexpected/${holes} raw${contigOk ? ' ✓' : ' ✗'}`
-        : `${holes}${contigOk ? ' ✓' : ' ✗'}`;
+      const phaseOnly = st.holes.phaseOnlyCells;
+      contigOk = contiguityPassed(st.holes, opening);
+      contigStr = (opening?.intentionalCells
+        ? `${opening.unexpectedCells} unexpected/${holes} raw`
+        : `${holes}`) + (phaseOnly ? `+${phaseOnly}φ` : '') + (contigOk ? ' ✓' : ' ✗');
       if (opening?.reason) console.error(`[standard-check] ${id}: ${opening.reason}`);
+      if (phaseOnly !== 0) {
+        console.error(`[standard-check] ${id} phase-only holes (the primary 6 cm raster misses them; another sub-cell ` +
+          `phase of the hull-anchored lattice sees them): ` + (st.holes.phaseOnlyGaps ?? [])
+          .map((g) => `(x ${g.x}, z ${g.z}) ${g.w}x${g.d} m gap ${g.gap} m`).join(', '));
+      }
       decorOk = roofEquipmentVerdict(id, st.census, configurations[id], sourceReceipts.get(id)).passed;
       decorStr = `mg${st.census.mg}+${st.census.dressing}d${decorOk ? ' ✓' : ' ✗'}`;
       if (!contigOk && st.holes.clusters?.length) {
@@ -301,7 +312,7 @@ for (const id of ids) {
 }
 if (ids.length) {
   console.log(`\n[standard-check] ${ids.length - fails}/${ids.length} pass the machine-checkable gates ` +
-    `(registered gate floor 90 fleet / 92 exemplar; --gate requires fresh registered oracles + clip<=${CLIP_BAND}${noRender ? '' : ' + unexpected holes=0 + verified equipment configuration'}).`);
+    `(registered gate floor 90 fleet / 92 exemplar; --gate requires fresh registered oracles + clip<=${CLIP_BAND}${noRender ? '' : ' + unexpected holes=0 at every hull-anchored phase (φ = phase-only) + verified equipment configuration'}).`);
   if (!noRender) {
     console.log('[standard-check] decor censuses KIT.fittings markers only (§B3): hand-authored ' +
       'decoration predating the fittings library reads mg0+0d — migrate the profile to ' +
