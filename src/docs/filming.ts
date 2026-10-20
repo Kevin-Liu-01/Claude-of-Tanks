@@ -122,7 +122,10 @@ function mountLibrary(article: HTMLElement): void {
   root.className = 'filming-library';
   section.appendChild(root);
   const load = (): void => {
-    void import('../presentation/mediaLibrary.ts').then(({ mountMediaLibrary }) => mountMediaLibrary(root)).catch(() => {
+    // The stylesheet loads beside the module at this lazy boundary, never inside its graph (runtimeStyles.selftest:
+    // plain-Node receipts import mediaLibrary.ts and cannot load CSS; the media archive's pattern in publicPages.ts).
+    void Promise.all([import('../presentation/mediaLibrary.css'), import('../presentation/mediaLibrary.ts')])
+      .then(([, { mountMediaLibrary }]) => mountMediaLibrary(root)).catch(() => {
       root.dataset.libraryMounted = 'false';
     });
   };

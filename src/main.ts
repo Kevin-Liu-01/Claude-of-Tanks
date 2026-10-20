@@ -1724,6 +1724,12 @@ const combatWarmComposition = createCombatWarmComposition({
   publishStudioTrace: (trace: RuntimeValue) => { window.__STUDIO_WARM = trace; },
   devTrace,
 });
+// (fx-ir-hull-heat-229) every shot heats its shooter's barrel in the heat lens, on the shot's simulation time
+bus.on('shell:fired', (payload) => {
+  if (typeof payload !== 'object' || payload === null) return;
+  combatWarmComposition.thermalVehicles.noteShot(String(Reflect.get(payload, 'shooterId') ?? ''),
+    Number(Reflect.get(payload, 'timeS')), Number(Reflect.get(payload, 'caliberMm')));
+});
 const {
   combatWarm,
   warmRender,
