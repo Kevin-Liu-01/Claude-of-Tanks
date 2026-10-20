@@ -28,11 +28,18 @@
 //    list entirely, so battle frames never cull or draw any of this.
 import * as THREE from 'three';
 import {
-  mulberry32, canvasTexture, dither, makeSignTexture, makeHazardTexture, SIGN_FONT,
+  mulberry32, canvasTexture, makeHazardTexture,
 } from '../ui/garageStage.ts';
 import { FEATURED_SHOTS } from '../ui/featuredShots.ts';
 import { garageSlideshowPose } from '../ui/garageSlideshowPlacement.ts';
 import { buildGarageVerdantKit } from '../ui/garageVerdantKit.ts';
+import {
+  createGarageDecalMaterial, createGarageDisplayMaterial, garageDisplayRectHasAlpha, garageDisplaySignRect, garageDisplayRect,
+  armGarageDisplayAtlas,
+} from '../ui/garageDisplayAtlas.ts';
+import { KitBuilder, kitRandom } from '../ui/garageKitGeometry.ts';
+import { garageKitSkin } from '../ui/garageKitSkins.ts';
+import { buildShadowBoard } from '../ui/garageWallKit.ts';
 import { DECOR_KITS } from '../vehicles/decorations.ts';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 import { getGarageVariant, type GarageVariant } from './garageVariants.ts';
@@ -238,7 +245,6 @@ export function createGarageDressing(
     disposables.push(o);
     return o;
   };
-  const signTextures: THREE.Texture[] = [];
   const workshopVisuals: GarageWorkshopVisual[] = [];
   const workshopFleet = existing.workshopFleet;
   const preparedVehicleIds = new Set<string>();
@@ -337,75 +343,6 @@ export function createGarageDressing(
   // --- tiny canvas textures ---------------------------------------------------
   // pegboard: dark board, peg-hole grid, painted hanging-tool silhouettes —
   // one textured quad reads as a whole wall of wrenches/hammers/pliers.
-  function makePegboardTexture(): HTMLCanvasElement {
-    const W = 256, H = 160;
-    const c = document.createElement('canvas');
-    c.width = W; c.height = H;
-    const g = c.getContext('2d')!;
-    g.fillStyle = '#2e3236';
-    g.fillRect(0, 0, W, H);
-    g.strokeStyle = '#1a1d20';
-    g.lineWidth = 6;
-    g.strokeRect(3, 3, W - 6, H - 6);
-    g.fillStyle = 'rgba(14,16,18,0.8)';
-    for (let y = 14; y < H - 8; y += 12) {
-      for (let x = 12; x < W - 8; x += 12) g.fillRect(x, y, 2.4, 2.4);
-    }
-    // painted tool shadows first (slight offset), then the tools
-    const tool = (draw: () => void): void => {
-      g.save(); g.translate(2, 3); g.strokeStyle = 'rgba(0,0,0,0.45)'; g.fillStyle = 'rgba(0,0,0,0.45)'; draw(); g.restore();
-      g.strokeStyle = '#83898f'; g.fillStyle = '#83898f'; draw();
-    };
-    g.lineWidth = 5;
-    // open-end wrenches (angled bars with C heads)
-    for (const [x, y, l, a] of [[30, 26, 52, 0.12], [58, 24, 66, 0.06], [86, 28, 46, 0.16]]) {
-      tool(() => {
-        g.beginPath();
-        g.moveTo(x, y); g.lineTo(x + Math.sin(a) * 14, y + l);
-        g.stroke();
-        g.beginPath(); g.arc(x, y - 3, 6, 0.6, Math.PI * 1.6); g.stroke();
-      });
-    }
-    // hammer
-    tool(() => {
-      g.fillRect(120, 22, 8, 56);
-      g.fillRect(108, 18, 32, 12);
-    });
-    // pliers (two arcs)
-    tool(() => {
-      g.beginPath(); g.moveTo(160, 26); g.quadraticCurveTo(154, 60, 150, 82); g.stroke();
-      g.beginPath(); g.moveTo(166, 26); g.quadraticCurveTo(172, 60, 176, 82); g.stroke();
-      g.beginPath(); g.arc(163, 24, 7, 0, Math.PI * 2); g.stroke();
-    });
-    // hand saw
-    tool(() => {
-      g.beginPath();
-      g.moveTo(196, 30); g.lineTo(240, 30); g.lineTo(238, 44); g.lineTo(196, 40);
-      g.closePath(); g.fill();
-      g.fillRect(190, 26, 8, 22);
-    });
-    // hex keys + screwdrivers row
-    g.lineWidth = 3.5;
-    for (let i = 0; i < 7; i++) {
-      const x = 34 + i * 14;
-      tool(() => {
-        g.beginPath(); g.moveTo(x, 104); g.lineTo(x, 128 + (i % 3) * 6); g.stroke();
-      });
-    }
-    // coiled air hose
-    tool(() => {
-      g.lineWidth = 4;
-      for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(196, 116, 14 - i * 4, 0, Math.PI * 2); g.stroke(); }
-    });
-    // grime
-    for (let i = 0; i < 240; i++) {
-      g.fillStyle = rng() < 0.6 ? 'rgba(12,14,16,0.25)' : 'rgba(140,148,156,0.08)';
-      g.fillRect(rng() * W, rng() * H, 1 + rng() * 2, 1 + rng() * 2);
-    }
-    dither(g, W, H, rng, 0.05);
-    return c;
-  }
-
   // soft radial pool for faked lamp light / under-bay work light
   function makePoolTexture(
     r0 = 'rgba(255,236,200,0.26)',
@@ -613,34 +550,12 @@ export function createGarageDressing(
   }
 
   /** worn steel workbench with clutter (vice, welder box, grinder, cans). */
-  function workbench(x: number, z: number, ry: number): THREE.Group {
-    const b = new THREE.Group();
-    b.position.set(x, 0, z);
-    b.rotation.y = ry;
-    group.add(b);
-    put(track(new THREE.BoxGeometry(3.1, 0.11, 0.95)), mat.timber, 0, 0.98, 0, 0, 0, 0, 1, b);
-    put(track(new THREE.BoxGeometry(3.0, 0.07, 0.85)), mat.steelDark, 0, 0.5, 0, 0, 0, 0, 1, b); // lower shelf
-    const legG = track(new THREE.BoxGeometry(0.09, 0.98, 0.09));
-    for (const [lx, lz] of [[-1.42, -0.38], [1.42, -0.38], [-1.42, 0.38], [1.42, 0.38]]) {
-      put(legG, mat.steelMid, lx, 0.49, lz, 0, 0, 0, 1, b);
-    }
-    // vice: base + jaw blocks + spindle
-    put(track(new THREE.BoxGeometry(0.16, 0.1, 0.22)), mat.steelDark, -1.05, 1.09, 0.18, 0, 0, 0, 1, b);
-    put(track(new THREE.BoxGeometry(0.22, 0.18, 0.14)), mat.blueSteel, -1.05, 1.22, 0.18, 0, 0, 0, 1, b);
-    put(track(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 8)), mat.steelBright, -1.05, 1.2, 0.34, 0, Math.PI / 2, 0, 1, b);
-    // stick welder box w/ dial + handle
-    put(track(new THREE.BoxGeometry(0.52, 0.34, 0.4)), mat.redCab, 0.15, 1.21, -0.05, 0.15, 0, 0, 1, b);
-    put(track(new THREE.CylinderGeometry(0.06, 0.06, 0.03, 12)), mat.steelBright, 0.15, 1.27, 0.17, 0, 1.42, 0, 1, b);
-    // angle grinder on its side
-    put(track(new THREE.CylinderGeometry(0.055, 0.065, 0.34, 10)), mat.blueSteel, 0.95, 1.09, 0.22, 0, 0, Math.PI / 2, 1, b);
-    put(track(new THREE.CylinderGeometry(0.11, 0.11, 0.018, 14)), mat.steelBright, 1.18, 1.09, 0.22, 0, 0.2, Math.PI / 2, 1, b);
-    // oil can + rag pile
-    put(track(new THREE.CylinderGeometry(0.07, 0.08, 0.2, 10)), mat.olive, 1.32, 1.14, -0.18, 0, 0, 0, 1, b);
-    put(track(new THREE.BoxGeometry(0.3, 0.05, 0.24)), mat.timberDark, -0.42, 1.07, -0.24, 0.5, 0, 0, 1, b);
-    return b;
-  }
-
-  /** pegboard quad + backing plate flush against a wall. */
+  // the shadow boards' one vertex-colour material (the Verdant kit's key), made with the first board
+  let shadowBoardMaterial: THREE.MeshStandardMaterial | null = null;
+  /**
+   * A shadow tool board flush against a wall (garage r9 K2, replacing the flat canvas pegboards): its backing plate and
+   * the kit's board, each tool hung in its own painted outline, built through the shared KitBuilder.
+   */
   function pegboard(
     x: number,
     y: number,
@@ -650,20 +565,21 @@ export function createGarageDressing(
     h = 1.55,
     wallBayId = '',
   ): void {
-    const tex = track(canvasTexture(makePegboardTexture(), { aniso }));
-    const m = track(shadowMat(new THREE.MeshStandardMaterial({
-      map: tex, roughness: 0.7, metalness: 0.15,
-      emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.05,
-    })));
     const back = put(track(new THREE.BoxGeometry(w + 0.1, h + 0.1, 0.05)), mat.steelDark, x, y, z, ry, 0, 0, 1, group, false);
     back.castShadow = false;
     back.userData.wallBayId = wallBayId;
-    const boardGeo = track(new THREE.PlaneGeometry(w, h));
-    const board = new THREE.Mesh(boardGeo, m);
+    const builder = new KitBuilder(kitRandom(0x5bd + wallBayId.length * 97), garageKitSkin('field_shed'));
+    buildShadowBoard(builder, w, h);
+    const built = builder.build(-10); // a wall piece: no ground AO
+    shadowBoardMaterial ||= track(shadowMat(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.08 })));
+    const board = new THREE.Mesh(track(built.solid), shadowBoardMaterial);
+    built.display?.dispose(); built.decal?.dispose();
     board.position.set(x, y, z);
     board.rotation.y = ry;
-    board.translateZ(0.032);
+    board.translateZ(0.04);
     board.userData.wallBayId = wallBayId;
+    board.castShadow = false;
+    board.receiveShadow = true;
     group.add(board);
   }
 
@@ -719,7 +635,20 @@ export function createGarageDressing(
     return t;
   }
 
-  /** wall sign: steel plate + stencil board (garageStage language). */
+  // the plates' one DISPLAY-LIT material (the wall signs' program key), made with the first plate
+  let signMaterial: THREE.MeshStandardMaterial | null = null;
+  function signDisplayMaterial(): THREE.MeshStandardMaterial {
+    signMaterial ||= track(createGarageDisplayMaterial((material) => { shadowMat(material); }));
+    return signMaterial;
+  }
+  // a bay numeral is paint with alpha: the decal material lays it on the dark plate
+  let signDecal: THREE.MeshBasicMaterial | null = null;
+  function signDecalMaterial(): THREE.MeshBasicMaterial {
+    signDecal ||= track(createGarageDecalMaterial());
+    return signDecal;
+  }
+
+  /** wall sign: a steel plate carrying its atlas pictogram (garageStage language). */
   function wallSign(
     text: string,
     x: number,
@@ -732,12 +661,14 @@ export function createGarageDressing(
     parent: THREE.Object3D = group,
     freestanding = parent === legacyVerdantRoot,
   ): void {
-    const tex = track(canvasTexture(makeSignTexture(rng, text), { aniso }));
-    signTextures.push(tex);
-    const m = track(shadowMat(new THREE.MeshStandardMaterial({
-      map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.13,
-      roughness: 0.6, metalness: 0.2,
-    })));
+    // the plate's picture is a pictogram, numeral or readout of the Garages' one display atlas (garage r9 K3: "less
+    // text, more pictograms"; type comes from the atlas generator, never the browser's canvas). The old canvas plate drew
+    // its wear from this dressing's random stream: the same draws are spent so every later piece keeps its place.
+    for (let draw = 0; draw < 1300; draw += 1) rng();
+    const rectName = garageDisplaySignRect(text);
+    const rect = garageDisplayRect(rectName);
+    const painted = garageDisplayRectHasAlpha(rectName);
+    const m = painted ? signDecalMaterial() : signDisplayMaterial();
     const mount = new THREE.Group();
     mount.position.set(x, 0, z);
     mount.rotation.y = ry;
@@ -748,10 +679,20 @@ export function createGarageDressing(
       ? 'grounded-freestanding-frame'
       : 'wall-supported';
     parent.add(mount);
-    const back = put(track(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.05)), mat.steelDark,
+    // the picture at its own aspect inside the w x h bay, and the plate fitted round it with a narrow steel margin (garage
+    // r9 g3, the blind critic: a square pictogram centred on a full-width plate read as a dark blank panel)
+    const aspect = (rect.u1 - rect.u0) / (rect.v1 - rect.v0) * 2;
+    const fitW = Math.min(w * 0.94, h * 0.9 * aspect), fitH = fitW / aspect;
+    const plateW = fitW + 0.12;
+    const back = put(track(new THREE.BoxGeometry(plateW, fitH + 0.12, 0.05)), mat.steelDark,
       0, y, 0, 0, 0, 0, 1, mount, false);
     back.userData.wallBayId = wallBayId;
-    const board = new THREE.Mesh(track(new THREE.PlaneGeometry(w, h)), m);
+    const boardGeometry = track(new THREE.PlaneGeometry(fitW, fitH));
+    const uv = boardGeometry.getAttribute('uv') as THREE.BufferAttribute;
+    for (let i = 0; i < uv.count; i += 1) uv.setXY(i, rect.u0 + uv.getX(i) * (rect.u1 - rect.u0), rect.v0 + uv.getY(i) * (rect.v1 - rect.v0));
+    const board = new THREE.Mesh(boardGeometry, m);
+    armGarageDisplayAtlas(board, aniso);
+    if (painted) board.renderOrder = 2;
     board.position.set(0, y, 0.032);
     board.translateZ(0.032);
     board.userData.wallBayId = wallBayId;
@@ -765,7 +706,7 @@ export function createGarageDressing(
       const postGeometry = track(new THREE.BoxGeometry(0.10, postHeight, 0.10));
       const footGeometry = track(new THREE.BoxGeometry(0.62, 0.08, 0.46));
       const braceGeometry = track(new THREE.BoxGeometry(0.08, 1.18, 0.08));
-      const supportOffset = Math.max(0.38, w / 2 - 0.22);
+      const supportOffset = Math.max(0.38, plateW / 2 - 0.28);
       for (const side of [-1, 1]) {
         const post = put(postGeometry, mat.steelDark,
           side * supportOffset, postHeight / 2, 0, 0, 0, 0, 1, mount, false);
@@ -777,7 +718,7 @@ export function createGarageDressing(
           side * (supportOffset - 0.16), 0.72, 0, 0, 0, side * 0.24, 1, mount, false);
         brace.name = 'garage_service_sign_connected_brace';
       }
-      const tie = put(track(new THREE.BoxGeometry(w - 0.18, 0.10, 0.10)), mat.steelMid,
+      const tie = put(track(new THREE.BoxGeometry(supportOffset * 2 + 0.10, 0.10, 0.10)), mat.steelMid,
         0, Math.max(0.48, postHeight * 0.42), 0, 0, 0, 0, 1, mount, false);
       tie.name = 'garage_service_sign_lower_tie';
       mount.userData.supportConnections = 9;
@@ -1280,6 +1221,9 @@ export function createGarageDressing(
   let battleScreenIndex = 0;
   let battleScreenLoading = false;
   let battleScreenTransitionStartedAt = 0;
+  // the arriving Garage's own still, taken the moment the screen is free (an arrival during a load or a crossfade used to
+  // leave the previous Garage's still up for a whole hold and then cycle past its own)
+  let battleScreenWanted: number | null = null;
 
   function disposeBattleScreenTexture(texture: THREE.Texture | null): void {
     if (!texture || texture === battleScreenFallbackTexture) return;
@@ -1369,7 +1313,19 @@ export function createGarageDressing(
     battleScreenFrame = null;
     group.userData.battleScreenResidentImageCount = 1;
     group.userData.battleScreenCurrentImage = GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex]?.img || '';
-    if (group.parent && group.visible && !document.hidden) scheduleBattleScreenAdvance();
+    if (group.parent && group.visible && !document.hidden && !takeWantedBattleScreen()) scheduleBattleScreenAdvance();
+  }
+
+  /** The screen is free: show the arriving Garage's still now (true), or carry on the cycle (false). */
+  function takeWantedBattleScreen(): boolean {
+    const wanted = battleScreenWanted;
+    if (wanted === null || wanted === battleScreenIndex) {
+      battleScreenWanted = null;
+      return false;
+    }
+    if (battleScreenTimer !== null) { window.clearTimeout(battleScreenTimer); battleScreenTimer = null; }
+    void advanceBattleScreen(wanted); // which clears the wanted still as it takes it
+    return true;
   }
 
   function animateBattleScreenTransition(now: number, nextIndex: number): void {
@@ -1397,11 +1353,14 @@ export function createGarageDressing(
     if (!battleScreenMaterial || !battleScreenCurrentTexture
         || battleScreenFrame !== null || battleScreenLoading
         || GARAGE_BATTLE_SCREEN_SHOTS.length < 2) return;
-    const nextIndex = targetIndex ?? (battleScreenIndex + 1) % GARAGE_BATTLE_SCREEN_SHOTS.length;
+    const nextIndex = targetIndex ?? battleScreenWanted ?? (battleScreenIndex + 1) % GARAGE_BATTLE_SCREEN_SHOTS.length;
+    const takesWanted = nextIndex === battleScreenWanted;
+    if (takesWanted) battleScreenWanted = null;
     battleScreenLoading = true;
     const texture = await loadBattleScreenTexture(nextIndex);
     battleScreenLoading = false;
     if (!texture || !battleScreenMaterial) {
+      if (takesWanted && battleScreenWanted === null) battleScreenWanted = nextIndex; // the retry tries it again
       if (group.parent && group.visible && !document.hidden) scheduleBattleScreenAdvance(1_500);
       return;
     }
@@ -1424,6 +1383,7 @@ export function createGarageDressing(
     if (!battleScreenMaterial || !GARAGE_BATTLE_SCREEN_SHOTS.length) return;
     battleScreenCurrentTexture = fallback;
     battleScreenIndex = battleScreenStartIndex(currentVariant.mapId);
+    group.userData.battleScreenWantedImage = GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex].img;
     battleScreenLoading = true;
     const texture = await loadBattleScreenTexture(battleScreenIndex);
     battleScreenLoading = false;
@@ -1433,7 +1393,7 @@ export function createGarageDressing(
     battleScreenMaterial.uniforms.uImageB.value = texture;
     group.userData.battleScreenResidentImageCount = 1;
     group.userData.battleScreenCurrentImage = GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex].img;
-    scheduleBattleScreenAdvance();
+    if (!takeWantedBattleScreen()) scheduleBattleScreenAdvance();
   }
 
   /** Hang the one screen on Verdant's panel, or on the yard mount at an outdoor Garage's slideshow pose. */
@@ -1461,10 +1421,19 @@ export function createGarageDressing(
     return isVerdant || pose !== null;
   }
 
-  /** On arriving in a Garage the slideshow opens on that Garage's own map still, then cycles. */
+  /**
+   * On arriving in a Garage the slideshow opens on that Garage's own map still, then cycles. During a load or a crossfade
+   * the still waits as the wanted one and is taken the moment the screen is free.
+   */
   function openSlideshowOnGarage(): void {
     const start = battleScreenStartIndex(currentVariant.mapId);
-    if (start !== battleScreenIndex && battleScreenFrame === null && !battleScreenLoading) {
+    group.userData.battleScreenWantedImage = GARAGE_BATTLE_SCREEN_SHOTS[start]?.img || '';
+    if (battleScreenFrame !== null || battleScreenLoading) {
+      battleScreenWanted = start;
+      return;
+    }
+    battleScreenWanted = null;
+    if (start !== battleScreenIndex) {
       if (battleScreenTimer !== null) { window.clearTimeout(battleScreenTimer); battleScreenTimer = null; }
       void advanceBattleScreen(start);
       return;
@@ -2466,7 +2435,7 @@ export function createGarageDressing(
 
   function buildWorkshopClutter(interiorChildrenStart: number): void {
     // --- EAST WALL (left of frame from the hero cam) ------------------------
-    workbench(21.95, -7, -Math.PI / 2);
+    // (garage r9: the bench under the shadow board is the kit's working bench, garageVerdantKit.ts)
     pegboardAt('east_tools');
     workLamp(21.6, -7);
     // steel locker pair
@@ -2632,10 +2601,9 @@ export function createGarageDressing(
       // drip tray under it
       put(track(new THREE.BoxGeometry(0.8, 0.05, 0.6)), mat.steelDark, 0, 0.03, 1.38, 0, 0, 0, 1, eh);
     }
-    // NORTH wall: second bench + red chest + engine on pallet + lamp
-    workbench(3.2, -21.85, 0);
+    // NORTH wall: the shadow board over the kit's second bench and roll cab (garage r9, garageVerdantKit.ts), the engine
+    // on its pallet, the lamp
     pegboardAt('north_tools');
-    toolChest(6.6, -21.4, 0.15, mat.redCab, mat.redCabDark);
     workLamp(3.2, -21.2);
     {
       put(track(new THREE.BoxGeometry(1.2, 0.11, 0.95)), mat.timberDark, 10.3, 0.06, -20.9, -0.15);
@@ -2708,7 +2676,8 @@ export function createGarageDressing(
   });
 
   // Verdant's share of the garage r9 kit (garageVerdantKit.ts): column and wordmark banners, the hall of fame's framed
-  // prints, a diagnostics station and daylight shafts, on its own Verdant-only owner in the hall's world frame
+  // prints, a diagnostics station, the mezzanine finish and the service cells, on its own Verdant-only owner in the
+  // hall's world frame
   function buildVerdantR9Kit(): void {
     const owner = new THREE.Group();
     owner.name = 'garage_verdant_kit_r9';
@@ -3612,14 +3581,6 @@ export function createGarageDressing(
     // shared material programs incrementally, while the optimization pass
     // above preserves the exact static composition for subsequent variants.
   });
-
-  // sign plates bake before the webfont settles — refresh them once it lands
-  // (same contract as garageStage's own signs)
-  if (document.fonts && !document.fonts.check(SIGN_FONT)) {
-    document.fonts.load(SIGN_FONT)
-      .then(faces => { if (!disposed && faces.length) for (const t of signTextures) t.needsUpdate = true; })
-      .catch(() => {});
-  }
 
   let next = 0;
   let pendingPump: Promise<boolean> | null = null;

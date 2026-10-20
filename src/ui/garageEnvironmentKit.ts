@@ -62,12 +62,13 @@ import {
   addGarageApproachDetails,
   type GarageApproachStats,
 } from './garageApproachDetails.ts';
-import { buildGarageKitDressing, type GarageKitBuild, type GarageKitPlacement } from './garageKitPlacement.ts';
+import { buildGarageKitDressing, garageKitPads, prepareGarageKitPieces, type GarageKitBuild, type GarageKitPlacement } from './garageKitPlacement.ts';
 import { GARAGE_KIT_PLACEMENTS, GARAGE_KIT_SKYLINES } from './garageKitPlacements.ts';
 import {
   createGarageSkylineBackdrop, garageSkylineEnabled, prepareGarageSkyline, type GarageSkylineLandmarkReceipt,
 } from './garageSkyline.ts';
 import { arcWeight, GarageSkylineEmitter, type GarageSkyline } from './garageSkylineKit.ts';
+import { garageHorizonLandmarks } from './garageHorizonLandmarks.ts';
 
 interface GarageEnvironmentEngineContext {
   anisotropy?: number;
@@ -540,6 +541,7 @@ function createBackdropGeometry(
   atmosphere: GarageAtmospherePalette,
   recipe: GarageEnvironmentRecipe,
   skyline: GarageSkyline | null = null,
+  architecture?: GarageVariant['architecture'],
 ): THREE.BufferGeometry {
   // Five map-derived bands close the terrain. Relief is authored by biome: mesas terrace, dunes crest and only the alpine
   // recipe receives a mountain skyline; the exact sampled patch still perturbs every crest, so the result stays grounded
@@ -572,6 +574,9 @@ function createBackdropGeometry(
     { radius: 96, base: -9.2, height: 1.00, relief: 0.34, slant: 13 },
   ] as const;
   const style = recipe.horizonStyle;
+  // the map's own landmarks on this horizon (garage r9, K10: Sirocco's mesas and ksar, Steinburg's town and castle)
+  const landmarks = architecture ? garageHorizonLandmarks(architecture) : null;
+  const layerCrests: Float32Array[] = [];
   const snowy = recipe.terrainSurface === 'snow';
   const tropical = recipe.treeSpecies.includes('palm') && recipe.terrainSurface === 'grass';
   const builtKind: 'town' | 'steelworks' | 'railway' | null = style === 'urban' ? 'town'
@@ -710,20 +715,23 @@ function createBackdropGeometry(
   const rugged = style === 'mesa' || style === 'alpine';
   const columns = segments + 1;
   layers.forEach((layer, layerIndex) => {
-    const segments = LAYER_SEGMENTS[layerIndex];
+    const segments = (landmarks?.layerSegments ?? LAYER_SEGMENTS)[layerIndex];
     const columns = segments + 1;
     const crestHeights = new Float32Array(columns);
+    layerCrests.push(crestHeights);
     for (let segment = 0; segment <= segments; segment += 1) {
       const angle = (segment / segments) * Math.PI * 2;
       const sourceX = Math.cos(angle) * patch.sizeXM * 0.48;
       const sourceZ = Math.sin(angle) * patch.sizeZM * 0.48;
       const sampled = THREE.MathUtils.clamp(samplePatch(patch, values, sourceX, sourceZ) - datum, -2.4, 4.8);
       const nominal = recipe.horizonHeightM * layer.height * (builtKind ? 0.55 : 1);
-      const clamped = THREE.MathUtils.clamp(
-        nominal + sampled * layer.relief + crestProfile(angle, layerIndex, layer) * recipe.horizonHeightM,
+      let crest = THREE.MathUtils.clamp(
+        nominal + sampled * layer.relief + crestProfile(angle, layerIndex, layer) * recipe.horizonHeightM
+          + (landmarks?.lift?.(angle, layerIndex) ?? 0),
         -0.15, recipe.horizonHeightM,
       );
-      const crest = skyline?.crest ? Math.min(recipe.horizonHeightM, skyline.crest(angle, layerIndex, clamped)) : clamped;
+      if (skyline?.crest) crest = Math.min(recipe.horizonHeightM, skyline.crest(angle, layerIndex, crest));
+      if (landmarks?.clearance) crest = Math.max(-0.15, crest * landmarks.clearance(angle, layerIndex, layer.radius));
       crestHeights[segment] = crest;
       maxHeightM = Math.max(maxHeightM, crest);
     }
@@ -807,12 +815,32 @@ function createBackdropGeometry(
   }
   let accentTopM = 0;
   let massTopM = 0;
+  let landmarkTriangles = 0;
+  if (landmarks) {
+    const crestAt = (angle: number, layerIndex: number): number => {
+      const crests = layerCrests[Math.max(0, Math.min(layerCrests.length - 1, Math.round(layerIndex)))];
+      const span = crests.length - 1;
+      const t = ((((angle / (Math.PI * 2)) % 1) + 1) % 1) * span;
+      const i = Math.floor(t);
+      return THREE.MathUtils.lerp(crests[i], crests[Math.min(span, i + 1)], t - i);
+    };
+    const result = landmarks.build({
+      positions, colors, indices, sun, horizon, crestAt, layerRadii: layers.map((layer) => layer.radius),
+    });
+    landmarkTriangles = result.triangles;
+    if (landmarks.kind === 'built') {
+      massTopM = result.massTopM ?? 0;
+      accentTopM = result.accentTopM ?? 0;
+    } else {
+      maxHeightM = Math.max(maxHeightM, result.maxHeightM ?? 0);
+    }
+  }
   if (skyline) {
     const emitter = new GarageSkylineEmitter(positions, colors, indices, horizon, sun, seed ^ 0x51c1);
     skyline.build(emitter);
     massTopM = emitter.massTop;
     accentTopM = emitter.accentTop;
-  } else if (builtKind) {
+  } else if (builtKind && landmarks?.kind !== 'built') {
     const built = addBuiltHorizon(builtKind, seed, horizon, sun, positions, colors, indices);
     massTopM = built.massTopM;
     accentTopM = built.accentTopM;
@@ -830,6 +858,7 @@ function createBackdropGeometry(
   geometry.userData.accentTopM = Number(accentTopM.toFixed(3));
   geometry.userData.massTopM = Number(massTopM.toFixed(3));
   geometry.userData.maxHeightM = Number(maxHeightM.toFixed(3));
+  geometry.userData.landmarkTriangles = landmarkTriangles;
   return geometry;
 }
 
@@ -1358,7 +1387,7 @@ export function buildGarageEnvironment(
   const horizon = new THREE.Mesh(
     track(skyline
       ? createGarageSkylineBackdrop(variant.mapId)
-      : createBackdropGeometry(patch, heights, seed, atmosphere, recipe, GARAGE_KIT_SKYLINES[variant.architecture] ?? null)),
+      : createBackdropGeometry(patch, heights, seed, atmosphere, recipe, GARAGE_KIT_SKYLINES[variant.architecture] ?? null, variant.architecture)),
     track(new THREE.MeshBasicMaterial({
       vertexColors: true,
       side: THREE.DoubleSide,
@@ -1664,6 +1693,40 @@ export function buildGarageEnvironment(
   // the reseat levels every facility terrace's core back to its datum; the dock and the bore are cut again after it
   carveDrydock();
   carveTunnelBore();
+  // The kit's work cells stand on graded pads (garage r9): the ground under each grounded piece is levelled to the
+  // height under its centre (a datum piece to its own height) and feathered back into the excerpt over two metres, so
+  // no container, bowser or trailer stands on a bank or half buried in a dune. Never inside the turntable's feather.
+  const kitPlacement = options.kitPlacement !== undefined ? options.kitPlacement : GARAGE_KIT_PLACEMENTS[variant.architecture];
+  const levelKitPads = (): void => {
+    if (!kitPlacement) return;
+    // the largest pieces first; a smaller piece standing in a levelled pad's reach joins its level, so a cell (a tower
+    // and its sandbags, a container and its desk) stands on one platform instead of a terrace of small steps
+    const levelled: Array<{ x: number; z: number; reach: number; target: number }> = [];
+    const pads = [...garageKitPads(variant, kitPlacement)].sort((a, b) => b.radius - a.radius);
+    for (const pad of pads) {
+      if (Math.hypot(pad.x, pad.z) - pad.radius - 2 < GARAGE_PLATFORM_GEOMETRY.terrainFeatherRadiusM) continue;
+      const host = levelled.find((other) => Math.hypot(pad.x - other.x, pad.z - other.z) < other.reach - 1.2);
+      const target = pad.y ?? host?.target ?? samplePatch(patch, heights, pad.x, pad.z);
+      // (the excerpt's grid is 2.4 m: the level core reaches a cell's half diagonal past the footprint)
+      const core = pad.radius + 1.2, feather = 2.4;
+      levelled.push({ x: pad.x, z: pad.z, reach: core + feather * 0.5, target });
+      for (let row = 0; row < patch.height; row += 1) {
+        const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+        for (let column = 0; column < patch.width; column += 1) {
+          const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+          const distance = Math.hypot(x - pad.x, z - pad.z);
+          if (distance >= core + feather) continue;
+          // a facility terrace keeps its own level (the exhibits' pads, the stations' floors, the signature facility)
+          const view = garageWorldPointToView(x, z);
+          if (terraceRecords.some((terrace) => Math.hypot((view.side - terrace.side) / terrace.radiusSide,
+            (view.depth - terrace.depth) / terrace.radiusDepth) <= 1.25)) continue;
+          const index = row * patch.width + column;
+          heights[index] = THREE.MathUtils.lerp(target, heights[index], THREE.MathUtils.smoothstep(distance, core, core + feather));
+        }
+      }
+    }
+  };
+  levelKitPads();
 
 
   const measurePlacementQuality = (): {
@@ -2293,7 +2356,6 @@ export function buildGarageEnvironment(
   // atmosphere. Solids join the baked bucket and surfaces their own buckets before the merge below; the kit's display,
   // decal and atmosphere meshes are the pack's only new draws.
   // (the placement receipts pass their own: an empty one measures the scene the kit must keep clear of)
-  const kitPlacement = options.kitPlacement !== undefined ? options.kitPlacement : GARAGE_KIT_PLACEMENTS[variant.architecture];
   const kit = kitPlacement
     ? buildGarageKitDressing({
         variant,
@@ -2317,8 +2379,11 @@ export function buildGarageEnvironment(
     // Source albedo already contains its own value range. Keep the material
     // multiplier close to white so shaded facades retain readable PBR detail.
     // Redrock's compounds are Rum's sand-coloured block walls, not white boxes (garage r9, the audit's "white box walls"):
-    // its render keeps more of the valley's own tint
-    const building = new THREE.Color(recipe.buildingTint).lerp(new THREE.Color(0xffffff), variant.architecture === 'recovery_yard' ? 0 : 0.62);
+    // its render keeps more of the valley's own tint. Sirocco's courts are mud plaster, not whitewash (the r1 frames
+    // still read the lightened tint as white under the desert sun): the wadi's own mud, no white in it
+    const building = variant.architecture === 'shade_depot'
+      ? new THREE.Color(0xa88a64)
+      : new THREE.Color(recipe.buildingTint).lerp(new THREE.Color(0xffffff), variant.architecture === 'recovery_yard' ? 0 : 0.62);
     switch (key) {
       case 'plaster': return texturedMaterial('plaster', { color: building, roughness: 1 });
       case 'plaster2': return texturedMaterial('plaster', { color: building.clone().offsetHSL(0, -0.04, -0.08), roughness: 1 });
@@ -2450,6 +2515,12 @@ export function buildGarageEnvironment(
       (combined.stone ||= []).push(...(combined[key] || []));
       combined[key] = [];
     }
+  }
+  // Sirocco's adobe is shuttered, not glazed (garage r9): its few panes join the dark openings, paying one of the kit's
+  // draws
+  if (variant.architecture === 'shade_depot' && (combined.glass || []).length) {
+    (combined.dark ||= []).push(...(combined.glass || []));
+    combined.glass = [];
   }
   const addMergedStructures = (): void => {
     // every source is this pack's own (all are disposed below) and is reshaped in place, unless it was pushed more than
@@ -2678,6 +2749,10 @@ export function buildGarageEnvironment(
     groundCover: groundCoverIndex,
     structures: recipe.structures.length,
     ...facilityDetails,
+    // the kit's working cells carry stocked spares and secured stores of their own (garage r9)
+    looseParts: facilityDetails.looseParts + (kit?.stats.looseParts ?? 0),
+    secureStorageSystems: facilityDetails.secureStorageSystems + (kit?.stats.secureStores ?? 0),
+    factoryProcessZones: facilityDetails.factoryProcessZones + (kit?.stats.processZones ?? 0),
     ...approachDetails,
     approachTerrainGraded: true,
     approachMaxGrade,
@@ -2769,4 +2844,7 @@ export async function prepareGarageEnvironmentAssets(
     await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
     prepareGarageSkyline(variant.mapId);
   }
+  // its kit's pieces into the session cache, in slices, so the pack's bake only places them (garage r9)
+  const kitPlacement = GARAGE_KIT_PLACEMENTS[variant.architecture];
+  if (kitPlacement) await prepareGarageKitPieces(variant, kitPlacement);
 }

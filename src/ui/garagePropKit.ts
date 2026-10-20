@@ -1,5 +1,6 @@
 import { KitBuilder, type KitColor } from './garageKitGeometry.ts';
 import { garageDisplayRect } from './garageDisplayAtlas.ts';
+import { GARAGE_REGIONAL_PROP_BUDGETS, GARAGE_REGIONAL_PROP_BUILDERS } from './garageRegionalProps.ts';
 
 /**
  * K5, tool and parts clutter (garage r9): authored, bevelled, vertex-AO pieces that take the region skin, replacing
@@ -393,6 +394,8 @@ export const GARAGE_PROP_BUILDERS: Readonly<Record<string, PropBuilder>> = Objec
   drum200, jerrycan, ammoBoxSteel, ammoCrate, pallet, roadWheel, trackPallet, towBar, chocks, cone, bollard,
   extinguisher, gasCylinder, cableReel, coiledHose, tarpStack, sandbag, generator, compressor, lightTower, forklift,
   palletJack, oilRack, spillBin, skip, bowser, gasCage, lowLoader, pole,
+  // the per-garage briefs' regional signatures (garageRegionalProps.ts)
+  ...GARAGE_REGIONAL_PROP_BUILDERS,
 });
 
 /**
@@ -404,6 +407,7 @@ export const GARAGE_PROP_BUDGETS: Readonly<Record<string, number>> = Object.free
   towBar: 120, chocks: 40, cone: 60, bollard: 80, extinguisher: 80, gasCylinder: 80, cableReel: 160, coiledHose: 160,
   tarpStack: 300, sandbag: 40, generator: 500, compressor: 450, lightTower: 900, forklift: 1800, palletJack: 250,
   oilRack: 900, spillBin: 120, skip: 300, bowser: 1600, gasCage: 500, lowLoader: 1500, pole: 160,
+  ...GARAGE_REGIONAL_PROP_BUDGETS,
 });
 
 /** Build one clutter piece by name. */

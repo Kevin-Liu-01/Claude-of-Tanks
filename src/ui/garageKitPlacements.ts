@@ -8,6 +8,8 @@ import type { GarageSkyline } from './garageSkylineKit.ts';
 import { IRONWORKS_KIT, IRONWORKS_SKYLINE } from './garageIronworksKit.ts';
 import { CINDER_KIT, CINDER_SKYLINE } from './garageCinderKit.ts';
 import { SALTMERE_KIT, SALTMERE_SKYLINE } from './garageSaltmereKit.ts';
+import { SIROCCO_KIT_PLACEMENT } from './garageSiroccoKit.ts';
+import { STEINBURG_KIT_PLACEMENT } from './garageSteinburgKit.ts';
 
 /**
  * Each Garage's kit arrangement (garage r9): the per-garage lanes fill these rows; garageKitPlacement.ts builds them.
@@ -28,6 +30,10 @@ export const GARAGE_KIT_PLACEMENTS: Readonly<Partial<Record<GarageVariant['archi
   rail_roundhouse: CINDER_KIT,
   // Saltmere Bay: the granite graving dock on the Breton coast (garageSaltmereKit.ts, brief 5)
   naval_drydock: SALTMERE_KIT,
+  // Sirocco Deployment: a forward FOB terrace at the wadi crossing (garage r9 g3; its cells: garageSiroccoKit.ts)
+  shade_depot: SIROCCO_KIT_PLACEMENT,
+  // Steinburg Deployment: the Zeughaus's street, crane bay and dispatch office (garage r9 g3: garageSteinburgKit.ts)
+  brick_arsenal: STEINBURG_KIT_PLACEMENT,
 });
 
 /**

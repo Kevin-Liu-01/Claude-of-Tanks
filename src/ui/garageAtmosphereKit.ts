@@ -66,6 +66,30 @@ export function garageAtmosphereAtlasPixels(): Uint8Array {
   for (let i = 0; i < 70; i += 1) motes.push([random() * TEX, 2 + random() * (STRIP_H - 4), 0.5 + random() * 0.7]);
   const drips: Array<[number, number]> = [];
   for (let i = 0; i < 22; i += 1) drips.push([random() * TEX, 0.4 + random() * 0.6]);
+  // the motes and drips are stamped over their own few pixels (the same values as testing every sprite at every pixel,
+  // at a fraction of the first Garage's build time)
+  const wrapDx = (x: number, cx: number): number => { const d = Math.abs(x - cx); return Math.min(d, TEX - d); };
+  const moteAlpha = new Float32Array(TEX * STRIP_H), dripAlpha = new Float32Array(TEX * STRIP_H);
+  for (const [mx, my, mr] of motes) {
+    for (let y = Math.max(0, Math.floor(my - mr)); y <= Math.min(STRIP_H - 1, Math.ceil(my + mr)); y += 1) {
+      for (let xi = Math.floor(mx - mr); xi <= Math.ceil(mx + mr); xi += 1) {
+        const x = ((xi % TEX) + TEX) % TEX;
+        const d = Math.hypot(wrapDx(x, mx), y - my);
+        if (d < mr) moteAlpha[y * TEX + x] = Math.max(moteAlpha[y * TEX + x], 1 - d / mr);
+      }
+    }
+  }
+  for (const [dx, len] of drips) {
+    for (let xi = Math.floor(dx - 0.8); xi <= Math.ceil(dx + 0.8); xi += 1) {
+      const x = ((xi % TEX) + TEX) % TEX;
+      const ddx = wrapDx(x, dx);
+      if (ddx >= 0.8) continue;
+      for (let y = 0; y < STRIP_H; y += 1) {
+        const v = y / (STRIP_H - 1);
+        if (v < len) dripAlpha[y * TEX + x] = Math.max(dripAlpha[y * TEX + x], (1 - v / len) * (1 - ddx / 0.8));
+      }
+    }
+  }
   STRIPS.forEach((strip, index) => {
     const [tr, tg, tb] = STRIP_TINT[strip];
     const peak = GARAGE_ATMOSPHERE_ALPHA[strip];
@@ -90,28 +114,8 @@ export function garageAtmosphereAtlasPixels(): Uint8Array {
             a = Math.pow(edge, 1.5) * Math.max(0, streak * 1.4 - 0.4);
             break;
           }
-          // (the sprites test their own few pixels only: a mote or drip further than its radius along either axis
-          // cannot reach this pixel, so the same texels come out at a fraction of the first Garage's build)
-          case 'motes': {
-            for (let k = 0; k < motes.length; k += 1) {
-              const mote = motes[k], my = mote[1], mr = mote[2];
-              if (Math.abs(y - my) >= mr) continue;
-              let ddx = Math.abs(x - mote[0]); ddx = Math.min(ddx, TEX - ddx);
-              if (ddx >= mr) continue;
-              const d = Math.hypot(ddx, y - my);
-              if (d < mr) a = Math.max(a, 1 - d / mr);
-            }
-            break;
-          }
-          case 'drips': {
-            for (let k = 0; k < drips.length; k += 1) {
-              const len = drips[k][1];
-              if (v >= len) continue;
-              let ddx = Math.abs(x - drips[k][0]); ddx = Math.min(ddx, TEX - ddx);
-              if (ddx < 0.8) a = Math.max(a, (1 - v / len) * (1 - ddx / 0.8));
-            }
-            break;
-          }
+          case 'motes': a = moteAlpha[y * TEX + x]; break;
+          case 'drips': a = dripAlpha[y * TEX + x]; break;
           default: break;
         }
         const o = ((index * STRIP_H + y) * TEX + x) * 4;

@@ -35,6 +35,33 @@ export function garageDisplayRect(name: string): KitAtlasRect {
   throw new Error(`garage display atlas has no rect '${name}'`);
 }
 
+/**
+ * The atlas picture for a hall sign's legend (garage r9 K3: "less text, more pictograms, no sentences"): bay labels
+ * become their numerals, hazards their ISO-7010-style pictograms, a bay's service label the vehicle's readout.
+ */
+export function garageDisplaySignRect(legend: string): string {
+  const text = legend.toUpperCase();
+  const bay = /^BAY\s*0?(\d)/.exec(text);
+  if (bay) return `num.0${bay[1]}`;
+  if (/NO SMOKING/.test(text)) return 'picto.nosmoking';
+  if (/FLAMMABLE|FIRE/.test(text)) return 'picto.flammable';
+  if (/KEEP CLEAR/.test(text)) return 'picto.overhead';
+  if (/T-90/.test(text)) return 'readout.modules.t90';
+  if (/K2/.test(text)) return 'readout.armor.k2';
+  if (/WEAPON/.test(text)) return 'picto.gloves';
+  return 'picto.head';
+}
+
+/**
+ * Whether a rect is paint with alpha (numerals, stencils, decals): its texels outside the paint carry no colour of their
+ * own (the encoder smears the paint into them), so it is drawn with the DECAL material over a plate, never on an opaque
+ * DISPLAY-LIT face (where a bay numeral read as a white blob).
+ */
+export function garageDisplayRectHasAlpha(name: string): boolean {
+  const kind = (rects[name] as { readonly kind?: string } | undefined)?.kind;
+  return kind === 'numeral' || kind === 'stencil' || kind === 'decal';
+}
+
 /** Every rect name of one group ('still', 'readout', 'picto', 'name', ...). */
 export function garageDisplayRectNames(group: string): readonly string[] {
   return Object.keys(rects).filter((name) => name.startsWith(`${group}.`)).sort();

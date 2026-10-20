@@ -760,6 +760,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageFacilityNear.selftest.mjs',
     // garage r9 per-garage lanes: the built skylines (named map landmarks at their bearings, deterministic, bounded)
     'src/ui/garageSkylineKit.selftest.mjs',
+    // garage r9 (g3): Sirocco's and Steinburg's map landmarks at their bearings, bounded and deterministic
+    'src/ui/garageHorizonLandmarks.selftest.mjs',
     'tools/garage-terrain-patches.selftest.mjs',
     'tools/garage-variants-probe.selftest.mjs',
     'src/game/rosterPlanning.selftest.mjs',

@@ -1,5 +1,6 @@
 import { GARAGE_HERO_HEADING_RAD, garageViewPoint } from '../game/garagePresentationPose.ts';
 import type { GarageVariant } from '../game/garageVariants.ts';
+import { kitYawToward } from './garageKitTable.ts';
 
 /**
  * Where each Garage's one slideshow stands (garage r9). The pack builds the panel's frame (a slim LED bezel on its
@@ -46,6 +47,12 @@ export const GARAGE_SLIDESHOW_PLACEMENTS: Readonly<Partial<Record<GarageVariant[
   // Saltmere: an LED harbour board on the dock's far pierhead past the crane's rails, facing up the quay
   // (garageSaltmereKit.ts)
   naval_drydock: Object.freeze({ at: [23.5, 37.25] as const, yaw: Math.PI / 4, width: 2.0, mount: 'freestanding', bottomY: 1.3, y: 0.12 }),
+  // Sirocco: a rugged LED trailer under the shade sail, on the depot's level terrace (1.5 m under the datum), in the
+  // frame's right band clear of the hero's halo, turned to the lens (garage r9, garageSiroccoKit.ts)
+  shade_depot: Object.freeze({ at: [13.4, 17.8] as const, yaw: kitYawToward([13.4, 17.8]), width: 2.8, mount: 'trailer', y: -1.5 }),
+  // Steinburg: a freestanding LED panel on the yard's level floor by its right bank, in the frame's right band clear of
+  // the hero's halo (the brief's gate passage stands behind the hero), turned to the lens (garage r9, garageSteinburgKit.ts)
+  brick_arsenal: Object.freeze({ at: [12.6, 16.0] as const, yaw: kitYawToward([12.6, 16.0]), width: 2.2, mount: 'freestanding' }),
 });
 
 /**

@@ -109,7 +109,8 @@ const assertAtmosphereClearOfDisplays = (label, cards, displayBoxes) => {
   }
 };
 
-// triangle / box overlap (separating axes), the box shrunk by the centimetre the rule allows
+// triangle / box overlap (separating axes), the box shrunk by the centimetre the rule allows; an oriented box (a display
+// quad's own frame: across, up and its normal) is tested by carrying the triangle into its frame
 const overlap = (() => {
   const axes = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
   const v = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
@@ -289,7 +290,8 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
     }
   }
   assert.ok(displayBoxes.length >= 10, 'Verdant: the slideshow, banners, prints and station screens are measured');
-  assertAtmosphereClearOfDisplays('Verdant', kit.atmosphereCards, displayBoxes);
+  // the hall carries no atmosphere cards (garage r9 g3, the blind critic: shaft panels over its screens read as a glitch)
+  assert.ok(!kit.meshes.some((mesh) => /atmosphere/.test(mesh.name)), 'Verdant: no atmosphere cards in the hall');
   for (const mesh of kit.meshes) {
     if (!/displays|atmosphere/.test(mesh.name)) continue;
     const position = mesh.geometry.getAttribute('position');

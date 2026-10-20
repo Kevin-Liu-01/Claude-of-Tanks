@@ -103,6 +103,11 @@ export interface GarageKitBuild {
     stationMonitors: number;
     nameboards: number;
     displayRects: readonly string[];
+    /** Stocked spares the props carry and the props that are secured stores (the facility receipt's own counts). */
+    looseParts: number;
+    secureStores: number;
+    /** Lifts in progress (a crane at work with its load): each a process zone of the facility receipt. */
+    processZones: number;
   }>;
   readonly slideshow: GarageSlideshowPose | null;
   /** Each grounded piece's footprint (world x, z and radius) for the pack's vegetation to keep clear of. */
@@ -118,6 +123,15 @@ interface CachedPiece {
 }
 
 const pieceCache = new Map<string, CachedPiece>();
+
+/** The stocked spares a placed prop carries (drums, cans, crates, sandbags, wheels ...) for the facility receipt. */
+const KIT_LOOSE_PARTS: Readonly<Record<string, number>> = Object.freeze({
+  drum200: 1, jerrycan: 1, ammoBoxSteel: 1, ammoCrate: 1, sandbag: 1, pallet: 1, roadWheel: 1, trackPallet: 6, towBar: 1,
+  chocks: 2, cone: 1, extinguisher: 1, gasCylinder: 1, cableReel: 1, coiledHose: 1, tarpStack: 4, jerrycanRack: 10, gasCage: 4,
+  oilRack: 2, rollCage: 2,
+});
+/** The props that are secured stores: locked racks, cages and closed containers. */
+const KIT_SECURE_STORES: ReadonlySet<string> = new Set(['jerrycanRack', 'gasCage', 'oilRack', 'rollCage', 'isoContainer']);
 
 /** Build (or fetch) one piece in its own frame. Exported for the kit sheet and the receipts. */
 function buildGarageKitPiece(item: GarageKitItem, architecture: GarageVariant['architecture'], mapId: string): CachedPiece {
@@ -202,6 +216,44 @@ function hash(text: string): number {
   return value >>> 0;
 }
 
+/**
+ * Build a Garage's kit pieces into the session cache ahead of its pack (garage r9 K0.3: "build each kit geometry once
+ * per session ... and only transform it into packs"): the pack's synchronous bake then only places cached pieces. The
+ * work yields to the event loop every few pieces, so a cold visit never builds the whole table inside one frame.
+ */
+export async function prepareGarageKitPieces(variant: GarageVariant, placement: GarageKitPlacement, piecesPerSlice = 4): Promise<void> {
+  let built = 0;
+  for (const item of garageKitItems(variant, placement)) {
+    buildGarageKitPiece(item, variant.architecture, variant.mapId);
+    built += 1;
+    // a few pieces a slice (each is a few milliseconds cold), then the event loop runs: no clock decides the slices
+    if (built % piecesPerSlice === 0) await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+  }
+}
+
+/**
+ * The ground pads a Garage's placed kit stands on (garage r9: "every part is supported"; a work cell stands on graded
+ * ground): each grounded piece's world centre (x, z), the radius its footprint reaches, and the height to level to (the
+ * datum pieces' own height, or null for the ground under its centre). The pack levels its terrain under them before it
+ * builds the ground, so no piece stands on a bank or half buried in a dune.
+ */
+export function garageKitPads(variant: GarageVariant, placement: GarageKitPlacement): Array<{
+  readonly x: number; readonly z: number; readonly radius: number; readonly y: number | null;
+}> {
+  const pads: Array<{ x: number; z: number; radius: number; y: number | null }> = [];
+  for (const item of garageKitItems(variant, placement)) {
+    if (item.kind === 'wall') continue;
+    const piece = buildGarageKitPiece(item, variant.architecture, variant.mapId);
+    if (!piece.footprint && !(item.kind === 'prop' && item.blot === false)) continue;
+    const box = piece.result.solid.boundingBox;
+    const [hx, hz] = piece.footprint ?? (box && !box.isEmpty()
+      ? [Math.max(Math.abs(box.min.x), Math.abs(box.max.x)), Math.max(Math.abs(box.min.z), Math.abs(box.max.z))] : [0.5, 0.5]);
+    const point = garageViewPoint(item.at[0], item.at[1]);
+    pads.push({ x: point.x, z: point.z, radius: Math.max(hx, hz) + 0.3, y: item.datum ? (item.y ?? 0) : null });
+  }
+  return pads;
+}
+
 /** Drop the session cache (tests). */
 export function clearGarageKitCache(): void {
   for (const piece of pieceCache.values()) {
@@ -232,7 +284,7 @@ export function buildGarageKitDressing(params: {
   const cranes: KitCraneReceipt[] = [];
   const displayRects: string[] = [];
   let kitTriangles = 0, displayTriangles = 0, decalTriangles = 0;
-  let brandPieces = 0, tankImages = 0, stations = 0, stationMonitors = 0, nameboards = 0;
+  let brandPieces = 0, tankImages = 0, stations = 0, stationMonitors = 0, nameboards = 0, looseParts = 0, secureStores = 0;
   let slideshow: GarageSlideshowPose | null = null;
   const footprints: Array<{ x: number; z: number; radius: number }> = [];
   const blotRect = garageDisplayRect('decal.blot');
@@ -289,6 +341,11 @@ export function buildGarageKitDressing(params: {
       }
     }
     if (piece.crane) cranes.push(piece.crane);
+    if (item.kind === 'prop') {
+      looseParts += KIT_LOOSE_PARTS[item.name] ?? 0;
+      // an open container is a workplace, not a store
+      if (KIT_SECURE_STORES.has(item.name) && !(item.name === 'isoContainer' && (item.params?.variant ?? 0) > 0)) secureStores += 1;
+    }
     if (item.kind === 'sign' || (item.kind === 'display' && 'rect' in item)) countRect((item as { rect: string }).rect);
     if (item.kind === 'display' && item.display === 'nameboard') nameboards += 1;
     if (item.kind === 'display' && item.display === 'board') for (const rect of item.rects) countRect(rect);
@@ -353,7 +410,8 @@ export function buildGarageKitDressing(params: {
     stats: Object.freeze({
       kitPieces: items.length, kitTriangles, displayTriangles, decalTriangles, atmosphereTriangles,
       cranes: Object.freeze(cranes), brandPieces, tankImages, stations, stationMonitors, nameboards,
-      displayRects: Object.freeze(displayRects),
+      displayRects: Object.freeze(displayRects), looseParts, secureStores,
+      processZones: cranes.filter((crane) => crane.atWork).length,
     }),
   };
 }
@@ -421,7 +479,7 @@ export function garageKitItemBounds(variant: GarageVariant, placement: GarageKit
       if (!geometry) continue;
       const placed = place(geometry);
       const position = placed.getAttribute('position');
-      for (let i = 0; i < position.count; i += 6) {
+      for (let i = 0; i + 5 < position.count; i += 6) {
         const box = new THREE.Box3();
         const corners: THREE.Vector3[] = [];
         for (let k = 0; k < 6 && i + k < position.count; k += 1) {

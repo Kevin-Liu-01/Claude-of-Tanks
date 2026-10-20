@@ -241,7 +241,9 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeFactory, 'arsenal annex', 36, -14, 0.56),
       at(makeCivicHall, 'arsenal administration', 40, -11, 0.50),
       at(makeParkingDeck, 'armored vehicle depot', 6, 38, 0.58),
-      at(makeMegatower, 'damaged arsenal high-rise', -42, 24, 0.34),
+      // garage r9 (g3): Steinburg is an old hill town of steep roofs and a castle rock, with no tower blocks in it (its
+      // map, urban.ts): the old skyline's damaged high-rise is a Gasthaus on the lane behind the fire station
+      at(makeTavern, 'Steinburg Gasthaus', -42, 24, 0.7),
       at(makeCornerShop, 'munition street frontage', 31, 31, 0.54),
     ],
     treeSpecies: ['poplar', 'oak'], treeCount: 18,
@@ -255,7 +257,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     serviceFrame: 'city appliance bay and brick industrial loading road',
     sourceBeat: 'steinburg-arsenal', sourceStructure: 'fire station + urban factory', landmark: [-21, 14.1, -29],
     distinctiveElements: ['real cobble PBR', 'hose tower fire station', 'brick factory facade', 'restrained city tree line',
-      'damaged high-rise skyline', 'munition street frontage', 'armored parking depot'],
+      'old-town Gasthaus lane', 'munition street frontage', 'armored parking depot'],
   },
   naval_drydock: {
     // (garage r9: granite grey quay paving, not a blue plane; healthy maritime pines and oaks on the downs)

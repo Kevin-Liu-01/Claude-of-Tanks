@@ -128,11 +128,13 @@ where the pack builds the frame and the dressing hangs the same screen. No displ
 enters the hero's halo in the canonical frame (its screen box plus 8 %, `garageDisplayPlacement.selftest.mjs` with
 the measured canonical camera), which leaves the top band and the frame's outer edges for displays, and no
 atmosphere card stands in front of a display, banner or the slideshow there (light shafts are feathered ribbons, never
-hard-edged panes). The atlas's battlefield stills are the `still.<map>` group, never `media.`: a `media.`-led
+hard-edged panes; Verdant's hall carries none: they crossed its screens and read as a glitching panel). The atlas's battlefield stills are the `still.<map>` group, never `media.`: a `media.`-led
 template in the game graph keeps every media.* caption in the boot catalogs. A display mesh is armed with
 `armGarageDisplayAtlas` (its first render starts the half-size-on-mobile atlas load, then the hook removes itself:
 no per-frame call). A pack releases the cascade registrations of the materials it owns when it is disposed. The
-platform kit (collars, LED pucks, pedestal, the segmented deck, half size on mobile) loads at Garage idle.
+platform kit (collars, LED pucks, pedestal, the segmented deck, the hall's two signs, half size on mobile) loads at
+Garage idle together with the atlas runtime: no boot-graph module (`garageStage.ts`) imports `garageDisplayAtlas.ts`
+statically.
 `tools/garage-kit-sheet.html` stages every piece for review. Each Garage's arrangement lives in its own module
 (`garageKitRedrock.ts`, `garageKitGlacier.ts`, `garageKitFrosthollow.ts`, `garageKitMonsoon.ts`, ...), laid out in the
 opening view's frame (atmosphere cards too, through `atView`); the halo receipt tests each face and card by its own
@@ -153,6 +155,11 @@ pure `KitBuilder` functions placed as `{ kind: 'piece', key, build }` items (cac
 is a built skyline (`garageSkylineKit.ts`, rows in `GARAGE_KIT_SKYLINES`): named map landmarks drawn into the pack's one
 backdrop draw at their bearings from the terrain patch's anchor (map x/z = pack x/z), plus optional band reshaping
 (sea arcs, strands, hedges); `garageSkylineKit.selftest.mjs` checks each landmark within 15 degrees of its map point.
+Sirocco and Steinburg draw their maps' landmarks (mesas and ksar; the old town, castle and spires) through
+`garageHorizonLandmarks.ts` (`garageSiroccoHorizon.ts`, `garageSteinburgHorizon.ts`, meshes from
+`garageLandmarkMesh.ts`), which lifts and clears the biome bands' crests; `garageHorizonLandmarks.selftest.mjs` checks
+bearings against the map data. Their kit tables lay out their own working cells (`GARAGE_KIT_CELL_ARCHITECTURES`), so
+the facility drops its primitive station piles there.
 The hero's outline from the Garage camera stays clear (garage critic panel and
 ruling, 2026-10-14: the current layout protects the hero's spot, the turntable,
 the camera and the UI, not the backdrop): no post, mast, leg, hook or lamp crosses
