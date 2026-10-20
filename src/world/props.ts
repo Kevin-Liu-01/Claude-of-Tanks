@@ -9278,6 +9278,50 @@ ${snowCap ? `
     if (!P.curbs) return;
     // (the maps lane, 228) a civic plan's pathway architecture (civic/pathwayKit.ts) in place of the legacy strips: kerbs
     // and pavements only where houses front a main street, the lanes in setts wall to wall; the legacy draws spent first
+    // (229 b1 r3, the coordinator: "a flat pavement footprint must never push a parked vehicle") the legacy strips'
+    // footprints as the map without the plan lays them (no draw, no geometry): on a map whose strips the kit replaced, the
+    // parked vehicles' and carts' seat passes read these, so every vehicle stands where it stands without the plan
+    const legacyKerbFootprints = (): CollisionRecord[] => {
+      const KO = 5.05, KD = 0.34, KF = 0.12, KE = 0.10, WO = 6.35, WD = 2.25, WE = 0.06, RISE = 0.25;
+      const deckList = heightField.bridgeDecks ?? [];
+      const onDeck = (x: number, z: number): boolean => deckList.some((deck) => {
+        const ox = x - deck.x, oz = z - deck.z;
+        return Math.abs(ox * deck.ux + oz * deck.uz) < deck.halfLength + 1 && Math.abs(ox * deck.uz - oz * deck.ux) < deck.halfWidth + 6;
+      });
+      const out: CollisionRecord[] = [];
+      for (let ri = 0; ri < roads.length; ri++) {
+        const nodes = roads[ri];
+        for (let i = 0; i < nodes.length - 1; i++) {
+          const [ax, az] = nodes[i], [bx, bz] = nodes[i + 1];
+          const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+          if (mx < town.x0 - 6 || mx > town.x1 + 6 || mz < town.z0 - 6 || mz > town.z1 + 6) continue;
+          const dx = bx - ax, dz = bz - az, len = Math.hypot(dx, dz), tx = dx / len, tz = dz / len;
+          const nSub = Math.max(1, Math.ceil(len / 5.2)), segLen = (len / nSub) * 1.03;
+          for (let k = 0; k < nSub; k++) {
+            const tt0 = k / nSub, tt = (k + 0.5) / nSub, tt1 = (k + 1) / nSub, cx = ax + dx * tt, cz = az + dz * tt;
+            for (const side of [-1, 1]) {
+              if (distToOtherRoads(cx - tz * side * KO, cz + tx * side * KO, ri) < 6.8 || onDeck(cx, cz)) continue;
+              const ground = (end: 0 | 1, offset: number): number => {
+                const t = end ? tt1 : tt0;
+                return heightField.getHeightAt(ax + dx * t - tz * side * offset, az + dz * t + tx * side * offset);
+              };
+              const road = [ground(0, KO - KD / 2), ground(1, KO - KD / 2)], behind = [ground(0, KO + KD / 2), ground(1, KO + KD / 2)];
+              const inner = [ground(0, WO - WD / 2), ground(1, WO - WD / 2)], outer = [ground(0, WO + WD / 2), ground(1, WO + WD / 2)];
+              const kerbTop = [road[0] + KF, road[1] + KF];
+              const kerbFoot = [Math.min(road[0], behind[0]) - KE, Math.min(road[1], behind[1]) - KE];
+              const walkFoot = [Math.min(inner[0], outer[0], kerbTop[0]) - WE, Math.min(inner[1], outer[1], kerbTop[1]) - WE];
+              void RISE;
+              const k0 = KO - KD / 2, k1 = WO + WD / 2, ux = (tx * segLen) / 2, uz = (tz * segLen) / 2, nx = -tz * side, nz = tx * side;
+              const foot = Math.min(kerbFoot[0], kerbFoot[1], walkFoot[0], walkFoot[1]);
+              out.push(setConvexShape({ min: [0, foot, 0], max: [0, foot + 0.45, 0], kind: 'kerb' }, convexHull2([
+                [cx - ux + nx * k0, cz - uz + nz * k0], [cx + ux + nx * k0, cz + uz + nz * k0],
+                [cx + ux + nx * k1, cz + uz + nz * k1], [cx - ux + nx * k1, cz - uz + nz * k1]])));
+            }
+          }
+        }
+      }
+      return out;
+    };
     if (civicPlan?.pathways) {
       // (228 r2) the structures' and walls' own contact footprints, gridded: a run keeps off a jettied front or a step
       // that stands out past its plot (the footprints the pathway receipt holds it to)
@@ -9298,9 +9342,10 @@ ${snowCap ? `
         tier: mobileProps ? 'mobile' : 'desktop', solidAt,
       });
       if (built.geometry) buckets.baked.push(built.geometry);
-      for (const f of built.footprints) {
-        streetKerbFootprints.push(setConvexShape({ min: [0, f.foot, 0], max: [0, f.foot + 0.45, 0], kind: 'kerb' }, convexHull2(f.pts)));
-      }
+      // (229 b1 r3, the coordinator: "a flat pavement footprint must never push a parked vehicle") the kit's kerbs and
+      // pavements are flush dressing, no seat blocker; the parked vehicles' and carts' seat passes (streetKerbFootprints
+      // feeds only them) read the legacy strips' footprints instead, as on the map without the plan
+      if (P.curbs) for (const fp of legacyKerbFootprints()) streetKerbFootprints.push(fp);
       group.userData.pathways = { census: built.census, debugPolys: built.debug };
       group.userData.pathwayFootprints = built.footprints.map((f) => ({ pts: f.pts.map(([x, z]) => [+x.toFixed(3), +z.toFixed(3)]) }));
       return;

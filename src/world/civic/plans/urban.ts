@@ -294,7 +294,7 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       // (228 r7, the blind critics: "one parked period car" for the owner's "parked period cars") one at the north-east
       // lot's east frontage and one at the south frontage past the room's edge, where no base battle's hull drove in zone
       // control or Frontline (probes/pace: twelve battles); the cover across the Hauptstrasse stays within a piece
-      { kind: 'sedan', x: -4.5, z: 31.5, yawDeg: 179.2 },
+      { kind: 'sedan', x: -5.5, z: 31.5, yawDeg: 179.2 },
       { kind: 'wagon', x: -25.0, z: -43.8, yawDeg: 90.8 },
     ],
     bayMarks: [],
