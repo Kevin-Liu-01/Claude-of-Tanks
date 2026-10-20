@@ -247,24 +247,30 @@ try {
       toggle(c,on){const want=on??!set.has(c);if(want)set.add(c);else set.delete(c);return want;}};};
     const node=(list=[],box=null)=>({attrs:{},dataset:{},childElementCount:0,classList:classes(list),offsetWidth:0,offsetHeight:0,
       style:{getPropertyValue:k=>properties.get(k)||'',setProperty:(k,v)=>properties.set(k,v),removeProperty:k=>properties.delete(k)},
-      getAttribute(k){return this.attrs[k]??null;},hasAttribute(k){return k in this.attrs;},
+      getAttribute(k){return k==='class'?[...this.classList.set].join(' '):this.attrs[k]??null;},hasAttribute(k){return k in this.attrs;},
       toggleAttribute(k,on){const want=on??!(k in this.attrs);if(want)this.attrs[k]='';else delete this.attrs[k];return want;},
       getClientRects(){return [{}];},getBoundingClientRect(){return typeof box==='function'?box():box??rect(0,0,0,0);},
       dispatchEvent(){return true;},querySelector(){return null;},querySelectorAll(){return [];}});
     const root=node(tab?['cot-hud','rosters-expanded']:['cot-hud']);root.querySelector=sel=>inRoot[sel]?.()??null;
     const body=node(touch?['cot-touch-layout']:[]);const html=node();html.clientWidth=width;
-    const parts={'.cot-top':node([],rect(width/2-172,0,344,62)),...Object.fromEntries(Object.entries(elements).map(([k,f])=>[k,node([],()=>f(root))])),...extra(node)};
+    const parts={'.cot-top':node([],rect(width/2-172,0,344,62)),...Object.fromEntries(Object.entries(elements).map(([k,f])=>[k,node([],()=>f(root))])),...extra(node,{root,properties})};
     globalThis.document={body,documentElement:html,querySelector:sel=>parts[sel]??null,querySelectorAll:()=>[]};
     globalThis.window={innerWidth:width,innerHeight:height,visualViewport:{width,height,scale:1},document:globalThis.document,addEventListener(){}};
     globalThis.getComputedStyle=()=>({visibility:'visible'});
     globalThis.requestAnimationFrame=fn=>{const id=nextFrame++;frames.set(id,fn);return id;};
     globalThis.setTimeout=()=>0;globalThis.clearTimeout=()=>{};
-    globalThis.ResizeObserver=class{observe(){}};
+    let resized=null;
+    globalThis.ResizeObserver=class{constructor(fn){resized=fn;}observe(){}};
     globalThis.MutationObserver=class{constructor(fn){observer=fn;}observe(){}};
     installBattleHudLayout(root);
     const flush=()=>{const work=[...frames.values()];frames.clear();for(const fn of work)fn();};
     flush();
-    return {root,body,html,properties,frames,flush,mutate:records=>observer(records),node,parts};
+    // a frame's layout: the ResizeObserver reports each measured part whose box changed since the last one, as browsers do
+    const boxes=new Map();const sized=()=>{const changed=[];for(const part of Object.values(parts)){if(!part.getBoundingClientRect)continue;const b=JSON.stringify(part.getBoundingClientRect());
+      if(boxes.has(part)&&boxes.get(part)!==b)changed.push({target:part});boxes.set(part,b);}return changed;};
+    sized();
+    const settle=()=>{flush();for(let i=0;i<4;i++){const changed=sized();if(!changed.length)break;resized(changed);flush();}};
+    return {root,body,html,properties,frames,flush,settle,mutate:records=>observer(records),node,parts};
   }
   try {
     // touch: no plan (mouseNoticePlanWork untouched), no plan attribute, variable or class, and main's own notice tops
@@ -289,13 +295,34 @@ try {
     // the scope flag (hud.ts, on the document element) schedules nothing while no medal card waits
     mouse.mutate([{type:'attributes',target:mouse.html,attributeName:'data-cot-scoped'}]);
     assert.equal(mouse.frames.size,0,'a scope toggle relayouts nothing');
-    // Tab held for the first plan: the rosters' resting boxes, read with the class lifted, give the plan releasing keeps
-    const ears={'.cot-ear.l':r=>r.classList.contains('rosters-expanded')?rect(0,52,560,420):rect(0,52,194,189),
-      '.cot-ear.r':r=>r.classList.contains('rosters-expanded')?rect(1366-560,52,560,420):rect(1366-194,52,194,189)};
-    const keys=h=>['notice-x','notice-top','alert-x','alert-top','alert-width'].map(k=>h.properties.get(`--hud-${k}`)).join(' ');
-    const held=harness({tab:true,elements:ears}),rest=harness({elements:ears});
-    assert.equal(held.root.classList.contains('rosters-expanded'),true,'the class is back on after the read');
-    assert.equal(keys(held),keys(rest),'the plan made while Tab is held is the resting one');
+    // Tab, with the rosters sized as the CSS sizes them: their width by the class, their height by
+    // --hud-roster-*-height, which a pass writes after it has read them (so the pass just after a release still measures
+    // the held height, 30 px a row against 24). With 1366 x 768's census instruments and both notices and the revive
+    // count up, no notice moves when Tab is pressed or released, nor when it was held for the first plan.
+    const tabRun=(firstHeld)=>{
+      const revive={offsetWidth:390,offsetHeight:129},shown={};let ears=[];
+      const run=harness({tab:firstHeld,inRoot:{'.cot-revive':()=>revive,'.cot-revive.on':()=>revive,'.cot-sixth.on':()=>shown,'.cot-alert.show':()=>shown,
+        '.cot-ear.l':()=>ears[0],'.cot-ear.r':()=>ears[1]},extra:(node,{root,properties})=>{
+        const ear=(side)=>{const e=node(['cot-ear',side],()=>{const w=root.classList.contains('rosters-expanded')?Math.min(320,1366/2-184):194;
+          return rect(side==='l'?0:1366-w,52,w,parseFloat(properties.get(`--hud-roster-${side==='l'?'left':'right'}-height`))||.28*768);});
+          e.dataset.count='7';return e;};
+        ears=[ear('l'),ear('r')];
+        return {'.cot-ear.l':ears[0],'.cot-ear.r':ears[1],'.cot-mode-status.show':node([],rect(544,62,278,41)),'.cot-dp':node([],rect(12,573,160,183)),
+          '.cot-drive':node([],rect(184,648,108,108)),'.cot-vehicle-controls':node([],rect(491,648,382,32)),'.cot-shells':node([],rect(467,688,433,64)),
+          '.cot-si-cardhost':node([],rect(1050,260,300,260)),'.cot-net':node([],rect(1229,8,127,28)),'.cot-minimap':node([],rect(1130,532,220,220))};}});
+      run.settle();return run;};
+    const placed=h=>['revive-x','revive-top','revive-scale','notice-x','notice-top','alert-x','alert-top'].map(k=>h.properties.get(`--hud-${k}`)).join(' ');
+    const tab=(h,on)=>{if(on)h.root.classList.add('rosters-expanded');else h.root.classList.remove('rosters-expanded');
+      h.mutate([{type:'attributes',target:h.root,attributeName:'class'}]);};
+    const rest=tabRun(false),still=placed(rest);
+    tab(rest,true);rest.flush();assert.equal(placed(rest),still,'pressing Tab moves no notice (its first relayout)');
+    rest.settle();assert.equal(placed(rest),still,'nor once the held rosters have resized');
+    tab(rest,false);rest.flush();assert.equal(placed(rest),still,'releasing Tab moves no notice (its first relayout still measures the held height)');
+    rest.settle();assert.equal(placed(rest),still,'nor once the rosters are back at rest');
+    const held=tabRun(true);
+    assert.equal(held.root.classList.contains('rosters-expanded'),true,'the class is back on after the resting read');
+    assert.equal(placed(held),still,'the plan made while Tab is held from the first pass is the resting one');
+    tab(held,false);held.flush();assert.equal(placed(held),still,'and releasing it moves nothing');
     // A medal card queued while the revive count shows (a medal can arrive after the death) waits exactly where the two
     // places meet: the written places (the card's centre and top, the count's centre, top and scale) decide it.
     let met=0,apart=0;

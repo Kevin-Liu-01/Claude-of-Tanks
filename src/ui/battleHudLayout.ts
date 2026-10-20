@@ -203,7 +203,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
   const planShown = () => root.classList.contains('rosters-expanded') || !!root.querySelector('.cot-sixth.on,.cot-alert.show,.cot-prebattle.on,.cot-revive.on')
     || !!document.querySelector('.cot-medal-toasts')?.childElementCount;
   function mouseNoticePlan(width: number, height: number, top: number, seen: readonly (PlanBox | null)[], net: DOMRect | null, map: DOMRect | null,
-    rosters: readonly [DOMRect | null, number, DOMRect | null, number],
+    rosters: readonly [PlanBox | null, number, PlanBox | null, number],
     systemsLeft: number, systemsTop: number, systemsWidth: number, systemsHeight: number, sideWidth: number,
     leftTop: number, leftBottom: number, rightTop: number, rightBottom: number,
     report: { top: number; height: number }): MouseNoticePlan {
@@ -458,22 +458,29 @@ export function installBattleHudLayout(root: HTMLElement): void {
         root.classList.add('rosters-expanded');
       }
       const resting = expanded ? restingEars : null;
-      const planLeft = resting ? resting.left : earLeft, planRight = resting ? resting.right : earRight;
+      // the left lane's floor without the vehicle-status strip, which comes and goes with damage
+      const planLeftBottom = Math.min(leftFloor(height, touch, true), systemsHeight && systemsLeft < sideWidth + 12 ? systemsTop - 8 : height);
+      // The rosters at rest: their place and width as measured at rest, their height as this pass sizes them at rest
+      // (the height variables are written after these reads, so a pass just after Tab's release still measures the held
+      // height, 30 px a row against 24)
+      const iconLeft = !!root.querySelector('.cot-ear.l.icon-grid'), iconRight = !!root.querySelector('.cot-ear.r.icon-grid');
+      const atRest = (ear: PlanBox | null, h: number): PlanBox | null => ear && { left: ear.left, top: ear.top, width: ear.width, height: h };
+      const restLeft = resting ? resting.left : earLeft, restRight = resting ? resting.right : earRight;
+      const planLeft = atRest(restLeft, restLeft ? battleRosterHeight(height, planLeftBottom - restLeft.top, iconLeft ? 124 : 48, rosterCountLeft, false) : 0);
+      const planRight = atRest(restRight, Math.min(battleRosterHeight(height, rightBottom - rosterStart, iconRight ? 124 : 48, rosterCount, false),
+        Math.max(0, report.top - rosterStart - 32)));
       // the lanes as they start below the resting rosters
-      const planLeftAnchor = planLeft === earLeft ? leftAnchor : Math.max(top, planLeft?.bottom || 0,
+      const planLeftAnchor = Math.max(top, planLeft ? planLeft.top + planLeft.height : 0,
         width < 768 && telemetry && telemetry.top < height / 2 ? telemetry.bottom : 0, map && map.left < width / 2 ? map.bottom : 0) + 8;
       // A phone-width window keeps the network strip's corner of the right lane for it, there or not (multiplayerStatus.ts:
       // its folded ping under the objective), so the strip coming and going (a reconnect) moves no notice.
       const phone = document.body.dataset.cotWidth === 'phone';
       const stripLane: PlanBox | null = phone ? { left: width - NETWORK_CORNER_RIGHT - PHONE_STRIP_WIDTH, top: top + 8, width: PHONE_STRIP_WIDTH, height: PHONE_STRIP_HEIGHT } : null;
       const planNetworkBottom = phone ? Math.max(networkBottom, top + 8 + PHONE_STRIP_HEIGHT) : networkBottom;
-      const planRightAnchor = planRight === earRight && planNetworkBottom === networkBottom ? rightAnchor
-        : Math.max(top, planRight ? (rosterTopRight ?? planRight.top) + planRight.height : 0, planNetworkBottom) + 8;
-      // the left lane's floor without the vehicle-status strip, which comes and goes with damage
-      const planLeftBottom = Math.min(leftFloor(height, touch, true), systemsHeight && systemsLeft < sideWidth + 12 ? systemsTop - 8 : height);
+      const planRightAnchor = Math.max(top, planRight ? (rosterTopRight ?? planRight.top) + planRight.height : 0, planNetworkBottom) + 8;
       plan = mouseNoticePlan(width, height, top, [score, objective, map, ammo, phone ? stripLane : strip], telemetry, map,
-        [planLeft, planLeft ? battleRosterHeight(height, planLeftBottom - planLeft.top, root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48, rosterCountLeft, true) : 0,
-          planRight, planRight ? Math.min(battleRosterHeight(height, rightBottom - rosterStart, root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, rosterCount, true),
+        [planLeft, planLeft ? battleRosterHeight(height, planLeftBottom - planLeft.top, iconLeft ? 124 : 48, rosterCountLeft, true) : 0,
+          planRight, planRight ? Math.min(battleRosterHeight(height, rightBottom - rosterStart, iconRight ? 124 : 48, rosterCount, true),
             Math.max(0, report.top - rosterStart - 32)) : 0],
         systemsLeft, systemsTop, dockWidth, systemsHeight, sideWidth, planLeftAnchor, planLeftBottom, planRightAnchor, Math.min(rightBottom, rightKillFloor), report);
     }
