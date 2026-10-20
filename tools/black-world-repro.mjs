@@ -375,6 +375,32 @@ async function newPage(time) {
       wrapAlloc('renderbufferStorage', (a) => [a[2], a[3]]);
       wrapAlloc('renderbufferStorageMultisample', (a) => [a[3], a[4]]);
       wrapAlloc('texImage2D', (a) => (a.length >= 8 && typeof a[3] === 'number' && typeof a[4] === 'number' ? [a[3], a[4]] : [1, 1]));
+      // (round 2, D1) every texture's storage size and who allocated it (a depth format with its JS stack): an incomplete
+      // framebuffer's attachments are then named (FRAMEBUFFER_INCOMPLETE_DIMENSIONS: a depth texture allocated at a stale
+      // size by a sampler bind before its render target was set up)
+      const DEPTH_FORMATS = new Set([0x81A5, 0x81A6, 0x81A7, 0x8CAC, 0x88F0, 0x8CAD]);
+      const texAlloc = (bwr.texAlloc = new WeakMap());
+      bwr.depthAllocs = [];
+      bwr.depthAllocCount = 0;
+      const storage = G2.texStorage2D;
+      G2.texStorage2D = function (target, levels, internalformat, width, height) {
+        try {
+          if (target === this.TEXTURE_2D) {
+            const tex = this.getParameter(this.TEXTURE_BINDING_2D);
+            const depth = DEPTH_FORMATS.has(internalformat);
+            const row = { w: width, h: height, fmt: internalformat, depth, at: +performance.now().toFixed(0),
+              phase: window.__DEBUG?.game?.phase ?? null,
+              stack: depth ? String(new Error().stack).split('\n').slice(2, 22).map((l) => l.trim().slice(0, 200)) : null };
+            if (tex) texAlloc.set(tex, row);
+            if (depth) {
+              bwr.depthAllocCount++;
+              bwr.depthAllocs.push(row);
+              if (bwr.depthAllocs.length > 40) bwr.depthAllocs.shift();
+            }
+          }
+        } catch { /* the tracer never alters the frame */ }
+        return storage.call(this, target, levels, internalformat, width, height);
+      };
     }
     const getContext = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function (type, attrs) {
@@ -976,7 +1002,19 @@ function installDiagnostics() {
         const status = gl.checkFramebufferStatus(gl.DRAW_FRAMEBUFFER);
         if (status !== gl.FRAMEBUFFER_COMPLETE) {
           tr.incomplete++;
+          // the attachments' allocations (round 2, D1): size and, for a depth texture, the stack that allocated it
+          const attachment = (point) => {
+            try {
+              const type = gl.getFramebufferAttachmentParameter(gl.DRAW_FRAMEBUFFER, point, gl.FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE);
+              if (type !== gl.TEXTURE) return { type };
+              const obj = gl.getFramebufferAttachmentParameter(gl.DRAW_FRAMEBUFFER, point, gl.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME);
+              const alloc = window.__BWR?.texAlloc?.get(obj) ?? null;
+              return alloc ? { w: alloc.w, h: alloc.h, fmt: alloc.fmt, at: alloc.at, phase: alloc.phase, stack: alloc.stack } : { unknown: true };
+            } catch (error) { return { error: String(error).slice(0, 80) }; }
+          };
           if (tr.rows.length < 24) tr.rows.push({ at: +performance.now().toFixed(0), phase: D.game?.phase, timeS: D.game?.timeS, status,
+            attachments: tr.rows.length < 4 ? { color: attachment(gl.COLOR_ATTACHMENT0), depth: attachment(gl.DEPTH_ATTACHMENT) } : null,
+            depthImage: rt?.depthTexture?.image ? [rt.depthTexture.image.width, rt.depthTexture.image.height] : null,
             target: rt ? { name: rt.texture?.name ?? '', w: rt.width, h: rt.height, samples: rt.samples ?? 0 } : 'canvas',
             canvas: [R.domElement.width, R.domElement.height], scene: scene?.name || scene?.type, camera: camera?.name || camera?.type, mask: camera?.layers?.mask,
             stack: String(new Error().stack).split('\n').slice(2, 12).map((l) => l.trim().slice(0, 180)) });
@@ -1407,7 +1445,8 @@ async function sampleWindow(page, label, meta) {
   if (scenePass) scenePass.presentedEmptyInWindow = Math.max(0, scenePass.presentedEmpty - presentedEmpty0);
   const zero = await page.evaluate(() => ({ count: window.__BWR?.zeroAllocCount ?? 0, rows: (window.__BWR?.zeroAlloc ?? []).slice(0, 24),
     incompleteRenders: window.__BWR_INCOMPLETE?.incomplete ?? null, renders: window.__BWR_INCOMPLETE?.renders ?? null, incompleteRows: (window.__BWR_INCOMPLETE?.rows ?? []).slice(0, 24),
-    tinySizes: (window.__BWR_INCOMPLETE?.tinySizes ?? []).slice(0, 24) })).catch(() => null);
+    tinySizes: (window.__BWR_INCOMPLETE?.tinySizes ?? []).slice(0, 24),
+    depthAllocCount: window.__BWR?.depthAllocCount ?? null, depthAllocs: (window.__BWR?.depthAllocs ?? []).slice(-24) })).catch(() => null);
   if (zero?.tinySizes?.length) log(`  TINY canvas/composer sizes: ${zero.tinySizes.length}; first ${JSON.stringify(zero.tinySizes[0])}`);
   if (zero?.incompleteRenders && zero.incompleteRenders !== meta?.incompleteSeen) {
     log(`  RENDER INTO AN INCOMPLETE FRAMEBUFFER: ${zero.incompleteRenders} of ${zero.renders} renders; first ${JSON.stringify(zero.incompleteRows[0])}`);
