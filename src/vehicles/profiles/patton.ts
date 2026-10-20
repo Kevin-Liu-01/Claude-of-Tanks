@@ -5178,6 +5178,9 @@ function finishM60A2Variant(
   for (const side of [-1, 1]) {
     for (const z of sideStations) {
       pattonSideCassette(P, side, sideCassetteCenterY, z, sideCassetteHeightM, 0.54, 'a2');
+      // 2026-10-19 (owner float sweep): on the A2 the cassettes hung 90 mm under the 1.67 rail with nothing inboard
+      // carrying them; two hanger straps per cassette now run from its top band up into the rail.
+      for (const dz of [-0.16, 0.16]) P.add('hullDetail', box(0.03, 0.13, 0.05), side * 1.76, sideCassetteTopY + 0.04, z + dz);
     }
     P.add('hullDetail', box(0.050, 0.060, 5.72), side * 1.73, 1.70, -0.08);
   }
@@ -6010,7 +6013,8 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
       // load path into the cast roof and remains turret-owned at yaw.
       P.add('turret', cylY(0.075, 0.09, 0.055, 12), A.x, yl(A.y), zl(A.z));
       P.add('turretDetail', cylY(0.035, 0.065, 0.11, 10), A.x, yl(A.y + 0.08), zl(A.z));
-      P.add('turretDark', cylY(0.009, 0.013, A.h, 8), A.x, yl(A.y + 0.16 + A.h / 2), zl(A.z));
+      // 2026-10-19 (owner float sweep): the whip started 25 mm over its collar's A.y+0.135 top; now 5 mm into it
+      P.add('turretDark', cylY(0.009, 0.013, A.h, 8), A.x, yl(A.y + 0.13 + A.h / 2), zl(A.z));
     }
   };
   buildM48TurretStage2();
@@ -6130,7 +6134,9 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     // Two-stage loader hatch from the source station envelope: a broad low
     // ring seated on the casting, smaller split lid and backed hinge.  The
     // old small dome left the second weapon station perched on an empty roof.
-    P.add('turret', cylY(0.483, 0.470, 0.105, P.q ? 28 : 16), -0.541, yl(2.585), zl(0.045));
+    // 2026-10-19 (owner float sweep): the upper ring (and the lids, shoe, fork and loader's MG on it) stood 26 mm over
+    // this broad ring; the broad ring rises 30 mm to carry it.
+    P.add('turret', cylY(0.483, 0.470, 0.135, P.q ? 28 : 16), -0.541, yl(2.600), zl(0.045));
     P.add('turret', cylY(0.230, 0.240, 0.105, P.q ? 24 : 14), -0.540, yl(2.716), zl(0.045));
     for (const side of [-1, 1]) {
       P.add('turret', box(0.205, 0.045, 0.36), -0.540 + side * 0.115, yl(2.770), zl(0.045));
@@ -6140,7 +6146,9 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     // not by an invisible point.  Recreate the reference's low lateral shoe
     // and fork so the receiver/ammunition assembly has a readable load path.
     P.add('turret', box(0.30, 0.055, 0.10), -0.81, yl(2.802), zl(0.225), 0, 0.06, 0);
-    P.add('turretDetail', box(0.035, 0.15, 0.035), -0.95, yl(2.866), zl(0.205));
+    // 2026-10-19 (owner float sweep): the loader's can web and MG hung 32-42 mm over the fork and bar; the fork rises
+    // 5 cm into the web.
+    P.add('turretDetail', box(0.035, 0.20, 0.035), -0.95, yl(2.891), zl(0.205));
     P.add('turretDetail', box(0.26, 0.032, 0.07), -0.82, yl(2.935), zl(0.205));
     // Both ammunition cans clamp to their cradles.  These short dark webs
     // eliminate the detached-box read without changing the source envelope.

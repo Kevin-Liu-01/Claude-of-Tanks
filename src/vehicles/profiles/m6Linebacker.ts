@@ -31,7 +31,12 @@ function flankKit(P: TankBuilderPort): void {
   for (const side of [-1,1]) {
     sideWall(P,side,LINEBACKER_SKIRT_INNER,LINEBACKER_SKIRT_OUTER,LINEBACKER_SKIRT_STATIONS);
     // Continuous folded shoulder bridges the native fender and the armor carrier.
-    P.addExternalArmor('hull',box(.33,.07,4.45),side*1.785,1.755,-.49);
+    // 2026-10-19 (owner float sweep): its 1.62 inner edge stood 48 mm off the 1.572 upper hull side, so the whole
+    // flank kit (56 parts) floated 78 mm; the bridge now runs in to 1.55, into that side.
+    P.addExternalArmor('hull',box(.40,.07,4.45),side*1.75,1.755,-.49);
+    // ... and a web under its inner edge drops onto the native fender wall (x 1.55..1.62, top 1.64): the bridge alone
+    // met the sloped upper side only along its box faces, which carried nothing.
+    P.addExternalArmor('hull',box(.07,.17,4.45),side*1.585,1.705,-.49);
     for (let bay=0;bay<6;bay++) {
       const z=-2.27+bay*.73;
       P.addExternalArmor('hull',box(.075,.54,.69),side*1.968,1.365,z);
@@ -52,9 +57,12 @@ function flankKit(P: TankBuilderPort): void {
     P.addEquipment('hullDetail',box(.29,.055,.055),side*1.92,1.68,-2.66);
     for (let row=0;row<5;row++) P.addEquipment('hullDetail',box(.32,.027,.035),side*1.91,1.04+row*.135,-2.66);
     // Clamped pioneer kit and storage cases on the rear shoulders.
-    P.addEquipment('hullDetail',box(.26,.24,.78),side*1.42,1.97,-2.12);
-    for (const z of [-2.39,-1.85]) P.addEquipment('hullDark',box(.28,.026,.045),side*1.42,2.10,z);
-    P.addEquipment('hullDetail',cylZ(.018,1.06,8),side*1.33,2.025,-2.10);
+    // 2026-10-19 (owner float sweep): the kit stood 59-79 mm over the rear deck; seated by dropping it onto the deck.
+    P.snapGroup(`m6-pioneer-kit-${side}`,()=>{
+      P.addEquipment('hullDetail',box(.26,.24,.78),side*1.42,1.97,-2.12);
+      for (const z of [-2.39,-1.85]) P.addEquipment('hullDark',box(.28,.026,.045),side*1.42,2.10,z);
+      P.addEquipment('hullDetail',cylZ(.018,1.06,8),side*1.33,2.025,-2.10);
+    },{reachM:.10,mode:'down'});
   }
 }
 

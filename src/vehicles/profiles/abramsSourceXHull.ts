@@ -360,12 +360,14 @@ function reactiveSkirts(P: TankBuilderPort, curved: boolean): void {
 }
 
 function driverHatch(P: TankBuilderPort): void {
-  P.addEquipment('hullDetail', sheet(-.470, .463, 1.848, 2.537, 1.502, 1.415, .033));
+  // 2026-10-19 (owner float sweep): the hatch sheet ran parallel to the glacis 56 mm over it (29 mm over the 1.44 ring
+  // block at its rear edge) and its handle 9 mm over the sheet; the group drops 55 mm onto the glacis.
+  P.addEquipment('hullDetail', sheet(-.470, .463, 1.848, 2.537, 1.447, 1.360, .033));
   for (const x of [-.20, 0, .20]) {
-    P.addEquipment('hullDetail', box(.169, .064, .100), x, 1.457, 2.461);
-    P.addEquipment('hullGlass', box(.136, .037, .005), x, 1.459, 2.514);
+    P.addEquipment('hullDetail', box(.169, .064, .100), x, 1.400, 2.461);
+    P.addEquipment('hullGlass', box(.136, .037, .005), x, 1.402, 2.514);
   }
-  P.addEquipment('hullDetail', roundMember([-.17, 1.511, 1.95], [.14, 1.511, 1.95], .013));
+  P.addEquipment('hullDetail', roundMember([-.17, 1.445, 1.95], [.14, 1.445, 1.95], .013));
 }
 
 function rearEquipment(P: TankBuilderPort): void {

@@ -990,7 +990,7 @@ function buildType99ABaseHull(P: Modern2BuilderPort) {
   // ---- DOZER BLADE under the bow (print y 0.39..0.53, z 2.5..3.0 center) -
   P.add('hull', box(2.10, 0.15, 0.50), 0, 0.465, 2.74);
   P.add('hullDark', box(2.06, 0.05, 0.06), 0, 0.42, 2.99);                     // blade lip
-  for (const s of [-1, 1]) P.add('hullDetail', box(0.10, 0.10, 0.55), s * 0.72, 0.44, 2.42); // ram arms
+  for (const s of [-1, 1]) P.add('hullDetail', box(0.10, 0.30, 0.55), s * 0.72, 0.545, 2.42); // ram arms, blade to belly (the blade hung 14 cm under the hull on arms as low as itself: owner 2026-10-19 float sweep)
   // front mudguards + flaps: the source's thick fender/flap body ends near
   // z=+3.52; thin brackets remain supported inside that measured envelope.
   for (const s of [-1, 1]) {
@@ -999,7 +999,7 @@ function buildType99ABaseHull(P: Modern2BuilderPort) {
                                                                                //   ~1.1 by z 3.5 — no tall noses)
     P.hangMudguard('ztz99-longwei-front-flap', 'hullRubber', box(0.60, 0.34, 0.028), s * 1.46, 0.91, 3.50);         // compact flap terminates at the
                                                                                //   oracle's +3.52 m thick-body line
-    P.add('hullDetail', box(0.12, 0.09, 0.20), s * 1.78, 1.35, 3.43);          // hanger bracket spanning the
+    P.add('hullDetail', box(0.12, 0.135, 0.20), s * 1.78, 1.3725, 3.43);       // hanger bracket spanning the (top into the fender nose: it stood 43 mm under it, owner 2026-10-19 sweep)
   }                                                                            //   skirt nose -> flap edge
   // ---- stern: compact split transom, backed grilles and raised flaps.  A
   // supported thin recovery loop supplies the oracle's -4.242 m extremum. --
@@ -1146,11 +1146,11 @@ function buildType99AHullDeckAndArmor(P: Modern2BuilderPort) {
   ];
   P.eraCluster('skirt_era_R', (put: EraPlacement) => {
     for (const [z, depth, height] of skirtPanels)
-      put(1.835, 0.91, z, 0, Math.PI / 2, 0, depth / 0.28, height / 0.13, 0.35);
+      put(1.835, 1.228 - height / 2, z, 0, Math.PI / 2, 0, depth / 0.28, height / 0.13, 0.35); // tops into the fender (they hung 15-30 mm under it: owner 2026-10-19 float sweep)
   });
   P.eraCluster('skirt_era_L', (put: EraPlacement) => {
     for (const [z, depth, height] of skirtPanels)
-      put(-1.835, 0.91, z, 0, -Math.PI / 2, 0, depth / 0.28, height / 0.13, 0.35);
+      put(-1.835, 1.228 - height / 2, z, 0, -Math.PI / 2, 0, depth / 0.28, height / 0.13, 0.35);
   });
   // ---- GLACIS ERA — the DISTINCTIVE ARROW/CHEVRON FIELD on the 16.3-deg
   // plane (owner identity headline; §5.29 chevron-tip kinship: the two

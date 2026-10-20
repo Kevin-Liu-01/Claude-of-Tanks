@@ -1,3 +1,4 @@
+import type { SnapGroupOptions } from '../tankFactoryCore.ts';
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // First-party procedural M551 Sheridan. The hull proportions were measured
@@ -64,6 +65,7 @@ interface SheridanBuilderPort {
   addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addHatch(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addModuleVisual(module: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  snapGroup(label: string, build: () => void, options?: SnapGroupOptions): void;
   decal(
     owner: VehicleAssemblyOwner,
     kind: string,
@@ -1664,13 +1666,15 @@ function addSheridanSmokeAndAntenna(P: SheridanBuilderPort): void {
       [2.7770, 4.5299, 0.0090, 'detail'],
     ] },
   ];
-  for (const antenna of antennaStages) {
+  // 2026-10-19 (owner float sweep): the right mount's base stood 81 mm over the roof (99 mm island); each mount is
+  // seated on its nearest roof stock.
+  for (const antenna of antennaStages) P.snapGroup('m551-antenna', () => {
     for (const [minY, maxY, radius, bucket] of antenna.stages) {
       P.add(bucket === 'detail' ? 'turretDetail' : 'turretDark',
         cylY(radius, radius, maxY - minY, P.q ? 14 : 10),
         antenna.x, turretY((minY + maxY) * 0.5), antenna.z);
     }
-  }
+  }, { reachM: 0.12 });
 }
 
 function finishSheridan(P: SheridanBuilderPort, isTts: boolean): void {

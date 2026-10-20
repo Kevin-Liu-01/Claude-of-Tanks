@@ -276,6 +276,8 @@ interface UKHullOptions {
   readonly skirtTrimFlush?: boolean;
   /** Hang the skirt panels from the fender above them (P.hangMudguard; the Centurions' panels stop 4-10 cm short). */
   readonly skirtHang?: boolean;
+  /** A hanger rail along the fender's outer edge carries panels that stand just outboard of it (Chieftain Mk 10). */
+  readonly skirtRail?: boolean;
   readonly wheelW?: number;
   readonly wheelY?: number;
   readonly wheelStyle?: string;
@@ -567,7 +569,9 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
           if (g.skirtHang) P.hangMudguard('uk-skirt-panel', 'hull', panel, side * (sk.x - skW / 2), (sk.top + b) / 2, z);
           else P.add('hull', panel, side * (sk.x - skW / 2), (sk.top + b) / 2, z);
           if (P.q) {
-            P.add('hullDark', box(skW, (sk.top - b) * 0.9, 0.016), side * (sk.x - skW * 0.4), (sk.top + b) / 2, z - panelD / 2);
+            // 2026-10-19 (owner float sweep): the 16 mm joint strip stood in the 26 mm gap between panels touching
+            // neither (46 mm islands); 30 mm deep now, so it laps both panel edges.
+            P.add('hullDark', box(skW, (sk.top - b) * 0.9, 0.030), side * (sk.x - skW * 0.4), (sk.top + b) / 2, z - panelD / 2);
             P.add('hullDetail', box(0.02, 0.05, 0.2), side * (sk.x + 0.005), sk.top - 0.1, z);
           }
         }
@@ -577,8 +581,18 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
         // columns the top retune had just fixed. Flush mounts tuck it 0.008
         // under the top edge. Default = the original proud seat (byte-
         // identical for chieftain3/centurions/fv510).
+        // 2026-10-19 (owner float sweep): the proud seat stood 2.5 mm over the panel tops (48 mm island); its foot
+        // now sits 1.5 mm into them.
         P.add('hullDark', box(0.014, 0.035, sk.z1 - sk.z0 - 0.1), side * (sk.x - 0.01),
-          sk.top + (g.skirtTrimFlush ? -0.0255 : 0.02), (sk.z0 + sk.z1) / 2);
+          sk.top + (g.skirtTrimFlush ? -0.0255 : 0.016), (sk.z0 + sk.z1) / 2);
+        if (g.skirtRail && g.fenderY) {
+          // 2026-10-19 (owner float sweep): the Mk 10 panels stood 15 mm outboard of (and 2.5 mm under) the 1.75
+          // fender edge (16 mm islands); a hanger rail under that edge carries their tops.
+          const fenderOuter = side < 0 ? (g.fenderHalfWL ?? g.fenderHalfW ?? 0) : (g.fenderHalfW ?? 0);
+          const railX0 = fenderOuter - 0.004, railX1 = sk.x - skW + 0.008;
+          P.add('hullDetail', box(railX1 - railX0, 0.04, sk.z1 - sk.z0 - 0.1), side * (railX0 + railX1) / 2,
+            sk.top - 0.012, (sk.z0 + sk.z1) / 2);
+        }
       }
     }
   };
@@ -1104,7 +1118,9 @@ function chieftain5Build(P: UKBuilderPort): void {
   // hull run behind it rises to the ref's 2.2325 line, and quarter-round
   // crests roll both top-outer edges (r < 0.48 chord-limit class — radius
   // authored, cited, not tool-paired).
-  segBoxZ(P, 'hull', 0.138, 0.415, 1.12, 1.559, 2.025, -0.88);
+  // 2026-10-19 (owner float sweep): the shoulder run's 1.8175 floor stood 107 mm over the 1.71 rear fender plate; its
+  // floor now reaches 2 mm into that plate (top kept at 2.2325).
+  segBoxZ(P, 'hull', 0.138, 0.524, 1.12, 1.559, 1.9705, -0.88);
   P.add('hull', xform(cylY(0.045, 0.045, 1.12, 10, false, Math.PI / 2, Math.PI / 2), 0, 0, 0, Math.PI / 2, 0, 0), 1.583, 2.1875, -0.88);
   segBoxZ(P, 'turret', 0.0505, 0.475, 1.30, 1.50025, 0.3375, -0.28);
   P.add('turret', xform(cylY(0.05, 0.05, 1.30, 10, false, Math.PI / 2, Math.PI / 2), 0, 0, 0, Math.PI / 2, 0, 0), 1.4755, 0.525, -0.28);
@@ -1599,7 +1615,7 @@ const MK10_HULL = {
   // and nothing (panels 1.8155, seams 1.8185, number decals 1.831) stands
   // wider than the anchor.
   skirt: { x: 1.8155, top: 1.555, bot: 0.79, z0: -2.85, z1: 2.45 },
-  skirtPanels: 6,
+  skirtPanels: 6, skirtRail: true,
   // Side numbers pinned ON the skirt planes (decals are mask geometry AND
   // box geometry — §D width guard: they sit 1 mm proud of the ±1.83 anchor,
   // never past it enough to re-scale the probe frame).
@@ -3599,8 +3615,10 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     // Match the measured 1.68 m Warrior roof without individually nudging a
     // hundred authored plates. This affine correction touches our primitives
     // only; no source vertices enter the runtime builder.
+    // 2026-10-19 (owner float sweep): the hull glass rides the same correction (the driver's periscope glasses stood
+    // 456 mm over their lowered housings)
     P.scaleBuckets(
-      ['hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullCloth'],
+      ['hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullCloth', 'hullGlass'],
       1, upperHullScaleY, 1,
     );
     P.offsetBuckets(
@@ -4535,9 +4553,13 @@ function buildChieftainUpper2026(
       P.add('turretDetail', box(0.035, 0.035, 0.42), s * 0.70, 0.52, -2.16);
       P.add('turretDetail', box(0.035, 0.035, 0.42), s * 0.70, 0.12, -2.16);
     }
-    tarpRoll(P, 'turretCloth', -0.36, 0.34, -2.16, 0.54, 0.105, true);
-    tarpRoll(P, 'turretCloth', 0.29, 0.34, -2.16, 0.48, 0.095, true);
+    // 2026-10-19 (owner float sweep): both rolls stood 45-55 mm over the 0.19 tray (27/38 mm islands); now on it.
+    tarpRoll(P, 'turretCloth', -0.36, 0.292, -2.16, 0.54, 0.105, true);
+    tarpRoll(P, 'turretCloth', 0.29, 0.282, -2.16, 0.48, 0.095, true);
     KIT.ammoCan(P, 'turretDark', 0.96, 0.49, -1.66, 0.18);
+    // 2026-10-19 (owner float sweep): the can (and the radio shoe resting on it) hung 36 mm off the pack's 0.73 side
+    // with nothing under it (40 mm island); a stowage shelf welded to that side now carries it.
+    P.add('turretDetail', box(0.40, 0.02, 0.44), 0.89, 0.381, -1.62);
 
     // Mk.5's large IR/searchlight and Mk.10's armored thermal head occupy the
     // same broad cheek station, making the upgrade lineage obvious.  Both use
@@ -4554,7 +4576,7 @@ function buildChieftainUpper2026(
       P.add('turretDark', cylZ(0.19, 0.08, seg), -0.70, 0.76, 1.275);
       P.add('turretGlass', cylZ(0.15, 0.022, seg), -0.70, 0.76, 1.326);
       P.add('turretDetail', torus(0.16, 0.018, seg), -0.70, 0.76, 1.34);
-      P.add('turretDetail', box(0.50, 0.035, 0.44), -0.70, 0.98, 1.03);
+      P.add('turretDetail', box(0.50, 0.035, 0.44), -0.70, 0.976, 1.03);   // 2026-10-19 (owner float sweep): 2.5 mm over the box top; now on it
     }
   };
   buildChieftainUpper2026TurretStage4();
@@ -4635,7 +4657,8 @@ function buildChieftainUpper2026(
     for (const [x, z, h] of radios) P.snapGroup('chieftain-radio-mast', () => {
       P.add('turret', box(0.13, 0.10, 0.15), x, radioShoeY, z);
       P.add('turretDetail', cylY(0.055, 0.065, 0.12, 12), x, radioShoeY + 0.10, z);
-      P.add('turretDark', cylY(0.018, 0.012, h, 10), x, radioShoeY + 0.22 + h * 0.5, z);
+      // 2026-10-19 (owner float sweep): the whip started 60 mm over its collar's 0.16 top; its foot is now 5 mm in it
+      P.add('turretDark', cylY(0.018, 0.012, h, 10), x, radioShoeY + 0.155 + h * 0.5, z);
       P.add('turretDetail', box(0.035, 0.20, 0.035), x + 0.07,
         radioShoeY + 0.16, z + 0.05, 0.35, 0, -0.25);
     }, { reachM: 0.35, mode: 'down' });

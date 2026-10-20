@@ -51,6 +51,9 @@ function addFoldedSideScreens(P: TankBuilderPort): void {
       [1.370268,2.889154],[1.370268,2.765718],[1.300680,2.668810]],side);
     if(side<0)cap.reverse();
     P.add('turret',sectionSolid([{z:-1.740081-Z,ring:cap},{z:-1.725629-Z,ring:cap}]));
+    // 2026-10-19 (owner float sweep): the screen (and the Trophy launcher on it) stood 46-58 mm over the turret's
+    // side edge; a sill strip under its lower lip carries it on the shell
+    put(P,'turretDetail',KIT.box(.032,.065,.577),side*1.306,2.4025,-1.4516);
   }
 }
 
@@ -119,7 +122,8 @@ function hatchRing(P: TankBuilderPort): void {
       {z:.064,ring:[[-.143,0],[.143,0],[.143,.044],[-.143,.044]]},
     ]);
     put(P,'turretDetail',caseGeo,x,2.567,z,angle);
-    optic(P,KIT.box(.216,.035,.007),x+Math.sin(angle)*.051,2.687,z+Math.cos(angle)*.051,angle);
+    // 2026-10-19 (owner float sweep): the window stood 33-34 mm off its case's sloped head; seated on it
+    P.snapGroup('barak-hatch-periscope',()=>optic(P,KIT.box(.216,.035,.007),x+Math.sin(angle)*.051,2.687,z+Math.cos(angle)*.051,angle),{reachM:.05});
   }
   for(const x of[-.7428,-.1517]){
     put(P,'turretDetail',KIT.box(.026,.10,.38),x,2.604,-1.44);
@@ -211,6 +215,9 @@ function basketFringe(P: TankBuilderPort): void {
     put(P,'turretOpenLatticeDark',KIT.cylY(.006,.006,.175,6),x,y+.111,z);
     put(P,'turretOpenLatticeDark',new THREE.SphereGeometry(.024,P.q?8:6,P.q?4:3),x,y,z);
   }
+  // 2026-10-19 (owner float sweep): the side strands between the basket rail's end and the turret hung from nothing
+  // (42-62 mm off it); a hanger rod runs through every strand head
+  for(const side of[-1,1])bar(P,[side*.964,2.0025,-3.524],[side*1.394,1.9675,-2.109],.012,'turretOpenLatticeDark');
 }
 
 export function addBarakBasket(P: TankBuilderPort): void {

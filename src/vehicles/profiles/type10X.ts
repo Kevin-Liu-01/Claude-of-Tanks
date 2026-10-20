@@ -107,7 +107,8 @@ function deckEquipment(P:TankBuilderPort):void {
     P.addEquipment('hullDetail',box(.601,.032,1.73),side*.64,1.546,-2.77);
     for(let i=0;i<13;i++)
       P.addEquipment('hullDark',box(.465,.005,.018),side*.64,1.565,-3.45+i*.113);
-    P.addEquipment('hullDetail',box(.293,.020,.335),side*1.26,1.551,-2.70);
+    // 2026-10-19 (owner float sweep): the deck plate stood 15 mm over the raked sponson roof; it sits on it now
+    P.addEquipment('hullDetail',box(.293,.020,.335),side*1.26,1.531,-2.70);
     for(const z of [-3.40,-2.70,-2.0])
       P.addEquipment('hullDetail',cylX(.015,.113,12),side*.96,1.565,z);
   }
@@ -146,8 +147,11 @@ function frontEquipment(P:TankBuilderPort):void {
     }
     P.addEquipment('hullDetail',box(.330,.153,.017),side*1.19,1.279,3.552);
     const eye=new THREE.TorusGeometry(.041,.010,8,18);
-    P.addEquipment('hullDetail',eye,side*.466,.790,3.536);
-    P.addEquipment('hullDetail',box(.064,.063,.139),side*.466,.759,3.455);
+    // 2026-10-19 (owner float sweep): the tow eye and its lug hung 25 mm under the lower bow; seated on it
+    P.snapGroup('type10-bow-tow-eye',()=>{
+      P.addEquipment('hullDetail',eye,side*.466,.790,3.536);
+      P.addEquipment('hullDetail',box(.064,.063,.139),side*.466,.759,3.455);
+    },{reachM:.04});
     P.addEquipment('hullDetail',box(.068,.047,.23),side*.74,1.239,3.505);
   }
 }
@@ -252,7 +256,8 @@ function turretArmor(P:TankBuilderPort):void {
         return{z,ring:side<0?ring.reverse():ring};
       });
     P.add('turret',sectionSolid(sections),-PIVOT[0],-PIVOT[1],-PIVOT[2]);
-    for(let i=0;i<5;i++)turret(P,'turretDetail',box(.027,.009,.19),side*1.34,2.030,-1.22+i*.50);
+    // 2026-10-19 (owner float sweep): the forward edge strips stood 5-34 mm off the falling cheek; each seats on it
+    for(let i=0;i<5;i++)P.snapGroup('type10-side-strip',()=>turret(P,'turretDetail',box(.027,.009,.19),side*1.34,2.030,-1.22+i*.50),{reachM:.05});
   }
   addType10CoaxSurround(P,PIVOT);
 }
@@ -266,7 +271,8 @@ function frameBar(P:TankBuilderPort,a:number[],b:number[],r=.012):void {
 }
 
 function rearRack(P:TankBuilderPort):void {
-  const left=-1.268,right=1.12,rear=-3.227,front=-2.065;
+  // 2026-10-19 (owner float sweep): the basket stood 48 mm behind the bustle; its front bars now end 5 mm into it
+  const left=-1.268,right=1.12,rear=-3.227,front=-2.012;
   for(const y of [1.622,1.731,2.125]) {
     frameBar(P,[left,y,front],[left,y,rear]);
     frameBar(P,[right,y,front],[right,y,rear]);
@@ -288,7 +294,7 @@ function rearRack(P:TankBuilderPort):void {
 // across the basket; front row: three lower chests against the bustle. Every chest stands on the floor slats (y 1.622) inside the frame (x -1.268..1.12,
 // z -3.227..-2.065, top bar 2.125), clear of the bars by at least 3 cm.
 function rearBasketStowage(P:TankBuilderPort):void {
-  const floor=1.640;
+  const floor=1.632;                                                        // on the 1.634 floor-slat tops (6 mm over them before, owner 2026-10-19 sweep)
   const chest=(w:number,h:number,d:number,x:number,z:number,front:1|-1,handles=true)=>{
     const {paint,dark}=fieldChestParts(w,h,d,{high:!!P.q,front,handles});
     for(const g of paint)turret(P,'turret',g,x/EQUIPMENT_X_DATUM,floor,z);
@@ -320,6 +326,8 @@ function sightCavity(P:TankBuilderPort,x:number,y:number,z:number,w:number,h:num
 
 function roofEquipment(P:TankBuilderPort):void {
   turret(P,'turretHatch',cylinder(.32747,.127,40),-.511,2.317,.271);
+  // 2026-10-19 (owner float sweep): the cupola stood 42-49 mm over the roof; a collar ring carries it from the roof
+  turret(P,'turretDetail',cylinder(.33,.058,40),-.511,2.2295,.271);
   turret(P,'turretDetail',cylinder(.436787,.038,48),-.511,2.397,.270);
   for(let i=0;i<8;i++) {
     const a=i*Math.PI/4;
@@ -423,7 +431,8 @@ function antenna(P:TankBuilderPort,base:number[],top:number[]):void {
 function antennas(P:TankBuilderPort):void {
   for(const x of [-1.315,1.315]) {
     const crown=x<0?2.373987:2.373856;
-    turret(P,'turretDetail',cylinder(.052,crown-2.145,20),x,(crown+2.145)/2,-1.915);
+    // 2026-10-19 (owner float sweep): the bases stood 26 mm off the falling cheek edge; they reach down into it
+    turret(P,'turretDetail',cylinder(.052,crown-2.105,20),x,(crown+2.105)/2,-1.915);
   }
   steppedWhip(P,-1);steppedWhip(P,1);
   rearAntennaMount(P);

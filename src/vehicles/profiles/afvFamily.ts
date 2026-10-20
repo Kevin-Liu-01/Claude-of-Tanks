@@ -167,12 +167,14 @@ function addBMP3Turret(P: AfvBuilderPort): void {
   buildGun(P, { len: 2.72, r: 0.058, sleeve: true, evac: 0.44,
     collar: true, baseR: 0.14 });
   // Parallel 30-mm cannon and coaxial PKT: both pitch with the gun plant.
-  P.addGunExtraDark(cylZ(0.037, 2.30, 12), 0.22, 0.03, 1.70);
-  P.addGunExtraDark(cylZ(0.022, 1.75, 10), -0.21, 0.02, 1.40);
+  // 2026-10-19 (owner float sweep): both tubes began ~10 cm ahead of the mantlet block (59-66 mm off the mount);
+  // their breech ends now run back into it, muzzles unchanged
+  P.addGunExtraDark(cylZ(0.037, 2.41, 12), 0.22, 0.03, 1.645);
+  P.addGunExtraDark(cylZ(0.022, 1.835, 10), -0.21, 0.02, 1.3575);
   P.addGunExtraDark(cylZ(0.052, 0.15, 12), 0.22, 0.03, 2.90);
   P.add('turret', box(0.30, 0.07, 0.30), -0.40, 0.72, -0.18);
   P.add('turretDetail', cylY(0.12, 0.14, 0.28, 14), -0.40, 0.91, -0.18);
-  P.add('turretGlass', box(0.17, 0.11, 0.024), -0.40, 0.92, -0.02);
+  P.add('turretGlass', box(0.17, 0.11, 0.024), -0.40, 0.92, -0.045);           // on the sight drum's face (18 mm off it before: owner 2026-10-19 float sweep)
   P.add('turret', cylY(0.24, 0.26, 0.07, 18), 0.40, 0.73, -0.30);
   // Owner landing c425f495 (re-applied after the §5.258 lane-side merge):
   // two overlapping crew stations, periscopes and service lids break up the
@@ -193,8 +195,11 @@ function addBMP3Turret(P: AfvBuilderPort): void {
         0, station.yaw, 0);
     }
   }
-  P.add('turret', box(0.38, 0.045, 0.28), 0.00, 0.760, -0.66, 0, 0.04, 0);
-  P.add('turretDark', box(0.27, 0.018, 0.05), 0.00, 0.790, -0.52, 0, 0.04, 0);
+  // 2026-10-19 (owner float sweep): the rear lid stood 58 mm over the crown; it drops onto it
+  P.snapGroup('bmp3-rear-lid', () => {
+    P.add('turret', box(0.38, 0.045, 0.28), 0.00, 0.760, -0.66, 0, 0.04, 0);
+    P.add('turretDark', box(0.27, 0.018, 0.05), 0.00, 0.790, -0.52, 0, 0.04, 0);
+  }, { reachM: 0.08, mode: 'down' });
   // A supported flank collar gives the smoke banks and fittings visible
   // armor seats instead of allowing them to disappear into the dome.
   for (const side of [-1, 1]) {
@@ -494,7 +499,7 @@ function addBWP1Station(P: AfvBuilderPort): void {
       0, 0, side * 0.04);
     P.add('turretGlass', box(0.15, 0.08, 0.024), side * 0.64, 0.70, -0.33);
   }
-  P.add('turretDark', box(1.32, 0.09, 0.055), 0, 0.49, -0.88);
+  P.add('turretDark', box(1.32, 0.09, 0.055), 0, 0.517, -0.88);                // up to the rack's base (32 mm under it before: owner 2026-10-19 float sweep)
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 1.28, d: 0.34, h: 0.23, fill: 0.60, rails: 3, seed: 3398,
   }), 0, 0.56, -0.82);

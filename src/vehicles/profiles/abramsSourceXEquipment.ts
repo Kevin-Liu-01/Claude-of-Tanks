@@ -260,8 +260,11 @@ function roofHatches(C: EquipmentContext): void {
   }
   commanderPeriscopes(C);
   for (const [x, label] of [[.3640055, 'Left'], [-.500608, 'Right']] as const) {
-    box(C, `BlastPanel${label}`, [.80316, .04552, 1.12474], [x, 2.429685, -1.510275], 'turret', 'turret', 0, 'hatch');
-    for (const z of [-1.80, -1.35]) emit(C, `BlastLatch${label}${z}`, KIT.cylY(.072, .072, .017, 20), [x, 2.46094, z]);
+    // 2026-10-19 (owner float sweep): the left panel and its latches stood 46 mm over the bustle roof; dropped onto it.
+    C.P.snapGroup(`abrams-blast-panel-${label}`, () => {
+      box(C, `BlastPanel${label}`, [.80316, .04552, 1.12474], [x, 2.429685, -1.510275], 'turret', 'turret', 0, 'hatch');
+      for (const z of [-1.80, -1.35]) emit(C, `BlastLatch${label}${z}`, KIT.cylY(.072, .072, .017, 20), [x, 2.46094, z]);
+    }, { reachM: .06, mode: 'down' });
   }
   gunnersPrimarySight(C);
 }
@@ -766,8 +769,10 @@ function smoke(C: EquipmentContext): void {
       const geometry = markSmokeTube(annularZ(.043, .032, .166, C.P.q ? 18 : 8),[0,0,1],true);
       geometry.rotateX(-.70);
       geometry.rotateY(side * .46);
+      // 2026-10-19 (owner float sweep): the lower tubes stood 10-29 mm over their bases; both banks sit 31 mm lower,
+      // on the bases.
       emit(C, `SmokeTube${side}_${row}_${i}`, geometry,
-        [x + (i - 1) * .096, 2.105 + row * .072, .635 - row * .105]);
+        [x + (i - 1) * .096, 2.074 + row * .072, .635 - row * .105]);
     }
   }
 }
@@ -874,9 +879,12 @@ function* rearEquipmentCooperativeSteps(C: EquipmentContext, fullLoadout: boolea
   for (const x of [1.069285, -1.20545]) {
     // Selected source owner58, distinct from the aft electronic mast78.
     // Its narrow upper rods retain the source's stepped section and height.
-    emit(C, `WhipFoot${x}`, KIT.cylY(.020, .033075, .0944, 24), [x, 2.421745, -2.101085]);
-    emit(C, `WhipStock${x}`, KIT.cylY(.033075, .033075, 1.1729, 24), [x, 3.055395, -2.101085]);
-    emit(C, `WhipTip${x}`, KIT.cylY(.0172, .0172, .53513, 12), [x, 3.909410, -2.101085]);
+    // 2026-10-19 (owner float sweep): each whip's foot stood 76 mm off the roof edge; seated on the nearest stock.
+    C.P.snapGroup(`abrams-whip-${x}`, () => {
+      emit(C, `WhipFoot${x}`, KIT.cylY(.020, .033075, .0944, 24), [x, 2.421745, -2.101085]);
+      emit(C, `WhipStock${x}`, KIT.cylY(.033075, .033075, 1.1729, 24), [x, 3.055395, -2.101085]);
+      emit(C, `WhipTip${x}`, KIT.cylY(.0172, .0172, .53513, 12), [x, 3.909410, -2.101085]);
+    }, { reachM: .10 });
   }
   yield* tankProfileCheckpoint(cooperative, "rearEquipment:for (const x of [1.069285, -1.20545]) {");
 }
