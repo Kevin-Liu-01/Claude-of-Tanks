@@ -199,8 +199,8 @@ assert.deepEqual({ ...assault.assault, lineBandM: [...assault.assault.lineBandM]
   defendersStartOnLine: true, lineBandM: [70, 110], lineGuard: { minAttackM: 200, outOfSight: true, stepBackM: 20, tries: 4 },
   counterAttack: { squad: 2, afterCaptureS: 8, forS: 40 },
   reinforceTrickleS: 45, reinforceExtra: 0, reinforceRearM: 140, contestReachM: 60, lineSpacingM: 16, lineJitterM: 8, allyReviveBackM: 40,
-  holdSpreadM: 14, regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: 30, hostileDifficultyStep: 1, hostileReloadScale: 1.5,
-}, 'every sector fought for, and winnable (round 2): 3 / 4 / 5 on the line, out of the spawn\'s reach and sight, a counter-attack, a trickle up to the count, defenders\' guns x1.5 slower, a 25 s regroup');
+  holdSpreadM: 14, regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: 30, hostileDifficultyStep: 1, hostileReloadScale: 1.35,
+}, 'every sector fought for, and winnable (round 2): 3 / 4 / 5 on the line, out of the spawn\'s reach and sight, a counter-attack, a trickle up to the count, defenders\' guns x1.35 slower (no scoot either side), a 25 s regroup');
 assert.equal(assault.hpScale, 1.35, 'the attack\'s hull (round 2: the one-life sortie lost 0/16 to the dug-in line); the defenders field their own');
 assert.deepEqual({ ...assault.assaultBots }, { pushAfterS: 15, pushMinGroup: 2, pushGroupM: 80, stageM: 20, flankShare: 0.4, flankOffsetM: 60, flankConvergeM: 80 });
 // Frontline's last line (modes lane 2026-10-08, owner decision: attackers win 40-55 % of bot tests): the third sector's

@@ -840,16 +840,18 @@ const SURVIVOR_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   openingRead: false, conserveRounds: false, fallbackScale: 0.5, hitReactions: 'angle', stalemateSilentS: 6,
   spearheadGuard: true, scoutKite: true, holdBandScale: 1, searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8,
 });
+// round 2: both sides without shoot-and-scoot and at a quarter of the fallback (the A/B over the critic's 16 seeds:
+// falling back 9 % / 12 % of samples -> 5 % / 6 %), the defenders' guns x1.35 to hold the 40-55 % band (assault)
 const ASSAULT_ATTACKER_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   missionOwnsRoute: true,
   openingRead: false, conserveRounds: false, missionSpeed: 1, missionBreakOffHp: 0, missionLocalReachM: 60, spearheadGuard: false, coverScale: 0.5,
-  fallbackScale: 0.5, hitReactions: 'angle', stalemateSilentS: 6, holdBandScale: 0.6, searchRouting: 'spotted',
+  fallbackScale: 0.25, scoot: false, hitReactions: 'angle', stalemateSilentS: 6, holdBandScale: 0.6, searchRouting: 'spotted',
   routeRefreshS: 1.25, routeMoveM: 8,
 });
 const ASSAULT_DEFENDER_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   missionOwnsRoute: true,
   openingRead: false, conserveRounds: false, missionSpeed: 1, missionBreakOffHp: 0.15, missionLocalReachM: 60, zoneSortieM: 80, coverScale: 0.75,
-  fallbackScale: 0.5, hitReactions: 'angle', holdBandScale: 0.7, stalemateSilentS: 6, routeRefreshS: 1.25, routeMoveM: 8,
+  fallbackScale: 0.25, scoot: false, hitReactions: 'angle', holdBandScale: 0.7, stalemateSilentS: 6, routeRefreshS: 1.25, routeMoveM: 8,
 });
 // round 2: no shoot-and-scoot and a quarter of the fallback (the A/B: 33 % of samples scooting and 11 % falling back;
 // off, the flags were run, not traded from cover)
@@ -954,7 +956,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
       lineGuard: Object.freeze({ minAttackM: 200, outOfSight: true, stepBackM: 20, tries: 4 }),
       counterAttack: Object.freeze({ squad: 2, afterCaptureS: 8, forS: 40 }),
       reinforceTrickleS: 45, reinforceExtra: 0, reinforceRearM: 140, contestReachM: 60, lineSpacingM: 16, lineJitterM: 8, allyReviveBackM: 40, holdSpreadM: 14,
-      regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: 30, hostileDifficultyStep: 1, hostileReloadScale: 1.5 }),
+      regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: 30, hostileDifficultyStep: 1, hostileReloadScale: 1.35 }),
     assaultBots: Object.freeze({ pushAfterS: 15, pushMinGroup: 2, pushGroupM: 80, stageM: 20, flankShare: 0.4, flankOffsetM: 60,
       flankConvergeM: 80 }),
     bots: Object.freeze({ alpha: ASSAULT_ATTACKER_DOCTRINE, bravo: ASSAULT_DEFENDER_DOCTRINE }),

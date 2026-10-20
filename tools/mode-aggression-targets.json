@@ -322,9 +322,10 @@
     "generated",
     "dir",
     "arrangement",
-    "hunterContacts"
+    "hunterContacts",
+    "engagedStillSettledShare"
    ],
-   "note": "classic doctrine: every run under TEAM NATIONS RANDOM (the old roster path) reproduces its integ/228 baseline run field for field (hunterContacts: a measurement field newer than the baseline)",
+   "note": "classic doctrine: every run under TEAM NATIONS RANDOM (the old roster path) reproduces its integ/228 baseline run field for field (hunterContacts, engagedStillSettledShare: measurement fields newer than the baseline)",
    "perRun": true
   },
   {
@@ -338,9 +339,10 @@
     "generated",
     "dir",
     "arrangement",
-    "hunterContacts"
+    "hunterContacts",
+    "engagedStillSettledShare"
    ],
-   "note": "classic doctrine: every run under TEAM NATIONS RANDOM (the old roster path) reproduces its integ/228 baseline run field for field (hunterContacts: a measurement field newer than the baseline)",
+   "note": "classic doctrine: every run under TEAM NATIONS RANDOM (the old roster path) reproduces its integ/228 baseline run field for field (hunterContacts, engagedStillSettledShare: measurement fields newer than the baseline)",
    "perRun": true
   },
   {
