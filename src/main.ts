@@ -1066,7 +1066,7 @@ const sniperFill = createSniperFillRuntime(scene, camera, {
 // submission, it re-keyed every fogged program (USE_FOG, FOG_EXP2) and the hero's warm below: 25 programs linked twice
 // at boot, 2.1 MB of shader source (perf-boot 10-17).
 sky.applyFog(scene);
-const bootLightCount =(): number => { let n = 0; scene.traverseVisible((object) => { if ((object as THREE.Light).isLight) n++; }); return n; };
+const bootLightCount = (): number => { let n = 0; scene.traverseVisible((object) => { if ((object as THREE.Light).isLight) n++; }); return n; };
 if (!STUDIO_BOOT_INTENT && !/[?&]bootprecompile=0(&|$)/.test(location.search)) {
   const probeTarget = new THREE.WebGLRenderTarget(1, 1);
   const previousTarget = renderer.getRenderTarget();
