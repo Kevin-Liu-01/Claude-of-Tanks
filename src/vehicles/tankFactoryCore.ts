@@ -111,6 +111,7 @@ import {
   markVehicleShadowDetail, NEAR_SHADOW_DETAIL_MAX_MESHES, NEAR_SHADOW_DETAIL_NAMES, vehicleShadowDetailOf,
 } from '../engine/nearVehicleShadowDetail.ts';
 import { installArticulatedShadowBatch } from '../engine/articulatedShadowBatch.ts';
+import { splitProgramVariants } from '../engine/programVariants.ts';
 import type { FleetGunSpec, FleetTankSpec, FleetVisualSpec } from './specContracts.ts';
 import type { ArmorEnvelope } from './specHelpers.ts';
 import type { VehicleMarkingRecord } from './vehicleMarkings.ts';
@@ -10569,6 +10570,12 @@ function* createTankOwnedSteps(
       return result.records;
     };
 
+    // 2026-10-19 (the 229 perf pass): one material object per program variant on the battle and Garage-hero builds
+    // (engine/programVariants.ts). The running gear's paint, rubber and gunmetal draw as plain meshes, instanced
+    // pools and the end-wheel batches: three re-resolved each one's program at every switch (18-36 getProgram
+    // calls a battle frame, 0.6-1.1 MB of parameter objects and key strings). Before the layers below, so each
+    // layer's material list holds the material its mesh draws.
+    if (batchStatic) root.userData.programVariants = splitProgramVariants(root);
     // Run after decoration, static batching and battle-detail regrouping so
     // every final color-pass mesh receives exactly one stable layer.
     let depthLayers = collectCoplanarDepthLayers(root);

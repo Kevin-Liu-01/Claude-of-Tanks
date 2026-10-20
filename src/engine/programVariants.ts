@@ -19,7 +19,9 @@
 // variant (the one runtime-built meshes — fragments, thrown wheels — take), else with the most objects.
 // A hook that keeps a reference to its compile's own uniform map on the material (terrain.ts splatUniforms,
 // shallowWater.ts waterShader) would follow only one of them: split only a subtree whose hooks keep none (map.ts splits
-// the props).
+// the props; since 2026-10-19 tankFactoryCore.ts splits every battle and Garage-hero build before its depth layers).
+// A twin is another object to code that keys or compares materials: whoever patches or clones a mesh's material by
+// its registration resolves the original first (programVariantOrigin: the vehicles' burn hook and registered clones).
 import type { Material, Object3D } from 'three';
 
 type VariantObject = Object3D & {
@@ -71,6 +73,9 @@ function shareUniforms(original: Material): void {
   const hook = original.onBeforeCompile;
   const wrapper = function (this: Material, shader: Parameters<Material['onBeforeCompile']>[0], renderer: Parameters<Material['onBeforeCompile']>[1]) {
     hook.call(this, shader, renderer);
+    // only the original's and its twins' programs share: a clone compiled through the original's chain (the vehicles'
+    // runVehicleHookChain: the Garage energy skin) keeps the map its own compile made, as before the split
+    if (this !== original && twinOrigin.get(this) !== original) return;
     const compiled = shader as unknown as CompileShader;
     if (!shared) { shared = compiled.uniforms; return; }
     for (const key of Object.keys(compiled.uniforms)) if (!(key in shared)) shared[key] = compiled.uniforms[key];
