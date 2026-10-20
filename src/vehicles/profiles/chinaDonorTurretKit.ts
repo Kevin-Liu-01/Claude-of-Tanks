@@ -559,11 +559,19 @@ function qilinBustleFloor(P:TankBuilderPort):void {
  * y 0.45 (the 226 basket's rear plane), and the floor bars' x. */
 const QILIN_RACK={half:.97,floor:.13,top:.62,depth:.27,floorX:[-.88,-.70,-.52,-.32,-.14,.14,.32,.52,.70,.88]} as const;
 
-/** The rack (cage family; turretOpenLattice): a frame a side (the floor root 30 mm into the bustle floor's rear face, a
- * front post from it up 16 mm into the shell's underside 4 mm into that face, the top side rail 30 mm into the rear box),
- * three rear posts and three rear rails on the rear plane, ten floor bars rooted like the root. Returns the rear plane. */
+/** The rack (cage family; turretOpenLattice; square steel tube): a frame a side (the floor root 30 mm into the bustle
+ * floor's rear face, a front post from it up 16 mm into the shell's underside 4 mm into that face, the top side rail 30 mm
+ * into the rear box), three rear posts and three rear rails on the rear plane, ten floor bars rooted like the root.
+ * Returns the rear plane. */
 function qilinRearRack(P:TankBuilderPort):number {
-  const r=QILIN_RACK,stock=new Stock(P,['turret','turretExternalArmor']),seg=P.q?6:4;
+  const r=QILIN_RACK,stock=new Stock(P,['turret','turretExternalArmor']);
+  // square steel tube along one axis (every member of the rack runs along x, y or z): side 2h from a to b
+  const tube=(a:P3,b:P3,h:number)=>{
+    const d=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],len=Math.hypot(...d),axis=d.findIndex(v=>Math.abs(v)>1e-9);
+    if(d.filter(v=>Math.abs(v)>1e-9).length!==1)throw new Error(`${P.spec.id}: a rack member off its axis`);
+    const size=[2*h,2*h,2*h];size[axis]=len;
+    return box(size[0],size[1],size[2]).translate((a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2);
+  };
   try {
     const wall=(x:number,y:number)=>{
       const hit=stock.hit(new THREE.Vector3(x,y,-3.5),new THREE.Vector3(0,0,1),3);
@@ -574,14 +582,14 @@ function qilinRearRack(P:TankBuilderPort):number {
     const put=(g:THREE.BufferGeometry,role:string)=>{g.userData.chineseModernization={model:QILIN_MODEL,role};P.addEquipment('turretOpenLattice',g);};
     for(const side of [-1,1]){
       const x=side*r.half,face=wall(x,F),postZ=face-.016+.004;
-      put(beamBetween([x,F,face+.03],[x,F,rear],.019,seg),'cage-root');
-      put(beamBetween([x,T,wall(x,T)+.03],[x,T,rear],.016,seg),'cage-side-rail');
+      put(tube([x,F,face+.03],[x,F,rear],.017),'cage-root');
+      put(tube([x,T,wall(x,T)+.03],[x,T,rear],.015),'cage-side-rail');
       const over=stock.hit(new THREE.Vector3(x,F,postZ),new THREE.Vector3(0,1,0),1);
       if(!over)throw new Error(`${P.spec.id}: no bustle underside over the rack's front post at ${x}`);
-      put(beamBetween([x,F,postZ],[x,over.point.y+.016,postZ],.016,seg),'cage-front-post');
+      put(tube([x,F,postZ],[x,over.point.y+.016,postZ],.015),'cage-front-post');
     }
-    for(const x of [-r.half,0,r.half])put(beamBetween([x,F,rear],[x,T,rear],.017,seg),'cage-post');
-    for(const y of [F,(F+T)/2,T])put(beamBetween([-r.half,y,rear],[r.half,y,rear],y===F||y===T?.019:.012,seg),'cage-rear-rail');
+    for(const x of [-r.half,0,r.half])put(tube([x,F,rear],[x,T,rear],.016),'cage-post');
+    for(const y of [F,(F+T)/2,T])put(tube([-r.half,y,rear],[r.half,y,rear],y===F||y===T?.017:.011),'cage-rear-rail');
     // the floor's square bars (24 mm, a flat top under the load)
     for(const x of r.floorX){const z0=wall(x,F)+.03;put(box(.024,.024,z0-rear).translate(x,F,(z0+rear)/2),'cage-floor');}
     return rear;
@@ -601,7 +609,7 @@ function softPack(x0:number,x1:number,y0:number,y1:number,z0:number,z1:number,c:
  * the rear box's lip (the shell's underside at 0.43): the net roll on the left, two ammunition cases and the kit bag on
  * the right. Back row, against the rear rails behind the box's ribs: the folded tarpaulin and the spare-parts case. */
 function qilinRackLoad(P:TankBuilderPort,rear:number):void {
-  const y0=QILIN_RACK.floor+.012-.001,seg=P.q?16:12,front=QILIN_BUSTLE_FLOOR.z[0]-.015,back=rear+.019+.002;
+  const y0=QILIN_RACK.floor+.012-.001,seg=P.q?16:12,front=QILIN_BUSTLE_FLOOR.z[0]-.015,back=rear+.017+.002;
   const kit=(role:string)=>tagged(P,QILIN_MODEL,role);
   // the camouflage-net roll, cinched by two straps (its sides a multiple of four: a vertex line rests on the bars)
   const roll=kit('net-roll'),rr=.105,rz=front-rr;
