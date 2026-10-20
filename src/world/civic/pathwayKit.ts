@@ -2,16 +2,19 @@
 // "fix / improve the pathways in steinburg", 2026-10-19: "finalize all 'pathway' architecture"). It replaces the legacy
 // kerb pass (props.ts placeStreetCurbs: a kerb at 5.05 m and a 2.25 m slab at 6.35 m down both sides of every street in
 // the town rect, under the houses, across the square, through the gates and past the wall) for a map that adopts it:
-//   - a main street is kerbed only where houses front it: a run stands where a placed structure lies `frontage` behind
-//     the kerb (1.2–3.5 m), its kerb face `kerbM` off the centreline, its pavement from the kerb's back out to the facade
-//     line (at most `maxWalkM`), never on a square (`exclude`), never past the wall line (`inside`), stopping clear of a
-//     gate's piers; short gaps between fronted stretches carry the pavement on;
+//   - inside the wall a main street and a lane (gasse) are kerbed down both sides, their kerb face `kerbM` off the
+//     centreline, the pavement from the kerb's back out to the facade line where a house fronts it (at most `maxWalkM`,
+//     the lane's `lane.maxWalkM`) and `openWalkM` (`lane.openWalkM`) where none does (a garden wall, a verge): one run
+//     from corner to corner, broken only by a junction's mouth, a house stepping out to the kerb, a square (`exclude`:
+//     the room's own frontage walks take it there) or the wall line; past the wall a main street keeps its pavement only
+//     where houses front it (`frontage`: a suburb outside a gate); a lane's kerb is lower (`lane.face`);
+//     (228 r2: the blind pairs lost every lane and the gate road to the legacy strips — "the pavement dissolves into a
+//     dark, ragged, weedy strip", "pill-ended pavement stubs" — so the runs stopped needing a house to stand)
 //   - each run is one ribbon, kerb units of a metre or so and flags in courses, every vertex seated on the ground under
 //     it (no level step at a joint), a dressed end only where the run ends;
-//   - where a lane or an alley meets a main street and the street's pavement runs on to its mouth, the kerb returns round
-//     the corner on its radius into the lane's mouth, the corner paved;
+//   - where a lane or an alley meets a street and the street's pavement runs on to its mouth, the kerb returns round
+//     the corner on its radius into the lane's mouth (on to the lane's own run), the corner paved;
 //   - a pavement that meets a square's flush walk ramps its kerb down to flush over 2 m;
-//   - a lane (gasse) lays nothing: setts wall to wall (the terrain's).
 // The legacy pass's draws are burnt first (8 of the props' main stream a legacy piece, as it drew them), so every later
 // placement keeps its seat. One geometry on the baked material, no draw and no record of its own; the runs' footprints
 // for the props' vehicle and cart seats (streetKerbFootprints).
@@ -32,6 +35,8 @@ export interface PathwayContext {
   /** the legacy pass's town rect and its other-road distance (props.ts distToOtherRoads) */
   town: CivicRect;
   distToOtherRoads(x: number, z: number, skip: number): number;
+  /** a phone lays the lean runs: square-arrised kerbs, a flag a sample across the pavement's width (absent: desktop) */
+  tier?: 'desktop' | 'mobile';
 }
 
 export interface PathwayFootprint { pts: Array<[number, number]>; foot: number }
@@ -132,21 +137,29 @@ function nearestOnRoad(road: Road, x: number, z: number): { d: number; i: number
   return best;
 }
 
-interface Sample { x: number; z: number; nx: number; nz: number; state: 'fronted' | 'open' | 'blocked'; outer: number; why?: string }
+interface Sample {
+  x: number; z: number; nx: number; nz: number; state: 'fronted' | 'open' | 'blocked'; outer: number; why?: string;
+  /** past the wall line (a main street's suburb: its runs only where houses front it) */
+  past?: boolean;
+}
 
 /** The pathway architecture of a town from its plan. */
 export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle, ctx: PathwayContext): PathwayBuild {
   const census: Record<string, number> = { legacyPieces: burnLegacyKerbDraws(ctx) };
   const debug: PathwayBuild['debug'] = [];
   const footprints: PathwayFootprint[] = [];
-  const m = new CivicMesh(ctx.ground);
-  const K = plan.kerbM, KW = style.kerb.width, FACE = style.kerb.face, W0 = K + KW;
+  const m = new CivicMesh(ctx.ground), lean = ctx.tier === 'mobile';
+  const K = plan.kerbM, KW = style.kerb.width, W0 = K + KW;
   const [fNear, fFar] = plan.frontage;
   const kerbCol = hexRgb(style.kerb.hex), flagCol = hexRgb(style.pavement.hex), jointCol = hexRgb(style.pavement.joint);
-  const mains = Object.entries(plan.classes).filter(([, c]) => c === 'main').map(([i]) => Number(i));
   const classOf = (ri: number) => plan.classes[ri] ?? 'none';
-  // the half-width each other road keeps clear at a junction (a main street's kerb, a lane's walls of setts)
-  const clearOf = (ri: number) => (classOf(ri) === 'main' ? K + 0.4 : 4.0);
+  // the kerbed streets: the main streets and the lanes, each its own kerb face and pavement widths
+  const kerbed = Object.entries(plan.classes).filter(([, c]) => c === 'main' || c === 'gasse').map(([i]) => Number(i));
+  const prof = (ri: number) => (classOf(ri) === 'main'
+    ? { face: style.kerb.face, maxWalk: plan.maxWalkM, openWalk: plan.openWalkM }
+    : { face: plan.lane.face, maxWalk: plan.lane.maxWalkM, openWalk: plan.lane.openWalkM });
+  // the half-width each other road keeps clear at a junction (a kerbed street's kerb, a footpath's verge)
+  const clearOf = (ri: number) => (classOf(ri) === 'main' || classOf(ri) === 'gasse' ? K + 0.4 : 4.0);
   const plotsNear = (x: number, z: number, r: number) => ctx.plots.filter((p) => Math.hypot(p.x - x, p.z - z) < r + Math.hypot(p.w, p.d) / 2);
 
   // ---------------------------------------------------------------------------------------- junction corners (returns)
@@ -154,10 +167,12 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
     road: number; jx: number; jz: number; dA: [number, number]; dB: [number, number]; other: number;
     /** the main street's normal toward the lane, the lane's toward the street's run, the fillet's centre and tangents */
     nAc: [number, number]; t0: number; O: [number, number]; TA: [number, number]; TB: [number, number];
+    /** the lane's normal toward the street's run, and the lane's tangent point's distance along it from the junction */
+    nBc: [number, number]; tB: number;
   }
   const dot2 = (p: readonly number[], q: readonly number[]) => p[0] * q[0] + p[1] * q[1];
   const corners: Corner[] = [];
-  for (const ri of mains) {
+  for (const ri of kerbed) {
     const A = ctx.roads[ri];
     for (let rj = 0; rj < ctx.roads.length; rj++) {
       if (rj === ri || classOf(rj) === 'none') continue;
@@ -188,8 +203,9 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
             const t0 = (eB + R - (eA + R) * dot2(nAc, nBc)) / denom;
             if (!(t0 > 0 && t0 < 14)) { corner = null; break; }
             const O: [number, number] = [cx + nAc[0] * (eA + R) + dA[0] * t0, cz + nAc[1] * (eA + R) + dA[1] * t0];
+            const TB: [number, number] = [O[0] - nBc[0] * R, O[1] - nBc[1] * R];
             corner = { road: ri, jx: cx, jz: cz, dA, dB, other: rj, nAc, t0, O,
-              TA: [O[0] - nAc[0] * R, O[1] - nAc[1] * R], TB: [O[0] - nBc[0] * R, O[1] - nBc[1] * R] };
+              TA: [O[0] - nAc[0] * R, O[1] - nAc[1] * R], TB, nBc, tB: (TB[0] - cx) * dB[0] + (TB[1] - cz) * dB[1] };
             const on = nearestOnRoad(A, cx + dA[0] * t0, cz + dA[1] * t0);
             if (on.i === seg) break;
             // the tangent point's segment: its line, and where it meets the lane's centreline
@@ -209,16 +225,20 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
 
   // ---------------------------------------------------------------------------------------------- the runs
   const runsByRoad: Array<{ ri: number; side: number; samples: Sample[]; from: number; to: number }> = [];
-  for (const ri of mains) {
-    const road = ctx.roads[ri], rs = resample(road);
+  for (const ri of kerbed) {
+    const road = ctx.roads[ri], rs = resample(road), pr = prof(ri);
     for (const side of [-1, 1]) {
       const samples: Sample[] = rs.p.map(([x, z], i) => {
         const [tx, tz] = rs.t[i], nx = -tz * side, nz = tx * side;
         const kx = x + nx * K, kz = z + nz * K;
-        const out: Sample = { x, z, nx, nz, state: 'blocked', outer: W0 + 2.0 };
+        const out: Sample = { x, z, nx, nz, state: 'blocked', outer: W0 + pr.openWalk };
         const why = (r: string): Sample => { census[`sample:${r}`] = (census[`sample:${r}`] ?? 0) + 1; out.why = r; return out; };
-        if (!insidePolygon(plan.inside, kx, kz) || polygonEdgeDistance(plan.inside, kx, kz) < 1.5) return why('outside');
-        if (plan.exclude.some((r) => inRect(r, kx, kz) || inRect(r, x + nx * (W0 + 1), z + nz * (W0 + 1)))) return why('square');
+        // the wall line itself (its modules, a gate's passage), and a lane past it
+        if (polygonEdgeDistance(plan.inside, kx, kz) < 1.5) return why('wall');
+        out.past = !insidePolygon(plan.inside, kx, kz);
+        if (out.past && classOf(ri) !== 'main') return why('outside');
+        // a square: its own frontage walks take the edge (the run comes up to the room and its kerb ramps flush)
+        if (plan.exclude.some((r) => inRect(r, kx, kz, 0.3))) return why('square');
         // a junction's mouth: another road's carriageway at the kerb
         let other = Infinity;
         for (let rj = 0; rj < ctx.roads.length; rj++) {
@@ -226,48 +246,63 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
           other = Math.min(other, nearestOnRoad(ctx.roads[rj], kx, kz).d - clearOf(rj));
         }
         if (other < 0) return why('junction');
-        // the corners' returns take the kerb from their tangent point on
+        // the corners' returns take the kerb from their tangent points on (the street's side and the lane's)
         for (const c of corners) {
-          if (c.road !== ri || nx * c.nAc[0] + nz * c.nAc[1] < 0.5) continue;
-          const along = (kx - c.jx) * c.dA[0] + (kz - c.jz) * c.dA[1];
-          if (along > -0.5 && along < c.t0 + 0.15) return why('return');
+          if (c.road === ri && nx * c.nAc[0] + nz * c.nAc[1] >= 0.5) {
+            const along = (kx - c.jx) * c.dA[0] + (kz - c.jz) * c.dA[1];
+            if (along > -0.5 && along < c.t0 + 0.15) return why('return');
+          }
+          if (c.other === ri && nx * c.nBc[0] + nz * c.nBc[1] >= 0.5) {
+            const along = (kx - c.jx) * c.dB[0] + (kz - c.jz) * c.dB[1];
+            if (along > -0.5 && along < c.tB + 0.15) return why('return');
+          }
         }
-        const near = plotsNear(kx, kz, fFar + 3);
-        // a structure at the kerb or on the pavement's first 0.6 m (a gate's pier, a house stepping out): no run
-        for (let o = K - 0.05; o <= W0 + 0.6; o += 0.1) {
+        const near = plotsNear(kx, kz, W0 + pr.maxWalk + 3);
+        // a structure at the kerb (0.65 m clear of it) or on the pavement's first 0.3 m (a gate's pier, a house stepping
+        // out): no run
+        for (let o = K - 0.05; o <= W0 + 0.3; o += 0.1) {
           const px = x + nx * o, pz = z + nz * o;
-          if (near.some((p) => inPlot(p, px, pz, 0.95 * (o < W0 ? 1 : 0)))) return why('structure');
+          if (near.some((p) => inPlot(p, px, pz, o < W0 ? 0.65 : 0))) return why('structure');
         }
+        // a house fronting it: the pavement out to its facade (at most the widest); none: the open walk
         out.state = 'open';
-        for (let o = W0 + 0.6; o <= K + fFar; o += 0.1) {
+        for (let o = W0 + 0.3; o <= Math.max(W0 + pr.maxWalk + 0.05, out.past ? K + fFar : 0); o += 0.1) {
           const px = x + nx * o, pz = z + nz * o;
           if (near.some((p) => inPlot(p, px, pz))) {
-            if (o >= K + fNear - 0.6) { out.state = 'fronted'; out.outer = Math.min(o - 0.05, W0 + plan.maxWalkM); }
+            if (!out.past || o >= K + fNear - 0.6) { out.state = 'fronted'; out.outer = Math.min(o - 0.05, W0 + pr.maxWalk); }
             break;
           }
         }
         census[`sample:${out.state}`] = (census[`sample:${out.state}`] ?? 0) + 1;
         return out;
       });
-      // the fronted stretches, joined over open gaps of up to 7 m, each at least 3 m long
       let i = 0;
       while (i < samples.length) {
-        if (samples[i].state !== 'fronted') { i++; continue; }
+        if (samples[i].state === 'blocked') { i++; continue; }
         let j = i;
-        for (;;) {
-          let k = j + 1;
-          while (k < samples.length && samples[k].state === 'open' && k - j <= 7) k++;
-          if (k < samples.length && samples[k].state === 'fronted' && k - j <= 8) { j = k; continue; }
-          break;
-        }
-        if (j - i >= 3) {
-          // the open samples inside the run take their neighbours' facade line
+        if (!samples[i].past) {
+          // inside the wall: every laid stretch, corner to corner
+          while (j + 1 < samples.length && samples[j + 1].state !== 'blocked' && !samples[j + 1].past) j++;
+        } else {
+          // past it: the fronted stretches, joined over open gaps of up to 7 m
+          if (samples[i].state !== 'fronted') { i++; continue; }
+          for (;;) {
+            let k = j + 1;
+            while (k < samples.length && samples[k].past && samples[k].state === 'open' && k - j <= 7) k++;
+            if (k < samples.length && samples[k].past && samples[k].state === 'fronted' && k - j <= 8) { j = k; continue; }
+            break;
+          }
           for (let k = i; k <= j; k++) if (samples[k].state === 'open') {
             let a = k, b = k;
             while (a > i && samples[a].state !== 'fronted') a--;
             while (b < j && samples[b].state !== 'fronted') b++;
             samples[k].outer = Math.min(samples[a].outer, samples[b].outer);
           }
+        }
+        if (j - i >= 3) {
+          // the outer edge eased to its narrower neighbour's (no flag's corner into a house where a front steps)
+          const outer = samples.slice(i, j + 1).map((s) => s.outer);
+          for (let k = i; k <= j; k++) samples[k].outer = Math.min(outer[k - i], outer[Math.max(0, k - i - 1)], outer[Math.min(j - i, k - i + 1)]);
           runsByRoad.push({ ri, side, samples, from: i, to: j });
         }
         i = j + 1;
@@ -276,27 +311,27 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
   }
 
   // ------------------------------------------------------------------- a run carried on to the corner it comes up to
-  // (228 r1b: a run whose last fronted sample stopped short of a lane's corner left a metre or more of bare setts between
-  // its dressed end and the return's kerb) a run's end within 6 m of a corner's tangent point on its side runs on over
-  // the open samples to the first sample the return takes, that sample set on the tangent point, so the kerb and the
-  // flags meet the return; a house at the kerb, a junction's mouth or the square on the way stops it (no return there)
-  const met = new Set<Corner>();
+  // (228 r1b: a run whose end stopped short of a lane's corner left a metre or more of bare setts between its dressed end
+  // and the return's kerb) a run's end within 6 m of a corner's tangent point on its side (the street's or the lane's)
+  // runs on over its laid samples to the first sample the return takes, that sample set on the tangent point, so the kerb
+  // and the flags meet the return; a house at the kerb, a junction's mouth or the square on the way stops it
+  const metA = new Set<Corner>(), metB = new Set<Corner>();
   for (const run of runsByRoad) {
     const S = run.samples;
     for (const dir of [1, -1] as const) {
       const end = dir === 1 ? run.to : run.from, e = S[end];
       for (const c of corners) {
-        if (c.road !== run.ri || met.has(c) || e.nx * c.nAc[0] + e.nz * c.nAc[1] < 0.5) continue;
-        if (Math.hypot(e.x + e.nx * K - c.TA[0], e.z + e.nz * K - c.TA[1]) >= 6) continue;
+        const isA = c.road === run.ri && e.nx * c.nAc[0] + e.nz * c.nAc[1] >= 0.5;
+        const isB = !isA && c.other === run.ri && e.nx * c.nBc[0] + e.nz * c.nBc[1] >= 0.5;
+        if (!isA && !isB) continue;
+        const met = isA ? metA : metB, T = isA ? c.TA : c.TB, n = isA ? c.nAc : c.nBc;
+        if (met.has(c) || Math.hypot(e.x + e.nx * K - T[0], e.z + e.nz * K - T[1]) >= 6) continue;
         let k = end + dir;
-        while (k >= 0 && k < S.length && Math.abs(k - end) <= 7 && (S[k].state === 'open' || S[k].state === 'fronted')) k += dir;
+        while (k >= 0 && k < S.length && Math.abs(k - end) <= 7 && S[k].state !== 'blocked') k += dir;
         if (k < 0 || k >= S.length || S[k].why !== 'return' || Math.abs(k - end) > 8) continue;
-        const along = (S[k].x - c.jx) * c.dA[0] + (S[k].z - c.jz) * c.dA[1];
-        if (Math.abs(along - c.t0) > 0.01) {
-          // the first return sample moves onto the corner's tangent point
-          S[k] = { ...S[k], x: c.jx + c.dA[0] * c.t0, z: c.jz + c.dA[1] * c.t0, nx: c.nAc[0], nz: c.nAc[1] };
-        }
-        for (let q = end + dir; q !== k + dir; q += dir) S[q] = { ...S[q], state: 'fronted', outer: e.outer };
+        // the first return sample moves onto the corner's tangent point (its street point the kerb's line back from it)
+        S[k] = { ...S[k], x: T[0] - n[0] * K, z: T[1] - n[1] * K, nx: n[0], nz: n[1] };
+        for (let q = end + dir; q !== k + dir; q += dir) S[q] = { ...S[q], state: e.state === 'blocked' ? 'open' : e.state, outer: e.outer };
         if (dir === 1) run.to = k; else run.from = k;
         census.carried = (census.carried ?? 0) + Math.abs(k - end);
         met.add(c);
@@ -325,10 +360,11 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
     const n = run.to - run.from;
     census.runs = (census.runs ?? 0) + 1;
     census.kerbM = (census.kerbM ?? 0) + n * STEP;
-    const course = style.pavement.course, gap = 0.008;
+    const course = style.pavement.course, gap = 0.008, face = prof(run.ri).face;
+    census[classOf(run.ri) === 'main' ? 'kerbMainM' : 'kerbLaneM'] = (census[classOf(run.ri) === 'main' ? 'kerbMainM' : 'kerbLaneM'] ?? 0) + n * STEP;
     for (let k = run.from; k < run.to; k++) {
       const a = S[k], b = S[k + 1];
-      const fa = FACE * mouthRamp(a.x + a.nx * K, a.z + a.nz * K), fb = FACE * mouthRamp(b.x + b.nx * K, b.z + b.nz * K);
+      const fa = face * mouthRamp(a.x + a.nx * K, a.z + a.nz * K), fb = face * mouthRamp(b.x + b.nx * K, b.z + b.nz * K);
       const ta = kerbTopAt(a.x, a.z, a.nx, a.nz, fa), tb = kerbTopAt(b.x, b.z, b.nx, b.nz, fb);
       const ga = ta - fa, gb = tb - fb;
       // the kerb: its unit's joint every other sample (units of about 1.0-1.4 m), its arris on the road side rounded
@@ -339,7 +375,8 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
       const col = toned(kerbCol, Math.floor((k - run.from) / 2), run.ri * 7 + run.side, 0.06, 51);
       m.run(ka, kbj, side, (end) => {
         const top = end ? tb : ta, g = end ? gb : ga;
-        return [[-KW / 2, g - 0.1], [KW / 2, g - 0.1], [KW / 2, top], [-KW / 2 + 0.035, top], [-KW / 2, top - 0.035]];
+        return lean ? [[-KW / 2, g - 0.1], [KW / 2, g - 0.1], [KW / 2, top], [-KW / 2, top]]
+          : [[-KW / 2, g - 0.1], [KW / 2, g - 0.1], [KW / 2, top], [-KW / 2 + 0.035, top], [-KW / 2, top - 0.035]];
       }, (face) => (face === -1 ? scaleRgb(col, 0.9) : col), k === run.from || k === run.to - 1 || joint);
       // the pavement: its surface from the kerb's top, rising to meet the ground at the facade by at most 0.25 m
       const oa = a.outer, ob = b.outer;
@@ -360,10 +397,10 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
       m.quad([A1[0], surf(a, oa, ta, oa), A1[1]], [B1[0], surf(b, ob, tb, ob), B1[1]], [B1[0], footB, B1[1]], [A1[0], footA, A1[1]],
         scaleRgb(jointCol, 1.2), [a.nx, 0, a.nz]);
       // the flags in courses along the street, each course's joints broken against the next
-      const width = Math.min(oa, ob) - W0, courses = Math.max(1, Math.round(width / course)), cw = width / courses;
+      const width = Math.min(oa, ob) - W0, courses = lean ? 1 : Math.max(1, Math.round(width / course)), cw = width / courses;
       for (let q = 0; q < courses; q++) {
         const o0 = W0 + q * cw + gap, o1 = W0 + (q + 1) * cw - gap;
-        const split = ((k - run.from) + q) % 2 === 0;
+        const split = !lean && ((k - run.from) + q) % 2 === 0;
         const cuts = split ? [0, 0.5, 1] : [0, 1];
         for (let c = 0; c + 1 < cuts.length; c++) {
           const u0 = cuts[c] + (c ? gap : 0), u1 = cuts[c + 1] - gap;
@@ -387,7 +424,9 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
   for (const c of corners) {
     const R = plan.returnR, O = c.O, TA = c.TA, TB = c.TB;
     // only where the street's run comes up to the corner (carried on to its tangent point above, on this side)
-    if (!met.has(c)) continue;
+    if (!metA.has(c)) continue;
+    // the kerb's face eased round the corner from the street's to the lane's
+    const faceA = prof(c.road).face, faceB = prof(c.other).face;
     const near = plotsNear(O[0], O[1], R + 4);
     const a0 = Math.atan2(TA[0] - O[0], TA[1] - O[1]), a1 = Math.atan2(TB[0] - O[0], TB[1] - O[1]);
     let da = a1 - a0;
@@ -403,7 +442,7 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
       const ga = ctx.ground(...at(p, R)), gb = ctx.ground(...at(q, R));
       const col = toned(kerbCol, k, c.road + c.other * 3, 0.06, 53);
       m.run(pa, pb, out, (end) => {
-        const g = end ? gb : ga, top = g + FACE;
+        const g = end ? gb : ga, top = g + faceA + (faceB - faceA) * ((k + end) / segs);
         return [[-KW / 2, g - 0.1], [KW / 2, g - 0.1], [KW / 2, top], [-KW / 2 + 0.035, top], [-KW / 2, top - 0.035]];
       }, col, true);
       // the corner's flags: a fan from the kerb's back in toward the corner, cut at the houses
@@ -412,7 +451,7 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
         if (r0 <= 0.1) break;
         const c0 = at(p, r0), c1 = at(q, r0), c2 = at(q, r1), c3 = at(p, r1);
         if (near.some((pl) => [c0, c1, c2, c3].some((pt) => inPlot(pl, pt[0], pt[1], 0.05)))) break;
-        const y = (pt: [number, number]) => ctx.ground(...pt) + FACE;
+        const y = (pt: [number, number]) => ctx.ground(...pt) + faceA + (faceB - faceA) * ((k + 0.5) / segs);
         m.quad([c0[0], y(c0), c0[1]], [c1[0], y(c1), c1[1]], [c2[0], y(c2), c2[1]], [c3[0], y(c3), c3[1]], toned(flagCol, k, ring + c.other, style.pavement.tone, 54));
       }
     }

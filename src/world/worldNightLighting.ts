@@ -71,6 +71,8 @@ export function registerWorldNightLighting(
   // (a shot-out lamp's form has no glass and no seat for a light: it stays dark)
   const lensAt = (mesh.geometry.userData.lampLens === undefined ? [0.98, 3.895, 0] : mesh.geometry.userData.lampLens) as [number, number, number] | null;
   if (!lensAt) return;
+  // (228 r2) the form's own candela where it names one (a map's gas lantern), else the street lamp's
+  const candela = typeof mesh.geometry.userData.lampCandela === 'number' ? mesh.geometry.userData.lampCandela as number : STREET_LAMP_CANDELA;
   const emitters: NightLightEmitter[] = [];
   for (const record of records) {
     if (record.kind !== 'lamp') continue;
@@ -88,7 +90,7 @@ export function registerWorldNightLighting(
       // (the looks lane, 228: at 6 cd a lamp lit 0.4 lux under itself, a twentieth of a headlight's pool, and no
       // pool showed at any pose) the lamp's pool reads on the pavement beside a headlight's; its range still bounds the
       // unshadowed spill to the lamp's own stretch of street
-      color: 0xffc889, intensity: STREET_LAMP_CANDELA, range: 17,
+      color: 0xffc889, intensity: candela, range: 17,
       emission: { material, color: 0xffffff, intensity: 3 },
       isActive: () => {
         const enabled = record.state === 0 ? 1 : 0;

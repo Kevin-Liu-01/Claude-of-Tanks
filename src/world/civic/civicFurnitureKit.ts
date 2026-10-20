@@ -11,7 +11,7 @@
 //   pflanzkuebel  a hexagonal concrete planter, its rim, its soil and a clipped shrub.
 // Regional forms join the kit with their maps (a K67 kiosk for Sarajevo); a kind's form is chosen by the map's place.
 // Pure geometry on the baked material (base on y = 0, local +z the front), no draws from any placement stream.
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import { bar, extrude, faceTri, finish, lathe, newMesh, pole, tone } from '../maps/clutterForms.ts';
 import { hexLin, mul, mix, type Rgb, type V3 } from '../maps/craftMesh.ts';
 import type { DestructiblePropType } from '../maps/inhabitKit.ts';
@@ -292,6 +292,122 @@ function pollerBroken(rng: Rng): THREE.BufferGeometry {
   for (let i = s0; i < m.mark; i += 3) { m.p[i + 1] += 0.1; m.p[i + 2] += 0.2; }
   return finish(m);
 }
+
+// ------------------------------------------------------------------------------------- the Wochenmarkt's stall
+// (228 r2; the blind critics on r1's market: "two bare box stalls with flat striped awnings and a lone white lump and an
+// orange box as wares") a Franconian market stand in the stall's record (its footprint 2.84 × 1.88 m, its counter and
+// posts its collider): a trestle table under an oilcloth, the produce in tiers of wooden Steigen (apples, oranges,
+// cabbages, potatoes, plums, carrots, lettuce, lemons), each a heaped dome in its crate, slate price boards, a scale; four
+// posts, the awning's red and cream stripes sloping to a scalloped valance, a green and cream curtain at its back.
+
+const OAK_W = L(0x8a6a48), OAK_DARK = L(0x5e4630), OILCLOTH = L(0x3d6a4c), SLATE = L(0x2c2e30);
+const AWNING_A = L(0xb3352c), AWNING_B = L(0xe9e1cf), CURTAIN_A = L(0x2f6a42);
+const PRODUCE: readonly Rgb[] = [L(0xb8322a), L(0xe2892c), L(0x6f9a46), L(0x9c7a4e), L(0x5c2a4c), L(0xd8702a), L(0x8cba5a), L(0xe4cf44)];
+
+/** A Steige at (x, y, z) on its base, its long side along x, heaped with a produce colour. */
+function steige(m: M, x: number, y: number, z: number, produce: Rgb, rng: Rng): void {
+  const w = 0.56, d = 0.4, h = 0.15, t = 0.018, wood = tone(OAK_W, rng, 0.1);
+  bar(m, [x - w / 2, y + 0.01, z], [x + w / 2, y + 0.01, z], d, 0.02, Z, mul(wood, 0.85), 0.003);
+  for (const s of [-1, 1]) {
+    bar(m, [x - w / 2, y + h / 2, z + s * (d / 2 - t / 2)], [x + w / 2, y + h / 2, z + s * (d / 2 - t / 2)], t, h * (s > 0 ? 0.62 : 1), Z, wood, 0.003);
+    bar(m, [x + s * (w / 2 - t / 2), y + h / 2, z - d / 2], [x + s * (w / 2 - t / 2), y + h / 2, z + d / 2], t, h, X, mul(wood, 0.93), 0.003);
+  }
+  // the heap: a low dome of the produce, each facet its own shade (the fruit's bumps), set down in the crate
+  const s0 = m.mark;
+  lathe(m, [[0.25, 0], [0.245, 0.04], [0.21, 0.08], [0.14, 0.11], [0.06, 0.125], [0, 0.128]], 9,
+    (k, j) => mul(produce, 0.82 + 0.3 * (((k * 7 + j * 3) % 5) / 4) * (0.8 + rng() * 0.4)), { faceted: true, capBottom: false, phase: rng() });
+  for (let i = s0; i < m.mark; i += 3) { m.p[i] = x + m.p[i] * 1.06; m.p[i + 1] += y + 0.035; m.p[i + 2] = z + m.p[i + 2] * 0.74; }
+}
+
+function marktstandNear(): THREE.BufferGeometry {
+  const rng = mulberry(0x5a11f2), m = newMesh();
+  const HW = 1.3, back = -0.82, front = 0.8, yBack = 2.3, yFront = 2.04;
+  // the trestles (an A each end) and the table's top under its oilcloth, the cloth hanging at the front and the ends
+  for (const sx of [-1, 1]) {
+    for (const [z0, z1] of [[-0.46, -0.08], [0.36, -0.02]] as const) bar(m, [sx * 1.0, 0, z0], [sx * 1.0, 0.82, z1], 0.05, 0.05, X, tone(OAK_DARK, rng, 0.1), 0.006);
+    bar(m, [sx * 1.0, 0.42, -0.27], [sx * 1.0, 0.42, 0.17], 0.04, 0.035, X, OAK_DARK, 0.005);
+  }
+  bar(m, [-1.24, 0.835, -0.05], [1.24, 0.835, -0.05], 1.0, 0.04, Z, tone(OAK_W, rng, 0.08), 0.006);
+  bar(m, [-1.26, 0.858, -0.05], [1.26, 0.858, -0.05], 1.03, 0.008, Z, OILCLOTH, 0.002);
+  bar(m, [-1.26, 0.56, 0.465], [1.26, 0.56, 0.465], 0.01, 0.6, Z, mul(OILCLOTH, 0.92), 0.002);
+  for (const sx of [-1, 1]) bar(m, [sx * 1.255, 0.66, -0.55], [sx * 1.255, 0.66, 0.46], 0.01, 0.4, X, mul(OILCLOTH, 0.86), 0.002);
+  // the riser at the back (the second tier) and the crates: the back row on it, the front row on the cloth
+  bar(m, [-1.2, 0.93, -0.32], [1.2, 0.93, -0.32], 0.42, 0.14, Z, tone(OAK_W, rng, 0.08), 0.006);
+  for (let k = 0; k < 4; k++) {
+    const x = -0.87 + k * 0.58;
+    steige(m, x, 1.0, -0.32, PRODUCE[(k * 3 + 1) % PRODUCE.length], rng);
+    steige(m, x, 0.862, 0.17, PRODUCE[(k * 5 + 2) % PRODUCE.length], rng);
+    // a slate price board stuck in the front crate (no lettering)
+    bar(m, [x + 0.14, 1.02, 0.36], [x + 0.14, 1.13, 0.37], 0.12, 0.008, X, tone(SLATE, rng, 0.1), 0.002);
+  }
+  // the scale at the table's end: its body and its dish
+  bar(m, [1.06, 0.92, 0.1], [1.06, 1.06, 0.1], 0.16, 0.2, X, L(0xd4d2c8), 0.01);
+  const dish = m.mark;
+  lathe(m, [[0.1, 0], [0.12, 0.03], [0.125, 0.035]], 10, () => L(0xa8a49a), { x: 1.06, z: 0.1, capBottom: true });
+  for (let i = dish; i < m.mark; i += 3) m.p[i + 1] += 1.065;
+  // the posts: taller at the back, the awning's rails between their heads
+  for (const sx of [-1, 1]) {
+    upright(m, sx * HW, back, 0, yBack, 0.06, 0.06, tone(OAK_DARK, rng, 0.08), 0.008);
+    upright(m, sx * HW, front, 0, yFront, 0.06, 0.06, tone(OAK_DARK, rng, 0.08), 0.008);
+    bar(m, [sx * HW, yBack - 0.02, back], [sx * HW, yFront - 0.02, front], 0.05, 0.04, X, OAK_DARK, 0.005);
+  }
+  // the awning: eight stripes, red and cream, sagging a little between the rails, out over the front 0.18 m
+  const NS = 8, sw = (HW * 2 + 0.16) / NS, fz = front + 0.18, fy = yFront - 0.03;
+  for (let k = 0; k < NS; k++) {
+    const x = -HW - 0.08 + sw * (k + 0.5), col = k % 2 ? AWNING_B : AWNING_A, midY = (yBack + fy) / 2 - 0.045;
+    bar(m, [x, yBack + 0.03, back - 0.08], [x, midY, (back + fz) / 2], sw, 0.012, X, col, 0);
+    bar(m, [x, midY, (back + fz) / 2], [x, fy, fz], sw, 0.012, X, mul(col, 0.96), 0);
+    // the valance: its panel and its scallop below
+    bar(m, [x - sw / 2, fy - 0.08, fz + 0.006], [x + sw / 2, fy - 0.08, fz + 0.006], 0.008, 0.16, Z, mul(col, 0.9), 0);
+    faceTri(m, [x - sw / 2, fy - 0.16, fz + 0.006], [x + sw / 2, fy - 0.16, fz + 0.006], [x, fy - 0.235, fz + 0.006], [0, 0, 1], mul(col, 0.88));
+    faceTri(m, [x - sw / 2, fy - 0.16, fz + 0.002], [x + sw / 2, fy - 0.16, fz + 0.002], [x, fy - 0.235, fz + 0.002], [0, 0, -1], mul(col, 0.7));
+    // the curtain at the back, green and cream, from the rail to a hand above the table
+    bar(m, [x, 1.72, back - 0.03], [x, yBack - 0.01, back - 0.03], 0.01, sw, Z, mul(k % 2 ? AWNING_B : CURTAIN_A, 0.92), 0);
+  }
+  return finish(m);
+}
+
+/** The stand knocked over by a hull: its own build tipped forward onto its table's front edge and a little turned, the
+ *  crates' produce spilled before it (a dome or two on the setts). */
+function marktstandBroken(): THREE.BufferGeometry {
+  const rng = mulberry(0x5a11f3), m = newMesh();
+  const g = marktstandNear(), pos = g.attributes.position, nrm = g.attributes.normal, col = g.attributes.color;
+  const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 1.05);
+  const r = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0.16);
+  q.premultiply(r);
+  const v = new THREE.Vector3();
+  let lo = Infinity;
+  const pts: number[] = [], ns: number[] = [];
+  for (let i = 0; i < pos.count; i++) {
+    v.set(pos.getX(i), pos.getY(i), pos.getZ(i) - 0.47).applyQuaternion(q);
+    pts.push(v.x, v.y, v.z + 0.47); lo = Math.min(lo, v.y);
+    v.set(nrm.getX(i), nrm.getY(i), nrm.getZ(i)).applyQuaternion(q);
+    ns.push(v.x, v.y, v.z);
+  }
+  for (let i = 0; i < pts.length; i += 3) pts[i + 1] -= lo + 0.02;
+  m.p.push(...pts); m.n.push(...ns);
+  for (let i = 0; i < pos.count; i++) { m.t.push(0.5, 0.5); m.c.push(col.getX(i), col.getY(i), col.getZ(i)); }
+  g.dispose();
+  for (let k = 0; k < 3; k++) steige(m, -0.9 + k * 0.85 + (rng() - 0.5) * 0.3, 0, 1.25 + rng() * 0.5, PRODUCE[(k * 3) % PRODUCE.length], rng);
+  return finish(m);
+}
+
+/** A tiny mulberry32 (the stand's own stream: no placement or pool stream draws for it). */
+function mulberry(seed: number): Rng {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** The market stall's regional forms by civic style (the props' 'stall' kind on a map whose plan names the style: its
+ *  record and the legacy builders' draws kept, its geometry this). */
+export const CIVIC_STALL_FORMS: Readonly<Record<string, { build: () => THREE.BufferGeometry; broken: () => THREE.BufferGeometry }>> = Object.freeze({
+  franconian: { build: marktstandNear, broken: marktstandBroken },
+});
 
 /** The civic kinds' records (props destructibles): a kiosk and a phone box break and stop no round (sheet metal and
  *  glass), a Litfaßsäule is concrete (a collider, a hull breaks it at speed), a bollard and a planter a hull drives

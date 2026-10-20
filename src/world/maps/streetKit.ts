@@ -120,10 +120,11 @@ export const SIGN_FORMS: Readonly<Record<string, SignSpec>> = Object.freeze({
 });
 
 // ---------------------------------------------------------------------------------------------------- lamps
-interface LampSpec { form: string; kind: LampForm['kind']; metal: Hex; broken?: boolean }
+/** `candela`: the lamp's pooled light where its form's differs from the street lamp's (worldNightLighting.ts) */
+interface LampSpec { form: string; kind: LampForm['kind']; metal: Hex; broken?: boolean; candela?: number }
 export const LAMP_FORMS: Readonly<Record<string, LampSpec>> = Object.freeze({
   blackglass: { form: 'bund-column', kind: 'victorian', metal: 0x2a3a2e }, foundry: { form: 'gaslaterne', kind: 'gas', metal: 0x3a3a38 },
-  railyard: { form: 'yard-floods', kind: 'yard', metal: 0x7a7a76 }, urban: { form: 'gaslaterne', kind: 'gas', metal: 0x2e302e },
+  railyard: { form: 'yard-floods', kind: 'yard', metal: 0x7a7a76 }, urban: { form: 'gaslaterne', kind: 'gas', metal: 0x2e302e, candela: 100 },
   ruinspires: { form: 'cobra-head-shot-out', kind: 'cobra', metal: 0x8a8c8a, broken: true },
 });
 const LAMP_DEFAULT: LampSpec = { form: 'peitschenmast', kind: 'whip', metal: 0x9aa0a0 };
@@ -187,6 +188,9 @@ export function streetTypes(mapId: string, entry: StreetEntry): Record<string, D
     for (const [a, b] of glass) for (let v = a; v < b; v++) vertices.push(v);
     setNightEmissionMask(geometry, 1, vertices);
     geometry.userData.lampLens = glass.length ? lensOf(geometry, glass) : null;
+    // (228 r2: Steinburg's thirty gas lanterns at the street lamp's 150 cd blew the square's pale setts to white in their
+    // pools) a gas lantern's own, dimmer light where its map's form names one
+    if (lamp.candela !== undefined) geometry.userData.lampCandela = lamp.candela;
     return geometry;
   }, null, null);
   const rugs = RUGS[RUG_REGION[mapId] ?? 'sahara'], rf: RugFrameForm = { wood: lin(0x6a5040), rugs: rugs.map(([a, b]) => [lin(a), lin(b)] as const) };

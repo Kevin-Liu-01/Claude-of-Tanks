@@ -49,6 +49,9 @@ export interface PavedSurfaceConfig {
   /** (the maps lane, 228) a square's setts' tone over the streets' (off any centreline: a civic square's lighter granite
    *  setts, world/civic); absent 1 */
   squareTone?: number;
+  /** (228 r2) a square's joints sanded toward its stone's tone (0..1), and its own arcs (chord, radius, m); absent 0 */
+  squareJoint?: number;
+  squareArc?: readonly [number, number];
 }
 
 /** Each paved map's surfaces (the period rulings above). Absent: the map's own splat (its R print, or none). */
@@ -61,7 +64,9 @@ export const MAP_PAVED_SURFACES: Readonly<Record<string, PavedSurfaceConfig>> = 
     patches: 1, cracks: 1, covers: 1, puddles: 0.6, markings: 1, tone: 0.92,
     // (the maps lane, 228; the owner: the square "a huge EMPTY grey asphalt expanse") the Friedensplatz's setts the pale
     // grey granite of a Franconian square, not the streets' dark stone
-    squareTone: 1.5 }),
+    squareTone: 1.5,
+    // (228 r2, the blind critics: the square's fan "a stamped, moire-like repeat at eye level", its joints a black grid)
+    squareJoint: 0.55, squareArc: [3.6, 2.4] as const }),
   // Ruinspires (Sarajevo, 1992–96): the shelled city's asphalt, patched and cracked; its styled paths keep their own classes
   // (R2: the squares in setts — the patched asphalt squares read as empty car parks; the round fills ragged and fewer)
   ruinspires: Object.freeze({ street: 'patched', square: 'cobble', kerbs: true, gutterM: 0.24, patches: 1.3, cracks: 1.3, covers: 1,
@@ -149,6 +154,6 @@ export function pavedSurfaceUniforms(paved: PavedSurfaceConfig | undefined,
     wear: [paved.patches ?? 1, paved.cracks ?? 1, paved.covers ?? 1, paved.puddles ?? 0],
     town: paved.kerbs ? [(town.x0 + town.x1) / 2, (town.z0 + town.z1) / 2, (town.x1 - town.x0) / 2, (town.z1 - town.z0) / 2] : [0, 0, 0, 0],
     extra: [paved.tone ?? 1, paved.kerbs && paved.townStreet ? ROAD_SURFACE_CODE[paved.townStreet] : 0, paved.markings ?? 0, paved.holeFills ?? 0],
-    square: [paved.squareTone ?? 1, 0, 0, 0],
+    square: [paved.squareTone ?? 1, paved.squareJoint ?? 0, paved.squareArc?.[0] ?? 0, paved.squareArc?.[1] ?? 0],
   };
 }

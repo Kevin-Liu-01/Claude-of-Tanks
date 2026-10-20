@@ -1,10 +1,11 @@
 // civicPathways.selftest.mjs — every planned map's pathway architecture as the props build it (the maps lane, 228; the
 // owner, 2026-10-18: "fix / improve the pathways in steinburg"; review AC5). Real props in Node:
-//   - the legacy strips are gone: no kerb or pavement on a square (the plan's excluded rooms), none past the wall line,
-//     none along a lane (a Gasse is laid in setts wall to wall);
-//   - every run is fronted and clear: its kerb face on the main street's line (kerbM ± 0.05 m), its kerb and pavement
-//     out of every structure, a gate's piers and the town wall's modules (the kerb a metre clear of them), its pavement
-//     no wider than the plan's widest;
+//   - the legacy strips are gone: no kerb or pavement on a square (the plan's excluded rooms) or on the wall line, none
+//     past it but a main street's (its suburb's fronted stretches);
+//   - (228 r2) the lanes kerbed too: the blind pairs preferred the legacy strips to bare setts and weedy margins;
+//   - every run clear: its kerb face on its street's line (kerbM ± 0.05 m), its kerb and pavement out of every structure,
+//     a gate's piers and the town wall's modules (the kerb 0.6 m clear of them), its pavement no wider than the plan's
+//     widest;
 //   - each run one ribbon: every piece's start meets the last one's end (no gap over 10 mm), a run at least 3 m long;
 //   - the lanes' corners return round their radius where the street's pavement reaches them.
 import assert from 'node:assert/strict';
@@ -22,6 +23,11 @@ const segDist = (x, z, ax, az, bx, bz) => {
   return Math.hypot(x - ax - dx * t, z - az - dz * t);
 };
 const roadDist = (road, x, z) => { let b = Infinity; for (let i = 0; i + 1 < road.length; i++) b = Math.min(b, segDist(x, z, ...road[i], ...road[i + 1])); return b; };
+const edgeDistance = (poly, x, z) => {
+  let b = Infinity;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) b = Math.min(b, segDist(x, z, ...poly[j], ...poly[i]));
+  return b;
+};
 const insidePolygon = (poly, x, z) => {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -59,13 +65,16 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
   let runs = 0, metres = 0, prev = null, runLen = 0, shortRuns = 0;
   for (const f of kerbs) {
     const [k0, k1, o1, o0] = f.pts;
-    // the kerb face on the main street's line
-    const face = Math.min(...mains.map((r) => roadDist(r, k0[0], k0[1])));
+    // the kerb face on its street's line (a main street's or a lane's)
+    const face = Math.min(...[...mains, ...lanes].map((r) => roadDist(r, k0[0], k0[1])));
     assert.ok(Math.abs(face - pw.kerbM) < 0.06, `${mapId}: a kerb face ${face.toFixed(3)} m off its street (${pw.kerbM})`);
     for (const [x, z] of [k0, k1, [(k0[0] + o0[0] + k1[0] + o1[0]) / 4, (k0[1] + o0[1] + k1[1] + o1[1]) / 4]]) {
       assert.ok(!pw.exclude.some((r) => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1), `${mapId}: pavement at (${x.toFixed(1)}, ${z.toFixed(1)}) on a square`);
-      assert.ok(insidePolygon(pw.inside, x, z), `${mapId}: pavement at (${x.toFixed(1)}, ${z.toFixed(1)}) past the wall line`);
-      for (const lane of lanes) assert.ok(roadDist(lane, x, z) > 3.4, `${mapId}: a kerb at (${x.toFixed(1)}, ${z.toFixed(1)}) along a lane`);
+      assert.ok(edgeDistance(pw.inside, x, z) > 1.0, `${mapId}: pavement at (${x.toFixed(1)}, ${z.toFixed(1)}) on the wall line`);
+      if (!insidePolygon(pw.inside, x, z)) {
+        const main = Math.min(...mains.map((r) => roadDist(r, x, z))), lane = Math.min(Infinity, ...lanes.map((r) => roadDist(r, x, z)));
+        assert.ok(main < lane, `${mapId}: a lane's pavement at (${x.toFixed(1)}, ${z.toFixed(1)}) past the wall line`);
+      }
     }
     for (const [x, z] of [k0, k1]) assert.ok(clearance(x, z) > 0.6, `${mapId}: the kerb at (${x.toFixed(1)}, ${z.toFixed(1)}) clear of every structure and wall`);
     const mid = [(k0[0] + o0[0] + k1[0] + o1[0]) / 4, (k0[1] + o0[1] + k1[1] + o1[1]) / 4];
@@ -83,6 +92,7 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
   assert.equal(shortRuns, 0, `${mapId}: every run at least 3 m long`);
   assert.equal(runs, census.runs, `${mapId}: ${runs} continuous ribbons, one a run (${census.runs})`);
   assert.ok((census.returns ?? 0) >= 1, `${mapId}: the lanes' corners return (${census.returns ?? 0})`);
+  if (lanes.length) assert.ok((census.kerbLaneM ?? 0) > 0, `${mapId}: the lanes kerbed (${census.kerbLaneM ?? 0} m)`);
   // (228 r1b) every return meets its run: the corner's tangent point is a run's kerb end (no bare setts between a run's
   // dressed end and the corner's kerb)
   const runEnds = report.debugPolys.filter((p) => p.col[1] === 120).flatMap((p) => [[p.pts[0], p.pts[1]], [p.pts[2], p.pts[3]]]);
@@ -91,6 +101,6 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
     assert.ok(gap < 0.2, `${mapId}: the return at (${r.pts[0].toFixed(1)}, ${r.pts[1].toFixed(1)}) ${gap.toFixed(2)} m from its run's kerb end`);
   }
   console.log(`${mapId}: ${census.legacyPieces} legacy pieces' draws spent; ${runs} runs, ${metres.toFixed(0)} m of kerb, ${(census.walkM2 ?? 0).toFixed(0)} m² of pavement, `
-    + `${census.returns ?? 0} returns, ${census.triangles} triangles`);
+    + `${census.returns ?? 0} returns (${(census.kerbMainM ?? 0).toFixed(0)} m on the main streets, ${(census.kerbLaneM ?? 0).toFixed(0)} m on the lanes), ${census.triangles} triangles`);
 }
-console.log(`civicPathways.selftest: ${plans.CIVIC_PLAN_MAPS.join(', ')} — kerbs and pavements only where houses front a main street, clear and continuous — ok`);
+console.log(`civicPathways.selftest: ${plans.CIVIC_PLAN_MAPS.join(', ')} — kerbs and pavements down the streets and the lanes, clear and continuous — ok`);

@@ -12,8 +12,9 @@ export type CivicPoint = readonly [number, number];
 /** An axis-aligned rectangle in the world plane. */
 export interface CivicRect { readonly x0: number; readonly x1: number; readonly z0: number; readonly z1: number }
 
-/** A street's class: a main street (raised kerbs and pavements where houses front it), a lane laid wall to wall in setts
- *  with a central gutter (no kerb, no pavement), a footpath, or none (the kit lays nothing beside it). */
+/** A street's class: a main street (raised kerbs and pavements down both sides inside the wall, where houses front it
+ *  past it), a lane (a low kerb and a narrow pavement down both sides inside the wall), a footpath, or none (the kit lays
+ *  nothing beside it). */
 export type PathClass = 'main' | 'gasse' | 'footpath' | 'none';
 
 /** A gate in a town wall a street passes: its passage centre, heading (the street's) and half its clear width. */
@@ -31,11 +32,16 @@ export interface PathwayPlan {
   readonly returnR: number;
   /** The widest pavement (m, kerb back to its outer edge). */
   readonly maxWalkM: number;
+  /** A main street's pavement where no house fronts it (m, kerb back to its outer edge: a garden wall, a verge). */
+  readonly openWalkM: number;
+  /** A lane's (gasse) kerb and pavement: the kerb's face over the setts, its widest pavement and its open one (m). */
+  readonly lane: { readonly face: number; readonly maxWalkM: number; readonly openWalkM: number };
   /** Where no pavement runs: a civic room's frontage walks own its edge, an open square has none. */
   readonly exclude: readonly CivicRect[];
   /** The gates the main streets pass: their kerbs stop a metre short of the piers, the setts run through. */
   readonly gates: readonly PathwayGate[];
-  /** The town's inside (a polygon): no kerb runs past the wall line. */
+  /** The town's inside (a polygon): past the wall line a main street keeps its pavement only where houses front it (a
+   *  suburb outside a gate), and no kerb runs along the wall line itself. */
   readonly inside: readonly CivicPoint[];
   /** Where a main street's pavement meets a square's flush walk: its kerb ramps down over 2 m to flush. */
   readonly mouths: readonly CivicPoint[];
@@ -90,6 +96,9 @@ export interface CivicAreaPlan {
   /** Ground beside the room the battle scars, the rubble and the hedgehogs keep off (a corner lot's garden), after their
    *  draws; the destructibles there keep their seats. */
   readonly keepOuts: readonly CivicRect[];
+  /** The pieces the plan clears from round its room (out of its period or its place), by kind in each rectangle: their
+   *  passes keep their draws and the piece is left out (a light building's plot with it). */
+  readonly clears: ReadonlyArray<{ readonly rect: CivicRect; readonly kinds: readonly string[] }>;
   /** The hardstand this area dresses (its airfield lip, gullies and patches dropped), by index in terrain.hardstands. */
   readonly pad: number;
   /** The carriageway arms that stay prop-free (the street lanes through the square). */

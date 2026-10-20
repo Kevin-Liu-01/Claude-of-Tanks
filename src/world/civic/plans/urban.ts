@@ -6,10 +6,15 @@
 // prop-free arms (18 m and 17 m) round an empty roundel (r 9: the zone hold disc and the ball's kickoff). West of the
 // trade road, the green: two kerbed quarters of lawn behind Burgsandstein dwarf walls and a cast-iron railing, the
 // north one a flower roundel on its paths' crossing, the south one the memorial grove (Ehrenhain) with the
-// Friedenssäule at its head, its forecourt open to the square. Sixteen oaks in rows on the two quarters, nine in iron
-// grates in the paving east of the trade road, three screening the north-east lot. East of the trade road, the Platz:
-// the market corner's stalls, a kiosk, two Litfaßsäulen, two phone boxes, and the parked period cars in their bays
-// (the 1980s' Golfs, W123 estates and Caddys, a Bundespost LP 813). Thirty gas lanterns light it at night.
+// Friedenssäule at its head, its forecourt open to the square. Thirteen oaks in rows on the two quarters, inside their
+// railings (the north quarter's church-side corner and the column's two left open: the church's front and the column
+// stand clear), more in iron grates in the paving east of the trade road, three screening the north-east lot. East of
+// the trade road, the Platz: the Wochenmarkt's two rows of Franconian stalls and their head stall, a short row by the
+// south frontage, a kiosk, two Litfaßsäulen, two phone boxes, and the period cars parked at the kerb along the south
+// and east frontages (the 1980s' Golfs, W123 estates and a Caddy; no painted bays). Thirty gas lanterns light it at night.
+// (228 r2, the blind critics on r1: the bay lines read as the car park the owner rejected, the oaks stood on the railing
+// lines, the church and the column were hidden behind crowns, the market was thin, a modern garage, a checkpoint hut and
+// oil drums stood about the room: each answered below.)
 //
 // The column's seat (review R2): the incentre of the south triangle of the planner cell x -75..-50, z -25..0, 5.18 m
 // from its six lattice segments and 13.5 m from the nearest node, in front of the oak rows, facing the crossing.
@@ -39,19 +44,24 @@ const POLLER = [
   [SW.x1 + 0.25, SW_AXIS - 3.6], [SW.x1 + 0.25, SW_AXIS + 3.6],
 ].map(([x, z]) => ({ kind: 'poller', x: +x.toFixed(2), z: +z.toFixed(2), yawDeg: 0 }));
 
-const OAK_X = [-81.8, -75.2, -67.2, -60.6];
+// the oak rows 2.2 m inside the beds' edges (the railing 1.6 m clear of each trunk), 6.67 m apart
+const OAK_X = [-81.2, -74.53, -67.87, -61.2];
+const OAK_N = 28.5, OAK_S = 12.0;
 
 export const URBAN_CIVIC_PLAN: CivicPlan = {
   mapId: 'urban',
   style: 'franconian',
   overlay: { hedgehogsAtApproaches: true, monumentKind: 'memorialcolumn' },
   pathways: {
-    // the Hauptstrasse and the trade road are the main streets; the back lanes and the alleys are Gassen
+    // the Hauptstrasse and the trade road are the main streets; the back lanes and the alleys are Gassen, kerbed low with
+    // a narrow pavement (228 r2: the blind pairs preferred the legacy strips to the lanes' bare setts and weedy margins)
     classes: { 0: 'main', 1: 'main', 6: 'gasse', 7: 'gasse', 8: 'gasse', 9: 'gasse', 10: 'gasse', 11: 'gasse', 12: 'gasse', 13: 'gasse' },
     kerbM: 3.8,
     frontage: [1.2, 3.5],
     returnR: 3.0,
     maxWalkM: 2.5,
+    openWalkM: 2.0,
+    lane: { face: 0.08, maxWalkM: 1.8, openWalkM: 1.4 },
     exclude: [ROOM],
     gates: [
       { x: -51.839, z: 100.564, halfWidth: 4.1, yawDeg: 2 },
@@ -74,8 +84,13 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       { from: [-53.8, 9.6], to: [-53.8, ROOM.z1] }, { from: [-46.2, 9.6], to: [-46.2, ROOM.z1] },
     ],
     vetoExempt: ['lamp'],
-    // the Pfarrgarten behind the church's north-west corner (the orange-ringed crater that sat there)
-    keepOuts: [{ x0: -116, x1: -92.4, z0: 19, z1: 48 }],
+    // the Pfarrgarten behind the church's north-west corner (the orange-ringed crater that sat there), and the north-east
+    // lot behind the parked cars (its rubble mounds stood round the screen's trunks)
+    keepOuts: [{ x0: -116, x1: -92.4, z0: 19, z1: 48 }, { x0: -8.7, x1: 0, z0: 6, z1: 36 }],
+    // (228 r2) round the room: the settlement's service garage on the south-west corner (behind the column) and its
+    // checkpoint hut by the south gap, the oil drums, pallets and barrels at the fountain and the frontages
+    clears: [{ rect: { x0: -100, x1: 0, z0: -56, z1: 56 },
+      kinds: ['servicegarage', 'checkpointhut', 'drum', 'drumred', 'pallet', 'barrel', 'gasbottle', 'jerrycan', 'cablespool'] }],
     pad: 0,
     arms: [{ x0: ROOM.x0, x1: ROOM.x1, z0: -9, z1: 9 }, { x0: -58.5, x1: -41.5, z0: -41, z1: 41 }],
     // the study's routeheat (C11): the north-east diagonal to frontline line-2 and the spur to the ac130 extraction
@@ -125,18 +140,24 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
     ],
     monument: { kind: 'memorialcolumn', x: COLUMN.x, z: COLUMN.z, faceX: -50, faceZ: 0 },
     trees: {
-      species: 'oak', scale: [1.45, 1.6],
+      // (228 r2: 1.45-1.6 stood the crowns over the column's figure and the church; the trunks read as wide orange posts)
+      species: 'oak', scale: [1.2, 1.32],
       stations: [
-        ...OAK_X.flatMap((x) => [{ x, z: 29.4 }, { x, z: 11.1 }]),
-        ...OAK_X.flatMap((x) => [{ x, z: -11.1 }, { x, z: -29.4 }]),
+        // the north quarter's rows, its church-side east corner left open (the church's front seen across the green)
+        ...OAK_X.filter((x) => x < -61.5).map((x) => ({ x, z: OAK_N })),
+        ...OAK_X.map((x) => ({ x, z: OAK_S })),
+        // the Ehrenhain's rows, their east pair left out: the column stands at the grove's head in the open
+        ...OAK_X.filter((x) => x < -61.5).flatMap((x) => [{ x, z: -OAK_S }, { x, z: -OAK_N }]),
         // the pits in the paving east of the trade road, and its east side
         { x: -38.5, z: 11, grate: true }, { x: -30.5, z: 11, grate: true }, { x: -15.5, z: 11, grate: true },
         // (the south three half a metre east of the review's seats: the first's trunk clear of the extraction's 8 m disc)
         { x: -30.5, z: -11, grate: true }, { x: -24, z: -11, grate: true }, { x: -17.5, z: -11, grate: true },
         { x: -40, z: 33, grate: true }, { x: -40, z: -25, grate: true }, { x: -40, z: -33, grate: true },
-        // (the fill, 228 r1) pit trees in the Platz's north-east quarter, before the north row and on the trade road's
-        // east side south of the extraction's disc (the walks round the green stay lanes: C12)
-        { x: -29.5, z: 21.5, grate: true }, { x: -23.5, z: 33.5, grate: true }, { x: -40, z: -18.4, grate: true },
+        // (the fill, 228 r1) a pit tree before the north row and on the trade road's east side south of the extraction's
+        // disc (the walks round the green stay lanes: C12)
+        { x: -23.5, z: 33.5, grate: true }, { x: -40, z: -18.4, grate: true },
+        // (228 r2) the south market's shade behind its stalls, and the south-west corner the garage left
+        { x: -26, z: -30, grate: true }, { x: -19.3, z: -30, grate: true }, { x: -88.5, z: -37.5, grate: true },
         // the north-east lot's screen, and the Pfarrgarten behind the church
         { x: -8, z: 14, grate: true }, { x: -8, z: 21, grate: true }, { x: -8, z: 28, grate: true },
         { x: -104, z: 24 }, { x: -112, z: 34 }, { x: -103, z: 44 },
@@ -148,8 +169,6 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       // the Ehrenhain's benches facing its axis
       { kind: 'bench', x: -67.0, z: -16.6, yawDeg: 180 }, { kind: 'bench', x: -76.0, z: -16.6, yawDeg: 180 },
       { kind: 'bench', x: -67.0, z: -23.0, yawDeg: 0 }, { kind: 'bench', x: -76.0, z: -23.0, yawDeg: 0 },
-      // round the new pit tree
-      { kind: 'bench', x: -29.5, z: 18.4, yawDeg: 180 }, { kind: 'bench', x: -29.5, z: 24.6, yawDeg: 0 },
       // a bench under the north row's pit tree, facing the square
       { kind: 'bench', x: -21.0, z: 35.6, yawDeg: 200 },
       // the Brunnenplatz: two benches against the church's east flank, facing the Marktbrunnen
@@ -158,40 +177,34 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       { kind: 'trashcan', x: -60.2, z: 17.6, yawDeg: 0 }, { kind: 'trashcan', x: -60.2, z: -27.5, yawDeg: 0 },
       { kind: 'trashcan', x: -66.5, z: 41.2, yawDeg: 0 }, { kind: 'trashcan', x: -29.0, z: -19.5, yawDeg: 0 },
       ...[[-64.0, 41.5], [-60.0, 41.5], [-29.5, -17.0], [-23.0, -17.0], [-10.8, 9.6], [-10.8, -9.6]].map(([x, z]) => ({ kind: 'pflanzkuebel', x, z, yawDeg: 0 })),
-      // the market corner: Franconian stalls, their crates
-      { kind: 'stall', x: -35.0, z: -22.5, yawDeg: 0 }, { kind: 'stall', x: -31.5, z: -22.5, yawDeg: 0 },
-      { kind: 'stall', x: -37.5, z: 25.75, yawDeg: -90 }, { kind: 'stall', x: -37.5, z: 29.25, yawDeg: -90 },
-      { kind: 'stall', x: -33.5, z: 22.0, yawDeg: -135 },
-      { kind: 'crate', x: -35.6, z: -24.2, yawDeg: 12 }, { kind: 'crate', x: -32.0, z: -24.3, yawDeg: -8 },
-      { kind: 'crate', x: -35.9, z: 26.4, yawDeg: 31 }, { kind: 'crate', x: -35.8, z: 30.4, yawDeg: 4 },
+      // (228 r2) the Wochenmarkt: two rows of Franconian stalls facing across their aisle north of the Hauptstrasse, their
+      // head stall at the aisle's north end, and a short row by the south frontage facing the square; crates at their backs
+      ...[14.5, 18.0, 21.5].flatMap((z) => [{ kind: 'stall', x: -37.0, z, yawDeg: 90 }, { kind: 'stall', x: -29.5, z, yawDeg: -90 }]),
+      { kind: 'stall', x: -33.25, z: 25.5, yawDeg: 180 },
+      ...[-34.5, -31.0, -27.5, -24.0].map((x) => ({ kind: 'stall', x, z: -24.0, yawDeg: 0 })),
+      { kind: 'crate', x: -38.7, z: 16.3, yawDeg: 12 }, { kind: 'crate', x: -38.6, z: 19.8, yawDeg: -8 },
+      { kind: 'crate', x: -27.9, z: 16.2, yawDeg: 31 }, { kind: 'crate', x: -27.8, z: 19.7, yawDeg: 4 },
+      { kind: 'crate', x: -32.9, z: -26.0, yawDeg: 17 }, { kind: 'crate', x: -25.8, z: -26.1, yawDeg: -11 },
       { kind: 'kiosk', x: -15.5, z: -14.5, yawDeg: -45 },
       { kind: 'litfass', x: -31.5, z: -15.5, yawDeg: 0 }, { kind: 'litfass', x: -16.5, z: 12.5, yawDeg: 20 },
       { kind: 'telzelle', x: -11.0, z: -21.0, yawDeg: -90 }, { kind: 'telzelle', x: -15.0, z: 33.5, yawDeg: -90 },
-      { kind: 'handcart', x: -26.5, z: -24.6, yawDeg: 70 },
+      { kind: 'handcart', x: -35.6, z: 27.6, yawDeg: 70 }, { kind: 'handcart', x: -21.0, z: -26.6, yawDeg: -60 },
     ],
+    // (228 r2) the cars parked at the kerb, nose to tail along the south frontage and the east, a little off true (no
+    // painted bays: the owner's "parking-lot lines" and the critics' "modern car park")
     parking: [
-      // north, head-in, noses east at x = -39
-      { kind: 'sedan', x: -39.0, z: 14.25, yawDeg: 90 }, { kind: 'wagon', x: -39.0, z: 16.75, yawDeg: 90 },
-      { kind: 'sedan', x: -39.0, z: 19.25, yawDeg: 90 }, { kind: 'wagon', x: -39.0, z: 21.75, yawDeg: 90 },
-      // north-east, angled 60 degrees at the lot
-      { kind: 'pickup', x: -13.5, z: 21.5, yawDeg: 60 }, { kind: 'wagon', x: -13.5, z: 25.8, yawDeg: 60 },
-      // south, head-in, noses south at z = -34.5
-      { kind: 'sedan', x: -30.75, z: -34.5, yawDeg: 180 }, { kind: 'wagon', x: -28.25, z: -34.5, yawDeg: 180 },
-      { kind: 'sedan', x: -25.75, z: -34.5, yawDeg: 180 }, { kind: 'pickup', x: -23.25, z: -34.5, yawDeg: 180 },
-      { kind: 'sedan', x: -20.75, z: -34.5, yawDeg: 180 }, { kind: 'wagon', x: -18.25, z: -34.5, yawDeg: 180 },
-      // the Bundespost's LP 813 box at the market corner, its nose east
-      { kind: 'truckbox', x: -20.0, z: -22.5, yawDeg: 90 },
+      { kind: 'wagon', x: -34.0, z: -37.2, yawDeg: 91.5 }, { kind: 'sedan', x: -28.3, z: -37.3, yawDeg: 88.5 },
+      { kind: 'wagon', x: -22.4, z: -37.15, yawDeg: 90.8 }, { kind: 'sedan', x: -16.7, z: -37.3, yawDeg: 89.2 },
+      { kind: 'pickup', x: -11.3, z: -31.4, yawDeg: 181 }, { kind: 'sedan', x: -11.4, z: -25.8, yawDeg: 179 },
+      { kind: 'sedan', x: -12.6, z: 15.5, yawDeg: 1.2 }, { kind: 'wagon', x: -12.55, z: 21.2, yawDeg: -0.8 },
+      { kind: 'wagon', x: -12.7, z: 27.0, yawDeg: 0.6 },
     ],
-    bayMarks: [
-      // the north row's separators (along the cars) and its head row, the south row's
-      ...[13.0, 15.5, 18.0, 20.5, 23.0].map((z) => ({ x: -39.0, z, yawDeg: 90, length: 5.0 })),
-      { x: -36.4, z: 18.0, yawDeg: 0, length: 10.0 },
-      ...[-32.0, -29.5, -27.0, -24.5, -22.0, -19.5, -17.0].map((x) => ({ x, z: -34.5, yawDeg: 0, length: 5.0 })),
-      { x: -24.5, z: -37.1, yawDeg: 90, length: 15.0 },
-    ],
+    bayMarks: [],
+    // (228 r2: the column's pair out on the granite band either side of its forecourt, wide of the plaques; the north
+    // quarter's corner lamp between its trunks; the Brunnenplatz's off the basin's rim; the east one off the kerb parking)
     lamps: [
-      [-73.4, 30.4], [-59.6, 22.45], [-82.8, 18.05], [-59.6, -24.6], [-82.8, -22.45], [-59.4, 42.6],
-      [-41.0, 9.9], [-27.5, -11.0], [-14.0, 17.5], [-59.4, 9.9], [-59.6, -15.0],
+      [-73.4, 30.4], [-59.6, 22.45], [-82.8, 18.05], [-58.75, -26.0], [-82.8, -22.45], [-56.8, 42.4],
+      [-41.0, 9.9], [-27.5, -11.0], [-15.8, 18.4], [-64.5, 9.25], [-58.75, -13.6],
     ].map(([x, z]) => ({ kind: 'lamp', x, z, yawDeg: 0 })),
     fountainRing: { x: -62, z: 47, r: 5.5 },
     steps: [{ x: -75.8, z: 39.9, width: 6, yawDeg: 180, count: 2, rise: 0.12 }],

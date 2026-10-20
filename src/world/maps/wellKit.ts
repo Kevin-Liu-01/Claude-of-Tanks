@@ -1366,11 +1366,26 @@ function victoria(m: Mesh, y: number, phone: boolean): void {
     const t = k / (phone ? 5 : 8), c: V3 = add(p0, scl(sub3(p1, p0), t)), l = 0.22 * (1 - t * 0.55);
     for (const s of [-1, 1]) member(m, c, add(c, [s * l, l * 0.55, 0.03]), 0.05, 0.012, Z, GILT_BRIGHT, FLAT, { shade: gilt });
   }
-  // the wings: from her shoulder blades back and up, three feathered blades each, the longest to 2.0 m
+  // the wings: from her shoulder blades back and up, each a whole swept plate (both faces) under its leading edge's
+  // member, the primaries' scallops along its trailing edge (228 r2, the blind critics: three separate blades a wing
+  // read as "a spiky blob" against the sky)
   for (const s of [-1, 1]) {
     const root: V3 = [s * 0.09, y + 1.42, -0.1];
-    const tips: V3[] = [[s * 0.5, y + 2.05, -0.42], [s * 0.46, y + 1.62, -0.48], [s * 0.34, y + 1.2, -0.42]];
-    tips.forEach((tip, k) => member(m, root, tip, 0.2 - k * 0.03, 0.035, [s, 0, 0.3], k ? GILT_DEEP : GILT_BRIGHT, FLAT, { chamfer: 0.012, shade: gilt }));
+    const edge: V3[] = [[s * 0.16, y + 1.6, -0.15], [s * 0.33, y + 1.95, -0.29], [s * 0.5, y + 2.12, -0.42], [s * 0.55, y + 1.92, -0.47],
+      [s * 0.52, y + 1.66, -0.5], [s * 0.45, y + 1.4, -0.48], [s * 0.34, y + 1.2, -0.42], [s * 0.2, y + 1.22, -0.26]];
+    // (flat on the kit's print: its colour over the print's texel, its uv the texel's, as a FLAT member's)
+    const uv: readonly [number, number] = [m.surface.flatUv?.[0] ?? 0.5, m.surface.flatUv?.[1] ?? 0.5];
+    for (let k = 0; k + 1 < edge.length; k++) {
+      const a = edge[k], b = edge[k + 1];
+      const e1 = sub3(a, root), e2 = sub3(b, root);
+      const cr: V3 = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+      const l = Math.hypot(cr[0], cr[1], cr[2]) || 1, nn: V3 = [cr[0] / l, cr[1] / l, cr[2] / l], back: V3 = [-nn[0], -nn[1], -nn[2]];
+      // each face a hair off the plate's mid-plane (no z-fight between them)
+      const off = (p: V3, n: V3): V3 => [p[0] + n[0] * 0.008, p[1] + n[1] * 0.008, p[2] + n[2] * 0.008];
+      m.tri(off(root, nn), off(a, nn), off(b, nn), nn, nn, nn, uv, uv, uv, m.colour(gilt(root, nn), false));
+      m.tri(off(root, back), off(b, back), off(a, back), back, back, back, uv, uv, uv, m.colour(gilt(root, back), false));
+    }
+    member(m, root, edge[2], 0.07, 0.05, [s, 0, 0.3], GILT_BRIGHT, FLAT, { chamfer: 0.015, shade: gilt });
   }
 }
 

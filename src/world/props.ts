@@ -159,7 +159,7 @@ import { applyCivicOverlay, civicPlanFor } from './civic/plans/index.ts';
 import { civicStyle } from './civic/styles.ts';
 import { composeCivicArea, type CivicPiece } from './civic/civicAreaKit.ts';
 import { buildPathwayNetwork } from './civic/pathwayKit.ts';
-import { CIVIC_RECORDS, civicFurnitureTypes } from './civic/civicFurnitureKit.ts';
+import { CIVIC_RECORDS, CIVIC_STALL_FORMS, civicFurnitureTypes } from './civic/civicFurnitureKit.ts';
 import type { CivicRect } from './civic/types.ts';
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
 import { composeMangroveFisheryWharf, type FisheryPacket, type FisheryVegetation } from './mangroveFisheryWharf.ts';
@@ -4515,6 +4515,17 @@ ${snowCap ? `
       // (a phone's shaft is a plain twelve-gon: every tier refits the desktop column's records, one world for a mixed lobby)
       collisionSolid: () => memorialColumnSolid(),
     };
+    // (228 r2) the market stall in the plan's regional form (a Franconian stand: its tiers of produce, its striped awning),
+    // its record kept and the legacy builders' draws spent first (every pool built after it keeps its geometry)
+    const stallForm = CIVIC_STALL_FORMS[civicPlan!.style];
+    const legacyStall = PROP_TYPE_REGISTRY.stall;
+    if (stallForm && legacyStall) {
+      out.stall = {
+        ...legacyStall, mat: 'baked', ownBroken: true,
+        build: (r: Rng) => { legacyStall.build(r).dispose(); return stallForm.build(); },
+        broken: (r: Rng) => { legacyStall.broken?.(r).dispose(); return stallForm.broken(); },
+      } as PropsDestructibleMeta;
+    }
     return out;
   }
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
@@ -4662,6 +4673,16 @@ ${snowCap ? `
   const civicKeepOuts: CivicRect[] = [];
   const civicGroundVetoAt = (x: number, z: number, kind: string): boolean => civicVetoAt(x, z, kind)
     || civicKeepOuts.some((r) => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1);
+  // (228 r2) the pieces a plan clears from round its room (out of its period or its place: a modern service garage, a
+  // checkpoint hut, oil drums and pallets), by kind in its rectangles: their passes keep their draws, the piece is left
+  // out; a light building's plot is kept off the civic kits' frontage reads (civicPlots)
+  const civicClears = civicPlan?.areas.flatMap((a) => a.clears) ?? [];
+  const civicClearedSites: Array<{ x: number; z: number }> = [];
+  const civicClearAt = (x: number, z: number, kind: string): boolean => civicClears.some((c) =>
+    c.kinds.includes(kind) && x >= c.rect.x0 && x <= c.rect.x1 && z >= c.rect.z0 && z <= c.rect.z1);
+  const civicPlots = () => (civicClearedSites.length
+    ? buildingFeatures.filter((b) => !civicClearedSites.some((c) => Math.abs(c.x - b.x) < 1e-6 && Math.abs(c.z - b.z) < 1e-6))
+    : buildingFeatures);
   // the scatter round a deployment slot (a building, a regional structure and a set piece's furniture keep their seats:
   // a slot they stand on moves off them with its rotated partner in the match placement)
   const deploymentVetoed: Record<string, number> = {};
@@ -4677,6 +4698,12 @@ ${snowCap ? `
     tiltX = 0,
     tiltZ = 0,
   ): DestructibleRecord {
+    if (civicClears.length && civicClearAt(x, z, kind)) {
+      const meta = resolveDestructibleMeta(destructibleContext, kind);
+      civicVetoed[`cleared:${kind}`] = (civicVetoed[`cleared:${kind}`] ?? 0) + 1;
+      civicClearedSites.push({ x, z });
+      return { kind, cls: meta.cls, x, y, z, yaw, sc, r: meta.r * sc, h: meta.h * sc, slot: -1, state: 0, ob: null, groundSupport: null };
+    }
     if (civicVetoes.length && civicVetoAt(x, z, kind)) {
       const meta = resolveDestructibleMeta(destructibleContext, kind);
       civicVetoed[kind] = (civicVetoed[kind] ?? 0) + 1;
@@ -6145,7 +6172,7 @@ ${snowCap ? `
     const debugPolys: Array<{ pts: number[]; col: [number, number, number]; fill?: [number, number, number] }> = [];
     for (const area of civicPlan.areas) {
       const built = composeCivicArea(area, style, {
-        ground: (x, z) => heightField.getHeightAt(x, z), tier: mobileProps ? 'mobile' : 'desktop', plots: buildingFeatures,
+        ground: (x, z) => heightField.getHeightAt(x, z), tier: mobileProps ? 'mobile' : 'desktop', plots: civicPlots(),
       });
       if (built.geometry) buckets.baked.push(built.geometry);
       civicPieces.push(...built.pieces);
@@ -9252,7 +9279,8 @@ ${snowCap ? `
     // and pavements only where houses front a main street, the lanes in setts wall to wall; the legacy draws spent first
     if (civicPlan?.pathways) {
       const built = buildPathwayNetwork(civicPlan.pathways, civicStyle(civicPlan.style), {
-        roads, ground: (x, z) => heightField.getHeightAt(x, z), plots: buildingFeatures, rng, town, distToOtherRoads,
+        roads, ground: (x, z) => heightField.getHeightAt(x, z), plots: civicPlots(), rng, town, distToOtherRoads,
+        tier: mobileProps ? 'mobile' : 'desktop',
       });
       if (built.geometry) buckets.baked.push(built.geometry);
       for (const f of built.footprints) {

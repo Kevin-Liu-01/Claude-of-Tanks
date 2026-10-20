@@ -51,6 +51,14 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
   const outside = (b) => new Set(b.destructibles.filter((d) => d.slot >= 0 && !inAnyRoom(d.x, d.z) && !VEHICLES.has(d.kind) && d.kind !== 'hedgehog'
     && !ownSeat(d)).map(key));
   const before = outside(base.built), after = outside(built);
+  // (228 r2: the pieces the plan clears from round its room — pinned by kind and rectangle in the plan — the only others)
+  const clears = plan.areas.flatMap((a) => a.clears);
+  for (const d of base.built.destructibles) {
+    if (d.slot >= 0 && clears.some((c) => c.kinds.includes(d.kind) && inRect(c.rect, d.x, d.z))) before.delete(key(d));
+  }
+  for (const d of built.destructibles) {
+    if (d.slot >= 0) assert.ok(!clears.some((c) => c.kinds.includes(d.kind) && inRect(c.rect, d.x, d.z)), `${mapId}: a cleared ${d.kind} stands at (${d.x.toFixed(1)}, ${d.z.toFixed(1)})`);
+  }
   // (the lamp-seat snap: a lamp stood in a structure moves off it — its old seat and its new the only lamps to differ)
   for (const m of built.group.userData.lampSnap ?? []) if (m.from) {
     before.delete(`lamp@${m.from[0].toFixed(1)},${m.from[1].toFixed(1)}`);
