@@ -1230,6 +1230,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     for (const mesh of made) {
       mesh.userData.runOwner = { section: -1, storey: storeyIndex } satisfies RunOwner;
       mesh.userData.room = true;
+      // (round 5) laid open to the sky, lit so (openTopRooms leaves it as it is)
+      if (open) mesh.userData.openToSky = true;
       // inside the walls its shadow is the building's own; drawn through the default depth program it would stand as a
       // box's shadow once the building folded away
       mesh.castShadow = false;

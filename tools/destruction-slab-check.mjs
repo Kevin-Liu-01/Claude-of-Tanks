@@ -1110,6 +1110,41 @@ export async function runSlabCheck({
       }
       return found.map(hangingFinding);
     };
+    /**
+     * (destruction-slabs 227 round 5; the round-4 critics' films: tavern #7, depot #8 and urban church #15 roofless, their
+     * top storey under one flat dark plane — its room, laid dim for a glimpse through a hole, its ceiling at the wall heads —
+     * which no rule read: a ceiling inside the walls passes) once the roof has fallen (OPEN_ROOM_S on), the top storey's
+     * rooms are open to the sky: one that draws a ceiling (a level surface facing down, a square metre and more) or still
+     * stands in an interior's shade (laid dim, not lit since) is the lid.
+     */
+    const OPEN_ROOM_S = 1.0;
+    const topStorey = seam.anatomy.storeys.length - 1;
+    const openRoomAt = (meshes) => {
+      if (!(roofDownAt >= 0 && clock >= roofDownAt + OPEN_ROOM_S) || !seam.anatomy.roof) return [];
+      const found = [];
+      for (const d of meshes) {
+        if (!ROOM_RUN.test(d.name)) continue;
+        const ud = d.mesh?.userData ?? {};
+        const storey = ud.runOwner?.storey ?? ud.storey;
+        if (storey !== topStorey) continue;
+        let ceil = 0;
+        const t = d.tris;
+        for (let o = 0; o + 8 < t.length; o += 9) {
+          const ax = t[o + 3] - t[o], ay = t[o + 4] - t[o + 1], az = t[o + 5] - t[o + 2], bx = t[o + 6] - t[o], by = t[o + 7] - t[o + 1], bz = t[o + 8] - t[o + 2];
+          const nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx, l = Math.hypot(nx, ny, nz);
+          if (ny < -0.9 * l) ceil += l / 2;
+        }
+        const dim = ud.openToSky !== true && !(Number(ud.roomShade ?? 0) >= 1);
+        if (!(ceil >= 1) && !dim) continue;
+        const sh = shapeOf(d.tris);
+        found.push({ mesh: d.name, sheet: false, material: d.material.name, map: d.material.map, tint: [0, 0, 0], slab: false, orientation: 'horizontal',
+          extentsM: sh.ext.map((e) => +e.toFixed(2)), areaM2: +(sh.ext[0] * sh.ext[1]).toFixed(1), centre: sh.centre.map((c) => +c.toFixed(2)),
+          liftM: +(sh.min[1] - ground(sh.centre[0], sh.centre[2])).toFixed(2), outsideShare: 0, outsideM2: 0, floatingShare: 0, triangles: sh.tris,
+          reasons: [`open room: the roofless top storey's room ${ceil >= 1 ? `draws a ceiling (${ceil.toFixed(1)} m²)` : 'stands in an interior\'s shade under the open sky'} — a lid`],
+          attributes: [], _tris: d.tris });
+      }
+      return found;
+    };
     const floorLists = drawnSpanTriangles(seam.spans.filter((sp) => sp.partClass !== 'roof'));
     const topFloorY = a.placement.y + (a.storeys.length ? a.storeys[a.storeys.length - 1].y0 : 0) + 0.5;
     const standingFloorAt = floorsOf(floorLists, topFloorY);
@@ -1300,6 +1335,7 @@ export async function runSlabCheck({
       // look within HANG_SETTLE_S of the building's last event is none)
       holdFloors = !felled;
       { const st = spansState(); if (st !== 'moving' && clock - lastEventAt >= HANG_SETTLE_S) judged.findings.push(...hangingAt(meshes, st === 'drawn', ground)); }
+      if (spansState() === 'drawn') judged.findings.push(...openRoomAt(meshes));
       const flagged = judged.findings.length > 0;
       const firstFlag = flagged && !snapshots.some((p) => p.findings.length);
       const tag = `t${clock.toFixed(1)}-${label}`;
@@ -1395,6 +1431,7 @@ export async function runSlabCheck({
             floorAt: felled ? null : floorOrLine });
           holdFloors = !felled;
           { const st = spansState(); if (st !== 'moving' && (atEnd || clock - lastEventAt >= HANG_SETTLE_S)) judged.findings.push(...hangingAt(meshes, st === 'drawn', ground)); }
+          if (spansState() === 'drawn') judged.findings.push(...openRoomAt(meshes));
           const last = events[events.length - 1];
           const label = atEnd ? 'final' : `t${clock.toFixed(1)}-${last ? (last.stage ?? (last.storeyDown ? 'storeyDown' : last.hole === 255 ? 'sectionDown' : 'hole')) : 'none'}`;
           const flagged = judged.findings.length > 0;
