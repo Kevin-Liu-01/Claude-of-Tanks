@@ -246,12 +246,12 @@ for (const hook of ['scene-before', 'scene-after', 'object-before', 'object-afte
   f.fx.userData.lateFxSceneAgnostic = true;
   f.frame();
   assert.equal(calls, 1, 'the agnostic callback still runs');
-  assert.equal(f.roots.at(-1).root, view, 'the marked object draws through the view');
+  assert.ok(f.roots.at(-1).root === view, 'the marked object draws through the view');
   f.frame();
   assert.equal(f.roots.at(-2).version, worldVersion, 'the world draw keeps its light hash version');
   delete f.fx.userData.lateFxSceneAgnostic;
   f.frame();
-  assert.equal(f.roots.at(-1).root, f.scene, 'unmarked, the callback keeps the scene\'s own path');
+  assert.ok(f.roots.at(-1).root === f.scene, 'unmarked, the callback keeps the scene\'s own path');
   const { readFileSync } = await import('node:fs');
   for (const file of ['../fx/projectileTracers.ts', '../fx/missileTrails.ts', '../fx/missileWires.ts']) {
     assert.match(readFileSync(new URL(file, import.meta.url), 'utf8'), /mesh\.userData\.lateFxSceneAgnostic = true;/, `${file} marks its viewport hook`);

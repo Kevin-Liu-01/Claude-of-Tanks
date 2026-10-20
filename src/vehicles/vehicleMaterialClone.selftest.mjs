@@ -186,7 +186,7 @@ try {
       if (!skins.has(object.material)) skins.set(object.material, programVariantOrigin(source));
       const origin = programVariantOrigin(source);
       if (origin !== source) twinSkins++;
-      assert.equal(skinOfOrigin.get(origin) ?? object.material, object.material, `${id}: a twin and its original wear one skin (${origin.name})`);
+      assert.ok((skinOfOrigin.get(origin) ?? object.material) === object.material, `${id}: a twin and its original wear one skin (${origin.name})`);
       skinOfOrigin.set(origin, object.material);
     });
     let wheelPaint = 0;

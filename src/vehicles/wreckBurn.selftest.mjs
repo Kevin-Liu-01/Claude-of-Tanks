@@ -84,7 +84,7 @@ assert.match(core, /burnU\.uBurnEmber\.value = emberHeat\(wreckAge\) \*/, 'the l
   group.add(plain, pool);
   splitProgramVariants(group);
   const twin = pool.material;
-  assert.notEqual(twin, original);
+  assert.ok(twin !== original, 'the burnt twin is its own material');
   const version = original.version;
   assert.equal(applyBurnHook(twin, a), true, 'the twin first');
   assert.ok(Object.prototype.hasOwnProperty.call(original, 'onBeforeCompile') && !Object.prototype.hasOwnProperty.call(twin, 'onBeforeCompile'),
