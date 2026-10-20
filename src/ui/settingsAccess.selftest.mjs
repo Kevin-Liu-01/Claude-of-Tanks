@@ -14,6 +14,7 @@ const bus = { on(event, handler) { busHandlers.set(event, handler); } };
 const gear = new FakeGear();
 let now = 1000;
 let modalOpen = false;
+let loadCovered = false;
 let attempts = 0;
 let constructions = 0;
 let opens = 0;
@@ -48,6 +49,7 @@ const access = createSettingsAccess({
   createGear: () => gear,
   modalOpen: () => modalOpen,
   now: () => now,
+  loadCovered: () => loadCovered,
 });
 
 assert.equal(gear.style.display, 'flex');
@@ -66,6 +68,13 @@ action();
 await Promise.resolve();
 assert.equal(opens, 0, 'an existing modal keeps settings closed');
 modalOpen = false;
+// (black-screen-228 round 2, D5) Esc under the battle entry's loading cover opens nothing (an invisible pause panel held
+// the entry on PREPARING)
+loadCovered = true;
+action('Escape');
+await Promise.resolve();
+assert.equal(opens, 0, 'the battle loading cover keeps settings closed');
+loadCovered = false;
 action();
 await Promise.resolve();
 assert.equal(opens, 1);
@@ -96,4 +105,4 @@ action('Pad9');
 await Promise.resolve();
 assert.equal(access.isOpen(), true, 'gamepad menu remains available while spectating');
 
-console.log('settingsAccess.selftest: retry, intent, modal and replay gates passed');
+console.log('settingsAccess.selftest: retry, intent, modal, loading-cover and replay gates passed');
