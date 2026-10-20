@@ -103,6 +103,8 @@ const TOUCH_NOTICE_SOFT = '.cot-minimap,.cot-top,.cot-mode-status.show,.cot-ear,
   + '.cot-si-toasthost,.cot-room-chat:not([hidden]),.cot-spec.show';
 /** The alert's height while none shows (two lines at the touch type size in the detection's width), so places hold. */
 const TOUCH_ALERT_RESERVE_H = 40;
+/** Below this height a portrait phone's systems row leaves the band over the sight for the top slot (r10g). */
+const PORTRAIT_SIGHT_ROOM_H = 720;
 /** How far a mouse layout's inline tray keeps from the drive gauge: the damage panel's gap to it (r10f). */
 const TRAY_GAUGE_GAP = 12;
 /** The sixth-sense notice, which a touch layout's seated warning chip yields to (sightFurniture.ts sightNotice). */
@@ -571,6 +573,27 @@ export function installBattleHudLayout(root: HTMLElement): void {
           systemsLeft = Math.max(12, ammo.left - 8 - dockWidth);
         }
       }
+    }
+    // r10g (the r10e critic at 320x568 and 360x640: the scope's readouts on the systems row's labels, the warning chip set
+    // over the sight on its key badges; the row clipped at 320 wide): the marks r10 sets over the ring (the readout row,
+    // the chip, a rack) reach past SIGHT_BAND_ABOVE, so on a portrait phone under PORTRAIT_SIGHT_ROOM_H tall the row takes
+    // the top slot right of the map, under the touch chrome, in its compact form (icons over labels, no key badges, the
+    // slot's width shared: battleHudLayout.css data-systems-slot), wherever that slot is higher than its own place (with
+    // an objective panel the chrome drops under it, and the slot is as high as the row already was: compact there, it
+    // no longer runs off the screen)
+    let systemsSlot = '';
+    if (touch && width < height && height < PORTRAIT_SIGHT_ROOM_H && systemsHeight && map && map.left < width / 2) {
+      const slotTop = Math.max(touchChrome?.bottom ?? 0, top) + 8;
+      if (slotTop <= systemsTop) {
+        systemsSlot = 'top';
+        systemsTop = slotTop;
+        systemsLeft = map.right + 8;
+        systemsWidth = dockWidth = Math.max(52, width - systemsLeft - 12);
+      }
+    }
+    if ((document.body.dataset.systemsSlot ?? '') !== systemsSlot) {
+      if (systemsSlot) document.body.dataset.systemsSlot = systemsSlot;
+      else delete document.body.dataset.systemsSlot;
     }
     if (touch && width < height && ammo && systemsTop + systemsHeight > ammo.top
       && systemsTop < ammo.bottom && systemsLeft < ammo.left) {

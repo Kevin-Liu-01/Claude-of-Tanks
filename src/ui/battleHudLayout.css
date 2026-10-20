@@ -411,3 +411,13 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientati
 /* r10f (the notices critic: the drive gauge 2 px from the APFSDS slot at 1024 wide): the inline tray, centred, moves right
    by the layout's measured shift until it keeps the damage panel's 12 px gap from the gauge */
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='inline'] .cot-shells{transform:translateX(calc(-50% + var(--hud-tray-shift,0px)))}
+
+/* r10g (the r10e critic: at 320 wide the systems row scrolled out of sight, "Auto g"; at 320x568 and 360x640 it sat in
+   the band the scope's marks take over the sight): on a portrait phone under 720 px tall the layout seats the row in the
+   top slot right of the map (data-systems-slot), compact: the slot's width shared by its buttons, each its icon over its
+   label, 40 px tall, without the keyboard's key badges a touch screen has no use for */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls{width:var(--hud-systems-width);overflow:visible}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button{flex:1 1 0;width:auto!important;min-width:0;height:40px!important;min-height:40px;grid-template-columns:minmax(0,1fr);grid-template-rows:17px 13px;row-gap:1px;padding:4px 1px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .si{grid-column:1;grid-row:1}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .sl{grid-column:1;grid-row:2;max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:8px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .sk{display:none}
