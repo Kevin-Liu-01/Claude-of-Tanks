@@ -491,7 +491,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     medalScopeSensitive = false;
     if (plan && banner?.childElementCount) {
       medalWaiting = mouseMedalWaits(plan, { detection: !!root.querySelector('.cot-sixth.on'), alert: !!root.querySelector('.cot-alert.show'),
-        revive: !!root.querySelector('.cot-revive.on'), scoped: document.documentElement.hasAttribute(SCOPED_ATTRIBUTE) });
+        revive: !!root.querySelector('.cot-revive.on'), scoped: document.documentElement.hasAttribute(SCOPED_ATTRIBUTE),
+        feeds: [!!killLeft?.childElementCount, !!killRight?.childElementCount] });
       medalReady = !medalWaiting;
       medalScopeSensitive = !!plan.medal && plan.medal.clearance < 2;
     }

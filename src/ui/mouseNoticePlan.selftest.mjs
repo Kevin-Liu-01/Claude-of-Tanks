@@ -276,16 +276,35 @@ for (const v of VIEWPORTS) for (const rosters of v.earL ? [7, 14, 20] : [7]) for
     if (waits) medalWaits++;
   }
   // it waits on the detection's 8 s lamp only where no place for it down the centre line, below the lamp and above the aim
-  // point, clears the whole keep-out, every instrument and both notices (main showed its card at once just below the lamp)
+  // point, clears the whole keep-out, every instrument, both notices and the kill lanes (main showed its card at once
+  // just below the lamp)
   if (overlap(medal, plan.detection, MOUSE_NOTICE_GAP_PX - .01)) {
     const [w0, h0] = v.vp, keep = mouseReticleFootprint(w0, h0);
     for (const [cw, ch] of [[medal.w, medal.h]]) {
       for (let y = Math.ceil(plan.detection.y + plan.detection.h + MOUSE_NOTICE_GAP_PX); y + ch <= h0 / 2; y++) {
         const box = { x: w0 / 2 - cw / 2, y, w: cw, h: ch };
         const clear = intrusion(box, keep) <= 0 && !input.obstacles.some((o) => overlap(box, o, MOUSE_NOTICE_GAP_PX - .01))
-          && !overlap(box, plan.detection, MOUSE_NOTICE_GAP_PX - .01) && !overlap(box, alertBox(plan.alert), MOUSE_NOTICE_GAP_PX - .01);
+          && !overlap(box, plan.detection, MOUSE_NOTICE_GAP_PX - .01) && !overlap(box, alertBox(plan.alert), MOUSE_NOTICE_GAP_PX - .01)
+          && !input.lanes.some((l) => l && overlap(box, { x: l.x, y: l.top, w: l.w, h: l.bottom - l.top }, MOUSE_NOTICE_GAP_PX - .01));
         assert.ok(!clear, `${name}: the card waits on the lamp though ${cw} x ${ch} at y ${y} on the centre line below it is clear`);
       }
+    }
+  }
+  // it never hides a kill row (owner: the card waits rather than cover the feed): each lane keeps, beside it, every row it
+  // holds without it (the rows may start lower), but on a phone-width mouse window (390 x 844, 481 x 700), where every
+  // place for the card cuts a lane: there the card waits while that lane shows a row
+  const rows = (h) => Math.min(8, Math.max(0, Math.floor((h + 3) / 29)));
+  for (let side = 0; side < 2; side++) {
+    const lane = input.lanes[side];
+    if (!lane) continue;
+    const t = Number.isNaN(medal.giveWay[side * 2]) ? lane.top : medal.giveWay[side * 2];
+    const b = Number.isNaN(medal.giveWay[side * 2 + 1]) ? lane.bottom : medal.giveWay[side * 2 + 1];
+    const cut = rows(b - t) < rows(lane.bottom - lane.top), what = `${name}: the medal card's place cuts the ${side ? 'right' : 'left'} lane`;
+    assert.equal(medal.cutsLanes[side], cut, `${what}: ${cut} (${rows(b - t)} of ${rows(lane.bottom - lane.top)} rows)`);
+    if (cut) {
+      assert.ok(v.vp[0] < 520, `${what} on a desktop window`);
+      const feeds = side ? [false, true] : [true, false], none = { detection: false, alert: false, revive: false, scoped: false };
+      assert.ok(mouseMedalWaits(plan, { ...none, feeds }) && !mouseMedalWaits(plan, { ...none, feeds: [false, false] }), `${what}: it waits while that lane shows a row, and only then`);
     }
   }
   const [W] = v.vp, mainCard = { x: W / 2 - input.medal.w / 2, y: Math.ceil(input.top + 16), w: input.medal.w, h: input.medal.h };
@@ -347,7 +366,7 @@ assert.match(css, /\.rosters-expanded \.cot-ear\.l\{width:min\(320px,calc\(50vw 
 assert.doesNotMatch(css, /data-hud-alert-type/, 'the alert never drops below main\'s type size');
 // the layout holds the medal card by mouseMedalWaits with everything it can show with (4c); hud.ts flags the scope on the
 // document element, outside the observed HUD root, so a scope toggle relayouts nothing (battleHudLayout.selftest.mjs)
-assert.match(layout, /medalWaiting = mouseMedalWaits\(plan, \{ detection: !!root\.querySelector\('\.cot-sixth\.on'\), alert: !!root\.querySelector\('\.cot-alert\.show'\),\s+revive: !!root\.querySelector\('\.cot-revive\.on'\), scoped: document\.documentElement\.hasAttribute\(SCOPED_ATTRIBUTE\) \}\);\s+medalReady = !medalWaiting;/);
+assert.match(layout, /medalWaiting = mouseMedalWaits\(plan, \{ detection: !!root\.querySelector\('\.cot-sixth\.on'\), alert: !!root\.querySelector\('\.cot-alert\.show'\),\s+revive: !!root\.querySelector\('\.cot-revive\.on'\), scoped: document\.documentElement\.hasAttribute\(SCOPED_ATTRIBUTE\),\s+feeds: \[!!killLeft\?\.childElementCount, !!killRight\?\.childElementCount\] \}\);\s+medalReady = !medalWaiting;/);
 assert.match(hud, /document\.documentElement\.toggleAttribute\('data-cot-scoped', mode === 'sniper'\);/);
 assert.doesNotMatch(hud, /root\.classList\.toggle\('cot-scoped'/, 'no scope class on the observed HUD root');
 

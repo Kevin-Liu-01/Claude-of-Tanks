@@ -76,9 +76,16 @@ interface PlannedAlert extends PlannedNotice { readonly anchor: 'centre' | 'star
 /** A box shown at `scale` of its natural size (x, y, w, h: the box as shown), clear of the keep-out at `clearance`;
  *  `sharesNotices`: it covers a notice's place (only where no other place exists). */
 interface PlannedScaled extends PlannedNotice { readonly scale: number; readonly clearance: 2 | 1 | 0; readonly sharesNotices: boolean }
-interface PlannedMedal extends PlannedNotice { readonly compact: boolean; readonly sharesNotices: boolean; readonly clearance: 2 | 1 | 0 }
-/** What shows with the medal card, as the layout owner reads it. */
-export interface MouseMedalCompany { readonly detection: boolean; readonly alert: boolean; readonly revive: boolean; readonly scoped: boolean }
+/** `cutsLanes`: the card's place leaves a side lane fewer kill rows than it holds (only where every place for it does: a
+ *  phone-width mouse window), so it waits while that lane shows a row. */
+interface PlannedMedal extends PlannedNotice {
+  readonly compact: boolean; readonly sharesNotices: boolean; readonly clearance: 2 | 1 | 0; readonly cutsLanes: readonly [boolean, boolean];
+}
+/** What shows with the medal card, as the layout owner reads it (`feeds`: whether each side lane shows a kill row). */
+export interface MouseMedalCompany {
+  readonly detection: boolean; readonly alert: boolean; readonly revive: boolean; readonly scoped: boolean;
+  readonly feeds?: readonly [boolean, boolean];
+}
 
 export interface MouseNoticePlan {
   readonly arrangement: 'stack' | 'flank' | 'split' | 'fallback';
@@ -197,6 +204,10 @@ interface LanePrice { readonly row: number; readonly px: number; readonly fixed:
 /** In battle a lane left without a kill row while elements show is the last resort before any reticle ink. */
 const BATTLE_LANES: LanePrice = { row: 30, px: .25, fixed: 40, empty: 900 };
 const PREBATTLE_LANES: LanePrice = { row: 15, px: .25, fixed: 20, empty: 300 };
+/** The medal card never hides a kill row (owner, 2026-10-20: decided by the lane): each row a lane would give up costs
+ *  more than waiting on both notices' places and more than the compact card (MEDAL_COMPACT_COST), so the card waits, or
+ *  goes compact, rather than cover the feed (the rows may still start lower while it shows). */
+const MEDAL_LANES: LanePrice = { row: 2e6, px: .25, fixed: 40, empty: 6e6 };
 /** The band a lane needs to show one kill row: 26 px, or 62 beside the left lane's damage toasts (they take up to
  *  45 % of it, battleHudLayout.ts) where the lane is that tall at all. */
 const laneRowPx = (side: number, lane: PlanLane) => side === 0 && lane.bottom - lane.top >= 62 ? 62 : 26;
@@ -219,6 +230,16 @@ const LAST_SCALE_COSTS = [...SCALE_COSTS, 2400, 3600] as const;
  *  before it goes aside). The full card in any place clear of a keep-out beats the compact card at that keep-out (main's
  *  look wherever the full card fits). */
 const MEDAL_SHARE_ALERT_COST = 60, MEDAL_SHARE_DETECTION_COST = 600, MEDAL_SHARE_BOTH_COST = 630, MEDAL_SHIFT_COST = 4;
+/* Where the card still waits on the lamp (2026-10-20; with these prices, MEDAL_LANES and MEDAL_COMPACT_COST): no place
+   down the centre line between the lamp and the aim point clears the keep-out, the instruments, both notices and the
+   kill lanes. "s": without an objective; the census at 7, 14 and 20 a side (mouseNoticePlan.selftest.mjs VIEWPORTS):
+     768 x 600, 820 x 1180, 1024 x 768, 1152 x 648, 1280 x 800, 1366 x 768, 1440 x 900, 1536 x 864 and 1600 x 900 (each
+     with and without an objective), 1280 x 720 s, and 390 x 844 and 844 x 390 (with and without);
+   the critic's off-census windows (synthesised from the census boxes, p229/critic-r2-harness/census.mjs):
+     769 x 551, 800 x 600, 911 x 512, 960 x 600, 1242 x 698, 1280 x 689, 1309 x 818, 1440 x 789, 1463 x 823,
+     1536 x 864, 1680 x 939, 1707 x 960, 1745 x 982, 1920 x 940, 1920 x 970 (1080p browser windows), 1966 x 823 and
+     2293 x 960 (with and without), 1000 x 400, and 1093 x 614 s, 1097 x 617 s, 1152 x 720 s, 1280 x 720 s, 1366 x 625 s,
+     1366 x 657 s and 1536 x 753 s. */
 const MEDAL_COMPACT_COST = 1e6;
 
 const rowsIn = (h: number) => Math.min(8, Math.max(0, Math.floor((h + 3) / 29)));
@@ -851,12 +872,19 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_BOTH_COST, NONE, MEDAL_SHIFT_COST]];
   const placeMedal = (): PlannedMedal | null => {
     // (its sharing is in its options: the steps are the keep-outs alone)
-    const medalTier = place(medalOptions, Math.ceil(input.top + 16), BATTLE_LANES, false);
+    const medalTier = place(medalOptions, Math.ceil(input.top + 16), MEDAL_LANES, false);
     if (medalTier < 0) return null;
     const [w, h, base] = chosen[found.option];
     const box = { x: found.s.x - w / 2, y: found.s.y, w, h };
+    const giveWay = giveWayOf(found.s.giveWay, 0);
+    const cuts = (side: number) => {
+      const lane = input.lanes[side];
+      if (!lane) return false;
+      const t = Number.isNaN(giveWay[side * 2]) ? lane.top : giveWay[side * 2], b = Number.isNaN(giveWay[side * 2 + 1]) ? lane.bottom : giveWay[side * 2 + 1];
+      return rowsIn(b - t) < rowsIn(lane.bottom - lane.top);
+    };
     return { ...box, compact: base >= MEDAL_COMPACT_COST, clearance: medalTier as 2 | 1 | 0,
-      sharesNotices: overlapsAny(box, notices), giveWay: giveWayOf(found.s.giveWay, 0) };
+      sharesNotices: overlapsAny(box, notices), giveWay, cutsLanes: [cuts(0), cuts(1)] };
   };
   // The countdown, the revive count and the medal card are placed when first asked for (a battle shows one or two of
   // them; the layout owner asks for one only while it is up), then kept.
@@ -885,8 +913,9 @@ const meets = (a: PlanRect, b: PlanRect) => a.x < b.x + b.w + MOUSE_NOTICE_GAP_P
   && a.y < b.y + b.h + MOUSE_NOTICE_GAP_PX && a.y + a.h > b.y - MOUSE_NOTICE_GAP_PX;
 /**
  * Whether the medal card waits (keeping its time; medalToast.ts) rather than show with what is up: it has no place, the
- * scope is up where its place clears the battle sight only, or a shown element's place meets its own: a notice whose
- * place it shares, or the revive count (a medal can arrive after the death: a shell still in flight, a mutual kill).
+ * scope is up where its place clears the battle sight only, a shown element's place meets its own (a notice whose place
+ * it shares, or the revive count: a medal can arrive after the death, a shell still in flight, a mutual kill), or its
+ * place would cut a side lane that shows a kill row.
  * The revive count's place is read (made) only while it shows.
  */
 export function mouseMedalWaits(plan: MouseNoticePlan, up: MouseMedalCompany): boolean {
@@ -895,6 +924,8 @@ export function mouseMedalWaits(plan: MouseNoticePlan, up: MouseMedalCompany): b
   if (up.scoped && slot.clearance < 2) return true;
   if (up.detection && meets(slot, plan.detection)) return true;
   if (up.alert && meets(slot, mouseAlertBox(plan.alert))) return true;
+  // never a kill row hidden for it: where its place cuts a lane, it waits while that lane shows a row
+  if (up.feeds && ((slot.cutsLanes[0] && up.feeds[0]) || (slot.cutsLanes[1] && up.feeds[1]))) return true;
   const revive = up.revive ? plan.revive : null;
   return !!revive && meets(slot, revive);
 }

@@ -227,7 +227,7 @@ function noticeMeasure(){
   out.waitingMedal=waiting&&waiting.width>1?[waiting.x,waiting.y,waiting.width,waiting.height].map(v=>Math.round(v*10)/10):null;
   for(const side of ['l','r']){
     const lane=document.querySelector(`.cot-kill-lane.${side}`);
-    if(lane)out.lanes[side]={staged:lane.children.length,shown:[...lane.children].filter(c=>!c.hidden&&c.getClientRects().length).length};
+    if(lane){const r=lane.getBoundingClientRect();out.lanes[side]={staged:lane.children.length,shown:[...lane.children].filter(c=>!c.hidden&&c.getClientRects().length).length,x:[r.left,r.right]};}
   }
   const OTHERS=['.cot-ear.l','.cot-ear.r','.cot-top','.cot-mode-status.show','.cot-kill-lane.l','.cot-kill-lane.r','.cot-net','.cot-drive','.cot-dp',
     '.cot-minimap','.cot-si-toasthost','.cot-si-cardhost:not(:empty)','.cot-room-chat:not([hidden])','.cot-spec.show','.cot-shell','.cot-con',
@@ -370,7 +370,9 @@ try {
         const marked=/m\d?s?w/.test(got.tiers??'');
         if(set.includes('medal')&&!got.notices.m&&tier('m')>=0){
           const near=(b,n)=>!!n&&b[0]<n.box[0]+n.box[2]+8&&b[0]+b[2]>n.box[0]-8&&b[1]<n.box[1]+n.box[3]+8&&b[1]+b[3]>n.box[1]-8;
-          const cause=scopedShort||(!!got.waitingMedal&&['d','a','r'].some(k=>near(got.waitingMedal,got.notices[k])));
+          // (or, on a phone-width window where every place for it cuts a lane, a lane under it showing a kill row)
+          const feed=!!got.waitingMedal&&Object.values(got.lanes).some(l=>l.staged>0&&l.x&&got.waitingMedal[0]<l.x[1]+8&&got.waitingMedal[0]+got.waitingMedal[2]>l.x[0]-8);
+          const cause=scopedShort||(!!got.waitingMedal&&['d','a','r'].some(k=>near(got.waitingMedal,got.notices[k])))||(feed&&width<520);
           if(!marked||!cause)failures.push(`the medal card has a place but is not shown (${marked?'marked waiting':'not marked waiting'}, ${cause?'with':'without'} a shown element in its place)`);
         }
         if(got.notices.m&&marked)failures.push('the medal card shows while marked waiting');
