@@ -1319,6 +1319,39 @@ function assertFurnitureClear(items, boxes, at, key = null) {
   resize(WIDTH, HEIGHT);
 }
 
+// 19d. r10 critic (a mutant that left the range tag out of the chip's ceiling survived every sweep): where a panel sits
+// under the sight, the range tag hangs at its 1:30 and the warning chip goes over the sight, where the tag's top, not the
+// ring's, is the ceiling the chip keeps 3 px under.
+{
+  scope = true;
+  for (const [width, height, metres] of [[1440, 900, 12], [900, 700, 16]]) {
+    resize(width, height);
+    dispersionM = metres;
+    clearSightFurniture();
+    settleSightFurniture();
+    const plain = scopeStates['gun reload']();
+    plain.state.gunLimitSpec = true;
+    const ring = ringOf(quickPaint(plain));
+    // (a panel under the marker's columns, its top 24 px under the ring's half radius: the tag's 4:30 meets it)
+    const panel = { x0: ring.x - 45, y0: ring.y + ring.r / 2 + 24, x1: ring.x + 45, y1: height, name: 'the panel under the sight' };
+    clearSightFurniture();
+    addSightFurniture(panel.x0, panel.y0, panel.x1, panel.y1);
+    settleSightFurniture();
+    const tank = scopeStates['gun reload']();
+    tank.state.gunLimitSpec = true;
+    const at = `${width}x${height} scope, ${metres} m, gun reload, gun travel warning, a panel under the sight`;
+    const { tag, chip, stack, furniture } = reticleGaps(quickPaint(tank), at, { warn: true, scoped: true });
+    assert.ok(tag.box.y1 < ring.y, `${at}: the range tag hangs at the 1:30`);
+    assert.ok(chip.box.y1 < ring.y - ring.r && chip.box.x1 > tag.box.x0, `${at}: the chip sits over the sight, over the tag's columns`);
+    assertFurnitureClear([...stack, ...furniture], [panel], at);
+  }
+  clearSightFurniture();
+  settleSightFurniture();
+  scope = false;
+  dispersionM = 8;
+  resize(WIDTH, HEIGHT);
+}
+
 // 19b. r8: the gun's ring follows its own lay, off the screen's centre when the turret lags the camera. With a camera on
 // the frame and the gun turned off the camera's aim, the ring sits left, right, above and below the marker: every gap of
 // section 19 holds (the struck marks test the ring's whole circle, not its lower arc; the warning chip, its row and the

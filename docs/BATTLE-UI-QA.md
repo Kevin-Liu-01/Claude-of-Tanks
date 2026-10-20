@@ -131,7 +131,8 @@ plate is left out (the view itself shows the zoom). Where nothing keeps clear,
 the row takes the place that reaches least far into the furniture. A rack or
 struck round that would reach a panel goes over the ring instead. A countdown
 that would reach one moves beside the rack, or over the sight. A range tag that
-would reach one hangs at the ring's 1:30. On a screen over 430 px tall a rack's
+would reach one hangs at the ring's 1:30, and a chip or row set over the sight
+keeps 3 px over the tag there. On a screen over 430 px tall a rack's
 countdown also moves beside the rack. On a portrait phone the reticle seats the
 touch warning chip under the sight, where a mouse layout paints its canvas chip,
 and the scope's readouts start under it. At 50% + 48 px it met the countdown and
