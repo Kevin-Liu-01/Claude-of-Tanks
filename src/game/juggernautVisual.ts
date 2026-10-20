@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { cloneVehicleMaterial, releaseVehicleMaterial, runVehicleHookChain } from '../vehicles/materials.ts';
+import { programVariantOrigin } from '../engine/programVariants.ts';
 
 interface Surface {mesh:THREE.Mesh;original:THREE.Material|THREE.Material[];highlight:THREE.Material|THREE.Material[]}
 const IMPACT_COUNT=6;
@@ -193,8 +194,11 @@ export function pulseJuggernautImpact(root:THREE.Object3D,pos:readonly number[],
   return true;
 }
 
-function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
-  if(!(source instanceof THREE.MeshStandardMaterial)||!source.colorWrite||source.transparent)return source;
+function highlightMaterial(drawn:THREE.Material,shield:Shield):THREE.Material {
+  if(!(drawn instanceof THREE.MeshStandardMaterial)||!drawn.colorWrite||drawn.transparent)return drawn;
+  // (2026-10-19, the 229 perf pass) a program-variant twin wears its original's skin: one skin per material, made in
+  // the order the tank's materials are met, so the skinned tank draws (and sorts) exactly as before the split
+  const source=programVariantOrigin(drawn) as THREE.MeshStandardMaterial;
   const existing=shield.materials.get(source);if(existing)return existing;
   // 2026-10-17 (the wheel-band lane; the owner: "in garage, on all tanks, i can see this weird shadow on wheels"): a raw
   // clone() lost the cascade registration (three's copy resets the defines: USE_CSM, CSM_*, COT_CLOUD_SHADE and the

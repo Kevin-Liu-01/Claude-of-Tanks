@@ -177,10 +177,17 @@ try {
     visual.root.traverse((object) => { if (object.isMesh) sourceOf.set(object, object.material); });
     prepareGarageTankEnergyVisual(visual.root, getSpec(id).dims);
     const skins = new Map();
+    // (2026-10-19) a program-variant twin wears its original's skin: one skin per material, as before the split
+    const skinOfOrigin = new Map();
     visual.root.traverse((object) => {
       const source = sourceOf.get(object);
       if (!object.isMesh || !source || object.material === source || Array.isArray(source)) return;
-      if (registered.has(programVariantOrigin(source))) skins.set(object.material, source);
+      if (!registered.has(programVariantOrigin(source))) return;
+      if (!skins.has(object.material)) skins.set(object.material, programVariantOrigin(source));
+      const origin = programVariantOrigin(source);
+      if (origin !== source) twinSkins++;
+      assert.equal(skinOfOrigin.get(origin) ?? object.material, object.material, `${id}: a twin and its original wear one skin (${origin.name})`);
+      skinOfOrigin.set(origin, object.material);
     });
     let wheelPaint = 0;
     for (const [clone, source] of skins) {
@@ -199,7 +206,6 @@ try {
       // round 2 (2026-10-17): a profile's patch over a set material (the Abrams' pad grime over its track bands and
       // spare-track steel) chains after its registration (chainVehicleMaterialHook); the skin compiles that chain
       const origin = programVariantOrigin(source);
-      if (origin !== source) twinSkins++;
       const entry = cascadeShaders.get(origin), cascaded = entry === sourceShader;
       if (!cascaded) { replacedHooks.add(`${id}:${source.name}`); }
       const shader = shaderFor(clone);
@@ -237,7 +243,7 @@ try {
     ['energySkin', ['m1a1_abrams_hc', 'm60a1', 't72b3m_2022']]]) {
     for (const id of ids) assert.ok(seenKinds.get(kind)?.has(id), `${id}: a ${kind} clone was covered`);
   }
-  assert.ok(twinSkins > 0, `the battle build's twins carry skins too (${twinSkins})`);
+  assert.ok(twinSkins > 0, `the battle build's twin-drawn meshes wear their originals' skins (${twinSkins})`);
 } finally {
   for (const visual of visuals) visual.dispose();
   restoreCanvas();
