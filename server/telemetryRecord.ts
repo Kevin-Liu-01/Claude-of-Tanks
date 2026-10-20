@@ -504,16 +504,26 @@ export const RENDER_BLACK_WORLD_CODE = 'render-black-world';
 /** What the guard found wrong when the world went black (the first CPU signal that explains it, else the probe's). */
 export const RENDER_BLACK_WORLD_CLASSES = Object.freeze([
   'camera-layer-mask', 'scene-hidden', 'override', 'passes', 'viewport', 'roots-hidden', 'empty-scene-pass', 'gl-masked',
-  'nan-history',
+  'nan-history', 'downstream-black',
 ] as const);
 export type RenderBlackWorldClass = (typeof RENDER_BLACK_WORLD_CLASSES)[number];
-/** The heal ladder: re-assert state, reallocate targets and histories, MSAA off + rescue, context restore; none healed. */
-export const RENDER_BLACK_WORLD_STEPS = Object.freeze(['H1', 'H2', 'H3', 'H4', 'none'] as const);
+/**
+ * The heal ladder: re-assert state, reallocate targets and histories, MSAA off, context restore; `self` a black that
+ * ended without a rung that acted just before it (a fault that cleared on its own), `none` one that outlived the ladder
+ * or that the player left.
+ */
+export const RENDER_BLACK_WORLD_STEPS = Object.freeze(['H1', 'H2', 'H3', 'H4', 'self', 'none'] as const);
 export type RenderBlackWorldStep = (typeof RENDER_BLACK_WORLD_STEPS)[number];
-/** The receipt's message keys, in order; every value is a bounded number or one of a key's own enumerated words. */
+/**
+ * The receipt's message keys, most telling first (round 2, eng D1: the message is cut to 200 characters, and the entry
+ * telemetry may cut an oversized record's to 100): the timing that tells a first load from an Esc-and-back (reveal,
+ * resize, resume), how it ended (steps, heal, left: the battle or the page ended with it open), then what the scene pass did (calls, the framebuffer status, the GL
+ * error, the warm stage), then the state. Every value is a bounded number or one of a key's own enumerated words.
+ */
 export const RENDER_BLACK_WORLD_FIELDS = Object.freeze([
-  'calls', 'mask', 'vis', 'ovr', 'pass', 'world', 'roots', 'vp', 'fb', 'err', 'black', 'nan', 'ground', 'dyn', 'trim',
-  'msaa', 'preset', 'focus', 'hidden', 'lock', 'settings', 'warm', 'rare', 'reveal', 'resize', 'resume', 'steps', 'heal',
+  'reveal', 'resize', 'resume', 'steps', 'heal', 'left', 'calls', 'fb', 'err', 'warm', 'rare', 'mask', 'vis', 'ovr', 'pass',
+  'world', 'roots', 'vp', 'black', 'nan', 'lost', 'ground', 'dyn', 'trim', 'msaa', 'preset', 'focus', 'hidden', 'lock',
+  'settings',
 ] as const);
 const RENDER_BLACK_WORLD_WORDS: Readonly<Record<string, ReadonlySet<string>>> = Object.freeze({
   preset: new Set(['ultra', 'high', 'medium', 'low', 'ultralow', 'mobile-high', 'mobile', 'mobile-low', 'mobile-ultralow', 'unknown']),
@@ -524,6 +534,9 @@ const RENDER_BLACK_WORLD_WORDS: Readonly<Record<string, ReadonlySet<string>>> = 
   heal: new Set(RENDER_BLACK_WORLD_STEPS),
 });
 const RENDER_BLACK_WORLD_NUMBER = /^-?\d{1,9}(\.\d{1,3})?$/;
+/** The message's whole length and its end mark: a record the transport cut short lacks the mark. */
+export const RENDER_BLACK_WORLD_MESSAGE_MAX = 200;
+const RENDER_BLACK_WORLD_END = '$';
 
 /** `render-black-world:<class>:<step>`, or null for a class or step the schema does not name. */
 export function renderBlackWorldCode(blackClass: string, step: string): string | null {
@@ -532,33 +545,50 @@ export function renderBlackWorldCode(blackClass: string, step: string): string |
   return `${RENDER_BLACK_WORLD_CODE}:${blackClass}:${step}`;
 }
 
-/** The receipt's message: `key=value` pairs in RENDER_BLACK_WORLD_FIELDS order; an unknown key or a free word is dropped. */
+function renderBlackWorldValue(key: string, text: string): boolean {
+  const words = RENDER_BLACK_WORLD_WORDS[key];
+  return words ? words.has(text) : RENDER_BLACK_WORLD_NUMBER.test(text);
+}
+
+/**
+ * The receipt's message: `key=value` pairs in RENDER_BLACK_WORLD_FIELDS order, whole pairs only up to the length cap
+ * (the least telling ones drop first, a pair is never cut), then the end mark; an unknown key or a free word is dropped.
+ */
 export function renderBlackWorldMessage(fields: Readonly<Record<string, string | number | boolean | null | undefined>>): string {
-  const parts: string[] = [];
+  let message = '';
   for (const key of RENDER_BLACK_WORLD_FIELDS) {
     const value = fields[key];
     if (value === undefined || value === null) continue;
     const text = typeof value === 'boolean' ? (value ? '1' : '0')
       : typeof value === 'number' ? (Number.isFinite(value) ? String(Math.round(value * 1000) / 1000) : '')
         : String(value);
-    const words = RENDER_BLACK_WORLD_WORDS[key];
-    if (words ? !words.has(text) : !RENDER_BLACK_WORLD_NUMBER.test(text)) continue;
-    parts.push(`${key}=${text}`);
+    if (!renderBlackWorldValue(key, text)) continue;
+    const pair = `${key}=${text}`;
+    if (message.length + pair.length + 1 + RENDER_BLACK_WORLD_END.length + 1 > RENDER_BLACK_WORLD_MESSAGE_MAX) break;
+    message += `${message ? ' ' : ''}${pair}`;
   }
-  return parts.join(' ').slice(0, 200);
+  return `${message}${message ? ' ' : ''}${RENDER_BLACK_WORLD_END}`;
 }
 
-/** A black-world record's class, step and receipt fields, or null when the record is another kind. */
+/**
+ * A black-world record's class, step and receipt fields, or null when the record is another kind. A message without
+ * its end mark was cut on the way (the entry telemetry's 100-character trim): its last pair may be a fragment and is
+ * dropped, and every value must still be a number or its key's own word.
+ */
 export function readRenderBlackWorld(record: { stage?: string | null; code?: string | null; message?: string | null; error?: { message?: string } | null }):
-  { blackClass: RenderBlackWorldClass; step: RenderBlackWorldStep; fields: Record<string, string> } | null {
+  { blackClass: RenderBlackWorldClass; step: RenderBlackWorldStep; fields: Record<string, string>; complete: boolean } | null {
   const [prefix, blackClass, step] = String(record.code ?? '').split(':');
   if (prefix !== RENDER_BLACK_WORLD_CODE || renderBlackWorldCode(blackClass, step) === null) return null;
   const fields: Record<string, string> = {};
-  for (const pair of String(record.error?.message ?? record.message ?? '').split(' ')) {
+  const pairs = String(record.error?.message ?? record.message ?? '').trim().split(' ').filter(Boolean);
+  const complete = pairs.at(-1) === RENDER_BLACK_WORLD_END;
+  // the end mark itself, or the possibly cut last pair of a message without it
+  pairs.pop();
+  for (const pair of pairs) {
     const at = pair.indexOf('=');
     if (at <= 0) continue;
-    const key = pair.slice(0, at);
-    if ((RENDER_BLACK_WORLD_FIELDS as readonly string[]).includes(key)) fields[key] = pair.slice(at + 1);
+    const key = pair.slice(0, at), value = pair.slice(at + 1);
+    if ((RENDER_BLACK_WORLD_FIELDS as readonly string[]).includes(key) && renderBlackWorldValue(key, value)) fields[key] = value;
   }
-  return { blackClass: blackClass as RenderBlackWorldClass, step: step as RenderBlackWorldStep, fields };
+  return { blackClass: blackClass as RenderBlackWorldClass, step: step as RenderBlackWorldStep, fields, complete };
 }

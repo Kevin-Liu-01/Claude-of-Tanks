@@ -25,17 +25,26 @@
  *  - The heal ladder, one step per two more failing verdicts, never while covered, one ladder per incident per 10 s:
  *    H1 re-assert state (the camera mask taken at reveal, scene visibility, no override, the canonical passes, the scene
  *    target's viewport, the battlefield and presentation roots, the live rare warm closed so its finally blocks run),
- *    H2 reallocate every composer target and reset the temporal histories, H3 MSAA off and (only when every CPU signal
- *    is healthy) the graphics-recovery preset, H4 (only then too) a context lose/restore through the renderer's recovery;
- *    H3 waits for a black that has lasted a second, H4 three (a context restore blacks the frame for seconds itself).
- *    H1 and H2 change nothing on a healthy frame and only ever act on a frame that is already black.
+ *    H2 reallocate every composer target and reset the temporal histories, H3 MSAA off, H4 (only when every CPU signal
+ *    is healthy, once a page) a context lose/restore through the renderer's recovery, whose own loss record takes the
+ *    graphics-recovery preset one rung down; H3 waits for a black that has lasted a second, H4 three (a context restore
+ *    blacks the frame for seconds itself), both measured from the ladder's own start. H1 and H2 change nothing on a
+ *    healthy frame and only ever act on a frame that is already black. A rung is named the healer only when it changed
+ *    something and the healthy verdict is one of the next two after it; a black that ends otherwise ended on its own
+ *    (`self`). (Round 2, 2026-10-20, eng D2/D3: the preset no longer ratchets one rung per ladder, and a fault that
+ *    cleared itself is no longer reported as healed by H1.)
+ *  - Downstream of the scene target (round 2, D2): a third occlusion query compares the resolved scene colour with the
+ *    chain's colour after the late-FX pass (the aerial pass's output and the late composite of it). A battle whose scene
+ *    target holds the world while that colour is exactly zero over most of it (a dropped aerial draw, a dropped late-FX
+ *    copy: the owner's signature over a healthy scene target) is a `downstream-black` incident.
+ *  - The probe's programs link under the cover (parallel compile), never on the first revealed frame (round 2: the
+ *    first probe used to compile them there, a 0.5-0.8 s freeze two frames after the reveal).
  *
  * Installed on instances (post.render, post.sceneAA.render), never on a prototype; window.__COT_BLACK_GUARD.enabled is
  * the A/B switch (tools/frame-budget-probe.mjs --toggle=black-guard). ?gldiag=1 (debug builds) adds the per-pass GL
  * error watch after every resolution change (P8: the dropped draws' program, named).
  */
 import * as THREE from 'three';
-import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 import type { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import {
   RENDER_BLACK_WORLD_STAGE,
@@ -66,6 +75,12 @@ export const H4_AFTER_MS = 3000;
 export const RECEIPT_RING = 8;
 /** Scene-pass draw calls under this are an empty scene pass. */
 export const MIN_SCENE_CALLS = 3;
+/** A rung is credited with the heal when the healthy verdict is one of this many after it acted. */
+export const HEAL_CREDIT_VERDICTS = 2;
+/** Downstream black: at least this share of the cells whose scene colour is lit read exactly zero after the late-FX pass,
+ * and at least DOWN_LOST_MIN_CELLS of them (a fifth of the probe). */
+export const DOWN_LOST_SHARE = 0.6;
+export const DOWN_LOST_MIN_CELLS = Math.ceil(0.2 * PROBE_CELLS);
 
 // CPU signal bits (cpuBits); the first set bit in CLASS_ORDER names a CPU incident
 export const CPU = Object.freeze({
@@ -118,6 +133,38 @@ void main() {
   if ( bad < 0.5 ) discard;
   gl_FragColor = vec4( 1.0 );
 }`;
+/**
+ * Kept (by the downstream query) when the chain lost the world after the scene target: one fragment over the whole
+ * probe grid (2 x 2 taps a cell) counts the cells whose resolved scene colour is lit and, of them, those whose colour
+ * after the late-FX pass is exactly zero.
+ */
+const PROBE_DOWN_FRAGMENT = /* glsl */ `
+uniform sampler2D tColor;
+uniform sampler2D tDown;
+void main() {
+  float sceneLit = 0.0;
+  float lost = 0.0;
+  for ( int y = 0; y < ${PROBE_ROWS}; y++ ) {
+    for ( int x = 0; x < ${PROBE_COLUMNS}; x++ ) {
+      float s = 0.0;
+      float d = 0.0;
+      for ( int j = 0; j < 2; j++ ) {
+        for ( int i = 0; i < 2; i++ ) {
+          vec2 uv = ( vec2( float( x ), float( y ) ) + ( vec2( float( i ), float( j ) ) + 0.5 ) / 2.0 )
+            / vec2( ${PROBE_COLUMNS}.0, ${PROBE_ROWS}.0 );
+          vec3 c = texture2D( tColor, uv ).rgb;
+          vec3 o = texture2D( tDown, uv ).rgb;
+          if ( abs( c.r ) < 6.0e4 && abs( c.g ) < 6.0e4 && abs( c.b ) < 6.0e4 && ( c.r > 0.0 || c.g > 0.0 || c.b > 0.0 ) ) s = 1.0;
+          if ( !( o.r == 0.0 && o.g == 0.0 && o.b == 0.0 ) ) d = 1.0;
+        }
+      }
+      sceneLit += s;
+      if ( s > 0.5 && d < 0.5 ) lost += 1.0;
+    }
+  }
+  if ( !( lost >= ${DOWN_LOST_SHARE} * sceneLit && lost >= ${DOWN_LOST_MIN_CELLS}.0 ) ) discard;
+  gl_FragColor = vec4( 1.0 );
+}`;
 /** The incident's census (read back once, synchronously): R lit, G non-finite, B depth, A ground. */
 const PROBE_CENSUS_FRAGMENT = `${PROBE_CELL_GLSL}
 void main() {
@@ -139,7 +186,9 @@ export interface GuardPost {
       deltaTime?: number, maskActive?: boolean): void;
   };
   aerial: AnyPass & { uniforms: Record<string, THREE.IUniform> };
-  lateFx: AnyPass & { target: THREE.WebGLRenderTarget; prepared?: boolean };
+  lateFx: AnyPass & { target: THREE.WebGLRenderTarget; prepared?: boolean; needsSwap?: boolean;
+    render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget,
+      deltaTime?: number, maskActive?: boolean): void };
   gtao?: AnyPass & { setSize(width: number, height: number): void };
   taa?: { resetHistory(): void };
   composer: { passes: AnyPass[]; renderTarget1?: THREE.WebGLRenderTarget; renderTarget2?: THREE.WebGLRenderTarget };
@@ -161,8 +210,6 @@ export interface BlackWorldGuardPorts {
   /** The battle entry's cover (the loader and its reveal barrier); the loader element is read too. */
   isCovered?(): boolean;
   combatWarm?: { cancelRare?(): void } | null;
-  /** H3 on a CPU-healthy black: the graphics-recovery preset a context loss takes (quality.ts, one rung down). */
-  relieveGraphics?(): void;
   /** The resolved graphics preset, for the receipt. */
   presetName?(): string;
   /** One record per incident (the entry telemetry's error path). */
@@ -186,7 +233,7 @@ export interface BlackWorldReceipt {
   cpu: Record<string, unknown>;
   /** The cell census at the incident (counts of 144 cells), and the last probe's answers. */
   probe: { black: number; nan: number; lit: number; deep: number; ground: number; groundBlack: number; anyLit: boolean;
-    anyNan: boolean } | null;
+    anyNan: boolean; downLost: boolean } | null;
   roots: Array<{ name: string; type: string; visible: boolean; mask: number; parent: string; children: number }>;
   world: { name: string; visible: boolean; attached: boolean } | null;
   target: Record<string, unknown>;
@@ -196,8 +243,11 @@ export interface BlackWorldReceipt {
   steps: IncidentStep[];
   /** H1 re-asserted after the ladder ran out, inside its cooldown */
   repeats?: number;
-  /** When the last rung (or H1's last re-assertion) acted: the world is back on the next frame when that rung healed it */
+  /** When the last rung that changed something acted: the world is back on the next frame when that rung healed it */
   lastStepAtMs?: number;
+  /** How the incident ended: a healthy verdict, the battle left (the player left, a cover came up) or the page hidden
+   * with it open, or a ladder that ran out unhealed */
+  endedBy?: 'healthy' | 'left' | 'ladder' | 'page';
   healedBy: RenderBlackWorldStep | null;
   healedAtMs: number | null;
   /** ms from the incident's first failing verdict to the healthy one */
@@ -207,8 +257,12 @@ export interface BlackWorldReceipt {
 
 export interface BlackWorldGuard {
   enabled: boolean;
-  /** Under the cover of a battle entry (solo deployment, network reveal): fresh histories, a new reveal snapshot. */
-  onCoveredEntry(): void;
+  /**
+   * A battle entry (solo deployment, network reveal) armed the guard: a new reveal snapshot, the probe's programs
+   * submitted for a parallel link, and (only while the entry is still covered: a chunk that arrives after the reveal
+   * never resets a presented frame's history) fresh temporal histories.
+   */
+  onCoveredEntry(options?: { covered?: boolean }): void;
   stats(): Record<string, number | boolean | string | null>;
   readonly receipts: BlackWorldReceipt[];
   dispose(): void;
@@ -220,8 +274,9 @@ interface GuardHost {
   __BATTLE_DEFERRED_WARM?: { done?: boolean; cancelled?: boolean; error?: string; stages?: Record<string, number> };
   __COMBAT_RARE_WARM_STEP?: string | null;
   __STUDIO?: { active?: boolean };
-  __COT_SHOT_STAGED?: boolean;
+  __DEBUG?: { shotMode?: boolean };
 }
+
 
 const guards = new WeakMap<THREE.WebGLRenderer, { guard: BlackWorldGuard; update(ports: BlackWorldGuardPorts): void }>();
 
@@ -274,7 +329,8 @@ export function groundReachSlope(height: number, far: number): number {
  * The verdict the CPU bits and a probe reach (`anyLit`: some cell holds colour or depth, ground cells only on an airless
  * map; `ground`: the ground cells in view, read only on an airless map); null is healthy.
  */
-export function judgeVerdict(cpuBits: number, probe: { anyLit: boolean; anyNan: boolean; allCells: boolean; ground: number } | null):
+export function judgeVerdict(cpuBits: number,
+  probe: { anyLit: boolean; anyNan: boolean; allCells: boolean; ground: number; downLost?: boolean } | null):
   RenderBlackWorldClass | null {
   for (let i = 0; i < CPU_CLASS.length; i++) if (cpuBits & CPU_CLASS[i][0]) return CPU_CLASS[i][1];
   if (!probe) return null;
@@ -282,6 +338,8 @@ export function judgeVerdict(cpuBits: number, probe: { anyLit: boolean; anyNan: 
   if (!probe.anyLit && (probe.allCells || probe.ground >= Math.ceil(GROUND_CELL_SHARE * PROBE_CELLS))) {
     return cpuBits & CPU.EMPTY ? 'empty-scene-pass' : 'gl-masked';
   }
+  // the scene target holds the world, the chain's colour after the late-FX pass lost it (round 2, D2)
+  if (probe.anyLit && probe.downLost === true) return 'downstream-black';
   return null;
 }
 
@@ -292,7 +350,9 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   const now = (): number => (ports.now ? ports.now() : performance.now());
   const sceneAA = post.sceneAA;
   const sceneTarget = sceneAA.sceneTarget;
+  const lateFx = post.lateFx;
   const originalSceneRender = sceneAA.render;
+  const originalLateRender = lateFx.render;
   const originalPostRender = post.render;
 
   // ---- preallocated probe ----
@@ -301,8 +361,15 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false,
   });
   probeTarget.texture.name = 'BlackWorldGuard.probe';
+  // the downstream query's one fragment (round 2, D2)
+  const probeDownTarget = new THREE.WebGLRenderTarget(1, 1, {
+    type: THREE.UnsignedByteType, depthBuffer: false, stencilBuffer: false,
+    minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false,
+  });
+  probeDownTarget.texture.name = 'BlackWorldGuard.probeDown';
   const probeUniforms = {
     tColor: { value: null as THREE.Texture | null }, tDepth: { value: null as THREE.Texture | null },
+    tDown: { value: null as THREE.Texture | null },
     // (a double stored in a shared `{ value }` uniform slot is boxed every frame; a vector's own fields are not)
     uFarFromNdc: { value: new THREE.Matrix4() }, uCamReach: { value: new THREE.Vector4() }, uAllCells: { value: 1 },
   };
@@ -314,21 +381,40 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   const probeLit = probeMaterial('BlackWorldGuard.ProbeLit', PROBE_LIT_FRAGMENT);
   const probeNan = probeMaterial('BlackWorldGuard.ProbeNan', PROBE_NAN_FRAGMENT);
   const probeCensus = probeMaterial('BlackWorldGuard.ProbeCensus', PROBE_CENSUS_FRAGMENT);
-  const probeQuad = new FullScreenQuad(probeLit);
+  const probeDown = probeMaterial('BlackWorldGuard.ProbeDown', PROBE_DOWN_FRAGMENT);
+  // one fullscreen triangle per program (its own meshes, so renderer.compileAsync can link them under the cover)
+  const probeGeometry = new THREE.BufferGeometry();
+  probeGeometry.setAttribute('position', new THREE.Float32BufferAttribute([-1, 3, 0, -1, -1, 0, 3, -1, 0], 3));
+  const probeCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const probeMesh = (material: THREE.ShaderMaterial): THREE.Mesh => {
+    const mesh = new THREE.Mesh(probeGeometry, material);
+    mesh.frustumCulled = false;
+    mesh.matrixAutoUpdate = false;
+    return mesh;
+  };
+  const meshLit = probeMesh(probeLit), meshNan = probeMesh(probeNan), meshCensus = probeMesh(probeCensus);
+  const meshDown = probeMesh(probeDown);
+  const drawProbe = (mesh: THREE.Mesh): void => { renderer.render(mesh, probeCamera); };
   const cells = new Uint8Array(PROBE_CELLS * 4);
   const census = { black: 0, nan: 0, lit: 0, deep: 0, ground: 0, groundBlack: 0 };
-  const answer = { anyLit: true, anyNan: false, allCells: true, ground: 0 };
+  const answer = { anyLit: true, anyNan: false, allCells: true, ground: 0, downLost: false };
   const probeWorld = new THREE.Matrix4();
   const probeProjectionInverse = new THREE.Matrix4();
   // the probe's camera height over the ground and far plane (a typed array: a double kept in a closure slot is boxed)
   const probeView = new Float64Array(2);
   let queryLit: WebGLQuery | null = null;
   let queryNan: WebGLQuery | null = null;
+  let queryDown: WebGLQuery | null = null;
   let queryContext: WebGL2RenderingContext | null = null;
   let pending = false;
+  let pendingDown = false; // the downstream query rides the same cycle when the late-FX pass ran after the scene probe
   let pendingSince = 0;
   let probeWanted = false;
+  let downWanted = false;
   let probeResult = false; // the queries answered this frame
+  // the probe's programs: submitted under the cover for a parallel link; no probe draws before they are ready
+  let probeReady = false;
+  let probeWarming = false;
 
   // ---- frame state ----
   let frame = 0;
@@ -361,7 +447,14 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   let failsSinceStep = 0;
   let stepIndex = 0;
   let ladderEndedAt = -Infinity;
+  // the context restores this guard asked for: at most one a page (one guard a renderer, one renderer a page), since each
+  // takes the recovery preset one rung down
+  let contextRestores = 0;
+  // the ladder's own start (the device rungs' age: a ladder that restarts after its cooldown waits for them again)
+  let ladderStartedAt = 0;
+  // the last rung that changed something, and the verdicts since: the heal's credit (eng D3)
   let lastStep: RenderBlackWorldStep | null = null;
+  let verdictsSinceAct = 0;
   let reported = false;
   const receipts: BlackWorldReceipt[] = [];
   const stats = { frames: 0, probes: 0, readbacks: 0, verdicts: 0, incidents: 0, heals: 0, skippedFences: 0 };
@@ -376,19 +469,52 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     }
     return !!coverElement && coverElement.classList.contains('on');
   };
-  const exempt = (): boolean => (ports.isExempt ? ports.isExempt() : (!!host.__STUDIO?.active || host.__COT_SHOT_STAGED === true));
+  // (a staged shot view stands the guard aside while the shot mode lasts, eng D9)
+  const exempt = (): boolean => (ports.isExempt ? ports.isExempt() : (!!host.__STUDIO?.active || host.__DEBUG?.shotMode === true));
   const focused = (): boolean => (ports.hasFocus ? ports.hasFocus()
     : typeof document === 'undefined' || (document.hasFocus() && !document.hidden));
   const worldGroup = (): THREE.Object3D | null => ports.getWorld?.()?.group ?? null;
 
   // ---- the probe (inside the scene pass, after the scene drew) ----
   function ensureQueries(context: WebGL2RenderingContext): boolean {
-    if (queryLit && queryNan && queryContext === context) return true;
+    if (queryLit && queryNan && queryDown && queryContext === context) return true;
     pending = false;
+    pendingDown = false;
     queryContext = context;
     queryLit = context.createQuery();
     queryNan = context.createQuery();
-    return !!(queryLit && queryNan);
+    queryDown = context.createQuery();
+    return !!(queryLit && queryNan && queryDown);
+  }
+
+  /**
+   * The probe's programs, submitted for the driver's parallel link into the probe's own targets (the program keys match
+   * the probe's draws); the probe draws only once they answer. Under the cover of a battle entry, never on the first
+   * revealed frames (the start hitch the visual critic measured).
+   */
+  function warmProbePrograms(): void {
+    if (probeReady || probeWarming) return;
+    const context = gl();
+    if (!canProbe(context) || context.isContextLost()) return;
+    const compileAsync = (renderer as { compileAsync?: (scene: THREE.Object3D, camera: THREE.Camera) => Promise<unknown> }).compileAsync;
+    if (typeof compileAsync !== 'function') { probeReady = true; return; }
+    probeWarming = true;
+    const previous = renderer.getRenderTarget();
+    const pendingLinks: Promise<unknown>[] = [];
+    try {
+      renderer.setRenderTarget(probeTarget);
+      for (const mesh of [meshLit, meshNan, meshCensus]) pendingLinks.push(compileAsync.call(renderer, mesh, probeCamera));
+      renderer.setRenderTarget(probeDownTarget);
+      pendingLinks.push(compileAsync.call(renderer, meshDown, probeCamera));
+    } catch {
+      probeWarming = false;
+      probeReady = true; // a renderer that cannot submit them links at the first probe, as before
+      return;
+    } finally {
+      renderer.setRenderTarget(previous);
+    }
+    const settle = (): void => { probeWarming = false; probeReady = !gl().isContextLost(); };
+    void Promise.all(pendingLinks).then(settle, settle);
   }
 
   /** The probe's uniforms from the live camera and the frame's scene target. */
@@ -413,7 +539,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
 
   function issueProbe(): void {
     const context = gl();
-    if (pending || !canProbe(context) || context.isContextLost() || !ensureQueries(context)) return;
+    if (pending || !probeReady || !canProbe(context) || context.isContextLost() || !ensureQueries(context)) return;
     const previous = renderer.getRenderTarget();
     const autoClear = renderer.autoClear;
     try {
@@ -424,17 +550,39 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
       renderer.autoClear = false;
       renderer.setRenderTarget(probeTarget);
       context.beginQuery(context.ANY_SAMPLES_PASSED, queryLit!);
-      probeQuad.material = probeLit;
-      probeQuad.render(renderer);
+      drawProbe(meshLit);
       context.endQuery(context.ANY_SAMPLES_PASSED);
       context.beginQuery(context.ANY_SAMPLES_PASSED, queryNan!);
-      probeQuad.material = probeNan;
-      probeQuad.render(renderer);
+      drawProbe(meshNan);
       context.endQuery(context.ANY_SAMPLES_PASSED);
       pending = true;
+      pendingDown = false;
+      downWanted = true; // the late-FX pass of this same frame adds the downstream query
       pendingSince = frame;
       stats.probes++;
     } finally {
+      renderer.autoClear = autoClear;
+      renderer.setRenderTarget(previous);
+    }
+  }
+
+  /** The downstream query (round 2, D2): the frame's resolved scene colour against the chain's colour after late FX. */
+  function issueDownProbe(down: THREE.Texture): void {
+    const context = gl();
+    if (!pending || pendingDown || !queryDown || queryContext !== context || context.isContextLost()) return;
+    const previous = renderer.getRenderTarget();
+    const autoClear = renderer.autoClear;
+    try {
+      probeUniforms.tColor.value = sceneTarget.texture;
+      probeUniforms.tDown.value = down;
+      renderer.autoClear = false;
+      renderer.setRenderTarget(probeDownTarget);
+      context.beginQuery(context.ANY_SAMPLES_PASSED, queryDown);
+      drawProbe(meshDown);
+      context.endQuery(context.ANY_SAMPLES_PASSED);
+      pendingDown = true;
+    } finally {
+      probeUniforms.tDown.value = null;
       renderer.autoClear = autoClear;
       renderer.setRenderTarget(previous);
     }
@@ -446,13 +594,16 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     const context = gl();
     if (context.isContextLost() || queryContext !== context) { pending = false; return; }
     if (!context.getQueryParameter(queryLit!, context.QUERY_RESULT_AVAILABLE)
-      || !context.getQueryParameter(queryNan!, context.QUERY_RESULT_AVAILABLE)) {
-      if (frame - pendingSince > 120) { pending = false; stats.skippedFences++; }
+      || !context.getQueryParameter(queryNan!, context.QUERY_RESULT_AVAILABLE)
+      || (pendingDown && !context.getQueryParameter(queryDown!, context.QUERY_RESULT_AVAILABLE))) {
+      if (frame - pendingSince > 120) { pending = false; pendingDown = false; stats.skippedFences++; }
       return;
     }
     pending = false;
     answer.anyLit = !!context.getQueryParameter(queryLit!, context.QUERY_RESULT);
     answer.anyNan = !!context.getQueryParameter(queryNan!, context.QUERY_RESULT);
+    answer.downLost = pendingDown && !!context.getQueryParameter(queryDown!, context.QUERY_RESULT);
+    pendingDown = false;
     // the ground census only decides an airless map's black probe
     answer.ground = !answer.anyLit && !answer.allCells
       ? countGroundCells(probeWorld, probeProjectionInverse, probeView[0], probeView[1]) : 0;
@@ -468,15 +619,13 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     try {
       aimProbe();
       renderer.setRenderTarget(probeTarget);
-      probeQuad.material = probeCensus;
-      probeQuad.render(renderer);
+      drawProbe(meshCensus);
       context.readPixels(0, 0, PROBE_COLUMNS, PROBE_ROWS, context.RGBA, context.UNSIGNED_BYTE, cells);
       countProbeCells(cells, census);
-      return { ...census, anyLit: answer.anyLit, anyNan: answer.anyNan };
+      return { ...census, anyLit: answer.anyLit, anyNan: answer.anyNan, downLost: answer.downLost };
     } catch {
       return null;
     } finally {
-      probeQuad.material = probeLit;
       renderer.setRenderTarget(previous);
     }
   }
@@ -499,13 +648,28 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     if (probeWanted) { probeWanted = false; issueProbe(); }
   }
 
+  /** After the late-FX pass: the chain's colour from here on (its swap target when it drew, else its input). */
+  function guardedLateRender(this: { needsSwap?: boolean }, r: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget,
+    readBuffer: THREE.WebGLRenderTarget, deltaTime?: number, maskActive?: boolean): void {
+    originalLateRender.call(this, r, writeBuffer, readBuffer, deltaTime, maskActive);
+    if (!downWanted || !guard.enabled || !active) return;
+    downWanted = false;
+    const out = this.needsSwap ? writeBuffer : readBuffer;
+    if (out?.texture) issueDownProbe(out.texture);
+  }
+
   function guardedPostRender(dt: number, frameWallDtSeconds?: number): void {
     if (!guard.enabled) { originalPostRender.call(post, dt, frameWallDtSeconds); return; }
     sceneRan = false;
+    downWanted = false;
     active = isActive();
     originalPostRender.call(post, dt, frameWallDtSeconds);
     if (active) afterFrame();
-    else if (failStreak || incident) { failStreak = 0; lastFailClass = null; }
+    else {
+      if (failStreak) { failStreak = 0; lastFailClass = null; }
+      // (eng D7) the battle ended with the incident open (the player left a black screen, a cover came up): it reports now
+      if (incident && !incident.closed && !reported) endIncident('left', now());
+    }
   }
 
   function isActive(): boolean {
@@ -571,6 +735,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     }
     if (incident && !incident.closed && !reported && incident.steps.length && t - incident.steps[incident.steps.length - 1].atMs > 2000) {
       // a ladder that ended unhealed still reports once (healedBy null)
+      incident.endedBy = 'ladder';
       report(incident);
     }
     // the next probe: on cadence, or at once while anything looks wrong
@@ -581,6 +746,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   }
 
   function onVerdict(verdict: RenderBlackWorldClass | null, t: number): void {
+    if (incident && !incident.closed) verdictsSinceAct++;
     if (!verdict) {
       if (incident && !incident.closed) closeIncident(t);
       failStreak = 0; lastFailClass = null;
@@ -605,6 +771,8 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     stats.incidents++;
     stepIndex = 0;
     lastStep = null;
+    verdictsSinceAct = 0;
+    ladderStartedAt = t;
     failsSinceStep = 0;
     reported = false;
     const roots = scene.children.map((child) => ({
@@ -664,15 +832,34 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     console.warn(`[gl] black world (${blackClass}): the guard heals it; receipt in window.__GL_DIAG.blackWorld`, incident);
   }
 
+  /**
+   * A healthy verdict closes the incident. The rung that acted last (and changed something) is credited only when this
+   * verdict is one of the next HEAL_CREDIT_VERDICTS after it; otherwise the black ended on its own (`self`): a fault
+   * that cleared by itself is never reported as healed by the rung that happened to run before it (eng D3).
+   */
   function closeIncident(t: number): void {
     if (!incident) return;
     incident.closed = true;
-    incident.healedBy = lastStep ?? 'none';
+    incident.endedBy = 'healthy';
+    incident.healedBy = lastStep && verdictsSinceAct <= HEAL_CREDIT_VERDICTS ? lastStep : 'self';
     incident.healedAtMs = Math.round(t);
     incident.healMs = Math.round(t - firstFailAt);
     if (glAtScene) incident.gl.scene = glAtScene;
     glAtScene = null;
     stats.heals++;
+    report(incident);
+  }
+
+  /** The battle ended (or the page is going away) with the incident open: it is closed unhealed and reported now. */
+  function endIncident(endedBy: 'left' | 'page', t: number): void {
+    if (!incident || incident.closed) return;
+    incident.closed = true;
+    incident.endedBy = endedBy;
+    incident.healedBy = null;
+    incident.healedAtMs = null;
+    incident.healMs = Math.round(t - firstFailAt);
+    if (glAtScene) incident.gl.scene = glAtScene;
+    glAtScene = null;
     report(incident);
   }
 
@@ -687,6 +874,9 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
       hidden: boolean | null; pointerLock: boolean | null; settingsOpen: boolean | null };
     const deferred = receipt.warm.deferred as { done: boolean; cancelled: boolean; stages: string[] } | null;
     const fb = receipt.target.framebuffer as { msaa?: number; resolve?: number } | undefined;
+    const seconds = (ms: number | null): number | null => (ms !== null ? Math.round(ms / 100) / 10 : null);
+    let rung = -1;
+    for (const entry of receipt.steps) rung = Math.max(rung, ['H1', 'H2', 'H3', 'H4'].indexOf(entry.step));
     const message = renderBlackWorldMessage({
       calls: cpu.sceneCalls, mask: cpu.cameraMask, vis: cpu.sceneVisible, ovr: !!cpu.override,
       pass: post.sceneAA.enabled && post.aerial.enabled && post.lateFx.enabled,
@@ -695,14 +885,15 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
       vp: (receipt.target.viewport as number[] | undefined)?.[2] ?? null,
       fb: fb?.resolve ?? null, err: (receipt.gl.errors as number[])[0] ?? 0,
       black: receipt.probe?.black ?? null, nan: receipt.probe?.nan ?? null, ground: receipt.probe?.ground ?? null,
+      lost: receipt.probe ? receipt.probe.downLost : null, left: receipt.endedBy === 'left' || receipt.endedBy === 'page',
       dyn: state.dyn, trim: state.perfTrim, msaa: state.msaa, preset: state.preset,
       focus: state.focus, hidden: state.hidden, lock: state.pointerLock, settings: state.settingsOpen,
       warm: deferred ? (deferred.cancelled ? 'cancelled' : deferred.done ? 'done' : deferred.stages.at(-1) ?? 'none') : 'none',
       rare: (receipt.warm.rareStep as string | null) ?? 'none',
-      reveal: receipt.sinceRevealMs !== null ? receipt.sinceRevealMs / 1000 : null,
-      resize: receipt.sinceResizeMs !== null ? receipt.sinceResizeMs / 1000 : null,
-      resume: receipt.sinceResumeMs !== null ? receipt.sinceResumeMs / 1000 : null,
-      steps: receipt.steps.length ? receipt.steps.map((entry) => entry.step).join('-') : 'none',
+      // (seconds to a tenth: the most telling fields lead the message, eng D1)
+      reveal: seconds(receipt.sinceRevealMs), resize: seconds(receipt.sinceResizeMs), resume: seconds(receipt.sinceResumeMs),
+      // the highest rung the ladder reached
+      steps: rung >= 0 ? ['H1', 'H1-H2', 'H1-H2-H3', 'H1-H2-H3-H4'][rung] : 'none',
       heal: receipt.healedBy ?? 'none',
     });
     try { ports.report(RENDER_BLACK_WORLD_STAGE, message, code); } catch { /* the beacon never breaks the guard */ }
@@ -755,91 +946,133 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
         const value = context.getParameter(name) as unknown;
         return ArrayBuffer.isView(value) ? Array.from(value as unknown as ArrayLike<number>) : value;
       };
+      // the bound draw framebuffer against the scene target's own (eng D8: a draw into another one lands nowhere seen)
+      const properties = renderer.properties.get(sceneTarget) as { __webglFramebuffer?: WebGLFramebuffer; __webglMultisampledFramebuffer?: WebGLFramebuffer };
+      const bound = context.getParameter(context.DRAW_FRAMEBUFFER_BINDING) as WebGLFramebuffer | null;
+      const drawFramebuffer = bound === null ? 'canvas' : bound === properties.__webglMultisampledFramebuffer ? 'scene-msaa'
+        : bound === properties.__webglFramebuffer ? 'scene-resolve' : 'other';
       return {
         phase, colorMask: read(context.COLOR_WRITEMASK), depthMask: read(context.DEPTH_WRITEMASK),
         depthTest: read(context.DEPTH_TEST), depthFunc: read(context.DEPTH_FUNC), viewport: read(context.VIEWPORT),
         scissorTest: read(context.SCISSOR_TEST), scissor: read(context.SCISSOR_BOX), blend: read(context.BLEND),
-        cull: read(context.CULL_FACE), rasterizerDiscard: read(context.RASTERIZER_DISCARD),
+        cull: read(context.CULL_FACE), cullMode: read(context.CULL_FACE_MODE), frontFace: read(context.FRONT_FACE),
+        rasterizerDiscard: read(context.RASTERIZER_DISCARD),
+        stencilTest: read(context.STENCIL_TEST), stencilFunc: read(context.STENCIL_FUNC), stencilRef: read(context.STENCIL_REF),
+        stencilMask: read(context.STENCIL_VALUE_MASK), stencilWriteMask: read(context.STENCIL_WRITEMASK),
+        drawFramebuffer,
         calls: renderer.info.render.calls, triangles: renderer.info.render.triangles,
       };
     } catch (error) { return { phase, error: String(error).slice(0, 120) }; }
   }
 
   // ---- the heal ladder ----
+  /** A rung acted: it is the one a following healthy verdict credits. */
+  function noteActed(name: RenderBlackWorldStep, t: number): void {
+    lastStep = name;
+    verdictsSinceAct = 0;
+    if (incident) incident.lastStepAtMs = Math.round(t);
+  }
+
+  /** H1 again (a ladder waiting for a device rung, or one that ran out): invisible on a healthy frame. */
+  function reassert(t: number): void {
+    if (!incident) return;
+    incident.repeats = (incident.repeats ?? 0) + 1;
+    let changed = false;
+    try { changed = healState(); } catch { /* the next verdict tries again */ }
+    if (changed) noteActed('H1', t);
+  }
+
   function step(t: number): void {
     if (!incident) return;
     failsSinceStep = 0;
     if (stepIndex >= 4) {
       // the ladder ran out: the state re-asserted again (H1 is invisible on a healthy frame), and the whole ladder once
-      // more for the same incident only after the cooldown
-      if (t - ladderEndedAt < LADDER_COOLDOWN_MS) {
-        incident.repeats = (incident.repeats ?? 0) + 1;
-        incident.lastStepAtMs = Math.round(t);
-        lastStep = 'H1';
-        try { healState(); } catch { /* the next verdict tries again */ }
-        return;
-      }
+      // more for the same incident only after the cooldown, its device rungs waiting from the new start
+      if (t - ladderEndedAt < LADDER_COOLDOWN_MS) { reassert(t); return; }
       stepIndex = 0;
+      ladderStartedAt = t;
     }
-    // the device rungs (the recovery preset, a context restore) answer a GL-level black only: never a CPU signal, nor a
-    // non-finite value, which the histories' reset (H2) is the cure for
+    // the context restore answers a GL-level black only: never a CPU signal, nor a non-finite value, which the
+    // histories' reset (H2) is the cure for
     const cpuHealthy = (cpuBits & CPU_DECISIVE) === 0 && incident.class !== 'nan-history';
     while (stepIndex < 4) {
       const name = (['H1', 'H2', 'H3', 'H4'] as const)[stepIndex];
-      const age = t - incident.openedAtMs;
+      const age = t - ladderStartedAt;
       if ((name === 'H3' && age < H3_AFTER_MS) || (name === 'H4' && cpuHealthy && age < H4_AFTER_MS)) {
         // too early for a device rung: the state again (invisible when healthy), the rung on a later failing verdict
-        incident.repeats = (incident.repeats ?? 0) + 1;
-        incident.lastStepAtMs = Math.round(t);
-        lastStep = 'H1';
-        try { healState(); } catch { /* the next verdict tries again */ }
+        reassert(t);
         return;
       }
       stepIndex++;
-      if ((name === 'H4') && !cpuHealthy) {
-        incident.steps.push({ step: 'H4', atMs: Math.round(t), note: incident.class === 'nan-history'
-          ? 'skipped: a non-finite value a context restore cannot fix' : 'skipped: a CPU signal a context restore cannot fix' });
+      const atMs = Math.round(t);
+      if (name === 'H4' && (!cpuHealthy || contextRestores > 0)) {
+        incident.steps.push({ step: 'H4', atMs, note: !cpuHealthy
+          ? (incident.class === 'nan-history' ? 'skipped: a non-finite value a context restore cannot fix'
+            : 'skipped: a CPU signal a context restore cannot fix')
+          : 'skipped: the page has had its context restore' });
         continue;
       }
-      incident.steps.push({ step: name, atMs: Math.round(t) });
-      incident.lastStepAtMs = Math.round(t);
-      lastStep = name;
+      if (name === 'H3' && sceneTarget.samples === 0) {
+        incident.steps.push({ step: 'H3', atMs, note: 'skipped: MSAA already off' });
+        continue;
+      }
+      incident.steps.push({ step: name, atMs });
+      let acted = true;
       try {
-        if (name === 'H1') healState();
+        if (name === 'H1') acted = healState();
         else if (name === 'H2') healTargets();
-        else if (name === 'H3') healDevice(cpuHealthy);
+        else if (name === 'H3') healDevice();
         else healContext();
       } catch (error) {
         incident.steps[incident.steps.length - 1].note = `failed: ${String(error).slice(0, 80)}`;
       }
       console.warn(`[gl] black world heal ${name} (${incident.class})`);
+      if (!acted) {
+        // a GL-level black with every CPU signal healthy: nothing to re-assert, so the targets' rung acts at once
+        incident.steps[incident.steps.length - 1].note = 'nothing to re-assert';
+        continue;
+      }
+      noteActed(name, t);
       if (stepIndex >= 4) ladderEndedAt = t;
       return;
     }
     ladderEndedAt = t;
   }
 
-  /** H1: the reveal's state again; nothing changes on a healthy frame. */
-  function healState(): void {
-    camera.layers.mask = revealMask | 1;
-    scene.visible = true;
-    scene.overrideMaterial = null;
-    sceneAA.enabled = true;
-    post.aerial.enabled = true;
-    post.lateFx.enabled = true;
-    sceneTarget.viewport.set(0, 0, sceneTarget.width, sceneTarget.height);
-    sceneTarget.scissor.set(0, 0, sceneTarget.width, sceneTarget.height);
-    sceneTarget.scissorTest = false;
+  /** H1: the reveal's state again; nothing changes on a healthy frame. Returns whether anything was wrong. */
+  function healState(): boolean {
+    let changed = false;
+    // the live rare warm first (its finally blocks restore what it hid)
+    const rareBefore = host.__COMBAT_RARE_WARM_STEP ?? null;
+    try { ports.combatWarm?.cancelRare?.(); } catch { /* a warm that cannot close finishes on its own */ }
+    if (rareBefore !== null && (host.__COMBAT_RARE_WARM_STEP ?? null) === null) changed = true;
+    const mask = revealMask | 1;
+    if (camera.layers.mask !== mask) { camera.layers.mask = mask; changed = true; }
+    if (!scene.visible) { scene.visible = true; changed = true; }
+    if (scene.overrideMaterial !== null) { scene.overrideMaterial = null; changed = true; }
+    if (!sceneAA.enabled || !post.aerial.enabled || !post.lateFx.enabled) {
+      sceneAA.enabled = true;
+      post.aerial.enabled = true;
+      post.lateFx.enabled = true;
+      changed = true;
+    }
+    const w = sceneTarget.width, h = sceneTarget.height, vp = sceneTarget.viewport, sc = sceneTarget.scissor;
+    if (vp.x !== 0 || vp.y !== 0 || vp.z !== w || vp.w !== h) { vp.set(0, 0, w, h); changed = true; }
+    if (sc.x !== 0 || sc.y !== 0 || sc.z !== w || sc.w !== h || sceneTarget.scissorTest) {
+      sc.set(0, 0, w, h);
+      sceneTarget.scissorTest = false;
+      changed = true;
+    }
     const world = worldGroup() ?? revealWorld;
     if (world) {
-      if (world.parent !== scene) scene.add(world);
-      world.visible = true;
+      if (world.parent !== scene) { scene.add(world); changed = true; }
+      if (!world.visible) { world.visible = true; changed = true; }
     }
     for (const root of revealRoots) {
-      if (root.parent === null) scene.add(root);
-      if (root.parent === scene) root.visible = true;
+      if (root.parent === null) { scene.add(root); changed = true; }
+      if (root.parent === scene && !root.visible) { root.visible = true; changed = true; }
     }
-    try { ports.combatWarm?.cancelRare?.(); } catch { /* a warm that cannot close finishes on its own */ }
+    return changed;
   }
 
   /** H2: every composer target reallocates at its next use; every temporal history starts over. */
@@ -855,21 +1088,23 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     drainErrors();
   }
 
-  /** H3: the scene target without MSAA, and on a CPU-healthy black the graphics-recovery preset (one rung down). */
-  function healDevice(cpuHealthy: boolean): void {
+  /**
+   * H3: the scene target without MSAA (the preset stays: round 2, eng D2, the old relief here dropped it one rung a
+   * ladder, and a persistent black ratcheted a session to the floor preset).
+   */
+  function healDevice(): void {
     if (sceneTarget.samples !== 0) sceneAA.setSamples(0);
-    if (cpuHealthy && ports.relieveGraphics) {
-      ports.relieveGraphics();
-      // the preset change resizes and re-samples the chain; the scene target stays single-sampled for this incident
-      if (sceneTarget.samples !== 0) sceneAA.setSamples(0);
-    }
   }
 
-  /** H4: a context lose/restore through the renderer's own recovery (contextRecovery.ts). */
+  /**
+   * H4: a context lose/restore through the renderer's own recovery (contextRecovery.ts), once a page: the renderer's
+   * loss record takes the graphics-recovery preset one rung down, the only preset change the guard ever causes.
+   */
   function healContext(): void {
     const context = gl();
     const lose = context.getExtension('WEBGL_lose_context');
     if (!lose) return;
+    contextRestores++;
     lose.loseContext();
     setTimeout(() => { try { lose.restoreContext(); } catch { /* the recovery notice owns it */ } }, 120);
   }
@@ -889,13 +1124,24 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     if (lastNan) { resetHistories(); lastNan = false; }
   };
   const onPointerLock = (): void => { if (typeof document !== 'undefined' && document.pointerLockElement) onResume(); };
-  const onContextLost = (): void => { pending = false; queryLit = queryNan = null; queryContext = null; };
+  const onContextLost = (): void => {
+    pending = false; pendingDown = false; queryLit = queryNan = queryDown = null; queryContext = null; probeReady = false;
+  };
+  // the restored context links the probe's programs again (in parallel, as under a cover)
+  const onContextRestored = (): void => { warmProbePrograms(); };
+  // (eng D7) a page going away with an incident open reports it first: in the capture phase, ahead of the entry
+  // telemetry's own pagehide / hidden flush, which then carries it
+  const onPageHide = (): void => { if (incident && !incident.closed && !reported) endIncident('page', now()); };
+  const onHiddenCapture = (): void => { if (typeof document !== 'undefined' && document.hidden) onPageHide(); };
   if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     window.addEventListener('focus', onResume);
     document.addEventListener('visibilitychange', onResume);
     document.addEventListener('pointerlockchange', onPointerLock);
+    window.addEventListener('pagehide', onPageHide, true);
+    document.addEventListener('visibilitychange', onHiddenCapture, true);
   }
   renderer.domElement?.addEventListener?.('webglcontextlost', onContextLost);
+  renderer.domElement?.addEventListener?.('webglcontextrestored', onContextRestored);
 
   // ---- ?gldiag=1: the GL error after each pass inside 120 frames of a resolution change (P8) ----
   const gldiag = typeof location !== 'undefined' && /[?&]gldiag=1(?:&|$)/.test(location.search);
@@ -945,46 +1191,58 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
 
   // ---- install ----
   sceneAA.render = guardedSceneRender as typeof sceneAA.render;
+  lateFx.render = guardedLateRender as typeof lateFx.render;
   post.render = guardedPostRender;
   if (gldiag) installGlDiag();
 
   const guard: BlackWorldGuard = {
     enabled: true,
-    onCoveredEntry() {
-      resetHistories();
+    onCoveredEntry(options) {
+      // (eng D6) a chunk that arrives after the reveal never resets a presented frame's histories
+      if (options?.covered !== false) resetHistories();
       revealAt = -1;
       failStreak = 0;
       lastFailClass = null;
-      if (incident && !incident.closed) { report(incident); incident.closed = true; }
+      if (incident && !incident.closed) endIncident('left', now());
       incident = null;
       ladderEndedAt = -Infinity;
+      warmProbePrograms();
     },
     stats() {
       return { ...stats, enabled: guard.enabled, active, frame, cpuBits, failStreak, pending: !!pending,
         lastClass: lastFailClass, incident: incident && !incident.closed ? incident.class : null,
-        lastLit: answer.anyLit, lastNan: answer.anyNan };
+        lastLit: answer.anyLit, lastNan: answer.anyNan, lastDownLost: answer.downLost, probeReady };
     },
     receipts,
     dispose() {
       if (sceneAA.render === (guardedSceneRender as unknown)) sceneAA.render = originalSceneRender;
+      if (lateFx.render === (guardedLateRender as unknown)) lateFx.render = originalLateRender;
       if (post.render === guardedPostRender) post.render = originalPostRender;
       for (const restore of gldiagRestore.splice(0)) restore();
       if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         window.removeEventListener('focus', onResume);
         document.removeEventListener('visibilitychange', onResume);
         document.removeEventListener('pointerlockchange', onPointerLock);
+        window.removeEventListener('pagehide', onPageHide, true);
+        document.removeEventListener('visibilitychange', onHiddenCapture, true);
       }
       renderer.domElement?.removeEventListener?.('webglcontextlost', onContextLost);
+      renderer.domElement?.removeEventListener?.('webglcontextrestored', onContextRestored);
       try {
-        if (queryContext && !queryContext.isContextLost()) { if (queryLit) queryContext.deleteQuery(queryLit); if (queryNan) queryContext.deleteQuery(queryNan); }
+        if (queryContext && !queryContext.isContextLost()) {
+          for (const query of [queryLit, queryNan, queryDown]) if (query) queryContext.deleteQuery(query);
+        }
       } catch { /* lost */ }
-      queryLit = queryNan = null; pending = false;
-      probeQuad.dispose(); probeLit.dispose(); probeNan.dispose(); probeCensus.dispose(); probeTarget.dispose();
+      queryLit = queryNan = queryDown = null; pending = false; pendingDown = false;
+      probeGeometry.dispose(); probeLit.dispose(); probeNan.dispose(); probeCensus.dispose(); probeDown.dispose();
+      probeTarget.dispose(); probeDownTarget.dispose();
       guards.delete(renderer);
       if (host.__COT_BLACK_GUARD === guard) delete host.__COT_BLACK_GUARD;
     },
   };
   host.__COT_BLACK_GUARD = guard;
+  // installed under a battle entry's cover: the probe's programs start linking now (onCoveredEntry asks again)
+  warmProbePrograms();
 
   return {
     guard,

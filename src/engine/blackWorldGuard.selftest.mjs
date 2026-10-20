@@ -5,6 +5,12 @@
 // that are available two frames later, as on a GPU. Every incident must be detected within two probes, healed
 // inside 30 frames by the right rung, named in its receipt, and reported once; a healthy battle, a covered entry, a
 // black lunar sky overhead and an unfocused page never open one; 600 healthy frames allocate nothing in the guard.
+// Round 2 (2026-10-20): a world lost after the scene target (the late composite exactly zero over a healthy scene
+// target) is a downstream-black incident; a black that cleared on its own is `self`, never credited to the rung that ran
+// before it; the device rungs never ratchet the preset (no relief of the guard's own, one context restore a page, their
+// waits measured from the ladder's own start); an incident open as the battle ends or the page hides reports then; the
+// probe draws only once its programs linked (under the cover); a late arm never resets a presented history; the
+// telemetry message leads with the telling fields and survives the transport's trims.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { Session } from 'node:inspector/promises';
@@ -30,7 +36,7 @@ const { installBlackWorldGuard, judgeVerdict, countProbeCells, countGroundCells,
 const { readRenderBlackWorld, renderBlackWorldCode, renderBlackWorldMessage, validateTelemetryRecord } =
   await import('../../server/telemetryRecord.ts');
 
-function createWorld({ focused = () => true } = {}) {
+function createWorld({ focused = () => true, compileAsync = null, samples = 0, exempt = () => false } = {}) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.5, 4000);
   camera.position.set(0, 10, 0);
@@ -45,7 +51,8 @@ function createWorld({ focused = () => true } = {}) {
   scene.add(world, sky, tank, fxRoot, sun);
 
   // ---- the GPU stand-in: the scene pass's output is the world model's verdict ----
-  const gpu = { glMasked: false, nan: false, errors: [], queries: 0, lost: false, census: 0, airless: false, groundInView: true };
+  const gpu = { glMasked: false, nan: false, downLost: false, errors: [], queries: 0, lost: false, census: 0, airless: false,
+    groundInView: true, compiles: [] };
   let sceneOutput = 'lit';
   let activeQuery = null;
   const gl = {
@@ -88,14 +95,20 @@ function createWorld({ focused = () => true } = {}) {
       if (name === 'BlackWorldGuard.ProbeLit') {
         activeQuery.passed = sceneOutput === 'lit' && (object.material.uniforms.uAllCells.value === 1 || gpu.groundInView);
       } else if (name === 'BlackWorldGuard.ProbeNan') activeQuery.passed = gpu.nan;
+      else if (name === 'BlackWorldGuard.ProbeDown') {
+        // the downstream query reads the scene colour against the late composite the late-FX pass handed on
+        assert.ok(object.material.uniforms.tDown.value, 'the downstream probe reads the chain colour after late FX');
+        activeQuery.passed = sceneOutput === 'lit' && gpu.downLost;
+      }
     },
+    ...(compileAsync ? { compileAsync(object, _camera) { gpu.compiles.push({ name: object.material.name, target: renderTarget?.texture?.name ?? null }); return compileAsync(); } } : {}),
     getSize: (target) => target.set(1512, 945),
     properties: { get: () => ({}) },
     state: { bindFramebuffer() {} },
   };
 
   // ---- the post stand-in: the canonical chain, its scene pass draws the world model ----
-  const sceneTarget = new THREE.WebGLRenderTarget(1013, 633, { depthTexture: new THREE.DepthTexture(1013, 633) });
+  const sceneTarget = new THREE.WebGLRenderTarget(1013, 633, { depthTexture: new THREE.DepthTexture(1013, 633), samples });
   const lateTarget = new THREE.WebGLRenderTarget(1013, 633);
   const history = { resets: 0, taa: 0, ao: 0 };
   scene.userData.volumetricClouds = { resetHistory() { history.resets++; gpu.nan = false; } };
@@ -111,17 +124,22 @@ function createWorld({ focused = () => true } = {}) {
     },
   };
   const aerial = { enabled: true, uniforms: { uHazeDatum: { value: 0 }, uAirless: { value: 0 } } };
-  const lateFx = { enabled: true, target: lateTarget, prepared: true };
+  // the late-FX pass: its colour is the chain's from here on (a dropped composite copy reads exactly zero downstream;
+  // reallocating the composer targets brings it back)
+  const lateFx = { enabled: true, target: lateTarget, prepared: true, needsSwap: false, renders: 0,
+    render() { lateFx.renders++; } };
   const gtao = { enabled: false, setSize() { history.ao++; } };
   const taa = { resetHistory() { history.taa++; } };
   const composer = { passes: [sceneAA, aerial, gtao, lateFx], renderTarget1: new THREE.WebGLRenderTarget(4, 4),
     renderTarget2: new THREE.WebGLRenderTarget(4, 4) };
+  composer.renderTarget1.addEventListener('dispose', () => { gpu.downLost = false; });
   const post = {
     sceneAA, aerial, lateFx, gtao, taa, composer, dynScale: 0.67, perfTrim: 0, msaaSamples: 0, sizes: [],
     render() {
       info.render.calls += 12; // shadow-free post passes
       if (sceneAA.enabled) post.sceneAA.render(renderer, null, null, DT, false);
       else sceneOutput = 'lit'; // the aerial pass reads the last scene target: a frozen world, never black
+      if (lateFx.enabled) post.lateFx.render(renderer, composer.renderTarget2, composer.renderTarget1, DT, false);
     },
     setSize(w, h) { post.sizes.push([w, h]); },
   };
@@ -135,12 +153,11 @@ function createWorld({ focused = () => true } = {}) {
     getWorld: () => ({ group: world }),
     isCovered: () => lifecycle.pending || lifecycle.renderingCovered,
     combatWarm: { cancelRare() { rescues.cancelRare = (rescues.cancelRare ?? 0) + 1; } },
-    relieveGraphics() { rescues.count++; },
     presetName: () => 'high',
     report(stage, message, code) { reports.push({ stage, message, code }); },
     now: () => clock,
     hasFocus: focused,
-    isExempt: () => false,
+    isExempt: exempt,
   });
   const frames = (n, each = null) => {
     for (let i = 0; i < n; i++) {
@@ -235,7 +252,31 @@ if (process.argv.includes('--allocation-windows')) {
   assert.equal(renderBlackWorldCode('gl-masked', 'H9'), null);
   const message = renderBlackWorldMessage({ calls: 0, mask: 32, vis: true, preset: 'high', warm: 'rareEffects', heal: 'H1',
     room: 'ABCD', preset2: 'x', settings: 'Kevin' });
-  assert.equal(message, 'calls=0 mask=32 vis=1 preset=high warm=rareEffects heal=H1', 'unknown keys and free words dropped');
+  assert.equal(message, 'heal=H1 calls=0 warm=rareEffects mask=32 vis=1 preset=high $',
+    'the telling fields first, unknown keys and free words dropped, the end mark last');
+  // (eng D1) a realistic Mac incident: every field offered; the message keeps whole pairs only, the telling ones first
+  const full = renderBlackWorldMessage({ reveal: 18.2, resize: 4.1, resume: 2.1, steps: 'H1-H2-H3', heal: 'H2', calls: 1843,
+    fb: 36053, err: 1286, warm: 'navigation', rare: 'hiddenVariants', mask: 1, vis: true, ovr: false, pass: true, world: true,
+    roots: 12, vp: 2419, black: 144, nan: 0, lost: false, ground: 96, dyn: 0.667, trim: 0, msaa: 4, preset: 'high', focus: true,
+    hidden: false, lock: true, settings: false, left: false });
+  assert.ok(full.length <= 200 && full.endsWith(' $'), `whole pairs under the cap: ${full.length} ${full}`);
+  const fullRead = readRenderBlackWorld({ code: 'render-black-world:gl-masked:H2', error: { message: full } });
+  assert.equal(fullRead.complete, true);
+  for (const key of ['reveal', 'resize', 'resume', 'steps', 'heal', 'calls', 'fb', 'err', 'warm', 'rare']) {
+    assert.ok(key in fullRead.fields, `the telling field ${key} survives the 200-character cap`);
+  }
+  assert.equal(fullRead.fields.rare, 'hiddenVariants');
+  assert.equal(fullRead.fields.reveal, '18.2');
+  // the entry telemetry's own oversized-record trim (src/entry/telemetry.ts fitRecord: message.slice(0, 100))
+  const cut = readRenderBlackWorld({ code: 'render-black-world:gl-masked:H2', error: { message: full.slice(0, 100) } });
+  assert.equal(cut.complete, false, 'a cut message lacks its end mark');
+  for (const key of ['reveal', 'resize', 'resume', 'steps', 'heal', 'calls']) assert.ok(key in cut.fields, `${key} inside the first 100 characters`);
+  for (const [key, value] of Object.entries(cut.fields)) {
+    assert.ok(full.includes(`${key}=${value} `), `a cut message never yields a fragment as a value: ${key}=${value}`);
+  }
+  assert.equal(readRenderBlackWorld({ code: 'render-black-world:gl-masked:H2', error: { message: 'reveal=18.2 rare=hidde' } }).fields.rare,
+    undefined, 'a fragment of an enumerated word is never read');
+  assert.equal(renderBlackWorldCode('downstream-black', 'self'), 'render-black-world:downstream-black:self');
   const valid = validateTelemetryRecord({ v: 2, sid: 'sabcdefgh12', build: 'v1.0.0', kind: 'error', outcome: 'notice', stage: 'render',
     code: 'render-black-world:camera-layer-mask:H1', error: { message, frames: [] } });
   assert.equal(valid.ok, true);
@@ -315,6 +356,8 @@ const proofs = [
   ['viewport', 'H1', (h) => { h.sceneTarget.viewport.set(0, 0, 0, 0); }],
   ['gl-masked', 'H2', (h) => { h.gpu.glMasked = true; }],
   ['nan-history', 'H2', (h) => { h.gpu.nan = true; }],
+  // (round 2, D2) the scene target holds the world, the late composite of it reads exactly zero (a dropped copy)
+  ['downstream-black', 'H2', (h) => { h.gpu.downLost = true; }],
 ];
 for (const [expected, healedBy, inject] of proofs) {
   const h = createWorld();
@@ -332,6 +375,7 @@ for (const [expected, healedBy, inject] of proofs) {
   assert.ok(validateTelemetryRecord({ v: 2, sid: 'sabcdefgh12', build: 'v1.0.0', kind: 'error', outcome: 'notice', stage: 'render',
     code: h.reports[0].code, error: { message: h.reports[0].message, frames: [] } }).ok, `${expected}: the record validates`);
   if (healedBy === 'H2') assert.ok(h.history.resets >= 1 && h.history.taa >= 1, `${expected}: the histories reset`);
+  if (healedBy === 'H2') assert.match(receipt.steps[0].note ?? '', /nothing to re-assert/, `${expected}: CPU-healthy, H1 had nothing to do and H2 acted at once`);
   // healthy afterwards: no second incident
   h.frames(120);
   assert.equal(h.guard.stats().incidents, 1, `${expected}: stays healed`);
@@ -360,18 +404,120 @@ for (const [expected, healedBy, inject] of proofs) {
   h.guard.dispose();
 }
 
-// ---- a GL-level fault that nothing but a context restore fixes: H3 rescues, H4 restores ----
+// ---- a GL-level fault that nothing but a context restore fixes: H3 turns MSAA off, H4 restores ----
 {
-  const h = createWorld();
+  const h = createWorld({ samples: 4 });
   h.frames(30);
   h.frames(240, () => { h.gpu.glMasked = true; });
   const [receipt] = h.guard.receipts;
   assert.equal(receipt.class, 'gl-masked');
   assert.deepEqual(receipt.steps.map((s) => s.step), ['H1', 'H2', 'H3', 'H4']);
-  assert.equal(h.rescues.count, 1, 'H3 takes the graphics-recovery preset on a CPU-healthy black');
+  assert.equal(h.sceneTarget.samples, 0, 'H3: MSAA off');
   assert.equal(h.gpu.loseCalls, 1, 'H4 restores the context');
   const at = (step) => receipt.steps.find((entry) => entry.step === step).atMs - receipt.openedAtMs;
   assert.ok(at('H3') >= 1000 && at('H4') >= 3000, `the device rungs wait for a black that lasted (H3 +${at('H3')} ms, H4 +${at('H4')} ms)`);
+  h.guard.dispose();
+}
+
+// ---- (round 2, eng D2) a GL-level black that lasts 40 s never ratchets: one context restore a page, waits from the
+// ladder's own start ----
+{
+  const h = createWorld({ samples: 4 });
+  h.frames(30);
+  h.frames(2400, () => { h.gpu.glMasked = true; });
+  const [receipt] = h.guard.receipts;
+  const steps = receipt.steps.map((s) => s.step);
+  assert.ok(steps.filter((step) => step === 'H2').length >= 3, `the ladder restarted after its cooldowns: ${steps.join(',')}`);
+  assert.equal(h.gpu.loseCalls ?? 0, 1, `one context restore a page, however long the black (steps ${steps.join(',')})`);
+  assert.equal(receipt.steps.filter((s) => s.step === 'H4' && /page has had/.test(s.note ?? '')).length >= 2, true,
+    'later ladders skip the context restore');
+  // every restarted ladder waits for its own device rungs: no H3 within a second of its own H2
+  for (let i = 0; i < receipt.steps.length; i++) {
+    if (receipt.steps[i].step !== 'H3') continue;
+    const restart = receipt.steps.slice(0, i).reverse().find((s) => s.step === 'H1');
+    assert.ok(receipt.steps[i].atMs - restart.atMs >= 1000, `H3 waits from its ladder's start (+${receipt.steps[i].atMs - restart.atMs} ms)`);
+  }
+  h.guard.dispose();
+}
+
+// ---- (round 2, eng D3) a black that clears on its own is `self`, never credited to the rung that ran before it ----
+{
+  const h = createWorld();
+  h.frames(30);
+  h.frames(150, () => { h.gpu.glMasked = true; });
+  h.gpu.glMasked = false; // the fault clears itself (the GL-level black the scenario held for 2.5 s)
+  h.frames(60);
+  const [receipt] = h.guard.receipts;
+  assert.equal(receipt.closed, true);
+  assert.equal(receipt.healedBy, 'self', `a fault that ended by itself: healedBy ${receipt.healedBy}, steps ${receipt.steps.map((s) => s.step)}`);
+  assert.equal(h.reports[0].code, 'render-black-world:gl-masked:self');
+  assert.match(h.reports[0].message, /heal=self/);
+  h.guard.dispose();
+}
+
+// ---- (round 2, eng D7) an incident open as the battle ends, or as the page hides, reports then ----
+{
+  const h = createWorld();
+  h.frames(30);
+  h.frames(40, () => { h.gpu.glMasked = true; });
+  assert.equal(h.reports.length, 0, 'still open');
+  h.game.phase = 'garage';
+  h.frames(1, () => { h.gpu.glMasked = true; });
+  assert.equal(h.reports.length, 1, 'leaving the battle reports the open incident');
+  assert.equal(h.reports[0].code, 'render-black-world:gl-masked:none');
+  assert.match(h.reports[0].message, /left=1/);
+  assert.equal(h.guard.receipts[0].endedBy, 'left');
+  h.guard.dispose();
+  const p = createWorld();
+  p.frames(30);
+  p.frames(40, () => { p.gpu.glMasked = true; });
+  fire('window:pagehide');
+  assert.equal(p.reports.length, 1, 'a page going away reports the open incident ahead of the telemetry flush');
+  assert.equal(p.guard.receipts[0].endedBy, 'page');
+  p.guard.dispose();
+}
+
+// ---- (round 2, the visual critic's start hitch) the probe draws only once its programs linked ----
+{
+  let resolveLink;
+  const linked = new Promise((resolve) => { resolveLink = resolve; });
+  const h = createWorld({ compileAsync: () => linked });
+  h.frames(60);
+  assert.equal(h.guard.stats().probes, 0, 'no probe draw while its programs link (no synchronous link on a revealed frame)');
+  assert.deepEqual(h.gpu.compiles.map((c) => c.name).sort(),
+    ['BlackWorldGuard.ProbeCensus', 'BlackWorldGuard.ProbeDown', 'BlackWorldGuard.ProbeLit', 'BlackWorldGuard.ProbeNan']);
+  assert.ok(h.gpu.compiles.every((c) => c.target === (c.name === 'BlackWorldGuard.ProbeDown' ? 'BlackWorldGuard.probeDown' : 'BlackWorldGuard.probe')),
+    `each program submitted against its own probe target (the program keys match the draws): ${JSON.stringify(h.gpu.compiles)}`);
+  resolveLink();
+  await linked;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  h.frames(60);
+  assert.ok(h.guard.stats().probes >= 3, `probes once linked: ${h.guard.stats().probes}`);
+  h.guard.dispose();
+}
+
+// ---- (round 2, eng D6) a guard armed after the reveal never resets the presented frame's histories ----
+{
+  const h = createWorld();
+  h.frames(30);
+  const before = h.history.resets;
+  h.guard.onCoveredEntry({ covered: false });
+  assert.equal(h.history.resets, before, 'a late arm keeps the histories');
+  h.guard.onCoveredEntry({ covered: true });
+  assert.equal(h.history.resets, before + 1, 'a covered arm resets them');
+  h.guard.dispose();
+}
+
+// ---- (round 2, eng D9) a staged shot view stands the guard aside only while the shot mode lasts ----
+{
+  const h = createWorld({ exempt: null });
+  globalThis.__DEBUG = { shotMode: true };
+  h.frames(40);
+  assert.equal(h.guard.stats().probes, 0, 'shot mode: no probe');
+  globalThis.__DEBUG.shotMode = false;
+  h.frames(40);
+  assert.ok(h.guard.stats().probes >= 2, 'shot mode over: the guard watches again');
+  delete globalThis.__DEBUG;
   h.guard.dispose();
 }
 
@@ -437,4 +583,6 @@ for (const [expected, healedBy, inject] of proofs) {
 }
 
 console.log('blackWorldGuard.selftest: detection within two probes, the right rung heals each injected class inside 30 frames, '
-  + 'enumerated receipts and one record per incident, gating, the ladder, resume policy, no guard allocation in steady 600-frame windows');
+  + 'enumerated receipts and one record per incident, gating, the ladder, resume policy, no guard allocation in steady 600-frame windows; '
+  + 'round 2: downstream-black, self-cleared blacks uncredited, no preset ratchet, open incidents reported on leave/pagehide, '
+  + 'probe programs linked before the first probe, late arms keep histories, shot-mode exemption, telemetry trims survived');

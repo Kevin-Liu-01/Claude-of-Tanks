@@ -393,8 +393,6 @@ export async function setShotView(
   context.showroom.stop();
   context.setShotMode(true);
   context.setCaptureHidden(true);
-  // (black-screen-228) staged views own their frames: the black-world guard stands aside (engine/blackWorldGuard.ts)
-  (globalThis as { __COT_SHOT_STAGED?: boolean }).__COT_SHOT_STAGED = true;
   context.resetPostPerfTrims();
   context.setShotHudFrame(false);
   context.game.phase = 'shot';
