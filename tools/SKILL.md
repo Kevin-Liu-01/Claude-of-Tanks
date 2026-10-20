@@ -53,6 +53,17 @@ or compare `graphLabels(...)`, uuids or names; `object3d-assert-lint.mjs`
 fails the suite otherwise (`--fix` rewrites, `--types` audits with the checker,
 `// object3d-assert-ok: <reason>` accepts a false positive).
 
+Fleet tool defaults (2026-10-16, test-speed R4c/R4d): every `--ids` reader
+passes its list through `uniqueIds` (`id-list.mjs`), so a repeated id fails by
+name before any server, browser or capture hold (`id-list.selftest` scans
+`tools/*.mjs`). Browser tools take their Vite `server` from `toolServerOptions`
+(127.0.0.1, strictPort false), build URLs with `boundOrigin(server)` (never
+`localhost`), and load their first page with `loadReadyPage` (180 s navigation,
+one retry of a timeout; `COT_NAV_TIMEOUT_MS`, `COT_READY_TIMEOUT_MS`,
+`COT_NAV_RETRIES`) from `tool-page-load.mjs`. `gen-interior-fills.mjs`
+generates at the shipped records' flags by default (`--rounds=8 --min-fine=1`,
+also spelled `--release`); exploration passes its own rounds explicitly.
+
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
 Read the tool's CLI/help and its current evidence doc, run a baseline, then

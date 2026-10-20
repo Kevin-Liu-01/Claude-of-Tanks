@@ -70,11 +70,9 @@ export async function createWatertightAudit({ records: replaced = null, carries 
       assert.equal(failures.length, 0, `${failures.length} hull(s) fail the ${WATERTIGHT_MAX_LEAK_L} L watertight gate past `
         + `their named carries (${carried.length} carried, list docs/geometry-gate/watertight-carry.json; regenerate: `
         + `node tools/gen-interior-fills.mjs --ids=<id> --rounds=8 --min-fine=1):\n  ${failures.join('\n  ')}`);
-      const below = carried.filter((row) => row.leakL < row.carriedL);
       if (carried.length) {
-        console.log(`watertight: ${carried.length} named carries leak at or below their listed litres (docs/geometry-gate/watertight-carry.json): `
-          + carried.map((row) => `${row.id} ${row.leakL} L`).join(', ')
-          + (below.length ? `; ${below.length} below their row (lower it): ${below.map((row) => `${row.id} ${row.carriedL} -> ${row.leakL} L`).join(', ')}` : ''));
+        console.log(`watertight: ${carried.length} named carries leak exactly their listed litres (docs/geometry-gate/watertight-carry.json): `
+          + carried.map((row) => `${row.id} ${row.leakL} L`).join(', '));
       }
       console.log(`watertight: ${watertight.length} of ${measured} hulls hold water with their shipped fills (${fillPolicyHulls} on their fill-policy `
         + `boundary); ${laneL.toFixed(2)} L of track-lane air, ${retainedL.toFixed(2)} L of retained source air, `

@@ -238,7 +238,7 @@ assert.equal(usage.status,1);
 assert.deepEqual(usage.calls,[]);
 assert.match(usage.out[0][1],/^usage: /);
 for(const [argv,message] of [[['--ids=nope','--lane'],/^\n\[tank-release\] FAIL \(lane mode\) nope: .*known playable/],
-  [['--ids=m1a1_abrams_hc,m1a1_abrams_hc','--gate','--lane'],/^\n\[tank-release\] FAIL \(lane mode\) m1a1_abrams_hc,m1a1_abrams_hc: Expected unique known playable tank IDs$/],
+  [['--ids=m1a1_abrams_hc,m1a1_abrams_hc','--gate','--lane'],/^\n\[tank-release\] FAIL \(lane mode\) m1a1_abrams_hc,m1a1_abrams_hc: tank:release:check --ids lists m1a1_abrams_hc 2 times: /],
   [['--ids=m1a1_abrams_hc,'],/^\n\[tank-release\] FAIL \(integrator mode\) m1a1_abrams_hc,: release requires nonempty tank IDs$/]]){
   const bad=await fakeRelease(argv);
   assert.equal(bad.status,2,`${argv.join(' ')} exits 2`);
@@ -270,3 +270,7 @@ for(const step of type100.filter(step=>step.args.some(arg=>arg.startsWith('--ids
 const allConcepts=tankReleaseSteps('type100,object695,ztz100_prototype,ztz100',true,'node-test');
 assert.deepEqual(allConcepts.find(step=>step.args[0]==='tools/procedural-fidelity.mjs').args,
   ['tools/procedural-fidelity.mjs','--ids=ztz100','--check','--board','--neutral-board']);
+
+// R4c (2026-10-16): a repeated id fails by name before any step runs.
+assert.throws(()=>tankReleaseSteps('leo2a7v,t14_armata,leo2a7v',true,'node-test'),/tank:release:check --ids lists leo2a7v 2 times/);
+console.log('tank-release-plan: a repeated id fails before any step');

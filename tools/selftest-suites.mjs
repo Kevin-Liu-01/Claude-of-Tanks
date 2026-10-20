@@ -210,6 +210,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/source-comparison-cameras.selftest.mjs',
     'tools/native-interior-fill-policy.selftest.mjs',
     'tools/interior-fill-selection.selftest.mjs',
+    // 2026-10-16 (test-speed R4c): duplicate ids fail loudly in every fleet tool; browser tools' ports and first loads
+    'tools/id-list.selftest.mjs',
+    'tools/tool-page-load.selftest.mjs',
     'tools/sealed-ledger-policy.selftest.mjs',
     'tools/muzzle-seat-policy.selftest.mjs',
     'tools/receipt-repin.selftest.mjs',

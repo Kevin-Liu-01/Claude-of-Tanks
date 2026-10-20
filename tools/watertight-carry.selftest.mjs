@@ -1,6 +1,6 @@
 // Named carries for the fleet watertight gate (tools/watertight-carry.mjs, test-speed R7c 2026-10-16), without a build:
 // the shipped list (docs/geometry-gate/watertight-carry.json) is well formed against the fleet roster, each malformed
-// row is caught, and the judge passes a listed leak only at or below its row and fails a new leak, a grown leak and a
+// row is caught, and the judge passes a listed leak only at exactly its row and fails a new leak, a grown leak and a
 // stale row. The same rules on a real measured build are in src/vehicles/watertightAudit.selftest.mjs; fleetPassDefault
 // applies them to the whole fleet.
 import assert from 'node:assert/strict';
@@ -48,10 +48,17 @@ assert.ok(WATERTIGHT_CARRY_FILE.endsWith('docs/geometry-gate/watertight-carry.js
 const leak = (id, leakL) => ({ id, leakL, text: `${id}: ${leakL} L reaches the deep interior in 1 gap(s)` });
 const carries = { leo2a4m: row(7.48), t80b: row(6.63), type59: row(9.78) };
 {
-  // at and below the row: carried, nothing fails
-  const { failures, carried } = judgeWatertightCarries({ leaks: [leak('t80b', 6.63), leak('type59', 9.5)], watertight: ['jpz_e100'], carries });
+  // exactly the row: carried, nothing fails
+  const { failures, carried } = judgeWatertightCarries({ leaks: [leak('t80b', 6.63)], watertight: ['jpz_e100'], carries });
   assert.deepEqual(failures, []);
-  assert.deepEqual(carried, [{ id: 't80b', leakL: 6.63, carriedL: 6.63 }, { id: 'type59', leakL: 9.5, carriedL: 9.78 }]);
+  assert.deepEqual(carried, [{ id: 't80b', leakL: 6.63, carriedL: 6.63 }]);
+}
+{
+  // below the row (229 ratchet): the row must come down to the measurement, so its slack never excuses a regrowth
+  const { failures, carried } = judgeWatertightCarries({ leaks: [leak('type59', 9.5), leak('t80b', 6.62)], watertight: [], carries });
+  assert.deepEqual(failures, ['type59: 9.5 L reaches the deep interior in 1 gap(s) [below its named carry of 9.78 L: lower its row to 9.5 L]',
+    't80b: 6.62 L reaches the deep interior in 1 gap(s) [below its named carry of 6.63 L: lower its row to 6.62 L]']);
+  assert.deepEqual(carried, []);
 }
 {
   // one step (0.01 L) above the row: grew
@@ -85,4 +92,4 @@ const carries = { leo2a4m: row(7.48), t80b: row(6.63), type59: row(9.78) };
 }
 
 console.log(`watertight-carry.selftest: ${Object.keys(shipped).length} named carries well formed against ${roster.length} fleet ids; `
-  + 'malformed rows named; carried at or below the row, failed above it, unlisted or stale');
+  + 'malformed rows named; carried at exactly the row, failed above or below it, unlisted or stale');

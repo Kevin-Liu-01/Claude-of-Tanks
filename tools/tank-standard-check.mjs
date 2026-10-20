@@ -3,6 +3,7 @@ import {readPhotoReference} from './photo-reference-record.mjs';
 import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
 import {readConceptDesign} from './first-party-concept-record.mjs';
 import {firstPartyConcept,partitionConceptIds,validateSelectedIds,conceptReceiptPassed} from './first-party-concept-policy.mjs';
+import {boundOrigin, toolServerOptions} from './tool-page-load.mjs';
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
 import { strictTrackClipPassed } from './track-clip-result.mjs';
 import { geometryReceiptPassed } from './geometry-gate-policy.mjs';
@@ -181,7 +182,8 @@ if ((ids.length && !noRender) || wantFixture) await stages.run('render', async (
   try {
     await withIsolatedCaptureBrowser({
     root: process.cwd(), logLevel: 'error',
-    server: { port: 7400 + Math.floor(Math.random() * 400), strictPort: false, hmr: false, watch: null },
+    // R4c (2026-10-16): 127.0.0.1 and the address really bound, never `localhost` (an IPv6 bind can leave 127.0.0.1 to another server)
+    server: toolServerOptions(7400, { span: 400 }),
   }, {
     headless: 'new',
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
@@ -190,7 +192,7 @@ if ((ids.length && !noRender) || wantFixture) await stages.run('render', async (
     page.setDefaultTimeout(120000);
     let pageError = null;
     page.on('pageerror', (e) => { pageError = String(e && e.message || e).slice(0, 160); });
-    const base = `http://localhost:${server.config.server.port}/tools/standard-check-page.html`;
+    const base = `${boundOrigin(server)}/tools/standard-check-page.html`;
     if (!noRender) {
       for (const id of ids) {
         pageError = null;

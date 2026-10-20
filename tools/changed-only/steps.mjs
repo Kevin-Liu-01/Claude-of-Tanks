@@ -135,13 +135,10 @@ export const DECLARED_DYNAMIC = Object.freeze({
     reads: [],
     note: 'readdirSync and reads of its own vehicleMarkingSeatGroups directory and index (stale shards, --check)',
   },
-  'src/ui/i18nDictionaries.ts': {
-    pin: 'a10171fb8b5b9857',
-    reads: [],
-    note: 'both computed imports load the URL a document names in its cot-i18n-catalog meta; tools/icons-page.html has none and Node has no document, so neither runs in a fleet step',
-  },
   'tools/presentation-centering.mjs': {
-    pin: '6f742cbf596859e7',
+    // 229 re-pin (R4c): the Vite server comes from toolServerOptions (127.0.0.1, strictPort false); the page origin
+    // from boundOrigin and its first load from loadReadyPage (tools/tool-page-load.mjs): where it serves, never what.
+    pin: 'a4e7b6de6e518f96',
     reads: [],
     // public/icons is read only by --check (the exported-icon audit) and --sync-assets; the chain runs --update, which
     // renders live builds and writes the anchors file alone.
@@ -149,7 +146,9 @@ export const DECLARED_DYNAMIC = Object.freeze({
     note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**); file reads are its own anchors file, and public/icons only under --check/--sync-assets (the chain runs --update)',
   },
   'tools/genIcons.mjs': {
-    pin: '1d226b77957ca428',
+    // 229 re-pin (R4c): the Vite server comes from toolServerOptions (127.0.0.1, strictPort false); the page origin
+    // from boundOrigin and its first load from loadReadyPage (tools/tool-page-load.mjs): where it serves, never what.
+    pin: '7d944ce5dd44bc5c',
     reads: [],
     note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**); file reads are its own manifest and images',
   },

@@ -1,6 +1,7 @@
 import {isPhotoReference} from './photo-reference-policy.mjs';
 import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
 import {validateSelectedIds,partitionConceptIds} from './first-party-concept-policy.mjs';
+import {uniqueIds} from './id-list.mjs';
 /**
  * The command line of tools/tank-release-check.mjs, parsed here so the selftest exercises it.
  * `--lane` (lane mode, 2026-10-16, test-speed R8e) skips the embedded `npm test` and
@@ -28,7 +29,8 @@ export function tankReleaseArgs(argv) {
  */
 export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = false} = {}) {
   if (!ids.split(',').every(id=>id.trim().length>0)) throw new Error('release requires nonempty tank IDs');
-  const selectedIds=validateSelectedIds(ids.split(','),Object.keys(FLEET_GROUP_BY_ID));
+  // a repeated id fails by name before any step (2026-10-16, test-speed R4c; tools/id-list.mjs)
+  const selectedIds=validateSelectedIds(uniqueIds(ids.split(','),'tank:release:check --ids'),Object.keys(FLEET_GROUP_BY_ID));
   const comparisons=partitionConceptIds(selectedIds).comparisons.filter(id=>!isPhotoReference(id));
   const selected=`--ids=${ids}`;
   // Fleet construction and builds share the resource queue with rendering.

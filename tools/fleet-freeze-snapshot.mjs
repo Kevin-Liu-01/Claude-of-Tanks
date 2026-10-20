@@ -17,6 +17,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { uniqueIds } from './id-list.mjs';
 
 const check = process.argv.includes('--check');
 const root = process.cwd();
@@ -27,7 +28,7 @@ const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 // (2026-09-23); the geometry freeze covers exactly the manifest.
 const ids = Object.keys(manifest.tanks || {}).sort();
 const idsArg = process.argv.find((arg) => arg.startsWith('--ids='))?.slice(6) ?? '';
-const scoped = idsArg && idsArg !== 'all' ? new Set(idsArg.split(',').filter(Boolean)) : null;
+const scoped = idsArg && idsArg !== 'all' ? new Set(uniqueIds(idsArg.split(',').filter(Boolean), 'fleet-freeze-snapshot --ids')) : null;
 if (scoped) for (const id of scoped) if (!ids.includes(id)) throw new Error(`[fleet-freeze] unknown id ${id} (not in public/icons/tank-assets.json)`);
 const previous = scoped ? JSON.parse(readFileSync(outputPath, 'utf8')).tanks ?? {} : {};
 const capturing = ids.filter((id) => !scoped || scoped.has(id) || !Object.hasOwn(previous, id));

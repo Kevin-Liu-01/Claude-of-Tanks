@@ -68,6 +68,9 @@ export function judgeWatertightCarries({ leaks, watertight, carries }) {
     const row = Object.hasOwn(carries, id) ? carries[id] : null;
     if (!row) failures.push(`${text} [no named carry]`);
     else if (!(leakL <= row.leakL)) failures.push(`${text} [grew past its named carry of ${row.leakL} L]`);
+    // A ratchet (229, critic r1): a carried hull that leaks less pins its row down, so the slack a partial fix leaves
+    // can never excuse a later regrowth. The measurement is deterministic at 0.01 L.
+    else if (leakL < row.leakL) failures.push(`${text} [below its named carry of ${row.leakL} L: lower its row to ${leakL} L]`);
     else carried.push({ id, leakL, carriedL: row.leakL });
   }
   for (const id of watertight) {

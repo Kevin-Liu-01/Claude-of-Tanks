@@ -3,7 +3,7 @@
 // the leak named, a fill-policy hull is measured on its policy boundary, and the shared build leaves the audit exactly
 // as it arrived (fills attached for the measurement are removed again).
 // 2026-10-16 (test-speed R7c): the named carries (docs/geometry-gate/watertight-carry.json) on the same real build: the
-// withheld-record leak passes when it is carried at its measured litres, fails when its row is 0.01 L lower (it grew)
+// withheld-record leak passes when it is carried at its measured litres, fails when its row is 0.01 L lower (it grew) or higher (lower the row)
 // and fails when it is not listed (a new leak); a listed hull that holds water fails as a stale row. The table rules and
 // the shipped list's form are proved in tools/watertight-carry.selftest.mjs.
 import assert from 'node:assert/strict';
@@ -55,6 +55,12 @@ try {
     audit.check('jpz_e100', tank);
     assert.throws(() => audit.finish(), new RegExp(`1 hull\\(s\\) fail[\\s\\S]*jpz_e100: ${leakL} L reaches the deep interior`
       + `[^\\n]*\\[grew past its named carry of ${lower} L\\]`));
+  }
+  {
+    const higher = +(leakL + 0.01).toFixed(2);
+    const audit = await createWatertightAudit({ records: {}, carries: { jpz_e100: row(higher) } });
+    audit.check('jpz_e100', tank);
+    assert.throws(() => audit.finish(), new RegExp(`jpz_e100: ${leakL} L reaches the deep interior[^\\n]*\\[below its named carry of ${higher} L: lower its row to ${leakL} L\\]`));
   }
   {
     const audit = await createWatertightAudit({ records: {}, carries: {} });
