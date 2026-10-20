@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { Group, Vector3 } from 'three';
-import '../vehicles/tankFactory.ts';
+// guards 229: no eager fleet factory (it cost 7 of the receipt's 12 s CPU): specs, the authority's calibrations
+// (prepareCounterDrone) and the solo battle load on their own, and every pinned value here reads the same without it.
 import { getSpec } from '../vehicles/specs.ts';
 import { createCombatState, selectShell, startMagazineReload, startPostShotReload, tickReload } from './damage.ts';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { createTankState, SIM_DT } from './movement.ts';
 import { createGameState, createBus, simStep } from '../game/state.ts';
-import { COUNTER_DRONE_CLASSES, soloHoverCounterDrone } from './counterDroneEngagement.test-support.mjs';
+import { COUNTER_DRONE_CLASSES, hoverCounterDrone, prepareCounterDrone, roofStations, soloHoverCounterDrone } from './counterDroneEngagement.test-support.mjs';
 
 const near = (actual, expected, message) => assert.ok(Math.abs(actual - expected) < 1e-8,
   `${message}: ${actual} vs ${expected}`);
@@ -136,13 +137,38 @@ for (const [name, createHarness] of [['solo', soloHarness], ['authority', author
     }
   }
 }
-// VH.15 counter-drone in the solo battle (227 guards): game/state.ts's own GunContext (its droneHit and 'drone:down')
-// downs a drone hovering 33 m off an M1A1's bow in the 8 capped 7.62 rounds, 42 ticks after the first, that the
-// authority takes (counterDroneEngagement.selftest pins the authority's; owner 2026-10-16 on the 226 preview: "machine
-// guns targeting drones is a lil too punishinng", hitsToDown 1.1).
+// VH.15 counter-drone hovers (227 guards; here since guards 229, where the authority and the solo battle are already
+// loaded: counterDroneEngagement.selftest holds the levers as data, the release check pins the pilot runs). Owner
+// 2026-10-16 on the 226 preview: "machine guns targeting drones is a lil too punishinng", hitsToDown 1.1.
+// On the authority, one lone station per class (the Rh 202 hull is the entry point's): a drone hovering about 33 m off
+// the bow takes the class's capped rounds (7.62 8 inside one burst; 12.7 6 and 30 mm 4, each only after a burst pause),
+// about 102 m out every round is below the cap (46, 39 and 20 rounds); ticks from the first round to the fall pinned;
+// a drone relaunched after a downed one starts clean. Deterministic: the same flight every run.
+{
+  const anchors = Object.fromEntries(Object.entries(COUNTER_DRONE_CLASSES).filter(([name]) => name !== 'rh202').map(([name, c]) => [name, c.anchor]));
+  await prepareCounterDrone(Object.values(anchors));
+  const ticks = (s) => (s === null ? null : Math.round(s / SIM_DT));
+  const TICKS = { rifle: { at30: 42, at100: 617 }, heavy: { at30: 117, at100: 838 }, cannon: { at30: 135, at100: 812 } };
+  for (const [name, id] of Object.entries(anchors)) {
+    const c = COUNTER_DRONE_CLASSES[name], near = hoverCounterDrone({ specId: id }), far = hoverCounterDrone({ specId: id, distanceM: 100, seconds: 30 });
+    assert.ok(near.rangeM > 25 && near.rangeM < 38 && far.rangeM > 95 && far.rangeM < 110, `${id}: the hovers sit about 33 m and 102 m out (${near.rangeM?.toFixed(1)}, ${far.rangeM?.toFixed(1)} m)`);
+    assert.deepEqual([near.rounds, ticks(near.downedS)], [[c.capped], TICKS[name].at30],
+      `a lone ${name} station downs a drone hovering 33 m out in ${c.capped} capped rounds, ${TICKS[name].at30} ticks after its first (measured ${JSON.stringify(near.rounds)}, ${ticks(near.downedS)} ticks; hitsToDown 1 gives fewer)`);
+    assert.equal(near.insideFirstBurst, !c.survivesBurst, c.survivesBurst
+      ? `a lone ${name} station's first capped burst leaves the drone flying (${near.totalRounds} rounds; a burst is ${roofStations(id)[0].burstRounds})`
+      : `a lone ${name} station still downs a drone inside one capped burst`);
+    assert.deepEqual([far.rounds, ticks(far.downedS)], [[c.at100], TICKS[name].at100],
+      `below the cap (102 m) a lone ${name} station needs ${c.at100} rounds, ${TICKS[name].at100} ticks (measured ${JSON.stringify(far.rounds)}, ${ticks(far.downedS)} ticks)`);
+  }
+  const twice = hoverCounterDrone({ specId: anchors.rifle, flights: 2, seconds: 45 });
+  assert.deepEqual(twice.flights.map((f) => [f.rounds, ticks(f.downedS)]), [[[8], 42], [[8], 42]],
+    'a drone relaunched after a downed one starts with no strikes on it: the second flight takes the same 8 rounds');
+}
+// The solo battle (227 guards): game/state.ts's own GunContext (its droneHit and 'drone:down') downs a drone hovering
+// 33 m off an M1A1's bow in the 8 capped 7.62 rounds, 42 ticks after the first, that the authority takes above.
 {
   const h = soloHoverCounterDrone({ specId: 'm1a1', solo: { createGameState, createBus, simStep } });
   assert.deepEqual([h.rounds, Math.round(h.downedS / SIM_DT), h.insideFirstBurst], [[COUNTER_DRONE_CLASSES.rifle.capped], 42, true],
     `solo: a lone 7.62 downs the hovering drone in the authority's 8 rounds and 42 ticks (measured ${JSON.stringify(h.rounds)}, ${h.downedS} s)`);
 }
-console.log('weaponReload: shared-gun ammo, magazine preservation, concurrent weapons, BMP-3 dual guns, solo/authority and snapshots, the solo counter-drone hover PASS');
+console.log('weaponReload: shared-gun ammo, magazine preservation, concurrent weapons, BMP-3 dual guns, solo/authority and snapshots, the counter-drone hovers (authority: 7.62 / 12.7 / 30 mm at 33 m and 102 m, a relaunch; solo: 7.62) PASS');

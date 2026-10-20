@@ -57,8 +57,10 @@ collision shards and run `node src/sim/deployment.selftest.mjs` and
 `node src/game/deploymentParity.selftest.mjs`. Bot route
 changes must also pass `node server/authoritativeBots.selftest.mjs` on all maps.
 Counter-drone (roof stations, the weapon profiles' drone fields, `AERIAL_RULES.drone`)
-holds the owner's 226 rule: run `node src/sim/counterDroneEngagement.selftest.mjs` (every
-station carries its class's 226 numbers; pinned hovers and runs on the authority) and
-`node src/sim/weaponReload.selftest.mjs` (the solo battle's hover), and for new or re-armed
-stations `node tools/counter-drone-engage.mjs --ids=<ids> --check` (per vehicle: class,
-hovers against the owner's literal counts, attack runs, elevation reach).
+holds the owner's 226 rule: run `node src/sim/counterDroneEngagement.selftest.mjs` (data
+only: every station carries its class's 226 numbers, the elevation ratchet),
+`node src/sim/weaponReload.selftest.mjs` (the pinned hovers on the authority and in the
+solo battle) and `node tools/counter-drone-engage.mjs --set=reference,pair --check` (every
+pinned pilot run exactly, the owner's band; `tank:release:check` runs it), and for new or
+re-armed stations `--ids=<ids> --check` (per vehicle: class, hovers against the owner's
+literal counts, attack runs, elevation reach).

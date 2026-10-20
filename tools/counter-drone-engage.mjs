@@ -28,12 +28,18 @@
 // m1a1_abrams_hc). --check exits 1 when a station carries no class's numbers, a hover leaves the drone flying, a lone
 // station downs a hovering drone faster than the owner's rule allows, or a level-run tally leaves its class's band (the
 // bands are wide enough for any hull of the class, so the hovers are what separate the 226 value from the old one).
+// With --check, the ids COUNTER_DRONE_PINS pins (the lone anchors m1a1 and t90a_2004, seeds 1-8; the 30 mm + 7.62 roofs, one
+// seed each) must also fly every pinned level run exactly (outcome, rounds, ticks), every station of a pinned roof must
+// fire in each, a pinned roof's bow hover must match, and the lone anchors must down 4-11 of their 48 pinned runs (the
+// owner's band). tank:release:check runs `--set=reference,pair --check` (guards 229: the pilot runs left npm test).
 // Changed-only: name the ids whose stations changed; nothing here builds geometry (the authority reads specs: about
 // 3 s to load, then roughly 0.1 s a run).
 import { writeFileSync } from 'node:fs';
+import { SIM_DT } from '../src/sim/movement.ts';
 import {
   COUNTER_DRONE_APPROACHES, COUNTER_DRONE_BANDS, COUNTER_DRONE_CLASSES, COUNTER_DRONE_SETS, LEVEL_APPROACHES, counterDroneCell,
   hoverCounterDrone, prepareCounterDrone, roofStations, stationClass,
+  COUNTER_DRONE_PINS, pinnedRunRow,
 } from '../src/sim/counterDroneEngagement.test-support.mjs';
 
 const arg = (name, fallback = null) => { const a = process.argv.find((x) => x.startsWith(`--${name}=`)); return a ? a.slice(name.length + 3) : fallback; };
@@ -52,6 +58,7 @@ if (!Number.isInteger(runs) || runs < 1) { console.error('--runs must be a posit
 const t0 = performance.now();
 await prepareCounterDrone(ids.flatMap((id) => id.split('+')));
 const report = { runs, seed0, approaches, vehicles: {} };
+const pinnedDowned = {};
 let failures = 0;
 const pct = (x) => Number.isFinite(x) ? x.toFixed(1) : '-';
 for (const id of ids) {
@@ -103,8 +110,42 @@ for (const id of ids) {
     if (!inside) failures++;
     console.log(`  band ${band.downedPct[0]}-${band.downedPct[1]} % (${band.why}): ${inside ? 'inside' : 'OUTSIDE'}`);
   }
+  // the exact pins (COUNTER_DRONE_PINS, guards 229): every pinned level run, read from this cell when it covers the
+  // pinned seeds (runs are independent per approach and seed), else flown on its own; a roof's every station must fire
+  // in every pinned run; the bow hover's rounds and ticks
+  const pin = COUNTER_DRONE_PINS.runs[id];
+  if (flag('check') && pin && group.length === 1) {
+    const covered = LEVEL_APPROACHES.every((a) => approaches.includes(a)) && seed0 <= pin.seed0 && seed0 + runs >= pin.seed0 + pin.runs;
+    const pinned = (covered ? cell.rows : counterDroneCell({ specIds: [id], runs: pin.runs, seed0: pin.seed0 }).rows)
+      .filter((r) => LEVEL_APPROACHES.includes(r.approach) && r.seed >= pin.seed0 && r.seed < pin.seed0 + pin.runs)
+      .sort((a, b) => LEVEL_APPROACHES.indexOf(a.approach) - LEVEL_APPROACHES.indexOf(b.approach) || a.seed - b.seed);
+    const measured = pinned.map(pinnedRunRow), expected = pin.rows.split(' ');
+    const moved = expected.map((want, k) => (measured[k] === want ? null : `${pinned[k]?.approach}:${pinned[k]?.seed} ${want} -> ${measured[k]}`)).filter(Boolean);
+    const silent = stations.length > 1 ? pinned.filter((r) => r.rounds[0].some((n) => !(n > 0))).map((r) => `${r.approach}:${r.seed}`) : [];
+    if (moved.length || measured.length !== expected.length) failures++;
+    if (silent.length) failures++;
+    pinnedDowned[id] = pinned.filter((r) => r.outcome === 'downed').length;
+    console.log(`  pinned runs (seeds ${pin.seed0}-${pin.seed0 + pin.runs - 1}, front/side/rear): ${moved.length || measured.length !== expected.length
+      ? `MOVED ${moved.length} of ${expected.length}: ${moved.slice(0, 6).join('; ')}${moved.length > 6 ? '; ...' : ''} (re-rule with the owner before re-pinning)`
+      : `${expected.length} exact, ${pinnedDowned[id]} downed`}${silent.length ? `; a station SILENT in ${silent.join(', ')}` : ''}`);
+  }
+  const hoverPin = COUNTER_DRONE_PINS.hovers[id];
+  if (flag('check') && hoverPin && hovers[0]) {
+    const h = hovers[0], got = [h.rounds, h.downedS === null ? null : Math.round(h.downedS / SIM_DT)];
+    const same = JSON.stringify(got) === JSON.stringify(hoverPin);
+    if (!same) failures++;
+    console.log(`  pinned bow hover: ${same ? `${JSON.stringify(got)} exact` : `MOVED ${JSON.stringify(hoverPin)} -> ${JSON.stringify(got)}`}`);
+  }
   report.vehicles[id] = { cls, stations, hovers, attack: { n: cell.n, downed: cell.downed, strike: cell.strike, other: cell.other,
     downedPct: cell.downedPct, downedCI: cell.downedCI, stationFiredRuns: fired, rows: cell.rows } };
+}
+// the owner's band on the lone anchors' pinned runs (4-11 of 48 at hitsToDown 1.1; 1 downs 14)
+const { loneBand } = COUNTER_DRONE_PINS;
+if (flag('check') && loneBand.ids.every((id) => id in pinnedDowned)) {
+  const downed = loneBand.ids.reduce((sum, id) => sum + pinnedDowned[id], 0);
+  const inside = downed >= loneBand.downed[0] && downed <= loneBand.downed[1];
+  if (!inside) failures++;
+  console.log(`\nthe owner's lone machine-gun band: ${loneBand.ids.join(' + ')} down ${downed} of ${loneBand.of} pinned runs (${loneBand.downed[0]}-${loneBand.downed[1]}): ${inside ? 'inside' : 'OUTSIDE'}`);
 }
 console.log(`\n${ids.length} vehicles in ${((performance.now() - t0) / 1000).toFixed(1)} s${flag('check') ? `; ${failures} check failure(s)` : ''}`);
 const json = arg('json');

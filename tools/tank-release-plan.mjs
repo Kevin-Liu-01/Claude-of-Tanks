@@ -40,6 +40,9 @@ export function tankReleaseSteps(ids, gate, node = process.execPath) {
     gpu('track-duplicate-audit',selected),
     gpu('muzzle-bore-probe',selected),
     gpu('turret-barrel-circularity',selected),
+    // guards 229: counter-drone on the authority, the pilot runs npm test no longer flies: the lone anchors' and the
+    // 30 mm + 7.62 roofs' level runs pinned exactly, the owner's rule on every lone station, the class bands
+    cpu('counter-drone-engage','--set=reference,pair','--check'),
     {command:'npm',args:['test'],capture:false},
     {command:'npm',args:['run','build:private'],capture:true},
   ];
