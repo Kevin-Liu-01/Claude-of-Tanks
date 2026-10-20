@@ -434,8 +434,9 @@ try {
           const t=tier(k),main=mainStage?.[k]??[0,0,0];
           const own=t===2?n.union:t===1?n.battle:t===0?n.rest:0;
           if(t>=0&&own>0)failures.push(`the ${what} covers ${own} px of reticle ink its plan clears (tier ${t}; ${n.box.join(',')})`);
-          // (a medal card whose place clears the battle sight only waits whenever the scope is up, scopedShort above, so no
-          // scope ink is ever under it: its ink is the battle sight's, held to main's battle ink)
+          // (a medal card whose place clears the battle sight only waits whenever the scope is up, and this receipt fails it
+          // if it ever shows there (scopedShort above), so no scope ink is ever under it: its ink is the battle sight's, held
+          // to main's battle ink; coordinator ruling 2026-10-20)
           const [shown,mainShown]=k==='m'&&t>=0&&t<2?[n.battle,main[1]]:[n.union,main[0]];
           if(shown>mainShown||n.rest>main[2])failures.push(`the ${what} covers more reticle ink than main (${n.union}/${n.battle}/${n.rest} px; main ${main[0]}/${main[1]}/${main[2]})`);
           if(k==='m'&&t<0)failures.push('the medal card is shown where its plan has no place');

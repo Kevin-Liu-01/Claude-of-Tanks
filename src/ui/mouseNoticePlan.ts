@@ -537,6 +537,8 @@ const LAST_SCALE_COSTS = [...SCALE_COSTS, 2400, 3600] as const;
  *  lamp only where no such place exists. A px sideways costs 4 (main's card is centred: it goes down the centre line
  *  before it goes aside). The full card in any place clear of a keep-out beats the compact card at that keep-out (main's
  *  look wherever the full card fits). */
+/** Sideways off the place a box keeps centred on (the countdown on the detection's): never worth a px. */
+const CENTRED_SHIFT_COST = 1e6;
 const MEDAL_SHARE_ALERT_COST = 60, MEDAL_SHARE_DETECTION_COST = 600, MEDAL_SHARE_BOTH_COST = 630, MEDAL_SHIFT_COST = 4;
 /* Where the card still waits on the lamp (2026-10-20; with these prices, MEDAL_LANES and MEDAL_COMPACT_COST): no place
    down the centre line between the lamp and the aim point clears the keep-out, the instruments, both notices and the
@@ -863,13 +865,15 @@ const jointScratch: number[] = [NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN];
 const partnerScratch: number[] = [NaN, NaN, NaN, NaN];
 interface Single { y: number; x: number; cost: number; lane: number; readonly giveWay: number[] }
 const single = (): Single => ({ y: 0, x: 0, cost: Infinity, lane: 0, giveWay: [NaN, NaN, NaN, NaN] });
-/** The cheapest place for one `w` x `h` box (x: its centre) from `yPref` off `avoid`; its cost includes `base`
+/** The cheapest place for one `w` x `h` box (x: its centre) from `yPref` off `avoid`, sideways from `centre` at `shift` a
+ *  px; its cost includes `base`
  *  (Infinity when none beats `bound`), `lane` the part the lanes' yielding makes up. */
 function singleBest(env: Env, w: number, h: number, yPref: number, base: number, bound: number, out: Single,
   avoid: readonly PlanRect[] = NONE, price: LanePrice = BATTLE_LANES, partner: readonly number[] | null = null, shift = SHIFT_COST,
-  edges = false): Single {
+  edges = false, centre = env.input.width / 2): Single {
   const { input } = env;
-  const cx = input.width / 2;
+  // (the line the box keeps to: the window's centre, or another place's centre)
+  const cx = centre;
   out.cost = Infinity; out.lane = 0;
   const hh = Math.ceil(h);
   // `edges`: the rows just clear of each blocking box (the fixed boxes and keep-out with their gaps, the discs, `avoid`),
@@ -1086,16 +1090,16 @@ function searchPair(input: MouseNoticeInput, envs: readonly Env[]): PairResult |
 
 const placeScratch = single();
 /** A candidate box for placeOne: its size, base cost and the notice places it keeps off. */
-type Option = readonly [w: number, h: number, base: number, avoid: readonly PlanRect[], shift?: number, edges?: boolean];
+type Option = readonly [w: number, h: number, base: number, avoid: readonly PlanRect[], shift?: number, edges?: boolean, centre?: number];
 /** The cheapest place for any of `options` from `yPref` in `env` (its keep-out; the lanes blocking or yielding). */
 function placeOne(env: Env, options: readonly Option[], yPref: number, price: LanePrice, partner: readonly number[] | null,
   out: { cost: number; option: number; s: Single }): boolean {
   const one = placeScratch;
   out.cost = Infinity;
   for (let i = 0; i < options.length; i++) {
-    const [w, h, base, avoid, shift, edges] = options[i];
+    const [w, h, base, avoid, shift, edges, centre] = options[i];
     if (base >= out.cost) continue;
-    singleBest(env, w, h, yPref, base, out.cost, one, avoid, price, partner, shift, edges);
+    singleBest(env, w, h, yPref, base, out.cost, one, avoid, price, partner, shift, edges, centre);
     if (one.cost < out.cost) {
       out.cost = one.cost; out.option = i;
       out.s.x = one.x; out.s.y = one.y; out.s.cost = one.cost; out.s.lane = one.lane;
@@ -1185,6 +1189,28 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     const ladder = (tier: number, share: boolean) => tier && !share ? SCALES : LAST_SCALES;
     let tier = place((share, t) => ladder(t, share).map((s, i) => [size.w * s, size.h * s, LAST_SCALE_COSTS[i], share ? alertOnly : notices] as const),
       yPref, price, shareDetection);
+    // The countdown then takes the detection's place, centred on it and starting within its height, where that costs it
+    // neither size nor keep-out: nothing spots the player before the roll-out, so the two never show together, and the
+    // alert it can show with (H, R and E work before the roll-out) keeps its own place beside it, the pair aligned
+    // (critic, 2026-10-20: off both places on a 1080p window it sat about 200 px off the alert's centre line). Where the
+    // centre line leaves it less room (the scope's upper arm and the alert's place below the detection's), the larger place
+    // aside stands.
+    if (shareDetection && tier >= 0) {
+      const scale = chosen[found.option][0] / size.w, envs = envsAt(TIERS.indexOf(tier as 2 | 1 | 0)), centre = det.x + det.w / 2;
+      const placed = { x: found.s.x, y: found.s.y, option: found.option, cost: found.cost, giveWay: [...found.s.giveWay] };
+      const kept = chosen;
+      let centred = false;
+      for (let i = 0; i < LAST_SCALES.length && !centred && LAST_SCALES[i] >= scale - 1e-9; i++) {
+        const s = LAST_SCALES[i];
+        chosen = [[size.w * s, size.h * s, LAST_SCALE_COSTS[i], alertOnly, CENTRED_SHIFT_COST, false, centre]];
+        centred = placeOne(envs[envs.length - 1], chosen, Math.ceil(det.y), price, hasLanes ? both : null, found)
+          && Math.abs(found.s.x - centre) < .5 && Math.abs(found.s.y - det.y) <= det.h;
+      }
+      if (!centred) {
+        chosen = kept; found.option = placed.option; found.cost = placed.cost; found.s.x = placed.x; found.s.y = placed.y;
+        for (let k = 0; k < 4; k++) found.s.giveWay[k] = placed.giveWay[k];
+      }
+    }
     // The last resorts (a window too small for any of those; the census never comes here): a place clear of the resting
     // sight on either notice's place, then over an instrument or a lane, never main's own place on the aim point.
     if (tier < 0) {

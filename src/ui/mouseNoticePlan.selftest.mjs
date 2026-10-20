@@ -217,18 +217,12 @@ assert.equal(detectionHeight(248, true), 32);
 // 4. Every viewport, with and without the objective: the detection and the alert clear everything the reticle draws
 //    (main's own type size, the detection's second line wherever main shows it); the countdown, the revive count and
 //    the medal card each have a place (none falls back to the CSS defaults) clear of the keep-out its tier names, off
-//    both notices' places (the countdown sharing only the detection's where SHARED lists it, as nothing spots the player
-//    before the roll-out; never the revive count, nor the countdown the alert's, as an alert can show with either; the
-//    medal card may share either, as it waits while anything shown meets it: 4c); nothing leaves the screen or touches
-//    an instrument;
+//    both notices' places (the countdown, which nothing spots before the roll-out, takes the detection's place centred
+//    on it wherever it fits there, so it lines up with the alert it can show with (critic 2026-10-20); never the revive
+//    count, nor the countdown the alert's, as an alert can show with either; the medal card may share either, as it
+//    waits while anything shown meets it: 4c); nothing leaves the screen or touches an instrument;
 //    a lane an element crosses keeps a row while it shows (and while the detection and the alert show together), and
 //    keeps all its rows while nothing shows (the plan holds no lane change outside `giveWay`).
-// (481 x 700: the scope's heaviest case seats its row with the chip over the sight, its drive gauge under the stacked
-// zoom plate (r10), so the band over the ring is the reticle's; the detection takes the one place left under the sight
-// and the countdown, which no enemy sees before the roll-out, shares it)
-// (844 x 390: on the detection's place the countdown clears the whole reticle at 45 %, where off both notices it cleared
-// only the resting sight)
-const SHARED = { '768x600': ['countdown'], '481x700': ['countdown'], '844x390': ['countdown'] };
 const TIER_FLOOR = { countdown: 2, revive: 1, medal: 1 };
 // (844 x 390's notices take the one band clear of the bloomed sight: its countdown and revive count clear the resting
 // sight, off both notices, rather than cover one. 768 x 600's drive gauge ends at the widest gun-limit chip's left edge
@@ -249,7 +243,7 @@ const rowPx = (side, lane) => side === 0 && lane.bottom - lane.top >= 62 ? 62 : 
 const EMPTIED = ['844x390 detection l', '844x390 revive l', '844x390 detection+alert l', '844x390s alert l', '844x390s revive l',
   '844x390s revive r', '844x390s detection+alert l',
   '768x600 alert l', '768x600 detection+alert l', '768x600s revive l', '481x700 alert r', '481x700 detection+alert r'];
-const emptied = [];
+const emptied = [], offCentre = [], centred = [];
 let plans = 0, slowest = 0, ms = 0, work = 0, mostWork = 0;
 for (const v of VIEWPORTS) {
   for (const objective of [true, false]) {
@@ -290,7 +284,12 @@ for (const v of VIEWPORTS) {
         const sharesAlert = overlap(r, alert, MOUSE_NOTICE_GAP_PX - .01);
         if (label === 'countdown') assert.ok(!sharesAlert, `${name}: the countdown keeps off the alert's place (H, R and E raise alerts before the roll-out)`);
         if (label === 'revive') assert.ok(!shares, `${name}: the revive count keeps off both notices' places`);
-        if (label !== 'medal' && shares) assert.ok(SHARED[vp]?.includes(label), `${name}: the ${label} shares a notice's place`);
+        // the countdown on the detection's place is centred on it and starts within its height, but where no such place
+        // clears the whole reticle (OFF_CENTRE: then on the detection's place still beats a reduced keep-out)
+        if (label === 'countdown' && shares && !(Math.abs(r.x + r.w / 2 - (det.x + det.w / 2)) < .5 && Math.abs(r.y - det.y) <= det.h)) {
+          offCentre.push(`${vp}${objective ? '' : 's'}`);
+        }
+        if (label === 'countdown' && shares && !offCentre.includes(`${vp}${objective ? '' : 's'}`)) centred.push(`${vp}${objective ? '' : 's'}`);
       }
       // the lanes' bands while it shows: off the box, each keeping a row
       for (let side = 0; side < 2; side++) {
@@ -329,6 +328,15 @@ for (const v of VIEWPORTS) {
   }
 }
 assert.deepEqual(emptied, EMPTIED, 'only these elements leave a lane without a row while they show');
+// The countdown takes the detection's place, centred on it, where that costs it neither size nor keep-out (coordinator
+// ruling 2026-10-20, after the critic's 1080p frame): there the pre-battle "5" lines up with the alert it can show with.
+// Where the centre line leaves it less room (the scope's upper arm, the alert's place under the detection's: 1080p would
+// take it from full size to 45 %, 1366 x 768 to 60 %), the full-size place aside stands, deliberately; alerts do fire
+// before the roll-out (playerBattleActions: R and E act once game.phase is 'battle', which the deployment countdown is).
+// On 844 x 390 and 768 x 600 it shares the detection's place off its centre, the last place clear of the whole reticle.
+assert.deepEqual(centred, ['1024x600', '1024x600s', '1000x600', '1000x600s', '2560x1440', '2560x1440s', '3440x1440', '3440x1440s',
+  '768x1024s', '481x700', '481x700s', '1000x551', '1000x551s'], 'the countdown sits centred on the detection\'s place where it costs nothing');
+assert.deepEqual(offCentre, ['844x390', '768x600'], 'and shares it off its centre only where no other place clears the whole reticle');
 // Planning runs once per viewport and HUD arrangement (battleHudLayout.ts caches the last few, and waits for a resize to
 // settle). Its work is counted in bands (each a sorted, merged scan of the fixed boxes), so the bound holds on any machine.
 assert.ok(work / plans < 2000 && mostWork < 4500, `planning stays cheap (${Math.round(work / plans)} bands a plan, ${mostWork} at most)`);
