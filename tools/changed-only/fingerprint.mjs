@@ -266,7 +266,8 @@ export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, en
       outputFiles: outputFiles.map(rel).sort(),
       toolFiles: [...toolFiles].map(rel).sort(),
       foreignTables: [...foreignTables].map(rel).sort(),
-      rowTables: [...new Set([...buildReadTables, ...perIdTables])].sort(),
+      // rowReads: tables the step's tool reads at the id it measures, by a declared computed path (steps.mjs)
+      rowTables: [...new Set([...buildReadTables, ...perIdTables, ...(step.rowReads ?? [])])].sort(),
     };
   }
 

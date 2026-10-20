@@ -35,6 +35,7 @@ const state = computeState({ root, steps: STEPS });
 // The accessors take effect: seats key the roof-gun inventory per id, not the whole table.
 assert.deepEqual(state.steps.seats.foreignTables, [], 'seats reach no table whole');
 assert.ok(state.steps.seats.rowTables.includes('auxiliaryInventory'), 'seats key the inventory per id');
+assert.ok(state.steps.gunLines.rowTables.includes('geometryLedger'), 'gun lines key each id\'s fleet-ledger row (rowReads)');
 assert.deepEqual(state.globalReasons, [], 'the fleet decomposes');
 for (const step of STEPS) assert.ok(state.steps[step.name].decomposed, `${step.name}: ${state.steps[step.name].reasons.join('; ')}`);
 assert.ok(state.ids.length >= 200, 'the roster is read');

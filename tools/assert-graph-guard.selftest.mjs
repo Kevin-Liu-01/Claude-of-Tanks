@@ -11,7 +11,8 @@ const SELFTEST_GRAPH_GUARD = `--import=${new URL('./assert-graph-guard.mjs', imp
 
 const run = (body) => spawnSync(process.execPath, ['--max-old-space-size=512', '--input-type=module', '-e', body], {
   encoding: 'utf8', timeout: 60_000,
-  env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} ${SELFTEST_GRAPH_GUARD}`.trim() },
+  // only the guard: the child gets no other options or variables (its heap cap is the argument above)
+  env: { NODE_OPTIONS: SELFTEST_GRAPH_GUARD },
 });
 // A scene large enough that node's own message (inspect at depth 1000, then a line diff) would not fit 512 MB.
 const SCENE = `import * as THREE from 'three';

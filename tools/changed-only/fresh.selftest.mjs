@@ -16,8 +16,11 @@ const manifest = readManifest(root);
 if (!manifest) {
   console.log(`changed-only fresh.selftest: PASS (no ${MANIFEST_PATH} yet: bootstrap it with npm run tank:regen:changed -- --all and commit the outputs and the manifest)`);
 } else {
-  const state = computeState({ root, steps: STEPS, toolchainOverride: manifest.toolchain });
+  // One state when the toolchain matches the manifest's (the usual case); a second, judged on the manifest's
+  // toolchain, only when it differs (229: computeState is 55-75 s warm).
   const actual = computeState({ root, steps: STEPS });
+  const state = actual.toolchain === manifest.toolchain ? actual
+    : computeState({ root, steps: STEPS, toolchainOverride: manifest.toolchain });
   if (actual.toolchain !== manifest.toolchain) {
     console.log(`changed-only fresh.selftest: note: this toolchain differs from the manifest's (${actual.toolchainParts.join(', ')}); judged on the manifest's`);
   }

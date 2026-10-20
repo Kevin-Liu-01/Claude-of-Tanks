@@ -23,10 +23,9 @@ import { gatherPacingShares, pacingRunDirectory, pacingShardReport } from './bat
 //   COT_PACING_REPORT=<file> writes the match records: tools/pacing-tail.mjs merges a run played in shards, judges it
 //   by the same gate and, given the PR head's records on the same matches, compares the share inside 90 s.
 // - COT_PACING_JOBS=<n> plays the maps on n worker threads of this file (default: a quarter of the cores, 1 to 4;
-//   COT_PACING_JOBS=1 plays them on the main thread). Every mode above takes it for what this receipt plays itself,
-//   except that the core run with a run directory plays the unclaimed shares one at a time on the main thread unless
-//   COT_PACING_JOBS is set (then up to n at once, one worker each): a pool counts this receipt as one slot, so it runs
-//   one thread however the pool orders it beside the shards (test-speed R9a). The maps are dealt
+//   COT_PACING_JOBS=1 plays them on the main thread). Every mode above takes it for what this receipt plays itself;
+//   the core run with a run directory plays only the shares no shard claimed (none in an ordinary pool run), up to n
+//   at once, one worker each (229: one thread made a judge whose shards were skipped play 132 matches in a row). The maps are dealt
 //   round-robin and each worker plays its share in MAPS order; the records and the log come back in MAPS order and
 //   sample order, so the report, the printed lines and the gate equal the one-thread run's. Each match is a function of
 //   its seed and map alone (the shards of tools/pacing-tail.mjs rely on it too); a record that moved with the job count
@@ -40,8 +39,11 @@ const PARTIAL = MAPS.length < MAP_IDS.length;
 const RUN_DIR = process.env.COT_SELFTEST_RUN_DIR;
 const JOBS = Math.floor(Number(process.env.COT_PACING_JOBS))
   || Math.max(1, Math.min(4, Math.floor(availableParallelism() / 4)));
-// The unclaimed shares of the core run this receipt plays at once, each on its own worker thread when more than one.
-const SHARE_PLAYERS = Math.floor(Number(process.env.COT_PACING_JOBS)) || 1;
+// The unclaimed shares of the core run this receipt plays at once, each on its own worker thread when more than one. In a
+// pool every shard claims its own share before the judge is admitted, so this matters when the shards did not run
+// (--only on the judge, or their PASSes reused while the judge's was not): then the judge plays them JOBS at a time, as
+// the one-receipt run did (229, critic r1: one thread made that 132 matches in a row).
+const SHARE_PLAYERS = JOBS;
 // Each worker's old-generation cap: max(2048, 1.5 x the one-thread run's peak heap). That run's whole-process max RSS,
 // an upper bound on its heap, was 1,118 MB over all 33 maps (2026-10-13), and a worker plays at most 9 of them.
 const WORKER_HEAP_MB = 2048;

@@ -708,7 +708,9 @@ exactly once, at their seeds, played on this tree. It judges the 132 by the same
 
 - **Who makes the directory.** `tools/run-selftests.mjs` makes a fresh directory for each invocation. A gate that runs
   the receipts with its own pool must export one fresh directory for each pool invocation, for example
-  `export COT_SELFTEST_RUN_DIR=$(mktemp -d $G/selftest-run.XXXX)` before `pool.mjs`. A directory reused by a later
+  `export COT_SELFTEST_RUN_DIR=$(mktemp -d $G/selftest-run.XXXX)` before `pool.mjs`. Such a pool must also launch its
+  children with `selftestChildEnv()` from `tools/run-selftests.mjs` (or add its `SELFTEST_GRAPH_GUARD` to
+  `NODE_OPTIONS`), so a failing assert on a three.js object fails with labels instead of dumping both scene graphs. A directory reused by a later
   invocation would hand it the records an earlier invocation played, on whatever the tree held then (records name
   their tree's path, not its contents). The pool should also admit the judges
   (`SELFTEST_LAST_FILES` in `tools/run-selftests.mjs`) after the rest. Without a directory the judge cannot see the
@@ -725,9 +727,10 @@ exactly once, at their seeds, played on this tree. It judges the 132 by the same
 - **Ordering.** The runner admits the judge after every other receipt, so in `npm test` it only merges. A pool that
   orders receipts some other way still plays each share once. The judge waits while a live process holds a share's
   claim, however long it plays; a pool's timeout bounds a hung one, whose claim then dies. It gives an unclaimed share
-  10 s in case a shard is starting, and then claims and plays what is left, one share at a time on its own thread, so
-  it never runs more threads than the one slot a pool counts (`COT_PACING_JOBS=n` plays n shares at once on worker
-  threads).
+  10 s in case a shard is starting, and then claims and plays what is left, `COT_PACING_JOBS` shares at once on
+  worker threads (by default a quarter of the cores, 1 to 4). In an ordinary pool run every shard has claimed its own
+  share by then, so the judge plays nothing; the threads matter when the shards did not run (`--only` on the judge, or
+  their PASSes reused while the judge's was not).
 - **Missing shares.** The judge always judges all 132. Without a run directory, as in
   `node server/battlePacing.selftest.mjs`, it plays them all itself, on `COT_PACING_JOBS` worker threads (by default
   a quarter of the cores, at most four).

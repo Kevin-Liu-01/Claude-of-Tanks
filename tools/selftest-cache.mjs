@@ -14,7 +14,8 @@ const ROOT_DIRS = new Set(['src', 'tools', 'docs', 'public', 'server', 'scripts'
 const SOURCE_EXTENSIONS = new Set(['.ts', '.mts', '.mjs', '.js', '.cjs', '.json', '.tsx', '.jsx', '.html']);
 const MODULE_EXTENSIONS = new Set(['.ts', '.mts', '.mjs', '.js', '.cjs', '.tsx', '.jsx']);
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', '.vercel', '.qa-dev', '.qa-map-environment']);
-const GLOBAL_SALT_FILES = ['package-lock.json', 'tools/selftest-cache.mjs', 'tools/selftest-inputs.mjs'];
+// assert-graph-guard.mjs: every child preloads it (run-selftests.mjs selftestChildEnv) and no receipt imports it.
+const GLOBAL_SALT_FILES = ['package-lock.json', 'tools/selftest-cache.mjs', 'tools/selftest-inputs.mjs', 'tools/assert-graph-guard.mjs'];
 const LEAF_FILE = /(?:^|\/)(?:package-lock\.json|\.package-lock\.json|[^/]+\.lock)$|\/node_modules\//;
 const BROAD_DIRS = ['src', 'tools', 'server', 'public', 'docs', 'scripts', 'cloudflare'];
 export const sha1 = text => createHash('sha1').update(text).digest('hex');
@@ -39,13 +40,14 @@ export function defaultSelftestCacheDir(root, env = process.env) {
 }
 
 export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.env,
-  argv = process.argv, nodeVersion = process.version, alwaysRun = [], fixtureLive = [] } = {}) {
+  argv = process.argv, nodeVersion = process.version, alwaysRun = [], fixtureKeyed = [] } = {}) {
   cacheDir ??= defaultSelftestCacheDir(root, env);
   const enabled = env.COT_SELFTEST_CACHE !== '0' && !argv.includes('--all');
   const freshFiles = new Set(alwaysRun);
-  // Receipts whose closure holds a browser or git tool they never drive against this checkout (fixtures, plans):
-  // keyed by their inputs like any other receipt (run-selftests.mjs SELFTEST_FIXTURE_LIVE_FILES names why).
-  const keyedLive = new Set(fixtureLive);
+  // Receipts whose closure holds tools they never run against this checkout (fixture repositories, plans, static
+  // reads): a browser or git tool, a computed import or a whole-environment read there is data to them, so they are
+  // keyed by their inputs like any other receipt (run-selftests.mjs SELFTEST_FIXTURE_KEYED_FILES names why).
+  const keyedFixtures = new Set(fixtureKeyed);
   const fileHashes = new Map(), dirFingerprints = new Map(), edges = new Map(), closures = new Map();
   const executableEdges = new Map();
   const metadata = new Map();
@@ -206,10 +208,11 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     if (!enabled) return { skip: false, reason: 'cache disabled' };
     if (freshFiles.has(receipt)) return { skip: false, reason: 'fresh environment/timing check' };
     const closure = closureOf(resolve(root, receipt));
-    if (!keyedLive.has(receipt) && [...closure].some(file => metadata.get(file)?.browser || metadata.get(file)?.git)) {
+    const fixture = keyedFixtures.has(receipt);
+    if (!fixture && [...closure].some(file => metadata.get(file)?.browser || metadata.get(file)?.git)) {
       return { skip: false, reason: 'browser or Git state must be checked live' };
     }
-    if ([...closure].some(file => metadata.get(file)?.opaqueImport || metadata.get(file)?.opaqueEnvironment || unresolvedImports.has(file))) {
+    if (!fixture && [...closure].some(file => metadata.get(file)?.opaqueImport || metadata.get(file)?.opaqueEnvironment || unresolvedImports.has(file))) {
       return { skip: false, reason: 'computed import/environment needs a fresh run' };
     }
     const { key, inputs } = inputKey(receipt);

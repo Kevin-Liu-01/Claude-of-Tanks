@@ -105,6 +105,9 @@ assert.equal(make().inputKey('src/simple.selftest.mjs').key, stableRegistry,
 const salted = make().inputKey('src/simple.selftest.mjs').key;
 write('package-lock.json', '{"name":"fixture","v":2}');
 assert.notEqual(make().inputKey('src/simple.selftest.mjs').key, salted, 'the lockfile salts every key');
+const guarded = make().inputKey('src/simple.selftest.mjs').key;
+write('tools/assert-graph-guard.mjs', '// the runtime guard every child preloads, edited');
+assert.notEqual(make().inputKey('src/simple.selftest.mjs').key, guarded, 'the preloaded assert guard salts every key');
 assert.notEqual(make({ nodeVersion: 'v-other' }).inputKey('src/simple.selftest.mjs').key, make().inputKey('src/simple.selftest.mjs').key,
   'the node version salts every key');
 write('src/environment.selftest.mjs', 'console.log(process.env.MODE);');
@@ -160,13 +163,18 @@ assert.equal(make().lookup('src/environment-object.selftest.mjs').key, undefined
   assert.equal(make().lookup('src/browser.selftest.mjs').skip, false, 'real browser checks cannot be certified by a stale source-only PASS');
   // 229: a receipt that only names a browser or git tool (a plan, a fixture repository) is keyed when it is listed
   write('src/plan.selftest.mjs', 'import "./browser.selftest.mjs";');
-  const listed = make({ fixtureLive: ['src/plan.selftest.mjs'] }), planKey = listed.lookup('src/plan.selftest.mjs').key;
+  const listed = make({ fixtureKeyed: ['src/plan.selftest.mjs'] }), planKey = listed.lookup('src/plan.selftest.mjs').key;
   assert.ok(planKey, 'a listed receipt is keyed');
   listed.recordPass('src/plan.selftest.mjs', planKey);
-  assert.equal(make({ fixtureLive: ['src/plan.selftest.mjs'] }).lookup('src/plan.selftest.mjs').skip, true, 'and reuses its PASS');
+  assert.equal(make({ fixtureKeyed: ['src/plan.selftest.mjs'] }).lookup('src/plan.selftest.mjs').skip, true, 'and reuses its PASS');
   assert.equal(make().lookup('src/plan.selftest.mjs').skip, false, 'an unlisted one stays live');
+  write('src/tool.mjs', 'const name = process.argv[2]; await import(name); export const env = { ...process.env };');
+  write('src/static.selftest.mjs', 'import "./tool.mjs";');
+  assert.equal(make().lookup('src/static.selftest.mjs').reason, 'computed import/environment needs a fresh run');
+  assert.ok(make({ fixtureKeyed: ['src/static.selftest.mjs'] }).lookup('src/static.selftest.mjs').key,
+    'a listed receipt whose closure holds a computed import or a whole-environment read is keyed too');
   write('src/browser.selftest.mjs', 'import browser from "puppeteer"; export const b = 2;');
-  assert.equal(make({ fixtureLive: ['src/plan.selftest.mjs'] }).lookup('src/plan.selftest.mjs').skip, false, 'its inputs still key it');
+  assert.equal(make({ fixtureKeyed: ['src/plan.selftest.mjs'] }).lookup('src/plan.selftest.mjs').skip, false, 'its inputs still key it');
 }
 // 2026-10-16 (the 226 audit): only node:path joins name files. `parts.join('')`, an array join and a Promise resolve
 // name none; a named, aliased, namespace or posix path join still does.

@@ -4,8 +4,9 @@
 // here and fails with identity labels; node's own AssertionError would inspect both graphs at depth 1000 and diff the
 // dumps (the 226 T-72 receipts reached 40 GB). The lint stops these calls in source; this covers every shape the lint
 // cannot see (raycast hits, helpers from other modules, destructured asserts). Passing calls and calls on plain values
-// are unchanged. A loose deepEqual on a graph operand is decided strictly: it can only fail a call node would pass,
-// never pass one node would fail.
+// are unchanged. Loose deep calls on a graph operand are decided strictly: deepEqual can only fail a call node would
+// pass; notDeepEqual passes values that differ only loosely (`[mesh, 1]` against `[mesh, '1']`), which node fails. The
+// lint forbids deep asserts on graph objects outright (compare graphLabels), so no receipt holds either form.
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert';
 import { syncBuiltinESMExports } from 'node:module';

@@ -47,6 +47,7 @@ export const TABLES = Object.freeze({
   presentationAnchors: { kind: 'module', files: ['src/vehicles/presentationAnchors.generated.ts'], exportName: 'TANK_PRESENTATION_ANCHORS' },
   presentationProjections: { kind: 'module', files: ['src/vehicles/presentationAnchors.generated.ts'], exportName: 'TANK_PRESENTATION_PROJECTIONS' },
   tankAssets: { kind: 'json', files: ['public/icons/tank-assets.json'], path: ['tanks'] },
+  gunJunction: { kind: 'json', files: ['docs/geometry-gate/gun-junction.json'], path: ['tanks'] },
 });
 
 /** Index and loader maps that import every shard of a table. Their bytes depend only on which shards exist, so they
@@ -155,8 +156,16 @@ export const DECLARED_DYNAMIC = Object.freeze({
   // 229: genIcons passes each published picture through the optional local master filter (owner attribution, 228).
   'tools/media-r5/master-filter.mjs': {
     pin: '9cc38542568f79c4',
+    // the local filter executable when present (COT_MASTER_FILTER is read by name, so its value is keyed); it rewrites
+    // the published images, whose bytes and sha256 the tank-assets rows record, so its own bytes key the step too
+    reads: ['shots/media-r5/master-filter'],
+    note: 'an optional local executable (COT_MASTER_FILTER or shots/media-r5/master-filter) rewrites published image bytes; both are keyed (name/value, file bytes)',
+  },
+  // 229: the gun-line census (the gunLines step).
+  'tools/gun-junction-census.mjs': {
+    pin: '63939167b6ebdff6',
     reads: [],
-    note: 'an optional local executable (COT_MASTER_FILTER, keyed by value, or shots/media-r5/master-filter) rewrites published image bytes only; the icons step keys the manifest row, never image bytes (writes public/icons/**)',
+    note: 'reads its own ledger (the step\'s output, to keep the other ids\' rows) and each measured id\'s fleet-ledger row, keyed per id by the step\'s rowReads (geometryLedger)',
   },
   'tools/fleet-geometry-ledger.mjs': {
     pin: '1c72be85b54a8dbf',
@@ -300,6 +309,16 @@ export const STEPS = Object.freeze([
     files: [], gb: 16, timeoutS: 3600, perIdS: 10, after: true,
   },
   {
+    // 229: each id's gun-line census row binds the turret and gun digests of its ledger row, so it follows the ledger
+    // (tank-release-plan's gun-junction --check fails an id whose ledger geometry moved without it).
+    name: 'gunLines', device: 'cpu', tool: 'tools/gun-junction-census.mjs',
+    flags: ['--ledger=docs/geometry-gate/gun-junction.json', '--update'], full: ['--all'], scoped: (list) => [ids(list)],
+    check: ['--all'], checkScoped: (list) => [ids(list)], checkFlags: ['--ledger=docs/geometry-gate/gun-junction.json', '--check'],
+    // the census copies each id's turret and gun digests from that id's fleet-ledger row (gun-junction-census.mjs)
+    rowReads: ['geometryLedger'], outputs: ['gunJunction'],
+    files: [], gb: 8, timeoutS: 3600, perIdS: 20, after: true,
+  },
+  {
     name: 'centering', device: 'gpu', tool: 'tools/presentation-centering.mjs', entries: ['tools/icons-page.html'],
     flags: ['--update'], full: [], scoped: (list) => [ids(list)],
     check: ['--check'], checkScoped: (list) => ['--check', ids(list)], checkFlags: [],
@@ -342,7 +361,7 @@ export const POST_AGGREGATES = Object.freeze([
 const KEYED_FIELDS = ['name', 'device', 'tool', 'entries', 'flags', 'full', 'scoped', 'outputs', 'files', 'reads', 'excludeReads'];
 /** Keyed fields added after schema 1: part of the definition only when a step sets them (so adding one to the table does
  *  not move every step's key). */
-const LATE_KEYED_FIELDS = ['writes', 'universe', 'donors'];
+const LATE_KEYED_FIELDS = ['writes', 'universe', 'donors', 'rowReads'];
 
 /** The step's definition as data (functions applied to a fixed probe), for its key: any edit marks the step's ids. */
 export function stepDefinition(step) {
