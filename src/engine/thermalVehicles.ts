@@ -30,10 +30,10 @@ export function wreckHeatLevel(ageS:number):number{
 export const HEAT_FAR = 4;
 export const HEAT_HULL = 2.2;
 export const HEAT_ENGINE = 4.6;
-/** (fx-ir-day-heat-229, the blind critic's "fairly hard edges between hot and cool areas") the engine heat's falloff (m):
- *  its white-to-hull edge spans ~1.1 m, ~13 px on a close hull (the gimbal at x6, 380 m); a uniform (the QA hook's
- *  THERMAL_ENGINE_R gives a same-build A/B its old 0.7) */
-export const HEAT_ENGINE_R = 1.2;
+/** The engine heat's falloff (m), a uniform (the QA hook's THERMAL_ENGINE_R tunes it). (fx-ir-day-heat-229) 1.2 m was
+ *  tried for softer edges and taken back: the blind critic preferred 0.7 at night (a close hull's white share of its hot
+ *  pixels 15-17 % at 0.7, 31 % at 1.2 — the engine's white core grew from 0.49 to 0.85 m past its box). */
+export const HEAT_ENGINE_R = 0.7;
 export const HEAT_GEAR_COLD = 1.5, HEAT_GEAR_HOT = 2.8;
 export const HEAT_GUN_COLD = 1.7, HEAT_GUN_HOT = 3.4;
 export const HEAT_NEAR_A = 0.06, HEAT_NEAR_B = 0.13;

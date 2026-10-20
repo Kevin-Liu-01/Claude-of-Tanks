@@ -120,13 +120,12 @@ assert.match(cp.vertexShader, new RegExp(`float heatSpan = 0\\.5 \\* projectionM
   'the shader fades the map in by the hull\'s span on the screen, as the mirror reads it');
 assert.ok(nearAt(250) >= 0.8, `at 250 m the map reads (${nearAt(250).toFixed(2)})`);
 assert.ok(nearAt(450) <= 0.1, `at 450 m the hull is the flat white-hot of old (${nearAt(450).toFixed(2)})`);
-// (fx-ir-day-heat-229, the blind critic: "fairly hard edges between hot and cool areas") the engine heat's edge, from white
-// at any angle (emission x 0.62 >= 3.1) to the hull's own level (within 0.3 of HEAT_HULL), spans >= 12 px on a close hull
-// (the gimbal at x6, 380 m: 0.5 x 720 / tan(4.6 deg) / 380 px per metre)
+// (fx-ir-day-heat-229) the engine's white core stays within half a metre of its box (white at any angle: emission x 0.62
+// >= 3.1): a wider falloff (1.2 m, 0.85 m of white) turned a close hull at night back toward a slab (the blind critic)
 const whiteD = HEAT_ENGINE_R * Math.sqrt(Math.log(HEAT_ENGINE / (3.1 / 0.62 - HEAT_HULL)));
 const hullD = HEAT_ENGINE_R * Math.sqrt(Math.log(HEAT_ENGINE / 0.3));
-const pxPerM = 0.5 * 720 / Math.tan((55 / 6) * Math.PI / 360) / 380;
-assert.ok((hullD - whiteD) * pxPerM >= 12, `the engine heat fades over ${((hullD - whiteD) * pxPerM).toFixed(1)} px (${(hullD - whiteD).toFixed(2)} m)`);
+assert.ok(whiteD <= 0.5, `the engine's white core reaches ${whiteD.toFixed(2)} m past its box`);
+assert.ok(hullD > whiteD, `then fades to the hull's own level by ${hullD.toFixed(2)} m`);
 assert.ok(Math.abs(emission(0, [0, 2.0, -2.9], 0, 0) - (HEAT_HULL + HEAT_ENGINE)) < 1e-9, 'the deck over the engine box at its full heat');
 
 // ---- 4. the heats: on the simulation clock, deterministic ----
