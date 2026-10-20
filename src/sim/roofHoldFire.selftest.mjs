@@ -19,10 +19,14 @@
 // rounds at a drone through an ally), case 6 (the Abrams's 12.7 on a quartering BMP-2's front), case 8 (Realistic: every
 // round on armour that leaves modules and crew untouched), case 9 (an M551A1 broadside and a CV90 rear-on at 200 m, a
 // BMP-2 20 degrees off: every 30 mm round wasted at the middle), case 10 (rounds where the K6 hurts nothing beside an
-// ally; rounds into an ally's and a wreck's barrel across the line). The cases and halves marked GUARD held before and
+// ally; rounds into an ally's and a wreck's barrel across the line), case 11 (a human seat's 30 mm under lag
+// compensation's rewind), case 12 (rounds on an AMX-10P braking hard). The cases and halves marked GUARD held before and
 // must hold after: a station still fires where the damage model lets its round hurt (a driving target, a track, a gun
-// behind a glancing glacis), the K6 on the turning BMP-2, the same rounds twice, the pillbox, host and solo shot for
-// shot (a driving target too).
+// behind a glancing glacis), the K6 on the turning BMP-2, the Leopard 1 gathering its pivot, the seat's cannon still
+// rewinding, the same rounds twice, the pillbox, host and solo shot for shot (a driving target too).
+//
+// The ghost flights meet the scene as it really went (each tick recorded as the battle ran: a target turning or braking
+// is where it was, not where a constant rate would put it), so the station's dead reckoning is judged, never assumed.
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
@@ -36,6 +40,7 @@ import { matchRulesetFor } from './matchRuleset.ts';
 import { createTankState, SIM_DT } from './movement.ts';
 import { createGameState, createBus, simStep } from '../game/state.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
+import { createLagCompensation } from '../../server/match/lagCompensation.ts';
 
 const FLEET = ['k1e1', 'm551a1_tts', 'm1a1_abrams_hc', 'bmp2', 'leo1a5', 'amx10p_25', 'bmp3m_dragun125', 'cv9040c', 'cv90', 'hayate_ifv', 'm1a2_abrams'];
 await ensureAuthorityFleet(FLEET);
@@ -50,26 +55,27 @@ const soft = (id, team, x, y, z) => ({ id, team, spec: { id: 'target', dims: { h
 
 /** The ghosts' rolls: a fixed stream per flight. */
 const stream = (seed) => { let value = seed >>> 0; return () => { value = (value * 1664525 + 1013904223) >>> 0; return value / 4294967296; }; };
-/** A hull's armour pose `t` seconds after the shot (carried along its heading at its speed). */
-const poseAfter = (entity, t) => {
-  const s = entity.state, travel = (s.speed ?? 0) * t;
-  return { pos: new Vector3(s.pos.x + Math.sin(s.yaw) * travel, s.pos.y, s.pos.z + Math.cos(s.yaw) * travel), yaw: s.yaw, pitch: 0, roll: 0,
-    turretYaw: s.turretYaw || 0, gunPitch: 0, modeScale: 1 };
-};
+/** A hull's armour pose as the scene recorded it on a tick. */
+const poseOf = (state) => ({ pos: new Vector3(state.pos.x, state.pos.y, state.pos.z), yaw: state.yaw, pitch: state.visualPitch || 0,
+  roll: state.visualRoll || 0, turretYaw: state.turretYaw || 0, gunPitch: state.gunPitch || 0, modeScale: state.modeScale ?? 1 });
 /** The share of GHOSTS flights of a fired round that hurt (hull damage, a module or a crew member): the live damage model,
- * never the station's estimate. */
-function realChance(round, shooter) {
+ * never the station's estimate, against the scene as it really stood on every tick of the flight (`timeline`, recorded
+ * as it ran; both authorities move the hulls, then fire and step the shells, so a round's k-th swept segment meets the
+ * poses of k - 1 ticks after its shot). */
+function realChance(round, shooter, entities, timeline) {
   let hurt = 0;
   for (let flight = 0; flight < GHOSTS; flight++) {
     const rng = stream(0x9e3779b9 ^ (flight * 7919 + round.tick * 31));
     const shell = createShell(round.shell, shooter.id, false, round.origin, round.direction, flight);
-    const hulls = round.scene.filter((e) => e.id !== shooter.id && e.spec.armor)
-      .map((entity) => ({ entity, ghost: { id: entity.id, spec: entity.spec, state: entity.state, combat: ghostCombat(entity) } }));
+    const hulls = entities.map((entity, index) => ({ entity, index }))
+      .filter(({ entity }) => entity.id !== shooter.id && entity.spec.armor)
+      .map(({ entity, index }) => ({ entity, index, ghost: { id: entity.id, spec: entity.spec, state: entity.state, combat: ghostCombat(entity, round.destroyed[index]) } }));
     for (let tick = 1; tick <= 150 && !shell.dead; tick++) {
       stepShell(shell, SIM_DT);
+      const frame = timeline[Math.min(timeline.length - 1, round.tick + tick - 1)];
       let first = null;
       for (const hull of hulls) {
-        const hits = traceTank(shell.prevPos, shell.pos, poseAfter(hull.entity, tick * SIM_DT), hull.entity.spec.armor, hull.ghost.combat.eraSpent);
+        const hits = traceTank(shell.prevPos, shell.pos, frame[hull.index], hull.entity.spec.armor, hull.ghost.combat.eraSpent);
         if (hits.length && (!first || hits[0].t < first.hits[0].t)) first = { ...hull, hits };
       }
       if (!first) continue;
@@ -83,34 +89,43 @@ function realChance(round, shooter) {
   }
   return hurt / GHOSTS;
 }
-/** A fresh combat state for one ghost flight carrying the hull's own: wrecked or not, the mode's damage flags. */
-function ghostCombat(entity) {
+/** A fresh combat state for one ghost flight carrying the hull's own: wrecked or not (at the shot), the mode's damage
+ * flags. */
+function ghostCombat(entity, destroyed) {
   const combat = createCombatState(entity.spec);
-  combat.destroyed = !!entity.combat.destroyed;
+  combat.destroyed = !!destroyed;
   for (const key of ['modeCriticalDamage', 'modeModuleOnlyDamage', 'modeDamageTakenScale']) if (key in entity.combat) combat[key] = entity.combat[key];
   return combat;
 }
 /** Steps every station of `shooter` for `seconds` (`each(tick)` moves the scene first; a hull with a speed drives along
- * its heading); each fired round's station, calibre, tick, line, the scene it flies into, whether it went at a drone,
- * and its real chance to hurt (realChance). */
+ * its heading at its yaw rate), recording the scene's poses on every tick and for the flights after; each fired round's
+ * station, calibre, tick, line, whether it went at a drone, and its real chance to hurt (realChance). */
 function battle(shooter, entities, seconds = 6, each = () => {}, context = {}) {
   let droneRound = false;
   const ctx = { entities, visible: () => true, clear: () => true, ...context,
     droneHit: (...args) => { droneRound = true; context.droneHit?.(...args); } };
-  const stations = roofStationCount(shooter.spec), rounds = [];
-  for (let tick = 0; tick < seconds * 60; tick++) {
+  const stations = roofStationCount(shooter.spec), rounds = [], timeline = [];
+  const advance = (tick) => {
     each(tick);
-    for (const e of entities) if (e.state.speed) { e.state.pos.x += Math.sin(e.state.yaw) * e.state.speed * SIM_DT; e.state.pos.z += Math.cos(e.state.yaw) * e.state.speed * SIM_DT; }
+    for (const e of entities) {
+      if (e.state.yawRate) e.state.yaw += e.state.yawRate * SIM_DT;
+      if (e.state.speed) { e.state.pos.x += Math.sin(e.state.yaw) * e.state.speed * SIM_DT; e.state.pos.z += Math.cos(e.state.yaw) * e.state.speed * SIM_DT; }
+    }
+    timeline.push(entities.map((e) => poseOf(e.state)));
+  };
+  for (let tick = 0; tick < seconds * 60; tick++) {
+    advance(tick);
     for (let station = 0; station < stations; station++) {
       droneRound = false;
       const fired = station ? stepRoofStation(shooter, station, tick / 60, 1 / 60, ctx) : stepRoofGun(shooter, tick / 60, 1 / 60, ctx);
       if (!fired) continue;
-      const round = { station, tick, shell: auxiliaryShot.shell, caliber: auxiliaryShot.shell.caliberMm, origin: auxiliaryShot.origin.clone(),
-        direction: auxiliaryShot.direction.clone(), drone: droneRound, scene: entities.map((e) => ({ ...e, state: { ...e.state, pos: { ...e.state.pos } } })) };
-      round.p = round.drone ? 1 : realChance(round, shooter);
-      rounds.push(round);
+      rounds.push({ station, tick, shell: auxiliaryShot.shell, caliber: auxiliaryShot.shell.caliberMm, origin: auxiliaryShot.origin.clone(),
+        direction: auxiliaryShot.direction.clone(), drone: droneRound, destroyed: entities.map((e) => !!e.combat.destroyed) });
     }
   }
+  // the flights of the last rounds: the scene goes on as it was
+  for (let tick = seconds * 60; tick < seconds * 60 + 150; tick++) advance(tick);
+  for (const round of rounds) round.p = round.drone ? 1 : realChance(round, shooter, entities, timeline);
   return rounds;
 }
 const wasted = (rounds) => rounds.filter((round) => round.p < .1).map((round) => `station ${round.station} tick ${round.tick} p ${round.p}`);
@@ -149,9 +164,8 @@ const count = (rounds, f) => rounds.filter(f).length;
 //    stop as the front comes round.
 for (const shooterId of ['k1e1', 'm551a1_tts']) {
   const shooter = vehicle('s', shooterId, 'blue', 0, 0), target = vehicle('t', 'bmp2', 'red', 20, 110, 180);
-  shooter.state.yaw = 0;
-  const start = target.state.yaw;
-  const rounds = battle(shooter, [shooter, target], 8, (tick) => { target.state.yaw = start - 25 * DEG * tick / 60; });
+  shooter.state.yaw = 0; target.state.yawRate = -25 * DEG;
+  const rounds = battle(shooter, [shooter, target], 8);
   assert.deepEqual(wasted(rounds), [], `${shooterId}: no round lands where it cannot hurt as the BMP-2 turns`);
   assert.ok(expected(rounds) >= 9, `${shooterId}: rounds into the turning BMP-2 while it shows a face they hurt (${expected(rounds).toFixed(1)} of ${rounds.length})`);
   assert.equal(count(rounds, (r) => r.tick > 7.2 * 60 && r.caliber < 20), 0, `${shooterId}: the 12.7 holds once the BMP-2's front faces it`);
@@ -259,7 +273,63 @@ for (const [targetId, aspect, range, least] of [['m551a1_tts', 90, 200, 6], ['cv
     assert.deepEqual(wasted(blocked), [], `no round into ${dead ? 'a wrecked' : 'an'} ally's barrel across the line`);
   }
 }
-// 11. GUARD: a pillbox (fortified cover, world/collision.ts) between a station and the BMP-2 behind it, on Foundry's own
+// 11. A human seat's roof station on the multiplayer host with lag compensation (server/match/lagCompensation.ts) at its
+//     full 15-tick rewind: the station lays on where the target will be in the authority's own time, and its rounds are
+//     never rewound to the seat's view (that undid the lead: a BMP-2 crossing at 15 m/s at 250 m took every 30 mm round
+//     behind it). The seat's cannon shells still rewind (GUARD).
+{
+  const flat = { getHeightAt: () => 0, getGroundType: () => 'hard', getNormalAt: () => new Vector3(0, 1, 0) };
+  const bound = { hook: null };
+  const match = createAuthoritativeMatch({ mapId: 'verdant', seed: 8317, countdownS: 0, ruleset: { ...matchRulesetFor('standard'), alwaysVisible: true },
+    worldCollision: { mapId: 'verdant', heightField: flat, obstacles: [] },
+    shellRewind: { begin: (shell) => bound.hook?.begin(shell), end: (shell) => bound.hook?.end(shell) },
+    players: [{ id: 's', specId: 'm551a1_tts', team: 'alpha', bot: false, spawn: { x: 0, z: 0, yaw: 0 } },
+      { id: 't', specId: 'bmp2', team: 'bravo', bot: true, spawn: { x: -40, z: 250, yaw: Math.PI / 2 } }] });
+  const lag = createLagCompensation({ entities: match.entities }); bound.hook = lag;
+  match.entities.forEach((entity, slot) => lag.bind(entity, slot));
+  lag.setRewindTicks('s', 15);
+  match.onMatchReady();
+  const s = match.entityById.get('s'), t = match.entityById.get('t');
+  const idle = { throttle: 0, steer: 0, brake: true, fire: false, shellSlot: 0, aimYaw: 0, aimPitch: 0, actionBits: 0, aimLocked: true, aimDistance: 300 };
+  let rounds = 0, hurt = 0;
+  for (let tick = 0; tick < 8 * 60; tick++) {
+    s.state.pos.set(0, 0, 0); s.state.yaw = 0; s.state.speed = 0;
+    // the BMP-2 crosses left to right at 15 m/s, 250 m out, back and forth over 120 m
+    const along = 15 * tick * SIM_DT, w = ((along + 60) % 120) - 60;
+    t.state.pos.set(w, 0, 250); t.state.yaw = Math.PI / 2; t.state.speed = 15; t.state.yawRate = 0;
+    t.combat.hp = t.combat.maxHp; for (const module of Object.values(t.combat.modules)) { module.hp = module.maxHp; module.state = 'ok'; }
+    match.step({ dt: SIM_DT, inputs: new Map([['s', idle], ['t', { ...idle, throttle: 1, brake: false }]]) });
+    lag.record(tick);
+    for (const event of match.eventsForViewer('__audit__')) {
+      const hit = event.payload ?? event.data ?? event;
+      if (hit.attackerId !== 's' || hit.targetId !== 't' || !(hit.caliberMm < 40)) continue;
+      rounds++;
+      if ((hit.damage ?? 0) > 0 || (hit.modulesHit ?? []).some((m) => m.dmg > 0)) hurt++;
+    }
+    match.afterEventBroadcast();
+  }
+  assert.equal(lag.stats.rewoundShots, 0, 'no roof round is rewound');
+  assert.ok(rounds >= 8 && hurt >= rounds * .8, `the 30 mm hurts the crossing BMP-2 at the seat's full rewind (${hurt} of ${rounds} rounds)`);
+  // GUARD: a cannon shell from the same seat still rewinds
+  const cannon = { shooterId: 's', ageS: 0, pos: new Vector3(0, 2, 0) };
+  lag.begin(cannon); lag.end(cannon);
+  assert.equal(lag.stats.rewoundShots, 1, 'the seat\'s cannon shell still rewinds');
+}
+// 12. Targets the dead reckoning reads wrong — a Leopard 1 pivoting with its turn still gathering (0 to 0.6 rad/s over
+//     two seconds; GUARD) and an AMX-10P braking hard from 12 m/s — against the scene as it really went: no round where
+//     it cannot hurt (each round's worst over lines beside its own and over more and less of the turn).
+{
+  const shooter = vehicle('s', 'm551a1_tts', 'blue', 0, 0), leo = vehicle('t', 'leo1a5', 'red', 0, 120, 120);
+  shooter.state.yaw = 0;
+  const pivot = battle(shooter, [shooter, leo], 5, (tick) => { leo.state.yawRate = Math.min(.6, .3 * tick / 60); });
+  assert.deepEqual(wasted(pivot), [], 'no round where it cannot hurt on a Leopard 1 gathering its pivot');
+  const k1 = vehicle('s', 'k1e1', 'blue', 0, 0), amx = vehicle('t', 'amx10p_25', 'red', -40, 110, 150, 12);
+  k1.state.yaw = 0;
+  const braking = battle(k1, [k1, amx], 5, () => { amx.state.speed = Math.max(0, amx.state.speed - 4 * SIM_DT); });
+  assert.deepEqual(wasted(braking), [], 'no round where it cannot hurt on an AMX-10P braking hard');
+  assert.ok(expected(braking) >= 6, `the K6 still hurts the braking AMX-10P (${expected(braking).toFixed(1)} of ${braking.length})`);
+}
+// 13. GUARD: a pillbox (fortified cover, world/collision.ts) between a station and the BMP-2 behind it, on Foundry's own
 //    collision shard and the multiplayer host's authority: no round goes into the bunker; the BMP-2 driven clear of it
 //    draws fire.
 {
@@ -290,7 +360,7 @@ for (const [targetId, aspect, range, least] of [['m551a1_tts', 90, 200, 6], ['cv
   assert.ok(shots() > 0, `the BMP-2 clear of the pillbox draws fire (${shots()})`);
   world.release?.();
 }
-// 12. GUARD: host and solo agree: the TTS against a turning BMP-2 and a quartering Leopard 1, stepped by the multiplayer host's
+// 14. GUARD: host and solo agree: the TTS against a turning BMP-2 and a quartering Leopard 1, stepped by the multiplayer host's
 //    authority and by the solo battle (both read the same pure roof-station law), poses pinned and hulls kept whole each
 //    tick: the same rounds from the same stations on the same ticks, and the same lays. And again with the BMP-2 driving
 //    and turning, its turret slewing (the speed and the hull and turret yaw rates each authority's movement leaves on it

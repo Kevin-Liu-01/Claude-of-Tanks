@@ -44,11 +44,11 @@ function referenceLaneClear(shooter, target, context, a, b) {
   return true;
 }
 /** Segment a→b against a hull box by separating axes (the box's three axes and their crosses with the segment) in the
- * hull's frame: half width (widthM, 3.4 m), half length (hullLengthM, 6.6 m), height (heightM, 2.5 m), times the mode's
- * scale. */
+ * hull's frame: half width (widthM, 3.4 m), half length (hullLengthM, 6.6 m), height (heightM, 2.5 m) — the spec's dims,
+ * which carry the mode's scale already (sim/juggernautScale.ts scales them with state.modeScale). */
 function segmentCrossesBox(other, a, b) {
-  const s = other.state, dims = other.spec.dims, scale = s.modeScale ?? 1, c = Math.cos(s.yaw), n = Math.sin(s.yaw);
-  const e = [(dims?.widthM ?? 3.4) * 0.5 * scale, (dims?.heightM ?? 2.5) * 0.5 * scale, (dims?.hullLengthM ?? 6.6) * 0.5 * scale];
+  const s = other.state, dims = other.spec.dims, c = Math.cos(s.yaw), n = Math.sin(s.yaw);
+  const e = [(dims?.widthM ?? 3.4) * 0.5, (dims?.heightM ?? 2.5) * 0.5, (dims?.hullLengthM ?? 6.6) * 0.5];
   const local = (p) => { const x = p.x - s.pos.x, z = p.z - s.pos.z; return [x * c - z * n, p.y - s.pos.y - e[1], x * n + z * c]; };
   const pa = local(a), pb = local(b), m = [0, 1, 2].map((i) => (pa[i] + pb[i]) / 2), h = [0, 1, 2].map((i) => (pb[i] - pa[i]) / 2);
   for (let i = 0; i < 3; i++) if (Math.abs(m[i]) > e[i] + Math.abs(h[i])) return false;

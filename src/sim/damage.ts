@@ -82,6 +82,9 @@ export interface DamageShellSpec extends BallisticShellSpec {
 
 export interface DamageShell extends ShellEntity<DamageShellSpec> {
   freshPenRollMm?: number;
+  /** A roof station's round (sim/auxiliarySystems.ts): the authority lays it on where the target will be in its own
+   * time, so lag compensation never rewinds it (server/match/lagCompensation.ts). */
+  roofStation?: boolean;
   /** Survives screen-piercing across fixed steps; scoped to each target. */
   weaponModuleRolls?: Map<string, Set<ModuleId>>;
 }

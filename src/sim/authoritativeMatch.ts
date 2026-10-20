@@ -2537,8 +2537,8 @@ export function createAuthoritativeMatch({
   };
   /** The shell a roof station just fired (auxiliaryShot). */
   function fireAuxiliaryShot(entity: AuthoritativeEntity): void {
-    const shell=createShell(auxiliaryShot.shell,entity.id,!entity.bot,auxiliaryShot.origin,auxiliaryShot.direction,nextShellId++);
-    shell.gravityMps2*=entity.modeGravityScale??1;shells.push(shell);
+    const shell:DamageShell=createShell(auxiliaryShot.shell,entity.id,!entity.bot,auxiliaryShot.origin,auxiliaryShot.direction,nextShellId++);
+    shell.gravityMps2*=entity.modeGravityScale??1;shell.roofStation=true;shells.push(shell);
     spotting.notifyFired(entity.id,timeS,auxiliaryShot.shell.caliberMm);
   }
   function advanceWeapons(dt: number): void {
