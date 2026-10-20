@@ -17,7 +17,9 @@ import {
 import { GARAGE_WALL_BUDGETS, buildWallRun, buildIndoorWallBay } from './garageWallKit.ts';
 import { buildComputerStation, buildFabricBanner, buildNameboard, buildNoticeBoard, buildSlideshowFrame } from './garageDisplayKit.ts';
 import { GARAGE_PLATFORM_COLLARS, buildGaragePlatformCollar, createGarageDeckPainter } from './garagePlatformKit.ts';
-import { buildGarageKitDressing, clearGarageKitCache, garageKitCacheStats } from './garageKitPlacement.ts';
+import {
+  buildGarageKitDressing, clearGarageKitCache, garageKitCacheStats, pinGarageKitMap, prepareGarageKitPieces,
+} from './garageKitPlacement.ts';
 import { GARAGE_KIT_PLACEMENTS, GARAGE_KIT_SKYLINES } from './garageKitPlacements.ts';
 import { garageSkylineEnabled } from './garageSkyline.ts';
 import { garageHorizonLandmarks } from './garageHorizonLandmarks.ts';
@@ -236,6 +238,28 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
   }
   const last = order.slice(-2).map((architecture) => GARAGE_VARIANTS.find((v) => v.architecture === architecture).mapId);
   assert.deepEqual(garageKitCacheStats().maps, last, 'the two most recent Garages stay resident');
+  clearGarageKitCache();
+}
+
+// 6f. several Garages prepared at once (hovering their cards) keep every prepared piece until their bakes: a held map is
+// never evicted, so each bake places cached pieces only; released, the cache trims back to two Garages (the r9
+// engineering critic: three concurrent prepares rebuilt 20-30 pieces inside each bake)
+{
+  clearGarageKitCache();
+  const picks = Object.keys(GARAGE_KIT_PLACEMENTS).slice(0, 4).map((architecture) => ({
+    variant: GARAGE_VARIANTS.find((v) => v.architecture === architecture), placement: GARAGE_KIT_PLACEMENTS[architecture],
+  }));
+  const releases = picks.map(({ variant }) => pinGarageKitMap(variant.mapId));
+  await Promise.all(picks.map(({ variant, placement }) => prepareGarageKitPieces(variant, placement, 2)));
+  for (const [index, { variant, placement }] of picks.entries()) {
+    const before = garageKitCacheStats().misses;
+    const kit = buildGarageKitDressing({ variant, placement, buckets: {}, groundAtWorld: () => 0 });
+    assert.equal(garageKitCacheStats().misses, before, `${variant.id}: its bake rebuilt pieces another prepare evicted`);
+    for (const mesh of kit.meshes) mesh.geometry.dispose();
+    releases[index]();
+    releases[index]();
+  }
+  assert.ok(garageKitCacheStats().maps.length <= 2, `released, ${garageKitCacheStats().maps.length} Garages' pieces stay resident`);
   clearGarageKitCache();
 }
 

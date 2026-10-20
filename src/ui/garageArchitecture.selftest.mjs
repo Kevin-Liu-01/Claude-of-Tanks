@@ -337,8 +337,11 @@ const fakeAssets = {
   warmAll() {},
   dispose() {},
 };
+// every pack build holds its Garage's kit and skyline caches from its prepare to its bake, then releases them
+const cachePins = { held: 0, released: 0 };
 const fakeKit = {
   createGarageEnvironmentAssetLibrary: () => fakeAssets,
+  pinGarageEnvironmentCaches: () => { cachePins.held += 1; return () => { cachePins.released += 1; }; },
   prepareGarageEnvironmentAssets: async () => {},
   buildGarageEnvironment: (_engineCtx, _assets, variant) => {
     const root = new THREE.Group();
@@ -436,6 +439,7 @@ try {
   };
   const uploadKit = {
     createGarageEnvironmentAssetLibrary: () => uploadAssets,
+    pinGarageEnvironmentCaches: () => () => {},
     prepareGarageEnvironmentAssets: async () => {},
     buildGarageEnvironment: (_engineCtx, _assets, variant) => {
       const root = new THREE.Group();
@@ -483,5 +487,8 @@ try {
   if (originalRaf === undefined) delete globalThis.requestAnimationFrame;
   else globalThis.requestAnimationFrame = originalRaf;
 }
+
+assert.ok(cachePins.held > 0, 'the pack builds hold their Garage caches');
+assert.equal(cachePins.released, cachePins.held, 'and release every hold');
 
 console.log('garageArchitecture.selftest: ok');

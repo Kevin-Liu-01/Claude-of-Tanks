@@ -549,12 +549,18 @@ export function createGarageArchitectureController(
       : getEnvironmentKit().then(async (kit) => {
       if (disposed) return null;
       const library = ensureAssets(kit);
-      await kit.prepareGarageEnvironmentAssets(library, variant);
-      if (disposed) return null;
-      const startedAt = performance.now();
-      const build = kit.buildGarageEnvironment(engineCtx, library, variant, requestRender);
-      lastBuildMs = performance.now() - startedAt;
-      return build;
+      // its prepared pieces and skyline stay cached until its bake, however many Garages prepare at once
+      const release = kit.pinGarageEnvironmentCaches(variant);
+      try {
+        await kit.prepareGarageEnvironmentAssets(library, variant);
+        if (disposed) return null;
+        const startedAt = performance.now();
+        const build = kit.buildGarageEnvironment(engineCtx, library, variant, requestRender);
+        lastBuildMs = performance.now() - startedAt;
+        return build;
+      } finally {
+        release();
+      }
     })).then((build) => build ? attach(variant, build) : null)
       .finally(() => pending.delete(variant.architecture));
     pending.set(variant.architecture, task);

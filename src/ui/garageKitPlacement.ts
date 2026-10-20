@@ -132,6 +132,12 @@ const pieceCache = new Map<string, CachedPiece>();
 const PIECE_CACHE_MAPS = 2;
 const pieceCacheMaps = new Map<string, Set<string>>();
 const pieceCacheCounts = { hits: 0, misses: 0 };
+/**
+ * Maps whose prepare or bake is in flight (a count per map): never evicted, so hovering three Garage cards at once
+ * cannot drop one card's prepared pieces before its bake (the r9 engineering critic: 20-30 pieces rebuilt inside the
+ * bake's long task). The cache may run over its two maps while they are held and trims when they are released.
+ */
+const pinnedPieceMaps = new Map<string, number>();
 
 function disposePiece(piece: CachedPiece): void {
   piece.result.solid.dispose();
@@ -146,16 +152,36 @@ function touchPieceCacheMap(mapId: string): Set<string> {
   if (keys) pieceCacheMaps.delete(mapId);
   else keys = new Set();
   pieceCacheMaps.set(mapId, keys);
-  while (pieceCacheMaps.size > PIECE_CACHE_MAPS) {
-    const [oldest, oldKeys] = pieceCacheMaps.entries().next().value!;
-    pieceCacheMaps.delete(oldest);
-    for (const key of oldKeys) {
+  trimPieceCache();
+  return keys;
+}
+
+/** Drop the oldest maps' pieces past the limit, skipping held maps. */
+function trimPieceCache(): void {
+  for (const [map, keys] of pieceCacheMaps) {
+    if (pieceCacheMaps.size <= PIECE_CACHE_MAPS) return;
+    if (pinnedPieceMaps.has(map)) continue;
+    pieceCacheMaps.delete(map);
+    for (const key of keys) {
       const piece = pieceCache.get(key);
       if (piece) disposePiece(piece);
       pieceCache.delete(key);
     }
   }
-  return keys;
+}
+
+/** Hold a map's pieces in the cache from its prepare to its bake; the returned release is idempotent. */
+export function pinGarageKitMap(mapId: string): () => void {
+  pinnedPieceMaps.set(mapId, (pinnedPieceMaps.get(mapId) ?? 0) + 1);
+  let held = true;
+  return () => {
+    if (!held) return;
+    held = false;
+    const count = (pinnedPieceMaps.get(mapId) ?? 1) - 1;
+    if (count > 0) pinnedPieceMaps.set(mapId, count);
+    else pinnedPieceMaps.delete(mapId);
+    trimPieceCache();
+  };
 }
 
 /** The session cache's hit and miss counts and the maps it holds, oldest first (the receipts). */

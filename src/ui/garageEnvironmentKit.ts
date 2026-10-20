@@ -62,10 +62,12 @@ import {
   addGarageApproachDetails,
   type GarageApproachStats,
 } from './garageApproachDetails.ts';
-import { buildGarageKitDressing, garageKitPads, prepareGarageKitPieces, type GarageKitBuild, type GarageKitPlacement } from './garageKitPlacement.ts';
+import {
+  buildGarageKitDressing, garageKitPads, pinGarageKitMap, prepareGarageKitPieces, type GarageKitBuild, type GarageKitPlacement,
+} from './garageKitPlacement.ts';
 import { GARAGE_KIT_PLACEMENTS, GARAGE_KIT_SKYLINES } from './garageKitPlacements.ts';
 import {
-  createGarageSkylineBackdrop, garageSkylineEnabled, prepareGarageSkyline, type GarageSkylineLandmarkReceipt,
+  createGarageSkylineBackdrop, garageSkylineEnabled, pinGarageSkyline, prepareGarageSkyline, type GarageSkylineLandmarkReceipt,
 } from './garageSkyline.ts';
 import { arcWeight, GarageSkylineEmitter, type GarageSkyline } from './garageSkylineKit.ts';
 import { garageHorizonLandmarks } from './garageHorizonLandmarks.ts';
@@ -2823,6 +2825,17 @@ export function buildGarageEnvironment(
       root.clear();
     },
   };
+}
+
+/**
+ * Hold a Garage's prepared kit pieces and skyline bake in their session caches until its pack is built (call before
+ * prepareGarageEnvironmentAssets, release after buildGarageEnvironment): several Garage cards prepared at once (hover
+ * intents) then never evict each other's work before the bake. The release is idempotent.
+ */
+export function pinGarageEnvironmentCaches(variant: GarageVariant): () => void {
+  const releaseKit = pinGarageKitMap(variant.mapId);
+  const releaseSkyline = pinGarageSkyline(variant.mapId);
+  return () => { releaseKit(); releaseSkyline(); };
 }
 
 /**

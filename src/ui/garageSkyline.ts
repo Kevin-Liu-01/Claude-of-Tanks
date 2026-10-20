@@ -775,6 +775,31 @@ export interface GarageSkylineLandmarkReceipt {
 const skylineCache = new Map<string, THREE.BufferGeometry>();
 /** Bakes kept, most recent last: two, like the pack cache (the r9 engineering critic: no bake held all session). */
 const SKYLINE_CACHE_MAPS = 2;
+/** Maps whose prepare or bake is in flight (a count per map): their bakes are never dropped (see pinGarageKitMap). */
+const pinnedSkylines = new Map<string, number>();
+
+function trimSkylineCache(): void {
+  for (const [map, bake] of skylineCache) {
+    if (skylineCache.size <= SKYLINE_CACHE_MAPS) return;
+    if (pinnedSkylines.has(map)) continue;
+    skylineCache.delete(map);
+    bake.dispose();
+  }
+}
+
+/** Hold a map's skyline bake from its prepare to its pack's build; the returned release is idempotent. */
+export function pinGarageSkyline(mapId: string): () => void {
+  pinnedSkylines.set(mapId, (pinnedSkylines.get(mapId) ?? 0) + 1);
+  let held = true;
+  return () => {
+    if (!held) return;
+    held = false;
+    const count = (pinnedSkylines.get(mapId) ?? 1) - 1;
+    if (count > 0) pinnedSkylines.set(mapId, count);
+    else pinnedSkylines.delete(mapId);
+    trimSkylineCache();
+  };
+}
 
 /**
  * A Garage's horizon for its pack: the bake is deterministic, so each map's is built once and every pack build takes its
@@ -791,11 +816,7 @@ export function prepareGarageSkyline(mapId: string): THREE.BufferGeometry {
   else geometry = buildGarageSkyline(mapId);
   skylineCache.set(mapId, geometry);
   // a pack takes its own copy, so an older bake leaves the cache without touching any built pack
-  while (skylineCache.size > SKYLINE_CACHE_MAPS) {
-    const [oldest, bake] = skylineCache.entries().next().value!;
-    skylineCache.delete(oldest);
-    bake.dispose();
-  }
+  trimSkylineCache();
   return geometry;
 }
 
