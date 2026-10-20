@@ -305,21 +305,22 @@ const AWNING_A = L(0xb3352c), AWNING_B = L(0xe9e1cf), CURTAIN_A = L(0x2f6a42);
 const PRODUCE: readonly Rgb[] = [L(0xb8322a), L(0xe2892c), L(0x6f9a46), L(0x9c7a4e), L(0x5c2a4c), L(0xd8702a), L(0x8cba5a), L(0xe4cf44)];
 
 /** A Steige at (x, y, z) on its base, its long side along x, heaped with a produce colour. */
-function steige(m: M, x: number, y: number, z: number, produce: Rgb, rng: Rng): void {
+function steige(m: M, x: number, y: number, z: number, produce: Rgb, rng: Rng, lean = false): void {
   const w = 0.56, d = 0.4, h = 0.15, t = 0.018, wood = tone(OAK_W, rng, 0.1);
   bar(m, [x - w / 2, y + 0.01, z], [x + w / 2, y + 0.01, z], d, 0.02, Z, mul(wood, 0.85), 0.003);
   for (const s of [-1, 1]) {
-    bar(m, [x - w / 2, y + h / 2, z + s * (d / 2 - t / 2)], [x + w / 2, y + h / 2, z + s * (d / 2 - t / 2)], t, h * (s > 0 ? 0.62 : 1), Z, wood, 0.003);
-    bar(m, [x + s * (w / 2 - t / 2), y + h / 2, z - d / 2], [x + s * (w / 2 - t / 2), y + h / 2, z + d / 2], t, h, X, mul(wood, 0.93), 0.003);
+    bar(m, [x - w / 2, y + h / 2, z + s * (d / 2 - t / 2)], [x + w / 2, y + h / 2, z + s * (d / 2 - t / 2)], t, h * (s > 0 ? 0.62 : 1), Z, wood, lean ? 0 : 0.003);
+    if (!lean) bar(m, [x + s * (w / 2 - t / 2), y + h / 2, z - d / 2], [x + s * (w / 2 - t / 2), y + h / 2, z + d / 2], t, h, X, mul(wood, 0.93), 0.003);
   }
   // the heap: a low dome of the produce, each facet its own shade (the fruit's bumps), set down in the crate
   const s0 = m.mark;
-  lathe(m, [[0.25, 0], [0.245, 0.04], [0.21, 0.08], [0.14, 0.11], [0.06, 0.125], [0, 0.128]], 9,
+  lathe(m, lean ? [[0.25, 0], [0.21, 0.08], [0.1, 0.12], [0, 0.128]] : [[0.25, 0], [0.245, 0.04], [0.21, 0.08], [0.14, 0.11], [0.06, 0.125], [0, 0.128]], lean ? 6 : 9,
     (k, j) => mul(produce, 0.82 + 0.3 * (((k * 7 + j * 3) % 5) / 4) * (0.8 + rng() * 0.4)), { faceted: true, capBottom: false, phase: rng() });
-  for (let i = s0; i < m.mark; i += 3) { m.p[i] = x + m.p[i] * 1.06; m.p[i + 1] += y + 0.035; m.p[i + 2] = z + m.p[i + 2] * 0.74; }
+  // (the heap a hand inside the crate's boards: clear of their inner faces)
+  for (let i = s0; i < m.mark; i += 3) { m.p[i] = x + m.p[i] * 0.98; m.p[i + 1] += y + 0.035; m.p[i + 2] = z + m.p[i + 2] * 0.64; }
 }
 
-function marktstandNear(): THREE.BufferGeometry {
+function marktstandNear(lean = false): THREE.BufferGeometry {
   const rng = mulberry(0x5a11f2), m = newMesh();
   const HW = 1.3, back = -0.82, front = 0.8, yBack = 2.3, yFront = 2.04;
   // the trestles (an A each end) and the table's top under its oilcloth, the cloth hanging at the front and the ends
@@ -335,10 +336,10 @@ function marktstandNear(): THREE.BufferGeometry {
   bar(m, [-1.2, 0.93, -0.32], [1.2, 0.93, -0.32], 0.42, 0.14, Z, tone(OAK_W, rng, 0.08), 0.006);
   for (let k = 0; k < 4; k++) {
     const x = -0.87 + k * 0.58;
-    steige(m, x, 1.0, -0.32, PRODUCE[(k * 3 + 1) % PRODUCE.length], rng);
-    steige(m, x, 0.862, 0.17, PRODUCE[(k * 5 + 2) % PRODUCE.length], rng);
+    steige(m, x, 1.0, -0.32, PRODUCE[(k * 3 + 1) % PRODUCE.length], rng, lean);
+    steige(m, x, 0.862, 0.17, PRODUCE[(k * 5 + 2) % PRODUCE.length], rng, lean);
     // a slate price board stuck in the front crate (no lettering)
-    bar(m, [x + 0.14, 1.02, 0.36], [x + 0.14, 1.13, 0.37], 0.12, 0.008, X, tone(SLATE, rng, 0.1), 0.002);
+    if (!lean) bar(m, [x + 0.14, 1.02, 0.36], [x + 0.14, 1.13, 0.37], 0.12, 0.008, X, tone(SLATE, rng, 0.1), 0.002);
   }
   // the scale at the table's end: its body and its dish
   bar(m, [1.06, 0.92, 0.1], [1.06, 1.06, 0.1], 0.16, 0.2, X, L(0xd4d2c8), 0.01);
@@ -369,9 +370,9 @@ function marktstandNear(): THREE.BufferGeometry {
 
 /** The stand knocked over by a hull: its own build tipped forward onto its table's front edge and a little turned, the
  *  crates' produce spilled before it (a dome or two on the setts). */
-function marktstandBroken(): THREE.BufferGeometry {
+function marktstandBroken(lean = false): THREE.BufferGeometry {
   const rng = mulberry(0x5a11f3), m = newMesh();
-  const g = marktstandNear(), pos = g.attributes.position, nrm = g.attributes.normal, col = g.attributes.color;
+  const g = marktstandNear(lean), pos = g.attributes.position, nrm = g.attributes.normal, col = g.attributes.color;
   const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 1.05);
   const r = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0.16);
   q.premultiply(r);
@@ -388,7 +389,7 @@ function marktstandBroken(): THREE.BufferGeometry {
   m.p.push(...pts); m.n.push(...ns);
   for (let i = 0; i < pos.count; i++) { m.t.push(0.5, 0.5); m.c.push(col.getX(i), col.getY(i), col.getZ(i)); }
   g.dispose();
-  for (let k = 0; k < 3; k++) steige(m, -0.9 + k * 0.85 + (rng() - 0.5) * 0.3, 0, 1.25 + rng() * 0.5, PRODUCE[(k * 3) % PRODUCE.length], rng);
+  for (let k = 0; k < 3; k++) steige(m, -0.9 + k * 0.85 + (rng() - 0.5) * 0.3, 0, 1.25 + rng() * 0.5, PRODUCE[(k * 3) % PRODUCE.length], rng, lean);
   return finish(m);
 }
 
@@ -404,8 +405,9 @@ function mulberry(seed: number): Rng {
 }
 
 /** The market stall's regional forms by civic style (the props' 'stall' kind on a map whose plan names the style: its
- *  record and the legacy builders' draws kept, its geometry this). */
-export const CIVIC_STALL_FORMS: Readonly<Record<string, { build: () => THREE.BufferGeometry; broken: () => THREE.BufferGeometry }>> = Object.freeze({
+ *  record and the legacy builders' draws kept, its geometry this); `lean` a phone's (its crates' ends and boards left
+ *  out, its heaps coarser). */
+export const CIVIC_STALL_FORMS: Readonly<Record<string, { build: (lean?: boolean) => THREE.BufferGeometry; broken: (lean?: boolean) => THREE.BufferGeometry }>> = Object.freeze({
   franconian: { build: marktstandNear, broken: marktstandBroken },
 });
 

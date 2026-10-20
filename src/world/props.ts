@@ -4522,8 +4522,8 @@ ${snowCap ? `
     if (stallForm && legacyStall) {
       out.stall = {
         ...legacyStall, mat: 'baked', ownBroken: true,
-        build: (r: Rng) => { legacyStall.build(r).dispose(); return stallForm.build(); },
-        broken: (r: Rng) => { legacyStall.broken?.(r).dispose(); return stallForm.broken(); },
+        build: (r: Rng) => { legacyStall.build(r).dispose(); return stallForm.build(mobileProps); },
+        broken: (r: Rng) => { legacyStall.broken?.(r).dispose(); return stallForm.broken(mobileProps); },
       } as PropsDestructibleMeta;
     }
     return out;

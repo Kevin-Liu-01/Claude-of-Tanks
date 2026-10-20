@@ -32,6 +32,24 @@ for (const [kind, b] of Object.entries(CIVIC_BUILDERS)) {
   assert.ok(rec.cls === 'break' && rec.r > 0 && rec.h > 0, `${kind}: a breakable record`);
   assert.ok(!isFortifiedCoverKind(kind), `${kind}: a hull breaks it`);
 }
+// (228 r2) the market stall's regional forms on each map whose plan stands stalls and names the style: at the bar, within its
+// record's footprint (the stall's 2.84 x 1.88 m and 2.3 m: its collider is its counter's and its posts')
+const { CIVIC_STALL_FORMS } = await import('./civicFurnitureKit.ts');
+for (const mapId of placing('stall')) {
+  const style = civicPlanFor(mapId).style, form = CIVIC_STALL_FORMS[style];
+  if (!form) continue;
+  const r = assertR2({ kind: 'civic:stall', maps: [mapId], caps: { near: 3200 },
+    resolve: () => ({ form: `stall:${style}`, build: () => form.build(), broken: () => form.broken() }) });
+  for (const f of r.forms) rows.push(`${f.form} ${f.metrics.tris}t box ${f.metrics.boxShare}`);
+  const g = form.build();
+  g.computeBoundingBox();
+  const b = g.boundingBox;
+  assert.ok(Math.max(-b.min.x, b.max.x) <= 1.42 + 0.02 && Math.max(-b.min.z, b.max.z) <= 0.94 + 0.08 && b.max.y <= 2.4 && b.min.y > -0.05,
+    `stall:${style}: within its record's footprint (${b.min.toArray().map((v) => v.toFixed(2))} .. ${b.max.toArray().map((v) => v.toFixed(2))})`);
+  const phone = form.build(true).attributes.position.count / 3;
+  assert.ok(phone <= 1800, `stall:${style}: a phone's ${phone} triangles (1800)`);
+  rows.push(`stall:${style}:phone ${phone}t`);
+}
 // the memorial column on each placing map's kit stone, desktop and phone, its caps (review AC3: 9.0k / 4.5k / 7.0k)
 for (const mapId of placing('memorialcolumn')) {
   const arch = getMapConfig(mapId).props?.architecture;
