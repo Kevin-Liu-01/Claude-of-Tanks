@@ -115,6 +115,8 @@ for (const [part, p] of [[0, [1.9, 1.2, 1.5]], [1, null], [2, null]]) assert.equ
 // the span: the AC-130 lens (55 deg / 3.6), a 7.9 m hull: the map close, flat white far
 const span = (rangeM, fovDeg = 55 / 3.6, lengthM = 7.9) => 0.5 * (1 / Math.tan(fovDeg * Math.PI / 360)) * lengthM / rangeM;
 const nearAt = (r) => smooth(HEAT_NEAR_A, HEAT_NEAR_B, span(r));
+assert.match(cp.vertexShader, new RegExp(`float heatSpan = 0\\.5 \\* projectionMatrix\\[ 1 \\]\\[ 1 \\] \\* uHeatK\\.w / max\\( -mvPosition\\.z, 1\\.0 \\);\\s*vHeatNear = smoothstep\\( ${g(HEAT_NEAR_A)}, ${g(HEAT_NEAR_B)}, heatSpan \\);`),
+  'the shader fades the map in by the hull\'s span on the screen, as the mirror reads it');
 assert.ok(nearAt(250) >= 0.8, `at 250 m the map reads (${nearAt(250).toFixed(2)})`);
 assert.ok(nearAt(450) <= 0.1, `at 450 m the hull is the flat white-hot of old (${nearAt(450).toFixed(2)})`);
 
@@ -155,6 +157,14 @@ assert.equal(kA.y, 0, 'and the barrel');
 heat.noteShot('a', 2, 120);
 frame([A, B], true, 2);
 assert.ok(Math.abs(kA.y - gunShotHeat(120)) < 1e-12, 'a shot on the new clock heats from cold');
+
+// the QA hook's THERMAL_HULL_MAP 0: no span, so the old flat white-hot (HEAT_FAR) on every part
+globalThis.__LIGHT_TUNE = { THERMAL_HULL_MAP: 0 };
+frame([A, B], true, 3);
+assert.equal(kA.w, 0, 'the QA hook lays no map');
+delete globalThis.__LIGHT_TUNE;
+frame([A, B], true, 3.5);
+assert.equal(kA.w, 7.9, 'and only while it is set');
 
 // ---- 5. the wiring: every shot reaches the heats ----
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');

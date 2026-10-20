@@ -1,5 +1,6 @@
 import {Matrix4,Mesh,MeshStandardMaterial,Vector4,type Material,type Object3D} from 'three';
 import {tagUnlitVehiclePixels} from './vehicleOcclusion.ts';
+import {lightTune} from './lightModelCore.ts';
 interface ThermalActor {
   id?:string;team?:string;networkVisible?:boolean;
   combat?:{destroyed?:boolean}|null;
@@ -110,7 +111,7 @@ interface HeatRecord {
   inv:{value:Matrix4};eng0:{value:Vector4};eng1:{value:Vector4};k:{value:Vector4};
   /** per source material: its stand-ins by part (hull, gear, gun) */
   materials:Map<Material,Material[]>;
-  drive:number;clockS:number;
+  drive:number;clockS:number;lengthM:number;
 }
 /** The heat stand-ins' one program (every vehicle's and part's alike: only the uniforms differ). */
 function installHeatProgram(m:MeshStandardMaterial,rec:HeatRecord,part:number):void {
@@ -145,15 +146,15 @@ export function createThermalVehicles(){
     let rec=records.get(root);
     if(!rec){
       rec={inv:{value:new Matrix4()},eng0:{value:new Vector4()},eng1:{value:new Vector4()},k:{value:new Vector4(0,0,1,7)},
-        materials:new Map(),drive:0,clockS:NaN};
+        materials:new Map(),drive:0,clockS:NaN,lengthM:7};
       const length=actor.spec?.dims?.hullLengthM;
-      rec.k.value.w=typeof length==='number'&&length>0?length:7;
+      if(typeof length==='number'&&length>0)rec.lengthM=length;
       // the engine: the damage model's module box (hull frame: metres, +Z forward); without one, the rear third
       const engine=actor.spec?.armor?.modules?.find(m=>m.module==='engine');
       if(engine?.min&&engine.max){
         rec.eng0.value.set(engine.min[0]!,engine.min[1]!,engine.min[2]!,0);
         rec.eng1.value.set(engine.max[0]!,engine.max[1]!,engine.max[2]!,0);
-      } else {const half=rec.k.value.w/2;rec.eng0.value.set(-1,.5,-half,0);rec.eng1.value.set(1,1.5,-half/3,0);}
+      } else {const half=rec.lengthM/2;rec.eng0.value.set(-1,.5,-half,0);rec.eng1.value.set(1,1.5,-half/3,0);}
       records.set(root,rec);
     }
     return rec;
@@ -196,7 +197,9 @@ export function createThermalVehicles(){
     const rec=record(root,actor);
     rec.inv.value.copy(root.matrixWorld).invert();
     const shot=typeof timeS==='number'&&actor.id?shots.get(actor.id):undefined;
-    rec.k.value.set(rec.drive,shot?gunHeatAt(shot.heat,shot.atS,timeS!):0,(enemy?1:HEAT_FRIENDLY)*heat,rec.k.value.w);
+    // the QA hook's THERMAL_HULL_MAP 0 lays no map (no span on the screen: the old flat white-hot) for a same-build A/B
+    rec.k.value.set(rec.drive,shot?gunHeatAt(shot.heat,shot.atS,timeS!):0,(enemy?1:HEAT_FRIENDLY)*heat,
+      lightTune('THERMAL_HULL_MAP',1)>0?rec.lengthM:0);
     const list=meshList(root),kinds=parts.get(root)!;
     for(let i=0;i<list.length;i++) {
       const mesh=list[i]!;
