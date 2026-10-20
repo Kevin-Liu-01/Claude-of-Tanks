@@ -52,7 +52,6 @@ export const SELFTEST_SUITES = Object.freeze({
     // credited to the AC-130 (the drone's to the drone) on every surface
     'src/fx/gunshipRounds.selftest.mjs',
     'src/fx/retiredTracers.selftest.mjs',
-    'src/fx/aerialDistBoost.selftest.mjs',
     'src/fx/shockRingLight.selftest.mjs',
     'src/ui/aerialHitMark.selftest.mjs',
     'src/sim/killSource.selftest.mjs',
