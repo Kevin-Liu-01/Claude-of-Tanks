@@ -6,7 +6,7 @@ import { auxiliaryWeaponProfile, type AuxiliaryWeaponProfile } from '../vehicles
 import { penAtDistanceMm, shellGravityMps2 } from './ballistics.ts';
 export { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 import { estimateHurtChance, type DamageShellSpec, type CombatState } from './damage.ts';
-import type { ArmorModel, TankArmorPose } from './armor.ts';
+import { traceTank, type ArmorModel, type TankArmorPose } from './armor.ts';
 import type { SpottingTank } from './spotting.ts';
 
 export type AuxiliaryAction = 'smoke' | 'lights' | 'roofGun' | 'lightsOff';
@@ -42,7 +42,7 @@ export interface AuxiliaryEntity {
     gunPitch?: number; modeScale?: number; roofGunYaw?: number; roofGunPitch?: number; speed?: number; yawRate?: number;
     turretYawRate?: number };
   combat: { destroyed?: boolean; auxiliary?: AuxiliaryState; modules?: CombatState['modules']; eraSpent?: ReadonlySet<string>;
-    modeCriticalDamage?: boolean; modeModuleOnlyDamage?: boolean };
+    crew?: CombatState['crew']; modeCriticalDamage?: boolean; modeModuleOnlyDamage?: boolean };
   modeActive?: boolean;
   /** The mode's gravity on the vehicle's rounds (both authorities scale a roof round's drop by it). */
   modeGravityScale?: number;
@@ -172,29 +172,25 @@ function roofHurtChance(target: AuxiliaryEntity, from: Vector3, at: Vector3, pro
   hurtTo.copy(from).addScaledVector(hurtRay, (distance + 12) / distance);
   hurtTarget.spec.armor = target.spec.armor as ArmorModel; hurtTarget.combat = target.combat;
   const chance = estimateHurtChance(profile.shell, distance, hurtTarget, poseAtArrival(target, distance / profile.shell.velocityMps),
-    from, hurtTo);
+    from, hurtTo, profile.shell.velocityMps * PASS_DT);
   hurtTarget.spec.armor = null; hurtTarget.combat = noCombat;
   return chance;
 }
-/** Where a round laid on `point` from `from` arrives: `point` less its drop over the flight (the mode's gravity). */
-function roundArrival(shooter: AuxiliaryEntity, profile: AuxiliaryWeaponProfile, from: Vector3, point: Vector3, out: Vector3): Vector3 {
-  const flight = from.distanceTo(point) / profile.shell.velocityMps;
-  out.copy(point); out.y -= .5 * shellGravityMps2(profile.shell) * (shooter.modeGravityScale ?? 1) * flight * flight;
-  return out;
-}
 /** The aim grid on each face the target turns towards the station: along the face and up it, as fractions of its half
  * length (or width) and of its height. */
-const AIM_ALONG = [0, -.35, .35, -.7, .7] as const, AIM_UP = [.5, .3, .75] as const;
-const aimWorld = new Vector3(), aimArrive = new Vector3(), aimBest = new Vector3();
+const AIM_ALONG = [0, -.35, .35, -.7, .7] as const, AIM_UP = [.5, .3, .75, .92] as const;
+const aimWorld = new Vector3(), aimFrom = new Vector3(), aimArrive = new Vector3();
 /** The best aim point aimSearch found (target-local, hull frame before the mode's scale) and its chance. */
 let aimX = 0, aimY = 0, aimZ = 0, aimChance = 0;
 /**
  * VH.14 hold fire: when the round at the target's centre cannot hurt it, the point on the faces it turns towards the
- * station (the hull box: its dims, the mode's scale) where one most likely does — a 5 x 3 grid on each face, each point
- * where the target will stand when the round arrives, the station able to lay on it (stationLay) and the line to it
- * clear of the world, priced from `from` with its drop (roofHurtChance); the nearer the face's middle the better among
- * near-equal chances. Leaves it in aimX/Y/Z and aimChance; false when no point reaches HURT_FLOOR. At a refusal only
- * (at most thirty traces), never per tick.
+ * station (the hull box: its dims, the mode's scale) where one most likely does — a 5 x 4 grid on each face, each point
+ * where the target will stand when the round arrives, priced along the line the round would really fly once the
+ * station lays on it (laidLine: the muzzle beside the mount's axis, the drop; roofHurtChance), with a clear lane
+ * (laneClear: no ally, ally hull, wreck or seen hull before it) and a line clear of the world from that muzzle; the
+ * nearer the face's middle the better among near-equal chances. Leaves it in aimX/Y/Z and aimChance; false when no
+ * point reaches HURT_FLOOR. `from`: where the station stands (the faces it sees). At a refusal or a lapsed hold only
+ * (at most forty traces), never per tick.
  */
 function aimSearch(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, shooter: AuxiliaryEntity, target: AuxiliaryEntity,
   from: Vector3, context: GunContext): boolean {
@@ -210,12 +206,16 @@ function aimSearch(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, shooter: 
     if (Math.abs(facing) <= .2) continue;
     for (const along of AIM_ALONG) for (const up of AIM_UP) {
       const x = face ? along * halfWidth : Math.sign(facing) * halfWidth, z = face ? Math.sign(facing) * halfLength : along * halfLength;
-      const y = up * height;
+      const y = up * height, prior = -.05 * (Math.abs(along) + Math.abs(up - .5));
+      // a point no chance can lift past the best is not traced
+      if (1 + prior <= best) continue;
       arrivalPoint(target, x, y, z, flight, aimWorld);
-      const chance = roofHurtChance(target, from, roundArrival(shooter, profile, from, aimWorld, aimArrive), profile);
-      const score = chance - .05 * (Math.abs(along) + Math.abs(up - .5));
-      if (chance < HURT_FLOOR || score <= best || !stationLay(gun, profile, aimWorld) || !context.clear(from, aimWorld)) continue;
-      best = score; aimChance = chance; aimX = x; aimY = y; aimZ = z; aimBest.copy(aimWorld);
+      if (!laidLine(gun, profile, shooter, aimWorld, aimFrom, aimArrive)) continue;
+      const chance = roofHurtChance(target, aimFrom, aimArrive, profile);
+      if (chance < HURT_FLOOR || chance + prior <= best) continue;
+      if (!laneClear(shooter, target, context, aimFrom, aimWorld) || !context.clear(aimFrom, aimWorld)
+        || !hullsClear(shooter, target, context, aimFrom, layDir, aimFrom.distanceTo(aimWorld), profile)) continue;
+      best = chance + prior; aimChance = chance; aimX = x; aimY = y; aimZ = z;
     }
   }
   return aimChance >= HURT_FLOOR;
@@ -351,10 +351,14 @@ function stationAccepts(target: AuxiliaryEntity): boolean {
       && stationHold(scanStation, scanShooter, target, scanNow, share, scanGun, engageWeapon, scanContext)?.aim === false) return false;
   }
   if (!scanGun || !engageWeapon) return true;
-  arcLocal.set(target.state.pos.x, target.state.pos.y + (target.spec.dims?.heightM ?? 2.5) * .5, target.state.pos.z);
+  const height = target.spec.dims?.heightM ?? 2.5;
+  arcLocal.set(target.state.pos.x, target.state.pos.y + height * .5, target.state.pos.z);
+  if (stationLay(scanGun, engageWeapon, arcLocal)) return true;
+  // 2026-10-19: a centre below the mount's depression leaves the upper hull to lay on (stepStation searches its faces)
+  arcLocal.y = target.state.pos.y + height * .92;
   return stationLay(scanGun, engageWeapon, arcLocal);
 }
-const layPoint = new Vector3(), boreEnd = new Vector3();
+const layPoint = new Vector3(), boreEnd = new Vector3(), layLocal = new Vector3(), layDir = new Vector3();
 /** Can the station lay on the world point: its bearing inside the station's arc, its pitch inside the depression the
  * mount allows at that yaw and the weapon's elevation (aimAndFire's own law, from the mount's frame `inverse`). */
 function stationLay(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, point: Vector3): boolean {
@@ -364,6 +368,26 @@ function stationLay(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, point: V
   layPoint.applyAxisAngle(yAxis, -bearing).divide(mountScale).sub(pivot);
   const pitch = Math.atan2(layPoint.y, Math.hypot(layPoint.x, layPoint.z));
   return pitch >= -depressionAt(gun, yaw, profile.depressionRad) && pitch <= profile.elevationRad;
+}
+/** The line a round laid on `point` would fly once the station has settled on it (aimAndFire's lay and bore: the yaw
+ * and pitch from the mount's pivot, the round leaving the muzzle along the bore): the muzzle in `from` and where the
+ * round arrives at the point's range, its drop over the flight taken (the mode's gravity), in `arrive`. False when the
+ * station cannot lay on the point (stationLay's law). From the mount's frame (`base`, `inverse`, `pivot`, `mountScale`). */
+function laidLine(gun: RoofGunMount, profile: AuxiliaryWeaponProfile, shooter: AuxiliaryEntity, point: Vector3, from: Vector3,
+  arrive: Vector3): boolean {
+  layLocal.copy(point).applyMatrix4(inverse);
+  const bearing = Math.atan2(layLocal.x, layLocal.z), yaw = gun.yawArc ? arcYaw(gun.yawArc, bearing) : bearing;
+  if (Number.isNaN(yaw)) return false;
+  layLocal.applyAxisAngle(yAxis, -bearing).divide(mountScale).sub(pivot);
+  const pitch = Math.atan2(layLocal.y, Math.hypot(layLocal.x, layLocal.z));
+  if (pitch < -depressionAt(gun, yaw, profile.depressionRad) || pitch > profile.elevationRad) return false;
+  layDir.set(0, Math.sin(pitch), Math.cos(pitch)).multiply(mountScale).applyAxisAngle(yAxis, yaw).transformDirection(base);
+  from.fromArray(gun.muzzle).sub(pivot).applyAxisAngle(xAxis, -pitch).add(pivot).multiply(mountScale).applyAxisAngle(yAxis, yaw)
+    .applyMatrix4(base);
+  const range = from.distanceTo(point), flight = range / profile.shell.velocityMps;
+  arrive.copy(from).addScaledVector(layDir, range);
+  arrive.y -= .5 * shellGravityMps2(profile.shell) * (shooter.modeGravityScale ?? 1) * flight * flight;
+  return true;
 }
 
 /**
@@ -390,13 +414,17 @@ function holdGeometry(shooter: AuxiliaryEntity, target: AuxiliaryEntity): void {
   const bearing = Math.atan2(dx, dz);
   holdHull = wrap(bearing - s.yaw); holdTurret = wrap(bearing - s.yaw - s.turretYaw); holdRange = Math.hypot(dx, dz);
 }
-const judgeCentre = new Vector3(), judgeArrive = new Vector3();
-/** A lapsed hold judged again from the mount (`origin`) without laying on the target: the round at its centre, then its
- * faces (aimSearch). Renews the hold, turns it into an aim point, or clears it (the centre hurts). */
+const judgeCentre = new Vector3(), judgeFrom = new Vector3(), judgeArrive = new Vector3();
+/** A lapsed hold judged again in place, without laying on the target: the round the station would fire at its centre
+ * (laidLine: the line it would fly, its lane and the world clear from that muzzle), then its faces (aimSearch). Renews
+ * the hold, turns it into an aim point, or clears it (the centre hurts). */
 function judgeInPlace(slot: StationHold, station: AuxiliaryStationState, shooter: AuxiliaryEntity, target: AuxiliaryEntity,
   now: number, share: number, gun: RoofGunMount, profile: AuxiliaryWeaponProfile, context: GunContext): StationHold | null {
   judgeCentre.set(target.state.pos.x, target.state.pos.y + (target.spec.dims?.heightM ?? 2.5) * .5, target.state.pos.z);
-  if (roofHurtChance(target, origin, roundArrival(shooter, profile, origin, judgeCentre, judgeArrive), profile) >= HURT_FLOOR) {
+  if (laidLine(gun, profile, shooter, judgeCentre, judgeFrom, judgeArrive)
+    && laneClear(shooter, target, context, judgeFrom, judgeCentre) && context.clear(judgeFrom, judgeCentre)
+    && hullsClear(shooter, target, context, judgeFrom, layDir, judgeFrom.distanceTo(judgeCentre), profile)
+    && roofHurtChance(target, judgeFrom, judgeArrive, profile) >= HURT_FLOOR) {
     slot.target = null;
     return null;
   }
@@ -431,11 +459,14 @@ function rememberHold(station: AuxiliaryStationState, shooter: AuxiliaryEntity, 
       range: 0, share: 0 }));
     stationHolds.set(station, slots);
   }
-  let slot = slots[0]!;
+  // the target's own slot, else an empty one, else the one that lapses first
+  let slot: StationHold | null = null, empty: StationHold | null = null, oldest = slots[0]!;
   for (const candidate of slots) {
     if (candidate.target === target) { slot = candidate; break; }
-    if (!candidate.target || candidate.untilS < slot.untilS) slot = candidate;
+    if (!candidate.target) empty ??= candidate;
+    else if (candidate.untilS < oldest.untilS) oldest = candidate;
   }
+  slot ??= empty ?? oldest;
   if (aim) { slot.x = aimX; slot.y = aimY; slot.z = aimZ; }
   slot.target = target; slot.aim = aim; slot.share = share;
   return refreshHold(slot, shooter, target, now);
@@ -550,8 +581,17 @@ function stepStation(entity: AuxiliaryEntity, gun: RoofGunMount, state: Auxiliar
   scanGun = null; engageWeapon = null; scanStation = null; scanShooter = null; scanContext = null;
   if(!target)return false;
   // VH.14 hold fire: a target refused at its centre is laid on at the point of its faces where a round hurts, led to
-  // where it will stand when the round arrives
-  const hold = stationHold(state, entity, target, now), aim = !!hold?.aim;
+  // where it will stand when the round arrives; so is one whose centre lies below the mount's depression
+  let hold = stationHold(state, entity, target, now);
+  if (!hold) {
+    aimPoint.set(target.state.pos.x,target.state.pos.y+(target.spec.dims?.heightM??2.5)*.5,target.state.pos.z);
+    if (!stationLay(gun, profile, aimPoint)) {
+      hold = rememberHold(state, entity, target, now, aimSearch(gun, profile, entity, target, origin, context),
+        defeatableShare(target, origin.x, origin.z, engagePenMm(profile, target)));
+      if (!hold.aim) return false;
+    }
+  }
+  const aim = !!hold?.aim;
   if (hold?.aim) arrivalPoint(target, hold.x, hold.y, hold.z,
     Math.hypot(target.state.pos.x - origin.x, target.state.pos.y - origin.y, target.state.pos.z - origin.z) / profile.shell.velocityMps, aimPoint);
   else aimPoint.set(target.state.pos.x,target.state.pos.y+(target.spec.dims?.heightM??2.5)*.5,target.state.pos.z);
@@ -621,8 +661,16 @@ function aimAndFire(entity: AuxiliaryEntity, gun: RoofGunMount, state: Auxiliary
   bore.multiply(mountScale).applyAxisAngle(yAxis,state.gunYaw);origin.copy(bore).applyMatrix4(base);
   // Recheck from the actual moving muzzle, not merely the mount center.
   targetPoint.copy(point);
+  const settled=Math.abs(arc?desiredYaw-state.gunYaw:wrap(desiredYaw-state.gunYaw))<=1e-4&&Math.abs(desiredPitch-state.gunPitch)<=1e-4;
   if((target?!laneClear(entity,target,context,origin,targetPoint):!friendlyLaneClear(entity,null,context.entities,origin,targetPoint))
-    ||!context.clear(origin,targetPoint))return false;
+    ||!context.clear(origin,targetPoint)||(target&&!hullsClear(entity,target,context,origin,direction,origin.distanceTo(targetPoint),profile))){
+    // VH.14 hold fire (2026-10-19): a settled bore whose line to the vehicle is blocked at the muzzle (another vehicle's
+    // armour, a gun barrel swung across the lane included) holds that vehicle (judged again in place when the hold lapses)
+    // instead of idling on it
+    if(target&&settled)rememberHold(state,entity,target,now,false,
+      defeatableShare(target,origin.x,origin.z,penAtDistanceMm(profile.shell,origin.distanceTo(targetPoint))/profile.engagePenRatio));
+    return false;
+  }
   // VH.14 hold fire (owner 2026-10-19): every round is judged where it lands — along the line it would leave on (this
   // muzzle, the bore as it stands, its drop over the flight) against the target where it will stand when the round
   // arrives (its speed, heading and turn), with the round's chance over its pen roll and the modules it reaches
@@ -634,7 +682,7 @@ function aimAndFire(entity: AuxiliaryEntity, gun: RoofGunMount, state: Auxiliary
       // a barrel still settling on its lay (the step that lays it is the step that fires) holds this round only: the
       // verdict of a settled bore decides. Refused at the centre: the point of the target's faces where a round from
       // this muzzle most likely hurts (aimSearch); refused at that point: held
-      if(Math.abs(arc?desiredYaw-state.gunYaw:wrap(desiredYaw-state.gunYaw))>1e-4||Math.abs(desiredPitch-state.gunPitch)>1e-4)return false;
+      if(!settled)return false;
       const share=defeatableShare(target,origin.x,origin.z,penAtDistanceMm(profile.shell,range)/profile.engagePenRatio);
       rememberHold(state,entity,target,now,!aim&&aimSearch(gun,profile,entity,target,origin,context),share);
       return false;
@@ -688,7 +736,8 @@ function laneClear(shooter:AuxiliaryEntity,target:AuxiliaryEntity,context:GunCon
   }return true;
 }
 /** The friendly-fire corridor: no ally (a wreck of the shooter's side too) within 3 m in plan and 2.5 m in height of the
- * lane a→b. A round at a drone keeps it as well (2026-10-19: the counter-drone lane read no ally before). */
+ * lane a→b, nor its hull box across the lane (segmentMeetsHull). A round at a drone keeps it as well (2026-10-19: the
+ * counter-drone lane read no ally before). */
 function friendlyLaneClear(shooter:AuxiliaryEntity,target:AuxiliaryEntity|null,entities:readonly AuxiliaryEntity[],a:Vector3,b:Vector3):boolean{
   const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z,length=dx*dx+dy*dy+dz*dz;
   for(const ally of entities){
@@ -696,6 +745,8 @@ function friendlyLaneClear(shooter:AuxiliaryEntity,target:AuxiliaryEntity|null,e
     const p=ally.state.pos, y=p.y+(ally.spec.dims?.heightM??2.5)*.5;
     const t=((p.x-a.x)*dx+(y-a.y)*dy+(p.z-a.z)*dz)/(length||1);
     if(t>0&&t<1&&(a.x+t*dx-p.x)**2+(a.z+t*dz-p.z)**2<9&&Math.abs(a.y+t*dy-y)<2.5)return false;
+    // 2026-10-19: and its hull box (a long hull reaches past the corridor round its centre)
+    if(segmentMeetsHull(ally,a,b))return false;
   }return true;
 }
 /** Does the segment a→b pass through the hull box of `other` (its yaw, footprint and height; the spec's dims, the
@@ -708,6 +759,43 @@ function segmentMeetsHull(other:AuxiliaryEntity,a:Vector3,b:Vector3):boolean{
   const lax=ax*c-az*n, laz=ax*n+az*c, lbx=bx*c-bz*n, lbz=bx*n+bz*c;
   slabEnter=0; slabExit=1;
   return clipSlab(lax,lbx,-hw,hw)&&clipSlab(laz,lbz,-hl,hl)&&clipSlab(a.y,b.y,s.pos.y,s.pos.y+h)&&slabExit>0&&slabEnter<1;
+}
+const passPose: TankArmorPose = { pos: new Vector3(), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0 };
+const passA = new Vector3(), passB = new Vector3();
+/** One tick of a flight, as sim/ballistics.ts stepShell integrates it (the drop of the mode's gravity). */
+const PASS_DT = 1 / 60;
+/** VH.14 hold fire (2026-10-19): no other vehicle's armour on the round's flight from `from` along `dir` to `range` — its
+ * plates, gun and stowage as sim/armor.ts traceTank finds them, on each tick's swept segment of the falling round (a
+ * barrel swung across the lane reaches past the friendly corridor and the hull boxes, and a round dropping a few
+ * centimetres finds it where the straight bore misses) — for an ally or a wreck of either side, or an enemy the
+ * shooter's side sees (a hidden one is never read). Only a vehicle whose swept sphere (its armour's bound or its
+ * barrel's reach) the line passes is traced; the traces allocate: at a shot or a refusal only, never in the per-tick
+ * scan. */
+function hullsClear(shooter:AuxiliaryEntity,target:AuxiliaryEntity,context:GunContext,from:Vector3,dir:Vector3,range:number,
+  profile:AuxiliaryWeaponProfile):boolean{
+  const speed=profile.shell.velocityMps,gravity=shellGravityMps2(profile.shell)*(shooter.modeGravityScale??1),flight=range/speed;
+  const drop=.5*gravity*flight*flight;
+  for(const other of context.entities){
+    const armor=other.spec.armor as ArmorModel|null|undefined;
+    if(other===shooter||other===target||other.modeActive===false||!armor||other.aerial?.kind==='gunship')continue;
+    if(other.team!==shooter.team&&!other.combat.destroyed&&!context.visible(other,shooter))continue;
+    // the sphere the vehicle sweeps: its armour's bound, or the gun barrel's reach from the turret ring at any traverse
+    const pivot=armor.turretPivot,reach=Math.max(armor.boundingRadiusM??6,(armor.gunBarrel?.lengthM??0)+Math.hypot(pivot?.[0]??0,pivot?.[2]??0)+2.5);
+    const s=other.state,scale=s.modeScale??1,radius=reach*scale+drop,cy=s.pos.y+(other.spec.dims?.heightM??2.5)*.5*scale;
+    const along=Math.min(range,Math.max(0,(s.pos.x-from.x)*dir.x+(cy-from.y)*dir.y+(s.pos.z-from.z)*dir.z));
+    if((from.x+along*dir.x-s.pos.x)**2+(from.y+along*dir.y-cy)**2+(from.z+along*dir.z-s.pos.z)**2>radius*radius)continue;
+    passPose.pos.set(s.pos.x,s.pos.y,s.pos.z);passPose.yaw=s.yaw;passPose.pitch=s.visualPitch||0;passPose.roll=s.visualRoll||0;
+    passPose.turretYaw=s.turretYaw||0;passPose.gunPitch=s.gunPitch||0;passPose.modeScale=scale;
+    passPose.roofGunYaw=s.roofGunYaw??0;passPose.roofGunPitch=s.roofGunPitch??0;
+    // the flight's ticks that pass within the sphere
+    const t0=Math.max(0,(along-radius*1.5)/speed),t1=Math.min(flight,(along+radius*1.5)/speed);
+    for(let t=Math.floor(t0/PASS_DT)*PASS_DT;t<t1;t+=PASS_DT){
+      const u=Math.min(flight,t+PASS_DT);
+      passA.copy(from).addScaledVector(dir,speed*t);passA.y-=.5*gravity*t*t;
+      passB.copy(from).addScaledVector(dir,speed*u);passB.y-=.5*gravity*u*u;
+      if(traceTank(passA,passB,passPose,armor,other.combat.eraSpent).length)return false;
+    }
+  }return true;
 }
 /** segmentMeetsHull's parametric interval (module scratch). */
 let slabEnter=0, slabExit=1;

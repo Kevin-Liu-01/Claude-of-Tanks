@@ -155,7 +155,8 @@ function run({ shooter, context }, seconds = 12) {
   // a turret traversed broadside shows the turret's flank: the turret plates follow the turret's yaw
   assert.ok(at(TANK_SPECS.bmp2, Math.PI, Math.PI / 2) >= at(TANK_SPECS.bmp2, Math.PI) - 1e-9, 'turret plates follow the turret');
   // 2026-10-19 (owner: "Make roof guns hold fire where their rounds cannot hurt"): the share picks the target, each
-  // round is judged where it lands (src/sim/roofHoldFire.selftest.mjs, on the live damage model). A BMP-2 50 degrees off
+  // round is judged where it lands (src/sim/roofHoldFire.selftest.mjs and roofTargetOrder.selftest.mjs prove the law on
+  // the live damage model; this receipt guards the stations' mechanics under it). A BMP-2 50 degrees off
   // its rear: the line to its centre meets its side a little thicker than the K6's nominal penetration, which its pen
   // roll still defeats nearly one round in two; the K6 fires, the M60 holds
   assert.ok(at(TANK_SPECS.bmp2, -50 * DEG) >= heavy.engageShare, 'the share rule engages the BMP-2 50 degrees off its rear');

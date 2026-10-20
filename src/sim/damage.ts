@@ -2556,23 +2556,37 @@ export function estimatePenRatio(
 
 /** The strata estimateHurtChance prices the pen roll over (its resolution: 1/HURT_ROLL_STRATA). */
 const HURT_ROLL_STRATA = 20;
-/** One estimateHurtChance walk (module scratch): the hull penetrated, the plate the round glances from and its pen
- * there, and the modules it reaches before it stops (each once, with its exposed-weapon flag). */
-const hurtWalk = { hullPen: false, bounce: null as PlateHit | null, bouncePen: 0 };
-const hurtModules: ModuleId[] = [], hurtWeapons: boolean[] = [], hurtEra: string[] = [];
-const _hurtDir = new Vector3(), _hurtFrom = new Vector3(), _hurtTo = new Vector3();
+/** One estimateHurtChance walk (module scratch): the hull penetrated (and where: the main plate it entered by), the
+ * plate the round glances from and its pen there, and what it reaches before it stops — modules (each once, with its
+ * exposed-weapon flag) and, past a penetration, crew. */
+const hurtWalk = { hullPen: false, entry: null as PlateHit | null, bounce: null as PlateHit | null, bouncePen: 0 };
+const hurtModules: ModuleId[] = [], hurtWeapons: boolean[] = [], hurtCrew: string[] = [], hurtEra: string[] = [];
+const hurtStraddlers: ArmorHit[] = [];
+const _hurtDir = new Vector3(), _hurtBounce = new Vector3(), _hurtFrom = new Vector3(), _hurtTo = new Vector3(), _hurtOffset = new Vector3();
 /** The combat fields estimateHurtChance reads (a roof station's target carries no more). */
-type HurtCombat = Partial<Pick<CombatState, 'modules' | 'destroyed' | 'modeCriticalDamage' | 'modeModuleOnlyDamage'>>
+type HurtCombat = Partial<Pick<CombatState, 'modules' | 'crew' | 'destroyed' | 'modeCriticalDamage' | 'modeModuleOnlyDamage'>>
   & { eraSpent?: ReadonlySet<string> };
 
 function noteHurtModule(module: ModuleId, weapon: boolean): void {
   if (!hurtModules.includes(module)) { hurtModules.push(module); hurtWeapons.push(weapon); }
 }
+function noteHurtCrew(crew: string): void {
+  if (!hurtCrew.includes(crew)) hurtCrew.push(crew);
+}
+/** A module or crew hit the round reaches with the hull penetrated (rollModuleDamage, rollCrewHit). */
+function noteInside(hit: ArmorHit): void {
+  if (hit.kind === 'module') noteHurtModule(hit.module, false);
+  else if (hit.kind === 'crew') noteHurtCrew(hit.crew);
+}
 
 /** walkLiveShellTrace's path for a round arriving with `pen` (no RNG, nothing mutated): ricochet on the raw angle, ERA
  * banks (each spent once), screens and outer plates (their moduleLink rolled), the gun barrel's screen, the exposed
- * weapons and gun, then the main plate's verdict, or the seam catch when no main plate decides. Fills hurtWalk and
- * hurtModules. */
+ * weapons and gun, then the main plate's verdict, or the seam catch when no main plate decides. Past a penetration the
+ * walk goes on as the live one does — the modules and crew it crosses within the post-penetration reach, the internal
+ * hits it straddled on the way in (flushStraddlers), further plates while pen lasts — so a mode in which a penetration
+ * does no hull damage (Realistic: modules and crew only) is priced by what the round reaches inside — within the tick's
+ * swept segment it entered by (the live resolution sees only that segment's hits: `lineM`, the traced line's length,
+ * and `stepM`, the round's travel per tick from the line's start). Fills hurtWalk, hurtModules and hurtCrew. */
 function walkForHurt(
   shellSpec: DamageShellSpec,
   behavior: ShellBehavior,
@@ -2580,27 +2594,41 @@ function walkForHurt(
   armor: DamageArmorModel,
   hits: ArmorHit[],
   pen: number,
+  lineM: number,
+  stepM: number,
 ): void {
-  hurtWalk.hullPen = false; hurtWalk.bounce = null;
+  hurtWalk.hullPen = false; hurtWalk.entry = null; hurtWalk.bounce = null;
+  hurtStraddlers.length = 0;
+  const limitM = postPenetrationLimitM(shellSpec.caliberMm);
+  let segmentEnd = Infinity;
   for (const hit of hits) {
+    const entry = hurtWalk.entry;
+    if (entry && (hit.point.distanceTo(entry.point) > limitM || hit.t > segmentEnd)) break;
     if (hit.kind === 'module') {
-      if (hit.external === true || hit.module === 'gun') {
+      if (hit.external === true || hit.module === 'gun' || hurtWalk.hullPen) {
         noteHurtModule(hit.module, hit.module === 'roofGun' || !!armor.externalWeapons?.some(part => part.module === hit.module));
-      }
-      if (!hit.barrel) continue;
+      } else hurtStraddlers.push(hit);
+      if (!hit.barrel || hurtWalk.hullPen) continue;
       pen -= barrelScreenMm(hit);
       if (pen > 0) continue;
       return;
     }
-    if (hit.kind !== 'plate') continue;
+    if (hit.kind === 'crew') {
+      if (hurtWalk.hullPen) noteHurtCrew(hit.crew);
+      else hurtStraddlers.push(hit);
+      continue;
+    }
     const plate = hit.plate;
     if (plate.kind === 'era' && (combat.eraSpent?.has(plate.name) || hurtEra.includes(plate.name))) continue;
-    if (wouldRicochet(shellSpec, hit.impactAngleDeg, plate)) { hurtWalk.bounce = hit; hurtWalk.bouncePen = pen; return; }
+    if (!hurtWalk.hullPen && wouldRicochet(shellSpec, hit.impactAngleDeg, plate)) {
+      hurtWalk.bounce = hit; hurtWalk.bouncePen = pen;
+      return;
+    }
     if (plate.kind === 'era') {
       hurtEra.push(plate.name);
       if (shellSpec.tandem) continue;
       pen = applyEstimatedEra(pen, shellSpec, behavior, plate);
-      if (pen > 0) continue;
+      if (pen > 0 || hurtWalk.hullPen) continue;
       return;
     }
     const { effMm } = effectiveThickness(shellSpec, plate, hit.impactAngleDeg);
@@ -2608,13 +2636,24 @@ function walkForHurt(
       pen -= effMm;
       if (shellSpec.type === 'HEAT') pen *= Math.max(0, 1 - HEAT_GAP_LOSS_PER_M * heatGapAfter(hits, hit));
       if (plate.moduleLink) noteHurtModule(plate.moduleLink, !!plate.weaponHousing);
-      if (pen > 0) continue;
+      if (pen > 0 || hurtWalk.hullPen) continue;
       return;
     }
-    hurtWalk.hullPen = pen >= effMm;
-    return;
+    if (pen < effMm) return;
+    if (!hurtWalk.hullPen) {
+      hurtWalk.hullPen = true; hurtWalk.entry = hit;
+      // the penetration decides the tick's resolution: nothing past the end of its swept segment is reached
+      if (stepM > 0 && lineM > 0) segmentEnd = Math.ceil(hit.t * lineM / stepM) * stepM / lineM;
+      for (const straddler of hurtStraddlers) if ((straddler.tExit ?? -Infinity) > hit.t) noteInside(straddler);
+    }
+    pen -= effMm;
   }
-  hurtWalk.hullPen = hits.some(isInternalSeamHit) && !hasClosedCollisionShell(armor) && pen >= seamArmorMm(armor);
+  if (hurtWalk.hullPen) return;
+  // resolveSeamCompatibilityHit: no main plate decided, internal hits behind an open shell
+  if (hits.some(isInternalSeamHit) && !hasClosedCollisionShell(armor) && pen >= seamArmorMm(armor)) {
+    hurtWalk.hullPen = true;
+    for (const hit of hits) if ((hit.kind === 'module' && isInternalSeamHit(hit)) || hit.kind === 'crew') noteInside(hit);
+  }
 }
 
 /** rollModuleDamage's chance for a module the round reaches: none once it is at 0 hp or the mode keeps modules intact. */
@@ -2629,16 +2668,23 @@ function moduleHurtChance(
   const chance = MODULE_DEFS[module].damageChance;
   return Math.min(1, weapon ? Math.max(.85, chance) : chance);
 }
+/** rollCrewHit's chance for a crew member a kinetic round reaches past a penetration. */
+function crewHurtChance(combat: HurtCombat, crew: string): number {
+  if (combat.modeCriticalDamage === false || !combat.crew || !(crew in combat.crew) || combat.crew[crew] === false) return 0;
+  return combat.modeModuleOnlyDamage ? 1 : CREW_HIT_CHANCE;
+}
 
 /**
  * VH.14 hold fire (owner, 2026-10-19: "Make roof guns hold fire where their rounds cannot hurt"): the chance a round of
  * `shellSpec` flying from→to (`distM` from its muzzle) hurts `target`, its armour in `pose` — the pose it holds when the
- * round arrives. resolveShellHit's own walk over traceTank's intersections, priced over ensurePenRoll's ±25 % roll
- * (HURT_ROLL_STRATA strata): a hull penetration hurts; so does each module the round reaches before it stops (an outer
- * plate's moduleLink, the gun and the exposed weapons) at rollModuleDamage's chance while it has hit points; a round
- * that glances (raw-angle ricochet) is followed once off that plate into the rest of the vehicle. A wreck never hurts; a
- * target without armour always does; a line that meets no part of the vehicle never does. No RNG and nothing mutated;
- * the traces allocate, so run it per shot, never per tick.
+ * round arrives; `stepM` the round's travel per sim tick (the live resolution walks one tick's swept segment at a time;
+ * 0: the whole line). resolveShellHit's own walk over traceTank's intersections, priced over ensurePenRoll's ±25 % roll
+ * (HURT_ROLL_STRATA strata): a hull penetration hurts (where the mode deals hull damage; in Realistic, by the modules
+ * and crew the round reaches inside and realisticFragments' cone from where it entered); so does each module the round
+ * reaches before it stops (an outer plate's moduleLink, the gun and the exposed weapons) at rollModuleDamage's chance
+ * while it has hit points; a round that glances (raw-angle ricochet) is followed once off that plate into the rest of
+ * the vehicle. A wreck never hurts; a target without armour always does; a line that meets no part of the vehicle
+ * never does. No RNG and nothing mutated; the traces allocate, so run it per shot, never per tick.
  */
 export function estimateHurtChance(
   shellSpec: DamageShellSpec,
@@ -2647,6 +2693,7 @@ export function estimateHurtChance(
   pose: TankArmorPose,
   from: Vector3,
   to: Vector3,
+  stepM = 0,
 ): number {
   const armor = target.spec.armor, combat = target.combat;
   if (combat.destroyed) return 0;
@@ -2656,12 +2703,14 @@ export function estimateHurtChance(
   const behavior = behaviorOf(shellSpec.type);
   // a burst on the hull rolls the blast sweep over its modules
   if (behavior.kindClass === 'HE') return 1;
-  const nominal = penAtDistanceMm(shellSpec, distM);
-  let glance: PlateHit | null = null, after: ArmorHit[] = [];
+  const insideOnly = combat.modeModuleOnlyDamage === true;
+  const nominal = penAtDistanceMm(shellSpec, distM), lineM = from.distanceTo(to);
+  let glance: PlateHit | null = null, after: ArmorHit[] = [], fragmentsFrom: PlateHit | null = null;
+  let fragments: { kind: 'module' | 'crew'; name: string; external: boolean; point: Vector3 }[] = [];
   let chance = 0;
   for (let stratum = 0; stratum < HURT_ROLL_STRATA; stratum++) {
-    hurtModules.length = 0; hurtWeapons.length = 0; hurtEra.length = 0;
-    walkForHurt(shellSpec, behavior, combat, armor, hits, nominal * (ROLL_LOW + ROLL_SPAN * (stratum + .5) / HURT_ROLL_STRATA));
+    hurtModules.length = 0; hurtWeapons.length = 0; hurtCrew.length = 0; hurtEra.length = 0;
+    walkForHurt(shellSpec, behavior, combat, armor, hits, nominal * (ROLL_LOW + ROLL_SPAN * (stratum + .5) / HURT_ROLL_STRATA), lineM, stepM);
     const bounce = hurtWalk.bounce;
     if (!hurtWalk.hullPen && bounce && behavior.kindClass === 'KE') {
       // deflectShell: the velocity mirrored about the plate's outward normal, the flight resumed just off the surface;
@@ -2669,17 +2718,40 @@ export function estimateHurtChance(
       if (bounce !== glance) {
         glance = bounce;
         const normal = bounce.normal;
-        _hurtDir.subVectors(to, from).normalize();
-        _hurtDir.addScaledVector(normal, -2 * _hurtDir.dot(normal));
+        _hurtBounce.subVectors(to, from).normalize();
+        _hurtBounce.addScaledVector(normal, -2 * _hurtBounce.dot(normal));
         _hurtFrom.copy(bounce.point).addScaledVector(normal, 0.02);
-        _hurtTo.copy(_hurtFrom).addScaledVector(_hurtDir, 2 * (armor.boundingRadiusM || 4));
+        _hurtTo.copy(_hurtFrom).addScaledVector(_hurtBounce, 2 * (armor.boundingRadiusM || 4));
         after = traceTank(_hurtFrom, _hurtTo, pose, armor, combat.eraSpent) as ArmorHit[];
       }
-      if (after.length) walkForHurt(shellSpec, behavior, combat, armor, after, hurtWalk.bouncePen);
+      // deflectShell restarts the flight at the plate: its next tick's segment begins there
+      if (after.length) walkForHurt(shellSpec, behavior, combat, armor, after, hurtWalk.bouncePen, _hurtFrom.distanceTo(_hurtTo), stepM);
     }
-    if (hurtWalk.hullPen) { chance += 1; continue; }
+    if (hurtWalk.hullPen && !insideOnly) { chance += 1; continue; }
+    if (hurtWalk.hullPen && hurtWalk.entry) {
+      // realisticFragments: the cone from the entry point along the flight (the glanced one past a ricochet), as deep
+      // as the calibre allows
+      if (hurtWalk.entry !== fragmentsFrom) {
+        fragmentsFrom = hurtWalk.entry;
+        fragments = [];
+        if (after.includes(fragmentsFrom)) _hurtDir.copy(_hurtBounce);
+        else _hurtDir.subVectors(to, from).normalize();
+        const depth = Math.max(1.6, Math.min(4, shellSpec.caliberMm * .025));
+        for (const box of blastTargets(pose, armor)) {
+          _hurtOffset.subVectors(box.point, fragmentsFrom.point);
+          const along = _hurtOffset.dot(_hurtDir), width = .18 + Math.max(0, along) * .48;
+          if (along < -.05 || along > depth || _hurtOffset.lengthSq() - along * along > width * width) continue;
+          if (box.kind === 'crew' || !box.external) fragments.push(box);
+        }
+      }
+      for (const box of fragments) {
+        if (box.kind === 'module') noteHurtModule(box.name as ModuleId, false);
+        else noteHurtCrew(box.name);
+      }
+    }
     let spared = 1;
     for (let i = 0; i < hurtModules.length; i++) spared *= 1 - moduleHurtChance(combat, hurtModules[i]!, hurtWeapons[i]!);
+    for (const crew of hurtCrew) spared *= 1 - crewHurtChance(combat, crew);
     chance += 1 - spared;
   }
   return chance / HURT_ROLL_STRATA;

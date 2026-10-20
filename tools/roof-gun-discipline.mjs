@@ -9,7 +9,7 @@
  *   from its first tick) flown GHOSTS times through sim/ballistics.ts stepShell, sim/armor.ts traceTank on each tick's
  *   swept segment against every hull near its line (each carried along its heading at its speed and turn) and
  *   sim/damage.ts resolveShellHit with its own rolls, against copies of the hulls' combat states. `chance`: the share of
- *   flights whose first hull is a live enemy that takes hull damage or a module hit. `cannotHurt` counts the rounds
+ *   flights whose first hull is a live enemy that takes hull damage, a module hit or a crew hit. `cannotHurt` counts the rounds
  *   under one flight in ten (why: `armour`, or a first hull that is a `wreck` or a `friendly`); `canHurt` the rest, and
  *   `expected` sums their chances; `drone` the rounds laid on an enemy drone in flight; `miss` the rest (the world, the
  *   sky);
@@ -137,9 +137,12 @@ function judgeRound(match, world, shooter, row, calibres) {
         if (hit && hit.dist < toPoint.length() - .5) { blocked = true; break; }
         first = best.other;
       }
+      // a wreck before the round (a round that destroys the hull hurts it)
+      const wreck = best.ghost.combat.destroyed;
       const event = resolveShellHit(shell, best.ghost, best.hits, rng);
-      if (best.ghost.combat.destroyed || best.other.team === shooter.team) { if (!best.ghost.combat.destroyed) break; continue; }
-      if ((event.damage ?? 0) > 0 || event.modulesHit?.some((m) => m.dmg > 0)) { hurt++; break; }
+      if (wreck) continue;
+      if (best.other.team === shooter.team) break;
+      if ((event.damage ?? 0) > 0 || event.modulesHit?.some((m) => m.dmg > 0) || event.crewHit?.length) { hurt++; break; }
     }
     if (blocked) break;
   }
