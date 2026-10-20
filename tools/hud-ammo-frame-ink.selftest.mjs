@@ -637,10 +637,23 @@ const FLOW_ISSUES = ['saved frame:', 'the DOM read names', 'tray count', 'tray l
   assert.ok(plateOn.some((line) => /^"×8.0" -[\d.]+ px from \.cot-drive$/.test(line)), `the zoom plate on the speedometer fails (${plateOn.join('; ')})`);
   const far = read({ paintLog: [text('×8.0', 386, 230, 28, 16)], extra: { '.cot-minimap': [el({ x0: 380, y0: 200, x1: 400, y1: 300 })] } });
   assert.ok(far.some((line) => /^"×8.0" -[\d.]+ px from \.cot-minimap$/.test(line)), `a plate 200 px right of the marker on the minimap fails (${far.join('; ')})`);
-  // a wide mouse tray's row 112 px over the floor (where hud.ts no longer models it); a stacked tray's row may sit anywhere
-  const model = read({ extra: { '.cot-vehicle-controls': [row(188)] } });
-  assert.ok(model.includes('the controls row starts 112 px over the floor, hud.ts models 120'), `a row off the model fails (${model.join('; ')})`);
-  assert.deepEqual(read({ extra: { '.cot-vehicle-controls': [row(188)] }, tray: 'stacked' }), [], 'a stacked tray\'s row is not modelled');
+  // r10: the readouts the scope sets over the ring are read too (a row 2 px under the score fails, 3 px passes), the
+  // shot report and the open log are panels, and the touch warning chip the reticle seats under the sight keeps 3 px
+  // from every control (2 px from a FIRE button fails)
+  const score = { '.cot-top': [el({ x0: 120, y0: 0, x1: 280, y1: 62 })] };
+  const high = read({ paintLog: [text('14 ', 185, 64 + 13.5 * 0.74, 20)], extra: score });
+  assert.ok(high.includes('"14 " 2 px from .cot-top'), `a readout over the ring 2 px under the score fails (${high.join('; ')})`);
+  assert.deepEqual(read({ paintLog: [text('14 ', 185, 65 + 13.5 * 0.74, 20)], extra: score }), [], 'a readout 3 px under the score passes');
+  // (a shot report is a passing overlay the reticle never dodges; the vision switch, a control, keeps clear of it)
+  const report = { '.cot-si-cardhost:not(:empty)': [el({ x0: 320, y0: 100, x1: 400, y1: 300 })] };
+  assert.deepEqual(read({ paintLog: [text('×8.0', 300, 230, 28, 16)], extra: report }), [], 'a readout under a shot report is no finding');
+  const covered = read({ extra: { ...report, ...switchAt(230, 126) } });
+  assert.ok(covered.some((line) => /^the vision switch -[\d.]+ px from \.cot-si-cardhost:not\(:empty\)$/.test(line)), `the switch under a shot report fails (${covered.join('; ')})`);
+  const fire = { '.cot-touch.on .round': [el({ x0: 108, y0: 230, x1: 164, y1: 286 })] };
+  const seatedAt = (y0) => ({ ...fire, '.cot-aim-warning[data-seat]:not([hidden])': [el({ x0: 110, y0, x1: 290, y1: y0 + 23 })] });
+  const seatedNear = read({ extra: seatedAt(205) });
+  assert.ok(seatedNear.includes('the seated warning chip 2 px from .cot-touch.on .round'), `a seated chip 2 px from FIRE fails (${seatedNear.join('; ')})`);
+  assert.deepEqual(read({ extra: seatedAt(204) }), [], 'a seated chip 3 px from FIRE passes');
 }
 
 // 6. The command line hands the flow its browser and lock and takes no screenshot of its own.
@@ -656,4 +669,5 @@ console.log('hud-ammo-frame-ink.selftest: PNG rows decode exactly (RGB and RGBA,
   + 'its ink box, fails each missing descriptor mark on mouse and touch, clips no shot, reads its frame before any ink '
   + 'shot and fails every finding; the reticle checks catch the r6 countdown and clip on the ring; the vision switch over, '
   + 'near or off a panel, a readout, a zoom rule or the warning chip near a control (the speedometer and the minimap among '
-  + 'them, a row set right of the column too) and a controls row off the model fail');
+  + 'them, a row set right of the column or over the ring too), the switch under a shot report and the seated touch '
+  + 'warning chip near a control fail');

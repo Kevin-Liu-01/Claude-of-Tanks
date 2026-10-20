@@ -1,4 +1,5 @@
 import { layoutViewportSize } from './responsiveLayout.ts';
+import { addSightFurniture, clearSightFurniture, settleSightFurniture } from './sightFurniture.ts';
 
 /** Matches the scoreboard polygon; the objective clears each bottom corner by 8px. */
 export const SCORE_BOTTOM_INSET = 25;
@@ -67,6 +68,19 @@ export function portraitSightClearTop(top: number, height: number, centerY: numb
   return above >= ceiling ? above : top;
 }
 
+/** What the reticle's marks keep clear of (sightFurniture.ts): the HUD panels and controls that can sit near the sight. The
+ *  touch warning chip the reticle seats under the sight itself (data-seat, hud.ts) is one of the reticle's marks. A shot
+ *  report, the open combat log and the centre notices are passing overlays the reticle never dodges, or its marks would
+ *  jump as they come and go (only the vision switch keeps clear of the right lane's: seatScopeVision). */
+const SIGHT_FURNITURE = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy',
+  '.cot-touch.on .quick', '.cot-touch-aim.on .aimhint', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
+  '.cot-scope-vision', '.cot-aim-warning:not([hidden]):not([data-seat])', '.flight-identity', '.cot-ear'].join(',');
+/** The left lane's feeds, which the scope's vision switch keeps clear of in its mirror seat (seatScopeVision). */
+const LEFT_LANE = '.cot-kill-lane.l .cot-kf:not([hidden]),.cot-si-toasthost .cot-si-toast:not([hidden]),.cot-room-chat:not([hidden])';
+/** What covers the vision switch's seat right of the sight on a mouse layout (critic r9: under about 1200 px wide): a shot
+ *  report's host, which takes the pointer over its whole box while it holds a card, and the open combat log. */
+const RIGHT_LANE_COVERS = '.cot-si-cardhost:not(:empty),.cot-si-log.open';
+
 export function installBattleHudLayout(root: HTMLElement): void {
   let frame = 0;
   const observed = new Set<Element>();
@@ -134,6 +148,60 @@ export function installBattleHudLayout(root: HTMLElement): void {
       touch ? read('.cot-touch.on .fire.alt')?.top ?? (height <= 340 ? height - 206 : height) : height,
       read('.cot-drive')?.top ?? height) - 8;
   }
+  /** A node's box when it shows (laid out, not hidden or transparent), else null. */
+  const shownBox = (node: Element): DOMRect | null => {
+    if (!node.getClientRects().length) return null;
+    const style = getComputedStyle(node);
+    return style.visibility === 'hidden' || style.opacity === '0' ? null : node.getBoundingClientRect();
+  };
+  const apart = (a: { left: number; top: number; right: number; bottom: number }, b: DOMRect) =>
+    Math.max(a.left - b.right, b.left - a.right, a.top - b.bottom, b.top - a.bottom);
+  /**
+   * The scope's vision switch sits right of the sight on a mouse layout (aerialHud.css). A shot report or the open combat
+   * log in the right lane covers that seat on a window under about 1200 px wide (critic r9: 900x700, 640x720, 800x400):
+   * the switch then takes the mirror seat left of the sight where that keeps 3 px from every panel and feed there, and
+   * otherwise waits hidden until the lane clears (its key still cycles the view). Touch seats it left of the sight already.
+   */
+  function seatScopeVision(width: number, height: number, touch: boolean): void {
+    const vision = document.querySelector<HTMLElement>('.cot-scope-vision');
+    let seat = '';
+    if (vision && !vision.hidden && !touch) {
+      const reach = Math.max(Math.min(width, height) * 0.15 + 8, 80);
+      const edge = width < 540 ? 112 : 180;
+      const w = vision.offsetWidth;
+      const h = vision.offsetHeight;
+      const right = { left: Math.min(width / 2 + reach, width - edge), top: height / 2 - h / 2, right: 0, bottom: height / 2 + h / 2 };
+      right.right = right.left + w;
+      let covered = false;
+      for (const node of document.querySelectorAll(RIGHT_LANE_COVERS)) {
+        const box = shownBox(node);
+        if (box && apart(right, box) < 3) covered = true;
+      }
+      if (covered) {
+        const left = { left: 0, top: right.top, right: Math.max(width / 2 - reach, edge), bottom: right.bottom };
+        left.left = left.right - w;
+        seat = 'left';
+        for (const node of document.querySelectorAll(`${SIGHT_FURNITURE},${LEFT_LANE},.cot-sixth.on,.cot-alert.show`)) {
+          if (node === vision || node.contains(vision)) continue;
+          const box = shownBox(node);
+          if (box && apart(left, box) < 3) seat = 'none';
+        }
+      }
+    }
+    if ((document.body.dataset.scopeVision ?? '') !== seat) {
+      if (seat) document.body.dataset.scopeVision = seat;
+      else delete document.body.dataset.scopeVision;
+    }
+  }
+  /** Measures the furniture the reticle keeps clear of (sightFurniture.ts), once per relayout. */
+  function publishSightFurniture(): void {
+    clearSightFurniture();
+    for (const node of document.querySelectorAll(SIGHT_FURNITURE)) {
+      const box = shownBox(node);
+      if (box) addSightFurniture(box.left, box.top, box.right, box.bottom);
+    }
+    settleSightFurniture();
+  }
   // The multiplayer v2 network strip with every cell shown, measured whenever it is not folded to its ping.
   let networkFullWidth = 0;
   /**
@@ -173,12 +241,18 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if (document.body.hasAttribute('data-cot-battle-layout') !== visible) {
       document.body.toggleAttribute('data-cot-battle-layout', visible);
     }
-    if (!visible) return;
+    if (!visible) {
+      clearSightFurniture();
+      settleSightFurniture();
+      return;
+    }
     observe('.cot-vehicle-status,.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
     observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane,.cot-medal-toasts,.cot-si-cardhost,.cot-si-log', true);
     // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
     // asks for a relayout when it mounts, and the lanes seat it in the corner row (networkCornerRight).
     observe('.cot-mp-status.battle,.cot-flight-hud,.flight-console');
+    // the scope's vision switch (shown and hidden with the scope) and the consumables, which the reticle keeps clear of
+    observe('.cot-scope-vision,.cot-cons,.cot-touch-aim');
     // The lanes are placed in layout-viewport coordinates (getBoundingClientRect, fixed positioning), so they
     // measure the same viewport the HUD root is sized to: a pinch leaves both unchanged.
     const { width, height } = layoutViewportSize(window);
@@ -385,6 +459,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     const toastRows = String(stack.toastRows);
     if (root.dataset.toastRows !== toastRows) root.dataset.toastRows = toastRows;
+    seatScopeVision(width, height, touch);
+    publishSightFurniture();
   }
   function schedule() {
     if (!frame) frame = requestAnimationFrame(refresh);

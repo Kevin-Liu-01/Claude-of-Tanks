@@ -363,4 +363,10 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
  /* (left of the sight, its right edge 8 px past the widest ring; a portrait under 343 px wide narrows it to fit) */
  .cot-hud .cot-scope-vision{left:auto;right:calc(50% + 15vmin + 8px);width:min(104px,calc(50% - 15vmin - 16px - env(safe-area-inset-left)));min-width:88px}
 }
+/* A shot report or the open combat log over the mouse seat (critic r9: under about 1200 px wide): the mirror seat left of
+   the sight, or hidden until the right lane clears where the left lane has no room either (battleHudLayout
+   seatScopeVision; the I key still cycles the view). */
+body[data-scope-vision='left'] .cot-hud .cot-scope-vision{left:auto;right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px))}
+@media(max-width:539px){body[data-scope-vision='left'] .cot-hud .cot-scope-vision{right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px))}}
+body[data-scope-vision='none'] .cot-hud .cot-scope-vision{visibility:hidden}
 @media(forced-colors:active){.cot-hud .cot-scope-vision{outline:1px solid ButtonText}.cot-scope-vision:focus-visible{outline:3px solid Highlight}.scope-vision-step.active{background:Highlight}}

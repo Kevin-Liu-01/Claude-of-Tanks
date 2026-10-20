@@ -91,6 +91,12 @@ const AMMO_STAGES = {
     reload:{t:12,totalS:21,kind:'magazine'}, sniper:true, ring:3},
   'ammo-dry-autoloader-sniper-wide': {spec:'m1a3', ammo:[0,0,0], magazineRounds:0, reload:{t:12,totalS:21,kind:'magazine'},
     sniper:true, ring:3},
+  // r10: Juggernaut's unlimited rounds through the scope (critic r9: no frame showed the ∞ readout); the scope with a
+  // shot report up, and with the combat log open too, in the right lane over the vision switch's seat
+  'ammo-unlimited-sniper': {spec:'m1a3', mode:'juggernaut', magazineRounds:3, reload:{t:1.4,totalS:2.5,kind:'intraClip'},
+    sniper:true},
+  'ammo-reload-sniper-report': {spec:'m1a1_abrams_hc', reload:{t:3.2,totalS:6,kind:'shell'}, sniper:true, report:true},
+  'ammo-reload-sniper-log': {spec:'m1a1_abrams_hc', reload:{t:3.2,totalS:6,kind:'shell'}, sniper:true, report:true, log:true},
 };
 let ammoSniper = false;
 let ammoUnlimited = false;
@@ -139,6 +145,8 @@ function stageAmmo(name) {
   frame.mode = ammoSniper ? 'sniper' : 'battle';
   for (let i = 0; i < 6; i++) hud.update(frame);
   panel.update(combat);
+  if (stage.report) for (let i = 0; i < 3; i++) { hit(); hit(true); }
+  if (stage.log && !document.querySelector('.cot-si-log.open')) bus.emit('ui:shotLog', {});
 }
 function hit(incoming=false, attackerIndex=8) {
   bus.emit('shell:hit',{attackerId:incoming?tanks[attackerIndex].id:player.id,targetId:incoming?player.id:tanks[8].id,

@@ -300,6 +300,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
 .cot-aim-warning[hidden]{display:none}
 .cot-aim-warning[data-kind='blocked']{color:#ff9b91;border-color:#f05a5a;background:#240a0aeb}
 .cot-aim-warning[data-kind='rollover']{color:#ffd17b;border-color:#f0a030;background:#211608eb}
+/* Owner 2026-10-17 (out of ammo, critic r9): where the chip sits under the sight, the reticle seats it (hud.ts
+   placeAimWarning) under the rack, the countdown and the ring, as the mouse layout's canvas chip, and the scope's readouts
+   start under it; its box is the canvas chip's, 23 px tall. A short landscape keeps it in the left lane (below). */
+.cot-aim-warning[data-seat='sight']:not([hidden]){left:var(--hud-aim-warning-x);top:var(--hud-aim-warning-y);width:var(--hud-aim-warning-w);height:23px;min-height:0;padding-block:0;transform:none;display:flex;align-items:center;justify-content:center}
 @media (max-height:299px) and (orientation:landscape){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-minimap{width:88px!important;height:88px!important}
   .cot-touch-aim .aimhint{display:none}

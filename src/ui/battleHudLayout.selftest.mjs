@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { battleSideStack, battleNotificationRows, battleRosterHeight, installBattleHudLayout, objectiveWidth, battleReportDock, REPORT_MAP_GAP,
   portraitSightClearTop, SIGHT_BAND_ABOVE, SIGHT_BAND_BELOW, SCOPE_BAND_BELOW } from './battleHudLayout.ts';
+import { sightFurniture } from './sightFurniture.ts';
+const layoutSourceR10 = readFileSync(new URL('./battleHudLayout.ts', import.meta.url), 'utf8');
 
 for (const space of [0, 80, 124, 320, 500]) {
   const height = battleRosterHeight(600, space, 124);
@@ -326,6 +328,81 @@ try {
     assert.deepEqual([tall.px('kill-left-top'), tall.px('kill-right-top')], [411, 408], 'tall: under the map and the chrome');
     assert.equal(tall.px('kill-left-height'), 5 * 29 - 3, 'tall: the left kill lane keeps the natural floor');
     assert.equal(tall.px('kill-right-height'), 5 * 29 - 3, 'tall: the right kill lane keeps the natural floor');
+  } finally {
+    for (const [key, descriptor] of saved) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];
+    }
+  }
+}
+// r10 (critic r9; owner 2026-10-17, out of ammo): every pass measures the furniture the reticle keeps clear of
+// (sightFurniture.ts), so the scope readouts follow the stylesheet; and it seats the scope's vision switch. A mouse
+// layout keeps the switch right of the sight; a shot report's host (it takes the pointer over its whole box while it
+// holds a card) or the open combat log over that seat sends it to the mirror seat left of the sight when nothing there
+// comes within 3 px (900x700, measured: the card at 584-884 x 196-452, the switch 166x48 at 563-729 x 326-374); where
+// the left lane's speedometer sits level with the marker (800x400: 184-292 x 164-272) it waits hidden. Touch never moves
+// it, and the touch chip the reticle seats under the sight (data-seat) is the reticle's own mark, never furniture.
+{
+  const saved = new Map(['document','window','ResizeObserver','MutationObserver','requestAnimationFrame','getComputedStyle']
+    .map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
+  const box = (left,top,right,bottom) => ({top,bottom,left,right,width:right-left,height:bottom-top,x:left,y:top});
+  function solve(width, height, rects, { touch = false, hidden = false } = {}) {
+    const nodes = new Map();
+    for (const [selector, list] of Object.entries(rects)) nodes.set(selector, list.map((rect) => ({ rect, hidden: false,
+      offsetWidth: rect.width, offsetHeight: rect.height, getClientRects: () => [rect], getBoundingClientRect: () => rect,
+      contains(other) { return other === this; }, children: [], childElementCount: 0, dataset: {}, getAttribute: () => null,
+      hasAttribute: () => false, toggleAttribute() {} })));
+    const vision = nodes.get('.cot-scope-vision')?.[0];
+    if (vision) vision.hidden = hidden;
+    const all = (selector) => [...new Set(selector.split(',').flatMap((part) => nodes.get(part.trim()) ?? []))];
+    const body = { dataset: {}, classList: { contains: (name) => touch && name === 'cot-touch-layout' },
+      style: { getPropertyValue: () => '', setProperty() {}, removeProperty() {} },
+      hasAttribute: () => true, toggleAttribute() {}, getAttribute: () => '' };
+    let frame = null;
+    globalThis.document = { body, documentElement: { clientWidth: width },
+      querySelector: (selector) => all(selector)[0] ?? null, querySelectorAll: all };
+    globalThis.window = { innerWidth: width, innerHeight: height, visualViewport: { width, height }, document: globalThis.document,
+      addEventListener() {} };
+    globalThis.getComputedStyle = () => ({ visibility: 'visible', opacity: '1' });
+    globalThis.requestAnimationFrame = (fn) => { frame = fn; return 1; };
+    globalThis.ResizeObserver = class { observe() {} };
+    globalThis.MutationObserver = class { observe() {} };
+    const root = { getClientRects: () => [{}], dataset: {}, classList: { contains: () => false, toggle() {} },
+      getAttribute: () => null, querySelector: () => null };
+    installBattleHudLayout(root);
+    frame();
+    return { seat: body.dataset.scopeVision ?? '', boxes: sightFurniture.boxes.slice(0, sightFurniture.count)
+      .map((b) => [b.x0, b.y0, b.x1, b.y1]) };
+  }
+  try {
+    const right = (width, height) => { const left = Math.min(width / 2 + Math.max(Math.min(width, height) * 0.15 + 8, 80), width - 180);
+      return box(left, height / 2 - 24, left + 166, height / 2 + 24); };
+    const base = { '.cot-shell': [box(12, 636, 76, 688)], '.cot-top': [box(287, 0, 613, 62)], '.cot-dp': [box(12, 389, 172, 572)],
+      '.cot-drive': [box(184, 464, 292, 572)], '.cot-aim-warning:not([hidden]):not([data-seat])': [box(8, 118, 114, 142)] };
+    let solved = solve(900, 700, { ...base, '.cot-scope-vision': [right(900, 700)] });
+    assert.equal(solved.seat, '', '900x700: nothing over the seat right of the sight, the switch stays');
+    for (const b of [[12, 636, 76, 688], [287, 0, 613, 62], [12, 389, 172, 572], [184, 464, 292, 572], [8, 118, 114, 142],
+      [right(900, 700).left, 326, right(900, 700).right, 374]]) {
+      assert.ok(solved.boxes.some((got) => got.every((v, i) => Math.abs(v - b[i]) < 1e-9)), `the furniture holds ${b}`);
+    }
+    assert.equal(solved.boxes.length, 6, 'one box a shown panel');
+    solved = solve(900, 700, { ...base, '.cot-scope-vision': [right(900, 700)], '.cot-si-cardhost:not(:empty)': [box(584, 196, 884, 452)] });
+    assert.equal(solved.seat, 'left', '900x700: a shot report over the seat sends the switch left of the sight');
+    solved = solve(900, 700, { ...base, '.cot-scope-vision': [right(900, 700)], '.cot-si-log.open': [box(584, 74, 884, 452)] });
+    assert.equal(solved.seat, 'left', '900x700: so does the open combat log');
+    solved = solve(900, 700, { ...base, '.cot-scope-vision': [right(900, 700)], '.cot-si-cardhost:not(:empty)': [box(584, 196, 884, 452)],
+      '.cot-kill-lane.l .cot-kf:not([hidden])': [box(0, 330, 240, 356)] });
+    assert.equal(solved.seat, 'none', '900x700: a kill notice level with the marker leaves no mirror seat: hidden');
+    solved = solve(800, 400, { '.cot-drive': [box(184, 164, 292, 272)], '.cot-scope-vision': [right(800, 400)],
+      '.cot-si-cardhost:not(:empty)': [box(484, 74, 784, 244)] });
+    assert.equal(solved.seat, 'none', '800x400: the speedometer beside the marker on the left: hidden while the report is up');
+    solved = solve(900, 700, { ...base, '.cot-scope-vision': [right(900, 700)], '.cot-si-cardhost:not(:empty)': [box(584, 196, 884, 452)] },
+      { hidden: true });
+    assert.equal(solved.seat, '', 'no scope (the switch hidden): no seat');
+    solved = solve(390, 844, { '.cot-scope-vision': [box(25, 399, 129, 445)], '.cot-si-cardhost:not(:empty)': [box(12, 380, 378, 520)] },
+      { touch: true });
+    assert.equal(solved.seat, '', 'touch keeps its own seat left of the sight');
+    assert.ok(!layoutSourceR10.includes("'.cot-aim-warning:not([hidden])',") && layoutSourceR10.includes(".cot-aim-warning:not([hidden]):not([data-seat])"),
+      'the seated touch chip is the reticle\'s mark, not furniture');
   } finally {
     for (const [key, descriptor] of saved) {
       if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];

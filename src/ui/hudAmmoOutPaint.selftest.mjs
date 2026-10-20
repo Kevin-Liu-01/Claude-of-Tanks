@@ -19,6 +19,7 @@ import { matchRulesetFor, refillUnlimitedAmmunition } from '../sim/matchRuleset.
 import { createAimController } from '../game/aimController.ts';
 import { createBus } from '../game/stateCore.ts';
 import { aimWarningState, initHud, RETICLE_AMMO_INK as INK } from './hud.ts';
+import { addSightFurniture, clearSightFurniture, settleSightFurniture } from './sightFurniture.ts';
 
 // --- a minimal DOM: elements remember classes, attributes, styles and their queried children; canvases record ---
 const created = [];
@@ -566,6 +567,31 @@ for (const [id, slots, fired] of [['m1a3', 4, 2], ['ztz100_prototype', 2, 1], ['
     `${id}: the cycle ends with every ready round whole; nothing vanishes`);
 }
 
+// 13b. The frame a reload ends on always repaints, whatever the wall clock (critic r9b: with performance.now running
+// 200 ms a call, the scope's fade had settled and nothing else kept the canvas live, so a clip's cycle reading t 0 under
+// its own kind reused the last cycling paint: the chambered round stayed part-filled). The cycle runs with the clock far
+// ahead; the last step paints the round whole in the ready ink.
+{
+  const realNow = performance.now.bind(performance);
+  let skew = 0;
+  performance.now = () => realNow() + (skew += 1000);
+  try {
+    const tank = tankOf('m1a3');
+    for (let shot = 0; shot < 2; shot++) assert.ok(fire(tank), `m1a3 (clock ahead): shot ${shot + 1}`);
+    const totalS = tank.combat.reload.totalS;
+    // (one scoped frame: the scope's fade, which would otherwise keep every frame repainting, settles on the clock)
+    frame(tank, { mode: 'sniper' });
+    tank.combat.reload.t = totalS / 6 + 1e-6;
+    for (let i = 0; i < 60; i++) frame(tank); // the ring eases onto its target
+    tank.combat.reload.t = 0;
+    const view = frame(tank);
+    assert.equal(view.painted, true, 'the frame the cycle ends on repaints');
+    assert.deepEqual(rackFills(ctx.ops, INK.reload), [15, 15, 0, 0], 'the chambered round ends whole in the ready ink');
+  } finally {
+    performance.now = realNow;
+  }
+}
+
 // 14. The ×8 sight on short landscape phones (critic r3 measured 844x390, 932x430 and 667x375): the empty mark, the
 // rack, its countdown and the range tag never land on the readout line or the zoom plate. Desktop keeps its stack.
 const overlap = (a, b) => Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0) > 0.5 && Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0) > 0.5;
@@ -884,16 +910,17 @@ const scopeStates = {
   'rack reload': () => { const tank = tankOf('m1a3', [12, 4, 10]); tank.combat.magazine.rounds = 0;
     Object.assign(tank.combat.reload, { t: 12, totalS: 21, kind: 'magazine' }); return tank; },
   'gun reload': () => { const tank = tankOf('m1a1_abrams_hc'); Object.assign(tank.combat.reload, { t: 3.2, totalS: 6, kind: 'shell' }); return tank; },
+  // a shell switch the authority has not confirmed: the countdown reads SWITCHING, wide enough to reach the range tag's
+  // columns on a small ring (and painted right before an empty gun, whose row set beside the column must not start past
+  // where the SWITCHING countdown ended: r9b critic, a stale countdown edge)
+  switching: () => { const tank = tankOf('m1a1_abrams_hc'); tank.input = { shellSlot: 1 }; tank._networkShellSlot = 0;
+    Object.assign(tank.combat.reload, { t: 3.2, totalS: 6, kind: 'shell' }); return tank; },
   'dry gun': () => tankOf('m1a1_abrams_hc', [0, 0, 0]),
   'dry rack': () => { const tank = tankOf('m1a3', [0, 0, 0]); tank.combat.magazine.rounds = 0; return tank; },
   'live rack': () => tankOf('m1a3'),
   'mid-cycle': () => { const tank = tankOf('m1a3'); tank.combat.magazine.rounds = 3;
     Object.assign(tank.combat.reload, { t: 1.4, totalS: 2.5, kind: 'intraClip' }); return tank; },
   'gun ready': () => tankOf('m1a1_abrams_hc'),
-  // a shell switch the authority has not confirmed: the countdown reads SWITCHING, wide enough to reach the range tag's
-  // columns on a small ring
-  switching: () => { const tank = tankOf('m1a1_abrams_hc'); tank.input = { shellSlot: 1 }; tank._networkShellSlot = 0;
-    Object.assign(tank.combat.reload, { t: 3.2, totalS: 6, kind: 'shell' }); return tank; },
 };
 // The vision switch's seat, read off the sheet (aerialHud.css) and modelled at its least size: level with the marker,
 // past the widest ring (15% of the short side); a mouse layout right of the sight, past the range tag beside a small ring
@@ -928,16 +955,30 @@ function visionSwitchBox(width, height, touch) {
   const x0 = Math.min(width / 2 + Math.max(0.15 * vmin + 8, 80), width - 180);
   return { x0, y0: height / 2 - 24, x1: x0 + 156, y1: height / 2 + 24 };
 }
-// A stacked mouse tray's speedometer and the damage panel left of it rise beside the tray, under the sight's left
-// (battleHudLayout .cot-drive and .cot-dp, measured from 431 to 900 px tall): 768 to 999 px wide the speedometer
-// [184, h - 236, 292, h - 128] and the panel [12, h - 311, 172, h - 128] at its tallest; narrower [140, h - 209, 221,
-// h - 128] and [8, h - 265, 128, h - 128] (critic r8 round: the chip beside the line ran 32 px into the speedometer at
-// 900x480, and the zoom plate touched it at 480x640). A wide tray keeps them under its controls row.
-function leftCluster(width, height) {
-  if (width >= 1000) return [];
-  return width < 768
-    ? [{ x0: 140, y0: height - 209, x1: 221, y1: height - 128 }, { x0: 8, y0: height - 265, x1: 128, y1: height - 128 }]
-    : [{ x0: 184, y0: height - 236, x1: 292, y1: height - 128 }, { x0: 12, y0: height - 311, x1: 172, y1: height - 128 }];
+// r10 (critic r9): the HUD's panels and controls the reticle keeps clear of, as battleHudLayout measures and publishes
+// them (sightFurniture.ts), recorded on the fixture (tools/fixtures/battle-hud-layout.html, Chrome) for every size this
+// receipt sweeps by tools/hud-sight-furniture.browser.mjs: the controls row and the tray, a stacked tray's speedometer
+// and damage panel beside the sight, a landscape phone's consumables column and systems row, a portrait phone's FIRE
+// buttons, the score, the map, the vision switch. (The constant floors hud.ts once modelled missed the consumables at
+// 667x375, a small portrait phone's left FIRE button and the touch warning chip.)
+const FURNITURE = JSON.parse(readFileSync(new URL('../../tools/fixtures/hud-sight-furniture.json', import.meta.url), 'utf8'));
+/** Publishes the recorded furniture of `width`x`height` (as the layout pass would) and returns its boxes. */
+function installFurniture(width, height, touch) {
+  const boxes = FURNITURE.sizes[`${width}x${height}${touch ? 't' : ''}`];
+  assert.ok(boxes?.length, `${width}x${height}${touch ? ' touch' : ''}: recorded furniture`);
+  clearSightFurniture();
+  for (const [, x0, y0, x1, y1] of boxes) addSightFurniture(x0, y0, x1, y1);
+  settleSightFurniture();
+  return boxes.map(([name, x0, y0, x1, y1]) => ({ name, x0, y0, x1, y1 }));
+}
+/** The touch warning chip the reticle seats under the sight (hud.ts seatTouchWarning), read off its custom properties;
+ *  null where it is hidden or not seated. 23 px tall, as the canvas chip (battleHudLayout.css data-seat). */
+const touchChip = created.find((element) => element.classes.has('cot-aim-warning'));
+function seatedChipBox() {
+  if (!touchChip || touchChip.hidden || touchChip.dataset.seat !== 'sight') return null;
+  const px = (name) => parseFloat(touchChip.style.getPropertyValue(name));
+  const x0 = px('--hud-aim-warning-x'); const y0 = px('--hud-aim-warning-y');
+  return { x0, y0, x1: x0 + px('--hud-aim-warning-w'), y1: y0 + 23 };
 }
 /** The settled paint: the ring eases at exp(-14 dt), so 0.1 s HUD frames (the HUD's dt ceiling) settle it in a few. */
 function quickPaint(tank, mode = 'sniper') {
@@ -952,14 +993,19 @@ function quickPaint(tank, mode = 'sniper') {
 }
 /** Every gap the reticle's furniture keeps (above), and with `vision` (the switch's box) 3 px from the vision switch, the
  *  ring too with `ringClear` (a ring centred on the marker); returns the parts, by role. */
-function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false }) {
+function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, touch = false }) {
   const apart = (a, b) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
   const contains = (outer, inner) => outer.x0 <= inner.x0 && outer.x1 >= inner.x1 && outer.y0 <= inner.y0 && outer.y1 >= inner.y1;
   const ring = ringOf(ops);
   const warning = warn ? aimWarningState({ gunLimitSpec: true }) : null;
   const warningText = warning && ops.find((op) => op.op === 'fillText' && op.text === warning.text);
-  const chip = warningText && ops.find((op) => op.op === 'fill' && op.box && op.path.length === 6 && contains(op.box, warningText.box));
-  assert.ok(!warn || chip, `${at}: the canvas paints the warning's chip`);
+  // (a touch layout's chip is the DOM chip the reticle seats, where it sits under the sight; a short landscape parks it
+  // in the left lane, with the furniture)
+  const seated = touch ? seatedChipBox() : null;
+  const chip = seated ? { op: 'dom', box: seated }
+    : warningText && ops.find((op) => op.op === 'fill' && op.box && op.path.length === 6 && contains(op.box, warningText.box));
+  assert.ok(!warn || chip || (touch && windowStub.innerWidth > windowStub.innerHeight && windowStub.innerHeight < 550), `${at}: the warning's chip is seated`);
+  assert.ok(touch || !warningText === !warn, `${at}: the canvas paints the warning only on a mouse layout`);
   const countdown = ops.filter((op) => op.op === 'fillText' && op.style === INK.reload && op.text.trim() && !op.text.startsWith('+'));
   const rack = ops.filter((op) => op.op === 'stroke' && op.lineWidth === 3 && op.path.length === 7 && op.style !== INK.dry);
   const marks = ops.filter((op) => op.op === 'stroke' && op.style === INK.dry && op.box);
@@ -968,8 +1014,9 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false }
   const rules = ops.filter((op) => op.op === 'stroke' && op.style === 'rgba(170,240,178,0.5)');
   const line = ops.filter((op) => op.op === 'fillText' && op.style !== INK.reload
     && (/^(\d+|∞) $/.test(op.text) || (/^[A-Z]+$/.test(op.text) && op !== warningText)));
-  if (scoped) assert.ok(tag && zoom && rules.length && line.length >= 2, `${at}: the readout line, the zoom plate and the range tag`);
-  const stack = scoped ? [...line, zoom, ...rules] : [];
+  // (the zoom plate is left out only where the screen leaves it no room clear of the furniture)
+  if (scoped) assert.ok(tag && line.length >= 2 && !zoom === !rules.length, `${at}: the readout line, the zoom plate and the range tag`);
+  const stack = scoped ? [...line, ...(zoom ? [zoom] : []), ...rules] : [];
   const furniture = [...countdown.map((op) => [op, `the countdown "${op.text}"`]), ...rack.map((op) => [op, 'the rack']),
     ...marks.map((op) => [op, 'an empty mark']), ...(tag ? [[tag, 'the range tag']] : []), ...(chip ? [[chip, 'the warning chip']] : [])];
   for (const item of stack) {
@@ -1005,68 +1052,109 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false }
   }
   return { ring, chip, line, zoom, stack, tag, countdown, furniture: furniture.map(([op]) => op) };
 }
+/** Every mark keeps 3 px from every recorded panel and control (sightFurniture.ts). */
+function assertFurnitureClear(items, boxes, at) {
+  for (const item of items) for (const panel of boxes) {
+    const gap = Math.max(item.box.x0 - panel.x1, panel.x0 - item.box.x1, item.box.y0 - panel.y1, panel.y0 - item.box.y1);
+    assert.ok(gap >= 3 - 1e-6, `${at}: ${item.text ? `"${item.text}"` : item.op === 'dom' ? 'the seated chip' : 'a mark'} keeps ${gap.toFixed(2)} px from ${panel.name}`);
+  }
+}
 {
-  // (the touch sizes, a phone and two landscape phones, paint the same canvas; their warning is a DOM chip. A mouse
-  // window 400 px tall keeps the compact stack, its struck round leading the readout line under the canvas chip)
+  // (the touch sizes, a phone and the landscape phones, paint the same canvas; their warning is the DOM chip, which the
+  // reticle seats under the sight on a portrait phone (critic r9: at 50% + 48 px it met the scope's countdown and a rack
+  // dropped below a wide ring) and a short landscape parks in the left lane. A mouse window 400 px tall keeps the compact
+  // stack, its struck round leading the readout line under the canvas chip)
   // (r9, critic r8: 800x560, 700x580 and 800x580 put the readouts and the chip on the old switch seat; 1024 to 1440 by 431
   // to 450 ran the chip's row into the controls; 900x720 and 1440x900 drop a wide ring's rack and stack below the ring;
   // 540x720 seats the full mouse plate nearest a wide ring, and 390x844, 480x640 and 520x900 the compact one; the small
   // touch sizes seat it in the narrowest room left of the ring; 1280x420 and 1440x425 run the compact stack over a wide
-  // tray's controls row, which it ran as much as 34 px into before it took the row's fallbacks)
+  // tray's controls row, which it ran as much as 34 px into before it took the row's fallbacks. r10, critic r9: the two
+  // stacked trays the capture shows (900x700, 640x720); a wide tray 400 px tall, where the widest rings left the row no
+  // room under the sight; 667x375, whose wide ring set the zoom plate on the consumables; 360x640 and 320x568, whose left
+  // FIRE button sits under the sight; and the landscape phones under a browser's bars, 740x360, 640x360 and 568x290)
   const sizes = [[800, 400], [800, 500], [900, 480], [700, 460], [700, 431], [700, 440], [700, 520], [1280, 431], [1280, 460],
     [1280, 470], [1024, 490], [1280, 520], [1024, 560], [1024, 600], [1024, 431], [1440, 431], [1280, 440], [1440, 450],
     [800, 560], [700, 580], [800, 580], [1440, 600], [900, 720], [1440, 900], [540, 720], [390, 844], [480, 640], [520, 900],
-    [1280, 420], [1440, 425],
+    [1280, 420], [1440, 425], [900, 700], [640, 720], [1024, 400],
     [390, 844, 'touch'], [844, 390, 'touch'], [667, 375, 'touch'], [568, 290, 'touch'], [320, 568, 'touch'],
-    [360, 640, 'touch'], [932, 430, 'touch']];
-  const modes = { zoomBeside: 0, chipBeside: 0, chipAbove: 0, rowBeside: 0 };
+    [360, 640, 'touch'], [932, 430, 'touch'], [740, 360, 'touch'], [640, 360, 'touch']];
+  const modes = { zoomBeside: 0, chipBeside: 0, chipAbove: 0, rowBeside: 0, rowAbove: 0, noZoom: 0, seatedChip: 0 };
   scope = true;
   for (const [width, height, touch] of sizes) {
     resize(width, height);
     documentStub.body.classes[touch ? 'add' : 'delete']('cot-touch-layout');
+    const boxes = installFurniture(width, height, !!touch);
     // (a wide tray's short window also sweeps the rings just wide enough to cross the rack or the struck round, which drop
     // them below the ring: 26 to 31 m put the readouts as much as 6.5 px into the controls row before rowBeside)
     for (const metres of (!touch && width >= 1000 && height <= 470) || (touch && width > height)
       ? [1, 11, 16, 24, 26, 27, 28, 29, 30, 31, 33, 35, 40] : [1, 11, 16, 24, 40]) {
       dispersionM = metres;
-      for (const [label, make] of Object.entries(scopeStates)) for (const warn of touch ? [false] : [false, true]) {
+      for (const [label, make] of Object.entries(scopeStates)) for (const warn of [false, true]) {
         const tank = make();
         tank.state.gunLimitSpec = warn;
-        const at = `${width}x${height} scope, ${metres} m, ${label}${warn ? ', gun travel warning' : ''}`;
+        const at = `${width}x${height}${touch ? ' touch' : ''} scope, ${metres} m, ${label}${warn ? ', gun travel warning' : ''}`;
         const { ring, chip, line, zoom, stack, tag, furniture } = reticleGaps(quickPaint(tank), at,
-          { warn, scoped: true, vision: visionSwitchBox(width, height, !!touch), ringClear: true });
-        if (Math.abs(zoom.box.y1 - line[0].box.y1) < 3) modes[chip && Math.abs(chip.box.y1 - line[0].box.y1 - 8.4) < 3 ? 'chipBeside' : 'zoomBeside']++;
+          { warn, scoped: true, vision: visionSwitchBox(width, height, !!touch), ringClear: true, touch: !!touch });
+        if (chip?.op === 'dom') modes.seatedChip++;
+        if (!zoom) modes.noZoom++;
+        else if (Math.abs(zoom.box.y1 - line[0].box.y1) < 3) modes[chip && Math.abs(chip.box.y1 - line[0].box.y1 - 8.4) < 3 ? 'chipBeside' : 'zoomBeside']++;
         if (chip && chip.box.y1 < ring.y - ring.r) modes.chipAbove++;
+        if (line[0].box.y1 < ring.y - ring.r) modes.rowAbove++;
         if (line[0].box.x0 > width / 2) {
-          // beside the column under the marker, the row keeps a group gap (16 px) from every mark on its level
+          // beside the column under the marker, the row keeps a group gap (16 px) from every mark on its level, and starts
+          // right past the nearest of them, never past a countdown painted on an earlier frame (r9b critic)
           modes.rowBeside++;
           const left = Math.min(...stack.map((op) => op.box.x0));
-          for (const op of furniture.filter((item) => item !== tag && Math.min(item.box.y1, line[0].box.y1) > Math.max(item.box.y0, line[0].box.y0 - 10))) {
+          const level = furniture.filter((item) => item !== tag && item.op !== 'dom'
+            && Math.min(item.box.y1, line[0].box.y1) > Math.max(item.box.y0, line[0].box.y0 - 10));
+          for (const op of level) {
             assert.ok(left - op.box.x1 >= 16 - 0.5, `${at}: the row beside the column keeps ${(left - op.box.x1).toFixed(2)} px from a mark on its level`);
           }
+          const nearest = Math.min(...level.map((op) => left - op.box.x1));
+          assert.ok(!level.length || nearest <= 16 + 4, `${at}: the row beside the column starts ${nearest.toFixed(2)} px past its nearest mark`);
         }
-        // A wide mouse tray's controls row starts 120 px over the floor, a landscape phone's systems row 99 px (both under
-        // the sight); every mark under the marker keeps 3 px over it: the stack, the countdown, the rack, the empty marks,
-        // the range tag and the chip. (Known limit: under 420 px tall on a wide tray, and under about 370 px on a
-        // landscape phone, the widest rings leave the ring, the tag and the readouts no room above the row: 1024x400
-        // 4.5 px into it, 568x290 25.5 px.)
-        const row = touch ? (width > height && height >= 370 ? 99 : null) : width >= 1000 && height >= 420 ? 120 : null;
-        if (row) {
-          const foot = Math.max(...stack.map((op) => op.box.y1), ...furniture.map((op) => op.box.y1));
-          assert.ok(foot <= height - row - 3 + 1e-6, `${at}: the stack's foot keeps ${(height - row - foot).toFixed(2)} px over the controls row`);
-        }
-        for (const panel of touch ? [] : leftCluster(width, height)) {
-          for (const op of [...stack, ...furniture]) {
-            const gap = Math.max(op.box.x0 - panel.x1, panel.x0 - op.box.x1, op.box.y0 - panel.y1, panel.y0 - op.box.y1);
-            assert.ok(gap >= 3 - 1e-6, `${at}: ${op.text ? `"${op.text}"` : 'a mark'} keeps ${gap.toFixed(2)} px from the speedometer or the damage panel`);
-          }
-        }
+        // every mark of the sight, the readout row, the countdown, the rack, the empty marks, the range tag and the
+        // warning chip, keeps 3 px from every panel and control the layout measured
+        assertFurnitureClear([...stack, ...furniture], boxes, at);
       }
     }
   }
   assert.ok(Object.values(modes).every((n) => n > 0), `the cramped rows ran (${JSON.stringify(modes)})`);
   documentStub.body.classes.delete('cot-touch-layout');
+  clearSightFurniture();
+  settleSightFurniture();
   scope = false;
+  dispersionM = 8;
+  resize(WIDTH, HEIGHT);
+}
+
+// 19a. r10 (critic r9): unscoped, a portrait phone's gun travel warning is the DOM chip the reticle seats under the
+// column (the rack, the struck round, the countdown, the ring), 3 px from each and from the furniture; on the smallest
+// phone, whose left FIRE button sits under the sight, it goes over the sight. (The recorded furniture is the scope's:
+// its vision switch left of the sight stays in, a stricter test.)
+{
+  let over = 0;
+  for (const [width, height] of [[390, 844], [360, 640], [320, 568]]) {
+    resize(width, height);
+    documentStub.body.classes.add('cot-touch-layout');
+    const boxes = installFurniture(width, height, true);
+    for (const metres of [2, 4, 8, 16, 40]) {
+      dispersionM = metres;
+      for (const label of ['rack reload', 'gun reload', 'dry gun', 'dry rack', 'mid-cycle']) {
+        const tank = scopeStates[label]();
+        tank.state.gunLimitSpec = true;
+        const at = `${width}x${height} touch battle, ${metres} m, ${label}, gun travel warning`;
+        const { ring, chip, furniture } = reticleGaps(quickPaint(tank, 'battle'), at, { warn: true, scoped: false, touch: true });
+        assert.equal(chip?.op, 'dom', `${at}: the chip is seated under the sight`);
+        if (chip.box.y1 < ring.y - ring.r) over++;
+        assertFurnitureClear(furniture, boxes, at);
+      }
+    }
+  }
+  assert.ok(over > 0, 'the smallest phone seats the chip over the sight');
+  documentStub.body.classes.delete('cot-touch-layout');
+  clearSightFurniture();
+  settleSightFurniture();
   dispersionM = 8;
   resize(WIDTH, HEIGHT);
 }
@@ -1123,4 +1211,7 @@ console.log('hudAmmoOutPaint.selftest: the live HUD paints no sweep, countdown o
   + 'marker, the warning chip, the range tag and the ring, 3 px over a wide tray\'s controls row and a landscape phone\'s '
   + 'systems row and off a stacked tray\'s speedometer and damage panel (the chip above the ring, then the row beside the '
   + 'column under the marker, when nothing else fits), '
-  + 'wherever the gun\'s ring sits, and every mark and a centred ring keep 3 px from the vision switch beside the sight');
+  + 'wherever the gun\'s ring sits, and every mark and a centred ring keep 3 px from the vision switch beside the sight; '
+  + 'every mark of the sight, the touch warning chip the reticle seats under it included, keeps 3 px from the furniture the '
+  + 'layout measures (sightFurniture.ts), the row going beside, over the ring or without its zoom plate, a rack, '
+  + 'countdown or range tag over the ring, where it must; a reload\'s last frame always repaints');
