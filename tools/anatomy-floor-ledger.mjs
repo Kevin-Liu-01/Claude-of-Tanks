@@ -211,7 +211,7 @@ export function readCommittedCalibrations(root = process.cwd()) {
 }
 
 /** Ledger schema 2 (2026-10-19, guards 229): rows carry turretMinY (the combat turret floor) beside the hull box. */
-export const SIM_FLOOR_SCHEMA = 2;
+const SIM_FLOOR_SCHEMA = 2;
 
 export function readFloorLedger(root = process.cwd()) {
   const ledger = JSON.parse(readFileSync(join(root, SIM_FLOOR_LEDGER), 'utf8'));
