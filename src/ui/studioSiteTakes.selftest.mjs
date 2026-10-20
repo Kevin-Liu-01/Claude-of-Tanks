@@ -25,8 +25,13 @@ const siteTakes = index.takes.filter((take) => take.group !== 'fleet');
 const fleetTakes = index.takes.filter((take) => take.group === 'fleet');
 assert.equal(new Set(index.takes.map((take) => take.id)).size, index.takes.length, 'one entry per take');
 // (2026-10-18) in the picks' own order: the site fifty, the owner's nine, then the combat round's takes (s225-s228); a
-// sort by id would slot s225 between s22 and s23
-assert.deepEqual(siteTakes.map((take) => take.id), Object.keys(picks.takes), 'every take of the site fifty, in order');
+// sort by id would slot s225 between s22 and s23. (2026-10-19) A tank's own take the picks publish for its stills
+// (picks.takes[id].fleet, the 226/227 fleet takes) stays in the fleet group.
+const pickedSiteTakes = Object.keys(picks.takes).filter((id) => !picks.takes[id].fleet);
+assert.deepEqual(siteTakes.map((take) => take.id), pickedSiteTakes, 'every take of the site fifty, in order');
+for (const id of Object.keys(picks.takes).filter((id) => picks.takes[id].fleet)) {
+  assert.ok(!siteTakes.some((take) => take.id === id), `${id}: a fleet take stays out of the site's list`);
+}
 const sha = (file) => createHash('sha256').update(readFileSync(file)).digest('hex');
 const fleetVehicles = new Set();
 for (const take of fleetTakes) {

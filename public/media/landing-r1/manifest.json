@@ -4,22 +4,9 @@
   "source": "The site fifty (public/media/site50-r14): takes staged in Scene Studio and rendered at 4K in the game engine, picked in tools/media-r5/site-media/picks.json",
   "hero": [
     {
-      "id": "s21-fields-assault",
-      "title": "A T-90SM wedge assaults through the burning fields",
-      "src": "/media/site50-r14/stills/s21-fields-assault-close.webp",
-      "still": "close"
-    },
-    {
-      "id": "s39-lakeside-village",
-      "title": "A Chieftain Mk 10 fires across the village at Highland Reservoir",
-      "src": "/media/site50-r14/stills/s39-lakeside-village.webp",
-      "still": "moment"
-    },
-    {
-      "id": "s26-minaret-fire",
-      "title": "A Merkava Mk 3D fires at Sunscar Oasis",
-      "src": "/media/site50-r14/stills/s26-minaret-fire-close.webp",
-      "still": "close"
+      "versus": "vs01-desert-abrams-t90m-r6",
+      "title": "Sirocco Wadi, day: M1A2 Abrams SEPv3 v T-90M",
+      "src": "/media/versus-r1/vs01-desert-abrams-t90m-r6.webp"
     },
     {
       "id": "s38-church-knockout",
@@ -28,16 +15,262 @@
       "still": "close"
     },
     {
-      "id": "s18-street-knockout",
-      "title": "A T-90A is knocked out at the end of a Steinburg street at night",
-      "src": "/media/site50-r14/stills/s18-street-knockout.webp",
+      "versus": "vs02-verdant-challenger-t80u-r6",
+      "title": "Verdant Fields, day: Challenger 3 v T-80U",
+      "src": "/media/versus-r1/vs02-verdant-challenger-t80u-r6.webp"
+    },
+    {
+      "id": "s39-lakeside-village",
+      "title": "A Chieftain Mk 10 fires across the village at Highland Reservoir",
+      "src": "/media/site50-r14/stills/s39-lakeside-village.webp",
       "still": "moment"
+    },
+    {
+      "versus": "vs05-oasis-merkava-t72b3-r6",
+      "title": "Sunscar Oasis, day: Merkava Mk 4 v T-72B3",
+      "src": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6.webp"
+    },
+    {
+      "id": "s21-fields-assault",
+      "title": "A T-90SM wedge assaults through the burning fields",
+      "src": "/media/site50-r14/stills/s21-fields-assault-close.webp",
+      "still": "close"
+    },
+    {
+      "versus": "vs03-reservoir-k2-ztz99-r6",
+      "title": "Highland Reservoir, golden hour: K2 Black Panther v ZTZ-99 Longwei",
+      "src": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6.webp"
+    },
+    {
+      "id": "s26-minaret-fire",
+      "title": "A Merkava Mk 3D fires at Sunscar Oasis",
+      "src": "/media/site50-r14/stills/s26-minaret-fire-close.webp",
+      "still": "close"
+    },
+    {
+      "versus": "vs04-railyard-leclerc-t14-r6",
+      "title": "Cinder Junction, night: Leclerc SXXI v T-14 Armata",
+      "src": "/media/versus-r1/vs04-railyard-leclerc-t14-r6.webp"
     },
     {
       "id": "s07-lake-shellfire",
       "title": "A Stridsvagn 122 crosses the frozen lake through shellfire",
       "src": "/media/site50-r14/stills/s07-lake-shellfire.webp",
       "still": "moment"
+    },
+    {
+      "versus": "vs06-coastal-type10-ztz99a2-r6",
+      "title": "Saltmere Bay, day: Type 10 v ZTZ-99A2",
+      "src": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r6.webp"
+    },
+    {
+      "id": "s18-street-knockout",
+      "title": "A T-90A is knocked out at the end of a Steinburg street at night",
+      "src": "/media/site50-r14/stills/s18-street-knockout.webp",
+      "still": "moment"
+    }
+  ],
+  "rail": [
+    {
+      "id": "s227-oasis-duel",
+      "title": "An M1A2 Abrams SEPv3 knocks out a T-14 Armata by the caravanserai at sunset",
+      "src": "/media/site50-r14/stills/s227-oasis-duel.webp"
+    },
+    {
+      "id": "s226-church-duel",
+      "title": "A Challenger 3 Prototype and a T-80U trade rounds down a snowy village street",
+      "src": "/media/site50-r14/stills/s226-church-duel.webp"
+    },
+    {
+      "id": "s225-verdant-duel",
+      "title": "A Leopard 2A7V races a T-90M across Verdant Fields at golden hour, trading broadsides",
+      "src": "/media/site50-r14/stills/s225-verdant-duel.webp"
+    },
+    {
+      "id": "s228-street-1v2",
+      "title": "An AbramsX takes on a T-90M and a T-72B3 down Steinburg's main street at night",
+      "src": "/media/site50-r14/stills/s228-street-1v2.webp"
+    },
+    {
+      "id": "s145-t14-steppe",
+      "title": "An Object 148 Proto knocks out an M1A2 Abrams at Tarkhan Steppe at night",
+      "src": "/media/site50-r14/stills/s145-t14-steppe.webp"
+    },
+    {
+      "id": "s101-merkava2d-copper-mesa",
+      "title": "A Merkava Mk 2D knocks out a T-64BV1 at Copper Mesa Mine at night",
+      "src": "/media/site50-r14/stills/s101-merkava2d-copper-mesa.webp"
+    },
+    {
+      "id": "s75-amx30b2-autumn",
+      "title": "An AMX-30B2 knocks out a T-62MV-1 at Amberford at sunset",
+      "src": "/media/site50-r14/stills/s75-amx30b2-autumn.webp"
+    },
+    {
+      "id": "s124-type90a-cliffbridge",
+      "title": "A Type 90A knocks out a T-72B at Aegis Crossing at sunset",
+      "src": "/media/site50-r14/stills/s124-type90a-cliffbridge.webp"
+    },
+    {
+      "id": "s91-leo2a6-longleaf",
+      "title": "A Leopard 2A4 knocks out a T-72B3 at Longleaf Crossing in the evening light",
+      "src": "/media/site50-r14/stills/s91-leo2a6-longleaf.webp"
+    },
+    {
+      "id": "s176-chieftain5-coastal",
+      "title": "A Chieftain Mk 3 holds its ground at Saltmere Bay in the evening light",
+      "src": "/media/site50-r14/stills/s176-chieftain5-coastal.webp"
+    },
+    {
+      "id": "s213-t64bv1-foundry",
+      "title": "A T-64BV1 leads the assault across Ironworks at sunset",
+      "src": "/media/site50-r14/stills/s213-t64bv1-foundry.webp"
+    },
+    {
+      "id": "s05-barn-advance",
+      "title": "A T-14 Armata advances past the barns of Verdant Fields",
+      "src": "/media/site50-r14/stills/s05-barn-advance.webp"
+    },
+    {
+      "id": "s26-minaret-fire",
+      "title": "A Merkava Mk 3D fires at Sunscar Oasis",
+      "src": "/media/site50-r14/stills/s26-minaret-fire.webp"
+    },
+    {
+      "id": "s20-road-return-fire",
+      "title": "A Challenger 2 leads a Ukrainian column returning fire across the fields at sunset",
+      "src": "/media/site50-r14/stills/s20-road-return-fire.webp"
+    },
+    {
+      "id": "s21-fields-assault",
+      "title": "A T-90SM wedge assaults through the burning fields",
+      "src": "/media/site50-r14/stills/s21-fields-assault.webp"
+    },
+    {
+      "id": "s24-ice-duel",
+      "title": "A duel on the frozen lake: a T-80U takes the hit",
+      "src": "/media/site50-r14/stills/s24-ice-duel.webp"
+    },
+    {
+      "id": "s23-village-crossroads",
+      "title": "A T-80U Husarz and a PL-01 hold the village crossroads",
+      "src": "/media/site50-r14/stills/s23-village-crossroads.webp"
+    },
+    {
+      "id": "s19-roof-tiles",
+      "title": "Roof tiles rain down as a PL-01 fires up the street",
+      "src": "/media/site50-r14/stills/s19-roof-tiles.webp"
+    },
+    {
+      "id": "s06-farm-charge",
+      "title": "A KF51 Panther charges past the farmhouse through artillery",
+      "src": "/media/site50-r14/stills/s06-farm-charge.webp"
+    },
+    {
+      "id": "s08-market-push",
+      "title": "An M6 Linebacker leads an Abrams column through the market street of Sunscar Oasis",
+      "src": "/media/site50-r14/stills/s08-market-push.webp"
+    },
+    {
+      "id": "s27-caravanserai-kill",
+      "title": "A T-62MV-1 is knocked out by the caravanserai",
+      "src": "/media/site50-r14/stills/s27-caravanserai-kill.webp"
+    },
+    {
+      "id": "s34-furnace-salvo",
+      "title": "TOS-1A launchers fire a rippling salvo in the Ironworks yard at night",
+      "src": "/media/site50-r14/stills/s34-furnace-salvo.webp"
+    }
+  ],
+  "versus": [
+    {
+      "id": "vs01-desert-abrams-t90m-r6",
+      "title": "Sirocco Wadi, day: M1A2 Abrams SEPv3 v T-90M",
+      "src": "/media/versus-r1/vs01-desert-abrams-t90m-r6.webp"
+    },
+    {
+      "id": "vs02-verdant-challenger-t80u-r6",
+      "title": "Verdant Fields, day: Challenger 3 v T-80U",
+      "src": "/media/versus-r1/vs02-verdant-challenger-t80u-r6.webp"
+    },
+    {
+      "id": "vs03-reservoir-k2-ztz99-r6",
+      "title": "Highland Reservoir, golden hour: K2 Black Panther v ZTZ-99 Longwei",
+      "src": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6.webp"
+    },
+    {
+      "id": "vs04-railyard-leclerc-t14-r6",
+      "title": "Cinder Junction, night: Leclerc SXXI v T-14 Armata",
+      "src": "/media/versus-r1/vs04-railyard-leclerc-t14-r6.webp"
+    },
+    {
+      "id": "vs05-oasis-merkava-t72b3-r6",
+      "title": "Sunscar Oasis, day: Merkava Mk 4 v T-72B3",
+      "src": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6.webp"
+    },
+    {
+      "id": "vs06-coastal-type10-ztz99a2-r6",
+      "title": "Saltmere Bay, day: Type 10 v ZTZ-99A2",
+      "src": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r6.webp"
+    },
+    {
+      "id": "vs07-autumn-ariete-t62-r6",
+      "title": "Amberford, golden hour: C2 Ariete v T-62MV-1",
+      "src": "/media/versus-r1/vs07-autumn-ariete-t62-r6.webp"
+    },
+    {
+      "id": "vs08-winter-cv90-bmp3-r6",
+      "title": "Frosthollow, day: CV90 Mk 4 v BMP-3",
+      "src": "/media/versus-r1/vs08-winter-cv90-bmp3-r6.webp"
+    },
+    {
+      "id": "vs09-alpine-strv122-t80bv-r6",
+      "title": "Glacier Pass, morning: Stridsvagn 122 v T-80BV",
+      "src": "/media/versus-r1/vs09-alpine-strv122-t80bv-r6.webp"
+    },
+    {
+      "id": "vs10-steppe-chieftain-t64-r6",
+      "title": "Tarkhan Steppe, night: Chieftain Mk 10 v T-64BV1",
+      "src": "/media/versus-r1/vs10-steppe-chieftain-t64-r6.webp"
+    },
+    {
+      "id": "f6-leo2a6-steinburg-r6",
+      "title": "Steinburg, day: Leopard 2A6 v T-90M",
+      "src": "/media/versus-r1/f6-leo2a6-steinburg-r6.webp"
+    },
+    {
+      "id": "f7-t90m-column-r5",
+      "title": "Frontier Basin, day: T-90M v Leopard 2A6",
+      "src": "/media/versus-r1/f7-t90m-column-r5.webp"
+    }
+  ],
+  "trailers": [
+    {
+      "film": "trailer",
+      "webm": "/media/site50-r14/films/trailer.webm",
+      "mp4": "/media/site50-r14/films/trailer.mp4",
+      "poster": "/media/site50-r14/films/trailer-row.jpg",
+      "width": 1600,
+      "height": 900,
+      "seconds": 70
+    },
+    {
+      "film": "trailer-30",
+      "webm": "/media/site50-r14/films/trailer-30.webm",
+      "mp4": "/media/site50-r14/films/trailer-30.mp4",
+      "poster": "/media/site50-r14/films/trailer-30-row.jpg",
+      "width": 1920,
+      "height": 1080,
+      "seconds": 30
+    },
+    {
+      "film": "trailer-vertical",
+      "webm": "/media/site50-r14/films/trailer-vertical.webm",
+      "mp4": "/media/site50-r14/films/trailer-vertical.mp4",
+      "poster": "/media/site50-r14/films/trailer-vertical-row.jpg",
+      "width": 1080,
+      "height": 1920,
+      "seconds": 20
     }
   ],
   "featureReel": {
@@ -235,8 +468,8 @@
     "width": 1920,
     "height": 1080,
     "durationMs": 6600,
-    "videoBytes": 3254887,
-    "posterBytes": 264524,
+    "videoBytes": 3357285,
+    "posterBytes": 274994,
     "captureMode": "studio-ui",
     "actors": [
       {

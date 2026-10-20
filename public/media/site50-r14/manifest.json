@@ -444,6 +444,440 @@
    "round": "deliver-combat226",
    "current": true,
    "sound": true
+  },
+  "s65-type96-72-long-mangrove": {
+   "map": "mangrove",
+   "title": "A Type 96-72 Lóng (Concept) fires across Mangrove Reach",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s66-type96-80-feng-skybridge": {
+   "map": "skybridge",
+   "title": "A Type 96-80 Fēng (Concept) knocks out a Type 10 at Skybridge Chasm",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s67-type99a-titan-gorge": {
+   "map": "titan_gorge",
+   "title": "A ZTZ-99 Longwei advances through Titan Gorge at night",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s68-ztz100-prototype-delta": {
+   "map": "delta",
+   "title": "A ZTZ-100 Prototype crosses Jade River Delta through shellfire in the evening light",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s70-ztz99a2-monsoon": {
+   "map": "monsoon",
+   "title": "A ZTZ-99A2 crosses Monsoon Ridge through shellfire",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s72-amx10p-orchard": {
+   "map": "orchard",
+   "title": "An AMX-10P knocks out a T-72B at Orchard Valley",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s73-amx10p-25-coastal": {
+   "map": "coastal",
+   "title": "An AMX-10P 25 fires on the move at Saltmere Bay in the morning",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s74-amx30-verdant": {
+   "map": "verdant",
+   "title": "An AMX-30 knocks out a T-64BV1 at Verdant Fields",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s75-amx30b2-autumn": {
+   "map": "autumn",
+   "title": "An AMX-30B2 knocks out a T-62MV-1 at Amberford at sunset",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s76-amx40-autumn": {
+   "map": "autumn",
+   "title": "An AMX-40 Prototype knocks out a T-64BV1 at Amberford in the morning",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s77-amx40-x-coastal": {
+   "map": "coastal",
+   "title": "An AMX-40 knocks out a T-72B at Saltmere Bay in the evening light",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s87-leo2a4-otco-polders": {
+   "map": "polders",
+   "title": "A Leopard 2A3 knocks out a T-90M at Tidegate Polders at sunset",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s88-leo2a4m-ruinspires": {
+   "map": "ruinspires",
+   "title": "A Leopard 2A4M CAN crosses Ruinspires through shellfire at sunset",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s89-leo2a5-polders": {
+   "map": "polders",
+   "title": "A Leopard 2A4 V fires across Tidegate Polders",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s90-leo2a5-a5nl-frontier": {
+   "map": "frontier",
+   "title": "A Leopard 2A4M fires across Frontier Basin",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s91-leo2a6-longleaf": {
+   "map": "longleaf",
+   "title": "A Leopard 2A4 knocks out a T-72B3 at Longleaf Crossing in the evening light",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s92-leo2a6m-urban": {
+   "map": "urban",
+   "title": "A Leopard 2A4 OTCO leads the assault across Steinburg in the morning",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s93-leo2a7v-ruinspires": {
+   "map": "ruinspires",
+   "title": "A Leopard 2 Improved fires on the move at Ruinspires",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s99-merkava1b-caldera": {
+   "map": "caldera",
+   "title": "A Merkava Mk 1B knocks out a T-64BV1 at Obsidian Caldera",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s100-merkava2b-badlands": {
+   "map": "badlands",
+   "title": "A Merkava Mk 2B fires across Redrock Divide",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s101-merkava2d-copper-mesa": {
+   "map": "copper_mesa",
+   "title": "A Merkava Mk 2D knocks out a T-64BV1 at Copper Mesa Mine at night",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s107-namer-ifv-desert": {
+   "map": "desert",
+   "title": "A Namer IFV fires on the move at Sirocco Wadi in the morning",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s108-sabra-mk2-x-caldera": {
+   "map": "caldera",
+   "title": "A Sabra Mk 2 charges through artillery at Obsidian Caldera",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s113-carro45t-caldera": {
+   "map": "caldera",
+   "title": "A Carro 45t leads the column through Obsidian Caldera",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s114-dardo-orchard": {
+   "map": "orchard",
+   "title": "A Dardo leads the column through Orchard Valley in the morning",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s119-type74-mangrove": {
+   "map": "mangrove",
+   "title": "A Type 74 fires across Mangrove Reach in the evening light",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s120-type89-skybridge": {
+   "map": "skybridge",
+   "title": "A Hayate IFV leads the column through Skybridge Chasm",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s123-type90-cliffbridge": {
+   "map": "cliffbridge",
+   "title": "A Type 90 (Kyū-maru) fires on the move at Aegis Crossing at sunset",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s124-type90a-cliffbridge": {
+   "map": "cliffbridge",
+   "title": "A Type 90A knocks out a T-72B at Aegis Crossing at sunset",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s126-bwp1-winter": {
+   "map": "winter",
+   "title": "A BWP-1 (Bojowy Wóz Piechoty 1) advances through Frosthollow at night",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s128-pl-t72b3-zubr-ii-moon": {
+   "map": "moon",
+   "title": "A T-72B3 Zubr II (Concept) knocks out a T-72B3 at Earthrise Basin",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s129-pl-t72b3m-modern-moon": {
+   "map": "moon",
+   "title": "A T-72B3M Wilk (Concept) fires across Earthrise Basin",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s131-pt91-twardy-longleaf": {
+   "map": "longleaf",
+   "title": "A PT-91A Twardy knocks out a T-72B3M at Longleaf Crossing",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s132-pt91m-polders": {
+   "map": "polders",
+   "title": "A PT-91M Pendekar leads the assault across Tidegate Polders",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s133-t72-rys-polders": {
+   "map": "polders",
+   "title": "A T-72 Ryś (Concept) leads the column through Tidegate Polders",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s135-upior-polders": {
+   "map": "polders",
+   "title": "An Upiór IFV knocks out a T-72B3M at Tidegate Polders in the evening light",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s138-bmpt-t90-whiteout": {
+   "map": "whiteout",
+   "title": "A BMPT T-90 holds its ground at Whiteout Station",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s139-bmpt-terminator2-railyard": {
+   "map": "railyard",
+   "title": "A BMPT Terminator 2 fires across Cinder Junction in the evening light",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s145-t14-steppe": {
+   "map": "steppe",
+   "title": "An Object 148 Proto knocks out an M1A2 Abrams at Tarkhan Steppe at night",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s146-t72b3-x-foundry": {
+   "map": "foundry",
+   "title": "A T-72B3 knocks out a Leopard 2A6 at Ironworks",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s165-strv103a-whiteout": {
+   "map": "whiteout",
+   "title": "A Stridsvagn 103A returns fire across Whiteout Station",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s166-strv122-winter": {
+   "map": "winter",
+   "title": "A Stridsvagn 121 returns fire across Frosthollow in the morning",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s167-strv81-longleaf": {
+   "map": "longleaf",
+   "title": "A Stridsvagn 81 knocks out a T-62MV-1 at Longleaf Crossing",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s168-udes03-fjord": {
+   "map": "fjord",
+   "title": "An UDES 03 knocks out a T-64BV1 at Nordhavn Fjord at night",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s173-challenger1-saltwind": {
+   "map": "saltwind",
+   "title": "A Challenger 1 Mk 2 leads the column through Saltwind Narrows",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s175-chieftain-mk10-saltwind": {
+   "map": "saltwind",
+   "title": "A Chieftain Mk 9 fires across Saltwind Narrows at sunset",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s176-chieftain5-coastal": {
+   "map": "coastal",
+   "title": "A Chieftain Mk 3 holds its ground at Saltmere Bay in the evening light",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s177-fv4034-railyard": {
+   "map": "railyard",
+   "title": "An FV4034 leads the column through Cinder Junction at sunset",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s183-ua-m2a3-bradley-steppe": {
+   "map": "steppe",
+   "title": "An M2A3 Bradley (Ukraine) leads the column through Tarkhan Steppe",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s184-ua-t64bv-frontier": {
+   "map": "frontier",
+   "title": "A T-64BV Donbas fires on the move at Frontier Basin",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s187-ua-t80bv-winter": {
+   "map": "winter",
+   "title": "A T-80BV (Ukraine) charges through artillery at Frosthollow in the evening light",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s188-ua-t80u-kursk-frontier": {
+   "map": "frontier",
+   "title": "A T-80U Kursk knocks out a T-72B3M at Frontier Basin",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s193-m1a1-copper-mesa": {
+   "map": "copper_mesa",
+   "title": "An M1A1 Abrams leads the column through Copper Mesa Mine",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s194-m1a1ha-desert": {
+   "map": "desert",
+   "title": "An M1A1 Abrams HA fires across Sirocco Wadi",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s199-m1a2-x-desert": {
+   "map": "desert",
+   "title": "An M1A2 Abrams leads the column through Sirocco Wadi",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s200-m2a2-bradley-badlands": {
+   "map": "badlands",
+   "title": "An M2A2 Bradley fires across Redrock Divide in the morning",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s201-m3a3-bradley-desert": {
+   "map": "desert",
+   "title": "An M3A3 Bradley CFV charges through artillery at Sirocco Wadi",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s212-t62mv1-x-blackglass": {
+   "map": "blackglass",
+   "title": "A T-62MV-1 knocks out a Leopard 1A5 at Suzhou Creek",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s213-t64bv1-foundry": {
+   "map": "foundry",
+   "title": "A T-64BV1 leads the assault across Ironworks at sunset",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s215-t72bu-foundry": {
+   "map": "foundry",
+   "title": "A T-72BU obr. 1989 knocks out an M60A3 at Ironworks",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s216-t72bu-x-foundry": {
+   "map": "foundry",
+   "title": "A T-72BU fires across Ironworks",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
+  },
+  "s217-t80-foundry": {
+   "map": "foundry",
+   "title": "A T-80 leads the column through Ironworks",
+   "round": "deliver-fleet226",
+   "current": true,
+   "sound": true
   }
  },
  "frames": [
@@ -965,6 +1399,14 @@
    }
   },
   {
+   "path": "media/site50-r14/films/trailer-30-row.jpg",
+   "bytes": 127759,
+   "sha256": "068548de4f192f76634cd03dad0e8883a6b60ad8fdcd31c91737cc8ad4ff0a28",
+   "source": "shots/media-r5/trailers-r6/deliver/trailer-30.mp4",
+   "film": "trailer-30",
+   "posterAtS": 14.2
+  },
+  {
    "path": "media/site50-r14/films/trailer-30.jpg",
    "bytes": 103336,
    "sha256": "0baff1ab6fb8ffd882480bf7d34fc2232f9c00d9012444c446152e27e11503bd",
@@ -1008,6 +1450,22 @@
     "vmafMin": 49.89,
     "capped": true
    }
+  },
+  {
+   "path": "media/site50-r14/films/trailer-row.jpg",
+   "bytes": 133173,
+   "sha256": "da6ac95d20b4207ee853df01f9e7af2ff01d0ac02a9a77e2623591cf891a46ee",
+   "source": "shots/media-r5/trailers-r6/deliver/trailer.mp4",
+   "film": "trailer",
+   "posterAtS": 52
+  },
+  {
+   "path": "media/site50-r14/films/trailer-vertical-row.jpg",
+   "bytes": 138688,
+   "sha256": "f4804a5715beaca3c4746a5aefdab945d7f41342625c6c66ced9124fecd90766",
+   "source": "shots/media-r5/trailers-r6/deliver/trailer-vertical.mp4",
+   "film": "trailer-vertical",
+   "posterAtS": 13
   },
   {
    "path": "media/site50-r14/films/trailer-vertical.jpg",
@@ -1629,8 +2087,8 @@
   },
   {
    "path": "media/site50-r14/fleet/bwp1.jpg",
-   "bytes": 28127,
-   "sha256": "de633fa1708072033d08b15960e762981e6a0f68984cb1b1f8e0303b4e234c0a",
+   "bytes": 26153,
+   "sha256": "44d18a40f31058ef7e92cfd5eb0e05d9c391a99a87c134a8931cbcf4cbae6cb0",
    "source": "shots/media-r5/site50/deliver-fleet226/s126-bwp1-winter/s126-bwp1-winter-close-4k.png",
    "take": "s126-bwp1-winter",
    "round": "shots/media-r5/site50/deliver-fleet226",
@@ -1638,8 +2096,8 @@
   },
   {
    "path": "media/site50-r14/fleet/bwp1.webm",
-   "bytes": 433304,
-   "sha256": "dc061ff63947c28c9673bbfd60229d547099a3b479a8d71100b1a76f9d55307b",
+   "bytes": 410906,
+   "sha256": "b2bf1eb4052320966387ce0cff2808fa5b231fb43cb9460d82fb53df0d5fbd3e",
    "width": 640,
    "height": 360,
    "fps": 30,
@@ -3384,8 +3842,8 @@
   },
   {
    "path": "media/site50-r14/fleet/merkava2d.jpg",
-   "bytes": 37034,
-   "sha256": "da604bfda26ad355aaac31534f8eb41ee44663dd954a1215b602d31008c5d293",
+   "bytes": 36743,
+   "sha256": "78d327636406de39c7781838301e48cff784b21ebebff3e39e497e2d6872e8e6",
    "source": "shots/media-r5/site50/deliver-fleet226/s101-merkava2d-copper-mesa/s101-merkava2d-copper-mesa-close-4k.png",
    "take": "s101-merkava2d-copper-mesa",
    "round": "shots/media-r5/site50/deliver-fleet226",
@@ -3393,8 +3851,8 @@
   },
   {
    "path": "media/site50-r14/fleet/merkava2d.webm",
-   "bytes": 333534,
-   "sha256": "9666b1a2d6411d12b315d7ca98b6217d3ce473e73deb0f23b6b8b6cdc3c16e10",
+   "bytes": 301125,
+   "sha256": "044326843a88e092948c0d35f86c2eed2c813ea9a194e5ac989368754fde063c",
    "width": 640,
    "height": 360,
    "fps": 30,
@@ -4074,8 +4532,8 @@
   },
   {
    "path": "media/site50-r14/fleet/t14.jpg",
-   "bytes": 60466,
-   "sha256": "44e7576caab888a9d9631d160a9346a62dfb8c9826b9f644ab9d6a4981c74843",
+   "bytes": 54173,
+   "sha256": "6e4a99578ccfd0f9c2f5c210e15b9235170df3a0beaf02f59176f6c4c8d8bcf6",
    "source": "shots/media-r5/site50/deliver-fleet226/s145-t14-steppe/s145-t14-steppe-close-4k.png",
    "take": "s145-t14-steppe",
    "round": "shots/media-r5/site50/deliver-fleet226",
@@ -4083,8 +4541,8 @@
   },
   {
    "path": "media/site50-r14/fleet/t14.webm",
-   "bytes": 549604,
-   "sha256": "47624f71a7668602578eb203c931e41cd74bd5d30b27c677e0353d3c3be633be",
+   "bytes": 556268,
+   "sha256": "02654e473a21085b824f5411ac24b690c1f1099d76102bdc57cb5a0312165720",
    "width": 640,
    "height": 360,
    "fps": 30,
@@ -4925,8 +5383,8 @@
   },
   {
    "path": "media/site50-r14/fleet/type99a.jpg",
-   "bytes": 39504,
-   "sha256": "d4f37e97ff4c7f5f84bd74eb170bf4028b44c000dad450a9548deaffe5f34c6e",
+   "bytes": 40826,
+   "sha256": "448f68124a5c347f363afe0fd2a7e8ae2cbe6cfb6608539fc8e58db2b7efea1c",
    "source": "shots/media-r5/site50/deliver-fleet226/s67-type99a-titan-gorge/s67-type99a-titan-gorge-close-4k.png",
    "take": "s67-type99a-titan-gorge",
    "round": "shots/media-r5/site50/deliver-fleet226",
@@ -4934,8 +5392,8 @@
   },
   {
    "path": "media/site50-r14/fleet/type99a.webm",
-   "bytes": 432584,
-   "sha256": "083e80ce590679fd4152b768d9c07e765e886b71d4a575d15a747e5a2708f2a2",
+   "bytes": 425175,
+   "sha256": "36fff1b0f6c3838fc836dbda677241a26fa9c5fba41eae28de94246bc32bd90c",
    "width": 640,
    "height": 360,
    "fps": 30,
@@ -5201,8 +5659,8 @@
   },
   {
    "path": "media/site50-r14/fleet/udes03.jpg",
-   "bytes": 24630,
-   "sha256": "55f72f6185a6006a043e100833f40088a090bed9132f9e246baf17d2964a1f66",
+   "bytes": 33202,
+   "sha256": "233d546e0c54260769f3cdc5bc4b2358f49f2fb2e195be44223818f421095dd2",
    "source": "shots/media-r5/site50/deliver-fleet226/s168-udes03-fjord/s168-udes03-fjord-close-4k.png",
    "take": "s168-udes03-fjord",
    "round": "shots/media-r5/site50/deliver-fleet226",
@@ -5210,8 +5668,8 @@
   },
   {
    "path": "media/site50-r14/fleet/udes03.webm",
-   "bytes": 456249,
-   "sha256": "cab0706c62adcf42deb4aabf9af52fce06d83567a341fda18cf561e05c57c633",
+   "bytes": 428321,
+   "sha256": "02e189a72ffc38d3d49887416db2f9db5ae778527d6dba30a2b0227401562e6f",
    "width": 640,
    "height": 360,
    "fps": 30,
@@ -6299,22 +6757,22 @@
   },
   {
    "path": "media/site50-r14/home/features/studio.jpg",
-   "bytes": 264524,
-   "sha256": "cba5dc38ba4f23a68233da664c463edffdf017dcb37324b925448253a8160b05",
+   "bytes": 274994,
+   "sha256": "c58581e76f92b5441a829d107edcef166654fd0fa5a0f40f180c17cc3358ca95",
    "source": "shots/media-r5/home-r2/deliver/features/studio.webm",
    "home": "features/studio"
   },
   {
    "path": "media/site50-r14/home/features/studio.json",
    "bytes": 2456,
-   "sha256": "edfbe09df633d3476d6fe41e7a477818652d4943c0ea06274710358e6dff7706",
+   "sha256": "1eaef4846a377513f3ed0f351a392467dbc19e71947ccafa430289ed7b1d9b2e",
    "source": "shots/media-r5/home-r2/deliver/features/studio.json",
    "home": "features/studio"
   },
   {
    "path": "media/site50-r14/home/features/studio.mp4",
-   "bytes": 3254887,
-   "sha256": "d1643270d9e132a7e0bb50f091e2b9cae63e55e8c931d2978d81f1d148e3e28f",
+   "bytes": 3357285,
+   "sha256": "63b9a30a0a84a9b7657b6a28f1551f557b78ef0be6f61f396b46fc43c9cf89b8",
    "width": 1920,
    "height": 1080,
    "fps": 30,
@@ -7547,8 +8005,8 @@
   },
   {
    "path": "media/site50-r14/reels/s225-verdant-duel.mp4",
-   "bytes": 2559682,
-   "sha256": "57774a013a11171f67dc6a1d2816e7bf8f167ed94b56f6450c4ec9182f86f7bf",
+   "bytes": 2570505,
+   "sha256": "6bff518530c87cf421ecc761cf6e14e692a7c5c0e442831df0317e54dbdccc16",
    "width": 1280,
    "height": 720,
    "fps": 30,
@@ -7560,8 +8018,8 @@
   },
   {
    "path": "media/site50-r14/reels/s225-verdant-duel.webp",
-   "bytes": 92210,
-   "sha256": "6742a47c368c54f42cc1ee6420efc850a1a23f75252cce987ac301a6bc7c3dfb",
+   "bytes": 91572,
+   "sha256": "90b2db48efcb08e9a51dfc7a4b2350ea55cc257900ef9a7f0ca8651a56e33cb6",
    "source": "shots/media-r5/site50/deliver-combat226/s225-verdant-duel/s225-verdant-duel-4k.png",
    "take": "s225-verdant-duel",
    "round": "shots/media-r5/site50/deliver-combat226"
@@ -7893,8 +8351,8 @@
   },
   {
    "path": "media/site50-r14/scenes/s101-merkava2d-copper-mesa.scene.json",
-   "bytes": 76338,
-   "sha256": "628d68d893d1349d23b792480e8b9b8969e1ac58ee77501350ee7f052695936d",
+   "bytes": 76356,
+   "sha256": "8a136d499152ee2bd4598f013acdace4b36026377892e693ab7ad70d462f8ef1",
    "source": "shots/media-r5/site50/deliver-fleet226/s101-merkava2d-copper-mesa/s101-merkava2d-copper-mesa.scene.json"
   },
   {
@@ -8055,8 +8513,8 @@
   },
   {
    "path": "media/site50-r14/scenes/s126-bwp1-winter.scene.json",
-   "bytes": 76887,
-   "sha256": "a86f8325f65431313a3176f5f9b7956cc34d7835e63d676c9d946a4ecccb455f",
+   "bytes": 76907,
+   "sha256": "e7be926d70ee85a55e0c0ba8cf10fd8147c8b4b9e6f9957aeec55d0a89b06acf",
    "source": "shots/media-r5/site50/deliver-fleet226/s126-bwp1-winter/s126-bwp1-winter.scene.json"
   },
   {
@@ -8169,8 +8627,8 @@
   },
   {
    "path": "media/site50-r14/scenes/s145-t14-steppe.scene.json",
-   "bytes": 80125,
-   "sha256": "ea498da361c77de7b8e860b2ddb8544a68583bb39bd4d634fedd1a99ff2a0dfd",
+   "bytes": 79911,
+   "sha256": "9e02f63da2c19878138e99519cba7656a267901b2eb2a3f731cad0086276e044",
    "source": "shots/media-r5/site50/deliver-fleet226/s145-t14-steppe/s145-t14-steppe.scene.json"
   },
   {
@@ -8271,8 +8729,8 @@
   },
   {
    "path": "media/site50-r14/scenes/s168-udes03-fjord.scene.json",
-   "bytes": 76673,
-   "sha256": "08b93644be1407781ea2ff1daa80bc49e932360a48756af03b3b0ccc3fce4391",
+   "bytes": 76691,
+   "sha256": "fb22a8dc3c1e37a84634635cc4d29aa2bbdb99b94bdc31890c59d4005af2bf93",
    "source": "shots/media-r5/site50/deliver-fleet226/s168-udes03-fjord/s168-udes03-fjord.scene.json"
   },
   {
@@ -8847,8 +9305,8 @@
   },
   {
    "path": "media/site50-r14/scenes/s67-type99a-titan-gorge.scene.json",
-   "bytes": 76002,
-   "sha256": "3917bbd92f922207ba5696d05d0de0678d0a274b99b7ab6bef54099d2fdbc0f4",
+   "bytes": 76521,
+   "sha256": "c49e640b98b55ec7a605fb563408e2776170a26029fb5280cb46ba58d595c411",
    "source": "shots/media-r5/site50/deliver-fleet226/s67-type99a-titan-gorge/s67-type99a-titan-gorge.scene.json"
   },
   {
@@ -9304,6 +9762,134 @@
    "round": "shots/media-r5/site50/deliver-r14"
   },
   {
+   "path": "media/site50-r14/stills/s100-merkava2b-badlands-close-thumb.webp",
+   "bytes": 33450,
+   "sha256": "8322c688fb831588456b7b51b93d1d90143c7040e3b3614951bb7f0f3acda6d8",
+   "source": "shots/media-r5/site50/deliver-fleet226/s100-merkava2b-badlands/s100-merkava2b-badlands-close-4k.png",
+   "take": "s100-merkava2b-badlands",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s100-merkava2b-badlands-close.webp",
+   "bytes": 331342,
+   "sha256": "86bc9998233b4ad710ae7a543dd01b9535b245aca20b3600e4af6f135b5ce57a",
+   "source": "shots/media-r5/site50/deliver-fleet226/s100-merkava2b-badlands/s100-merkava2b-badlands-close.webp",
+   "take": "s100-merkava2b-badlands",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s100-merkava2b-badlands-thumb.webp",
+   "bytes": 32526,
+   "sha256": "8da08bb259647346730de55195fe64842a46d2eb59e64fa80650d164892ac0dc",
+   "source": "shots/media-r5/site50/deliver-fleet226/s100-merkava2b-badlands/s100-merkava2b-badlands-4k.png",
+   "take": "s100-merkava2b-badlands",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s100-merkava2b-badlands.webp",
+   "bytes": 308208,
+   "sha256": "1925b87243e4b52317c2d297c36b6b3bb7484ba135f5e71c0be43d7399b3b1ee",
+   "source": "shots/media-r5/site50/deliver-fleet226/s100-merkava2b-badlands/s100-merkava2b-badlands.webp",
+   "take": "s100-merkava2b-badlands",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s101-merkava2d-copper-mesa-close-thumb.webp",
+   "bytes": 24610,
+   "sha256": "26f70d74aba3723094581bed9f73f417c9298a63b9ecd643203ac3078868296b",
+   "source": "shots/media-r5/site50/deliver-fleet226/s101-merkava2d-copper-mesa/s101-merkava2d-copper-mesa-close-4k.png",
+   "take": "s101-merkava2d-copper-mesa",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s101-merkava2d-copper-mesa-close.webp",
+   "bytes": 257656,
+   "sha256": "08103895eb9790b1e1516f9ba7cde4cfe8e561853ad49eacf3a3ea72814db949",
+   "source": "shots/media-r5/site50/deliver-fleet226/s101-merkava2d-copper-mesa/s101-merkava2d-copper-mesa-close.webp",
+   "take": "s101-merkava2d-copper-mesa",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s101-merkava2d-copper-mesa-thumb.webp",
+   "bytes": 26990,
+   "sha256": "2d79e66e2db1671a79337898fab0ac6dc657d8b02329bb5939c89c5773c1db27",
+   "source": "shots/media-r5/site50/deliver-fleet226/s101-merkava2d-copper-mesa/s101-merkava2d-copper-mesa-4k.png",
+   "take": "s101-merkava2d-copper-mesa",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s101-merkava2d-copper-mesa.webp",
+   "bytes": 258192,
+   "sha256": "a594d4cc3a288297a8f4da81f30ad83516ead1248301d679abf2a4db42d9e2b1",
+   "source": "shots/media-r5/site50/deliver-fleet226/s101-merkava2d-copper-mesa/s101-merkava2d-copper-mesa.webp",
+   "take": "s101-merkava2d-copper-mesa",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s107-namer-ifv-desert-close-thumb.webp",
+   "bytes": 51614,
+   "sha256": "6e1d7baede2823dd7ecb05dd1c1b2255f6ce0bcb3f9a5f4fcb28e7ead8d70593",
+   "source": "shots/media-r5/site50/deliver-fleet226/s107-namer-ifv-desert/s107-namer-ifv-desert-close-4k.png",
+   "take": "s107-namer-ifv-desert",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s107-namer-ifv-desert-close.webp",
+   "bytes": 540112,
+   "sha256": "85b8becaa3b318f895069f31c828509b6d4c2fe51c789fa5a56803956ab617b3",
+   "source": "shots/media-r5/site50/deliver-fleet226/s107-namer-ifv-desert/s107-namer-ifv-desert-close.webp",
+   "take": "s107-namer-ifv-desert",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s107-namer-ifv-desert-thumb.webp",
+   "bytes": 31024,
+   "sha256": "3dd1fc67c116708b5c8c58194a53d1a6ebd3801041bf16e78c57ef0f83613507",
+   "source": "shots/media-r5/site50/deliver-fleet226/s107-namer-ifv-desert/s107-namer-ifv-desert-4k.png",
+   "take": "s107-namer-ifv-desert",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s107-namer-ifv-desert.webp",
+   "bytes": 317840,
+   "sha256": "2a7923276b4ede835fd492c0915dc981965aab373e347705c507cb22b6915804",
+   "source": "shots/media-r5/site50/deliver-fleet226/s107-namer-ifv-desert/s107-namer-ifv-desert.webp",
+   "take": "s107-namer-ifv-desert",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s108-sabra-mk2-x-caldera-close-thumb.webp",
+   "bytes": 31748,
+   "sha256": "42204e1277143208b3e56194c5ff29e15dba4ac62667478e134a9b130413fecb",
+   "source": "shots/media-r5/site50/deliver-fleet226/s108-sabra-mk2-x-caldera/s108-sabra-mk2-x-caldera-close-4k.png",
+   "take": "s108-sabra-mk2-x-caldera",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s108-sabra-mk2-x-caldera-close.webp",
+   "bytes": 346926,
+   "sha256": "e15a68344f1df7a30d52d80667c6cf03ee599c4293c6fc34b725091b04807d8f",
+   "source": "shots/media-r5/site50/deliver-fleet226/s108-sabra-mk2-x-caldera/s108-sabra-mk2-x-caldera-close.webp",
+   "take": "s108-sabra-mk2-x-caldera",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s108-sabra-mk2-x-caldera-thumb.webp",
+   "bytes": 48506,
+   "sha256": "011d934fa051a9ca118e4b21fd7f664c3e6225c3445bc388349b099c63a79640",
+   "source": "shots/media-r5/site50/deliver-fleet226/s108-sabra-mk2-x-caldera/s108-sabra-mk2-x-caldera-4k.png",
+   "take": "s108-sabra-mk2-x-caldera",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s108-sabra-mk2-x-caldera.webp",
+   "bytes": 679764,
+   "sha256": "5d4de047b891b713a18eb68ae463f86c8e0c9fc6412393363c716192aace042b",
+   "source": "shots/media-r5/site50/deliver-fleet226/s108-sabra-mk2-x-caldera/s108-sabra-mk2-x-caldera.webp",
+   "take": "s108-sabra-mk2-x-caldera",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
    "path": "media/site50-r14/stills/s11-container-rows-close-thumb.webp",
    "bytes": 35458,
    "sha256": "bec93c8b0b241646ae671a5e961844781f3aaa5261d01570093551efb14e5d12",
@@ -9334,6 +9920,102 @@
    "source": "shots/media-r5/site50/deliver-r14/s11-container-rows/s11-container-rows.webp",
    "take": "s11-container-rows",
    "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s113-carro45t-caldera-close-thumb.webp",
+   "bytes": 29268,
+   "sha256": "ddcd55edda882f4a2b6f1a74e545623503d9a8c68e8a9f646e17192bf0d20d62",
+   "source": "shots/media-r5/site50/deliver-fleet226/s113-carro45t-caldera/s113-carro45t-caldera-close-4k.png",
+   "take": "s113-carro45t-caldera",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s113-carro45t-caldera-close.webp",
+   "bytes": 288178,
+   "sha256": "59439671e351523e42d28a638e9138a17f02dc5d868a2931cf586c77683ccba1",
+   "source": "shots/media-r5/site50/deliver-fleet226/s113-carro45t-caldera/s113-carro45t-caldera-close.webp",
+   "take": "s113-carro45t-caldera",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s113-carro45t-caldera-thumb.webp",
+   "bytes": 33406,
+   "sha256": "28e57fbdfc9dd5c5c71a56282b5f1b448a5b01e52c3eb2404faa2cd91987a701",
+   "source": "shots/media-r5/site50/deliver-fleet226/s113-carro45t-caldera/s113-carro45t-caldera-4k.png",
+   "take": "s113-carro45t-caldera",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s113-carro45t-caldera.webp",
+   "bytes": 337680,
+   "sha256": "b2d09be314f1ff6d82f1eb6dcaa09176b6ce793da5286484f84e171078db0855",
+   "source": "shots/media-r5/site50/deliver-fleet226/s113-carro45t-caldera/s113-carro45t-caldera.webp",
+   "take": "s113-carro45t-caldera",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s114-dardo-orchard-close-thumb.webp",
+   "bytes": 38560,
+   "sha256": "caeadfa231f15b42f874e5529d59f1b758fdf495a6be43332d3f0d2c66d61403",
+   "source": "shots/media-r5/site50/deliver-fleet226/s114-dardo-orchard/s114-dardo-orchard-close-4k.png",
+   "take": "s114-dardo-orchard",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s114-dardo-orchard-close.webp",
+   "bytes": 371840,
+   "sha256": "7fe8bf8179b7bdb21751e06a0071926cc72423845c29685e72fb763d8c7569fb",
+   "source": "shots/media-r5/site50/deliver-fleet226/s114-dardo-orchard/s114-dardo-orchard-close.webp",
+   "take": "s114-dardo-orchard",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s114-dardo-orchard-thumb.webp",
+   "bytes": 35420,
+   "sha256": "e8df8a4c566cb90a0374df3deca18bc8a869b564769762bd54ea42446fc2699b",
+   "source": "shots/media-r5/site50/deliver-fleet226/s114-dardo-orchard/s114-dardo-orchard-4k.png",
+   "take": "s114-dardo-orchard",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s114-dardo-orchard.webp",
+   "bytes": 391212,
+   "sha256": "aed9f72611155926f6914add5b8611797b10698a77f742d4f426c198ca21e010",
+   "source": "shots/media-r5/site50/deliver-fleet226/s114-dardo-orchard/s114-dardo-orchard.webp",
+   "take": "s114-dardo-orchard",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s119-type74-mangrove-close-thumb.webp",
+   "bytes": 26408,
+   "sha256": "487bf9f9ca66ab6b9dcb8cc14c80e99abe201b68efa1c28c8a7631c6682a4adc",
+   "source": "shots/media-r5/site50/deliver-fleet226/s119-type74-mangrove/s119-type74-mangrove-close-4k.png",
+   "take": "s119-type74-mangrove",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s119-type74-mangrove-close.webp",
+   "bytes": 246612,
+   "sha256": "a9242f516015f5072d0ece1ad1886ba53c23e466b1e3ad95dabca30e05979642",
+   "source": "shots/media-r5/site50/deliver-fleet226/s119-type74-mangrove/s119-type74-mangrove-close.webp",
+   "take": "s119-type74-mangrove",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s119-type74-mangrove-thumb.webp",
+   "bytes": 29930,
+   "sha256": "25d235d2f69549a6e3df00f1d35547c63d4b67291cc4724d6f8ae3a414415d7e",
+   "source": "shots/media-r5/site50/deliver-fleet226/s119-type74-mangrove/s119-type74-mangrove-4k.png",
+   "take": "s119-type74-mangrove",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s119-type74-mangrove.webp",
+   "bytes": 317732,
+   "sha256": "2df53bebb0c3266195fe663592a1186d679ca9693b41fd16a39539beb8d658b3",
+   "source": "shots/media-r5/site50/deliver-fleet226/s119-type74-mangrove/s119-type74-mangrove.webp",
+   "take": "s119-type74-mangrove",
+   "round": "shots/media-r5/site50/deliver-fleet226"
   },
   {
    "path": "media/site50-r14/stills/s12-gantry-advance-close-thumb.webp",
@@ -9368,6 +10050,198 @@
    "round": "shots/media-r5/site50/deliver-r14"
   },
   {
+   "path": "media/site50-r14/stills/s120-type89-skybridge-close-thumb.webp",
+   "bytes": 40340,
+   "sha256": "2febcb42bdb53c4668c6a7b000b74a564d7b52a10669147f52382e8d3b0802d7",
+   "source": "shots/media-r5/site50/deliver-fleet226/s120-type89-skybridge/s120-type89-skybridge-close-4k.png",
+   "take": "s120-type89-skybridge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s120-type89-skybridge-close.webp",
+   "bytes": 502416,
+   "sha256": "5d4c03aace6d9224244021497ca90d9ca4a3045537465b65b3d2525cbd8c53d2",
+   "source": "shots/media-r5/site50/deliver-fleet226/s120-type89-skybridge/s120-type89-skybridge-close.webp",
+   "take": "s120-type89-skybridge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s120-type89-skybridge-thumb.webp",
+   "bytes": 40094,
+   "sha256": "d04bcabe0fc4020e7031a4826e8977ec64be8340c3002a607a3ca7fb1df730ba",
+   "source": "shots/media-r5/site50/deliver-fleet226/s120-type89-skybridge/s120-type89-skybridge-4k.png",
+   "take": "s120-type89-skybridge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s120-type89-skybridge.webp",
+   "bytes": 514046,
+   "sha256": "743d38b72a89c0cf9c8e5d1412f134e1933b5cbfb1a6d7eca421fb0dc3432319",
+   "source": "shots/media-r5/site50/deliver-fleet226/s120-type89-skybridge/s120-type89-skybridge.webp",
+   "take": "s120-type89-skybridge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s123-type90-cliffbridge-close-thumb.webp",
+   "bytes": 42540,
+   "sha256": "b8947504c5a883ea8b411e5eed111852349ae615ef787cfa1c6ffbf62fb61449",
+   "source": "shots/media-r5/site50/deliver-fleet226/s123-type90-cliffbridge/s123-type90-cliffbridge-close-4k.png",
+   "take": "s123-type90-cliffbridge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s123-type90-cliffbridge-close.webp",
+   "bytes": 492986,
+   "sha256": "78e6564cf8ab720030ed9087d730b6b28bd0f3ae2ac0df227311c8dda6b80732",
+   "source": "shots/media-r5/site50/deliver-fleet226/s123-type90-cliffbridge/s123-type90-cliffbridge-close.webp",
+   "take": "s123-type90-cliffbridge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s123-type90-cliffbridge-thumb.webp",
+   "bytes": 38200,
+   "sha256": "835f01bd337cf111e8f07716876c8fdf351af116e0e251851da74859bbbd85af",
+   "source": "shots/media-r5/site50/deliver-fleet226/s123-type90-cliffbridge/s123-type90-cliffbridge-4k.png",
+   "take": "s123-type90-cliffbridge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s123-type90-cliffbridge.webp",
+   "bytes": 517980,
+   "sha256": "daaba136e4105049ac9097e86c1f4f53bcc29147a8fa1dad430f70a61fad5f93",
+   "source": "shots/media-r5/site50/deliver-fleet226/s123-type90-cliffbridge/s123-type90-cliffbridge.webp",
+   "take": "s123-type90-cliffbridge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s124-type90a-cliffbridge-close-thumb.webp",
+   "bytes": 37754,
+   "sha256": "85379cf0de45b2280a9f5a0837865afddfd5ebd5adc65c61d343c142fe873ed8",
+   "source": "shots/media-r5/site50/deliver-fleet226/s124-type90a-cliffbridge/s124-type90a-cliffbridge-close-4k.png",
+   "take": "s124-type90a-cliffbridge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s124-type90a-cliffbridge-close.webp",
+   "bytes": 405114,
+   "sha256": "fbff9e3641ab0fc38b55de5768eceaf7d2e0050320527ace657da93d40b75ce8",
+   "source": "shots/media-r5/site50/deliver-fleet226/s124-type90a-cliffbridge/s124-type90a-cliffbridge-close.webp",
+   "take": "s124-type90a-cliffbridge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s124-type90a-cliffbridge-thumb.webp",
+   "bytes": 37748,
+   "sha256": "c35edb40bc8d45215c0a1933ef86a11a4a47921500d80d5b08b93be14867ae87",
+   "source": "shots/media-r5/site50/deliver-fleet226/s124-type90a-cliffbridge/s124-type90a-cliffbridge-4k.png",
+   "take": "s124-type90a-cliffbridge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s124-type90a-cliffbridge.webp",
+   "bytes": 433502,
+   "sha256": "519974ae0b96854df8bd126c0b46e993dd4c6839e942591f8e58a954dcdb0b58",
+   "source": "shots/media-r5/site50/deliver-fleet226/s124-type90a-cliffbridge/s124-type90a-cliffbridge.webp",
+   "take": "s124-type90a-cliffbridge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s126-bwp1-winter-close-thumb.webp",
+   "bytes": 18440,
+   "sha256": "c4d84ddf2736b5be5943052a4ebdd408eaecf6a48affe6eeddae0af4d2b7e1dc",
+   "source": "shots/media-r5/site50/deliver-fleet226/s126-bwp1-winter/s126-bwp1-winter-close-4k.png",
+   "take": "s126-bwp1-winter",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s126-bwp1-winter-close.webp",
+   "bytes": 199790,
+   "sha256": "fbd758133fe56cbe1e1e978df62667dcd7653aab302f6dd5c19869321498fff0",
+   "source": "shots/media-r5/site50/deliver-fleet226/s126-bwp1-winter/s126-bwp1-winter-close.webp",
+   "take": "s126-bwp1-winter",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s126-bwp1-winter-thumb.webp",
+   "bytes": 18590,
+   "sha256": "81598ef9cc12af3278c5b098a1c7dc4d6b45f6e1064f08b1965a33e1ef1bc375",
+   "source": "shots/media-r5/site50/deliver-fleet226/s126-bwp1-winter/s126-bwp1-winter-4k.png",
+   "take": "s126-bwp1-winter",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s126-bwp1-winter.webp",
+   "bytes": 189496,
+   "sha256": "ec93fa29d2269497132ff1d49be7ad4c959935dfcb8b13984abb6bd4ca786ffc",
+   "source": "shots/media-r5/site50/deliver-fleet226/s126-bwp1-winter/s126-bwp1-winter.webp",
+   "take": "s126-bwp1-winter",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s128-pl-t72b3-zubr-ii-moon-close-thumb.webp",
+   "bytes": 21072,
+   "sha256": "cf56f2e4f355b53419510d1a85f7b6e1162df253cd44fd214a09c8ec04ac37de",
+   "source": "shots/media-r5/site50/deliver-fleet226/s128-pl-t72b3-zubr-ii-moon/s128-pl-t72b3-zubr-ii-moon-close-4k.png",
+   "take": "s128-pl-t72b3-zubr-ii-moon",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s128-pl-t72b3-zubr-ii-moon-close.webp",
+   "bytes": 271588,
+   "sha256": "798e2842091cfd5e0903b485af34270efdbe1372faaa0c05cef45c9849df3522",
+   "source": "shots/media-r5/site50/deliver-fleet226/s128-pl-t72b3-zubr-ii-moon/s128-pl-t72b3-zubr-ii-moon-close.webp",
+   "take": "s128-pl-t72b3-zubr-ii-moon",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s128-pl-t72b3-zubr-ii-moon-thumb.webp",
+   "bytes": 21768,
+   "sha256": "c0630d12c09e5db38bec67104298ddf2b6e75e021cb804fbd4940cf62c33a9ef",
+   "source": "shots/media-r5/site50/deliver-fleet226/s128-pl-t72b3-zubr-ii-moon/s128-pl-t72b3-zubr-ii-moon-4k.png",
+   "take": "s128-pl-t72b3-zubr-ii-moon",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s128-pl-t72b3-zubr-ii-moon.webp",
+   "bytes": 233234,
+   "sha256": "d061f022ad058e941dbb8c7eae7560c0e02343f56f9dd1fb0e10200a00e337c9",
+   "source": "shots/media-r5/site50/deliver-fleet226/s128-pl-t72b3-zubr-ii-moon/s128-pl-t72b3-zubr-ii-moon.webp",
+   "take": "s128-pl-t72b3-zubr-ii-moon",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s129-pl-t72b3m-modern-moon-close-thumb.webp",
+   "bytes": 26750,
+   "sha256": "7a80eef3fbdd6c5b4d879ade5b7107b8254d7bd95ea512bc4bcaf13a69caafb8",
+   "source": "shots/media-r5/site50/deliver-fleet226/s129-pl-t72b3m-modern-moon/s129-pl-t72b3m-modern-moon-close-4k.png",
+   "take": "s129-pl-t72b3m-modern-moon",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s129-pl-t72b3m-modern-moon-close.webp",
+   "bytes": 227106,
+   "sha256": "7fb0942c5dc8faf243545d55632c847923a06f99106e3d90f2c90a23cf56f6d3",
+   "source": "shots/media-r5/site50/deliver-fleet226/s129-pl-t72b3m-modern-moon/s129-pl-t72b3m-modern-moon-close.webp",
+   "take": "s129-pl-t72b3m-modern-moon",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s129-pl-t72b3m-modern-moon-thumb.webp",
+   "bytes": 22634,
+   "sha256": "4771b1a9b1289db4e922d1dfa5122dab0ae12c0edc616d3eb7296e68281b59d7",
+   "source": "shots/media-r5/site50/deliver-fleet226/s129-pl-t72b3m-modern-moon/s129-pl-t72b3m-modern-moon-4k.png",
+   "take": "s129-pl-t72b3m-modern-moon",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s129-pl-t72b3m-modern-moon.webp",
+   "bytes": 231038,
+   "sha256": "ecbb281f8f8a4448cda4df37d36acccd97f8cdbc52bdb9cb9c87628917596c5c",
+   "source": "shots/media-r5/site50/deliver-fleet226/s129-pl-t72b3m-modern-moon/s129-pl-t72b3m-modern-moon.webp",
+   "take": "s129-pl-t72b3m-modern-moon",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
    "path": "media/site50-r14/stills/s13-farm-race-close-thumb.webp",
    "bytes": 46226,
    "sha256": "9ff112d4563ddb589c7b93eaefc48017a09aa799907d93548416f54003d476e1",
@@ -9400,6 +10274,198 @@
    "round": "shots/media-r5/site50/deliver-r15"
   },
   {
+   "path": "media/site50-r14/stills/s131-pt91-twardy-longleaf-close-thumb.webp",
+   "bytes": 35096,
+   "sha256": "3c7f5a52c8f4b5dd348fb8fe563b42091cc02adcf5c664b776b8ebce46596b11",
+   "source": "shots/media-r5/site50/deliver-fleet226/s131-pt91-twardy-longleaf/s131-pt91-twardy-longleaf-close-4k.png",
+   "take": "s131-pt91-twardy-longleaf",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s131-pt91-twardy-longleaf-close.webp",
+   "bytes": 345602,
+   "sha256": "4a254159a1c5127955920110936299bb24ff9cd8cd076678807f9b830e17a326",
+   "source": "shots/media-r5/site50/deliver-fleet226/s131-pt91-twardy-longleaf/s131-pt91-twardy-longleaf-close.webp",
+   "take": "s131-pt91-twardy-longleaf",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s131-pt91-twardy-longleaf-thumb.webp",
+   "bytes": 28866,
+   "sha256": "a7aef528bcb394593e22b6911d27fe99f751b35a55137df26a0418779d080fa9",
+   "source": "shots/media-r5/site50/deliver-fleet226/s131-pt91-twardy-longleaf/s131-pt91-twardy-longleaf-4k.png",
+   "take": "s131-pt91-twardy-longleaf",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s131-pt91-twardy-longleaf.webp",
+   "bytes": 324042,
+   "sha256": "16b5ebab3bf296a2632203d9e354f737e168723fa03fbe1d7e103671deb65a99",
+   "source": "shots/media-r5/site50/deliver-fleet226/s131-pt91-twardy-longleaf/s131-pt91-twardy-longleaf.webp",
+   "take": "s131-pt91-twardy-longleaf",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s132-pt91m-polders-close-thumb.webp",
+   "bytes": 44574,
+   "sha256": "3cade26f472ca81e6a36034e0a777a6a7d6ef30380988dd33013ebaea7468720",
+   "source": "shots/media-r5/site50/deliver-fleet226/s132-pt91m-polders/s132-pt91m-polders-close-4k.png",
+   "take": "s132-pt91m-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s132-pt91m-polders-close.webp",
+   "bytes": 450380,
+   "sha256": "1d93590706a22166e7fd177fe5b651c0e85e1c06974a34a916ec3f900bd24804",
+   "source": "shots/media-r5/site50/deliver-fleet226/s132-pt91m-polders/s132-pt91m-polders-close.webp",
+   "take": "s132-pt91m-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s132-pt91m-polders-thumb.webp",
+   "bytes": 37048,
+   "sha256": "8aff1db93b0e1f0c9bb85f61ef628f2916e72dd30f72c95ec5a90aa3987ad3ce",
+   "source": "shots/media-r5/site50/deliver-fleet226/s132-pt91m-polders/s132-pt91m-polders-4k.png",
+   "take": "s132-pt91m-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s132-pt91m-polders.webp",
+   "bytes": 386882,
+   "sha256": "4a68502991ec6b7ebbaa3cb7110d3223522bf9ae76a5cf2f6a24ad22945b3d63",
+   "source": "shots/media-r5/site50/deliver-fleet226/s132-pt91m-polders/s132-pt91m-polders.webp",
+   "take": "s132-pt91m-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s133-t72-rys-polders-close-thumb.webp",
+   "bytes": 55144,
+   "sha256": "e6ff2b37df3e6fdd9508309f5b8da13ed5a0182360784da5974a4421c4db6125",
+   "source": "shots/media-r5/site50/deliver-fleet226/s133-t72-rys-polders/s133-t72-rys-polders-close-4k.png",
+   "take": "s133-t72-rys-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s133-t72-rys-polders-close.webp",
+   "bytes": 524472,
+   "sha256": "580297a52d0e6044997639a8c5cb8ea994aa48d14177a24d207a50f5af5aca8e",
+   "source": "shots/media-r5/site50/deliver-fleet226/s133-t72-rys-polders/s133-t72-rys-polders-close.webp",
+   "take": "s133-t72-rys-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s133-t72-rys-polders-thumb.webp",
+   "bytes": 51736,
+   "sha256": "630a69bdff53f763c1d57428d4b5f4e34d81cfb4f74017dbf287b360758814ed",
+   "source": "shots/media-r5/site50/deliver-fleet226/s133-t72-rys-polders/s133-t72-rys-polders-4k.png",
+   "take": "s133-t72-rys-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s133-t72-rys-polders.webp",
+   "bytes": 493936,
+   "sha256": "ea21c99e7e0d322d44fe1938816422ec8e037a8bfa492d2b48dd4b55cdcb4748",
+   "source": "shots/media-r5/site50/deliver-fleet226/s133-t72-rys-polders/s133-t72-rys-polders.webp",
+   "take": "s133-t72-rys-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s135-upior-polders-close-thumb.webp",
+   "bytes": 33670,
+   "sha256": "1998c3796e115602deb2750030fd041cf31fd136c676c6b85f98ed00c4dbf6ea",
+   "source": "shots/media-r5/site50/deliver-fleet226/s135-upior-polders/s135-upior-polders-close-4k.png",
+   "take": "s135-upior-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s135-upior-polders-close.webp",
+   "bytes": 317024,
+   "sha256": "80b4f87fd0da20eb5346efd14bb862366eabdcae9c64fa4be69e175557813cea",
+   "source": "shots/media-r5/site50/deliver-fleet226/s135-upior-polders/s135-upior-polders-close.webp",
+   "take": "s135-upior-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s135-upior-polders-thumb.webp",
+   "bytes": 35660,
+   "sha256": "263256dd13f90ed3c0373fa9f5e57b24945b55332de7d8e0ca87ece5fd9a15cd",
+   "source": "shots/media-r5/site50/deliver-fleet226/s135-upior-polders/s135-upior-polders-4k.png",
+   "take": "s135-upior-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s135-upior-polders.webp",
+   "bytes": 372824,
+   "sha256": "480e56d2b344182dd3bec42d01c377b9f983c1f4b182eef6b8a511549b251115",
+   "source": "shots/media-r5/site50/deliver-fleet226/s135-upior-polders/s135-upior-polders.webp",
+   "take": "s135-upior-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s138-bmpt-t90-whiteout-close-thumb.webp",
+   "bytes": 20426,
+   "sha256": "6c8c883244112de10ed65289ca1fab555c43977a276f5fd15fae1c9ddd12de1b",
+   "source": "shots/media-r5/site50/deliver-fleet226/s138-bmpt-t90-whiteout/s138-bmpt-t90-whiteout-close-4k.png",
+   "take": "s138-bmpt-t90-whiteout",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s138-bmpt-t90-whiteout-close.webp",
+   "bytes": 196082,
+   "sha256": "fb940fa0851decf7291d4b5a68b2ae7d9ac67f5336d04a952333d5104f3e97a0",
+   "source": "shots/media-r5/site50/deliver-fleet226/s138-bmpt-t90-whiteout/s138-bmpt-t90-whiteout-close.webp",
+   "take": "s138-bmpt-t90-whiteout",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s138-bmpt-t90-whiteout-thumb.webp",
+   "bytes": 22660,
+   "sha256": "721873cb4cb7a36c52a48d633697b0b01335a4ece3f8a2b905fc56d8de689e07",
+   "source": "shots/media-r5/site50/deliver-fleet226/s138-bmpt-t90-whiteout/s138-bmpt-t90-whiteout-4k.png",
+   "take": "s138-bmpt-t90-whiteout",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s138-bmpt-t90-whiteout.webp",
+   "bytes": 218200,
+   "sha256": "e1bc40c059740d019a13e34ae4b8d69b4e54963b086efe32ad20a1bae6d986e1",
+   "source": "shots/media-r5/site50/deliver-fleet226/s138-bmpt-t90-whiteout/s138-bmpt-t90-whiteout.webp",
+   "take": "s138-bmpt-t90-whiteout",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s139-bmpt-terminator2-railyard-close-thumb.webp",
+   "bytes": 36952,
+   "sha256": "1cd171fb8110a6f424bb69424a47942263d4e4c52667089de613caad4b520822",
+   "source": "shots/media-r5/site50/deliver-fleet226/s139-bmpt-terminator2-railyard/s139-bmpt-terminator2-railyard-close-4k.png",
+   "take": "s139-bmpt-terminator2-railyard",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s139-bmpt-terminator2-railyard-close.webp",
+   "bytes": 387288,
+   "sha256": "0b6c31fb9883fb0be4ed49cf3d80be4dd468f98fc7d1022eaef4234f080dde39",
+   "source": "shots/media-r5/site50/deliver-fleet226/s139-bmpt-terminator2-railyard/s139-bmpt-terminator2-railyard-close.webp",
+   "take": "s139-bmpt-terminator2-railyard",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s139-bmpt-terminator2-railyard-thumb.webp",
+   "bytes": 37120,
+   "sha256": "58b55ee89dd50ef5da06aa4d10f994a1aa4588cfc5ad36c970dd7bbfa53dc5ed",
+   "source": "shots/media-r5/site50/deliver-fleet226/s139-bmpt-terminator2-railyard/s139-bmpt-terminator2-railyard-4k.png",
+   "take": "s139-bmpt-terminator2-railyard",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s139-bmpt-terminator2-railyard.webp",
+   "bytes": 399952,
+   "sha256": "cc4fb9a8baee3b9f9c394293ada803f5eee057309a9d35260d7e5fdccac023f2",
+   "source": "shots/media-r5/site50/deliver-fleet226/s139-bmpt-terminator2-railyard/s139-bmpt-terminator2-railyard.webp",
+   "take": "s139-bmpt-terminator2-railyard",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
    "path": "media/site50-r14/stills/s14-snow-push-close-thumb.webp",
    "bytes": 36272,
    "sha256": "76b8ed758bb15a60673840daca44e5a3101fb6a0f9253332045d0320cadab76d",
@@ -9430,6 +10496,70 @@
    "source": "shots/media-r5/site50/deliver-r14/s14-snow-push/s14-snow-push.webp",
    "take": "s14-snow-push",
    "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s145-t14-steppe-close-thumb.webp",
+   "bytes": 41532,
+   "sha256": "e950ada84d73407bd65547a0968d6dbab0d4087934551768f08abb3928fd166c",
+   "source": "shots/media-r5/site50/deliver-fleet226/s145-t14-steppe/s145-t14-steppe-close-4k.png",
+   "take": "s145-t14-steppe",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s145-t14-steppe-close.webp",
+   "bytes": 413704,
+   "sha256": "8a0059387dc665bbfec72687e8ada0295ac66f9b65c114a3cad1db2ea99b7186",
+   "source": "shots/media-r5/site50/deliver-fleet226/s145-t14-steppe/s145-t14-steppe-close.webp",
+   "take": "s145-t14-steppe",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s145-t14-steppe-thumb.webp",
+   "bytes": 49126,
+   "sha256": "61794b0b355c9ecd12b74f0ade37ba5bd7890bdd2e04a7277a5a28e826f198bb",
+   "source": "shots/media-r5/site50/deliver-fleet226/s145-t14-steppe/s145-t14-steppe-4k.png",
+   "take": "s145-t14-steppe",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s145-t14-steppe.webp",
+   "bytes": 537710,
+   "sha256": "778a4e14178221530b719eaa3680d6ace8620d8297afc7863b506459a4fc311d",
+   "source": "shots/media-r5/site50/deliver-fleet226/s145-t14-steppe/s145-t14-steppe.webp",
+   "take": "s145-t14-steppe",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s146-t72b3-x-foundry-close-thumb.webp",
+   "bytes": 22912,
+   "sha256": "eb45a5ddfb93886d46ffeaf08b24f8e4177442f7f4de98a835cb1bf0465ccae0",
+   "source": "shots/media-r5/site50/deliver-fleet226/s146-t72b3-x-foundry/s146-t72b3-x-foundry-close-4k.png",
+   "take": "s146-t72b3-x-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s146-t72b3-x-foundry-close.webp",
+   "bytes": 227934,
+   "sha256": "014a6471c1c89ae90bcd652479672d23666cc8ab16065e5bf4c2dcf03fabf808",
+   "source": "shots/media-r5/site50/deliver-fleet226/s146-t72b3-x-foundry/s146-t72b3-x-foundry-close.webp",
+   "take": "s146-t72b3-x-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s146-t72b3-x-foundry-thumb.webp",
+   "bytes": 18902,
+   "sha256": "790181a52f8d9a213de9f2747188396e26f56febcf6a7ac76db04bcbfb1930e8",
+   "source": "shots/media-r5/site50/deliver-fleet226/s146-t72b3-x-foundry/s146-t72b3-x-foundry-4k.png",
+   "take": "s146-t72b3-x-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s146-t72b3-x-foundry.webp",
+   "bytes": 204246,
+   "sha256": "a4419d01aa433225a7d08c77ca1ef5772a43023542d7f3d1d77c619c0721ce0e",
+   "source": "shots/media-r5/site50/deliver-fleet226/s146-t72b3-x-foundry/s146-t72b3-x-foundry.webp",
+   "take": "s146-t72b3-x-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
   },
   {
    "path": "media/site50-r14/stills/s15-orchard-column-close-thumb.webp",
@@ -9496,6 +10626,134 @@
    "round": "shots/media-r5/site50/deliver-r14"
   },
   {
+   "path": "media/site50-r14/stills/s165-strv103a-whiteout-close-thumb.webp",
+   "bytes": 16256,
+   "sha256": "c19f843c1bea04858a784f1f4e6146caa48d2383e4872115e15bc5e12d3c1637",
+   "source": "shots/media-r5/site50/deliver-fleet226/s165-strv103a-whiteout/s165-strv103a-whiteout-close-4k.png",
+   "take": "s165-strv103a-whiteout",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s165-strv103a-whiteout-close.webp",
+   "bytes": 148902,
+   "sha256": "5d762b58d15e92596c080663e6fd73a49f9336365606b5874cfda79a15abb0a6",
+   "source": "shots/media-r5/site50/deliver-fleet226/s165-strv103a-whiteout/s165-strv103a-whiteout-close.webp",
+   "take": "s165-strv103a-whiteout",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s165-strv103a-whiteout-thumb.webp",
+   "bytes": 16460,
+   "sha256": "19c5292392ab1e24efb8d83901f8d94f0cbe311a31bf04679f4b9458d064dfb5",
+   "source": "shots/media-r5/site50/deliver-fleet226/s165-strv103a-whiteout/s165-strv103a-whiteout-4k.png",
+   "take": "s165-strv103a-whiteout",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s165-strv103a-whiteout.webp",
+   "bytes": 179646,
+   "sha256": "aca0797b48ff720563fba2104f07cc56c475c76b547ddc51f9e7b3750bf75c7b",
+   "source": "shots/media-r5/site50/deliver-fleet226/s165-strv103a-whiteout/s165-strv103a-whiteout.webp",
+   "take": "s165-strv103a-whiteout",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s166-strv122-winter-close-thumb.webp",
+   "bytes": 46406,
+   "sha256": "158612d4e44debb0af347efa3702ca7886dc1add8addc04992c8740ff869e9ec",
+   "source": "shots/media-r5/site50/deliver-fleet226/s166-strv122-winter/s166-strv122-winter-close-4k.png",
+   "take": "s166-strv122-winter",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s166-strv122-winter-close.webp",
+   "bytes": 433768,
+   "sha256": "416cb21ce05f3f797d6ee8fc3a55536cbc066bf6258dba4997112235a2ccdb0e",
+   "source": "shots/media-r5/site50/deliver-fleet226/s166-strv122-winter/s166-strv122-winter-close.webp",
+   "take": "s166-strv122-winter",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s166-strv122-winter-thumb.webp",
+   "bytes": 44772,
+   "sha256": "5b710196497a4d88ec5072537348ce8173b054c585295e91f6648dba35f14eae",
+   "source": "shots/media-r5/site50/deliver-fleet226/s166-strv122-winter/s166-strv122-winter-4k.png",
+   "take": "s166-strv122-winter",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s166-strv122-winter.webp",
+   "bytes": 459990,
+   "sha256": "9a907af1a8f361a051723f292f9da74424cd26ab51762aaac9057c64d58abcfb",
+   "source": "shots/media-r5/site50/deliver-fleet226/s166-strv122-winter/s166-strv122-winter.webp",
+   "take": "s166-strv122-winter",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s167-strv81-longleaf-close-thumb.webp",
+   "bytes": 34642,
+   "sha256": "f701286c40abb257c4136ebb9eba7160e3ac1c3c176600342144c4e97cd64ad8",
+   "source": "shots/media-r5/site50/deliver-fleet226/s167-strv81-longleaf/s167-strv81-longleaf-close-4k.png",
+   "take": "s167-strv81-longleaf",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s167-strv81-longleaf-close.webp",
+   "bytes": 317814,
+   "sha256": "12e1d1805585253f8a75c5b839a6136944a2b2b07d9f7cf49c0096c8b72893cd",
+   "source": "shots/media-r5/site50/deliver-fleet226/s167-strv81-longleaf/s167-strv81-longleaf-close.webp",
+   "take": "s167-strv81-longleaf",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s167-strv81-longleaf-thumb.webp",
+   "bytes": 35132,
+   "sha256": "57c1bd24db16c5e8e13d06c13ffd9307d48b49e53f9edfa09e22288d78934c48",
+   "source": "shots/media-r5/site50/deliver-fleet226/s167-strv81-longleaf/s167-strv81-longleaf-4k.png",
+   "take": "s167-strv81-longleaf",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s167-strv81-longleaf.webp",
+   "bytes": 338828,
+   "sha256": "7649129460a5936273af8e2faf97c5e24d8a7b3390475ce23561b3154bf04814",
+   "source": "shots/media-r5/site50/deliver-fleet226/s167-strv81-longleaf/s167-strv81-longleaf.webp",
+   "take": "s167-strv81-longleaf",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s168-udes03-fjord-close-thumb.webp",
+   "bytes": 26318,
+   "sha256": "88d0f431515d20d34656047efaa6f2c0b27905ee62d1b66f4e5da0160794827b",
+   "source": "shots/media-r5/site50/deliver-fleet226/s168-udes03-fjord/s168-udes03-fjord-close-4k.png",
+   "take": "s168-udes03-fjord",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s168-udes03-fjord-close.webp",
+   "bytes": 278936,
+   "sha256": "bbbf089a3ab9ef33fa1664f912c9fe830a697182863de7aaad9301258f856885",
+   "source": "shots/media-r5/site50/deliver-fleet226/s168-udes03-fjord/s168-udes03-fjord-close.webp",
+   "take": "s168-udes03-fjord",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s168-udes03-fjord-thumb.webp",
+   "bytes": 25674,
+   "sha256": "bd451bfdf79aec87334839ec65920a2d15f6523db39a5e7c1d98b2412513c9be",
+   "source": "shots/media-r5/site50/deliver-fleet226/s168-udes03-fjord/s168-udes03-fjord-4k.png",
+   "take": "s168-udes03-fjord",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s168-udes03-fjord.webp",
+   "bytes": 263696,
+   "sha256": "95423d5a123a2fd69a56b50d1f89ee430ad6beef065dbf15c4235501f6d379d8",
+   "source": "shots/media-r5/site50/deliver-fleet226/s168-udes03-fjord/s168-udes03-fjord.webp",
+   "take": "s168-udes03-fjord",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
    "path": "media/site50-r14/stills/s17-crossroads-fire-close-thumb.webp",
    "bytes": 22780,
    "sha256": "da4293af6792b38ed8979b68cf7c413b5654ef7f9eb6c6986962390f68e81a8a",
@@ -9526,6 +10784,134 @@
    "source": "shots/media-r5/site50/deliver-r14/s17-crossroads-fire/s17-crossroads-fire.webp",
    "take": "s17-crossroads-fire",
    "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s173-challenger1-saltwind-close-thumb.webp",
+   "bytes": 22044,
+   "sha256": "d74e7f4b8b4e36a9b655d738000524b6e19020f089f4b3166ff9a3e083fa2408",
+   "source": "shots/media-r5/site50/deliver-fleet226/s173-challenger1-saltwind/s173-challenger1-saltwind-close-4k.png",
+   "take": "s173-challenger1-saltwind",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s173-challenger1-saltwind-close.webp",
+   "bytes": 261640,
+   "sha256": "05ae72062259f51a7a4d7e15a372d4edd25a038ca87c4463e129eb7b99420624",
+   "source": "shots/media-r5/site50/deliver-fleet226/s173-challenger1-saltwind/s173-challenger1-saltwind-close.webp",
+   "take": "s173-challenger1-saltwind",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s173-challenger1-saltwind-thumb.webp",
+   "bytes": 23316,
+   "sha256": "c5b3d1653018eca798ff038b0742479edfa4c46c31e7c0d74526594e9ec2308e",
+   "source": "shots/media-r5/site50/deliver-fleet226/s173-challenger1-saltwind/s173-challenger1-saltwind-4k.png",
+   "take": "s173-challenger1-saltwind",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s173-challenger1-saltwind.webp",
+   "bytes": 260272,
+   "sha256": "b2ea77703eef3dd498bd8b76b39becff42cf4f2c96f7edf7e4be740a26d756ad",
+   "source": "shots/media-r5/site50/deliver-fleet226/s173-challenger1-saltwind/s173-challenger1-saltwind.webp",
+   "take": "s173-challenger1-saltwind",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s175-chieftain-mk10-saltwind-close-thumb.webp",
+   "bytes": 33622,
+   "sha256": "6bccd2a0e913ed6ee52b13259398f48f12df69e63eed56c876a7d97346b811a7",
+   "source": "shots/media-r5/site50/deliver-fleet226/s175-chieftain-mk10-saltwind/s175-chieftain-mk10-saltwind-close-4k.png",
+   "take": "s175-chieftain-mk10-saltwind",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s175-chieftain-mk10-saltwind-close.webp",
+   "bytes": 354714,
+   "sha256": "557a3585a37db03d75e3b4fcbc93e2f4d87a37fd9fe69fd0e4d859303c5a743c",
+   "source": "shots/media-r5/site50/deliver-fleet226/s175-chieftain-mk10-saltwind/s175-chieftain-mk10-saltwind-close.webp",
+   "take": "s175-chieftain-mk10-saltwind",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s175-chieftain-mk10-saltwind-thumb.webp",
+   "bytes": 30272,
+   "sha256": "6626035d7e71b753deb6f1c1eb273f1ef26696701b31ff15e685f267661cc443",
+   "source": "shots/media-r5/site50/deliver-fleet226/s175-chieftain-mk10-saltwind/s175-chieftain-mk10-saltwind-4k.png",
+   "take": "s175-chieftain-mk10-saltwind",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s175-chieftain-mk10-saltwind.webp",
+   "bytes": 342506,
+   "sha256": "49d77893ebc4b3e910acc937e94c34a3957f5359e2ffd29e5cbf2b545f75df46",
+   "source": "shots/media-r5/site50/deliver-fleet226/s175-chieftain-mk10-saltwind/s175-chieftain-mk10-saltwind.webp",
+   "take": "s175-chieftain-mk10-saltwind",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s176-chieftain5-coastal-close-thumb.webp",
+   "bytes": 34568,
+   "sha256": "656be2504ee92053dddaadac341fb1b3ce27d3d347e7766caef965ec78ac1da6",
+   "source": "shots/media-r5/site50/deliver-fleet226/s176-chieftain5-coastal/s176-chieftain5-coastal-close-4k.png",
+   "take": "s176-chieftain5-coastal",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s176-chieftain5-coastal-close.webp",
+   "bytes": 348612,
+   "sha256": "676e61e62acbf4a2c9563024791f4dc1ba44a80e4ecfefb971491d6d8e2a5500",
+   "source": "shots/media-r5/site50/deliver-fleet226/s176-chieftain5-coastal/s176-chieftain5-coastal-close.webp",
+   "take": "s176-chieftain5-coastal",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s176-chieftain5-coastal-thumb.webp",
+   "bytes": 38170,
+   "sha256": "7244aab7605043b3e8829479e3dbc59cb6a0a09cb47960a2d91a6d71768b0980",
+   "source": "shots/media-r5/site50/deliver-fleet226/s176-chieftain5-coastal/s176-chieftain5-coastal-4k.png",
+   "take": "s176-chieftain5-coastal",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s176-chieftain5-coastal.webp",
+   "bytes": 380754,
+   "sha256": "2037e6adc83707b051ab57fa2a6f8669838bd41bb642768e41d6ee64e139e7ed",
+   "source": "shots/media-r5/site50/deliver-fleet226/s176-chieftain5-coastal/s176-chieftain5-coastal.webp",
+   "take": "s176-chieftain5-coastal",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s177-fv4034-railyard-close-thumb.webp",
+   "bytes": 19902,
+   "sha256": "ea74b21686ebe23f387762af3c9c68a072de093d99a739b70f61e5c40082fbae",
+   "source": "shots/media-r5/site50/deliver-fleet226/s177-fv4034-railyard/s177-fv4034-railyard-close-4k.png",
+   "take": "s177-fv4034-railyard",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s177-fv4034-railyard-close.webp",
+   "bytes": 215906,
+   "sha256": "cfb5bf831d5d554acde47bce9fd46b367ddd39cb8c01803acdd479ee3872aee2",
+   "source": "shots/media-r5/site50/deliver-fleet226/s177-fv4034-railyard/s177-fv4034-railyard-close.webp",
+   "take": "s177-fv4034-railyard",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s177-fv4034-railyard-thumb.webp",
+   "bytes": 28232,
+   "sha256": "3d7f34db9f7932e0dcc66f3ef56308cc96a675c6b56db3a959e3e1c0e4585a4f",
+   "source": "shots/media-r5/site50/deliver-fleet226/s177-fv4034-railyard/s177-fv4034-railyard-4k.png",
+   "take": "s177-fv4034-railyard",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s177-fv4034-railyard.webp",
+   "bytes": 342342,
+   "sha256": "56f0f7d663831233bea60b2cdf05d8d4250021b1abaef04f972774d4d65d078a",
+   "source": "shots/media-r5/site50/deliver-fleet226/s177-fv4034-railyard/s177-fv4034-railyard.webp",
+   "take": "s177-fv4034-railyard",
+   "round": "shots/media-r5/site50/deliver-fleet226"
   },
   {
    "path": "media/site50-r14/stills/s18-street-knockout-close-thumb.webp",
@@ -9560,6 +10946,134 @@
    "round": "shots/media-r5/site50/deliver-r14"
   },
   {
+   "path": "media/site50-r14/stills/s183-ua-m2a3-bradley-steppe-close-thumb.webp",
+   "bytes": 38800,
+   "sha256": "ae240fcaa6347d711a5b0a3ccc88957804ba8f9ecd077a9cc4a9ef82b45e047c",
+   "source": "shots/media-r5/site50/deliver-fleet226/s183-ua-m2a3-bradley-steppe/s183-ua-m2a3-bradley-steppe-close-4k.png",
+   "take": "s183-ua-m2a3-bradley-steppe",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s183-ua-m2a3-bradley-steppe-close.webp",
+   "bytes": 384260,
+   "sha256": "de125facee0970dbf1a9b7b7a6334cbdd290f8b7615eac9c2ffe50c9924c00ae",
+   "source": "shots/media-r5/site50/deliver-fleet226/s183-ua-m2a3-bradley-steppe/s183-ua-m2a3-bradley-steppe-close.webp",
+   "take": "s183-ua-m2a3-bradley-steppe",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s183-ua-m2a3-bradley-steppe-thumb.webp",
+   "bytes": 32520,
+   "sha256": "122e0bdaeaae8786e22f10f5022f96d4dff812fdb1f77b7dd543028c90c673fd",
+   "source": "shots/media-r5/site50/deliver-fleet226/s183-ua-m2a3-bradley-steppe/s183-ua-m2a3-bradley-steppe-4k.png",
+   "take": "s183-ua-m2a3-bradley-steppe",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s183-ua-m2a3-bradley-steppe.webp",
+   "bytes": 338614,
+   "sha256": "250d7cbc5011c308fb27fff8d7a81f274d9812547388cc8ed0b975b46930510f",
+   "source": "shots/media-r5/site50/deliver-fleet226/s183-ua-m2a3-bradley-steppe/s183-ua-m2a3-bradley-steppe.webp",
+   "take": "s183-ua-m2a3-bradley-steppe",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s184-ua-t64bv-frontier-close-thumb.webp",
+   "bytes": 31574,
+   "sha256": "833e1f2d2ef56eace5732c1c96c093b9354b1438fc183d36d9f3aa0b4384e4f0",
+   "source": "shots/media-r5/site50/deliver-fleet226/s184-ua-t64bv-frontier/s184-ua-t64bv-frontier-close-4k.png",
+   "take": "s184-ua-t64bv-frontier",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s184-ua-t64bv-frontier-close.webp",
+   "bytes": 293054,
+   "sha256": "d77fef87ab8b81244615a4bb1fbc0de9ca517e7bb96563ec7e837c10a2cc3907",
+   "source": "shots/media-r5/site50/deliver-fleet226/s184-ua-t64bv-frontier/s184-ua-t64bv-frontier-close.webp",
+   "take": "s184-ua-t64bv-frontier",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s184-ua-t64bv-frontier-thumb.webp",
+   "bytes": 47216,
+   "sha256": "35c195662f11591b2ac44cfcca766347925dd93d353b703697459a3d3bd74bcf",
+   "source": "shots/media-r5/site50/deliver-fleet226/s184-ua-t64bv-frontier/s184-ua-t64bv-frontier-4k.png",
+   "take": "s184-ua-t64bv-frontier",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s184-ua-t64bv-frontier.webp",
+   "bytes": 548422,
+   "sha256": "4bc0e5dc8604289c4175e59aeb0625aa123b6e938abbda78707a40ff3a5153a7",
+   "source": "shots/media-r5/site50/deliver-fleet226/s184-ua-t64bv-frontier/s184-ua-t64bv-frontier.webp",
+   "take": "s184-ua-t64bv-frontier",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s187-ua-t80bv-winter-close-thumb.webp",
+   "bytes": 28254,
+   "sha256": "1ed0d1db4ffbd63fdb4fd91e3eed35a92f28abbfcb826a53b6002c6457669125",
+   "source": "shots/media-r5/site50/deliver-fleet226/s187-ua-t80bv-winter/s187-ua-t80bv-winter-close-4k.png",
+   "take": "s187-ua-t80bv-winter",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s187-ua-t80bv-winter-close.webp",
+   "bytes": 278694,
+   "sha256": "05bdd4ec0020c6619eaa1233897aef942a388a37fa90dedefa4a47d725155662",
+   "source": "shots/media-r5/site50/deliver-fleet226/s187-ua-t80bv-winter/s187-ua-t80bv-winter-close.webp",
+   "take": "s187-ua-t80bv-winter",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s187-ua-t80bv-winter-thumb.webp",
+   "bytes": 22746,
+   "sha256": "f9f1c6dae3e0378c5944511d7d4f36759ca675f9e2e636c8cbb3ef74339c24b3",
+   "source": "shots/media-r5/site50/deliver-fleet226/s187-ua-t80bv-winter/s187-ua-t80bv-winter-4k.png",
+   "take": "s187-ua-t80bv-winter",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s187-ua-t80bv-winter.webp",
+   "bytes": 231958,
+   "sha256": "cd9627a2c615de5e80e23ba64e040c0f6ee5eda446e5d5304e5240864f33106c",
+   "source": "shots/media-r5/site50/deliver-fleet226/s187-ua-t80bv-winter/s187-ua-t80bv-winter.webp",
+   "take": "s187-ua-t80bv-winter",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s188-ua-t80u-kursk-frontier-close-thumb.webp",
+   "bytes": 42940,
+   "sha256": "04ba8a895c9604c691fccb13644fa95cfcb02fcf4c644f37b0aace09bf09db3b",
+   "source": "shots/media-r5/site50/deliver-fleet226/s188-ua-t80u-kursk-frontier/s188-ua-t80u-kursk-frontier-close-4k.png",
+   "take": "s188-ua-t80u-kursk-frontier",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s188-ua-t80u-kursk-frontier-close.webp",
+   "bytes": 429804,
+   "sha256": "ef72a5a74bd022efa082d038a6dd1ea4fb7b2c7585137bb1d10fa0b10ac4c698",
+   "source": "shots/media-r5/site50/deliver-fleet226/s188-ua-t80u-kursk-frontier/s188-ua-t80u-kursk-frontier-close.webp",
+   "take": "s188-ua-t80u-kursk-frontier",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s188-ua-t80u-kursk-frontier-thumb.webp",
+   "bytes": 40556,
+   "sha256": "94588144b6f9542f1ed885536fd1104626e78d99539d17a96e6a94e1b315ad40",
+   "source": "shots/media-r5/site50/deliver-fleet226/s188-ua-t80u-kursk-frontier/s188-ua-t80u-kursk-frontier-4k.png",
+   "take": "s188-ua-t80u-kursk-frontier",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s188-ua-t80u-kursk-frontier.webp",
+   "bytes": 389520,
+   "sha256": "14eead0553faf5ae4f4f7f280b7b4efae01e207e070a8228f840650001f2d5b6",
+   "source": "shots/media-r5/site50/deliver-fleet226/s188-ua-t80u-kursk-frontier/s188-ua-t80u-kursk-frontier.webp",
+   "take": "s188-ua-t80u-kursk-frontier",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
    "path": "media/site50-r14/stills/s19-roof-tiles-close-thumb.webp",
    "bytes": 34618,
    "sha256": "cfc0753655211203d572879fb114784be024752c8e0f1c0ce722bac24b3a3076",
@@ -9592,6 +11106,102 @@
    "round": "shots/media-r5/site50/deliver-r14"
   },
   {
+   "path": "media/site50-r14/stills/s193-m1a1-copper-mesa-close-thumb.webp",
+   "bytes": 40390,
+   "sha256": "0960f93e5d38e55e1d63733a125280cea04ef0ead4cc097ab77e26fb1c0b424f",
+   "source": "shots/media-r5/site50/deliver-fleet226/s193-m1a1-copper-mesa/s193-m1a1-copper-mesa-close-4k.png",
+   "take": "s193-m1a1-copper-mesa",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s193-m1a1-copper-mesa-close.webp",
+   "bytes": 472544,
+   "sha256": "ba6f684bf6d9ec89579246f447c3e5d512a57571dfebb8246c0567dac0fc159a",
+   "source": "shots/media-r5/site50/deliver-fleet226/s193-m1a1-copper-mesa/s193-m1a1-copper-mesa-close.webp",
+   "take": "s193-m1a1-copper-mesa",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s193-m1a1-copper-mesa-thumb.webp",
+   "bytes": 40044,
+   "sha256": "11fcf19a93e9ab60968920891349cc610edb13ffc4b9e5351660fce2a0c4fff0",
+   "source": "shots/media-r5/site50/deliver-fleet226/s193-m1a1-copper-mesa/s193-m1a1-copper-mesa-4k.png",
+   "take": "s193-m1a1-copper-mesa",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s193-m1a1-copper-mesa.webp",
+   "bytes": 463620,
+   "sha256": "66289f22b289ed8454c10dee1b0ff41380095fccec358cab51c63d5c3d58f8e9",
+   "source": "shots/media-r5/site50/deliver-fleet226/s193-m1a1-copper-mesa/s193-m1a1-copper-mesa.webp",
+   "take": "s193-m1a1-copper-mesa",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s194-m1a1ha-desert-close-thumb.webp",
+   "bytes": 38374,
+   "sha256": "aece053058fe684ad97d8a1105c7ca9f73b15a85a5adefdc6171948af6241e5b",
+   "source": "shots/media-r5/site50/deliver-fleet226/s194-m1a1ha-desert/s194-m1a1ha-desert-close-4k.png",
+   "take": "s194-m1a1ha-desert",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s194-m1a1ha-desert-close.webp",
+   "bytes": 545888,
+   "sha256": "4ca99775883a4d760dca2a7d9c3ee05c3036c9f7c0d145154748cc4550445548",
+   "source": "shots/media-r5/site50/deliver-fleet226/s194-m1a1ha-desert/s194-m1a1ha-desert-close.webp",
+   "take": "s194-m1a1ha-desert",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s194-m1a1ha-desert-thumb.webp",
+   "bytes": 28950,
+   "sha256": "0a6c80df09feef55523636f8d757f72da77d1fe3639b57d57518fc8dc7d0d36f",
+   "source": "shots/media-r5/site50/deliver-fleet226/s194-m1a1ha-desert/s194-m1a1ha-desert-4k.png",
+   "take": "s194-m1a1ha-desert",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s194-m1a1ha-desert.webp",
+   "bytes": 364592,
+   "sha256": "706783eeee042ef44ddf6078de412ef31ecd5253f904bb6d1039d7fdf6701112",
+   "source": "shots/media-r5/site50/deliver-fleet226/s194-m1a1ha-desert/s194-m1a1ha-desert.webp",
+   "take": "s194-m1a1ha-desert",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s199-m1a2-x-desert-close-thumb.webp",
+   "bytes": 28404,
+   "sha256": "e3efad538925d4a2b354c2a40557d4ac744ab7f283b10c90a72285bacf4064a0",
+   "source": "shots/media-r5/site50/deliver-fleet226/s199-m1a2-x-desert/s199-m1a2-x-desert-close-4k.png",
+   "take": "s199-m1a2-x-desert",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s199-m1a2-x-desert-close.webp",
+   "bytes": 289684,
+   "sha256": "f71f99ad3271c72fe1cacf0e2d0098086a93c029ecd7e09b2bf06a67eeffe523",
+   "source": "shots/media-r5/site50/deliver-fleet226/s199-m1a2-x-desert/s199-m1a2-x-desert-close.webp",
+   "take": "s199-m1a2-x-desert",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s199-m1a2-x-desert-thumb.webp",
+   "bytes": 23780,
+   "sha256": "c6f006516c6876dcad85ba15bb746223081f9b079ee5240eb7d2f81e82fd479d",
+   "source": "shots/media-r5/site50/deliver-fleet226/s199-m1a2-x-desert/s199-m1a2-x-desert-4k.png",
+   "take": "s199-m1a2-x-desert",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s199-m1a2-x-desert.webp",
+   "bytes": 230012,
+   "sha256": "24dbb35bf09d44cb26c734e2ac7e28dce8dea9f712dca8756b82c2eb031fa706",
+   "source": "shots/media-r5/site50/deliver-fleet226/s199-m1a2-x-desert/s199-m1a2-x-desert.webp",
+   "take": "s199-m1a2-x-desert",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
    "path": "media/site50-r14/stills/s20-road-return-fire-close-thumb.webp",
    "bytes": 37514,
    "sha256": "0499e295a794c73de8f54dc8ba84a8cb25f9565426fa5cd1d7d031593c4d2ada",
@@ -9622,6 +11232,70 @@
    "source": "shots/media-r5/site50/deliver-r14/s20-road-return-fire/s20-road-return-fire.webp",
    "take": "s20-road-return-fire",
    "round": "shots/media-r5/site50/deliver-r14"
+  },
+  {
+   "path": "media/site50-r14/stills/s200-m2a2-bradley-badlands-close-thumb.webp",
+   "bytes": 26530,
+   "sha256": "78a7e87ab37ac0d215f7b73e0065ea85685bfcb1bf8f778f8d71826dae1d39db",
+   "source": "shots/media-r5/site50/deliver-fleet226/s200-m2a2-bradley-badlands/s200-m2a2-bradley-badlands-close-4k.png",
+   "take": "s200-m2a2-bradley-badlands",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s200-m2a2-bradley-badlands-close.webp",
+   "bytes": 256058,
+   "sha256": "42c928b3bb94a6e5ecad0c648003c1f6a3ca9402c03f75fad5a380aed75ccefb",
+   "source": "shots/media-r5/site50/deliver-fleet226/s200-m2a2-bradley-badlands/s200-m2a2-bradley-badlands-close.webp",
+   "take": "s200-m2a2-bradley-badlands",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s200-m2a2-bradley-badlands-thumb.webp",
+   "bytes": 25546,
+   "sha256": "9b20ad75cb05aed88b80170f27bf1fd0423bfe6556a9db04fba3d24a239a1673",
+   "source": "shots/media-r5/site50/deliver-fleet226/s200-m2a2-bradley-badlands/s200-m2a2-bradley-badlands-4k.png",
+   "take": "s200-m2a2-bradley-badlands",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s200-m2a2-bradley-badlands.webp",
+   "bytes": 231808,
+   "sha256": "22539883155f05190ab5edd9636023a8f149edf4f0298eb7bde7e10497ed7bb0",
+   "source": "shots/media-r5/site50/deliver-fleet226/s200-m2a2-bradley-badlands/s200-m2a2-bradley-badlands.webp",
+   "take": "s200-m2a2-bradley-badlands",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s201-m3a3-bradley-desert-close-thumb.webp",
+   "bytes": 35390,
+   "sha256": "a9bffb6b0f7305241cdea27fb3126e880c802f7d3d054969db8df11b78b2fea6",
+   "source": "shots/media-r5/site50/deliver-fleet226/s201-m3a3-bradley-desert/s201-m3a3-bradley-desert-close-4k.png",
+   "take": "s201-m3a3-bradley-desert",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s201-m3a3-bradley-desert-close.webp",
+   "bytes": 438764,
+   "sha256": "943a9c47eeedb9122d19fb50802afec41bb1ed7e042d4664922b4d2eb39cb888",
+   "source": "shots/media-r5/site50/deliver-fleet226/s201-m3a3-bradley-desert/s201-m3a3-bradley-desert-close.webp",
+   "take": "s201-m3a3-bradley-desert",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s201-m3a3-bradley-desert-thumb.webp",
+   "bytes": 29224,
+   "sha256": "2129d68a4527dc34d98e1b078bde5f0fdf6b6e20e7f5991903507baee39c2032",
+   "source": "shots/media-r5/site50/deliver-fleet226/s201-m3a3-bradley-desert/s201-m3a3-bradley-desert-4k.png",
+   "take": "s201-m3a3-bradley-desert",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s201-m3a3-bradley-desert.webp",
+   "bytes": 336824,
+   "sha256": "bafcffb84301d66aaf9b5d139e06e03000a4b8f4fb97d77d65602ac4a07e4c37",
+   "source": "shots/media-r5/site50/deliver-fleet226/s201-m3a3-bradley-desert/s201-m3a3-bradley-desert.webp",
+   "take": "s201-m3a3-bradley-desert",
+   "round": "shots/media-r5/site50/deliver-fleet226"
   },
   {
    "path": "media/site50-r14/stills/s21-fields-assault-boot.webp",
@@ -9664,6 +11338,166 @@
    "round": "shots/media-r5/site50/deliver-r14"
   },
   {
+   "path": "media/site50-r14/stills/s212-t62mv1-x-blackglass-close-thumb.webp",
+   "bytes": 49040,
+   "sha256": "6334c769d5eb2338c9d5d8453cd901c19dea8df0f96b21946c34444d11e15c20",
+   "source": "shots/media-r5/site50/deliver-fleet226/s212-t62mv1-x-blackglass/s212-t62mv1-x-blackglass-close-4k.png",
+   "take": "s212-t62mv1-x-blackglass",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s212-t62mv1-x-blackglass-close.webp",
+   "bytes": 611452,
+   "sha256": "529e8887acfa4ac9c55cbb84ab02295b5179fe624476f8ea3e18570cc7f77b08",
+   "source": "shots/media-r5/site50/deliver-fleet226/s212-t62mv1-x-blackglass/s212-t62mv1-x-blackglass-close.webp",
+   "take": "s212-t62mv1-x-blackglass",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s212-t62mv1-x-blackglass-thumb.webp",
+   "bytes": 44140,
+   "sha256": "aad0ad9e84d2c9070106e685e012dd90c80ece31dc0c7134c93e2a8e8ddbb442",
+   "source": "shots/media-r5/site50/deliver-fleet226/s212-t62mv1-x-blackglass/s212-t62mv1-x-blackglass-4k.png",
+   "take": "s212-t62mv1-x-blackglass",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s212-t62mv1-x-blackglass.webp",
+   "bytes": 595208,
+   "sha256": "2a38487005ead1a3fa3d090c65e7540596b0e56a500b21b96a3f53cd696632b2",
+   "source": "shots/media-r5/site50/deliver-fleet226/s212-t62mv1-x-blackglass/s212-t62mv1-x-blackglass.webp",
+   "take": "s212-t62mv1-x-blackglass",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s213-t64bv1-foundry-close-thumb.webp",
+   "bytes": 24860,
+   "sha256": "63cbc05dc5de3078af97fed0ebe1254fd14c6273c9d5cf9cd2f4bb590788c21a",
+   "source": "shots/media-r5/site50/deliver-fleet226/s213-t64bv1-foundry/s213-t64bv1-foundry-close-4k.png",
+   "take": "s213-t64bv1-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s213-t64bv1-foundry-close.webp",
+   "bytes": 280970,
+   "sha256": "b408443c185174496c70239fa2e895e2aba4efcb542cec9f1d68fbbdc50699b6",
+   "source": "shots/media-r5/site50/deliver-fleet226/s213-t64bv1-foundry/s213-t64bv1-foundry-close.webp",
+   "take": "s213-t64bv1-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s213-t64bv1-foundry-thumb.webp",
+   "bytes": 26934,
+   "sha256": "8170ed50f8ef6807d720e0bd8d3c33eb151b86f680238cd6ab75e12fc673fec3",
+   "source": "shots/media-r5/site50/deliver-fleet226/s213-t64bv1-foundry/s213-t64bv1-foundry-4k.png",
+   "take": "s213-t64bv1-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s213-t64bv1-foundry.webp",
+   "bytes": 248422,
+   "sha256": "d2905286f01ddb7698265e5fa84ef894f4ec7690c131f2909e217cb7a9479809",
+   "source": "shots/media-r5/site50/deliver-fleet226/s213-t64bv1-foundry/s213-t64bv1-foundry.webp",
+   "take": "s213-t64bv1-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s215-t72bu-foundry-close-thumb.webp",
+   "bytes": 16476,
+   "sha256": "d439cd9a149d0c09fba9fabe05cd17bd010a94ae85519ba567da7c4fe9d9c271",
+   "source": "shots/media-r5/site50/deliver-fleet226/s215-t72bu-foundry/s215-t72bu-foundry-close-4k.png",
+   "take": "s215-t72bu-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s215-t72bu-foundry-close.webp",
+   "bytes": 174372,
+   "sha256": "bfcabf22801026ae0e6112a9e2ff1219e75e4cc850335716f93eb5ee88e855aa",
+   "source": "shots/media-r5/site50/deliver-fleet226/s215-t72bu-foundry/s215-t72bu-foundry-close.webp",
+   "take": "s215-t72bu-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s215-t72bu-foundry-thumb.webp",
+   "bytes": 17190,
+   "sha256": "b5386c5dd745add066ab80808b1c763b4f15fe05a0224202d6ad6fbb26fc4bd9",
+   "source": "shots/media-r5/site50/deliver-fleet226/s215-t72bu-foundry/s215-t72bu-foundry-4k.png",
+   "take": "s215-t72bu-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s215-t72bu-foundry.webp",
+   "bytes": 170972,
+   "sha256": "3eda1aeb289f0c150070fa248e631bade82ce031a8b80e86f96927d0ec72ea75",
+   "source": "shots/media-r5/site50/deliver-fleet226/s215-t72bu-foundry/s215-t72bu-foundry.webp",
+   "take": "s215-t72bu-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s216-t72bu-x-foundry-close-thumb.webp",
+   "bytes": 21346,
+   "sha256": "ee99310b7f8fa0224b056250d87bdf3b208e46394890b7c5cbc2e9a7d6105c32",
+   "source": "shots/media-r5/site50/deliver-fleet226/s216-t72bu-x-foundry/s216-t72bu-x-foundry-close-4k.png",
+   "take": "s216-t72bu-x-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s216-t72bu-x-foundry-close.webp",
+   "bytes": 211716,
+   "sha256": "1c1b3a91ef1857d1d5ca765a51dc3067cb9f7fc810b6e057f21dae137f313353",
+   "source": "shots/media-r5/site50/deliver-fleet226/s216-t72bu-x-foundry/s216-t72bu-x-foundry-close.webp",
+   "take": "s216-t72bu-x-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s216-t72bu-x-foundry-thumb.webp",
+   "bytes": 18430,
+   "sha256": "1453fbbe7abdeffd64ccc16c223bf13f3edb02671336eea49d1737bf058c8bd7",
+   "source": "shots/media-r5/site50/deliver-fleet226/s216-t72bu-x-foundry/s216-t72bu-x-foundry-4k.png",
+   "take": "s216-t72bu-x-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s216-t72bu-x-foundry.webp",
+   "bytes": 174560,
+   "sha256": "a5d4f62774feed4c92adbc6d91e464330053b077d42d6f9b4793d04ee3a335e7",
+   "source": "shots/media-r5/site50/deliver-fleet226/s216-t72bu-x-foundry/s216-t72bu-x-foundry.webp",
+   "take": "s216-t72bu-x-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s217-t80-foundry-close-thumb.webp",
+   "bytes": 24004,
+   "sha256": "317c28aebbd8bbd525581d703eb0972f766a894122767db3854e98ae26b1c42b",
+   "source": "shots/media-r5/site50/deliver-fleet226/s217-t80-foundry/s217-t80-foundry-close-4k.png",
+   "take": "s217-t80-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s217-t80-foundry-close.webp",
+   "bytes": 287268,
+   "sha256": "dedd7f4da186a9eb25899e52228bf9b5bf8227380fafab4a5c08da59230064c7",
+   "source": "shots/media-r5/site50/deliver-fleet226/s217-t80-foundry/s217-t80-foundry-close.webp",
+   "take": "s217-t80-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s217-t80-foundry-thumb.webp",
+   "bytes": 23218,
+   "sha256": "f1fd838389cb6631efef38e593698b37adf236b5c3626575fb54ccec62e38de7",
+   "source": "shots/media-r5/site50/deliver-fleet226/s217-t80-foundry/s217-t80-foundry-4k.png",
+   "take": "s217-t80-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s217-t80-foundry.webp",
+   "bytes": 242010,
+   "sha256": "94142ececda28b13e1c845f0ded9df64ae4ab84ade635ad1f4d0180fed9ea3e2",
+   "source": "shots/media-r5/site50/deliver-fleet226/s217-t80-foundry/s217-t80-foundry.webp",
+   "take": "s217-t80-foundry",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
    "path": "media/site50-r14/stills/s22-walking-barrage-close-thumb.webp",
    "bytes": 41316,
    "sha256": "e8519eab2df6bdc1d3a0d1d9d98b9e3dd312a089e27965e511edcc808a52b98e",
@@ -9697,16 +11531,16 @@
   },
   {
    "path": "media/site50-r14/stills/s225-verdant-duel-thumb.webp",
-   "bytes": 29190,
-   "sha256": "9df5b25ddb4d2badc79aa0ad1a6d9237ad3dbfedb488d5a86cbef14ca1c3531c",
+   "bytes": 28492,
+   "sha256": "36e3dc830788f8444dab17e9de8dedd334edece2feba117f72eb9508c960f710",
    "source": "shots/media-r5/site50/deliver-combat226/s225-verdant-duel/s225-verdant-duel-4k.png",
    "take": "s225-verdant-duel",
    "round": "shots/media-r5/site50/deliver-combat226"
   },
   {
    "path": "media/site50-r14/stills/s225-verdant-duel.webp",
-   "bytes": 300480,
-   "sha256": "2a999f75cbc2e6b85258d43a998c8ce0bf782e2c8fdd2143a23fbf5f566fbfca",
+   "bytes": 288798,
+   "sha256": "a09853f5e0c1f903d187f221c3e5403324f97f9f664551c8d77794154d9a4b27",
    "source": "shots/media-r5/site50/deliver-combat226/s225-verdant-duel/s225-verdant-duel.webp",
    "take": "s225-verdant-duel",
    "round": "shots/media-r5/site50/deliver-combat226"
@@ -10966,6 +12800,614 @@
    "source": "shots/media-r5/site50/deliver-r15/s59-strv103b-farm-charge/s59-strv103b-farm-charge.webp",
    "take": "s59-strv103b-farm-charge",
    "round": "shots/media-r5/site50/deliver-r15"
+  },
+  {
+   "path": "media/site50-r14/stills/s65-type96-72-long-mangrove-close-thumb.webp",
+   "bytes": 26348,
+   "sha256": "d01ed3ce417bd1f2b15d0651469a9ea955c090e4753905e8f2af6267ee2f0153",
+   "source": "shots/media-r5/site50/deliver-fleet226/s65-type96-72-long-mangrove/s65-type96-72-long-mangrove-close-4k.png",
+   "take": "s65-type96-72-long-mangrove",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s65-type96-72-long-mangrove-close.webp",
+   "bytes": 304004,
+   "sha256": "9e77d44d90234f0af85f42e71451a838bb3fd1aa2dd9e84d3fa897adaf4bfc42",
+   "source": "shots/media-r5/site50/deliver-fleet226/s65-type96-72-long-mangrove/s65-type96-72-long-mangrove-close.webp",
+   "take": "s65-type96-72-long-mangrove",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s65-type96-72-long-mangrove-thumb.webp",
+   "bytes": 25888,
+   "sha256": "4ed6674d8f1540b5ea5b2ec7e46024204700e769bbf5ee472b7480e9dea3de1d",
+   "source": "shots/media-r5/site50/deliver-fleet226/s65-type96-72-long-mangrove/s65-type96-72-long-mangrove-4k.png",
+   "take": "s65-type96-72-long-mangrove",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s65-type96-72-long-mangrove.webp",
+   "bytes": 246210,
+   "sha256": "21879b198009b10afcb57f804d87b5e333cd574ef27c96df4757c3e891ff0ea0",
+   "source": "shots/media-r5/site50/deliver-fleet226/s65-type96-72-long-mangrove/s65-type96-72-long-mangrove.webp",
+   "take": "s65-type96-72-long-mangrove",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s66-type96-80-feng-skybridge-close-thumb.webp",
+   "bytes": 23728,
+   "sha256": "bd44e206ac0d12a7cc83b81221c2e319c40aeb3a288540f4a45310091bcd217c",
+   "source": "shots/media-r5/site50/deliver-fleet226/s66-type96-80-feng-skybridge/s66-type96-80-feng-skybridge-close-4k.png",
+   "take": "s66-type96-80-feng-skybridge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s66-type96-80-feng-skybridge-close.webp",
+   "bytes": 249818,
+   "sha256": "a93fd8d0e4164eb77cc80b4854e0eeeae9268034513ae63fe379d6277e6a8d91",
+   "source": "shots/media-r5/site50/deliver-fleet226/s66-type96-80-feng-skybridge/s66-type96-80-feng-skybridge-close.webp",
+   "take": "s66-type96-80-feng-skybridge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s66-type96-80-feng-skybridge-thumb.webp",
+   "bytes": 20648,
+   "sha256": "124a77e87b9ace402c9dae017175bce898bb8f92fd5589fd9daad9ec770a5bf2",
+   "source": "shots/media-r5/site50/deliver-fleet226/s66-type96-80-feng-skybridge/s66-type96-80-feng-skybridge-4k.png",
+   "take": "s66-type96-80-feng-skybridge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s66-type96-80-feng-skybridge.webp",
+   "bytes": 211364,
+   "sha256": "441d74a91ff50b324c2f48f6d235216b5f17ca213e19b5fea9d340494d5b4047",
+   "source": "shots/media-r5/site50/deliver-fleet226/s66-type96-80-feng-skybridge/s66-type96-80-feng-skybridge.webp",
+   "take": "s66-type96-80-feng-skybridge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s67-type99a-titan-gorge-close-thumb.webp",
+   "bytes": 27568,
+   "sha256": "ede2c2612b125def2b325df8fef12371543349afc7c0c901f420dc3e81d77ad6",
+   "source": "shots/media-r5/site50/deliver-fleet226/s67-type99a-titan-gorge/s67-type99a-titan-gorge-close-4k.png",
+   "take": "s67-type99a-titan-gorge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s67-type99a-titan-gorge-close.webp",
+   "bytes": 261944,
+   "sha256": "0ebca8cd91f734d71c241ee8a6f3c9db30b531205301b3d2a5760d9994398a34",
+   "source": "shots/media-r5/site50/deliver-fleet226/s67-type99a-titan-gorge/s67-type99a-titan-gorge-close.webp",
+   "take": "s67-type99a-titan-gorge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s67-type99a-titan-gorge-thumb.webp",
+   "bytes": 17464,
+   "sha256": "46bbfe988dcf42cadea240c9201de041c36dfefd73cf32039e65149d05b6e164",
+   "source": "shots/media-r5/site50/deliver-fleet226/s67-type99a-titan-gorge/s67-type99a-titan-gorge-4k.png",
+   "take": "s67-type99a-titan-gorge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s67-type99a-titan-gorge.webp",
+   "bytes": 161596,
+   "sha256": "e91e7deb4bd86d2f9cf7495934487c337cc64cedd92969c6834792c50aa19379",
+   "source": "shots/media-r5/site50/deliver-fleet226/s67-type99a-titan-gorge/s67-type99a-titan-gorge.webp",
+   "take": "s67-type99a-titan-gorge",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s68-ztz100-prototype-delta-close-thumb.webp",
+   "bytes": 50860,
+   "sha256": "c3efe6ac23dfc0ff8027c91735d524927742220410ed020edf6fd012e28cd3c0",
+   "source": "shots/media-r5/site50/deliver-fleet226/s68-ztz100-prototype-delta/s68-ztz100-prototype-delta-close-4k.png",
+   "take": "s68-ztz100-prototype-delta",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s68-ztz100-prototype-delta-close.webp",
+   "bytes": 533574,
+   "sha256": "b43d62c841eee4485e84fe386f8d9b938d594036515efcd2660c917261d37aac",
+   "source": "shots/media-r5/site50/deliver-fleet226/s68-ztz100-prototype-delta/s68-ztz100-prototype-delta-close.webp",
+   "take": "s68-ztz100-prototype-delta",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s68-ztz100-prototype-delta-thumb.webp",
+   "bytes": 59762,
+   "sha256": "0f3e39d5de8cbe5218edf752d1906bc19a55ba1a9868bf9fa0c0a7227f9c43e5",
+   "source": "shots/media-r5/site50/deliver-fleet226/s68-ztz100-prototype-delta/s68-ztz100-prototype-delta-4k.png",
+   "take": "s68-ztz100-prototype-delta",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s68-ztz100-prototype-delta.webp",
+   "bytes": 605366,
+   "sha256": "5eb99e304852619626da02fff94c11b1565468d76799e94bc4a98bf01affc51c",
+   "source": "shots/media-r5/site50/deliver-fleet226/s68-ztz100-prototype-delta/s68-ztz100-prototype-delta.webp",
+   "take": "s68-ztz100-prototype-delta",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s70-ztz99a2-monsoon-close-thumb.webp",
+   "bytes": 33778,
+   "sha256": "7c723f417ae41b02f40af9b8fee65ea37812fc40ef9ef3ee5ba1765be8611cb0",
+   "source": "shots/media-r5/site50/deliver-fleet226/s70-ztz99a2-monsoon/s70-ztz99a2-monsoon-close-4k.png",
+   "take": "s70-ztz99a2-monsoon",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s70-ztz99a2-monsoon-close.webp",
+   "bytes": 341884,
+   "sha256": "f38c7884b5b25ab003bfc105008a5c06f38f3a23d8277f723ff13d7de352d164",
+   "source": "shots/media-r5/site50/deliver-fleet226/s70-ztz99a2-monsoon/s70-ztz99a2-monsoon-close.webp",
+   "take": "s70-ztz99a2-monsoon",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s70-ztz99a2-monsoon-thumb.webp",
+   "bytes": 30822,
+   "sha256": "af91b020ca5ec554ab5ac7ad3cf356bb9ce5855a672006057d4d23ea464a71c7",
+   "source": "shots/media-r5/site50/deliver-fleet226/s70-ztz99a2-monsoon/s70-ztz99a2-monsoon-4k.png",
+   "take": "s70-ztz99a2-monsoon",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s70-ztz99a2-monsoon.webp",
+   "bytes": 299438,
+   "sha256": "cfdc5fe88db719114380799d105bc6b9f93d6c8e9b97a382d90bb30afb36df05",
+   "source": "shots/media-r5/site50/deliver-fleet226/s70-ztz99a2-monsoon/s70-ztz99a2-monsoon.webp",
+   "take": "s70-ztz99a2-monsoon",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s72-amx10p-orchard-close-thumb.webp",
+   "bytes": 30366,
+   "sha256": "d40d9fa059c1068c5a7a3ef3971d790c0c57c6f3048e90ba98dbc77a91e8f395",
+   "source": "shots/media-r5/site50/deliver-fleet226/s72-amx10p-orchard/s72-amx10p-orchard-close-4k.png",
+   "take": "s72-amx10p-orchard",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s72-amx10p-orchard-close.webp",
+   "bytes": 352514,
+   "sha256": "088114e9d9860504524ba6742ceadad29774397f43179a89edc07d148b46b1eb",
+   "source": "shots/media-r5/site50/deliver-fleet226/s72-amx10p-orchard/s72-amx10p-orchard-close.webp",
+   "take": "s72-amx10p-orchard",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s72-amx10p-orchard-thumb.webp",
+   "bytes": 32786,
+   "sha256": "747f41464bf1f50da1c0557e60af136e9349992aa9e42aa2b8c8c7cefd483ee9",
+   "source": "shots/media-r5/site50/deliver-fleet226/s72-amx10p-orchard/s72-amx10p-orchard-4k.png",
+   "take": "s72-amx10p-orchard",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s72-amx10p-orchard.webp",
+   "bytes": 360004,
+   "sha256": "bd37abe6ae2c80a9950b660c2721608ef286dc65a0bc2c25943e536788c2483f",
+   "source": "shots/media-r5/site50/deliver-fleet226/s72-amx10p-orchard/s72-amx10p-orchard.webp",
+   "take": "s72-amx10p-orchard",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s73-amx10p-25-coastal-close-thumb.webp",
+   "bytes": 30008,
+   "sha256": "85e73f6ad2d68bba2790d3c5d7f6504cdb84cf1861f441ee15fddcda9e755ea7",
+   "source": "shots/media-r5/site50/deliver-fleet226/s73-amx10p-25-coastal/s73-amx10p-25-coastal-close-4k.png",
+   "take": "s73-amx10p-25-coastal",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s73-amx10p-25-coastal-close.webp",
+   "bytes": 259458,
+   "sha256": "9715051c0ab8ed648bd64790ef57b92951fb1e06c2c287beafce822c57759244",
+   "source": "shots/media-r5/site50/deliver-fleet226/s73-amx10p-25-coastal/s73-amx10p-25-coastal-close.webp",
+   "take": "s73-amx10p-25-coastal",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s73-amx10p-25-coastal-thumb.webp",
+   "bytes": 30402,
+   "sha256": "c4875b7aff323a90f4f88cac488e3cfb59dbdc6cbc9fae7df27e37f2ce80c806",
+   "source": "shots/media-r5/site50/deliver-fleet226/s73-amx10p-25-coastal/s73-amx10p-25-coastal-4k.png",
+   "take": "s73-amx10p-25-coastal",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s73-amx10p-25-coastal.webp",
+   "bytes": 273588,
+   "sha256": "3a27238b551ea52169086aa6a593d43ad449270ddfe00b3edb0da4ca6a8989f4",
+   "source": "shots/media-r5/site50/deliver-fleet226/s73-amx10p-25-coastal/s73-amx10p-25-coastal.webp",
+   "take": "s73-amx10p-25-coastal",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s74-amx30-verdant-close-thumb.webp",
+   "bytes": 38310,
+   "sha256": "d9a1332c1dd8ab72a4d0e18d5d8dfc911f55b680ab68e792facc2d030fb9680c",
+   "source": "shots/media-r5/site50/deliver-fleet226/s74-amx30-verdant/s74-amx30-verdant-close-4k.png",
+   "take": "s74-amx30-verdant",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s74-amx30-verdant-close.webp",
+   "bytes": 353570,
+   "sha256": "209b893a99ca995ea95e7f1202bf194c6ace711ef7a24b5363bfff9fb3667302",
+   "source": "shots/media-r5/site50/deliver-fleet226/s74-amx30-verdant/s74-amx30-verdant-close.webp",
+   "take": "s74-amx30-verdant",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s74-amx30-verdant-thumb.webp",
+   "bytes": 32224,
+   "sha256": "4b723cd2d2cadb95adc67e2502dd4bc2a5bb958e5f73857b4c6b4eef150a6e3e",
+   "source": "shots/media-r5/site50/deliver-fleet226/s74-amx30-verdant/s74-amx30-verdant-4k.png",
+   "take": "s74-amx30-verdant",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s74-amx30-verdant.webp",
+   "bytes": 269124,
+   "sha256": "60852235693e6100a172848c281b63d5c4069d5d29076c99978652dfe0a8a839",
+   "source": "shots/media-r5/site50/deliver-fleet226/s74-amx30-verdant/s74-amx30-verdant.webp",
+   "take": "s74-amx30-verdant",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s75-amx30b2-autumn-close-thumb.webp",
+   "bytes": 31872,
+   "sha256": "8ced3f3a0204c06b87d5b2ddd8ca7174b535ee63c08a183e1a959ed23c074233",
+   "source": "shots/media-r5/site50/deliver-fleet226/s75-amx30b2-autumn/s75-amx30b2-autumn-close-4k.png",
+   "take": "s75-amx30b2-autumn",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s75-amx30b2-autumn-close.webp",
+   "bytes": 346774,
+   "sha256": "d47cb406a14385ffce70f9399bc1570fa8b944f941c837ff3d1d3fd229dbae4d",
+   "source": "shots/media-r5/site50/deliver-fleet226/s75-amx30b2-autumn/s75-amx30b2-autumn-close.webp",
+   "take": "s75-amx30b2-autumn",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s75-amx30b2-autumn-thumb.webp",
+   "bytes": 37858,
+   "sha256": "4e30281118cd2b314384752c049c04d9b599c747350b4cb104c94d1a9d878d30",
+   "source": "shots/media-r5/site50/deliver-fleet226/s75-amx30b2-autumn/s75-amx30b2-autumn-4k.png",
+   "take": "s75-amx30b2-autumn",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s75-amx30b2-autumn.webp",
+   "bytes": 430870,
+   "sha256": "9910d2a0f4bcd66fa5c3c6b7480d472e43d7c9db2d7e5288f654d53df30880a8",
+   "source": "shots/media-r5/site50/deliver-fleet226/s75-amx30b2-autumn/s75-amx30b2-autumn.webp",
+   "take": "s75-amx30b2-autumn",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s76-amx40-autumn-close-thumb.webp",
+   "bytes": 44490,
+   "sha256": "b3f862deb3675ad26fda51fe08144e8cabc10634374637a7a3622ca317d2952d",
+   "source": "shots/media-r5/site50/deliver-fleet226/s76-amx40-autumn/s76-amx40-autumn-close-4k.png",
+   "take": "s76-amx40-autumn",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s76-amx40-autumn-close.webp",
+   "bytes": 494468,
+   "sha256": "f66209dcb602daac8975737ceb775ae21dda8fae2d586bbe5a91b4643e9df134",
+   "source": "shots/media-r5/site50/deliver-fleet226/s76-amx40-autumn/s76-amx40-autumn-close.webp",
+   "take": "s76-amx40-autumn",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s76-amx40-autumn-thumb.webp",
+   "bytes": 50670,
+   "sha256": "256f7e65a269a0c1ae1da5a0f8ca0b9f31a7ae0b092217a95c3b7a8a587e5381",
+   "source": "shots/media-r5/site50/deliver-fleet226/s76-amx40-autumn/s76-amx40-autumn-4k.png",
+   "take": "s76-amx40-autumn",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s76-amx40-autumn.webp",
+   "bytes": 533912,
+   "sha256": "4b4d3257455d11136de6a4f3bf7fe4ebd8a4a3e63c0975b1cc4e5d00c4868deb",
+   "source": "shots/media-r5/site50/deliver-fleet226/s76-amx40-autumn/s76-amx40-autumn.webp",
+   "take": "s76-amx40-autumn",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s77-amx40-x-coastal-close-thumb.webp",
+   "bytes": 30596,
+   "sha256": "871af33971c26fa15f9edded3c6f52647432236446538d1d23708fcab2fbe8df",
+   "source": "shots/media-r5/site50/deliver-fleet226/s77-amx40-x-coastal/s77-amx40-x-coastal-close-4k.png",
+   "take": "s77-amx40-x-coastal",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s77-amx40-x-coastal-close.webp",
+   "bytes": 297978,
+   "sha256": "3a82ce2ed9cf2a955a60a6a8af83a189dc076fe090fe2bbc46935eedbed32475",
+   "source": "shots/media-r5/site50/deliver-fleet226/s77-amx40-x-coastal/s77-amx40-x-coastal-close.webp",
+   "take": "s77-amx40-x-coastal",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s77-amx40-x-coastal-thumb.webp",
+   "bytes": 33392,
+   "sha256": "41d71152fecf382baf962ddb816c7d3e9c7594601fa1f88ead0945f1edd0a094",
+   "source": "shots/media-r5/site50/deliver-fleet226/s77-amx40-x-coastal/s77-amx40-x-coastal-4k.png",
+   "take": "s77-amx40-x-coastal",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s77-amx40-x-coastal.webp",
+   "bytes": 337162,
+   "sha256": "d7d264811a47d1dcad6d3d759e4d8db18ea93dab1de97c8bc0a5e5617e3bd92f",
+   "source": "shots/media-r5/site50/deliver-fleet226/s77-amx40-x-coastal/s77-amx40-x-coastal.webp",
+   "take": "s77-amx40-x-coastal",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s87-leo2a4-otco-polders-close-thumb.webp",
+   "bytes": 28280,
+   "sha256": "8a8ba12bf96a4f92549e7b64f34756b60bfcd9e7bf7097e6bcfaf605cd46ccf6",
+   "source": "shots/media-r5/site50/deliver-fleet226/s87-leo2a4-otco-polders/s87-leo2a4-otco-polders-close-4k.png",
+   "take": "s87-leo2a4-otco-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s87-leo2a4-otco-polders-close.webp",
+   "bytes": 283310,
+   "sha256": "9abbede797b6fe45959647ce7b32ca49ccb3f5997d03a68f79b1636f56b831d5",
+   "source": "shots/media-r5/site50/deliver-fleet226/s87-leo2a4-otco-polders/s87-leo2a4-otco-polders-close.webp",
+   "take": "s87-leo2a4-otco-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s87-leo2a4-otco-polders-thumb.webp",
+   "bytes": 26080,
+   "sha256": "42498ddcdee547bec7e1c4983c0344bb807db28b78b5443d4d921c1c148d15c2",
+   "source": "shots/media-r5/site50/deliver-fleet226/s87-leo2a4-otco-polders/s87-leo2a4-otco-polders-4k.png",
+   "take": "s87-leo2a4-otco-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s87-leo2a4-otco-polders.webp",
+   "bytes": 266876,
+   "sha256": "5fbe726b537f2e59e955da23e7855a20159df23edc5e6596446141eb2ce9a855",
+   "source": "shots/media-r5/site50/deliver-fleet226/s87-leo2a4-otco-polders/s87-leo2a4-otco-polders.webp",
+   "take": "s87-leo2a4-otco-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s88-leo2a4m-ruinspires-close-thumb.webp",
+   "bytes": 24586,
+   "sha256": "40bc09a6c7d5288704d20aad96d118fb3610b7c9a66914a5133f437d6e2a5560",
+   "source": "shots/media-r5/site50/deliver-fleet226/s88-leo2a4m-ruinspires/s88-leo2a4m-ruinspires-close-4k.png",
+   "take": "s88-leo2a4m-ruinspires",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s88-leo2a4m-ruinspires-close.webp",
+   "bytes": 223952,
+   "sha256": "8b9aa186eb9820fab34d78bf685f34ee24c6f360d77e4b04ffbf84fb4b149c53",
+   "source": "shots/media-r5/site50/deliver-fleet226/s88-leo2a4m-ruinspires/s88-leo2a4m-ruinspires-close.webp",
+   "take": "s88-leo2a4m-ruinspires",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s88-leo2a4m-ruinspires-thumb.webp",
+   "bytes": 28728,
+   "sha256": "25b77580753a1167203de41498d9b8a781b8267f3502b10126c0ef010ec88114",
+   "source": "shots/media-r5/site50/deliver-fleet226/s88-leo2a4m-ruinspires/s88-leo2a4m-ruinspires-4k.png",
+   "take": "s88-leo2a4m-ruinspires",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s88-leo2a4m-ruinspires.webp",
+   "bytes": 331962,
+   "sha256": "be6ffb1c80c45eb871b8ee3bb7d0d3775a85d8f058ca9a24b18a2c6a8066c8e9",
+   "source": "shots/media-r5/site50/deliver-fleet226/s88-leo2a4m-ruinspires/s88-leo2a4m-ruinspires.webp",
+   "take": "s88-leo2a4m-ruinspires",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s89-leo2a5-polders-close-thumb.webp",
+   "bytes": 35802,
+   "sha256": "556ea9211614b83309734d9e9f460ea585da4c19b21c3dae33cf0743d20009b4",
+   "source": "shots/media-r5/site50/deliver-fleet226/s89-leo2a5-polders/s89-leo2a5-polders-close-4k.png",
+   "take": "s89-leo2a5-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s89-leo2a5-polders-close.webp",
+   "bytes": 376860,
+   "sha256": "80e09dc74fa4cfc7b44efa7152f406387c1b3ace44757459300f3113a27cc3df",
+   "source": "shots/media-r5/site50/deliver-fleet226/s89-leo2a5-polders/s89-leo2a5-polders-close.webp",
+   "take": "s89-leo2a5-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s89-leo2a5-polders-thumb.webp",
+   "bytes": 44518,
+   "sha256": "14264701945a5811ba5a6e3e45e3d8eaaa7b53eea8c47c337f725aad61392b14",
+   "source": "shots/media-r5/site50/deliver-fleet226/s89-leo2a5-polders/s89-leo2a5-polders-4k.png",
+   "take": "s89-leo2a5-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s89-leo2a5-polders.webp",
+   "bytes": 416546,
+   "sha256": "c3e935d98bcb2a9ba12e61dfdd67a70e218bbc9e70fa13b8fe615d6c3a5a29c7",
+   "source": "shots/media-r5/site50/deliver-fleet226/s89-leo2a5-polders/s89-leo2a5-polders.webp",
+   "take": "s89-leo2a5-polders",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s90-leo2a5-a5nl-frontier-close-thumb.webp",
+   "bytes": 44330,
+   "sha256": "f8d1e4922a5d473b0a065288364bc2012ef8b3b141d5da2cef99d766c009ed75",
+   "source": "shots/media-r5/site50/deliver-fleet226/s90-leo2a5-a5nl-frontier/s90-leo2a5-a5nl-frontier-close-4k.png",
+   "take": "s90-leo2a5-a5nl-frontier",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s90-leo2a5-a5nl-frontier-close.webp",
+   "bytes": 431438,
+   "sha256": "f65f60feb0600e6b0413871096fe86a9cd4d8f0aa537624903ae2b940b05b0d0",
+   "source": "shots/media-r5/site50/deliver-fleet226/s90-leo2a5-a5nl-frontier/s90-leo2a5-a5nl-frontier-close.webp",
+   "take": "s90-leo2a5-a5nl-frontier",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s90-leo2a5-a5nl-frontier-thumb.webp",
+   "bytes": 43652,
+   "sha256": "9cfe7ad30812abc73d09b96eee854916fe125787479866bbe404f3b805125849",
+   "source": "shots/media-r5/site50/deliver-fleet226/s90-leo2a5-a5nl-frontier/s90-leo2a5-a5nl-frontier-4k.png",
+   "take": "s90-leo2a5-a5nl-frontier",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s90-leo2a5-a5nl-frontier.webp",
+   "bytes": 480644,
+   "sha256": "c1941db49a147405d4a4e03bab9f898805e0592dc39a04ec8f0b8b0e2f2266e7",
+   "source": "shots/media-r5/site50/deliver-fleet226/s90-leo2a5-a5nl-frontier/s90-leo2a5-a5nl-frontier.webp",
+   "take": "s90-leo2a5-a5nl-frontier",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s91-leo2a6-longleaf-close-thumb.webp",
+   "bytes": 23938,
+   "sha256": "b16356e6a4b3b69a501aa520129a64f692cde2ef4d3c6297429ee2048e4df732",
+   "source": "shots/media-r5/site50/deliver-fleet226/s91-leo2a6-longleaf/s91-leo2a6-longleaf-close-4k.png",
+   "take": "s91-leo2a6-longleaf",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s91-leo2a6-longleaf-close.webp",
+   "bytes": 256916,
+   "sha256": "b0301947f64dd613be4116a757b4e786837b3ebc9c9b18567ef5afb2a8de7210",
+   "source": "shots/media-r5/site50/deliver-fleet226/s91-leo2a6-longleaf/s91-leo2a6-longleaf-close.webp",
+   "take": "s91-leo2a6-longleaf",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s91-leo2a6-longleaf-thumb.webp",
+   "bytes": 22974,
+   "sha256": "4b423aa53ed6de6f3e40238825deabd1c075b2841d3f81c918de2c769f611f77",
+   "source": "shots/media-r5/site50/deliver-fleet226/s91-leo2a6-longleaf/s91-leo2a6-longleaf-4k.png",
+   "take": "s91-leo2a6-longleaf",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s91-leo2a6-longleaf.webp",
+   "bytes": 263354,
+   "sha256": "ba0893b4c1cbe3557e1a967c42af10ca3618497a28ef350bfd3b12cd025745d1",
+   "source": "shots/media-r5/site50/deliver-fleet226/s91-leo2a6-longleaf/s91-leo2a6-longleaf.webp",
+   "take": "s91-leo2a6-longleaf",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s92-leo2a6m-urban-close-thumb.webp",
+   "bytes": 46686,
+   "sha256": "6faded2f8b4b11e7547c35f913ae6143ac705e5a11a2d9a3d97556ed3f57afbb",
+   "source": "shots/media-r5/site50/deliver-fleet226/s92-leo2a6m-urban/s92-leo2a6m-urban-close-4k.png",
+   "take": "s92-leo2a6m-urban",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s92-leo2a6m-urban-close.webp",
+   "bytes": 428488,
+   "sha256": "cbc20f7e3497f90386eac7d0f4b82e3fc4980b0f775167caff2276a49c2e43ba",
+   "source": "shots/media-r5/site50/deliver-fleet226/s92-leo2a6m-urban/s92-leo2a6m-urban-close.webp",
+   "take": "s92-leo2a6m-urban",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s92-leo2a6m-urban-thumb.webp",
+   "bytes": 32456,
+   "sha256": "424a4a98b5b24e1e14c5b8fa9817342adb1cf43ccb5f00711b9cece1493b3ea7",
+   "source": "shots/media-r5/site50/deliver-fleet226/s92-leo2a6m-urban/s92-leo2a6m-urban-4k.png",
+   "take": "s92-leo2a6m-urban",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s92-leo2a6m-urban.webp",
+   "bytes": 343490,
+   "sha256": "6b7051a4665ca2d210d94db9ce1ccb5aa2534009d3e1dadb840f7642fa68f637",
+   "source": "shots/media-r5/site50/deliver-fleet226/s92-leo2a6m-urban/s92-leo2a6m-urban.webp",
+   "take": "s92-leo2a6m-urban",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s93-leo2a7v-ruinspires-close-thumb.webp",
+   "bytes": 39656,
+   "sha256": "79ea1d187c430e43c38c2fd3c0d0ec681803ef99729649006d15305e33bd11c3",
+   "source": "shots/media-r5/site50/deliver-fleet226/s93-leo2a7v-ruinspires/s93-leo2a7v-ruinspires-close-4k.png",
+   "take": "s93-leo2a7v-ruinspires",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s93-leo2a7v-ruinspires-close.webp",
+   "bytes": 435160,
+   "sha256": "74e5399ecd828b02ce98495fd195b89cd2a3e65ab13951f738c6881e4812a402",
+   "source": "shots/media-r5/site50/deliver-fleet226/s93-leo2a7v-ruinspires/s93-leo2a7v-ruinspires-close.webp",
+   "take": "s93-leo2a7v-ruinspires",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s93-leo2a7v-ruinspires-thumb.webp",
+   "bytes": 37406,
+   "sha256": "97cf100d7c394c614fafc41532bc04aa50fff711060588e1c3f06b0247cecd93",
+   "source": "shots/media-r5/site50/deliver-fleet226/s93-leo2a7v-ruinspires/s93-leo2a7v-ruinspires-4k.png",
+   "take": "s93-leo2a7v-ruinspires",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s93-leo2a7v-ruinspires.webp",
+   "bytes": 477920,
+   "sha256": "fc1436830f14ed245006b66834a5087593f479c7d7926761f4911b19f1b05458",
+   "source": "shots/media-r5/site50/deliver-fleet226/s93-leo2a7v-ruinspires/s93-leo2a7v-ruinspires.webp",
+   "take": "s93-leo2a7v-ruinspires",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s99-merkava1b-caldera-close-thumb.webp",
+   "bytes": 34726,
+   "sha256": "7d24f9a79f309ddd5a959168cde2c083562f9ecbe7a2da6f7b0ec07c1302572d",
+   "source": "shots/media-r5/site50/deliver-fleet226/s99-merkava1b-caldera/s99-merkava1b-caldera-close-4k.png",
+   "take": "s99-merkava1b-caldera",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s99-merkava1b-caldera-close.webp",
+   "bytes": 330752,
+   "sha256": "9d779602721ae0b71e5b2593c2e9d5e9ada03110e8cc2f1625d960c3c2487398",
+   "source": "shots/media-r5/site50/deliver-fleet226/s99-merkava1b-caldera/s99-merkava1b-caldera-close.webp",
+   "take": "s99-merkava1b-caldera",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s99-merkava1b-caldera-thumb.webp",
+   "bytes": 26844,
+   "sha256": "021de7d74a3bd22b918c9f5eb7036d74be4ad454a0e17f6573b5dbe8ee89ea72",
+   "source": "shots/media-r5/site50/deliver-fleet226/s99-merkava1b-caldera/s99-merkava1b-caldera-4k.png",
+   "take": "s99-merkava1b-caldera",
+   "round": "shots/media-r5/site50/deliver-fleet226"
+  },
+  {
+   "path": "media/site50-r14/stills/s99-merkava1b-caldera.webp",
+   "bytes": 250020,
+   "sha256": "61c7ac352ec0b0cfd05a271fb9946775b17da9784eaef7565a623798a04b664f",
+   "source": "shots/media-r5/site50/deliver-fleet226/s99-merkava1b-caldera/s99-merkava1b-caldera.webp",
+   "take": "s99-merkava1b-caldera",
+   "round": "shots/media-r5/site50/deliver-fleet226"
   }
  ]
 }

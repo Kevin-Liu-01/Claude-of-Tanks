@@ -151,6 +151,30 @@ function mountShotRail(rail: HTMLElement): void {
 
 document.querySelectorAll<HTMLElement>('[data-shot-rail]').forEach(mountShotRail);
 
+// The landing page's trailers row: each trailer plays on a click (controls, preload none) with its sound, so nothing of
+// it loads before the row nears the viewport, when its poster does; starting one pauses the others.
+function mountTrailerRow(row: HTMLElement): void {
+  const videos = [...row.querySelectorAll<HTMLVideoElement>('video[data-trailer]')];
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      const video = entry.target as HTMLVideoElement;
+      if (video.dataset.poster && !video.poster) video.poster = video.dataset.poster;
+      observer.unobserve(video);
+    }
+  }, { rootMargin: '25% 0px' });
+  for (const video of videos) {
+    observer.observe(video);
+    video.addEventListener('play', () => {
+      for (const other of videos) if (other !== video) other.pause();
+      video.closest('figure')?.classList.add('is-playing');
+    });
+    video.addEventListener('pause', () => video.closest('figure')?.classList.remove('is-playing'));
+  }
+}
+
+document.querySelectorAll<HTMLElement>('[data-trailer-row]').forEach(mountTrailerRow);
+
 function mountDeferredImage(image: HTMLImageElement): void {
   const observer = new IntersectionObserver(([entry]) => {
     if (!entry.isIntersecting) return;
