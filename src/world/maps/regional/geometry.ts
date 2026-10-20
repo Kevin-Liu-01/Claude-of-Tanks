@@ -664,7 +664,7 @@ export function facePoint(face: Face, u: number, y: number, o = 0): Vec3 {
 }
 
 /** Faces of a face-aligned box that something else covers: its ends (u faces), top, bottom or back. */
-export interface FaceBoxHidden { ends?: boolean; top?: boolean; bottom?: boolean; back?: boolean }
+interface FaceBoxHidden { ends?: boolean; top?: boolean; bottom?: boolean; back?: boolean }
 
 /** A face-aligned box: centre (u, y, out), size (along u, up, out). */
 export function faceBox(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y: number, o: number,

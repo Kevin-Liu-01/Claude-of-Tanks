@@ -42,7 +42,7 @@ export function continuedGroundSampler(ground: CanyonGround): (x: number, z: num
 /** Construction-time sampling of the two triangles actually drawn in a ring
  * quad. Extrapolating its first triangle through the fourth corner floats
  * props above warped cliffs. The caller owns the reusable output. */
-export interface HorizonSurfacePoint { x: number; y: number; z: number; slope: number }
+interface HorizonSurfacePoint { x: number; y: number; z: number; slope: number }
 export function sampleHorizonFace(
   positions: Float32Array, heights: Float32Array,
   i00: number, i01: number, i10: number, i11: number,

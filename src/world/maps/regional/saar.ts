@@ -848,7 +848,7 @@ const saarWaterTower: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const SAAR_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const SAAR_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   // the coalfield brick the Ruhr kit builds (the water towers, the shells, the goods sheds)
   ...RUHR_BUILDERS,
   // the colliery's terraces: the miner's house (the Ruhr kit's cottage pair stands short of the base's reach)

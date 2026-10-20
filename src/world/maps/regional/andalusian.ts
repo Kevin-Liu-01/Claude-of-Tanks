@@ -1341,7 +1341,7 @@ const horno: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const ANDALUSIAN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const ANDALUSIAN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => casa(ctx),
   rowhouse: (ctx) => townhouse(ctx),
   cornershop: (ctx) => townhouse(ctx, { shop: true }),

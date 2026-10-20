@@ -675,7 +675,7 @@ export function buildSetPiece(kind: SetPieceKind, opts: { wrecked?: boolean; coa
 export const RUNNING_GEAR_SEATED: ReadonlySet<SetPieceKind> = new Set<SetPieceKind>(['bv206', 'snocat', 'd8h', 'haulpak']);
 
 /** A plan rectangle where a set piece's solids meet the ground (a tyre or a pair of duals, a track, a pontoon), local. */
-export interface GearContact { readonly x0: number; readonly x1: number; readonly z0: number; readonly z1: number }
+interface GearContact { readonly x0: number; readonly x1: number; readonly z0: number; readonly z1: number }
 /** A set piece's running gear: its ground contacts, and its floor points (local x, y, z triples: the solids' vertices within
  * 6 cm of its lowest, and points every 0.4 m down each contact's middle, at most a few hundred). */
 export interface RunningGear { readonly contacts: readonly GearContact[]; readonly floor: Float32Array }
@@ -756,7 +756,7 @@ export function setPieceRunningGear(kind: SetPieceKind, wrecked = false): Runnin
 
 /** A seat on the ground: the piece's height over the map's datum at its centre, its pitch (nose up) and roll (right side
  * up), and how far its floor points stand clear of the ground (most, least: negative is into it). */
-export interface GearSeat { readonly y: number; readonly pitch: number; readonly roll: number; readonly maxGap: number; readonly minGap: number }
+interface GearSeat { readonly y: number; readonly pitch: number; readonly roll: number; readonly maxGap: number; readonly minGap: number }
 
 /** How far a seated floor point may stand clear of the ground. */
 export const GEAR_SEAT_CLEARANCE_M = 0.02;

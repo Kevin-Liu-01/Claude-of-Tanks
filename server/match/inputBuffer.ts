@@ -17,7 +17,7 @@ const ADAPT_WINDOW = 60;             // frames per adaptation decision (about on
 const LATE_RATE_GROW = 0.05;
 const MARGIN_SHRINK = 2;
 
-export interface AdmitResult {
+interface AdmitResult {
   /** Controls stored for future ticks (duplicates excluded). */
   accepted: number;
   /** Controls older than the newest already applied tick. */
@@ -26,7 +26,7 @@ export interface AdmitResult {
   farAhead: boolean;
 }
 
-export interface SeatInputBufferOptions {
+interface SeatInputBufferOptions {
   /** The frame is rejected when its newest tick exceeds serverTick + maxLeadTicks (v1: 120). */
   maxLeadTicks?: number;
   initialBufferTicks?: number;

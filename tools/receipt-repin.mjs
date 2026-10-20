@@ -40,7 +40,7 @@ export function diffLines(output) {
 
 /** Every quoted 64-hex digest the failure output shows — changed, unchanged or as diff context: the rows a count
  * belongs to. Quoted only, so a digest inside a file path never counts. */
-export function diffAnchors(output) {
+function diffAnchors(output) {
   return [...new Set((output.match(/['"][0-9a-f]{64}['"]/g) ?? []).map((token) => token.slice(1, -1)))];
 }
 

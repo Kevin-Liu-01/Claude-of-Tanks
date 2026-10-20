@@ -15,6 +15,7 @@ import {
 } from './standard-check-stages.mjs';
 import { firstPartyConcept, partitionConceptIds } from './first-party-concept-policy.mjs';
 import { isPhotoReference } from './photo-reference-policy.mjs';
+import { latticeCellScan } from './contig-grid.mjs';
 import { readPhotoReference } from './photo-reference-record.mjs';
 
 const REPO = fileURLToPath(new URL('..', import.meta.url));
@@ -202,8 +203,13 @@ const PASSING_PACKET = { geoMin: 95.1, requiredMinimum: 90, qualityBar: 'fleet',
 const FAILING_PACKET = { ...PASSING_PACKET, geoMin: 85.2, gatePassed: false,
   components: { ...PASSING_PACKET.components, hullCurves: 85.2 } };
 const census = mg => ({ mg, roofMg: mg, dressing: 0, invalidWeaponMarkers: 0 });
+// The page's hole scan as tools/standard-check-page.html reports it since guards 229: a hull-anchored lattice raster
+// (tools/contig-grid.mjs latticeCellScan, the receipts' stand-in for a real scan) with every sub-cell phase and no
+// phase-only gaps, so contig-hidden.json is never consulted for these ids; the holes sit in lattice cells at (0.1, -2.3).
+const PLAN = { minX: -1.8, maxX: 1.8, minZ: -3.6, maxZ: 3.6 };
 const render = (holeCells, mg) => ({ census: census(mg),
-  holes: { holeCells, clusters: holeCells ? [{ x: 0.1, z: -2.3, cells: holeCells }] : [] } });
+  holes: { ...latticeCellScan(Array.from({ length: holeCells }, (_, i) => [1 + i, -39]), { aabb: PLAN }),
+    clusters: holeCells ? [{ x: 0.1, z: -2.3, cells: holeCells }] : [], phaseOnlyGaps: [] } });
 
 // Every stage red somewhere: the geometry gate, the concept and photo proofs, B4, B2 and B3.
 const RED_EVERYWHERE = {

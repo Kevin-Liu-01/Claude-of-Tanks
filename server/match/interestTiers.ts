@@ -28,7 +28,7 @@ export const INTEREST_MID_M = 300;
 /** Snapshots between refreshes per tier. */
 export const INTEREST_CADENCE: readonly [number, number, number] = Object.freeze([1, 2, 3]) as unknown as readonly [number, number, number];
 /** After a hit either way, a near miss or a ram: the entity stays on the near tier for this long. */
-export const INTEREST_ENGAGED_S = 4;
+const INTEREST_ENGAGED_S = 4;
 export const INTEREST_ENGAGED_TICKS = INTEREST_ENGAGED_S * TICK_HZ;
 /** A shell landing within this distance (m) of the viewer counts as fired at it. */
 export const INTEREST_NEAR_MISS_M = 15;

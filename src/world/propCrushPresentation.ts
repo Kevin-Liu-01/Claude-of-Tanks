@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import { addDent, createCrushField, deformPositions, flatNormals, hullMeetsBox, pressField, sweepPose, type CrushField } from './propCrush.ts';
 
 /** A destructible record as this reads it (props.ts DestructibleRecord). */
-export interface CrushRecordLike {
+interface CrushRecordLike {
   readonly kind: string;
   readonly x: number;
   readonly y: number;
@@ -31,14 +31,14 @@ export interface CrushRecordLike {
   _bi?: number;
 }
 /** A destructible pool as this reads it (props.ts DestructiblePool). */
-export interface CrushPoolLike {
+interface CrushPoolLike {
   readonly mats4: readonly THREE.Matrix4[];
   /** The pool's destructible type: `crushFloor`, the share of its height no hull presses it below (heavy plant). */
   readonly meta?: { readonly keep?: number; readonly crushFloor?: number };
   readonly imI: THREE.InstancedMesh | null;
   readonly imB: THREE.InstancedMesh | null;
 }
-export interface PropCrushHost {
+interface PropCrushHost {
   readonly group: THREE.Group;
   readonly records: readonly CrushRecordLike[];
   poolOf(kind: string): CrushPoolLike | undefined;
@@ -99,7 +99,7 @@ interface CrushTarget {
   burn: { t: number; from: [number, number, number]; swapped: boolean } | null;
 }
 
-export interface PropCrushPresentation {
+interface PropCrushPresentation {
   /** A hull this frame (world centre, yaw, its contact half extents). */
   pressHull(x: number, z: number, yaw: number, halfLength: number, halfWidth: number): void;
   /**

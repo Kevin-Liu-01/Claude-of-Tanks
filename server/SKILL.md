@@ -45,8 +45,7 @@ tree with the cutover of 2026-09-29 (`docs/MULTIPLAYER-V2.md` §13.10).
   and the LAN helper hand it to the room actor's `relayCredentials` port, one
   grant per admitted `room_relay`, never cached or logged; STUN only when no
   secret is set. Run `node server/relayCredentials.selftest.mjs`. Credentials are
-  never committed; `api/ice.ts` is a deprecated STUN-only answer for one release
-  (`node server/ice.selftest.mjs`).
+  never committed (the deprecated STUN-only `api/ice.ts` route is retired, 229).
 - `telemetryRecord.ts` is the shared entry-telemetry schema; `jev/main.ts` is the
   local HTTP wrapper around `api/jev.ts` for the Vite dev server (`npm run jev:dev`,
   port 8794; docs/JEV-COMMANDER.md).

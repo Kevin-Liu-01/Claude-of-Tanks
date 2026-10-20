@@ -421,6 +421,8 @@ export function createMissileTrails(light: SceneLightUniforms, depth: SceneDepth
     uSoftOn.value = soft ? 1 : 0;
     material.depthTest = !soft;
   };
+  // the callback reads the viewport and the late pass's depth alone: the late pass may draw it through its view
+  mesh.userData.lateFxSceneAgnostic = true;
 
   const looks = new Map<MissileTrail, number>();
   const lifeOfLook = new Float32Array(TRAIL_LOOKS);

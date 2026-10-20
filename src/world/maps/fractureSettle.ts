@@ -86,7 +86,7 @@ export interface SettleBody {
 export type SettleEdge = (material: FractureMaterial, piece: FracturePiece, score: number | 'whole', seed: number,
   out: DamageMeshWriter) => void;
 
-export interface SettleOptions {
+interface SettleOptions {
   /** The grid's cell (m) and how far past the pieces' boxes it reaches (m). */
   cell?: number;
   margin?: number;
@@ -103,7 +103,7 @@ export interface SettleOptions {
   restMembers?: boolean;
 }
 
-export interface FallOptions {
+interface FallOptions {
   /** Most the settle may tip it from the pose it is given (rad; default 1.5). */
   maxTilt?: number;
   /** A wall's least swing before what it meets can stop it (rad; default 1.0: a panel stopped nearer upright slides on). */

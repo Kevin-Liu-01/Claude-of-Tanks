@@ -171,6 +171,15 @@ export const DECLARED_DYNAMIC = Object.freeze({
     covered: ['docs/references/fleet-geometry-ledger.json'],
     note: 'reads its own ledger (the step\'s output, to keep the other ids\' rows) and each measured id\'s fleet-ledger row, keyed per id by the step\'s rowReads (geometryLedger)',
   },
+  // 229 (guards): gen-combat-anatomy checks each measured tank against the sim-floor ledger.
+  'tools/anatomy-floor-ledger.mjs': {
+    pin: '6d4a299856dae1bf',
+    reads: [],
+    // the floor ledger decides whether a regen passes (a drift exits 3 after the rows are written), never what the
+    // generated anatomy rows hold; its accepts carry their own reason trail
+    verdictOnly: ['docs/geometry-gate/sim-floors.json'],
+    note: 'reads the anatomy step\'s own outputs (src/vehicles/combatAnatomyCalibrations.ts and its combatAnatomyGroups files, as data) and the sim-floor ledger (verdict only); writes the ledger\'s rows for new and retired tanks',
+  },
   'tools/fleet-geometry-ledger.mjs': {
     pin: '1c72be85b54a8dbf',
     reads: [],

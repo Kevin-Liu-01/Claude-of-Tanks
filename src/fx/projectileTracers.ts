@@ -458,6 +458,8 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     renderer.getCurrentViewport(_vp);
     if (_vp.z > 0 && _vp.w > 0) uViewport.value.set(_vp.z, _vp.w);
   };
+  // the callback reads the viewport alone: the late pass may draw it through its view (engine/lateFxSceneView.ts)
+  mesh.userData.lateFxSceneAgnostic = true;
 
   const records = new Map<ShellKey, RoundRecord>();
   const free: RoundRecord[] = [];

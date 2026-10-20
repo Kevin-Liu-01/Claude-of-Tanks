@@ -233,6 +233,31 @@ for (const hook of ['scene-before', 'scene-after', 'object-before', 'object-afte
   assert.ok(f.roots.at(-1).root === view);
 }
 
+// 2026-10-19 (the 229 perf pass): an owner that marks its object scene-agnostic (userData.lateFxSceneAgnostic: the projectile
+// tracers', the missile trails' and wires' viewport reads) keeps the view: a round in flight no longer sends the FX draw
+// down the scene's own path, so the world's light hash and every lit material's program hold across frames
+{
+  const f = fixture();
+  f.frame();
+  const view = f.roots.at(-1).root;
+  const worldVersion = f.roots.at(-2)?.version;
+  let calls = 0;
+  f.fx.onBeforeRender = function (renderer) { assert.equal(renderer, f.renderer); calls++; };
+  f.fx.userData.lateFxSceneAgnostic = true;
+  f.frame();
+  assert.equal(calls, 1, 'the agnostic callback still runs');
+  assert.ok(f.roots.at(-1).root === view, 'the marked object draws through the view');
+  f.frame();
+  assert.equal(f.roots.at(-2).version, worldVersion, 'the world draw keeps its light hash version');
+  delete f.fx.userData.lateFxSceneAgnostic;
+  f.frame();
+  assert.ok(f.roots.at(-1).root === f.scene, 'unmarked, the callback keeps the scene\'s own path');
+  const { readFileSync } = await import('node:fs');
+  for (const file of ['../fx/projectileTracers.ts', '../fx/missileTrails.ts', '../fx/missileWires.ts']) {
+    assert.match(readFileSync(new URL(file, import.meta.url), 'utf8'), /mesh\.userData\.lateFxSceneAgnostic = true;/, `${file} marks its viewport hook`);
+  }
+}
+
 {
   const f = fixture();
   const failure = new Error('owned callback failure');

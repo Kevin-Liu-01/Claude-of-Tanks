@@ -15,7 +15,7 @@
  */
 
 /** The tank state fields the support pose and the presentation read (sim/movement.ts TankState). */
-export interface FilmSupportSource {
+interface FilmSupportSource {
   pos: { x: number; y: number; z: number };
   yaw: number;
   speed: number;
@@ -46,7 +46,7 @@ interface SupportPose {
 }
 
 /** The presentation state handed to the tank visual (tankFactoryCore.ts TankPoseState). */
-export interface FilmSupportPresentation {
+interface FilmSupportPresentation {
   pos: { x: number; y: number; z: number };
   yaw: number;
   visualPitch: number;

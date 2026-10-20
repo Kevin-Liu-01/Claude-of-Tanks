@@ -85,7 +85,7 @@ export interface Opening {
   arch?: { spring?: number };
 }
 
-export interface ChimneySpec {
+interface ChimneySpec {
   /** position in the body frame */
   x: number;
   z: number;
@@ -823,7 +823,7 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
 }
 
 /** A shed roof laid by `placeShed`: its geometry (in its own frame) and the height of its underside over any point. */
-export interface PlacedShed {
+interface PlacedShed {
   rg: RoofGeometry;
   /** the underside of the slab over (x, z) of the emitting frame (past its eaves the plane runs on) */
   undersideAt(x: number, z: number): number;
@@ -854,7 +854,7 @@ export function placeShed(sink: PartSink, spec: { cx: number; cz: number; run: n
 }
 
 /** A lean-to against a wall: what `leanTo` lays and the heights it found. */
-export interface LeanToSpec {
+interface LeanToSpec {
   /** the wall it leans on and its run along the wall (face u) */
   face: Face;
   u0: number;

@@ -34,7 +34,7 @@ import type {
   FlameSource, GroundTone, Puff, PuffPool, Rng, Streak, Chunk, Jet, SmokeScreenWalls,
 } from './cinematicRecipes.ts';
 
-export type CinematicQuality = 'battle' | 'cinematic';
+type CinematicQuality = 'battle' | 'cinematic';
 
 /** Studio actor facts the recipes need (hull centre, heading, dimensions). */
 export interface CineActor {
@@ -52,7 +52,7 @@ export interface CineActor {
 }
 
 /** One Studio shell for the tracer-head glare. */
-export interface CineShell {
+interface CineShell {
   readonly pos: { x: number; y: number; z: number };
   readonly dead?: boolean;
   readonly spec?: { tracer?: unknown } | null;
@@ -69,7 +69,7 @@ export interface CineTrackActor {
   poseAt(tS: number, out: CineTrackSample): boolean;
 }
 
-export interface StudioCinematicsOptions {
+interface StudioCinematicsOptions {
   port: FxCinematicPort;
   scene: THREE.Scene;
   /** One idle pooled PointLight Studio may drive (never added or removed). */
@@ -277,7 +277,7 @@ export interface StudioCinematics {
   dispose(): void;
 }
 
-export interface FlareOptions {
+interface FlareOptions {
   heightM: number; burnS: number; driftMps: number; fallMps: number;
   intensity: number; color: number; launch: boolean;
 }

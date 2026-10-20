@@ -1005,7 +1005,7 @@ const laave: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const NORDLAND_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const NORDLAND_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => hus(ctx),
   logcabin: (ctx) => hus(ctx),
   alpine: (ctx) => hus(ctx, { two: true }),

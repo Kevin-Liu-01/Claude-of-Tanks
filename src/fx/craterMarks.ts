@@ -40,7 +40,7 @@ const CRATER_REACH = 2.4;
  *  heavy shell's rayed crater (the gunship's howitzer and missile: long dark rays of thrown soil out past the apron, a
  *  wider scorch) and a drone warhead's pocked scorch (a small black blast spot, a dense ring of fragment pocks, the
  *  battery's melted black patch beside it). */
-export type CraterMarkKind = 'gouge' | 'he' | 'scar' | 'hesh' | 'rayed' | 'drone';
+type CraterMarkKind = 'gouge' | 'he' | 'scar' | 'hesh' | 'rayed' | 'drone';
 const KIND_INDEX: Readonly<Record<CraterMarkKind, number>> = Object.freeze({ gouge: 0, he: 1, scar: 2, hesh: 3, rayed: 4, drone: 5 });
 /** The mark a munition leaves (sim/destructionEvents.ts MunitionClass). */
 export function markKindFor(munition: string, explosive: boolean): CraterMarkKind {
@@ -311,7 +311,7 @@ void main() {
 `;
 
 /** A deforming crater's surface (crater-render-spec §D). */
-export interface CraterSurfaceInput {
+interface CraterSurfaceInput {
   x: number; z: number;
   radiusM: number;
   /** the simulation's wobble phases (sim/terrainDeformation.ts craterWobblePhases) */

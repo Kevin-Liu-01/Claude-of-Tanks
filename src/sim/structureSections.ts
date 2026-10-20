@@ -52,7 +52,7 @@ const HOLE_MATERIAL: Readonly<Record<StructureMaterial, number>> = Object.freeze
 /** No hole wider than this, nor than half a storey. */
 const MAX_HOLE_M = 1.6;
 
-export type SectionKind = 'wall' | 'roof';
+type SectionKind = 'wall' | 'roof';
 
 /** A structure's sections: its openings (what the raycasts read) and each section's hit points. */
 export interface StructureSections extends StructureOpenings {
@@ -65,7 +65,7 @@ export interface StructureSections extends StructureOpenings {
 }
 
 /** What a structure's sections are derived from (StructureState's fields). */
-export interface SectionSource {
+interface SectionSource {
   readonly cx: number;
   readonly cz: number;
   readonly hw: number;
