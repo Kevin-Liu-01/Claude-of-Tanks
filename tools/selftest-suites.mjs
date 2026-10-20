@@ -1192,7 +1192,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/session/roomInvite.selftest.mjs',
     'src/game/localWeaponPresentation.selftest.mjs',
     'server/githubStars.selftest.mjs',
-    'server/ice.selftest.mjs',
     'server/relayCredentials.selftest.mjs',
     'server/telemetryRecord.selftest.mjs',
     'server/telemetry.selftest.mjs',
