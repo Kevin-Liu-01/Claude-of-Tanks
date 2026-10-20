@@ -17,7 +17,7 @@
  *   `nonpen` (a live hull struck for nothing), `wreck`, `friendly`, `world` (shell_impact), and the hull damage, kills
  *   and drones brought down by roof rounds.
  *
- *   node tools/roof-gun-discipline.mjs --label=after --out=/path/dir
+ *   npm run roof:discipline -- --label=after --out=/path/dir
  *   node tools/roof-gun-discipline.mjs --maps=verdant,urban,alpine --modes=standard,drone --seeds=8 --seconds=150
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
