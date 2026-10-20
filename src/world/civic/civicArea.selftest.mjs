@@ -68,6 +68,13 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
   }
   const lost = [...before].filter((k) => !after.has(k)), gained = [...after].filter((k) => !before.has(k));
   assert.deepEqual([lost, gained], [[], []], `${mapId}: every record outside the rooms stands where it stood`);
+  // (229 b1 r3, the coordinator: "a flat pavement footprint must never push a parked vehicle") the parked vehicles and
+  // carts outside the rooms stand where they stand on the map without the plan (the kit's pavements are no seat blocker)
+  const vehicleKeys = (b) => b.destructibles.filter((d) => d.slot >= 0 && VEHICLES.has(d.kind) && !inAnyRoom(d.x, d.z) && !ownSeat(d)).map(key);
+  const vBefore = new Set(vehicleKeys(base.built)), vAfter = new Set(vehicleKeys(built));
+  const vLost = [...vBefore].filter((k) => !vAfter.has(k)), vGained = [...vAfter].filter((k) => !vBefore.has(k));
+  if (vLost.length || vGained.length) console.log(`${mapId}: parked vehicles moved against the map without the plan: ${JSON.stringify({ from: vLost, to: vGained })}`);
+  assert.deepEqual([vLost, vGained], [[], []], `${mapId}: every parked vehicle and cart outside the rooms stands where it stood`);
 
   const structures = built.obstacles.filter((o) => o.kind === 'structure' || o.structureIdx != null);
   const inStructure = (x, z, m) => structures.some((o) => x > o.min[0] - m && x < o.max[0] + m && z > o.min[2] - m && z < o.max[2] + m

@@ -117,9 +117,9 @@
       "concealers": 2730
     },
     "ruinspires": {
-      "bytes": 6445127,
-      "sha256": "e29c120237f7048eb929e944b1028dd4cd28d1abca79c8b58487498fb52056e5",
-      "obstacles": 2373,
+      "bytes": 6444322,
+      "sha256": "6053596042a70cd9ee5c3befc42d55fd7e593a0d00db309311d83cd59ecb8102",
+      "obstacles": 2371,
       "colliders": 8820,
       "concealers": 388
     },
@@ -351,9 +351,9 @@
         "concealers": 2730
       },
       "ruinspires": {
-        "bytes": 6445127,
-        "sha256": "e29c120237f7048eb929e944b1028dd4cd28d1abca79c8b58487498fb52056e5",
-        "obstacles": 2373,
+        "bytes": 6444322,
+        "sha256": "6053596042a70cd9ee5c3befc42d55fd7e593a0d00db309311d83cd59ecb8102",
+        "obstacles": 2371,
         "colliders": 8820,
         "concealers": 388
       },
