@@ -56,3 +56,7 @@ deployment law or its slot ground moves the world's spawn clearings: recapture t
 collision shards and run `node src/sim/deployment.selftest.mjs` and
 `node src/game/deploymentParity.selftest.mjs`. Bot route
 changes must also pass `node server/authoritativeBots.selftest.mjs` on all maps.
+Counter-drone (roof stations, the weapon profiles' drone fields, `AERIAL_RULES.drone`)
+holds the owner's 226 band: run `node src/sim/counterDroneEngagement.selftest.mjs`, and
+for new or re-armed stations `node tools/counter-drone-engage.mjs --ids=<ids> --check`
+(the same authority engagements per vehicle: hover, attack runs, elevation reach).
