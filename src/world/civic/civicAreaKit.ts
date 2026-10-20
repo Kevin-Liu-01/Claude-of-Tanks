@@ -163,7 +163,7 @@ function onBedPath(bed: CivicBed, x: number, z: number, margin = 0): boolean {
 function composeBed(m: CivicMesh, bed: CivicBed, style: RegionalCivicStyle, pieces: CivicPiece[], census: Record<string, number>, tier: 'desktop' | 'mobile'): void {
   const r = bed.rect, E = style.edging;
   // the mown lawn inside the dwarf wall: a sward of a few greens in drifts, a worn margin along the wall's foot
-  const greens = style.lawn.greens.map(hexRgb), bareCol = hexRgb(style.lawn.bare), inset = E.kerb.width + E.wall.width;
+  const greens = style.lawn.greens.map(hexRgb), bareCol = hexRgb(style.lawn.bare), inset = E.kerb.width + (bed.low ? 0 : E.wall.width);
   const lawnAt = (x: number, z: number): Rgb => {
     // two octaves of drifts between the style's greens, a worn margin along the wall's foot
     const n = civicNoise(x, z, 4.5, 61) * 0.65 + civicNoise(x, z, 1.4, 62) * 0.35, f = n * (greens.length - 1);
@@ -192,6 +192,8 @@ function composeBed(m: CivicMesh, bed: CivicBed, style: RegionalCivicStyle, piec
       const a = sidePoint(r, s.side, mo.at - mo.width / 2, 0), b = sidePoint(r, s.side, mo.at + mo.width / 2, kw + ww);
       m.skinRect(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1]), SKIN + 0.004, scaleRgb(kerbCol, 0.96), 0.8);
     }
+    // (228 r7) a low bed keeps its kerb alone
+    if (bed.low) continue;
     // the dwarf wall: dressed units 0.30 wide, its coping a little proud of both faces, chamfered
     const wallStretches = sideStretches(r, s.side, bed, kw);
     for (const [t0, t1] of wallStretches) {
@@ -388,29 +390,32 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
   const C = area.centre;
   // (228 r3, the blind critics: "a thin pale circle ... reads like a roundabout or helipad marking") the ring band a dark
   // basalt inlay in units, its inner line granite
-  m.skinRing(C.x, C.z, C.ringR[0], C.ringR[1], 64, SKIN, (k) => toned(basalt, k, 1, 0.09, 31));
-  m.skinRing(C.x, C.z, C.ringR[0] - 0.22, C.ringR[0] - 0.02, 64, SKIN, (k) => toned(granite, k, 9, 0.06, 30));
-  m.skinRing(C.x, C.z, C.roseR, C.roseR + 0.16, 32, SKIN, (k) => toned(basalt, k, 2, 0.06, 32));
-  if (C.fill) {
-    // (229 b2 r2, the blind critics: "a small grey disc on a darker square patch", "a pale bluish puddle" at night) the
-    // roundel laid in klinker: concentric courses of setts from the rose out to the ring's granite line, each course its
-    // own tone, a touch under the bands so they read on top
-    const sett = hexRgb(style.bands.sett), r0 = C.roseR + 0.16, r1 = C.ringR[0] - 0.22, n = Math.max(1, Math.round((r1 - r0) / 0.5));
-    for (let q = 0; q < n; q++) {
-      const a = r0 + ((r1 - r0) * q) / n, b = r0 + ((r1 - r0) * (q + 1)) / n;
-      m.skinRing(C.x, C.z, a, b - 0.015, 64, SKIN - 0.003, (k) => toned(sett, k + q * 64, q, 0.09, 35));
+  // (228 r8, the blind critics: the crossing's disc "reads as a traffic roundabout") a hidden roundel draws nothing
+  if (!C.hidden) {
+    m.skinRing(C.x, C.z, C.ringR[0], C.ringR[1], 64, SKIN, (k) => toned(basalt, k, 1, 0.09, 31));
+    m.skinRing(C.x, C.z, C.ringR[0] - 0.22, C.ringR[0] - 0.02, 64, SKIN, (k) => toned(granite, k, 9, 0.06, 30));
+    m.skinRing(C.x, C.z, C.roseR, C.roseR + 0.16, 32, SKIN, (k) => toned(basalt, k, 2, 0.06, 32));
+    if (C.fill) {
+      // (229 b2 r2, the blind critics: "a small grey disc on a darker square patch", "a pale bluish puddle" at night) the
+      // roundel laid in klinker: concentric courses of setts from the rose out to the ring's granite line, each course its
+      // own tone, a touch under the bands so they read on top
+      const sett = hexRgb(C.fillHex ?? style.bands.sett), r0 = C.roseR + 0.16, r1 = C.ringR[0] - 0.22, n = Math.max(1, Math.round((r1 - r0) / 0.5));
+      for (let q = 0; q < n; q++) {
+        const a = r0 + ((r1 - r0) * q) / n, b = r0 + ((r1 - r0) * (q + 1)) / n;
+        m.skinRing(C.x, C.z, a, b - 0.015, 64, SKIN - 0.003, (k) => toned(sett, k + q * 64, q, 0.09, 35));
+      }
     }
+    const rays = C.rays * 2;
+    for (let k = 0; k < rays; k++) {
+      const a0 = (k / rays) * Math.PI * 2, a1 = ((k + 1) / rays) * Math.PI * 2, am = (a0 + a1) / 2;
+      // a ray: the point out at the rim on the even sectors (basalt), the granite between
+      const tipR = C.roseR, P = (a: number, r: number): number[] => { const x = C.x + Math.sin(a) * r, z = C.z + Math.cos(a) * r; return [x, ctx.ground(x, z) + SKIN, z]; };
+      m.tri(P(a0, 0.45), P(am, tipR), P(a1, 0.45), k % 2 ? toned(basalt, k, 3, 0.05, 33) : toned(granite, k, 3, 0.05, 34));
+      m.tri(P(a0, 0.45), P(a0, tipR), P(am, tipR), toned(granite, k, 4, 0.05, 35));
+      m.tri(P(a1, 0.45), P(am, tipR), P(a1, tipR), toned(granite, k, 5, 0.05, 36));
+    }
+    m.skinRing(C.x, C.z, 0, 0.45, 12, SKIN, () => granite);
   }
-  const rays = C.rays * 2;
-  for (let k = 0; k < rays; k++) {
-    const a0 = (k / rays) * Math.PI * 2, a1 = ((k + 1) / rays) * Math.PI * 2, am = (a0 + a1) / 2;
-    // a ray: the point out at the rim on the even sectors (basalt), the granite between
-    const tipR = C.roseR, P = (a: number, r: number): number[] => { const x = C.x + Math.sin(a) * r, z = C.z + Math.cos(a) * r; return [x, ctx.ground(x, z) + SKIN, z]; };
-    m.tri(P(a0, 0.45), P(am, tipR), P(a1, 0.45), k % 2 ? toned(basalt, k, 3, 0.05, 33) : toned(granite, k, 3, 0.05, 34));
-    m.tri(P(a0, 0.45), P(a0, tipR), P(am, tipR), toned(granite, k, 4, 0.05, 35));
-    m.tri(P(a1, 0.45), P(am, tipR), P(a1, tipR), toned(granite, k, 5, 0.05, 36));
-  }
-  m.skinRing(C.x, C.z, 0, 0.45, 12, SKIN, () => granite);
   for (const bed of area.beds) {
     composeBed(m, bed, style, pieces, census, ctx.tier);
     const r = bed.rect;

@@ -52,7 +52,9 @@ export const CIVIC_STYLES: Readonly<Record<string, RegionalCivicStyle>> = Object
     kerb: { width: 0.25, face: 0.12, unit: [1.0, 1.4], hex: 0xa7a59e },
     // (228 r3, the blind critics: the pale grey flags "look modern concrete-slab, not Franconian sandstone or granite")
     // the flags a warm granite of the Fichtelgebirge, the joints sanded
-    pavement: { course: 0.5, length: [0.75, 1.0], hex: 0xa69a86, tone: 0.07, joint: 0x625a4e },
+    // (228 r8, the blind critics: the flags "pale cream ... almost concrete-modern", near-white under the lamps) a shade
+    // darker and more varied
+    pavement: { course: 0.5, length: [0.75, 1.0], hex: 0x968b78, tone: 0.09, joint: 0x5a5246 },
     gutter: { rows: 3, width: 0.45, dish: 0.02, hex: 0x6e6c66 },
     bands: { granite: 0x8f8c85, basalt: 0x4a4946, sett: 0x8e8a82, bay: 0x9b978f },
     edging: {

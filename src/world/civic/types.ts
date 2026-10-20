@@ -63,6 +63,8 @@ export interface CivicBed {
   readonly rect: CivicRect;
   readonly mouths: readonly CivicMouth[];
   readonly paths: readonly CivicBedPath[];
+  /** (228 r7) a low bed: its kerb only, no dwarf wall, railing or piers (a lawn laid flush in a fight's ground) */
+  readonly low?: boolean;
   /** a round flower bed with its gravel ring at the paths' crossing, or a memorial grove's forecourt and hedge */
   readonly feature: { readonly kind: 'flowerRondell'; readonly x: number; readonly z: number; readonly r: number; readonly ring: number }
     | { readonly kind: 'hedgeArc'; readonly x: number; readonly z: number; readonly r: number; readonly height: number; readonly fromDeg: number; readonly toDeg: number }
@@ -124,8 +126,9 @@ export interface CivicAreaPlan {
   readonly holds: ReadonlyArray<{ readonly id: string; readonly x: number; readonly z: number; readonly r: number }>;
   /** The roundel at the crossing: its ring band and its rose, flush. */
   /** The roundel: its ring band, its rose and rays; `fill` lays the ground between the rose and the ring in concentric
-   *  courses of the style's setts (a klinker roundel on a green with no paved square under it). */
-  readonly centre: { readonly x: number; readonly z: number; readonly ringR: readonly [number, number]; readonly roseR: number; readonly rays: number; readonly fill?: boolean };
+   *  courses of the style's setts (a klinker roundel on a green with no paved square under it); `hidden` draws none (the
+   *  crossing paved as the square, the ring kept as the hold's measure). */
+  readonly centre: { readonly x: number; readonly z: number; readonly ringR: readonly [number, number]; readonly roseR: number; readonly rays: number; readonly fill?: boolean; readonly fillHex?: number; readonly hidden?: boolean };
   readonly beds: readonly CivicBed[];
   /** The flush granite bands between a bed's kerb and the arms. */
   readonly paving: readonly CivicPaving[];

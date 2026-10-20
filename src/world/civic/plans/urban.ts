@@ -35,6 +35,9 @@ import type { CivicPlan } from '../types.ts';
 const ROOM = { x0: -92.4, x1: -8.7, z0: -40.3, z1: 40.2 } as const;
 const NW = { x0: -83.4, x1: -59.0, z0: 9.5, z1: 31.0 } as const;
 const SW = { x0: -83.4, x1: -59.0, z0: -31.0, z1: -9.5 } as const;
+// (228 r7) the north-east quarter's low lawn (line-2's approach and jostle disc: kerbed flush, nothing hull-high)
+const NE = { x0: -40.0, x1: -21.5, z0: 11.0, z1: 38.5 } as const;
+const NE_X = -30.75, NE_Z = 24.75;
 const MID_X = -71.2, NW_Z = 20.25, SW_AXIS = -19.8;
 const COLUMN = { x: -62.5, z: -19.8 } as const;
 
@@ -57,17 +60,21 @@ const POLLER = [
 ].map(([x, z]) => ({ kind: 'poller', x: +x.toFixed(2), z: +z.toFixed(2), yawDeg: 0 }));
 
 /** (228 r7) the walks along the arms: the trade road's (x -50) and the Hauptstrasse's (z 0) pavements carried through the
- *  room from the gutters (3.8 m) out to the arms' edges, each stopping where it would enter the roundel's ring (9 m) */
+ *  room from the gutters (3.8 m) out to the arms' edges; (r8, the blind critics: "the pavement split by a gap" at the mouths,
+ *  the walks "stopping short" of the crossing) 2.5 m on past the room's edges over the streets' own pavements' dropped ends,
+ *  and round the crossing's four corners (no roundel) */
+const OVER = 2.5;
 const ARM_WALKS = [
-  { x0: -58.5, x1: -54.1, z0: ROOM.z0, z1: -9.0 }, { x0: -45.9, x1: -41.5, z0: ROOM.z0, z1: -9.0 },
-  { x0: -58.5, x1: -54.1, z0: 9.0, z1: ROOM.z1 }, { x0: -45.9, x1: -41.5, z0: 9.0, z1: ROOM.z1 },
-  { x0: ROOM.x0, x1: -58.5, z0: -9.0, z1: -4.1 }, { x0: ROOM.x0, x1: -58.5, z0: 4.1, z1: 9.0 },
-  { x0: -41.5, x1: ROOM.x1, z0: -9.0, z1: -4.1 }, { x0: -41.5, x1: ROOM.x1, z0: 4.1, z1: 9.0 },
+  { x0: -58.5, x1: -54.1, z0: ROOM.z0 - OVER, z1: -4.1 }, { x0: -45.9, x1: -41.5, z0: ROOM.z0 - OVER, z1: -4.1 },
+  { x0: -58.5, x1: -54.1, z0: 4.1, z1: ROOM.z1 + OVER }, { x0: -45.9, x1: -41.5, z0: 4.1, z1: ROOM.z1 + OVER },
+  { x0: ROOM.x0 - OVER, x1: -58.5, z0: -9.0, z1: -4.1 }, { x0: ROOM.x0 - OVER, x1: -58.5, z0: 4.1, z1: 9.0 },
+  { x0: -41.5, x1: ROOM.x1 + OVER, z0: -9.0, z1: -4.1 }, { x0: -41.5, x1: ROOM.x1 + OVER, z0: 4.1, z1: 9.0 },
 ] as const;
 
-// the oak rows 2.2 m inside the beds' edges (the railing 1.6 m clear of each trunk), 6.67 m apart
-const OAK_X = [-81.2, -74.53, -67.87, -61.2];
-const OAK_N = 28.5, OAK_S = 12.0;
+// (228 r8, the blind critics: "the trunk stands exactly on the fence line", lamps "tight against" trunks) four oaks a
+// green, 3.5 m and more inside its edges (the railing 3 m clear of each trunk), either side of its north-south path
+const OAK_X = [-79.9, -67.5];
+const OAK_N = 27.5, OAK_S = 13.0;
 
 export const URBAN_CIVIC_PLAN: CivicPlan = {
   mapId: 'urban',
@@ -84,7 +91,8 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
     // anywhere in the frontage band
     maxWalkM: 3.3,
     openWalkM: 2.0,
-    cornerDepthM: 2.5,
+    // (228 r8, the blind critics: corners ending in "rounded tongues" round a lot's grass) the corners paved deeper
+    cornerDepthM: 5,
     lane: { face: 0.08, maxWalkM: 2.8, openWalkM: 1.4 },
     exclude: [ROOM],
     gates: [
@@ -150,7 +158,9 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
     // wide compass of setts within the ring
     // (228 r7, the blind critics: "a flat compass-rose medallion with nothing on it ... reads like a roundabout or a missing
     // monument", pulling the eye off the column) no rose: the roundel laid in concentric courses of setts in its ring
-    centre: { x: -50, z: 0, ringR: [8.0, 9.0], roseR: 0, rays: 0, fill: true },
+    // (r7: a pale disc; r8, the blind critics: "a flat grey circle ... reads as a traffic roundabout", the axial focus
+    // over the column) none: the crossing paved as the square, the walks turning its corners (the ring the holds' measure)
+    centre: { x: -50, z: 0, ringR: [8.0, 9.0], roseR: 0, rays: 0, hidden: true },
     beds: [
       {
         id: 'blumenrondell', rect: NW,
@@ -165,6 +175,14 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
         paths: [{ from: [SW.x0, SW_AXIS], to: [COLUMN.x - 2.9, SW_AXIS], width: 3 }, { from: [MID_X, SW.z0], to: [MID_X, SW.z1], width: 3 }],
         // the clipped box semicircle behind the column, open where the axis path comes in from the west
         feature: { kind: 'hedgeArc', x: COLUMN.x, z: COLUMN.z, r: 3.4, height: 0.55, fromDeg: 190, toDeg: 350 },
+      },
+      {
+        // (228 r7, the blind critics: the north-east quarter "a dark empty plain"; the coordinator: flat work there, kerbed
+        // beds and low-cut lawns, nothing hull-high) the third green, low: its kerb alone, cross paths, a flower round
+        id: 'nordgruen', rect: NE, low: true,
+        mouths: [{ side: 'n', at: NE_X, width: 2.6 }, { side: 's', at: NE_X, width: 2.6 }, { side: 'e', at: NE_Z, width: 2.6 }, { side: 'w', at: NE_Z, width: 2.6 }],
+        paths: [{ from: [NE_X, NE.z0], to: [NE_X, NE.z1], width: 2.6 }, { from: [NE.x0, NE_Z], to: [NE.x1, NE_Z], width: 2.6 }],
+        feature: { kind: 'flowerRondell', x: NE_X, z: NE_Z, r: 2.2, ring: 4.0 },
       },
     ],
     paving: [
@@ -188,12 +206,7 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       { rect: { x0: -54.1, x1: -45.9, z0: NW_Z - 1.2, z1: NW_Z + 1.2 }, kind: 'basalt' },
       { rect: { x0: -54.1, x1: -45.9, z0: SW_AXIS - 1.2, z1: SW_AXIS + 1.2 }, kind: 'basalt' },
       { rect: { x0: -29.2, x1: -26.8, z0: -4.1, z1: 4.1 }, kind: 'basalt' },
-      // (228 r7, the blind critics: the north-east quarter "a dark empty plain"; it is line-2's approach and jostle disc,
-      // which holds nothing a hull meets) its setts laid in four fields between granite bands, the walks along the arms
-      // their south and west edges
-      { rect: { x0: -41.5, x1: ROOM.x1, z0: 24.3, z1: 24.9 }, kind: 'granite' },
-      { rect: { x0: -25.3, x1: -24.7, z0: 9.0, z1: 24.3 }, kind: 'granite' },
-      { rect: { x0: -25.3, x1: -24.7, z0: 24.9, z1: ROOM.z1 }, kind: 'granite' },
+
     ],
     // (228 r6) the manholes in the arms, and the leaves under the oaks
     covers: [{ x: -86, z: 1.5 }, { x: -78, z: -1.5 }, { x: -22, z: 1.5 }, { x: -14, z: -1.5 }, { x: -50, z: -29 }, { x: -48.6, z: 26 },
@@ -206,11 +219,9 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       // into a trunk, the church tower and the column hidden) younger oaks
       species: 'oak', scale: [0.95, 1.05],
       stations: [
-        // the north quarter's rows, its church-side east corner left open (the church's front seen across the green)
-        ...OAK_X.filter((x) => x < -61.5).map((x) => ({ x, z: OAK_N })),
-        ...OAK_X.map((x) => ({ x, z: OAK_S })),
-        // the Ehrenhain's rows, their east pair left out: the column stands at the grove's head in the open
-        ...OAK_X.filter((x) => x < -61.5).flatMap((x) => [{ x, z: -OAK_S }, { x, z: -OAK_N }]),
+        // the north green's four and the Ehrenhain's four (its east pair clear of the column's hedge)
+        ...OAK_X.flatMap((x) => [{ x, z: OAK_N }, { x, z: OAK_S }]),
+        ...OAK_X.flatMap((x) => [{ x, z: -OAK_S }, { x, z: -26.5 }]),
         // the pits in the paving east of the trade road, and its east side (228 r3: the north three stood on the bots'
         // routes to line-2; they are left out)
         // (the south three half a metre east of the review's seats: the first's trunk clear of the extraction's 8 m disc)
@@ -220,7 +231,8 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
         // (the fill, 228 r1) a pit tree before the north row and on the trade road's east side south of the extraction's
         // disc (the walks round the green stay lanes: C12)
         // (228 r4: the north row's two pits stood in line-2's jostle disc; left out)
-        { x: -40, z: -18.4, grate: true },
+        // (228 r8: the greens' oaks 3.5 m in, zone 2's disc holds one north, so the market's pit by the extraction is out:
+        // the cover across the Hauptstrasse within a piece)
         // (228 r2) the south market's shade behind its stalls, and the south-west corner the garage left
         { x: -26, z: -30, grate: true }, { x: -19.3, z: -30, grate: true }, { x: -88.5, z: -37.5, grate: true },
         // the north-east lot's screen, and the Pfarrgarten behind the church
@@ -292,13 +304,14 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
       // (228 r6, the blind critics: the Brunnenplatz's lamp stood before the fountain's column in the view) east of the basin
       // (228 r7, the blind critics: a lamp head inside the north row's canopy; the column's pair "pressed against the plinth")
       // the north quarter's corner lamp left out; the column's pair 5.5 m out on the same bearings
-      [-59.6, 22.45], [-82.8, 18.05], [-60.8, -25.05], [-82.8, -22.45], [-53.6, 44.0],
-      [-41.0, 9.9], [-27.5, -11.0], [-16.5, 26.0], [-64.5, 9.25], [-67.95, -20.55],
+      // (228 r8: the greens' lamps stood on the railing's line, at its piers) a metre and a half into the lawns
+      [-61.1, 22.45], [-81.6, 18.05], [-60.8, -25.05], [-81.6, -22.45], [-53.6, 44.0],
+      [-41.0, 9.9], [-27.5, -11.0], [-16.5, 26.0], [-64.5, 11.0], [-67.95, -20.55],
       // (228 r7) the twelfth round the crossing by the south market's planters, out of the extraction's disc
       [-31.5, -13.8],
     ].map(([x, z]) => ({ kind: 'lamp', x, z, yawDeg: 0 })),
     fountainRing: { x: -62, z: 47, r: 5.5 },
     steps: [{ x: -75.8, z: 39.9, width: 6, yawDeg: 180, count: 2, rise: 0.12 }],
-    lawns: [NW, SW],
+    lawns: [NW, SW, NE],
   }],
 };

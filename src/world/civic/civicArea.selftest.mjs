@@ -250,7 +250,8 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
     console.log(`${tag}: ${records.length} records in the room, ${civicTrees.length} trees, ${benches} benches, ${lamps.length} lamps (${roundCrossing} round the crossing), `
       + `open share ${(share * 100).toFixed(1)} %, largest free disc r ${largest.toFixed(1)} m, lanes ${JSON.stringify(widths)}, vetoed ${JSON.stringify(built.group.userData.civic?.vetoed ?? {})}`);
     // (live records: the props' destructibles and the trees' trunks)
-    assert.ok(records.length + civicTrees.length >= 150, `${tag}: ${records.length} records and ${civicTrees.length} trunks in the room (150)`);
+    // (228 r8: four oaks a green, set in from the railings) 145
+    assert.ok(records.length + civicTrees.length >= 145, `${tag}: ${records.length} records and ${civicTrees.length} trunks in the room (145)`);
     assert.ok(share <= 0.02, `${tag}: ${(share * 100).toFixed(1)} % of the room's paving more than 4 m from anything (off the arms, the roundel, the corridors and the lanes; 2 %)`);
     assert.ok(largest <= 9.0, `${tag}: the largest free disc ${largest.toFixed(1)} m at (${largestAt[0].toFixed(1)}, ${largestAt[1].toFixed(1)}) off the arms, the corridors and the lanes (9)`);
   }
