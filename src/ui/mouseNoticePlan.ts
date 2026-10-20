@@ -530,10 +530,17 @@ function walkY(yPref: number, yMin: number, yMax: number, limit: () => number, v
     } else { visit(down, downCost); down += step; }
   }
 }
-/** walkY on the coarse grid, then to the px within a step of the cheapest y `found()` reports (NaN: none). */
+const NO_MARKS: readonly number[] = [];
+const edgeScratch: number[] = [];
+/** walkY on the coarse grid and at `marks`, then to the px within a step of the cheapest y `found()` reports (NaN: none). */
 function walkFine(yPref: number, yMin: number, yMax: number, limit: () => number, visit: (y: number, yCost: number) => void,
-  found: () => number): void {
+  found: () => number, marks: readonly number[] = NO_MARKS): void {
   walkY(yPref, yMin, yMax, limit, visit);
+  // then each of `marks` (integers: a band narrower than the coarse step is found at its edges)
+  for (const y of marks) {
+    const yCost = y < yPref ? (yPref - y) * UP_COST : y - yPref;
+    if (y >= yMin && y <= yMax && yCost < limit()) visit(y, yCost);
+  }
   const y = found();
   if (Number.isFinite(y)) walkY(yPref, Math.max(yMin, y - Y_STEP + 1), Math.min(yMax, y + Y_STEP - 1), limit, visit, 1);
 }
@@ -549,11 +556,26 @@ const single = (): Single => ({ y: 0, x: 0, cost: Infinity, lane: 0, giveWay: [N
 /** The cheapest place for one `w` x `h` box (x: its centre) from `yPref` off `avoid`; its cost includes `base`
  *  (Infinity when none beats `bound`), `lane` the part the lanes' yielding makes up. */
 function singleBest(env: Env, w: number, h: number, yPref: number, base: number, bound: number, out: Single,
-  avoid: readonly PlanRect[] = NONE, price: LanePrice = BATTLE_LANES, partner: readonly number[] | null = null, shift = SHIFT_COST): Single {
+  avoid: readonly PlanRect[] = NONE, price: LanePrice = BATTLE_LANES, partner: readonly number[] | null = null, shift = SHIFT_COST,
+  edges = false): Single {
   const { input } = env;
   const cx = input.width / 2;
   out.cost = Infinity; out.lane = 0;
   const hh = Math.ceil(h);
+  // `edges`: the rows just clear of each blocking box (the fixed boxes and keep-out with their gaps, the discs, `avoid`),
+  // where a place can be a band narrower than the coarse step (844 x 390 without an objective: y 295..296 between the
+  // gun-limit chip and the scope-vision toggle)
+  let marks = NO_MARKS;
+  if (edges) {
+    marks = edgeScratch; edgeScratch.length = 0;
+    // (below a box: its bottom rounded up; above it: its top less the height, rounded down)
+    for (let i = 0; i < env.itemCount; i++) edgeScratch.push(Math.ceil(env.items[i * 4 + 3]), Math.floor(env.items[i * 4 + 2] - hh));
+    for (let i = 0; i < env.discCount; i++) {
+      const cy = env.discs[i * 3 + 1], reach = env.discs[i * 3 + 2];
+      edgeScratch.push(Math.ceil(cy + reach), Math.floor(cy - reach - hh));
+    }
+    for (const o of avoid) edgeScratch.push(Math.ceil(o.y + o.h + MOUSE_NOTICE_GAP_PX), Math.floor(o.y - MOUSE_NOTICE_GAP_PX - hh));
+  }
   walkFine(yPref, Math.ceil(input.top + MOUSE_NOTICE_GAP_PX), input.height - EDGE_PX - hh, () => Math.min(bound, out.cost) - base, (y, yCost) => {
     let extra: number[] | null = null;
     if (avoid.length) {
@@ -574,7 +596,7 @@ function singleBest(env: Env, w: number, h: number, yPref: number, base: number,
       out.cost = cost; out.x = m; out.y = y; out.lane = lane;
       for (let i = 0; i < 4; i++) out.giveWay[i] = env.lanes === 'yield' ? yieldScratch[i] : NaN;
     }
-  }, () => out.cost < Infinity ? out.y : NaN);
+  }, () => out.cost < Infinity ? out.y : NaN, marks);
   return out;
 }
 
@@ -749,16 +771,16 @@ function searchPair(input: MouseNoticeInput, envs: readonly Env[]): PairResult |
 
 const placeScratch = single();
 /** A candidate box for placeOne: its size, base cost and the notice places it keeps off. */
-type Option = readonly [w: number, h: number, base: number, avoid: readonly PlanRect[], shift?: number];
+type Option = readonly [w: number, h: number, base: number, avoid: readonly PlanRect[], shift?: number, edges?: boolean];
 /** The cheapest place for any of `options` from `yPref` in `env` (its keep-out; the lanes blocking or yielding). */
 function placeOne(env: Env, options: readonly Option[], yPref: number, price: LanePrice, partner: readonly number[] | null,
   out: { cost: number; option: number; s: Single }): boolean {
   const one = placeScratch;
   out.cost = Infinity;
   for (let i = 0; i < options.length; i++) {
-    const [w, h, base, avoid, shift] = options[i];
+    const [w, h, base, avoid, shift, edges] = options[i];
     if (base >= out.cost) continue;
-    singleBest(env, w, h, yPref, base, out.cost, one, avoid, price, partner, shift);
+    singleBest(env, w, h, yPref, base, out.cost, one, avoid, price, partner, shift, edges);
     if (one.cost < out.cost) {
       out.cost = one.cost; out.option = i;
       out.s.x = one.x; out.s.y = one.y; out.s.cost = one.cost; out.s.lane = one.lane;
@@ -863,13 +885,15 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
   // the alert's place, the detection's or both; the compact card only where the full one has no place at that keep-out.
   const { medal: full, medalCompact: compact } = input;
   const detOnly = [det];
+  // (the card's search also tries the rows just clear of each blocking box: `edges`)
   const medalOptions = (): readonly Option[] => [
-    [full.w, full.h, 0, notices, MEDAL_SHIFT_COST], [full.w, full.h, MEDAL_SHARE_ALERT_COST, detOnly, MEDAL_SHIFT_COST],
-    [full.w, full.h, MEDAL_SHARE_DETECTION_COST, alertOnly, MEDAL_SHIFT_COST], [full.w, full.h, MEDAL_SHARE_BOTH_COST, NONE, MEDAL_SHIFT_COST],
-    [compact.w, compact.h, MEDAL_COMPACT_COST, notices, MEDAL_SHIFT_COST],
-    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_ALERT_COST, detOnly, MEDAL_SHIFT_COST],
-    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_DETECTION_COST, alertOnly, MEDAL_SHIFT_COST],
-    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_BOTH_COST, NONE, MEDAL_SHIFT_COST]];
+    [full.w, full.h, 0, notices, MEDAL_SHIFT_COST, true], [full.w, full.h, MEDAL_SHARE_ALERT_COST, detOnly, MEDAL_SHIFT_COST, true],
+    [full.w, full.h, MEDAL_SHARE_DETECTION_COST, alertOnly, MEDAL_SHIFT_COST, true],
+    [full.w, full.h, MEDAL_SHARE_BOTH_COST, NONE, MEDAL_SHIFT_COST, true],
+    [compact.w, compact.h, MEDAL_COMPACT_COST, notices, MEDAL_SHIFT_COST, true],
+    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_ALERT_COST, detOnly, MEDAL_SHIFT_COST, true],
+    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_DETECTION_COST, alertOnly, MEDAL_SHIFT_COST, true],
+    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_BOTH_COST, NONE, MEDAL_SHIFT_COST, true]];
   const placeMedal = (): PlannedMedal | null => {
     // (its sharing is in its options: the steps are the keep-outs alone)
     const medalTier = place(medalOptions, Math.ceil(input.top + 16), MEDAL_LANES, false);

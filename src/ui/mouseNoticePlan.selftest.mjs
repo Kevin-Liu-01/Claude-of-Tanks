@@ -51,9 +51,17 @@ function inputFor(v, { objective = true, rosters = 7 } = {}) {
   if (phone) obstacles.push({ x: width - 10 - 96, y: top + 8, w: 96, h: 30 });
   const side = Math.min(400, width / 2 - 24);
   const lane = (x, from, to) => to - from >= 26 ? { x, w: side, top: from, bottom: to } : null;
+  // The census measured the lanes with the objective. A window without rosters starts them under whatever is above them
+  // as battleHudLayout.ts derives it: the objective, or the score without one (the left one also under a narrow window's
+  // fps/ping readout and a left-hand map; the right one under a phone-width window's network strip).
+  let leftTop = v.lanes[0], rightTop = phone ? Math.max(v.lanes[2], top + 46) : v.lanes[2];
+  if (!v.earL && !objective) {
+    leftTop = Math.max(top, width < 768 && v.net[1] < height / 2 ? v.net[1] + v.net[3] : 0, v.map[0] < width / 2 ? v.map[1] + v.map[3] : 0) + 8;
+    rightTop = phone ? top + 46 : top + 8;
+  }
   return {
     width, height, top, obstacles,
-    lanes: [lane(0, v.lanes[0], v.lanes[1]), lane(width - side, phone ? Math.max(v.lanes[2], top + 46) : v.lanes[2], v.lanes[3])],
+    lanes: [lane(0, leftTop, v.lanes[1]), lane(width - side, rightTop, v.lanes[3])],
     smallAlert: height <= 550 || width <= 480, compactDetection: height <= 550,
     countdown: { w: v.cd[0], h: v.cd[1] }, revive: { w: Math.min(390, width - 32), h: 129 },
     medal: { w: Math.min(380, width - 32), h: width > 640 ? 85 : 76 },
@@ -154,9 +162,10 @@ const LOW_TIER = { '844x390': { countdown: 0, revive: 0, medal: 1 }, '768x600': 
 // shows): the plan prices that as its last resort before any reticle ink.
 // (a row needs 26 px; beside the left lane's damage toasts 62, where the lane is that tall: mouseNoticePlan.ts laneRowPx)
 const rowPx = (side, lane) => side === 0 && lane.bottom - lane.top >= 62 ? 62 : 26;
-// (844 x 390's left lane is one row deep, and every place off both notices clear of the resting sight crosses it)
-const EMPTIED = ['844x390 revive l', '768x600 alert l', '768x600 detection+alert l', '768x600s revive l', '481x700 alert r',
-  '481x700 detection+alert r'];
+// (844 x 390's revive count: every place for it off both notices crosses the left lane whole, one row deep with an
+// objective and two without, so the lane yields them while the count shows: the plan's last resort before reticle ink)
+const EMPTIED = ['844x390 revive l', '844x390s revive l', '768x600 alert l', '768x600 detection+alert l', '768x600s revive l',
+  '481x700 alert r', '481x700 detection+alert r'];
 const emptied = [];
 let plans = 0, slowest = 0, ms = 0, work = 0, mostWork = 0;
 for (const v of VIEWPORTS) {
@@ -301,11 +310,11 @@ for (const v of VIEWPORTS) for (const rosters of v.earL ? [7, 14, 20] : [7]) for
     const b = Number.isNaN(medal.giveWay[side * 2 + 1]) ? lane.bottom : medal.giveWay[side * 2 + 1];
     const cut = rows(b - t) < rows(lane.bottom - lane.top), what = `${name}: the medal card's place cuts the ${side ? 'right' : 'left'} lane`;
     assert.equal(medal.cutsLanes[side], cut, `${what}: ${cut} (${rows(b - t)} of ${rows(lane.bottom - lane.top)} rows)`);
+    const feeds = side ? [false, true] : [true, false], none = { detection: false, alert: false, revive: false, scoped: false };
     if (cut) {
       assert.ok(v.vp[0] < 520, `${what} on a desktop window`);
-      const feeds = side ? [false, true] : [true, false], none = { detection: false, alert: false, revive: false, scoped: false };
       assert.ok(mouseMedalWaits(plan, { ...none, feeds }) && !mouseMedalWaits(plan, { ...none, feeds: [false, false] }), `${what}: it waits while that lane shows a row, and only then`);
-    }
+    } else assert.ok(!mouseMedalWaits(plan, { ...none, feeds }), `${name}: the ${side ? 'right' : 'left'} lane's kill rows hold back a card whose place leaves them all`);
   }
   // it keeps main's centred card wherever a place for the full card on the centre line, off the alert's place (sharing the
   // detection's at most), clears the keep-out, every instrument and the kill lanes (a card aside shows sooner, but the
@@ -341,6 +350,26 @@ for (const v of VIEWPORTS) for (const rosters of v.earL ? [7, 14, 20] : [7]) for
       assert.ok(plan[label], `768x${H}${objective ? '' : 's'}: the ${label} has a place`);
       assert.ok(intrusion(plan[label], mouseReticleFootprint(768, H, 0)) <= 0, `768x${H}${objective ? '' : 's'}: the ${label} keeps off the resting sight`);
     }
+  }
+}
+
+// 4e. The card's search finds a band narrower than its coarse step: 844 x 390 without an objective has one clear place
+//     for it off the lanes, y 295..296 between the gun-limit chip and the scope-vision toggle (on both notices' places,
+//     waiting while they show); stepping over it put the card over the left lane, held back by every kill row. 820 x 400
+//     (the 844 x 390 boxes moved with their anchors) likewise: no card cuts a lane there.
+{
+  const v = VIEWPORTS.find((x) => x.vp[0] === 844 && x.vp[1] === 390);
+  const std = planMouseNotices(inputFor(v, { objective: false }));
+  assert.ok(std.medal.y === 295 && std.medal.sharesNotices && !std.medal.cutsLanes.some(Boolean),
+    `844x390 (standard): the card takes the narrow band at y 295 (it is at ${Math.round(std.medal.x)},${std.medal.y}, cuts ${std.medal.cutsLanes})`);
+  const moved = (w, h) => {
+    const dw = w - 844, dh = h - 390, c = (b) => [b[0] + dw / 2, b[1], b[2], b[3]], r = (b) => [b[0] + dw, b[1], b[2], b[3]], down = (b) => [b[0], b[1] + dh, b[2], b[3]];
+    return { ...v, vp: [w, h], score: c(v.score), obj: c(v.obj), map: down(r(v.map)), dp: down(v.dp), drive: down(v.drive), sys: down(c(v.sys)),
+      ammo: down(c(v.ammo)), card: down(r(v.card)), net: r(v.net), lanes: [v.lanes[0], v.lanes[1] + dh, v.lanes[2], v.lanes[3] + dh] };
+  };
+  for (const objective of [true, false]) {
+    const plan = planMouseNotices(inputFor(moved(820, 400), { objective }));
+    assert.ok(!plan.medal.cutsLanes.some(Boolean), `820x400${objective ? '' : ' (standard)'}: the card cuts no lane (${Math.round(plan.medal.x)},${plan.medal.y})`);
   }
 }
 
