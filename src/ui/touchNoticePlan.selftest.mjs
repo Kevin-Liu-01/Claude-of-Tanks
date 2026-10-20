@@ -28,6 +28,28 @@ const boxOf = (cx, y, size) => ({ x0: cx - size.w / 2, y0: y, x1: cx + size.w / 
   assert.equal(touchFreePlace({ w: 390, h: 30 }, 200, 0, 400, 300, [], 6), null, 'no place wider than the screen allows');
 }
 
+// 1b. r10g: a button's label keeps a notice off it where a place clears, and where none does the notice covers the label
+// before the sight's footprint (at 375x667 the alert sat on AUTO AIM and SCOPE; the labels are not the buttons' boxes).
+{
+  const base = { width: 600, height: 400, top: 20, soft: [], scope: false, seated: false, notice: { w: 100, h: 30 },
+    alert: { w: 100, h: 30 }, countdown: null, banner: null, fallbackTop: 0 };
+  const keep = touchSightKeepOut(600, 400, false, false);
+  const [kx0, ky0, kx1, ky1] = [Math.min(...keep.map((b) => b.x0)), Math.min(...keep.map((b) => b.y0)),
+    Math.max(...keep.map((b) => b.x1)), Math.max(...keep.map((b) => b.y1))];
+  // (walls everywhere but a band under the score and the footprint itself)
+  const walls = [{ x0: 0, y0: 0, x1: 600, y1: 20 }, { x0: 0, y0: 70, x1: kx0, y1: 400 }, { x0: kx1, y0: 70, x1: 600, y1: 400 },
+    { x0: kx0, y0: ky1, x1: kx1, y1: 400 }, { x0: kx0, y0: 70, x1: kx1, y1: ky0 }];
+  const label = { x0: 0, y0: 30, x1: 600, y1: 56 };
+  assert.ok(planTouchNotices({ ...base, obstacles: walls }).cleared, 'without the label the band holds both notices');
+  const plan = planTouchNotices({ ...base, obstacles: walls, labels: [label] });
+  assert.ok(!plan.cleared, 'a label across the band leaves the notices no clear place');
+  for (const [name, box] of [['detection', boxOf(plan.noticeCx, plan.noticeTop, TOUCH_COMPACT_NOTICE)],
+    ['alert', boxOf(plan.alertCx, plan.alertTop, TOUCH_COMPACT_ALERT)]]) {
+    assert.ok(apart(box, label) < 0 && keep.every((block) => apart(box, block) >= 0),
+      `where none clears the ${name} covers the label, not the footprint (${JSON.stringify(plan)})`);
+  }
+}
+
 // 2. Every recorded touch size and stage.
 const uncleared = new Set();
 let planned = 0;

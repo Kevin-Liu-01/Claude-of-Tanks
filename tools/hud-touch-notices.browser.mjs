@@ -5,7 +5,8 @@
 // countdown on the ring and the medal card on the scope's readout row. This rendered regression stages the critic's
 // scenes (out-of-ammo states, the battle sight and the scope, at full bloom and at rest, with the detection, the alert,
 // the countdown and a medal) at every touch size, records the reticle's real ink (recordReticle) and measures each notice
-// against it, the seated warning chip, the vision plate, the aim hint and the other notices: each keeps 3 px. Where the
+// against it, the seated warning chip, the vision plate, the aim hint and the other notices, and (r10g: the alert sat on
+// the AUTO AIM and SCOPE labels at 375x667) the controls, their labels and the panels: each keeps 3 px. Where the
 // layout found no place that keeps clear (body[data-touch-notices~='uncleared'], touchNoticePlan.ts) the gaps are notes,
 // not failures, and the report lists them. No screenshot.
 // node tools/hud-touch-notices.browser.mjs --url=http://127.0.0.1:5189 [--out=outputs/hud-touch-notices] [--case=360x640,...]
@@ -30,9 +31,13 @@ const TOUCH_NOTICE_SCENES = [
   ['g-reload-battle-rest', 'ammo-reload', 'battle', 'rest', true, 'det+alert'],
 ];
 const NOTICES = ['detection', 'alert', 'countdown', 'medal'];
+// the controls, their labels and the panels a notice keeps clear of (battleHudLayout TOUCH_NOTICE_OBSTACLES and _SOFT)
+const FURNITURE = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .round>.lb',
+  '.cot-touch.on .joy', '.cot-touch.on .quick', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
+  '.cot-ear', '.flight-identity'];
 
 /** In the page: stages a scene and returns the notices' boxes, the reticle's ink, the chip, the plate and the hint. */
-async function stageScene([stage, sight, bloom, warn, set]) {
+async function stageScene([stage, sight, bloom, warn, set, furniture]) {
   const { MEDALS } = await import('/src/game/serviceRecord.ts');
   const f = window.__HUD_LAYOUT;
   document.querySelector('.cot-hud').classList.remove('rosters-expanded');
@@ -67,6 +72,10 @@ async function stageScene([stage, sight, bloom, warn, set]) {
     medal: document.querySelector('.cot-medal-toasts')?.dataset.placement === 'ready' ? box('.cot-medal-toasts .cot-medal-toast') : null,
     chip: box('.cot-aim-warning:not([hidden])'), vision: box('.cot-scope-vision'), hint: box('.cot-touch-aim.on .aimhint'),
     ink: window.__RETICLE_LOG.paint.filter((op) => op.box).map((op) => ({ ...op.box, what: op.text ?? (op.ring ? 'ring' : op.op) })),
+    furniture: furniture.flatMap((selector) => [...document.querySelectorAll(selector)]
+      .filter((node) => node.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }))
+      .map((node) => { const r = node.getBoundingClientRect(); return { x0: r.left, y0: r.top, x1: r.right, y1: r.bottom, what: selector }; })
+      .filter((box) => box.x1 - box.x0 >= 1 && box.y1 - box.y0 >= 1)),
     uncleared: (document.body.dataset.touchNotices ?? '').split(' ').includes('uncleared'),
   };
 }
@@ -80,6 +89,7 @@ function noticeGaps(scene) {
     if (!notice) continue;
     let least = [Infinity, ''];
     for (const ink of scene.ink) { const gap = apart(notice, ink); if (gap < least[0]) least = [gap, `ink ${ink.what}`]; }
+    for (const box of scene.furniture) { const gap = apart(notice, box); if (gap < least[0]) least = [gap, box.what]; }
     for (const other of ['chip', 'vision', 'hint', ...NOTICES]) {
       if (other === name || !scene[other]) continue;
       const gap = apart(notice, scene[other]);
@@ -107,7 +117,7 @@ try {
       await page.goto(`${url}/tools/fixtures/battle-hud-layout.html?locale=en-US`, { waitUntil: 'networkidle', timeout: 300_000 });
       await page.waitForFunction(() => !!window.__HUD_LAYOUT, null, { timeout: 300_000 });
       await page.evaluate(() => document.fonts?.ready);
-      const staged = await page.evaluate(stageScene, staging);
+      const staged = await page.evaluate(stageScene, [...staging, FURNITURE]);
       const gaps = noticeGaps(staged);
       const short = Object.entries(gaps).filter(([, [gap]]) => gap < 3 - 1e-6);
       for (const [name, [gap, what]] of short) {

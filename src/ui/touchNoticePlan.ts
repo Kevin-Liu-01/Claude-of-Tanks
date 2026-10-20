@@ -11,7 +11,7 @@
  * it (the rack, the struck round, the countdown and the seated warning chip, at most max(62, r + 24) + 10 under the
  * marker, 180 px wide) and the chip's seat over the ring where a small portrait phone sends it; through the scope the
  * circle at 1.55 r + 3, the readout row and zoom plate under it (its rest, sniperReadoutStack), the range tag at the 4:30,
- * and the row over the circle where a short landscape or a seated chip sends it. The vision plate, the panels and the
+ * the row over the circle where a short landscape sends it, and the row and a seated chip stacked over the ring. The vision plate, the panels and the
  * controls are measured and passed in (`obstacles`), the map, the score and the objective, the rosters, the network
  * readouts and the feed lanes with them (`soft`).
  *
@@ -24,7 +24,7 @@
  * then the detection, then both in their compact form (the short landscapes' 136 px notice, the alert in 8 px type). The
  * alert's slot is the detection's width, so its wrapped height holds. Where no place keeps clear (the smallest phones),
  * each element takes the least intrusive one, reaching into the footprint (modelled at full bloom) before it covers any
- * panel or control (`cleared` false). The medal card takes the highest free place off them all, or waits (`bannerReady` false), keeping its time.
+ * panel or control, and over a button's label before the footprint (`cleared` false). The medal card takes the highest free place off them all, or waits (`bannerReady` false), keeping its time.
  *
  * DOM-free and deterministic; battleHudLayout.ts measures the inputs on each relayout. touchNoticePlan.selftest.mjs checks
  * every recorded touch size; tools/hud-touch-notices.browser.mjs measures the rendered boxes against the reticle's ink.
@@ -72,10 +72,13 @@ export function touchSightKeepOut(width: number, height: number, scope: boolean,
     { x0: cx - 110, y0: cy, x1: cx + 170, y1: cy + rest + 30 },
     // the range tag at the 4:30 (or the 1:30)
     { x0: cx, y0: cy - r * 0.71 - 16, x1: cx + r * 0.71 + 64, y1: cy + r * 0.71 + 16 }];
-  // the row over the ring, whatever its size, its zoom plate reaching past the circle (a short landscape's), and over the
-  // circle (a seated chip's)
+  // the row over the ring, whatever its size, its zoom plate reaching past the circle (a short landscape's), and a seated
+  // chip with it: hud.ts sets the row 3 px over the ring and the chip 3 px over or under the row (sniperReadoutStack's
+  // 'rowAbove'), so the stack reaches the ring's halo, 3 + 24 + 3 + 20 px past it, not past the arms' ends (r10g: the
+  // circle plus 30 px kept a portrait phone's notices 20 px over the real stack, and its top slot left them no place)
   boxes.push({ x0: cx - 110, y0: cy - ring - 3 - 40, x1: cx + 170, y1: cy });
-  if (height <= 430 || seated) boxes.push({ x0: cx - 110, y0: cy - circle - 30, x1: cx + 170, y1: cy - circle });
+  if (height <= 430) boxes.push({ x0: cx - 110, y0: cy - circle - 30, x1: cx + 170, y1: cy - circle });
+  else if (seated) boxes.push({ x0: cx - 110, y0: cy - Math.max(circle, ring + 3 + 24 + 3 + 20), x1: cx + 170, y1: cy });
   return boxes;
 }
 
@@ -140,6 +143,9 @@ interface TouchNoticeInput {
   readonly obstacles: readonly TouchBox[];
   /** The map, the score and the objective, the rosters, the network readouts, the feed lanes: kept clear of alike. */
   readonly soft: readonly TouchBox[];
+  /** The round buttons' labels: kept clear of alike; where nothing clears, a notice covers one before the footprint
+   *  (a few letters of a label under it, rather than the sight's readouts: LABEL_WEIGHT). */
+  readonly labels?: readonly TouchBox[];
   readonly scope: boolean;
   /** The warning chip sits by the sight (touchSightKeepOut). */
   readonly seated: boolean;
@@ -167,6 +173,8 @@ interface TouchNoticePlan {
 
 /** The countdown's scales, largest first. */
 const COUNTDOWN_SCALES = [1, 0.8, 0.6];
+/** A label's cost in a least intrusive place, per px² (the footprint's is 1, a panel's or a control's 10). */
+const LABEL_WEIGHT = 0.25;
 const scaled = (size: TouchSize, scale: number): TouchSize => ({ w: size.w * scale, h: size.h * scale });
 
 /** The candidates after integ's place: [together, the detection compact, the alert compact] (see the module's note). */
@@ -180,7 +188,8 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
   const cx = width / 2;
   // (the footprint's boxes drawn in by the difference, so a uniform gap keeps TOUCH_SIGHT_GAP from them)
   const keep = touchSightKeepOut(width, height, scope, seated).map((box) => grow(box, TOUCH_SIGHT_GAP - gap));
-  const blocks = [...input.obstacles, ...input.soft, ...keep];
+  const labels = input.labels ?? [];
+  const blocks = [...input.obstacles, ...input.soft, ...labels, ...keep];
   // (integ's 8 px under the score and the objective)
   const start = top + INTEG_STACK_GAP;
   const plan: TouchNoticePlan = { noticeCx: cx, noticeTop: input.fallbackTop, alertCx: cx,
@@ -189,7 +198,7 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
   // (where nothing clears, a notice reaches into the footprint before it covers a panel or a control: the footprint is
   // modelled at full bloom, and the panels are there whole)
   const layers = (extra: readonly TouchBox[]) =>
-    [[keep, 1], [[...input.obstacles, ...extra], 10], [input.soft, 10]] as const;
+    [[keep, 1], [[...input.obstacles, ...extra], 10], [input.soft, 10], [labels, LABEL_WEIGHT]] as const;
   // the countdown first: the alert may show with it, the detection never (nothing spots the player before the roll-out)
   const placed: TouchBox[] = [];
   if (input.countdown) {
