@@ -220,7 +220,10 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
     for (const h of area.holds) {
       for (const b of blockers) {
         if (b.kind === 'structure') continue;
-        if (b.kind === 'lamp' && baseBlockers.has(`${b.kind}@${((b.x0 + b.x1) / 2).toFixed(1)},${((b.z0 + b.z1) / 2).toFixed(1)}`)) continue;
+        const onBase = baseBlockers.has(`${b.kind}@${((b.x0 + b.x1) / 2).toFixed(1)},${((b.z0 + b.z1) / 2).toFixed(1)}`);
+        if (b.kind === 'lamp' && onBase) continue;
+        // (229 b3 r2) a plan-only hold (a zone's 30 m disc) leaves what the map stands there without the plan to the map
+        if (h.planOnly && onBase) continue;
         const d = Math.hypot(Math.max(b.x0 - h.x, 0, h.x - b.x1), Math.max(b.z0 - h.z, 0, h.z - b.z1));
         assert.ok(d >= h.r, `${tag}: ${b.kind} at (${((b.x0 + b.x1) / 2).toFixed(1)}, ${((b.z0 + b.z1) / 2).toFixed(1)}) in the ${h.id} disc (${d.toFixed(2)} m, ${h.r})`);
       }
@@ -255,8 +258,9 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
     }
     console.log(`${tag}: ${records.length} records in the room, ${civicTrees.length} trees, ${benches} benches, ${lamps.length} lamps (${roundCrossing} round the crossing), `
       + `open share ${(share * 100).toFixed(1)} %, largest free disc r ${largest.toFixed(1)} m, lanes ${JSON.stringify(widths)}, vetoed ${JSON.stringify(built.group.userData.civic?.vetoed ?? {})}`);
-    // (live records: the props' destructibles and the trees' trunks)
-    assert.ok(records.length + civicTrees.length >= T.records, `${tag}: ${records.length} records and ${civicTrees.length} trunks in the room (${T.records})`);
+    // (live records: the props' destructibles and the trees' trunks; 229 b1 r3, the critic's D4: the trunks in the room only)
+    const roomTrees = civicTrees.filter((t) => inRect(room, t.x, t.z));
+    assert.ok(records.length + roomTrees.length >= T.records, `${tag}: ${records.length} records and ${roomTrees.length} trunks in the room (${T.records})`);
     assert.ok(share <= T.openShare, `${tag}: ${(share * 100).toFixed(1)} % of the room's paving more than 4 m from anything (off the arms, the roundel, the corridors and the lanes; ${(T.openShare * 100).toFixed(0)} %)`);
     assert.ok(largest <= T.largestDisc, `${tag}: the largest free disc ${largest.toFixed(1)} m at (${largestAt[0].toFixed(1)}, ${largestAt[1].toFixed(1)}) off the arms, the corridors and the lanes (${T.largestDisc})`);
   }

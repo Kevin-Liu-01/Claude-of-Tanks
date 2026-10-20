@@ -43,6 +43,13 @@ function plaza(id: string, pad: number, mirror: boolean): CivicAreaPlan {
     parterre(`${id}-e1`, R({ x0: 13, x1: 32, z0: -205, z1: -178 })), parterre(`${id}-e2`, R({ x0: 13, x1: 32, z0: -166, z1: -139 })),
   ];
   const cz = mirror ? 172 : -172;
+  // (229 b1 r3, the gameplay critic's D2 and the coordinator's ruling: no piece on a driven line) nothing hull-high in the
+  // zone's 30 m disc, and past it none of the pieces the hulls drove over on the line from the plaza to zone 3 (the west
+  // paseo bed's north-west quarter; its south twin's numbers, mirrored for the north)
+  // (and, the branch's own battles, the paseo beds' arm-side north quarters' trees, rammed in 3 of 6)
+  const HOT: ReadonlyArray<readonly [number, number]> = [[-25.5, -149.5], [-27.25, -145.75], [-11.2, -140.5], [-17.75, -145.75], [17.75, -145.75]];
+  const keep = (x: number, z: number, r: number): boolean => Math.hypot(x, z - cz) > 30 + r
+    && !HOT.some(([hx, hz]) => Math.hypot(hx - x, hz - (mirror ? -z : z)) < 0.05);
   // orange trees in each bed's four quarters, the quarters' middles
   const stations = [...beds.flatMap((b) => {
     const r = b.rect, mx = (r.x0 + r.x1) / 2, mz = (r.z0 + r.z1) / 2;
@@ -52,7 +59,7 @@ function plaza(id: string, pad: number, mirror: boolean): CivicAreaPlan {
   // (229 b1 r1, the critics: a wide empty band round the parterres) a row down the paseo between each side's two beds, in
   // their grates, and a row before the casa consistorial
   ...[16, 22.5, 29].flatMap((x) => [{ x, z: cz, grate: true }, { x: -x, z: cz, grate: true }]),
-  ...[-170, -163.5, -157, -150.5, -144].map((z) => ({ x: -45, z: mirror ? -z : z, grate: true }))];
+  ...[-170, -163.5, -157, -150.5, -144].map((z) => ({ x: -45, z: mirror ? -z : z, grate: true }))].filter((t) => keep(t.x, t.z, 0.6));
   // benches on each glorieta's diagonals facing in
   const benches = [...beds.flatMap((b) => {
     const r = b.rect, mx = (r.x0 + r.x1) / 2, mz = (r.z0 + r.z1) / 2;
@@ -61,7 +68,8 @@ function plaza(id: string, pad: number, mirror: boolean): CivicAreaPlan {
   // (229 b1 r1) the paseo's benches between its trees, facing across it, and before the casa consistorial between its
   // trees, facing the plaza
   ...P([[19.25, -174.4, 0], [25.75, -169.6, 180], [-19.25, -174.4, 0], [-25.75, -169.6, 180],
-    [-45, -166.75, 90], [-45, -153.75, 90], [-45, -147.25, 90]].map(([x, z, yawDeg]) => ({ kind: 'bench', x, z, yawDeg })))];
+    [-45, -166.75, 90], [-45, -153.75, 90], [-45, -147.25, 90]].map(([x, z, yawDeg]) => ({ kind: 'bench', x, z, yawDeg })))]
+    .filter((b) => keep(b.x, b.z, 1.0));
   return {
     id, room,
     paved: R({ x0: -52, x1: 43, z0: -216, z1: -128 }),
@@ -77,7 +85,7 @@ function plaza(id: string, pad: number, mirror: boolean): CivicAreaPlan {
       ? { from: [0, 132], to: [0, 212], half: 9 } : { from: [0, -212], to: [0, -132], half: 9 },
     mirror ? { from: [-36, 131], to: [-8, 131], half: 4 } : { from: [-36, -131], to: [-8, -131], half: 4 }],
     lanes: [],
-    holds: [],
+    holds: [{ id: mirror ? 'zone-2' : 'zone-1', x: 0, z: cz, r: 30, planOnly: true }],
     centre: { x: 0, z: cz, ringR: [8.5, 9.0], roseR: 3, rays: 8 },
     beds,
     // (229 b1 r1, the blind critics: "raw dark asphalt" round the beds) the plaza floored in pale stone tiles round its beds,
@@ -105,11 +113,13 @@ function plaza(id: string, pad: number, mirror: boolean): CivicAreaPlan {
     // cast-iron column lamps at the beds' corners by the arm
     lamps: P([[-11.2, -203.5], [11.2, -203.5], [-11.2, -140.5], [11.2, -140.5],
       // (229 b1 r1) at the paseo's ends by the arm, and before the casa consistorial
-      [11.5, -172], [-11.5, -172], [-41.5, -160.25], [-41.5, -147.25]].map(([x, z]) => ({ kind: 'lamp', x, z, yawDeg: 0 }))),
+      [11.5, -172], [-11.5, -172], [-41.5, -160.25], [-41.5, -147.25]].map(([x, z]) => ({ kind: 'lamp', x, z, yawDeg: 0 })))
+      .filter((l) => keep(l.x, l.z, 0.3)),
     fountainRing: null,
     steps: [],
     lawns: beds.map((b) => b.rect),
-    targets: { records: 60, benches: 12, lawnM2: 1500, lampsAround: 4, openShare: 0.08, largestDisc: 10 },
+    // (229 b1 r3: the zone's disc and the line to zone 3 cleared)
+    targets: { records: 24, benches: 6, lawnM2: 1500, lampsAround: 4, openShare: 0.08, largestDisc: 10 },
   };
 }
 
