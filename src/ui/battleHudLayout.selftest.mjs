@@ -234,8 +234,9 @@ try {
     if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];
   }
 }
-// The notice plan in a deterministic DOM with real class lists (desk-notices 229): a scope toggle relayouts nothing
-// unless a queued medal card waits on it.
+// The notice plan in a deterministic DOM with real class lists (desk-notices 229): the touch layout never plans and
+// writes none of the plan's attributes; a scope toggle relayouts nothing unless a queued medal card waits on it; the
+// first plan made while Tab is held is the one releasing Tab keeps.
 {
   const saved=new Map(['document','window','ResizeObserver','MutationObserver','requestAnimationFrame','getComputedStyle',
     'setTimeout','clearTimeout'].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
@@ -266,6 +267,19 @@ try {
     return {root,body,html,properties,frames,flush,mutate:records=>observer(records),node,parts};
   }
   try {
+    // touch: no plan (mouseNoticePlanWork untouched), no plan attribute, variable or class, and main's own notice tops
+    mouseNoticePlanWork.bands=-1;
+    const touch=harness({touch:true});
+    assert.equal(mouseNoticePlanWork.bands,-1,'the touch layout makes no notice plan');
+    assert.equal(touch.body.hasAttribute('data-hud-notices'),false,'the touch layout carries no plan attribute');
+    assert.equal(touch.body.dataset.hudNoticeTiers,undefined,'nor the receipt\'s tiers');
+    for(const name of ['notice-x','alert-x','alert-width','alert-shift','banner-x','countdown-x','countdown-top','countdown-scale',
+      'revive-x','revive-top','revive-scale','roster-wide-left','roster-wide-right'])
+      assert.equal(touch.properties.has(`--hud-${name}`),false,`the touch layout writes no --hud-${name}`);
+    assert.deepEqual([...touch.root.classList.set].sort(),['cot-hud'],'nor a class on the HUD root');
+    // main's rule: under the score at 12 % of the height (no instrument in the way), the alert 8 px under a 48 px detection
+    assert.equal(touch.properties.get('--hud-notice-top'),`${Math.floor(Math.max(62+8,768*.12))}px`);
+    assert.equal(touch.properties.get('--hud-alert-top'),`${Math.floor(Math.max(62+8,768*.12)+48+8)}px`);
     // the mouse layout of the same window plans and carries it (the check above is not blind)
     mouseNoticePlanWork.bands=-1;
     const mouse=harness();
@@ -275,6 +289,13 @@ try {
     // the scope flag (hud.ts, on the document element) schedules nothing while no medal card waits
     mouse.mutate([{type:'attributes',target:mouse.html,attributeName:'data-cot-scoped'}]);
     assert.equal(mouse.frames.size,0,'a scope toggle relayouts nothing');
+    // Tab held for the first plan: the rosters' resting boxes, read with the class lifted, give the plan releasing keeps
+    const ears={'.cot-ear.l':r=>r.classList.contains('rosters-expanded')?rect(0,52,560,420):rect(0,52,194,189),
+      '.cot-ear.r':r=>r.classList.contains('rosters-expanded')?rect(1366-560,52,560,420):rect(1366-194,52,194,189)};
+    const keys=h=>['notice-x','notice-top','alert-x','alert-top','alert-width'].map(k=>h.properties.get(`--hud-${k}`)).join(' ');
+    const held=harness({tab:true,elements:ears}),rest=harness({elements:ears});
+    assert.equal(held.root.classList.contains('rosters-expanded'),true,'the class is back on after the read');
+    assert.equal(keys(held),keys(rest),'the plan made while Tab is held is the resting one');
     // A medal card queued while the revive count shows (a medal can arrive after the death) waits exactly where the two
     // places meet: the written places (the card's centre and top, the count's centre, top and scale) decide it.
     let met=0,apart=0;

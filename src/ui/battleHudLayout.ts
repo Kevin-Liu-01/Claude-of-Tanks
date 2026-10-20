@@ -445,7 +445,15 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const rosterCountLeft = Number(root.querySelector<HTMLElement>('.cot-ear.l')?.dataset.count) || 0;
       const size = width * 65536 + height, counts = rosterCountLeft * 4096 + rosterCount;
       if (!expanded) restingEars = { size, left: earLeft, right: earRight, counts };
-      const resting = expanded && restingEars?.size === size && restingEars.counts === counts ? restingEars : null;
+      else if (!(restingEars?.size === size && restingEars.counts === counts)) {
+        // The first plan for this window and these rosters is made while Tab is held: the rosters at rest are read with
+        // the class lifted for the read (no frame between; the observers see the same final class), so the plan is the
+        // one releasing Tab keeps.
+        root.classList.remove('rosters-expanded');
+        restingEars = { size, left: read('.cot-ear.l'), right: read('.cot-ear.r'), counts };
+        root.classList.add('rosters-expanded');
+      }
+      const resting = expanded ? restingEars : null;
       const planLeft = resting ? resting.left : earLeft, planRight = resting ? resting.right : earRight;
       // the lanes as they start below the resting rosters
       const planLeftAnchor = planLeft === earLeft ? leftAnchor : Math.max(top, planLeft?.bottom || 0,
