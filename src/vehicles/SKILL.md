@@ -325,7 +325,7 @@ For every added or changed playable tank, run this required sequence:
 1. `npm run tank:anatomy:update` — remeasure the complete playable fleet and
    regenerate every tank's armor, module, and crew cards.
 2. `npm run tank:anatomy:check` — fail on stale receipts or visual drift.
-   Both steps also hold each tank's belly pan, track bottom and combat hull box to
+   Both steps also hold each tank's belly pan, track bottom, combat hull box and turret floor to
    `docs/geometry-gate/sim-floors.json`: a move over 5 cm fails and names the part and
    its builder line. Keep accessories above the belly and out of the structural
    buckets; accept an intended move only with a reason

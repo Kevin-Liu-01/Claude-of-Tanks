@@ -14,8 +14,9 @@ import { rigidHullFrame } from './rigid-hull-frame.mjs';
 enableCombatAnatomyMeasurementMode();
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 
-// The structural buckets that calibrate the combat hull box (gen-combat-anatomy PRIMARY_BUCKETS.hull).
+// The structural buckets that calibrate the combat hull and turret boxes (gen-combat-anatomy PRIMARY_BUCKETS).
 const STRUCTURAL_HULL_BUCKETS = new Set(['hull', 'hullGun']);
+const STRUCTURAL_TURRET_BUCKETS = new Set(['turret']);
 
 function captureFrames() {
   const limit = Error.stackTraceLimit;
@@ -35,8 +36,8 @@ function visibleBelow(object, root) {
 const writesColor = (material) => (Array.isArray(material) ? material : [material]).some((m) => m && m.colorWrite !== false);
 
 /**
- * The live parts of `id` in both frames, each with its author site. `parts[i].hull` / `.root` hold
- * `{ min, max }` in the hull rig frame and the tank root frame.
+ * The live parts of `id` in every gated frame, each with its author site. `parts[i].hull` / `.turret` / `.root` hold
+ * `{ min, max }` in the hull rig, turret rig and tank root frames.
  */
 function floorParts(id, { create = createTank } = {}) {
   const census = [];
@@ -49,9 +50,11 @@ function floorParts(id, { create = createTank } = {}) {
     rigidHullFrame(tank, id);
     const root = tank.root;
     const hullRig = root.getObjectByName('rig_hull');
-    if (!hullRig) throw new Error(`${id}: articulation rigs missing`);
+    const turretRig = root.getObjectByName('rig_turret');
+    if (!hullRig || !turretRig) throw new Error(`${id}: articulation rigs missing`);
     root.updateMatrixWorld(true);
     const invHull = hullRig.matrixWorld.clone().invert();
+    const invTurret = turretRig.matrixWorld.clone().invert();
     const invRoot = root.matrixWorld.clone().invert();
     const meshes = new Map();
     root.traverse((object) => { if (object.geometry && !meshes.has(object.name)) meshes.set(object.name, object); });
@@ -71,11 +74,13 @@ function floorParts(id, { create = createTank } = {}) {
       const bounds = mesh.geometry.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(invRoot, mesh.matrixWorld));
       // restPoseContact.centerSpanningMeshBottomY: a mesh whose box crosses the centreline offers a belly-pan floor
       const colour = writesColor(mesh.material);
+      const armour = colour && mesh.userData?.combatHitboxRole === 'armor';
       const info = {
         centreSpanning: bounds.min.x < -0.2 && bounds.max.x > 0.2,
         visible: colour && visibleBelow(mesh, root),
         // gen-combat-anatomy selectedObjects: a colour-writing mesh of the bucket with the armour hit role
-        structural: STRUCTURAL_HULL_BUCKETS.has(mesh.name) && colour && mesh.userData?.combatHitboxRole === 'armor',
+        structural: STRUCTURAL_HULL_BUCKETS.has(mesh.name) && armour,
+        turretStructural: STRUCTURAL_TURRET_BUCKETS.has(mesh.name) && armour,
       };
       meshInfo.set(mesh, info);
       return info;
@@ -87,6 +92,7 @@ function floorParts(id, { create = createTank } = {}) {
       const info = infoFor(mesh);
       const local = new THREE.Box3(new THREE.Vector3().fromArray(receipt.min), new THREE.Vector3().fromArray(receipt.max));
       const hullBox = local.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(invHull, mesh.matrixWorld));
+      const turretBox = local.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(invTurret, mesh.matrixWorld));
       const rootBox = local.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(invRoot, mesh.matrixWorld));
       const site = sites.get(boxKey(receipt.min, receipt.max));
       parts.push({
@@ -95,9 +101,11 @@ function floorParts(id, { create = createTank } = {}) {
         site: site?.site ?? null,
         caller: site?.caller ?? null,
         structural: info.structural,
+        turretStructural: info.turretStructural,
         centreSpanning: info.centreSpanning,
         visible: info.visible,
         hull: { min: hullBox.min.toArray(), max: hullBox.max.toArray() },
+        turret: { min: turretBox.min.toArray(), max: turretBox.max.toArray() },
         root: { min: rootBox.min.toArray(), max: rootBox.max.toArray() },
       });
     }

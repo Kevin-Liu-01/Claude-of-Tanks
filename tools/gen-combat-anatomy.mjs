@@ -21,8 +21,8 @@ import { ConvexHull } from 'three/addons/math/ConvexHull.js';
 import { weaponCollisionReceipts } from './weapon-collision-receipts.mjs';
 import { rigidHullFrame } from './rigid-hull-frame.mjs';
 import {
-  acceptFloorRows, acceptHint, compareFloorRows, floorRowOf, formatFloorDrift, parseFloorAccepts, readFloorLedger,
-  seedFloorRows, writeFloorLedger,
+  acceptFloorRows, acceptHint, compareFloorRows, floorRowOf, formatFloorDrift, parseFloorAccepts, readCommittedCalibrations,
+  readFloorLedger, seedFloorRows, writeFloorLedger,
 } from './anatomy-floor-ledger.mjs';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import {
@@ -677,11 +677,14 @@ const floorLedger = readFloorLedger();
 const floorAccepts = parseFloorAccepts(process.argv, process.env, '--accept-floor=');
 if (check && floorAccepts.length) throw new Error('[combat-anatomy] --accept-floor / COT_ACCEPT_FLOOR_DRIFT records new values: run it without --check');
 const floorBy = process.env.COT_LANE || userInfo().username;
+// The calibration on disk before this run writes: only an id it has never measured is new. A calibrated tank whose
+// ledger row is missing is compared with that committed calibration and fails; it is never seeded (guards 229).
+const committedFloorRows = readCommittedCalibrations();
 const floorLedgerChanges = [];
 if (!check) {
   const { changed } = acceptFloorRows(floorLedger, rows, floorAccepts, { by: floorBy });
   if (changed.length) floorLedgerChanges.push(`accepted ${changed.join(', ')}`);
-  const seeded = seedFloorRows(floorLedger, rows, measuredIds, { by: floorBy });
+  const { seeded } = seedFloorRows(floorLedger, rows, measuredIds, { committed: committedFloorRows, by: floorBy });
   if (seeded.length) floorLedgerChanges.push(`first rows for ${seeded.join(', ')}`);
   if (!onlyIds) {
     const gone = Object.keys(floorLedger.rows).filter((id) => !ALL_TANK_IDS.includes(id));
@@ -711,8 +714,19 @@ if (floorResult.drifts.size) {
     : `  intended move: ${acceptHint(drifting)} (these outputs are written), or re-run with --accept-floor=`
       + `${drifting.join(',')}:'<what moved and why>' (COT_ACCEPT_FLOOR_DRIFT through an npm chain)`);
 }
-if (floorResult.missing.length) floorReport.push(`[combat-anatomy] SIM FLOOR: no ledger row for ${floorResult.missing.join(', ')} `
-  + '(the write mode seeds a new tank\'s row)');
+if (floorResult.missing.length) {
+  floorReport.push(`[combat-anatomy] SIM FLOOR: no ledger row for ${floorResult.missing.join(', ')}: a calibrated tank's row `
+    + 'is never re-seeded (the write mode seeds only an id the committed calibration has never measured); restore the row '
+    + `from git, or record it: ${acceptHint(floorResult.missing)}`);
+  // what the lost row would have caught: the fresh measurement against the committed calibration
+  for (const id of floorResult.missing.filter((id) => committedFloorRows[id])) {
+    const against = compareFloorRows({ [id]: floorRowOf(committedFloorRows[id], id) }, { [id]: floorRowOf(rows[id], id) },
+      { ids: [id], toleranceM: floorLedger.toleranceM });
+    const moved = against.drifts.get(id);
+    floorReport.push(moved ? `  ${id} against its committed calibration:` : `  ${id}: within ${floorLedger.toleranceM * 100} cm of its committed calibration`);
+    if (moved) floorReport.push(...formatFloorDrift(id, moved));
+  }
+}
 if (floorResult.extra.length) floorReport.push(`[combat-anatomy] SIM FLOOR: ledger rows for ids no longer in the fleet: `
   + `${floorResult.extra.join(', ')} (node tools/anatomy-floor-drift.mjs --prune)`);
 

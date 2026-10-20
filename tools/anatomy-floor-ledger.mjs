@@ -30,8 +30,10 @@ const localDate = () => new Date().toLocaleDateString('en-CA');
 
 /**
  * The gated fields. `frame` is where the value is measured: `root` (the tank root, trackContact as
- * src/vehicles/restPoseContact.ts publishes it) or `hull` (the hull rig, the combat hull box gen-combat-anatomy
- * measures from the structural 'hull' / 'hullGun' armour buckets).
+ * src/vehicles/restPoseContact.ts publishes it), `hull` (the hull rig, the combat hull box gen-combat-anatomy
+ * measures from the structural 'hull' / 'hullGun' armour buckets) or `turret` (the turret rig, the combat turret
+ * box's floor from the structural 'turret' bucket: a part hung under the turret drops the turret's shell box exactly
+ * as the 226 blade dropped the hull's; null for a casemate whose turret is only a gun-pivot helper).
  */
 export const FLOOR_FIELDS = Object.freeze([
   Object.freeze({ key: 'panYM', label: 'belly pan (trackContact.panYM)', frame: 'root', axis: 1, side: 'min' }),
@@ -42,9 +44,10 @@ export const FLOOR_FIELDS = Object.freeze([
   Object.freeze({ key: 'hullMaxX', label: 'combat hull side +x (hull.max[0])', frame: 'hull', axis: 0, side: 'max' }),
   Object.freeze({ key: 'hullTailZ', label: 'combat hull tail (hull.min[2])', frame: 'hull', axis: 2, side: 'min' }),
   Object.freeze({ key: 'hullBowZ', label: 'combat hull bow (hull.max[2])', frame: 'hull', axis: 2, side: 'max' }),
+  Object.freeze({ key: 'turretFloorY', label: 'combat turret floor (turret.min[1])', frame: 'turret', axis: 1, side: 'min' }),
 ]);
 
-/** A ledger row's gated values, as stored: `{ panYM, bottomYM, hullMin: [x, y, z], hullMax: [x, y, z] }`. */
+/** A ledger row's gated values, as stored: `{ panYM, bottomYM, hullMin: [x, y, z], hullMax: [x, y, z], turretMinY }`. */
 export function floorRowOf(calibration, id = '?') {
   const contact = calibration?.trackContact;
   const hull = calibration?.hull;
@@ -57,12 +60,14 @@ export function floorRowOf(calibration, id = '?') {
     bottomYM: num(contact.bottomYM ?? 0),
     hullMin: hull.min.map(num),
     hullMax: hull.max.map(num),
+    turretMinY: num(calibration.turret?.min?.[1]),
   };
 }
 
 export function fieldValue(row, field) {
   if (!row) return null;
   if (field.frame === 'root') return row[field.key] ?? null;
+  if (field.frame === 'turret') return row.turretMinY ?? null;
   return (field.side === 'min' ? row.hullMin : row.hullMax)?.[field.axis] ?? null;
 }
 
@@ -125,9 +130,10 @@ function describePart(part, field) {
 
 /**
  * Rank the parts that explain one moved field. `parts` are the tank's live parts in that field's frame:
- * `{ bucket, module, min, max, site, caller, structural, primary, centreSpanning, visible }`: the hull box fields read
- * the structural parts (the roof only the primary ones, gen-combat-anatomy's roof cap), the belly pan the visible parts
- * of meshes that cross the centreline, the track bottom every visible part.
+ * `{ bucket, module, min, max, site, caller, structural, turretStructural, primary, centreSpanning, visible }`: the hull
+ * box fields read the structural parts (the roof only the primary ones, gen-combat-anatomy's roof cap), the turret
+ * floor the structural turret parts, the belly pan the visible parts of meshes that cross the centreline, the track
+ * bottom every visible part.
  * - An outward move (a floor or a side that went further out): the parts beyond the recorded value, the furthest first.
  *   The first one is the new extent.
  * - An inward move: no current part can be the one that left, so the parts that now set the extent are listed, with a
@@ -136,6 +142,7 @@ function describePart(part, field) {
 export function rankFloorCulprits(field, from, to, parts, { limit = 6 } = {}) {
   const eligible = parts.filter((part) => {
     if (field.key === 'hullRoofY') return part.primary;
+    if (field.frame === 'turret') return part.turretStructural;
     if (field.frame === 'hull') return part.structural;
     if (field.key === 'panYM') return part.centreSpanning && part.visible;
     return part.visible;
@@ -203,9 +210,12 @@ export function readCommittedCalibrations(root = process.cwd()) {
   return rows;
 }
 
+/** Ledger schema 2 (2026-10-19, guards 229): rows carry turretMinY (the combat turret floor) beside the hull box. */
+export const SIM_FLOOR_SCHEMA = 2;
+
 export function readFloorLedger(root = process.cwd()) {
   const ledger = JSON.parse(readFileSync(join(root, SIM_FLOOR_LEDGER), 'utf8'));
-  if (ledger.schema !== 1 || !ledger.rows || typeof ledger.rows !== 'object') {
+  if (ledger.schema !== SIM_FLOOR_SCHEMA || !ledger.rows || typeof ledger.rows !== 'object') {
     throw new Error(`[sim-floors] ${SIM_FLOOR_LEDGER}: unknown ledger shape`);
   }
   if (ledger.tankIdSchema !== TANK_ID_SCHEMA) {
@@ -217,12 +227,13 @@ export function readFloorLedger(root = process.cwd()) {
 
 export function emptyFloorLedger() {
   return {
-    schema: 1,
+    schema: SIM_FLOOR_SCHEMA,
     tool: 'tools/anatomy-floor-drift.mjs',
     tankIdSchema: TANK_ID_SCHEMA,
     toleranceM: FLOOR_DRIFT_TOLERANCE_M,
     about: 'Per tank: trackContact.panYM (belly pan) and bottomYM in the root frame; the combat hull box min/max (x, y, z) '
-      + 'in the hull rig frame, all in metres, as tools/gen-combat-anatomy.mjs measures them. A move over toleranceM fails '
+      + 'in the hull rig frame; turretMinY, the combat turret box floor in the turret rig frame (null without a fighting '
+      + 'turret); all in metres, as tools/gen-combat-anatomy.mjs measures them. A move over toleranceM fails '
       + 'the anatomy regen, its --check and npm test, naming the parts responsible. Change a row only with '
       + '`node tools/anatomy-floor-drift.mjs --accept=<ids>:<reason>` (or gen-combat-anatomy --accept-floor=, or '
       + 'COT_ACCEPT_FLOOR_DRIFT): the row records the old values, the reason, who and when.',
@@ -293,15 +304,25 @@ export function acceptFloorRows(ledger, currentRows, accepts, { by = 'unknown', 
   return { changed, unchanged };
 }
 
-/** Rows for new ids, recorded as their first measurement; never touches an existing row. */
-export function seedFloorRows(ledger, currentRows, ids, { by = 'unknown', date = localDate() } = {}) {
+/**
+ * Rows for new ids, recorded as their first measurement; never touches an existing row. A new id is one the committed
+ * calibration has never measured (`committed`: the calibration rows on disk before this run writes, as
+ * readCommittedCalibrations reads them). A calibrated tank without a ledger row is REFUSED, never seeded: its row was
+ * removed or lost, and seeding the fresh measurement would launder whatever drift the regen carries as a "first
+ * measurement" (critic, 227 guards round 1). The caller fails on a refused id (compareFloorRows reports it missing)
+ * after comparing the fresh measurement with the committed calibration; only an accept with a reason records it.
+ */
+export function seedFloorRows(ledger, currentRows, ids, { committed, by = 'unknown', date = localDate() } = {}) {
+  if (!committed || typeof committed !== 'object') throw new Error('[sim-floors] seedFloorRows needs the committed calibration rows');
   const seeded = [];
+  const refused = [];
   for (const id of ids) {
     if (ledger.rows[id]) continue;
+    if (committed[id]) { refused.push(id); continue; }
     ledger.rows[id] = { ...floorRowOf(currentRows[id], id), accepted: { reason: 'first measurement', by, date, from: 'no earlier row' } };
     seeded.push(id);
   }
-  return seeded;
+  return { seeded, refused };
 }
 
 /** The accept command a failure prints, ready to edit. */

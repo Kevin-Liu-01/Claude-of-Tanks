@@ -87,8 +87,9 @@ if (result.drifts.size) {
   console.error(`  is intended, record it: ${acceptHint([...result.drifts.keys()])}`);
 }
 if (result.missing.length) {
-  console.error(`[sim-floors] FAIL: no ledger row for ${result.missing.join(', ')}: run gen-combat-anatomy for them (it seeds a `
-    + `new tank's row), or ${acceptHint(result.missing)}`);
+  console.error(`[sim-floors] FAIL: no ledger row for ${result.missing.join(', ')}: a calibrated tank's row is never re-seeded `
+    + `(gen-combat-anatomy seeds only an id the committed calibration has never measured); restore it from git, or `
+    + `${acceptHint(result.missing)}`);
 }
 if (result.extra.length) {
   console.error(`[sim-floors] FAIL: ledger rows for ids no longer in the fleet: ${result.extra.join(', ')} `

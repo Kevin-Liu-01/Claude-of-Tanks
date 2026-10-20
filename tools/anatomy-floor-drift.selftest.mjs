@@ -4,8 +4,9 @@
 //    is built unless one drifted, and then only that one, to name the parts responsible in the failure.
 // 2. The rules, on the 226 defect class seeded into t90am's committed row: the blade's regen (floor and belly pan
 //    0.42 -> ~0.2) fails on exactly those two fields; the MP lane's half fix (belly pan only) fails on the pan; 5 cm
-//    passes and 5.1 cm fails; every hull face and the track bottom is gated; accepts need a reason and record the
-//    old values; new and retired ids fail until recorded.
+//    passes and 5.1 cm fails; every hull face, the turret floor and the track bottom is gated; accepts need a reason
+//    and record the old values; new and retired ids fail until recorded; a calibrated tank whose row went missing is
+//    never re-seeded as a "first measurement" (the round-1 critic's laundering case).
 // 3. Culprit ranking and author sites on a synthetic 226 blade: the structural blade is named for the hull floor,
 //    the centre-spanning visible parts for the belly pan, never a one-sided bracket or a hidden proxy.
 // 4. gen-combat-anatomy runs the same gate on its fresh measurement in both modes (a wiring check on its source).
@@ -48,6 +49,7 @@ assert.ok(fleetIds.length >= 200, `the calibration covers the fleet (${fleetIds.
 const BASE_ID = 't90am';
 const base = current[BASE_ID];
 assert.ok(base && base.panYM > 0.35 && base.hullMin[1] > 0.35, `${BASE_ID} keeps its belly above 0.35 m in the committed tree`);
+assert.ok(Number.isFinite(base.turretMinY), `${BASE_ID} has a fighting turret whose floor the ledger holds`);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const variant = (patch) => {
   const row = clone(base);
@@ -55,6 +57,7 @@ const variant = (patch) => {
   if ('bottomYM' in patch) row.bottomYM = patch.bottomYM;
   for (const [axis, value] of Object.entries(patch.hullMin ?? {})) row.hullMin[axis] = value;
   for (const [axis, value] of Object.entries(patch.hullMax ?? {})) row.hullMax[axis] = value;
+  if ('turretMinY' in patch) row.turretMinY = patch.turretMinY;
   return row;
 };
 const recordedOnly = { [BASE_ID]: base };
@@ -80,10 +83,13 @@ const cases = [
   ['the +x side 6 cm in', { hullMax: { 0: base.hullMax[0] - 0.06 } }, ['hullMaxX']],
   ['the tail 6 cm out', { hullMin: { 2: base.hullMin[2] - 0.06 } }, ['hullTailZ']],
   ['the bow 6 cm out', { hullMax: { 2: base.hullMax[2] + 0.06 } }, ['hullBowZ']],
+  ['a part hung 6 cm under the turret (its combat box floor drops)', { turretMinY: base.turretMinY - 0.06 }, ['turretFloorY']],
+  ['the turret floor exactly 5 cm lower', { turretMinY: base.turretMinY - 0.05 }, []],
+  ['the turret box gone (a casemate helper: null)', { turretMinY: null }, ['turretFloorY']],
 ];
 for (const [label, patch, expected] of cases) assert.deepEqual(moved(variant(patch)), expected, label);
 assert.deepEqual(FLOOR_FIELDS.map((field) => field.key).sort(),
-  ['bottomYM', 'hullBowZ', 'hullFloorY', 'hullMaxX', 'hullMinX', 'hullRoofY', 'hullTailZ', 'panYM'],
+  ['bottomYM', 'hullBowZ', 'hullFloorY', 'hullMaxX', 'hullMinX', 'hullRoofY', 'hullTailZ', 'panYM', 'turretFloorY'],
   'every gated field has a case above');
 {
   const within = compareFloorRows(recordedOnly, { [BASE_ID]: variant({ hullMin: { 1: y - 0.02 } }) }, { ids: [BASE_ID] });
@@ -124,11 +130,24 @@ assert.deepEqual(parseFloorAccepts(['--accept-floor=t90am,t90m_proryv:blade re-s
   assert.ok(compareFloorRows(book.rows, { [BASE_ID]: floorRowOf(drifted) }, { ids: [BASE_ID] }).ok, 'an accepted move passes');
   assert.deepEqual(acceptFloorRows(book, { [BASE_ID]: drifted }, accepts), { changed: [], unchanged: [BASE_ID] },
     'accepting a current row changes nothing');
+  const committed = { [BASE_ID]: calibrations[BASE_ID] };
   const seeded = seedFloorRows(book, { [BASE_ID]: calibrations[BASE_ID], new_tank: calibrations[BASE_ID] }, [BASE_ID, 'new_tank'],
-    { by: 'selftest', date: '2026-10-16' });
-  assert.deepEqual(seeded, ['new_tank'], 'only a new id is seeded');
+    { committed, by: 'selftest', date: '2026-10-16' });
+  assert.deepEqual(seeded, { seeded: ['new_tank'], refused: [] }, 'only a new id is seeded');
   assert.equal(book.rows[BASE_ID].accepted.reason, 'the 226 blade, accepted for this proof', 'seeding never touches a row');
   assert.equal(book.rows.new_tank.accepted.reason, 'first measurement');
+  // The round-1 critic's laundering case: t90am's row removed, then a regen carrying the 226 blade. The calibration on
+  // disk has measured t90am, so the write mode refuses to seed it; the row stays missing and the regen fails.
+  const lost = { rows: {} };
+  const refusal = seedFloorRows(lost, { [BASE_ID]: drifted }, [BASE_ID], { committed, by: 'selftest', date: '2026-10-19' });
+  assert.deepEqual(refusal, { seeded: [], refused: [BASE_ID] }, 'a calibrated tank without a row is refused, never seeded');
+  assert.equal(lost.rows[BASE_ID], undefined, 'the refused row is not written');
+  const judged = compareFloorRows(lost.rows, { [BASE_ID]: floorRowOf(drifted) }, { ids: [BASE_ID] });
+  assert.deepEqual([judged.ok, judged.missing], [false, [BASE_ID]], 'the missing row fails the regen');
+  const against = compareFloorRows({ [BASE_ID]: floorRowOf(calibrations[BASE_ID]) }, { [BASE_ID]: floorRowOf(drifted) }, { ids: [BASE_ID] });
+  assert.deepEqual((against.drifts.get(BASE_ID) ?? []).map(({ field }) => field.key).sort(), ['hullFloorY', 'panYM'],
+    'and the comparison with the committed calibration names the blade\'s drift');
+  assert.throws(() => seedFloorRows(lost, {}, [], {}), /committed calibration/, 'the seed cannot run without the committed rows');
 }
 
 // ---------------------------------------------------------------- 3. culprits and author sites
@@ -153,6 +172,13 @@ assert.deepEqual(parseFloorAccepts(['--accept-floor=t90am,t90m_proryv:blade re-s
   const risen = rankFloorCulprits(field('hullFloorY'), 0.30, 0.42, parts);
   assert.ok(risen.note && risen.parts.length === 1 && risen.parts[0].min[1] === 0.42,
     'a floor that rose names what it rests on now, with a note that the old floor part left');
+  const turretParts = [
+    part('turret', [-1.1, 0.0, -1.5], [1.1, 0.75, 1.4], { turretStructural: true }),                  // the turret shell
+    part('turret', [-0.4, -0.31, -1.2], [0.4, 0.0, -0.9], { turretStructural: true }),                // hung under it
+    part('turretEquipment', [-0.6, -0.4, 1.0], [0.6, -0.1, 1.2], {}),                                 // not structural
+  ];
+  const turretFloor = rankFloorCulprits(field('turretFloorY'), 0.0, -0.31, turretParts);
+  assert.deepEqual(turretFloor.parts.map((p) => p.min[1]), [-0.31], 'the turret floor names the structural turret part below it only');
   const roof = rankFloorCulprits(field('hullRoofY'), 1.5, 1.6, parts);
   assert.deepEqual(roof.parts.map((p) => p.max[1]), [1.6], 'the roof reads only the primary parts (the roof cap), never a small box');
   const text = formatFloorDrift(BASE_ID, [{ field: field('hullFloorY'), from: 0.42, to: 0.1995, delta: -0.2205 }],
@@ -183,7 +209,8 @@ assert.deepEqual(parseFloorAccepts(['--accept-floor=t90am,t90m_proryv:blade re-s
   for (const [needle, why] of [
     ['compareFloorRows(', 'compares its fresh measurement with the ledger'],
     ["parseFloorAccepts(process.argv, process.env, '--accept-floor=')", 'takes accepts from its flag and the environment'],
-    ['seedFloorRows(', 'seeds a new tank\'s row in the write mode'],
+    ['seedFloorRows(floorLedger, rows, measuredIds, { committed: committedFloorRows', 'seeds only a never-calibrated id in the write mode'],
+    ['const committedFloorRows = readCommittedCalibrations()', 'reads the calibration on disk before it writes'],
     ["await import('./anatomy-floor-blame.mjs')", 'names the parts behind a drift'],
     ['process.exit(3)', 'stops the regen chain after writing when a floor moved'],
     ['if (floorReport.length) process.exit(2)', 'fails its --check when a floor moved'],
@@ -191,5 +218,5 @@ assert.deepEqual(parseFloorAccepts(['--accept-floor=t90am,t90m_proryv:blade re-s
 }
 
 console.log(`anatomy-floor-drift.selftest: ${fleetIds.length} ids within ${FLOOR_DRIFT_TOLERANCE_M * 100} cm of ${SIM_FLOOR_LEDGER}; `
-  + `${cases.length} seeded drift cases (the 226 blade fails on the floor and the belly pan); accept, coverage, culprit `
-  + 'and author-site rules hold; gen-combat-anatomy gates both modes');
+  + `${cases.length} seeded drift cases (the 226 blade fails on the floor and the belly pan; the turret floor is gated); `
+  + 'accept, coverage, no-laundering seed, culprit and author-site rules hold; gen-combat-anatomy gates both modes');
