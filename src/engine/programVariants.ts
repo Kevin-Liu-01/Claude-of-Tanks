@@ -116,9 +116,12 @@ function twinOf(original: Material, variant: string): Material {
 
 /**
  * Give every further program variant of each material drawn under `root` its own twin (above). Idempotent: a second
- * pass finds one variant per material. Returns the counts.
+ * pass finds one variant per material. `onlyAlreadySplit` re-seats the twins of materials a pass split before and splits
+ * nothing new. Returns the counts.
  */
-export function splitProgramVariants(root: Object3D): { materials: number; split: number; twins: number; objects: number } {
+export function splitProgramVariants(
+  root: Object3D, { onlyAlreadySplit = false }: { onlyAlreadySplit?: boolean } = {},
+): { materials: number; split: number; twins: number; objects: number } {
   interface Slot { object: VariantObject; index: number }
   const uses = new Map<Material, Map<string, Slot[]>>();
   root.traverse((node) => {
@@ -138,6 +141,8 @@ export function splitProgramVariants(root: Object3D): { materials: number; split
   let split = 0, made = 0, objects = 0;
   for (const [material, byVariant] of uses) {
     if (byVariant.size < 2) continue;
+    // a re-seat (onlyAlreadySplit: the energy skin's unwrap) never splits a material the build left whole
+    if (onlyAlreadySplit && !keptVariant.has(programVariantOrigin(material))) continue;
     split++;
     // the original keeps the plain variant, else the most drawn one (the first of a tie: traversal order)
     let keep = byVariant.has('') ? '' : null;

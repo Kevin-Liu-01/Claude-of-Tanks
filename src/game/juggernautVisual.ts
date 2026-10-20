@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { cloneVehicleMaterial, releaseVehicleMaterial, runVehicleHookChain } from '../vehicles/materials.ts';
-import { programVariantOrigin } from '../engine/programVariants.ts';
+import { programVariantOrigin, splitProgramVariants } from '../engine/programVariants.ts';
 
 interface Surface {mesh:THREE.Mesh;original:THREE.Material|THREE.Material[];highlight:THREE.Material|THREE.Material[]}
 const IMPACT_COUNT=6;
@@ -56,13 +56,18 @@ export function clearJuggernautVisual(root:THREE.Object3D,restoreSavedMaterials=
   const scale=scales.get(root)??1;
   if(scale!==1)root.scale.multiplyScalar(1/scale);
   scales.delete(root);
-  if(restoreSavedMaterials)root.traverse(object=>{
+  if(!restoreSavedMaterials)return;
+  root.traverse(object=>{
     if(!(object instanceof THREE.Mesh))return;
     const current=object.material;
     if(Array.isArray(current)){
       if(current.some(m=>highlightSources.has(m)))object.material=current.map(originalMaterial);
     }else object.material=originalMaterial(current);
   });
+  // (2026-10-19, the 229 perf pass) a saved skin unwraps to its original material: a battle build re-seats the
+  // program-variant twins its meshes drew (only materials its build split: the shared shadow-proxy material stays whole),
+  // or they would flip programs again and fall out of their depth layers
+  if(root.userData.programVariants)splitProgramVariants(root,{onlyAlreadySplit:true});
 }
 
 /** Keep compiled Garage materials resident across mode switches. A zero

@@ -78,6 +78,24 @@ assert.equal(root._listeners.childadded.length,0,'effect cleanup releases hierar
 
 geometry.dispose();batch.dispose();source.dispose();wreck.dispose();glassMaterial.dispose();
 
+// 2026-10-19 (the 229 perf pass, critic r1): a battle build's program-variant twin wears its original's skin, and a skin
+// a wreck snapshot put back unwraps onto the twin the mesh drew, not the original (programVariants.ts)
+{
+  const {splitProgramVariants}=await import('../engine/programVariants.ts');
+  const tank=new T.Group(),paint=new T.MeshStandardMaterial({color:0x445533}),box=new T.BoxGeometry();
+  const plate=new T.Mesh(box,paint),wheels=new T.InstancedMesh(box,paint,4);tank.add(plate,wheels);
+  tank.userData.programVariants=splitProgramVariants(tank);
+  const twin=wheels.material;assert.notEqual(twin,paint,'the instanced draw has its own twin');
+  syncJuggernautVisual(tank,dims,1.12,100,100,.016);
+  const skin=plate.material;assert.notEqual(skin,paint);assert.equal(wheels.material,skin,'the twin wears its original\'s skin');
+  syncJuggernautVisual(tank,dims,1.12,0,100,.016);
+  assert.equal(plate.material,paint);assert.equal(wheels.material,twin,'the kill ends the skin: each mesh its own material');
+  plate.material=skin;wheels.material=skin; // the wreck snapshot taken while skinned puts the skins back
+  clearJuggernautVisual(tank,true);
+  assert.equal(plate.material,paint);assert.equal(wheels.material,twin,'the Garage handoff re-seats the twin, never the original');
+  box.dispose();paint.dispose();
+}
+
 // ---- 2026-10-17 (the wheel-band lane; the owner: "in garage, on all tanks, i can see this weird shadow on wheels"): the
 // skin's clones keep the vehicle's cascade registration. A raw clone() reset the defines (USE_CSM, CSM_*, COT_CLOUD_SHADE
 // and the vehicle's COT_* switches) and ran the source's CSM hook, which keeps the compiled shader under the SOURCE in

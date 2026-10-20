@@ -64,6 +64,18 @@ assert.equal(programVariantOrigin(shared), shared);
 assert.equal(alone.material, other);
 assert.equal(multi.material[1], other);
 assert.deepEqual(splitProgramVariants(root), { materials: 4, split: 0, twins: 0, objects: 0 }, 'a second pass changes nothing');
+// (2026-10-19) a re-seat after an unwrap put the original back on a twin's object: only materials a pass split before
+{
+  poolA.material = shared; // an unwrap that restored the original
+  const whole = new THREE.MeshBasicMaterial(), g2 = new THREE.Group();
+  g2.add(new THREE.Mesh(box, whole), new THREE.InstancedMesh(box, whole, 2));
+  root.add(g2);
+  const reseat = splitProgramVariants(root, { onlyAlreadySplit: true });
+  assert.equal(poolA.material, poolB.material, 'the original\'s object takes its twin back');
+  assert.equal(g2.children[1].material, whole, 'a material no pass split stays whole');
+  assert.deepEqual([reseat.split, reseat.twins, reseat.objects], [1, 0, 1], 'one re-seat, no new twin');
+  root.remove(g2); whole.dispose();
+}
 
 // ---- 3. the twin reads the original, live
 const twin = poolA.material;
