@@ -8,6 +8,9 @@ import { RUINSPIRES_CIVIC_PLAN } from './ruinspires.ts';
 import { CLIFFBRIDGE_CIVIC_PLAN } from './cliffbridge.ts';
 import { BLACKGLASS_CIVIC_PLAN } from './blackglass.ts';
 import { POLDERS_CIVIC_PLAN } from './polders.ts';
+import { AUTUMN_CIVIC_PLAN } from './autumn.ts';
+import { DELTA_CIVIC_PLAN } from './delta.ts';
+import { BADLANDS_CIVIC_PLAN } from './badlands.ts';
 
 const PLANS: Readonly<Record<string, CivicPlan>> = Object.freeze({
   urban: URBAN_CIVIC_PLAN,
@@ -15,6 +18,9 @@ const PLANS: Readonly<Record<string, CivicPlan>> = Object.freeze({
   cliffbridge: CLIFFBRIDGE_CIVIC_PLAN,
   blackglass: BLACKGLASS_CIVIC_PLAN,
   polders: POLDERS_CIVIC_PLAN,
+  autumn: AUTUMN_CIVIC_PLAN,
+  delta: DELTA_CIVIC_PLAN,
+  badlands: BADLANDS_CIVIC_PLAN,
 });
 
 /** The maps with a civic plan (the receipts iterate them). */
@@ -51,6 +57,16 @@ export function civicPavedRooms(mapId: string | null | undefined): readonly Civi
 /** The pads whose airfield dressing a civic area drops (hardstandDressing.ts), by index. */
 export function civicUndressedPads(mapId: string | null | undefined): ReadonlySet<number> {
   return new Set(civicPlanFor(mapId)?.areas.map((area: CivicAreaPlan) => area.pad).filter((pad) => pad >= 0) ?? []);
+}
+
+/** Whether (x, z) lies in an area's room (turned about its centre by `roomYawDeg`; a margin out from its edges). */
+export function inCivicRoom(area: Pick<CivicAreaPlan, 'room' | 'roomYawDeg'>, x: number, z: number, margin = 0): boolean {
+  const r = area.room, yaw = ((area.roomYawDeg ?? 0) * Math.PI) / 180;
+  if (yaw === 0) return inCivicRect(r, x, z, margin);
+  const cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2, c = Math.cos(yaw), s = Math.sin(yaw), dx = x - cx, dz = z - cz;
+  // the point in the room's own axes (local +x at (cos, -sin), +z at (sin, cos): the props' heading convention)
+  const u = dx * c - dz * s, v = dx * s + dz * c;
+  return Math.abs(u) <= (r.x1 - r.x0) / 2 + margin && Math.abs(v) <= (r.z1 - r.z0) / 2 + margin;
 }
 
 /** Whether (x, z) lies in a rectangle. */

@@ -83,11 +83,20 @@ export interface CivicPaving {
   readonly gutter?: 'n' | 's' | 'e' | 'w';
 }
 
+/** (229 b3) A strip of flush paving along a centreline, `width` across: `brick` a herringbone of bricks at 45 degrees to the
+ *  line inside a row of bricks on edge along each side (Bengal's HBB soling), `pavers` a herringbone square to it. */
+export interface CivicStrip { readonly from: CivicPoint; readonly to: CivicPoint; readonly width: number; readonly kind: 'brick' | 'pavers' }
+
 /** A town square's civic area (civicAreaKit.ts). */
 export interface CivicAreaPlan {
   readonly id: string;
   /** The square's frontage-to-frontage room: the later scatter passes keep out of it, and the fill measures read it. */
   readonly room: CivicRect;
+  /** (229 b3, the census's K6) the room turned about its centre to this heading (a char's haat on its diamond pad); absent 0.
+   *  Only the room turns: the paved ground, the beds, the paving and the lawns stay world rectangles. */
+  readonly roomYawDeg?: number;
+  /** (229 b3) false: no frontage walks along the fronts round the room (a sand or beaten-earth square); absent true. */
+  readonly frontage?: boolean;
   /** The ground the terrain paves for the square (the room and out to the set-back facades round it; under the houses it
    *  is never seen). */
   readonly paved: CivicRect;
@@ -115,11 +124,17 @@ export interface CivicAreaPlan {
   /** The objective seats the area keeps clear past its roundel (matchPlacement's: an extraction's convoy disc), each a
    *  disc no piece or trunk enters (C13). */
   readonly holds: ReadonlyArray<{ readonly id: string; readonly x: number; readonly z: number; readonly r: number }>;
-  /** The roundel at the crossing: its ring band and its rose, flush. */
-  readonly centre: { readonly x: number; readonly z: number; readonly ringR: readonly [number, number]; readonly roseR: number; readonly rays: number };
+  /** The roundel at the crossing: its ring band and its rose, flush; (229 b3) `inlay: false` lays none (a village place's
+   *  crossing, a char's haat: the open disc is kept, nothing is set in its ground). */
+  readonly centre: { readonly x: number; readonly z: number; readonly ringR: readonly [number, number]; readonly roseR: number; readonly rays: number;
+    readonly inlay?: boolean };
   readonly beds: readonly CivicBed[];
   /** The flush granite bands between a bed's kerb and the arms. */
   readonly paving: readonly CivicPaving[];
+  /** (229 b3) Flush strips laid along a centreline at any heading (a char's brick soling, the pavers before a fort). */
+  readonly strips?: readonly CivicStrip[];
+  /** (229 b3) Raised platforms round a tree's foot (a bot-tola), square, at their heading. */
+  readonly platforms?: ReadonlyArray<{ readonly x: number; readonly z: number; readonly half: number; readonly height: number; readonly yawDeg: number }>;
   /** The monument: its kind (a props destructible), its seat and the point its front faces. */
   readonly monument: { readonly kind: string; readonly x: number; readonly z: number; readonly faceX: number; readonly faceZ: number } | null;
   /** The area's trees: the species, the scale band, the stations. */
