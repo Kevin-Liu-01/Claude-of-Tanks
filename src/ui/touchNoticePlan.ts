@@ -12,8 +12,8 @@
  * marker, 180 px wide) and the chip's seat over the ring where a small portrait phone sends it; through the scope the
  * circle at 1.55 r + 3, the readout row and zoom plate under it (its rest, sniperReadoutStack), the range tag at the 4:30,
  * and the row over the circle where a short landscape or a seated chip sends it. The vision plate, the panels and the
- * controls are measured and passed in (`obstacles`); the map, the score and the objective, the rosters, the network
- * readouts and the feeds too (`soft`: a notice that cannot keep clear of everything covers these first).
+ * controls are measured and passed in (`obstacles`), the map, the score and the objective, the rosters, the network
+ * readouts and the feed lanes with them (`soft`).
  *
  * Each takes the highest place that keeps TOUCH_SIGHT_GAP from the footprint and TOUCH_NOTICE_GAP from everything else,
  * centred on the sight where it fits there, else in the free span nearest the centre. The countdown goes first, in the
@@ -138,7 +138,7 @@ interface TouchNoticeInput {
   readonly top: number;
   /** The panels and controls the notices keep TOUCH_NOTICE_GAP from (the vision plate, the systems row among them). */
   readonly obstacles: readonly TouchBox[];
-  /** The map, the score, the rosters, the network readouts, the feeds: kept clear of too, covered first where none is. */
+  /** The map, the score and the objective, the rosters, the network readouts, the feed lanes: kept clear of alike. */
   readonly soft: readonly TouchBox[];
   readonly scope: boolean;
   /** The warning chip sits by the sight (touchSightKeepOut). */
@@ -181,7 +181,8 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
   // (the footprint's boxes drawn in by the difference, so a uniform gap keeps TOUCH_SIGHT_GAP from them)
   const keep = touchSightKeepOut(width, height, scope, seated).map((box) => grow(box, TOUCH_SIGHT_GAP - gap));
   const blocks = [...input.obstacles, ...input.soft, ...keep];
-  const start = top + gap;
+  // (integ's 8 px under the score and the objective)
+  const start = top + INTEG_STACK_GAP;
   const plan: TouchNoticePlan = { noticeCx: cx, noticeTop: input.fallbackTop, alertCx: cx,
     alertTop: input.fallbackTop + input.notice.h + INTEG_STACK_GAP, alertW: input.alert.w, noticeCompact: false, alertCompact: false,
     countdownCx: cx, countdownTop: start, countdownScale: 1, cleared: true, bannerCx: cx, bannerTop: start, bannerReady: false };

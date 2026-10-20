@@ -92,15 +92,15 @@ const SIGHT_FURNITURE = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con
   '.cot-touch.on .quick', '.cot-touch-aim.on .aimhint', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
   '.cot-scope-vision', '.cot-aim-warning:not([hidden]):not([data-seat])', '.flight-identity', '.cot-ear'].join(',');
 /** What a touch layout's centre notices, countdown and medal card keep clear of besides the reticle's footprint
- *  (touchNoticePlan.ts): the controls, the ammunition and consumables, the instruments, the vision plate, the parked
- *  warning chip and a shot report or open combat log (the systems row by its new place); and, covered first where
- *  nothing clears (`soft`), the map, the score and the objective, the rosters, the network readouts and the feeds. */
+ *  (touchNoticePlan.ts): the controls, the ammunition and consumables, the instruments, the vision plate, the warning
+ *  chip (seated or parked) and a shot report or open combat log (the systems row by its new place); and the map, the
+ *  score and the objective, the rosters, the network readouts and the feed lanes (`soft`). */
 const TOUCH_NOTICE_OBSTACLES = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-touch.on .round,.cot-touch.on .joy,'
   + '.cot-touch.on .quick,.cot-touch-aim.on .aimhint,.cot-dp,.cot-drive,.cot-scope-vision,'
-  + '.cot-aim-warning:not([hidden]):not([data-seat]),.flight-identity,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,'
+  + '.cot-aim-warning:not([hidden]),.flight-identity,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,'
   + '.cot-touch.on .scope,.cot-touch.on .fire,.cot-shells,.cot-cons,.cot-si-cardhost:not(:empty),.cot-si-log.open';
 const TOUCH_NOTICE_SOFT = '.cot-minimap,.cot-top,.cot-mode-status.show,.cot-ear,.cot-net,.cot-mp-status.battle,'
-  + '.cot-kill-lane .cot-kf:not([hidden]),.cot-si-toast:not([hidden]),.cot-room-chat:not([hidden]),.cot-spec.show';
+  + '.cot-kill-lane.l,.cot-kill-lane.r,.cot-si-toasthost,.cot-room-chat:not([hidden]),.cot-spec.show';
 /** The alert's height while none shows (two lines at the touch type size in the detection's width), so places hold. */
 const TOUCH_ALERT_RESERVE_H = 40;
 /** The sixth-sense notice, which a touch layout's seated warning chip yields to (sightFurniture.ts sightNotice). */
