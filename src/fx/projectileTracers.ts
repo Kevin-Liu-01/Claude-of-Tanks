@@ -26,7 +26,7 @@
  * round in flight, reused).
  */
 import * as THREE from 'three';
-import { LATE_FX_LAYER, LATE_FX_SCENE_AGNOSTIC } from './layers.ts';
+import { LATE_FX_LAYER } from './layers.ts';
 import { tankSeedId } from '../vehicles/tankIdAliases.ts';
 
 type ShellKey = number | string;
@@ -385,7 +385,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     if (_vp.z > 0 && _vp.w > 0) uViewport.value.set(_vp.z, _vp.w);
   };
   // the callback reads the viewport alone: the late pass may draw it through its view (engine/lateFxSceneView.ts)
-  mesh.userData[LATE_FX_SCENE_AGNOSTIC] = true;
+  mesh.userData.lateFxSceneAgnostic = true;
 
   const records = new Map<ShellKey, RoundRecord>();
   const free: RoundRecord[] = [];
