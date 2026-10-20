@@ -1359,15 +1359,22 @@ function assertFurnitureClear(items, boxes, at, key = null) {
 // chip the reticle seats over the sight sat under the DETECTED notice, 82-238 x 233-257 under 70-250 x 215-262.9): on
 // every touch size the seated chip yields to the sixth-sense notice, in battle and through the scope, on the standard
 // stage and on a mode's objective stage, over the rings, for every reticle state; it keeps 3 px from the notice where
-// the layout records it (tools/fixtures/hud-sight-furniture.json `notices`; a short landscape parks the chip in the left
-// lane, unseated), or waits hidden where its place runs into the notice. The notice never moves the chip or any mark (it
+// the layout records it (tools/fixtures/hud-sight-furniture.json `notices`, where the touch plan sets it; a short
+// landscape parks the chip in the left lane, unseated) and where integ centred it over the sight, or waits hidden where
+// its place runs into the notice. The notice never moves the chip or any mark (it
 // comes and goes, and the places clear of it ran into the furniture instead: at 320x568 the left FIRE button, 22 px deep
 // at 16 m), so each frame paints as it does without the notice, the chip shown where it was or hidden.
 {
   let seated = 0;
   const yielded = {};
   const opsWithout = (ops) => ops.map((op) => JSON.stringify(op)).join('\n');
-  for (const [key, notice] of Object.entries(FURNITURE.notices)) {
+  // (where the layout now plans the notice, touchNoticePlan.ts, and where integ centred it over the sight, the defect's
+  // place: 320x568 measured by the notices session's receipt, the rest from the r10e fixture before the plan)
+  const INTEG_NOTICES = { '320x568t': [70, 215, 250, 262.88], '360x640t': [73, 264, 287, 306], '375x667t': [80.5, 277, 294.5, 319],
+    '390x844t': [88, 208, 302, 250] };
+  const notices = [...Object.entries(FURNITURE.notices).map(([key, box]) => [key, box, '']),
+    ...Object.entries(INTEG_NOTICES).map(([key, box]) => [key, box, ' (integ\'s place)'])];
+  for (const [key, notice, integ] of notices) {
     const [, width, height, variant] = /^(\d+)x(\d+)t(.*)$/.exec(key).map((v, i) => (i && i < 3 ? Number(v) : v));
     resize(width, height);
     documentStub.body.classes.add('cot-touch-layout');
@@ -1376,7 +1383,7 @@ function assertFurnitureClear(items, boxes, at, key = null) {
       scope = scoped;
       dispersionM = metres;
       for (const [label, make] of Object.entries(scopeStates)) {
-        const at = `${key} ${scoped ? 'scope' : 'battle'}, ${metres} m, ${label}, gun travel warning, the DETECTED notice`;
+        const at = `${key} ${scoped ? 'scope' : 'battle'}, ${metres} m, ${label}, gun travel warning, the DETECTED notice${integ}`;
         setSightNotice(false);
         settleSightFurniture();
         const plain = make();
@@ -1393,7 +1400,7 @@ function assertFurnitureClear(items, boxes, at, key = null) {
         const chip = seatedChipBox();
         if (!chip) {
           if (place) {
-            yielded[key] = (yielded[key] ?? 0) + 1;
+            yielded[key + integ] = (yielded[key + integ] ?? 0) + 1;
             const gap = Math.max(notice[0] - place.x1, place.x0 - notice[2], notice[1] - place.y1, place.y0 - notice[3]);
             assert.ok(gap < 3, `${at}: the chip hides only where its place runs into the notice (${gap.toFixed(2)} px)`);
           }
@@ -1406,7 +1413,8 @@ function assertFurnitureClear(items, boxes, at, key = null) {
       }
     }
   }
-  assert.ok(seated > 0 && Object.keys(yielded).length, `the chips were seated, and yielded (${JSON.stringify(yielded)})`);
+  assert.ok(seated > 0 && Object.keys(yielded).some((key) => key.endsWith('(integ\'s place)')),
+    `the chips were seated, and yielded to integ's place (${JSON.stringify(yielded)})`);
   setSightNotice(false);
   documentStub.body.classes.delete('cot-touch-layout');
   clearSightFurniture();

@@ -488,6 +488,46 @@ latency remains in the connection control. Mobile physical gun warnings use a
 measured DOM notice instead of painting over controls on the reticle canvas.
 The geometry gate includes those notices alongside detection and damage alerts.
 
+### Touch centre notices (r10e)
+
+A touch layout places its centre notices against the reticle and the measured
+furniture (`src/ui/touchNoticePlan.ts`, called by the layout on each relayout).
+These are the detection, the alert, the pre-battle countdown and the medal
+card. Integ stacked the detection and the alert centred under the systems row.
+On every phone but the tallest, that put them on the aim point, the ring, the
+struck round and rack, the scope's circle, readouts and vision plate. The alert
+also sat on the countdown's digit, and the medal card on the scope's readout
+row. The notices session's critic found this on integ ce8b634668.
+
+The plan keeps 4 px from the reticle's footprint and 6 px from the panels,
+controls and feeds. The footprint is what the reticle can draw at full bloom,
+so nothing moves as the ring breathes:
+
+- the ring at 15 % of the shorter side;
+- in battle, the column under it and over it (rack, struck round, countdown,
+  seated chip);
+- through the scope, the circle at 1.55 r + 3, the readout row and zoom plate
+  over and under it, and the range tag.
+
+The countdown goes first, in the detection's place, scaled down to 60 % where
+it must. The detection and the alert then take integ's place where that keeps
+clear. Otherwise they take the highest free place, as a stack, then apart, then
+compact (the 136 px notice, the alert in 8 px type). The medal card takes the
+highest free place off all of them, or waits with its time kept. A phone's aim
+hint sets its "LANDSCAPE RECOMMENDED" advice on its own right-aligned line. On
+one line it ran under the speedometer and the left FIRE button at 360x640.
+
+Where no place keeps clear, each notice takes the least intrusive place.
+`body[data-touch-notices~='uncleared']` marks this. The notice reaches into the
+footprint before it covers any panel or control. This happens on the 568 px
+landscapes (568x256, 568x290, 568x320) and in the scope at 640x360 at rest.
+
+`src/ui/touchNoticePlan.selftest.mjs` plans every recorded touch size and stage.
+`tools/hud-touch-notices.browser.mjs` stages the critic's scenes at 15 touch
+sizes and measures each notice against the reticle's recorded ink, the seated
+chip, the vision plate and the hint, with no screenshot. It notes the uncleared
+windows rather than failing them.
+
 ### Verified local run — 2026-10-01
 
 - 396 setup/garage/settings checks: passed.

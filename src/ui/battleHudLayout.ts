@@ -1,5 +1,6 @@
 import { layoutViewportSize } from './responsiveLayout.ts';
 import { addSightFurniture, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
+import { planTouchNotices, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
 
 /** Matches the scoreboard polygon; the objective clears each bottom corner by 8px. */
 export const SCORE_BOTTOM_INSET = 25;
@@ -75,6 +76,18 @@ export function portraitSightClearTop(top: number, height: number, centerY: numb
 const SIGHT_FURNITURE = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy',
   '.cot-touch.on .quick', '.cot-touch-aim.on .aimhint', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
   '.cot-scope-vision', '.cot-aim-warning:not([hidden]):not([data-seat])', '.flight-identity', '.cot-ear'].join(',');
+/** What a touch layout's centre notices, countdown and medal card keep clear of besides the reticle's footprint
+ *  (touchNoticePlan.ts): the controls, the ammunition and consumables, the instruments, the vision plate, the parked
+ *  warning chip and a shot report or open combat log (the systems row by its new place); and, covered first where
+ *  nothing clears (`soft`), the map, the score and the objective, the rosters, the network readouts and the feeds. */
+const TOUCH_NOTICE_OBSTACLES = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-touch.on .round,.cot-touch.on .joy,'
+  + '.cot-touch.on .quick,.cot-touch-aim.on .aimhint,.cot-dp,.cot-drive,.cot-scope-vision,'
+  + '.cot-aim-warning:not([hidden]):not([data-seat]),.flight-identity,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,'
+  + '.cot-touch.on .scope,.cot-touch.on .fire,.cot-shells,.cot-cons,.cot-si-cardhost:not(:empty),.cot-si-log.open';
+const TOUCH_NOTICE_SOFT = '.cot-minimap,.cot-top,.cot-mode-status.show,.cot-ear,.cot-net,.cot-mp-status.battle,'
+  + '.cot-kill-lane .cot-kf:not([hidden]),.cot-si-toast:not([hidden]),.cot-room-chat:not([hidden]),.cot-spec.show';
+/** The alert's height while none shows (two lines at the touch type size in the detection's width), so places hold. */
+const TOUCH_ALERT_RESERVE_H = 40;
 /** The sixth-sense notice, which a touch layout's seated warning chip yields to (sightFurniture.ts sightNotice). */
 const SIXTH_SENSE = '.cot-sixth.on';
 /** The properties whose transition end measures a furniture again (installBattleHudLayout). */
@@ -411,11 +424,53 @@ export function installBattleHudLayout(root: HTMLElement): void {
     setRows(toastHost, stack.toastRows);
     if (touch && width > height && height <= 340) noticeTop = Math.max(top + 16, scoreBottom + 52);
     if (sideNotices) noticeTop = Math.max(top + 8, leftBottom - noticeReserve + 8);
+    // r10e: a touch layout's centre notices and medal card keep off the reticle's footprint and the HUD's panels
+    // (touchNoticePlan.ts); integ's place stays wherever it keeps clear
+    const banner = document.querySelector<HTMLElement>('.cot-medal-toasts');
+    let touchPlan = null;
+    if (touch) {
+      const boxes = (selector: string): TouchBox[] => {
+        const out: TouchBox[] = [];
+        for (const node of document.querySelectorAll(selector)) {
+          const box = shownBox(node);
+          if (box) out.push({ x0: box.left, y0: box.top, x1: box.right, y1: box.bottom });
+        }
+        return out;
+      };
+      const obstacles = boxes(TOUCH_NOTICE_OBSTACLES);
+      if (systems) obstacles.push({ x0: systemsLeft, y0: systemsTop, x1: systemsLeft + dockWidth, y1: systemsTop + systemsHeight });
+      // (the countdown's own box, unscaled: the plan sets its scale)
+      const countdownNode = document.querySelector<HTMLElement>('.cot-prebattle.on');
+      const countdown = countdownNode && shownBox(countdownNode) ? { w: countdownNode.offsetWidth, h: countdownNode.offsetHeight } : null;
+      // (the alert's slot is the detection's width; its wrapped height measured there, while it shows in that form)
+      const compactNow = document.body.dataset.touchNotices ?? '';
+      const noticeSize: TouchSize = !compactNow.includes('notice-compact') && notice ? { w: notice.width, h: notice.height } : { w: 214, h: 48 };
+      const alertBox = compactNow.includes('alert-compact') ? null : read('.cot-alert.show');
+      // (the card's layout box: it enters scaled)
+      const bannerBox = banner?.childElementCount ? { width: banner.offsetWidth, height: banner.offsetHeight } : null;
+      touchPlan = planTouchNotices({ width, height, top, obstacles, soft: boxes(TOUCH_NOTICE_SOFT),
+        scope: !!read('.cot-scope-vision'), seated: !(width > height && height < 550), notice: noticeSize,
+        alert: { w: noticeSize.w, h: alertBox?.height ?? TOUCH_ALERT_RESERVE_H },
+        countdown,
+        banner: bannerBox ? { w: bannerBox.width, h: bannerBox.height } : null, fallbackTop: noticeTop });
+      noticeTop = touchPlan.noticeTop;
+    }
+    const touchNotices = touchPlan ? ['plan', touchPlan.noticeCompact ? 'notice-compact' : '', touchPlan.alertCompact ? 'alert-compact' : '',
+      touchPlan.cleared ? '' : 'uncleared'].filter(Boolean).join(' ') : '';
+    if ((document.body.dataset.touchNotices ?? '') !== touchNotices) {
+      if (touchNotices) document.body.dataset.touchNotices = touchNotices;
+      else delete document.body.dataset.touchNotices;
+    }
     // Awards use the center lane only when the actual visible HUD leaves room.
     // Keep the card measurable while deferred; no per-frame polling is needed.
-    const banner = document.querySelector<HTMLElement>('.cot-medal-toasts');
-    let bannerTop = Math.ceil(top + 16);
-    if (banner?.childElementCount) {
+    let bannerTop = Math.ceil(touchPlan ? touchPlan.bannerTop : top + 16);
+    if (banner?.childElementCount && touchPlan) {
+      const placement = touchPlan.bannerReady ? 'ready' : 'deferred';
+      if (banner.dataset.placement !== placement) {
+        banner.dataset.placement = placement;
+        banner.dispatchEvent(new Event('cot-banner-placement'));
+      }
+    } else if (banner?.childElementCount) {
       const bounds = banner.getBoundingClientRect();
       const crosses = (box: DOMRect) => bounds.left < box.right + 8 && bounds.right > box.left - 8;
       for (const selector of ['.cot-kill-lane.l', '.cot-kill-lane.r', '.cot-sixth.on', '.cot-alert.show']) {
@@ -451,7 +506,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'roster-right-height': Math.min(battleRosterHeight(height, rightBottom - rosterStart, root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, rosterCount, root.classList.contains('rosters-expanded')), dockReport ? Math.max(0, report.top - rosterStart - 32) : Infinity),
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
       'portrait-countdown-top': systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
-      'notice-top': noticeTop, 'alert-top': noticeTop + (notice?.height ?? 48) + 8,
+      'notice-top': noticeTop, 'alert-top': touchPlan ? touchPlan.alertTop : noticeTop + (notice?.height ?? 48) + 8,
+      // (the touch plan's own names: the mouse layout's planner writes its own, on its side of the split)
+      'touch-notice-cx': touchPlan?.noticeCx ?? width / 2, 'touch-alert-cx': touchPlan?.alertCx ?? width / 2,
+      'touch-alert-w': touchPlan?.alertW ?? width - 24, 'touch-banner-cx': touchPlan?.bannerCx ?? width / 2,
+      'touch-countdown-cx': touchPlan?.countdownCx ?? width / 2, 'touch-countdown-top': touchPlan?.countdownTop ?? top + 8,
       'objective-top': scoreBottom, 'objective-bottom': top, 'banner-top': bannerTop,
       'objective-width': objectiveWidth(score?.width || 344) - (touch && network && width > height ? 52 : 0),
       'objective-left': score ? score.left + score.width / 2 : width / 2,
@@ -469,6 +528,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (document.body.style.getPropertyValue(property) !== pixels) {
         document.body.style.setProperty(property, pixels);
       }
+    }
+    // (the touch countdown's scale, unitless: touchNoticePlan.ts)
+    const countdownScale = String(touchPlan?.countdownScale ?? 1);
+    if (document.body.style.getPropertyValue('--hud-touch-countdown-scale') !== countdownScale) {
+      document.body.style.setProperty('--hud-touch-countdown-scale', countdownScale);
     }
     const rosterProperty = '--hud-roster-top-right';
     const rosterPixels = rosterTopRight === null ? '' : `${rosterTopRight}px`;
