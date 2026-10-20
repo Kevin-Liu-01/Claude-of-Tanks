@@ -4942,8 +4942,9 @@ export function initHud(bus: EventBus): HudRuntime {
     const yielded = seated && sightNoticeGap(draw.warningX - draw.warningW / 2, draw.warningY - AIM_WARNING_CHIP_ABOVE,
       draw.warningX + draw.warningW / 2, draw.warningY + AIM_WARNING_CHIP_BELOW) < SIGHT_MARK_RING_GAP;
     if (touchAimWarning.hidden === (touchWarning && !yielded)) touchAimWarning.hidden = !touchWarning || yielded;
-    // (the chip, canvas or seated, for the scope's cross arms to yield to)
-    if ((seated && !yielded) || (!touchWarning && warning.visible && draw.warningY > 0)) {
+    // (the chip, canvas or seated, for the scope's cross arms to yield to; its seat even while it waits hidden for the
+    // notice, which moves no mark)
+    if (seated || (!touchWarning && warning.visible && draw.warningY > 0)) {
       noteSightInk(draw.warningX - draw.warningW / 2, draw.warningY - AIM_WARNING_CHIP_ABOVE,
         draw.warningX + draw.warningW / 2, draw.warningY + AIM_WARNING_CHIP_BELOW);
     }
