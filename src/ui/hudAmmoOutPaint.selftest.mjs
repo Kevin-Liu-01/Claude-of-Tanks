@@ -592,6 +592,28 @@ for (const [id, slots, fired] of [['m1a3', 4, 2], ['ztz100_prototype', 2, 1], ['
   }
 }
 
+// 13c. A frame at rest is reused until something it shows changes; a relayout that moves the furniture is such a change
+// (sightFurniture.version: the readouts may have to move), and a pass that measures the same boxes is not.
+{
+  const tank = tankOf('m1a1_abrams_hc', [0, 0, 0]);
+  settledFrame(tank);
+  clearSightFurniture();
+  settleSightFurniture();
+  assert.equal(frame(tank).painted, false, 'the same (empty) furniture: reused');
+  clearSightFurniture();
+  addSightFurniture(10, 10, 60, 40);
+  settleSightFurniture();
+  assert.equal(frame(tank).painted, true, 'new furniture: repainted');
+  assert.equal(frame(tank).painted, false, '... then reused again');
+  clearSightFurniture();
+  addSightFurniture(10, 10, 60, 40);
+  settleSightFurniture();
+  assert.equal(frame(tank).painted, false, 'the same box measured again: reused');
+  clearSightFurniture();
+  settleSightFurniture();
+  frame(tank);
+}
+
 // 14. The ×8 sight on short landscape phones (critic r3 measured 844x390, 932x430 and 667x375): the empty mark, the
 // rack, its countdown and the range tag never land on the readout line or the zoom plate. Desktop keeps its stack.
 const overlap = (a, b) => Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0) > 0.5 && Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0) > 0.5;
@@ -1052,11 +1074,22 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
   }
   return { ring, chip, line, zoom, stack, tag, countdown, furniture: furniture.map(([op]) => op) };
 }
-/** Every mark keeps 3 px from every recorded panel and control (sightFurniture.ts). */
-function assertFurnitureClear(items, boxes, at) {
+/** The smallest windows, where the widest rings with the column under the marker (and on a portrait phone the warning
+ *  chip) leave no place for every mark that keeps 3 px from the furniture: there the row, the chip and the column take
+ *  the places that reach least far into it, and this is how far that is at worst (r10, measured: 568x290 3.34 px into
+ *  the score, a rack set over a 43 px ring; 320x568 26.28 px, the 156 px warning chip over the sight on the systems row
+ *  with a rack reloading under the widest ring, its left FIRE button under the sight; 360x640 7.84 px, the same chip.
+ *  Round r9 left 568x290 25.5 px into its systems row). Every other swept window keeps 3 px. */
+const TIGHT_FLOOR = { '568x290t': -3.5, '320x568t': -26.5, '360x640t': -8 };
+const tightWorst = {};
+/** Every mark keeps 3 px from every recorded panel and control (sightFurniture.ts), or on the smallest windows no less
+ *  than their floor (TIGHT_FLOOR). */
+function assertFurnitureClear(items, boxes, at, key = null) {
+  const floor = key && key in TIGHT_FLOOR ? TIGHT_FLOOR[key] : 3;
   for (const item of items) for (const panel of boxes) {
     const gap = Math.max(item.box.x0 - panel.x1, panel.x0 - item.box.x1, item.box.y0 - panel.y1, panel.y0 - item.box.y1);
-    assert.ok(gap >= 3 - 1e-6, `${at}: ${item.text ? `"${item.text}"` : item.op === 'dom' ? 'the seated chip' : 'a mark'} keeps ${gap.toFixed(2)} px from ${panel.name}`);
+    if (key in TIGHT_FLOOR) tightWorst[key] = Math.min(tightWorst[key] ?? Infinity, gap);
+    assert.ok(gap >= floor - 1e-6, `${at}: ${item.text ? `"${item.text}"` : item.op === 'dom' ? 'the seated chip' : 'a mark'} keeps ${gap.toFixed(2)} px from ${panel.name}`);
   }
 }
 {
@@ -1110,16 +1143,22 @@ function assertFurnitureClear(items, boxes, at) {
           for (const op of level) {
             assert.ok(left - op.box.x1 >= 16 - 0.5, `${at}: the row beside the column keeps ${(left - op.box.x1).toFixed(2)} px from a mark on its level`);
           }
-          const nearest = Math.min(...level.map((op) => left - op.box.x1));
-          assert.ok(!level.length || nearest <= 16 + 4, `${at}: the row beside the column starts ${nearest.toFixed(2)} px past its nearest mark`);
+          // (the column's right edge: the rack's turned outer contour 0.6 px past its modelled reach, a struck rack's strike
+          // 2 px short of it; a stale countdown edge would carry the row 15 px and more further)
+          const columnRight = Math.max(width / 2, ...furniture.filter((item) => item !== tag && item !== chip).map((op) => op.box.x1));
+          assert.ok(left - columnRight <= 16 + 3, `${at}: the row beside the column starts ${(left - columnRight).toFixed(2)} px past the column`);
         }
         // every mark of the sight, the readout row, the countdown, the rack, the empty marks, the range tag and the
         // warning chip, keeps 3 px from every panel and control the layout measured
-        assertFurnitureClear([...stack, ...furniture], boxes, at);
+        assertFurnitureClear([...stack, ...furniture], boxes, at, `${width}x${height}${touch ? 't' : ''}`);
       }
     }
   }
   assert.ok(Object.values(modes).every((n) => n > 0), `the cramped rows ran (${JSON.stringify(modes)})`);
+  // (the floors bind: each tight window does reach into its furniture, by no more than its floor allows)
+  for (const [key, floor] of Object.entries(TIGHT_FLOOR)) {
+    assert.ok(tightWorst[key] < 3 && tightWorst[key] >= floor - 1e-6, `${key}: the least gap is ${tightWorst[key]?.toFixed(2)} (floor ${floor})`);
+  }
   documentStub.body.classes.delete('cot-touch-layout');
   clearSightFurniture();
   settleSightFurniture();
@@ -1147,7 +1186,7 @@ function assertFurnitureClear(items, boxes, at) {
         const { ring, chip, furniture } = reticleGaps(quickPaint(tank, 'battle'), at, { warn: true, scoped: false, touch: true });
         assert.equal(chip?.op, 'dom', `${at}: the chip is seated under the sight`);
         if (chip.box.y1 < ring.y - ring.r) over++;
-        assertFurnitureClear(furniture, boxes, at);
+        assertFurnitureClear(furniture, boxes, at, `${width}x${height}t`);
       }
     }
   }

@@ -757,8 +757,9 @@ const AIM_WARNING_CHIP_BELOW = 9.5;
 const SCOPE_VISION_HALF_H = 24;
 /** How the scope's readout row sets its zoom plate and the warning chip, and where its line goes (sniperReadoutStack). */
 type SniperRowMode = 'stack' | 'zoomBeside' | 'chipBeside' | 'rowBeside' | 'rowAbove';
-/** The touch warning chip the reticle seats under the sight (placeAimWarning): its width (a portrait under 341 px wide
- *  narrows it), its height the canvas chip's (AIM_WARNING_CHIP_ABOVE + _BELOW; battleHudLayout.css data-seat). */
+/** The touch warning chip the reticle seats under the sight (placeAimWarning): its width (a portrait under 375 px wide
+ *  narrows it, clear of the speedometer beside the sight at 360x640), its height the canvas chip's
+ *  (AIM_WARNING_CHIP_ABOVE + _BELOW; battleHudLayout.css data-seat). */
 const TOUCH_WARNING_W = 180;
 const TOUCH_WARNING_NARROW_W = 156;
 /** The scope row's places, tried in order (sniperReadoutStack): its mode, the warning chip set over the sight (else under
@@ -770,6 +771,15 @@ const SNIPER_ROW_PLACES: readonly (readonly [SniperRowMode, boolean, boolean, bo
   ['rowAbove', false, false, false], ['rowAbove', true, false, true], ['stack', false, true, false], ['stack', true, true, true],
   ['rowAbove', false, true, false], ['rowAbove', true, true, true],
 ];
+/** The reticle's text faces, built once (a canvas font set every repaint from a template would build a string each time). */
+const FONT_COUNTDOWN = `700 ${COUNTDOWN_SIZE}px ${FONT_COND}`;
+const FONT_COUNTDOWN_UNIT = `500 10.5px ${FONT_COND}`;
+const FONT_SCOPE_ZOOM = `700 16px ${FONT_COND}`;
+const FONT_SCOPE_COUNT = `700 13.5px ${FONT_COND}`;
+const FONT_SCOPE_TYPE = `800 9px ${FONT_COND}`;
+const FONT_RANGE_TAG = `600 11.5px ${FONT_COND}`;
+const FONT_AIM_WARNING = `800 10.5px ${FONT_COND}`;
+const FONT_RACK_OVERFLOW = `700 9px ${FONT_COND}`;
 /** The struck round that leads the compact sniper readout line (paintSniperAmmoReadout). */
 const COMPACT_DRY_ROUND_W = 6;
 const COMPACT_DRY_ROUND_H = 14;
@@ -4197,7 +4207,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
     if (magazine.overflow > 0) {
       ctx.fillStyle = shellInk;
-      ctx.font = `700 9px ${FONT_COND}`;
+      ctx.font = FONT_RACK_OVERFLOW;
       ctx.textAlign = 'left';
       // 3 px past the turned outer shell's contour (the capture's rack gap)
       ctx.fillText(`+${magazine.overflow}`, draw.cx + totalW * 0.5 + RACK_TURN_X + RACK_CONTOUR + 3, y0 + shellH);
@@ -4349,9 +4359,9 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!draw.reloading || draw.magazine?.intraClip) return;
     const text = reloadHudCountdown(view.reload, view.ammoSelectionPending);
     ctx.fillStyle = RELOAD_ACCENT;
-    ctx.font = `700 ${COUNTDOWN_SIZE}px ${FONT_COND}`;
+    ctx.font = FONT_COUNTDOWN;
     const textW = ctx.measureText(text).width;
-    ctx.font = `500 10.5px ${FONT_COND}`;
+    ctx.font = FONT_COUNTDOWN_UNIT;
     const unit = view.ammoSelectionPending ? '' : ' s';
     const unitW = ctx.measureText(unit).width;
     const height = COUNTDOWN_ASCENT + COUNTDOWN_DESCENT;
@@ -4387,7 +4397,10 @@ export function initHud(bus: EventBus): HudRuntime {
       if (sightFurnitureGap(x, top, x + textW + unitW, top + height) < SIGHT_MARK_RING_GAP) {
         const sideX = draw.cx - draw.magazineHalfW - 7 - textW - unitW;
         const sideY = draw.magazineBottomY - 2;
-        const overTop = aboveSightTop(draw) - SIGHT_MARK_RING_GAP - height;
+        // (over a range tag hung at the 1:30 too, where it would sit on the countdown's row within a group gap)
+        const tagNear = tag && tag.y1 < draw.cy && tag.x0 - (x + textW + unitW) < TAG_GROUP_GAP;
+        const overTop = Math.min(aboveSightTop(draw), tagNear ? tag.y0 - SIGHT_MARK_RING_GAP : Infinity)
+          - SIGHT_MARK_RING_GAP - height;
         if (draw.magazine && ringGap(draw, sideX, sideY - COUNTDOWN_ASCENT, sideX + textW + unitW, sideY + COUNTDOWN_DESCENT)
           >= SIGHT_MARK_RING_GAP && sightFurnitureGap(sideX, sideY - COUNTDOWN_ASCENT, sideX + textW + unitW,
           sideY + COUNTDOWN_DESCENT) >= SIGHT_MARK_RING_GAP) {
@@ -4402,9 +4415,9 @@ export function initHud(bus: EventBus): HudRuntime {
     draw.countdownBottomY = y + COUNTDOWN_DESCENT;
     draw.countdownRightX = x + textW + unitW;
     ctx.textAlign = 'left';
-    ctx.font = `700 ${COUNTDOWN_SIZE}px ${FONT_COND}`;
+    ctx.font = FONT_COUNTDOWN;
     ctx.fillText(text, x, y);
-    ctx.font = `500 10.5px ${FONT_COND}`;
+    ctx.font = FONT_COUNTDOWN_UNIT;
     ctx.fillText(unit, x + textW, y);
     ctx.textAlign = 'center';
   }
@@ -4435,15 +4448,16 @@ export function initHud(bus: EventBus): HudRuntime {
     const row = sniperRowScratch;
     const line = sniperReadoutLine(draw);
     row.lineW = line.round + line.countW + line.typeW;
-    ctx.font = `700 16px ${FONT_COND}`;
+    ctx.font = FONT_SCOPE_ZOOM;
     // the plate's rules reach 32 px past its text, and their 1.2 px stroke 0.6 px past their ends
     row.zoomW = ctx.measureText(sniperZoomText(view)).width + 24 + 40 + 1.2;
     row.chipW = draw.warningY ? draw.warningW : 0;
     // The line stays centred under the marker. How far each part's ink reaches over and under the row's baseline: the
-    // line's digits 10 and 1.1 (the compact stack's struck round, leading the line, 14.7 and 3.7 with its strike), the
+    // line's digits 10 and 1.1 (the compact stack's struck round, leading the line, 14.7 and 4.7 with its strike's dark
+    // contour), the
     // zoom plate's 11.9 and 1.3, the warning chip's AIM_WARNING_CHIP_ABOVE and _BELOW.
     row.lineTop = line.round ? 14.7 : 10;
-    row.lineFoot = line.round ? 3.7 : 1.1;
+    row.lineFoot = line.round ? 4.7 : 1.1;
     row.chipRight = draw.cx - row.lineW / 2 - TAG_GROUP_GAP;
     // the column under the marker: a struck rack's strike 3 px past the rack (2 px past its shells), a live rack's
     // contours 1.5 px past it, the scope's struck round (8 px wide, its strike 6 px past its middle), the countdown
@@ -4571,7 +4585,10 @@ export function initHud(bus: EventBus): HudRuntime {
     if (mode === 'rowAbove') {
       // its foot 3 px over the ring's stroke and the marker's clear centre, then risen past what sits level with the
       // marker under it (the vision switch); a chip goes over the row
-      y = aboveSightTop(draw) - SIGHT_MARK_RING_GAP - sniperRowFoot(draw, mode);
+      // (over a chip placeAimWarning already set over the sight, where the row leaves it be)
+      const chipOver = !row.chipAbove && draw.warningY > 0 && draw.warningY < draw.cy;
+      y = Math.min(aboveSightTop(draw), chipOver ? draw.warningY - AIM_WARNING_CHIP_ABOVE : Infinity)
+        - SIGHT_MARK_RING_GAP - sniperRowFoot(draw, mode);
       // (over the range tag too, where it hangs over the sight beside the row's columns)
       if (tag && tag.y1 < draw.cy) {
         let right = -Infinity;
@@ -4615,8 +4632,18 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     if (row.chipW && mode !== 'chipBeside') {
       const chipY = row.chipAbove ? (mode === 'rowAbove' ? row.chipOverY : sniperChipAboveY(draw)) : draw.warningY;
-      clear = Math.min(clear, sniperMarkClearance(draw.cx - row.chipW / 2, chipY - AIM_WARNING_CHIP_ABOVE,
-        draw.cx + row.chipW / 2, chipY + AIM_WARNING_CHIP_BELOW));
+      const x0 = draw.cx - row.chipW / 2;
+      const x1 = draw.cx + row.chipW / 2;
+      const y0 = chipY - AIM_WARNING_CHIP_ABOVE;
+      const y1 = chipY + AIM_WARNING_CHIP_BELOW;
+      clear = Math.min(clear, sniperMarkClearance(x0, y0, x1, y1));
+      // ... and the row's parts 3 px from the chip itself, wherever each sits (a place that sets one on the other is the
+      // worst of all, not a last resort)
+      for (let part = 0; part < 3; part++) {
+        if (!sniperRowPart(draw, part, mode)) continue;
+        const p = sniperPartScratch;
+        clear = Math.min(clear, Math.max(x0 - p.x1, p.x0 - x1, y0 - (y + p.foot), (y - p.top) - y1));
+      }
     }
     return clear;
   }
@@ -4667,9 +4694,9 @@ export function initHud(bus: EventBus): HudRuntime {
       line.label = `${count} `;
     }
     line.type = shell.type || '';
-    ctx.font = `700 13.5px ${FONT_COND}`;
+    ctx.font = FONT_SCOPE_COUNT;
     line.countW = ctx.measureText(line.label).width;
-    ctx.font = `800 9px ${FONT_COND}`;
+    ctx.font = FONT_SCOPE_TYPE;
     line.typeW = ctx.measureText(line.type).width;
     // Out of ammo on the compact stack, the struck round leads the line: [round] 0 APFSDS.
     line.round = draw.dry && !draw.magazine && compactSniperStack(draw) ? COMPACT_DRY_ROUND_W + 8 : 0;
@@ -4692,7 +4719,7 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     tag.x0 = draw.cx + Math.max(offset, rackClear) + 4;
     tag.y = draw.cy + offset + 12;
-    ctx.font = `600 11.5px ${FONT_COND}`;
+    ctx.font = FONT_RANGE_TAG;
     tag.x1 = tag.x0 + ctx.measureText(tag.text).width;
     tag.y0 = tag.y - 11.5 * 0.74;
     tag.y1 = tag.y + 11.5 * 0.08;
@@ -4716,10 +4743,10 @@ export function initHud(bus: EventBus): HudRuntime {
     const { label, type, countW, round } = sniperReadoutLine(draw);
     if (round) paintStruckRound(x - round, y - COMPACT_DRY_ROUND_H + 2, COMPACT_DRY_ROUND_W, COMPACT_DRY_ROUND_H);
     ctx.textAlign = 'left';
-    ctx.font = `700 13.5px ${FONT_COND}`;
+    ctx.font = FONT_SCOPE_COUNT;
     ctx.fillStyle = draw.dry ? DRY_ACCENT : 'rgba(226,236,244,0.92)';
     ctx.fillText(label, x, y);
-    ctx.font = `800 9px ${FONT_COND}`;
+    ctx.font = FONT_SCOPE_TYPE;
     ctx.fillStyle = SHELL_TYPE_COLOR[type] || 'rgba(159,176,191,0.9)';
     ctx.fillText(type, x + countW, y);
     ctx.textAlign = 'center';
@@ -4730,7 +4757,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!tag) return;
     ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(208,221,232,0.8)';
-    ctx.font = `600 11.5px ${FONT_COND}`;
+    ctx.font = FONT_RANGE_TAG;
     ctx.fillText(tag.text, tag.x0, tag.y);
     ctx.textAlign = 'center';
   }
@@ -4740,7 +4767,7 @@ export function initHud(bus: EventBus): HudRuntime {
     // Keep the familiar zoom line directly beneath ammunition, not over the
     // target or detached down beside the vehicle console.
     const text = sniperZoomText(view);
-    ctx.font = `700 16px ${FONT_COND}`;
+    ctx.font = FONT_SCOPE_ZOOM;
     ctx.fillStyle = 'rgba(196,246,202,0.95)';
     ctx.fillText(text, x, y);
     const halfWidth = ctx.measureText(text).width / 2 + 12;
@@ -4781,9 +4808,9 @@ export function initHud(bus: EventBus): HudRuntime {
     const touch = document.body.classList.contains('cot-touch-layout');
     if (!warning.visible || (touch && !touchWarningSeated())) return;
     const tag = sniperDistanceTag(view, draw);
-    if (touch) draw.warningW = w <= 340 && h >= w ? TOUCH_WARNING_NARROW_W : TOUCH_WARNING_W;
+    if (touch) draw.warningW = w < 375 && h >= w ? TOUCH_WARNING_NARROW_W : TOUCH_WARNING_W;
     else {
-      ctx.font = `800 10.5px ${FONT_COND}`;
+      ctx.font = FONT_AIM_WARNING;
       draw.warningW = ctx.measureText(warning.text).width + 50;
     }
     draw.warningX = draw.cx;
@@ -4796,12 +4823,13 @@ export function initHud(bus: EventBus): HudRuntime {
     if (ringGap(draw, draw.cx - half, y - AIM_WARNING_CHIP_ABOVE, draw.cx + half, y + AIM_WARNING_CHIP_BELOW) < SIGHT_MARK_RING_GAP) {
       y = Math.max(y, belowRing(draw) + AIM_WARNING_CHIP_ABOVE);
     }
-    // ... and over the sight where the HUD's furniture sits there and leaves room over it (critic r9: a small portrait
-    // phone's left FIRE button under the sight); the scope's row may still move it (sniperReadoutStack)
-    if (sightFurnitureGap(draw.cx - half, y - AIM_WARNING_CHIP_ABOVE, draw.cx + half, y + AIM_WARNING_CHIP_BELOW) < SIGHT_MARK_RING_GAP) {
+    // ... and over the sight where the HUD's furniture sits there and over it reaches less far into it (critic r9: a small
+    // portrait phone's left FIRE button under the sight); the scope's row may still move it (sniperReadoutStack)
+    const under = sightFurnitureGap(draw.cx - half, y - AIM_WARNING_CHIP_ABOVE, draw.cx + half, y + AIM_WARNING_CHIP_BELOW);
+    if (under < SIGHT_MARK_RING_GAP) {
       const over = sniperChipAboveY(draw);
       if (sightFurnitureGap(draw.cx - half, over - AIM_WARNING_CHIP_ABOVE, draw.cx + half, over + AIM_WARNING_CHIP_BELOW)
-        >= SIGHT_MARK_RING_GAP) y = over;
+        > under) y = over;
     }
     draw.warningY = y;
   }
@@ -4819,8 +4847,8 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!seated) return;
     const x = draw.warningX - draw.warningW / 2;
     const y = draw.warningY - AIM_WARNING_CHIP_ABOVE;
-    if (!(Math.abs(x - seat.x) < 0.01)) { seat.x = x; touchAimWarning.style.setProperty('--hud-aim-warning-x', `${x}px`); }
-    if (!(Math.abs(y - seat.y) < 0.01)) { seat.y = y; touchAimWarning.style.setProperty('--hud-aim-warning-y', `${y}px`); }
+    if (x !== seat.x) { seat.x = x; touchAimWarning.style.setProperty('--hud-aim-warning-x', `${x}px`); }
+    if (y !== seat.y) { seat.y = y; touchAimWarning.style.setProperty('--hud-aim-warning-y', `${y}px`); }
     if (draw.warningW !== seat.w) { seat.w = draw.warningW; touchAimWarning.style.setProperty('--hud-aim-warning-w', `${draw.warningW}px`); }
   }
 
@@ -4838,7 +4866,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const y = draw.warningY; // placeAimWarning
     const danger = warning.kind === 'blocked';
     const recovery = warning.kind === 'rollover';
-    ctx.font = `800 10.5px ${FONT_COND}`;
+    ctx.font = FONT_AIM_WARNING;
     const chipW = draw.warningW;
     const chipX = draw.warningX - chipW * 0.5;
     ctx.fillStyle = danger ? 'rgba(36,10,10,.92)' :
