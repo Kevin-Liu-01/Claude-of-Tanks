@@ -24,7 +24,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /** Shell groups that move with the gun: the generator's moving test (gun-frame fill included, as it is a gun-frame shell). */
-export const MOVING_GROUP = /^(gun|gunMount|mantlet)/i;
+const MOVING_GROUP = /^(gun|gunMount|mantlet)/i;
 const FILL_GROUP = /InteriorFill$/;
 const TURRET_PROPER = /^turret/i;
 
