@@ -115,12 +115,17 @@ function loadTexture(url: string, options: { width: number; height: number }): P
   return new THREE.TextureLoader().loadAsync(url).then(finish);
 }
 
+/** A phone decodes the atlas at half size (the device tier the engine measured at boot). */
+function garageDisplayAtlasLowTier(): boolean {
+  return getDeviceTier() === 'mobile';
+}
+
 /**
  * Start the one atlas load (idempotent). Called from a display's first render, never on the boot or switch path; a
  * headless build (no document) never loads it. `lowTier` decodes it at half size (2.8 MB instead of 11.2 MB): every
  * display armed by armGarageDisplayAtlas asks for it on a mobile device.
  */
-export function ensureGarageDisplayAtlas({ anisotropy = 4, lowTier = false }: { anisotropy?: number; lowTier?: boolean } = {}): void {
+export function ensureGarageDisplayAtlas({ anisotropy = 4, lowTier = garageDisplayAtlasLowTier() }: { anisotropy?: number; lowTier?: boolean } = {}): void {
   if (status !== 'idle' || typeof document === 'undefined') return;
   status = 'loading';
   const scale = lowTier ? 0.5 : 1;
@@ -142,7 +147,8 @@ export function ensureGarageDisplayAtlas({ anisotropy = 4, lowTier = false }: { 
   });
 }
 
-const disarmed = (): void => {};
+/** The stock no-op a display's hook hands back after its first render. */
+const disarmed = THREE.Object3D.prototype.onBeforeRender;
 
 /**
  * Arm a display, decal or lens mesh: its first render starts the one atlas load (half size on a mobile device), then the
@@ -152,7 +158,7 @@ const disarmed = (): void => {};
 export function armGarageDisplayAtlas(mesh: THREE.Object3D, anisotropy = 4): void {
   mesh.onBeforeRender = () => {
     mesh.onBeforeRender = disarmed;
-    ensureGarageDisplayAtlas({ anisotropy, lowTier: getDeviceTier() === 'mobile' });
+    ensureGarageDisplayAtlas({ anisotropy, lowTier: garageDisplayAtlasLowTier() });
   };
 }
 

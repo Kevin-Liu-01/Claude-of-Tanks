@@ -148,6 +148,11 @@ factor, nearest first with occluded far forms dropped, under 9,500 triangles. Ad
 and, where its draft lacks them, its map's rows in the generator. An approach with `drapeM`
 (`garageEnvironmentRecipes.ts`) lies on the terrain mesh's own triangles and splits where the ground bends off a
 chord, its road one ribbon laid across the width every 2 m or less (Monsoon, Frosthollow, Glacier).
+A Garage's own pieces live in its kit module (`garageSaltmereKit.ts`, `garageCinderKit.ts`, `garageIronworksKit.ts`):
+pure `KitBuilder` functions placed as `{ kind: 'piece', key, build }` items (cached by `key`). Its outside environment
+is a built skyline (`garageSkylineKit.ts`, rows in `GARAGE_KIT_SKYLINES`): named map landmarks drawn into the pack's one
+backdrop draw at their bearings from the terrain patch's anchor (map x/z = pack x/z), plus optional band reshaping
+(sea arcs, strands, hedges); `garageSkylineKit.selftest.mjs` checks each landmark within 15 degrees of its map point.
 The hero's outline from the Garage camera stays clear (garage critic panel and
 ruling, 2026-10-14: the current layout protects the hero's spot, the turntable,
 the camera and the UI, not the backdrop): no post, mast, leg, hook or lamp crosses

@@ -49,14 +49,17 @@ export function garageAtmosphereAtlasPixels(): Uint8Array {
   // a tileable value noise along U (period TEX)
   const lattice = new Float32Array(32 * 9);
   for (let i = 0; i < lattice.length; i += 1) lattice[i] = random();
+  // (no closure per sample: the strips are painted once, on the first Garage with atmosphere, mostly before the
+  // optimizing compiler has seen this code, so it is written to run quickly in the interpreter too)
+  const at = (a: number, b: number, cellsU: number): number => lattice[(b * 32) + (((a % cellsU) + cellsU) % cellsU)];
   const noise = (u: number, v: number, cellsU: number): number => {
     const fu = (u / TEX) * cellsU, fv = v * 8;
     const iu = Math.floor(fu), iv = Math.min(7, Math.floor(fv));
     const tu = fu - iu, tv = fv - iv;
     const su = tu * tu * (3 - 2 * tu), sv = tv * tv * (3 - 2 * tv);
-    const at = (a: number, b: number): number => lattice[(b * 32) + (((a % cellsU) + cellsU) % cellsU)];
-    const top = at(iu, iv) + (at(iu + 1, iv) - at(iu, iv)) * su;
-    const bottom = at(iu, iv + 1) + (at(iu + 1, iv + 1) - at(iu, iv + 1)) * su;
+    const a00 = at(iu, iv, cellsU), a10 = at(iu + 1, iv, cellsU), a01 = at(iu, iv + 1, cellsU), a11 = at(iu + 1, iv + 1, cellsU);
+    const top = a00 + (a10 - a00) * su;
+    const bottom = a01 + (a11 - a01) * su;
     return top + (bottom - top) * sv;
   };
   const motes: Array<[number, number, number]> = [];
@@ -87,18 +90,25 @@ export function garageAtmosphereAtlasPixels(): Uint8Array {
             a = Math.pow(edge, 1.5) * Math.max(0, streak * 1.4 - 0.4);
             break;
           }
+          // (the sprites test their own few pixels only: a mote or drip further than its radius along either axis
+          // cannot reach this pixel, so the same texels come out at a fraction of the first Garage's build)
           case 'motes': {
-            for (const [mx, my, mr] of motes) {
-              let ddx = Math.abs(x - mx); ddx = Math.min(ddx, TEX - ddx);
+            for (let k = 0; k < motes.length; k += 1) {
+              const mote = motes[k], my = mote[1], mr = mote[2];
+              if (Math.abs(y - my) >= mr) continue;
+              let ddx = Math.abs(x - mote[0]); ddx = Math.min(ddx, TEX - ddx);
+              if (ddx >= mr) continue;
               const d = Math.hypot(ddx, y - my);
               if (d < mr) a = Math.max(a, 1 - d / mr);
             }
             break;
           }
           case 'drips': {
-            for (const [dx, len] of drips) {
-              let ddx = Math.abs(x - dx); ddx = Math.min(ddx, TEX - ddx);
-              if (ddx < 0.8 && v < len) a = Math.max(a, (1 - v / len) * (1 - ddx / 0.8));
+            for (let k = 0; k < drips.length; k += 1) {
+              const len = drips[k][1];
+              if (v >= len) continue;
+              let ddx = Math.abs(x - drips[k][0]); ddx = Math.min(ddx, TEX - ddx);
+              if (ddx < 0.8) a = Math.max(a, (1 - v / len) * (1 - ddx / 0.8));
             }
             break;
           }

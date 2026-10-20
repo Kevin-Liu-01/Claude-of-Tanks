@@ -758,6 +758,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageSkyline.selftest.mjs',
     // garage r9 (g1 lane, criterion 16): the near facility's primitives rebuilt as kit geometry
     'src/ui/garageFacilityNear.selftest.mjs',
+    // garage r9 per-garage lanes: the built skylines (named map landmarks at their bearings, deterministic, bounded)
+    'src/ui/garageSkylineKit.selftest.mjs',
     'tools/garage-terrain-patches.selftest.mjs',
     'tools/garage-variants-probe.selftest.mjs',
     'src/game/rosterPlanning.selftest.mjs',

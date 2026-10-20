@@ -267,8 +267,18 @@ for (const variant of GARAGE_VARIANTS) {
       `${variant.id} built horizon masses stay under the biome ceiling (${stats.builtHorizonMassTopM} m)`);
     assert.ok(stats.builtHorizonAccentTopM > stats.builtHorizonMassTopM && stats.builtHorizonAccentTopM <= 26,
       `${variant.id} built horizon accents stay slender and bounded (${stats.builtHorizonAccentTopM} m)`);
+  } else if (variant.architecture === 'naval_drydock') {
+    // garage r9 (K10): Saltmere's coast is built too, the whitewashed village, the headland and its lighthouse, the islets
+    assert.ok(stats.builtHorizonMassTopM > 0 && stats.builtHorizonMassTopM <= 13.2,
+      `${variant.id} coastal skyline masses stay low (${stats.builtHorizonMassTopM} m)`);
+    assert.ok(stats.builtHorizonAccentTopM > stats.builtHorizonMassTopM && stats.builtHorizonAccentTopM <= 26,
+      `${variant.id} the lighthouse and the steeple stay slender and bounded (${stats.builtHorizonAccentTopM} m)`);
   } else {
     assert.equal(stats.builtHorizonMassTopM, 0, `${variant.id} has no built horizon`);
+  }
+  // garage r9 (K10): a Garage with a built skyline of its own names its map's landmarks
+  if (['naval_drydock', 'rail_roundhouse', 'factory_line'].includes(variant.architecture)) {
+    assert.ok(stats.kitSkylineLandmarks.length >= 4, `${variant.id} names its skyline's landmarks: ${stats.kitSkylineLandmarks.join(', ')}`);
   }
   if (['naval_drydock', 'rail_roundhouse'].includes(variant.architecture)) {
     assert.ok(stats.horizonMaxHeightM <= 6.5,

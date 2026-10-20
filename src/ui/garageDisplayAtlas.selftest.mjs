@@ -14,6 +14,7 @@ import {
 } from './garageDisplayAtlas.ts';
 import { buildGarageKitDressing, clearGarageKitCache } from './garageKitPlacement.ts';
 import { GARAGE_KIT_PLACEMENTS } from './garageKitPlacements.ts';
+import { analyzeModuleSource } from '../../tools/i18n-page-catalogs.mjs';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const check = spawnSync(process.execPath, ['tools/generate-garage-display-atlas.mjs', '--check'], { cwd: root, encoding: 'utf8' });
@@ -55,6 +56,19 @@ for (const file of kitFiles) {
   assert.doesNotMatch(source, /makeSignTexture|Monument|fillText/, `${file}: sign type comes from the atlas generator, never the browser`);
 }
 for (const name of named) assert.doesNotThrow(() => garageDisplayRect(name), `the kit names '${name}', which the atlas lacks`);
+
+// the rect names never read as translation keys: a template opening on a group the catalog also uses as a namespace
+// (`media.${id}`) makes the i18n page scan keep that whole namespace in the game's catalogs (the engineering critic,
+// 2026-10-18: every media.* caption on the boot path, check:bundle over budget)
+{
+  const english = Object.keys(JSON.parse(await readFile(new URL('./i18nCatalog.en-US.json', import.meta.url), 'utf8')));
+  for (const file of ['garageDisplayAtlas.ts', 'garageDisplayKit.ts', 'garageKitPlacement.ts', ...kitFiles]) {
+    const source = await readFile(new URL(`./${file}`, import.meta.url), 'utf8');
+    const scan = analyzeModuleSource(source, `src/ui/${file}`, { root, keys: english });
+    assert.deepEqual(scan.patterns.map(String), [], `${file}: builds rect names the i18n scan reads as key patterns`);
+    assert.deepEqual([...scan.prefixes], [], `${file}: names a key prefix`);
+  }
+}
 assert.ok(named.size >= 30, `the kit uses ${named.size} atlas rects`);
 assert.throws(() => garageDisplayRect('brand.nonexistent'), /no rect/);
 

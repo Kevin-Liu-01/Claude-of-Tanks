@@ -37,6 +37,15 @@ export const GARAGE_SLIDESHOW_PLACEMENTS: Readonly<Partial<Record<GarageVariant[
   repair_bunker: Object.freeze({ at: [16.0, 25.73] as const, yaw: Math.PI / 4, width: 2.2, mount: 'wall', bottomY: 1.6, y: 2.72 }),
   // Monsoon: a rugged panel bolted to the canopy's front-right column under the eave, turned to the yard's right
   rain_canopy: Object.freeze({ at: [12.42, 19.58] as const, yaw: Math.PI / 2, width: 2.0, mount: 'column', bottomY: 2.0, y: 1.35 }),
+  // Ironworks: on the yard wall of the control kiosk right of the crane bay (garageIronworksKit.ts), between the bay's
+  // columns from the opening view, facing down the yard
+  factory_line: Object.freeze({ at: [17.2, 24.8] as const, yaw: Math.PI / 4, width: 2.6, mount: 'wall', bottomY: 1.7 }),
+  // Cinder: hung from the throat platform's canopy at its front column, an LED departure board facing the yard
+  // (garageCinderKit.ts); the platform's deck is 0.9 m up
+  rail_roundhouse: Object.freeze({ at: [18.6, 21.35] as const, yaw: Math.PI / 4, width: 2.2, mount: 'column', bottomY: 1.4, y: 0.9 }),
+  // Saltmere: an LED harbour board on the dock's far pierhead past the crane's rails, facing up the quay
+  // (garageSaltmereKit.ts)
+  naval_drydock: Object.freeze({ at: [23.5, 37.25] as const, yaw: Math.PI / 4, width: 2.0, mount: 'freestanding', bottomY: 1.3, y: 0.12 }),
 });
 
 /**

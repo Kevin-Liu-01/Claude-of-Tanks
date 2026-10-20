@@ -68,7 +68,11 @@ type GarageKitItem = GarageKitItemBase & (
   | { readonly kind: 'display'; readonly display: 'station'; readonly at: readonly [number, number]; readonly yaw?: number;
     readonly y?: number; readonly screens: readonly string[]; readonly width?: number; readonly rugged?: boolean }
   | { readonly kind: 'display'; readonly display: 'slideshow'; readonly at: readonly [number, number]; readonly yaw?: number;
-    readonly y?: number; readonly width: number; readonly mount: 'freestanding' | 'wall' | 'column' | 'trailer'; readonly bottomY?: number });
+    readonly y?: number; readonly width: number; readonly mount: 'freestanding' | 'wall' | 'column' | 'trailer'; readonly bottomY?: number }
+  // a Garage's own signature piece (garage r9 per-garage lanes): a pure builder from that Garage's kit module, cached by
+  // its stable `key` (the builder's own parameters belong in the key); `grounded` false skips the contact blot
+  | { readonly kind: 'piece'; readonly key: string; readonly build: (b: KitBuilder) => KitCraneReceipt | void;
+    readonly at: readonly [number, number]; readonly yaw?: number; readonly y?: number; readonly grounded?: boolean });
 
 export interface GarageKitPlacement {
   readonly items: readonly GarageKitItem[];
@@ -119,7 +123,7 @@ const pieceCache = new Map<string, CachedPiece>();
 function buildGarageKitPiece(item: GarageKitItem, architecture: GarageVariant['architecture'], mapId: string): CachedPiece {
   const skin = garageKitSkin(architecture);
   const { at: _at, yaw: _yaw, y: _y, ...shape } = item as GarageKitItem & { at?: unknown; yaw?: unknown; y?: unknown };
-  const key = `${skin.id}|${mapId}|${JSON.stringify(shape)}`;
+  const key = `${skin.id}|${mapId}|${item.kind === 'piece' ? `piece:${item.key}` : JSON.stringify(shape)}`;
   const cached = pieceCache.get(key);
   if (cached) return cached;
   const b = new KitBuilder(kitRandom(hash(key)), skin);
@@ -145,6 +149,7 @@ function buildGarageKitPiece(item: GarageKitItem, architecture: GarageVariant['a
       }
       break;
     }
+    case 'piece': crane = item.build(b) ?? undefined; grounded = item.grounded !== false; break;
     case 'wall': buildWallRun(b, item.wall, item.points.map(([side, depth]) => [side, -depth] as const), item.params); grounded = false; break;
     case 'sign': {
       const [w, h] = item.size;
