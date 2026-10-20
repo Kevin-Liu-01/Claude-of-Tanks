@@ -8,10 +8,10 @@
 //   2. the 30 mm + 7.62 one-roof Leopard 2A7V, 2A5, Revolution and Leclerc XLR, one seed each: every run exact with
 //      both stations firing in each, and each roof's bow hover about 33 m out.
 // A failure means counter-drone lethality moved: re-measure with `node tools/counter-drone-engage.mjs
-// --set=reference,pair --check`, re-rule with the owner, then re-pin. About 6 s CPU (the authority's module graph and
-// 64 flights). Its inputs never change on a tank lane's geometry edit, and the selftest cache keys it on its closure
-// where the runner lists it as a fixture-keyed receipt (item/tests-speed-229's SELFTEST_FIXTURE_KEYED_FILES: the
-// closure reaches i18nDictionaries' browser-only runtime-URL import(), which nothing here executes).
+// --set=reference,pair --check`, re-rule with the owner, then re-pin. About 7 s CPU (the authority's module graph and
+// 64 flights). The selftest cache keys it on its closure (472 inputs: sim, roof stations, vehicle specs, the world it
+// reaches) once item/tests-speed-229's i18nChunkImport.ts removes i18nDictionaries' computed import() from every
+// authority receipt's closure; on this branch alone that import still makes it run live.
 import assert from 'node:assert/strict';
 import { AERIAL_RULES } from './matchRuleset.ts';
 import { SIM_DT } from './movement.ts';

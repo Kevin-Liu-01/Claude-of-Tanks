@@ -75,7 +75,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/auxiliarySystems.selftest.mjs',
     'src/sim/roofStations.selftest.mjs',
     // 2026-10-16 (227 guards; guards 229): counter-drone as the owner's 226 rule: the levers as data (keyable, ~0.5 s),
-    // then every pinned pilot run on the authority (~6 s; fixture-keyed where the runner lists it)
+    // then every pinned pilot run on the authority (~7 s; keyed on its closure with item/tests-speed-229's i18nChunkImport)
     'src/sim/counterDroneEngagement.selftest.mjs',
     'src/sim/counterDroneRuns.selftest.mjs',
     'src/vehicles/remoteGunFleet.selftest.mjs',
