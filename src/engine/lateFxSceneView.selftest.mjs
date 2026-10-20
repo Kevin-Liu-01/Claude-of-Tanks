@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { WebGLRenderStates } from 'three/src/renderers/webgl/WebGLRenderStates.js';
 import { LateFxPass } from './post.ts';
 import { LateFxSceneView } from './lateFxSceneView.ts';
-import { LATE_FX_LAYER } from '../fx/layers.ts';
+import { LATE_FX_LAYER, LATE_FX_SCENE_AGNOSTIC } from '../fx/layers.ts';
 
 // CPU contract evidence, not pixel or performance certification. The real
 // pinned render-state owner also executes the real WebGLLights count/version
@@ -231,6 +231,31 @@ for (const hook of ['scene-before', 'scene-after', 'object-before', 'object-afte
   receiver[key] = previous;
   f.frame();
   assert.equal(f.roots.at(-1).root, view);
+}
+
+// 2026-10-19 (the 229 perf pass): an owner that marks its object scene-agnostic (LATE_FX_SCENE_AGNOSTIC: the projectile
+// tracers', the missile trails' and wires' viewport reads) keeps the view: a round in flight no longer sends the FX draw
+// down the scene's own path, so the world's light hash and every lit material's program hold across frames
+{
+  const f = fixture();
+  f.frame();
+  const view = f.roots.at(-1).root;
+  const worldVersion = f.roots.at(-2)?.version;
+  let calls = 0;
+  f.fx.onBeforeRender = function (renderer) { assert.equal(renderer, f.renderer); calls++; };
+  f.fx.userData[LATE_FX_SCENE_AGNOSTIC] = true;
+  f.frame();
+  assert.equal(calls, 1, 'the agnostic callback still runs');
+  assert.equal(f.roots.at(-1).root, view, 'the marked object draws through the view');
+  f.frame();
+  assert.equal(f.roots.at(-2).version, worldVersion, 'the world draw keeps its light hash version');
+  delete f.fx.userData[LATE_FX_SCENE_AGNOSTIC];
+  f.frame();
+  assert.equal(f.roots.at(-1).root, f.scene, 'unmarked, the callback keeps the scene\'s own path');
+  const { readFileSync } = await import('node:fs');
+  for (const file of ['../fx/projectileTracers.ts', '../fx/missileTrails.ts', '../fx/missileWires.ts']) {
+    assert.match(readFileSync(new URL(file, import.meta.url), 'utf8'), /mesh\.userData\[LATE_FX_SCENE_AGNOSTIC\] = true;/, `${file} marks its viewport hook`);
+  }
 }
 
 {

@@ -31,7 +31,7 @@
  * draws while no trail lives.
  */
 import * as THREE from 'three';
-import { LATE_FX_LAYER } from './layers.ts';
+import { LATE_FX_LAYER, LATE_FX_SCENE_AGNOSTIC } from './layers.ts';
 import type { MissileTrail } from './missileLooks.ts';
 import type { SceneLightUniforms } from './sceneLight.ts';
 
@@ -403,6 +403,8 @@ export function createMissileTrails(light: SceneLightUniforms, depth: SceneDepth
     uSoftOn.value = soft ? 1 : 0;
     material.depthTest = !soft;
   };
+  // the callback reads the viewport and the late pass's depth alone: the late pass may draw it through its view
+  mesh.userData[LATE_FX_SCENE_AGNOSTIC] = true;
 
   const looks = new Map<MissileTrail, number>();
   const lifeOfLook = new Float32Array(TRAIL_LOOKS);

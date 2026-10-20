@@ -19,7 +19,7 @@
  * nothing is drawn while no wire lives.
  */
 import * as THREE from 'three';
-import { LATE_FX_LAYER } from './layers.ts';
+import { LATE_FX_LAYER, LATE_FX_SCENE_AGNOSTIC } from './layers.ts';
 import type { SceneLightUniforms } from './sceneLight.ts';
 
 export const WIRE_SLOTS = 16;
@@ -208,6 +208,8 @@ export function createMissileWires(light: SceneLightUniforms): MissileWires {
     renderer.getCurrentViewport(_vp);
     uViewport.value.set(Math.max(1, _vp.z), Math.max(1, _vp.w));
   };
+  // the callback reads the viewport alone: the late pass may draw it through its view (engine/lateFxSceneView.ts)
+  mesh.userData[LATE_FX_SCENE_AGNOSTIC] = true;
 
   // a slot's round (its key may be any number, negative too: whether a slot is taken is its own flag)
   const keys = new Float64Array(WIRE_SLOTS);
