@@ -30,7 +30,10 @@ export function wreckHeatLevel(ageS:number):number{
 export const HEAT_FAR = 4;
 export const HEAT_HULL = 2.2;
 export const HEAT_ENGINE = 4.6;
-export const HEAT_ENGINE_R = 0.7;
+/** (fx-ir-day-heat-229, the blind critic's "fairly hard edges between hot and cool areas") the engine heat's falloff (m):
+ *  its white-to-hull edge spans ~1.1 m, ~13 px on a close hull (the gimbal at x6, 380 m); a uniform (the QA hook's
+ *  THERMAL_ENGINE_R gives a same-build A/B its old 0.7) */
+export const HEAT_ENGINE_R = 1.2;
 export const HEAT_GEAR_COLD = 1.5, HEAT_GEAR_HOT = 2.8;
 export const HEAT_GUN_COLD = 1.7, HEAT_GUN_HOT = 3.4;
 export const HEAT_NEAR_A = 0.06, HEAT_NEAR_B = 0.13;
@@ -88,8 +91,8 @@ const HEAT_VERTEX=`
     float heatSpan = 0.5 * projectionMatrix[ 1 ][ 1 ] * uHeatK.w / max( -mvPosition.z, 1.0 );
     vHeatNear = smoothstep( ${f(HEAT_NEAR_A)}, ${f(HEAT_NEAR_B)}, heatSpan );
   }`;
-const HEAT_FRAGMENT_PARS=`uniform vec4 uHeatEng0;
-uniform vec4 uHeatEng1;
+const HEAT_FRAGMENT_PARS=`uniform vec4 uHeatEng0; // the engine box's min xyz, the falloff squared
+uniform vec4 uHeatEng1; // its max xyz
 uniform vec4 uHeatK;
 uniform float uHeatPart;
 varying vec3 vHeatP;
@@ -103,7 +106,7 @@ float cotHeatEmission() {
     vec3 c = 0.5 * ( uHeatEng0.xyz + uHeatEng1.xyz ), h = 0.5 * ( uHeatEng1.xyz - uHeatEng0.xyz );
     vec2 dxz = max( abs( vHeatP.xz - c.xz ) - h.xz, 0.0 );
     float dy = max( uHeatEng0.y - vHeatP.y, 0.0 ) + max( vHeatP.y - uHeatEng1.y - 0.6, 0.0 );
-    e = ${f(HEAT_HULL)} + ${f(HEAT_ENGINE)} * exp( -( dot( dxz, dxz ) + dy * dy ) / ${f(HEAT_ENGINE_R * HEAT_ENGINE_R)} );
+    e = ${f(HEAT_HULL)} + ${f(HEAT_ENGINE)} * exp( -( dot( dxz, dxz ) + dy * dy ) / max( uHeatEng0.w, 1e-3 ) );
   }
   return mix( ${f(HEAT_FAR)}, e, vHeatNear ) * uHeatK.z;
 }`;
@@ -197,6 +200,7 @@ export function createThermalVehicles(){
   function apply(root:Object3D,actor:ThermalActor,enemy:boolean,heat=1,timeS?:number):void {
     const rec=record(root,actor);
     rec.inv.value.copy(root.matrixWorld).invert();
+    const falloff=lightTune('THERMAL_ENGINE_R',HEAT_ENGINE_R);rec.eng0.value.w=falloff*falloff;
     const shot=typeof timeS==='number'&&actor.id?shots.get(actor.id):undefined;
     // the QA hook's THERMAL_HULL_MAP 0 lays no map (no span on the screen: the old flat white-hot) for a same-build A/B
     rec.k.value.set(rec.drive,shot?gunHeatAt(shot.heat,shot.atS,timeS!):0,(enemy?1:HEAT_FRIENDLY)*heat,

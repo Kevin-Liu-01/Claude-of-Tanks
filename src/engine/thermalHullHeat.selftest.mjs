@@ -67,6 +67,7 @@ assert.ok(cp.uniforms.uHeatK !== cB.uniforms.uHeatK, 'another vehicle has its ow
 assert.deepEqual([cp.uniforms.uHeatPart.value, cg.uniforms.uHeatPart.value, cb.uniforms.uHeatPart.value], [0, 1, 2]);
 assert.deepEqual(cp.uniforms.uHeatEng0.value.toArray().slice(0, 3), ENGINE.min, 'the engine: the damage model\'s module box');
 assert.deepEqual(cp.uniforms.uHeatEng1.value.toArray().slice(0, 3), ENGINE.max);
+assert.ok(Math.abs(cp.uniforms.uHeatEng0.value.w - HEAT_ENGINE_R * HEAT_ENGINE_R) < 1e-12, 'the engine falloff, squared');
 assert.equal(cp.uniforms.uHeatK.value.w, 7.9, 'the hull\'s length');
 assert.match(cp.vertexShader, /#include <project_vertex>\s*\{\s*vec4 heatW = vec4\( transformed, 1\.0 \);[\s\S]*#ifdef USE_INSTANCING\s*heatW = instanceMatrix \* heatW;\s*#endif\s*vHeatP = \( uHeatInv \* modelMatrix \* heatW \)\.xyz;/,
   'the vehicle-frame position, instancing included');
@@ -85,7 +86,7 @@ for (const re of [
   new RegExp(`if \\( uHeatPart > 1\\.5 \\) e = ${g(HEAT_GUN_COLD)} \\+ ${g(HEAT_GUN_HOT)} \\* uHeatK\\.y;`),
   new RegExp(`else if \\( uHeatPart > 0\\.5 \\) e = ${g(HEAT_GEAR_COLD)} \\+ ${g(HEAT_GEAR_HOT)} \\* uHeatK\\.x;`),
   /float dy = max\( uHeatEng0\.y - vHeatP\.y, 0\.0 \) \+ max\( vHeatP\.y - uHeatEng1\.y - 0\.6, 0\.0 \);/,
-  new RegExp(`e = ${g(HEAT_HULL)} \\+ ${g(HEAT_ENGINE)} \\* exp\\( -\\( dot\\( dxz, dxz \\) \\+ dy \\* dy \\) / ${g(HEAT_ENGINE_R * HEAT_ENGINE_R)} \\);`),
+  new RegExp(`e = ${g(HEAT_HULL)} \\+ ${g(HEAT_ENGINE)} \\* exp\\( -\\( dot\\( dxz, dxz \\) \\+ dy \\* dy \\) / max\\( uHeatEng0\\.w, 1e-3 \\) \\);`),
   new RegExp(`return mix\\( ${g(HEAT_FAR)}, e, vHeatNear \\) \\* uHeatK\\.z;`),
 ]) assert.match(fs, re, 'the shader is the map the mirror reads');
 function emission(part, p, drive, gun, near = 1, scale = 1) {
@@ -119,6 +120,14 @@ assert.match(cp.vertexShader, new RegExp(`float heatSpan = 0\\.5 \\* projectionM
   'the shader fades the map in by the hull\'s span on the screen, as the mirror reads it');
 assert.ok(nearAt(250) >= 0.8, `at 250 m the map reads (${nearAt(250).toFixed(2)})`);
 assert.ok(nearAt(450) <= 0.1, `at 450 m the hull is the flat white-hot of old (${nearAt(450).toFixed(2)})`);
+// (fx-ir-day-heat-229, the blind critic: "fairly hard edges between hot and cool areas") the engine heat's edge, from white
+// at any angle (emission x 0.62 >= 3.1) to the hull's own level (within 0.3 of HEAT_HULL), spans >= 12 px on a close hull
+// (the gimbal at x6, 380 m: 0.5 x 720 / tan(4.6 deg) / 380 px per metre)
+const whiteD = HEAT_ENGINE_R * Math.sqrt(Math.log(HEAT_ENGINE / (3.1 / 0.62 - HEAT_HULL)));
+const hullD = HEAT_ENGINE_R * Math.sqrt(Math.log(HEAT_ENGINE / 0.3));
+const pxPerM = 0.5 * 720 / Math.tan((55 / 6) * Math.PI / 360) / 380;
+assert.ok((hullD - whiteD) * pxPerM >= 12, `the engine heat fades over ${((hullD - whiteD) * pxPerM).toFixed(1)} px (${(hullD - whiteD).toFixed(2)} m)`);
+assert.ok(Math.abs(emission(0, [0, 2.0, -2.9], 0, 0) - (HEAT_HULL + HEAT_ENGINE)) < 1e-9, 'the deck over the engine box at its full heat');
 
 // ---- 4. the heats: on the simulation clock, deterministic ----
 // drive: warming toward |speed| / DRIVE_HOT_MPS over DRIVE_WARM_S, cooling over DRIVE_COOL_S, the frame rate only sampling

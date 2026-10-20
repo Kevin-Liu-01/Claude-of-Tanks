@@ -267,13 +267,18 @@ const BLOOM_INPUT_CLAMP = 2.6;
 // each pixel's display level into its cool grey, and the night exposure lifts whatever the bloom laid there: every
 // white-hot hull's halo on the wide mips, summed, read as warm ground across the frame (the film: the ground fell 92 -> 72
 // -> 61 -> 40 levels from 25 to 240+ px off the hot pixels, and the old build's did the same). Under a heat lens at night
-// the bloom keeps THERMAL_BLOOM_NIGHT_K of its strength on its tightest mips only (radius 0): a hull keeps a rim of glow,
-// the ground its own level. By day (the light model's night 0), in the daylight lens, the intensifier and every other
-// camera the bloom is untouched.
-export const THERMAL_BLOOM_NIGHT_K = 0.25;
-/** How far the heat lens's night bloom cut applies (0 none .. 1 full): the night level under a heat-imaging grade code. */
-export function heatLensNight(thermalCode: number, night: number): number {
-  return thermalCode > 0.5 && thermalCode < 2.5 ? Math.min(1, Math.max(0, night)) : 0;
+// the bloom keeps THERMAL_BLOOM_K of its strength on its tightest mips only (radius 0): a hull keeps a rim of glow,
+// the ground its own level. (item fx-ir-day-heat-229, the coordinator: "the map must read" by day too) by day as well: the
+// day bloom laid ~0.9 over a close hull's own pixels and lifted its heat map's cool parts over the grade's white (the
+// blind critic: 70-81 % of a close hull white by day, 3-44 % at night). In the daylight lens, the intensifier and every
+// other camera the bloom is untouched.
+export const THERMAL_BLOOM_K = 0.25;
+/** How far the heat lens's bloom cut applies (0 none .. 1 full): 1 under a heat-imaging grade code, at every hour; with
+ *  `dayToo` 0 (the QA hook's THERMAL_BLOOM_DAY, for a same-build A/B) only by the night level, as the 229 bloom item had it. */
+export function heatLensBloomCut(thermalCode: number, night: number, dayToo = 1): number {
+  if (!(thermalCode > 0.5 && thermalCode < 2.5)) return 0;
+  const n = Math.min(1, Math.max(0, night));
+  return n + (1 - n) * Math.min(1, Math.max(0, dayToo));
 }
 const HIGH_PASS_ANCHOR = 'gl_FragColor = mix( outputColor, texel, alpha );';
 // AO radius must be vehicle-scale (~1 m) to ground hulls/building bases;
@@ -2968,13 +2973,13 @@ export function createPost(
       * Math.min(1, Math.max(0, (16 - camera.fov) / 10));
     const scopeWeight = grade.uniforms.uScope.value;
     // 2026-10-04 (the sun-bloom lane): the bloom's strength, threshold and radius through the light model's QA hook;
-    // (fx-ir-lens-bloom-229) cut to its tight mips under a heat lens at night (THERMAL_BLOOM_NIGHT_K; 1 and 1 otherwise;
-    // the QA hook's THERMAL_BLOOM_CUT 0 restores the old bloom for a same-build A/B)
-    const heatNight = heatLensNight(grade.uniforms.uThermal.value, (scene.userData.lightModel as LightModel | undefined)?.night ?? 0)
-      * lightTune('THERMAL_BLOOM_CUT', 1);
-    bloom.strength = lightTune('BLOOM_STRENGTH', BLOOM_STRENGTH) * (1 - 0.5 * scopeWeight) * (1 - (1 - THERMAL_BLOOM_NIGHT_K) * heatNight);
+    // (fx-ir-lens-bloom-229, fx-ir-day-heat-229) cut to its tight mips under a heat lens (THERMAL_BLOOM_K; 1 and 1
+    // otherwise; the QA hook's THERMAL_BLOOM_CUT 0 restores the old bloom, THERMAL_BLOOM_DAY 0 the night-only cut)
+    const heatCut = heatLensBloomCut(grade.uniforms.uThermal.value, (scene.userData.lightModel as LightModel | undefined)?.night ?? 0,
+      lightTune('THERMAL_BLOOM_DAY', 1)) * lightTune('THERMAL_BLOOM_CUT', 1);
+    bloom.strength = lightTune('BLOOM_STRENGTH', BLOOM_STRENGTH) * (1 - 0.5 * scopeWeight) * (1 - (1 - THERMAL_BLOOM_K) * heatCut);
     bloom.threshold = lightTune('BLOOM_THRESHOLD', BLOOM_THRESHOLD);
-    bloom.radius = lightTune('BLOOM_RADIUS', BLOOM_RADIUS) * (1 - heatNight);
+    bloom.radius = lightTune('BLOOM_RADIUS', BLOOM_RADIUS) * (1 - heatCut);
     // (2026-10-15) the shoulder's defaults follow the look (tone r1 turns it on; TONE_R1 0 = off, as before)
     const shoulderTone = toneFor((scene.userData.lightModel as LightModel | undefined)?.night ?? 0);
     (grade.uniforms.uShoulder.value as THREE.Vector4).set(lightTune('GRADE_SHOULDER_SLOPE', shoulderTone.shoulderSlope),
