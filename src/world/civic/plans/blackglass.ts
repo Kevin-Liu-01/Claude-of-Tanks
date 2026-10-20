@@ -18,7 +18,9 @@ export const BLACKGLASS_CIVIC_PLAN: CivicPlan = {
     kerbM: 3.8,
     frontage: [1.2, 3.5],
     returnR: 3.5,
-    maxWalkM: 3.0,
+    // (229 b2 r2, the blind critics: a dirt strip between the pavement and the row houses' fronts) the Settlement's
+    // pavements out to the facades up to 5 m back
+    maxWalkM: 5.0,
     openWalkM: 2.0,
     lane: { face: 0.10, maxWalkM: 1.6, openWalkM: 1.2 },
     exclude: [],

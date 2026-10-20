@@ -6,7 +6,7 @@
 // at (-52.7, 3.8)) became a grazed green after the 10-17 blind ruling ("a dark flat square plot reads as an untextured
 // void"). It becomes a Zeeland brink: the green kept, a klinker roundel at the zone, two kerbed lawns behind a low brick
 // wall on hardstone kerbs, rows of lindens (the oak's form stands in), the village pump at the south lawn's paths' crossing
-// with its benches about it, a tulip bed on the north lawn, farm carts and a Traction Avant by the east road; no lamps
+// with its benches about it, an aster bed on the north lawn, farm carts and a Traction Avant by the east road; no lamps
 // (the blackout). The bots' routes (the 229 routeheat probe) run north-south down x = -28 into the middle, east-west
 // along z = 4 and in from the north-west on the diagonal: those are the corridors, and the lawns keep the quarters the
 // routes leave (the south-west, and the north-west between the diagonal and the north run).
@@ -38,11 +38,14 @@ export const POLDERS_CIVIC_PLAN: CivicPlan = {
   pathways: {
     classes: { 0: 'gasse' },
     kerbM: 2.3,
-    frontage: [1.2, 3.5],
+    frontage: [1.2, 6],
     returnR: 2.0,
     maxWalkM: 1.6,
     openWalkM: 0.6,
     lane: { face: 0.05, maxWalkM: 1.6, openWalkM: 0.6 },
+    // (229 b2 r2, the blind critics: the stoep ran on as a loose ribbon across the open green) only before the fronts,
+    // joined over a farmyard's gap of up to 6 m
+    openGapM: 6,
     exclude: [ROOM],
     gates: [],
     inside: [[[-178, -96], [68, -96], [68, 122], [-178, 122]]],
@@ -51,8 +54,9 @@ export const POLDERS_CIVIC_PLAN: CivicPlan = {
   areas: [{
     id: 'brink',
     room: ROOM,
-    // the green stays grass: only the klinker roundel at the zone is paved
-    paved: { x0: -49.5, x1: -30.5, z0: -9.5, z1: 9.5 },
+    // the green stays grass: only the klinker roundel at the zone is laid (229 b2 r2: its own courses, the paved square
+    // under it no wider than the disc covers — the critics saw "a grey disc on a darker square patch")
+    paved: { x0: -46.3, x1: -33.7, z0: -6.3, z1: 6.3 },
     rinnen: [],
     vetoExempt: ['lamp'],
     keepOuts: [],
@@ -71,7 +75,7 @@ export const POLDERS_CIVIC_PLAN: CivicPlan = {
     ],
     lanes: [],
     holds: [{ id: 'ac130-extraction', x: -52.7, z: 3.8, r: 8 }],
-    centre: { x: -40, z: 0, ringR: [8.0, 9.0], roseR: 3, rays: 8 },
+    centre: { x: -40, z: 0, ringR: [8.0, 9.0], roseR: 3, rays: 8, fill: true },
     beds: [
       {
         id: 'brink-south', rect: SW,
@@ -86,10 +90,25 @@ export const POLDERS_CIVIC_PLAN: CivicPlan = {
         feature: { kind: 'flowerRondell', x: ROSE.x, z: ROSE.z, r: 1.6, ring: 2.6 },
       },
     ],
-    paving: [...walk(SW), ...walk(NW)],
+    paving: [
+      ...walk(SW), ...walk(NW),
+      // (229 b2 r2, the blind critics: the green "mostly empty", "huge bare expanses") klinker footpaths across the
+      // green, flush with it (nothing a hull meets): the roundel to the north lawn's south mouth, to the south lawn's east
+      // mouth, west to the mill lane, east to the causeway, and the north lawn's east mouth on to the causeway
+      { rect: { x0: ROSE.x - 1.2, x1: ROSE.x + 1.2, z0: 5.6, z1: NW.z0 - 1.2 }, kind: 'setts' },
+      { rect: { x0: -41.2, x1: -38.8, z0: SW.z0, z1: -8.6 }, kind: 'setts' },
+      { rect: { x0: SW.x1 + 1.2, x1: -41.2, z0: PUMP.z - 1.2, z1: PUMP.z + 1.2 }, kind: 'setts' },
+      { rect: { x0: -75, x1: -48.6, z0: -1.2, z1: 1.2 }, kind: 'setts' },
+      { rect: { x0: -31.4, x1: -15.5, z0: -1.2, z1: 1.2 }, kind: 'setts' },
+      { rect: { x0: NW.x1 + 1.2, x1: -17.5, z0: ROSE.z - 1.2, z1: ROSE.z + 1.2 }, kind: 'setts' },
+      // hard standings under the hay wagon and the Traction Avant (the critics: "parked on the grass of the green")
+      { rect: { x0: -41.5, x1: -35.5, z0: 32.6, z1: 35.8 }, kind: 'setts' },
+      { rect: { x0: -21, x1: -15, z0: 11.4, z1: 15.6 }, kind: 'setts' },
+    ],
     monument: null,
     trees: {
-      species: 'oak', scale: [1.0, 1.12],
+      // (229 b2 r2, the blind critics: trunks too thick, crowns crowding the lawns) younger lindens
+      species: 'oak', scale: [0.78, 0.88],
       stations: [
         // (229 b2 r1: six south, five north — the halves' trees within one)
         ...[-63.4, -56.8, -50.2].flatMap((x) => [{ x, z: -25.5 }, { x, z: -12.5 }]),
@@ -100,7 +119,7 @@ export const POLDERS_CIVIC_PLAN: CivicPlan = {
       // the village pump at the south lawn's crossing, its benches about it facing it
       { kind: 'well', x: PUMP.x, z: PUMP.z, yawDeg: 0 },
       ...[[-62, -16], [-56, -16], [-62, -22], [-56, -22]].map(([x, z]) => ({ kind: 'bench', x, z, yawDeg: facing(x, z, PUMP.x, PUMP.z) })),
-      // the north lawn's benches either side of its tulip bed
+      // the north lawn's benches either side of its aster bed
       { kind: 'bench', x: -50.5, z: 30.5, yawDeg: 90 }, { kind: 'bench', x: -42.5, z: 30.5, yawDeg: -90 },
       // (229 b2 r1: the haycart off the hulls' z 22 line, the handcart off the mill lane's roadway: the critic's D3) the hay
       // wagon in the quiet north band, the handcart by the pump
