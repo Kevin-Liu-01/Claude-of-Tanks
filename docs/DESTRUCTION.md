@@ -1325,15 +1325,17 @@ adds:
   largest extent judged (the round-3 critic: any new finding of that class on that building was hidden too).
 
 **The census (2026-10-19, round 4).** On `9f60f6522f`, every map and destructible kind (a builder each) from all four faces
-at three seeds each drawn at random (`r4/s4/final/census/seeds.txt`): the A pass (60 rounds up storeys 0-3, every phase,
-the late joiner's replays) and the R pass (to the roof's fall, judged standing roofless). 7,848 building runs, 136,165 snapshots; 14 buildings flag, in 759 snapshots (0.56 %). (Blackglass's A pass and ruinspires' R pass, every face in one job, hit the 4 h alarm at a load of ~290 and run again a face a job: @SPLIT@.) (The census on
-`5a6df978e7`, stopped at 120 of its 207 jobs when the runtime moved, found airfield #0's chunk above.) What flags is named.
-Three are the owner's kind, each at one face and one seed, each while the building falls and gone by its settled ruin (open
-for round 5): a 3.7 x 3.2 m plate of airfield #0's fracture heap 1.3 m up while its storeys fall (R narrow, seed 1147584926:
-held when it baked, 62 % over nothing at 6.45 s and 95 % by 9 s as what held it went, until the collapse took it at 10.9
-s), a 4.2 m roof slab on badlands #0's wall heads 2 m up, 75 % past the walls, for a second of its collapse (A narrow,
-725095366), and a 1.3 m dark face piece of blackglass #3 2.1 m up at one look (R narrow-back, 978345481). Two more are
-single looks in flight (a 2.4 m timber part of foundry #0's roof 7 m up, a 36 m pilaster strip of ruinspires #1 1.7 m up
+at three seeds each drawn at random (`r4/s4/final/census/seeds.txt`): the A pass (60 rounds up storeys 0-3, every phase, the
+late joiner's replays) and the R pass (to the roof's fall, judged standing roofless). 8,184 building runs, 145,605
+snapshots; 14 buildings flag, in 863 snapshots (0.59 %; blackglass's A pass and ruinspires' R pass, every face in one job,
+hit the 4 h alarm at a load of ~290 and ran again a face a job: blackglass clean, ruinspires its KNOWN held storeys). (The
+census on `5a6df978e7`, stopped at 120 of its 207 jobs when the runtime moved, found airfield #0's chunk above.) What flags
+is named. Three are the owner's kind, each at one face and one seed, each while the building falls and gone by its settled
+ruin (open for round 5): a 3.7 x 3.2 m plate of airfield #0's fracture heap 1.3 m up while its storeys fall (R narrow, seed
+1147584926: held when it baked, 62 % over nothing at 6.45 s and 95 % by 9 s as what held it went, until the collapse took it
+at 10.9 s), a 4.2 m roof slab on badlands #0's wall heads 2 m up, 75 % past the walls, for a second of its collapse (A
+narrow, 725095366), and a 1.3 m dark face piece of blackglass #3 2.1 m up at one look (R narrow-back, 978345481). Two more
+are single looks in flight (a 2.4 m timber part of foundry #0's roof 7 m up, a 36 m pilaster strip of ruinspires #1 1.7 m up
 half held), and one stands: a 1.4 m post 6.6 m up in fjord #0's roofless fishery (R narrow-back, every seed), 40 % held,
 inside its walls. The rest is the kinds receipt's KNOWN, at every seed and face it ran: the megatower's held storeys
 (ruinspires #1: a joist end, its rims), an arcology's rim 1.8 m up (ruinspires #3), the terrace tower's thin members 3 m up
@@ -1344,13 +1346,13 @@ guyed mast's two guys strung up to its fallen head (whiteout #25: wires, read as
 same code (a full fresh run): 406 kinds on 33 maps, 682 runs, 9,470 snapshots, 11 judged findings (round 3: 32). The phone
 (`--fracture=phone`, six maps, A and R, all faces): 544 runs, five buildings flag, each a piece the phone's slower sweep
 takes down 0.5-2 s past the check's 2 s, all down by the standing end (desktop and the round-3 critics' repros pass). The
-anti-raft probe (1,985 structures): 13 under the floors, integ/228 4, none a raft: skybridge #12's mast, the moon's two relay
-masts and fjord #65's rack lie as lattice wrecks (frames: their intact p90 is the mast head), longleaf #11 is a ruin already
-(0.235), steppe #0's water tower and the moon's ISRU works and dome stand a hair under (0.224-0.247), whiteout #19's tank
-farm falls inside its plan (0.584), and the moon's Apollo site falls to a few struts (its lander's legs read as a frame;
-integ heaped a skin ruin six times its plan). Lane B's darkbox-repro on the post mill (verdant #17), the smock mill (verdant
-#18), the headframe (copper_mesa #39) and the penstock (skybridge #2): no room, no triangle taken, no wall patch, no body
-thrown.
+anti-raft probe (1,985 structures): 13 under the floors, integ/228 4, none a raft: skybridge #12's mast, the moon's two
+relay masts and fjord #65's rack lie as lattice wrecks (frames: their intact p90 is the mast head), longleaf #11 is a ruin
+already (0.235), steppe #0's water tower and the moon's ISRU works and dome stand a hair under (0.224-0.247), whiteout #19's
+tank farm falls inside its plan (0.584), and the moon's Apollo site falls to a few struts (its lander's legs read as a
+frame; integ heaped a skin ruin six times its plan). Lane B's darkbox-repro on the post mill (verdant #17), the smock mill
+(verdant #18), the headframe (copper_mesa #39) and the penstock (skybridge #2): no room, no triangle taken, no wall patch,
+no body thrown.
 
 **Open after round 4.** The tavern (reservoir #7) in the game's film ends with its top storey under one flat dark plane at
 its wall heads once its roof has fallen and it stands breached: the film's rounds (the census's, cycled) leave it standing
