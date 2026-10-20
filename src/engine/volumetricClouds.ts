@@ -722,6 +722,8 @@ export class VolumetricCloudLayer {
   private trace: THREE.WebGLRenderTarget;
   private historyIndex = 0;
   private historyValid = false;
+  /** The history textures hold a traced frame since they were last allocated (a frozen layer keeps showing it). */
+  private historyHeld = false;
   private targetWidth = 0;
   private targetHeight = 0;
   private readonly noise: CloudNoiseTextures = { weather: null, streets: null, blue: null, local: null };
@@ -1088,6 +1090,7 @@ export class VolumetricCloudLayer {
     const hw = Math.max(4, Math.round(width * CLOUD_HISTORY_SCALE)), hh = Math.max(4, Math.round(height * CLOUD_HISTORY_SCALE));
     const tw = Math.ceil(hw / CLOUD_TRACE_DIVISOR), th = Math.ceil(hh / CLOUD_TRACE_DIVISOR);
     for (const rt of this.history) rt.setSize(hw, hh);
+    this.historyHeld = false;
     this.trace.setSize(tw, th);
     for (const m of [this.traceMaterial, this.resolveMaterial]) {
       (m.uniforms.uHistorySize.value as THREE.Vector2).set(hw, hh);
@@ -1275,6 +1278,7 @@ export class VolumetricCloudLayer {
     this.renderQuad(this.resolveMaterial, next);
     this.historyIndex = 1 - this.historyIndex;
     this.historyValid = true;
+    this.historyHeld = true;
     this.domeMaterial.uniforms.tClouds.value = next.texture;
   }
 
@@ -1544,8 +1548,10 @@ export class VolumetricCloudLayer {
     this.endTimer();
     this.frame++;
     this.framesShown++;
-    // (black-screen-228 P2) only over a resolved history: a reset or frozen layer with nothing traced yet shows no dome
-    this.dome.visible = this.historyValid;
+    // (black-screen-228 P2) only over a resolved history: a reset layer with nothing traced yet shows no dome; a frozen
+    // (QA) layer keeps showing the history it holds, as it did before (round 2, eng D9: a camera cut under a frozen layer
+    // reset the flag with no trace to follow, and the capture tools lost the dome)
+    this.dome.visible = this.historyValid || (this.frozen && this.historyHeld);
     // a camera in or over the lowest lane sees the cloud in front of the terrain (no depth test, no horizon mask)
     const inside = C.pos.y > low ? 1 : 0;
     this.domeMaterial.uniforms.uInside.value = inside;
@@ -1855,6 +1861,7 @@ export class VolumetricCloudLayer {
       scratch.dispose();
     } finally {
       this.resetHistory();
+      this.historyHeld = false; // the warm's resolve is no frame a frozen layer may show
     }
   }
 
