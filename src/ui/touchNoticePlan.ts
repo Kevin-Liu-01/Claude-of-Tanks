@@ -131,7 +131,7 @@ function leastIntrusive(size: TouchSize, cx: number, top: number, width: number,
   return best;
 }
 
-export interface TouchNoticeInput {
+interface TouchNoticeInput {
   readonly width: number;
   readonly height: number;
   /** The first row under the score and the objective. */
@@ -154,7 +154,7 @@ export interface TouchNoticeInput {
   readonly fallbackTop: number;
 }
 
-export interface TouchNoticePlan {
+interface TouchNoticePlan {
   noticeCx: number; noticeTop: number; alertCx: number; alertTop: number; alertW: number;
   /** Each in its compact form. */
   noticeCompact: boolean; alertCompact: boolean;
