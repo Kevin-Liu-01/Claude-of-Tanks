@@ -139,12 +139,17 @@ assert.equal(detectionHeight(248, true), 32);
 // 4. Every viewport, with and without the objective: the detection and the alert clear everything the reticle draws
 //    (main's own type size, the detection's second line wherever main shows it); the countdown, the revive count and
 //    the medal card each have a place (none falls back to the CSS defaults) clear of the keep-out its tier names, off
-//    both notices' places (sharing one only where SHARED lists it); nothing leaves the screen or touches an instrument;
+//    both notices' places (sharing only a place it never shows with: the countdown the detection's where SHARED lists
+//    it, as nothing spots the player before the roll-out, the medal card the alert's, waiting it out; never the revive
+//    count, nor the countdown the alert's, as an alert can show with either); nothing leaves the screen or touches an
+//    instrument;
 //    a lane an element crosses keeps a row while it shows (and while the detection and the alert show together), and
 //    keeps all its rows while nothing shows (the plan holds no lane change outside `giveWay`).
-const SHARED = { '844x390': ['countdown', 'revive', 'medal'], '768x600': ['countdown', 'revive', 'medal'] };
+const SHARED = { '768x600': ['countdown'] };
 const TIER_FLOOR = { countdown: 2, revive: 1, medal: 1 };
-const LOW_TIER = { '844x390': { revive: 1, medal: 1 }, '481x700': { countdown: 1, revive: 1 } };
+// (844 x 390's notices take the one band clear of the bloomed sight: its countdown and revive count clear the resting
+// sight, off both notices, rather than cover one)
+const LOW_TIER = { '844x390': { countdown: 0, revive: 0, medal: 1 }, '768x600': { revive: 0 }, '481x700': { countdown: 1, revive: 1 } };
 // A lane gives up its last row only where every place clear of the reticle crosses it (and only while the element
 // shows): the plan prices that as its last resort before any reticle ink.
 const ROW_PX = [62, 26];
@@ -187,8 +192,11 @@ for (const v of VIEWPORTS) {
       if (!fixedTier) {
         const shares = overlap(r, det, MOUSE_NOTICE_GAP_PX - .01) || overlap(r, alert, MOUSE_NOTICE_GAP_PX - .01);
         assert.equal(r.sharesNotices, shares, `${name}: the ${label} reports whether it shares a notice's place`);
-        // the medal card may wait out a 2.4 s alert in the alert's place, never the 8 s detection
-        const sharesDet = overlap(r, det, MOUSE_NOTICE_GAP_PX - .01);
+        // the medal card may wait out a 2.4 s alert in the alert's place, never the 8 s detection; the countdown may take
+        // only the detection's place; the revive count neither
+        const sharesDet = overlap(r, det, MOUSE_NOTICE_GAP_PX - .01), sharesAlert = overlap(r, alert, MOUSE_NOTICE_GAP_PX - .01);
+        if (label === 'countdown') assert.ok(!sharesAlert, `${name}: the countdown keeps off the alert's place (H, R and E raise alerts before the roll-out)`);
+        if (label === 'revive') assert.ok(!shares, `${name}: the revive count keeps off both notices' places`);
         if (label === 'medal' ? sharesDet : shares) assert.ok(SHARED[vp]?.includes(label), `${name}: the ${label} shares a notice's place`);
       }
       // the lanes' bands while it shows: off the box, each keeping a row

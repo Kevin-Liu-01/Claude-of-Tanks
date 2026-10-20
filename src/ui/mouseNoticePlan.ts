@@ -27,9 +27,12 @@
  * yields while the notice shows priced in. The alert keeps main's type size everywhere (9 px only where main's own
  * small-window rule sets it). The countdown, the revive count and the medal card then take one place each, off both
  * notices' places (the countdown and the revive count scaled down to 60 % where they must; the medal card compact where
- * the full card cannot fit); only where no such place exists does one share a notice's place (the medal card then waits,
- * keeping its time, while that notice is up). Where no place clears everything (very small windows) a reduced keep-out
- * is tried (the battle sight at full bloom, then the resting sight), so nothing ever sits on the aim point.
+ * the full card cannot fit); only where no such place exists does one share a notice's place, and only one it never
+ * shows with: the countdown the detection's (nothing spots the player before the roll-out), the medal card the alert's
+ * (it waits, keeping its time, while the alert is up); the revive count never (an alert, or a detection lit before the
+ * death, can show with it). Where no place clears everything (very small windows) a reduced keep-out is tried (the
+ * battle sight at full bloom, then the resting sight, where the countdown and the revive count may shrink to 40 %), so
+ * nothing ever sits on the aim point or on another notice.
  *
  * DOM-free and deterministic; battleHudLayout.ts measures the inputs and caches the plan by them.
  * mouseNoticePlan.selftest.mjs checks every viewport of the census, and tools/battle-hud-layout.browser.mjs measures
@@ -199,14 +202,16 @@ const HUG_PX = MOUSE_RETICLE.armHalfWidthPx + MOUSE_RETICLE_MARGIN_PX;
 /** The search's vertical step; the cheapest place is then refined to the px within a step of it. */
 const Y_STEP = 8;
 /** The countdown and revive count shrink in these steps, each 10 % costing as much as moving 80 px down; 60 % keeps the
- *  countdown's 17 px kicker at 10 px, and half size (8.5 px) is the last resort before sharing a notice's place. */
+ *  countdown's 17 px kicker at 10 px, and half size (8.5 px) is the last resort before sharing a notice's place. Clear
+ *  of the resting sight only (tier 0, a short window whose notices take the one band beside the bloomed sight: 844 x
+ *  390), they may go on down to 40 % (the count's numeral still 34 px) rather than cover a notice. */
 const SCALES = [1, .9, .8, .7, .6, .5] as const;
 const SCALE_COSTS = [0, 80, 160, 240, 320, 1200] as const;
+const LAST_SCALES = [...SCALES, .45, .4] as const;
+const LAST_SCALE_COSTS = [...SCALE_COSTS, 2400, 3600] as const;
 /** The compact card costs as much as moving 200 px down; sharing the alert's place (waiting out its 2.4 s) is kept for
  *  where nothing else clears the reticle. */
 const MEDAL_COMPACT_COST = 200, MEDAL_SHARE_ALERT_COST = 600;
-/** Sharing the alert's place where the detection's would do (the countdown and the revive count). */
-const SHARE_ALERT_COST = 400;
 
 const rowsIn = (h: number) => Math.min(8, Math.max(0, Math.floor((h + 3) / 29)));
 const overlapsAny = (r: PlanRect, list: readonly PlanRect[]) => list.some((o) => r.x < o.x + o.w && r.x + r.w > o.x && r.y < o.y + o.h && r.y + r.h > o.y);
@@ -792,26 +797,28 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     both.push(Number.isNaN(d) ? al : Number.isNaN(al) ? d : i % 2 ? Math.min(d, al) : Math.max(d, al));
   }
   /** The first step of STEPS where one of `options(share)` has a place (its lanes yield where there are lanes); the
-   *  place is left in `found`, its option in `chosen[found.option]`. */
-  const place = (options: (share: boolean) => readonly Option[], yPref: number, price: LanePrice) => {
+   *  place is left in `found`, its option in `chosen[found.option]`. `mayShare` false: the sharing steps are skipped. */
+  const place = (options: (share: boolean, tier: 2 | 1 | 0) => readonly Option[], yPref: number, price: LanePrice, mayShare = true) => {
     for (const [tier, share] of STEPS) {
+      if (share && !mayShare) continue;
       const envs = envsAt(TIERS.indexOf(tier));
-      chosen = options(share);
+      chosen = options(share, tier);
       if (placeOne(envs[envs.length - 1], chosen, yPref, price, hasLanes ? both : null, found)) return tier;
     }
     return -1;
   };
-  const scaled = (size: PlanSize | null, yFrac: number, price: LanePrice): PlannedScaled | null => {
+  /** `shareDetection`: the box may take the detection's place where nothing else clears the reticle (the countdown: the
+   *  battle does not step before the roll-out, so no enemy can spot the player). It never takes the alert's: H, R and E
+   *  raise alerts during the countdown, and modes' events and keys raise them while the player waits to revive (when a
+   *  detection lit just before the death also burns on, so the revive count takes neither place). */
+  const scaled = (size: PlanSize | null, yFrac: number, price: LanePrice, shareDetection: boolean): PlannedScaled | null => {
     if (!size || size.w <= 0 || size.h <= 0) return null;
     const yPref = Math.max(Math.ceil(input.top + MOUSE_NOTICE_GAP_PX), Math.ceil(input.height * yFrac));
-    // sharing, the detection's place first: no enemy is in sight before the roll-out or while dead, and an alert (2.4 s)
-    // comes with keys pressed and modes' events
-    const tier = place((share) => share
-      ? [...SCALES.map((s, i) => [size.w * s, size.h * s, SCALE_COSTS[i], alertOnly] as const),
-        ...SCALES.map((s, i) => [size.w * s, size.h * s, SCALE_COSTS[i] + SHARE_ALERT_COST, NONE] as const)]
-      : SCALES.map((s, i) => [size.w * s, size.h * s, SCALE_COSTS[i], notices] as const), yPref, price);
+    const ladder = (tier: number) => tier ? SCALES : LAST_SCALES;
+    const tier = place((share, t) => ladder(t).map((s, i) => [size.w * s, size.h * s, LAST_SCALE_COSTS[i], share ? alertOnly : notices] as const),
+      yPref, price, shareDetection);
     if (tier < 0) return null;
-    const s = SCALES[found.option % SCALES.length], w = size.w * s, h = size.h * s, x = found.s.x - w / 2, y = found.s.y;
+    const s = ladder(tier)[found.option], w = size.w * s, h = size.h * s, x = found.s.x - w / 2, y = found.s.y;
     return { x, y, w, h, scale: s, clearance: tier as 2 | 1 | 0, sharesNotices: overlapsAny({ x, y, w, h }, notices), giveWay: giveWayOf(found.s.giveWay, 0) };
   };
   // The medal card: the full card, then the compact one; off both notices, or (a little dearer) off the detection only,
@@ -837,8 +844,8 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     return () => { if (!made) { own(); value = make(); made = true; } return value; };
   };
   const medal = later(placeMedal);
-  const countdown = later(() => scaled(input.countdown, .22, PREBATTLE_LANES));
-  const revive = later(() => scaled(input.revive, .30, BATTLE_LANES));
+  const countdown = later(() => scaled(input.countdown, .22, PREBATTLE_LANES, true));
+  const revive = later(() => scaled(input.revive, .30, BATTLE_LANES, false));
   return {
     arrangement: pair.arrangement, clearance, detection: det, alert: pair.alert,
     // The card is optional: where it shares a notice's place it waits while that notice is up (keeping its time).
