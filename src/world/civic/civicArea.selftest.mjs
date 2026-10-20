@@ -232,14 +232,14 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
       }
     }
     // ---- the objective holds past the roundel (C13): their discs clear of every piece and trunk
-    // (228 r4) what stands in a hold on the map without the plan too (the town's own street lamp at line-2's point) is the
-    // map's, not the plan's
+    // (228 r4) a street lamp standing in a hold on the map without the plan too (the town's own lamp at line-2's point) is
+    // the map's, not the plan's (228 r5, the critic's D13: lamps only)
     const baseKey = (o) => `${o.kind}@${((o.min[0] + o.max[0]) / 2).toFixed(1)},${((o.min[2] + o.max[2]) / 2).toFixed(1)}`;
     const baseBlockers = new Set(base.built.obstacles.filter((o) => o.min && o.max).map(baseKey));
     for (const h of area.holds) {
       for (const b of blockers) {
         if (b.kind === 'structure') continue;
-        if (b.kind !== 'tree' && baseBlockers.has(`${b.kind}@${((b.x0 + b.x1) / 2).toFixed(1)},${((b.z0 + b.z1) / 2).toFixed(1)}`)) continue;
+        if (b.kind === 'lamp' && baseBlockers.has(`${b.kind}@${((b.x0 + b.x1) / 2).toFixed(1)},${((b.z0 + b.z1) / 2).toFixed(1)}`)) continue;
         const d = Math.hypot(Math.max(b.x0 - h.x, 0, h.x - b.x1), Math.max(b.z0 - h.z, 0, h.z - b.z1));
         assert.ok(d >= h.r, `${tag}: ${b.kind} at (${((b.x0 + b.x1) / 2).toFixed(1)}, ${((b.z0 + b.z1) / 2).toFixed(1)}) in the ${h.id} disc (${d.toFixed(2)} m, ${h.r})`);
       }
@@ -249,7 +249,8 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
       const [x, z] = roomAt(u, v);
       let d = Infinity;
       for (const [x0, x1, z0, z1] of things) d = Math.min(d, Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(z0 - z, 0, z - z1)));
-      for (const r of [...area.beds.map((b) => b.rect), ...area.paving.map((p) => p.rect)]) {
+      // (229 b1 r1: a plaza's tiles laid wall to wall fill nothing — they are its floor)
+      for (const r of [...area.beds.map((b) => b.rect), ...area.paving.filter((p) => p.kind !== 'tiles').map((p) => p.rect)]) {
         d = Math.min(d, Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1)));
       }
       // (229 b3) the strips of paving

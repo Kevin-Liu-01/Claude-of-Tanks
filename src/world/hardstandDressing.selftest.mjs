@@ -10,7 +10,9 @@ import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { HARDSTAND_LIP_M, buildHardstandDressing, hardstandIsPaved } from './hardstandDressing.ts';
 import { civicUndressedPads } from './civic/plans/index.ts';
 
-const PAVED = ['airfield', 'urban', 'ruinspires', 'railyard', 'cliffbridge']; // (Ronda's pads inside its paved town rect)
+// (229 b1, the civic kit: Ruinspires' three squares and Aegis Crossing's two plazas are civic areas now, their pads
+// undressed: civicUndressedPads)
+const PAVED = ['airfield', 'urban', 'railyard'];
 const inside = (s, x, z, inset) => {
   const yaw = (s.yawDeg ?? 0) * Math.PI / 180, dx = x - s.x, dz = z - s.z;
   return Math.abs(dx * Math.cos(yaw) - dz * Math.sin(yaw)) < s.width / 2 - inset && Math.abs(dx * Math.sin(yaw) + dz * Math.cos(yaw)) < s.length / 2 - inset;

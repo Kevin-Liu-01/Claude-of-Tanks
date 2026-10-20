@@ -35,28 +35,38 @@ function parterre(id: string, r: CivicRect): CivicBed {
 function plaza(id: string, pad: number, mirror: boolean): CivicAreaPlan {
   const R = (r: CivicRect) => (mirror ? mirRect(r) : r);
   const P = (list: readonly CivicFurniture[]) => (mirror ? list.map(mirPiece) : [...list]);
-  const room = R({ x0: -36, x1: 36, z0: -212, z1: -132 });
+  // (229 b1 r1, the blind critics: no pavement along the town hall and the church, a hard edge against bare dirt) the room
+  // out to the house fronts east and to the casa consistorial's front west, the paving under them
+  const room = R({ x0: -49.5, x1: 38.5, z0: -212, z1: -132 });
   const beds = [
     parterre(`${id}-w1`, R({ x0: -32, x1: -13, z0: -205, z1: -178 })), parterre(`${id}-w2`, R({ x0: -32, x1: -13, z0: -166, z1: -139 })),
     parterre(`${id}-e1`, R({ x0: 13, x1: 32, z0: -205, z1: -178 })), parterre(`${id}-e2`, R({ x0: 13, x1: 32, z0: -166, z1: -139 })),
   ];
   const cz = mirror ? 172 : -172;
   // orange trees in each bed's four quarters, the quarters' middles
-  const stations = beds.flatMap((b) => {
+  const stations = [...beds.flatMap((b) => {
     const r = b.rect, mx = (r.x0 + r.x1) / 2, mz = (r.z0 + r.z1) / 2;
     return [[(r.x0 + mx) / 2, (r.z0 + mz) / 2], [(mx + r.x1) / 2, (r.z0 + mz) / 2], [(r.x0 + mx) / 2, (mz + r.z1) / 2], [(mx + r.x1) / 2, (mz + r.z1) / 2]]
       .map(([x, z]) => ({ x: +x.toFixed(2), z: +z.toFixed(2) }));
-  });
+  }),
+  // (229 b1 r1, the critics: a wide empty band round the parterres) a row down the paseo between each side's two beds, in
+  // their grates, and a row before the casa consistorial
+  ...[16, 22.5, 29].flatMap((x) => [{ x, z: cz, grate: true }, { x: -x, z: cz, grate: true }]),
+  ...[-170, -163.5, -157, -150.5, -144].map((z) => ({ x: -45, z: mirror ? -z : z, grate: true }))];
   // benches on each glorieta's diagonals facing in
-  const benches = beds.flatMap((b) => {
+  const benches = [...beds.flatMap((b) => {
     const r = b.rect, mx = (r.x0 + r.x1) / 2, mz = (r.z0 + r.z1) / 2;
     return [[-3.0, -3.0], [3.0, -3.0], [-3.0, 3.0], [3.0, 3.0]].map(([dx, dz]) => ({ kind: 'bench', x: mx + dx, z: mz + dz, yawDeg: facing(mx + dx, mz + dz, mx, mz) }));
-  });
+  }),
+  // (229 b1 r1) the paseo's benches between its trees, facing across it, and before the casa consistorial between its
+  // trees, facing the plaza
+  ...P([[19.25, -174.4, 0], [25.75, -169.6, 180], [-19.25, -174.4, 0], [-25.75, -169.6, 180],
+    [-45, -166.75, 90], [-45, -153.75, 90], [-45, -147.25, 90]].map(([x, z, yawDeg]) => ({ kind: 'bench', x, z, yawDeg })))];
   return {
     id, room,
-    paved: R({ x0: -40, x1: 40, z0: -216, z1: -128 }),
-    rinnen: [{ from: [-4.2, room.z0], to: [-4.2, cz - 9.6] }, { from: [4.2, room.z0], to: [4.2, cz - 9.6] },
-      { from: [-4.2, cz + 9.6], to: [-4.2, room.z1] }, { from: [4.2, cz + 9.6], to: [4.2, room.z1] }],
+    paved: R({ x0: -52, x1: 43, z0: -216, z1: -128 }),
+    // (229 b1 r1, the blind critics: the gutters' two light rows read from above as painted lane lines) none
+    rinnen: [],
     vetoExempt: ['lamp'],
     keepOuts: [],
     clears: [],
@@ -70,9 +80,20 @@ function plaza(id: string, pad: number, mirror: boolean): CivicAreaPlan {
     holds: [],
     centre: { x: 0, z: cz, ringR: [8.5, 9.0], roseR: 3, rays: 8 },
     beds,
-    paving: [],
+    // (229 b1 r1, the blind critics: "raw dark asphalt" round the beds) the plaza floored in pale stone tiles round its beds,
+    // the road's arm with it
+    paving: [
+      { rect: R({ x0: room.x0, x1: -32, z0: -212, z1: -132 }), kind: 'tiles' },
+      { rect: R({ x0: -13, x1: 13, z0: -212, z1: -132 }), kind: 'tiles' },
+      { rect: R({ x0: 32, x1: room.x1, z0: -212, z1: -132 }), kind: 'tiles' },
+      ...[[-32, -13], [13, 32]].flatMap(([x0, x1]) => [[-212, -205], [-178, -166], [-139, -132]].map(([z0, z1]) => ({ rect: R({ x0, x1, z0, z1 }), kind: 'tiles' as const }))),
+      // over the apron's painted edge outside the room, to the street and the bridgehead (no dark band at the plaza's ends)
+      { rect: R({ x0: -40, x1: 38.5, z0: -218, z1: -212 }), kind: 'tiles' }, { rect: R({ x0: -40, x1: 38.5, z0: -132, z1: -127 }), kind: 'tiles' },
+    ],
     monument: null,
-    trees: { species: 'acacia', scale: [0.7, 0.8], stations },
+    // (229 b1 r1, the critics: the acacia form read oversized, spiky and sparse) the oak slot (the map's holm oak) small,
+    // a round dark crown standing for the orange tree
+    trees: { species: 'oak', scale: [0.5, 0.58], stations },
     // (the benches come off the beds, already the plaza's own)
     furniture: benches,
     // the town's SEATs along the casa consistorial's front, outside the beds
@@ -82,7 +103,9 @@ function plaza(id: string, pad: number, mirror: boolean): CivicAreaPlan {
     ]),
     bayMarks: [],
     // cast-iron column lamps at the beds' corners by the arm
-    lamps: P([[-11.2, -203.5], [11.2, -203.5], [-11.2, -140.5], [11.2, -140.5]].map(([x, z]) => ({ kind: 'lamp', x, z, yawDeg: 0 }))),
+    lamps: P([[-11.2, -203.5], [11.2, -203.5], [-11.2, -140.5], [11.2, -140.5],
+      // (229 b1 r1) at the paseo's ends by the arm, and before the casa consistorial
+      [11.5, -172], [-11.5, -172], [-41.5, -160.25], [-41.5, -147.25]].map(([x, z]) => ({ kind: 'lamp', x, z, yawDeg: 0 }))),
     fountainRing: null,
     steps: [],
     lawns: beds.map((b) => b.rect),
@@ -104,7 +127,10 @@ export const CLIFFBRIDGE_CIVIC_PLAN: CivicPlan = {
     maxWalkM: 1.6,
     openWalkM: 1.2,
     lane: { face: 0.06, maxWalkM: 1.0, openWalkM: 0.8 },
-    exclude: [{ x0: -36, x1: 36, z0: -212, z1: -132 }, { x0: -36, x1: 36, z0: 132, z1: 212 }],
+    exclude: [{ x0: -49.5, x1: 38.5, z0: -212, z1: -132 }, { x0: -49.5, x1: 38.5, z0: 132, z1: 212 }],
+    // (229 b1 r1, the blind critics: kerb slabs floating on open ground at the plazas' entries) only the fronted stretches,
+    // joined over gaps of up to 15 m
+    openGapM: 15,
     gates: [],
     inside: [TOWN_SOUTH, TOWN_SOUTH.map(([x, z]) => [x, -z] as const)],
     mouths: [[0, -212], [0, -132], [0, 132], [0, 212]],
