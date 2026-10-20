@@ -60,6 +60,13 @@ export interface GarageApproachRecipe {
    * threshold").
    */
   readonly forecourt?: { readonly from: number; readonly width: number };
+  /**
+   * Drape the route on the drawn terrain (garage r9 g1 r4): its ribbons follow the terrain mesh's own triangles and
+   * split wherever the ground curves away from a chord, down to this length in metres. Without it a route chords every
+   * 3.2 m over the bilinear field, and a terrace's feather or a coarse cell's diagonal buries it by 10-30 cm (Monsoon's
+   * causeway showed only its kerbs, as loose slabs on the grass).
+   */
+  readonly drapeM?: number;
 }
 
 export interface GarageEnvironmentRecipe {
@@ -212,6 +219,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     approach: {
       style: 'snow-road', label: 'ploughed recovery road', surface: 'snow', width: 7.4,
       waypoints: [[0, 9], [3, 15], [6.5, 21], [9.5, 26.5]], lanes: [-2.2, 2.2], // to the bunker's portal
+      drapeM: 1.2,
     },
     terrainProfile: 'actual Frosthollow spawn excerpt with snowbank relief',
     serviceFrame: 'snowbound lodge yard and sheltered repair chalet',
@@ -327,8 +335,11 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     treeSpecies: ['eucalyptus', 'palm'], treeCount: 22, reliefScale: 0.72,
     horizonStyle: 'rolling', horizonHeightM: 10.4,
     approach: {
-      style: 'monsoon-causeway', label: 'drained ridge causeway', surface: 'rock', width: 7.8,
+      // a concrete causeway on the render texture (garage r9 g1 r4: draped into view, the mossy rock texture read as a
+      // green carpet), the bay's floor and kerbs in the same concrete
+      style: 'monsoon-causeway', label: 'drained ridge causeway', surface: 'plaster', width: 7.8,
       waypoints: [[0, 10], [0, 25], [0, 46]], lanes: [-3.3, 3.3], // straight through the covered bay
+      drapeM: 0.8,
     },
     terrainProfile: 'actual Monsoon Ridge spawn excerpt with drainage relief',
     serviceFrame: 'raised depot terrace and connected rain-service shelter',
@@ -342,20 +353,24 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       // a military pass station of steel sheds, containers and a plant house (wave 398: no chalets, chapels or domes)
       // at the cliff's foot, clear of its face (the cliff now runs 46 m across the frame: the garage critic panel)
       at(makeWarehouse, 'glacier vehicle store', -34.65, 0.71, 0.6),
-      at(makeContainerRow, 'pass container line', -30, -30, 0.55),
+      // a plough shed off the cliff's left end, where the container line stood hidden inside the cliff (garage r9: 7k
+      // triangles no view saw)
+      atView(makeShed, 'pass plough shed', -43.5, 31, 0.6),
       at(makeFireStation, 'pass plant house', -2.1, -31.8, 0.5),
       at(makeShed, 'pass service shelter', 18, -34, 0.72),
-      at(makeContainerRow, 'glacier outpost containers', 36, -14, 0.45),
+      at(makeWarehouse, 'glacier outpost store', 36, -14, 0.45), // (a container line was 6.4k triangles: garage r9 funds the kit)
       at(makeWaterTower, 'high-pass water tank', 40, -11, 0.6),
       at(makeWarehouse, 'avalanche patrol garage', 6, 38, 0.5),
       at(makeDepot, 'cliff rescue depot', -41, 23, 0.5),
-      at(makeContainerRow, 'high-pass rescue containers', 31, 31, 0.5),
+      at(makeWarehouse, 'high-pass rescue garage', 31, 31, 0.4), // (was a container line: 5.7k triangles behind the lens)
     ],
-    treeSpecies: ['spruce', 'fir'], treeCount: 28, reliefScale: 0.38,
+    // a few wind-cut spruce and fir below the col (garage r9: the col stands above the treeline, the hinterland's own
+    // reading; 28 trees were 7.8k triangles of a forest the place does not have)
+    treeSpecies: ['spruce', 'fir'], treeCount: 12, reliefScale: 0.38,
     horizonStyle: 'alpine', horizonHeightM: 13.2,
     approach: {
       style: 'alpine-pass', label: 'snowbound cavern approach', surface: 'snow', width: 7.2,
-      waypoints: [[0, 9], [3, 15], [6.5, 21], [8.5, 26.5]], lanes: [-2.4, 2.4],
+      waypoints: [[0, 9], [3, 15], [6.5, 21], [8.5, 26.5]], lanes: [-2.4, 2.4], drapeM: 1.6,
     },
     terrainProfile: 'actual Glacier Pass spawn excerpt with steep alpine shoulder',
     serviceFrame: 'high-pass recovery terrace between lodge and chalet',
@@ -374,11 +389,11 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       // third (stills ticket 6, 2026-10-15): it now stands behind the showroom lens on the right, seen from the orbit
       atView(makeGantry, 'heavy lift gantry', 17, -38, 0.76),
       at(makeWaterTower, 'divide water tower', 18, -34, 0.68),
-      at(makeContainerRow, 'salvage container line', 36, -14, 0.62),
+      at(makeWarehouse, 'salvage parts store', 36, -14, 0.55), // (a container line was 5k triangles: garage r9 funds the kit)
       at(makeShed, 'recovery fabrication shed', 40, -11, 0.72),
       at(makeCaravanserai, 'mesa crew compound', 6, 38, 0.54),
       at(MARKET_BUILDERS.compound, 'salvage fortification', -41, 23, 0.50),
-      at(makeGantry, 'canyon recovery bridge', 31, 31, 0.56),
+      at(makeShed, 'recovery spares shed', 31, 31, 0.6), // (was a second gantry behind the lens: garage r9 funds the kit's)
     ],
     // acacia and scrub oak only: a cedar read as "a stray spruce instead of badlands" (wave 408)
     treeSpecies: ['acacia', 'oak'], treeCount: 12, reliefScale: 0.72,

@@ -30,6 +30,13 @@ export const GARAGE_SLIDESHOW_PLACEMENTS: Readonly<Partial<Record<GarageVariant[
   // Redrock: a rugged LED trailer on its outriggers past the gantry, in the frame's right band clear of the hero's halo,
   // its panel turned to the yard
   recovery_yard: Object.freeze({ at: [19, 37] as const, yaw: 0, width: 2.8, mount: 'trailer' }),
+  // Glacier: an LED panel on its legs at the guard post on the portal's right, in the frame's right band (the bore and the
+  // portal stand behind the hero, inside the halo no display may enter)
+  rock_cavern: Object.freeze({ at: [14.0, 16.6] as const, yaw: Math.PI / 4 - 0.25, width: 2.0, mount: 'freestanding', y: 0.2 }),
+  // Frosthollow: a wall panel on the bunker's right pier beside the open blast door, in the frame's right band
+  repair_bunker: Object.freeze({ at: [16.0, 25.73] as const, yaw: Math.PI / 4, width: 2.2, mount: 'wall', bottomY: 1.6, y: 2.72 }),
+  // Monsoon: a rugged panel bolted to the canopy's front-right column under the eave, turned to the yard's right
+  rain_canopy: Object.freeze({ at: [12.42, 19.58] as const, yaw: Math.PI / 2, width: 2.0, mount: 'column', bottomY: 2.0, y: 1.35 }),
 });
 
 /**

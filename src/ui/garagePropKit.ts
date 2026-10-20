@@ -131,6 +131,26 @@ const bollard: PropBuilder = (b) => {
   b.lathe(0, 0, 0, [[0.11, 0], [0.11, 0.6], [0.11, 0.78], [0.09, 0.86], [0, 0.88]], 10, [b.skin.accent, 0x1c1c1c, b.skin.accent, b.skin.accent]);
 };
 
+/**
+ * A pole (garage r9, the g1 lane): a bamboo pole with its nodes (variant 0: Monsoon's banner poles), a red-and-white
+ * snow pole on the road's verge (1), or a steel scaffold pole in a sandbag foot (2); 3 m tall, the snow pole 2 m.
+ */
+const pole: PropBuilder = (b, params = {}) => {
+  const variant = params.variant ?? 0;
+  if (variant === 1) {
+    b.lathe(0, 0, 0, [[0.03, 0], [0.03, 0.5], [0.03, 1.0], [0.03, 1.5], [0.03, 2.0], [0, 2.01]], 5, [0xd8d6cc, 0xb43a2a, 0xd8d6cc, 0xb43a2a, 0xd8d6cc]);
+    return;
+  }
+  const height = 3.0;
+  const tones = variant === 0 ? [0x9a8a52, 0x7d6e40] : [0x8a9094, 0x6e7478];
+  const profile: Array<[number, number]> = [];
+  for (let i = 0; i <= 6; i += 1) profile.push([(variant === 0 ? 0.045 : 0.03) * (1 - i * 0.04), (i / 6) * height]);
+  profile.push([0, height]);
+  b.lathe(0, 0, 0, profile, 6, profile.slice(0, -1).map((_, i) => tones[i % 2]));
+  if (variant === 0) for (let i = 1; i < 6; i += 1) b.cylinder(0, (i / 6) * height - 0.02, 0, 0.052, 0.04, 6, 0x6a5c34, { capTop: false, capBottom: false });
+  else b.box(0, 0.1, 0, 0.5, 0.2, 0.36, 0xa89a78, { bevel: 0.05 });
+};
+
 /** A fire extinguisher: the red body, its valve and the hose. */
 const extinguisher: PropBuilder = (b) => {
   b.lathe(0, 0, 0, [[0, 0], [0.08, 0], [0.08, 0.48], [0.05, 0.54], [0, 0.56]], 8, 0xa8302a);
@@ -372,7 +392,7 @@ const lowLoader: PropBuilder = (b, params = {}) => {
 export const GARAGE_PROP_BUILDERS: Readonly<Record<string, PropBuilder>> = Object.freeze({
   drum200, jerrycan, ammoBoxSteel, ammoCrate, pallet, roadWheel, trackPallet, towBar, chocks, cone, bollard,
   extinguisher, gasCylinder, cableReel, coiledHose, tarpStack, sandbag, generator, compressor, lightTower, forklift,
-  palletJack, oilRack, spillBin, skip, bowser, gasCage, lowLoader,
+  palletJack, oilRack, spillBin, skip, bowser, gasCage, lowLoader, pole,
 });
 
 /**
@@ -383,7 +403,7 @@ export const GARAGE_PROP_BUDGETS: Readonly<Record<string, number>> = Object.free
   drum200: 180, jerrycan: 120, ammoBoxSteel: 90, ammoCrate: 80, pallet: 120, roadWheel: 200, trackPallet: 300,
   towBar: 120, chocks: 40, cone: 60, bollard: 80, extinguisher: 80, gasCylinder: 80, cableReel: 160, coiledHose: 160,
   tarpStack: 300, sandbag: 40, generator: 500, compressor: 450, lightTower: 900, forklift: 1800, palletJack: 250,
-  oilRack: 900, spillBin: 120, skip: 300, bowser: 1600, gasCage: 500, lowLoader: 1500,
+  oilRack: 900, spillBin: 120, skip: 300, bowser: 1600, gasCage: 500, lowLoader: 1500, pole: 160,
 });
 
 /** Build one clutter piece by name. */

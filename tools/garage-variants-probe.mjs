@@ -398,7 +398,8 @@ try {
         || architecture.operationalMachines < 3
         || architecture.openingViewFrames !== 2
         || architecture.treeDetailTier !== 'battlefield-near'
-        || architecture.horizonStyle === 'none' || architecture.horizonMaxHeightM > 13.2
+        || architecture.horizonStyle === 'none'
+        || (architecture.skylineLandmarks ? architecture.horizonMaxElevationDeg > 13 : architecture.horizonMaxHeightM > 13.2)
         || architecture.looseParts < 40
         || architecture.placementZones < 7 || architecture.placementOverlaps !== 0
         || architecture.maxGroundContactErrorM > 0.1

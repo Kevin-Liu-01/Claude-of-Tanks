@@ -122,6 +122,9 @@ interface PrimitiveFrame {
   readonly wear: number;
 }
 
+/** The one scratch step matrix the transforms multiply in (multiply copies it out at once). */
+const STEP = new THREE.Matrix4();
+
 /**
  * Accumulates kit geometry under a transform stack. Coordinates are metres in the piece's own frame: +Y up, the piece
  * standing on y = 0 (its ground), +Z its front. A pack places the finished geometry with one matrix.
@@ -170,14 +173,14 @@ export class KitBuilder {
     return this;
   }
   translate(x: number, y: number, z: number): this {
-    this.matrix.multiply(new THREE.Matrix4().makeTranslation(x, y, z));
+    this.matrix.multiply(STEP.makeTranslation(x, y, z));
     this.normalDirty = true;
     return this;
   }
-  rotateX(angle: number): this { this.matrix.multiply(new THREE.Matrix4().makeRotationX(angle)); this.normalDirty = true; return this; }
-  rotateY(angle: number): this { this.matrix.multiply(new THREE.Matrix4().makeRotationY(angle)); this.normalDirty = true; return this; }
-  rotateZ(angle: number): this { this.matrix.multiply(new THREE.Matrix4().makeRotationZ(angle)); this.normalDirty = true; return this; }
-  scale(x: number, y = x, z = x): this { this.matrix.multiply(new THREE.Matrix4().makeScale(x, y, z)); this.normalDirty = true; return this; }
+  rotateX(angle: number): this { this.matrix.multiply(STEP.makeRotationX(angle)); this.normalDirty = true; return this; }
+  rotateY(angle: number): this { this.matrix.multiply(STEP.makeRotationY(angle)); this.normalDirty = true; return this; }
+  rotateZ(angle: number): this { this.matrix.multiply(STEP.makeRotationZ(angle)); this.normalDirty = true; return this; }
+  scale(x: number, y = x, z = x): this { this.matrix.multiply(STEP.makeScale(x, y, z)); this.normalDirty = true; return this; }
   /** Run `body` in a pushed frame translated to (x, y, z) and turned by `yaw`. */
   at(x: number, y: number, z: number, yaw: number, body: () => void): this {
     this.push().translate(x, y, z);
@@ -224,23 +227,30 @@ export class KitBuilder {
     const flip = outward !== null && fx * outward[0] + fy * outward[1] + fz * outward[2] < 0;
     const inv = (flip ? -1 : 1) / Math.sqrt(lengthSq);
     fx *= inv; fy *= inv; fz *= inv;
-    const { baseY, topY, wear } = this.frame;
-    const span = Math.max(1e-4, topY - baseY);
-    const p = this.tmpA, n = this.tmpN;
-    const emit = (point: KitVec, index: number): void => {
-      const local = (point[1] - baseY) / span;
-      p.set(point[0], point[1], point[2]).applyMatrix4(this.matrix);
-      this.positions.push(p.x, p.y, p.z);
-      if (normals) n.set(normals[index][0], normals[index][1], normals[index][2]);
-      else n.set(fx, fy, fz);
-      n.applyMatrix3(this.normalMatrix).normalize();
-      this.normals.push(n.x, n.y, n.z);
-      const tone = Array.isArray(color) ? color[index] : color as THREE.Color;
-      this.colors.push(tone.r, tone.g, tone.b);
-      this.shading.push(local < 0 ? 0 : local > 1 ? 1 : local, chip, wear);
-    };
-    emit(a, 0);
-    if (flip) { emit(c, 2); emit(b, 1); } else { emit(b, 1); emit(c, 2); }
+    // (garage r9 g1 r4: one vertex writer, not a closure built per triangle: the kit's cold bakes spent a fifth here)
+    const tones = Array.isArray(color) ? color as readonly [THREE.Color, THREE.Color, THREE.Color] : null;
+    const single = color as THREE.Color;
+    this.emitVertex(a, normals ? normals[0] : null, fx, fy, fz, tones ? tones[0] : single, chip);
+    if (flip) {
+      this.emitVertex(c, normals ? normals[2] : null, fx, fy, fz, tones ? tones[2] : single, chip);
+      this.emitVertex(b, normals ? normals[1] : null, fx, fy, fz, tones ? tones[1] : single, chip);
+    } else {
+      this.emitVertex(b, normals ? normals[1] : null, fx, fy, fz, tones ? tones[1] : single, chip);
+      this.emitVertex(c, normals ? normals[2] : null, fx, fy, fz, tones ? tones[2] : single, chip);
+    }
+  }
+
+  /** One vertex of a triangle: its position and normal through the current frame, its colour and shading inputs. */
+  private emitVertex(point: KitVec, normal: KitVec | null, fx: number, fy: number, fz: number, tone: THREE.Color, chip: number): void {
+    const frame = this.frame;
+    const local = (point[1] - frame.baseY) / Math.max(1e-4, frame.topY - frame.baseY);
+    const p = this.tmpA.set(point[0], point[1], point[2]).applyMatrix4(this.matrix);
+    this.positions.push(p.x, p.y, p.z);
+    const n = normal ? this.tmpN.set(normal[0], normal[1], normal[2]) : this.tmpN.set(fx, fy, fz);
+    n.applyMatrix3(this.normalMatrix).normalize();
+    this.normals.push(n.x, n.y, n.z);
+    this.colors.push(tone.r, tone.g, tone.b);
+    this.shading.push(local < 0 ? 0 : local > 1 ? 1 : local, chip, frame.wear);
   }
 
   private quad(a: KitVec, b: KitVec, c: KitVec, d: KitVec, color: THREE.Color, outward: KitVec | null, chip = 0): void {
@@ -675,7 +685,7 @@ export class KitBuilder {
     for (let i = 0; i < count; i += 1) {
       const x = this.positions[i * 3], y = this.positions[i * 3 + 1], z = this.positions[i * 3 + 2];
       const ny = this.normals[i * 3 + 1];
-      const [local, chip, extraWear] = [this.shading[i * 3], this.shading[i * 3 + 1], this.shading[i * 3 + 2]];
+      const local = this.shading[i * 3], chip = this.shading[i * 3 + 1], extraWear = this.shading[i * 3 + 2];
       const wear = THREE.MathUtils.clamp(skin.wear + extraWear, 0, 1);
       tone.setRGB(this.colors[i * 3], this.colors[i * 3 + 1], this.colors[i * 3 + 2]);
       // a cheap positional hash for streaks and chips (deterministic, no rng order dependence)
@@ -718,8 +728,9 @@ export class KitBuilder {
     solid.setAttribute('normal', new THREE.Float32BufferAttribute(this.normals, 3));
     solid.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     solid.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(count * 2), 2));
+    // a box (the placement's footprints read it); no sphere: a pack merges the pieces and bounds the merged mesh, and a
+    // piece drawn alone (the platform collar) gets its sphere from the renderer on first use
     solid.computeBoundingBox();
-    solid.computeBoundingSphere();
     const atlasGeometry = (positions: number[], normals: number[], uvs: number[]): THREE.BufferGeometry | null => {
       if (!positions.length) return null;
       const geometry = new THREE.BufferGeometry();
@@ -727,7 +738,6 @@ export class KitBuilder {
       geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
       geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
       geometry.computeBoundingBox();
-      geometry.computeBoundingSphere();
       return geometry;
     };
     const display = atlasGeometry(this.displayPositions, this.displayNormals, this.displayUvs);

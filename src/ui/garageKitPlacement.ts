@@ -35,8 +35,12 @@ import { GARAGE_SLIDESHOW_PLACEMENTS } from './garageSlideshowPlacement.ts';
  * - Every piece standing on the ground gets a contact blot (decal) a little wider than its footprint.
  */
 
-/** Every item may stand on the Garage datum (y = 0, the pads' level) instead of the terrain under it. */
-type GarageKitItemBase = { readonly datum?: boolean };
+/**
+ * Every item may stand on the Garage datum (y = 0, the pads' level) instead of the terrain under it, and may carry a
+ * `shade` (0-1): a piece deep in a bore or under a heavy roof keeps that occlusion in its baked colours (garage r9: the
+ * crane in Glacier's tunnel read lit yellow straight behind the hero).
+ */
+type GarageKitItemBase = { readonly datum?: boolean; readonly shade?: number };
 
 type GarageKitItem = GarageKitItemBase & (
   | { readonly kind: 'prop'; readonly name: string; readonly at: readonly [number, number]; readonly yaw?: number; readonly y?: number;
@@ -49,7 +53,7 @@ type GarageKitItem = GarageKitItemBase & (
     readonly params: PortalGantryParams }
   | { readonly kind: 'crane'; readonly crane: 'jib' | 'aframe' | 'monorail' | 'gable' | 'breakdown' | 'magnet' | 'ropeway';
     readonly at: readonly [number, number]; readonly yaw?: number; readonly y?: number;
-    readonly params: Readonly<Record<string, number | string | boolean | KitCraneLoad | null | undefined>> }
+    readonly params: Readonly<Record<string, number | string | boolean | KitCraneLoad | KitVec | null | undefined>> }
   | { readonly kind: 'wall'; readonly wall: KitWallKind; readonly points: ReadonlyArray<readonly [number, number]>; readonly y?: number;
     readonly params?: KitWallRunParams }
   | { readonly kind: 'sign'; readonly sign: 'plate' | 'post' | 'hanging' | 'aboard' | 'supergraphic' | 'stencil'; readonly rect: string;
@@ -173,6 +177,11 @@ function buildGarageKitPiece(item: GarageKitItem, architecture: GarageVariant['a
     default: break;
   }
   const result = b.build();
+  if (item.shade !== undefined && item.shade < 1) {
+    const color = result.solid.getAttribute('color') as THREE.BufferAttribute;
+    for (let i = 0; i < color.array.length; i += 1) (color.array as Float32Array)[i] *= item.shade;
+    color.needsUpdate = true;
+  }
   const box = result.solid.boundingBox;
   const footprint: readonly [number, number] | null = grounded && box && !box.isEmpty() && box.min.y < 0.2
     ? [Math.max(Math.abs(box.min.x), Math.abs(box.max.x)), Math.max(Math.abs(box.min.z), Math.abs(box.max.z))]
@@ -232,24 +241,24 @@ export function buildGarageKitDressing(params: {
   for (const item of items) {
     const piece = buildGarageKitPiece(item, variant.architecture, variant.mapId);
     const yaw = kitItemMatrix(item, groundAtWorld, matrix);
-    const solid = piece.result.solid.clone().applyMatrix4(matrix);
+    const solid = placedCopy(piece.result.solid, matrix);
     if (item.kind === 'wall') seatOnGround(solid, groundAtWorld, item.y ?? 0);
     (buckets.baked ||= []).push(solid);
     kitTriangles += piece.result.solidTriangles;
     for (const [bucket, surface] of piece.result.surfaces) {
-      const placed = surface.clone().applyMatrix4(matrix);
+      const placed = placedCopy(surface, matrix);
       if (item.kind === 'wall') seatOnGround(placed, groundAtWorld, item.y ?? 0);
       ((buckets as Record<string, THREE.BufferGeometry[]>)[bucket] ||= []).push(placed);
       kitTriangles += surface.getAttribute('position').count / 3;
     }
     if (piece.result.display) {
-      const placed = piece.result.display.clone().applyMatrix4(matrix);
+      const placed = placedCopy(piece.result.display, matrix);
       if (item.kind === 'wall') seatOnGround(placed, groundAtWorld, item.y ?? 0);
       displays.push(placed);
       displayTriangles += piece.result.displayTriangles;
     }
     if (piece.result.decal) {
-      const placed = piece.result.decal.clone().applyMatrix4(matrix);
+      const placed = placedCopy(piece.result.decal, matrix);
       if (item.kind === 'wall') seatOnGround(placed, groundAtWorld, item.y ?? 0);
       decals.push(placed);
       decalTriangles += piece.result.decalTriangles;
@@ -380,6 +389,10 @@ export function garageKitItemBounds(variant: GarageVariant, placement: GarageKit
     readonly item: GarageKitItem; readonly solid: THREE.Box3; readonly display: THREE.Box3 | null;
     /** Each display face and decal quad on its own (a wall's murals, a board's prints, a station's screens). */
     readonly quads: readonly THREE.Box3[];
+    /** Each quad's six corners in the Garage frame (its oriented box: the placement receipt's structure test). */
+    readonly quadCorners: ReadonlyArray<readonly THREE.Vector3[]>;
+    /** The piece's oriented bounds (its own box under its placement), or null for a wall run seated per module. */
+    readonly solidObb: { readonly matrix: THREE.Matrix4; readonly box: THREE.Box3 } | null;
   }> {
   const matrix = new THREE.Matrix4();
   return garageKitItems(variant, placement).map((item) => {
@@ -398,22 +411,43 @@ export function garageKitItemBounds(variant: GarageVariant, placement: GarageKit
       return box;
     };
     const quads: THREE.Box3[] = [];
+    const quadCorners: THREE.Vector3[][] = [];
     for (const geometry of [piece.result.display, piece.result.decal]) {
       if (!geometry) continue;
       const placed = place(geometry);
       const position = placed.getAttribute('position');
       for (let i = 0; i < position.count; i += 6) {
         const box = new THREE.Box3();
-        for (let k = 0; k < 6 && i + k < position.count; k += 1) box.expandByPoint(new THREE.Vector3().fromBufferAttribute(position, i + k));
+        const corners: THREE.Vector3[] = [];
+        for (let k = 0; k < 6 && i + k < position.count; k += 1) {
+          const corner = new THREE.Vector3().fromBufferAttribute(position, i + k);
+          box.expandByPoint(corner);
+          corners.push(corner);
+        }
         quads.push(box);
+        quadCorners.push(corners);
       }
       placed.dispose();
     }
-    return { item, solid: boxOf(piece.result.solid), display: piece.result.display ? boxOf(piece.result.display) : null, quads };
+    const own = piece.result.solid.boundingBox;
+    const solidObb = item.kind !== 'wall' && own && !own.isEmpty() ? { matrix: matrix.clone(), box: own.clone() } : null;
+    return { item, solid: boxOf(piece.result.solid), display: piece.result.display ? boxOf(piece.result.display) : null, quads, quadCorners, solidObb };
   });
 }
 
 /** Seat a wall run's vertices on the terrain (each vertex rises by the ground under its own x/z). */
+/**
+ * A cached piece's geometry placed by `matrix`, without bounds: placed copies only feed the pack's merge, which bounds
+ * the merged mesh, and a copy carrying the piece's bounds recomputed both on every transform (garage r9 g1 r4: a tenth
+ * of a cold pack bake).
+ */
+function placedCopy(geometry: THREE.BufferGeometry, matrix: THREE.Matrix4): THREE.BufferGeometry {
+  const copy = geometry.clone();
+  copy.boundingBox = null;
+  copy.boundingSphere = null;
+  return copy.applyMatrix4(matrix);
+}
+
 function seatOnGround(geometry: THREE.BufferGeometry, groundAtWorld: (x: number, z: number) => number, lift: number): void {
   const position = geometry.getAttribute('position') as THREE.BufferAttribute;
   // seat by module: group vertices by a 0.6 m cell so a module stays rigid on sloping ground
@@ -423,6 +457,7 @@ function seatOnGround(geometry: THREE.BufferGeometry, groundAtWorld: (x: number,
     position.setY(i, position.getY(i) + groundAtWorld(cx, cz) + lift);
   }
   position.needsUpdate = true;
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
+  // bounds stay as the copy had them (none: placedCopy); the merge bounds the pack's mesh
+  if (geometry.boundingBox) geometry.computeBoundingBox();
+  if (geometry.boundingSphere) geometry.computeBoundingSphere();
 }

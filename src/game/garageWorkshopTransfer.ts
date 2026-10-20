@@ -62,6 +62,9 @@ const ROLE_MATERIAL_KEYS: Readonly<Record<string, MaterialPaletteKey>> = {
 };
 
 const NAME_MATERIAL_KEYS: ReadonlyArray<readonly [RegExp, MaterialPaletteKey]> = [
+  // a ghillie suit's net and garnish are white under their texture: the map-free palette's cloth carries them (garage
+  // r9: the T-90M turret's net drew pure white and blew out in every bay_t90m frame)
+  [/ghillie|garnish/i, 'canvasCloth'],
   [/glass/i, 'glass'],
   [/runninggeardetail|wheeldisc/i, 'wheels'],
   [/runninggeardark|shadow/i, 'shadow'],

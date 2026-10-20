@@ -41,6 +41,20 @@ const screenRect = (box) => {
   }
   return front ? { minX, minY, maxX, maxY } : null;
 };
+// the screen rect of a set of points (a card's or a face's own corners: their world box over-reaches when they run
+// diagonally in the Garage frame, as everything square to the view does)
+const screenRectPoints = (points) => {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, front = 0;
+  for (const point of points) {
+    const p = point.clone().applyMatrix4(camera.matrixWorldInverse);
+    if (p.z > -0.1) continue;
+    front += 1;
+    const ndc = point.clone().project(camera);
+    const sx = (ndc.x + 1) / 2, sy = (1 - ndc.y) / 2;
+    minX = Math.min(minX, sx); maxX = Math.max(maxX, sx); minY = Math.min(minY, sy); maxY = Math.max(maxY, sy);
+  }
+  return front ? { minX, minY, maxX, maxY } : null;
+};
 const hero = (() => {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const point of heroPoints) {
@@ -124,6 +138,32 @@ const overlap = (() => {
   };
 })();
 
+/** A display quad's oriented box: its plane's frame, its extents in it, a centimetre less each way, 5 mm thick. */
+function quadFrame(corners) {
+  const centroid = corners.reduce((sum, p) => sum.add(p), new THREE.Vector3()).multiplyScalar(1 / corners.length);
+  const u = new THREE.Vector3().subVectors(corners[1], corners[0]);
+  const w = new THREE.Vector3().subVectors(corners[2], corners[0]);
+  const n = new THREE.Vector3().crossVectors(u, w);
+  if (u.lengthSq() < 1e-12 || n.lengthSq() < 1e-12) return null;
+  u.normalize(); n.normalize();
+  const v = new THREE.Vector3().crossVectors(n, u).normalize();
+  const basis = new THREE.Matrix4().makeBasis(u, v, n).setPosition(centroid);
+  const toLocal = basis.clone().invert();
+  const extent = new THREE.Vector3();
+  for (const p of corners) {
+    const local = p.clone().applyMatrix4(toLocal);
+    extent.set(Math.max(extent.x, Math.abs(local.x)), Math.max(extent.y, Math.abs(local.y)), 0.005);
+  }
+  return { center: centroid, toLocal, half: new THREE.Vector3(Math.max(0.001, extent.x - 0.01), Math.max(0.001, extent.y - 0.01), 0.005) };
+}
+/** A piece's oriented box (its own bounds under its placement), a centimetre less each way. */
+function obbFrame({ matrix, box }) {
+  const localCentre = box.getCenter(new THREE.Vector3());
+  const basis = matrix.clone().multiply(new THREE.Matrix4().makeTranslation(localCentre.x, localCentre.y, localCentre.z));
+  return { center: new THREE.Vector3().setFromMatrixPosition(basis), toLocal: basis.clone().invert(),
+    half: box.getSize(new THREE.Vector3()).multiplyScalar(0.5).subScalar(0.01).max(new THREE.Vector3(0.001, 0.001, 0.001)) };
+}
+
 const assets = createGarageEnvironmentAssetLibrary({});
 for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
   clearGarageKitCache();
@@ -143,12 +183,15 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
   const instanceMatrix = new THREE.Matrix4();
   let intrusions = 0;
   const offenders = [];
-  for (const { item, solid, quads } of bounds) {
+  for (const { item, solid, quads, quadCorners, solidObb } of bounds) {
     const isDisplay = item.kind === 'display' || item.kind === 'sign' || (item.kind === 'wall' && item.params?.mural);
     if (!isDisplay) continue;
     // the slideshow by its screen (the dressing's one screen at the shared pose; its frame is the support) and against
-    // the structures by its whole frame; everything else by its faces and decals
+    // the structures by its whole frame; everything else by its faces and decals. The structure test takes each face's
+    // own oriented box (its plane, a centimetre thick: garage r9, the g1 lane: a plate on a wall square to the view runs
+    // diagonally in the Garage frame, so its axis-aligned box always reached into the wall behind it)
     let boxes = quads.length ? quads : [solid];
+    const frames = quads.length ? quadCorners.map(quadFrame) : [solidObb ? obbFrame(solidObb) : null];
     if (item.kind === 'display' && item.display === 'slideshow') {
       const pose = garageSlideshowPose(architecture);
       const across = new THREE.Vector3(Math.cos(pose.yaw), 0, -Math.sin(pose.yaw)).multiplyScalar(pose.width / 2);
@@ -158,16 +201,22 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
       ]);
       assert.ok(!inHalo(screenRect(screen)), `${architecture}: the slideshow's screen enters the hero's halo`);
       boxes = [solid];
+      frames.length = 0;
+      frames.push(solidObb ? obbFrame(solidObb) : null);
     }
-    for (const box of boxes) {
+    for (const [boxIndex, box] of boxes.entries()) {
+    const frame = frames[boxIndex] ?? null;
     // 1. the halo
     if (!(item.kind === 'display' && item.display === 'slideshow')) {
-      assert.ok(!inHalo(screenRect(box)), `${architecture}: ${item.kind}/${item.display ?? item.sign ?? item.wall} enters the hero's halo`);
+      const corners = quads.length ? quadCorners[boxIndex] : null;
+      assert.ok(!inHalo(corners ? screenRectPoints(corners) : screenRect(box)), `${architecture}: ${item.kind}/${item.display ?? item.sign ?? item.wall} enters the hero's halo`);
     }
     // 2. the structures: its display faces (or its sign plate) never cut into them
-    const center = box.getCenter(new THREE.Vector3());
-    const half = box.getSize(new THREE.Vector3()).multiplyScalar(0.5).subScalar(0.01).max(new THREE.Vector3(0.001, 0.001, 0.001));
+    const center = frame ? frame.center : box.getCenter(new THREE.Vector3());
+    const half = frame ? frame.half : box.getSize(new THREE.Vector3()).multiplyScalar(0.5).subScalar(0.01).max(new THREE.Vector3(0.001, 0.001, 0.001));
     const reach = half.length() + 0.5;
+    const toLocal = frame ? frame.toLocal : null;
+    const origin = new THREE.Vector3();
     let hit = false;
     for (const mesh of obstacles) {
       if (hit) break;
@@ -185,8 +234,11 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
           if (p.distanceTo(center) > s.length() + reach) continue;
         }
         for (let t = 0; t < count; t += 3) {
-          for (let c = 0; c < 3; c += 1) triangle[c].fromBufferAttribute(position, index ? index.getX(t + c) : t + c).applyMatrix4(instanceMatrix);
-          if (overlap(triangle[0], triangle[1], triangle[2], center, half)) { hit = true; break; }
+          for (let c = 0; c < 3; c += 1) {
+            triangle[c].fromBufferAttribute(position, index ? index.getX(t + c) : t + c).applyMatrix4(instanceMatrix);
+            if (toLocal) triangle[c].applyMatrix4(toLocal);
+          }
+          if (overlap(triangle[0], triangle[1], triangle[2], toLocal ? origin : center, half)) { hit = true; break; }
         }
       }
       if (hit) offenders.push(`${item.kind}/${item.display ?? item.sign ?? item.wall} cuts ${mesh.name}`);
@@ -197,7 +249,7 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
   assert.equal(intrusions, 0, `${architecture}: displays cut into structures: ${offenders.join('; ')}`);
   // 3. the atmosphere: no card over the halo (each strip is at least 6 % opaque at its peak), none over a display
   for (const card of placement.atmosphere?.cards ?? []) {
-    for (const box of cardBoxes(card)) assert.ok(!inHalo(screenRect(box)), `${architecture}: an atmosphere ${card.strip} card covers the hero's halo`);
+    assert.ok(!inHalo(screenRectPoints(card.corners.map((p) => new THREE.Vector3(...p)))), `${architecture}: an atmosphere ${card.strip} card covers the hero's halo`);
   }
   const displayBoxes = [];
   for (const { item, quads } of bounds) {

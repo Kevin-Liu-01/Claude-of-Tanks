@@ -14,6 +14,8 @@ interface GarageApproachBuildOptions {
   readonly approach: GarageApproachRecipe;
   readonly buckets: GeometryBuckets;
   readonly groundAtWorld: (x: number, z: number) => number;
+  /** The drawn terrain's own surface (its triangles): a draped route (`approach.drapeM`) is laid on it. */
+  readonly surfaceAtWorld?: (x: number, z: number) => number;
 }
 
 export interface GarageApproachStats {
@@ -139,6 +141,84 @@ function pathPanel(
   )));
 }
 
+/**
+ * A draped road surface (garage r9 g1 r4): one continuous ribbon along `path` laid on the ground at every path point
+ * and at `columns + 1` lines across its width (a terrace's feather or a cell's diagonal crowns the ground between two
+ * edges, and a two-edge panel sank under that crown), mitred at the bends, its texture running on along the route
+ * instead of restarting per segment. Skirts drop `thickness` under the two edges and both ends; it has no underside
+ * (it lies on the terrain).
+ */
+function drapedRibbon(
+  bucket: THREE.BufferGeometry[],
+  groundAtWorld: (x: number, z: number) => number,
+  path: readonly CameraPoint[],
+  width: number,
+  thickness: number,
+  lift: number,
+  columns: number,
+  tileM = 1,
+): void {
+  const n = path.length;
+  if (n < 2) return;
+  // the mitred across direction at each path point, in camera coordinates (side right, depth away)
+  const across: Array<readonly [number, number]> = path.map((_point, index) => {
+    const a = path[Math.max(0, index - 1)], b = path[Math.min(n - 1, index + 1)];
+    const ds = b.side - a.side, dd = b.depth - a.depth;
+    const length = Math.hypot(ds, dd) || 1;
+    return [dd / length, -ds / length] as const;
+  });
+  const rows: THREE.Vector3[][] = [];
+  const along: number[] = [0];
+  for (let index = 0; index < n; index += 1) {
+    if (index > 0) along.push(along[index - 1] + Math.hypot(path[index].side - path[index - 1].side, path[index].depth - path[index - 1].depth));
+    const row: THREE.Vector3[] = [];
+    for (let column = 0; column <= columns; column += 1) {
+      const offset = -width / 2 + (column / columns) * width;
+      const world = cameraToWorld(path[index].side + across[index][0] * offset, path[index].depth + across[index][1] * offset);
+      row.push(new THREE.Vector3(world.x, groundAtWorld(world.x, world.y) + lift, world.y));
+    }
+    rows.push(row);
+  }
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const push = (point: THREE.Vector3, u: number, v: number): void => { positions.push(point.x, point.y, point.z); uvs.push(u, v); };
+  const quad = (p0: THREE.Vector3, p1: THREE.Vector3, p2: THREE.Vector3, p3: THREE.Vector3,
+    uv0: readonly [number, number], uv1: readonly [number, number], uv2: readonly [number, number], uv3: readonly [number, number]): void => {
+    push(p0, ...uv0); push(p1, ...uv1); push(p2, ...uv2);
+    push(p0, ...uv0); push(p2, ...uv2); push(p3, ...uv3);
+  };
+  const below = (point: THREE.Vector3): THREE.Vector3 => point.clone().setY(point.y - thickness);
+  for (let index = 0; index < n - 1; index += 1) {
+    const r0 = rows[index], r1 = rows[index + 1], v0 = along[index], v1 = along[index + 1];
+    for (let column = 0; column < columns; column += 1) {
+      const u0 = (column / columns) * width / tileM, u1 = ((column + 1) / columns) * width / tileM;
+      // wound counter-clockwise seen from above (the across direction points right of the route's heading)
+      quad(r0[column], r0[column + 1], r1[column + 1], r1[column], [u0, v0 / tileM], [u1, v0 / tileM], [u1, v1 / tileM], [u0, v1 / tileM]);
+    }
+    // the edge skirts, facing out
+    quad(r0[0], r1[0], below(r1[0]), below(r0[0]), [0, v0], [0, v1], [thickness, v1], [thickness, v0]);
+    quad(r1[columns], r0[columns], below(r0[columns]), below(r1[columns]), [0, v1], [0, v0], [thickness, v0], [thickness, v1]);
+  }
+  for (const [row, flip] of [[rows[0], false], [rows[n - 1], true]] as const) {
+    for (let column = 0; column < columns; column += 1) {
+      const [a, b] = flip ? [row[column + 1], row[column]] : [row[column], row[column + 1]];
+      quad(b, a, below(a), below(b), [0, 0], [width / columns, 0], [width / columns, thickness], [0, thickness]);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.computeVertexNormals();
+  geometry.userData.garageApproachSurface = 'terrain-draped-ribbon';
+  geometry.userData.maxVisibleEdgeHeightM = thickness;
+  bucket.push(geometry);
+}
+
+/** Metres per texture repeat on a draped road, by surface (the render's grain at 2.5 m, a slab's worth). */
+const DRAPED_TILE_M: Readonly<Partial<Record<GarageApproachRecipe['surface'], number>>> = Object.freeze({
+  plaster: 2.5, rock: 3, snow: 4, cobble: 1.8,
+});
+
 function subdividePath(
   points: readonly CameraPoint[],
   maxSegmentM = 3.2,
@@ -161,6 +241,42 @@ function subdividePath(
   return result;
 }
 
+/**
+ * Split a route's segments wherever the drawn ground curves away from their chords (garage r9 g1 r4): along the centre
+ * line and the kerb lines at `offsets`, a segment whose thirds stand more than `toleranceM` off the chord halves, down
+ * to `minM`. Flat stretches keep their long segments.
+ */
+function drapePath(
+  points: readonly CameraPoint[],
+  heightAt: (side: number, depth: number) => number,
+  offsets: readonly number[],
+  minM: number,
+  toleranceM = 0.025,
+): CameraPoint[] {
+  const result: CameraPoint[] = [points[0]];
+  const bends = (a: CameraPoint, b: CameraPoint): boolean => {
+    for (const offset of offsets) {
+      const ha = heightAt(a.side + offset, a.depth), hb = heightAt(b.side + offset, b.depth);
+      for (const t of [0.35, 0.65]) {
+        const side = THREE.MathUtils.lerp(a.side, b.side, t) + offset, depth = THREE.MathUtils.lerp(a.depth, b.depth, t);
+        if (Math.abs(heightAt(side, depth) - THREE.MathUtils.lerp(ha, hb, t)) > toleranceM) return true;
+      }
+    }
+    return false;
+  };
+  const refine = (a: CameraPoint, b: CameraPoint): void => {
+    if (Math.hypot(b.side - a.side, b.depth - a.depth) > minM * 1.5 && bends(a, b)) {
+      const mid = { side: (a.side + b.side) / 2, depth: (a.depth + b.depth) / 2 };
+      refine(a, mid);
+      refine(mid, b);
+      return;
+    }
+    result.push(b);
+  };
+  for (let index = 0; index < points.length - 1; index += 1) refine(points[index], points[index + 1]);
+  return result;
+}
+
 function samplePath(points: readonly CameraPoint[], depth: number): CameraPoint {
   for (let index = 0; index < points.length - 1; index += 1) {
     const a = points[index];
@@ -176,17 +292,32 @@ function samplePath(points: readonly CameraPoint[], depth: number): CameraPoint 
 export function addGarageApproachDetails({
   approach,
   buckets,
-  groundAtWorld,
+  groundAtWorld: fieldAtWorld,
+  surfaceAtWorld,
 }: GarageApproachBuildOptions): GarageApproachStats {
   const route = buckets.route || (buckets.route = []);
   const baked = buckets.baked || (buckets.baked = []);
   const dark = buckets.dark || (buckets.dark = []);
-  const points = subdividePath(approach.waypoints.map(([side, depth]) => ({ side, depth })));
+  // a draped route lies on the drawn terrain's triangles and bends with it; the others keep the bilinear field's chords
+  const draped = Boolean(approach.drapeM && surfaceAtWorld);
+  const groundAtWorld = draped ? surfaceAtWorld! : fieldAtWorld;
+  const chords = subdividePath(approach.waypoints.map(([side, depth]) => ({ side, depth })));
+  const halfWidth = approach.width / 2;
+  const points = draped
+    ? drapePath(chords, (side, depth) => { const world = cameraToWorld(side, depth); return groundAtWorld(world.x, world.y); },
+      [-halfWidth - 0.4, 0, halfWidth + 0.4], approach.drapeM!)
+    : chords;
   let approachSegments = 0;
   let approachDetails = 0;
   let approachGroundErrorM = 0;
 
   const addPath = (path: readonly CameraPoint[], width: number, thickness = 0.12): void => {
+    if (draped) {
+      // laid on the drawn ground at every point and across the width every 2 m or less: it never sinks under a crown
+      drapedRibbon(route, groundAtWorld, path, width, thickness, 0.035, Math.max(2, Math.ceil(width / 2)), DRAPED_TILE_M[approach.surface] ?? 1);
+      approachSegments += path.length - 1;
+      return;
+    }
     for (let index = 0; index < path.length - 1; index += 1) {
       approachGroundErrorM = Math.max(approachGroundErrorM,
         pathPanel(route, groundAtWorld, path[index], path[index + 1], width, thickness));
@@ -392,8 +523,12 @@ export function addGarageApproachDetails({
     'snow-road': () => {
       addPath(points, approach.width, 0.13);
       addRuts(approach.lanes || [-2.2, 2.2], 0x86949a, 0.46);
-      addEdgeCourse(-approach.width / 2 - 0.45, 0xbec8ca, 0.68, 0.34);
-      addEdgeCourse(approach.width / 2 + 0.45, 0xbec8ca, 0.68, 0.34);
+      // the plough's windrows: a broad low berm under a narrower crest each side, not one raw box course (garage r9:
+      // "the flat faceted drift wedges")
+      for (const side of [-1, 1]) {
+        addEdgeCourse(side * (approach.width / 2 + 0.75), 0xdfe6ea, 1.5, 0.16);
+        addEdgeCourse(side * (approach.width / 2 + 0.8), 0xeaeff2, 0.7, 0.32);
+      }
       addRoadsidePosts(5.8, approach.width / 2 + 1.0, 0x9a5c4a, 1.85, true); // weathered paint (the re-judge)
     },
     'urban-street': () => {
@@ -456,9 +591,12 @@ export function addGarageApproachDetails({
     },
     'monsoon-causeway': () => {
       addPath(points, approach.width, 0.24);
-      addEdgeCourse(-approach.width / 2 - 0.45, 0x344f49, 0.42, 0.34);
-      addEdgeCourse(approach.width / 2 + 0.45, 0x344f49, 0.42, 0.34);
-      addRuts(approach.lanes || [-2.6, 2.6], 0x3c4f45, 0.34);
+      // (garage r9 g1 r2: the teal kerbs read as plastic planks on the grass) laterite-stained concrete kerbs along both
+      // edges; draped on the drawn ground (r4) they run unbroken to the bay's ramps. The laterite shoulder strip went: a
+      // 5 cm slab lifted 9 cm, it floated over the grass and read as loose cardboard (the r3 judge)
+      for (const side of [-1, 1]) addEdgeCourse(side * (approach.width / 2 + 0.2), 0x7b7064, 0.36, 0.26);
+      // the tracks' ruts hold the red mud they carried up from the yard (they were a teal-green strip)
+      addRuts(approach.lanes || [-2.6, 2.6], 0x4a3628, 0.34);
       addRoadsidePosts(7, approach.width / 2 + 1.0, 0xd19a2e, 1.45);
     },
     'alpine-pass': () => {

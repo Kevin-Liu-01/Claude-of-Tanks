@@ -164,9 +164,13 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
   const t0 = performance.now();
   const kit = buildGarageKitDressing({ variant, placement, buckets, groundAtWorld: () => 0 });
   const coldMs = performance.now() - t0;
-  const t1 = performance.now();
-  buildGarageKitDressing({ variant, placement, buckets: {}, groundAtWorld: () => 0 });
-  const warmMs = performance.now() - t1;
+  // the faster of two cached builds (one collector pause under a loaded machine read as a cache miss)
+  let warmMs = Infinity;
+  for (let pass = 0; pass < 2; pass += 1) {
+    const t1 = performance.now();
+    buildGarageKitDressing({ variant, placement, buckets: {}, groundAtWorld: () => 0 });
+    warmMs = Math.min(warmMs, performance.now() - t1);
+  }
   assert.ok(kit.stats.cranes.some((crane) => crane.atWork && crane.load), `${architecture}: a crane at work with a real load`);
   assert.ok(kit.stats.brandPieces >= 2, `${architecture}: brand pieces ${kit.stats.brandPieces}`);
   assert.ok(kit.stats.tankImages >= 3, `${architecture}: tank images ${kit.stats.tankImages}`);
@@ -189,7 +193,8 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
 // deck painter's slice timer only pace work; neither shapes a vertex or a texel)
 for (const file of ['garageKitGeometry', 'garageKitSkins', 'garagePropKit', 'garageBenchKit', 'garageCraneKit', 'garageWallKit',
   'garageSignKit', 'garageDisplayKit', 'garageDisplayAtlas', 'garagePlatformKit', 'garageAtmosphereKit', 'garageKitPlacement',
-  'garageKitPlacements', 'garageSlideshowPlacement', 'garageVerdantKit']) {
+  'garageKitPlacements', 'garageSlideshowPlacement', 'garageVerdantKit', 'garageKitRedrock', 'garageKitGlacier', 'garageKitFrosthollow',
+  'garageKitMonsoon', 'garageSkyline']) {
   const source = await readFile(new URL(`./${file}.ts`, import.meta.url), 'utf8');
   assert.doesNotMatch(source, /Math\.random|Date\.now|new Date\(/, `${file}: no random numbers or dates`);
   const clocks = (source.match(/performance\.now\(\)/g) || []).length;
