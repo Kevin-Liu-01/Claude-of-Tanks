@@ -117,7 +117,7 @@ const pool = new StonePiecePool(geometry, new MeshBasicMaterial(), 2, 'test-piec
 assert.equal(pool.capacity, 2 * STONE_PIECES);
 assert.equal(pool.mesh.count, 0); assert.equal(pool.mesh.visible, false, 'an empty pool draws nothing');
 assert.ok(pool.mesh.geometry.getAttribute('aRockGround') && pool.mesh.geometry.getAttribute('aRockSlope'), 'a slot carries its ground and slope');
-assert.equal(pool.mesh.geometry.getAttribute('position'), geometry.getAttribute('position'), 'the pool shares the form\'s vertices');
+assert.ok(pool.mesh.geometry.getAttribute('position') === geometry.getAttribute('position'), 'the pool shares the form\'s vertices');
 const layoutOf = (x) => crushedStoneLayout(new Matrix4().makeTranslation(x, 2, 0), form, grounds.level, createCrushedStoneLayout());
 const one = {}, two = {}, three = {};
 assert.equal(pool.show(one, layoutOf(0).pieces), true);

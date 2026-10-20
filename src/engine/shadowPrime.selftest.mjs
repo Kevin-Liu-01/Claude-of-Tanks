@@ -30,7 +30,7 @@ function fixture() {
   let warmTarget;
   const originalRender = function (selected, activeScene, activeCamera) {
     assert.equal(this, renderer.shadowMap);
-    assert.equal(activeScene, scene);
+    assert.ok(activeScene === scene);
     assert.equal(activeCamera.layers.mask, cameraMask);
     draws.push(selected.map((light) => lights.indexOf(light)));
     const cohort = [];
@@ -72,8 +72,8 @@ function fixture() {
       if (next === prior) hooks.restore?.();
     },
     render(activeScene, activeCamera) {
-      assert.equal(activeScene, scene);
-      assert.equal(activeCamera, camera);
+      assert.ok(activeScene === scene);
+      assert.ok(activeCamera === camera);
       assert.equal(camera.layers.mask, 2 ** 31);
       assert.equal(lights.filter((light) => light.shadow.needsUpdate).length, 1);
       renderer.shadowMap.render(lights, scene, camera);

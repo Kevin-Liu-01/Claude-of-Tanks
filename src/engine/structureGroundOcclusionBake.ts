@@ -127,24 +127,40 @@ export function shapeFootprint(shape: SgoShape): number[] {
   return pts;
 }
 
+/** One record's occluding parts as packOccluders packs them, whatever its destroyed flags; null for none (a tree, a kerb). */
+export function packRecordOccluders(record: SgoRecord | null | undefined): Float32Array | null {
+  if (!record || record.treeIdx != null) return null;
+  const out: number[] = [];
+  const base = record.min[1];
+  for (const shape of recordShapes(record)) {
+    const y0 = shape.y0 ?? record.min[1], y1 = shape.y1 ?? record.max[1];
+    if (!(y1 - base >= SGO_MIN_HEIGHT_M) || !(y1 > y0)) continue;
+    const pts = shapeFootprint(shape);
+    if (pts.length < 6) continue;
+    out.push(pts.length / 2, y0, y1, base, ...pts);
+  }
+  return out.length ? new Float32Array(out) : null;
+}
+
 /**
  * The records' occluding parts packed for the bake (and the worker's transfer): per part
  * [n, y0, y1, base, x0, z0, … x(n−1), z(n−1)]. Trees, dead and crushed records and parts under SGO_MIN_HEIGHT_M stay out.
+ * `parts` is packRecordOccluders of each record, which a world's solids keep from their assembly on (2026-10-19, the 229
+ * perf pass: the runtime re-packed every solid's footprint on each re-bake around a broken one, ~5 MB/s of garbage).
  */
-export function packOccluders(records: readonly SgoRecord[]): Float32Array {
-  const out: number[] = [];
-  for (const record of records) {
-    if (!record || record.treeIdx != null || record.dead || record.crushed) continue;
-    const base = record.min[1];
-    for (const shape of recordShapes(record)) {
-      const y0 = shape.y0 ?? record.min[1], y1 = shape.y1 ?? record.max[1];
-      if (!(y1 - base >= SGO_MIN_HEIGHT_M) || !(y1 > y0)) continue;
-      const pts = shapeFootprint(shape);
-      if (pts.length < 6) continue;
-      out.push(pts.length / 2, y0, y1, base, ...pts);
-    }
+export function packOccluders(
+  records: readonly SgoRecord[], parts: readonly (Float32Array | null)[] = records.map(packRecordOccluders),
+): Float32Array {
+  let length = 0;
+  for (let i = 0; i < records.length; i++) if (parts[i] && !records[i].dead && !records[i].crushed) length += parts[i]!.length;
+  const out = new Float32Array(length);
+  for (let i = 0, at = 0; i < records.length; i++) {
+    const packed = parts[i];
+    if (!packed || records[i].dead || records[i].crushed) continue;
+    out.set(packed, at);
+    at += packed.length;
   }
-  return new Float32Array(out);
+  return out;
 }
 
 /** One edge term of Lambert's formula for a receiver with normal up: θ · (a × b).y / |a × b|. */

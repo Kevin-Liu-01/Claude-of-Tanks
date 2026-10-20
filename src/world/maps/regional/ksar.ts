@@ -467,7 +467,7 @@ function stallBody(sink: PartSink, look: () => number, W: number, D: number, top
   souqStall(sink, look, W, D, top, { mud: MUD });
 }
 
-export const KSAR_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const KSAR_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   adobe: house,
   caravanserai: ghorfaRange,
   compound: ghorfaRange,
@@ -1262,7 +1262,7 @@ const shaliRuin: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const SIWA_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const SIWA_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   adobe: kershefHouse,
   caravanserai: shaliCluster,
   compound: shaliCluster,

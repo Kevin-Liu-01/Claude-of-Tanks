@@ -42,7 +42,7 @@ for (const quality of ['high','low']) for (const id of ids) {
       }
     } else {
       const fitting=tank.root.getObjectByName('sabraSourceCupolaWeapon');
-      assert.equal(fitting?.parent,turret,'real roof weapon belongs to the turret yaw rig');
+      assert.ok(fitting?.parent === turret,'real roof weapon belongs to the turret yaw rig');
       assert.equal(fitting.userData.fitting,'pintleMG');
       assert.equal(fitting.userData.fittingRoot,true);
       // 2026-10-10 (fleet-weapons lane; the owner: "its changes need to be combined with your primitive updates like

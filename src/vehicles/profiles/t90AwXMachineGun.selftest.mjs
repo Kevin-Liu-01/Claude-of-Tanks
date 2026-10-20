@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
+import { graphLabels } from '../../../tools/receipt-kit.test-support.mjs';
 
 function contains(meshes, point) {
   const saved=new Map();
@@ -26,13 +27,13 @@ for(const quality of ['high','low']){
   try{
     tank.root.updateMatrixWorld(true);
     const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('t90XMountedNsvt');
-    assert.ok(gun);assert.equal(gun.parent,turret);
+    assert.ok(gun);assert.ok(gun.parent === turret);
     assert.equal(gun.userData.weaponClass,'nsvt');assert.equal(gun.userData.barrelBridge,true);
     assert.equal(gun.userData.mount,'external-cradle');
     assert.deepEqual(gun.rotation.toArray().slice(0,3),[0,Math.PI,0],
       'complete weapon is parked straight rearward, not an independently tilted barrel');
     const guns=[];turret.traverse(n=>{if(n.userData.fittingRoot&&n.userData.fitting==='pintleMG')guns.push(n);});
-    assert.deepEqual(guns,[gun],'one complete shared primitive weapon, not a marker on the source stock');
+    assert.deepEqual(graphLabels(guns),graphLabels([gun]),'one complete shared primitive weapon, not a marker on the source stock');
     const meshes=[];gun.traverse(n=>{if(n.isMesh)meshes.push(n);});
     for(const x of [-.040,.040]){
       const bearing=gun.localToWorld(new THREE.Vector3(x,.0075,.10));

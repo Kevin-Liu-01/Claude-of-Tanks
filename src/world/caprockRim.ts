@@ -19,7 +19,7 @@ import { landformPathStation, prepareLandformPath, type LandformPathStation } fr
 type Rng = () => number;
 
 /** The ridge or trench whose brows the caprock runs along. */
-export interface CaprockSpec {
+interface CaprockSpec {
   /** The landform's centre, length, width (a ridge's: the whole width; the rims are searched out to 0.75 of it) and
    * bearing (degrees from +x toward +z: 90 runs along z). */
   x: number;

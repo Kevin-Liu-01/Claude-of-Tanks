@@ -1783,6 +1783,122 @@
       ]
     },
     {
+      "id": "gunship_kill",
+      "role": "gunner",
+      "delivery": "calm, controlled",
+      "context": "In the AC-130 our round destroyed an enemy vehicle on the ground.",
+      "en-US": [
+        "Good hit. Target destroyed.",
+        "Splash. Target down."
+      ],
+      "en-GB": [
+        "Good hit. Target destroyed.",
+        "Splash. Target down."
+      ],
+      "de": [
+        "Guter Treffer. Ziel zerstört.",
+        "Einschlag. Ziel ausgeschaltet."
+      ],
+      "ru": [
+        "Есть попадание. Цель уничтожена.",
+        "Попадание. Цель поражена."
+      ],
+      "uk": [
+        "Є влучання. Ціль знищено.",
+        "Влучання. Ціль уражено."
+      ],
+      "zh": [
+        "命中。目标已摧毁。",
+        "击中。目标已消灭。"
+      ],
+      "fr": [
+        "Coup au but. Cible détruite.",
+        "Impact. Cible neutralisée."
+      ],
+      "sv": [
+        "Träff. Målet förstört.",
+        "Nedslag. Målet utslaget."
+      ],
+      "ja": [
+        "命中。目標撃破。",
+        "着弾。目標沈黙。"
+      ],
+      "ko": [
+        "명중. 목표 파괴.",
+        "탄착. 목표 제거."
+      ],
+      "it": [
+        "Colpito. Bersaglio distrutto.",
+        "Impatto. Bersaglio abbattuto."
+      ],
+      "pl": [
+        "Trafienie. Cel zniszczony.",
+        "Uderzenie. Cel zlikwidowany."
+      ],
+      "he": [
+        "פגיעה. המטרה הושמדה.",
+        "פגיעה. המטרה נוטרלה."
+      ]
+    },
+    {
+      "id": "gunship_double",
+      "role": "gunner",
+      "delivery": "calm, controlled",
+      "context": "In the AC-130 our round destroyed a second enemy vehicle within seconds.",
+      "en-US": [
+        "Second target destroyed.",
+        "Another one down. Good effect."
+      ],
+      "en-GB": [
+        "Second target destroyed.",
+        "Another one down. Good effect."
+      ],
+      "de": [
+        "Zweites Ziel zerstört.",
+        "Noch einer. Gute Wirkung."
+      ],
+      "ru": [
+        "Вторая цель уничтожена.",
+        "Ещё один. Хороший эффект."
+      ],
+      "uk": [
+        "Другу ціль знищено.",
+        "Ще один. Гарний ефект."
+      ],
+      "zh": [
+        "第二个目标已摧毁。",
+        "又一个。效果良好。"
+      ],
+      "fr": [
+        "Deuxième cible détruite.",
+        "Encore un. Bon effet."
+      ],
+      "sv": [
+        "Andra målet förstört.",
+        "En till. God verkan."
+      ],
+      "ja": [
+        "第二目標撃破。",
+        "もう一両。効果良好。"
+      ],
+      "ko": [
+        "두 번째 목표 파괴.",
+        "하나 더. 효과 양호."
+      ],
+      "it": [
+        "Secondo bersaglio distrutto.",
+        "Un altro. Buon effetto."
+      ],
+      "pl": [
+        "Drugi cel zniszczony.",
+        "Kolejny. Dobry efekt."
+      ],
+      "he": [
+        "מטרה שנייה הושמדה.",
+        "עוד אחד. אפקט טוב."
+      ]
+    },
+    {
       "id": "ammo_low",
       "role": "loader",
       "delivery": "steady, concerned",

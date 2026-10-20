@@ -77,7 +77,7 @@ export interface HorizonForestTree {
   detail: number;
 }
 
-export interface ResolvedHorizonForest {
+interface ResolvedHorizonForest {
   trees: HorizonForestTree[];
   ringLobeHeightM: number;
   ratio: number;

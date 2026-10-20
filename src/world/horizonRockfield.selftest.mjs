@@ -83,7 +83,7 @@ try {
   const base = {
     columns, rows, positions, heights, seed: 77, rock, fog: new THREE.Color(0.7, 0.6, 0.5), density: 1, maxInstances: 600, ridgeRow: 4,
   };
-  assert.equal(buildHorizonRockfield({ ...base, density: 0 }), null, 'density 0 builds nothing');
+  assert.ok(buildHorizonRockfield({ ...base, density: 0 }) === null, 'density 0 builds nothing');
   const group = buildHorizonRockfield(base);
   assert.ok(group && group.name === 'horizon-rocks', 'a rockfield group');
   const placed = instancesOf(group);
@@ -144,7 +144,7 @@ try {
     seamNormals++;
   }
   assert.ok(seamNormals>400,'all seam normals were checked');
-  assert.equal(seated.getObjectByName('horizon-treeline'),undefined,'live-lit ground omits the obsolete baked canopy ribbon');
+  assert.ok(seated.getObjectByName('horizon-treeline') === undefined,'live-lit ground omits the obsolete baked canopy ribbon');
   disposeObject3DResources(seated);
 
   // --- the real rings: Redrock's mesa outland carries rocks, the wooded Verdant keeps its ring forest instead
@@ -167,7 +167,7 @@ try {
   assert.ok(disposed.materials >= 2, `eviction owns the ring and rock materials (${disposed.materials})`);
   assert.ok(disposed.geometries >= 1 + HORIZON_ROCK_VARIANTS, `eviction owns the ring geometry and the boulder primitives (${disposed.geometries})`);
   const verdant = buildHorizonRing(null, getMapConfig('verdant'), 1337);
-  assert.equal(verdant.getObjectByName('horizon-rocks'), undefined, 'a wooded map keeps its ring forest, no rockfield');
+  assert.ok(verdant.getObjectByName('horizon-rocks') === undefined, 'a wooded map keeps its ring forest, no rockfield');
   assert.ok(verdant.getObjectByName('horizon-forest'), 'Verdant still stands its ring forest');
   // (batch 4: Copper Mesa is Queenstown under the West Coast Range, an alpine ring since maps-copper_mesa eb50bd75f; the
   // second mesa outland checked is Monument Valley's)

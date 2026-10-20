@@ -68,6 +68,8 @@ export interface BlastContext {
   lightPulse(x: number, y: number, z: number, peakK: number, delayS: number, durS?: number, hex?: number): void;
   /** the burst's light inside the media round it (volumeMedia glow sources): centre, radius m, peak, duration s */
   glow(x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset: number): void;
+  /** (ac130-fx-228 follow-up) a heavy burst's embers lighting its column at night only. Absent (captures, receipts): none. */
+  ember?(x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset: number): void;
   /** camera-distance size boost (1 inside ~90 m) so far blasts still read */
   distBoost(x: number, y: number, z: number): number;
   /** (the salvo governor) how crowded this burst's patch is with other bursts in the last second (0..1); it records this
@@ -107,6 +109,16 @@ const _e: [number, number, number] = [0, 0, 0];
 const _f: [number, number, number] = [0, 0, 0];
 const _g: [number, number, number] = [0, 0, 0];
 const _h: [number, number, number] = [0, 0, 0];
+const _col: [number, number, number] = [0, 0, 0];
+/** (ac130-fx-228 r3, the r5 blind critic 4 at a matched 300 m: the gunship's 152 mm "too short, no column" — its smoke was
+ *  there for seconds but too thin to read as a column through the steep lens) the gunship class's heavy rounds (the
+ *  starburst on the ground; a heavy charge of HEAVY_COLUMN_MIN_KG and up on a hull) stand a denser column: more puffs, a
+ *  fuller density, born darker with the charge's soot. Every other burst's smoke is unchanged. */
+const HEAVY_COLUMN_N = 24, HEAVY_HULL_COLUMN_N = 18, HEAVY_COLUMN_DENSITY = 0.92, HEAVY_COLUMN_SOOT = 0.3, HEAVY_COLUMN_MIN_KG = 8;
+/** (ac130-fx-228 follow-up, the coordinator: the night 152 mm column "fades within 1.5 s ... light it so it reads at night")
+ *  the same heavy rounds' embers light their column from the burning ground at night (volumeMedia ember: the night level
+ *  only): reaching EMBER_REACH_D of the fireball's width round a point EMBER_HEIGHT_D up it, for EMBER_S seconds */
+const EMBER_PEAK = 0.35, EMBER_S = 4.5, EMBER_REACH_D = 1.8, EMBER_HEIGHT_D = 1.0;
 function mixInto(out: [number, number, number], a: Rgb, b: Rgb, t: number): Rgb {
   out[0] = a[0] + (b[0] - a[0]) * t; out[1] = a[1] + (b[1] - a[1]) * t; out[2] = a[2] + (b[2] - a[2]) * t;
   return out;
@@ -356,6 +368,11 @@ interface GroundBurstInput {
   birthOffset?: number;
   /** the round's travel direction (unit) when known: a shaped charge's jet flashes back along it */
   dx?: number; dy?: number; dz?: number;
+  /** (ac130-fx-228 r3) the earth only: no flash, fireball, light or fireball smoke (a heavy charge bursting on a hull that
+   *  sits on this ground draws those itself, heavyHullBurst) — the fountain, the column, the clods, the dust and the ring */
+  earthOnly?: boolean;
+  /** (ac130-fx-228 r3) the patch's crowding the caller already recorded (its own burst counted once with the governor) */
+  crowd?: number;
 }
 
 /**
@@ -395,7 +412,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   const hard = I.surface === 'rock' || I.surface === 'concrete' || I.surface === 'metal';
   // (FX-05) the gunship's howitzer and missile, and any heavy HE plunging in from above: the starburst
   const plunge = I.dy !== undefined && (I.dy ?? 0) < -0.55;
-  const starburst = (I.munition === 'howitzer' || I.munition === 'missile') && (kg >= 8 || plunge);
+  const starburst = !I.earthOnly && (I.munition === 'howitzer' || I.munition === 'missile') && (kg >= 8 || plunge);
   const dustK = L.dustK * (shaped ? 0.6 : 1);
   // the fireball's width: an open-air TNT fireball is ~3.9 kg^0.32 m across (the drone's 1.2 kg ~4 m, the 125 mm's
   // 3.5 kg ~5.8 m, the gunship's 20 kg ~10 m); a shaped charge's explosive drives its jet, its ball is smaller
@@ -409,16 +426,16 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // fireball medium: born white-hot at most of the charge's width, cooling to an orange heart within two frames and to
   // soot inside a third. The additive flash is only the air's glow round the dome — soft, dim, gone within a frame —
   // and the additive fire is a few small tongues at the heart (never a sprite pair over the dome)
-  lightPuff(C, 'flash', I.x, by + 0.45 * D, I.z, 0, 0.6, 0, 0.07, 1.0 * D * dk, 1.45 * D * dk, FLASH_WHITE, FLASH_ORANGE,
-    0.42, 0, bo);
-  const fireN = shaped ? 1 : heavy ? 3 : 2;
+  if (!I.earthOnly) lightPuff(C, 'flash', I.x, by + 0.45 * D, I.z, 0, 0.6, 0, 0.07, 1.0 * D * dk, 1.45 * D * dk, FLASH_WHITE,
+    FLASH_ORANGE, 0.42, 0, bo);
+  const fireN = I.earthOnly ? 0 : shaped ? 1 : heavy ? 3 : 2;
   for (let i = 0; i < fireN; i++) {
     const a = R() * TAU, v = (1.5 + R() * 2) * sq;
     lightPuff(C, 'fire', I.x + Math.cos(a) * 0.08 * D, by + 0.3 * D, I.z + Math.sin(a) * 0.08 * D,
       Math.cos(a) * v, v * 0.8 + 1, Math.sin(a) * v, 0.12 + R() * 0.05, 0.2 * D * dk, (0.38 + R() * 0.1) * D * dk,
       FIRE_DEEP, FIRE_DEEP, 0.55, 1.5, bo + 0.01);
   }
-  const ballN = thermobaric ? 5 : heavy ? 4 : shaped ? 2 : 3;
+  const ballN = I.earthOnly ? 0 : thermobaric ? 5 : heavy ? 4 : shaped ? 2 : 3;
   // (fx 8) the fireball's own soot is the burst's smoke, not a brown ball of soil beside it
   const ballC0: Rgb = SOOT;
   for (let i = 0; i < ballN; i++) {
@@ -441,9 +458,12 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // the light: on the ground for a moment (a bright ground takes far less of it) and inside the burst's own medium for
   // a moment — (fx 8) brief and dim enough that no orange disc stands on the ground or over the sheet after the flash
   const albedoK = I.surface === 'snow' ? 0.3 : I.surface === 'sand' ? 0.5 : hard ? 0.6 : 1;
-  C.lightPulse(I.x, by + 0.6 * D, I.z, Math.min(0.45, 0.15 + 0.09 * s) * albedoK, 0, heavy ? 0.2 : shaped ? 0.1 : 0.13,
-    BURST_LIGHT_HEX);
-  C.glow(I.x, by + 0.45 * D, I.z, 0.9 * D, heavy ? 0.6 : shaped ? 0.4 : 0.5, heavy ? 0.24 : shaped ? 0.12 : 0.16, bo);
+  if (!I.earthOnly) {
+    C.lightPulse(I.x, by + 0.6 * D, I.z, Math.min(0.45, 0.15 + 0.09 * s) * albedoK, 0, heavy ? 0.2 : shaped ? 0.1 : 0.13,
+      BURST_LIGHT_HEX);
+    C.glow(I.x, by + 0.45 * D, I.z, 0.9 * D, heavy ? 0.6 : shaped ? 0.4 : 0.5, heavy ? 0.24 : shaped ? 0.12 : 0.16, bo);
+    if (starburst) C.ember?.(I.x, by + EMBER_HEIGHT_D * D, I.z, EMBER_REACH_D * D * dk, EMBER_PEAK, EMBER_S, bo);
+  }
 
   // 1b. (round 7c, DVIDS 954922: by +0.3 s the fireball is inside its own smoke, a lobed grey-brown cloud that keeps
   // climbing on its heat for seconds, leaning downwind and thinning; b8a's stopped as a tan haystack on the ground) the
@@ -454,8 +474,9 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // a 25 m cell that already took two in the same second pools its cloud into the salvo's: up to 70 % fewer bodies, each
   // up to 35 % larger and a quarter shorter-lived, so the salvo's smoke keeps its mass with far fewer overlapping cards;
   // a lone burst (and a pair) is untouched. Decided by burst count, never by frame time.
-  const crowd = C.crowd ? C.crowd(I.x, I.z) : 0;
-  const smokeN = Math.max(3, Math.round((thermobaric || heavy ? 16 : shaped ? 6 : 14) * (1 - 0.7 * crowd)));
+  const crowd = I.crowd ?? (C.crowd ? C.crowd(I.x, I.z) : 0);
+  const smokeN = I.earthOnly ? 0 : Math.max(3, Math.round((starburst ? HEAVY_COLUMN_N : thermobaric || heavy ? 16 : shaped ? 6 : 14)
+    * (1 - 0.7 * crowd)));
   const crowdSize = 1 + 0.35 * crowd, crowdLife = 1 - 0.25 * crowd;
   // (on snow, the dark soil it throws from under the snow: HE on snow is dark smoke over white powder)
   const snowy = I.surface === 'snow';
@@ -502,7 +523,8 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     shape(m, life, 0.4 * D * dk, (1.6 + 0.4 * u + 0.35 * R()) * D * dk * crowdSize, 6, R);
     // (fx 8i: "never thins") its erosion starts at a third of its life (~3-4 s), so the cloud thins as it climbs
     // (8j) a body you see into at its edges, not a wall: a little thinner
-    look(m, cloudC0, smokeAged, 0.78, 0.0, 0.33);
+    look(m, starburst ? mixInto(_col, cloudC0, SOOT, HEAVY_COLUMN_SOOT) : cloudC0, smokeAged, starburst ? HEAVY_COLUMN_DENSITY : 0.78,
+      0.0, 0.33);
     book(m, 'billow', R, life);
     heat(m, 0.3, 4.5);
     C.media(m);
@@ -918,6 +940,7 @@ export function plateBurst(C: BlastContext, I: PlateBurstInput): void {
   // (the bloom's share capped), gone in two or three frames
   lightPuff(C, 'flash', I.x + nx * 0.3, I.y + ny * 0.3, I.z + nz * 0.3, nx, ny + 0.5, nz, 0.045, 1.0 * s * dk,
     2.3 * s * dk, FLASH_WHITE, FLASH_ORANGE, 0.65, 0, bo);
+  if (heavyHit) { heavyHullBurst(C, I, nx, ny, nz, dk, bo); return; }
   const fireN = Math.round(3 + s);
   for (let i = 0; i < fireN; i++) {
     const v = (3 + R() * 5) * s;
@@ -947,6 +970,90 @@ export function plateBurst(C: BlastContext, I: PlateBurstInput): void {
   C.lightPulse(I.x + nx, I.y + 1.5, I.z + nz, Math.min(0.7, 0.3 + 0.2 * s), 0, 0.25, BURST_LIGHT_HEX);
   if (I.ground) dustSurge(C, I.x, C.groundY(I.x, I.z), I.z, Math.max(0.8, s * 0.8), I.ground, bo + 0.02);
 }
+
+/**
+ * (ac130-fx-228 r2, the motion critic: the gunship's Hellfire on a hull "only a white flash and pale grey dust", its
+ * 152 mm "a small white flash and tan dust" where the same shell on the ground stands a large fireball, and at night the
+ * hull burst's fire "flat orange petal sprites") a heavy charge (the howitzer's shell, a missile's warhead) bursting on a
+ * hull is the full detonation the ground burst draws, the plate only tilting it: the dome of fireball medium born white-
+ * hot at most of the charge's width and cooling to an orange heart inside its own soot within a third of a second, a few
+ * small tongues of fire at its heart (never broad additive cards), the light glowing inside the medium for a moment, the
+ * fragments sparking off the plate, and the lobed smoke climbing on its heat, leaning downwind and thinning; the ground's
+ * dust and shock ring when the hull sits on it.
+ */
+function heavyHullBurst(C: BlastContext, I: PlateBurstInput, nx: number, ny: number, nz: number, dk: number,
+  bo: number): void {
+  const R = C.rand;
+  const m = C.m;
+  const kg = Math.max(0.3, I.chargeKg);
+  const s = blastScale(kg);
+  const sq = Math.sqrt(s);
+  // the fireball's width, the ground burst's (~3.9 kg^0.32 m: the howitzer's ~7 m, the Hellfire's ~8 m)
+  const D = 3.9 * Math.pow(kg, 0.32);
+  // its centre thrown a little off the plate and up (the hull takes the lower half of the dome)
+  const cx = I.x + nx * 0.2 * D, cy = I.y + Math.max(0.15, ny) * 0.25 * D + 0.3, cz = I.z + nz * 0.2 * D;
+  for (let i = 0; i < 3; i++) {
+    const a = R() * TAU, v = (1.5 + R() * 2) * sq;
+    lightPuff(C, 'fire', cx + Math.cos(a) * 0.08 * D, cy, cz + Math.sin(a) * 0.08 * D,
+      Math.cos(a) * v + nx * v, v * 0.8 + 1, Math.sin(a) * v + nz * v, 0.12 + R() * 0.05, 0.2 * D * dk,
+      (0.38 + R() * 0.1) * D * dk, FIRE_DEEP, FIRE_DEEP, 0.55, 1.5, bo + 0.01);
+  }
+  for (let i = 0; i < 4; i++) {
+    const a = R() * TAU;
+    place(m, cx + Math.cos(a) * 0.1 * D, cy + 0.12 * R() * D, cz + Math.sin(a) * 0.1 * D, bo - 0.01);
+    move(m, Math.cos(a) * 0.8 * D + nx * 0.6 * D, (0.8 + R() * 0.6) * D, Math.sin(a) * 0.8 * D + nz * 0.6 * D, 3.4, 0.55,
+      0.5, 0);
+    const life = 1.5 + R() * 0.5;
+    shape(m, life, 0.62 * D * dk, (0.95 + 0.2 * R()) * D * dk, 5, R);
+    look(m, SOOT, mix3(SOOT, SMOKE_AGED, 0.35), 0.95, 0.0, 0.5);
+    book(m, 'billow', R, life);
+    heat(m, 1.55, 7);
+    C.media(m);
+  }
+  C.lightPulse(cx, cy + 0.3 * D, cz, Math.min(0.45, 0.15 + 0.09 * s), 0, 0.2, BURST_LIGHT_HEX);
+  C.glow(cx, cy + 0.2 * D, cz, 0.9 * D, 0.6, 0.24, bo);
+  if (kg >= HEAVY_COLUMN_MIN_KG) C.ember?.(cx, cy + EMBER_HEIGHT_D * D, cz, EMBER_REACH_D * D * dk, EMBER_PEAK, EMBER_S, bo);
+  // the casing's (or the warhead's) fragments off the plate
+  sparkSpray(C, I.x, I.y, I.z, nx, ny, nz, Math.round(14 + 8 * s), 20 * Math.sqrt(s), 1.2, 0.45, 0.026, bo);
+  sparkSpray(C, I.x, I.y, I.z, nx, ny, nz, Math.round(24 + 6 * s), 55, 1.4, 0.35, 0.022, bo, FRAG_HOT, -9);
+  // the smoke: born out of the cooling fireball, climbing on its heat into one lobed mass (the ground burst's palette)
+  const crowd = C.crowd ? C.crowd(I.x, I.z) : 0;
+  const column = kg >= HEAVY_COLUMN_MIN_KG;
+  const smokeN = Math.max(3, Math.round((column ? HEAVY_HULL_COLUMN_N : 12) * (1 - 0.7 * crowd)));
+  const smokeC0 = column ? mixInto(_e, mixInto(_col, BLAST_RESIDUE, SOOT, 0.3), SOOT, HEAVY_COLUMN_SOOT) : mixInto(_e, BLAST_RESIDUE, SOOT, 0.3);
+  for (let i = 0; i < smokeN; i++) {
+    const u = (i + R()) / smokeN;
+    const a = R() * TAU, r = R() * 0.3 * D;
+    place(m, cx + Math.cos(a) * r, cy + 0.4 * u * D, cz + Math.sin(a) * r, bo + 0.04 + 0.1 * u);
+    const out = (2.0 + 2.6 * R()) * sq;
+    move(m, Math.cos(a) * out, (2.2 + 2.4 * u) * sq * 1.3, Math.sin(a) * out, 1.3, (0.42 + 0.14 * u) * Math.sqrt(sq), 0.85, 0);
+    const life = (9 + 4 * R()) * 1.2 * (1 - 0.25 * crowd);
+    shape(m, life, 0.4 * D * dk, (1.5 + 0.4 * u + 0.35 * R()) * D * dk * (1 + 0.35 * crowd), 6, R);
+    look(m, smokeC0, SMOKE_AGED, column ? HEAVY_COLUMN_DENSITY : 0.78, 0.0, 0.33);
+    book(m, 'billow', R, life);
+    heat(m, 0.3, 4.5);
+    C.media(m);
+  }
+  // (ac130-fx-228 r3, the r5 blind critic: the gunship's 152 mm on a hull "undersized ... gone by f6" against the same
+  // shell on the ground, and no hot signature in the infrared lens; measured: 41 media bodies, the largest 28.7 m, where
+  // the ground burst draws 182 and 45.6 m) a hull sitting on the ground takes the burst a metre or two above it: the
+  // charge still throws the ground's earth — the heavy round's fountain and column, its clods, the dust sheet and the
+  // ring — at HULL_EARTH_SHARE of the charge (the plate takes the rest), round the hull's own fireball and smoke
+  // (the engineering critic's m1-m3) the earth only: no second flash, starburst or light, and the patch's crowding counted
+  // once; a light warhead (a 0.6 kg SAM) keeps the dust surge and the ring
+  if (I.ground && kg >= HULL_EARTH_MIN_KG) {
+    groundBurst(C, { x: I.x, y: C.groundY(I.x, I.z), z: I.z, munition: I.munition, chargeKg: kg * HULL_EARTH_SHARE,
+      surface: I.ground, birthOffset: bo, earthOnly: true, crowd });
+  } else if (I.ground) {
+    C.shockRing(I.x, I.z, 0.5 + 0.38 * s, Math.min(1.3, 0.55 + 0.28 * s), Math.max(0, -bo));
+    dustSurge(C, I.x, C.groundY(I.x, I.z), I.z, Math.max(0.8, s * 0.8), I.ground, bo + 0.02);
+  }
+}
+/** (ac130-fx-228 r3) the share of a heavy hull burst's charge that throws the ground's earth round the hull */
+const HULL_EARTH_SHARE = 0.6;
+/** (ac130-fx-228 r3) the least charge (kg) whose hull burst throws the ground's earth, and reaches it from a roof
+ *  (effects.ts): the howitzers' and the 152 mm missiles' shells, never a light SAM's warhead */
+export const HULL_EARTH_MIN_KG = 4;
 
 /** The kinetic results on armour that armorHit draws (the battle's shell:hit kinds; HE and shaped charges are plateBurst). */
 export type ArmorHitKind = 'pen' | 'nonpen' | 'ricochet' | 'spaced' | 'era';

@@ -180,16 +180,6 @@ export async function speech({ voiceId, text, modelId = 'eleven_v4', languageCod
 }
 
 /**
- * A composition plan from a prompt (free of credits, rate-limited). The media films build their own plans from their
- * cue sheets; this is for checking a plan's shape against the model. Returns the plan.
- */
-export async function musicPlan({ prompt, lengthMs = null, modelId = 'music_v2_5', sourcePlan = null }) {
-  const body = { prompt, model_id: modelId, ...(lengthMs ? { music_length_ms: lengthMs } : {}), ...(sourcePlan ? { source_composition_plan: sourcePlan } : {}) };
-  const { data } = await limit(() => request('POST', '/v1/music/plan', { json: body, label: 'music plan' }));
-  return data;
-}
-
-/**
  * One music take (Eleven Music) from a composition plan: { chunks } for music_v2 / music_v2_5, { positive_global_styles,
  * negative_global_styles, sections } for music_v1. `seed` makes a plan reproducible; `take` separates retries of the
  * same request in the cache. Returns { file, cost, cached }.

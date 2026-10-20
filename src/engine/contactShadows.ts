@@ -180,7 +180,7 @@ export function contactShadowSurfaceSupport(normalDot: number, planeHeight: numb
     THREE.MathUtils.smoothstep(planeHeight, 0.3, 0.5));
 }
 
-export interface ContactShadowAmbient {
+interface ContactShadowAmbient {
   /** Hemisphere sky pole irradiance luminance (intensity × colour luma). */
   sky: number;
   /** Hemisphere ground pole irradiance luminance. */
@@ -215,7 +215,7 @@ export function contactShadowSunShare(
   return T / (T + A);
 }
 
-export interface ContactShadowUniforms extends CloudShadeUniforms {
+interface ContactShadowUniforms extends CloudShadeUniforms {
   uContact: THREE.IUniform<number>;
   uContactViewProj: THREE.IUniform<THREE.Matrix4>;
   uContactAmb: THREE.IUniform<THREE.Vector4>;

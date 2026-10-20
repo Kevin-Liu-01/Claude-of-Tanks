@@ -1,3 +1,4 @@
+import { hypot2, hypot3 } from './scalarHypot.ts';
 import { WeaponDamageVisuals } from './weaponDamageVisuals.ts';
 import { casemateGunYaw } from './casemateGunPose.ts';
 import { tankSeedId } from './tankIdAliases.ts';
@@ -111,6 +112,7 @@ import {
   markVehicleShadowDetail, NEAR_SHADOW_DETAIL_MAX_MESHES, NEAR_SHADOW_DETAIL_NAMES, vehicleShadowDetailOf,
 } from '../engine/nearVehicleShadowDetail.ts';
 import { installArticulatedShadowBatch } from '../engine/articulatedShadowBatch.ts';
+import { splitProgramVariants } from '../engine/programVariants.ts';
 import type { FleetGunSpec, FleetTankSpec, FleetVisualSpec } from './specContracts.ts';
 import type { ArmorEnvelope } from './specHelpers.ts';
 import type { VehicleMarkingRecord } from './vehicleMarkings.ts';
@@ -2153,7 +2155,10 @@ function trackBandGeo(
 // every vertex through temporary Vector3s and BufferAttribute accessors, then
 // makes a second pass to normalize the result. Runtime track belts are plain
 // float position/normal buffers, so the same calculation can be performed in
-// one allocation-free scalar pass. This is mathematically identical for the
+// one allocation-free scalar pass (2026-10-19: hypot2/hypot3 instead of Math.hypot on
+// the per-frame track paths — V8's hypot allocates its argument array on every call,
+// ~0.3 MB a battle frame here; they return Math.hypot's exact bits, scalarHypot.ts).
+// This is mathematically identical for the
 // non-indexed procedural/extracted belts and preserves averaged normals for
 // indexed sourced belts, but removes one of the largest live CPU samples in a
 // full battle (28 animated bands at the near-camera gear cadence).
@@ -2190,7 +2195,7 @@ function recomputeTrackNormals(
       n[ci] += nx; n[ci + 1] += ny; n[ci + 2] += nz;
     }
     for (let i = 0; i < n.length; i += 3) {
-      const inv = 1 / (Math.hypot(n[i], n[i + 1], n[i + 2]) || 1);
+      const inv = 1 / (hypot3(n[i], n[i + 1], n[i + 2]) || 1);
       n[i] *= inv; n[i + 1] *= inv; n[i + 2] *= inv;
     }
   } else {
@@ -2206,7 +2211,7 @@ function recomputeTrackNormals(
       let nx = cby * abz - cbz * aby;
       let ny = cbz * abx - cbx * abz;
       let nz = cbx * aby - cby * abx;
-      const inv = 1 / (Math.hypot(nx, ny, nz) || 1);
+      const inv = 1 / (hypot3(nx, ny, nz) || 1);
       nx *= inv; ny *= inv; nz *= inv;
       n[i] = n[i + 3] = n[i + 6] = nx;
       n[i + 1] = n[i + 4] = n[i + 7] = ny;
@@ -5002,7 +5007,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     const z0=cfg.trackCarrierFromOuterFace?attribute.getZ(base+2)+(bandBasePos[(base+6)*3+2]-bandBasePos[(base+2)*3+2])/2:(attribute.getZ(base+2)+attribute.getZ(base+6))/2;
     const y1=cfg.trackCarrierFromOuterFace?attribute.getY(base)+(bandBasePos[(base+8)*3+1]-bandBasePos[base*3+1])/2:(attribute.getY(base)+attribute.getY(base+8))/2;
     const z1=cfg.trackCarrierFromOuterFace?attribute.getZ(base)+(bandBasePos[(base+8)*3+2]-bandBasePos[base*3+2])/2:(attribute.getZ(base)+attribute.getZ(base+8))/2;
-    const length=Math.max(Math.hypot(z1-z0,y1-y0),1e-6);
+    const length=Math.max(hypot2(z1-z0,y1-y0),1e-6);
     out.set(z0+(z1-z0)*t-(y1-y0)/length*rOut,
       y0+(y1-y0)*t+(z1-z0)/length*rOut);
   };
@@ -5034,7 +5039,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       + bandPosition.getZ(vertexBase + 8)) / 2;
     const y = y0 + (y1 - y0) * progress;
     const z = z0 + (z1 - z0) * progress;
-    const inverseLength = 1 / Math.max(Math.hypot(z1 - z0, y1 - y0), 1e-6);
+    const inverseLength = 1 / Math.max(hypot2(z1 - z0, y1 - y0), 1e-6);
     const tangentZ = (z1 - z0) * inverseLength;
     const tangentY = (y1 - y0) * inverseLength;
     _q.setFromAxisAngle(_X, Math.atan2(-tangentY, tangentZ));
@@ -10697,6 +10702,12 @@ function* createTankOwnedSteps(
       return result.records;
     };
 
+    // 2026-10-19 (the 229 perf pass): one material object per program variant on the battle and Garage-hero builds
+    // (engine/programVariants.ts). The running gear's paint, rubber and gunmetal draw as plain meshes, instanced
+    // pools and the end-wheel batches: three re-resolved each one's program at every switch (18-36 getProgram
+    // calls a battle frame, 0.6-1.1 MB of parameter objects and key strings). Before the layers below, so each
+    // layer's material list holds the material its mesh draws.
+    if (batchStatic) root.userData.programVariants = splitProgramVariants(root);
     // Run after decoration, static batching and battle-detail regrouping so
     // every final color-pass mesh receives exactly one stable layer.
     let depthLayers = collectCoplanarDepthLayers(root);

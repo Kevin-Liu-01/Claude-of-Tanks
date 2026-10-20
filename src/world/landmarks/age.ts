@@ -23,7 +23,7 @@ export interface FaceRect { u0: number; u1: number; y0: number; y1: number }
  * Spalled render on a face: `count` ragged patches of `bucket` (the masonry under the render) 15 mm proud, inside
  * `area` and clear of every `keepOut` rectangle (the openings), the first ones along the wall foot.
  */
-export function spallPatches(sink: PartSink, face: Face, area: FaceRect, keepOut: readonly FaceRect[], rng: () => number,
+function spallPatches(sink: PartSink, face: Face, area: FaceRect, keepOut: readonly FaceRect[], rng: () => number,
   opts: { bucket?: RegionalBucket; count?: number; foot?: number } = {}): void {
   const bucket = opts.bucket ?? 'stone', count = opts.count ?? 2, foot = opts.foot ?? 0.5;
   for (let k = 0; k < count; k++) {
@@ -48,7 +48,7 @@ export function spallPatches(sink: PartSink, face: Face, area: FaceRect, keepOut
  * Rain streaks washed down a face from a ledge at height `y`: `count` strips of the wall's own `bucket` between u0 and
  * u1, each `depth` darker at its head and fading to nothing `length` below it (the kit weathering's occlusion).
  */
-export function rainStreaks(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, y: number, rng: () => number,
+function rainStreaks(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, y: number, rng: () => number,
   opts: { count?: number; length?: number; depth?: number; floor?: number } = {}): void {
   const count = opts.count ?? Math.max(1, Math.round((u1 - u0) / 1.6)), floor = opts.floor ?? 0.2;
   for (let k = 0; k < count; k++) {
@@ -83,10 +83,10 @@ export function sootOver(sink: PartSink, bucket: RegionalBucket, face: Face, u: 
 }
 
 /** An opening as the kit cuts it (kit.ts ArchHole): centre u, width, sill y0, springing; its head over the springing. */
-export interface AgedOpening { u: number; w: number; y0: number; spring: number; form?: string }
+interface AgedOpening { u: number; w: number; y0: number; spring: number; form?: string }
 
 /** One wall a builder ages: its face, its bucket, the rectangle it covers, its openings and its top ledge. */
-export interface AgedWall {
+interface AgedWall {
   face: Face;
   /** the wall's own bucket (its streaks are drawn in it: the kit weathering darkens them) */
   bucket: RegionalBucket;

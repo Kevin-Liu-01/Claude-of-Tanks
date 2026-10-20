@@ -28,9 +28,9 @@ const first = applyLodShadowFadeDepth(makeCaster('first-map-tree'));
 const second = applyLodShadowFadeDepth(makeCaster('second-map-tree'));
 const sharedMaterial = getLodShadowFadeDepthMaterial();
 
-assert.equal(first.customDepthMaterial, sharedMaterial,
+assert.ok(first.customDepthMaterial === sharedMaterial,
   'LOD casters use the engine-owned depth material');
-assert.equal(second.customDepthMaterial, sharedMaterial,
+assert.ok(second.customDepthMaterial === sharedMaterial,
   'different worlds reuse one shader/material policy');
 assert.equal(sharedMaterial.depthPacking, THREE.RGBADepthPacking,
   'LOD shadows retain the renderer-compatible depth packing');

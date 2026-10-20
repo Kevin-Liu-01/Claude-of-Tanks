@@ -1788,10 +1788,14 @@ export class VolumetricCloudLayer {
     const bake = this.volumes ? null : cloudVolumeBake();
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    // each program at the geometry it draws: the layer's passes through three's FullScreenQuad (position and uv, no
+    // normal: HAS_NORMAL is in the program key; 2026-10-19, the plane's normals linked all four twice at boot), the bakes
+    // through their plane (cloudVolumeNoise.ts)
     const geometry = new THREE.PlaneGeometry(2, 2);
-    const materials: THREE.Material[] = [this.traceMaterial, this.resolveMaterial, this.bsmMaterial, this.shadeMaterial, ...(bake?.materials ?? [])];
-    for (const material of materials) {
-      const mesh = new THREE.Mesh(geometry, material);
+    const quadGeometry = geometry.clone().deleteAttribute('normal');
+    const quad = [this.traceMaterial, this.resolveMaterial, this.bsmMaterial, this.shadeMaterial];
+    for (const material of [...quad, ...(bake?.materials ?? [])]) {
+      const mesh = new THREE.Mesh(quad.includes(material as THREE.ShaderMaterial) ? quadGeometry : geometry, material);
       mesh.frustumCulled = false;
       scene.add(mesh);
     }
@@ -1815,6 +1819,7 @@ export class VolumetricCloudLayer {
     const pending: Promise<void> = compiled.then(() => undefined, () => undefined).then(() => {
       if (this.linkPending === pending) this.linkPending = null;
       geometry.dispose();
+      quadGeometry.dispose();
       if (bake) {
         // the bake's programs are linked: its draws read no link synchronously (a failed bake leaves ensureVolumes to retry)
         if (!this.volumes) {

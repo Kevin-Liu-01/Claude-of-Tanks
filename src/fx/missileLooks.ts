@@ -252,6 +252,9 @@ export interface MissileTrail {
   readonly c1: Rgb;
   readonly rise: number;
   readonly windK: number;
+  /** (ac130-fx-228 r2) the smoke fades out within this many metres of the camera (0: never). Only a trail born beside
+   *  the eye takes it: the gunship's own missile, whose smoke starts 8 m from its gimbal lens */
+  readonly nearM?: number;
 }
 
 const trail = (t: MissileTrail): MissileTrail => Object.freeze(t);
@@ -282,9 +285,11 @@ export const MISSILE_TRAILS: Readonly<Record<string, MissileTrail | null>> = Obj
     puff: 0.15, puffM: 2.6, churn: 0.75, glow: 0.65, c0: LIGHT, c1: LIGHT_AGED, rise: 0.12, windK: 0.8 }),
   shillelagh: trail({ r0: 0.09, rJet: 0.48, r1: 2.09, growS: 1.68, life: 7.5, tau: 1.49, boostS: 1.0, boostK: 1.35,
     boostW: 1.15, puff: 0.35, puffM: 2.6, churn: 0.85, glow: 0.75, c0: GREY, c1: GREY_AGED, rise: 0.14, windK: 0.85 }),
-  // a rail missile: a dense white trail that persists
-  hellfire: trail({ r0: 0.12, rJet: 0.64, r1: 2.97, growS: 1.96, life: 10, tau: 2.86, boostS: 0.6, boostK: 1.3, boostW: 1.15,
-    puff: 0.08, puffM: 3, churn: 0.75, glow: 0.7, c0: WHITE, c1: WHITE_AGED, rise: 0.1, windK: 0.85 }),
+  // a rail missile: a dense white trail that persists; (ac130-fx-228 r2, the motion critic: "a smooth tube of even width
+  // with no billowing or spread with age") its steady motor lays a smooth line that spreads as it hangs, the air tearing
+  // and clumping it as it ages
+  hellfire: trail({ r0: 0.12, rJet: 0.64, r1: 3.5, growS: 1.96, life: 10, tau: 2.86, boostS: 0.6, boostK: 1.3, boostW: 1.15,
+    puff: 0.08, puffM: 3, churn: 0.95, glow: 0.7, c0: WHITE, c1: WHITE_AGED, rise: 0.1, windK: 0.85 }),
   // MANPADS: the boost stage's fierce dense white, the sustainer's long white trail
   stinger: trail({ r0: 0.08, rJet: 0.48, r1: 2.43, growS: 1.82, life: 9, tau: 2.08, boostS: 0.4, boostK: 1.7, boostW: 1.25,
     puff: 0.06, puffM: 3, churn: 0.7, glow: 0.8, c0: WHITE, c1: WHITE_AGED, rise: 0.1, windK: 0.85 }),
@@ -331,6 +336,9 @@ const BY_SOUND: Readonly<Record<string, string>> = Object.freeze({
   'ataka-launch': 'ataka',
   'shillelagh-launch': 'shillelagh',
   'jyu-mat-launch': 'spike',
+  // (ac130-fx-228) the AC-130's guided missile: a Hellfire-class rail missile off the gunship's wing (its rail launch,
+  // dense persistent white trail and the hellfire airframe), not the Konkurs default
+  'gunship-missile': 'hellfire',
 });
 
 /** The fallback for a guided round that names neither (a SACLOS missile: the commonest kind in the fleet). */
@@ -351,9 +359,10 @@ export function missileLookFor(name: string | null | undefined, sound: string | 
 }
 
 /** Whether a fired round is a missile or a rocket by what its shot event carries (every guided round's sound is a
- *  '*-launch' profile; a rack's rockets carry the rocket flag). */
+ *  '*-launch' profile or another launch sound this table names, the gunship's 'gunship-missile'; a rack's rockets carry
+ *  the rocket flag). */
 export function firedIsMissile(sound: string | null | undefined, rocket: boolean | undefined): boolean {
-  return rocket === true || (typeof sound === 'string' && sound.endsWith('-launch'));
+  return rocket === true || (typeof sound === 'string' && (sound.endsWith('-launch') || Object.hasOwn(BY_SOUND, sound)));
 }
 
 /**

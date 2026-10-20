@@ -62,7 +62,7 @@ export function attachCloudShadeUniforms(shader: { uniforms: Record<string, THRE
 }
 
 /** What the volumetric layer publishes when it refreshes the map. */
-export interface CloudShadeSource {
+interface CloudShadeSource {
   texture: THREE.Texture;
   /** the square: centre x, centre z, side (m) */
   rect: THREE.Vector3;

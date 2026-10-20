@@ -179,7 +179,7 @@ camera.projectionMatrix.elements[8] += 0.0004; // (a TAA jitter, as post.ts appl
 cloudDome.visible = true;
 handle.mesh.onBeforeRender(null, scene, camera);
 assert.equal(air.uPanoCloudOn.value, 1, 'the layer draws: the shell reads it');
-assert.equal(air.tClouds.value, history, 'the history the dome composites this frame');
+assert.ok(air.tClouds.value === history, 'the history the dome composites this frame');
 for (const name of ['uHistorySize', 'uKnee', 'uFlash', 'uFlashTint', 'uSunDir']) {
   assert.deepEqual(air[name].value.toArray(), cloudUniforms[name].value.toArray(), `the dome's ${name}`);
 }

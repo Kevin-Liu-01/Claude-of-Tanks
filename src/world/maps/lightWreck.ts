@@ -92,7 +92,7 @@ const PANEL: ReadonlySet<FractureRole> = new Set(['wall', 'board', 'sheet', 'doo
 const ROOF: ReadonlySet<FractureRole> = new Set(['roof', 'rafter', 'purlin']);
 const MEMBER: ReadonlySet<FractureRole> = new Set(['sill', 'plate', 'girt', 'brace']);
 
-export interface LightWreckOptions {
+interface LightWreckOptions {
   /** The ground under it in the prop frame (default flat at 0). */
   ground?: (x: number, z: number) => number;
   /** The wreck's colours times this (default 0.84: dust and soot). */

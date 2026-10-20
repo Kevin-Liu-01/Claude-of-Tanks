@@ -79,7 +79,8 @@ export function createGarageSea(setup: ((material: THREE.Material, hook: Compile
   const geometry = new THREE.RingGeometry(SEA_INNER_M, SEA_FADE_M[1], 96, 6);
   geometry.rotateX(-Math.PI / 2);
   const material = new THREE.MeshStandardMaterial({
-    color: 0x1d3a40, roughness: 0.14, metalness: 0, transparent: true, depthWrite: false,
+    // (garage r9, the per-garage brief: the bay's turquoise over its sandy floor, not a dark teal plane)
+    color: 0x235a60, roughness: 0.14, metalness: 0, transparent: true, depthWrite: false,
   });
   material.name = 'garage-sea';
   if (setup) setup(material, seaWaveHook(hole));

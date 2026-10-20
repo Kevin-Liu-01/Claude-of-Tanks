@@ -62,10 +62,20 @@ import {
   addGarageApproachDetails,
   type GarageApproachStats,
 } from './garageApproachDetails.ts';
+import {
+  buildGarageKitDressing, garageKitPads, pinGarageKitMap, prepareGarageKitPieces, type GarageKitBuild, type GarageKitPlacement,
+} from './garageKitPlacement.ts';
+import { GARAGE_KIT_PLACEMENTS, GARAGE_KIT_SKYLINES } from './garageKitPlacements.ts';
+import {
+  createGarageSkylineBackdrop, garageSkylineEnabled, pinGarageSkyline, prepareGarageSkyline, type GarageSkylineLandmarkReceipt,
+} from './garageSkyline.ts';
+import { arcWeight, GarageSkylineEmitter, type GarageSkyline } from './garageSkylineKit.ts';
+import { garageHorizonLandmarks } from './garageHorizonLandmarks.ts';
 
 interface GarageEnvironmentEngineContext {
   anisotropy?: number;
   setupShadowMaterial?(material: THREE.Material, extraHook?: THREE.Material['onBeforeCompile'] | null): void;
+  releaseShadowMaterial?(material: THREE.Material): unknown;
 }
 
 interface GarageEnvironmentStats {
@@ -89,9 +99,15 @@ interface GarageEnvironmentStats {
   readonly backdropLayers: number;
   readonly horizonStyle: GarageEnvironmentRecipe['horizonStyle'] | 'none';
   readonly horizonMaxHeightM: number;
+  /** The horizon's largest elevation angle from the opening camera (deg). */
+  readonly horizonMaxElevationDeg: number;
+  /** The map skyline's landmarks as built (garageSkyline.ts), or null where the Garage keeps the biome backdrop. */
+  readonly skylineLandmarks: readonly GarageSkylineLandmarkReceipt[] | null;
   /** The built horizon's tallest building mass and slender accent (0 where the biome has none). */
   readonly builtHorizonMassTopM: number;
   readonly builtHorizonAccentTopM: number;
+  /** The named landmarks of a Garage's built skyline (garage r9, garageSkylineKit.ts), or none. */
+  readonly kitSkylineLandmarks: readonly string[];
   readonly groundCover: number;
   readonly structures: number;
   readonly facilityProps: number;
@@ -135,12 +151,16 @@ interface GarageEnvironmentStats {
   readonly maxGroundContactErrorM: number;
   readonly platformGroundClearanceM: number;
   readonly triangles: number;
+  /** The garage r9 kit's receipt (garageKitPlacement.ts), or null where the Garage places no kit yet. */
+  readonly kit: (GarageKitBuild['stats'] & { readonly slideshow: GarageKitBuild['slideshow'] }) | null;
 }
 
 export interface GarageEnvironmentBuild {
   readonly root: THREE.Group;
   readonly stats: GarageEnvironmentStats;
   readonly texturesReady?: Promise<void>;
+  /** The pack's graded terrain under a world-local point (the kit's placement receipts seat pieces with it). */
+  readonly groundAtWorld?: (x: number, z: number) => number;
   dispose(): void;
 }
 
@@ -522,6 +542,8 @@ function createBackdropGeometry(
   seed: number,
   atmosphere: GarageAtmospherePalette,
   recipe: GarageEnvironmentRecipe,
+  skyline: GarageSkyline | null = null,
+  architecture?: GarageVariant['architecture'],
 ): THREE.BufferGeometry {
   // Five map-derived bands close the terrain. Relief is authored by biome: mesas terrace, dunes crest and only the alpine
   // recipe receives a mountain skyline; the exact sampled patch still perturbs every crest, so the result stays grounded
@@ -541,7 +563,9 @@ function createBackdropGeometry(
   // with conifer woods, the pass has a forested foot that grows out of its snowfield, the mesas carry strata, varnish
   // and shaded cliffs, and the sea darkens toward the shore and fades into the horizon. One unlit vertex-colour program.
   // the near bands carry the most columns; the far, hazed ones need fewer (the pack's 50k-triangle budget)
-  const LAYER_SEGMENTS = [160, 160, 104, 80, 80] as const;
+  // (garage r9: a Garage with a built skyline of its own (garageSkylineKit.ts) draws its landmarks into this draw and may
+  // reshape the bands: sea arcs, strands, hedges; its low land needs fewer columns)
+  const LAYER_SEGMENTS = skyline?.bandSegments ?? [160, 160, 104, 80, 80] as const;
   const segments = 120;
   const ROWS = 8;
   const layers = [
@@ -552,6 +576,9 @@ function createBackdropGeometry(
     { radius: 96, base: -9.2, height: 1.00, relief: 0.34, slant: 13 },
   ] as const;
   const style = recipe.horizonStyle;
+  // the map's own landmarks on this horizon (garage r9, K10: Sirocco's mesas and ksar, Steinburg's town and castle)
+  const landmarks = architecture ? garageHorizonLandmarks(architecture) : null;
+  const layerCrests: Float32Array[] = [];
   const snowy = recipe.terrainSurface === 'snow';
   const tropical = recipe.treeSpecies.includes('palm') && recipe.terrainSurface === 'grass';
   const builtKind: 'town' | 'steelworks' | 'railway' | null = style === 'urban' ? 'town'
@@ -573,10 +600,11 @@ function createBackdropGeometry(
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     });
   })();
+  // (one lookup for every sample, not a closure per sample: the bands are built cold, on the switch path)
+  const at = (cx: number, cy: number): number => noiseGrid[Math.min(15, cy) * 128 + (cx % 128)];
   const noise = (u: number, v: number): number => {
     const x = (((u % 1) + 1) % 1) * 128, y = THREE.MathUtils.clamp(v, 0, 0.999) * 15;
     const ix = Math.floor(x), iy = Math.floor(y), tx = x - ix, ty = y - iy;
-    const at = (cx: number, cy: number): number => noiseGrid[Math.min(15, cy) * 128 + (cx % 128)];
     const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
     return (at(ix, iy) * (1 - sx) + at(ix + 1, iy) * sx) * (1 - sy) + (at(ix, iy + 1) * (1 - sx) + at(ix + 1, iy + 1) * sx) * sy;
   };
@@ -689,19 +717,23 @@ function createBackdropGeometry(
   const rugged = style === 'mesa' || style === 'alpine';
   const columns = segments + 1;
   layers.forEach((layer, layerIndex) => {
-    const segments = LAYER_SEGMENTS[layerIndex];
+    const segments = (landmarks?.layerSegments ?? LAYER_SEGMENTS)[layerIndex];
     const columns = segments + 1;
     const crestHeights = new Float32Array(columns);
+    layerCrests.push(crestHeights);
     for (let segment = 0; segment <= segments; segment += 1) {
       const angle = (segment / segments) * Math.PI * 2;
       const sourceX = Math.cos(angle) * patch.sizeXM * 0.48;
       const sourceZ = Math.sin(angle) * patch.sizeZM * 0.48;
       const sampled = THREE.MathUtils.clamp(samplePatch(patch, values, sourceX, sourceZ) - datum, -2.4, 4.8);
       const nominal = recipe.horizonHeightM * layer.height * (builtKind ? 0.55 : 1);
-      const crest = THREE.MathUtils.clamp(
-        nominal + sampled * layer.relief + crestProfile(angle, layerIndex, layer) * recipe.horizonHeightM,
+      let crest = THREE.MathUtils.clamp(
+        nominal + sampled * layer.relief + crestProfile(angle, layerIndex, layer) * recipe.horizonHeightM
+          + (landmarks?.lift?.(angle, layerIndex) ?? 0),
         -0.15, recipe.horizonHeightM,
       );
+      if (skyline?.crest) crest = Math.min(recipe.horizonHeightM, skyline.crest(angle, layerIndex, crest));
+      if (landmarks?.clearance) crest = Math.max(-0.15, crest * landmarks.clearance(angle, layerIndex, layer.radius));
       crestHeights[segment] = crest;
       maxHeightM = Math.max(maxHeightM, crest);
     }
@@ -734,7 +766,8 @@ function createBackdropGeometry(
         const p = at(wrapped, k);
         if (normal.x * -p.x + normal.z * -p.z < 0) normal.negate();
         const slope = 1 - Math.max(0, Math.min(1, normal.y * 1.4));
-        ground(colour, t, p.y, slope, segment / segments, layerIndex);
+        if (!skyline?.ground?.(colour, (segment / segments) * Math.PI * 2, t, p.y, slope, layerIndex,
+          noise(segment / segments * 5, t * 0.8 + layerIndex * 0.11))) ground(colour, t, p.y, slope, segment / segments, layerIndex);
         const sunlit = Math.max(0, normal.dot(sun));
         const lit = rugged ? 0.46 + 0.86 * sunlit + 0.1 * Math.max(0, normal.y) : 0.56 + 0.64 * sunlit + 0.1 * Math.max(0, normal.y);
         let shade = lit * (0.92 + (noise(segment / segments * 17, t + layerIndex) - 0.5) * 0.16);
@@ -748,6 +781,8 @@ function createBackdropGeometry(
       }
     }
     for (let segment = 0; segment < segments; segment += 1) {
+      // a column drowned under a skyline's sea arc is never seen: it draws nothing
+      if (skyline && crestHeights[segment] < -2.4 && crestHeights[segment + 1] < -2.4) continue;
       for (let k = 0; k < ROWS - 1; k += 1) {
         const i0 = first + segment * ROWS + k, i1 = i0 + 1, i2 = i0 + ROWS, i3 = i2 + 1;
         indices.push(i0, i1, i2, i2, i1, i3);
@@ -765,13 +800,16 @@ function createBackdropGeometry(
         const angle = (segment / segments) * Math.PI * 2;
         positions.push(Math.cos(angle) * r, -2.3, Math.sin(angle) * r);
         const swell = noise(segment / segments * 31 + ringIndex * 0.21, 0.2 + ringIndex * 0.1);
-        colour.copy(hexColor(0x274f57)).lerp(hexColor(0x3d6f78), far * 0.8 + (swell - 0.5) * 0.12) // (rejudge6: "flat teal bands")
+        // (rejudge6: "flat teal bands"; garage r9: shallow turquoise toward the strand, deepening to blue-green offshore)
+        colour.copy(hexColor(skyline ? 0x2f747a : 0x274f57)).lerp(hexColor(skyline ? 0x2e6a78 : 0x3d6f78), far * 0.8 + (swell - 0.5) * 0.12)
           .lerp(horizon, Math.min(0.92, 0.12 + far * far * 0.85));
         colors.push(colour.r, colour.g, colour.b);
       }
     });
     for (let ringIndex = 0; ringIndex < rings.length - 1; ringIndex += 1) {
       for (let segment = 0; segment < segments; segment += 1) {
+        // a skyline's sea runs only over its arc (the land bands hide the rest)
+        if (skyline?.seaArc && arcWeight((segment + 0.5) / segments * Math.PI * 2, skyline.seaArc[0], skyline.seaArc[1], 0.35) <= 0) continue;
         const i0 = first + ringIndex * columns + segment, i1 = i0 + 1, i2 = i0 + columns, i3 = i2 + 1;
         indices.push(i0, i2, i1, i1, i2, i3);
       }
@@ -779,7 +817,32 @@ function createBackdropGeometry(
   }
   let accentTopM = 0;
   let massTopM = 0;
-  if (builtKind) {
+  let landmarkTriangles = 0;
+  if (landmarks) {
+    const crestAt = (angle: number, layerIndex: number): number => {
+      const crests = layerCrests[Math.max(0, Math.min(layerCrests.length - 1, Math.round(layerIndex)))];
+      const span = crests.length - 1;
+      const t = ((((angle / (Math.PI * 2)) % 1) + 1) % 1) * span;
+      const i = Math.floor(t);
+      return THREE.MathUtils.lerp(crests[i], crests[Math.min(span, i + 1)], t - i);
+    };
+    const result = landmarks.build({
+      positions, colors, indices, sun, horizon, crestAt, layerRadii: layers.map((layer) => layer.radius),
+    });
+    landmarkTriangles = result.triangles;
+    if (landmarks.kind === 'built') {
+      massTopM = result.massTopM ?? 0;
+      accentTopM = result.accentTopM ?? 0;
+    } else {
+      maxHeightM = Math.max(maxHeightM, result.maxHeightM ?? 0);
+    }
+  }
+  if (skyline) {
+    const emitter = new GarageSkylineEmitter(positions, colors, indices, horizon, sun, seed ^ 0x51c1);
+    skyline.build(emitter);
+    massTopM = emitter.massTop;
+    accentTopM = emitter.accentTop;
+  } else if (builtKind && landmarks?.kind !== 'built') {
     const built = addBuiltHorizon(builtKind, seed, horizon, sun, positions, colors, indices);
     massTopM = built.massTopM;
     accentTopM = built.accentTopM;
@@ -792,10 +855,12 @@ function createBackdropGeometry(
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();
   geometry.userData.horizonStyle = recipe.horizonStyle;
-  geometry.userData.builtHorizon = builtKind;
+  geometry.userData.builtHorizon = skyline ? 'skyline' : builtKind;
+  geometry.userData.kitSkylineLandmarks = skyline ? skyline.landmarks.map((landmark) => landmark.name) : [];
   geometry.userData.accentTopM = Number(accentTopM.toFixed(3));
   geometry.userData.massTopM = Number(massTopM.toFixed(3));
   geometry.userData.maxHeightM = Number(maxHeightM.toFixed(3));
+  geometry.userData.landmarkTriangles = landmarkTriangles;
   return geometry;
 }
 
@@ -1105,6 +1170,25 @@ function samplePatch(
   return THREE.MathUtils.lerp(a, b, tz);
 }
 
+/**
+ * The terrain mesh's own surface at a point: its triangles (createTerrainGeometry splits each cell on the b-c diagonal),
+ * not the bilinear field, which a twisted cell's centre can leave 10 cm under the drawn ground.
+ */
+function samplePatchSurface(
+  patch: GarageTerrainPatch,
+  values: Float32Array,
+  x: number,
+  z: number,
+): number {
+  const fx = THREE.MathUtils.clamp((x / patch.sizeXM + 0.5) * (patch.width - 1), 0, patch.width - 1);
+  const fz = THREE.MathUtils.clamp((z / patch.sizeZM + 0.5) * (patch.height - 1), 0, patch.height - 1);
+  const x0 = Math.min(patch.width - 2, Math.floor(fx)); const z0 = Math.min(patch.height - 2, Math.floor(fz));
+  const tx = fx - x0; const tz = fz - z0;
+  const a = values[z0 * patch.width + x0], b = values[z0 * patch.width + x0 + 1];
+  const c = values[(z0 + 1) * patch.width + x0], d = values[(z0 + 1) * patch.width + x0 + 1];
+  return tx + tz <= 1 ? a + (b - a) * tx + (c - a) * tz : d + (c - d) * (1 - tx) + (b - d) * (1 - tz);
+}
+
 function cameraPoint(side: number, depth: number): Readonly<{ x: number; z: number }> {
   return garageViewPoint(side, depth);
 }
@@ -1167,8 +1251,12 @@ function createBuckets(): GeometryBuckets {
   };
 }
 
-function normalizeGeometry(source: THREE.BufferGeometry, vertexColors: boolean): THREE.BufferGeometry {
-  const geometry = source.index ? source.toNonIndexed() : source.clone();
+/**
+ * One bucket source in the merge's attribute layout. `owned` sources (built for this pack and disposed after the merge)
+ * are reshaped in place instead of copied first (garage r9 g1 r4: the copies were a sixth of a cold pack bake).
+ */
+function normalizeGeometry(source: THREE.BufferGeometry, vertexColors: boolean, owned = false): THREE.BufferGeometry {
+  const geometry = source.index ? source.toNonIndexed() : owned ? source : source.clone();
   for (const key of Object.keys(geometry.attributes)) {
     if (!['position', 'normal', 'uv', 'color'].includes(key)) geometry.deleteAttribute(key);
   }
@@ -1189,11 +1277,25 @@ function normalizeGeometry(source: THREE.BufferGeometry, vertexColors: boolean):
 
 /** Build one authentic, renderer-only Garage scene pack. */
 export function buildGarageEnvironment(
-  engineCtx: GarageEnvironmentEngineContext,
+  outerEngineCtx: GarageEnvironmentEngineContext,
   assets: GarageEnvironmentAssetLibrary,
   variant: GarageVariant,
   requestRender: () => void = () => {},
+  options: Readonly<{ kitPlacement?: GarageKitPlacement | null }> = {},
 ): GarageEnvironmentBuild {
+  // Every material the pack registers with the shadow cascades is noted, and the ones the pack owns (disposes) are
+  // released with it: the LRU keeps two packs, but the cascade registry grew on every switch (the garage r9 engineering
+  // critic counted 207 -> 377 registered materials over one cycle of the Garages; the kit's display material added more).
+  const cascadeMaterials = new Set<THREE.Material>();
+  const engineCtx: GarageEnvironmentEngineContext = outerEngineCtx.setupShadowMaterial
+    ? {
+        ...outerEngineCtx,
+        setupShadowMaterial(material, extraHook) {
+          cascadeMaterials.add(material);
+          outerEngineCtx.setupShadowMaterial!(material, extraHook);
+        },
+      }
+    : outerEngineCtx;
   const recipe = GARAGE_ENVIRONMENT_RECIPES[variant.architecture]
     || GARAGE_ENVIRONMENT_RECIPES.field_shed;
   const patch = getGarageTerrainPatch(variant.mapId);
@@ -1223,9 +1325,12 @@ export function buildGarageEnvironment(
       for (let column = 0; column < patch.width; column += 1) {
         const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
         const { side, depth } = garageWorldPointToView(x, z);
-        if (depth < 9 || Math.abs(side) > 44) continue;
+        // (garage r9, the brief's "grass mounds on the quay": the quay runs on to the patch's sides, and the apron right
+        // of the turntable, where the downs' shoulder stood 3-6 m over the dock's head, is levelled to the quay too)
+        const apron = THREE.MathUtils.smoothstep(side, 9, 15) * THREE.MathUtils.smoothstep(depth, -18, -11);
+        if ((depth < 9 && apron <= 0) || Math.abs(side) > 60) continue;
         const index = row * patch.width + column;
-        const quay = THREE.MathUtils.smoothstep(depth, 9, 15) * (1 - THREE.MathUtils.smoothstep(Math.abs(side), 34, 44));
+        const quay = Math.max(apron, THREE.MathUtils.smoothstep(depth, 9, 15) * (1 - THREE.MathUtils.smoothstep(Math.abs(side), 50, 60)));
         const shoreDepth = 33 + 2.5 * Math.sin(side * 0.13 + 1.1);
         const nearBuilding = keep.some((placement) => Math.hypot(placement.side - side, placement.depth - depth) < 6.5);
         const drop = nearBuilding ? 0 : THREE.MathUtils.smoothstep(depth, shoreDepth - 0.5, shoreDepth + 4.5);
@@ -1278,8 +1383,13 @@ export function buildGarageEnvironment(
   // remains visible with zero additional frame work or Garage-owned textures.
   const atmosphere = atmospherePalette(variant.weather);
 
+  // garage r9 (K10): a Garage whose map carries a skyline builds its horizon from it (the near relief ray-cast over its
+  // battlefield, its landmarks at their true bearings: garageSkyline.ts); the others keep the biome backdrop
+  const skyline = garageSkylineEnabled(variant.mapId);
   const horizon = new THREE.Mesh(
-    track(createBackdropGeometry(patch, heights, seed, atmosphere, recipe)),
+    track(skyline
+      ? createGarageSkylineBackdrop(variant.mapId)
+      : createBackdropGeometry(patch, heights, seed, atmosphere, recipe, GARAGE_KIT_SKYLINES[variant.architecture] ?? null, variant.architecture)),
     track(new THREE.MeshBasicMaterial({
       vertexColors: true,
       side: THREE.DoubleSide,
@@ -1585,6 +1695,40 @@ export function buildGarageEnvironment(
   // the reseat levels every facility terrace's core back to its datum; the dock and the bore are cut again after it
   carveDrydock();
   carveTunnelBore();
+  // The kit's work cells stand on graded pads (garage r9): the ground under each grounded piece is levelled to the
+  // height under its centre (a datum piece to its own height) and feathered back into the excerpt over two metres, so
+  // no container, bowser or trailer stands on a bank or half buried in a dune. Never inside the turntable's feather.
+  const kitPlacement = options.kitPlacement !== undefined ? options.kitPlacement : GARAGE_KIT_PLACEMENTS[variant.architecture];
+  const levelKitPads = (): void => {
+    if (!kitPlacement) return;
+    // the largest pieces first; a smaller piece standing in a levelled pad's reach joins its level, so a cell (a tower
+    // and its sandbags, a container and its desk) stands on one platform instead of a terrace of small steps
+    const levelled: Array<{ x: number; z: number; reach: number; target: number }> = [];
+    const pads = [...garageKitPads(variant, kitPlacement)].sort((a, b) => b.radius - a.radius);
+    for (const pad of pads) {
+      if (Math.hypot(pad.x, pad.z) - pad.radius - 2 < GARAGE_PLATFORM_GEOMETRY.terrainFeatherRadiusM) continue;
+      const host = levelled.find((other) => Math.hypot(pad.x - other.x, pad.z - other.z) < other.reach - 1.2);
+      const target = pad.y ?? host?.target ?? samplePatch(patch, heights, pad.x, pad.z);
+      // (the excerpt's grid is 2.4 m: the level core reaches a cell's half diagonal past the footprint)
+      const core = pad.radius + 1.2, feather = 2.4;
+      levelled.push({ x: pad.x, z: pad.z, reach: core + feather * 0.5, target });
+      for (let row = 0; row < patch.height; row += 1) {
+        const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+        for (let column = 0; column < patch.width; column += 1) {
+          const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+          const distance = Math.hypot(x - pad.x, z - pad.z);
+          if (distance >= core + feather) continue;
+          // a facility terrace keeps its own level (the exhibits' pads, the stations' floors, the signature facility)
+          const view = garageWorldPointToView(x, z);
+          if (terraceRecords.some((terrace) => Math.hypot((view.side - terrace.side) / terrace.radiusSide,
+            (view.depth - terrace.depth) / terrace.radiusDepth) <= 1.25)) continue;
+          const index = row * patch.width + column;
+          heights[index] = THREE.MathUtils.lerp(target, heights[index], THREE.MathUtils.smoothstep(distance, core, core + feather));
+        }
+      }
+    }
+  };
+  levelKitPads();
 
 
   const measurePlacementQuality = (): {
@@ -2199,6 +2343,7 @@ export function buildGarageEnvironment(
           approach: recipe.approach,
           buckets: combined,
           groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
+          surfaceAtWorld: (x, z) => samplePatchSurface(patch, heights, x, z),
         });
     for (const mesh of facilityDetails.meshes) {
       track(mesh.geometry);
@@ -2209,15 +2354,46 @@ export function buildGarageEnvironment(
   };
   const { facilityDetails, approachDetails } = buildFacilityPresentation();
 
+  // The garage r9 kit (garageKitPlacement.ts): this Garage's placed cranes, walls, signs, displays, clutter and
+  // atmosphere. Solids join the baked bucket and surfaces their own buckets before the merge below; the kit's display,
+  // decal and atmosphere meshes are the pack's only new draws.
+  // (the placement receipts pass their own: an empty one measures the scene the kit must keep clear of)
+  const kit = kitPlacement
+    ? buildGarageKitDressing({
+        variant,
+        placement: kitPlacement,
+        buckets: combined,
+        groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
+        setupShadowMaterial: engineCtx.setupShadowMaterial ? (material) => engineCtx.setupShadowMaterial!(material) : null,
+        anisotropy: engineCtx.anisotropy,
+      })
+    : null;
+  if (kit) {
+    for (const mesh of kit.meshes) {
+      track(mesh.geometry);
+      mesh.updateMatrix();
+      root.add(mesh);
+    }
+    for (const material of kit.materials) track(material);
+  }
+
   const materialForBucket = (key: BucketKey): THREE.Material => {
     // Source albedo already contains its own value range. Keep the material
     // multiplier close to white so shaded facades retain readable PBR detail.
-    const building = new THREE.Color(recipe.buildingTint).lerp(new THREE.Color(0xffffff), 0.62);
+    // Redrock's compounds are Rum's sand-coloured block walls, not white boxes (garage r9, the audit's "white box walls"):
+    // its render keeps more of the valley's own tint. Sirocco's courts are mud plaster, not whitewash (the r1 frames
+    // still read the lightened tint as white under the desert sun): the wadi's own mud, no white in it
+    const building = variant.architecture === 'shade_depot'
+      ? new THREE.Color(0xa88a64)
+      : new THREE.Color(recipe.buildingTint).lerp(new THREE.Color(0xffffff), variant.architecture === 'recovery_yard' ? 0 : 0.62);
     switch (key) {
       case 'plaster': return texturedMaterial('plaster', { color: building, roughness: 1 });
       case 'plaster2': return texturedMaterial('plaster', { color: building.clone().offsetHSL(0, -0.04, -0.08), roughness: 1 });
       case 'plaster3': return texturedMaterial('plaster', { color: building.clone().offsetHSL(0.02, -0.02, 0.05), roughness: 1 });
-      case 'stone': return texturedMaterial('brick', { color: building.clone().multiplyScalar(0.86), roughness: 1 });
+      // Saltmere's walls are whitewashed granite render, not red brick (garage r9, the per-garage brief 5)
+      case 'stone': return variant.architecture === 'naval_drydock'
+        ? texturedMaterial('plaster', { color: new THREE.Color(0xf2f0ea), roughness: 1 })
+        : texturedMaterial('brick', { color: building.clone().multiplyScalar(0.86), roughness: 1 });
       // dry-country roofs are flat earth-plastered decks, not European red tiles (wave 377: "a European red-tile house in
       // the badlands")
       // the snowbound yards' roofs lie under snow (the re-judge, 2026-10-15: "the roofs carry no snow ... bare saturated
@@ -2230,8 +2406,14 @@ export function buildGarageEnvironment(
           // re-judge, 2026-10-15): a cool grey multiplier draws its orange toward brown
           : variant.architecture === 'brick_arsenal'
             ? texturedMaterial('roof', { color: 0x8c949b, roughness: 0.96 })
+            // Breton slate over Saltmere's whitewash (garage r9): a cold blue-grey multiplier takes the tile's red out
+            : variant.architecture === 'naval_drydock'
+              ? texturedMaterial('plaster', { color: 0x5a636c, roughness: 0.82 })
             : texturedMaterial('roof', { color: new THREE.Color(variant.accent).lerp(new THREE.Color(0xaaa19a), 0.74), roughness: 0.96 });
-      case 'wood': return texturedMaterial('wood', { color: 0xd2c3aa, roughness: 1 });
+      // Saltmere's sheds are whitewashed (garage r9: the brief's "red-roof brick sheds" were brown weatherboard)
+      case 'wood': return variant.architecture === 'naval_drydock'
+        ? texturedMaterial('plaster', { color: 0xe4e1d8, roughness: 1 })
+        : texturedMaterial('wood', { color: 0xd2c3aa, roughness: 1 });
       case 'glass': return plainMaterial({ color: 0x6b8790, roughness: 0.16, metalness: 0.08, transparent: true, opacity: 0.78 });
       case 'baked': return plainMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.88, metalness: 0.06 });
       case 'route': return texturedMaterial(recipe.approach.surface, {
@@ -2252,7 +2434,11 @@ export function buildGarageEnvironment(
     const sand = hardstandStyle === 'earth-sand';
     const snow = hardstandStyle === 'earth-snow' || hardstandStyle === 'gravel-snow' || hardstandStyle === 'slab-snow';
     if (!sand && !snow) return;
-    const inner = GARAGE_PLATFORM_GEOMETRY.baseRadiusM - 0.06, reach = sand ? 1.8 : 1.4, peak = sand ? 0.34 : 0.28;
+    // the two heated decks (Frosthollow's and Glacier's, garage r9: "a 0.4-0.6 m melt margin, a meltwater sheen") melt
+    // the snow back off the collar: a dark wet margin round the plinth, the drift banked beyond it
+    const heated = hardstandStyle === 'earth-snow' || hardstandStyle === 'gravel-snow';
+    const margin = heated ? 0.5 : 0;
+    const inner = GARAGE_PLATFORM_GEOMETRY.baseRadiusM - 0.06 + margin, reach = sand ? 1.8 : 1.4, peak = sand ? 0.34 : 0.28;
     const segments = 72, rings = 5;
     // packed and crushed-rock yards keep a grey, trodden snow; the ring is uneven, banked to windward and all but gone
     // on the lee side, never a clean halo (CPU canonical, 2026-10-15)
@@ -2282,6 +2468,23 @@ export function buildGarageEnvironment(
         }
       }
     }
+    if (heated) {
+      const wet = new THREE.Color(0x59636a), damp = new THREE.Color(0x9aa5ab);
+      const rim = (segment: number, outer: boolean): [number, number, number] => {
+        const angle = (segment / segments) * Math.PI * 2;
+        const r = outer ? inner + 0.04 : GARAGE_PLATFORM_GEOMETRY.baseRadiusM - 0.06;
+        const x = Math.cos(angle) * r, z = Math.sin(angle) * r;
+        return [x, Math.max(samplePatch(patch, heights, x, z), GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM) + 0.025, z];
+      };
+      for (let segment = 0; segment < segments; segment += 1) {
+        const a = rim(segment, false), b = rim(segment + 1, false), c = rim(segment + 1, true), d = rim(segment, true);
+        for (const [p, out] of [[a, 0], [c, 1], [d, 1], [a, 0], [b, 0], [c, 1]] as const) {
+          positions.push(p[0], p[1], p[2]);
+          tone.copy(wet).lerp(damp, out * (0.55 + 0.25 * Math.sin(segment * 0.9 + wind)));
+          colors.push(tone.r, tone.g, tone.b);
+        }
+      }
+    }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
@@ -2289,11 +2492,47 @@ export function buildGarageEnvironment(
     combined.baked!.push(geometry);
   };
   addPodiumDrift();
+  // The plaster family's tinted variants draw alone; one that carries only a few facade fixtures folds into the largest
+  // of the family (garage r9: the kit's display and decal draws are paid for here and by the facility cylinders' one
+  // tier), losing a tint only on pieces of a couple of hundred triangles.
+  const foldTinyPlasterBuckets = (): void => {
+    const family = (['plaster', 'plaster2', 'plaster3'] as const).filter((key) => (combined[key] || []).length);
+    if (family.length < 2) return;
+    const trianglesOf = (key: typeof family[number]): number => (combined[key] || []).reduce((sum, geometry) => (
+      sum + (geometry.index ? geometry.index.count : geometry.getAttribute('position').count) / 3), 0);
+    const largest = family.reduce((best, key) => (trianglesOf(key) > trianglesOf(best) ? key : best), family[0]);
+    for (const key of family) {
+      if (key === largest || trianglesOf(key) >= 240) continue;
+      (combined[largest] ||= []).push(...(combined[key] || []));
+      combined[key] = [];
+    }
+  };
+  foldTinyPlasterBuckets();
+  // Saltmere's whitewashed walls and its render share the plaster texture: the render's few fixtures ride the walls'
+  // draw (garage r9: the kit's display, decal and atmosphere draws are paid for here)
+  // (Ironworks and Cinder: their few render fixtures, about a hundred triangles, ride the brick: Ironworks' clad crane bay
+  // draws instead, and Cinder's hero frame holds the brief's +3 calls with its kit)
+  if (variant.architecture === 'naval_drydock' || variant.architecture === 'factory_line' || variant.architecture === 'rail_roundhouse') {
+    for (const key of ['plaster', 'plaster2', 'plaster3'] as const) {
+      (combined.stone ||= []).push(...(combined[key] || []));
+      combined[key] = [];
+    }
+  }
+  // Sirocco's adobe is shuttered, not glazed (garage r9): its few panes join the dark openings, paying one of the kit's
+  // draws
+  if (variant.architecture === 'shade_depot' && (combined.glass || []).length) {
+    (combined.dark ||= []).push(...(combined.glass || []));
+    combined.glass = [];
+  }
   const addMergedStructures = (): void => {
+    // every source is this pack's own (all are disposed below) and is reshaped in place, unless it was pushed more than
+    // once (twice into a bucket, or into two): then each use takes its own copy, as before
+    const uses = new Map<THREE.BufferGeometry, number>();
+    for (const key of BUCKET_KEYS) for (const geometry of combined[key] || []) uses.set(geometry, (uses.get(geometry) ?? 0) + 1);
     for (const key of BUCKET_KEYS) {
       const sources = combined[key] || [];
       if (!sources.length) continue;
-      const normalized = sources.map((geometry) => normalizeGeometry(geometry, key === 'baked'));
+      const normalized = sources.map((geometry) => normalizeGeometry(geometry, key === 'baked', uses.get(geometry) === 1));
       const merged = mergeGeometries(normalized, false);
       for (const geometry of normalized) geometry.dispose();
       for (const geometry of sources) geometry.dispose();
@@ -2346,6 +2585,9 @@ export function buildGarageEnvironment(
       // plane exclusion left alternate orbit angles looking unfinished even
       // though the environment owned enough vegetation for a complete ring.
       if (depth < 5 && Math.abs(side) < 16) return false;
+      // Saltmere's quay and shore run to the sea behind the hero: no grove there (garage r9: the brief's "dead-looking
+      // pines" stood on the strand behind the turret), the downs behind the camera keep theirs
+      if (recipe.horizonStyle === 'coastal' && depth > 12 && Math.abs(side) < 36) return false;
       // no grove in Saltmere's dock, on its paving or in its channel (a crown's reach round it)
       if (drydock && [[0, 0], [3.5, 0], [-3.5, 0], [0, 3.5], [0, -3.5]].some(([ds, dd]) => (
         garageDrydockGround(drydock, side + ds, depth + dd, 0) !== null))) return false;
@@ -2360,7 +2602,9 @@ export function buildGarageEnvironment(
         Math.hypot(x - terrace.x, z - terrace.z)
           < Math.max(terrace.radiusSide, terrace.radiusDepth) + 4.2
       ));
-      return !nearStructure && !nearFacility
+      // no grove grows through a placed kit piece (garage r9: the LED trailer, the cells, the cranes)
+      const nearKit = (kit?.footprints ?? []).some((footprint) => Math.hypot(x - footprint.x, z - footprint.z) < footprint.radius + 3.6);
+      return !nearStructure && !nearFacility && !nearKit
         && !grovePoints.some((point) => point !== self && Math.hypot(x - point.x, z - point.z) < 7.0);
     };
     for (let attempt = 0;
@@ -2481,8 +2725,11 @@ export function buildGarageEnvironment(
     backdropLayers: 5,
     horizonStyle: recipe.horizonStyle,
     horizonMaxHeightM: Number(horizon.geometry.userData.maxHeightM || 0),
+    horizonMaxElevationDeg: Number(horizon.geometry.userData.maxElevationDeg || 0),
+    skylineLandmarks: skyline ? horizon.geometry.userData.skylineLandmarks : null,
     builtHorizonMassTopM: Number(horizon.geometry.userData.massTopM || 0),
     builtHorizonAccentTopM: Number(horizon.geometry.userData.accentTopM || 0),
+    kitSkylineLandmarks: Object.freeze([...(horizon.geometry.userData.kitSkylineLandmarks as string[] ?? [])]),
     drawCalls: objects,
     enclosingSurfaces: 0,
     landmarkHeightM: recipe.landmark[1],
@@ -2504,6 +2751,10 @@ export function buildGarageEnvironment(
     groundCover: groundCoverIndex,
     structures: recipe.structures.length,
     ...facilityDetails,
+    // the kit's working cells carry stocked spares and secured stores of their own (garage r9)
+    looseParts: facilityDetails.looseParts + (kit?.stats.looseParts ?? 0),
+    secureStorageSystems: facilityDetails.secureStorageSystems + (kit?.stats.secureStores ?? 0),
+    factoryProcessZones: facilityDetails.factoryProcessZones + (kit?.stats.processZones ?? 0),
     ...approachDetails,
     approachTerrainGraded: true,
     approachMaxGrade,
@@ -2547,6 +2798,7 @@ export function buildGarageEnvironment(
     maxGroundContactErrorM: Number(maxGroundContactErrorM.toFixed(4)),
     platformGroundClearanceM: Number(platformGroundClearanceM.toFixed(4)),
     triangles: Math.round(triangles),
+    kit: kit ? Object.freeze({ ...kit.stats, slideshow: kit.slideshow }) : null,
   });
   Object.assign(root.userData, stats);
 
@@ -2556,17 +2808,34 @@ export function buildGarageEnvironment(
     root,
     stats,
     texturesReady,
+    groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
     dispose() {
       if (disposed) return;
       disposed = true;
       root.removeFromParent();
       for (const handle of handles) handle.release();
       handles.length = 0;
+      if (outerEngineCtx.releaseShadowMaterial) {
+        const owned = new Set<unknown>(disposables);
+        for (const material of cascadeMaterials) if (owned.has(material)) outerEngineCtx.releaseShadowMaterial(material);
+      }
+      cascadeMaterials.clear();
       for (const resource of disposables) resource.dispose();
       disposables.length = 0;
       root.clear();
     },
   };
+}
+
+/**
+ * Hold a Garage's prepared kit pieces and skyline bake in their session caches until its pack is built (call before
+ * prepareGarageEnvironmentAssets, release after buildGarageEnvironment): several Garage cards prepared at once (hover
+ * intents) then never evict each other's work before the bake. The release is idempotent.
+ */
+export function pinGarageEnvironmentCaches(variant: GarageVariant): () => void {
+  const releaseKit = pinGarageKitMap(variant.mapId);
+  const releaseSkyline = pinGarageSkyline(variant.mapId);
+  return () => { releaseKit(); releaseSkyline(); };
 }
 
 /**
@@ -2582,4 +2851,13 @@ export async function prepareGarageEnvironmentAssets(
   const recipe = GARAGE_ENVIRONMENT_RECIPES[variant.architecture];
   if (!recipe) throw new Error(`Unknown Garage architecture: ${variant.architecture}`);
   await assets.prepareTreeGroves(recipe.treeSpecies as readonly TreeSpecies[]);
+  // the map's skyline bakes here, in its own slice before the synchronous pack bake (4-45 ms on a first visit: garage
+  // r9 g1 r4, the switch's long task); the build then takes a copy of the cached bake
+  if (garageSkylineEnabled(variant.mapId)) {
+    await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+    prepareGarageSkyline(variant.mapId);
+  }
+  // its kit's pieces into the session cache, in slices, so the pack's bake only places them (garage r9)
+  const kitPlacement = GARAGE_KIT_PLACEMENTS[variant.architecture];
+  if (kitPlacement) await prepareGarageKitPieces(variant, kitPlacement);
 }

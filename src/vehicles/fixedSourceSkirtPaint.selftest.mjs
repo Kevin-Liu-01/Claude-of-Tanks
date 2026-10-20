@@ -21,7 +21,7 @@ function skinCloud(root){const rows=[];root.updateMatrixWorld(true);root.travers
     rows.push([0,1,2].map(j=>[corners[j],corners[(j+1)%3],corners[(j+2)%3]].join('|')).sort()[0]);}
   });return rows.sort();}
 function paint(tank,id){const skin=tank.root.getObjectByName('hullFixedPaintedBodywork'),hull=tank.root.getObjectByName('hull');
-  assert.ok(skin?.isMesh);assert.equal(skin.material,hull.material);assert.ok(skin.material.map?.isTexture);
+  assert.ok(skin?.isMesh);assert.ok(skin.material === hull.material);assert.ok(skin.material.map?.isTexture);
   assert.equal(skin.parent.name,'rig_hull','retains the previous rubber skin full-distance coverage');
   assert.equal(skin.userData.combatHitboxRole,'nonArmor');assert.equal(skin.userData.appearanceRole,'armorPaint');
   assert.equal(skin.userData.materialOnlyPaintSourceBucket,'hullRubber');assert.equal(skin.userData.materialOnlyPaintMigration,true);

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createOffscreenSceneWarmer, warmSceneOffscreenBatched } from './offscreenWarm.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 function fakeRenderer({ throwOnRender = false } = {}) {
   const prior = { name: 'prior-target' };
@@ -140,7 +141,7 @@ for (const failure of [null, 'render', 'yield']) {
   if (failure) await assert.rejects(task, (error) => error === originalFailure);
   else {
     assert.equal((await task).length, 2);
-    assert.deepEqual(submitted, [parent, child], 'each eligible object is submitted exactly once');
+    assert.deepEqual(graphLabels(submitted), graphLabels([parent, child]), 'each eligible object is submitted exactly once');
   }
   assert.deepEqual(all.map((object) => object.layers.mask), masks, 'restore layers on success, render error and cancellation');
   assert.equal(lod.autoUpdate, true, 'restore caller LOD policy');
@@ -161,7 +162,7 @@ for (const failure of [null, 'render', 'yield']) {
   const failure = new Error('preparation cancelled');
   await assert.rejects(warmSceneOffscreenBatched({}, scene, camera, {
     async prepareObjects(objects) {
-      assert.deepEqual(objects, [mesh]);
+      assert.deepEqual(graphLabels(objects), graphLabels([mesh]));
       assert.equal(lod.autoUpdate, true);
       assert.equal(mesh.layers.mask, mask);
       await Promise.resolve();

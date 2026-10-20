@@ -95,7 +95,7 @@ for (const quality of ['high', 'low']) {
     ]) {
       const hit = ray(hull, [x, y, 8], [0, 0, -1]);
       near(hit?.point.z, z, .0002, `${quality} held-out front cover/lip`);
-      assert.equal(hit.object, applique, 'source armor face must not be imitated by equipment');
+      assert.ok(hit.object === applique, 'source armor face must not be imitated by equipment');
       normal(hit, n, quality);
     }
     for (const [x, z, y, n] of [
@@ -116,7 +116,7 @@ for (const quality of ['high', 'low']) {
     ]) {
       const hit = ray(hull, [x, 1.6, 2.5], [0, -1, 0]);
       near(hit?.point.y, floor, .0002, `${quality} true central seam floor`);
-      assert.equal(hit.object, applique, 'seam exposes the actual lower armor base');
+      assert.ok(hit.object === applique, 'seam exposes the actual lower armor base');
       assert.equal(ray(hull, [x, floor + .020, 2.5], [0, -1, 0], .018), undefined,
         'seam has measurable empty depth, not painted dark overlay');
       near(ray(hull, [panelX, 1.6, 2.5], [0, -1, 0])?.point.y, panelY, .0002, 'adjacent panel retains original plane');
@@ -136,7 +136,7 @@ for (const quality of ['high', 'low']) {
     ]) for (const x of [x0, x1]) {
       const hit = ray(hull, [x, 1.6, z], [0, -1, 0]);
       near(hit?.point.y, (d - nz * z) / ny, .00002, `${quality} independent rib crown`);
-      assert.equal(hit.object, applique, 'rib follows its damageable hull cover, not permanent hull');
+      assert.ok(hit.object === applique, 'rib follows its damageable hull cover, not permanent hull');
       normal(hit, [0, ny, nz], 'rib');
       const bearing=new THREE.Group();
       for(const g of armor)bearing.add(new THREE.Mesh(g,new THREE.MeshBasicMaterial()));
@@ -156,7 +156,7 @@ for (const quality of ['high', 'low']) {
     ]) {
       const hit = ray(hull, [x, 1.65, z], [0, -1, 0]);
       near(hit?.point.y, y, .00003, `${quality} source latch/tab/carrier crown`);
-      assert.equal(hit.object,z<2.3?applique:detail,
+      assert.ok(hit.object === (z<2.3?applique:detail),
         'attached latch follows its cassette; independent tab and carrier remain permanent equipment');
     }
     for (const [x, index] of [[-.809, 16], [-.637, 18], [.674, 20], [.846, 22]]) {

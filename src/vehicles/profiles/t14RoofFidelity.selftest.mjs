@@ -61,7 +61,7 @@ for(const quality of ['high','low']) {
     for(const side of ['left','right']) {
       const antenna=root.getObjectByName(`t14_rear_antenna_${side}`);
       let p=antenna;while(p&&p!==turret)p=p.parent;
-      assert.equal(p,turret,'rear instruments follow the turret');
+      assert.ok(p === turret,'rear instruments follow the turret');
     }
   }
   localShell.material.dispose();tank.dispose();

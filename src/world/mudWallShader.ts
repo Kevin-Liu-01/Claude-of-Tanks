@@ -41,7 +41,7 @@ function mustReplace(source: string, anchor: string, replacement: string): strin
 }
 
 /** The crown's loss at a ground-plan place, 0..uMudShape.z (vertex stage; samples the props grime tile). */
-export const MUD_LOSS_GLSL = /* glsl */`
+const MUD_LOSS_GLSL = /* glsl */`
 uniform vec3 uMudShape;
 float cotMudLoss(vec2 xz) {
   // slumps where two noises of the ground plan agree, a metre or so long; the wall's height over tens of metres
@@ -71,7 +71,7 @@ float cotMudCrown(float y, float z) {
 `;
 
 /** The crown's displacement (after <begin_vertex>; instanced walls only). */
-export const MUD_DISPLACE_GLSL = /* glsl */`
+const MUD_DISPLACE_GLSL = /* glsl */`
 #ifdef USE_INSTANCING
 if (transformed.y > uMudShape.y) {
   // (looked up on the wall's centre line, so the crown stays level across the wall's thickness)

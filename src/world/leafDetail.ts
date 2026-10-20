@@ -16,11 +16,11 @@
 import * as THREE from 'three';
 import { TREE_ARCHETYPES, type TreeSpecies } from './treeSpecies.ts';
 
-export type LeafDetailClass = 'broadleaf' | 'conifer' | 'autumn' | 'palm';
-export type LeafDetailFamily = 'conifer' | 'broadleaf' | 'palm' | 'birch';
+type LeafDetailClass = 'broadleaf' | 'conifer' | 'autumn' | 'palm';
+type LeafDetailFamily = 'conifer' | 'broadleaf' | 'palm' | 'birch';
 type ToneFunction = (hue: number, saturation: number, lightness: number) => readonly [number, number, number];
 /** The slice of a species palette the class resolution reads. */
-export interface LeafDetailPalette { texTone?: ToneFunction | null }
+interface LeafDetailPalette { texTone?: ToneFunction | null }
 
 export const LEAF_DETAIL_CLASSES: readonly LeafDetailClass[] = Object.freeze(['broadleaf', 'conifer', 'autumn', 'palm']);
 /** The tile's edge in texels. */
@@ -205,7 +205,7 @@ export function leafDetailClassOfSpecies(species: string, palette: LeafDetailPal
   return resolveLeafDetailClass(archetype?.family ?? 'broadleaf', palette?.texTone ?? null);
 }
 
-export interface LeafDetailLibrary {
+interface LeafDetailLibrary {
   /** The class of a species from its archetype family and the map palette's tone. */
   classOf(species: string, palette: LeafDetailPalette | null | undefined): LeafDetailClass;
   /** The class's tile, built on first use; null when the library is disabled (the mobile tier). */

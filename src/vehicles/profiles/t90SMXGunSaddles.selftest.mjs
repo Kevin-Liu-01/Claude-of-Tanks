@@ -71,13 +71,13 @@ function testActualSeating(gun,helper,label,material) {
 }
 function testPoseOwnership(tank,gun,label) {
   const pitch=tank.root.getObjectByName('rig_gun'),recoil=tank.root.getObjectByName('rig_recoil');
-  assert.equal(gun.parent,recoil,`${label}: actual saddle buffer lives under recoil`);
+  assert.ok(gun.parent === recoil,`${label}: actual saddle buffer lives under recoil`);
   const before=new THREE.Vector3(0,.121,1.1008).applyMatrix4(gun.matrixWorld),geometry=gun.geometry;
   recoil.position.z=-.20;tank.root.updateMatrixWorld(true);
   const after=new THREE.Vector3(0,.121,1.1008).applyMatrix4(gun.matrixWorld);
   near(after.z-before.z,-.20,.000001,`${label}: saddles physically recoil with barrel`);
   pitch.rotation.x=-14*Math.PI/180;tank.root.updateMatrixWorld(true);
-  assert.equal(gun.geometry,geometry,`${label}: pitch and recoil preserve creation-time buffers`);
+  assert.ok(gun.geometry === geometry,`${label}: pitch and recoil preserve creation-time buffers`);
 }
 for(const quality of ['high','low']) {
   const tank=createTank('t90sm',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});

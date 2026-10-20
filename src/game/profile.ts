@@ -14,6 +14,8 @@ export interface BattleRecord {
   kills: number;
   damage: number;
   vehicleId: string;
+  /** (ac130-fx-228 r3) the player flew the AC-130 that battle: the last-battle card names the aircraft */
+  aircraft?: boolean;
   mapId: string;
   durationS: number;
   completedAt: number;
@@ -36,6 +38,7 @@ interface BattleResultInput {
   kills?: RuntimeValue;
   damage?: RuntimeValue;
   vehicleId?: RuntimeValue;
+  aircraft?: RuntimeValue;
   mapId?: RuntimeValue;
   durationS?: RuntimeValue;
   completedAt?: RuntimeValue;
@@ -101,6 +104,7 @@ function sanitizeBattle(value: RuntimeValue): BattleRecord | null {
     kills: finiteInt(source.kills),
     damage: finiteInt(source.damage),
     vehicleId: typeof source.vehicleId === 'string' ? source.vehicleId : '',
+    ...(source.aircraft === true ? { aircraft: true } : {}),
     mapId: typeof source.mapId === 'string' ? source.mapId : '',
     durationS: finiteInt(source.durationS),
     completedAt: Number.isFinite(source.completedAt) ? Number(source.completedAt) : 0,
@@ -165,6 +169,7 @@ export function recordBattleResult({
   kills = 0,
   damage = 0,
   vehicleId = '',
+  aircraft = false,
   mapId = '',
   durationS = 0,
   completedAt = Date.now(),
@@ -175,6 +180,7 @@ export function recordBattleResult({
     kills,
     damage,
     vehicleId,
+    aircraft,
     mapId,
     durationS,
     completedAt,
@@ -228,11 +234,15 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
       tally = null;
       return;
     }
+    // (ac130-fx-228 r3) the end roster's own row says the player flew the AC-130 (its card names the aircraft)
+    const roster = Array.isArray(event.roster) ? event.roster.map(recordOf) : [];
+    const own = roster.find((row) => row != null && (row.isPlayer === true || (tally?.playerId != null && row.id === tally.playerId)));
     recordBattleResult({
       result: event.result,
       kills: tally.kills,
       damage: tally.damage,
       vehicleId: tally.vehicleId,
+      aircraft: own?.aircraft === true,
       mapId: event.mapId || tally.mapId,
       durationS: Number.isFinite(event.durationS)
         ? Number(event.durationS) : Math.max(0, (Date.now() - tally.startedAt) / 1000),

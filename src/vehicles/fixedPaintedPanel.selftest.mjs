@@ -5,7 +5,7 @@ import {markFixedPaintedPanel,materialOnlyPaintSourceBucket} from './profiles/fi
 const g=new THREE.BoxGeometry(.2,.3,.4), plain=g.clone(), second=g.clone();
 try{
   const original=new Uint8Array(g.attributes.position.array.buffer.slice(0));
-  assert.equal(markFixedPaintedPanel(g,'fixed-source-sheet','hullRubber'),g);
+  assert.ok(markFixedPaintedPanel(g,'fixed-source-sheet','hullRubber') === g);
   assert.deepEqual(new Uint8Array(g.attributes.position.array.buffer),original);
   assert.equal(materialOnlyPaintSourceBucket([g]),'hullRubber');
   assert.equal(materialOnlyPaintSourceBucket([]),undefined);

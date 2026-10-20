@@ -60,7 +60,7 @@ function columns(rect: WallRect, holes: readonly Hole[], pitch: number, inset: n
 }
 
 /** A sheet's livery: its own shade of the wall's, one in five a patch of another (`patch`). */
-export type SheetLivery = (k: number) => Rgb;
+type SheetLivery = (k: number) => Rgb;
 
 /**
  * Corrugated sheet on a framed wall: sheets `cover` wide from the foot to the plate, a second row lapping the first

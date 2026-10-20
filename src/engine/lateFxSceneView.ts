@@ -37,7 +37,13 @@ function canBorrowLayerObject(object: Renderable): boolean {
   if (object.isLOD && object.autoUpdate) return false;
   if (object.isLight && object.castShadow) return false;
   if (!object.isMesh && !object.isLine && !object.isPoints && !object.isSprite) return true;
-  return object.onBeforeRender === defaultBeforeRender && object.onAfterRender === defaultAfterRender
+  // (2026-10-19, the 229 perf pass) an owner whose callbacks never read the scene marks the object
+  // userData.lateFxSceneAgnostic (the projectile tracers', the missile trails' and wires' viewport reads): it draws
+  // through the view too. Before, any round in flight sent the FX draw down the scene's own path, whose zero-light hash
+  // re-resolved every lit material's program on the next world draw (the 229 battle census: ~180 getProgram calls a
+  // frame while shells flew)
+  return (object.userData.lateFxSceneAgnostic === true
+    || (object.onBeforeRender === defaultBeforeRender && object.onAfterRender === defaultAfterRender))
     && (!object.material || canBorrowMaterials(object.material));
 }
 

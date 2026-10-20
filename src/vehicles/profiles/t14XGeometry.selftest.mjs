@@ -236,11 +236,11 @@ for (const quality of ['high', 'low']) {
     }
     const gun = tank.root.getObjectByName('rig_gun');
     const yaw = tank.root.getObjectByName('rig_turret');
-    assert.equal(gun.parent, yaw, 'cannon pitch follows turret yaw');
+    assert.ok(gun.parent === yaw, 'cannon pitch follows turret yaw');
     near(gun.getWorldPosition(new THREE.Vector3()).y, 2.051, .001, 'physical cannon bore');
     near(new THREE.Box3().setFromObject(gun).max.z, 5.64301, .008, 'source cannon muzzle');
     const rws = tank.root.getObjectByName('armataXRemoteMachineGun');
-    assert.equal(rws.parent, yaw, 'roof weapon is mounted to rotating assembly');
+    assert.ok(rws.parent === yaw, 'roof weapon is mounted to rotating assembly');
     assert.equal(rws.userData.firingAxis, '+Z', 'level collinear receiver and barrel');
     near(new THREE.Box3().setFromObject(rws).max.z, -.70595, .005, 'exposed source roof-MG muzzle');
     const local = rws.position.clone();

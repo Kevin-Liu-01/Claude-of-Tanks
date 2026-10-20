@@ -13,7 +13,7 @@ import * as THREE from 'three';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { hash, hexLin, mix, stream, type Rgb } from './craftMesh.ts';
 
-export type EjectaClimate = 'turf' | 'mud' | 'sand' | 'snow' | 'town' | 'regolith' | 'ash';
+type EjectaClimate = 'turf' | 'mud' | 'sand' | 'snow' | 'town' | 'regolith' | 'ash';
 const CLIMATE: Readonly<Record<string, EjectaClimate>> = Object.freeze({
   verdant: 'turf', steppe: 'turf', autumn: 'turf', coastal: 'turf', frontier: 'turf', reservoir: 'turf', polders: 'mud',
   fjord: 'turf', alpine: 'turf', longleaf: 'turf', orchard: 'turf', railyard: 'turf', airfield: 'turf', cliffbridge: 'turf',

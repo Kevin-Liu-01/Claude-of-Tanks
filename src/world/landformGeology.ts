@@ -128,7 +128,7 @@ export interface LandformGeology {
 }
 
 /** The slice of a landform the geology reads. */
-export interface GeologicForm {
+interface GeologicForm {
   kind: string;
   x: number;
   z: number;
@@ -806,7 +806,7 @@ function ridgeReach(form: GeologicForm, outline: number, edge: number): number {
   return Math.hypot(Math.max(1, (form.length || 100) * 0.5) + edge, width);
 }
 
-export function hasGeologyZones(form: GeologicForm): boolean {
+function hasGeologyZones(form: GeologicForm): boolean {
   const geology = form.geology;
   if (!geology) return false;
   if (form.kind === 'ridge') return geology.profile === 'flow';

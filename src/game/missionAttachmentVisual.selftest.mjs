@@ -20,7 +20,7 @@ for(const id of ['m1a1_abrams_hc','kf41_lynx','strv103b'])for(const scale of [1,
  const view={kind:'drone',active:false,cooldownS:0};
  syncMissionAttachment(root,spec,view,false);
  const rail=root.getObjectByName('Reusable mission payload rail'),drone=root.getObjectByName('Docked FPV mission payload');
- assert.equal(rail.parent,seat.frame==='turret'?turret:root);
+ assert.ok(rail.parent === (seat.frame==='turret'?turret:root));
  for(const yaw of [0,Math.PI/2,-2.1]){
   turret.rotation.y=yaw;root.updateMatrixWorld(true);
   const expected=new Vector3(seat.x+(seat.payloadOffset?.[0]??0),seat.y+DRONE_DOCK_HEIGHT_M,seat.z+(seat.payloadOffset?.[1]??0));
@@ -57,7 +57,7 @@ for(const id of ['m1a1_abrams_hc','kf41_lynx','strv103b'])for(const scale of [1,
  view.active=false;syncMissionAttachment(root,spec,view,true);assert.equal(rail.visible,true);assert.equal(drone.visible,false);
  assert.ok(platform.material.color.getHex()<0x404040,'burnt-out carrier chars its dock');
  syncMissionAttachment(root,spec,view,false);assert.equal(drone.visible,true);assert.equal(platform.material.color.getHex(),0xffffff,'a revived carrier restores the painted dock');
- root.dispatchEvent({type:'removed'});assert.equal(rail.parent,null);
+ root.dispatchEvent({type:'removed'});assert.ok(rail.parent === null);
  clearMissionAttachment(root);root.dispatchEvent({type:'removed'});
  assert.ok([...disposal.values()].every(count=>count===1),'every unique dock/airframe GPU resource disposed exactly once');
 }
@@ -87,7 +87,7 @@ console.log('missionAttachmentVisual: turret/casemate ownership, rotation, scale
  const view={kind:'drone',active:false,cooldownS:0},dt=1/60;
  syncMissionAttachment(root,spec,view,false,dt);
  const drone=root.getObjectByName('Docked FPV mission payload'),detail=root.getObjectByName('Docked FPV airframe detail'),datum=drone.position.clone();
- assert.equal(root.getObjectByName('Docked FPV arrival'),undefined,'a carrier first seen ready shows its parked airframe, no landing');
+ assert.ok(root.getObjectByName('Docked FPV arrival') === undefined,'a carrier first seen ready shows its parked airframe, no landing');
  view.cooldownS=3;syncMissionAttachment(root,spec,view,false,dt);assert.equal(drone.visible,false,'empty cradle while the payload is away');
  view.cooldownS=0;syncMissionAttachment(root,spec,view,false,dt);
  const arrival=root.getObjectByName('Docked FPV arrival');

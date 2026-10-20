@@ -62,13 +62,13 @@ import { createTank } from './tankFactory.ts';
   paint.color.setHex(0x33382c); // a family retinted the shared paint in place after the bake
   const touched = normalizeTankAppearance(root, { wheelPaint: paint, wheelPaintShade: shade });
   assert.ok(touched >= 6, `re-seated and normalised (${touched})`);
-  assert.equal(discs.material, paint, 'the wheelHex clone on the discs re-seats onto the hull paint');
-  assert.equal(drum.material, paint, 'the clone on an end-wheel body re-seats onto the hull paint');
-  assert.equal(ring.material, paint, 'fitting paint under a dish role re-seats onto the hull paint');
-  assert.equal(arm.material, shade, 'a paint clone on the suspension arms re-seats onto the shade');
-  assert.equal(camo.material, mapped, 'camouflage-mapped wheel paint is its own material and stays');
-  assert.equal(roller.material[1], paint, 'a material-array slot re-seats too');
-  assert.equal(roller.material[0], tire, 'the rubber slot is untouched');
+  assert.ok(discs.material === paint, 'the wheelHex clone on the discs re-seats onto the hull paint');
+  assert.ok(drum.material === paint, 'the clone on an end-wheel body re-seats onto the hull paint');
+  assert.ok(ring.material === paint, 'fitting paint under a dish role re-seats onto the hull paint');
+  assert.ok(arm.material === shade, 'a paint clone on the suspension arms re-seats onto the shade');
+  assert.ok(camo.material === mapped, 'camouflage-mapped wheel paint is its own material and stays');
+  assert.ok(roller.material[1] === paint, 'a material-array slot re-seats too');
+  assert.ok(roller.material[0] === tire, 'the rubber slot is untouched');
   assert.equal(paint.color.getHex(), 0x545b48, 'the in-place retint returns to the stamped scheme tone');
   assert.equal(tire.color.getHex(), RUNNING_GEAR_PALETTE.tireRubber, 'tires snap to the fleet rubber');
   // the release audit reads the same tree clean

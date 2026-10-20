@@ -2,14 +2,20 @@ import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
 import { isMainThread, parentPort, workerData, Worker } from 'node:worker_threads';
-import { preparePacingRoster } from './pacingRoster.test-support.ts';
-import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.ts';
-import { MAP_IDS } from '../src/world/maps/index.ts';
-import { createDedicatedWorldCollision } from './dedicatedWorldCollision.ts';
-import { PACING_SAMPLES, pacingSeed, pacingStats, pacingVerdicts } from './battlePacing.test-support.mjs';
+import { MAP_IDS } from '../src/world/maps/mapIds.ts';
+import { mergeShardReports, PACING_SAMPLES, pacingMapLine, pacingRunOrder, pacingShardMaps, pacingStats,
+  pacingVerdicts } from './battlePacing.test-support.mjs';
+import { gatherPacingShares, pacingRunDirectory, pacingShardReport } from './battlePacingRun.test-support.mjs';
 
 // Modes (docs/DEVELOPMENT.md, "The pacing tail"):
-// - core (npm test): the 132 matches, four per map, judged by the gate below; one match may end inside 90 s.
+// - core (npm test): the 132 matches, four per map, judged by the gate below; one match may end inside 90 s. Since
+//   2026-10-16 (test-speed R9a) the eight server/battlePacingShard<n>.selftest.mjs receipts play them, one thread
+//   each, and write their records into the run's directory (COT_SELFTEST_RUN_DIR, a fresh one per tools/run-selftests
+//   invocation or per gate pool); this receipt waits for any share a live shard is playing, merges the records (every
+//   map's samples exactly once, at their seeds, on this tree) and judges them. A share nobody plays in this run (a
+//   shard that failed, was skipped or has not started) is claimed and played here, so the gate always judges all 132
+//   and each share is played once (server/battlePacingRun.test-support.mjs). Without a run directory, as in
+//   `node server/battlePacing.selftest.mjs`, this receipt plays all 132 itself.
 // - tail (COT_PACING_TAIL=1, `npm run test:pacing:tail`): the 264 matches, the 132 plus samples 4-7 on every map,
 //   judged by the same gate with the owner's floor as a rate: at most 0.5 % of them inside 90 s.
 // - COT_PACING_MAPS=a,b plays those maps' matches of the full run (the seeds are keyed to each map's index in MAP_IDS)
@@ -17,75 +23,36 @@ import { PACING_SAMPLES, pacingSeed, pacingStats, pacingVerdicts } from './battl
 //   COT_PACING_REPORT=<file> writes the match records: tools/pacing-tail.mjs merges a run played in shards, judges it
 //   by the same gate and, given the PR head's records on the same matches, compares the share inside 90 s.
 // - COT_PACING_JOBS=<n> plays the maps on n worker threads of this file (default: a quarter of the cores, 1 to 4;
-//   COT_PACING_JOBS=1 plays them on the main thread). Every mode above takes it. The maps are dealt round-robin and
-//   each worker plays its share in MAPS order; the records and the log come back in MAPS order and sample order, so
-//   the report, the printed lines and the gate equal the one-thread run's. Each match is a function of its seed and
-//   map alone (the shards of tools/pacing-tail.mjs rely on it too); a record that moved with the job count would be
-//   a defect in the simulation, not in this receipt.
+//   COT_PACING_JOBS=1 plays them on the main thread). Every mode above takes it for what this receipt plays itself;
+//   the core run with a run directory plays only the shares no shard claimed (none in an ordinary pool run), up to n
+//   at once, one worker each (229: one thread made a judge whose shards were skipped play 132 matches in a row). The maps are dealt
+//   round-robin and each worker plays its share in MAPS order; the records and the log come back in MAPS order and
+//   sample order, so the report, the printed lines and the gate equal the one-thread run's. Each match is a function of
+//   its seed and map alone (the shards of tools/pacing-tail.mjs rely on it too); a record that moved with the job count
+//   would be a defect in the simulation, not in this receipt.
 const TAIL = process.env.COT_PACING_TAIL === '1';
 const SAMPLES = TAIL ? PACING_SAMPLES.tail : PACING_SAMPLES.core;
 const MAPS = process.env.COT_PACING_MAPS
   ? process.env.COT_PACING_MAPS.split(',').filter((id) => MAP_IDS.includes(id))
   : MAP_IDS;
 const PARTIAL = MAPS.length < MAP_IDS.length;
+const RUN_DIR = process.env.COT_SELFTEST_RUN_DIR;
 const JOBS = Math.floor(Number(process.env.COT_PACING_JOBS))
   || Math.max(1, Math.min(4, Math.floor(availableParallelism() / 4)));
+// The unclaimed shares of the core run this receipt plays at once, each on its own worker thread when more than one. In a
+// pool every shard claims its own share before the judge is admitted, so this matters when the shards did not run
+// (--only on the judge, or their PASSes reused while the judge's was not): then the judge plays them JOBS at a time, as
+// the one-receipt run did (229, critic r1: one thread made that 132 matches in a row).
+const SHARE_PLAYERS = JOBS;
 // Each worker's old-generation cap: max(2048, 1.5 x the one-thread run's peak heap). That run's whole-process max RSS,
 // an upper bound on its heap, was 1,118 MB over all 33 maps (2026-10-13), and a worker plays at most 9 of them.
 const WORKER_HEAP_MB = 2048;
 
-// Deterministic default private-lobby rosters per battlefield. The human remains idle deliberately: this is the
-// historical worst case where the bot fill used to converge, ram, and decide matches in roughly two minutes. It also
-// verifies bots do not dog-pile an inactive player.
-// Plays `samples` matches on each of `maps`; returns their records (map order, then sample order) and one log line per
-// map. `onLine` prints each line as its map finishes (the one-thread run).
+// The matches themselves: server/battlePacingPlay.test-support.mjs (shared with the shards), imported only when this
+// receipt plays some of them.
 async function playMaps(maps, samples, onLine = () => {}) {
-  const matches = [];
-  const lines = [];
-  for (const mapId of maps) {
-    const mapMatches = [];
-    for (let sample = 0; sample < samples; sample++) {
-      // keyed to the map's index in MAP_IDS: a run over some maps plays the full run's matches on them (a seed keyed to
-      // the filtered list played other matches)
-      const matchSeed = pacingSeed(MAP_IDS, mapId, sample);
-      const lobby = {
-        phase: 'starting',
-        matchSeed,
-        mapId,
-        teamSize: 2,
-        players: [{ id: 'host', name: 'Host', specId: 'm1a1_abrams_hc', team: 'alpha' }],
-      };
-      const players = await preparePacingRoster(lobby);
-      const match = createAuthoritativeMatch({
-        players,
-        mapId,
-        seed: matchSeed,
-        countdownS: 0,
-        worldCollision: createDedicatedWorldCollision(mapId),
-      });
-      match.onMatchReady();
-      // Floating accumulation can cross the exact 900 s boundary one fixed
-      // step after 54,000; allow that single simulation quantum.
-      for (let tick = 0; tick < 15 * 60 * 60 + 2 && !match.result; tick++) {
-        match.step({ dt: 1 / 60, inputs: new Map() });
-      }
-      assert.ok(match.result, `${mapId}/${sample}: match resolves by the 15 minute cap`);
-      if (match.resultReason === 'time_limit') {
-        assert.ok(match.timeS >= 899,
-          `${mapId}/${sample}: time-limit result occurs at the configured cap`);
-      }
-      const record = { mapId, seed: matchSeed, sample, timeS: match.timeS, result: match.resultReason,
-        roster: players.map((player) => player.specId) };
-      matches.push(record);
-      mapMatches.push(record);
-    }
-    const mapTimeouts = mapMatches.filter((match) => match.result === 'time_limit').length;
-    const line = `${mapId}: ${mapMatches.map((match) => match.timeS.toFixed(0)).join('/')}s ` +
-      `timeouts=${mapTimeouts}/${samples}`;
-    lines.push(line);
-    onLine(line);
-  }
-  return { matches, lines };
+  const { playPacingMaps } = await import('./battlePacingPlay.test-support.mjs');
+  return playPacingMaps(maps, samples, onLine);
 }
 
 // The share's result, or the worker's failure (an assertion's error, or an exit before the result).
@@ -97,15 +64,16 @@ function workerResult(worker) {
   });
 }
 
-async function playAll() {
-  if (JOBS <= 1 || MAPS.length < 2) {
-    return (await playMaps(MAPS, SAMPLES, (line) => console.log(line))).matches;
-  }
-  // MAPS[i] goes to share i % n as its floor(i / n)-th map.
-  const shares = Array.from({ length: Math.min(JOBS, MAPS.length) }, () => []);
-  MAPS.forEach((mapId, index) => shares[index % shares.length].push(mapId));
-  const workers = shares.map((maps) => new Worker(new URL(import.meta.url), {
-    workerData: { maps, samples: SAMPLES },
+// Plays `maps` (a sublist of MAPS, in MAPS order) here: their records in that order, each map's line printed (as it
+// finishes on one thread; in map order after the workers).
+async function playHere(maps) {
+  const say = (line) => console.log(line);
+  if (JOBS <= 1 || maps.length < 2) return (await playMaps(maps, SAMPLES, say)).matches;
+  // maps[i] goes to share i % n as its floor(i / n)-th map.
+  const shares = Array.from({ length: Math.min(JOBS, maps.length) }, () => []);
+  maps.forEach((mapId, index) => shares[index % shares.length].push(mapId));
+  const workers = shares.map((share) => new Worker(new URL(import.meta.url), {
+    workerData: { maps: share, samples: SAMPLES },
     resourceLimits: { maxOldGenerationSizeMb: WORKER_HEAP_MB },
   }));
   let results;
@@ -116,12 +84,47 @@ async function playAll() {
     throw error;
   }
   const matches = [];
-  for (let index = 0; index < MAPS.length; index++) {
+  for (let index = 0; index < maps.length; index++) {
     const share = results[index % shares.length];
     const position = Math.floor(index / shares.length);
-    console.log(share.lines[position]);
+    say(share.lines[position]);
     matches.push(...share.matches.slice(position * SAMPLES, (position + 1) * SAMPLES));
   }
+  return matches;
+}
+
+// One share of the core run played here (on its own worker thread when SHARE_PLAYERS > 1), as its shard would report it.
+async function playShare(shard) {
+  const maps = pacingShardMaps(MAP_IDS, shard);
+  if (SHARE_PLAYERS <= 1) return pacingShardReport(shard, maps, (await playMaps(maps, SAMPLES)).matches, 'battlePacing');
+  const worker = new Worker(new URL(import.meta.url), {
+    workerData: { maps, samples: SAMPLES },
+    resourceLimits: { maxOldGenerationSizeMb: WORKER_HEAP_MB },
+  });
+  try {
+    return pacingShardReport(shard, maps, (await workerResult(worker)).matches, 'battlePacing');
+  } finally {
+    await worker.terminate();
+  }
+}
+
+// The run's matches: the core run merges the shards' records from this run and plays only the shares nobody else
+// plays (SHARE_PLAYERS at a time); the tail and a subset of the maps play everything here, as before.
+async function playAll() {
+  const say = (message) => console.log(`battlePacing.selftest: ${message}`);
+  if (!TAIL && !PARTIAL && !RUN_DIR) {
+    say(`no run directory (COT_SELFTEST_RUN_DIR): all ${MAP_IDS.length * SAMPLES} matches play here on ${Math.min(JOBS, MAPS.length)} `
+      + 'thread(s), beside any shard that played its share in this run; a pool that runs the shards exports one directory for its '
+      + 'receipts (docs/DEVELOPMENT.md, "The pacing tail")');
+  }
+  if (TAIL || PARTIAL || !RUN_DIR) return playHere(MAPS);
+  const { reports, playedHere } = await gatherPacingShares(RUN_DIR, { playShare, players: SHARE_PLAYERS, log: say });
+  const matches = pacingRunOrder(MAP_IDS, mergeShardReports([...reports.values()], MAP_IDS));
+  for (const mapId of MAPS) console.log(pacingMapLine(mapId, matches, SAMPLES));
+  const shards = [...reports.keys()].sort((a, b) => a - b);
+  say(`the records of shard(s) ${shards.filter((shard) => !playedHere.includes(shard)).join(', ') || 'none'} from this run`
+    + (playedHere.length ? `; shard(s) ${[...playedHere].sort((a, b) => a - b).join(', ')} played here` : '')
+    + ` (${pacingRunDirectory(RUN_DIR)})`);
   return matches;
 }
 

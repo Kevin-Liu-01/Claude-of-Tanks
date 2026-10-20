@@ -30,7 +30,7 @@ for (const id of BRADLEY_DONOR_IDS) {
         `${id}/${quality}: exposes one complete suspension-driven track assembly`);
       assert.equal(gear.trackPatternId, 'compact-ifv',
         `${id}/${quality}: keeps the Bradley-family smart-track pattern`);
-      assert.equal(tank.root.getObjectByName('hullRunningGearTrack'), undefined,
+      assert.ok(tank.root.getObjectByName('hullRunningGearTrack') === undefined,
         `${id}/${quality}: has no static pad rows or return-run filler beside the smart track`);
 
       const restWheels = Array.from(wheels.instanceMatrix.array);

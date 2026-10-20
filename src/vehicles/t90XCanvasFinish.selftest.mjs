@@ -53,7 +53,7 @@ function assertCloth(tank){
   const rig=tank.root.getObjectByName('rig_gun');
   assert.ok(cloth.parent===rig,'continuous gun skin keeps the original always-visible gun-rig owner');
   assert.equal(cloth.material.name,'cot:canvas');
-  assert.equal(cloth.material.map,null,'fabric must not repeat the armor camouflage atlas');
+  assert.ok(cloth.material.map === null,'fabric must not repeat the armor camouflage atlas');
   assert.equal(cloth.material.metalness,0);
   assert.equal(cloth.material.roughness,.97);
   assert.equal(cloth.material.color.getHex(),0x42452f);
