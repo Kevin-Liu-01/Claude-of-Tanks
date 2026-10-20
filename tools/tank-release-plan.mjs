@@ -15,7 +15,9 @@ export function tankReleaseSteps(ids, gate, node = process.execPath) {
     // Reject fitting/outline/continuity defects before full-fleet anatomy and
     // the integrated test/build tail. Same assertions and fresh measurements;
     // only ordering changes. This child already queues its render phases.
-    {...cpu('tank-standard-check',selected,...(gate?['--gate']:[])),capture:false},
+    // --stages (2026-10-16, test-speed R4b): a red geometry gate no longer hides
+    // B2-B4; every stage reports for every id and any gated red still fails.
+    {...cpu('tank-standard-check',selected,...(gate?['--gate']:[]),'--stages'),capture:false},
     // Sealed hull (2026-09-13): no view may look into the tank through a culled
     // or missing face; each id is held to docs/geometry-gate/sealed.json.
     cpu('tank-sealed-check',selected,'--ledger=docs/geometry-gate/sealed.json',...(gate?['--gate']:[])),

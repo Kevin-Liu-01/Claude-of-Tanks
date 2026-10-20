@@ -3,7 +3,7 @@ import { tankReleaseSteps, tankReleaseStages } from './tank-release-plan.mjs';
 const steps=tankReleaseSteps('leo2a7v,t14_armata',true,'node-test');
 const byTool=tool=>steps.find(step=>step.args[0]===`tools/${tool}.mjs`);
 assert.deepEqual(steps.map(step=>[step.command,...step.args].join(' ')),[
-  'node-test tools/tank-standard-check.mjs --ids=leo2a7v,t14_armata --gate',
+  'node-test tools/tank-standard-check.mjs --ids=leo2a7v,t14_armata --gate --stages',
   'node-test tools/tank-sealed-check.mjs --ids=leo2a7v,t14_armata --ledger=docs/geometry-gate/sealed.json --gate',
   'node-test tools/procedural-fidelity.mjs --ids=leo2a7v,t14_armata --check --board --neutral-board',
   'node-test tools/gen-combat-anatomy.mjs --check',
@@ -34,6 +34,9 @@ assert.ok(byTool('procedural-fidelity').args.includes('--neutral-board'),
   'strict source release retains fresh equal-material visual/articulation evidence after scoring');
 assert.equal(byTool('procedural-fidelity').capture,true);
 assert.ok(byTool('tank-standard-check').args.includes('--gate'));
+// 2026-10-16 (test-speed R4b): the release reports every standard stage, so a red geometry gate cannot hide B2-B4.
+assert.ok(byTool('tank-standard-check').args.includes('--stages'));
+assert.ok(tankReleaseSteps('m1a1_abrams_hc',false,'node-test')[0].args.includes('--stages'),'with or without --gate');
 assert.equal(byTool('tank-standard-check').capture,false,'standard children acquire their own phase locks');
 assert.equal(byTool('gen-combat-anatomy').capture,true,'fleet construction uses the shared resource queue');
 assert.equal(byTool('module-hit-probe').capture,true,'fleet CPU probing uses the shared resource queue');
