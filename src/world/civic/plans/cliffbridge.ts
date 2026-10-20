@@ -80,7 +80,16 @@ function plaza(id: string, pad: number, mirror: boolean): CivicAreaPlan {
     holds: [],
     centre: { x: 0, z: cz, ringR: [8.5, 9.0], roseR: 3, rays: 8 },
     beds,
-    paving: [],
+    // (229 b1 r1, the blind critics: "raw dark asphalt" round the beds) the plaza floored in pale stone tiles round its beds,
+    // the road's arm with it
+    paving: [
+      { rect: R({ x0: room.x0, x1: -32, z0: -212, z1: -132 }), kind: 'tiles' },
+      { rect: R({ x0: -13, x1: 13, z0: -212, z1: -132 }), kind: 'tiles' },
+      { rect: R({ x0: 32, x1: room.x1, z0: -212, z1: -132 }), kind: 'tiles' },
+      ...[[-32, -13], [13, 32]].flatMap(([x0, x1]) => [[-212, -205], [-178, -166], [-139, -132]].map(([z0, z1]) => ({ rect: R({ x0, x1, z0, z1 }), kind: 'tiles' as const }))),
+      // over the apron's painted edge outside the room, to the street and the bridgehead (no dark band at the plaza's ends)
+      { rect: R({ x0: -40, x1: 38.5, z0: -218, z1: -212 }), kind: 'tiles' }, { rect: R({ x0: -40, x1: 38.5, z0: -132, z1: -127 }), kind: 'tiles' },
+    ],
     monument: null,
     // (229 b1 r1, the critics: the acacia form read oversized, spiky and sparse) the oak slot (the map's holm oak) small,
     // a round dark crown standing for the orange tree

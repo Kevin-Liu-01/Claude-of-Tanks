@@ -86,9 +86,7 @@ export const MAP_PAVED_SURFACES: Readonly<Record<string, PavedSurfaceConfig>> = 
   // only: a dark tar macadam, few cracks, no covers (R2, the first frames: a pale modern grey band)
   monsoon: Object.freeze({ tone: 0.70, patches: 0.6, cracks: 0.3, covers: 0 }),
   // Aegis Crossing (Ronda, 1972): the old towns' streets and squares in setts
-  // (229 b1 r1, the blind critics on the civic plazas: the squares' dark fine setts read from any distance as raw asphalt)
-  // the plazas' setts a pale calcarenite, their joints sanded toward it
-  cliffbridge: Object.freeze({ street: 'cobble', square: 'cobble', townOnly: true, tone: 1.1, squareTone: 1.45, squareJoint: 0.5 }),
+  cliffbridge: Object.freeze({ street: 'cobble', square: 'cobble', townOnly: true, tone: 1.1 }),
 });
 
 /** Each map's roads by path index where a path's surface differs from the map's own (a map's own pathStyles win). */

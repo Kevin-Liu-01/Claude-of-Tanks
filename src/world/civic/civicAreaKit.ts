@@ -101,6 +101,21 @@ function settRect(m: CivicMesh, r: CivicRect, hex: number, lift = SKIN): void {
   m.skinRect(r.x0, r.z0, r.x1, r.z1, lift, (x, z) => toned(base, Math.floor(x / 0.3), Math.floor(z / 0.3), 0.09, 9), 0.3);
 }
 
+/** (229 b1 r1) A plaza's square tiles over a rectangle: each tile its own tone of the style's pavement stone, on a joint
+ *  bed, a hand under the roundel's lift (the ring and its rose lie on them); a phone lays tiles twice the size. */
+function tileRect(m: CivicMesh, r: CivicRect, style: RegionalCivicStyle, tier: 'desktop' | 'mobile'): number {
+  const base = hexRgb(style.pavement.hex), joint = hexRgb(style.pavement.joint), u = tier === 'mobile' ? 1.5 : 0.75, gap = 0.014;
+  const lift = SKIN - 0.004;
+  m.skinRect(r.x0, r.z0, r.x1, r.z1, lift - 0.003, joint, 3.0);
+  const nx = Math.max(1, Math.round((r.x1 - r.x0) / u)), nz = Math.max(1, Math.round((r.z1 - r.z0) / u));
+  const ux = (r.x1 - r.x0) / nx, uz = (r.z1 - r.z0) / nz;
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    const x0 = r.x0 + i * ux + gap / 2, z0 = r.z0 + j * uz + gap / 2;
+    m.skinRect(x0, z0, x0 + ux - gap, z0 + uz - gap, lift, toned(base, Math.floor(x0 * 4), Math.floor(z0 * 4), style.pavement.tone * 1.4, 71), 4);
+  }
+  return nx * nz;
+}
+
 /** A kerb (or a coping, a wall unit run) from a to b in units, its section from `section(end, top)`; each unit toned. */
 function unitRun(m: CivicMesh, a: readonly [number, number], b: readonly [number, number], side: readonly [number, number],
   units: readonly [number, number], col: Rgb, k: number, section: (ga: number, gb: number, end: 0 | 1) => ReadonlyArray<readonly [number, number]>, salt: number): void {
@@ -424,6 +439,7 @@ export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle,
     debug.push({ pts: [r.x0, r.z0, r.x1, r.z0, r.x1, r.z1, r.x0, r.z1], col: [40, 140, 40], fill: [170, 205, 150] });
   }
   for (const p of area.paving) {
+    if (p.kind === 'tiles') { census.tiles = (census.tiles ?? 0) + tileRect(m, p.rect, style, ctx.tier); continue; }
     if (p.kind === 'flags') flagRect(m, p.rect, style, SKIN, 3);
     else if (p.kind === 'setts') settRect(m, p.rect, style.bands.sett, SKIN);
     else graniteRect(m, p.rect, p.kind === 'basalt' ? style.bands.basalt : style.bands.granite, SKIN);

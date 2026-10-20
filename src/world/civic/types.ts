@@ -81,7 +81,8 @@ export interface CivicTreeStation { readonly x: number; readonly z: number; read
 /** A strip of flush paving (a frontage walk, a granite band, a church's path): its rectangle and its course. */
 export interface CivicPaving {
   readonly rect: CivicRect;
-  readonly kind: 'flags' | 'granite' | 'basalt' | 'setts';
+  /** (229 b1 r1) `tiles`: square stone tiles over a whole plaza (the style's pavement stone), laid under the roundel */
+  readonly kind: 'flags' | 'granite' | 'basalt' | 'setts' | 'tiles';
   /** a gutter (Rinne) of three sett rows along one long side */
   readonly gutter?: 'n' | 's' | 'e' | 'w';
 }

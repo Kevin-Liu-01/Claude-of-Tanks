@@ -229,7 +229,8 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
     for (let x = room.x0 + 0.5; x < room.x1; x += 1) for (let z = room.z0 + 0.5; z < room.z1; z += 1) {
       let d = Infinity;
       for (const [x0, x1, z0, z1] of things) d = Math.min(d, Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(z0 - z, 0, z - z1)));
-      for (const r of [...area.beds.map((b) => b.rect), ...area.paving.map((p) => p.rect)]) {
+      // (229 b1 r1: a plaza's tiles laid wall to wall fill nothing — they are its floor)
+      for (const r of [...area.beds.map((b) => b.rect), ...area.paving.filter((p) => p.kind !== 'tiles').map((p) => p.rect)]) {
         d = Math.min(d, Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1)));
       }
       d = Math.min(d, x - room.x0, room.x1 - x, z - room.z0, room.z1 - z);
