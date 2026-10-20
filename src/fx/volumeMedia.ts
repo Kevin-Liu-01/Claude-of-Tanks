@@ -558,6 +558,8 @@ interface VolumeMediaOptions {
   now: () => number;
   scene?: THREE.Scene | null;
   capacity?: number;
+  /** (ac130-fx-228 r3) the fire's emission gain for this frame's camera (a heat-imaging lens reads hot gas as hot) */
+  heatGain?: (camera: THREE.Camera | null | undefined) => number;
 }
 
 /** How far the detail tear eats into a puff's thin rim (0 off). */
@@ -794,6 +796,8 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
   }
 
   const o_now = o.now;
+  /** this frame's fire emission gain (the camera's heat imaging), set by update() before the light refresh */
+  let heatK = 1;
   // --- emit
   const bandOf = (p: VolumePuff): number => {
     const m = VOLUME_ATLAS.media[p.medium];
@@ -868,7 +872,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
       uSkyCol.value.set(lum + (sr - lum) * ks, lum + (sg - lum) * ks, lum + (sb - lum) * ks);
       uGroundCol.value.set(gr, gg, gb);
     }
-    uGrade.value.set(tune.alpha, tune.glow, tune.back, tune.ms);
+    uGrade.value.set(tune.alpha, tune.glow * heatK, tune.back, tune.ms);
     uGrade2.value.x = tune.ground;
     // (EF.11) the night level: the rig's sun (Verdant: day 4.5, sunset 2.8, night 0.6) under ~2.2 fades in the night floor
     { const sunI = rig ? (rig.sunIntensity ?? 4.5) : 4.5; const k = Math.min(1, Math.max(0, (sunI - 0.9) / 1.3));
@@ -889,6 +893,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
       drawn = 0; liveCount = 0; orderCount = 0;
       return;
     }
+    heatK = o.heatGain ? o.heatGain(camera) : 1;
     refreshLight();
     // live set (birth <= now <= birth + life), keeping last frame's order for an almost-sorted start
     let n = 0;

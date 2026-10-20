@@ -1,8 +1,10 @@
 // shockRingLight.selftest.mjs — (lane ac130-fx-228 r3, the blind critic's night "full-lens tan wash" through the
-// gunship's 3.6x lens, on the base build as well) a blast's pressure ring is dust, not light: it takes the battle pools'
-// light tint (sceneLightTint.ts) as the prints, the decals and the scars do. Under a clear day's rig it draws its own
-// tan exactly as before; under the night rig it falls to the pools' dim blue instead of glowing at the daylight level.
-// Measured on the real runtime: the ring a 152 mm ground burst launches, read after the same frames under each rig.
+// gunship's 3.6x lens, on the base build as well; the r5 critic's "the night ring is effectively invisible") a blast's
+// pressure ring is dust, not light: it takes the battle pools' light tint (sceneLightTint.ts) as the prints, the decals
+// and the scars do, and while it is young and small by the fireball, the burst's own warm light. Under a clear day's rig
+// it draws its own tan exactly as before at every age; at night it leaves the burst lit warm and has fallen to the
+// pools' dim moonlit blue by the time it spreads wide (never the old daylight tan glowing across the lens).
+// Measured on the real runtime: the ring a 152 mm ground burst launches, read at two ages under each rig.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import * as THREE from 'three';
@@ -34,33 +36,46 @@ const bus = { on(n, f) { (handlers.get(n) ?? handlers.set(n, []).get(n)).push(f)
   emit(n, p) { for (const f of handlers.get(n) ?? []) f(p); } };
 fx.bindBus(bus);
 
-/** the visible pressure rings' colours (copied: the pool's materials are reused) after a 152 mm ground burst under `lightRig` */
-function ringsUnder(lightRig, id) {
+/** the visible pressure rings' colours (copied: the pool's materials are reused) `frames` sixtieths after a 152 mm ground
+ *  burst under `lightRig` */
+function ringsUnder(lightRig, id, frames) {
   scene.userData.lightRig = lightRig;
   bus.emit('shell:expired', { shellId: `ring-${id}`, pos: [0, 0, 0], hitTerrain: true, munition: 'howitzer', chargeKg: 20,
     caliberMm: 152, shellType: 'HE' });
-  for (let i = 0; i < 3; i++) fx.update(1 / 60, [], camera, () => null);
+  for (let i = 0; i < frames; i++) fx.update(1 / 60, [], camera, () => null);
   const rings = [];
-  fx.group.traverse((o) => { if (o.isMesh && o.visible && o.geometry?.type === 'CircleGeometry' && o.material?.map) rings.push({ color: o.material.color.clone() }); });
+  fx.group.traverse((o) => { if (o.isMesh && o.visible && o.geometry?.type === 'CircleGeometry' && o.material?.map)
+    rings.push({ color: o.material.color.clone(), scale: o.scale.x }); });
   fx.resetAll();
   return rings;
 }
 
 const base = C(0x90887a);
-const day = ringsUnder(DAY, 'day');
-assert.ok(day.length >= 1, 'a 152 mm ground burst launches a pressure ring');
-for (const m of day) assert.ok(Math.abs(m.color.r - base.r) < 1e-6 && Math.abs(m.color.g - base.g) < 1e-6 && Math.abs(m.color.b - base.b) < 1e-6,
-  `by day the ring keeps its own tan exactly (${m.color.getHexString()})`);
-const night = ringsUnder(NIGHT, 'night');
-assert.ok(night.length >= 1, 'the night burst launches its ring too');
+const same = (a, b, why) => assert.ok(Math.abs(a.r - b.r) < 1e-6 && Math.abs(a.g - b.g) < 1e-6 && Math.abs(a.b - b.b) < 1e-6,
+  `${why} (${a.getHexString()} vs ${b.getHexString()})`);
+// by day: its own tan at every age (the day's white tint outweighs the burst's light)
+for (const frames of [3, 18]) {
+  const day = ringsUnder(DAY, `day${frames}`, frames);
+  assert.ok(day.length >= 1, `a 152 mm ground burst launches a pressure ring (${frames} frames)`);
+  for (const m of day) same(m.color, base, `by day the ring keeps its own tan ${frames} frames in`);
+}
 const tint = battleLightTintForRig(NIGHT, new THREE.Color());
-const want = base.clone().multiply(tint);
-for (const m of night) {
-  assert.ok(Math.abs(m.color.r - want.r) < 1e-6 && Math.abs(m.color.g - want.g) < 1e-6 && Math.abs(m.color.b - want.b) < 1e-6,
-    `at night the ring takes the pools' tint (${m.color.getHexString()} vs ${want.getHexString()})`);
-  assert.ok(lum(m.color) < 0.2 * lum(base) && m.color.b > m.color.r, `at night the ring is dim and moonlit (${m.color.getHexString()})`);
+// at night, young and small by the fireball: lit warm by its own burst, never the full daylight tan
+const young = ringsUnder(NIGHT, 'night-young', 3);
+assert.ok(young.length >= 1, 'the night burst launches its ring');
+for (const m of young) {
+  assert.ok(m.color.r > m.color.b * 1.4, `the young night ring is lit warm by its burst (${m.color.getHexString()})`);
+  assert.ok(lum(m.color) > 2 * lum(base.clone().multiply(tint)) && lum(m.color) < 0.65 * lum(base),
+    `the young night ring reads (${lum(m.color).toFixed(3)}) between the moonlit dust and the daylight tan (${lum(base).toFixed(3)})`);
+}
+// at night, spread wide (the 3.6x lens's frame): the moonlit dust, dim and blue
+const wide = ringsUnder(NIGHT, 'night-wide', 18);
+assert.ok(wide.length >= 1 && wide.every((m) => m.scale > young[0].scale * 2), 'the ring has spread wide 0.3 s in');
+for (const m of wide) {
+  assert.ok(lum(m.color) < 0.2 * lum(base) && m.color.b > m.color.r, `the spread night ring is dim and moonlit (${m.color.getHexString()})`);
+  assert.ok(lum(m.color) <= lum(base.clone().multiply(tint)) * 1.25, 'the spread night ring is (about) the pools\' moonlit tint');
 }
 // the next day's burst is tan again (the colour is set every frame, never left at the night's)
-const again = ringsUnder(DAY, 'again');
+const again = ringsUnder(DAY, 'again', 3);
 assert.ok(again.length >= 1 && again.every((m) => m.color.getHex() === base.getHex()), 'back under the day rig, the ring is its own tan');
-console.log(`shockRingLight: a 152 mm burst's pressure ring keeps its tan by day (${base.getHexString()}) and takes the night's light (${night[0].color.getHexString()}) instead of glowing in a moonlit lens`);
+console.log(`shockRingLight: a 152 mm burst's pressure ring keeps its tan by day (${base.getHexString()}) at every age; at night it leaves the burst lit warm (${young[0].color.getHexString()}) and spreads as moonlit dust (${wide[0].color.getHexString()})`);

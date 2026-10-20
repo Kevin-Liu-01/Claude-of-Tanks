@@ -629,6 +629,19 @@ const GUNSHIP_PYLON_MERGE_M = 120;
  *  airframe) gets the fade and the width cap (missileTrails.ts); a camera near the ground sees the whole trail */
 const GUNSHIP_TRAIL_NEAR_M = 70;
 const GUNSHIP_LENS_TRAIL_M = 120;
+/** (ac130-fx-228 r3, the blind critic's "the 152 mm burst has essentially no hot signature" in the gunship's infrared
+ *  lens) the heat lens images the HDR luminance over ~1.55-3.1 (engine/post.ts thermalHeat), and the media's fire is
+ *  white-hot only on its first frame: its cooling orange heart (luminance ~0.5-1) read cold a frame later, where a real
+ *  long-wave sensor still sees the hot gas white. Under a heat-imaging camera the media's fire emission (its blackbody
+ *  heart and the burst's light inside it, volumeMedia.ts uGrade.y) is this much brighter; every other camera unchanged */
+const THERMAL_FIRE_GAIN = 4;
+/** the grade's own vision code (engine/post.ts uThermal): 1 infrared, 2 thermal (heat); 0 daylight, 3 intensified */
+function imagesHeat(camera: THREE.Camera | null | undefined): boolean {
+  const ud = camera?.userData as { sensorVision?: number; thermalFlight?: boolean; flightVision?: number } | undefined;
+  if (!ud) return false;
+  const vision = ud.sensorVision ?? (ud.thermalFlight === true ? (ud.flightVision ?? 1) : 0);
+  return vision > 0.5 && vision < 2.5;
+}
 /** (ac130-fx-228 r2) its widest spread (m, the family's r1 capped) */
 const GUNSHIP_TRAIL_R1_M = 2.4;
 /** (ac130-fx-228 r2) the missile motor flare's sphere (m) and the widest it is ever drawn from the camera (rad, its
@@ -1084,7 +1097,8 @@ function* createFxSteps(
   };
   const landingGround = createLatticeGround((x, z) => deformedGroundY(x, z), groundRevision, (x, z) => baseCellFlipped(x, z));
   const vol: VolumeMedia | null = mediaTier
-    ? createVolumeMedia({ soft: particles.softParticles, now: () => particles.getTime(), scene: engineCtx.scene ?? null })
+    ? createVolumeMedia({ soft: particles.softParticles, now: () => particles.getTime(), scene: engineCtx.scene ?? null,
+      heatGain: (camera) => (imagesHeat(camera) ? THERMAL_FIRE_GAIN : 1) })
     : null;
   const chunks: DebrisChunks | null = mediaTier
     ? createDebrisChunks({ seed, now: () => particles.getTime(), scene: engineCtx.scene ?? null, groundAt: landingGround })
@@ -1492,8 +1506,12 @@ function* createFxSteps(
   // (ac130-fx-228 r3, the blind critic's night "full-lens tan wash" through the gunship's lens, the base build's too) the
   // ring is dust, not light: unlit, it drew its daylight tan at every hour, and at night the camera's exposure lifted it
   // into a glowing band; through the 3.6x lens its 20-26 m sweep crossed the whole frame. It takes the pools' light tint
-  // (update() below: white by day, so the daylight ring is unchanged; a dim blue at night) as the prints and the scars do.
+  // (white by day, so the daylight ring is unchanged; a dim blue at night) as the prints and the scars do, and while it is
+  // young and small by the fireball the burst's own warm light (the r5 blind critic: "the night ring is effectively
+  // invisible"): lit as it leaves the burst, the moonlit dust by the time it spreads across the lens (applyShockRing)
   const SHOCK_COLOR = new THREE.Color(0x90887a);
+  const SHOCK_BURST_LIT = new THREE.Color(1.0, 0.78, 0.52);
+  const SHOCK_BURST_K = 0.7;
   for (let i = 0; i < 2; i++) {
     const mat = new THREE.MeshBasicMaterial({
       map: shockTex,
@@ -1529,6 +1547,9 @@ function* createFxSteps(
     // against road/dirt at the 20 m kill framing before it dies at 400 ms.
     r.mesh.scale.setScalar((1.6 + 14.5 * k) * (r.scaleK || 1));
     r.mat.opacity = 0.45 * (r.alphaK || 1) * Math.pow(1 - t, 1.5);
+    const tint = particles.sharing.uLightTint.value, lit = SHOCK_BURST_K * Math.pow(1 - t, 2.5);
+    r.mat.color.setRGB(SHOCK_COLOR.r * Math.max(tint.r, lit * SHOCK_BURST_LIT.r), SHOCK_COLOR.g * Math.max(tint.g, lit * SHOCK_BURST_LIT.g),
+      SHOCK_COLOR.b * Math.max(tint.b, lit * SHOCK_BURST_LIT.b));
     r.mesh.visible = true;
   }
 
@@ -4735,10 +4756,7 @@ function* createFxSteps(
     camera.getWorldPosition(_flareCam);
     flareCamSet = true;
     setGunshipTrailNear(_flareCam);
-    // the grade's own vision code (engine/post.ts uThermal): 1 infrared, 2 thermal (heat); 0 daylight, 3 intensified
-    const ud = camera.userData as { sensorVision?: number; thermalFlight?: boolean; flightVision?: number };
-    const vision = ud.sensorVision ?? (ud.thermalFlight === true ? (ud.flightVision ?? 1) : 0);
-    heatCamera = vision > 0.5 && vision < 2.5;
+    heatCamera = imagesHeat(camera);
     drones.begin(particles.getTime(), camera.position);
     tracers.begin(_flareCam); // atmospherics lane; (ac130-fx-228 r3) the eye, for the gunship's lens clearance
     liveAtgmCount = 0;
@@ -5833,7 +5851,6 @@ function* createFxSteps(
         const tint = particles.sharing.uLightTint.value;
         printUniforms.uTint.value.copy(tint);
         impactDecals.material.color.copy(tint);
-        for (const ring of shockRings) ring.mat.color.copy(SHOCK_COLOR).multiply(tint);
       }
       particles.update(dt);
       structMask?.setClock(particles.getTime());
