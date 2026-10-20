@@ -22,9 +22,10 @@
 // Netting is counted apart (2026-10-16, 227 guards: kf51_u's ledger read 37 see-through px against 3,547 measured, all
 // of it sky between the alpha-cut ghillie leaves, and nothing gated it). A pixel whose only cover is declared alpha-cut
 // net or leaf dressing (tank-surface-collect.mjs alphaCutNetting: the ghillie suit's open-lattice net and garnish, the
-// decor's net and cut-branch buckets) is netting px, reported and never gated; a pixel any other transparent surface
-// covers stays the hull's see-through and gates. Transparent surfaces never take part in the opaque depth test, so a
-// hole behind netting still reads as a hole.
+// decor's net and cut-branch buckets) is netting px, never the hull's see-through; a pixel any other transparent surface
+// covers stays the hull's see-through. Both gate against their own ledger columns (netting px exactly reproduce for an
+// unchanged suit, so a net that grows, lifts off its hull or is doubled fails). Transparent surfaces never take part
+// in the opaque depth test, so a hole behind netting still reads as a hole.
 //
 // Gun bores are open by design (2026-10-14, coordinator: the netting drape moved type10b's and leo2a7v's framing and
 // single pixels inside their muzzle bores failed the hull). Every physical mouth the factory publishes (userData
@@ -63,11 +64,12 @@ const outDir = resolve(opt('out', '.qa-dev/out/sealed'));
 const writeImages = flag('images');
 
 // --ledger=path gates each tank against the committed census: a sealed tank must stay sealed, and no tank may add
-// more than max(12 px, 10 %) of true openings, or of see-through (netting apart), over its ledger row; a new vehicle
-// must be sealed with no see-through cluster. --update-ledger rewrites the rows for the checked ids and refuses any
-// regression; --update-ledger=see-through rewrites only their see-through columns (seeThroughPx, netSeeThroughPx),
-// never an opening baseline; --accept-see-through=id,... (a subset of --ids) lets either update raise those ids'
-// see-through baselines, an explicit per-id re-baseline whose openings are still held to the ledger.
+// more than max(12 px, 10 %) of true openings, of see-through, or of netting px over its ledger row; a new vehicle
+// must be sealed with no see-through cluster. --update-ledger rewrites the rows for the checked ids (and records a new
+// vehicle's row) and refuses any regression; --update-ledger=see-through rewrites only existing rows' see-through
+// columns (seeThroughPx, netSeeThroughPx), never an opening baseline; --accept-see-through=id,... (a subset of --ids)
+// lets either update set those ids' see-through and netting baselines at their measurement, and lets a new vehicle's
+// row carry a see-through cluster: an explicit per-id decision whose openings are still held (to the row, or sealed).
 const ledgerPath = opt('ledger', '');
 const ledger = ledgerPath ? JSON.parse(readFileSync(resolve(ledgerPath), 'utf8')) : null;
 const updateMode = flag('update-ledger') ? 'rows' : opt('update-ledger', '');
@@ -75,11 +77,6 @@ if (updateMode && !['rows', 'see-through'].includes(updateMode)) { console.error
 const acceptSeeThrough = opt('accept-see-through', '').split(',').filter(Boolean);
 if (acceptSeeThrough.length && !(ledger && updateMode)) { console.error('--accept-see-through re-baselines rows: it needs --ledger and --update-ledger, and never relaxes a gate'); process.exit(2); }
 import { collectTriangles } from './tank-surface-collect.mjs';
-const { createTank } = await import('../src/vehicles/tankFactory.ts');
-const { ensureInteriorFills, hasInteriorFills } = await import('../src/vehicles/interiorFills.ts');
-const { ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
-const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', 'abramsx').split(',').filter(Boolean);
-if (writeImages) mkdirSync(outDir, { recursive: true });
 
 function viewDirections() {
   const dirs = [];
@@ -302,24 +299,28 @@ if (flag('self-test')) {
   // strands by design, netting px and never the hull's see-through. The same net undeclared (the 226 class: an alpha-cut
   // part the census cannot tell from glass) puts every one of those pixels on the hull's account; a hole cut in the roof
   // under the net is exactly as open as with the net hidden; a glass fin under the net is exactly the see-through it is
-  // alone. One bounding sphere frames every case, so equal counts mean the same pixels.
+  // alone. The net's own count gates too, both ways: the same net lifted 0.4 m off the roof, or doubled beside itself,
+  // adds netting px, and sunk 0.26 m into the box it loses them, with no opening and no see-through; each fails against
+  // the declared net's baseline. One bounding sphere frames every case, so equal counts mean the same pixels.
   root.remove(barrel, rim, mouth);
-  const net = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 4.2).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ alphaTest: 0.5, side: THREE.DoubleSide }));
-  net.name = 'selftest_ghillie_hull_net'; net.position.y = 0.56; root.add(net);
+  const netMaterial = new THREE.MeshStandardMaterial({ alphaTest: 0.5, side: THREE.DoubleSide });
+  const netGeometry = new THREE.PlaneGeometry(3.2, 4.2).rotateX(-Math.PI / 2);
+  const netAt = (name, x, y) => { const m = new THREE.Mesh(netGeometry, netMaterial); m.name = name; m.position.set(x, y, 0); root.add(m); return m; };
+  const net = netAt('selftest_ghillie_hull_net', 0, 0.56), lifted = netAt('selftest_ghillie_lifted_net', 0, 0.96), twin = netAt('selftest_ghillie_twin_net', 1.2, 0.56);
+  const sunk = netAt('selftest_ghillie_sunk_net', 0, 0.3);
   const glass = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.4), new THREE.MeshStandardMaterial({ transparent: true, opacity: 0.4, side: THREE.DoubleSide }));
   glass.name = 'selftestVisionBlock'; glass.position.set(1.3, 0.25, 0); root.add(glass);
-  const frame = boundingSphere(collectTriangles(root).tris); glass.visible = false;
+  const frame = boundingSphere(collectTriangles(root).tris);
   const declared = { continuityRole: 'open-lattice', combatHitboxRole: 'nonArmor' };
-  const census = (label, { netDeclared = true, netShown = true, geometry = box.geometry, glassShown = false } = {}) => {
-    net.userData = netDeclared ? { ...declared } : {}; net.visible = netShown; glass.visible = glassShown; box.geometry = geometry;
+  const census = (label, { netDeclared = true, netShown = true, liftedShown = false, twinShown = false, sunkShown = false, geometry = box.geometry, glassShown = false } = {}) => {
+    net.userData = netDeclared ? { ...declared } : {}; for (const m of [lifted, twin, sunk]) m.userData = { ...declared };
+    net.visible = netShown; lifted.visible = liftedShown; twin.visible = twinShown; sunk.visible = sunkShown; glass.visible = glassShown; box.geometry = geometry;
     const { tris, meshes } = collectTriangles(root); let open = 0, through = 0, netting = 0, throughViews = 0;
     for (const view of VIEWS) {
       const r = rasterizeView(tris, meshes, frame, view); open += r.holePx + r.invertedPx; through += r.throughPx; netting += r.netPx;
       if (r.clusters.some((c) => c.kind === 'see-through')) throughViews++;
     }
-    const verdict = sealedLedgerVerdict({ sealed: true, openPx: 0, seeThroughPx: 0 }, { sealed: open === 0, holeViews: open ? 1 : 0, holePx: open, throughPx: through, throughViews });
-    console.log(`self-test ${label}: open ${open}, see-through ${through} in ${throughViews} views, netting ${netting}, gate ${verdict.pass ? 'pass' : 'FAIL'}`);
-    return { open, through, netting, gate: verdict.pass };
+    return { label, open, through, netting, throughViews };
   };
   const closedBox = box.geometry;
   // the roof's middle cell (BoxGeometry face +y is the third plane; 4 x 6 cells of 6 indices) cut out: a 0.5 m hole
@@ -327,19 +328,39 @@ if (flag('self-test')) {
     const top = holed.groups[2], cell = top.start + (3 * 4 + 1) * 6, indices = Array.from(holed.index.array);
     indices.splice(cell, 6); holed.setIndex(indices); holed.clearGroups();
   }
-  const netted = census('netting declared');
-  const undeclared = census('netting undeclared', { netDeclared: false });
-  const holeBare = census('roof hole, net hidden', { netShown: false, geometry: holed });
-  const holeNetted = census('roof hole under netting', { geometry: holed });
-  const glassBare = census('glass fin, net hidden', { netShown: false, glassShown: true, geometry: closedBox });
-  const glassNetted = census('glass fin under netting', { glassShown: true, geometry: closedBox });
+  const cases = [
+    census('netting declared'),
+    census('netting undeclared', { netDeclared: false }),
+    census('roof hole, net hidden', { netShown: false, geometry: holed }),
+    census('roof hole under netting', { geometry: holed }),
+    census('glass fin, net hidden', { netShown: false, glassShown: true, geometry: closedBox }),
+    census('glass fin under netting', { glassShown: true, geometry: closedBox }),
+    census('net lifted off the roof', { netShown: false, liftedShown: true }),
+    census('net doubled', { twinShown: true }),
+    census('net sunk into the box', { netShown: false, sunkShown: true }),
+  ];
+  // every case gates against the declared net's row: sealed, no see-through, its netting count
+  const row = { sealed: true, openPx: 0, seeThroughPx: 0, netSeeThroughPx: cases[0].netting };
+  for (const c of cases) {
+    c.gate = sealedLedgerVerdict(row, { sealed: c.open === 0, holeViews: c.open ? 1 : 0, holePx: c.open, throughPx: c.through, throughViews: c.throughViews, netPx: c.netting }).pass;
+    console.log(`self-test ${c.label}: open ${c.open}, see-through ${c.through} in ${c.throughViews} views, netting ${c.netting}, gate ${c.gate ? 'pass' : 'FAIL'}`);
+  }
+  const [netted, undeclared, holeBare, holeNetted, glassBare, glassNetted, liftedNet, doubledNet, sunkNet] = cases;
   const netOk = netted.open === 0 && netted.through === 0 && netted.netting > 0 && netted.gate
     && undeclared.through === netted.netting && undeclared.netting === 0 && !undeclared.gate
     && holeBare.open > 0 && holeNetted.open === holeBare.open && !holeNetted.gate
-    && glassBare.through > 0 && glassNetted.through === glassBare.through && glassNetted.netting > 0 && !glassNetted.gate;
+    && glassBare.through > 0 && glassNetted.through === glassBare.through && glassNetted.netting > 0 && !glassNetted.gate
+    && [liftedNet, doubledNet].every((c) => c.open === 0 && c.through === 0 && c.netting > netted.netting && !c.gate)
+    && sunkNet.open === 0 && sunkNet.through === 0 && sunkNet.netting < netted.netting && !sunkNet.gate;
   const ok = netOk && boreOk && closed.open === 0 && closed.inverted === 0 && (insideOut.open + insideOut.inverted) > 0 && insideOut.viewsOpen === VIEWS.length && mirrored.open === 0 && mirrored.inverted === 0;
   console.log(ok ? 'self-test PASS' : 'self-test FAIL'); process.exit(ok ? 0 : 1);
 }
+// The fleet factory loads only for a tank census (guards 229: --self-test never builds a tank, so it skips the import).
+const { createTank } = await import('../src/vehicles/tankFactory.ts');
+const { ensureInteriorFills, hasInteriorFills } = await import('../src/vehicles/interiorFills.ts');
+const { ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
+const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', 'abramsx').split(',').filter(Boolean);
+if (writeImages) mkdirSync(outDir, { recursive: true });
 const report = []; let failures = 0;
 for (const id of ids) {
   await ensureInteriorFills([id]);
@@ -374,7 +395,9 @@ for (const id of ids) {
     const r = rasterizeView(tris, meshes, sphere, view, bores);
     const entry = { name: r.name, silhouette: r.silhouette, holePx: r.holePx, throughPx: r.throughPx, netPx: r.netPx, invertedPx: r.invertedPx, borePx: r.borePx, clusters: r.clusters };
     views.push(entry);
-    if (!worst || r.holePx + r.throughPx > worst.holePx + worst.throughPx) worst = r;
+    // the view whose reported (non-netting) clusters cover the most pixels names the offending meshes
+    const reported = r.clusters.reduce((sum, c) => sum + (c.kind === 'netting' ? 0 : c.area), 0);
+    if (reported && (!worst || reported > worst.reported)) worst = { ...r, reported };
     if (writeImages && (r.clusters.length || flag('images-all'))) await writeImage(`${outDir}/${id}__${r.name}.png`, r);
   }
   const holeViews = views.filter((v) => v.clusters.some((c) => c.kind === 'hole')).length;
@@ -387,22 +410,23 @@ for (const id of ids) {
   const meshTally = new Map();
   for (const v of views) for (const c of v.clusters) if (c.kind !== 'netting') for (const m of c.meshes) { const n = m.replace(/\(\d+\)$/, ''); meshTally.set(n, (meshTally.get(n) || 0) + c.area); }
   const topMeshes = [...meshTally.entries()].sort((u, v) => v[1] - u[1]).slice(0, 5).map(([n, a]) => `${n}:${a}`);
-  // openings gate (holeViews, holePx), and see-through gates on its own account (throughPx, throughViews): the world
-  // seen through glass, markings or undeclared alpha-cut parts. Netting see-through (netPx) and inside-out thin parts
-  // are reported, not gated; a hole behind netting is still a hole, because no transparent surface hides an opening.
+  // openings gate (holeViews, holePx), see-through gates on its own account (throughPx, throughViews: the world seen
+  // through glass, markings or undeclared alpha-cut parts), and netting px (netPx) against the row's netting column.
+  // Inside-out thin parts are reported, not gated; a hole behind netting is still a hole, because no transparent
+  // surface hides an opening.
   const sealed = holeViews === 0;
   let ledgerVerdict = '';
+  const census = { sealed, holeViews, holePx, throughPx, throughViews, netPx };
   if (ledger) {
-    const listed = ledger.tanks?.[id];
-    // an id the update re-baselines (--accept-see-through) is judged at its measured see-through; its openings still gate
-    const row = listed && acceptSeeThrough.includes(id) ? { ...listed, seeThroughPx: Math.max(throughPx, listed.seeThroughPx ?? 0) } : listed;
-    const verdict = sealedLedgerVerdict(row, { sealed, holeViews, holePx, throughPx, throughViews });
+    // an id the update re-baselines (--accept-see-through) is judged at its measured see-through and netting; its
+    // openings still gate (a row's baseline, or a new vehicle's sealed rule)
+    const verdict = sealedLedgerVerdict(ledger.tanks?.[id], census, { acceptSeeThrough: acceptSeeThrough.includes(id) });
     ledgerVerdict = verdict.message;
     if (!verdict.pass) failures++;
-  } else if (!sealedLedgerVerdict(undefined, { sealed, holeViews, holePx, throughPx, throughViews }).pass) failures++;
+  } else if (!sealedLedgerVerdict(undefined, census).pass) failures++;
   report.push({ id, interiorFillRecordLoaded: hasInteriorFills(id), tris: tris.length, radiusM: +sphere.radius.toFixed(2), sealed, holeViews, invertedViews, throughViews, netViews, holePx, invertedPx, throughPx, netPx, bores: bores.length, borePx, topMeshes, views: views.filter((v) => v.clusters.length) });
   console.log(`${id}: ${sealed ? 'SEALED' : 'OPEN'} — ${tris.length} tris, open px ${holePx} in ${holeViews}/${views.length} views, inside-out px ${invertedPx} in ${invertedViews} views, see-through px ${throughPx} in ${throughViews} views, netting px ${netPx} in ${netViews} views, bore px ${borePx} masked in ${bores.length} bore(s)${topMeshes.length ? ' — ' + topMeshes.join(', ') : ''}${ledgerVerdict ? ' — ' + ledgerVerdict : ''} (${((performance.now() - started) / 1000).toFixed(1)} s)`);
-  if (worst && (worst.holePx || worst.throughPx)) console.log(`   worst view ${worst.name}: ${worst.clusters.filter((c) => c.kind !== 'netting').slice(0, 4).map((c) => `${c.kind} ${c.area}px world(${(c.world || []).join(',')}) ${c.meshes.join('/')}`).join(' | ')}`);
+  if (worst) console.log(`   worst view ${worst.name}: ${worst.clusters.filter((c) => c.kind !== 'netting').slice(0, 4).map((c) => `${c.kind} ${c.area}px world(${(c.world || []).join(',')}) ${c.meshes.join('/')}`).join(' | ')}`);
   if (flag('clusters')) for (const v of views) for (const c of v.clusters) console.log(`   ${v.name}: ${c.kind} ${c.area}px world(${(c.world || []).join(',')}) ${c.meshes.join('/')}`);
   tank.dispose?.();
 }
@@ -410,7 +434,10 @@ if (ledger && updateMode) {
   try {
     const updated = updatedSealedLedger(ledger, report, new Date().toISOString(), ids, { acceptSeeThrough, seeThroughOnly: updateMode === 'see-through' });
     writeFileSync(resolve(ledgerPath), JSON.stringify(updated, null, 1) + '\n');
-    for (const id of acceptSeeThrough) console.log(`   see-through re-baselined: ${id} ${ledger.tanks[id].seeThroughPx} -> ${updated.tanks[id].seeThroughPx} px (netting ${updated.tanks[id].netSeeThroughPx} px apart)`);
+    for (const id of acceptSeeThrough) {
+      const was = ledger.tanks?.[id], now = updated.tanks[id];
+      console.log(`   see-through ${was ? `re-baselined: ${id} ${was.seeThroughPx} -> ${now.seeThroughPx} px, netting ${was.netSeeThroughPx ?? '-'} -> ${now.netSeeThroughPx} px` : `accepted on a new row: ${id} ${now.seeThroughPx} px, netting ${now.netSeeThroughPx} px`}`);
+    }
     console.log(`ledger updated: ${ledgerPath}`);
   } catch (error) {
     console.error(error.message);

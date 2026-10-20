@@ -497,10 +497,14 @@ per-family causes are in `docs/tank-generation/chassis-closure-audit-20260925.md
 See-through gates too (227 guards, 2026-10-16): the sealed check holds each
 row's `seeThroughPx` (world seen through glass, markings or any undeclared
 alpha-cut part) to max(12 px, 10 %), and counts sky between declared netting
-apart as `netSeeThroughPx` (reported, never gated). Netting must declare itself:
+apart as `netSeeThroughPx`, held to max(12 px, 2 %) either way (an unchanged
+suit reproduces it exactly; a suit that floats, doubles, sinks or goes missing
+moves it). Netting must declare itself:
 alpha-cut, `combatHitboxRole: 'nonArmor'`, and `continuityRole: 'open-lattice'`
 (the ghillie suit) or a `decor_<frame>_net|foliage` bucket
 (`alphaCutNetting` in `tools/tank-surface-collect.mjs`). A new alpha-cut part
 without that declaration fails its row; a hole behind netting is still a hole.
-Re-baseline a row the gate never held only with
-`--update-ledger --accept-see-through=<ids>`.
+Every playable id has a row; a new vehicle must be sealed with no see-through
+cluster. Re-baseline a row's see-through or netting, or record a new vehicle
+whose see-through is accepted, only with
+`--update-ledger[=see-through] --accept-see-through=<ids>`.
