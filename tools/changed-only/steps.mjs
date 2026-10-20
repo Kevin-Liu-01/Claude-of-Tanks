@@ -112,7 +112,8 @@ export const DECLARED_DYNAMIC = Object.freeze({
     note: 'the computed import and the reads run only when the file is executed as a CLI (they read the seats generator\'s own outputs); the generator imports it as a library',
   },
   'tools/spare-track-placement-check.mjs': {
-    pin: '20ca77abf4fe3e4c',
+    // 229 re-pin: the new site is --rekey's read of the ledger (the step's own output); the chain never runs --rekey.
+    pin: '28903754d573a67d',
     importHelper: 'imp',
     reads: [],
     // The run classifier reads the source lines of the stack frames that built each id's parts (src/<frame file>): code
@@ -151,6 +152,12 @@ export const DECLARED_DYNAMIC = Object.freeze({
     pin: '1d226b77957ca428',
     reads: [],
     note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**); file reads are its own manifest and images',
+  },
+  // 229: genIcons passes each published picture through the optional local master filter (owner attribution, 228).
+  'tools/media-r5/master-filter.mjs': {
+    pin: '9cc38542568f79c4',
+    reads: [],
+    note: 'an optional local executable (COT_MASTER_FILTER, keyed by value, or shots/media-r5/master-filter) rewrites published image bytes only; the icons step keys the manifest row, never image bytes (writes public/icons/**)',
   },
   'tools/fleet-geometry-ledger.mjs': {
     pin: '1c72be85b54a8dbf',
