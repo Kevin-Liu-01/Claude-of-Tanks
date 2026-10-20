@@ -41,7 +41,7 @@ export function civicPavedRooms(mapId: string | null | undefined): readonly Civi
 
 /** The pads whose airfield dressing a civic area drops (hardstandDressing.ts), by index. */
 export function civicUndressedPads(mapId: string | null | undefined): ReadonlySet<number> {
-  return new Set(civicPlanFor(mapId)?.areas.map((area: CivicAreaPlan) => area.pad) ?? []);
+  return new Set(civicPlanFor(mapId)?.areas.map((area: CivicAreaPlan) => area.pad).filter((pad) => pad >= 0) ?? []);
 }
 
 /** Whether (x, z) lies in a rectangle. */

@@ -6176,6 +6176,12 @@ ${snowCap ? `
       });
       if (built.geometry) buckets.baked.push(built.geometry);
       civicPieces.push(...built.pieces);
+      // (229) a map without the walked monument pass (props.monument unset) seats the area's monument as an authored
+      // piece, after every seeded pass like the furniture (placeCentralMonument seats it, its draws taken, where it runs)
+      if (area.monument && !P.monument) {
+        const mo = area.monument;
+        civicPieces.push({ kind: mo.kind, x: mo.x, z: mo.z, yaw: Math.atan2(mo.faceX - mo.x, mo.faceZ - mo.z), scale: 1 });
+      }
       civicVetoes.push({ rect: built.veto, exempt: new Set(area.vetoExempt) });
       civicKeepOuts.push(...area.keepOuts);
       areas.push({ id: area.id, census: built.census });
@@ -9274,7 +9280,14 @@ ${snowCap ? `
   // --- street curbs (town maps): raised stone kerb lines along both sides of
   // every street inside the town rect, broken at crossings ---
   function placeStreetCurbs(): void {
-    if (!P.curbs) return;
+    // (229) a civic plan's pathways run on a map that never laid the legacy kerbs too (its draws then none to spend)
+    if (!P.curbs && !civicPlan?.pathways) return;
+    const decks = heightField.bridgeDecks ?? [];
+    const onDeckSpan = (x: number, z: number): boolean => decks.some((deck) => {
+      const ox = x - deck.x, oz = z - deck.z;
+      return Math.abs(ox * deck.ux + oz * deck.uz) < deck.halfLength + 1
+        && Math.abs(ox * deck.uz - oz * deck.ux) < deck.halfWidth + 6;
+    });
     // (the maps lane, 228) a civic plan's pathway architecture (civic/pathwayKit.ts) in place of the legacy strips: kerbs
     // and pavements only where houses front a main street, the lanes in setts wall to wall; the legacy draws spent first
     if (civicPlan?.pathways) {
@@ -9294,7 +9307,7 @@ ${snowCap ? `
         x > o.min[0] - m && x < o.max[0] + m && z > o.min[2] - m && z < o.max[2] + m && collisionFootprintContainsPoint(o, x, z, m));
       const built = buildPathwayNetwork(civicPlan.pathways, civicStyle(civicPlan.style), {
         roads, ground: (x, z) => heightField.getHeightAt(x, z), plots: civicPlots(), rng, town, distToOtherRoads,
-        tier: mobileProps ? 'mobile' : 'desktop', solidAt,
+        tier: mobileProps ? 'mobile' : 'desktop', solidAt, onDeck: decks.length ? onDeckSpan : undefined, legacy: !!P.curbs,
       });
       if (built.geometry) buckets.baked.push(built.geometry);
       for (const f of built.footprints) {
@@ -9321,12 +9334,6 @@ ${snowCap ? `
     // pieces skipped still draw their UV jitter, so every later draw of the dressing stream keeps its seat.
     const KERB_OFFSET_M = 5.05, KERB_DEPTH_M = 0.34, KERB_FACE_M = 0.12, KERB_EMBED_M = 0.10;
     const WALK_OFFSET_M = 6.35, WALK_DEPTH_M = 2.25, WALK_EMBED_M = 0.06, WALK_RISE_MAX_M = 0.25;
-    const decks = heightField.bridgeDecks ?? [];
-    const onDeckSpan = (x: number, z: number): boolean => decks.some((deck) => {
-      const ox = x - deck.x, oz = z - deck.z;
-      return Math.abs(ox * deck.ux + oz * deck.uz) < deck.halfLength + 1
-        && Math.abs(ox * deck.uz - oz * deck.ux) < deck.halfWidth + 6;
-    });
     /**
      * Seat a slab built along local x (its length) and z (across, +z = `outward` away from the road): each vertex takes
      * its end's height (x < 0 the piece's start, x > 0 its end) — the top from `top(end, outer)`, the bottom from

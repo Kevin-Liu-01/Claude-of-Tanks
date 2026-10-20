@@ -23,9 +23,10 @@ const segDist = (x, z, ax, az, bx, bz) => {
   return Math.hypot(x - ax - dx * t, z - az - dz * t);
 };
 const roadDist = (road, x, z) => { let b = Infinity; for (let i = 0; i + 1 < road.length; i++) b = Math.min(b, segDist(x, z, ...road[i], ...road[i + 1])); return b; };
-const edgeDistance = (poly, x, z) => {
+// (229: a map of two towns names two polygons)
+const edgeDistance = (polys, x, z) => {
   let b = Infinity;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) b = Math.min(b, segDist(x, z, ...poly[j], ...poly[i]));
+  for (const poly of polys) for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) b = Math.min(b, segDist(x, z, ...poly[j], ...poly[i]));
   return b;
 };
 const insidePolygon = (poly, x, z) => {
@@ -71,7 +72,7 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
     for (const [x, z] of [k0, k1, [(k0[0] + o0[0] + k1[0] + o1[0]) / 4, (k0[1] + o0[1] + k1[1] + o1[1]) / 4]]) {
       assert.ok(!pw.exclude.some((r) => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1), `${mapId}: pavement at (${x.toFixed(1)}, ${z.toFixed(1)}) on a square`);
       assert.ok(edgeDistance(pw.inside, x, z) > 1.0, `${mapId}: pavement at (${x.toFixed(1)}, ${z.toFixed(1)}) on the wall line`);
-      if (!insidePolygon(pw.inside, x, z)) {
+      if (!pw.inside.some((poly) => insidePolygon(poly, x, z))) {
         const main = Math.min(...mains.map((r) => roadDist(r, x, z))), lane = Math.min(Infinity, ...lanes.map((r) => roadDist(r, x, z)));
         assert.ok(main < lane, `${mapId}: a lane's pavement at (${x.toFixed(1)}, ${z.toFixed(1)}) past the wall line`);
       }

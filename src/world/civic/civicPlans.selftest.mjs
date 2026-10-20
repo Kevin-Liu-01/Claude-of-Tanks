@@ -42,7 +42,7 @@ for (const mapId of CIVIC_PLAN_MAPS) {
   for (const key of Object.keys(plan.overlay)) assert.ok(['plazaNest', 'hedgehogsAtApproaches', 'monumentKind'].includes(key), `${mapId}: overlay key ${key} is the kit's`);
   for (const area of plan.areas) {
     const tag = `${mapId}/${area.id}`, room = area.room;
-    assert.ok(cfg.terrain.hardstands?.[area.pad], `${tag}: its pad ${area.pad} exists`);
+    assert.ok(area.pad === -1 || cfg.terrain.hardstands?.[area.pad], `${tag}: its pad ${area.pad} exists (or -1: none)`);
     for (const bed of area.beds) {
       assert.ok(inCivicRect(room, bed.rect.x0, bed.rect.z0) && inCivicRect(room, bed.rect.x1, bed.rect.z1), `${tag}: bed ${bed.id} inside its room`);
       for (const arm of area.arms) {
@@ -108,7 +108,7 @@ for (const mapId of CIVIC_PLAN_MAPS) {
     const pw = plan.pathways;
     assert.ok(pw.frontage[0] < pw.frontage[1] && pw.kerbM > 2 && pw.returnR > 0 && pw.maxWalkM > 0, `${mapId}: pathway numbers`);
     for (const [i, cls] of Object.entries(pw.classes)) assert.ok(roads[Number(i)], `${mapId}: pathway class for road ${i} names a road (${cls})`);
-    assert.ok(pw.inside.length >= 3, `${mapId}: the town's inside is a polygon`);
+    assert.ok(pw.inside.length >= 1 && pw.inside.every((poly) => poly.length >= 3), `${mapId}: the town's inside is a list of polygons`);
   }
 }
 console.log(`civicPlans.selftest: ${CIVIC_PLAN_MAPS.length} plan(s) (${CIVIC_PLAN_MAPS.join(', ')}) hold the kit's rules; the kit names no map — ok`);

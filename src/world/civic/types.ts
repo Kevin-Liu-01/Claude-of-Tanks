@@ -40,9 +40,9 @@ export interface PathwayPlan {
   readonly exclude: readonly CivicRect[];
   /** The gates the main streets pass: their kerbs stop a metre short of the piers, the setts run through. */
   readonly gates: readonly PathwayGate[];
-  /** The town's inside (a polygon): past the wall line a main street keeps its pavement only where houses front it (a
-   *  suburb outside a gate), and no kerb runs along the wall line itself. */
-  readonly inside: readonly CivicPoint[];
+  /** The town's inside (one polygon a town; a map of two towns names two): past its line a main street keeps its
+   *  pavement only where houses front it (a suburb outside a gate), and no kerb runs along the line itself. */
+  readonly inside: ReadonlyArray<readonly CivicPoint[]>;
   /** Where a main street's pavement meets a square's flush walk: its kerb ramps down over 2 m to flush. */
   readonly mouths: readonly CivicPoint[];
 }
@@ -99,7 +99,8 @@ export interface CivicAreaPlan {
   /** The pieces the plan clears from round its room (out of its period or its place), by kind in each rectangle: their
    *  passes keep their draws and the piece is left out (a light building's plot with it). */
   readonly clears: ReadonlyArray<{ readonly rect: CivicRect; readonly kinds: readonly string[] }>;
-  /** The hardstand this area dresses (its airfield lip, gullies and patches dropped), by index in terrain.hardstands. */
+  /** The hardstand this area dresses (its airfield lip, gullies and patches dropped), by index in terrain.hardstands;
+   *  -1 for a square laid on the town's own ground (no pad). */
   readonly pad: number;
   /** The carriageway arms that stay prop-free (the street lanes through the square). */
   readonly arms: readonly CivicRect[];

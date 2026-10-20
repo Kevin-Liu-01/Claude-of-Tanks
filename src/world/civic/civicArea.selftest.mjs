@@ -210,9 +210,11 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
     assert.ok(roundCrossing >= 12, `${tag}: ${roundCrossing} lamps within 45 m of the crossing (12)`);
     for (const l of lamps) assert.ok(!inStructure(l.x, l.z, 0.3), `${tag}: the lamp at (${l.x.toFixed(1)}, ${l.z.toFixed(1)}) out of every structure`);
     // ---- the pad's airfield dressing off
-    const pad = config.terrain.hardstands[area.pad];
-    const g = dressing.buildHardstandDressing([pad], config.splat, field, field._layout.roads, field._layout.village, 2002, new Set([0]));
-    assert.equal(g, null, `${tag}: no lip, gully or patch on the square's pad`);
+    if (area.pad >= 0) {
+      const pad = config.terrain.hardstands[area.pad];
+      const g = dressing.buildHardstandDressing([pad], config.splat, field, field._layout.roads, field._layout.village, 2002, new Set([0]));
+      assert.equal(g, null, `${tag}: no lip, gully or patch on the square's pad`);
+    }
     console.log(`${tag}: ${records.length} records in the room, ${civicTrees.length} trees, ${benches} benches, ${lamps.length} lamps (${roundCrossing} round the crossing), `
       + `open share ${(share * 100).toFixed(1)} %, largest free disc r ${largest.toFixed(1)} m, lanes ${JSON.stringify(widths)}, vetoed ${JSON.stringify(built.group.userData.civic?.vetoed ?? {})}`);
     // (live records: the props' destructibles and the trees' trunks)

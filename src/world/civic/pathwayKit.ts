@@ -40,6 +40,11 @@ export interface PathwayContext {
   /** (228 r2) whether a structure's or a wall's own collision footprint (its ground contact, `m` metres grown) stands at
    *  (x, z): a jettied front or a shop's step stands out past its plot; absent, the plots alone */
   solidAt?(x: number, z: number, m: number): boolean;
+  /** (229) whether (x, z) is on a bridge deck's span (its parapets own its edges: no kerb there) */
+  onDeck?(x: number, z: number): boolean;
+  /** (229) whether the map ran the legacy kerb pass (props.curbs): its draws are spent first; false on a map that never
+   *  laid kerbs (nothing to spend: every later seat keeps its place) */
+  legacy?: boolean;
 }
 
 export interface PathwayFootprint { pts: Array<[number, number]>; foot: number }
@@ -56,6 +61,7 @@ const SKIN = 0.012;
 
 /** The legacy kerb pass's draws (props.ts placeStreetCurbs: two jitterUV a piece, four draws each), spent. */
 export function burnLegacyKerbDraws(ctx: PathwayContext): number {
+  if (ctx.legacy === false) return 0;
   let pieces = 0;
   const { town } = ctx;
   for (let ri = 0; ri < ctx.roads.length; ri++) {
@@ -80,6 +86,16 @@ export function burnLegacyKerbDraws(ctx: PathwayContext): number {
   return pieces;
 }
 
+/** Whether (x, z) is inside any of a town's polygons. */
+function insideTown(polys: ReadonlyArray<readonly CivicPoint[]>, x: number, z: number): boolean {
+  return polys.some((poly) => insidePolygon(poly, x, z));
+}
+/** The distance from (x, z) to the nearest of a town's polygons' boundaries. */
+function townEdgeDistance(polys: ReadonlyArray<readonly CivicPoint[]>, x: number, z: number): number {
+  let best = Infinity;
+  for (const poly of polys) best = Math.min(best, polygonEdgeDistance(poly, x, z));
+  return best;
+}
 /** Whether (x, z) is inside a polygon (even-odd). */
 function insidePolygon(poly: readonly CivicPoint[], x: number, z: number): boolean {
   let inside = false;
@@ -244,8 +260,10 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
         const out: Sample = { x, z, nx, nz, state: 'blocked', outer: W0 + pr.openWalk };
         const why = (r: string): Sample => { census[`sample:${r}`] = (census[`sample:${r}`] ?? 0) + 1; out.why = r; return out; };
         // the wall line itself (its modules, a gate's passage), and a lane past it
-        if (polygonEdgeDistance(plan.inside, kx, kz) < 1.5) return why('wall');
-        out.past = !insidePolygon(plan.inside, kx, kz);
+        if (townEdgeDistance(plan.inside, kx, kz) < 1.5) return why('wall');
+        // a bridge's deck: its parapets own the edge
+        if (ctx.onDeck?.(kx, kz) || ctx.onDeck?.(x + nx * (W0 + 1), z + nz * (W0 + 1))) return why('deck');
+        out.past = !insideTown(plan.inside, kx, kz);
         if (out.past && classOf(ri) !== 'main') return why('outside');
         // a square: its own frontage walks take the edge (the run comes up to the room and its kerb ramps flush)
         if (plan.exclude.some((r) => inRect(r, kx, kz, 0.3))) return why('square');
