@@ -323,6 +323,34 @@ try {
     assert.equal(held.root.classList.contains('rosters-expanded'),true,'the class is back on after the resting read');
     assert.equal(placed(held),still,'the plan made while Tab is held from the first pass is the resting one');
     tab(held,false);held.flush();assert.equal(placed(held),still,'and releasing it moves nothing');
+    // Planned places round away from the centre line (writeMousePlan): 1366 x 768's flank puts the detection's centre at
+    // 548.5, its right edge on the scope arm's 4 px margin (672.5); the nearest px (549) would sit 0.5 px inside it.
+    {
+      const run=harness({extra:node=>({'.cot-mode-status.show':node([],rect(544,62,278,41)),'.cot-dp':node([],rect(12,573,160,183)),
+        '.cot-drive':node([],rect(184,648,108,108)),'.cot-vehicle-controls':node([],rect(491,648,382,32)),'.cot-shells':node([],rect(467,688,433,64)),
+        '.cot-si-cardhost':node([],rect(1050,260,300,260)),'.cot-net':node([],rect(1229,8,127,28)),'.cot-minimap':node([],rect(1130,532,220,220))})});
+      assert.equal(run.properties.get('--hud-alert-shift'),'0%','1366 x 768 flanks the arm (the detection left of it)');
+      assert.equal(run.properties.get('--hud-notice-x'),'548px','the detection\'s centre 548.5 rounds away from the centre line');
+    }
+    // A queued card placed clear of the battle sight only (a cramped 800 x 380 window: tier 0) waits while the scope is up:
+    // the scope flag on the document element relayouts then, and only then (above: no such card, no relayout).
+    {
+      let banner;
+      const run=harness({width:800,height:380,extra:node=>({'.cot-medal-toasts':(banner=node(),banner.childElementCount=1,banner),
+        '.cot-mode-status.show':node([],rect(261,62,278,41)),'.cot-dp':node([],rect(12,185,160,183)),'.cot-drive':node([],rect(184,260,108,108)),
+        '.cot-vehicle-controls':node([],rect(208,260,382,32)),'.cot-shells':node([],rect(184,300,433,64)),'.cot-si-cardhost':node([],rect(480,110,300,150)),
+        '.cot-net':node([],rect(663,8,127,28)),'.cot-minimap':node([],rect(564,144,220,220))})});
+      assert.match(run.body.dataset.hudNoticeTiers,/ m[01]/,'the card here clears less than the whole reticle');
+      assert.equal(banner.dataset.placement,'ready','and shows with the scope down');
+      const scope=on=>{run.html.toggleAttribute('data-cot-scoped',on);run.mutate([{type:'attributes',target:run.html,attributeName:'data-cot-scoped'}]);};
+      scope(true);
+      assert.equal(run.frames.size,1,'the scope coming up relayouts while such a card is queued');run.flush();
+      assert.equal(banner.dataset.placement,'deferred','the card waits in the scope');
+      assert.match(run.body.dataset.hudNoticeTiers,/ m[01]s?w$/,'marked waiting');
+      scope(false);
+      assert.equal(run.frames.size,1,'the scope going down relayouts too');run.flush();
+      assert.equal(banner.dataset.placement,'ready','and the card shows again');
+    }
     // A medal card queued while the revive count shows (a medal can arrive after the death) waits exactly where the two
     // places meet: the written places (the card's centre and top, the count's centre, top and scale) decide it.
     let met=0,apart=0;
