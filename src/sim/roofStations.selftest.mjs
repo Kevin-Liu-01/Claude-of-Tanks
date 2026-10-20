@@ -154,12 +154,13 @@ function run({ shooter, context }, seconds = 12) {
   assert.deepEqual(headOn, [], 'no MBT is engaged head-on by a 12.7 mm station at 100 m');
   // a turret traversed broadside shows the turret's flank: the turret plates follow the turret's yaw
   assert.ok(at(TANK_SPECS.bmp2, Math.PI, Math.PI / 2) >= at(TANK_SPECS.bmp2, Math.PI) - 1e-9, 'turret plates follow the turret');
-  // 2026-10-19 (owner: "Make roof guns hold fire where their rounds cannot hurt"): the share is the target's, the round
-  // is judged where it lands. A BMP-2 50 degrees off its rear shows mostly armour the K6 defeats, but the line to its
-  // centre meets armour it cannot: it took every round of the K6's bursts; now the K6 holds (src/sim/roofHoldFire.selftest
-  // .mjs: every round, every station, host and solo)
-  assert.ok(at(TANK_SPECS.bmp2, -50 * DEG) >= heavy.engageShare, 'the share rule would engage the BMP-2 50 degrees off its rear');
-  assert.deepEqual(duel('bmp2', 100, -50 * DEG), [0, 0], 'the K6 holds where the line to its centre meets armour it cannot defeat');
+  // 2026-10-19 (owner: "Make roof guns hold fire where their rounds cannot hurt"): the share picks the target, each
+  // round is judged where it lands (src/sim/roofHoldFire.selftest.mjs, on the live damage model). A BMP-2 50 degrees off
+  // its rear: the line to its centre meets its side a little thicker than the K6's nominal penetration, which its pen
+  // roll still defeats nearly one round in two; the K6 fires, the M60 holds
+  assert.ok(at(TANK_SPECS.bmp2, -50 * DEG) >= heavy.engageShare, 'the share rule engages the BMP-2 50 degrees off its rear');
+  const [quarterK6, quarterM60] = duel('bmp2', 100, -50 * DEG);
+  assert.ok(quarterK6 >= 15 && quarterM60 === 0, `the K6 fires where its round may well penetrate (${quarterK6}), the M60 holds (${quarterM60})`);
 }
 // 9. VH.14 launch interlock (coordinator ruling 2026-10-15): while the vehicle's own drone launches, every roof station
 //    turns back to its rest bearing, levels and holds fire; it takes its target again once the launch is over. The

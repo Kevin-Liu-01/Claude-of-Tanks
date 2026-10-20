@@ -403,9 +403,11 @@ const _heTo = new Vector3();
  * strikes plate interiors instead of grazing mathematically exact edges. */
 const HE_NEAREST_INSET_M = 0.01;
 
+/** The ±25% uniform roll's low end and span (rollUniform; estimateHurtChance prices the pen roll over the same). */
+const ROLL_LOW = 0.75, ROLL_SPAN = 0.5;
 /** ±25% uniform roll. @param {function} rng @param {number} avg @returns {number} */
 function rollUniform(rng: Rng, avg: number): number {
-  return avg * (0.75 + rng() * 0.5);
+  return avg * (ROLL_LOW + rng() * ROLL_SPAN);
 }
 
 // ---- RAMMING (gameplay: "add ramming and ram damage") ----------------------
@@ -2550,6 +2552,137 @@ export function estimatePenRatio(
     return estimateSinglePlatePenRatio(shellSpec, distM, plateInfo);
   }
   return estimateLayeredPenRatio(shellSpec, distM, layers, behavior);
+}
+
+/** The strata estimateHurtChance prices the pen roll over (its resolution: 1/HURT_ROLL_STRATA). */
+const HURT_ROLL_STRATA = 20;
+/** One estimateHurtChance walk (module scratch): the hull penetrated, the plate the round glances from and its pen
+ * there, and the modules it reaches before it stops (each once, with its exposed-weapon flag). */
+const hurtWalk = { hullPen: false, bounce: null as PlateHit | null, bouncePen: 0 };
+const hurtModules: ModuleId[] = [], hurtWeapons: boolean[] = [], hurtEra: string[] = [];
+const _hurtDir = new Vector3(), _hurtFrom = new Vector3(), _hurtTo = new Vector3();
+/** The combat fields estimateHurtChance reads (a roof station's target carries no more). */
+type HurtCombat = Partial<Pick<CombatState, 'modules' | 'destroyed' | 'modeCriticalDamage' | 'modeModuleOnlyDamage'>>
+  & { eraSpent?: ReadonlySet<string> };
+
+function noteHurtModule(module: ModuleId, weapon: boolean): void {
+  if (!hurtModules.includes(module)) { hurtModules.push(module); hurtWeapons.push(weapon); }
+}
+
+/** walkLiveShellTrace's path for a round arriving with `pen` (no RNG, nothing mutated): ricochet on the raw angle, ERA
+ * banks (each spent once), screens and outer plates (their moduleLink rolled), the gun barrel's screen, the exposed
+ * weapons and gun, then the main plate's verdict, or the seam catch when no main plate decides. Fills hurtWalk and
+ * hurtModules. */
+function walkForHurt(
+  shellSpec: DamageShellSpec,
+  behavior: ShellBehavior,
+  combat: HurtCombat,
+  armor: DamageArmorModel,
+  hits: ArmorHit[],
+  pen: number,
+): void {
+  hurtWalk.hullPen = false; hurtWalk.bounce = null;
+  for (const hit of hits) {
+    if (hit.kind === 'module') {
+      if (hit.external === true || hit.module === 'gun') {
+        noteHurtModule(hit.module, hit.module === 'roofGun' || !!armor.externalWeapons?.some(part => part.module === hit.module));
+      }
+      if (!hit.barrel) continue;
+      pen -= barrelScreenMm(hit);
+      if (pen > 0) continue;
+      return;
+    }
+    if (hit.kind !== 'plate') continue;
+    const plate = hit.plate;
+    if (plate.kind === 'era' && (combat.eraSpent?.has(plate.name) || hurtEra.includes(plate.name))) continue;
+    if (wouldRicochet(shellSpec, hit.impactAngleDeg, plate)) { hurtWalk.bounce = hit; hurtWalk.bouncePen = pen; return; }
+    if (plate.kind === 'era') {
+      hurtEra.push(plate.name);
+      if (shellSpec.tandem) continue;
+      pen = applyEstimatedEra(pen, shellSpec, behavior, plate);
+      if (pen > 0) continue;
+      return;
+    }
+    const { effMm } = effectiveThickness(shellSpec, plate, hit.impactAngleDeg);
+    if (plate.kind === 'spaced' || plate.kind === 'external') {
+      pen -= effMm;
+      if (shellSpec.type === 'HEAT') pen *= Math.max(0, 1 - HEAT_GAP_LOSS_PER_M * heatGapAfter(hits, hit));
+      if (plate.moduleLink) noteHurtModule(plate.moduleLink, !!plate.weaponHousing);
+      if (pen > 0) continue;
+      return;
+    }
+    hurtWalk.hullPen = pen >= effMm;
+    return;
+  }
+  hurtWalk.hullPen = hits.some(isInternalSeamHit) && !hasClosedCollisionShell(armor) && pen >= seamArmorMm(armor);
+}
+
+/** rollModuleDamage's chance for a module the round reaches: none once it is at 0 hp or the mode keeps modules intact. */
+function moduleHurtChance(
+  combat: HurtCombat,
+  module: ModuleId,
+  weapon: boolean,
+): number {
+  const state = combat.modules?.[module];
+  if (!state || state.hp <= 0 || combat.modeCriticalDamage === false) return 0;
+  if (combat.modeModuleOnlyDamage) return 1;
+  const chance = MODULE_DEFS[module].damageChance;
+  return Math.min(1, weapon ? Math.max(.85, chance) : chance);
+}
+
+/**
+ * VH.14 hold fire (owner, 2026-10-19: "Make roof guns hold fire where their rounds cannot hurt"): the chance a round of
+ * `shellSpec` flying from→to (`distM` from its muzzle) hurts `target`, its armour in `pose` — the pose it holds when the
+ * round arrives. resolveShellHit's own walk over traceTank's intersections, priced over ensurePenRoll's ±25 % roll
+ * (HURT_ROLL_STRATA strata): a hull penetration hurts; so does each module the round reaches before it stops (an outer
+ * plate's moduleLink, the gun and the exposed weapons) at rollModuleDamage's chance while it has hit points; a round
+ * that glances (raw-angle ricochet) is followed once off that plate into the rest of the vehicle. A wreck never hurts; a
+ * target without armour always does; a line that meets no part of the vehicle never does. No RNG and nothing mutated;
+ * the traces allocate, so run it per shot, never per tick.
+ */
+export function estimateHurtChance(
+  shellSpec: DamageShellSpec,
+  distM: number,
+  target: { spec: { armor?: DamageArmorModel | null }; combat: HurtCombat },
+  pose: TankArmorPose,
+  from: Vector3,
+  to: Vector3,
+): number {
+  const armor = target.spec.armor, combat = target.combat;
+  if (combat.destroyed) return 0;
+  if (!armor) return 1;
+  const hits = traceTank(from, to, pose, armor, combat.eraSpent) as ArmorHit[];
+  if (!hits.length) return 0;
+  const behavior = behaviorOf(shellSpec.type);
+  // a burst on the hull rolls the blast sweep over its modules
+  if (behavior.kindClass === 'HE') return 1;
+  const nominal = penAtDistanceMm(shellSpec, distM);
+  let glance: PlateHit | null = null, after: ArmorHit[] = [];
+  let chance = 0;
+  for (let stratum = 0; stratum < HURT_ROLL_STRATA; stratum++) {
+    hurtModules.length = 0; hurtWeapons.length = 0; hurtEra.length = 0;
+    walkForHurt(shellSpec, behavior, combat, armor, hits, nominal * (ROLL_LOW + ROLL_SPAN * (stratum + .5) / HURT_ROLL_STRATA));
+    const bounce = hurtWalk.bounce;
+    if (!hurtWalk.hullPen && bounce && behavior.kindClass === 'KE') {
+      // deflectShell: the velocity mirrored about the plate's outward normal, the flight resumed just off the surface;
+      // the plate it glances from is the same for every stratum that reaches it, so the bounce is traced once
+      if (bounce !== glance) {
+        glance = bounce;
+        const normal = bounce.normal;
+        _hurtDir.subVectors(to, from).normalize();
+        _hurtDir.addScaledVector(normal, -2 * _hurtDir.dot(normal));
+        _hurtFrom.copy(bounce.point).addScaledVector(normal, 0.02);
+        _hurtTo.copy(_hurtFrom).addScaledVector(_hurtDir, 2 * (armor.boundingRadiusM || 4));
+        after = traceTank(_hurtFrom, _hurtTo, pose, armor, combat.eraSpent) as ArmorHit[];
+      }
+      if (after.length) walkForHurt(shellSpec, behavior, combat, armor, after, hurtWalk.bouncePen);
+    }
+    if (hurtWalk.hullPen) { chance += 1; continue; }
+    let spared = 1;
+    for (let i = 0; i < hurtModules.length; i++) spared *= 1 - moduleHurtChance(combat, hurtModules[i]!, hurtWeapons[i]!);
+    chance += 1 - spared;
+  }
+  return chance / HURT_ROLL_STRATA;
 }
 
 /**
