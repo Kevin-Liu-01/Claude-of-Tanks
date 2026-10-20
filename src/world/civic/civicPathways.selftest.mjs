@@ -14,6 +14,7 @@ installWorldBuildFixture();
 const [maps, terrain, vegetation, props, models, fleet, plans, collision] = await Promise.all([
   import('../maps/index.ts'), import('../terrain.ts'), import('../vegetation.ts'), import('../props.ts'), import('../propsModelStore.ts'),
   import('../../vehicles/fleetFactory.ts'), import('./plans/index.ts'), import('../collision.ts')]);
+const { CIVIC_STYLES } = await import('./styles.ts');
 await models.preloadPropModels();
 const engine = { anisotropy: 4, setupShadowMaterial() {} };
 
@@ -65,6 +66,7 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
     }
     return Infinity;
   };
+  const kerbW = CIVIC_STYLES[plan.style].kerb.width;
   const mains = Object.entries(pw.classes).filter(([, c]) => c === 'main').map(([i]) => roads[Number(i)]);
   const lanes = Object.entries(pw.classes).filter(([, c]) => c === 'gasse').map(([i]) => roads[Number(i)]);
   let runs = 0, metres = 0, prev = null, runLen = 0, shortRuns = 0;
@@ -84,8 +86,9 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
     for (const [x, z] of [k0, k1]) assert.ok(clearance(x, z) > 0.6, `${mapId}: the kerb at (${x.toFixed(1)}, ${z.toFixed(1)}) clear of every structure and wall`);
     const mid = [(k0[0] + o0[0] + k1[0] + o1[0]) / 4, (k0[1] + o0[1] + k1[1] + o1[1]) / 4];
     assert.ok(clearance(mid[0], mid[1]) > 0, `${mapId}: the pavement at (${mid[0].toFixed(1)}, ${mid[1].toFixed(1)}) out of every structure`);
-    const width = Math.hypot(o0[0] - k0[0], o0[1] - k0[1]);
-    assert.ok(width <= 0.25 + pw.maxWalkM + 0.02, `${mapId}: a pavement ${width.toFixed(2)} m wide (${pw.maxWalkM})`);
+    // (229: the style's own kerb width; the reach measured off the street, not along a bend's mitred normal)
+    const reach = Math.min(...[...mains, ...lanes].map((r) => roadDist(r, o0[0], o0[1]))) - face;
+    assert.ok(reach <= kerbW + pw.maxWalkM + 0.05, `${mapId}: a pavement reaching ${reach.toFixed(2)} m past its kerb's face (${kerbW} + ${pw.maxWalkM})`);
     const len = Math.hypot(k1[0] - k0[0], k1[1] - k0[1]);
     if (prev && Math.hypot(prev[0] - k0[0], prev[1] - k0[1]) < 0.01) runLen += len;
     else { if (prev) { runs++; if (runLen < 3) shortRuns++; } runLen = len; }
@@ -96,7 +99,8 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
   if (runLen < 3) shortRuns++;
   assert.equal(shortRuns, 0, `${mapId}: every run at least 3 m long`);
   assert.equal(runs, census.runs, `${mapId}: ${runs} continuous ribbons, one a run (${census.runs})`);
-  assert.ok((census.returns ?? 0) >= 1, `${mapId}: the lanes' corners return (${census.returns ?? 0})`);
+  // (a map of one kerbed lane has no junction to return round)
+  if (mains.length + lanes.length >= 2) assert.ok((census.returns ?? 0) >= 1, `${mapId}: the lanes' corners return (${census.returns ?? 0})`);
   if (lanes.length) assert.ok((census.kerbLaneM ?? 0) > 0, `${mapId}: the lanes kerbed (${census.kerbLaneM ?? 0} m)`);
   // (228 r1b) every return meets its run: the corner's tangent point is a run's kerb end (no bare setts between a run's
   // dressed end and the corner's kerb)

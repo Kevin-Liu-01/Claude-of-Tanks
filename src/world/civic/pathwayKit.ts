@@ -200,11 +200,28 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
     for (let rj = 0; rj < ctx.roads.length; rj++) {
       if (rj === ri || classOf(rj) === 'none') continue;
       const B = ctx.roads[rj];
+      // where B meets A: an end of B on A (a T), or (229 b2: Suzhou Creek's streets cross, none ends on another) B crossing
+      // A, its four corners (the pair once: a kerbed B's own pass takes none of them again)
+      const specs: Array<{ ex: number; ez: number; dB: [number, number]; near: { d: number; i: number; f: number } }> = [];
       for (const end of [0, B.length - 1]) {
         const [ex, ez] = B[end], near = nearestOnRoad(A, ex, ez);
         if (near.d > 2.5) continue;
         const nb = B[end === 0 ? 1 : B.length - 2], bl = Math.hypot(nb[0] - ex, nb[1] - ez) || 1;
-        const dB: [number, number] = [(nb[0] - ex) / bl, (nb[1] - ez) / bl];
+        specs.push({ ex, ez, dB: [(nb[0] - ex) / bl, (nb[1] - ez) / bl], near });
+      }
+      if (!(kerbed.includes(rj) && rj < ri)) for (let sb = 0; sb + 1 < B.length; sb++) for (let sa = 0; sa + 1 < A.length; sa++) {
+        const [p0x, p0z] = A[sa], [p1x, p1z] = A[sa + 1], [q0x, q0z] = B[sb], [q1x, q1z] = B[sb + 1];
+        const rx = p1x - p0x, rz = p1z - p0z, qx = q1x - q0x, qz = q1z - q0z, den = rx * qz - rz * qx;
+        if (Math.abs(den) < 1e-9) continue;
+        const ta = ((q0x - p0x) * qz - (q0z - p0z) * qx) / den, tb = ((q0x - p0x) * rz - (q0z - p0z) * rx) / den;
+        if (ta < 0 || ta > 1 || tb < 0 || tb > 1) continue;
+        const hx = p0x + rx * ta, hz = p0z + rz * ta;
+        if (Math.hypot(hx - B[0][0], hz - B[0][1]) < 2.5 || Math.hypot(hx - B[B.length - 1][0], hz - B[B.length - 1][1]) < 2.5) continue;
+        if (Math.hypot(hx - A[0][0], hz - A[0][1]) < 2.5 || Math.hypot(hx - A[A.length - 1][0], hz - A[A.length - 1][1]) < 2.5) continue;
+        const ql = Math.hypot(qx, qz) || 1;
+        for (const sg of [1, -1]) specs.push({ ex: hx, ez: hz, dB: [(qx / ql) * sg, (qz / ql) * sg], near: { d: 0, i: sa, f: ta } });
+      }
+      for (const { ex, ez, dB, near } of specs) {
         const [ax, az] = A[near.i], [bx, bz] = A[near.i + 1], al = Math.hypot(bx - ax, bz - az) || 1;
         const tA: [number, number] = [(bx - ax) / al, (bz - az) / al];
         const jx = ax + (bx - ax) * near.f, jz = az + (bz - az) * near.f;
