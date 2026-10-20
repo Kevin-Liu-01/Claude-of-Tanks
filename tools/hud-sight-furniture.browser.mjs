@@ -3,9 +3,10 @@
 // HUD's panels and controls, which battleHudLayout measures on every relayout and publishes (src/ui/sightFurniture.ts).
 // This records what it publishes on the fixture (tools/fixtures/battle-hud-layout.html) at every size
 // src/ui/hudAmmoOutPaint.selftest.mjs sweeps, so that receipt places the readouts among the real furniture without a
-// browser: two scope stages, recorded apart, a standard battle with the gun travel warning (`<w>x<h>[t]`) and Juggernaut
-// (`<w>x<h>[t]:juggernaut`), whose objective panel sits over the sight on a short landscape phone and whose controls
-// row, map and quick buttons sit elsewhere (r10 critic: the standard stage alone missed them at 568x290), each measured
+// browser: two scope stages, recorded apart, a standard battle with the gun travel warning (`<w>x<h>[t]`) and a mode
+// with an objective (`<w>x<h>[t]:objective`, Juggernaut's stage: every mode but the standard battle shows its objective
+// panel, which on a short landscape phone sits right over the sight, and seats the controls row, map and quick buttons
+// elsewhere; r10 critic: the standard stage alone missed them at 568x290), each measured
 // once the fonts and the tray's transitions have settled (r10 critic: a box caught mid-transition differed by
 // up to 2.3 px between two recordings). Each box is named by the first panel with its rect (for the receipt's messages).
 // No screenshot; accepts an existing dev server:
@@ -18,7 +19,7 @@ const arg = (name, fallback) => process.argv.find((v) => v.startsWith(`--${name}
 const url = arg('url', 'http://127.0.0.1:5189');
 const out = resolve(arg('out', 'tools/fixtures/hud-sight-furniture.json'));
 const { chromium } = await import(arg('playwright-module', 'playwright'));
-const STAGES = [['', 'ammo-reload-sniper-warn'], [':juggernaut', 'ammo-unlimited-sniper']];
+const STAGES = [['', 'ammo-reload-sniper-warn'], [':objective', 'ammo-unlimited-sniper']];
 // [width, height, touch] (hudAmmoOutPaint.selftest section 19)
 const SIZES = [[800, 400], [800, 500], [900, 480], [700, 460], [700, 431], [700, 440], [700, 520], [1280, 431], [1280, 460],
   [1280, 470], [1024, 490], [1280, 520], [1024, 560], [1024, 600], [1024, 431], [1440, 431], [1280, 440], [1440, 450],

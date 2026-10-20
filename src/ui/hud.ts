@@ -3900,8 +3900,11 @@ export function initHud(bus: EventBus): HudRuntime {
   // constants + rationale at RET_FLOOR_PX/RET_CEIL_FRAC). The [floor,
   // ceiling] clamp is applied at DRAW time (clampRetR) so smoothing eases
   // toward the truth and the clamp can never amplify it.
+  /** The ring's target radius, on an eighth-pixel grid: the simulation's bloom decays toward its rest without end, and
+   *  every mark placed off the ring (the seated touch chip's style among them) would follow its creep by 1e-7 px a frame
+   *  for good (r10 critic). On the grid the ring settles, and the marks with it. */
   function reticleTargetR(view: HudAimView): number {
-    return view.radPx;
+    return Math.round(view.radPx * 8) / 8;
   }
   // Display clamp for the DRAWN dispersion-circle radius — the single
   // authority every consumer reads (circle, sniper hairline gaps, hit-wedge
@@ -4072,9 +4075,9 @@ export function initHud(bus: EventBus): HudRuntime {
     state.single = anchor.single;
     const targetRadius = reticleTargetR(view);
     smoothRadPx += (targetRadius - smoothRadPx) * (1 - Math.exp(-14 * dt));
-    // (the ease's last hundredth of a pixel snaps: its tail would move every mark placed off the ring, and the seated
-    // touch chip's style, by 1e-8 px a frame for good; r10 critic)
-    if (Math.abs(targetRadius - smoothRadPx) < 0.01) smoothRadPx = targetRadius;
+    // (the ease's last eighth of a pixel, one step of the target's grid, snaps: its tail would move every mark placed off
+    // the ring, and the seated touch chip's style, a fraction of a pixel a frame for good; r10 critic)
+    if (Math.abs(targetRadius - smoothRadPx) <= 0.125) smoothRadPx = targetRadius;
     state.radius = clampRetR(smoothRadPx);
     state.circleX = view.gunX ?? state.cx;
     state.circleY = view.gunY ?? state.cy;

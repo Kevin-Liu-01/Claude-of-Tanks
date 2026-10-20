@@ -262,24 +262,28 @@ not the gun ring's, so a far-displaced ring can cross it. A few small windows
 leave no place where every mark keeps 3 px from the furniture under the widest
 rings. There each mark takes the place that reaches least far into it. The paint
 receipt pins how far that is (`TIGHT_FLOOR`), measured in its model and on the
-rendered fixture:
+rendered fixture. Every mode but the standard battle shows its objective panel.
+The layout records that stage apart, and the receipt sweeps it with live and
+empty racks, finite and endless rounds:
 
 - 568x290: 3.34 px into the score in a standard battle (a rack set over a 43 px
-  ring). Under Juggernaut it is 21.18 px. Its objective panel sits over the
-  sight and its systems row under it, so the rack has no room above or below
-  the ring; only the space right of the ring is free.
-- 320x568: 25.28 px (25.52 rendered). The readout row or the 156 px warning
+  ring). With the objective panel it is 22.75 px. The panel sits over the sight
+  and the systems row under it, so the rack has no room above or below the
+  ring; only the space right of the ring is free.
+- 320x568: 25.25 px (25.52 rendered). The readout row or the 156 px warning
   chip sits on the systems row, and the left FIRE button sits under the sight.
-- 360x640: 8.84 px (8.64 rendered), the chip on the systems row's grey
+- 360x640: 8.87 px (9.64 rendered), the 24 px chip on the systems row's grey
   underlines.
 - 375x667: 7.34 px, `0 ` on the systems row with the warning under the widest
-  ring; under Juggernaut it keeps 0.78 px.
-- 1024x400 under Juggernaut: 7.62 px, the warning chip set over the widest ring
-  into the objective panel.
+  ring, in every mode.
+- 740x360 with the objective panel: 0.37 px, an empty rack under the widest ring
+  on the systems row.
+- 1024x400 with the objective panel: 7.62 px, the warning chip set over the
+  widest ring into the panel. The rendered fixture keeps 3 px.
 
 The capture reports these windows' gaps as notes (its case's `tight` floor),
-not failures. Every other swept window keeps 3 px in a standard battle and under
-Juggernaut, the listed capture sizes among them. Round r9 left 568x290 25.5 px
+not failures. Every other swept window keeps 3 px in a standard battle and in
+every mode, the listed capture sizes among them. Round r9 left 568x290 25.5 px
 into its systems row and 1024x400 4.5 px into its controls row. It put the
 portrait chip on the countdown and a dropped rack, and the 667x375 zoom plate
 12 px into the consumables. Before r9 the compact stack under 431 px tall had no
