@@ -3,7 +3,7 @@
 // also the zubr"). An original Polish concept in an orthogonal, framed language of the ERAWA-2 lineage, not a T-90M/MS
 // Relikt layout: welded cheek boxes faced by a grid of cassettes in a frame of bars and mullions ("Krata", the Zubr, level 1),
 // raised by the Zubr II to raked boxes faced by a flush grid of square two-layer pillow cassettes that funnel into the mantlet
-// ("Krata-2", level 2); framed glacis fields (level 1) or stepped glacis terraces (level 2); framed lower-plate fields;
+// ("Krata-2", level 2); framed glacis fields (level 1) or stepped glacis terraces of large two-layer cassettes (level 2); framed lower-plate fields;
 // and fitted front-skirt grids. The two read as one family at two levels of advancement and as a national design
 // distinct from Hetman II's diagonal prow. Every module is bound to an existing gameplay ERA sector with authored hit
 // faces; every box, frame, carrier, pocket and housing is permanent and survives stripEra/resetEra.
@@ -616,16 +616,21 @@ function lampPockets(P: TankBuilderPort, g: HullSurface): void {
 // (round 6, the critic's D5: "rows of long horizontal bricks ... close to the generic Kontakt-5/Relikt brick-row layout";
 // D4: no shape carried over from the Zubr): the terraces' cassettes stand in one square grid (no brick stagger), each
 // column between Krata mullions, over gunmetal bay floors
-// (round 7, the critic's UAPL-1: the terraces still read as "shelf rows of rectangular bricks": the two upper terraces
-// each carry a waffle of square cassettes, two rows of six a side between Krata mullions and a bar between the rows, as
-// the cheek boxes do; the front terrace, between the LED clusters, one row of three)
-const TERRACES = [{z: [2.22, 2.54] as const, x: 1.00, pieces: 6, rows: 2}, {z: [2.58, 2.86] as const, x: 1.00, pieces: 6, rows: 2},
-  {z: [2.90, 3.12] as const, x: .78, pieces: 3, rows: 1}];
+// (round 10, 2026-10-19; the blind critic's UAPL-R8-02: round 7's waffles, two rows of six small pillow cassettes a side
+// on each upper terrace, read as "a dense field of about six staggered rows of small, dark, capped bricks ... busy,
+// high-frequency noise across the whole nose, like an older brick array", and reversed the family logic, the less
+// advanced Zubr carrying the larger, cleaner plates): each terrace carries ONE row of large two-layer cassettes, three a
+// side on the two upper terraces (about 31 x 30 cm and 31 x 26 cm, larger than the Zubr's 23 x 16 cm tiles) and two a
+// side on the front terrace between the LED clusters, their face layer inset 25 mm with 20 mm chamfers: three clean
+// stepped courses of big stacked plates (level 2) against the Zubr's framed single-layer brick bond (level 1)
+const TERRACES = [{z: [2.22, 2.54] as const, x: 1.00, pieces: 3}, {z: [2.58, 2.86] as const, x: 1.00, pieces: 3},
+  {z: [2.90, 3.12] as const, x: .78, pieces: 2}];
 const TERRACE_MULLION = {w: .010, h: .03};
 const TERRACE_TOP = Math.tan(16.8 * Math.PI / 180);
+const TERRACE_FACE = {inset: .025, chamfer: .020};
 
 function level2Glacis(P: TankBuilderPort, g: HullSurface): void {
-  const id = idOf(2), cassette = {down: .26, base: .05, top: .04, gap: .015};
+  const id = idOf(2), cassette = {base: .05, top: .04, gap: .015};
   const X = new THREE.Vector3(1, 0, 0);
   for (const t of TERRACES) {
     const [z0, z1] = t.z, y0 = g.glacisAt(z0) + .025, topAt = (z: number) => y0 - (z - z0) * TERRACE_TOP;
@@ -635,37 +640,25 @@ function level2Glacis(P: TankBuilderPort, g: HullSurface): void {
     assertHullPart(id, 'glacis terrace', carrier);
     P.addExternalArmor('hull', carrier);
     const down = new THREE.Vector3(0, -TERRACE_TOP, 1).normalize(), n = new THREE.Vector3(0, 1, TERRACE_TOP).normalize();
-    // (one row: at most the cassette's .26; two rows share the terrace's whole depth)
-    const depth = (z1 - z0) / Math.cos(Math.atan(TERRACE_TOP)) - .03, along = t.rows > 1 ? depth : Math.min(cassette.down, depth);
-    const rowDepth = (along - (t.rows - 1) * cassette.gap) / t.rows;
+    // one row over the terrace top's whole depth, 15 mm in from its rear and front edges
+    const depth = (z1 - z0) / Math.cos(Math.atan(TERRACE_TOP)) - .03;
     const start = new THREE.Vector3(0, topAt(z0 + .015), z0 + .015);
     for (const side of SIDES) {
       const pieces = mosaicLayout(t.x - .03, (t.x - .03 + cassette.gap) / t.pieces, 1, 0, .09, cassette.gap);
-      for (let r = 0; r < t.rows; r++) {
-        const off = r * (rowDepth + cassette.gap);
-        for (const piece of pieces) {
-          const a = .03 + piece.start, b = .03 + piece.end;
-          const corner = start.clone().setX(side * (side > 0 ? a : b)).addScaledVector(down, off);
-          const geo = stackTile(P, corner, X, down, n, b - a, rowDepth, cassette.base, cassette.top);
-          eraModule(P, {owner: 'hull', sector: sectorOf('glacis_era', side), geometry: geo, outward: tup(n), minDot: .5,
-            name: 'glacis terrace cassette', guard: (nm, geo2) => assertHullPart(id, nm, geo2)});
-          const mid = start.clone().setX(side * (a + b) / 2).addScaledVector(down, off + rowDepth / 2);
-          bayFloor(P, 'hull', id, b - a, rowDepth, mid, X, n);
-          // a Krata mullion in the joint after this cassette (2.5 mm clear of both)
-          if (b < t.x - .03 - 1e-6) {
-            const m = orientedBox([TERRACE_MULLION.w, rowDepth, TERRACE_MULLION.h + .004],
-              start.clone().setX(side * (b + cassette.gap / 2)).addScaledVector(down, off + rowDepth / 2).addScaledVector(n, (TERRACE_MULLION.h - .004) / 2), X, n);
-            assertHullPart(id, 'terrace mullion', m);
-            P.addEquipment('hullDetail', m);
-          }
-        }
-        // the bar between two rows, across the side's cassettes (2.5 mm clear of both rows)
-        if (r < t.rows - 1) {
-          const x0 = .03, x1 = t.x - .03;
-          const bar = orientedBox([x1 - x0, TERRACE_MULLION.w, TERRACE_MULLION.h + .004],
-            start.clone().setX(side * (x0 + x1) / 2).addScaledVector(down, off + rowDepth + cassette.gap / 2).addScaledVector(n, (TERRACE_MULLION.h - .004) / 2), X, n);
-          assertHullPart(id, 'terrace row bar', bar);
-          P.addEquipment('hullDetail', bar);
+      for (const piece of pieces) {
+        const a = .03 + piece.start, b = .03 + piece.end;
+        const corner = start.clone().setX(side * (side > 0 ? a : b));
+        const geo = stackTile(P, corner, X, down, n, b - a, depth, cassette.base, cassette.top, TERRACE_FACE.inset, TERRACE_FACE.chamfer);
+        eraModule(P, {owner: 'hull', sector: sectorOf('glacis_era', side), geometry: geo, outward: tup(n), minDot: .5,
+          name: 'glacis terrace cassette', guard: (nm, geo2) => assertHullPart(id, nm, geo2)});
+        const mid = start.clone().setX(side * (a + b) / 2).addScaledVector(down, depth / 2);
+        bayFloor(P, 'hull', id, b - a, depth, mid, X, n);
+        // a Krata mullion in the joint after this cassette (2.5 mm clear of both)
+        if (b < t.x - .03 - 1e-6) {
+          const m = orientedBox([TERRACE_MULLION.w, depth, TERRACE_MULLION.h + .004],
+            start.clone().setX(side * (b + cassette.gap / 2)).addScaledVector(down, depth / 2).addScaledVector(n, (TERRACE_MULLION.h - .004) / 2), X, n);
+          assertHullPart(id, 'terrace mullion', m);
+          P.addEquipment('hullDetail', m);
         }
       }
     }

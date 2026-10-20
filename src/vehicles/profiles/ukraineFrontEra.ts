@@ -5,7 +5,7 @@
 // courses of deep blocks per side on two facets, each course set back .085 m as it rises, carried on a permanent welded
 // shelf, with jaw collars framing the mantlet, returns round the shoulders and a roof course of swept wedge blocks
 // behind the top course (round 6). The hull carries a framed chevron glacis (three sawtooth bands per side laid as
-// shingled wedge blocks between a keel and two side rails), a nose sill holding two LED bars in raised dark bezels, three two-tier
+// shingled wedge blocks between a keel and two side rails), a nose sill carrying two LED bars in proud visored lamp boxes, three two-tier
 // hinged aprons a side on the lower front plate and two-layer bow modules on its front skirt banks. Every module is a lofted solid bound to an existing gameplay ERA sector with authored hit faces;
 // every carrier, sill, rail, keel, hinge and housing is permanent and survives stripEra/resetEra.
 //
@@ -587,7 +587,8 @@ export function hetmanIIProw(P: TankBuilderPort): void {
 // Hull: the framed chevron glacis, the nose sill and its LED bars, the lower-plate aprons and the bow modules
 
 const SILL = {x: 1.142, rear: 3.08, nose: 3.342, front: 3.357, bottom: .958, hoodY: 1.05, top: 1.07, hood: .03, rearTop: 1.14};
-const LED = {xs: [.60], half: .18, y: 1.015, slot: .03, depth: .015, lens: [.096, .046, .015] as V3, pitch: .12};
+// (round 10: each bar in its own proud armoured lamp box: `half` is the box's half width, the sill's flat cut under it)
+const LED = {xs: [.60], half: .19, y: 1.015, lens: [.100, .056, .015] as V3, pitch: .124};
 // (round 7, the critic's UAPL-R5C-7: "glacis side rails 9.5 mm" into the hull: the rail's outer 14 mm ran under the
 // fender's inner edge at x 1.128 over the glacis's rear; it now ends 4 mm inside that edge)
 const RAIL = {x0: 1.082, x1: 1.124, z0: 2.00, z1: 3.08, proud: .07};
@@ -606,15 +607,14 @@ function sillSegments(P: TankBuilderPort, glacisAt: (z: number) => number): void
   const brk: [number, number] = [3.20, glacisAt(3.20) - .004];
   const full: [number, number][] = [[s.rear, gb], brk, [s.nose, .963], [s.front, s.bottom], [s.front, s.hoodY], [s.front + s.hood, s.hoodY],
     [s.front + s.hood, s.top], [s.rear, s.rearTop]];
-  const lo = LED.y - LED.slot, hi = LED.y + LED.slot, back = s.front - LED.depth;
-  // (round 7, the critic's UAPL-2: "flush, dark, recessed slits ... the feature only reads at night": the hood's lip
-  // stops at the LED bars, so daylight reaches each bar's raised bezel and lenses; it stays over the sill between them)
-  const slot: [number, number][] = [[s.rear, gb], brk, [s.nose, .963], [s.front, s.bottom], [s.front, lo], [back, lo], [back, hi],
-    [s.front, hi], [s.front, s.hoodY], [s.front + s.hood, s.hoodY], [s.front + s.hood, s.top], [s.rear, s.rearTop]];
+  // (round 10, the blind critic's UAPL-R8-01: by day the bars in their slot under the hood's lip read only as a plain
+  // plate edge: each now stands in a proud armoured lamp box, so the sill's face under a box is flat to its top, no slot
+  // and no hood, and the box carries its own visor)
+  const flat: [number, number][] = [[s.rear, gb], brk, [s.nose, .963], [s.front, s.bottom], [s.front, s.top], [s.rear, s.rearTop]];
   const cuts = [-s.x, ...LED.xs.flatMap(c => [-c - LED.half, -c + LED.half]).sort((a, b) => a - b),
     ...LED.xs.flatMap(c => [c - LED.half, c + LED.half]), s.x];
   for (let i = 0; i < cuts.length - 1; i++) {
-    const inSlot = i % 2 === 1, ring = inSlot ? slot : full;
+    const underBox = i % 2 === 1, ring = underBox ? flat : full;
     const g = crosswiseSolid([cuts[i], cuts[i + 1]].map(x => ({x, ring})));
     assertHullPart(ID, 'nose sill', g);
     P.addExternalArmor('hull', g);
@@ -622,33 +622,45 @@ function sillSegments(P: TankBuilderPort, glacisAt: (z: number) => number): void
 }
 
 /** Two LED nose bars. Round 7 (2026-10-18; the critic's UAPL-2: "flush, dark, recessed slits with no visible lens,
- * bezel or housing", the special lights read only at night): each bar is a dark bezel standing 15 mm out of its slot in
- * the sill (a frame of four bars seated in the slot's walls) round three lens segments 5 mm inside the sill's face, the
- * segments split by dark dividers 3 mm less proud than the frame (near tier); each lens's body laps 5 mm into the
- * slot's back wall. */
-const BEZEL = {proud: .015, end: .010, opening: .048, divider: .020};
+ * bezel or housing") gave each a raised dark bezel in a slot under the sill's hood. Round 10 (2026-10-19; the blind
+ * critic's UAPL-R8-01: "the special lights only read at night ... by day the same lip shows only a plain plate edge"):
+ * each bar is an armoured lamp box standing 5 cm proud of the sill's flat face (3 mm into it), welded plate in the hull's
+ * paint: a top wall running on as a 15 mm visor, a bottom wall and two end cheeks round a dark mouth 2 mm over and under
+ * the lenses, its gunmetal back plate (3 mm into the sill) carrying three lens segments 7 mm inside the mouth and 22 mm
+ * inside the visor's lip (each lapping 5 mm into the back plate), split by gunmetal dividers (near tier). Lit from above,
+ * the visor's top and the box's walls frame a black mouth and throw their own shadow on the sill: a fitting, not a plate
+ * edge. */
+const LAMP_BOX = {wall: .018, cheek: .012, seat: .003, mouth: .050, visor: .015, lensIn: .007, y0: .967, y1: 1.063, divider: .020,
+  dividerProud: .003};
 function ledBars(P: TankBuilderPort): void {
-  const [lw, lh, lt] = LED.lens, face = SILL.front - .005, back = SILL.front - LED.depth;
-  const lo = LED.y - LED.slot, hi = LED.y + LED.slot, z0 = back - .0005, z1 = SILL.front + BEZEL.proud;
-  const dark = (x0: number, x1: number, y0: number, y1: number, zFront: number, name: string) =>
-    P.addEquipment('hullDark', tagFrontPart(new THREE.BoxGeometry(x1 - x0, y1 - y0, zFront - z0), name, 'hull'), (x0 + x1) / 2, (y0 + y1) / 2, (z0 + zFront) / 2);
+  const [lw, lh, lt] = LED.lens, B = LAMP_BOX, zSeat = SILL.front - B.seat, zMouth = SILL.front + B.mouth;
+  const lensBack = zMouth - B.lensIn - lt, zPlate = lensBack + .005;
+  const add = (bucket: string, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number, name: string) => {
+    const g = tagFrontPart(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), name, 'hull').translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    assertHullPart(ID, name, g);
+    P.addEquipment(bucket, g);
+  };
+  const oy0 = B.y0 + B.wall, oy1 = B.y1 - B.wall;
   for (const c of LED.xs) for (const side of SIDES) {
-    const cx = side * c, a = cx - LED.half, b = cx + LED.half;
+    const cx = side * c, a = cx - LED.half + .001, b = cx + LED.half - .001;
+    // the box: top wall and visor, bottom wall, end cheeks (between the walls), in the hull's paint
+    add('hullExternalArmor', a, b, oy1, B.y1, zSeat, zMouth + B.visor, 'LED lamp box');
+    add('hullExternalArmor', a, b, B.y0, oy0, zSeat, zMouth, 'LED lamp box');
+    // (the cheeks' outer faces 0.5 mm inside the walls' ends and their backs 0.5 mm shallower, the back plate's 1 mm: no
+    // two faces of the box share a plane)
+    add('hullExternalArmor', a + .0005, a + B.cheek, oy0 - .001, oy1 + .001, zSeat + .0005, zMouth - .002, 'LED lamp box');
+    add('hullExternalArmor', b - B.cheek, b - .0005, oy0 - .001, oy1 + .001, zSeat + .0005, zMouth - .002, 'LED lamp box');
+    // the back plate, between the cheeks and walls (0.5 mm into each)
+    add('hullDark', a + B.cheek - .0005, b - B.cheek + .0005, oy0 - .0005, oy1 + .0005, zSeat + .001, zPlate, 'LED lamp back plate');
     for (const k of [-1, 0, 1]) {
       // (glass, though the T-72B3M hull had no glass bucket (one draw more): the field net opens only round Glass, Hatch
       // and Cupola stock, so a lens in another bucket would be netted over)
-      P.addEquipment('hullGlass', tagFrontPart(nightLens(new THREE.BoxGeometry(lw, lh, lt), 'headlight'), 'LED bar lens', 'hull'), cx + k * LED.pitch, LED.y, face - lt / 2);
+      P.addEquipment('hullGlass', tagFrontPart(nightLens(new THREE.BoxGeometry(lw, lh, lt), 'headlight'), 'LED bar lens', 'hull'), cx + k * LED.pitch, LED.y, lensBack + lt / 2);
     }
-    // the bezel: its ends full height, 0.5 mm into the slot's end and top and bottom walls; its top and bottom bars
-    // between them, 0.5 mm into the walls, round a 48 mm opening
-    dark(a - .0005, a + BEZEL.end, lo - .0005, hi + .0005, z1, 'LED bar bezel');
-    dark(b - BEZEL.end, b + .0005, lo - .0005, hi + .0005, z1, 'LED bar bezel');
-    dark(a + BEZEL.end, b - BEZEL.end, LED.y + BEZEL.opening / 2, hi + .0005, z1, 'LED bar bezel');
-    dark(a + BEZEL.end, b - BEZEL.end, lo - .0005, LED.y - BEZEL.opening / 2, z1, 'LED bar bezel');
-    // the dividers between the lenses (near tier)
+    // the dividers between the lenses (near tier), 3 mm prouder than the lenses, 0.5 mm into the back plate
     if (P.q) for (const k of [-.5, .5]) {
       const x = cx + k * LED.pitch;
-      dark(x - BEZEL.divider / 2, x + BEZEL.divider / 2, LED.y - BEZEL.opening / 2, LED.y + BEZEL.opening / 2, z1 - .003, 'LED bar divider');
+      add('hullDark', x - B.divider / 2, x + B.divider / 2, LED.y - lh / 2 - .002, LED.y + lh / 2 + .002, zPlate - .0005, lensBack + lt + B.dividerProud, 'LED bar divider');
     }
   }
 }

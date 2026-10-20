@@ -72,13 +72,13 @@ const POLISH_FIELD: Readonly<Partial<Record<Layout['id'], {
 };
 
 /** The Zubr II's glacis terrace nets: z0, z1 and half width. Round 7 (polandFrontEra.ts TERRACES: the two upper terraces
- * carry two rows of cassettes, the rear row 4-5 cm above the front one on the 16.8-degree terrace top; one net a terrace
+ * carried two rows of cassettes, the rear row 4-5 cm above the front one on the 16.8-degree terrace top; one net a terrace
  * laid the rear row's height out over the front row, and the ghillieSuit receipt found three of its pieces 2.2 cm over
  * everything): one net per cassette row, over the row (its z span along the terrace top) and no further, so no cloth
- * bridges a row's step or lies in the bar's joint between rows; the front terrace stops short of the LED cluster
- * housings. */
-const ZUBR_II_TERRACE_NETS: readonly (readonly [number, number, number])[] = [[2.235, 2.373, 1.0], [2.387, 2.525, 1.0],
-  [2.595, 2.714, 1.0], [2.728, 2.847, 1.0], [2.915, 3.106, .78]];
+ * bridges a row's step; the front terrace stops short of the LED cluster housings. Round 10 (the blind critic's
+ * UAPL-R8-02: each terrace now carries one row of large cassettes): one net a terrace, over its one row. */
+const ZUBR_II_TERRACE_NETS: readonly (readonly [number, number, number])[] = [[2.235, 2.525, 1.0], [2.595, 2.847, 1.0],
+  [2.915, 3.106, .78]];
 
 const square = ([x, z]: readonly [number, number], r: number): Point2[] => [[x - r, z - r], [x + r, z - r], [x + r, z + r], [x - r, z + r]];
 const circle = (z: number, r: number): Point2[] => Array.from({length: 24}, (_, k): Point2 =>

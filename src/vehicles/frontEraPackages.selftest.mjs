@@ -34,7 +34,7 @@ import {vehicleNightLightEmittersFor, SEARCHLIGHT_CONE_RAD} from './vehicleNight
 import {NATIONAL_ROOF_LOADOUTS} from './nationalRoofConfig.ts';
 import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
 import {auxiliaryState, requestAuxiliary, stepRoofGun, auxiliaryShot} from '../sim/auxiliarySystems.ts';
-import {Solid, trianglesOf, surfaceSamples, deepest} from './frontEraSolids.test-support.mjs';
+import {Solid, trianglesOf, trianglesIn, surfaceSamples, deepest} from './frontEraSolids.test-support.mjs';
 import {tankPoseFromState, traceTank} from '../sim/armor.ts';
 
 // (FRONT_ERA_IDS=<id,...>: a debugging subset)
@@ -44,8 +44,9 @@ const SECTORS = ['glacis_era_L', 'glacis_era_R', 'skirt_era_L', 'skirt_era_R', '
 const MODULES = {
   t72b3m_hetman_ii: {glacis_era: 13, skirt_era: 1, turret_era: 19},
   t72b3_zubr: {glacis_era: 18, skirt_era: 10, turret_era: 24},
-  // (round 7: the Zubr II's two upper glacis terraces carry two rows of six square cassettes a side)
-  t72b3_zubr_ii: {glacis_era: 30, skirt_era: 13, turret_era: 54},
+  // (round 10, the blind critic's UAPL-R8-02: the Zubr II's terraces carry one row of large cassettes each, 3 + 3 + 2 a
+  // side, with the lower plate's three)
+  t72b3_zubr_ii: {glacis_era: 11, skirt_era: 13, turret_era: 54},
 };
 /** The brief's cost ceilings (round 7, the critic's UAPL-R5C-8: this receipt held Hetman II to 146,669 / 110,265, looser
  * than the brief's, and never asserted LOW <= 75 % of HIGH): drawn triangles HIGH/LOW (Hetman II its gatefix2 baseline
@@ -106,13 +107,27 @@ function intersects(a, b) {
 class Grid {
   constructor(tris, cell = .1) {
     this.cell = cell; this.map = new Map(); this.box = new THREE.Box3();
+    // (round 10, the critic's UAPL-C8-6: this receipt was the slowest in the suite) the highest point of any triangle
+    // listed in each cell: a posed triangle wholly above every triangle of the cells under it meets none of them
+    this.maxY = new Map();
     for (const t of tris) {
       this.box.union(t.box);
       for (let i = Math.floor(t.box.min.x / cell); i <= Math.floor(t.box.max.x / cell); i++)
         for (let k = Math.floor(t.box.min.z / cell); k <= Math.floor(t.box.max.z / cell); k++) {
           const key = i * 100003 + k; let list = this.map.get(key); if (!list) this.map.set(key, list = []); list.push(t);
+          if (!(this.maxY.get(key) >= t.box.max.y)) this.maxY.set(key, t.box.max.y);
         }
     }
+  }
+  /** Whether a box can meet any listed triangle: false when it lies outside the grid's box or above every triangle of
+   * the cells under it (an exact filter: every candidate near() would return has its top at or under that height). */
+  reaches(min, max) {
+    if (min.x > this.box.max.x || max.x < this.box.min.x || min.y > this.box.max.y || max.y < this.box.min.y
+      || min.z > this.box.max.z || max.z < this.box.min.z) return false;
+    const c = this.cell;
+    for (let i = Math.floor(min.x / c); i <= Math.floor(max.x / c); i++)
+      for (let k = Math.floor(min.z / c); k <= Math.floor(max.z / c); k++) if (this.maxY.get(i * 100003 + k) >= min.y) return true;
+    return false;
   }
   near(box) {
     const out = new Set(), c = this.cell;
@@ -366,17 +381,45 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
     const gunMeshes = [];
     gun.traverse(o => { if (o.isMesh && !isShadow(o) && o.material?.colorWrite !== false) gunMeshes.push(o); });
     const gunLocal = gunMeshes.map(o => ({o, tris: trisOf(o.geometry), mount: /gunMount/.test(o.name)}));
-    const posed = (frameRig, lower = 0, dx = 0, only = null) => {
+    // (round 10, UAPL-C8-6) the gun's triangles posed in a rig's frame and tested against a grid. A triangle whose posed
+    // box cannot reach the grid (Grid.reaches, exact) is skipped before it is built; one that can is tested as pieces no
+    // longer than 15 cm (its own area, split at its longest edges, each piece behind the same exact filter): the barrel's
+    // 5 m strips no longer gather every hull triangle under their whole length for each pose
+    const PIECE = .15;
+    const piecesOf = tr => tr.pieces ??= (() => {
+      const out = [], stack = [tr.v];
+      while (stack.length) {
+        const [a, b, c] = stack.pop(), e = [[a, b, c], [b, c, a], [c, a, b]].map(([p, q, r]) => ({p, q, r, l: p.distanceTo(q)}));
+        const longest = e.reduce((x, y) => (y.l > x.l ? y : x));
+        if (longest.l <= PIECE) { out.push([a, b, c]); continue; }
+        const mid = longest.p.clone().lerp(longest.q, .5);
+        stack.push([longest.p, mid, longest.r], [mid, longest.q, longest.r]);
+      }
+      return out;
+    })();
+    const sweepHits = (grid, frameRig, lower = 0, dx = 0, only = null) => {
       t.root.updateMatrixWorld(true);
-      const inv = new THREE.Matrix4().copy(frameRig.matrixWorld).invert(), out = [];
+      const inv = new THREE.Matrix4().copy(frameRig.matrixWorld).invert(), m = new THREE.Matrix4(), shift = new THREE.Matrix4().makeTranslation(dx, -lower, 0);
+      const q = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()], lo = new THREE.Vector3(), hi = new THREE.Vector3();
+      const test = v3 => {
+        for (let k = 0; k < 3; k++) q[k].copy(v3[k]).applyMatrix4(m);
+        lo.copy(q[0]).min(q[1]).min(q[2]); hi.copy(q[0]).max(q[1]).max(q[2]);
+        if (!grid.reaches(lo, hi)) return null;
+        const v = q.map(p => p.clone()), tri = new THREE.Triangle(...v);
+        return grid.hits([{v, tri, plane: tri.getPlane(new THREE.Plane()), box: new THREE.Box3(lo.clone(), hi.clone())}]);
+      };
       for (const {o, tris, mount} of gunLocal) {
         if (only === 'mount' && !mount) continue;
         if (only === 'barrel' && mount) continue;
-        const m = inv.clone().multiply(o.matrixWorld).premultiply(new THREE.Matrix4().makeTranslation(dx, -lower, 0));
-        for (const tr of tris) { const v = tr.v.map(q => q.clone().applyMatrix4(m)), tri = new THREE.Triangle(...v);
-          out.push({v, tri, plane: tri.getPlane(new THREE.Plane()), box: new THREE.Box3().setFromPoints(v)}); }
+        m.copy(inv).multiply(o.matrixWorld).premultiply(shift);
+        for (const tr of tris) {
+          for (let k = 0; k < 3; k++) q[k].copy(tr.v[k]).applyMatrix4(m);
+          lo.copy(q[0]).min(q[1]).min(q[2]); hi.copy(q[0]).max(q[1]).max(q[2]);
+          if (!grid.reaches(lo, hi)) continue;
+          for (const piece of piecesOf(tr)) { const hit = test(piece); if (hit) return hit; }
+        }
       }
-      return out;
+      return null;
     };
     const turretFresh = new Grid(fresh.filter(p => p.owner === 'turret').flatMap(p => trisOf(p.g)), .1);
     const hullFresh = new Grid(fresh.filter(p => p.owner === 'hull').flatMap(p => trisOf(p.g)), .1);
@@ -386,9 +429,9 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
       turret.rotation.y = 0;
       for (let pitch = -spec.gunDepressionDeg; pitch <= spec.gunElevationDeg + 1e-9; pitch += 1) for (const travel of [0, .135]) {
         gun.rotation.x = -pitch * DEG; recoil.position.z = -travel;
-        const hit = turretFresh.hits(posed(turret));
+        const hit = sweepHits(turretFresh, turret);
         assert(!hit, `${label}: the main gun at pitch ${pitch}, recoil ${travel} meets new turret stock`);
-        if (travel === 0) for (const dx of [-.05, .05]) assert(!turretFresh.hits(posed(turret, 0, dx, 'mount')), `${label}: the mantlet keeps 5 cm from new turret stock at pitch ${pitch}`);
+        if (travel === 0) for (const dx of [-.05, .05]) assert(!sweepHits(turretFresh, turret, 0, dx, 'mount'), `${label}: the mantlet keeps 5 cm from new turret stock at pitch ${pitch}`);
       }
       // hull parts: every degree of yaw at its lowest legal pitch, both recoil states; 3 cm under the barrel over the front arc
       for (let yaw = -179; yaw <= 180; yaw += 1) {
@@ -396,7 +439,7 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
         turret.rotation.y = yaw * DEG; gun.rotation.x = -low;
         for (const travel of [0, .135]) {
           recoil.position.z = -travel;
-          assert(!hullFresh.hits(posed(hullRig, Math.abs(yaw) <= 90 ? .03 : 0)), `${label}: the main gun at yaw ${yaw} (pitch ${(low / DEG).toFixed(1)}, recoil ${travel}) keeps ${Math.abs(yaw) <= 90 ? '3 cm over' : 'clear of'} new hull stock`);
+          assert(!sweepHits(hullFresh, hullRig, Math.abs(yaw) <= 90 ? .03 : 0), `${label}: the main gun at yaw ${yaw} (pitch ${(low / DEG).toFixed(1)}, recoil ${travel}) keeps ${Math.abs(yaw) <= 90 ? '3 cm over' : 'clear of'} new hull stock`);
         }
       }
       // the pitch curves over the whole circle (round 2; the critic's D7: at -6 the gun met the existing hull stock in the
@@ -408,7 +451,7 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
         turret.rotation.y = yaw; gun.rotation.x = -low;
         for (const travel of [0, .135]) {
           recoil.position.z = -travel;
-          const hit = hullGrid.hits(posed(hullRig, .015, 0, 'barrel')) ?? hullGrid.hits(posed(hullRig, 0, 0, 'mount'));
+          const hit = sweepHits(hullGrid, hullRig, .015, 0, 'barrel') ?? sweepHits(hullGrid, hullRig, 0, 0, 'mount');
           assert(!hit, `${label}: the pitch curve keeps the gun off the hull at yaw ${sgn * a} (pitch ${(low / DEG).toFixed(2)}, recoil ${travel})${hit ? ` ${JSON.stringify(hit.map(h => h.v.map(q => q.toArray().map(n => +n.toFixed(3)))))}` : ''}`);
         }
       }
@@ -431,7 +474,7 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
       const news = fresh.filter(q => q.owner === owner && !q.lamp).map(q => piece(q.g, {name: q.name, module: q.module, hardware: q.era && !q.module, sector: q.sector}));
       const solid = A => A.solid ??= new Solid(A.tris);
       // (B's points inside A's box only: a whole shell sampled every 12 mm would be tens of thousands of points)
-      const pointsIn = (B, box) => surfaceSamples(B.tris.filter(t2 => t2.box.intersectsBox(box)), .012).filter(q => box.containsPoint(q));
+      const pointsIn = (B, box) => surfaceSamples(trianglesIn(B.tris, box), .012).filter(q => box.containsPoint(q));
       const pairDepth = (A, B) => {
         if (!A.box.clone().expandByScalar(.002).intersectsBox(B.box)) return {depth: 0};
         const a = deepest(pointsIn(A, B.box), solid(B)), b = deepest(pointsIn(B, A.box), solid(A));
