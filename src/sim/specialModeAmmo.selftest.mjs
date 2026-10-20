@@ -12,7 +12,7 @@ import { createCombatState } from './damage.ts';
 import { createMatchModeController, GAME_MODE_IDS } from './matchModes.ts';
 import { createTankState } from './movement.ts';
 import { createBus, createGameState, simStep } from '../game/state.ts';
-import { cacheHealChance, matchRulesetFor, refillUnlimitedAmmunition, rulesetLines } from './matchRuleset.ts';
+import { cacheHealChance, matchRulesetFor, refillUnlimitedAmmunition, rulesetLines, rulesetUnlimitedFor } from './matchRuleset.ts';
 
 const AMMO = {
   standard: 'spec', capture_the_flag: 'spec', zone_control: 'spec', realistic: 'spec',
@@ -42,12 +42,25 @@ assert.equal(matchRulesetFor('frontline_assault', { difficulty: 6, enemy: 'russi
   assert.equal(combat.ammo[0], 29, 'a competitive mode never refills');
 }
 
+// Per entity (critic r3): the one read both refill sites, both shell-card builders and the loader audio use. Unlimited
+// rounds are every seat's in an unlimited mode, except the AC-130's escorts: only the gunship refills there.
+for (const mode of GAME_MODE_IDS) {
+  const rules = matchRulesetFor(mode);
+  const gunshipMode = rules.aerial === 'gunship';
+  assert.equal(rulesetUnlimitedFor(rules, {}), rules.ammo === 'unlimited' && !gunshipMode, `${mode}: a ground seat`);
+  assert.equal(rulesetUnlimitedFor(rules, { aerial: { kind: 'gunship' } }), rules.ammo === 'unlimited', `${mode}: the gunship`);
+  assert.equal(rulesetUnlimitedFor(rules, { aerial: { kind: 'drone' } }), rules.ammo === 'unlimited' && !gunshipMode,
+    `${mode}: a drone carrier is a ground seat`);
+}
+assert.equal(rulesetUnlimitedFor(null, { aerial: { kind: 'gunship' } }), false, 'no ruleset: the vehicle\'s own loadout');
+
 // the authority's fire path: the boss fires; its channel is full again after the shot in Juggernaut, one round lighter
-// in Standard
-for (const mode of ['juggernaut', 'standard', 'infected', 'endless_horde']) {
+// in Standard and for an AC-130 escort (a bravo human seat: a ground tank beside the alpha gunship, which never refills)
+for (const mode of ['juggernaut', 'standard', 'infected', 'endless_horde', 'ac130']) {
+  const escort = mode === 'ac130';
   const match = createAuthoritativeMatch({ gameMode: mode, countdownS: 0, mapId: 'verdant', seed: 31, players: [
-    { id: 'pilot', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -60, yaw: 0 } },
-    { id: 'hostile', specId: 'm1a1_abrams_hc', team: 'bravo', bot: true, spawn: { x: 0, z: 140, yaw: Math.PI } },
+    { id: 'pilot', specId: 'm1a1_abrams_hc', team: escort ? 'bravo' : 'alpha', spawn: { x: 0, z: -60, yaw: 0 } },
+    { id: 'hostile', specId: 'm1a1_abrams_hc', team: escort ? 'alpha' : 'bravo', bot: true, spawn: { x: 0, z: 140, yaw: Math.PI } },
   ] });
   match.onMatchReady();
   const pilot = match.entityById.get('pilot');
@@ -63,8 +76,9 @@ for (const mode of ['juggernaut', 'standard', 'infected', 'endless_horde']) {
     match.afterEventBroadcast();
   }
   assert.equal(fired, 1, `${mode}: the pilot fired`);
-  assert.equal(pilot.combat.ammo[0], matchRulesetFor(mode).ammo === 'unlimited' ? capacity : capacity - 1,
-    `${mode}: ${matchRulesetFor(mode).ammo} rounds after one shot`);
+  assert.equal(pilot.aerial?.kind === 'gunship', false, `${mode}: the pilot is a ground seat`);
+  assert.equal(pilot.combat.ammo[0], matchRulesetFor(mode).ammo === 'unlimited' && !escort ? capacity : capacity - 1,
+    `${mode}: ${escort ? 'an escort spends its' : matchRulesetFor(mode).ammo} rounds after one shot`);
 }
 
 // Gravity Mode's timed caches through the controller (matchModes spawnPickup reads cacheHealChance; Mars has no Horde
@@ -97,8 +111,8 @@ for (const mode of ['juggernaut', 'standard', 'infected', 'endless_horde']) {
 }
 
 // the solo battle's fire path (game/state.ts tryFire): the same shot refills the channel in Juggernaut and the other
-// special modes and spends one round in Standard
-for (const mode of ['juggernaut', 'standard', 'infected', 'endless_horde', 'mars']) {
+// special modes and spends one round in Standard and for an AC-130 escort (a ground seat: no gunship view)
+for (const mode of ['juggernaut', 'standard', 'infected', 'endless_horde', 'mars', 'ac130']) {
   const spec = getSpec('m1a3'), combat = createCombatState(spec), game = createGameState();
   game.ruleset = matchRulesetFor(mode);
   const input = { throttle: 0, steer: 0, brake: true, fire: true, shellSlot: 0, aimYaw: 0, aimPitch: 0.25, aimDistance: 300, actionBits: 0 };
@@ -115,8 +129,9 @@ for (const mode of ['juggernaut', 'standard', 'infected', 'endless_horde', 'mars
   const collider = { setSelf() {}, collide: () => false, pendingCrush: [], pendingRams: [], queueRam() {} };
   simStep(game, bus, { heightField: flat, raycast: () => null }, null, collider);
   assert.equal(fired, 1, `solo ${mode}: the pilot fired`);
-  assert.equal(combat.ammo[0], game.ruleset.ammo === 'unlimited' ? capacity : capacity - 1,
+  assert.equal(combat.ammo[0], rulesetUnlimitedFor(game.ruleset, entity) ? capacity : capacity - 1,
     `solo ${mode}: ${game.ruleset.ammo} rounds after one shot`);
+  assert.equal(combat.ammo[0] === capacity, mode !== 'standard' && mode !== 'ac130', `solo ${mode}: refilled exactly where it should`);
 }
 
-console.log('specialModeAmmo: competitive and realistic modes keep spec rounds; every special and arcade mode plays unlimited rounds, its card says so, its caches repair (Horde and Gravity Mode drops), and both the authority and the solo battle refill a fired channel');
+console.log('specialModeAmmo: competitive and realistic modes keep spec rounds; every special and arcade mode plays unlimited rounds, its card says so, its caches repair (Horde and Gravity Mode drops), and both the authority and the solo battle refill a fired channel — the AC-130 gunship\'s alone, never an escort\'s (rulesetUnlimitedFor)');

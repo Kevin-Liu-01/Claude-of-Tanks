@@ -79,8 +79,7 @@ interface GarageWorkshopStats {
   readonly battleScreenResidentImageLimit: number;
   readonly battleScreenResidentImageCount: number;
   readonly battleScreenCurrentImage: string;
-  readonly battleScreenSecondaryImage: string;
-  readonly battleScreenSecondaryFacing: string;
+  readonly battleScreenFacing: string;
   readonly battleScreenVisible: boolean;
   readonly modelMode: string;
   readonly exhibitCount: number;
@@ -279,8 +278,7 @@ export function createGarageWorkshopDiagnostics({
         battleScreenResidentImageLimit: numberValue(data.battleScreenResidentImageLimit),
         battleScreenResidentImageCount: numberValue(data.battleScreenResidentImageCount),
         battleScreenCurrentImage: stringValue(data.battleScreenCurrentImage),
-        battleScreenSecondaryImage: stringValue(data.battleScreenSecondaryImage),
-        battleScreenSecondaryFacing: stringValue(data.battleScreenSecondaryFacing),
+        battleScreenFacing: stringValue(data.battleScreenFacing),
         battleScreenVisible: trueValue(data.battleScreenVisible),
         modelMode: stringValue(data.workshopModelMode),
         exhibitCount: numberValue(data.workshopExhibitCount),
