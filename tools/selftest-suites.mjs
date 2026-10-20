@@ -772,6 +772,20 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageYardWear.selftest.mjs',
     'src/ui/garageVerdantHall.selftest.mjs',
     'src/ui/garageQualityRubric.selftest.mjs',
+    // garage r9 (2026-10-17): the shared kit (pieces, cranes, walls, displays, platform, placement), its display atlas
+    // (generator check, rect names, the swap test) and the atmosphere
+    'src/ui/garageKit.selftest.mjs',
+    'src/ui/garageDisplayAtlas.selftest.mjs',
+    'src/ui/garageAtmosphere.selftest.mjs',
+    'src/ui/garageDisplayPlacement.selftest.mjs',
+    // garage r9 (g1 lane): the outside environment from each map (generator check, landmarks, budgets)
+    'src/ui/garageSkyline.selftest.mjs',
+    // garage r9 (g1 lane, criterion 16): the near facility's primitives rebuilt as kit geometry
+    'src/ui/garageFacilityNear.selftest.mjs',
+    // garage r9 per-garage lanes: the built skylines (named map landmarks at their bearings, deterministic, bounded)
+    'src/ui/garageSkylineKit.selftest.mjs',
+    // garage r9 (g3): Sirocco's and Steinburg's map landmarks at their bearings, bounded and deterministic
+    'src/ui/garageHorizonLandmarks.selftest.mjs',
     'tools/garage-terrain-patches.selftest.mjs',
     'tools/garage-variants-probe.selftest.mjs',
     'src/game/rosterPlanning.selftest.mjs',

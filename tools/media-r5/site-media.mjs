@@ -171,7 +171,8 @@ for (const f of PICKS.featured) if (f.still === 'close' && f.fourK) throw new Er
 function slots() {
   const out = [];
   const add = (slot, id, kind) => out.push({ slot, id, kind });
-  PICKS.home.hero.forEach((h, i) => add(`home.hero[${i}]`, h.id, h.still));
+  // (a hero slide may be a versus still instead of a take: versusSlots)
+  PICKS.home.hero.forEach((h, i) => { if (!h.versus) add(`home.hero[${i}]`, h.id, h.still); });
   PICKS.home.rail.forEach((id, i) => add(`home.rail[${i}]`, id, 'moment'));
   PICKS.home.mosaic.forEach((m, i) => add(`home.mosaic[${i}]`, m.id, m.still));
   add('home.cta', PICKS.home.cta.id, PICKS.home.cta.still);
@@ -195,6 +196,15 @@ function slots() {
   // the home page's shots stand in on a site fifty still until their own are delivered
   // (a slot with no honest stand-in has none: it hides until its shot lands)
   for (const s of homeSlots()) if (s.standIn) add(`home.${s.group}.${s.id}`, s.standIn.id, s.standIn.still);
+  return out;
+}
+// The landing page's versus stills (2026-10-19, the owner: "all our new frames need to go up with no removals of old
+// ones"): the hero's first slides ({ versus, focus }) and the versus wall (picks.home.versus) show versus-media.mjs's
+// published stills (public/media/versus-r1), which this build does not make; it checks that each one is there.
+function versusSlots() {
+  const out = [];
+  PICKS.home.hero.forEach((h, i) => { if (h.versus) out.push({ slot: `home.hero[${i}]`, id: h.versus }); });
+  (PICKS.home.versus ?? []).forEach((id, i) => out.push({ slot: `home.versus[${i}]`, id }));
   return out;
 }
 
@@ -233,6 +243,11 @@ function checkPicks() {
     if (s.kind === 'close' && !d.close) problems.push(`${s.slot}: ${s.id} has no close still in ${d.round}`);
     if ((s.kind === 'reel' || s.kind === 'loop') && !d.sound) problems.push(`${s.slot}: ${s.id} is delivered without its sound (${d.round})`);
   }
+  const versusManifest = join(ROOT, 'public/media/versus-r1/manifest.json');
+  const versus = new Set(existsSync(versusManifest) ? JSON.parse(readFileSync(versusManifest, 'utf8')).items.map((v) => v.id) : []);
+  for (const s of versusSlots()) if (!versus.has(s.id)) problems.push(`${s.slot}: ${s.id} is not a published versus still (public/media/versus-r1)`);
+  // the landing page's trailers row plays films this build ships
+  for (const film of PICKS.home.trailers ?? []) if (!(PICKS.films ?? []).includes(film)) problems.push(`home.trailers: ${film} is not one of the films`);
   // a delivered home shot keeps its slot's frame (a 16:9 card, the 24:7 multiplayer band): the build never stretches one
   for (const s of homeSlots()) {
     const png = homeDelivery(s);
@@ -467,6 +482,19 @@ function buildFilms() {
           ...(e.capped ? { capped: true } : {}) } });
     }
     copy(join(OUT, 'films', `${name}.jpg`), join(trailers, film.poster.file), { film: name });
+    // the landing's trailers row (2026-10-19) shows each film at an action moment, picks.home.trailerPosters (the
+    // delivered poster is its title card); a moment picked on another delivery is not used on this one
+    const moment = PICKS.home.trailerPosters?.[name];
+    if (moment && moment.source === PICKS.sources.trailers) {
+      const src = join(trailers, film.mp4.file), out = join(OUT, 'films', `${name}-row.jpg`);
+      // (make() goes by mtime: a moment picked again is cut again)
+      const manifest = join(OUT, 'manifest.json');
+      const was = existsSync(manifest) ? JSON.parse(readFileSync(manifest, 'utf8')).files
+        .find((f) => f.path === relative(join(ROOT, 'public'), out).split('\\').join('/'))?.posterAtS : undefined;
+      if (existsSync(out) && was !== moment.atS) rmSync(out);
+      make(out, src, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-ss', String(moment.atS), '-i', src,
+        '-frames:v', '1', '-q:v', '3', tmp]), { film: name, posterAtS: moment.atS });
+    }
   }
   const takes = reelTakes();
   if (takes.length === PICKS.home.reel.takes.length) {
@@ -649,6 +677,7 @@ function main() {
       const d = delivery(s.id);
       console.log(`${s.slot.padEnd(22)} ${s.id.padEnd(24)} ${s.kind.padEnd(7)} ${d ? `${relative('shots/media-r5/site50', d.round)}${d.sound ? '' : ' (silent)'}` : 'MISSING'}`);
     }
+    for (const s of versusSlots()) console.log(`${s.slot.padEnd(22)} ${s.id.padEnd(24)} versus  public/media/versus-r1`);
     const frames = frameList();
     console.log(`frames: ${frames.length} (${frames.filter((f) => f.current).length} from ${PICKS.sources.frames})`);
     console.log(`films: ${(PICKS.films ?? []).map((name) => `${name} ${existsSync(join(MEDIA, PICKS.sources.trailers, `${name}.webm`)) ? 'delivered' : 'MISSING'}`).join(', ')}`);

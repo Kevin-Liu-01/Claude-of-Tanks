@@ -51,13 +51,20 @@ function fixture() {
   return {
     geometries: [wireGeometry(888), wireGeometry(4, true)],
     nodes: [wireNode('group', 'worker-exhibit'), first, second,
-      wireNode('mesh', 'unclassified-part', { parentIndex: 0, geometry: 0, materials: [1] }), packed],
+      wireNode('mesh', 'unclassified-part', { parentIndex: 0, geometry: 0, materials: [1] }), packed,
+      // garage r9 (the T-90M glare): a suit's net and a jerrycan stack whose paint lived in vertex colours the wire omits
+      wireNode('mesh', 't90m_ghillie_turret_net', { parentIndex: 0, geometry: 0, materials: [3] }),
+      wireNode('mesh', 'decor_hull_cans', { parentIndex: 0, geometry: 0, materials: [4] })],
     materials: [
       { name: 'factory-paint', role: 'armorPaint', color: 0x445544, roughness: 0.8,
         metalness: 0.1, opacity: 1, transparent: false, side: THREE.FrontSide, depthWrite: true },
       { name: 'unknown-finish', role: '', color: 0x778899, roughness: 0.7,
         metalness: 0.2, opacity: 1, transparent: false, side: THREE.DoubleSide, depthWrite: true },
       { name: 'wheel', role: 'wheelPaint', color: 0xffffff,
+        opacity: 1, transparent: false, side: THREE.FrontSide, depthWrite: true },
+      { name: '', role: '', color: 0xffffff, roughness: 1, metalness: 0,
+        opacity: 1, transparent: false, side: THREE.DoubleSide, depthWrite: true },
+      { name: '', role: '', color: 0xffffff, roughness: 0.82, metalness: 0.07,
         opacity: 1, transparent: false, side: THREE.FrontSide, depthWrite: true },
     ],
     payload: { attributeBytes: 22_746, omittedAttributeBytes: 0, omittedAttributeCount: 0 },
@@ -235,10 +242,16 @@ const originalWorker = Object.getOwnPropertyDescriptor(globalThis, 'Worker');
 const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
 let transfer;
 const visuals = [];
+// the engine's cascade registration: every material the transfer makes, its fallbacks too, joins it and leaves it
+const registered = new Set(), released = new Set();
+const shadowCtx = {
+  setupShadowMaterial(material) { registered.add(material); },
+  releaseShadowMaterial(material) { released.add(material); return true; },
+};
 try {
   Object.defineProperty(globalThis, 'Worker', { configurable: true, value: FixtureWorker });
   Object.defineProperty(globalThis, 'window', { configurable: true, value: { setTimeout } });
-  transfer = createGarageWorkshopTransfer({});
+  transfer = createGarageWorkshopTransfer(shadowCtx);
   // Construct successively: the second visual must reuse the completed first
   // visual's worker and palette lease, not merely join a concurrent request.
   visuals.push(await transfer.createVisual('m1a1_abrams_hc', 4200));
@@ -253,6 +266,15 @@ try {
   assert.ok(sharedMaterial === second.root.children[0].material, 'matching finishes retain one palette lease');
   assert.ok(first.root.children[0].geometry !== second.root.children[0].geometry,
     'separate transfers retain independent geometry ownership');
+  // the suit's net is the exhibit's cloth, the cans its fitting paint, never a white fallback; the remaining fallback
+  // joins the cascade registration (unregistered, three's plain loop summed all four cascade suns on it)
+  const byName = (name) => first.root.children.find((child) => child.name === name).material;
+  assert.equal(byName('t90m_ghillie_turret_net').name, 'cot:garage-canvas', 'a ghillie net takes the exhibit canvas');
+  assert.equal(byName('decor_hull_cans').name, 'cot:garage-factory-fitting-paint', 'a near-white part takes the fitting paint');
+  const fallback = first.root.children[2].material;
+  assert.ok(registered.has(fallback), 'a fallback material joins the cascade registration');
+  assert.ok(!first.root.children.some((child) => child.material.color?.getHex() === 0xffffff && !child.material.name),
+    'no exhibit part renders as an unregistered white fallback');
   const firstDisposal = disposalCounts(first), secondDisposal = disposalCounts(second);
   const parent = new THREE.Group();
   parent.add(first.root, second.root);
@@ -263,6 +285,7 @@ try {
   assert.equal(firstDisposal.material.get(sharedMaterial), 0, 'live second visual protects shared palette');
   assert.equal(firstDisposal.material.get(first.root.children[2].material), 1,
     'per-visual fallback material is disposed exactly once');
+  assert.ok(released.has(fallback), 'a disposed fallback leaves the cascade registration');
   assert.ok([...secondDisposal.geometry.values()].every(count => count === 0));
   second.dispose(); second.dispose();
   assert.ok([...secondDisposal.geometry.values()].every(count => count === 1));

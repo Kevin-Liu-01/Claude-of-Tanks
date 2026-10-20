@@ -31,6 +31,8 @@ const EN = JSON.parse(readFileSync(join(ROOT, 'src/ui/i18nCatalog.en-US.json'), 
 // are the two together and no frame is cut.
 const PRODUCTION = join(ROOT, 'public/media/production-r1/manifest.json');
 const WALL_COUNT = ARCHIVE.shots.length + (existsSync(PRODUCTION) ? JSON.parse(readFileSync(PRODUCTION, 'utf8')).shots.length : 0);
+// the versus stills (versus-media.mjs: public/media/versus-r1), which the landing's hero opens on and its versus wall shows
+const VERSUS = JSON.parse(readFileSync(join(ROOT, 'public/media/versus-r1/manifest.json'), 'utf8'));
 
 // --- names --------------------------------------------------------------------------------------------------------
 const camel = (id) => id.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
@@ -46,6 +48,21 @@ const built = (url) => {
   return url;
 };
 const still = (id, kind = 'moment') => built(`${C}/stills/${id}${kind === 'close' ? '-close' : ''}.webp`);
+const versus = (id) => {
+  const v = VERSUS.items.find((item) => item.id === id);
+  if (!v) throw new Error(`unknown versus still ${id} (public/media/versus-r1/manifest.json)`);
+  if (!existsSync(join(ROOT, 'public', v.path))) throw new Error(`versus still ${id}: ${v.path} is not published`);
+  return v;
+};
+const versusKey = (part, id) => `media.versus.${part}.${camel(id)}`;
+// a versus title is "<place>: <matchup>" ("Sirocco Wadi, day: M1A2 Abrams SEPv3 v T-90M"; 西罗科旱谷，白天：…)
+const versusParts = (title) => {
+  const [place, match] = title.split(/: |：/);
+  if (!place || !match) throw new Error(`a versus title without its place and matchup: ${title}`);
+  return { place, match };
+};
+// a hero slide: a take's still, or (2026-10-19) a versus still
+const heroSrc = (h) => (h.versus ? versus(h.versus).path : still(h.id, h.still));
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const mapName = (map) => EN[`map.${map}`] ?? map;
 const reKey = (key) => key.replace(/\./g, '\\.');
@@ -149,16 +166,29 @@ function wireHome() {
   const H = 'site/home.html';
   const hero = PICKS.home.hero;
   swap(H, /<link rel="preload" href="\/media\/[^"]+" as="image" type="image\/webp" fetchpriority="high">/,
-    () => `<link rel="preload" href="${still(hero[0].id, hero[0].still)}" as="image" type="image/webp" fetchpriority="high">`, 'hero preload');
+    () => `<link rel="preload" href="${heroSrc(hero[0])}" as="image" type="image/webp" fetchpriority="high">`, 'hero preload');
   const slides = hero.map((h, i) => (i === 0
-    ? `<img class="is-active" data-hero-slide src="${still(h.id, h.still)}" alt="" width="1920" height="1080" fetchpriority="high" style="--hero-focus:${h.focus}">`
-    : `<img data-hero-slide data-src="${still(h.id, h.still)}" alt="" width="1920" height="1080" decoding="async" style="--hero-focus:${h.focus}">`));
+    ? `<img class="is-active" data-hero-slide src="${heroSrc(h)}" alt="" width="1920" height="1080" fetchpriority="high" style="--hero-focus:${h.focus}">`
+    : `<img data-hero-slide data-src="${heroSrc(h)}" alt="" width="1920" height="1080" decoding="async" style="--hero-focus:${h.focus}">`));
   swap(H, /(<div class="v5-hero-rail" data-hero-rail>\n)(?:[ \t]*<img [^\n]*\n)+([ \t]*<\/div>)/,
     (_, open, close) => `${open}${slides.map((s) => `        ${s}\n`).join('')}${close}`, 'hero rail');
   const rail = PICKS.home.rail.map((id) => `          <figure><img data-deferred-src="${still(id)}" alt="${esc(take(id).en)}" data-i18n-alt="${titleKey(id)}" decoding="async"></figure>\n`);
   swap(H, /(<div class="v5-shot-rail" data-shot-rail[^>]*>\n)(?:[ \t]*<figure>[^\n]*<\/figure>\n)+([ \t]*<\/div>)/,
     (_, open, close) => `${open}${rail.join('')}${close}`, 'screenshot rail');
   swap(H, /(<span data-shot-position aria-live="polite">)1 \/ \d+(<\/span>)/, (_, open, close) => `${open}1 / ${PICKS.home.rail.length}${close}`, 'screenshot position');
+  // the versus wall (2026-10-19): every versus still, its matchup and its place under it
+  const wall = PICKS.home.versus.map((id) => {
+    const v = versus(id), { place, match } = versusParts(v.title.en);
+    return `        <figure><img src="${v.path}" alt="${esc(v.title.en)}" data-i18n-alt="${versusKey('title', id)}" width="${v.width}" height="${v.height}" loading="lazy" decoding="async"><figcaption><b data-i18n="${versusKey('match', id)}">${esc(match)}</b><span data-i18n="${versusKey('place', id)}">${esc(place)}</span></figcaption></figure>\n`;
+  });
+  swap(H, /(<div class="v5-versus-wall">\n)(?:[ \t]*<figure>[^\n]*<\/figure>\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${wall.join('')}${close}`, 'versus wall');
+  // the trailers row (2026-10-19): each trailer plays on a click; its poster loads as the row nears the viewport and one
+  // plays at a time (publicPages.ts mountTrailerRow)
+  const trailers = PICKS.home.trailers.map((name) => {
+    const f = trailerFilm(name), vars = `data-i18n-vars='{"seconds":"${f.seconds}"}'`;
+    return `        <figure class="v5-trailer v5-trailer--${f.shape}"><video controls playsinline preload="none" data-trailer data-poster="${f.poster}" aria-label="${esc(COPY.en[f.ariaKey].replace('{seconds}', f.seconds))}" data-i18n-aria-label="${f.ariaKey}" ${vars}><source src="${f.webm}" type="video/webm"><source src="${f.mp4}" type="video/mp4"></video><figcaption><b data-i18n="${f.nameKey}">${esc(COPY.en[f.nameKey])}</b><span data-i18n="home.trailers.seconds" ${vars}>${esc(COPY.en['home.trailers.seconds'].replace('{seconds}', f.seconds))}</span></figcaption></figure>\n`;
+  });
+  swap(H, /(<div class="v5-trailer-grid" data-trailer-row>\n)(?:[ \t]*<figure [^\n]*<\/figure>\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${trailers.join('')}${close}`, 'trailers row');
   // the feature reel: its 900p VP9 webm, the same in H.264 for a browser that plays no VP9 (2026-10-14), the phone's mp4
   swap(H, /(<section class="v5-film"[^>]*>\n[ \t]*)<video [^\n]*?<\/video>/,
     (_, open) => `${open}<video muted loop playsinline preload="none" data-poster="${built(`${C}/films/reel.jpg`)}" data-autoplay-video data-label="Claude of Tanks battle reel, rendered in the game engine" aria-hidden="true"><source data-src="${built(`${C}/films/reel.webm`)}" data-type="video/webm" data-fallback-src="${built(`${C}/films/reel.mp4`)}" data-fallback-type="video/mp4" data-mobile-src="/media/web-video-r1/reel-mobile.mp4" data-mobile-type="video/mp4"></video>`, 'feature reel');
@@ -170,8 +200,19 @@ function wireHome() {
   const cta = PICKS.home.cta;
   swap(H, /(<section class="v5-cta">)<img [^>]*>/,
     (_, open) => `${open}<img src="${still(cta.id, cta.still)}" alt="${esc(take(cta.id).en)}" data-i18n-alt="${titleKey(cta.id)}" loading="lazy">`, 'closing image');
-  for (const key of ['home.reel.title', 'home.reel.lede', 'home.reel.cta', 'home.shots.lede', 'home.mosaic.lede']) swapText(H, key, COPY.en[key]);
+  for (const key of ['home.reel.title', 'home.reel.lede', 'home.reel.cta', 'home.shots.lede', 'home.mosaic.lede',
+    'home.versus.title', 'home.versus.lede', 'home.trailers.title', 'home.trailers.lede']) swapText(H, key, COPY.en[key]);
   wireHomeShots(H);
+}
+/** A trailer the landing's row plays: its built files, length and shape, and its name's catalog keys. */
+function trailerFilm(name) {
+  const mp4 = BUILT.get(built(`${C}/films/${name}.mp4`));
+  const key = camel(name);
+  // its action-moment poster (site-media.mjs, picks.home.trailerPosters), else the delivered one
+  const row = `${C}/films/${name}-row.jpg`;
+  return { webm: built(`${C}/films/${name}.webm`), mp4: `/${mp4.path}`, poster: BUILT.has(row) ? row : built(`${C}/films/${name}.jpg`),
+    seconds: String(Math.round(mp4.seconds)), width: mp4.width, height: mp4.height,
+    shape: mp4.height > mp4.width ? 'vertical' : 'wide', nameKey: `home.trailers.${key}`, ariaKey: `home.trailers.${key}Aria` };
 }
 
 // --- the manual ---------------------------------------------------------------------------------------------------
@@ -322,7 +363,7 @@ function wireReadme() {
   swap(M, /<table>\n<tr>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<\/tr>\n<tr>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<td width="50%"><img src="public\/media\/[^"]+" alt="[^"]*"><\/td>\n<\/tr>\n<\/table>/,
     () => `<table>\n${rows.join('\n')}\n</table>`, 'README stills');
   swap(M, /These are (?:handmade, deterministic scenes captured with the current game renderer|deterministic scenes staged in Scene Studio and rendered at 4K)[\s\S]*?published on the site\./,
-    () => `These are deterministic scenes staged in Scene Studio and rendered at 4K in the game engine—not concept art. The\n[visual archive](public/media/${PICKS.collection}/archive.json) holds the fifty frames and the key moment and close portrait of each of\nthe site's takes. The [landing selection](public/media/landing-r1/manifest.json) records the six hero frames, the feature\nreel, the four camera-path loops, the destruction loop, the 24-shot mosaic, and the directed Strv 122 versus Leclerc sequence\npublished on the site.`, 'README archive note');
+    () => `These are deterministic scenes staged in Scene Studio and rendered at 4K in the game engine—not concept art. The\n[visual archive](public/media/${PICKS.collection}/archive.json) holds the fifty frames and the key moment and close portrait of each of\nthe site's takes. The [landing selection](public/media/landing-r1/manifest.json) records the ${PICKS.home.hero.length} hero frames, the ${PICKS.home.rail.length}\nscreenshots of the rail, the feature reel, the four camera-path loops, the destruction loop, the ${PICKS.home.versus.length} versus stills, the\n${PICKS.home.trailers.length} trailers, the ${PICKS.home.mosaic.length}-shot mosaic and the Scene Studio loop published on the site.`, 'README archive note');
   const loop = (id) => `<td width="50%"><a href="public${built(`${C}/loops/${id}.webm`)}"><img src="public${built(`${C}/loops/${id}.jpg`)}" alt="Open the ${esc(take(id).shortEn)} take"></a><br><sub><b>${esc(take(id).shortEn)}:</b> ${esc(take(id).en)}.</sub></td>`;
   const p = PICKS.home.paths;
   swap(M, /<table>\n<tr>\n<td width="50%"><a href="public\/media\/[^"]+\.webm">[\s\S]*?<\/tr>\n<\/table>/,
@@ -347,9 +388,9 @@ function wireReadme() {
   swap(M, /\[Open all six review sheets\]\(docs\/SHOWCASE-LIBRARY\.md#review-sheets\) and the complete admission contract\./,
     () => 'The manual shows all five sheets; [docs/SHOWCASE-LIBRARY.md](docs/SHOWCASE-LIBRARY.md) records the library and how it is built.', 'README sheets link',
     /The manual shows all five sheets;/);
-  swap(M, /This smaller wall samples the action and foreground collections\nwithout repeating the six hero frames\./,
-    () => "This smaller wall samples the site fifty's key moments and close portraits\nwithout repeating the six hero frames.", 'README wall copy',
-    /samples the site fifty's key moments/);
+  swap(M, /This smaller wall samples (?:the action and foreground collections|the site fifty's key moments and close portraits)\nwithout repeating the six hero frames\./,
+    () => "This smaller wall samples the site fifty's key moments and close portraits\nwithout repeating the hero's frames.", 'README wall copy',
+    /without repeating the hero's frames\./);
   const wallCell = (p) => `<td width="25%"><img src="public${still(p.id, p.still)}" alt="${esc(take(p.id).en)}"></td>`;
   const wallRows = [0, 4, 8].map((i) => `<tr>\n${R.wall.slice(i, i + 4).map(wallCell).join('\n')}\n</tr>`);
   swap(M, /<table>\n<tr>\n<td width="25%"><img src="public\/media\/(?:showcase-r1|site50-r\d+\/stills)\/[\s\S]*?<\/tr>\n<\/table>/, () => `<table>\n${wallRows.join('\n')}\n</table>`, 'README wall');
@@ -366,7 +407,14 @@ function wireLandingManifest() {
     libraryId: old.libraryId,
     schemaVersion: old.schemaVersion,
     source: `The site fifty (public/media/${PICKS.collection}): takes staged in Scene Studio and rendered at 4K in the game engine, picked in tools/media-r5/site-media/picks.json`,
-    hero: PICKS.home.hero.map((h) => ({ id: h.id, title: take(h.id).en, src: still(h.id, h.still), still: h.still })),
+    hero: PICKS.home.hero.map((h) => (h.versus ? { versus: h.versus, title: versus(h.versus).title.en, src: heroSrc(h) }
+      : { id: h.id, title: take(h.id).en, src: still(h.id, h.still), still: h.still })),
+    rail: PICKS.home.rail.map((id) => ({ id, title: take(id).en, src: still(id) })),
+    versus: PICKS.home.versus.map((id) => ({ id, title: versus(id).title.en, src: versus(id).path })),
+    trailers: PICKS.home.trailers.map((name) => {
+      const f = trailerFilm(name);
+      return { film: name, webm: f.webm, mp4: f.mp4, poster: f.poster, width: f.width, height: f.height, seconds: Number(f.seconds) };
+    }),
     featureReel: { video: `${C}/films/reel.mp4`, poster: built(`${C}/films/reel.jpg`), width: reel.width, height: reel.height,
       durationMs: Math.round(reel.seconds * 1000), fps: reel.fps, takes: reel.takes, crossfadeS: reel.crossfadeS },
     rails: PICKS.home.paths.map((id) => ({ id, title: take(id).en, video: built(`${C}/loops/${id}.webm`), poster: built(`${C}/loops/${id}.jpg`) })),
@@ -395,6 +443,17 @@ const COPY = {
     'home.reel.cta': `Watch ${PICKS.docs.reels.length} battle takes`,
     'home.shots.lede': 'Each scene was staged in Scene Studio and rendered at 4K in the game engine.',
     'home.mosaic.lede': "These frames show close combat and long-range fire across the game's battlefields, by day, at sunset and at night.",
+    'home.versus.title': 'Pit any two tanks against each other',
+    'home.versus.lede': `${PICKS.home.versus.length} matchups on the game's own battlefields, each staged in Scene Studio and rendered in the game engine.`,
+    'home.trailers.title': 'Watch the trailers',
+    'home.trailers.lede': 'The trailer, its 30-second cut and its vertical cut for phones, each filmed in the game engine with its score and battle sound.',
+    'home.trailers.trailer': 'Trailer',
+    'home.trailers.trailer30': '30-second cut',
+    'home.trailers.trailerVertical': 'Vertical cut',
+    'home.trailers.seconds': '{seconds} seconds',
+    'home.trailers.trailerAria': 'Play the trailer ({seconds} seconds), filmed in the game engine with its score and battle sound',
+    'home.trailers.trailer30Aria': "Play the trailer's {seconds}-second cut, filmed in the game engine with its score and battle sound",
+    'home.trailers.trailerVerticalAria': "Play the trailer's vertical cut ({seconds} seconds), filmed in the game engine with its score and battle sound",
     'docs.hero.trailerCaption': 'The trailer, filmed in the game engine',
     'docs.hero.trailerSpec': 'In-engine renders // {seconds} seconds',
     'docs.hero.trailerAria': 'The Claude of Tanks trailer, filmed in the game engine, with its score and battle sound',
@@ -425,6 +484,17 @@ const COPY = {
     'home.reel.cta': `观看 ${PICKS.docs.reels.length} 段战斗镜头`,
     'home.shots.lede': '每个场景都在 Scene Studio 中编排，并在游戏引擎中以 4K 渲染。',
     'home.mosaic.lede': '这些画面呈现游戏各个战场上的近距离交火与远程射击，白昼、日落与夜间皆有。',
+    'home.versus.title': '让任意两辆坦克正面交锋',
+    'home.versus.lede': `游戏自己战场上的 ${PICKS.home.versus.length} 场对决，每一场都在 Scene Studio 中编排、在游戏引擎中渲染。`,
+    'home.trailers.title': '观看预告片',
+    'home.trailers.lede': '预告片、它的 30 秒剪辑版与适合手机的竖屏版，均在游戏引擎中拍摄，配有配乐与战场音效。',
+    'home.trailers.trailer': '预告片',
+    'home.trailers.trailer30': '30 秒剪辑版',
+    'home.trailers.trailerVertical': '竖屏版',
+    'home.trailers.seconds': '{seconds} 秒',
+    'home.trailers.trailerAria': '播放预告片（{seconds} 秒），在游戏引擎中拍摄，配有配乐与战场音效',
+    'home.trailers.trailer30Aria': '播放预告片的 {seconds} 秒剪辑版，在游戏引擎中拍摄，配有配乐与战场音效',
+    'home.trailers.trailerVerticalAria': '播放预告片的竖屏版（{seconds} 秒），在游戏引擎中拍摄，配有配乐与战场音效',
     'docs.hero.trailerCaption': '预告片，在游戏引擎中拍摄',
     'docs.hero.trailerSpec': '引擎内渲染 // {seconds} 秒',
     'docs.hero.trailerAria': 'Claude of Tanks 预告片，在游戏引擎中拍摄，配有配乐与战场音效',
@@ -464,6 +534,12 @@ function wireCatalogs() {
       catalog[shortKey(id)] = locale === 'en' ? t.shortEn : t.shortZh;
     }
     Object.assign(catalog, COPY[locale]);
+    // the versus stills the landing shows: each one's title (its alt), its matchup and its place (the wall's caption)
+    for (const id of new Set([...PICKS.home.hero.filter((h) => h.versus).map((h) => h.versus), ...PICKS.home.versus])) {
+      const title = versus(id).title[locale];
+      const { place, match } = versusParts(title);
+      Object.assign(catalog, { [versusKey('title', id)]: title, [versusKey('match', id)]: match, [versusKey('place', id)]: place });
+    }
     for (const s of sheets) catalog[`docs.media.alt.framesSheet${s.sheet}`] = SHEET_ALT[locale](s);
     // the home page's own shots describe themselves once delivered (a stand-in uses its take's title)
     for (const group of Object.keys(HOME_GROUPS)) {

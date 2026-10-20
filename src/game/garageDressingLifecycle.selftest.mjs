@@ -267,9 +267,8 @@ const factoryJs = ts.transpileModule(`
     const console = { warn() { events.push('warn'); } };
     let battleScreenGeneration = 0, battleScreenTimer = null, battleScreenFrame = null;
     let battleScreenLoading = false, battleScreenCurrentTexture = null;
-    let battleScreenNextTexture = null, battleScreenSecondaryTexture = null, battleScreenFallbackTexture = null;
-    let battleScreenMesh = null, battleScreenSecondaryMesh = null;
-    let battleScreenMaterial = null, battleScreenSecondaryMaterial = null;
+    let battleScreenNextTexture = null, battleScreenFallbackTexture = null;
+    let battleScreenMesh = null, battleScreenMaterial = null;
     const setVariant = (id) => id;
     ${['WORKSHOP_PRESENTATION_OPTIONS', 'WORKSHOP_CHUNK_VEHICLE_IDS', 'WORKSHOP_CHUNK_LABELS']
       .map((name) => declaration(name, syntax.statements)).join('\n')}

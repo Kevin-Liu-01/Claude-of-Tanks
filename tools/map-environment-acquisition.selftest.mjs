@@ -22,21 +22,21 @@ const scene = {
     isPlayer: index === 0, visualSpecId: specId,
   })),
 };
-const archiveTarget = { primary: '/media/second.webp', secondary: '/media/first.webp' };
+const archiveTarget = { primary: '/media/second.webp' };
 assert.deepEqual(selectTimingArchiveTarget([
   { img: '/media/skipped.webp' },
-  { img: archiveTarget.secondary, maps: ['verdant'] },
+  { img: '/media/first.webp', maps: ['verdant'] },
   { img: archiveTarget.primary, maps: ['winter'] },
 ]), archiveTarget);
 assert.throws(() => selectTimingArchiveTarget([]), /canonical/);
 assert.throws(() => selectTimingArchiveTarget([{ img: '/media/a', maps: ['a'] }]), /canonical/);
 const archive = {
-  protocol: 'decoded-canonical-archive-v1', displayCount: 2, residentImageCount: 2,
-  screens: ['garage_battle_archive_screen', 'garage_battle_archive_screen_secondary'].map((name, index) => ({
-    name, source: [archiveTarget.primary, archiveTarget.secondary][index], width: index ? 1500 : 2000,
-    height: index ? 921 : 1227, format: 1023, type: 1009, minFilter: 1008, magFilter: 1006,
+  protocol: 'decoded-canonical-archive-v2', displayCount: 1, residentImageCount: 1,
+  screens: [{
+    name: 'garage_slideshow_screen', source: archiveTarget.primary, width: 1024,
+    height: 576, format: 1023, type: 1009, minFilter: 1008, magFilter: 1006,
     generateMipmaps: true, colorSpace: 'srgb', anisotropy: 4, transition: 0, pairedUniforms: true,
-  })),
+  }],
 };
 const settings = {
   protocol: ACQUISITION_PROTOCOL, harnessHash: 'same-tool-content-hash',
@@ -96,7 +96,7 @@ for (const [key, value] of [
   ['sampleCount', 100], ['repeats', 5], ['settleMs', 1100], ['syncGpu', true], ['tier', 'auto'],
   ['harnessHash', 'other-tool'], ['viewport', { width: 1920, height: 1080, dpr: 1 }],
   ['maps', ['oasis', 'verdant']], ['captureShots', true], ['production', false], ['production', undefined],
-  ['garageArchiveTarget', { primary: '/media/wrong.webp', secondary: archiveTarget.secondary }],
+  ['garageArchiveTarget', { primary: '/media/wrong.webp' }],
   ['protocol', 'settled-pinned-map-timing-v5'],
 ]) assert.throws(() => requireComparableRun(baseline, { ...settings, [key]: value }), undefined, key);
 assert.throws(() => requireComparableRun({ schemaVersion: 2 }, settings), /recapture/);
@@ -329,46 +329,52 @@ try {
   await assert.rejects(browserGarageWait(), /left Garage/);
 
   const render = () => {};
-  const monitorTextures = archive.screens.map(screen => ({
-    ...screen, isTexture: true,
-    image: { complete: true, naturalWidth: screen.width, naturalHeight: screen.height,
-      src: `http://127.0.0.1:1234${screen.source}` },
-  }));
-  const monitorObjects = monitorTextures.map((texture, index) => ({
-    name: archive.screens[index].name, material: { uniforms: {
-      uImageA: { value: texture }, uImageB: { value: texture }, uTransition: { value: 0 },
+  // the slideshow's stills are ImageBitmaps (no complete/naturalWidth); the texture records its own source
+  const monitorTexture = {
+    ...archive.screens[0], isTexture: true, userData: { archiveSource: `http://127.0.0.1:1234${archiveTarget.primary}` },
+    image: { width: archive.screens[0].width, height: archive.screens[0].height },
+  };
+  const otherTexture = { ...monitorTexture, userData: { archiveSource: '/media/first.webp' } };
+  const monitorObject = {
+    name: 'garage_slideshow_screen', material: { uniforms: {
+      uImageA: { value: monitorTexture }, uImageB: { value: monitorTexture }, uTransition: { value: 0 },
     } },
-  }));
-  const archiveData = { battleScreenDisplayCount: 2, battleScreenResidentImageCount: 2,
-    battleScreenCurrentImage: archiveTarget.primary, battleScreenSecondaryImage: archiveTarget.secondary };
+  };
+  const uniforms = monitorObject.material.uniforms;
+  const archiveData = { battleScreenDisplayCount: 1, battleScreenResidentImageCount: 1,
+    battleScreenCurrentImage: archiveTarget.primary };
   debug.garageDressing.group = { userData: archiveData,
-    getObjectByName: name => monitorObjects.find(object => object.name === name) };
+    getObjectByName: name => (name === monitorObject.name ? monitorObject : undefined) };
   const browserArchive = Function(`return (${captureTimingGarageArchive.toString()})`)();
   assert.deepEqual(browserArchive(archiveTarget), archive);
   assert.equal(browserArchive(archiveTarget, true), null, 'an already-matching hold is not a fresh entry');
   const pendingStates = [
-    () => { monitorTextures[0].isDataTexture = true; },
-    () => { monitorTextures[1].image.complete = false; },
-    () => { monitorTextures[1].image.naturalWidth = 0; },
-    () => { archiveData.battleScreenResidentImageCount = 3; },
-    () => { archiveData.battleScreenSecondaryImage = '/media/not-ready.webp'; },
-    () => { monitorObjects[0].material.uniforms.uTransition.value = 0.4; },
-    () => { monitorObjects[0].material.uniforms.uImageB.value = monitorTextures[1]; },
+    () => { monitorTexture.isDataTexture = true; },
+    () => { monitorTexture.image.complete = false; },
+    () => { monitorTexture.image.width = 0; },
+    () => { delete monitorTexture.userData.archiveSource; },
+    () => { archiveData.battleScreenResidentImageCount = 2; },
+    () => { archiveData.battleScreenDisplayCount = 2; },
+    () => { archiveData.battleScreenCurrentImage = '/media/not-ready.webp'; },
+    () => { uniforms.uTransition.value = 0.4; },
+    () => { uniforms.uImageB.value = otherTexture; },
   ];
   for (const mutate of pendingStates) {
     mutate();
     assert.equal(browserArchive(archiveTarget), null, 'partial/failed/transitioning producer is not ready');
     assert.equal(browserArchive(archiveTarget, true), true, 'observe the actual producer leaving the canonical hold');
-    delete monitorTextures[0].isDataTexture;
-    monitorTextures[1].image.complete = true;
-    monitorTextures[1].image.naturalWidth = archive.screens[1].width;
-    archiveData.battleScreenResidentImageCount = 2;
-    archiveData.battleScreenSecondaryImage = archiveTarget.secondary;
-    monitorObjects[0].material.uniforms.uTransition.value = 0;
-    monitorObjects[0].material.uniforms.uImageB.value = monitorTextures[0];
+    delete monitorTexture.isDataTexture;
+    delete monitorTexture.image.complete;
+    monitorTexture.image.width = archive.screens[0].width;
+    monitorTexture.userData.archiveSource = `http://127.0.0.1:1234${archiveTarget.primary}`;
+    archiveData.battleScreenResidentImageCount = 1;
+    archiveData.battleScreenDisplayCount = 1;
+    archiveData.battleScreenCurrentImage = archiveTarget.primary;
+    uniforms.uTransition.value = 0;
+    uniforms.uImageB.value = monitorTexture;
   }
-  assert.equal(browserArchive({ primary: '/media/other.webp', secondary: archiveTarget.secondary }), null,
-    'a different decoded steady phase must wait for the canonical recurring pair');
+  assert.equal(browserArchive({ primary: '/media/other.webp' }), null,
+    'a different decoded steady phase must wait for the canonical recurring image');
   const getMonitor = debug.garageDressing.group.getObjectByName;
   debug.garageDressing.group.getObjectByName = () => undefined;
   assert.throws(() => browserArchive(archiveTarget), /Missing Garage archive producer/);
@@ -398,24 +404,24 @@ try {
   debug.post.render = render;
   const transitionFailure = browserGarageWarm({ archive });
   debug.post.render();
-  monitorObjects[0].material.uniforms.uImageB.value = monitorTextures[1];
+  uniforms.uImageB.value = otherTexture;
   assert.throws(() => debug.post.render(), /archive changed/);
   await assert.rejects(transitionFailure, /archive changed/);
   assert.equal(debug.post.render, render, 'mid-warm transition fails without retrying or adding frames');
-  monitorObjects[0].material.uniforms.uImageB.value = monitorTextures[0];
+  uniforms.uImageB.value = monitorTexture;
   for (const mutate of [
-    () => { archiveData.battleScreenResidentImageCount = 3; },
-    () => { monitorObjects[0].material.uniforms.uImageA.value = monitorTextures[1]; },
-    () => { monitorObjects[1].material.uniforms.uTransition.value = 0.01; },
+    () => { archiveData.battleScreenResidentImageCount = 2; },
+    () => { uniforms.uImageA.value = otherTexture; },
+    () => { uniforms.uTransition.value = 0.01; },
   ]) {
     const guarded = browserGarageWarm({ archive });
     mutate();
     assert.throws(() => debug.post.render(), /submitted frame 1\/8.*residentImages=.*screens=/);
     await assert.rejects(guarded, /archive changed/);
     assert.equal(debug.post.render, render);
-    archiveData.battleScreenResidentImageCount = 2;
-    monitorObjects[0].material.uniforms.uImageA.value = monitorTextures[0];
-    monitorObjects[1].material.uniforms.uTransition.value = 0;
+    archiveData.battleScreenResidentImageCount = 1;
+    uniforms.uImageA.value = monitorTexture;
+    uniforms.uTransition.value = 0;
   }
 
   const texture = { isTexture: true }, shaderTexture = { isTexture: true };
@@ -439,21 +445,17 @@ try {
 }
 
 const tool = fs.readFileSync(new URL('./map-environment-audit.mjs', import.meta.url), 'utf8');
-// Actual Three uniform cloning explains the saved 17→18 owner direction:
-// initial secondary decode removes one alias; a slideshow advance adds one.
+// One slideshow material (garage r9, no clone for a second screen): the fallback and the first decoded image each alias
+// both uniforms; only a crossfade holds a second image.
 const fallback = new DataTexture(new Uint8Array([10, 20, 18, 255]), 1, 1);
-const primary = new ShaderMaterial({ uniforms: { uImageA: { value: fallback }, uImageB: { value: fallback } } });
-const secondary = primary.clone();
-const uniformCount = () => new Set([primary, secondary].flatMap(material =>
-  [material.uniforms.uImageA.value, material.uniforms.uImageB.value])).size;
-assert.equal(uniformCount(), 3, 'secondary fallback uniforms clone separately');
-const firstImage = new Texture(), secondImage = new Texture(), nextImage = new Texture();
-primary.uniforms.uImageA.value = primary.uniforms.uImageB.value = firstImage;
-assert.equal(uniformCount(), 3);
-secondary.uniforms.uImageA.value = secondary.uniforms.uImageB.value = secondImage;
-assert.equal(uniformCount(), 2, 'initial two decoded images reduce the alias count');
-primary.uniforms.uImageB.value = nextImage;
-assert.equal(uniformCount(), 3, 'advance creates the temporary third image');
+const slideshow = new ShaderMaterial({ uniforms: { uImageA: { value: fallback }, uImageB: { value: fallback } } });
+const uniformCount = () => new Set([slideshow.uniforms.uImageA.value, slideshow.uniforms.uImageB.value]).size;
+assert.equal(uniformCount(), 1, 'the fallback aliases both uniforms');
+const firstImage = new Texture(), nextImage = new Texture();
+slideshow.uniforms.uImageA.value = slideshow.uniforms.uImageB.value = firstImage;
+assert.equal(uniformCount(), 1, 'the decoded image replaces the fallback');
+slideshow.uniforms.uImageB.value = nextImage;
+assert.equal(uniformCount(), 2, 'the crossfade holds the incoming image beside the current one');
 assert.ok(tool.includes("const production = flagArg('production')"), 'CLI production flag is actually consumed');
 assert.ok(tool.includes("fs.readFileSync(path.join(ROOT, 'dist/index.html'))"), 'hash the served build index');
 assert.ok(tool.includes('if (readBuildIndexHash() !== report.buildIndexHash)'), 'a replaced build invalidates timing');
