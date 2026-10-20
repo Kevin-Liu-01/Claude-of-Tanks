@@ -638,8 +638,11 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4'|'merkava4_trophy
   for(const x of[-.82038,.89347])put('turretDetail',box(.21,.29,.26),x,2.527,-3.015);
   merkava4Basket(P);
   const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:1.0,remoteControlled:true,seed:444,tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:candidate==='merkava4_trophy'}); // true scale (round 3; was 1.48, a 115 % GPMG)
-  const mgSeatY={merkava4:2.577,merkava4_trophy:2.400}[candidate];
+  // 2026-10-19 (owner float sweep): on the Mk.4 the MG stood 33 mm over the roof furniture and its pintle 176 mm over
+  // the low roof beside the raised shoulder; it drops to the shoulder line (2.551) on a pintle pedestal from the roof
+  const mgSeatY={merkava4:2.551,merkava4_trophy:2.400}[candidate];
   mg.position.set(-.83,mgSeatY-MK4.y,-.752-MK4.z);P.turretG.add(mg);
+  if(candidate==='merkava4')put('turretDark',cylY(.03,.157,12),-.83,2.4765,-.752);
 }
 
 function merkava4Basket(P: TankBuilderPort): void {
@@ -947,6 +950,8 @@ function addTrophyRearFaceDetails(P: TankBuilderPort): void {
   P.addEquipment('hullDark',box(.72,.96,.016),0,.9275,-2.753);
   P.addEquipment('hullDetail',box(.6506,.9016,.018),0,.9275,-2.8105);
   P.addEquipment('hullDark',box(.050,.78,.020),0,.9275,-2.822);
+  // 2026-10-19 (owner float sweep): the door stood 15 mm clear of both receiver walls; hinge and latch blocks join them
+  for(const side of[-1,1])for(const y of[.70,1.15])P.addEquipment('hullDark',box(.022,.07,.016),side*.3338,y,-2.8105);
   P.addEquipment('hullDetail',box(.6547,.1464,.2811),0,1.4907,-2.8824);
   for(const side of[-1,1]){
     // Independently closed primary-hull lamp islands: source envelopes are
@@ -955,6 +960,10 @@ function addTrophyRearFaceDetails(P: TankBuilderPort): void {
     const lampY=(side<0?1.3563:1.4266)-.010;
     P.addEquipment('hullDark',cylZ(.0975,.038,16),lampX,lampY,-4.018);
     P.addEquipment('hullDetail',cylZ(.064,.020,16),lampX,lampY,-4.041);
+    // 2026-10-19 (owner float sweep): the lamps stood 176-210 mm aft of and above the back mudguard with nothing under
+    // them; a bracket (a shelf on the mudguard's top return and a post behind the lamp body) carries each
+    P.addEquipment('hullDetail',box(.09,.012,.20),lampX,1.190,-3.905);
+    P.addEquipment('hullDetail',box(.09,lampY+.05-1.186,.012),lampX,(lampY+.05+1.186)/2,-3.9945);
     const x=side*.23;
     hullBar(P,[x-side*.040,.515,-2.812],[x-side*.042,.440,-2.790],.012);
     hullBar(P,[x-side*.042,.440,-2.790],[x+side*.035,.426,-2.774],.012);

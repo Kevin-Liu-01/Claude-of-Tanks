@@ -220,7 +220,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
         [s * 0.88, 1.26, 3.00], [s * 0.95, 1.26, 3.00], [s * 0.95, 1.15, 3.55], [s * 0.88, 1.15, 3.55])); // tops tucked under the §5.299 raked B plane
       P.add('hull', box(0.18, 0.14, 0.19), s * 0.87, 1.20, 3.705);               // nose center bumps to +3.80 (plan_hull 3.803 @ x ±0.825..0.915)
       headlight(P, s * 0.87, 1.10, 3.70, -0.22, 0.05);                           // headlight pods on the bumps
-      P.add('hullDetail', torus(0.075, 0.015, 10), s * 0.50, 0.81, 3.70, Math.PI / 2, 0, 0); // bow tow eyes; 2026-10-19 (owner float sweep): hung 0.19 m under the chin, now from it
+      P.add('hullDetail', torus(0.075, 0.015, 10), s * 0.50, 0.819, 3.694, Math.PI / 2, 0, 0); // bow tow eyes; 2026-10-19 (owner float sweep): hung 0.19 m under the chin, now from it (r2: last 8 mm closed)
       // s5322-C4 headlight BRUSH GUARDS (§5.283 debt; thin low-kit bars also
       // armor the razor-margin bow anchor columns per the whip-rough law).
       P.add('hullDetail', box(0.014, 0.16, 0.014), s * 0.79, 1.12, 3.76);        // guard verticals (feet buried in the chin plane)
@@ -771,8 +771,11 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
           };
           buildArieteMkTurretCourse1();
         }
-        P.addEquipment('turret', box(0.30, 0.15, 0.30), -0.76, 1.295, L(-0.16));            // new commander sight housing over the pano
-        P.add('turretGlass', box(0.18, 0.08, 0.02), -0.76, 1.32, L(-0.005));
+        // 2026-10-19 (owner float sweep): the housing stood 61 mm off the roof field; it seats on it with its window.
+        P.snapGroup('ariete-c2-commander-sight', () => {
+          P.addEquipment('turret', box(0.30, 0.15, 0.30), -0.76, 1.295, L(-0.16));            // new commander sight housing over the pano
+          P.add('turretGlass', box(0.18, 0.08, 0.02), -0.76, 1.32, L(-0.005));
+        }, { reachM: 0.08 });
         P.add('hull', box(0.26, 0.10, 0.16), 0.0, 1.72, 0.90);                     // driver thermal camera pod on the fairing
         P.add('hullGlass', box(0.16, 0.05, 0.02), 0.0, 1.73, 0.985);
         P.add('turret', box(0.44, 0.34, 0.60), -1.14, localY(1.70), L(-1.35));     // yawing APU/shoulder box, zero-yaw world seat retained
@@ -786,8 +789,9 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
         const rwsX = 0.54, rwsZ = L(-0.57);
         P.addCupola('turret', cylY(0.18, 0.21, 0.10, 16), rwsX, 0.94, rwsZ);
         P.addEquipment('turret', box(0.30, 0.20, 0.28), rwsX, 1.07, rwsZ);
-        P.addEquipment('turret', box(0.06, 0.22, 0.24), rwsX - 0.18, 1.20, rwsZ + 0.03, 0, 0, -0.08);
-        P.addEquipment('turret', box(0.06, 0.22, 0.24), rwsX + 0.18, 1.20, rwsZ + 0.03, 0, 0, 0.08);
+        // 2026-10-19 (owner float sweep): the canted cheeks stood 9 mm off the body; set 10 mm inboard onto it.
+        P.addEquipment('turret', box(0.06, 0.22, 0.24), rwsX - 0.17, 1.20, rwsZ + 0.03, 0, 0, -0.08);
+        P.addEquipment('turret', box(0.06, 0.22, 0.24), rwsX + 0.17, 1.20, rwsZ + 0.03, 0, 0, 0.08);
         P.addEquipment('turret', box(0.17, 0.18, 0.17), rwsX + 0.25, 1.09, rwsZ + 0.14);
         P.add('turretGlass', box(0.11, 0.10, 0.014), rwsX + 0.25, 1.10, rwsZ + 0.232);
         const remoteRws = FITTINGS.pintleMG({ remoteControlled: true, mats: P.mats, cls: 'nsvt', tone: 'two-tone',
@@ -1032,7 +1036,8 @@ function buildCarro45T(P: ItalyBuilderPort): void {
       P.add('hull', box(0.34, 0.40, 0.25), s * 0.80, 1.00, 3.175);               // final-drive noses (FRAME LOCK: bow body edge PINNED at +3.30 — the
       P.add('hull', box(0.22, 0.18, 0.30), s * 0.80, 1.01, 3.34);                // 0.48 band ends there and everything beyond stays sub-threshold);
       P.add('hullDark', box(0.10, 0.10, 0.04), s * 0.80, 1.00, 3.475);           // pod tips carry the ref's 3.487 plan corners (thin: side band stays sub)
-      headlight(P, s * 0.35, 1.38, 3.04, -0.22, 0.052);                          // headlight pods (side 1.415@2.96-3.08, plan 3.36@±0.33..0.37)
+      // 2026-10-19 (owner float sweep): the pods stood 58 mm over the glacis; dropped onto it.
+      P.snapGroup(`carro45t-headlight-${s}`, () => headlight(P, s * 0.35, 1.38, 3.04, -0.22, 0.052), { reachM: 0.08, mode: 'down' }); // headlight pods (side 1.415@2.96-3.08, plan 3.36@±0.33..0.37)
       P.add('hull', slab(                                                        // bow corner closure wedges (inside the 1.017 lane plane, bottoms riding
         [s * 0.95, 0.30, 2.70], [s * 0.985, 0.30, 2.70], [s * 0.985, 1.00, 3.42], [s * 0.95, 1.00, 3.42],  // the ramp line so the side view keeps the print's ramp)
         [s * 0.95, 1.26, 2.70], [s * 0.985, 1.26, 2.70], [s * 0.985, 1.06, 3.42], [s * 0.95, 1.06, 3.42]));
@@ -1089,7 +1094,7 @@ function buildCarro45T(P: ItalyBuilderPort): void {
           links.rotation.set(0, 0, -0.995);
           P.turretG.add(links);
         } else {
-          P.add('hullDetail', box(0.07, 0.03, 0.90), -1.50, 1.545, 2.72);          // jack bar on the bow fender (outside the swing circle)
+          P.add('hullDetail', box(0.07, 0.03, 0.90), -1.50, 1.504, 2.72);          // jack bar on the bow fender (outside the swing circle; 2026-10-19 owner float sweep: was 39 mm over it)
           P.add('hullDark', box(0.16, 0.05, 0.30), -1.52, 1.55, -2.45);            // jack block aft of the swing
         }
       };
@@ -1233,8 +1238,9 @@ function buildCarro45T(P: ItalyBuilderPort): void {
         const pz = 0.16 - i * 0.57;                                              // panels superseded: the print walls cant 1.60@±1.54 -> 2.33@±1.15)
         P.add('turret', box(0.030, 0.26, 0.38), s2 * 1.40, 0.30, L(pz), 0, 0, s2 * 0.50);
         P.add('turretDark', box(0.018, 0.20, 0.30), s2 * 1.425, 0.30, L(pz), 0, 0, s2 * 0.50);
+        // 2026-10-19 (owner float sweep): the upper seam stood 24 mm off the canted panel; the three now ride its face.
         for (const dy of [-0.065, 0, 0.065]) P.add('turretDetail', box(0.020, 0.014, 0.27),
-          s2 * 1.438, 0.30 + dy, L(pz), 0, 0, s2 * 0.50);
+          s2 * (1.425 + 0.017 * Math.cos(0.5) - dy * Math.sin(0.5)), 0.30 + 0.017 * Math.sin(0.5) + dy * Math.cos(0.5), L(pz), 0, 0, s2 * 0.50);
       }
     }
     for (const s2 of [-1, 1]) P.add('turretDetail', box(0.02, 0.10, 0.16), s2 * 1.435, 0.30, L(-1.30));

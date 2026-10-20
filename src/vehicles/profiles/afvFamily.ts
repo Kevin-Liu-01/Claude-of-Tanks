@@ -361,7 +361,9 @@ function addTerminatorStation(P: AfvBuilderPort): void {
     P.addGunExtra(cylZ(0.060, 0.32, 14, 0.048), side * 0.16, 0, 0.55);
     P.add(`gunBarrel${barrel}`, cylZ(0.038, 2.45, 12), side * 0.16, 0, 1.82);
     P.add(`gunBarrel${barrel}Dark`, cylZ(0.056, 0.18, 12), side * 0.16, 0, 3.10);
-    P.add(`gunBarrel${barrel}Dark`, cylZ(0.021, 0.025, 12), side * 0.16, 0, 3.205);
+    // 2026-10-19 (owner float sweep): the bore-mouth ring stood 2.5 mm proud of the muzzle sleeve (census: 243 mm
+    // off the gun); it now starts inside the sleeve, front face unchanged.
+    P.add(`gunBarrel${barrel}Dark`, cylZ(0.021, 0.030, 12), side * 0.16, 0, 3.2025);
   }
   P.muzzleZ = 3.22;
   // OWNER "much better" ROUND (2026-08-17, the removed ground-up bmpt's
@@ -1347,7 +1349,9 @@ function buildUpior(P: AfvBuilderPort): void {
     P.add('hullRubber', box(0.07, 0.24, 0.28), s * 1.38, 0.74, -2.24);         // stern flaps
     P.add('hullDetail', box(0.05, 0.05, 3.90), s * 1.36, 1.475, -0.20);        // skirt top rail
   }
-  stowage(P, 'hullCloth', rng, [[0.85, 1.63, -1.60, 0.20, 0.08, 0.60]]);
+  // 2026-10-19 (owner float sweep): the deck bag hung 71 mm above the sloping roof facet; it now drops onto it.
+  P.snapGroup('upior-deck-bag', () => stowage(P, 'hullCloth', rng, [[0.85, 1.63, -1.60, 0.20, 0.08, 0.60]]),
+    { mode: 'down', reachM: 0.10 });
   // §B2 sweep handoff upior(a) (corridor-annulus law, re-applied post-flip):
   // the full-length open sponson corridors between sponson outer face
   // (+-1.30) and skirt inner face (+-1.425) read ground-through from above
@@ -1401,9 +1405,14 @@ function addPumaOraclePackage(P: AfvBuilderPort): void {
   // the bustle roof plate (§B5 physical-seat law). 2026-10-14 (VH.14): the Puma carries its 30 mm, the coaxial MG4 and
   // MELLS and no roof machine gun (roofWeaponPolicy.ts), so the roof MG3 pot is gone.
   radioPair(P, 0.79, -1.20, 3710, 0.55);
-  P.add('turret', KIT.box(0.28, 0.07, 0.28), 0.42, 0.90, -0.18);
-  P.add('turretDetail', KIT.cylY(0.12, 0.14, 0.32, 14), 0.42, 1.09, -0.18);
-  P.add('turretGlass', KIT.box(0.18, 0.12, 0.024), 0.42, 1.11, -0.02);
+  // 2026-10-19 (owner float sweep): the sight stand hung 106-180 mm over the raked roof (106 mm to the MUSS head
+  // beside it) and its window 19 mm off the drum; the window now sits on the drum and the whole stand drops onto
+  // the roof, clear of that head.
+  P.snapGroup('puma-roof-sight', () => {
+    P.add('turret', KIT.box(0.28, 0.07, 0.28), 0.42, 0.90, -0.18);
+    P.add('turretDetail', KIT.cylY(0.12, 0.14, 0.32, 14), 0.42, 1.09, -0.18);
+    P.add('turretGlass', KIT.box(0.18, 0.12, 0.024), 0.42, 1.11, -0.042);
+  }, { mode: 'down', reachM: 0.22 });
   P.topY = Math.max(P.topY || 0, 1.52);
 }
 
@@ -1588,7 +1597,8 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
   // Met mast rear-left: shoe + post + cross arm.
   P.addEquipment('turret', box(0.16, 0.08, 0.16), -0.40, 0.90, -0.52);
   P.addEquipment('turret', cylY(0.022, 0.026, 0.52, 8), -0.40, 1.19, -0.52);
-  P.addEquipment('turret', box(0.34, 0.022, 0.022), -0.40, 1.47, -0.52);
+  // 2026-10-19 (owner float sweep): the cross arm floated 9 mm over the post top; it now caps the post.
+  P.addEquipment('turret', box(0.34, 0.022, 0.022), -0.40, 1.459, -0.52);
 
   // Roof clutter (feed humps over the trunnions, cable trunk + a run to the
   // hood, service lids with latches) — the §5.269 station-clutter bar.

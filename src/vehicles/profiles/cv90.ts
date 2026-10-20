@@ -17,6 +17,7 @@ import {
   type AdvancedIfvScalePort,
 } from './advancedIfvScale.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { mountRotated as mount } from './fittingMount.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { hatchParts, reserveDecorVolume } from './fieldChest.ts';
@@ -25,6 +26,7 @@ type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
 
 interface CvBuilderPort extends AdvancedIfvScalePort {
+  readonly snapGroup: TankBuilderPort['snapGroup'];
   readonly gunG: THREE.Group;
   readonly mats: Record<string, THREE.Material> & {
     readonly canvasCloth: THREE.MeshStandardMaterial;
@@ -151,8 +153,9 @@ function buildCv90Hull(P: CvBuilderPort): void {
     P.addEquipment('hull', box(0.28, 0.20, 0.26), side * 1.08, 1.43, 2.49, -0.22, 0, 0);
     P.addModuleVisual('optics', 'hullGlass', box(0.17, 0.080, 0.016),
       side * 1.08, 1.47, 2.63, -0.22, 0, 0);
-    P.add('hullDetail', KIT.torus(0.075, 0.018, 12), side * 0.78, 0.78, 3.30,
-      Math.PI / 2, 0, 0);
+    // 2026-10-19 (owner float sweep): the tow eyes hung 114 mm clear of the nose; each seats on it.
+    P.snapGroup(`cv90-tow-eye-${side}`, () => P.add('hullDetail', KIT.torus(0.075, 0.018, 12), side * 0.78, 0.78, 3.30,
+      Math.PI / 2, 0, 0), { reachM: 0.14 });
   }
   KIT.towCable(P, [[-1.17, 1.36, 2.50], [-0.58, 1.20, 2.99],
     [0.58, 1.20, 2.99], [1.17, 1.36, 2.50]]);

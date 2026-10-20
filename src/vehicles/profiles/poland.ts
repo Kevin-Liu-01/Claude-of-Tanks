@@ -895,7 +895,8 @@ function addPL01SkirtsAndRunningGear(P: PolishBuilderPort, context: PL01BuildCon
     for (let i = 0; i < 7; i++) {
       const z = 2.56 - i * 0.82;
       P.add('hullDark', box(0.014, 0.46, 0.022), s * 1.902, 1.60, z);
-      P.add('hullDetail', box(0.018, 0.05, 0.09), s * 1.905, 1.82, z + 0.28);
+      // 2026-10-19 (owner float sweep): the bow latch (z 2.84) hung 177 mm over the falling crest; it sits on the face band.
+      P.add('hullDetail', box(0.018, 0.05, 0.09), s * (i === 0 ? 1.88 : 1.905), i === 0 ? 1.48 : 1.82, z + 0.28);
       P.add('hullDetail', box(0.018, 0.05, 0.09), s * 1.905, 1.42, z - 0.26);
     }
     // shoulder shadow seam follows the falling top line (r3: a full-length
@@ -946,7 +947,8 @@ function addPL01SkirtsAndRunningGear(P: PolishBuilderPort, context: PL01BuildCon
     for (const s of [-1, 1]) {
       for (let i = 0; i < 3; i++) {
         const z = 1.78 + i * 0.30;
-        const y = glacisY(z) + 0.052;
+        // 2026-10-19 (owner float sweep): the cassettes stood 20 mm off the glacis plane; seated 2 mm into it.
+        const y = glacisY(z) + 0.029;
         P.add('hull', box(0.34, 0.060, 0.245), s * 0.72, y, z,
           glacisPitch, 0, 0);
         // A narrow recessed seam keeps the cassettes legible while their

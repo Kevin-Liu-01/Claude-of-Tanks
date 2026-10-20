@@ -4800,8 +4800,10 @@ export function buildPuma(P: Modern3BuilderPort) {
     hw.position.set(-1.30, 2.14, -3.45);                                       // stern whip on the print's own
     P.hullG.add(hw);                                                           //   mast corner (its 3.46 spike col)
   }
-  liftEye(P, 'hullDetail', -1.30, 2.06, 2.10);
-  liftEye(P, 'hullDetail', 1.30, 2.06, 2.10);
+  // 2026-10-19 (owner float sweep): the bow eyes stood 174-182 mm over the 1.86 shoulder; set on it (the seat pass
+  // closes the last few millimetres)
+  liftEye(P, 'hullDetail', -1.30, 1.89, 2.10);
+  liftEye(P, 'hullDetail', 1.30, 1.89, 2.10);
   liftEye(P, 'hullDetail', -1.30, 2.12, -2.60);
   liftEye(P, 'hullDetail', 1.30, 2.12, -2.60);
   stowage(P, 'hullCloth', rng, [[0.55, 2.15, -2.55, 0.42, 0.15, 0.75]]);       // strapped bergen row by the rack

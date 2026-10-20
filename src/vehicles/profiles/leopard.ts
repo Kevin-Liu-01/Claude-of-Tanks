@@ -7964,7 +7964,8 @@ function buildLeo2Proto(P: TankBuilderPort) {
     P.add('turretDark', box(0.075, 0.055, 0.03), bx, 0.712, bz, 0, a, 0);      // vision block
     P.add('turretGlass', box(0.055, 0.030, 0.012), 0.55 + Math.sin(a) * 0.232, 0.716, -0.55 + Math.cos(a) * 0.232, 0, a, 0);
   }
-  P.add('turret', cylY(0.215, 0.215, 0.028, P.q ? 18 : 14), 0.55, 0.766, -0.55); // flat lid (crown 2.50w)
+  // 2026-10-19 (owner float sweep): the lid stood 12-17 mm over the drum and its vision blocks; it runs down onto them.
+  P.add('turret', cylY(0.215, 0.215, 0.045, P.q ? 18 : 14), 0.55, 0.7575, -0.55); // flat lid (crown 2.50w)
   P.add('turretDark', box(0.30, 0.012, 0.032), 0.55, 0.784, -0.55);            // lid handle seam
   P.add('turret', cylY(0.21, 0.21, 0.045, 14), -0.60, 0.6725, -0.45);
   P.add('turretDark', box(0.36, 0.014, 0.035), -0.60, 0.702, -0.45);
@@ -8055,6 +8056,8 @@ function buildLeo2Proto(P: TankBuilderPort) {
   }
   P.add('turretDark', openRackGrid(2.02, 0.23, 0.012, 4, 10),
     0, 0.355, -3.215, Math.PI / 2, 0, 0);                                      // open mesh back panel
+  // 2026-10-19 (owner float sweep): the overhung basket stood 82 mm clear of the bustle box; four arms carry it.
+  for (const bx of [-0.78, 0.78]) for (const y of [0.22, 0.43]) P.add('turretDetail', box(0.028, 0.028, 0.11), bx, y, -3.18);
   // cross decals pinned on the BIN faces (§5.04 vertical flank law)
   P.decal('turret', 'crossgrey', null, 0.26, [1.224, 0.26, -0.325], Math.PI / 2, 0, 0.042);
   P.decal('turret', 'crossgrey', null, 0.26, [-1.224, 0.26, -0.325], -Math.PI / 2, 0, -0.042);
@@ -11538,8 +11541,11 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
       P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.44, 1.89, -3.14);
       P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.44, 1.89, -3.46);
       // width-indicator rods on the front mudguards
-      P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * 1.66, 1.42, 3.42);
-      P.add('hullDetail', KIT.sph(0.016, 8), s * 1.66, 1.58, 3.42);
+      // 2026-10-19 (owner float sweep): the rods stood 60 mm clear of the mudguard; each seats on its edge.
+      P.snapGroup(`kf51u-width-rod-${s}`, () => {
+        P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * 1.66, 1.42, 3.42);
+        P.add('hullDetail', KIT.sph(0.016, 8), s * 1.66, 1.58, 3.42);
+      }, { reachM: 0.08 });
       // headlight brush guards (three bars riding the glacis plane)
       for (const d of [-0.10, 0, 0.10]) {
         P.add('hullDetail', box(0.018, 0.12, 0.12), s * 0.78 + d, 1.375, 3.40, -0.16, 0, 0);
@@ -11579,7 +11585,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
       P.add('hullGlass', box(0.05, 0.04, 0.014), s * 1.42, 1.71, -3.705);
       P.add('hullDetail', box(0.16, 0.022, 0.07), s * 1.42, 1.775, -3.68);
       // stern shackle bows on the inter-track rear wall
-      P.add('hullDetail', cylX(0.030, 0.22, 8), s * 0.58, 1.02, -3.76);
+      P.add('hullDetail', cylX(0.030, 0.22, 8), s * 0.58, 1.02, -3.708);        // 2026-10-19 (owner float sweep): stood 50 mm off the wall
     }
     P.add('hullDark', box(0.09, 0.07, 0.11), -1.05, 1.49, 2.60);                // Bosch horn on the glacis sheet
     P.add('hullDark', KIT.xform(cylZ(0.035, 0.02, 10), 0, 0, 0.062), -1.05, 1.49, 2.60, -0.16, 0, 0);
@@ -11600,7 +11606,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     P.add('hullWood', box(0.03, 0.022, 0.58), 1.22, 1.832, -3.36);              // axe helve
     P.add('hullDark', box(0.05, 0.028, 0.14), 1.22, 1.834, -3.14);              // axe head
     P.add('hullDark', box(0.028, 0.024, 0.72), -0.95, 1.832, -3.32);            // crowbar
-    P.add('hullDetail', box(0.30, 0.16, 0.015), 0.02, 1.30, -3.835);            // convoy plate on the tail lip
+    P.add('hullDetail', box(0.30, 0.16, 0.015), 0.02, 1.30, -3.674);            // convoy plate on the tail lip (2026-10-19 owner float sweep: hung 148 mm behind it)
     jerryCan(P, 'hullCloth', 0.42, 1.90, -3.42, 0.14);                          // stern jerry can pair
     jerryCan(P, 'hullCloth', 0.68, 1.90, -3.42, 0.14);
 
@@ -12401,7 +12407,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
     // EMES-18: compact two-window armored sight rooted in the right roof.
     P.addEquipment('turret', box(0.46, 0.10, 0.44), 0.48, 0.76, 0.32);
     P.addEquipment('turret', box(0.50, 0.24, 0.47), 0.48, 0.92, 0.32);
-    P.addEquipment('turret', box(0.54, 0.035, 0.51), 0.48, 1.06, 0.32);
+    P.addEquipment('turret', box(0.54, 0.035, 0.51), 0.48, 1.056, 0.32);     // 2026-10-19 (owner float sweep): lid sat 2.5 mm over the head; seated
     P.add('turretDark', box(0.38, 0.16, 0.025), 0.48, 0.92, 0.568);
     for (const x of [0.39, 0.57]) {
       P.add('turretGlass', box(0.115, 0.105, 0.014), x, 0.92, 0.584);
@@ -12487,7 +12493,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       [0.56, 0.51, -2.54, 0.46, 0.31, 0.46],
     ]);
     jerryCan(P, 'turretCloth', 0.68, 0.47, -2.65, 0.16);
-    tarpRoll(P, 'turretCloth', -0.04, 0.76, -2.45, 0.96, 0.095, true, P.q ? 12 : 8);
+    tarpRoll(P, 'turretCloth', -0.04, 0.736, -2.45, 0.96, 0.095, true, P.q ? 12 : 8); // 2026-10-19 (owner float sweep): stood 21 mm over the load
     ammoCan(P, 'turretDark', -0.72, 0.45, -2.66, 0.12);
 
     P.turretG.userData.leopard1A5TurretFinishReceipt = {
@@ -13887,7 +13893,8 @@ function addLeopardUaHullCage(P: TankBuilderPort): void {
   for (const side of [-1, 1] as const) {
     P.add('hullDark', box(0.56, 0.035, 0.20), side * 1.94, 1.46, -3.29);
   }
-  P.add('hullDetail', box(0.44, 0.035, 0.20), 0, 1.33, 3.61);
+  // 2026-10-19 (owner float sweep): the bow step stood 68 mm over the nose; dropped onto it.
+  P.snapGroup('leo2a6ua-bow-step', () => P.add('hullDetail', box(0.44, 0.035, 0.20), 0, 1.33, 3.61), { reachM: 0.10, mode: 'down' });
 }
 
 function addLeopardUaTurretCage(P: TankBuilderPort): void {

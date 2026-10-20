@@ -57,6 +57,7 @@ interface EraPlacement {
 
 interface MiscBuilderPort {
   readonly forEachBucketPart: TankBuilderPort['forEachBucketPart'];
+  readonly snapGroup: TankBuilderPort['snapGroup'];
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
@@ -438,7 +439,8 @@ export function buildAriete(P: MiscBuilderPort): void {
       [-0.82, 0.38, -2.60], [0.82, 0.38, -2.60], [0.82, 0.74, -3.66], [-0.82, 0.74, -3.66],
       [-0.82, 1.30, -2.60], [0.82, 1.30, -2.60], [0.82, 1.30, -3.66], [-0.82, 1.30, -3.66]));
     P.add('hull', box(1.66, 0.82, 0.06), 0, 1.03, -3.67);                        // rear plate CENTER x +-0.83 (y 0.62..1.44 — the ref -3.73..-3.85 bottoms read 0.629). push-2 NOTCH SPLIT: the ref rear at |x| 0.85-0.97 reads -3.53/-3.57 — a cutout between its center plate and exhaust pods; the full-width plate printed -3.76 there (0.16 err x2)
-    for (const s of [-1, 1]) P.add('hull', box(0.43, 0.82, 0.06), s * 1.205, 1.03, -3.67); // rear plate OUTER courses x 0.99-1.42
+    // 2026-10-19 (owner float sweep): the outer courses (lamps, stubs) stood 24 mm behind the hull's tail; they run 4 mm into it.
+    for (const s of [-1, 1]) P.add('hull', box(0.43, 0.82, 0.088), s * 1.205, 1.03, -3.656); // rear plate OUTER courses x 0.99-1.42
     P.add('hull', box(0.40, 0.055, 0.21), 0, 1.415, -3.795);                     // thin tail lip 1.385..1.445 (z -3.69..-3.90) — CENTER-ONLY x +-0.30 (push round: the 2.70 lip printed plan rear -3.94 at every x where the ref rear is -3.65..-3.83; sides fall back to the -3.71 rear plate)
     P.add('hull', box(0.36, 0.41, 0.19), 0, 1.365, -3.795);                       // SS-A REAR ANCHOR: center tail block to -3.89 (ref plan -3.88 center col; band 0.32 at the ref's own 1.385-1.565 lip heights; muzzle drops to 5.78 so overall stays 9.67)
     for (const s of [-1, 1]) {
@@ -515,8 +517,8 @@ export function buildAriete(P: MiscBuilderPort): void {
         P.add('hull', box(0.0225, 0.495, 0.455), s * 1.74375, 1.0475, -2.98 + k * 0.4775); // complete suspension behind an almost continuous wall.
       }                                                                          // r3-1024 OUTER-SKIN SPLIT: main course tops 1.42 pull inboard to x 1.7325 (rendered 1.7546, 2px clear of the ±1.7625 col boundary) and a LOW outer skin (x 1.7325-1.755, top 1.295) rides the ±1.784 front cols — the ref's outermost skirt cols read tops 1.317 rendered, not 1.57; the full-height 1.755 faces printed +0.12 there
       P.add('hull', slab(                                                        // 13th course = the ref's SLANTED LEADING CUT (one raked lip 1.42@2.52 -> 1.34@2.98 — the flat 1.42 course printed 0.10-0.14 over the falling glacis line on four side cols + the +-1.797 front col)
-        [s * 1.706, 0.80, 2.5225], [s * 1.7325, 0.80, 2.5225], [s * 1.7325, 0.80, 2.98], [s * 1.706, 0.80, 2.98],
-        [s * 1.706, 1.42, 2.5225], [s * 1.7325, 1.42, 2.5225], [s * 1.7325, 1.34, 2.98], [s * 1.706, 1.34, 2.98]));
+        [s * 1.706, 0.80, 2.498], [s * 1.7325, 0.80, 2.498], [s * 1.7325, 0.80, 2.98], [s * 1.706, 0.80, 2.98],
+        [s * 1.706, 1.42, 2.498], [s * 1.7325, 1.42, 2.498], [s * 1.7325, 1.34, 2.98], [s * 1.706, 1.34, 2.98])); // 2026-10-19 (owner float sweep): led 22 mm past the 12th panel; laps 2 mm onto it
       P.add('hull', box(0.0225, 0.495, 0.4575), s * 1.74375, 1.0475, 2.75125);  // 13th-course outer skin
       P.add('hull', box(0.0265, 0.62, 0.34), s * 1.71925, 1.11, -3.39);          // 14th course over the sprocket
       P.add('hull', box(0.0225, 0.495, 0.34), s * 1.74375, 1.0475, -3.39);       // 14th-course outer skin
@@ -605,12 +607,13 @@ export function buildAriete(P: MiscBuilderPort): void {
     P.add('turret', box(0.06, 0.1175, 0.80), -1.035, 0.77125, 0.60);              // roof-edge RAIL L x 1.005-1.065, top 2.4175 -> 2.448 rendered (90-ladder r2: widened inboard — its rendered -1.056 edge sat 1 mm outside the -1.033 front col window, which read the 2.346 plate against the ref's 2.457 rail line)
     P.add('turret', box(0.05, 0.235, 0.80), 0.995, 0.8195, 0.60);               // R rail L-PROFILE inner run (top 2.417 -> 2.451 rendered = the fresh 0.993 front want; banked push-2 order)
     P.add('turret', box(0.0575, 0.185, 0.80), 1.049, 0.7945, 0.60);              // R rail outer flange (top 2.367 -> 2.398 rendered at 1.02-1.0775 = the ref fall line)              // roof-edge RAIL R top 2.4775 -> 2.509 rendered (also the side-row 2.497 want at err 0.012; r10: both stay out of station slice 6 [-0.67..-0.13] — the 1 cm window is unbuildable, station trim wins)
-    P.add('turret', box(0.04, 0.05, 0.46), -1.195, 0.771, -0.185);               // L roof-edge stowage lip x 1.175-1.215, top 2.276 (push-2: the ref L wall-top col at -1.23 reads 2.306 where R reads 2.155 — L/R-asymmetric ref; one thin L angle-iron fills it, 2px clear of the -1.271 col)
+    P.add('turret', box(0.10, 0.05, 0.46), -1.167, 0.771, -0.185);               // 2026-10-19 (owner float sweep): stood 57 mm outboard of the roof plate, 50 mm over the wall; widened inboard onto the plate. L roof-edge stowage lip x 1.175-1.215, top 2.276 (push-2: the ref L wall-top col at -1.23 reads 2.306 where R reads 2.155 — L/R-asymmetric ref; one thin L angle-iron fills it, 2px clear of the -1.271 col)
     P.add('turret', frustum(0.85, 1.24, 0.90, 0.80, 1.24, 0.90, 0.60, 0.775));   // front closer cap (top 2.255, z_w 0.61-0.95 — the ref 2.25-2.28 fall zone)
     // TURMS gunner sight box fwd-right (top 2.50 = the heightM p95 anchor;
     // push round: x 0.555-0.80 — the 0.47-0.87 box AA-printed the 0.471 and
     // 0.876 front cols at 2.51 over the ref's 2.337-2.357 valley)
     sightBox(P, 'turret', 0.6725, 0.86625, 0.55, 0.335, 0.2925, 0.50);
+    P.add('turretDetail', box(0.335, 0.06, 0.50), 0.6725, 0.695, 0.55);         // 2026-10-19 (owner float sweep): the sight box stood 42 mm over the roof loft; a plinth carries it
     P.add('turretDetail', box(0.335, 0.028, 0.54), 0.6725, 0.988, 0.55);         // split lid (top 2.506; x 0.505-0.84 = the ref's own front plateau — r6: 2.514+AA read heightM 2.53/+1.02%)
     // commander panoramic TOWER aft-left-of-center (ref spike 2.38-2.50 at
     // x -0.22..-0.30, z_w -0.90..-1.02). TURRET-FIX NOTE: the real C1 pano
@@ -768,8 +771,8 @@ export function buildAriete(P: MiscBuilderPort): void {
     // of the body — the r4 two-slab pair restored verbatim (plan row 70.1)
     for (const s of [-1, 1]) {
       P.add('turret', slab(
-        [s * 0.42, -0.025, 2.44], [s * 0.70, -0.025, 2.38], [s * 1.25, -0.025, 2.06], [s * 0.60, -0.025, 2.24],
-        [s * 0.42, 0.36, 2.36], [s * 0.70, 0.35, 2.30], [s * 1.25, 0.30, 2.00], [s * 0.60, 0.355, 2.18]));
+        [s * 0.42, -0.025, 2.44], [s * 0.70, -0.025, 2.38], [s * 1.25, -0.025, 2.015], [s * 0.60, -0.025, 2.222],
+        [s * 0.42, 0.36, 2.36], [s * 0.70, 0.35, 2.30], [s * 1.25, 0.30, 1.955], [s * 0.60, 0.355, 2.145])); // 2026-10-19 (owner float sweep): its back edge stood 16-45 mm ahead of the root wedge; seated on its face
       P.add('turret', slab(                                                      // wedge roots back to the body face (r2: undersides to 1.455w — the ref front-zone turret bottoms read 1.37-1.43; 1 cm over the 1.445 deck at every yaw)
         [s * 0.42, -0.025, 2.28], [s * 1.24, -0.025, 2.02], [s * 1.26, -0.025, 0.90], [s * 0.42, -0.025, 1.30],
         [s * 0.42, 0.355, 2.20], [s * 1.24, 0.29, 1.96], [s * 1.26, 0.42, 0.90], [s * 0.42, 0.62, 1.30]));
@@ -866,7 +869,8 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     fenders(P, 1.20, 1.40, 1.612, -3.06, -2.55, 0.03);                           // engine deck aft 1.627 (ref falls 1.617 by -2.91 — split priced lower)
     fenders(P, 1.38, 1.72, 1.570, -3.06, -1.80, 0.03);                           // engine deck outer edge 1.585 (front ±1.72 wants 1.555)
     fenders(P, 1.20, 1.695, 1.590, -3.24, -3.00, 0.03);                          // tail lip 1.605 (90-ladder r1: outer 1.695 — its 1.72 edge owned the front ±1.72 cols at 1.602 vs the ref's 1.553)
-    for (const s2 of [-1, 1]) P.add('hull', box(0.07, 0.08, 0.165), s2 * 1.05, 1.673, -2.3125); // filler pots (the ref's 1.715 'hump' is two x ±1.05 caps. 90-ladder r1: ref front cols carry the 1.71 line ONLY at ±1.033/1.073 — the 0.16-wide pots printed +0.044/+0.063 on ±0.991/±1.112; x-span now 1.015..1.085. z rear pulled to -2.395: the old -2.415 edge AA'd into side col -2.464's window [-2.409..])
+    // 2026-10-19 (owner float sweep): the pots stood 10-15 mm over the deck step; they run down into it (tops kept).
+    for (const s2 of [-1, 1]) P.add('hull', box(0.07, 0.11, 0.165), s2 * 1.05, 1.658, -2.3125); // filler pots (the ref's 1.715 'hump' is two x ±1.05 caps. 90-ladder r1: ref front cols carry the 1.71 line ONLY at ±1.033/1.073 — the 0.16-wide pots printed +0.044/+0.063 on ±0.991/±1.112; x-span now 1.015..1.085. z rear pulled to -2.395: the old -2.415 edge AA'd into side col -2.464's window [-2.409..])
     // GLACIS: raked surface (1.64,1.55) -> (2.66,1.363) full width, then a
     // TAPER to x ±0.94 by z 2.78 and a narrow nose to 3.46 — the ascending
     // track band crosses the glacis plane at z>2.75, so full-width plate
@@ -1649,6 +1653,8 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     P.add('turretDark', box(0.012, 0.10, 0.012), 0.60, 0.79, 1.222, 0, 0, 0.3);  // wiper arm
     P.add('turret', box(0.34, 0.022, 0.085), 0.55, 0.770, 1.2425);               // VISOR HOOD over the window (top 2.381w = ref side col 1.179 EXACT — the old lid overhung it +0.074, the loop-2 head undershot -0.069; z_w 1.10..1.185 inside the col window)
     P.add('turretDark', box(0.07, 0.05, 0.07), 0.785, 0.795, 1.01);              // aux day scope (top 2.42w = ref col 0.795)
+    // 2026-10-19 (owner float sweep): the scope hung 17 mm under the head block's side; a bracket carries it.
+    P.add('turretDark', box(0.03, 0.03, 0.05), 0.745, 0.83, 1.01);
     P.add('turretDark', box(0.014, 0.095, 0.014), 0.55, 0.800, 0.883);           // cable conduit lies flush on the compact head's rear face
     P.add('turretDark', box(0.38, 0.010, 0.014), 0.55, 0.8555, 1.196);           // head/shaft split line
     P.add('turretDark', box(0.56, 0.014, 0.40), 0, 0.639, -1.12);                // autoloader panel field (in the low channel; 2026-10-19 owner float sweep: was 17 mm over the 0.634 floor)
@@ -2032,7 +2038,9 @@ function buildLeclercXLR(P: MiscBuilderPort): void {
   finishXlrRws();
   // The marked periscope block previously started at 0.795 m. Lower it so
   // its 70 mm housing bottoms exactly on the same 0.752 m roof plateau.
-  periscope(P, 'turretDetail', 0.18, 0.787, 0.14, -0.10);
+  // 2026-10-19 (owner float sweep): on the SXXI the block stood 104 mm over the 2.248 roof here; dropped onto it.
+  P.snapGroup('leclerc-xlr-roof-periscope', () => periscope(P, 'turretDetail', 0.18, 0.787, 0.14, -0.10),
+    { reachM: 0.12, mode: 'down' });
   P.add('turretGlass', cylZ(0.075, 0.040, 14), 0.88, 0.76, 0.35, Math.PI / 2, 0, 0);
   P.add('turretDetail', torus(0.085, 0.012, 14), 0.88, 0.76, 0.37, Math.PI / 2, 0, 0);
   P.turretG.userData.leclercXlrRoofAssembly = {
@@ -3002,7 +3010,9 @@ function buildType74(P: MiscBuilderPort): void {
     // from that end (front face 2.5 mm past it, top 1.37 inside the 1.361-1.389 plate)
     mudflap(P, s * 1.2835, 1.26, 3.035, 0.52, 0.22);
     mudflap(P, s * 1.2835, 1.26, -3.40, 0.52, 0.20);
-    P.add('hullDetail', torus(0.075, 0.014, 10), s * 0.55, 0.58, 3.215, Math.PI / 2, 0, 0); // tow eyes on the chin plate
+    // 2026-10-19 (owner float sweep): the tow eyes stood 26-42 mm proud of the chin plate; pushed back onto it.
+    P.snapGroup(`type74-tow-eye-${s}`, () => P.add('hullDetail', torus(0.075, 0.014, 10), s * 0.55, 0.58, 3.215, Math.PI / 2, 0, 0),
+      { reachM: 0.08, direction: [0, 0, -1] }); // tow eyes on the chin plate
     // rear-view mirror arms folded low over the front fenders
     P.add('hullDetail', box(0.035, 0.22, 0.035), s * 1.42, 1.46, 2.66, 0, 0, s * 0.30);
     P.add('hullDark', box(0.15, 0.19, 0.03), s * 1.475, 1.505, 2.66);
@@ -3013,10 +3023,11 @@ function buildType74(P: MiscBuilderPort): void {
   bin(P, 1.28, 1.435, -0.90, 0.40, 0.12, 1.00);
   bin(P, 1.28, 1.435, 0.60, 0.40, 0.12, 0.80);
   shovelTool(P, -1.27, 1.40, 1.85);
-  headlight(P, -1.26, 1.46, 2.98, -0.22, 0.05);
-  headlight(P, 1.26, 1.46, 2.98, -0.22, 0.05);
-  P.add('hullDetail', torus(0.072, 0.012, 12), -1.26, 1.46, 3.05);
-  P.add('hullDetail', torus(0.072, 0.012, 12), 1.26, 1.46, 3.05);
+  // 2026-10-19 (owner float sweep): the lamps and their guard rings stood 15 mm over the fender; seated.
+  headlight(P, -1.26, 1.443, 2.98, -0.22, 0.05);
+  headlight(P, 1.26, 1.443, 2.98, -0.22, 0.05);
+  P.add('hullDetail', torus(0.072, 0.012, 12), -1.26, 1.443, 3.05);
+  P.add('hullDetail', torus(0.072, 0.012, 12), 1.26, 1.443, 3.05);
   {                                                                            // §I fittings: tow cable draped across the glacis crest
     const cable = FITTINGS.towCable({ mats: P.mats, pts: [[-0.90, 1.32, 2.60], [0, 1.42, 2.28], [0.90, 1.32, 2.60]], seed: 11 });
     P.hullG.add(cable);
@@ -3131,22 +3142,27 @@ function buildType74(P: MiscBuilderPort): void {
   m2.position.set(0.44, 0.61, -0.48);                                          // receiver+sight seated on the cupola lid
   P.turretG.add(m2);
   P.add('turret', cylY(0.19, 0.20, 0.05, 14), -0.44, 0.48, -0.30);             // loader ring on the left shoulder
-  P.add('turret', cylY(0.165, 0.165, 0.028, 14), -0.44, 0.535, -0.30);         // oval lid seated on the restored crown
+  P.add('turret', cylY(0.165, 0.165, 0.046, 14), -0.44, 0.526, -0.30);         // oval lid seated on the restored crown (2026-10-19 owner float sweep: was 16 mm over the ring; top kept)
   P.add('turretDark', box(0.31, 0.013, 0.03), -0.44, 0.557, -0.30);            // lid seam
-  periscope(P, 'turretDetail', 0.24, 0.58, 0.28);                              // gunner periscope fwd-right
-  periscope(P, 'turretDetail', -0.44, 0.575, -0.02, 0.3);                      // loader periscope
+  // 2026-10-19 (owner float sweep): the periscopes stood 80 / 56 mm over the roof; dropped onto it.
+  P.snapGroup('type74-gunner-periscope', () => periscope(P, 'turretDetail', 0.24, 0.58, 0.28), { reachM: 0.10, mode: 'down' });
+  P.snapGroup('type74-loader-periscope', () => periscope(P, 'turretDetail', -0.44, 0.575, -0.02, 0.3), { reachM: 0.10, mode: 'down' });
   // A backed rangefinder head, M2 ammunition box and paired turret marker
   // lamps make the low roof read as a crewed fighting compartment rather
   // than an undecorated polygon. Every foot overlaps the shell or cupola.
   P.add('turret', box(0.23, 0.17, 0.20), 0.67, 0.53, 0.10, -0.06, 0, 0);
   P.add('turretDark', box(0.18, 0.10, 0.024), 0.67, 0.54, 0.215);
   P.add('turretGlass', box(0.13, 0.06, 0.018), 0.67, 0.54, 0.231);
-  P.add('turretDetail', box(0.23, 0.17, 0.16), 0.70, 0.66, -0.63);
-  P.add('turretDark', box(0.025, 0.11, 0.12), 0.835, 0.66, -0.63);
+  // 2026-10-19 (owner float sweep): the ammo box stood 14 mm off the cupola and its end plate 7 mm off the box; seated.
+  P.add('turretDetail', box(0.23, 0.17, 0.16), 0.680, 0.66, -0.63);
+  P.add('turretDark', box(0.025, 0.11, 0.12), 0.806, 0.66, -0.63);
   for (const side of [-1, 1]) {
-    P.add('turretDetail', cylZ(0.056, 0.105, 12), side * 0.82, 0.31, 0.92);
-    P.add('turretGlass', cylZ(0.040, 0.018, 12), side * 0.82, 0.31, 0.981);
-    P.add('turretDark', box(0.135, 0.024, 0.024), side * 0.82, 0.378, 0.93);
+    // 2026-10-19 (owner float sweep): the right lamp stood 21 mm off the shell; each lamp seats on it.
+    P.snapGroup(`type74-marker-lamp-${side}`, () => {
+      P.add('turretDetail', cylZ(0.056, 0.105, 12), side * 0.82, 0.31, 0.92);
+      P.add('turretGlass', cylZ(0.040, 0.018, 12), side * 0.82, 0.31, 0.981);
+      P.add('turretDark', box(0.135, 0.024, 0.024), side * 0.82, 0.378, 0.93);
+    }, { reachM: 0.05 });
   }
   // big IR/white searchlight box LEFT of the mantlet (the signature box):
   // hood lip + split doors + glass slit + cable conduit (§B3 tells)
@@ -3171,7 +3187,10 @@ function buildType74(P: MiscBuilderPort): void {
     }
     P.add('turretDark', openRackGrid(0.21, bz0 - bz1 - 0.06, 0.014, 5, 8),
       s * (bx1 + 0.006), 0.315, (bz0 + bz1) / 2, 0, 0, Math.PI / 2);             // open side-basket mesh face
-    P.add('turretCloth', box(bx1 - bx0 - 0.04, 0.18, bz0 - bz1 - 0.10), s * (bx0 + bx1) / 2, 0.31, (bz0 + bz1) / 2); // duffel load
+    // 2026-10-19 (owner float sweep): the rail frame stood 30 mm clear of the bustle and its load; a floor ties the lower
+    // rails into the flank and the load rests on it.
+    P.add('turretDetail', box(bx1 - bx0 + 0.04, 0.012, bz0 - bz1), s * ((bx0 + bx1) / 2 - 0.02), 0.20, (bz0 + bz1) / 2);
+    P.add('turretCloth', box(bx1 - bx0 - 0.04, 0.18, bz0 - bz1 - 0.10), s * (bx0 + bx1) / 2, 0.30, (bz0 + bz1) / 2); // duffel load
     // §I fittings: full-height whip antenna on the bustle flank plus the
     // 3-tube smoke-discharge bank on the dome rear quarter (real 2x3 JGSDF fit)
     const whipF = FITTINGS.antennaWhip({ mats: P.mats, h: 0.98, rake: s * 0.05, seed: 3 + s });
@@ -3830,7 +3849,8 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
       const railR = 0.415, railY = 1.006, a0 = 0.62, arc = Math.PI * 1.30;
       for (let k = 0; k < 7; k++) {
         const a = a0 + (k + 0.5) * (arc / 7);
-        P.add('turretDark', geometryXform(box(0.225, 0.02, 0.024), 0, 0, railR, 0, 0, 0), cupX, railY, cupZ, 0, a, 0);
+        // 2026-10-19 (owner float sweep): 0.225 segments left 14 mm gaps on the 0.415 arc; 0.26 ones lap end to end.
+        P.add('turretDark', geometryXform(box(0.26, 0.02, 0.024), 0, 0, railR, 0, 0, 0), cupX, railY, cupZ, 0, a, 0);
       }
       for (const a of [1.15, 2.55, 3.95]) {                                      // stanchions: rail -> drum wall
         P.add('turretDark', geometryXform(box(0.022, 0.13, 0.022), 0, -0.055, 0.376, 0.55, 0, 0), cupX, railY, cupZ, 0, a, 0);
@@ -3923,8 +3943,9 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
       0, 0.02, 0.22);                                                            // rounded rocking shield
     P.addGunExtra(box(0.70, 0.055, 0.30), 0, 0.285, 0.15, -0.08, 0, 0);         // cast rain brow
     P.addGunExtra(box(0.66, 0.070, 0.28), 0, -0.265, 0.17, 0.10, 0, 0);         // supported lower lip
+    // 2026-10-19 (owner float sweep): the fasteners stood 30-76 mm proud of the rounded shield; each sits 5 mm into it.
     for (const [mx, my] of [[-0.36, 0.19], [0.36, 0.19], [-0.36, -0.17], [0.36, -0.17]]) {
-      P.addGunExtraDark(cylZ(0.014, 0.030, 8), mx, my, 0.535);                   // shield fasteners
+      P.addGunExtraDark(cylZ(0.014, 0.030, 8), mx, my, 0.230 + 0.319 * Math.sqrt(1 - ((my - 0.02) / 0.267) ** 2)); // shield fasteners
     }
     P.addGunExtra(cylZ(0.16, 0.44, 14, 0.20), 0, 0, 0.28);                       // cast rotor collar emerging from the nose
     P.addGunExtra(cylZ(0.135, 0.16, 14, 0.16), 0, 0, 0.52);
@@ -3946,7 +3967,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     P.addGunExtra(geometryXform(torus(0.155, 0.020, 18), 0, 0, 0, Math.PI / 2, 0, 0), -0.76, 0.18, 0.578); // pale bezel ring
     P.addGunExtraDark(cylZ(0.138, 0.042, 16), -0.76, 0.18, 0.578);               // recessed lens well
     P.addGunExtra(geometryXform(cylY(0.055, 0.055, 0.016, 12), 0, 0, 0, Math.PI / 2, 0, 0), -0.76, 0.18, 0.602); // iris hub disc
-    P.addGunExtra(box(0.05, 0.40, 0.05), -0.545, 0.16, 0.40);                    // inboard carrier arm into the rotor
+    P.addGunExtra(box(0.14, 0.40, 0.05), -0.48, 0.16, 0.40);                     // inboard carrier arm into the rotor (2026-10-19 owner float sweep: it stopped 83 mm short of the cheek bulge)
     P.addGunExtraDark(box(0.015, 0.34, 0.02), -0.90, 0.16, 0.565);               // guard bars
     P.addGunExtraDark(box(0.015, 0.34, 0.02), -0.62, 0.16, 0.565);
     if (b2) {

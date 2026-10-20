@@ -1708,7 +1708,9 @@ function buildMBT70(P: Modern2BuilderPort) {
   // Facet seams and lifting eyes make the broad armor read as assembled plate.
   for (const s of [-1, 1]) {
     P.add('turretDark', box(0.018, 0.50, 1.36), s * 1.39, 0.40, -0.62, 0, s * 0.08, 0);
-    P.add('turretDetail', box(0.05, 0.05, 1.30), s * 1.72, 0.54, -1.10);
+    // 2026-10-19 (owner float sweep): this side rail stood 49-140 mm off the curved flank; shortened to the flank's
+    // broad shoulder and moved in onto its widest line.
+    P.add('turretDetail', box(0.05, 0.05, 0.80), s * 1.668, 0.54, -1.37);
     liftEye(P, 'turretDetail', s * 1.12, TH + 0.02, -1.28);
   }
   // Roof hatches: structural cupolas are explicitly separated from fittings.
@@ -1737,9 +1739,10 @@ function buildMBT70(P: Modern2BuilderPort) {
     GUNNER_SIGHT_BASE_Y_M + GUNNER_SIGHT_HEIGHT_M * 0.54, 0.20);
   periscope(P, 'turretDetail', -0.58, TH + 0.16, -0.30);
   // Rear basket, smoke launchers, antennae and securely seated stowage.
-  P.add('turretDetail', box(3.20, 0.05, 0.05), 0, 0.70, -3.06);
-  P.add('turretDetail', box(3.20, 0.05, 0.05), 0, 0.19, -3.06);
-  for (let k = 0; k < 13; k++) P.add('turretDetail', box(0.035, 0.50, 0.035), -1.50 + k * 0.25, 0.45, -3.06);
+  // 2026-10-19 (owner float sweep): the basket frame stood 14 mm behind the stowage racks it closes; now on them.
+  P.add('turretDetail', box(3.20, 0.05, 0.05), 0, 0.70, -3.046);
+  P.add('turretDetail', box(3.20, 0.05, 0.05), 0, 0.19, -3.046);
+  for (let k = 0; k < 13; k++) P.add('turretDetail', box(0.035, 0.50, 0.035), -1.50 + k * 0.25, 0.45, -3.046);
   for (const [side, seed] of [[-1, 73], [1, 74]]) {
     const rack = FITTINGS.stowageRack({
       mats: P.mats, w: 1.26, d: 0.38, h: 0.28, rails: 3, fill: 0.95,
@@ -1800,7 +1803,8 @@ function buildMBT70(P: Modern2BuilderPort) {
   }
   const hullEraStations = [
     [-0.82, 1.405, 2.86], [-0.29, 1.405, 2.86], [0.29, 1.405, 2.86], [0.82, 1.405, 2.86],
-    [-0.78, 1.505, 2.38], [-0.26, 1.505, 2.38], [0.26, 1.505, 2.38], [0.78, 1.505, 2.38],
+    // 2026-10-19 (owner float sweep): the aft row stood 15 mm over the glacis; lowered onto it.
+    [-0.78, 1.489, 2.38], [-0.26, 1.489, 2.38], [0.26, 1.489, 2.38], [0.78, 1.489, 2.38],
   ];
   for (const [x, y, z] of hullEraStations) {
     P.add('hull', box(0.44, 0.09, 0.34), x, y, z, -0.035, 0, 0);
@@ -1822,8 +1826,10 @@ function buildMBT70(P: Modern2BuilderPort) {
     links.position.set(side * SPARE_TRACK_MOUNT_X_M, SPARE_TRACK_MOUNT_Y_M, SPARE_TRACK_MOUNT_Z_M);
     P.turretG.add(links);
   }
-  P.addEquipment('turret', box(0.28, 0.20, 0.32), -1.02, TH + 0.12, -0.88);
-  P.add('turretGlass', box(0.17, 0.10, 0.02), -1.02, TH + 0.15, -0.705);
+  // 2026-10-19 (owner float sweep): the sensor box stood 20 mm over the roof and its window 5 mm off its face; both
+  // seated.
+  P.addEquipment('turret', box(0.28, 0.20, 0.32), -1.02, TH + 0.099, -0.88);
+  P.add('turretGlass', box(0.17, 0.10, 0.02), -1.02, TH + 0.129, -0.711);
   P.addEquipment('turretDetail', box(0.74, 0.035, 0.06), 0, TH + 0.04, -1.24);
   {
     const leftWhip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.78, rake: -0.04, seed: 71 });

@@ -323,20 +323,24 @@ function loaderHatches(P: TankBuilderPort): void {
         ring.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
       }
     }
+    // 2026-10-19 (owner float sweep): both leaves stood 58 mm over the roof; they bed 2 mm into it
     P.addHatch('turretDetail', sectionSolid([{z: -.024, ring}, {z: .024, ring}])
-      .rotateX(Math.PI / 2), hx, 2.499 - D.turretPivot[1], hz - D.turretPivot[2]);
+      .rotateX(Math.PI / 2), hx, 2.439 - D.turretPivot[1], hz - D.turretPivot[2]);
   }
 }
 
 function roofFittings(P: TankBuilderPort): void {
   for (const x of [-.97, -.64, -.31]) {
-    equipment(P, 'turretDetail', box(.153, .06972, .107), x, 2.465, -.794);
-    equipment(P, 'turretGlass', box(.113, .028, .008), x, 2.477, -.736);
+    // 2026-10-19 (owner float sweep): the outer block stood 33 mm over the falling roof; it (and its glass) bed 2 mm in
+    const dy = x < -.9 ? .035 : 0;
+    equipment(P, 'turretDetail', box(.153, .06972, .107), x, 2.465 - dy, -.794);
+    equipment(P, 'turretGlass', box(.113, .028, .008), x, 2.477 - dy, -.736);
   }
   antennaStations(P);
-  equipment(P, 'turretDetail', cylY(.02424, .02424, .2488, 16), -.8299, 2.59298, -1.03264);
-  equipment(P, 'turretDetail', cylY(.02912, .02912, .3147, 16), -.83062, 2.870925, -1.03383);
-  equipment(P, 'turretDetail', cylY(.033, .033, .06324, 16), -.830585, 3.059805, -1.033898);
+  // 2026-10-19 (owner float sweep): the mast stack stood 55 mm over the roof; all three stages drop 57 mm
+  equipment(P, 'turretDetail', cylY(.02424, .02424, .2488, 16), -.8299, 2.59298 - .057, -1.03264);
+  equipment(P, 'turretDetail', cylY(.02912, .02912, .3147, 16), -.83062, 2.870925 - .057, -1.03383);
+  equipment(P, 'turretDetail', cylY(.033, .033, .06324, 16), -.830585, 3.059805 - .057, -1.033898);
 }
 
 function antennaStations(P: TankBuilderPort): void {

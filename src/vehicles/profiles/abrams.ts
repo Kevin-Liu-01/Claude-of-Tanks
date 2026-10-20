@@ -3173,8 +3173,10 @@ function tejasRoofKit(
         0.50, 1.06, 0.62, 0.84, 0.035,
         gunnerSightReceipt.seat + gunnerSightReceipt.thickness);
     } else {
-      P.addModuleVisual('optics', 'turret', box(0.52, 0.14, 0.20), 0.78, plat2 - 0.07, 0.74);
-      P.addModuleVisual('optics', 'turret', box(0.56, 0.035, 0.24), 0.78, plat2 - 0.018, 0.74);
+      // 2026-10-19 (owner float sweep): on the CWS roof the doghouse and its cap stood 64 mm over the roof; both drop
+      // 66 mm onto it
+      P.addModuleVisual('optics', 'turret', box(0.52, 0.14, 0.20), 0.78, plat2 - 0.136, 0.74);
+      P.addModuleVisual('optics', 'turret', box(0.56, 0.035, 0.24), 0.78, plat2 - 0.084, 0.74);
     }
     P.addModuleVisual('optics', 'turret', box(0.52, 0.10, 0.38), 0.78, 0.60, 1.05);
     P.addModuleVisual('optics', 'turretDark', box(0.40, 0.09, 0.04), 0.78, 0.595, 1.26);
@@ -3370,9 +3372,13 @@ function tejasRoofKit(
     // ran a pixel short of the -1.499/-1.54 columns' 2.379-2.389).
     // Scheme-painted (visual r2 item 8: the khaki cloth end disc peeked over
     // the left cheek as the "lone beige cylinder"); geometry identical.
-    P.add('turret', cylZ(0.075, 0.6, 10), -1.56, t.roofMain - 0.055, -0.55);
-    P.add('turretDetail', torus(0.066, 0.012, 12), -1.56, t.roofMain - 0.055, -0.255, Math.PI / 2, 0, 0);
-    P.add('turretDetail', torus(0.066, 0.012, 12), -1.56, t.roofMain - 0.055, -0.845, Math.PI / 2, 0, 0);
+    // 2026-10-19 (owner float sweep): on the M1A1 SA's cheek the roll stood 46 mm clear of the turret; roll and straps
+    // are seated on the nearest stock
+    P.snapGroup('abrams-tarp-roll', () => {
+      P.add('turret', cylZ(0.075, 0.6, 10), -1.56, t.roofMain - 0.055, -0.55);
+      P.add('turretDetail', torus(0.066, 0.012, 12), -1.56, t.roofMain - 0.055, -0.255, Math.PI / 2, 0, 0);
+      P.add('turretDetail', torus(0.066, 0.012, 12), -1.56, t.roofMain - 0.055, -0.845, Math.PI / 2, 0, 0);
+    }, { reachM: 0.06 });
     // W1b roof-edge shelf law (front coldiff): outboard of the narrowed loft
     // top (±1.27 with inset 0.30) the ref carries a flat ~2.29 stowage shelf
     // to |x| 1.46-1.49 on BOTH flanks (left 2.286-2.317 over -1.29..-1.46,
@@ -4822,6 +4828,8 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
         }
         // Pioneer tools on the right mid deck (shovel + axe, §B3 named tells:
         // handle rod + blade plate, half-sunk clamps).
+        // 2026-10-19 (owner float sweep): tools and clamps stood 65 mm over this deck; the set drops onto it
+        P.snapGroup('abrams-pioneer-tools', () => {
         P.add('hullDark', cylZ(0.016, 0.62, 8), 1.52, 1.70, -1.05);        // shovel handle
         P.add('hullDetail', box(0.13, 0.02, 0.22), 1.52, 1.70, -1.46);     // shovel blade
         P.add('hullDark', cylZ(0.014, 0.55, 8), 1.30, 1.695, -1.10);       // axe handle
@@ -4832,6 +4840,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
           };
           buildTejasFamilyHullCourse11();     // clamp straps
         }
+        }, { reachM: 0.09, mode: 'down' });
         // ---- Loader's armored gun shield (LAGS) with its crew-served Browning
         // (the TUSK tell — shield wings, vision window, coping, gun through the
         // notch). Turret bucket: yaws with the turret (§B5). Tops <= 0.86
@@ -4980,10 +4989,14 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
         }
         // CROWS-side urban spotlight on the left station base (drum + guard,
         // top 0.845 < the 0.883 knee).
-        P.add('turretDetail', cylZ(0.048, 0.09, 12), lagsX + 0.02, 0.80, 1.12, -0.24, 0, 0);
-        P.add('turretGlass', cylZ(0.038, 0.014, 12), lagsX + 0.02, 0.812, 1.165, -0.24, 0, 0);
-        P.add('turretDetail', box(0.014, 0.115, 0.014), lagsX - 0.035, 0.795, 1.10, -0.24, 0, 0);
-        P.add('turretDetail', box(0.014, 0.115, 0.014), lagsX + 0.075, 0.795, 1.10, -0.24, 0, 0);
+        // 2026-10-19 (owner float sweep): the lamp and its guard posts stood 87 mm over the station base; they are seated
+        // on the nearest stock
+        P.snapGroup('abrams-crows-spotlight', () => {
+          P.add('turretDetail', cylZ(0.048, 0.09, 12), lagsX + 0.02, 0.80, 1.12, -0.24, 0, 0);
+          P.add('turretGlass', cylZ(0.038, 0.014, 12), lagsX + 0.02, 0.812, 1.165, -0.24, 0, 0);
+          P.add('turretDetail', box(0.014, 0.115, 0.014), lagsX - 0.035, 0.795, 1.10, -0.24, 0, 0);
+          P.add('turretDetail', box(0.014, 0.115, 0.014), lagsX + 0.075, 0.795, 1.10, -0.24, 0, 0);
+        }, { reachM: 0.1 });
       };
       buildTejasFamilyHullCourse1();
     }
@@ -6893,10 +6906,11 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     P.add('hullDetail', box(2.86, 0.035, 0.03), 0, 2.295, -2.245); // aft sill
     // The aft kit's only 2.75 m peak is a narrow center electronics post;
     // the carrier around it is the 2.39-2.40 m band authored above.
+    // 2026-10-19 (owner float sweep): the post stood 45 mm over the deck; post and window drop 45 mm onto it
     P.add('turretDark', box(0.087, 0.413, 0.087), 0,
-      2.545 - 1.95, -1.923 + 0.39);
+      2.500 - 1.95, -1.923 + 0.39);
     P.add('turretGlass', box(0.060, 0.090, 0.012), 0,
-      2.660 - 1.95, -1.877 + 0.39);
+      2.615 - 1.95, -1.877 + 0.39);
   };
   buildAbramsXHullStage7();
   // Bustle fittings from the registered component-envelope receipt.  They
@@ -7193,10 +7207,11 @@ function buildAbramsX(P: AbramsBuilderPort): void {
       // deep clevis mouths, hinge pins and guarded utility lamps add the
       // source's layered service relief instead of enlarging the louvers.
       for (const side of [-1, 1]) {
-        P.add('hullDark', box(0.13, 0.11, 0.018), side * 1.08, 0.86, -3.668);
-        P.add('hullDetail', torus(0.052, 0.014, 12), side * 1.08,
+        // 2026-10-19 (owner float sweep): the clevis, ring and pin stood 54 mm outboard of the tail's side; they move in
+        P.add('hullDark', box(0.13, 0.11, 0.018), side * 1.024, 0.86, -3.668);
+        P.add('hullDetail', torus(0.052, 0.014, 12), side * 1.024,
           0.84, -3.682, Math.PI / 2, 0, 0);
-        P.add('hullDetail', cylX(0.014, 0.15, 8), side * 1.08,
+        P.add('hullDetail', cylX(0.014, 0.15, 8), side * 1.024,
           0.900, -3.684);
         P.add('hullDark', box(0.17, 0.105, 0.016), side * 1.28,
           1.29, -3.704);
@@ -7261,7 +7276,8 @@ function buildAbramsX(P: AbramsBuilderPort): void {
       // face at z -3.86 for |x| > 0.85 — the tailPull ring), <=12 mm proud,
       // interior to the tail box from the side.
       {
-        const LWX = -3.86;
+        // 2026-10-19 (owner float sweep): the ladder stood 49 mm behind the corner wall (-3.812 here); it bears on it
+        const LWX = -3.808;
         P.add('hullDetail', box(0.016, 0.60, 0.014), 1.10, 1.03, LWX - 0.008);
         P.add('hullDetail', box(0.016, 0.60, 0.014), 1.32, 1.03, LWX - 0.008);
         for (let k = 0; k < 4; k++) {
@@ -7675,7 +7691,8 @@ function buildAbramsX(P: AbramsBuilderPort): void {
       P.snapGroup('abramsx-roof-rivet', () => P.add('turretDetail', cylY(0.009, 0.009, 0.010, 6), side * 1.075,
         0.457, -1.45 + ri * 0.31), { reachM: 0.04, mode: 'down' });
     }
-    P.add('turretDark', box(1.30, 0.055, 0.026), 0, 0.16, -2.18);
+    // 2026-10-19 (owner float sweep): the bar stood 93 mm off the bustle's rear face; it lies on it
+    P.add('turretDark', box(1.30, 0.055, 0.026), 0, 0.105, -2.102);
     P.add('turretDetail', box(0.69, 0.014, 0.026), 0, 0.523, 1.015);
     if (P.q) {
       for (const side of [-1, 1]) {

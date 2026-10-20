@@ -741,10 +741,12 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   }
   P.addEquipment('turret', box(0.46, 0.26, 0.46), 0.44, 0.99, -0.52, 0, 0.10, 0);
   P.add('turretGlass', box(0.28, 0.13, 0.025), 0.44, 1.01, -0.275, 0, 0.10, 0);
+  // 2026-10-19 (owner float sweep): the aerial base stood 41 mm over the basket's front course; base and whip drop
+  // 42 mm so the base beds 2 mm into it
   P.add('turretDark', cylY(0.050, 0.070, 0.50, P.q ? 16 : 10),
-    -0.96, 1.10, -1.48);
+    -0.96, 1.058, -1.48);
   P.add('turretDetail', cylY(0.014, 0.014, 1.42, P.q ? 12 : 8),
-    -0.96, 2.04, -1.48);
+    -0.96, 1.998, -1.48);
 
   P.turretG.add(sheridanTtsAutocannon(P));
   };
@@ -990,7 +992,9 @@ function addSheridanHullProtectionAndFurniture(
   for (const side of [-1, 1]) {
     P.add('hullDark', torus(0.12, 0.015, 14), side * 0.82, 1.18, 2.73, Math.PI / 2, 0, 0);
     liftEye(P, 'hullDetail', side * 0.73, 1.55, 1.15, side * 0.08);
-    P.add('hullDetail', torus(0.10, 0.022, 12), side * 0.76, 0.73, 2.91, Math.PI / 2, 0, 0);
+    // 2026-10-19 (owner float sweep): the right tow eye stood 35 mm off the nose plate; each eye is seated on it
+    P.snapGroup('m551-tow-eye', () => P.add('hullDetail', torus(0.10, 0.022, 12), side * 0.76, 0.73, 2.91, Math.PI / 2, 0, 0),
+      { reachM: 0.05 });
   }
 
   if (!isTts) {
@@ -1646,6 +1650,14 @@ function addSheridanSmokeAndAntenna(P: SheridanBuilderPort): void {
     ];
     P.add('turretDark', cylinderOnAxis(foot, axis, 0.055, 0.043,
       P.q ? 16 : 10), 0, 0, 0);
+    // 2026-10-19 (owner float sweep): the whole cheek bank (ERA, carrier rails, tubes and feet) stood 40 mm off the
+    // cast cheek; a strut from the aft tube's foot up into the cheek (its nearest point, turret-local) carries it
+    if (Math.abs(x) > 1.1 && P.spec.id !== 'm551a1_tts') {
+      const end: Vec3Tuple = [Math.sign(x) * 1.0108, 0.3093, 0.7984];
+      const v: Vec3Tuple = [end[0] - foot[0], end[1] - foot[1], end[2] - foot[2]];
+      P.add('turretDark', cylinderOnAxis([(foot[0] + end[0]) / 2, (foot[1] + end[1]) / 2, (foot[2] + end[2]) / 2],
+        v, Math.hypot(v[0], v[1], v[2]) + 0.01, 0.018, P.q ? 12 : 8), 0, 0, 0);
+    }
   }
   // Exact connected envelopes from source Object 14. The generic antenna
   // fitting used 120 mm square pedestal blocks and overran the source tips

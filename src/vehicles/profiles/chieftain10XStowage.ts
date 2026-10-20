@@ -55,12 +55,18 @@ function rightCases(P: TankBuilderPort, pivot: Pivot): void {
   // Source ex_decor_06 main case is an oblique rectangular body. Its
   // repeated outer normal is [.93301,~0,-.35985], not a Z-parallel wall.
   const angle = Math.atan2(.3598466, .9330107);
-  part(P, pivot, box(.354, .408261, .837), 1.462898, 2.1476045, -.829497, angle);
-  part(P, pivot, box(.365, .011, .846), 1.462898, 2.351425, -.829497, angle);
+  // 2026-10-19 (owner float sweep): the long case stood 57 mm off the housing's rear return, touching nothing; case
+  // and lid move (+46, +38) mm to bear on that return
+  part(P, pivot, box(.354, .408261, .837), 1.508898, 2.1476045, -.791497, angle);
+  part(P, pivot, box(.365, .011, .846), 1.508898, 2.351425, -.791497, angle);
   // Independent aft can and restrained upper handle; the central void
   // above the long case is left open rather than filled to its highest lid.
-  part(P, pivot, box(.218, .407, .275), 1.31506, 2.14727, -1.44543, .588);
-  part(P, pivot, box(.205, .040, .225), 1.3293, 2.384, -1.42545, .588);
+  // 2026-10-19 (owner float sweep): the can stood 219 mm off the aft casting and its handle 13 mm over its lid; the
+  // handle beds 1 mm into the lid and the pair is seated on the nearest stock (the long case ahead)
+  P.snapGroup('chieftain10-aft-can', () => {
+    part(P, pivot, box(.218, .407, .275), 1.31506, 2.14727, -1.44543, .588);
+    part(P, pivot, box(.205, .040, .225), 1.3293, 2.370, -1.42545, .588);
+  }, { reachM: .15 });
   part(P, pivot, box(.51, .277, .105), 1.56166, 2.237, -.29086, .035);
 }
 

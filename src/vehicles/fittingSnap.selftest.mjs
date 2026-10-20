@@ -1,9 +1,10 @@
 // Seated fittings (fittingSnap.ts, owner 2026-10-19 floating-parts sweep): a fitting floating within reach of its
 // stock moves along the shortest gap until it sits 2 mm into the surface; one touching, embedded, beyond reach or
-// headed into the running gear stays as authored.
+// headed into the running gear stays as authored; one beyond reach of the stock but beside a seated fitting seats on it
+// in the second pass (snapFittingsSeated).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { snapFittings } from './fittingSnap.ts';
+import { snapFittings, snapFittingsSeated } from './fittingSnap.ts';
 
 const deck = () => new THREE.BoxGeometry(2, 0.1, 2).translate(0, 1.0, 0); // top face at y 1.05
 const snap = (parts, stock = [deck()], gear) => snapFittings([{ label: 'fitting', parts, reachM: 0.04 }], stock, gear)[0];
@@ -40,4 +41,16 @@ const snap = (parts, stock = [deck()], gear) => snapFittings([{ label: 'fitting'
   const plate = new THREE.BoxGeometry(0.1, 0.02, 0.1).translate(0, 1.08, 0);
   assert.equal(snap([plate], [deck()], () => true).reason, 'running-gear');
 }
-console.log('fittingSnap.selftest: seated, directed, touching, embedded, beyond-reach and running-gear fittings pass');
+{ // a second case 30 mm beside a case that seats on the deck, itself 0.30 m up the first case's side: it seats on it
+  const first = new THREE.BoxGeometry(0.2, 0.4, 0.2).translate(0, 1.27, 0);       // 20 mm over the deck
+  const second = new THREE.BoxGeometry(0.1, 0.1, 0.2).translate(0.18, 1.40, 0);   // x 0.13..0.23: 30 mm beside it
+  const [a, b] = snapFittingsSeated([{ label: 'case', parts: [first], reachM: 0.04 },
+    { label: 'pack', parts: [second], reachM: 0.04 }], [deck()]);
+  assert.equal(a.moved, true);
+  assert.equal(b.moved, true, 'the pack seats on the seated case in the second pass');
+  second.computeBoundingBox();
+  assert.ok(Math.abs(second.boundingBox.min.x - 0.098) < 1e-6, 'the pack sits 2 mm into the case side');
+  assert.equal(snapFittings([{ label: 'pack', parts: [new THREE.BoxGeometry(0.1, 0.1, 0.2).translate(0.18, 1.40, 0)],
+    reachM: 0.04 }], [deck()])[0].reason, 'beyond-reach', 'one pass alone leaves it');
+}
+console.log('fittingSnap.selftest: seated, directed, touching, embedded, beyond-reach, running-gear and second-pass fittings pass');

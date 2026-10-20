@@ -130,7 +130,7 @@ import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel,
 import { ditherPaintTone, relaxFlatFans } from './surfaceFinish.ts';
 import { seatAuthoredSpareTracks } from './spareTrackSeatPass.ts';
 import { hangAuthoredMudguards, runningGearTest, type MudguardHangRequest } from './mudguardHangers.ts';
-import { snapFittings, type SnapGroupRequest, type SnapReceipt } from './fittingSnap.ts';
+import { snapFittingsSeated, type SnapGroupRequest, type SnapReceipt } from './fittingSnap.ts';
 
 /** Options for P.snapGroup (fittingSnap.ts). */
 export interface SnapGroupOptions {
@@ -7941,8 +7941,14 @@ function* createTankOwnedSteps(
     const snapParts = new Set(snapRequests.flatMap(({ parts }) => parts.map(([, part]) => part)));
     const byGroup = new Map<RigGroupKey, SnapGroupRequest[]>();
     const snapReceipts: SnapReceipt[] = [];
+    // a part a later stage moved to another bucket (smoke tubes go to the fitting paint) is found where it now lies
+    const bucketOf = new Map<THREE.BufferGeometry, string>();
+    for (const [bucket, list] of Object.entries(buckets)) for (const part of list) bucketOf.set(part, bucket);
     for (const request of snapRequests) {
-      const live = request.parts.filter(([bucket, part]) => buckets[bucket]?.includes(part));
+      const live = request.parts.flatMap(([, part]) => {
+        const bucket = bucketOf.get(part);
+        return bucket ? [[bucket, part] as const] : [];
+      });
       const objects = request.objects.filter(([, object]) => object.parent);
       const groups = new Set([...live.map(([bucket]) => BUCKET_DEF[bucket]?.[0]), ...objects.map(([key]) => key)]);
       const [group] = groups;
@@ -7959,7 +7965,8 @@ function* createTankOwnedSteps(
         for (const part of list) if (!snapParts.has(part)) stock.push(part);
       }
       const rig = rigGroupsForSnap().find(([key]) => key === group)?.[1] ?? null;
-      snapReceipts.push(...snapFittings(requests, stock, group === 'hullG' ? runningGearTest(hullG) : undefined, rig));
+      // a fitting whose only neighbour is another seated fitting seats on it (snapFittingsSeated's second pass)
+      snapReceipts.push(...snapFittingsSeated(requests, stock, group === 'hullG' ? runningGearTest(hullG) : undefined, rig));
     }
     root.userData.fittingSnaps = snapReceipts;
   }

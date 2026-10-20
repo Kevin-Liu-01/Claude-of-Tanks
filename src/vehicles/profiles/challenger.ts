@@ -3004,6 +3004,12 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     cr2ProfileStrip(P, 0.25, 0.33,
       [[2.80, cr2At(hullTop, 2.80)], ...hullTop.filter(([z]) => z > 2.80 && z < 3.80), [3.80, 1.31]],
       [[2.80, cr2At(hullBottom, 2.80)], ...hullBottom.filter(([z]) => z > 2.80 && z < 3.80), [3.80, 1.02]]);
+    // 2026-10-19 (owner float sweep): the same 0.25..0.33 m seam stayed open aft, between the centre strip and the
+    // stern cross-loft (z -3.66..-2.90), an 80 mm see-through slot in the stern belly; the stern bridge follows the
+    // centre strip's own profile and closes it.
+    cr2ProfileStrip(P, 0.25, 0.33,
+      [...centerHullTop.filter(([z]) => z < -2.90), [-2.90, cr2At(centerHullTop, -2.90)]],
+      [...centerHullBottom.filter(([z]) => z < -2.90), [-2.90, cr2At(centerHullBottom, -2.90)]]);
   };
   buildChallenger2AssemblyStage3();
 

@@ -53,7 +53,9 @@ function buildHull(P: TankBuilderPort, upgraded: boolean): void {
   deckGrille(P,.66,1.913,.74,.76,1.57);
   // Circular right-side exhaust, protected by a louvered cage.
   P.addEquipment('hullDark',cylX(.18,.10,20),1.30,1.58,.42);
-  for (let i=0;i<6;i++) P.addEquipment('hullDetail',box(.032,.022,.35),1.374,1.43+i*.06,.42);
+  // 2026-10-19 (owner float sweep): the cage slats stood 8 mm off the exhaust's face (the outer ones 45 mm clear of
+  // anything); they bed 2 mm into it
+  for (let i=0;i<6;i++) P.addEquipment('hullDetail',box(.032,.022,.35),1.364,1.43+i*.06,.42);
   P.addHatch('hull',box(1.34,1.02,.04),0,1.36,-2.90);
   for (const side of [-1,1]) {
     P.addHatch('hull',box(.57,.83,.025),side*.32,1.37,-2.933);

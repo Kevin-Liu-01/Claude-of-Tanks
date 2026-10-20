@@ -54,7 +54,8 @@ function build(P:TankBuilderPort,variant:Variant):void {
       P.addEquipment('turretGlass',box(.15,.06,.012),side*1.20,.61,-1.407);
       strappedPack(P,'turret',[side*.69,.67,-1.68],[.46,.17,.68]);
     }
-    attachedCage(P,'turret',[0,.26,-2.56],2.35,.48,.32);
+    // 2026-10-19 (owner float sweep): the cage's brackets ran 10 mm under the bustle floor; raised onto it.
+    attachedCage(P,'turret',[0,.275,-2.56],2.35,.48,.32);
     supportedSensor(P,[-.22,.94,-1.13],.55);
   }
   if(variant==='feng')addRearFieldStowage(P);

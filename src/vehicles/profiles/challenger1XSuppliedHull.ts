@@ -112,7 +112,8 @@ function frontGuards(P:TankBuilderPort,side:number):void{
   equipment(P,markVehicleNightLens(cylZ(m(3.05),m(.45),28),'headlight'),side*47.3,54.7,87.24,'hullGlass');
   for(const dx of [-6.4,6.4])caseBox(P,side*47.3+dx,54.8,84,1.0,7.8,7.5);
   caseBox(P,side*47.3,58.0,84,12.8,1.0,7.5);
-  equipment(P,cylX(m(1.4),m(5.4),20),side*63.0,54.2,82.4);
+  // 2026-10-19 (owner float sweep): the horn stood 64 mm over the sponson top; it lies on it
+  equipment(P,cylX(m(1.4),m(5.4),20),side*63.0,51.5,82.4);
 }
 function sideSkirts(P:TankBuilderPort,side:number):void{
   // The installed source skirts, not the four misplaced centerline export
@@ -200,6 +201,9 @@ function bowArmor(P:TankBuilderPort):void{
   for(const rows of[upper,lower])P.addExternalArmor('hull',roofSheet(rows.map(([z,y])=>
     [p(0,0,z)[2],a,b,p(0,y,0)[1],p(0,y,0)[1]] as const),m(.9)));
   caseBox(P,0,49.8,80.25,68.2,1.0,1.4);
+  // 2026-10-19 (owner float sweep): the nose array (both sheets, rails and clamps) stood 64 mm clear of the hull, held
+  // by nothing; four mounting brackets rise from the nose deck through the rear strip into the upper sheet's back edge
+  for(const x of[-25,-5,5,25])caseBox(P,x,51.45,80.7,3.0,10.9,.8);
   for(const x of[-30,-20,-10,0,10,20,30]){
     P.addEquipment('hullDetail',beamBetween(p(x,55.8,82),p(x,48.0,94),m(.7),8));
     P.addEquipment('hullDetail',beamBetween(p(x,47.2,95.5),p(x,34.1,107.8),m(.7),8));

@@ -65,9 +65,11 @@ function trophyLauncher(P: TankBuilderPort, side: -1 | 1): void {
   for (const dz of [-L / 2 + .06, L / 2 - .06]) {
     member(P, 'turret', 'turretDark', 'trophy-bumper', [s(outer - .01), yc + H / 2 + .05, zc + dz], [s(outer - .01), yc + H / 2 + .012, zc + dz], .010);
   }
-  const roofZ = zc - .45, roofX = s(1.02);
+  // 2026-10-19 (owner float sweep): the run left from 60 mm behind the launcher and ended 14 mm over the roof; it
+  // now leaves the lid's rear corner and lies on the roof
+  const roofZ = zc - L / 2 + .04, roofX = s(1.02);
   member(P, 'turret', 'turretDark', 'trophy-cable', [s(outer - D + .04), yc + H / 2 + .02, roofZ],
-    [roofX, turretRoofY(roofX, roofZ) + .03, roofZ], .016);
+    [roofX, turretRoofY(roofX, roofZ) + .012, roofZ], .016);
 }
 
 /** Four Trophy radar panels: a forward pair flush on the composite cheeks, a rear pair on posts at the
@@ -82,7 +84,9 @@ function trophyRadars(P: TankBuilderPort): void {
     put(P, 'turret', 'turret', 'trophy-radar', box(.34, .30, .07).applyMatrix4(basis), add3(foot, n, .026 + .035));
     put(P, 'turret', 'turretDark', 'trophy-radar-face', box(.28, .24, .008).applyMatrix4(basis), add3(foot, n, .026 + .07 + .004));
     // rear pair above the rack's top course
-    const x = side * 1.42, z = -2.70, yaw = side * 3 * Math.PI / 4;
+    // 2026-10-19 (owner float sweep): at x -1.42 the left post stood 97 mm inboard of the course's rear bend (the
+    // rack is offset left); each post now stands on its course's centreline at z -2.70 (x -1.5166 / 1.3877)
+    const x = side > 0 ? 1.3877 : -1.5166, z = -2.70, yaw = side * 3 * Math.PI / 4;
     member(P, 'turret', 'turretDark', 'trophy-radar-mount', [x, 2.28926, z], [x, 2.36, z], .020);
     put(P, 'turret', 'turret', 'trophy-radar', box(.34, .30, .07).rotateY(yaw), [x, 2.36 + .15, z]);
     put(P, 'turret', 'turretDark', 'trophy-radar-face', box(.28, .24, .008).translate(0, 0, .039).rotateY(yaw), [x, 2.36 + .15, z]);

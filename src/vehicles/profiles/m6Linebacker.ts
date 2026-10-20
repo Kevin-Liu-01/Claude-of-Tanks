@@ -37,6 +37,10 @@ function flankKit(P: TankBuilderPort): void {
     // ... and a web under its inner edge drops onto the native fender wall (x 1.55..1.62, top 1.64): the bridge alone
     // met the sloped upper side only along its box faces, which carried nothing.
     P.addExternalArmor('hull',box(.07,.17,4.45),side*1.585,1.705,-.49);
+    // 2026-10-19 (owner float sweep): the left hull has no such fender wall (its sloped skirt apron tops out at 1.605
+    // at x -1.50), so the left kit still floated 54 mm; four hangers drop from the bridge onto that apron, clear of
+    // the apron gap and the cloth roll at z -2.55..-1.95.
+    if (side<0) for (const z of [-2.65,-1.30,.10,1.40]) P.addEquipment('hullDetail',box(.07,.29,.10),-1.585,1.635,z);
     for (let bay=0;bay<6;bay++) {
       const z=-2.27+bay*.73;
       P.addExternalArmor('hull',box(.075,.54,.69),side*1.968,1.365,z);

@@ -59,7 +59,7 @@ function buildTmlHull(P: TankBuilderPort): void {
     P.hangMudguard('cv90105-rear-'+side,'hullRubber',box(.48,.22,.055),side*1.24,.77,-3.04,.10);
     P.addEquipment('hullDetail',box(.22,.095,.13),side*1.13,1.24,2.97);
     P.addEquipment('hullGlass',markVehicleNightLens(box(.15,.045,.015), 'headlight'),side*1.13,1.25,3.044);
-    for(const z of [-2.60,-1.96])P.addHatch('hullDetail',box(.76,.025,.46),side*.91,1.685,z);
+    for(const z of [-2.60,-1.96])P.addHatch('hullDetail',box(.76,.025,.46),side*.91,1.671,z); // 2026-10-19 (owner float sweep): 12 mm over the deck; seated
     P.addEquipment('hullDetail',box(.035,.045,1.48),side*1.30,1.54,1.01);
   }
   buildTmlRearRamp(P);
@@ -123,7 +123,8 @@ function buildTmlRoofFittings(P: TankBuilderPort, py: number, pz: number): void 
   P.addHatch('turret',box(.49,.046,.49),.548,2.313-py,-.303-pz);
   for(const x of [.365,.735])turretEquipment(P,'turretDetail',box(.044,.035,.13),x,2.348,-.49);
   turretEquipment(P,'turretDetail',box(.21,.023,.035),.564,2.352,-.13);
-  antenna(P,-.58,2.355,4.64523,-2.265);antenna(P,.714,2.237,4.528,.025);
+  // 2026-10-19 (owner float sweep): the left base stood ~100 mm over the 2.25 bustle roof (49 mm off the rail); seated.
+  antenna(P,-.58,2.248,4.64523,-2.265);antenna(P,.714,2.237,4.528,.025);
 }
 
 function buildTmlMantlet(P: TankBuilderPort): void {

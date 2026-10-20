@@ -51,7 +51,7 @@ function buildHull(P: TankBuilderPort): void {
     P.addEquipment('hullDark',cylY(.014,.014,.38,8),side*1.18,2.00,2.15);
     P.addEquipment('hullDetail',box(.15,.21,.043),side*1.18,2.24,2.15);
     P.addEquipment('hullGlass',box(.12,.175,.008),side*1.18,2.24,2.123);
-    for (const z of [-2.83,-1.97]) P.addHatch('hull',box(.86,.03,.65),side*.73,2.07,z);
+    for (const z of [-2.83,-1.97]) P.addHatch('hull',box(.86,.03,.65),side*.73,2.064,z);   // 2026-10-19 (owner float sweep): 5 mm over the roof; seated
   }
   // Stowed bow wave-breaker is a sloping plate; the ramp closes the stern.
   P.addExternalArmor('hull',box(2.52,.040,.85),0,1.824,2.85,.22);
@@ -89,9 +89,10 @@ function buildTurret(P: TankBuilderPort): void {
       {z:.95-pz,ring:[[.32,2.30-py],[.88,2.40-py],[.70,2.85-py],[.32,2.85-py]]},
     ]);
     P.add('turret',side<0?mirrorX(cheek):cheek);
+    // 2026-10-19 (owner float sweep): the side bolt heads stood 20-30 mm off the raked flank; seated on it.
     for (const z of [-1.40,-1.04,-.68,-.32,.04]) {
-      turretEquipment(P,'turretDark',cylX(.025,.018,8),side*1.139,2.63,z);
-      turretEquipment(P,'turretDetail',cylX(.014,.024,6),side*1.15,2.63,z);
+      turretEquipment(P,'turretDark',cylX(.025,.018,8),side*1.098,2.63,z);
+      turretEquipment(P,'turretDetail',cylX(.014,.024,6),side*1.109,2.63,z);
     }
     // Three smoke launchers per side, distinct from the Spike battery.
     for (let i=0;i<3;i++) {
@@ -102,7 +103,7 @@ function buildTurret(P: TankBuilderPort): void {
   optic(P,-.62,2.66,.79,.42,.29,.23);
   turretEquipment(P,'turretDetail',cylY(.17,.19,.12,20),-.24,2.98,-.63);
   optic(P,-.24,3.12,-.59,.42,.26,.33);
-  antenna(P,.61,2.96,4.35,-1.45);
+  antenna(P,.61,2.937,4.35,-1.45);   // 2026-10-19 (owner float sweep): base stood 20 mm over the roof; seated
   P.addHatch('turret',box(.56,.035,.60),.46,2.96-py,-.87-pz);
   P.addGunExtra(box(.52,.38,.61),0,0,.08);
   P.addGunExtra(cylZ(.10,.25,20),0,0,.51);

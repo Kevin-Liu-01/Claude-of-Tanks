@@ -816,7 +816,10 @@ function bustleRackStowage(C: EquipmentContext): void {
     for (const g of parts.dark) P.addEquipment('turretDark', g, x, y, z, 0, yaw, 0);
   };
   // the two middle bays: one chest each, latches aft
-  for (const x of [-.327, .190]) place(fieldChestParts(.44, .30, .42, {high, front: -1, handles: false}), x, .412, -2.930);
+  // 2026-10-19 (owner float sweep): the left chest stood 22 mm off the bustle wall, touching neither it nor the rack;
+  // each chest is seated against the wall
+  for (const x of [-.327, .190]) P.snapGroup('abrams-bustle-chest', () =>
+    place(fieldChestParts(.44, .30, .42, {high, front: -1, handles: false}), x, .412, -2.930), { reachM: .04 });
   // the outer bays behind the can trays: a row of five M2A1 cans standing long side fore and aft, latches aft, filling
   // each bay between its frame and its receiving plate (critic panel 2026-10-15: two rows of two left the bay's inner
   // third bare, its floor cross members reading as a loose dark bar, and the rows' lids overlapped 8 mm). Measured

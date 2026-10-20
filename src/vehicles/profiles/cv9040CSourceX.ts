@@ -35,7 +35,8 @@ function hull(P: TankBuilderPort): void {
     P.hangMudguard(`cv9040c-rear-${side}`,'hullRubber',box(.52,.33,.025),side*1.315,.73,-3.17,.13);
     P.addEquipment('hullDetail',box(.37,.16,.26),side*1.19,1.31,3.12);
     for(const dx of [-.10,.10])P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.045,.018,12), 'headlight'),side*1.19+dx,1.32,3.26);
-    for(const z of [-2.62,-2.02])P.addHatch('hull',box(.99,.033,.50),side*.77,1.965,z);
+    // 2026-10-19 (owner float sweep): rear roof hatches stood 8 mm above the deck; seated.
+    for(const z of [-2.62,-2.02])P.addHatch('hull',box(.99,.033,.50),side*.77,1.9555,z);
     for(const z of [-3.12,.75,2.62])KIT.liftEye(P,'hullDetail',side*1.25,z>2?1.43:z>0?1.78:1.96,z);
   }
   // Driver at the left front, engine and cooling package to the right.
@@ -91,7 +92,8 @@ function turret(P: TankBuilderPort): void {
       [side*.29,.03,.93],[side*1.02,.03,.34],[side*.99,.73,.12],[side*.29,.73,.64],
     ));
     turretEquipment(P,'turretDetail',box(.17,.51,1.21),side*1.10,2.18,-.87);
-    for(const z of [-1.30,-.72,-.19])turretEquipment(P,'turretDetail',box(.019,.035,.08),side*1.195,2.37,z);
+    // 2026-10-19 (owner float sweep): the front lug sat 75 mm past the stowage box's nose; moved onto the box.
+    for(const z of [-1.30,-.72,-.30])turretEquipment(P,'turretDetail',box(.019,.035,.08),side*1.195,2.37,z);
     // Three Galix tubes per side, canted outwards; never offensive launchers.
     for(let i=0;i<3;i++) {
       turretEquipment(P,'turretDetail',markSmokeTube(cylZ(.050,.20,12)),side*(.81+i*.11),2.56,-.25-i*.12,-.63,side*.40);
@@ -103,7 +105,7 @@ function turret(P: TankBuilderPort): void {
   for(let i=0;i<6;i++){const a=i*Math.PI/3;KIT.periscope(P,'turretDetail',.45+Math.cos(a)*.29,.875,-.18+Math.sin(a)*.29,a);}
   P.addHatch('turret',box(.59,.033,.62),-.45,.80,-.32);
   optic(P,-.46,2.77,.02,.39,.35,.34);
-  optic(P,.46,2.75,-.36,.31,.22,.24);
+  optic(P,.46,2.668,-.36,.31,.22,.24); // 2026-10-19 (owner float sweep): stood 80 mm above the roof; seated
   turretEquipment(P,'turretDetail',box(1.45,.42,.31),0,2.26,-2.00);
   for(const x of [-.59,.59])antenna(P,x,2.55,4.17,-1.74);
   for(const x of [-.75,.75])KIT.liftEye(P,'turretDetail',x,.82,-.84);
@@ -127,7 +129,7 @@ function gun(P: TankBuilderPort): void {
   P.add('gun',cylZ(.052,.64,P.q?24:12),0,0,2.15);
   openTube(P,.067,2.43,2.75,.020);
   P.addGunExtraDark(cylZ(.022,.62,12),-.325,-.06,.39);
-  P.addGunExtraDark(new THREE.CircleGeometry(.010,12),-.325,-.06,.708);
+  P.addGunExtraDark(new THREE.CircleGeometry(.010,12),-.325,-.06,.701); // 2026-10-19 (owner float sweep): 8 mm off the tube end
 }
 
 export function buildCv9040CX(P: TankBuilderPort): void {

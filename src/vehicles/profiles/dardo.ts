@@ -45,8 +45,9 @@ function buildHull(P: TankBuilderPort): void {
     for (const z of [-2.7,2.38]) KIT.liftEye(P,'hullDetail',side*1.19,z>0?1.475:1.775,z); // seated: they stood 15 mm off
   }
   // Right-side engine grille and the left-front driver cover establish Dardo's asymmetry.
-  P.addEquipment('hullDark',box(.027,.40,1.61),1.413,1.50,.23);
-  for (let i=0;i<15;i++) P.addEquipment('hullDetail',box(.036,.015,1.60),1.438,1.32+i*.026,.23);
+  // 2026-10-19 (owner float sweep): the grille stood 14 mm off the inward-leaning side; set onto it.
+  P.addEquipment('hullDark',box(.027,.40,1.61),1.384,1.50,.23);
+  for (let i=0;i<15;i++) P.addEquipment('hullDetail',box(.036,.015,1.60),1.409,1.32+i*.026,.23);
   deckGrille(P,.70,1.758,.43,.84,1.54);
   P.addHatch('hull',box(.63,.043,.71),-.70,1.763,.88);
   for (const x of [-.91,-.70,-.49]) KIT.periscope(P,'hullDetail',x,1.815,1.17);
@@ -82,12 +83,13 @@ function buildTurret(P: TankBuilderPort): void {
   }
   optic(P,-.38,2.475,.27,.27,.25,.29);
   optic(P,.38,2.47,.27,.20,.22,.23);
-  antenna(P,.53,2.44,4.14,-1.02);
+  antenna(P,.53,2.418,4.14,-1.02); // 2026-10-19 (owner float sweep): base stood 20 mm over the roof
   P.addGunExtra(box(.47,.39,.53),0,0,.05);
   P.addGunExtra(cylZ(.10,.28,20),0,0,.40);
   P.add('gun',cylZ(.043,1.58,24),0,0,1.28);
   openTube(P,.052,2.04,2.45,.0125);
   P.addGunExtraDark(cylZ(.019,.55,12),-.285,-.065,.28);
+  P.addGunExtraDark(box(.05,.03,.06),-.255,-.065,.20); // 2026-10-19 (owner float sweep): the coax ran 31 mm clear of the mantlet; a clamp holds it
 }
 
 export function buildDardo(P: TankBuilderPort): void {

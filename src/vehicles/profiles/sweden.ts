@@ -574,7 +574,7 @@ function buildUdes03(P: SwedishBuilderPort): void {
     elev: 0.05, shield: false, ammo: true, seed: 302, working: true,
   }), 0.38, 1.70, -0.28, [0, -0.05, 0]);
   P.addEquipment('hull', box(0.24, 0.18, 0.27), 0.64, 1.72, -0.54);
-  P.add('hullGlass', box(0.14, 0.07, 0.018), 0.64, 1.75, -0.39);
+  P.add('hullGlass', box(0.14, 0.07, 0.018), 0.64, 1.75, -0.40);             // 2026-10-19 (owner float sweep): 6 mm ahead of the sight box; set into it
   periscope(P, 'hullDetail', -0.20, 1.62, 0.36);
   periscope(P, 'hullDetail', 0.18, 1.62, 0.30);
   for (const side of [-1, 1]) {
@@ -588,7 +588,7 @@ function buildUdes03(P: SwedishBuilderPort): void {
     mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 1, spacing: 0.12, r: 0.050,
       shield: true, seed: 300 + (side > 0 ? 1 : 0),
-    }), side * 1.02, 1.38, 2.62);
+    }), side * 1.25, 1.353, 2.62); // 2026-10-19 (owner float sweep): hung 128 mm clear of everything at x 1.02; on the fender nose
   }
   P.add('hull', box(0.38, 0.10, 0.34), 0.72, 1.64, -1.02);
   P.add('hullDark', box(0.34, 0.018, 0.30), 0.72, 1.70, -1.02);
@@ -815,7 +815,8 @@ function buildStrv103A(P: SwedishBuilderPort): void {
   P.add('hullDark', box(0.32, 0.02, 0.36), 0.62, 2.15, -0.94);
   P.add('hullGlass', box(0.20, 0.075, 0.022), 0.62, 2.06, -0.73);
   P.add('hull', cylY(0.26, 0.28, 0.11, 16), 0.28, 1.93, -0.40);               // commander cupola (right)
-  P.add('hull', cylY(0.145, 0.145, 0.045, 14), 0.28, 2.045, -0.40);           // cupola crown at the 2.16 cap
+  // 2026-10-19 (owner float sweep): the crown hung 38 mm over the cupola; it runs down into it (top kept).
+  P.add('hull', cylY(0.145, 0.145, 0.085, 14), 0.28, 2.025, -0.40);           // cupola crown at the 2.16 cap
   // 2026-10-07 (tank-accessories round 4, wave 216: "a thin rod on a box bracket, on a bare ring floating round the
   // cupola with no supports"): the two dark round tori that stood proud of the cupola's rim and crown become flat
   // machined rings seated on them (a chamfered race with its bolt circle), carried at the rim on four welded
@@ -907,7 +908,7 @@ function buildStrv103A(P: SwedishBuilderPort): void {
   P.add('hull', box(0.24, 0.16, 0.62), -1.46, 1.44, 1.90);                    // fixed MG box
   P.add('hullDark', cylZ(0.020, 0.26, 6), -1.52, 1.47, 2.26);
   P.add('hullDark', cylZ(0.020, 0.26, 6), -1.42, 1.47, 2.26);
-  liftEye(P, 'hullDetail', -1.50, 1.92, 0.55, 0.4); liftEye(P, 'hullDetail', 1.50, 1.92, 0.55, -0.4);
+  liftEye(P, 'hullDetail', -1.50, 1.92, 0.55, 0.4); liftEye(P, 'hullDetail', 1.50, 1.906, 0.55, -0.4); // right eye was 12 mm high (2026-10-19 float sweep)
   for (const s of [-1, 1]) {                                                  // bow tow shackles
     P.add('hullDetail', box(0.10, 0.08, 0.10), s * 0.84, 1.06, 2.92);
     P.add('hullDark', torus(0.055, 0.016, 10), s * 0.84, 1.02, 2.98);
@@ -920,7 +921,8 @@ function buildStrv103A(P: SwedishBuilderPort): void {
   for (const s of [-1, 1]) {
     P.add('hullDark', cylZ(0.075, 0.10, 10), s * 0.98, 1.34, -3.475);         // recessed exhaust outlets
     P.add('hullDetail', box(0.30, 0.22, 0.035), s * 0.98, 1.34, -3.50);
-    P.add('hullDetail', box(0.10, 0.09, 0.10), s * 1.30, 1.30, -3.46);        // rear shackle blocks
+    // 2026-10-19 (owner float sweep): the blocks hung 60 mm under the rear rail; they run up into its end.
+    P.add('hullDetail', box(0.10, 0.155, 0.10), s * 1.30, 1.3325, -3.46);     // rear shackle blocks
   }
   P.add('hullDetail', box(0.16, 0.07, 0.05), 0, 1.70, -3.49);                 // convoy light
   mount(P, 'hull', FITTINGS.stowageRack({

@@ -239,3 +239,22 @@ export function snapFittings(
   }
   return receipts;
 }
+
+/** snapFittings, then a second pass for the groups nothing was within reach of, with the groups the first pass seated
+ * (moved or already touching) as stock: a case beside a seated case seats on it. The seated groups' parts already
+ * stand where the first pass left them. One receipt per request, in order. */
+export function snapFittingsSeated(
+  requests: readonly SnapGroupRequest[],
+  stock: readonly THREE.BufferGeometry[],
+  gearTouches: (box: THREE.Box3) => boolean = () => false,
+  rig: THREE.Object3D | null = null,
+): SnapReceipt[] {
+  const receipts = snapFittings(requests, stock, gearTouches, rig);
+  const seated = requests.flatMap((request, i) => receipts[i].moved || receipts[i].reason === 'touching' ? request.parts : []);
+  const retry = requests.flatMap((_, i) => receipts[i].reason === 'beyond-reach' ? [i] : []);
+  if (retry.length && seated.length) {
+    const second = snapFittings(retry.map((i) => requests[i]), [...stock, ...seated], gearTouches, rig);
+    retry.forEach((i, k) => { receipts[i] = second[k]; });
+  }
+  return receipts;
+}
