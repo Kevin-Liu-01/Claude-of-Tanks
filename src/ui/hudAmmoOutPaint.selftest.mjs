@@ -1129,6 +1129,14 @@ function assertFurnitureClear(items, boxes, at, key = null) {
         const { ring, chip, line, zoom, stack, tag, furniture } = reticleGaps(quickPaint(tank), at,
           { warn, scoped: true, vision: visionSwitchBox(width, height, !!touch), ringClear: true, touch: !!touch });
         if (chip?.op === 'dom') modes.seatedChip++;
+        // a small portrait phone keeps the plain stack (the zoom plate under the line) under the sight on a small ring:
+        // its rest (96 px under the marker) would set the plate on the aim hint and the left FIRE button, so the row
+        // rises over them rather than leaving for the fallbacks
+        if (touch && width === 360 && metres === 1 && label === 'gun reload' && !warn) {
+          assert.ok(zoom && zoom.box.y0 > line[0].box.y1 && line[0].box.y0 > height / 2
+            && Math.abs((zoom.box.x0 + zoom.box.x1) / 2 - width / 2) < 1, `${at}: the plain stack under the sight`);
+          modes.risen = (modes.risen ?? 0) + 1;
+        }
         if (!zoom) modes.noZoom++;
         else if (Math.abs(zoom.box.y1 - line[0].box.y1) < 3) modes[chip && Math.abs(chip.box.y1 - line[0].box.y1 - 8.4) < 3 ? 'chipBeside' : 'zoomBeside']++;
         if (chip && chip.box.y1 < ring.y - ring.r) modes.chipAbove++;
@@ -1154,7 +1162,7 @@ function assertFurnitureClear(items, boxes, at, key = null) {
       }
     }
   }
-  assert.ok(Object.values(modes).every((n) => n > 0), `the cramped rows ran (${JSON.stringify(modes)})`);
+  assert.ok(Object.values(modes).every((n) => n > 0) && modes.risen === 1, `the cramped rows ran (${JSON.stringify(modes)})`);
   // (the floors bind: each tight window does reach into its furniture, by no more than its floor allows)
   for (const [key, floor] of Object.entries(TIGHT_FLOOR)) {
     assert.ok(tightWorst[key] < 3 && tightWorst[key] >= floor - 1e-6, `${key}: the least gap is ${tightWorst[key]?.toFixed(2)} (floor ${floor})`);
