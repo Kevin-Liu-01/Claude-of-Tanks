@@ -8,6 +8,11 @@ import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { createTankState, SIM_DT } from './movement.ts';
 import { createGameState, createBus, simStep } from '../game/state.ts';
 import { COUNTER_DRONE_CLASSES, hoverCounterDrone, prepareCounterDrone, roofStations, soloHoverCounterDrone } from './counterDroneEngagement.test-support.mjs';
+import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
+
+// Every harness below reaches the authority or the solo battle with finalized combat anatomy, as the match service
+// does (server/match/service.ts calls ensureAuthorityFleet first; guards 229 critic round 2).
+await ensureAuthorityFleet(['mbt70', 'm1a1_abrams_hc', 'leclerc_s2', 'm1a3', 'bmp3', 'bmp3_rok']);
 
 const near = (actual, expected, message) => assert.ok(Math.abs(actual - expected) < 1e-8,
   `${message}: ${actual} vs ${expected}`);

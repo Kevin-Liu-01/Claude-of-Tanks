@@ -60,7 +60,7 @@ Counter-drone (roof stations, the weapon profiles' drone fields, `AERIAL_RULES.d
 holds the owner's 226 rule: run `node src/sim/counterDroneEngagement.selftest.mjs` (data
 only: every station carries its class's 226 numbers, the elevation ratchet),
 `node src/sim/weaponReload.selftest.mjs` (the pinned hovers on the authority and in the
-solo battle) and `node tools/counter-drone-engage.mjs --set=reference,pair --check` (every
-pinned pilot run exactly, the owner's band; `tank:release:check` runs it), and for new or
-re-armed stations `--ids=<ids> --check` (per vehicle: class, hovers against the owner's
-literal counts, attack runs, elevation reach).
+solo battle) and `node src/sim/counterDroneRuns.selftest.mjs` (every pinned pilot run
+exactly, the owner's band), and for new or re-armed stations
+`node tools/counter-drone-engage.mjs --ids=<ids> --check` (per vehicle: class, hovers
+against the owner's literal counts, attack runs, elevation reach, the pins).

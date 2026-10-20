@@ -31,7 +31,8 @@
 // With --check, the ids COUNTER_DRONE_PINS pins (the lone anchors m1a1 and t90a_2004, seeds 1-8; the 30 mm + 7.62 roofs, one
 // seed each) must also fly every pinned level run exactly (outcome, rounds, ticks), every station of a pinned roof must
 // fire in each, a pinned roof's bow hover must match, and the lone anchors must down 4-11 of their 48 pinned runs (the
-// owner's band). tank:release:check runs `--set=reference,pair --check` (guards 229: the pilot runs left npm test).
+// owner's band). npm test flies the same pins (src/sim/counterDroneRuns.selftest.mjs); tank:release:check runs `--ids=<the
+// pinned vehicles the release names> --check` without a capture lease.
 // Changed-only: name the ids whose stations changed; nothing here builds geometry (the authority reads specs: about
 // 3 s to load, then roughly 0.1 s a run).
 import { writeFileSync } from 'node:fs';

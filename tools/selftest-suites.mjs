@@ -74,10 +74,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/earthriseCrossing.selftest.mjs',
     'src/sim/auxiliarySystems.selftest.mjs',
     'src/sim/roofStations.selftest.mjs',
-    // 2026-10-16 (227 guards; data only since guards 229, keyable, ~0.5 s): counter-drone levers as the owner's 226 rule
-    // (hitsToDown 1.1, every roof station's class numbers, the elevation ratchet); the authority hovers are in
-    // weaponReload.selftest, the pinned pilot runs in tank:release:check (counter-drone-engage --set=reference,pair --check)
+    // 2026-10-16 (227 guards; guards 229): counter-drone as the owner's 226 rule: the levers as data (keyable, ~0.5 s),
+    // then every pinned pilot run on the authority (~6 s; fixture-keyed where the runner lists it)
     'src/sim/counterDroneEngagement.selftest.mjs',
+    'src/sim/counterDroneRuns.selftest.mjs',
     'src/vehicles/remoteGunFleet.selftest.mjs',
     'src/vehicles/profiles/mbt70Rh202.selftest.mjs',
     'src/vehicles/roofWeaponPolicy.selftest.mjs',

@@ -12,7 +12,7 @@
 // What the levers do in a fight is pinned on the authority elsewhere: each class anchor's hovers at 33 m and 102 m and a
 // relaunched flight in src/sim/weaponReload.selftest.mjs (it already loads the authority and the solo battle), and every
 // level pilot run of the lone anchors (seeds 1-8) and the 30 mm + 7.62 roofs, exactly, with the owner's 4-11 of 48 band,
-// in the release check: `node tools/counter-drone-engage.mjs --set=reference,pair --check` (tank:release:check).
+// in src/sim/counterDroneRuns.selftest.mjs (and `node tools/counter-drone-engage.mjs --ids=<ids> --check` per vehicle).
 import assert from 'node:assert/strict';
 import { AUXILIARY_INVENTORY } from '../vehicles/auxiliaryInventory.generated.ts';
 import { AERIAL_RULES, matchRulesetFor } from './matchRuleset.ts';
@@ -58,4 +58,4 @@ let stations = 0;
   assert.deepEqual(moved, [], 'a listed station\'s reach moved: re-measure and update the KNOWN list');
 }
 
-console.log(`counterDroneEngagement: hitsToDown ${AERIAL_RULES.drone.hitsToDown}; all ${stations} roof stations carry their class's 226 numbers; the class anchors and the 30 mm + 7.62 roofs hold their classes; the elevation ratchet holds (hovers: weaponReload.selftest; pilot runs: the release check)`);
+console.log(`counterDroneEngagement: hitsToDown ${AERIAL_RULES.drone.hitsToDown}; all ${stations} roof stations carry their class's 226 numbers; the class anchors and the 30 mm + 7.62 roofs hold their classes; the elevation ratchet holds (hovers: weaponReload.selftest; pilot runs: counterDroneRuns.selftest)`);

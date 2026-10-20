@@ -26,14 +26,14 @@ import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { encodeAimIntent } from './aimIntent.ts';
 import { initializeAerial } from './aerialCombat.ts';
 import { createAuxiliaryState, roofStationCount } from './auxiliarySystems.ts';
-import { COUNTER_DRONE_BANDS, COUNTER_DRONE_CLASSES, COUNTER_DRONE_SETS, roofStations, stationClass } from './counterDroneStations.test-support.mjs';
+import { COUNTER_DRONE_BANDS, COUNTER_DRONE_CLASSES, COUNTER_DRONE_PINS, COUNTER_DRONE_SETS, roofStations, stationClass } from './counterDroneStations.test-support.mjs';
 import { createCombatState } from './damage.ts';
 import { AERIAL_RULES, matchRulesetFor } from './matchRuleset.ts';
 import { createTankState, SIM_DT } from './movement.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
 
 // the station half, re-exported for the entry point (tools/counter-drone-engage.mjs)
-export { COUNTER_DRONE_BANDS, COUNTER_DRONE_CLASSES, COUNTER_DRONE_SETS, roofStations, stationClass };
+export { COUNTER_DRONE_BANDS, COUNTER_DRONE_CLASSES, COUNTER_DRONE_PINS, COUNTER_DRONE_SETS, roofStations, stationClass };
 
 /** The pilot's approaches: a level run at the hull's front, side (either, by seed) or rear, or a steep dive. */
 export const COUNTER_DRONE_APPROACHES = Object.freeze({
@@ -249,31 +249,6 @@ export function soloHoverCounterDrone({ specId, solo, distanceM = 30, carrierId 
     launchInput: () => ({ ...idle, throttle: 0, brake: false, actionBits: PLAYER_ACTION_BITS.DRONE }) });
 }
 
-/**
- * The release check's exact pins (guards 229; critic round 1: a 12.7-only lethality change past about 110 m passed the
- * receipt, since the lone anchors' level runs were judged only by their combined band). Every level pilot run the lone
- * anchors fly on seeds 1-8 and each 30 mm + 7.62 roof flies on its own seed, as `outcome:rounds@ticks from launch`
- * (d downed, s strike, o other; rounds per station joined by /), approach-major (front, side, rear) then seed, and each
- * roof's bow hover about 33 m out ([rounds per station], ticks from the first round to the fall). The lone anchors' 48
- * runs down 9 (m1a1 5, t90a_2004 4): the owner's band is 4-11 of 48 (hitsToDown 1 downs 14).
- * tools/counter-drone-engage.mjs --check compares them exactly (tank:release:check runs it with --set=reference,pair).
- * Measured on integ/229 93cfe22c21; re-pin only after re-ruling a change with the owner.
- */
-export const COUNTER_DRONE_PINS = Object.freeze({
-  runs: Object.freeze({
-    m1a1: Object.freeze({ seed0: 1, runs: 8, rows: 's:8@714 s:15@700 d:12@569 s:13@657 s:8@677 s:11@591 s:6@607 s:11@671 d:10@642 d:15@657 d:15@640 s:7@659 s:7@668 s:11@606 s:15@633 s:11@706 s:7@657 d:9@683 s:6@693 s:10@725 s:8@696 s:11@657 s:11@632 s:8@690' }),
-    t90a_2004: Object.freeze({ seed0: 1, runs: 8, rows: 's:6@716 d:15@695 s:9@587 s:13@659 s:9@678 s:12@592 s:9@608 s:12@672 s:7@651 s:13@688 s:12@667 s:7@659 s:7@670 s:11@606 d:14@618 s:9@707 s:7@657 s:6@689 s:9@693 s:11@726 s:6@696 d:12@650 d:12@621 s:9@690' }),
-    leo2a7v: Object.freeze({ seed0: 1, runs: 1, rows: 'd:6/7@694 d:7/6@604 d:8/12@613' }),
-    leo2a5: Object.freeze({ seed0: 2, runs: 1, rows: 'd:9/12@653 d:9/9@627 d:6/4@667' }),
-    leo2_revolution: Object.freeze({ seed0: 3, runs: 1, rows: 'd:8/5@554 d:8/7@652 d:9/14@656' }),
-    leclerc_xlr: Object.freeze({ seed0: 4, runs: 1, rows: 'd:8/5@609 d:7/11@611 d:7/6@677' }),
-  }),
-  hovers: Object.freeze({
-    leo2a7v: Object.freeze([[4, 0], 135]), leo2a5: Object.freeze([[2, 3], 20]),
-    leo2_revolution: Object.freeze([[2, 4], 19]), leclerc_xlr: Object.freeze([[2, 4], 18]),
-  }),
-  loneBand: Object.freeze({ ids: Object.freeze(['m1a1', 't90a_2004']), downed: Object.freeze([4, 11]), of: 48 }),
-});
 /** One pilot run as the pins write it. */
 export const pinnedRunRow = (r) => `${r.outcome[0]}:${r.rounds[0].join('/')}@${r.at === null ? '-' : Math.round(r.at / SIM_DT)}`;
 

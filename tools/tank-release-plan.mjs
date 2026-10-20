@@ -1,11 +1,15 @@
 import {isPhotoReference} from './photo-reference-policy.mjs';
 import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
 import {validateSelectedIds,partitionConceptIds} from './first-party-concept-policy.mjs';
+/** The vehicles whose counter-drone pilot runs are pinned (src/sim/counterDroneStations.test-support.mjs COUNTER_DRONE_PINS;
+ * tank-release-plan.selftest holds the two lists equal). */
+export const COUNTER_DRONE_PINNED_IDS=Object.freeze(['m1a1','t90a_2004','leo2a7v','leo2a5','leo2_revolution','leclerc_xlr']);
 /** Declarative release composition, tested without launching browser children. */
 export function tankReleaseSteps(ids, gate, node = process.execPath) {
   if (!ids.split(',').every(id=>id.trim().length>0)) throw new Error('release requires nonempty tank IDs');
   const selectedIds=validateSelectedIds(ids.split(','),Object.keys(FLEET_GROUP_BY_ID));
   const comparisons=partitionConceptIds(selectedIds).comparisons.filter(id=>!isPhotoReference(id));
+  const counterDronePinned=selectedIds.filter(id=>COUNTER_DRONE_PINNED_IDS.includes(id));
   const selected=`--ids=${ids}`;
   // Fleet construction and builds share the resource queue with rendering.
   // Only children that already queue their own phases bypass this wrapper.
@@ -40,9 +44,9 @@ export function tankReleaseSteps(ids, gate, node = process.execPath) {
     gpu('track-duplicate-audit',selected),
     gpu('muzzle-bore-probe',selected),
     gpu('turret-barrel-circularity',selected),
-    // guards 229: counter-drone on the authority, the pilot runs npm test no longer flies: the lone anchors' and the
-    // 30 mm + 7.62 roofs' level runs pinned exactly, the owner's rule on every lone station, the class bands
-    cpu('counter-drone-engage','--set=reference,pair','--check'),
+    // guards 229: a release naming a counter-drone pinned vehicle re-flies its pinned runs and the owner's rule (CPU only,
+    // no capture lease; npm test flies every pin in src/sim/counterDroneRuns.selftest.mjs)
+    ...counterDronePinned.length ? [{command:node,args:['tools/counter-drone-engage.mjs',`--ids=${counterDronePinned.join(',')}`,'--check'],capture:false}] : [],
     {command:'npm',args:['test'],capture:false},
     {command:'npm',args:['run','build:private'],capture:true},
   ];
