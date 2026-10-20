@@ -517,42 +517,56 @@ driver takes the waypoints back (a mission owns its route: no search while it dr
 destination is cleared, so its first route push lands at once. No bot reads an unspotted opponent's position, and
 multiplayer hosts send none.
 
-**Measured** with `tools/mode-aggression-harness.mjs` (seeded headless battles through the real solo code path, seeds 1-8
-on Verdant, Redrock, Steinburg, Desert, Winter, Autumn, Steppe and Coastal, the player seat a bot, normal tier; Frontline
-win share over seeds 1-16; the gate `tools/mode-aggression-targets.json` via `compare`). Before is integ/228 (93559dfe8);
-the runs and scripts live in `cot-launch-state/streams/gameplay-modes-228` (`baseline/ext`, `metrics/round1`):
+**Measured** with `tools/mode-aggression-harness.mjs` (seeded headless battles through the real solo code path, the player
+seat a bot, normal tier; the gate `tools/mode-aggression-targets.json` via `compare`). Round 2 (2026-10-19) measures on
+the round-1 critic's 16 seeds and maps: 101-108 on Winter, Autumn, Steppe, Coastal, Verdant, Redrock, Steinburg and
+Desert, then Frontier, Railyard, Alpine and Delta two seeds each; the Horde's team survival and Frontline's park and
+shield seats on 101-112; the shared authority on 101-104 for parity. Before is integ/228 (93559dfe8, the round-1
+critic's runs; Frontline's fight seat re-run at ac0a12960 with round 2's harness, whose fight seat plays the objective).
+The runs, scripts and compare output live in `cot-launch-state/streams/gameplay-modes-228/metrics/round2` (`final3m`):
 
-| Mode | Measure (seeds 1-8 unless noted) | Before | After | Target |
+| Mode | Measure | Before | After | Target |
 | --- | --- | --- | --- | --- |
-| all changed | hunt routed on an unspotted opponent (Horde / Infected) | 27 % / 19 % | 0.5 % / 0.2 % | ≤ 2 % |
-| classic | Standard and Juggernaut rows (old roster path) | — | field for field the baseline's | identical |
-| Horde | enemies per round (arrivals; ×1.4 on the 5th) | 6, 8, 10, 13, 15, 17, 20, 20 | 6, 9, 13, 18, 34, 30, 37, 44 … every cleared round on the law | the law |
-| Horde | peak hostiles alive; arrivals inside 150 m / in a human's sight | 20; 78 / 170 | 16; 0 / 0 (team view 3 / 17) | 16; 0 / 0 |
-| Horde | lull between rounds | 6 s + travel | 7.95-8.07 s | 8 s |
-| Horde | zombie engaged-standing-still; advance; fall back / kite / settle | 29 %; 56 %; 3 / 4 / 13 % | 15 %; 70 %; 0 / 0 / 0 % | ≤ 5 %; ≥ 80 %; 0 |
-| Horde | rounds reached, fight seat / team survival (median) | 3.5 / 6 | 4.5 / 6.5 | ≥ 4 / 7-11 |
-| Horde | zombie kills per human-side death | 8.6 | 35.7 | 6-12 |
-| Infected | first infection; infections a minute | 153 s; 1.9 | 99 s; 2.5 | ≤ 60 s; ≥ 3.5 |
-| Infected | infected within 150 m of a survivor; distance | 51 %; 183 m | 78 %; 125 m | ≥ 80 %; ≤ 90 m |
-| Infected | infected advance; fall back; scoot; shots a minute | 56 %; 14 %; 33 %; 6.2 | 76 %; 0 %; 0.6 %; 9.9 | ≥ 75 %; ≤ 2 %; ≤ 5 %; ≥ 8 |
-| Infected | survivors' shots a minute; survivor wins | 4.3; 0/8 | 8.5; 0/8 (probe: 2/72) | ≥ 5.5; 1-4 of 8 |
-| Frontline | sector-1 fight; first sector taken; defenders' distance to the live zone | 0/8; 24 s; 194 m | 8/8; 80 s; 44 m | ≥ 7/8; ≥ 45 s; ≤ 80 m |
-| Frontline | attackers in the live zone; defenders' kills a minute | 13 %; 1.2 | 35 %; 2.3 | ≥ 20 %; ≥ 2 |
-| Frontline | fight seat match length (median); attacker wins, seeds 1-16 | 143 s; 1/16 | 92 s; 0/16 | ≥ 150 s; 40-55 % |
-| Frontline | park-seat progress; shield-seat match end (median) | 42 %; 493 s | 42 %; 720 s | ≥ 67 %; ≤ 300 s |
-| CTF | captures a match; matches with a capture; draws | 0.25; 1/8; 7/8 | 0.5; 3/8; 5/8 | ≥ 1.5; ≥ 6/8; ≤ 4/8 |
-| CTF | first pickup; carried share; escort within 80 m | 105 s; 17 %; 9 % | 71 s; 24 %; 15 % | ≤ 70 s; ≥ 25 %; ≥ 35 % |
-| Turbo Ball | goals a match; touches a minute; possession changes | 0; 10.5; 41 | 0; 15.7; 62 | ≥ 1.5; ≥ 18; ≥ 60 |
-| Turbo Ball | nearest bot to the ball (alpha / bravo); strikers' share; crowd cap held | 70 / 55 m; 17 / 14 %; — | 57 / 46 m; 34 / 29 %; 99.1 % | ≤ 30 m; ≈ 28 %; ≥ 98 % |
+| all changed | hunt routed on an unspotted opponent (Horde / Infected) | 20.6 % / 17.1 % | 0.2 % / 0.3 % | ≤ 2 % |
+| classic | Standard and Juggernaut runs under RANDOM (seeds 101-104) | — | every run identical to its integ/228 run, field for field | identical |
+| Horde | arrivals per round (median); every cleared round on the law; peak hostiles alive | 6, 8, 10, 13, 15, 17, 20 (capped); 20 | 6, 9, 13, 18, 24, 30, 37, 44 …; 85 of 85 on the law; 16 | the law, rising every round; ≤ 16 |
+| Horde | arrivals inside 150 m / in a human's sight (fight seat) | 448 / 622 | 0 / 0 | 0 / 0 |
+| Horde | waves with first contact outside 8-25 s | 63 | 6 (miss) | 0 |
+| Horde | zombie engaged-standing-still; engagement distance; advance | 31.6 % / 137 / 53.4 % | 8.4 % / 39 / 80.9 % (miss) | ≤ 5 %; ≤ 50 m; ≥ 80 % |
+| Horde | rounds reached, fight seat / team survival (median); team runs ended by round 15 | 5 / 7.5 / 11 | 6 / 7 / 9 (miss) | ≥ 4 / 7-11; 12 of 12 |
+| Horde | zombie kills per human-side death; hunter rams (16 runs) | 15.39 / 14 | 31.23 / 41 (miss) | 6-12; 0 |
+| Infected | first infection; infections a minute | 163.3 / 1.58 | 72.3 / 1.9 (miss) | ≤ 60 s; ≥ 3.5 |
+| Infected | infected within 150 m of a survivor; distance | 50.3 % / 181 | 78.8 % / 134 (miss) | ≥ 80 %; ≤ 90 m |
+| Infected | engaged-still; advance; fall back; scoot | 20.3 % / 55.9 % / 12.7 % / 32.2 % | 6.2 % / 72.7 % / 0 % / 0 % (miss) | ≤ 6 %; ≥ 75 %; ≤ 2 %; ≤ 5 % |
+| Infected | shots a bot-minute, infected / survivors; survivor wins (16) | 7.2 / 4.86 / 1 | 8.17 / 7.22 / 7 | ≥ 8 / ≥ 5.5; 2-8 |
+| Frontline | sector-1 fight (16); first sector taken; defenders' distance to the live zone | 0 / 22.8 / 200 | 13 / 52.7 / 78 (miss) | ≥ 14; ≥ 45 s; ≤ 80 m |
+| Frontline | attacker wins, fight seat (16 seeds); match length (median) | 0 % / 160 | 56.3 % / 249 (miss) | 40-55 %; ≥ 150 s |
+| Frontline | park-seat progress; shield-seat end (median) | 50 % / 245 | 75 % / 283 | ≥ 67 %; ≤ 300 s |
+| Frontline | falling back, attackers / defenders; kills a minute | 9.8 % / 12.2 % / 0.9 / 1.11 | 4.6 % / 5.7 % / 1.88 / 1.05 (miss) | ≤ 7 %; ≥ 2 |
+| Frontline | engaged-still, attackers / defenders | 17.6 % / 23 % | 28.2 % / 31.2 % (miss) | ≤ 12 % / ≤ 15 % |
+| CTF | captures a match; matches with a capture; decided by captures; draws (16) | 0.38 / 4 / 0 / 12 | 1.75 / 13 / 5 / 4 | ≥ 1.5; ≥ 12; ≥ 4; ≤ 8 |
+| CTF | first pickup; carried share; escort within 80 m; pursuers within 120 m | 93 / 15.5 % / 8.2 % / 29.8 % | 56.9 / 46.6 % / 25.6 % / 42.1 % (miss) | ≤ 70 s; ≥ 25 %; ≥ 35 %; ≥ 55 % |
+| CTF | bot-on-bot ram deaths a match | 22 | 19.31 | ≤ base + 10 % |
+| Turbo Ball | goals a match; goalless matches (16); touches a minute; possession changes | 0.13 / 14 / 10.14 / 39.1 | 1.63 / 3 / 32.04 / 128.9 | ≥ 1.5; ≤ 4; ≥ 18; ≥ 60 |
+| Turbo Ball | ball still; end third; Redrock / Steinburg touches | 61.8 % / 23 % / 62 / 13 | 23.2 % / 39.4 % / 223 / 48 (miss) | ≤ 25 %; ≥ 35 %; ≥ 100 each |
+| Turbo Ball | nearest bot (alpha / bravo); crowd cap held | 52 / 49 / 99.1 % | 59 / 60 / 98.2 % (miss) | ≤ 30 m; ≥ 98 % |
 
-Of the gate's 249 rows 193 pass (all 120 TEAM NATIONS rows; every stuck, ammunition and classic-identity guard). The
-pitch trial for Turbo Ball (`ball.goalAxisM` 560 and 480 m against the map's own ~794 m) gave 0.13 and 0.5 goals a match,
-so the pitch stays the map's (the plan adopts a shorter pitch only when it meets the goals target). Round 1 leaves open:
-Frontline's attack (the defence now fights for every sector and the fight seat, a bot, dies early: 0/16 wins), the
-Infected survivors' share (2 of 72 probe rounds, 0/8 here: neither 25 % hulls nor four starters nor a 150-240 m ring
-moved it; the next lever is outside the plan's list), the Horde's kill ratio (the doubled human hulls and the fodder
-zombies make 35 zombies a loss), Capture the Flag's captures and Turbo Ball's goals (the bots chase and shoot the ball but
-do not carry it forward). Every row, the run scripts and the compare output: `metrics/round1/merged/compare.txt`.
+Of the gate's 249 rows 218 pass (all 120 TEAM NATIONS rows; every stuck, bunching, ammunition and classic-identity guard;
+`server/battlePacing` plays its matches identically to integ/228's on a map subset and passes in full). What round 2
+changed, in the order the critic's blockers and majors came: Frontline's line stands out of the attack's reach and
+sight (`lineGuard`), neither side scoots, a quarter fallback, the defenders' guns ×1.35 (the A/B: ×1.5 gave the attack
+12 of 16, ×1.25 1 of 6, ×1.35 7 of 14 and here 9 of 16, one match over the band's top); Capture the Flag's bases stand
+400 m apart in front of the spawns (`flagPitch`) and its bots neither scoot nor fall back far; the Turbo Ball's every role
+shoots the ball and its goals stand 480 m apart; the Horde's arrivals keep their first 60 m of approach out of sight and
+its zombies reload ×2.2; the Infected rise on a 90-150 m ring with guns ×1.8 and a five-minute round; the rusher's no-ram
+lane runs last of the drivers. Still open, each a tension the targets carry or a lever outside the plan's list:
+the zombie kill ratio (a human side that reaches round 4 has killed 28 zombies, so 6-12 a loss cannot hold beside
+"rounds ≥ 4"), hunter rams (most are allied hulls reversing or crossing into a braking rusher; the rule counts the
+rusher's own closing speed over 1 m/s), Infected infections a minute (survivors winning 7 of 16 five-minute rounds caps
+it near 2) and its approach distances (the ring, out of sight, is the infected's 90-150 m), Frontline's engaged-still
+shares (a defender holds its line by design), the Turbo Ball's bot distance to the ball (on Steinburg the ball lies still
+64 % of a match in the town centre with the nearest bot 54-72 m off and resets nine times: the town's streets, which the
+steinburg-center lane is rebuilding) and CTF's escort and pursuit shares (the carrier now runs 400 m, not 800 m).
 
 ## Team nations (gameplay-modes-228, 2026-10-18)
 
