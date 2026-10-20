@@ -84,11 +84,11 @@ const LONG_ALERTS = ['wave123','autoAimLong','flagDroppedEnemy','ammoEmpty'];
 // (mouseNoticePlan.selftest.mjs lists the same: its last resort before any reticle ink).
 // Matched against the stage key ('<context>|<set>|<sight>').
 const EMPTY_LANES_OK={'mouse-768x600':/alert|revive|medal/,'mouse-481x700':/alert/,
-  // three up at once (the revive count beside both notices) on a phone; on a short window (its left lane one row deep)
-  // the medal card without an objective, and the revive count, which keeps off both notices' places: every such place
-  // clear of the resting sight crosses that lane
+  // three up at once (the revive count beside both notices) on a phone; on a short window the revive count, which keeps
+  // off both notices' places: every such place clear of the resting sight crosses the left lane whole (one row deep with
+  // an objective, two without)
   'phone-mouse':/alert:[^|]*\+revive/,'chinese-phone-mouse':/alert:[^|]*\+revive/,
-  'short-mouse':/^std\|[^|]*medal|revive/,'chinese-short-mouse':/^std\|[^|]*medal|revive/};
+  'short-mouse':/revive/,'chinese-short-mouse':/revive/};
 // [key, fixture state, kill rows kept (null: as staged), rosters a side (null: 7), notice set ('' none), sight, Tab held]
 function noticeStages(){
   const out=[];
@@ -198,6 +198,19 @@ function noticeStage([state,kills,rosters,set,sight,tab]){
   if(tab)document.querySelector('.cot-hud').classList.add('rosters-expanded');
   window.dispatchEvent(new Event('cot-hud-relayout'));
 }
+// Why a hidden (waiting) medal card waits, from what the stage measured: its hidden place on a shown notice or the revive
+// count; the scope up where its place clears the battle sight only (`scopedShort`); or, on a phone-width window (the
+// only windows where every place for the card cuts a side lane: mouseNoticePlan.selftest.mjs 4c), the layout's 'f'
+// mark (a lane its place cuts shows a kill row) with that lane's shown rows meeting its place. Exercised without a
+// browser in battleHudLayout.selftest.mjs.
+function medalWaitCause(got,scopedShort,width){
+  const b=got.waitingMedal;
+  if(scopedShort)return true;
+  if(!b)return false;
+  const meets=(x,y)=>b[0]<x[1]+8&&b[0]+b[2]>x[0]-8&&b[1]<y[1]+8&&b[1]+b[3]>y[0]-8;
+  if(['d','a','r'].some(k=>got.notices[k]&&meets([got.notices[k].box[0],got.notices[k].box[0]+got.notices[k].box[2]],[got.notices[k].box[1],got.notices[k].box[1]+got.notices[k].box[3]])))return true;
+  return /m\d?s?wf/.test(got.tiers??'')&&width<520&&Object.values(got.lanes).some(l=>l.shown>0&&l.x&&l.y&&meets(l.x,l.y));
+}
 function noticeMeasure(){
   const m=window.__noticeMasks;
   const vis=e=>!!e&&e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})&&e.getBoundingClientRect().width>1&&e.getBoundingClientRect().height>1;
@@ -227,7 +240,7 @@ function noticeMeasure(){
   out.waitingMedal=waiting&&waiting.width>1?[waiting.x,waiting.y,waiting.width,waiting.height].map(v=>Math.round(v*10)/10):null;
   for(const side of ['l','r']){
     const lane=document.querySelector(`.cot-kill-lane.${side}`);
-    if(lane){const r=lane.getBoundingClientRect();out.lanes[side]={staged:lane.children.length,shown:[...lane.children].filter(c=>!c.hidden&&c.getClientRects().length).length,x:[r.left,r.right]};}
+    if(lane){const r=lane.getBoundingClientRect();out.lanes[side]={staged:lane.children.length,shown:[...lane.children].filter(c=>!c.hidden&&c.getClientRects().length).length,x:[r.left,r.right],y:[r.top,r.bottom]};}
   }
   const OTHERS=['.cot-ear.l','.cot-ear.r','.cot-top','.cot-mode-status.show','.cot-kill-lane.l','.cot-kill-lane.r','.cot-net','.cot-drive','.cot-dp',
     '.cot-minimap','.cot-si-toasthost','.cot-si-cardhost:not(:empty)','.cot-room-chat:not([hidden])','.cot-spec.show','.cot-shell','.cot-con',
@@ -369,10 +382,7 @@ try {
         // shown element or the scope as its cause, and a shown card must not be marked.
         const marked=/m\d?s?w/.test(got.tiers??'');
         if(set.includes('medal')&&!got.notices.m&&tier('m')>=0){
-          const near=(b,n)=>!!n&&b[0]<n.box[0]+n.box[2]+8&&b[0]+b[2]>n.box[0]-8&&b[1]<n.box[1]+n.box[3]+8&&b[1]+b[3]>n.box[1]-8;
-          // (or, where every place for it would cut a side lane, that lane showing a kill row: the card never hides one)
-          const feed=!!got.waitingMedal&&Object.values(got.lanes).some(l=>l.staged>0&&l.x&&got.waitingMedal[0]<l.x[1]+8&&got.waitingMedal[0]+got.waitingMedal[2]>l.x[0]-8);
-          const cause=scopedShort||(!!got.waitingMedal&&['d','a','r'].some(k=>near(got.waitingMedal,got.notices[k])))||feed;
+          const cause=medalWaitCause(got,scopedShort,width);
           if(!marked||!cause)failures.push(`the medal card has a place but is not shown (${marked?'marked waiting':'not marked waiting'}, ${cause?'with':'without'} a shown element in its place)`);
         }
         if(got.notices.m&&marked)failures.push('the medal card shows while marked waiting');

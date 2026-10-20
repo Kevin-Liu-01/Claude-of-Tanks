@@ -307,7 +307,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
   /** Writes the plan; the countdown, the revive count and the medal card only while they are up (`up`), as the plan
    *  places those when first read. */
   function writeMousePlan(plan: MouseNoticePlan, up: { countdown: boolean; revive: boolean; medal: boolean }, width: number,
-    medalWaits: boolean) {
+    medalWaits: boolean, medalFeedWait: boolean) {
     const { detection, alert } = plan;
     // (centres and inner edges round away from the centre line, never into a keep-out's margin)
     setBodyVar('--hud-notice-x', `${outward(detection.x + detection.w / 2, width)}px`);
@@ -317,11 +317,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const medal = up.medal ? plan.medal : null;
     if (up.medal) setBodyVar('--hud-banner-x', medal ? `${outward(medal.x + medal.w / 2, width)}px` : '50%');
     // The keep-out each element clears (mouseNoticePlan.ts tiers: 2 everything the reticle draws, 1 the battle sight at
-    // full bloom, 0 the resting sight, - none, ? not up; s: it shares a notice's place; w: the medal card waits), for the
-    // browser receipt.
+    // full bloom, 0 the resting sight, - none, ? not up; s: it shares a notice's place; w: the medal card waits, f: on a
+    // kill row of a lane its place cuts), for the browser receipt.
     const tier = (shown: boolean, place: { clearance: number; sharesNotices: boolean } | null) =>
       !shown ? '?' : place ? `${place.clearance}${place.sharesNotices ? 's' : ''}` : '-';
-    const tiers = `d${plan.clearance} a${plan.clearance} c${tier(up.countdown, up.countdown ? plan.countdown : null)} r${tier(up.revive, up.revive ? plan.revive : null)} m${tier(up.medal, medal)}${medal && medalWaits ? 'w' : ''}`;
+    const tiers = `d${plan.clearance} a${plan.clearance} c${tier(up.countdown, up.countdown ? plan.countdown : null)} r${tier(up.revive, up.revive ? plan.revive : null)} m${tier(up.medal, medal)}${medal && medalWaits ? `w${medalFeedWait ? 'f' : ''}` : ''}`;
     if (document.body.dataset.hudNoticeTiers !== tiers) document.body.dataset.hudNoticeTiers = tiers;
     for (const name of ['countdown', 'revive'] as const) {
       if (!up[name]) continue;
@@ -487,7 +487,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // The medal card waits (keeping its time) where it has no place, while anything shown meets its place (a notice
     // whose place it shares, the revive count) and while the scope is up where its place clears the battle sight only
     // (a short window: hud.ts flags the scope on the document element, which relayouts only while such a card waits).
-    let medalReady = false, medalWaiting = false;
+    let medalReady = false, medalWaiting = false, medalFeedWait = false;
     medalScopeSensitive = false;
     if (plan && banner?.childElementCount) {
       medalWaiting = mouseMedalWaits(plan, { detection: !!root.querySelector('.cot-sixth.on'), alert: !!root.querySelector('.cot-alert.show'),
@@ -495,6 +495,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
         feeds: [!!killLeft?.childElementCount, !!killRight?.childElementCount] });
       medalReady = !medalWaiting;
       medalScopeSensitive = !!plan.medal && plan.medal.clearance < 2;
+      // (for the receipt: a lane the card's place cuts shows a kill row, the one wait that comes from the feed)
+      medalFeedWait = !!plan.medal && ((plan.medal.cutsLanes[0] && !!killLeft?.childElementCount) || (plan.medal.cutsLanes[1] && !!killRight?.childElementCount));
     }
     // A placed element crossing a side lane takes the lane's band from the plan while it shows (its rows start below it
     // or end above it); the lanes hold all their rows while nothing is up. Held Tab rosters stop short of it too.
@@ -634,7 +636,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         if (movesPlanInputs.has(name)) planInputs = true;
       }
     }
-    if (plan) writeMousePlan(plan, { countdown: !!countdown, revive: !!root.querySelector('.cot-revive.on'), medal: !!banner?.childElementCount }, width, medalWaiting);
+    if (plan) writeMousePlan(plan, { countdown: !!countdown, revive: !!root.querySelector('.cot-revive.on'), medal: !!banner?.childElementCount }, width, medalWaiting, medalFeedWait);
     const rosterProperty = '--hud-roster-top-right';
     const rosterPixels = rosterTopRight === null ? '' : `${rosterTopRight}px`;
     if (document.body.style.getPropertyValue(rosterProperty) !== rosterPixels) {

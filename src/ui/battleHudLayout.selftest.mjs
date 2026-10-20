@@ -398,6 +398,25 @@ const browserProbe=readFileSync(new URL('../../tools/battle-hud-layout.browser.m
 const measureStart=browserProbe.indexOf('function measure(state){');
 const measureEnd=browserProbe.indexOf('\ntry {',measureStart);
 assert.ok(measureStart>=0&&measureEnd>measureStart);
+// The receipt's reading of a waiting medal card (medalWaitCause): a hidden card needs a cause the layout can name. A wait
+// on a kill row stands only where the layout marked it ('f': a lane its place cuts shows a row), on a phone-width window,
+// with the lane's shown rows meeting the card's place; a card held back by any kill row elsewhere (critic M7) fails.
+{
+  const start=browserProbe.indexOf('function medalWaitCause(');
+  const end=browserProbe.indexOf('\nfunction noticeMeasure(',start);
+  assert.ok(start>=0&&end>start,'the receipt names why a medal card waits in one function');
+  const cause=runInNewContext(`${browserProbe.slice(start,end)}\nmedalWaitCause`,{});
+  const lane=(x0,x1,y0,y1,shown)=>({staged:shown||3,shown,x:[x0,x1],y:[y0,y1]});
+  const stage=(tiers,lanes,notices={})=>({tiers,waitingMedal:[120,148,250,40],notices,lanes});
+  const phoneLanes={l:lane(0,171,221,308,3),r:lane(219,390,148,235,3)};
+  assert.equal(cause(stage('d2 a2 c? r? m2swf',phoneLanes),false,390),true,'a phone-width card waits on the rows of the lane its place cuts');
+  assert.equal(cause(stage('d2 a2 c? r? m2sw',phoneLanes),false,390),false,'not without the layout\'s mark (critic M7: a card held by any kill row)');
+  assert.equal(cause(stage('d2 a2 c? r? m2swf',phoneLanes),false,844),false,'nor on a desktop window, where some place for it always clears the lanes');
+  assert.equal(cause(stage('d2 a2 c? r? m2swf',{l:lane(0,171,221,308,3),r:lane(219,390,148,235,0)}),false,390),false,'nor on a lane showing no row');
+  assert.equal(cause(stage('d2 a2 c? r? m2swf',{l:lane(0,171,221,308,3),r:lane(219,390,260,347,3)}),false,390),false,'nor on rows clear of its place');
+  assert.equal(cause(stage('d2 a2 c? r? m2sw',phoneLanes,{d:{box:[56,150,164,48]}}),false,390),true,'a shown notice on its place is a cause');
+  assert.equal(cause(stage('d2 a2 c? r? m1w',{}),true,844),true,'so is the scope over a place that clears the battle sight only');
+}
 function measurementFixture(nodes){
   const queries=[];let styleReads=0;
   const dataset={mode:'battle'};
