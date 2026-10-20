@@ -37,8 +37,9 @@ function battle(bearingDeg, distanceM = 150, yM = 0) {
     state: { pos: { x: Math.sin(bearingDeg * DEG) * distanceM, y: yM, z: Math.cos(bearingDeg * DEG) * distanceM }, yaw: 0, turretYaw: 0 }, combat: {} };
   return { shooter, target, context: { entities: [shooter, target], visible: () => true, clear: () => true } };
 }
-/** Steps both stations for `seconds`; returns each station's shots and the shells' calibres and muzzles. */
-function run({ shooter, context }, seconds = 12) {
+/** Steps both stations for `seconds` (`each` after every tick); returns each station's shots and the shells' calibres
+ * and muzzles. */
+function run({ shooter, context }, seconds = 12, each = () => {}) {
   const shots = [[], []];
   for (let i = 0; i < seconds * 60; i++) {
     if (stepRoofGun(shooter, i / 60, 1 / 60, context)) shots[0].push({ caliber: auxiliaryShot.shell.caliberMm, origin: auxiliaryShot.origin.clone() });
@@ -47,6 +48,7 @@ function run({ shooter, context }, seconds = 12) {
     assert.ok(s.gunYaw >= cannon.yawArc[0] - 1e-9 && s.gunYaw <= cannon.yawArc[1] + 1e-9, 'the 30 mm stays inside its arc');
     const m = s.stations[0];
     assert.ok(m.gunYaw >= mg.yawArc[0] - 1e-9 && m.gunYaw <= mg.yawArc[1] + 1e-9, 'the M2 stays inside its arc');
+    each();
   }
   return shots;
 }
@@ -71,11 +73,15 @@ function run({ shooter, context }, seconds = 12) {
 { const shots = run(battle(-100)); assert.ok(shots[0].length > 0 && shots[1].length === 0, 'the 30 mm fires over the left; the M2 holds'); }
 // 4. Right of the roof (the M2, the antennas): neither barrel sweeps through them.
 { const shots = run(battle(60)); assert.ok(shots[0].length === 0 && shots[1].length === 0, 'no station fires through the right-hand stock'); }
-// 5. Close and low dead ahead: the 30 mm may not depress into the turret front; the M2 (clear to 0.18 rad) fires.
+// 5. Close and low dead ahead: the 30 mm may not depress into the turret front — it never pitches below the table at
+//    any tick (since 2026-10-19 it lays on the upper hull it can reach rather than idle on a centre below the table);
+//    the M2 (clear to 0.18 rad) fires.
 {
-  const b = battle(-2, 9, 0), shots = run(b, 6);
-  assert.ok(shots[0].length === 0 && shots[1].length > 0, `the 30 mm holds at the roof's depression limit; the M2 fires (${shots[1].length})`);
-  assert.ok(b.shooter.combat.auxiliary.gunPitch >= -0.106, 'the 30 mm never pitches below the table');
+  const b = battle(-2, 9, 0);
+  let lowest = Infinity;
+  const shots = run(b, 6, () => { lowest = Math.min(lowest, b.shooter.combat.auxiliary.gunPitch); });
+  assert.ok(shots[1].length > 0, `the M2 fires (${shots[1].length})`);
+  assert.ok(lowest >= -0.106, `the 30 mm never pitches below the table (lowest ${lowest.toFixed(3)} rad; ${shots[0].length} rounds on the upper hull)`);
 }
 // 6. One system: the toggle and a red roofGun module silence both stations.
 {
