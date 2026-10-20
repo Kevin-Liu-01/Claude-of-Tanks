@@ -301,6 +301,9 @@ function addStrv122Package(P: SwedishBuilderPort): void {
     for (let i = 0; i < 8; i++) {
       plate(P, 'hull', side * 1.84, 1.23, 2.52 - i * 0.73,
         0.055, 0.52, 0.58, [0, 0, side * 0.018], false);
+      // 2026-10-19 (owner float sweep): aft of the bow pair the cassettes stood 77 mm off the donor's 1.731 side line; a
+      // spacer block under each cassette's top edge carries it.
+      if (i >= 2) P.add('hullDark', box(0.10, 0.20, 0.12), side * 1.775, 1.40, 2.52 - i * 0.73);
     }
 
     // Flush turret-side protection and supported rear-corner returns.

@@ -266,6 +266,10 @@ function joinedBasket(
     P.add('turretDetail', KIT.box(width + 0.18 * s, 0.026 * s, 0.030 * s), 0, yy, z - depth - 0.025 * s);
   for (let i = 0; i < 8; i++) P.add('turretDetail', KIT.box(0.026 * s, 0.38 * s, 0.030 * s),
     -width * 0.47 + i * (width * 0.94 / 7), y, z - depth - 0.025 * s);
+  // 2026-10-19 (owner float sweep): the rail-and-post frame stood ~14 cm aft of the back panel with nothing between; side
+  // bars at the end posts run it back to the panel.
+  for (const sx of [-1, 1]) P.add('turretDetail', KIT.box(0.026 * s, 0.026 * s, depth * 0.5 + 0.04 * s),
+    sx * width * 0.47, y, z - depth * 0.75 - 0.0075 * s);
   mount(P, FITTINGS.stowageRack({
     mats: P.mats, w: width * 0.76, d: depth * 0.62, h: 0.22 * s,
     fill: 0.45, rails: 3, seed,

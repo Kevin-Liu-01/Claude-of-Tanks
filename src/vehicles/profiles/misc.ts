@@ -1050,6 +1050,9 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     // rear BODY column must be -3.385 (with the front one at 3.497 = 6.88);
     // a -3.31 face read only the -3.274 col = 6.77 (-1.53%)
     P.add('hull', box(3.00, 0.3405, 0.05), 0, 1.40025, -3.335);                  // (90-ladder r1: band 1.23..1.5705 — top at the ref's 1.571 rear line, bottom deep enough that — with the step filler pulled to -3.29 the plate's 0.300 band sat 4 mm UNDER the 12% cut (0.304) and the -3.352 rear anchor column silently dropped from the body span: hullLengthM 6.76 class. RAZOR-ANCHOR LAW: anchor bands need >10% margin over the cut)
+    // 2026-10-19 (owner float sweep): the rear plate + rack stood 10-60 mm behind the engine-bay fill's -3.25 face; a
+    // backer strip (inside the plate's z, rear face untouched) carries it.
+    P.add('hullDark', box(1.80, 0.20, 0.064), 0, 1.40, -3.279);
     P.add('hull', box(2.00, 0.24, 0.05), 0, 1.13, -3.265);                       // step filler down to the wedge line (90-ladder r1: rear face -3.29 — the old -3.30 crossed col -3.352's window edge -3.297 and its 1.01 bottom owned the col's 0.152 err; the plate band 1.245..1.545 is the honest window content)
     for (const s of [-1, 1]) {
       P.add('hullDark', box(0.64, 0.22, 0.03), s * 0.85, 1.40, -3.345);
@@ -1619,7 +1622,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
   buildLeclercTurretStage4();
   // print's LEFT flank cloth bulge (front col -1.64 reads 1.65..1.92 there)
   const buildLeclercTurretStage5 = (): void => {
-    P.add('turretCloth', box(0.05, 0.27, 0.80), -1.625, 0.185, -0.90);
+    P.add('turretCloth', box(0.09, 0.27, 0.80), -1.605, 0.185, -0.90);              // 2026-10-19 (owner float sweep): grown 4 cm inboard onto the rise it stood 35 mm off (outer face kept)
     P.add('turretCloth', box(0.05, 0.38, 0.80), -1.54, 0.24, -0.90);             // inboard rise of the supported left flank stowage bundle
     // roof: HL-70 PANORAMIC SIGHT TOWER center-forward (photo-parity round,
     // 2026-08-06 — THE Leclerc identity feature per the owner's Tamiya photo).
@@ -1648,14 +1651,15 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     P.add('turretDark', box(0.07, 0.05, 0.07), 0.785, 0.795, 1.01);              // aux day scope (top 2.42w = ref col 0.795)
     P.add('turretDark', box(0.014, 0.095, 0.014), 0.55, 0.800, 0.883);           // cable conduit lies flush on the compact head's rear face
     P.add('turretDark', box(0.38, 0.010, 0.014), 0.55, 0.8555, 1.196);           // head/shaft split line
-    P.add('turretDark', box(0.56, 0.014, 0.40), 0, 0.658, -1.12);                // autoloader panel field (in the low channel)
+    P.add('turretDark', box(0.56, 0.014, 0.40), 0, 0.639, -1.12);                // autoloader panel field (in the low channel; 2026-10-19 owner float sweep: was 17 mm over the 0.634 floor)
     // aft panel rides the channel fall — split around the notch (photo round):
     // left/right full-depth panels + a SHORT center strip ending z_w -1.775
     // (clear of the ref col-0.069 notch floor at -1.814)
     P.add('turretDark', box(0.16, 0.014, 0.62), -0.20, 0.60, -1.72, -0.09, 0, 0);
     P.add('turretDark', box(0.14, 0.014, 0.26), 0.065, 0.607, -1.545, -0.09, 0, 0);
     P.add('turretDark', box(0.145, 0.014, 0.62), 0.2075, 0.60, -1.72, -0.09, 0, 0);
-    for (let k = 0; k < 3; k++) P.add('turretDetail', box(0.56, 0.018, 0.02), 0, (k < 1 ? 0.648 : roofAt(-1.08 - k * 0.30) - 0.10) + 0.012, -1.08 - k * 0.30);
+    // 2026-10-19 (owner float sweep): ribs 0 and 1 stood 17-20 mm over the channel floor; they sit 2 mm into it.
+    for (let k = 0; k < 3; k++) P.add('turretDetail', box(0.56, 0.018, 0.02), 0, (k < 1 ? 0.628 : roofAt(-1.08 - k * 0.30) - (k === 1 ? 0.122 : 0.10)) + 0.012, -1.08 - k * 0.30);
     {                                                                            // 4th rib split around the notch (z_w -2.08 crossed the col-0.069 window)
       const ry4 = roofAt(-1.98) - 0.10 + 0.012;
       P.add('turretDetail', box(0.275, 0.018, 0.02), -0.1425, ry4, -1.98);
@@ -1738,7 +1742,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     // HL-15 panoramic + antenna pot: the ref's 2.49-2.50 head cluster lives
     // at x ~0.0-0.10, z world -1.66 (front cols -0.015..0.106 = 2.501; side
     // cols -1.72..-1.60 = 2.49) — NOT at x -0.55 (ref front there is 2.359)
-    P.add('turretDetail', cylY(0.05, 0.055, 0.16, 10), 0.055, 0.72, -1.56);
+    P.add('turretDetail', cylY(0.05, 0.055, 0.184, 10), 0.055, 0.708, -1.56);     // 2026-10-19 (owner float sweep): base ran 22 mm short of the aft panel; top kept
     P.add('turretDark', box(0.12, 0.12, 0.14), 0.055, 0.835, -1.56);
     P.add('turretGlass', box(0.10, 0.06, 0.018), 0.055, 0.85, -1.48);
     // crosswind mast + whip base: TWO spike columns at x ±1.05, tops 2.54,
@@ -2074,6 +2078,8 @@ function buildAMX56(P: MiscBuilderPort): void {
       const z = -2.48 + k * 0.68;
       P.add('hull', box(0.042, 0.48, 0.57), s * 1.825, 1.04, z);
       P.add('hullDark', box(0.016, 0.36, 0.018), s * 1.849, 1.04, z + 0.22);
+      // 2026-10-19 (owner float sweep): the panels stood 104 mm off the 1.70 skirt face; a spacer block carries each one.
+      P.add('hullDark', box(0.114, 0.30, 0.10), s * 1.75, 1.04, z);
     }
     });
     // Two-course canted cheek ERA, buried into the swept primary shell.
@@ -2090,6 +2096,9 @@ function buildAMX56(P: MiscBuilderPort): void {
       P.add('turret', box(0.13, 0.34, 0.34), s * 1.47, 0.38, z, 0, s * 0.08, 0);
       P.add('turretDark', cylZ(0.018, 0.012, 8), s * 1.54, 0.48, z, 0, Math.PI / 2, 0);
     }
+    // 2026-10-19 (owner float sweep): the rearmost module stood 49 mm clear of its neighbour, off the tapering side; a
+    // joint plate bridges the 5 cm seam.
+    P.add('turretDark', box(0.08, 0.24, 0.07), s * 1.46, 0.38, -1.695);
     });
   }
 
@@ -2670,6 +2679,9 @@ function buildType90Turret(P: MiscBuilderPort): void {
     for (let i = 0; i < 7; i++) {
       const x = -1.11 + i * 0.37;
       P.add('turretDetail', box(0.03, 0.32, 0.03), x, 0.58, -2.13);            // rear posts SPAN the raised rails (1.82..2.14 — the old 0.60 posts hung to 1.52 and painted the -2.29 col bottom 0.27 under the v2 basket line; §B2: connect floor rail to top rail)
+      // 2026-10-19 (owner float sweep): the raised rear floor rail (z -2.235) stood 70-90 mm aft of the posts; a foot
+      // at each post carries it.
+      P.add('turretDetail', box(0.03, 0.04, 0.10), x, 0.44, -2.18);
     }
     P.add('turretDark', openRackGrid(2.35, 0.38, 0.014, 5, 11),
       0, 0.60, -2.12, Math.PI / 2, 0, 0);                                      // open mesh back in the certified rear envelope
