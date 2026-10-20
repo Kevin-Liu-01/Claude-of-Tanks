@@ -301,9 +301,12 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
     b.box(0, 0.42, 7.5, 0.82, 0.68, 0.52, 0x56606a, { bevel: 0.02 });
     b.box(0, 0.13, 7.5 - 0.265, 0.82, 0.08, 0.012, 0xd29a2a, { bevel: 0 });
     b.box(0, 0.13, 7.5 + 0.265, 0.82, 0.08, 0.012, 0xd29a2a, { bevel: 0 });
-    b.push().translate(0, 0.84, 7.46).rotateX(-0.42).rotateY(Math.PI);
-    b.box(0, 0, 0, 0.8, 0.4, 0.06, 0x23272b, { bevel: 0.012 });
-    b.uprightFace(0, 0, 0.031, 0.62, 0.32, garageDisplayRect('readout.armor.abrams'));
+    // the screen is the console's low sloped desk top, rising toward the turntable over a riser at the back, so from any
+    // side the console reads as a desk and nothing stands proud of it (a raised panel showed edge-on as a dark stick)
+    b.box(0, 0.845, 7.5 - 0.2, 0.82, 0.17, 0.12, 0x56606a, { bevel: 0.01 });
+    b.push().translate(0, 0.85, 7.5).rotateX(-1.22);
+    b.box(0, 0, 0, 0.78, 0.46, 0.04, 0x23272b, { bevel: 0.008 });
+    b.uprightFace(0, 0, 0.021, 0.62, 0.34, garageDisplayRect('readout.armor.abrams'));
     b.pop();
     b.pop();
     void c; void sn;
