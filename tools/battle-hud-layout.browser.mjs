@@ -46,8 +46,11 @@ const reports=[];const errors=[];
 // - keep its box through a kill burst and while Tab is held (k0, k3, the burst and Tab stage the same box);
 // - overlap no other HUD part (rosters, held Tab rosters too, score, objective, kill lanes, damage toasts, chat, minimap,
 //   damage panel, drive, systems, ammunition, consumables, report, network readouts, the scope-vision toggle and the
-//   flight console, with the aerial sheet loaded as in battle) and no other element it is shown with (only an element
-//   its plan marks as sharing a notice's place, tier 's', may meet that notice);
+//   flight console, with the aerial sheet loaded as in battle) and no other element it is shown with (only where its
+//   plan marks it sharing a notice's place, tier 's', and only a pair that never shows together: the countdown on the
+//   detection's place, the medal card on the alert's);
+// - the detection and the alert clear the whole reticle (tier 2: a plan fallen back to main's places fails), and a shown
+//   countdown or revive count has a planned place;
 // - the medal card waits in the scope where its place clears the battle sight only (a short window);
 // and the side lanes keep every kill row main shows while nothing is up, and at least one while anything is (but where
 // every place clear of the reticle crosses a lane whole: EMPTY_LANES_OK).
@@ -361,10 +364,17 @@ try {
           if(t>=0&&own>0)failures.push(`the ${what} covers ${own} px of reticle ink its plan clears (tier ${t}; ${n.box.join(',')})`);
           if(n.union>main[0]||n.rest>main[2])failures.push(`the ${what} covers more reticle ink than main (${n.union}/${n.rest} px; main ${main[0]}/${main[2]})`);
           if(k==='m'&&t<0)failures.push('the medal card is shown where its plan has no place');
-          // only an element its plan marks as sharing a notice's place (tier 's') may meet that notice
+          // a dropped plan fails: the detection and the alert clear the whole reticle (the plan fell back to main's places,
+          // '-', or cleared less), and a shown countdown or revive count has a planned place (not the CSS defaults)
+          if((k==='d'||k==='a')&&t!==2)failures.push(`the ${what}'s plan clears tier ${t<0?'-':t}, not the whole reticle`);
+          if((k==='c'||k==='r')&&t<0)failures.push(`the ${what} is shown without a planned place`);
+          // only an element its plan marks as sharing a notice's place (tier 's') may meet that notice, and only the pairs
+          // that never show together: the countdown and the detection (nothing can spot the player before the roll-out),
+          // the medal card and the alert (the card waits it out). An alert shows during the countdown (H, R, E) and with
+          // the revive count, and a detection lit before a death burns on under the revive count.
           const sharing=hit=>{const m=hit.match(/^notice ([dacmr])$/);if(!m)return false;
-            const [x,y]=[k,m[1]],notice=v=>v==='d'||v==='a';
-            return (notice(y)&&shares(x))||(notice(x)&&shares(y));};
+            const pair=[k,m[1]].sort().join('');
+            return (pair==='cd'&&shares('c'))||(pair==='am'&&shares('m'));};
           // a place that clears the battle sight only (tier 1 or 0: the countdown on a 481 px portrait, the revive count on a
           // short window) is not kept off the scope's furniture; its ink is held to main's above
           const scopeFurniture=hit=>hit.startsWith('.cot-scope-vision')&&t<2;
