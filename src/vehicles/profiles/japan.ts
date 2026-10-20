@@ -22,6 +22,7 @@ type Quad = [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
 
 interface JapaneseBuilderPort {
   readonly forEachBucketPart: TankBuilderPort['forEachBucketPart'];
+  readonly snapGroup: TankBuilderPort['snapGroup'];
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
