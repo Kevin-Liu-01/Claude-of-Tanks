@@ -164,7 +164,8 @@ const hurtTarget: { spec: { armor: ArmorModel | null }; combat: AuxiliaryEntity[
  * carried 12 m on through the vehicle, against its pose on the round's arrival. Pure over the poses (the traces
  * allocate: run per shot or per refusal, never per tick). */
 function roofHurtChance(target: AuxiliaryEntity, from: Vector3, at: Vector3, profile: AuxiliaryWeaponProfile): number {
-  if (!target.spec.armor) return 1;
+  // a target without main armour plates is soft (defeatableShare's 1): always hurt
+  if (!target.spec.armor || !mainPlates(target.spec.armor).length) return 1;
   hurtRay.copy(at).sub(from);
   const distance = hurtRay.length();
   if (distance < 1e-6) return 1;
