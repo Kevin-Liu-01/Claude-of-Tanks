@@ -100,13 +100,14 @@ const TOUCH_NOTICE_OBSTACLES = '.cot-vehicle-controls>button,.cot-shell,.cot-con
   + '.cot-aim-warning:not([hidden]),.flight-identity,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,'
   + '.cot-touch.on .scope,.cot-touch.on .fire,.cot-shells,.cot-cons,.cot-si-cardhost:not(:empty),.cot-si-log.open';
 const TOUCH_NOTICE_SOFT = '.cot-minimap,.cot-top,.cot-mode-status.show,.cot-ear,.cot-net,.cot-mp-status.battle,'
-  + '.cot-kill-lane.l,.cot-kill-lane.r,.cot-si-toasthost,.cot-room-chat:not([hidden]),.cot-spec.show';
+  + '.cot-si-toasthost,.cot-room-chat:not([hidden]),.cot-spec.show';
 /** The alert's height while none shows (two lines at the touch type size in the detection's width), so places hold. */
 const TOUCH_ALERT_RESERVE_H = 40;
 /** The sixth-sense notice, which a touch layout's seated warning chip yields to (sightFurniture.ts sightNotice). */
 const SIXTH_SENSE = '.cot-sixth.on';
-/** The properties whose transition end measures a furniture again (installBattleHudLayout). */
-const FURNITURE_SETTLES = new Set(['opacity', 'visibility', 'transform']);
+/** The properties whose transition end measures a furniture again (installBattleHudLayout): a fade decides whether it is
+ *  furniture at all (shownBox); a slide or a press is measured as it lands by the pass its own change asks for. */
+const FURNITURE_SETTLES = new Set(['opacity', 'visibility']);
 /** The vertical part of an element's transform, in CSS px (0 when it has none). */
 function translationY(node: Element): number {
   const transform = getComputedStyle(node).transform;
@@ -749,7 +750,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const alertBox = compactNow.includes('alert-compact') ? null : read('.cot-alert.show');
       // (the card's layout box: it enters scaled)
       const bannerBox = banner?.childElementCount ? { width: banner.offsetWidth, height: banner.offsetHeight } : null;
-      touchPlan = planTouchNotices({ width, height, top, obstacles, soft: boxes(TOUCH_NOTICE_SOFT),
+      // (the kill lanes by the places and heights this pass gives them, while they hold a row)
+      const soft = boxes(TOUCH_NOTICE_SOFT);
+      if (killsLeft) soft.push({ x0: 0, y0: leftAnchor, x1: sideWidth, y1: leftAnchor + killHeightLeft });
+      if (killsRight) soft.push({ x0: width - sideWidth, y0: rightAnchor, x1: width, y1: rightAnchor + killHeightRight });
+      touchPlan = planTouchNotices({ width, height, top, obstacles, soft,
         scope: !!read('.cot-scope-vision'), seated: !(width > height && height < 550), notice: noticeSize,
         alert: { w: noticeSize.w, h: alertBox?.height ?? TOUCH_ALERT_RESERVE_H },
         countdown: touchCountdown,
@@ -881,9 +886,10 @@ export function installBattleHudLayout(root: HTMLElement): void {
   // Transforms (notably the spectator tray's entrance) do not resize the
   // border box. Measure the settled position without polling its animation.
   // A pass that lands mid-fade measures the reticle's furniture where its fade has it, so the end of a furniture's own fade
-  // or slide measures it again (r10e: the touch tray's two collapsed shell slots, fading out behind the selected one,
-  // stayed published until some later relayout). Only the furniture's own opacity, visibility or transform: a child's
-  // transition bubbling up, or any other property, asks for nothing, and every end in a frame shares its one relayout.
+  // measures it again (r10e: the touch tray's two collapsed shell slots, fading out behind the selected one, stayed
+  // published until some later relayout). Only the furniture's own opacity or visibility: a child's transition bubbling
+  // up, or any other property (the same slots' slower scale, which ended inside the layout receipt's idle window), asks
+  // for nothing, and every end in a frame shares its one relayout.
   const transitionFinished = (event: Event) => {
     const target = event.target as Element;
     if (observed.has(target)

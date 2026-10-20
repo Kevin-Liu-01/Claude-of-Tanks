@@ -638,6 +638,7 @@ try {
     assert.equal(tray.boxes.filter((b) => b[0] > 330).length, 3, 'mid-fade, the pass measures the selected slot and the fading two');
     fading.opacity = '0';
     assert.equal(tray.dispatch('transitionend', '.cot-shell', 1, 'background-color'), null, 'another property\'s end asks for nothing');
+    assert.equal(tray.dispatch('transitionend', '.cot-shell', 1, 'transform'), null, 'nor its scale\'s (the idle receipt\'s window)');
     const settled = tray.dispatch('transitionend', '.cot-shell', 1);
     assert.ok(settled, 'the end of a furniture\'s fade asks for a relayout');
     assert.deepEqual(settled.boxes.filter((b) => b[0] > 330), [[332, 468, 380, 520]], 'and only the selected slot is furniture');
