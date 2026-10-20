@@ -124,9 +124,9 @@
       "concealers": 396
     },
     "blackglass": {
-      "bytes": 3875126,
-      "sha256": "3b6b363c099c28c9a38f4da96795c11c53d52f532ad9ec2afc9ed92e18b15d6b",
-      "obstacles": 3215,
+      "bytes": 3876377,
+      "sha256": "ab759b2662e43fc657dca30b0477a040493a64d7eb7a7bb5a9c43d627709c735",
+      "obstacles": 3216,
       "colliders": 5593,
       "concealers": 1916
     },
@@ -145,11 +145,11 @@
       "concealers": 1003
     },
     "polders": {
-      "bytes": 1702033,
-      "sha256": "270c9dc5dab594a14b8780e01695c571972623bf8763c74c229dfab76f2f867d",
-      "obstacles": 4221,
-      "colliders": 4902,
-      "concealers": 3380
+      "bytes": 1720024,
+      "sha256": "d7a9b95c40d93f0cc670141d3ca777e4ee4b76c681c0dddfb87c53a12b25fc6a",
+      "obstacles": 4247,
+      "colliders": 4917,
+      "concealers": 3396
     },
     "copper_mesa": {
       "bytes": 1888762,
@@ -358,9 +358,9 @@
         "concealers": 396
       },
       "blackglass": {
-        "bytes": 3875126,
-        "sha256": "3b6b363c099c28c9a38f4da96795c11c53d52f532ad9ec2afc9ed92e18b15d6b",
-        "obstacles": 3215,
+        "bytes": 3876377,
+        "sha256": "ab759b2662e43fc657dca30b0477a040493a64d7eb7a7bb5a9c43d627709c735",
+        "obstacles": 3216,
         "colliders": 5593,
         "concealers": 1916
       },
@@ -379,11 +379,11 @@
         "concealers": 1003
       },
       "polders": {
-        "bytes": 1887130,
-        "sha256": "bee90ddcf9068b1a01115da9a9eb25fc441866b67fdb806f608b646767def430",
-        "obstacles": 4522,
-        "colliders": 5111,
-        "concealers": 3548
+        "bytes": 1905137,
+        "sha256": "61991f784286453bcfc5418bff01b13198a4733ebc81fbaa00712b2344af91a5",
+        "obstacles": 4548,
+        "colliders": 5126,
+        "concealers": 3564
       },
       "copper_mesa": {
         "bytes": 1993974,
