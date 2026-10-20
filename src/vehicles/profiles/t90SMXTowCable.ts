@@ -142,6 +142,11 @@ function eyeSupports(P:TankBuilderPort):void {
 }
 
 function rightEyeBacking(P:TankBuilderPort):void {
+  // 2026-10-19 (owner float sweep): the panel and its cover stood 24 mm off the shoulder; they are seated on it.
+  P.snapGroup('t90sm-eye-backing',()=>rightEyeBackingParts(P),{reachM:.04});
+}
+
+function rightEyeBackingParts(P:TankBuilderPort):void {
   // Separate 3 mm panel behind the right opening, not the old raised shelf.
   P.addEquipment('hullDetail',KIT.box(.22719,.058816,.0032),1.50612,1.39286,-3.3019);
   // Its narrow outboard folded cover reaches the existing raised engine

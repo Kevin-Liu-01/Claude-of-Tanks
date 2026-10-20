@@ -1,9 +1,10 @@
 // Hull contact census (tools/hull-contact-census-lib.mjs): real contact, not bounding boxes, and the owner's
 // 2026-10-19 Gallery markups stay fixed: the KF51-U belly closed between its tub and nose fill, the Leopard 2A5M
-// rear flaps hung from the hull overhang, the KF51 EVO rear flaps hung from the fender plank.
+// rear flaps hung from the hull overhang, the KF51 EVO rear flaps hung from the fender plank; a gun-mount launcher
+// resting on a turret bracket is held, not floating.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { bodyIslands, collectHullStock, hullBellyPits, partsTouch, stockPart } from './hull-contact-census-lib.mjs';
+import { bodyIslands, collectHullStock, hullBellyPits, markHiddenIslands, partsTouch, stockPart } from './hull-contact-census-lib.mjs';
 
 const at = (g, x, y, z, rx = 0) => g.rotateX(rx).translate(x, y, z);
 const box = (w, h, d, x, y, z, rx = 0) => stockPart('hull', at(new THREE.BoxGeometry(w, h, d), x, y, z, rx));
@@ -15,6 +16,20 @@ assert.ok(!partsTouch(box(1, 1, 1, 0, 0, 0), box(.2, .2, .2, 0, .605, 0)), '5 mm
 assert.ok(partsTouch(box(1, .02, .02, 0, 0, 0), box(.02, 1, .02, 0, 0, 0)), 'two bars crossing through each other touch');
 const shell = stockPart('hull', at(new THREE.TorusGeometry(1, .05, 8, 24), 0, 0, 0, Math.PI / 2));
 assert.ok(!partsTouch(shell, box(.1, .1, .1, 0, 0, 0)), 'a part inside another\'s bounds but clear of it does not touch');
+
+// A launcher on the elevating mass that rests on a turret-side bracket is held; one standing in air beside it is not.
+{
+  const turretPart = (w, h, d, x, y, z) => Object.assign(stockPart('turret', at(new THREE.BoxGeometry(w, h, d), x, y, z)),
+    { body: 'turret' });
+  const gunPart = (bucket, w, h, d, x, y, z) => Object.assign(stockPart(bucket, at(new THREE.BoxGeometry(w, h, d), x, y, z)),
+    { body: 'gun' });
+  const parts = [turretPart(2, .5, 2, 0, 2, 0), turretPart(.1, .1, .4, 1.05, 2.1, 0),
+    gunPart('gun', .12, .12, 3, 0, 2.1, 2.5), gunPart('gunMount', .5, .4, .3, 0, 2.1, 1.15),
+    gunPart('gunMount', .2, .2, .8, 1.15, 2.25, 0), gunPart('gunMount', .2, .2, .8, -1.4, 2.4, 0)];
+  const islands = markHiddenIslands(bodyIslands(parts, 'gun'), parts);
+  assert.deepEqual(islands.map((island) => [Math.sign(island.min[0]), island.held === true]), [[1, true], [-1, false]],
+    'a gun-mount launcher on a turret bracket is held; one in air is not');
+}
 
 // the rear flap and hanger envelope, both sides: |x| 1.0..1.75, y 0.35..1.62, z -3.76..-3.55
 const inFlapEnvelope = (island) => Math.min(Math.abs(island.min[0]), Math.abs(island.max[0])) > 1.0
@@ -35,4 +50,4 @@ for (const id of ['leo2a5m', 'kf51_evo']) {
     .map((island) => island.parts.map((part) => part.bucket)), [],
     `${id}: every flap, hanger and mudguard plate reaches the hull`);
 }
-console.log('hull-contact-census.selftest: contact law, the kf51_u belly and the leo2a5m/kf51_evo rear flaps pass');
+console.log('hull-contact-census.selftest: contact law, turret-held launchers, the kf51_u belly and the leo2a5m/kf51_evo rear flaps pass');

@@ -38,6 +38,33 @@ function tube(P: TankBuilderPort,values: Tube): void {
   place('turretDetail',KIT.box(.088,.031,.219),-.027,.044);
 }
 
-export function addT90ASmokeTubes(P: TankBuilderPort): void {
-  for(const values of TUBES) tube(P,values);
+// A tube's carrier centre in the turret frame (place()'s arithmetic for the carrier).
+function carrier(values: Tube): THREE.Vector3 {
+  const [x,y,z,dx,dy,dz]=values;
+  const direction=new THREE.Vector3(dx,dy,dz).normalize();
+  const q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),direction);
+  return new THREE.Vector3(x,y,z).addScaledVector(direction,-.027).add(new THREE.Vector3(0,-.044,0).applyQuaternion(q))
+    .add(new THREE.Vector3(-.010,-1.468,.0039));
+}
+
+// A flat bar between two carriers (the bank's frame).
+function bar(P: TankBuilderPort,a: THREE.Vector3,b: THREE.Vector3): void {
+  const along=b.clone().sub(a),mid=a.clone().add(b).multiplyScalar(.5);
+  const q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),along.clone().normalize());
+  P.addEquipment('turretDetail',KIT.box(.034,.022,along.length()+.04).applyQuaternion(q),mid.x,mid.y,mid.z);
+}
+
+// 2026-10-19 (owner float sweep): the side banks stood 22-142 mm off the turret, each tube alone in the air. Each bank's
+// carriers are framed together (row and column bars), its mounting plate (the caller's `mount`) rides with it, and the
+// framed bank is seated on the turret; the roof pair already stands on it.
+const BANKS: readonly (readonly [side: number, tubes: readonly number[]])[] = [[-1,[0,1,2,3]],[1,[6,7,8,9,10,11]]];
+
+export function addT90ASmokeTubes(P: TankBuilderPort,mount: (side: number)=>void=()=>{}): void {
+  for(const [side,bank] of BANKS) P.snapGroup('t90a-smoke-bank',()=>{
+    mount(side);
+    for(const i of bank) tube(P,TUBES[i]);
+    for(let k=0;k<bank.length;k+=2) bar(P,carrier(TUBES[bank[k]]),carrier(TUBES[bank[k+1]]));
+    for(let k=0;k+2<bank.length;k++) bar(P,carrier(TUBES[bank[k]]),carrier(TUBES[bank[k+2]]));
+  },{reachM:.16});
+  for(const i of [4,5]) tube(P,TUBES[i]);
 }

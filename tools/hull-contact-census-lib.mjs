@@ -390,6 +390,28 @@ function islandEnclosed(island, parts) {
   return inside >= points.length - 1;
 }
 
+/** Whether a gun-body island rests on the turret at the rest pose (a turret-side launcher or sight on the elevating mass,
+ * carried on a turret bracket): the gun's own law reads it as floating, but it is not seen floating. */
+function islandHeldByTurret(island, parts) {
+  if (island.body !== 'gun') return false;
+  const own = islandMembers.get(island) ?? [];
+  const lo = island.min, hi = island.max, tol = CONTACT_TOL_M;
+  const turret = parts.filter((part) => part.body === 'turret' && !part.gear
+    && part.box.max.x >= lo[0] - tol && part.box.min.x <= hi[0] + tol && part.box.max.y >= lo[1] - tol
+    && part.box.min.y <= hi[1] + tol && part.box.max.z >= lo[2] - tol && part.box.min.z <= hi[2] + tol);
+  return own.some((member) => turret.some((part) => partsTouch(member, part, tol)));
+}
+
+/** Tags the clear islands nobody sees floating: `enclosed` in the vehicle's own armour, or (gun) `held` on the turret. */
+export function markHiddenIslands(islands, parts) {
+  for (const island of islands) {
+    if ((island.gapM ?? 1) < VISIBLE_FLOAT_GAP_M) continue;
+    if (islandEnclosed(island, parts)) island.enclosed = true;
+    else if (islandHeldByTurret(island, parts)) island.held = true;
+  }
+  return islands;
+}
+
 /** Openings into the hull seen from below, between the track bands' inner faces. */
 export function bellyPits(parts, trackInnerX, options = {}) {
   const step = options.step ?? BELLY_STEP_M, depth = options.depth ?? BELLY_PIT_DEPTH_M, reach = options.reach ?? BELLY_PIT_REACH_M;
@@ -500,7 +522,7 @@ export function hullBellyPits(parts, trackInnerX) {
 export function hullContactCensus(id, options = {}) {
   const { parts, trackInnerX, hullScale, instanced } = collectStock(id, options);
   const islands = ['hull', 'turret', 'gun'].flatMap((body) => bodyIslands(parts, body));
-  for (const island of islands) if ((island.gapM ?? 1) >= VISIBLE_FLOAT_GAP_M && islandEnclosed(island, parts)) island.enclosed = true;
+  markHiddenIslands(islands, parts);
   const pits = hullBellyPits(parts, trackInnerX);
   return { id, parts: parts.length, instanced, trackInnerX, hullScale, islands, pits };
 }

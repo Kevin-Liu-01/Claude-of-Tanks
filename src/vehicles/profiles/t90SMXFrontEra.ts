@@ -1,8 +1,11 @@
 // Independently authored SM front applique from local-source scalar planes.
 // No source vertex/index data, source assets, or donor-family geometry.
 import { sectionSolid } from './sectionSolid.ts';
+import { KIT } from './kit.ts';
 import { markEraHitFaces, markEraFurniture } from './eraHitFaces.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+
+const { box } = KIT;
 
 type PointYZ = readonly [y: number, z: number];
 type Plate = {
@@ -47,6 +50,9 @@ function forwardCourse(P: TankBuilderPort): void {
     [.827125967, 3.423683405], [.830116928, 3.413158178],
     [.898902535, 3.440521717], [.895413637, 3.451048136],
   ]);
+  // 2026-10-19 (owner float sweep): that air stays, but the rib hung in it with nothing holding it; four short tabs
+  // carry it from the covers' lower edge.
+  for (const x of [-.6, -.2, .2, .6]) P.addEquipment('hullDetail', box(.03, .012, .016), x, .9005, 3.437);
 }
 
 function rearCenterCovers(P: TankBuilderPort): void {
