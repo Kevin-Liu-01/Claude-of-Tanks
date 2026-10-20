@@ -114,7 +114,7 @@ export const NEAR_VEHICLE_SHADOW_REACH_MAX_M = 40;
  * The view-depth span of a hull's shadow (m, [min, max] offsets from its own depth): the shadow runs from the hull
  * down-sun over height / tan(elevation), projected on the camera's forward. `fromSun` is the CSM light direction.
  */
-function shadowReachDepthSpan(fromSun: Vector3, viewMatrix: Matrix4, heightM = NEAR_VEHICLE_SHADOW_HEIGHT_M): [number, number] {
+export function shadowReachDepthSpan(fromSun: Vector3, viewMatrix: Matrix4, heightM = NEAR_VEHICLE_SHADOW_HEIGHT_M): [number, number] {
   const horizontal = Math.hypot(fromSun.x, fromSun.z);
   const sinElevation = -fromSun.y;
   if (!(horizontal > 1e-6) || !(sinElevation > 0)) return [0, 0];

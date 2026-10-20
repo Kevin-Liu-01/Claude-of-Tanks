@@ -1,11 +1,11 @@
 // src/world/maps/regional/souqs.ts — the souq rows and souk stalls of the desert and the Levant, member-built (props
-// census #23, the looks lane 2026-10-15; WORKLIST.md "Markets & stalls"): the ksar's
+// census #23, the looks lane 2026-10-15; WORKLIST.md "Markets & stalls"): the Wadi Rum village's souq row, the ksar's
 // ghorfa souk, the souk stall of the ksar and of Siwa with Siwa's row of them, the Navajo roadside stands and the Chouf
 // souk of Deir el-Qamar. The kits keep one re-pointing line each (or a body handed its sink); what a builder needs of its
 // kit's own palette or helpers its call hands in.
-import { PartSink, faceBox, facePoint, pick, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, holedFace, holedPolygon, recordBody, type HouseDialect, type Opening } from './house.ts';
-import { doorUnit } from './openings.ts';
+import { LocalFrame, PartSink, faceBox, facePoint, pick, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { buildHouse, holedFace, holedPolygon, recordBody, windowRhythm, type HouseDialect, type Opening } from './house.ts';
+import { doorUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.ts';
 import { archHead } from './sarajevoParts.ts';
 import { recordLattice } from './lattice.ts';
 import { recordShed } from './shedFall.ts';
@@ -16,10 +16,238 @@ const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.m
 const uvOffset = (ctx: RegionalBuildContext): [number, number] => [ctx.rng() * 7.31, ctx.rng() * 5.17];
 const IRON: Rgb = [0.12, 0.12, 0.12];
 
+/** A box standing free (both its faces), its long axis `ax` in the ground plane. */
+function freeBox(sink: PartSink, bucket: RegionalBucket, c: Vec3, size: Vec3, opts: EmitOptions, ax: Vec3 = [1, 0, 0]): void {
+  const az: Vec3 = [-ax[2], 0, ax[0]];
+  sink.box(bucket, c, [size[0] / 2, size[1] / 2, size[2] / 2], { ...opts, uv: opts.uv ?? { kind: 'world' } }, new LocalFrame(ax, [0, 1, 0], az, [0, 0, 0]));
+}
+
+/**
+ * An open shop cell behind a cut opening in a front wall `t` thick (the opening u0..u1, y0..y1 on `face`): its jambs,
+ * head and sill through the wall, then the cell `deep` deep — its floor, its back, its sides and its ceiling, all facing
+ * in — the room a shop's goods stand in (no dark plate: the cell is seen into). The back is structure; the rest dressing.
+ */
+function shopCell(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number, u1: number, y0: number, y1: number, t: number, deep: number,
+  inner: EmitOptions = {}): void {
+  const P = (u: number, y: number, o: number) => facePoint(face, u, y, o);
+  const rv = { ...inner, shade: 0.72 };
+  sink.quad(bucket, P(u0, y0, 0), P(u0, y0, -t), P(u0, y1, -t), P(u0, y1, 0), rv);
+  sink.quad(bucket, P(u1, y0, 0), P(u1, y1, 0), P(u1, y1, -t), P(u1, y0, -t), rv);
+  sink.quad(bucket, P(u0, y1, 0), P(u0, y1, -t), P(u1, y1, -t), P(u1, y1, 0), { ...inner, shade: 0.62 });
+  sink.quad(bucket, P(u0, y0, 0), P(u1, y0, 0), P(u1, y0, -t), P(u0, y0, -t), { ...inner, shade: 0.88 });
+  const a = -t, b = -t - deep, m = 0.25;
+  // the room: a little wider and taller than its opening, its back wall the collision
+  const v0 = u0 - m, v1 = u1 + m, top = y1 + 0.3;
+  sink.quad(bucket, P(v0, y0, b), P(v1, y0, b), P(v1, top, b), P(v0, top, b), { ...inner, shade: 0.5 });
+  sink.quad(bucket, P(v0, y0, a), P(v0, y0, b), P(v0, top, b), P(v0, top, a), { ...inner, shade: 0.45, decor: true });
+  sink.quad(bucket, P(v1, y0, b), P(v1, y0, a), P(v1, top, a), P(v1, top, b), { ...inner, shade: 0.45, decor: true });
+  sink.quad(bucket, P(v0, top, b), P(v1, top, b), P(v1, top, a), P(v0, top, a), { ...inner, shade: 0.35, decor: true });
+  sink.quad(bucket, P(v0, y0 + 0.002, a), P(v1, y0 + 0.002, a), P(v1, y0 + 0.002, b), P(v0, y0 + 0.002, b), { ...inner, shade: 0.6, decor: true });
+  // (the room's outsides: it stands inside a body whose other openings look into it)
+  sink.quad(bucket, P(v1, y0, b - 0.01), P(v0, y0, b - 0.01), P(v0, top, b - 0.01), P(v1, top, b - 0.01), { ...inner, shade: 0.4, decor: true });
+  sink.quad(bucket, P(v0 - 0.01, y0, b), P(v0 - 0.01, y0, a), P(v0 - 0.01, top, a), P(v0 - 0.01, top, b), { ...inner, shade: 0.4, decor: true });
+  sink.quad(bucket, P(v1 + 0.01, y0, a), P(v1 + 0.01, y0, b), P(v1 + 0.01, top, b), P(v1 + 0.01, top, a), { ...inner, shade: 0.4, decor: true });
+  sink.quad(bucket, P(v0, top + 0.01, a), P(v1, top + 0.01, a), P(v1, top + 0.01, b), P(v0, top + 0.01, b), { ...inner, shade: 0.4, decor: true });
+  // the wall's own inner face beside and over the opening (seen from inside the room past the jambs)
+  sink.quad(bucket, P(v0, y0, a), P(v0, top, a), P(u0, top, a), P(u0, y0, a), { ...inner, shade: 0.45, decor: true });
+  sink.quad(bucket, P(u1, y0, a), P(u1, top, a), P(v1, top, a), P(v1, y0, a), { ...inner, shade: 0.45, decor: true });
+  sink.quad(bucket, P(u0, y1, a), P(u0, top, a), P(u1, top, a), P(u1, y1, a), { ...inner, shade: 0.4, decor: true });
+}
+
+// ------------------------------------------------------------------------------------------------ Wadi Rum
+
+/**
+ * An air-conditioner's outdoor unit on a wall (`face`, centred at u, y; the looks lane's r2 sub-stream 2026-10-16, the
+ * sweep: "a dark grille plate stuck on its front"): its casing (0.8 x 0.55 m, 0.4 m deep) open round the fan, the fan's
+ * chamber a reveal deep behind its guard (the bars fine), the fan's hub and blades in the dark, the coil's louvres down
+ * its side, its two brackets under it into the wall. Dressing.
+ */
+function acUnit(sink: PartSink, f: Face, u: number, y: number): void {
+  const w = 0.8, h = 0.55, d = 0.4, uc = u + 0.13, r = 0.2, back = d - 0.17;
+  const P = (uu: number, yy: number, o: number): Vec3 => facePoint(f, uu, yy, o);
+  const q = (a: Vec3, b: Vec3, c: Vec3, e: Vec3, out: Vec3, opts: EmitOptions): void => {
+    const n = [(b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]), (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]),
+      (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])];
+    if (n[0] * out[0] + n[1] * out[1] + n[2] * out[2] < 0) sink.quad('structureMetal', e, c, b, a, opts); else sink.quad('structureMetal', a, b, c, e, opts);
+  };
+  const casing = { colour: rgb(0xd8d6ce), decor: true }, inner = { colour: rgb(0x2c2c2a), decor: true };
+  const U = f.u, O = f.out, nU: Vec3 = [-U[0], 0, -U[2]], up: Vec3 = [0, 1, 0], dn: Vec3 = [0, -1, 0];
+  const u0 = u - w / 2, u1 = u + w / 2, y0 = y - h / 2, y1 = y + h / 2, a0 = uc - r, a1 = uc + r, b0 = y - r, b1 = y + r;
+  // the casing: its top, bottom and ends, its front round the fan's opening (one welded sheet)
+  q(P(u0, y1, 0), P(u1, y1, 0), P(u1, y1, d), P(u0, y1, d), up, casing);
+  q(P(u0, y0, 0), P(u1, y0, 0), P(u1, y0, d), P(u0, y0, d), dn, casing);
+  q(P(u0, y0, 0), P(u0, y0, d), P(u0, y1, d), P(u0, y1, 0), nU, casing);
+  q(P(u1, y0, 0), P(u1, y0, d), P(u1, y1, d), P(u1, y1, 0), U, casing);
+  q(P(u0, y0, d), P(a0, y0, d), P(a0, y1, d), P(u0, y1, d), O, casing);
+  q(P(a1, y0, d), P(u1, y0, d), P(u1, y1, d), P(a1, y1, d), O, casing);
+  q(P(a0, y0, d), P(a1, y0, d), P(a1, b0, d), P(a0, b0, d), O, casing);
+  q(P(a0, b1, d), P(a1, b1, d), P(a1, y1, d), P(a0, y1, d), O, casing);
+  // the fan's chamber: its four sides in from the opening, its back (the coil) in the dark
+  q(P(a0, b0, d), P(a0, b0, back), P(a0, b1, back), P(a0, b1, d), U, inner);
+  q(P(a1, b0, d), P(a1, b0, back), P(a1, b1, back), P(a1, b1, d), nU, inner);
+  q(P(a0, b0, d), P(a1, b0, d), P(a1, b0, back), P(a0, b0, back), up, inner);
+  q(P(a0, b1, d), P(a1, b1, d), P(a1, b1, back), P(a0, b1, back), dn, inner);
+  q(P(a0, b0, back), P(a1, b0, back), P(a1, b1, back), P(a0, b1, back), O, { colour: rgb(0x161616), decor: true });
+  // the fan: its hub and three blades, its guard's bars across the opening
+  faceBox(sink, 'structureMetal', f, uc, y, back + 0.035, 0.07, 0.07, 0.07, { colour: rgb(0x3a3a38), decor: true });
+  for (let k = 0; k < 3; k++) {
+    const t = k * Math.PI * 2 / 3, c = Math.cos(t), s = Math.sin(t), c2 = Math.cos(t + 0.7), s2 = Math.sin(t + 0.7);
+    q(P(uc + c * 0.04, y + s * 0.04, back + 0.05), P(uc + c * 0.17, y + s * 0.17, back + 0.06), P(uc + c2 * 0.17, y + s2 * 0.17, back + 0.07),
+      P(uc + c2 * 0.04, y + s2 * 0.04, back + 0.05), O, { colour: rgb(0x3a3a38), decor: true, fine: true });
+  }
+  for (let k = 1; k < 6; k++) {
+    const t = a0 + (a1 - a0) * k / 6, v = b0 + (b1 - b0) * k / 6;
+    faceBox(sink, 'structureMetal', f, t, y, d + 0.006, 0.008, 2 * r, 0.008, { colour: rgb(0x4a4a48), decor: true, fine: true });
+    faceBox(sink, 'structureMetal', f, uc, v, d + 0.014, 2 * r, 0.008, 0.008, { colour: rgb(0x4a4a48), decor: true, fine: true });
+  }
+  // the coil's louvres down the casing's left of the fan, the brackets under it
+  for (let k = 0; k < 6; k++) faceBox(sink, 'structureMetal', f, u0 + 0.12, y0 + 0.08 + k * 0.075, d + 0.006, 0.16, 0.012, 0.012, { colour: rgb(0xb4b2aa), decor: true, fine: true });
+  for (const du of [-0.28, 0.28]) {
+    sink.member('structureMetal', P(u + du, y0 - 0.02, 0), P(u + du, y0 - 0.02, d - 0.04), 0.04, 0.03, dn, { colour: rgb(0x5a5a58), decor: true, exposed: true }, 0);
+    sink.member('structureMetal', P(u + du, y0 - 0.25, 0.01), P(u + du, y0 - 0.03, d - 0.06), 0.03, 0.03, nU, { colour: rgb(0x5a5a58), decor: true, exposed: true }, 0);
+  }
+}
+
+/** What the Wadi Rum souq takes from its kit: its roof furniture, its sheets, doors and goods. */
+export interface RumKit {
+  rooftop: (sink: PartSink, W: number, D: number, top: number, rng: () => number) => void;
+  sheets: readonly Rgb[];
+  doors: readonly Rgb[];
+  goods: readonly Rgb[];
+}
+
+/**
+ * The souq row of the Wadi Rum village (kit:wadirum/marketRow; the judges: "one solid render box; the shopfronts
+ * painted: a dark faceBox with a grey shutter slab over it"): a row of concrete-block shops on the house grammar (its
+ * plinth sunk, its walls rendered over block, its parapet and the roof's tanks, rebar stubs and dish; its back doors and
+ * windows cut; a house plan that breaks it as block): the shop fronts cut through the street wall, each shop a room seen
+ * into with its shelves of goods, its roller shutter half raised on its drum in its guides at the head of the opening, the
+ * sacks, crates, gas bottles and plastic chairs out before it; a cantilevered concrete canopy on its brackets along the
+ * front, the signboards over the shops with their lettering, the air-conditioners and the cable runs; the render fallen
+ * away in patches to the block. Laid in the kit's own sink, in its frame along the plot (`plot`: the kit's plotAxes), its
+ * shop fronts to +x; the kit coats it.
+ */
+export function wadirumSouq(sink: PartSink, ctx: RegionalBuildContext, plot: { turned: boolean; w: number; d: number }, kit: RumKit): void {
+  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
+  const turned = plot.turned;
+  const W = clamp(plot.w - 0.6, turned ? 4.2 : 6, 10), D = clamp(plot.d - 0.6, turned ? 6 : 10, 18);
+  const H = 3.6, plinth = 0.25, t = 0.25, wall: RegionalBucket = ctx.wallBucket === 'stone' ? 'plaster' : ctx.wallBucket as RegionalBucket;
+  const n = Math.max(2, Math.floor(D / 3.2)), bay = D / n, sw = bay - 0.9, sh = 2.7, cellD = clamp(W - 1.4, 1.6, 3.2);
+  const us = Array.from({ length: n }, (_, k) => -D / 2 + (k + 0.5) * bay);
+  const style: WindowStyle = { frame: rgb(0x5a5e60), frameWidth: 0.05, frameOut: 0.04, bars: 'six', surround: null, sill: { bucket: 'plaster', out: 0.06 }, shutters: null };
+  const openings: Opening[] = [];
+  // the back: two doors and windows between them; the ends: a window each
+  const backDoors = [-D * 0.28, D * 0.22];
+  for (const u of backDoors) openings.push({ face: 'left', storey: 0, kind: 'door', u, w: 0.95, y0: 0, h: 2.1 });
+  for (const o of windowRhythm('left', 0, D, { w: 0.9, h: 1.0, sill: 1.3, spacing: 3.0, margin: 1.2, avoid: backDoors.map((u) => [u - 1.0, u + 1.0] as const), max: 4 })) openings.push(o);
+  for (const face of ['front', 'back'] as const) openings.push({ face, storey: 0, kind: 'window', u: 0, w: 0.9, y0: 1.3, h: 1.0 });
+  const door = pick(rng, kit.doors);
+  const dialect: HouseDialect = {
+    window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, style, rng, 0.3),
+    door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: door, frame: { bucket: 'plaster', width: 0.1, out: 0.04 }, steps: { bucket: 'stone' }, leafKind: 'panel' }, y0 + o.y0),
+  };
+  const lay = () => {
+    const frame = buildHouse(sink, {
+      w: W, d: D, plinth: { h: plinth, out: 0.05, bucket: 'stone' }, storeys: [{ h: H, wall }], core: 'concrete',
+      roof: { kind: 'flat', pitchDeg: 0, eave: 0.05, verge: 0.05, thickness: 0.18, bucket: wall, parapet: 0.6 },
+      gableBucket: wall, openings, chimneys: [], gutters: null, verge: null, reveal: 0.22,
+      // the street front is the shops' own wall (below), cut by their fronts
+      abutted: [{ face: 'right', u0: -D / 2, u1: D / 2 }],
+    }, dialect);
+    const f = frame.faces.right, y0 = plinth, top = plinth + H;
+    // the shop step: a concrete pavement along the street front at the shops' floor, its kerb to the road (the goods out on it)
+    faceBox(sink, 'stone', f, 0, (y0 - 0.25) / 2, 0.6, D + 0.1, y0 + 0.25, 1.2, { decor: true, tint: [0.86, 0.85, 0.82] });
+    // the street wall: its block cut by the shop fronts (their rooms behind), rendered
+    holedFace(sink, wall, { ...f, origin: facePoint(f, 0, 0, 0) }, { u0: -D / 2, u1: D / 2, y0, y1: top },
+      us.map((u) => ({ u0: u - sw / 2, u1: u + sw / 2, y0, y1: y0 + sh, bare: true })), 0);
+    us.forEach((u, k) => {
+      shopCell(sink, wall, f, u - sw / 2, u + sw / 2, y0, y0 + sh, t, cellD, { tint: [0.92, 0.9, 0.86] });
+      // the roller shutter: its drum box under the canopy, its guides, the curtain half raised at the head
+      sink.recess = t;
+      try { rollerDoor(sink, f, u, y0, sw, sh, 0.55 + look() * 0.35, pick(look, [rgb(0x8a8e90), rgb(0x6a7276), rgb(0x9a9a94)]), rgb(0x5a5e60), mobile); }
+      finally { sink.recess = 0; }
+      sink.dressing(mobile, () => {
+        // the shop's shelves on its back wall with the goods, the counter at its side
+        const back = -t - cellD + 0.02;
+        for (const sy of [y0 + 0.6, y0 + 1.25, y0 + 1.9]) {
+          faceBox(sink, 'structureWood', f, u, sy, back + 0.18, sw + 0.3, 0.04, 0.36, { colour: rgb(0x8a7a66), decor: true });
+          for (let a = u - sw / 2 + 0.1; a < u + sw / 2 + 0.05; a += 0.3) {
+            if (look() < 0.18) continue;
+            const h = 0.14 + look() * 0.2;
+            faceBox(sink, 'structureWood', f, a, sy + 0.02 + h / 2, back + 0.18, 0.22 + look() * 0.05, h, 0.24, { colour: pick(look, kit.goods), decor: true });
+          }
+        }
+        faceBox(sink, 'structureWood', f, u + sw / 2 - 0.35, y0 + 0.45, -t - 0.45, 0.6, 0.9, 0.55, { colour: rgb(0x9a8a72), decor: true });
+        // out before it: sacks, a crate of produce, the gas bottles, a plastic chair
+        const o0 = 0.35 + look() * 0.2;
+        if (look() < 0.6) for (let j = 0; j < 3; j++) {
+          const p = facePoint(f, u - sw / 2 + 0.35 + j * 0.42, 0, o0);
+          sink.cylinder('structureWood', [p[0], y0 - 0.0, p[2]], 'y', 0.55, 0.2, 7, { colour: shade(rgb(0xc8b48a), 0.85 + look() * 0.2), decor: true }, 0.15);
+        }
+        if (look() < 0.5) {
+          const p = facePoint(f, u + 0.3, 0, o0 + 0.1);
+          sink.span('structureWood', p[0] - 0.3, y0 - 0.0, p[2] - 0.22, p[0] + 0.3, y0 + 0.32, p[2] + 0.22, { colour: rgb(0x9a7a52), decor: true });
+          sink.span('structureWood', p[0] - 0.26, y0 + 0.32, p[2] - 0.18, p[0] + 0.26, y0 + 0.4, p[2] + 0.18, { colour: pick(look, [rgb(0xb8452e), rgb(0xc9a23a), rgb(0x5f8a3a)]), decor: true });
+        }
+        if (k % 2 === 0) for (const dz of [-0.2, 0.15]) {
+          const p = facePoint(f, u + sw / 2 + 0.1 + dz, 0, 0.3);
+          sink.cylinder('structureMetal', [p[0], y0, p[2]], 'y', 0.55, 0.15, 8, { colour: pick(look, [rgb(0x2e5f9a), rgb(0xb8302a), rgb(0xc8c4b4)]), decor: true });
+          sink.cylinder('structureMetal', [p[0], y0 + 0.55, p[2]], 'y', 0.08, 0.06, 6, { colour: IRON, decor: true });
+        }
+        if (k % 3 === 1) {
+          // a white plastic chair: its seat, its back, its four legs
+          const p = facePoint(f, u - sw / 2 - 0.2, 0, 0.6), c = rgb(0xdedad0), ax: Vec3 = [f.u[0], 0, f.u[2]];
+          freeBox(sink, 'structureWood', [p[0], y0 + 0.44, p[2]], [0.44, 0.04, 0.42], { colour: c, decor: true }, ax);
+          freeBox(sink, 'structureWood', [p[0] - f.out[0] * 0.2, y0 + 0.72, p[2] - f.out[2] * 0.2], [0.44, 0.52, 0.03], { colour: c, decor: true }, ax);
+          for (const a of [-0.19, 0.19]) for (const b of [-0.18, 0.18]) {
+            sink.cylinder('structureWood', [p[0] + ax[0] * a + f.out[0] * b, y0, p[2] + ax[2] * a + f.out[2] * b], 'y', 0.43, 0.018, 5, { colour: c, decor: true });
+          }
+        }
+      });
+    });
+    // the canopy: a concrete slab cantilevered from the wall over the shop fronts, on its brackets between the shops
+    const cy = y0 + sh + 0.72, cd = 1.1;
+    faceBox(sink, 'plaster', f, 0, cy, cd / 2, D + 0.1, 0.14, cd, { decor: true, tint: [0.9, 0.9, 0.88] });
+    for (let k = 0; k <= n; k++) {
+      const u = -D / 2 + k * bay + (k === 0 ? 0.15 : k === n ? -0.15 : 0);
+      sink.prism('plaster', [facePoint(f, u - 0.08, cy - 0.07, 0), facePoint(f, u - 0.08, cy - 0.07, cd - 0.15), facePoint(f, u - 0.08, cy - 0.6, 0)] as Vec3[],
+        [f.u[0], 0, f.u[2]], 0.16, { decor: true, tint: [0.88, 0.88, 0.86] });
+    }
+    sink.dressing(mobile, () => {
+      // the signboards standing on the canopy's front edge, their lettering in a band of strokes from the right
+      us.forEach((u) => {
+        const c = pick(look, [rgb(0x2a6a3a), rgb(0x2a4a8a), rgb(0x8a2a24), rgb(0xd8c8a0)]);
+        faceBox(sink, 'structureWood', f, u, cy + 0.32, cd - 0.04, sw, 0.5, 0.04, { colour: c, decor: true });
+        for (let j = 0, m = 4 + Math.floor(look() * 4); j < m; j++) {
+          const a = u + sw / 2 - 0.25 - j * (sw - 0.5) / Math.max(1, m), len = 0.12 + look() * 0.22;
+          faceBox(sink, 'structureWood', f, a - len / 2, cy + 0.3 + look() * 0.12, cd - 0.015, len, 0.05, 0.01, { colour: [0.94, 0.92, 0.86], decor: true, fine: true });
+        }
+      });
+      // the air-conditioners on the end wall and the back, their cable runs up to the roof
+      for (const [fn, u] of [['front', W * 0.2], ['left', D * 0.1]] as const) {
+        const af = frame.faces[fn];
+        acUnit(sink, af, u, y0 + 2.45);
+        faceBox(sink, 'structureMetal', af, u + 0.5, (y0 + 2.45 + top) / 2, 0.02, 0.025, top - y0 - 2.45, 0.025, { colour: rgb(0x2a2a2a), decor: true, fine: true });
+      }
+      // the render fallen away in patches to the block on the end walls and the back
+      for (const fn of ['front', 'back', 'left'] as const) {
+        const pf = frame.faces[fn];
+        for (let j = 0; j < 3; j++) {
+          if (look() < 0.35) continue;
+          const u = (look() - 0.5) * pf.width * 0.8, y = y0 + 0.3 + look() * (H - 1.0), w = 0.5 + look() * 0.9, h = 0.3 + look() * 0.5;
+          faceBox(sink, 'stone', pf, u, y, 0.004, w, h, 0.008, { decor: true, tint: [0.82, 0.8, 0.76] });
+        }
+      }
+    });
+    kit.rooftop(sink, W, D, top, rng);
+  };
+  lay();
+}
+
 // ------------------------------------------------------------------------------------------------ the ksar
 
 /** What the ghorfa souk takes from its kit: its door blues, its palm timber, its mud's bucket. */
-interface KsarKit { blues: readonly Rgb[]; timber: Rgb; mud: RegionalBucket }
+export interface KsarKit { blues: readonly Rgb[]; timber: Rgb; mud: RegionalBucket }
 
 /**
  * One ghorfa cell of the souk: its mud body on a footing sunk into the lane, its front and back walls cut, its barrel
@@ -144,7 +372,7 @@ export function ksarGhorfaSouk(ctx: RegionalBuildContext, kit: KsarKit): PartSin
 }
 
 /** What a souk stall takes from its kit: its mud's bucket. */
-interface StallKit { mud: RegionalBucket }
+export interface StallKit { mud: RegionalBucket }
 
 /**
  * The souk stall of the ksar and of Siwa (kit:ksar/market, kit:siwa/market, the stalls of Siwa's row; the judges: "the
@@ -292,7 +520,7 @@ function lettering(sink: PartSink, face: Face, word: string, u: number, y: numbe
 }
 
 /** What the Navajo stands take from their kit: its pole, its juniper and its planks. */
-interface StandsKit { pole: (sink: PartSink, a: Vec3, b: Vec3, r: number, colour: Rgb, decor: boolean) => void; juniper: readonly Rgb[]; plank: Rgb }
+export interface StandsKit { pole: (sink: PartSink, a: Vec3, b: Vec3, r: number, colour: Rgb, decor: boolean) => void; juniper: readonly Rgb[]; plank: Rgb }
 
 /**
  * The roadside stands on the highway through Oljato (kit:navajo/marketRow; the judges: "the plywood flat slabs with no
@@ -470,7 +698,7 @@ function archCell(sink: PartSink, bucket: RegionalBucket, face: Face, u: number,
 }
 
 /** What the Chouf souk takes from its kit: its state (shutters, windows), its dialect, its earth roof, its spouts. */
-interface ChoufKit<S> {
+export interface ChoufKit<S> {
   st: S;
   dialect: (st: S) => HouseDialect;
   roof: import('./house.ts').RoofSpec;
