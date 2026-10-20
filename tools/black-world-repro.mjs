@@ -55,6 +55,14 @@
  *   --real-focus             no Document.prototype.hasFocus override: the window leaves and returns through a second
  *                            tab brought to the front (CDP Page.bringToFront), as the frame scheduler sees a real blur
  *   --gldiag                 ?gldiag=1: the guard's per-pass GL error watch after every resolution change (P8)
+ * (round 2, 2026-10-20) the acceptance's own blind spots (critic D3, D4, eng D3):
+ *   --black-world-frac=0.8   a JPEG sample is BLACK-WORLD at this near-black share too (the q70 samples never keep exact
+ *                            zeros: the positive control read near-black 0.98 with exact-zero 0.000); every black or
+ *                            suspect sample is re-read from a lossless PNG and its exact-zero share recorded
+ *   --until-battle-s=N       the window runs on (to --seconds + 90 s) until the battle clock reaches N s (the owner's
+ *                            frame was 18 s in; a 25 s window from the lift is mostly the PREPARING hold)
+ *   rows count the guard's incidents from its monotonic counter read before the row's action (an incident opened during
+ *   the reveal is the row's own); heal rows say whether a rung healed the fault or it cleared at its own end
  *   session steps: inject:<fault> (applied ONCE; the black-world guard must heal it), inject:persist:<fault>:<s> (applied
  *                  every frame for s seconds), faults layers | roots | override | passes | viewport1 | nancloud | nanscene (a NaN over the
  *                  scene target inside the scene pass) | emptypass | control;
@@ -104,6 +112,8 @@ const pauseS = Number(opt('pause-s', '3'));
 const injectSeconds = Number(opt('inject-seconds', '7'));
 const cbv = flag('capture-beyond-viewport'); // the old (artifact-prone) capture, for the A/B only
 const zeroFracThreshold = Number(opt('zero-frac', '0.8'));
+const blackWorldFrac = Number(opt('black-world-frac', '0.8'));
+const untilBattleS = Number(opt('until-battle-s', '0'));
 const realEsc = flag('real-esc');
 const realFocus = flag('real-focus');
 const gldiag = flag('gldiag');
@@ -452,6 +462,8 @@ async function boot(page, base) {
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     } catch { /* none */ }
     return { version: document.querySelector('meta[name="application-version"]')?.content ?? null, gpu,
+      // (round 2, D3) a Vite dev server injects its client: the build kind, whatever host serves it
+      devServer: !!document.querySelector('script[src*="/@vite/client"]'),
       webdriver: navigator.webdriver, preset: (() => { try { return window.__DEBUG?.quality?.resolvePresetName?.() ?? null; } catch { return null; } })() };
   });
   return { bootMs: Date.now() - t0, browser: await browser.version(), ...info };
@@ -872,9 +884,13 @@ function guardReceiptsSince() {
   const since = inj ? inj.injectAt - 50 : 0;
   const rows = ring.filter((r) => r.openedAtMs >= since).map((r) => ({ class: r.class, steps: r.steps.map((s) => s.step + (s.note ? `(${s.note})` : '')),
     repeats: r.repeats ?? 0, healedBy: r.healedBy, closed: r.closed, openedAfterMs: inj ? Math.round(r.openedAtMs - inj.injectAt) : null,
-    // the world is back the frame after the healing rung acted (lastStepAtMs); the probe confirms it a few frames later
-    healedAfterMs: inj && r.lastStepAtMs != null ? Math.max(0, Math.round(r.lastStepAtMs - (inj.persist ? inj.until : inj.injectAt))) : null,
-    confirmedAfterMs: inj && r.healedAtMs !== null ? Math.round(r.healedAtMs - (inj.persist ? inj.until : inj.injectAt)) : null,
+    // (round 2, eng D3) from the fault's start: the world is back the frame after the crediting rung acted (lastStepAtMs),
+    // only when the guard credits a rung; a fault that cleared at its own end (a persist fault's last frame, the empty
+    // pass's own timer) is 'fault-end', its timing measured from that end, never reported as a heal
+    healedAfterMs: inj && r.lastStepAtMs != null && /^H/.test(r.healedBy ?? '') ? Math.max(0, Math.round(r.lastStepAtMs - inj.injectAt)) : null,
+    confirmedAfterMs: inj && r.healedAtMs !== null ? Math.round(r.healedAtMs - inj.injectAt) : null,
+    clearedBy: r.healedBy === 'self' ? (inj?.persist ? 'fault-end' : 'self') : (r.healedBy ?? (r.closed ? 'none' : 'open')),
+    afterFaultEndMs: inj?.persist && r.healedAtMs !== null ? Math.round(r.healedAtMs - inj.until) : null,
     healMs: r.healMs, cpu: { calls: r.cpu.sceneCalls, mask: r.cpu.cameraMask, bits: r.cpu.bits }, probe: r.probe,
     framebuffer: r.target.framebuffer ?? null, glErrors: r.gl.errors, warm: r.warm, sinceRevealMs: r.sinceRevealMs }));
   return { inject: inj ?? null, receipts: rows, stats: window.__COT_BLACK_GUARD?.stats() ?? null,
@@ -1335,13 +1351,19 @@ async function sampleWindow(page, label, meta) {
   let prev = null;
   const t0 = Date.now();
   const windowS = meta?.inject ? injectSeconds : seconds;
-  const total = Math.round(windowS * 1000 / intervalMs);
+  // (round 2, D4) a natural window also runs until the battle clock passes --until-battle-s (capped 90 s past --seconds)
+  const untilS = meta?.inject ? 0 : untilBattleS;
+  const total = Math.round((windowS + (untilS ? 90 : 0)) * 1000 / intervalMs);
+  let battleS = 0;
   // the frame-accurate monitor's presented empty scene passes before this window (a session's earlier faults are not its own)
   const presentedEmpty0 = plain ? 0 : await page.evaluate(() => window.__BWR_SCENE?.presentedEmpty ?? 0).catch(() => 0);
   // --drive: a player's input through the window — W held, a steer every 3 s, the cursor sweeping the view
   let steer = null, lastSteerS = -1;
   if (drive) { try { await page.mouse.move(vw / 2, vh / 2); await page.keyboard.down('KeyW'); } catch { /* none */ } }
-  for (let i = 0; i < total && Date.now() - t0 < windowS * 1000 + intervalMs; i++) {
+  for (let i = 0; i < total; i++) {
+    const elapsedMs = Date.now() - t0;
+    if (elapsedMs >= windowS * 1000 + intervalMs && !(untilS && battleS < untilS)) break;
+    if (elapsedMs >= (windowS + 90) * 1000) break;
     const due = t0 + i * intervalMs;
     const wait = due - Date.now();
     if (wait > 0) await sleep(wait);
@@ -1373,10 +1395,26 @@ async function sampleWindow(page, label, meta) {
       frames.push({ at, error: String(error?.message ?? error).slice(0, 200) });
       continue;
     }
+    if (st?.timeS != null) battleS = Math.max(battleS, st.timeS);
     // (the fix lane) BLACK-WORLD: at least --zero-frac of the world region exactly zero while the HUD shows (calibrated on
-    // the owner's frame, 0.812); near-black past --black-frac but not that is a suspect
-    const black = g.zeroFrac >= zeroFracThreshold && st?.hud;
-    const suspect = !black && (g.blackFrac > blackFrac || g.blackFrac > suspectFrac) && st?.hud;
+    // the owner's frame, 0.812), or (round 2, D3) at least --black-world-frac near-black in the JPEG sample (the owner's
+    // frame reads 0.846 near-black; JPEG never keeps the exact zeros); near-black past --suspect-frac but not that is a
+    // suspect
+    let black = (g.zeroFrac >= zeroFracThreshold || g.blackFrac >= blackWorldFrac) && st?.hud;
+    let suspect = !black && (g.blackFrac > blackFrac || g.blackFrac > suspectFrac) && st?.hud;
+    if ((black || suspect) && !meta?.inject && blackCount + suspectCount < 12) {
+      // the lossless re-read: the same moment's exact-zero share (a black world reads ~0.8 exact zeros, a dark night none)
+      try {
+        const png = await page.screenshot({ type: 'png', captureBeyondViewport: false });
+        const img = await loadImage(png);
+        const c = createCanvas(img.width, img.height); const cx = c.getContext('2d'); cx.drawImage(img, 0, 0);
+        const full = worldStats(cx.getImageData(0, 0, img.width, img.height).data, img.width, img.height);
+        g.pngZeroFrac = full.zeroFrac; g.pngBlackFrac = full.blackFrac;
+        if (full.zeroFrac >= zeroFracThreshold && st?.hud) { black = true; suspect = false; }
+        writeFileSync(path.join(out, 'frames', `${label}-t${at.toFixed(2)}-${black ? 'BLACK' : 'suspect'}.png`), png);
+        log(`  ${black ? 'BLACK-WORLD' : 'suspect'} t${at.toFixed(2)}: jpeg near-black ${g.blackFrac}, png exact-zero ${full.zeroFrac} near-black ${full.blackFrac}`);
+      } catch (error) { log(`  png re-read failed: ${error?.message ?? error}`); }
+    }
     if (meta?.inject && (i === Math.round(2000 / intervalMs) || i === Math.round(5000 / intervalMs))) {
       // lossless evidence for the signature comparison (exact zeros survive a PNG)
       try {
@@ -1389,7 +1427,9 @@ async function sampleWindow(page, label, meta) {
       } catch (error) { log(`  inject evidence failed: ${error?.message ?? error}`); }
     }
     const ctl = !!(meta?.controlOn && !meta?.controlOff) || !!meta?.inject;
-    const row = { at: +at.toFixed(2), mean: g.mean, blackFrac: g.blackFrac, zeroFrac: g.zeroFrac, black: !!black && !ctl, suspect: !!suspect && !ctl, ...(ctl ? { ctl } : {}), st };
+    const row = { at: +at.toFixed(2), mean: g.mean, blackFrac: g.blackFrac, zeroFrac: g.zeroFrac,
+      ...(g.pngZeroFrac != null ? { pngZeroFrac: g.pngZeroFrac, pngBlackFrac: g.pngBlackFrac } : {}),
+      black: !!black && !ctl, suspect: !!suspect && !ctl, ...(ctl ? { ctl } : {}), st };
     frames.push(row);
     if (ctl) {
       if (black && !meta.controlSeen) { meta.controlSeen = true; log(`  ${meta.inject ? 'injected fault' : 'control'} detected at ${at.toFixed(2)} s (black ${g.blackFrac}, zero ${g.zeroFrac})`); }
@@ -1482,7 +1522,7 @@ async function sampleWindow(page, label, meta) {
 // main
 // ---------------------------------------------------------------------------------------------------------------------
 const report = path.join(out, 'report.jsonl');
-const summary = { tool: 'black-world-repro', zeroFrac: zeroFracThreshold, realEsc, realFocus, gldiag, stressGame: stressGame || null, awayDuringLoadS, awayHidden, awayAtS, plan: scenario === 'session' ? opt('plan', '') : null, garageDwellS, stress, control, preset: preset || 'auto', target, chrome: chromeArg || 'puppeteer', maps, mode, tank: tank || null, drive, times: timesArg, runsPerMap, scenario, seconds, intervalMs, plain, headful,
+const summary = { tool: 'black-world-repro', zeroFrac: zeroFracThreshold, blackWorldFrac, untilBattleS, targetKind: null, realEsc, realFocus, gldiag, stressGame: stressGame || null, awayDuringLoadS, awayHidden, awayAtS, plan: scenario === 'session' ? opt('plan', '') : null, garageDwellS, stress, control, preset: preset || 'auto', target, chrome: chromeArg || 'puppeteer', maps, mode, tank: tank || null, drive, times: timesArg, runsPerMap, scenario, seconds, intervalMs, plain, headful,
   viewport: `${vw}x${vh}`, dsf, blackFrac, suspectFrac, blackLuma, startedAt: new Date().toISOString(), runs: [] };
 const times = timesArg === 'any' ? ['any'] : timesArg.split(',');
 
@@ -1527,12 +1567,20 @@ try {
         await acquire();
         await startStress();
         const continuing = step.action !== 'boot' && page && !page.isClosed();
+        // (round 2, D3) the guard's monotonic incident counter and the page clock before this row's action: an incident
+        // opened during the re-entry's reveal is this row's own (a count read after the entry dropped it)
+        const guardBefore = continuing && !plain
+          ? await page.evaluate(() => ({ incidents: window.__COT_BLACK_GUARD?.stats().incidents ?? 0, at: performance.now() })).catch(() => null)
+          : { incidents: 0, at: 0 };
         if (!continuing) {
           if (scenario === 'cold' || !browser) await launchBrowser(scenario !== 'warm' || !browser);
           if (page) { try { await page.close(); } catch { /* closed */ } }
           page = await newPage(time);
           const b = await boot(page, base);
           Object.assign(row, { boot: b });
+          // the target as the summary names it: the public production site, a dev server, or a production build served here
+          summary.targetKind ??= target === 'prod' ? 'prod' : b.devServer ? 'dev'
+            : /127\.0\.0\.1|localhost/.test(String(base)) ? 'local-prod' : 'url';
           log(`${label}: booted in ${(b.bootMs / 1000).toFixed(1)} s, ${b.version}, ${b.browser}, gpu ${b.gpu}, webdriver ${b.webdriver}, preset ${b.preset}`);
           if (!plain) await page.evaluate(installDiagnostics);
           entryCdp = null;
@@ -1688,13 +1736,11 @@ try {
             player: D.game?.player?.specId ?? null } : null;
         }).catch(() => null);
         log(`${label}: in battle after ${((row.entryMs ?? 0) / 1000).toFixed(1)} s ${JSON.stringify(row.entry)}`);
-        const incidentsAtStart = step.action === 'inject' ? null
-          : await page.evaluate(() => (window.__GL_DIAG?.blackWorld ?? []).length).catch(() => null);
         const w = await sampleWindow(page, label, { healthyDiag: r === 0 && step.action !== 'inject', inject: step.action === 'inject' });
         if (step.action === 'inject') {
           row.guardHeal = await page.evaluate(guardReceiptsSince).catch((e) => ({ error: String(e) }));
           const first = row.guardHeal?.receipts?.[0];
-          log(`  guard after ${step.value}: ${first ? `${first.class} healed by ${first.healedBy}, world back after ${first.healedAfterMs} ms, confirmed after ${first.confirmedAfterMs} ms (opened +${first.openedAfterMs} ms, rungs ${first.steps.join(' ')}${first.repeats ? `, H1 x${first.repeats}` : ''})` : 'no incident'}; tiny sizes ${row.guardHeal?.tinySizes}; pass errors ${row.guardHeal?.passErrors?.length ?? 0}`);
+          log(`  guard after ${step.value}: ${first ? `${first.class} ${first.clearedBy === 'fault-end' ? `cleared at the fault's end (+${first.afterFaultEndMs} ms after it)` : `healed by ${first.healedBy}, world back after ${first.healedAfterMs} ms`}, confirmed after ${first.confirmedAfterMs} ms (opened +${first.openedAfterMs} ms, rungs ${first.steps.join(' ')}${first.repeats ? `, H1 x${first.repeats}` : ''})` : 'no incident'}; tiny sizes ${row.guardHeal?.tinySizes}; pass errors ${row.guardHeal?.passErrors?.length ?? 0}`);
           row.nanLanded = await page.evaluate(() => { const v = window.__bwrNanLanded ?? null; window.__bwrNanLanded = null; return v; }).catch(() => null);
           if (row.nanLanded) log(`  the fault's value in the ${row.nanLanded.target}: ${JSON.stringify(row.nanLanded)}`);
           row.injectUndo = await page.evaluate(() => { try { return window.__bwrUndo?.() ?? null; } catch (e) { return String(e); } });
@@ -1704,15 +1750,17 @@ try {
           log(`  dynflap scales seen ${JSON.stringify(row.dynflap.seen)}`);
         }
         Object.assign(row, w);
-        row.guard = await page.evaluate(() => {
+        row.guard = await page.evaluate((sinceAt) => {
           const g = window.__COT_BLACK_GUARD;
           const ring = window.__GL_DIAG?.blackWorld ?? [];
-          return { installed: !!g, stats: g ? g.stats() : null, total: ring.length, incidents: ring.length,
-            receipts: ring.slice(-4).map((r) => ({ class: r.class, healedBy: r.healedBy, steps: r.steps.map((x) => x.step), healMs: r.healMs,
-              sinceRevealMs: r.sinceRevealMs, cpu: r.cpu, probe: r.probe, roots: r.roots, target: r.target, gl: r.gl, state: r.state, warm: r.warm })) };
-        }).catch(() => null);
-        // a natural row counts only the receipts opened while it ran (a session's earlier injections are not its own)
-        if (row.guard && incidentsAtStart !== null) row.guard.incidents = Math.max(0, row.guard.total - incidentsAtStart);
+          const own = ring.filter((r) => r.openedAtMs >= sinceAt);
+          return { installed: !!g, stats: g ? g.stats() : null, total: g ? g.stats().incidents : ring.length, incidents: own.length,
+            receipts: own.slice(-4).map((r) => ({ class: r.class, healedBy: r.healedBy, steps: r.steps.map((x) => x.step), healMs: r.healMs,
+              endedBy: r.endedBy ?? null, sinceRevealMs: r.sinceRevealMs, cpu: r.cpu, probe: r.probe, roots: r.roots, target: r.target, gl: r.gl,
+              state: r.state, warm: r.warm })) };
+        }, guardBefore?.at ?? 0).catch(() => null);
+        // a natural row counts the incidents opened since its action began (the monotonic counter; the ring holds 8)
+        if (row.guard && guardBefore && row.guard.total != null) row.guard.incidents = Math.max(0, row.guard.total - guardBefore.incidents);
         if (row.guard && step.action === 'inject') row.guard.incidents = 0;
         if (row.guard?.incidents && step.action !== 'inject') log(`  GUARD INCIDENTS on a natural run: ${JSON.stringify(row.guard.receipts.map((r) => [r.class, r.healedBy]))}`);
         if (realEsc && row.escape) log(`  real Esc: ${JSON.stringify(row.escape)}`);
