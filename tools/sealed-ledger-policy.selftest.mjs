@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { sealedLedgerVerdict, updatedSealedLedger } from './sealed-ledger-policy.mjs';
+import { parseSeeThroughAccepts, sealedLedgerVerdict, updatedSealedLedger } from './sealed-ledger-policy.mjs';
 const clear = { throughPx: 0, throughViews: 0, netPx: 0 };
 assert.equal(sealedLedgerVerdict(undefined, { sealed: true, holeViews: 0, holePx: 0, ...clear }).pass, true);
 assert.equal(sealedLedgerVerdict(undefined, { sealed: false, holeViews: 1, holePx: 6, ...clear }).pass, false,
@@ -42,7 +42,7 @@ const kf51Census = {sealed:true,holeViews:0,holePx:1,throughPx:23,throughViews:0
 for (const netPx of [3526, 3526+70, 3526-70]) assert.equal(sealedLedgerVerdict(kf51, {...kf51Census,netPx}).pass, true, `netting ${netPx} within the band`);
 for (const netPx of [3526+71, 15687, 7476]) {
   const drift = sealedLedgerVerdict(kf51, {...kf51Census,netPx});
-  assert.equal(drift.pass, false); assert.match(drift.message, new RegExp(`^REGRESSION: netting px ${netPx} > ledger 3526 \\(.*--accept-see-through=<id>\\)$`));
+  assert.equal(drift.pass, false); assert.match(drift.message, new RegExp(`^REGRESSION: netting px ${netPx} > ledger 3526 \\(.*--accept-see-through=<id>:<reason>\\)$`));
 }
 for (const netPx of [3526-71, 0]) assert.match(sealedLedgerVerdict(kf51, {...kf51Census,netPx}).message, new RegExp(`^REGRESSION: netting px ${netPx} < ledger 3526`),
   'a suit that sank into its hull or went missing moves the count too');
@@ -64,6 +64,10 @@ assert.equal(sealedLedgerVerdict(undefined, ajax).pass, false, 'ajax\'s marking 
 assert.match(sealedLedgerVerdict(undefined, ajax, {acceptSeeThrough:true}).message, /^new vehicle: sealed; see-through 51 px in 1 views accepted$/);
 assert.equal(sealedLedgerVerdict(undefined, {...ajax,sealed:false,holeViews:1}, {acceptSeeThrough:true}).pass, false, 'acceptance never waives a new vehicle\'s openings');
 
+// an accept is per id and carries its reason, who and when (guards 229 critic round 1)
+const REASON = 'selftest: the measured change is intended';
+const A = (...ids) => new Map(ids.map((id) => [id, REASON]));
+const NOTE = { by: 'selftest', date: '2026-10-19' };
 const ledger = { generatedAt:'old', tanks:{ existing:{sealed:false,openPx:40,seeThroughPx:5,netSeeThroughPx:0}, netted:{sealed:true,openPx:0,seeThroughPx:30,netSeeThroughPx:4000} } };
 const snapshot = JSON.stringify(ledger);
 const closed = {id:'new_closed',sealed:true,holeViews:0,holePx:0,invertedPx:0,throughPx:0,throughViews:0,netPx:0,tris:12};
@@ -99,36 +103,73 @@ assert.throws(()=>updatedSealedLedger(ledger,[jump],'new',['netted']),/netted: R
 assert.throws(()=>updatedSealedLedger(ledger,[{...jump,throughPx:30,netPx:9000}],'new',['netted']),/netted: REGRESSION: netting px 9000 > ledger 4000 .*; ledger unchanged/);
 assert.throws(()=>updatedSealedLedger(ledger,[{...jump,throughPx:30,netPx:3000}],'new',['netted'],{seeThroughOnly:true}),/netted: REGRESSION: netting px 3000 < ledger 4000 .*; ledger unchanged/,
   'a column re-baseline moves the netting only with the explicit acceptance');
-assert.equal(updatedSealedLedger(ledger,[{...jump,throughPx:30,netPx:3000}],'new',['netted'],{acceptSeeThrough:['netted'],seeThroughOnly:true}).tanks.netted.netSeeThroughPx,3000);
-const rebased = updatedSealedLedger(ledger,[{...jump,throughPx:75,netPx:8130}],'new',['netted'],{acceptSeeThrough:['netted']});
+assert.equal(updatedSealedLedger(ledger,[{...jump,throughPx:30,netPx:3000}],'new',['netted'],{acceptSeeThrough:A('netted'),seeThroughOnly:true,...NOTE}).tanks.netted.netSeeThroughPx,3000);
+const rebased = updatedSealedLedger(ledger,[{...jump,throughPx:75,netPx:8130}],'new',['netted'],{acceptSeeThrough:A('netted'),...NOTE});
 assert.deepEqual([rebased.tanks.netted.seeThroughPx,rebased.tanks.netted.netSeeThroughPx],[75,8130]);
+assert.deepEqual(rebased.tanks.netted.seeThroughAccepted,{reason:REASON,by:'selftest',date:'2026-10-19',from:{seeThroughPx:30,netSeeThroughPx:4000}},
+  'an accepted raise records its reason, who, when and the old values');
 assert.equal(sealedLedgerVerdict(rebased.tanks.netted,{sealed:true,holeViews:0,holePx:0,throughPx:88,throughViews:1,netPx:8130}).pass,false,
   'the re-baselined row gates from its new see-through value');
 assert.equal(sealedLedgerVerdict(rebased.tanks.netted,{sealed:true,holeViews:0,holePx:0,throughPx:75,throughViews:1,netPx:8293}).pass,false,
   'and from its new netting value');
 assert.equal(sealedLedgerVerdict(rebased.tanks.netted,{sealed:true,holeViews:0,holePx:0,throughPx:75,throughViews:1,netPx:8292}).pass,true);
-assert.throws(()=>updatedSealedLedger(ledger,[{...jump,sealed:false,holeViews:1,holePx:20}],'new',['netted'],{acceptSeeThrough:['netted']}),
+assert.throws(()=>updatedSealedLedger(ledger,[{...jump,sealed:false,holeViews:1,holePx:20}],'new',['netted'],{acceptSeeThrough:A('netted'),...NOTE}),
   /REGRESSION: ledger sealed, now 1 open views; ledger unchanged/);
-assert.throws(()=>updatedSealedLedger(ledger,[jump],'new',['netted'],{acceptSeeThrough:['existing']}),/unrequested ids: existing/);
+assert.throws(()=>updatedSealedLedger(ledger,[jump],'new',['netted'],{acceptSeeThrough:A('existing'),...NOTE}),/unrequested ids: existing/);
 assert.throws(()=>updatedSealedLedger(ledger,[{...closed,netPx:undefined}],'new',['new_closed']),/see-through census .* is required/);
 // A vehicle without a row (ajax, griffin_viper on 16aeab482: sealed, a 6 px marking cluster) is recorded through the
 // supported path: refused by a plain update, written with the acceptance, still refused when it is open; the written row
 // then gates from its measurement.
 const ajaxReport = {...closed,id:'ajax',...ajax,invertedPx:438,tris:76298};
 assert.throws(()=>updatedSealedLedger(ledger,[ajaxReport],'new',['ajax']),/ajax: new vehicle: see-through in 1 views without an approved baseline/);
-const recorded = updatedSealedLedger(ledger,[ajaxReport,closed],'new',['ajax','new_closed'],{acceptSeeThrough:['ajax']});
-assert.deepEqual(recorded.tanks.ajax,{sealed:true,openPx:10,openViews:0,insideOutPx:438,seeThroughPx:51,netSeeThroughPx:0,tris:76298});
+const recorded = updatedSealedLedger(ledger,[ajaxReport,closed],'new',['ajax','new_closed'],{acceptSeeThrough:A('ajax'),...NOTE});
+assert.deepEqual(recorded.tanks.ajax,{sealed:true,openPx:10,openViews:0,insideOutPx:438,seeThroughPx:51,netSeeThroughPx:0,tris:76298,
+  seeThroughAccepted:{reason:REASON,by:'selftest',date:'2026-10-19',from:'no earlier row'}});
+assert.equal(recorded.tanks.new_closed.seeThroughAccepted,undefined,'a new row without a cluster needs no accept and carries none');
 assert.equal(sealedLedgerVerdict(recorded.tanks.ajax,{...ajax}).pass,true);
 assert.equal(sealedLedgerVerdict(recorded.tanks.ajax,{...ajax,throughPx:64}).pass,false);
-assert.throws(()=>updatedSealedLedger(ledger,[{...ajaxReport,sealed:false,holeViews:1}],'new',['ajax'],{acceptSeeThrough:['ajax']}),
+assert.throws(()=>updatedSealedLedger(ledger,[{...ajaxReport,sealed:false,holeViews:1}],'new',['ajax'],{acceptSeeThrough:A('ajax'),...NOTE}),
   /ajax: new vehicle: 1 open views without an approved baseline; ledger unchanged/);
 // a see-through re-baseline rewrites only the see-through columns: the opening baseline stays (40 px here, though the
 // measurement read 2), and a new id has no row to re-baseline
-const columns = updatedSealedLedger(ledger,[{...closed,id:'existing',sealed:true,holePx:2,throughPx:60,throughViews:2,netPx:900}],'new',['existing'],{acceptSeeThrough:['existing'],seeThroughOnly:true});
-assert.deepEqual(columns.tanks.existing,{sealed:false,openPx:40,seeThroughPx:60,netSeeThroughPx:900});
+const columns = updatedSealedLedger(ledger,[{...closed,id:'existing',sealed:true,holePx:2,throughPx:60,throughViews:2,netPx:900}],'new',['existing'],{acceptSeeThrough:A('existing'),seeThroughOnly:true,...NOTE});
+assert.deepEqual(columns.tanks.existing,{sealed:false,openPx:40,seeThroughPx:60,netSeeThroughPx:900,
+  seeThroughAccepted:{reason:REASON,by:'selftest',date:'2026-10-19',from:{seeThroughPx:5,netSeeThroughPx:0}}});
 assert.throws(()=>updatedSealedLedger(ledger,[closed],'new',['new_closed'],{seeThroughOnly:true}),/see-through re-baseline needs an existing row/);
-assert.throws(()=>updatedSealedLedger(ledger,[ajaxReport],'new',['ajax'],{acceptSeeThrough:['ajax'],seeThroughOnly:true}),/see-through re-baseline needs an existing row/);
-assert.throws(()=>updatedSealedLedger(ledger,[{...closed,id:'existing',sealed:false,holeViews:3,holePx:53,throughPx:60,throughViews:2,netPx:900}],'new',['existing'],{acceptSeeThrough:['existing'],seeThroughOnly:true}),
+assert.throws(()=>updatedSealedLedger(ledger,[ajaxReport],'new',['ajax'],{acceptSeeThrough:A('ajax'),seeThroughOnly:true,...NOTE}),/see-through re-baseline needs an existing row/);
+assert.throws(()=>updatedSealedLedger(ledger,[{...closed,id:'existing',sealed:false,holeViews:3,holePx:53,throughPx:60,throughViews:2,netPx:900}],'new',['existing'],{acceptSeeThrough:A('existing'),seeThroughOnly:true,...NOTE}),
   /REGRESSION: open px 53 > ledger 40/,'a column re-baseline still holds the openings');
+// No ratchet (guards 229 critic round 1: six passing plain updates walked marder1a3's see-through 113 -> 199 px and
+// griffin_viper's netting 8531 -> 9605). A plain update never raises a see-through or netting baseline: two successive
+// passing updates at +10 % see-through and +2 % netting leave the row exactly as it was; a lower measurement tightens
+// it; openings only tighten too (an open row that measures sealed becomes sealed at its measured px).
+{
+  const marder = {sealed:false,openPx:182,openViews:3,insideOutPx:163,seeThroughPx:113,netSeeThroughPx:0,tris:91842};
+  const griffin = {sealed:true,openPx:0,openViews:0,insideOutPx:144,seeThroughPx:38,netSeeThroughPx:8531,tris:76682};
+  const book = {generatedAt:'old',tanks:{marder1a3:marder,griffin_viper:griffin}};
+  const pass1 = [{id:'marder1a3',sealed:false,holeViews:3,holePx:182,invertedPx:163,throughPx:124,throughViews:4,netPx:0,tris:91842},
+    {id:'griffin_viper',sealed:true,holeViews:0,holePx:0,invertedPx:144,throughPx:50,throughViews:1,netPx:8701,tris:76682}];
+  for (const r of pass1) assert.equal(sealedLedgerVerdict(book.tanks[r.id],r).pass,true,`${r.id}: the +10 % / +2 % measurement passes the gate`);
+  const once = updatedSealedLedger(book,pass1,'u1',['marder1a3','griffin_viper']);
+  const twice = updatedSealedLedger(once,pass1,'u2',['marder1a3','griffin_viper']);
+  assert.deepEqual([once.tanks,twice.tanks],[book.tanks,book.tanks],'two passing plain updates leave the rows unchanged');
+  // the critic's walk: the next +10 % / +2 % step is judged against the unchanged row and fails, so nothing compounds
+  const step2 = pass1.map((r)=>({...r,throughPx:Math.floor(r.throughPx*1.1),netPx:Math.floor(r.netPx*1.019)}));
+  assert.throws(()=>updatedSealedLedger(twice,step2,'u3',['marder1a3','griffin_viper']),/marder1a3: REGRESSION: see-through px 136 > ledger 113/);
+  assert.throws(()=>updatedSealedLedger(twice,[{...step2[1],throughPx:38}],'u3',['griffin_viper']),/griffin_viper: REGRESSION: netting px 8866 > ledger 8531/);
+  const lower = updatedSealedLedger(book,[{...pass1[0],throughPx:90,holePx:0,holeViews:0,sealed:true}],'u3',['marder1a3']);
+  assert.deepEqual(lower.tanks.marder1a3,{sealed:true,openPx:0,openViews:0,insideOutPx:163,seeThroughPx:90,netSeeThroughPx:0,tris:91842},
+    'a lower see-through and a sealed measurement tighten the row (sealed, 0 px)');
+  assert.throws(()=>updatedSealedLedger(book,pass1,'u4',['marder1a3','griffin_viper'],{acceptSeeThrough:['marder1a3']}),/needs a reason per id/,
+    'bare-id acceptance is refused');
+  assert.throws(()=>updatedSealedLedger(book,pass1,'u4',['marder1a3','griffin_viper'],{acceptSeeThrough:new Map([['marder1a3','soot']])}),/at least 12 characters/);
+  const kept = updatedSealedLedger({generatedAt:'old',tanks:{griffin_viper:{...griffin,seeThroughAccepted:{reason:'earlier note',by:'x',date:'d',from:'no earlier row'}}}},
+    [{...pass1[1],throughPx:38,netPx:8531}],'u5',['griffin_viper'],{acceptSeeThrough:A('griffin_viper'),...NOTE});
+  assert.equal(kept.tanks.griffin_viper.seeThroughAccepted.reason,'earlier note','an accept that changes nothing keeps the row and its earlier note');
+}
+assert.deepEqual([...parseSeeThroughAccepts('ajax,griffin_viper:marking specks off the glacis edge; type10b:rear course re-seated').entries()],
+  [['ajax','marking specks off the glacis edge'],['griffin_viper','marking specks off the glacis edge'],['type10b','rear course re-seated']]);
+assert.equal(parseSeeThroughAccepts('').size,0);
+for (const spec of ['ajax','ajax:short',':a long enough reason here']) assert.throws(()=>parseSeeThroughAccepts(spec),/<id>\[,<id>\]:<reason>/,`refused: ${spec}`);
 assert.equal(JSON.stringify(ledger),snapshot);
-console.log('sealed-ledger-policy: incomplete batches, unregistered openings, see-through and netting regressions fail; see-through re-baselines and new rows with see-through are explicit per id; historical thresholds and sealed regressions preserved');
+console.log('sealed-ledger-policy: incomplete batches, unregistered openings, see-through and netting regressions fail; see-through re-baselines and new rows with see-through are explicit per id with a recorded reason; plain updates never raise a baseline (two passing updates leave a row unchanged) and only tighten openings; historical thresholds and sealed regressions preserved');

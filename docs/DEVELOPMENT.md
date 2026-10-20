@@ -569,8 +569,10 @@ support went with it. Visual change detection lives in generated ledgers that on
 - `docs/geometry-gate/sealed.json` see-through columns (guards 227/229) — `tools/tank-sealed-check.mjs --ledger --gate`
   (in `tank:release:check`) holds each row's `seeThroughPx` (glass, markings, undeclared alpha-cut parts) to max(12 px,
   10 %) and its `netSeeThroughPx` (sky between declared netting) to max(12 px, 2 %) either way; every playable id has a
-  row. Re-baseline columns only with `--update-ledger[=see-through] --accept-see-through=<ids>` (a sealed new vehicle's
-  row is recorded the same way).
+  row (`tank-sealed-check.selftest` holds the ledger's ids to the fleet manifest). `--update-ledger[=see-through]` only
+  ever tightens a row (openings and see-through to min(row, measured), sealed once it measures sealed, netting kept); a
+  see-through or netting raise, or a sealed new vehicle's row with a see-through cluster, needs
+  `--accept-see-through=<id>[,<id>]:<reason>`, and the row records `seeThroughAccepted` {reason, by, date, from}.
 - `docs/geometry-gate/contig-hidden.json` (guards 229) — the §B2 fleet hidden-gap audit: per tank, the plan gaps the
   hull-anchored lattice reads and the pre-227 raster missed, as exact vehicle-frame pixel boxes
   (`tools/contig-hidden-gaps.mjs`, from `tools/contig-phase-audit.mjs` rows). `tank-standard-check` passes those as

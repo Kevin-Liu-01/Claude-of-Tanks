@@ -505,6 +505,9 @@ alpha-cut, `combatHitboxRole: 'nonArmor'`, and `continuityRole: 'open-lattice'`
 (`alphaCutNetting` in `tools/tank-surface-collect.mjs`). A new alpha-cut part
 without that declaration fails its row; a hole behind netting is still a hole.
 Every playable id has a row; a new vehicle must be sealed with no see-through
-cluster. Re-baseline a row's see-through or netting, or record a new vehicle
-whose see-through is accepted, only with
-`--update-ledger[=see-through] --accept-see-through=<ids>`.
+cluster. `--update-ledger[=see-through]` never raises a row: openings and
+see-through only tighten to the measurement, netting keeps the row's value.
+Raise a row's see-through or netting, or record a new vehicle whose
+see-through cluster is accepted, only with
+`--update-ledger[=see-through] --accept-see-through=<id>:<reason>` (the row
+keeps the reason, who, when and the old values as `seeThroughAccepted`).

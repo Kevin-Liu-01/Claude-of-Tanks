@@ -24,7 +24,7 @@ export function sealedLedgerVerdict(row, { sealed, holeViews, holePx, throughPx,
   if (!row) {
     if (!sealed) return { pass: false, message: `new vehicle: ${holeViews} open views without an approved baseline` };
     if (throughViews && !acceptSeeThrough) return { pass: false,
-      message: `new vehicle: see-through in ${throughViews} views without an approved baseline (fix it, or record the row with --update-ledger --accept-see-through=<id>)` };
+      message: `new vehicle: see-through in ${throughViews} views without an approved baseline (fix it, or record the row with --update-ledger --accept-see-through=<id>:<reason>)` };
     return { pass: true, message: throughViews ? `new vehicle: sealed; see-through ${throughPx} px in ${throughViews} views accepted` : 'new vehicle: sealed' };
   }
   if (row.sealed && !sealed) return { pass: false,
@@ -48,30 +48,64 @@ function seeThroughVerdict(baseline, measured) {
 function nettingVerdict(baseline, measured) {
   if (!Number.isFinite(baseline)) return { pass: false, message: 'REGRESSION: the ledger row has no netting baseline' };
   if (Math.abs(measured - baseline) > nettingSlack(baseline)) return { pass: false,
-    message: `REGRESSION: netting px ${measured} ${measured > baseline ? '>' : '<'} ledger ${baseline} (the declared netting moved, grew or shrank; re-baseline on purpose with --update-ledger=see-through --accept-see-through=<id>)` };
+    message: `REGRESSION: netting px ${measured} ${measured > baseline ? '>' : '<'} ledger ${baseline} (the declared netting moved, grew or shrank; re-baseline on purpose with --update-ledger=see-through --accept-see-through=<id>:<reason>)` };
   return { pass: true, message: `netting ${measured} px (ledger ${baseline}), holds` };
 }
 
+/** The local calendar date (the lanes' notes use local dates), YYYY-MM-DD. */
+const localDate = () => new Date().toLocaleDateString('en-CA');
+
+/**
+ * `--accept-see-through=<id>[,<id>]:<reason>`: the ids whose see-through and netting baselines an update may set at
+ * their measurement, and why (at least 12 characters, saying what moved and why). Returns Map(id -> reason); '' is none.
+ * Bare ids are refused: an accept without a reason leaves no trail (guards 229 critic round 1).
+ */
+export function parseSeeThroughAccepts(spec) {
+  const accepts = new Map();
+  for (const part of String(spec ?? '').split(';').map((s) => s.trim()).filter(Boolean)) {
+    const colon = part.indexOf(':');
+    const ids = (colon < 0 ? '' : part.slice(0, colon)).split(',').map((id) => id.trim()).filter(Boolean);
+    const reason = colon < 0 ? '' : part.slice(colon + 1).trim();
+    if (!ids.length || reason.length < 12) {
+      throw new Error(`--accept-see-through "${part}": write <id>[,<id>]:<reason>, the reason saying what moved and why `
+        + '(at least 12 characters), e.g. ajax:designation decal stands 2 cm off the glacis edge');
+    }
+    for (const id of ids) accepts.set(id, reason);
+  }
+  return accepts;
+}
+
 /** Validate the whole update before returning a new ledger. A rejected new
- * opening must never become a historical allowance on the next invocation.
- * acceptSeeThrough names the ids whose see-through and netting baselines this
- * update may set at their measurement (an explicit, per-id decision: a row the
- * gate never held, such as the 35 ghillie ids whose rows predate the netting,
- * or a vehicle without a row whose see-through cluster is accepted, such as
- * ajax's and griffin_viper's marking specks); their openings are still held,
- * to the row or to the new-vehicle rule. Every other id must pass the full
- * verdict. seeThroughOnly rewrites just the see-through columns (seeThroughPx
- * and netSeeThroughPx) of existing rows, leaving the opening baselines as they
- * were: a see-through re-baseline never moves an opening allowance. */
-export function updatedSealedLedger(ledger, reports, generatedAt, requestedIds, { acceptSeeThrough = [], seeThroughOnly = false } = {}) {
+ * opening must never become a historical allowance on the next invocation,
+ * and an update never raises an allowance it was not asked to (guards 229
+ * critic round 1: six passing plain updates walked marder1a3's see-through
+ * 113 -> 199 px). For an existing row:
+ * - openings only tighten: sealed stays sealed, an open row that measures
+ *   sealed becomes sealed, and openPx/openViews take the measurement only
+ *   when it is lower;
+ * - see-through takes min(row, measurement) and netting keeps the row's
+ *   value, unless the id is accepted (`acceptSeeThrough`: Map id -> reason,
+ *   parseSeeThroughAccepts), when both take the measurement and the row
+ *   records seeThroughAccepted {reason, by, date, from} (the old values);
+ * - inside-out px and the triangle count are reports and take the measurement.
+ * A new row (rows mode only) is the measurement; it must be sealed, and with a
+ * see-through cluster it must be accepted (its note's from: 'no earlier row').
+ * seeThroughOnly leaves every opening column as it was. Every id must pass the
+ * verdict (an accepted id judged at its measured see-through and netting). */
+export function updatedSealedLedger(ledger, reports, generatedAt, requestedIds,
+  { acceptSeeThrough = new Map(), seeThroughOnly = false, by = 'unknown', date = localDate() } = {}) {
+  if (Array.isArray(acceptSeeThrough)) throw new Error('See-through acceptance needs a reason per id (parseSeeThroughAccepts); ledger unchanged');
+  const accepted = acceptSeeThrough instanceof Map ? acceptSeeThrough : new Map(Object.entries(acceptSeeThrough));
   // A build failure produces no measurement row. Never save the surviving
   // subset as though the requested batch had been measured completely.
   const expected = new Set(requestedIds);
   const measured = new Set();
   if (!expected.size) throw new Error('No requested vehicles; ledger unchanged');
-  const accepted = new Set(acceptSeeThrough);
-  const stray = [...accepted].filter((id) => !expected.has(id));
+  const stray = [...accepted.keys()].filter((id) => !expected.has(id));
   if (stray.length) throw new Error(`See-through acceptance for unrequested ids: ${stray.join(', ')}; ledger unchanged`);
+  for (const [id, reason] of accepted) {
+    if (String(reason ?? '').trim().length < 12) throw new Error(`${id}: a see-through acceptance needs a reason of at least 12 characters; ledger unchanged`);
+  }
   for (const { id } of reports) {
     if (!expected.has(id) || measured.has(id)) {
       throw new Error(`${id}: unexpected or duplicate measurement; ledger unchanged`);
@@ -83,17 +117,32 @@ export function updatedSealedLedger(ledger, reports, generatedAt, requestedIds, 
   const tanks = { ...ledger.tanks };
   for (const result of reports) {
     const row = ledger.tanks?.[result.id];
+    const reason = accepted.get(result.id);
     if (seeThroughOnly && !row) throw new Error(`${result.id}: a see-through re-baseline needs an existing row (record a new row with --update-ledger); ledger unchanged`);
-    const verdict = sealedLedgerVerdict(row, result, { acceptSeeThrough: accepted.has(result.id) });
+    const verdict = sealedLedgerVerdict(row, result, { acceptSeeThrough: reason !== undefined });
     if (!verdict.pass) throw new Error(`${result.id}: ${verdict.message}; ledger unchanged`);
     const { sealed, holePx, holeViews, invertedPx, throughPx, netPx, tris } = result;
-    if (seeThroughOnly) {
-      const { seeThroughPx: _seeThrough, netSeeThroughPx: _net, tris: rowTris, ...openings } = row;
-      tanks[result.id] = { ...openings, seeThroughPx: throughPx, netSeeThroughPx: netPx, ...(rowTris === undefined ? {} : { tris: rowTris }) };
+    if (!row) {
+      tanks[result.id] = { sealed, openPx: holePx, openViews: holeViews, insideOutPx: invertedPx, seeThroughPx: throughPx,
+        netSeeThroughPx: netPx, tris, ...(reason === undefined ? {} : { seeThroughAccepted: { reason, by, date, from: 'no earlier row' } }) };
       continue;
     }
-    tanks[result.id] = { sealed, openPx: holePx, openViews: holeViews,
-      insideOutPx: invertedPx, seeThroughPx: throughPx, netSeeThroughPx: netPx, tris };
+    const raise = reason !== undefined && (row.seeThroughPx !== throughPx || row.netSeeThroughPx !== netPx);
+    const seeThrough = raise
+      ? { seeThroughPx: throughPx, netSeeThroughPx: netPx,
+        seeThroughAccepted: { reason, by, date, from: { seeThroughPx: row.seeThroughPx ?? null, netSeeThroughPx: row.netSeeThroughPx ?? null } } }
+      : { seeThroughPx: Math.min(row.seeThroughPx, throughPx), netSeeThroughPx: row.netSeeThroughPx,
+        ...(row.seeThroughAccepted ? { seeThroughAccepted: row.seeThroughAccepted } : {}) };
+    const tighter = holePx < row.openPx;
+    const openings = seeThroughOnly
+      ? { sealed: row.sealed, openPx: row.openPx, openViews: row.openViews, insideOutPx: row.insideOutPx }
+      : { sealed: row.sealed || sealed, openPx: tighter ? holePx : row.openPx, openViews: tighter ? holeViews : row.openViews, insideOutPx: invertedPx };
+    const { seeThroughAccepted: _note, ...rest } = row;
+    tanks[result.id] = { ...rest, ...openings, seeThroughPx: seeThrough.seeThroughPx, netSeeThroughPx: seeThrough.netSeeThroughPx,
+      tris: seeThroughOnly ? row.tris : tris, ...(seeThrough.seeThroughAccepted ? { seeThroughAccepted: seeThrough.seeThroughAccepted } : {}) };
+    if (tanks[result.id].tris === undefined) delete tanks[result.id].tris;
+    if (tanks[result.id].openViews === undefined) delete tanks[result.id].openViews;
+    if (tanks[result.id].insideOutPx === undefined) delete tanks[result.id].insideOutPx;
   }
   return { ...ledger, generatedAt, tanks };
 }

@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { alphaCutNetting } from './tank-surface-collect.mjs';
+import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 
 // Sealed-hull check (2026-09-13): the software rasteriser must call a closed box
 // sealed from every census view, an inside-out box open/inside-out from every
@@ -63,7 +64,10 @@ for (const [object, expected, why] of [
 ]) assert.equal(alphaCutNetting(object, object.material), expected, why);
 
 const ledger = JSON.parse(readFileSync('docs/geometry-gate/sealed.json', 'utf8'));
-assert.ok(Object.keys(ledger.tanks).length >= 150, 'the ledger covers the playable fleet');
+// Every playable id has a row and no row outlives its id (guards 229 critic round 1: a rowless vehicle is held only to
+// the new-vehicle rule, which never sees scattered see-through or netting). The manifest is import-free plain data.
+assert.deepEqual(Object.keys(ledger.tanks).sort(), Object.keys(FLEET_GROUP_BY_ID).sort(),
+  'the sealed ledger\'s ids are the fleet ids (record a new vehicle with --update-ledger; drop a retired id\'s row)');
 assert.equal(ledger.tanks.m1a1_abrams_hc.sealed, true, 'the base Abrams is a sealed reference');
 const sealedCount = Object.values(ledger.tanks).filter((row) => row.sealed).length;
 assert.ok(sealedCount >= 150, `at least 150 sealed tanks in the ledger (${sealedCount})`);

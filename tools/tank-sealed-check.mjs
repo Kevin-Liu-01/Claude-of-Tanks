@@ -36,7 +36,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
-import { sealedLedgerVerdict, updatedSealedLedger } from './sealed-ledger-policy.mjs';
+import { parseSeeThroughAccepts, sealedLedgerVerdict, updatedSealedLedger } from './sealed-ledger-policy.mjs';
+import { userInfo } from 'node:os';
 import { createCanvas, Path2D as NapiPath2D, ImageData as NapiImageData, Image as NapiImage } from '@napi-rs/canvas';
 
 // Builders paint their canvas textures (ghillie nets, markings, kit fabrics)
@@ -63,19 +64,23 @@ const MIN_AREA = Number(opt('min-area', '6'));
 const outDir = resolve(opt('out', '.qa-dev/out/sealed'));
 const writeImages = flag('images');
 
-// --ledger=path gates each tank against the committed census: a sealed tank must stay sealed, and no tank may add
-// more than max(12 px, 10 %) of true openings, of see-through, or of netting px over its ledger row; a new vehicle
-// must be sealed with no see-through cluster. --update-ledger rewrites the rows for the checked ids (and records a new
-// vehicle's row) and refuses any regression; --update-ledger=see-through rewrites only existing rows' see-through
-// columns (seeThroughPx, netSeeThroughPx), never an opening baseline; --accept-see-through=id,... (a subset of --ids)
-// lets either update set those ids' see-through and netting baselines at their measurement, and lets a new vehicle's
-// row carry a see-through cluster: an explicit per-id decision whose openings are still held (to the row, or sealed).
+// --ledger=path gates each tank against the committed census: a sealed tank must stay sealed, no tank may add more
+// than max(12 px, 10 %) of true openings or of see-through over its ledger row, and its netting px stay within
+// max(12 px, 2 %) of the row either way; a new vehicle must be sealed with no see-through cluster. --update-ledger
+// rewrites the rows for the checked ids (and records a new vehicle's row) and refuses any regression; it only ever
+// tightens an existing row (openings and see-through to min(row, measured), the netting kept: sealed-ledger-policy.mjs
+// updatedSealedLedger). --update-ledger=see-through touches only existing rows' see-through columns, never an opening.
+// --accept-see-through=<id>[,<id>]:<reason> (a subset of --ids, the reason at least 12 characters) lets either update
+// set those ids' see-through and netting at their measurement, and lets a new vehicle's row carry a see-through
+// cluster; the row records seeThroughAccepted {reason, by (COT_LANE or the user), date, from}. Openings are still held.
 const ledgerPath = opt('ledger', '');
 const ledger = ledgerPath ? JSON.parse(readFileSync(resolve(ledgerPath), 'utf8')) : null;
 const updateMode = flag('update-ledger') ? 'rows' : opt('update-ledger', '');
 if (updateMode && !['rows', 'see-through'].includes(updateMode)) { console.error(`--update-ledger=${updateMode}: use --update-ledger or --update-ledger=see-through`); process.exit(2); }
-const acceptSeeThrough = opt('accept-see-through', '').split(',').filter(Boolean);
-if (acceptSeeThrough.length && !(ledger && updateMode)) { console.error('--accept-see-through re-baselines rows: it needs --ledger and --update-ledger, and never relaxes a gate'); process.exit(2); }
+let acceptSeeThrough;
+try { acceptSeeThrough = parseSeeThroughAccepts(opt('accept-see-through', '')); } catch (error) { console.error(error.message); process.exit(2); }
+if (acceptSeeThrough.size && !(ledger && updateMode)) { console.error('--accept-see-through re-baselines rows: it needs --ledger and --update-ledger, and never relaxes a gate'); process.exit(2); }
+const acceptedBy = process.env.COT_LANE || userInfo().username;
 import { collectTriangles } from './tank-surface-collect.mjs';
 
 function viewDirections() {
@@ -420,7 +425,7 @@ for (const id of ids) {
   if (ledger) {
     // an id the update re-baselines (--accept-see-through) is judged at its measured see-through and netting; its
     // openings still gate (a row's baseline, or a new vehicle's sealed rule)
-    const verdict = sealedLedgerVerdict(ledger.tanks?.[id], census, { acceptSeeThrough: acceptSeeThrough.includes(id) });
+    const verdict = sealedLedgerVerdict(ledger.tanks?.[id], census, { acceptSeeThrough: acceptSeeThrough.has(id) });
     ledgerVerdict = verdict.message;
     if (!verdict.pass) failures++;
   } else if (!sealedLedgerVerdict(undefined, census).pass) failures++;
@@ -432,9 +437,9 @@ for (const id of ids) {
 }
 if (ledger && updateMode) {
   try {
-    const updated = updatedSealedLedger(ledger, report, new Date().toISOString(), ids, { acceptSeeThrough, seeThroughOnly: updateMode === 'see-through' });
+    const updated = updatedSealedLedger(ledger, report, new Date().toISOString(), ids, { acceptSeeThrough, seeThroughOnly: updateMode === 'see-through', by: acceptedBy });
     writeFileSync(resolve(ledgerPath), JSON.stringify(updated, null, 1) + '\n');
-    for (const id of acceptSeeThrough) {
+    for (const id of acceptSeeThrough.keys()) {
       const was = ledger.tanks?.[id], now = updated.tanks[id];
       console.log(`   see-through ${was ? `re-baselined: ${id} ${was.seeThroughPx} -> ${now.seeThroughPx} px, netting ${was.netSeeThroughPx ?? '-'} -> ${now.netSeeThroughPx} px` : `accepted on a new row: ${id} ${now.seeThroughPx} px, netting ${now.netSeeThroughPx} px`}`);
     }
