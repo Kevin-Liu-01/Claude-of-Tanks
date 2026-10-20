@@ -22,7 +22,8 @@ export function validAdmissionOrder(order, length) {
 export async function runSelftestCpuPool(name, files, options) {
   const { concurrency, runFile, lock, ownedLeaseFiles, exclusiveCpuFiles = [], refreshMs, maxLeaseBatchMs,
     now, log, logError, onTiming, failFast = false, gate = { lookup: () => null, record: () => {} },
-    lockTimeoutMs = 45 * 60 * 1000, order = files.map((_, index) => index), cpuLease = true } = options;
+    lockTimeoutMs = 45 * 60 * 1000, order = files.map((_, index) => index), cpuLease = true,
+    memoryGate = async () => {} } = options;
   if (!validAdmissionOrder(order, files.length)) throw new TypeError('order must be a permutation of the suite indices');
   let held = false, acquiredAt = 0, refresher, next = 0, failure;
   let interruptionSeen = false, renewals = 0, yields = 0;
@@ -71,7 +72,7 @@ export async function runSelftestCpuPool(name, files, options) {
   const acquireLease = async () => {
     // cpuLease false (229, the runner's default): CPU children never wait in the capture FIFO; only the browser
     // receipts, which take the lock themselves, queue for the GPU.
-    if (!cpuLease) return 0;
+    if (!cpuLease) { const waitedFrom = now(); await memoryGate(); return now() - waitedFrom; }
     if (batchMustYield()) { yields++; release(); }
     if (held) return 0;
     const queuedAt = now();

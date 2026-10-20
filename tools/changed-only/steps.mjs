@@ -64,7 +64,7 @@ export const AGGREGATES = Object.freeze([
  * Dynamic reads, per file: what the file's directory reads, child processes and computed imports touch beyond its
  * static imports, and the pin (sha256/16 of the normalised call sites, tools/changed-only/graph.mjs dynamicSites) the
  * declaration was reviewed against. A changed call site breaks the pin, and every step that reaches the file runs on
- * every id until the declaration is reviewed and re-pinned (tools/changed-only/declarations.selftest.mjs prints the
+ * every id until the declaration is reviewed and re-pinned (tools/changed-only/fleet-partition.selftest.mjs prints the
  * new pin). `reads` globs are hashed into the reaching step's key. `modeOnly` names paths the file reads only in modes the
  * chain never runs (a --check audit): the edge to them is dropped. `covered` names paths the file reads that the fleet keys
  * already cover (with the reason beside it): the edge to them is dropped from the step's own key. `verdictOnly` globs
@@ -156,15 +156,19 @@ export const DECLARED_DYNAMIC = Object.freeze({
   // 229: genIcons passes each published picture through the optional local master filter (owner attribution, 228).
   'tools/media-r5/master-filter.mjs': {
     pin: '9cc38542568f79c4',
-    // the local filter executable when present (COT_MASTER_FILTER is read by name, so its value is keyed); it rewrites
-    // the published images, whose bytes and sha256 the tank-assets rows record, so its own bytes key the step too
-    reads: ['shots/media-r5/master-filter'],
-    note: 'an optional local executable (COT_MASTER_FILTER or shots/media-r5/master-filter) rewrites published image bytes; both are keyed (name/value, file bytes)',
+    reads: [],
+    // Not keyed: the filter is a machine-local executable (COT_MASTER_FILTER, read by name, or the untracked
+    // shots/media-r5/master-filter) that rewrites the published images. Their bytes are the icons step's GPU output,
+    // which is never an input key (rendered bytes differ across GPUs and drivers); keying a file most worktrees lack
+    // would mark every id in every lane that has none (229, critic r2).
+    note: 'an optional machine-local post-process of the published images (GPU output bytes, never keyed)',
   },
   // 229: the gun-line census (the gunLines step).
   'tools/gun-junction-census.mjs': {
     pin: '63939167b6ebdff6',
     reads: [],
+    // the fleet ledger is read at each measured id's row: keyed per id by the step's rowReads, never whole
+    covered: ['docs/references/fleet-geometry-ledger.json'],
     note: 'reads its own ledger (the step\'s output, to keep the other ids\' rows) and each measured id\'s fleet-ledger row, keyed per id by the step\'s rowReads (geometryLedger)',
   },
   'tools/fleet-geometry-ledger.mjs': {

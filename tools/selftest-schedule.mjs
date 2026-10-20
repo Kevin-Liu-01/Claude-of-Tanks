@@ -95,9 +95,9 @@ export function unknownRunMs(knownRunMs) {
 }
 
 /**
- * Admission order as registry indices: barrier receipts (exclusive CPU and self-leasing browser
- * checks, which run alone anyway) first in registry order, so no worker idles while the pool
- * drains for them; then longest-first (LPT) by run time; ties keep registry order. `last`
+ * Admission order as registry indices: barrier receipts (the runner passes the exclusive CPU and,
+ * under the CPU lease, the self-leasing browser checks; without it the browser checks are `last`)
+ * first in registry order, so no worker idles while the pool drains for them; then longest-first (LPT) by run time; ties keep registry order. `last`
  * receipts (judges that merge what other receipts of the same run wrote, such as
  * server/battlePacing.selftest.mjs over its eight shards) come after everything else, in
  * registry order, whatever their run time.

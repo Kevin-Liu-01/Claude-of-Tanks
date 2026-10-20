@@ -4,9 +4,9 @@
 // here and fails with identity labels; node's own AssertionError would inspect both graphs at depth 1000 and diff the
 // dumps (the 226 T-72 receipts reached 40 GB). The lint stops these calls in source; this covers every shape the lint
 // cannot see (raycast hits, helpers from other modules, destructured asserts). Passing calls and calls on plain values
-// are unchanged. Loose deep calls on a graph operand are decided strictly: deepEqual can only fail a call node would
-// pass; notDeepEqual passes values that differ only loosely (`[mesh, 1]` against `[mesh, '1']`), which node fails. The
-// lint forbids deep asserts on graph objects outright (compare graphLabels), so no receipt holds either form.
+// are unchanged. A loose deepEqual on a graph operand is decided strictly, so it can only fail a call node would pass;
+// a loose notDeepEqual whose operands differ strictly is handed to node, which then decides values that differ only
+// loosely (`[mesh, 1]` against `[mesh, '1']`) exactly as before.
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert';
 import { syncBuiltinESMExports } from 'node:module';
@@ -43,6 +43,7 @@ function guard(target, strict) {
       : strict && name === 'deepEqual' ? isDeepStrictEqual : strict && name === 'notDeepEqual' ? (a, b) => !isDeepStrictEqual(a, b) : passes;
     const guarded = function (actual, expected, message) {
       if (!heavy(actual) && !heavy(expected)) return Reflect.apply(original, this, arguments);
+      if (!strict && name === 'notDeepEqual' && !isDeepStrictEqual(actual, expected)) return Reflect.apply(original, this, arguments);
       if (decide(actual, expected)) return;
       if (message instanceof Error) throw message;
       throw new assert.AssertionError({ message: `${message ? `${message}\n` : ''}assert.${name} on a three.js graph `

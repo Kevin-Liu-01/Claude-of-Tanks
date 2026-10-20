@@ -173,6 +173,17 @@ assert.equal(make().lookup('src/environment-object.selftest.mjs').key, undefined
   assert.equal(make().lookup('src/static.selftest.mjs').reason, 'computed import/environment needs a fresh run');
   assert.ok(make({ fixtureKeyed: ['src/static.selftest.mjs'] }).lookup('src/static.selftest.mjs').key,
     'a listed receipt whose closure holds a computed import or a whole-environment read is keyed too');
+  // declared inputs: the receipt and its named code key it, nothing its import scan would add
+  write('src/kit/a.mjs', 'export const a = 1;'); write('src/kit/b.mjs', 'export const b = 2;'); write('src/other.ts', 'export const o = 1;');
+  write('src/fixture.selftest.mjs', 'import { readdirSync } from "node:fs"; import "./kit/a.mjs"; import "./tool.mjs"; readdirSync(".");');
+  const declare = { declaredInputs: { 'src/fixture.selftest.mjs': ['src/kit/*.mjs'] } };
+  const declaredKey = make(declare).lookup('src/fixture.selftest.mjs').key;
+  assert.ok(declaredKey, 'a declared receipt is keyed despite its computed import and directory walk');
+  assert.deepEqual(rel(make(declare), 'src/fixture.selftest.mjs'), ['src/fixture.selftest.mjs', 'src/kit/a.mjs', 'src/kit/b.mjs']);
+  write('src/other.ts', 'export const o = 2;');
+  assert.equal(make(declare).lookup('src/fixture.selftest.mjs').key, declaredKey, 'an undeclared file never re-keys it');
+  write('src/kit/b.mjs', 'export const b = 3;');
+  assert.notEqual(make(declare).lookup('src/fixture.selftest.mjs').key, declaredKey, 'a declared file re-keys it');
   write('src/browser.selftest.mjs', 'import browser from "puppeteer"; export const b = 2;');
   assert.equal(make({ fixtureKeyed: ['src/plan.selftest.mjs'] }).lookup('src/plan.selftest.mjs').skip, false, 'its inputs still key it');
 }

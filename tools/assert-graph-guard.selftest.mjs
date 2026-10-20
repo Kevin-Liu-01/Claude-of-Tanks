@@ -45,6 +45,7 @@ CASES.forEach(([label, , pattern], index) => assert.match(String(messages[index]
 const ok = run(SCENE + `import assert from 'node:assert/strict'; import legacy from 'node:assert';
 assert.equal(scene.children[0].parent, scene); assert.notEqual(hit, undefined); assert.deepEqual([scene], [scene]);
 legacy.equal(scene, scene); legacy.notStrictEqual(scene, null);
+try { legacy.notDeepEqual([scene, 1], [scene, '1']); throw new Error('passed'); } catch (error) { if (error.message === 'passed') throw new Error('a loose-equal pair passed notDeepEqual'); }
 try { assert.equal(1, 2); } catch (error) { if (!/1 !== 2/.test(error.message)) throw error; }
 console.log('passed');`);
 assert.equal(ok.status, 0, ok.stderr);

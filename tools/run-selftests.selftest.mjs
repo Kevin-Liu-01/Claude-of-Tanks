@@ -5,9 +5,10 @@ import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
-import { runSelftestFile, runSelftestSuite, selftestAdmissionSets, selftestCpuLease, SELFTEST_EXCLUSIVE_CPU_FILES, SELFTEST_FIXTURE_KEYED_FILES, SELFTEST_GRAPH_GUARD, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
+import { runSelftestFile, runSelftestSuite, selftestAdmissionSets, selftestMemoryGate, SELFTEST_DECLARED_INPUTS, selftestCpuLease, SELFTEST_EXCLUSIVE_CPU_FILES, SELFTEST_FIXTURE_KEYED_FILES, SELFTEST_GRAPH_GUARD, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
   selftestCacheEnv, selftestRunDirectory, SELFTEST_LAST_FILES, SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
 import { createSelftestCache } from './selftest-cache.mjs';
+import { collectSelftestInputs } from './selftest-inputs.mjs';
 // The runners read COT_SHOTS_LOCK_TIMEOUT_MS (landing chains export three hours); this receipt pins the default wait.
 process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
 
@@ -121,6 +122,41 @@ for (const concurrency of [1, 3]) {
     } });
   assert.equal(status, 0);
   assert.deepEqual(events.filter((event) => event !== 'release').sort(), ['a', 'b', 'browser', 'c'], `concurrency ${concurrency}`);
+}
+// the memory gate: a yes is reused for 20 s, a no is asked again every 20 s, no CLI or 0 GB opens it; the pool awaits it
+// once per CPU child when there is no lease
+{
+  let clock = 0, asks = 0, answers = [0, 1, 1, 0];
+  const waits = [], said = [];
+  const gate = selftestMemoryGate({}, { ask: (gb) => { asks++; assert.equal(gb, 6); return { status: answers.shift() }; },
+    sleep: async (ms) => { waits.push(ms); clock += ms; }, clock: () => clock, log: (line) => said.push(line) });
+  await gate(); await gate(); assert.equal(asks, 1, 'a yes is reused');
+  clock += 20_000; await gate();
+  assert.equal(asks, 4, 'after 20 s it asks again and waits through two noes'); assert.deepEqual(waits, [20_000, 20_000]);
+  assert.equal(said.length, 1, 'the wait is logged once');
+  let missing = 0;
+  const absent = selftestMemoryGate({}, { ask: () => { missing++; return { error: Object.assign(new Error('x'), { code: 'ENOENT' }) }; } });
+  await absent(); await absent(); assert.equal(missing, 1, 'no headroom CLI: the gate opens for good');
+  await selftestMemoryGate({ COT_SELFTEST_MEMORY_GB: '0' }, { ask: () => assert.fail('asked with the gate off') })();
+  let gated = 0;
+  const lock = { async acquire() { assert.fail('no lease'); }, release() {}, refresh() {}, waiting: () => 0 };
+  for (const concurrency of [1, 2]) {
+    gated = 0;
+    await runSelftestSuite('gated', ['a', 'browser', 'b'], { concurrency, lock, ownedLeaseFiles: ['browser'], cpuLease: false,
+      memoryGate: async () => { gated++; }, refreshMs: 5, log: () => {}, logError: () => {}, runFile: async () => ({ status: 0 }) });
+    assert.equal(gated, 2, `concurrency ${concurrency}: every CPU child passes the memory gate, the browser child does not`);
+  }
+}
+// CPU children run under nice: a real child reads its own priority
+{
+  const { mkdtempSync: temp, writeFileSync: put } = await import('node:fs');
+  const { tmpdir: tmp } = await import('node:os');
+  const { join: joinPath } = await import('node:path');
+  const dir = temp(joinPath(tmp(), 'cot-nice-')), script = joinPath(dir, 'nice.mjs'), out = joinPath(dir, 'nice.txt');
+  put(script, `import { getPriority } from 'node:os'; import { writeFileSync } from 'node:fs'; writeFileSync(${JSON.stringify(out)}, String(getPriority()));`);
+  const result = await runSelftestFile(script, { nice: 10, signals: { on() {}, removeListener() {} } });
+  assert.equal(result.status, 0);
+  assert.ok(Number((await import('node:fs')).readFileSync(out, 'utf8')) >= 10, 'the child runs at nice 10 or lower priority');
 }
 assert.equal(selftestCpuLease({}), false, 'the runner takes no CPU lease by default');
 assert.equal(selftestCpuLease({ COT_SELFTEST_CPU_LEASE: '1' }), true, 'COT_SELFTEST_CPU_LEASE=1 restores the shared lease');
@@ -377,6 +413,32 @@ assert.deepEqual(selftestCacheEnv(selftestChildEnv(capped)).NODE_OPTIONS, '--max
 assert.equal('NODE_OPTIONS' in selftestCacheEnv(selftestChildEnv({})), false);
 assert.equal(SELFTEST_GRAPH_GUARD, `--import=${new URL('./assert-graph-guard.mjs', import.meta.url).href}`,
   'assert-graph-guard.selftest spells the same flag');
+// every declared-input receipt names all the code it runs: each declared file's relative imports, and every repository
+// path a receipt joins onto the checkout, are declared too (a missed edge would reuse a PASS the code no longer earns)
+{
+  const { readFileSync: read, readdirSync: list, existsSync: exists } = await import('node:fs');
+  const { dirname: dir, join: joinPath, relative: rel, resolve: res } = await import('node:path');
+  const root = res(import.meta.dirname, '..');
+  const { SELFTEST_SUITES } = await import('./selftest-suites.mjs');
+  const registered = new Set(Object.values(SELFTEST_SUITES).flat());
+  for (const [receipt, patterns] of Object.entries(SELFTEST_DECLARED_INPUTS)) {
+    assert.ok(registered.has(receipt), `${receipt} is a registered receipt`);
+    const declared = new Set([receipt]);
+    for (const pattern of patterns) {
+      if (!pattern.includes('*')) { assert.ok(exists(joinPath(root, pattern)), `${pattern} exists`); declared.add(pattern); continue; }
+      const folder = dir(pattern), suffix = pattern.slice(pattern.indexOf('*') + 1);
+      for (const name of list(joinPath(root, folder))) if (name.endsWith(suffix)) declared.add(`${folder}/${name}`);
+    }
+    for (const file of declared) {
+      const text = read(joinPath(root, file), 'utf8');
+      // the parsed imports (static and literal dynamic), never import text inside a fixture's source strings
+      const edges = [...collectSelftestInputs(text, file).imports].filter((specifier) => /^\.{1,2}\//.test(specifier))
+        .map((specifier) => rel(root, res(root, dir(file), specifier)));
+      if (file === receipt) edges.push(...[...text.matchAll(/join\(repo,\s*'([^']+)'\)/g)].map((match) => match[1]));
+      for (const edge of edges) assert.ok(declared.has(edge), `${receipt}: ${file} reaches ${edge}, which its declaration leaves out`);
+    }
+  }
+}
 // every fixture-live receipt is registered (a stale entry would silently key nothing)
 {
   const { SELFTEST_SUITES } = await import('./selftest-suites.mjs');

@@ -583,12 +583,15 @@ substitute for the map/contact, shadow-motion and real Garage/battle review.
 **Scheduling, selection and cache identity (2026-10-01).** Only the order and the batching of the
 work changed; every selected receipt still runs every assertion in a fresh process.
 
-- (229) CPU receipts take no capture lease: CPU work runs under nice and the capture lock is for the
-  GPU. The exclusive CPU receipts still run alone and first; the self-leasing browser receipts run
-  alone and last, queueing for the lock themselves, so no CPU receipt waits behind the GPU queue
-  (on 2026-10-19 it held 45 tickets and two cold suites timed out at 30 min without starting).
-  `COT_SELFTEST_CPU_LEASE=1` restores the shared lease and the two bullets below (a quiet-window gate
-  that wants captures and CPU receipts never to overlap).
+- (229) CPU receipts take no capture lease: they run at nice 10 and each waits for
+  `headroom can-start --gb 6` (`COT_SELFTEST_MEMORY_GB`, 0 turns it off), and the capture lock is for
+  the GPU. The exclusive CPU receipts still run alone and first within this suite (at the runner's
+  priority); the self-leasing browser receipts run alone and last, queueing for the lock themselves,
+  so no CPU receipt waits behind the GPU queue (on 2026-10-19 it held 45 tickets and two cold suites
+  timed out at 30 min without starting). The trade-off: nothing holds other sessions' suites or GPU
+  captures off this suite's CPU any more, so a timing receipt (here or in a capture) can see their
+  load. `COT_SELFTEST_CPU_LEASE=1` restores the shared lease and the two bullets below for a gate
+  that wants captures and CPU receipts never to overlap; tools/gate.mjs's red-receipt pairs keep it.
 - With the lease, a batch older than 45 s yields (drains, releases, re-queues) only while another acquisition
   waits in the capture queue; with nobody queued the batch window restarts and the lease is
   refreshed, never released (gate P5). The pool logs how often it renewed and yielded.
@@ -611,8 +614,9 @@ work changed; every selected receipt still runs every assertion in a fresh proce
   one, so existing proofs keep counting (`tools/selftest-cache-dir.mjs`; a shallow clone keeps the URL
   key). These live outside `tools/selftest-cache.mjs` on purpose: that file salts every proof key.
 
-The runner retains bounded CPU workers, fresh child processes, fair capture-queue
-batches and exclusive browser/timing checks. It reports every ordinary failure in
+The runner retains bounded CPU workers, fresh child processes, a memory gate per CPU child
+(`headroom can-start`; fair capture-queue batches instead under `COT_SELFTEST_CPU_LEASE=1`)
+and exclusive browser/timing checks. It reports every ordinary failure in
 one run; `COT_SELFTEST_FAIL_FAST=1` opts into stopping early. No assertion threshold
 was loosened to gain speed. A first run after changing the proof format is cold;
 later runs reuse only matching successful evidence.

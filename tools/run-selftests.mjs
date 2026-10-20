@@ -1,6 +1,6 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { closeSync, mkdirSync, mkdtempSync, openSync, rmSync, writeFileSync } from 'node:fs';
-import { availableParallelism, constants, tmpdir } from 'node:os';
+import { availableParallelism, constants, getPriority, setPriority, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCaptureLock, selftestLockTimeoutMs } from './capture-lock.mjs';
@@ -14,7 +14,8 @@ import { admissionOrder, createRuntimeIndex, DURATION_SNAPSHOT_URL, durationSnap
 
 // These real browser regressions own the shared lease inside their processes.
 // Other subprocess tests either remain CPU-only or reject browser CLI input
-// before acquisition. Keep those ordinary tests under the runner's lease.
+// before acquisition. Those ordinary tests run under the runner's lease only
+// with COT_SELFTEST_CPU_LEASE=1 (selftestCpuLease); by default they take none.
 export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
   'tools/source-dimension-frame.browser.selftest.mjs',
   'tools/resolved-depth-copy.browser.selftest.mjs',
@@ -34,8 +35,9 @@ export const SELFTEST_OWNED_LEASE_FILES = Object.freeze([
 ]);
 
 // This full-fleet child has a 240s no-progress functional-test watchdog. Do
-// not compete with other native fleet builders while it runs.
-// It still uses the runner's lease (unlike a self-leasing browser test).
+// not compete with other native fleet builders while it runs. These run alone
+// within this suite's pool (other sessions' work is not held off without the
+// lease), at the runner's own priority, and under the runner's lease when one is held.
 export const SELFTEST_EXCLUSIVE_CPU_FILES = Object.freeze([
   'src/vehicles/fleetLazy.selftest.mjs',
   // Its unchanged 100 ms construction gate measures host time. Running beside
@@ -73,16 +75,22 @@ export const SELFTEST_FRESH_FILES = Object.freeze([
 // their closure) that never run those tools against this checkout: keyed by their inputs like any other receipt (229;
 // tools/selftest-cache.mjs fixtureKeyed). Their closures still hold every tool file, so an edit to one re-runs them.
 export const SELFTEST_FIXTURE_KEYED_FILES = Object.freeze([
-  // the changed-only chain, resolver and world keys run on fixture repositories they make in tmpdir
-  'tools/changed-only/chain.selftest.mjs',
-  'tools/changed-only/resolver.selftest.mjs',
-  'tools/changed-only/world.selftest.mjs',
-  // static reads of this checkout's sources and manifest (the step table names tools as data; none is run)
+  // static reads of this checkout's sources (the step table names tools as data; none is run). fresh.selftest stays
+  // live: its verdict reads release/fingerprints.tsv, which no closure holds (229, critic r2)
   'tools/changed-only/fleet-partition.selftest.mjs',
-  'tools/changed-only/fresh.selftest.mjs',
   // the release plan and its CLI driven with fake runners; the planned tools are argument lists
   'tools/tank-release-plan.selftest.mjs',
 ]);
+
+// Receipts that run only on fixture repositories they write in tmpdir: keyed by the receipt and the code its
+// declaration names (one directory level per `*`), not by the import scan's closure, which holds every source
+// directory (the fixture walks read directories; the step table names the real tools as data). They re-run when that
+// code changes, not on every edit (229, critic r2: the chain alone is 240-540 s under load). run-selftests.selftest
+// holds each declaration to its files' relative imports and repository paths.
+export const SELFTEST_DECLARED_INPUTS = Object.freeze(Object.fromEntries([
+  'tools/changed-only/chain.selftest.mjs', 'tools/changed-only/resolver.selftest.mjs', 'tools/changed-only/world.selftest.mjs',
+].map((file) => [file, Object.freeze(['tools/changed-only/*.mjs', 'tools/tank-regen-changed.mjs', 'tools/capture-lock.mjs',
+  'tools/selftest-inputs.mjs'])])));
 
 // Test-speed R9a (2026-10-16): a judge merges the records other receipts of the same run wrote
 // and plays whatever nobody else plays in the run. server/battlePacing.selftest.mjs judges the
@@ -142,7 +150,7 @@ export function selftestWorkerCount(env = process.env, availableCpus = available
 // file descriptor, never a pipe: a grandchild that outlives the receipt cannot hold the runner open.
 // `cwd` lets the gate run a receipt in a baseline worktree. Defaults keep the inherited terminal.
 export function runSelftestFile(file, { spawnProcess = spawn, signals = process, env = selftestChildEnv(),
-  cwd = process.cwd(), logFile = null } = {}) {
+  cwd = process.cwd(), logFile = null, nice = 0 } = {}) {
   return new Promise((resolveResult) => {
     let output = null;
     if (logFile) {
@@ -157,6 +165,8 @@ export function runSelftestFile(file, { spawnProcess = spawn, signals = process,
     } finally {
       if (output !== null) closeSync(output); // the child holds its own descriptor
     }
+    // CPU work under nice (229): never raise a child above the runner's own niceness
+    if (nice && child?.pid) { try { setPriority(child.pid, Math.max(nice, getPriority(child.pid))); } catch { /* exited */ } }
     let error, interruptedBy;
     const interrupt = () => { interruptedBy ??= 'SIGINT'; child.kill('SIGINT'); };
     const terminate = () => { interruptedBy ??= 'SIGTERM'; child.kill('SIGTERM'); };
@@ -218,6 +228,28 @@ export function selftestCpuLease(env = process.env) {
   return env.COT_SELFTEST_CPU_LEASE === '1';
 }
 
+/**
+ * Without the lease nothing serializes suites machine-wide, so each CPU child waits until Headroom
+ * (`headroom can-start --gb N`, the house memory gate) says N GB fit; COT_SELFTEST_MEMORY_GB sets N (default 6, 0
+ * turns it off). A "yes" is reused for 20 s; a "no" is asked again every 20 s. Without the CLI the gate is open.
+ */
+export function selftestMemoryGate(env = process.env, { ask = (gb) => spawnSync('headroom', ['can-start', '--gb', String(gb)],
+  { stdio: 'ignore', timeout: 20_000 }), sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)), clock = () => Date.now(),
+  log = console.log } = {}) {
+  const gb = Number(env.COT_SELFTEST_MEMORY_GB ?? 6);
+  if (!Number.isFinite(gb) || gb <= 0) return async () => {};
+  let openUntil = 0, available = true, said = false;
+  return async () => {
+    while (available && clock() >= openUntil) {
+      const answer = ask(gb);
+      if (answer.error?.code === 'ENOENT') { available = false; break; }
+      if (answer.status === 0) { openUntil = clock() + 20_000; break; }
+      if (!said) { log(`[selftests] waiting for ${gb} GB (headroom can-start); COT_SELFTEST_MEMORY_GB=0 turns this off`); said = true; }
+      await sleep(20_000);
+    }
+  };
+}
+
 /** Barriers run alone and first; with no CPU lease the browser barriers move last (after the judges). */
 export function selftestAdmissionSets(cpuLease) {
   if (cpuLease) return { barriers: new Set(SELFTEST_BARRIER_FILES), last: new Set(SELFTEST_LAST_FILES) };
@@ -242,13 +274,14 @@ export async function runSelftestSuite(suiteName, suite, {
   cache = null,
   order, // pool admission order (registry indices); the serial path's total is order-independent
   cpuLease = true, // false: CPU children take no capture lease (selftestCpuLease)
+  memoryGate = async () => {}, // with no lease, awaited before each CPU child (selftestMemoryGate)
 } = {}) {
   validateRunOptions(maxLeaseBatchMs, concurrency);
   const gate = selftestCacheGate(cache, log);
   const lockTimeoutMs = selftestLockTimeoutMs();
   if (concurrency > 1) return runSelftestCpuPool(suiteName, suite, {
     concurrency, runFile, lock, ownedLeaseFiles, exclusiveCpuFiles, refreshMs, maxLeaseBatchMs, now, log, logError, onTiming,
-    failFast, gate, lockTimeoutMs, cpuLease, ...(order ? { order } : {}),
+    failFast, gate, lockTimeoutMs, cpuLease, memoryGate, ...(order ? { order } : {}),
   });
   let held = false;
   let acquiredAt = 0;
@@ -276,7 +309,11 @@ export async function runSelftestSuite(suiteName, suite, {
         else { acquiredAt = now(); lock.refresh(); }
       }
       if (ownedLeaseFiles.includes(file)) release();
-      else if (!held && cpuLease) {
+      else if (!cpuLease) {
+        const waitedFrom = now();
+        await memoryGate();
+        queueMs = now() - waitedFrom;
+      } else if (!held) {
         const queuedAt = now();
         await lock.acquire(lockTimeoutMs);
         queueMs = now() - queuedAt;
@@ -381,6 +418,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const cacheLocation = resolveSelftestCacheDir(REPO_ROOT, childEnv);
     if (cacheLocation.adoption === 'linked') console.log(`[selftests] result cache now keyed on the ${cacheLocation.identity}; adopted ${cacheLocation.legacyDir}`);
     const cache = createSelftestCache({ alwaysRun: SELFTEST_FRESH_FILES, fixtureKeyed: SELFTEST_FIXTURE_KEYED_FILES,
+      declaredInputs: SELFTEST_DECLARED_INPUTS,
       env: selftestCacheEnv(childEnv), cacheDir: cacheLocation.dir });
     const runtimes = createRuntimeIndex(cacheLocation.dir);
     if (command.shard) console.log(`[selftests] shard ${command.shard.index}/${command.shard.count}: ${command.shard.receipts} of ${command.shard.selected} selected receipts (~${(command.shard.loadMs / 60_000).toFixed(1)} min weighted; partition ${command.shard.partition})`);
@@ -422,7 +460,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         cache,
         order,
         cpuLease,
-        ...(command.logs ? { runFile: file => runSelftestFile(file, { logFile: logOf(file) }) } : {}),
+        ...(cpuLease ? {} : { memoryGate: selftestMemoryGate() }),
+        // CPU children under nice; the timing-sensitive exclusive and browser receipts keep the runner's priority
+        runFile: file => runSelftestFile(file, { ...(command.logs ? { logFile: logOf(file) } : {}),
+          nice: SELFTEST_BARRIER_FILES.includes(file) ? 0 : 10 }),
         onTiming(row) {
           rows.push({ ...row, error: row.error?.message });
           completed++; executionMs += row.runMs; queueMs += row.queueMs;

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { accessorPin, createGraph, dynamicSites, h16 } from './graph.mjs';
-import { computeState, emptyManifest, parseGroupLoaders, recordStep, refreshComponents, resolveChanged } from './fingerprint.mjs';
+import { computeState, emptyManifest, normalizedNodeOptions, parseGroupLoaders, recordStep, refreshComponents, resolveChanged } from './fingerprint.mjs';
 import { CPU_FIXPOINT_STEPS, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS,
   STEPS, WORLD_STEPS } from './steps.mjs';
 import { tokenPin } from './world.mjs';
@@ -36,6 +36,9 @@ const state = computeState({ root, steps: STEPS });
 assert.deepEqual(state.steps.seats.foreignTables, [], 'seats reach no table whole');
 assert.ok(state.steps.seats.rowTables.includes('auxiliaryInventory'), 'seats key the inventory per id');
 assert.ok(state.steps.gunLines.rowTables.includes('geometryLedger'), 'gun lines key each id\'s fleet-ledger row (rowReads)');
+assert.deepEqual(state.steps.gunLines.foreignTables, [], 'gun lines reach no table whole (the fleet ledger is covered, keyed per id)');
+assert.equal(normalizedNodeOptions('--max-old-space-size=4096 --import=file:///w/tools/assert-graph-guard.mjs --x'), '--x',
+  'the heap cap and the runner\'s assert guard never key the toolchain');
 assert.deepEqual(state.globalReasons, [], 'the fleet decomposes');
 for (const step of STEPS) assert.ok(state.steps[step.name].decomposed, `${step.name}: ${state.steps[step.name].reasons.join('; ')}`);
 assert.ok(state.ids.length >= 200, 'the roster is read');

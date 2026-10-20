@@ -78,9 +78,11 @@ function readRows(root, env, tableModule = null) {
   return JSON.parse(out);
 }
 
-/** NODE_OPTIONS minus heap-size flags, which cannot change what a tool writes. */
+/** NODE_OPTIONS minus heap-size flags and the self-test runner's assert guard (it decides only failing asserts in
+ *  receipts; tools/run-selftests.mjs SELFTEST_GRAPH_GUARD), neither of which can change what a tool writes. */
 export function normalizedNodeOptions(value = '') {
-  return value.split(/\s+/).filter((flag) => flag && !/^--max-old-space-size(=|$)/.test(flag)).sort().join(' ');
+  return value.split(/\s+/).filter((flag) => flag && !/^--max-old-space-size(=|$)/.test(flag)
+    && !/^--import=\S*\/tools\/assert-graph-guard\.mjs$/.test(flag)).sort().join(' ');
 }
 
 /**
