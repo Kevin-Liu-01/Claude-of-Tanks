@@ -59,7 +59,7 @@ function recordingContext(canvas) {
     ellipse: () => push(['ellipse']), rect: () => push(['rect']), roundRect: () => push(['roundRect']),
     quadraticCurveTo: (cx, cy, x, y) => push(['quad'], cx, cy, x, y), bezierCurveTo: () => push(['bezier']),
     stroke() { ops.push({ op: 'stroke', style: state.strokeStyle, lineWidth: state.lineWidth, dash: dash.slice(), path,
-      box: box(points, (state.lineWidth * scale()) / 2) }); },
+      points: points.slice(), box: box(points, (state.lineWidth * scale()) / 2) }); },
     fill() { ops.push({ op: 'fill', style: state.fillStyle, path, box: box(points) }); },
     fillRect(x, y, w, h) { ops.push({ op: 'fillRect', style: state.fillStyle, x, y, w, h, box: box([at(x, y), at(x + w, y + h)]) }); },
     strokeRect() { ops.push({ op: 'strokeRect', style: state.strokeStyle }); },
@@ -1416,6 +1416,69 @@ function assertFurnitureClear(items, boxes, at, key = null) {
   assert.ok(seated > 0 && Object.keys(yielded).some((key) => key.endsWith('(integ\'s place)')),
     `the chips were seated, and yielded to integ's place (${JSON.stringify(yielded)})`);
   setSightNotice(false);
+  documentStub.body.classes.delete('cot-touch-layout');
+  clearSightFurniture();
+  settleSightFurniture();
+  scope = false;
+  dispersionM = 8;
+  resize(WIDTH, HEIGHT);
+}
+
+// 19f. r10f (the notices critic on integ/229 11a74e4906: the scope's right arm ran through the Daylight vision plate, the
+// lower post across the gun travel chip, a mil tick across the rack onto the struck round): through the scope, on mouse
+// windows and phones among their recorded furniture (the vision plate in it), for every reticle state with and without
+// the warning, over the rings, every cross arm segment keeps 3 px from every mark (the rack, the struck round, the
+// countdown, the readout line and zoom plate, the range tag, the chip) and from the furniture, every mil tick 2 px.
+{
+  const ARM_INK = new Set(['rgba(170,240,178,0.6)', 'rgba(4,7,6,0.38)']);
+  const TICK_INK = new Set(['rgba(176,242,184,0.70)', 'rgba(3,7,5,0.52)']);
+  const apart = (a, b) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
+  // (a stroke's moveTo/lineTo pairs, each a segment, its line width either side)
+  const segments = (op) => {
+    const out = [];
+    for (let i = 0; i + 1 < op.points.length; i += 2) {
+      const [ax, ay] = op.points[i];
+      const [bx, by] = op.points[i + 1];
+      const pad = op.lineWidth / 2;
+      out.push({ x0: Math.min(ax, bx) - pad, y0: Math.min(ay, by) - pad, x1: Math.max(ax, bx) + pad, y1: Math.max(ay, by) + pad });
+    }
+    return out;
+  };
+  let arms = 0;
+  let ticks = 0;
+  scope = true;
+  for (const [width, height, touch] of [[1440, 900], [1024, 600], [900, 700], [800, 500], [1280, 520], [390, 844, 'touch'],
+    [360, 640, 'touch'], [740, 360, 'touch'], [667, 375, 'touch']]) {
+    resize(width, height);
+    documentStub.body.classes[touch ? 'add' : 'delete']('cot-touch-layout');
+    const boxes = installFurniture(width, height, !!touch);
+    for (const metres of [1, 11, 16, 24, 40]) {
+      dispersionM = metres;
+      for (const [label, make] of Object.entries(scopeStates)) for (const warn of [false, true]) {
+        const tank = make();
+        tank.state.gunLimitSpec = warn;
+        const at = `${width}x${height}${touch ? ' touch' : ''} scope's arms, ${metres} m, ${label}${warn ? ', gun travel warning' : ''}`;
+        const ops = quickPaint(tank);
+        const { stack, furniture } = reticleGaps(ops, at, { warn, scoped: true, touch: !!touch });
+        const marks = [...stack.map((op) => [op.box, op.text ? `"${op.text}"` : 'a zoom rule']),
+          ...furniture.map((op) => [op.box, op.op === 'dom' ? 'the seated chip' : op.text ? `"${op.text}"` : 'a mark']),
+          ...boxes.map((box) => [box, box.name])];
+        for (const op of ops) {
+          if (op.op !== 'stroke' || !op.points) continue;
+          const arm = ARM_INK.has(op.style);
+          if (!arm && !TICK_INK.has(op.style)) continue;
+          for (const segment of segments(op)) {
+            if (arm) arms++; else ticks++;
+            for (const [box, what] of marks) {
+              const gap = apart(segment, box);
+              assert.ok(gap >= (arm ? 3 : 2) - 1e-6, `${at}: a ${arm ? 'cross arm' : 'mil tick'} keeps ${gap.toFixed(2)} px from ${what}`);
+            }
+          }
+        }
+      }
+    }
+  }
+  assert.ok(arms > 0 && ticks > 0, `the scope's arms (${arms}) and ticks (${ticks}) painted`);
   documentStub.body.classes.delete('cot-touch-layout');
   clearSightFurniture();
   settleSightFurniture();

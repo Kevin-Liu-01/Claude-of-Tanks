@@ -407,3 +407,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 /* (the card's own width wherever it sits: a fixed box shrinks to the room right of its left edge, and the plan measures it) */
 body.cot-touch-layout[data-touch-notices] .cot-medal-toasts{left:var(--hud-touch-banner-cx,50%);width:max-content}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation].cot-touch-layout[data-touch-notices] .cot-prebattle{left:var(--hud-touch-countdown-cx,50%);top:var(--hud-touch-countdown-top);transform:translateX(-50%) scale(var(--hud-touch-countdown-scale,1));transform-origin:50% 0}
+
+/* r10f (the notices critic: the drive gauge 2 px from the APFSDS slot at 1024 wide): the inline tray, centred, moves right
+   by the layout's measured shift until it keeps the damage panel's 12 px gap from the gauge */
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='inline'] .cot-shells{transform:translateX(calc(-50% + var(--hud-tray-shift,0px)))}

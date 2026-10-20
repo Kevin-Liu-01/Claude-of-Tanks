@@ -103,6 +103,8 @@ const TOUCH_NOTICE_SOFT = '.cot-minimap,.cot-top,.cot-mode-status.show,.cot-ear,
   + '.cot-si-toasthost,.cot-room-chat:not([hidden]),.cot-spec.show';
 /** The alert's height while none shows (two lines at the touch type size in the detection's width), so places hold. */
 const TOUCH_ALERT_RESERVE_H = 40;
+/** How far a mouse layout's inline tray keeps from the drive gauge: the damage panel's gap to it (r10f). */
+const TRAY_GAUGE_GAP = 12;
 /** The sixth-sense notice, which a touch layout's seated warning chip yields to (sightFurniture.ts sightNotice). */
 const SIXTH_SENSE = '.cot-sixth.on';
 /** The properties whose transition end measures a furniture again (installBattleHudLayout): a fade decides whether it is
@@ -132,7 +134,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
   const planInput = (target: Element) => { if (!transientParts.some((part) => target.classList?.contains(part))) planInputs = true; };
   const movesPlanInputs = new Set(['fps-top', 'network-top', 'network-corner-right', 'roster-left-height', 'roster-right-height',
     'systems-top', 'systems-width', 'systems-left', 'objective-top', 'objective-bottom', 'objective-width', 'objective-left',
-    'report-right', 'flight-right-clearance']);
+    'report-right', 'flight-right-clearance', 'tray-shift']);
   const resize = new ResizeObserver((entries) => {
     if (entries?.length) for (const entry of entries) planInput(entry.target);
     else planInputs = true;
@@ -505,6 +507,15 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if (width * 65536 + height !== lastSize) planInputs = true;
     const tray = width < 1000 ? 'stacked' : 'inline';
     if (document.body.dataset.hudTray !== tray) document.body.dataset.hudTray = tray;
+    // r10f (the notices critic: the drive gauge 2 px from the APFSDS slot at 1024 wide): a mouse layout's inline tray,
+    // centred, moves right until it keeps the gap the damage panel keeps from the gauge (TRAY_GAUGE_GAP)
+    let trayShift = 0;
+    if (!touch && tray === 'inline') {
+      const gauge = read('.cot-drive');
+      const shells = read('.cot-shells');
+      const shifted = parseFloat(document.body.style.getPropertyValue('--hud-tray-shift')) || 0;
+      if (gauge && shells) trayShift = Math.max(0, Math.ceil(gauge.right + TRAY_GAUGE_GAP - (shells.left - shifted)));
+    }
     // The mouse layout's centre notices are planned off the reticle (mouseNoticePlan.ts); touch keeps its own rules.
     if (document.body.hasAttribute('data-hud-notices') === touch) document.body.toggleAttribute('data-hud-notices', !touch);
     const map = read('.cot-minimap');
@@ -833,7 +844,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'touch-notice-cx': touchPlan?.noticeCx ?? width / 2, 'touch-alert-cx': touchPlan?.alertCx ?? width / 2,
       'touch-alert-w': touchPlan?.alertW ?? width - 24, 'touch-banner-cx': touchPlan?.bannerCx ?? width / 2,
       'touch-countdown-cx': touchPlan?.countdownCx ?? width / 2, 'touch-countdown-top': touchPlan?.countdownTop ?? top + 8,
-      'objective-top': scoreBottom, 'objective-bottom': top, 'banner-top': bannerTop,
+      'objective-top': scoreBottom, 'objective-bottom': top, 'banner-top': bannerTop, 'tray-shift': trayShift,
       'objective-width': objectiveWidth(score?.width || 344) - (touch && network && width > height ? 52 : 0),
       'objective-left': score ? score.left + score.width / 2 : width / 2,
       'kill-left-top': leftAnchor, 'kill-right-top': rightAnchor,
