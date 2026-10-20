@@ -208,6 +208,24 @@ function validateRunOptions(maxLeaseBatchMs, concurrency) {
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > MAX_SELFTEST_WORKERS) throw new TypeError(`concurrency must be an integer from 1 to ${MAX_SELFTEST_WORKERS}`);
 }
 
+// 229: CPU receipts take no capture lease unless COT_SELFTEST_CPU_LEASE=1. The lease made every npm test queue in the
+// GPU FIFO for each 45 s batch whenever a capture waited: on 2026-10-19 the queue held 45 tickets, its head 2 h 48 min
+// old, and two cold runs timed out at 30 min without starting a receipt. CPU work runs under nice and the capture lock
+// is for the GPU (house rule); the browser receipts still take the lock themselves, and run last so the CPU work never
+// waits behind the GPU queue. COT_SELFTEST_CPU_LEASE=1 restores the shared lease (a quiet-window gate that wants GPU
+// captures and CPU receipts never to overlap).
+export function selftestCpuLease(env = process.env) {
+  return env.COT_SELFTEST_CPU_LEASE === '1';
+}
+
+/** Barriers run alone and first; with no CPU lease the browser barriers move last (after the judges). */
+export function selftestAdmissionSets(cpuLease) {
+  if (cpuLease) return { barriers: new Set(SELFTEST_BARRIER_FILES), last: new Set(SELFTEST_LAST_FILES) };
+  // (a file in both lists, the garage switch probe, takes the lock itself: it goes last)
+  return { barriers: new Set(SELFTEST_EXCLUSIVE_CPU_FILES.filter((file) => !SELFTEST_OWNED_LEASE_FILES.includes(file))),
+    last: new Set([...SELFTEST_LAST_FILES, ...SELFTEST_OWNED_LEASE_FILES]) };
+}
+
 export async function runSelftestSuite(suiteName, suite, {
   runFile = runSelftestFile,
   lock = createCaptureLock(),
@@ -223,13 +241,14 @@ export async function runSelftestSuite(suiteName, suite, {
   failFast = false,
   cache = null,
   order, // pool admission order (registry indices); the serial path's total is order-independent
+  cpuLease = true, // false: CPU children take no capture lease (selftestCpuLease)
 } = {}) {
   validateRunOptions(maxLeaseBatchMs, concurrency);
   const gate = selftestCacheGate(cache, log);
   const lockTimeoutMs = selftestLockTimeoutMs();
   if (concurrency > 1) return runSelftestCpuPool(suiteName, suite, {
     concurrency, runFile, lock, ownedLeaseFiles, exclusiveCpuFiles, refreshMs, maxLeaseBatchMs, now, log, logError, onTiming,
-    failFast, gate, lockTimeoutMs, ...(order ? { order } : {}),
+    failFast, gate, lockTimeoutMs, cpuLease, ...(order ? { order } : {}),
   });
   let held = false;
   let acquiredAt = 0;
@@ -257,7 +276,7 @@ export async function runSelftestSuite(suiteName, suite, {
         else { acquiredAt = now(); lock.refresh(); }
       }
       if (ownedLeaseFiles.includes(file)) release();
-      else if (!held) {
+      else if (!held && cpuLease) {
         const queuedAt = now();
         await lock.acquire(lockTimeoutMs);
         queueMs = now() - queuedAt;
@@ -390,9 +409,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       // index; the committed snapshot covers receipts it has not seen, e.g. on a fresh clone).
       const snapshot = loadDurationSnapshot();
       const runMsOf = file => runtimes.runMsOf(file) ?? snapshot.get(file);
-      const order = command.order === 'longest' ? admissionOrder(suite, { runMsOf, barriers: new Set(SELFTEST_BARRIER_FILES),
-        last: new Set(SELFTEST_LAST_FILES) }) : undefined;
-      if (order) console.log(`[selftests] ${suiteName}: admission longest-first (${suite.filter(file => runMsOf(file) !== undefined).length} of ${suite.length} run times known; barriers first); --order=registry admits in registry order`);
+      const cpuLease = selftestCpuLease();
+      const order = command.order === 'longest' ? admissionOrder(suite, { runMsOf, ...selftestAdmissionSets(cpuLease) }) : undefined;
+      if (order) console.log(`[selftests] ${suiteName}: admission longest-first (${suite.filter(file => runMsOf(file) !== undefined).length} of ${suite.length} run times known; ${cpuLease ? 'barriers first' : 'exclusive CPU first, browser receipts last'}); --order=registry admits in registry order`);
+      console.log(`[selftests] ${suiteName}: ${cpuLease ? 'CPU receipts share the capture lease (COT_SELFTEST_CPU_LEASE=1)' : 'CPU receipts take no capture lease; browser receipts queue for the GPU themselves'}`);
       const logOf = file => join(command.logs, `${file}.log`);
       const runDirectory = selftestRunDirectory();
       process.env.COT_SELFTEST_RUN_DIR = runDirectory.dir; // every child inherits it (selftestChildEnv)
@@ -401,6 +421,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         failFast: selftestFailFast(),
         cache,
         order,
+        cpuLease,
         ...(command.logs ? { runFile: file => runSelftestFile(file, { logFile: logOf(file) }) } : {}),
         onTiming(row) {
           rows.push({ ...row, error: row.error?.message });

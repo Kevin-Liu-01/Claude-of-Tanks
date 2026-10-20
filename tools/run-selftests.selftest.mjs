@@ -5,7 +5,7 @@ import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
-import { runSelftestFile, runSelftestSuite, SELFTEST_FIXTURE_KEYED_FILES, SELFTEST_GRAPH_GUARD, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
+import { runSelftestFile, runSelftestSuite, selftestAdmissionSets, selftestCpuLease, SELFTEST_EXCLUSIVE_CPU_FILES, SELFTEST_FIXTURE_KEYED_FILES, SELFTEST_GRAPH_GUARD, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
   selftestCacheEnv, selftestRunDirectory, SELFTEST_LAST_FILES, SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
 import { createSelftestCache } from './selftest-cache.mjs';
 // The runners read COT_SHOTS_LOCK_TIMEOUT_MS (landing chains export three hours); this receipt pins the default wait.
@@ -104,6 +104,37 @@ assert.equal(await runSelftestSuite('fixture', ['a', 'slow', 'b', 'browser', 'c'
 assert.deepEqual(ordered.events, ['[selftests] fixture: 6 files', 'acquire', 'a', 'slow', 'b',
   'release', 'browser', 'acquire', 'c', 'd', '[selftests] PASS fixture', 'release']);
 assert.ok(ordered.refreshes > 0, 'async child waiting refreshes the held lease');
+
+// 229: with cpuLease false the CPU children never touch the capture lock, serial or pooled; the browser child still
+// runs alone (it takes the lock itself) and nothing is released that was never taken.
+for (const concurrency of [1, 3]) {
+  const events = [];
+  const lock = { async acquire() { assert.fail('a CPU child queued for the capture lock'); }, release() { events.push('release'); },
+    refresh() { assert.fail('no lease to refresh'); }, waiting: () => 4 };
+  let active = 0;
+  const status = await runSelftestSuite('no-lease', ['a', 'b', 'browser', 'c'], { concurrency, lock, ownedLeaseFiles: ['browser'],
+    cpuLease: false, refreshMs: 5, log: () => {}, logError: () => {},
+    async runFile(file) {
+      if (file === 'browser') assert.equal(active, 0, 'the browser receipt still runs alone');
+      active++; events.push(file); await new Promise((resolve) => setTimeout(resolve, 2)); active--;
+      return { status: 0 };
+    } });
+  assert.equal(status, 0);
+  assert.deepEqual(events.filter((event) => event !== 'release').sort(), ['a', 'b', 'browser', 'c'], `concurrency ${concurrency}`);
+}
+assert.equal(selftestCpuLease({}), false, 'the runner takes no CPU lease by default');
+assert.equal(selftestCpuLease({ COT_SELFTEST_CPU_LEASE: '1' }), true, 'COT_SELFTEST_CPU_LEASE=1 restores the shared lease');
+{
+  const leased = selftestAdmissionSets(true), free = selftestAdmissionSets(false);
+  for (const file of SELFTEST_OWNED_LEASE_FILES) {
+    assert.ok(leased.barriers.has(file) && !leased.last.has(file), `${file}: a first barrier under the shared lease`);
+    assert.ok(!free.barriers.has(file) && free.last.has(file), `${file}: last without a CPU lease, so CPU work never waits on the GPU queue`);
+  }
+  for (const file of SELFTEST_EXCLUSIVE_CPU_FILES.filter((file) => !SELFTEST_OWNED_LEASE_FILES.includes(file))) {
+    assert.ok(free.barriers.has(file), `${file}: still runs alone, first`);
+  }
+  for (const file of SELFTEST_LAST_FILES) assert.ok(free.last.has(file) && leased.last.has(file));
+}
 assert.equal(ordered.held, false);
 const refreshes = ordered.refreshes;
 await new Promise((resolve) => setTimeout(resolve, 15));

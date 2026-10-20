@@ -583,7 +583,13 @@ substitute for the map/contact, shadow-motion and real Garage/battle review.
 **Scheduling, selection and cache identity (2026-10-01).** Only the order and the batching of the
 work changed; every selected receipt still runs every assertion in a fresh process.
 
-- A lease batch older than 45 s yields (drains, releases, re-queues) only while another acquisition
+- (229) CPU receipts take no capture lease: CPU work runs under nice and the capture lock is for the
+  GPU. The exclusive CPU receipts still run alone and first; the self-leasing browser receipts run
+  alone and last, queueing for the lock themselves, so no CPU receipt waits behind the GPU queue
+  (on 2026-10-19 it held 45 tickets and two cold suites timed out at 30 min without starting).
+  `COT_SELFTEST_CPU_LEASE=1` restores the shared lease and the two bullets below (a quiet-window gate
+  that wants captures and CPU receipts never to overlap).
+- With the lease, a batch older than 45 s yields (drains, releases, re-queues) only while another acquisition
   waits in the capture queue; with nobody queued the batch window restarts and the lease is
   refreshed, never released (gate P5). The pool logs how often it renewed and yielded.
 - The pool admits the barrier receipts (exclusive CPU and self-leasing browser checks) first, then the

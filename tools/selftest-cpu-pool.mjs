@@ -1,5 +1,6 @@
-// Bounded fresh CPU subprocesses share one runner-owned lease. Real browser
-// regressions are barriers: drain CPU children, release, then run alone.
+// Bounded fresh CPU subprocesses share one runner-owned lease (or, with cpuLease false, none: CPU
+// work under nice, the capture lock for the GPU alone). Real browser regressions are barriers:
+// drain CPU children, release, then run alone.
 
 // Gate P5 (2026-10-01): a lease batch older than maxLeaseBatchMs yields (drains, releases and
 // re-queues) only while another acquisition waits in the capture queue. With nobody queued the
@@ -21,7 +22,7 @@ export function validAdmissionOrder(order, length) {
 export async function runSelftestCpuPool(name, files, options) {
   const { concurrency, runFile, lock, ownedLeaseFiles, exclusiveCpuFiles = [], refreshMs, maxLeaseBatchMs,
     now, log, logError, onTiming, failFast = false, gate = { lookup: () => null, record: () => {} },
-    lockTimeoutMs = 45 * 60 * 1000, order = files.map((_, index) => index) } = options;
+    lockTimeoutMs = 45 * 60 * 1000, order = files.map((_, index) => index), cpuLease = true } = options;
   if (!validAdmissionOrder(order, files.length)) throw new TypeError('order must be a permutation of the suite indices');
   let held = false, acquiredAt = 0, refresher, next = 0, failure;
   let interruptionSeen = false, renewals = 0, yields = 0;
@@ -68,6 +69,9 @@ export async function runSelftestCpuPool(name, files, options) {
     return false;
   };
   const acquireLease = async () => {
+    // cpuLease false (229, the runner's default): CPU children never wait in the capture FIFO; only the browser
+    // receipts, which take the lock themselves, queue for the GPU.
+    if (!cpuLease) return 0;
     if (batchMustYield()) { yields++; release(); }
     if (held) return 0;
     const queuedAt = now();
