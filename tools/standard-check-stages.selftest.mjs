@@ -141,7 +141,10 @@ const redirects = {
           throw new Error('unexpected evaluate ' + expression);
         },
       };
-      return run({ server: { config: { server: { port: 1 } } }, browser: { newPage: async () => page } });
+      // the CLI builds its page URL from the address the server really bound (tools/tool-page-load.mjs boundOrigin)
+      const address = { address: '127.0.0.1', family: 'IPv4', port: 1 };
+      return run({ server: { config: { server: { port: 1 } }, httpServer: { address: () => address } },
+        browser: { newPage: async () => page } });
     }
   `),
   // The real measurement for every id outside the registered opening targets is exactly this policy call
@@ -225,19 +228,22 @@ function runScenario(name, scenario, args, prewritten = {}) {
     let stdout = '', stderr = '';
     child.stdout.on('data', chunk => { stdout += chunk; });
     child.stderr.on('data', chunk => { stderr += chunk; });
-    const timer = setTimeout(() => child.kill('SIGKILL'), 120_000);
+    // A hang guard only: a scenario finishes in seconds, so the bound is generous enough that machine load (the gate
+    // runs at load 200+) can never cut a healthy child short; a killed child is named in every assertion message.
+    let killed = false;
+    const timer = setTimeout(() => { killed = true; child.kill('SIGKILL'); }, 600_000);
     child.once('error', reject);
     child.once('close', code => {
       clearTimeout(timer);
       const lines = file => existsSync(path.join(cwd, file)) ? readFileSync(path.join(cwd, file), 'utf8').trim().split('\n').filter(Boolean) : [];
       const stagesFile = path.join(out, 'stages.json');
-      resolve({ name, code, stdout, stderr, ran: lines('ran.txt'), rendered: lines('render.txt'), lock: lines('lock.txt'),
+      resolve({ name, code, killed, stdout, stderr, ran: lines('ran.txt'), rendered: lines('render.txt'), lock: lines('lock.txt'),
         report: existsSync(stagesFile) ? JSON.parse(readFileSync(stagesFile, 'utf8')) : null });
     });
   });
 }
 const rowsOf = report => Object.fromEntries(report.rows.map(row => [row.id, row.stages]));
-const explain = result => `${result.name}: exit ${result.code}\n${result.stdout}\n${result.stderr}`;
+const explain = result => `${result.name}: exit ${result.code}${result.killed ? ' (killed by the 600 s hang guard)' : ''}\n${result.stdout}\n${result.stderr}`;
 
 try {
   const ids = `--ids=${COMPARISON},${CONCEPT},${PHOTO}`;
@@ -253,13 +259,15 @@ try {
       [`--ids=${COMPARISON},${UNSCORED}`, '--no-render', '--stages'], { [COMPARISON]: PASSING_PACKET }),
     runScenario('render-error', { ...ALL_GREEN, renderThrows: true }, [`--ids=${COMPARISON}`, '--gate', '--stages']),
   ]);
-  for (const result of [stagesRun, defaultRun, green, stageError, clipCrash, noRender, renderError])
+  for (const result of [stagesRun, defaultRun, green, stageError, clipCrash, noRender, renderError]) {
+    assert.equal(result.killed, false, explain(result));
     assert.ok(!result.lock.length || result.lock.every(line => /^(acquire|captured )/.test(line)), explain(result));
+  }
 
   // --stages: a red geometry gate, red concept and photo proofs and a red B4 no longer hide B2 and B3.
   assert.equal(stagesRun.code, 2, explain(stagesRun));
   assert.deepEqual(stagesRun.ran, ['geometry', 'concept', 'photo', 'clip'], explain(stagesRun));
-  assert.deepEqual(stagesRun.rendered, [COMPARISON, CONCEPT, PHOTO], 'B2/B3 rendered every id after the red A stages');
+  assert.deepEqual(stagesRun.rendered, [COMPARISON, CONCEPT, PHOTO], `B2/B3 rendered every id after the red A stages\n${explain(stagesRun)}`);
   assert.deepEqual(rowsOf(stagesRun.report), {
     [COMPARISON]: { geometry: 'FAIL', clip: 'PASS', contiguity: 'FAIL', decor: 'FAIL' },
     [CONCEPT]: { concept: 'FAIL', clip: 'FAIL', contiguity: 'PASS', decor: 'PASS' },
