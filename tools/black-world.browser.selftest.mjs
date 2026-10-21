@@ -196,7 +196,9 @@ try {
   report.checks.heal = healed;
   assert.equal(healed.class, 'camera-layer-mask', 'the injected fault is named');
   assert.equal(healed.healedBy, 'H1', 'H1 heals it');
-  assert.ok(healed.afterMs <= 500, `healed within half a second (${healed.afterMs} ms, ${healed.frames} frames)`);
+  // the acceptance's bound is 30 frames (half a second at 60 Hz): a page this busy host starves to a few frames a second
+  // (5146 ms for 8 frames, 2026-10-20) measures the host in wall time, not the guard
+  assert.ok(healed.frames <= 30, `healed within 30 frames (${healed.frames} frames, ${healed.afterMs} ms)`);
   assert.equal(healed.mask & 1, 1, 'the camera sees layer 0 again');
   assert.ok(await worldZeroShare(page) < 0.8, 'the world is back');
 
