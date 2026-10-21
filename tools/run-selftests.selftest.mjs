@@ -70,9 +70,20 @@ assert.ok(!SELFTEST_FRESH_FILES.includes('src/vehicles/fleetLazy.selftest.mjs'),
 assert.deepEqual(selftestPlan(['a'], {
   lookup: () => ({ skip: false, reason: 'new input', inputs: 2 }),
   closureOf: () => new Set(['/fixture/src', '/fixture/tools/a.mjs']),
+  scanMatch: () => false,
 }, ['src/main.ts', 'docs/readme.md'], '/fixture'), [
-  { file: 'a', action: 'run', reason: 'new input', inputs: 2, affectedBy: ['src/main.ts'] },
-], 'impact planning is explanatory and includes directory inputs');
+  { file: 'a', action: 'run', reason: 'new input', inputs: 2, affectedBy: ['src/main.ts'], scanBy: [], broadOnly: true },
+], 'impact planning is explanatory and includes directory inputs; a match through a fallback directory alone is broad');
+// (2026-10-20, after 228p) a named file or a non-fallback directory is a read; a listing's pattern selects even a deleted path
+assert.deepEqual(selftestPlan(['a'], {
+  lookup: () => ({ skip: false, reason: 'new input', inputs: 3 }),
+  closureOf: () => new Set(['/fixture/src', '/fixture/src/ui/hud.ts', '/fixture/public/icons']),
+  scanMatch: (file, path) => path.startsWith('src/presentation/'),
+}, ['src/ui/hud.ts', 'public/icons/a.webp', 'src/presentation/gone.ts', 'src/world/map.ts', 'api/x.ts'], '/fixture'), [
+  { file: 'a', action: 'run', reason: 'new input', inputs: 3,
+    affectedBy: ['src/ui/hud.ts', 'public/icons/a.webp', 'src/presentation/gone.ts', 'src/world/map.ts'],
+    scanBy: ['src/presentation/gone.ts'], broadOnly: false },
+], 'named files, named directories and listings select; the fallback alone only explains');
 
 function fixture({ failAt, errorAt, acquireError } = {}) {
   const events = [], errors = [];
