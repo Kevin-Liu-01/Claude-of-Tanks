@@ -712,13 +712,13 @@
    "hostSweep": []
   },
   "challenger3": {
-   "inputHash": "e210c601fb0ec388",
+   "inputHash": "35031b8a2825804e",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger3_proto": {
-   "inputHash": "3c4c170c06ec83c4",
+   "inputHash": "41c343409eda4b67",
    "runs": [
     {
      "index": 0,
@@ -741,7 +741,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.854,
-      "host": "turret<c3ShellSegment@profiles/challenger.ts:4796>"
+      "host": "turret<c3ShellSegment@profiles/challenger.ts:4798>"
      }
     }
    ],
@@ -1110,7 +1110,7 @@
    "hostSweep": []
   },
   "leclerc_s1": {
-   "inputHash": "99f0390313f71c67",
+   "inputHash": "b83571cb455b2cc3",
    "runs": [
     {
      "index": 0,
@@ -1131,7 +1131,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 1,
-      "host": "turret<buildLeclercTurretStage4@profiles/misc.ts:1609>"
+      "host": "turret<buildLeclercTurretStage4@profiles/misc.ts:1621>"
      }
     }
    ],
@@ -1168,7 +1168,7 @@
    "hostSweep": []
   },
   "leclerc_sxxi": {
-   "inputHash": "d6d88f0870d07c3f",
+   "inputHash": "aa85b782bae0b719",
    "runs": [
     {
      "index": 0,
@@ -1189,7 +1189,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 1,
-      "host": "turret<buildLeclercTurretStage4@profiles/misc.ts:1609>"
+      "host": "turret<buildLeclercTurretStage4@profiles/misc.ts:1621>"
      }
     }
    ],
@@ -1209,7 +1209,7 @@
    "hostSweep": []
   },
   "leo2_improved": {
-   "inputHash": "59f4455502753139",
+   "inputHash": "844f963f32fccffa",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1227,7 +1227,7 @@
    "hostSweep": []
   },
   "leo2a2": {
-   "inputHash": "c244a00710ae01e4",
+   "inputHash": "9ca52b22f0083bec",
    "runs": [
     {
      "index": 0,
@@ -1248,7 +1248,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.932,
-      "host": "hull<cutSlab@profiles/leopard.ts:1571>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1586>"
      }
     },
     {
@@ -1270,7 +1270,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.897,
-      "host": "turret<buildLeo2A4TurretStage1@profiles/leopard.ts:6875>"
+      "host": "turret<buildLeo2A4TurretStage1@profiles/leopard.ts:7132>"
      }
     }
    ],
@@ -1278,7 +1278,7 @@
    "hostSweep": []
   },
   "leo2a3": {
-   "inputHash": "9827aa18cc2bd1ff",
+   "inputHash": "2acd7c4e9b8a0a8b",
    "runs": [
     {
      "index": 0,
@@ -1299,7 +1299,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.932,
-      "host": "hull<cutSlab@profiles/leopard.ts:1569>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1586>"
      }
     },
     {
@@ -1321,7 +1321,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.9,
-      "host": "turret<buildLeo2A4TurretStage1@profiles/leopard.ts:6873>"
+      "host": "turret<buildLeo2A4TurretStage1@profiles/leopard.ts:7132>"
      }
     }
    ],
@@ -1619,7 +1619,7 @@
    "hostSweep": []
   },
   "leo2a4m_can": {
-   "inputHash": "c44b05e67e989cbf",
+   "inputHash": "0dea150c8d345582",
    "runs": [
     {
      "index": 0,
@@ -1640,7 +1640,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<leoHullV3HullStage3@profiles/leopard.ts:1561>"
+      "host": "hull<leoHullV3HullStage3@profiles/leopard.ts:1576>"
      }
     },
     {
@@ -1662,7 +1662,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.897,
-      "host": "turret<buildLeo2A4MTurretStage1@profiles/leopard.ts:14520>"
+      "host": "turret<buildLeo2A4MTurretStage1@profiles/leopard.ts:14791>"
      }
     }
    ],
@@ -1754,7 +1754,7 @@
    "hostSweep": []
   },
   "leopard2_proto": {
-   "inputHash": "e1b35ced7196debf",
+   "inputHash": "c59fec1a1fafebaa",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2863,7 +2863,7 @@
    "hostSweep": []
   },
   "t14_armata": {
-   "inputHash": "ab5c33076bfb8889",
+   "inputHash": "6e19ef0ff50eda1a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3317,7 +3317,7 @@
    "hostSweep": []
   },
   "t90_1992": {
-   "inputHash": "f370d0cc63a82dcf",
+   "inputHash": "34485625e139ed58",
    "runs": [
     {
      "index": 0,
@@ -3352,7 +3352,7 @@
    "hostSweep": []
   },
   "t90a_2004": {
-   "inputHash": "5099eb8a8cce4831",
+   "inputHash": "6a76e0ee76f75a55",
    "runs": [
     {
      "index": 0,
@@ -3383,7 +3383,7 @@
    "hostSweep": []
   },
   "t90a_2006": {
-   "inputHash": "322b633dac2ee923",
+   "inputHash": "6e36af32353b2595",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3395,7 +3395,7 @@
    "hostSweep": []
   },
   "t90a_burlak_proto": {
-   "inputHash": "4478bcc40039d158",
+   "inputHash": "da6a134b5a7ef3c8",
    "runs": [
     {
      "index": 0,
@@ -3432,7 +3432,7 @@
    "hostSweep": []
   },
   "t90am": {
-   "inputHash": "9335d175dbead6d3",
+   "inputHash": "9a09f4203f44b4e6",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3444,13 +3444,13 @@
    "hostSweep": []
   },
   "t90m_proryv": {
-   "inputHash": "2446b9dbe6fa4380",
+   "inputHash": "e87b078babc5e37b",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t90ms_2011": {
-   "inputHash": "f986a274addec737",
+   "inputHash": "77ca8f591650f486",
    "runs": [
     {
      "index": 0,
@@ -3471,7 +3471,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.956,
-      "host": "turret<Proxy.add<-rebuildT90MSTurretExact@profiles/t90.ts:6593>"
+      "host": "turret<Proxy.add<-rebuildT90MSTurretExact@profiles/t90.ts:6661>"
      }
     }
    ],
@@ -3491,7 +3491,7 @@
    "hostSweep": []
   },
   "t90sm_2013": {
-   "inputHash": "7623da5a896f4a60",
+   "inputHash": "0b37e5d9ca86a645",
    "runs": [
     {
      "index": 0,
@@ -3512,7 +3512,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.989,
-      "host": "turretDetail<Proxy.add<-addT90SMLegacyBustleCageAndSystems@profiles/t90.ts:4200>"
+      "host": "turretDetail<Proxy.add<-addT90SMLegacyBustleCageAndSystems@profiles/t90.ts:4250>"
      }
     }
    ],
