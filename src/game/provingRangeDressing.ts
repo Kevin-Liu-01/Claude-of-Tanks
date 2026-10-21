@@ -61,6 +61,23 @@ function hash(i: number, j: number, seed: number): number {
   return ((h >>> 0) & 0xffff) / 0xffff;
 }
 
+/**
+ * A unit box whose +z face is its own last group (material 1) after one group of the other five (material 0): a board's
+ * or a plate's painted face and its plain edges in two draws, not six.
+ */
+function faceBox(): THREE.BoxGeometry {
+  const box = new THREE.BoxGeometry(1, 1, 1);
+  const index = box.getIndex()!;
+  const source = Array.from(index.array as ArrayLike<number>);
+  // BoxGeometry's groups run px, nx, py, ny, pz, nz, six indices each: move pz after nz
+  const order = [...source.slice(0, 24), ...source.slice(30, 36), ...source.slice(24, 30)];
+  box.setIndex(order);
+  box.clearGroups();
+  box.addGroup(0, 30, 0);
+  box.addGroup(30, 6, 1);
+  return box;
+}
+
 /** A beam's matrix from `a` to `b` with a square section `w` x `d` (its local y along the beam). */
 function beamMatrix(a: THREE.Vector3, b: THREE.Vector3, w: number, d: number, out: THREE.Matrix4): THREE.Matrix4 {
   _mid.addVectors(a, b).multiplyScalar(0.5);
@@ -98,38 +115,35 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
   };
   const geometry = <T extends THREE.BufferGeometry>(made: T): T => { geometries.push(made); return made; };
   const unitBox = geometry(new THREE.BoxGeometry(1, 1, 1));
+  const panelBox = geometry(faceBox());
   const frameMaterial = material({ color: 0x4a5236, roughness: 0.78, metalness: 0.15 });
   const steelSide = material({ color: 0x4f575d, roughness: 0.5, metalness: 0.55 });
   const postMaterial = material({ color: 0x3b4044, roughness: 0.82, metalness: 0.1 });
   const poleMaterial = material({ color: 0xe9ece6, roughness: 0.6, metalness: 0 });
   const capMaterial = material({ color: 0xd8462a, roughness: 0.55, metalness: 0 });
 
-  /** A board facing `yaw` (its face's normal), `w` x `h`, its lower edge `lift` above the ground at (x, z), on posts. */
+  /** A board facing `yaw` (its face's normal), `w` x `h`, its lower edge `lift` above the ground at (x, z), on posts
+   *  (their matrices into `posts`: one instanced mesh for every board's posts). */
   const board = (group: THREE.Group, canvas: HTMLCanvasElement, x: number, z: number, yaw: number, w: number, h: number,
-    lift: number, posts: 1 | 2): THREE.CanvasTexture => {
+    lift: number, postCount: 1 | 2, posts: THREE.Matrix4[]): THREE.CanvasTexture => {
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = 4;
     textures.push(texture);
     const face = material({ map: texture, roughness: 0.72, metalness: 0 }, rangeLit);
     const y = ground(x, z);
-    const panel = new THREE.Mesh(unitBox, [postMaterial, postMaterial, postMaterial, postMaterial, face, postMaterial]);
+    const panel = new THREE.Mesh(panelBox, [postMaterial, face]);
     panel.scale.set(w, h, 0.06);
     panel.position.set(x, y + lift + h / 2, z);
     panel.rotation.y = yaw;
     panel.castShadow = true;
     panel.receiveShadow = true;
     group.add(panel);
-    const across = posts === 2 ? [-w * 0.36, w * 0.36] : [0];
+    const across = postCount === 2 ? [-w * 0.36, w * 0.36] : [0];
     for (const offset of across) {
       const px = x + Math.cos(yaw) * offset - Math.sin(yaw) * 0.06, pz = z - Math.sin(yaw) * offset - Math.cos(yaw) * 0.06;
-      const post = new THREE.Mesh(unitBox, postMaterial);
       const top = y + lift + h * 0.9, foot = ground(px, pz) - 0.2;
-      post.scale.set(0.09, top - foot, 0.09);
-      post.position.set(px, (top + foot) / 2, pz);
-      post.rotation.y = yaw;
-      post.castShadow = true;
-      group.add(post);
+      posts.push(beamMatrix(_a.set(px, foot, pz), _b.set(px, top, pz), 0.09, 0.09, new THREE.Matrix4()));
     }
     return texture;
   };
@@ -282,7 +296,7 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
       texture.anisotropy = 4;
       textures.push(texture);
       const face = material({ map: texture, roughness: 0.48, metalness: 0.55 }, rangeLit);
-      const slab = new THREE.Mesh(unitBox, [steelSide, steelSide, steelSide, steelSide, face, steelSide]);
+      const slab = new THREE.Mesh(panelBox, [steelSide, face]);
       _basis.makeBasis(r, u, n);
       slab.quaternion.setFromRotationMatrix(_basis);
       slab.scale.set(plate.widthM, plate.heightM, thickness);
@@ -327,11 +341,12 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
     const yaw = range.course.yaw;
     const fx = Math.sin(yaw), fz = Math.cos(yaw), lx = Math.cos(yaw), lz = -Math.sin(yaw);
     const boardCanvases: Array<[HTMLCanvasElement, number]> = [];
+    const boardPosts: THREE.Matrix4[] = [];
     for (let along = BOARD_STEP_M; along <= BOARD_LAST_M; along += BOARD_STEP_M) {
       const x = range.origin.x + fx * along + lx * BOARD_LATERAL_M, z = range.origin.z + fz * along + lz * BOARD_LATERAL_M;
       if (Math.abs(x) > 500 || Math.abs(z) > 500) break;
       const canvas = canvasOf(256, 160);
-      board(group, canvas, x, z, Math.atan2(range.origin.x - x, range.origin.z - z), 2.2, 1.375, 1.1, 2);
+      board(group, canvas, x, z, Math.atan2(range.origin.x - x, range.origin.z - z), 2.2, 1.375, 1.1, 2, boardPosts);
       boardCanvases.push([canvas, along]);
     }
 
@@ -343,7 +358,7 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
     for (const feature of course.features) {
       const x = feature.x0 - cf.x * 3 - cl.x * (edge + 1.2), z = feature.z0 - cf.z * 3 - cl.z * (edge + 1.2);
       const canvas = canvasOf(256, 256);
-      board(group, canvas, x, z, course.yaw + Math.PI, 1.3, 1.3, 0.9, 1);
+      board(group, canvas, x, z, course.yaw + Math.PI, 1.3, 1.3, 0.9, 1, boardPosts);
       courseCanvases.push([canvas, feature.kind, feature.first]);
     }
     const length = Math.hypot(course.end.x - course.start.x, course.end.z - course.start.z);
@@ -371,6 +386,7 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
       group.add(mesh);
     };
     instanced(poles, poleMaterial, 'range-course-poles');
+    instanced(boardPosts, postMaterial, 'range-board-posts');
     instanced(caps, capMaterial, 'range-course-caps');
 
     // draw now (fallback faces), again once the range's type has loaded

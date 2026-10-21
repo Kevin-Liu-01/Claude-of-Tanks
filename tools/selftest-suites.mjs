@@ -823,6 +823,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleSides.selftest.mjs',
     // 2026-10-17 (v2 progression): the proving ground run for real on its range, and the test drive's entry points.
     'src/game/provingSession.selftest.mjs',
+    // 2026-10-20: the range's furniture — plates on the simulation's faces, boards, the course, the draw budget.
+    'src/game/provingRangeDressing.selftest.mjs',
     // 2026-10-08 (modes lane): the solo sim and the host seat every side on the same deployment slots.
     'src/game/deploymentParity.selftest.mjs',
     'src/game/rosterVisualStaging.selftest.mjs',
