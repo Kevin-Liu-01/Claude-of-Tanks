@@ -5,6 +5,8 @@ import { createNightLightingRuntime } from '../engine/nightLightingRuntime.ts';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
 import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.ts';
 import { MAP_IDS } from './maps/catalog.ts';
+import { clutterTypes } from './maps/clutterKit.ts';
+import { LAMP_FORMS } from './maps/streetKit.ts';
 import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const scene = new THREE.Scene(), root = new THREE.Group();
@@ -128,5 +130,45 @@ try {
     [{ kind: 'lamp', slot: 2, state: 0 }], 'urban'), /instance slot/);
 } finally {
   runtime.dispose(); lamps.dispose(); geometry.dispose(); ordinary.dispose(); lampMaterial.dispose(); curtain.dispose();
+}
+// (229, the night amber carry: "no lamp pools render beyond Steinburg") every map's street lamp, as its props build it
+// (clutterTypes: the map's own form, else the cast-iron lamp), carries its lens seat for the pooled light that
+// registerWorldNightLighting gives each standing lamp at night, unless its form is shot out (Ruinspires' cobra heads stay
+// dark); the seat stands in the lamp's head, over a hull's height
+{
+  const lit = [], dark = [];
+  for (const mapId of MAP_IDS) {
+    const type = clutterTypes(mapId, false).lamp ?? DESTRUCTIBLE_TYPES.lamp;
+    const form = type.build(() => .5);
+    form.computeBoundingBox();
+    const lens = form.userData.lampLens === undefined ? [0.98, 3.895, 0] : form.userData.lampLens;
+    if (LAMP_FORMS[mapId]?.broken) {
+      assert.equal(lens, null, `${mapId}: a shot-out lamp has no glass and no light`);
+      dark.push(mapId);
+    } else {
+      assert.ok(Array.isArray(lens), `${mapId}: the lamp's lens seat (its pooled light at night)`);
+      const box = form.boundingBox;
+      assert.ok(lens[1] > 2.5 && lens[1] <= box.max.y + 1e-6 && lens[1] > box.max.y - 1.5, `${mapId}: the seat in the lamp's head (${lens[1].toFixed(2)} m of ${box.max.y.toFixed(2)})`);
+      lit.push(mapId);
+    }
+    form.dispose();
+  }
+  assert.deepEqual(dark, ['ruinspires'], 'only the shot-out lamps stay dark');
+  assert.ok(lit.length === MAP_IDS.length - 1);
+  // and only at night: a day's prepare lights nothing and adds no light pool to the scene
+  const day = new THREE.Scene(), town = new THREE.Group(), lampMat = new THREE.MeshStandardMaterial();
+  day.add(town);
+  const lampMesh = new THREE.InstancedMesh(DESTRUCTIBLE_TYPES.lamp.build(() => .5), lampMat, 1);
+  lampMesh.name = 'destructible-lamp'; lampMesh.setMatrixAt(0, new THREE.Matrix4()); town.add(lampMesh);
+  registerWorldNightLighting(town, new THREE.MeshStandardMaterial(), [{ kind: 'lamp', slot: 0, state: 0 }], 'foundry');
+  const pool = createNightLightingRuntime(day, { spotLights: 1, pointLights: 2 });
+  pool.prepare([{ root: town }], false);
+  pool.update(new THREE.Vector3(-10, 2, 0), true, new THREE.Vector3(1, 0, 0));
+  assert.ok(pool.lights.every((light) => light.intensity === 0) && !day.children.includes(pool.group), 'by day no lamp lights');
+  pool.prepare([{ root: town }], true);
+  pool.update(new THREE.Vector3(-10, 2, 0), true, new THREE.Vector3(1, 0, 0));
+  assert.equal(pool.lights.filter((light) => light.intensity > 0).length, 1, 'at night the lamp pools');
+  pool.dispose(); lampMesh.geometry.dispose(); lampMat.dispose();
+  console.log(`worldNightLighting: ${lit.length} maps' street lamps seat their pooled light (shot out: ${dark.join(', ')}), at night only`);
 }
 console.log('worldNightLighting: authored lamp transforms, destruction, window emission and exact restoration passed');
