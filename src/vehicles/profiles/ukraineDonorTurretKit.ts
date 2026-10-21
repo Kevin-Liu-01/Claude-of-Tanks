@@ -411,8 +411,12 @@ function turretSuit(id:UkraineDonorId,n:TurretNet):GhillieConfig {
   const opening=([x,z]:readonly[number,number]):[number,number][]=>[[x-.26,z-.26],[x+.26,z-.26],[x+.26,z+.26],[x-.26,z+.26]];
   return {...base,turret:{
     // The roof net opens round the marks and over the drone dock's landing (its 12 m lift column stays clear).
+    // (230 round 11: over Hetman II's forward Duplet-T slab field the net lies on the slabs' tops (ghillieSuit.ts
+    // envelopeM), as the glacis net does over the chevron bands: laid on the roof between them, its lying garnish met the
+    // slabs' sides and kept 26 % of the net, under the receipt's 30 %; on their tops it keeps 38 %)
     top:[{yFromArmour:true,clipToArmour:true,autoOpeningsM:.07,rimScale:.5,x0:-n.x,x1:n.x,z0:n.rear,z1:n.front,nx:38,
-      nz:Math.round((n.front-n.rear)/.1),yAt:()=>n.roof,garnishRiseM:.16,seed:151,holes:[...n.marks.map(opening),landingOpening(id)]}],
+      nz:Math.round((n.front-n.rear)/.1),yAt:()=>n.roof,garnishRiseM:.16,seed:151,holes:[...n.marks.map(opening),landingOpening(id)],
+      ...(id==='t72b3m_hetman_ii'?{envelopeM:.09,envelopeZ:[.10,.80] as const}:{})}],
     side:n.sides.map((s,i)=>({side:s.side,z0:s.z0,z1:s.z1,nz:Math.max(6,Math.round((s.z1-s.z0)/.07)),ny:7,seed:71+s.side+i*13,
       topAt:()=>s.top-.026,bottomAt:(z:number)=>s.bottom+.068+.017*Math.sin(z*5.2),
       outAt:(z:number,t:number)=>s.out(z)+.028+(1-t)*.015})),
