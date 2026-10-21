@@ -1543,6 +1543,9 @@ function assemblePintleMg(context: PintleMgBuildContext): THREE.Group {
  */
 const RIDING_CRADLE_PARTS = new Map<string, { readonly parts: readonly (readonly [string, readonly THREE.BufferGeometry[]])[][];
   readonly fit: RidingCradleFit }>();
+/** Release 230: the riding remote stations (FITTINGS.americanRws, the armed FITTINGS.openYokeRws), built once per option
+ * set as the riding pintles are: their yaw stage, cradle and gun parts, before they are assembled. */
+const RIDING_STATION_PARTS = new Map<string, readonly (readonly [string, readonly THREE.BufferGeometry[]])[][]>();
 function ridingCradleKey(opts: FittingOptions): string {
   const { mats: _mats, ...geometric } = opts;
   return JSON.stringify(geometric);
@@ -2235,7 +2238,7 @@ function americanRwsTrunnion(context: AmericanRwsBuildContext, receiverHalfW: nu
  * recoils inside it). */
 function addAmericanRwsWeaponSystem(context: AmericanRwsBuildContext, cradle: FittingParts, gun: FittingParts): void {
   const { box, cylX } = KIT;
-  const { body, headD, headW, headY, recY, s, standard } = context;
+  const { body, headW, headY, recY, s, standard } = context;
   // 2026-10-11 (fleet-weapons lane, round 3b; wave 348b's critics on the SEPv3's station: "flat untextured grey boxes
   // with a plain rod barrel"): the M2 is the fleet's Browning construction in its remote form (receiver with feed cover
   // and feedway, solenoid at the back plate, perforated barrel support, heavy barrel, flash hider), its receiver centred
@@ -2256,10 +2259,23 @@ function addAmericanRwsWeaponSystem(context: AmericanRwsBuildContext, cradle: Fi
   const receiverBottom = dy + layout.bodyBottom;
   cradle.add('dark', box(0.16 * s, 0.030 * s, 0.16 * s), 0, receiverBottom - 0.0005 - 0.015 * s, 0.04 * s);
   const { plateIn, plateOut, bracketIn, pinR } = americanRwsTrunnion(context, layout.bodyW / 2);
+  // each plate's front stops 2 mm behind whatever of the gun runs back past the receiver's side over the recoil stroke
+  // (the retracting slide's handle), and never nearer the pin than 1.5 mm
+  const triangles = fittingTriangles(gun), plateBottom = receiverBottom - 0.0005 - 0.026 * s, plateTop = recY + 0.030 * s;
   for (const side of [-1, 1]) {
-    const plateBottom = receiverBottom - 0.0005 - 0.026 * s, plateTop = recY + 0.030 * s;
-    cradle.add('dark', box(plateOut - plateIn, plateTop - plateBottom, 0.08 * s),
-      side * (plateIn + plateOut) / 2, (plateTop + plateBottom) / 2, 0);
+    let front = 0.04 * s;
+    for (let t = 0; t < triangles.length; t += 9) {
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity;
+      for (let k = 0; k < 9; k += 3) {
+        const x = side * triangles[t + k]!, y = triangles[t + k + 1]!;
+        x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); z0 = Math.min(z0, triangles[t + k + 2]!);
+      }
+      if (x1 < plateIn - 0.002 || x0 > plateOut + 0.002 || y1 < plateBottom || y0 > plateTop) continue;
+      front = Math.min(front, z0 - RIDING_CRADLE_RECOIL_M - 0.002);
+    }
+    front = Math.max(front, pinR + 0.0015);
+    cradle.add('dark', box(plateOut - plateIn, plateTop - plateBottom, front + 0.04 * s),
+      side * (plateIn + plateOut) / 2, (plateTop + plateBottom) / 2, (front - 0.04 * s) / 2);
     const pinIn = plateOut - 0.004 * s, pinOut = bracketIn - 0.002;
     cradle.add('dark', cylX(pinR, pinOut - pinIn, 12), side * (pinIn + pinOut) / 2, recY, 0);
   }
@@ -2306,7 +2322,6 @@ function addAmericanRwsWeaponSystem(context: AmericanRwsBuildContext, cradle: Fi
   // pitch group did)
   gun.add('shadow', box(0.095 * s, 0.070 * s, 0.018 * s),
     0.205 * s, serviceY + 0.025 * s, 0.027 * s);
-  void headD;
 }
 
 /** Release 230: the trunnion brackets on the head (on its top cover, or the standard head's brow), each with its bearing
@@ -2354,12 +2369,15 @@ function addAmericanRwsVariantArmor(context: AmericanRwsBuildContext): void {
         0, 0, side * 0.06);
     }
   } else if (hunter) {
+    // (release 230: the sensor box keeps its place against the head's top, and its mast stands outboard of the service
+    // tower's swing)
+    const headTop = headY + headH / 2;
     plate(body, 0.25 * s, 0.28 * s, 0.25 * s,
-      0.31 * s, headY + 0.06 * s, 0.00);
+      0.31 * s, headTop - 0.09 * s, 0.00);
     plate('glass', 0.15 * s, 0.13 * s, 0.022 * s,
-      0.31 * s, headY + 0.07 * s, 0.137 * s);
+      0.31 * s, headTop - 0.08 * s, 0.137 * s);
     fitting('detail', () => cylY(0.045 * s, 0.060 * s, 0.10 * s, 14), 0.12 * s, 0.10 * s, 0.12 * s,
-      0.31 * s, headY + 0.25 * s, 0.00);
+      0.36 * s, headTop + 0.10 * s, 0.00);
   } else if (low) {
     for (const side of [-1, 1]) {
       if (underCoffin(side)) continue;
@@ -2422,7 +2440,7 @@ function sweptLow(moving: RidingStationMoving, x0: number, x1: number, z0: numbe
     const gunM = pivot.clone().multiply(turn).multiply(new THREE.Matrix4().makeTranslation(0, -pivotY, -pivotZ - r));
     for (const t of candidates) {
       const M = t / 9 < moving.gunTriangles ? gunM : full;
-      let poly = [0, 3, 6].map((o) => v.set(T[t + o]!, T[t + o + 1]!, T[t + o + 2]!).applyMatrix4(M).toArray());
+      let poly: number[][] = [0, 3, 6].map((o) => v.set(T[t + o]!, T[t + o + 1]!, T[t + o + 2]!).applyMatrix4(M).toArray());
       for (const [axis, bound, dir] of [[0, x0, 1], [0, x1, -1], [2, z0, 1], [2, z1, -1]] as const) {
         poly = clip(poly, axis, bound, dir);
         if (!poly.length) break;
@@ -2433,14 +2451,15 @@ function sweptLow(moving: RidingStationMoving, x0: number, x1: number, z0: numbe
   return low;
 }
 
-/** Release 230: how much lower the head (its top cover, or the standard head's brow) must stand to keep the air from
- * everything that moves over it. */
+/** Release 230: how much lower the head (its top cover, or the standard head's brow) must stand to keep twice the air
+ * from everything that moves over it. */
 function americanRwsHeadDrop(context: AmericanRwsBuildContext, moving: RidingStationMoving): number {
   const { headD, headH, headW, headY, recY, s, standard } = context;
   const halfW = (standard ? headW + 0.09 * s : headW) / 2, halfD = (standard ? headD + 0.05 * s : headD) / 2, z = 0.04 * s;
   const top = headY + headH / 2 + (standard ? 0.051 : 0.026) * s, foot = headY - headH / 2;
   const low = sweptLow(moving, -halfW, halfW, z - halfD, z + halfD, Math.hypot(recY - foot, Math.abs(z) + halfD));
-  return Math.max(0, top - (low - RIDING_STATION_AIR_M));
+  // twice the air, so the plates drawn there keep theirs from the sweep (ridingYawPlate)
+  return Math.max(0, top - (low - 2 * RIDING_STATION_AIR_M));
 }
 
 /** Moves weapon parts from the fitting's frame into the pitch group's (its origin on the pivot). */
@@ -2461,16 +2480,25 @@ function attachAuxiliaryWeapon(fitting: THREE.Group, parts: FittingParts, opts: 
   weapon.traverse(o=>{if(o instanceof THREE.Mesh)o.userData.appearanceRole='machineGun';});
 }
 function fittingAmericanRws(opts: FittingOptions = {}): THREE.Group {
-  // release 230: the cradle and the gun first, then the head as low as their sweep asks, then the yaw stage round them
-  const fleet = createAmericanRwsBuildContext(opts);
   const cradle = fitParts(), gun = fitParts();
-  addAmericanRwsWeaponSystem(fleet, cradle, gun);
-  const moving = ridingStationMoving(cradle, gun, fleet.recY, 0, RIDING_CRADLE_RECOIL_M);
-  const context = createAmericanRwsBuildContext(opts, americanRwsHeadDrop(fleet, moving), moving);
-  addAmericanRwsPedestal(context);
-  addAmericanRwsSensorHead(context);
-  addAmericanRwsTrunnions(context);
-  addAmericanRwsVariantArmor(context);
+  // release 230: built once per option set (RIDING_STATION_PARTS)
+  const key = `americanRws:${ridingCradleKey(opts)}`, stored = RIDING_STATION_PARTS.get(key);
+  let context: AmericanRwsBuildContext;
+  if (stored) {
+    context = createAmericanRwsBuildContext(opts);
+    restoreFittingParts(stored, [context.parts, cradle, gun]);
+  } else {
+    // release 230: the cradle and the gun first, then the head as low as their sweep asks, then the yaw stage round them
+    const fleet = createAmericanRwsBuildContext(opts);
+    addAmericanRwsWeaponSystem(fleet, cradle, gun);
+    const moving = ridingStationMoving(cradle, gun, fleet.recY, 0, RIDING_CRADLE_RECOIL_M);
+    context = createAmericanRwsBuildContext(opts, americanRwsHeadDrop(fleet, moving), moving);
+    addAmericanRwsPedestal(context);
+    addAmericanRwsSensorHead(context);
+    addAmericanRwsTrunnions(context);
+    addAmericanRwsVariantArmor(context);
+    RIDING_STATION_PARTS.set(key, storeFittingParts([context.parts, cradle, gun]));
+  }
   const fitting = assembleAmericanRws(context);
   fitting.userData.barrelAxisLocalY = context.recY;
   fitting.userData.muzzleLocalZ = 1.223 * context.s;
@@ -2511,18 +2539,20 @@ function ridingStationMoving(cradle: FittingParts, gun: FittingParts, pivotY: nu
 
 /**
  * Release 230: where a riding station's moving parts pass through a placed yaw-stage plate over the pitch range and the
- * recoil stroke: the rectangle (x0, y0, x1, y1 in the plate's own face) round every section of them through the plate's
- * slab (RIDING_STATION_AIR_M either side) that meets the face, widened by the same air and clipped to the face, or null
- * where nothing passes. The poses step finely enough that no point within the plate's reach moves more than the air
- * between two of them; only the triangles that reach the plate's span across and round the pivot are posed.
+ * recoil stroke. The plate is cut through its `thin` local axis (0 x, 1 y, 2 z): the rectangle in its face (the other two
+ * axes in order, as [a0, b0, a1, b1]) round every section of the moving parts through the plate's slab
+ * (RIDING_STATION_AIR_M either side) that meets the face, widened by the same air and clipped to the face, or null where
+ * nothing passes. The poses step finely enough that no point within the plate's reach moves more than the air between two
+ * of them; only the triangles that reach the plate's span across and round the pivot are posed.
  */
-function sweptPortRect(moving: RidingStationMoving, plate: PlatePlacement): [number, number, number, number] | null {
-  const [w, h, d] = plate, air = RIDING_STATION_AIR_M, { pivotY, pivotZ, stroke, triangles: T } = moving;
+function sweptPortRect(moving: RidingStationMoving, plate: PlatePlacement, thin = 2): [number, number, number, number] | null {
+  const dims = [plate[0], plate[1], plate[2]], air = RIDING_STATION_AIR_M, { pivotY, pivotZ, stroke, triangles: T } = moving;
+  const [fa, fb] = [0, 1, 2].filter((k) => k !== thin) as [number, number], ha = dims[fa]! / 2, hb = dims[fb]! / 2, hc = dims[thin]! / 2;
   const m = plateMatrix(plate), inv = m.clone().invert(), v = new THREE.Vector3();
   // the plate's reach: its x span and its distance from the pivot's axis
   let px0 = Infinity, px1 = -Infinity, rFar = 0, py0 = Infinity, py1 = -Infinity, pz0 = Infinity, pz1 = -Infinity;
   for (const cx of [-1, 1]) for (const cy of [-1, 1]) for (const cz of [-1, 1]) {
-    v.set(cx * w / 2, cy * h / 2, cz * d / 2).applyMatrix4(m);
+    v.set(cx * dims[0]! / 2, cy * dims[1]! / 2, cz * dims[2]! / 2).applyMatrix4(m);
     px0 = Math.min(px0, v.x); px1 = Math.max(px1, v.x); py0 = Math.min(py0, v.y); py1 = Math.max(py1, v.y); pz0 = Math.min(pz0, v.z); pz1 = Math.max(pz1, v.z);
     rFar = Math.max(rFar, Math.hypot(v.y - pivotY, v.z - pivotZ));
   }
@@ -2544,7 +2574,7 @@ function sweptPortRect(moving: RidingStationMoving, plate: PlatePlacement): [num
   const poses: number[] = [];
   for (let e = RIDING_STATION_PITCH[0]; e < RIDING_STATION_PITCH[1]; e += step) poses.push(e);
   poses.push(RIDING_STATION_PITCH[1]);
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  let a0 = Infinity, b0 = Infinity, a1 = -Infinity, b1 = -Infinity;
   const turn = new THREE.Matrix4(), full = new THREE.Matrix4(), pivot = new THREE.Matrix4().makeTranslation(0, pivotY, pivotZ);
   for (const e of poses) for (const r of stroke > 0 ? [0, stroke / 2, stroke] : [0]) {
     turn.makeRotationX(-e);
@@ -2553,42 +2583,48 @@ function sweptPortRect(moving: RidingStationMoving, plate: PlatePlacement): [num
     full.copy(inv).multiply(pivot).multiply(turn).multiply(new THREE.Matrix4().makeTranslation(0, -pivotY, -pivotZ));
     for (const t of candidates) {
       const M = t / 9 < moving.gunTriangles ? gunM : full;
-      let poly = [0, 3, 6].map((o) => v.set(T[t + o]!, T[t + o + 1]!, T[t + o + 2]!).applyMatrix4(M).toArray());
-      for (const [bound, dir] of [[-d / 2 - air, 1], [d / 2 + air, -1]] as const) {
+      let poly: number[][] = [0, 3, 6].map((o) => v.set(T[t + o]!, T[t + o + 1]!, T[t + o + 2]!).applyMatrix4(M).toArray());
+      for (const [bound, dir] of [[-hc - air, 1], [hc + air, -1]] as const) {
         const next: number[][] = [];
         for (let i = 0; i < poly.length; i++) {
-          const a = poly[i]!, c = poly[(i + 1) % poly.length]!, da = dir * (a[2]! - bound), dc = dir * (c[2]! - bound);
-          if (da >= 0) next.push(a);
-          if (da * dc < 0) { const u = da / (da - dc); next.push([a[0]! + (c[0]! - a[0]!) * u, a[1]! + (c[1]! - a[1]!) * u, a[2]! + (c[2]! - a[2]!) * u]); }
+          const p = poly[i]!, q = poly[(i + 1) % poly.length]!, dp = dir * (p[thin]! - bound), dq = dir * (q[thin]! - bound);
+          if (dp >= 0) next.push(p);
+          if (dp * dq < 0) { const u = dp / (dp - dq); next.push([0, 1, 2].map((k) => p[k]! + (q[k]! - p[k]!) * u)); }
         }
         poly = next;
         if (!poly.length) break;
       }
       if (!poly.length) continue;
-      let qx0 = Infinity, qy0 = Infinity, qx1 = -Infinity, qy1 = -Infinity;
-      for (const p of poly) { qx0 = Math.min(qx0, p[0]!); qx1 = Math.max(qx1, p[0]!); qy0 = Math.min(qy0, p[1]!); qy1 = Math.max(qy1, p[1]!); }
-      if (qx1 < -w / 2 - air || qx0 > w / 2 + air || qy1 < -h / 2 - air || qy0 > h / 2 + air) continue;
-      x0 = Math.min(x0, qx0); x1 = Math.max(x1, qx1); y0 = Math.min(y0, qy0); y1 = Math.max(y1, qy1);
+      let qa0 = Infinity, qb0 = Infinity, qa1 = -Infinity, qb1 = -Infinity;
+      for (const p of poly) { qa0 = Math.min(qa0, p[fa]!); qa1 = Math.max(qa1, p[fa]!); qb0 = Math.min(qb0, p[fb]!); qb1 = Math.max(qb1, p[fb]!); }
+      if (qa1 < -ha - air || qa0 > ha + air || qb1 < -hb - air || qb0 > hb + air) continue;
+      a0 = Math.min(a0, qa0); a1 = Math.max(a1, qa1); b0 = Math.min(b0, qb0); b1 = Math.max(b1, qb1);
     }
   }
-  if (x0 > x1) return null;
-  return [Math.max(-w / 2, x0 - air), Math.max(-h / 2, y0 - air), Math.min(w / 2, x1 + air), Math.min(h / 2, y1 + air)];
+  if (a0 > a1) return null;
+  return [Math.max(-ha, a0 - air), Math.max(-hb, b0 - air), Math.min(ha, a1 + air), Math.min(hb, b1 + air)];
 }
 
 /**
  * A remote station's yaw-stage plate (`geometry`, a box w x h x d round its origin, placed). Release 230: on a riding
- * station (`moving`) the plate is cut round its moving parts' sweep (sweptPortRect): drawn as the plates round the port,
- * the port's two full-height sides and the strips under and over it, so a port at an edge is a notch, a plate the sweep
- * covers is left off, and a plate nothing passes through is the plate as authored.
+ * station (`moving`) the plate is cut through its thinnest dimension round its moving parts' sweep (sweptPortRect):
+ * drawn as the plates round the port, the port's two sides and the strips beyond it, so a port at an edge is a notch and
+ * a plate nothing passes through is the plate as authored; a strip under 12 mm is left off, and so is a plate left with
+ * under a quarter of its face.
  */
 function ridingYawPlate(parts: FittingParts, moving: RidingStationMoving | undefined, slot: string, geometry: () => THREE.BufferGeometry,
   w: number, h: number, d: number, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0): void {
-  const port = moving ? sweptPortRect(moving, [w, h, d, x, y, z, rx, ry, rz]) : null;
+  const dims = [w, h, d], thin = d <= w && d <= h ? 2 : h <= w ? 1 : 0, [fa, fb] = [0, 1, 2].filter((k) => k !== thin) as [number, number];
+  const port = moving ? sweptPortRect(moving, [w, h, d, x, y, z, rx, ry, rz], thin) : null;
   if (!port) { parts.add(slot, geometry(), x, y, z, rx, ry, rz); return; }
-  const [px0, py0, px1, py1] = port;
-  for (const [a, b, c, e] of [[-w / 2, -h / 2, px0, h / 2], [px1, -h / 2, w / 2, h / 2], [px0, -h / 2, px1, py0], [px0, py1, px1, h / 2]] as const) {
-    if (c - a < 0.004 || e - b < 0.004) continue;
-    parts.add(slot, KIT.xform(KIT.box(c - a, e - b, d), (a + c) / 2, (b + e) / 2, 0), x, y, z, rx, ry, rz);
+  const [pa0, pb0, pa1, pb1] = port, ha = dims[fa]! / 2, hb = dims[fb]! / 2;
+  const pieces = ([[-ha, -hb, pa0, hb], [pa1, -hb, ha, hb], [pa0, -hb, pa1, pb0], [pa0, pb1, pa1, hb]] as const)
+    .filter(([a0, b0, a1, b1]) => a1 - a0 >= 0.012 && b1 - b0 >= 0.012);
+  if (pieces.reduce((area, [a0, b0, a1, b1]) => area + (a1 - a0) * (b1 - b0), 0) < 0.25 * 4 * ha * hb) return;
+  for (const [a0, b0, a1, b1] of pieces) {
+    const size = [...dims], at = [0, 0, 0];
+    size[fa] = a1 - a0; size[fb] = b1 - b0; at[fa] = (a0 + a1) / 2; at[fb] = (b0 + b1) / 2;
+    parts.add(slot, KIT.xform(KIT.box(size[0]!, size[1]!, size[2]!), at[0]!, at[1]!, at[2]!), x, y, z, rx, ry, rz);
   }
 }
 
@@ -2765,19 +2801,20 @@ function addOpenYokeWeapon(context: OpenYokeBuildContext, cradle: FittingParts, 
   }}};
   addPintleReceiver(shifted);
   addPintleBarrel(shifted);
-  // the cradle saddle under the receiver, and (release 230) the recoil rails beside it, which ride the cradle
+  // the cradle saddle under the receiver, and (release 230) the recoil rails beside it, which ride the cradle; the cradle is
+  // painted with the vehicle, as a riding pintle's is (critic CN-4), one mesh
   // (release 230: its top 0.5 mm under the receiver's floor line, a slide fit as a riding pintle's floor)
-  cradle.add('dark',box(0.150 * s,0.030 * s,0.36 * s),0,receiverY - layout.trunY + layout.bodyBottom - 0.0155 * s,receiverZ);
-  for (const side of [-1,1]) cradle.add('dark',box(0.032 * s,0.035 * s,0.42 * s),
+  cradle.add('detail',box(0.150 * s,0.030 * s,0.36 * s),0,receiverY - layout.trunY + layout.bodyBottom - 0.0155 * s,receiverZ);
+  for (const side of [-1,1]) cradle.add('detail',box(0.032 * s,0.035 * s,0.42 * s),
     side * 0.090 * s,yokeCenterY - 0.045 * s,0.145 * s);
   // release 230: the cradle's two side plates, from the rails up past the pivot, and their trunnion pins through the fork
   // arms' bearings (4 mm short of the arms)
   const { pinR, armInner, plateOuter } = openYokeTrunnion(context), plateT = 0.016 * s;
   const plateBottom = yokeCenterY - 0.045 * s + 0.0175 * s - 0.004 * s, plateTop = receiverY + 0.040 * s;
   for (const side of [-1,1]) {
-    cradle.add('dark',box(plateT,plateTop - plateBottom,0.09 * s),side * (plateOuter - plateT / 2),(plateTop + plateBottom) / 2,0);
+    cradle.add('detail',box(plateT,plateTop - plateBottom,0.09 * s),side * (plateOuter - plateT / 2),(plateTop + plateBottom) / 2,0);
     const pinIn = plateOuter - 0.004 * s, pinOut = armInner - 0.004;
-    cradle.add('dark',cylX(pinR,pinOut - pinIn,16),side * (pinIn + pinOut) / 2,receiverY,0);
+    cradle.add('detail',cylX(pinR,pinOut - pinIn,16),side * (pinIn + pinOut) / 2,receiverY,0);
   }
 
   // Asymmetric ammunition coffin and its lid on the ammo side (release 230: hung 2 mm outboard of its fork arm's foot,
@@ -2796,7 +2833,8 @@ function addOpenYokeWeapon(context: OpenYokeBuildContext, cradle: FittingParts, 
   const lidTop=yokeCenterY + 0.0955 * s;
   const feedX=ammoSide * (layout.bodyW / 2 + 0.012 * sigma), feedY=receiverY + layout.bodyH * 0.12;
   const p0=[ammoX - ammoSide * 0.03 * s,lidTop - 0.01 * s,0.06 * s], p3=[feedX,feedY,receiverZ - 0.02 * s];
-  const apex=Math.max(lidTop,feedY) + 0.075 * s;
+  // (release 230: an armed station's chute arcs 30 mm x s lower, under the brows its swing would cut, still over its arm)
+  const apex=Math.max(lidTop,feedY) + 0.045 * s;
   const at=(t:number):number[]=>{
     const u=1 - t, p1=[p0[0],apex,p0[2]], p2=[p3[0] + ammoSide * 0.06 * s,apex,p3[2]];
     return [0,1,2].map((k)=>u * u * u * p0[k] + 3 * u * u * t * p1[k] + 3 * u * t * t * p2[k] + t * t * t * p3[k]);
@@ -2831,11 +2869,87 @@ function openYokeYaw(context: OpenYokeBuildContext): {
   };
 }
 
+/** Release 230: how much lower a yaw-stage part under an armed station's gun (a lamp bar: w wide and d deep at x, z, its
+ * top at `top`) stands than authored, so the cradle's and the gun's sweep keeps twice the air above it (0 when unarmed). */
+function openYokeUnderSweep(context: OpenYokeBuildContext, w: number, d: number, x: number, z: number, top: number): number {
+  const { moving, receiverY, s } = context;
+  if (!moving) return 0;
+  const low = sweptLow(moving, x - w / 2, x + w / 2, z - d / 2, z + d / 2, Math.hypot(receiverY - top + 0.1 * s, Math.abs(z) + d / 2));
+  return Math.max(0, top - (low - 2 * RIDING_STATION_AIR_M));
+}
+
+/** Release 230: the highest a riding station's moving parts come over x0..x1 through the pitch range and the recoil stroke,
+ * in `bin`-wide slices of z from z0 to z1 (fitting frame; -Infinity where nothing passes), each slice widened by one
+ * either side (a clipped section's top is sampled along its edges). */
+function sweptHighByZ(moving: RidingStationMoving, x0: number, x1: number, z0: number, z1: number, bin: number, reach: number): Float64Array {
+  const { pivotY, pivotZ, stroke, triangles: T } = moving, air = RIDING_STATION_AIR_M, v = new THREE.Vector3();
+  const n = Math.max(1, Math.ceil((z1 - z0) / bin)), high = new Float64Array(n).fill(-Infinity);
+  const candidates: number[] = [];
+  for (let t = 0; t < T.length; t += 9) {
+    const a = Math.min(T[t]!, T[t + 3]!, T[t + 6]!), b = Math.max(T[t]!, T[t + 3]!, T[t + 6]!);
+    if (b >= x0 - air && a <= x1 + air) candidates.push(t);
+  }
+  const clip = (poly: number[][], axis: number, bound: number, dir: number): number[][] => {
+    const next: number[][] = [];
+    for (let i = 0; i < poly.length; i++) {
+      const p = poly[i]!, q = poly[(i + 1) % poly.length]!, dp = dir * (p[axis]! - bound), dq = dir * (q[axis]! - bound);
+      if (dp >= 0) next.push(p);
+      if (dp * dq < 0) { const u = dp / (dp - dq); next.push([0, 1, 2].map((k) => p[k]! + (q[k]! - p[k]!) * u)); }
+    }
+    return next;
+  };
+  const step = Math.min(Math.PI / 180, air / Math.max(reach, 0.01));
+  const poses: number[] = [];
+  for (let e = RIDING_STATION_PITCH[0]; e < RIDING_STATION_PITCH[1]; e += step) poses.push(e);
+  poses.push(RIDING_STATION_PITCH[1]);
+  const mark = (y: number, z: number): void => {
+    const k = Math.floor((z - z0) / bin);
+    for (const j of [k - 1, k, k + 1]) if (j >= 0 && j < n && y > high[j]!) high[j] = y;
+  };
+  for (const e of poses) for (const r of stroke > 0 ? [0, stroke] : [0]) {
+    const turn = new THREE.Matrix4().makeRotationX(-e), pivot = new THREE.Matrix4().makeTranslation(0, pivotY, pivotZ);
+    const full = pivot.clone().multiply(turn).multiply(new THREE.Matrix4().makeTranslation(0, -pivotY, -pivotZ));
+    const gunM = pivot.clone().multiply(turn).multiply(new THREE.Matrix4().makeTranslation(0, -pivotY, -pivotZ - r));
+    for (const t of candidates) {
+      const M = t / 9 < moving.gunTriangles ? gunM : full;
+      let poly: number[][] = [0, 3, 6].map((o) => v.set(T[t + o]!, T[t + o + 1]!, T[t + o + 2]!).applyMatrix4(M).toArray());
+      for (const [axis, bound, dir] of [[0, x0, 1], [0, x1, -1], [2, z0, 1], [2, z1, -1]] as const) {
+        poly = clip(poly, axis, bound, dir);
+        if (!poly.length) break;
+      }
+      for (let i = 0; i < poly.length; i++) {
+        const p = poly[i]!, q = poly[(i + 1) % poly.length]!, k = Math.max(1, Math.ceil(Math.abs(q[2]! - p[2]!) / (bin / 2)));
+        for (let j = 0; j <= k; j++) mark(p[1]! + (q[1]! - p[1]!) * j / k, p[2]! + (q[2]! - p[2]!) * j / k);
+      }
+    }
+  }
+  return high;
+}
+
+/** Release 230: how far an armed station's roof sensor (its shelf, from z0 to z1 at x0..x1, its underside at `bottom`)
+ * stands back so its gun elevates in front of it with twice the air (0 when unarmed or nothing reaches it). */
+function openYokeRoofSensorBack(context: OpenYokeBuildContext, x0: number, x1: number, z0: number, z1: number, bottom: number): number {
+  const { moving, receiverY, s } = context;
+  if (!moving) return 0;
+  const bin = 0.004, back = 0.5 * s, from = z0 - back;
+  const high = sweptHighByZ(moving, x0, x1, from, z1, bin, Math.hypot(bottom - receiverY + 0.1 * s, back + z1));
+  const limit = bottom - 2 * RIDING_STATION_AIR_M;
+  let first = Infinity;
+  for (let k = 0; k < high.length; k++) if (high[k]! > limit) { first = from + k * bin; break; }
+  if (!Number.isFinite(first)) return 0;
+  if (first <= from) throw new Error('KIT.fittings.openYokeRws: no place behind the gun clears its roof sensor');
+  return Math.max(0, z1 - first);
+}
+
 function addOpenYokeSensorHead(context: OpenYokeBuildContext): void {
   if (context.opts.sensorHead === false) return;
   const {cylZ}=KIT;
   const {body,parts,roofSensor,s,sensorSide,sensorX,sensorY,twinOptics}=context;
-  const {plate,fitting}=openYokeYaw(context);
+  const {plate,fitting,underCoffin}=openYokeYaw(context);
+  // release 230: an armed station's roof sensor stands back (its shelf, head and optics together) as far as its gun's
+  // elevation asks, on the fork tip away from the coffin (the feed chute swings over the other); zb is that set-back
+  const zb=roofSensor ? openYokeRoofSensorBack(context,-0.17 * s,0.17 * s,0.025 * s - 0.145 * s,0.025 * s + 0.145 * s,
+    sensorY - 0.12 * s - 0.020 * s) : 0;
   // Independent EO/thermal head on the opposite cheek. Hosts with a proper
   // roof-seated panoramic tower can omit this compact side head so the weapon
   // has an unobstructed firing lane and the two systems remain visually
@@ -2844,28 +2958,28 @@ function addOpenYokeSensorHead(context: OpenYokeBuildContext): void {
     // Carry the panoramic head from the fork tips. The unarmed variant has
     // no receiver above the shaft, so the former raised shelf floated here.
     const footY = 0.46 * s, shelfY = sensorY - 0.12 * s;
-    for (const side of [-1, 1]) plate(body,
+    for (const side of [-1, 1]) if (!underCoffin(side)) plate(body,
       0.055 * s, shelfY - footY, 0.105 * s,
       side * 0.145 * s, (footY + shelfY) / 2, -0.015 * s);
     plate(body,0.34 * s,0.040 * s,0.29 * s,
-      0,shelfY,0.025 * s);
+      0,shelfY,0.025 * s - zb);
   }
   plate(body,0.215 * s,(twinOptics ? 0.20 : 0.24) * s,0.215 * s,
-    sensorX,sensorY,0.055 * s);
+    sensorX,sensorY,0.055 * s - zb);
   plate('dark',0.190 * s,0.024 * s,0.19 * s,
-    sensorX,sensorY + (twinOptics ? 0.112 : 0.132) * s,0.055 * s);
+    sensorX,sensorY + (twinOptics ? 0.112 : 0.132) * s,0.055 * s - zb);
   const opticXs=twinOptics ? [-0.045,0.045] : [0];
   for (const dx of opticXs) {
     plate('glass',(twinOptics ? 0.065 : 0.125) * s,
       (twinOptics ? 0.075 : 0.105) * s,0.014 * s,
-    sensorX + dx * s,sensorY + 0.018 * s,0.170 * s);
+    sensorX + dx * s,sensorY + 0.018 * s,0.170 * s - zb);
   }
   fitting('glass',() => cylZ(0.026 * s,0.014 * s,10),0.052 * s,0.052 * s,0.014 * s,
-    sensorX - sensorSide * 0.055 * s,sensorY - 0.075 * s,0.171 * s);
+    sensorX - sensorSide * 0.055 * s,sensorY - 0.075 * s,0.171 * s - zb);
   // Round 5 (wave 253: "no sensor window detail"): each aperture sits in a dark bezel proud of the face (the day/thermal
   // window, the laser rangefinder's port beside the small lens), under a sun hood, and the head's power and video
   // cable runs from its underside down the fork to the slew drum.
-  const faceZ=0.055 * s + 0.1075 * s;
+  const faceZ=0.055 * s + 0.1075 * s - zb;
   for (const dx of opticXs) {
     const w=(twinOptics ? 0.065 : 0.125) * s, h=(twinOptics ? 0.075 : 0.105) * s;
     plate('dark',w + 0.022 * s,h + 0.022 * s,0.010 * s,sensorX + dx * s,sensorY + 0.018 * s,faceZ + 0.003 * s);
@@ -2911,10 +3025,10 @@ function addOpenYokeTuskArmor(context: OpenYokeBuildContext): void {
   const {cylZ}=KIT;
   const {body,hasWeapon,s,yokeCenterY}=context;
   const {plate,fitting}=openYokeYaw(context);
-  // (release 230: an armed station's plates stand 3 mm further forward, clear of its receiver's slide handle)
+  // (release 230: an armed station's plates stand 6 mm further forward, clear of its receiver's slide handle)
   for (const side of [-1,1]) {
     plate(body,0.25 * s,0.25 * s,0.030 * s,
-      side * 0.225 * s,yokeCenterY + 0.015 * s,0.275 * s + (hasWeapon ? 0.003 : 0),0,-side * 0.08,0);
+      side * 0.225 * s,yokeCenterY + 0.015 * s,0.275 * s + (hasWeapon ? 0.006 : 0),0,-side * 0.08,0);
   }
   // the paired lamps under the gun; an armed station's cradle sweeps that place, so (release 230) they stand on the fork
   // arms' fronts, 0.30 s up, their housings 1 mm into the arms
@@ -2941,8 +3055,10 @@ function addOpenYokeA7vArmor(context: OpenYokeBuildContext): void {
   const {plate}=openYokeYaw(context);
   plate(body,0.58 * s,0.030 * s,0.28 * s,
     0,yokeCenterY + 0.135 * s,0.035 * s);
+  // (release 230: the lamp bar under an armed station's gun stands below its cradle's sweep, openYokeUnderSweep)
+  const drop=openYokeUnderSweep(context,0.44 * s,0.028 * s,0,0.23 * s,yokeCenterY - 0.105 * s + 0.0375 * s);
   plate('dark',0.44 * s,0.075 * s,0.028 * s,
-    0,yokeCenterY - 0.105 * s,0.23 * s);
+    0,yokeCenterY - 0.105 * s - drop,0.23 * s);
 }
 
 function addOpenYokePumaArmor(context: OpenYokeBuildContext): void {
@@ -2978,8 +3094,10 @@ function addOpenYokeLightTigerArmor(context: OpenYokeBuildContext): void {
       side * 0.255 * s,yokeCenterY + 0.005 * s,0.035 * s,
       0,-side * 0.08,side * 0.12);
   }
+  // (release 230: the bar under an armed station's gun stands below its cradle's sweep, openYokeUnderSweep)
+  const drop=openYokeUnderSweep(context,0.30 * s,0.032 * s,0,0.235 * s,yokeCenterY - 0.118 * s + 0.0225 * s);
   plate('dark',0.30 * s,0.045 * s,0.032 * s,
-    0,yokeCenterY - 0.118 * s,0.235 * s);
+    0,yokeCenterY - 0.118 * s - drop,0.235 * s);
 }
 
 function addOpenYokeKoreanArmor(context: OpenYokeBuildContext): void {
@@ -3016,11 +3134,14 @@ function addOpenYokePantherArmor(context: OpenYokeBuildContext): void {
       0,-side * 0.10,side * 0.16);
   }
   if (!classicPanther) return;
+  // (release 230: the lamp bar under an armed station's gun and its three lamps stand below its cradle's sweep,
+  // openYokeUnderSweep)
+  const drop=openYokeUnderSweep(context,0.50 * s,0.053 * s,0,0.2805 * s,yokeCenterY - 0.135 * s + 0.0525 * s);
   plate('dark',0.50 * s,0.105 * s,0.040 * s,
-    0,yokeCenterY - 0.135 * s,0.274 * s);
+    0,yokeCenterY - 0.135 * s - drop,0.274 * s);
   for (const x of [-0.155,0,0.155]) {
     plate('glass',0.105 * s,0.058 * s,0.014 * s,
-      x * s,yokeCenterY - 0.135 * s,0.300 * s);
+      x * s,yokeCenterY - 0.135 * s - drop,0.300 * s);
   }
   plate(body,0.31 * s,0.075 * s,0.245 * s,
     sensorX,sensorY + 0.158 * s,0.048 * s);
@@ -3045,11 +3166,14 @@ function addOpenYokeVariantArmor(context: OpenYokeBuildContext): void {
   else if (context.panther) addOpenYokePantherArmor(context);
 }
 
+function openYokeTowerRise({ opts, sizeStandard }: OpenYokeBuildContext): number {
+  return opts.towerRise ?? (sizeStandard === 'm1a3-full-tower' ? 0.18 : 0);
+}
+
 function applyOpenYokeTowerRise(context: OpenYokeBuildContext): number {
   const { cylY, torus } = KIT;
-  const { body, opts, parts, s, sizeStandard } = context;
-  const towerRise = opts.towerRise
-    ?? (sizeStandard === 'm1a3-full-tower' ? 0.18 : 0);
+  const { body, parts, s } = context;
+  const towerRise = openYokeTowerRise(context);
   if (towerRise <= 0) return towerRise;
   for (const geometries of Object.values(parts.bySlot)) {
     for (const geometry of geometries) geometry.translate(0, towerRise, 0);
@@ -3100,20 +3224,28 @@ function stampOpenYokeMetadata(
 
 function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
   const base=createOpenYokeContext(opts);
-  addOpenYokeBase(base);
-  // release 230: an armed station's cradle and gun first, so its yaw stage is drawn round their sweep
   const cradle=fitParts(), gun=fitParts();
-  addOpenYokeWeapon(base,cradle,gun);
-  const context: OpenYokeBuildContext=base.hasWeapon
-    ? {...base,cradle,moving:ridingStationMoving(cradle,gun,base.receiverY,0,RIDING_CRADLE_RECOIL_M)} : base;
-  addOpenYokeSensorHead(context);
-  addOpenYokeVariantArmor(context);
+  // release 230: an armed station is built once per option set (RIDING_STATION_PARTS)
+  const key=base.hasWeapon ? `openYokeRws:${ridingCradleKey(opts)}` : '', stored=key ? RIDING_STATION_PARTS.get(key) : undefined;
+  let context: OpenYokeBuildContext=base, towerRise: number;
+  if (stored) {
+    restoreFittingParts(stored,[base.parts,cradle,gun]);
+    towerRise=openYokeTowerRise(base);
+  } else {
+    addOpenYokeBase(base);
+    // release 230: an armed station's cradle and gun first, so its yaw stage is drawn round their sweep
+    addOpenYokeWeapon(base,cradle,gun);
+    if (base.hasWeapon) context={...base,cradle,moving:ridingStationMoving(cradle,gun,base.receiverY,0,RIDING_CRADLE_RECOIL_M)};
+    addOpenYokeSensorHead(context);
+    addOpenYokeVariantArmor(context);
 
-  // The reference M1A3 station stands on a real powered riser rather than a
-  // bearing plate alone. Lift the complete working assembly as one unit and
-  // close the load path back to the roof with a broad, contiguous pedestal.
-  // This adds height without inflating the weapon, sensors or side armor.
-  const towerRise = applyOpenYokeTowerRise(context);
+    // The reference M1A3 station stands on a real powered riser rather than a
+    // bearing plate alone. Lift the complete working assembly as one unit and
+    // close the load path back to the roof with a broad, contiguous pedestal.
+    // This adds height without inflating the weapon, sensors or side armor.
+    towerRise = applyOpenYokeTowerRise(context);
+    if (key) RIDING_STATION_PARTS.set(key,storeFittingParts([base.parts,cradle,gun]));
+  }
 
   const fitting = fitAssemble('openYokeRws', context.parts, opts);
   stampOpenYokeMetadata(fitting, context, towerRise);
