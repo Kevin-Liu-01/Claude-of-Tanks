@@ -9,20 +9,36 @@
 // alone; and no lamp part z-fights by the exact measure (coplanarOverlap.test-support.mjs: parallel faces clipped exactly;
 // seatingCensus's sampled ZFIGHT misses the 5.6 mm post flat on the round and square lamps, and reads the square lamps'
 // pane and bezel bar, two faces sharing an edge, as 9.8 cm2 by float noise). Negative control: the original flush plate,
-// put back on one lamp of each shape, z-fights with both of its posts. The census's burial class (CROSS) is not asserted:
-// the lamps' feet and plates were authored 17-46 mm into the cast roofs and add-on armour before this item.
+// put back on one lamp of each shape, z-fights with both of its posts. The census's general burial class (CROSS) is not
+// asserted: the lamps' feet and plates are let 17-46 mm into the cast roofs and add-on armour they stand on.
+//
+// Release 227 (national lamp clearance), on the same eleven tanks at both qualities:
+// - no lamp part goes into a reactive cassette, and no lamp body, lens, bezel, guard post or top bar into a cage or frame
+//   member (penetration both ways, 1 mm); the foot and plate of a lamp standing on a frame (the Zubr's screen arm) go at
+//   most 10 mm into it. Negative controls: the Wilk's right lamp body put back over the common seat (0.68, 0.96) runs
+//   into the top-course housing ERA, and the Hetman II's right front outer cage leg put back at x 1.40 runs up through
+//   the right lamp's body (before this item: 31 and 48.5 mm);
+// - the six lamps seated straight on a sloping cast roof (nationalRoofSystems: Zoria, Husarz, Wilk, Bars-M, Bulat-M,
+//   Bastion-M) carry a levelling shim, and nothing shows under their plates: from every point of a plate's underside
+//   (6 mm inside its edges) the first permanent surface below is within 1 mm. Negative control: without the shims each
+//   of these plates stands clear of its roof at the front (4-24 mm there; 7-31 mm at the plate's front edge).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { NATIONAL_ROOF_LOADOUTS } from './nationalRoofConfig.ts';
 import { NATIONAL_LAMP_GUARD_INSET_M } from './profiles/nationalRoofSystems.ts';
-import { censusPart, seatingCensus } from './cnTurretGeometry.test-support.mjs';
+import { censusPart, seatingCensus, penetrationDepth, insideClosed } from './cnTurretGeometry.test-support.mjs';
 import { zFightCensus } from './coplanarOverlap.test-support.mjs';
 
 const IDS = ['t80u_zoria', 't72b3m_hetman', 't72b3_sich', 't80u_husarz', 't72b3m_wilk', 't72b3_zubr', 't80u_bars_m',
   't72b3m_bulat_m', 't72b3_bastion_m', 't72b3m_hetman_ii', 't72b3_zubr_ii'];
 // one lamp of each shape for the negative control
 const CONTROLS = new Set(['t80u_zoria', 't80u_husarz', 't72b3_sich']);
+// the lamps nationalRoofSystems seats straight on the cast roof, each on its levelling shim
+const ROOF_SEATED = new Set(['t80u_zoria', 't80u_husarz', 't72b3m_wilk', 't80u_bars_m', 't72b3m_bulat_m', 't72b3_bastion_m']);
+// the common lamp seat (profiles/nationalRoofSystems.ts NATIONAL_LAMP_SEAT), for the Wilk's negative control
+const COMMON_SEAT = [.68, .96];
+const CLEAR_M = .001, FRAME_SEAT_M = .010, CARRIED_M = .001;
 const MIN_ZFIGHT_M2 = 1e-5; // 0.1 cm2 visible
 const owner = (p) => (p.bucket.startsWith('turret') ? 'turret' : p.bucket.startsWith('gun') ? 'gun' : 'hull');
 const size = (p) => p.box.getSize(new THREE.Vector3());
@@ -43,9 +59,39 @@ function lampsOf(parts) {
       && [postA, postB, bar].every((p) => p?.bucket === 'turretDark') && near(size(bar).y, .018) && near(size(bar).z, .020))) return;
     const assembly = [foot, plate, body, lens, ...bezel, postA, postB, bar];
     for (const p of assembly) p.role = 'lamp';
-    lamps.push({ assembly, plate, posts: [postA, postB], bar, bezel });
+    lamps.push({ assembly, foot, plate, body, posts: [postA, postB], bar, bezel, shim: parts[i - 4]?.shim ? parts[i - 4] : null });
   });
   return lamps;
+}
+/** A copy of a census part moved by d. */
+function moved(p, d) {
+  const tri = Float64Array.from(p.tri);
+  for (let i = 0; i < tri.length; i += 3) { tri[i] += d[0]; tri[i + 1] += d[1]; tri[i + 2] += d[2]; }
+  const v = new THREE.Vector3(...d);
+  return { ...p, tri, box: p.box.clone().translate(v), dense: undefined, samples: undefined };
+}
+const depth = (a, b) => Math.max(penetrationDepth(a, b), penetrationDepth(b, a));
+/** The worst gap under a plate: from each point of its underside (6 mm inside its edges, 1 cm grid) down to the first
+ * surface of `stock`, 0 where the point lies inside a stock part. */
+function plateGap(plate, stock) {
+  const b = plate.box, y = b.min.y - 5e-4;
+  let worst = 0;
+  for (let x = b.min.x + .006; x <= b.max.x - .006 + 1e-9; x += Math.min(.01, (b.max.x - b.min.x - .012) / 4))
+    for (let z = b.min.z + .006; z <= b.max.z - .006 + 1e-9; z += Math.min(.01, (b.max.z - b.min.z - .012) / 4)) {
+      const under = stock.filter((q) => x >= q.box.min.x && x <= q.box.max.x && z >= q.box.min.z && z <= q.box.max.z);
+      if (under.some((q) => y > q.box.min.y && y < q.box.max.y && insideClosed(q, x, y, z))) continue;
+      let top = -Infinity;
+      for (const q of under) for (let t = 0, T = q.tri; t < T.length; t += 9) {
+        const ax = T[t], az = T[t + 2], bx = T[t + 3], bz = T[t + 5], cx = T[t + 6], cz = T[t + 8];
+        const d = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz); if (Math.abs(d) < 1e-14) continue;
+        const u = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / d, v = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / d, w = 1 - u - v;
+        if (u < -1e-9 || v < -1e-9 || w < -1e-9) continue;
+        const h = u * T[t + 1] + v * T[t + 4] + w * T[t + 7];
+        if (h <= y && h > top) top = h;
+      }
+      worst = Math.max(worst, Number.isFinite(top) ? y - top : Infinity);
+    }
+  return worst;
 }
 /** A copy of a census part narrowed about its centre in X to `width` (the plate as it was). */
 function narrowed(p, width) {
@@ -60,7 +106,8 @@ for (const quality of ['high', 'low']) {
   for (const id of (process.env.NATIONAL_LAMP_IDS ?? IDS.join(',')).split(',')) {
     const parts = [];
     const tank = createTank(id, null, { proceduralOnly: true, quality, geometryReceipt: true, camoSeed: 4242,
-      partCensus(bucket, g) { parts.push({ ...censusPart(bucket, g), lens: g.userData?.vehicleNightLens?.kind ?? null, bezel: Boolean(g.userData?.glassSurround) }); } });
+      partCensus(bucket, g) { parts.push({ ...censusPart(bucket, g), lens: g.userData?.vehicleNightLens?.kind ?? null, bezel: Boolean(g.userData?.glassSurround),
+        shim: Boolean(g.userData?.nationalLampShim) }); } });
     try {
       const lamps = lampsOf(parts), shape = NATIONAL_ROOF_LOADOUTS[id].lamp, w = shape === 'slit' ? .26 : .20;
       assert.equal(lamps.length, 2, `${id}/${quality}: two turret lamps built by nationalLamp`);
@@ -92,9 +139,56 @@ for (const quality of ['high', 'low']) {
         assert.equal(hits.length, 2, `negative control ${id}: the flush ${shape} plate z-fights with both posts (${areas} cm2)`);
         console.log(`negative control ${id}: the flush ${shape} plate z-fights with both posts (${areas} cm2 visible) PASS`);
       }
+      // clearance: no lamp part in a reactive cassette, none but a frame-seated foot or plate in a cage or frame member
+      const era = scope.filter((p) => p.era), lattice = scope.filter((p) => p.bucket === 'turretOpenLattice');
+      let latticeSeat = 0;
+      for (const L of lamps) for (const a of L.assembly) {
+        for (const e of era) {
+          if (!a.box.intersectsBox(e.box)) continue;
+          const d = depth(a, e);
+          assert.ok(d <= CLEAR_M, `${id}/${quality}: lamp part ${label(a)} runs ${(d * 1000).toFixed(1)} mm into ERA ${label(e)}`);
+        }
+        for (const m of lattice) {
+          if (!a.box.intersectsBox(m.box)) continue;
+          const d = depth(a, m), seat = a === L.foot || a === L.plate;
+          assert.ok(d <= (seat ? FRAME_SEAT_M : CLEAR_M), `${id}/${quality}: lamp part ${label(a)} runs ${(d * 1000).toFixed(1)} mm into the cage or frame member ${label(m)}`);
+          if (seat) latticeSeat = Math.max(latticeSeat, d);
+        }
+      }
+      // the roof-seated lamps' plates carried over their whole underside by the shim and the roof
+      const lampSet = new Set(lamps.flatMap((L) => L.assembly));
+      const stock = T.filter((p) => !lampSet.has(p) && !p.era && !/Glass$|OpenLattice$/.test(p.bucket));
+      assert.equal(lamps.filter((L) => L.shim).length, ROOF_SEATED.has(id) ? 2 : 0, `${id}/${quality}: levelling shims under the roof-seated lamps only`);
+      const gaps = [];
+      if (ROOF_SEATED.has(id)) for (const L of lamps) {
+        const gap = plateGap(L.plate, stock);
+        assert.ok(gap <= CARRIED_M, `${id}/${quality}: ${(gap * 1000).toFixed(1)} mm of air under the lamp plate ${label(L.plate)}`);
+        if (quality === 'high') {
+          const bare = plateGap(L.plate, stock.filter((p) => p !== L.shim));
+          assert.ok(bare > 3 * CARRIED_M, `negative control ${id}: without its shim the plate ${label(L.plate)} stands ${(bare * 1000).toFixed(1)} mm clear of the roof`);
+          gaps.push(`${(bare * 1000).toFixed(1)} mm`);
+        }
+      }
+      if (gaps.length) console.log(`negative control ${id}: without the shims the plates stand ${gaps.join(', ')} clear of the roof PASS`);
+      if (quality === 'high' && id === 't72b3m_wilk') {
+        const R = lamps.find((L) => L.body.box.min.x > 0), [x, z] = NATIONAL_ROOF_LOADOUTS[id].lampSeat;
+        const back = moved(R.body, [COMMON_SEAT[0] - x, 0, COMMON_SEAT[1] - z]);
+        const worst = Math.max(0, ...T.filter((p) => p.era && p.box.intersectsBox(back.box)).map((e) => depth(back, e)));
+        assert.ok(worst > .02, `negative control ${id}: the lamp body over the common seat runs ${(worst * 1000).toFixed(1)} mm into its ERA`);
+        console.log(`negative control ${id}: the right lamp body over the common seat runs ${(worst * 1000).toFixed(1)} mm into the housing ERA PASS`);
+      }
+      if (quality === 'high' && id === 't72b3m_hetman_ii') {
+        const R = lamps.find((L) => L.body.box.min.x > 0), c = new THREE.Vector3();
+        const leg = T.find((p) => p.bucket === 'turretOpenLattice' && size(p).y > .2 && Math.abs(p.box.getCenter(c).z + .32) < .01 && Math.abs(c.x - 1.26) < .01);
+        assert.ok(leg, `${id}: the right wing's front outer cage leg at x 1.26`);
+        const back = moved(leg, [1.40 - 1.26, 0, 0]), d = depth(back, R.body);
+        assert.ok(d > .03, `negative control ${id}: the front outer leg at x 1.40 runs ${(d * 1000).toFixed(1)} mm into the right lamp body`);
+        console.log(`negative control ${id}: the front outer cage leg back at x 1.40 runs ${(d * 1000).toFixed(1)} mm up through the right lamp body PASS`);
+      }
       const crosses = census.filter((s) => s.startsWith('CROSS'));
-      console.log(`${id}/${quality}: two ${shape} lamps guarded ${(NATIONAL_LAMP_GUARD_INSET_M * 1000).toFixed(0)} mm, seated, no z-fight`
-        + ` (${scope.length} parts; authored burials over 16 mm: ${crosses.length}) PASS`);
+      console.log(`${id}/${quality}: two ${shape} lamps guarded ${(NATIONAL_LAMP_GUARD_INSET_M * 1000).toFixed(0)} mm, seated, no z-fight,`
+        + ` clear of ERA and cage members${latticeSeat ? ` (feet on the frame ${(latticeSeat * 1000).toFixed(1)} mm in)` : ''}`
+        + `${ROOF_SEATED.has(id) ? ', plates carried by their shims' : ''} (${scope.length} parts; authored burials over 16 mm: ${crosses.length}) PASS`);
     } finally {
       tank.dispose();
     }
