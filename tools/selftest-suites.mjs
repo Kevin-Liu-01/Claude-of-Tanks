@@ -647,6 +647,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/donorStockSeating.selftest.mjs',
     // release 227: the fleet Type 96B's gun clears its hull through traverse and pitch (trimmed boot, rear-deck curve)
     'src/vehicles/profiles/type96MantletClearance.selftest.mjs',
+    // release 227: the fleet Type 96B's box sight rides the gun at its measured top; the mantlet stands over the hull
+    'src/vehicles/profiles/type96bSightBoot.selftest.mjs',
     'src/vehicles/profiles/type99AAngularTurret.selftest.mjs',
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
     'src/vehicles/profiles/eraSeating.selftest.mjs',
