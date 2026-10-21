@@ -1,6 +1,7 @@
 import { hypot2, hypot3 } from './scalarHypot.ts';
 import { WeaponDamageVisuals } from './weaponDamageVisuals.ts';
 import { casemateGunYaw } from './casemateGunPose.ts';
+import { authoringRigSpec } from './combatGunRigSeat.ts';
 import { tankSeedId } from './tankIdAliases.ts';
 import type { ModuleStateName } from '../sim/damage.ts';
 import { DetachedGear } from './detachedGear.ts';
@@ -43,7 +44,7 @@ import {
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, tagUnlitVehicleMaterials, LIVE_HULL_DENTS,
   LIVE_TURRET_DENTS,
 } from './materials.ts';
-import { bendGeometry, dentSamples, planBend, planDents, wreckRandom, type WreckDent } from './wreckDents.ts';
+import { bendGeometry, dentSamples, planBend, planDents, wreckBarrelSpan, wreckRandom, type WreckDent } from './wreckDents.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
@@ -7444,7 +7445,10 @@ function* createTankOwnedSteps(
   }
   const geometryOnly = materialMode === 'geometry-only';
   const engineCtx = normalizeTankEngineContext(engineContext);
-  const spec = getSpec(specId) as FactoryTankSpec;
+  const combatSpec = getSpec(specId) as FactoryTankSpec;
+  // 230: builders and every visual pass read the profile-authored frame; the combat-rig table moves only combat
+  // (combatGunRigSeat.ts). The same object when no row moved this tank's frame.
+  const spec = authoringRigSpec(combatSpec);
   const armor = spec.armor;
   const marking: VehicleMarkingRecord = spec.markings || vehicleMarkingRecord(spec);
   const usesSharedMaterialTextures = !geometryReceipt && !geometryOnly;
@@ -7926,7 +7930,7 @@ function* createTankOwnedSteps(
   const coreAuthoredStartedAt = performance.now();
   const sizeFactor = VEHICLE_SIZE_FACTORS[specId] ?? 1;
   if (sizeFactor !== 1) {
-    const sourceSpec = vehicleAuthoringSpec(spec);
+    const sourceSpec = vehicleAuthoringSpec(combatSpec);
     turretG.position.set(...sourceSpec.armor.turretPivot);
     gunG.position.set(...sourceSpec.armor.gunPivot);
     P.muzzleZ = sourceSpec.armor.gunBarrel.lengthM;
@@ -9584,14 +9588,12 @@ function* createTankOwnedSteps(
     // the gun: past a point along it the barrel bends (down, or any way on a turret the blast threw)
     gunG.updateMatrixWorld(true);
     const gunInv = gunG.matrixWorld.clone().invert();
-    let barrel: THREE.Mesh | null = null;
-    gunG.traverse((object) => { if (!barrel && object instanceof THREE.Mesh && object.name === 'gun') barrel = object; });
-    const bore = barrel as THREE.Mesh | null;
-    if (!bore?.geometry?.attributes?.position) return;
-    bore.geometry.computeBoundingBox();
+    const gunMeshes: THREE.Mesh[] = [];
+    gunG.traverse((object) => { if (object instanceof THREE.Mesh) gunMeshes.push(object); });
     const toGun = new THREE.Matrix4();
-    box.copy(bore.geometry.boundingBox!).applyMatrix4(toGun.multiplyMatrices(gunInv, bore.matrixWorld));
-    const bend = planBend(box.min.z, box.max.z, rng, pop);
+    const span = wreckBarrelSpan(gunMeshes, (mesh) => toGun.multiplyMatrices(gunInv, mesh.matrixWorld));
+    if (!span) return;
+    const bend = planBend(span.zMin, span.zMax, rng, pop);
     if (!bend) return;
     gunG.traverse((object) => {
       if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh || !object.geometry?.attributes?.position) return;

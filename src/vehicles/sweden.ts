@@ -170,11 +170,19 @@ interface SiegeArmorRatings {
   trackMm: number;
 }
 
+/** The hull gun as profiles/sweden.ts draws it: bore axis height, mouth station and tube radius (hull frame). */
+interface SiegeGunMount {
+  axisY: number;
+  muzzleZ: number;
+  radiusM: number;
+}
+
 /** Combat envelope for the hull-aimed Swedish wedge. Every module remains in
  * hull space so armor, reticle, module hits and server authority agree. */
 function siegeArmor(
   dims: FleetDimensions,
   ratings: SiegeArmorRatings,
+  mount: SiegeGunMount,
 ): ArmorEnvelope {
   const hl = dims.hullLengthM * 0.5;
   const hw = dims.widthM * 0.5;
@@ -184,7 +192,9 @@ function siegeArmor(
   const roofY = dims.heightM * 0.68;
   const bowZ = hl * 0.99;
   const roofNoseZ = hl * 0.48;
-  const gunY = roofY * 0.73;
+  // 230 gun-barrel alignment: the barrel runs down the drawn hull gun (tools/gun-barrel-align-census.mjs). The old
+  // derived axis (0.73 of the roof height) sat ~0.5 m under it and the barrel ran 0.5-0.8 m past its mouth.
+  const gunY = mount.axisY;
   const gunZ = hl * 0.54;
   const plateRatings = (keMm: number, ceMm: number): PlateOptions => ({ keMm, ceMm });
   return {
@@ -193,8 +203,8 @@ function siegeArmor(
     turretPivot: [0, 0, 0],
     gunPivot: [0, gunY, gunZ],
     gunBarrel: {
-      lengthM: dims.overallLengthM - dims.hullLengthM + hl * 0.62,
-      radiusM: 0.075,
+      lengthM: Math.round((mount.muzzleZ - gunZ) * 1e4) / 1e4,
+      radiusM: mount.radiusM,
     },
     hullPlates: [
       frontPlate('upper_glacis', ratings.frontPhysicalMm, bodyW, trackTop * 0.57,
@@ -321,13 +331,13 @@ SWEDEN_SPECS.udes03.armor = siegeArmor(SWEDEN_SPECS.udes03.dims, {
   lowerPhysicalMm: 35, lowerKeMm: 65, lowerCeMm: 85,
   sideMm: 25, sideKeMm: 35, sideCeMm: 45,
   rearMm: 25, roofMm: 25, trackMm: 20,
-});
+}, { axisY: 1.43, muzzleZ: 4.70, radiusM: 0.081 });
 SWEDEN_SPECS.strv103a.armor = siegeArmor(SWEDEN_SPECS.strv103a.dims, {
   frontPhysicalMm: 65, frontKeMm: 180, frontCeMm: 240,
   lowerPhysicalMm: 55, lowerKeMm: 140, lowerCeMm: 180,
   sideMm: 40, sideKeMm: 55, sideCeMm: 70,
   rearMm: 35, roofMm: 35, trackMm: 25,
-});
+}, { axisY: 1.59, muzzleZ: 5.47, radiusM: 0.089 });
 enforceTurretlessArmor(SWEDEN_SPECS.udes03);
 enforceTurretlessArmor(SWEDEN_SPECS.strv103a);
 
@@ -356,7 +366,7 @@ if (strv103b) {
       lowerPhysicalMm: 65, lowerKeMm: 170, lowerCeMm: 220,
       sideMm: 50, sideKeMm: 65, sideCeMm: 90,
       rearMm: 40, roofMm: 40, trackMm: 30,
-    }),
+    }, { axisY: 1.56, muzzleZ: 5.26, radiusM: 0.084 }),
   });
   delete strv103b.community;
   strv103b.visual = {

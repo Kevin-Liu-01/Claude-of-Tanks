@@ -25,6 +25,8 @@ import {
   calibrationOrientationPoint, stockCollisionCoverCandidates, stockCollisionFaceCovered,
 } from './calibrationStockGeometry.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
+import { COMBAT_GUN_RIGS, type CombatGunRig } from './combatGunRigs.generated.ts';
+import { rememberAuthoredRig } from './combatGunRigSeat.ts';
 import type {
   InternalCrewStation,
   InternalLayoutRecord,
@@ -122,6 +124,9 @@ interface ArmorAnatomy {
   externalWeapons?: ExternalWeaponStock[];
   roofGun?: AuxiliaryInventory['guns'][number];
   turretPivot: Vec3;
+  gunPivot?: Vec3;
+  gunBarrel?: { lengthM: number; radiusM: number; collision?: boolean };
+  boundingRadiusM?: number;
   hullPlates: ArmorPlate[];
   turretPlates: ArmorPlate[];
   modules?: ModuleVolume[];
@@ -1510,6 +1515,23 @@ function assignCollisionOutputs(
   else delete armor.trackContact;
 }
 
+/**
+ * 230 gun-barrel alignment: seat the combat articulation where the builder seated its rig (combatGunRigs.generated.ts,
+ * measured by tools/gun-barrel-align-census.mjs). The turret and trunnion pivots, the barrel length and, where the
+ * authored one was off, its radius are replaced; the bounding radius only grows to keep the muzzle inside the
+ * authorities' trace broadphase. Runs before the anatomy reconciles, so the turret ring and the turret cells (both
+ * measured in the builder's rig_turret frame) follow the same pivot.
+ */
+export function applyCombatGunRig(armor: ArmorAnatomy, rig: CombatGunRig | undefined): void {
+  if (!rig || !armor.gunBarrel) return;
+  rememberAuthoredRig(armor);
+  armor.turretPivot = [...rig.turretPivot];
+  armor.gunPivot = [...rig.gunPivot];
+  armor.gunBarrel = { ...armor.gunBarrel, lengthM: rig.lengthM, ...(rig.radiusM === undefined ? {} : { radiusM: rig.radiusM }) };
+  const reach = Math.hypot(rig.turretPivot[0], rig.turretPivot[2]) + Math.hypot(rig.gunPivot[0], rig.gunPivot[2]) + rig.lengthM + 0.4;
+  if (!(Number(armor.boundingRadiusM) >= reach)) armor.boundingRadiusM = Math.round(reach * 1000) / 1000;
+}
+
 export function finalizeCombatAnatomy<T>(
   spec: T,
   calibration?: CombatAnatomyCalibration | null,
@@ -1522,6 +1544,7 @@ export function finalizeCombatAnatomy(
   const calibration = resolveCombatCalibration(spec, requestedCalibration);
   if (!spec?.armor || spec[FINALIZED]) return spec;
   const armor = spec.armor;
+  applyCombatGunRig(armor, COMBAT_GUN_RIGS[spec.id]);
   if (calibration) reconcileCalibratedAnatomy(armor, calibration);
   // Non-playable comparison/authoring specs are intentionally outside the
   // 122-vehicle evidence registry. Keep their authored anatomy usable without

@@ -18,7 +18,7 @@
 // Deterministic in (hierarchy, seed, pop) on its own random stream; no allocation per vertex.
 
 import * as THREE from 'three';
-import { bendAngle, planBend, planCreases, planDents, wreckRandom, type WreckBend, type WreckCrease, type WreckDent } from '../vehicles/wreckDents.ts';
+import { bendAngle, planBend, planCreases, planDents, wreckBarrelSpan, wreckRandom, type WreckBend, type WreckCrease, type WreckDent } from '../vehicles/wreckDents.ts';
 
 type PartName = 'hull' | 'gear' | 'turret' | 'gun';
 
@@ -214,12 +214,14 @@ export function planWreckCrumple(root: THREE.Object3D, seed: number, pop: boolea
 
   // ---- the gun: the barrel bends past a point along it -----------------------------------------------------------
   const gunRig = rigs.get('rig_gun');
-  const barrel = named.get('gun')?.[0];
-  if (gunRig && barrel) {
+  const gunFrame = gunRig ? frameOf(gunRig) : null;
+  const toGun = new THREE.Matrix4();
+  const span = gunFrame ? wreckBarrelSpan(meshes.gun, (mesh) =>
+    toGun.multiplyMatrices(gunFrame.toFrame, new THREE.Matrix4().multiplyMatrices(rootInv, mesh.matrixWorld))) : null;
+  if (gunRig && span) {
     const gun = blank(gunRig);
-    const box = frameBox([barrel], gun.toFrame, rootInv);
     // down under its own weight in the fire, or any way on a turret the blast threw
-    if (box) gun.bend = planBend(box.min.z, box.max.z, rng, pop);
+    gun.bend = planBend(span.zMin, span.zMax, rng, pop);
     parts.gun = gun;
   }
   return { parts, partOf: (mesh) => partOfMesh(mesh, root) };
