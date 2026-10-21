@@ -693,7 +693,10 @@
       // A failed import names the entry script, not the dependency that 404ed;
       // Resource Timing's responseStatus (noteNetworkProgress) names that file.
       function noteFailure(text) {
-        const joined = String(text || '').replace(/\s+/g, ' ').trim();
+        // URLs keep their path: a query or fragment (a Studio #scene= link carries a whole scene) is never reported.
+        const joined = String(text || '')
+          .replace(/([a-z][a-z0-9+.-]*:\/\/[^\s?#()'"]*)[?#][^\s()'"]*?(?=(?::\d+){1,2}(?=[\s)'"]|$)|[\s)'"]|$)/gi, '$1')
+          .replace(/\s+/g, ' ').trim();
         if (joined) lastErrorText = joined.slice(0, 300);
         const asset = /\/assets\/([^\s'")?#]+)/.exec(joined);
         if (asset) lastFailedFile = asset[1];

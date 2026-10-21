@@ -184,7 +184,173 @@ export interface TeamArrangement {
   /** Mars mode only: the gravity world and boost-cache cadence (MARS_GRAVITY_OPTIONS / MARS_CACHE_OPTIONS). */
   readonly marsGravity?: MarsGravityId | null;
   readonly marsCaches?: MarsCachesId | null;
+  /** Proving ground only: the target hulls shuttle along their hull axes about their marks (PROVING_GROUND_RULES.patrol). */
+  readonly movingTargets?: boolean | null;
 }
+
+/** One lane of the proving ground: a target hull at a set range down the range axis, presenting a set angle. */
+interface ProvingLaneRule {
+  /** Range from the firing line along the range axis (m). */
+  readonly rangeM: number;
+  /** The angle the target presents to the firing line (deg): 0 nose on, 90 full broadside; + turns its nose to its left. */
+  readonly presentDeg: number;
+  /** Preferred offset across the range axis (m, + toward the shooter's left); the layout moves it off a blocked sightline. */
+  readonly lateralM: number;
+}
+
+/** One reference plate on the rack: rolled homogeneous armour `mm` thick, laid back `angleDeg` from facing the firing line;
+ * a plate laid far back may run longer up its slope than the rack's height (`lengthM`), so it still shows the line a face. */
+interface ProvingPlateRule {
+  readonly mm: number;
+  readonly angleDeg: number;
+  readonly lengthM?: number;
+}
+
+/**
+ * The plate rack (2026-10-20): reference plates standing in a row across the range at a set range, each facing the firing
+ * line and laid back by its angle, so a round fired from the line meets it at that angle. A round that strikes one is
+ * resolved by the damage law the hulls answer to (sim/damage.ts resolvePlateStrike): its once-per-shot penetration roll
+ * against the plate's effective thickness, the ricochet and overmatch rules, the slope law.
+ */
+interface ProvingPlateRackRule {
+  /** Range from the firing line along the axis (m) and the rack's centre across it (m, + toward the shooter's left). */
+  readonly rangeM: number;
+  readonly lateralM: number;
+  /** Centre-to-centre spacing across the axis, each plate's face (width x height, m), its lower edge above the ground. */
+  readonly spacingM: number;
+  readonly widthM: number;
+  readonly heightM: number;
+  readonly liftM: number;
+  readonly plates: readonly ProvingPlateRule[];
+}
+
+/** One graded feature of the drive course (sim/provingGround.ts provingCourseStamps turns each into a terrain profile). */
+type ProvingCourseFeature =
+  /** Up at `upDeg` to `heightM`, a level top `topM` long, down at `downDeg`. */
+  | { readonly kind: 'ramp'; readonly heightM: number; readonly upDeg: number; readonly topM: number; readonly downDeg: number }
+  /** A ditch `depthM` deep with walls at `wallDeg` and a floor `floorM` long. */
+  | { readonly kind: 'ditch'; readonly depthM: number; readonly wallDeg: number; readonly floorM: number }
+  /** `count` rounded humps `heightM` tall, one every `periodM`. */
+  | { readonly kind: 'moguls'; readonly heightM: number; readonly periodM: number; readonly count: number }
+  /** The ground across the course raised at `deg` (its left side up), `lengthM` along it. */
+  | { readonly kind: 'sideSlope'; readonly deg: number; readonly lengthM: number };
+
+/**
+ * The drive course (2026-10-20): graded earthworks on the meadow beside the range, in a row parallel to its axis — ramps,
+ * a ditch, moguls and a side slope — raised in the battle's ground overlay (sim/terrainDeformation.ts CourseStamp), so the
+ * hull drives what the eye sees and nothing outside the proving ground moves.
+ */
+interface ProvingCourseRule {
+  /** Where the first feature begins along the axis from the firing line (m) and the course's line across it (m, + left). */
+  readonly startM: number;
+  readonly lateralM: number;
+  /** The graded band's width (m), the skirt each side past it (m) and the level ground between two features (m). */
+  readonly widthM: number;
+  readonly skirtM: number;
+  readonly gapM: number;
+  readonly features: readonly ProvingCourseFeature[];
+}
+
+/**
+ * The proving ground (v2 progression, owner 2026-10-17: "build out all the options": proving ground / test drive). A solo
+ * range on the simulation's own armor, ballistics and damage: the player on a firing line, a target hull on every lane at
+ * a set range and presented angle, every shot's outcome on the shot card, and a range card measuring every round against
+ * the targets and against reference plates. No enemy fires, no clock runs, nothing is scored or recorded; a destroyed
+ * hull stands again at its mark. sim/provingGround.ts lays the lanes out on the battlefield; game/state.ts seats them.
+ */
+export interface ProvingGroundRules {
+  /** The range's battlefield: Kestrel Airfield's runway, a graded strip on a level plateau (world/maps/airfield.ts). */
+  readonly mapId: string;
+  /** Where the player deploys and the bearing down the range (deg from +z toward +x; 90 = east). */
+  readonly firingLine: { readonly x: number; readonly z: number; readonly bearingDeg: number };
+  readonly lanes: readonly ProvingLaneRule[];
+  /** The range card measures every round against rolled homogeneous plate at these angles from the plate normal (deg). */
+  readonly plateAnglesDeg: readonly number[];
+  /** Moving targets (the player's arrangement; off by default). */
+  readonly moving: boolean;
+  /** A moving target shuttles `halfLengthM` either way of its mark along its hull axis at this throttle, steering for a
+   * point `lookaheadM` ahead on its line with this heading gain (per radian of error). */
+  readonly patrol: { readonly halfLengthM: number; readonly throttle: number; readonly lookaheadM: number; readonly steerGain: number };
+  /** A lane whose preferred offset is blocked searches this far either side in these steps (m). */
+  readonly lateralStepM: number;
+  readonly lateralReachM: number;
+  /** Sightline heights above the ground: the shooter's sight and a target's centre (m). */
+  readonly sightHeightM: number;
+  readonly targetHeightM: number;
+  /** Nominal silhouette radius of a target hull and the clear angle kept between two lanes seen from the firing line. */
+  readonly targetRadiusM: number;
+  readonly separationDeg: number;
+  /** Ground a mark must stand on: the relief under a hull (m) and the steepest slope (the ground normal's least y). */
+  readonly markRelief: number;
+  readonly markNormalY: number;
+  /** The plate rack and the drive course beside the lanes. */
+  readonly plateRack: ProvingPlateRackRule;
+  readonly course: ProvingCourseRule;
+  /** The range's light: one time of day whatever the player's battle times (a test reads in daylight, without the
+   * long low-sun shadows that stripe the yard at a sight's zoom). */
+  readonly timeOfDay: 'day' | 'sunset' | 'night';
+}
+
+export const PROVING_GROUND_RULES: ProvingGroundRules = Object.freeze({
+  mapId: 'airfield',
+  // the runway's west end, on the runway road, looking east down the 620 m strip
+  firingLine: Object.freeze({ x: -350, z: 0, bearingDeg: 90 }),
+  // five lanes alternate across the axis so no nearer hull hides a farther one from the firing line
+  lanes: Object.freeze([
+    Object.freeze({ rangeM: 100, presentDeg: 0, lateralM: -14 }),
+    Object.freeze({ rangeM: 200, presentDeg: 30, lateralM: 20 }),
+    Object.freeze({ rangeM: 300, presentDeg: 90, lateralM: -20 }),
+    Object.freeze({ rangeM: 450, presentDeg: 45, lateralM: 14 }),
+    Object.freeze({ rangeM: 650, presentDeg: 0, lateralM: -14 }),
+  ]),
+  plateAnglesDeg: Object.freeze([0, 30, 60]),
+  moving: false,
+  patrol: Object.freeze({ halfLengthM: 22, throttle: 0.55, lookaheadM: 14, steerGain: 2.2 }),
+  lateralStepM: 6,
+  lateralReachM: 60,
+  sightHeightM: 2.2,
+  targetHeightM: 1.3,
+  targetRadiusM: 5,
+  separationDeg: 0.3,
+  markRelief: 2,
+  markNormalY: 0.94,
+  // the rack stands on the meadow left of the 100 m lane, clear of every lane's sightline: five plates square to the line
+  // (50 to 500 mm) and three laid back, the last past every armour-piercing round's ricochet angle
+  plateRack: Object.freeze({
+    rangeM: 95, lateralM: 40, spacingM: 3.4, widthM: 1.8, heightM: 2, liftM: 0.45,
+    plates: Object.freeze([
+      Object.freeze({ mm: 50, angleDeg: 0 }),
+      Object.freeze({ mm: 100, angleDeg: 0 }),
+      Object.freeze({ mm: 200, angleDeg: 0 }),
+      Object.freeze({ mm: 300, angleDeg: 0 }),
+      Object.freeze({ mm: 500, angleDeg: 0 }),
+      Object.freeze({ mm: 100, angleDeg: 45 }),
+      Object.freeze({ mm: 100, angleDeg: 60 }),
+      Object.freeze({ mm: 60, angleDeg: 82, lengthM: 4 }),
+    ]),
+  }),
+  timeOfDay: 'day',
+  // the course runs on the meadow right of the lanes, parallel to the runway: a gentle ramp, a ditch, moguls, a steep
+  // ramp and a side slope, 8 m of level ground between them
+  course: Object.freeze({
+    startM: 14, lateralM: -40, widthM: 10, skirtM: 4, gapM: 8,
+    features: Object.freeze([
+      Object.freeze({ kind: 'ramp', heightM: 2.5, upDeg: 15, topM: 6, downDeg: 15 }),
+      Object.freeze({ kind: 'ditch', depthM: 2, wallDeg: 35, floorM: 3 }),
+      Object.freeze({ kind: 'moguls', heightM: 0.7, periodM: 6, count: 4 }),
+      Object.freeze({ kind: 'ramp', heightM: 3, upDeg: 30, topM: 5, downDeg: 22 }),
+      Object.freeze({ kind: 'sideSlope', deg: 12, lengthM: 18 }),
+    ] as const),
+  }),
+});
+
+/**
+ * What a test drive launches (the Garage dossier's and the Gallery's "Test drive"): the proving ground on its own
+ * battlefield. The one place outside the ruleset table that names the practice mode; every entry point reads it here.
+ */
+export const TEST_DRIVE: { readonly gameMode: GameModeId; readonly mapId: string } = Object.freeze({
+  gameMode: 'proving_ground', mapId: PROVING_GROUND_RULES.mapId,
+});
 
 /**
  * Vehicles one solo field may hold, the player included (owner 2026-09-18: "go up to a number that you
@@ -204,6 +370,8 @@ type IntRange = readonly [number, number];
 const range = (low: number, high: number): IntRange => Object.freeze([low, high] as const);
 const SYMMETRIC_ALLIES = range(0, BATTLE_FIELD_LIMIT - 2), SYMMETRIC_ENEMIES = range(1, BATTLE_FIELD_LIMIT - 1);
 const COOP_ALLIES = range(0, 6);
+// the proving ground fields no allied bot and exactly one target hull per lane
+const PROVING_ALLIES = range(0, 0), PROVING_TARGETS = range(PROVING_GROUND_RULES.lanes.length, PROVING_GROUND_RULES.lanes.length);
 export const TEAM_ARRANGEMENT_LIMITS: {
   readonly field: number;
   readonly allies: Readonly<Record<GameModeId, IntRange>>;
@@ -215,11 +383,13 @@ export const TEAM_ARRANGEMENT_LIMITS: {
     standard: SYMMETRIC_ALLIES, capture_the_flag: SYMMETRIC_ALLIES, zone_control: SYMMETRIC_ALLIES, turbo_ball: SYMMETRIC_ALLIES,
     endless_horde: COOP_ALLIES, frontline_assault: COOP_ALLIES, mars: SYMMETRIC_ALLIES,
     juggernaut: SYMMETRIC_ALLIES, infected: SYMMETRIC_ALLIES, realistic: SYMMETRIC_ALLIES, gun_game: SYMMETRIC_ALLIES, drone: SYMMETRIC_ALLIES, ac130: range(2, 8),
+    proving_ground: PROVING_ALLIES,
   }),
   enemies: Object.freeze({
     standard: SYMMETRIC_ENEMIES, capture_the_flag: SYMMETRIC_ENEMIES, zone_control: SYMMETRIC_ENEMIES, turbo_ball: SYMMETRIC_ENEMIES,
     endless_horde: range(6, 20), frontline_assault: range(4, 14), mars: SYMMETRIC_ENEMIES,
     juggernaut: SYMMETRIC_ENEMIES, infected: SYMMETRIC_ENEMIES, realistic: SYMMETRIC_ENEMIES, gun_game: SYMMETRIC_ENEMIES, drone: SYMMETRIC_ENEMIES, ac130: range(4, 24),
+    proving_ground: PROVING_TARGETS,
   }),
   waveSize: range(2, 12),
 });
@@ -360,6 +530,13 @@ export interface MatchRuleset {
    * (its own collision manifest, server/world-collision-manifests/<map>@assault-trenches.json).
    */
   readonly terrainVariant: TerrainVariant | null;
+  /**
+   * The battle keeps records: the service record's medals and stats, the profile's result tally and the campaign ladder
+   * read a battle only where this is true. The practice modes play without a record (nothing to farm on a range).
+   */
+  readonly records: boolean;
+  /** The proving ground's range: the firing line, the lanes, the reference plates and the moving-target option. */
+  readonly provingGround?: ProvingGroundRules;
 }
 
 /** A battlefield variant a mode can play (the map built with that variant's config, its own collision manifest). */
@@ -415,7 +592,7 @@ const STANDARD: MatchRuleset = Object.freeze({
   ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, recoilLaunchScale: 1, shellKnockScale: 0.3,
   respawnS: null, timeLimitS: 900, timeout: 'draw', endingHoldS: ENDING_HOLD_S,
   allies: null, enemies: null, assault: null, horde: null, enemyNation: null,
-  destruction: DESTRUCTION_ON, terrainVariant: null,
+  destruction: DESTRUCTION_ON, terrainVariant: null, records: true,
 });
 
 // Ammunition (owner 2026-10-17: "for special modes like juggernaut, ammo should be endless"): the competitive and
@@ -485,6 +662,15 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   ac130: Object.freeze({ ...STANDARD, mode: 'ac130', aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true,
     ammo: 'unlimited', consumables: false, timeLimitS: 480, timeout: 'defeat',
     destruction: Object.freeze({ ...DESTRUCTION_ON, craterScale: 1.25 }) }),
+  // Proving ground (v2 progression, 2026-10-17): the player alone on the firing line, one target hull per lane (no allied
+  // bots, no AI on the targets), every target always in sight, unlimited rounds of the tank's own loadout, a destroyed hull
+  // back on its mark in 3 s, no clock and no record. The standard physics, damage and destruction apply unchanged, so every
+  // outcome on the range is the outcome in battle.
+  proving_ground: Object.freeze({
+    ...STANDARD, mode: 'proving_ground', alwaysVisible: true, ammo: 'unlimited',
+    allies: 0, enemies: PROVING_GROUND_RULES.lanes.length, respawnS: 3, timeLimitS: null,
+    records: false, provingGround: PROVING_GROUND_RULES,
+  }),
 });
 
 /** Score targets the modes play to (kept here so rule cards and controller agree). */
@@ -570,6 +756,8 @@ const clampInt = (value: unknown, range: readonly [number, number]): number | nu
 /** Clamp an arrangement to the mode's limits; null for modes that take none or an empty input. */
 export function normalizeTeamArrangement(mode: GameModeId, input: TeamArrangement | null | undefined): TeamArrangement | null {
   if (!input || !acceptsTeamArrangement(mode)) return null;
+  // the proving ground's sides are its lanes: the moving-target switch is its only arrangement
+  if (BASE_RULESETS[mode].provingGround) return input.movingTargets === true ? Object.freeze({ movingTargets: true }) : null;
   let allies = input.allies == null ? null : clampInt(input.allies, TEAM_ARRANGEMENT_LIMITS.allies[mode]);
   const enemies = input.enemies == null ? null : clampInt(input.enemies, TEAM_ARRANGEMENT_LIMITS.enemies[mode]);
   const waveSize = mode === 'endless_horde' && input.waveSize != null
@@ -680,6 +868,9 @@ export function matchRulesetFor(
       juggernaut: { ...ruleset.juggernaut, team: hunter ? 'bravo' : 'alpha' } };
   }
   if (ruleset.infection) ruleset = { ...ruleset, enemies: Math.max(3, ruleset.enemies ?? base.enemies ?? 3) };
+  if (ruleset.provingGround && arranged?.movingTargets) {
+    ruleset = { ...ruleset, provingGround: Object.freeze({ ...ruleset.provingGround, moving: true }) };
+  }
   return ruleset === base ? base : Object.freeze(ruleset);
 }
 
@@ -811,7 +1002,11 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
   else if (ruleset.timeLimitS !== STANDARD.timeLimitS || ruleset.timeout !== 'draw') {
     line(ruleset.timeout === 'defeat' ? 'clockDefeat' : 'clock', { value: `${Math.round(ruleset.timeLimitS / 60)}` });
   }
-  if (isWaveMode(ruleset.mode)) {
+  if (ruleset.provingGround) {
+    // the range's sides are its lanes (no allied bot, a target hull on every lane, none of them firing)
+    line('provingLanes', { value: String(ruleset.provingGround.lanes.length) });
+    if (ruleset.provingGround.moving) line('movingTargets');
+  } else if (isWaveMode(ruleset.mode)) {
     if (ruleset.allies === 0) line('noAllies');
     else if (ruleset.allies != null) line('allies', { value: String(ruleset.allies) });
     if (ruleset.enemies != null) line('enemyPool', { value: String(ruleset.enemies) });
@@ -834,7 +1029,13 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
       hp: percent(1 + ruleset.assault.difficultyHp),
     });
   }
+  if (!ruleset.records) line('noRecords');
   return lines;
+}
+
+/** The battle keeps records (the service record, the profile tally, the campaign): false in the practice modes. */
+export function rulesetKeepsRecords(mode: GameModeId | string | null | undefined): boolean {
+  return (BASE_RULESETS as Readonly<Record<string, MatchRuleset>>)[String(mode)]?.records ?? true;
 }
 
 /** Ammunition capacity for one round under a ruleset. Unlimited rounds keep the authored capacity and are refilled

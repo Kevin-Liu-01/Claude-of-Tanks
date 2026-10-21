@@ -48,6 +48,7 @@ import {
   privateRoomMetadata,
 } from '../presentation/siteMetadata.ts';
 import {
+  BATTLE_MODE_IDS,
   GAME_MODE_DEFINITIONS,
   normalizeGameMode,
   type GameModeId,
@@ -781,7 +782,8 @@ export function createPlayMenu({
       .map((line) => t(`rules.line.${line.key}`, ruleLineValues(line))).join(' · ');
   const leadingModes: readonly GameModeId[] = ['standard', 'drone', 'ac130', 'mars', 'juggernaut', 'capture_the_flag', 'infected', 'frontline_assault', 'realistic', 'gun_game', 'turbo_ball', 'zone_control', 'endless_horde'];
   const modeRank = (id: GameModeId): number => { const rank = leadingModes.indexOf(id); return rank < 0 ? leadingModes.length : rank; };
-  const ruleCards = Object.values(GAME_MODE_DEFINITIONS)
+  // the battle modes only: the practice modes launch from the Garage dossier and the Gallery, never a room
+  const ruleCards = BATTLE_MODE_IDS.map((id) => GAME_MODE_DEFINITIONS[id])
     .sort((a, b) => modeRank(a.id) - modeRank(b.id)).map((rule) =>
     `<button class="rule" data-game-mode="${rule.id}" type="button" title="${t(`playMenu.matchMode.${rule.id}.desc`, modeCopyValues(rule.id))}">
       ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${t(`playMenu.matchMode.${rule.id}.label`)}</b><small>${t(`playMenu.matchMode.${rule.id}.short`, modeCopyValues(rule.id))}</small>${

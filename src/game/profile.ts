@@ -1,4 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
+import { rulesetKeepsRecords } from '../sim/matchRuleset.ts';
 // Durable local battle history. This deliberately records outcomes instead of
 // inventing a wallet: Claude of Tanks has no research tree or purchasable
 // vehicles, so credits and XP would communicate progression that does not
@@ -230,7 +231,8 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
   bus.on('battle:ended', (payload) => {
     const event = recordOf(payload) ?? {};
     if (!tally) return;
-    if (event.reason === 'network_disconnect') {
+    // a practice mode keeps no record (sim/matchRuleset.ts records): the proving ground never reaches the tally
+    if (event.reason === 'network_disconnect' || !rulesetKeepsRecords(typeof event.gameMode === 'string' ? event.gameMode : null)) {
       tally = null;
       return;
     }

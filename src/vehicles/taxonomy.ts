@@ -1,8 +1,9 @@
-// Canonical public vehicle taxonomy and private simulation-role vocabulary.
+// Canonical public vehicle eras and the private simulation-role vocabulary.
 //
-// Era is the only fleet category exposed to players. `role` exists solely for
-// mechanics that genuinely need a platform distinction (AI doctrine, spotting
-// baselines, weapon-feed behavior); it is not a gallery or garage category.
+// Era is one of the player-facing fleet facets; class, battle role and design
+// status live in vehicleFacets.ts (owner ruling 2026-10-17). `role` here exists
+// solely for mechanics that genuinely need a platform distinction (AI doctrine,
+// spotting baselines, weapon-feed behavior); players filter by the class facet.
 
 import type { RuntimeValue } from '../runtimeTypes.ts';
 

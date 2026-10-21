@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { bakeTankWreck } from './wrecks.ts';
 import { collectWreckSolids, placeWreckCollision } from './wreckCollision.ts';
-import { pushHullFromObstacle, setObbShape } from './collision.ts';
+import { collisionPartTopAt, pointInsideCollisionRecord, pushHullFromObstacle, setObbShape } from './collision.ts';
 
 const box = (name, w, h, l, x = 0, z = 0) => {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,h,l), new THREE.MeshBasicMaterial());
@@ -13,7 +13,20 @@ const root = new THREE.Group();
 root.add(box('hull',4,2,8), box('turret',2,1,2,-6), box('gun',14,0.2,0.2));
 root.updateMatrixWorld(true);
 const solids = collectWreckSolids(root);
-assert.equal(solids.length,2);
+assert.equal(solids.length,10,'the hull as 3 x 3 columns, the turret whole');
+// (DST-03, 2026-10-17) the support top follows the deck column by column: a bin on the hull's front-left corner raises
+// its own column, not the rear-right deck (one convex top over the whole hull bridged from the bin to the far edges)
+{
+  const deck = new THREE.Group();
+  const bin = box('hullExternalArmor',0.6,0.8,1,-1.7,3.5); bin.position.y = 2.4;
+  deck.add(box('hull',4,2,8), bin);
+  deck.updateMatrixWorld(true);
+  const r = placeWreckCollision(collectWreckSolids(deck),new THREE.Matrix4());
+  const topAt = (x,z) => { let t=-Infinity; for(const part of r.shape2.parts) if(pointInsideCollisionRecord(r,part,x,z)) t=Math.max(t,collisionPartTopAt(r,part,x,z)); return t; };
+  assert.ok(Math.abs(topAt(1.5,-3)-2)<0.02,`the rear-right deck stands at the deck (${topAt(1.5,-3)})`);
+  assert.ok(Math.abs(topAt(0,0)-2)<0.02,`the middle of the deck stands at the deck (${topAt(0,0)})`);
+  assert.ok(topAt(-1.7,3.5)>2.75,`the bin stands at its own top (${topAt(-1.7,3.5)})`);
+}
 const hit = (rec,x,z,halfL=1,halfW=1) => {
   const push = {x:0,z:0};
   const collided = pushHullFromObstacle({x,z},0,1,1,0,halfL,halfW,rec,push);
@@ -48,7 +61,7 @@ for(const id of ['m1a1_abrams_hc','t90am','xk2_black_panther','m551_sheridan','k
   for(const pop of [false,true]) {
     const baked=bakeTankWreck(null,id,{seed:91234,pop});
     assert.ok(baked,`${id} bakes`);
-    assert.ok(baked.solids.length>=1 && baked.solids.length<=2,`${id}: bounded solid bodies`);
+    assert.ok(baked.solids.length>=1 && baked.solids.length<=10,`${id}: bounded solid bodies (the hull's columns and the turret)`);
     const placed=placeWreckCollision(baked.solids,new THREE.Matrix4());
     const old=setObbShape({min:[-baked.hx,0,-baked.hz],max:[baked.hx,baked.h,baked.hz]},0,0,baked.hx+0.2,baked.hz+0.2,0);
     let cleared=0;
