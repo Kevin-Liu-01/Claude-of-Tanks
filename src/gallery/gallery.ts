@@ -374,7 +374,9 @@ const anatomyHost = (): AnatomyHost => ({
     $('#inspectionId').textContent = readout.id;
     $('#inspectionOwner').textContent = readout.owner;
     $('#inspectionTitle').textContent = readout.title;
-    $('#inspectionDetails').textContent = readout.details;
+    const combatModule = pick.kind === 'module' ? damageLab?.combat.modules[pick.part.module as keyof DamageLab['combat']['modules']] : null;
+    $('#inspectionDetails').textContent = combatModule
+      ? `${readout.details} · ${t('gallery.anatomy.detail.hp', { hp: Math.round(combatModule.maxHp) })}` : readout.details;
     panel.hidden = false;
     const key = pick.kind === 'armor' ? `plate:${pick.surface.plate.name}` : pick.kind === 'module' ? `module:${pick.part.module}`
       : pick.kind === 'crew' ? `crew:${pick.station.crew}` : 'module:gun';

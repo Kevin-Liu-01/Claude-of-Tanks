@@ -2018,6 +2018,7 @@
   "gallery.anatomy.detail.parts": " · 第 {part} / {count} 部分",
   "gallery.anatomy.detail.crew": "{station} · 乘员位 {dimensions} 米",
   "gallery.anatomy.detail.barrel": "炮管 · {length} 米 · {diameter} 毫米",
+  "gallery.anatomy.detail.hp": "耐久 {hp}",
   "gallery.inspection.layer": "层",
   "gallery.inspection.armorDetail": "{kind} {layer} · {physical} 毫米实厚 · {ke} 毫米动能穿深 · {ce} 毫米化弹穿深",
   "gallery.inspection.moduleDetail": "{label} · {dimensions} 米 {killCam}",

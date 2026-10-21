@@ -215,6 +215,8 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
   const toggles: Record<AnatomyMode, ViewToggles> = {
     armor: { ...DEFAULT_TOGGLES.armor }, modules: { ...DEFAULT_TOGGLES.modules }, crew: { ...DEFAULT_TOGGLES.crew },
   };
+  // A phone stage is too small for a dozen part badges at once: they start off there (the Labels chip brings them back).
+  if (globalThis.matchMedia?.('(max-width: 700px)').matches) { toggles.modules.labels = false; toggles.crew.labels = false; }
   let metric: ArmorMetric = 'ke';
   let mode: AnatomyMode | null = null;
   let anatomy: AnatomyScene | null = null;

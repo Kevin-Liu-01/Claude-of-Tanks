@@ -2062,6 +2062,7 @@
   "gallery.anatomy.detail.parts": " · part {part} of {count}",
   "gallery.anatomy.detail.crew": "{station} · station {dimensions} m",
   "gallery.anatomy.detail.barrel": "Barrel · {length} m · {diameter} mm",
+  "gallery.anatomy.detail.hp": "{hp} HP",
   "gallery.inspection.layer": "layer",
   "gallery.inspection.armorDetail": "{kind} {layer} · {physical} mm physical · {ke} mm KE · {ce} mm CE",
   "gallery.inspection.moduleDetail": "{label} · {dimensions} m {killCam}",
