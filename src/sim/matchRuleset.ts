@@ -200,8 +200,11 @@ export const RUSH_DRIVE = Object.freeze({
   orbitStepM: 10, orbitRings: 3,
   /** The orbit's aim point runs this far along the tangent (closingLeadM while closing inside noRamM: out, not in). */
   tangentLeadM: 18, closingLeadM: 6,
-  /** The no-ram lane: the two half-widths plus laneMarginM, and a crossing hull's place lookaheadS on. */
-  laneMarginM: 2, lookaheadS: 0.6,
+  /**
+   * The no-ram lane: the two half-widths plus laneMarginM, and a crossing hull's place lookaheadS on (round 3b: 2 m and
+   * 0.6 s still let a hunter close on a hull turning across its bow — 7 hunter rams in 5 Horde runs).
+   */
+  laneMarginM: 3, lookaheadS: 1.0,
   /**
    * The gap before two footprints touch (round 3): inside the stopping distance plus brakeGapM the hull stops — and backs
    * off at backOffThrottle inside backOffGapM when it stands (backing off sooner put the hull's tail into the hulls behind
@@ -221,6 +224,8 @@ export const RUSH_DRIVE = Object.freeze({
 export const JOCKEY_DRIVE = Object.freeze({ throttle: 0.35, standThrottle: 0.1, ringM: 16, leadM: 10, legMinS: 3, blockedS: 0.7, blockedMps: 0.4,
   /** A strafe under way keeps the hull while its drivers' goal stays this near where it stood (their call back to that ground). */
   leashM: 24,
+  /** A contact lost from sight (inside the target memory) is strafed round where it was last seen, from at least this far. */
+  memoryMinM: 20,
   /** A lap is judged for a stall only after this long under way (the roll-off itself starts from a stand). */
   legSettleS: 1.0,
   /** The rolling turn (doctrine rollingTurns): this drive and at most this steer, an arc in place of the pivot's lock. */
@@ -412,6 +417,12 @@ interface HordeRules extends ArrivalRules {
    * at 320-440 m a lone zombie on Verdant never found the humans again, and wave 1 never cleared in 1500 s).
    */
   readonly strandedRingM: readonly [number, number];
+  /**
+   * A straggler benched more than this many times in one wave is retired from it (round 3b, the critic's M1: on Verdant a
+   * zombie re-arrived twenty times round humans it never found and wave 1 never cleared): it rests, the wave owes it no
+   * more, and it is the director's call alone (no bot learns where anything is).
+   */
+  readonly strandedRetireAfter: number;
   /** A field left empty with arrivals queued for stallTrickles × trickleS takes ring points in sight (out of reach). */
   readonly stallTrickles: number;
   /** The lull between waves (a clear, readable break; was a 6 s literal plus 0-49 s of travel). */
@@ -943,9 +954,11 @@ const STANDARD: MatchRuleset = Object.freeze({
 });
 
 // Per-side doctrines (gameplay-modes-228). Each is a partial over CLASSIC_BOT_DOCTRINE; see BotDoctrine for the knobs.
+// round 3b (the critic's M2/M3: 0.31 -> 1.0 bot ram deaths a Horde run, 0.38 -> 0.94 an Infected one, nearly all of
+// them fodder hulls the humans' side drove into): the Horde's allies and the survivors keep the rushers' no-ram lane
 const HORDE_ALLY_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   missionOwnsRoute: true,
-  openingRead: false, conserveRounds: false, searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8,
+  openingRead: false, conserveRounds: false, searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8, noRamLane: true,
 });
 // the infected keep firing at range on the way in (a zombie's long shot is wasted; the infected's is pressure)
 const INFECTED_DOCTRINE: Partial<BotDoctrine> = Object.freeze({ ...RUSH_DOCTRINE, hitReactions: 'angle', claimRangeM: null });
@@ -953,6 +966,7 @@ const SURVIVOR_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   missionOwnsRoute: true,
   openingRead: false, conserveRounds: false, fallbackScale: 0.5, hitReactions: 'angle', stalemateSilentS: 6,
   spearheadGuard: true, scoutKite: true, holdBandScale: 1, searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8,
+  noRamLane: true,
 });
 // round 2: both sides without shoot-and-scoot and at a quarter of the fallback (the A/B over the critic's 16 seeds:
 // falling back 9 % / 12 % of samples -> 5 % / 6 %); round 3: both fire on the move (no settled-shot halt), drive their hard
@@ -1050,7 +1064,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     allies: 4, enemies: 20,
     horde: Object.freeze({
       waveSize: 6, waveStep: 3, waveCurve: 0.35, perHumanTotal: 0.25, maxAlive: 16, maxAlivePerHuman: 1, maxAliveCap: 20,
-      trickleS: 1.5, stallTrickles: 4, recycleAfterS: 6, strandedS: 40, strandedGainM: 20, strandedContactM: 50, strandedRingM: Object.freeze([160, 230] as const), spawnRingM: Object.freeze([320, 440] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
+      trickleS: 1.5, stallTrickles: 4, recycleAfterS: 6, strandedS: 40, strandedGainM: 20, strandedContactM: 50, strandedRingM: Object.freeze([160, 230] as const), strandedRetireAfter: 2, spawnRingM: Object.freeze([320, 440] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
       spawnMinHumanM: 150, spawnOutOfSight: true, sightRangeM: 450, sightStepM: 8, sightEyeM: 2.4, sightHullM: 1.5, sightMarginM: 1,
       sightLeadM: 60, spawnCandidates: 12, spawnReachS: 26,
       intermissionS: 8, waveRepair: 0.3,

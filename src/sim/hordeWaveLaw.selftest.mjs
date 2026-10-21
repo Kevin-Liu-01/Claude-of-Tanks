@@ -137,6 +137,26 @@ for (const arrival of a.arrivals) {
   assert.equal(d.mode.state.horde.remaining, 6, 'the wave still owes all six (queued again, never lost)');
   assert.ok(d.arrivals.length > 6, 'the benched re-arrive on the ring');
 }
+// a straggler benched more than strandedRetireAfter times in one wave is retired from it (round 3b, the critic's M1: a
+// zombie that never finds the humans re-arrived twenty times and wave 1 never cleared): the wave owes it no more, so
+// once the one in the fight falls the wave clears; the next wave owes its full total again
+{
+  const d = run(36);
+  const retired = () => d.events.filter((e) => e.type === 'mode_horde_retired').length;
+  const fighter = live(d.pool)[0];
+  const rules = horde.horde;
+  const hold = () => Object.assign(fighter.state.pos, { x: 0, z: -150 + rules.strandedContactM - 10 });
+  hold();
+  const budget = (rules.strandedRetireAfter + 2) * (rules.strandedS + 8);
+  for (let i = 0; i < 2 * budget; i++) { d.clock += 0.5; hold(); d.mode.step(1 / 60, d.clock); }
+  assert.equal(retired(), 5, `the five stragglers retire after ${rules.strandedRetireAfter} benchings each (${retired()})`);
+  const benched = d.events.filter((e) => e.type === 'mode_horde_recycled');
+  assert.ok(benched.every((e) => benched.filter((o) => o.payload.id === e.payload.id).length <= rules.strandedRetireAfter), 'never benched more than that');
+  assert.equal(d.mode.state.horde.remaining, 1, 'the wave owes only the one in the fight');
+  fighter.combat.destroyed = true; fighter.combat.hp = 0;
+  for (let i = 0; i < 8; i++) { d.clock += 0.5; d.mode.step(1 / 60, d.clock); }
+  assert.ok(d.events.some((e) => e.type === 'mode_wave_cleared' && e.payload.wave === 1), 'and wave 1 clears');
+}
 // the approach stays hidden too (sightLeadM; round 3, the critic's E-R2-3: with the lead check disabled every receipt
 // passed): the humans stand on a plain ringed by a 30 m-deep moat 280-470 m out. An arrival anywhere in the moat is out
 // of sight, but its first sightLeadM toward the humans (that stretch times the wave's speed scale) must be too — so every

@@ -5731,6 +5731,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         // turn is driven round with way on
         if (doctrineOf().hitReactions === 'angle') {
           input.throttle = JOCKEY_DRIVE.reactRollThrottle;
+          // an arc, not a pivot at that throttle (round 3b: a full lock at 0.7 still turned most hulls almost in place,
+          // under a walking pace, the attack's largest still share in Frontline)
+          input.steer = clamp(input.steer, -JOCKEY_DRIVE.rollSteer, JOCKEY_DRIVE.rollSteer);
           input.brake = false;
         }
         if (Math.abs(wrapAngle(want - st.yaw)) < 0.08) reaction = null;
@@ -6055,7 +6058,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * each turn-about a few metres closer in. A strafe keeps way on where a rock along the hull's line braked through a stand at
    * every turn-about (the rocking jockey's turn-abouts were a third of Frontline's still samples). A leg that stalls (a
    * wall, a hull, the safety brakes that still run after it) turns about at once. Never on the settled-shot halt, the gun
-   * nudge or an empty rack.
+   * nudge or an empty rack. A target the side has lost sight of inside TARGET_MEMORY_S is strafed round where this hull
+   * last saw it (its own sighting, never the hidden hull's place; JOCKEY_DRIVE.memoryMinM out at least): round 3b, the
+   * critic's M4 — nine in ten of Frontline's engaged stills were a hull standing on a contact the side had just lost.
    */
   let jockeyDir = 1, jockeyStandS = 0, jockeyStallS = 0, jockeyLegs = 0, jockeyAtS = -Infinity;
   let jockeyAX = 0, jockeyAZ = 0, jockeyRange = 1, jockeyAnchored = false;
@@ -6068,8 +6073,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const leashed = jockeyAnchored && driveGoalAtS === nowS
       && Math.hypot(driveGoalX - jockeyAX, driveGoalZ - jockeyAZ) <= JOCKEY_DRIVE.leashM
       && Math.hypot(st.pos.x - jockeyAX, st.pos.z - jockeyAZ) <= 2 * JOCKEY_DRIVE.ringM;
-    // a target the side sees, in the gun's line: the strafe runs round its place, which no hidden hull gives away
-    if (after <= 0 || mode !== 'engage' || !target || !enemyAlive(target) || !losClear || !isVisibleToTeam(target)
+    // a target the side sees, in the gun's line: the strafe runs round its place; one it has just lost: round where
+    // this hull last saw it (no hidden hull gives its live place away)
+    const seen = !!target && enemyAlive(target) && losClear && isVisibleToTeam(target);
+    const remembered = !seen && !!target && enemyAlive(target) && timeS - lastSeenAtS <= TARGET_MEMORY_S
+      && Math.hypot(st.pos.x - lastSeen.x, st.pos.z - lastSeen.z) >= JOCKEY_DRIVE.memoryMinM;
+    if (after <= 0 || mode !== 'engage' || !(seen || remembered)
       || !st.grounded || emptyRack || timeS < settleUntilS || timeS < nudgeUntilS || timeS < unstickUntilS
       || (Math.abs(input.throttle) >= JOCKEY_DRIVE.standThrottle && !leashed)) {
       jockeyStandS = 0;
@@ -6079,7 +6088,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     jockeyStandS += dt;
     if (jockeyStandS < after && !jockeyAnchored) return;
-    const tp = target.state.pos;
+    const tp = seen ? target!.state.pos : lastSeen;
     const rdx = st.pos.x - tp.x, rdz = st.pos.z - tp.z, range = Math.hypot(rdx, rdz) || 1;
     if (!jockeyAnchored) {
       // the first leg runs the way the hull's bow already points across the line to the target

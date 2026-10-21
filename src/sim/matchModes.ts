@@ -341,7 +341,7 @@ export interface ModeCheckpoint {
 interface WaveCheckpoint {
   wave: number; inactive: string[]; restedAt: [string, number][]; lastWaveIds: string[];
   horde?: { queued: number; special: 'runner' | 'swarm' | null; healthScale: number; nextWaveAtS: number | null;
-    nextTrickleAtS: number; spawnSector: number; stalledAtS: number | null; stranded?: number; pickups: PickupState[]; sequence: number };
+    nextTrickleAtS: number; spawnSector: number; stalledAtS: number | null; stranded?: number; benched?: [string, number][]; strikes?: number[]; pickups: PickupState[]; sequence: number };
   line?: { index: number; holdUntilS: number | null; regroup: { x: number; z: number; untilS: number; checkedS: number } | null;
     counter: { x: number; z: number; atS: number; untilS: number; ids: string[]; line: number } | null; fresh: string[];
     nextReinforceAtS: number | null; allyDownAt: [string, number][];
@@ -931,6 +931,11 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const strandedArrival: ArrivalRules = Object.freeze({ ...hordeRules, spawnRingM: hordeRules.strandedRingM ?? hordeRules.spawnRingM });
   // benched stragglers whose re-arrival is still queued (the next arrivals of the wave take the nearer ring)
   let strandedPending = 0;
+  // the benchings each straggler's slot has taken this wave (strandedRetireAfter): a benched slot re-queues with its count
+  // and the identity that re-arrives for it carries it on (the pool rotates, so it is seldom the same hull); cleared at
+  // every wave start
+  const strandRecycles = new Map<string, number>();
+  const strandStrikeQueue: number[] = [];
   const arriveHostile = (entity: Entity): boolean => {
     const stalled = arrivalStalledAtS != null && placementTimeS - arrivalStalledAtS >= hordeRules.trickleS * hordeRules.stallTrickles
       && livingHordeEnemyCount() === 0;
@@ -943,7 +948,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
     if (!at) { arrivalStalledAtS ??= placementTimeS; return false; }
     arrivalStalledAtS = null;
-    if (straggler) strandedPending--;
+    if (straggler) { strandedPending--; strandRecycles.set(entity.id, strandStrikeQueue.shift() ?? 1); }
+    else strandRecycles.delete(entity.id);
     reviveAtSpawn(entity, hordeHealthScale, at);
     return true;
   };
@@ -957,6 +963,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   };
   const startHordeWave = (): void => {
     strandedPending = 0;
+    strandRecycles.clear();
+    strandStrikeQueue.length = 0;
     hordeSpecial = hordeWaveSpecial(hordeRules, wave);
     runnerWave = hordeSpecial === 'runner';
     const total = hordeWaveTotal(hordeRules, wave, hordeHumans);
@@ -1770,6 +1778,14 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (timeS - track.sinceS < hordeRules.strandedS) continue;
       strandTrack.delete(hostile.id);
       deactivate(hostile);
+      const benched = (strandRecycles.get(hostile.id) ?? 0) + 1;
+      strandRecycles.delete(hostile.id);
+      if (benched > (hordeRules.strandedRetireAfter ?? Infinity)) {
+        // retired: the slot rests and the wave owes it no more (the trickle never brings it back this wave)
+        emit('mode_horde_retired', { id: hostile.id, wave });
+        continue;
+      }
+      strandStrikeQueue.push(benched);
       strandedPending++;
       hordeQueued++;
       emit('mode_horde_recycled', { id: hostile.id, wave });
@@ -2348,6 +2364,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       hordeQueued = saved.horde.queued; hordeSpecial = saved.horde.special; runnerWave = hordeSpecial === 'runner';
       hordeHealthScale = saved.horde.healthScale; nextWaveAtS = saved.horde.nextWaveAtS; nextTrickleAtS = saved.horde.nextTrickleAtS;
       spawnSector = saved.horde.spawnSector; arrivalStalledAtS = saved.horde.stalledAtS; strandedPending = saved.horde.stranded ?? 0;
+      strandRecycles.clear(); for (const [id, n] of saved.horde.benched ?? []) strandRecycles.set(id, n);
+      strandStrikeQueue.length = 0; strandStrikeQueue.push(...(saved.horde.strikes ?? []));
       pickups.length = 0; pickups.push(...saved.horde.pickups.map((p) => ({ ...p }))); pickupSequence = saved.horde.sequence;
       if (state.horde) {
         state.horde.wave = wave; state.horde.total = hordeWaveTotal(hordeRules, wave, hordeHumans);
@@ -2462,7 +2480,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         wave, inactive: entities.filter((entity) => entity.modeActive === false).map((entity) => entity.id),
         restedAt: [...restedAt], lastWaveIds: [...lastWaveIds],
         ...(ruleset.horde ? { horde: { queued: hordeQueued, special: hordeSpecial, healthScale: hordeHealthScale,
-          nextWaveAtS, nextTrickleAtS, spawnSector, stalledAtS: arrivalStalledAtS, stranded: strandedPending, pickups: pickups.map((p) => ({ ...p })),
+          nextWaveAtS, nextTrickleAtS, spawnSector, stalledAtS: arrivalStalledAtS, stranded: strandedPending,
+          ...(strandRecycles.size ? { benched: [...strandRecycles] } : {}), ...(strandStrikeQueue.length ? { strikes: [...strandStrikeQueue] } : {}), pickups: pickups.map((p) => ({ ...p })),
           sequence: pickupSequence } } : {}),
         ...(ruleset.assault ? { line: { index: lineIndex, holdUntilS, regroup: regroup ? { ...regroup } : null,
           counter: counter ? { ...counter, ids: [...counter.ids] } : null, fresh: [...freshDefenders],
