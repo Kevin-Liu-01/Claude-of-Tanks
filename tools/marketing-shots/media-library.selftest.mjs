@@ -1,6 +1,7 @@
 // The media library (2026-10-19, owner: "lets get all our images on main, all of them ... all should be visible on the
-// website"; 2026-10-20 on r1's 11,215 pictures: "wth that seems like way too much", so finals only): public/media/
-// library-r2 holds the current final of every subject the media rounds filmed, by collection. Each collection's index
+// website"; 2026-10-20 on r1's 11,215 pictures: "wth that seems like way too much"; 2026-10-21 on r2's 391 finals: "i
+// feel like were missing so many pictures"): public/media/library-r3 holds every finished picture of the media rounds'
+// current takes (finals, close portraits, other moments, key art), by collection. Each collection's index
 // names its sets and pictures; a picture is a byte range of a pack file (WebP files end to end, read by the page with an
 // HTTP range request) or a file the site already publishes, and its thumbnail is a cell of a thumbnail sheet. This
 // receipt reads every range back as a WebP of the stated size, holds every cell inside its sheet, every pack covered
@@ -11,7 +12,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const LIB = join(ROOT, 'public/media/library-r2');
+const LIB = join(ROOT, 'public/media/library-r3');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 
 /** A WebP file's pixel size from its first 30 bytes (VP8, VP8L or VP8X). */

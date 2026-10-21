@@ -1,22 +1,22 @@
 {
  "version": 1,
- "count": 391,
+ "count": 836,
  "collections": [
   {
    "key": "fifty",
    "title": "The fifty takes",
-   "blurb": "The site's fifty scenes, each in its current final.",
-   "count": 59,
-   "sets": 3,
-   "bytes": 3263391
+   "blurb": "The site's fifty scenes: each scene's current final, its close portrait and other moments of the same round, the motion-blur studies.",
+   "count": 227,
+   "sets": 8,
+   "bytes": 5004205
   },
   {
    "key": "fleet",
    "title": "Fleet takes",
-   "blurb": "Every vehicle in its current final take.",
-   "count": 128,
-   "sets": 5,
-   "bytes": 9536919
+   "blurb": "Every vehicle's current final, its close portrait and the other moments of the same round.",
+   "count": 382,
+   "sets": 10,
+   "bytes": 15748890
   },
   {
    "key": "versus",
@@ -24,15 +24,15 @@
    "blurb": "The versus stills: two tanks, one frame.",
    "count": 12,
    "sets": 1,
-   "bytes": 46259
+   "bytes": 46209
   },
   {
    "key": "combat",
    "title": "Combat duels",
-   "blurb": "The combat duels in their current finals.",
-   "count": 10,
-   "sets": 4,
-   "bytes": 950129
+   "blurb": "The combat duels: current finals, night versions, close portraits and other moments.",
+   "count": 24,
+   "sets": 9,
+   "bytes": 1428962
   },
   {
    "key": "home",
@@ -40,15 +40,15 @@
    "blurb": "The home page's features, mechanics and modes.",
    "count": 43,
    "sets": 1,
-   "bytes": 407692
+   "bytes": 407974
   },
   {
    "key": "keyart",
    "title": "Key art and posters",
-   "blurb": "Key art and posters from the media kit.",
-   "count": 57,
-   "sets": 2,
-   "bytes": 2490805
+   "blurb": "Key art and posters from the media kit, every format.",
+   "count": 66,
+   "sets": 3,
+   "bytes": 2800607
   },
   {
    "key": "maps",
@@ -56,7 +56,7 @@
    "blurb": "Map cards and plates of the battlefields.",
    "count": 67,
    "sets": 2,
-   "bytes": 934827
+   "bytes": 935399
   },
   {
    "key": "showcase",
@@ -64,7 +64,7 @@
    "blurb": "The showcase's latest deliveries.",
    "count": 4,
    "sets": 1,
-   "bytes": 250363
+   "bytes": 250431
   },
   {
    "key": "interface",
@@ -72,7 +72,7 @@
    "blurb": "The interface: garage, HUD, gallery and multiplayer screens.",
    "count": 11,
    "sets": 1,
-   "bytes": 47756
+   "bytes": 47978
   }
  ]
 }
