@@ -1,7 +1,8 @@
 // Tank hero cards receipt (CPU only): the shipped layers under public/icons/hero/ and their manifest.
 //   - every fleet vehicle has a card row under the current policy; measured through the card lens, its hull's
-//     bow faces the policy's way and its turret is swung past the lens so the gun points to the other side
-//     (owner 2026-10-18); only a turretless or limited-arc mount keeps its gun on the bow's side;
+//     bow and its gun both point left (owner 2026-10-20: "Whole tank faces left"; the turret turned modestly
+//     toward the lens, the gun still forward); a turretless or limited-arc mount follows the hull, and only a
+//     handful of those may exist (a turret rig the renderer could not find reads as one);
 //   - each row's flag is its nation's flag (src/ui/flagCodes.ts) and that flag layer is shipped;
 //   - every named file exists with the recorded sha256 prefix and byte count, and nothing else is there;
 //   - no layer was CLIPPED, and the whole tank fits every card kind inside the side margins;
@@ -35,6 +36,10 @@ if (!manifest) {
 }
 const fleet = fleetRecords();
 
+// 0. The owner's ruling (2026-10-20, "Whole tank faces left"): the policy itself puts the bow and the gun left.
+if (HERO_CAMERA.facing !== 'left') fail(`the policy faces ${HERO_CAMERA.facing}; the owner's ruling is bow left`);
+if (HERO_GUN_SIDE !== 'left') fail(`the policy's turret pose points the gun ${HERO_GUN_SIDE}; the owner's ruling is gun left, forward with the hull`);
+
 // 1. The manifest is the current policy's.
 if (manifest.schema !== 1) fail(`schema ${manifest.schema}, expected 1`);
 if (manifest.policyVersion !== HERO_POLICY_VERSION) fail(`policyVersion ${manifest.policyVersion}, the policy is ${HERO_POLICY_VERSION}`);
@@ -55,8 +60,8 @@ const checkFiles = (label, files, row) => {
 };
 for (const [code, row] of Object.entries(manifest.flags || {})) checkFiles(`flag ${code}`, heroFlagFiles(code), row);
 
-// 3. Every fleet vehicle has its card, its nation's flag, a clean fit, its bow on the policy's side and its gun
-//    turned past the lens (sides measured by projection when the layer was rendered, never from a yaw sign).
+// 3. Every fleet vehicle has its card, its nation's flag, a clean fit, its bow and its gun on the policy's side
+//    (sides measured by projection when the layer was rendered, never from a yaw sign).
 let gunsTurned = 0;
 const fixedMounts = [];
 const tankBytes = [[], [], []];
@@ -81,7 +86,7 @@ for (const record of fleet.values()) {
   else if (!row.mount) {
     if (traverse !== HERO_POSE.turretTowardCameraDeg) fail(`${record.id}: turret traversed ${traverse} deg, the policy ${HERO_POSE.turretTowardCameraDeg}`);
     if (Math.abs(Math.abs(yaw) - traverse) > 0.5) fail(`${record.id}: turret yaw ${yaw} deg does not match its ${traverse} deg traverse`);
-    if (gunSide !== HERO_GUN_SIDE) fail(`${record.id}: the gun points ${gunSide || '?'}, the pose wants it ${HERO_GUN_SIDE} (turned past the lens)`);
+    if (gunSide !== HERO_GUN_SIDE) fail(`${record.id}: the gun points ${gunSide || '?'}, the pose wants it ${HERO_GUN_SIDE} (turned toward the lens, forward with the hull)`);
     else gunsTurned++;
   } else {
     if (!['none', 'turretless', 'arc'].includes(row.mount)) fail(`${record.id}: unknown mount ${row.mount}`);
@@ -143,5 +148,5 @@ if (failures.length) {
   process.exit(1);
 }
 console.log(`hero-cards check: ok: ${ids.length} cards for ${fleet.size} vehicles, ${Object.keys(manifest.flags).length} flags, hulls facing ${manifest.facing}, ` +
-  `${gunsTurned} turrets swung past the lens (gun ${HERO_GUN_SIDE}), ${fixedMounts.length} fixed mounts (${fixedMounts.join(', ') || 'none'}), ` +
+  `${gunsTurned} turrets turned ${HERO_POSE.turretTowardCameraDeg} deg toward the lens (gun ${HERO_GUN_SIDE}), ${fixedMounts.length} fixed mounts (${fixedMounts.join(', ') || 'none'}), ` +
   budgets.map(([label, value, budget]) => `${label} ${(value / 1024).toFixed(1)}/${(budget / 1024).toFixed(0)} KB`).join(', '));

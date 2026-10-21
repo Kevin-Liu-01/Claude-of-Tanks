@@ -13,10 +13,10 @@ import { applyFlagMask, composeCard, drawTank, horizontalBands, measureBounds, r
 const deg = (rad) => rad * 180 / Math.PI;
 const right = HERO_CAMERA.facing === 'right';
 
-// 1. The hull faces the way the brand SPEC rules for the Garage roster (2026-10-17: "facing RIGHT in the garage
-//    roster", the owner's reference direction), from a camera within 10 deg of the showroom camera's azimuth and
-//    2 deg of its pitch (front three-quarter: the glacis and the flank both show).
-assert.equal(HERO_CAMERA.facing, 'right', 'hero card hulls face right (bow toward screen-right)');
+// 1. The hull faces the way the owner ruled (2026-10-20: "Whole tank faces left", superseding the 2026-10-17
+//    right-facing roster rule), from a camera within 10 deg of the showroom camera's azimuth and 2 deg of its
+//    pitch (front three-quarter: the glacis and the flank both show).
+assert.equal(HERO_CAMERA.facing, 'left', 'hero card hulls face left (bow toward screen-left)');
 assert.ok(Math.abs(HERO_CAMERA.azimuthDeg - deg(GARAGE_CAMERA_AZIMUTH_RAD)) <= 10, `hero azimuth ${HERO_CAMERA.azimuthDeg} within 10 deg of the Garage camera`);
 assert.ok(HERO_CAMERA.azimuthDeg > 0 && HERO_CAMERA.azimuthDeg < 90, 'front three-quarter: the glacis and the flank both show');
 assert.ok(Math.abs(HERO_CAMERA.elevationDeg - deg(GARAGE_CAMERA_PITCH_RAD)) <= 2, `hero elevation ${HERO_CAMERA.elevationDeg} within 2 deg of the Garage pitch`);
@@ -136,6 +136,7 @@ for (const gunSide of ['left', 'right']) {
   assert.match(layerCss, /\.cot-hc \.hc-flag\{[^}]*mask-image:var\(--hc-flag-mask\)/, 'the flag takes the policy mask');
   assert.match(layerCss, /\.cot-hc \.hc-flag\{[^}]*object-position:0 0;/, 'facing right: the flag anchors at the top-left (rear-top) corner');
   assert.match(layerCss, /\.cot-hc\[data-hero-facing='left'\] \.hc-flag\{object-position:100% 0;\}/, 'facing left mirrors the anchor');
+  assert.match(garageCss, /\.cot-hc\[data-hero-facing='left'\] \.hc-tier,\.cot-hc\[data-hero-facing='left'\] \.dev-tag\{right:auto;left:6px;\}/, 'facing left: the tier chip takes the bow-side top corner, as the compositor draws it');
   assert.match(layerCss, /--hc-k:min\(calc\(100cqw \* var\(--hc-share\) \/ var\(--hc-cw\)\),calc\(\(100cqh - var\(--hc-band\) - var\(--hc-lift,0px\)\) \* var\(--hc-hshare\) \/ var\(--hc-ch\)\),calc\(100cqw \* 0\.93 \/ var\(--hc-fw\)\)\)/, 'tank width is placeTank\'s k (the art box ends a second name line higher)');
   assert.match(layerCss, /left:clamp\(calc\(100cqw \* 0\.035 - var\(--hc-fx0\) \* var\(--hc-k\)\),calc\(100cqw \* \(0\.5 \+ \(var\(--hc-cxr\) - 0\.5\) \* var\(--hc-gs,1\)\) - var\(--hc-cx\) \* var\(--hc-k\)\),calc\(100cqw \* 0\.965 - var\(--hc-fx1\) \* var\(--hc-k\)\)\)/, 'tank x is placeTank\'s clamped dx, the centre mirrored for a gun on the other side');
   const cardTs = readFileSync(new URL('../src/ui/heroCard.ts', import.meta.url), 'utf8');
@@ -188,26 +189,26 @@ for (const gunSide of ['left', 'right']) {
   assert.ok(Math.abs(one - two - line) <= 1.5, `a two-line name lifts the contact line one name line (${one} -> ${two}, line ${line})`);
 }
 
-// 8. The turret pose (owner 2026-10-18: "the turrets should be turned towards you more and they should be facing left
-//    not right as their hulls are oriented rn"): hull bow right, the turret swung past the lens so the gun points
-//    left while still turned toward the viewer, the gun level; turretless mounts keep the gun on the hull axis and a
+// 8. The turret pose (owner 2026-10-18: "the turrets should be turned towards you more"; 2026-10-20: "Whole tank
+//    faces left"): hull bow left, the turret turned modestly toward the lens so its face shows while the gun still
+//    points left and forward with the hull, the gun level; turretless mounts keep the gun on the hull axis and a
 //    limited arc turns as far as it legally can. The renderer picks the traverse side by the bore against the lens
 //    and records both sides by projection (the receipt checks every row), never by the yaw sign.
 {
   const az = HERO_CAMERA.azimuthDeg;
   const T = HERO_POSE.turretTowardCameraDeg;
-  assert.ok(T > az && T < az + 90, `traverse ${T} deg is past the lens (${az}) and still toward the viewer (< ${az + 90})`);
-  assert.ok(T >= 100 && T <= 130, `traverse ${T} deg: the turret face shows and the barrel keeps most of its length`);
+  assert.ok(T >= 10 && T <= 45, `traverse ${T} deg: turned toward the viewer, short of the lens (${az}) so the gun keeps pointing forward`);
   assert.equal(HERO_POSE.gunPitchDeg, 0, 'the gun is level');
-  assert.equal(HERO_GUN_SIDE, 'left', 'hull bow right, gun left');
-  assert.equal(heroGunSide(T, 'right'), 'left');
-  assert.equal(heroGunSide(0, 'right'), 'right', 'a gun on the hull axis points with the bow');
-  assert.equal(heroGunSide(T, 'left'), 'right', 'the gun side mirrors with the facing');
+  assert.equal(HERO_GUN_SIDE, 'left', 'hull bow left, gun left');
+  assert.equal(heroGunSide(T, 'left'), 'left', 'a modest traverse keeps the gun on the bow\'s side');
+  assert.equal(heroGunSide(0, 'left'), 'left', 'a gun on the hull axis points with the bow');
+  assert.equal(heroGunSide(az + 10, 'left'), 'right', 'past the lens the gun would cross to the far side (the retired v4 pose)');
+  assert.equal(heroGunSide(T, 'right'), 'right', 'the gun side mirrors with the facing');
   assert.equal(heroTurretTraverseLimitDeg({ armor: {} }), Infinity, 'a turret traverses freely');
   assert.equal(heroTurretTraverseDeg({ armor: {} }), T, 'a turret takes the policy traverse');
   assert.equal(heroTurretTraverseDeg({ armor: { turretless: true } }), 0, 'turretless: the gun stays on the hull axis');
   assert.equal(heroTurretTraverseDeg({ armor: { turretless: true }, gunArcDeg: 4 }), 0, 'a casemate arc is not a turret');
-  assert.equal(heroTurretTraverseDeg({ armor: {}, gunArcDeg: 30 }), 30, 'a limited turret arc turns as far as it legally can');
+  assert.equal(heroTurretTraverseDeg({ armor: {}, gunArcDeg: 10 }), Math.min(10, T), 'a limited turret arc turns as far as it legally can');
   const page = readFileSync(new URL('./hero-cards-page.html', import.meta.url), 'utf8');
   assert.match(page, /const bore = boreDirection\(turret, gun\)[\s\S]*?bore\.dot\(/, 'the traverse side is chosen by the bore against the lens vector');
   assert.match(page, /minimumMechanicalGunPitch\(spec, yaw\)/, 'the gun rises only where the spec\'s rear-deck curve needs it');

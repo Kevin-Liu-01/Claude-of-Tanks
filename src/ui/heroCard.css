@@ -3,7 +3,7 @@
      --hc-band   the name band under the contact line (px)
      --hc-share  the dense core's share of the card width
      --hc-hshare the dense core's share of the art-box height
-     --hc-cxr    the core centre for the policy's gun side (HERO_GUN_SIDE: the turret swung past the lens)
+     --hc-cxr    the core centre for the policy's gun side (HERO_GUN_SIDE: left, with the bow, in policy v5)
      --hc-lift   a second name line's height (0 by default): the art box ends that much higher
    heroCard.ts puts each vehicle's bounds on its tank image (--hc-cx/-cw/-ch/-cb/-fx0/-fx1/-fw, and --hc-gs:-1
    for a gun on the other side, which mirrors the centre) and the policy's feather on the host (--hc-flag-mask). The tank width and offsets below are placeTank's

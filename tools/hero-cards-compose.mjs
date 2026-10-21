@@ -454,7 +454,7 @@ function drawTierChip(ctx, tier, { x, right, y, size, font, scale }) {
  * Compose one card at `scale` (device pixel ratio): ground, masked flag, tank, then the name in the
  * band under the contact line (never over the hull), the tier chip in the bow-side top corner (the flag
  * holds the rear-top corner) and the frame. No eyebrow, no nation text: the flag is the nation. `gunSide`
- * is the layer's measured gun side (the turret swung past the lens points it away from the bow).
+ * is the layer's measured gun side (policy v5: the bow's side, the turret turned modestly toward the lens).
  */
 export function composeCard(kind, { tank, bounds, flag, name, tier, font = 'Chakra Petch', dataFont = 'IBM Plex Mono', selected = false, facing = HERO_CAMERA.facing, gunSide = HERO_GUN_SIDE, ground = HERO_GROUND }, scale = 2) {
   const L = HERO_CARD_LAYOUT[kind];

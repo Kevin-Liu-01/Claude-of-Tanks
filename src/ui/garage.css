@@ -668,8 +668,8 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
 /* DRAG-SCROLL CAROUSEL: grabbing cursor while the strip is being panned */
 .cot-cards.dragging{cursor:grabbing;}
 .cot-cards.dragging .cot-card{cursor:grabbing;}
-/* TANK HERO CARD (owner 2026-10-17: "make the tank icons look like my image but obv facing the right
-   direction in the garage"). Layers, back to front: the steel ground (this box), the nation's waving
+/* TANK HERO CARD (owner 2026-10-17: "make the tank icons look like my image"; 2026-10-20: "Whole tank faces
+   left"). Layers, back to front: the steel ground (this box), the nation's waving
    cloth flag under the policy feather (.hc-flag, mask from src/ui/heroCardPolicy.ts), the vehicle's 3/4
    hero render (.hc-tank, placed by placeTank in container units; both layers' rules live in the lazy
    src/ui/heroCard.css), the name floor (::after), then the name and the tier chip. The card is a size
@@ -697,6 +697,9 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
   font:500 var(--hc-tier)/1 'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:0;
   color:rgba(246,243,236,.72);background:rgba(11,14,17,.72);border:1px solid rgba(246,243,236,.2);}
 .cot-card .hc-tier b{font-weight:500;color:#f0a030;}
+/* Facing left (policy v5, owner 2026-10-20 "Whole tank faces left"): the flag holds the rear-top (right) corner,
+   so the tier chip and the dev tag take the bow-side (left) one, as the compositor draws them. */
+.cot-hc[data-hero-facing='left'] .hc-tier,.cot-hc[data-hero-facing='left'] .dev-tag{right:auto;left:6px;}
 .cot-card .flag{position:absolute;z-index:3;top:7px;left:7px;line-height:0;}
 .cot-card .flag .cot-flag{display:block;object-fit:cover;box-shadow:0 1px 3px rgba(0,0,0,.55);}
 .cot-card .dev-tag{position:absolute;right:6px;top:calc(var(--hc-tier) + 14px);z-index:3;padding:2px 5px;
@@ -1420,6 +1423,7 @@ body[data-cot-panels='overlay'] .cot-card .flag{top:4px;left:4px}
 body[data-cot-panels='overlay'] .cot-card .flag .cot-flag{width:16px}
 body[data-cot-panels='overlay'] .cot-card .hc-tier{top:3px;right:3px;padding:2px 3px 1px}
 body[data-cot-panels='overlay'] .cot-card .dev-tag{right:3px;top:17px;padding:1px 3px;font-size:5px}
+body[data-cot-panels='overlay'] .cot-hc[data-hero-facing='left'] .hc-tier,body[data-cot-panels='overlay'] .cot-hc[data-hero-facing='left'] .dev-tag{right:auto;left:3px}
 body[data-cot-panels='overlay'] .cot-card .ti{width:98px;height:52px;left:4px;top:14px;
   transform:translate(var(--cot-thumb-x,-10px),var(--cot-thumb-y,-6px))
     scale(var(--cot-thumb-scale,1.2))}

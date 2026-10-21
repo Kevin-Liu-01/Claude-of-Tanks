@@ -8,21 +8,22 @@
 // unchanged ids never re-render.
 // First-party: Kevin B. Liu (NOTICE.md).
 
-export const HERO_POLICY_VERSION = 4;
+export const HERO_POLICY_VERSION = 5;
 
 export type HeroFacing = 'left' | 'right';
 
 /**
- * Camera. Vehicle forward is local +Z. `facing: 'right'` puts the camera on the hull's
- * -X flank so the bow points toward screen-right, the owner's reference composition and
- * the brand SPEC's Garage roster rule (2026-10-17: "make the tank icons look like my image
- * but obv facing the right direction in the garage"; SPEC: "facing RIGHT in the garage
- * roster"). The turret then swings past the lens to the other side (HERO_POSE). Flipping
- * the whole card set is this one field: the light rig, the framing, the gun side, the flag
- * layout, the feather and the tier chip mirror with it.
+ * Camera. Vehicle forward is local +Z. `facing: 'left'` puts the camera on the hull's +X
+ * flank so the bow points toward screen-left: the owner's decision of 2026-10-20 ("Whole tank
+ * faces left"), after the v4 cards (bow right, turret swung back past the lens, gun left) read
+ * to two blind critics as tanks driving right while aiming backward over the engine deck. It
+ * supersedes the 2026-10-17 right-facing roster rule. The turret turns modestly toward the lens
+ * and the gun keeps pointing left and forward with the hull (HERO_POSE). Flipping the whole card
+ * set is this one field: the light rig, the framing, the gun side, the flag layout, the feather
+ * and the tier chip mirror with it.
  */
 export const HERO_CAMERA = Object.freeze({
-  facing: 'right' as HeroFacing,
+  facing: 'left' as HeroFacing,
   // Fixed by sample round r4 (45/50/55/60 deg on 16 vehicles): 45 foreshortens the gun in the
   // small cards, 55+ shrinks long-gun tanks (the gun sets the fit). 50 keeps the glacis and the
   // turret face in view (the owner's fronts rule, 2026-10-05) within 10 deg of the Garage camera.
@@ -33,27 +34,24 @@ export const HERO_CAMERA = Object.freeze({
 });
 
 /**
- * Turret pose (owner 2026-10-18, on the right-facing roster: "the turrets should be turned towards you
- * more and they should be facing left not right as their hulls are oriented rn"). The hull keeps the
- * camera's front three-quarter view, bow to the facing side; the turret traverses past the lens so the
- * gun points to the other side of the card with the turret face, mantlet and gun toward the viewer.
- *   turretTowardCameraDeg: traverse from the hull's forward axis, on whichever side brings the gun round
- *     past the lens (the renderer picks the sign by projecting the gun into the camera, never by the
- *     yaw convention alone). With the 50 deg camera the gun passes the lens at 50 deg and lies exactly
- *     across the card at 140. Fixed by pose study r1 (100/115/130 deg on 16 vehicles,
- *     samples/pose-r1): 130 lays the gun nearly flat across the card and hides the turret face, 100
- *     shows the most turret face but shortens the gun over the hull; 105 keeps it 35 deg toward the
- *     lens (the turret face and mantlet show, the barrel keeps ~82 % of its length, the same
- *     foreshortening the forward pose had, mirrored).
- *   gunPitchDeg: the gun is level (raised only where the spec's yaw-dependent depression curve needs it
- *     over the rear deck).
+ * Turret pose (owner 2026-10-18: "the turrets should be turned towards you more"; 2026-10-20: "Whole tank
+ * faces left"). The hull keeps the camera's front three-quarter view, bow to the facing side; the turret
+ * turns modestly toward the lens so the turret face and mantlet show while the gun still points left and
+ * forward, the way the hull drives (a tank advancing left with its turret turned toward you).
+ *   turretTowardCameraDeg: traverse from the hull's forward axis, on whichever side brings the gun toward
+ *     the lens (the renderer picks the sign by projecting the gun into the camera, never by the yaw
+ *     convention alone). With the 50 deg camera the gun points at the lens at 50 deg, so any traverse
+ *     below it keeps the gun on the bow's side (heroGunSide). Pose study r2 (15/30/45 deg toward the lens
+ *     on 8 vehicles, blind pick) fixes the angle; 30 is the provisional middle.
+ *     (v4, retired: 105 deg swung the gun back past the lens to the far side, pose study r1.)
+ *   gunPitchDeg: the gun is level.
  * A turretless vehicle (casemate, hydraulic fixed gun) keeps its gun on the hull axis; a turreted mount with
  * a limited arc turns as far toward the lens as its legal arc allows (heroTurretTraverseLimitDeg).
  * Everything the turret carries (roof stations, secondary mounts on it) turns with it; hull-mounted
  * stations stay at rest.
  */
 export const HERO_POSE = Object.freeze({
-  turretTowardCameraDeg: 105,
+  turretTowardCameraDeg: 30,
   gunPitchDeg: 0,
 });
 

@@ -184,8 +184,9 @@ missing/moved stock and wrong-source negatives, and keep all geometry in the
 source and physical audits.
 
 Tank hero cards (Garage roster, end-screen tile, Gallery list): one policy in
-`src/ui/heroCardPolicy.ts` (hull bow right, turret swung 105 deg past the lens so
-the gun points left, level gun; turretless mounts keep the gun on the hull axis).
+`src/ui/heroCardPolicy.ts` (policy v5, owner 2026-10-20: the whole tank faces left, the
+turret turned modestly toward the lens with the gun forward and level; turretless mounts
+keep the gun on the hull axis).
 `node tools/hero-cards-plan.mjs` names the stale ids (geometry hash and angle-render
 sha from `tank-assets.json`, flag SVG, policy keys); render only those with
 `node tools/genHeroCards.mjs --ids=<stale>` (capture lock, NORMAL band; a policy
