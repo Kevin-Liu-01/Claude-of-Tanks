@@ -292,6 +292,28 @@ const GARAGE_POS = new THREE.Vector3(VERDANT_GARAGE_POS.x, 0, VERDANT_GARAGE_POS
 const pendingRoomInvitePromise = startupIntent.pendingRoomInvite;
 /** A tab the room invite leaves in the Garage gets its idle work (neighbour heroes, dressing) this long after ready. */
 const INVITE_GARAGE_IDLE_DELAY_MS = 12_000;
+/**
+ * 2026-10-20 (item/mp-rejoin-229): the network round this browser last entered (the composition's rememberRound port),
+ * so a tab reopened on that room's invite builds the match's battlefield during its boot. Two hours at most: past that
+ * the room has long moved on.
+ */
+const REMEMBERED_ROUND_KEY = 'cot.mp.rememberedRound.v1';
+const REMEMBERED_ROUND_MAX_AGE_MS = 2 * 60 * 60 * 1000;
+function rememberRound(round: { roomCode: string; matchId: string; mapId: string; terrainVariant: 'assault-trenches' | null } | null): void {
+  try {
+    if (round) localStorage.setItem(REMEMBERED_ROUND_KEY, JSON.stringify({ ...round, at: Date.now() }));
+    else localStorage.removeItem(REMEMBERED_ROUND_KEY);
+  } catch { /* storage unavailable: a reload only loses the head start */ }
+}
+function rememberedRoundFor(roomCode: string): { mapId: string; terrainVariant: 'assault-trenches' | null } | null {
+  try {
+    const raw = localStorage.getItem(REMEMBERED_ROUND_KEY);
+    const round = raw ? JSON.parse(raw) as { roomCode?: unknown; mapId?: unknown; terrainVariant?: unknown; at?: unknown } : null;
+    if (!round || round.roomCode !== roomCode || typeof round.mapId !== 'string' || !(MAP_IDS as readonly string[]).includes(round.mapId)) return null;
+    if (typeof round.at !== 'number' || !(Date.now() - round.at < REMEMBERED_ROUND_MAX_AGE_MS)) return null;
+    return { mapId: round.mapId, terrainVariant: round.terrainVariant === 'assault-trenches' ? 'assault-trenches' : null };
+  } catch { return null; }
+}
 // FE-P13: battle loading art follows the viewport (a 1280 card on small and medium screens, else the 4K hero).
 const battleBackdrop = (mapId: string): string => mapBackdropFor(mapId, currentViewport());
 const minimapAssetUrl = (mapId: string): string => (
@@ -797,6 +819,18 @@ const { stage: garageStage, dressing: garageDressing } = await bootStage('garage
   // stream after readiness in the same quiet slices used by later repair bays.
   return { stage: gs, dressing: gd };
 });
+// 2026-10-20 (item/mp-rejoin-229; the MP-05 rejoin row): a tab reopened on the invite of the room whose match it last
+// entered is on its way back into that match, and its battlefield was built only after the whole boot (15.5 s of the
+// 227 rejoins' 37 s). The remembered round's battlefield now builds on the room-intent background lane from here,
+// beside the rest of the boot; the battle entry promotes the build instead of starting it (worldBuildCoordinator).
+// A wrong guess (the match ended, the room moved on) is a background build the room's lobby state cancels. Phones keep
+// their boot memory for the boot.
+if (pendingRoomInvitePromise && getDeviceTier() !== 'mobile') {
+  void pendingRoomInvitePromise.then((invite) => {
+    const round = invite ? rememberedRoundFor(invite.roomCode) : null;
+    if (round) prefetchWorld(round.terrainVariant ? `${round.mapId}#${round.terrainVariant}` : round.mapId, { intent: true });
+  }).catch(() => { /* the entry builds it */ });
+}
 // FEEL r12: stable zero-work diagnostics facade. Explicit QA and automation
 // acquire the exact existing HUD + telemetry owner near the ready boundary,
 // after every dependency exists. Ordinary players never transfer either
@@ -2481,6 +2515,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             ensureWorld(mapId, onProgress, { precompile: false, atmosphere: 'covered-battle', ...(terrainVariant ? { terrainVariant } : {}) })
           ),
           recordTrace: (trace) => { window.__NETWORK_LOAD = trace; },
+          rememberRound,
           recordEntryFailure: (failure) => {
             window.__NETWORK_ENTRY_FAILURE = failure;
             // A null clears the diagnostic at entry start; a diagnostic is a failed network entry (the funnel's beacon).
