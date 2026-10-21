@@ -1,0 +1,78 @@
+{
+ "version": 1,
+ "count": 391,
+ "collections": [
+  {
+   "key": "fifty",
+   "title": "The fifty takes",
+   "blurb": "The site's fifty scenes, each in its current final.",
+   "count": 59,
+   "sets": 3,
+   "bytes": 3263391
+  },
+  {
+   "key": "fleet",
+   "title": "Fleet takes",
+   "blurb": "Every vehicle in its current final take.",
+   "count": 128,
+   "sets": 5,
+   "bytes": 9536919
+  },
+  {
+   "key": "versus",
+   "title": "Versus",
+   "blurb": "The versus stills: two tanks, one frame.",
+   "count": 12,
+   "sets": 1,
+   "bytes": 46259
+  },
+  {
+   "key": "combat",
+   "title": "Combat duels",
+   "blurb": "The combat duels in their current finals.",
+   "count": 10,
+   "sets": 4,
+   "bytes": 950129
+  },
+  {
+   "key": "home",
+   "title": "Features, mechanics and modes",
+   "blurb": "The home page's features, mechanics and modes.",
+   "count": 43,
+   "sets": 1,
+   "bytes": 407692
+  },
+  {
+   "key": "keyart",
+   "title": "Key art and posters",
+   "blurb": "Key art and posters from the media kit.",
+   "count": 57,
+   "sets": 2,
+   "bytes": 2490805
+  },
+  {
+   "key": "maps",
+   "title": "Battlefields",
+   "blurb": "Map cards and plates of the battlefields.",
+   "count": 67,
+   "sets": 2,
+   "bytes": 934827
+  },
+  {
+   "key": "showcase",
+   "title": "Showcase",
+   "blurb": "The showcase's latest deliveries.",
+   "count": 4,
+   "sets": 1,
+   "bytes": 250363
+  },
+  {
+   "key": "interface",
+   "title": "Interface",
+   "blurb": "The interface: garage, HUD, gallery and multiplayer screens.",
+   "count": 11,
+   "sets": 1,
+   "bytes": 47756
+  }
+ ]
+}

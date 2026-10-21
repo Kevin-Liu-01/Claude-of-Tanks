@@ -1,5 +1,6 @@
 // The media library (2026-10-19, owner: "lets get all our images on main, all of them ... all should be visible on the
-// website"): public/media/library-r1 holds every picture of the media rounds by collection. Each collection's index
+// website"; 2026-10-20 on r1's 11,215 pictures: "wth that seems like way too much", so finals only): public/media/
+// library-r2 holds the current final of every subject the media rounds filmed, by collection. Each collection's index
 // names its sets and pictures; a picture is a byte range of a pack file (WebP files end to end, read by the page with an
 // HTTP range request) or a file the site already publishes, and its thumbnail is a cell of a thumbnail sheet. This
 // receipt reads every range back as a WebP of the stated size, holds every cell inside its sheet, every pack covered
@@ -10,7 +11,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const LIB = join(ROOT, 'public/media/library-r1');
+const LIB = join(ROOT, 'public/media/library-r2');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 
 /** A WebP file's pixel size from its first 30 bytes (VP8, VP8L or VP8X). */
@@ -56,7 +57,7 @@ if (!existsSync(join(LIB, 'index.json'))) {
 }
 const top = JSON.parse(readFileSync(join(LIB, 'index.json'), 'utf8'));
 assert.equal(top.version, 1);
-assert.ok(top.collections.length >= 10, 'the library holds the rounds by collection');
+assert.ok(top.collections.length >= 6, 'the library holds the finals by collection');
 let pictures = 0, ranges = 0, links = 0, sheets = 0, bytes = 0;
 for (const summary of top.collections) {
   assert.match(summary.key, /^[a-z0-9-]+$/);
