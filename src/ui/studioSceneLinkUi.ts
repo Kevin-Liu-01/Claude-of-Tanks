@@ -10,7 +10,7 @@ import {
 import { getLocale, t } from './i18n.ts';
 import { pathForLocale } from './localeRouting.ts';
 
-export interface SceneLinkCopyEnv {
+interface SceneLinkCopyEnv {
   readonly origin: string;
   readonly studioPath: string;
   /** Write the link (resolved later) to the clipboard; called synchronously, inside the click. */
@@ -19,7 +19,7 @@ export interface SceneLinkCopyEnv {
   showInAddressBar?(url: string): void;
 }
 
-export interface SceneLinkNotice {
+interface SceneLinkNotice {
   readonly ok: boolean;
   /** The plain-language sentence. */
   readonly message: string;

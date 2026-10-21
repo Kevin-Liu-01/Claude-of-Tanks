@@ -42,7 +42,7 @@ import { isBuiltInCamoId } from '../vehicles/camoPolicy.ts';
 /** The link format this build writes and the newest it opens. */
 export const SCENE_LINK_FORMAT = 1;
 /** The fragment parameter: `#scene=<value>`. */
-export const SCENE_LINK_KEY = 'scene';
+const SCENE_LINK_KEY = 'scene';
 /** Most characters of encoded scene a link may carry (every site take fits; the largest is ~14 K). */
 export const SCENE_LINK_MAX_CHARS = 16_384;
 /** Most bytes of scene JSON a link may inflate to (4x the largest site take's canonical JSON). */
@@ -87,29 +87,34 @@ const SCENE_BLAST_CAUSES = Object.freeze(['ammorack', 'shot', 'fire', 'blast', '
 /** Actor camo values beside the built-in patterns (studio.ts: 'inherit' keeps the spec's own; materials.ts: 'urban'). */
 const EXTRA_CAMO_IDS = Object.freeze(['inherit', 'urban']);
 
-export type SceneLinkFailure = 'too-large' | 'encoding' | 'version' | 'unsupported' | 'schema';
-export type SharedScene = Record<string, unknown>;
+type SceneLinkFailure = 'too-large' | 'encoding' | 'version' | 'unsupported' | 'schema';
+type SharedScene = Record<string, unknown>;
 export type SceneLinkDecoded =
   | { readonly ok: true; readonly scene: SharedScene; readonly jsonBytes: number }
   | { readonly ok: false; readonly reason: SceneLinkFailure; readonly detail: string };
 export type SceneLinkEncoded =
   | { readonly ok: true; readonly value: string; readonly chars: number; readonly jsonBytes: number }
   | { readonly ok: false; readonly reason: 'too-large' | 'schema'; readonly chars: number; readonly detail: string };
-export type SceneSanitized =
+type SceneSanitized =
   | { readonly ok: true; readonly scene: SharedScene }
   | { readonly ok: false; readonly detail: string };
 
 // --- strict schema --------------------------------------------------------------------------------------------------
 
-/** World coordinates (m): maps are well inside ±2 km; the clamp only keeps floats sane. */
-const WORLD_M = 10_000;
+/** World coordinates (m): every map lies inside ±2 km (the largest tracked take reaches 451 m), so tracks, effects and
+ * the crush planner stay on the map. */
+const WORLD_M = 2_500;
 const HEIGHT_M = 2_000;
 const ANGLE_DEG = 10_000;
 const INT32 = 2_147_483_647;
 const TOKEN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,47}$/;
 const LOWER_TOKEN = /^[a-z0-9][a-z0-9_-]{0,63}$/;
-/** Markup, control, line/paragraph separators and bidi overrides never appear in a shared string. */
-const UNSAFE_TEXT = /[\u0000-\u001f\u007f-\u009f<>&"`\\\u2028\u2029\u202a-\u202e\u2066-\u2069]/;
+/**
+ * Never in a shared string: markup, control and line/paragraph separator characters, bidi overrides and isolates, the
+ * invisible marks (Arabic letter mark, zero-width space/joiners, LRM/RLM, word joiner and invisible operators, BOM),
+ * a lone surrogate and a run of three or more combining marks (text-only spoofing aids).
+ */
+const UNSAFE_TEXT = /[\u0000-\u001f\u007f-\u009f<>&"`\\\u061c\u200b-\u200f\u2028\u2029\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]|\p{Cs}|\p{M}{3,}/u;
 
 class SceneSchemaError extends Error {}
 
@@ -474,7 +479,8 @@ function film(value: unknown, path: string): unknown {
   try {
     return normalizeFilm(input);
   } catch (error) {
-    return refuse(path, error instanceof Error ? error.message : 'is not a film block');
+    // the path alone: a normalizer's message may quote the link's own value, which never reaches the screen
+    return refuse(path, 'is not a film block this build reads');
   }
 }
 
@@ -507,7 +513,8 @@ function picture(value: unknown, path: string): Record<string, unknown> | undefi
     // picture's own schema clamps and quantizes; state() writes exactly this minimal form
     return pictureStateJson(resolvePicture(patch));
   } catch (error) {
-    return refuse(path, error instanceof Error ? error.message : 'is not a picture block');
+    // the path alone: picture's messages quote the value they refuse, which never reaches the screen
+    return refuse(path, 'is not a picture block this build reads');
   }
 }
 
@@ -540,7 +547,17 @@ export function sanitizeSharedScene(raw: unknown): SceneSanitized {
       productionFormat: (value, path) => oneOf(value, path, PRODUCTION_FORMATS),
       seed: (value, path) => int(value, path, -INT32, INT32),
       actors: (value, path) => list(value, path, SCENE_LINK_LIMITS.actors, (entry, at) => actor(entry, at, schema)),
-      effects: (value, path) => list(value, path, SCENE_LINK_LIMITS.effects, effect),
+      effects: (value, path) => {
+        const effects = list(value, path, SCENE_LINK_LIMITS.effects, effect);
+        // an effect id names one effect: a repeated id would make playback skip the copies
+        const seen = new Set<unknown>();
+        effects.forEach((entry, index) => {
+          if (entry.id === undefined) return;
+          if (seen.has(entry.id)) refuse(`${path}[${index}].id`, 'repeats an earlier effect id');
+          seen.add(entry.id);
+        });
+        return effects;
+      },
       storyboard,
       camera: (value, path) => fields(record(value, path), path, CAMERA_FIELDS),
       fxTime: (value, path) => int(value, path, 0, STUDIO_FILM_MAX_DURATION_MS),

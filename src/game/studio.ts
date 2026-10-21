@@ -582,11 +582,19 @@ interface RemoveActorOptions {
   rebuild?: boolean;
 }
 
+/** The scene a boot URL carries (bootScene): its battlefield, then the open once the game is ready. */
+interface StudioBootScene {
+  readonly map: Promise<string | null>;
+  open(fallbackMap: string): Promise<void>;
+}
+
 interface StudioRuntime {
   readonly active: boolean;
   tick(deltaSeconds: number, frameWallDtSeconds?: number): void;
   enter(options?: EnterOptions): Promise<void>;
   exit(): void;
+  /** The scene the page's URL carries (a shared #scene= link or a ?scene= path link), or null. */
+  bootScene(): StudioBootScene | null;
   api: StudioPanelApi & Readonly<Record<string, RuntimeValue>>;
 }
 
@@ -1660,7 +1668,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function reserveEffectId(id: RuntimeValue): void {
-    const m = /^fx(\d+)$/.exec(String(id || ''));
+    // nine digits at most: a loaded `fx9999…` id (46 digits) once made every later id `fx1e+46`, so the ids collided
+    const m = /^fx(\d{1,9})$/.exec(String(id || ''));
     if (m) effectUidSeq = Math.max(effectUidSeq, Number(m[1]) + 1);
   }
 
@@ -5510,7 +5519,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   /**
    * Open a shared scene link's decode (studioSceneShare.ts: bounded, schema-checked, never throws): enter on the scene's
    * own map and load it as Load JSON would. A refused link or a scene that fails to stage leaves the Studio open with
-   * the reason on screen.
+   * the reason on an error card (the sentence, and for a damaged link the refusing field's path; a staging error's text
+   * stays in the console, since it may quote the scene).
    */
   async function openSharedScene(result: SceneLinkDecoded, fallbackMap: string): Promise<void> {
     if (!result.ok) {
@@ -5527,51 +5537,92 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       panel.notice(t('studio.sceneLink.opened'));
     } catch (error) {
       console.error('[studio] scene link failed to stage', error);
-      panel.notice(t('studio.sceneLink.loadFailed'), 'error', error instanceof Error ? error.message : String(error));
+      panel.notice(t('studio.sceneLink.loadFailed'), 'error');
     }
   }
 
-  // A scene link pasted into an open Studio's address bar is a same-document navigation (no reload): open it here, after
-  // a confirmation when it would replace a staged scene.
+  const whenGameReady = (): Promise<void> => new Promise((resolve) => {
+    if (window.__GAME_READY) { resolve(); return; }
+    const poll = setInterval(() => {
+      if (!window.__GAME_READY) return;
+      clearInterval(poll);
+      resolve();
+    }, 60);
+  });
+
+  /**
+   * The scene a boot URL carries, started at once: a shared link, /studio#scene=1.z.… (studioSceneShare.ts: the scene
+   * itself, in the fragment no server sees), wins over a path link, ?scene=/path/on/this/site.json (studioSceneLink.ts).
+   * `map` resolves to the scene's own battlefield (null when there is none), so the boot can enter on it; `open` waits
+   * for the game's readiness, then loads it as Load JSON would; a link that fails leaves the plain Studio open.
+   */
+  function bootScene(): StudioBootScene | null {
+    const linkValue = sceneLinkValue(window.location.hash);
+    if (linkValue != null) {
+      const decoded = decodeSceneLink(linkValue);
+      return {
+        map: decoded.then((result) => (result.ok && typeof result.scene.map === 'string' ? result.scene.map : null)),
+        open: (fallbackMap) => whenGameReady().then(() => decoded).then((result) => openSharedScene(result, fallbackMap)),
+      };
+    }
+    const scenePath = sceneLinkPath(urlParam('scene'));
+    if (!scenePath) return null;
+    const scene = fetch(scenePath).then((response) => {
+      if (!response.ok) throw new Error(`${scenePath}: HTTP ${response.status}`);
+      return response.json() as Promise<StudioSceneInput>;
+    }).catch((err: RuntimeValue) => {
+      console.error('[studio] scene link failed', err);
+      return null;
+    });
+    return {
+      map: scene.then((json) => (typeof json?.map === 'string' ? json.map : null)),
+      open: (fallbackMap) => whenGameReady().then(() => scene).then(async (json) => {
+        await enter({ map: json?.map || fallbackMap });
+        if (json) await load(json);
+      }),
+    };
+  }
+
+  // A scene link pasted into an open Studio's address bar is a same-document navigation (no reload): open it here once
+  // the Studio is idle, after a confirmation when it would replace a staged scene. Declining (or a busy Studio) puts the
+  // address back, so the bar never shows a link the Studio is not showing.
+  let shownHash = window.location.hash;
   window.addEventListener('hashchange', () => {
     const value = sceneLinkValue(window.location.hash);
-    if (value == null || !active) return;
+    const previousHash = shownHash;
+    if (value == null || !active) {
+      shownHash = window.location.hash;
+      return;
+    }
+    const restoreAddress = (): void => {
+      try {
+        window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}${previousHash}`);
+      } catch (_) { /* a sandboxed frame keeps its address */ }
+    };
     void decodeSceneLink(value).then((result) => {
-      if (result.ok && (actors.length || effectLog.length) && !window.confirm(t('studio.sceneLink.replace'))) return;
+      // the Studio may have closed, or begun a load, an entry or a film while the link decoded
+      if (!active || loading || entering || filmRenderer.active || recording) {
+        restoreAddress();
+        return undefined;
+      }
+      const staged = actors.length > 0 || effectLog.length > 0 || storyboard.shots.length > 0
+        || storyboard.actorTracks.length > 0 || storyboard.cameraCues.length > 0;
+      if (result.ok && staged && !window.confirm(t('studio.sceneLink.replace'))) {
+        restoreAddress();
+        return undefined;
+      }
+      shownHash = window.location.hash;
       return openSharedScene(result, getWorld()?.mapId || 'verdant');
     }).catch((err: RuntimeValue) => console.error('[studio] scene link failed', err));
   });
 
-  // Auto-entry: the /studio pretty route or the legacy ?studio=1 param
-  // (waits for readiness; map via ?map=…). A scene link, ?scene=/path/on/this/site.json (studioSceneLink.ts), enters
-  // on the scene's own map and loads it as Load JSON would; a link that fails to load leaves the plain Studio open.
-  // A shared scene link, /studio#scene=1.z.… (studioSceneShare.ts), carries the scene itself in the fragment (never sent
-  // to a server) and wins over a path link; its decode starts now and is awaited once the game is ready.
+  // Auto-entry outside the game's own boot (main.ts owns the direct /studio boot and passes autoEnter: false, then
+  // opens bootScene() itself): the /studio pretty route or the legacy ?studio=1 param, on ?map=… or the scene's map.
   if (ctx.autoEnter !== false && (urlParam('studio') || onStudioRoute())) {
     const map = urlParam('map') || 'verdant';
-    const linkValue = sceneLinkValue(window.location.hash);
-    const shared = linkValue != null ? decodeSceneLink(linkValue) : null;
-    const scenePath = sceneLinkPath(urlParam('scene'));
-    const scene = scenePath && !shared
-      ? fetch(scenePath).then((response) => {
-        if (!response.ok) throw new Error(`${scenePath}: HTTP ${response.status}`);
-        return response.json() as Promise<StudioSceneInput>;
-      })
-      : null;
-    scene?.catch(() => {}); // awaited below; never an unhandled rejection while the game boots
-    const t = setInterval(() => {
-      if (!window.__GAME_READY) return;
-      clearInterval(t);
-      const entry = shared
-        ? shared.then((result) => openSharedScene(result, map))
-        : scene
-          ? scene.then(
-            (json) => enter({ map: json.map || map }).then(() => load(json)),
-            (err: RuntimeValue) => { console.error('[studio] scene link failed', err); return enter({ map }); },
-          )
-          : enter({ map });
-      entry.catch((err: RuntimeValue) => console.error('[studio] auto-enter failed', err));
-    }, 60);
+    const boot = bootScene();
+    const entry = boot ? boot.open(map) : whenGameReady().then(() => enter({ map }));
+    entry.catch((err: RuntimeValue) => console.error('[studio] auto-enter failed', err));
   }
 
   return {
@@ -5579,6 +5630,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     tick,
     enter,
     exit,
+    bootScene,
     api,
   };
 }

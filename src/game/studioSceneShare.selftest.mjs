@@ -122,7 +122,7 @@ for (const file of sceneFiles) {
   assert.equal(scene.timeScale, 4);
   assert.equal(scene.fxTime, 60000);
   assert.equal(scene.seed, 2);
-  assert.deepEqual(scene.actors[0].pos, [10000, -10000], 'positions clamp to ±10 km');
+  assert.deepEqual(scene.actors[0].pos, [2500, -2500], 'positions clamp to ±2.5 km (every map lies inside ±2 km)');
   assert.equal(scene.actors[0].gunDeg, 90);
   assert.equal(scene.actors[0].facingDeg, 1.235, 'angles round to 0.001°');
   assert.equal(scene.actors[0].stateAgeS, 0);
@@ -194,6 +194,24 @@ refused({ effects: [{ type: 'tracer', params: { shellType: 'PLASMA' } }] }, /par
 refused({ effects: [{ type: 'explosion', params: { size: 'gigantic' } }] }, /params\.size/, 'an unknown blast size');
 refused({ effects: [{ type: 'tank_kill', params: { cause: 'toString' } }] }, /params\.cause/, 'cause toString');
 refused({ effects: [{ type: 'strike', params: { shell: { type: 'NUKE' } } }] }, /params\.shell\.type/, 'an unknown strike round');
+// a refusal names the field and never quotes the link (no attacker sentence on the error card)
+for (const [raw, field] of [
+  [{ map: 'verdant', picture: { letterbox: 'Session expired. Call +1 555 0100 now' } }, /^scene\.picture: is not a picture block this build reads$/],
+  [{ map: 'verdant', picture: { preset: 'Session-expired.Call.now' } }, /^scene\.picture: is not a picture block this build reads$/],
+  [{ map: 'verdant', film: { fps: 25 } }, /^scene\.film: is not a film block this build reads$/],
+]) {
+  const result = sanitizeSharedScene(raw);
+  assert.equal(result.ok, false);
+  assert.match(result.detail, field);
+}
+refused({ effects: [{ id: 'fx1', type: 'dust' }, { id: 'fx1', type: 'flare' }] }, /effects\[1\]\.id: repeats an earlier effect id/, 'a repeated effect id');
+for (const [name, label] of [['hero\u200f', 'RLM'], ['he\u200bro', 'zero-width space'], ['\ufeffhero', 'BOM'], ['hero\u061c', 'Arabic letter mark'],
+  ['hero\u2060', 'word joiner'], ['he\ud800ro', 'a lone surrogate'], ['he\u0301\u0301\u0301ro', 'a combining-mark flood']]) {
+  refused({ actors: [{ id: 't90am', name }] }, /actors\[0\]\.name/, label);
+}
+for (const name of ['豹 2A6', 'Škoda', 'T-90M «Proryv»', 'Crème brûlée']) {
+  assert.ok(sanitizeSharedScene({ actors: [{ id: 't90am', name }] }).ok, `${name} is plain text`);
+}
 {
   // an old scene names its vehicles in its own schema: accepted, spelling kept for load()'s own migration
   const legacy = sanitizeSharedScene({ tankIdSchema: 1, map: 'desert', actors: [{ id: 'm1a2', camo: 'inherit' }, { id: 't90m', camo: 'urban' }] });
@@ -364,6 +382,8 @@ for (let length = 0; length < 70; length++) {
       assert.deepEqual(sanitizeSharedScene(result.scene).scene, result.scene, `${label}: canonical`);
     } else {
       assert.ok(['too-large', 'encoding', 'version', 'unsupported', 'schema'].includes(result.reason), `${label}: ${result.reason}`);
+      // the detail is this build's field path and a fixed phrase: no value from the link ever reaches the error card
+      if (result.reason === 'schema') assert.match(result.detail, /^[A-Za-z][\w.[\]]*: [a-z][a-z0-9 ,]*$/, `${label}: ${result.detail}`);
     }
   };
   for (let i = 0; i < 600; i++) {
@@ -495,9 +515,19 @@ for (const none of ['', '#', '#other=1', null, undefined, 7]) assert.equal(scene
       assert.ok(rule && rule.kind === 'number' && rule.lo <= def.min && def.max <= rule.hi, `${type}.${def.key} fits its link bound`);
     }
   }
-  assert.match(studio, /const linkValue = sceneLinkValue\(window\.location\.hash\);\n\s+const shared = linkValue != null \? decodeSceneLink\(linkValue\) : null;/,
-    'auto-entry reads the scene from the fragment');
-  assert.match(studio, /\? shared\.then\(\(result\) => openSharedScene\(result, map\)\)/, 'a shared link wins over a path link');
+  assert.match(studio, /function bootScene\(\): StudioBootScene \| null \{\n\s+const linkValue = sceneLinkValue\(window\.location\.hash\);\n\s+if \(linkValue != null\) \{\n\s+const decoded = decodeSceneLink\(linkValue\);/,
+    'the boot reads the scene from the fragment first: a shared link wins over a path link');
+  assert.match(studio, /open: \(fallbackMap\) => whenGameReady\(\)\.then\(\(\) => decoded\)\.then\(\(result\) => openSharedScene\(result, fallbackMap\)\)/,
+    'a shared boot link opens once the game is ready');
+  assert.match(studio, /^\s+bootScene,\n\s+api,\n\s+\};/m, 'the Studio runtime exposes bootScene');
+  // the game's own direct /studio boot (autoEnter: false) is the path a fresh tab takes: it must open the link
+  const main = read('src/main.ts');
+  assert.match(main, /autoEnter: false/, 'main.ts owns the direct Studio boot');
+  assert.match(main, /studioBoot\.scene = runtime\.bootScene\?\.\(\) \?\? null;\n\s+const sceneMap = studioBoot\.scene \? await studioBoot\.scene\.map : null;\n\s+return runtime\.enter\(\{\n\s+map: sceneMap \|\| STUDIO_BOOT_MAP,/,
+    'the direct boot enters on the linked scene\'s battlefield');
+  assert.match(main, /window\.__GAME_READY = true;\nstudioBoot\.scene\?\.open\(STUDIO_BOOT_MAP\)/, 'the direct boot opens the linked scene once ready');
+  assert.match(studio, /if \(!active \|\| loading \|\| entering \|\| filmRenderer\.active \|\| recording\) \{\n\s+restoreAddress\(\);/,
+    'a pasted link waits for an idle Studio and otherwise puts the address back');
   assert.match(studio, /const failure = sceneLinkOpenFailure\(result\);\n\s+panel\.notice\(failure\.message, 'error', failure\.detail\);/,
     'a refused link is explained on screen');
   // the shell and tracer types are the FX layer's own (fx/effects.ts TracerType)
@@ -536,7 +566,8 @@ for (const none of ['', '#', '#other=1', null, undefined, 7]) assert.equal(scene
       assert.match(rhs, constantMarkup, `${file}: markup is constant or translated: ${rhs.slice(0, 120)}`);
       // a template may interpolate only translations and icons, never scene or actor data
       for (const hole of rhs.matchAll(/\$\{([^}]*)\}/g)) {
-        assert.match(hole[1].trim(), /^(?:t\('[\w.]+'(?:, \{[^}]*\})?\)|uiIconSVG\([^)]*\))$/, `${file}: only t() and icons are interpolated: ${hole[1]}`);
+        // a translation without parameters (a parameter could carry scene text) or an icon
+        assert.match(hole[1].trim(), /^(?:t\('[\w.]+'\)|uiIconSVG\('[\w-]+'(?:, \d+)?\))$/, `${file}: only t('key') and icons are interpolated: ${hole[1]}`);
       }
     }
   }

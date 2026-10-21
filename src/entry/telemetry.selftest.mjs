@@ -360,6 +360,18 @@ function cleanBoot(f, { readyMs = 4200 } = {}) {
   assert.deepEqual(describeError(firefox, 'https://cot.kevinliu.studio').frames,
     ['bake@/assets/sky-1.js:1:2', 'run@/assets/main-1.js:3:4'], 'Firefox/Safari frames are recognised');
   assert.equal(describeError({ message: 'x'.repeat(400) }).message.length, 200);
+  // a Studio scene link carries the whole scene in its #fragment: no report ever carries a query or a fragment
+  const sceneLinkError = Object.assign(new Error('boom at https://cot.kevinliu.studio/studio#scene=1.j.eyJtYXAiOiJ2ZXJkYW50In0'), {
+    stack: 'Error: boom\n    at onload (https://cot.kevinliu.studio/studio?map=verdant#scene=1.j.eyJtYXAiOiJ2ZXJkYW50In0:12:34)\n'
+      + '    at https://cot.kevinliu.studio/assets/main-1.js?v=2:5:6',
+  });
+  const scrubbed = describeError(sceneLinkError, 'https://cot.kevinliu.studio');
+  assert.deepEqual(scrubbed.frames, ['at onload (/studio:12:34)', 'at /assets/main-1.js:5:6'], 'frames keep the path and position only');
+  assert.equal(scrubbed.message, 'boom at https://cot.kevinliu.studio/studio', 'the message keeps the path only');
+  assert.doesNotMatch(JSON.stringify(scrubbed), /scene=|eyJ|\?map|v=2/);
+  const inline = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
+  assert.match(inline, /function noteFailure\(text\) \{[\s\S]{0,240}\.replace\(\/\(\[a-z\]\[a-z0-9\+\.-\]\*:/,
+    'the boot watchdog strips URL queries and fragments before it notes a failure');
   assert.equal(telemetryCode(' stall: vehicle/paint '), 'stall:_vehicle_paint');
   assert.equal(telemetryCode(''), 'unknown');
   // 2026-09-25 census: the stamp travelled as v1.0.0_g4a24eb4ad because the code alphabet has no '+'
