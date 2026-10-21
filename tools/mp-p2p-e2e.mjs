@@ -1398,6 +1398,8 @@ try {
     try { await rooms?.close(); } catch { /* gone */ }
   };
   await Promise.race([teardown(), sleep(20_000)]);
+  // (2026-10-20, item/mp-rejoin-229) a browser whose close hung past the race is killed, never left rendering as an orphan
+  for (const entry of [browser, ...extraBrowsers]) { try { if (entry?.process()?.exitCode === null) entry.process().kill('SIGKILL'); } catch { /* gone */ } }
 }
 
 if (json) console.log(JSON.stringify(report, null, 2));
