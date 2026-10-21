@@ -434,7 +434,7 @@ const P_SEG = 12;
 function casemateIlluminator(P:TankBuilderPort,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
  const I=ILLUMINATOR,{side,fx,y1,z1}=binFrame(l,x,y,z,w),ht=y1-.002+BIN.lid,front=z1-BIN.chamfer+I.lip;
  const done=captureAuxiliaryStock(P,l.name,'pitch');
- P.addEquipment('turretGlass',markVehicleNightLens(box(...I.lens),'headlight',{searchlight:true}),fx+side*I.out,ht-.004+I.h/2,front-I.recess-I.lens[2]/2);
+ P.addEquipment('turretGlass',markVehicleNightLens(box(...I.lens),'headlight',{searchlight:true,tint:'cool'}),fx+side*I.out,ht-.004+I.h/2,front-I.recess-I.lens[2]/2);
  done();
 }
 

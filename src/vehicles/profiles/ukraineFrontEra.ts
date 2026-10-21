@@ -757,7 +757,7 @@ function ledBars(P: TankBuilderPort): void {
     for (const k of [-1, 0, 1]) {
       // (glass, though the T-72B3M hull had no glass bucket (one draw more): the field net opens only round Glass, Hatch
       // and Cupola stock, so a lens in another bucket would be netted over)
-      P.addEquipment('hullGlass', tagFrontPart(nightLens(new THREE.BoxGeometry(lw, lh, lt), 'headlight'), 'LED bar lens', 'hull'), cx + k * LED.pitch, LED.y, lensBack + lt / 2);
+      P.addEquipment('hullGlass', tagFrontPart(nightLens(new THREE.BoxGeometry(lw, lh, lt), 'headlight', 'cool'), 'LED bar lens', 'hull'), cx + k * LED.pitch, LED.y, lensBack + lt / 2);
     }
     // the dividers between the lenses (near tier), 3 mm prouder than the lenses, 0.5 mm into the back plate
     if (P.q) for (const k of [-.5, .5]) {

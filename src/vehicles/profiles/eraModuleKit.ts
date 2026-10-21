@@ -226,7 +226,7 @@ export function mosaicLayout(length: number, pitch: number, rows: number, stagge
 // Permanent frames and lamps
 
 /** A lens marked as a night emitter BEFORE its pose: its +Z aperture (or +Y with apertureAxis 'y') is the lit face. */
-export function nightLens(g: THREE.BufferGeometry, kind: VehicleLampKind, tint?: 'red' | 'warm'): THREE.BufferGeometry {
+export function nightLens(g: THREE.BufferGeometry, kind: VehicleLampKind, tint?: 'red' | 'warm' | 'cool'): THREE.BufferGeometry {
   g.userData.frontEraLamp = kind;
   return markVehicleNightLens(g, kind, tint ? {tint} : {});
 }

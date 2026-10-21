@@ -5,7 +5,7 @@ import {
   markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh,
   transferVehicleNightLenses, finalizeVehicleNightLighting, vehicleNightLightEmittersFor,
 } from './vehicleNightLighting.ts';
-import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
+import { NIGHT_EMISSION_ATTRIBUTE, NIGHT_HEADLIGHT_COLOR, NIGHT_LED_COLOR } from '../engine/nightEmissionMaterial.ts';
 import { createNightLightingRuntime, bindNightOwnGunUniforms, HEADLIGHT_LOW_BEAM_DROP } from '../engine/nightLightingRuntime.ts';
 import { tankSeedId } from './tankIdAliases.ts'; // the t90 family prefix is schema-1 vocabulary
 
@@ -92,6 +92,21 @@ assert.equal(marker.range, 0);
 assert.deepEqual(markerMesh.userData.nightLightCoverage, { headlights: 0, shtora: 0, markers: 1 });
 assert.ok([...markerPart.getAttribute(NIGHT_EMISSION_ATTRIBUTE).array].some(value => value === 2));
 markerPart.dispose(); markerMaterial.dispose();
+// Release 230 (UA/PL round 11): a cool-white LED lens (tint 'cool'): its aperture masked 3, a beam of the LED colour;
+// an untinted lamp stays the warm halogen
+{
+  const cool = markVehicleNightLens(box(.10, .056, .015), 'headlight', { tint: 'cool' }), warm = markVehicleNightLens(box(.10, .056, .015), 'headlight');
+  prepareVehicleNightLensParts([cool, warm]);
+  const coolMaterial = new THREE.MeshStandardMaterial(), coolMesh = new THREE.Mesh(mergeAll([cool, warm]), coolMaterial);
+  registerVehicleNightLensMesh(coolMesh, [cool, warm]);
+  finalizeVehicleNightLighting(coolMesh);
+  const [coolLamp, warmLamp] = vehicleNightLightEmittersFor(coolMesh);
+  assert.equal(coolLamp.color, NIGHT_LED_COLOR, 'the LED lens casts the cool colour');
+  assert.equal(warmLamp.color, NIGHT_HEADLIGHT_COLOR, 'an untinted lamp keeps the warm halogen');
+  assert.ok([...cool.getAttribute(NIGHT_EMISSION_ATTRIBUTE).array].some(value => value === 3), 'its aperture is masked 3');
+  assert.ok([...warm.getAttribute(NIGHT_EMISSION_ATTRIBUTE).array].every(value => value !== 3));
+  cool.dispose(); warm.dispose(); coolMesh.geometry.dispose(); coolMaterial.dispose();
+}
 const serviceCap = markVehicleNightLens(cylY(.068, .068, .012, 16), 'marker', { apertureAxis: 'y' });
 const servicePositions = serviceCap.getAttribute('position').array.slice();
 prepareVehicleNightLensParts([serviceCap]);

@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { registerSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
 import { registerNightLightEmitters, registerNightBeamClearance, type NightLightEmitter } from '../engine/nightLightingRuntime.ts';
 import {
-  NIGHT_EMISSION_ATTRIBUTE, NIGHT_HEADLIGHT_COLOR, NIGHT_SHTORA_COLOR,
+  NIGHT_EMISSION_ATTRIBUTE, NIGHT_HEADLIGHT_COLOR, NIGHT_SHTORA_COLOR, NIGHT_LED_COLOR,
   setNightEmissionMask, installNightEmissionMask, refreshNightEmissionBase,
 } from '../engine/nightEmissionMaterial.ts';
 
@@ -13,7 +13,8 @@ export type VehicleLampKind = 'headlight' | 'shtora' | 'marker';
 interface LensDefinition {
   readonly kind: VehicleLampKind;
   readonly faces: readonly number[];
-  readonly tint?: 'red' | 'warm';
+  /** (release 230) 'cool': a cool-white LED lens (mask 3, NIGHT_LED_COLOR). */
+  readonly tint?: 'red' | 'warm' | 'cool';
   /** A weapon searchlight boresighted with its station (release 227: the Zubr II's illuminator): its authored aperture
    * keeps its aim instead of a driving lamp's .08 drop, and it lights the runtime's narrow searchlight cone
    * (nightLightingRuntime.ts searchlight, SEARCHLIGHT_CONE_RAD) at 6,000 cd to 150 m (round 7). */
@@ -40,7 +41,7 @@ function vertexAt(geometry: THREE.BufferGeometry, offset: number): number {
  */
 export function markVehicleNightLens<T extends THREE.BufferGeometry>(
   geometry: T, kind: VehicleLampKind,
-  options: { readonly curvedAperture?: boolean; readonly apertureAxis?: 'z' | 'y'; readonly tint?: 'red' | 'warm'; readonly searchlight?: true } = {},
+  options: { readonly curvedAperture?: boolean; readonly apertureAxis?: 'z' | 'y'; readonly tint?: 'red' | 'warm' | 'cool'; readonly searchlight?: true } = {},
 ): T {
   const normal = geometry.getAttribute('normal');
   const count = geometry.index?.count ?? geometry.getAttribute('position').count;
@@ -67,7 +68,7 @@ function maskLens(geometry: THREE.BufferGeometry): void {
   if (definition) for (const face of definition.faces) {
     for (let corner = 0; corner < 3; corner++) vertices.push(vertexAt(geometry, face + corner));
   }
-  setNightEmissionMask(geometry, definition?.kind === 'shtora' || definition?.tint === 'red' ? 2 : 1, vertices);
+  setNightEmissionMask(geometry, definition?.kind === 'shtora' || definition?.tint === 'red' ? 2 : definition?.tint === 'cool' ? 3 : 1, vertices);
 }
 
 /** Merge utilities require matching attributes on every part in one bucket. */
@@ -132,7 +133,7 @@ export function registerVehicleNightLensMesh(mesh: LensMesh, parts: readonly THR
     const searchlight = definition.searchlight === true;
     return {
       kind: definition.kind, ...place(apertureFrame(part, definition)),
-      color: definition.kind === 'shtora' || definition.tint === 'red' ? NIGHT_SHTORA_COLOR : NIGHT_HEADLIGHT_COLOR,
+      color: definition.kind === 'shtora' || definition.tint === 'red' ? NIGHT_SHTORA_COLOR : definition.tint === 'cool' ? NIGHT_LED_COLOR : NIGHT_HEADLIGHT_COLOR,
       // (round 7, the critic's UAPL-9: at 2,000 cd the Zubr II's station searchlight was "much weaker than the turret
       // searchlight's pool ... at y0 it disappears into that pool": a weapon searchlight throws 6,000 cd to 150 m, its
       // narrow pool standing out of the driving lamps' wide one wherever the station aims)

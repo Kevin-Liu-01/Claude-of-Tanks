@@ -812,7 +812,7 @@ function ledClusters(P: TankBuilderPort, g: HullSurface): void {
     for (const X of [.855, .965]) for (const dy of [.045, .115]) {
       const x = side * X, y = base + dy;
       P.addEquipment('hullDark', tagFrontPart(blindTube(.032, .026, .04, .014, P.q ? 16 : 10), 'LED pod cup', 'hull'), x, y, z1 + .02 - .002);
-      P.addEquipment('hullGlass', tagFrontPart(nightLens(cylZ(.024, .010, P.q ? 16 : 10), 'headlight'), 'LED pod lens', 'hull'), x, y, z1 + .04 - .002 - .008 - .005);
+      P.addEquipment('hullGlass', tagFrontPart(nightLens(cylZ(.024, .010, P.q ? 16 : 10), 'headlight', 'cool'), 'LED pod lens', 'hull'), x, y, z1 + .04 - .002 - .008 - .005);
     }
     for (const k of [0, 1, 2]) {
       const y = top - .004 - k * .012;
