@@ -545,8 +545,8 @@ function addRwsCradle(P: TankBuilderPort): void {
   // floor from 34 degrees of elevation (to Y 2.798), and the gun's trunnion side (to X 0.044) and the cradle's pin
   // turned inside the positive-X support. The negative-X wall stands outboard of the can's sweep on a floor widened to
   // carry it, the floor's crown comes down under the receiver's sweep (Y 2.785, its front on the source slope) and each
-  // wall rises from it, and the support's inner face stands clear of the trunnion side (X 0.052). The source's
-  // positive-X wall and the support's front slope are unchanged.
+  // wall rises from it, and the support is relieved round the trunnion (its inner face at X 0.052 from Y 2.99 to 3.11,
+  // where the trunnion side turns). The source's positive-X wall and the support's front slope are unchanged.
   section(-.330, .110, 2.568, 2.785, -1.79, -1.377, -1.832, -1.439);
   for (const x of [-.330, .110]) {
     section(x, x + .058, 2.785, 2.87, -1.832, -1.439, -1.844, -1.463);
@@ -558,9 +558,11 @@ function addRwsCradle(P: TankBuilderPort): void {
   // Source Object_15 is a full-depth positive-X support beside the weapon,
   // not an empty fork across this entire width. The narrow negative-X gap
   // and forward receiver clearance remain genuinely open.
-  section(.052, .161313, 2.898874, 2.973030, -1.844, -1.474581, -1.843788, -1.515167);
-  section(.052, .161313, 2.973030, 3.144819, -1.843788, -1.515167, -1.768057, -1.629514);
-  section(.052, .161708, 3.144819, 3.150478, -1.768057, -1.629514, -1.758765, -1.640078);
+  section(-.001210, .161313, 2.898874, 2.973030, -1.844, -1.474581, -1.843788, -1.515167);
+  section(-.001210, .161313, 2.973030, 2.99, -1.843788, -1.515167, -1.836307, -1.526463);
+  section(.052, .161313, 2.99, 3.11, -1.836307, -1.526463, -1.783407, -1.606337);
+  section(-.001210, .161313, 3.11, 3.144819, -1.783407, -1.606337, -1.768057, -1.629514);
+  section(-.001210, .161708, 3.144819, 3.150478, -1.768057, -1.629514, -1.758765, -1.640078);
 }
 
 function addCannon(P: TankBuilderPort): void {

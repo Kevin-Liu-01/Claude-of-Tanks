@@ -252,6 +252,12 @@ interface LeopardRemoteWeaponStationOptions {
   /** Release 230: the open yoke's sensor pod beside its right arm (default) or on the bin's outer face. */
   readonly podSide?: 'right' | 'left';
   /**
+   * Release 230: the station turns in the roof's mount ring (a well sunk under it), whose rim tops out at this y: no
+   * turntable over the roof; the yoke stands on the well's floor (the gun's foot) and what stands outboard of the well
+   * (bin, pod) rides over the rim.
+   */
+  readonly ringMount?: number;
+  /**
    * The station is the hull's working roof weapon (2026-10-08): its M2 is remote-controlled and every piece of the
    * station is its stock. Owner order §5.09-5 (2026-08-07) put the FLW 200 on these Leopards; his 2A5M precedent
    * (main 6763d7cc0, 2026-10-08) activates such an original station rather than removing it.
@@ -6378,6 +6384,93 @@ function buildLeo2A5A5NL(builder: object) {
 //      top local y; null = none), towerZ (tower z-center, local),
 //      towerW (z window, default 0.16), shields (flank armor), seed }
 // ---------------------------------------------------------------------------
+/**
+ * Release 230: a closed polygonal well (`segments` sides about cx, cz, `radius` to its corners) sunk from a closed shell's
+ * flat roof (y roofY) to a floor (y floorY): the roof's faces keep what lies outside the well, the well's walls and floor
+ * close it, and the roof's new edges are shared with the walls' tops (each split where the other's vertices lie on it), so
+ * the shell stays one closed surface. Faces off the roof plane are kept as they are (the well must not reach them).
+ */
+function roofWell(shell: THREE.BufferGeometry, { cx, cz, radius, segments, floorY, roofY }: {
+  readonly cx: number; readonly cz: number; readonly radius: number; readonly segments: number;
+  readonly floorY: number; readonly roofY: number;
+}): THREE.BufferGeometry {
+  const ring = Array.from({ length: segments }, (_, i) => {
+    const a = 2 * Math.PI * i / segments;
+    return new THREE.Vector3(cx + radius * Math.sin(a), roofY, cz + radius * Math.cos(a));
+  });
+  // each edge's outward half-plane: f(p) > 0 outside the well
+  const sides = ring.map((a, i) => {
+    const b = ring[(i + 1) % segments]!, nx = b.z - a.z, nz = -(b.x - a.x), centre = (cx - a.x) * nx + (cz - a.z) * nz;
+    const sign = centre > 0 ? -1 : 1;
+    return (p: THREE.Vector3): number => sign * ((p.x - a.x) * nx + (p.z - a.z) * nz);
+  });
+  const split = (poly: THREE.Vector3[], f: (p: THREE.Vector3) => number, keepPositive: boolean): THREE.Vector3[] => {
+    const out: THREE.Vector3[] = [];
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i]!, b = poly[(i + 1) % poly.length]!, fa = keepPositive ? f(a) : -f(a), fb = keepPositive ? f(b) : -f(b);
+      if (fa >= 0) out.push(a);
+      if ((fa > 0 && fb < 0) || (fa < 0 && fb > 0)) out.push(a.clone().lerp(b, fa / (fa - fb)));
+    }
+    return out;
+  };
+  const position = shell.getAttribute('position'), index = shell.getIndex(), n = index ? index.count : position.count;
+  const kept: THREE.Vector3[][] = [], local: THREE.Vector3[][] = [];
+  for (let t = 0; t + 2 < n; t += 3) {
+    const tri = [0, 1, 2].map((k) => new THREE.Vector3().fromBufferAttribute(position, index ? index.getX(t + k) : t + k));
+    if (!tri.every((p) => Math.abs(p.y - roofY) < 1e-6)) { kept.push(tri); continue; }
+    // the roof face less the well: the part outside each side in turn
+    let rest = tri;
+    for (const side of sides) {
+      const outside = split(rest, side, true);
+      if (outside.length >= 3) local.push(outside);
+      rest = split(rest, side, false);
+      if (rest.length < 3) break;
+    }
+  }
+  const up = new THREE.Vector3(0, 1, 0), face = (points: THREE.Vector3[], expect: THREE.Vector3): THREE.Vector3[] => {
+    const normal = points[1]!.clone().sub(points[0]!).cross(points[2]!.clone().sub(points[0]!));
+    return normal.dot(expect) < 0 ? [...points].reverse() : points;
+  };
+  for (let i = 0; i < segments; i++) {
+    const a = ring[i]!, b = ring[(i + 1) % segments]!, inward = new THREE.Vector3(cx - (a.x + b.x) / 2, 0, cz - (a.z + b.z) / 2);
+    local.push(face([a.clone().setY(floorY), b.clone().setY(floorY), b.clone(), a.clone()], inward));
+  }
+  local.push(face(ring.map((p) => p.clone().setY(floorY)), up));
+  // weld: a vertex lying on another face's edge is inserted into that edge
+  const vertices: THREE.Vector3[] = [];
+  const weld = (p: THREE.Vector3): THREE.Vector3 => vertices.find((v) => v.distanceToSquared(p) < 1e-12) ?? (vertices.push(p), p);
+  const polys = local.map((poly) => poly.map(weld));
+  const output: number[] = [];
+  const emit = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3): void => {
+    if (b.clone().sub(a).cross(c.clone().sub(a)).lengthSq() > 1e-16) output.push(...a.toArray(), ...b.toArray(), ...c.toArray());
+  };
+  for (const tri of kept) emit(tri[0]!, tri[1]!, tri[2]!);
+  for (const poly of polys) {
+    const boundary: THREE.Vector3[] = [];
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i]!, b = poly[(i + 1) % poly.length]!, edge = b.clone().sub(a), lengthSq = edge.lengthSq();
+      if (lengthSq < 1e-14) continue;
+      const along = [{ p: a, t: 0 }];
+      for (const v of vertices) {
+        const t = v.clone().sub(a).dot(edge) / lengthSq;
+        if (t > 1e-6 && t < 1 - 1e-6 && a.clone().addScaledVector(edge, t).distanceToSquared(v) < 1e-12) along.push({ p: v, t });
+      }
+      along.sort((l, r) => l.t - r.t);
+      boundary.push(...along.map((entry) => entry.p));
+    }
+    if (boundary.length < 3) continue;
+    const centre = boundary.reduce((sum, p) => sum.add(p), new THREE.Vector3()).divideScalar(boundary.length);
+    if (boundary.length === 3) emit(boundary[0]!, boundary[1]!, boundary[2]!);
+    else for (let i = 0; i < boundary.length; i++) emit(centre, boundary[i]!, boundary[(i + 1) % boundary.length]!);
+  }
+  shell.dispose();
+  const result = new THREE.BufferGeometry();
+  result.setAttribute('position', new THREE.Float32BufferAttribute(output, 3));
+  result.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(output.length / 3 * 2), 2));
+  result.computeVertexNormals();
+  return result;
+}
+
 interface FlwSlot { readonly x0: number; readonly x1: number; readonly z0: number; readonly z1: number }
 
 /**
@@ -6532,18 +6625,22 @@ function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
   };
   const rect = (hx: number, hz: number): [number, number][] => [[-hx, -hz], [hx, -hz], [hx, hz], [-hx, hz]];
   const disc = (r: number, n: number): [number, number][] => Array.from({ length: n }, (_, i) => [r * Math.sin(2 * Math.PI * i / n), r * Math.cos(2 * Math.PI * i / n)] as [number, number]);
-  // base plate + corner gussets tie the station into the roof (§B2 attached)
-  turntablePart('turret', () => box(0.50 * ws, 0.030, 0.50 * s), rect(0.25 * ws, 0.25 * s), Y, 0.030);
-  for (const side of [-1, 1]) {
-    turntablePart('turretDark', () => box(0.42 * ws, 0.026, 0.05), rect(0.21 * ws, 0.025), Y + 0.029, 0.026, 0, side * 0.21 * s);
-  }
-  // powered slew ring + drum (the automated tell — a ringed turntable, not
-  // a pintle post). drumH squashes for low-profile fits (proto dims line).
   const dh = o.drumH ?? 0.10;
-  turntablePart('turretDark', () => cylY(0.21 * s, 0.21 * s, 0.024, seg + 4), disc(0.21 * s, seg + 4), Y + 0.030, 0.024);
-  turntablePart('turret', () => cylY(0.16 * s, 0.185 * s, dh, seg + 4), disc(0.1725 * s, seg + 4), Y + 0.05, dh);
-  turntablePart('turretDark', () => cylY(0.135 * s, 0.135 * s, 0.05, seg), disc(0.135 * s, seg), Y + 0.02 + dh, 0.05); // drum neck
-  const deckTop = Y + 0.05 + dh;
+  if (o.ringMount == null) {
+    // base plate + corner gussets tie the station into the roof (§B2 attached)
+    turntablePart('turret', () => box(0.50 * ws, 0.030, 0.50 * s), rect(0.25 * ws, 0.25 * s), Y, 0.030);
+    for (const side of [-1, 1]) {
+      turntablePart('turretDark', () => box(0.42 * ws, 0.026, 0.05), rect(0.21 * ws, 0.025), Y + 0.029, 0.026, 0, side * 0.21 * s);
+    }
+    // powered slew ring + drum (the automated tell — a ringed turntable, not
+    // a pintle post). drumH squashes for low-profile fits (proto dims line).
+    turntablePart('turretDark', () => cylY(0.21 * s, 0.21 * s, 0.024, seg + 4), disc(0.21 * s, seg + 4), Y + 0.030, 0.024);
+    turntablePart('turret', () => cylY(0.16 * s, 0.185 * s, dh, seg + 4), disc(0.1725 * s, seg + 4), Y + 0.05, dh);
+    turntablePart('turretDark', () => cylY(0.135 * s, 0.135 * s, 0.05, seg), disc(0.135 * s, seg), Y + 0.02 + dh, 0.05); // drum neck
+  }
+  const deckTop = o.ringMount == null ? Y + 0.05 + dh : o.gunY;
+  // the floor what stands outboard of a ring mount's well rides over (its rim)
+  const overRim = (centreY: number, halfH: number): number => (o.ringMount == null ? centreY : Math.max(centreY, o.ringMount + 0.009 + halfH));
   // pedestal column up to the cradle (the fitting column emerges inside
   // it); skipped when the cradle plane sits at/under the roof (squat fit —
   // the cradle then connects straight onto the drum).
@@ -6569,10 +6666,10 @@ function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
       if (o.shields) P.add('turret', box(0.016, 0.17 * s, 0.46 * s), X + armX(side) + side * 0.010 * ws, troughC + 0.005 * s, Z + 0.02 * s);
     }
     // ammo bin GUN-LEFT outboard of the yoke + bracket + feed chute (feed law)
-    const binX = X + armX(-1) - 0.019 - 0.0675 * ws + 0.005;
-    P.add('turretDetail', box(0.135 * ws, 0.15 * s, 0.30 * s), binX, troughC - 0.025 * s, Z - 0.04 * s);
-    P.add('turretDark', box(0.06 * ws, 0.04, 0.05), binX + 0.055 * ws, troughC - 0.065 * s, Z - 0.04 * s);  // bin bracket -> arm
-    P.add('turretDark', box(0.014, 0.05, 0.10 * s), binX + 0.065 * ws, troughC + 0.045 * s, Z - 0.02 * s); // feed chute -> the gun's left
+    const binX = X + armX(-1) - 0.019 - 0.0675 * ws + 0.005, binY = overRim(troughC - 0.025 * s, 0.075 * s), lift = binY - (troughC - 0.025 * s);
+    P.add('turretDetail', box(0.135 * ws, 0.15 * s, 0.30 * s), binX, binY, Z - 0.04 * s);
+    P.add('turretDark', box(0.06 * ws, 0.04, 0.05), binX + 0.055 * ws, troughC - 0.065 * s + lift, Z - 0.04 * s);  // bin bracket -> arm
+    P.add('turretDark', box(0.014, 0.05, 0.10 * s), binX + 0.065 * ws, troughC + 0.045 * s + lift, Z - 0.02 * s); // feed chute -> the gun's left
     // IR pointer pod on the right arm's front (§4.9999 lights)
     const irZ = armZ + 0.085 * s + 0.045 * s - 0.01;
     P.add('turretDetail', cylZ(0.022 * s, 0.09 * s, 10), X + armX(1), troughC + 0.015 * s, irZ);
@@ -6580,7 +6677,7 @@ function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
     // the sensor pod beside the yoke, on its arm (right) or on the bin's outer face (left)
     podZ = o.podSide === 'left' ? Z - 0.04 * s : armZ;
     podX = o.podSide === 'left' ? binX - 0.0675 * ws - 0.135 * ws + 0.002 : X + armX(1) + 0.019 + 0.135 * ws - 0.004;
-    podY = Math.max(podY, Y + podH / 2 + 0.002);
+    podY = overRim(Math.max(podY, Y + podH / 2 + 0.002), podH / 2);
   } else {
     // the compact fit's pod stays forward under the gun's depression
     podY = Math.min(podY, crown(X - 0.1375 * ws, X + 0.1375 * ws, podZ - 0.0875 * s, podZ + 0.0875 * s) - podH / 2 - 0.016);
@@ -6595,10 +6692,13 @@ function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
   P.add('turretDark', box(0.20 * ws, 0.014, 0.014), podX, podY - podH * 0.43, podZ + 0.085 * s);            // wiper bar
   // the compact pod hangs on a bracket from the drum, under the gun's depression
   if (o.compact) P.add('turretDark', box(0.03, 0.022, 0.225 * s), X, podY - podH * 0.38, Z + 0.2225 * s);
-  // cable drop + flush roof conduit (§4.9999 cabling — powered station), the drop under the gun's sweep
+  // cable drop + flush roof conduit (§4.9999 cabling — powered station), the drop under the gun's sweep (a ring mount's
+  // from the well's floor, its conduit from the rim)
+  const cableBottom = o.ringMount == null ? Y + 0.01 : deckTop;
   const cableTop = Math.min(Y + Math.max(0.05, pedTop - Y - 0.06) + 0.01, crown(X + 0.10 * s - 0.016, X + 0.10 * s + 0.016, Z - 0.10 * s - 0.025, Z - 0.10 * s + 0.025));
-  if (cableTop - Y - 0.01 >= 0.01) P.add('turretDark', box(0.032, cableTop - Y - 0.01, 0.05), X + 0.10 * s, (Y + 0.01 + cableTop) / 2, Z - 0.10 * s);
-  P.add('turretDark', box(0.028, 0.006, 0.30), X + 0.06, Y + 0.003, Z - 0.36 * s);
+  if (cableTop - cableBottom >= 0.01) P.add('turretDark', box(0.032, cableTop - cableBottom, 0.05), X + 0.10 * s, (cableBottom + cableTop) / 2, Z - 0.10 * s);
+  const conduitFront = o.ringMount == null ? Z - 0.36 * s + 0.15 : Z - 0.32;
+  P.add('turretDark', box(0.028, 0.006, conduitFront - (Z - 0.36 * s - 0.15)), X + 0.06, Y + 0.003, (conduitFront + Z - 0.36 * s - 0.15) / 2);
   if (o.automatic) mg.name = gunName;
   mg.position.set(X, o.gunY, Z);
   P.turretG.add(mg);
@@ -6611,7 +6711,8 @@ function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
     const headH = 0.12 * s;
     const headTop = o.towerTop;
     const riserTop = headTop - headH;
-    P.add('turretDark', box(0.075, riserTop - pedTop, Math.min(0.075, tw * 0.5)), tx, (pedTop + riserTop) / 2, tz);
+    const riserBottom = o.ringMount == null ? pedTop : deckTop;
+    P.add('turretDark', box(0.075, riserTop - riserBottom, Math.min(0.075, tw * 0.5)), tx, (riserBottom + riserTop) / 2, tz);
     P.add('turretDark', box(0.22 * s, headH, tw), tx, headTop - headH / 2, tz);      // panoramic head (wide across — x is mask-free)
     P.add('turretDetail', box(0.225 * s, 0.014, tw + 0.005), tx, headTop - 0.007, tz);
     P.add('turretGlass', box(0.13 * s, 0.055 * s, 0.010), tx, headTop - headH / 2, tz + tw / 2 - 0.002);
@@ -7990,11 +8091,14 @@ function buildLeo2Proto(P: TankBuilderPort) {
     [-0.44, 1.18], [0.44, 1.18], [0.94, 0.78], [1.22, 0.16], [1.18, -1.18],
     [1.10, -2.75], [-1.10, -2.75], [-1.18, -1.18], [-1.22, 0.16], [-0.94, 0.78],
   ];
-  P.add('turret', recessClosedTurret(polyMultiLoft(PT_PLAN, [
+  // Release 230 (the coordinator's ruling for the RWS clearance lane): the roof's OWS mount ring is a real well, as the
+  // source shows. The FLW 200 sits in it (its M2's foot 0.19 m under the roof), so the receiver, which at full elevation
+  // swung 16 cm through the roof, now sweeps within the well: 0.31 m to its corners, its floor under the gun's foot.
+  P.add('turret', recessClosedTurret(roofWell(polyMultiLoft(PT_PLAN, [
     { height: 0.015, inset: 1.00 },
     { height: 0.40, inset: 0.995 },
     { height: 0.65, inset: 0.92 },
-  ]), { halfWidthM: .43, backZM: .68 }));
+  ]), { cx: 0.02, cz: -1.58, radius: 0.31, segments: 24, floorY: 0.462, roofY: 0.65 }), { halfWidthM: .43, backZM: .68 }));
   P.add('turret', recessClosedTurret(polyMultiLoft([                          // buried fore apron with real gun clearance
     [-0.44, 1.18], [0.44, 1.18], [0.94, 0.78], [1.22, 0.16], [1.22, 0.08],
     [-1.22, 0.08], [-1.22, 0.16], [-0.94, 0.78],
@@ -8155,11 +8259,17 @@ function buildLeo2Proto(P: TankBuilderPort) {
   // (the ratified "deliberate ring" read); the blanking plate's bolt torus
   // + bolt heads retire (buried inside the restored base, torus top was
   // coplanar with the base-plate top = z-fight).
-  P.add('turret', cylY(0.31, 0.31, 0.016, P.q ? 20 : 14), 0.02, 0.658, -1.58); // OWS mount-ring flange
+  {
+    // OWS mount-ring flange: the annulus round the well's mouth (release 230: the well is open, the ring its rim)
+    const flange = new THREE.Shape().absarc(0, 0, 0.36, 0, 2 * Math.PI, false);
+    flange.holes.push(new THREE.Path().absarc(0, 0, 0.312, 0, 2 * Math.PI, true));
+    P.add('turret', new THREE.ExtrudeGeometry(flange, { depth: 0.016, bevelEnabled: false, curveSegments: P.q ? 24 : 16 })
+      .rotateX(-Math.PI / 2), 0.02, 0.65, -1.58);
+  }
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the owner's station is a working remote station
   leoFLW200(P, { x: 0.02, y: 0.65, z: -1.58, s: 1.1, gunY: 0.46, gunScale: 0.92,
     drumH: 0.05, podY: 0.70, podH: 0.16, shields: false, elev: 0.07,
-    towerTop: 1.06, towerZ: -1.52, towerW: 0.16, seed: 17, automatic: true, podSide: 'left' });
+    towerTop: 1.06, towerZ: -1.52, towerW: 0.16, seed: 17, automatic: true, podSide: 'left', ringMount: 0.666 });
 
   // Owner-directed replacement: a finite, clipped welded shield with a
   // real recoil passage and split journals, seated in the original gun frame.
