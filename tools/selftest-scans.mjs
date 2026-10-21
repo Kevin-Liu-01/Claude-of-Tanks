@@ -89,6 +89,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/deployment-policy.selftest.mjs': lists('api/*.ts'),
   'tools/gate.mjs': lists('cloudflare/*/package.json'),
   'tools/gen-interior-fills.mjs': lists('src/vehicles/interiorFillGroups/*.generated.ts'),
+  // 230 (tank hero icons v5): the stray-file and directory-budget checks list the hero directory
+  'tools/hero-cards-check.mjs': lists('public/icons/hero/*'),
   'tools/i18n-scan.mjs': lists('src/**/*.{ts,tsx,js,mjs,cjs,html}'),
   'tools/id-list.selftest.mjs': lists('tools/*.mjs'),
   // 230 (foliage-shadow-sites-228): every virtual: import under src resolves through the probe server's plugins
