@@ -114,7 +114,8 @@ function sideSquare(id: string, pad: number, twin: boolean): CivicAreaPlan {
       }),
     },
     furniture,
-    parking: [],
+    // (229, the owner: "a lot of cars") one at each outer corner of the room, past the zone's hold, along its frontage
+    parking: [F({ kind: 'sedan', x: -258.5, z: 28.6, yawDeg: 90 }), F({ kind: 'wagon', x: -258.5, z: -28.6, yawDeg: 90 })],
     bayMarks: [],
     // (229 b1 r3) the boulevard's west corner's lamp past the zone's disc
     lamps: [F({ kind: 'lamp', x: -256, z: 10.5, yawDeg: 0 })],
@@ -130,6 +131,34 @@ function sideSquare(id: string, pad: number, twin: boolean): CivicAreaPlan {
 export const RUINSPIRES_CIVIC_PLAN: CivicPlan = {
   mapId: 'ruinspires',
   style: 'sarajevo',
+  // (229, the owner: "add a lot of cars in civic areas ... same should apply to the ruinspires") the city's Zastavas,
+  // Yugos, vans and pickups at the kerbs of the streets round the side squares' outer mouths, each a seat no base battle's
+  // hull touched in twelve (probes/pace carseats.mjs: six zone, six Frontline) and its rotation twin's as quiet
+  streetParking: [
+    // (the boulevard's kerb past each side square's mouth: its 6 m pivot disc clear, the zone's hold past the car's nose)
+    { kind: 'sedan', x: -272, z: -3.85, yawDeg: -90 },
+    { kind: 'sedan', x: 272, z: 3.85, yawDeg: 90 },
+    { kind: 'wagon', x: 288, z: 3.85, yawDeg: 90 },
+    { kind: 'wagon', x: -290.4, z: -7, yawDeg: 180 },
+    { kind: 'sedan', x: 296.15, z: -26, yawDeg: 0 },
+    { kind: 'sedan', x: -296.15, z: 29, yawDeg: 180 },
+    { kind: 'van', x: 295.75, z: 42.4, yawDeg: -8.5 },
+    { kind: 'van', x: -295.75, z: -42.4, yawDeg: 171.5 },
+    { kind: 'wagon', x: 294.38, z: -51.52, yawDeg: 8.5 },
+    { kind: 'wagon', x: -293.79, z: 55.47, yawDeg: -171.5 },
+    { kind: 'pickup', x: 319.39, z: -0.05, yawDeg: 78.7 },
+    { kind: 'pickup', x: -322.81, z: -0.64, yawDeg: 78.7 },
+    { kind: 'sedan', x: 286.79, z: 89.16, yawDeg: -18.9 },
+    { kind: 'sedan', x: -287.44, z: -87.26, yawDeg: 161.1 },
+  ],
+  // (229, the owner: "other decorations ... and so on") the besieged city's own carts at the same streets' kerbs: a
+  // water-can trolley and a donkey's firewood cart past each side square's outer mouth and a trolley on the street
+  // beyond, rotation twins, seats no base battle's hull touched (probes/pace carseats.mjs)
+  streetFurniture: [
+    { kind: 'handcart', x: -270, z: 3.85, yawDeg: 90 }, { kind: 'handcart', x: 270, z: -3.85, yawDeg: -90 },
+    { kind: 'haycart', x: -280, z: -3.85, yawDeg: -90 }, { kind: 'haycart', x: 280, z: 3.85, yawDeg: 90 },
+    { kind: 'handcart', x: -296.15, z: -15, yawDeg: 180 }, { kind: 'handcart', x: 296.15, z: 15, yawDeg: 0 },
+  ],
   // (the plaza's sandbag nest is left out by the room's veto after its draws: the overlay keeps its pass running)
   // (229 b1 r1, the gameplay critic's D6: the hedgehogs-at-approaches overlay moved the whole city's hedgehogs, 51 to 28)
   // none: the city's own placement

@@ -128,6 +128,16 @@ const TOWN_SOUTH: ReadonlyArray<readonly [number, number]> = [[-140, -282], [140
 export const CLIFFBRIDGE_CIVIC_PLAN: CivicPlan = {
   mapId: 'cliffbridge',
   style: 'andalusian',
+  // (229, the owner: "add a lot of cars in civic areas") the town's SEAT 600s and estates on the verges of the high
+  // street where it enters each plaza and at the kerbs of the street below it, each with its mirror twin across z = 0,
+  // every seat one the base battles' hulls touched at most once (front) and twice (zone) in six (probes/pace
+  // carseats-mirror.mjs: both twins checked, the pair scored by the worse)
+  streetParking: [
+    { kind: 'sedan', x: -7, z: -218, yawDeg: 0.6 }, { kind: 'sedan', x: -7, z: 218, yawDeg: 179.4 },
+    { kind: 'wagon', x: 7, z: -223, yawDeg: 179.2 }, { kind: 'wagon', x: 7, z: 223, yawDeg: 0.8 },
+    { kind: 'sedan', x: -37.23, z: -251.8, yawDeg: 83.2 }, { kind: 'sedan', x: -37.23, z: 251.8, yawDeg: 96.8 },
+    { kind: 'sedan', x: -21.53, z: -255.25, yawDeg: -95.9 }, { kind: 'sedan', x: -21.53, z: 255.25, yawDeg: -84.1 },
+  ],
   overlay: {},
   pathways: {
     classes: { 0: 'main', 1: 'gasse', 2: 'gasse', 3: 'gasse', 4: 'gasse' },

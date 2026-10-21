@@ -189,6 +189,14 @@ export default {
         structure: 'transformershed', redoubt: true, wreck: true, wreckOffsetZ: 16 },
     ],
     blockFill: false, streetRows: true, streetRowsAfterLandmarks: true,
+    // (229, the owner: "other decorations and landmarks ... same should apply to the ruinspires") a small park on each
+    // open block between the squares, each round an Ottoman fountain (the octagonal basin round its pillar, Baščaršija's
+    // kind): a railed lawn, its diagonal paths, benches and the city's lamps. Rotation twins; their ground vetoed (the
+    // map's streams and seats as without them), seats no base battle's hull reached (probes/pace lmseats.mjs, r 11 m)
+    landmarks: [-1, 1].map((s) => ({
+      kind: 'parkSquare' as const, x: s * 133, z: s * 60, yawDeg: s < 0 ? 0 : 180, ground: 'veto' as const, name: s < 0 ? 'the west fountain park' : 'the east fountain park',
+      params: { width: 18, depth: 18, paths: 'diagonal', railing: 'iron', benches: 4, lamps: 2, centre: 'fountain', centreStyle: 'ottoman' },
+    })),
     streetRowRoadStride: 1, ruinChance: 0.48, curbs: true, lampposts: true,
     // The boulevard's three squares stay open: the row houses face each one from beyond its zone-control disc. The
     // terrace streets' uphill sides stay gardens (rotation pair): a row there sealed the blocks below from the slope,
