@@ -2919,7 +2919,9 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
                         // the window p5 floor. z-extremes (hullLength carriers) and the
                         // wg.top-0.012 edge line stay within a hair.
                         P.add(wB('hullDetail'), box(0.036, 0.012, wlen + 0.02), xm, wg.top - 0.0185 + wY, wmid + wZ, 0, 0, -0.42 * s);
-                        P.add(wB('hullDetail'), box(0.036, 0.012, wlen + 0.02), xm, wg.bot + 0.0185 + wY, wmid + wZ, 0, 0, -0.42 * s);
+                        // 2026-10-19 (owner float sweep): the wing's plate ends 20 mm above wg.bot on the 3D (the
+                        // bottom hairline hung under it); the rail rises onto the plate's lower edge
+                        P.add(wB('hullDetail'), box(0.036, 0.012, wlen + 0.02), xm, wg.bot + 0.0385 + wY, wmid + wZ, 0, 0, -0.42 * s);
                       };
                       merkavaChassisHullCourse50();
                     };
@@ -4349,12 +4351,14 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
             const slY = b.bot + 0.115 + sl * 0.098;
             for (let sg2 = 0; sg2 < 2; sg2++) {
               const za2 = b.z0 - 0.14 - sg2 * 0.52 - sl * 0.045;
-              P.add(rimMat, box(0.028, 0.022, 0.46),
-                slX9, slY + sg2 * 0.007 + ((sl * 7) % 3) * 0.004, za2 - 0.23, 0, 0, -0.72 - sl * 0.04);
+              // 2026-10-19 (owner float sweep): the rolled slats stood 26-57 mm off the basket frame; each is seated on it
+              P.snapGroup('merkava-basket-slat', () => P.add(rimMat, box(0.028, 0.022, 0.46),
+                slX9, slY + sg2 * 0.007 + ((sl * 7) % 3) * 0.004, za2 - 0.23, 0, 0, -0.72 - sl * 0.04), { reachM: 0.07 });
             }
           }
           P.add(rimMat, box(b.hw * 0.86, 0.024, 0.030), bx + b.hw * 0.44, b.bot + 0.155, b.z1 + 0.055, 0.58, 0, 0.015);
-          P.add(rimMat, box(b.hw * 0.80, 0.024, 0.028), bx + b.hw * 0.47, b.bot + 0.265, b.z1 + 0.058, 0.55, 0, -0.012);
+          P.snapGroup('merkava-basket-bar', () => P.add(rimMat, box(b.hw * 0.80, 0.024, 0.028), bx + b.hw * 0.47, b.bot + 0.265,
+            b.z1 + 0.058, 0.55, 0, -0.012), { reachM: 0.04 });
           // pack rear-FACE ledge crowns (r13b third cut: the first strips sat
           // at y 0.36-0.62 bH INSIDE the solid pack — embedded, invisible;
           // the pack fills to bot+0.74 bH and its rear face is z -3.564).
@@ -4365,8 +4369,8 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
             [0.52, 0.34, 0.66, 0.60], [0.20, 0.28, 0.615, 0.56], [0.68, 0.26, 0.50, 0.62],
             [0.34, 0.22, 0.44, 0.58], [0.58, 0.24, 0.36, 0.60], [0.30, 0.20, 0.295, 0.56],
           ]) {
-            P.add(rimMat, box(b.hw * lw9, 0.020, 0.028), bx + b.hw * lf9,
-              b.bot + (b.top - b.bot) * ly9, pkRear9, lr9, ((lf9 * 9) % 2 - 0.5) * 0.08, 0);
+            P.snapGroup('merkava-basket-ledge', () => P.add(rimMat, box(b.hw * lw9, 0.020, 0.028), bx + b.hw * lf9,
+              b.bot + (b.top - b.bot) * ly9, pkRear9, lr9, ((lf9 * 9) % 2 - 0.5) * 0.08, 0), { reachM: 0.03 });
           }
         }
       };
@@ -9711,10 +9715,14 @@ function merkavaSourceFinish(
     const top = Math.min(capWorld, roofWorld + h);
     const actualH = Math.max(0.10, top - roofWorld);
     // Broad tapered shoe prevents the familiar stand-off-box failure.
-    P.add('turret', box(w * 1.25, 0.055, d * 1.20), x, V(roofWorld + 0.018), L(z), 0, yaw, 0);
-    P.add('turretDetail', box(w, actualH, d), x, V(roofWorld + actualH / 2), L(z), -0.08, yaw, 0);
-    P.add('turretDark', box(w * 0.72, actualH * 0.42, 0.018), x, V(roofWorld + actualH * 0.62), L(z + d * 0.51), -0.08, yaw, 0);
-    P.add('turretGlass', box(w * 0.52, actualH * 0.25, 0.012), x, V(roofWorld + actualH * 0.67), L(z + d * 0.53), -0.08, yaw, 0);
+    // 2026-10-19 (owner float sweep): the caller's roof height is the centreline's; off it the sight drops onto the roof
+    // (the 3C's stood 51 mm over it)
+    P.snapGroup('merkava-roof-sight', () => {
+      P.add('turret', box(w * 1.25, 0.055, d * 1.20), x, V(roofWorld + 0.018), L(z), 0, yaw, 0);
+      P.add('turretDetail', box(w, actualH, d), x, V(roofWorld + actualH / 2), L(z), -0.08, yaw, 0);
+      P.add('turretDark', box(w * 0.72, actualH * 0.42, 0.018), x, V(roofWorld + actualH * 0.62), L(z + d * 0.51), -0.08, yaw, 0);
+      P.add('turretGlass', box(w * 0.52, actualH * 0.25, 0.012), x, V(roofWorld + actualH * 0.67), L(z + d * 0.53), -0.08, yaw, 0);
+    }, { mode: 'down', reachM: 0.08 });
   };
 
   const deckRod = (pts: readonly Vec3Tuple[], mat = 'turretDark', width = 0.022, lift = 0.028): void => {
@@ -10443,14 +10451,18 @@ function merkavaSourceFinish(
       const d = 0.24 + ((i + 1) % 3) * 0.07;
       const h = Math.max(0.07, Math.min(0.15 + (i % 2) * 0.035, capWorld - roof - 0.02));
       const mat = i % 3 === 2 ? 'turretCloth' : 'turretDetail';
-      P.add('turret', box(w * 1.10, 0.045, d * 1.10), x, V(roof + 0.005), L(z), 0, s * 0.08, 0);
-      P.add(mat, box(w, h, d), x, V(roof + h * 0.50), L(z), 0.02, s * 0.08, 0);
-      P.add('turretDark', box(0.022, h * 1.04, d * 0.96), x,
-        V(roof + h * 0.50), L(z), 0.02, s * 0.08, 0);
-      if (i % 2 === 0) {
-        P.add('turretDark', box(w * 0.70, 0.018, 0.026), x,
-          V(roof + h * 0.88), L(z + d * 0.28), 0.02, s * 0.08, 0);
-      }
+      // 2026-10-19 (owner float sweep): roofAt reads the centreline; out on the shoulders the roof falls away under the
+      // shoes (18-51 mm on the 1B/3C), so each case drops onto it with its shoe and straps
+      P.snapGroup('merkava-roof-case', () => {
+        P.add('turret', box(w * 1.10, 0.045, d * 1.10), x, V(roof + 0.005), L(z), 0, s * 0.08, 0);
+        P.add(mat, box(w, h, d), x, V(roof + h * 0.50), L(z), 0.02, s * 0.08, 0);
+        P.add('turretDark', box(0.022, h * 1.04, d * 0.96), x,
+          V(roof + h * 0.50), L(z), 0.02, s * 0.08, 0);
+        if (i % 2 === 0) {
+          P.add('turretDark', box(w * 0.70, 0.018, 0.026), x,
+            V(roof + h * 0.88), L(z + d * 0.28), 0.02, s * 0.08, 0);
+        }
+      }, { mode: 'down', reachM: 0.08 });
     }
 
     // Mk.4B's explicit fourth-generation roof pass already owns three rack-top
@@ -10463,15 +10475,19 @@ function merkavaSourceFinish(
       for (const s of [-1, 1]) {
         const z = -2.18;
         const roof = Math.min(capWorld - 0.12, roofAt(z));
-        P.add('turret', box(0.48, 0.045, 0.34), s * 0.70, V(roof + 0.004), L(z), 0, s * 0.06, 0);
-        P.add('turretCloth', cylX(0.115, 0.44, 16), s * 0.70, V(roof + 0.115), L(z), 0, 0, s * 0.08);
-        P.add('turretDark', box(0.025, 0.25, 0.30), s * 0.70, V(roof + 0.115), L(z), 0, s * 0.06, 0);
+        P.snapGroup('merkava-roof-roll', () => {
+          P.add('turret', box(0.48, 0.045, 0.34), s * 0.70, V(roof + 0.004), L(z), 0, s * 0.06, 0);
+          P.add('turretCloth', cylX(0.115, 0.44, 16), s * 0.70, V(roof + 0.115), L(z), 0, 0, s * 0.08);
+          P.add('turretDark', box(0.025, 0.25, 0.30), s * 0.70, V(roof + 0.115), L(z), 0, s * 0.06, 0);
+        }, { mode: 'down', reachM: 0.08 });
       }
       const caseZ = -1.20;
       const caseRoof = Math.min(capWorld - 0.18, roofAt(caseZ));
-      P.add('turret', box(0.36, 0.048, 0.32), -0.06, V(caseRoof + 0.006), L(caseZ), 0, -0.05, 0);
-      P.add('turretDetail', box(0.31, 0.14, 0.28), -0.06, V(caseRoof + 0.075), L(caseZ), 0.02, -0.05, 0);
-      P.add('turretGlass', box(0.13, 0.050, 0.014), -0.06, V(caseRoof + 0.095), L(caseZ + 0.148), 0.02, -0.05, 0);
+      P.snapGroup('merkava-roof-case', () => {
+        P.add('turret', box(0.36, 0.048, 0.32), -0.06, V(caseRoof + 0.006), L(caseZ), 0, -0.05, 0);
+        P.add('turretDetail', box(0.31, 0.14, 0.28), -0.06, V(caseRoof + 0.075), L(caseZ), 0.02, -0.05, 0);
+        P.add('turretGlass', box(0.13, 0.050, 0.014), -0.06, V(caseRoof + 0.095), L(caseZ + 0.148), 0.02, -0.05, 0);
+      }, { mode: 'down', reachM: 0.08 });
 
       // Additional radio/ammunition cases on the bustle shoulders.  Each case
       // has a painted shoe and a dark transverse strap returning into the roof.
@@ -10481,11 +10497,13 @@ function merkavaSourceFinish(
       ] satisfies ReadonlyArray<readonly [Side, number, number, boolean]>) {
         const roof = Math.min(capWorld - 0.24, roofAt(z));
         const x = s * 0.82;
-        P.add('turret', box(0.42, 0.045, 0.34), x, V(roof + 0.004), L(z), 0, yaw, 0);
-        P.add(cloth ? 'turretCloth' : 'turretDetail', box(0.36, 0.18, 0.29),
-          x, V(roof + 0.105), L(z), 0.02, yaw, 0);
-        P.add('turretDark', box(0.024, 0.19, 0.30), x, V(roof + 0.105), L(z), 0.02, yaw, 0);
-        P.add('turretDark', box(0.28, 0.018, 0.026), x, V(roof + 0.185), L(z + 0.08), 0.02, yaw, 0);
+        P.snapGroup('merkava-roof-case', () => {
+          P.add('turret', box(0.42, 0.045, 0.34), x, V(roof + 0.004), L(z), 0, yaw, 0);
+          P.add(cloth ? 'turretCloth' : 'turretDetail', box(0.36, 0.18, 0.29),
+            x, V(roof + 0.105), L(z), 0.02, yaw, 0);
+          P.add('turretDark', box(0.024, 0.19, 0.30), x, V(roof + 0.105), L(z), 0.02, yaw, 0);
+          P.add('turretDark', box(0.28, 0.018, 0.026), x, V(roof + 0.185), L(z + 0.08), 0.02, yaw, 0);
+        }, { mode: 'down', reachM: 0.08 });
       }
     }
   };

@@ -207,7 +207,9 @@ export function stockPart(bucket, geometry, source = 'add') { return makePart(bu
 
 /** The articulated body a factory bucket belongs to (its rig group moves it as one). */
 export function bucketBody(bucket) {
-  if (bucket.startsWith('hull')) return /RunningGear|Track/.test(bucket) ? null : 'hull';
+  // The hull/turret Track buckets are static: spare links, their straps and the track guards, trims and details (the
+  // moving track is the gear's own band); a strap resting on a spare link rests on stock.
+  if (bucket.startsWith('hull')) return /RunningGear/.test(bucket) ? null : 'hull';
   if (bucket.startsWith('turret')) return 'turret';
   if (bucket.startsWith('gun')) return 'gun';
   return null;
