@@ -45,8 +45,8 @@ import {
   drawProgressArc, drawSpawnGlyph, sideColor, sideFill,
 } from './objectiveGlyphs.ts';
 import { shellTypeLabel } from './garageDossier.ts';
-// the proving ground's range card (v2 progression, 2026-10-17)
-import { createProvingRangeCard, type RangeCardState } from './provingRangeCard.ts';
+// the proving ground's range card (2026-10-17): loaded the first time a frame carries the range (updateRangeCard)
+import type { RangeCardState } from './provingRangeCard.ts';
 import type { CombatState } from '../sim/damage.ts';
 import type {
   SpecialActionKind,
@@ -2077,8 +2077,9 @@ export function initHud(bus: EventBus): HudRuntime {
   const modeStatusValue = requireElement<HTMLElement>(modeStatusEl, '.mv');
   let lastModeStatus = '';
   const standardModeStatus: HudMatchModeState = {id:'standard',target:0};
-  // proving ground (v2 progression, 2026-10-17): the range card; its buttons reach the session through the bus
-  const rangeCard = createProvingRangeCard(root, (type) => bus.emit(type, {}));
+  // proving ground (2026-10-17): the range card, a lazy chunk; its buttons reach the session through the bus
+  let rangeCard: ReturnType<typeof import('./provingRangeCard.ts').createProvingRangeCard> | null = null;
+  let rangeCardLoad: Promise<void> | null = null;
   let objectiveTeam: 'alpha' | 'bravo' = 'alpha';
 
   // --- ping/fps readout (WoT battle constant, top-right corner) ---
@@ -7287,11 +7288,18 @@ export function initHud(bus: EventBus): HudRuntime {
   /** The proving ground's range card: the loaded round against every lane, the lane the gun is laid on lit. */
   function updateRangeCard(frame: HudFrame): void {
     const range = frame.matchModeState?.range;
-    if (!range) { rangeCard.hide(); return; }
+    if (!range) { rangeCard?.hide(); return; }
+    if (!rangeCard) {
+      rangeCardLoad ??= import('./provingRangeCard.ts').then((module) => {
+        rangeCard = module.createProvingRangeCard(root, (type) => bus.emit(type, {}));
+      }).catch((error) => { rangeCardLoad = null; console.error('[hud] range card failed to load', error); });
+      return;
+    }
     const player = frame.player || playerRef;
     const slot = player?.combat?.shellSlot ?? 0;
     rangeCard.update({
-      range, shellSlot: slot, shellName: shellTypeLabel(player?.spec?.gun?.shells?.[slot]?.type || ''),
+      range, shellSlot: slot,
+      shellName: player?.spec?.gun?.shells?.[slot]?.name || shellTypeLabel(player?.spec?.gun?.shells?.[slot]?.type || ''),
       laidTargetId: frame.aim?.gunTargetId ?? null,
       resetKey: frame.auxiliaryKeyLabels?.rangeReset || 'R', movingKey: frame.auxiliaryKeyLabels?.rangeMoving || 'Y',
     });

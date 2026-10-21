@@ -2109,6 +2109,12 @@ input.onAction('rangeReset', pressRangeReset);
 input.onAction('rangeMoving', pressRangeMoving);
 bus.on('ui:rangeReset', pressRangeReset);
 bus.on('ui:rangeMoving', pressRangeMoving);
+// the range card's Garage button: straight back to the Garage (the range keeps no verdict and no record)
+bus.on('ui:rangeExit', () => {
+  if (!provingControls.active()) return;
+  bus.emit('ui:click', {});
+  void leaveBattleToGarage().catch((error) => console.error('[proving ground] leave failed', error));
+});
 
 // ---------------------------------------------------------------------------
 // Game flow

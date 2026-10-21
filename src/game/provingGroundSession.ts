@@ -34,6 +34,8 @@ interface ProvingControlsOptions {
 }
 
 interface ProvingControls {
+  /** A proving-ground battle is running in this page. */
+  active(): boolean;
   reset(): boolean;
   toggleMoving(): boolean;
 }
@@ -41,6 +43,7 @@ interface ProvingControls {
 /** The two range controls, inert outside a proving-ground battle (the keys stay free for every other battle). */
 export function createProvingControls(options: ProvingControlsOptions): ProvingControls {
   return {
+    active: () => options.active(),
     reset: () => options.active() && options.reset(),
     toggleMoving: () => {
       if (!options.active()) return false;

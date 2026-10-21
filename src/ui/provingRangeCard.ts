@@ -1,24 +1,27 @@
 /**
- * The proving ground's range card (v2 progression, owner 2026-10-17: "build out all the options": proving ground / test
- * drive). A HUD panel in the left lane: every lane's set range, presented angle and target hull, the expected outcome of
- * the loaded round laid on that hull's centre of mass, and the thickest rolled plate the round defeats at the range's
- * plate angles (sim/provingGround.ts provingShellCard measures all of it once, when the range is laid out). The lane the
- * gun is laid on is lit. Two controls close it: reset the range (every hull back on its mark) and moving targets; on a
- * keyboard their bound keys (R and Y by default), on a phone the buttons themselves.
+ * The proving ground's range card (owner 2026-10-17: "build out all the options": proving ground / test drive; the owner's
+ * UI rules: Chakra Petch and IBM Plex, less text, more showing). Copyright © 2026 Kevin B. Liu. The HUD loads it lazily the
+ * first time a frame carries the range (hud.ts updateRangeCard), so no other battle downloads it.
  *
- * The final UI moves to the brand overhaul's components (streams/brand-ui SPEC.md); this is the minimal hook. It renders
- * only when the inputs change (the range record, the loaded slot, the laid lane, the switch, the key labels), so the HUD's
- * per-frame update does no DOM or string work on a steady frame.
+ *  - the last shot: its verdict in the shot card's own words and colour (ui/hitEventFormat.ts), a gauge of the round's
+ *    penetration roll against the armour it met (the tick), the figures, the range and the angle;
+ *  - the lanes: each lane's range, its hull and the angle it presents (a hull seen from above, turned as it stands), and
+ *    the loaded round's expected verdict laid on its centre of mass (sim/provingGround.ts provingShellCard); the lane the
+ *    gun is laid on is lit;
+ *  - the controls: reset the range, moving targets, back to the Garage; their keys on a keyboard, the buttons on a phone.
+ *
+ * It renders only when its inputs change (the range record, the loaded slot, the laid lane, the switch, the last shot,
+ * the key labels), so a steady frame does no DOM or string work.
  */
 import { createElement, ensureStyle } from './dom.ts';
-import { FONT_COND } from './fonts.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { hitOutcomeFor } from './hitEventFormat.ts';
+import { PROVING_DISPLAY, PROVING_MONO, loadProvingType } from './provingType.ts';
 
 /** The range as the HUD receives it (sim/matchModes.ts ProvingRangePresentation, structurally). */
 export interface RangeCardState {
   readonly moving: boolean;
-  readonly plateAnglesDeg: readonly number[];
   readonly lanes: ReadonlyArray<{
     readonly index: number;
     readonly rangeM: number;
@@ -31,9 +34,18 @@ export interface RangeCardState {
       readonly penMm: number;
       readonly ratio: number;
       readonly outcome: 'pen' | 'marginal' | 'nopen';
-      readonly plateMm: readonly number[];
     }>;
   }>;
+  readonly lastShot: {
+    readonly serial: number;
+    readonly kind: string;
+    readonly targetName: string;
+    readonly rangeM: number;
+    readonly penRollMm: number;
+    readonly effectiveMm: number;
+    readonly impactAngleDeg: number;
+    readonly damage: number;
+  } | null;
 }
 
 interface RangeCardInput {
@@ -53,40 +65,67 @@ interface ProvingRangeCard {
   hide(): void;
 }
 
+const AMBER = '#f0a030';
 const CSS = `
 .cot-range-card{position:absolute;z-index:var(--hud-layer-controls,30);left:12px;
   top:calc(var(--hud-left-top,120px) + var(--hud-toast-height,0px) + 8px);
-  width:min(300px,var(--hud-side-width,300px));max-height:calc(var(--hud-left-height,60vh) - var(--hud-toast-height,0px) - 8px);
-  overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;display:none;flex-direction:column;gap:2px;
-  padding:7px 8px 8px;color:#e8f0f5;background:rgba(7,11,15,.82);border:1px solid rgba(176,194,208,.24);
-  box-shadow:0 6px 16px rgba(0,0,0,.36);font:700 10px ${FONT_COND};letter-spacing:.04em;pointer-events:auto;}
+  width:min(288px,var(--hud-side-width,288px));max-height:calc(var(--hud-left-height,60vh) - var(--hud-toast-height,0px) - 8px);
+  overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;display:none;flex-direction:column;gap:6px;
+  padding:9px 10px 10px;color:#e8f0f5;background:linear-gradient(180deg,rgba(10,15,19,.9),rgba(7,11,14,.84));
+  border:1px solid rgba(176,194,208,.2);border-top:2px solid ${AMBER};box-shadow:0 8px 22px rgba(0,0,0,.4);
+  font:600 11px ${PROVING_DISPLAY};pointer-events:auto;}
 .cot-range-card.show{display:flex}
-.cot-range-card .rc-head{display:flex;align-items:center;gap:6px;padding-bottom:4px;margin-bottom:2px;
-  border-bottom:1px solid rgba(176,194,208,.18);text-transform:uppercase;letter-spacing:.14em;font-size:9px}
-.cot-range-card .rc-head .mi,.cot-range-card .rc-head .mi svg{display:block;width:14px;height:14px;color:#f0a030}
-.cot-range-card .rc-head .sh{margin-left:auto;color:#fff1d6;letter-spacing:.06em}
-.cot-range-card .rc-lane{display:grid;grid-template-columns:14px 44px minmax(0,1fr) auto;gap:2px 6px;align-items:baseline;
-  padding:3px 4px;border-left:2px solid transparent}
-.cot-range-card .rc-lane.laid{background:rgba(240,160,48,.12);border-left-color:#f0a030}
-.cot-range-card .rc-n{color:#798996;font-variant-numeric:tabular-nums}
-.cot-range-card .rc-r{color:#e2ebf2;font-variant-numeric:tabular-nums}
+.cot-range-card .rc-head{display:flex;align-items:center;gap:8px}
+.cot-range-card .rc-head .mi,.cot-range-card .rc-head .mi svg{display:block;width:18px;height:18px;color:${AMBER}}
+.cot-range-card .rc-round{font:700 13px ${PROVING_DISPLAY};letter-spacing:.02em;color:#fff1d6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cot-range-card .rc-shot{display:none;flex-direction:column;gap:4px;padding:7px 8px 8px;background:rgba(255,255,255,.035);
+  border-left:3px solid var(--rc-tone,#9aa7b0)}
+.cot-range-card .rc-shot.on{display:flex}
+.cot-range-card .rc-verdict{display:flex;align-items:baseline;gap:8px}
+.cot-range-card .rc-verdict b{font:700 19px ${PROVING_DISPLAY};letter-spacing:.04em;text-transform:uppercase;color:var(--rc-tone,#e8f0f5)}
+.cot-range-card .rc-verdict .rc-at{margin-left:auto;font:500 12px ${PROVING_MONO};color:#c8d4dc;font-variant-numeric:tabular-nums}
+.cot-range-card .rc-gauge{position:relative;height:9px;background:rgba(255,255,255,.08)}
+.cot-range-card .rc-gauge i{position:absolute;left:0;top:0;bottom:0;background:var(--rc-tone,#9aa7b0);opacity:.85}
+.cot-range-card .rc-gauge s{position:absolute;top:-3px;bottom:-3px;width:3px;margin-left:-1.5px;background:#f4f7f9;
+  box-shadow:0 0 0 1px rgba(0,0,0,.55)}
+.cot-range-card .rc-figs{display:flex;align-items:baseline;gap:6px;font:500 12px ${PROVING_MONO};color:#e8f0f5;
+  font-variant-numeric:tabular-nums}
+.cot-range-card .rc-figs em{font-style:normal;color:#7f909c}
+.cot-range-card .rc-figs .rc-tgt{margin-left:auto;font:600 11px ${PROVING_DISPLAY};color:#9fb0bb;max-width:46%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cot-range-card .rc-lanes{display:flex;flex-direction:column;gap:1px}
+.cot-range-card .rc-lane{display:grid;grid-template-columns:38px 20px minmax(0,1fr) auto;gap:6px;align-items:center;
+  padding:3px 5px;border-left:2px solid transparent}
+.cot-range-card .rc-lane.laid{background:rgba(240,160,48,.13);border-left-color:${AMBER}}
+.cot-range-card .rc-r{font:500 12px ${PROVING_MONO};color:#e2ebf2;font-variant-numeric:tabular-nums;text-align:right}
+.cot-range-card .rc-a svg{display:block;width:20px;height:20px}
 .cot-range-card .rc-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c8d4dc}
-.cot-range-card .rc-t small{color:#798996;margin-left:4px;font-size:9px}
-.cot-range-card .rc-o{font-variant-numeric:tabular-nums;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.cot-range-card .rc-o{font:700 10px ${PROVING_DISPLAY};letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;
+  border:1px solid currentColor;white-space:nowrap}
 .cot-range-card .rc-o.pen{color:#7ee87e}.cot-range-card .rc-o.marginal{color:#f3a536}.cot-range-card .rc-o.nopen{color:#f05a5a}
-.cot-range-card .rc-p{grid-column:2 / -1;color:#798996;font-size:9px;font-variant-numeric:tabular-nums;letter-spacing:.02em}
-.cot-range-card .rc-foot{display:flex;gap:6px;margin-top:5px}
-.cot-range-card .rc-foot button{flex:1 1 0;min-height:30px;display:flex;align-items:center;justify-content:center;gap:5px;
-  padding:4px 6px;color:#e8f0f5;background:rgba(126,148,164,.12);border:1px solid rgba(176,194,208,.28);
-  font:800 9px ${FONT_COND};letter-spacing:.12em;text-transform:uppercase;cursor:pointer;touch-action:manipulation}
-.cot-range-card .rc-foot button[aria-pressed='true']{color:#fff1d6;border-color:#f0a030;background:rgba(240,160,48,.16)}
-.cot-range-card .rc-foot kbd{font:inherit;color:#f0a030;border:1px solid rgba(240,160,48,.45);padding:0 4px;min-width:10px}
-body.cot-touch-layout .cot-range-card{width:min(240px,var(--hud-side-width,240px));font-size:9px}
-body.cot-touch-layout .cot-range-card .rc-p,body.cot-touch-layout .cot-range-card .rc-foot kbd{display:none}
-body.cot-touch-layout .cot-range-card .rc-foot button{min-height:40px}
+.cot-range-card .rc-foot{display:grid;grid-template-columns:1fr 1fr 40px;gap:5px}
+.cot-range-card .rc-foot button{min-height:32px;display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 6px;
+  color:#e8f0f5;background:rgba(126,148,164,.12);border:1px solid rgba(176,194,208,.26);
+  font:700 11px ${PROVING_DISPLAY};letter-spacing:.06em;text-transform:uppercase;cursor:pointer;touch-action:manipulation}
+.cot-range-card .rc-foot button:hover{border-color:rgba(240,160,48,.6)}
+.cot-range-card .rc-foot button[aria-pressed='true']{color:#fff1d6;border-color:${AMBER};background:rgba(240,160,48,.18)}
+.cot-range-card .rc-foot button svg{width:15px;height:15px;flex:0 0 auto}
+.cot-range-card .rc-foot kbd{font:500 10px ${PROVING_MONO};color:${AMBER};border:1px solid rgba(240,160,48,.45);padding:0 4px}
+body.cot-touch-layout .cot-range-card{width:min(232px,var(--hud-side-width,232px));padding:7px 8px 8px;gap:5px}
+body.cot-touch-layout .cot-range-card .rc-lanes,body.cot-touch-layout .cot-range-card .rc-foot kbd{display:none}
+body.cot-touch-layout .cot-range-card .rc-foot button{min-height:42px}
+body.cot-touch-layout .cot-range-card .rc-verdict b{font-size:16px}
 `;
 
-/** The presented angle as the card names it: nose on, broadside, or the angle off the nose. */
+/** A hull seen from above (its gun forward, toward the top), turned by the angle it presents to the firing line. */
+function presentedGlyph(deg: number): string {
+  return `<svg viewBox="-10 -10 20 20" aria-hidden="true"><g transform="rotate(${180 + deg})">` +
+    `<rect x="-4.2" y="-7" width="8.4" height="14" rx="1.2" fill="none" stroke="#c8d4dc" stroke-width="1.4"/>` +
+    `<circle cx="0" cy="0.6" r="2.6" fill="#c8d4dc"/><path d="M0 -1.6V-9.6" stroke="#c8d4dc" stroke-width="1.5"/></g>` +
+    `<path d="M-9 9.2h18" stroke="${AMBER}" stroke-width="1.2" opacity=".7"/></svg>`;
+}
+
+/** The presented angle in words, for the glyph's title (screen readers and a hover). */
 function presentedAngleLabel(deg: number): string {
   const angle = Math.round(Math.abs(deg));
   if (angle === 0) return t('hud.range.noseOn');
@@ -94,29 +133,40 @@ function presentedAngleLabel(deg: number): string {
   return t('hud.range.angle', { value: String(angle) });
 }
 
-/** The reference-plate line: "RHA 0° 540 · 30° 470 · 60° 270 mm" (a dash where no plate is defeated). */
-function plateLine(anglesDeg: readonly number[], plateMm: readonly number[]): string {
-  const parts = anglesDeg.map((angle, index) => `${angle}° ${plateMm[index] ? plateMm[index] : '—'}`);
-  return t('hud.range.plates', { values: parts.join(' · ') });
-}
-
 export function createProvingRangeCard(parent: HTMLElement, emit: (type: string) => void): ProvingRangeCard {
   ensureStyle('cot-range-card-style', CSS);
+  void loadProvingType();
   const root = createElement('section', 'cot-range-card', parent);
   root.setAttribute('aria-label', t('hud.range.title'));
-  root.innerHTML = `<div class="rc-head"><span class="mi">${uiIconSVG('modeProving', 14)}</span>` +
-    `<span class="nm">${t('hud.range.title')}</span><span class="sh"></span></div>` +
-    `<div class="rc-lanes"></div>` +
-    `<div class="rc-foot"><button type="button" data-range-action="reset"><kbd></kbd><span>${t('hud.range.reset')}</span></button>` +
-    `<button type="button" data-range-action="moving" aria-pressed="false"><kbd></kbd><span>${t('hud.range.moving')}</span></button></div>`;
-  const shellEl = root.querySelector<HTMLElement>('.rc-head .sh')!;
+  root.innerHTML = `<div class="rc-head"><span class="mi">${uiIconSVG('modeProving', 18)}</span><span class="rc-round"></span></div>` +
+    `<div class="rc-shot" aria-live="polite"><div class="rc-verdict"><b></b><span class="rc-at"></span></div>` +
+    `<div class="rc-gauge"><i></i><s></s></div><div class="rc-figs"><span class="rc-pen"></span><em>/</em>` +
+    `<span class="rc-eff"></span><span class="rc-tgt"></span></div></div>` +
+    `<div class="rc-lanes" role="list"></div>` +
+    `<div class="rc-foot"><button type="button" data-range-action="reset" title="${t('action.rangeReset')}">` +
+    `${uiIconSVG('reload', 15)}<span>${t('hud.range.reset')}</span><kbd></kbd></button>` +
+    `<button type="button" data-range-action="moving" aria-pressed="false" title="${t('action.rangeMoving')}">` +
+    `${uiIconSVG('modeProving', 15)}<span>${t('hud.range.moving')}</span><kbd></kbd></button>` +
+    `<button type="button" data-range-action="exit" title="${t('hud.range.exit')}" aria-label="${t('hud.range.exit')}">` +
+    `${uiIconSVG('garage', 16)}</button></div>`;
+  const roundEl = root.querySelector<HTMLElement>('.rc-round')!;
+  const shotEl = root.querySelector<HTMLElement>('.rc-shot')!;
+  const verdictEl = shotEl.querySelector<HTMLElement>('.rc-verdict b')!;
+  const atEl = shotEl.querySelector<HTMLElement>('.rc-at')!;
+  const barEl = shotEl.querySelector<HTMLElement>('.rc-gauge i')!;
+  const tickEl = shotEl.querySelector<HTMLElement>('.rc-gauge s')!;
+  const penEl = shotEl.querySelector<HTMLElement>('.rc-pen')!;
+  const effEl = shotEl.querySelector<HTMLElement>('.rc-eff')!;
+  const targetEl = shotEl.querySelector<HTMLElement>('.rc-tgt')!;
   const lanesEl = root.querySelector<HTMLElement>('.rc-lanes')!;
   const resetButton = root.querySelector<HTMLButtonElement>('[data-range-action="reset"]')!;
   const movingButton = root.querySelector<HTMLButtonElement>('[data-range-action="moving"]')!;
+  const exitButton = root.querySelector<HTMLButtonElement>('[data-range-action="exit"]')!;
   const resetKeyEl = resetButton.querySelector('kbd')!;
   const movingKeyEl = movingButton.querySelector('kbd')!;
   resetButton.addEventListener('click', (event) => { event.stopPropagation(); emit('ui:rangeReset'); });
   movingButton.addEventListener('click', (event) => { event.stopPropagation(); emit('ui:rangeMoving'); });
+  exitButton.addEventListener('click', (event) => { event.stopPropagation(); emit('ui:rangeExit'); });
   // touch: a tap on the card must not fall through to the battle's look/fire surface
   root.addEventListener('pointerdown', (event) => event.stopPropagation());
 
@@ -126,6 +176,7 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
   let lastShellName = '';
   let lastMoving: boolean | null = null;
   let lastLaid = -2;
+  let lastSerial = -1;
   let lastResetKey = '';
   let lastMovingKey = '';
   let rows: HTMLElement[] = [];
@@ -134,22 +185,30 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
     lanesEl.textContent = '';
     rows = range.lanes.map((lane) => {
       const card = lane.shells[Math.min(Math.max(0, slot), lane.shells.length - 1)];
-      const row = createElement('div', 'rc-lane', lanesEl);
       const outcome = card ? card.outcome : 'nopen';
-      row.innerHTML = `<span class="rc-n">${lane.index + 1}</span>` +
-        `<span class="rc-r">${t('hud.range.meters', { value: String(lane.rangeM) })}</span>` +
-        `<span class="rc-t"></span>` +
-        `<span class="rc-o ${outcome}">${t(`hud.range.outcome.${outcome}`)}${card && card.ratio > 0 ? ` ${card.ratio.toFixed(2)}` : ''}</span>` +
-        `<span class="rc-p"></span>`;
-      const target = row.querySelector<HTMLElement>('.rc-t')!;
-      target.textContent = lane.targetName || '—';
-      const angle = createElement('small', '', target);
-      angle.textContent = presentedAngleLabel(lane.presentDeg);
-      row.querySelector<HTMLElement>('.rc-p')!.textContent = card
-        ? `${t('hud.range.pen', { value: String(card.penMm) })} · ${plateLine(range.plateAnglesDeg, card.plateMm)}`
-        : '';
+      const row = createElement('div', 'rc-lane', lanesEl);
+      row.setAttribute('role', 'listitem');
+      row.innerHTML = `<span class="rc-r">${lane.rangeM}</span>` +
+        `<span class="rc-a" title="${presentedAngleLabel(lane.presentDeg)}">${presentedGlyph(lane.presentDeg)}</span>` +
+        `<span class="rc-t"></span><span class="rc-o ${outcome}">${t(`hud.range.outcome.${outcome}`)}</span>`;
+      row.querySelector<HTMLElement>('.rc-t')!.textContent = lane.targetName || '—';
       return row;
     });
+  };
+
+  const renderShot = (shot: NonNullable<RangeCardState['lastShot']>): void => {
+    const verdict = hitOutcomeFor({ kind: shot.kind, damage: shot.damage });
+    shotEl.style.setProperty('--rc-tone', verdict.color);
+    verdictEl.textContent = verdict.label;
+    atEl.textContent = `${Math.round(shot.rangeM)} m · ${Math.round(shot.impactAngleDeg)}°`;
+    const pen = Math.max(0, shot.penRollMm), armour = Math.max(0, shot.effectiveMm);
+    const scale = Math.max(pen, armour, 1) * 1.12;
+    barEl.style.width = `${(pen / scale) * 100}%`;
+    tickEl.style.display = armour > 0 ? '' : 'none';
+    tickEl.style.left = `${(armour / scale) * 100}%`;
+    penEl.textContent = `${Math.round(pen)}`;
+    effEl.textContent = armour > 0 ? `${Math.round(armour)} mm` : '— mm';
+    targetEl.textContent = shot.targetName;
   };
 
   const hide = (): void => {
@@ -168,8 +227,15 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
       lastRange = range;
       lastSlot = input.shellSlot;
       lastLaid = -2;
+      lastSerial = -1;
     }
-    if (input.shellName !== lastShellName) { shellEl.textContent = input.shellName; lastShellName = input.shellName; }
+    if (input.shellName !== lastShellName) { roundEl.textContent = input.shellName; lastShellName = input.shellName; }
+    const serial = range.lastShot?.serial ?? 0;
+    if (serial !== lastSerial) {
+      lastSerial = serial;
+      shotEl.classList.toggle('on', !!range.lastShot);
+      if (range.lastShot) renderShot(range.lastShot);
+    }
     if (range.moving !== lastMoving) {
       movingButton.setAttribute('aria-pressed', String(range.moving));
       lastMoving = range.moving;

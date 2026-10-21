@@ -7,6 +7,7 @@ import {
 } from './modeObjects.ts';
 
 import type { MatchModePresentationState, ObjectiveTeam } from '../sim/matchModes.ts';
+import { createProvingRangeDressing, type ProvingRangeDressing } from './provingRangeDressing.ts';
 import { objectiveMarkers, type ObjectiveMarker } from '../ui/minimapObjectives.ts';
 import {
   drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawPickupGlyph, drawSpawnGlyph,
@@ -298,6 +299,8 @@ export function createMatchModeWorldPresentation(
   let spawnMarkers: MarkerGroup[] | null = null;
   /** the proving ground's lane marks: an amber ring on each mark and the lane's board floating over it */
   let laneMarkers: MarkerGroup[] = [];
+  /** the proving ground's furniture: the plate rack, the range boards, the drive course's boards and poles */
+  let rangeDressing: ProvingRangeDressing | null = null;
 
   // tactical map 2026-09-15: the same glyphs the minimap paints, rasterised
   // once per (kind, side, label, status) into sprite textures that float
@@ -1001,12 +1004,18 @@ export function createMatchModeWorldPresentation(
     // Caches coexist with objectives (Mars has both zones and drops).
     // Keep their lifecycle independent of the exclusive objective dispatch.
     if (state.pickups.length || state.id === 'endless_horde') updatePickups(state, timeS);
-    if (state.range) updateLanes(marks);
+    if (state.range) {
+      updateLanes(marks);
+      rangeDressing ??= createProvingRangeDressing(root, options);
+      rangeDressing.update(state.range);
+    } else rangeDressing?.update(null);
     updateSpawns(state, marks);
   };
 
   const dispose = (): void => {
     disposeLineWorks();
+    rangeDressing?.dispose();
+    rangeDressing = null;
     const geometries = new Set<THREE.BufferGeometry>();
     const materials = new Set<THREE.Material>();
     root.traverse((object) => {
