@@ -692,6 +692,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/run-selftests.selftest.mjs',
     'tools/selftest-cache.selftest.mjs',
     'tools/selftest-cache-dir.selftest.mjs',
+    // 2026-10-20 (after 228p): listing receipts select and key on what they list (tools/selftest-scans.mjs)
+    'tools/selftest-scans.selftest.mjs',
     'tools/selftest-cpu-pool.selftest.mjs',
     'tools/selftest-schedule.selftest.mjs',
     'tools/gate.selftest.mjs',
@@ -1109,6 +1111,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/vehicleGroundOcclusion.selftest.mjs',
     // 2026-10-09 (the shadows lane): the ground's sky beside the world's solids; the thin deck's beam
     'src/engine/structureGroundOcclusion.selftest.mjs',
+    // 2026-10-17 (the SKY lane, 227 SKY-03): a thin deck's aureole — the solids' soft shadow under Whiteout's stratus
+    'src/engine/structureAureole.selftest.mjs',
     // 2026-10-14 (the engine-cs lane; media wave f1 "hulls hover" on snow): the Studio support seats the snow takes' heroes on
     // the rendered ground, and the ground occlusion grounds them there (the snow cap, the crease's core; ordinary ground unchanged)
     'tools/studio-snow-contact.selftest.mjs',
