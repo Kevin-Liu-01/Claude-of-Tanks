@@ -22,6 +22,7 @@ import { createRequire } from 'node:module';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { uniqueIds } from './id-list.mjs';
 
 const arg = (name, fallback = '') => process.argv.find(a => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const plan = (arg('plan') || `${arg('side', 'before')}:${arg('part', 'desk')}`).split(',').filter(Boolean)
@@ -30,8 +31,8 @@ const roots = {
   before: resolve(arg('before-root', process.cwd())),
   after: resolve(arg('after-root', process.cwd())),
 };
-const ids = arg('ids', 't90m_proryv,leo2a7v,m1a2_abrams_sepv3,challenger2,merkava4,ztz99a,strv103b,kv2').split(',').filter(Boolean);
-const phoneIds = (arg('phone-ids') || ids.join(',')).split(',').filter(Boolean);
+const ids = uniqueIds(arg('ids', 't90m_proryv,leo2a7v,m1a2_abrams_sepv3,challenger2,merkava4,ztz99a,strv103b,kv2').split(',').filter(Boolean), 'anatomy-render-set --ids');
+const phoneIds = uniqueIds((arg('phone-ids') || ids.join(',')).split(',').filter(Boolean), 'anatomy-render-set --phone-ids');
 const OUT_ROOT = resolve(arg('out', '/Users/kevinliu/cot-launch-state/streams/gallery-anatomy/renders/r230'));
 const views = arg('views', 'exterior,armor,modules,crew,hitbox').split(',').filter(Boolean);
 const toolRoot = roots[plan[0].side];

@@ -107,6 +107,9 @@ on post-ready environment texture warming, eager fleet/map artwork, frame-gap
 spikes, long-task bursts, or console errors. Environment-transition claims use
 `tools/garage-variants-probe.mjs`; exercise all ten destinations, rapid stale
 selection, cache eviction, persisted reload, iPad, and phone layouts.
+Gallery anatomy before/after packets (the Armor, Modules and Crew layers; 2026-10-21) come from
+`tools/anatomy-render-set.mjs`: both sides served from their own checkouts, one capture hold, the same
+cameras on both (`--plan=before:desk,after:desk,... --before-root --after-root --ids --out`).
 Pinch-zoom claims (a trackpad pinch only magnifies; 2026-10-16) use the manual
 `npm run qa:pinch -- --base=<served origin> --out=<report.json>`
 (`tools/pinch-zoom-probe.mjs`): a real CDP trackpad pinch to 2x, a pan and a
