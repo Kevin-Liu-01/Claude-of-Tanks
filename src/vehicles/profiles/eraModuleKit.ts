@@ -279,6 +279,81 @@ export function frontEnvelope(id: string): FrontEnvelope {
   return e;
 }
 
+/** E7 (release 230, UA/PL round 11: one source for the build guard and frontEraPackages.selftest): the hatch opening
+ * zones, each [x, z, r, plane]: a plan centre, a radius (the lid's plus 30 cm) and the plane nothing new may rise above
+ * within r + .01. The hull zone (the driver's hatch) in each hull's own frame; the turret zones (the commander's cupola,
+ * the loader's hatch) in the T-72B3M (2016) donor turret's frame, shared by the three. */
+export type HatchZone = readonly [x: number, z: number, r: number, plane: number];
+const DONOR_TURRET_HATCHES: readonly HatchZone[] = [[-.627, -.359, .74, .79], [.528, -.527, .63, .70]];
+export const HATCH_ZONES: Readonly<Record<string, {hull: readonly HatchZone[]; turret: readonly HatchZone[]}>> = {
+  t72b3m_hetman_ii: {hull: [[-.079, 1.72, .674, 1.54]], turret: DONOR_TURRET_HATCHES},
+  t72b3_zubr: {hull: [[0, 1.59, .59, 1.46]], turret: DONOR_TURRET_HATCHES},
+  t72b3_zubr_ii: {hull: [[0, 1.59, .59, 1.46]], turret: DONOR_TURRET_HATCHES},
+};
+/** E8 (round 11): the highest a Polish turret ERA module may stand (turret frame), at least .20 m under the lowest point
+ * its WKM-B station sweeps (frontEraPackages.selftest re-derives it from the built sweep and asserts the cap is no
+ * higher). Hetman II's 30 mm station clears its roof by nationalRoof.selftest's 8 mm instead. */
+export const ROOF_ERA_CAP: Readonly<Record<string, number>> = {t72b3_zubr: .809, t72b3_zubr_ii: .844};
+
+/** Round 11: a roof part's guard: E7 (nothing above a hatch zone's plane within its radius + .01), E8 (the Polish roof
+ * cap), then the turret part's guards E3-E6. Throws with the part name. */
+export function assertRoofPart(id: string, name: string, g: THREE.BufferGeometry): void {
+  const zones = HATCH_ZONES[id]?.turret ?? [], cap = ROOF_ERA_CAP[id];
+  eachVertex(g, p => {
+    for (const [hx, hz, r, plane] of zones) if (Math.hypot(p.x - hx, p.z - hz) < r + .01 && p.y > plane - .01 + 1e-6)
+      throw new Error(`${id}: ${name} stands ${(p.y - plane + .01).toFixed(4)} m into the hatch opening at (${hx}, ${hz}) (E7)`);
+    if (cap !== undefined && p.y > cap + 1e-6) throw new Error(`${id}: ${name} rises to ${p.y.toFixed(4)}, over the roof cap ${cap} (E8)`);
+  });
+  assertTurretPart(id, name, g);
+}
+
+/** A roof tile's seat (round 11, generalised from polishRoofGrid): a plan rectangle of sides sx (along `dir`, a plan unit
+ * vector) and sz (along `dir` turned 90 degrees towards +z), centred at (x, z), met by four Stock.top rays at its
+ * corners; the plane through them (its normal from the diagonals, turned up), their centre, the lowest corner's offset
+ * along the normal from the centre (a tile laid `low - .004` deep has its lowest corner 4 mm into the stock), and the
+ * tile's axes in that plane (`along`, and `fwd` towards its front edge). */
+export interface TileSeat { corners: THREE.Vector3[]; n: THREE.Vector3; centre: THREE.Vector3; low: number; along: THREE.Vector3;
+  fwd: THREE.Vector3; sx: number; sz: number }
+export function seatOrientedTile(stock: Stock, x: number, z: number, dir: readonly [number, number], sx: number, sz: number): TileSeat {
+  const l = Math.hypot(dir[0], dir[1]), d = [dir[0] / l, dir[1] / l], q = d[0] >= 0 ? [-d[1], d[0]] : [d[1], -d[0]];
+  // (the across axis is the one with +z: a tile's front edge faces the vehicle's front)
+  const p = q[1] >= 0 ? q : [-q[0], -q[1]];
+  const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => {
+    const cx = x + a * d[0] * sx / 2 + b * p[0] * sz / 2, cz = z + a * d[1] * sx / 2 + b * p[1] * sz / 2;
+    return new THREE.Vector3(cx, stock.top(cx, cz), cz);
+  });
+  const n = corners[2].clone().sub(corners[0]).cross(corners[3].clone().sub(corners[1])).normalize();
+  if (n.y < 0) n.negate();
+  const centre = corners.reduce((c, v) => c.add(v), new THREE.Vector3()).multiplyScalar(.25);
+  const low = Math.min(...corners.map(v => v.clone().sub(centre).dot(n)));
+  const along = new THREE.Vector3(d[0], 0, d[1]).addScaledVector(n, -(d[0] * n.x + d[1] * n.z)).normalize();
+  const fwd = along.clone().cross(n).normalize();
+  if (fwd.x * p[0] + fwd.z * p[1] < 0) fwd.negate();
+  return {corners, n, centre, low, along, fwd, sx, sz};
+}
+/** seatOrientedTile for a plan rectangle [x0, x1, z0, z1] (|x|, mirrored by side), its sides along x and z. */
+export function seatPlanTile(stock: Stock, side: number, rect: readonly [number, number, number, number]): TileSeat {
+  const [X0, X1, z0, z1] = rect;
+  return seatOrientedTile(stock, side * (X0 + X1) / 2, (z0 + z1) / 2, [1, 0], X1 - X0, z1 - z0);
+}
+
+/** Whether a plan rectangle [x0, x1, z0, z1] (signed x) keeps `margin` from every box (plan: min/max x and z). */
+export function clearOf(rect: readonly [number, number, number, number], boxes: readonly THREE.Box3[], margin = .008): boolean {
+  const [x0, x1, z0, z1] = rect;
+  return boxes.every(b => b.min.x > Math.max(x0, x1) + margin || b.max.x < Math.min(x0, x1) - margin
+    || b.min.z > z1 + margin || b.max.z < z0 - margin);
+}
+
+/** Round 11: a side-band (hull) part's guard: E1 (assertHullPart) and its keep-outs, boxes it keeps `margin` from in
+ * 3-D (the cage's foot pads and rods, the camouflage carrier's brackets, the skirt joints' lap caps). */
+export function assertBandPart(id: string, name: string, g: THREE.BufferGeometry, keepOuts: readonly THREE.Box3[], margin = .008): void {
+  assertHullPart(id, name, g);
+  g.computeBoundingBox();
+  const b = g.boundingBox!.clone().expandByScalar(margin);
+  for (const k of keepOuts) if (b.intersectsBox(k))
+    throw new Error(`${id}: ${name} comes within ${margin} m of a keep-out at ${k.min.toArray().map(v => v.toFixed(3))}..${k.max.toArray().map(v => v.toFixed(3))}`);
+}
+
 /** Names a new frontal-package part (the receipt frontEraPackages.selftest finds every new part by this tag). */
 export function tagFrontPart<T extends THREE.BufferGeometry>(g: T, name: string, owner: Owner): T {
   g.userData.frontEraPart ??= name;

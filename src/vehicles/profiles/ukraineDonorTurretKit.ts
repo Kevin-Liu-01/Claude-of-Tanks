@@ -15,7 +15,7 @@ import {eraCassette,supportedSensor,strappedPack} from './modernizationFittings.
 import {nationalLamp,nationalEye,nationalRoofSensor} from './nationalRoofSystems.ts';
 import {ukrainianDonorHull} from './nationalUkraine.ts';
 import {hetmanIIHullPackage} from './hetmanII.ts';
-import {hetmanIIProw,hetmanIIGlacis} from './ukraineFrontEra.ts';
+import {hetmanIIProw,hetmanIIRoofSlabs,hetmanIIGlacis} from './ukraineFrontEra.ts';
 import {sectionLoft} from './eraModuleKit.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {addNationalUkraineProtection,NATIONAL_UKRAINE_GHILLIE} from './nationalUkraineProtection.ts';
@@ -690,6 +690,9 @@ function hetmanII(P:TankBuilderPort,S:TurretStock):void {
     P.addEquipment('turretDetail',cylY(.050,.062,.055,12),x,.737,z);
     P.addEquipment('turretDark',cylY(.007,.014,h,10),x,.765+h/2,z);
   }
+  // Release 230 (UA/PL round 11): the Duplet-T roof slabs last, clear of every roof and lid fitting laid above.
+  hetmanIIRoofSlabs(P);
+  S.refresh();
 }
 
 // ---------------------------------------------------------------------------------------------------------------

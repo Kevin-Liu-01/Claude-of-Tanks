@@ -15,8 +15,8 @@
 import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {blindTube} from './measuredPrimitives.ts';
-import {Stock, sectionLoft, crosswiseSolid, eraModule, sectorOf, assertHullPart, assertTurretPart,
-  nightLens, tagFrontPart, refineHeights, type LoftStation, type V3} from './eraModuleKit.ts';
+import {Stock, sectionLoft, crosswiseSolid, eraModule, sectorOf, assertHullPart, assertTurretPart, assertRoofPart, seatPlanTile,
+  nightLens, tagFrontPart, refineHeights, type LoftStation, type TileSeat, type V3} from './eraModuleKit.ts';
 import type {SectionPoint} from './sectionSolid.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {cylX, cylZ} = KIT;
@@ -562,6 +562,140 @@ function dazzlers(P: TankBuilderPort): void {
     // the lens's face 10 mm inside the hood's mouth (z + .055), lapping into the hood bore
     P.addEquipment('turretGlass', tagFrontPart(nightLens(cylZ(.042, .012, 7), 'marker', 'red'), 'dazzler lens', 'turret'), x, y, z + .055 - .010 - .006);
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Turret roof: the Duplet-T top-attack slabs (release 230, UA/PL round 11)
+//
+// Round 10's measured regression (UAPL-R8-03): with the donor's 33-cassette Relikt roof carpet gone, the turret's roof
+// ERA (top-down cells) fell from about 925 to about 230. The owner's brief asks for Hetman II's own design language, not
+// a carpet: a spine of flat two-layer slabs either side of the turret's centre line ahead of the hatches, a rear row
+// behind the ventilator and slabs on the flank cabinets' lids, each slab a single solid (a 24 mm base over its plan, an
+// 18 mm face inset 12 mm at its front edge with a 10 mm front chamfer) laid to the plane of its four seat corners, its
+// lowest corner 4 mm into the casting or the lid. A row of two stands on a permanent 12 x 25 mm gunmetal sill rail along
+// its front edge (near tier), which stays on the bare roof when the slabs are spent.
+
+/** The slabs' section and their layout: rows (a z span and its columns, |x| spans laid on both sides, or a third entry
+ * naming the one side). Round 11 measured the brief's eleven cabinet-lid slabs on the build: no lid cell of 16 cm or more
+ * keeps 8 mm from the lids' fittings (the slit lamps, the sensor heads, the panoramas, the cage legs' pads, the end
+ * flanges and the remaining lid cassette) outside the cupola's and the loader's hatch openings (E7), so their share of the
+ * roof is laid on the casting instead: the shoulder slabs outboard of the spine and the left flank's four. */
+const DUPLET = {
+  base: .024, face: .018, inset: .012, chamfer: .010, sink: .004,
+  roof: [
+    // the spine: two columns either side of the centre line in three rows ahead of the hatches (the brief), and round 11's
+    // shoulder slabs outboard of it, under the roof-front wedge course, in its middle and rear rows
+    {z: [.56, .74], cols: [[.03, .19], [.21, .37]]},
+    {z: [.35, .53], cols: [[.03, .19], [.21, .37], [.43, .61]]},
+    // (on the right the gunner's sight's housing stands within 8 mm of the row's middle shoulder cells)
+    {z: [.14, .32], cols: [[.03, .19], [.21, .37], [.43, .61, -1], [.63, .81, -1], [.83, 1.01, -1], [1.03, 1.21]]},
+    // the left flank between the cupola and the front cabinet, and behind the cupola
+    {z: [-.19, -.02], cols: [[1.03, 1.21, -1]]},
+    {z: [-.38, -.21], cols: [[1.03, 1.21, -1]]},
+    {z: [-.76, -.59], cols: [[.85, 1.01, -1]]},
+    {z: [-.95, -.78], cols: [[.23, .41, -1]]},
+    // the rear row behind the ventilator, ahead of the bustle rack (the brief's, its outer rear corners off the casting)
+    {z: [-1.20, -1.03], cols: [[.03, .21], [.23, .41], [.43, .61]]},
+    {z: [-1.39, -1.22], cols: [[.03, .21]]},
+  ] as readonly {z: readonly [number, number]; cols: readonly (readonly number[])[]}[],
+  rail: {w: .012, h: .025, gap: .003, sink: .003},
+  /** Every slab keeps this far from every other built part (its plan and its height). */
+  clear: .008,
+};
+
+/** One Duplet-T slab on a seat: a single loft between its two side stations (near tier: a 6-point section, about 20
+ * triangles; far tier: a 12-triangle block inside it, its front face the chamfer's slope run down to the seat, so it never
+ * stands higher than the near tier's slab). */
+function dupletSlab(P: TankBuilderPort, seat: TileSeat): THREE.BufferGeometry {
+  const D = DUPLET, {n, centre, low, along, fwd, sx, sz} = seat, t = D.base + D.face;
+  const ring: SectionPoint[] = P.q
+    ? [[0, -D.sink], [sz, -D.sink], [sz, D.base], [sz - D.inset, D.base], [sz - D.inset - D.chamfer, t], [0, t]]
+    : [[0, -D.sink], [sz, -D.sink], [sz - D.inset - D.chamfer, t], [0, t]];
+  const origin = (a: number): V3 => {
+    const o = centre.clone().addScaledVector(n, low).addScaledVector(along, a).addScaledVector(fwd, -sz / 2);
+    return [o.x, o.y, o.z];
+  };
+  return sectionLoft([-sx / 2, sx / 2].map(a => ({o: origin(a), out: [fwd.x, fwd.y, fwd.z] as V3, up: [n.x, n.y, n.z] as V3, ring})));
+}
+
+/** Whether a triangle soup comes within a box (its triangles split to 1 cm pieces, every piece's corners tested): a
+ * built part's real surface, not its box, so a diagonal cage brace over a lid does not veto a slab beside its foot. */
+function surfaceNear(g: THREE.BufferGeometry, box: THREE.Box3): boolean {
+  const p = g.getAttribute('position'), ix = g.index, n = ix ? ix.count : p.count;
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), q = new THREE.Vector3();
+  const tri = new THREE.Box3();
+  for (let i = 0; i < n; i += 3) {
+    a.fromBufferAttribute(p, ix ? ix.getX(i) : i); b.fromBufferAttribute(p, ix ? ix.getX(i + 1) : i + 1); c.fromBufferAttribute(p, ix ? ix.getX(i + 2) : i + 2);
+    tri.makeEmpty().expandByPoint(a).expandByPoint(b).expandByPoint(c);
+    if (!tri.intersectsBox(box)) continue;
+    const l = Math.max(a.distanceTo(b), b.distanceTo(c), c.distanceTo(a)), k = Math.max(1, Math.ceil(l / .01));
+    for (let u = 0; u <= k; u++) for (let v = 0; v <= k - u; v++) {
+      q.copy(a).multiplyScalar(1 - (u + v) / k).addScaledVector(b, u / k).addScaledVector(c, v / k);
+      if (box.containsPoint(q)) return true;
+    }
+  }
+  return false;
+}
+
+/** Hetman II's Duplet-T roof slabs and their sill rails, laid after every other roof and lid fitting of the turret kit.
+ * Every listed slab must keep DUPLET.clear from every built part, keep out of the hatches' openings (E7) and sit on its
+ * seat: one that cannot is an error (the layout was measured on the build; release 230's census, tools/r14). */
+export function hetmanIIRoofSlabs(P: TankBuilderPort): void {
+  const D = DUPLET, castingParts: THREE.BufferGeometry[] = [];
+  const built: {g: THREE.BufferGeometry; box: THREE.Box3}[] = [];
+  P.forEachBucketPart(['turret'], g => castingParts.push(g));
+  P.forEachBucketPart(['turretCupola', 'turretHatch', 'turretExternalArmor', 'turretEquipment', 'turretDetail', 'turretDark', 'turretGlass',
+    'turretCloth', 'turretFittingPaint', 'turretOpenLattice', 'turretOpenLatticeDark', 'turretPaintedDetail', 'turretCanvasPale', 'turretTrack',
+    'turretTrackLinks', 'turretPermanentMarkingSurface', 'turretBark'], (g, box) => { if (box) built.push({g, box}); });
+  const casting = new Stock(ID, castingParts);
+  try {
+    const lay = (side: number, seatOf: () => TileSeat, name: string): void => {
+      const fail = (why: string): never => { throw new Error(`${ID}: ${name} ${why}`); };
+      let seat: TileSeat;
+      try { seat = seatOf(); } catch { fail('has no seat'); return; }
+      const g = dupletSlab(P, seat);
+      g.computeBoundingBox();
+      const keep = g.boundingBox!.clone().expandByScalar(D.clear);
+      const near = built.find(o => o.box.intersectsBox(keep) && surfaceNear(o.g, keep));
+      if (near) fail(`comes within ${D.clear} m of a built part at ${near.box.min.toArray().map(v => v.toFixed(3))}`);
+      assertRoofPart(ID, name, g);
+      eraModule(P, {owner: 'turret', sector: sectorOf('turret_era', side), geometry: g, outward: [seat.n.x, seat.n.y, seat.n.z], minDot: .5,
+        name, guard: (nm, geo) => assertRoofPart(ID, nm, geo)});
+    };
+    // a run of neighbouring slabs carries a sill rail along its front edge
+    const rails: {side: number; z: number; x0: number; x1: number}[] = [];
+    D.roof.forEach((row, r) => {
+      for (const side of SIDES) {
+        const laid: [number, number][] = [];
+        row.cols.forEach(([x0, x1, only], c) => {
+          if (only !== undefined && only !== side) return;
+          lay(side, () => seatPlanTile(casting, side, [x0, x1, row.z[0], row.z[1]]), `Duplet-T roof slab ${r + 1}.${c + 1}`);
+          laid.push([x0, x1]);
+        });
+        // (a rail only under a run of neighbouring slabs: their joints are 2 to 6 cm; a wider gap ends the run)
+        laid.sort((u, v) => u[0] - v[0]);
+        for (let i = 0; i < laid.length;) {
+          let j = i;
+          while (j + 1 < laid.length && laid[j + 1][0] - laid[j][1] <= .061) j++;
+          if (j > i) { const xs = [side * laid[i][0], side * laid[j][1]]; rails.push({side, z: row.z[1], x0: Math.min(...xs), x1: Math.max(...xs)}); }
+          i = j + 1;
+        }
+      }
+    });
+    // the sill rails, near tier: in front of a run of slabs, D.rail.gap clear of their front edge, its foot 3 mm into the
+    // dome and its top 25 mm over it, at stations refined where the dome bows more than 1.5 mm between two
+    if (P.q) for (const rail of rails) {
+      const z0 = rail.z + D.rail.gap, z1 = z0 + D.rail.w, top = (x: number, z: number) => casting.top(x, z);
+      const xs = refineHeights(x => Math.min(top(x, z0), top(x, z1)), [rail.x0, (rail.x0 + rail.x1) / 2, rail.x1], .0015);
+      const g = crosswiseSolid(xs.map(x => ({x, ring: [[z0, top(x, z0) - D.rail.sink], [z1, top(x, z1) - D.rail.sink],
+        [z1, top(x, z1) + D.rail.h], [z0, top(x, z0) + D.rail.h]] as [number, number][]})));
+      assertRoofPart(ID, 'Duplet-T sill rail', g);
+      g.computeBoundingBox();
+      const keep = g.boundingBox!.clone().expandByScalar(.003), near = built.find(o => o.box.intersectsBox(keep) && surfaceNear(o.g, keep));
+      if (near) throw new Error(`${ID}: a Duplet-T sill rail at z ${z0.toFixed(3)} meets a built part at ${near.box.min.toArray().map(v => v.toFixed(3))}`);
+      P.addEquipment(FRAME_BUCKET, g);
+    }
+  } finally { casting.dispose(); }
 }
 
 /** Hetman II's turret front: the shelves, the cheek frame posts, jaw collars, three prow courses of blocks on their
