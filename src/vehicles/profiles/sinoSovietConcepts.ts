@@ -12,6 +12,17 @@ import {attachedCage,cheekEraCassette,supportedSensor,strappedPack} from './mode
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {box,cylY}=KIT;
 type Variant='long'|'feng'|'lei';
+// Release 227: each variant's mantlet boot floors (buildType96Turret's bootFloor, Type 96B source frame). The 96B boot's
+// underside hangs 4-10 cm below its turret's floor, and on these lower-set rings it swept through the T-72B3, T-80U and
+// T-72B3M decks at nearly every yaw (22-36 crossing poses in a 30-degree sweep). Each floor is the lowest that keeps the
+// boot 10 mm over its host's top surface (a 2 cm height field of the hull) at every 2-degree yaw, at rest, half and full
+// elevation and, over the front 240 degrees of traverse, full depression; the stations that wrap the barrel collar keep
+// their measured undersides where the host allows (type96MantletClearance.selftest.mjs sweeps the whole gun).
+const BOOT_FLOOR:Readonly<Record<Variant,readonly (number|null)[]>>={
+  long:[1.733,1.714,1.646,1.658,null,null],
+  feng:[1.725,1.695,1.632,null,null,null],
+  lei:[1.741,1.711,1.689,1.692,null,null],
+};
 function build(P:TankBuilderPort,variant:Variant):void {
   const frame=EASTERN_SOURCE_STUDIES.type96b.frame;
   if(variant==='feng')buildT80UXHull(P);
@@ -23,7 +34,7 @@ function build(P:TankBuilderPort,variant:Variant):void {
   const z=variant==='feng'?.07187:variant==='lei'?.114315:.065591;
   P.turretG.position.set(...frame.turret);
   P.gunG.position.set(frame.gun[0]-frame.turret[0],frame.gun[1]-frame.turret[1],frame.gun[2]-frame.turret[2]);
-  buildType96Turret(P);
+  buildType96Turret(P,{bootFloor:BOOT_FLOOR[variant]});
   P.turretG.position.set(frame.turret[0],y,z);
   P.add('turret',cylY(1.05,1.08,.09,40),0,.02,0);
   if(variant==='long'){
