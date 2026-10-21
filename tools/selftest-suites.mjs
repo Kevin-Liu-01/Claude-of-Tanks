@@ -160,6 +160,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/magazineIndicator.selftest.mjs',
     'src/vehicles/profiles/griffinViper.selftest.mjs',
     'src/sim/gunPitchLimits.selftest.mjs',
+    // 2026-10-20 (the CN lane's measured depression, carried to the national concepts and the fleet's curves): every
+    // published gunPitchByYawDeg keeps the whole gun 25 mm off its hull at every yaw; the bare depression meets the hull
+    'src/vehicles/nationalGunClearance.selftest.mjs',
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
     'src/sim/weaponModuleDamage.selftest.mjs',

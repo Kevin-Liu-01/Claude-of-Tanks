@@ -320,7 +320,12 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
     turretTraverseDegS: 60, gunPitchDegS: 40, gunElevationDeg: 30, gunDepressionDeg: 9,
     // Preserve full front/side depression with the lower gun seat. Only the
     // aft hatch sector needs a mechanical stop, shared by game and Gallery.
-    gunPitchByYawDeg: [[0, -9], [150, -9], [160, -5], [180, -5]],
+    // 2026-10-20 follow-up (tools/gun-depression-sweep.mjs, nationalGunClearance.selftest.mjs): the barrel over the
+    // front quarter's hull edge and external armour at 17-39 (-7.9 at 32) and the aft stop from 148. Dead ahead the
+    // full forward depression stays: the barrel keeps 37 mm there; the mantlet's underside passes 11 mm over the roof at
+    // -9 across the front 39 degrees, where the selftest holds the barrel alone.
+    gunPitchByYawDeg: [[0, -9], [17, -9], [22, -8.5], [29, -8.4], [32, -7.9], [35, -8], [39, -9], [148, -9], [158, -5.2],
+      [159, -5], [180, -5]],
     gun: {
       caliberMm: 25, reloadS: 0.33, baseAccuracy: 0.25, aimTimeS: 1.05,
       soundProfile: 'm242-bushmaster',

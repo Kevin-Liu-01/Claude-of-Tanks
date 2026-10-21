@@ -451,8 +451,33 @@
    "hostSweep": []
   },
   "c2_ariete": {
-   "inputHash": "e994189119ba26e3",
-   "runs": [],
+   "inputHash": "1b89b448c4278630",
+   "runs": [
+    {
+     "index": 0,
+     "site": "adhoc:ariete-forward-carry@<anon>@profiles/arieteXSuppliedHullEquipment.ts",
+     "source": "adhoc",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [
+      "clips <= 5 cm cosmetic"
+     ],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.016,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.811,
+      "host": "hull<lowerTub@profiles/arieteXSuppliedHull.ts:20>"
+     }
+    }
+   ],
    "uncovered": [],
    "hostSweep": []
   },

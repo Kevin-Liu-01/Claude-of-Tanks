@@ -69,6 +69,9 @@ export function synchronizeNationalModernizationMetadata():void {
     s.hp=upper.hp+(c.package==='ru'?100:0);
     s.gun.reloadS=upper.gun.reloadS*(c.package==='ru'?.94:1);
     s.turretTraverseDegS=upper.turretTraverseDegS+3;
+    // its gun's measured deck clearance over this hull (data, nationalDonorTurrets.ts)
+    const pitchByYaw=NATIONAL_GUN_PITCH_BY_YAW[c.id];
+    if(pitchByYaw)s.gunPitchByYawDeg=pitchByYaw;
     s.description='Original game concept. '+design.description+' Retains the '+c.donor+' mechanical running gear.';
   }
   synchronizeNationalLegacyMetadata();

@@ -36,14 +36,18 @@ export const ARIETE_C2_X_DATUMS = Object.freeze({
 
 // Actual whole-barrel/hull sweeps reveal a local front-skirt shoulder and a
 // separate engine-deck stop. Keep full depression through the useful sides.
-const PITCH_FRONT_AND_SHOULDER = [
-  [0, -9], [22, -9], [30, -6], [35, -5], [42, -7], [47, -9],
-  [120, -9], [130, -7], [135, -5], [145, 0],
-] as const;
+// 2026-10-20 follow-up (tools/gun-depression-sweep.mjs: the whole gun 26 mm off every hull mesh at every degree,
+// src/vehicles/nationalGunClearance.selftest.mjs): the C1 keeps its earlier stops and adds where they were short, the front
+// skirt shoulder at 13-54 (down to -5 at 34-36) and the engine deck from 118.
 export const ARIETE_C1_X_GUN_PITCH_BY_YAW_DEG = Object.freeze([
-  ...PITCH_FRONT_AND_SHOULDER, [170, 1], [180, 1],
+  [0, -9], [13, -9], [16, -8.7], [20, -8.7], [23, -8], [29, -5.4], [32, -5.1], [34, -5], [36, -5], [37, -5.1],
+  [47, -7.9], [49, -8], [54, -9], [118, -9], [130, -6.4], [140, -1.4], [143, -0.2], [144, 0.1], [168, 1], [180, 1],
 ] as const);
+// The C2 likewise keeps its stops and adds where its hull stock (the camouflage suit left out: ghillieSuit.ts cuts it to
+// these stops) was short: the glacis fittings and skirt shoulders at 3-58 (down to -4 at 34-36) and the engine deck from
+// 112, up to +4 behind.
 export const ARIETE_C2_X_GUN_PITCH_BY_YAW_DEG = Object.freeze([
-  [0,-8], [15,-8], [22,-6.5], [30,-5], [35,-4], [42,-6], [47,-8], [52,-9],
-  [120,-9], [130,-7], [135,-5], [145,0], [160,2], [170,3], [180,3],
+  [0, -8], [2, -8], [3, -7.1], [4, -6.5], [7, -6.3], [27, -5.2], [33, -4.1], [34, -4], [36, -4], [37, -4.1], [51, -7.4],
+  [59, -9], [112, -9], [113, -8.6], [133, -5.2], [137, -3.2], [139, -0.4], [140, 0.4], [141, 0.6], [151, 1], [153, 1.8],
+  [155, 2.1], [170, 3.3], [171, 3.5], [175, 3.9], [180, 4],
 ] as const);
