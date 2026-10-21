@@ -762,6 +762,12 @@ function armorPresentation(ev: ShotHitEvent): string {
       ? `${Math.round(ev.physicalMm)} mm screen`
       : 'screen';
   }
+  // a glance off the face tests no thickness: the plate and the angle it glanced at, not "→ 0 mm eff."
+  if (ev.kind === 'ricochet' && (ev.nominalMm || ev.physicalMm || 0) > 0) {
+    return t('shotInfo.armorRicochet', {
+      mm: Math.round(ev.nominalMm || ev.physicalMm || 0), angle: Math.round(ev.impactAngleDeg || 0),
+    });
+  }
   const hasArmor = (ev.nominalMm || 0) > 0 || (ev.effectiveMm || 0) > 0;
   if (hasArmor) {
     return `${Math.round(ev.nominalMm || 0)} → ${Math.round(ev.effectiveMm || 0)} mm eff.`;
@@ -809,11 +815,16 @@ function penetrationPresentation(
       legend,
     };
   }
-  const verdict = (cut ? fresh : roll) >= nominal ? COL.green : COL.red;
+  // the roll beside the armour it met (the Armor row): green where it went through, red where it did not; the round's
+  // average at this range stays in the row's title (the roll is within 25 % of it), not as a second figure
+  const effective = Math.round(ev.effectiveMm || 0);
+  const through = ev.kind === 'pen' || ev.kind === 'he_pen';
+  const verdict = ev.kind === 'ricochet' ? '#9fb0bf' : effective > 0 ? (through ? COL.green : COL.red)
+    : (cut ? fresh : roll) >= nominal ? COL.green : COL.red;
   return {
-    html: `<span style="color:${verdict}">${arrow}${roll}</span> / ${nominal} mm`,
+    html: `<span style="color:${verdict}">${arrow}${roll}</span> mm`,
     qualifier,
-    legend,
+    legend: cut ? legend : t('shotInfo.penLegend', { roll, nominal }),
   };
 }
 
@@ -1249,7 +1260,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     if (!missileSplash) kv('Angle', `${Math.round(ev.impactAngleDeg || 0)}°`, 'w');
     if (!missileSplash) kv('Armor', armorPresentation(ev), 'w armor');
     const penetration = penetrationPresentation(card, ev);
-    kv('Damage', `${Math.round(ev.damage || 0)} / ${Math.round(ev.dmgRoll || 0)}`, 'w');
+    // (a reference plate on the proving ground has no hull: no damage and no roll, no row)
+    if ((ev.damage || 0) > 0 || (ev.dmgRoll || 0) > 0) kv('Damage', `${Math.round(ev.damage || 0)} / ${Math.round(ev.dmgRoll || 0)}`, 'w');
     if (weaponHitKind(ev) === 'missile') kv(t('shotInfo.range'), `${Math.round(ev.flightDistM || 0)} m`, 'w');
     if (!missileSplash) {
       const r = kv('Pen', penetration.html + (penetration.qualifier

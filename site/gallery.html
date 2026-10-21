@@ -159,12 +159,14 @@
       <form class="archive-filters" id="archiveFilters" role="search">
         <label class="search-field" for="gallerySearch">
           <span data-i18n="gallery.archive.search">Search archive</span>
-          <input id="gallerySearch" type="search" data-i18n-placeholder="gallery.archive.searchPlaceholder" placeholder="Name, nation, era…" autocomplete="off" spellcheck="false">
+          <input id="gallerySearch" type="search" data-i18n-placeholder="gallery.archive.searchPlaceholder" placeholder="Name, nation, class, role…" autocomplete="off" spellcheck="false">
           <kbd data-i18n="gallery.archive.searchKey">/</kbd>
         </label>
         <div class="filter-row">
           <div class="gallery-filter"><span class="filter-label" id="nationFilterLabel" data-i18n="gallery.archive.filter.nation">Nation</span><select id="nationFilter" aria-labelledby="nationFilterLabel"><option value="all" data-i18n="gallery.archive.filter.allNations">All nations</option></select></div>
           <div class="gallery-filter"><span class="filter-label" id="eraFilterLabel" data-i18n="gallery.archive.filter.era">Era</span><select id="eraFilter" aria-labelledby="eraFilterLabel"><option value="all" data-i18n="gallery.archive.filter.allEras">All eras</option></select></div>
+          <div class="gallery-filter"><span class="filter-label" id="classFilterLabel" data-i18n="fleet.filter.class">Class</span><select id="classFilter" aria-labelledby="classFilterLabel"><option value="all" data-i18n="fleet.filter.allClasses">All classes</option></select></div>
+          <div class="gallery-filter"><span class="filter-label" id="roleFilterLabel" data-i18n="fleet.filter.role">Role</span><select id="roleFilter" aria-labelledby="roleFilterLabel"><option value="all" data-i18n="fleet.filter.allRoles">All roles</option></select></div>
         </div>
       </form>
 
@@ -231,6 +233,7 @@
             <div><p class="workspace-title" data-i18n="gallery.dossier.heading">Technical dossier</p></div>
           </div>
           <div class="dossier-actions">
+            <button type="button" id="testDrive" class="test-drive" data-i18n-title="gallery.dossier.testDriveTitle" data-i18n="gallery.dossier.testDrive">Test drive</button>
             <button type="button" id="copyLink" data-i18n-title="gallery.dossier.linkTitle" data-i18n="gallery.dossier.linkButton">Link</button>
             <button type="button" id="copySpec" data-i18n-title="gallery.dossier.copyDataTitle" data-i18n="gallery.dossier.copyData">Copy data</button>
           </div>

@@ -59,7 +59,7 @@ function recordingContext(canvas) {
     ellipse: () => push(['ellipse']), rect: () => push(['rect']), roundRect: () => push(['roundRect']),
     quadraticCurveTo: (cx, cy, x, y) => push(['quad'], cx, cy, x, y), bezierCurveTo: () => push(['bezier']),
     stroke() { ops.push({ op: 'stroke', style: state.strokeStyle, lineWidth: state.lineWidth, dash: dash.slice(), path,
-      box: box(points, (state.lineWidth * scale()) / 2) }); },
+      points: points.slice(), box: box(points, (state.lineWidth * scale()) / 2) }); },
     fill() { ops.push({ op: 'fill', style: state.fillStyle, path, box: box(points) }); },
     fillRect(x, y, w, h) { ops.push({ op: 'fillRect', style: state.fillStyle, x, y, w, h, box: box([at(x, y), at(x + w, y + h)]) }); },
     strokeRect() { ops.push({ op: 'strokeRect', style: state.strokeStyle }); },
@@ -1039,14 +1039,15 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
   const ring = ringOf(ops);
   const warning = warn ? aimWarningState({ gunLimitSpec: true }) : null;
   const warningText = warning && ops.find((op) => op.op === 'fillText' && op.text === warning.text);
-  // (a touch layout's chip is the DOM chip the reticle seats, where it sits under the sight; a short landscape parks it
-  // in the left lane, with the furniture)
+  // (a touch layout's chip is the DOM chip the reticle seats, where it sits under the sight; a short landscape and a
+  // portrait phone 340 px wide or less park it in the left lane, with the furniture: r10g)
   const seated = touch ? seatedChipBox() : null;
   // (the canvas chip by its 1 px outline's ink, not its fill: r10 critic, the outline came 2.5 px from the ring)
   const chip = seated ? { op: 'dom', box: seated }
     : warningText && ops.find((op) => op.op === 'stroke' && op.box && op.path.length === 6 && contains(op.box, warningText.box));
   // (or, while the sixth-sense notice shows, waits hidden where its place would run into the notice: r10e, section 19e)
   assert.ok(!warn || chip || (touch && windowStub.innerWidth > windowStub.innerHeight && windowStub.innerHeight < 550)
+    || (touch && windowStub.innerHeight >= windowStub.innerWidth && windowStub.innerWidth <= 340)
     || (touch && touchChip.hidden && sightNotice.on), `${at}: the warning's chip is seated`);
   assert.ok(touch || !warningText === !warn, `${at}: the canvas paints the warning only on a mouse layout`);
   const countdown = ops.filter((op) => op.op === 'fillText' && op.style === INK.reload && op.text.trim() && !op.text.startsWith('+'));
@@ -1101,15 +1102,18 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
  *  text metrics (r10, measured here and on the rendered fixture). Keys ending ':objective' are the recorded objective
  *  stage, which every mode but the standard battle shows (section 19c). 568x290: 3.34 px, a rack set over a 43 px ring
  *  under the score; with the objective panel 22.75 px, the panel over the sight and the systems row under it leaving the
- *  rack no room (only right of the ring is free). 320x568: 25.25 px here, 25.52 rendered, the readout row or the 156 px
- *  warning chip on the systems row, the left FIRE button under the sight. 360x640: 8.87 px (9.64 rendered), the 24 px
- *  chip on the systems row's underlines. 375x667: 7.34 px, '0 ' on the systems row with the warning under the widest
- *  ring. 740x360 and 640x360 with the objective panel: 0.37 px, an empty rack under the widest ring on the systems row. 1024x400 with
- *  the objective panel: 7.62 px, the warning chip set over the widest ring into the panel (the render keeps 3 px). Round
- *  r9 left 568x290 25.5 px into its systems row in a standard battle. Every other swept window, the listed capture sizes
- *  among them, keeps 3 px in a standard battle and in every mode. */
-const TIGHT_FLOOR = { '568x290t': -3.5, '320x568t': -26, '360x640t': -9, '375x667t': -7.5,
-  '568x290t:objective': -23, '320x568t:objective': -26, '360x640t:objective': -9, '375x667t:objective': -7.5,
+ *  rack no room (only right of the ring is free). 320x568 with the objective panel: 10.59 px, the readout line set over
+ *  the ring on the systems row's top slot, the panel, the chrome and the row stacked down to 203 px (its standard battle
+ *  keeps 3 px since r10g parks the gun travel chip under the map: seated by the sight it met the left FIRE button by
+ *  12.22 px, the drive gauge or the map's corner). 740x360 and 640x360 with the objective panel: 0.37 px, an empty rack under the widest ring
+ *  on the systems row. 1024x400 with the objective panel: 7.62 px, the warning chip set over the widest ring into the
+ *  panel (the render keeps 3 px). r10g moved a small portrait phone's systems row out of the band over the sight (the
+ *  top slot right of the map, compact): 360x640 (8.87 px before, the chip on the row's underlines) and 375x667 (7.34)
+ *  keep 3 px now, and 320x568 kept 25.25 px before (its objective stage too). Round r9 left 568x290 25.5 px into its systems row in a standard
+ *  battle. Every other swept window, the listed capture sizes among them, keeps 3 px in a standard battle and in every
+ *  mode. */
+const TIGHT_FLOOR = { '568x290t': -3.5,
+  '568x290t:objective': -23, '320x568t:objective': -11,
   '740x360t:objective': -0.5, '640x360t:objective': -0.5, '1024x400:objective': -8 };
 const tightWorst = {};
 /** Every mark keeps 3 px from every recorded panel and control (sightFurniture.ts), or on the smallest windows no less
@@ -1222,6 +1226,12 @@ function assertFurnitureClear(items, boxes, at, key = null) {
         tank.state.gunLimitSpec = true;
         const at = `${width}x${height} touch battle, ${metres} m, ${label}, gun travel warning`;
         const { ring, chip, furniture } = reticleGaps(quickPaint(tank, 'battle'), at, { warn: true, scoped: false, touch: true });
+        // (r10g, the coordinator: 320 wide parks it under the map, where every seat by the sight met the furniture)
+        if (width <= 340) {
+          assert.ok(!chip, `${at}: the chip parks under the map, unseated`);
+          assertFurnitureClear(furniture, boxes, at, `${width}x${height}t`);
+          continue;
+        }
         assert.equal(chip?.op, 'dom', `${at}: the chip is seated under the sight`);
         // (a portrait under 375 px wide narrows it to 156 px, clear of the speedometer beside the sight at 360x640)
         assert.equal(chip.box.x1 - chip.box.x0, width < 375 ? 156 : 180, `${at}: the seated chip's width`);
@@ -1416,6 +1426,69 @@ function assertFurnitureClear(items, boxes, at, key = null) {
   assert.ok(seated > 0 && Object.keys(yielded).some((key) => key.endsWith('(integ\'s place)')),
     `the chips were seated, and yielded to integ's place (${JSON.stringify(yielded)})`);
   setSightNotice(false);
+  documentStub.body.classes.delete('cot-touch-layout');
+  clearSightFurniture();
+  settleSightFurniture();
+  scope = false;
+  dispersionM = 8;
+  resize(WIDTH, HEIGHT);
+}
+
+// 19f. r10f (the notices critic on integ/229 11a74e4906: the scope's right arm ran through the Daylight vision plate, the
+// lower post across the gun travel chip, a mil tick across the rack onto the struck round): through the scope, on mouse
+// windows and phones among their recorded furniture (the vision plate in it), for every reticle state with and without
+// the warning, over the rings, every cross arm segment keeps 3 px from every mark (the rack, the struck round, the
+// countdown, the readout line and zoom plate, the range tag, the chip) and from the furniture, every mil tick 2 px.
+{
+  const ARM_INK = new Set(['rgba(170,240,178,0.6)', 'rgba(4,7,6,0.38)']);
+  const TICK_INK = new Set(['rgba(176,242,184,0.70)', 'rgba(3,7,5,0.52)']);
+  const apart = (a, b) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
+  // (a stroke's moveTo/lineTo pairs, each a segment, its line width either side)
+  const segments = (op) => {
+    const out = [];
+    for (let i = 0; i + 1 < op.points.length; i += 2) {
+      const [ax, ay] = op.points[i];
+      const [bx, by] = op.points[i + 1];
+      const pad = op.lineWidth / 2;
+      out.push({ x0: Math.min(ax, bx) - pad, y0: Math.min(ay, by) - pad, x1: Math.max(ax, bx) + pad, y1: Math.max(ay, by) + pad });
+    }
+    return out;
+  };
+  let arms = 0;
+  let ticks = 0;
+  scope = true;
+  for (const [width, height, touch] of [[1440, 900], [1024, 600], [900, 700], [800, 500], [1280, 520], [390, 844, 'touch'],
+    [360, 640, 'touch'], [740, 360, 'touch'], [667, 375, 'touch']]) {
+    resize(width, height);
+    documentStub.body.classes[touch ? 'add' : 'delete']('cot-touch-layout');
+    const boxes = installFurniture(width, height, !!touch);
+    for (const metres of [1, 11, 16, 24, 40]) {
+      dispersionM = metres;
+      for (const [label, make] of Object.entries(scopeStates)) for (const warn of [false, true]) {
+        const tank = make();
+        tank.state.gunLimitSpec = warn;
+        const at = `${width}x${height}${touch ? ' touch' : ''} scope's arms, ${metres} m, ${label}${warn ? ', gun travel warning' : ''}`;
+        const ops = quickPaint(tank);
+        const { stack, furniture } = reticleGaps(ops, at, { warn, scoped: true, touch: !!touch });
+        const marks = [...stack.map((op) => [op.box, op.text ? `"${op.text}"` : 'a zoom rule']),
+          ...furniture.map((op) => [op.box, op.op === 'dom' ? 'the seated chip' : op.text ? `"${op.text}"` : 'a mark']),
+          ...boxes.map((box) => [box, box.name])];
+        for (const op of ops) {
+          if (op.op !== 'stroke' || !op.points) continue;
+          const arm = ARM_INK.has(op.style);
+          if (!arm && !TICK_INK.has(op.style)) continue;
+          for (const segment of segments(op)) {
+            if (arm) arms++; else ticks++;
+            for (const [box, what] of marks) {
+              const gap = apart(segment, box);
+              assert.ok(gap >= (arm ? 3 : 2) - 1e-6, `${at}: a ${arm ? 'cross arm' : 'mil tick'} keeps ${gap.toFixed(2)} px from ${what}`);
+            }
+          }
+        }
+      }
+    }
+  }
+  assert.ok(arms > 0 && ticks > 0, `the scope's arms (${arms}) and ticks (${ticks}) painted`);
   documentStub.body.classes.delete('cot-touch-layout');
   clearSightFurniture();
   settleSightFurniture();

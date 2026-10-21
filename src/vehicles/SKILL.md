@@ -15,7 +15,11 @@ materials, and garage ordering.
 `specs.ts` is the registry, `fleetManifest.ts` and `fleetFactory.ts` own the
 typed browser demand graph, `tankFactory.ts` builds/synchronizes eager audit visuals,
 `profiles/` owns authored families, `taxonomy.ts` owns the strict era/role
-vocabulary and complete saved-fleet assignment, `tier.ts` and `fleetOrder.ts`
+vocabulary and complete saved-fleet assignment, `vehicleFacets.ts` owns the
+player-facing class, battle role and design status facets (every playable id
+exactly once per facet, tied to its doctrine and mechanical role:
+`vehicleFacets.selftest.mjs`) and `vehicleFacetSearch.ts` the shared
+`class:`/`role:`/`status:`/`era:`/`nation:`/`tier:` search grammar, `tier.ts` and `fleetOrder.ts`
 own remaining metadata, `tankAssets.ts` owns UI asset mappings, and
 `turretBarrelCircularity.ts` measures actual rig-local gun sections for the
 fleet release gate.

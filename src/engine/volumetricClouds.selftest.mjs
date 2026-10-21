@@ -444,7 +444,12 @@ assert.deepEqual(table, {
   // grey evening sheet); an evening cumulus keeps the warm tint on its sunward faces
   const evening = (id) => deriveCloudLayerPreset({ ...skyOf(id), sunElevationDeg: 7, skyIntensity: 0.72, cloudTintHex: 0xeab492 });
   const wEve = evening('winter'), vEve = evening('verdant');
-  assert.ok(wEve.tint[0] === wEve.tint[1] && wEve.tint[1] === wEve.tint[2] && wEve.tint[0] > 0.6, `winter at sunset: a grey deck albedo (${wEve.tint})`);
+  // (229) a quarter of the evening tint's own hue over the grey: warm, at the tint's level, far from the tint itself
+  const lumOf = (t) => 0.2126 * t[0] + 0.7152 * t[1] + 0.0722 * t[2];
+  const peach = [0xea / 255, 0xb4 / 255, 0x92 / 255].map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  assert.ok(wEve.tint[0] > wEve.tint[2] && wEve.tint[0] - wEve.tint[2] < 0.3 * (peach[0] - peach[2]) && wEve.tint[0] > 0.6,
+    `winter at sunset: a grey deck albedo with a quarter of the evening's warmth (${wEve.tint})`);
+  assert.ok(Math.abs(lumOf(wEve.tint) - lumOf(wEve.tint.map(() => lumOf(wEve.tint)))) < 1e-6, 'at the tint\'s level');
   assert.ok(vEve.tint[0] > vEve.tint[2] + 0.2, `verdant at sunset: the warm evening cumulus (${vEve.tint})`);
   const urban = deriveCloudLayerPreset(skyOf('urban'));
   // (2026-10-15: Steinburg on Verdant's cumulus under the 10-13 ruling; the altocumulus row stays in the vocabulary, unused)

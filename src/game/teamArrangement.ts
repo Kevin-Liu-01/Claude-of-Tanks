@@ -8,7 +8,7 @@ import {
   acceptsTeamArrangement, isWaveMode, normalizeTeamArrangement, rulesetSides, type TeamArrangement,
   MARS_DEFAULT_RULES, isMarsCachesId, isMarsGravityId, type MarsCachesId, type MarsGravityId,
 } from '../sim/matchRuleset.ts';
-import { GAME_MODE_IDS } from '../sim/matchModes.ts';
+import { BATTLE_MODE_IDS } from '../sim/matchModes.ts';
 
 export const TEAM_ARRANGEMENT_STORAGE_KEY = 'cot.game.teams.v1';
 
@@ -72,8 +72,9 @@ export function readTeamArrangement(mode: GameModeId, storage?: ArrangementStora
 }
 
 /** The symmetric modes share one sides setting (owner 2026-09-18: the Garage battle menu's 7v7 / 14v14 /
- * custom switch); the wave modes arrange allied bots and a pool in the play menu instead. */
-export const SIDES_MODES: readonly GameModeId[] = Object.freeze(GAME_MODE_IDS.filter((mode) => !isWaveMode(mode)));
+ * custom switch); the wave modes arrange allied bots and a pool in the play menu instead, and the practice modes
+ * (the proving ground's lanes) have no sides to arrange. */
+export const SIDES_MODES: readonly GameModeId[] = Object.freeze(BATTLE_MODE_IDS.filter((mode) => !isWaveMode(mode)));
 
 /** The stored sides of the symmetric modes (Standard's entry speaks for all of them): allied bots and hostiles. */
 export function readSides(storage?: ArrangementStorage | null): { readonly allies: number; readonly enemies: number } {

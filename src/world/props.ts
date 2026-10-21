@@ -154,6 +154,7 @@ import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } fro
 import { craterEjectaPiece, placeFieldLogsAndStumpsOf } from './maps/groundDressing.ts';
 import { felledPoleDebris } from './maps/felledPoles.ts';
 import { buildHardstandDressing } from './hardstandDressing.ts';
+import { fieldWorkMatrix, fieldWorkSeat, shearedOutlines, shearRiseRange } from './fieldWorkSeat.ts'; // (229) terrain-seated breastworks
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
 import { composeMangroveFisheryWharf, type FisheryPacket, type FisheryVegetation } from './mangroveFisheryWharf.ts';
 import { composeFoundryServiceCourt, type FoundryDonor, type FoundryServiceCourtConfig } from './foundryServiceCourt.ts';
@@ -196,7 +197,7 @@ export const SLAB_SHELL_KINDS: ReadonlySet<string> = new Set(['sandbagbig', 'san
 import {
   appendStructureCollisionBand, applyStructureCollisionBand, mergeStructureDecks,
   deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureCollisionWithSolids,
-  deriveRuntimeStructureContactBand, deriveRuntimeStructureShellBands,
+  deriveRuntimeStructureContactBand, deriveRuntimeStructureShellBands, type StructureCollisionRuntimeBand,
 } from './structureCollision.ts';
 import { structureShellPoolFor } from './structureShellPool.ts';
 import { unpackStructureShellWire } from './structureShellWire.ts';
@@ -463,7 +464,10 @@ export const PILLBOX_SET_BACK_M: Readonly<Record<string, number>> = Object.freez
 /** props.dressingRules (the Polders village blind 227): how far a fence module keeps off a building's plot, how far the
  *  yard clutter keeps off the clutter already placed (past both radii), how far a hedgehog drawn in the town keeps off
  *  every building (past its ring), and the most a field work's breastwork stations' ground may step (m). */
-const FENCE_BUILDING_CLEAR_M = 0.8, YARD_CLUTTER_GAP_M = 1.2, HEDGEHOG_TOWN_CLEAR_M = 12, FIELD_WORK_STEP_M = 0.55;
+const FENCE_BUILDING_CLEAR_M = 0.8, YARD_CLUTTER_GAP_M = 1.2, HEDGEHOG_TOWN_CLEAR_M = 12;
+/** props.dressingRules.fenceFrontageClear (the maps lane, 229): how much farther a run in line with a building's face keeps
+ *  off that face's ends (a counter, porch or awning reaches past the plot). */
+const FENCE_FRONTAGE_CLEAR_M = 2, FENCE_FACE_LINE_M = 1.2;
 /** props.dressingRules.fencesClearBuildings (the fleet dressing rules 227): the fewest modules a fence run's piece stands
  *  with — a shorter piece between two breaks is left out (the stub a plot's clearance left of a field-edge run). */
 const FENCE_PIECE_MIN = 3;
@@ -658,11 +662,17 @@ interface PropsSettings {
    *    yard fence run (its yard is fenced: the run stood in its ground at any angle);
    *  - hedgehogsAtApproaches: the steel hedgehogs drawn inside the town stand only at its approaches, HEDGEHOG_TOWN_CLEAR_M
    *    and more off every building, not in its streets ("a dark object lies in the middle of the road");
-   *  - fieldWorksLevel: a field work's breastwork keeps the run of its stations the ground lets its modules follow,
-   *    within FIELD_WORK_STEP_M of each other (the rest left out, draws taken, so no work moves) (a work laid up a dyke's batter stepped its bags into "a dark rectangular block on
-   *    the hillside").
+   *  - fenceFrontageClear (with fencesClearBuildings; the maps lane, 229): a module running in line with a building's face
+   *    (within FENCE_FACE_LINE_M of the face's line), on a run that crosses that building's plot, keeps
+   *    FENCE_FRONTAGE_CLEAR_M more off the face's ends, so a run broken at a shop does not end in its corners (Monsoon's
+   *    market: "the stall wattle pressed against the storefront").
+   * (227's fieldWorksLevel, which left out a breastwork's stepped modules, is gone: since 229 every map seats each module on
+   * the ground under its own footprint and keeps them all, placeFieldWorks.)
    */
-  dressingRules?: { fencesClearBuildings?: boolean; fenceStubsOut?: boolean; yardClutterClear?: boolean; hedgehogsAtApproaches?: boolean; fieldWorksLevel?: boolean };
+  dressingRules?: {
+    fencesClearBuildings?: boolean; fenceStubsOut?: boolean; yardClutterClear?: boolean; hedgehogsAtApproaches?: boolean;
+    fenceFrontageClear?: boolean;
+  };
   /** The field works' pillboxes keep off the trunks the vegetation planted (the Redrock lane's rule, visual/redrock-smooth
    *  ae7dcffa7, 2026-10-07; every map's default since the scenery lane's b40): a seat whose pillbox footprint, with
    *  PILLBOX_TRUNK_BERTH_M round it, holds a trunk is passed for the work's next seat. false keeps the old seats. */
@@ -874,6 +884,9 @@ export interface DestructibleRecord {
   _destructibleIndex?: number;
   /** The parked-vehicle separation found this vehicle no clear seat: out of play (no obstacle, no instance). */
   dropped?: boolean;
+  /** (229) a field work's module laid up a slope: its courses' rise per metre along its local x and z (fieldWorkSeat.ts);
+   *  its slot matrix carries the shear and its records' parts follow it (refitDestructibleColliders). */
+  shear?: readonly [number, number];
   /** The slot its broken state took in its pool's broken mesh (animateBrokenRecord): a hull pressing the heap later
    *  draws it from there (propCrushPresentation.ts). */
   _bi?: number;
@@ -2918,6 +2931,7 @@ type AddDestructible = (
   scale?: number,
   tiltX?: number,
   tiltZ?: number,
+  seat?: GroundedDestructiblePlacement | null,
 ) => DestructibleRecord;
 
 interface FieldScatterContext {
@@ -2995,9 +3009,22 @@ interface DestructibleBuildContext {
   euler: THREE.Euler;
 }
 
+/** (the maps lane, 229) a field work as placeFieldWorks laid it (group.userData.fieldWorks): its centre, and each station's
+ *  module where it was seated (its record's height, the ground under its footprint) or why it was left out. */
+interface FieldWorkReceipt {
+  x: number;
+  z: number;
+  modules: Array<{
+    kind: string; x: number; z: number; y?: number; yaw?: number; sc?: number; min?: number; max?: number;
+    shear?: readonly [number, number]; out?: 'road' | 'vetoed';
+  }>;
+}
+
 interface GroundedDestructiblePlacement {
   y: number;
   support: GroundSupportRecord | null;
+  /** (229) a field work's module: its courses' rise per metre along local x and z (fieldWorkSeat.ts). */
+  shear?: readonly [number, number];
 }
 
 interface DestructibleContactExtents {
@@ -3237,10 +3264,14 @@ function addDestructibleRecord(
   scale = 1,
   tiltX = 0,
   tiltZ = 0,
+  seat: GroundedDestructiblePlacement | null = null,
 ): DestructibleRecord {
   const meta = resolveDestructibleMeta(context, kind);
   let placement: GroundedDestructiblePlacement;
-  if ((GROUND_POSED_KINDS.has(kind) || meta.groundPose) && tiltX === 0 && tiltZ === 0) {
+  if (seat) {
+    // (a seat its placer measured on the ground under the record's own footprint: a field work's module, placeFieldWorks)
+    placement = seat;
+  } else if ((GROUND_POSED_KINDS.has(kind) || meta.groundPose) && tiltX === 0 && tiltZ === 0) {
     // a cart or a parked vehicle sits on the ground under it, tilted to it (cartGroundPose), a few centimetres into it
     // (and a kind posed so, the map-content lane's polar works: their drums stand with the slope, no corner in the air)
     const pose = cartGroundPose(context.heightField, x, z, yaw, (meta.hw ?? meta.r) * scale, (meta.hl ?? meta.r) * scale);
@@ -3250,16 +3281,22 @@ function addDestructibleRecord(
     placement = groundDestructiblePlacement(context.heightField, meta, x, y, z, yaw, scale, tiltX, tiltZ);
   }
   const pool = ensureDestructiblePool(context, kind, meta);
-  context.euler.set(tiltX, yaw, tiltZ, 'YXZ');
-  context.quaternion.setFromEuler(context.euler);
-  _mat4.compose(_posv.set(x, placement.y, z), context.quaternion,
-    _scalev.set(scale, scale, scale));
+  const shear = placement.shear && (placement.shear[0] !== 0 || placement.shear[1] !== 0) ? placement.shear : null;
+  if (shear) {
+    _mat4.fromArray(fieldWorkMatrix(x, placement.y, z, yaw, scale, shear[0], shear[1]));
+  } else {
+    context.euler.set(tiltX, yaw, tiltZ, 'YXZ');
+    context.quaternion.setFromEuler(context.euler);
+    _mat4.compose(_posv.set(x, placement.y, z), context.quaternion,
+      _scalev.set(scale, scale, scale));
+  }
   pool.mats4.push(_mat4.clone());
   const record: DestructibleRecord = {
     kind, cls: meta.cls, x, y: placement.y, z, yaw, sc: scale,
     r: meta.r * scale, h: meta.h * scale,
     slot: pool.mats4.length - 1, state: 0, ob: null,
     groundSupport: placement.support,
+    ...(shear ? { shear } : {}),
   };
   const recordIndex = context.records.length;
   context.records.push(record);
@@ -4635,6 +4672,7 @@ ${snowCap ? `
     sc = 1,
     tiltX = 0,
     tiltZ = 0,
+    seat: GroundedDestructiblePlacement | null = null,
   ): DestructibleRecord {
     if (landmarkVetoes.length && !landmarkFurniture) {
       // (what stands on the ground: its centre inside, or within half a metre of the edge — a long wall or fence module
@@ -4657,7 +4695,7 @@ ${snowCap ? `
       }
     }
     return addDestructibleRecord(
-      destructibleContext, kind, x, y, z, yaw, sc, tiltX, tiltZ,
+      destructibleContext, kind, x, y, z, yaw, sc, tiltX, tiltZ, seat,
     );
   }
   // A destructible's placed obstacle is refitted at pool finalization to the solids its built geometry bears on the
@@ -4721,21 +4759,63 @@ ${snowCap ? `
     // taken, so every other placement keeps its seat. (The run is executed on its own by roadFencePath and roadStations,
     // with no props build around it: with no P in scope the rule is off, so neither needs the build's state.)
     const fencesClearBuildings = typeof P !== 'undefined' && !!P.dressingRules?.fencesClearBuildings;
+    // (props.dressingRules.fenceFrontageClear) and a module in line with a building's face keeps FENCE_FRONTAGE_CLEAR_M more
+    // off the face's ends: Monsoon's roadside wattle, broken at a cornershop's plot, still ended in line with its counter
+    // at both corners
+    const frontageClear = fencesClearBuildings && !!P.dressingRules?.fenceFrontageClear;
+    // (and only at a building whose grown plot the run itself crosses — the run already broken at that shop — so a run
+    // passing a face's line without entering its plot keeps every module: Monsoon's garden fence in line with a second
+    // shop's front lost one from its middle, the 229 blind's pose 10)
+    let crossedPlots: Set<(typeof buildingFeatures)[number]> | null = null;
+    const meetsPlot = (b: (typeof buildingFeatures)[number], ax: number, az: number, bx: number, bz: number): boolean => {
+      const c = Math.cos(b.rot), sn = Math.sin(b.rot), hw = b.w / 2 + FENCE_BUILDING_CLEAR_M, hd = b.d / 2 + FENCE_BUILDING_CLEAR_M;
+      const steps = Math.max(2, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.3));
+      for (let k = 0; k <= steps; k++) {
+        const dx = ax + (bx - ax) * k / steps - b.x, dz = az + (bz - az) * k / steps - b.z;
+        if (Math.abs(dx * c - dz * sn) < hw && Math.abs(dx * sn + dz * c) < hd) return true;
+      }
+      return false;
+    };
     const clearOfBuildings = !fencesClearBuildings ? () => true : (ax: number, az: number, bx: number, bz: number): boolean => {
       const steps = Math.max(2, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.3));
       for (const b of buildingFeatures) {
         const c = Math.cos(b.rot), sn = Math.sin(b.rot), hw = b.w / 2 + FENCE_BUILDING_CLEAR_M, hd = b.d / 2 + FENCE_BUILDING_CLEAR_M;
-        if (Math.hypot((ax + bx) / 2 - b.x, (az + bz) / 2 - b.z) > Math.hypot(hw, hd) + FENCE_SEG) continue;
+        if (Math.hypot((ax + bx) / 2 - b.x, (az + bz) / 2 - b.z) > Math.hypot(hw, hd) + FENCE_SEG + (frontageClear ? FENCE_FRONTAGE_CLEAR_M : 0)) continue;
         for (let k = 0; k <= steps; k++) {
           const dx = ax + (bx - ax) * k / steps - b.x, dz = az + (bz - az) * k / steps - b.z;
           if (Math.abs(dx * c - dz * sn) < hw && Math.abs(dx * sn + dz * c) < hd) return false;
         }
+        if (!frontageClear || !crossedPlots?.has(b)) continue;
+        // (the module's ends in the plot's frame: running along its local x on the line of a +-z face, or along z on the
+        // line of a +-x face — within FENCE_FACE_LINE_M of it — short of the face's end by less than the frontage; a run
+        // aimed head-on at a wall keeps the plot's own clearance)
+        const lax = (ax - b.x) * c - (az - b.z) * sn, laz = (ax - b.x) * sn + (az - b.z) * c;
+        const lbx = (bx - b.x) * c - (bz - b.z) * sn, lbz = (bx - b.x) * sn + (bz - b.z) * c;
+        const len = Math.hypot(lbx - lax, lbz - laz) || 1;
+        if (Math.abs(lbz - laz) < 0.3 * len && Math.abs(Math.abs((laz + lbz) / 2) - b.d / 2) < FENCE_FACE_LINE_M
+          && Math.min(Math.abs(lax), Math.abs(lbx)) < hw + FENCE_FRONTAGE_CLEAR_M) return false;
+        if (Math.abs(lbx - lax) < 0.3 * len && Math.abs(Math.abs((lax + lbx) / 2) - b.w / 2) < FENCE_FACE_LINE_M
+          && Math.min(Math.abs(laz), Math.abs(lbz)) < hd + FENCE_FRONTAGE_CLEAR_M) return false;
       }
       return true;
     };
     const n = Math.max(1, Math.round(along / FENCE_SEG));
     const tx = (x1 - x0) / along, tz = (z1 - z0) / along;
     const straightYaw = Math.atan2(tx, tz); // module runs along local +z
+    if (frontageClear) {
+      // (props.dressingRules.fenceFrontageClear) the plots the run's own modules meet, read before any is laid (the
+      // modules' ends as the loop below takes them; no draws)
+      crossedPlots = new Set();
+      for (let k = 0; k < n; k++) {
+        const a = curved?.at(k * along / n), b = curved?.at((k + 1) * along / n);
+        const ax = a?.[0] ?? x0 + tx * (k * FENCE_SEG), az = a?.[1] ?? z0 + tz * (k * FENCE_SEG);
+        const bx = b?.[0] ?? x0 + tx * ((k + 1) * FENCE_SEG), bz = b?.[1] ?? z0 + tz * ((k + 1) * FENCE_SEG);
+        for (const building of buildingFeatures) {
+          if (Math.hypot((ax + bx) / 2 - building.x, (az + bz) / 2 - building.z) > Math.hypot(building.w, building.d) + FENCE_SEG) continue;
+          if (meetsPlot(building, ax, az, bx, bz)) crossedPlots.add(building);
+        }
+      }
+    }
     let gated = false;
     let openRun = false;
     // (props.dressingRules.fencesClearBuildings) the run's modules wait in their piece — the modules between two breaks (a
@@ -8219,6 +8299,9 @@ ${snowCap ? `
   }
   placeTrenchWorks();
 
+  // (the maps lane, 229) every field work's modules as they were seated (group.userData.fieldWorks; fieldWorkSeat.selftest)
+  const fieldWorkSeats: FieldWorkReceipt[] = [];
+
   // --- fortifications on every map (owner 2026-09-17: "more trenches/barbed wire/AA guns/bunkers on ALL maps,
   // extra in Frontline Assault"): field works between the spawns — a breastwork facing the threat (sourced sandbag
   // modules, concrete barriers where the bags are absent), a barbed-wire belt in front of it, and a pillbox at one
@@ -8289,31 +8372,28 @@ ${snowCap ? `
         stations.push([cx + lx * off, cz + lz * off]);
       }
       if (!stations.every(([bx, bz]) => clear(bx, bz))) continue;
-      // (props.dressingRules.fieldWorksLevel) the work stands where it was drawn, on the run of its stations the ground lets
-      // its modules follow: the longest run whose stations step no more than FIELD_WORK_STEP_M off the next, nor two
-      // steps from end to end. The stations off it are left out with their draws taken, so the work keeps its seat and
-      // every later work keeps its own (the coordinator's ruling, 2026-10-17: level the breastworks, never delete the
-      // cover; a first cut refused the whole work and the next draw laid it elsewhere, leaving the spot bare)
-      let keepFrom = 0, keepTo = stations.length - 1;
-      if (P.dressingRules?.fieldWorksLevel) {
-        const ys = stations.map(([bx, bz]) => heightField.getHeightAt(bx, bz));
-        let best = [0, 0];
-        for (let i = 0; i < ys.length; i++) {
-          let lo = ys[i], hi = ys[i], j = i;
-          while (j + 1 < ys.length && Math.abs(ys[j + 1] - ys[j]) <= FIELD_WORK_STEP_M
-            && Math.max(hi, ys[j + 1]) - Math.min(lo, ys[j + 1]) <= 2 * FIELD_WORK_STEP_M) { j++; lo = Math.min(lo, ys[j]); hi = Math.max(hi, ys[j]); }
-          if (j - i > best[1] - best[0]) best = [i, j];
-        }
-        [keepFrom, keepTo] = best;
-      }
-      for (const [si, [bx, bz]] of stations.entries()) {
+      const seats: FieldWorkReceipt['modules'] = [];
+      fieldWorkSeats.push({ x: cx, z: cz, modules: seats });
+      for (const [bx, bz] of stations) {
         const kind = SOURCED.sandbags ? (wrng() < 0.6 ? 'sandbagwall' : 'sandbagbig') : 'barrier';
         // every piece keeps its whole footprint out of the road core: one that would reach into it is left out, its
         // draws still taken, so the rest of the works keep their seats
         const moduleYaw = yaw + (wrng() - 0.5) * 0.1, moduleScale = SOURCED.sandbags ? 1.15 + wrng() * 0.2 : 1;
-        if (si < keepFrom || si > keepTo) continue;
-        if (!destructibleClearOfRoad(kind, bx, bz, moduleYaw, moduleScale)) continue;
-        addDestructible(kind, bx, heightField.getHeightAt(bx, bz) - 0.04, bz, moduleYaw, moduleScale);
+        if (!destructibleClearOfRoad(kind, bx, bz, moduleYaw, moduleScale)) { seats.push({ kind, x: bx, z: bz, out: 'road' }); continue; }
+        // (the maps lane, 229: terrain-seated breastworks; the coordinator's ruling, 2026-10-18: seat each module on its own
+        // ground, sunk at the base, and keep the full cover) each module stands on the ground under its own measured
+        // footprint, its courses following that ground's plane and its base under the lowest of it (fieldWorkSeat.ts): no
+        // corner in the air, none sunk past its own footprint. It stood level at the lowest point of a 2.3-2.7 m bounding
+        // disc, which on a slope stepped a work down in blocks sunk into the hill (a dyke's batter: "a dark rectangular block
+        // on the hillside"); 227's fieldWorksLevel left those modules out instead, and cut the local cover (Badlands 4 -> 1).
+        const [hw, hl] = destructibleFootprint(kind);
+        const seat = fieldWorkSeat(heightField, bx, bz, moduleYaw, hw * moduleScale, hl * moduleScale);
+        const record = addDestructible(kind, bx, seat.y, bz, moduleYaw, moduleScale, 0, 0, {
+          y: seat.y, shear: [seat.shearX, seat.shearZ],
+          support: { mode: 'obb', y: seat.y, min: seat.min, max: seat.max, spread: seat.max - seat.min },
+        });
+        seats.push({ kind, x: bx, z: bz, y: record.y, yaw: moduleYaw, sc: moduleScale, min: seat.min, max: seat.max,
+          shear: [seat.shearX, seat.shearZ], ...(record.slot < 0 ? { out: 'vetoed' as const } : {}) });
         bedSandbagNest(kind, bx, bz, moduleYaw, moduleScale, [fx, fz]); // (its spoil thrown toward the threat)
       }
       // wire belt 14–18 m toward the threat, one module wider than the breastwork on each side
@@ -8392,6 +8472,7 @@ ${snowCap ? `
     }
   }
   placeFieldWorks();
+  group.userData.fieldWorks = fieldWorkSeats;
 
   // the fortifications lane (2026-10-09; gauntlet wave 315: pillboxes "on brown plinths or on flat brown patches that
   // look pasted onto the grass", "weak footing", and their ask, "sand or earth banked against the pillboxes"): each
@@ -10964,6 +11045,45 @@ ${snowCap ? `
     placements: 0, placementBytes: 0, unsupportedTransforms: 0, buildMs: 0,
   };
   group.userData.groundCoverDetails = groundCoverDetails;
+  /**
+   * (229) A field work's module laid up a slope (record.shear, fieldWorkSeat.ts): its contact band and its shell slabs keep
+   * their outlines, cut into cells along the slope, each cell raised by the courses' rise at its centre; the records'
+   * heights span the lowest and highest of them.
+   */
+  function refitShearedRecord(record: DestructibleRecord, band: StructureCollisionRuntimeBand,
+    slabs: readonly { points: number[]; y0: number; y1: number }[] | null): void {
+    const [shearX, shearZ] = record.shear!;
+    const contact = shearedOutlines(band.parts.map((part) => {
+      const convex = part as Extract<SimpleCollisionShape, { kind: 'convex' }>;
+      return { points: convex.points, y0: convex.y0 ?? band.minY, y1: convex.y1 ?? band.maxY };
+    }), shearX, shearZ);
+    const sheared: StructureCollisionRuntimeBand = {
+      ...band, parts: contact.map((cell) => {
+        let cx = 0, cz = 0;
+        for (let i = 0; i < cell.points.length; i += 2) { cx += cell.points[i]; cz += cell.points[i + 1]; }
+        const n = cell.points.length / 2;
+        return { kind: 'convex' as const, cx: cx / n, cz: cz / n, points: cell.points, y0: cell.y0, y1: cell.y1 };
+      }),
+    };
+    const [lo, hi] = shearRiseRange(contact, shearX, shearZ);
+    applyStructureCollisionBand(record.ob!, sheared, record.x, record.z, record.yaw, record.y);
+    record.ob!.min[1] = record.y + Math.min(0, lo);
+    record.ob!.max[1] = record.y + record.h + hi;
+    if (!record.col) return;
+    if (!slabs?.length) {
+      applyStructureCollisionBand(record.col, sheared, record.x, record.z, record.yaw, record.y);
+      record.col.min[1] = record.ob!.min[1]; record.col.max[1] = record.ob!.max[1];
+      return;
+    }
+    const cells = shearedOutlines(slabs.map((slab) => ({
+      points: slab.points.map((value) => value * record.sc), y0: slab.y0 * record.sc, y1: slab.y1 * record.sc,
+    })), shearX, shearZ);
+    placeLocalShellSlabs(record.col, cells, record.x, record.y, record.z, record.yaw, 1);
+    let y0 = Infinity, y1 = -Infinity;
+    for (const cell of cells) { y0 = Math.min(y0, cell.y0); y1 = Math.max(y1, cell.y1); }
+    record.col.min[1] = Math.round((record.y + y0) * 100) / 100;
+    record.col.max[1] = Math.round((record.y + y1) * 100) / 100;
+  }
   function refitDestructibleColliders(
     geometry: THREE.BufferGeometry,
     pool: DestructiblePool,
@@ -11011,6 +11131,10 @@ ${snowCap ? `
             }),
       });
       const scaledBand = scaled(contactBand);
+      if (record.shear && !colliderBand && !shellBand && scaledBand.parts.every((part) => part.kind === 'convex')) {
+        refitShearedRecord(record, scaledBand, shellSlabs);
+        continue;
+      }
       applyStructureCollisionBand(record.ob, scaledBand, record.x, record.z, record.yaw, record.y);
       if (record.col) {
         applyStructureCollisionBand(record.col, colliderBand ? scaled(colliderBand) : scaledBand, record.x, record.z, record.yaw, record.y);

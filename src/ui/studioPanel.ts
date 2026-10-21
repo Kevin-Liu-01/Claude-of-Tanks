@@ -27,6 +27,7 @@ import { createPlanView, type StudioPlanFeatures } from './studioPlanView.ts';
 import { getLocale, t } from './i18n.ts';
 import { STUDIO_FX_PARAMS } from '../game/studioFxSettings.ts';
 import { hrefForLocale } from './localeRouting.ts';
+import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
 import { FILM_RESOLUTIONS, createFilmPlan, filmOutputSize, normalizeFilm } from '../game/studioFilmPlan.ts';
 
 const STUDIO_GUIDES = {
@@ -299,6 +300,11 @@ interface StudioPanelRuntime {
   show(): void;
   hide(): void;
   setBusy(text: string | null): void;
+  /**
+   * A scene-link notice: the sentence, and an optional technical detail on its own line. Information fades after a few
+   * seconds; an error stays until dismissed or replaced, and announces assertively.
+   */
+  notice(text: string, tone?: 'info' | 'error', detail?: string): void;
   setPlaceArmed(specId: string | null): void;
   setSelected(actor: StudioActor | null): void;
   setSelectedEffect(effect: StudioEffect | null): void;
@@ -329,6 +335,28 @@ const CSS = `
 .cot-studio .busy{position:absolute;top:16px;left:50%;transform:translateX(-50%);
   padding:8px 18px;background:rgba(6,9,12,.88);border:1px solid rgba(230,154,45,.5);
   color:#ffd27a;font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;display:none;}
+.cot-studio .notice{position:absolute;top:72px;left:calc(var(--studio-preview-width,100%) / 2);transform:translateX(-50%);
+  z-index:2;pointer-events:auto;width:max-content;max-width:min(540px,calc(var(--studio-preview-width,100%) - 32px));
+  box-sizing:border-box;display:none;
+  grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:12px;padding:12px 10px 12px 14px;
+  background:rgba(6,9,12,.94);border:1px solid rgba(230,154,45,.5);border-left:3px solid #e69a2d;
+  box-shadow:0 14px 36px rgba(0,0,0,.5);color:#f3e2bd;}
+.cot-studio .notice[data-open]{display:grid;}
+.cot-studio .notice .ng svg{display:block;margin-top:1px;color:#ffd27a;}
+.cot-studio .notice .nt{display:grid;gap:5px;min-width:0;}
+.cot-studio .notice .nt b{font-size:13px;font-weight:600;line-height:1.4;letter-spacing:0;text-transform:none;}
+.cot-studio .notice .nd[hidden]{display:none;}
+.cot-studio .notice .nd summary{width:max-content;cursor:pointer;font-size:11px;font-weight:600;color:#a7b4bf;}
+.cot-studio .notice .nd summary:focus-visible{outline:2px solid #ffd27a;outline-offset:2px;}
+.cot-studio .notice .nd code{display:block;margin-top:4px;font:500 10.5px/1.4 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  color:#a7b4bf;overflow-wrap:anywhere;}
+.cot-studio .notice .nx{display:grid;place-items:center;width:28px;height:28px;padding:0;margin:-4px 0;font-size:16px;
+  line-height:1;letter-spacing:0;color:#9fb0bf;background:transparent;border-color:transparent;box-shadow:none;}
+.cot-studio .notice .nx:hover,.cot-studio .notice .nx:focus-visible{color:#ffd27a;border-color:rgba(230,154,45,.6);}
+.cot-studio .notice[data-tone=error]{border-color:rgba(255,128,104,.6);border-left-color:#ff8068;color:#ffd9cf;}
+.cot-studio .notice[data-tone=error] .ng svg{color:#ff9c83;}
+.cot-studio button.scene-link{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:5px;}
+.cot-studio button.scene-link svg{display:block;flex:0 0 auto;}
 .cot-studio .dock{position:absolute;top:0;right:0;bottom:0;width:390px;pointer-events:auto;
   background:rgba(5,8,11,.94);border-left:1px solid rgba(210,221,230,.17);
   box-shadow:-12px 0 28px rgba(0,0,0,.26);backdrop-filter:blur(12px) saturate(.85);
@@ -659,6 +687,30 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
 
   const busy = el('div', 'busy');
   root.appendChild(busy);
+  // Scene-link notices: a glyph (constant markup), the sentence and the detail as text, and a dismiss button.
+  const notice = el('div', 'notice');
+  notice.dataset.studioNotice = '';
+  const noticeGlyph = el('span', 'ng');
+  const noticeText = el('div', 'nt');
+  const noticeMessage = el('b');
+  // the technical reason (a refused field's path) waits behind Details; the sentence says what happened and what to do
+  const noticeMore = el('details', 'nd');
+  const noticeDetail = el('code');
+  noticeMore.append(el('summary', null, t('studio.sceneLink.details')), noticeDetail);
+  noticeText.append(noticeMessage, noticeMore);
+  const noticeClose = el('button', 'nx', '×');
+  noticeClose.type = 'button';
+  noticeClose.setAttribute('aria-label', t('studio.sceneLink.dismiss'));
+  noticeClose.title = t('studio.sceneLink.dismiss');
+  notice.append(noticeGlyph, noticeText, noticeClose);
+  root.appendChild(notice);
+  let noticeTimer: ReturnType<typeof setTimeout> | null = null;
+  const hideNotice = (): void => {
+    if (noticeTimer !== null) clearTimeout(noticeTimer);
+    noticeTimer = null;
+    delete notice.dataset.open;
+  };
+  noticeClose.addEventListener('click', hideNotice);
 
   // --- right dock --------------------------------------------------------------
   const dock = el('div', 'dock');
@@ -1662,7 +1714,17 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     flashBusy(t('studio.sceneJsonCopied'));
   });
   svRow.append(saveBtn, loadBtn, copyBtn);
-  secCap.append(svRow, fileIn);
+  // Copy scene link (studioSceneLinkUi.ts): the scene itself rides in the link's #fragment, capped and schema-checked.
+  const linkBtn = el('button', 'scene-link');
+  linkBtn.innerHTML = SCENE_LINK_GLYPHS.link;
+  linkBtn.append(el('span', null, t('studio.sceneLink.copy')));
+  linkBtn.title = t('studio.sceneLink.copyTitle');
+  linkBtn.dataset.sceneLinkCopy = '';
+  linkBtn.addEventListener('click', () => {
+    copySceneLink(S.state(), browserSceneLinkEnv())
+      .then((result) => api.notice(result.message, result.ok ? 'info' : 'error', result.detail));
+  });
+  secCap.append(svRow, linkBtn, fileIn);
   // localStorage slots
   const slotRow = el('div', 'grid3');
   slotRow.style.marginTop = '5px';
@@ -2016,6 +2078,19 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     setBusy(text) {
       busy.style.display = text ? 'block' : 'none';
       if (text) busy.textContent = text;
+    },
+    notice(text, tone = 'info', detail = '') {
+      hideNotice();
+      noticeGlyph.innerHTML = tone === 'error' ? SCENE_LINK_GLYPHS.broken : SCENE_LINK_GLYPHS.done;
+      noticeMessage.textContent = text;
+      noticeDetail.textContent = detail;
+      noticeMore.hidden = !detail;
+      noticeMore.open = false;
+      notice.dataset.tone = tone;
+      notice.setAttribute('role', tone === 'error' ? 'alert' : 'status');
+      notice.setAttribute('aria-live', tone === 'error' ? 'assertive' : 'polite');
+      notice.dataset.open = '';
+      if (tone !== 'error') noticeTimer = setTimeout(hideNotice, 5000);
     },
     setPlaceArmed(specId) {
       placeBtn.classList.toggle('on', !!specId);

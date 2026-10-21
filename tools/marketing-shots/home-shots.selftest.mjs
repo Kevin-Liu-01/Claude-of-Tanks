@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { GAME_MODE_DEFINITIONS, GAME_MODE_IDS } from '../../src/sim/matchModes.ts';
+import { BATTLE_MODE_IDS, GAME_MODE_DEFINITIONS } from '../../src/sim/matchModes.ts';
 import { renderProductStats } from '../../src/productStats.ts';
 import { replaceAppVersionTokens } from '../appVersion.ts';
 
@@ -90,8 +90,8 @@ for (const retired of ['/media/home/garage-m1a3-fleet.webp', '/media/multiplayer
 const modesSection = home.match(/<section class="v5-modes"[\s\S]*?\n {4}<\/section>/)?.[0] ?? '';
 // (a mode whose shot has not landed keeps its card in the markup, hidden: the order holds)
 const cards = [...modesSection.matchAll(/<article class="v5-mode[^"]*" data-mode="([a-z0-9_]+)"(?: hidden)?>([\s\S]*?)<\/article>/g)];
-assert.deepEqual(cards.map((c) => c[1]), [...GAME_MODE_IDS], 'one card per game mode, in GAME_MODE_IDS order');
-assert.deepEqual(picks.home.modes.map((m) => m.id), [...GAME_MODE_IDS], 'one mode shot per game mode');
+assert.deepEqual(cards.map((c) => c[1]), [...BATTLE_MODE_IDS], 'one card per battle mode, in BATTLE_MODE_IDS order (the practice modes are not battles)');
+assert.deepEqual(picks.home.modes.map((m) => m.id), [...BATTLE_MODE_IDS], 'one mode shot per battle mode');
 for (const [, id, body] of cards) {
   assert.ok(body.includes(`data-ui-icon="${GAME_MODE_DEFINITIONS[id].icon}"`), `${id} wears the battle setup's icon`);
   assert.ok(body.includes(`data-i18n="playMenu.matchMode.${id}.label">${en[`playMenu.matchMode.${id}.label`]}<`),
@@ -104,7 +104,7 @@ for (const [, id, body] of cards) {
   }
 }
 assert.match(modesSection, /data-i18n="home\.modes\.title" data-i18n-vars='\{"count":"\{\{COT_BATTLE_MODES\}\}"\}'/,
-  'the modes heading counts the registry (productStats.ts, GAME_MODE_IDS)');
+  'the modes heading counts the registry (productStats.ts, BATTLE_MODE_IDS)');
 assert.equal((modesSection.match(/v5-mode--hero/g) || []).length, 1, 'one lead mode card');
 
 // --- the mechanics: four groups, twenty to twenty-eight cards, each with copy in both languages ----------------------
@@ -133,6 +133,6 @@ for (const [section] of groups) {
   const left = [...new Set(served.match(/\{\{[^{}]*\}\}/g) ?? [])];
   assert.deepEqual(left, [], `site/home.html as served carries no unresolved token (${left.join(', ')})`);
   const modesHeading = served.match(/<h2 id="modes-title"[^>]*>([^<]*)</)?.[1] ?? '';
-  assert.match(modesHeading, new RegExp(`\\b${GAME_MODE_IDS.length}\\b`), `the modes heading as served counts the modes (${modesHeading})`);
+  assert.match(modesHeading, new RegExp(`\\b${BATTLE_MODE_IDS.length}\\b`), `the modes heading as served counts the modes (${modesHeading})`);
 }
 console.log(`home-shots.selftest: ${picked.length + 1} slots (${picked.filter(({ group, entry }) => built.has(`${C}/home/${group}/${entry.id}.webp`)).length} delivered), ${cards.length} modes, ${mechanicCards.length} mechanics`);

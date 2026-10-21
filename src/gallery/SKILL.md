@@ -13,8 +13,14 @@ specimen without duplicating the canonical fleet registry or combat metadata.
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
 `catalog.ts` derives read-only search, ratings, technical copy, and the versioned
-copy-data record from vehicle specs. `overlays.ts` turns canonical armor plates,
-module boxes, and crew boxes into disposable diagnostic geometry;
+copy-data record from vehicle specs; its class and role filters and facet search
+read `src/vehicles/vehicleFacets.ts` and `vehicleFacetSearch.ts`. The Armor, Modules and Crew layers are the
+lazy anatomy view: `anatomyData.ts` reads the combat armor model into the lists
+`traceTank` tests (pure, Node-runnable), `anatomyScene.ts` draws them in the
+combat frames (heat map, `anatomyModules.ts` models, `anatomyCrew.ts`
+mannequins, hit volumes), and `anatomyView.ts` (loaded through `import()`) owns
+the ghost exterior pass, toggles, legend, badges and readouts. `overlays.ts`
+still builds the baked side diagrams and field-guide scenes;
 `viewGlyphs.ts` owns the exhaustive camera-view icon vocabulary.
 `surfaceMarkup.ts` owns live triangle/patch selection, articulation ownership,
 review annotations, JSON, and PNG capture. `inAction.ts` is the dossier's lazy
@@ -42,9 +48,9 @@ contract. `site/gallery.html` and `gallery.css` own the public surface;
 <!-- agent-docs:fill:tasks -->
 - Dossier/search work: change `catalog.ts`, then run
   `node src/gallery/catalog.selftest.mjs`.
-- Overlay work: inspect the source volume shape in `src/vehicles/specs.ts`,
-  verify hull- versus turret-local ownership, then select the live volume in a
-  browser.
+- Anatomy work: run `node src/gallery/anatomyFidelity.selftest.mjs`
+  (`ANATOMY_IDS=a,b` narrows it) and, in a lane, `node tools/anatomy-frozen-check.mjs`
+  to prove combat data is untouched; select the live part in a browser.
 - Surface-markup work: run `node src/gallery/surfaceMarkup.selftest.mjs`, then
   test face/patch scope, additive selection, ownership, focus, JSON, and PNG in
   the browser.
@@ -63,4 +69,8 @@ extractions or real-world engineering claims. Anatomical turret overlays remain 
 hitboxes instead use `createCombatFrames`, updated with every articulation and
 frame: combat coordinates must not inherit presentation-only rig scaling.
 The legacy `/surface-studio` path is redirect-only; do not recreate a second
-viewer or authoring state owner.
+viewer or authoring state owner. Anatomy draws the sim's surfaces, not the
+visual mesh: collision cells are plane polytopes and plates are their ray-test
+polygons, one-sided. Never import the anatomy modules statically from
+`gallery.ts`, and never edit `overlays.ts` or `internalAnatomyVisuals.ts` for
+Gallery looks: they feed the baked diagrams and the kill cam.

@@ -23,9 +23,9 @@
 
 const FILM_FRAME_RATES = [24, 30, 60] as const;
 type FilmFps = typeof FILM_FRAME_RATES[number];
-const FILM_SPEED_EASES = ['smooth', 'linear', 'step'] as const;
+export const FILM_SPEED_EASES = ['smooth', 'linear', 'step'] as const;
 type FilmSpeedEase = typeof FILM_SPEED_EASES[number];
-const FILM_FILTERS = ['gaussian', 'box'] as const;
+export const FILM_FILTERS = ['gaussian', 'box'] as const;
 export type FilmFilter = typeof FILM_FILTERS[number];
 
 const FILM_MIN_SPEED = 0.05;
