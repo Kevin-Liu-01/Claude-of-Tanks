@@ -1,6 +1,6 @@
 {
  "note": "Combat-data byte identity for the Gallery anatomy lane: sha256 of every frozen path and a canonical-JSON hash of getSpec(id).armor per vehicle. Rewrite only at a reviewed base (tools/anatomy-frozen.mjs --write).",
- "base": "067f7df20f",
+ "base": "4a32bbbb3a",
  "files": {
   "src/gallery/overlays.ts": "372cd6847353a1de0e984ea6e57da47b709e658a4ee1c05e7823699bc3a918bf",
   "src/sim/SKILL.md": "52a11875d77c0605600e67fa27720199a6598e4256a8764b0d0a66741d715334",
