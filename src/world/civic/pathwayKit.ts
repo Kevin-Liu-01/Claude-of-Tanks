@@ -508,7 +508,8 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
     // whole: from the kerb's back round the arc out to where the two pavements' outer edges meet, a fan of flags from
     // that corner point (each flag kept off the houses)
     {
-      const oA = c.outerA ?? W0 + prof(c.road).openWalk, oB = c.outerB ?? W0 + prof(c.other).openWalk;
+      const deep = plan.cornerDepthM ?? 0;
+      const oA = (c.outerA ?? W0 + prof(c.road).openWalk) + deep, oB = (c.outerB ?? W0 + prof(c.other).openWalk) + deep;
       const J: [number, number] = [c.jx, c.jz];
       // Q = J + dA s + nAc oA = J + dB t + nBc oB
       const rx = c.nBc[0] * oB - c.nAc[0] * oA, rz = c.nBc[1] * oB - c.nAc[1] * oA;
@@ -516,7 +517,7 @@ export function buildPathwayNetwork(plan: PathwayPlan, style: RegionalCivicStyle
       if (Math.abs(det) > 0.2) {
         const s = (rx * -c.dB[1] - rz * -c.dB[0]) / det;
         const Q: [number, number] = [J[0] + c.dA[0] * s + c.nAc[0] * oA, J[1] + c.dA[1] * s + c.nAc[1] * oA];
-        if (Math.hypot(Q[0] - O[0], Q[1] - O[1]) < 8) {
+        if (Math.hypot(Q[0] - O[0], Q[1] - O[1]) < 8 + deep * 1.5) {
           const PA: [number, number] = [J[0] + c.dA[0] * c.t0 + c.nAc[0] * oA, J[1] + c.dA[1] * c.t0 + c.nAc[1] * oA];
           const PB: [number, number] = [J[0] + c.dB[0] * c.tB + c.nBc[0] * oB, J[1] + c.dB[1] * c.tB + c.nBc[1] * oB];
           const rim: Array<[number, number]> = [PA];

@@ -23,6 +23,11 @@ const L = (hex: number): Rgb => hexLin(hex);
 
 const ENAMEL = L(0xe6dcc0), TRIM = L(0x2f5a3c), ROOF = L(0x5a5e5c), GLASS = L(0x9fb4bc), YELLOW = L(0xe2a900), ALU = L(0xb8bcbc);
 const IRON = L(0x2f3a30), CONCRETE = L(0x837f77), SOIL = L(0x3a2e22), SHRUB = L(0x335a2a), SHRUB_DARK = L(0x264620);
+// (228 r6, the blind critics: "plain white boxes topped with blobby low-poly green balls", "an untextured white cylinder",
+// "a plain white box": the pale finishes read white in low sun) the planter's washed-aggregate concrete, its geraniums, the
+// kiosk's aged enamel and its posters, the litter bin's green steel
+const WASHED = L(0x6c675e), WASHED_LIP = L(0x8a857a), GERANIUM = L(0xb3262a), GERANIUM_PALE = L(0xd8cfc4), LEAF = L(0x2e4a26);
+const KIOSK_ENAMEL = L(0xb6a984), BIN_GREEN = L(0x2c4634), BIN_DARK = L(0x1e2a22);
 const LITFASS = L(0x2f4a3a), CORNICE = L(0x3a4a40);
 const POSTERS: readonly Rgb[] = [L(0xc8b47a), L(0xa8584a), L(0x6a7a98), L(0xd8d2c2), L(0x7a8a68), L(0xb8865a), L(0x8a5a6a), L(0xcac4b2)];
 const PAPER = L(0xd6cfbd);
@@ -51,7 +56,7 @@ function kioskNear(rng: Rng): THREE.BufferGeometry {
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) upright(m, sx * (hw - 0.05), sz * (hd - 0.05), 0.15, KH - 0.32, 0.1, 0.1, TRIM, 0.015);
   // the walls of enamel panels between the posts: the back and the sides whole (their panel seams proud), the front
   // round the hatch (1.5 wide, from 1.0 to 1.95 m)
-  const enamel = (): Rgb => tone(ENAMEL, rng, 0.05);
+  const enamel = (): Rgb => tone(KIOSK_ENAMEL, rng, 0.05);
   const y0 = 0.15, y1 = KH - 0.32, hatch0 = 1.0, hatch1 = 1.95, hx = 0.75;
   for (const sx of [-1, 1]) {
     bar(m, [sx * (hw - t / 2), (y0 + y1) / 2, -hd + 0.1], [sx * (hw - t / 2), (y0 + y1) / 2, hd - 0.1], t, y1 - y0, X, enamel(), 0.004);
@@ -217,16 +222,48 @@ function pollerNear(rng: Rng): THREE.BufferGeometry {
   return finish(m);
 }
 
+// ------------------------------------------------------------------------------------------ the litter bin
+
+/** (228 r6) The town's litter bin of the 1980s: a green steel drum of ribbed sheet on a post, its domed lid's mouth, the
+ *  ashtray plate on top. */
+function abfallkorbNear(rng: Rng): THREE.BufferGeometry {
+  const m = newMesh();
+  pole(m, [0, 0, 0], [0, 0.42, 0], 0.035, 6, BIN_DARK, true);
+  bar(m, [0, 0.02, 0], [0, 0.02, 0], 0.22, 0.04, Z, mul(CONCRETE, 0.8), 0.01);
+  lathe(m, [[0.2, 0.36], [0.22, 0.4], [0.22, 0.9], [0.235, 0.92], [0.235, 0.96], [0.18, 1.0], [0.08, 1.03], [0, 1.035]], 12,
+    (k, b) => (b >= 3 ? mul(BIN_DARK, 1.1) : mul(BIN_GREEN, (k % 2 ? 1.0 : 0.86) * (0.96 + rng() * 0.04))), { faceted: true });
+  // the mouth in the lid's front and the ashtray's plate
+  bar(m, [0, 0.95, 0.19], [0, 0.95, 0.19], 0.2, 0.06, Z, BIN_DARK, 0.004);
+  lathe(m, [[0.07, 1.035], [0.075, 1.05], [0, 1.055]], 8, () => ALU, { faceted: true });
+  return finish(m);
+}
+
+function abfallkorbBroken(rng: Rng): THREE.BufferGeometry {
+  // knocked off its post: the post's stub still standing, its top bent over, the drum dented and squashed beside it, its lid sprung
+  const m = newMesh();
+  pole(m, [0, 0, 0], [0.02, 0.36, 0.01], 0.035, 6, BIN_DARK, true);
+  pole(m, [0.02, 0.36, 0.01], [0.3, 0.44, 0.1], 0.033, 6, BIN_DARK, false);
+  lathe(m, [[0.24, 0], [0.27, 0.04], [0.25, 0.18], [0.27, 0.27], [0.22, 0.32]], 12, (k) => mul(BIN_GREEN, (k % 2 ? 0.9 : 0.76) * (0.95 + rng() * 0.05)), { faceted: true, x: 0.3, z: 0.12 });
+  lathe(m, [[0.2, 0], [0.22, 0.03], [0.1, 0.06], [0, 0.07]], 10, () => mul(BIN_DARK, 1.05), { faceted: true, x: -0.22, z: 0.18 });
+  return finish(m);
+}
+
 // --------------------------------------------------------------------------------------------- the planter
 
 function pflanzkuebelNear(rng: Rng): THREE.BufferGeometry {
   const m = newMesh();
-  // the hexagonal tub: its foot, its walls, its rim lip (faceted: six sides), the soil inside
-  lathe(m, [[0.56, 0], [0.6, 0.04], [0.6, 0.48], [0.64, 0.5], [0.64, 0.56], [0.54, 0.56], [0.54, 0.5]], 6, (k, b) => mul(CONCRETE, 0.92 + (k % 2) * 0.05 + (b > 2 ? 0.06 : 0)), { faceted: true, phase: Math.PI / 6 });
+  // the hexagonal tub of washed-aggregate concrete: its foot, its walls (each face its own tone), its paler rim lip, the
+  // soil inside
+  lathe(m, [[0.56, 0], [0.6, 0.04], [0.6, 0.48], [0.64, 0.5], [0.64, 0.56], [0.54, 0.56], [0.54, 0.5]], 6, (k, b) => (b >= 3 ? mul(WASHED_LIP, 0.95 + (k % 2) * 0.05) : mul(WASHED, 0.9 + ((k * 7) % 5) * 0.035)), { faceted: true, phase: Math.PI / 6 });
   lathe(m, [[0.54, 0.48], [0, 0.49]], 6, () => SOIL, { faceted: true, phase: Math.PI / 6 });
-  // the clipped shrub: a faceted ball in two tones, a smaller lump at its side
-  lathe(m, [[0.1, 0.48], [0.38, 0.58], [0.46, 0.75], [0.42, 0.92], [0.28, 1.04], [0, 1.08]], 9, (k, b) => (k + b) % 2 ? SHRUB : SHRUB_DARK, { faceted: true, phase: rng() });
-  lathe(m, [[0.06, 0.49], [0.2, 0.55], [0.22, 0.66], [0.12, 0.74], [0, 0.76]], 7, (k) => (k % 2 ? SHRUB_DARK : SHRUB), { faceted: true, x: 0.28, z: 0.12 });
+  // the clipped box: two lumps of it in two greens, the taller off the middle
+  lathe(m, [[0.08, 0.48], [0.27, 0.57], [0.33, 0.72], [0.28, 0.87], [0.15, 0.96], [0, 0.98]], 8, (k, b) => (k + b) % 3 ? SHRUB : SHRUB_DARK, { faceted: true, phase: rng(), x: -0.06, z: -0.04 });
+  lathe(m, [[0.05, 0.49], [0.19, 0.56], [0.19, 0.67], [0.1, 0.74], [0, 0.75]], 6, (k) => (k % 2 ? SHRUB_DARK : SHRUB), { faceted: true, x: 0.2, z: 0.16 });
+  // the geraniums round the rim: five clumps, their leaves and their flower heads in one, red with a pale one
+  for (let k = 0; k < 5; k++) {
+    const a = (k / 5) * Math.PI * 2 + 0.4 + rng() * 0.3, r = 0.43, x = Math.sin(a) * r, z = Math.cos(a) * r;
+    lathe(m, [[0.05, 0.5], [0.12, 0.56], [0.09, 0.64], [0, 0.67]], 4, (_k, b) => (b < 1 ? LEAF : k === 3 ? GERANIUM_PALE : GERANIUM), { faceted: true, x, z, phase: rng() });
+  }
   return finish(m);
 }
 
@@ -421,6 +458,7 @@ export const CIVIC_RECORDS = Object.freeze({
   telzelle: { cls: 'break', mat: 'baked', contact: 'ob', r: 0.82, h: TH, hw: 0.6, hl: 0.6, keep: 0.94, crushMin: 1.2 },
   poller: { cls: 'break', mat: 'baked', contact: 'ob', r: 0.15, h: 0.92, shape: 'circle', collisionR: 0.13, keep: 0.97 },
   pflanzkuebel: { cls: 'break', mat: 'baked', contact: 'ob', r: 0.66, h: 1.08, shape: 'circle', collisionR: 0.64, keep: 0.93 },
+  abfallkorb: { cls: 'break', mat: 'baked', contact: 'ob', r: 0.26, h: 1.06, shape: 'circle', collisionR: 0.24, keep: 0.96 },
   memorialcolumn: { cls: 'break', mat: 'stone', contact: 'ob', r: 2.05, h: 12.3, shape: 'circle', collisionR: 2.05, collider: true, keep: 0.35, crushMin: 999 },
 } as const);
 
@@ -431,6 +469,7 @@ export const CIVIC_BUILDERS: Readonly<Record<string, { build: (rng: Rng) => THRE
   telzelle: { build: telzelleNear, broken: telzelleBroken },
   poller: { build: pollerNear, broken: pollerBroken },
   pflanzkuebel: { build: pflanzkuebelNear, broken: pflanzkuebelBroken },
+  abfallkorb: { build: abfallkorbNear, broken: abfallkorbBroken },
 });
 
 /** The civic furniture kinds as props destructible types (props.ts LOCAL_TYPES). */

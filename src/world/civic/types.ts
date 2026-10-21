@@ -46,6 +46,9 @@ export interface PathwayPlan {
   /** (229 b1 r1) inside the town too, only the fronted stretches, joined over open gaps of up to this many metres (a town
    *  without a wall: no pavement along open ground or a long vacant lot); absent: inside, every stretch corner to corner. */
   readonly openGapM?: number;
+  /** (228 r6, the blind critics: "rounded kerb corners enclose dirt with grass tufts") a corner's paving carried this much
+   *  past where the two pavements' outer edges meet, into a vacant corner lot (each flag still kept off the houses); absent 0 */
+  readonly cornerDepthM?: number;
   /** Where a main street's pavement meets a square's flush walk: its kerb ramps down over 2 m to flush. */
   readonly mouths: readonly CivicPoint[];
 }
@@ -63,6 +66,8 @@ export interface CivicBed {
   readonly rect: CivicRect;
   readonly mouths: readonly CivicMouth[];
   readonly paths: readonly CivicBedPath[];
+  /** (228 r7) a low bed: its kerb only, no dwarf wall, railing or piers (a lawn laid flush in a fight's ground) */
+  readonly low?: boolean;
   /** a round flower bed with its gravel ring at the paths' crossing, or a memorial grove's forecourt and hedge */
   readonly feature: { readonly kind: 'flowerRondell'; readonly x: number; readonly z: number; readonly r: number; readonly ring: number }
     | { readonly kind: 'hedgeArc'; readonly x: number; readonly z: number; readonly r: number; readonly height: number; readonly fromDeg: number; readonly toDeg: number }
@@ -85,6 +90,8 @@ export interface CivicPaving {
   readonly kind: 'flags' | 'granite' | 'basalt' | 'setts' | 'tiles';
   /** a gutter (Rinne) of three sett rows along one long side */
   readonly gutter?: 'n' | 's' | 'e' | 'w';
+  /** (228 r7) flags laid on the ground every this many metres (a street's camber; the default 2 m) */
+  readonly cell?: number;
 }
 
 /** A town square's civic area (civicAreaKit.ts). */
@@ -95,6 +102,11 @@ export interface CivicAreaPlan {
   /** The ground the terrain paves for the square (the room and out to the set-back facades round it; under the houses it
    *  is never seen). */
   readonly paved: CivicRect;
+  /** (228 r6) Flush street work in the open paving (the coordinator: "gutters and drains, manholes ... leaf litter"):
+   *  cast-iron manhole covers at their seats; leaf litter under the trees (litterR m round each station, 0: none). The
+   *  gutters (rinnen) take their gully grates every 12 m of their own. */
+  readonly covers?: ReadonlyArray<{ readonly x: number; readonly z: number }>;
+  readonly litterR?: number;
   /** The square's gutters (Rinnen): three rows of setts along the carriageways' edges, segment by segment. */
   readonly rinnen: ReadonlyArray<{ readonly from: CivicPoint; readonly to: CivicPoint }>;
   /** The kinds the room's veto leaves alone (the street lamps keep their posts: the lamps snap off the facades instead). */
@@ -122,7 +134,10 @@ export interface CivicAreaPlan {
    *  out of it and leaves the map's (a hedgehog, a shed the map stands there without the plan) to the map. */
   readonly holds: ReadonlyArray<{ readonly id: string; readonly x: number; readonly z: number; readonly r: number; readonly planOnly?: boolean }>;
   /** The roundel at the crossing: its ring band and its rose, flush. */
-  readonly centre: { readonly x: number; readonly z: number; readonly ringR: readonly [number, number]; readonly roseR: number; readonly rays: number };
+  /** The roundel: its ring band, its rose and rays; `fill` lays the ground between the rose and the ring in concentric
+   *  courses of the style's setts (a klinker roundel on a green with no paved square under it); `hidden` draws none (the
+   *  crossing paved as the square, the ring kept as the hold's measure). */
+  readonly centre: { readonly x: number; readonly z: number; readonly ringR: readonly [number, number]; readonly roseR: number; readonly rays: number; readonly fill?: boolean; readonly fillHex?: number; readonly hidden?: boolean };
   readonly beds: readonly CivicBed[];
   /** The flush granite bands between a bed's kerb and the arms. */
   readonly paving: readonly CivicPaving[];
