@@ -46,11 +46,9 @@ function hull(P:TankBuilderPort):void {
     fenderReinforcements(P,side);
   }
   // The broad low apron is a separate thin hanging sheet, not a filled hull: the T-80U's rubber mat over the lower
-  // front plate. Art fixes 230 (2026-10-21, hero-card critics: "a flat, untextured dark slab hangs under the nose" on
-  // every hull that builds it): the mat is painted in the vehicle scheme like the side aprons (crews paint it with the
-  // hull) and a bolted clamp strip holds its top edge under the hanger struts. Its measured extent is unchanged.
-  P.addMudguard('t80u-x-bow-apron','hullFixedPaintedBodywork',
-    markFixedPaintedPanel(box(2.04451,.68890,.00902),'t80u-x-bow-apron','hullRubber'),0,.566517,3.011124);
+  // front plate, bare rubber (owner 2026-10-21: "they are technically supposed to be made of rubber"). Art fixes 230:
+  // a bolted steel clamp strip holds its top edge under the hanger struts. Its measured extent is unchanged.
+  P.addMudguard('t80u-x-bow-apron','hullRubber',box(2.04451,.68890,.00902),0,.566517,3.011124);
   P.addEquipment('hullDetail',box(2.03,.046,.014),0,.885,3.0215);
   const apronHangers=[-.72,-.591,-.463,-.067,.067,.463,.591,.72];
   for(const x of apronHangers)P.addEquipment('hullDetail',beamBetween([x,.925,3.025],[x,.976,3.129],.018));
@@ -81,7 +79,7 @@ function skirt(P:TankBuilderPort,side:number):void {
   };
   // Forward armored sections under the Kontakt-5 bank carry paint; the rear
   // rubber-fabric apron is painted in the vehicle scheme too (fleet paint
-  // standard 2026-09-11), and so is the bow apron since 2026-10-21.
+  // standard 2026-09-11), so only the bow apron and mud flaps stay black.
   P.addMudguard('t80u-x-side-apron-rear','hullFixedPaintedBodywork',markFixedPaintedPanel(sectionSolid([
     {z:-2.882,ring:ring(.886,1.414)},{z:-2.45,ring:ring(.815,1.458)},
     {z:-1.22,ring:ring(.782,1.504)},
