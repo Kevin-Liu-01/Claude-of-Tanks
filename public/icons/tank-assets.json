@@ -1047956,7 +1047956,7 @@
           }
         ]
       },
-      "geometryHash": "8e652638",
+      "geometryHash": "111baf04",
       "metadataHash": "dcab0b4d",
       "presentationAnchor": {
         "xM": -0.0031,
@@ -1179262,7 +1179262,7 @@
           }
         ]
       },
-      "geometryHash": "f70d275a",
+      "geometryHash": "aad441f6",
       "metadataHash": "447e79a7",
       "presentationAnchor": {
         "xM": 0.0016,
@@ -1348027,7 +1348027,7 @@
           }
         ]
       },
-      "geometryHash": "3576d4b8",
+      "geometryHash": "192494ff",
       "metadataHash": "eb6f8139",
       "presentationAnchor": {
         "xM": 0.001,
@@ -1348113,8 +1348113,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30322,
-          "sha256": "d44a573674cd0e633b0953a2ea1fa28957fbb06822fc1a737c293a78a85beb21",
+          "bytes": 30318,
+          "sha256": "f5da417e24580f5b86a00c2d996b3ec9019258562de34d57de3807219bcf5e7f",
           "thumbnail": {
             "file": "thumbs/t72b3m_hetman_ii_angle.webp",
             "width": 256,
@@ -1478254,7 +1478254,7 @@
           }
         ]
       },
-      "geometryHash": "ef5fc717",
+      "geometryHash": "e2619d07",
       "metadataHash": "65fc8887",
       "presentationAnchor": {
         "xM": 0.0014,
@@ -1478317,15 +1478317,15 @@
           "height": 256,
           "mime": "image/png",
           "bytes": 96457,
-          "sha256": "8559f1bac68c590b340294e495e659f04dbcd60a1de5ba1c6312749d3df83413"
+          "sha256": "edf0870b7c902b20a92183f46a00d811169512313c12f30c56b72c16929b092e"
         },
         "modulesSide": {
           "file": "t72b3m_wilk_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 96662,
-          "sha256": "f92a993692e9e5e141976cf91d9ff0f6557aea3241e13d37045114e015a000e8"
+          "bytes": 96633,
+          "sha256": "8e61ecef34cef06305c031bd22b68bbd8cfbd36c3b11db69a117c6f4da76ddc4"
         },
         "crewSide": {
           "file": "t72b3m_wilk_crew_side.png",
@@ -1478333,15 +1478333,15 @@
           "height": 256,
           "mime": "image/png",
           "bytes": 82743,
-          "sha256": "cf837975ec104d5e547aa6933f0362bc8a3a5d6ec1ac7a8ca9a479b7b6ae4bf4"
+          "sha256": "dcc86a317b5a4be8de01630e7e15e2aadcb473d5dcaa58384f98dac72143cbb9"
         },
         "angle": {
           "file": "t72b3m_wilk_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26790,
-          "sha256": "2dcb552324bd7b5e891e7fc42a5ebb4096f46a6575a10da2ddd48b8897b1f931",
+          "bytes": 26786,
+          "sha256": "6c27d727e51e03bd920da0bc2ade2385645e42ea4c534d44ce28b913e71be2b8",
           "thumbnail": {
             "file": "thumbs/t72b3m_wilk_angle.webp",
             "width": 256,
@@ -1478365,7 +1478365,7 @@
           "height": 256,
           "mime": "image/webp",
           "bytes": 9864,
-          "sha256": "c5ee51997d74fd89191cc5f99ff28d7469b7ee1b38484b91fb90dbaf4de3d22e"
+          "sha256": "ed24d6b1473a818fbd0ba4d5045ff5131ecacbfc8b4bc18af7b237da92e10493"
         },
         "topSilhouette": {
           "file": "t72b3m_wilk_top_silhouette.png",
@@ -1736260,7 +1736260,7 @@
           }
         ]
       },
-      "geometryHash": "8062fc15",
+      "geometryHash": "151aedb9",
       "metadataHash": "dd1f0332",
       "presentationAnchor": {
         "xM": 0.0079,
