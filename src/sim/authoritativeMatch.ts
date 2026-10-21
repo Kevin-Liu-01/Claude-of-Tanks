@@ -118,7 +118,7 @@ import {
 import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
-  applyRulesetToCombat, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetBotDoctrine,
+  applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetBotDoctrine,
   rulesetLoadout, rulesetObjectiveAxisM, rulesetRoutePush, type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
@@ -989,7 +989,7 @@ export function createAuthoritativeMatch({
       loadout,
       spec,
     );
-    applyRulesetToCombat(combat, spec.gun.shells, ruleset);
+    applyRulesetToCombat(combat, spec.gun.shells, ruleset, rulesetSeatHullScale(ruleset, team, bot));
     const entity: AuthoritativeEntity = {
       id,
       specId: spec.id,

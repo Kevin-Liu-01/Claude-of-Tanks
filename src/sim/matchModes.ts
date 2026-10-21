@@ -17,7 +17,7 @@ import { MATCH_MODE_ARENA_HALF_EXTENT_M as WORLD_MARGIN_M } from './matchObjecti
 import {
   FLAG_CARRIER_SPEED_SCALE, HUNT_RULES, RULESET_SCORE_TARGETS, matchRulesetFor, type MatchRuleset,
   assaultWaveHealthScale, cacheHealChance, hordeMaxAlive, hordeWaveHealthScale, hordeWaveSpecial, hordeWaveSpeedScale,
-  hordeTrickleS, hordeWaveTotal, MARS_DEFAULT_RULES, GUN_GAME_WEAPONS, type ArrivalRules, type RulesetPhysics,
+  hordeTrickleS, hordeWaveTotal, MARS_DEFAULT_RULES, GUN_GAME_WEAPONS, rulesetSeatHullScale, type ArrivalRules, type RulesetPhysics,
 } from './matchRuleset.ts';
 
 /** The aerial unit's presentation view: what the mode state, the HUD, the cameras and the renderer read of a drone or
@@ -1184,7 +1184,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (timeS < down + after) continue;
       allyDownAt.delete(ally.id);
       const taken = lineIndex > 0 ? zones[lineIndex - 1] : null;
-      reviveAtSpawn(ally, 1, taken ? { x: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, taken.x - axisX * assaultRules.allyReviveBackM)),
+      reviveAtSpawn(ally, rulesetSeatHullScale(ruleset, 'alpha', true), taken ? { x: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, taken.x - axisX * assaultRules.allyReviveBackM)),
         z: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, taken.z - axisZ * assaultRules.allyReviveBackM)), yaw: Math.atan2(axisX, axisZ) } : null);
     }
   };

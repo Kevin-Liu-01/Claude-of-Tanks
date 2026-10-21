@@ -213,6 +213,12 @@ export const RUSH_DRIVE = Object.freeze({
    */
   brakeGapM: 3, backOffGapM: 1.5, backOffThrottle: 0.5, swerveThrottle: 0.45,
   /**
+   * A lane keeper that is no rusher (noRamLane: Frontline's sides, the survivors, the Horde's allies, Turbo Ball) backs off
+   * from this gap when it stands (round 3b, the critic's M4: in a sector's point-blank fight the hulls stood nose to nose,
+   * driving into one another — over half of Frontline's engaged stills on Verdant with an enemy inside 20 m).
+   */
+  laneBackOffGapM: 3,
+  /**
    * The gun's bearing ring (round 3b): a target (or hunt point) more than bearRiseM above or below is orbited no nearer
    * than the range the gun's elevation (or depression) stop reaches it from, plus bearPadM, at most bearMaxM.
    */
@@ -346,6 +352,13 @@ interface AssaultRules {
   readonly hostileDifficultyStep: number;
   /** Multiplies a defender's reload (the Horde's `hostileReloadScale`; 1 = its own gun's). */
   readonly hostileReloadScale: number;
+  /**
+   * The attack's allied BOTS take this share of the attack's hull (hpScale) at their first spawn and every revive; the
+   * human seats keep the whole of it (round 3b, the critic's M4: at x1.8 an allied bot was all but never destroyed, so the
+   * defence killed under one a minute; lighter allies that come back sooner keep the fight going while the sortie's one
+   * life stays the human's). Absent or 1: the attack's hull for every seat.
+   */
+  readonly allyBotHull?: number;
 }
 
 /**
@@ -987,13 +1000,13 @@ const ASSAULT_ATTACKER_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   missionOwnsRoute: true,
   openingRead: false, conserveRounds: false, missionSpeed: 1, missionBreakOffHp: 0, missionLocalReachM: 60, spearheadGuard: false, coverScale: 0.5,
   fallbackScale: 0.25, scoot: false, settleShots: false, hitReactions: 'angle', stalemateSilentS: 6, holdBandScale: 0.6, searchRouting: 'spotted',
-  routeRefreshS: 1.25, routeMoveM: 8, jockeyS: 0.4, rollingTurns: true,
+  routeRefreshS: 1.25, routeMoveM: 8, jockeyS: 0.4, rollingTurns: true, noRamLane: true,
 });
 const ASSAULT_DEFENDER_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   missionOwnsRoute: true,
   openingRead: false, conserveRounds: false, missionSpeed: 1, missionBreakOffHp: 0.15, missionLocalReachM: 60, zoneSortieM: 80, coverScale: 0.75,
   fallbackScale: 0.25, scoot: false, settleShots: false, hitReactions: 'angle', holdBandScale: 0.7, stalemateSilentS: 6, routeRefreshS: 1.25, routeMoveM: 8,
-  jockeyS: 0.4, rollingTurns: true,
+  jockeyS: 0.4, rollingTurns: true, noRamLane: true,
 });
 // round 2: no shoot-and-scoot and a quarter of the fallback (the A/B: 33 % of samples scooting and 11 % falling back;
 // off, the flags were run, not traded from cover)
@@ -1107,7 +1120,8 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
       lineGuard: Object.freeze({ minAttackM: 200, outOfSight: true, stepBackM: 20, tries: 4 }),
       counterAttack: Object.freeze({ squad: 2, afterCaptureS: 8, forS: 40 }),
       reinforceTrickleS: 45, reinforceExtra: 0, reinforceRearM: 140, contestReachM: 60, lineSpacingM: 16, lineJitterM: 8, allyReviveBackM: 40, holdSpreadM: 14,
-      regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: 20, hostileDifficultyStep: 1, hostileReloadScale: 1 }),
+      regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: 20, hostileDifficultyStep: 1, hostileReloadScale: 1,
+      allyBotHull: 1 }),
     assaultBots: Object.freeze({ pushAfterS: 15, pushMinGroup: 2, pushGroupM: 80, stageM: 20, flankShare: 0.4, flankOffsetM: 60,
       flankConvergeM: 80 }),
     bots: Object.freeze({ alpha: ASSAULT_ATTACKER_DOCTRINE, bravo: ASSAULT_DEFENDER_DOCTRINE }),
@@ -1681,6 +1695,14 @@ export function applyRulesetToCombat(
 }
 
 /** The equipment ids a ruleset honours out of a loadout (0 slots disables equipment). */
+/**
+ * A seat's hull scale beyond the ruleset's hpScale (both builders, at the first spawn; the Frontline ally revive passes it
+ * too): Frontline's allied bots take `assault.allyBotHull`; every other seat 1.
+ */
+export function rulesetSeatHullScale(ruleset: Pick<MatchRuleset, 'assault'>, team: string, bot: boolean): number {
+  return bot && team !== 'bravo' && team !== 'enemy' ? ruleset.assault?.allyBotHull ?? 1 : 1;
+}
+
 export function rulesetLoadout(ruleset: MatchRuleset, ids: readonly string[] | null | undefined): string[] {
   const list = Array.isArray(ids) ? ids.slice() : [];
   return ruleset.equipmentSlots >= 3 ? list : list.slice(0, ruleset.equipmentSlots);

@@ -6375,7 +6375,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     input.steer = (Math.sign(-ramCross) || orbitSide) * sign;
     if (ramGap <= stopM + RUSH_DRIVE.brakeGapM) {
       // all but touching and standing: back off the hull (turning off its line)
-      if (ramGap <= RUSH_DRIVE.backOffGapM && Math.abs(speed) <= 1) {
+      if (ramGap <= (doctrine.rush ? RUSH_DRIVE.backOffGapM : RUSH_DRIVE.laneBackOffGapM) && Math.abs(speed) <= 1) {
         input.throttle = -sign * RUSH_DRIVE.backOffThrottle;
         input.brake = false;
       } else {

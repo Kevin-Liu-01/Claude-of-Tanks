@@ -46,7 +46,7 @@ import type {
 import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap, rulesetBotDifficulty,
   rulesetBotDoctrine, rulesetObjectiveAxisM, rulesetRoutePush, rulesetVerdictSide,
-  rulesetLoadout, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
+  rulesetLoadout, rulesetSeatHullScale, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
   DEFAULT_BRAIN_SETTINGS, readBrainSettings, readTeamArrangement, type BrainSettings,
@@ -919,7 +919,8 @@ function initializeBattleEntity(
     ? (loadEquipment(entity.specId) || [])
     : defaultLoadoutFor(entity.spec));
   applyEquipmentToCombat(entity.combat, entity.equip, entity.spec);
-  applyRulesetToCombat(entity.combat, entity.spec.gun.shells, context.game.ruleset);
+  applyRulesetToCombat(entity.combat, entity.spec.gun.shells, context.game.ruleset,
+    rulesetSeatHullScale(context.game.ruleset, entity.team, entity.bot));
   entity.input.throttle = 0;
   entity.input.steer = 0;
   entity.input.brake = false;
