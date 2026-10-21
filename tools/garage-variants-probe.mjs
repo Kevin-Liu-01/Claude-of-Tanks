@@ -368,7 +368,7 @@ try {
     // the one slideshow stands where the Garage places it: Verdant's west wall, or the yard pose its pack builds the
     // frame at (garageSlideshowPlacement.ts, receipted by the pack's kit stats)
     if (result.stats.battleScreenVisible !== (isVerdant || Boolean(architecture?.kit?.slideshow))
-        || result.stats.battleScreenMode !== 'led-crossfade-slideshow'
+        || result.stats.battleScreenMode !== 'crt-crossfade-slideshow'
         || result.stats.battleScreenWallBay !== 'west-freestanding'
         || result.stats.battleScreenDisplayCount !== 1
         || result.stats.battleScreenImageCount < 2

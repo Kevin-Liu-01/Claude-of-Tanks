@@ -1,6 +1,6 @@
 import { KitBuilder, type KitVec } from './garageKitGeometry.ts';
 import { garageDisplayRect } from './garageDisplayAtlas.ts';
-import { garageSlideshowBottomY } from './garageSlideshowPlacement.ts';
+import { GARAGE_SLIDESHOW_GLASS_BULGE, garageSlideshowBottomY, garageSlideshowHousing } from './garageSlideshowPlacement.ts';
 
 /**
  * K9, the display set (garage r9; the owner: "more areas of images of tanks, computers or screens showing tanks, banners
@@ -197,18 +197,68 @@ export interface KitSlideshowMount {
 }
 
 /**
- * The frame of the Garage's one slideshow panel: a slim LED bezel and its service cabinet, carried on its legs
- * ('freestanding'), a wall bracket ('wall'), a column bracket ('column') or a rugged LED trailer with outriggers and a
- * generator ('trailer'). The slideshow mesh itself (the dressing's shader) is placed at the returned mount.
+ * The housing of the Garage's one slideshow, a CRT monitor (garage 231; the owner, 2026-10-21: "make it a crt screen
+ * like the one we removed"): a moulded bezel sloping in to the glass with a control chin (knobs, a speaker grille, the
+ * power lamp) and rack handles, the case behind it and the tube's tapered shell and neck, in the region's machine paint.
+ * It stands on a stand ('freestanding'), on a shelf bracket off a wall ('wall') or a column ('column'), or on a rugged
+ * monitor trailer's mast ('trailer'). The slideshow mesh itself (the dressing's bulged glass and shader) sits at the
+ * returned mount; its centre and face plane come from the shared table (garageSlideshowPlacement.ts).
  */
 export function buildSlideshowFrame(b: KitBuilder, params: { readonly width: number; readonly mount: 'freestanding' | 'wall' | 'column' | 'trailer';
   readonly bottomY?: number }): KitSlideshowMount {
   const { skin } = b;
   const w = params.width, h = w * 9 / 16;
-  const bezelW = w + 0.16, bezelH = h + 0.16;
-  const bottom = garageSlideshowBottomY(params.mount, params.bottomY);
+  const { border, chin, caseDepth, tubeDepth, neckDepth, faceZ } = garageSlideshowHousing(params.mount, w);
+  const cy = garageSlideshowBottomY(params.mount, params.bottomY) + (h + 0.16) / 2;
+  // the housing's top and foot, the bezel's face (proud of the glass's crown) and back, the case's back, the tube's end
+  const top = cy + h / 2 + border, base = cy - h / 2 - chin, outerW = w + border * 2, bodyH = top - base, bodyY = (top + base) / 2;
+  const front = faceZ + w * GARAGE_SLIDESHOW_GLASS_BULGE + 0.02, back = faceZ - 0.02;
+  const caseBack = back - caseDepth, tubeBack = caseBack - tubeDepth;
+  const bezel = 0x232628, recess = 0x111213, metal = 0x6a6e70;
+  // the bezel, a moulded frame 15 mm proud of the case all round: its face's opening a chamfer wider than the picture,
+  // sloping in to an inner rim that laps the glass, its outer edge chamfered back to its sides (a few dozen triangles:
+  // the Garage kits' budgets are tight)
+  const xo = outerW / 2 + 0.015, yt = top + 0.015, yb = base - 0.015, e = Math.min(0.02, w * 0.008);
+  const ox = w / 2 + w * 0.03, oy = h / 2 + w * 0.03, ix = w / 2 - w * 0.006, iy = h / 2 - w * 0.006, rim = faceZ + 0.006;
+  for (const s of [-1, 1]) {
+    const edge = s > 0 ? yt : yb, open = cy + s * oy;
+    b.polygon([[-xo + e, edge - s * e, front], [xo - e, edge - s * e, front], [ox, open, front], [-ox, open, front]], bezel, [0, 0, 1]);
+    b.polygon([[s * (xo - e), yt - e, front], [s * ox, cy + oy, front], [s * ox, cy - oy, front], [s * (xo - e), yb + e, front]], bezel, [0, 0, 1]);
+    b.polygon([[-xo + e, edge - s * e, front], [xo - e, edge - s * e, front], [xo, edge, front - e], [-xo, edge, front - e]], bezel, [0, s, 1]);
+    b.polygon([[s * (xo - e), yt - e, front], [s * (xo - e), yb + e, front], [s * xo, yb, front - e], [s * xo, yt, front - e]], bezel, [s, 0, 1]);
+    b.polygon([[-xo, edge, front - e], [xo, edge, front - e], [xo, edge, back], [-xo, edge, back]], bezel, [0, s, 0]);
+    b.polygon([[s * xo, yt, front - e], [s * xo, yb, front - e], [s * xo, yb, back], [s * xo, yt, back]], bezel, [s, 0, 0]);
+    b.polygon([[-xo, edge, back], [xo, edge, back], [outerW / 2, s > 0 ? top : base, back], [-outerW / 2, s > 0 ? top : base, back]], bezel, [0, 0, -1]);
+    b.polygon([[s * xo, yt, back], [s * xo, yb, back], [s * outerW / 2, base, back], [s * outerW / 2, top, back]], bezel, [0, 0, -1]);
+  }
+  const slopeX = ox - ix, slopeY = oy - iy, dz = front - rim;
+  for (const s of [-1, 1]) {
+    b.polygon([[-ox, cy + s * oy, front], [ox, cy + s * oy, front], [ix, cy + s * iy, rim], [-ix, cy + s * iy, rim]], recess, [0, -s * dz, slopeY]);
+    b.polygon([[s * ox, cy - oy, front], [s * ox, cy + oy, front], [s * ix, cy + iy, rim], [s * ix, cy - iy, rim]], recess, [-s * dz, 0, slopeX]);
+  }
+  // the chin: three knobs and the power lamp, a speaker grille, and the rack handles on the bezel's sides
+  const chinY = (yb + cy - oy) / 2, knob = w * 0.012;
+  for (let k = 0; k < 3; k += 1) b.cylinder(ox - w * 0.03 - k * w * 0.045, chinY, front, knob, knob * 0.9, 6, recess, { axis: 'z', capBottom: false });
+  b.uprightFace(-ox + w * 0.02, chinY, front + 0.004, w * 0.014, w * 0.008, garageDisplayRect('glow.green'));
+  for (let k = 0; k < 4; k += 1) {
+    const gy = chinY + (k - 1.5) * w * 0.012, gx = -ox + w * 0.07;
+    b.polygon([[gx, gy - w * 0.002, front + 0.004], [gx + w * 0.1, gy - w * 0.002, front + 0.004], [gx + w * 0.1, gy + w * 0.002, front + 0.004],
+      [gx, gy + w * 0.002, front + 0.004]], recess, [0, 0, 1]);
+  }
+  for (const s of [-1, 1]) {
+    const x = s * (ox + xo) / 2, out = front + w * 0.035;
+    b.tube([[x, cy - h * 0.3, front], [x, cy - h * 0.3, out], [x, cy + h * 0.3, out], [x, cy + h * 0.3, front]], w * 0.007, 4, metal);
+  }
+  // the case in the region's machine paint, and the tube's tapered shell and neck behind it
+  b.box(0, bodyY, (back + caseBack) / 2, outerW, bodyH, caseDepth, skin.paint, { bevel: 0.03 });
+  b.push().translate(0, bodyY, caseBack).rotateY(Math.PI).scale((outerW - 0.03) / 2, (bodyH - 0.03) / 2, 1);
+  b.cylinder(0, 0, 0, Math.SQRT2, tubeDepth, 4, skin.paint, { axis: 'z', start: Math.PI / 4, topRadius: Math.SQRT2 * 0.5, smooth: false, capBottom: false });
+  b.pop();
+  b.box(0, bodyY, tubeBack - neckDepth / 2, outerW * 0.36, bodyH * 0.36, neckDepth, bezel, { bevel: 0.01 });
+  // what carries it
+  const post = Math.min(0.18, w * 0.06), steel = 0x41474e, foot = 0x26292d;
   if (params.mount === 'trailer') {
-    // the trailer: chassis, wheels, drawbar, outriggers down, the generator box and the mast carrying the panel
+    // the trailer: chassis, wheels, drawbar, outriggers down, the generator box and the mast carrying the monitor
     b.box(0, 0.7, 0, 2.2, 0.16, 3.6, 0x232526, { bevel: 0.01 });
     b.box(0, 1.05, -1.1, 1.8, 0.6, 1.0, skin.paint, { bevel: 0.03 });
     for (const s of [-1, 1]) b.cylinder(s * 1.15 - (s > 0 ? 0.22 : 0), 0.38, 0.2, 0.38, 0.22, 12, skin.rubber, { axis: 'x' });
@@ -218,20 +268,30 @@ export function buildSlideshowFrame(b: KitBuilder, params: { readonly width: num
       b.box(sx * 1.9, 0.15, sz, 0.12, 0.3, 0.12, skin.steel, { bevel: 0 });
       b.box(sx * 1.9, 0.02, sz, 0.35, 0.04, 0.35, skin.wood, { bevel: 0, noBottom: true });
     }
-    b.box(0, (0.8 + bottom) / 2, -0.2, 0.22, bottom - 0.8 + 0.4, 0.22, skin.steel, { bevel: 0.01 });
+    b.box(0, (0.78 + base) / 2, caseBack, 0.22, base - 0.78, 0.22, skin.steel, { bevel: 0.01 });
+    b.box(0, base - 0.03, (back + caseBack) / 2, outerW * 0.6, 0.06, caseDepth, skin.steel, { bevel: 0.01 });
   } else if (params.mount === 'freestanding') {
-    for (const x of [-w * 0.4, w * 0.4]) {
-      b.box(x, bottom / 2, -0.12, 0.16, bottom + 0.2, 0.16, 0x41474e, { bevel: 0.01, noBottom: true });
-      b.box(x, 0.06, -0.12, 1.0, 0.12, 0.9, 0x26292d, { bevel: 0.01, noBottom: true });
-      b.beam([x, bottom * 0.8, -0.2], [x, 0.12, -0.55], 0.12, 0.12, 0x26292d, { bevel: 0 });
+    // the stand: two posts under the case on long feet, braced back, and the cradle the case sits in
+    const zm = (back + caseBack) / 2, footLen = back - tubeBack + 0.3;
+    for (const s of [-1, 1]) {
+      const x = s * w * 0.32;
+      b.box(x, (base - 0.06) / 2, zm, post, base - 0.06, post, steel, { bevel: 0.01, noBottom: true });
+      b.box(x, 0.06, (back + tubeBack) / 2, post * 2.2, 0.12, footLen, foot, { bevel: 0.01, noBottom: true });
+      b.beam([x, base * 0.62, zm], [x, 0.12, back - footLen + 0.2], post * 0.7, post * 0.7, foot, { bevel: 0 });
     }
-  } else if (params.mount === 'column') {
-    b.box(0, bottom + bezelH / 2, -0.22, 0.4, 0.3, 0.3, 0x41474e, { bevel: 0.01 });
+    b.box(0, base - 0.03, zm, w * 0.64 + post, 0.06, caseDepth, steel, { bevel: 0.01 });
   } else {
-    for (const x of [-w * 0.3, w * 0.3]) b.box(x, bottom + bezelH / 2, -0.18, 0.08, bezelH * 0.6, 0.2, 0x41474e, { bevel: 0.006 });
+    // the shelf bracket: a deck under the case off the mount, two gussets down to plates on the wall or a clamp round
+    // the column, its back 0.29 m behind the frame's origin
+    const reach = back + 0.29, drop = Math.min(1.2, reach * 0.9), gx = params.mount === 'wall' ? w * 0.3 : 0.12;
+    b.box(0, base - 0.03, (back - 0.29) / 2, w * 0.7, 0.06, reach, steel, { bevel: 0.01 });
+    for (const s of [-1, 1]) b.beam([s * gx, base - 0.06, back - 0.06], [s * gx, base - 0.06 - drop, -0.25], 0.06, 0.06, steel, { bevel: 0 });
+    if (params.mount === 'wall') {
+      for (const s of [-1, 1]) b.box(s * gx, base - 0.06 - drop / 2, -0.27, 0.14, drop + 0.2, 0.04, steel, { bevel: 0.006 });
+    } else {
+      b.box(0, base - 0.06 - drop / 2, -0.27, 0.42, drop + 0.2, 0.04, steel, { bevel: 0.006 });
+      for (const y of [base - 0.12, base - drop]) b.box(0, y, -0.27, 0.46, 0.08, 0.06, foot, { bevel: 0.006 });
+    }
   }
-  const cy = bottom + bezelH / 2;
-  b.box(0, cy, 0, bezelW, bezelH, 0.1, 0x1c1f22, { bevel: 0.012 });
-  b.box(0, cy, -0.12, w * 0.85, h * 0.85, 0.16, 0x3a3f44, { bevel: 0.01 });
-  return { center: [0, cy, 0.052], width: w, height: h };
+  return { center: [0, cy, faceZ], width: w, height: h };
 }

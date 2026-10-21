@@ -1,6 +1,6 @@
-// Native diagnostic, not timing: actual completed Garage; pin only the two
-// wall-clock CRT animation uniforms, then eight baseline warm frames per pose
-// and synchronous control/A/B/negative framebuffer captures.
+// Native diagnostic, not timing: actual completed Garage; pin only the
+// slideshow's crossfade and CRT clock uniforms, then eight baseline warm
+// frames per pose and synchronous control/A/B/negative framebuffer captures.
 // Owns the shared FIFO lease; do not wrap in another capture-command lease.
 // node tools/garage-draw-range-probe.mjs --url=http://127.0.0.1:4178 --out=/absolute/fresh-directory
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -108,19 +108,23 @@ function capturePair({ name, angle, baseCamera }) {
     if (!callbacks.length) throw new Error('no candidate static merged meshes found');
     if (window.__DEBUG.game.phase !== 'garage') throw new Error('expected actual Garage');
     // The slideshow's onBeforeRender may start its crossfade between the two
-    // compared renders. Keep its scheduling side effects but pin one identical
-    // visible phase (both images and the crossfade), without hiding the panel
-    // or disabling any post pass.
+    // compared renders and advances its CRT hum bar's clock. Keep its
+    // scheduling side effects but pin one identical visible phase (both
+    // images, the crossfade and the clock), without hiding the screen or
+    // disabling any post pass.
     for (const name of ['garage_slideshow_screen']) {
       const mesh = garageDressing.group.getObjectByName(name), uniforms = mesh?.material?.uniforms;
       const uniform = uniforms?.uTransition;
-      if (!mesh || !uniform || typeof uniform.value !== 'number') throw new Error(`missing slideshow: ${name}`);
-      const before = mesh.onBeforeRender, time = uniform.value;
+      if (!mesh || !uniform || typeof uniform.value !== 'number' || typeof uniforms.uTime?.value !== 'number') {
+        throw new Error(`missing slideshow: ${name}`);
+      }
+      const before = mesh.onBeforeRender, time = uniform.value, clock = uniforms.uTime.value;
       const imageA = uniforms.uImageA.value, imageB = uniforms.uImageB.value;
       clockCallbacks.push({ mesh, before, uniform, time });
       mesh.onBeforeRender = function (...args) {
         before.apply(this, args);
-        uniform.value = time; uniforms.uImageA.value = imageA; uniforms.uImageB.value = imageB;
+        uniform.value = time; uniforms.uTime.value = clock;
+        uniforms.uImageA.value = imageA; uniforms.uImageB.value = imageB;
       };
     }
     result.pinnedAnimationClocks = clockCallbacks.map(({ mesh, time }) => ({ name: mesh.name, time }));

@@ -817,6 +817,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageDisplayAtlas.selftest.mjs',
     'src/ui/garageAtmosphere.selftest.mjs',
     'src/ui/garageDisplayPlacement.selftest.mjs',
+    // garage 231 (2026-10-21): the slideshow's CRT clear of every deck, rail, column, structure and kit piece
+    'src/ui/garageSlideshowClearance.selftest.mjs',
     // garage r9 (g1 lane): the outside environment from each map (generator check, landmarks, budgets)
     'src/ui/garageSkyline.selftest.mjs',
     // garage r9 (g1 lane, criterion 16): the near facility's primitives rebuilt as kit geometry

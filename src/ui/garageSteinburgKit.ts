@@ -16,7 +16,7 @@ import type { KitVec } from './garageKitGeometry.ts';
  * - the lift cell at the yard's left: a pillar jib crane at work, a turret hanging in slings over its turret stand, a
  *   wheat-pasted poster hoarding behind it, the welding cart, the gas cage, drums, crates and wheels (all clear of the
  *   line from the turntable to the T-90M bay);
- * - the right: the slideshow on its freestanding LED panel on the yard floor by the right bank
+ * - the right: the slideshow's CRT on its stand on the yard floor by the right bank
  *   (garageSlideshowPlacement.ts), a lamp post, roll cages and pallets of crates by the corner shop;
  * - the dispatch office on the yard's west terrace: a container office, its doors open on a desk with the Steinburg
  *   map, with its station.

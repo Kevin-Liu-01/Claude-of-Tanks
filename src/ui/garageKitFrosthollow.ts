@@ -6,7 +6,7 @@ import type { GarageKitPlacement } from './garageKitPlacement.ts';
  * High Tatra (garageFacilityDetails.ts builds the bunker, garageSkyline.ts the massif, the frozen river, the wooden church,
  * the village and the sawmill from the map). Coordinates are the opening view's frame (garageKitPlacements.ts).
  *
- * The cells: the bunker's right pier carries the LED panel (garageSlideshowPlacement.ts), its number and the crest plate;
+ * The cells: the bunker's right pier carries the slideshow's CRT (garageSlideshowPlacement.ts), its number and the crest plate;
  * the duty office under the timber lean-to (a computer station, the PVC banner on its front, the notice board with three
  * prints beside it); a forklift parked in the lit bay beyond the half-open blast door; a monorail on its portal frame at work on a road-wheel station over its stands; the cold-start
  * cell (the booster compressor, its hose, the frosted bowser, jerrycans); the bays' swaps (a tarp-covered stack, a sledge
@@ -15,7 +15,7 @@ import type { GarageKitPlacement } from './garageKitPlacement.ts';
  */
 export const GARAGE_KIT_FROSTHOLLOW: GarageKitPlacement = {
   items: [
-    // the bunker's right pier: its number and the crest plate over the LED panel
+    // the bunker's right pier: its number and the crest plate over the slideshow's CRT
     { kind: 'sign', sign: 'plate', rect: 'num.02', at: [15.9, 26.02], yaw: Math.PI / 4, y: 4.2, size: [0.7, 0.7] },
     { kind: 'display', display: 'plate', rect: 'brand.crest.metal', at: [17.4, 26.02], yaw: Math.PI / 4, y: 3.9, size: [0.9, 0.9] },
     // the duty office under the timber lean-to: the station, the notice board, the PVC banner on the lean-to's front
