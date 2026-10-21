@@ -237,6 +237,6 @@
   "ztz85_iii": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"3377aea91acee8f3","gun":"cf3c16fb5173ff02"}},
   "ztz99_longwei": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f40f3fe9b33c1a72","gun":"5c6c7d414e21530d"}},
   "ztz99a": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2bd34948444a2d26","gun":"571e0358be797657"}},
-  "ztz99a2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f6548766beea6398","gun":"642232069d3a2a43"}}
+  "ztz99a2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2e6f55223002894c","gun":"642232069d3a2a43"}}
  }
 }
