@@ -53,6 +53,7 @@ interface PolishBuilderMaterials extends Record<string, THREE.Material> {
 
 interface PolishBuilderPort {
   postAssemble: TankBuilderPort['postAssemble'];
+  readonly snapGroup: TankBuilderPort['snapGroup'];
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
@@ -88,6 +89,8 @@ interface PolishBuilderPort {
     owner: VehicleAssemblyOwner,
     build: () => void,
   ): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface EraCourseOptions {
@@ -390,13 +393,14 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
   // bow corner fenders carry the plan front outboard of the center V
   for (const s of [-1, 1]) {
     P.add('hull', box(0.62, 0.13, 0.42), s * 1.40, 1.09, 3.30);
-    P.add('hullRubber', box(0.58, 0.15, 0.04), s * 1.38, 0.93, 3.52);
+    P.hangMudguard('pt91a-front-flap', 'hullRubber', box(0.58, 0.15, 0.04), s * 1.38, 0.93, 3.52);
     P.add('hullDark', box(0.03, 0.05, 0.44), s * 1.755, 1.235, 3.28);
     P.add('hull', box(0.16, 0.05, 5.7), s * 1.70, 1.215, 0.30);
     // fender-slot §B2 floor: a REAL dark slot plate riding 6 cm above the
     // idler wrap arc at its z (strict clip audit proof; the v2 hole scan
-    // hides /shadow/ meshes so the leclerc_s2 shadow device cannot close B2)
-    P.add('hullDark', box(0.24, 0.01, 0.28), s * 1.53, 1.10, 3.00);
+    // hides /shadow/ meshes so the leclerc_s2 shadow device cannot close B2); it rides 5 mm into the sponson's
+    // underside and carries the bow corner fender, which stops 4 cm ahead of the sponson
+    P.add('hullDark', box(0.24, 0.01, 0.28), s * 1.53, 1.125, 3.00);
   }
 
   // ---- running gear: T-72 stance centered on the 0.065 body mid ----------
@@ -892,7 +896,8 @@ function addPL01SkirtsAndRunningGear(P: PolishBuilderPort, context: PL01BuildCon
     for (let i = 0; i < 7; i++) {
       const z = 2.56 - i * 0.82;
       P.add('hullDark', box(0.014, 0.46, 0.022), s * 1.902, 1.60, z);
-      P.add('hullDetail', box(0.018, 0.05, 0.09), s * 1.905, 1.82, z + 0.28);
+      // 2026-10-19 (owner float sweep): the bow latch (z 2.84) hung 177 mm over the falling crest; it sits on the face band.
+      P.add('hullDetail', box(0.018, 0.05, 0.09), s * (i === 0 ? 1.88 : 1.905), i === 0 ? 1.48 : 1.82, z + 0.28);
       P.add('hullDetail', box(0.018, 0.05, 0.09), s * 1.905, 1.42, z - 0.26);
     }
     // shoulder shadow seam follows the falling top line (r3: a full-length
@@ -943,7 +948,8 @@ function addPL01SkirtsAndRunningGear(P: PolishBuilderPort, context: PL01BuildCon
     for (const s of [-1, 1]) {
       for (let i = 0; i < 3; i++) {
         const z = 1.78 + i * 0.30;
-        const y = glacisY(z) + 0.052;
+        // 2026-10-19 (owner float sweep): the cassettes stood 20 mm off the glacis plane; seated 2 mm into it.
+        const y = glacisY(z) + 0.029;
         P.add('hull', box(0.34, 0.060, 0.245), s * 0.72, y, z,
           glacisPitch, 0, 0);
         // A narrow recessed seam keeps the cassettes legible while their
@@ -1186,7 +1192,9 @@ function addPL01RemoteWeaponStation(P: PolishBuilderPort, context: PL01BuildCont
     // window and the plinth crown stays under the 1% grace edge 2.828)
     P.addEquipment('turret', box(0.46, 0.035 * equipmentHeightScale, 0.34), -0.05, roofEquipmentY(0.7275), -1.33); // plinth
     P.addEquipment('turret', cylY(0.095, 0.11, 0.05 * equipmentHeightScale, 16), -0.05, roofEquipmentY(0.77), -1.33);
-    P.addEquipment('turret', box(0.52, 0.46 * equipmentHeightScale, 0.17), -0.05, roofEquipmentY(1.03), -1.33); // tower
+    // 2026-10-19 (owner float sweep): the tower (and the cap, sensors, chest and weapon on it) stood 33 mm over the plinth
+    // collar; it runs 34 mm deeper to it (top kept)
+    P.addEquipment('turret', box(0.52, 0.46 * equipmentHeightScale + 0.034, 0.17), -0.05, roofEquipmentY(1.03) - 0.017, -1.33); // tower
     P.add('turretDark', box(0.46, 0.035, 0.15), -0.05, roofEquipmentY(1.278), -1.33); // cap
     P.add('turretDetail', box(0.10, 0.05 * equipmentHeightScale, 0.09), 0.12, roofEquipmentY(1.315), -1.325); // sensor
     P.add('turretDark', box(0.065, 0.03, 0.06), 0.12, roofEquipmentY(1.352), -1.325);
@@ -1298,7 +1306,9 @@ function addPL01RoofSuite(P: PolishBuilderPort, context: PL01BuildContext): void
 
   // Short antenna whips, lifting eyes, and service boxes complete the roof.
   for (const [x, z, h, rake] of [[-0.88, -1.72, 0.42, -0.05], [0.86, -1.88, 0.36, 0.05]]) {
-    P.addEquipment('turretDetail', cylY(0.035, 0.045, 0.065, 10), x, roofY + 0.0325, z);
+    // 2026-10-19 (owner float sweep): the right pot stood 50 mm over the falling roof edge; each pot drops onto the roof
+    P.snapGroup('pl01-antenna-pot', () => P.addEquipment('turretDetail', cylY(0.035, 0.045, 0.065, 10), x, roofY + 0.0325, z),
+      { mode: 'down', reachM: 0.08 });
     const whip = FITTINGS.antennaWhip({
       mats: P.mats, h, r: 0.010, rake, seed: 1070 + (x > 0 ? 1 : 0),
     });

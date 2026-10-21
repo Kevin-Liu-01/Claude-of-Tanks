@@ -10,6 +10,7 @@ import { adobeCrownFor } from './maps/adobeWallKit.ts';
 import { createWallDressing } from './maps/fieldWallDressing.ts';
 import { sourcedStoneIsBrick } from './sourcedTextures.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
+import { CIVILIAN_VEHICLE_RECEIPTS } from './maps/civilianVehicleKit.ts';
 import { createHeightField } from './terrain.ts';
 import { getMapConfig } from './maps/index.ts';
 import { rayCollisionRecord, setObbShape } from './collision.ts';
@@ -282,7 +283,7 @@ function checkSourceLifecycle(pool) {
     },
     cloth: () => false, burns: () => false, onBurn: () => {},
   });
-  const lifecycle = new Function('THREE', 'dPools', 'destructibles', 'setWorldNightFixtureActive', 'crushPress',
+  const lifecycle = new Function('THREE', 'dPools', 'destructibles', 'setWorldNightFixtureActive', 'crushPress', 'CIVILIAN_VEHICLE_RECEIPTS',
     `const _quat = new THREE.Quaternion(), _upAxis = new THREE.Vector3(0,1,0),
       _mat4 = new THREE.Matrix4(), _posv = new THREE.Vector3(), _zeroScale = new THREE.Vector3(1e-4,1e-4,1e-4);
       const events = [], fx = [], pendingBlasts = [];
@@ -290,7 +291,7 @@ function checkSourceLifecycle(pool) {
       const emitDestroyed = event => events.push(event), emitBreakFx = (...args) => fx.push(args);
       ${breakAnimationSource}; ${breakRecordSource}; ${restoreSource};
       return { breakRecord, restoreDestructibleRecord, resetBrokenPools, events, fx };`)(
-    THREE, new Map([['wallstone', pool]]), pool.records, setWorldNightFixtureActive, crushPress);
+    THREE, new Map([['wallstone', pool]]), pool.records, setWorldNightFixtureActive, crushPress, CIVILIAN_VEHICLE_RECEIPTS);
   const intact = pool.imI.instanceMatrix.array.slice(), placements = pool.mats4.map(m => m.elements.slice());
   const record = pool.records[0], ob = record.ob, col = record.col;
   const bounds = [ob.min.slice(), ob.max.slice(), col.min.slice(), col.max.slice()];

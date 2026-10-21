@@ -125,9 +125,19 @@ function sideArmorCourse(P: AfvBuilderPort, o: SideArmorOptions = {}): void {
   const count = o.count || 7;
   for (const side of [-1, 1]) for (let i = 0; i < count; i++) {
     const z = (o.front ?? 2.35) - i * (o.step ?? 0.78);
-    armorTile(P, 'hull', side * (o.x ?? 1.68), o.y ?? 1.17, z,
-      o.w ?? 0.08, o.h ?? 0.50, o.d ?? 0.66,
-      [0, 0, side * (o.rz ?? 0.018)], o.cap !== false);
+    const x = side * (o.x ?? 1.68), y = o.y ?? 1.17, w = o.w ?? 0.08, h = o.h ?? 0.50, d = o.d ?? 0.66;
+    const rz = side * (o.rz ?? 0.018);
+    // Spaced side armour stands off the hull on brackets (owner 2026-10-19 sweep: the tiles floated up to 0.19 m
+    // beside the hull side with nothing joining them): each tile hangs from the stock over or beside its top edge
+    // (mudguardHangers.ts), the dark cap riding its top.
+    P.hangMudguard('afv-side-armor-tile', 'hull', KIT.box(w, h, d), x, y, z, 0, 0, rz);
+    if (o.cap !== false) P.add('hullDark', KIT.box(w * 0.72, 0.016, Math.max(0.025, d * 0.08)),
+      x, y + h * 0.50 + 0.010, z + d * 0.22, 0, 0, rz);
+    // a backing strap behind each joint ties the course together, so the bow tile (no stock over or beside it at the
+    // falling nose) rides its neighbour; it laps 20 mm into each tile's back
+    const step = o.step ?? 0.78;
+    if (i < count - 1) P.add('hull', KIT.box(0.02, h * 0.5, step - d + 0.04),
+      side * ((o.x ?? 1.68) - w / 2 + 0.006), y, z - step / 2, 0, 0, rz);
   }
 }
 
@@ -157,12 +167,14 @@ function addBMP3Turret(P: AfvBuilderPort): void {
   buildGun(P, { len: 2.72, r: 0.058, sleeve: true, evac: 0.44,
     collar: true, baseR: 0.14 });
   // Parallel 30-mm cannon and coaxial PKT: both pitch with the gun plant.
-  P.addGunExtraDark(cylZ(0.037, 2.30, 12), 0.22, 0.03, 1.70);
-  P.addGunExtraDark(cylZ(0.022, 1.75, 10), -0.21, 0.02, 1.40);
+  // 2026-10-19 (owner float sweep): both tubes began ~10 cm ahead of the mantlet block (59-66 mm off the mount);
+  // their breech ends now run back into it, muzzles unchanged
+  P.addGunExtraDark(cylZ(0.037, 2.41, 12), 0.22, 0.03, 1.645);
+  P.addGunExtraDark(cylZ(0.022, 1.835, 10), -0.21, 0.02, 1.3575);
   P.addGunExtraDark(cylZ(0.052, 0.15, 12), 0.22, 0.03, 2.90);
   P.add('turret', box(0.30, 0.07, 0.30), -0.40, 0.72, -0.18);
   P.add('turretDetail', cylY(0.12, 0.14, 0.28, 14), -0.40, 0.91, -0.18);
-  P.add('turretGlass', box(0.17, 0.11, 0.024), -0.40, 0.92, -0.02);
+  P.add('turretGlass', box(0.17, 0.11, 0.024), -0.40, 0.92, -0.045);           // on the sight drum's face (18 mm off it before: owner 2026-10-19 float sweep)
   P.add('turret', cylY(0.24, 0.26, 0.07, 18), 0.40, 0.73, -0.30);
   // Owner landing c425f495 (re-applied after the §5.258 lane-side merge):
   // two overlapping crew stations, periscopes and service lids break up the
@@ -183,8 +195,11 @@ function addBMP3Turret(P: AfvBuilderPort): void {
         0, station.yaw, 0);
     }
   }
-  P.add('turret', box(0.38, 0.045, 0.28), 0.00, 0.760, -0.66, 0, 0.04, 0);
-  P.add('turretDark', box(0.27, 0.018, 0.05), 0.00, 0.790, -0.52, 0, 0.04, 0);
+  // 2026-10-19 (owner float sweep): the rear lid stood 58 mm over the crown; it drops onto it
+  P.snapGroup('bmp3-rear-lid', () => {
+    P.add('turret', box(0.38, 0.045, 0.28), 0.00, 0.760, -0.66, 0, 0.04, 0);
+    P.add('turretDark', box(0.27, 0.018, 0.05), 0.00, 0.790, -0.52, 0, 0.04, 0);
+  }, { reachM: 0.08, mode: 'down' });
   // A supported flank collar gives the smoke banks and fittings visible
   // armor seats instead of allowing them to disappear into the dome.
   for (const side of [-1, 1]) {
@@ -346,7 +361,9 @@ function addTerminatorStation(P: AfvBuilderPort): void {
     P.addGunExtra(cylZ(0.060, 0.32, 14, 0.048), side * 0.16, 0, 0.55);
     P.add(`gunBarrel${barrel}`, cylZ(0.038, 2.45, 12), side * 0.16, 0, 1.82);
     P.add(`gunBarrel${barrel}Dark`, cylZ(0.056, 0.18, 12), side * 0.16, 0, 3.10);
-    P.add(`gunBarrel${barrel}Dark`, cylZ(0.021, 0.025, 12), side * 0.16, 0, 3.205);
+    // 2026-10-19 (owner float sweep): the bore-mouth ring stood 2.5 mm proud of the muzzle sleeve (census: 243 mm
+    // off the gun); it now starts inside the sleeve, front face unchanged.
+    P.add(`gunBarrel${barrel}Dark`, cylZ(0.021, 0.030, 12), side * 0.16, 0, 3.2025);
   }
   P.muzzleZ = 3.22;
   // OWNER "much better" ROUND (2026-08-17, the removed ground-up bmpt's
@@ -484,7 +501,7 @@ function addBWP1Station(P: AfvBuilderPort): void {
       0, 0, side * 0.04);
     P.add('turretGlass', box(0.15, 0.08, 0.024), side * 0.64, 0.70, -0.33);
   }
-  P.add('turretDark', box(1.32, 0.09, 0.055), 0, 0.49, -0.88);
+  P.add('turretDark', box(1.32, 0.09, 0.055), 0, 0.517, -0.88);                // up to the rack's base (32 mm under it before: owner 2026-10-19 float sweep)
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 1.28, d: 0.34, h: 0.23, fill: 0.60, rails: 3, seed: 3398,
   }), 0, 0.56, -0.82);
@@ -1087,8 +1104,8 @@ function buildBMP3(P: AfvBuilderPort): void {
     P.add('hull', box(0.42, 0.06, 6.40), s * 1.40, 1.355, -0.14);              // band roof over the track run
     P.add('hullDetail', box(0.09, 0.03, 0.60), s * 1.56, 1.34, 2.40);          // band step rails
     P.add('hullDetail', box(0.09, 0.03, 0.60), s * 1.56, 1.34, -2.60);
-    P.add('hullRubber', box(0.07, 0.30, 0.42), s * 1.578, 0.74, 3.02);         // bow mud flaps (outboard of the
-    P.add('hullRubber', box(0.07, 0.32, 0.30), s * 1.578, 0.72, -3.30);        //   1.504 shoe plane, §B4)
+    P.hangMudguard('bmp3-bow-flap', 'hullRubber', box(0.07, 0.30, 0.42), s * 1.578, 0.74, 3.02);         // bow mud flaps (outboard of the
+    P.hangMudguard('bmp3-rear-flap', 'hullRubber', box(0.07, 0.32, 0.30), s * 1.578, 0.72, -3.30);        //   1.504 shoe plane, §B4)
   }
   bowLightPair(P, 1.16, 1.70, 2.62, 3810);
   shovelTool(P, -1.56, 1.40, 0.80, 0.9);
@@ -1332,7 +1349,9 @@ function buildUpior(P: AfvBuilderPort): void {
     P.add('hullRubber', box(0.07, 0.24, 0.28), s * 1.38, 0.74, -2.24);         // stern flaps
     P.add('hullDetail', box(0.05, 0.05, 3.90), s * 1.36, 1.475, -0.20);        // skirt top rail
   }
-  stowage(P, 'hullCloth', rng, [[0.85, 1.63, -1.60, 0.20, 0.08, 0.60]]);
+  // 2026-10-19 (owner float sweep): the deck bag hung 71 mm above the sloping roof facet; it now drops onto it.
+  P.snapGroup('upior-deck-bag', () => stowage(P, 'hullCloth', rng, [[0.85, 1.63, -1.60, 0.20, 0.08, 0.60]]),
+    { mode: 'down', reachM: 0.10 });
   // §B2 sweep handoff upior(a) (corridor-annulus law, re-applied post-flip):
   // the full-length open sponson corridors between sponson outer face
   // (+-1.30) and skirt inner face (+-1.425) read ground-through from above
@@ -1386,9 +1405,14 @@ function addPumaOraclePackage(P: AfvBuilderPort): void {
   // the bustle roof plate (§B5 physical-seat law). 2026-10-14 (VH.14): the Puma carries its 30 mm, the coaxial MG4 and
   // MELLS and no roof machine gun (roofWeaponPolicy.ts), so the roof MG3 pot is gone.
   radioPair(P, 0.79, -1.20, 3710, 0.55);
-  P.add('turret', KIT.box(0.28, 0.07, 0.28), 0.42, 0.90, -0.18);
-  P.add('turretDetail', KIT.cylY(0.12, 0.14, 0.32, 14), 0.42, 1.09, -0.18);
-  P.add('turretGlass', KIT.box(0.18, 0.12, 0.024), 0.42, 1.11, -0.02);
+  // 2026-10-19 (owner float sweep): the sight stand hung 106-180 mm over the raked roof (106 mm to the MUSS head
+  // beside it) and its window 19 mm off the drum; the window now sits on the drum and the whole stand drops onto
+  // the roof, clear of that head.
+  P.snapGroup('puma-roof-sight', () => {
+    P.add('turret', KIT.box(0.28, 0.07, 0.28), 0.42, 0.90, -0.18);
+    P.add('turretDetail', KIT.cylY(0.12, 0.14, 0.32, 14), 0.42, 1.09, -0.18);
+    P.add('turretGlass', KIT.box(0.18, 0.12, 0.024), 0.42, 1.11, -0.042);
+  }, { mode: 'down', reachM: 0.22 });
   P.topY = Math.max(P.topY || 0, 1.52);
 }
 
@@ -1573,7 +1597,8 @@ function addTerminatorT90Station(P: AfvBuilderPort): void {
   // Met mast rear-left: shoe + post + cross arm.
   P.addEquipment('turret', box(0.16, 0.08, 0.16), -0.40, 0.90, -0.52);
   P.addEquipment('turret', cylY(0.022, 0.026, 0.52, 8), -0.40, 1.19, -0.52);
-  P.addEquipment('turret', box(0.34, 0.022, 0.022), -0.40, 1.47, -0.52);
+  // 2026-10-19 (owner float sweep): the cross arm floated 9 mm over the post top; it now caps the post.
+  P.addEquipment('turret', box(0.34, 0.022, 0.022), -0.40, 1.459, -0.52);
 
   // Roof clutter (feed humps over the trunnions, cable trunk + a run to the
   // hood, service lids with latches) — the §5.269 station-clutter bar.

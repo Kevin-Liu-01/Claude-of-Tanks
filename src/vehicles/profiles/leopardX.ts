@@ -367,10 +367,13 @@ function smokeBank(P: TankBuilderPort, d: Datum, side: number, x: number, y: num
     const row = Math.floor(i / 4), col = i % 4;
     const zz = z + (col - 1.5) * .18 + row * .13;
     const yy = y + row * .17;
-    equip(P, d, 'turretDark', box(.10, .12, .13), side * (x - .045), yy - .045, zz);
-    const launcher = cappedSmokeLauncherGeometry(.043, .22, .034, .012, 12);
-    equip(P, d, 'turretDetail', launcher.body, side * x, yy, zz, -.48, side * 1.00);
-    equip(P, d, 'turretDark', launcher.cap, side * x, yy, zz, -.48, side * 1.00);
+    // 2026-10-19 (owner float sweep): launchers stood 23-50 mm off the narrowing flank (leo2a7v); each slides in onto it.
+    P.snapGroup(`leo-x-smoke-${side}-${x}-${i}`, () => {
+      equip(P, d, 'turretDark', box(.10, .12, .13), side * (x - .045), yy - .045, zz);
+      const launcher = cappedSmokeLauncherGeometry(.043, .22, .034, .012, 12);
+      equip(P, d, 'turretDetail', launcher.body, side * x, yy, zz, -.48, side * 1.00);
+      equip(P, d, 'turretDark', launcher.cap, side * x, yy, zz, -.48, side * 1.00);
+    }, { reachM: .10, direction: [-side, 0, 0] });
   }
 }
 
@@ -474,8 +477,11 @@ function a7Skirts(P: TankBuilderPort): void {
     }
     a7TerminalSkirt(P,side);
     P.add('hull',box(.30,.39,1.49),side*1.71,1.76,-3.06);
-    P.addMudguard('a7v-x-front-flap','hullRubber',box(.62,.17,.045),side*1.49,1.08,3.79,-.14);
-    P.addMudguard('a7v-x-rear-flap','hullRubber',box(.63,.50,.045),side*1.48,.76,-3.86,.10);
+    P.hangMudguard('a7v-x-front-flap','hullRubber',box(.62,.17,.045),side*1.49,1.08,3.79,-.14);
+    // Owner 2026-10-19 (flaps sweep): the front flap stood 0.11 m ahead of everything; over the track lane nothing stands
+    // behind it, so a bracket from its outer top corner runs back into the side armour's nose (x 1.80, z 3.642).
+    P.add('hullDetail',box(.06,.07,.17),side*1.80,1.135,3.705);
+    P.hangMudguard('a7v-x-rear-flap','hullRubber',box(.63,.50,.045),side*1.48,.76,-3.86,.10);
   }
 }
 
@@ -509,7 +515,7 @@ function a6HullCage(P: TankBuilderPort): void {
       P.addEquipment('hullOpenLatticeDark',box(.26,.035,.044),side*1.86,1.64,z);
     }
     for(let j=0;j<13;j++) P.addEquipment('hullOpenLattice',box(.027,.018,7.05),side*1.972,.983+j*.071,-.38);
-    P.addMudguard('a6m-x-rear-flap','hullRubber',box(.55,.48,.045),side*1.34,.72,-3.69);
+    P.hangMudguard('a6m-x-rear-flap','hullRubber',box(.55,.48,.045),side*1.34,.72,-3.69);
   }
   for(let j=0;j<13;j++) P.addEquipment('hullOpenLattice',box(3.96,.018,.027),0,.983+j*.071,-3.93);
   for(const x of [-1.96,-.66,.66,1.96]) P.addEquipment('hullOpenLattice',box(.036,.94,.036),x,1.445,-3.93);
@@ -543,7 +549,7 @@ function a5Skirts(P: TankBuilderPort): void {
     P.add('hull',box(.033,1.480-1.308,1.50-(-3.49)),side*1.7205,(1.480+1.308)/2,(1.50+(-3.49))/2);
     P.add('hull',box(.041,1.480-1.344,1.672-1.493),side*1.7585,(1.480+1.344)/2,(1.672+1.493)/2);
     a5FrontGuard(P,side);
-    P.addMudguard('a5-x-rear-flap','hullRubber',box(.60,.45,.045),side*1.371,.85,-3.53);
+    P.hangMudguard('a5-x-rear-flap','hullRubber',box(.60,.45,.045),side*1.371,.85,-3.53);
     a5BowTowEye(P,side);
     P.addEquipment('hullDetail',box(.10,.11,.08),side*.646,1.207,3.74);
   }
@@ -648,7 +654,7 @@ function a5HullShell(P:TankBuilderPort): void {
 function a5BowSpare(P:TankBuilderPort,x:number,y:number,z:number): void {
   const slope=.637;
   P.addEquipment('hullDetail',box(.1207,.018,.239),x,y-.0295,z-.012,slope);
-  P.addEquipment('hullDark',box(.105,.025,.056),x,y+.012,z-.004,slope);
+  P.addEquipment('hullDark',box(.105,.025,.056),x,y-.003,z-.015,slope);          // 2026-10-19 (owner float sweep): stood 17 mm off its plate
   for(const k of [-1,1]) {
     const along=k*.094;
     P.addEquipment('hullDetail',cylX(.014,.130,10),x,
@@ -678,8 +684,10 @@ function a7Stern(P:TankBuilderPort): void {
     1.548+i*.0366,-3.723-i*.00696,-.18);
   for(const side of [-1,1]) {
     for(const x of [.527,1.223]) P.addEquipment('hullDark',box(.038,.425,.030),side*x,1.735,-3.787,-.18);
-    P.addEquipment('hullDark',cylZ(.098,.08,16),side*1.219,1.353,-3.738);
-    P.addEquipment('hullDetail',torus(.068,.025,14,6),side*.94,1.162,-3.754,Math.PI/2);
+    // 2026-10-19 (owner float sweep): stern light and tow eye stood 46-61 mm off the stern; the eye slides forward onto the
+    // plate, the light (outboard of it) seats on the mudguard bracket behind it.
+    P.snapGroup(`a7v-stern-light-${side}`,()=>P.addEquipment('hullDark',cylZ(.098,.08,16),side*1.219,1.353,-3.738),{reachM:.06});
+    P.snapGroup(`a7v-stern-eye-${side}`,()=>P.addEquipment('hullDetail',torus(.068,.025,14,6),side*.94,1.162,-3.754,Math.PI/2),{reachM:.30,direction:[0,0,1]});
     const path=new THREE.CatmullRomCurve3([
       new THREE.Vector3(side*1.31,2.018,-3.076),
       new THREE.Vector3(side*1.31,2.018,-3.60),
@@ -691,7 +699,7 @@ function a7Stern(P:TankBuilderPort): void {
     ]);
     recoveryCable(P,`leo2a7v_xRecoveryCable_${side}`,path,40);
   }
-  P.addEquipment('hullDetail',box(.34,.16,.17),0,1.28,-3.69);
+  P.snapGroup('a7v-stern-box',()=>P.addEquipment('hullDetail',box(.34,.16,.17),0,1.28,-3.69),{reachM:.08}); // 2026-10-19 (owner float sweep): stood 63 mm off the stern
 }
 
 function a6Stern(P:TankBuilderPort): void {
@@ -708,7 +716,7 @@ function a6Stern(P:TankBuilderPort): void {
   for(let i=0;i<12;i++)P.addEquipment('hullDetail',box(3.23-i*.0052,.023,.037),
     .00765,1.418+i*.0335,-3.745-i*.00275,-.38);
   for(const side of [-1,1]) {
-    P.addEquipment('hullDark',cylZ(.127,.047,20),side*.844,1.197,-3.662);
+    P.snapGroup(`a6-stern-light-${side}`,()=>P.addEquipment('hullDark',cylZ(.127,.047,20),side*.844,1.197,-3.662),{reachM:.07}); // 2026-10-19 (owner float sweep): stood 55 mm under the stern lip
     P.addEquipment('hullDetail',torus(.079,.023,18,7),side*.916,.840,-3.650,Math.PI/2);
     P.addEquipment('hullDetail',box(.083,.11,.10),side*.916,.928,-3.59);
     a6RecoveryCable(P,side);
@@ -912,21 +920,28 @@ function a5SmokeBanks(P:TankBuilderPort,d:Datum): void {
   // Upper tubes are rearward and nearly forward-facing; lower tubes sit
   // further out and forward. A generic stacked outboard bank is not this
   // source arrangement and makes the roof silhouette too wide.
-  for(const [x,y,z,yaw] of [
-    [1.289,2.279,-1.658,.03],[1.296,2.279,-1.441,.03],
-    [1.303,2.278,-1.220,.03],[1.310,2.277,-.987,.03],
-    [1.394,2.046,-1.192,.30],[1.368,2.049,-.821,.25],
-    [1.353,2.049,-.615,.20],[1.367,2.049,-.392,.03],
+  // 2026-10-21 (float-gaps 230): the fifth value is the bracket's inboard arm, measured from its inner face to the
+  // casting along -x at its four corners (largest + 8 mm, to the cm).
+  for(const [x,y,z,yaw,arm] of [
+    [1.289,2.279,-1.658,.03,.07],[1.296,2.279,-1.441,.03,.02],
+    [1.303,2.278,-1.220,.03,.02],[1.310,2.277,-.987,.03,.02],
+    [1.394,2.046,-1.192,.30,.11],[1.368,2.049,-.821,.25,.07],
+    [1.353,2.049,-.615,.20,.05],[1.367,2.049,-.392,.03,.05],
     // The source's negative-X bank is staggered differently; mirroring the
     // positive bank creates a false long outboard shelf in the plan view.
-    [-1.200,2.307,-1.646,-.055],[-1.230,2.302,-1.433,-.055],
-    [-1.261,2.308,-1.217,-.055],[-1.293,2.308,-.979,-.055],
-    [-1.325,2.071,-1.443,-.47],[-1.343,2.071,-1.215,-.47],
-    [-1.355,2.073,-.850,-.39],[-1.375,2.074,-.629,-.30],
+    [-1.200,2.307,-1.646,-.055,.05],[-1.230,2.302,-1.433,-.055,.02],
+    [-1.261,2.308,-1.217,-.055,.02],[-1.293,2.308,-.979,-.055,.03],
+    [-1.325,2.071,-1.443,-.47,.12],[-1.343,2.071,-1.215,-.47,.11],
+    [-1.355,2.073,-.850,-.39,.08],[-1.375,2.074,-.629,-.30,.07],
   ]) {
+    // 2026-10-19 (owner float sweep): the lower bank stood 31-68 mm off the casting and the splayed tubes' caps 22 mm
+    // off their muzzles; the caps follow the tube axis and each discharger seats on the casting.
+    // 2026-10-21 (float-gaps 230): the tubes keep their source stations (leopardX.selftest's asymmetric negative-side
+    // station and fan angle); each bracket grows inboard by its arm onto the casting instead of sliding the discharger.
+    const ax=[Math.sin(yaw),Math.sin(.79)*Math.cos(yaw),Math.cos(.79)*Math.cos(yaw)],side=Math.sign(x);
     equip(P,d,'turretDetail',markSmokeTube(cylZ(.044,.26,14)),x,y,z,-.79,yaw);
-    equip(P,d,'turretDark',cylZ(.034,.012,14),x+Math.sin(yaw)*.10,y+.097,z+.09,-.79,yaw);
-    equip(P,d,'turretDetail',box(.11,.068,.13),x-Math.sign(x)*.014,y-.089,z-.031);
+    equip(P,d,'turretDark',cylZ(.034,.012,14),x+ax[0]*.134,y+ax[1]*.134,z+ax[2]*.134,-.79,yaw);
+    equip(P,d,'turretDetail',box(.11+arm,.068,.13),x-side*(.014+arm/2),y-.089,z-.031);
   }
 }
 
@@ -977,12 +992,22 @@ function a7CurvedWhip(P:TankBuilderPort,d:Datum,x:number,bottom:number,top:numbe
 }
 
 function a6Whip(P:TankBuilderPort,d:Datum,x:number): void {
+  // 2026-10-19 (owner float sweep): the foot stood 74 mm off the bustle roof's edge.
+  // 2026-10-21 (float-gaps 230): the foot and shaft keep their source station (leopardX.selftest); a 20 mm post under
+  // the foot carries it down to the bustle's falling rear deck (embedded 7-43 mm), instead of sliding the whip 59 mm
+  // down and 48 mm forward.
+  equip(P,d,'turretDetail',cylY(.02,.02,.148,10),x,2.454,-1.8716);
   equip(P,d,'turretDetail',cylY(.0306,.0306,.0722,12),x,2.562,-1.87188);
   equip(P,d,'turretDark',cylY(.00348,.0171,.047,10),x,2.6215,-1.8716);
   equip(P,d,'turretDark',cylY(.00348,.00348,.74385,10),x,3.016925,-1.8716);
 }
 
 function a6RoofEquipment(P:TankBuilderPort,d:Datum): void {
+  // 2026-10-19 (owner float sweep): the panorama stood 59 mm over the commander's hatch and 64 mm over its collar.
+  // 2026-10-21 (float-gaps 230): the panorama keeps its source crown and inset glass (leopardX.selftest); a 0.12 m
+  // pedestal under its base, set 90 mm off the base's centre away from the hatch (clear of the hatch disc by 30 mm),
+  // stands 6 mm into the roof and 2 mm into the base, instead of dropping the whole sight 61 mm.
+  equip(P,d,'turretDetail',cylY(.12,.12,.122,20),-.1789,2.601,-.318);
   equip(P,d,'turretDetail',cylY(.2135,.2135,.06,28),-.2614,2.69,-.282);
   equip(P,d,'turretDetail',cylY(.195,.195,.1215,28),-.2614,2.757,-.282);
   a6PanoramaHead(P,d);
@@ -1241,6 +1266,13 @@ export function buildLeopard2A4MX(P: TankBuilderPort): void {
     for(let i=0;i<3;i++) skirt(P,side,-3.72+i*.97,-2.765+i*.97,1.72,1.687,1.00,1.69);
     P.addMudguard('a4m-x-front-flap','hullRubber',box(.57,.18,.045),side*1.36,1.07,3.73,-.11);
     P.addMudguard('a4m-x-rear-flap','hullRubber',box(.57,.43,.045),side*1.36,.75,-3.69,.07);
+    // Owner 2026-10-19 (Gallery markup, "floating"): the rear flap hung 0.60 m under the hull's rear overhang with
+    // nothing holding it. Two flat steel hangers run from 35 mm inside its top edge, within its thickness, up into
+    // the overhang's underside (y 1.569 over the flap, 18-34 mm deep along its slope), and a clamp bar across the
+    // flap's rear face, 4 mm into the rubber, carries them. Both stand 0.18 m behind the sprocket's track course.
+    for(const dx of [-.19,.19])
+      P.addMudguard('a4m-x-rear-flap-hanger','hullDetail',box(.06,.665,.022),side*1.36+dx,1.2625,-3.675);
+    P.addEquipment('hullDetail',box(.53,.05,.014).translate(0,.185,-.0255),side*1.36,.75,-3.69,.07);
   }
   fans(P,1.833,-2.95,.51);
   driver(P,1.68,-.58,1.0);
@@ -1306,9 +1338,12 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
   a5Stern(P);
   // Rear hull marker rod, present in the supplied x_root_107 node; unlike
   // the roof masts it stays on the hull when the turret turns.
-  P.addEquipment('hullDetail',cylY(.018,.020,.062,12),-.085,1.87,-3.75);
-  P.addEquipment('hullDetail',cylY(.0034,.0034,.49,8),-.085,2.135,-3.802,-.213);
-  P.addEquipment('hullDetail',cylY(.009,.009,.019,10),-.085,2.37,-3.855);
+  // 2026-10-19 (owner float sweep): the rod's foot stood 92 mm off the stern deck edge; the rod seats on it.
+  P.snapGroup('a5-stern-marker-rod',()=>{
+    P.addEquipment('hullDetail',cylY(.018,.020,.062,12),-.085,1.87,-3.75);
+    P.addEquipment('hullDetail',cylY(.0034,.0034,.49,8),-.085,2.135,-3.802,-.213);
+    P.addEquipment('hullDetail',cylY(.009,.009,.019,10),-.085,2.37,-3.855);
+  },{reachM:.10});
   shell(P,d,[[-2.725,-.56,.21,2.35,2.405],[-2.64,-.56,.50,1.92,2.414],
     [-2.48,-.68,.76,1.92,2.431],
     [-1.72,-1.10,1.18,1.869,2.511],[-1.50,-1.16,1.225,1.866,2.519],

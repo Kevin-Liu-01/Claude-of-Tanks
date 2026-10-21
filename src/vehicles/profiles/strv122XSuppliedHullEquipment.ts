@@ -23,10 +23,13 @@ function bowLamps(P:TankBuilderPort,side:-1|1):void {
     P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.053,.006,24),'headlight'),x+side*dx,1.087,z+.004,-.12,side*.12);
   }
   // Square upper lamp is seated on a small bridge on the sloping shoulder.
-  P.addEquipment('hullDetail',box(.156,.051,.19),side*1.616,1.473,2.955,.147);
-  P.addEquipment('hullDetail',box(.140,.127,.100),side*1.616,1.536,2.932);
-  P.addEquipment('hullDark',box(.118,.101,.013),side*1.616,1.536,2.988);
-  P.addEquipment('hullGlass',markVehicleNightLens(box(.090,.074,.004),'marker'),side*1.616,1.536,2.997);
+  // 2026-10-19 (owner float sweep): the bridge and lamp stood 25 mm over the shoulder; seated on it
+  P.snapGroup('strv122-upper-lamp',()=>{
+    P.addEquipment('hullDetail',box(.156,.051,.19),side*1.616,1.473,2.955,.147);
+    P.addEquipment('hullDetail',box(.140,.127,.100),side*1.616,1.536,2.932);
+    P.addEquipment('hullDark',box(.118,.101,.013),side*1.616,1.536,2.988);
+    P.addEquipment('hullGlass',markVehicleNightLens(box(.090,.074,.004),'marker'),side*1.616,1.536,2.997);
+  },{reachM:.04});
 }
 
 function bowTowing(P:TankBuilderPort,side:-1|1):void {
@@ -43,10 +46,11 @@ function bowTowing(P:TankBuilderPort,side:-1|1):void {
 
 function driver(P:TankBuilderPort):void {
   P.addHatch('hullDetail',box(.620,.027,.507),-.698,1.595,1.85,.071);
+  // 2026-10-19 (owner float sweep): the three vision blocks stood 42 mm over the plate; seated on it
   for(const x of [-.912,-.700,-.488]){
-    P.addEquipment('hullDetail',box(.180,.105,.152),x,1.693,2.014,.104);
-    P.addEquipment('hullDark',box(.155,.065,.010),x,1.701,2.094,.104);
-    P.addEquipment('hullGlass',box(.122,.043,.004),x,1.705,2.101,.104);
+    P.addEquipment('hullDetail',box(.180,.105,.152),x,1.650,2.014,.104);
+    P.addEquipment('hullDark',box(.155,.065,.010),x,1.658,2.094,.104);
+    P.addEquipment('hullGlass',box(.122,.043,.004),x,1.662,2.101,.104);
   }
   for(const side of [-1,1]){
     P.addEquipment('hullDetail',box(.390,.026,.64),side*1.018,1.547,2.235,.138);

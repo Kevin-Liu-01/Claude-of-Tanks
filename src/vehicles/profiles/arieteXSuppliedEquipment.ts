@@ -98,11 +98,16 @@ function roofFurniture(P: TankBuilderPort): void {
     add(P, 'turretDetail', box(.065, .044, .059), x, y - .045, z);
   }
   // Rear crown rails are thin folded stock, not another raised roof slab.
+  // 2026-10-19 (owner float sweep): the rails stood 13-38 mm, the side box 18 mm and the long bar 82 mm over the
+  // falling roof; each drops onto it.
   for (const x of [-.800, -.268, .081, .482]) {
-    add(P, 'turretDetail', box(.018, .052, .322), x, 2.134, -1.324);
+    P.snapGroup(`ariete-crown-rail-${x}`, () => add(P, 'turretDetail', box(.018, .052, .322), x, 2.134, -1.324),
+      { reachM: .05, mode: 'down' });
   }
-  add(P, 'turretDetail', box(.0984, .1035, .7839), -1.032, 2.1158, -1.1792);
-  add(P, 'turretDetail', cylX(.0273, 1.4139, 20), -.1384, 2.1629, -.9715);
+  P.snapGroup('ariete-crown-box', () => add(P, 'turretDetail', box(.0984, .1035, .7839), -1.032, 2.1158, -1.1792),
+    { reachM: .04, mode: 'down' });
+  P.snapGroup('ariete-crown-bar', () => add(P, 'turretDetail', cylX(.0273, 1.4139, 20), -.1384, 2.1629, -.9715),
+    { reachM: .14, mode: 'down' });
   for (const x of [-.230, .183]) add(P, 'turretDetail', cylY(.020, .024, .278, 16),
     x, 2.199, -.834);
   add(P, 'turretDetail', cylY(.067, .067, .273, 24), .87222, 2.1673, -.86465);

@@ -10,7 +10,7 @@ function inside(m,p){return hit([m],p,[0,1,0],.5)&&hit([m],p,[0,-1,0],.5);}
 function localPoint(p,yaw){return new THREE.Vector3(...p).applyAxisAngle(new THREE.Vector3(0,1,0),yaw).toArray();}
 function helper(){
   const ms=[],mat=new THREE.MeshBasicMaterial({side:THREE.DoubleSide}),pivot=T90_AW_X_SOURCE_DATUMS.turretPivot;
-  addT90AWAAContainers({addEquipment(_b,g,x=0,y=0,z=0){g.translate(x+pivot[0],y+pivot[1],z+pivot[2]);const m=new THREE.Mesh(g,mat);m.updateMatrixWorld();ms.push(m);}});
+  addT90AWAAContainers({snapGroup:(_label,build)=>build(),addEquipment(_b,g,x=0,y=0,z=0){g.translate(x+pivot[0],y+pivot[1],z+pivot[2]);const m=new THREE.Mesh(g,mat);m.updateMatrixWorld();ms.push(m);}});
   for(const r of packet.rays){const h=hit(ms,r.origin,r.direction);assert.ok(h&&h.point.distanceTo(new THREE.Vector3(...r.point))<.006,'isolated actual source container face');}
   const p=localPoint([-.8,2.530,.56],-.41816);
   assert.ok(ms.filter(m=>inside(m,p)).length>=2,'forward canister positively overlaps its actual receiving channel');

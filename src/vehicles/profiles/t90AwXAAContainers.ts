@@ -53,6 +53,10 @@ function forwardCanister(P:TankBuilderPort):void{
   // existing rear canister, rather than a new tall pedestal through roof air.
   const channel=KIT.box(.2587,.0054,.1685).translate(-.75635,2.52958,.56631);
   part(P,channel,yaw);
+  // 2026-10-21 (float-gaps 230): the canister and its channel stand where the source puts them (the AA-containers
+  // receipt pins their faces), 34 mm from the forward support beam; a short cleat runs from inside the channel's
+  // inboard corner, under the canister floor, to the beam's axis (it was the 37 mm float of the 10-19 sweep).
+  part(P,beamBetween([-.7952,2.535,.1961],[-.7558,2.55,.1367],.010));
   part(P,beamBetween([-.8481,2.55,.1119],[-.682,2.55,.1564],.017));
   part(P,beamBetween([-.773,2.501,.000],[ -.742,2.666,.032],.009));
 }
