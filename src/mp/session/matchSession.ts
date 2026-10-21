@@ -825,7 +825,10 @@ export class MatchSession {
     const client = this.matchClient;
     const round = this.currentRound;
     const migrating = this.migrating;
-    if (!client || !round || !migrating || !parseP2pMatchUrl(round.matchStart.matchUrl)) return;
+    // 2026-10-20 (item/mp-rejoin-229, the 229 e2e under load): a match link its client already closed (recovery past
+    // its grace: the round is lost for this seat) carries no migration; replacing it threw "transport closed" as an
+    // unhandled rejection in the page
+    if (!client || !round || !migrating || migrating.state === 'closed' || !parseP2pMatchUrl(round.matchStart.matchUrl)) return;
     const me = this.room.playerId;
     if (change.generation <= this.runningGeneration) {
       // The election that named the host at the start (the URL's generation), or one this seat already runs: nothing moves —
@@ -928,7 +931,7 @@ export class MatchSession {
       void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
       return;
     }
-    if (this.host !== host || this.matchClient !== client) { host.stop(); return; }
+    if (this.host !== host || this.matchClient !== client || migrating.state === 'closed') { if (this.host === host) this.host = null; host.stop(); return; }
     const previous = this.peerTransport;
     this.peerTransport = null;
     migrating.replace(host.transport, 'host migration');
