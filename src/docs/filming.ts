@@ -110,9 +110,9 @@ function processMarkup(): string {
 const reducedMotion = (): boolean => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /**
- * The eleventh section holds the library of every picture the media rounds made (2026-10-19, owner: "all should be
- * visible on the website"): src/presentation/mediaLibrary.ts, loaded when the section nears the screen or the page
- * opens at #library.
+ * The eleventh section holds the library of the media rounds' finals (2026-10-19, owner: "all should be visible on the
+ * website"; finals only since 2026-10-20): src/presentation/mediaLibrary.ts, loaded when the section nears the screen
+ * or the page opens at #library.
  */
 function mountLibrary(article: HTMLElement): void {
   const section = article.querySelector<HTMLElement>('#topic-section-11');
