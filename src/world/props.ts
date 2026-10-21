@@ -663,8 +663,9 @@ interface PropsSettings {
    *  - hedgehogsAtApproaches: the steel hedgehogs drawn inside the town stand only at its approaches, HEDGEHOG_TOWN_CLEAR_M
    *    and more off every building, not in its streets ("a dark object lies in the middle of the road");
    *  - fenceFrontageClear (with fencesClearBuildings; the maps lane, 229): a module running in line with a building's face
-   *    (within FENCE_FACE_LINE_M of the face's line) keeps FENCE_FRONTAGE_CLEAR_M more off the face's ends, so a run broken
-   *    at a shop does not end in its corners (Monsoon's market: "the stall wattle pressed against the storefront").
+   *    (within FENCE_FACE_LINE_M of the face's line), on a run that crosses that building's plot, keeps
+   *    FENCE_FRONTAGE_CLEAR_M more off the face's ends, so a run broken at a shop does not end in its corners (Monsoon's
+   *    market: "the stall wattle pressed against the storefront").
    * (227's fieldWorksLevel, which left out a breastwork's stepped modules, is gone: since 229 every map seats each module on
    * the ground under its own footprint and keeps them all, placeFieldWorks.)
    */
@@ -4762,6 +4763,19 @@ ${snowCap ? `
     // off the face's ends: Monsoon's roadside wattle, broken at a cornershop's plot, still ended in line with its counter
     // at both corners
     const frontageClear = fencesClearBuildings && !!P.dressingRules?.fenceFrontageClear;
+    // (and only at a building whose grown plot the run itself crosses — the run already broken at that shop — so a run
+    // passing a face's line without entering its plot keeps every module: Monsoon's garden fence in line with a second
+    // shop's front lost one from its middle, the 229 blind's pose 10)
+    let crossedPlots: Set<(typeof buildingFeatures)[number]> | null = null;
+    const meetsPlot = (b: (typeof buildingFeatures)[number], ax: number, az: number, bx: number, bz: number): boolean => {
+      const c = Math.cos(b.rot), sn = Math.sin(b.rot), hw = b.w / 2 + FENCE_BUILDING_CLEAR_M, hd = b.d / 2 + FENCE_BUILDING_CLEAR_M;
+      const steps = Math.max(2, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.3));
+      for (let k = 0; k <= steps; k++) {
+        const dx = ax + (bx - ax) * k / steps - b.x, dz = az + (bz - az) * k / steps - b.z;
+        if (Math.abs(dx * c - dz * sn) < hw && Math.abs(dx * sn + dz * c) < hd) return true;
+      }
+      return false;
+    };
     const clearOfBuildings = !fencesClearBuildings ? () => true : (ax: number, az: number, bx: number, bz: number): boolean => {
       const steps = Math.max(2, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.3));
       for (const b of buildingFeatures) {
@@ -4771,7 +4785,7 @@ ${snowCap ? `
           const dx = ax + (bx - ax) * k / steps - b.x, dz = az + (bz - az) * k / steps - b.z;
           if (Math.abs(dx * c - dz * sn) < hw && Math.abs(dx * sn + dz * c) < hd) return false;
         }
-        if (!frontageClear) continue;
+        if (!frontageClear || !crossedPlots?.has(b)) continue;
         // (the module's ends in the plot's frame: running along its local x on the line of a +-z face, or along z on the
         // line of a +-x face — within FENCE_FACE_LINE_M of it — short of the face's end by less than the frontage; a run
         // aimed head-on at a wall keeps the plot's own clearance)
@@ -4788,6 +4802,20 @@ ${snowCap ? `
     const n = Math.max(1, Math.round(along / FENCE_SEG));
     const tx = (x1 - x0) / along, tz = (z1 - z0) / along;
     const straightYaw = Math.atan2(tx, tz); // module runs along local +z
+    if (frontageClear) {
+      // (props.dressingRules.fenceFrontageClear) the plots the run's own modules meet, read before any is laid (the
+      // modules' ends as the loop below takes them; no draws)
+      crossedPlots = new Set();
+      for (let k = 0; k < n; k++) {
+        const a = curved?.at(k * along / n), b = curved?.at((k + 1) * along / n);
+        const ax = a?.[0] ?? x0 + tx * (k * FENCE_SEG), az = a?.[1] ?? z0 + tz * (k * FENCE_SEG);
+        const bx = b?.[0] ?? x0 + tx * ((k + 1) * FENCE_SEG), bz = b?.[1] ?? z0 + tz * ((k + 1) * FENCE_SEG);
+        for (const building of buildingFeatures) {
+          if (Math.hypot((ax + bx) / 2 - building.x, (az + bz) / 2 - building.z) > Math.hypot(building.w, building.d) + FENCE_SEG) continue;
+          if (meetsPlot(building, ax, az, bx, bz)) crossedPlots.add(building);
+        }
+      }
+    }
     let gated = false;
     let openRun = false;
     // (props.dressingRules.fencesClearBuildings) the run's modules wait in their piece — the modules between two breaks (a
