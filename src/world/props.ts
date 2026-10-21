@@ -467,7 +467,7 @@ export const PILLBOX_SET_BACK_M: Readonly<Record<string, number>> = Object.freez
 const FENCE_BUILDING_CLEAR_M = 0.8, YARD_CLUTTER_GAP_M = 1.2, HEDGEHOG_TOWN_CLEAR_M = 12;
 /** props.dressingRules.fenceFrontageClear (the maps lane, 229): how much farther a run in line with a building's face keeps
  *  off that face's ends (a counter, porch or awning reaches past the plot). */
-const FENCE_FRONTAGE_CLEAR_M = 2;
+const FENCE_FRONTAGE_CLEAR_M = 2, FENCE_FACE_LINE_M = 1.2;
 /** props.dressingRules.fencesClearBuildings (the fleet dressing rules 227): the fewest modules a fence run's piece stands
  *  with — a shorter piece between two breaks is left out (the stub a plot's clearance left of a field-edge run). */
 const FENCE_PIECE_MIN = 3;
@@ -662,9 +662,9 @@ interface PropsSettings {
    *    yard fence run (its yard is fenced: the run stood in its ground at any angle);
    *  - hedgehogsAtApproaches: the steel hedgehogs drawn inside the town stand only at its approaches, HEDGEHOG_TOWN_CLEAR_M
    *    and more off every building, not in its streets ("a dark object lies in the middle of the road");
-   *  - fenceFrontageClear (with fencesClearBuildings; the maps lane, 229): a module running in line with a building's face,
-   *    within the grown plot's depth of it, keeps FENCE_FRONTAGE_CLEAR_M more off the face's ends, so a run broken at a shop
-   *    does not end in its corners (Monsoon's market: "the stall wattle pressed against the storefront").
+   *  - fenceFrontageClear (with fencesClearBuildings; the maps lane, 229): a module running in line with a building's face
+   *    (within FENCE_FACE_LINE_M of the face's line) keeps FENCE_FRONTAGE_CLEAR_M more off the face's ends, so a run broken
+   *    at a shop does not end in its corners (Monsoon's market: "the stall wattle pressed against the storefront").
    * (227's fieldWorksLevel, which left out a breastwork's stepped modules, is gone: since 229 every map seats each module on
    * the ground under its own footprint and keeps them all, placeFieldWorks.)
    */
@@ -4772,13 +4772,15 @@ ${snowCap ? `
           if (Math.abs(dx * c - dz * sn) < hw && Math.abs(dx * sn + dz * c) < hd) return false;
         }
         if (!frontageClear) continue;
-        // (the module's ends in the plot's frame: running along its local x within its depth, or along z within its width)
+        // (the module's ends in the plot's frame: running along its local x on the line of a +-z face, or along z on the
+        // line of a +-x face — within FENCE_FACE_LINE_M of it — short of the face's end by less than the frontage; a run
+        // aimed head-on at a wall keeps the plot's own clearance)
         const lax = (ax - b.x) * c - (az - b.z) * sn, laz = (ax - b.x) * sn + (az - b.z) * c;
         const lbx = (bx - b.x) * c - (bz - b.z) * sn, lbz = (bx - b.x) * sn + (bz - b.z) * c;
         const len = Math.hypot(lbx - lax, lbz - laz) || 1;
-        if (Math.abs(lbz - laz) < 0.3 * len && Math.abs((laz + lbz) / 2) < hd
+        if (Math.abs(lbz - laz) < 0.3 * len && Math.abs(Math.abs((laz + lbz) / 2) - b.d / 2) < FENCE_FACE_LINE_M
           && Math.min(Math.abs(lax), Math.abs(lbx)) < hw + FENCE_FRONTAGE_CLEAR_M) return false;
-        if (Math.abs(lbx - lax) < 0.3 * len && Math.abs((lax + lbx) / 2) < hw
+        if (Math.abs(lbx - lax) < 0.3 * len && Math.abs(Math.abs((lax + lbx) / 2) - b.w / 2) < FENCE_FACE_LINE_M
           && Math.min(Math.abs(laz), Math.abs(lbz)) < hd + FENCE_FRONTAGE_CLEAR_M) return false;
       }
       return true;
