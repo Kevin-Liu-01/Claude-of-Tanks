@@ -324,10 +324,23 @@ export function buildAnatomyScene(armor: AnatomyArmor, options: AnatomySceneOpti
     }
     return support;
   };
+  // Inside the exact hull shell: a point inside any hull or turret collision cell (face planes, 2 cm tolerance), with the
+  // turret at rest. Crew poses keep their legs inside it.
+  const cellContains = (cell: { min?: readonly number[]; max?: readonly number[]; faces?: ReadonlyArray<{ normal?: readonly number[]; constant?: number }> }, point: readonly number[]) =>
+    !!cell.min && !!cell.max && [0, 1, 2].every((axis) => point[axis] >= cell.min![axis] - 0.02 && point[axis] <= cell.max![axis] + 0.02)
+    && (cell.faces || []).every((face) => !face.normal || !Number.isFinite(face.constant)
+      || face.normal[0] * point[0] + face.normal[1] * point[1] + face.normal[2] * point[2] + Number(face.constant) <= 0.02);
+  const hullCells = (armor.collisionShells?.hull || []) as unknown as Parameters<typeof cellContains>[0][];
+  const turretCells = (armor.collisionShells?.turret || []) as unknown as Parameters<typeof cellContains>[0][];
+  const insideShell = (frame: string) => (point: readonly [number, number, number]) => {
+    const hullPoint = frame === 'turret' ? point.map((value, axis) => value + Number(pivot[axis])) : point;
+    const turretPoint = frame === 'turret' ? point : point.map((value, axis) => value - Number(pivot[axis]));
+    return hullCells.some((cell) => cellContains(cell, hullPoint)) || turretCells.some((cell) => cellContains(cell, turretPoint));
+  };
   for (const station of stations) {
     const supportY = stationFloor(station);
     const frameFloor = station.frame === 'hull' ? supportY : supportY - turretY;
-    const model = buildCrewModel(station, frameFloor);
+    const model = buildCrewModel(station, frameFloor, station.frame === 'hull' || station.frame === 'turret' ? insideShell(station.frame) : undefined);
     const pick: AnatomyPick = { kind: 'crew', station };
     model.group.traverse((object) => { if (object instanceof THREE.Mesh) { object.userData.anatomyPick = pick; pickables.push(object); } });
     holder('crew', station.frame).add(model.group);

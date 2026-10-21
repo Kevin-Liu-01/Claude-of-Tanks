@@ -56,7 +56,8 @@ const BASE_POSES: Readonly<Record<'driver' | 'gunner' | 'commander' | 'loaderSea
 
 /** The most tucked pose the solver may reach for each base pose. */
 const TUCKED: Readonly<Record<keyof typeof BASE_POSES, CrewPose>> = Object.freeze({
-  driver: { trunk: -1.08, hip: 1.62, knee: 1.55, shoulder: 1.25, elbow: 0.3, neck: -0.65 },
+  // Fully reclined with the thighs raised and the knees past a right angle: feet on pedals close under the knees.
+  driver: { trunk: -1.0, hip: 2.05, knee: 2.25, shoulder: 1.3, elbow: 0.25, neck: -0.6 },
   gunner: { trunk: -0.2, hip: 1.95, knee: 2.3, shoulder: 0.8, elbow: 0.8, neck: 0.35 },
   commander: { trunk: -0.3, hip: 1.95, knee: 2.3, shoulder: 0.45, elbow: 1.1, neck: 0.25 },
   loaderSeated: { trunk: -0.3, hip: 1.95, knee: 2.3, shoulder: 0.55, elbow: 1.0, neck: 0.25 },
@@ -117,6 +118,10 @@ interface CrewFit {
   tuck: number;
   /** Clearance of the lowest body point above the hull-shell floor (negative: the station is too low for a person). */
   floorClearanceM: number;
+  /** Lower-body points (of 6) inside the hull shell. */
+  insideShell: number;
+  /** Head slide along the station (frame z, metres) the fit needed; 0 keeps the head on the combat head anchor. */
+  slideM: number;
 }
 
 function crewBasePose(station: CrewStation, floorY: number): keyof typeof BASE_POSES {
@@ -128,26 +133,78 @@ function crewBasePose(station: CrewStation, floorY: number): keyof typeof BASE_P
   return station.head[1] - floorY >= HEAD_ABOVE_HIP + SEGMENT.hipHeight * 0.86 ? 'loaderStanding' : 'loaderSeated';
 }
 
-/** Pick the least tucked pose whose lowest point clears the floor by 2 cm (bisection over the tuck blend). */
-function fitCrewPose(station: CrewStation, floorY: number): CrewFit {
-  const base = crewBasePose(station, floorY);
-  const clearance = (tuck: number) => {
-    const pose = lerpPose(BASE_POSES[base], TUCKED[base], tuck);
-    return station.head[1] + lowestBelowHead(poseJoints(pose)) - floorY;
-  };
-  let tuck = 0;
-  if (clearance(0) < 0.02) {
-    if (clearance(1) < 0.02) tuck = 1;
-    else {
-      let lo = 0, hi = 1;
-      for (let step = 0; step < 24; step += 1) {
-        const mid = (lo + hi) / 2;
-        if (clearance(mid) >= 0.02) hi = mid; else lo = mid;
-      }
-      tuck = hi;
+/** Station-frame points of the lower body (knees, ankles, toes) for a pose whose head centre is at `head`. */
+function lowerBodyPoints(head: readonly number[], joints: Joints): Array<[number, number, number]> {
+  const points: Array<[number, number, number]> = [];
+  for (const side of [-1, 1]) {
+    const x = head[0] + side * SEGMENT.hipHalfWidth * 1.75;
+    for (const joint of [joints.knee, joints.ankle, joints.toe]) {
+      points.push([x, head[1] + joint[0] - joints.head[0], head[2] + joint[1] - joints.head[1]]);
     }
   }
-  return { pose: lerpPose(BASE_POSES[base], TUCKED[base], tuck), base, tuck, floorClearanceM: clearance(tuck) };
+  return points;
+}
+
+/** A frame-local point inside the vehicle's exact hull shell (supplied by the scene from the collision cells). */
+type InsideShell = (point: readonly [number, number, number]) => boolean;
+
+/** Head slides along the station (frame z) tried when no tuck keeps the legs inside the shell, nearest first. */
+function stationSlides(station: CrewStation): number[] {
+  const margin = SEGMENT.headRadius;
+  const back = Math.min(0, station.volume.min[2] + margin - station.head[2]);
+  const front = Math.max(0, station.volume.max[2] - margin - station.head[2]);
+  const slides = [0];
+  for (let step = 0.05; step <= Math.max(-back, front) + 1e-9; step += 0.05) {
+    if (-step >= back) slides.push(-step);
+    if (step <= front) slides.push(step);
+  }
+  return slides;
+}
+
+/**
+ * Pick the least tucked pose (tuck blend 0…1) whose lowest point clears the floor by 2 cm and whose knees, ankles and
+ * toes stay inside the hull shell, with the head on the station's head anchor. Where no tuck does, the head may slide
+ * along the station (inside the combat station box, nearest slide first): a reclined driver whose head shape sits
+ * mid-station otherwise pushes the legs through the glacis. Failing that, the first pose with both knees and ankles
+ * inside (a toe may touch a sloped plate), else the pose with the most lower-body points inside.
+ */
+function fitCrewPose(station: CrewStation, floorY: number, inside?: InsideShell): CrewFit {
+  const base = crewBasePose(station, floorY);
+  const evaluate = (tuck: number, slide: number) => {
+    const pose = lerpPose(BASE_POSES[base], TUCKED[base], tuck);
+    const joints = poseJoints(pose);
+    const head = [station.head[0], station.head[1], station.head[2] + slide];
+    const clearance = head[1] + lowestBelowHead(joints) - floorY;
+    const flags = inside ? lowerBodyPoints(head, joints).map((point) => inside(point)) : [true, true, true, true, true, true];
+    // Per side: knee, ankle, toe. The knees and ankles carry the silhouette; a toe may touch a sloped plate.
+    const contained = flags.filter(Boolean).length;
+    const legs = flags.filter((flag, index) => flag && index % 3 !== 2).length;
+    return { tuck, slide, pose, clearance, contained, legs };
+  };
+  type Step = ReturnType<typeof evaluate>;
+  const clear = (step: Step) => step.clearance >= 0.02;
+  const evaluated: Step[] = [];
+  const search = (accept: (step: Step) => boolean): Step | undefined => {
+    for (let index = 0; index <= 40; index += 1) {
+      const step = evaluate(index / 40, 0);
+      evaluated.push(step);
+      if (clear(step) && accept(step)) return step;
+    }
+    if (!inside) return undefined;
+    for (const slide of stationSlides(station).slice(1)) {
+      for (let index = 0; index <= 40; index += 2) {
+        const step = evaluate(index / 40, slide);
+        evaluated.push(step);
+        if (clear(step) && accept(step)) return step;
+      }
+    }
+    return undefined;
+  };
+  const pick = search((step) => step.contained === 6)
+    || evaluated.find((step) => clear(step) && step.legs === 4)
+    || evaluated.filter(clear).sort((a, b) => b.contained - a.contained || Math.abs(a.slide) - Math.abs(b.slide) || a.tuck - b.tuck)[0]
+    || evaluated[40];
+  return { pose: pick.pose, base, tuck: pick.tuck, slideM: pick.slide, floorClearanceM: pick.clearance, insideShell: pick.contained };
 }
 
 type Tone = 'clay' | 'joint' | 'band';
@@ -181,8 +238,8 @@ interface CrewModel {
  * One crew mannequin, positioned in its station's frame: the head centre sits exactly on `station.head`.
  * `userData.anatomy` records the combat identity and the measured floor clearance.
  */
-export function buildCrewModel(station: CrewStation, floorY: number): CrewModel {
-  const fit = fitCrewPose(station, floorY);
+export function buildCrewModel(station: CrewStation, floorY: number, inside?: InsideShell): CrewModel {
+  const fit = fitCrewPose(station, floorY, inside);
   const joints = poseJoints(fit.pose);
   // Sagittal (y, z) → local 3D, pelvis at origin; x is lateral.
   const p = (point: [number, number], x = 0) => new THREE.Vector3(x, point[0], point[1]);
@@ -236,7 +293,10 @@ export function buildCrewModel(station: CrewStation, floorY: number): CrewModel 
     boot.translate(ankle.x, ankle.y - S.ankle + 0.0425 - 0.02, ankle.z + S.foot * 0.3);
     pieces.joint.push(boot);
   }
-  const colors: Record<Tone, string> = { clay: SYSTEM_COLORS.crew, joint: '#3a434e', band: CREW_ROLE_COLORS[station.role as CrewRole] };
+  // Role-tinted clay (the role colour lifted toward the crew paper tone), graphite joints, full-strength role band.
+  const role = CREW_ROLE_COLORS[station.role as CrewRole];
+  const clay = '#' + new THREE.Color(role).lerp(new THREE.Color(SYSTEM_COLORS.crew), 0.52).getHexString();
+  const colors: Record<Tone, string> = { clay, joint: '#3a434e', band: role };
   const group = new THREE.Group();
   group.name = `anatomy_crew_${station.crew}_${station.index}`;
   const figure = new THREE.Group();
@@ -267,12 +327,13 @@ export function buildCrewModel(station: CrewStation, floorY: number): CrewModel 
   headMarker.name = 'anatomy_crew_head';
   headMarker.position.copy(head);
   figure.add(headMarker);
-  figure.position.set(station.head[0] - head.x, station.head[1] - head.y, station.head[2] - head.z);
+  figure.position.set(station.head[0] - head.x, station.head[1] - head.y, station.head[2] + fit.slideM - head.z);
   group.add(figure);
   group.userData.anatomy = {
     kind: 'crew', crew: station.crew, role: station.role, index: station.index, frame: station.frame,
     head: [...station.head], pose: fit.base, tuck: Number(fit.tuck.toFixed(3)),
-    floorClearanceM: Number(fit.floorClearanceM.toFixed(3)), statureM: MANNEQUIN_STATURE_M,
+    floorClearanceM: Number(fit.floorClearanceM.toFixed(3)), insideShell: fit.insideShell, slideM: fit.slideM,
+    statureM: MANNEQUIN_STATURE_M,
   };
   return { group, materials, geometries, triangles, fit };
 }

@@ -19,6 +19,8 @@ export type AnatomyMode = 'armor' | 'modules' | 'crew';
 export type AnatomyToggle = keyof AnatomyToggles | 'exterior' | 'labels';
 type ViewToggles = AnatomyToggles & { exterior: boolean; labels: boolean };
 
+const CORE_BADGE_MODULES = new Set(['engine', 'transmission', 'fuelTank', 'ammoRack', 'autoloader', 'missileRack', 'feedSystem']);
+
 /** Layer for exterior meshes while an anatomy layer is on: off the main pass, drawn only by the ghost passes. */
 const EXTERIOR_LAYER = 3;
 
@@ -270,8 +272,12 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
     const visible = new Set<THREE.Object3D>();
     anatomy.frames.root.traverseVisible((object) => { visible.add(object); });
     visiblePickables = anatomy.pickables.filter((object) => visible.has(object));
+    // Module badges name the core systems only; crew letters belong to the Crew layer. Fewer, unstacked badges.
     for (const item of badgeItems) {
-      const on = view.labels && (item.kind === 'module' ? view.modules : view.crew);
+      const pick = item.anchor.pick;
+      const on = view.labels && (item.kind === 'module'
+        ? view.modules && pick.kind === 'module' && CORE_BADGE_MODULES.has(pick.part.module)
+        : view.crew && mode === 'crew');
       item.element.classList.toggle('is-off', !on);
     }
     badges.hidden = !view.labels;
@@ -364,8 +370,15 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
     } else {
       const present = new Set(anatomy?.parts.filter((part) => !TRACK_MODULES.has(part.module)).map((part) => part.system) || []);
       for (const system of ANATOMY_SYSTEMS) {
-        if (system === 'crew' ? !view.crew : (!view.modules || !present.has(system))) continue;
+        if (system === 'crew' ? !view.crew || mode === 'crew' : (!view.modules || !present.has(system))) continue;
         entries.push(key(t(`gallery.anatomy.system.${system}`), SYSTEM_COLORS[system]));
+      }
+      if (mode === 'crew' && view.crew) {
+        // The Crew layer keys its role colours (helmet bands and tinted figures), one key per role on board.
+        const roles = [...new Set(anatomy?.stations.map((station) => station.role) || [])];
+        for (const role of (['commander', 'gunner', 'loader', 'driver', 'radio'] as const).filter((entry) => roles.includes(entry))) {
+          entries.push(key(t(`gallery.anatomy.role.${role}`), CREW_ROLE_COLORS[role]));
+        }
       }
       if (view.hits) entries.push(key(t('gallery.anatomy.toggle.hits'), '#5fe3ff'));
     }
@@ -527,7 +540,9 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       scene.overrideMaterial = depth;
       renderer.render(scene, camera);
       scene.overrideMaterial = ghost;
-      ghost.uniforms.uRim.value = mode === 'armor' ? 0.3 : 0.42;
+      // Armor: a faint shell for context. X-ray: a visible glass veil, so internals read as inside the hull.
+      ghost.uniforms.uRim.value = mode === 'armor' ? 0.3 : 0.5;
+      ghost.uniforms.uFill.value = mode === 'armor' ? 0.035 : 0.11;
       renderer.render(scene, camera);
       scene.overrideMaterial = override;
       camera.layers.mask = mask;

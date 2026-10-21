@@ -207,7 +207,8 @@ function carousel(s: ModuleSketch, caliberMm: number, rammer: boolean): void {
     for (let index = 0; index < count; index += 1) {
       const angle = (index / count) * Math.PI * 2;
       const mid = inner + length / 2;
-      placements.push({ x: Math.cos(angle) * mid, y, z: Math.sin(angle) * mid, axis: 'radial', angle });
+      // Rounds lie radially with their noses toward the hub, as in an AZ/MZ carousel.
+      placements.push({ x: Math.cos(angle) * mid, y, z: Math.sin(angle) * mid, axis: 'radial', angle: angle + Math.PI });
     }
     s.rounds.push({ radius: r, length: length * 0.96, placements });
   }

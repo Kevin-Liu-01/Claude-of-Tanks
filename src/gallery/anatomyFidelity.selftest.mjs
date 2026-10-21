@@ -7,7 +7,8 @@
 //            every main-armor triangle carries the ramp colour of its plate's value;
 //   modules— one model per combat module part (tracks: hit volume only), in the part's combat frame, inside the part's
 //            hit-shape bounds;
-//   crew   — one P50 (1.75 m) mannequin per station, its head centre on the station's combat head shape;
+//   crew   — one P50 (1.75 m) mannequin per station, its head centre on the station's combat head shape, or slid along
+//            the station inside the combat station box where the legs would otherwise leave the hull shell;
 //   hits   — one drawn hit volume per combat shape (and the barrel), each spanning exactly its shape's bounds;
 //   purity — building the scene leaves the armor model byte-identical (canonical JSON before and after).
 // ANATOMY_RAYS (default 72 per vehicle) and ANATOMY_IDS narrow or widen a run.
@@ -83,7 +84,7 @@ const hash = (value) => createHash('sha256').update(canonical(value)).digest('he
 const RAYS = Number(process.env.ANATOMY_RAYS || 72);
 const ids = process.env.ANATOMY_IDS ? process.env.ANATOMY_IDS.split(',') : [...ALL_TANK_IDS];
 const TURRET_YAW = 0.35, GUN_PITCH = 0.05;
-const totals = { unshapedCrew: 0, vehicles: 0, rays: 0, ties: 0, surfaces: 0, parts: 0, models: 0, crew: 0, hits: 0, maxModuleTriangles: 0, maxFigureTriangles: 0 };
+const totals = { slid: 0, legsInside: 0, unshapedCrew: 0, vehicles: 0, rays: 0, ties: 0, surfaces: 0, parts: 0, models: 0, crew: 0, hits: 0, maxModuleTriangles: 0, maxFigureTriangles: 0 };
 const failures = [];
 const fail = (id, message) => { if (failures.length < 40) failures.push(`${id}: ${message}`); };
 const raycaster = new THREE.Raycaster();
@@ -192,15 +193,20 @@ for (const id of ids) {
     if (figure.userData.anatomy.statureM !== MANNEQUIN_STATURE_M) fail(id, `crew ${station.crew} stature ${figure.userData.anatomy.statureM}`);
     const frame = figure.parent.parent;
     const head = figure.getObjectByName('anatomy_crew_head').getWorldPosition(new THREE.Vector3()).applyMatrix4(frame.matrixWorld.clone().invert());
-    const offset = head.distanceTo(new THREE.Vector3(...station.head));
+    // The head is on the station anchor, or slid along the station (frame z) and still inside the combat station box.
+    const slide = Number(figure.userData.anatomy.slideM || 0);
+    const offset = head.distanceTo(new THREE.Vector3(station.head[0], station.head[1], station.head[2] + slide));
     if (offset > 1e-6) fail(id, `crew ${station.crew} head ${offset.toFixed(4)} m off its station anchor`);
+    if (slide && (head.z < station.volume.min[2] - 1e-6 || head.z > station.volume.max[2] + 1e-6)) fail(id, `crew ${station.crew} slid out of its station box`);
+    if (slide) totals.slid += 1;
+    if (figure.userData.anatomy.insideShell === 6) totals.legsInside += 1;
     // Unsplit stations keep the two combat body shapes, head second: the anchor is that shape's centre. Every anchor
     // lies inside a combat crew shape (a shell aimed at the drawn head strikes this crew member).
-    if (station.shapes.length === 2 && station.shapes[1].kind === 'ellipsoid') {
+    if (!slide && station.shapes.length === 2 && station.shapes[1].kind === 'ellipsoid') {
       const shapeOffset = new THREE.Vector3(...station.shapes[1].center).distanceTo(new THREE.Vector3(...station.head));
       if (shapeOffset > 1e-6) fail(id, `crew ${station.crew} head anchor ${shapeOffset.toFixed(4)} m off the combat head shape`);
     }
-    if (station.shapes.length && !station.shapes.some((shape) => insideShape(shape, station.head))) {
+    if (station.shapes.length && !slide && !station.shapes.some((shape) => insideShape(shape, station.head))) {
       fail(id, `crew ${station.crew} head anchor lies outside every combat crew shape`);
     }
     if (!station.shapes.length) totals.unshapedCrew += 1;
@@ -238,5 +244,6 @@ assert.ok(totals.vehicles === ids.length && totals.rays > 0);
 assert.ok(totals.maxModuleTriangles <= 40000, `module set ${totals.maxModuleTriangles} triangles (budget 40k per vehicle)`);
 assert.ok(totals.maxFigureTriangles <= 3000, `mannequin ${totals.maxFigureTriangles} triangles (budget 3k)`);
 console.log(`anatomy fidelity: ${totals.vehicles} vehicles · ${totals.rays} armor rays agree with traceTank (${totals.ties} coincident-surface ties) · `
-  + `${totals.surfaces} armor surfaces · ${totals.models} module models in ${totals.parts} combat parts · ${totals.crew} mannequins on their head shapes · `
+  + `${totals.surfaces} armor surfaces · ${totals.models} module models in ${totals.parts} combat parts · ${totals.crew} mannequins on their stations `
+  + `(${totals.crew - totals.slid} on the head shape, ${totals.slid} slid within the station box; legs inside the hull shell: ${totals.legsInside}) · `
   + `${totals.hits} hit volumes · max ${Math.round(totals.maxModuleTriangles)} module / ${Math.round(totals.maxFigureTriangles)} figure triangles PASS`);
