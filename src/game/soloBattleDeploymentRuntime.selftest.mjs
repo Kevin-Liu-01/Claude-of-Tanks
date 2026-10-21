@@ -537,7 +537,8 @@ for (let index = 0; index < happy.calls.length; index++) {
 assert.ok(order.indexOf('compileClosed') < order.indexOf('warmRender'));
 assert.deepEqual(happy.calls[order.indexOf('compileClosed') + 1], ['yield', true],
   'final submission releases its task before the first native forward bind');
-assert.deepEqual(happy.lightSignatures, [[2, 1], [2, 1], [2, 1]],
+// (229) the pool's town-lamp slot is a cone aimed down (nightLightingRuntime createLamps): the signature counts it a spot
+assert.deepEqual(happy.lightSignatures, [[3, 0], [3, 0], [3, 0]],
   'day warms the fixed pool before manual headlights can be enabled; the early submission sees the final signature');
 // (2026-10-15, the perf lane) the scene's programs reach the driver once the light signature is final, before the
 // allied builds, so they link while those run; every early slice releases its task
@@ -676,12 +677,12 @@ for (const lateCancelWarm of ['cover', 'fx', 'forward']) {
 
 const nocturnal = createHarness({ night: true });
 assert.equal((await nocturnal.runtime.warm(Promise.resolve())).revealPrimed, true);
-assert.deepEqual(nocturnal.lightSignatures, [[2, 1], [2, 1], [2, 1]],
+assert.deepEqual(nocturnal.lightSignatures, [[3, 0], [3, 0], [3, 0]],
   'real Three light signatures are final before the early, allied and scene/player submissions');
 assert.equal(nocturnal.lamps.current.emitterCount, 2,
   'player collected before streaming and late ally appended without another prepare');
 assert.equal(nocturnal.calls.filter(([name]) => name === 'nightLighting').length, 1);
-assert.equal(nocturnal.lamps.current.lights.filter(light => light.isSpotLight && light.intensity > 0).length, 2,
+assert.equal(nocturnal.lamps.current.lights.filter(light => light.name.startsWith('night-headlight-') && light.intensity > 0).length, 2,
   'late allied headlight is active by the final covered reveal');
 assert.ok(nocturnal.lamps.current.lights.every(light => light.castShadow === false));
 nocturnal.lamps.dispose();
