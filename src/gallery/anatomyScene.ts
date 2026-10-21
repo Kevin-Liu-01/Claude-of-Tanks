@@ -296,7 +296,9 @@ export function buildAnatomyScene(armor: AnatomyArmor, options: AnatomySceneOpti
     disposables.push(...model.geometries, ...model.materials);
     moduleItems.push({ part, group: model.group, materials: model.materials });
     moduleTriangles += model.triangles;
-    anchors.push({ key: `module:${part.index}:${part.part}`, pick, object: model.group, local: new THREE.Vector3() });
+    // The badge floats just above the part, so it labels the model without covering it.
+    anchors.push({ key: `module:${part.index}:${part.part}`, pick, object: model.group,
+      local: new THREE.Vector3(0, (part.max[1] - part.min[1]) / 2 + 0.14, 0) });
   }
 
   // --- crew ------------------------------------------------------------------------------------------------------

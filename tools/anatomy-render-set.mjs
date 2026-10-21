@@ -1,11 +1,14 @@
 // Gallery anatomy render set (BUI-G2/G3/G4/H8 blind-critic packet source).
 // Copyright (c) 2026 Kevin B. Liu. First-party tool; see NOTICE.md.
 //
-// Deterministic before/after capture for the anatomy lane. Run from the worktree root that is being captured
-// (cwd = the checkout: the lane's base tree for BEFORE, the lane head for AFTER). One part per capture-lock
-// hold (NORMAL band, fresh ticket per part, 19.5 min watchdog started only after the lock is taken).
+// Deterministic before/after capture for the anatomy lane. Each side is served from its own checkout (the lane's
+// base tree for BEFORE, the lane head for AFTER), both Vite servers warm before the capture lock is taken, and one
+// NORMAL-band hold captures every planned side × viewport (19.5 min watchdog started only after the lock is taken;
+// items that would pass the 17 min mark are skipped and listed in the receipt).
 //
-//   node tools/anatomy-render-set.mjs --side=before|after --part=desk|phone|killcam --ids=a,b,c --out=<dir> [--lockwait=ms]
+//   node tools/anatomy-render-set.mjs --plan=before:desk,after:desk,before:phone,after:phone \
+//     --before-root=<base checkout> --after-root=<lane checkout> --ids=a,b,c [--phone-ids=a,b] --out=<dir> [--lockwait=ms]
+//   node tools/anatomy-render-set.mjs --side=before|after --part=desk|phone|killcam   (one item, root = cwd)
 //
 // Views (same camera on both sides: frameView('hero'), cameraFit unchanged; Crew adds the same 5 dolly ticks):
 //   exterior  control (appearance / exterior)
@@ -20,36 +23,45 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const ROOT = process.cwd();
 const arg = (name, fallback = '') => process.argv.find(a => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
-const side = arg('side', 'before');
-const part = arg('part', 'desk');
+const plan = (arg('plan') || `${arg('side', 'before')}:${arg('part', 'desk')}`).split(',').filter(Boolean)
+  .map((item) => { const [side, part] = item.split(':'); return { side, part }; });
+const roots = {
+  before: resolve(arg('before-root', process.cwd())),
+  after: resolve(arg('after-root', process.cwd())),
+};
 const ids = arg('ids', 't90m_proryv,leo2a7v,m1a2_abrams_sepv3,challenger2,merkava4,ztz99a,strv103b,kv2').split(',').filter(Boolean);
-const OUT = resolve(arg('out', '/Users/kevinliu/cot-launch-state/streams/gallery-anatomy/renders/r230'), side);
+const phoneIds = (arg('phone-ids') || ids.join(',')).split(',').filter(Boolean);
+const OUT_ROOT = resolve(arg('out', '/Users/kevinliu/cot-launch-state/streams/gallery-anatomy/renders/r230'));
 const views = arg('views', 'exterior,armor,modules,crew,hitbox').split(',').filter(Boolean);
-const require = createRequire(join(ROOT, 'package.json'));
-const { createServer } = await import(pathToFileURL(require.resolve('vite')).href);
-const puppeteer = (await import(pathToFileURL(require.resolve('puppeteer')).href)).default;
-const { createCaptureLock } = await import(pathToFileURL(join(ROOT, 'tools/capture-lock.mjs')).href);
+const toolRoot = roots[plan[0].side];
+const toolRequire = createRequire(join(toolRoot, 'package.json'));
+const puppeteer = (await import(pathToFileURL(toolRequire.resolve('puppeteer')).href)).default;
+const { createCaptureLock } = await import(pathToFileURL(join(toolRoot, 'tools/capture-lock.mjs')).href);
 
-await mkdir(OUT, { recursive: true });
 const started = Date.now();
 const log = (...m) => console.log(`[${((Date.now() - started) / 1000).toFixed(0)}s]`, ...m);
-const receipts = { side, part, ids, views, root: ROOT, shots: [], errors: [], skipped: [], cameras: {} };
-let server, browser;
+const receipts = { plan, roots, ids, views, shots: [], errors: [], skipped: [], cameras: {} };
+const servers = {};
+let browser;
 
-// CPU warm-up outside the GPU hold: vite transforms the entry graphs before the lock is taken.
-server = await createServer({
-  root: ROOT, logLevel: 'error',
-  server: { host: '127.0.0.1', port: 0, strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
-  optimizeDeps: { entries: ['index.html', 'site/gallery.html'], include: ['three'] },
-});
-await server.listen();
-const base = `http://127.0.0.1:${server.httpServer.address().port}`;
-for (const entry of ['/src/gallery/gallery.ts', '/src/main.ts', '/src/vehicles/fleetFactory.ts', '/src/gallery/damageLab.ts']) {
-  try { await server.warmupRequest(entry); } catch (error) { log('warmup', entry, String(error?.message || error).slice(0, 120)); }
+// CPU warm-up outside the GPU hold: each side's Vite transforms its entry graphs before the lock is taken.
+for (const side of new Set(plan.map((item) => item.side))) {
+  const root = roots[side];
+  const require = createRequire(join(root, 'package.json'));
+  const { createServer } = await import(pathToFileURL(require.resolve('vite')).href);
+  const server = await createServer({
+    root, logLevel: 'error',
+    server: { host: '127.0.0.1', port: 0, strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
+    optimizeDeps: { entries: ['index.html', 'site/gallery.html'], include: ['three'] },
+  });
+  await server.listen();
+  for (const entry of ['/src/gallery/gallery.ts', '/src/main.ts', '/src/vehicles/fleetFactory.ts', '/src/gallery/damageLab.ts', '/src/gallery/anatomyView.ts']) {
+    try { await server.warmupRequest(entry); } catch (error) { log('warmup', side, entry, String(error?.message || error).slice(0, 120)); }
+  }
+  servers[side] = { server, base: `http://127.0.0.1:${server.httpServer.address().port}` };
+  log('vite warm', side, root, servers[side].base);
 }
-log('vite warm at', base);
 
 const lock = createCaptureLock();
 await lock.acquire(Number(arg('lockwait', String(5 * 60 * 60 * 1000))));
@@ -58,24 +70,30 @@ log('capture lock held');
 const refresher = setInterval(() => lock.refresh(), 30000); refresher.unref();
 async function shutdown(code) {
   try { await browser?.close(); } catch {}
-  try { await server?.close(); } catch {}
+  for (const { server } of Object.values(servers)) { try { await server.close(); } catch {} }
   lock.release();
-  try { await writeFile(join(OUT, `receipt-${part}.json`), JSON.stringify(receipts, null, 2)); } catch {}
+  try {
+    await mkdir(OUT_ROOT, { recursive: true });
+    await writeFile(join(OUT_ROOT, `receipt-${plan.map((item) => `${item.side}-${item.part}`).join('+')}.json`), JSON.stringify(receipts, null, 2));
+  } catch {}
   process.exit(code);
 }
 setTimeout(() => { log('watchdog: 19.5 min hold cap'); receipts.errors.push('watchdog'); void shutdown(124); }, 19.5 * 60 * 1000).unref();
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => void shutdown(143));
-const HOLD_LIMIT_MS = 16 * 60 * 1000;
+const HOLD_LIMIT_MS = 17 * 60 * 1000;
 const settle = (ms = 700) => new Promise(r => setTimeout(r, ms));
 
-try {
-  browser = await puppeteer.launch({ channel: 'chrome', headless: true,
-    args: ['--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--use-angle=metal', '--hide-scrollbars'] });
+const allIds = ids;
+async function captureItem({ side, part }) {
+  const OUT = join(OUT_ROOT, side);
+  await mkdir(OUT, { recursive: true });
+  const { base } = servers[side];
   const page = await browser.newPage();
-  page.on('pageerror', e => receipts.errors.push(String(e.message).slice(0, 300)));
+  page.on('pageerror', e => receipts.errors.push(`${side}:${part}: ${String(e.message).slice(0, 300)}`));
   await page.evaluateOnNewDocument(() => { try { localStorage.setItem('cot.locale', 'en-US'); } catch {} });
   const phone = part === 'phone';
   const viewportName = phone ? 'phone' : 'desktop';
+  const ids = phone ? phoneIds : allIds;
   if (phone) await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   else await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });
 
@@ -99,54 +117,66 @@ try {
     await page.goto(`${base}/`, { waitUntil: 'domcontentloaded', timeout: 240000 });
     await page.waitForFunction('window.__GAME_READY === true', { timeout: 240000, polling: 250 });
     for (const id of ids) {
-      if (Date.now() - holdStart > HOLD_LIMIT_MS) { receipts.skipped.push(id); continue; }
+      if (Date.now() - holdStart > HOLD_LIMIT_MS) { receipts.skipped.push(`${side}:${part}:${id}`); continue; }
       try {
         await page.evaluate(async (want) => { window.__DEBUG.selectGarageTank(want); await window.__DEBUG.stagePedestalTank(want); }, id);
         await page.waitForFunction(want => window.__DEBUG.selectedSpecId === want, { timeout: 60000 }, id);
         await page.evaluate(() => window.__SHOTS.set('killcam_xray'));
         await settle(2200);
         await shot(id, 'killcam');
-      } catch (error) { receipts.errors.push(`${id}: ${String(error?.message || error).slice(0, 300)}`); log('error', id, error?.message); }
+      } catch (error) { receipts.errors.push(`${side}:${id}: ${String(error?.message || error).slice(0, 300)}`); log('error', id, error?.message); }
     }
-  } else {
-    await page.goto(`${base}/gallery?id=${ids[0]}`, { waitUntil: 'domcontentloaded', timeout: 240000 });
-    await page.waitForFunction(() => window.__TANK_GALLERY?.ready, { timeout: 240000, polling: 250 });
-    const api = (fn, ...a) => page.evaluate(fn, ...a);
-    const anatomy = await api(() => typeof window.__TANK_GALLERY.waitAnatomyReady === 'function');
-    const setView = async (view) => {
-      const layer = { exterior: 'appearance', armor: 'armor', crew: 'crew', modules: 'modules', hitbox: 'modules' }[view];
-      if (!anatomy) {
-        const want = view === 'hitbox';
-        const pressed = await page.$eval('[data-damage-action=hitboxes]', b => b.getAttribute('aria-pressed') === 'true').catch(() => null);
-        if (pressed !== null && pressed !== want) { await page.click('[data-damage-action=hitboxes]'); await settle(400); }
-        await api(m => window.__TANK_GALLERY.setMode(m, false), layer);
-      } else {
-        await api(m => window.__TANK_GALLERY.setMode(m, false), layer);
-        await api(() => window.__TANK_GALLERY.waitAnatomyReady());
-        if (layer === 'modules') await api(on => window.__TANK_GALLERY.setAnatomyToggle('hits', on), view === 'hitbox');
-      }
-      await api(() => window.__TANK_GALLERY.frameView('hero'));
+    await page.close();
+    return;
+  }
+  await page.goto(`${base}/gallery?id=${ids[0]}`, { waitUntil: 'domcontentloaded', timeout: 240000 });
+  await page.waitForFunction(() => window.__TANK_GALLERY?.ready, { timeout: 240000, polling: 250 });
+  const api = (fn, ...a) => page.evaluate(fn, ...a);
+  const anatomy = await api(() => typeof window.__TANK_GALLERY.waitAnatomyReady === 'function');
+  const setView = async (view) => {
+    const layer = { exterior: 'appearance', armor: 'armor', crew: 'crew', modules: 'modules', hitbox: 'modules' }[view];
+    if (!anatomy) {
+      const want = view === 'hitbox';
+      const pressed = await page.$eval('[data-damage-action=hitboxes]', b => b.getAttribute('aria-pressed') === 'true').catch(() => null);
+      if (pressed !== null && pressed !== want) { await page.click('[data-damage-action=hitboxes]'); await settle(400); }
+      await api(m => window.__TANK_GALLERY.setMode(m, false), layer);
+    } else {
+      await api(m => window.__TANK_GALLERY.setMode(m, false), layer);
+      await api(() => window.__TANK_GALLERY.waitAnatomyReady());
+      if (layer === 'modules') await api(on => window.__TANK_GALLERY.setAnatomyToggle('hits', on), view === 'hitbox');
+    }
+    await api(() => window.__TANK_GALLERY.frameView('hero'));
+    await settle(900);
+    if (view === 'crew') {
+      const box = await (await page.$('#viewport canvas')).boundingBox();
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      for (let i = 0; i < 5; i++) { await page.mouse.wheel({ deltaY: -120 }); await settle(60); }
       await settle(900);
-      if (view === 'crew') {
-        const box = await (await page.$('#viewport canvas')).boundingBox();
-        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-        for (let i = 0; i < 5; i++) { await page.mouse.wheel({ deltaY: -120 }); await settle(60); }
-        await settle(900);
-      }
-    };
-    for (const id of ids) {
-      if (Date.now() - holdStart > HOLD_LIMIT_MS) { receipts.skipped.push(id); continue; }
-      try {
-        await api(want => window.__TANK_GALLERY.loadTank(want), id);
-        await page.waitForFunction(want => window.__TANK_GALLERY?.ready && window.__TANK_GALLERY.getState().selectedId === want, { timeout: 180000, polling: 250 }, id);
-        await settle(1200);
-        for (const view of views) {
-          await setView(view);
-          receipts.cameras[`${id}-${view}`] = await api(() => window.__TANK_GALLERY.getState().camera);
-          await shot(id, view);
-        }
-      } catch (error) { receipts.errors.push(`${id}: ${String(error?.message || error).slice(0, 300)}`); log('error', id, error?.message); }
     }
+  };
+  for (const id of ids) {
+    if (Date.now() - holdStart > HOLD_LIMIT_MS) { receipts.skipped.push(`${side}:${part}:${id}`); continue; }
+    try {
+      await api(want => window.__TANK_GALLERY.loadTank(want), id);
+      await page.waitForFunction(want => window.__TANK_GALLERY?.ready && window.__TANK_GALLERY.getState().selectedId === want, { timeout: 180000, polling: 250 }, id);
+      await settle(1200);
+      for (const view of views) {
+        await setView(view);
+        receipts.cameras[`${side}-${viewportName}-${id}-${view}`] = await api(() => window.__TANK_GALLERY.getState().camera);
+        await shot(id, view);
+      }
+    } catch (error) { receipts.errors.push(`${side}:${part}:${id}: ${String(error?.message || error).slice(0, 300)}`); log('error', id, error?.message); }
+  }
+  await page.close();
+}
+
+try {
+  browser = await puppeteer.launch({ channel: 'chrome', headless: true,
+    args: ['--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--use-angle=metal', '--hide-scrollbars'] });
+  for (const item of plan) {
+    if (Date.now() - holdStart > HOLD_LIMIT_MS) { receipts.skipped.push(`${item.side}:${item.part}`); continue; }
+    log('item', item.side, item.part);
+    await captureItem(item);
   }
 } catch (error) {
   receipts.errors.push(`fatal: ${String(error?.stack || error).slice(0, 600)}`);
