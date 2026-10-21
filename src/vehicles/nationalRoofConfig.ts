@@ -38,6 +38,9 @@ export interface NationalRoofLoadout {
   roof:'radome'|'split-panels'|'spine'|'scanner';
   roofZ:number;
   lamp:'round'|'slit'|'square';
+  /** The right turret lamp's seat [x, z] on a cast national turret (the left lamp mirrors it), where the common seat
+   * (profiles/nationalRoofSystems.ts NATIONAL_LAMP_SEAT) would put the lamp into this turret's own roof ERA. */
+  lampSeat?:readonly [number,number];
 }
 // The emplacements' pintle risers (m), measured with the moving gun's clearance sweep (cnClearance.selftest.mjs check 4).
 // Round 3 (critic D6: the emplacement stands no taller than 0.46 m, foot to leaf sight). Round 4 (critics D10, S1: the
@@ -53,7 +56,11 @@ export const NATIONAL_ROOF_LOADOUTS:Readonly<Record<string,NationalRoofLoadout>>
  // Owner 2026-10-15 (VEH-21): the Sich carries a modern 30 mm autocannon in the open fork cradle, low on the T-72B3's raised cupola ring.
  t72b3_sich:{name:'Sokil field gun',caliber:30,mount:'fork',feedSide:-1,axisHeight:.56,muzzleZ:1.05,eyes:'flat',eyeRadius:.11,roof:'spine',roofZ:-.20,lamp:'slit'},
  t80u_husarz:{name:'Husarz armoured station',caliber:12.7,mount:'shield',feedSide:-1,axisHeight:.64,muzzleZ:1.01,eyes:'twin',eyeRadius:.12,roof:'scanner',roofZ:-.10,lamp:'square'},
- t72b3m_wilk:{name:'Wilk enclosed cannon',caliber:30,mount:'wedge',feedSide:1,axisHeight:.77,muzzleZ:1.16,eyes:'monocle-left',eyeRadius:.17,roof:'split-panels',roofZ:-.12,lamp:'slit'},
+ // Release 227 (national lamp clearance): the Wilk's slit lamps 8 cm inboard and 3 cm aft of the common seat, whose lamp
+ // bodies ran 31 mm into the top-course housing ERA cassettes (nationalPoland.ts seed .96, 1.27); inboard of them and
+ // outboard of the mantlet drum (|x| <= .42), its plate .43-.77 m out.
+ t72b3m_wilk:{name:'Wilk enclosed cannon',caliber:30,mount:'wedge',feedSide:1,axisHeight:.77,muzzleZ:1.16,eyes:'monocle-left',eyeRadius:.17,roof:'split-panels',roofZ:-.12,lamp:'slit',
+  lampSeat:[.60,.93]},
  // Release 227 (owner 2026-10-16: "make thhe zubr 2 and zubr autocannons into proper machine gun emplacements that are aut
  // ocontrolled"): both Zubrs carry a 12.7 mm WKM-B emplacement (profiles/nationalRoofWeapon.ts 'cradle', 'casemate').
  t72b3_zubr:{name:'Zubr WKM-B field emplacement',caliber:12.7,mount:'cradle',feedSide:1,axisHeight:.515,muzzleZ:1.12,eyes:'flat',eyeRadius:.115,roof:'radome',roofZ:-.10,lamp:'round'},

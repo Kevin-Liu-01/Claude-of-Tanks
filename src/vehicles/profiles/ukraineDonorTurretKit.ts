@@ -636,12 +636,15 @@ function hetmanII(P:TankBuilderPort,S:TurretStock):void {
   const fit={l:{lamp:.74,eye:.44,pan:-.62},r:{lamp:.22,eye:-.08,pan:-.80}};
   const station=(side:number,dBack:number,fa:number):[number,number]=>{const p=b3mFlank(side).at(b3mFlank(side).face-dBack,fa,0);return [p.x,p.z];};
   const reservedL:[number,number][]=[[-1.17,.06],[-1.17,-.86],[-1.42,.06],[-1.42,-.86],station(-1,.12,fit.l.lamp),station(-1,.16,fit.l.eye),station(-1,.20,fit.l.pan)];
-  const reservedR:[number,number][]=[[.98,-.32],[.98,-.90],[1.40,-.32],[1.40,-.90],station(1,.12,fit.r.lamp),station(1,.16,fit.r.eye),station(1,.20,fit.r.pan)];
+  // Release 227 (national lamp clearance): the right wing's front outer leg stands inboard of the right lamp (outerAt), at
+  // 1.40 m it ran 48.5 mm up through the lamp's body; the lamp keeps its lid station.
+  const RIGHT_FRONT_OUTER_LEG=1.26;
+  const reservedR:[number,number][]=[[.98,-.32],[.98,-.90],[RIGHT_FRONT_OUTER_LEG,-.32],[1.40,-.90],station(1,.12,fit.r.lamp),station(1,.16,fit.r.eye),station(1,.20,fit.r.pan)];
   const L=flankCabinet(P,S,-1,-.84,.86,3,reservedL),R=flankCabinet(P,S,1,-1.00,.33,2,reservedR);
   S.refresh();
   roofCageWings(P,S,[
     {side:-1,inner:1.10,outer:1.92,z0:-1.06,z1:.26,y:1.16,legX:[1.17,1.42],legZ:[.06,-.86]},
-    {side:1,inner:.95,outer:1.80,z0:-1.26,z1:-.16,y:1.16,legX:[.98,1.40],legZ:[-.32,-.90]},
+    {side:1,inner:.95,outer:1.80,z0:-1.26,z1:-.16,y:1.16,legX:[.98,1.40],legZ:[-.32,-.90],outerAt:[RIGHT_FRONT_OUTER_LEG,1.40]},
   ]);
   S.refresh();
   commandBasket(P,S);

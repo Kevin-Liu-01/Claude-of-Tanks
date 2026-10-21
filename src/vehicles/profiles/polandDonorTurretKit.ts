@@ -327,9 +327,11 @@ function zubrIICabinets(P: TankBuilderPort, casting: Stock): void {
     }
     // Bolted access lids; the right lid carries a clamped crowbar, the left keeps its middle clear as the drone dock's
     // flat landing (ZUBR_II_DOCK), outside the remote station's sweep with nothing overhead.
+    // Release 227 (national lamp clearance): the front lid's handle at its rear end, 15 mm behind the driving lamp's base
+    // plate (centred on the lid it ran under the lamp, 10 mm up through the plate into the lamp's body).
     for (const z of [.25, -.70]) {
       P.addEquipment('turretDetail', box(.27, .022, .30), side * (w.x - .17), w.top + .015, z);
-      P.addEquipment('turretDark', box(.07, .018, .10), side * (w.x - .17), w.top + .034, z);
+      P.addEquipment('turretDark', box(.07, .018, .10), side * (w.x - .17), w.top + .034, z > 0 ? z - .065 : z);
     }
     if (side < 0) {
       // Release 227 (national lamp guards): the bar ends 20 mm behind the lamp's base plate (it ran on under the plate's
