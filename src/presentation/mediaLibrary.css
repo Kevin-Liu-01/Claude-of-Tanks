@@ -38,6 +38,8 @@
 .media-library-viewer figcaption span{color:var(--library-amber);font-size:8px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
 .media-library-viewer figcaption strong{margin-top:4px;overflow:hidden;font-size:14px;text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap}
 .media-library-viewer figcaption small{margin-top:3px;color:var(--library-muted);font:700 9px/1 ui-monospace,SFMono-Regular,monospace}
+.media-library-viewer figcaption p{max-width:76ch;margin:5px 0 0;color:var(--library-ink);font-size:12px;line-height:1.45;opacity:.82}
+.media-library-viewer figcaption p:empty{display:none}
 .media-library-controls{display:flex;align-items:center;gap:6px;flex:none}
 .media-library-controls output{min-width:76px;color:var(--library-muted);font:700 10px/1 ui-monospace,SFMono-Regular,monospace;text-align:center}
 .media-library-controls button{min-width:42px;min-height:42px;border:1px solid var(--library-line);background:transparent;color:var(--library-gold);cursor:pointer;font-size:20px;transition:border-color .14s ease,background-color .14s ease}

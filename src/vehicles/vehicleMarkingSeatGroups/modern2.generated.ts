@@ -558,7 +558,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 7,
         "visibilityRatio": 0.7777778,
-        "maximumSurfaceErrorM": 0.1273932
+        "maximumSurfaceErrorM": 0.0735404
       },
       {
         "kind": "insignia",
@@ -580,7 +580,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 7,
         "visibilityRatio": 0.7777778,
-        "maximumSurfaceErrorM": 0.1251958
+        "maximumSurfaceErrorM": 0.0713887
       },
       {
         "kind": "designation",

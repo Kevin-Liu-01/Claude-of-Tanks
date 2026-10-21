@@ -38,8 +38,8 @@ function hull(P: TankBuilderPort): void {
       P.addEquipment('hullDetail',cylX(.080,.07,P.q?18:10),side*1.523,1.63,z,0,0,side*.38);
       P.addEquipment('hullDetail',box(.05,.05,.40),side*1.40,1.79,z);
     }
-    P.addMudguard(`type89-front-${side}`,'hullRubber',box(.48,.27,.028),side*1.34,1.01,3.16,-.18);
-    P.addMudguard(`type89-rear-${side}`,'hullRubber',box(.45,.37,.035),side*1.34,.89,-3.19,.10);
+    P.hangMudguard(`type89-front-${side}`,'hullRubber',box(.48,.27,.028),side*1.34,1.01,3.16,-.18);
+    P.hangMudguard(`type89-rear-${side}`,'hullRubber',box(.45,.37,.035),side*1.34,.89,-3.19,.10);
     P.addEquipment('hullDetail',box(.32,.10,.18),side*1.33,1.31,3.10);
     P.addEquipment('hullDark',cylZ(.073,.045,16),side*1.34,1.28,3.185);
     P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.054,.008,16), 'headlight'),side*1.34,1.28,3.210);

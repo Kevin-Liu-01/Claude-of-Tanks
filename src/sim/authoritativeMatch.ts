@@ -2,7 +2,7 @@ import type { ModeCheckpoint } from './matchModes.ts';
 import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, strikeDrone, killSourceOf, supportKillSource, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
 import { setModeWeapon } from './modeLoadout.ts';
 import { packSmokeScreen } from './smokeReceipt.ts';
-import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, type SmokeScreen } from './auxiliarySystems.ts';
+import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, type SmokeScreen } from './auxiliarySystems.ts';
 import { bridgeBallFloor } from './bridgeBallSupport.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from './launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -832,6 +832,8 @@ export function createAuthoritativeMatch({
   if (worldCollision && worldCollision.mapId && worldCollision.mapId !== mapId) {
     throw new Error(`world collision map mismatch: expected ${mapId}, got ${worldCollision.mapId}`);
   }
+  // (FX lane 2026-10-17) the map's smoke drift: every screen this match launches drifts on it (sim/smokeScreen.ts)
+  const smokeWind = smokeWindForMap(mapId);
   // A browser world or dedicated collision lease already owns the exact field.
   // Do not bake a second 5.5 MB field merely to obtain its existing layout.
   const suppliedHeightField = worldCollision?.heightField;
@@ -1801,7 +1803,8 @@ export function createAuthoritativeMatch({
       if(bits&PLAYER_ACTION_BITS.SUPPLY_HEAL)modeController.requestSupply(entity.id,'heal',timeS+modeTimeOffsetS);
       // (2026-10-09) the canisters fly through the match's collision (the shards and their destruction state): they
       // bounce off walls, and the clouds stay out of the houses beside them
-      if (bits & PLAYER_ACTION_BITS.SMOKE && requestAuxiliary(entity, 'smoke', timeS, heightField.getHeightAt, worldCollision)) {
+      // (FX lane 2026-10-17) on its map's wind; the drift crosses the wire with the screen
+      if (bits & PLAYER_ACTION_BITS.SMOKE && requestAuxiliary(entity, 'smoke', timeS, heightField.getHeightAt, worldCollision, smokeWind)) {
         auxiliarySmokeScreens.push(entity.combat.auxiliary!.smoke!);
         if(auxiliarySmokeScreens.length>84)auxiliarySmokeScreens.shift();
       }

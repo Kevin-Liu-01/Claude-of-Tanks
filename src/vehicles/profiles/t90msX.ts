@@ -77,7 +77,8 @@ function glacis(P:TankBuilderPort):void{
       P.addExternalArmor('hull',markEraHitFaces(roofSheet([[2.6893,l,r,1.20964,1.20964],[2.933,l,r,1.043,1.043],[3.1924,l,r,.85254,.85254]],.022),[0,1,0]));
       for(const x of [side*.158,side*.454,side*.750])for(const z of [2.14,2.35,2.57])
         P.addExternalArmor('hull',markEraFurniture(box(.265,.012,.024).rotateX(.451)),x,1.442-(z-2.024)*.485,z);
-      for(const x of [side*.13,side*.72])P.addExternalArmor('hull',markEraFurniture(box(.068,.029,.090).rotateX(.53)),x,1.15,2.843);
+      // 2026-10-19 (owner float sweep): the lower lugs stood 20 mm over the nose sheet (y 1.15); seated 2 mm in.
+      for(const x of [side*.13,side*.72])P.addExternalArmor('hull',markEraFurniture(box(.068,.029,.090).rotateX(.53)),x,1.132,2.843);
     });
     P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.066,.11,24),'headlight'),side*.774,1.108,2.858);
     for(const dx of [-.093,.093])P.addEquipment('hullDetail',beamBetween([side*.774+dx,1.015,2.874],[side*.774+dx,1.245,2.730],.008));
@@ -95,18 +96,22 @@ function skirts(P:TankBuilderPort):void{
   }
 }
 function engineDeck(P:TankBuilderPort):void{
-  for(const x of [-.47,.47]){
+  // 2026-10-19 (owner float sweep): the two grille sheets stood 15 mm over the falling deck; each is dropped onto it.
+  for(const x of [-.47,.47])P.snapGroup('t90ms-deck-grille',()=>{
     P.addEquipment('hullDetail',roofSheet([[-2.76,x-.439,x+.439,1.570,1.570],[-2.168,x-.439,x+.439,1.553,1.553]],.014));
     for(let i=0;i<16;i++)P.addEquipment('hullDark',box(.85,.007,.014),x,1.572-i*.001,-2.736+i*.036);
-  }
+  },{reachM:.05,mode:'down'});
   P.addEquipment('hullDetail',box(1.847,.029,.659),-.009,1.518,-1.67);
   for(const[x,z,w,d,y,p]of [[-1.36,-.41,.53,1.07,1.514,.02],
     [-1.36,.72,.53,1.09,1.478,.041],[-1.36,1.93,.53,.88,1.419,.063],[1.417,-.604,.291,.974,1.516,.022],
     [1.462,.87,.254,1.092,1.472,.041],[1.385,2.062,.335,.780,1.410,.066],[1.326,-1.6485,.507,1.037,1.517,.01]]){
     P.addEquipment('hullDetail',box(w,.027,d).rotateX(p),x,y,z);
-    for(const dz of [-d*.40,d*.40])P.addEquipment('hullDetail',box(w*.86,.013,.024).rotateX(p),x,y+.020,z+dz);
+    // 2026-10-19 (owner float sweep): the tread ribs kept the plate's mid height, so on pitched plates the forward rib
+    // stood 18-22 mm proud and the aft one sank in; each now follows the plate's pitch, 1 mm into its face.
+    for(const dz of [-d*.40,d*.40])P.addEquipment('hullDetail',box(w*.86,.013,.024).rotateX(p),x,y+.019-dz*Math.tan(p),z+dz);
   }
-  for(const x of [-.18135,.5563])P.addEquipment('hullDetail',box(.696,.090,.1816).rotateX(.37),x,1.57665,-3.04885);
+  // 2026-10-19 (owner float sweep): the two louvre boxes stood 73 mm off the falling stern deck; each is seated on it.
+  for(const x of [-.18135,.5563])P.snapGroup('t90ms-stern-louvre',()=>P.addEquipment('hullDetail',box(.696,.090,.1816).rotateX(.37),x,1.57665,-3.04885),{reachM:.09});
 }
 function rearAndHullCages(P:TankBuilderPort):void{
   P.addEquipment('hullDetail',cylX(.105,3.35,28),-.008,1.0115,-3.213);
@@ -161,7 +166,8 @@ function cheeks(P:TankBuilderPort):void{
     [1.49613,1.94346,.63247,.28630,.786],[1.28843,1.94343,.84039,.28622,.787],[1.08038,1.94350,1.04857,.28622,.787],
     [.87270,1.94345,1.25640,.28620,.786],[.43556,1.94191,1.45030,.28621,0]])cheekModule(P,x,y,z,w,yaw);
   for(const[x,z]of [[-.29,.74],[-.09,.74],[.11,.74],[-.29,.41],[-.09,.41],[.11,.41],[-.29,.06],[-.09,.06],[.11,.06]]){
-    const y=2.18-z*.073;
+    // 2026-10-19 (owner float sweep): the forward row stood 18 mm over the roof; it is seated 2 mm in.
+    const y=2.18-z*.073-(z>.5?.02:0);
     P.destructibleCluster(`turret_era_${x<0?'L':'R'}`,()=>P.addExternalArmor('turret',markEraHitFaces(box(.19,.042,.308),[0,1,0]).rotateX(.073),x-YAW[0],y-YAW[1],z-YAW[2]));
   }
 }
@@ -186,7 +192,8 @@ function bustle(P:TankBuilderPort):void{
 function roofEquipment(P:TankBuilderPort):void{
   P.addCupola('turret',cylY(.4162,.0854,32),-.6981-YAW[0],2.15749-YAW[1],-.28881-YAW[2]);
   top(P,'turretDetail',cylY(.369,.0962,32).scale(1,1,.966),-.69845,2.21759,-.27691);
-  top(P,'turretDetail',cylY(.307,.034,8).scale(1,1,.973),-.6997,2.30309,-.29336);
+  // 2026-10-19 (owner float sweep): the cupola's top ring stood 20 mm over its drum; seated 1 mm in.
+  top(P,'turretDetail',cylY(.307,.034,8).scale(1,1,.973),-.6997,2.2817,-.29336);
   P.addCupola('turret',cylY(.365,.08,32).scale(1,1,.88),.6966-YAW[0],2.126-YAW[1],-.82061-YAW[2]);
   top(P,'turretDetail',cylY(.353,.027,32).scale(1,1,.88),.6966,2.172,-.82061);
   top(P,'turretDetail',box(.7227,.0376,.4903).rotateY(.20),.4937,2.20149,-.53816);
@@ -195,8 +202,12 @@ function roofEquipment(P:TankBuilderPort):void{
   for(const[x,y,z,w,h,d]of [[-.7893,2.21074,-1.02396,.2739,.1695,.3877],
     [-.5509,2.21269,-1.44001,.4871,.189,.2978],[.3728,2.39604,-1.14116,.1611,.1611,.1143],
     [.2836,2.60454,-1.08261,.2415,.0635,.2568],[.2756,2.81889,-1.07821,.0841,.3066,.1094]])top(P,'turretDetail',box(w,h,d),x,y,z);
-  top(P,'turretDetail',cylY(.029,.4644,16),.27545,2.39039,-1.07821);
-  top(P,'turretDetail',cylY(.01735,.4073,12),-.7956,2.72854,-2.38676);
+  // 2026-10-19 (owner float sweep): the met mast stood 30 mm over the roof and its head 30 mm over its plate; the mast
+  // runs down into the roof and a short stem carries the head off the plate. The rear whip stood 416 mm over the bustle stowage with
+  // nothing under it; it runs down onto that stowage, 42 mm further forward (top height unchanged).
+  top(P,'turretDetail',cylY(.029,.4954,16),.27545,2.37489,-1.07821);
+  top(P,'turretDetail',cylY(.02,.04,12),.2756,2.651,-1.07821);
+  top(P,'turretDetail',cylY(.01735,.8253,12),-.7956,2.51954,-2.345);
   antenna(P);
 }
 function antenna(P:TankBuilderPort):void{
@@ -254,8 +265,11 @@ function smoke(P:TankBuilderPort):void{
   ];
   for(const[x,y,z,dx,dy,dz]of stocks){
     const q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),new THREE.Vector3(dx,dy,dz).normalize());
-    top(P,'turretDark',markSmokeTube(blindTube(.0453,.032,.1947,.12,24),[0,0,1],true).applyQuaternion(q),x,y,z);
-    top(P,'turretDetail',beamBetween([x*.94,y-.10,z-.09],[x-dx*.075,y-dy*.075,z-dz*.075],.011),0,0,0);
+    // 2026-10-19 (owner float sweep): nine tubes and their struts stood 17-75 mm off the cheek stock; each is seated.
+    P.snapGroup('t90ms-smoke-tube',()=>{
+      top(P,'turretDark',markSmokeTube(blindTube(.0453,.032,.1947,.12,24),[0,0,1],true).applyQuaternion(q),x,y,z);
+      top(P,'turretDetail',beamBetween([x*.94,y-.10,z-.09],[x-dx*.075,y-dy*.075,z-dz*.075],.011),0,0,0);
+    },{reachM:.08});
   }
 }
 function mainGun(P:TankBuilderPort):void{

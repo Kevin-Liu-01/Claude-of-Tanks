@@ -30,11 +30,14 @@ function addKurganetsSmokeCases(P: TankBuilderPort, side: number): void {
         const length = i === 0 ? .381 : .369, radius = i === 0 ? .0417 : .0391;
         const center = new THREE.Vector3(...mouths[0]).add(new THREE.Vector3(...mouths[1])).multiplyScalar(.5).addScaledVector(axis, -length / 2);
         const housing = box(.218, .108, length).applyQuaternion(rotation);
-        localTurret(P, 'turretDetail', housing, center.x, center.y, center.z);
-        for (const mouth of mouths) {
-            const cap = markSmokeTube(cylZ(radius, .019, P.q ? 20 : 12)).applyQuaternion(rotation);
-            localTurret(P, 'turretDark', cap, mouth[0], mouth[1], mouth[2]);
-        }
+        // 2026-10-19 (owner float sweep): the forward pair stood 95 mm inboard of its tray; each pair is seated on it.
+        P.snapGroup('kurganets-smoke-case', () => {
+            localTurret(P, 'turretDetail', housing, center.x, center.y, center.z);
+            for (const mouth of mouths) {
+                const cap = markSmokeTube(cylZ(radius, .019, P.q ? 20 : 12)).applyQuaternion(rotation);
+                localTurret(P, 'turretDark', cap, mouth[0], mouth[1], mouth[2]);
+            }
+        }, { reachM: .10 });
     }
 }
 function addKurganetsCanisterCarrier(P: TankBuilderPort, side: number, handed: number): void {

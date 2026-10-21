@@ -42,6 +42,8 @@ interface PumaS1BuilderPort extends AdvancedIfvScalePort {
     ...transform: number[]): void;
   decal(owner: Owner, kind: string, label: string | null, scale: number,
     position: Vec3, ...orientation: number[]): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface OpenGunCradleConfig {
@@ -219,7 +221,11 @@ function addHullShell(P: PumaS1BuilderPort): void {
     [1.44, 1.48, 1.66, 1.47, 1.28, 1.80, 2.08],
     [1.72, 1.42, 1.56, 1.43, 1.28, 1.79, 1.98],
   ]));
+  // 2026-10-19 (owner float sweep): the bow plate stood 50-70 mm ahead of the tub's front face. It keeps its station
+  // (the frontal envelope the balance bands were reviewed on: seated 55 mm back, the S1's Tier X duel at 120 m fell from
+  // 0.238 to 0.167) and a web behind it, inset 60 mm round its edges, closes the gap into the tub.
   P.add('hull', box(2.12, 0.54, 0.16), 0, 1.02, 3.72, -0.08, 0, 0);
+  P.add('hull', box(2.00, 0.42, 0.09), 0, 1.02, 3.615, -0.08, 0, 0);
   P.add('hullDark', box(2.64, 0.035, 2.44), 0, 2.045, -1.52);
   for (let index = 0; index < 12; index++) {
     P.add('hullDetail', box(2.42, 0.018, 0.052), 0, 2.069, -2.57 + index * 0.16);
@@ -267,9 +273,10 @@ function addHullShell(P: PumaS1BuilderPort): void {
   }
   for (const side of [-1, 1]) {
     P.addEquipment('hull', box(0.36, 0.44, 0.31), side * 1.24, 1.46, -3.55);
-    P.add('hullDark', box(0.22, 0.24, 0.022), side * 1.24, 1.45, -3.806);
+    // 2026-10-19 (owner float sweep): lamp face and lens stood 35 mm behind the rear plate; now on its face.
+    P.add('hullDark', box(0.22, 0.24, 0.022), side * 1.24, 1.45, -3.769);
     P.addModuleVisual('optics', 'hullGlass', box(0.12, 0.085, 0.012),
-      side * 1.24, 1.52, -3.820);
+      side * 1.24, 1.52, -3.783);
   }
 }
 
@@ -362,7 +369,7 @@ function addRunningGear(P: PumaS1BuilderPort): void {
     // while preserving a single continuous protective mass.
     P.add('hullDark', KIT.box(0.028, 0.026, jacketFrontZ - jacketRearZ - 0.10),
       side * 2.038, 1.31, (jacketFrontZ + jacketRearZ) * 0.5);
-    P.add('hullRubber', KIT.box(0.045, 0.16, jacketFrontZ - jacketRearZ + 0.02),
+    P.hangMudguard('puma-jacket-hem', 'hullRubber', KIT.box(0.045, 0.16, jacketFrontZ - jacketRearZ + 0.02),
       side * 2.022, 0.72, (jacketFrontZ + jacketRearZ) * 0.5);
 
     // Recessed flank camera and paired marker lamps remain readable above the
@@ -375,10 +382,13 @@ function addRunningGear(P: PumaS1BuilderPort): void {
       P.addModuleVisual('optics', 'hullGlass', KIT.box(0.013, 0.10, 0.15),
         side * 2.056, 1.82, z, 0, 0, side * 0.03);
     }
+    // 2026-10-19 (owner float sweep): the forward sensor head stood 72 mm outboard of the jacket (nothing under it at
+    // z 2.17); it moves in onto the jacket's outer face.
     for (const z of [2.17, -2.72]) {
-      P.addEquipment('hull', KIT.box(0.080, 0.13, 0.18), side * 2.012, 1.84, z);
+      const dx = z > 0 ? -.074 : 0;
+      P.addEquipment('hull', KIT.box(0.080, 0.13, 0.18), side * (2.012 + dx), 1.84, z);
       P.addModuleVisual('optics', 'hullGlass', KIT.box(0.012, 0.075, 0.105),
-        side * 2.058, 1.84, z);
+        side * (2.058 + dx), 1.84, z);
     }
   }
 }
@@ -472,12 +482,14 @@ function addTurret(P: PumaS1BuilderPort): void {
     ));
     P.addEquipment('turret', box(0.21, 0.29, 0.43),
       side * 0.70, 0.43, 0.91, 0, -side * 0.10, 0);
+    // 2026-10-19 (owner float sweep): the aperture plate and its lens stood ~20 mm, the small lens ~40 mm, ahead of
+    // the shoulder's raked face; set back onto it.
     P.addModuleVisual('optics', 'turretDark', box(0.25, 0.18, 0.026),
-      side * 0.48, 0.49, 1.492, 0, side * 0.025, 0);
+      side * 0.48, 0.49, 1.470, 0, side * 0.025, 0);
     P.addModuleVisual('optics', 'turretGlass', box(0.17, 0.105, 0.014),
-      side * 0.48, 0.49, 1.509, 0, side * 0.025, 0);
+      side * 0.48, 0.49, 1.487, 0, side * 0.025, 0);
     P.addModuleVisual('optics', 'turretGlass', box(0.062, 0.052, 0.015),
-      side * 0.61, 0.36, 1.437, 0, side * 0.05, 0);
+      side * 0.61, 0.36, 1.394, 0, side * 0.05, 0);
     // The left cheek carries the compact protected lamp bank. The opposite
     // cheek is reserved for the complete rotating panoramic installation
     // below, so no loose circular pod competes with its silhouette.

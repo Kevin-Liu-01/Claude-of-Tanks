@@ -112,6 +112,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/smokeBallistics.selftest.mjs',
     'src/vehicles/smokeFan.selftest.mjs',
     'src/sim/smokeScreenCover.selftest.mjs',
+    'src/sim/smokeWind.selftest.mjs',
     'src/sim/smokeCollision.selftest.mjs', // 2026-10-09 the hitbox lane: canisters bounce off walls; screens stay out of houses
     'src/sim/smokeBlocksExact.selftest.mjs', // 2026-10-13 the MP stream: the footprint early-out answers exactly as before
     'src/sim/roofTargetOrder.selftest.mjs', // 2026-10-13 the MP stream: nearest-first roof-gun scan picks the same target
@@ -223,6 +224,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/tank-sealed-check.selftest.mjs',
     // 2026-10-17 (227 gun-gaps): the nine closed gun junctions at rest/elevation/depression and a seeded tube pull
     'tools/gun-junction-census.selftest.mjs',
+    // 2026-10-19 (owner Gallery markups): real-contact hull census — closed bellies and hung flaps
+    'tools/hull-contact-census.selftest.mjs',
+    // the build-time flap hangers (P.hangMudguard) and the fleet flaps they hang
+    'src/vehicles/mudguardHangers.selftest.mjs',
+    // the build-time fitting snap (P.snapGroup, seatOnRig): floating fittings seated onto the hull/turret stock
+    'src/vehicles/fittingSnap.selftest.mjs',
     'tools/reference-supplement.selftest.mjs',
     'tools/fidelity-component-floor.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',
@@ -1050,6 +1057,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/deploymentSkew.selftest.mjs',
     'src/engine/offscreenWarm.selftest.mjs',
     'src/engine/lodEmptySentinels.selftest.mjs',
+    // sealed lane round 2 (2026-10-10): screen-size vehicle LODs, the sniper sight draws near detail
+    'src/engine/lodDistanceScale.selftest.mjs',
     'src/engine/battleWeatherPolicy.selftest.mjs',
     'src/engine/battleAtmosphereRuntime.selftest.mjs',
     'src/engine/nightLightingRuntime.selftest.mjs',
@@ -2122,7 +2131,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/docs/referenceTakes.selftest.mjs',
     'src/ui/garageFleetTake.selftest.mjs',
     'tools/marketing-shots/landing-media.selftest.mjs',
-    // 2026-10-19: the media library (public/media/library-r2 since 10-20: the finals), by pack range and sheet
+    // 2026-10-19: the media library (public/media/library-r3 since 10-21: the finished pictures of the current rounds), by pack range and sheet
     'tools/marketing-shots/media-library.selftest.mjs',
     // home r2 (2026-10-12): the home page's feature, mechanic and mode slots, their picks and the modes' registry order
     'tools/marketing-shots/home-shots.selftest.mjs',
