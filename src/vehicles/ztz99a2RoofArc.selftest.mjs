@@ -4,7 +4,7 @@
 // receiver through the commander's stabilised sight on the right of the roof. Its arc is now the station's own,
 // measured against the whole moving mass (tools/roof-station-sweep.mjs: the CN clearance receipt's two-way dense sweep,
 // src/vehicles/cnClearance.selftest.mjs check 4): it stops short of the sight (-79..-58 deg); its other end is the
-// drone stand's. The pintle stands on a 10 mm riser (the coordinator's approval): on the old seat the gun's rear passed
+// drone stand's. The pintle stands on a 12 mm riser (the coordinator's approval; 10 mm before the riding cradle): on the old seat the gun's rear passed
 // 17 mm over the cupola periscope at full elevation from +58 deg on.
 //  1. The built station publishes its own arc and depression table; the inventory and the combat anatomy carry them,
 //     and the drone-stand table no longer lists the station (a station's own arc takes precedence).
@@ -46,8 +46,9 @@ try {
 
   // ---- 1. the published arc and table
   assert.ok(Array.isArray(arc) && arc[0] < 0 && arc[1] > 0, `${ID}: the station carries its own arc round its rest bearing`);
-  // the pintle's 10 mm riser: the trunnion stands 0.314 m over the foot (0.304 on the plain column)
-  assert.ok(Math.abs(station.userData.auxiliaryPivot[1] - .314) < 1e-6, `${ID}: the QJC-88 stands on its 10 mm riser (trunnion ${station.userData.auxiliaryPivot[1]} m)`);
+  // the pintle's 12 mm riser: the trunnion stands 0.316 m over the foot (0.304 on the plain column; 10 mm before the
+  // riding cradle, whose gun's 12 mm recoil along its bore drops its rear ~8 mm at full elevation)
+  assert.ok(Math.abs(station.userData.auxiliaryPivot[1] - .316) < 1e-6, `${ID}: the QJC-88 stands on its 12 mm riser (trunnion ${station.userData.auxiliaryPivot[1]} m)`);
   const gun = AUXILIARY_INVENTORY[ID].guns.find((g) => g.name === NAME);
   assert.deepEqual(gun.yawArc, [...arc], `${ID}: the inventory carries the station's arc`);
   assert.deepEqual(gun.depressionByYaw ?? null, table && table.map((r) => [...r]), `${ID}: the inventory carries the station's table`);
