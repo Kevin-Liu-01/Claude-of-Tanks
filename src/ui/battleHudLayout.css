@@ -402,7 +402,9 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-relation=friendly] .rel
    landscapes' 136 px notice) where only that keeps clear. Their entry slides stay vertical. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-sixth{left:var(--hud-touch-notice-cx,50%);top:var(--hud-notice-top);transform:translate(-50%,-6px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-sixth.on{transform:translate(-50%,0)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{left:var(--hud-touch-alert-cx,50%);top:var(--hud-alert-top);bottom:auto;width:auto;max-width:var(--hud-touch-alert-w,214px);transform:translate(-50%,7px)}
+/* (max-content, as the medal card: an auto width shrank to the room right of its centre, and a 150 px alert centred at
+   237 of 320 px set five lines 96 px wide onto the ammo slot, r10g) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{left:var(--hud-touch-alert-cx,50%);top:var(--hud-alert-top);bottom:auto;width:max-content;max-width:var(--hud-touch-alert-w,214px);transform:translate(-50%,7px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert.show{transform:translate(-50%,0)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='notice-compact'] .cot-sixth{width:136px;min-height:32px;padding-block:4px;font-size:9px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='notice-compact'] .cot-sixth .sub{display:none}

@@ -127,7 +127,7 @@ function placeCost(box: TouchBox, layers: readonly (readonly [readonly TouchBox[
   for (const [blocks, weight] of layers) {
     for (const block of blocks) {
       const out = grow(block, TOUCH_NOTICE_GAP);
-      cost += weight * (area(box, out) + OVER_FACTOR * area(box, block));
+      cost += Math.min(weight, MARGIN_WEIGHT) * area(box, out) + weight * OVER_FACTOR * area(box, block);
     }
   }
   return cost;
@@ -144,7 +144,9 @@ function leastIntrusive(size: TouchSize, cx: number, top: number, width: number,
   layers: readonly (readonly [readonly TouchBox[], number])[]): { cx: number; y: number; cost: number } {
   const grown: { box: TouchBox; weight: number }[] = [];
   for (const [blocks, weight] of layers) {
-    for (const block of blocks) grown.push({ box: grow(block, TOUCH_NOTICE_GAP), weight }, { box: block, weight: weight * OVER_FACTOR });
+    for (const block of blocks) {
+      grown.push({ box: grow(block, TOUCH_NOTICE_GAP), weight: Math.min(weight, MARGIN_WEIGHT) }, { box: block, weight: weight * OVER_FACTOR });
+    }
   }
   let best = { cx, y: top, cost: Infinity };
   // (per row band, the blocks that reach into it, each by its overlapping height and weight)
@@ -214,8 +216,11 @@ const COUNTDOWN_SCALES = [1, 0.8, 0.6];
  *  already placed (the countdown, the first of the detection and the alert). */
 const LABEL_WEIGHT = 0.25;
 const PLACED_WEIGHT = 1000;
-/** How much more a notice over a block costs than one in its gap (leastIntrusive). */
+/** How much more a notice over a block costs than one in its gap (leastIntrusive), and the most a gap costs: a notice
+ *  already placed weighs a hundred times a panel over it, never in its margin (at 568x256 the two notices fit side by
+ *  side only touching, and a margin at its weight sent the second 10 px onto a consumable). */
 const OVER_FACTOR = 3;
+const MARGIN_WEIGHT = 10;
 /** The minimap's cost through the scope (in battle a panel's: the footprint there is mostly the ring's empty middle), and
  *  the scope's readout rows and range tag (touchSightKeepOut's boxes after the circle): over the map and the circle, under
  *  a panel or a control (the coordinator's ruling: "0 APFSDS" and the zoom matter more than the map, never a button). */

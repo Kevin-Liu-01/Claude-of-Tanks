@@ -11,7 +11,9 @@
 // not failures, and the report lists them, except through a portrait phone's scope: there a notice keeps 3 px from the
 // sight's text (the readouts, the zoom, the range tag, a countdown) wherever it sits, the alert lying over the map
 // instead (r10g, the coordinator's ruling: at 320x568 the alert sat on "0 APFSDS" and the zoom plate). The short
-// landscapes' scope, whose map sits beside the score, over the notices' first row, keeps its notes. No screenshot.
+// landscapes' scope, whose map sits beside the score, over the notices' first row, keeps its notes. A wrapped alert
+// takes the width the plan gives it (r10g: an auto width shrank to the room right of its centre, and at 320x568 a 150 px
+// alert set five lines 96 px wide onto the ammo slot). No screenshot.
 // node tools/hud-touch-notices.browser.mjs --url=http://127.0.0.1:5189 [--out=outputs/hud-touch-notices] [--case=360x640,...]
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -80,6 +82,15 @@ async function stageScene([stage, sight, bloom, warn, set, furniture]) {
       .map((node) => { const r = node.getBoundingClientRect(); return { x0: r.left, y0: r.top, x1: r.right, y1: r.bottom, what: selector }; })
       .filter((box) => box.x1 - box.x0 >= 1 && box.y1 - box.y0 >= 1)),
     uncleared: (document.body.dataset.touchNotices ?? '').split(' ').includes('uncleared'),
+    // (the alert's place width, and its lines)
+    alertW: parseFloat(document.body.style.getPropertyValue('--hud-touch-alert-w')) || null,
+    alertLines: (() => {
+      const copy = document.querySelector('.cot-alert.show .cot-alert-copy');
+      if (!copy) return 0;
+      const range = document.createRange();
+      range.selectNodeContents(copy);
+      return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size;
+    })(),
   };
 }
 
@@ -126,6 +137,10 @@ try {
       for (const [name, [gap, what]] of short) {
         const line = `${size} ${scene}: the ${name} keeps ${gap.toFixed(2)} px from ${what}`;
         if (!staged.uncleared) failures.push(line);
+      }
+      // (a wrapped alert as wide as its place, cleared or not)
+      if (staged.alert && staged.alertW && staged.alertLines > 1 && staged.alert.x1 - staged.alert.x0 < staged.alertW - 1) {
+        failures.push(`${size} ${scene}: the alert set ${staged.alertLines} lines ${(staged.alert.x1 - staged.alert.x0).toFixed(1)} px wide, narrower than its ${staged.alertW} px place`);
       }
       // (through a portrait phone's scope the sight's text binds an uncleared place too)
       if (staging[1] === 'scope' && staged.uncleared && height > width) {

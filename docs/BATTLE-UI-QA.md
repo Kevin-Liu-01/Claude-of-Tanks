@@ -563,9 +563,16 @@ nothing clears, every block now counts out to its 6 px gap, so a fallback place
 no longer sits 0 px from the systems row or the quick buttons. The detection and
 the alert are also placed in whichever order reaches least far in all, and a
 notice already placed costs a hundred times a panel, so the two never stack
-while any other place remains. A place over a block costs three times one in its
-gap. At 568x256 the two notices fit only by touching the chip and the
-consumables, and margins alone had set the detection 10 px onto a consumable.
+while any other place remains. Only the overlap costs that much; the margin
+around a placed notice costs a panel's 10. A place over a block costs three times
+one in its gap. At 568x256 the two notices fit side by side only by touching
+each other, the chip and the consumables. Gap-wide costs at full weight had set
+the detection 10 px onto a consumable.
+
+The touch alert takes `width: max-content` up to its place's width, as the medal
+card does. An auto width shrank to the room right of its centre. At 320x568 a
+150 px alert centred at 237 px set five lines 96 px wide onto the ammo slot. The
+rendered receipt fails a wrapped alert narrower than its place.
 
 Through the scope, the coordinator ruled that "0 APFSDS" and the zoom matter
 more than the map while a notice shows. The fallback weights there are:
