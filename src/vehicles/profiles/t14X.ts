@@ -521,7 +521,7 @@ function addRoofEquipment(P: TankBuilderPort): void {
   const finishRws=captureAuxiliaryStock(P,'armataXRemoteMachineGun');
   addRwsCradle(P);
   finishRws();
-  const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: 1.50, remoteControlled: true,
+  const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: 1.50, remoteControlled: true, ridingCradle: true,
     tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, barrelBridge: true, seed: 260905 });
   weapon.name = 'armataXRemoteMachineGun';
   weapon.position.set(-.087, localY(2.718), localZ(-1.7115));

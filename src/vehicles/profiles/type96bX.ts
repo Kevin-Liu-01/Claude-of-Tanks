@@ -361,6 +361,7 @@ export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptio
         // 2026-10-21 (float-gaps 230): the bridge stands at the housing's front end (z 1.665..1.735), not mid-housing: there
         // the crossbar hid the boot's shoulders from above at full elevation (type96GunOwnership.selftest.mjs; the shoulder
         // line crosses it at z 1.50..1.65 over -7..14 degrees) and nearly met the boot's rising rear at full depression.
+        // (Release 229 merge: the turret-fixed sight only; with boxSightOnGun the sight rides the boot and needs no bridge.)
         for (const side of [-1, 1])
             equipment(P, 'turret', 'Detail', box(.06, .25, .07), side * .30, 2.12, 1.70);
         equipment(P, 'turret', 'Detail', box(.66, .03, .07), 0, 2.23, 1.70);

@@ -16,7 +16,7 @@ import { ownFittingGeometry } from '../ownedFittingGeometry.ts';
 import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRidingCradle, addPintleRing, addPintleShield, addPintleShieldPort,
   createPintleLayout, isMgClass, machinedRing, MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT, MG_CLASSES, RIDING_CRADLE_RECOIL_M,
-  type PintleLayout,
+  type PintleLayout, type RidingCradleFit,
 } from '../machineGunGeometry.ts';
 import {
   barkLog, block, fabricBody, fabricStrap, latheY, moldedBox, place, rolledEndSpiral, sweptTube, type FabricSpec,
@@ -218,9 +218,10 @@ interface FittingOptions {
    * Release 227, round 3 (critic D4): a working pintle whose cradle, trunnion pin and shield pitch with the gun on a
    * low yoke with one side arm (machineGunGeometry.ts addPintleRidingCradle). Round 4 (critic CN3-D1): the gun itself
    * (receiver, barrel, can) recoils inside the cradle in its own group (`auxiliaryWeaponRecoil` under the pitch group,
-   * travel `userData.auxiliaryRecoilM`), so neither pitch nor recoil carries a moving part through a fixed one. The
-   * fleet's working pintles keep their yaw-stage cradle and shield (unchanged geometry); the classic cupola emplacements
-   * (nationalRoofWeapon.ts nationalCupolaPintle) ride theirs. Working rigs only.
+   * travel `userData.auxiliaryRecoilM`), so neither pitch nor recoil carries a moving part through a fixed one. Release
+   * 229: every working or remote FITTINGS.pintleMG station rides its cradle (the classic cupola emplacements first,
+   * nationalRoofWeapon.ts nationalCupolaPintle; the cradle is fitted round each class's gun, addPintleRidingCradle), held
+   * by workingPintleCradle.selftest and fleetPassDefault's audit; a host-built external cradle cannot. Working rigs only.
    */
   ridingCradle?: boolean;
   mats?: RuntimeValue;
@@ -1421,7 +1422,14 @@ function fitAssemble(type: string, parts: FittingParts, opts: FittingOptions): T
     // rounds' brass in the vertex colours (weaponFinish.ts)
     if (material.userData?.weaponUvScale) {
       prepareWeaponFinishGeometry(merged, KIT.boxUV);
-      if (material.userData.weaponFinish === 'ammoDrab') paintAmmoVertexColours(merged, material, slot === MG_CARTRIDGE_SLOT);
+      // a riding cradle's can mesh carries its belt's rounds (marked `ammoCartridge`), each run in the rounds' brass
+      const rounds: [number, number][] = [];
+      if (slot === MG_AMMO_CAN_SLOT) geos.reduce((first, geo) => {
+        const n = geo.index ? geo.index.count : geo.getAttribute('position').count;
+        if (geo.userData.ammoCartridge) rounds.push([first, n]);
+        return first + n;
+      }, 0);
+      if (material.userData.weaponFinish === 'ammoDrab') paintAmmoVertexColours(merged, material, slot === MG_CARTRIDGE_SLOT, rounds);
     }
     const mesh = new THREE.Mesh(merged, material);
     registerVehicleNightLensMesh(mesh, geos);
@@ -1543,7 +1551,8 @@ function assemblePintleMg(context: PintleMgBuildContext): THREE.Group {
  * once per option set and each build takes copies (positions, indices and every attribute copied; geometry userData
  * copied one level deep), so the emplacement is the same to the bit and nothing a build does reaches another's.
  */
-const RIDING_CRADLE_PARTS = new Map<string, readonly (readonly [string, readonly THREE.BufferGeometry[]])[][]>();
+const RIDING_CRADLE_PARTS = new Map<string, { readonly parts: readonly (readonly [string, readonly THREE.BufferGeometry[]])[][];
+  readonly fit: RidingCradleFit }>();
 function ridingCradleKey(opts: FittingOptions): string {
   const { mats: _mats, ...geometric } = opts;
   return JSON.stringify(geometric);
@@ -1561,6 +1570,16 @@ function restoreFittingParts(stored: readonly (readonly [string, readonly THREE.
   stored.forEach((slots, i) => { for (const [slot, geos] of slots) sets[i]!.bySlot[slot] = geos.map(copyFittingGeometry); });
 }
 
+/** A fitting's parts as one triangle soup in the fitting's frame (9 numbers a triangle). */
+function fittingTriangles(set: FittingParts): Float64Array {
+  const out: number[] = [];
+  for (const geos of Object.values(set.bySlot)) for (const geometry of geos) {
+    const p = geometry.getAttribute('position'), index = geometry.index, n = index ? index.count : p.count;
+    for (let i = 0; i < n; i++) { const k = index ? index.getX(i) : i; out.push(p.getX(k), p.getY(k), p.getZ(k)); }
+  }
+  return Float64Array.from(out);
+}
+
 function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
   // Crew-operated pintles retain their authored assembly. Only remote stations
   // get the powered yaw/pitch rig used by the auxiliary auto-gun control.
@@ -1574,10 +1593,15 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
     const gun=opts.ridingCradle?fitParts():weapon, gunContext=opts.ridingCradle?{...context,parts:gun,canTrayPainted:true}:weaponContext;
     // a stored riding cradle's cradle and gun parts are kept already moved into the pitch frame (attachAuxiliaryWeapon)
     const key=opts.ridingCradle?ridingCradleKey(opts):'', stored=opts.ridingCradle?RIDING_CRADLE_PARTS.get(key):undefined;
-    if (stored) restoreFittingParts(stored,[context.parts,weapon,gun]);
+    // release 229 (the fleet's working pintles ride their cradles): the cradle and yaw stage take the mount's tone, painted
+    // with the vehicle, or the gun's steel on a dark-toned mount (the fleet mount's dark support and shield)
+    const cradleSlot=context.tone==='dark'?'dark':'detail';
+    let fit=stored?.fit;
+    if (stored) restoreFittingParts(stored.parts,[context.parts,weapon,gun]);
     else {
-    if (opts.ridingCradle) addPintleRidingCradle(context,weapon);
     addPintleMgReceiver(gunContext);addPintleMgBarrel(gunContext);addPintleMgAmmo(gunContext);
+    // release 229: the riding cradle is fitted round the gun it carries (machineGunGeometry.ts addPintleRidingCradle)
+    if (opts.ridingCradle) fit=addPintleRidingCradle(context,weapon,cradleSlot,fittingTriangles(gun));
     // a riding cradle carries its shield on the pitch group (its vision recesses in the gun's steel, no extra material)
     // and any race ring in the mount's paint (the yaw stage is one mesh, painted with the vehicle: land stage, critic
     // CN-D1). It rides 12 mm lower than the fleet's yaw-stage
@@ -1585,10 +1609,14 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
     // still 50 mm over the barrel's support collar.
     if (opts.ridingCradle) {
       // round 6 (visual critic CN-D3): the shield's window closed round a gun port (machineGunGeometry.ts addPintleShieldPort)
-      const shieldContext={...weaponContext,recY:weaponContext.recY-.012*context.s};
-      addPintleShield(shieldContext,{braces:false,recessSlot:'dark'});addPintleShieldPort(shieldContext);addPintleRing(context,'detail');
+      const shieldContext={...weaponContext,recY:weaponContext.recY-(fit?.shieldDrop??.012*context.s),trunZ:weaponContext.trunZ+(fit?.shieldDZ??0)};
+      addPintleShield(shieldContext,{braces:false,recessSlot:'dark'});addPintleShieldPort(shieldContext,fit);addPintleRing(context,cradleSlot,fit?.ringDrop,fit?.ringGap);
+      // release 229: the belt's rounds draw in the can's mesh (one ammunition material, their brass a vertex colour), so the
+      // recoiling gun is a draw fewer and the riding rig no more draws than the fleet's
+      const rounds=gun.bySlot[MG_CARTRIDGE_SLOT], can=gun.bySlot[MG_AMMO_CAN_SLOT];
+      if (rounds?.length&&can?.length) {for (const g of rounds) g.userData.ammoCartridge=true;can.push(...rounds);delete gun.bySlot[MG_CARTRIDGE_SLOT];}
       pitchFrameParts([weapon,gun],context.recY,0,context.recZ);
-      RIDING_CRADLE_PARTS.set(key,storeFittingParts([context.parts,weapon,gun]));
+      RIDING_CRADLE_PARTS.set(key,{parts:storeFittingParts([context.parts,weapon,gun]),fit:fit!});
     }
     else {addPintleMgShield(context);addPintleMgRing(context);}
     }
@@ -1603,7 +1631,7 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
       ? context.trunZ+(.10+context.cls.barrelL+context.cls.flashL)*context.s+.011
       : context.trunZ+.10*context.s+context.barrelLength+context.cls.flashL*context.s+.011;
     attachAuxiliaryWeapon(fitting,weapon,opts,context.recY,0,context.recZ,opts.ridingCradle?gun:undefined,Boolean(opts.ridingCradle));
-    if (opts.ridingCradle) fitting.userData.auxiliaryRecoilM=RIDING_CRADLE_RECOIL_M;
+    if (opts.ridingCradle) fitting.userData.auxiliaryRecoilM=fit?.stroke??RIDING_CRADLE_RECOIL_M;
     if (!opts.remoteControlled) {
       fitting.userData.crewServed=true;
       nameWorkingStation(fitting,'browningDerivedMachineGunBody','browningDerivedMachineGunMount');
@@ -1873,9 +1901,9 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
 function nameWorkingStation(fitting: THREE.Group, body: string, mount: string, ammo?: string): void {
   const pitch = fitting.getObjectByName('auxiliaryWeaponPitch');
   // a riding cradle (round 4): the gun's steel is its recoil group's, the cradle's steel (pin and head) the pitch group's;
-  // its yaw stage is one painted mesh (land stage, critic CN-D1), the fleet mount's the steel one
+  // its yaw stage is one mesh in the mount's tone (land stage, critic CN-D1; release 229), the fleet mount's the steel one
   const recoil = pitch?.getObjectByName('auxiliaryWeaponRecoil');
-  const mountSlot = recoil ? 'detail' : 'dark';
+  const mountSlot = recoil ? fitting.children.find((child) => child instanceof THREE.Mesh)?.userData.fittingSlot : 'dark';
   for (const child of fitting.children) if (child.userData.fittingSlot === mountSlot) child.name = mount;
   if (recoil) for (const child of pitch?.children ?? []) if (child.userData.fittingSlot === 'dark') {
     child.name = 'browningDerivedMachineGunCradle'; child.userData.appearanceRole = 'machineGun';

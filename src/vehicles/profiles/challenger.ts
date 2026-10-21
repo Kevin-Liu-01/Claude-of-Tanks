@@ -1015,7 +1015,7 @@ function challenger1Build(P: ChallengerBuilderPort): void {
       // commander's sight hood (2.59 m): the gun breaks the turret's far skyline in the hero view instead of hiding
       // behind the hood.
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.06, scale: 1.0, seed: 7, riser: 0.10, working: true });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.06, scale: 1.0, seed: 7, riser: 0.10, working: true, ridingCradle: true });
       mg.name = 'challenger1LoaderL37';
       mg.position.set(-0.74, 0.876, -0.15);
       mg.rotation.y = -0.06;
@@ -1038,7 +1038,7 @@ function challenger1Build(P: ChallengerBuilderPort): void {
         P.add('turretGlass', box(0.075, 0.034, 0.012), vx, 0.80, vz + 0.035, 0, vry, 0);
       }
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 1.0, seed: 8, riser: 0.10, working: true });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 1.0, seed: 8, riser: 0.10, working: true, ridingCradle: true });
       mg.name = 'challenger1CommanderL37';
       mg.position.set(0.70, 0.795, -0.40);
       mg.rotation.y = 0.05;
@@ -1853,7 +1853,7 @@ function cr2MountedMg(
     barrelBridge: cls === 'mag',
     rotation: [0, rotationY, 0],
     // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the crew gun is a working station
-    working: true,
+    working: true, ridingCradle: true,
   });
   mg.position.set(x, y, z);
   mg.userData.mountSeatY = y;
@@ -5027,7 +5027,7 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       0.70, 1.17, -0.48);                                                        // source RWS rear face begins world z .67
     finishRwsRearCover();
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', remoteControlled: true, tone: 'two-tone', seed: 31, elev: 0.05, ammo: true });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', remoteControlled: true, ridingCradle: true, tone: 'two-tone', seed: 31, elev: 0.05, ammo: true });
       mg.position.set(0.72, C3H + 0.22, -0.10);
       mg.scale.z = 1.55;                                                         // measured .73..2.67 world run
       P.turretG.add(mg);

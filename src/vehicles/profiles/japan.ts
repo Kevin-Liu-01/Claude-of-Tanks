@@ -603,7 +603,7 @@ function addSTB1RoofEquipment(P: JapaneseBuilderPort): void {
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
   mount(P, FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.82, elev: 0.06,
-    shield: false, ammo: true, ring: { r: 0.15, stubs: 3 }, seed: 1110, working: true,
+    shield: false, ammo: true, ring: { r: 0.15, stubs: 3 }, seed: 1110, working: true, ridingCradle: true,
   }), 0.43, 1.11, -0.38, [0, -0.05, 0]);
   P.add('turretDark', box(0.12, 0.11, 0.34), 0.43, 1.25, -0.20);
   P.add('turretDark', cylZ(0.020, 0.64, 10), 0.43, 1.27, 0.26, -0.05, 0, 0);

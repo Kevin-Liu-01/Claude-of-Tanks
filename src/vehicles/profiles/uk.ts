@@ -2699,7 +2699,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
         ammo: true,
         shield: 'low',
         barrelBridge: true,
-        working: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
+        working: true, ridingCradle: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
       });
       mg.name = 'centurion5_loader_roof_machine_gun';
       mg.position.set(0.42, 0.838, -0.35);
@@ -4138,7 +4138,7 @@ function vickersMk1Build(P: UKBuilderPort): void {
       ammo: true,
       shield: 'low',
       barrelBridge: true,
-      working: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
+      working: true, ridingCradle: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
     });
     mg.name = 'vickers_mk1_loader_roof_machine_gun';
     mg.position.set(-0.42, 1.118, -0.35);
@@ -4681,7 +4681,7 @@ function buildChieftainUpper2026(
     {
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's cupola L37)
       const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
-        elev: 0.08, scale: 0.84, seed: stillbrew ? 17 : 15, ammo: true, working: true });
+        elev: 0.08, scale: 0.84, seed: stillbrew ? 17 : 15, ammo: true, working: true, ridingCradle: true });
       mg.name = 'chieftainCommanderL37';
       mg.position.set(-0.49, cupolaY(1.12), -0.20);
       mg.rotation.y = 0;

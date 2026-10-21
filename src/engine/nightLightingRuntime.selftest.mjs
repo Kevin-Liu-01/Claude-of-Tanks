@@ -339,4 +339,4 @@ const source = readFileSync(new URL('./nightLightingRuntime.ts', import.meta.url
 assert.doesNotMatch(source, /Math\.random\(|performance\.|setTimeout\(|requestAnimationFrame\(|needsUpdate\s*=/);
 assert.doesNotMatch(source, /from ['"].*(?:quality|fleet|tankFactory)/, 'runtime stays independent of fleet and quality overrides');
 for (const material of materials) material.dispose();
-console.log('nightLightingRuntime self-test: bounded lights, authored emission, visibility/death, rolled poses, searchlights, exact reset and disposal PASS');
+console.log('nightLightingRuntime self-test: bounded lights, authored emission, visibility/death, rolled poses, exact reset and disposal PASS');

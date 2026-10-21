@@ -520,7 +520,7 @@ function addModernizedT80TurretSuite(
     const rws = FITTINGS.pintleMG({
       mats: P.mats, cls: 'kord', tone: 'dark', elev: -0.08,
       ammo: true, shield: true, scale: kursk ? 0.78 : 0.72,
-      seed: kursk ? 8961 : 8861, remoteControlled: true,
+      seed: kursk ? 8961 : 8861, remoteControlled: true, ridingCradle: true,
     });
     rws.name = `uaT80ModernKord_${variant}`;
     rws.position.set(panoX, kursk ? 0.94 : 0.90, panoZ - 0.03);

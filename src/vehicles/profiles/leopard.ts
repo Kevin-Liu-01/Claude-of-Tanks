@@ -3943,7 +3943,7 @@ function buildLeo2A6(P: TankBuilderPort) {
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
       const mg = FITTINGS.pintleMG({
         mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 6,
-        rotation: [0, Math.PI, 0], working: true,
+        rotation: [0, Math.PI, 0], working: true, ridingCradle: true,
       });
       mg.name = 'leo2LoaderMg3';
       // Sink the canonical foot 12 cm into the sloped plate: its post still
@@ -5218,7 +5218,7 @@ export function buildLeo2A5(builder: object) {
       P.add('turretDetail', cylY(0.030, 0.034, 0.05, 12), -0.50, 0.79, -0.06);     // pintle socket on the loader ring
       const a5nl = P.spec.id === 'leo2a4m';
       const loaderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag58', tone: 'two-tone', elev: 0.03, ammo: true,
-        remoteControlled: a5nl, working: !a5nl, seed: 5087 });
+        remoteControlled: a5nl, working: !a5nl, ridingCradle: true, seed: 5087 });
       loaderMg.name = 'leo2a5_loader_machine_gun';
       loaderMg.position.set(-0.50, 0.81, -0.06);
       P.turretG.add(loaderMg);
@@ -6499,7 +6499,7 @@ function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone',
       scale: o.gunScale ?? (1.05 * s), elev: o.elev ?? 0.03, ammo: false, seed: o.seed ?? 13,
-      remoteControlled: o.automatic === true });
+      remoteControlled: o.automatic === true, ridingCradle: o.automatic === true });
     if (o.automatic) mg.name = gunName;
     mg.position.set(X, o.gunY, Z);
     P.turretG.add(mg);
@@ -6968,7 +6968,7 @@ export function buildLeo2A4(builder: object) {
     // (the mg3 class since 2026-10-08, round 5: the MG3's perforated jacket and muzzle booster; two-tone per MG PHYSICS).
     {
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0], working: true });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0], working: true, ridingCradle: true });
       mg.name = 'leo2LoaderMg3';
       mg.position.set(-0.42, 0.678, -0.38);                                      // 2026-10-19 (owner float sweep): 20 mm over the roof; seated
       P.turretG.add(mg);
@@ -7576,7 +7576,7 @@ function buildLeo2A7V(P: TankBuilderPort) {
     P.add('turret', cylY(0.075, 0.095, 0.055, P.q ? 16 : 12), -0.40, 0.795, -0.05); // mount collar
     {
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 6, rotation: [0, -0.3, 0], working: true });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 6, rotation: [0, -0.3, 0], working: true, ridingCradle: true });
       mg.name = 'leo2LoaderMg3';
       mg.position.set(-0.40, 0.70, -0.05);
       P.turretG.add(mg);
@@ -8008,7 +8008,7 @@ function buildLeo2Proto(P: TankBuilderPort) {
   // loader MG3 pintle at the hatch rim (§B3 census weapon, the mg3 class since 2026-10-08, round 5)
   {
     // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 9, rotation: [0, -0.30, 0], working: true });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 9, rotation: [0, -0.30, 0], working: true, ridingCradle: true });
     mg.name = 'leo2LoaderMg3';
     // mount LOW (0.54): the mag receiver band spans several side columns —
     // at a 0.65 mount it wrote heightM p95 2.59 (dims -27.7); at 0.54 the
@@ -12446,7 +12446,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
       const mg = FITTINGS.pintleMG({
         mats: P.mats, cls: 'mg3', tone: 'two-tone', elev: 0.05,
-        scale: 0.96, seed: 15, shield: true, ammo: true, working: true,
+        scale: 0.96, seed: 15, shield: true, ammo: true, working: true, ridingCradle: true,
       });
       mg.name = 'leo1LoaderMg3';
       mg.position.set(-0.45, 0.91, -0.30);
@@ -12975,7 +12975,7 @@ function addLeo2A6MRoofRCWS(P: TankBuilderPort) {
   // feed's belt arcs 1 cm over the old crown (0.303 vs 0.293 at this scale),
   // so the feet sink 1 cm further (crown 1.238 under the 1.24 budget).
   const weaponFootY = 0.930;
-  const remoteMachineGun = FITTINGS.pintleMG({ remoteControlled: true,
+  const remoteMachineGun = FITTINGS.pintleMG({ remoteControlled: true, ridingCradle: true,
     mats: P.mats,
     cls: 'm2',
     scale: machineGunScale,
@@ -13628,7 +13628,7 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     // remote station; on the 2A6M the MG3 laid here was a spare gun beside its remote station, and it is gone.
     if (P.spec.id === 'leo2a6_ua') {
       const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: 'mag', remoteControlled: true, tone: 'two-tone', scale: 0.66, elev: 0,
+        mats: P.mats, cls: 'mag', remoteControlled: true, ridingCradle: true, tone: 'two-tone', scale: 0.66, elev: 0,
         shield: false, ammo: true, seed: 3450, rotation: [0, Math.PI / 2, 0],
       });
       mg.position.set(-0.58, 0.67, -2.62);
@@ -14598,7 +14598,7 @@ function buildLeo2A4M(P: TankBuilderPort) {
     // given the German crew guns' MG3 class to this Canadian mark too).
     {
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's C6)
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0], working: true });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0], working: true, ridingCradle: true });
       mg.name = 'leo2LoaderC6';
       mg.position.set(-0.42, 0.678, -0.38);                                      // 2026-10-19 (owner float sweep): 20 mm over the roof; seated
       P.turretG.add(mg);

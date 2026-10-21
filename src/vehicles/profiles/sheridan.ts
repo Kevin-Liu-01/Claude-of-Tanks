@@ -1577,7 +1577,7 @@ function addSheridanLoaderStation(
     ring: { r: 0.21, stubs: 3 },
     seed: 552,
     // VH.14: the requested loader's gun (the M60 crews fitted at the loader's hatch) is a working station
-    working: true,
+    working: true, ridingCradle: true,
   });
   mg.name = 'm551LoaderMg';
   mg.scale.set(0.92, 0.72, 0.92);
