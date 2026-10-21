@@ -1246,9 +1246,9 @@ export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99
     P.add('turretDetail', box(0.035, 0.035, railLength), s * 1.49, 0.76, railZ, 0, -s * 0.05, 0);
     for (const z of [-0.16, -0.82, -1.48, -2.06]) {
       if (!rearFlank && z < -1.27) continue;
-      // release 227, round 3 (critic D8): on a cut bustle each stanchion stands under the rail's yawed line (on the fleet
-      // turret, x 1.50 throughout, the front one stands 23 mm beside it and holds nothing; tracked as a fleet follow-up)
-      const x = cut > 0 ? 1.49 - Math.sin(0.05) * (bz(z) - railZ) / Math.cos(0.05) : 1.50;
+      // release 227, round 3 (critic D8): each stanchion stands under the rail's yawed line. Release 229 (fleet follow-up):
+      // the uncut fleet turret too, where x 1.50 throughout left the front one 23 mm beside the rail and the rear one 3 mm
+      const x = 1.49 - Math.sin(0.05) * (bz(z) - railZ) / Math.cos(0.05);
       P.add('turretDetail', box(0.034, 0.40, 0.034), s * x, 0.55, bz(z), 0, -s * 0.05, 0);
     }
     liftEye(P, 'turretDetail', s * 0.98, 0.82, -1.18);
