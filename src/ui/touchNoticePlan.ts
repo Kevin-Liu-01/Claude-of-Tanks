@@ -47,7 +47,7 @@ export const TOUCH_COMPACT_NOTICE: TouchSize = { w: 136, h: 32 };
 export const TOUCH_COMPACT_ALERT: TouchSize = { w: 150, h: 40 };
 /** The narrow alert's height at a phone's map width (five lines of its 8 px type at the most: battleHudLayout.css
  *  data-touch-notices~='alert-narrow'). */
-export const TOUCH_NARROW_ALERT_H = 58;
+const TOUCH_NARROW_ALERT_H = 58;
 
 /**
  * The reticle's footprint at full bloom on a touch layout (see the module's note), as boxes. `seated`: the warning chip

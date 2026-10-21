@@ -1102,18 +1102,18 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
  *  text metrics (r10, measured here and on the rendered fixture). Keys ending ':objective' are the recorded objective
  *  stage, which every mode but the standard battle shows (section 19c). 568x290: 3.34 px, a rack set over a 43 px ring
  *  under the score; with the objective panel 22.75 px, the panel over the sight and the systems row under it leaving the
- *  rack no room (only right of the ring is free). 320x568: 12.22 px, the 156 px seated warning chip at full bloom, which
- *  meets the left FIRE button under the sight, the drive gauge or the map's corner over it; with the objective panel
- *  25.25 px, the readout line set over the ring on the compact systems row, the panel, the chrome, the map and the row
- *  stacked down to 203 px. 740x360 and 640x360 with the objective panel: 0.37 px, an empty rack under the widest ring
+ *  rack no room (only right of the ring is free). 320x568 with the objective panel: 10.59 px, the readout line set over
+ *  the ring on the systems row's top slot, the panel, the chrome and the row stacked down to 203 px (its standard battle
+ *  keeps 3 px since r10g parks the gun travel chip under the map: seated by the sight it met the left FIRE button by
+ *  12.22 px, the drive gauge or the map's corner). 740x360 and 640x360 with the objective panel: 0.37 px, an empty rack under the widest ring
  *  on the systems row. 1024x400 with the objective panel: 7.62 px, the warning chip set over the widest ring into the
  *  panel (the render keeps 3 px). r10g moved a small portrait phone's systems row out of the band over the sight (the
  *  top slot right of the map, compact): 360x640 (8.87 px before, the chip on the row's underlines) and 375x667 (7.34)
- *  keep 3 px now, and 320x568 kept 25.25 px before. Round r9 left 568x290 25.5 px into its systems row in a standard
+ *  keep 3 px now, and 320x568 kept 25.25 px before (its objective stage too). Round r9 left 568x290 25.5 px into its systems row in a standard
  *  battle. Every other swept window, the listed capture sizes among them, keeps 3 px in a standard battle and in every
  *  mode. */
-const TIGHT_FLOOR = { '568x290t': -3.5, '320x568t': -12.5,
-  '568x290t:objective': -23, '320x568t:objective': -26,
+const TIGHT_FLOOR = { '568x290t': -3.5,
+  '568x290t:objective': -23, '320x568t:objective': -11,
   '740x360t:objective': -0.5, '640x360t:objective': -0.5, '1024x400:objective': -8 };
 const tightWorst = {};
 /** Every mark keeps 3 px from every recorded panel and control (sightFurniture.ts), or on the smallest windows no less

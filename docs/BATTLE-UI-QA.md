@@ -301,12 +301,12 @@ empty racks, finite and endless rounds:
   ring). With the objective panel it is 22.75 px. The panel sits over the sight
   and the systems row under it, so the rack has no room above or below the
   ring; only the space right of the ring is free.
-- 320x568: 12.22 px in a standard battle, the 156 px warning chip seated under
-  the widest ring on the left FIRE button (and 8.62 px on the map, 5.6 px on the
-  speedometer); no other mark reaches the furniture. With the objective panel it
-  is 25.25 px, the readout row on the compact systems row under the panel. Round
-  r10e had 25.25 px in a standard battle too, the readout row on the systems
-  row's labels and a rack on the FIRE button.
+- 320x568 with the objective panel: 10.59 px, the readout row set over the ring
+  on the systems row's top slot under the panel. Its standard battle keeps 3 px
+  since r10g parks the gun travel chip under the map. Seated by the sight, the
+  chip ran 12.22 px into the left FIRE button. Round r10e had 25.25 px on both
+  stages, with the readout row on the systems row's labels and a rack on the FIRE
+  button.
 - 360x640 and 375x667 keep 3 px since the systems row's top slot (r10g; they
   were 8.87 px, the chip on the row's key badges and underline, and 7.34 px).
 - 740x360 and 640x360 with the objective panel: 0.37 px, an empty rack under the
