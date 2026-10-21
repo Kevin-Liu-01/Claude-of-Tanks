@@ -74,7 +74,10 @@ cards on the trees lane's atlases through `vehicleFoliage.ts`, never a second
 foliage system. The Browning-family roof gun is one construction,
 `machineGunGeometry.ts`, shared by `KIT.fittings.pintleMG`, the legacy
 `KIT.pintleMG` and the decor roof gun: keep envelopes and muzzle points when
-changing it (remote parity). The 20 L jerrycan is one construction too
+changing it (remote parity). A working or remote `pintleMG` station passes
+`ridingCradle: true` (its cradle, pin and shield pitch with the gun, fitted to
+the class by `addPintleRidingCradle`); `workingPintleCradle.selftest` scans the
+calls and `fleetPassDefault` measures every station against its own mount. The 20 L jerrycan is one construction too
 (`accessoryKits.ts` `jerrycanParts`: decor cans, `KIT.jerryCan`,
 `FITTINGS.jerryCans`), and the profile kit's soft stowage, tarp rolls, ammo
 cans, shovels and stowage-rack loads use the same primitives inside their old
