@@ -20,7 +20,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MANIFEST = join(ROOT, 'tools/anatomy-frozen.manifest.json');
 
 /** Frozen roots: a directory is taken recursively, a file as itself; `match` filters a directory's files. */
-export const FROZEN_ROOTS = Object.freeze([
+const FROZEN_ROOTS = Object.freeze([
   { path: 'src/sim' },
   { path: 'src/vehicles', match: /^combatAnatomy[^/]*\.ts$/ },
   { path: 'src/vehicles/combatAnatomyGroups' },
