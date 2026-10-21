@@ -8,7 +8,15 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { REPO } from '../paths.mjs';
-import { BED, FILMS_DIR, SHARED, listFilms, restore } from './restore.mjs';
+import { BED, FILMS_DIR, RETIRED_FONTS, SHARED, listFilms, restore, restorePlan } from './restore.mjs';
+
+// The retired face the films were cut with comes only from a local archive outside the repository.
+delete process.env.COT_RETIRED_FONTS_DIR;
+for (const [from] of SHARED) assert.doesNotMatch(from, /monument/i, `${from}: the repository ships no ABC Monument Grotesk file`);
+process.env.COT_RETIRED_FONTS_DIR = '/archive/fonts';
+assert.deepEqual(restorePlan('posters-port').filter((s) => s.rel.startsWith('assets/fonts/')).map((s) => [s.from, s.rel]),
+  RETIRED_FONTS.map(([file, rel]) => [join('/archive/fonts', file), rel]).sort((a, b) => (a[1] < b[1] ? -1 : 1)), 'COT_RETIRED_FONTS_DIR restores the face from its archive');
+delete process.env.COT_RETIRED_FONTS_DIR;
 
 const FILMS = ['cut-30', 'lineup', 'posters-land', 'posters-port', 'posters-square', 'studio-feature', 'trailer-24h', 'vertical-15'];
 const BEDS = new Set(['cut-30', 'lineup', 'trailer-24h', 'vertical-15']);

@@ -10,9 +10,9 @@ import {
 } from './bundle-budget.mjs';
 
 assert.deepEqual(Object.keys(BUNDLE_PAGES), ['game', 'home', 'docs', 'gallery', 'notFound', 'cn']);
-assert.deepEqual(budgetMetrics('game'), ['requests', 'raw', 'gzip', 'brotli', 'entryRaw', 'entryBrotli']);
-assert.deepEqual(budgetMetrics('home'), ['requests', 'raw', 'gzip', 'brotli'],
-  'public pages budget their totals; their first module script is an arbitrary shared chunk');
+assert.deepEqual(budgetMetrics('game'), ['requests', 'raw', 'gzip', 'brotli', 'inlineCss', 'entryRaw', 'entryBrotli']);
+assert.deepEqual(budgetMetrics('home'), ['requests', 'raw', 'gzip', 'brotli', 'inlineCss'],
+  'public pages budget their totals and inline CSS; their first module script is an arbitrary shared chunk');
 
 assert.deepEqual(htmlResources(`
   <link rel="preload" as="font" href="/fonts/a.woff2" crossorigin>
@@ -23,11 +23,14 @@ assert.deepEqual(htmlResources(`
   <link rel="modulepreload" crossorigin href="/assets/dep-bbbb2222.js">
   <link crossorigin rel="stylesheet" href="/assets/main-cccc3333.css?v=1">
   <link rel="icon" href="/assets/icon.svg">
+  <style id="cot-font-faces">@font-face{font-family:x}</style><style></style>
+  <!-- <style>.commented{}</style> -->
 `), {
   entries: ['assets/main-aaaa1111.js'],
   preloads: ['assets/dep-bbbb2222.js'],
   stylesheets: ['assets/main-cccc3333.css'],
-}, 'only bundle files (/assets/) the document requests up front are counted; fonts, icons and comments are not');
+  inlineStyles: ['@font-face{font-family:x}'],
+}, 'only bundle files (/assets/) the document requests up front are counted; fonts, icons and comments are not; inline CSS is kept apart');
 
 assert.deepEqual(staticImportSpecifiers(
   'import{a as e}from"./dep.js";export{x}from"./re.js";export*from"./star.js";import"./side.js";'
@@ -40,7 +43,9 @@ try {
     mkdirSync(dirname(join(dist, file)), { recursive: true });
     writeFileSync(join(dist, file), text);
   };
-  write('index.html', '<script type="module" crossorigin src="/assets/main-aaaa1111.js"></script>'
+  const headCss = `@font-face{font-family:'Cot UI';src:url(/fonts/a.woff2)}${'.b{padding:0}'.repeat(30)}`;
+  write('index.html', `<style id="cot-font-faces">${headCss}</style>`
+    + '<script type="module" crossorigin src="/assets/main-aaaa1111.js"></script>'
     + '<link rel="modulepreload" crossorigin href="/assets/dep-bbbb2222.js">'
     + '<link rel="stylesheet" crossorigin href="/assets/main-cccc3333.css">');
   write('cn/index.html', '<script type="module" crossorigin src="/assets/main-aaaa1111.js"></script>'
@@ -64,10 +69,15 @@ try {
   assert.equal(game.brotli, files.reduce((sum, bytes) => sum + brotliCompressSync(bytes, { params: {
     [constants.BROTLI_PARAM_QUALITY]: 11, [constants.BROTLI_PARAM_SIZE_HINT]: bytes.length,
   } }).length, 0));
+  assert.equal(game.inlineCssRaw, Buffer.byteLength(headCss), 'the inline type head is measured');
+  assert.equal(game.inlineCss, brotliCompressSync(Buffer.from(headCss), { params: {
+    [constants.BROTLI_PARAM_QUALITY]: 11, [constants.BROTLI_PARAM_SIZE_HINT]: Buffer.byteLength(headCss),
+  } }).length, 'inline CSS is budgeted as brotli bytes, apart from the asset totals');
   assert.equal(game.entry, 'assets/main-aaaa1111.js');
   assert.equal(game.entryRaw, readFileSync(join(dist, 'assets/main-aaaa1111.js')).length);
 
   const cn = measurePage(dist, 'cn/index.html');
+  assert.equal(cn.inlineCss, 0, 'a document without inline CSS measures 0');
   assert.ok(cn.scripts.includes('assets/lazy-ffff6666.js') && cn.scripts.includes('assets/lazyonly-gggg7777.js'),
     'an explicit modulepreload (the zh-CN catalog on /cn/) is an up-front request with its own closure');
   assert.equal(cn.requests, 5);
@@ -101,6 +111,7 @@ for (const [name, budget] of Object.entries(committed.pages)) {
   for (const metric of budgetMetrics(name)) {
     assert.ok(Number.isInteger(budget[metric]) && budget[metric] > 0, `${name}.${metric} budget must be a positive integer`);
   }
+  assert.ok(budget.inlineCss < budget.brotli, `${name}: inline CSS is a small share of the page`);
 }
 
 console.log('bundle-budget.selftest: closure, byte totals, budgets and violations verified on a fixture dist');

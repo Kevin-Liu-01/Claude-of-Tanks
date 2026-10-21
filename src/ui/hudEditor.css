@@ -38,8 +38,8 @@ body .cot-modal-root.cot-hud-editor .cot-modal__body{display:flex;flex-direction
  .cot-modal-root.cot-hud-editor{padding:6px}.cot-hud-editor .cot-modal{height:calc(100dvh - 12px);max-height:calc(100dvh - 12px)}
  .hud-edit-content{grid-template-columns:minmax(0,1fr) 162px;gap:6px}
  body .cot-modal-root.cot-hud-editor .cot-modal__body{padding:6px;gap:6px}
- .cot-hud-editor button:not(.hud-edit-part){padding:6px 8px;font-size:10px}.hud-edit-inspector{padding:8px}.hud-edit-inspector h3{font-size:13px}
- .hud-edit-profiles{padding-right:0;border:0}.hud-edit-status{max-width:45%;font-size:10px}
+ .cot-hud-editor button:not(.hud-edit-part){padding:6px 8px;font-size:11px}.hud-edit-inspector{padding:8px}.hud-edit-inspector h3{font-size:13px}
+ .hud-edit-profiles{padding-right:0;border:0}.hud-edit-status{max-width:45%;font-size:11px}
 }
 @media(orientation:portrait) and (max-width:700px){
  .cot-hud-editor .cot-modal__header{padding:12px}.cot-hud-editor .cot-modal__title{font-size:19px}.cot-hud-editor .cot-modal__subtitle{font-size:11px}
@@ -52,6 +52,6 @@ body .cot-modal-root.cot-hud-editor .cot-modal__body{display:flex;flex-direction
  .cot-hud-editor .cot-modal__close{width:36px;height:36px;min-height:36px}
  body .cot-modal-root.cot-hud-editor .cot-modal__footer{padding:4px 6px;flex-wrap:nowrap}
  .cot-hud-editor .cot-modal__footer button{min-height:36px}.hud-edit-toolbar{flex-wrap:nowrap;gap:4px}
- .hud-edit-profiles{gap:3px;flex-wrap:nowrap}.hud-edit-toolbar button:not(.hud-edit-part){min-height:36px;font-size:9px;padding:4px 6px}
- .hud-edit-status{font-size:9px}.hud-edit-inspector p{display:none}
+ .hud-edit-profiles{gap:3px;flex-wrap:nowrap}.hud-edit-toolbar button:not(.hud-edit-part){min-height:36px;font-size:11px;padding:4px 6px}
+ .hud-edit-status{font-size:11px}.hud-edit-inspector p{display:none}
 }

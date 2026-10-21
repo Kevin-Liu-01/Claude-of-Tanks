@@ -2041,6 +2041,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',
     'src/ui/fonts.selftest.mjs',
+    // 2026-10-17: Chakra Petch + IBM Plex replace Monument; pinned OFL files, one marker per document,
+    // real weights only, the 11 px floor, tabular figures only through .num, metric-matched fallbacks, zh-CN resets
+    'src/ui/typeSystem.selftest.mjs',
     'src/ui/bootScreen.selftest.mjs',
     'src/ui/battleLoadProgress.selftest.mjs',
     'src/ui/mapLqip.selftest.mjs',

@@ -7,7 +7,11 @@ import {createBus} from '../../src/game/stateCore.ts';
 import {createEndScreen} from '../../src/ui/endScreen.ts';
 import {createEndOverlayRuntime} from '../../src/ui/endOverlayRuntime.ts';
 import {setLocale} from '../../src/ui/i18n.ts';
-setLocale(new URLSearchParams(location.search).get('locale')||'en-US');installResponsiveLayout();
+import {zhTypeFloorStyle} from '../../src/ui/zhTypeFloor.ts';
+await setLocale(new URLSearchParams(location.search).get('locale')||'en-US');
+// A zh-CN capture carries the label floor its /cn/ document ships (src/presentation/localizedHtml.ts).
+if(document.documentElement.lang==='zh-CN')document.head.insertAdjacentHTML('beforeend',zhTypeFloorStyle('game'));
+installResponsiveLayout();
 const bus=createBus();createEndOverlayRuntime({bus,onReturnToGarage:()=>{window.__RETURNED=true;report.hide();}});
 const host=document.createElement('div');host.className='cot-si-stats';document.body.append(host);
 const report=createEndScreen(bus,host);

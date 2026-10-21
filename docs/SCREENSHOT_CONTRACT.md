@@ -75,7 +75,7 @@ showcase-r1 contract below `showcase:publish` describes the retired library.
 
 `npm run og:images` regenerates the default game card and all 17 route/private-room
 cards at 1200×630. Each uses the current `public/brand/logo-mark.svg` at its native
-square aspect ratio, with the bottom-left ABC Monument Grotesk lockup: white
+square aspect ratio, with the bottom-left Chakra Petch Bold lockup (the display face): white
 CLAUDE, amber OF TANKS. Do not substitute the compact all-white website lockup
 or a precomposed raster logo. The default retains the owner-selected T-90 column
 photo; route companions retain their own photography and page labels.

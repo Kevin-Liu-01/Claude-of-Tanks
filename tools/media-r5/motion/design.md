@@ -15,9 +15,11 @@ large, confident words laid over it, until the brand lands with weight at the cl
 - Background ink: `#0b0e11` (brand panel). Letterbox bars: `#07090c` (never pure black).
 - Foreground steel: `#e8edf2`. Accent (the one hue): amber `#f0a12e`; highlight gold
   `#ffd27a` for counts and the wordmark's second line.
-- Display face: ABC Monument Grotesk (owner-licensed brand UI face, local woff2 from
-  `public/fonts/abc-monument-grotesk`: Regular 400 / Medium 500 / Bold 700). Statements
-  in Bold caps. No monospace.
+- Display face of the films cut through 2026-10-16: ABC Monument Grotesk (local woff2 trial builds, no
+  longer in the repository; `COT_RETIRED_FONTS_DIR` names a local archive so those films re-render byte
+  for byte: Regular 400 / Medium 500 / Bold 700). Statements in Bold caps. No monospace. The face is
+  retired (trial builds); new films take the UI faces in `public/fonts/` (Chakra Petch
+  display, IBM Plex Sans body).
 - Logo: the crest (`logo-mark-metal.svg` on dark) and the CLAUDE / OF TANKS wordmark.
   The crest is never recolored, skewed or cropped.
 

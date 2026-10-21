@@ -6,7 +6,10 @@
 // module entries, modulepreload links and stylesheets the HTML names, plus every
 // chunk those modules import statically. `import()` edges are lazy and excluded.
 // Each page reports raw, gzip (zlib level 6) and brotli (quality 11) bytes and its
-// request count; the game page also reports its entry chunk.
+// request count; the game page also reports its entry chunk. The CSS a document
+// carries inline (its `<style>` blocks: the boot styles and the type head the
+// cot:type marker expands) is render-blocking too: it is measured on its own
+// (inlineCss, brotli of the blocks together) and budgeted beside the totals.
 //
 //   node tools/bundle-budget.mjs              print the measurement
 //   node tools/bundle-budget.mjs --check      fail when a page exceeds tools/bundle-budget.json
@@ -35,7 +38,7 @@ export const BUNDLE_PAGES = Object.freeze({
   cn: 'cn/index.html',
 });
 
-const TOTAL_METRICS = Object.freeze(['requests', 'raw', 'gzip', 'brotli']);
+const TOTAL_METRICS = Object.freeze(['requests', 'raw', 'gzip', 'brotli', 'inlineCss']);
 // Only the game documents start with an application entry chunk; a public page's first module script is
 // whichever shared chunk Rolldown lists first, too small and arbitrary to budget on its own.
 const ENTRY_BUDGET_PAGES = new Set(['game', 'cn']);
@@ -66,6 +69,7 @@ export function htmlResources(html) {
   const preloads = [];
   const stylesheets = [];
   const source = String(html).replace(/<!--[\s\S]*?-->/g, '');
+  const inlineStyles = [...source.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((match) => match[1]).filter((css) => css.trim());
   for (const [tag] of source.matchAll(/<script\b[^>]*>/gi)) {
     const attributes = tagAttributes(tag);
     const file = attributes.type === 'module' ? local(attributes.src) : null;
@@ -79,7 +83,7 @@ export function htmlResources(html) {
     if (rel.includes('modulepreload')) preloads.push(file);
     else if (rel.includes('stylesheet')) stylesheets.push(file);
   }
-  return { entries, preloads, stylesheets };
+  return { entries, preloads, stylesheets, inlineStyles };
 }
 
 /** Relative specifiers of the static `import`/`export … from` statements of one built chunk. */
@@ -127,7 +131,7 @@ function createFileCache(distDir) {
 export function measurePage(distDir, page, fileCache = createFileCache(distDir)) {
   const htmlPath = join(distDir, page);
   if (!existsSync(htmlPath)) throw new Error(`bundle-budget: ${page} is missing from ${distDir}; run npm run build first`);
-  const { entries, preloads, stylesheets } = htmlResources(readFileSync(htmlPath, 'utf8'));
+  const { entries, preloads, stylesheets, inlineStyles } = htmlResources(readFileSync(htmlPath, 'utf8'));
   if (!entries.length) throw new Error(`bundle-budget: ${page} names no module entry`);
   const scripts = new Set();
   const queue = [...entries, ...preloads];
@@ -149,6 +153,7 @@ export function measurePage(distDir, page, fileCache = createFileCache(distDir))
     totals.brotli += entry.compressed.brotli;
   }
   const entryFile = fileCache(entries[0]);
+  const inline = Buffer.from(inlineStyles.join('\n'));
   return {
     page,
     entry: entries[0],
@@ -157,6 +162,11 @@ export function measurePage(distDir, page, fileCache = createFileCache(distDir))
     preloadLinks: preloads.length,
     requests: scripts.size + styles.length,
     ...totals,
+    inlineCss: inline.length ? brotliCompressSync(inline, { params: {
+      [constants.BROTLI_PARAM_QUALITY]: 11,
+      [constants.BROTLI_PARAM_SIZE_HINT]: inline.length,
+    } }).length : 0,
+    inlineCssRaw: inline.length,
     entryRaw: entryFile.bytes.length,
     entryBrotli: entryFile.compressed.brotli,
   };
@@ -198,10 +208,10 @@ function formatBytes(value) {
 }
 
 function printTable(measures) {
-  const rows = [['page', 'requests', 'raw', 'gzip', 'brotli-11', 'entry raw', 'entry br-11']];
+  const rows = [['page', 'requests', 'raw', 'gzip', 'brotli-11', 'inline css br-11', 'entry raw', 'entry br-11']];
   for (const [name, m] of Object.entries(measures)) {
     rows.push([`${name} (${m.page})`, String(m.requests), formatBytes(m.raw), formatBytes(m.gzip), formatBytes(m.brotli),
-      formatBytes(m.entryRaw), formatBytes(m.entryBrotli)]);
+      formatBytes(m.inlineCss), formatBytes(m.entryRaw), formatBytes(m.entryBrotli)]);
   }
   const widths = rows[0].map((_, column) => Math.max(...rows.map((row) => row[column].length)));
   for (const row of rows) console.log(row.map((cell, column) => column ? cell.padStart(widths[column]) : cell.padEnd(widths[column])).join('  '));

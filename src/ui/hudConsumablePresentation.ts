@@ -3,7 +3,7 @@ type StyledNode = Pick<HTMLElement, 'style'>;
 
 interface ConsumableSlotElements {
   button: Pick<HTMLButtonElement, 'classList' | 'setAttribute'>;
-  count: TextNode;
+  count: TextNode & Pick<HTMLElement, 'classList'>;
   cooldown: StyledNode;
 }
 
@@ -45,6 +45,8 @@ export function createRetainedConsumableSlot({
         cooling = nextCooling;
         elements.cooldown.style.display = nextCooling ? 'block' : 'none';
         elements.button.classList.toggle('cooling', nextCooling);
+        // The countdown ticks in tabular Plex Mono; the ready mark ∞ stays in the shell face (its fallback's bold ∞).
+        elements.count.classList.toggle('num', nextCooling);
         seconds = undefined;
       }
       const nextLocale = locale();

@@ -142,12 +142,12 @@ function showContextLossOverlay(state: RecoveryNotice): void {
       el.setAttribute('aria-modal', 'true');
       el.setAttribute('aria-labelledby', 'cot-ctxlost-title');
       el.tabIndex = -1;
-      el.style.cssText = "position:fixed;inset:0;z-index:100000;display:grid;place-items:center;background:#080d13;color:#eef4f9;font-family:Inter,system-ui,sans-serif;text-align:center;padding:24px;box-sizing:border-box";
+      el.style.cssText = "position:fixed;inset:0;z-index:100000;display:grid;place-items:center;background:#080d13;color:#eef4f9;text-align:center;padding:24px;box-sizing:border-box";
       el.innerHTML = `<div style="width:min(420px,100%)">
         <div style="color:#f0ad45;font-size:11px;font-weight:700;letter-spacing:.2em;margin-bottom:20px">CLAUDE OF TANKS</div>
         <h2 id="cot-ctxlost-title" style="font-size:22px;margin:0 0 12px"></h2>
         <p data-recovery-copy role="status" aria-live="polite" style="font-size:14px;line-height:1.6;color:#9fb0bf;margin:0"></p>
-        <button id="cot-ctxlost-btn" hidden style="margin-top:24px;padding:12px 24px;background:#f0ad45;color:#101820;border:0;font:700 14px Inter,system-ui,sans-serif;cursor:pointer"></button>
+        <button id="cot-ctxlost-btn" hidden style="margin-top:24px;padding:12px 24px;background:#f0ad45;color:#101820;border:0;font:700 14px var(--font-ui);cursor:pointer"></button>
       </div>`;
       (document.body || document.documentElement).appendChild(el);
       el.focus({ preventScroll: true });

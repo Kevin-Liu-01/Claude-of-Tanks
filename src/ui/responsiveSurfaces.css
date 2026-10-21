@@ -25,14 +25,14 @@ body[data-cot-width='laptop'] .cot-killfeed{left:clamp(184px,15vw,210px)}
 body[data-cot-width='tablet'] .cot-top{width:min(326px,calc(100vw - 120px))}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-ear{top:58px;width:160px}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-ear.r{top:var(--hud-roster-top-right,58px)}
-body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er{padding-inline:6px;font-size:9px}
+body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er{padding-inline:6px;font-size:11px}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er .ic{width:25px;height:13px}
-body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er .n .nick{font-size:9px}
-body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er .n .veh{font-size:7px}
+body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er .n .nick{font-size:11px}
+body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er .n .veh{font-size:11px}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-killfeed{
   top:66px;left:50%;transform:translateX(-50%);max-width:42%;align-items:center;
 }
-body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-kf{font-size:9px;padding:4px 8px}
+body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-kf{font-size:11px;padding:4px 8px}
 
 body[data-cot-width='phone']:not(.cot-touch-layout) .cot-ear,
 body[data-cot-width='compact']:not(.cot-touch-layout) .cot-ear{display:none}
@@ -50,7 +50,7 @@ body[data-cot-width='compact']:not(.cot-touch-layout) .cot-killfeed{
   top:60px;left:50%;transform:translateX(-50%);max-width:72%;align-items:center;
 }
 body[data-cot-width='phone']:not(.cot-touch-layout) .cot-kf,
-body[data-cot-width='compact']:not(.cot-touch-layout) .cot-kf{font-size:8px;padding:3px 6px}
+body[data-cot-width='compact']:not(.cot-touch-layout) .cot-kf{font-size:11px;padding:3px 6px}
 body[data-cot-width='phone']:not(.cot-touch-layout) .cot-minimap,
 body[data-cot-width='compact']:not(.cot-touch-layout) .cot-minimap{
   left:max(8px,env(safe-area-inset-left));right:auto;top:max(64px,calc(env(safe-area-inset-top) + 60px));
@@ -103,27 +103,27 @@ body[data-cot-width='phone'] .cot-si-card{min-height:0}
 body[data-cot-width='compact'] .cot-si-hd,
 body[data-cot-width='phone'] .cot-si-hd{min-height:40px;padding:5px 8px}
 body[data-cot-width='compact'] .cot-si-kicker,
-body[data-cot-width='phone'] .cot-si-kicker{font-size:6.5px}
+body[data-cot-width='phone'] .cot-si-kicker{font-size:11px}
 body[data-cot-width='compact'] .cot-si-badge,
 body[data-cot-width='phone'] .cot-si-badge{font-size:11px}
 body[data-cot-width='compact'] .cot-si-dmg,
 body[data-cot-width='phone'] .cot-si-dmg{font-size:18px}
 body[data-cot-width='compact'] .cot-si-sub,
-body[data-cot-width='phone'] .cot-si-sub{height:23px;padding:3px 8px;font-size:8.5px}
+body[data-cot-width='phone'] .cot-si-sub{height:23px;padding:3px 8px;font-size:11px}
 body[data-cot-width='compact'] .cot-si-body,
 body[data-cot-width='phone'] .cot-si-body{display:block;padding:4px 8px 0}
 body[data-cot-width='compact'] .cot-si-rows,
 body[data-cot-width='phone'] .cot-si-rows{gap:2px 9px}
 body[data-cot-width='compact'] .cot-si-kv,
-body[data-cot-width='phone'] .cot-si-kv{font-size:8.5px;gap:4px}
+body[data-cot-width='phone'] .cot-si-kv{font-size:11px;gap:4px}
 body[data-cot-width='compact'] .cot-si-pencap,
-body[data-cot-width='phone'] .cot-si-pencap{font-size:6.5px}
+body[data-cot-width='phone'] .cot-si-pencap{font-size:11px}
 body[data-cot-width='compact'] .cot-si-diag{
   grid-template-columns:78px 154px;margin:4px 0 0;padding:4px 6px;justify-content:center;gap:8px;
 }
 body[data-cot-width='compact'] .cot-si-diag .box:first-child{width:78px!important;height:78px!important}
 body[data-cot-width='compact'] .cot-si-diag .box:nth-child(2){width:154px!important;height:77px!important}
-body[data-cot-width='compact'] .cot-si-zone{grid-column:auto;text-align:right;font-size:8px}
+body[data-cot-width='compact'] .cot-si-zone{grid-column:auto;text-align:right;font-size:11px}
 body[data-cot-width='compact'] .cot-si-zone .cap{display:block;margin-right:0}
 body[data-cot-width='compact'] .cot-si-mods,
 body[data-cot-width='phone'] .cot-si-mods{padding:5px 9px 0}
@@ -132,7 +132,7 @@ body[data-cot-panels='overlay'] .cot-si-toasthost{
   width:min(236px,42vw);min-height:84px;
 }
 body[data-cot-panels='overlay'] .cot-si-toast{height:26px;padding:4px 6px}
-body[data-cot-panels='overlay'] .cot-si-toast .l1{height:100%;font-size:9.5px}
+body[data-cot-panels='overlay'] .cot-si-toast .l1{height:100%;font-size:11px}
 body[data-cot-panels='overlay'] .cot-si-toast .l1 b{font-size:11px}
 body.cot-touch-layout .cot-si-cardhost,
 body.cot-touch-layout .cot-si-log{display:none!important}
@@ -164,11 +164,11 @@ body[data-cot-width='phone'] .cot-set-tabs{
 }
 body[data-cot-width='compact'] .cot-set-tab,
 body[data-cot-width='phone'] .cot-set-tab{min-height:var(--cot-control-floor);white-space:nowrap;flex:0 0 auto}
-body[data-cot-width='phone'] .cot-set-tabs{overflow-x:hidden}
-body[data-cot-width='phone'] .cot-set-tab{
-  flex:1 1 0;min-width:0;padding-inline:2px;font-size:8px;letter-spacing:.07em;
-}
-body[data-cot-width='phone'] .cot-set-tab .ct{margin-left:3px;font-size:8px}
+/* Phone tabs size to their labels and share the spare width; a row too wide for a narrow phone scrolls instead of
+   letting a label run past its plate. */
+body[data-cot-width='phone'] .cot-set-tab{flex:1 0 auto;padding-inline:4px;font-size:11px;letter-spacing:.01em}
+body[data-cot-width='phone'] .cot-set-tab.sel::after{left:3px;right:3px}
+body[data-cot-width='phone'] .cot-set-tab .ct{margin-left:3px;font-size:11px}
 /* The crew-voice picker stacks under its label once the panel is full-screen. */
 body[data-cot-width='compact'] .cot-set-crew-row,
 body[data-cot-width='phone'] .cot-set-crew-row{flex-direction:column;align-items:stretch;gap:10px}
@@ -193,7 +193,7 @@ body[data-cot-height='short'] .cot-set-hdr{padding-block:7px 5px}
 body[data-cot-height='short'] .cot-set-ftr{padding-block:6px max(6px,env(safe-area-inset-bottom))}
 body[data-cot-width='tablet'] .cot-set-hdr{padding:12px 14px 8px}
 body[data-cot-width='tablet'] .cot-set-tabs{padding-inline:14px}
-body[data-cot-width='tablet'] .cot-set-tab{padding:9px 10px 8px;font-size:9.5px;letter-spacing:.14em}
+body[data-cot-width='tablet'] .cot-set-tab{padding:9px 10px 8px;font-size:11px;letter-spacing:.07em}
 body[data-cot-width='tablet'] .cot-set-body{padding:0 14px 12px}
 body[data-cot-width='tablet'] .cot-set-conflict{margin:8px 14px 0}
 body[data-cot-width='tablet'] .cot-set-ftr{padding:10px 14px 12px}
@@ -213,7 +213,7 @@ body[data-cot-width='compact'] .cot-play .rule-heading span,
 body[data-cot-width='phone'] .cot-play .rule-heading span{display:none}
 body[data-cot-width='compact'] .cot-play .mode,
 body[data-cot-width='phone'] .cot-play .mode{min-height:104px;padding:13px 11px}
-body[data-cot-width='phone'] .cot-play .mode p{font-size:8px}
+body[data-cot-width='phone'] .cot-play .mode p{font-size:11px}
 body[data-cot-width='compact'] .cot-play .room-actions,
 body[data-cot-width='phone'] .cot-play .room-actions{grid-template-columns:1fr}
 body[data-cot-width='compact'] .cot-play .room-failure,
@@ -245,7 +245,7 @@ body[data-cot-width='phone'] .cot-play .ranked-form label:nth-child(-n+2){grid-c
 body[data-cot-width='compact'] .cot-play .vehicle-icon,
 body[data-cot-width='phone'] .cot-play .vehicle-icon{width:46px;height:32px;flex-basis:46px}
 body[data-cot-width='compact'] .cot-play .vehicle-name,
-body[data-cot-width='phone'] .cot-play .vehicle-name{font-size:10px}
+body[data-cot-width='phone'] .cot-play .vehicle-name{font-size:11px}
 body[data-cot-width='compact'] .cot-play .controls,
 body[data-cot-width='phone'] .cot-play .controls,
 body[data-cot-width='tablet'][data-cot-orientation='portrait'] .cot-play .controls{
@@ -296,43 +296,43 @@ body[data-cot-width='phone'] .cot-bl .vs{display:none}
 body[data-cot-height='standard'][data-cot-panels='persistent'] .cot-bl .team,
 body[data-cot-height='compact'][data-cot-panels='persistent'] .cot-bl .team{--bl-row-height:20px}
 body[data-cot-panels='overlay'] .cot-bl .cap{padding-bottom:10px}
-body[data-cot-panels='overlay'] .cot-bl .cap::before{margin-bottom:5px;font-size:7px}
+body[data-cot-panels='overlay'] .cot-bl .cap::before{margin-bottom:5px;font-size:11px}
 body[data-cot-panels='overlay'] .cot-bl .mapname{margin-top:4px;font-size:clamp(22px,6vw,34px)}
-body[data-cot-panels='overlay'] .cot-bl .kicker{font-size:8.5px}
-body[data-cot-panels='overlay'] .cot-bl .thead{font-size:9px;padding:0 4px 4px}
+body[data-cot-panels='overlay'] .cot-bl .kicker{font-size:11px}
+body[data-cot-panels='overlay'] .cot-bl .thead{font-size:11px;padding:0 4px 4px}
 body[data-cot-panels='overlay'] .cot-bl .team{--bl-row-height:24px;--bl-row-gap:2px;--bl-row-inset:4px;--bl-heading:24px}
 body[data-cot-panels='overlay'] .cot-bl .row{gap:5px;padding-inline:4px}
-body[data-cot-panels='overlay'] .cot-bl .row .tier{flex-basis:20px;font-size:9px}
+body[data-cot-panels='overlay'] .cot-bl .row .tier{flex-basis:20px;font-size:11px}
 body[data-cot-panels='overlay'] .cot-bl .row .sil{flex-basis:38px;max-height:20px}
-body[data-cot-panels='overlay'] .cot-bl .row .nm{font-size:10px}
+body[data-cot-panels='overlay'] .cot-bl .row .nm{font-size:11px}
 body[data-cot-panels='overlay'] .cot-bl .foot{padding-top:9px}
 body[data-cot-panels='overlay'] .cot-bl .fmeta{margin-bottom:5px}
-body[data-cot-panels='overlay'] .cot-bl .fstage{font-size:9px}
+body[data-cot-panels='overlay'] .cot-bl .fstage{font-size:11px}
 body[data-cot-panels='overlay'] .cot-bl .fpct{font-size:15px}
-body[data-cot-panels='overlay'] .cot-bl .count{margin-top:8px;font-size:10px}
+body[data-cot-panels='overlay'] .cot-bl .count{margin-top:8px;font-size:11px}
 body[data-cot-panels='overlay'] .cot-bl .count b{font-size:16px}
 body[data-cot-panels='overlay'] .cot-bl .tip{display:none}
 body[data-cot-width='phone'] .cot-bl .row{gap:3px;padding-inline:3px}
-body[data-cot-width='phone'] .cot-bl .row .tier{flex-basis:17px;font-size:8px}
+body[data-cot-width='phone'] .cot-bl .row .tier{flex-basis:17px;font-size:11px}
 body[data-cot-width='phone'] .cot-bl .row .sil{flex-basis:31px;max-height:17px}
-body[data-cot-width='phone'] .cot-bl .row .nm{font-size:10px}
-body[data-cot-width='phone'] .cot-bl .thead{font-size:8px}
+body[data-cot-width='phone'] .cot-bl .row .nm{font-size:11px}
+body[data-cot-width='phone'] .cot-bl .thead{font-size:11px}
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-bl .briefing{padding-inline:8px}
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-bl .team.foe .row{padding-left:2px}
 body[data-cot-height='short'] .cot-bl .briefing{width:calc(100vw - max(16px,env(safe-area-inset-left) + env(safe-area-inset-right)));height:calc(var(--cot-viewport-height,100dvh) - 10px);min-height:0;padding:4px max(10px,env(safe-area-inset-left)) max(7px,env(safe-area-inset-bottom))}
 body[data-cot-height='short'] .cot-bl .cap{padding-bottom:5px}
 body[data-cot-height='short'] .cot-bl .cap::before{display:none}
 body[data-cot-height='short'] .cot-bl .mapname{margin-top:3px;font-size:clamp(18px,3vw,26px)}
-body[data-cot-height='short'] .cot-bl .kicker{font-size:7.5px}
+body[data-cot-height='short'] .cot-bl .kicker{font-size:11px}
 body[data-cot-height='short'] .cot-bl .teams{gap:8px}
 body[data-cot-height='short'] .cot-bl .team{--bl-row-height:18px;--bl-row-gap:1px;--bl-heading:18px}
 body[data-cot-height='short'] .cot-bl .row{gap:5px;padding-inline:4px}
-body[data-cot-height='short'] .cot-bl .row .tier{flex-basis:20px;font-size:8.5px}
+body[data-cot-height='short'] .cot-bl .row .tier{flex-basis:20px;font-size:11px}
 body[data-cot-height='short'] .cot-bl .row .sil{flex-basis:36px;max-height:18px}
-body[data-cot-height='short'] .cot-bl .row .nm{font-size:9.5px}
+body[data-cot-height='short'] .cot-bl .row .nm{font-size:11px}
 body[data-cot-height='short'] .cot-bl .foot{padding-top:5px}
 body[data-cot-height='short'] .cot-bl .fmeta{margin-bottom:3px}
-body[data-cot-height='short'] .cot-bl .fstage{font-size:8px}
+body[data-cot-height='short'] .cot-bl .fstage{font-size:11px}
 body[data-cot-height='short'] .cot-bl .fpct{font-size:13px}
 body[data-cot-height='short'] .cot-bl .count{margin-top:4px;height:18px;line-height:18px}
 body[data-cot-height='short'] .cot-bl .tip{display:none}
@@ -356,7 +356,7 @@ body[data-cot-width='phone'] .cot-es .es-report{
 }
 body[data-cot-width='phone'] .cot-es .es-ban{font-size:clamp(30px,11vw,44px)}
 body[data-cot-width='phone'] .cot-es .es-sub{font-size:11px}
-body[data-cot-width='phone'] .cot-es .es-meta{gap:8px;font-size:9px;flex-wrap:wrap}
+body[data-cot-width='phone'] .cot-es .es-meta{gap:8px;font-size:11px;flex-wrap:wrap}
 body[data-cot-width='phone'] .cot-es .es-stat-grid.has-vehicle{grid-template-columns:92px repeat(2,minmax(0,1fr))}
 body[data-cot-width='phone'] .cot-es .es-tal{padding:9px 8px}
 body[data-cot-width='phone'] .cot-es .es-tal .v,
@@ -378,7 +378,7 @@ body[data-cot-height='short'] .cot-es .es-actions{
   padding:8px var(--cot-edge) max(8px,env(safe-area-inset-bottom));
   background:linear-gradient(180deg,rgba(3,5,8,.1),rgba(3,5,8,.99) 28%);border-top:1px solid rgba(166,184,199,.24);
 }
-body[data-cot-width='phone'] .cot-es .cot-es-btn{min-width:0;flex:1;padding:10px 8px;font-size:10px}
+body[data-cot-width='phone'] .cot-es .cot-es-btn{min-width:0;flex:1;padding:10px 8px;font-size:11px}
 body[data-cot-height='short'] .cot-es{justify-content:flex-start;overflow-y:auto;padding-bottom:78px}
 body[data-cot-height='short'] .cot-es .es-ban{font-size:clamp(24px,9vh,38px)}
 body[data-cot-height='short'] .cot-es .es-tal .v,
@@ -386,7 +386,7 @@ body[data-cot-height='short'] .cot-es .es-tal.hot .v{font-size:24px}
 body[data-cot-height='short'] .cot-es .es-report{height:300px;flex:0 0 300px;margin-top:8px}
 body[data-cot-height='short'] .cot-es .es-tal{min-height:0;text-align:center;padding:5px 4px}
 body[data-cot-height='short'] .cot-es .es-tal .v{text-align:center}
-body[data-cot-height='short'] .cot-es .es-tal .k{margin-top:3px;font-size:7.5px;letter-spacing:.08em}
+body[data-cot-height='short'] .cot-es .es-tal .k{margin-top:3px;font-size:11px;letter-spacing:.01em}
 body[data-cot-height='short'] .cot-es .es-dh,
 body[data-cot-height='short'] .cot-es .es-best{min-height:32px;padding:5px 9px}
 body[data-cot-height='short'] .cot-es .es-scoreboard{min-height:64px;padding:6px 10px}
@@ -443,7 +443,7 @@ body[data-cot-width='phone'] .cot-studio .dock{
 body[data-cot-width='compact'] .cot-studio .badge,
 body[data-cot-width='phone'] .cot-studio .badge{top:max(8px,env(safe-area-inset-top));left:var(--cot-edge);right:var(--cot-edge)}
 body[data-cot-width='phone'] .cot-studio .badge .m{display:none}
-body[data-cot-width='phone'] .cot-studio .badge .t{font-size:9px;letter-spacing:.13em}
+body[data-cot-width='phone'] .cot-studio .badge .t{font-size:11px;letter-spacing:.06em}
 body[data-cot-input='coarse'] .cot-studio button{min-height:44px}
 body[data-cot-input='coarse'] .cot-studio input,
 body[data-cot-input='coarse'] .cot-studio select{min-height:42px}
@@ -453,9 +453,9 @@ body[data-cot-height='short'] .cot-studio .mapBtn{height:94px}
 body[data-cot-width='compact'] .cot-studio .badge,
 body[data-cot-width='phone'] .cot-studio .badge{gap:6px;padding:6px 8px}
 body[data-cot-width='compact'] .cot-studio .badge .t,
-body[data-cot-width='phone'] .cot-studio .badge .t{font-size:10px;letter-spacing:.16em}
+body[data-cot-width='phone'] .cot-studio .badge .t{font-size:11px;letter-spacing:.1em}
 body[data-cot-width='compact'] .cot-studio .badge button,
-body[data-cot-width='phone'] .cot-studio .badge button{font-size:8px;padding:5px 6px}
+body[data-cot-width='phone'] .cot-studio .badge button{font-size:11px;padding:5px 6px}
 body[data-cot-width='compact'] .cot-studio .mapBtn,
 body[data-cot-width='phone'] .cot-studio .mapBtn{height:126px}
 body[data-cot-width='compact'] .cot-studio .mapPop,
@@ -500,7 +500,7 @@ body.cot-touch-layout[data-cot-width='phone'] .cot-minimap{width:92px!important;
    its own line, right-aligned under the hint, which stays where it was (the scope's readouts rest over it), in a tighter
    spacing that keeps both lines clear of the left controls */
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch-aim .aimhint{text-align:right;bottom:calc(31% - 12px)}
-body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch-aim .aimhint::after{content:'LANDSCAPE RECOMMENDED';display:block;margin-top:2px;font-size:7px;letter-spacing:.08em}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch-aim .aimhint::after{content:'LANDSCAPE RECOMMENDED';display:block;margin-top:2px;font-size:11px;letter-spacing:.02em}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch .mobile-chrome{top:calc(max(8px,env(safe-area-inset-top)) + 48px)}
 body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-minimap{
   top:calc(max(8px,env(safe-area-inset-top)) + 100px);
@@ -557,7 +557,7 @@ body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch .fire
 }
 body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch .fire .lb,
 body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch .scope .lb,
-body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch .autoaim .lb{bottom:-15px;font-size:7px}
+body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch .autoaim .lb{bottom:-15px;font-size:11px}
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-drive{
   left:max(140px,calc(env(safe-area-inset-left) + 140px));bottom:max(18px,env(safe-area-inset-bottom));transform:scale(.72);
 }
@@ -672,13 +672,13 @@ body[data-cot-width='phone'] .cot-kc-title{padding-inline:18px}
 body[data-cot-width='compact'] .cot-kc-title .t,
 body[data-cot-width='phone'] .cot-kc-title .t{font-size:13px;letter-spacing:.34em}
 body[data-cot-width='compact'] .cot-kc-title .s,
-body[data-cot-width='phone'] .cot-kc-title .s{font-size:8px}
+body[data-cot-width='phone'] .cot-kc-title .s{font-size:11px}
 body[data-cot-width='compact'] .cot-kc-skip,
 body[data-cot-width='phone'] .cot-kc-skip{right:var(--cot-edge);bottom:10px}
 body[data-cot-width='compact'] .cot-kc-label,
-body[data-cot-width='phone'] .cot-kc-label{font-size:9.5px;padding:3px 6px 4px}
+body[data-cot-width='phone'] .cot-kc-label{font-size:11px;padding:3px 6px 4px}
 body[data-cot-width='compact'] .cot-kc-label .s,
-body[data-cot-width='phone'] .cot-kc-label .s{font-size:8px}
+body[data-cot-width='phone'] .cot-kc-label .s{font-size:11px}
 body[data-cot-width='compact'] .cot-kc-dmg,
 body[data-cot-width='phone'] .cot-kc-dmg{font-size:20px;padding:3px 7px 4px}
 body[data-cot-height='short'] .cot-kc-title{top:4px;min-width:280px;padding-block:5px 6px}
@@ -687,20 +687,20 @@ body[data-cot-height='short'] .cot-kc-annot{padding-bottom:5px}
 body[data-cot-height='short'] .cot-kc-annot .hd{padding:4px 7px}
 body[data-cot-height='short'] .cot-kc-annot .hd .m{display:none}
 body[data-cot-height='short'] .cot-kc-annot .shellrow{gap:4px}
-body[data-cot-height='short'] .cot-kc-annot .hd .k{font-size:10px;line-height:1.12}
-body[data-cot-height='short'] .cot-kc-annot .hd .w{font-size:7.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body[data-cot-height='short'] .cot-kc-annot .hd .k{font-size:11px;line-height:1.12}
+body[data-cot-height='short'] .cot-kc-annot .hd .w{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body[data-cot-height='short'] .cot-kc-rows{padding:4px 7px 0;gap:1px 7px}
-body[data-cot-height='short'] .cot-kc-kv{gap:4px;font-size:8px;line-height:1.2;min-width:0}
+body[data-cot-height='short'] .cot-kc-kv{gap:4px;font-size:11px;line-height:1.2;min-width:0}
 body[data-cot-height='short'] .cot-kc-kv>span{gap:3px;min-width:0}
 body[data-cot-height='short'] .cot-kc-kv b{white-space:nowrap}
 body[data-cot-height='short'] .cot-kc-pencap{display:none}
-body[data-cot-height='short'] .cot-kc-banner{margin:4px 7px 0;padding:3px 5px;font-size:8px}
+body[data-cot-height='short'] .cot-kc-banner{margin:4px 7px 0;padding:3px 5px;font-size:11px}
 body[data-cot-height='short'] .cot-kc-killer{padding:0 7px 6px}
-body[data-cot-height='short'] .cot-kc-killer .kk{padding:5px 0 4px;font-size:7px}
+body[data-cot-height='short'] .cot-kc-killer .kk{padding:5px 0 4px;font-size:11px}
 body[data-cot-height='short'] .cot-kc-killer .nm{margin-top:4px;font-size:12px;gap:5px}
 body[data-cot-height='short'] .cot-kc-killer .nm .sil{width:42px;height:20px}
 body[data-cot-height='short'] .cot-kc-killer .rows{margin-top:4px;padding-top:4px;gap:1px 7px}
-body[data-cot-height='short'] .cot-kc-killer .kv{font-size:8px;gap:3px;min-width:0}
+body[data-cot-height='short'] .cot-kc-killer .kv{font-size:11px;gap:3px;min-width:0}
 body[data-cot-height='short'] .cot-kc-killer .kv b{white-space:nowrap}
 body[data-cot-height='short'] .cot-kc-micro,
 body[data-cot-height='short'] .cot-kc-label.nm{display:none!important}
@@ -719,7 +719,7 @@ body[data-cot-width] .cot-network-status{
 body[data-cot-width='compact'] .cot-network-status,
 body[data-cot-width='phone'] .cot-network-status{
   top:max(66px,calc(env(safe-area-inset-top) + 58px));width:calc(100vw - (var(--cot-edge) * 2));
-  min-width:0;padding:8px 12px;font-size:9px;line-height:1.35;letter-spacing:.09em;
+  min-width:0;padding:8px 12px;font-size:11px;line-height:1.35;letter-spacing:.03em;
 }
 body.cot-touch-layout[data-cot-orientation='portrait'] .cot-network-status{
   top:max(146px,calc(env(safe-area-inset-top) + 138px));
@@ -731,7 +731,7 @@ body[data-cot-width] .cot-network-diagnostics{
 body[data-cot-width='compact'] .cot-network-diagnostics,
 body[data-cot-width='phone'] .cot-network-diagnostics{
   left:max(8px,env(safe-area-inset-left));top:max(112px,calc(env(safe-area-inset-top) + 104px));
-  width:min(390px,calc(100vw - 16px));font-size:8.5px;line-height:1.4;
+  width:min(390px,calc(100vw - 16px));font-size:11px;line-height:1.4;
 }
 body.cot-touch-layout[data-cot-orientation='portrait'] .cot-network-diagnostics{
   top:max(194px,calc(env(safe-area-inset-top) + 186px));max-height:calc(var(--cot-viewport-height,100dvh) - 210px);
@@ -750,9 +750,9 @@ body[data-cot-width='phone'] .cot-trans .title{
   font-size:clamp(20px,7vw,32px);letter-spacing:.1em;text-indent:.1em;
 }
 body[data-cot-width='compact'] .cot-trans .kick,
-body[data-cot-width='phone'] .cot-trans .kick{font-size:9px;letter-spacing:.26em;text-indent:.26em}
+body[data-cot-width='phone'] .cot-trans .kick{font-size:11px;letter-spacing:.16em;text-indent:.26em}
 body[data-cot-width='compact'] .cot-trans .sub,
-body[data-cot-width='phone'] .cot-trans .sub{font-size:9px;letter-spacing:.14em;text-indent:.14em}
+body[data-cot-width='phone'] .cot-trans .sub{font-size:11px;letter-spacing:.07em;text-indent:.14em}
 body[data-cot-height='short'] .cot-trans .mark{width:36px;height:36px}
 body[data-cot-height='short'] .cot-trans .kick{margin-top:8px}
 body[data-cot-height='short'] .cot-trans .title{margin-top:6px;font-size:clamp(19px,6vh,28px)}
@@ -771,7 +771,7 @@ body[data-cot-width='phone'] .cot-resume .rz-title{
   font-size:clamp(17px,5.8vw,22px);letter-spacing:.18em;text-indent:.18em;
 }
 body[data-cot-width='compact'] .cot-resume .rz-sub,
-body[data-cot-width='phone'] .cot-resume .rz-sub{font-size:9px;letter-spacing:.12em;text-indent:.12em}
+body[data-cot-width='phone'] .cot-resume .rz-sub{font-size:11px;letter-spacing:.05em;text-indent:.12em}
 body[data-cot-height='short'] .cot-resume{gap:8px}
 
 body[data-cot-width] .cot-hints{
@@ -782,10 +782,10 @@ body[data-cot-width] .cot-hints .hg{white-space:nowrap}
 body[data-cot-width='compact'] .cot-hints,
 body[data-cot-width='phone'] .cot-hints{
   bottom:max(10px,env(safe-area-inset-bottom));gap:5px 9px;padding:6px 9px;
-  font-size:8px;letter-spacing:.08em;
+  font-size:11px;letter-spacing:.01em;
 }
 body[data-cot-width='compact'] .cot-hints kbd,
-body[data-cot-width='phone'] .cot-hints kbd{font-size:8px;padding:1px 4px;line-height:12px}
+body[data-cot-width='phone'] .cot-hints kbd{font-size:11px;padding:1px 4px;line-height:12px}
 body[data-cot-height='short'] .cot-hints{display:none!important}
 body[data-cot-panels='overlay']>.cot-gear{
   top:max(12px,calc(env(safe-area-inset-top) + 8px));right:max(12px,calc(env(safe-area-inset-right) + 8px));
@@ -799,7 +799,7 @@ body[data-cot-width] .cot-lock-toast{
 body[data-cot-width='compact'] .cot-lock-toast,
 body[data-cot-width='phone'] .cot-lock-toast{
   top:max(68px,calc(env(safe-area-inset-top) + 60px))!important;width:calc(100vw - (var(--cot-edge) * 2));
-  padding:8px 10px!important;font-size:9px!important;line-height:1.35;letter-spacing:.09em!important;
+  padding:8px 10px!important;font-size:11px!important;line-height:1.35;letter-spacing:.03em!important;
 }
 
 /* Opt-in engineering panels remain operable on the device being diagnosed. */
@@ -808,7 +808,7 @@ body[data-cot-width='phone'] #cot-perfhud{
   top:auto!important;bottom:max(8px,env(safe-area-inset-bottom))!important;
   right:max(8px,env(safe-area-inset-right))!important;
   left:max(8px,env(safe-area-inset-left))!important;width:auto!important;
-  max-height:64dvh!important;font-size:10px!important;
+  max-height:64dvh!important;font-size:11px!important;
   z-index:70!important;pointer-events:auto!important;touch-action:pan-y;overscroll-behavior:contain;
 }
 body[data-cot-width='compact'] #cot-perfhud:not(.mobile-expanded),
@@ -822,7 +822,7 @@ body[data-cot-width='compact'] #cot-diag,
 body[data-cot-width='phone'] #cot-diag{
   left:max(8px,env(safe-area-inset-left))!important;right:max(8px,env(safe-area-inset-right))!important;
   bottom:max(8px,env(safe-area-inset-bottom))!important;width:auto!important;
-  max-height:62dvh!important;overflow:auto!important;font-size:10px!important;
+  max-height:62dvh!important;overflow:auto!important;font-size:11px!important;
 }
 
 body[data-cot-width] #cot-ctxlost{box-sizing:border-box;padding:var(--cot-edge)!important}

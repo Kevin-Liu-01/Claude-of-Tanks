@@ -8,8 +8,10 @@
 //  - the generated music bed, music/music-gen.wv, decoded back to music/music-gen.wav. The bed is 32-bit float
 //    (score/music.mjs), which FLAC cannot hold, so it is kept as WavPack: the decode is exact, and ffmpeg's -xerror
 //    stops on a block whose checksum fails;
-//  - in assets/: the brand marks and fonts the compositions load (public/brand, public/fonts/abc-monument-grotesk) and
-//    the film grain motion/build.mjs draws.
+//  - in assets/: the brand marks the compositions load (public/brand) and the film grain motion/build.mjs draws. The
+//    films were cut with ABC Monument Grotesk, whose files are Dinamo trial builds: the repository no longer carries
+//    them. Set COT_RETIRED_FONTS_DIR to a local archive of ABCMonumentGrotesk-{Regular,Medium,Bold}.woff2
+//    to re-render a film byte for byte; without it the plan names what is missing.
 // The footage, the mixes and the posters' art stay out of git: motion/sync-footage.mjs links the footage, motion/recut.zsh
 // re-cuts a film's score and renders it, motion/rerender.zsh renders it as it is, and motion/posters-build.mjs copies
 // the posters' art from the stills. The script prints these next steps.
@@ -27,9 +29,10 @@ export const BED = 'music/music-gen.wv';
 /** What every project's assets/ takes from the repo: [repo path, project path]. */
 export const SHARED = [
   ...['logo-full-metal.svg', 'logo-mark-metal.svg', 'logo-mark.svg'].map((f) => [`public/brand/${f}`, `assets/brand/${f}`]),
-  ...['Regular', 'Medium', 'Bold'].map((w) => `ABCMonumentGrotesk-${w}.woff2`)
-    .map((f) => [`public/fonts/abc-monument-grotesk/${f}`, `assets/fonts/${f}`]),
 ];
+/** The retired face the films were cut with, from a local archive outside the repository: [archive file, project path]. */
+export const RETIRED_FONTS = ['Regular', 'Medium', 'Bold'].map((w) => `ABCMonumentGrotesk-${w}.woff2`).map((f) => [f, `assets/fonts/${f}`]);
+const retiredFontsDir = () => process.env.COT_RETIRED_FONTS_DIR || '';
 
 const walk = (dir, base = dir) => readdirSync(dir, { withFileTypes: true }).filter((e) => !e.name.startsWith('.'))
   .flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name), base) : [relative(base, join(dir, e.name))]));
@@ -49,6 +52,7 @@ export function restorePlan(film, out = MOTION) {
     ? { op: 'decode', rel: 'music/music-gen.wav', from: join(src, rel) }
     : { op: 'copy', rel, from: join(src, rel) }));
   for (const [from, rel] of SHARED) steps.push({ op: 'copy', rel, from: join(REPO, from) });
+  if (retiredFontsDir()) for (const [file, rel] of RETIRED_FONTS) steps.push({ op: 'copy', rel, from: join(retiredFontsDir(), file) });
   steps.push({ op: 'grain', rel: 'assets/grain.png' });
   for (const s of steps) s.to = join(resolve(out), film, s.rel);
   return steps.sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0));
@@ -104,6 +108,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   const out = resolve(argv.find((a) => a.startsWith('--out='))?.slice('--out='.length) ?? MOTION);
   const dry = argv.includes('--dry'), force = argv.includes('--force');
   const films = argv.filter((a) => !a.startsWith('--'));
+  if (!retiredFontsDir()) console.log(`note: COT_RETIRED_FONTS_DIR is unset, so ${RETIRED_FONTS.map(([f]) => f).join(', ')} (the retired face the films`
+    + ' were cut with) are not restored; point it at a local archive of those files to re-render byte for byte');
   for (const film of films.length ? films : listFilms()) {
     const { steps, tally } = await restore(film, { out, dry, force });
     if (dry) {

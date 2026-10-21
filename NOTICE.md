@@ -30,10 +30,15 @@ research inputs only; they are not playable geometry and retain their original
 authors and licenses.
 
 Third-party fonts, marks, shader code, reference models, environment props,
-and other exceptions remain the property of their respective authors. The
-proving ground's type is Chakra Petch (Cadson Demak) and IBM Plex Mono (IBM
-Corp., Reserved Font Name "Plex"), each under the SIL Open Font License 1.1
-with its license file beside it in `public/fonts/<face>/OFL.txt`. Their
+and other exceptions remain the property of their respective authors. The UI
+typefaces are Chakra Petch (Cadson Demak) and IBM Plex Sans and IBM Plex Mono
+(IBM Corp., Reserved Font Name "Plex"), each under the SIL Open Font License
+1.1 with its license file beside it in `public/fonts/<face>/OFL.txt`;
+Cot Symbols, the marks face Kevin B. Liu drew from Chakra Petch's outlines,
+ships under the same license in `public/fonts/cot-symbols/`, and Cot Accents,
+the accented letters Kevin B. Liu assembled from IBM Plex Sans's own glyphs
+under its own name, in `public/fonts/cot-accents/`; the
+retired ABC Monument Grotesk (Dinamo Typefaces) is no longer in the tree. Their
 required notices and exact paths are preserved in
 [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md) and `docs/licenses/`. The project
 licenses do not replace or relicense those works.

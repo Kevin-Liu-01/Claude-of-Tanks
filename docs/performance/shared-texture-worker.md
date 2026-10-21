@@ -38,7 +38,7 @@ One lazily created module worker processes requests serially. It has at most
 16 pending requests, a 15-second absolute queue/work deadline, and a five-second
 idle shutdown. Failure, malformed messages, font-load failure and unsupported
 Worker/OffscreenCanvas features use the original main-thread painter. Font
-loading uses the shipped ABC Monument Grotesk Bold asset; no substitute font is
+loading uses the shipped Chakra Petch Bold asset; no substitute font is
 accepted as equivalent output.
 
 `disposeMaterialPainterWorker` drains pending callers and terminates only its

@@ -26,6 +26,9 @@ try{
   const record=(label,issues=[])=>reports.push({name,label,width:page.viewportSize().width,height:page.viewportSize().height,issues});
   const box=async(selector)=>{
    const el=page.locator(selector).first();await el.waitFor({state:'visible'});
+   // A shared modal un-hides on one frame and opens (rises from translateY(12px) at opacity 0) on the next: measure the
+   // opened panel two frames on, not the invisible pre-open frame (the r5 '.cot-record-dialog outside viewport' race).
+   await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
    const issues=await el.evaluate(el=>{const r=el.getBoundingClientRect();return r.x<-.5||r.y<-.5||r.right>innerWidth+.5||r.bottom>innerHeight+.5?['outside viewport']:[];});record(step+': '+selector,issues);
   };
   const reach=async(target)=>{
@@ -50,7 +53,7 @@ try{
    step='navigation';await tap('.cot-mobile-nav-trigger');
    for(const item of await page.locator('.cot-mobile-nav-menu button').all())await reach(item);
    await tap('[data-mobile-nav="environment"]');await box('.cot-garage-variant-menu');await tap(page.locator('.cot-garage-variant-card').last());
-   await tap('.cot-mobile-nav-trigger');await tap('[data-mobile-nav="record"]');await box('.cot-record-dialog');await tap('.cot-record-close');
+   await tap('.cot-mobile-nav-trigger');await tap('[data-mobile-nav="record"]');await box('.cot-record-dialog');await tap('.cot-modal-root.is-open .cot-modal__close');
    step='maps';await tap('[data-garage-panel="maps"]');await box('.cot-leftcol');assert.ok(await page.locator('.cot-map-card').count()>25);
    await reach(page.locator('.cot-map-select').last());
    await tap('.cot-maps .cot-info-trigger');await closeModal();
