@@ -6,11 +6,15 @@ import { CIVIC_STYLES } from '../styles.ts';
 import { URBAN_CIVIC_PLAN } from './urban.ts';
 import { RUINSPIRES_CIVIC_PLAN } from './ruinspires.ts';
 import { CLIFFBRIDGE_CIVIC_PLAN } from './cliffbridge.ts';
+import { BLACKGLASS_CIVIC_PLAN } from './blackglass.ts';
+import { POLDERS_CIVIC_PLAN } from './polders.ts';
 
 const PLANS: Readonly<Record<string, CivicPlan>> = Object.freeze({
   urban: URBAN_CIVIC_PLAN,
   ruinspires: RUINSPIRES_CIVIC_PLAN,
   cliffbridge: CLIFFBRIDGE_CIVIC_PLAN,
+  blackglass: BLACKGLASS_CIVIC_PLAN,
+  polders: POLDERS_CIVIC_PLAN,
 });
 
 /** The maps with a civic plan (the receipts iterate them). */
@@ -125,8 +129,13 @@ export function civicPavementTest(mapId: string | null | undefined, roads: Reado
       else if (d <= b.hi && grid[k] !== 2) grid[k] = 1;
     }
   }
+  const laid = plan.areas.flatMap((a) => a.paving.map((p) => p.rect));
+  const discs = plan.areas.filter((a) => a.centre.fill).map((a) => ({ x: a.centre.x, z: a.centre.z, r: a.centre.ringR[1] + 0.3 }));
   const test = (x: number, z: number): boolean => {
     const i = Math.round((x - x0) / C), j = Math.round((z - z0) / C);
+    // (229 b2 r2) an area's paving strips and its laid roundel: no tuft through them either (their walks cross a green
+    // outside the paved room)
+    if (laid.some((r) => inCivicRect(r, x, z, 0.3)) || discs.some((d) => Math.hypot(x - d.x, z - d.z) < d.r)) return true;
     if (i < 0 || j < 0 || i >= nx || j >= nz || grid[j * nx + i] !== 1) return false;
     return polys.some((poly) => inPoly(poly, x, z)) && !pw.exclude.some((r) => inCivicRect(r, x, z));
   };

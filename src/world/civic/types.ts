@@ -49,6 +49,12 @@ export interface PathwayPlan {
   /** (228 r6, the blind critics: "rounded kerb corners enclose dirt with grass tufts") a corner's paving carried this much
    *  past where the two pavements' outer edges meet, into a vacant corner lot (each flag still kept off the houses); absent 0 */
   readonly cornerDepthM?: number;
+  /** (229 b2 r3) the pavement's outer edge changes by at most this many metres per metre along the street (a front set
+   *  back next to an open lot: no zig-zag of flags); absent: the 3-tap ease only. */
+  readonly walkEase?: number;
+  /** (229 b2 r3) runs shorter than this many metres are not laid (no stub of flags between a junction and a house);
+   *  absent: 3 m. */
+  readonly minRunM?: number;
   /** Where a main street's pavement meets a square's flush walk: its kerb ramps down over 2 m to flush. */
   readonly mouths: readonly CivicPoint[];
 }

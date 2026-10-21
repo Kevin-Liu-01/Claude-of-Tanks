@@ -118,6 +118,55 @@ export const CIVIC_STYLES: Readonly<Record<string, RegionalCivicStyle>> = Object
     grate: { iron: 0x262624, frame: 0xa8a49a },
     steps: 0xc8bca2,
   }),
+  // (229 b2) the International Settlement, 1937 (Suzhou Creek): granite kerbstones, concrete flags, red-brick garden walls
+  shanghai: Object.freeze<RegionalCivicStyle>({
+    id: 'shanghai',
+    // (229 b2 r2, the blind critics: the kerb's top "near-white in low sun, like a painted edge line"; the flags "one flat
+    // grey tone", lines on the aerials against a road of the same value) a weathered granite, the flags a warmer concrete
+    // in more varied tones with darker joints
+    kerb: { width: 0.30, face: 0.15, unit: [1.0, 1.5], hex: 0x8a877f },
+    pavement: { course: 0.6, length: [0.6, 0.9], hex: 0x9a9388, tone: 0.11, joint: 0x4a4640, step: 2.0, maxCourses: 2 },
+    gutter: { rows: 1, width: 0.35, dish: 0.02, hex: 0x6a6862 },
+    bands: { granite: 0x8f8c85, basalt: 0x4a4946, sett: 0x7a766e, bay: 0x8e8a82 },
+    edging: {
+      kerb: { width: 0.25, face: 0.15, hex: 0x9a978f },
+      wall: { width: 0.30, height: 0.35, hex: 0x8a5a48, coping: 0.03 },
+      pier: { size: 0.40, height: 1.0, hex: 0x8a5a48 },
+      railing: { kind: 'fenceiron', pitch: 2.4, scale: 0.9 },
+    },
+    path: { hex: 0xa89878, edgeHex: 0x8a867e, worn: 0x8e7e60 },
+    lawn: { bare: 0x6a5e44, greens: [0x4a6230, 0x52683a, 0x5a6e3a, 0x50663a] },
+    flowers: [0xd8c040, 0xe8e4dc, 0xc8303a, 0xf2efe6],
+    hedge: 0x2a4422,
+    grate: { iron: 0x2a2a28, frame: 0x8f8c85 },
+    steps: 0x9a968e,
+  }),
+  // (229 b2) a Zeeland village, autumn 1944 (Tidegate Polders): a klinker stoep on a brick-on-edge kerb, a brick goot,
+  // blue hardstone edging round the brink's green, shell paths
+  polder: Object.freeze<RegionalCivicStyle>({
+    id: 'polder',
+    // (229 b2 r2, the blind critics: the brick-on-edge kerb read as a painted orange-red stripe, glowing at night) the
+    // kerb and the stoep in a weathered, sooted klinker darker than the houses' brick, the goot darker still
+    kerb: { width: 0.12, face: 0.05, unit: [0.21, 0.21], hex: 0x5a3a30 },
+    pavement: { course: 0.30, length: [0.40, 0.60], hex: 0x6e4638, tone: 0.12, joint: 0x3e3029, step: 1.0, maxCourses: 3 },
+    gutter: { rows: 2, width: 0.25, dish: 0.02, hex: 0x4a362e },
+    bands: { granite: 0x6a6c6e, basalt: 0x3e3e3c, sett: 0x704838, bay: 0x8a5e48 },
+    edging: {
+      kerb: { width: 0.12, face: 0.08, hex: 0x5e6062 },
+      wall: { width: 0.22, height: 0.30, hex: 0x6e4436, coping: 0.02 },
+      pier: { size: 0.35, height: 0.8, hex: 0x6e4436 },
+      railing: null,
+    },
+    // (r2: the shell paths read as plain concrete) klinker walks, their edges a darker brick
+    path: { hex: 0x7a5242, edgeHex: 0x553a2e, worn: 0x6a4a3c },
+    // (r2: the lawns' green clashed with the grazed green round them) an autumn sward, muted toward the olive
+    lawn: { bare: 0x6a5a40, greens: [0x55633a, 0x5b693d, 0x617040, 0x58663b] },
+    // (r2: tulips in October) asters and chrysanthemums: purple, rust, gold and a dull white
+    flowers: [0x6e4a82, 0xa04e2c, 0xc49a34, 0xd6cdbc],
+    hedge: 0x2c4a24,
+    grate: { iron: 0x2a2a28, frame: 0x6a6c6e },
+    steps: 0x6a6c6e,
+  }),
 });
 
 /** A plan's style row (throws on an unknown key: a plan must name a row that exists). */
