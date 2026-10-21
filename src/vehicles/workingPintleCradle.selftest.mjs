@@ -59,11 +59,12 @@ const CASES = [
   { cls: 'heavy', tone: 'dark', scale: .82, remoteControlled: true },
   { cls: 'qjc88', shield: true, ring: { r: .16, stubs: 3 }, working: true },
   { cls: 'm2', working: true },
+  { cls: 'm2', scale: .9, ammo: false, remoteControlled: true }, // an open FLW 200's gun with no can of its own
 ];
 const HEAVY = { depression: .18, elevation: .75 };
 let worst = Infinity;
 for (const opts of CASES) {
-  const label = `${opts.cls}${opts.scale ? ` x${opts.scale}` : ''}${opts.shield ? ` ${opts.shield === true ? 'standard' : opts.shield} shield` : ''}${opts.ring ? ' ring' : ''}${opts.remoteControlled ? ' remote' : ''}`;
+  const label = `${opts.cls}${opts.scale ? ` x${opts.scale}` : ''}${opts.ammo === false ? ' no can' : ''}${opts.shield ? ` ${opts.shield === true ? 'standard' : opts.shield} shield` : ''}${opts.ring ? ' ring' : ''}${opts.remoteControlled ? ' remote' : ''}`;
   const riding = FITTINGS.pintleMG({ mats, tone: 'two-tone', ammo: true, seed: 229, ...opts, ridingCradle: true });
   riding.updateMatrixWorld(true);
   const self = assertWorkingPintleClear(label, riding, riding.getObjectByName('auxiliaryWeaponPitch'));
@@ -74,12 +75,13 @@ for (const opts of CASES) {
   const fleet = FITTINGS.pintleMG({ mats, tone: 'two-tone', ammo: true, seed: 229, ...opts });
   fleet.updateMatrixWorld(true);
   // materials flat: no slot the fleet rig of the same options does not draw (the cradle's paint is the vehicle's own
-  // 'detail', or the gun's steel on a dark mount); draws flat with a shield (the yaw stage's shield, recesses and ring
-  // collapse into one mesh), one more on an open mount (its cradle, between the yaw stage and the recoiling gun)
+  // 'detail', or the gun's steel on a dark mount). Draws flat: the cradle between the yaw stage and the recoiling gun is a
+  // mesh of its own, offset by the yaw stage's shield, recesses and ring collapsing into one mesh and the belt's rounds
+  // drawing in the can's; only an open mount with no can draws one more
   for (const slot of slotsOf(riding)) assert.ok(slotsOf(fleet).has(slot) || slot === 'detail' || slot === 'dark',
     `${label}: the riding rig draws no slot the fleet rig does not (${slot})`);
   const meshes = (root) => { let n = 0; root.traverse((o) => { if (o.isMesh) n++; }); return n; };
-  assert.ok(meshes(riding) <= meshes(fleet) + (opts.shield ? 0 : 1), `${label}: ${meshes(riding)} meshes riding, ${meshes(fleet)} on the fleet rig`);
+  assert.ok(meshes(riding) <= meshes(fleet) + (opts.ammo === false && !opts.shield ? 1 : 0), `${label}: ${meshes(riding)} meshes riding, ${meshes(fleet)} on the fleet rig`);
   // negative control: the fleet's yaw-stage cradle and shield
   assert.throws(() => assertWorkingPintleClear(label, fleet, fleet.getObjectByName('auxiliaryWeaponPitch')),
     /rides its cradle/, `${label}: negative control: the fleet rig is not a riding cradle`);

@@ -1416,7 +1416,14 @@ function fitAssemble(type: string, parts: FittingParts, opts: FittingOptions): T
     // rounds' brass in the vertex colours (weaponFinish.ts)
     if (material.userData?.weaponUvScale) {
       prepareWeaponFinishGeometry(merged, KIT.boxUV);
-      if (material.userData.weaponFinish === 'ammoDrab') paintAmmoVertexColours(merged, material, slot === MG_CARTRIDGE_SLOT);
+      // a riding cradle's can mesh carries its belt's rounds (marked `ammoCartridge`), each run in the rounds' brass
+      const rounds: [number, number][] = [];
+      if (slot === MG_AMMO_CAN_SLOT) geos.reduce((first, geo) => {
+        const n = geo.index ? geo.index.count : geo.getAttribute('position').count;
+        if (geo.userData.ammoCartridge) rounds.push([first, n]);
+        return first + n;
+      }, 0);
+      if (material.userData.weaponFinish === 'ammoDrab') paintAmmoVertexColours(merged, material, slot === MG_CARTRIDGE_SLOT, rounds);
     }
     const mesh = new THREE.Mesh(merged, material);
     registerVehicleNightLensMesh(mesh, geos);
@@ -1594,6 +1601,10 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
       // round 6 (visual critic CN-D3): the shield's window closed round a gun port (machineGunGeometry.ts addPintleShieldPort)
       const shieldContext={...weaponContext,recY:weaponContext.recY-(fit?.shieldDrop??.012*context.s),trunZ:weaponContext.trunZ+(fit?.shieldDZ??0)};
       addPintleShield(shieldContext,{braces:false,recessSlot:'dark'});addPintleShieldPort(shieldContext,fit);addPintleRing(context,cradleSlot,fit?.ringDrop,fit?.ringGap);
+      // release 229: the belt's rounds draw in the can's mesh (one ammunition material, their brass a vertex colour), so the
+      // recoiling gun is a draw fewer and the riding rig no more draws than the fleet's
+      const rounds=gun.bySlot[MG_CARTRIDGE_SLOT], can=gun.bySlot[MG_AMMO_CAN_SLOT];
+      if (rounds?.length&&can?.length) {for (const g of rounds) g.userData.ammoCartridge=true;can.push(...rounds);delete gun.bySlot[MG_CARTRIDGE_SLOT];}
       pitchFrameParts([weapon,gun],context.recY,0,context.recZ);
       RIDING_CRADLE_PARTS.set(key,{parts:storeFittingParts([context.parts,weapon,gun]),fit:fit!});
     }
