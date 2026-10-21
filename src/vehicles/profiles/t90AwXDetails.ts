@@ -57,7 +57,7 @@ export function addT90AWSideEra(P:TankBuilderPort):void{
 }
 
 export function addT90AWProjectors(P:TankBuilderPort):void{
-  addShtoraEyes({ mats: P.mats, turretG: P.turretG,
+  addShtoraEyes({ mats: P.mats, turretG: P.turretG, disposables: P.disposables,
     add: (slot, geometry, x, y, z) => P.addEquipment(slot, geometry, x, y, z),
   }, { x: .8772, y: 1.77158, z: 1.55, scale: 1.35, round: true, kit: true,
     offset: [-YAW[0] - .0012, -YAW[1], -YAW[2]] });

@@ -97,7 +97,7 @@ function checkAftInstalledWheels(tank) {
   const tire=tank.root.getObjectByName('gearRoadWheelTires'), disc=tank.root.getObjectByName('gearRoadWheelDiscs');
   assert.equal(tire.count,12,'one paired tire belongs to each native road wheel');
   assert.equal(disc.count,12,'one pressed disc belongs to each native road wheel');
-  assert.equal(tank.root.getObjectByName('gearRoadWheelInsets'),undefined,'the Type 100 construction emits no dark inset ring');
+  assert.ok(tank.root.getObjectByName('gearRoadWheelInsets') === undefined,'the Type 100 construction emits no dark inset ring');
   // Type 100 stock: tires from .310 to .360 of the donor radius, scaled radially into the AFT-10 envelope.
   const tireInner=.310*pattern.nationStandard.radialScale, angle=.55;
   for(const side of[-1,1])for(const z of stations) {

@@ -308,7 +308,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => {
       const n = Math.round(num(p, 'tanks')), cols = Math.min(n, Math.max(1, Math.round(num(p, 'columns')))), rows = Math.ceil(n / cols);
       const pitch = 2 * num(p, 'radius') + 3;
-      return [(cols - 1) * pitch / 2 + num(p, 'radius') + 2.8, (rows - 1) * pitch / 2 + num(p, 'radius') + 3.4];
+      // (the map-content lane's R6, landed 2026-10-17) the earth berm's outer toe and its corners: its crest a face's run
+      // outside the old wall's line, the runs carried past the corners by a face's run (tankFarm.ts)
+      return [(cols - 1) * pitch / 2 + num(p, 'radius') + 6.0, (rows - 1) * pitch / 2 + num(p, 'radius') + 6.0];
     } },
   // (a Jamesway hut; a fuel cache and a drift fence are the props' own drums and fence modules: all dressing)
   jamesway: { family: 'works', defaults: { length: 14.6, width: 4.9 },
@@ -319,14 +321,19 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   floodMast: { family: 'works', defaults: { height: 22 },
     footprint: (): [number, number] => [1.8, 1.8] },
   // (the airstrip: a draped strip, its markers the props' barrels, a windsock and a shack beside its middle)
-  airstrip: { family: 'works', drapes: true, roadMargin: 0, defaults: { length: 460, width: 26 },
+  // (the looks lane, 227: the strip is ground, no solid — its collapse laid a heap over its 17,500 m2 — and its windsock
+  // and radio shack stand as a set piece of their own beside its middle, stripShack, its child)
+  airstrip: { family: 'works', drapes: true, dressing: () => true, roadMargin: 0, defaults: { length: 460, width: 26 },
     footprint: (p) => [num(p, 'width') / 2 + 10, num(p, 'length') / 2 + 1.5] },
+  stripShack: { family: 'works', drapes: true, defaults: {}, footprint: (): [number, number] => [4.6, 4.2] },
   snowFence: { family: 'works', drapes: true, dressing: () => true, defaults: { length: 60 },
     footprint: (p) => [Math.max(2.5, Math.floor(num(p, 'length') / 2.5) * 1.25) + 0.2, 0.6] },
-  // a mine's works (mining.ts): the headframe stands over its shaft with its winding house behind (the piece centred on
+  // a mine's works (mineWorks.ts): the headframe stands over its shaft with its winding house behind (the piece centred on
   // both); the conveyor's bents and end houses are its movement record, so it spans the ground between them
   headframe: { family: 'works', drapes: true, defaults: { height: 20, paint: 'oxide' },
-    footprint: (p) => [5.2, 0.25 * num(p, 'height') + 9.8] },
+    // (the map-content lane's R6) the shaft 3 m further forward, the winding house 6 m further back (mineWorks.ts
+    // headframeShaftZ), its roof's eaves past the back; the shaft yard's skip road and timber stack out to the collar's side
+    footprint: (p) => [9.9, 0.25 * num(p, 'height') + 12.45] },
   oreBin: { family: 'works', drapes: true, defaults: { width: 7, depth: 6, clearance: 5.4, height: 13 },
     footprint: (p) => [num(p, 'width') / 2 + 0.7, num(p, 'depth') / 2 + 0.7] },
   conveyor: { family: 'works', drapes: true, defaults: { length: 56, width: 2.6, head: 10, tail: 2.2 },
@@ -342,6 +349,23 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'length') / 2 + 0.4, num(p, 'height') * 0.42 + 0.3] },
   stabbur: { family: 'civic', defaults: { width: 3.6, depth: 3.6 },
     footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'depth') / 2 + 2.0] },
+  // ------------------------------------------------------------------------------- Taurus-Littrow Station's (lunar.ts)
+  // (the Earthrise 228 rebuild, 2026-10-18) Challenger's site inside its ring of posts (the ring's radius; the piece follows
+  // the valley floor under it: its pads, posts and instruments each on their own ground); the oxygen works' plant and its
+  // excavation front; the solar tower on the scarp's crest, its guys' anchors 6.2 m out
+  apolloSite: { family: 'works', drapes: true, defaults: { radius: 22 },
+    footprint: (p) => [num(p, 'radius') + 0.6, num(p, 'radius') + 0.6] },
+  isruWorks: { family: 'works', drapes: true, defaults: { part: 'plant' },
+    footprint: (p) => (p.part === 'front' ? [12.6, 9.6] : [11.2, 9.4]) },
+  solarTower: { family: 'works', drapes: true, defaults: { height: 18 },
+    footprint: (): [number, number] => [6.8, 6.8] },
+  // (round 3, 2026-10-18) the station's commons: the dome and its collar, the tunnels 4.2 m past the foot (the main one
+  // 5.6 m and its step), the radiator wings 5.4 m out at either side
+  stationDome: { family: 'works', drapes: true, defaults: { radius: 12, rise: 9.5 },
+    footprint: (p) => [num(p, 'radius') + 5.8, num(p, 'radius') + 5.4] },
+  // the deployments' relay repeaters on the scarps' crests: the pad and the legs, the guys' anchors 6.5 m out
+  relayRepeater: { family: 'works', drapes: true, defaults: { height: 16 },
+    footprint: (): [number, number] => [7.0, 7.0] },
 });
 
 /** A placement's parameters over its kind's defaults. An unknown kind fails closed. */

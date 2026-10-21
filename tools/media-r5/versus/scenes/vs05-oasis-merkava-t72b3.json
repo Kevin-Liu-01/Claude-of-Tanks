@@ -1,0 +1,342 @@
+{
+ "map": "oasis",
+ "timeOfDay": "day",
+ "seed": 905,
+ "light": {
+  "sunAzimuthDeg": 290,
+  "sunElevationDeg": 45
+ },
+ "actors": [
+  {
+   "id": "merkava4_x",
+   "name": "hero",
+   "pos": [
+    33.86,
+    43.68
+   ],
+   "facingDeg": 25.65,
+   "turretDeg": 83.75,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 7101
+  },
+  {
+   "id": "t72b3_x",
+   "name": "foe0",
+   "pos": [
+    51.25,
+    37.55
+   ],
+   "facingDeg": 282.93,
+   "turretDeg": 6.47,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 7102
+  }
+ ],
+ "effects": [
+  {
+   "type": "dust",
+   "actor": "hero",
+   "tMs": 6780,
+   "params": {
+    "count": 12,
+    "intensity": 1
+   }
+  },
+  {
+   "type": "firing_moment",
+   "actor": "hero",
+   "tMs": 7000,
+   "params": {
+    "ageS": 0.05,
+    "slot": 0
+   }
+  },
+  {
+   "type": "impact",
+   "at": [
+    35.85,
+    5.19,
+    42.98
+   ],
+   "tMs": 6870,
+   "params": {
+    "kind": "ricochet",
+    "caliberMm": 125,
+    "normal": [
+     0.57,
+     0.66,
+     -0.2
+    ]
+   }
+  },
+  {
+   "type": "sparks",
+   "at": [
+    35.85,
+    5.19,
+    42.98
+   ],
+   "tMs": 6895,
+   "params": {
+    "caliberMm": 120,
+    "normal": [
+     0.57,
+     0.66,
+     -0.2
+    ]
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    35.85,
+    5.19,
+    42.98
+   ],
+   "tMs": 6880,
+   "params": {
+    "count": 14,
+    "speedMps": 8,
+    "hot": 0.9,
+    "scale": 0.45
+   }
+  },
+  {
+   "type": "firing_moment",
+   "actor": "foe0",
+   "tMs": 7000,
+   "params": {
+    "ageS": 0.045,
+    "slot": 0
+   }
+  },
+  {
+   "type": "impact",
+   "at": [
+    48.68,
+    4.66,
+    38.46
+   ],
+   "tMs": 6870,
+   "params": {
+    "kind": "ricochet",
+    "caliberMm": 125,
+    "normal": [
+     -0.57,
+     0.66,
+     0.2
+    ]
+   }
+  },
+  {
+   "type": "sparks",
+   "at": [
+    48.68,
+    4.66,
+    38.46
+   ],
+   "tMs": 6895,
+   "params": {
+    "caliberMm": 120,
+    "normal": [
+     -0.57,
+     0.66,
+     0.2
+    ]
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    48.68,
+    4.66,
+    38.46
+   ],
+   "tMs": 6880,
+   "params": {
+    "count": 14,
+    "speedMps": 8,
+    "hot": 0.9,
+    "scale": 0.45
+   }
+  },
+  {
+   "type": "mg_burst",
+   "actor": "foe0",
+   "tMs": 6580,
+   "params": {
+    "count": 8
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    50.35,
+    30.11
+   ],
+   "tMs": 6240,
+   "params": {
+    "size": "small",
+    "munition": "he",
+    "cause": "shot"
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    50.35,
+    3.69,
+    30.11
+   ],
+   "tMs": 6265,
+   "params": {
+    "count": 44,
+    "speedMps": 15,
+    "hot": 0.45,
+    "scale": 1.35
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    62.16,
+    -17.35
+   ],
+   "tMs": 0,
+   "params": {
+    "size": "huge"
+   }
+  },
+  {
+   "type": "fire_field",
+   "at": [
+    60.35,
+    27.79
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 4,
+    "durationS": 40,
+    "intensity": 1,
+    "smoke": true
+   }
+  },
+  {
+   "type": "embers",
+   "at": [
+    60.35,
+    27.79
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 4,
+    "rate": 50,
+    "durationS": 20,
+    "rise": 3
+   }
+  }
+ ],
+ "fxTime": 7000,
+ "timeScale": 0,
+ "storyboard": {
+  "version": 1,
+  "durationMs": 8500,
+  "shots": [],
+  "actorTracks": [
+   {
+    "actor": "hero",
+    "keys": [
+     {
+      "id": "hero-0",
+      "tMs": 4400,
+      "pos": [
+       27.67,
+       30.78
+      ],
+      "facingDeg": 25.65,
+      "turretDeg": 83.75,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-1",
+      "tMs": 7600,
+      "pos": [
+       35.28,
+       46.65
+      ],
+      "facingDeg": 25.65,
+      "turretDeg": 83.75,
+      "gunDeg": 1,
+      "transition": "linear"
+     }
+    ]
+   }
+  ]
+ },
+ "picture": {
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "vignette": {
+   "amount": 0.22,
+   "roundness": 0.55,
+   "softness": 0.65
+  },
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0
+ },
+ "fx": {
+  "quality": "cinematic",
+  "trackDust": true
+ },
+ "autoPlace": false,
+ "meta": {
+  "id": "vs05-oasis-merkava-t72b3",
+  "kind": "versus-still",
+  "pair": "merkava4_x v t72b3_x",
+  "lens": "a",
+  "pick": "vs05-oasis-merkava-t72b3:a"
+ },
+ "camera": {
+  "name": "a",
+  "pos": [
+   29.8,
+   2.2,
+   57.5
+  ],
+  "lookAt": [
+   39.8,
+   3.4,
+   40.18
+  ],
+  "fov": 37,
+  "rollDeg": 0,
+  "groundRel": true
+ },
+ "cameraVariants": [
+  {
+   "name": "a",
+   "pos": [
+    29.8,
+    2.2,
+    57.5
+   ],
+   "lookAt": [
+    39.8,
+    3.4,
+    40.18
+   ],
+   "fov": 37,
+   "rollDeg": 0,
+   "groundRel": true
+  }
+ ]
+}

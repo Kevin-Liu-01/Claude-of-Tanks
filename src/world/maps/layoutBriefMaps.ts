@@ -19,8 +19,6 @@ export const LAYOUT_BRIEF_MAPS = Object.freeze([
   'oasis', 'whiteout',
 ] as const);
 
-export type LayoutBriefMapId = (typeof LAYOUT_BRIEF_MAPS)[number];
-
 export function isLayoutBriefMap(mapId: string): boolean {
   return (LAYOUT_BRIEF_MAPS as readonly string[]).includes(mapId);
 }

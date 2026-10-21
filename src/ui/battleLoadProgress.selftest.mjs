@@ -62,7 +62,7 @@ try {
   assert.equal(selectors.get('.kicker').textContent, t('battleLoad.kicker'));
   const pendingRoot = screen.root;
   screen.show(info);
-  assert.equal(screen.root, pendingRoot, 'the loaded transaction enriches the same already-opaque surface');
+  assert.ok(screen.root === pendingRoot, 'the loaded transaction enriches the same already-opaque surface');
   assert.equal(screen.root.classList.contains('leaving'), false);
   assert.equal(selectors.get('.mapname').textContent, 'Verdant');
   const fill = selectors.get('.ffill');

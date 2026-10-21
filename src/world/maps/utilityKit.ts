@@ -17,7 +17,7 @@ import { transformerBroken, transformerNear, type TransformerForm } from './util
 type Hex = number;
 type Build = (rng: () => number) => THREE.BufferGeometry;
 /** clutterKit.ts's entry. */
-export type UtilityEntry = (kind: string, mapId: string, near: Build, far: (() => THREE.BufferGeometry) | null, broken: Build | null) => DestructiblePropType;
+type UtilityEntry = (kind: string, mapId: string, near: Build, far: (() => THREE.BufferGeometry) | null, broken: Build | null) => DestructiblePropType;
 
 interface TransformerSpec { form: string; kind: TransformerForm['kind']; body: Hex; trim: Hex; roof?: Hex; hip?: boolean }
 const PAD: TransformerSpec = { form: 'pad-mount', kind: 'pad', body: 0xb8bcb0, trim: 0x5a5e58 };
@@ -25,7 +25,7 @@ const KIOSK_DE: TransformerSpec = { form: 'kompaktstation', kind: 'kiosk', body:
 const KIOSK_YU: TransformerSpec = { form: 'trafostanica', kind: 'kiosk', body: 0xd8d0be, trim: 0x5a6a62, roof: 0x9a4a32, hip: true };
 const HFRAME: TransformerSpec = { form: 'h-frame-cans', kind: 'hframe', body: 0x9aa0a0, trim: 0x4a3a2a };
 const SWITCHGEAR: TransformerSpec = { form: 'switchgear', kind: 'switchgear', body: 0xb8bcb8, trim: 0x4a4e4c };
-export const TRANSFORMER_FORMS: Readonly<Record<string, TransformerSpec>> = Object.freeze({
+const TRANSFORMER_FORMS: Readonly<Record<string, TransformerSpec>> = Object.freeze({
   // the pad-mounts: the Léon's (Enedis grey-beige), Aso's, Hostomel's (a KTP's grey-green), the desert maps' sand-beige,
   // the Bengal and Mekong deltas' grey
   coastal: { ...PAD, body: 0xc8c0a8 }, caldera: PAD, airfield: { ...PAD, body: 0x9aa098 }, oasis: { ...PAD, body: 0xd0c4a8 },

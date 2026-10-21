@@ -4,7 +4,6 @@ import { createHash } from 'node:crypto';
 import { registerHooks } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { beforeRoadCompletionConstructor } from '../../tools/road-constructor-history-fixture.mjs';
-import { beforeRoadSettlementRedesign } from '../../tools/road-settlement-history-fixture.mjs';
 import { loadShorelineHistory } from './shorelineContinuity.test-support.mjs';
 
 // Preserve the authenticated pre-completion constructor and layout only.
@@ -132,10 +131,6 @@ let reliefLaws;
 try { reliefLaws = await import(reliefLawUrl); } finally { reliefLawHooks.deregister(); }
 // This oracle reproduces historical authored geometry as well as the old
 // constructor. Current parity checks import terrain.ts directly and remain live.
-export function historicalRoadHeightField(seed, config) {
-  return original.createHeightField(seed, beforeRoadSettlementRedesign(config));
-}
 export const historicalRoadHeightFieldWithReliefLaws = reliefLaws.createHeightField;
 export const historicalRoadLayout = original.createLayout;
 export const currentRoadLayoutBeforeCompletion = reliefLaws.createLayout;
-export const historicalRoadTerrainSource = referenceSource;

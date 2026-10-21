@@ -142,7 +142,7 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
     }
   }
   return {
-    update(player:HudTank|null|undefined,now:number,fov:number,dist:number,visible:boolean,key='V',thermalReady=false,viewKey='I',supplies?:{ammoReadyInS:number;healReadyInS:number},supplyKeys?:{ammo:string;heal:string},scoped=false,escort?:HudMatchModeState['escort']){
+    update(player:HudTank|null|undefined,now:number,fov:number,dist:number,visible:boolean,key='V',thermalReady=false,viewKey='I',supplies?:{ammoReadyInS:number;healReadyInS:number},supplyKeys?:{ammo:string;heal:string},scoped=false,escort?:HudMatchModeState['escort'],lensUp=true){
       const view=player?.aerial,active=!!view?.active&&visible;
       // A recall the authority accepted closes the feed cleanly (the airframe is flying home); a loss breaks it in static.
       const signalLevel=transition.step(active&&view?.kind==='drone'&&thermalReady,active,visible,performance.now(),(view?.returnS??0)>0);
@@ -162,7 +162,10 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
       identity.setAttribute('aria-keyshortcuts',viewKey);
       identity.title=t('flight.view.next',{view:t('flight.view.'+nextAerialVision())});
       identity.setAttribute('aria-label',t('flight.view.switch',{current:t('flight.view.'+getAerialVision()),next:t('flight.view.'+nextAerialVision())}));
-      const drone=view.kind==='drone';support.hidden=drone;solution.hidden=drone;role.hidden=drone;
+      const drone=view.kind==='drone';support.hidden=drone;role.hidden=drone;
+      // (ac130-fx-228 r2) the gimbal's sight and solution belong to its lens: an external camera (the ending's orbit, a
+      // replay) keeps the console and drops them
+      solution.hidden=drone||!lensUp;sight.hidden=!drone&&!lensUp;
       role.textContent=gunshipDesignation(escort);
       updateSupplyControls(supplies,supplyKeys);
       root.dataset.kind=view.kind;backKey.textContent=key;

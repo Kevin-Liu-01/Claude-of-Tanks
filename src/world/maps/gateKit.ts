@@ -153,7 +153,7 @@ export function gateStyleFor(architectureId: string | null | undefined, mapId: s
 // the builders
 
 /** What a gate builder needs beyond its style: the surface its kind rides on this map. */
-export interface GateBuildContext {
+interface GateBuildContext {
   style: GateStyle;
   /** gatestone: the kit's stone (its print kind and tint) and its weather's damp; gateadobe: the render's mean tone */
   stone?: { kind: StoneSurfaceKind; dressed: boolean; tint: Rgb; damp: number };

@@ -18,7 +18,7 @@ export interface TreeWindConfig {
   clouds?: { regime?: string; windDirDeg?: number; windSpeed?: number } | null;
 }
 
-export interface TreeWind {
+interface TreeWind {
   /** Unit direction the wind blows TOWARD, world xz. */
   dirX: number;
   dirZ: number;

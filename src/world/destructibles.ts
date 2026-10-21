@@ -56,6 +56,36 @@ interface WorldDestructibleEntry {
 
 type DestroyedEventSink = (event: DestroyedPropEvent) => void;
 
+// ---- (ac130-fx-228 r2) rounds in flight that are not shells -----------------------------------------------------------
+// The owner: "get rid of the old ones we dont want to use the old ones anymore". The frontline backdrop's AA guns
+// (frontlineAtmosphere.ts) fire presentation-only rounds no authority tracks; they drew through a September tracer shader
+// of their own. Their source registers here (this seam, so neither layer imports the other) and effects.ts draws its
+// rounds each frame through the projectile tracers (projectileTracers.ts `ambient`), the one tracer look of the game.
+
+/** One round this frame: its head (world m), its unit direction, its speed (m/s), how far it has flown from its muzzle
+ *  (m), its strength (0..1: its own burn-out) and whether it is Soviet-lineage ammunition (a green-yellow trace). */
+export type AmbientRoundDraw = (hx: number, hy: number, hz: number, dx: number, dy: number, dz: number, speedMps: number,
+  travelledM: number, k: number, east: boolean) => void;
+
+interface AmbientRoundSource {
+  /** draw every round in flight now through `draw` (no allocation: the caller hoists `draw`) */
+  drawRounds(draw: AmbientRoundDraw): void;
+}
+
+let ambientRounds: AmbientRoundSource | null = null;
+
+/** Register the backdrop's rounds (one battle's backdrop at a time); returns the unregister, which leaves a later
+ *  source in place. */
+export function setAmbientRoundSource(source: AmbientRoundSource | null): () => void {
+  ambientRounds = source;
+  return () => { if (ambientRounds === source) ambientRounds = null; };
+}
+
+/** The registered source, if any (the effects runtime's frame). */
+export function ambientRoundSource(): AmbientRoundSource | null {
+  return ambientRounds;
+}
+
 let fxProvider: BreakFxProvider | null = null;
 
 /**

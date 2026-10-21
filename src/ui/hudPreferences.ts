@@ -28,9 +28,9 @@ export const HUD_PARTS = [
 ] as const;
 export type HudPartId = typeof HUD_PARTS[number]['id'];
 export type HudProfile = 'desktop' | 'portrait' | 'landscape';
-export type HudPlacement = { hidden:boolean; x?:number; y?:number };
-export type HudLayout = Partial<Record<HudPartId,HudPlacement>>;
-export type HudPreferences = Record<HudProfile,HudLayout>;
+type HudPlacement = { hidden:boolean; x?:number; y?:number };
+type HudLayout = Partial<Record<HudPartId,HudPlacement>>;
+type HudPreferences = Record<HudProfile,HudLayout>;
 export const HUD_LAYOUT_KEY = 'cot.hud-layout.v1';
 export function hudProfile(width:number,height:number,touch:boolean):HudProfile {
   return touch ? width>height?'landscape':'portrait' : 'desktop';

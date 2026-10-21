@@ -49,6 +49,7 @@ for (const [id, rec] of Object.entries(record)) {
   const shipped = SFX_ASSETS[id];
   const entry = SFX_CATALOG.find((e) => e.id === id);
   assert.ok(shipped && entry, `${id}: in the manifest and the catalog`);
+  // object3d-assert-ok: rec.group is a mix-group name string, not a THREE.Group
   assert.equal(rec.group, shipped.g, `${id}: group`);
   assert.equal(rec.preset, entry.proc, `${id}: mastered with its catalog preset`);
   assert.equal(rec.channels, shipped.c, `${id}: channels`);

@@ -10,6 +10,10 @@
 import type { GameModeId } from './matchModes.ts';
 import { shell } from './shellSpec.ts';
 import type { DestructionRules } from './destructionEvents.ts';
+import { DRONE_LAUNCH_HEIGHT_M } from './droneDockRules.ts';
+
+// The dock's launch column (a leaf, so the decor keep-out reads it without the ruleset: src/sim/droneDockRules.ts).
+export { DRONE_LAUNCH_HEIGHT_M } from './droneDockRules.ts';
 
 /** Mode weapons are fictional gameplay loadouts; they never mutate the fleet catalog. */
 export const GUN_GAME_WEAPONS = Object.freeze([
@@ -27,7 +31,7 @@ export const AERIAL_RULES = Object.freeze({
   // burst (3 x .35 = 1.05) no longer downs a drone alone, a 7.62's (8 x .15 = 1.2) still does, and shares from several
   // stations still add, so a lone gun downs a quarter to a third fewer drones and two or three stations nearly as many.
   // Kept clear of every exact burst sum.
-  drone: Object.freeze({ launchS: 2.4, responseHz: 4.5, spotRangeM: 350, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: 12, hitsToDown: 1.1,
+  drone: Object.freeze({ launchS: 2.4, responseHz: 4.5, spotRangeM: 350, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: DRONE_LAUNCH_HEIGHT_M, hitsToDown: 1.1,
     /**
      * The recall (owner 2026-10-14: "dont be able to instantly call it back, only be able to call back once weve entered
      * screen, and if we do, show the landing animation and we should be able to launch it again after a shorter
@@ -90,7 +94,11 @@ interface AssaultRules {
   readonly holdS: number;
 }
 
-/** Endless Horde wave law (owner 2026-09-15: "the horde is not endless, there's only 3 tanks every time"). */
+/**
+ * Endless Horde wave law (owner 2026-09-15: "the horde is not endless, there's only 3 tanks every time"). Zombies
+ * (owner 2026-10-17: "all the zombies actually have low hp"): the ruleset's `hpScale` is the humans' hull; the hostiles
+ * arrive as fodder at `hostileHpScale` of their own hull (about one main-gun round), so the pressure is their numbers.
+ */
 interface HordeRules {
   /** Hostiles fielded on the first wave. */
   readonly waveSize: number;
@@ -98,6 +106,17 @@ interface HordeRules {
   readonly waveStep: number;
   /** One more hostile every this many waves (0 = never). */
   readonly surgeEvery: number;
+  /** A hostile's hull on the first wave, as a multiple of its vehicle's own hull (not of the humans' `hpScale`). */
+  readonly hostileHpScale: number;
+  /** Hull a hostile gains every wave after the first, as a share of its first-wave hull. */
+  readonly hpPerWave: number;
+  /** Speed a hostile (and a Frontline defender) gains every wave after the first, up to `speedPerWaveMax`. */
+  readonly speedPerWave: number;
+  readonly speedPerWaveMax: number;
+  /** Share of the caches that repair rather than rearm: `first` on wave one, `perWave` less each wave, never under `floor`. */
+  readonly cacheHeal: { readonly first: number; readonly perWave: number; readonly floor: number };
+  /** Difficulty tiers the hostiles' bots play below the battle's (0 = the same; never under the easiest). */
+  readonly hostileDifficultyStep: number;
 }
 
 /**
@@ -267,7 +286,12 @@ export interface MatchRuleset {
   readonly alwaysVisible?: boolean;
   readonly moduleOnlyDamage?: boolean;
   readonly juggernaut?: { readonly team: 'alpha' | 'bravo'; readonly hpScale: number; readonly reloadScale: number; readonly speedScale: number };
-  readonly infection?: { readonly infectedSpeed: number; readonly infectedRespawnS: number; readonly survivorHpScale: number; readonly infectedHpScale: number; readonly infectedReloadScale: number };
+  /**
+   * Infected: the survivors' and the infected's hulls (multiples of the vehicle's own), the infected's speed and reload
+   * multipliers, and `hunt` — the infected bots drive at the nearest survivor (the Horde's law) instead of roaming. Every
+   * respawn, a converted survivor's included, waits the ruleset's `respawnS`.
+   */
+  readonly infection?: { readonly infectedSpeed: number; readonly survivorHpScale: number; readonly infectedHpScale: number; readonly infectedReloadScale: number; readonly hunt: boolean };
   readonly gunGame?: { readonly killsPerWeapon: number };
   readonly aerial?: 'drone' | 'gunship';
   /** VH.15: the roof stations engage enemy drones in flight (sim/auxiliarySystems.ts; the drone mode). */
@@ -394,6 +418,11 @@ const STANDARD: MatchRuleset = Object.freeze({
   destruction: DESTRUCTION_ON, terrainVariant: null,
 });
 
+// Ammunition (owner 2026-10-17: "for special modes like juggernaut, ammo should be endless"): the competitive and
+// realistic modes (Standard, Capture the Flag, Zone Control, Realistic) keep the vehicle's own loadout; every special
+// and arcade mode plays unlimited rounds — the AC-130's escorts excepted, whose rounds are what the gunship's airdrop is
+// for (state.ts and the authority refill only the gunship there). Unlimited rounds turn every cache into a repair
+// (cacheHealChance): an ammunition cache could never be taken.
 const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze({
   standard: STANDARD,
   // Flags: respawning objective play on the standard physics; the controller slows a carrier.
@@ -409,37 +438,50 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     criticalDamage: false, jumpMps: 13, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
     destruction: DESTRUCTION_OFF,
   }),
-  // Horde: survival — the player with two allied bots on alpha (co-op humans join it), a pool of
-  // fourteen hostile identities on the far side drawn afresh every wave (five on the first wave,
-  // one more each wave and a surge every third), tougher hull, no respawn, no clock; clearing a
-  // wave repairs the survivors by HORDE_WAVE_REPAIR and drops a cache.
+  // Horde: survival — the player with four allied bots on alpha (co-op humans join it), a pool of
+  // twenty hostile identities on the far side drawn afresh every wave (six on the first wave,
+  // two more each wave and a surge every third), no respawn, no clock, unlimited rounds; clearing
+  // a wave repairs the survivors by HORDE_WAVE_REPAIR and drops a repair cache. Zombies (owner
+  // 2026-10-17: "all the zombies actually have low hp. rn its humans with low hp and a bunch of
+  // overpowered glowing zombies that can steam roll them"): the humans' hull is doubled, the
+  // hostiles arrive at 15 % of their own (about one main-gun round) plus 2 % a wave and play one
+  // difficulty tier below the battle's, so a wave is many and weak and its pressure is numbers
+  // (docs/GAME-MODES.md "Zombie balance": 1.1 waves and a 1:3 kill ratio before, measured after).
   endless_horde: Object.freeze({
-    ...STANDARD, mode: 'endless_horde', hpScale: 1.25, respawnS: null, timeLimitS: null,
-    allies: 2, enemies: 14,
-    horde: Object.freeze({ waveSize: 5, waveStep: 1, surgeEvery: 3 }),
+    ...STANDARD, mode: 'endless_horde', hpScale: 2, ammo: 'unlimited', respawnS: null, timeLimitS: null,
+    allies: 4, enemies: 20,
+    horde: Object.freeze({
+      waveSize: 6, waveStep: 2, surgeEvery: 3, hostileHpScale: 0.15, hpPerWave: 0.02,
+      speedPerWave: 0.045, speedPerWaveMax: 0.55, cacheHeal: Object.freeze({ first: 0.62, perWave: 0.055, floor: 0.08 }),
+      hostileDifficultyStep: 1,
+    }),
   }),
-  // Frontline Assault: the campaign sortie — three allies, no respawn, a twelve-minute clock that
-  // costs the operation when it runs out; defenders escalate per sector and per difficulty.
+  // Frontline Assault: the campaign sortie — three allies, no respawn, unlimited rounds, a twelve-minute
+  // clock that costs the operation when it runs out; defenders escalate per sector and per difficulty.
   frontline_assault: Object.freeze({
-    ...STANDARD, mode: 'frontline_assault', respawnS: null, timeLimitS: 720, timeout: 'defeat',
+    ...STANDARD, mode: 'frontline_assault', ammo: 'unlimited', respawnS: null, timeLimitS: 720, timeout: 'defeat',
     allies: 3, enemies: 10, terrainVariant: 'assault-trenches',
     assault: Object.freeze({ initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, finalLineHp: 1.15, difficultyHp: 0, holdS: 20 }),
   }),
   // Mars mode (owner 2026-09-18): Olympus Basin's own physics — 0.38 g, a 6.5 m/s jump, +25 % speed, tougher
-  // hulls, a lighter recoil launch than Turbo Ball — on the zone objective with 6 s respawns and a
-  // twelve-minute clock; the boost caches are the mode controller's.
+  // hulls, a lighter recoil launch than Turbo Ball — on the zone objective with 6 s respawns, unlimited
+  // rounds and a twelve-minute clock; the boost caches (repairs, under unlimited rounds) are the mode controller's.
   mars: Object.freeze({
     ...STANDARD, mode: 'mars', mars: MARS_DEFAULT_RULES, gravityScale: 0.38, physics: MARS_PHYSICS, speedMultiplier: 1.25, hpScale: 1.2, damageScale: 0.9,
-    reloadScale: 0.9, jumpMps: 9.5, recoilLaunchScale: 3, shellKnockScale: 0.9, respawnS: 6, timeLimitS: 720,
+    reloadScale: 0.9, ammo: 'unlimited', jumpMps: 9.5, recoilLaunchScale: 3, shellKnockScale: 0.9, respawnS: 6, timeLimitS: 720,
   }),
-  juggernaut: Object.freeze({ ...STANDARD, mode: 'juggernaut', allies: 0, enemies: 12, respawnS: 6, timeLimitS: 600,
+  juggernaut: Object.freeze({ ...STANDARD, mode: 'juggernaut', ammo: 'unlimited', allies: 0, enemies: 12, respawnS: 6, timeLimitS: 600,
     juggernaut: Object.freeze({ team: 'alpha', hpScale: 8, reloadScale: .5, speedScale: .9 }) }),
-  infected: Object.freeze({ ...STANDARD, mode: 'infected', allies: 9, enemies: 4, respawnS: 3, timeLimitS: 420,
-    infection: Object.freeze({ infectedSpeed: 1.4, infectedRespawnS: 3, survivorHpScale: .3, infectedHpScale: 1.25, infectedReloadScale: .7 }) }),
+  // Infected (owner 2026-10-17, the zombies): sturdy survivors (150 % hull) against five fragile infected (30 %) that hunt
+  // the nearest survivor at +30 % speed with no reload bonus and come back 5 s after every death, a converted survivor's
+  // included; the outbreak wins by numbers (four starters let the survivors win 3 rounds in 4, six almost never). Before: survivors at 30 % against infected at 125 % with +40 % speed and a
+  // ×0.7 reload lost every bot round inside 2:16 (docs/GAME-MODES.md "Zombie balance").
+  infected: Object.freeze({ ...STANDARD, mode: 'infected', ammo: 'unlimited', allies: 9, enemies: 5, respawnS: 5, timeLimitS: 420,
+    infection: Object.freeze({ infectedSpeed: 1.3, survivorHpScale: 1.5, infectedHpScale: .3, infectedReloadScale: 1, hunt: true }) }),
   realistic: Object.freeze({ ...STANDARD, mode: 'realistic', alwaysVisible: false, moduleOnlyDamage: true, consumables: false }),
   gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', respawnS: 4, ammo: 'unlimited', timeLimitS: 900,
     gunGame: Object.freeze({ killsPerWeapon: 2 }) }),
-  drone: Object.freeze({ ...STANDARD, mode: 'drone', aerial: 'drone', counterDrone: true, respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
+  drone: Object.freeze({ ...STANDARD, mode: 'drone', aerial: 'drone', counterDrone: true, ammo: 'unlimited', respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
   ac130: Object.freeze({ ...STANDARD, mode: 'ac130', aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true,
     ammo: 'unlimited', consumables: false, timeLimitS: 480, timeout: 'defeat',
     destruction: Object.freeze({ ...DESTRUCTION_ON, craterScale: 1.25 }) }),
@@ -466,6 +508,7 @@ export function modeCopyValues(mode: GameModeId): Readonly<Record<string, number
     gravity: rules.gravityScale,
     minutes: rules.timeLimitS == null ? 0 : rules.timeLimitS / 60,
     survivorHp: Math.round((rules.infection?.survivorHpScale ?? 1) * 100),
+    infectedHp: Math.round((rules.infection?.infectedHpScale ?? 1) * 100),
     killsPerWeapon: rules.gunGame?.killsPerWeapon ?? 0,
     weapons: GUN_GAME_WEAPONS.length,
   };
@@ -636,7 +679,7 @@ export function matchRulesetFor(
       enemies: hunter ? 1 : (arranged?.enemies ?? 12),
       juggernaut: { ...ruleset.juggernaut, team: hunter ? 'bravo' : 'alpha' } };
   }
-  if (ruleset.infection) ruleset = { ...ruleset, enemies: Math.max(3, arranged?.enemies ?? 4) };
+  if (ruleset.infection) ruleset = { ...ruleset, enemies: Math.max(3, ruleset.enemies ?? base.enemies ?? 3) };
   return ruleset === base ? base : Object.freeze(ruleset);
 }
 
@@ -655,6 +698,59 @@ export function assaultWaveHealthScale(rules: AssaultRules, line: number, lines:
 export function hordeWaveSize(rules: HordeRules, wave: number): number {
   const w = Math.max(1, Math.floor(wave));
   return rules.waveSize + (w - 1) * rules.waveStep + (rules.surgeEvery > 0 ? Math.floor((w - 1) / rules.surgeEvery) : 0);
+}
+
+/** A Horde hostile's hull on a wave (1-based) as a multiple of its vehicle's own: the zombies' fodder law. */
+export function hordeHostileHull(rules: HordeRules, wave: number): number {
+  return rules.hostileHpScale * (1 + (Math.max(1, Math.floor(wave)) - 1) * rules.hpPerWave);
+}
+
+/**
+ * The health scale the controller hands a Horde hostile's revive on a wave. The revive's ruleset stamp multiplies it by
+ * `hpScale` (the humans' hull), so it is the hostile's hull divided by that: the hostile ends at hordeHostileHull.
+ */
+export function hordeWaveHealthScale(ruleset: Pick<MatchRuleset, 'hpScale'>, rules: HordeRules, wave: number): number {
+  return hordeHostileHull(rules, wave) / (ruleset.hpScale > 0 ? ruleset.hpScale : 1);
+}
+
+/** Speed multiplier the wave pressure gives a Horde hostile or a Frontline defender on a wave (1-based). */
+export function hordeWaveSpeedScale(rules: HordeRules, wave: number): number {
+  return 1 + Math.min(rules.speedPerWaveMax, (Math.max(1, Math.floor(wave)) - 1) * rules.speedPerWave);
+}
+
+/** Mars caches split evenly between a repair and a rearm (the Horde's fall with the waves). */
+const EVEN_CACHE_HEAL_CHANCE = 0.5;
+/**
+ * Share of the caches a mode drops on a wave (1-based) that repair rather than rearm: every one under unlimited rounds
+ * (an ammunition cache could never be taken and would hold a cache slot), else the Horde's falling law, else even.
+ */
+export function cacheHealChance(ruleset: Pick<MatchRuleset, 'ammo' | 'horde'>, wave: number): number {
+  if (ruleset.ammo === 'unlimited') return 1;
+  const law = ruleset.horde?.cacheHeal;
+  if (!law) return EVEN_CACHE_HEAL_CHANCE;
+  return Math.max(law.floor, law.first - (Math.max(1, Math.floor(wave)) - 1) * law.perWave);
+}
+
+/** Bot difficulty tiers, easiest first (game/input.ts AI_DIFFICULTIES; the ruleset only steps along them). */
+const BOT_DIFFICULTY_TIERS = Object.freeze(['easy', 'normal', 'hard'] as const);
+type BotDifficultyTier = (typeof BOT_DIFFICULTY_TIERS)[number];
+/**
+ * The difficulty a bot on `team` plays under a ruleset: the battle's own, except a Horde hostile, which plays
+ * `horde.hostileDifficultyStep` tiers below it and never under the easiest (zombies come on numbers, not aim). The solo
+ * battle and the network authority both read it when they build a bot.
+ */
+export function rulesetBotDifficulty(ruleset: Pick<MatchRuleset, 'horde'>, team: string, difficulty: BotDifficultyTier): BotDifficultyTier {
+  const step = ruleset.horde?.hostileDifficultyStep ?? 0;
+  if (step <= 0 || (team !== 'bravo' && team !== 'enemy')) return difficulty;
+  const index = BOT_DIFFICULTY_TIERS.indexOf(difficulty);
+  return index < 0 ? difficulty : BOT_DIFFICULTY_TIERS[Math.max(0, index - Math.floor(step))]!;
+}
+
+/** The hostile side's hull as a multiple of its vehicles' own when it differs from the humans' (Horde, Infected). */
+function hostileHullScale(ruleset: MatchRuleset): number | null {
+  if (ruleset.horde) return ruleset.horde.hostileHpScale;
+  if (ruleset.infection) return ruleset.hpScale * ruleset.infection.infectedHpScale;
+  return null;
 }
 
 /** Whole-number percent for copy ("+50 %", "-40 %"). */
@@ -683,7 +779,12 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
   if (ruleset.gunGame) line('gunGame', { kills: String(ruleset.gunGame.killsPerWeapon) });
   if (ruleset.gravityScale !== 1) line('gravity', { value: `${Math.round(ruleset.gravityScale * 100) / 100} g` });
   if (ruleset.speedMultiplier !== 1) line('speed', { value: percent(ruleset.speedMultiplier) });
-  if (ruleset.hpScale !== 1) line('hp', { value: percent(ruleset.hpScale) });
+  // the humans' hull; where the hostiles' differs (owner 2026-10-17: the Horde's and the Infected's are low-hull fodder)
+  // the same chip pairs it after a slash, own / hostile ("+100 % / -85 %"), so the card gains no line of its own
+  const humanHull = ruleset.hpScale * (ruleset.infection?.survivorHpScale ?? 1);
+  const hostileHull = hostileHullScale(ruleset);
+  if (hostileHull != null) line('hp', { value: `${percent(humanHull)} / ${percent(hostileHull)}` });
+  else if (humanHull !== 1) line('hp', { value: percent(humanHull) });
   if (ruleset.damageScale !== 1) line('damage', { value: percent(ruleset.damageScale) });
   if (ruleset.reloadScale !== 1) line('reload', { value: percent(1 / ruleset.reloadScale) });
   if (ruleset.ammo === 'he_only') line('ammoHeOnly');
@@ -807,6 +908,19 @@ export function applyRulesetToCombat(
 export function rulesetLoadout(ruleset: MatchRuleset, ids: readonly string[] | null | undefined): string[] {
   const list = Array.isArray(ids) ? ids.slice() : [];
   return ruleset.equipmentSlots >= 3 ? list : list.slice(0, ruleset.equipmentSlots);
+}
+
+/**
+ * Whether one entity's rounds are unlimited under a ruleset: the one read for both refill sites (the solo battle's and
+ * the authority's), both shell-card builders and the loader audio. The AC-130 refills only the gunship (its escorts'
+ * rounds are what the gunship's airdrop is for), so an escort shows the real empty states (critic r3). The gunship test
+ * is sim/aerialCombat isGunship, read structurally here (that module imports this one).
+ */
+export function rulesetUnlimitedFor(
+  ruleset: { readonly ammo?: string; readonly aerial?: string | null } | null | undefined,
+  entity: { readonly aerial?: { readonly kind?: string } | null } | null | undefined,
+): boolean {
+  return ruleset?.ammo === 'unlimited' && (ruleset.aerial !== 'gunship' || entity?.aerial?.kind === 'gunship');
 }
 
 /** After a shot under unlimited ammunition, refill the fired channel (the HUD keeps the loadout shape). */

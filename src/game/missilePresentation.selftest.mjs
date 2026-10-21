@@ -147,7 +147,7 @@ addXrayBox(context, ghostBox, 'm:missileRack', line, fill);
 const expectedWorld = groups.pose.localToWorld(expectedCenter.clone());
 const drawnCenter = context.anchors.get('m:missileRack').getWorldPosition(new Vector3());
 assert.ok(drawnCenter.distanceTo(expectedWorld) < 1e-9, 'real x-ray frame is posed at the damage center');
-assert.equal(pb.obstacles[0].parent, groups.gun, 'label avoidance uses the posed physical frame');
+assert.ok(pb.obstacles[0].parent === groups.gun, 'label avoidance uses the posed physical frame');
 assert.ok(xrayBoxCenter(context, { ...ghostBox, gunFollow: false }, new Vector3()).distanceTo(expectedCenter) > .5,
   'missing-pitch mutation exposes the old stale label');
 const addXrayModuleInternals = privateFunction('./killcam.ts', 'addXrayModuleInternals', {

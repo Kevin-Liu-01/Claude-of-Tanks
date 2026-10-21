@@ -36,7 +36,6 @@ export const LAMP = material('lamp', [0.72, 0.72, 0.68], 0.07, 0.65, 0, 0.1);
 export const LAMP_RED = material('lampRed', [0.40, 0.02, 0.014], 0.14, 0, 0, 0.1);
 export const LAMP_AMBER = material('lampAmber', [0.55, 0.22, 0.02], 0.14, 0, 0, 0.1);
 export const PLATE = material('plate', [0.60, 0.60, 0.56], 0.5, 0, 0, 0.5);
-export const PLATE_YELLOW = material('plate', [0.62, 0.48, 0.06], 0.5, 0, 0, 0.5);
 export const STEEL = material('steel', [0.10, 0.096, 0.092], 0.62, 0.35, 0, 1);
 export const RIM_STEEL = material('steel', [0.28, 0.28, 0.27], 0.45, 0.5, 0, 0.9);
 export const WOOD = material('wood', [0.16, 0.105, 0.062], 0.86, 0, 0, 1);
@@ -151,7 +150,7 @@ export interface CarBodySpec {
 interface Section { x: Float64Array; y: Float64Array; }
 
 /** The shared reading of a spec: the profile functions along z. */
-export class CarProfile {
+class CarProfile {
   readonly zNose: number;
   readonly zTail: number;
   readonly wheelY: number;
@@ -506,7 +505,7 @@ export function boxLoft(mesh: VehicleMesh, zs: readonly number[], sec: (z: numbe
 // ---------------------------------------------------------------------------------------------------- cab lofts
 
 /** A cab's plan at one height: front and back z, half-width, plan corner radius. */
-export interface CabPlan {
+interface CabPlan {
   zF: number;
   zB: number;
   hw: number;

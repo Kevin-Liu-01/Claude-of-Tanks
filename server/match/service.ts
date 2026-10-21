@@ -30,7 +30,7 @@ const WS_PATH = '/match';
 const MAX_ADMIN_BODY_BYTES = 64 * 1024;
 const ID_RE = /^[a-zA-Z0-9_-]{1,48}$/;
 
-export interface MatchServiceOptions {
+interface MatchServiceOptions {
   host?: string;
   port?: number;
   /** Exact origins allowed to connect; null allows any (LAN / development). */
@@ -56,7 +56,7 @@ export interface MatchServiceOptions {
   server?: http.Server;
 }
 
-export interface MatchServiceStats {
+interface MatchServiceStats {
   ok: boolean;
   draining: boolean;
   actors: number;

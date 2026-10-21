@@ -47,7 +47,7 @@ for (const [id, expected] of Object.entries(REBUILDS)) {
       `${id} has no near-black rectangles between its road wheels`);
     const turretEra = turretRig.getObjectByName('turretExternalArmor');
     if (expected.turretEra) assert.ok(turretEra?.isMesh, `${id}: turret ERA stays turret-owned`);
-    else assert.equal(turretEra, undefined, `${id}: the reshaped station cannot keep ghost donor turret ERA`);
+    else assert.ok(turretEra === undefined, `${id}: the reshaped station cannot keep ghost donor turret ERA`);
   } finally {
     tank.dispose();
   }

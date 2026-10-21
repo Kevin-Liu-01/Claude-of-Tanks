@@ -29,7 +29,7 @@ export interface CastleGround {
 }
 
 /** One castle rock: the knoll it skins and what is cut into it. */
-export interface CastleRockSpec {
+interface CastleRockSpec {
   x: number;
   z: number;
   /** The knoll's radii (the rays search 1.5 x the larger). */
@@ -52,7 +52,7 @@ interface CastleMass {
   y1: number;
 }
 
-export interface CastleRockBuild {
+interface CastleRockBuild {
   geometry: THREE.BufferGeometry | null;
   masses: CastleMass[];
   triangles: number;
@@ -100,7 +100,7 @@ const lerp3 = (a: V3, b: V3, t: number): V3 => [a[0] + (b[0] - a[0]) * t, a[1] +
  * bed runs on from rock to rock across the valley), cream, rose and grey-white, wavering a little along the run.
  * Returns [rose, white] weights in [0, 1].
  */
-export function tuffBands(x: number, y: number, z: number, noise: SimplexNoise): [number, number] {
+function tuffBands(x: number, y: number, z: number, noise: SimplexNoise): [number, number] {
   const wob = noise.noise(x * 0.013 + 3.7, z * 0.013 - 1.9) * 0.9 + noise.noise(x * 0.061, z * 0.061 + 5.3) * 0.25;
   const yy = y + wob;
   const band = Math.sin(yy * 1.85 + 0.6) + 0.55 * Math.sin(yy * 0.69 + 2.1) + 0.3 * Math.sin(yy * 4.1 + 1.3);
@@ -113,6 +113,11 @@ export class SkinMesh {
   col: number[] = [];
   gr: number[] = [];
   idx: number[] = [];
+  /** (the maps lane, 2026-10-17, Aegis r7) a builder's own uv per vertex and an offset per triangle added to it (a bedded
+   * wall's frame along its beds, each joint block its own cut of the tile); without them finishSkin lays the
+   * world-planar uv, whose sheared lattice repeats every few metres across a long wall. */
+  uv: number[] | null = null;
+  faceUv: number[] | null = null;
   vert(p: V3, c: readonly [number, number, number], ground: number): number {
     this.pos.push(p[0], p[1], p[2]);
     this.col.push(c[0], c[1], c[2]);
@@ -173,7 +178,10 @@ export function finishSkin(mesh: SkinMesh, creaseDeg: number): THREE.BufferGeome
       if (nl > 1e-9) { nor[out * 3] = sx / nl; nor[out * 3 + 1] = sy / nl; nor[out * 3 + 2] = sz / nl; } else { nor[out * 3] = fx; nor[out * 3 + 1] = fy; nor[out * 3 + 2] = fz; }
       col[out * 3] = mesh.col[v * 3]; col[out * 3 + 1] = mesh.col[v * 3 + 1]; col[out * 3 + 2] = mesh.col[v * 3 + 2];
       gr[out] = mesh.gr[v];
-      uvs[out * 2] = p[v * 3] * 0.37 + p[v * 3 + 1] * 0.21; uvs[out * 2 + 1] = p[v * 3 + 2] * 0.37 - p[v * 3 + 1] * 0.17;
+      if (mesh.uv) {
+        uvs[out * 2] = mesh.uv[v * 2] + (mesh.faceUv ? mesh.faceUv[f * 2] : 0);
+        uvs[out * 2 + 1] = mesh.uv[v * 2 + 1] + (mesh.faceUv ? mesh.faceUv[f * 2 + 1] : 0);
+      } else { uvs[out * 2] = p[v * 3] * 0.37 + p[v * 3 + 1] * 0.21; uvs[out * 2 + 1] = p[v * 3 + 2] * 0.37 - p[v * 3 + 1] * 0.17; }
       out++;
     }
   }

@@ -44,12 +44,13 @@ import {
   structureSoundOf, structureStageSounds, type RubbleShareLike, type StructureSound,
 } from './destructionSounds.ts';
 import type { MunitionClass, StructureBreachEvent, StructureStageEvent } from '../sim/destructionEvents.ts';
+import type { GameModeId } from '../sim/matchModes.ts';
 import { BUDGETS, BUS_LEVELS, CONCUSSION, SNAPSHOTS, VEHICLE_LOD, type DeviceTier, type SettingsChannel } from './mixPolicy.ts';
 import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
 import { cueProfile } from './soundCues.ts';
 import { onDebrisLanding, onTurretLanding } from '../fx/clock.ts';
-import { AERIAL_RULES } from '../sim/matchRuleset.ts';
+import { AERIAL_RULES, matchRulesetFor, rulesetUnlimitedFor } from '../sim/matchRuleset.ts';
 import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
 import { resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type VehicleAudioIdentity } from './vehicleAudioProfiles.ts';
 import type { ModuleHealth, SurfaceId, VehicleAudioInput } from './vehicleAudioModel.ts';
@@ -227,6 +228,17 @@ function toEntity(value: RuntimeValue): AudioEntity | null {
   return value as AudioEntity;
 }
 
+/** The selected weapon holds no round, loaded or stowed (the simulation only leaves an empty slot selected once every
+ * channel is spent). A state without an inventory never reads spent, and neither does the ruleset's unlimited-rounds
+ * mark, whatever the counters say — the HUD's read (the shell cards carry the same mark). */
+function selectedWeaponSpent(combat: AudioEntity['combat'] | null | undefined, unlimited = false): boolean {
+  if (unlimited) return false;
+  const ammo = combat?.ammo;
+  const slot = combat?.shellSlot;
+  if (!ammo || slot == null || !Number.isInteger(slot) || slot < 0 || slot >= ammo.length) return false;
+  return !((ammo[slot] ?? 0) >= 1);
+}
+
 function moduleHealth(entity: AudioEntity, name: string): ModuleHealth {
   const s = entity.combat?.modules?.[name]?.state;
   return s === 'red' ? 'red' : s === 'yellow' ? 'yellow' : 'ok';
@@ -274,7 +286,9 @@ interface ShellExpiredEvent { shellId?: number; shooterId?: string; hitTerrain?:
   structureId?: number;
   /** the round's type, and the destruction catalog's class and charge when published (destruction-fx lane) */
   shellType?: string; munition?: MunitionClass; chargeKg?: number }
-interface TankDestroyedEvent { id: string; killerId?: string | null; pos: Vec3; cause?: string }
+interface TankDestroyedEvent { id: string; killerId?: string | null; pos: Vec3; cause?: string;
+  /** (ac130-fx-228) the kill's platform when not the killer's vehicle (the authority's sim/aerialCombat.ts killSourceOf) */
+  source?: string }
 interface ModuleStateEvent { id: string; module: string; state: string; source?: string; repaired?: boolean }
 /** `cause`: 'impact' (a hard obstacle), 'fall' (a landing) or 'contact' (another hull); `struck`: the obstacle's record kind
  *  ('cliff' for the terrain's own face) when the solo step knows it. */
@@ -1238,7 +1252,10 @@ export function createAudio({
       radio?.silence();
     } else if (playerId != null && event.killerId === playerId) {
       const now = ctx?.currentTime ?? 0;
-      say(now - lastKillAt < 12 ? 'double_kill' : 'target_destroyed', { delayS: 0.45 + random() * 0.15 });
+      // (ac130-fx-228) the AC-130's kill is the gunship crew's call ("Splash. Target down."), never a tank crew's
+      const gunship = event.source === 'ac130';
+      say(now - lastKillAt < 12 ? (gunship ? 'gunship_double' : 'double_kill') : gunship ? 'gunship_kill' : 'target_destroyed',
+        { delayS: 0.45 + random() * 0.15 });
       lastKillAt = now;
     } else if (playerId != null && info) {
       const near = listenerValid && distanceTo(x, y, z) < 300;
@@ -1479,6 +1496,17 @@ export function createAudio({
 
   function onReload(event: ReloadEvent): void {
     if (!ctx || phase !== 'battle' || battleOver) return;
+    // Owner 2026-10-17 (out of ammo): an empty gun still runs its post-shot cycle in the simulation, but the crew loads
+    // nothing — no loader cues, no latch, no "reloaded" call; the half-played plan is dropped, so a cycle that resumes
+    // starts afresh. The mode's unlimited rounds never read spent where this entity really refills (sim/matchRuleset
+    // rulesetUnlimitedFor, the read the HUD's cards carry: an AC-130 escort runs dry, the gunship never does). No mode
+    // reads as the standard ruleset (matchRulesetFor's own fallback): no mode literal here.
+    const unlimitedRounds = rulesetUnlimitedFor(matchRulesetFor(getGameMode?.() as GameModeId), latestPlayer);
+    if (selectedWeaponSpent(latestPlayer?.combat, unlimitedRounds)) {
+      reload.active = false;
+      reloadCalled = false;
+      return;
+    }
     const total = Math.max(0.05, Number(event.total) || 0.05);
     const kind = event.kind || 'shell';
     const caliber = Math.max(12, Number(event.caliberMm) || 100);

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
-import { createGunshipBattleVisual, syncGunshipVisual } from './gunshipVisual.ts';
+import { createGunshipBattleVisual, loadGunshipAirframe, syncGunshipVisual } from './gunshipVisual.ts';
 import { rosterVisualAttempts } from './rosterVisualFallback.ts';
 
 const candidateSource = readFileSync(new URL('./rosterState.ts', import.meta.url), 'utf8');
@@ -81,7 +81,7 @@ for (const player of [true, false]) for (const mobile of [true, false]) for (con
       assert.equal(f.created[0].disposed, 0);
     }) : f.api.ensureTankVisual(f.game, f.ent);
     assert.equal(result, f.ent.visual);
-    assert.equal(result.root.parent, f.scene);
+    assert.ok(result.root.parent === f.scene);
     assert.equal(result.disposed, 0);
     assert.deepEqual(f.trace, expectedBinding, 'binding and pool policy retain the independently recorded original order');
     assert.deepEqual(f.builds.map(({ id, options }) => ({ id, options })),
@@ -155,11 +155,13 @@ for (const fail of ['factory', 'scene', 'ground', 'pose']) {
     'authored tier first, then the other tier');
   assert.equal(f.created[0].disposed, 1, 'the failed attempt disposed once');
   assert.equal(f.created[1].disposed, 0, 'the bound visual is live');
-  assert.equal(visual.root.parent, f.scene);
+  assert.ok(visual.root.parent === f.scene);
   assert.ok(errors.some(line => /merkava1b visual \(authored merkava1b\) failed/.test(line)), 'the failure is logged');
 }
 console.log('roster staging: PASS recorded synchronous policy parity, private graph publication, cancellation, stale lifetimes, pools, failure cleanup and fail-soft retry');
 
+// (ac130-fx-228 r2) the airframe is its own chunk (gunshipAirframe.ts), loaded with an AC-130 battle
+await loadGunshipAirframe();
 for (const staged of [false, true]) {
   const f = fixture({ player: true }); f.game.ruleset = { aerial: 'gunship' };
   const visual = staged ? drain(f.api.ensureTankVisualSteps(f.game, f.ent)) : f.api.ensureTankVisual(f.game, f.ent);

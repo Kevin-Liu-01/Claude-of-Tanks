@@ -1,0 +1,342 @@
+{
+ "map": "verdant",
+ "timeOfDay": "day",
+ "seed": 902,
+ "light": {
+  "sunAzimuthDeg": 290,
+  "sunElevationDeg": 45
+ },
+ "actors": [
+  {
+   "id": "challenger_3x",
+   "name": "hero",
+   "pos": [
+    -70.94,
+    106.68
+   ],
+   "facingDeg": 25.65,
+   "turretDeg": 83.75,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 7101
+  },
+  {
+   "id": "t80u_x",
+   "name": "foe0",
+   "pos": [
+    -53.55,
+    100.55
+   ],
+   "facingDeg": 282.93,
+   "turretDeg": 6.47,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 7102
+  }
+ ],
+ "effects": [
+  {
+   "type": "dust",
+   "actor": "hero",
+   "tMs": 6780,
+   "params": {
+    "count": 12,
+    "intensity": 1
+   }
+  },
+  {
+   "type": "firing_moment",
+   "actor": "hero",
+   "tMs": 7000,
+   "params": {
+    "ageS": 0.05,
+    "slot": 0
+   }
+  },
+  {
+   "type": "impact",
+   "at": [
+    -68.58,
+    4.52,
+    105.85
+   ],
+   "tMs": 6870,
+   "params": {
+    "kind": "ricochet",
+    "caliberMm": 125,
+    "normal": [
+     0.57,
+     0.66,
+     -0.2
+    ]
+   }
+  },
+  {
+   "type": "sparks",
+   "at": [
+    -68.58,
+    4.52,
+    105.85
+   ],
+   "tMs": 6895,
+   "params": {
+    "caliberMm": 120,
+    "normal": [
+     0.57,
+     0.66,
+     -0.2
+    ]
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -68.58,
+    4.52,
+    105.85
+   ],
+   "tMs": 6880,
+   "params": {
+    "count": 14,
+    "speedMps": 8,
+    "hot": 0.9,
+    "scale": 0.45
+   }
+  },
+  {
+   "type": "firing_moment",
+   "actor": "foe0",
+   "tMs": 7000,
+   "params": {
+    "ageS": 0.045,
+    "slot": 0
+   }
+  },
+  {
+   "type": "impact",
+   "at": [
+    -56.25,
+    3.33,
+    101.5
+   ],
+   "tMs": 6870,
+   "params": {
+    "kind": "ricochet",
+    "caliberMm": 125,
+    "normal": [
+     -0.57,
+     0.66,
+     0.2
+    ]
+   }
+  },
+  {
+   "type": "sparks",
+   "at": [
+    -56.25,
+    3.33,
+    101.5
+   ],
+   "tMs": 6895,
+   "params": {
+    "caliberMm": 120,
+    "normal": [
+     -0.57,
+     0.66,
+     0.2
+    ]
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -56.25,
+    3.33,
+    101.5
+   ],
+   "tMs": 6880,
+   "params": {
+    "count": 14,
+    "speedMps": 8,
+    "hot": 0.9,
+    "scale": 0.45
+   }
+  },
+  {
+   "type": "mg_burst",
+   "actor": "foe0",
+   "tMs": 6580,
+   "params": {
+    "count": 8
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -54.45,
+    93.11
+   ],
+   "tMs": 6240,
+   "params": {
+    "size": "small",
+    "munition": "he",
+    "cause": "shot"
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -54.45,
+    3.13,
+    93.11
+   ],
+   "tMs": 6265,
+   "params": {
+    "count": 44,
+    "speedMps": 15,
+    "hot": 0.45,
+    "scale": 1.35
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -16.85,
+    48.99
+   ],
+   "tMs": 0,
+   "params": {
+    "size": "huge"
+   }
+  },
+  {
+   "type": "fire_field",
+   "at": [
+    -60.04,
+    81.79
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 4,
+    "durationS": 40,
+    "intensity": 1,
+    "smoke": true
+   }
+  },
+  {
+   "type": "embers",
+   "at": [
+    -60.04,
+    81.79
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 4,
+    "rate": 50,
+    "durationS": 20,
+    "rise": 3
+   }
+  }
+ ],
+ "fxTime": 7000,
+ "timeScale": 0,
+ "storyboard": {
+  "version": 1,
+  "durationMs": 8500,
+  "shots": [],
+  "actorTracks": [
+   {
+    "actor": "hero",
+    "keys": [
+     {
+      "id": "hero-0",
+      "tMs": 4400,
+      "pos": [
+       -77.13,
+       93.78
+      ],
+      "facingDeg": 25.65,
+      "turretDeg": 83.75,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-1",
+      "tMs": 7600,
+      "pos": [
+       -69.52,
+       109.65
+      ],
+      "facingDeg": 25.65,
+      "turretDeg": 83.75,
+      "gunDeg": 1,
+      "transition": "linear"
+     }
+    ]
+   }
+  ]
+ },
+ "picture": {
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "vignette": {
+   "amount": 0.22,
+   "roundness": 0.55,
+   "softness": 0.65
+  },
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0
+ },
+ "fx": {
+  "quality": "cinematic",
+  "trackDust": true
+ },
+ "autoPlace": false,
+ "meta": {
+  "id": "vs02-verdant-challenger-t80u",
+  "kind": "versus-still",
+  "pair": "challenger_3x v t80u_x",
+  "lens": "a",
+  "pick": "vs02-verdant-challenger-t80u:a"
+ },
+ "camera": {
+  "name": "a",
+  "pos": [
+   -75,
+   2.2,
+   120.5
+  ],
+  "lookAt": [
+   -65,
+   3.4,
+   103.18
+  ],
+  "fov": 37,
+  "rollDeg": 0,
+  "groundRel": true
+ },
+ "cameraVariants": [
+  {
+   "name": "a",
+   "pos": [
+    -75,
+    2.2,
+    120.5
+   ],
+   "lookAt": [
+    -65,
+    3.4,
+    103.18
+   ],
+   "fov": 37,
+   "rollDeg": 0,
+   "groundRel": true
+  }
+ ]
+}

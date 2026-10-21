@@ -28,7 +28,7 @@ import { UA_CAGE_STATIONS as ABRAMS_DRONE_CAGE_STATIONS } from '../ukrainianDron
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { fabricRollParts } from '../accessoryPrimitives.ts';
-import { vehicleAmbientFloorHook } from '../materials.ts';
+import { cloneRehookedVehicleMaterial } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
 import {
@@ -924,10 +924,8 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
     // old grille-line seat. Hanger straps chain it into the stern plate.
     const log = FITTINGS.unditchingLog({ mats: P.mats, len: 2.30, r: 0.10, straps: 3, seed: 8901 });
     log.position.set(0, 0.64, -3.34);
-    const woodDim = P.mats.wood.clone();
+    const woodDim = cloneRehookedVehicleMaterial(P.mats.wood);
     woodDim.color = new THREE.Color(0x77705d);
-    woodDim.onBeforeCompile = vehicleAmbientFloorHook;
-    woodDim.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     log.traverse((object) => {
       if (object instanceof THREE.Mesh && object.material === P.mats.wood) {
         object.material = woodDim;

@@ -163,9 +163,9 @@ for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
     // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle): the Ariete's AA MG 42/59 is the
     // loader's, a working station; the commander's cupola carries none
     assert.equal(equipment.manualPintles, 1, 'C1 carries the loader\'s manual machine-gun station');
-    assert.equal(turret.getObjectByName('arieteC1CommanderMg'), undefined, 'no C1 commander MG');
+    assert.ok(turret.getObjectByName('arieteC1CommanderMg') === undefined, 'no C1 commander MG');
     assert.ok(turret.getObjectByName('arieteC1LoaderMg')?.userData.remoteControlled, 'C1 loader MG is a working station');
-    assert.equal(turret.getObjectByName('arieteC2RemoteRws'), undefined,
+    assert.ok(turret.getObjectByName('arieteC2RemoteRws') === undefined,
       'C1 does not inherit the C2 remote tower');
   } else {
     assert.equal(equipment.remoteControlled, true, 'C2 roof weapon is remotely controlled');
@@ -203,7 +203,7 @@ for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
     for (const yaw of [0, Math.PI / 3]) {
       turret.rotation.y = yaw;
       tank.root.updateMatrixWorld(true);
-      assert.equal(remoteRws.parent, turret, `C2 remote tower remains turret-owned through yaw ${yaw}`);
+      assert.ok(remoteRws.parent === turret, `C2 remote tower remains turret-owned through yaw ${yaw}`);
     }
   }
   const marking = vehicleMarkingAnchor(id);

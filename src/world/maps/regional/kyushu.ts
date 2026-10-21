@@ -846,7 +846,7 @@ const ruin: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const KYUSHU_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const KYUSHU_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   depot: minka,
   shed: naya,
   containerRow: kuraRow,

@@ -328,7 +328,7 @@ async function runComposed({ fail = '', cancel = '' } = {}) {
       warmBattleTerrainTiles: async () => {},
       primeOpeningTerrainPresentation,
       stageCombatFxProgramSubmission: async () => {
-        assert.equal(fxGroup.parent, scene, 'the composed loading fixture owns its staged root');
+        assert.ok(fxGroup.parent === scene, 'the composed loading fixture owns its staged root');
         events.push('fx:staged');
         if (cancel === 'fx') generation++;
         return { staged: false, restore() { events.push('fx:restored'); } };
@@ -497,5 +497,23 @@ console.log('soloBattleLoadingRuntime.selftest: acquisition, progress, warm, rev
  assert.deepEqual(prepared[0].autoCamoIds,[]);
  assert.ok(!built.includes('m1a1_abrams_hc'),'pilot tank never enters builder preparation');
  assert.deepEqual(cards,['t90am']);game.tanks[0].visual=playerVisual;
+ delete globalThis.__BATTLE_LOAD;delete globalThis.__VISUAL_LOAD_TIMINGS;
+}
+// (ac130-fx-228) an escort on the pilot's own garage spec (the allied pool's [player] fallback) keeps its texture
+// preparation and its builder: only the plan's first entry, the pilot, is dropped
+{
+ const prepared=[],built=[];
+ const aircraftVisual={root:new Object3D()};aircraftVisual.root.userData.aircraftOnly=true;
+ const entry=createSoloBattleLoadingRuntime({...loadingOptions,
+  battleIntent:{...loadingOptions.battleIntent,prepareRoster:async options=>{prepared.push(options);}},
+  planRoster:()=>['m1a1_abrams_hc','t90am','m1a1_abrams_hc'],
+  ensureTankBuilders:async ids=>{built.push(...ids);},
+  startBattle:()=>{game.player=game.tanks[0];game.player.visual=aircraftVisual;},
+  warmShotCards:()=>{},
+ });
+ await entry.begin('m1a1_abrams_hc',null,{randomRoster:false,gameMode:'ac130'});
+ assert.deepEqual(prepared[0].rosterIds,['t90am','m1a1_abrams_hc'],'the duplicate-spec escort keeps its texture preparation');
+ assert.ok(built.includes('m1a1_abrams_hc'),'the duplicate-spec escort keeps its builder');
+ game.tanks[0].visual=playerVisual;
  delete globalThis.__BATTLE_LOAD;delete globalThis.__VISUAL_LOAD_TIMINGS;
 }

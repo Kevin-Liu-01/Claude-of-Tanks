@@ -97,8 +97,9 @@ for (const seed of [1337, 2049, 7719]) {
     // Audit the emitted geometry itself on a denser grid than the policy:
     // edge/corner water cannot hide between the tested center-line samples.
     for (const geometry of afterBallast) {
-      assert.equal(geometry.attributes.position.count, 24,
-        'the skipped color-draw count matches the actual ballast BoxGeometry');
+      // (the looks lane, 227: the bed is a crowned section, its stone's colour draws still the box's 24)
+      assert.equal(geometry.userData.colourDraws ?? geometry.attributes.position.count, 24,
+        'the skipped color-draw count matches the ballast\'s actual colour draws');
       geometry.computeBoundingBox();
       const { min, max } = geometry.boundingBox;
       for (let iz = 0; iz <= 24; iz++) for (let ix = 0; ix <= 6; ix++) {

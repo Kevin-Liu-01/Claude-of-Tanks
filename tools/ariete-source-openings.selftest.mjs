@@ -4,6 +4,7 @@ import {ARIETE_OPENING_INPUTS,ARIETE_OPENING_RASTERS,arieteOpeningConfiguration,
   arieteOpeningSourceReceipt,arieteOpeningWitnesses} from './ariete-source-openings.mjs';
 import {sourceOpeningsVerdict} from './source-openings-policy.mjs';
 import {sourceOpeningRayProbe} from './source-opening-rays.mjs';
+import {latticeCellScan} from './contig-grid.mjs';
 
 // Real finite geometry supplies fixture measurements; these are regression
 // fixtures, not the source/native qualification receipts.
@@ -22,15 +23,16 @@ function measurement(witness,owner,mutation='') {
   const result={owner,passed,point,mesh:hit?.object.name??null};
   probe.dispose();root.traverse(o=>o.geometry?.dispose());material.dispose();return result;
 }
-function fixture(id,quality) {
-  const raster=ARIETE_OPENING_RASTERS[id][quality];
-  const samples=raster.cells.map(([gx,gy])=>({gx,gy,
-    x:raster.bounds.x0+(gx+.5)*(raster.bounds.x1-raster.bounds.x0)/raster.gridW,
-    z:raster.bounds.z1-(gy+.5)*(raster.bounds.z1-raster.bounds.z0)/raster.gridH}));
+// Plan AABBs of the builds the pre-227 pins were measured on (their page frames minus the two-cell margin).
+const PINNED_AABB={
+  c1_ariete:{minX:-2.2237598896026612,maxX:2.2237598896026612,minZ:-4.319010257720947,maxZ:6.1946120699000985},
+  c2_ariete:{minX:-2.2237598896026612,maxX:2.2237598896026612,minZ:-4.319010257720947,maxZ:7.193811937148634}};
+function fixture(id,quality,aabb=PINNED_AABB[id]) {
+  // The page's actual primary raster for that AABB holding exactly the pinned hull-frame lattice cells.
+  const scan=latticeCellScan(ARIETE_OPENING_RASTERS[id][quality].cells,{aabb});
   return {id,quality,configuration:arieteOpeningConfiguration(id),
     sourceReceipt:arieteOpeningSourceReceipt(id,ARIETE_OPENING_INPUTS),
-    scan:{...structuredClone(raster),holeCells:samples.length,cellM:.06,samples},
-    samples:samples.map(s=>({...s,sourceAir:true,nativeAir:true})),
+    scan,samples:scan.samples.map(s=>({...s,sourceAir:true,nativeAir:true})),
     guards:arieteOpeningWitnesses(id,quality).map(w=>({key:w.key,passed:true,
       measurements:['source','native'].map(owner=>measurement(w,owner))}))};
 }
@@ -40,6 +42,12 @@ for(const id of Object.keys(ARIETE_OPENING_RASTERS)) for(const quality of ['high
   const valid=fixture(id,quality),positive=sourceOpeningsVerdict(valid);
   assert.equal(positive.passed,true,`${id}/${quality}: complete finite stock and actual cells`);
   assert.equal(positive.rawHoleCells,valid.scan.holeCells);assert.equal(positive.unexpectedCells,0);
+  // The 226 class: an add-on that only moves the AABB re-framed the pre-227 pin out of validity (on main 16aeab482
+  // C2 reaches 9.7 cm further to +x). The lattice pin holds at every reach on both axes.
+  for(const axis of ['maxX','maxZ'])for(const reach of [.004,.017,.031,.046,.097]){
+    const grown=fixture(id,quality,{...PINNED_AABB[id],[axis]:PINNED_AABB[id][axis]+reach});
+    assert.equal(sourceOpeningsVerdict(grown).passed,true,`${id}/${quality}: an add-on ${reach} m past ${axis} keeps the approved opening`);
+  }
   for(const key of Object.keys(ARIETE_OPENING_INPUTS))fails(valid,b=>{b.sourceReceipt.inputs[key]='0'.repeat(64)},'changed source/recipe/certificate');
   for(const mutate of [
     b=>{b.configuration.source.sha256='0'.repeat(64);b.sourceReceipt.sha256='0'.repeat(64)},
@@ -55,6 +63,7 @@ for(const id of Object.keys(ARIETE_OPENING_RASTERS)) for(const quality of ['high
     b=>{b.quality='unknown'},
     b=>{b.scan.bounds.z0+=.001},
     b=>{b.scan.gridH++},
+    b=>{for(const s of [...b.scan.samples,...b.samples])s.x+=.06;b.scan.bounds.x0+=.06;b.scan.bounds.x1+=.06},
     b=>{b.scan.holeCells=0;b.scan.samples=[];b.samples=[]},
     b=>{b.scan.samples[1]={...b.scan.samples[0]};b.samples[1]={...b.samples[0]}},
     b=>{

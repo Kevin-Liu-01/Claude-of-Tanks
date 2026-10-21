@@ -168,7 +168,7 @@ function auditBerm(geometry, field) {
 function auditSlab(geometry, field) {
   const p = geometry.attributes.position, n = geometry.attributes.normal, c = geometry.attributes.color;
   assert.equal(geometry.name, 'winter-ice-slab');
-  assert.equal(geometry.index, null);
+  assert.ok(geometry.index === null);
   assert.equal(p.count, 48, 'cap, broken sides and underside: 16 triangles');
   const edges = new Map(), key = (i) => `${p.getX(i)},${p.getY(i)},${p.getZ(i)}`;
   for (let i = 0; i < p.count; i += 3) for (let j = 0; j < 3; j++) {

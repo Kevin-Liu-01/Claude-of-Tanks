@@ -24,7 +24,7 @@ const PLAN_STEP_MS = 1000 / 60;
  * takes 1.1 s, a toss 1.5 s, a felled trunk about 1.27 s). */
 const SETTLE_S = 1.6;
 
-export interface StudioCrushPose { x: number; z: number; yawRad: number }
+interface StudioCrushPose { x: number; z: number; yawRad: number }
 
 /** A hull on the timeline: its contact rectangle's half extents and its pose along its track. */
 export interface StudioCrushHull {
@@ -37,7 +37,7 @@ export interface StudioCrushHull {
 }
 
 /** A presentation crushable (props.ts CrushableRecord): utility poles and loop-class dressing. */
-export interface StudioCrushable {
+interface StudioCrushable {
   readonly x: number;
   readonly y: number;
   readonly z: number;
@@ -59,7 +59,7 @@ export interface StudioCrushEvent {
 }
 
 /** The battlefield the crushes land on (map.ts WorldRuntime). */
-export interface StudioCrushWorld {
+interface StudioCrushWorld {
   crushObstacle(
     record: CollisionRecord, dx: number, dz: number, speedMps?: number, cause?: 'ram' | 'shell',
     options?: { settled?: boolean },
@@ -138,7 +138,7 @@ export function planStudioCrushes(
   });
 }
 
-export interface StudioCrushes {
+interface StudioCrushes {
   /** A new plan (the tracks, the hulls or the battlefield changed): what the old one crushed stands again. */
   setPlan(world: StudioCrushWorld | null, events: readonly StudioCrushEvent[]): void;
   /**

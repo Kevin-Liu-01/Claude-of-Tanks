@@ -86,7 +86,7 @@ export function clutterLodDefaults(material: THREE.Material): void {
 }
 
 /** A lean form's pool geometry: drawn at every distance, its instances toned (tagged 3). */
-export function leanForm(g: THREE.BufferGeometry): THREE.BufferGeometry {
+function leanForm(g: THREE.BufferGeometry): THREE.BufferGeometry {
   const flat = g.index ? g.toNonIndexed() : g;
   flat.setAttribute(CLUTTER_LOD_ATTRIBUTE, new THREE.BufferAttribute(new Float32Array(flat.getAttribute('position').count).fill(3), 1));
   if (flat !== g) g.dispose();
@@ -127,7 +127,7 @@ const DRUM_WW2_DE: DrumSpec = { form: 'kraftstoff-200l', shell: 0x4f5442, hoop: 
 const DRUM_WW2_US: DrumSpec = { form: 'us-55gal-od', shell: 0x5a5a3c, hoop: 0x47472f, head: 0x57573a, band: 0xc9b24a, rust: 0.3 };
 const DRUM_WW2_SU: DrumSpec = { form: 'soviet-200l', shell: 0x46503c, hoop: 0x383f30, head: 0x434c39, rust: 0.4 };
 /** Every map's drum: its period's and its place's (the setting year, periodClutterKit MAP_SETTING_YEAR). */
-export const DRUM_FORMS: Readonly<Record<string, DrumSpec>> = Object.freeze({
+const DRUM_FORMS: Readonly<Record<string, DrumSpec>> = Object.freeze({
   blackglass: { form: 'asphalt-1937', shell: 0x262624, hoop: 0x1c1c1a, head: 0x2a2a28, band: 0x8a8070, rust: 0.45 },
   fjord: DRUM_WW2_DE, winter: DRUM_WW2_DE, foundry: DRUM_WW2_DE, alpine: DRUM_WW2_DE, reservoir: DRUM_WW2_US,
   autumn: DRUM_WW2_US, polders: DRUM_WW2_US, longleaf: DRUM_WW2_US, monsoon: { ...DRUM_WW2_US, form: 'uk-40gal', band: 0x9a2e26 },
@@ -161,7 +161,7 @@ const OAK: CaskSpec = { form: 'oak-cask', wood: 0x7a5638, hoop: 0x2f2f2d, head: 
 const WINE: CaskSpec = { ...OAK, form: 'wine-cask', wood: 0x8a5e3c, head: 0x9a7452, bilge: 0.06, height: 0.92 };
 const TAR: CaskSpec = { form: 'tar-barrel', wood: 0x5a4430, hoop: 0x2a2724, head: 0x3a2e24, staves: 9, hoops: 3, bilge: 0.035, height: 0.82, radius: 0.24, tar: true };
 const WHISKEY: CaskSpec = { ...OAK, form: 'white-oak-barrel', wood: 0x6e5034, head: 0x7a5a3e, bilge: 0.045, height: 0.88, radius: 0.28 };
-export const CASK_FORMS: Readonly<Record<string, CaskSpec>> = Object.freeze({
+const CASK_FORMS: Readonly<Record<string, CaskSpec>> = Object.freeze({
   autumn: { ...WINE, form: 'calvados-cask' }, cliffbridge: WINE, saltwind: WINE, orchard: { ...WINE, form: 'arak-cask', wood: 0x7e5a3a },
   fjord: TAR, coastal: TAR, polders: { ...TAR, form: 'herring-barrel', wood: 0x6a5238, tar: false },
   caldera: { form: 'taru', wood: 0x9a7a52, hoop: 0x6a6a3a, head: 0xa88a5e, staves: 9, hoops: 3, bilge: 0.0, height: 0.62, radius: 0.3 },
@@ -177,7 +177,7 @@ export const CASK_FORMS: Readonly<Record<string, CaskSpec>> = Object.freeze({
 interface VesselSpec { form: string; kind: VesselForm['kind']; body: Hex; trim: Hex; band?: Hex; height: number; radius: number }
 const HDPE: VesselSpec = { form: 'hdpe-220l', kind: 'hdpe', body: 0x2a62a0, trim: 0x214f84, height: 0.93, radius: 0.29 };
 const JAR: VesselSpec = { form: 'martaban-jar', kind: 'jar', body: 0x5a3a24, trim: 0x3a2a1e, band: 0x7a5a30, height: 0.8, radius: 0.3 };
-export const VESSEL_FORMS: Readonly<Record<string, VesselSpec>> = Object.freeze({
+const VESSEL_FORMS: Readonly<Record<string, VesselSpec>> = Object.freeze({
   desert: { form: 'zir', kind: 'khabia', body: 0xb0704a, trim: 0x8a5a3a, height: 0.9, radius: 0.32 },
   oasis: HDPE, badlands: { ...HDPE, body: 0x2d5ea8, trim: 0x224a86 },
   delta: JAR, mangrove: { ...JAR, body: 0x6a4a2a, band: 0x8a6a3a },
@@ -199,14 +199,17 @@ const RICK: WoodSpec = { form: 'rick', kind: 'rick', ...OAK_WOOD, length: 1.6, h
 const LEANTO: WoodSpec = { form: 'lean-to', kind: 'leanto', ...SPRUCE, length: 1.56, height: 0.86, depth: 1.0 };
 const ROUND: WoodSpec = { form: 'holzhausen', kind: 'holzhausen', ...SPRUCE, length: 1.3, height: 0.95, depth: 1.3 };
 const BUNDLES: WoodSpec = { form: 'brushwood', kind: 'bundles', ...BRUSH, length: 1.5, height: 0.62, depth: 1.0 };
-export const WOOD_FORMS: Readonly<Record<string, WoodSpec>> = Object.freeze({
+const WOOD_FORMS: Readonly<Record<string, WoodSpec>> = Object.freeze({
   verdant: POLENNITSA, steppe: POLENNITSA, winter: POLENNITSA, airfield: POLENNITSA,
   fjord: ROUND, frontier: { ...ROUND, ...PINE }, alpine: LEANTO, foundry: LEANTO, railyard: LEANTO, urban: LEANTO,
   caldera: { ...LEANTO, form: 'makiba', bark: 0x6a4a3a, split: 0xc8a070 },
   longleaf: { ...RICK, form: 'cordwood', ...PINE }, titan_gorge: { ...RICK, form: 'juniper-rick', bark: 0x7a6a5a, split: 0xc0a080, end: 0xd0b48a },
   skybridge: { ...RICK, form: 'cordwood', ...PINE }, copper_mesa: { ...RICK, form: 'gum-rick', bark: 0x8a7a68, split: 0xb88a60, end: 0xc89a6a },
   whiteout: { ...RICK, form: 'lumber-rick', ...PINE }, autumn: { ...RICK, form: 'stere' }, coastal: { ...RICK, form: 'stere' },
-  polders: { ...RICK, form: 'rick', ...PINE }, reservoir: RICK, cliffbridge: { ...RICK, form: 'olive-rick', bark: 0x6a6458, split: 0xc0a07a },
+  // (2026-10-17, the maps lane; the Polders village blind 227's follow-ups, pose 3: "the foreground woodpile crate is still
+  // chunky") the Zeeland house's woodpile a long low stack one billet deep, laid along its wall (props.ts wallSpot), not a
+  // cube a metre deep stood end-on off it
+  polders: { ...RICK, form: 'wall-rick', ...PINE, length: 2.2, height: 0.8, depth: 0.6 }, reservoir: RICK, cliffbridge: { ...RICK, form: 'olive-rick', bark: 0x6a6458, split: 0xc0a07a },
   saltwind: { ...RICK, form: 'olive-rick', bark: 0x6a6458, split: 0xc0a07a }, ruinspires: RICK,
   desert: { ...BUNDLES, form: 'tamarisk', bark: 0x7a6650 }, oasis: { ...BUNDLES, form: 'palm-rib', bark: 0x8a7458, end: 0xa89060 },
   badlands: { ...BUNDLES, form: 'tamarisk', bark: 0x7a6650 }, orchard: { ...BUNDLES, form: 'prunings', bark: 0x6a6450 },
@@ -221,7 +224,7 @@ const EUR: PalletSpec = { form: 'epal', kind: 'eur', wood: 0xc0a074, dark: 0x9a7
 const GMA: PalletSpec = { form: 'gma', kind: 'gma', wood: 0xb89a6a, dark: 0x8a7050 };
 const ROUGH: PalletSpec = { form: 'plank-skid', kind: 'rough', wood: 0x9a8058, dark: 0x6a5640 };
 const BAMBOO: PalletSpec = { form: 'bamboo-skid', kind: 'bamboo', wood: 0xc8b070, dark: 0x9a8450 };
-export const PALLET_FORMS: Readonly<Record<string, PalletSpec>> = Object.freeze({
+const PALLET_FORMS: Readonly<Record<string, PalletSpec>> = Object.freeze({
   railyard: EUR, cliffbridge: EUR, frontier: EUR, urban: EUR, ruinspires: { ...EUR, wood: 0xa88a62 }, saltwind: EUR, coastal: EUR,
   airfield: EUR, orchard: EUR, desert: { ...EUR, wood: 0xb8946a }, oasis: { ...EUR, wood: 0xb8946a }, badlands: EUR,
   longleaf: GMA, skybridge: GMA, titan_gorge: GMA, whiteout: GMA, copper_mesa: GMA, reservoir: GMA, autumn: GMA, polders: GMA,
@@ -241,7 +244,7 @@ const WEHR_GELB: CanSpec = { ...WEHR, body: 0x8a7e56, trim: 0x6a6044 };
 const US_CAN: CanSpec = { form: 'us-jerrycan', kind: 'steel', body: 0x4f5338, trim: 0x3e422c };
 const NATO_CAN: CanSpec = { form: 'nato-jerrycan', kind: 'steel', body: 0x4a5038, trim: 0x383d2a };
 const RED_CAN: CanSpec = { form: 'petrol-can', kind: 'steel', body: 0x9a2a20, trim: 0x6a1e18 };
-export const CAN_FORMS: Readonly<Record<string, CanSpec>> = Object.freeze({
+const CAN_FORMS: Readonly<Record<string, CanSpec>> = Object.freeze({
   fjord: { ...WEHR, body: 0x4a4c48 }, foundry: WEHR_GELB, alpine: WEHR_GELB, winter: WEHR_GELB, verdant: WEHR_GELB,
   reservoir: US_CAN, autumn: US_CAN, polders: US_CAN, longleaf: US_CAN, monsoon: { ...US_CAN, form: 'blitz-can', body: 0x5a5a40 },
   blackglass: { form: 'kerosene-tin', kind: 'tin', body: 0xa8a090, trim: 0x7a7468 },
@@ -263,7 +266,7 @@ const ENAMEL: BucketSpec = { form: 'enamel-pail', kind: 'enamel', body: 0xe0ded6
 const WOOD_PAIL: BucketSpec = { form: 'coopered-pail', kind: 'wood', body: 0x9a7a52, trim: 0x3a3632, inside: 0x3a2a1a };
 const RUBBER: BucketSpec = { form: 'tyre-bucket', kind: 'rubber', body: 0x2a2a2a, trim: 0x1c1c1c, inside: 0x161616 };
 const plasticPail = (body: Hex): BucketSpec => ({ form: 'plastic-bucket', kind: 'plastic', body, trim: body, inside: body });
-export const BUCKET_FORMS: Readonly<Record<string, BucketSpec>> = Object.freeze({
+const BUCKET_FORMS: Readonly<Record<string, BucketSpec>> = Object.freeze({
   verdant: ENAMEL, steppe: ENAMEL, winter: ENAMEL, fjord: WOOD_PAIL, alpine: WOOD_PAIL, blackglass: { ...WOOD_PAIL, body: 0x8a6a42 },
   desert: RUBBER, oasis: RUBBER, badlands: RUBBER,
   delta: plasticPail(0x2a6aa8), mangrove: plasticPail(0xc83a2a), airfield: plasticPail(0x3a6a3a), coastal: plasticPail(0x2a5aa0),
@@ -279,7 +282,7 @@ const OXY_DE: BottleSpec = { form: 'sauerstoff', kind: 'industrial', body: 0x2a4
 const OXY_US: BottleSpec = { form: 'oxygen-us', kind: 'industrial', body: 0x3a5a3a, collar: 0x5a5a5a };
 const OXY_UK: BottleSpec = { form: 'oxygen-uk', kind: 'industrial', body: 0x262626, collar: 0x5a5a5a, band: 0xd8d8d0 };
 const lpg = (body: Hex, form = 'lpg-bottle'): BottleSpec => ({ form, kind: 'domestic', body, collar: 0x8a8a86 });
-export const BOTTLE_FORMS: Readonly<Record<string, BottleSpec>> = Object.freeze({
+const BOTTLE_FORMS: Readonly<Record<string, BottleSpec>> = Object.freeze({
   fjord: OXY_DE, foundry: OXY_DE, alpine: OXY_DE, winter: OXY_DE, verdant: { ...OXY_DE, form: 'kislorod', body: 0x3a5a9a },
   reservoir: OXY_US, autumn: OXY_US, polders: OXY_US, longleaf: OXY_US, monsoon: OXY_UK, blackglass: OXY_UK,
   steppe: lpg(0xb8302a, 'propan'), railyard: lpg(0x8a8c8a), skybridge: lpg(0xc8c8c4), titan_gorge: lpg(0xc8c8c4), cliffbridge: lpg(0xe0702a, 'butano'),
@@ -296,7 +299,7 @@ interface ChurnSpec { form: string; kind: ChurnForm['kind']; body: Hex; trim: He
 const CHURN: ChurnSpec = { form: 'milk-churn', kind: 'churn', body: 0xa0a4a4, trim: 0x808484 };
 const BIDON: ChurnSpec = { form: 'bidon', kind: 'bidon', body: 0xc0c4c8, trim: 0x9aa0a4 };
 const MILK_CAN: ChurnSpec = { form: 'milk-can', kind: 'can', body: 0xa8acac, trim: 0x84888a };
-export const CHURN_FORMS: Readonly<Record<string, ChurnSpec>> = Object.freeze({
+const CHURN_FORMS: Readonly<Record<string, ChurnSpec>> = Object.freeze({
   verdant: BIDON, steppe: BIDON, winter: BIDON, blackglass: BIDON, monsoon: BIDON, delta: BIDON, mangrove: BIDON,
   longleaf: MILK_CAN, skybridge: MILK_CAN, titan_gorge: MILK_CAN,
   autumn: CHURN, polders: CHURN, reservoir: CHURN, alpine: CHURN, fjord: CHURN, frontier: CHURN, cliffbridge: CHURN, saltwind: CHURN,
@@ -309,7 +312,7 @@ export const CHURN_FORMS: Readonly<Record<string, ChurnSpec>> = Object.freeze({
 interface WheelSpec { form: string; kind: WheelForm['kind']; rubber: Hex; rim: Hex; hub: Hex }
 const CART: WheelSpec = { form: 'cart-wheel', kind: 'cart', rubber: 0x7a5a3a, rim: 0x3a3632, hub: 0x5a4430 };
 const tyre = (rim: Hex): WheelSpec => ({ form: 'tyre-on-rim', kind: 'tyre', rubber: 0x262626, rim, hub: 0x3a3a36 });
-export const WHEEL_FORMS: Readonly<Record<string, WheelSpec>> = Object.freeze({
+const WHEEL_FORMS: Readonly<Record<string, WheelSpec>> = Object.freeze({
   verdant: CART, winter: CART, steppe: CART, monsoon: CART, blackglass: CART, delta: CART, mangrove: CART,
   fjord: tyre(0x4a4c48), foundry: tyre(0x6a6a4a), alpine: tyre(0x6a6a4a), reservoir: tyre(0x4f5338), autumn: tyre(0x4f5338), polders: tyre(0x4f5338),
   longleaf: tyre(0x4f5338), railyard: tyre(0x7a7a76), skybridge: tyre(0x9a9a96), titan_gorge: tyre(0x9a9a96), cliffbridge: tyre(0x8a8a86),
@@ -321,7 +324,7 @@ export const WHEEL_FORMS: Readonly<Record<string, WheelSpec>> = Object.freeze({
 
 /** Each map's pot cluster: the Saharan zir, the Levant's and Dalmatia's storage jars, the Navajo olla, the Bengal matka. */
 interface PotSpec { form: string; kind: PotForm['kind']; body: Hex; slip: Hex }
-export const POT_FORMS: Readonly<Record<string, PotSpec>> = Object.freeze({
+const POT_FORMS: Readonly<Record<string, PotSpec>> = Object.freeze({
   desert: { form: 'zir', kind: 'zir', body: 0xb0704a, slip: 0xd8b890 }, oasis: { form: 'zir', kind: 'zir', body: 0xa86a48, slip: 0xd0b088 },
   badlands: { form: 'zir', kind: 'zir', body: 0xa0603e, slip: 0xc8a07a }, orchard: { form: 'jarra', kind: 'amphora', body: 0xb8805a, slip: 0xd8c0a0 },
   saltwind: { form: 'amphora', kind: 'amphora', body: 0xa87050, slip: 0xc8a888 }, titan_gorge: { form: 'olla', kind: 'olla', body: 0xc8a07a, slip: 0x6a3a2a },
@@ -333,7 +336,7 @@ export const POT_FORMS: Readonly<Record<string, PotSpec>> = Object.freeze({
  *  Bengal chars and the Mekong. */
 interface LaundrySpec { form: string; post: Hex; cloths: readonly Hex[]; long?: boolean }
 const LINEN: LaundrySpec = { form: 'linen', post: 0x6a5a48, cloths: [0xe8e4d8, 0x8a3a3a, 0x3a5a8a] };
-export const LAUNDRY_FORMS: Readonly<Record<string, LaundrySpec>> = Object.freeze({
+const LAUNDRY_FORMS: Readonly<Record<string, LaundrySpec>> = Object.freeze({
   verdant: { ...LINEN, cloths: [0xe0dccc, 0xb8b0a0, 0x7a3a34] }, autumn: LINEN, frontier: { ...LINEN, cloths: [0xe8e4d8, 0x5a7aa8, 0xd8c8a0] },
   reservoir: LINEN, polders: { ...LINEN, cloths: [0xe8e4d8, 0x3a5a8a, 0xe8e4d8] }, longleaf: { ...LINEN, cloths: [0xd8ccb0, 0x6a7a9a, 0xe8e4d8] },
   coastal: { ...LINEN, cloths: [0xe8e8e0, 0x2a4a8a, 0xc83a2a] }, orchard: { ...LINEN, cloths: [0xe8e4d8, 0xd8a83a, 0x3a7a5a] },
@@ -351,7 +354,10 @@ const RED_DRUM_LATE = { shell: 0xb02a22, hoop: 0x801e18, head: 0xb02a22, band: 0
 /** A map's cable drum: the cable lead-sheathed before 1955 (periodClutterKit MODERN_KIND_INTRODUCED), PVC black after;
  *  the stations' steel spool and its orange cable. */
 function spoolOf(mapId: string): { form: string; spec: { cheek: Hex; cable: Hex; steel?: boolean } } {
-  if (mapId === 'moon' || mapId === 'mars') return { form: 'steel-spool', spec: { cheek: 0xb8b8b4, cable: 0xd8702a, steel: true } };
+  // (the Earthrise 228 rebuild, round 3; the blind judge: "a stray orange marker sits beside the berm") the Moon's spool
+  // carries the station's dark power cable: its orange coil read as a lone marker across the regolith
+  if (mapId === 'moon') return { form: 'steel-spool', spec: { cheek: 0xb8b8b4, cable: 0x3a3c40, steel: true } };
+  if (mapId === 'mars') return { form: 'steel-spool', spec: { cheek: 0xb8b8b4, cable: 0xd8702a, steel: true } };
   const year = MAP_SETTING_YEAR[mapId] ?? 2000;
   return year < 1955 ? { form: 'lead-cable-drum', spec: { cheek: 0x8a6a48, cable: 0x6a6c70 } } : { form: 'cable-drum', spec: { cheek: 0x9a7a52, cable: 0x232323 } };
 }
@@ -374,7 +380,7 @@ const SUPPLY: CrateSpec = { form: 'plank-crate', w: 0.92, h: 0.82, d: 0.86, boar
 const FRUIT: CrateSpec = { form: 'fruit-bin', w: 0.92, h: 0.62, d: 0.86, boards: 4, gap: 0.03, wood: 0xb0946a, frame: 0x8e7452, inside: 0x2a2018, kind: 'slats' };
 const TEA: CrateSpec = { form: 'tea-chest', w: 0.8, h: 0.8, d: 0.8, boards: 2, gap: 0.003, wood: 0xb08a5c, frame: 0x8a6a46, inside: 0x1a140e, kind: 'chest', strap: 0x9a9a92, stencil: 0x3a2a1e };
 const PLASTIC: CrateSpec = { form: 'plastic-box', w: 0.92, h: 0.66, d: 0.86, boards: 4, gap: 0.03, wood: 0xc23a2a, frame: 0xa83224, inside: 0x3a1410, kind: 'slats' };
-export const CRATE_FORMS: Readonly<Record<string, CrateSpec>> = Object.freeze({
+const CRATE_FORMS: Readonly<Record<string, CrateSpec>> = Object.freeze({
   fjord: AMMO_DE, winter: AMMO_SU, foundry: AMMO_DE, alpine: AMMO_DE, reservoir: AMMO_US, autumn: AMMO_US, polders: AMMO_US,
   longleaf: AMMO_US, monsoon: TEA, verdant: AMMO_SU, blackglass: { ...SUPPLY, form: 'shanghai-crate', wood: 0x8a7050 },
   steppe: SUPPLY, railyard: SUPPLY, skybridge: SUPPLY, titan_gorge: SUPPLY, copper_mesa: SUPPLY, urban: SUPPLY, frontier: { ...SUPPLY, form: 'bundeswehr-crate', wood: 0x6a6a4a },

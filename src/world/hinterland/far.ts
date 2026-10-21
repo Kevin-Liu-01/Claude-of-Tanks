@@ -17,7 +17,7 @@ import { hash12, hashString, noise2, noised, seedOffset, smoothstep } from './no
 import { arcWeight, hinterlandBearing, type HinterlandFarForm, type HinterlandFarSectorConfig, type HinterlandSpec } from './spec.ts';
 
 /** A far form's vocabulary (the panorama character's terrain knobs; amplitudes come from the sector's relief). */
-export interface FarCharacter {
+interface FarCharacter {
   foot: number; macroL: number; sharp: number; midL: number; gullyL: number; gullyM: number; warpM: number;
   valley: number; valleyL: number; tables: boolean; trees: number;
   mesaTalusM: number; mesaTalusShare: number; mesaCliffM: number; mesaFluteM: number;
@@ -291,9 +291,4 @@ export function createFarRelief(spec: HinterlandSpec, seed: number): HinterlandR
       return add;
     },
   };
-}
-
-/** The far forms' twin for the receipts: one sector's height at a point (full detail). */
-export function farHeightAt(spec: HinterlandSpec, seed: number, x: number, z: number, texelM = 0): number {
-  return createFarRelief(spec, seed)?.heightAt(x, z, 0, texelM) ?? 0;
 }

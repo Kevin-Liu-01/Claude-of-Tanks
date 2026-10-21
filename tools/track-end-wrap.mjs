@@ -136,8 +136,8 @@ export function endWrapRows(root) {
 
 /** Gate thresholds (mm). The fleet's tangent wraps sit within ±1 mm (graded chords circumscribe up to R / cos 3°);
  * a course wrapped about a station 38 mm from its wheel reads 16–23 mm. */
-export const END_WRAP_CUT_LIMIT_MM = 3;
-export const END_WRAP_DEVIATION_LIMIT_MM = 5;
+const END_WRAP_CUT_LIMIT_MM = 3;
+const END_WRAP_DEVIATION_LIMIT_MM = 5;
 export function endWrapFlags(row) {
   if (row.status !== 'ok') return [];
   const flags = [];

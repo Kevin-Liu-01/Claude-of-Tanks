@@ -46,6 +46,23 @@ avoid editing generated evidence manually. Combat-anatomy generation always
 uses `ALL_TANK_IDS`; donor/retired spec rows are not part of the playable gate.
 Receipts import `near`, `nearStrict` and `geometryHash` from
 `receipt-kit.test-support.mjs` instead of defining their own copies.
+Never `assert.equal`/`deepEqual` three.js objects (Object3D, geometry,
+attribute, material, texture): a failure dumps and diffs both graphs whole
+(the 226 T-72 receipts reached 40 GB). Assert a boolean (`assert.ok(a === b)`)
+or compare `graphLabels(...)`, uuids or names; `object3d-assert-lint.mjs`
+fails the suite otherwise (`--fix` rewrites, `--types` audits with the checker,
+`// object3d-assert-ok: <reason>` accepts a false positive).
+
+Fleet tool defaults (2026-10-16, test-speed R4c/R4d): every `--ids` reader
+passes its list through `uniqueIds` (`id-list.mjs`), so a repeated id fails by
+name before any server, browser or capture hold (`id-list.selftest` scans
+`tools/*.mjs`). Browser tools take their Vite `server` from `toolServerOptions`
+(127.0.0.1, strictPort false), build URLs with `boundOrigin(server)` (never
+`localhost`), and load their first page with `loadReadyPage` (180 s navigation,
+one retry of a timeout; `COT_NAV_TIMEOUT_MS`, `COT_READY_TIMEOUT_MS`,
+`COT_NAV_RETRIES`) from `tool-page-load.mjs`. `gen-interior-fills.mjs`
+generates at the shipped records' flags by default (`--rounds=8 --min-fine=1`,
+also spelled `--release`); exploration passes its own rounds explicitly.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
@@ -140,6 +157,12 @@ aggregate score must reach 92, not merely the legacy 90 fleet floor. Keep that
 floor quality-bar-aware through geometry packets and `tank-standard-check`;
 never replace it with a favorable average or waive it because component masks
 are unavailable on a fused source mesh.
+The §B2 contiguity scan reads `contig-grid.mjs`: a 6 cm lattice fixed in the
+vehicle frame and re-binned at all nine sub-cell phases, so an add-on that only
+moves the AABB cannot hide or reveal a gap. Never frame a scan from the AABB;
+census hidden gaps with `contig-phase-audit.mjs --ids=<ids>`. The gaps the old
+raster missed are listed in `docs/geometry-gate/contig-hidden.json`
+(`contig-hidden-gaps.mjs --report`): the gate passes those and fails any other.
 
 `gen-interior-fills.mjs` applies the explicit body-boundary recipes in
 `interior-fill-body-policy.mjs` before voxelization. A separately mounted cage,
@@ -159,6 +182,21 @@ door target supersedes the older open entrance: exterior rays must hit the
 finite leaf, while interior rays retain the bay walls. Retain raw residuals, test
 missing/moved stock and wrong-source negatives, and keep all geometry in the
 source and physical audits.
+
+The Garage running-gear band (2026-10-17, the wheel-band lane): `tools/garage-wheel-band.browser.mjs` stages Garages
+and tanks as the Garage does (the dormant energy skin on), poses beside the run and reports the vehicle-tag share of
+the tank's pixels in the scene target's alpha and the ground occlusion's step across the belly line (the same frame
+with `__LIGHT_TUNE.VEHICLE_GROUND_AO = 0` as reference); `--battle` adds a daylight player view, plain and with the
+live Juggernaut skin, `--root` serves another checkout for a before/after pair, `--gate` fails on a step of 4 levels or
+a tag share under 0.8. It takes the capture lock. Round 3 (2026-10-18): `--battle-thermal` adds the sensor view (the
+tank in its hostile heat stand-ins under the white-hot grade), `--views=front` frames the near run's front end (the
+KF51's flaps), and the report counts untagged unlit pixels under the line.
+`tools/vehicle-material-registration.mjs [--ids=a,b|all] [--quality=low,high]` (node, no GPU; round 2, the same day)
+builds each tank through a recording cascade context and fails on any drawn opaque lit material without its own
+vehicle registration (unregistered, a replaced cascade hook, no vehicle-tag write), any other opaque one without the
+unlit vehicle tag (round 3), or one left registered after dispose:
+the material invariant behind the band. `tank:release:check` runs it on the released ids; `--ids=all` (220 tanks, two
+qualities) takes about 25 minutes in one process, so split it across processes for a fleet sweep.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

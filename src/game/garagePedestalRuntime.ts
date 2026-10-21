@@ -43,7 +43,7 @@ type GarageSwitchStageName = 'import' | 'paint' | 'build' | 'stage' | 'compile';
  * `tail` copy the factory's own interval receipts so a switch profile can
  * attribute construction without changing any construction step.
  */
-export interface GarageSwitchRecord {
+interface GarageSwitchRecord {
   id: string;
   token: number;
   path: 'cached' | 'procedural' | 'speculative' | 'aborted';

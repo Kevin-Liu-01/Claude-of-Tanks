@@ -22,7 +22,11 @@ const option = (name, fallback) => {
   return index >= 0 ? args[index + 1] : fallback;
 };
 const outDir = resolve(option('out', join(ROOT, 'shots/showcase-r2/raw')));
-const config = JSON.parse(readFileSync(join(HERE, 'showcase-r2.json'), 'utf8'));
+// COT_CAPTURE_LOAD_TIMEOUT_MS: the page-load waits on a loaded, shared machine (a cold dev-server load of the game
+// can outlast the default there); the default is unchanged.
+const LOAD_MS = Number(process.env.COT_CAPTURE_LOAD_TIMEOUT_MS) || 120000;
+// --config <file>: another shot list in the same shape (r14b: the home page's Garage, tools/marketing-shots/home-garage.json)
+const config = JSON.parse(readFileSync(resolve(HERE, option('config', 'showcase-r2.json')), 'utf8'));
 const onlyIds = new Set((option('ids', '') || '').split(',').filter(Boolean));
 const productShots = config.shots.filter((shot) =>
   ['garage', 'gallery', 'studio', 'mobile'].includes(shot.sourceType)
@@ -82,16 +86,16 @@ try {
 
   await page.setViewport(desktopViewport);
   await page.goto(`${baseUrl}/?nosplash=1&qa=1`, {
-    waitUntil: 'domcontentloaded', timeout: 120000,
+    waitUntil: 'domcontentloaded', timeout: LOAD_MS,
   });
   await page.waitForFunction(() => window.__GAME_READY === true && window.__GARAGE_WORKSHOP,
-    { timeout: 120000 });
+    { timeout: LOAD_MS });
   await page.waitForFunction(() => {
     const stats = window.__GARAGE_WORKSHOP.stats();
     return stats.architecture?.ready === true && stats.architecture.presented === true;
-  }, { timeout: 120000 });
+  }, { timeout: LOAD_MS });
   await page.waitForFunction(() => window.__GARAGE_WORKSHOP.stats().built === true,
-    { timeout: 120000 }).catch(() => {
+    { timeout: LOAD_MS }).catch(() => {
     console.warn('[showcase-r2-ui] optional workshop did not finish before capture window');
   });
 
@@ -132,10 +136,10 @@ try {
   await page.setViewport(desktopViewport);
   const galleryShots = productShots.filter((entry) => entry.sourceType === 'gallery');
   await page.goto(`${baseUrl}/gallery.html?id=${galleryShots[0]?.vehicleId || 'k2'}`, {
-    waitUntil: 'domcontentloaded', timeout: 120000,
+    waitUntil: 'domcontentloaded', timeout: LOAD_MS,
   });
   await page.waitForFunction(() => window.__TANK_GALLERY?.ready === true,
-    { timeout: 120000 });
+    { timeout: LOAD_MS });
   for (const shot of galleryShots) {
     errors = [];
     const mode = shot.mode === 'hero' ? 'appearance' : shot.mode;
@@ -153,13 +157,15 @@ try {
   const studioShot = productShots.find((entry) => entry.sourceType === 'studio');
   if (studioShot) {
     errors = [];
+    // --studio-scene <file> (2026-10-15: on today's Steinburg the old alley scene's lens framed a grass bank, the tanks
+    // cut off at both edges): the scene the Studio directs in the shot, its map from the scene; seeked to its fxTime
     const scene = JSON.parse(readFileSync(
-      join(HERE, 'scenes-action-r3/85_action_urban_alley_flash.json'), 'utf8'));
-    await page.goto(`${baseUrl}/?studio=1&map=urban&nogate=1`, {
-      waitUntil: 'domcontentloaded', timeout: 120000,
+      resolve(option('studio-scene', join(HERE, 'scenes-action-r3/85_action_urban_alley_flash.json'))), 'utf8'));
+    await page.goto(`${baseUrl}/?studio=1&map=${scene.map ?? 'urban'}&nogate=1`, {
+      waitUntil: 'domcontentloaded', timeout: LOAD_MS,
     });
     await page.waitForFunction(() => window.__GAME_READY === true && window.__STUDIO?.active === true,
-      { timeout: 120000 });
+      { timeout: LOAD_MS });
     await page.evaluate(async (nextScene) => {
       await window.__STUDIO.load(nextScene);
       window.__STUDIO.seek(nextScene.fxTime || 0);

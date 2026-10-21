@@ -24,7 +24,7 @@ sourced.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(pol
 sourced.setAttribute('color', new THREE.BufferAttribute(Float32Array.from(pole.colors), 3));
 sourced.setIndex(new THREE.BufferAttribute(Uint16Array.from(pole.indices), 1));
 const before = Float32Array.from(pole.colors);
-assert.equal(markPoleTimber(sourced), sourced, 'marked in place');
+assert.ok(markPoleTimber(sourced) === sourced, 'marked in place');
 /** Each wood triangle's extents and its corners' axes (the models are flat-shaded: a face is its own piece). */
 function woodTriangles(geometry, woodAt) {
   const p = geometry.getAttribute('position'), axis = geometry.getAttribute('aPoleWood'), index = geometry.index;
@@ -82,7 +82,7 @@ const distance = markPoleTimber(makeTelephonePoleDistanceGeometry());
   for (const f of trunk) assert.deepEqual(f.axes, [1, 1, 1]);
   for (const f of arms) assert.deepEqual(f.axes, [2, 2, 2]);
   assert.ok(ceramic > 50, `insulators ${ceramic}`);
-  assert.equal(distance.index, null, 'the distance pole stays a triangle list');
+  assert.ok(distance.index === null, 'the distance pole stays a triangle list');
   distance.dispose();
 }
 
@@ -100,7 +100,7 @@ const distance = markPoleTimber(makeTelephonePoleDistanceGeometry());
   post.setAttribute('color', new THREE.BufferAttribute(Float32Array.from(pole.colors), 3));
   post.setIndex(new THREE.BufferAttribute(Uint16Array.from(keep), 1));
   const trianglesBefore = keep.length / 3;
-  assert.equal(roundPoleShaft(post), post, 'rounded in place');
+  assert.ok(roundPoleShaft(post) === post, 'rounded in place');
   const p = post.getAttribute('position'), n = post.getAttribute('normal'), c = post.getAttribute('color'), index = post.index.array;
   assert.equal(index.length / 3, trianglesBefore - 16 + 24, 'the eight flat faces (sixteen triangles) out, twelve round in');
   const isWood = (v) => near(c.getX(v), sourceTone[0], 0.012) && near(c.getY(v), sourceTone[1], 0.012) && near(c.getZ(v), sourceTone[2], 0.012);

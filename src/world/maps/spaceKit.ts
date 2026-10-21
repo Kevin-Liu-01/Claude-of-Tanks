@@ -38,7 +38,9 @@ interface SpacePaint {
   bag: number; glass: number;
 }
 const PAINT: Readonly<Record<SpaceWorld, SpacePaint>> = {
-  moon: { hull: 0xe2e0d8, blanket: 0xd8d6cc, foil: 0xc49a4a, frame: 0x4a4e52, dark: 0x101214, accent: 0xb8b8b0,
+  // (the Earthrise 228 rebuild, round 3; the blind judge: "a small dark speck floats on the hillside" — a crater-rim mast's
+  // dish over a lattice too dark to see against the regolith) the Moon's frames the station's steel, the colour of the dust
+  moon: { hull: 0xe2e0d8, blanket: 0xd8d6cc, foil: 0xc49a4a, frame: 0x8d8a84, dark: 0x101214, accent: 0xb8b8b0,
     apron: 0x5f5c57, cell: 0x1c2638, bag: 0x6f6c66, glass: 0x52849a },
   mars: { hull: 0xd9d2c4, blanket: 0xcfc6b4, foil: 0xb98a4a, frame: 0x5a5650, dark: 0x120f0d, accent: 0xd8712a,
     apron: 0x7a5440, cell: 0x1f2f4a, bag: 0x8a5a40, glass: 0x86b9d8 },
@@ -78,11 +80,22 @@ function hatch(T: HutTools, P: SpacePaint, x: number, y0: number, z0: number, w:
   T.tag('door', 'hatch-leaf', 'metal');
   const swing = (g: THREE.BufferGeometry): THREE.BufferGeometry =>
     g.translate(w * 0.48, 0, 0).rotateY(-0.3 * nz).translate(-w * 0.48, 0, 0).translate(x, y0 + h / 2, z0 + nz * (fd - 0.04 + 0.025));
-  T.put(swing(T.mbox(w * 0.96, h * 0.96, 0.05)), P.hull);
-  // the leaf's viewport: its ring proud of the leaf's outer face, the pane in it (lit at night, the airlock manned)
-  const port = (r: number, d: number, z: number): THREE.BufferGeometry => { const g = T.cylinder(r, r, d, 12); g.rotateX(Math.PI / 2); return g.translate(0, h * 0.2, nz * z); };
-  T.put(swing(port(0.15, 0.04, 0.035)), P.frame);
-  T.put(T.aperture(swing(port(0.11, 0.02, 0.05)), [nz * Math.sin(-0.3 * nz), 0, nz * Math.cos(-0.3 * nz)]), P.glass, 0.02);
+  // the leaf round its viewport, cut through it (the r2 sweep, 227: a disc over the pane on a solid leaf read as a painted
+  // plate): its panels about the square hole; the viewport's rim an open ring of members over the hole's edge on the
+  // outer face, the pane in the hole at the leaf's middle (lit at night, the airlock manned)
+  const hw = w * 0.48, hh = h * 0.48, cyv = h * 0.2, H = 0.16, t = 0.05;
+  const panel = (x0: number, x1: number, y0: number, y1: number) => swing(T.mbox(x1 - x0, y1 - y0, t).translate((x0 + x1) / 2, (y0 + y1) / 2, 0));
+  T.put(panel(-hw, hw, -hh, cyv - H), P.hull);
+  T.put(panel(-hw, hw, cyv + H, hh), P.hull);
+  T.put(panel(-hw, -H, cyv - H, cyv + H), P.hull);
+  T.put(panel(H, hw, cyv - H, cyv + H), P.hull);
+  const rim = 0.15;
+  for (let k = 0; k < 12; k++) {
+    const a0 = (k / 12) * Math.PI * 2, a1 = ((k + 1) / 12) * Math.PI * 2;
+    T.put(swing(T.mbeam([rim * Math.cos(a0), cyv + rim * Math.sin(a0), nz * 0.045], [rim * Math.cos(a1), cyv + rim * Math.sin(a1), nz * 0.045], 0.04, 0.04)), P.frame);
+  }
+  const pane = T.cylinder(0.14, 0.14, 0.012, 12); pane.rotateX(Math.PI / 2); pane.translate(0, cyv, 0);
+  T.put(T.aperture(swing(pane), [nz * Math.sin(-0.3 * nz), 0, nz * Math.cos(-0.3 * nz)]), P.glass, 0.02);
 }
 
 /**
@@ -170,11 +183,17 @@ function habModule(T: HutTools, world: SpaceWorld): void {
     ladder(T, P, 0, len / 2 + 0.56, cy - 0.8);
     T.tag('fitting', 'ports', 'metal');
     for (const s of [-1, 1]) for (const z of [-1.2, 1.2]) {
-      // (the flange's face 3 cm behind the glass's: they stood flush, and the flange's disc covered the pane)
+      // the port's flange on the hull, the pane on it, set back inside an open rim of members standing proud of the glass
+      // (the r2 sweep, 227: the pane proud of a solid flange read as a painted plate)
+      // (the flange a boss of the hull, in the hull's own paint: a dark disc on the white hull read as a painted plate)
       const ring = T.cylinder(0.3, 0.3, 0.1, 12); ring.rotateZ(Math.PI / 2);
-      T.put(ring.translate(s * (r - 0.01), cy + 0.5, z), P.frame);
+      T.put(ring.translate(s * (r - 0.01), cy + 0.5, z), P.hull, 0.03);
       const pane = T.cylinder(0.22, 0.22, 0.04, 12); pane.rotateZ(Math.PI / 2);
       T.put(T.aperture(pane.translate(s * (r + 0.05), cy + 0.5, z), [s, 0, 0]), P.glass, 0.02);
+      for (let k = 0; k < 12; k++) {
+        const a0 = (k / 12) * Math.PI * 2, a1 = ((k + 1) / 12) * Math.PI * 2, R = 0.235;
+        T.put(T.mbeam([s * (r + 0.095), cy + 0.5 + R * Math.sin(a0), z + R * Math.cos(a0)], [s * (r + 0.095), cy + 0.5 + R * Math.sin(a1), z + R * Math.cos(a1)], 0.05, 0.05), P.frame);
+      }
     }
     // the radiators on their struts over the drum
     T.tag('brace', 'radiator-struts', 'metal');

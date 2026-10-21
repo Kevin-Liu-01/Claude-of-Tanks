@@ -13,7 +13,7 @@ for (const mapId of MAP_IDS) {
   for (let i = 0; i < 12; i++) {
     const size = 0.14 + (i / 11) * 0.26, g = ejectaPiece(climate, mapId, size, 7 + i * 131);
     assert.deepEqual(Object.keys(g.attributes).sort(), ['color', 'normal', 'position', 'uv'], 'the baked family\'s attributes');
-    assert.equal(g.index, null);
+    assert.ok(g.index === null);
     const p = g.attributes.position, c = g.attributes.color, tris = p.count / 3;
     assert.ok(tris >= 8 && tris <= 90, `${mapId}: ${tris} triangles`);
     let lo = Infinity, hi = -Infinity, spanX = 0;

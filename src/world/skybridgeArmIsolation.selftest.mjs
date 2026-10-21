@@ -15,7 +15,7 @@ const BEFORE = {
   winter: '9726f7f88e679a00',
   urban: 'd55a1084385adf87',
   coastal: 'bd0869e3b6f74cbd',
-  autumn: '5647eccd5ae5f182',
+  autumn: '7729ce23aed0d036', // 2026-10-17 re-pinned, was 5647eccd5ae5f182: MAPS Lane A's autumn backlog (item/maps-backlog-227): the f3 hedge-bank ridge at (128, 59) retired (its 1.6 m faces were the steep cells inside zone 2's disc); the ford green stays at (154, 54)
   steppe: 'f39da59d3b8341be',
   railyard: '3fc793f5cfa28201',
   frontier: '6dd169127afbaa73',
@@ -25,7 +25,7 @@ const BEFORE = {
   monsoon: '84b5ee48c992bafc', // 2026-10-16 re-pinned, was ee7f16856debcd25: MAPS Monsoon Ridge Kohima (integ/226 d8a514543, item/maps-monsoon efaafd74c; merged before the port, which was cut from d4b0d0fcb); the port's own side 074713b3a^2 still hashes to the old pin
   alpine: 'ad1861235bf42d36', // 2026-10-16 re-pinned, was 02f111788b73aad4: the Glacier Hinterland back in 226 (integ/226 1ad81a403, the integrator's re-revert: alpine rimH 52 -> 30); the port's merge 074713b3a left it at its pin
   caldera: '8242b97c1c879b54',
-  foundry: '9d91c513ba3f7e1c',
+  foundry: '82760ac67681631c', // 2026-10-17 re-pinned, was 9d91c513ba3f7e1c: MAPS Lane A's Ironworks re-landing (item/maps-ironworks-227, round d4b718bd6): the furnace line's floor, a level apron cut into the ore berm at (-74, -29), 48 x 22 m, level 2.4, bank 14 m (without it the old hash holds)
   ruinspires: 'f8fb31019a15a8f3',
   blackglass: '05d5d86640658a70',
   titan_gorge: '485e822b044f058f',
@@ -40,7 +40,7 @@ const BEFORE = {
   saltwind: '590eec2375e191ba',
   reservoir: '863f6b8225ce9365',
   mars: 'b760ed9717fba45a',
-  moon: '7ce00910e42eb981',
+  moon: '0aa6b7fb664e549a', // 2026-10-18 re-pinned, was 7ce00910e42eb981: MAPS Earthrise 228 rebuild (item/maps-earthrise-228 8018118a90, integ/228 27adeab6a; the owner's ask, independent blind 16-0): the moon's landforms and works rebuilt
   cliffbridge: '073028df8cb5fabb',
 };
 const changed = [];

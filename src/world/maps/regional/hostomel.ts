@@ -636,7 +636,7 @@ const ruin: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const HOSTOMEL_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const HOSTOMEL_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   warehouse: hangar,
   depot: maintenanceHangar,
   tower: controlTower,

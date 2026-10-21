@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript-compiler-api';
+import { gunshipShotOf } from '../fx/gunshipRounds.ts';
 
 // Execute the production receiver bodies with their audio/WebGL boundaries
 // replaced. No AudioContext, GPU, timing guess, or duplicated routing policy.
@@ -79,6 +80,9 @@ const fxBindings = {
   // (FX lane 10-14) a wire-guided round pays out its wire from the launcher's tube (missileWires.selftest)
   missileLookFor: (name) => ({ wires: name === 'TOW' ? 2 : 0 }),
   beginWire: (e, look) => fxCalls.push(`wire:${e.shellId}:${look.wires}`),
+  // (ac130-fx-228) the AC-130's shots: the real resolver, their own muzzle (gunshipMuzzleFx), never a tank cannon's
+  gunshipShotOf, gunshipMuzzleFx: (e, gun) => fxCalls.push(`gunship:${gun}`), gunshipCaliberMm: () => 180,
+  subjectFor: (id) => (id === 'pilot' ? { aerial: { kind: 'gunship' } } : null),
 };
 const predictFx = await receiver('../fx/effects.ts', fxCallback('weapon:predicted'), fxBindings);
 const confirmFx = await receiver('../fx/effects.ts', fxCallback('shell:fired'), fxBindings);
@@ -103,4 +107,15 @@ assert.deepEqual(Array.from(fxBindings.missileLaunchAt.get(20)), [...shot.muzzle
   'its launch point anchors its trail, its calibre sizes its airframe');
 confirmFx({ ...missile, shellId: 21, shellName: 'TOW' });
 assert.deepEqual(fxCalls.slice(5), ['missile', 'wire:21:2'], 'a confirmed wire-guided round pays out its wire from its launcher');
+// (ac130-fx-228) the gunship's three guns: their own muzzle by their sound, or by the firing aircraft for a networked shot
+{
+  const before = fxCalls.length;
+  predictFx({ ...shot, weaponSound: 'gunship-autocannon', caliberMm: 30, shellType: 'AP' });
+  confirmFx({ ...shot, shellId: 30, weaponSound: 'gunship-howitzer', caliberMm: 152, shellType: 'HE' });
+  confirmFx({ ...shot, shellId: 31, weaponSound: 'gunship-missile', caliberMm: 180, shellType: 'HE' });
+  confirmFx({ ...shot, shellId: 32, weaponSound: null, shooterId: 'pilot', caliberMm: 152, shellType: 'HE' });
+  assert.deepEqual(fxCalls.slice(before), ['gunship:cannon', 'gunship:howitzer', 'gunship:missile', 'gunship:howitzer'],
+    "the gunship's shots take the gunship muzzle, never a tank cannon's flash at the lens");
+  assert.deepEqual(Array.from(fxBindings.missileLaunchAt.get(31)), [...shot.muzzlePos, 180], "the gunship missile anchors its hellfire's trail");
+}
 console.log('localWeaponPresentation.selftest: production audio/FX receivers isolate intent feedback and retain authority');

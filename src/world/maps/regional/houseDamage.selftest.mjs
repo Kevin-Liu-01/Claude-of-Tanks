@@ -110,12 +110,24 @@ for (const style of ARCHITECTURE_STYLES) {
   }
 }
 assert.ok(described > 200, `most builders describe from their plan (${described})`);
+// (looks 227: Siwa's kershef adobe is built on buildHouse since e46316912, its plan drawn in with its batter)
+{
+  const style = ARCHITECTURE_STYLES.find((s) => s.id === 'siwa');
+  const { parts, w, d, h } = build(style, 'adobe', 11, 'plaster');
+  const plan = regionalKitPlanOf(parts);
+  const a = kitOf('adobe', 'siwa', 'describe')({ structureIdx: 3, mapId: 'damage', builder: 'adobe', style: 'siwa', parts, w, d, h,
+    placement: { x: 0, y: 0, z: 0, yaw: 0 }, massClass: 'house', seed: 99, kitPlan: plan });
+  assert.ok(plan?.houses?.length && a?.kit === 'siwa', 'siwa/adobe: the kershef house describes from its house plan');
+  // (the kershef wall's foot 0.25 m in from the plot's edge; each floor's face drawn in by the batter, the next floor's further)
+  assert.ok(a.storeys.every((st, i) => st.faces[1].origin[0] < (i ? a.storeys[i - 1].faces[1].origin[0] : w / 2 - 0.25 - 0.05)),
+    'siwa/adobe: its floors\' faces drawn in with the batter');
+}
 console.log(`house damage: ${described} anatomies from house plans, ${houseless} builds left to the default kit`);
 
 // 2. breach: every face of every storey of a sample of houses, determinism, caps, rim and room bounds
 const SAMPLE = [['hessian', 'cottage', 'stone'], ['hessian', 'tavern', 'plaster'], ['franconian', 'rowhouse', 'plaster'], ['kolkhoz', 'cottage', 'plaster'],
   ['breton', 'cottage', 'stone'], ['dalmatian', 'cottage', 'stone'], ['polder', 'cottage', 'stone'], ['savoyard', 'cottage', 'plaster'],
-  ['glencanyon', 'megatower', 'plaster2']];
+  ['glencanyon', 'megatower', 'plaster2'], ['siwa', 'adobe', 'plaster']];
 let holes = 0, verts = 0, pcs = 0, worst = 0, poured = 0, reinforced = 0;
 for (const [styleId, id, wall] of SAMPLE) {
   const style = ARCHITECTURE_STYLES.find((s) => s.id === styleId);
@@ -183,8 +195,9 @@ for (const [styleId, id, wall] of SAMPLE) {
     assertFacing(one.runs, `${styleId}/${id} damaged`);
     for (const c of res.cuts) {
       assert.ok(c.radiusM > 0 && c.radiusM < 1.0 && c.depthM <= 0.06, `${styleId}/${id}: a spall is a small, shallow cut (${c.radiusM}, ${c.depthM})`);
-      const onFace = a.storeys.some((st) => st.faces.some((f) => Math.abs((c.x - f.origin[0]) * f.out[0] + (c.z - f.origin[2]) * f.out[2]) < 1e-3
-        && c.nx === f.out[0] && c.nz === f.out[2]));
+      // (on the main body's faces or another body's: a Siwan house's roof room is a body of its own, looks 227)
+      const onFace = [a, ...(a.kitPlan?.bodies ?? [])].some((b) => b.storeys.some((st) => st.faces.some((f) => Math.abs((c.x - f.origin[0]) * f.out[0] + (c.z - f.origin[2]) * f.out[2]) < 1e-3
+        && c.nx === f.out[0] && c.nz === f.out[2])));
       assert.ok(onFace, `${styleId}/${id}: a spall cut lies on a face's plane`);
     }
     spalls += res.cuts.length; dpcs += one.pieces.count; stages++;

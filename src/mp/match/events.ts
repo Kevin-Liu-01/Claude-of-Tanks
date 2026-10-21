@@ -32,7 +32,7 @@ interface QueuedEvent {
   event: WireEvent;
 }
 
-export interface ReliableEventQueueOptions {
+interface ReliableEventQueueOptions {
   maxEventsPerFlush?: number;
   maxPending?: number;
   isHeavy?: (event: WireEvent) => boolean;

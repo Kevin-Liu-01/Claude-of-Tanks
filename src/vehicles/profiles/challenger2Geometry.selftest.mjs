@@ -57,7 +57,7 @@ for (const bucket of ['hullRunningGearDark', 'hullRunningGearDetail']) {
   }
 }
 
-assert.equal(tank.root.getObjectByName('hullRubber'), undefined,
+assert.ok(tank.root.getObjectByName('hullRubber') === undefined,
   'former vertical fender bars must not remain as rubber track intrusions');
 
 for (const [label, minX, maxX] of [

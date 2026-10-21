@@ -27,7 +27,8 @@ assert.deepEqual(presentation.battleRows([
 
 console.log('rosterPresentation.selftest: lobby/local naming and player order passed');
 
-const aircraftRow = {id:'ac130',name:'AC-130',tier:'',kind:'aircraft',isPlayer:true};
+// (ac130-fx-228) an aircraft row is named by its renderer (ui/killSourceIdentity.ts, through battleLoad.ts)
+const aircraftRow = {id:'ac130',name:'',tier:'',kind:'aircraft',isPlayer:true};
 assert.deepEqual(presentation.battleRows([
  {specId:'m1a1_abrams_hc',team:'player',isPlayer:true,aerial:{kind:'gunship'}},
  {specId:'t90am',team:'player',spec:{name:'T-90M'}},

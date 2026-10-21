@@ -28,6 +28,16 @@ assert.ok(T.tow.puff >= 0.4 && T.mclos.puff >= 0.5 && T.hellfire.puff <= 0.1 && 
   'a pulsing sustainer lays lumps; a steady motor a smooth line');
 assert.ok(T.hellfire.tau > T.tow.tau && T.tow.tau > T.spike.tau && T.spike.tau > T.kornet.tau && T.kornet.tau > T.arkan.tau,
   'dense rail trail > TOW > fire-and-forget > beam-rider wisps');
+// (ac130-fx-228 r2) no family's own trail fades near the camera; only the gunship's own missile (born beside its lens)
+for (const [id, t] of Object.entries(T)) if (t) assert.equal(t.nearM ?? 0, 0, `${id}: no near fade of its own`);
+{
+  const { readFileSync } = await import('node:fs');
+  const trails = readFileSync(new URL('./missileTrails.ts', import.meta.url), 'utf8');
+  assert.match(trails, /v\[i \* 6 \+ 3\]\.set\(look\.rise, look\.windK, look\.glow, look\.nearM \?\? 0\);/, 'the near fade rides in the look table');
+  assert.match(trails, /if \( vNear > 0\.0 \) T \*= smoothstep\( 0\.2 \* vNear, vNear, vR\.z \);/, 'none within a fifth of it, full past it');
+  const effects = readFileSync(new URL('./effects.ts', import.meta.url), 'utf8');
+  assert.match(effects, /const tl = trail\.pylon \? gunshipTrailOf\(base\) : base;/, "only the gunship's missile (drawn off its pylon) takes it");
+}
 assert.ok(T.hellfire.life >= 9 && T.kornet.life <= 4, 'a dense trail hangs, a wisp is soon gone');
 assert.ok(T.mclos.c0[0] < T.hellfire.c0[0], 'an old motor is greyer');
 

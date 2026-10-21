@@ -40,7 +40,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
-import { vehicleAmbientFloorHook } from '../materials.ts';
+import { chainVehicleMaterialHook, cloneFloorlessVehicleMaterial, cloneRehookedVehicleMaterial, rehookVehicleMaterial } from '../materials.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { addMissionAttachmentReceiver } from '../missionAttachmentReceiver.ts';
 import { buildLeopardRevolution } from './leopardRevolution.ts';
@@ -4361,24 +4361,18 @@ function buildLeo2A6(P: TankBuilderPort) {
       // green-biased canvas, luminance ratio ref/proc moves 1.11 -> ~1.0.
       P.mats.canvasCloth.color.setHex(0x3e4532);
       // (owner 2026-09-22 running-gear finish: dishes and end-wheel bodies keep the scheme wheel paint; wornDish/wornDrum left.)
-      const rehook = <T extends VehicleMaterial>(m: T): T => {
-        m.onBeforeCompile = vehicleAmbientFloorHook;
-        m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-        return m;
-      };
       // r8 #2 platePale: the lower-plate skin + taillight-oval material (the
       // hullCloth bucket — a6-unused before this round, so the swap scopes to
       // exactly those pieces). The ref plate samples med L 89-108 where every
       // shared pale bucket renders <= 68 on a vertical rear face (hemi-floor
       // law: canvasCloth 78, detail 68, wood 80 tilted) — the skin needs its
       // own albedo. Bin-green hue family (G >= R), env pinned low per the
-      // rear-face sky-wash law; clone loses onBeforeCompile -> rehook.
-      const platePale = P.mats.canvasCloth.clone();
+      // rear-face sky-wash law; a re-hooked clone in the set's registration (cloneRehookedVehicleMaterial).
+      const platePale = cloneRehookedVehicleMaterial(P.mats.canvasCloth);
       platePale.color.setHex(0x5b6449);                    // r8 sampled: un-swapped canvasCloth read 75; 0x626c4e and 0x5b6449 both render face 95 / down-slope 114 (tone-curve shoulder) -> whole-trapezoid med 95, mid of the ref's 89-108 band
       platePale.roughness = 0.92;
       platePale.envMapIntensity = 0.25;
       P.disposables.push(platePale);
-      rehook(platePale);
       // r6 #1 TOP-GRIME HOOK (track-shoe clones only; the measured mechanism
       // behind the critic's 1.19-1.23x front wrap): the wrap corners read hot
       // because up-facing shoe surfaces take ~1.9x the key + full sky of a
@@ -4391,17 +4385,13 @@ function buildLeo2A6(P: TankBuilderPort) {
       // parity rects, normal.y ~ 0) render byte-identical. Chained after the
       // fleet ambient-floor hook on these per-build clones; own cache key;
       // zero shared-path edits.
-      const regrime = <T extends VehicleMaterial>(m: T): T => {
-        m.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
-          vehicleAmbientFloorHook(shader);
-          shader.fragmentShader = shader.fragmentShader.replace(
-            '#include <opaque_fragment>',
-            'outgoingLight *= ( 1.0 - 0.26 * saturate( normal.y ) );\n\t#include <opaque_fragment>',
-          );
-        };
-        m.customProgramCacheKey = () => 'leo-shoe-topgrime-v1';
-        return m;
-      };
+      // (2026-10-17, the wheel-band lane: chained after the material's own hook, its registration with it)
+      const regrime = <T extends VehicleMaterial>(m: T): T => chainVehicleMaterialHook(m, 'leo-shoe-topgrime-v1', (shader) => {
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <opaque_fragment>',
+          'outgoingLight *= ( 1.0 - 0.26 * saturate( normal.y ) );\n\t#include <opaque_fragment>',
+        );
+      });
       P.hullG.traverse((ob) => {
         if (!(ob instanceof THREE.Mesh) || Array.isArray(ob.material)) return;
         const m = ob.material;
@@ -5430,11 +5420,6 @@ export function buildLeo2A5(builder: object) {
         // brighter) — the a6 dish tone rendered 0.78 ratio (over-bright) here.
         // Transfer: rendered/material ~0.83 per channel on the dish faces.
         // (owner 2026-09-22 running-gear finish: dishes and end-wheel bodies keep the scheme wheel paint; wornDish/wornDrum left.)
-        const rehook = <T extends VehicleMaterial>(m: T): T => {
-          m.onBeforeCompile = vehicleAmbientFloorHook;
-          m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-          return m;
-        };
         // top-grime hook (a6 r6 #1): up-facing shoe crowns shade toward the wrap
         // accent; vertical faces render byte-identical. Clones lose the fleet
         // ambient floor (gearFloor law) — re-chained here.
@@ -5458,34 +5443,25 @@ export function buildLeo2A5(builder: object) {
         // the gap tone (med had run 62.2 -> 71.8 on the pad lift), and the
         // same term walks the front-face med back onto the ref's 63.5 line;
         // the r8-a nz-0.33 failure was a dark-chain artifact, not the term.
-        const regrime = <T extends VehicleMaterial>(m: T): T => {
-          m.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
-            vehicleAmbientFloorHook(shader);
-            shader.fragmentShader = shader.fragmentShader.replace(
-              '#include <opaque_fragment>',
-              'outgoingLight *= ( 1.0 - 0.34 * abs( normal.y ) ) * ( 1.0 - 0.33 * abs( normal.z ) );\n\t#include <opaque_fragment>',
-            );
-          };
-          m.customProgramCacheKey = () => 'leo-a5-shoe-topgrime-v7';
-          return m;
-        };
+        // (2026-10-17, the wheel-band lane: chained after the material's own hook, its registration with it)
+        const regrime = <T extends VehicleMaterial>(m: T): T => chainVehicleMaterialHook(m, 'leo-a5-shoe-topgrime-v7', (shader) => {
+          shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <opaque_fragment>',
+            'outgoingLight *= ( 1.0 - 0.34 * abs( normal.y ) ) * ( 1.0 - 0.33 * abs( normal.z ) );\n\t#include <opaque_fragment>',
+          );
+        });
         // r8-e CHAIN GRIME SPLIT: the last ~1600 gear-window sub45 pixels are
         // the ground-run chain TOPS straddling luma 44.6-46.8 — the shared ny
         // 0.34 mud was the very term pinning them under 45 (the ref band never
         // reads below ~51 anywhere). The chain keeps the full nz (the corner
         // ladder lives on z-faces, 3.95/3.99 at the <=4.0 gate) but takes a
         // lighter crown term; pads keep the full pairing.
-        const chainGrime = <T extends VehicleMaterial>(m: T): T => {
-          m.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
-            vehicleAmbientFloorHook(shader);
-            shader.fragmentShader = shader.fragmentShader.replace(
-              '#include <opaque_fragment>',
-              'outgoingLight *= ( 1.0 - 0.22 * abs( normal.y ) ) * ( 1.0 - 0.33 * abs( normal.z ) );\n\t#include <opaque_fragment>',
-            );
-          };
-          m.customProgramCacheKey = () => 'leo-a5-chain-topgrime-v1';
-          return m;
-        };
+        const chainGrime = <T extends VehicleMaterial>(m: T): T => chainVehicleMaterialHook(m, 'leo-a5-chain-topgrime-v1', (shader) => {
+          shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <opaque_fragment>',
+            'outgoingLight *= ( 1.0 - 0.22 * abs( normal.y ) ) * ( 1.0 - 0.33 * abs( normal.z ) );\n\t#include <opaque_fragment>',
+          );
+        });
         const buildLeo2A5AssemblyStage10 = (): void => {
           P.hullG.traverse((ob) => {
             if (!(ob instanceof THREE.Mesh) || Array.isArray(ob.material)) return;
@@ -5530,7 +5506,7 @@ export function buildLeo2A5(builder: object) {
         // the sky-backed roofline — pale top-lit barrel + receiver cover. Both
         // overlays stay INSIDE the certified envelope (cover top 2.648w under
         // the 2.653 heightM anchor line; barrel +1.4mm co-rod shares its rows).
-        const mgPale = rehook(P.mats.shadow.clone());
+        const mgPale = cloneRehookedVehicleMaterial(P.mats.shadow);
         const buildLeo2A5AssemblyStage11 = (): void => {
           mgPale.color.setHex(0x60624c);
           mgPale.envMapIntensity = 0.18;
@@ -5651,13 +5627,13 @@ export function buildLeo2A5(builder: object) {
             const tPanel = (geo: THREE.BufferGeometry, tint: number): void => {
               turretPanels.push(panelPrep(geo, 1.78, 0.5, tint));
             };
-            const camoRed = rehook(P.mats.shadow.clone());     // scheme red-brown (rendered target ~(66,55,42))
+            const camoRed = cloneRehookedVehicleMaterial(P.mats.shadow);     // scheme red-brown (rendered target ~(66,55,42))
             const buildLeo2A5AssemblyStage13 = (): void => {
               camoRed.color.setHex(0x453428);
               camoRed.envMapIntensity = 0.12;
             };
             buildLeo2A5AssemblyStage13();
-            const camoOlv = rehook(P.mats.shadow.clone());     // scheme deep olive (rendered target ~(46,52,40))
+            const camoOlv = cloneRehookedVehicleMaterial(P.mats.shadow);     // scheme deep olive (rendered target ~(46,52,40))
             const buildLeo2A5AssemblyStage14 = (): void => {
               camoOlv.color.setHex(0x2f3526);
               camoOlv.envMapIntensity = 0.12;
@@ -5678,16 +5654,12 @@ export function buildLeo2A5(builder: object) {
             // floor" flattens above 0.09). The print's flat-lit canvas carries
             // no rim glow: these a5 clones zero the rim term; the fleet
             // material and every casting bucket keep the fleet look.
-            const norim = <T extends VehicleMaterial>(m: T): T => {
-              m.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
-                vehicleAmbientFloorHook(shader);
-                shader.fragmentShader = shader.fragmentShader.replace(
-                  '0.45 * vehRim * vehShade', '0.0 * vehRim * vehShade');
-              };
-              m.customProgramCacheKey = () => 'leo-a5-norim-v1';
-              return m;
-            };
-            const litKit = norim(P.mats.detail.clone());
+            // (2026-10-17, the wheel-band lane: re-hooked clones in the set's registration, the rim cut chained after)
+            const norim = <T extends VehicleMaterial>(m: T): T => chainVehicleMaterialHook(m, 'leo-a5-norim-v1', (shader) => {
+              shader.fragmentShader = shader.fragmentShader.replace(
+                '0.45 * vehRim * vehShade', '0.0 * vehRim * vehShade');
+            });
+            const litKit = norim(cloneRehookedVehicleMaterial(P.mats.detail));
             // ABSOLUTE hex (r9-c magenta-marker finding): P.mats.detail's color at
             // BUILD time is the pre-repaint placeholder — a multiplyScalar(0.76)
             // clone rendered ~0.76-GREY (107,117,95 sunlit), BRIGHTER than fleet
@@ -5704,7 +5676,7 @@ export function buildLeo2A5(builder: object) {
             // r9 1a RIM BAND (the tier-edge quiet tone): albedo L~45 (<= the L56
             // law cap) renders ~58-66 sunlit — a shade seam, not a black line;
             // non-casting overlays only (r8 law 3).
-            const rimBand = rehook(P.mats.shadow.clone());
+            const rimBand = cloneRehookedVehicleMaterial(P.mats.shadow);
             const buildLeo2A5AssemblyStage16 = (): void => {
               rimBand.color.setHex(0x2c2f22);
               rimBand.envMapIntensity = 0.10;
@@ -5772,12 +5744,12 @@ export function buildLeo2A5(builder: object) {
             // (canvas hex x0.94 — a clone, the shared plateau hex untouched)
             // hug the REAR faces only: the hero-rr 2c plateau reads side/top
             // faces, which stay raw canvas.
-            const skinCloth = norim(P.mats.canvasCloth.clone());
+            const skinCloth = norim(cloneRehookedVehicleMaterial(P.mats.canvasCloth));
             const buildLeo2A5AssemblyStage18 = (): void => {
               skinCloth.color.setHex(0x4a5241);
             };
             buildLeo2A5AssemblyStage18();
-            const skinCloth2 = norim(P.mats.canvasCloth.clone());
+            const skinCloth2 = norim(cloneRehookedVehicleMaterial(P.mats.canvasCloth));
             const buildLeo2A5AssemblyStage19 = (): void => {
               skinCloth2.color.setHex(0x4f5745);                 // r8-f/j/k: the 2c p75 plateau reads the SKINS at hero-rr (not the shared canvas — the skins pinned those pixels below 69); the hero-facing pile takes the last step alone, decoupled from the rear med
               P.disposables.push(skinCloth, skinCloth2);
@@ -6150,7 +6122,7 @@ export function buildLeo2A5(builder: object) {
             // tire hex — see the rubber note): between the r6 0x2c2a26 read (rows
             // 52-56, min 34 — the glacis-tex dark stripes) and the r8-a 0x34352b
             // overshoot (window med 66.4 > the 66 gate).
-            const antiSlip = rehook(P.mats.rubber.clone());
+            const antiSlip = cloneRehookedVehicleMaterial(P.mats.rubber);
             const buildLeo2A5AssemblyStage32 = (): void => {
               antiSlip.color.setHex(0x333428);                   // r9-c: REVERTED to the r8 value — the shallow fields' shadowed 66 read IS the window's median pivot (bistable law); the +10 "brightening" was the guard-shadow loss, not the hex
               P.disposables.push(antiSlip);
@@ -6183,7 +6155,7 @@ export function buildLeo2A5(builder: object) {
             // sunlit-wornDish rgb (84,90,66): ANY curved band catches the key on
             // its crown (the a6 wrap-crown law) — the tori take the shoe-grime
             // shader + a darker hex so their crowns sit ~55, not ~85.
-            const rimMud = regrime(P.mats.wheels.clone());
+            const rimMud = regrime(cloneRehookedVehicleMaterial(P.mats.wheels));
             const buildLeo2A5ReceiptStage5 = (): void => {
               rimMud.color.setHex(0x2e3125);
               rimMud.envMapIntensity = 0.05;
@@ -6718,13 +6690,11 @@ export function buildLeo2A4(builder: object) {
     // here (env-lit ABOVE the 58 glacis); the under-nose must be the
     // darkest front face (the revolution fillDark recipe).
     {
-      const bowShade = P.mats.shadow.clone();
+      const bowShade = cloneRehookedVehicleMaterial(P.mats.shadow);
       bowShade.color.setHex(0x22251d);
       bowShade.roughness = 0.97;
       bowShade.metalness = 0.04;
       bowShade.envMapIntensity = 0.08;
-      bowShade.onBeforeCompile = vehicleAmbientFloorHook;
-      bowShade.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       P.disposables.push(bowShade);
       const bm = new THREE.Mesh(KIT.xform(box(2.00, 0.008, 0.585), 0, 0.835, 3.67, -0.847, 0, 0), bowShade);
       bm.receiveShadow = true;
@@ -7686,6 +7656,14 @@ function addLeo2PrototypeMudguards(P: TankBuilderPort): void {
   const { box } = KIT;
   for (const side of [-1, 1] as const) {
     P.add('hull', box(0.09, 0.21, 0.42), side * 1.775, 1.155, 3.74);
+    // The side plate's inner face (|x| 1.73) stood 5.2 cm outside the shoe
+    // face (1.678); ahead of the sponson rail's front slab (z 3.64) that open
+    // slot reached the front lip (B2 contiguity hole, z 3.66-3.90). The inner
+    // lining takes the rail's own section line (inner face 1.7075, the same
+    // 2.95 cm shoe clearance) so the rail runs unbroken to the bow. It stays
+    // inside the side plate's rounded edges (y 1.07-1.255, z 3.56-3.94): a
+    // square corner below them closed one voxel row of the nose's own air.
+    P.add('hullFixedPaintedBodywork', box(0.0225, 0.185, 0.38), side * 1.71875, 1.1625, 3.75);
     P.add('hull', box(0.90, 0.20, 0.04), side * 1.35, 1.14, 3.93);
     P.add('hullDetail', box(0.86, 0.022, 0.024), side * 1.35, 1.033, 3.926);
     P.add('hullRubber', box(0.66, 0.40, 0.024), side * 1.36, 0.78, 3.849);
@@ -7797,13 +7775,11 @@ function buildLeo2Proto(P: TankBuilderPort) {
   addLeo2PrototypeSponsonRails(P);
   // §B8 BOW shade overlay (a4 lineage — same beak underside plane)
   {
-    const bowShade = P.mats.shadow.clone();
+    const bowShade = cloneRehookedVehicleMaterial(P.mats.shadow);
     bowShade.color.setHex(0x22251d);
     bowShade.roughness = 0.97;
     bowShade.metalness = 0.04;
     bowShade.envMapIntensity = 0.08;
-    bowShade.onBeforeCompile = vehicleAmbientFloorHook;
-    bowShade.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     P.disposables.push(bowShade);
     const bm = new THREE.Mesh(KIT.xform(box(2.00, 0.008, 0.585), 0, 0.835, 3.67, -0.847, 0, 0), bowShade);
     bm.receiveShadow = true;
@@ -8675,11 +8651,6 @@ function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
   const buildLeo2RevolutionRunningGearStage1 = (): void => {
     {
       const camoScale = (P.spec.visual && P.spec.visual.camoScale) || 0.34;
-      const rehook = <T extends VehicleMaterial>(m: T): T => {
-        m.onBeforeCompile = vehicleAmbientFloorHook;
-        m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-        return m;
-      };
       const prepCamo = (
         geo: THREE.BufferGeometry,
         yOff: number,
@@ -8758,16 +8729,16 @@ function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
         meshUp(KIT.mergeAll(bars), latticePale, P.hullG, false);
         // r9-d two-tone slats (window sd 9.45 vs the >=10 gate): alternate
         // slats ride a +12% clone (rehooked — clones drop the family hooks).
-        const slatB = rehook(P.mats.canvasCloth.clone());
+        const slatB = cloneRehookedVehicleMaterial(P.mats.canvasCloth);
         slatB.color.setHex(0x4a503e);
         P.disposables.push(slatB);
         meshUp(KIT.mergeAll(barsB), slatB, P.hullG, false);
       }
       // -- D1 camo bleed over both lattice fields (a5 louvre-bleed class)
-      const camoRed = rehook(P.mats.shadow.clone());
+      const camoRed = cloneRehookedVehicleMaterial(P.mats.shadow);
       camoRed.color.setHex(0x453428);
       camoRed.envMapIntensity = 0.12;
-      const camoOlv = rehook(P.mats.shadow.clone());
+      const camoOlv = cloneRehookedVehicleMaterial(P.mats.shadow);
       camoOlv.color.setHex(0x2f3526);
       camoOlv.envMapIntensity = 0.12;
       P.disposables.push(camoRed, camoOlv);
@@ -8817,7 +8788,8 @@ function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
         // land dark-on-pale here (the anticipated 'tone stalls' branch of
         // the order). RAW clone (no ambient-floor hook — the D1 two-point's
         // dark end) is the only lever that separates on top faces.
-        const cableDark = P.mats.shadow.clone();
+        // (2026-10-17, the wheel-band lane: floorless in the set's registration, as the raw clone drew it, now tagged)
+        const cableDark = cloneFloorlessVehicleMaterial(P.mats.shadow);
         cableDark.color.setHex(0x1f231a);
         cableDark.roughness = 0.97;
         cableDark.metalness = 0.04;
@@ -8908,8 +8880,8 @@ function finishKf51RubberInstance(
 }
 
 function configureKf51TrackShoeMaterial(material: VehicleMaterial): void {
-  material.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
-    vehicleAmbientFloorHook(shader);
+  // (2026-10-17, the wheel-band lane: chained after the material's own hook, its registration with it)
+  chainVehicleMaterialHook(material, 'kf51-shoe-hicap-r8', (shader) => {
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <opaque_fragment>',
       `{
@@ -8918,8 +8890,7 @@ function configureKf51TrackShoeMaterial(material: VehicleMaterial): void {
 	}
 	#include <opaque_fragment>`,
     );
-  };
-  material.customProgramCacheKey = () => 'kf51-shoe-hicap-r8';
+  });
   material.color.setHex(0x45402a);
   material.envMapIntensity = 0.05;
   material.roughness = 1.0;
@@ -8940,8 +8911,7 @@ function finishKf51TrackInstance(
   }
   if (color !== 0x27251f) return false;
 
-  material.onBeforeCompile = vehicleAmbientFloorHook;
-  material.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+  rehookVehicleMaterial(material);
   material.color.setHex(0x020202);
   material.envMapIntensity = 0.02;
   return true;
@@ -10606,8 +10576,9 @@ function buildKF51(P: TankBuilderPort) {
             // Chained after the fleet ambient-floor hook on these per-build
             // materials (leo2a4 regrime precedent); own cache key; white-mask
             // law: the gate's mask pass overrides materials — silhouette-inert.
-            tm.onBeforeCompile = (shader: THREE.WebGLProgramParametersWithUniforms) => {
-              vehicleAmbientFloorHook(shader);
+            // 2026-10-17 (the wheel-band lane, round 2): chained after the band's own hook, its cascade registration
+            // with it (assigned as the whole hook, USE_CSM stayed and its uniforms never bound).
+            chainVehicleMaterialHook(tm, 'kf51-track-hicap-r8', (shader) => {
               shader.fragmentShader = shader.fragmentShader.replace(
                 '#include <opaque_fragment>',
                 `{
@@ -10616,16 +10587,10 @@ function buildKF51(P: TankBuilderPort) {
 	}
 	#include <opaque_fragment>`,
               );
-            };
-            tm.customProgramCacheKey = () => 'kf51-track-hicap-r8';
+            });
           }
         };
         buildKF51AssemblyStage5();
-        const rehook = <T extends VehicleMaterial>(m: T): T => {
-          m.onBeforeCompile = vehicleAmbientFloorHook;
-          m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-          return m;
-        };
         // r4 #5a: the bay set (piers/AO wall/bore recesses/ticks/strips) rendered
         // V27-29 on the lit side because mats.shadow ships with DEFAULT
         // envMapIntensity 1.0 — the PMREM sky mirrored off the near-black faces
@@ -10641,7 +10606,7 @@ function buildKF51(P: TankBuilderPort) {
         // pure-black rails. Keep their geometry, but make all armor-sized pieces
         // use the KF51 paint stack; true apertures, vents and bearing seams remain
         // in the small-area dark materials below.
-        const moatMat = rehook(P.mats.shadow.clone());
+        const moatMat = cloneRehookedVehicleMaterial(P.mats.shadow);
         const buildKF51AssemblyStage7 = (): void => {
           moatMat.color.setHex(0x1d1e13);
           moatMat.envMapIntensity = 0.05;
@@ -10762,19 +10727,19 @@ function buildKF51(P: TankBuilderPort) {
           }
         };
         buildKF51ReceiptStage2();
-        const wornDish = rehook(P.mats.wheels.clone());      // road-wheel dishes — r3 #6: faces must sit BELOW the skirt value (ref wheel V21 vs skirt 30; r2's 0x44462f rendered V26-28, INVERTED)
+        const wornDish = cloneRehookedVehicleMaterial(P.mats.wheels);      // road-wheel dishes — r3 #6: faces must sit BELOW the skirt value (ref wheel V21 vs skirt 30; r2's 0x44462f rendered V26-28, INVERTED)
         const buildKF51AssemblyStage9 = (): void => {
           wornDish.color.setHex(0x2e2c22);                     // r5 #7: dishes darker (lit-side response 44 -> ~37; unlit side stays floor-bound) — amplitude vs the lit skirt fields grows toward the ref's D24
           wornDish.envMapIntensity = 0.05;
         };
         buildKF51AssemblyStage9();                     // r5 #7: PMREM lift off the lit-side faces (bank of the r4 env-on-shadow find)
-        const wornDrum = rehook(P.mats.wheels.clone());      // sprocket/idler drums (the blank tan disc — r3 #3 darkened under the skirt line)
+        const wornDrum = cloneRehookedVehicleMaterial(P.mats.wheels);      // sprocket/idler drums (the blank tan disc — r3 #3 darkened under the skirt line)
         const buildKF51AssemblyStage10 = (): void => {
           wornDrum.color.setHex(0x302e24);
           wornDrum.envMapIntensity = 0.10;
         };
         buildKF51AssemblyStage10();
-        const tireMat = rehook(P.mats.rubber.clone());       // r3 #6: tires split from the flap material — dark rubber rim ring per wheel without dragging the tires to flap-black
+        const tireMat = cloneRehookedVehicleMaterial(P.mats.rubber);       // r3 #6: tires split from the flap material — dark rubber rim ring per wheel without dragging the tires to flap-black
         const buildKF51AssemblyStage11 = (): void => {
           tireMat.color.setHex(0x010101);                      // r6 #1c: 16.0 -> the 25.8 class. MEASURED THIS ROUND: 0x020202 FLOORS to ~52 on the instanced tire faces (the r5 comment was right for this surface — the ring vanished entirely, zone p5 51.8 vs ref 25.8); 0x010101 rides the collapse step one up from 16 and AA-lifts the thin ring into the ref's 25-35 tail
           tireMat.envMapIntensity = 0.0;
@@ -10800,7 +10765,7 @@ function buildKF51(P: TankBuilderPort) {
           P.disposables.push(geo);
         };
         const mkTone = (hex: number, env: number): VehicleMaterial => {
-          const m = rehook(P.mats.shadow.clone());
+          const m = cloneRehookedVehicleMaterial(P.mats.shadow);
           m.color.setHex(hex);
           m.envMapIntensity = env;
           P.disposables.push(m);
@@ -14339,7 +14304,9 @@ function buildLeo2A4M(P: TankBuilderPort) {
     // VEH-13 (2026-10-16): a closure web floors each nose slot. The slots run between the hull nose (|x| <= 0.88) and
     // the front track wrap (|x| >= 0.99) at z 3.15-3.60, 6-10 cm wide and open to the ground from above. The B2
     // contiguity scan read the right one as enclosed sky beside the re-seated glacis links.
-    for (const s of [-1, 1] as const) P.add('hull', box(0.125, 0.02, 0.49), s * 0.9225, 1.155, 3.375);
+    // The web runs forward to the nose lip (z 3.71) and in under the glacis edge (|x| 0.76), so the pocket between the
+    // lip, the web and the track (|x| 0.78-0.98, z 3.62-3.70) is floored too.
+    for (const s of [-1, 1] as const) P.add('hull', box(0.225, 0.02, 0.58), s * 0.8725, 1.155, 3.42);
     P.add('hullDetail', box(0.30, 0.16, 0.015), 0.02, 1.32, -3.755);            // convoy plate
     for (const s of [-1, 1] as const) {
       P.add('hullDetail', box(0.09, 0.09, 0.12), s * 0.72, 1.28, 3.66);

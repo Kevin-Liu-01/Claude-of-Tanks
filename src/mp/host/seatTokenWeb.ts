@@ -33,7 +33,7 @@ function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
 }
 
 /** HMAC-SHA256 of `payload` under `secret` (the seat-token signature). */
-export async function hmacSha256(secret: string, payload: string, subtle?: SubtleLike): Promise<Uint8Array> {
+async function hmacSha256(secret: string, payload: string, subtle?: SubtleLike): Promise<Uint8Array> {
   const api = subtleOf(subtle);
   const key = await api.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   return new Uint8Array(await api.sign('HMAC', key, encoder.encode(payload)));

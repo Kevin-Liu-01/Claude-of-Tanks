@@ -60,7 +60,7 @@ function other(root){const rows=[];root.updateMatrixWorld(true);root.traverse(o=
   materials.map(m=>[m.name,m.userData.appearanceRole]),o.geometry.groups,
   o.userData.combatHitboxRole,o.count??null,o.instanceMatrix?Array.from(o.instanceMatrix.array):null]);});return rows;}
 function paint(tank,prior){const o=tank.root.getObjectByName('hullPaintedDetail');assert.ok(o?.isMesh);
- assert.equal(o.material.name,'cot:armor-paint');assert.equal(o.material.map,tank.root.getObjectByName('hull').material.map);assert.ok(o.material.map?.isTexture);
+ assert.equal(o.material.name,'cot:armor-paint');assert.ok(o.material.map === tank.root.getObjectByName('hull').material.map);assert.ok(o.material.map?.isTexture);
  assert.equal(o.userData.combatHitboxRole,'nonArmor');assert.equal(o.userData.materialOnlyPaintMigration,true);
  assert.equal(o.userData.materialOnlyPaintSourceBucket,'hullDetail');assert.equal(o.parent.isLOD,true);
  assert.equal(o.parent.parent.name,'rig_hull');assert.deepEqual(o.parent.levels.map(l=>l.distance),prior.parent.levels.map(l=>l.distance));

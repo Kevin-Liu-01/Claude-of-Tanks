@@ -19,7 +19,7 @@ interface InfoImageRecord {
   caption?: RuntimeValue;
 }
 
-export type InfoImage = string | InfoImageRecord | null | undefined;
+type InfoImage = string | InfoImageRecord | null | undefined;
 type InfoImageSource = LiveValue<InfoImage>;
 
 interface ResolvedInfoImage {

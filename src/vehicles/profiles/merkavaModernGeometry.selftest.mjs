@@ -29,7 +29,7 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
 
     const turretRig = tank.root.getObjectByName('rig_turret');
     const gunRig = tank.root.getObjectByName('rig_gun');
-    assert.equal(gunRig?.parent, turretRig, `${id}: gun pitch remains inside turret yaw`);
+    assert.ok(gunRig?.parent === turretRig, `${id}: gun pitch remains inside turret yaw`);
     const trophy = turretRig?.userData.trophySuiteReceipt;
     assert.deepEqual(trophy, { configuration: contract.trophy, radarFaces: 4, launchers: 2, owner: 'rig_turret' },
       `${id}: four radar faces and two launchers stay turret-owned`);
@@ -39,7 +39,7 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
       if (object.isInstancedMesh && object.userData.runningGear && object.userData.trackShoeCountPerSide > 0) shoes.push(object);
     });
     assert.ok(shoes.length >= 1 && shoes.length <= 3, `${id}: one native animated track construction`);
-    assert.equal(tank.root.getObjectByName('gearTrackInnerLinks'), undefined,
+    assert.ok(tank.root.getObjectByName('gearTrackInnerLinks') === undefined,
       `${id}: no duplicate static inner track course`);
 
     if (contract.barak) {
@@ -55,7 +55,7 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
         if(object.userData?.fittingRoot&&object.userData?.fitting==='pintleMG')roofWeapons.push(object);
       });
       assert.equal(roofWeapons.length,1,`${id}: exactly one real roof weapon fitting`);
-      assert.equal(roofWeapons[0].parent,turretRig,`${id}: roof weapon remains turret-owned`);
+      assert.ok(roofWeapons[0].parent === turretRig,`${id}: roof weapon remains turret-owned`);
       // 2026-10-10 (fleet-weapons lane; the owner: "its changes need to be combined with your primitive updates like
       // updating machine guns and stuff"): the roof gun is the fleet's GPMG construction in place of the receiver box and
       // box barrel. 2026-10-11 (round 3c): it stands on its own pintle with its ammunition box, in a socket collar on a
@@ -144,7 +144,7 @@ for (const quality of ['high', 'low']) for (const [id, contract] of Object.entri
         new THREE.Vector3(0, 0, 1), 0, 3).intersectObject(hull, false)[0];
       assert.ok(door && Math.abs(door.point.z + 2.19345) < .004,
         `${id}: source-positioned access door terminates the lane`);
-      assert.equal(tank.root.getObjectByName('missile'), undefined, `${id}: 30 mm demonstrator has no invented ATGM`);
+      assert.ok(tank.root.getObjectByName('missile') === undefined, `${id}: 30 mm demonstrator has no invented ATGM`);
     }
 
     const yawBefore = new THREE.Box3().setFromObject(turretRig).clone();

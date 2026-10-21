@@ -166,8 +166,8 @@ try {
   for (const yaw of [0, Math.PI / 2, -Math.PI / 2, Math.PI]) {
     turretRig.rotation.y = yaw;
     tank.root.updateMatrixWorld(true);
-    assert.equal(gunRig.parent, turretRig, `gun remains turret-owned through yaw ${yaw}`);
-    assert.equal(turret.parent, turretRig, `structural bustle remains turret-owned through yaw ${yaw}`);
+    assert.ok(gunRig.parent === turretRig, `gun remains turret-owned through yaw ${yaw}`);
+    assert.ok(turret.parent === turretRig, `structural bustle remains turret-owned through yaw ${yaw}`);
   }
   turretRig.rotation.y = 0;
   tank.root.updateMatrixWorld(true);

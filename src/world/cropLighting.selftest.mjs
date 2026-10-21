@@ -97,10 +97,10 @@ function assertContract(f) {
   for (const [key, value] of Object.entries({ alphaTest: .42, alphaToCoverage: true,
     side: THREE.DoubleSide, vertexColors: true, roughness: 1, metalness: 0,
     envMapIntensity: 1, transparent: false, opacity: 1, depthTest: true, depthWrite: true, // (2026-10-08: the full sky, as it always drew)
-    flatShading: false, normalMap: null, bumpMap: null })) assert.equal(material[key], value, key);
+    flatShading: false, normalMap: null, bumpMap: null })) assert.ok(material[key] === value, key);
   assert.equal(material.color.getHex(), 0xffffff);
   assert.equal(material.emissive.getHex(), 0);
-  assert.strictEqual(material.map, texture);
+  assert.ok(material.map === texture);
   assert.deepEqual(Object.values(material).filter(value => value?.isTexture), [texture],
     'one retained texture, no extra normal/environment sampler owner');
   assert.equal(material.customProgramCacheKey(), 'world-crop-authored-normal-v1');

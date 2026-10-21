@@ -26,13 +26,13 @@ const assertMaterialHierarchy = (id) => {
       assert.ok(object, `${id}: ${name} mesh exists`);
       // Fleet paint standard (2026-09-11): welded fittings share the armor's world-scaled camouflage through the
       // same box projection, never a primitive-local repeat of the atlas.
-      assert.strictEqual(object.material, armor.material, `${id}: ${name} shares the structural armor camouflage material`);
+      assert.ok(object.material === armor.material, `${id}: ${name} shares the structural armor camouflage material`);
       assert.ok(object.geometry.getAttribute('uv') && object.geometry.getAttribute('color'),
         `${id}: ${name} carries projected UVs and baked dirt like the plates it is welded to`);
     }
     for (const name of ['hullExternalArmor', 'turretExternalArmor']) {
       const era = tank.root.getObjectByName(name);
-      if (era) assert.strictEqual(era.material, armor.material, `${id}: ${name} uses continuous vehicle-scale camouflage`);
+      if (era) assert.ok(era.material === armor.material, `${id}: ${name} uses continuous vehicle-scale camouflage`);
     }
     assert.ok(tank.root.getObjectByName('hullExternalArmor'), `${id}: hull ERA is present`);
     let dedicated = 0;
@@ -40,9 +40,9 @@ const assertMaterialHierarchy = (id) => {
       const object = tank.root.getObjectByName(name);
       if (!object) continue;
       dedicated++;
-      assert.equal(object.material.map, null,
+      assert.ok(object.material.map === null,
         `${id}: ${name} never repeats the full camouflage atlas on primitive-local UVs`);
-      assert.notStrictEqual(object.material, armor.material, `${id}: ${name} keeps its own finish`);
+      assert.ok(object.material !== armor.material, `${id}: ${name} keeps its own finish`);
     }
     assert.ok(dedicated > 0, `${id}: carries at least one dedicated canvas or turntable finish`);
   } finally {

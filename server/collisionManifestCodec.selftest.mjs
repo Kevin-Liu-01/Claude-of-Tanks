@@ -342,7 +342,10 @@ assert.equal(encodedBytes, publishedBytes, 'published shards are the canonical e
 // by tree index bring the same records to 66736390, bit for bit (tools/transcode-collision-manifests.mjs). The budget
 // stays. What it protects is the deployed corpus (base + variants 138.7 MB at /mp-collision/v2/, beside the frozen 224
 // set's 129 MB); a host fetches one shard, the largest Ruinspires at 6.35 MB raw, 1.50 MB gzip, 1.10 MB brotli.
-assert.ok(publishedBytes <= 68660462, 'complete roster storage cannot exceed the frozen published budget');
+// 2026-10-17 integ/227: 68592722 bytes after fence v2 (fence colliders +0.96 MB, blackglass/shanghai +626 KB, oasis/siwa
+// +119 KB, copper_mesa +39 KB, whiteout +37 KB, delta +35 KB, polders -22 KB, badlands -2 KB; main 16aeab482 = 66753467);
+// budget +5 % headroom (coordinator ruling), was 68660462. A 228 shard diet aims back under 68.66 MB.
+assert.ok(publishedBytes <= 72093485, 'complete roster storage cannot exceed the frozen published budget');
 
 // Hash-valid corruptions must still be rejected by the loader's schema/census.
 const temporary = mkdtempSync(join(tmpdir(), 'cot-collision-codec-'));

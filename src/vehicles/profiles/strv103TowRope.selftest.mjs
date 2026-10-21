@@ -11,7 +11,7 @@ const hull = visual.root.getObjectByName('rig_hull');
 const rope = visual.root.getObjectByName('strv103_side_tow_rope');
 
 assert.ok(hull && rope, 'Strv 103B owns a named recovery rope on the hull rig');
-assert.equal(rope.parent, hull, 'recovery rope follows the fixed hull rather than a virtual turret');
+assert.ok(rope.parent === hull, 'recovery rope follows the fixed hull rather than a virtual turret');
 assert.equal(rope.userData.orientation, 'longitudinal', 'recovery rope records its intended side orientation');
 
 visual.root.updateMatrixWorld(true);

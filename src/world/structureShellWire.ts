@@ -7,7 +7,7 @@
 // The unpacked geometry answers the same reads with the same numbers, in the same bucket and geometry order.
 import type { BufferGeometry } from 'three';
 
-export interface StructureShellGeometryWire {
+interface StructureShellGeometryWire {
   /** x, y, z per vertex */
   position: Float32Array | Float64Array;
   count: number;

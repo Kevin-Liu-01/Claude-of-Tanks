@@ -24,7 +24,7 @@ import { ruinWall } from './shell.ts';
  * (0..1 along) by `dip` of its height, and how ragged it is (metres of jitter). */
 export interface RuinHead { a: number; b: number; at?: number; dip?: number; ragged?: number }
 
-export interface RuinSpec {
+interface RuinSpec {
   /** the body's outer faces (x across, z along, front +z), its walls' thickness */
   w: number;
   d: number;

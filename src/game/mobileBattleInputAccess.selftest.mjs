@@ -58,7 +58,7 @@ const access = createMobileBattleInputAccess({
         autoAimCreates += 1;
         assert.equal(options.bus, bus);
         assert.equal(options.input, input);
-        assert.equal(options.camera, camera);
+        assert.ok(options.camera === camera);
         return autoAim;
       },
     };

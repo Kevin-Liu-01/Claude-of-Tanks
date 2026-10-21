@@ -124,6 +124,8 @@ uniform float uTurbulence;
 uniform float uWeatherWarp;
 // QA (round 9 candidate): the shell under which a sample keeps no density (0 = none) — the detached fragments culled
 uniform float uFragMin;
+// (227) the detail's erosion exponent at a convective base (volumetricClouds.ts CLOUD2_BASE_ERODE; 6 was round 1's cores only)
+uniform float uBaseErode;
 const float CL2_LOCAL = ${f(CLOUD2_PERIODS.local)};
 const float CL2_STREETS = ${f(CLOUD2_PERIODS.streets)};
 const float CL2_SHAPE = ${f(CLOUD2_PERIODS.shape)};
@@ -229,7 +231,7 @@ vec4 cl2Media( vec3 p, vec4 shell, vec4 hf, float lod, float detail ) {
 		float dn = textureLod( tDetail, ( sp + uDetailShift ) / CL2_DETAIL, 0.0 ).r;
 		// fluffy (the inverted cells) on the tops, the cells' cores at the base; a wispy lane takes the cells higher up
 		vec4 topErode = mix( vec4( 1.0 - dn ), vec4( dn ), uLayerWisp );
-		vec4 modifier = mix( vec4( pow( dn, 6.0 ) ), topErode, clamp( ( hf - 0.2 ) / 0.2, 0.0, 1.0 ) ) * uLayerDetail * detail;
+		vec4 modifier = mix( vec4( pow( dn, uBaseErode ) ), topErode, clamp( ( hf - 0.2 ) / 0.2, 0.0, 1.0 ) ) * uLayerDetail * detail;
 		d = clamp( ( d * 2.0 - modifier * 0.5 ) / max( 1.0 - modifier * 0.5, vec4( 1e-3 ) ), 0.0, 1.0 );
 	}
 	vec4 profile = uProfA * exp( uProfB * hf ) + uProfC * hf + uProfD;
@@ -523,6 +525,9 @@ uniform float uStepCap;
 uniform vec2 uFine;
 // the forward lobe of the sun's light diffused through a deck (0 = isotropic)
 uniform float uDeckLobe;
+// (2026-10-18) at dusk (a sun under ~17 degrees) a deck's vertical depth hands back from its cell's column to the sun ray's (x,
+// CLOUD_DECK_DUSK_TAU) and its deep diffusion drops the low sun's share (y, CLOUD_DECK_DUSK)
+uniform vec2 uDeckDusk;
 // a deck's light by its own column: x the diffusion's depth from the column over the point in its own cell (0 the sun
 // ray's depth by its slope), y the ground's return at the deck's base as the light the deck itself passes down (0 the
 // map's ambient scale over it), z the ground's return on a closing deck's base (a multiple; a broken deck's lane, flat
@@ -800,7 +805,11 @@ void main() {
 				// a low sun's kilometre of slant through several cells, every base the same grey; the cell's own column puts a
 				// thick core dark beside a thin, bright seam, and a lump hanging under the base darker than the base around it)
 				float tauV = od * max( sunUp, 0.2 );
-				float deckK = dot( wgt, uLayerFlat ) * uDeckTune.x;
+				// (2026-10-18, the s187 bisect: the 10-15 close took Frosthollow's lane flat 0.51 -> 0.84, so this column law
+				// passed the evening sun's orange down through every cell) at dusk the sun ray's depth again: a 7-degree ray's
+				// kilometre of slant, the evening sheet one grey as the approved deck drew it
+				float duskK = 1.0 - smoothstep( 0.0, 0.3, sunUp );
+				float deckK = dot( wgt, uLayerFlat ) * uDeckTune.x * ( 1.0 - uDeckDusk.x * duskK );
 				if ( deckK > 0.0 ) {
 					vec4 kc = mix( vec4( 1.0 ), vec4( cell.x ) * mix( vec4( 1.0 ), vec4( 0.55 + 0.45 * cell.y ), uLayerLumps ), uLayerCells );
 					vec4 topC = uLayerBase + ( uLayerTop - uLayerBase ) * ( 0.1 + 0.9 * kc );
@@ -815,7 +824,11 @@ void main() {
 					// the sun's share keeps a broad forward lobe through the deck (its mean over the sky unchanged): a readable
 					// sun direction under a closed deck without a disc (2026-10-04, the gauntlet's wave 62 on Titan Gorge)
 					float lobe = 1.0 + uDeckLobe * ( mix( phaseHG( cosT, 0.6 ), phaseHG( cosT, -0.225 ), 0.3 ) * 4.0 * CL_PI - 1.0 );
-					vec3 eTop = sunE * sunUp * lobe + uSkyIrradiance * CL_PI;
+					// (2026-10-18, the SKY lane's s187 bisect: Frosthollow's evening deck, an approved grey sheet, drew a strong
+					// orange-pink one once it closed on 10-15 and took this diffusion) a sun under ~17 degrees strikes the deck's top
+					// at grazing incidence, where the thick layer reflects most of it back up (a diffuser's transmission falls toward
+					// grazing incidence); what the deck passes down at dusk is the sky's light more than the low sun's
+					vec3 eTop = sunE * sunUp * lobe * ( 1.0 - uDeckDusk.y * duskK ) + uSkyIrradiance * CL_PI;
 					radiance += eTop * ( diffuse * ( 1.0 - exp( -od * 0.3 ) ) / ( 1.0 + 0.1125 * tauV ) / CL_PI );
 				}
 				vec3 dbgDiffuse = radiance - dbgSun;
