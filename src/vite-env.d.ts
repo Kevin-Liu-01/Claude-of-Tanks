@@ -5,3 +5,9 @@ declare module 'virtual:cot-i18n-studio/*' {
   const strings: Readonly<Record<string, string>>;
   export default strings;
 }
+
+// A locale's Garage Filter panel strings, which load with the panel (tools/viteI18nStudioCatalog.ts).
+declare module 'virtual:cot-i18n-fleet/*' {
+  const strings: Readonly<Record<string, string>>;
+  export default strings;
+}

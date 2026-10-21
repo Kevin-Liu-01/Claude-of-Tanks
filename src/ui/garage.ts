@@ -2403,7 +2403,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let facetPanel: Promise<GarageFacetPanel> | null = null;
   facetToggle.addEventListener('click', () => {
     emit('ui:click', {});
-    facetPanel ??= Promise.all([import('./garageFacetPanel.ts'), import('./garageFacetPanel.css')])
+    // (the panel's strings load beside it: it mounts once they are resident, so it never shows a raw key)
+    facetPanel ??= Promise.all([import('./garageFacetPanel.ts'), import('./garageFacetPanel.css'),
+      import('./fleetStrings.ts').then((strings) => strings.ensureFleetStrings())])
       .then(([{ mountGarageFacetPanel }]) => mountGarageFacetPanel({
         anchor: countryRailEl,
         toggle: facetToggle,
