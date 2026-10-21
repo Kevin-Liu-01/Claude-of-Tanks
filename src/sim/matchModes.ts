@@ -721,6 +721,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       const around = entity.bot ? null : freshestFor('bravo', entity.state.pos.x, entity.state.pos.z);
       if (entity.bot || around) {
         at = arrivalPoint(entity, infectionArrival, false, around) ?? arrivalPoint(entity, infectionArrival, true, around);
+        if (!at && infectionWideArrival) {
+          at = arrivalPoint(entity, infectionWideArrival, false, around) ?? arrivalPoint(entity, infectionWideArrival, true, around);
+        }
       }
     }
     if (!at && flagRespawnBackM != null) at = flagRespawnSpot(entity, flagRespawnBackM);
@@ -835,6 +838,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   // the arrival points' own seeded stream (the wave draws and the caches keep theirs)
   const spawnRng = seededRandom((seed ^ 0x484f5244) >>> 0);
   const infectionArrival = ruleset.infection ? ruleset.infectionBots?.arrival ?? null : null;
+  // its wider ring (fallbackRingM), built once
+  const infectionWideArrival: ArrivalRules | null = infectionArrival?.fallbackRingM
+    ? Object.freeze({ ...infectionArrival, spawnRingM: infectionArrival.fallbackRingM }) : null;
   /** Whether a human-side hull at `from` sees the ground point (x, z) over the terrain (a height-field march). */
   const terrainSees = (from: Entity, x: number, z: number, rules: ArrivalRules): boolean => {
     const fx = from.state.pos.x, fz = from.state.pos.z, fy = from.state.pos.y + rules.sightEyeM;

@@ -212,6 +212,11 @@ export const RUSH_DRIVE = Object.freeze({
    * the line.
    */
   brakeGapM: 3, backOffGapM: 1.5, backOffThrottle: 0.5, swerveThrottle: 0.45,
+  /**
+   * The gun's bearing ring (round 3b): a target (or hunt point) more than bearRiseM above or below is orbited no nearer
+   * than the range the gun's elevation (or depression) stop reaches it from, plus bearPadM, at most bearMaxM.
+   */
+  bearRiseM: 3, bearPadM: 4, bearMaxM: 70,
 });
 /**
  * The jockey (doctrine jockeyS): a hull standing in a fight (its drivers' throttle under standThrottle, held the doctrine's
@@ -382,6 +387,13 @@ export interface ArrivalRules {
    * plus 10 m); absent: the ring as it stands.
    */
   readonly spawnReachS?: number;
+  /**
+   * The Infected's wider ring (round 3b, the critic's M3: with ten survivors spread up to their rally reach, no point of
+   * the 70-120 m ring stood 60 m clear of every one and an infected rose at its base 600-740 m off, a minute from the
+   * fight): when neither the ring out of sight nor the ring in sight has a clear point, this ring is tried the same two
+   * ways before the base; absent: straight to the base.
+   */
+  readonly fallbackRingM?: readonly [number, number];
 }
 
 interface HordeRules extends ArrivalRules {
@@ -1071,7 +1083,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
       hostileHpScale: 0.15, hpPerWave: 0.02, hpPerWaveLate: 0.06, lateFromWave: 11,
       runnerEvery: 4, runnerSpeed: 1.25, swarmEvery: 5, swarmTrickleScale: 0.5, swarmHull: 0.10,
       speedPerWave: 0.045, speedPerWaveMax: 0.55, cacheHeal: Object.freeze({ first: 0.62, perWave: 0.055, floor: 0.08 }),
-      hostileDifficultyStep: 1, hostileReloadScale: 1, hunt: 'spotted', allyLeashM: 120, allyScreenM: 40, allyScreenSpreadM: 22,
+      hostileDifficultyStep: 0, hostileReloadScale: 1, hunt: 'spotted', allyLeashM: 120, allyScreenM: 40, allyScreenSpreadM: 22,
     }),
     bots: Object.freeze({ bravo: RUSH_DOCTRINE, alpha: HORDE_ALLY_DOCTRINE }),
   }),
@@ -1127,7 +1139,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     infection: Object.freeze({ infectedSpeed: 1.3, survivorHpScale: 1.5, infectedHpScale: .25, infectedReloadScale: 1, hunt: true }),
     bots: Object.freeze({ bravo: INFECTED_DOCTRINE, alpha: SURVIVOR_DOCTRINE }),
     infectionBots: Object.freeze({ survivorRallyM: 90, arrival: Object.freeze({
-      spawnRingM: Object.freeze([70, 120] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
+      spawnRingM: Object.freeze([70, 120] as const), fallbackRingM: Object.freeze([120, 200] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
       spawnMinHumanM: 60, spawnOutOfSight: true, sightRangeM: 450, sightStepM: 8, sightEyeM: 2.4, sightHullM: 1.5,
       sightMarginM: 1, sightLeadM: 0, spawnCandidates: 12 }) }) }),
   realistic: Object.freeze({ ...STANDARD, mode: 'realistic', alwaysVisible: false, moduleOnlyDamage: true, consumables: false }),
