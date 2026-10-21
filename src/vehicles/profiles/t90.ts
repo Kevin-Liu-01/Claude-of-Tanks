@@ -3421,15 +3421,9 @@ function addT90MProryvGunAndFinish(
   // r1: fin 0.25 -> 0.186 band at c +0.005 — the ref evac crest band is
   // 1.522..1.708 exactly (my 1.485..1.735 read 0.031x3 cols)
   P.add('gun', box(0.02, 0.186, 0.24), 0, 0.005, 2.04);  // evac crest fin (band under the 12% body-column threshold)
-  // r27: the spec's legacy gunBarrel.lengthM 6.0 predates this profile —
-  // the GUN SHADOW PROXY (cylZ from the pivot, §C: proxies ARE in gate
-  // masks, raycast-disabled so whatsat can't see it = the r26 "no
-  // authored mesh" mystery) ran to world 7.28, 1.08 past the authored
-  // muzzle (world 6.20 = ref-exact). Align the spec datum to the build;
-  // consumers audited: proxy + muzzleZ default (overridden by tubeGun)
-  // + UI framing (shotInfo/tankThumbs — now tighter/truer). FLAGGED in
-  // the round report for orchestrator ratification.
-  P.spec.armor.gunBarrel.lengthM = 4.92;
+  // r27 set P.spec.armor.gunBarrel.lengthM = 4.92 here, at visual build time: the browser's spec then differed from
+  // every authority's, which never builds a tank. 230: the combat barrel comes from src/vehicles/combatGunRigs.generated.ts
+  // (finalizeCombatAnatomy), measured from this tube's mouth, so the client and the authorities read one length.
   // r8 ORDER 2 note (DETAIL-SLOT LOUD-CARRIER law): the drum set is fixed
   // by RE-BUCKET (see the rack block above), not a mats.detail retint —
   // 'detail' is registered on the shared paintable set and a builder-time
