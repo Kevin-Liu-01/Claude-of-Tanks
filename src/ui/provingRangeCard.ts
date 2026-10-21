@@ -53,8 +53,9 @@ interface RangeCardInput {
   /** The loaded shell slot and its name (the HUD's own shell rail names it). */
   readonly shellSlot: number;
   readonly shellName: string;
-  /** The hull the gun is laid on (the aim's gun target), or null. */
+  /** The hull the gun is laid on (the aim's gun target), or null; the range the gun is laid at (m), or null. */
   readonly laidTargetId: string | null;
+  readonly laidRangeM: number | null;
   readonly resetKey: string;
   readonly movingKey: string;
 }
@@ -78,6 +79,8 @@ const CSS = `
 .cot-range-card .rc-head{display:flex;align-items:center;gap:8px}
 .cot-range-card .rc-head .mi,.cot-range-card .rc-head .mi svg{display:block;width:18px;height:18px;color:${AMBER}}
 .cot-range-card .rc-round{font:700 13px ${PROVING_DISPLAY};letter-spacing:.02em;color:#fff1d6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cot-range-card .rc-rng{margin-left:auto;font:500 15px ${PROVING_MONO};color:#e8f0f5;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cot-range-card .rc-rng small{font-size:11px;color:#7f909c;margin-left:2px}
 .cot-range-card .rc-shot{display:none;flex-direction:column;gap:4px;padding:7px 8px 8px;background:rgba(255,255,255,.035);
   border-left:3px solid var(--rc-tone,#9aa7b0)}
 .cot-range-card .rc-shot.on{display:flex}
@@ -138,7 +141,8 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
   void loadProvingType();
   const root = createElement('section', 'cot-range-card', parent);
   root.setAttribute('aria-label', t('hud.range.title'));
-  root.innerHTML = `<div class="rc-head"><span class="mi">${uiIconSVG('modeProving', 18)}</span><span class="rc-round"></span></div>` +
+  root.innerHTML = `<div class="rc-head"><span class="mi">${uiIconSVG('modeProving', 18)}</span><span class="rc-round"></span>` +
+    `<span class="rc-rng" title="${t('hud.range.laid')}"><span></span><small>m</small></span></div>` +
     `<div class="rc-shot" aria-live="polite"><div class="rc-verdict"><b></b><span class="rc-at"></span></div>` +
     `<div class="rc-gauge"><i></i><s></s></div><div class="rc-figs"><span class="rc-pen"></span><em>/</em>` +
     `<span class="rc-eff"></span><span class="rc-tgt"></span></div></div>` +
@@ -150,6 +154,7 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
     `<button type="button" data-range-action="exit" title="${t('hud.range.exit')}" aria-label="${t('hud.range.exit')}">` +
     `${uiIconSVG('garage', 16)}</button></div>`;
   const roundEl = root.querySelector<HTMLElement>('.rc-round')!;
+  const laidRangeEl = root.querySelector<HTMLElement>('.rc-rng span')!;
   const shotEl = root.querySelector<HTMLElement>('.rc-shot')!;
   const verdictEl = shotEl.querySelector<HTMLElement>('.rc-verdict b')!;
   const atEl = shotEl.querySelector<HTMLElement>('.rc-at')!;
@@ -177,6 +182,7 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
   let lastMoving: boolean | null = null;
   let lastLaid = -2;
   let lastSerial = -1;
+  let lastLaidRange = -2;
   let lastResetKey = '';
   let lastMovingKey = '';
   let rows: HTMLElement[] = [];
@@ -230,6 +236,9 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
       lastSerial = -1;
     }
     if (input.shellName !== lastShellName) { roundEl.textContent = input.shellName; lastShellName = input.shellName; }
+    // the rangefinder: the range the gun is laid at, to the metre (a dash with nothing under the sight)
+    const laidRange = input.laidRangeM != null && Number.isFinite(input.laidRangeM) ? Math.round(input.laidRangeM) : -1;
+    if (laidRange !== lastLaidRange) { laidRangeEl.textContent = laidRange >= 0 ? String(laidRange) : '—'; lastLaidRange = laidRange; }
     const serial = range.lastShot?.serial ?? 0;
     if (serial !== lastSerial) {
       lastSerial = serial;

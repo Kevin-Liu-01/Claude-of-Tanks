@@ -52,7 +52,6 @@ const _mid = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _s = new THREE.Vector3();
-const _m = new THREE.Matrix4();
 const _basis = new THREE.Matrix4();
 
 /** A small deterministic hash noise (a plate's mill scale), so every plate's face looks the same each battle. */
@@ -307,6 +306,10 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
           const heel = new THREE.Vector3(head.x - Math.sin(yaw) * reach, 0, head.z - Math.cos(yaw) * reach);
           heel.y = ground(heel.x, heel.z) - 0.1;
           frames.push(beamMatrix(head, heel, 0.07, 0.07, new THREE.Matrix4()));
+        } else {
+          // laid far back: a prop straight down from the stile's head
+          const prop = new THREE.Vector3(head.x, ground(head.x, head.z) - 0.15, head.z);
+          frames.push(beamMatrix(prop, head, 0.08, 0.08, new THREE.Matrix4()));
         }
       }
       const sillA = new THREE.Vector3().copy(centre).addScaledVector(r, -plate.widthM / 2 - 0.1).addScaledVector(u, -plate.heightM / 2).addScaledVector(n, -back);

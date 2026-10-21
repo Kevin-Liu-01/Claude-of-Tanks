@@ -641,6 +641,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<span class="choice-icon">${uiIconSVG('battleBots', 17)}</span>` +
     `<span><span class="choice-name">${t('garage.battle.soloLabel')}</span>` +
     `<span class="choice-description">${t('garage.battle.regularDescription')}</span></span></button>` +
+    // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the battle menu
+    `<button class="cot-battle-choice cot-battle-regular cot-battle-proving" type="button" data-proving>` +
+    `<span class="choice-icon">${uiIconSVG('modeProving', 17)}</span>` +
+    `<span><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span>` +
+    `<span class="choice-description">${t('garage.battle.provingDescription')}</span></span></button>` +
     `<div class="cot-battle-menu-label" id="cot-special-modes">${t('garage.battle.soloRules')}</div>` +
     `<div class="cot-battle-choice-grid" role="group" aria-labelledby="cot-special-modes">` +
     `<button class="cot-battle-choice" type="button" data-game-mode="drone" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeDrone', 17)}</span><span class="choice-name">${t('playMenu.matchMode.drone.label')}</span></button>` +
@@ -3066,6 +3071,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (choice.dataset.mode === 'private' || choice.dataset.mode === 'lan') {
       openMultiplayer(choice.dataset.mode);
     } else setBattleMode(choice.dataset.mode);
+  });
+  requiredElement<HTMLButtonElement>(root, '.cot-battle-choice[data-proving]').addEventListener('click', () => {
+    emit('ui:click', {});
+    startTestDrive(selectedId);
   });
   for (const choice of battleRuleChoices) choice.addEventListener('click', () => {
     emit('ui:click', {});

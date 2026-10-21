@@ -7300,7 +7300,7 @@ export function initHud(bus: EventBus): HudRuntime {
     rangeCard.update({
       range, shellSlot: slot,
       shellName: player?.spec?.gun?.shells?.[slot]?.name || shellTypeLabel(player?.spec?.gun?.shells?.[slot]?.type || ''),
-      laidTargetId: frame.aim?.gunTargetId ?? null,
+      laidTargetId: frame.aim?.gunTargetId ?? null, laidRangeM: frame.aim?.distM ?? null,
       resetKey: frame.auxiliaryKeyLabels?.rangeReset || 'R', movingKey: frame.auxiliaryKeyLabels?.rangeMoving || 'Y',
     });
   }
