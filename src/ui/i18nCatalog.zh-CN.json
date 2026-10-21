@@ -4060,6 +4060,7 @@
   "hud.range.reset": "重置",
   "hud.range.moving": "移动靶",
   "hud.range.exit": "返回车库",
+  "hud.range.average": "均 {value}",
   "hud.range.penRoll": "这一发的穿深",
   "hud.range.armour": "遭遇的等效装甲",
   "hud.range.laid": "火炮瞄准距离",

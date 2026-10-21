@@ -4060,6 +4060,7 @@
   "hud.range.reset": "Reset",
   "hud.range.moving": "Moving",
   "hud.range.exit": "Back to the Garage",
+  "hud.range.average": "avg {value}",
   "hud.range.penRoll": "Penetration of this round",
   "hud.range.armour": "Armour it met (effective)",
   "hud.range.laid": "Range the gun is laid at",

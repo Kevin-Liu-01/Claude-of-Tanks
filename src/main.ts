@@ -2055,7 +2055,9 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
       await prepareEntryPanelMasks(panel, player.spec, player.visual, deferredPanelMasks);
     },
     prepareAtmosphere: async () => {
-      await battleAtmosphere.prepare(game.battleCount, game.mapId, battlePreferences.times);
+      // the proving ground keeps its own light (sim/matchRuleset.ts PROVING_GROUND_RULES.timeOfDay)
+      const provingTime = game.ruleset?.provingGround?.timeOfDay;
+      await battleAtmosphere.prepare(game.battleCount, game.mapId, provingTime ? [provingTime] : battlePreferences.times);
       await frontline.prepare(game.battleCount, game.mapId);
     },
     prepareNightLighting: () => nightLighting.prepare(),

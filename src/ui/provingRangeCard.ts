@@ -16,7 +16,7 @@
 import { createElement, ensureStyle } from './dom.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { hitOutcomeFor } from './hitEventFormat.ts';
+import { hitOutcomeFor, nominalPenFor } from './hitEventFormat.ts';
 import { PROVING_DISPLAY, PROVING_MONO, loadProvingType } from './provingType.ts';
 
 /** The range as the HUD receives it (sim/matchModes.ts ProvingRangePresentation, structurally). */
@@ -40,6 +40,9 @@ export interface RangeCardState {
     readonly serial: number;
     readonly kind: string;
     readonly targetName: string;
+    readonly shellName: string;
+    readonly shellType: string;
+    readonly attackerSpecId: string;
     readonly rangeM: number;
     readonly penRollMm: number;
     readonly effectiveMm: number;
@@ -103,6 +106,7 @@ const CSS = `
 .cot-range-card .rc-figs .rc-pen,.cot-range-card .rc-figs .rc-eff{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .cot-range-card .rc-figs svg{width:13px;height:13px;flex:0 0 auto}
 .cot-range-card .rc-figs .rc-pen svg{color:var(--rc-tone,#9aa7b0)}
+.cot-range-card .rc-figs .rc-pen small{font:500 10px ${PROVING_MONO};color:#7f909c;margin-left:2px}
 .cot-range-card .rc-figs .rc-eff svg{color:#c8d4dc}
 .cot-range-card .rc-shot.glance .rc-eff,.cot-range-card .rc-shot.glance .rc-gauge s{display:none}
 .cot-range-card .rc-figs .rc-tgt{margin-left:auto;font:600 11px ${PROVING_DISPLAY};color:#9fb0bb;max-width:46%;
@@ -139,10 +143,11 @@ body.cot-touch-layout .cot-range-card .rc-foot button svg{width:18px;height:18px
 /* the last shot at the top right under the screen's own buttons, one line: clear of the sight in the middle and of the
    round controls under the card */
 body.cot-touch-layout .cot-range-card .rc-shot{position:fixed;left:auto;top:calc(env(safe-area-inset-top,0px) + 58px);
-  right:calc(env(safe-area-inset-right,0px) + 12px);width:max-content;max-width:min(320px,46vw);
+  right:calc(env(safe-area-inset-right,0px) + 12px);width:max-content;max-width:min(300px,36vw);flex-wrap:wrap;
   flex-direction:row;align-items:center;gap:8px;padding:6px 9px;background:rgba(7,11,14,.86);border:1px solid rgba(176,194,208,.2);
   border-left:3px solid var(--rc-tone,#9aa7b0)}
-body.cot-touch-layout .cot-range-card .rc-shot .rc-gauge,body.cot-touch-layout .cot-range-card .rc-shot .rc-tgt{display:none}
+body.cot-touch-layout .cot-range-card .rc-shot .rc-gauge,body.cot-touch-layout .cot-range-card .rc-shot .rc-tgt,
+body.cot-touch-layout .cot-range-card .rc-shot .rc-at,body.cot-touch-layout .cot-range-card .rc-shot .rc-pen small{display:none}
 body.cot-touch-layout .cot-range-card .rc-verdict b{font-size:15px}
 body.cot-touch-layout .cot-range-card .rc-verdict .rc-at{font-size:11px}
 `;
@@ -172,7 +177,7 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
     `<span class="rc-rng" title="${t('hud.range.laid')}">${uiIconSVG('statRange', 14)}<span></span><small>m</small></span></div>` +
     `<div class="rc-shot" aria-live="polite"><div class="rc-verdict"><b></b><span class="rc-at"></span></div>` +
     `<div class="rc-gauge"><i></i><s></s></div><div class="rc-figs">` +
-    `<span class="rc-pen" title="${t('hud.range.penRoll')}">${uiIconSVG('penetration', 13)}<span></span></span>` +
+    `<span class="rc-pen" title="${t('hud.range.penRoll')}">${uiIconSVG('penetration', 13)}<span></span><small></small></span>` +
     `<span class="rc-eff" title="${t('hud.range.armour')}">${uiIconSVG('shield', 13)}<span></span></span>` +
     `<span class="rc-tgt"></span></div></div>` +
     `<div class="rc-lanes" role="list"></div>` +
@@ -190,6 +195,7 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
   const barEl = shotEl.querySelector<HTMLElement>('.rc-gauge i')!;
   const tickEl = shotEl.querySelector<HTMLElement>('.rc-gauge s')!;
   const penEl = shotEl.querySelector<HTMLElement>('.rc-pen span')!;
+  const avgEl = shotEl.querySelector<HTMLElement>('.rc-pen small')!;
   const effEl = shotEl.querySelector<HTMLElement>('.rc-eff span')!;
   const targetEl = shotEl.querySelector<HTMLElement>('.rc-tgt')!;
   const lanesEl = root.querySelector<HTMLElement>('.rc-lanes')!;
@@ -246,6 +252,10 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
     barEl.style.width = `${(pen / scale) * 100}%`;
     tickEl.style.left = `${(armour / scale) * 100}%`;
     penEl.textContent = `${Math.round(pen)} mm`;
+    // the roll is one of a spread (within 25 % of the round's average at this range): the average beside it
+    const average = nominalPenFor({ attackerSpecId: shot.attackerSpecId, shellName: shot.shellName, shellType: shot.shellType,
+      flightDistM: shot.rangeM });
+    avgEl.textContent = average > 0 ? t('hud.range.average', { value: String(average) }) : '';
     effEl.textContent = `${Math.round(armour)} mm`;
     targetEl.textContent = shot.targetName;
   };

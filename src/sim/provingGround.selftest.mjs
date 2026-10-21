@@ -43,6 +43,7 @@ assert.equal(ruleset.timeLimitS, null, 'no clock');
 assert.equal(ruleset.respawnS, 3, 'a destroyed hull stands again on its mark');
 assert.equal(ruleset.records, false, 'nothing recorded');
 assert.equal(ruleset.provingGround.moving, false, 'the targets hold still by default');
+assert.equal(rules.timeOfDay, 'day', 'the range keeps its own light: daylight, whatever the battle times');
 for (const key of ['speedMultiplier', 'hpScale', 'damageScale', 'reloadScale', 'gravityScale']) {
   assert.equal(ruleset[key], matchRulesetFor('standard')[key], `${key}: the range plays the battle's own physics and damage`);
 }

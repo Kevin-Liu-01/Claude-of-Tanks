@@ -351,7 +351,10 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = 4;
       textures.push(texture);
-      const face = material({ map: texture, roughness: 0.64, metalness: 0.3, envMapIntensity: 0.5 }, rangeLit);
+      // the stencil reads like retroreflective range paint: the face's own canvas lights it faintly (the dark steel
+      // stays dark, the white paint carries)
+      const face = material({ map: texture, roughness: 0.64, metalness: 0.3, envMapIntensity: 0.5,
+        emissive: 0xffffff, emissiveMap: texture, emissiveIntensity: 0.24 }, rangeLit);
       const slab = new THREE.Mesh(panelBox, [steelSide, face]);
       _basis.makeBasis(r, u, n);
       slab.quaternion.setFromRotationMatrix(_basis);

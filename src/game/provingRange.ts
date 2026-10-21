@@ -146,7 +146,7 @@ export const PROVING_STRIKE_MARKS = 24;
 export function noteProvingHit(
   range: ProvingRangePresentation,
   layout: ProvingRangeLayout,
-  event: HitEvent & { targetName?: string; flightDistM?: number },
+  event: HitEvent & { targetName?: string; flightDistM?: number; attackerSpecId?: string },
 ): void {
   const targetId = event.targetId;
   if (!targetId) return;
@@ -156,6 +156,7 @@ export function noteProvingHit(
   range.lastShot = {
     serial: (range.lastShot?.serial ?? 0) + 1,
     kind: event.kind, targetId, targetName: event.targetName ?? lane?.targetName ?? '', shellName: event.shellName,
+    attackerSpecId: event.attackerSpecId ?? '', shellType: event.shellType,
     rangeM: event.flightDistM ?? 0, penRollMm: event.penRollMm, effectiveMm: event.effectiveMm,
     impactAngleDeg: event.impactAngleDeg, damage: event.damage,
   };

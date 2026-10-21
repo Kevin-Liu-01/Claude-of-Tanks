@@ -299,6 +299,7 @@ export function createMatchModeWorldPresentation(
   let spawnMarkers: MarkerGroup[] | null = null;
   /** the proving ground's lane marks: an amber ring on each mark and the lane's board floating over it */
   let laneMarkers: MarkerGroup[] = [];
+  let laneTether: THREE.CylinderGeometry | null = null;
   /** the proving ground's furniture: the plate rack, the range boards, the drive course's boards and poles */
   let rangeDressing: ProvingRangeDressing | null = null;
 
@@ -962,7 +963,12 @@ export function createMatchModeWorldPresentation(
       // high over the hull: the laid hull's target plate sits just above it, the board well clear of the plate
       const icon = iconSprite(`range-lane-${laneMarkers.length + 1}-icon`, 4.6, 11);
       marker.userData.icon = icon;
-      marker.add(ring, icon);
+      // a thin tether from the ring up to the board: the board is the lane's marker, anchored to its mark
+      laneTether ??= new THREE.CylinderGeometry(0.05, 0.05, 1, 6, 1, true);
+      const tether = new THREE.Mesh(laneTether, basic(AMBER, 0.55));
+      tether.scale.y = 11 - 2.3;
+      tether.position.y = (11 - 2.3) / 2;
+      marker.add(ring, tether, icon);
       marker.visible = false;
       root.add(marker);
       laneMarkers.push(marker);

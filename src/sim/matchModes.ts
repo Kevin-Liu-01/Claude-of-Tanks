@@ -398,6 +398,9 @@ export interface ProvingShotReadout {
   targetId: string;
   targetName: string;
   shellName: string;
+  /** The shooter's vehicle and the round's type (the card prices the round's average penetration at the range). */
+  attackerSpecId: string;
+  shellType: string;
   rangeM: number;
   penRollMm: number;
   effectiveMm: number;

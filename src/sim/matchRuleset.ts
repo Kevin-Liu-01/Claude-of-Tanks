@@ -286,6 +286,9 @@ export interface ProvingGroundRules {
   /** The plate rack and the drive course beside the lanes. */
   readonly plateRack: ProvingPlateRackRule;
   readonly course: ProvingCourseRule;
+  /** The range's light: one time of day whatever the player's battle times (a test reads in daylight, without the
+   * long low-sun shadows that stripe the yard at a sight's zoom). */
+  readonly timeOfDay: 'day' | 'sunset' | 'night';
 }
 
 export const PROVING_GROUND_RULES: ProvingGroundRules = Object.freeze({
@@ -326,6 +329,7 @@ export const PROVING_GROUND_RULES: ProvingGroundRules = Object.freeze({
       Object.freeze({ mm: 60, angleDeg: 82, lengthM: 4 }),
     ]),
   }),
+  timeOfDay: 'day',
   // the course runs on the meadow right of the lanes, parallel to the runway: a gentle ramp, a ditch, moguls, a steep
   // ramp and a side slope, 8 m of level ground between them
   course: Object.freeze({
