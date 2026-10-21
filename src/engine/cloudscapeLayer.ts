@@ -50,8 +50,10 @@ const greyOf = (t: readonly [number, number, number]): [number, number, number] 
 };
 /** (229, the SKY lane's 228 carry: Whiteout's evening deck read "bluer steel-grey" and dark beside the warm sky after the
  *  grey albedo) the share of the evening tint's own hue a deck keeps over its grey at sunset (0 the grey alone, 1 the
- *  tint), at the tint's level either way; __LIGHT_TUNE.CLOUD_DECK_DUSK_WARMTH for the pairs. */
-export const DECK_DUSK_WARMTH = 0;
+ *  tint), at the tint's level either way. A quarter: Whiteout's sky R-B -12 -> -8.5 (eye), Frosthollow's 13 -> 19, far
+ *  from the 226 pink (48); blind vs the grey, Whiteout's evening 7-0-1 over both critics (a half split it 4-3-1 and
+ *  warmed Frosthollow toward the pink). __LIGHT_TUNE.CLOUD_DECK_DUSK_WARMTH reads at a preset's derivation. */
+export const DECK_DUSK_WARMTH = 0.25;
 const duskDeckOf = (t: readonly [number, number, number]): [number, number, number] => {
   const g = greyOf(t), k = clamp(lightTune('CLOUD_DECK_DUSK_WARMTH', DECK_DUSK_WARMTH), 0, 1);
   return [g[0] + (t[0] - g[0]) * k, g[1] + (t[1] - g[1]) * k, g[2] + (t[2] - g[2]) * k];
