@@ -5895,8 +5895,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const tp = target.state.pos;
       const dist = Math.hypot(st.pos.x - tp.x, st.pos.z - tp.z) || 1;
       if (dist < RUSH_DRIVE.directM) {
-        // the ring is never so close in that the gun cannot be laid on a hull a level above or below (bearRangeM)
-        const out = Math.max(orbitRingFor(tp.x, tp.z, dist), bearRangeM(tp.y - st.pos.y) - RUSH_DRIVE.orbitMinM);
+        const out = orbitRingFor(tp.x, tp.z, dist);
         if (dist >= RUSH_DRIVE.orbitInM + out) {
           // the run-in aims beside the target, on the orbit's ring at the side it will circle (round 3, the critic's
           // M2/M3: aimed at the hull itself, the run-in met the no-ram brake 10-20 m out at full pace and stood the
@@ -5913,9 +5912,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // into: behind a corner the quarry has no line of sight yet, and a straight drive at its place would ram it (round
     // 2: the hunter rams the guard counted were these)
     const pointDist = Math.hypot(st.pos.x - objective.x, st.pos.z - objective.z) || 1;
-    const pointOut = Math.max(0, bearRangeM(hf.getHeightAt(objective.x, objective.z) - st.pos.y) - RUSH_DRIVE.orbitMinM);
-    if (pointDist < RUSH_DRIVE.orbitInM + pointOut) {
-      orbitAround(input, objective.x, objective.z, pointDist, pointOut);
+    if (pointDist < RUSH_DRIVE.orbitInM) {
+      orbitAround(input, objective.x, objective.z, pointDist, 0);
       return true;
     }
     if (missionRouteNeedsRefresh(objective.x, objective.z) || !waypointsAreMission()) {
@@ -5929,18 +5927,6 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     }
     drivePatrol(input);
     return true;
-  }
-  /**
-   * The least range from which the gun can be laid on a point `rise` metres above (or below) this hull (round 3b, the
-   * critic's M2/M3: on rolling ground a hunter orbiting 16-28 m round a hull 4-10 m above or below it could neither
-   * elevate nor depress onto it and circled with its gun silent): beyond RUSH_DRIVE.bearRiseM of rise, the rise over the
-   * tangent of the stop it needs, plus bearPadM, at most bearMaxM (0 on the level).
-   */
-  function bearRangeM(rise: number): number {
-    if (!(Math.abs(rise) >= RUSH_DRIVE.bearRiseM)) return 0;
-    const stopDeg = rise > 0 ? spec.gunElevationDeg : spec.gunDepressionDeg;
-    const arc = Math.max(0.02, stopDeg * (Math.PI / 180) - GUN_ARC_MARGIN_RAD);
-    return Math.min(RUSH_DRIVE.bearMaxM, Math.abs(rise) / Math.tan(arc) + RUSH_DRIVE.bearPadM);
   }
   /**
    * The ring a hunter orbits a seen target on (round 3, the critic's M2: on Verdant up to a dozen zombies orbited the

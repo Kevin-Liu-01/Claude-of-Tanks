@@ -92,10 +92,10 @@ assert.equal(CLASSIC_BOT_DOCTRINE.missionOwnsRoute, false, 'classic: the search 
 assert.equal(rulesetBotDoctrine(matchRulesetFor('turbo_ball'), 'alpha').offensiveJump, true, 'strikers jump at the ball');
 // the drive and hunt tables the controller and the mode controller read
 // round 3: the run-in beside the quarry and the pack's orbit rings; round 3b: the wider, longer no-ram lane, the lane
-// keepers' back-off where they stand, the gun-bearing ring on another level
+// keepers' back-off where they stand
 assert.deepEqual({ ...RUSH_DRIVE }, { directM: 70, orbitInM: 28, orbitMinM: 16, orbitMaxM: 28, noRamM: 12, runInSideM: 24, orbitStepM: 10,
   orbitRings: 3, tangentLeadM: 18, closingLeadM: 6, laneMarginM: 3, lookaheadS: 1, brakeGapM: 3, backOffGapM: 1.5, backOffThrottle: 0.5,
-  swerveThrottle: 0.45, laneBackOffGapM: 3, bearRiseM: 3, bearPadM: 4, bearMaxM: 70 });
+  swerveThrottle: 0.45, laneBackOffGapM: 3 });
 assert.ok(RUSH_DRIVE.laneBackOffGapM <= RUSH_DRIVE.brakeGapM, 'a lane keeper backs off only inside the brake gap');
 for (const id of ['frontline_assault', 'infected', 'endless_horde', 'turbo_ball']) {
   for (const side of ['alpha', 'bravo']) {

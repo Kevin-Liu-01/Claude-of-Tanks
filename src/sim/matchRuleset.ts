@@ -218,11 +218,6 @@ export const RUSH_DRIVE = Object.freeze({
    * driving into one another — over half of Frontline's engaged stills on Verdant with an enemy inside 20 m).
    */
   laneBackOffGapM: 3,
-  /**
-   * The gun's bearing ring (round 3b): a target (or hunt point) more than bearRiseM above or below is orbited no nearer
-   * than the range the gun's elevation (or depression) stop reaches it from, plus bearPadM, at most bearMaxM.
-   */
-  bearRiseM: 3, bearPadM: 4, bearMaxM: 70,
 });
 /**
  * The jockey (doctrine jockeyS): a hull standing in a fight (its drivers' throttle under standThrottle, held the doctrine's
