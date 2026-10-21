@@ -152,7 +152,11 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
       [159, -5.1], [160, -4.9], [163, -4.5], [166, -4.5], [167, -4], [169, -3.5], [172, -3.4], [174, -3.4], [180, -3.6]],
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
     builderOptions: { mastTopY: 3.20, bins: false, smoke: false, bootHeel: true, boxSightOnGun: true } },
-  t72b3m_hetman: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.382 },
+  // Release 230 (the 230 turret land, after round 11's fix of the other three T-72B3M turrets): the same 16 mm shallower
+  // mantlet chin. On the merged tree the stock chin passed 19.9 mm over the driver's periscope at yaw 16 (at the stop) and
+  // 20.5 mm over the driver's hatch at yaw 25 (full elevation), under nationalGunMantlet's 20 mm mount keep.
+  t72b3m_hetman: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.382,
+    builderOptions: { mantletChinLift: .016 } },
   // Release 227 (owner 2026-10-16: "brand new era packages ... donnt make it just copy the t90ms"): Hetman II and both
   // Zubrs fit their own frontal ERA (ukraineFrontEra.ts, polandFrontEra.ts), so the donor's Relikt cells, their beams
   // and its roof cassettes are not emitted on them. The Zubrs' heights are their lower 12.7 mm WKM-B emplacements'
@@ -183,12 +187,15 @@ export const NATIONAL_DONOR_TURRET_IDS = Object.freeze(Object.keys(NATIONAL_DONO
  *   level at 149-157, the Hetman II +2.4 over its T-72B3M engine deck, the Wilk +0.6), the T-80Us' rear hull from 141-159;
  * - straight ahead on the Bulat-M and Bastion-M, the mantlet's chin over the glacis armour and the driver's periscope
  *   (-2.9 and -3.9 at yaw 0-20).
- * Two standing mantlet conflicts no depression stop cures are left to the geometry (nationalGunClearance.selftest.mjs
- * holds only the barrel there):
+ * Two standing mantlet conflicts no depression stop cures were left to the geometry:
  * - the T-72B3M turret's mantlet underside 6-18 mm over the driver's hatch at yaw 0-25 at every pitch (Hetman, Hetman II,
  *   Zubr, Zubr II; the fleet T-72B3M has it too);
  * - the T-72B3M hull's right-side fitting under the turret overhang (x -1.26, y 1.57-1.58), which the mantlet's lower
  *   corner passes through at yaw -48..-133 (the Hetman II, as on the fleet T-72B3M).
+ * Release 230 cures both on the four concepts with a 16 mm shallower mantlet chin (t72b3mX.ts mantletChinLift; UA/PL
+ * round 11 for Hetman II and the Zubrs, the 230 turret land for the Hetman): nationalGunMantlet.selftest.mjs holds their
+ * mounts to 20 mm; nationalGunClearance.selftest.mjs still holds only the barrel to 25 mm in the windows where a mount
+ * sits between 20 and 25 mm (Hetman II, the Zubrs).
  * Data only: sim/gunPitchLimits.ts applies it; matchRuleset.ts is untouched.
  */
 export const NATIONAL_GUN_PITCH_BY_YAW: Readonly<Record<string, readonly (readonly [number, number])[]>> = {

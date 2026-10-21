@@ -21,9 +21,10 @@
 //   barrel there and the selftest holds only the barrel inside the conflict's window until the geometry is fixed), curve
 //   (null when the gun keeps its full depression all round), published: the spec's current curve }.
 import { readFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 
 const arg = (name, fallback) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
-const ids = arg('ids', '').split(',').filter(Boolean), envelope = arg('envelope', '').split(',').filter(Boolean);
+const ids = uniqueIds(arg('ids', '').split(',').filter(Boolean)), envelope = arg('envelope', '').split(',').filter(Boolean);
 const keep = Number(arg('keep', '.026')), tol = Number(arg('tol', '.35')), BARREL = process.argv.includes('--barrel');
 if (!(ids.length || envelope.length) || !(keep > 0) || !(tol > 0)) {
   console.error('usage: node tools/gun-depression-sweep.mjs --ids=<id,...> [--keep=0.026] [--tol=0.35] | --envelope=<sweep.json,...>');

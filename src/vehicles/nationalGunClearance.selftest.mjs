@@ -14,7 +14,7 @@ const DEG = Math.PI / 180, T0 = Date.now();
 /** id -> the yaw windows [from, to] (absolute degrees) where its gun mount stands in a known conflict with the hull, or
  * [from, to, 'skip'] where a hull fitting stands in the barrel's own path at every pitch (a geometry defect, not held). */
 const CURVES = {
-  t72b3m_hetman: [[0, 25]],
+  t72b3m_hetman: [], // 230: its mantlet chin 16 mm shallower (mantletChinLift), the mount 35.7 mm over the periscope
   t72b3m_hetman_ii: [[0, 26], [48, 133]],
   t72b3_sich: [],
   t72b3_zubr: [[0, 22]],

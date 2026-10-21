@@ -1,4 +1,5 @@
-// Release 230 (UA/PL round 11): the main gun of Hetman II, the Zubr and the Zubr II over its own hull, on the round's
+// Release 230 (UA/PL round 11; the 230 turret land added the Hetman): the main gun of Hetman, Hetman II, the Zubr and the
+// Zubr II over its own hull, on the round's
 // geometry (gunHullClearance.test-support.mjs, the gun-depression lane's probe: every gun mesh sampled every 15 mm, the
 // recoiling parts in battery and at 0.135 m, against every hull mesh but the camouflage suit, which ghillieSuit.ts cuts to
 // the gun's own stops):
@@ -6,14 +7,15 @@
 //     (NATIONAL_GUN_PITCH_BY_YAW, the lane's 26 mm rows), at level and at full elevation; the mount (mantlet, boot,
 //     sights) keeps 20 mm there. The T-72B3M turret's mantlet underside passed 6-18 mm over the driver's hatch and
 //     periscope at yaw 0-25 at every pitch and 5.5 mm over Hetman II's right deck cover at yaw -102, which no depression
-//     stop cures: the three ids' mantlets take a 16 mm shallower chin (t72b3mX.ts mantletChinLift);
+//     stop cures: the four ids' mantlets take a 16 mm shallower chin (t72b3mX.ts mantletChinLift; the Hetman's stock chin
+//     read 19.9 mm over the driver's periscope at yaw 16 and 20.5 mm over the hatch at yaw 25 on the 230 merged tree);
 //   - negative controls: at its bare depression (no curve) each barrel comes within 25 mm of its hull; the fleet T-72B3M
 //     (t72b3m_2016, the stock chin) brings its mount within 20 mm of its hull at yaw 0-25.
 import assert from 'node:assert/strict';
 import { gunHullProbe, gunHullSweep } from './gunHullClearance.test-support.mjs';
 
 const T0 = Date.now(), MOUNT_KEEP = .020, BARREL_KEEP = .025;
-const IDS = process.env.GUN_MANTLET_IDS?.split(',') ?? ['t72b3m_hetman_ii', 't72b3_zubr', 't72b3_zubr_ii'];
+const IDS = process.env.GUN_MANTLET_IDS?.split(',') ?? ['t72b3m_hetman', 't72b3m_hetman_ii', 't72b3_zubr', 't72b3_zubr_ii'];
 const report = {};
 for (const id of IDS) {
   const probe = gunHullProbe(id, { suit: false });
