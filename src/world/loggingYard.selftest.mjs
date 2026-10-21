@@ -129,7 +129,7 @@ for (const seed of [1337, 2025]) {
   }
   const geometryChanged = (geo, index) => !geo.attributes.position.array.every((v, at) => v === before.buckets.baked[index].attributes.position.array[at]);
   after.fieldTimber.forEach((piece, index) => {
-    assert.equal(piece.geometry, after.buckets.baked[index]);
+    assert.ok(piece.geometry === after.buckets.baked[index]);
     assert.equal(piece.radius, before.fieldTimber[index].radius);
     assert.equal(piece.length, before.fieldTimber[index].length);
     assert.equal(piece.height, before.fieldTimber[index].height);

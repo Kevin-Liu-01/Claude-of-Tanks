@@ -6,6 +6,7 @@
 //   node tools/fleet-visual-compare.mjs --before=/tmp/before --after=/tmp/after
 //   node tools/fleet-visual-compare.mjs --before ... --after ... --strict
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { dirname, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 
@@ -27,7 +28,7 @@ const minSsim = Number(option('min-ssim', '0.985'));
 const minSilhouetteIou = Number(option('min-silhouette-iou', '0.99'));
 const maxEdgeShiftPx = Number(option('max-edge-shift', '5'));
 const strict = args.includes('--strict');
-const selectedIds = new Set(option('ids').split(',').map((id) => id.trim()).filter(Boolean));
+const selectedIds = new Set(uniqueIds(option('ids').split(',').map((id) => id.trim()).filter(Boolean), 'fleet-visual-compare --ids'));
 const selectedViews = new Set(option('views').split(',').map((view) => view.trim()).filter(Boolean));
 
 const beforeManifest = JSON.parse(readFileSync(resolve(beforeDir, 'tank-assets.json'), 'utf8'));

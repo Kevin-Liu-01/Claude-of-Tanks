@@ -66,7 +66,7 @@ interface DamBuckets {
 }
 
 /** What the receipts read back: the build's dimensions and counts. */
-export interface ReservoirDamReceipt {
+interface ReservoirDamReceipt {
   chordM: number;
   sagM: number;
   crestY: number;

@@ -75,7 +75,7 @@ f.update(farCamera);
 assert.ok(f.calls() > 0 && f.calls() <= 99 * 32,
   `one live update takes at most 32 fine-grid row checkpoints, got ${f.calls()} samples`);
 assert.equal(f.stats.streamedGeometryCount, 0, 'a partial job is not counted as completed');
-assert.equal(target.geometry, originalGeometry, 'partial buffers never replace visible terrain');
+assert.ok(target.geometry === originalGeometry, 'partial buffers never replace visible terrain');
 for (let frame = 0; frame < 2; frame++) {
   const before = f.calls();
   f.update(farCamera);
@@ -88,7 +88,7 @@ assert.equal(f.warm(farCamera, 1), 1, 'countdown drains the same partial job to 
 assert.equal(f.calls(), 99 * 99, 'mixed live/countdown does not restart the fine-grid sampling');
 assert.ok(f.calls() > beforeWarm);
 assert.equal(f.stats.streamedGeometryCount, 1);
-assert.notEqual(target.geometry, originalGeometry);
+assert.ok(target.geometry !== originalGeometry);
 assert.equal(target.geometry.getAttribute('position').count, 97 * 97 + 4 * 96);
 assert.equal(f.warm(farCamera, 2), 2, 'warm budget counts completed jobs, never checkpoints');
 let warmCompletions = 3;
@@ -128,14 +128,14 @@ while (moving.stats.streamedGeometryCount === 0) {
   moving.update(nextCamera);
   assert.ok(++framesToComplete < 40, 'one pending job finishes without starvation');
 }
-assert.equal(movedTarget.geometry, retainedFar, 'old-camera detail is retained off-tree, not mounted');
+assert.ok(movedTarget.geometry === retainedFar, 'old-camera detail is retained off-tree, not mounted');
 const secondTarget = moving.group.children[8]; // horizon + row 0, column 7
 const secondOld = secondTarget.geometry;
 while (moving.stats.streamedGeometryCount === 1) {
   moving.update(nextCamera);
   assert.ok(++framesToComplete < 80, 'the new nearest urgent chunk follows pending completion');
 }
-assert.notEqual(secondTarget.geometry, secondOld, 'selection uses the latest camera, not the job start');
+assert.ok(secondTarget.geometry !== secondOld, 'selection uses the latest camera, not the job start');
 
 // GPU suspension preserves resumable CPU state. Actual retirement still
 // disposes off-tree completed LODs through the established retained set.

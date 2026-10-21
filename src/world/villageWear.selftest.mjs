@@ -11,7 +11,9 @@ const stringify = value => JSON.stringify(value, (_key, item) => typeof item ===
 const pilots = ['coastal', 'saltwind'];
 // map revival lane 2 (2026-10-05): Aegis Crossing takes the activity mode off the gorge its village rect spans
 // (the map-revival lane, Caldera round 4, 2026-10-10: Aso's farmsteads among their paddies — the yards and margins only)
-const activityMaps = ['coastal', 'caldera', 'foundry', 'saltwind', 'cliffbridge'];
+// (2026-10-18, Earthrise 228 rebuild: outpost tracks are activity wear) Taurus-Littrow Station's rover and tyre tracks around
+// the outpost and the excavation front's strips, the rest of the floor the gardened grey (moon.ts workedGround)
+const activityMaps = ['coastal', 'caldera', 'foundry', 'saltwind', 'moon', 'cliffbridge'];
 // ground lane (the farmland, 2026-10-04): Verdant lays its village's ground out as plots (terrain.villageWear 'plots') —
 // the terrain material's mask alone, no CPU twin, grading, collision or grass input reads it; the map-revival lane:
 // Orchard Valley's walled yards and threshing floors (2026-10-05)
@@ -34,7 +36,7 @@ function wearDisabled(cfg) {
 }
 function checkScope(resolve) {
   assert.deepEqual(MAP_IDS.filter(id => resolve(id).terrain.villageWear === 'activity-patches'), activityMaps,
-    'activity wear stays opt-in: only the four activity maps replace the blanket village apron');
+    'activity wear stays opt-in: only the five activity maps replace the blanket village apron');
   assert.deepEqual(MAP_IDS.filter(id => ![undefined, 'activity-patches'].includes(resolve(id).terrain.villageWear)), plotMaps,
     'the village plots stay opt-in: the plot maps alone, and no third mode');
   for (const id of plotMaps) assert.equal(resolve(id).terrain.villageWear, 'plots', `${id}: the village in plots`);
@@ -133,6 +135,9 @@ const activityPoints = {
   caldera: [[-96.5, 162.7], [-25.2, 110.3], [55.9, 166], [130.5, 152.9], [-54.9, -96.5], [39.5, -62.2], [144.7, -138.8]],
   // the towns' ground beside each square and below them, both halves, and the gorge's gravel bed
   cliffbridge: [[-70, -205], [75, -150], [-85, -235], [-70, 205], [75, 150], [-60, 30], [80, -25]],
+  // (Earthrise 228) the station plots' yards in both halves (earthriseStation.ts EARTHRISE_STATION) and the excavation
+  // front's two graded strips
+  moon: [[34, 48], [88, 62], [-34, -48], [-88, -62], [-74, 82], [48, -22], [100, -80], [-157.8, -236.6], [-142.2, -213.4]],
 };
 function checkActivityPoints(id, pixels, size) {
   for (const [x,z] of activityPoints[id]) assert.ok(pixels[at(size,x,z) + 3] > 30,

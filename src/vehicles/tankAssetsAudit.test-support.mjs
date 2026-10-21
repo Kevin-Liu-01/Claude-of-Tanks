@@ -276,7 +276,7 @@ export function createTankAssetsAudit() {
       const hullRig = tank.root.getObjectByName('rig_hull');
       const yaw = tank.root.getObjectByName('rig_turret');
       const gun = tank.root.getObjectByName('rig_gun');
-      assert.equal(tank.root.getObjectByName('turret'), undefined, 'fixed casemate never masquerades as rotating turret stock');
+      assert.ok(tank.root.getObjectByName('turret') === undefined, 'fixed casemate never masquerades as rotating turret stock');
       assert.ok(hull.parent === hullRig, 'physical casemate remains hull-owned');
       assert.ok(hullProxy.parent === hullRig, 'fixed casemate shadow stays hull-owned');
       assert.ok(gunProxy.parent === gun, 'separate cannon and mantlet shadow follows the pitched gun');

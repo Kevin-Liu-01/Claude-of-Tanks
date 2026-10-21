@@ -44,7 +44,7 @@ export const OFFICIAL_TELEMETRY_URL = 'https://cot-telemetry.kk23907751.workers.
 /**
  * The official STUN servers (2026-10-02, docs/MULTIPLAYER-V2.md §13.14): what a seat's relay grant from the rooms Worker
  * carries when no TURN credential can be minted (`COT_STUN_URLS` in cloudflare/rooms/wrangler.jsonc, pinned here by
- * tools/deployment-policy.selftest.mjs) and the deprecated `/api/ice` answer for tabs loaded before the move.
+ * tools/deployment-policy.selftest.mjs). (The deprecated `/api/ice` route that also served it is retired, 229.)
  */
 export const OFFICIAL_STUN_URLS: readonly string[] = Object.freeze(['stun:stun.cloudflare.com:3478']);
 

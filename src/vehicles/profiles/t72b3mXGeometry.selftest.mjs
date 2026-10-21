@@ -25,7 +25,7 @@ function frames(tank){
   near(getSpec('t72b3m_2016').dims.heightM,SOURCE.physicalRoof,.000002,'physical casting roof is not elevated AA height');
   const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');
   assert.ok(gun.getObjectByName('gunMount')?.isMesh,'actual pitching canvas/mount geometry');
-  assert.equal(gun.getObjectByName('rig_recoil').parent,gun);
+  assert.ok(gun.getObjectByName('rig_recoil').parent === gun);
   for(const yaw of [0,-1.2,.73])for(const pitch of [0,-.075,.22]){
     turret.rotation.y=yaw;gun.rotation.x=pitch;tank.root.updateMatrixWorld(true);
     const expected=new THREE.Vector3(0,0,SOURCE.muzzle-SOURCE.gun[2]).applyAxisAngle(new THREE.Vector3(1,0,0),pitch)

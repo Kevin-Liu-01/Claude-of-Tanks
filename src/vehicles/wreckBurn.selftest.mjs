@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { makeBurnUniforms, applyBurnHook } from './materials.ts';
+import { splitProgramVariants } from '../engine/programVariants.ts';
 
 const mats = readFileSync(new URL('./materials.ts', import.meta.url), 'utf8');
 const core = readFileSync(new URL('./tankFactoryCore.ts', import.meta.url), 'utf8');
@@ -72,6 +73,26 @@ assert.match(core, /burnU\.uBurnEmber\.value = emberHeat\(wreckAge\) \*/, 'the l
   assert.equal(shader.uniforms.uBurnK, a.uBurnK);
   assert.ok(shader.fragmentShader.includes('brnSoot') && shader.fragmentShader.includes('brnPkGlow'), 'the patched program carries the 8p burn');
   mat.dispose();
+}
+// 2026-10-19: a battle build's program-variant twin (engine/programVariants.ts) met first burns its original, so the
+// plain meshes on the original burn too and the twin reads the hook, the key and the version through it
+{
+  const a = makeBurnUniforms(7);
+  const original = new THREE.MeshStandardMaterial();
+  const group = new THREE.Group();
+  const plain = new THREE.Mesh(new THREE.BoxGeometry(), original), pool = new THREE.InstancedMesh(plain.geometry, original, 2);
+  group.add(plain, pool);
+  splitProgramVariants(group);
+  const twin = pool.material;
+  assert.ok(twin !== original, 'the burnt twin is its own material');
+  const version = original.version;
+  assert.equal(applyBurnHook(twin, a), true, 'the twin first');
+  assert.ok(Object.prototype.hasOwnProperty.call(original, 'onBeforeCompile') && !Object.prototype.hasOwnProperty.call(twin, 'onBeforeCompile'),
+    'the hook lands on the original');
+  assert.equal(original.version, version + 1, 'the original recompiles');
+  assert.equal(applyBurnHook(original, a), true, 'the original next: already burning');
+  assert.ok(twin.customProgramCacheKey().endsWith('|burn-r7') && original.customProgramCacheKey().endsWith('|burn-r7'), 'both programs key the burn');
+  original.dispose();
 }
 
 // ---- the mirror: what a hull does over its burn ----------------------------------------------------------------------

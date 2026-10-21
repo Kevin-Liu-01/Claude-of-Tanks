@@ -20,7 +20,7 @@ const renderer = {
   clear() {},
   render(probe, camera) {
     renders++;
-    assert.strictEqual(probe.environment, environment);
+    assert.ok(probe.environment === environment);
     assert.equal(camera.isPerspectiveCamera, true);
     assert.equal(probe.children.length, 1, 'unchanged one chrome-sphere validation scene');
     const sphere = probe.children[0];
@@ -60,15 +60,15 @@ try {
   assert.equal(fallback().length, 0, 'normalized healthy night removes existing false rescue');
   pixelRadiance = 0;
   probe(.035, false, 1 / .035);
-  assert.equal(scene.environment, null, 'actual black bake remains rejected');
+  assert.ok(scene.environment === null, 'actual black bake remains rejected');
   assert.equal(fallback().length, 1);
   const light = fallback()[0];
   assert.equal(light.intensity, 3.1 * .035);
   probe(1, false, 1);
-  assert.strictEqual(fallback()[0], light); assert.equal(fallback().length, 1);
+  assert.ok(fallback()[0] === light); assert.equal(fallback().length, 1);
   assert.equal(light.intensity, 3.1, 'failed day re-bake rescales the same owner');
   probe(.035, false, 1 / .035);
-  assert.strictEqual(fallback()[0], light); assert.equal(light.intensity, 3.1 * .035);
+  assert.ok(fallback()[0] === light); assert.equal(light.intensity, 3.1 * .035);
   for (const scale of [0, -1, .000001]) {
     probe(scale, false, 1000); assert.equal(light.intensity, 3.1 * .001);
   }

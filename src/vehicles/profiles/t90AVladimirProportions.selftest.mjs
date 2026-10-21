@@ -156,11 +156,11 @@ try {
     assert.ok(normalAlignment > 0.9999,
       `${seat.station} ERA normal matches its structural carrier (${normalAlignment.toFixed(6)})`);
   }
-  assert.equal(turretRig.getObjectByName('turretTrack'), undefined,
+  assert.ok(turretRig.getObjectByName('turretTrack') === undefined,
     'no Vladimir ERA remains in the spare-track material bucket');
   const eraMesh = turretRig.getObjectByName('turretExternalArmor');
   assert.ok(eraMesh?.isMesh, 'faceted Kontakt-5 cassettes remain turret-owned external armor');
-  assert.equal(eraMesh.material, turret.material,
+  assert.ok(eraMesh.material === turret.material,
     'merged Vladimir ERA mesh shares the vehicle armor-paint material');
   assert.equal(tank.root.userData.eraFinishReceipt?.bodyAndCoverUseVehiclePaint, true,
     'cassette bodies and covers both retain vehicle-scale camouflage');
@@ -437,10 +437,10 @@ try {
   for (const yaw of [0, Math.PI / 2]) {
     turretRig.rotation.y = yaw;
     tank.root.updateMatrixWorld(true);
-    assert.equal(gunRig.parent, turretRig, `gun remains turret-owned through yaw ${yaw}`);
-    assert.equal(smokeLeft.parent, turretRig, `left smoke bank remains turret-owned through yaw ${yaw}`);
-    assert.equal(smokeRight.parent, turretRig, `right smoke bank remains turret-owned through yaw ${yaw}`);
-    assert.equal(remoteKord.parent, turretRig, `remote Kord remains turret-owned through yaw ${yaw}`);
+    assert.ok(gunRig.parent === turretRig, `gun remains turret-owned through yaw ${yaw}`);
+    assert.ok(smokeLeft.parent === turretRig, `left smoke bank remains turret-owned through yaw ${yaw}`);
+    assert.ok(smokeRight.parent === turretRig, `right smoke bank remains turret-owned through yaw ${yaw}`);
+    assert.ok(remoteKord.parent === turretRig, `remote Kord remains turret-owned through yaw ${yaw}`);
     assert.ok(turretRig.getObjectById(turretDetail.id) === turretDetail,
       `side rails remain turret-owned through yaw ${yaw}`);
   }

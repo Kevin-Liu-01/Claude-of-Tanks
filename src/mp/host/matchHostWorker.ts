@@ -15,7 +15,7 @@ type WorkerScope = {
 };
 
 /** The core's port over a Worker scope (`self` inside the Worker). */
-export function workerScopePort(scope: WorkerScope): HostPort<WorkerToHostMessage, HostToWorkerMessage> {
+function workerScopePort(scope: WorkerScope): HostPort<WorkerToHostMessage, HostToWorkerMessage> {
   return {
     post(message, transfer) { scope.postMessage(message, transfer ?? []); },
     onMessage(listener) {

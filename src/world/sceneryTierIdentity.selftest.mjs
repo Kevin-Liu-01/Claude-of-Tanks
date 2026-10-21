@@ -121,7 +121,7 @@ for (const mapId of [...angularMaps, 'verdant', 'winter']) {
     const stream = () => mulberry32(2002 + 60 + vi);
     const desk = boulderVariantForms(vi, stoneNoise, stream, legacy.hull, legacy.top, lithology, angular, false);
     const phone = boulderVariantForms(vi, stoneNoise, stream, legacy.hull, legacy.top, lithology, angular, true);
-    assert.equal(desk.collision, desk.drawn.geometry, `${mapId} stone ${vi}: the desktop collides with the form it draws`);
+    assert.ok(desk.collision === desk.drawn.geometry, `${mapId} stone ${vi}: the desktop collides with the form it draws`);
     assert.deepEqual(positions(phone.collision), positions(desk.collision), `${mapId} stone ${vi}: the phone's collision form is the desktop's`);
     assert.ok(phone.drawn.geometry.attributes.position.count < desk.drawn.geometry.attributes.position.count,
       `${mapId} stone ${vi}: the phone draws a lighter form`);

@@ -153,7 +153,7 @@ export function pole(m: Mesh, a: V3, b: V3, r: number, seg: number, col: Rgb, ca
 // ------------------------------------------------------------------------------------------------------- the drum
 
 /** A steel drum's paint: the shell's, its hoops and chimes, its head's; the stencil band where it has one. */
-export interface DrumPaint { shell: Rgb; hoop: Rgb; head: Rgb; band?: Rgb; rust: number }
+interface DrumPaint { shell: Rgb; hoop: Rgb; head: Rgb; band?: Rgb; rust: number }
 
 /**
  * The 200-litre steel drum (the Wehrmacht's Kraftstoff, the US 55-gallon, the oil companies' liveries, the modern
@@ -204,7 +204,7 @@ export function drumFar(p: DrumPaint): THREE.BufferGeometry {
 // ------------------------------------------------------------------------------------------------------- the barrel
 
 /** A cask's wood, its hoops and its head; `staves` its count; `bilge` its belly over its ends. */
-export interface CaskForm { wood: Rgb; hoop: Rgb; head: Rgb; staves: number; hoops: number; bilge: number; height: number; radius: number; tar?: boolean }
+interface CaskForm { wood: Rgb; hoop: Rgb; head: Rgb; staves: number; hoops: number; bilge: number; height: number; radius: number; tar?: boolean }
 
 /**
  * The coopered cask (a wine or cider cask of oak, a herring or tar barrel, a sake taru with its bamboo hoops): its staves

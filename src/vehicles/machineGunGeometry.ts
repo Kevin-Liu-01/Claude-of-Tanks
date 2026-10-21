@@ -350,8 +350,8 @@ export const RIDING_CRADLE_RECOIL_M = 0.012;
  * and the cradle, pin and shield stay on the trunnion. The cheeks stand clear of the receiver's side furniture over that
  * stroke: the pin-side cheek 3 mm outboard of the charging-handle slide, its front 3 mm ahead of the pin and the handle's
  * knob 9 mm ahead of it at full recoil; the feed-side cheek 2 mm outboard of the side-plate seam and 1.5 mm inboard of the
- * can, its front 2 mm behind the can tray's arm (which runs in under the receiver) at full recoil; the receiver bears on
- * the cradle floor. The bearing ring's
+ * can, its front 2 mm behind the can tray's arm (which runs in under the receiver) at full recoil; the receiver slides on
+ * the cradle floor (a 0.5 mm fit, round 5). The bearing ring's
  * outer radius is 20 mm, 2 mm behind the knob's stem at full recoil. The cradle (cheeks, floor, carrier bars) is painted
  * with the vehicle (`cradleSlot`, critic CN-4: the weapon steel's grain read as a crumpled silver sheet from below); the
  * pin stays steel.
@@ -365,7 +365,9 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
   if (context.mount === 'external-cradle') throw new Error('addPintleRidingCradle: a pintle mount only');
   const { bodyBottom, bodyW, feedSign: f, parts, recY, recZ, s, trunY, weaponSlot } = context;
   const near = context.detail === 1;
-  const floorBottom = bodyBottom - 0.010 * s;
+  // round 5 (critic CN5-01): the floor's top 0.5 mm under the receiver's floor line, a slide fit (an exact triangle test
+  // read the coincident faces as crossing at every pitch; the receiver slides on it, it never meets it)
+  const floorBottom = bodyBottom - 0.0105 * s;
   // the pin-side cheek outboard of the charging slide (bodyW/2 + 9 mm), the feed-side one between the seam strip
   // (bodyW/2 + 3.5 mm) and the can (bodyW/2 + 14 mm)
   const pinIn = bodyW / 2 + 0.012 * s, pinT = 0.012 * s, feedIn = bodyW / 2 + 0.0055 * s, feedT = 0.007 * s;
@@ -879,6 +881,31 @@ export function addPintleShield(context: PintleLayout,
     parts.add(shieldSlot, moldedBox(0.34 * s, 0.035 * s, 0.18 * s, 0.008 * s, 1, 0.008 * s),
       0, recY + shieldH * 0.58 * s, shieldZ - 0.070 * s);
   }
+}
+
+/**
+ * Release 227, round 6 (visual critic CN-D3: "the 'light shield' reads as an open rectangular window frame ... not a
+ * shield plate. From the front it looks like a hollow box frame around the gun"): a riding cradle's shield closes the
+ * 0.15 m window between its two inner panels with a face plate round a gun port, on the same pitch group, so it reads
+ * as one shield with a port. Four flat plates, 20 mm thick, 12 mm into each inner panel's inboard edge and set between
+ * the panels' faces (no coplanar face): an apron under the port down to 10 mm over the leaves' foot, a plate over it
+ * into the top beam, and two port cheeks. The port is 36 mm from the barrel's axis each way: the barrel's support collar
+ * (24 mm radius) passes through it with 12 mm of air at every pitch (cradle and barrel pitch together) and through the
+ * whole 12 mm recoil stroke (the barrel runs back along its own axis); the receiver's and the can's fronts stand 16 mm
+ * behind the plates at rest and recoil away from them. The aprons bury the shield carrier's cross-bar front by 1 mm.
+ */
+export function addPintleShieldPort(context: PintleLayout): void {
+  const { parts, recY, s, shieldVariant, tone, trunY, trunZ } = context;
+  if (!shieldVariant) return;
+  const shieldSlot = tone === 'dark' ? 'dark' : 'detail';
+  const shieldH = shieldVariant === 'low' ? 0.14 : shieldVariant === 'armored' ? 0.27 : 0.22;
+  const x0 = 0.075 * s, t = 0.022 * s, z = trunZ + 0.035 * s - 0.003 * s, halfW = x0 + 0.012 * s;
+  const port = 0.036 * s, portBottom = trunY - port, portTop = trunY + port;
+  const foot = recY + 0.018 * s - shieldH * s / 2 + 0.010 * s, beamIn = recY + shieldH * 0.48 * s - 0.010 * s;
+  parts.add(shieldSlot, block(2 * halfW, portBottom - foot, t), 0, (portBottom + foot) / 2, z);
+  parts.add(shieldSlot, block(2 * halfW, beamIn - portTop, t), 0, (beamIn + portTop) / 2, z);
+  const cheekW = halfW - port, cheekH = portTop - portBottom + 0.004 * s;
+  for (const side of [-1, 1]) parts.add(shieldSlot, block(cheekW, cheekH, t), side * (port + cheekW / 2), trunY, z);
 }
 
 /**

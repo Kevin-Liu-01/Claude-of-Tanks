@@ -12,7 +12,7 @@
 import { muxMp4, muxWebm, type MuxAudioTrack, type MuxColor, type MuxSample } from './studioFilmMux.ts';
 import type { FilmFrameInfo, FilmSessionInfo } from './studioFilm.ts';
 
-export interface FilmExportPorts {
+interface FilmExportPorts {
   /** Open the film session at the export size (studio.beginFilm). */
   begin(): FilmSessionInfo;
   /** Render the next frame into `canvas` (studio.renderFilmFrame). */
@@ -33,7 +33,7 @@ export interface FilmExportProgress {
   readonly remainingMs: number | null;
 }
 
-export interface FilmExportOptions {
+interface FilmExportOptions {
   readonly width: number;
   readonly height: number;
   readonly fps: number;
@@ -76,7 +76,7 @@ const AVC_LEVELS: ReadonlyArray<readonly [number, number, number, number]> = [
 ];
 
 /** Smallest High-profile level that fits the frame size, rate and bitrate. */
-export function avcCodecString(width: number, height: number, fps: number, bitrate: number): string | null {
+function avcCodecString(width: number, height: number, fps: number, bitrate: number): string | null {
   const mbs = Math.ceil(width / 16) * Math.ceil(height / 16);
   const longSide = Math.max(Math.ceil(width / 16), Math.ceil(height / 16));
   for (const [level, maxFs, maxMbps, maxBr] of AVC_LEVELS) {
@@ -88,7 +88,7 @@ export function avcCodecString(width: number, height: number, fps: number, bitra
 }
 
 /** Default quality: ~0.2 bits per pixel per frame, 8–100 Mbit/s. */
-export function defaultFilmBitrate(width: number, height: number, fps: number): number {
+function defaultFilmBitrate(width: number, height: number, fps: number): number {
   return Math.round(Math.min(100_000_000, Math.max(8_000_000, width * height * fps * 0.2)));
 }
 

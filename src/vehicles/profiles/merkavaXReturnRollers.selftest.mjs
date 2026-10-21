@@ -9,6 +9,7 @@ import {getSpec} from '../specs.ts';
 import {createTankState} from '../../sim/movement.ts';
 import {auditVisibleReturnRollerContact} from '../returnRollerContactTest.mjs';
 import {rollerSuspensionFixtures,finiteClearance as completeStockClearance} from '../returnRollerPhysicsTest.mjs';
+import { graphLabels } from '../../../tools/receipt-kit.test-support.mjs';
 
 const cases=[['merkava3d',buildMerkava3DX],['merkava4',buildMerkava4X]];
 // The pre-roller witness (a source replay of merkavaX.ts without the lining call and the literal pre-roller gear
@@ -73,7 +74,7 @@ function matrix(mesh,i,hull){
 }
 function rollerBounds(c){
  const tire=c.port.hullG.getObjectByName('gearReturnRollerRotors');
- assert.equal(tire.count,8);assert.deepEqual(tire.material,[c.port.mats.rubber,c.port.mats.wheels]);
+ assert.equal(tire.count,8);assert.deepEqual(graphLabels(tire.material),graphLabels([c.port.mats.rubber,c.port.mats.wheels]));
  assert.equal(tire.visible,true);assert.equal(tire.userData.appearanceRole,undefined);
  assert.equal(tire.geometry.groups.length,2,'One complete rotor with two material groups');
  const bounds=[];
@@ -122,8 +123,8 @@ function mounts(c,bounds){
  const mesh=c.port.hullG.getObjectByName('gearMerkavaReturnSpindles');
  assert.equal(mesh.count,8);assert.equal(mesh.geometry.parameters.radiusTop,.027);
  assert.equal(mesh.geometry.parameters.radialSegments,c.quality==='high'?8:4);assert.equal(mesh.geometry.parameters.openEnded,false);
- assert.equal(mesh.material,c.port.mats.wheels);assert.equal(mesh.userData.runningGear,true);
- assert.equal(mesh.parent,c.port.hullG,'Mounts share the roller assembly owner, not a disposable detail LOD');
+ assert.ok(mesh.material === c.port.mats.wheels);assert.equal(mesh.userData.runningGear,true);
+ assert.ok(mesh.parent === c.port.hullG,'Mounts share the roller assembly owner, not a disposable detail LOD');
  for(const [i,b]of bounds.entries()){
   const g=mesh.geometry.clone().applyMatrix4(matrix(mesh,i,c.port.hullG));g.computeBoundingBox();const box=g.boundingBox,side=Math.sign(b.center.x);g.dispose();
   const p=mesh.geometry.attributes.position,rim=new Map(),m=matrix(mesh,i,c.port.hullG);
@@ -418,7 +419,7 @@ for(const [id,build]of cases)for(const quality of['high','low']){
  const omitted=id==='merkava4'?null:capture(id,build,quality,false,{omitRollers:true});
  try{
   if(omitted){
-   assert.equal(omitted.port.hullG.getObjectByName('gearReturnRollerRotors'),undefined,'Roller-free twin has no rotors');
+   assert.ok(omitted.port.hullG.getObjectByName('gearReturnRollerRotors') === undefined,'Roller-free twin has no rotors');
    assert.deepEqual(current.emissions,omitted.emissions,'Rollers add or change no authored emission (live roller-free twin)');
    assert.deepEqual(body(current.tank.root),body(omitted.tank.root),'Hull/turret/gun armor, finish and rig unchanged by the rollers');
    for(const name of['rig_hull','rig_turret','rig_gun'])assert.deepEqual(current.tank.root.getObjectByName(name).matrixWorld.elements,
@@ -556,7 +557,7 @@ for(const quality of['high','low']){
   const control=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true});stats.builds++;
   try{
    for(const name of['gearReturnRollerTires','gearReturnRollerDiscs','gearReturnRollerRotors','gearMerkavaReturnSpindles'])
-    assert.equal(control.root.getObjectByName(name),undefined,id+': rollerless suspension retained');
+    assert.ok(control.root.getObjectByName(name) === undefined,id+': rollerless suspension retained');
   }finally{control.dispose();}
  }
 }

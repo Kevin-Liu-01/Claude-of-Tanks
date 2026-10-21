@@ -196,7 +196,7 @@ assert.ok(Math.abs(sightMinLocalY - 0.80) < 0.005,
 for (const side of ['left', 'right']) {
   const links = turretRig.getObjectByName(`mbt70_bustle_spare_links_${side}`);
   assert(links, `${side} bustle carries a real spare-track fitting`);
-  assert.equal(links.parent, turretRig, `${side} spare links rotate with the turret`);
+  assert.ok(links.parent === turretRig, `${side} spare links rotate with the turret`);
   assert.ok(Math.abs(Math.abs(links.position.x) - 1.641) < 1e-9
     && links.position.z <= -2.40,
     `${side} spare links sit flush against the aft bustle quarter`);
@@ -226,7 +226,7 @@ for (const name of [
 ]) {
   const fitting = turretRig.getObjectByName(name);
   assert(fitting, `${name} is present`);
-  assert.equal(fitting.parent, turretRig, `${name} remains attached through turret yaw`);
+  assert.ok(fitting.parent === turretRig, `${name} remains attached through turret yaw`);
 }
 assert.ok(turretRig.userData.mbt70TurretReceipt.bustleFloorRearM
   > turretRig.userData.mbt70TurretReceipt.bustleFloorFrontM + 0.20,

@@ -137,10 +137,10 @@ check('every opaque real material shares one stand-in per side and raster state,
   const double = first.real.filter((material) => material.side === THREE.DoubleSide).map(topMaskCoverageMaterial);
   assert.equal(new Set(front).size, 1);
   assert.equal(new Set(double).size, 1);
-  assert.notStrictEqual(front[0], double[0]);
+  assert.ok(front[0] !== double[0]);
   for (const standIn of [front[0], double[0]]) {
     assert.ok(standIn instanceof THREE.MeshBasicMaterial);
-    assert.equal(standIn.map, null, 'an opaque pass writes alpha 1 everywhere: no texture is sampled');
+    assert.ok(standIn.map === null, 'an opaque pass writes alpha 1 everywhere: no texture is sampled');
     assert.equal(standIn.transparent, false);
     assert.equal(standIn.alphaTest, 0);
   }
@@ -166,8 +166,8 @@ check('each stand-in decides alpha exactly as its source: OPAQUE, alpha test, ve
       if (!a.opaque || a.alphaTest) {
         assert.equal(b.map, a.map, `${source.name || source.type}: map alpha`);
         assert.equal(b.alphaMap, a.alphaMap, `${source.name || source.type}: alphaMap`);
-        assert.strictEqual(standIn.map, source.map ?? null);
-        assert.strictEqual(standIn.alphaMap, source.alphaMap ?? null);
+        assert.ok(standIn.map === (source.map ?? null));
+        assert.ok(standIn.alphaMap === (source.alphaMap ?? null));
         assert.equal(standIn.opacity, source.opacity);
       }
       for (const field of ['side', 'visible', 'colorWrite', 'depthWrite', 'depthTest', 'depthFunc', 'forceSinglePass',
@@ -182,15 +182,15 @@ check('a depth-only occluder stays a depth-only occluder', () => {
   const standIn = topMaskCoverageMaterial(first.occluder);
   assert.equal(standIn.colorWrite, false);
   assert.equal(standIn.depthWrite, true);
-  assert.notStrictEqual(standIn, topMaskCoverageMaterial(first.real[1]), 'colour-writing meshes never share it');
+  assert.ok(standIn !== topMaskCoverageMaterial(first.real[1]), 'colour-writing meshes never share it');
 });
 
 check('coverage a stand-in cannot reproduce keeps the real material', () => {
   for (const material of [first.shader, first.displaced, first.transmissive]) {
-    assert.strictEqual(topMaskCoverageMaterial(material), material);
+    assert.ok(topMaskCoverageMaterial(material) === material);
   }
   const stencil = new THREE.MeshStandardMaterial({ stencilWrite: true });
-  assert.strictEqual(topMaskCoverageMaterial(stencil), stencil);
+  assert.ok(topMaskCoverageMaterial(stencil) === stencil);
   assert.strictEqual(topMaskCoverageMaterial(new THREE.LineBasicMaterial()) instanceof THREE.LineBasicMaterial, true);
 });
 
@@ -208,7 +208,7 @@ check('a second tank reuses the shared stand-ins: no new opaque program keys', (
   const fresh = [...secondKeys].filter((key) => !newKeys.has(key));
   // Only the kept materials (their own shader hooks/textures differ per tank) may add keys.
   assert.ok(fresh.length <= 3, `new keys for the second tank: ${fresh.length}`);
-  assert.strictEqual(topMaskCoverageMaterial(second.real[0]), topMaskCoverageMaterial(first.real[0]));
+  assert.ok(topMaskCoverageMaterial(second.real[0]) === topMaskCoverageMaterial(first.real[0]));
   restoreSecond();
 });
 
@@ -217,14 +217,14 @@ check('alpha stand-ins follow their source between passes and die with it', () =
   first.glass.opacity = 0.6;
   const swapped = new THREE.Texture();
   first.net.map = swapped;
-  assert.strictEqual(topMaskCoverageMaterial(first.glass), standIn, 'one stand-in per alpha source');
+  assert.ok(topMaskCoverageMaterial(first.glass) === standIn, 'one stand-in per alpha source');
   assert.equal(standIn.opacity, 0.6);
-  assert.strictEqual(topMaskCoverageMaterial(first.net).map, swapped);
+  assert.ok(topMaskCoverageMaterial(first.net).map === swapped);
   let disposed = 0;
   standIn.addEventListener('dispose', () => disposed++);
   first.glass.dispose();
   assert.equal(disposed, 1, 'disposing the source releases its stand-in');
-  assert.notStrictEqual(topMaskCoverageMaterial(first.glass), standIn, 'a reused source gets a fresh stand-in');
+  assert.ok(topMaskCoverageMaterial(first.glass) !== standIn, 'a reused source gets a fresh stand-in');
 });
 
 check('a failing traversal leaves no mesh on a stand-in', () => {
@@ -234,7 +234,7 @@ check('a failing traversal leaves no mesh on a stand-in', () => {
   Object.defineProperty(poison, 'material', { get: () => { throw new Error('poisoned material'); }, configurable: true });
   third.root.add(poison);
   assert.throws(() => applyTopMaskCoverage(third.root), /poisoned material/);
-  for (const [mesh, material] of rows) assert.strictEqual(mesh.material, material);
+  for (const [mesh, material] of rows) assert.ok(mesh.material === material);
 });
 
 console.log(`topMaskCoverage.selftest: ${checks} checks; mask passes link ${newKeys.size} programs instead of ${oldKeys.size}`);

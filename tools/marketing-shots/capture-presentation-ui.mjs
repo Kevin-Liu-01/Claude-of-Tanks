@@ -19,6 +19,9 @@ function opt(name, fallback) {
 }
 
 const collection = opt('collection', 'presentation');
+// COT_CAPTURE_LOAD_TIMEOUT_MS: the page-load waits on a loaded, shared machine (a cold dev-server load of the game
+// can outlast the default there); the default is unchanged.
+const LOAD_MS = Number(process.env.COT_CAPTURE_LOAD_TIMEOUT_MS) || 90000;
 const onlyTarget = opt('only', '');
 const outDir = resolve(opt('out', collection === 'feature-evidence'
   ? 'shots/feature-evidence-r2/ui-raw'
@@ -153,8 +156,8 @@ try {
   for (const target of targets) {
     errors = [];
     await page.setViewport({ width: target.width, height: target.height, deviceScaleFactor: target.dpr || 1 });
-    await page.goto(`${baseUrl}${target.path}`, { waitUntil: 'domcontentloaded', timeout: 90000 });
-    await page.waitForFunction(target.ready, { timeout: 90000 });
+    await page.goto(`${baseUrl}${target.path}`, { waitUntil: 'domcontentloaded', timeout: LOAD_MS });
+    await page.waitForFunction(target.ready, { timeout: LOAD_MS });
     if (target.setup) {
       await page.evaluate(async (setup) => {
         if (setup.kind === 'garage') {

@@ -29,6 +29,7 @@
 // gun group and the cells a declared finite clearance cut are reported apart as moving-clearance air; --no-moving restores
 // the plain measurement.
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
 import { collectTriangles } from './tank-surface-collect.mjs';
@@ -58,7 +59,7 @@ const fullBody = flag('full-body');
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 // Interior fills 2026-09-13: the shipped tank carries its generated fills; --no-fills measures the authored shells alone.
 if (!flag('no-fills')) { const { ensureAllInteriorFills } = await import('../src/vehicles/interiorFills.ts'); await ensureAllInteriorFills(); }
-const ids = opt('ids', 'abramsx').split(',').filter(Boolean);
+const ids = uniqueIds(opt('ids', 'abramsx').split(',').filter(Boolean), 'tank-watertight-check --ids');
 
 /** One measurement through the shared module (lane volume, retained air, bore air and moving-clearance air are reported
  * apart from the leak). */

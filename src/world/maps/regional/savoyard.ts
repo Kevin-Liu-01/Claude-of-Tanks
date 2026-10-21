@@ -848,7 +848,7 @@ const ruine: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const SAVOYARD_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const SAVOYARD_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   alpine: maison,
   logcabin: grange,
   granary: mazot,

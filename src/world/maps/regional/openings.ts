@@ -313,7 +313,7 @@ export function doorUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
 }
 
 /** An open shop's fittings (openShop): its timber, its shutter boards and how they stand by day, its goods' colours. */
-export interface ShopStyle {
+interface ShopStyle {
   timber: Rgb;
   /**
    * the shutter boards: taken down and stacked against a jamb inside, hinged up over the opening and propped on two poles
@@ -410,7 +410,7 @@ const CHARRED: Rgb = [0.09, 0.08, 0.07];
 const GATE_IRON: Rgb = [0.15, 0.14, 0.13];
 
 /** Options for a gate pair: whether a leaf wide and tall enough carries a wicket (default yes). */
-export interface GateOptions { wicket?: boolean; /** a timber leaf's ledges' height (default 0.14) */ ledge?: number }
+interface GateOptions { wicket?: boolean; /** a timber leaf's ledges' height (default 0.14) */ ledge?: number }
 
 /**
  * A pair of ledged-and-braced gate leaves in a wide opening (the barn, the cart shed, the yard gate). Props census E2

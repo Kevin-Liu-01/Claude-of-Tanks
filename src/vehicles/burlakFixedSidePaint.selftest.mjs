@@ -49,9 +49,9 @@ function decorationAdmission(summary){return {...summary,skipped:summary.skipped
  [kit,/^gun@-?\d+$/.test(reason)?'gun@blocked':reason])};}
 function guards(tank){const rig=tank.root.getObjectByName('rig_hull'),hull=tank.root.getObjectByName('hull');
  return [-1,1].map(side=>{const mesh=tank.root.getObjectByName(side<0?'hullTrackGuardL':'hullTrackGuardR');
-  assert.ok(mesh?.isMesh);assert.equal(mesh.parent,rig,'unchanged always-visible hull-side stock');
+  assert.ok(mesh?.isMesh);assert.ok(mesh.parent === rig,'unchanged always-visible hull-side stock');
   assert.equal(mesh.userData.combatHitboxRole,'nonArmor','paint does not enlarge the ballistic envelope');
-  assert.equal(mesh.material.name,'cot:armor-paint');assert.equal(mesh.material.map,hull.material.map);
+  assert.equal(mesh.material.name,'cot:armor-paint');assert.ok(mesh.material.map === hull.material.map);
   assert.ok(mesh.material.map?.isTexture,'native paint material, not a flat approximation');
   const uv=mesh.geometry.attributes.uv;assert.ok(uv&&Array.from(uv.array).every(Number.isFinite));
   assert.ok(new Set(uv.array).size>8,'spatial camouflage coordinates, not one constant texel');return mesh;});}
@@ -66,7 +66,7 @@ try{for(const quality of['high','low'])for(const camo of['factory','winter']){
   assert.deepEqual(after.emissions,before.emissions,'every raw geometry, method and pose is identical; only the eight declared finishes change');
   emissions+=after.emissions.length;
   const oldSheet=before.tank.root.getObjectByName('hullRubber');
-  assert.ok(oldSheet?.isMesh);assert.equal(oldSheet.material.name,'cot:tire-rubber');assert.equal(oldSheet.material.map,null);
+  assert.ok(oldSheet?.isMesh);assert.equal(oldSheet.material.name,'cot:tire-rubber');assert.ok(oldSheet.material.map === null);
   const rig=after.tank.root.getObjectByName('rig_hull'),sheets=guards(after.tank);
   assert.deepEqual(decorationAdmission(after.tank.root.userData.__decorSummary),decorationAdmission(before.tank.root.userData.__decorSummary),'no decoration admission or rejection-kind change');
   for(const tank of[before.tank,after.tank])for(const era of tank.root.userData.eraClusterNames??[])tank.stripEra(era);

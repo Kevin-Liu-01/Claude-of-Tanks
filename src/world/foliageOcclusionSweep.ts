@@ -11,7 +11,7 @@
  * on that record alone, so the fades and their uploads are the full walk's.
  */
 
-export interface FadeRecord {
+interface FadeRecord {
   readonly x: number;
   readonly z: number;
   fade: number;
@@ -20,7 +20,7 @@ export interface FadeRecord {
 /** The broadphase cell (m): a capsule box of ~40 m spans at most 3 x 3 cells. */
 export const FOLIAGE_OCCLUSION_CELL_M = 32;
 
-export interface FoliageFadeSweep<T extends FadeRecord> {
+interface FoliageFadeSweep<T extends FadeRecord> {
   /**
    * One frame: ease every record in the box [minX, maxX] x [minZ, maxZ] (when `boxActive`) and every record still
    * fading, once each. Returns whether any record's fade is non-zero afterwards (the walk's `any`).

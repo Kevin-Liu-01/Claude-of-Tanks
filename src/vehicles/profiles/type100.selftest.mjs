@@ -180,7 +180,7 @@ for(const quality of ['high','low']) {
   tank.syncFromState(state,2);tank.root.updateMatrixWorld(true);
   for(let i=0;i<4;i++){tank.recoilKick(0,1,i,true);tank.syncFromState(state,.12);near(recoil.position.z,0,1e-6,'guided launch does not recoil cannon');}
   // The frame transform, not a hardcoded world coordinate, drives each launch point.
-  for(let i=0;i<4;i++){const tip=tank.root.getObjectByName(`rig_launcher_tip_${i}`);assert.ok(tip,`physical launch anchor ${i}`);assert.equal(tip.parent,gun);near(tip.position.distanceTo(new T.Vector3(spec.gun.launcherMuzzles[i].x,spec.gun.launcherMuzzles[i].y,spec.gun.launcherMuzzles[i].z)),0,1e-9,'declared launch position');}
+  for(let i=0;i<4;i++){const tip=tank.root.getObjectByName(`rig_launcher_tip_${i}`);assert.ok(tip,`physical launch anchor ${i}`);assert.ok(tip.parent === gun);near(tip.position.distanceTo(new T.Vector3(spec.gun.launcherMuzzles[i].x,spec.gun.launcherMuzzles[i].y,spec.gun.launcherMuzzles[i].z)),0,1e-9,'declared launch position');}
   state.turretYaw=0;state.gunPitch=0;tank.syncFromState(state,2);tank.root.updateMatrixWorld(true);
   const triangles=count(tank.root);assert.ok(triangles<=(quality==='high'?80000:55000),`${quality} whole-scene budget ${triangles}`);
   result.push({quality,triangles,poses,negatives:4});tank.dispose();for(const p of pieces)p.mesh.geometry.dispose();

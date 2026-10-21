@@ -201,10 +201,12 @@ the original manifest recorded evidence it lacks.
 An unresolved source target does not explain every failure on that vehicle.
 Inspect the complete geometry receipt, including articulated floater regions;
 trace each failed region to its actual stock and source receiving surface.
-If `tank-standard-check --gate` exits at source comparison, a separate run
-without `--gate` can expose track, continuity and fitting defects. Label that
-run diagnostic, preserve the failed source gate, and repair independently
-supported omissions before asking the owner to adjudicate a target conflict.
+`tank-standard-check --gate` stops at a failing source comparison. Add
+`--stages` (the release check does) to run and report every stage for every
+id anyway: track, continuity and fitting defects then show beside the failed
+source gate, which still fails the run (2026-10-16, test-speed R4b). Preserve
+the failed source gate, and repair independently supported omissions before
+asking the owner to adjudicate a target conflict.
 Do not stretch a hull, invent a bracket or fill a real vent to improve a score.
 
 A supplied export can intersect its own running gear. Measure the actual source

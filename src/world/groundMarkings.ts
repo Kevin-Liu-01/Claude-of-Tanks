@@ -12,7 +12,10 @@
 // fade is a hash of the stripe's place.
 import * as THREE from 'three';
 
-type GroundPaint = 'yellow' | 'white' | 'black';
+// 'track': the compacted regolith of a rover's track across open ground (the Earthrise 228 rebuild, round 3), its 'rut' the
+// wheels' own darker bands — disturbed regolith reads darker than the gardened surface round it
+// 'soot': a lander's blast across a pad (Earthrise's landing field), laid under its paint
+type GroundPaint = 'yellow' | 'white' | 'black' | 'track' | 'rut' | 'soot';
 
 interface GroundMarkingLine {
   /** the stripe's nodes (x, z), metres; corners are rounded into curves */
@@ -22,6 +25,8 @@ interface GroundMarkingLine {
   paint: GroundPaint;
   /** how far a corner's curve starts before the node (metres, default 8; never past 40 % of either leg) */
   round?: number;
+  /** a track across the open ground (a rover's on the Moon): drawn wherever it runs, not only on the paving */
+  unpaved?: boolean;
 }
 
 interface GroundMarkingNumber {
@@ -57,6 +62,9 @@ const PAINT: Record<GroundPaint, { hex: number; alpha: number }> = {
   yellow: { hex: 0xcfa846, alpha: 0.84 },
   white: { hex: 0xe2dfd3, alpha: 0.8 },
   black: { hex: 0x22221f, alpha: 0.7 },
+  track: { hex: 0x2b2926, alpha: 0.58 },
+  rut: { hex: 0x242220, alpha: 0.58 },
+  soot: { hex: 0x1c1b19, alpha: 0.3 },
 };
 /** the worn-paint mask's tile, metres */
 const WEAR_TILE_M = 7;
@@ -173,7 +181,7 @@ function emitLine(sink: Sink, line: GroundMarkingLine, cfg: GroundMarkingsConfig
       for (let k = 0; k < n; k++) {
         const u0 = s0 + (s1 - s0) * k / n, u1 = s0 + (s1 - s0) * (k + 1) / n;
         const x0 = ax + tx * u0, z0 = az + tz * u0, x1 = ax + tx * u1, z1 = az + tz * u1;
-        if (paved && !paved((x0 + x1) / 2, (z0 + z1) / 2)) continue;
+        if (paved && !line.unpaved && !paved((x0 + x1) / 2, (z0 + z1) / 2)) continue;
         pushQuad(sink, [[x0 - nx * half, z0 - nz * half], [x1 - nx * half, z1 - nz * half],
           [x1 + nx * half, z1 + nz * half], [x0 + nx * half, z0 + nz * half]], groundAt, lift, rgba);
         pieces++;

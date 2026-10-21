@@ -8,6 +8,7 @@ import {
   snapshotRendererPrograms,
   warmNewRendererProgramUniforms,
 } from './programWarm.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const targetCalls = [];
 const targetRenderer = {
@@ -347,7 +348,7 @@ function firstUseFixture({ names = ['back', 'front', 'instanced'], extension = t
   const renderer = {
     target: 'prior', face: 3, mip: 2,
     info: { programs: [unrelated, ...programs] },
-    properties: { get(value) { assertActive(); assert.equal(value, material); return materialProperties; } },
+    properties: { get(value) { assertActive(); assert.ok(value === material); return materialProperties; } },
     getContext() { assertActive(); return gl; },
     getRenderTarget() { assertActive(); return this.target; },
     getActiveCubeFace() { return this.face; },
@@ -365,7 +366,7 @@ function firstUseFixture({ names = ['back', 'front', 'instanced'], extension = t
   function assertRestored() {
     assert.deepEqual([renderer.target, renderer.face, renderer.mip], ['prior', 3, 2]);
     assert.equal(camera.layers.mask, 1);
-    assert.equal(mesh.parent, scene);
+    assert.ok(mesh.parent === scene);
   }
   const owner = createForwardProgramWarmOwner({
     renderer, scene, camera, getTarget: () => 'hdr',
@@ -433,22 +434,22 @@ function visibleRootFixture() {
   const passes = [{ layerMask: 2, target: { name: 'terrain-scene-aa' } }];
   const compiled = [];
   f.renderer.compile = (root, camera, targetScene) => {
-    assert.equal(targetScene, f.scene, 'selected-root submission retains the real target scene');
+    assert.ok(targetScene === f.scene, 'selected-root submission retains the real target scene');
     assert.equal(targetScene.fog, fog);
-    assert.equal(targetScene.environment, environment);
+    assert.ok(targetScene.environment === environment);
     assert.equal(f.renderer.target, passes[0].target, 'use the supplied AA destination unchanged');
     assert.equal(camera.layers.mask, passes[0].layerMask);
-    assert.notEqual(root, f.mesh, 'native compile receives a flat selection, not the recursive terrain root');
+    assert.ok(root !== f.mesh, 'native compile receives a flat selection, not the recursive terrain root');
     const lights = [];
     const visitLight = object => { if (object.isLight) lights.push(object); };
     targetScene.traverseVisible(visitLight);
     root.traverseVisible(visitLight);
-    assert.deepEqual(lights, [light], 'the selection neither duplicates nor hides real lights');
+    assert.deepEqual(graphLabels(lights), graphLabels([light]), 'the selection neither duplicates nor hides real lights');
     const objects = [];
     root.traverse(object => objects.push(object));
-    assert.deepEqual(objects, [f.mesh, child],
+    assert.deepEqual(graphLabels(objects), graphLabels([f.mesh, child]),
       'only visible selected-root objects on the supplied pass are submitted; no hidden descendants or siblings');
-    assert.equal(child.parent, f.mesh, 'selection never reparents original objects');
+    assert.ok(child.parent === f.mesh, 'selection never reparents original objects');
     compiled.push(objects);
     f.state.compile();
     return new Set(objects.map(object => object.material));
@@ -1803,8 +1804,8 @@ function garageCohortFixture({ count = 65, compileMs = 0, shared = false } = {})
     info: { programs: [] }, getContext: () => gl,
     getRenderTarget: () => null, setRenderTarget() {},
     compile(root, activeCamera, activeScene) {
-      assert.equal(activeScene, scene);
-      assert.equal(activeCamera, camera);
+      assert.ok(activeScene === scene);
+      assert.ok(activeCamera === camera);
       events.push(['compile', root.name]);
       state.clock += compileMs;
       const materials = new Set();

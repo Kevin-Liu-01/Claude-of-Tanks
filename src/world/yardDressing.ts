@@ -19,7 +19,7 @@ export interface YardStructure {
   rot: number;
 }
 
-export interface YardField {
+interface YardField {
   getHeightAt(x: number, z: number): number;
   getNormalAt(x: number, z: number): { y: number };
   _roadDist(x: number, z: number): number;
@@ -52,7 +52,7 @@ export interface YardPlan {
   attempts: number;
 }
 
-export interface YardPlanOptions {
+interface YardPlanOptions {
   /** Hard cap on placed pieces (a map's yardDressing budget). */
   budget: number;
   /** Half-extent of the square the dressing stays inside (the playable square's rim margin). */
@@ -60,7 +60,7 @@ export interface YardPlanOptions {
   /** Chase the pieces this far from a road centreline. */
   roadClearance?: number;
   /** Polar and martian sets thin the mix (no wooden pallets on Mars). */
-  palette?: 'brownfield' | 'polar' | 'martian';
+  palette?: 'brownfield' | 'polar' | 'martian' | 'lunar';
 }
 
 /** Footprint radius per family (metres): clearance against solids, other pieces and the structure envelope. */
@@ -88,6 +88,9 @@ const YARD_PIECES_PER_KIND: Readonly<Record<string, number>> = Object.freeze({
 });
 
 const MARTIAN_FAMILIES: ReadonlySet<YardFamily> = new Set(['drum', 'drumRank', 'skip', 'fuelTank']); // no timber on Mars
+/** (the Earthrise 228 rebuild, 2026-10-18) a lunar station's yards: cargo transfer bags (the crates), aluminium skids (the
+ * pallets), canisters (the drums and their ranks), cable reels and a small dewar tank — no tyres, timber or skips. */
+const LUNAR_FAMILIES: ReadonlySet<YardFamily> = new Set(['drum', 'drumRank', 'cableDrum', 'pallets', 'crates', 'fuelTank']);
 
 function mulberry32(a: number): () => number {
   return () => {
@@ -103,7 +106,8 @@ export function yardStructureKinds(): readonly string[] {
 }
 
 function pickFamily(rng: () => number, profile: ReadonlyArray<readonly [YardFamily, number]>, palette: string): YardFamily {
-  const rows = palette === 'martian' ? profile.filter(([family]) => MARTIAN_FAMILIES.has(family)) : profile;
+  const rows = palette === 'martian' ? profile.filter(([family]) => MARTIAN_FAMILIES.has(family))
+    : palette === 'lunar' ? profile.filter(([family]) => LUNAR_FAMILIES.has(family)) : profile;
   const total = rows.reduce((sum, [, weight]) => sum + weight, 0);
   let roll = rng() * total;
   for (const [family, weight] of rows) { roll -= weight; if (roll <= 0) return family; }

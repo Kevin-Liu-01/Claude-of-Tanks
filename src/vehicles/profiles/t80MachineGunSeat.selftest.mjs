@@ -23,11 +23,11 @@ for (const id of ['t80', 't80b', 't80bv']) {
     const receipt = turret?.userData.t80CommanderNsvtStationReceipt;
 
     assert.ok(station, `${id}: exposes the commander-cupola weapon station`);
-    assert.equal(station.parent, turret,
+    assert.ok(station.parent === turret,
       `${id}: station is attached to the traversing turret`);
     assert.equal(station.userData.supportAssembly, 'commander-cupola');
     assert.ok(weapon, `${id}: exposes its complete NSVT fitting`);
-    assert.equal(weapon.parent, station,
+    assert.ok(weapon.parent === station,
       `${id}: NSVT is attached to the commander-cupola station`);
 
     near(station.rotation.x, 0, `${id}: station pitch`);

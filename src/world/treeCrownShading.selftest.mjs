@@ -253,7 +253,7 @@ for (const species of GROWTH_SPECIES) {
   assert.throws(() => applyCrownDappleDepth(mesh), /requires aCrown/, 'a proxy without crown flags is refused');
   geometry.setAttribute(CROWN_DAPPLE_ATTRIBUTE, new THREE.BufferAttribute(crownDappleTags(count, [{ start: 6, end: 18, transmittance: 0.3 }]), 1));
   applyCrownDappleDepth(mesh);
-  assert.equal(mesh.customDepthMaterial, material, 'every world shares the one program');
+  assert.ok(mesh.customDepthMaterial === material, 'every world shares the one program');
   assert.equal(mesh.userData.lodShadowFadeCaster, true);
   // the tags: 0 on the wood and the trailing casters; mass m carries m + 1 and, in the fraction, its threshold
   const tags = crownDappleTags(12, [{ start: 3, end: 6, transmittance: 0.1 }, { start: 6, end: 9, transmittance: 0.6 }]);

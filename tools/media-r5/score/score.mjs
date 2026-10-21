@@ -192,7 +192,8 @@ function weapon(e) {
   if (closeK > 0.03) play(WEAPON_CLOSE[cls.id], e.t, { gain: level * closeK, pan, rate, send: 0.25, distM: d });
   if (farK > 0.03) play(WEAPON_FAR[cls.id], e.t, { gain: level * farK * db(-3), pan, rate, send: 0.35, distM: d });
   if (e.twin) play(WEAPON_CLOSE[cls.id], e.t, { gain: level * Math.max(closeK, 0.05) * db(-2), pan, rate: rate * 0.97, delayS: 0.016, distM: d });
-  if (cls.family !== 'mg' || e.burstHead) {
+  // no echo where the scene has no air to carry one (the moon's tail is 'none'), as audioEngine.ts plays it
+  if ((cls.family !== 'mg' || e.burstHead) && e.tail !== 'none') {
     play(`tail_${e.tail ?? 'open'}`, e.t, { gain: level * cls.tailGain * db(-12), pan, rate: cls.tailRate * rate, delayS: 0.035 + (seedOf(e.t) % 20) / 1000, send: 0.4, distM: d });
   }
 }

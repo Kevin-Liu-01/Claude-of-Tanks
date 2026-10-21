@@ -262,6 +262,24 @@ const BLOOM_THRESHOLD = 1.78;
 // headroom (up to ~5.15) must reach the bloom pass or the halo cannot scale
 // with core heat; still far below the 5-20 raw stack values that flooded.
 const BLOOM_INPUT_CLAMP = 2.6;
+// (item fx-ir-lens-bloom-229, the coordinator: "several white-hot live hulls in the IR/thermal lens lift the whole frame's
+// ground level", median ~35 -> 61 on the airfield at night) a heat-imaging lens (uThermal 1 infrared, 2 thermal) grades
+// each pixel's display level into its cool grey, and the night exposure lifts whatever the bloom laid there: every
+// white-hot hull's halo on the wide mips, summed, read as warm ground across the frame (the film: the ground fell 92 -> 72
+// -> 61 -> 40 levels from 25 to 240+ px off the hot pixels, and the old build's did the same). Under a heat lens at night
+// the bloom keeps THERMAL_BLOOM_K of its strength on its tightest mips only (radius 0): a hull keeps a rim of glow,
+// the ground its own level. (item fx-ir-day-heat-229, the coordinator: "the map must read" by day too) by day as well: the
+// day bloom laid ~0.9 over a close hull's own pixels and lifted its heat map's cool parts over the grade's white (the
+// blind critic: 70-81 % of a close hull white by day, 3-44 % at night). In the daylight lens, the intensifier and every
+// other camera the bloom is untouched.
+export const THERMAL_BLOOM_K = 0.25;
+/** How far the heat lens's bloom cut applies (0 none .. 1 full): 1 under a heat-imaging grade code, at every hour; with
+ *  `dayToo` 0 (the QA hook's THERMAL_BLOOM_DAY, for a same-build A/B) only by the night level, as the 229 bloom item had it. */
+export function heatLensBloomCut(thermalCode: number, night: number, dayToo = 1): number {
+  if (!(thermalCode > 0.5 && thermalCode < 2.5)) return 0;
+  const n = Math.min(1, Math.max(0, night));
+  return n + (1 - n) * Math.min(1, Math.max(0, dayToo));
+}
 const HIGH_PASS_ANCHOR = 'gl_FragColor = mix( outputColor, texel, alpha );';
 // AO radius must be vehicle-scale (~1 m) to ground hulls/building bases;
 // 0.3 m read as nothing at gameplay camera distances. r3: radius 1.0 → 1.3,
@@ -971,6 +989,11 @@ const AerialShader = {
     // band's (sky.ts sampleHorizonElevationFalloff, published on scene.userData.skyElevationFalloff) — the
     // scatter-in target follows the view ray's elevation so a far ridge converges toward the sky BEHIND it
     uHazeElevFloor: { value: 1 },
+    // (the Earthrise 228 rebuild, 2026-10-18; the blind critics: "the distant hills are bright blue-white and read as snow
+    // or ice") 1 on an airless map (a FogExp2 of density 0: fogDensity 0, the Moon alone): its haze law has no air (σ 0),
+    // so the pixel fell to the legacy distance law below — the cool extinction and the blue-grey scatter-in that whitened
+    // every far range; airless, the legacy law, its scatter-in and the far hue clamp all stand down
+    uAirless: { value: 0 },
     // round 65 (2026-09-24): the physically based sky. When the desktop dome runs the Hillaire atmosphere
     // (sky.ts publishes scene.userData.atmosphere), the scatter-in target is its sky-view LUT sampled along
     // each pixel's view ray — the sky the far range actually stands against, round 37's rule per pixel —
@@ -1050,6 +1073,7 @@ const AerialShader = {
     uniform float uDesat;
     uniform vec3 uCool;
     uniform float uHazeDensity;
+    uniform float uAirless;
     uniform float uHazeFull;
     uniform vec3 uHazeWarm;
     uniform vec3 uHazeCool;
@@ -1284,6 +1308,9 @@ const AerialShader = {
           f = min( f, extCeil );
           float lum = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
           vec3 hazy = mix( texel.rgb, vec3( lum ), uDesat ) * uCool;
+          // (the Earthrise 228 rebuild) airless, no extinction (the uAirless note): its own step, so the haze line stays
+          // the one contactShadows.selftest orders after the contact shade
+          f *= 1.0 - uAirless;
           texel.rgb = mix( texel.rgb, hazy, f );
           // scattering-in: distance pulls everything toward the sun-directional
           // sky haze — warm near the sun azimuth, cool blue away from it.
@@ -1313,7 +1340,7 @@ const AerialShader = {
           f2 *= 0.25 + 0.75 * smoothstep( 0.0, 0.05, lum );
           f2 *= mix( 1.0, hAtt, ${AERIAL_HEIGHT_SCATTER_K.toFixed(2)} );
           f2 = min( f2, scatCeil );
-          texel.rgb = mix( texel.rgb, hazeCol, f2 );
+          texel.rgb = mix( texel.rgb, hazeCol, f2 * ( 1.0 - uAirless ) );
         }
         // large-scale cloud shadows / light patchiness (see CLOUD_SHADE
         // const block): world-anchored soft patches multiply the ground —
@@ -1335,7 +1362,7 @@ const AerialShader = {
           float gDom = smoothstep( 0.0, 0.032, texel.g - texel.b );
           float hl = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
           vec3 grey = hl * vec3( ${AERIAL_HUE_GREY[0].toFixed(3)}, ${AERIAL_HUE_GREY[1].toFixed(3)}, ${AERIAL_HUE_GREY[2].toFixed(3)} );
-          texel.rgb = mix( texel.rgb, grey, hueW * gDom * hzLayer );
+          texel.rgb = mix( texel.rgb, grey, hueW * gDom * hzLayer * ( 1.0 - uAirless ) );
         }
         // Same arcade/scope amplitude, distances and chroma policy; sample
         // true world volume so every slope retains two surface dimensions.
@@ -2945,10 +2972,14 @@ export function createPost(
       * 0.95
       * Math.min(1, Math.max(0, (16 - camera.fov) / 10));
     const scopeWeight = grade.uniforms.uScope.value;
-    // 2026-10-04 (the sun-bloom lane): the bloom's strength, threshold and radius through the light model's QA hook
-    bloom.strength = lightTune('BLOOM_STRENGTH', BLOOM_STRENGTH) * (1 - 0.5 * scopeWeight);
+    // 2026-10-04 (the sun-bloom lane): the bloom's strength, threshold and radius through the light model's QA hook;
+    // (fx-ir-lens-bloom-229, fx-ir-day-heat-229) cut to its tight mips under a heat lens (THERMAL_BLOOM_K; 1 and 1
+    // otherwise; the QA hook's THERMAL_BLOOM_CUT 0 restores the old bloom, THERMAL_BLOOM_DAY 0 the night-only cut)
+    const heatCut = heatLensBloomCut(grade.uniforms.uThermal.value, (scene.userData.lightModel as LightModel | undefined)?.night ?? 0,
+      lightTune('THERMAL_BLOOM_DAY', 1)) * lightTune('THERMAL_BLOOM_CUT', 1);
+    bloom.strength = lightTune('BLOOM_STRENGTH', BLOOM_STRENGTH) * (1 - 0.5 * scopeWeight) * (1 - (1 - THERMAL_BLOOM_K) * heatCut);
     bloom.threshold = lightTune('BLOOM_THRESHOLD', BLOOM_THRESHOLD);
-    bloom.radius = lightTune('BLOOM_RADIUS', BLOOM_RADIUS);
+    bloom.radius = lightTune('BLOOM_RADIUS', BLOOM_RADIUS) * (1 - heatCut);
     // (2026-10-15) the shoulder's defaults follow the look (tone r1 turns it on; TONE_R1 0 = off, as before)
     const shoulderTone = toneFor((scene.userData.lightModel as LightModel | undefined)?.night ?? 0);
     (grade.uniforms.uShoulder.value as THREE.Vector4).set(lightTune('GRADE_SHOULDER_SLOPE', shoulderTone.shoulderSlope),
@@ -2959,6 +2990,8 @@ export function createPost(
   }
 
   function updateAerialFogColors(): void {
+    // (the Earthrise 228 rebuild) no air at all: no distance law (the uAirless note)
+    aerial.uniforms.uAirless.value = scene.fog instanceof THREE.FogExp2 && scene.fog.density === 0 ? 1 : 0;
     if (!scene.fog) return;
     const fogColor = scene.fog.color;
     aerial.uniforms.uHazeWarm.value.setRGB(

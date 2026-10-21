@@ -12,9 +12,9 @@
 // mixer applies the travel delay and a long-range law of its own.
 import * as THREE from 'three';
 import { isMapId, type MapId } from './maps/catalog.ts';
-import { emitBreakFx, emitDestroyed, registerWorldDestructibles } from './destructibles.ts';
+import { emitBreakFx, emitDestroyed, registerWorldDestructibles, setAmbientRoundSource, type AmbientRoundDraw } from './destructibles.ts';
 import { buildFlyover, flyoversForMap, type FlyoverType } from './flyoverAircraft.ts';
-import { buildAaGun } from './maps/fieldworksKit.ts';
+import { buildAaGun, fieldworksForms } from './maps/fieldworksKit.ts';
 
 interface FrontlineEventBus {
   emit(event: string, payload: unknown): void;
@@ -218,48 +218,10 @@ void main() {
   #include <fog_fragment>
 }`;
 
-const TRACER_VERT = /* glsl */`
-attribute vec4 aTracer; // birth, life, length, seed
-varying float vAge;
-varying vec2 vUv;
-uniform float uTime;
-uniform float uSpeed;
-#include <common>
-#include <fog_pars_vertex>
-void main() {
-  vUv = uv;
-  float age = (uTime - aTracer.x) / max(aTracer.y, 1e-3);
-  vAge = age;
-  vec4 base = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
-  vec3 dir = normalize(vec3(instanceMatrix[2].xyz));
-  float travelled = max(0.0, uTime - aTracer.x) * uSpeed;
-  vec3 head = base.xyz + dir * travelled;
-  vec3 toCam = normalize(cameraPosition - head);
-  vec3 side = normalize(cross(dir, toCam) + vec3(1e-4));
-  float alive = (aTracer.x < 0.0 || age < 0.0 || age > 1.0) ? 0.0 : 1.0;
-  float len = aTracer.z * alive;
-  float width = 0.22 * alive;
-  vec3 world = head - dir * (uv.y * len) + side * (position.x * width);
-  vec4 mvPosition = viewMatrix * vec4(world, 1.0);
-  gl_Position = projectionMatrix * mvPosition;
-  #include <fog_vertex>
-}`;
-
-const TRACER_FRAG = /* glsl */`
-varying float vAge;
-varying vec2 vUv;
-#include <common>
-#include <fog_pars_fragment>
-void main() {
-  if (vAge < 0.0 || vAge > 1.0) discard;
-  float core = 1.0 - abs(vUv.x - 0.5) * 2.0;
-  float tail = 1.0 - vUv.y;
-  vec3 col = mix(vec3(1.0, 0.45, 0.12), vec3(1.0, 0.9, 0.6), core * tail);
-  float a = pow(core, 1.6) * tail * (1.0 - smoothstep(0.7, 1.0, vAge));
-  if (a < 0.02) discard;
-  gl_FragColor = vec4(col * 1.6, a);
-  #include <fog_fragment>
-}`;
+/** (ac130-fx-228 r3) one round in this many of a front gun's belt is a tracer */
+const AA_TRACER_EVERY = 3;
+/** The front's guns firing Soviet-lineage ammunition (maps/fieldworksKit.ts AA_FORMS): the 61-K, the S-60, the ZU-23-2 */
+const EAST_AA: ReadonlySet<string> = new Set(['k61', 's60', 'zu23']);
 
 // ---------------------------------------------------------------- factory ----
 
@@ -371,27 +333,39 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
   group.add(aaBases, aaHeads);
   interface AaGun { pos: THREE.Vector3; yaw: number; pitch: number; nextBurstAt: number; shotsLeft: number; nextShotAt: number; destroyed: boolean; }
   const aaGuns: AaGun[] = [];
-  const tracerGeometry = quad.clone();
-  const tracerAttr = new THREE.InstancedBufferAttribute(new Float32Array(FRONTLINE_LIMITS.tracerCap * 4).fill(-1), 4);
-  tracerAttr.setUsage(THREE.DynamicDrawUsage);
-  tracerGeometry.setAttribute('aTracer', tracerAttr);
-  const tracerMaterial = new THREE.ShaderMaterial({
-    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uTime: { value: 0 }, uSpeed: { value: FRONTLINE_LIMITS.tracerSpeedMps } }]),
-    vertexShader: TRACER_VERT, fragmentShader: TRACER_FRAG,
-    transparent: true, depthWrite: false, fog: true, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-  });
-  const tracers = new THREE.InstancedMesh(tracerGeometry, tracerMaterial, FRONTLINE_LIMITS.tracerCap);
-  tracers.name = 'frontline-aa-tracers'; tracers.frustumCulled = false; tracers.renderOrder = 6;
-  tracers.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  {
-    const identity = new THREE.Matrix4();
-    for (let i = 0; i < FRONTLINE_LIMITS.tracerCap; i++) tracers.setMatrixAt(i, identity);
-  }
-  group.add(tracers);
+  // (ac130-fx-228 r2; the owner: "get rid of the old ones") the AA rounds in flight: a fixed ring of slots (birth, muzzle,
+  // direction) on the front's clock, drawn each frame by the effects runtime's projectile tracers (registered on the world/fx seam, destructibles.ts),
+  // the game's one tracer look, in place of this layer's September tracer shader: an autocannon's streak and halo, the
+  // gun's ammunition lineage (the Red Army's and the Warsaw Pact's guns a green-yellow trace, the West's red)
+  const tracerCap = FRONTLINE_LIMITS.tracerCap;
+  const roundBorn = new Float32Array(tracerCap).fill(-1);
+  const roundFrom = new Float32Array(tracerCap * 3), roundDir = new Float32Array(tracerCap * 3);
+  let roundsEast = false;
   let tracerCursor = 0;
+  const unregisterRounds = setAmbientRoundSource({
+    drawRounds(draw: AmbientRoundDraw): void {
+      if (!prepared) return;
+      const speed = FRONTLINE_LIMITS.tracerSpeedMps, life = FRONTLINE_LIMITS.tracerLifeS;
+      for (let i = 0; i < tracerCap; i++) {
+        const born = roundBorn[i]!;
+        // (ac130-fx-228 r3, the blind critic: "dozens of dashes scattered over the whole sky, like confetti rather than a
+        // belt") a gun's belt carries a tracer every AA_TRACER_EVERY rounds (the slots fill shot by shot): a burst reads
+        // as a spaced stream of dashes along its line
+        if (born < 0 || i % AA_TRACER_EVERY !== 0) continue;
+        const age = time - born;
+        if (age < 0 || age > life) continue;
+        // the charge burns its flight out, dimming over its last 30 % (the old layer's fade)
+        const u = Math.max(0, (age / life - 0.7) / 0.3);
+        const k = 1 - u * u * (3 - 2 * u);
+        const flown = age * speed, j = i * 3;
+        const dx = roundDir[j]!, dy = roundDir[j + 1]!, dz = roundDir[j + 2]!;
+        draw(roundFrom[j]! + dx * flown, roundFrom[j + 1]! + dy * flown, roundFrom[j + 2]! + dz * flown, dx, dy, dz, speed, flown,
+          k, roundsEast);
+      }
+    },
+  });
   const _aim = new THREE.Vector3(), _muzzle = new THREE.Vector3(), _lead = new THREE.Vector3();
   const _headQ = new THREE.Quaternion(), _e = new THREE.Euler(), _one = new THREE.Vector3(1, 1, 1);
-  const _origin = new THREE.Vector3(0, 0, 0);
 
   const log: FrontlineEvent[] = [];
   let intensity = 0, bearingDeg = 0, scale = 1, mapIntensity = 0;
@@ -560,13 +534,12 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     // small dispersion so bursts fan out around the lead point
     _aim.x += (rng() - 0.5) * 0.03; _aim.y += (rng() - 0.5) * 0.03; _aim.z += (rng() - 0.5) * 0.03;
     _aim.normalize();
-    const i = tracerCursor; tracerCursor = (tracerCursor + 1) % FRONTLINE_LIMITS.tracerCap;
-    _m.lookAt(_aim, _origin, _up); // Matrix4.lookAt: local +z = eye - target = the shot direction
-    _m.setPosition(_muzzle);
-    tracers.setMatrixAt(i, _m);
-    tracers.instanceMatrix.needsUpdate = true;
-    tracerAttr.setXYZW(i, time, FRONTLINE_LIMITS.tracerLifeS, 9 + rng() * 5, rng());
-    tracerAttr.needsUpdate = true;
+    const i = tracerCursor; tracerCursor = (tracerCursor + 1) % tracerCap;
+    roundBorn[i] = time;
+    roundFrom[i * 3] = _muzzle.x; roundFrom[i * 3 + 1] = _muzzle.y; roundFrom[i * 3 + 2] = _muzzle.z;
+    roundDir[i * 3] = _aim.x; roundDir[i * 3 + 1] = _aim.y; roundDir[i * 3 + 2] = _aim.z;
+    // the retired shader's streak length and seed draws: kept, so a seed still replays the same front
+    rng(); rng();
     spawnSprite(flashes, _muzzle, 0.07, 2.4 + rng() * 1.2, 0);
   }
 
@@ -697,6 +670,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     layoutFront();
     const gun = aaGunFor(mapId);
     aaBases.geometry = gun.base; aaHeads.geometry = gun.head;
+    roundsEast = EAST_AA.has(fieldworksForms(mapId).aa);
     layoutAaGuns();
     registerAaDestructibles(mapId);
     nextArtillery = 2 + rng() * 4;
@@ -718,7 +692,6 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     time += dt;
     flashMaterial.uniforms.uTime.value = time;
     flakMaterial.uniforms.uTime.value = time;
-    tracerMaterial.uniforms.uTime.value = time;
     if (time >= nextArtillery) { fireArtillery(); nextArtillery = time + interval(FRONTLINE_LIMITS.artilleryIntervalS); }
     if (time >= nextFlak) { burstFlak(); nextFlak = time + interval(FRONTLINE_LIMITS.flakIntervalS); }
     if (time >= nextFlyover) { launchAircraft(); nextFlyover = time + interval(FRONTLINE_LIMITS.flyoverIntervalS); }
@@ -736,7 +709,7 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     }
     for (const plane of aircraft) { plane.active = false; plane.root.visible = false; }
     aaGuns.length = 0; aaBases.count = 0; aaHeads.count = 0;
-    tracerAttr.array.fill(-1); tracerAttr.needsUpdate = true; tracerCursor = 0;
+    roundBorn.fill(-1); tracerCursor = 0;
     unregisterAa?.(); unregisterAa = null;
   }
 
@@ -745,12 +718,13 @@ export function createFrontlineAtmosphere(options: FrontlineAtmosphereOptions): 
     parent.remove(group);
     quad.dispose();
     flashes.mesh.geometry.dispose(); flak.mesh.geometry.dispose();
-    aircraftGeometry.dispose(); for (const gun of aaGunGeometries.values()) { gun.base.dispose(); gun.head.dispose(); } tracerGeometry.dispose();
+    aircraftGeometry.dispose(); for (const gun of aaGunGeometries.values()) { gun.base.dispose(); gun.head.dispose(); }
+    unregisterRounds();
     for (const g of flyoverGeometries.values()) g.dispose();
     flyoverGeometries.clear();
     flashMaterial.dispose(); flakMaterial.dispose(); aircraftMaterial.dispose();
     options.releaseMaterial?.(aaMaterial);
-    aaMaterial.dispose(); tracerMaterial.dispose();
+    aaMaterial.dispose();
     puffTexture.dispose();
   }
 

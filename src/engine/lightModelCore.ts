@@ -44,6 +44,13 @@ export interface LightModelPreset {
   sunColorHex?: number;
   hemiIntensity?: number;
   fillIntensity?: number;
+  /**
+   * (the Earthrise 228 rebuild, 2026-10-18; the blind critics: the scarps' shaded faces and the berms "snow-blue") the
+   * legacy rig's shade light, sRGB: the hemisphere's sky pole and the anti-sun fill take this hue at their own luminance
+   * in place of the cool sky's (0xaac8f5 / 0xbdd2f2). An airless map's black sky lends no blue: what lights a face the
+   * sun leaves is the sunlit regolith round it. Absent (null): the cool sky as before, every other map unchanged.
+   */
+  shadeHex?: number | null;
   envIntensity?: number;
   postExposure?: number;
   lighting?: LightingConfig | null;
@@ -153,6 +160,11 @@ export function hexToLinear(hex: number): Rgb {
   };
   return [ch((hex >> 16) & 255), ch((hex >> 8) & 255), ch(hex & 255)];
 }
+/** A colour's hue at another colour's luminance (an authored shade light at the cool sky's level: the key:fill ratios kept). */
+function atLuminanceOf(hue: Rgb, level: Rgb): Rgb {
+  const k = luminance(level) / Math.max(1e-6, luminance(hue));
+  return [hue[0] * k, hue[1] * k, hue[2] * k];
+}
 
 
 /**
@@ -245,8 +257,8 @@ function legacyModel(preset: LightModelPreset): LightModel {
     envDiffuseGain: 1,
     envDiffuseChroma: 1,
     hemiIntensity: hemiPreset + hemiFloor,
-    hemiSky: hexToLinear(0xaac8f5),
-    hemiGround: hexToLinear(0x94815f),
+    hemiSky: preset.shadeHex != null ? atLuminanceOf(hexToLinear(preset.shadeHex), hexToLinear(0xaac8f5)) : hexToLinear(0xaac8f5),
+    hemiGround: preset.shadeHex != null ? atLuminanceOf(hexToLinear(preset.shadeHex), hexToLinear(0x94815f)) : hexToLinear(0x94815f),
     fillIntensity: preset.fillIntensity ?? LEGACY_FILL,
     groundAlbedo: ground,
     groundRadiance: [0, 0, 0],

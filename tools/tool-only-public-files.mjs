@@ -9,7 +9,7 @@ import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 /** dist-relative directory -> file-name rule of the tool-only files it holds. */
-export const TOOL_ONLY_PUBLIC_FILES = Object.freeze([
+const TOOL_ONLY_PUBLIC_FILES = Object.freeze([
   Object.freeze({ dir: 'icons', test: (name) => name === 'tank-assets.json', why: 'tank asset manifest (tools/genIcons.mjs)' }),
   Object.freeze({ dir: 'icons', test: (name) => /_markings\.png$/.test(name), why: 'marking sheets (tools/genIcons.mjs --views markings)' }),
 ]);

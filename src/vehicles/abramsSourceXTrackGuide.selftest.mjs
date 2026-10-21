@@ -156,7 +156,7 @@ for(const quality of['high','low'])for(const id of ABRAMS_SOURCE_X_IDS){
     try{assert.deepEqual(added,triangles(g),'only the exact new closed guide is added to each shoe');assert.equal(removed.length,12,'FSP reference is the complete closed ruled legacy-envelope horn, not the historical two-box recipe');closure(g);}finally{g.dispose();}
     const low=current.tank.root.getObjectByName('gearTrackPadsSimplified'),oldLow=old.tank.root.getObjectByName('gearTrackPadsSimplified');
     assert.equal(subtract(triangles(oldLow.geometry),triangles(low.geometry)).length,0,'all old simplified pad/grouser triangles remain');
-    assert.equal(low.instanceMatrix,a.instanceMatrix,'one live matrix train across both LODs');
+    assert.ok(low.instanceMatrix === a.instanceMatrix,'one live matrix train across both LODs');
     sourceSections(current);
     if(id==='m1a2_abrams_sepv2')sweep(current,quality);
     builds++;

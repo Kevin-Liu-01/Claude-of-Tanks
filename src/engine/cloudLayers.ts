@@ -20,6 +20,8 @@ export interface CloudLane {
   cover: number;
   /** extinction at full density (1/m) */
   density: number;
+  /** (2026-10-18) the share of `density` the medium draws (a thin deck; CloudscapeConfig.deckDensity): cloudDeckTau keeps `density` */
+  mediumShare?: number;
   /** weights of the local weather's channels: cumuliform, aloft, stratiform, cells */
   channels: readonly [number, number, number, number];
   /** the street field's share of the weather (wind-frame rolls) */
@@ -197,6 +199,8 @@ export function cloudStackOf(preset: CloudLayerPreset): CloudStack {
     density: isDeck
       ? Math.max(preset.density * 0.45, (10 + 15 * clamp((preset.coverage - 0.85) / 0.15, 0, 1)) / (thickness * core))
       : preset.density,
+    // (2026-10-18, the 228 census) a thin deck draws a share of that extinction (Whiteout's pale polar stratus)
+    mediumShare: isDeck ? clamp(preset.deckDensity ?? 1, 0.05, 1) : 1,
     channels,
     streets: clamp(preset.streets, 0, 1) * (1 - deck),
     envelope,
@@ -333,7 +337,7 @@ export function packCloudStack(stack: CloudStack, u: Record<string, { value: unk
   v4('uLayerBase', (l) => l.baseM, 1e6);
   v4('uLayerTop', (l) => l.topM, 1e6 + 1);
   v4('uLayerCover', (l) => l.cover);
-  v4('uLayerDensity', (l) => l.density);
+  v4('uLayerDensity', (l) => l.density * (l.mediumShare ?? 1));
   v4('uLayerShape', (l) => l.shape);
   v4('uLayerDetail', (l) => l.detail);
   v4('uLayerBias', (l) => l.bias, 1);

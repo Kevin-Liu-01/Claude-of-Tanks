@@ -26,7 +26,7 @@ import {
   type JevResponseBody,
 } from './jevProtocol.ts';
 
-export interface JevCommanderEntity {
+interface JevCommanderEntity {
   readonly id: string;
   readonly team: string;
   readonly isPlayer?: boolean;
@@ -53,7 +53,7 @@ interface JevFlagLike { readonly team: string; readonly x: number; readonly z: n
 interface JevGoalLike { readonly team: string; readonly x: number; readonly z: number }
 
 /** The mode presentation state the commander reads (sim/matchModes.ts MatchModePresentationState, structurally). */
-export interface JevModeStateView {
+interface JevModeStateView {
   readonly score?: { readonly alpha: number; readonly bravo: number };
   readonly target?: number | null;
   readonly zones?: readonly JevZoneLike[] | null;
@@ -74,17 +74,17 @@ export interface JevBattleView {
   objectiveFor?(entity: JevCommanderEntity): { readonly x: number; readonly z: number; readonly radiusM: number; readonly mission?: string } | null;
 }
 
-export type JevTransportResult =
+type JevTransportResult =
   | { readonly ok: true; readonly body: JevResponseBody }
   | { readonly ok: false; readonly error: string; readonly status?: number; readonly retryAfterMs?: number };
 
-export interface JevTransport {
+interface JevTransport {
   /** The session id the proxy budgets by (one per page load; never a player name). */
   readonly sid: string;
   send(body: JevRequestBody, signal: AbortSignal): Promise<JevTransportResult>;
 }
 
-export interface JevTeamStats {
+interface JevTeamStats {
   requests: number;
   answered: number;
   failed: number;
@@ -107,7 +107,7 @@ export interface JevTeamStats {
   backoffS: number;
 }
 
-export interface JevOrderLogEntry {
+interface JevOrderLogEntry {
   readonly t: number;
   readonly team: string;
   readonly id: string;
@@ -120,7 +120,7 @@ export interface JevOrderLogEntry {
   readonly reason: string;
 }
 
-export interface JevCommanderOptions {
+interface JevCommanderOptions {
   transport: JevTransport;
   /** Teams commanded (solo: 'enemy', and 'player' when the allies are Jev's too). */
   teams: readonly string[];

@@ -66,8 +66,8 @@ function fixture(autoClear = true) {
     copyTextureToTexture: (input, output) => {
       events.push({ kind: 'depth', input, output });
       if (failure === 'depth') throw new Error('owned depth failure');
-      assert.equal(input, sceneTarget.depthTexture);
-      assert.equal(output, lateTarget.depthTexture);
+      assert.ok(input === sceneTarget.depthTexture);
+      assert.ok(output === lateTarget.depthTexture);
       assert.notEqual(input, output);
       lineage.set(output, lineage.get(input));
     },
@@ -87,12 +87,12 @@ function fixture(autoClear = true) {
       if (failure === kind || failure === copyKind) throw new Error(`owned ${copyKind} failure`);
       if (renderer.autoClear) renderer.clear(true, true, false);
       if (isScene) {
-        assert.equal(view, camera);
+        assert.ok(view === camera);
         assert.equal(renderer.autoClear, false);
         if (fx) {
           assert.equal(camera.layers.mask, 1 << LATE_FX_LAYER);
           assert.equal(scene.background, null);
-          assert.equal(softState.uSceneDepth.value, sceneTarget.depthTexture);
+          assert.ok(softState.uSceneDepth.value === sceneTarget.depthTexture);
           assert.equal(lineage.get(lateTarget.depthTexture), `depth-${frame}`);
           assert.ok(lineage.has(lateTarget.texture), 'FX must blend over this frame\'s world color');
           lineage.set(lateTarget.texture, `${lineage.get(lateTarget.texture)}+fx`);
@@ -351,8 +351,8 @@ for (const autoClear of [true, false]) {
   f.aerial.beginDirectColorFrame(f.lateTarget);
   f.composer.setPixelRatio(1.5);
   f.composer.setSize(1440, 900);
-  assert.equal(f.lateTarget.texture, color);
-  assert.equal(f.lateTarget.depthTexture, depth);
+  assert.ok(f.lateTarget.texture === color);
+  assert.ok(f.lateTarget.depthTexture === depth);
   assert.deepEqual([f.lateTarget.width, f.lateTarget.height], [2160, 1350]);
   assert.deepEqual(f.softState.uSoftViewport.value.toArray(), [2160, 1350]);
   assert.equal(f.aerial.consumeDirectColor(f.lateTarget, f.composer.readBuffer), false);

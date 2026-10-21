@@ -9,6 +9,8 @@ assert.equal(before.revision,'1e6b4b738179721483f647ef04fe6ee3b249849f');
 // 2026-10-08: c6b60311c (main) rebuilt the Dragun turret front and gun mount and the Kurganets gun after that
 // measurement; the fixture's repinned20261008 note lists the entries re-measured as the current build / factor.
 // 2026-10-16: the BMPT's muzzle anchor likewise (repinned20261016).
+// 2026-10-19: the T-90M family's gun box floor (repinned20261019): 227 gun-gaps (351de3bd1) starts the 2A46M-5 sleeve
+// at 0.42 inside the saddle cone instead of the 0.55 clamp face, closing the 60 mm see-through ring; re-measured.
 const near=(a,b,label,tol=2e-5)=>assert(Math.abs(a-b)<tol,`${label}: ${a} != ${b}`);
 for(const [id,b] of Object.entries(before.rows)){
  const f=VEHICLE_SIZE_FACTORS[id],h=VEHICLE_HULL_LENGTH_FACTORS[id]??1,spec=getSpec(id);

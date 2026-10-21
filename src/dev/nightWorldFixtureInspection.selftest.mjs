@@ -7,6 +7,7 @@ import { makeLighthouse } from '../world/maps/railKit.ts';
 import { markWorldAperture } from '../world/worldNightEmissionGeometry.ts';
 import { prepareWorldStaticNightFixture, prepareWorldStructureNightFixture, setWorldNightFixtureActive } from '../world/worldNightFixtureInstances.ts';
 import { configureWorldLampMaterial, WORLD_LAMP_ACTIVE_ATTRIBUTE } from '../world/worldNightLighting.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const root = new THREE.Group(); root.position.set(30, 2, -20); root.rotation.y = .6;
 const materials = [], geometries = [], instances = [];
@@ -61,7 +62,7 @@ for (const [kind, mesh, distance] of [['structure-window', office, 4], ['relay-b
   }
   mesh.visible = false; assert.equal(inspectNightWorldFixture(root, reference, kind), null); mesh.visible = true;
 }
-assert.deepEqual(root.children, children, 'inspection changes no scene owners');
+assert.deepEqual(graphLabels(root.children), graphLabels(children), 'inspection changes no scene owners');
 setWorldNightFixtureActive(office, 1, false);
 assert.equal(inspectNightWorldFixture(root, reference, 'structure-window'), null);
 setWorldNightFixtureActive(relay, 1, false);

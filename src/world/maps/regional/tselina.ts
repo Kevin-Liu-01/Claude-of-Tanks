@@ -956,7 +956,7 @@ const ruinedHouse: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const TSELINA_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const TSELINA_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: settlerHouse,
   farmhouse: twoFamilyHouse,
   cornershop: club,

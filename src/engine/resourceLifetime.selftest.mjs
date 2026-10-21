@@ -7,6 +7,7 @@ import {
   residentResourceLimits,
   visitOwnedObject3DGeometries,
 } from './resourceLifetime.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 assert.deepEqual(residentResourceLimits('mobile'), {
   pedestalVisuals: 2,
@@ -53,7 +54,7 @@ const released = disposeObject3DResources(retired, {
   preserveRoots: [live],
   onDispose(type, resource) { disposalOrder.push([type, resource]); },
 });
-assert.equal(retired.parent, null, 'retired subtree must detach from the live scene');
+assert.ok(retired.parent === null, 'retired subtree must detach from the live scene');
 assert.equal(geometryDisposals, 1, 'retired geometry must release its GPU buffer');
 assert.equal(dormantGeometryDisposals, 1,
   'retained off-tree geometry must release with its Object3D owner');
@@ -79,11 +80,11 @@ for (const resource of [suspendedGeometry, suspendedTexture, suspendedMaterial])
   resource.addEventListener('dispose', () => { suspendedDisposals += 1; });
 }
 const suspended = releaseObject3DGpuResources(suspendedRoot);
-assert.equal(suspendedRoot.parent, parent,
+assert.ok(suspendedRoot.parent === parent,
   'GPU suspension keeps the retained presentation in its ownership tree');
-assert.equal(suspendedMesh.geometry, suspendedGeometry,
+assert.ok(suspendedMesh.geometry === suspendedGeometry,
   'GPU suspension preserves the exact CPU-side geometry for automatic re-upload');
-assert.equal(suspendedMesh.material, suspendedMaterial,
+assert.ok(suspendedMesh.material === suspendedMaterial,
   'GPU suspension preserves the exact material and shader contract');
 assert.deepEqual(suspended, { objects: 2, geometries: 1, materials: 1, textures: 1 });
 assert.equal(suspendedDisposals, 3, 'every independently owned WebGL allocation is released');
@@ -129,11 +130,11 @@ assert.equal(visitOwnedObject3DGeometries(inventoryRoot, geometry => laterInvent
 assert.deepEqual(new Set(laterInventory), new Set([inventoryGeometry, inventoryOffTree, inventoryLater]),
   'streamed off-tree additions remain visible without replacing the declaration');
 assert.equal(inventoryDisposals, 0, 'inventory must never invoke mesh, geometry, material or texture disposal');
-assert.equal(inventoryRoot.parent, inventoryBefore.parent);
-assert.deepEqual(inventoryRoot.children, inventoryBefore.children);
-assert.equal(inventoryMesh.geometry, inventoryBefore.geometry);
-assert.equal(inventoryMesh.material, inventoryBefore.material);
-assert.equal(inventoryMaterial.map, inventoryBefore.texture);
+assert.ok(inventoryRoot.parent === inventoryBefore.parent);
+assert.deepEqual(graphLabels(inventoryRoot.children), graphLabels(inventoryBefore.children));
+assert.ok(inventoryMesh.geometry === inventoryBefore.geometry);
+assert.ok(inventoryMesh.material === inventoryBefore.material);
+assert.ok(inventoryMaterial.map === inventoryBefore.texture);
 assert.equal(inventoryMesh.visible, inventoryBefore.visible);
 assert.deepEqual(inventoryMesh.instanceMatrix.array, inventoryBefore.matrixArray);
 assert.deepEqual(inventoryGeometry.attributes.position.array, inventoryBefore.position);

@@ -220,7 +220,7 @@ try {
   const draw = merged.find((mesh) => staticMergePartsOf(mesh).length > 4);
   const parts = staticMergePartsOf(draw);
   const found = findStaticMergePart(tank.root, parts[2].name);
-  assert.equal(found.mesh, draw, 'a folded source resolves to its merged draw');
+  assert.ok(found.mesh === draw, 'a folded source resolves to its merged draw');
   assert.equal(found.part, parts[2], 'with its side-table row');
   const live = findStaticMergePart(tank.root, 'hull');
   assert.ok(live && live.part === null && live.mesh.name === 'hull', 'a live mesh resolves to itself');

@@ -34,7 +34,7 @@ const KINDS = new Set(['team_orders']);
 export const JEV_POSTURES = Object.freeze([
   'hold', 'push', 'flank_left', 'flank_right', 'retreat', 'capture', 'support',
 ] as const);
-export type JevPosture = (typeof JEV_POSTURES)[number];
+type JevPosture = (typeof JEV_POSTURES)[number];
 
 const BEARINGS = new Set(['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']);
 const FACINGS = new Set(['toward us', 'side-on', 'away']);
@@ -42,14 +42,14 @@ const OWNERS = new Set(['ours', 'theirs', 'nobody']);
 const OBJECTIVE_KINDS = new Set(['zone', 'sector', 'flag', 'goal', 'ball', 'cache']);
 const GUN_RE = /^(ready|reloading \d{1,3} s|empty)$/;
 
-export interface JevSeenEnemy {
+interface JevSeenEnemy {
   readonly id: string;
   readonly m: number;
 }
 
 const ABILITIES = new Set(['smoke_ready', 'smoke_reloading', 'roof_gun', 'guided_missile', 'magazine', 'suspension', 'jump', 'airborne', 'burning', 'edge_risk']);
 const MISSIONS = new Set(['carrier', 'recover', 'escort', 'raid', 'defend', 'striker', 'screen', 'capture', 'assault']);
-export interface JevTactics {
+interface JevTactics {
   readonly mission?: string;
   readonly allies_nearby: number;
   readonly enemies_nearby: number;
@@ -132,7 +132,7 @@ export interface JevRequestBody {
 
 type Text = string | Record<string, unknown> | readonly unknown[];
 
-export type JevQuestion =
+type JevQuestion =
   | { readonly type: 'choice'; readonly instructions: Text; readonly criteria: Readonly<Record<string, Text | null>> }
   | { readonly type: 'noul'; readonly instructions: Text; readonly criteria?: { readonly true: Text; readonly false: Text } }
   | { readonly type: 'score'; readonly instructions: Text; readonly criteria: readonly Text[] };

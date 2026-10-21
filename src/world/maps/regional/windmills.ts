@@ -26,7 +26,7 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
 }
 
-export interface PostMillPalette {
+interface PostMillPalette {
   /** the buck's boards and sails, the frame's darker oak */
   timber: Rgb;
   dark: Rgb;
@@ -110,7 +110,7 @@ export function buildPostMill(ctx: RegionalBuildContext, p: PostMillPalette): Re
   return sink.finish();
 }
 
-export interface SmockMillPalette {
+interface SmockMillPalette {
   tar: Rgb;
   white: Rgb;
   /** the door's and the shutters' paint */

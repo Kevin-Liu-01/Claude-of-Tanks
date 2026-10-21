@@ -33,6 +33,10 @@ const REEL_SOURCES: ReadonlyArray<readonly [string, string, string]> = [
   ['s34-furnace-salvo', 'media.site50.short.s34FurnaceSalvo', 'map.foundry'],
   ['s38-church-knockout', 'media.site50.short.s38ChurchKnockout', 'map.winter'],
   ['s39-lakeside-village', 'media.site50.short.s39LakesideVillage', 'map.reservoir'],
+  ['s225-verdant-duel', 'media.site50.short.s225VerdantDuel', 'map.verdant'],
+  ['s226-church-duel', 'media.site50.short.s226ChurchDuel', 'map.winter'],
+  ['s227-oasis-duel', 'media.site50.short.s227OasisDuel', 'map.oasis'],
+  ['s228-street-1v2', 'media.site50.short.s228Street1v2', 'map.urban'],
 ];
 
 export const BATTLE_REELS: readonly BattleReel[] = Object.freeze(REEL_SOURCES.map(([id, titleKey, mapKey]) => Object.freeze({

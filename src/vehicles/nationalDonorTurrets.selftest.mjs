@@ -36,6 +36,14 @@ for (const [id, d] of Object.entries(NATIONAL_DONOR_TURRETS)) {
     rig.position.toArray().forEach((v, i) => assert(Math.abs(v - d.pivot[i]) < 1e-6, `${id}: turret rides its listed ring seat`));
     assert.equal(rig.userData.nationalDonorTurret?.donor, d.donor, `${id}: donor turret receipt`);
     const concept = vertexSet(owned(tank, 'rig_turret', 'turret'));
+    if (id === 't72b3_qilin') {
+      // round 8 (critic CN8-09: the mapped comparison below passes any cut): the cut itself, a tenth of the 99A2 body's
+      // 3.954 m, and the casting's rear wall where that cut puts it (the 99A2's z -2.22 at -1.825)
+      const cutM = Number(d.builderOptions?.bustleCutM ?? 0);
+      assert.ok(Math.abs(cutM - .1 * 3.954) < .001, `${id}: its bustle cut is 10 % of the 99A2 body (${cutM} m)`);
+      const rearZ = Math.min(...[...concept].map((k) => Number(k.split(',')[2]) / 1e4));
+      assert.ok(Math.abs(rearZ - (-2.22 + .1 * 3.954)) < .002, `${id}: the cut casting's rear wall stands at z ${rearZ.toFixed(4)} (-1.825)`);
+    }
     // Release 227: a donor built with its bustle cut (the Qilin's ZTZ-99A2) is compared to the donor's casting with the
     // same cut: each vertex's z maps through bustleCutZ. Its omitted rear flank fit (rearFlank: false: the rear stowage
     // box among the casting's own parts) and the gun throat's clip seams (|x| 0.40 and its rear wall at z 0.20, where the

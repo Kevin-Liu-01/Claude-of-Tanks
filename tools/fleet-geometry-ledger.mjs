@@ -11,6 +11,7 @@
 //   node tools/fleet-geometry-ledger.mjs --update [--jobs=4]          # re-pin the whole fleet
 //   node tools/fleet-geometry-ledger.mjs --update --ids=t90am,leclerc_xlr [--quality=high]   # re-pin some rows
 import { writeFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
@@ -37,7 +38,7 @@ function parseArgs(argv) {
   return {
     update: argv.includes('--update'),
     worker: argv.includes('--worker'),
-    ids: value('ids')?.split(',').filter(Boolean) ?? null,
+    ids: uniqueIds(value('ids')?.split(',').filter(Boolean) ?? null, 'fleet-geometry-ledger --ids'),
     qualities: value('quality')?.split(',').filter(Boolean) ?? [...LEDGER_QUALITIES],
     jobs: Math.max(1, Number(value('jobs') ?? 1) | 0),
     shard: value('shard'),

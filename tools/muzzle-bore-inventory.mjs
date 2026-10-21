@@ -5,6 +5,7 @@
 // retriangulation is measured separately instead of estimated as a round cap.
 // Usage: --ids=a,b | --all, --quality=high,low, --json=path, --md=path, --gate.
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { dirname, resolve } from 'node:path';
 import * as THREE from 'three';
 import './tank-surface-collect.mjs'; // node canvas shim
@@ -24,7 +25,7 @@ const { expectedMuzzleBoreCount } = await import('../src/vehicles/tankAssets.ts'
 let fills = null;
 try { fills = await import('../src/vehicles/interiorFills.ts'); } catch { fills = null; }
 
-const ids = flag('all') ? [...DEVELOPMENT_TANK_IDS] : opt('ids', 'm1a1_abrams_hc,xk2_black_panther,kf41_lynx').split(',').map((s) => s.trim()).filter(Boolean);
+const ids = flag('all') ? [...DEVELOPMENT_TANK_IDS] : uniqueIds(opt('ids', 'm1a1_abrams_hc,xk2_black_panther,kf41_lynx').split(',').map((s) => s.trim()).filter(Boolean), 'muzzle-bore-inventory --ids');
 const qualities = opt('quality', 'high,low').split(',').map((s) => s.trim()).filter(Boolean);
 const debug = flag('debug');
 /** Every playable cannon needs a verified physical opening; sealed canisters are exempt. */

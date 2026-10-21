@@ -51,6 +51,7 @@ import { CHOUF_STYLE } from './chouf.ts';
 import { LORRAIN_STYLE } from './lorrain.ts';
 import { TSELINA_STYLE } from './tselina.ts';
 import { OLYMPUS_STYLE } from './olympus.ts';
+import { LITTROW_STYLE } from './littrow.ts';
 import type { ArchitectureStyle, BaseBounds, RegionalBuildContext, RegionalBuilder, RegionalGround } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
@@ -102,6 +103,9 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   tselina: TSELINA_STYLE,
   // (the looks lane, 2026-10-13) the Olympus Basin station: its regolith works and its cargo modules
   olympus: OLYMPUS_STYLE,
+  // (the Earthrise 228 rebuild, 2026-10-18) Taurus-Littrow Station's habitats, nodes, garages, tank farms, tower, lab,
+  // crane, logistics modules and tool lockers
+  littrow: LITTROW_STYLE,
 });
 
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));

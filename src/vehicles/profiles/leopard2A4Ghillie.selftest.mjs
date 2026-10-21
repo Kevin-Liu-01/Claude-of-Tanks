@@ -96,7 +96,7 @@ const otco = createTank('leo2a3', null, {
   geometryReceipt: true,
   quality: 'high',
 });
-assert.equal(otco.root.getObjectByName('leo2a4_ghillie_hull_net'), undefined,
+assert.ok(otco.root.getObjectByName('leo2a4_ghillie_hull_net') === undefined,
   'the separate OTCO variant does not inherit the base A4 field suit');
 const otcoTurretRig = otco.root.getObjectByName('rig_turret');
 const otcoTurretArmor = otcoTurretRig?.getObjectByName('turret');

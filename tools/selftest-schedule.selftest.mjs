@@ -27,6 +27,15 @@ assert.deepEqual(admissionOrder(['a', 'b', 'c', 'd'], { barriers: new Set(['c'])
   'cold index: barriers first, the rest in registry order (its head lists the fleet sweeps)');
 assert.deepEqual(admissionOrder(['a', 'b'], { runMsOf: (file) => file === 'a' ? 10 : undefined, unknownMs: 5 }), [0, 1],
   'an explicit unknown estimate is honoured');
+// test-speed R9a (2026-10-16): a judge that merges the records other receipts of the same run wrote (battlePacing over
+// its eight shards) is admitted after everything else, however long its last run took (it plays what it lacks)
+const judged = ['judge', 'shard-1', 'browser', 'shard-2', 'tiny', 'judge-2'];
+const judgedMs = { judge: 300_000, 'shard-1': 80_000, browser: 1_000, 'shard-2': 90_000, tiny: 100, 'judge-2': 1 };
+assert.deepEqual(admissionOrder(judged, { runMsOf: (file) => judgedMs[file], barriers: new Set(['browser']),
+  last: new Set(['judge', 'judge-2']) }).map((index) => judged[index]),
+['browser', 'shard-2', 'shard-1', 'tiny', 'judge', 'judge-2'], 'last receipts follow everything, in registry order');
+assert.deepEqual(admissionOrder(['a', 'b'], { barriers: new Set(['b']), last: new Set(['b']) }), [1, 0],
+  'a barrier stays a barrier');
 
 // the run-time index: rebuilt from the newest proof record per receipt, then kept in runtimes.json
 const cacheDir = mkdtempSync(join(tmpdir(), 'cot-selftest-schedule-'));

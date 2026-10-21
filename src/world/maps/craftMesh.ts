@@ -38,7 +38,7 @@ export const WOOD_UV_PER_M = 0.55;
 /** The kits' stone and render prints: 0.5 repeats a metre (regionalSurfaces.ts). */
 export const STONE_UV_PER_M = 0.5;
 /** The structure wood's mean luminance (timberGrain.ts paints 0.55..1): vertex colours are albedo over it. */
-export const WOOD_PRINT_MEAN = 0.8;
+const WOOD_PRINT_MEAN = 0.8;
 
 /**
  * One flat texel of each regional stone print (tools: the looks stream's flat-texel.mjs over regionalSurfaces.ts

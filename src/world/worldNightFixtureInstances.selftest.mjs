@@ -9,6 +9,7 @@ import { prepareWorldStaticNightFixture, prepareWorldStructureNightFixture,
 import { registerWorldNightLighting } from './worldNightLighting.ts';
 import { createNightLightingRuntime } from '../engine/nightLightingRuntime.ts';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const panes = new Set(['fieldhut', 'fishershack', 'saunahut', 'alpinerefuge', 'stilthouse', 'longhouse',
   'guardpost', 'quonsethut', 'checkpointhut', 'securityoffice', 'servicegarage', 'corneroffice',
@@ -126,13 +127,13 @@ try {
   setWorldNightFixtureActive(intact, 0, true); assert.deepEqual([...active.array], [1, 1], 'rematch restores exact slot');
   assert.throws(() => setWorldNightFixtureActive(intact, 2, false), /instance slot/);
   assert.equal(structureMaterial.version, originalVersion, 'activity/night radiance never recompiles shader');
-  assert.deepEqual(root.children, children, 'no new scene owners or per-building materials');
+  assert.deepEqual(graphLabels(root.children), graphLabels(children), 'no new scene owners or per-building materials');
   root.visible = false; runtime.update(reference);
   assert.equal(structureMaterial.emissiveIntensity, .07); assert.equal(glassMaterial.emissive.getHex(), 0);
   root.visible = true; runtime.update(reference); assert.equal(glassMaterial.emissiveIntensity, 2);
   runtime.reset();
   assert.equal(structureMaterial.emissive.getHex(), 0x221100); assert.equal(structureMaterial.emissiveIntensity, .07);
-  assert.equal(glassMaterial.emissive.getHex(), 0); assert.equal(runtime.group.parent, null);
+  assert.equal(glassMaterial.emissive.getHex(), 0); assert.ok(runtime.group.parent === null);
   runtime.prepare([{ root }], false); runtime.update(reference);
   assert.equal(runtime.emitterCount, 0); assert.equal(glassMaterial.emissive.getHex(), 0, 'day/Garage stays original');
   for (const mapId of ['ruinspires', 'blackglass']) {
@@ -159,10 +160,10 @@ try {
     setWorldNightFixtureActive(relay, 0, true); runtime.update(reference);
     assert.deepEqual([...active.array], [1, 1], 'rematch restores authored panes');
     assert.deepEqual([...relay.geometry.getAttribute(WORLD_FIXTURE_ACTIVE_ATTRIBUTE).array], [1], 'rematch restores authored relay bulb');
-    assert.deepEqual(runtime.lights, pool, 'ruined-map activity preserves pool identity and count');
+    assert.deepEqual(graphLabels(runtime.lights), graphLabels(pool), 'ruined-map activity preserves pool identity and count');
     runtime.prepare([{ root: ruins }], false); runtime.update(reference);
     assert.equal(runtime.emitterCount, 0); assert.equal(structureMaterial.emissiveIntensity, .07);
-    assert.equal(structureMaterial.emissive.getHex(), 0x221100); assert.equal(runtime.group.parent, null);
+    assert.equal(structureMaterial.emissive.getHex(), 0x221100); assert.ok(runtime.group.parent === null);
     runtime.prepare([{ root: ruins }], true); runtime.update(reference); runtime.reset();
     assert.equal(structureMaterial.emissiveIntensity, .07, 'Garage reset restores the exact material baseline');
     assert.equal(curtain.emissive.getHex(), 0); assert.equal(runtime.emitterCount, 0);

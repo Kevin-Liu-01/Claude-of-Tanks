@@ -83,7 +83,9 @@ const PALETTES: Readonly<Record<GarageHardstandStyle, StylePalette>> = Object.fr
   'slab-soot': { kind: 'slab', base: [106, 102, 98], spread: 0.06, speckle: 0.09, seed: 101 },
   'earth-sand': { kind: 'earth', base: [184, 160, 120], spread: 0.06, speckle: 0.14, seed: 113 },
   'earth-snow': { kind: 'earth', base: [208, 214, 220], spread: 0.05, speckle: 0.06, seed: 127 },
-  'gravel-snow': { kind: 'earth', base: [128, 128, 126], spread: 0.07, speckle: 0.2, seed: 131 },
+  // (garage r9 g1 r2: the grey gravel base under white blots read as "grey-mottled snow": the yard is packed snow, the
+  // gravel shows in the lanes and the clumps)
+  'gravel-snow': { kind: 'earth', base: [186, 190, 195], spread: 0.07, speckle: 0.14, seed: 131 },
   'earth-slag': { kind: 'earth', base: [76, 71, 66], spread: 0.07, speckle: 0.18, seed: 139 },
 });
 
@@ -404,7 +406,10 @@ function drawHardstand(
   const dir = (angle: number): [number, number] => [Math.sin(angle), Math.cos(angle)];
   // packed snow under tracks is a compacted blue-grey with grit, read against the white (the re-judge, 2026-10-15: "no
   // ... packed track ruts")
-  const rutDark = earth ? (snow ? '104,112,122' : '42,30,22') : '26,24,22';
+  // (garage r9, the g1 lane: the dry and snow yards' ruts read as black painted smears) a dry rut is the ground compacted
+  // and a shade darker, a snow rut is grey slush with the gravel showing through; the wet and slab yards keep theirs
+  const RUT_TONES: Partial<Record<GarageHardstandStyle, string>> = { 'earth-dust': '120,66,42', 'earth-snow': '132,128,120', 'gravel-snow': '98,96,92' };
+  const rutDark = RUT_TONES[style] ?? (earth ? (snow ? '104,112,122' : '42,30,22') : '26,24,22');
   const berm = snow ? '246,250,252' : style === 'earth-sand' ? '232,212,176' : style === 'earth-dust' ? '214,160,124' : '';
   const wheelPath = (
     p0: readonly [number, number], p1: readonly [number, number], p2: readonly [number, number],
@@ -573,6 +578,58 @@ function drawHardstand(
         squash[0] + rng() * (squash[1] - squash[0]));
     }
   };
+  /**
+   * Wind-laid snow (garage r9 g1 r2: the round blots read as soap bubbles and the podium's drift ring as a bead
+   * necklace): long soft streaks on one wind, a smooth falloff with no plateau or rim, banked at the yard's edges and in
+   * the open ground; a continuous drift collar on the turntable plinth's windward side.
+   */
+  const windAngle = Math.atan2(approach.x, approach.z) + 0.85;
+  const streak = (xM: number, zM: number, lengthM: number, widthM: number, angle: number, colour: string, alpha: number): void => {
+    const [x, y] = px(xM, zM);
+    const r = Math.max(1, lengthM * PX_PER_M);
+    g.save();
+    g.translate(x, y); g.rotate(angle); g.scale(1, Math.max(0.05, widthM / lengthM));
+    const grad = g.createRadialGradient(0, 0, 0, 0, 0, r);
+    grad.addColorStop(0, `rgba(${colour},${alpha.toFixed(3)})`);
+    grad.addColorStop(0.3, `rgba(${colour},${(alpha * 0.78).toFixed(3)})`);
+    grad.addColorStop(0.62, `rgba(${colour},${(alpha * 0.32).toFixed(3)})`);
+    grad.addColorStop(1, `rgba(${colour},0)`);
+    g.fillStyle = grad;
+    g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill();
+    g.restore();
+  };
+  const windDrifts = (colour: string, count: number, alpha: readonly [number, number], edgeM: number): void => {
+    // in the open: sastrugi and scoured streaks on the wind, more where the density field is quiet
+    for (let i = 0; i < count; i++) {
+      const x = rng() * CANVAS_W, y = rng() * CANVAS_H;
+      if (rng() > 0.35 + 0.65 * (1 - density(x, y))) continue;
+      const xM = x / PX_PER_M - APRON_W_M / 2, zM = y / PX_PER_M - APRON_D_M / 2;
+      if (Math.hypot(xM, zM) < 6.6) continue;
+      const len = 1.0 + rng() * rng() * 3.6;
+      streak(xM, zM, len, len * (0.26 + rng() * 0.22), windAngle + (rng() - 0.5) * 0.3, colour, alpha[0] + (alpha[1] - alpha[0]) * rng());
+    }
+    // banked against the yard's edges
+    for (let i = 0; i < 60; i++) {
+      const edge = Math.floor(rng() * 4), t = rng() - 0.5, inset = rng() * edgeM;
+      const xM = edge < 2 ? t * APRON_W_M : (edge === 2 ? -1 : 1) * (APRON_W_M / 2 - inset);
+      const zM = edge < 2 ? (edge === 0 ? -1 : 1) * (APRON_D_M / 2 - inset) : t * APRON_D_M;
+      const len = 1.4 + rng() * 2.8;
+      streak(xM, zM, len, len * (0.3 + rng() * 0.25), (edge < 2 ? 0 : Math.PI / 2) + (rng() - 0.5) * 0.4, colour, alpha[1] * 0.8);
+    }
+    // the drift collar on the plinth: one smooth annulus, heavier on the windward side, broken where the hulls cross
+    const [cx, cy] = px(0, 0);
+    const ring = g.createRadialGradient(cx, cy, 6.2 * PX_PER_M, cx, cy, 7.6 * PX_PER_M);
+    ring.addColorStop(0, `rgba(${colour},0)`);
+    ring.addColorStop(0.18, `rgba(${colour},${(alpha[1] * 0.85).toFixed(3)})`);
+    ring.addColorStop(0.5, `rgba(${colour},${(alpha[1] * 0.35).toFixed(3)})`);
+    ring.addColorStop(1, `rgba(${colour},0)`);
+    g.fillStyle = ring;
+    g.beginPath(); g.arc(cx, cy, 7.6 * PX_PER_M, 0, Math.PI * 2); g.fill();
+    for (let i = 0; i < 26; i++) {
+      const a = windAngle + Math.PI / 2 + (rng() - 0.5) * 2.4, r = 6.5 + rng() * 0.5;
+      streak(Math.sin(a) * r, Math.cos(a) * r, 0.8 + rng() * 0.9, 0.22 + rng() * 0.2, -a, colour, alpha[1] * 0.7);
+    }
+  };
   const alongJoints = (count: number, width: number, inner: string, outer: string): void => {
     for (let i = 0; i < count; i++) {
       const along = (rng() * 2 - 1) * JOINT_SPAN * JOINT_PITCH_M, line = Math.round((rng() * 2 - 1) * JOINT_SPAN) * JOINT_PITCH_M;
@@ -697,7 +754,38 @@ function drawHardstand(
       // compacted redrock earth: gravel in patches, a dry crust between the paths, pale dust blown along the edges
       scatter(80, 0.8, 3.0, 'rgba(206,140,100,0.2)', 'rgba(206,140,100,0.06)', [0.3, 0.7]);
       aggregate(3000, ['120,96,84', '214,170,140'], [0.6, 3.2], [0.12, 0.3], 0.85);
-      crustCracks(260, '92,52,34');
+      crustCracks(160, '92,52,34');
+      // (garage r9: "red hardpan with desiccation-crack polygons in the margins ... gravel and black varnished stones")
+      // the hardpan's shrinkage cracks: polygons of 0.8-1.6 m, their edges wobbling, only away from the turntable and
+      // where the traffic has not crushed them (the density field's quiet ground), fainter toward the busy ground
+      {
+        const cell = 1.15 * PX_PER_M;
+        const cols = Math.ceil(CANVAS_W / cell) + 1, rows = Math.ceil(CANVAS_H / cell) + 1;
+        const nodes: Array<[number, number]> = [];
+        for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) nodes.push([(i + 0.15 + rng() * 0.7) * cell, (j + 0.15 + rng() * 0.7) * cell]);
+        const at = (i: number, j: number): [number, number] => nodes[j * cols + i];
+        g.lineCap = 'round';
+        for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+          const [x, y] = at(i, j);
+          const xm = (x / PX_PER_M) - APRON_W_M / 2, zm = (y / PX_PER_M) - APRON_D_M / 2;
+          const quiet = 1 - THREE.MathUtils.smoothstep(density(x, y), 0.34, 0.58);
+          const away = THREE.MathUtils.smoothstep(Math.hypot(xm, zm), 8.5, 11);
+          const strength = quiet * away;
+          if (strength < 0.05) continue;
+          for (const [di, dj] of [[1, 0], [0, 1], [1, 1]] as const) {
+            if (i + di >= cols || j + dj >= rows || (di && dj && rng() < 0.6)) continue;
+            const [x2, y2] = at(i + di, j + dj);
+            const mx = (x + x2) / 2 + (rng() - 0.5) * cell * 0.25, my = (y + y2) / 2 + (rng() - 0.5) * cell * 0.25;
+            g.strokeStyle = `rgba(74,38,24,${(strength * (0.22 + rng() * 0.18)).toFixed(3)})`;
+            g.lineWidth = 0.8 + rng() * 1.1;
+            g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(mx, my, x2, y2); g.stroke();
+          }
+          // the polygon's face curls and lightens a little toward its edges
+          if (rng() < 0.5) blot(xm + 0.5, zm + 0.5, 0.45, `rgba(214,160,122,${(strength * 0.12).toFixed(3)})`, 'rgba(214,160,122,0)', 0.8);
+        }
+      }
+      // desert varnish on the stones: small dark pebbles lying on the hardpan, more in the margins
+      aggregate(900, ['44,26,20', '64,38,28'], [0.8, 2.6], [0.3, 0.55], 0.6);
       drifts('214,160,124', 0.26, 2.0, false);
       break;
     }
@@ -718,18 +806,29 @@ function drawHardstand(
       break;
     }
     case 'earth-snow': {
-      // packed snow: glazed ice where it melted and froze, grit and soot, drifts banked at the edges and the podium
-      scatter(40, 0.5, 1.8, 'rgba(176,196,214,0.32)', 'rgba(176,196,214,0.1)', [0.4, 0.8]);
-      scatter(24, 0.3, 1.0, 'rgba(118,112,104,0.1)', 'rgba(118,112,104,0.03)'); // grit, not grey smears (the re-judge)
-      aggregate(1600, ['80,78,74'], [0.5, 1.8], [0.06, 0.18], 0.85);
-      drifts('250,252,255', 0.6, 2.8, true);
+      // packed snow: glazed ice where it melted and froze, a little grit, drifts banked at the edges and the podium
+      // (garage r9: "the mottled grey snow" goes: the glaze in fewer, cleaner patches, the grit finer)
+      // (r2: the glaze and the drifts as wind-laid streaks, not round blots)
+      for (let i = 0; i < 18; i++) {
+        const len = 0.8 + rng() * 1.6;
+        streak((rng() - 0.5) * APRON_W_M, (rng() - 0.5) * APRON_D_M, len, len * 0.3, windAngle + (rng() - 0.5) * 0.5, '178,198,216', 0.14);
+      }
+      aggregate(900, ['92,88,82'], [0.5, 1.4], [0.05, 0.14], 0.85);
+      windDrifts('250,252,255', 150, [0.14, 0.32], 3.0);
       break;
     }
     case 'gravel-snow': {
       // crushed-rock hardstand with old snow lying in its hollows and banked at the edges
-      aggregate(5600, ['70,70,66', '120,120,116', '180,180,176'], [0.7, 3.4], [0.16, 0.42], 0.75);
-      scatter(70, 0.6, 2.6, 'rgba(232,238,244,0.56)', 'rgba(232,238,244,0.16)', [0.35, 0.8]);
-      drifts('236,242,246', 0.55, 2.6, true);
+      // (garage r9: "compacted snow and gravel with ruts and plough berms", the yard snow-covered, the gravel showing
+      // through in the lanes, not a grey mottle)
+      // (r2: packed snow over the crushed rock, the gravel in clumps where the ploughs scraped and the wheels churned,
+      // a few salted wet streaks gone darker, the snow laid on the wind)
+      aggregate(2600, ['78,78,74', '112,112,108', '150,150,146'], [0.5, 2.2], [0.1, 0.26], 0.9);
+      for (let i = 0; i < 14; i++) {
+        const len = 1.2 + rng() * 2.4;
+        streak((rng() - 0.5) * APRON_W_M, (rng() - 0.5) * APRON_D_M, len, len * 0.22, windAngle + (rng() - 0.5) * 0.6, '118,122,128', 0.12);
+      }
+      windDrifts('240,244,248', 140, [0.14, 0.3], 2.6);
       break;
     }
     case 'earth-slag': {

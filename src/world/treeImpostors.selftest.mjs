@@ -157,7 +157,7 @@ try {
       assert.ok(row.cellM > 4 && row.cellM < 40 && row.baseV > 0 && row.baseV < baseCap && row.heightM > 3, `${id}: ${row.species}/${row.variant} measured (${row.cellM}, ${row.baseV}, ${row.heightM})`);
     }
     assert.equal(library.material.customProgramCacheKey(), TREE_IMPOSTOR_PROGRAM_KEY);
-    assert.strictEqual(library.material.map, library.albedo.texture);
+    assert.ok(library.material.map === library.albedo.texture);
     // the pools: two impostor quads per species, no lobe pool, the near pools and their shadow proxies untouched
     const impostorMeshes = world.group.children.filter(m => m.userData.treeImpostor === true);
     assert.equal(impostorMeshes.length, species.length * 2, `${id}: two impostor pools per species`);
@@ -169,7 +169,7 @@ try {
     assert.equal(world.group.children.filter(m => m.userData.treeFoliage).length, nearSpecies * 3);
     for (const mesh of impostorMeshes) {
       const [, sp, fv] = mesh.name.split('_');
-      assert.strictEqual(mesh.material, library.material);
+      assert.ok(mesh.material === library.material);
       assert.equal(mesh.geometry.getAttribute('position').count, 4); assert.equal(mesh.geometry.index.count, 6);
       assert.equal(mesh.castShadow, false); assert.equal(mesh.receiveShadow, false);
       assert.equal(mesh.userData.aoExclude, true); assert.equal(mesh.userData.treeLod, 'far'); assert.equal(mesh.frustumCulled, false);
