@@ -13,26 +13,29 @@
  *  - A GPU probe every PROBE_EVERY frames (at once while anything looks wrong): two fullscreen draws over a 16 x 9 target,
  *    each fragment one cell of 8 x 8 taps of the resolved scene colour and depth, under two reusable ANY_SAMPLES_PASSED
  *    occlusion queries: one keeps the cells that hold any colour or depth (on an airless map only the cells looking at
- *    ground within reach, a black lunar sky overhead not being a black world), one the cells holding any non-finite
- *    value. The answers arrive frames later; the probe never stalls a frame, reads back no buffer and allocates nothing.
+ *    ground within reach, a black lunar sky overhead not being a black world), one answers when at least 1 % of the
+ *    cells hold a NaN, read from its bits (round 3: saturated and infinite HDR, the sun disc, is light). The answers
+ *    arrive frames later; the probe never stalls a frame, reads back no buffer and allocates nothing.
  *    (A pixel-pack-buffer readback trips Chrome's READ-usage shadow warning on every cycle, a known Chromium issue.)
  *  - Verdicts (a revealed battle, no Studio or shot staging, a live context, a focused document): BLACK-WORLD = no cell
- *    with colour or depth, NAN = a non-finite cell, a CPU violation = its own class; two failing verdicts in a row open an
- *    incident. Its receipt (window.__GL_DIAG.blackWorld, a ring of 8; one console warning; one entry-telemetry `error`
- *    record) names the class, the probe's cell census (one synchronous read, at the incident only), every top-level
+ *    with colour or depth, NAN = NaN in 1 % of the cells, a CPU violation = its own class; two failing verdicts in a row
+ *    open an incident. Its receipt (window.__GL_DIAG.blackWorld, a ring of 8; one console warning; one entry-telemetry
+ *    `error` record, at most MAX_REPORTS a page) names the class, the probe's cell census (one synchronous read, at the incident only), every top-level
  *    root, the scene target and its framebuffers, the GL errors, the warm stage and the timing, so the owner's next
  *    black frame names its own cause.
  *  - The heal ladder, one step per two more failing verdicts, never while covered, one ladder per incident per 10 s:
  *    H1 re-assert state (the camera mask taken at reveal, scene visibility, no override, the canonical passes, the scene
  *    target's viewport, the battlefield and presentation roots, the live rare warm closed so its finally blocks run),
- *    H2 reallocate every composer target and reset the temporal histories, H3 MSAA off, H4 (only when every CPU signal
+ *    H2 reallocate every composer target and reset the temporal histories, H3 MSAA off for the rest of that battle (the
+ *    next covered entry takes the preset's samples back), H4 (only when every CPU signal
  *    is healthy, once a page) a context lose/restore through the renderer's recovery, whose own loss record takes the
  *    graphics-recovery preset one rung down; H3 waits for a black that has lasted a second, H4 three (a context restore
  *    blacks the frame for seconds itself), both measured from the ladder's own start. H1 and H2 change nothing on a
  *    healthy frame and only ever act on a frame that is already black. A rung is named the healer only when it changed
  *    something and the healthy verdict is one of the next two after it; a black that ends otherwise ended on its own
  *    (`self`). (Round 2, 2026-10-20, eng D2/D3: the preset no longer ratchets one rung per ladder, and a fault that
- *    cleared itself is no longer reported as healed by H1.)
+ *    cleared itself is no longer reported as healed by H1. Round 3, eng E3: the incident H4 restores stays open while the
+ *    context is away, and the first verdict after the return credits it.)
  *  - Downstream of the scene target (round 2, D2): a third occlusion query compares the resolved scene colour with the
  *    chain's colour after the late-FX pass (the aerial pass's output and the late composite of it). A battle whose scene
  *    target holds the world while that colour is exactly zero over most of it (a dropped aerial draw, a dropped late-FX
@@ -73,6 +76,10 @@ export const LADDER_COOLDOWN_MS = 10_000;
 export const H3_AFTER_MS = 1000;
 export const H4_AFTER_MS = 3000;
 export const RECEIPT_RING = 8;
+/** Telemetry records a page (round 3, eng E1: the entry telemetry's error budget is 3 a session and shared with crashes). */
+export const MAX_REPORTS = 2;
+/** A context restore the guard asked for (H4) keeps its incident open this long while the context is away (eng E3). */
+export const RESTORE_WAIT_MS = 15_000;
 /** Scene-pass draw calls under this are an empty scene pass. */
 export const MIN_SCENE_CALLS = 3;
 /** A rung is credited with the heal when the healthy verdict is one of this many after it acted. */
@@ -93,13 +100,31 @@ const CPU_CLASS: ReadonlyArray<readonly [number, RenderBlackWorldClass]> = Objec
 /** The bits a CPU signal alone may open an incident on (an empty scene pass waits for the probe's confirmation). */
 const CPU_DECISIVE = CPU.MASK | CPU.SCENE_HIDDEN | CPU.OVERRIDE | CPU.PASSES | CPU.VIEWPORT | CPU.ROOTS;
 
-/** One cell's census: any finite colour above 0, any non-finite value, any depth below 1, and whether it looks at ground. */
+/** A NaN verdict needs at least this many NaN cells (1 % of the probe): one stray NaN texel is no poisoned history. */
+export const NAN_MIN_CELLS = Math.ceil(0.01 * PROBE_CELLS);
+
+/**
+ * A NaN read from its bits (IEEE 754: an all-ones exponent, a non-zero mantissa), the one test no fast-math compile can
+ * fold away. Saturated and infinite HDR is light, never a fault (round 3, eng E1 / repro R2-SUN-FALSE-POSITIVE): the sun
+ * disc's ~9e4 radiance (sky.ts uSunDiscRadiance) fills the half-float scene target with 65504 on Metal and may store +Inf
+ * on other GPUs, and the old `!(abs(c) < 6e4)` test opened a nan-history incident over a fully lit day frame.
+ */
+export const NAN_BITS_GLSL = /* glsl */ `
+bool bwgNan( float x ) {
+  uint b = floatBitsToUint( x );
+  return ( b & 0x7f800000u ) == 0x7f800000u && ( b & 0x007fffffu ) != 0u;
+}
+bool bwgNan3( vec3 c ) { return bwgNan( c.r ) || bwgNan( c.g ) || bwgNan( c.b ); }`;
+
+/** One cell's census: any colour above 0 (saturated and +Inf HDR included), any NaN, any depth below 1, and whether
+ * the cell looks at ground. */
 const PROBE_CELL_GLSL = /* glsl */ `
 uniform sampler2D tColor;
 uniform sampler2D tDepth;
 uniform mat4 uFarFromNdc;
 uniform vec4 uCamReach; // the camera's position, and the slope below which a view ray meets ground within reach
 uniform float uAllCells;
+${NAN_BITS_GLSL}
 void cellCensus( out float lit, out float bad, out float deep, out float ground ) {
   vec2 cell = floor( gl_FragCoord.xy );
   lit = 0.0; bad = 0.0; deep = 0.0;
@@ -108,8 +133,7 @@ void cellCensus( out float lit, out float bad, out float deep, out float ground 
       vec2 uv = ( cell + ( vec2( float( i ), float( j ) ) + 0.5 ) / 8.0 ) / vec2( ${PROBE_COLUMNS}.0, ${PROBE_ROWS}.0 );
       vec4 c = texture2D( tColor, uv );
       float d = texture2D( tDepth, uv ).x;
-      // comparisons with NaN are false, also under fast math
-      if ( !( abs( c.r ) < 6.0e4 && abs( c.g ) < 6.0e4 && abs( c.b ) < 6.0e4 ) ) bad = 1.0;
+      if ( bwgNan3( c.rgb ) ) bad = 1.0;
       else if ( c.r > 0.0 || c.g > 0.0 || c.b > 0.0 ) lit = 1.0;
       if ( d < 1.0 ) deep = 1.0;
     }
@@ -125,12 +149,24 @@ void main() {
   if ( !( ( lit > 0.5 || deep > 0.5 ) && ( ground > 0.5 || uAllCells > 0.5 ) ) ) discard;
   gl_FragColor = vec4( 1.0 );
 }`;
-/** Kept (and counted by the non-finite query): a cell holding a NaN or an Inf. */
+/** Every cell's NaN flag into the probe target (R), for the count below. */
 const PROBE_NAN_FRAGMENT = `${PROBE_CELL_GLSL}
 void main() {
   float lit, bad, deep, ground;
   cellCensus( lit, bad, deep, ground );
-  if ( bad < 0.5 ) discard;
+  gl_FragColor = vec4( bad, 0.0, 0.0, 1.0 );
+}`;
+/** Kept (and counted by the NaN query): one fragment, when at least NAN_MIN_CELLS cells of the probe target hold a NaN. */
+const PROBE_NAN_COUNT_FRAGMENT = /* glsl */ `
+uniform sampler2D tCells;
+void main() {
+  float n = 0.0;
+  for ( int y = 0; y < ${PROBE_ROWS}; y++ ) {
+    for ( int x = 0; x < ${PROBE_COLUMNS}; x++ ) {
+      if ( texelFetch( tCells, ivec2( x, y ), 0 ).r > 0.5 ) n += 1.0;
+    }
+  }
+  if ( n < ${NAN_MIN_CELLS}.0 ) discard;
   gl_FragColor = vec4( 1.0 );
 }`;
 /**
@@ -258,6 +294,12 @@ export interface BlackWorldReceipt {
 export interface BlackWorldGuard {
   enabled: boolean;
   /**
+   * (round 3, repro R2-PERF-INCONCLUSIVE) measure the guard's own cost while true: the main-thread ms it spends outside
+   * the frame it wraps, and the GPU ms of its probe draws (a timer query); stats() reports them, resetTiming() zeroes them.
+   */
+  timing: boolean;
+  resetTiming(): void;
+  /**
    * A battle entry (solo deployment, network reveal) armed the guard: a new reveal snapshot, the probe's programs
    * submitted for a parallel link, and (only while the entry is still covered: a chunk that arrives after the reveal
    * never resets a presented frame's history) fresh temporal histories.
@@ -370,6 +412,8 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   const probeUniforms = {
     tColor: { value: null as THREE.Texture | null }, tDepth: { value: null as THREE.Texture | null },
     tDown: { value: null as THREE.Texture | null },
+    // the NaN count reads the probe target's own cells (one texel a cell)
+    tCells: { value: probeTarget.texture as THREE.Texture },
     // (a double stored in a shared `{ value }` uniform slot is boxed every frame; a vector's own fields are not)
     uFarFromNdc: { value: new THREE.Matrix4() }, uCamReach: { value: new THREE.Vector4() }, uAllCells: { value: 1 },
   };
@@ -382,6 +426,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   const probeNan = probeMaterial('BlackWorldGuard.ProbeNan', PROBE_NAN_FRAGMENT);
   const probeCensus = probeMaterial('BlackWorldGuard.ProbeCensus', PROBE_CENSUS_FRAGMENT);
   const probeDown = probeMaterial('BlackWorldGuard.ProbeDown', PROBE_DOWN_FRAGMENT);
+  const probeNanCount = probeMaterial('BlackWorldGuard.ProbeNanCount', PROBE_NAN_COUNT_FRAGMENT);
   // one fullscreen triangle per program (its own meshes, so renderer.compileAsync can link them under the cover)
   const probeGeometry = new THREE.BufferGeometry();
   probeGeometry.setAttribute('position', new THREE.Float32BufferAttribute([-1, 3, 0, -1, -1, 0, 3, -1, 0], 3));
@@ -393,7 +438,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     return mesh;
   };
   const meshLit = probeMesh(probeLit), meshNan = probeMesh(probeNan), meshCensus = probeMesh(probeCensus);
-  const meshDown = probeMesh(probeDown);
+  const meshDown = probeMesh(probeDown), meshNanCount = probeMesh(probeNanCount);
   const drawProbe = (mesh: THREE.Mesh): void => { renderer.render(mesh, probeCamera); };
   const cells = new Uint8Array(PROBE_CELLS * 4);
   const census = { black: 0, nan: 0, lit: 0, deep: 0, ground: 0, groundBlack: 0 };
@@ -450,6 +495,11 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   // the context restores this guard asked for: at most one a page (one guard a renderer, one renderer a page), since each
   // takes the recovery preset one rung down
   let contextRestores = 0;
+  // H4's restore in flight (eng E3): the incident stays open while the context is away, its credit waits for the return
+  let restoreAskedAt = -1;
+  // H3's MSAA-off lasts the battle it healed (eng E2): the samples and preset it lowered, taken back at the next entry
+  let h3Lowered: { samples: number; preset: string } | null = null;
+  let reports = 0;
   // the ladder's own start (the device rungs' age: a ladder that restarts after its cooldown waits for them again)
   let ladderStartedAt = 0;
   // the last rung that changed something, and the verdicts since: the heal's credit (eng D3)
@@ -458,6 +508,13 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   let reported = false;
   const receipts: BlackWorldReceipt[] = [];
   const stats = { frames: 0, probes: 0, readbacks: 0, verdicts: 0, incidents: 0, heals: 0, skippedFences: 0 };
+  // the guard's own cost while guard.timing: [cpu ms, timed frames, max frame ms, probe GPU ms, timed probes, this frame's
+  // ms inside the wrapped passes] (a typed array: no boxed doubles)
+  const timed = new Float64Array(6);
+  let timerExt: { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null | undefined;
+  let timerQuery: WebGLQuery | null = null;
+  let timerPending = false;
+  let timerContext: WebGL2RenderingContext | null = null;
 
   const gl = (): WebGL2RenderingContext => renderer.getContext() as WebGL2RenderingContext;
   const canProbe = (context: WebGL2RenderingContext): boolean => typeof context.createQuery === 'function';
@@ -505,7 +562,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
       renderer.setRenderTarget(probeTarget);
       for (const mesh of [meshLit, meshNan, meshCensus]) pendingLinks.push(compileAsync.call(renderer, mesh, probeCamera));
       renderer.setRenderTarget(probeDownTarget);
-      pendingLinks.push(compileAsync.call(renderer, meshDown, probeCamera));
+      for (const mesh of [meshDown, meshNanCount]) pendingLinks.push(compileAsync.call(renderer, mesh, probeCamera));
     } catch {
       probeWarming = false;
       probeReady = true; // a renderer that cannot submit them links at the first probe, as before
@@ -549,12 +606,17 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
       probeProjectionInverse.copy(camera.projectionMatrixInverse);
       renderer.autoClear = false;
       renderer.setRenderTarget(probeTarget);
+      const timer = guard.timing ? beginTimer(context) : false;
       context.beginQuery(context.ANY_SAMPLES_PASSED, queryLit!);
       drawProbe(meshLit);
       context.endQuery(context.ANY_SAMPLES_PASSED);
-      context.beginQuery(context.ANY_SAMPLES_PASSED, queryNan!);
+      // every cell's NaN flag, then one fragment that counts them (round 3, E1: a stray NaN texel is no poisoned history)
       drawProbe(meshNan);
+      renderer.setRenderTarget(probeDownTarget);
+      context.beginQuery(context.ANY_SAMPLES_PASSED, queryNan!);
+      drawProbe(meshNanCount);
       context.endQuery(context.ANY_SAMPLES_PASSED);
+      if (timer) context.endQuery(timerExt!.TIME_ELAPSED_EXT);
       pending = true;
       pendingDown = false;
       downWanted = true; // the late-FX pass of this same frame adds the downstream query
@@ -564,6 +626,29 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
       renderer.autoClear = autoClear;
       renderer.setRenderTarget(previous);
     }
+  }
+
+  /** The probe's GPU time (timing only): one timer query around its draws, read once it answers. */
+  function beginTimer(context: WebGL2RenderingContext): boolean {
+    if (timerPending) return false;
+    if (timerExt === undefined || timerContext !== context) {
+      timerContext = context;
+      timerExt = context.getExtension('EXT_disjoint_timer_query_webgl2') as typeof timerExt ?? null;
+      timerQuery = timerExt ? context.createQuery() : null;
+    }
+    if (!timerExt || !timerQuery) return false;
+    context.beginQuery(timerExt.TIME_ELAPSED_EXT, timerQuery);
+    timerPending = true;
+    return true;
+  }
+
+  function collectTimer(): void {
+    if (!timerPending || !timerExt || !timerQuery || !timerContext || timerContext.isContextLost()) return;
+    if (!timerContext.getQueryParameter(timerQuery, timerContext.QUERY_RESULT_AVAILABLE)) return;
+    timerPending = false;
+    if (timerContext.getParameter(timerExt.GPU_DISJOINT_EXT)) return;
+    timed[3] += (timerContext.getQueryParameter(timerQuery, timerContext.QUERY_RESULT) as number) / 1e6;
+    timed[4]++;
   }
 
   /** The downstream query (round 2, D2): the frame's resolved scene colour against the chain's colour after late FX. */
@@ -637,15 +722,20 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
       originalSceneRender.call(this, r, writeBuffer, readBuffer, deltaTime, maskActive);
       return;
     }
+    const timing = guard.timing;
+    const t0 = timing ? performance.now() : 0;
     const info = r.info;
     const before = info.render.calls;
     sceneMask = camera.layers.mask;
     if (captureGl) glAtScene = readGlState('before');
+    const t1 = timing ? performance.now() : 0;
     originalSceneRender.call(this, r, writeBuffer, readBuffer, deltaTime, maskActive);
+    const t2 = timing ? performance.now() : 0;
     sceneCalls = info.autoReset ? info.render.calls : info.render.calls - before;
     sceneRan = true;
     if (captureGl) { captureGl = false; if (glAtScene) glAtScene.after = readGlState('after'); }
     if (probeWanted) { probeWanted = false; issueProbe(); }
+    if (timing) timed[5] += (t1 - t0) + (performance.now() - t2);
   }
 
   /** After the late-FX pass: the chain's colour from here on (its swap target when it drew, else its input). */
@@ -653,25 +743,48 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     readBuffer: THREE.WebGLRenderTarget, deltaTime?: number, maskActive?: boolean): void {
     originalLateRender.call(this, r, writeBuffer, readBuffer, deltaTime, maskActive);
     if (!downWanted || !guard.enabled || !active) return;
+    const t0 = guard.timing ? performance.now() : 0;
     downWanted = false;
     const out = this.needsSwap ? writeBuffer : readBuffer;
     if (out?.texture) issueDownProbe(out.texture);
+    if (guard.timing) timed[5] += performance.now() - t0;
   }
 
   function guardedPostRender(dt: number, frameWallDtSeconds?: number): void {
     if (!guard.enabled) { originalPostRender.call(post, dt, frameWallDtSeconds); return; }
+    const timing = guard.timing;
+    const t0 = timing ? performance.now() : 0;
     sceneRan = false;
     downWanted = false;
     active = isActive();
+    const t1 = timing ? performance.now() : 0;
     originalPostRender.call(post, dt, frameWallDtSeconds);
+    const t2 = timing ? performance.now() : 0;
     // (a frame whose late-FX pass never ran leaves no downstream probe pending for a warm's lone late-FX render)
     downWanted = false;
     if (active) afterFrame();
     else {
       if (failStreak) { failStreak = 0; lastFailClass = null; }
-      // (eng D7) the battle ended with the incident open (the player left a black screen, a cover came up): it reports now
-      if (incident && !incident.closed && !reported) endIncident('left', now());
+      // (eng D7) the battle ended with the incident open (the player left a black screen, a cover came up): it reports now;
+      // (round 3, eng E3) not while the guard's own context restore (H4) is away, whose return the incident waits for
+      if (incident && !incident.closed && !reported && !awaitingRestore()) endIncident('left', now());
     }
+    if (timing) {
+      const ms = (t1 - t0) + (performance.now() - t2) + timed[5];
+      timed[5] = 0;
+      timed[0] += ms;
+      timed[1]++;
+      if (ms > timed[2]) timed[2] = ms;
+      collectTimer();
+    }
+  }
+
+  /** H4's restore is in flight: the same battle, the context away (or just back and not yet judged), inside its wait. */
+  function awaitingRestore(): boolean {
+    if (restoreAskedAt < 0) return false;
+    if (ports.game.phase === 'battle' && verdictsSinceAct === 0 && now() - restoreAskedAt < RESTORE_WAIT_MS) return true;
+    restoreAskedAt = -1;
+    return false;
   }
 
   function isActive(): boolean {
@@ -735,7 +848,8 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
       stats.verdicts++;
       onVerdict(judgeVerdict(bits, probeResult ? answer : null), t);
     }
-    if (incident && !incident.closed && !reported && incident.steps.length && t - incident.steps[incident.steps.length - 1].atMs > 2000) {
+    if (incident && !incident.closed && !reported && incident.steps.length && t - incident.steps[incident.steps.length - 1].atMs > 2000
+      && !awaitingRestore()) {
       // a ladder that ended unhealed still reports once (healedBy null)
       incident.endedBy = 'ladder';
       report(incident);
@@ -868,6 +982,10 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   function report(receipt: BlackWorldReceipt): void {
     if (reported) return;
     reported = true;
+    restoreAskedAt = -1;
+    // (the console warning and the ring hold every incident; the beacon only the first MAX_REPORTS a page)
+    if (reports >= MAX_REPORTS) return;
+    reports++;
     const step = (receipt.healedBy ?? 'none') as RenderBlackWorldStep;
     const code = renderBlackWorldCode(receipt.class, receipt.healedBy ? step : 'none');
     if (!code || !ports.report) return;
@@ -1095,7 +1213,26 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
    * ladder, and a persistent black ratcheted a session to the floor preset).
    */
   function healDevice(): void {
-    if (sceneTarget.samples !== 0) sceneAA.setSamples(0);
+    if (sceneTarget.samples === 0) return;
+    // (round 3, eng E2) for this battle only: the next covered entry takes the preset's samples back, and the canvas
+    // says what the scene target holds (post.msaaSamples reads the target itself)
+    h3Lowered = { samples: sceneTarget.samples, preset: presetName() };
+    sceneAA.setSamples(0);
+    publishSamples();
+  }
+
+  function publishSamples(): void {
+    const dataset = (renderer.domElement as { dataset?: DOMStringMap } | undefined)?.dataset;
+    if (dataset) dataset.sceneMsaaSamples = String(sceneTarget.samples);
+  }
+
+  /** H3's MSAA back at a covered entry, unless a preset change since then set the samples itself. */
+  function restoreSamples(): void {
+    const lowered = h3Lowered;
+    h3Lowered = null;
+    if (!lowered || sceneTarget.samples !== 0 || presetName() !== lowered.preset) return;
+    sceneAA.setSamples(lowered.samples);
+    publishSamples();
   }
 
   /**
@@ -1107,6 +1244,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     const lose = context.getExtension('WEBGL_lose_context');
     if (!lose) return;
     contextRestores++;
+    restoreAskedAt = now();
     lose.loseContext();
     setTimeout(() => { try { lose.restoreContext(); } catch { /* the recovery notice owns it */ } }, 120);
   }
@@ -1199,9 +1337,11 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
 
   const guard: BlackWorldGuard = {
     enabled: true,
+    timing: false,
+    resetTiming() { timed.fill(0); },
     onCoveredEntry(options) {
       // (eng D6) a chunk that arrives after the reveal never resets a presented frame's histories
-      if (options?.covered !== false) resetHistories();
+      if (options?.covered !== false) { resetHistories(); restoreSamples(); }
       revealAt = -1;
       failStreak = 0;
       lastFailClass = null;
@@ -1213,7 +1353,10 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     stats() {
       return { ...stats, enabled: guard.enabled, active, frame, cpuBits, failStreak, pending: !!pending,
         lastClass: lastFailClass, incident: incident && !incident.closed ? incident.class : null,
-        lastLit: answer.anyLit, lastNan: answer.anyNan, lastDownLost: answer.downLost, probeReady };
+        lastLit: answer.anyLit, lastNan: answer.anyNan, lastDownLost: answer.downLost, probeReady,
+        // (round 3) the guard's own cost while timing
+        timedFrames: timed[1], selfCpuMsMean: timed[1] ? timed[0] / timed[1] : null, selfCpuMsMax: timed[2],
+        timedProbes: timed[4], probeGpuMsMean: timed[4] ? timed[3] / timed[4] : null };
     },
     receipts,
     dispose() {
@@ -1237,6 +1380,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
       } catch { /* lost */ }
       queryLit = queryNan = queryDown = null; pending = false; pendingDown = false;
       probeGeometry.dispose(); probeLit.dispose(); probeNan.dispose(); probeCensus.dispose(); probeDown.dispose();
+      probeNanCount.dispose();
       probeTarget.dispose(); probeDownTarget.dispose();
       guards.delete(renderer);
       if (host.__COT_BLACK_GUARD === guard) delete host.__COT_BLACK_GUARD;

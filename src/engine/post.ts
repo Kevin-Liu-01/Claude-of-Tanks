@@ -3233,8 +3233,8 @@ export function createPost(
     lateFx,
     aerial,
 
-    /** Scene-only hardware AA. Display-space SMAA + FSR1 follow it. */
-    get msaaSamples() { return msaaSamples; },
+    /** Scene-only hardware AA (what the scene target holds: the guard's H3 may lower it for one battle). */
+    get msaaSamples() { return sceneTarget.samples; },
     taa,
     get taaEnabled() { return taaEnabled; },
 

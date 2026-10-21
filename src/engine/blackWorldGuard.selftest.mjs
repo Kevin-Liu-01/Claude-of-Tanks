@@ -31,12 +31,13 @@ globalThis.document = { ...on('document'), hidden: false, pointerLockElement: nu
 const fire = (key) => listeners.get(key)?.();
 const DT = 1 / 60;
 
-const { installBlackWorldGuard, judgeVerdict, countProbeCells, countGroundCells, CPU, PROBE_CELLS, PROBE_EVERY } =
-  await import('./blackWorldGuard.ts');
+const { installBlackWorldGuard, judgeVerdict, countProbeCells, countGroundCells, CPU, PROBE_CELLS, PROBE_EVERY, NAN_MIN_CELLS,
+  NAN_BITS_GLSL, MAX_REPORTS } = await import('./blackWorldGuard.ts');
 const { readRenderBlackWorld, renderBlackWorldCode, renderBlackWorldMessage, validateTelemetryRecord } =
   await import('../../server/telemetryRecord.ts');
 
-function createWorld({ focused = () => true, compileAsync = null, samples = 0, exempt = () => false } = {}) {
+function createWorld({ focused = () => true, compileAsync = null, samples = 0, exempt = () => false, modelLoss = false,
+  preset = () => 'high' } = {}) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.5, 4000);
   camera.position.set(0, 10, 0);
@@ -51,8 +52,14 @@ function createWorld({ focused = () => true, compileAsync = null, samples = 0, e
   scene.add(world, sky, tank, fxRoot, sun);
 
   // ---- the GPU stand-in: the scene pass's output is the world model's verdict ----
-  const gpu = { glMasked: false, nan: false, downLost: false, errors: [], queries: 0, lost: false, census: 0, airless: false,
-    groundInView: true, compiles: [] };
+  // (nan: a poisoned history, NaN over a quarter of the cells; strayNan: one NaN texel in one cell)
+  const gpu = { glMasked: false, nan: false, strayNan: false, downLost: false, errors: [], queries: 0, lost: false, census: 0,
+    airless: false, groundInView: true, compiles: [], downDraws: 0 };
+  const nanCell = (i) => (gpu.nan ? i % 16 < 4 : gpu.strayNan && i === 70);
+  const nanCells = () => { let n = 0; for (let i = 0; i < PROBE_CELLS; i++) if (nanCell(i)) n++; return n; };
+  // the canvas's context events (modelLoss: a lose/restore as the browser runs it, the context away in between)
+  const canvasListeners = new Map();
+  const canvasFire = (type) => { for (const fn of canvasListeners.get(type) ?? []) fn({ type, preventDefault() {} }); };
   let sceneOutput = 'lit';
   let activeQuery = null;
   const gl = {
@@ -70,12 +77,26 @@ function createWorld({ focused = () => true, compileAsync = null, samples = 0, e
       gpu.census++;
       for (let i = 0; i < w * h; i++) {
         const lit = sceneOutput === 'lit';
-        out[i * 4] = lit ? 255 : 0; out[i * 4 + 1] = gpu.nan && i % 16 < 4 ? 255 : 0; out[i * 4 + 2] = lit ? 255 : 0;
+        out[i * 4] = lit ? 255 : 0; out[i * 4 + 1] = nanCell(i) ? 255 : 0; out[i * 4 + 2] = lit ? 255 : 0;
         out[i * 4 + 3] = Math.floor(i / 16) < 4 ? 255 : 0;
       }
     },
     getError: () => gpu.errors.shift() ?? 0,
-    getExtension: (name) => (name === 'WEBGL_lose_context' ? { loseContext() { gpu.loseCalls = (gpu.loseCalls ?? 0) + 1; }, restoreContext() {} } : null),
+    getExtension: (name) => (name === 'WEBGL_lose_context' ? {
+      loseContext() {
+        gpu.loseCalls = (gpu.loseCalls ?? 0) + 1;
+        if (!modelLoss) return;
+        // (round 3, eng E3) as the browser runs it: lost at once, the event a task later
+        gpu.lost = true;
+        setTimeout(() => canvasFire('webglcontextlost'), 0);
+      },
+      restoreContext() {
+        if (!modelLoss) return;
+        // a restored context drops the GL-level fault with every GL object
+        gpu.lost = false; gpu.glMasked = false; gpu.restores = (gpu.restores ?? 0) + 1;
+        setTimeout(() => canvasFire('webglcontextrestored'), 0);
+      },
+    } : null),
     getParameter: () => null,
     checkFramebufferStatus: () => 0x8cd5,
   };
@@ -83,7 +104,9 @@ function createWorld({ focused = () => true, compileAsync = null, samples = 0, e
   let renderTarget = null;
   const renderer = {
     info, autoClear: true, clippingPlanes: [], localClippingEnabled: false, shadowMap: { enabled: true },
-    domElement: { dataset: {}, addEventListener() {}, removeEventListener() {} },
+    domElement: { dataset: {},
+      addEventListener(type, fn) { if (!canvasListeners.has(type)) canvasListeners.set(type, new Set()); canvasListeners.get(type).add(fn); },
+      removeEventListener(type, fn) { canvasListeners.get(type)?.delete(fn); } },
     getContext: () => gl,
     getRenderTarget: () => renderTarget,
     setRenderTarget(target) { renderTarget = target; },
@@ -94,8 +117,11 @@ function createWorld({ focused = () => true, compileAsync = null, samples = 0, e
       if (!activeQuery) return;
       if (name === 'BlackWorldGuard.ProbeLit') {
         activeQuery.passed = sceneOutput === 'lit' && (object.material.uniforms.uAllCells.value === 1 || gpu.groundInView);
-      } else if (name === 'BlackWorldGuard.ProbeNan') activeQuery.passed = gpu.nan;
+      } else if (name === 'BlackWorldGuard.ProbeNan') throw new Error('the per-cell NaN pass draws under no query');
+      // (round 3, E1) the NaN query answers only for NAN_MIN_CELLS NaN cells, counted from the per-cell pass
+      else if (name === 'BlackWorldGuard.ProbeNanCount') activeQuery.passed = nanCells() >= NAN_MIN_CELLS;
       else if (name === 'BlackWorldGuard.ProbeDown') {
+        gpu.downDraws++;
         // the downstream query reads the scene colour against the late composite the late-FX pass handed on
         assert.ok(object.material.uniforms.tDown.value, 'the downstream probe reads the chain colour after late FX');
         activeQuery.passed = sceneOutput === 'lit' && gpu.downLost;
@@ -139,7 +165,8 @@ function createWorld({ focused = () => true, compileAsync = null, samples = 0, e
       info.render.calls += 12; // shadow-free post passes
       if (sceneAA.enabled) post.sceneAA.render(renderer, null, null, DT, false);
       else sceneOutput = 'lit'; // the aerial pass reads the last scene target: a frozen world, never black
-      if (lateFx.enabled) post.lateFx.render(renderer, composer.renderTarget2, composer.renderTarget1, DT, false);
+      // (skipLate: a frame without live FX, whose chain runs no late-FX pass)
+      if (lateFx.enabled && !post.skipLate) post.lateFx.render(renderer, composer.renderTarget2, composer.renderTarget1, DT, false);
     },
     setSize(w, h) { post.sizes.push([w, h]); },
   };
@@ -153,7 +180,7 @@ function createWorld({ focused = () => true, compileAsync = null, samples = 0, e
     getWorld: () => ({ group: world }),
     isCovered: () => lifecycle.pending || lifecycle.renderingCovered,
     combatWarm: { cancelRare() { rescues.cancelRare = (rescues.cancelRare ?? 0) + 1; } },
-    presetName: () => 'high',
+    presetName: preset,
     report(stage, message, code) { reports.push({ stage, message, code }); },
     now: () => clock,
     hasFocus: focused,
@@ -485,8 +512,11 @@ for (const [expected, healedBy, inject] of proofs) {
   h.frames(60);
   assert.equal(h.guard.stats().probes, 0, 'no probe draw while its programs link (no synchronous link on a revealed frame)');
   assert.deepEqual(h.gpu.compiles.map((c) => c.name).sort(),
-    ['BlackWorldGuard.ProbeCensus', 'BlackWorldGuard.ProbeDown', 'BlackWorldGuard.ProbeLit', 'BlackWorldGuard.ProbeNan']);
-  assert.ok(h.gpu.compiles.every((c) => c.target === (c.name === 'BlackWorldGuard.ProbeDown' ? 'BlackWorldGuard.probeDown' : 'BlackWorldGuard.probe')),
+    ['BlackWorldGuard.ProbeCensus', 'BlackWorldGuard.ProbeDown', 'BlackWorldGuard.ProbeLit', 'BlackWorldGuard.ProbeNan',
+      'BlackWorldGuard.ProbeNanCount']);
+  const ownTarget = (name) => (name === 'BlackWorldGuard.ProbeDown' || name === 'BlackWorldGuard.ProbeNanCount'
+    ? 'BlackWorldGuard.probeDown' : 'BlackWorldGuard.probe');
+  assert.ok(h.gpu.compiles.every((c) => c.target === ownTarget(c.name)),
     `each program submitted against its own probe target (the program keys match the draws): ${JSON.stringify(h.gpu.compiles)}`);
   resolveLink();
   await linked;
@@ -582,7 +612,159 @@ for (const [expected, healedBy, inject] of proofs) {
   h.guard.dispose();
 }
 
+// ---- (round 3, eng E1 / repro R2-SUN-FALSE-POSITIVE) saturated and infinite HDR is light; only NaN, from its bits, is bad ----
+{
+  // the shipped test: an all-ones exponent and a non-zero mantissa (the constants read out of the shader itself)
+  const [expMask, mantMask] = [...new Set([...NAN_BITS_GLSL.matchAll(/0x([0-9a-f]{8})u/g)].map((m) => parseInt(m[1], 16)))];
+  assert.equal(expMask, 0x7f800000);
+  assert.equal(mantMask, 0x007fffff);
+  const view = new DataView(new ArrayBuffer(4));
+  const nanBits = (x) => { view.setFloat32(0, x); const b = view.getUint32(0); return ((b & expMask) >>> 0) === expMask && (b & mantMask) !== 0; };
+  // the sun disc in a half-float target: 65504 on Metal (Redrock read 65472-65504 at the disc), +Inf elsewhere
+  for (const light of [65504, 65472, 9.05e4, Infinity, 1e-3, 0, -0, 2.5e5, 3.4e38]) assert.equal(nanBits(light), false, `${light} is no NaN`);
+  view.setUint32(0, 0x7fc00000); assert.equal(nanBits(view.getFloat32(0)), true, 'a quiet NaN');
+  view.setUint32(0, 0xffc00001); assert.equal(nanBits(view.getFloat32(0)), true, 'a negative NaN payload');
+  assert.equal(nanBits(NaN), true);
+  // the cell census and the downstream probe never read saturated HDR as non-finite
+  const src = await import('node:fs').then((fs) => fs.readFileSync(new URL('./blackWorldGuard.ts', import.meta.url), 'utf8'));
+  const census = src.slice(src.indexOf('const PROBE_CELL_GLSL'), src.indexOf('/** Kept (and counted by the lit query)'));
+  assert.match(census, /if \( bwgNan3\( c\.rgb \) \) bad = 1\.0;\s*else if \( c\.r > 0\.0 \|\| c\.g > 0\.0 \|\| c\.b > 0\.0 \) lit = 1\.0;/,
+    'the census: NaN from its bits is bad, any other colour above zero (65504, +Inf) is lit');
+  assert.doesNotMatch(census, /6\.0e4/, 'no magnitude cap in the bad-cell test (the sun disc saturates the half-float target)');
+  assert.equal(NAN_MIN_CELLS, 2, 'a NaN verdict needs 1 % of the 144 cells');
+  // one stray NaN texel (one cell) on a lit day frame opens nothing; a NaN history over a quarter of the cells does
+  const h = createWorld();
+  h.frames(30);
+  h.gpu.strayNan = true;
+  h.frames(240);
+  assert.equal(h.guard.stats().incidents, 0, 'one NaN cell is no poisoned history');
+  assert.equal(h.reports.length, 0);
+  h.gpu.strayNan = false;
+  const frames = healFrames(h, () => { h.gpu.nan = true; });
+  assert.ok(frames <= 30, `a NaN history is still healed in ${frames} frames`);
+  assert.equal(h.guard.receipts[0].class, 'nan-history');
+  assert.equal(h.guard.receipts[0].healedBy, 'H2');
+  h.guard.dispose();
+}
+
+// ---- (round 3, eng E2) H3's MSAA-off lasts the battle it healed; the next covered entry takes the preset's samples back ----
+{
+  let preset = 'ultra';
+  const h = createWorld({ samples: 4, preset: () => preset });
+  h.frames(30);
+  h.frames(120, () => { h.gpu.glMasked = true; });
+  assert.ok(h.guard.receipts[0].steps.some((s) => s.step === 'H3' && !s.note), 'H3 acted');
+  assert.equal(h.sceneTarget.samples, 0, 'H3: MSAA off');
+  assert.equal(h.renderer.domElement.dataset.sceneMsaaSamples, '0', 'the canvas names the scene target\'s samples');
+  h.frames(60);
+  assert.equal(h.sceneTarget.samples, 0, 'for the rest of that battle');
+  h.guard.onCoveredEntry({ covered: false });
+  assert.equal(h.sceneTarget.samples, 0, 'a late arm over a presented frame keeps the target');
+  h.guard.onCoveredEntry({ covered: true });
+  assert.equal(h.sceneTarget.samples, 4, 'the next covered entry takes the preset\'s samples back');
+  assert.equal(h.renderer.domElement.dataset.sceneMsaaSamples, '4');
+  // a preset change since H3 set the samples itself: the entry leaves them
+  h.frames(30);
+  h.frames(120, () => { h.gpu.glMasked = true; });
+  assert.equal(h.sceneTarget.samples, 0);
+  preset = 'medium';
+  h.guard.onCoveredEntry({ covered: true });
+  assert.equal(h.sceneTarget.samples, 0, 'a preset changed since H3 owns the samples');
+  h.guard.dispose();
+}
+
+// ---- (round 3, eng E3) H4 as the browser runs it: the context away, the incident open, the return credits H4 ----
+{
+  const h = createWorld({ samples: 4, modelLoss: true });
+  h.frames(30);
+  let lostFrames = 0;
+  // a GL-level black only a context restore fixes, held until the guard's H4 takes the context
+  for (let i = 0; i < 600 && !h.gpu.lost; i++) h.frames(1, () => { h.gpu.glMasked = true; });
+  assert.equal(h.gpu.lost, true, 'H4 lost the context');
+  const [receipt] = h.guard.receipts;
+  assert.equal(receipt.steps.at(-1).step, 'H4');
+  // the frames while the context is away (the render loop keeps running), then the browser's restore a task later
+  for (; lostFrames < 30; lostFrames++) h.frames(1);
+  assert.equal(receipt.closed, false, 'the context away is no battle left: the incident stays open');
+  assert.equal(h.reports.length, 0, 'nothing reported while the restore is in flight');
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  assert.equal(h.gpu.lost, false, 'the browser restored the context');
+  h.frames(60);
+  assert.equal(receipt.closed, true);
+  assert.equal(receipt.endedBy, 'healthy');
+  assert.equal(receipt.healedBy, 'H4', `the first verdict after the return credits H4 (steps ${receipt.steps.map((s) => s.step)})`);
+  assert.equal(h.reports.length, 1);
+  assert.equal(h.reports[0].code, 'render-black-world:gl-masked:H4');
+  h.guard.dispose();
+}
+{
+  // a restore that never comes back inside RESTORE_WAIT_MS ends the incident as left (the battle over for the player)
+  const h = createWorld({ samples: 4, modelLoss: true });
+  h.frames(30);
+  for (let i = 0; i < 600 && !h.gpu.lost; i++) h.frames(1, () => { h.gpu.glMasked = true; });
+  h.gpu.lost = true;
+  h.frames(16 * 60);
+  assert.equal(h.guard.receipts[0].endedBy, 'left', 'a context that stays away past the wait ends the incident');
+  assert.equal(h.reports.length, 1);
+  h.guard.dispose();
+}
+
+// ---- (round 3, eng E4: c8cf067bf7) the downstream probe request lasts one post frame only ----
+{
+  const h = createWorld();
+  h.frames(30);
+  // frames without live FX (no late-FX pass in the chain): a probe issued in one of them asks for the downstream query
+  h.post.skipLate = true;
+  let probes = h.guard.stats().probes;
+  let guard = 0;
+  while (h.guard.stats().probes === probes && guard++ < 60) h.frames(1);
+  assert.ok(h.guard.stats().probes > probes, 'a probe issued in a frame without the late-FX pass');
+  const downBefore = h.gpu.downDraws;
+  // a warm's lone late-FX render between frames (battleWarmRuntime's opening volley) is no presented chain colour
+  h.post.lateFx.render(h.renderer, h.post.composer.renderTarget2, h.post.composer.renderTarget1, DT, false);
+  assert.equal(h.gpu.downDraws, downBefore, 'no downstream query from a late-FX render outside the post frame that asked');
+  h.post.skipLate = false;
+  probes = h.guard.stats().probes;
+  guard = 0;
+  while (h.guard.stats().probes === probes && guard++ < 60) h.frames(1);
+  assert.equal(h.gpu.downDraws, downBefore + 1, 'a frame whose chain runs the late-FX pass carries the downstream query');
+  h.guard.dispose();
+}
+
+// ---- (round 3) the beacon carries at most MAX_REPORTS incidents a page (the entry telemetry's shared error budget) ----
+{
+  const h = createWorld();
+  h.frames(30);
+  for (let i = 0; i < MAX_REPORTS + 2; i++) {
+    healFrames(h, () => h.camera.layers.set(5));
+    h.frames(60);
+  }
+  assert.equal(h.guard.stats().incidents, MAX_REPORTS + 2, 'every incident is judged and kept in the ring');
+  assert.equal(h.reports.length, MAX_REPORTS, `${h.reports.length} records`);
+  h.guard.dispose();
+}
+
+// ---- (round 3, repro R2-PERF-INCONCLUSIVE) the guard measures its own cost when asked, and only then ----
+{
+  const h = createWorld();
+  h.frames(30);
+  assert.equal(h.guard.stats().timedFrames, 0, 'timing off: nothing measured');
+  h.guard.timing = true;
+  h.frames(120);
+  const s = h.guard.stats();
+  assert.equal(s.timedFrames, 120, 'every frame timed');
+  assert.ok(Number.isFinite(s.selfCpuMsMean) && s.selfCpuMsMean >= 0 && s.selfCpuMsMax >= s.selfCpuMsMean, `the guard's own ms: ${JSON.stringify(s)}`);
+  assert.equal(s.probeGpuMsMean, null, 'no timer extension on the stub: no GPU figure');
+  h.guard.timing = false;
+  h.guard.resetTiming();
+  h.frames(30);
+  assert.equal(h.guard.stats().timedFrames, 0, 'reset, and off again');
+  h.guard.dispose();
+}
+
 console.log('blackWorldGuard.selftest: detection within two probes, the right rung heals each injected class inside 30 frames, '
   + 'enumerated receipts and one record per incident, gating, the ladder, resume policy, no guard allocation in steady 600-frame windows; '
   + 'round 2: downstream-black, self-cleared blacks uncredited, no preset ratchet, open incidents reported on leave/pagehide, '
-  + 'probe programs linked before the first probe, late arms keep histories, shot-mode exemption, telemetry trims survived');
+  + 'probe programs linked before the first probe, late arms keep histories, shot-mode exemption, telemetry trims survived; '
+  + 'round 3: saturated/+Inf HDR is light (NaN from its bits, 1 % of the cells), H3 lasts one battle, H4 waits for the '
+  + 'restored context and is credited, the downstream request lasts one post frame, MAX_REPORTS records a page, self-timing on request');
