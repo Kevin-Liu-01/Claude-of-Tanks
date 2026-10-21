@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
-import { createNightLightingRuntime, registerNightLightEmitters, HEADLIGHT_LOW_BEAM_DROP, HEADLIGHT_CONE_RAD, BUILDING_FOCUS_AHEAD_M } from './nightLightingRuntime.ts';
+import {
+  createNightLightingRuntime, registerNightLightEmitters, registerNightBeamClearance, bindNightOwnGunUniforms,
+  NIGHT_OWN_GUN_GLSL, HEADLIGHT_LOW_BEAM_DROP, HEADLIGHT_CONE_RAD, BUILDING_FOCUS_AHEAD_M,
+} from './nightLightingRuntime.ts';
 import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 // (EF.11) a driving lamp's beam is its authored aim dropped to a low beam in its vehicle's frame
 const lowBeam = (d) => { const v = new THREE.Vector3(...d); v.y -= HEADLIGHT_LOW_BEAM_DROP * Math.hypot(v.x, v.z); return v.normalize(); };
@@ -174,6 +177,83 @@ assert.throws(() => createNightLightingRuntime(scene, { spotLights: 2, pointLigh
     assert.deepEqual(fourSides.filter((s) => s.vehicle === 'neighbour').map((s) => s.side).sort(), [-1, 1], 'the desktop budget lights both headlights of the next vehicle too');
     assert.equal(four.lights.filter((light) => light.isPointLight).length, 2);
   } finally { two.dispose(); four.dispose(); scene.remove(cluster, neighbour); }
+}
+// (CN-7, 2026-10-20: "the main-gun barrel seen from the front shows as a bright white glowing tube") turret lamps
+// flanking the gun put the tube 2-5 m into their cones. The beams stay exactly as authored; each lit lamp whose vehicle
+// registered its gun publishes that gun's world capsule beside its seat, and the vehicle shader drops the lamp's light
+// inside that capsule only. Another vehicle's lamp lights this gun as before.
+{
+  const tank = new THREE.Group(), hull = new THREE.Group(), turretRig = new THREE.Group(), gunRig = new THREE.Group();
+  scene.add(tank); tank.add(hull, turretRig); turretRig.add(gunRig);
+  tank.position.set(-40, .3, 30); tank.rotation.y = .9; tank.scale.setScalar(1.1);
+  turretRig.position.set(0, 1.9, .3); gunRig.position.set(0, 0, .6);
+  const capsule = { start: [0, 0, -.2], end: [0, 0, 5.3], radius: .12 };
+  registerNightBeamClearance(tank, gunRig, capsule);
+  const lamp = (x, y, z) => ({ kind: 'headlight', position: [x, y, z], direction: [0, 0, 1], intensity: 1200, range: 75 });
+  const turretLamps = [lamp(-.68, .28, .85), lamp(.68, .28, .85)], hullLamps = [lamp(-1.35, 1.5, 2.85), lamp(1.35, 1.5, 2.85)];
+  registerNightLightEmitters(turretRig, turretLamps);
+  registerNightLightEmitters(hull, hullLamps);
+  const stranger = new THREE.Group(); scene.add(stranger); stranger.position.set(-30, .3, 33);
+  registerNightLightEmitters(stranger, [lamp(.7, 1.1, 2.6)]);
+  const uniforms = {}; bindNightOwnGunUniforms(uniforms);
+  // the shader's test (NIGHT_OWN_GUN_GLSL) on the CPU: does this spot's light reach this world point?
+  const passes = (light, point) => {
+    for (let k = 0; k < uniforms.uCotOwnGunCount.value; k++) {
+      if (light.position.distanceToSquared(uniforms.uCotOwnGunSeat.value[k]) > 1e-4) continue;
+      const a = uniforms.uCotOwnGunA.value[k], start = new THREE.Vector3(a.x, a.y, a.z);
+      const segment = new THREE.Line3(start, uniforms.uCotOwnGunB.value[k]);
+      return segment.closestPointToPoint(point, true, new THREE.Vector3()).distanceTo(point) > a.w;
+    }
+    return true;
+  };
+  const pool = createNightLightingRuntime(scene, { spotLights: 5, pointLights: 1 });
+  try {
+    pool.prepare([{ root: tank, priority: 1 }, { root: stranger }], true);
+    for (const [yawDeg, pitchDeg] of [[0, 0], [0, -5], [0, 15], [25, 0], [-40, 3], [90, 0], [180, 0]]) {
+      turretRig.rotation.y = yawDeg * Math.PI / 180; gunRig.rotation.x = -pitchDeg * Math.PI / 180;
+      tank.updateMatrixWorld(true);
+      pool.update(tank.localToWorld(new THREE.Vector3(0, 2, 8)));
+      const label = `${yawDeg}/${pitchDeg}`;
+      const spots = pool.lights.filter((light) => light.isSpotLight && light.intensity > 0);
+      assert.equal(spots.length, 5, `${label}: both turret lamps, both hull lamps and the stranger's`);
+      for (const light of spots) {
+        assert.equal(light.angle, HEADLIGHT_CONE_RAD, `${label}: every beam keeps its cone`);
+        assert.equal(light.intensity, 1200); assert.equal(light.distance, 75);
+      }
+      const own = spots.filter((light) => light.position.distanceTo(tank.position) < 7);
+      const stray = spots.find((light) => light.position.distanceTo(stranger.position) < 7);
+      assert.equal(own.length, 4);
+      assert.equal(uniforms.uCotOwnGunCount.value, 4, `${label}: one record per lit lamp of the vehicle that registered its gun`);
+      const seats = uniforms.uCotOwnGunSeat.value.slice(0, 4);
+      for (const light of own) assert.ok(seats.some((seat) => seat.distanceTo(light.position) < 1e-12), `${label}: each own lamp's seat is published`);
+      assert.ok(seats.every((seat) => seat.distanceTo(stray.position) > 1), "the stranger's lamp has no record");
+      const start = gunRig.localToWorld(new THREE.Vector3(...capsule.start)), end = gunRig.localToWorld(new THREE.Vector3(...capsule.end));
+      for (let k = 0; k < 4; k++) {
+        const a = uniforms.uCotOwnGunA.value[k];
+        near(new THREE.Vector3(a.x, a.y, a.z), start, `${label}: the capsule follows traverse and elevation`);
+        near(uniforms.uCotOwnGunB.value[k], end, `${label}: the muzzle end`);
+        assert.ok(Math.abs(a.w - .12 * 1.1) < 1e-12, 'the radius takes the vehicle scale');
+      }
+      // the tube's surface takes none of its own lamps' light, and all of the stranger's; the road and the hull do
+      const tube = [];
+      for (let z = 0; z < 5.31; z += .25) for (let q = 0; q < 8; q++) {
+        tube.push(gunRig.localToWorld(new THREE.Vector3(.1 * Math.cos(q * Math.PI / 4), .1 * Math.sin(q * Math.PI / 4), z)));
+      }
+      for (const light of own) assert.ok(tube.every((point) => !passes(light, point)), `${label}: no own lamp lights the gun`);
+      assert.ok(tube.every((point) => passes(stray, point)), `${label}: another vehicle's lamp still lights this gun`);
+      const road = tank.localToWorld(new THREE.Vector3(0, -.3, 12)), glacis = tank.localToWorld(new THREE.Vector3(0, 1.5, 2.4));
+      for (const light of own) assert.ok(passes(light, road) && passes(light, glacis), `${label}: the beam keeps the road and the hull`);
+    }
+    pool.prepare([{ root: stranger }], true); pool.update(stranger.position);
+    assert.equal(uniforms.uCotOwnGunCount.value, 0, 'a frame with no registered gun publishes no record');
+  } finally { pool.dispose(); scene.remove(tank, stranger); }
+  assert.throws(() => registerNightBeamClearance(tank, gunRig, { ...capsule, start: [0, NaN, 0] }), /finite/);
+  assert.throws(() => registerNightBeamClearance(tank, gunRig, { ...capsule, radius: 2.5 }), /radius/);
+  // the shader: the wrapper reads three's own spot light first, then renames every later call to itself
+  const wrapper = NIGHT_OWN_GUN_GLSL.indexOf('void cotOwnGunSpotLightInfo('), call = NIGHT_OWN_GUN_GLSL.indexOf('getSpotLightInfo( spotLight');
+  const rename = NIGHT_OWN_GUN_GLSL.indexOf('#define getSpotLightInfo cotOwnGunSpotLightInfo');
+  assert.ok(NIGHT_OWN_GUN_GLSL.startsWith('#if NUM_SPOT_LIGHTS > 0') && wrapper >= 0 && wrapper < call && call < rename);
+  assert.ok(NIGHT_OWN_GUN_GLSL.trimEnd().endsWith('#endif'));
 }
 assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'glass', position: [0, 0, 0] }]), /kind/);
 assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', position: [NaN, 0, 0] }]), /finite/);

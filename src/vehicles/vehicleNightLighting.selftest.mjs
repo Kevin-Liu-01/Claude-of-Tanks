@@ -6,7 +6,7 @@ import {
   transferVehicleNightLenses, finalizeVehicleNightLighting, vehicleNightLightEmittersFor,
 } from './vehicleNightLighting.ts';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
-import { createNightLightingRuntime, HEADLIGHT_LOW_BEAM_DROP } from '../engine/nightLightingRuntime.ts';
+import { createNightLightingRuntime, bindNightOwnGunUniforms, HEADLIGHT_LOW_BEAM_DROP } from '../engine/nightLightingRuntime.ts';
 import { tankSeedId } from './tankIdAliases.ts'; // the t90 family prefix is schema-1 vocabulary
 
 const close = (actual, expected, message) => assert.ok(actual.distanceTo(expected) < 2e-6, message);
@@ -137,6 +137,61 @@ for (const kind of ['headlight', 'shtora', 'marker']) for (const pitch of [-.12,
   lens.dispose(); lensMaterial.dispose();
 }
 console.log('vehicleNightLighting: authored aperture/clone/scale/roll/yaw, periscope exclusion, zero added owners, batch transport, destruction/garage restoration PASS');
+
+// (CN-7, 2026-10-20: "the main-gun barrel seen from the front shows as a bright white glowing tube") lamps flanking
+// the gun put the tube 2-5 m into their cones. Every lit lamp carries its own gun's capsule, and through the shader's
+// test (NIGHT_OWN_GUN_GLSL, here on the CPU) every gun vertex in that lamp's beam takes none of its light, but for the
+// breech-end stock the capsule leaves out on purpose, while every vertex of the rest of the vehicle in the beam keeps it.
+function assertOwnGunUnlit(root, label, poses = [[0, 0], [30, -5]]) {
+  const uniforms = {}; bindNightOwnGunUniforms(uniforms);
+  const scene = new THREE.Scene(), runtime = createNightLightingRuntime(scene, { spotLights: 8, pointLights: 1 });
+  const turret = root.getObjectByName('rig_turret'), gunRig = root.getObjectByName('rig_gun');
+  const saved = { parent: root.parent, yaw: turret.rotation.y, pitch: gunRig.rotation.x };
+  const meshes = [];
+  root.traverseVisible(mesh => { if (mesh.isMesh && !mesh.isInstancedMesh && !mesh.userData.shadowOnly) meshes.push(mesh); });
+  // the gun: its rig (tube, mantlet, recoil), and the bore fills parented beside it
+  const onGun = mesh => /^muzzleBore/.test(mesh.name) || (() => { for (let o = mesh; o; o = o.parent) if (o === gunRig) return true; return false; })();
+  const point = new THREE.Vector3(), toPoint = new THREE.Vector3(), onBore = new THREE.Vector3(), axis = new THREE.Vector3();
+  let gunInBeams = 0;
+  scene.add(root);
+  try {
+    runtime.prepare([{ root, priority: 1 }], true);
+    for (const [yaw, pitch] of poses) {
+      turret.rotation.y = yaw * Math.PI / 180; gunRig.rotation.x = -pitch * Math.PI / 180; root.updateMatrixWorld(true);
+      runtime.update(root.localToWorld(new THREE.Vector3(0, 2, 9)));
+      for (const light of runtime.lights) {
+        if (!light.isSpotLight || light.intensity <= 0) continue;
+        let k = 0;
+        while (k < uniforms.uCotOwnGunCount.value && light.position.distanceToSquared(uniforms.uCotOwnGunSeat.value[k]) > 1e-4) k++;
+        assert.ok(k < uniforms.uCotOwnGunCount.value, `${label}: every lit lamp carries its own gun`);
+        const a = uniforms.uCotOwnGunA.value[k], bore = new THREE.Line3(new THREE.Vector3(a.x, a.y, a.z), uniforms.uCotOwnGunB.value[k].clone());
+        axis.copy(light.target.position).sub(light.position).normalize();
+        const cone = Math.cos(light.angle);
+        for (const mesh of meshes) {
+          const position = mesh.geometry.getAttribute('position'), gun = onGun(mesh);
+          for (let i = 0; i < position.count; i++) {
+            point.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
+            const distance = toPoint.subVectors(point, light.position).length();
+            if (distance > light.distance || toPoint.dot(axis) <= cone * distance) continue; // outside this beam
+            const along = bore.closestPointToPointParameter(point, true);
+            const inside = bore.at(along, onBore).distanceTo(point) <= a.w;
+            if (!gun) assert.ok(!inside, `${label} ${yaw}/${pitch}: ${mesh.name} keeps its own lamps' light`);
+            else if (along >= .3) { // the tube to the muzzle: the breech-end stock (mantlet, gun mount) keeps its light
+              gunInBeams++;
+              assert.ok(inside, `${label} ${yaw}/${pitch}: ${mesh.name} (${(along * 100).toFixed(0)} % along the gun) takes none of its own lamp's light`);
+            }
+          }
+        }
+      }
+    }
+  } finally {
+    runtime.dispose();
+    turret.rotation.y = saved.yaw; gunRig.rotation.x = saved.pitch;
+    if (saved.parent) saved.parent.add(root); else scene.remove(root);
+    root.updateMatrixWorld(true);
+  }
+  return gunInBeams;
+}
 
 function assertM1A3RoadBeams(root, label) {
   // Exact player pose from the completed cold-night Urban r2 capture. This is
@@ -295,6 +350,7 @@ const physicalRun=!process.argv.includes('--fleet')||process.argv.includes('--ph
       assert.ok(coverage.headlights > 0, `${id}/${quality}: every playable vehicle has working driving lamps`);
       if (restoredCounts[id]) assert.equal(coverage.headlights, restoredCounts[id], `${id}/${quality}: correct authored driving-lamp count`);
       if (id === 'm1a3') assertM1A3RoadBeams(visual.root, `${id}/${quality}`);
+      assertOwnGunUnlit(visual.root, `${id}/${quality}`);
       if (sourceStudyLampIds.has(id)) assert.ok(coverage.headlights > 0, `${id}/${quality} retains actual authored front fixtures`);
       if (coverage.headlights + coverage.shtora + (coverage.markers ?? 0) > 0) assert.ok(maskBytes > 0, `${id}/${quality} registration requires real masked aperture vertices`);
       if (id === 'm48a5_patton') assert.ok(coverage.headlights >= 2, `${id}/${quality} shared helper lenses survive full build`);
@@ -341,4 +397,12 @@ const physicalRun=!process.argv.includes('--fleet')||process.argv.includes('--ph
     console.log(`NIGHT_COVERAGE ${id}/${quality}: ${coverage.headlights} driving lamps`);
   }
   console.log('NIGHT_FLEET_ORACLE ' + JSON.stringify(rows));
+  // (CN-7) the reported case: the Yun turret's lamps 0.68 m either side of the gun, at elevation, depression and traverse
+  if (!baseline && !requestedIds && !allIds) {
+    const yun = createTank('t80u_yun', null, { proceduralOnly: true, geometryReceipt: true, quality: 'high', camoSeed: 4242 });
+    const inBeams = assertOwnGunUnlit(yun.root, 't80u_yun/high', [[0, 0], [0, -5], [0, 15], [30, 0], [-60, 3]]);
+    assert.ok(inBeams > 5000, `t80u_yun: the turret lamps' beams cross the gun (${inBeams} vertices) and none of it is lit`);
+    yun.dispose();
+    console.log(`vehicleNightLighting: CN-7 own-gun exclusion, t80u_yun ${inBeams} gun vertices in its own beams, none lit PASS`);
+  }
 }
