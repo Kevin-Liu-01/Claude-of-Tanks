@@ -52,6 +52,13 @@ const sourceFrames: Readonly<Record<string, SourceFrame>> = Object.freeze({
   },
 });
 
+/** The fleet Type 96B's mechanical gun clearance (absolute turret yaw, minimum pitch, degrees; gunPitchLimits.ts).
+ * Release 227: with its mantlet boot clipped clear of the hull (type96bX.ts TYPE96B_BOOT_FLOOR), the whole-gun sweep
+ * over this hull clears full depression through 142.5 degrees of traverse; beyond, the barrel enters the rear deck's
+ * panels and louvre caps below -4.75 (145), -2 (160) and -3.5 (180) degrees. The rear arc stops at -1 degree, at least
+ * 1 degree above every measured station (type96MantletClearance.selftest.mjs sweeps it). */
+const TYPE96B_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -7], [140, -7], [146, -1], [180, -1]] as const);
+
 function applySourceFrame(spec: FleetTankSpec, id: string): void {
   if (['type96b', 'aft10', 'sabra_mk2'].includes(id)) {
     // These source configurations author permanent shell/service panels, not
@@ -74,6 +81,7 @@ function applySourceFrame(spec: FleetTankSpec, id: string): void {
     frame.gun[2] - frame.turret[2],
   ];
   spec.armor.gunBarrel.lengthM = frame.muzzleZ - frame.gun[2];
+  if (id === 'type96b') spec.gunPitchByYawDeg = TYPE96B_GUN_PITCH_BY_YAW_DEG;
   // the Bumerang-BM's 2A42 barrel (coordinator ruling 2026-10-15: the turret is the Bumerang-BM, so its gun is the 30 mm
   // 2A42, not a 57 mm)
   if (id === 'kurganets25') spec.armor.gunBarrel.radiusM = .05;
