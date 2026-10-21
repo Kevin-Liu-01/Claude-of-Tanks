@@ -645,6 +645,10 @@ const GUNSHIP_LENS_TRAIL_M = 120;
 const LENS_NEAR_M = 1.5;
 const LENS_MERGE_K = 0.9;
 const LENS_TRAIL_NEAR_M = 8;
+/** (round 2) the lens missile's smoke at the nozzle, after the jet's first expansion and grown (m), no wider in the boost:
+ *  from beside the rail its nearest stretch is seen down its length, where the family's 0.64 m jet (x1.3 boosting) a few
+ *  metres from the glass was a translucent wedge over a quarter of the frame */
+const LENS_TRAIL_R0_M = 0.05, LENS_TRAIL_JET_M = 0.16, LENS_TRAIL_R1_M = 1.6;
 /** a lens gun's gas: swept out of the frame past its gun (lens m/s, scaled with the lens across the view:
  *  gunshipLensGuns.scale), never across the sight */
 const LENS_SLIP_MPS = 4.5;
@@ -4596,13 +4600,29 @@ function* createFxSteps(
     }
     return t;
   }
+  /** (ac130-barrels-230 r2) the lens missile's trail: the gunship's, narrow at the rail (LENS_TRAIL_*) */
+  const lensTrails = new Map<MissileTrail, MissileTrail>();
+  /** this frame's near fade for the derived looks (no iterator per frame) */
+  let trailNear = 0;
+  const applyTrailNear = (look: MissileTrail): void => smokeTrails.setNear(look, trailNear);
+  function lensTrailOf(base: MissileTrail): MissileTrail {
+    let t = lensTrails.get(base);
+    if (!t) {
+      t = Object.freeze({ ...base, nearM: LENS_TRAIL_NEAR_M, r0: LENS_TRAIL_R0_M, rJet: LENS_TRAIL_JET_M,
+        r1: Math.min(base.r1, LENS_TRAIL_R1_M), boostK: 1 });
+      lensTrails.set(base, t);
+    }
+    return t;
+  }
   /** (ac130-fx-228 r3) this frame's camera: is it aloft (a gunship's lens, the killcam's orbit round the airframe)? The
    *  derived looks' near fade is on for it and off for a camera near the ground, which sees the whole trail */
   function setGunshipTrailNear(cam: THREE.Vector3): void {
-    if (!gunshipTrails.size) return;
+    if (!gunshipTrails.size && !lensTrails.size) return;
     const aloft = cam.y - groundY(cam.x, cam.z) > GUNSHIP_LENS_TRAIL_M;
     const near = lensUp ? LENS_TRAIL_NEAR_M : aloft ? GUNSHIP_TRAIL_NEAR_M : 0;
-    for (const look of gunshipTrails.values()) smokeTrails.setNear(look, near);
+    trailNear = near;
+    gunshipTrails.forEach(applyTrailNear);
+    lensTrails.forEach(applyTrailNear);
   }
 
   /** the live presentation entity a shooter id names (the Studio's actors first, else the battle's) */
@@ -4926,7 +4946,7 @@ function* createFxSteps(
     const base: MissileTrail | null = missileTrailOf(look);
     if (!base) return;
     // (ac130-fx-228 r2) the gunship's own missile: its smoke, born 8 m from the gimbal lens, thins out near the camera
-    const tl = trail.pylon ? gunshipTrailOf(base) : base;
+    const tl = trail.pylon ? (trail.lensK !== undefined ? lensTrailOf(base) : gunshipTrailOf(base)) : base;
     const key = trail.seed as number;
     let slot = trail.smokeSlot ?? -1;
     if (slot < 0 || smokeTrails.slotOf(key) !== slot) {

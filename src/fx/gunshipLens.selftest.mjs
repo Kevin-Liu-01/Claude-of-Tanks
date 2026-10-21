@@ -230,6 +230,11 @@ const round = (id, i, d) => ({ id, shooterId: 'pilot', isPlayer: true, dead: fal
   const unEased = ndc(rail.clone().addScaledVector(dir, 20), camera);
   assert.ok(Math.hypot(eased.x, eased.y) > Math.hypot(unEased.x, unEased.y) + 0.15,
     `eased off the rail (${eased.x.toFixed(2)}, ${eased.y.toFixed(2)}; at full speed it would be at ${unEased.x.toFixed(2)}, ${unEased.y.toFixed(2)})`);
+  // its smoke from the rail through the lens's own narrow look (no translucent wedge seen down its length)
+  for (const d of [30, 45, 60, 80]) frame([round(701, 2, d)]);
+  const looks = fx.group.getObjectByName('fx-missile-trails')?.material?.uniforms?.uLook?.value ?? [];
+  const narrow = looks.some((v, i) => i % 6 === 0 && v.x > 0 && v.x <= 0.06 && v.y <= 0.2 && v.z <= 1.6);
+  assert.ok(narrow, 'the lens missile\'s trail is laid through a narrow look (r0 <= 0.06, jet <= 0.2, grown <= 1.6 m)');
   frame([]);
 }
 {

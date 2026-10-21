@@ -423,7 +423,7 @@ function missileParts(round: Parts, mount: Parts): void {
     round.add(canard, () => c);
   }
   box(mount, 0.16, 0.08, 1.9, 0, R + 0.06, 0.95, MOUNT);
-  box(mount, 0.12, 0.9, 1.5, 0, R + 0.55, 1.15, MOUNT);
+  box(mount, 0.1, 0.55, 1.0, 0, R + 0.37, 1.25, MOUNT);
 }
 
 export function buildGunshipLensGuns(hooks: GunshipMaterialHooks | null): GunshipLensGuns {
