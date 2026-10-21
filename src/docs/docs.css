@@ -274,3 +274,5 @@ body[data-cot-width='phone'] .doc-section h2{align-items:flex-start;gap:10px}bod
 .manual-take figcaption{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 14px;color:#b7c1c3;font-size:13px;line-height:1.5}
 .manual-take .fleet-take-studio{display:inline-flex;align-items:center;min-height:34px;padding:0 13px;border:1px solid var(--amber);background:#14140f;color:var(--amber2);font:700 11px/1 var(--mono);letter-spacing:.04em;text-decoration:none;text-transform:uppercase;white-space:nowrap}
 .manual-take [hidden]{display:none!important}
+/* No kicker above a heading (owner UI rules 2026-10-17): these lines stay for assistive technology only. */
+.docs-hero-eyebrow,.docs-chapters-heading .kicker,.aside-card-kicker,.topic-kicker{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}

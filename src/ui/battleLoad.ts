@@ -128,10 +128,11 @@ const CSS = `
   padding:clamp(20px,3vh,34px) clamp(18px,2.5vw,34px) clamp(16px,2.2vh,26px);
   background:transparent;border:0;box-shadow:none;}
 
-.cot-bl .cap{text-align:center;padding-bottom:clamp(15px,2.5vh,27px);}
-.cot-bl .kicker{font-family:${FONT_COND};font-size:11px;font-weight:700;
-  letter-spacing:.32em;text-indent:.36em;color:#f0a030;text-transform:uppercase;}
-.cot-bl .mapname{margin-top:7px;font-size:clamp(30px,4.1vw,52px);font-weight:700;
+.cot-bl .cap{text-align:center;padding-bottom:clamp(15px,2.5vh,27px);display:flex;flex-direction:column;align-items:center;}
+/* The mode reads under the map's name, never as a kicker above it (owner UI rules 2026-10-17). */
+.cot-bl .kicker{order:1;margin-top:9px;font-family:${FONT_COND};font-size:11px;font-weight:700;
+  letter-spacing:.16em;text-indent:.16em;color:#f0a030;text-transform:uppercase;}
+.cot-bl .mapname{margin-top:0;font-size:clamp(30px,4.1vw,52px);font-weight:700;
   letter-spacing:.14em;text-indent:.14em;text-transform:uppercase;color:#f4f8fc;
   text-shadow:0 3px 22px rgba(0,0,0,.9);}
 /* --- rosters ------------------------------------------------------------- */

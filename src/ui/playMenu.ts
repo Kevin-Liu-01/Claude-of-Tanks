@@ -197,8 +197,8 @@ const CSS = `
   max-height:92vh;overflow:auto;background:linear-gradient(155deg,rgba(18,24,30,.985),rgba(7,10,14,.99));
   border:1px solid rgba(181,197,210,.3);box-shadow:0 30px 100px rgba(0,0,0,.72);padding:28px;}
 .cot-play .close{position:absolute;right:14px;top:12px;width:40px;height:40px;border:0;background:none;
-  color:#95a5b2;font-size:27px;cursor:pointer}.cot-play .eyebrow{font:700 11px ${FONT_COND};letter-spacing:.22em;
-  text-transform:uppercase;color:#e69a36}.cot-play h2{margin:7px 0 4px;font-size:32px;letter-spacing:.02em}
+  color:#95a5b2;font-size:27px;cursor:pointer}/* no kicker above the title (owner UI rules 2026-10-17); kept for assistive technology */
+.cot-play .eyebrow{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.cot-play h2{margin:0 0 4px;font-size:32px;letter-spacing:.02em}
 .cot-play .lead{margin:0 0 22px;color:#9dadba;font-size:13px}.cot-play .modes{display:grid;
   grid-template-columns:repeat(3,1fr);gap:10px}.cot-play .mode{position:relative;min-height:156px;text-align:left;padding:18px;
   color:#eef4f8;background:rgba(20,27,34,.86);border:1px solid rgba(161,180,195,.28);cursor:pointer}

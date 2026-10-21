@@ -414,3 +414,7 @@ body[data-cot-input='coarse'] .fleet-take-toggle{width:44px;height:44px}
 body[data-cot-input='coarse'] .fleet-take-studio{display:grid;place-items:center;min-height:44px}
 /* zh-CN: tight display headings open up (CJK glyphs fill the em box; the type rules) */
 :lang(zh-CN) :is(.panel-heading h1,.dossier-head h2){line-height:1.14}
+/* No kicker above a heading (owner UI rules 2026-10-17): the archive's line stays for assistive technology, and the
+   dossier's nation, era and tier read under the vehicle's name, after its designation. */
+.workspace-identity .eyebrow{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.dossier-identity>div{display:flex;flex-direction:column;min-width:0}#dossierName{order:1;margin-top:0}#dossierDesignation{order:2}#dossierMeta{order:3;margin:5px 0 0}
