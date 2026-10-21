@@ -16,7 +16,10 @@ for (const bad of [null, undefined, '', 'a.json', 'media/a.json', 'https://examp
 const studio = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
 assert.match(studio, /import \{ sceneLinkPath \} from '\.\/studioSceneLink\.ts';/);
 assert.match(studio, /const scenePath = sceneLinkPath\(urlParam\('scene'\)\);/);
-assert.match(studio, /enter\(\{ map: json\.map \|\| map \}\)\.then\(\(\) => load\(json\)\)/);
+// bootScene() (2026-10-20): the boot enters on the scene's map, then loads it once the game is ready; main.ts's direct
+// /studio boot opens it too (studioSceneShare.selftest checks that wiring).
+assert.match(studio, /map: scene\.then\(\(json\) => \(typeof json\?\.map === 'string' \? json\.map : null\)\),/);
+assert.match(studio, /await enter\(\{ map: json\?\.map \|\| fallbackMap \}\);\n\s+if \(json\) await load\(json\);/);
 // Leaving the Studio drops the link from the address, so a refresh in the garage stays in the garage.
 assert.match(studio, /sp\.delete\('studio'\);\n\s+if \(!inStudio\) sp\.delete\('scene'\);/);
 

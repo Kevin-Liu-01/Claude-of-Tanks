@@ -3482,11 +3482,16 @@ if (!STUDIO_BOOT_INTENT) {
   studioAccess.installKeyboard();
 }
 
+// A /studio boot URL may carry a scene (a shared #scene= link or a ?scene= path link, studio.ts bootScene): the boot
+// enters on the scene's own battlefield, and the scene opens once the game is ready (below __GAME_READY).
+const studioBoot: { scene: { readonly map: Promise<string | null>; open(fallbackMap: string): Promise<void> } | null } = { scene: null };
 if (STUDIO_BOOT_INTENT) {
   await bootStage('studio', async () => {
     const runtime = await loadStudioRuntime();
+    studioBoot.scene = runtime.bootScene?.() ?? null;
+    const sceneMap = studioBoot.scene ? await studioBoot.scene.map : null;
     return runtime.enter({
-      map: STUDIO_BOOT_MAP,
+      map: sceneMap || STUDIO_BOOT_MAP,
       coveredByBoot: true,
       onProgress: (fraction: number, label: string) => {
         boot.sub(fraction);
@@ -3637,6 +3642,7 @@ if (pendingRoomInvitePromise) {
   });
 }
 window.__GAME_READY = true;
+studioBoot.scene?.open(STUDIO_BOOT_MAP).catch((error: unknown) => console.error('[studio] boot scene failed', error));
 // 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)
 if (worldRuntime.pendingMapId && worldRuntime.pendingMapId !== 'random') preloadImageWhenIdle(battleBackdrop(worldRuntime.pendingMapId));
 // 2026-10-13: the loading screen's blurred per-map placeholders (a ~15 kB lazy chunk), so its first frame is the map's own
