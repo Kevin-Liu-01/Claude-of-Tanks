@@ -565,7 +565,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // brand mark (tank + Claude Code commander) so the garage brand matches
     // the entry screen; master copy public/brand/logo-mark.svg
     `<img class="mark" src="/brand/logo-mark.svg" alt="" draggable="false">` +
-    `<span>CLAUDE <b>OF TANKS</b></span></div>` +
+    `<span lang="en">CLAUDE <b>OF TANKS</b></span></div>` +
     `<div class="cot-brand-utilities cot-header-nav" aria-label="${t('garage.nav.home')} & ${t('garage.nav.record')}">` +
     `<button class="nv" data-nav="home" type="button" aria-label="${t('garage.nav.home')}" title="${t('garage.nav.home')}">` +
     `<img class="nvi nvi-product" src="/brand/nav/home.svg" alt="" draggable="false">` +
@@ -1494,9 +1494,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           const tag = document.createElement('span');
           tag.className = 'cot-map-region';
           tag.dataset.region = region;
-          tag.innerHTML = uiIconSVG(regionTagIcon(region)!, 9);
+          tag.innerHTML = uiIconSVG(regionTagIcon(region)!, 12);
           const label = document.createElement('span');
           label.textContent = t(`camoTag.${region}`);
+          tag.title = label.textContent;
           tag.appendChild(label);
           tags.appendChild(tag);
         }

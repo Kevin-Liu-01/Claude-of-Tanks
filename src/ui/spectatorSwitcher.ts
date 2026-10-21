@@ -73,15 +73,15 @@ export const spectatorSwitcherStyles = `
  background:radial-gradient(ellipse,#dda64924,transparent 70%);}
 .cot-spec .portrait img{display:block;width:66px;height:52px;object-fit:contain;filter:drop-shadow(0 3px 3px #0009)}
 .cot-spec .identity{display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:0;padding:0}
-.cot-spec .spec-status{display:flex;align-items:center;gap:6px;color:#ffc46b;font-size:9px;font-weight:800;line-height:1.2;letter-spacing:.14em;text-transform:uppercase}
+.cot-spec .spec-status{display:flex;align-items:center;gap:6px;color:#ffc46b;font-size:11px;font-weight:700;line-height:1.2;letter-spacing:.06em;text-transform:uppercase}
 .cot-spec .spec-status svg{width:13px;height:13px;flex-shrink:0}
 .cot-spec .who{display:flex;flex-direction:column;gap:4px;min-width:0;width:100%}
-.cot-spec .nick{font-size:18px;line-height:1.15;font-weight:750;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cot-spec .nick{font-size:18px;line-height:1.15;font-weight:700;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cot-spec .veh{color:#abbecb;font-size:11px;line-height:1.2;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cot-spec .cursor-hint{color:#bdcbd4;font-size:10px;line-height:1.3;letter-spacing:0}
+.cot-spec .cursor-hint{color:#bdcbd4;font-size:11px;line-height:1.3;letter-spacing:0}
 .cot-spec .cursor-hint[hidden],.cot-spec .idx[hidden]{display:none}
 .cot-spec .switch{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:3px;min-width:0;padding:0;background:none;border:0}
-.cot-spec .idx{font-size:9px;font-weight:650;font-variant-numeric:tabular-nums;line-height:1.5;color:#d9e6ed;text-align:center;white-space:nowrap;text-shadow:0 1px 3px #000,0 0 8px #000}
+.cot-spec .idx{font-size:11px;font-weight:700;line-height:1.5;color:#d9e6ed;text-align:center;white-space:nowrap;text-shadow:0 1px 3px #000,0 0 8px #000}
 .cot-spec :is(.cycle,.gar){position:relative;isolation:isolate;display:flex;align-items:center;justify-content:center;
  min-width:0;min-height:48px;margin:0;padding:7px 12px;border:0;border-radius:0;background:none;box-shadow:none;
  color:#e8f0f5;font:inherit;cursor:pointer;pointer-events:auto;filter:drop-shadow(0 2px 4px #0008);transition:color .15s ease,transform .15s ease;}
@@ -89,8 +89,8 @@ export const spectatorSwitcherStyles = `
 .cot-spec :is(.cycle,.gar)::after{inset:1px;z-index:-1;background:linear-gradient(155deg,#203440f2,#081219f5)}
 .cot-spec .cycle{flex-direction:column;gap:3px;padding:7px 10px}
 .cot-spec .cycle-icon{display:flex;order:0;color:#ffd18b}.cot-spec .cycle-icon svg{width:14px;height:14px;display:block}
-.cot-spec .cycle kbd{order:1;display:block;padding:0;border:0;background:none;box-shadow:none;color:#a9bdc9;font:700 10px/1.1 ui-monospace,monospace}
-.cot-spec .gar{flex-direction:column;gap:4px;color:#ffc46b;text-transform:uppercase;font-size:9px;font-weight:800;letter-spacing:.1em}
+.cot-spec .cycle kbd{order:1;display:block;padding:0;border:0;background:none;box-shadow:none;color:#a9bdc9;font:700 11px/1.1 var(--font-mono)}
+.cot-spec .gar{flex-direction:column;gap:4px;color:#ffc46b;text-transform:uppercase;font-size:11px;font-weight:700;letter-spacing:.03em}
 .cot-spec .gar::before{background:#c29550}.cot-spec .gar::after{background:linear-gradient(155deg,#342c1df2,#141c20f5)}
 .cot-spec .gar-icon,.cot-spec .gar-icon svg{display:block;width:20px;height:20px}
 .cot-spec :is(.cycle,.gar):focus-visible{outline:2px solid #ffe1a5;outline-offset:3px}
@@ -102,12 +102,12 @@ export const spectatorSwitcherStyles = `
 @media(max-width:900px){
  .cot-spec{grid-template-columns:minmax(0,1fr) 144px 64px;gap:8px}
  .cot-spec .subject{grid-template-columns:48px minmax(0,1fr);gap:7px;padding:8px 14px 8px 10px}
- .cot-spec .portrait,.cot-spec .portrait img{width:48px;height:46px}.cot-spec .nick{font-size:15px}.cot-spec .veh{font-size:10px}
- .cot-spec .gar{font-size:8px;letter-spacing:.04em}
+ .cot-spec .portrait,.cot-spec .portrait img{width:48px;height:46px}.cot-spec .nick{font-size:15px}.cot-spec .veh{font-size:11px}
+ .cot-spec .gar{font-size:11px;letter-spacing:0em}
 }
 body.cot-touch-layout .cot-spec .cycle kbd{display:none}
 body.cot-touch-layout .cot-spec .cursor-hint{display:none}
-@media(max-width:600px){.cot-spec{grid-template-columns:minmax(0,1fr) 144px 48px;gap:6px}.cot-spec .gar>span:last-child{display:none}.cot-spec .spec-status{font-size:8px;letter-spacing:.08em}.cot-spec .nick{font-size:14px}}
+@media(max-width:600px){.cot-spec{grid-template-columns:minmax(0,1fr) 144px 48px;gap:6px}.cot-spec .gar>span:last-child{display:none}.cot-spec .spec-status{font-size:11px;letter-spacing:.01em}.cot-spec .nick{font-size:14px}}
 @media(max-width:400px) and (orientation:portrait){
  .cot-spec{grid-template-columns:minmax(0,1fr) 88px;gap:7px 12px}
  .cot-spec .subject{grid-column:1/-1}.cot-spec .switch{width:144px;justify-self:center}

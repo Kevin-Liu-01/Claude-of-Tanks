@@ -4,6 +4,7 @@
   <link rel="stylesheet" href="/src/presentation/manualStart.css">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <!--cot:type ui mono body-->
   <meta name="cot-i18n-catalog" content="docs">
   <meta name="theme-color" content="#080a0c">
   <meta name="author" content="Kevin B. Liu">
@@ -29,7 +30,7 @@
 <body>
   <nav class="public-nav" aria-label="Primary navigation">
     <div class="public-nav__inner">
-      <a class="public-nav__brand" href="/home" data-i18n-aria-label="publicNav.brandAria"><img src="/brand/logo-mark.svg" alt=""><span>Claude <b>of Tanks</b></span></a>
+      <a class="public-nav__brand" href="/home" data-i18n-aria-label="publicNav.brandAria"><img src="/brand/logo-mark.svg" alt=""><span lang="en">Claude <b>of Tanks</b></span></a>
       <div class="public-nav__links">
         <a href="/home"><img class="public-nav__icon public-nav__icon--home" src="/brand/nav/home.svg" alt=""><span data-i18n="publicNav.home">Home</span></a><a href="/studio"><img class="public-nav__icon public-nav__icon--studio" src="/brand/nav/studio.svg" alt=""><span data-i18n="publicNav.studio">Studio</span></a><a href="/gallery"><img class="public-nav__icon public-nav__icon--tank" src="/brand/nav/tank-gallery.svg" alt=""><span data-i18n="publicNav.gallery">Gallery</span></a><a href="/docs" aria-current="page"><img class="public-nav__icon public-nav__icon--docs" src="/brand/nav/docs.svg" alt=""><span data-i18n="publicNav.docs">Docs</span></a>
         <a class="public-nav__github" href="https://github.com/Kevin-Liu-01/claude-of-tanks" target="_blank" rel="noreferrer" data-i18n-aria-label="publicNav.githubAria"><span class="public-nav__github-label" data-i18n="publicNav.githubLabel">GitHub</span><span class="public-nav__stars"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m8 1.2 2.1 4.2 4.7.7-3.4 3.3.8 4.7L8 11.9l-4.2 2.2.8-4.7-3.4-3.3 4.7-.7L8 1.2Z"/></svg><span data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="Loading GitHub star count"></span></span></a>
@@ -43,7 +44,7 @@
     <div class="docs-hero-shade"></div>
     <div class="shell">
       <div class="docs-hero-copy">
-        <p class="docs-hero-eyebrow"><span data-doc-icon="manual"></span><span data-i18n="docs.hero.eyebrow" data-i18n-vars='{"date":"30 September 2026"}'>Engineering field manual // Updated 30 September 2026</span></p>
+        <p class="docs-hero-eyebrow"><span data-doc-icon="manual"></span><span data-i18n="docs.hero.eyebrow">Engineering field manual · Updated 30 September 2026</span></p>
         <h1><span data-i18n="docs.hero.titleLead">Inside the</span><br><span data-i18n="docs.hero.titleMain">browser battlefield</span></h1>
         <p class="hero-lede" data-i18n-html="docs.hero.lede" data-i18n-vars='{"name":"Claude of Tanks"}'>See how <strong>Claude of Tanks</strong> turns Three.js, deterministic simulation, procedural vehicles, physical ballistics, networking, and production tooling into one playable browser game.</p>
         <div class="docs-hero-actions">
@@ -60,10 +61,10 @@
   </header>
 
   <section class="docs-evidence" aria-label="Current build facts"><div class="shell"><dl>
-    <div><dt><span data-doc-icon="fleet"></span><span data-i18n="docs.evidence.fleet">Production fleet</span></dt><dd>{{COT_PRODUCTION_VEHICLES}} <span data-i18n="docs.evidence.fleetValue" data-i18n-vars='{"count":"{{COT_PRODUCTION_VEHICLES}}"}'>vehicles</span></dd></div>
-    <div><dt><span data-doc-icon="battlefields"></span><span data-i18n="docs.evidence.battlefields">Battlefields</span></dt><dd>{{COT_BATTLEFIELDS}} <span data-i18n="docs.evidence.battlefieldsValue" data-i18n-vars='{"count":"{{COT_BATTLEFIELDS}}"}'>maps</span></dd></div>
+    <div><dt><span data-doc-icon="fleet"></span><span data-i18n="docs.evidence.fleet">Production fleet</span></dt><dd>{{COT_PRODUCTION_VEHICLES}} <span data-i18n="docs.evidence.fleetValue">vehicles</span></dd></div>
+    <div><dt><span data-doc-icon="battlefields"></span><span data-i18n="docs.evidence.battlefields">Battlefields</span></dt><dd>{{COT_BATTLEFIELDS}} <span data-i18n="docs.evidence.battlefieldsValue">maps</span></dd></div>
     <div><dt><span data-doc-icon="simulation"></span><span data-i18n="docs.evidence.simulation">Simulation</span></dt><dd data-i18n="docs.evidence.simulationValue">60 Hz fixed step</dd></div>
-    <div><dt><span data-doc-icon="refresh"></span><span data-i18n="docs.evidence.presentation">Presentation</span></dt><dd><span>120 FPS</span> <span data-i18n="docs.evidence.presentationValue" data-i18n-vars='{"fps":"120"}'>test path</span></dd></div>
+    <div><dt><span data-doc-icon="refresh"></span><span data-i18n="docs.evidence.presentation">Presentation</span></dt><dd><span>120 FPS</span> <span data-i18n="docs.evidence.presentationValue">test path</span></dd></div>
   </dl></div></section>
 
 <section class="manual-start shell" aria-labelledby="manual-start-title"><h2 id="manual-start-title" data-i18n="docs.start.title">Find your next step</h2><p data-i18n="docs.start.intro">Start with the player guides, then explore the technical detail behind the game.</p><div class="manual-start-grid"><a href="/docs/simulation#topic-section-7"><strong data-i18n="docs.start.play">Modes and battle setup</strong><span data-i18n="docs.start.playBody">Thirteen modes, objectives, flight, respawns and team settings.</span></a><a href="/docs/vehicles#reference"><strong data-i18n="docs.start.vehicles">Tanks and their systems</strong><span data-i18n="docs.start.vehiclesBody">Compare the full fleet, equipment effects, smoke, missiles and remote guns.</span></a><a href="/docs/worlds#reference"><strong data-i18n="docs.start.maps">Explore every battlefield</strong><span data-i18n="docs.start.mapsBody">Current map pictures, random selection, daylight and dedicated skies.</span></a><a href="/docs/multiplayer"><strong data-i18n="docs.start.rooms">Play with friends</strong><span data-i18n="docs.start.roomsBody">Create a room, invite your team and configure the match before launch.</span></a></div></section>
@@ -246,7 +247,7 @@ npm run build</code></pre></div>
     <div class="docs-archive-body" id="docsArchiveBody"></div>
   </dialog>
 
-  <footer class="docs-footer"><div class="inner shell"><a class="brand" href="/home" aria-label="Claude of Tanks showcase" data-i18n-aria-label="aria.claudeoftanksshowcase"><img src="/brand/logo-mark-metal.svg" alt=""><span>Claude <b>of Tanks</b></span></a><div class="footer-links"><a href="/gallery" data-i18n="docs.footer.docsGallery">Tank Gallery</a><a href="/" data-i18n="docs.footer.docsGarage">Garage</a><a href="/studio" data-i18n="docs.footer.docsStudio">Scene Studio</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" data-i18n-aria-label="docs.footer.docsGithubAria"><span>GitHub</span><span class="footer-stars"><span aria-hidden="true">★</span><span data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="Loading GitHub star count"></span></span></a></div><span class="footer-mark" data-i18n="docs.footer.docsMark">Public field manual // 2026</span></div></footer>
+  <footer class="docs-footer"><div class="inner shell"><a class="brand" href="/home" aria-label="Claude of Tanks showcase" data-i18n-aria-label="aria.claudeoftanksshowcase"><img src="/brand/logo-mark-metal.svg" alt=""><span lang="en">Claude <b>of Tanks</b></span></a><div class="footer-links"><a href="/gallery" data-i18n="docs.footer.docsGallery">Tank Gallery</a><a href="/" data-i18n="docs.footer.docsGarage">Garage</a><a href="/studio" data-i18n="docs.footer.docsStudio">Scene Studio</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" data-i18n-aria-label="docs.footer.docsGithubAria"><span>GitHub</span><span class="footer-stars"><span aria-hidden="true">★</span><span data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="Loading GitHub star count"></span></span></a></div><span class="footer-mark" data-i18n="docs.footer.docsMark">Public field manual // 2026</span></div></footer>
   <div class="docs-toast" id="docsToast" role="status"></div>
   <script type="module" src="/src/analytics.ts"></script>
   <script type="module" src="/src/presentation/publicNav.ts"></script>

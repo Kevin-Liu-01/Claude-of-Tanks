@@ -7,6 +7,7 @@
       "raw": 3890257,
       "gzip": 1204617,
       "brotli": 1017908,
+      "inlineCss": 5413,
       "entryRaw": 818369,
       "entryBrotli": 244533
     },
@@ -14,31 +15,36 @@
       "requests": 8,
       "raw": 70145,
       "gzip": 23823,
-      "brotli": 20762
+      "brotli": 20762,
+      "inlineCss": 689
     },
     "docs": {
       "requests": 13,
       "raw": 183258,
       "gzip": 46871,
-      "brotli": 40339
+      "brotli": 40339,
+      "inlineCss": 840
     },
     "gallery": {
       "requests": 78,
       "raw": 2550511,
       "gzip": 749819,
-      "brotli": 630253
+      "brotli": 630253,
+      "inlineCss": 766
     },
     "notFound": {
       "requests": 6,
       "raw": 18513,
       "gzip": 7259,
-      "brotli": 6369
+      "brotli": 6369,
+      "inlineCss": 588
     },
     "cn": {
       "requests": 129,
       "raw": 4164793,
       "gzip": 1299831,
       "brotli": 1095247,
+      "inlineCss": 5975,
       "entryRaw": 818369,
       "entryBrotli": 244533
     }

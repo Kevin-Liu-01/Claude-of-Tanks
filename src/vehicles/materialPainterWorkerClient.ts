@@ -149,7 +149,7 @@ export function tryPaintMaterialBase(request: MaterialPainterRequest): Promise<M
         createWorker: browserWorker,
         clone: value => structuredClone(value),
         schedule: (callback, delay) => { const timer = setTimeout(callback, delay); return () => clearTimeout(timer); },
-        fontUrl: new URL(`${import.meta.env?.BASE_URL ?? '/'}fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2`, document.baseURI).href,
+        fontUrl: new URL(`${import.meta.env?.BASE_URL ?? '/'}fonts/chakra-petch/ChakraPetch-Bold-Latin.woff2`, document.baseURI).href,
       });
     }
     owner = sharedClient;

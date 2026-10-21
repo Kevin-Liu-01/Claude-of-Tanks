@@ -73,6 +73,7 @@ for (const { elements } of fixtures) {
   assert.equal(elements.cooldown.style.display, 'none');
   assert.equal(elements.button.classes.has('cooling'), false);
   assert.equal(elements.count.textContent, '∞');
+  assert.equal(elements.count.classes.has('num'), false, 'the ready mark stays in the shell face (no .num)');
   assert.equal(elements.button.attributes.get('aria-label'), 'en: ready');
 }
 mutations.length = 0;
@@ -88,6 +89,7 @@ assert.equal(fixtures[1].elements.cooldown.style.display, 'block');
 assert.equal(fixtures[1].elements.cooldown.style['--cool'], '100.0%');
 assert.equal(fixtures[1].elements.count.textContent, '45');
 assert.equal(fixtures[1].elements.button.classes.has('cooling'), true);
+assert.equal(fixtures[1].elements.count.classes.has('num'), true, 'the countdown ticks in tabular figures (.num)');
 assert.equal(fixtures[1].elements.button.attributes.get('aria-label'), 'en: ready in 45s');
 assert.equal(fixtures[0].elements.button.classes.has('cooling'), false);
 mutations.length = 0;
@@ -113,6 +115,7 @@ fixtures[1].slot.render(0, COOLDOWN_S[1]);
 assert.deepEqual(mutations, [
   ['1.cooldown', 'style', 'display', 'none'],
   ['1.button', 'class', 'cooling', false],
+  ['1.count', 'class', 'num', false],
   ['1.count', 'text', '∞'],
   ['1.button', 'attribute', 'aria-label', 'en: ready'],
 ], 'the ready transition is written once');

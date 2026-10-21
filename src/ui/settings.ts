@@ -218,7 +218,7 @@ const SETTINGS_CSS = `
 @keyframes cotSetVeil{from{opacity:0;}}
 @keyframes cotSetIn{from{opacity:0;transform:translateY(14px) scale(.985);}}
 .cot-set-hdr{display:flex;align-items:center;gap:12px;padding:15px 22px 11px;}
-.cot-set-hdr h2{font-size:15px;font-weight:800;letter-spacing:.18em;color:#d5dfe7;
+.cot-set-hdr h2{font-size:15px;font-weight:700;letter-spacing:.18em;color:#d5dfe7;
   text-transform:uppercase;margin-right:auto;}
 .cot-set-hdr h2::before{content:'';display:inline-block;width:18px;height:3px;
   background:#f0a030;margin-right:12px;vertical-align:3px;}
@@ -226,8 +226,8 @@ const SETTINGS_CSS = `
    actually freezing a live battle (root gets .paused; garage Esc never shows
    it). Era-chip plate + slow-pulsing amber lamp instead of the old blinking
    outline chip (settings_ui r2). */
-.cot-set-paused{display:none;align-items:center;gap:8px;font-size:9.5px;font-weight:800;
-  letter-spacing:.30em;color:#ffd27a;text-transform:uppercase;padding:6px 12px 5px 11px;
+.cot-set-paused{display:none;align-items:center;gap:8px;font-size:11px;font-weight:700;
+  letter-spacing:.2em;color:#ffd27a;text-transform:uppercase;padding:6px 12px 5px 11px;
   border:1px solid rgba(240,176,74,.6);border-bottom:2px solid #f0a030;
   background:linear-gradient(180deg,rgba(58,40,14,.92),rgba(30,20,8,.95));}
 .cot-set-paused::before{content:'';width:6px;height:6px;flex:0 0 auto;background:#f0a030;
@@ -250,11 +250,12 @@ const SETTINGS_CSS = `
   text-transform:uppercase;padding:11px 16px 10px;
   transition:color var(--cot-motion-fast) ease,background-color var(--cot-motion-fast) ease;}
 .cot-set-tab:hover{color:#c6d2dc;background:rgba(146,164,180,.07);}
+:lang(zh-CN) .cot-settings .cot-set-tab{font-size:13px;}
 .cot-set-tab.sel{color:#ffd27a;background:linear-gradient(180deg,rgba(240,160,48,.10),rgba(240,160,48,0));}
 .cot-set-tab.sel::after{content:'';position:absolute;left:6px;right:6px;bottom:-1px;height:2px;
   background:#f0a030;box-shadow:0 -1px 8px rgba(240,160,48,.45);}
-.cot-set-tab .ct{margin-left:7px;font-style:normal;font-weight:600;font-size:9.5px;
-  color:#6d7a86;letter-spacing:.05em;font-variant-numeric:tabular-nums;}
+.cot-set-tab .ct{margin-left:7px;font-style:normal;font-weight:600;font-size:11px;
+  color:#6d7a86;letter-spacing:0em;}
 .cot-set-tab.sel .ct{color:#d8a04c;}
 /* scrolling rows area — thin steel scrollbar + overflow-gated fade masks
    (.fade-top/.fade-bot toggled by JS from live scroll position; the garage
@@ -274,8 +275,8 @@ const SETTINGS_CSS = `
   mask-image:linear-gradient(180deg,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%);}
 /* section header: amber tick + hairline rule running to the right edge
    (the garage r9 .mtitle pattern) */
-.cot-set-group{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:700;
-  letter-spacing:.24em;color:#8a97a3;text-transform:uppercase;margin:18px 0 6px;}
+.cot-set-group{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;
+  letter-spacing:.16em;color:#8a97a3;text-transform:uppercase;margin:18px 0 6px;}
 .cot-set-group::before{content:'';width:8px;height:2px;flex:0 0 auto;background:#f0a030;}
 .cot-set-group::after{content:'';flex:1;height:1px;background:rgba(146,164,180,.14);}
 .cot-set-group:first-child{margin-top:12px;}
@@ -305,7 +306,7 @@ const SETTINGS_CSS = `
 .cot-setting-icon.tone-cyan{color:#67b8d8;border-color:rgba(103,184,216,.28);}
 .cot-setting-icon.tone-violet{color:#aa8bd3;border-color:rgba(170,139,211,.28);}
 .cot-setting-icon[data-badge]::after{content:attr(data-badge);position:absolute;right:-4px;bottom:-4px;
-  min-width:11px;height:11px;padding:0 2px;display:grid;place-items:center;font-size:7px;font-weight:900;
+  min-width:11px;height:11px;padding:0 2px;display:grid;place-items:center;font-size:11px;font-weight:700;
   line-height:1;color:#161009;background:#e2a64d;border:1px solid #6d4717;box-shadow:0 1px 3px #000;}
 .cot-setting-label-text{min-width:0;}
 .cot-set-row.conflict,.cot-set-row.conflict.alt{background:rgba(190,60,50,.12);
@@ -315,8 +316,8 @@ const SETTINGS_CSS = `
 .cot-set-row .chips{display:flex;gap:6px;align-items:center;}
 .cot-set-colhdr{display:flex;align-items:center;gap:6px;padding:12px 10px 5px;
   border-bottom:1px solid rgba(146,164,180,.22);}
-.cot-set-colhdr span{width:92px;text-align:center;font-size:8.5px;font-weight:700;
-  letter-spacing:.2em;color:#68747f;text-transform:uppercase;}
+.cot-set-colhdr span{width:92px;text-align:center;font-size:11px;font-weight:700;
+  letter-spacing:.1em;color:#68747f;text-transform:uppercase;}
 .cot-set-colhdr span.act{width:auto;flex:1;text-align:left;}
 .cot-set-colhdr span.pad{width:72px;}
 /* binding chips: keycap read — top-light gradient, 1px inner highlight, 2px
@@ -336,7 +337,7 @@ const SETTINGS_CSS = `
   border:1px dashed rgba(146,164,180,.26);padding:5px;}
 .cot-chip.listening{color:#ffd27a;border:1px solid #f0a030;border-bottom:2px solid #c97f18;
   background:linear-gradient(180deg,rgba(66,42,12,.96),rgba(34,22,8,.97));
-  animation:cotChipPulse 1.1s ease-in-out infinite;font-size:9px;letter-spacing:.05em;padding:5px 3px 4px;}
+  animation:cotChipPulse 1.1s ease-in-out infinite;font-size:11px;letter-spacing:0em;padding:5px 3px 4px;}
 /* controls_gunnery r4 minor: Chromium's default blue focus ring survived on
    chips after a rebind click (visible in the conflict screenshot) and read as
    web-page chrome inside the custom panel. All panel controls drop the UA
@@ -365,7 +366,7 @@ const SETTINGS_CSS = `
 .cot-set-ftr{display:flex;align-items:center;gap:10px;padding:13px 22px 16px;
   border-top:1px solid rgba(146,164,180,.22);
   background:linear-gradient(180deg,rgba(146,164,180,.04),rgba(146,164,180,0));}
-.cot-set-btn{cursor:pointer;font-family:${FONT_STACK};font-size:11px;font-weight:800;
+.cot-set-btn{cursor:pointer;font-family:${FONT_STACK};font-size:11px;font-weight:700;
   letter-spacing:.2em;color:#fff8ee;text-transform:uppercase;padding:10px 22px 9px;
   text-shadow:none;background:#ee8912;border:1px solid #8a4a06;border-bottom:2px solid #a85a05;
   transition:filter .12s;}
@@ -405,7 +406,7 @@ const SETTINGS_CSS = `
 .cot-set-slider input[type=range]::-moz-range-thumb{width:11px;height:16px;border-radius:0;
   background:linear-gradient(180deg,#4a5866,#232c34);border:1px solid rgba(210,225,240,.6);}
 .cot-set-slider input[type=number]{width:62px;text-align:right;font-size:12px;font-weight:700;
-  color:#ffd27a;font-variant-numeric:tabular-nums;letter-spacing:.03em;padding:4px 6px 3px;
+  color:#ffd27a;letter-spacing:.03em;padding:4px 6px 3px;
   font-family:${FONT_STACK};background:rgba(8,11,15,.85);
   border:1px solid rgba(146,164,180,.4);border-bottom:2px solid rgba(146,164,180,.5);
   -moz-appearance:textfield;appearance:textfield;}
@@ -416,8 +417,8 @@ const SETTINGS_CSS = `
 /* segmented pickers (difficulty / RMB mode / quality) + ON/OFF toggles —
    keycap plates, amber selected (era-chip sel treatment) */
 .cot-set-seg{display:flex;gap:4px;}
-.cot-set-seg button{cursor:pointer;font-family:${FONT_STACK};font-size:10px;font-weight:700;
-  letter-spacing:.16em;text-transform:uppercase;color:#8a97a3;padding:6px 14px 5px;
+.cot-set-seg button{cursor:pointer;font-family:${FONT_STACK};font-size:11px;font-weight:700;
+  letter-spacing:.09em;text-transform:uppercase;color:#8a97a3;padding:6px 14px 5px;
   background:linear-gradient(180deg,rgba(30,38,46,.9),rgba(16,21,26,.95));
   border:1px solid rgba(146,164,180,.42);border-bottom:2px solid rgba(88,102,115,.8);
   box-shadow:inset 0 1px 0 rgba(235,243,250,.07);
@@ -429,8 +430,8 @@ const SETTINGS_CSS = `
   background:linear-gradient(180deg,rgba(58,40,14,.92),rgba(30,20,8,.95));
   box-shadow:inset 0 1px 0 rgba(255,210,122,.12);}
 .cot-set-seg.onoff button{padding:5px 13px 4px;min-width:48px;}
-.cot-set-note{font-size:10px;letter-spacing:.05em;color:#68747f;margin:10px 10px 2px;line-height:1.55;}
-.cot-set-note b{color:#9fb0bf;font-weight:700;}
+.cot-set-note{font-size:13px;font-weight:400;letter-spacing:0;color:#8d9ba7;margin:10px 10px 2px;line-height:1.55;max-width:72ch;text-wrap:pretty;}
+.cot-set-note b{color:#c3cfd8;font-family:var(--font-body);font-weight:600;}
 /* settings_ui r2: the panel respects reduced motion — enter transition,
    paused lamp and listening pulse all freeze; hover transitions collapse */
 @media (prefers-reduced-motion:reduce){
@@ -453,19 +454,19 @@ const SETTINGS_CSS = `
   display:none;align-items:center;gap:16px;padding:8px 20px;pointer-events:none;
   background:linear-gradient(180deg,rgba(9,13,17,.82),rgba(7,10,14,.7));
   border:1px solid rgba(146,164,180,.3);box-shadow:0 4px 18px rgba(0,0,0,.45);
-  font-family:${FONT_STACK};font-size:10.5px;font-weight:600;letter-spacing:.12em;
+  font-family:${FONT_STACK};font-size:11px;font-weight:600;letter-spacing:.09em;
   color:#9fb0bf;text-transform:uppercase;white-space:nowrap;
   opacity:1;transition:opacity 1.2s ease;}
 .cot-hints .hg{display:flex;align-items:center;gap:5px;}
-.cot-hints kbd{font-family:${FONT_STACK};font-size:10px;font-weight:700;color:#e6edf3;
-  letter-spacing:.06em;padding:2px 6px;line-height:14px;
+.cot-hints kbd{font-family:${FONT_STACK};font-size:11px;font-weight:700;color:#e6edf3;
+  letter-spacing:.01em;padding:2px 6px;line-height:14px;
   background:linear-gradient(180deg,rgba(34,42,50,.95),rgba(18,23,28,.95));
   border:1px solid rgba(146,164,180,.45);border-bottom:2px solid rgba(146,164,180,.6);}
 .cot-resume{position:fixed;inset:0;z-index:79;display:none;align-items:center;justify-content:center;
   flex-direction:column;gap:14px;cursor:pointer;background:rgba(4,7,10,.55);
   font-family:${FONT_STACK};color:#e6edf3;-webkit-user-select:none;user-select:none;}
 .cot-resume.show{display:flex;}
-.cot-resume .rz-title{font-size:22px;font-weight:800;letter-spacing:.34em;text-transform:uppercase;
+.cot-resume .rz-title{font-size:22px;font-weight:700;letter-spacing:.34em;text-transform:uppercase;
   color:#f0b04a;text-shadow:0 2px 14px rgba(0,0,0,.8);}
 .cot-resume .rz-sub{font-size:11px;font-weight:600;letter-spacing:.22em;color:#9fb0bf;
   text-transform:uppercase;}
@@ -817,7 +818,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     range.min = String(min);
     range.max = String(max);
     range.step = o.step || '0.05';
-    const num = el('input', '', wrap);
+    const num = el('input', 'num', wrap);
     num.type = 'number';
     num.setAttribute('aria-label', `${label} value`);
     num.min = String(toD(min));

@@ -372,8 +372,10 @@ assert.match(perfHud,
   /ph-mobile-toggle[\s\S]*aria-expanded="false"[\s\S]*classList\.toggle\('mobile-expanded'\)/,
   'the compact diagnostics header must expose an accessible expand/collapse control');
 assert.match(responsiveSurfaces,
-  /body\[data-cot-width='phone'\] \.cot-set-tab\{[\s\S]*flex:1 1 0;min-width:0;[\s\S]*font-size:9px/,
-  'all four Settings tabs must fit at once on phone widths');
+  /body\[data-cot-width='phone'\] \.cot-set-tab\{flex:1 0 auto;padding-inline:4px;font-size:11px;/,
+  'phone Settings tabs size to their labels (never squeezed under them) and share the spare width');
+assert.doesNotMatch(responsiveSurfaces, /body\[data-cot-width='phone'\] \.cot-set-tabs\{overflow-x:hidden\}/,
+  'a tab row wider than the phone scrolls instead of clipping a label');
 assert.match(responsiveSurfaces,
   /body\[data-cot-width='phone'\] #cot-diag\{[\s\S]*max-height:62dvh!important;overflow:auto!important/,
   'the compatibility diagnostics panel must stay bounded and scrollable on phones');

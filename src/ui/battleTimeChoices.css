@@ -14,7 +14,7 @@
 .cot-time-choice input:focus-visible+.cot-time-content{outline:2px solid #ffcd86;outline-offset:2px;}
 .cot-time-choice input:disabled{cursor:default;}
 .cot-time-choice input:disabled:not(:checked)+.cot-time-content{opacity:.55;}
-.cot-battle-times small{flex-basis:100%;color:#a6b5c0;font-size:10px;line-height:1.5;}
+.cot-battle-times small{flex-basis:100%;color:#a6b5c0;font-size:11px;line-height:1.5;}
 .cot-settings .cot-battle-times{margin:10px 0 0;padding:8px;}
 .cot-settings .cot-battle-times legend{padding:0 5px;}
 .cot-settings .cot-time-content{padding:6px;}

@@ -511,7 +511,7 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
   const root = document.createElement('div');
   root.className = 'cot-dp';
   root.innerHTML =
-    `<div class="hprow"><span class="hplabel">HP</span><span class="hpnum">—</span></div>` +
+    `<div class="hprow"><span class="hplabel">HP</span><span class="hpnum num">—</span></div>` +
     `<div class="hptrack"><div class="hpfill"></div></div>` +
     `<div class="fire">ON FIRE</div>`;
   const hpNum = requiredElement<HTMLElement>(root, '.hpnum');

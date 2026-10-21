@@ -26,6 +26,7 @@ import { dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Connect } from 'vite';
 import { renderProductStats } from './src/productStats.ts';
+import { expandTypeMarkers } from './src/ui/typeFaces.ts';
 import { localizeHtmlDocument } from './src/presentation/localizedHtml.ts';
 import { publicRouteForEntry, resolveLocalePath } from './src/ui/localeRouting.ts';
 import { replaceAppVersionTokens, resolveAppVersion } from './tools/appVersion.ts';
@@ -267,6 +268,15 @@ export default defineConfig({
       name: 'cot-product-stats',
       transformIndexHtml(html) {
         return renderProductStats(html);
+      },
+    },
+    {
+      // The type system (src/ui/typeFaces.ts): every document's `<!--cot:type …-->` marker becomes its font preloads and
+      // the one <style id="cot-font-faces"> (faces, fallbacks, type tokens). Pre-order, so Vite sees it as source markup.
+      name: 'cot-type-faces',
+      enforce: 'pre',
+      transformIndexHtml(html) {
+        return expandTypeMarkers(html);
       },
     },
     {

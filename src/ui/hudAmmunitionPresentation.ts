@@ -19,7 +19,7 @@ interface AmmunitionSlotElements {
   name: TextNode;
   penetration: TextNode;
   damage: TextNode;
-  count: TextNode;
+  count: TextNode & Pick<HTMLElement, 'classList'>;
   cooldown: StyledNode;
 }
 
@@ -72,6 +72,7 @@ export function createRetainedAmmunitionSlot({
   let displayedPenetration: string | undefined;
   let displayedDamage: string | undefined;
   let displayedCount: string | undefined;
+  let numericCount: boolean | undefined;
   let ariaPressed: string | undefined;
   let ariaBusy: string | undefined;
   let ariaLabel: string | undefined;
@@ -136,6 +137,11 @@ export function createRetainedAmmunitionSlot({
     if (wideClass !== wide) {
       elements.button.classList.toggle('wide', wide);
       wideClass = wide;
+    }
+    // A count ticks in tabular Plex Mono; the unlimited mark stays in the shell face, whose fallback has a bold ∞.
+    if (numericCount !== !unlimited) {
+      numericCount = !unlimited;
+      elements.count.classList.toggle('num', numericCount);
     }
     const empty = !unlimited && rounds <= 0;
     if (emptyClass !== empty) {

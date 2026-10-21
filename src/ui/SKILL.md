@@ -77,6 +77,37 @@ Garage presentation depend on a third-party request.
 Shared DOM, font, generated-icon, image-preload, featured-media, and map-art
 primitives are strict TypeScript owners. Extend their exported contracts rather
 than creating screen-local unchecked copies.
+Type: `typeFaces.ts` is the one face source. Chakra Petch
+(display 500/600/700), IBM Plex Sans (body 400/500/600) and IBM Plex Mono
+(readouts 400/500) are pinned OFL files in `public/fonts/`. Each document has one
+`<!--cot:type …-->` marker naming the families it declares (`ui display body
+mono`; none named means `ui mono`), faces to preload (`display-700`; only the game
+page and home preload, at most two) and opt-ins (`scale` for the `--fs-*`/`--t-*`
+tokens, `fx` for `.t-accent` and `.t-hollow`); Vite expands it into only those
+faces, their own metric-matched fallbacks and the family tokens. The arrows and
+math marks the subsets lack (← ↑ → ↓ ∞ ≤ ≥) come from `'Cot Symbols'`
+(`tools/type/cot-symbols.py`, drawn from Chakra Petch), named right after each
+Latin face; the accented letters the Plex subsets lack (ā ē ī ō ū, ć ń ś ź and
+capitals: tank names) come from `'Cot Accents'` (`tools/type/cot-accents.py`,
+assembled from Plex Sans's own glyphs under its own name), named after each Plex
+stack's Latin face. The receipt reads every face's cmap from its WOFF2 bytes and
+fails if a catalog string or tank name prints a character no shipped face draws.
+Chinese views are `/cn/` documents: `zhTypeFloor.ts` lists, per route, the label
+elements a Chinese string fills below 13 px, and `localizedHtml.ts` adds that floor
+to zh-CN documents only (English documents and the game entry carry none of it).
+A new Chinese label under 13 px joins its route's list there.
+check:bundle reports a document's inline CSS as `inlineCss`, and the receipt holds
+each head to a brotli budget. Never add an
+`@font-face`, a font preload or a face file elsewhere. Code asks only for
+400/500/600/700 (CSS, style properties, object literals, canvas fonts), never
+declares text under 11 px (clamp()/max()/min() floors included), and sets tabular
+figures only through `.num` on values that tick in place (Plex Mono with its plain
+zero; never on a localized string; the HUD team scores are Chakra Petch Bold
+display numerals). `'Cot UI'` (`var(--font-ui)`, `FONT_STACK`) is Plex Sans at
+400/500, Chakra Petch SemiBold at 600 (the label voice) and Bold at 700. Mark
+Latin-only lockups `lang="en"` and track them on that element, so the zh-CN reset
+(no tracking on Chinese) leaves them alone; Chinese display headings take a CJK
+line-height (1.14-1.15). `typeSystem.selftest.mjs` holds all of it.
 `garage.ts` is a strict presentation adapter: keep fleet, map, camouflage,
 loadout, room-status, and battle-intent inputs explicit; fail fast when its
 static markup contract is missing; and preserve its disclosure/event lifecycle

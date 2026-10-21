@@ -1345,8 +1345,7 @@ export function mountDiagOverlay({
   el.style.cssText = [
     'position:fixed', 'left:14px', 'bottom:14px', 'z-index:400',
     'width:min(430px,calc(100vw - 28px))', 'box-sizing:border-box',
-    'color:#edf3f1', 'font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace',
-    'font-variant-numeric:tabular-nums',
+    'color:#edf3f1', 'font:11px/1.45 var(--font-mono)',
     'background:linear-gradient(145deg,rgba(10,15,19,.97),rgba(24,20,14,.94))',
     'border:1px solid rgba(229,176,86,.46)', 'border-radius:10px',
     'box-shadow:0 18px 55px rgba(0,0,0,.52),inset 0 1px rgba(255,255,255,.05)',
@@ -1355,7 +1354,7 @@ export function mountDiagOverlay({
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.08)">
       <div aria-hidden="true" style="width:27px;height:27px;display:grid;place-items:center;border:1px solid rgba(239,190,102,.5);border-radius:50%;color:#f2c36f">◈</div>
-      <div style="flex:1;min-width:0"><b style="font:700 12px/1 system-ui,sans-serif;letter-spacing:.12em">COT SHADOW SAVER</b>
+      <div style="flex:1;min-width:0"><b style="font:700 12px/1 var(--font-ui);letter-spacing:.12em">COT SHADOW SAVER</b>
         <div data-summary style="margin-top:4px;color:#aab7b9">Checking renderer health…</div></div>
       <button data-collapse type="button" aria-label="${t('deviceDiag.shadowSaver.collapseAria')}" style="border:0;background:transparent;color:#9ca8ab;font:18px/1 sans-serif;cursor:pointer;padding:5px">−</button>
     </div>
@@ -1387,7 +1386,7 @@ export function mountDiagOverlay({
     for (const [label, value] of [['BASIC', diag.basic], ['LIT', diag.lit], ['SHADOWS', diag.litShadow]]) {
       const card = document.createElement('div');
       card.style.cssText = `padding:7px;border-radius:5px;text-align:center;background:${value ? 'rgba(84,181,139,.09)' : 'rgba(230,111,77,.10)'};border:1px solid ${value ? 'rgba(84,181,139,.25)' : 'rgba(230,111,77,.3)'}`;
-      card.innerHTML = `<span style="display:block;font:700 9px/1 system-ui,sans-serif;letter-spacing:.12em;color:#91a1a4">${label}</span><b style="display:block;margin-top:5px;color:${value ? '#78d4ae' : '#ff9b7b'}">${value ? 'PASS' : 'FAIL'}</b>`;
+      card.innerHTML = `<span style="display:block;font:700 11px/1 var(--font-ui);letter-spacing:.12em;color:#91a1a4">${label}</span><b style="display:block;margin-top:5px;color:${value ? '#78d4ae' : '#ff9b7b'}">${value ? 'PASS' : 'FAIL'}</b>`;
       probesEl.appendChild(card);
     }
     capsEl.textContent =

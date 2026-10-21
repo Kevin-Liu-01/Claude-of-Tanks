@@ -100,10 +100,10 @@ const CSS = `
   background:linear-gradient(90deg,#f0a030,rgba(240,160,48,0));pointer-events:none}
 .cot-modal__header{position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:18px;
   padding:20px clamp(18px,3vw,30px) 17px;border-bottom:1px solid rgba(165,183,198,.17);background:rgba(8,12,16,.88)}
-.cot-modal__eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:6px;color:#e5a542;font:900 10px/1 ${FONT_COND};
-  letter-spacing:.22em;text-transform:uppercase}.cot-modal__eyebrow::before{content:"";width:18px;height:2px;background:#e69a2d}
-.cot-modal__title{margin:0;color:#f3f6f8;font:800 clamp(21px,3vw,30px)/1.08 ${FONT_STACK};letter-spacing:-.025em}
-.cot-modal__subtitle{max-width:720px;margin:8px 0 0;color:#8fa0ad;font:650 13px/1.5 ${FONT_STACK}}
+.cot-modal__eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:6px;color:#c9a872;font:500 12px/1 ${FONT_COND};
+  letter-spacing:0}.cot-modal__eyebrow::before{content:"";width:18px;height:2px;background:#e69a2d}
+.cot-modal__title{margin:0;color:#f3f6f8;font:700 clamp(21px,3vw,30px)/1.08 ${FONT_STACK};letter-spacing:-.025em}
+.cot-modal__subtitle{max-width:720px;margin:8px 0 0;color:#93a3b0;font:500 14px/1.5 ${FONT_STACK}}
 .cot-modal__close{width:40px;height:40px;display:grid;place-items:center;padding:0;border:1px solid rgba(165,183,198,.24);
   background:rgba(4,7,10,.64);color:#9cadb9;cursor:pointer;
   transition:color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
@@ -119,7 +119,7 @@ const CSS = `
 .cot-modal__footer:empty{display:none}
 .cot-modal__button{min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 16px;
   border:1px solid rgba(165,183,198,.3);background:rgba(10,15,19,.86);color:#c5d0d8;cursor:pointer;
-  font:900 10px/1 ${FONT_COND};letter-spacing:.13em;text-transform:uppercase;
+  font:700 11px/1 ${FONT_COND};letter-spacing:.06em;text-transform:uppercase;
   transition:color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
     background-color var(--cot-motion-fast) ease,transform var(--cot-motion-fast) var(--cot-ease-out)}
 .cot-modal__button:hover,.cot-modal__button:focus-visible{border-color:#e69a2d;color:#ffd27a;background:rgba(230,154,45,.1);outline:none}

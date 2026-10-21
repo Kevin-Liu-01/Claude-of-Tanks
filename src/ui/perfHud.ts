@@ -133,8 +133,8 @@ interface PerformanceWithMemory extends Performance {
 const PERF_HUD_CSS = `
 #cot-perfhud{position:fixed;top:12px;right:12px;z-index:360;
   width:min(386px,calc(100vw - 24px));max-height:calc(var(--cot-viewport-height,100dvh) - 24px);box-sizing:border-box;
-  overflow:auto;padding:0;font:10px/1.42 ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-variant-numeric:tabular-nums;color:#dce6ed;background:rgba(5,9,12,.96);
+  overflow:auto;padding:0;font:11px/1.42 var(--font-mono);
+  color:#dce6ed;background:rgba(5,9,12,.96);
   border:1px solid rgba(176,195,209,.3);border-top-color:rgba(240,176,74,.66);
   box-shadow:0 18px 52px rgba(0,0,0,.55),inset 0 1px rgba(255,255,255,.035);
   text-shadow:0 1px 2px #000;pointer-events:none;}
@@ -145,12 +145,12 @@ const PERF_HUD_CSS = `
 #cot-perfhud .ph-icon{width:28px;height:28px;display:grid;place-items:center;color:#f0b04a;
   border:1px solid rgba(240,176,74,.3);background:rgba(240,160,48,.07)}
 #cot-perfhud .ph-icon svg{display:block;width:17px;height:17px}
-#cot-perfhud .ph-title{font-family:${FONT_COND};font-size:11px;font-weight:800;line-height:1;
+#cot-perfhud .ph-title{font-family:${FONT_COND};font-size:11px;font-weight:700;line-height:1;
   letter-spacing:.18em;text-transform:uppercase;color:#f2f6f9}
-#cot-perfhud .ph-sub{margin-top:5px;font-family:${FONT_COND};font-size:7px;font-weight:700;
-  letter-spacing:.14em;text-transform:uppercase;color:#7e8e99}
-#cot-perfhud .ph-state{display:flex;align-items:center;gap:6px;font-family:${FONT_COND};font-size:8px;
-  font-weight:800;letter-spacing:.14em;color:#9ee0b0}
+#cot-perfhud .ph-sub{margin-top:5px;font-family:${FONT_COND};font-size:11px;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;color:#7e8e99}
+#cot-perfhud .ph-state{display:flex;align-items:center;gap:6px;font-family:${FONT_COND};font-size:11px;
+  font-weight:700;letter-spacing:.05em;color:#9ee0b0}
 #cot-perfhud .ph-state::before{content:"";width:6px;height:6px;background:#78d491;
   box-shadow:0 0 8px rgba(120,212,145,.5)}
 #cot-perfhud .ph-mobile-toggle{display:none;width:44px;height:44px;margin:-5px -8px -5px 4px;
@@ -165,14 +165,14 @@ const PERF_HUD_CSS = `
   background:rgba(177,196,210,.1)}
 #cot-perfhud .ph-section{min-width:0;padding:9px 10px;background:rgba(8,13,17,.98)}
 #cot-perfhud .ph-section.wide{grid-column:1/-1}
-#cot-perfhud .ph-label{margin-bottom:5px;font-family:${FONT_COND};font-size:7px;font-weight:800;
-  letter-spacing:.17em;color:#8ca09e;text-transform:uppercase}
+#cot-perfhud .ph-label{margin-bottom:5px;font-family:${FONT_COND};font-size:11px;font-weight:700;
+  letter-spacing:.05em;color:#8ca09e;text-transform:uppercase}
 #cot-perfhud .ph-value{white-space:pre-wrap;color:#d7e0e4}
 #cot-perfhud .ph-actions{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
   padding:8px;background:#080d11;pointer-events:auto}
 #cot-perfhud .ph-action{min-height:44px;padding:7px;border:1px solid rgba(240,176,74,.34);border-radius:2px;
   background:linear-gradient(180deg,rgba(240,160,48,.12),rgba(240,160,48,.045));color:#ffd796;
-  font:800 8px/1 ${FONT_COND};letter-spacing:.11em;cursor:pointer;
+  font:700 11px/1 ${FONT_COND};letter-spacing:.04em;cursor:pointer;
   transition:transform 90ms ease-out,border-color 90ms ease,background-color 90ms ease}
 #cot-perfhud .ph-action:active{transform:scale(.97)}
 #cot-perfhud .ph-action:focus-visible{outline:2px solid #ffd27a;outline-offset:2px}

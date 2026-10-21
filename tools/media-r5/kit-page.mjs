@@ -10,8 +10,11 @@ const KIT = resolve(process.argv[2] ?? DEFAULT_KIT);
 const m = JSON.parse(readFileSync(join(KIT, 'manifest.json'), 'utf8'));
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 mkdirSync(join(KIT, 'assets'), { recursive: true });
-for (const f of ['ABCMonumentGrotesk-Regular.woff2', 'ABCMonumentGrotesk-Medium.woff2', 'ABCMonumentGrotesk-Bold.woff2'])
-  if (!existsSync(join(KIT, 'assets', f))) copyFileSync(join(REPO, 'public/fonts/abc-monument-grotesk', f), join(KIT, 'assets', f));
+// The UI faces: IBM Plex Sans for reading text, Chakra Petch Bold for the display weight.
+for (const f of ['ibm-plex-sans/IBMPlexSans-Regular-Latin1.woff2', 'ibm-plex-sans/IBMPlexSans-Medium-Latin1.woff2', 'chakra-petch/ChakraPetch-Bold-Latin.woff2']) {
+  const name = f.split('/')[1];
+  if (!existsSync(join(KIT, 'assets', name))) copyFileSync(join(REPO, 'public/fonts', f), join(KIT, 'assets', name));
+}
 if (!existsSync(join(KIT, 'assets/logo-mark-metal.svg'))) copyFileSync(join(REPO, 'public/brand/logo-mark-metal.svg'), join(KIT, 'assets/logo-mark-metal.svg'));
 const TIME_ORDER = ['dawn', 'morning', 'day', 'golden', 'sunset', 'dusk', 'night', 'space'];
 const TIME_LABEL = { dawn: 'Dawn', morning: 'Morning', day: 'High noon', golden: 'Golden hour', sunset: 'Sunset', dusk: 'Blue hour', night: 'Night', space: 'Beyond' };
@@ -32,11 +35,11 @@ const frame = f => `<figure class="still"><a class="img" href="${esc(f.file)}"><
 const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Media Kit · Claude of Tanks</title>
 <style>
-@font-face{font-family:'Monument';src:url('assets/ABCMonumentGrotesk-Regular.woff2') format('woff2');font-weight:400}
-@font-face{font-family:'Monument';src:url('assets/ABCMonumentGrotesk-Medium.woff2') format('woff2');font-weight:500}
-@font-face{font-family:'Monument';src:url('assets/ABCMonumentGrotesk-Bold.woff2') format('woff2');font-weight:700}
+@font-face{font-family:'Cot UI';src:url('assets/IBMPlexSans-Regular-Latin1.woff2') format('woff2');font-weight:100 449}
+@font-face{font-family:'Cot UI';src:url('assets/IBMPlexSans-Medium-Latin1.woff2') format('woff2');font-weight:450 649}
+@font-face{font-family:'Cot UI';src:url('assets/ChakraPetch-Bold-Latin.woff2') format('woff2');font-weight:650 1000}
 :root{--bg:#05080b;--surface:#0a0f14;--ink:#edf3f7;--muted:#a9b8c4;--line:rgba(153,174,190,.2);--amber:#f0a030;--gold:#ffd27a;--pad:clamp(16px,4vw,64px)}
-*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:var(--bg);color:var(--ink);font-family:'Monument',system-ui,sans-serif;font-size:18px;line-height:1.5;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:var(--bg);color:var(--ink);font-family:'Cot UI',system-ui,sans-serif;font-size:18px;line-height:1.5;-webkit-font-smoothing:antialiased}
 a{color:inherit}img,video{display:block;max-width:100%}
 .shell{width:min(100%,1480px);margin:auto;padding-inline:var(--pad)}
 header.top{display:flex;align-items:center;gap:18px;padding-block:28px;border-bottom:1px solid var(--line)}

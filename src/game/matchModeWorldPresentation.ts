@@ -889,7 +889,7 @@ export function createMatchModeWorldPresentation(
       setIcon(marker.userData.icon, `${mark.kind}:${mark.side}:${label}:${status}`, (ctx, c) => {
         drawHexBadge(ctx, c, c, 46, {
           fill: sideFill(mark.side), stroke: sideColor(mark.side), label, ringWidth: 9,
-          dashed: mark.side === 'contested' || status === 'locked', font: '700 48px system-ui, sans-serif',
+          dashed: mark.side === 'contested' || status === 'locked', font: "700 48px 'Cot UI', sans-serif",
         });
         if (status === 'taken') drawCheck(ctx, c + 30, c + 30, 22, sideColor(mark.side));
       });

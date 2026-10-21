@@ -17,14 +17,14 @@ const CSS = `
   border-left:3px solid #e69a36;border-radius:4px;box-shadow:0 14px 34px rgba(0,0,0,.45);font-family:${FONT_STACK};
   opacity:0;transform:translateX(-14px);transition:opacity .35s ease,transform .35s ease;pointer-events:none}
 .cot-brief.show{opacity:1;transform:none}
-.cot-brief .kicker{font:900 9px ${FONT_COND};letter-spacing:.22em;text-transform:uppercase;color:#e2b56a}
-.cot-brief h3{margin:4px 0 6px;font:900 19px ${FONT_COND};letter-spacing:.06em;text-transform:uppercase;color:#fff0d8}
-.cot-brief p{margin:0 0 9px;font-size:12px;line-height:1.45;color:#c8d3db}
-.cot-brief .objectives{font:900 8px ${FONT_COND};letter-spacing:.2em;text-transform:uppercase;color:#8ea2b0;margin:0 0 4px}
+.cot-brief .kicker{font:700 11px ${FONT_COND};letter-spacing:.13em;text-transform:uppercase;color:#e2b56a}
+.cot-brief h3{margin:4px 0 6px;font:700 19px ${FONT_COND};letter-spacing:.06em;text-transform:uppercase;color:#fff0d8}
+.cot-brief p{margin:0 0 9px;font-size:13px;line-height:1.45;color:#c8d3db}
+.cot-brief .objectives{font:700 11px ${FONT_COND};letter-spacing:.09em;text-transform:uppercase;color:#8ea2b0;margin:0 0 4px}
 .cot-brief ul{margin:0 0 8px;padding:0;list-style:none}
-.cot-brief li{position:relative;padding-left:14px;font-size:11.5px;line-height:1.4;color:#dfe7ec}
-.cot-brief li::before{content:'';position:absolute;left:0;top:7px;width:6px;height:6px;border:1px solid #e69a36;transform:rotate(45deg)}
-.cot-brief .enemy{font:700 9px ${FONT_COND};letter-spacing:.12em;text-transform:uppercase;color:#f0a4a4}
+.cot-brief li{position:relative;padding-left:14px;font-size:13px;line-height:1.4;color:#dfe7ec}
+.cot-brief li::before{content:'';position:absolute;left:0;top:5px;width:6px;height:6px;border:1px solid #e69a36;transform:rotate(45deg)}
+.cot-brief .enemy{font:700 11px ${FONT_COND};letter-spacing:.05em;text-transform:uppercase;color:#f0a4a4}
 `;
 
 interface MissionBriefRequest {

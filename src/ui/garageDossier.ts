@@ -219,6 +219,14 @@ const SHELL_TYPE_I18N: Readonly<Record<string, string>> = Object.freeze({
   HEP: 'garage.shellType.HEP',
 });
 
+/** The canonical type code (APFSDS-T reads APFSDS): what the HUD's ammo slots and scope readout print in every locale.
+ *  At the 11 px type floor a slot holds five Chinese characters at most and the full names run to seven, so the slot
+ *  prints the code, as the scope readout and the Chinese catalog's own tips do; its tooltip carries the full name. */
+export function shellTypeCode(type: string): string {
+  const key = SHELL_TYPE_I18N[type];
+  return key ? key.slice(key.lastIndexOf('.') + 1) : type;
+}
+
 /** Resolve a shell type code to its localized label, falling back to the
  *  canonical English code when no translation key is registered. */
 export function shellTypeLabel(type: string): string {
