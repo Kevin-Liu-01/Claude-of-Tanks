@@ -124,9 +124,12 @@ for (const seed of [1337, 2049]) {
 }
 
 const mangroveRoadWater = createHeightField(1337, getMapConfig('mangrove'));
+// (2026-10-21, waterBank.ts) the lakes' floor is their level: Mangrove's went under its tidal waterline (-2.3 - 0.43)
+const mangroveFloor = getMapConfig('mangrove').terrain.lakes[0].level;
+assert.ok(Math.abs(mangroveFloor + 2.73) < 1e-12, 'Mangrove\'s floor under its tidal waterline');
 for (const [x, z] of [[83.66666666666667, -181], [73.5, -178]]) {
   assert.equal(mangroveRoadWater.getWaterMaskAt(x, z), 1, 'road-apron regression points are fully liquid');
-  assert.ok(Math.abs(mangroveRoadWater.getHeightAt(x, z) + 2.3) < 1e-10,
+  assert.ok(Math.abs(mangroveRoadWater.getHeightAt(x, z) - mangroveFloor) < 1e-10,
     'the late road ditch cannot depress a fully flat lake by either 0.096mm or 5mm');
 }
 const roadLakeConfig = {

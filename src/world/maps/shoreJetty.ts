@@ -70,6 +70,7 @@ export const JETTY_SPAWN_CLEARANCE_M = 26; // the terrain's own pad law
 // bank's lip at the waterline (waterBank.ts WATER_BANK_LIP_M, 0.12 m; 230: the strand meets the water at its top)
 export const JETTY_BANK_CLEARANCE_M = 0.18;
 export const JETTY_BANK_LANDING_M = 0.05; // on a bank shore the deck lands where the ground comes this close to its underside
+const JETTY_BANK_EDGE_M = 0.25; // and no nearer the water's edge than this
 export const JETTY_CORE_SEARCH_M = 12; // how far inside the water's edge the planar core is looked for
 export const GANGWAY_MIN_RISE_M = 0.40; // a shore end higher than this over the ground gets a gangway
 const GANGWAY_GRADE = 0.36; // rise per metre of run (~20°)
@@ -137,7 +138,9 @@ export function planShoreJetty(
   // height within a few metres of the water) the deck lands ON the bank where the ground meets its underside
   let shoreR = wrackBand(band)[1] + JETTY_SHORE_MARGIN_M;
   if (groundAcross(shoreR) > underside - JETTY_BANK_CLEARANCE_M) {
-    while (shoreR > band.edge + 0.5 && groundAcross(shoreR) > underside - JETTY_BANK_LANDING_M) shoreR -= 0.25;
+    // (230, waterBank.ts) a steep bank now meets the water at its top, a lip over it, so the deck may land within a quarter
+    // metre of the water's edge (it had half a metre of a bank still at the floor)
+    while (shoreR > band.edge + JETTY_BANK_EDGE_M && groundAcross(shoreR) > underside - JETTY_BANK_LANDING_M) shoreR -= 0.25;
     if (groundAcross(shoreR) > underside - JETTY_BANK_LANDING_M) return null;
   }
   const spans = options.spans ?? Math.min(JETTY_MAX_SPANS, Math.max(JETTY_MIN_SPANS,

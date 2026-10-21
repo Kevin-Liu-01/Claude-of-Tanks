@@ -26,7 +26,7 @@ for (const anchor of anchors) {
   // the water's top, not the floor; on a field without bodies the top is the level, as before
   assert.equal(p.deckY, p.surface + 0.65, 'pier deck stays at a believable height above water');
   assert.ok(p.surface >= p.waterLevel, 'the water stands on its floor');
-  assert.ok(hf.getHeightAt(p.boatX, p.boatZ) > p.surface + 0.05, 'the hauled-out boat lies over the water\'s top');
+  assert.ok(hf.getHeightAt(p.boatX, p.boatZ) > p.surface + 0.02, 'the hauled-out boat lies over the water\'s top');
 }
 assert.equal(planRiverLanding(hf, mangrove.terrain.lakes, { lakeIndex: 999, shoreAngleDeg: 0 }), null);
 assert.equal(planRiverLanding({ ...hf, getHeightAt: () => 100 }, mangrove.terrain.lakes, anchors[0]), null,
