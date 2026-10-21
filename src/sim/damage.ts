@@ -1372,6 +1372,8 @@ export function resolvePlateStrike(shell: DamageShell, hit: PlateHit, targetId: 
   shell.distM = Math.max(0, shell.distM - Math.max(0, shell.prevPos.distanceTo(shell.pos) - shell.prevPos.distanceTo(hit.point)));
   ensurePenRoll(shell, rng);
   const event = baseEvent(shell, targetId);
+  // a plate has no hull to damage: no damage roll to report (the round's roll is kept on the shell for any later hit)
+  event.dmgRoll = 0;
   const pen = shell.remainingPenMm;
   event.zone = hit.plate.name;
   event.plateKind = hit.plate.kind;

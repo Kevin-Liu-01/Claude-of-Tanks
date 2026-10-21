@@ -1810,6 +1810,8 @@
   "shotInfo.empty": "尚未记录命中。",
   "shotInfo.emptyShots": "尚未记录命中。",
   "shotInfo.emptyReceived": "暂无受击记录。",
+  "shotInfo.armorRicochet": "{mm} 毫米 · {angle}° 跳弹",
+  "shotInfo.penLegend": "本发 {roll}，该弹此距离平均 {nominal}（±25%）",
   "endOverlay.damageSuffix": "伤害",
   "customCamo.title": "自定义迷彩工作室",
   "customCamo.eyebrow": "本地涂装实验室",
