@@ -920,26 +920,28 @@ function a5SmokeBanks(P:TankBuilderPort,d:Datum): void {
   // Upper tubes are rearward and nearly forward-facing; lower tubes sit
   // further out and forward. A generic stacked outboard bank is not this
   // source arrangement and makes the roof silhouette too wide.
-  for(const [x,y,z,yaw] of [
-    [1.289,2.279,-1.658,.03],[1.296,2.279,-1.441,.03],
-    [1.303,2.278,-1.220,.03],[1.310,2.277,-.987,.03],
-    [1.394,2.046,-1.192,.30],[1.368,2.049,-.821,.25],
-    [1.353,2.049,-.615,.20],[1.367,2.049,-.392,.03],
+  // 2026-10-21 (float-gaps 230): the fifth value is the bracket's inboard arm, measured from its inner face to the
+  // casting along -x at its four corners (largest + 8 mm, to the cm).
+  for(const [x,y,z,yaw,arm] of [
+    [1.289,2.279,-1.658,.03,.07],[1.296,2.279,-1.441,.03,.02],
+    [1.303,2.278,-1.220,.03,.02],[1.310,2.277,-.987,.03,.02],
+    [1.394,2.046,-1.192,.30,.11],[1.368,2.049,-.821,.25,.07],
+    [1.353,2.049,-.615,.20,.05],[1.367,2.049,-.392,.03,.05],
     // The source's negative-X bank is staggered differently; mirroring the
     // positive bank creates a false long outboard shelf in the plan view.
-    [-1.200,2.307,-1.646,-.055],[-1.230,2.302,-1.433,-.055],
-    [-1.261,2.308,-1.217,-.055],[-1.293,2.308,-.979,-.055],
-    [-1.325,2.071,-1.443,-.47],[-1.343,2.071,-1.215,-.47],
-    [-1.355,2.073,-.850,-.39],[-1.375,2.074,-.629,-.30],
+    [-1.200,2.307,-1.646,-.055,.05],[-1.230,2.302,-1.433,-.055,.02],
+    [-1.261,2.308,-1.217,-.055,.02],[-1.293,2.308,-.979,-.055,.03],
+    [-1.325,2.071,-1.443,-.47,.12],[-1.343,2.071,-1.215,-.47,.11],
+    [-1.355,2.073,-.850,-.39,.08],[-1.375,2.074,-.629,-.30,.07],
   ]) {
     // 2026-10-19 (owner float sweep): the lower bank stood 31-68 mm off the casting and the splayed tubes' caps 22 mm
     // off their muzzles; the caps follow the tube axis and each discharger seats on the casting.
-    const ax=[Math.sin(yaw),Math.sin(.79)*Math.cos(yaw),Math.cos(.79)*Math.cos(yaw)];
-    P.snapGroup(`a5-discharger-${x}-${z}`,()=>{
-      equip(P,d,'turretDetail',markSmokeTube(cylZ(.044,.26,14)),x,y,z,-.79,yaw);
-      equip(P,d,'turretDark',cylZ(.034,.012,14),x+ax[0]*.134,y+ax[1]*.134,z+ax[2]*.134,-.79,yaw);
-      equip(P,d,'turretDetail',box(.11,.068,.13),x-Math.sign(x)*.014,y-.089,z-.031);
-    },{reachM:.12});
+    // 2026-10-21 (float-gaps 230): the tubes keep their source stations (leopardX.selftest's asymmetric negative-side
+    // station and fan angle); each bracket grows inboard by its arm onto the casting instead of sliding the discharger.
+    const ax=[Math.sin(yaw),Math.sin(.79)*Math.cos(yaw),Math.cos(.79)*Math.cos(yaw)],side=Math.sign(x);
+    equip(P,d,'turretDetail',markSmokeTube(cylZ(.044,.26,14)),x,y,z,-.79,yaw);
+    equip(P,d,'turretDark',cylZ(.034,.012,14),x+ax[0]*.134,y+ax[1]*.134,z+ax[2]*.134,-.79,yaw);
+    equip(P,d,'turretDetail',box(.11+arm,.068,.13),x-side*(.014+arm/2),y-.089,z-.031);
   }
 }
 
@@ -990,21 +992,25 @@ function a7CurvedWhip(P:TankBuilderPort,d:Datum,x:number,bottom:number,top:numbe
 }
 
 function a6Whip(P:TankBuilderPort,d:Datum,x:number): void {
-  // 2026-10-19 (owner float sweep): the foot stood 74 mm off the bustle roof's edge; the whip seats on it.
-  P.snapGroup(`a6-whip-${x}`,()=>{
-    equip(P,d,'turretDetail',cylY(.0306,.0306,.0722,12),x,2.562,-1.87188);
-    equip(P,d,'turretDark',cylY(.00348,.0171,.047,10),x,2.6215,-1.8716);
-    equip(P,d,'turretDark',cylY(.00348,.00348,.74385,10),x,3.016925,-1.8716);
-  },{reachM:.09});
+  // 2026-10-19 (owner float sweep): the foot stood 74 mm off the bustle roof's edge.
+  // 2026-10-21 (float-gaps 230): the foot and shaft keep their source station (leopardX.selftest); a 20 mm post under
+  // the foot carries it down to the bustle's falling rear deck (embedded 7-43 mm), instead of sliding the whip 59 mm
+  // down and 48 mm forward.
+  equip(P,d,'turretDetail',cylY(.02,.02,.148,10),x,2.454,-1.8716);
+  equip(P,d,'turretDetail',cylY(.0306,.0306,.0722,12),x,2.562,-1.87188);
+  equip(P,d,'turretDark',cylY(.00348,.0171,.047,10),x,2.6215,-1.8716);
+  equip(P,d,'turretDark',cylY(.00348,.00348,.74385,10),x,3.016925,-1.8716);
 }
 
 function a6RoofEquipment(P:TankBuilderPort,d:Datum): void {
-  // 2026-10-19 (owner float sweep): the panorama stood 59 mm over its roof plate; it drops onto it.
-  P.snapGroup('a6-panorama',()=>{
-    equip(P,d,'turretDetail',cylY(.2135,.2135,.06,28),-.2614,2.69,-.282);
-    equip(P,d,'turretDetail',cylY(.195,.195,.1215,28),-.2614,2.757,-.282);
-    a6PanoramaHead(P,d);
-  },{reachM:.08,mode:'down'});
+  // 2026-10-19 (owner float sweep): the panorama stood 59 mm over the commander's hatch and 64 mm over its collar.
+  // 2026-10-21 (float-gaps 230): the panorama keeps its source crown and inset glass (leopardX.selftest); a 0.12 m
+  // pedestal under its base, set 90 mm off the base's centre away from the hatch (clear of the hatch disc by 30 mm),
+  // stands 6 mm into the roof and 2 mm into the base, instead of dropping the whole sight 61 mm.
+  equip(P,d,'turretDetail',cylY(.12,.12,.122,20),-.1789,2.601,-.318);
+  equip(P,d,'turretDetail',cylY(.2135,.2135,.06,28),-.2614,2.69,-.282);
+  equip(P,d,'turretDetail',cylY(.195,.195,.1215,28),-.2614,2.757,-.282);
+  a6PanoramaHead(P,d);
   // The 33.6 mm source island includes its foot; actual shaft rays measure
   // only 6.94 mm through Y 2.7–3.35. Do not extrude the foot up the whip.
   a6Whip(P,d,-.9885);

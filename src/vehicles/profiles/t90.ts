@@ -996,6 +996,8 @@ interface T90ALegacyOptions {
   gunAssemblyRaiseM?: number;
   adoptT90MFamilyGun?: boolean;
   recordSeatReceipt?: boolean;
+  /** The fender lips' inner edge runs into the hull side (false on the Burlak: addT90ALegacyHull). */
+  fenderLipHullSeat?: boolean;
 }
 
 type ResolvedT90ALegacyOptions = Required<T90ALegacyOptions>;
@@ -1012,7 +1014,10 @@ interface T90ALegacyTurretReceiptContext {
   };
 }
 
-function addT90ALegacyHull(P: T90BuilderPort): void {
+// K-5 skirt course hangers (addT90ALegacyHullDeckAndGear): two per 0.56 m block, at its centre +-0.18.
+const T90A_K5_HANGER_ZS: readonly number[] = [0, 1, 2, 3].flatMap((i) => [2.40 - i * 0.55 + 0.18, 2.40 - i * 0.55 - 0.18]);
+
+function addT90ALegacyHull(P: T90BuilderPort, fenderLipHullSeat = true): void {
   const { box } = KIT;
   // VERTEX ROUND r2 (batch-12 oracle normalized to published dims): re-anchor
   // to docs/references/vertex/t90a.json — hull mask +-3.43 (6.865), deck
@@ -1094,6 +1099,11 @@ function addT90ALegacyHull(P: T90BuilderPort): void {
   // fender lips: thin shelves at the ref's 1.14-1.22 outer band (segmented
   // per the r7c prism law so station slices see end faces). Their inner edge runs 10 mm into the 1.60 hull side (owner
   // 2026-10-19 sweep: at 1.62 the whole fender course, and the skirt hung from it, stood 20 mm off the hull).
+  // 2026-10-21 (float-gaps 230): not on the Burlak (`fenderLipHullSeat` false): its narrowed hull reseats every
+  // outboard plate to a 1.68 inner clearance and carries the lips on its closing shelves, and a widened lip's inner
+  // edge (0.94 x 1.59 = 1.495) fell inside that reseat's 1.50 test, leaving the lips 10 cm inboard and the pinned
+  // hull 20 cm narrower (fleetResize20261002).
+  const lipW = fenderLipHullSeat ? 0.19 : 0.16, lipX = fenderLipHullSeat ? 1.685 : 1.70;
   for (const s of [-1, 1]) for (let i = 0; i < 11; i++) {
     // Independent front/side station truth: this is the low outer fender
     // band (1.14..1.22 m), not the inner 1.36 m engine deck.  The old seat
@@ -1108,18 +1118,18 @@ function addT90ALegacyHull(P: T90BuilderPort): void {
       // z -2.82 left open air between the seat and the track, a pocket enclosed in plan: 2 hole cells on the T-90A and
       // 8 on the BMPT T-90 at its 1.05 size in the standard check's top-down scan.
       const seatFront = T90A_REAR_SEAT_FRONT_Z_M;
-      P.add('hull', box(0.19, 0.05, seatFront + 3.00), s * 1.685, 1.17, (seatFront - 3.00) / 2);
+      P.add('hull', box(lipW, 0.05, seatFront + 3.00), s * lipX, 1.17, (seatFront - 3.00) / 2);
       P.add('hull', box(0.056, 0.05, -2.50 - seatFront), s * 1.752, 1.17, (seatFront - 2.50) / 2);
     } else if (i === 1) {
       // The rear climb passes under this segment. Keep the original plan
       // footprint, but seat the shelf on the deck/fender datum instead of
       // through the rising native course.
       P.add('hull', box(0.056, 0.05, 0.255), s * 1.752, 1.27, -2.3275);
-      P.add('hull', box(0.19, 0.05, 0.245), s * 1.685, 1.27, -2.0775);
+      P.add('hull', box(lipW, 0.05, 0.245), s * lipX, 1.27, -2.0775);
     } else {
       // The matching forward transition is i=9. Raise only that supported
       // shelf; the long mid-run course and every side-armor panel stay put.
-      P.add('hull', box(0.19, 0.05, 0.50), s * 1.685, i === 9 ? 1.27 : 1.17, -2.75 + i * 0.545);
+      P.add('hull', box(lipW, 0.05, 0.50), s * lipX, i === 9 ? 1.27 : 1.17, -2.75 + i * 0.545);
     }
   }
 }
@@ -1286,20 +1296,27 @@ function addT90ALegacyHullDeckAndGear(P: T90BuilderPort): void {
   // r10c: the ref outer skirt face is a THIN high band (0.978..1.138 at the
   // +-1.80-1.83 cols); its deep 0.67..1.18 course lives at 1.74-1.79 (studs)
   ruSkirtBand(P, { x: 1.7675, th: 0.036, z0: -2.88, z1: 2.97, yTop: 1.14, yBot: 0.98, panels: 7, lipX: 1.755 });
-  // (2026-10-19: the stud stands 10 mm aft of the course's rear edge so the seated course below leaves it in place.)
-  widthAnchor(P, 1.89, 0.95, 0.40);
+  // (2026-10-21, float-gaps 230: the stud stands at z 0.60, inside the course's aft block (0.47..1.03) on the T-90A
+  // and, reseated with the Burlak's narrowed band, inside that band's lower trim (0.51..1.29); at 0.46 it cleared the
+  // Burlak's trims by 22 mm, at the 10-19 sweep's 0.40 it cleared the T-90A course by 79 mm.)
+  widthAnchor(P, 1.89, 0.95, 0.60);
   // r10b: outer course deepened to the ref's 0.691..1.223 band (front cols
   // +-1.84..1.90 read it; the old 0.93..1.11 studs left 0.18 x 4 cols)
-  // 2026-10-19 (owner float sweep): the course stood 53 mm outboard of the skirt (120 mm on the Burlak's reseated
-  // skirt) with nothing between; each side's course is moved straight inboard onto the skirt face.
   P.visualEraCluster('t90a-k5-skirt-era', 'hull', () => {
-  for (const s of [-1, 1]) P.snapGroup('t90a-k5-skirt-course', () => {
-    for (let i = 0; i < 4; i++) {
-      P.add('hull', box(0.05, 0.53, 0.56), s * 1.863, 0.955, 2.40 - i * 0.55);
-      P.add('hullDark', box(0.04, 0.42, 0.03), s * 1.859, 0.95, 2.15 - i * 0.55);
-    }
-  }, { reachM: 0.13, direction: [-s, 0, 0] });
+  for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
+    P.add('hull', box(0.05, 0.53, 0.56), s * 1.863, 0.955, 2.40 - i * 0.55);
+    P.add('hullDark', box(0.04, 0.42, 0.03), s * 1.859, 0.95, 2.15 - i * 0.55);
+  }
   });
+  // 2026-10-19 (owner float sweep): the course stood 53 mm outboard of the skirt band (1.7855) with nothing between.
+  // 2026-10-21 (float-gaps 230): the course keeps its measured outboard station (outer face 1.888, the front columns'
+  // width carrier; the 10-19 sweep had slid it 61 mm inboard, 126 mm on the Burlak); two hangers per block run from
+  // 6.5 mm inside the band to 7 mm inside the course, at band-panel stations clear of the panel joints and of the
+  // band's own hangers (y 1.11+). Permanent hull detail, not ERA: they stay when a block is lost. The Burlak, whose
+  // narrowed band stands 124 mm inboard of the unscaled course, extends each one (buildT90BurlakHybridNative2026).
+  for (const s of [-1, 1]) for (const z of T90A_K5_HANGER_ZS) {
+    P.add('hullDetail', box(0.066, 0.05, 0.04), s * 1.812, 1.06, z);
+  }
 }
 
 function addT90ALegacyTurret(P: T90BuilderPort, {
@@ -1808,6 +1825,7 @@ function buildT90ALegacy(P: T90BuilderPort, {
   gunAssemblyRaiseM = T90A_GUN_ASSEMBLY_RAISE_M,
   adoptT90MFamilyGun = true,
   recordSeatReceipt = true,
+  fenderLipHullSeat = true,
 }: T90ALegacyOptions = {}): void {
   const options: ResolvedT90ALegacyOptions = {
     turretSeatZ,
@@ -1821,8 +1839,9 @@ function buildT90ALegacy(P: T90BuilderPort, {
     gunAssemblyRaiseM,
     adoptT90MFamilyGun,
     recordSeatReceipt,
+    fenderLipHullSeat,
   };
-  addT90ALegacyHull(P);
+  addT90ALegacyHull(P, fenderLipHullSeat);
   addT90ALegacyHullDeckAndGear(P);
   const receiptContext = addT90ALegacyTurret(P, options);
   addT90ALegacyGun(P, options, receiptContext);
@@ -7959,13 +7978,17 @@ function finishT90BurlakNative2026(P: T90BuilderPort): void {
   P.add('turret', box(0.52, 0.14, 0.48), 0.38, 0.63, -0.70);
   P.add('turretDark', torus(0.22, 0.022, 18), 0.38, 0.71, -0.70);
   // 2026-10-19 (owner float sweep): the sight head stood 40 mm over its seat box (and its window 19 mm off its face),
-  // and the left hatch ring 74 mm over the crown with the commander station on it. The head sits 2 mm into the box,
-  // the window lies on its raked face, and the ring's collar runs down into the crown.
+  // and the left hatch ring 74 mm over the crown with the commander station on it. The window lies on the head's
+  // raked face, and the ring's collar runs down into the crown.
+  // 2026-10-21 (float-gaps 230): the head keeps its 0.92 station (its crown is the turret's top, pinned by
+  // fleetResize20261002; the 10-19 sweep had dropped it 42 mm into the box); a 50 mm neck inside the slew ring
+  // (corners 21 mm inside the ring's tube) runs from 2.5 mm inside the seat box to 7.5 mm inside the head.
+  P.add('turret', box(0.26, 0.05, 0.24), 0.38, 0.7225, -0.70);
   P.add('turret', orientedSlab(
     [-0.15, -0.18, -0.14], [0.15, -0.18, -0.14], [0.15, -0.18, 0.14], [-0.15, -0.18, 0.14],
     [-0.11, 0.18, -0.10], [0.11, 0.18, -0.10], [0.11, 0.18, 0.10], [-0.11, 0.18, 0.10],
-  ), 0.38, 0.878, -0.70);
-  P.add('turretGlass', box(0.19, 0.16, 0.012), 0.38, 0.878, -0.576, -0.111, 0, 0);
+  ), 0.38, 0.92, -0.70);
+  P.add('turretGlass', box(0.19, 0.16, 0.012), 0.38, 0.92, -0.576, -0.111, 0, 0);
   P.add('turret', cylY(0.25, 0.28, 0.22, 18), -0.48, 0.72, -0.34);
   P.add('turretDark', cylY(0.22, 0.22, 0.022, 16), -0.48, 0.84, -0.34);
   P.add('turret', cylY(0.20, 0.23, 0.09, 16), 0.38, 0.77, -0.24);
@@ -8089,6 +8112,7 @@ function buildT90BurlakHybridNative2026(P: T90BuilderPort): void {
     gunAssemblyRaiseM: 0,
     adoptT90MFamilyGun: false,
     recordSeatReceipt: false,
+    fenderLipHullSeat: false,
   });
   // Burlak's hull shoulders sit inside the common T-90A track lanes.  Keep
   // the certified native six-wheel course at full gauge, but narrow the
@@ -8116,6 +8140,21 @@ function buildT90BurlakHybridNative2026(P: T90BuilderPort): void {
     if (rightPlate) geo.translate(1.68 - bounds.min.x, 0, 0);
     else if (leftPlate) geo.translate(-1.68 - bounds.max.x, 0, 0);
   });
+  // 2026-10-21 (float-gaps 230): the K-5 skirt course (visual ERA, outside the section scale) keeps its unscaled
+  // 1.838..1.888 station, 124 mm outboard of the reseated band (1.68..1.714). Each shared course hanger, scaled with
+  // the hull detail to 1.672..1.734 at y x0.92+0.12 and z x1.02, gets an extension from 9 mm inside its outboard end to
+  // 7 mm inside the course.
+  for (const s of [-1, 1]) for (const z of T90A_K5_HANGER_ZS) {
+    P.add('hullDetail', KIT.box(0.12, 0.034, 0.036), s * 1.785, 1.095, z * 1.02);
+  }
+  // The fender lips keep their reseated 1.68..1.83 station (fenderLipHullSeat false). Aft of the closing shelves
+  // (z < -1.30) nothing carries them: the low i=2 lip stands 4.6 mm over the reseated band (top 1.1688) and the raised
+  // i=1 pair 97 mm over it. A spacer pair and a web, inside the band's outboard plan (1.68..1.714), carry them from
+  // 5.8 mm inside the band to 6.6 mm inside the lip.
+  for (const s of [-1, 1]) {
+    for (const z of [-1.85, -1.55]) P.add('hullDetail', KIT.box(0.02, 0.017, 0.04), s * 1.695, 1.1715, z);
+    P.add('hullDetail', KIT.box(0.02, 0.109, 0.06), s * 1.695, 1.2175, -2.17);
+  }
   // Closing fender shelves. Narrowing the inherited T-90A hull and then
   // reseating its outboard skirt course used to leave a 20–30 cm open air
   // channel down both shoulders. These mirrored, segmented plates overlap

@@ -95,11 +95,12 @@ function panoramicSight(P: TankBuilderPort): void {
     classicTurret(P, 'turretDetail', box(.017, .405, .3137), x, 2.6747, .8158);
   for (const y of [2.483, 2.875])
     classicTurret(P, 'turretDetail', box(.40135, .022, .3137), .545325, y, .8158);
-  // 2026-10-19 (owner float sweep): the window panel hung between the shelves (33 and 22 mm clear) and its glass 12 mm
-  // ahead of it: the panel spans shelf to shelf and the glass lies on its face
+  // 2026-10-19 (owner float sweep): the window panel hung between the shelves (33 and 22 mm clear): it spans shelf to
+  // shelf. The glass keeps its recessed source station 12 mm ahead of it (the sight's optical air, leclercClassicX
+  // selftest), a pane inside the head's window
   classicTurret(P, 'turretDark', box(.249, .392, .010), .574089, 2.679, .90052);
   classicTurret(P, 'turretGlass', box(.245412, .308755, .002),
-    .574089, 2.6844435, .9065);
+    .574089, 2.6844435, .918432);
   // Rear roof stock measured to source diameter; contacts the crew support.
   classicTurret(P, 'turretDetail', cylY(.195, .195, .075, 40), .545, 2.447, .79);
 }

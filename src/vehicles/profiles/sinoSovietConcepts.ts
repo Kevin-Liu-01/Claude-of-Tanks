@@ -6,7 +6,7 @@ import {boxSections} from './measuredPrimitives.ts';
 import {buildT72B3XHull} from './t72b3X.ts';
 import {buildT80UXHull} from './t80uX.ts';
 import {buildT72B3MXHull} from './t72b3mX.ts';
-import {buildType96Turret} from './type96bX.ts';
+import {addType96GunnerSightPlinth,buildType96Turret} from './type96bX.ts';
 import {EASTERN_SOURCE_STUDIES} from '../easternSourceStudyData.ts';
 import {attachedCage,cheekEraCassette,supportedSensor,strappedPack} from './modernizationFittings.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -35,6 +35,7 @@ function build(P:TankBuilderPort,variant:Variant):void {
   P.turretG.position.set(...frame.turret);
   P.gunG.position.set(frame.gun[0]-frame.turret[0],frame.gun[1]-frame.turret[1],frame.gun[2]-frame.turret[2]);
   buildType96Turret(P,{bootFloor:BOOT_FLOOR[variant]});
+  addType96GunnerSightPlinth(P);   // the gunner's sight housing stood 60 mm over the roof (owner 2026-10-19 float sweep)
   P.turretG.position.set(frame.turret[0],y,z);
   P.add('turret',cylY(1.05,1.08,.09,40),0,.02,0);
   if(variant==='long'){

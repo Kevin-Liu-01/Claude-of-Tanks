@@ -142,11 +142,6 @@ function eyeSupports(P:TankBuilderPort):void {
 }
 
 function rightEyeBacking(P:TankBuilderPort):void {
-  // 2026-10-19 (owner float sweep): the panel and its cover stood 24 mm off the shoulder; they are seated on it.
-  P.snapGroup('t90sm-eye-backing',()=>rightEyeBackingParts(P),{reachM:.04});
-}
-
-function rightEyeBackingParts(P:TankBuilderPort):void {
   // Separate 3 mm panel behind the right opening, not the old raised shelf.
   P.addEquipment('hullDetail',KIT.box(.22719,.058816,.0032),1.50612,1.39286,-3.3019);
   // Its narrow outboard folded cover reaches the existing raised engine
@@ -157,6 +152,12 @@ function rightEyeBackingParts(P:TankBuilderPort):void {
   ];
   P.addEquipment('hullDetail',sectionSolid(rows.map(([z,inner,outer,thickness])=>({z,
     ring:[[1.425,inner-thickness],[1.625,outer-thickness],[1.625,outer],[1.425,inner]],
+  }))));
+  // 2026-10-21 (float-gaps 230): the panel and cover keep their source stations (the right-eye air ray reaches the
+  // panel at -3.302); the cover's outboard edge stood 24-40 mm over the raised side case, so a 20 mm web under that
+  // edge runs from 6 mm inside the case top to 4 mm inside the cover (it was the 10-19 sweep's 24 mm float).
+  P.addEquipment('hullDetail',sectionSolid(([[-3.235,1.4504,1.4932],[-3.195,1.4854,1.5411]] as const).map(([z,low,high])=>({z,
+    ring:[[1.600,low],[1.620,low],[1.620,high],[1.600,high]],
   }))));
 }
 

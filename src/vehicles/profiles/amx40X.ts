@@ -197,11 +197,14 @@ function turretRoof(P:TankBuilderPort):void {
   put(P,'turretDetail',cylY(.2845,.2845,.0293,32),.446,2.416,.00919);
   for(const x of[.24,.66])put(P,'turretDetail',beamBetween([x,2.435,-.05],[x,2.48,.10],.014),0,0,0);
   // The separate source rear meteo mast is unchanged by cupola correction.
-  const mast=[[0,2.35049],[.114,2.35049],[.114,2.58729],[.04945,2.66349],
+  // 2026-10-19 (owner float sweep): the mast foot stood 74 mm over the roof.
+  // 2026-10-21 (float-gaps 230): the mast keeps its source stations (amx40X.selftest's tapered meteo mast); its foot
+  // drum runs on down from 2.35049 to 2.255, through the rear roof plate the sweep dropped 121 mm under it (top 2.269-
+  // 2.289 over the footprint) and into the casting, instead of the mast dropping 38 mm onto the rear stowage.
+  const mast=[[0,2.255],[.114,2.255],[.114,2.58729],[.04945,2.66349],
     [.04945,2.86369],[.03415,2.86369],[.03415,3.06489],[.04093,3.07069],
     [.04093,3.11269],[0,3.11269]];
-  // 2026-10-19 (owner float sweep): the mast foot stood 74 mm over the roof; dropped onto it.
-  P.snapGroup('amx40-meteo-mast',()=>put(P,'turretDetail',new THREE.LatheGeometry(mast.map(([r,y])=>new THREE.Vector2(r,y)),24),.01306,0,-1.77856),{reachM:.10,mode:'down'});
+  put(P,'turretDetail',new THREE.LatheGeometry(mast.map(([r,y])=>new THREE.Vector2(r,y)),24),.01306,0,-1.77856);
   recess(P,'turretDetail',-.5584,2.787,.0582,.220,.175,.0953);
   for(const x of[-1.007,1.024]) {
     put(P,'turretDetail',box(.112,.095,.126),x,2.194,-1.693);

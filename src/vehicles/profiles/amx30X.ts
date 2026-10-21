@@ -191,7 +191,13 @@ function roof(P: TankBuilderPort): void {
   equipment(P, 'turretDetail', cylY(.390, .390, .021, 32), -.553, 2.628, -.235);
   // 2026-10-19 (owner float sweep): three vision blocks on the 0.43 m circle stood 64 mm over the 0.39 m ring; a low
   // collar under the circle carries all ten.
-  equipment(P, 'turretDetail', cylY(.445, .445, .07, 32), -.553, 2.672, -.235);
+  // 2026-10-21 (float-gaps 230): the collar is an annulus (r .400-.445) standing on the plinth, not a solid disc: the
+  // disc buried the recessed hatch and filled the cupola's open space (amx30X.selftest). Its top stays at 2.707.
+  const collar = new THREE.LatheGeometry([
+    new THREE.Vector2(.400, 0), new THREE.Vector2(.445, 0), new THREE.Vector2(.445, .096),
+    new THREE.Vector2(.400, .096), new THREE.Vector2(.400, 0),
+  ], 32);
+  equipment(P, 'turretDetail', collar, -.553, 2.611, -.235);
   for (const [x,w,z,depth] of [[-.55787,.24894,.03597,.12208],[-.73657,.10847,.03338,.17865]]) {
     equipment(P, 'turretDetail', box(w,.2578,depth),x,2.74327,z);
   }
@@ -302,8 +308,10 @@ function gun(P: TankBuilderPort): void {
   // 2026-10-19 (owner float sweep): the hood stood 174 mm outboard of the mantlet and its window panel only met the
   // walls edge-on; a bracket arm carries the hood and the panel runs into the walls.
   add('gunMount', box(.27, .12, .16), .715, 1.95, 1.60);
-  add('gunMountDark', box(.46, .469, .009), 1.078, 2.062, 1.665);
-  add('gunMountGlass', box(.421, .430, .004), 1.078, 2.062, 1.6705);
+  // 2026-10-21 (float-gaps 230): the glass keeps its source surface (z 1.680, amx30X.selftest); the dark panel behind
+  // it grows 7.5 mm forward from its unchanged back face so the glass sits 1 mm into it instead of 6.5 mm clear.
+  add('gunMountDark', box(.46, .469, .0165), 1.078, 2.062, 1.66875);
+  add('gunMountGlass', box(.421, .430, .004), 1.078, 2.062, 1.678);
   // Separate coax tube and its through-mantlet socket.
   add('gunMountDark', cylZ(.054, .23, 20), .412, 1.859, 1.919);
   add('gunMountDark', cylZ(.032, .91, 20), .412, 1.859, 2.453);

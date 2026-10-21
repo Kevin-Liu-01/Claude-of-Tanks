@@ -221,8 +221,11 @@ function addHullShell(P: PumaS1BuilderPort): void {
     [1.44, 1.48, 1.66, 1.47, 1.28, 1.80, 2.08],
     [1.72, 1.42, 1.56, 1.43, 1.28, 1.79, 1.98],
   ]));
-  // 2026-10-19 (owner float sweep): the bow plate stood 50-70 mm ahead of the tub's front face; set back onto it.
-  P.add('hull', box(2.12, 0.54, 0.16), 0, 1.02, 3.665, -0.08, 0, 0);
+  // 2026-10-19 (owner float sweep): the bow plate stood 50-70 mm ahead of the tub's front face. It keeps its station
+  // (the frontal envelope the balance bands were reviewed on: seated 55 mm back, the S1's Tier X duel at 120 m fell from
+  // 0.238 to 0.167) and a web behind it, inset 60 mm round its edges, closes the gap into the tub.
+  P.add('hull', box(2.12, 0.54, 0.16), 0, 1.02, 3.72, -0.08, 0, 0);
+  P.add('hull', box(2.00, 0.42, 0.09), 0, 1.02, 3.615, -0.08, 0, 0);
   P.add('hullDark', box(2.64, 0.035, 2.44), 0, 2.045, -1.52);
   for (let index = 0; index < 12; index++) {
     P.add('hullDetail', box(2.42, 0.018, 0.052), 0, 2.069, -2.57 + index * 0.16);

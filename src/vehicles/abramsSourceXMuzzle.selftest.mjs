@@ -65,7 +65,7 @@ const capture=(_bucket,g,x,y,z,rx,ry,rz)=>{
  if(g.name==='abramsSourceX_MainTube'){tube=new T.Mesh(g,material);tube.position.set(x,y,z);tube.rotation.set(rx,ry,rz);tube.updateMatrixWorld(true);}else g.dispose();
 };
 buildAbramsSourceXEquipment({q:true,turretG:groups[0],gunG:groups[1],recoilG:groups[2],mats:{dark:material},disposables,
- spec:{armor:{turretPlates:[]}},destructibleCluster:(_n,f)=>f(),addEquipment:capture,addCupola:capture,addHatch:capture,addExternalArmor:capture},
+ spec:{armor:{turretPlates:[]}},destructibleCluster:(_n,f)=>f(),snapGroup:(_label,build)=>build(),addEquipment:capture,addCupola:capture,addHatch:capture,addExternalArmor:capture},
  {a1:true,urbanArmor:false,curvedArat:false,sepv3:false,ukrainian:false},{turret:[0,0,0],gun:[0,0,0]});
 groups.forEach(g=>g.traverse(o=>{if(o.isMesh)o.geometry.dispose();}));disposables.forEach(g=>g.dispose());assert.ok(tube);
 // Source-only dYN9LS: true .06064 bore, flat rim from .061 through .076.

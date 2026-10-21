@@ -159,8 +159,10 @@ function merkava3FrontDeck(P: TankBuilderPort): void {
   // Driver cover, transverse hinge and right-hand access cover are distinct
   // fitted parts, not a generic grille repeated over the entire glacis.
   // 2026-10-19 (owner float sweep): the driver cover stood 43 mm and its hinge 69 mm over the glacis; both drop onto it
-  P.snapGroup('merkava3-driver-cover',()=>deckField(P,'hullDetail',[[2.79,-.67,-.53,1.675,1.675],
-    [2.97,-.78,-.52,1.622,1.622],[3.119,-.81,-.55,1.576,1.576]],.022),{reachM:.06,mode:'down'});
+  // 2026-10-21 (float-gaps 230): the cover keeps its source top (westXGeometry.selftest's shaped front clamp body); it
+  // grows down instead, 22 -> 72 mm, so its sides reach 4-5 mm into the parallel glacis plate 45 mm under it.
+  deckField(P,'hullDetail',[[2.79,-.67,-.53,1.675,1.675],
+    [2.97,-.78,-.52,1.622,1.622],[3.119,-.81,-.55,1.576,1.576]],.072);
   P.addEquipment('hullDetail',torus(.084,.016,20,8),-.527,1.671,2.73,1.285);
   P.snapGroup('merkava3-driver-cover',()=>P.addEquipment('hullDetail',box(.21,.019,.033),-.666,1.626,3.005,.29,.16),{reachM:.08,mode:'down'});
   P.addEquipment('hullDetail',box(.649,.0483,.4816),.88868,1.78628,1.20122);

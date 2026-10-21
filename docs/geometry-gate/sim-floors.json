@@ -185,7 +185,7 @@
     "t90a_2004": {"panYM":0.28,"bottomYM":0,"hullMin":[-1.89,0.28,-3.44],"hullMax":[1.89,1.375,3.445],"turretMinY":-0.02},
     "t90a_2006": {"panYM":0.378,"bottomYM":0,"hullMin":[-1.9792,0.378,-4.9928],"hullMax":[1.9792,1.7523,2.2114],"turretMinY":-0.0945},
     "t90a_burlak": {"panYM":0.4849,"bottomYM":0,"hullMin":[-1.795,0.4849,-3.367],"hullMax":[1.795,1.505,3.755],"turretMinY":-0.157},
-    "t90a_burlak_proto": {"panYM":0.3965,"bottomYM":0,"hullMin":[-1.8193,0.3965,-3.6842],"hullMax":[1.8193,1.4542,3.6896],"turretMinY":-0.189,"accepted":{"reason":"the K-5 skirt course seats 10 cm inboard on the hull side it floated off (owner float sweep 2026-10-19)","by":"kevinliu","date":"2026-10-21","from":{"hullMinX":-1.9219,"hullMaxX":1.9219}}},
+    "t90a_burlak_proto": {"panYM":0.3965,"bottomYM":0,"hullMin":[-1.9219,0.3965,-3.6842],"hullMax":[1.9219,1.4542,3.6896],"turretMinY":-0.189},
     "t90a_vladimir": {"panYM":0.3896,"bottomYM":0,"hullMin":[-1.828,0.414,-3.603],"hullMax":[1.828,1.514,3.921],"turretMinY":-0.012},
     "t90am": {"panYM":0.42,"bottomYM":0,"hullMin":[-1.9294,0.42,-3.9616],"hullMax":[1.9294,1.638,3.9616],"turretMinY":-0.84},
     "t90m": {"panYM":0.3134,"bottomYM":0,"hullMin":[-1.8398,0.3134,-3.47],"hullMax":[1.8398,1.366,3.735],"turretMinY":-0.012},

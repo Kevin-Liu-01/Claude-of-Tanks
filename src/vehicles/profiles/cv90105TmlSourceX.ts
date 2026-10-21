@@ -108,18 +108,17 @@ function buildTmlTurretArmor(P: TankBuilderPort, py: number, pz: number): void {
 
 function buildTmlRoofFittings(P: TankBuilderPort, py: number, pz: number): void {
   // Broad, low source cupola and polygonal cover; no thin generic sight tower.
-  // 2026-10-19 (owner float sweep): the cupola with its hatch, blocks, rail and sight stood 34 mm over the roof; the
-  // station drops onto it as one.
-  P.snapGroup('tml-cupola-station',()=>{
-    P.addCupola('turret',cylY(.48,.51,.145,10).scale(1,1,1.055),-.471,2.386-py,-.885-pz);
-    P.addHatch('turret',cylY(.435,.455,.075,8).scale(1,1,.87),-.472,2.524-py,-.99-pz);
-    for(const [x,z,ry]of[[-.80,-.785,-1.1],[-.766,-1.162,-2.2],[-.205,-1.24,2.5],[-.09,-.91,1.4]]) {
-      turretEquipment(P,'turretDetail',box(.18,.09,.12),x,2.486,z,0,ry);
-      turretEquipment(P,'turretGlass',box(.13,.045,.014),x+Math.sin(ry)*.064,2.49,z+Math.cos(ry)*.064,0,ry);
-    }
-    turretEquipment(P,'turretDetail',cylX(.031,.43,P.q?16:8),-.455,2.568,-1.27);
-    optic(P,-.314,2.645,-.615,.273,.17,.19);
-  },{reachM:.05,mode:'down'});
+  // 2026-10-19 (owner float sweep): the cupola stood 34 mm over the roof. 2026-10-21 (float-gaps 230): the station
+  // keeps its source heights (the hatch top is the turret's measured top, suppliedShadowCoverage.selftest.mjs) and the
+  // cupola's skirt runs 35.5 mm deeper on the same taper, 2 mm into the roof (r .5173 at its new foot).
+  P.addCupola('turret',cylY(.48,.5173,.1805,10).scale(1,1,1.055),-.471,2.36825-py,-.885-pz);
+  P.addHatch('turret',cylY(.435,.455,.075,8).scale(1,1,.87),-.472,2.524-py,-.99-pz);
+  for(const [x,z,ry]of[[-.80,-.785,-1.1],[-.766,-1.162,-2.2],[-.205,-1.24,2.5],[-.09,-.91,1.4]]) {
+    turretEquipment(P,'turretDetail',box(.18,.09,.12),x,2.486,z,0,ry);
+    turretEquipment(P,'turretGlass',box(.13,.045,.014),x+Math.sin(ry)*.064,2.49,z+Math.cos(ry)*.064,0,ry);
+  }
+  turretEquipment(P,'turretDetail',cylX(.031,.43,P.q?16:8),-.455,2.568,-1.27);
+  optic(P,-.314,2.645,-.615,.273,.17,.19);
   P.addHatch('turret',box(.49,.046,.49),.548,2.313-py,-.303-pz);
   for(const x of [.365,.735])turretEquipment(P,'turretDetail',box(.044,.035,.13),x,2.348,-.49);
   turretEquipment(P,'turretDetail',box(.21,.023,.035),.564,2.352,-.13);

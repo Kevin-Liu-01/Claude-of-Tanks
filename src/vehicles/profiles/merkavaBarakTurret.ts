@@ -122,8 +122,11 @@ function hatchRing(P: TankBuilderPort): void {
       {z:.064,ring:[[-.143,0],[.143,0],[.143,.044],[-.143,.044]]},
     ]);
     put(P,'turretDetail',caseGeo,x,2.567,z,angle);
-    // 2026-10-19 (owner float sweep): the window stood 33-34 mm off its case's sloped head; seated on it
-    P.snapGroup('barak-hatch-periscope',()=>optic(P,KIT.box(.216,.035,.007),x+Math.sin(angle)*.051,2.687,z+Math.cos(angle)*.051,angle),{reachM:.05});
+    // 2026-10-21 (float-gaps 230): the window keeps its source station (merkavaModernOptics.selftest) 33 mm ahead of the
+    // case's sloped head; a periscope head block, inset 6/3 mm inside the window's outline, runs from 10-45 mm inside
+    // the slope to 0.5 mm into the window's back, so the window is carried instead of standing clear.
+    put(P,'turretDetail',KIT.box(.204,.029,.098),x-Math.sin(angle)*.001,2.687,z-Math.cos(angle)*.001,angle);
+    optic(P,KIT.box(.216,.035,.007),x+Math.sin(angle)*.051,2.687,z+Math.cos(angle)*.051,angle);
   }
   for(const x of[-.7428,-.1517]){
     put(P,'turretDetail',KIT.box(.026,.10,.38),x,2.604,-1.44);

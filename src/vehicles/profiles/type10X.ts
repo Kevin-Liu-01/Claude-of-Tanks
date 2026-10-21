@@ -256,8 +256,10 @@ function turretArmor(P:TankBuilderPort):void {
         return{z,ring:side<0?ring.reverse():ring};
       });
     P.add('turret',sectionSolid(sections),-PIVOT[0],-PIVOT[1],-PIVOT[2]);
-    // 2026-10-19 (owner float sweep): the forward edge strips stood 5-34 mm off the falling cheek; each seats on it
-    for(let i=0;i<5;i++)P.snapGroup('type10-side-strip',()=>turret(P,'turretDetail',box(.027,.009,.19),side*1.34,2.030,-1.22+i*.50),{reachM:.05});
+    // 2026-10-19 (owner float sweep): the forward edge strips stood 5-34 mm off the falling cheek; each seats on it.
+    // 2026-10-21 (float-gaps 230): straight down at its authored x: along the shortest vector the front strip slid 26 mm
+    // inboard onto the 45-degree cheek bevel, over the source raised-roof facet at x 1.2 (type10X.selftest).
+    for(let i=0;i<5;i++)P.snapGroup('type10-side-strip',()=>turret(P,'turretDetail',box(.027,.009,.19),side*1.34,2.030,-1.22+i*.50),{reachM:.05,mode:'down'});
   }
   addType10CoaxSurround(P,PIVOT);
 }

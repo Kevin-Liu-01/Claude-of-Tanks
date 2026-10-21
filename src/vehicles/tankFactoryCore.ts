@@ -7641,7 +7641,16 @@ function* createTankOwnedSteps(
     },
     hangMudguard(label, bucket, geo, x = 0, y = 0, z = 0,
       rx = 0, ry = 0, rz = 0, s = 1) {
-      P.addMudguard(label, bucket, geo, x, y, z, rx, ry, rz, s);
+      // Inside an ERA or destructible cluster the guard is that cluster's armour (a Relikt side tile): it takes P.add's
+      // route (external-armour bucket, cluster span, seat role) and is registered and hung from there.
+      const eraOwner = activeVisualEraCluster?.owner
+        ?? (activeDestructibleCluster ? (bucket.startsWith('turret') ? 'turret' : 'hull') : null);
+      if (eraOwner) {
+        const target = `${eraOwner}ExternalArmor`, list = buckets[target] || (buckets[target] = []), at = list.length;
+        P.add(bucket, geo, x, y, z, rx, ry, rz, s);
+        mudguardParts.push({ label, bucket: target, part: list[at] });
+        partCensus?.(target, list[at], 'mudguard');
+      } else P.addMudguard(label, bucket, geo, x, y, z, rx, ry, rz, s);
       mudguardHangRequests.push({ label, part: mudguardParts[mudguardParts.length - 1].part, strapBucket: 'hullDetail' });
     },
     snapGroup(label, build, options = {}) {

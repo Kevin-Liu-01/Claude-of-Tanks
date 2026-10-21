@@ -4709,6 +4709,12 @@ function buildChieftainUpper2026(
   const radioShoeY = 0.54;
   const radios = [[-0.92, -1.62, 0.76], [0.82, -1.73, 0.66], [0.18, -1.92, 0.54]];
   const buildChieftainUpper2026MarkingsStage1 = (): void => {
+    // 2026-10-21 (float-gaps 230): the left station's shoe stands 0.165 m outboard of the bustle pack's -0.69 side,
+    // over the open gap to the flank basket; dropped 0.28 m by the snap it sank onto the basket tray's inner lip and its
+    // whip lost the source tip height. An antenna bracket cantilevered from the pack side (5 mm into it, its top 3 mm
+    // into the shoe) carries the shoe at the pack-top 0.49 seat instead.
+    P.add('turretDetail', box(0.30, 0.03, 0.17), -0.835, 0.478, -1.62);
+    P.add('turretDetail', box(0.03, 0.19, 0.03), -0.7425, 0.399, -1.62, 0, 0, 0.695);   // gusset to the pack side
     // each antenna stack stands on the falling rear roof under its shoe (owner 2026-10-19 sweep: at the common 0.54
     // shoe height the outer two hovered up to 0.27 m over it)
     for (const [x, z, h] of radios) P.snapGroup('chieftain-radio-mast', () => {

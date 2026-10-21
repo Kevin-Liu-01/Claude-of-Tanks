@@ -107,14 +107,17 @@ function deck(P:TankBuilderPort):void{
   for(const x of [-.85,-.426,-.152,.152,.426,.85])P.addEquipment('hullDetail',beamBetween([x,.585,3.02],[x,.787,3.14],.017,8));
 }
 function rear(P:TankBuilderPort):void{
-  // each drum with its bands and struts is seated on the stern it stood 15 cm off (owner 2026-10-19 sweep)
-  for(const x of [-.59360,.58002])P.snapGroup('t72bu-rear-drum',()=>{
+  // 2026-10-21 (float-gaps 230): the source drums, bands and cradle struts stay where they were measured
+  // (t72buXGeometry.selftest.mjs pins the drum crowns); the struts' upper ends stood 15 cm off the upper rear plate, so a
+  // foot leg runs from 3 cm down each strut into that plate (its end 24 mm under the plate's face).
+  for(const x of [-.59360,.58002]){
     P.addEquipment('hullDetail',cylX(.295645,.8858,32),x,1.47009,-3.4954);
     for(const dx of [-.255,.255]){
       P.addEquipment('hullDark',torus(.298,.009,28,6).rotateZ(Math.PI/2),x+dx,1.47009,-3.4954);
       P.addEquipment('hullDetail',beamBetween([x+dx,1.355,-3.125],[x+dx,1.083,-3.69],.009,8));
+      P.addEquipment('hullDetail',beamBetween([x+dx,1.342,-3.152],[x+dx,1.17,-3.08],.012,8));
     }
-  },{reachM:.17});
+  }
   P.addEquipment('hullDetail',cylX(.098,3.10,24),-.0068,.90353,-3.23376);
   for(const x of [-.937,.924]){
     P.addEquipment('hullDetail',torus(.063,.020,20,8).rotateX(Math.PI/2),x,.944,-3.29);

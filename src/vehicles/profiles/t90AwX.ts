@@ -138,12 +138,16 @@ function roofEra(P:TankBuilderPort):void{
 function casesAndOptics(P:TankBuilderPort):void{
   addT90AWRearStowage(P);
   addT90AWRearCases(P);
-  // 2026-10-19 (owner float sweep): the rear roll stood 43 mm off the stowage and its two straps hung 28 mm past its
-  // ends; the straps now grip the roll and the roll is seated on the stowage.
-  P.snapGroup('t90aw-rear-roll',()=>{
-    top(P,'turretDetail',cylX(.09535,1.2363,28),-.0444,1.92913,-1.63583);
-    for(const x of [-.60,.50])top(P,'turretDetail',torus(.104,.016,24,8).rotateZ(Math.PI/2),x,1.9296,-1.6356);
-  },{reachM:.06});
+  // 2026-10-19 (owner float sweep): the rear roll stood off the stowage and its two straps hung 28 mm past its ends;
+  // the straps now grip the roll.
+  // 2026-10-21 (float-gaps 230): the roll keeps its source station (t90AwXRearStowage.selftest's rear rays at x 0/+-0.5
+  // measure it); the straps sit at -0.62/+0.53, clear of those ray planes, and each strap's tail runs from its crown
+  // forward over the roll into the stowage's rear face (the right one through its lid fitting), carrying the roll.
+  top(P,'turretDetail',cylX(.09535,1.2363,28),-.0444,1.92913,-1.63583);
+  for(const x of [-.62,.53]){
+    top(P,'turretDetail',torus(.104,.016,24,8).rotateZ(Math.PI/2),x,1.9296,-1.6356);
+    top(P,'turretDetail',box(.030,.012,.140),x,2.040,-1.575);
+  }
   P.addCupola('turret',cylY(.352,.115,32),-.603-YAW[0],2.323-YAW[1],-.30873-YAW[2]);
   top(P,'turretDetail',cylY(.345,.038,32).scale(1,1,.73),-.603,2.438,-.30873);
   P.addCupola('turret',cylY(.3394,.10,32).scale(1,1,.707),.47555-YAW[0],2.174-YAW[1],-.39108-YAW[2]);
@@ -153,15 +157,17 @@ function casesAndOptics(P:TankBuilderPort):void{
     [-.593,2.40608,.16547,.2427,.1304,.0818],[-.8325,2.46833,-.01003,.2207,.0977,.116],
     [-.8918,2.47738,-.15923,.2065,.187,.1354],[.73705,2.23878,-.76763,.271,.1504,.249]])top(P,'turretDetail',box(w,h,d),x,y,z);
   addT90AWApsHousings(P);
-  // 2026-10-19 (owner float sweep): the rear mast's foot stood 26 mm over the roof (y 2.18015); it stands 2 mm in.
-  antenna(P,-.27255,2.152,-.89241);antenna(P,1.05213,1.99952,.52246);
+  // 2026-10-19 (owner float sweep): the rear mast's foot stood 26 mm over the roof; 2026-10-21 (float-gaps 230): the
+  // whip keeps its source station (y 2.18015) and its foot collar runs down to 2.152, 2 mm into the roof.
+  antenna(P,-.27255,2.18015,-.89241,2.152);antenna(P,1.05213,1.99952,.52246);
   addT90AWMeteo(P);
   addT90AWProjectors(P);
   addT90AWOpticalHeads(P);
   addT90AWSmallOptics(P);
 }
-function antenna(P:TankBuilderPort,x:number,y:number,z:number):void{
-  const rows=[[0,0],[.0129,0],[.0185,.0694],[.0115,.1385],[.012,.5989],[.0094,.6042],[.0093,.7922],
+function antenna(P:TankBuilderPort,x:number,y:number,z:number,footY=y):void{
+  // a foot under the source station (footY < y) extends the base collar straight down to it; the whip above is unchanged
+  const rows=[...(footY<y?[[0,footY-y],[.0129,footY-y]]:[[0,0]]),[.0129,0],[.0185,.0694],[.0115,.1385],[.012,.5989],[.0094,.6042],[.0093,.7922],
     [.0064,.7986],[.0086,.8041],[.0082,1.0165],[.0078,1.2289],[.0074,1.4414],[.007,1.6538],[.0066,1.8662],[.0062,2.0786],[.0058,2.291],[0,2.291]];
   top(P,'turretDetail',new THREE.LatheGeometry(rows.map(([r,h])=>new THREE.Vector2(r,h)),6).rotateY(Math.PI/6),x,y,z);
 }
