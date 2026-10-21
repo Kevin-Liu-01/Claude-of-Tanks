@@ -311,7 +311,8 @@ function cableRun(P:TankBuilderPort,points:readonly (readonly [number,number,num
 function liftingEye(P:TankBuilderPort,x:number,z:number):void {
   const y=surfaceY(P,'turret',x,z,true);
   P.addEquipment('turretDetail',box(.15,.026,.11),x,y+.008,z);
-  P.addEquipment('turretDetail',torus(.047,.014,12,6),x,y+.060,z);
+  // 2026-10-19 (owner float sweep): the eye lay flat 25 mm above its pad; it now stands upright, welded into the pad.
+  P.addEquipment('turretDetail',torus(.047,.014,12,6),x,y+.060,z,Math.PI/2);
 }
 
 function nationalRoofEquipment(P:TankBuilderPort,c:NationalModernizationConfig):void {

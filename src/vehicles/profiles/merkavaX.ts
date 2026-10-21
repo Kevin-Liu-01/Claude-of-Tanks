@@ -158,10 +158,13 @@ function merkava3FrontDeck(P: TankBuilderPort): void {
     [3.171,-1.175,.282,1.4906,1.4906]],.055);
   // Driver cover, transverse hinge and right-hand access cover are distinct
   // fitted parts, not a generic grille repeated over the entire glacis.
+  // 2026-10-19 (owner float sweep): the driver cover stood 43 mm and its hinge 69 mm over the glacis; both drop onto it
+  // 2026-10-21 (float-gaps 230): the cover keeps its source top (westXGeometry.selftest's shaped front clamp body); it
+  // grows down instead, 22 -> 72 mm, so its sides reach 4-5 mm into the parallel glacis plate 45 mm under it.
   deckField(P,'hullDetail',[[2.79,-.67,-.53,1.675,1.675],
-    [2.97,-.78,-.52,1.622,1.622],[3.119,-.81,-.55,1.576,1.576]],.022);
+    [2.97,-.78,-.52,1.622,1.622],[3.119,-.81,-.55,1.576,1.576]],.072);
   P.addEquipment('hullDetail',torus(.084,.016,20,8),-.527,1.671,2.73,1.285);
-  P.addEquipment('hullDetail',box(.21,.019,.033),-.666,1.626,3.005,.29,.16);
+  P.snapGroup('merkava3-driver-cover',()=>P.addEquipment('hullDetail',box(.21,.019,.033),-.666,1.626,3.005,.29,.16),{reachM:.08,mode:'down'});
   P.addEquipment('hullDetail',box(.649,.0483,.4816),.88868,1.78628,1.20122);
   P.addEquipment('hullDetail',box(.5413,.0480,.2621),1.08541,1.8190,1.26188);
   for(const x of[.6397,1.1070]){
@@ -259,10 +262,11 @@ function merkava3TurretDetails(P: TankBuilderPort): void {
     // Only the three existing bolt-on panels deplete. The independently
     // closed turret shell, handrail, smoke mounts and roof furniture remain.
     P.destructibleCluster(`merkava_merkava3d_turret_era_${side<0?'L':'R'}`,()=>{
+      // 2026-10-19 (owner float sweep): the forward panel stood 31 mm off the cheek; each panel seats on it
       for(let i=0;i<3;i++){
         const rear=-2.20+i*.65,front=rear+.626;
-        armorTile(P,MK3,side,rear,front,1.24,1.68+i*.06,1.24,1.74+i*.045,
-          2.578-i*.043,2.34-i*.035,2.54-i*.043,2.30-i*.035,true);
+        P.snapGroup('merkava3-turret-era',()=>armorTile(P,MK3,side,rear,front,1.24,1.68+i*.06,1.24,1.74+i*.045,
+          2.578-i*.043,2.34-i*.035,2.54-i*.043,2.30-i*.035,true),{reachM:.04});
       }
     });
     handrail(P,MK3,side*1.64,-2.33,-.05,2.18);
@@ -276,8 +280,11 @@ function merkava3TurretDetails(P: TankBuilderPort): void {
     put('turretDetail',box(.21,.027,.042),x,2.675,z+.10);
   }
   put('turretDetail',cylY(.171,.27,24),-.41,2.671,-.98);
-  put('turretDark',box(.27,.15,.017),-.41,2.706,-.80);
-  put('turretGlass',box(.21,.095,.008),-.41,2.707,-.788);
+  // 2026-10-19 (owner float sweep): the window frame stood clear of the round sight head; seated on it
+  P.snapGroup('merkava3-sight-window',()=>{
+    put('turretDark',box(.27,.15,.017),-.41,2.706,-.80);
+    put('turretGlass',box(.21,.095,.008),-.41,2.707,-.788);
+  },{reachM:.05});
   put('turretDetail',box(.42,.18,.37),-.91,2.529,-.34);
   put('turretDark',box(.31,.12,.02),-.91,2.537,-.14);
   put('turretGlass',box(.24,.083,.008),-.91,2.547,-.126);
@@ -295,6 +302,9 @@ function merkava3TurretDetails(P: TankBuilderPort): void {
     }
     cageBar(P,MK3,[side*1.04,2.06,-4.02],[side*1.61,2.145,-2.30]);
     cageBar(P,MK3,[side*1.04,2.04,-3.99],[side*1.63,2.11,-2.60]);
+    // 2026-10-19 (owner float sweep): the three middle rear rails ended in air 38-71 mm off the side frame; a rear
+    // corner post joins every rail end to the side rails
+    cageBar(P,MK3,[side*1.04,2.024,-4.10],[side*1.04,2.3847,-4.10]);
   }
   for(let j=0;j<5;j++)put('turretOpenLattice',box(2.08,.024,.024),0,2.04+j*.084,-4.10);
   P.add('turretDetail',sectionSolid([
@@ -452,7 +462,7 @@ function merkava4HullDetails(P: TankBuilderPort, candidate: 'merkava4'|'merkava4
       return {z,ring:side<0?ring.map(([x,y])=>[-x,y] as [number,number]).reverse():ring};
     })));
     P.addMudguard('merkava4-x-front-flap','hullRubber',box(.57,.235,.045),side*1.44,.928,3.76,-.13);
-    P.addMudguard('merkava4-x-rear-flap','hullRubber',box(.58,.45,.043),side*1.45,.92,-3.56,.09);
+    P.hangMudguard('merkava4-x-rear-flap','hullRubber',box(.58,.45,.043),side*1.45,.92,-3.56,.09);
     // The modern source rear openings replace the generic closed Mk.4 case.
     if(candidate!=='merkava4_trophy'&&candidate!=='merkava4_barak')
       P.addEquipment('hullDetail',box(.66,.36,.35),side*.66,1.37,-3.69);
@@ -515,7 +525,8 @@ function merkava4GunnerStation(P: TankBuilderPort): void {
   }
   for(const [x,z,w,d,ry]of[[-.79435,-1.1394,.0779,.2386,0],[-.00365,-1.15305,.0779,.2386,0],
     [-.689,-.842,.25,.05,-.7854],[-.1097,-.842,.25,.05,.7854],[-.399,-.7223,.2386,.0778,0]]){
-    put('turretDetail',box(w,.0973,d),x,2.62765,z,0,ry);
+    // 2026-10-19 (owner float sweep): the outer guard pads stood 19-67 mm clear of the station and roof; each drops onto it
+    P.snapGroup('merkava4-gunner-guard',()=>put('turretDetail',box(w,.0973,d),x,2.62765,z,0,ry),{reachM:.08});
   }
 }
 
@@ -574,7 +585,9 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4'|'merkava4_trophy
     P.turretG.userData.trophySmokeBankReceipt=Object.freeze({tubes:12,cradles:12,solidEnvelope:false});
   if(candidate==='merkava4_trophy'){
     type WhipStation=readonly [number,number,number,number];
-    const taperedWhip=(stations: readonly WhipStation[])=>{
+    // 2026-10-19 (owner float sweep): the long aerials' spring feet stood 17-111 mm clear of the turret/basket; each
+    // aerial is seated on its nearest stock
+    const taperedWhip=(stations: readonly WhipStation[])=>P.snapGroup('merkava4-trophy-whip',()=>{
       for(let i=1;i<stations.length;i++){
         const a=stations[i-1],b=stations[i];
         const start=new THREE.Vector3(a[0],a[1],a[2]);
@@ -589,7 +602,7 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4'|'merkava4_trophy
         const mid=start.add(end).multiplyScalar(.5);
         topPart(P,MK4,'turretOpenLatticeDark',g,mid.x,mid.y,mid.z);
       }
-    };
+    },{reachM:.12});
     // Exact horizontal source calipers: the five long aerials curve aft and
     // taper from broad spring feet to 9 mm tips. Fixed-Z cylinders collapsed
     // that swept stock and produced the wrong source-only p95 silhouette.
@@ -617,15 +630,21 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4'|'merkava4_trophy
     [-.82038,-3.10476,2.6732,4.9327283],[.89347,-3.10476,2.6732,4.9327283],
     [-1.5179,-2.203,2.4419,4.70146],[1.674,-1.898,2.4004,4.6600],
   ]){
-    put('turretDetail',cylY(.042,.17,12),x,base-.078,z);
-    put('turretDark',cylY(.0047,tip-base-.020,8),x,(tip+base-.020)/2,z);
-    put('turretDetail',new THREE.SphereGeometry(.020,8,6),x,tip-.020,z);
+    // 2026-10-19 (owner float sweep): the right aerial's base stood 51 mm off the turret side; each aerial seats on it
+    P.snapGroup('merkava4-aerial',()=>{
+      put('turretDetail',cylY(.042,.17,12),x,base-.078,z);
+      put('turretDark',cylY(.0047,tip-base-.020,8),x,(tip+base-.020)/2,z);
+      put('turretDetail',new THREE.SphereGeometry(.020,8,6),x,tip-.020,z);
+    },{reachM:.06});
   }
   for(const x of[-.82038,.89347])put('turretDetail',box(.21,.29,.26),x,2.527,-3.015);
   merkava4Basket(P);
   const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:1.0,remoteControlled:true,ridingCradle:true,seed:444,tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:candidate==='merkava4_trophy'}); // true scale (round 3; was 1.48, a 115 % GPMG)
-  const mgSeatY={merkava4:2.577,merkava4_trophy:2.400}[candidate];
+  // 2026-10-19 (owner float sweep): on the Mk.4 the MG stood 33 mm over the roof furniture and its pintle 176 mm over
+  // the low roof beside the raised shoulder; it drops to the shoulder line (2.551) on a pintle pedestal from the roof
+  const mgSeatY={merkava4:2.551,merkava4_trophy:2.400}[candidate];
   mg.position.set(-.83,mgSeatY-MK4.y,-.752-MK4.z);P.turretG.add(mg);
+  if(candidate==='merkava4')put('turretDark',cylY(.03,.157,12),-.83,2.4765,-.752);
 }
 
 function merkava4Basket(P: TankBuilderPort): void {
@@ -794,6 +813,9 @@ function addBarakSensorSuite(P: TankBuilderPort): void {
   for(const side of[-1,1]){
     cageBar(P,MK4,[side*1.025,1.98,-3.57],[side*1.025,2.60,-3.63],.050);
     put('turretDetail',cylY(.052,.13,12),side*1.025,2.64,-3.63);
+    // 2026-10-19 (owner float sweep): the mast stood 35 mm outboard of the basket's rear rails; two clamps tie it to them
+    put('turretDetail',box(.105,.03,.03),side*.9825,2.12,-3.578);
+    put('turretDetail',box(.105,.03,.03),side*.9825,2.283,-3.595);
   }
   addBarakWhips(P);
   P.turretG.userData.barakSensorReceipt=Object.freeze({crewHatchPeriscopes:5,cylindricalSight:true,rearWhips:2,owner:'rig_turret'});
@@ -824,10 +846,12 @@ function addBarakHullSignature(P: TankBuilderPort): void {
     // Barak's source has a conspicuous flexible side-retention run. Model it
     // as an open chain with real gaps instead of a solid rope or another
     // armor strip; this is the side-profile signature missing from the draft.
+    // 2026-10-19 (owner float sweep): the bow-end link and bar stood 27-50 mm off the falling skirt top; every link
+    // and bar seats on the stock under it
     for(let i=0;i<15;i++){
       const z=-2.72+i*.38,y=1.61+(i%2)*-.07;
-      P.addEquipment('hullDark',torus(.047,.011,10,6),side*1.857,y,z,Math.PI/2);
-      if(i<14)hullBar(P,[side*1.857,y,z+.045],[side*1.857,1.61+((i+1)%2)*-.07,z+.335],.009);
+      P.snapGroup('merkava-side-chain',()=>P.addEquipment('hullDark',torus(.047,.011,10,6),side*1.857,y,z,Math.PI/2),{reachM:.06});
+      if(i<14)P.snapGroup('merkava-side-chain',()=>hullBar(P,[side*1.857,y,z+.045],[side*1.857,1.61+((i+1)%2)*-.07,z+.335],.009),{reachM:.06});
     }
   }
   addBarakBowEquipment(P);
@@ -928,6 +952,8 @@ function addTrophyRearFaceDetails(P: TankBuilderPort): void {
   P.addEquipment('hullDark',box(.72,.96,.016),0,.9275,-2.753);
   P.addEquipment('hullDetail',box(.6506,.9016,.018),0,.9275,-2.8105);
   P.addEquipment('hullDark',box(.050,.78,.020),0,.9275,-2.822);
+  // 2026-10-19 (owner float sweep): the door stood 15 mm clear of both receiver walls; hinge and latch blocks join them
+  for(const side of[-1,1])for(const y of[.70,1.15])P.addEquipment('hullDark',box(.022,.07,.016),side*.3338,y,-2.8105);
   P.addEquipment('hullDetail',box(.6547,.1464,.2811),0,1.4907,-2.8824);
   for(const side of[-1,1]){
     // Independently closed primary-hull lamp islands: source envelopes are
@@ -936,6 +962,10 @@ function addTrophyRearFaceDetails(P: TankBuilderPort): void {
     const lampY=(side<0?1.3563:1.4266)-.010;
     P.addEquipment('hullDark',cylZ(.0975,.038,16),lampX,lampY,-4.018);
     P.addEquipment('hullDetail',cylZ(.064,.020,16),lampX,lampY,-4.041);
+    // 2026-10-19 (owner float sweep): the lamps stood 176-210 mm aft of and above the back mudguard with nothing under
+    // them; a bracket (a shelf on the mudguard's top return and a post behind the lamp body) carries each
+    P.addEquipment('hullDetail',box(.09,.012,.20),lampX,1.190,-3.905);
+    P.addEquipment('hullDetail',box(.09,lampY+.05-1.186,.012),lampX,(lampY+.05+1.186)/2,-3.9945);
     const x=side*.23;
     hullBar(P,[x-side*.040,.515,-2.812],[x-side*.042,.440,-2.790],.012);
     hullBar(P,[x-side*.042,.440,-2.790],[x+side*.035,.426,-2.774],.012);
@@ -1236,7 +1266,8 @@ export function buildNamerIfv(P: TankBuilderPort): void {
   addNamerSourceSupport(P);
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's MAG)
   const auxiliary=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.72,seed:904,tone:'two-tone',ammo:true,shield:false,ring:false,working:true,ridingCradle:true});
-  auxiliary.position.set(.46,2.76-NAMER.y,-1.17-NAMER.z);P.turretG.add(auxiliary);
+  // 2026-10-19 (owner float sweep): the mount's foot stood 65 mm over the roof (2.662); it stands 2 mm into it
+  auxiliary.position.set(.46,2.697-NAMER.y,-1.17-NAMER.z);P.turretG.add(auxiliary);
   P.muzzleZ=2.51;P.topY=1.12;
   // The Namer source is a narrower/shorter Merkava-family chassis. Its turret
   // is authored directly at the registered envelope so each sensor and weapon

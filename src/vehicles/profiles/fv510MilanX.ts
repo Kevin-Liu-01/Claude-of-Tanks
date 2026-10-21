@@ -175,8 +175,12 @@ function hull(P: TankBuilderPort): void {
   for (const side of [-1, 1]) {
     corrugatedSideArmor(P, side);
     for (const z of [-2.52, -1.35, -.18, .99, 2.13]) {
-      P.addEquipment('hullDetail', box(.40, .065, .07), side * 1.77, 1.77, z);
-      P.addEquipment('hullDetail', box(.065, .08, .18), side * 2.05, 1.86, z);
+      // 2026-10-19 (owner float sweep): over the left's low oblique flange and the bow taper the strap and clamp
+      // stood 21-83 mm off the armour top; each drops onto it
+      P.snapGroup('warrior-armour-strap', () => P.addEquipment('hullDetail', box(.40, .065, .07), side * 1.77, 1.77, z),
+        { reachM: .1, mode: 'down' });
+      P.snapGroup('warrior-armour-clamp', () => P.addEquipment('hullDetail', box(.065, .08, .18), side * 2.05, 1.86, z),
+        { reachM: .1, mode: 'down' });
     }
     sideAndBowCage(P, cage, side);
     hullSideLights(P, side);
@@ -475,6 +479,9 @@ function turretSideFittings(P: TankBuilderPort, add: EquipmentAdder): void {
       const x=p.x+side*(.61+i*.07), y=2.17+(i%2)*.13, z=.44-(i%2)*.12;
       add('turretDetail',markSmokeTube(cylZ(.052,.25,P.q?16:9)),x,y,z,-.2,side*.45);
       add('turretDark',cylZ(.040,.016,12),x+side*.057,y+.026,z+.114,-.2,side*.45);
+      // 2026-10-19 (owner float sweep): the outer tube of each row stood 22 mm off the inner one; a clamp band
+      // across the pair now ties it in
+      if(i>=2)add('turretDark',box(.15,.04,.05),x-side*.07,y,z,-.2,side*.45);
     }
   }
 }
@@ -525,13 +532,16 @@ function milanLauncherAndAntenna(P: TankBuilderPort, add: EquipmentAdder): void 
       [-.085,2.954]] as const;
     const cradle=sectionSolid([{z:-.020,ring:cradleRing.map(([z,y])=>[-z,y] as const).reverse()},
       {z:.020,ring:cradleRing.map(([z,y])=>[-z,y] as const).reverse()}]).rotateY(Math.PI/2);
-    add('turretDetail',cradle,-.487,0,0);
-    add('turretDetail',box(.18,.039,.37),-.598,2.821,.086);
+    // 2026-10-19 (owner float sweep): the cradle stood 10 mm off the trunnion's end and the lower rail 8.5 mm
+    // under the tube rail; the cradle now bears 2 mm on the trunnion and the rail meets both
+    add('turretDetail',cradle,-.499,0,0);
+    add('turretDetail',box(.18,.039,.37),-.598,2.8305,.086);
     add('turretDetail',box(.12,.028,.841),-.644,2.863,.0485);
     add('turretDetail',cylZ(.078,1.21,P.q?24:14),-.64,2.955,-.14);
     add('turretDark',cylZ(.059,.016,P.q?24:14),-.64,2.955,.474);
     add('turretDetail',cylZ(.10,.13,P.q?24:14),-.64,2.955,-.69);
-    add('turretDetail',box(.026,.056,.274),-.553,3.102,-.010);
+    // 2026-10-19 (owner float sweep): the carry handle hung 94 mm off the tube's flank; it sits on its crown
+    add('turretDetail',box(.026,.056,.274),-.59,3.03,-.010);
     add('turretDetail',box(.131,.159,.029),-.4645,3.012,.280);
     add('turretGlass',box(.098,.112,.012),-.4645,3.012,.300);
   });

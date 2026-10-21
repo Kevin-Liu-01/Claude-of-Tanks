@@ -220,7 +220,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
         [s * 0.88, 1.26, 3.00], [s * 0.95, 1.26, 3.00], [s * 0.95, 1.15, 3.55], [s * 0.88, 1.15, 3.55])); // tops tucked under the §5.299 raked B plane
       P.add('hull', box(0.18, 0.14, 0.19), s * 0.87, 1.20, 3.705);               // nose center bumps to +3.80 (plan_hull 3.803 @ x ±0.825..0.915)
       headlight(P, s * 0.87, 1.10, 3.70, -0.22, 0.05);                           // headlight pods on the bumps
-      P.add('hullDetail', torus(0.075, 0.015, 10), s * 0.50, 0.62, 3.70, Math.PI / 2, 0, 0); // bow tow eyes
+      P.add('hullDetail', torus(0.075, 0.015, 10), s * 0.50, 0.819, 3.694, Math.PI / 2, 0, 0); // bow tow eyes; 2026-10-19 (owner float sweep): hung 0.19 m under the chin, now from it (r2: last 8 mm closed)
       // s5322-C4 headlight BRUSH GUARDS (§5.283 debt; thin low-kit bars also
       // armor the razor-margin bow anchor columns per the whip-rough law).
       P.add('hullDetail', box(0.014, 0.16, 0.014), s * 0.79, 1.12, 3.76);        // guard verticals (feet buried in the chin plane)
@@ -530,17 +530,20 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     for (const bx of [-1.02, -0.35, 0.35, 1.02]) {
       P.add('turret', box(0.05, 0.60, 0.52), bx, 0.43, L(-1.99));                // basket dividers
     }
-    P.add('turretDark', openRackGrid(2.04, 0.44, 0.020, 5, 10),
-      0, 0.42, L(-2.36), Math.PI / 2, 0, 0);                                     // open rear mesh face in the registered frame
+    // 2026-10-19 (owner float sweep): the mesh face stood 22 mm over the floor frame, the bottles 35 mm over it, the left
+    // bundle 25 mm off its divider and the right strap 13 mm behind its bundle; the face now spans floor to top frame,
+    // the bottles rest on the floor, the bundle meets the divider and the strap sits on the bundle face.
+    P.add('turretDark', openRackGrid(2.04, 0.52, 0.020, 5, 10),
+      0, 0.425, L(-2.36), Math.PI / 2, 0, 0);                                    // open rear mesh face in the registered frame
     for (const [bx2, blen] of [[-0.70, 0.52], [0.02, 0.44], [0.72, 0.48]]) {
-      P.add('turretDetail', KIT.xform(KIT.cylX(0.085, blen, 12), 0, 0, 0), bx2, 0.30, L(-1.99)); // strapped stores bottles in the bays (owner c425f495)
-      P.add('turretDark', box(0.03, 0.18, 0.14), bx2 - blen * 0.28, 0.30, L(-1.99));
-      P.add('turretDark', box(0.03, 0.18, 0.14), bx2 + blen * 0.28, 0.30, L(-1.99));
+      P.add('turretDetail', KIT.xform(KIT.cylX(0.085, blen, 12), 0, 0, 0), bx2, 0.262, L(-1.99)); // strapped stores bottles in the bays (owner c425f495)
+      P.add('turretDark', box(0.03, 0.18, 0.14), bx2 - blen * 0.28, 0.262, L(-1.99));
+      P.add('turretDark', box(0.03, 0.18, 0.14), bx2 + blen * 0.28, 0.262, L(-1.99));
     }
-    stowage(P, 'turretDetail', rng, [[-0.66, 0.50, L(-1.98), 0.52, 0.20, 0.42], [0.42, 0.48, L(-1.98), 0.62, 0.16, 0.40],
+    stowage(P, 'turretDetail', rng, [[-0.63, 0.50, L(-1.98), 0.52, 0.20, 0.42], [0.42, 0.48, L(-1.98), 0.62, 0.16, 0.40],
       [-0.05, 0.52, L(-2.02), 0.55, 0.18, 0.40], [0.80, 0.46, L(-1.98), 0.32, 0.14, 0.34]]);  // s5322-B2 bustle bays read as CARGO (owner MBT order; tops <= 1.91 world; right item CLAMPED inside the ±1.13 bustle plan — the 1.17 overflow cost plan_turret, measured + pulled in)
-    for (const sx of [-0.66, -0.05, 0.42, 0.80]) {
-      P.add('turretDark', box(0.022, 0.30, 0.014), sx, 0.45, L(-2.17));          // s5322-B2 cargo lash straps ON the bundle faces (inside the -2.37 plan boundary; the mesh-face seats poked it, measured + re-seated)
+    for (const sx of [-0.63, -0.05, 0.42, 0.80]) {
+      P.add('turretDark', box(0.022, 0.30, 0.014), sx, 0.45, L(sx === 0.80 ? -2.155 : -2.17));          // s5322-B2 cargo lash straps ON the bundle faces (inside the -2.37 plan boundary; the mesh-face seats poked it, measured + re-seated)
     }
     // full-run side racks (gate plan_turret: rails ±1.52 from +1.0 to -2.95;
     // gate front_whole wing tops 1.91-1.96)
@@ -587,7 +590,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     // roof furniture (gate ref: TURMS 2.53@zW+0.24 / x ~+0.78; pano head
     // 2.41-2.54 @ x -0.67..-0.87; hatch bumps 2.31-2.43; broad cluster carries
     // the p95 height datum 2.45)
-    P.add('turret', box(0.40, 0.13, 0.38), 0.76, 0.925, L(0.22));                // TURMS plinth
+    P.add('turret', box(0.40, 0.15, 0.38), 0.76, 0.915, L(0.22));                // TURMS plinth; 2026-10-19 (owner float sweep): 20 mm deeper, the head stood 19 mm over the roof
     P.add('turret', box(0.34, 0.17, 0.32), 0.76, 1.075, L(0.22));               // TURMS armored box to 2.46 (p95 datum 2.45)
     P.add('turretDark', box(0.345, 0.02, 0.28), 0.76, 1.10, L(0.22));            // split-door seam
     P.add('turretDark', box(0.26, 0.13, 0.025), 0.76, 1.09, L(0.385));           // TURMS recessed face (owner cadence: backed, not a bare square)
@@ -608,8 +611,9 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     P.add('turret', box(0.02, 0.09, 0.03), -0.855, 1.095, L(-0.032));            // face frame L
     P.add('turret', box(0.02, 0.09, 0.03), -0.665, 1.095, L(-0.032));            // face frame R
     P.add('turretDark', box(0.011, 0.07, 0.011), -0.80, 1.09, L(-0.024), 0, 0, -0.30); // wiper blade
-    cupolaRing(P, 0.45, 0.86, L(-0.42), 0.24);                                   // commander hatch ring
-    P.add('turret', box(0.36, 0.022, 0.32), 0.45, 0.925, L(-0.42), 0, -0.08, 0); // split lid (owner c425f495 crew-station cadence)
+    // 2026-10-19 (owner float sweep): ring, lid and the three periscopes ahead stood 19 mm over the roof; lowered 22 mm.
+    cupolaRing(P, 0.45, 0.838, L(-0.42), 0.24);                                  // commander hatch ring
+    P.add('turret', box(0.36, 0.022, 0.32), 0.45, 0.903, L(-0.42), 0, -0.08, 0); // split lid (owner c425f495 crew-station cadence)
     // s5322-A2 commander's MG 42/59 at the TURMS-station cupola (owner MBT
     // order; real C1 carries one) — CENSUS pintleMG on the ring's FRONT-right
     // rim, stowed forward alongside the TURMS housing so the entire mass nests
@@ -622,7 +626,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     // AA MG 42/59 is the loader's, worked from his hatch; the commander's cupola gun is gone.
     cupolaRing(P, -0.42, 0.86, L(-0.62), 0.23);                                  // loader hatch ring
     P.add('turret', box(0.34, 0.022, 0.30), -0.42, 0.925, L(-0.62), 0, 0.10, 0);
-    for (let k = 0; k < 3; k++) periscope(P, 'turretDetail', 0.30 + k * 0.16, 0.90, L(-0.10), 0.1);
+    for (let k = 0; k < 3; k++) periscope(P, 'turretDetail', 0.30 + k * 0.16, 0.878, L(-0.10), 0.1);
     for (const [px, pz, yw] of [[-0.60, -0.28, 0.14], [-0.22, -0.30, -0.06], [0.14, -0.62, 0.08]]) {
       periscope(P, 'turretDetail', px, 0.895, L(pz), yw);                        // commander/loader periscope arcs (owner cadence)
     }
@@ -633,10 +637,14 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   const buildArieteMkTurretStage3 = (): void => {
     for (const [px, pz, w, dd] of [[-0.68, -1.30, 0.46, 0.40], [0.02, -1.34, 0.58, 0.42],
       [0.70, -1.28, 0.44, 0.40], [-0.55, -1.90, 0.54, 0.34], [0.14, -1.94, 0.60, 0.32]]) {
-      P.add('turretDark', box(w, 0.02, dd), px, 0.875, L(pz));
-      P.add('turretDetail', box(w * 0.8, 0.016, 0.026), px, 0.888, L(pz + dd * 0.38));
+      // 2026-10-19 (owner float sweep): the two aft fields lay 14 cm over the basket lid, past the bustle roof; each
+      // field drops onto what is under it.
+      P.snapGroup(`ariete-roof-field-${px}`, () => {
+        P.add('turretDark', box(w, 0.02, dd), px, 0.875, L(pz));
+        P.add('turretDetail', box(w * 0.8, 0.016, 0.026), px, 0.888, L(pz + dd * 0.38));
+      }, { reachM: 0.16, mode: 'down' });
     }
-    P.addEquipment('turret', box(0.30, 0.145, 0.26), 0.10, 0.93, L(0.30));                // gunner's aux sight hood (front_whole 2.31 @ x +0.14)
+    P.addEquipment('turret', box(0.30, 0.145, 0.26), 0.10, 0.876, L(0.30));               // gunner's aux sight hood (front_whole 2.31 @ x +0.14); 2026-10-19 (owner float sweep): was 53 mm up
     // crosswind mast folded low on the rear roof (xk2_black_panther height-law: no p95 spike)
     P.addEquipment('turret', box(0.05, 0.09, 0.05), -0.30, 0.885, L(-1.12));              // mast pedestal
     P.add('turretDetail', cylZ(0.02, 0.55, 8), -0.30, 0.915, L(-1.38), 0.10, 0, 0);
@@ -649,11 +657,11 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     // tip 3.55); left base authored folded (print-true absence of the rod)
     addFitting(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats, h: 1.27, r: 0.02, rake: 0, seed: 48 }),
       0.87, 0.86, L(-0.885));                                                    // vertical rod (leaning tips read partial columns in the front trace)
-    P.add('turretDark', cylY(0.035, 0.04, 0.09, 8), -0.87, 0.905, L(-0.885));    // left whip base drum, rod stowed
+    P.add('turretDark', cylY(0.035, 0.04, 0.09, 8), -0.87, 0.883, L(-0.885));    // left whip base drum, rod stowed; 2026-10-19 (owner float sweep): was 22 mm up
     // s5322-B8 antenna BASES realized: AB-armored feed boxes + cable loops at
     // both whip stations (tops nest under the certified 2.25 base-drum column).
     for (const s of [-1, 1]) {
-      P.add('turretDark', box(0.05, 0.05, 0.07), s * 0.795, 0.895, L(-0.90));    // tuner feed box inboard of the pot
+      P.add('turretDark', box(0.05, 0.05, 0.07), s * 0.795, 0.864, L(-0.90));    // tuner feed box inboard of the pot; 2026-10-19 (owner float sweep): was 32 mm up
       P.add('turretDark', torus(0.030, 0.008, 8), s * 0.76, 0.856, L(-0.90));    // coiled cable service loop (dark, FSP-06) nested under the base-drum column
     }
     // mantlet: protruding central block + backward-raked wedge cheeks + coax
@@ -677,8 +685,8 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
         [s * 0.375, 0.26, L(2.00)], [s * 0.55, 0.26, L(1.76)], [s * 0.55, 0.26, L(1.58)], [s * 0.375, 0.26, L(1.70)],  // §5.299 cheek rake (33°) so the wedges hug
         [s * 0.375, 0.57, L(1.80)], [s * 0.55, 0.54, L(1.58)], [s * 0.55, 0.54, L(1.54)], [s * 0.375, 0.58, L(1.64)]));  // the new face; rear contacts byte-held
     }
-    liftEye(P, 'turretDetail', -1.05, 0.90, L(0.60), 0.3);
-    liftEye(P, 'turretDetail', 1.05, 0.90, L(0.60), -0.3);
+    liftEye(P, 'turretDetail', -1.05, 0.82, L(0.60), 0.3);                      // 2026-10-19 (owner float sweep): eyes were 78 mm up
+    liftEye(P, 'turretDetail', 1.05, 0.82, L(0.60), -0.3);
   };
   buildArieteMkTurretStage3();
 
@@ -763,8 +771,11 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
           };
           buildArieteMkTurretCourse1();
         }
-        P.addEquipment('turret', box(0.30, 0.15, 0.30), -0.76, 1.295, L(-0.16));            // new commander sight housing over the pano
-        P.add('turretGlass', box(0.18, 0.08, 0.02), -0.76, 1.32, L(-0.005));
+        // 2026-10-19 (owner float sweep): the housing stood 61 mm off the roof field; it seats on it with its window.
+        P.snapGroup('ariete-c2-commander-sight', () => {
+          P.addEquipment('turret', box(0.30, 0.15, 0.30), -0.76, 1.295, L(-0.16));            // new commander sight housing over the pano
+          P.add('turretGlass', box(0.18, 0.08, 0.02), -0.76, 1.32, L(-0.005));
+        }, { reachM: 0.08 });
         P.add('hull', box(0.26, 0.10, 0.16), 0.0, 1.72, 0.90);                     // driver thermal camera pod on the fairing
         P.add('hullGlass', box(0.16, 0.05, 0.02), 0.0, 1.73, 0.985);
         P.add('turret', box(0.44, 0.34, 0.60), -1.14, localY(1.70), L(-1.35));     // yawing APU/shoulder box, zero-yaw world seat retained
@@ -778,8 +789,9 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
         const rwsX = 0.54, rwsZ = L(-0.57);
         P.addCupola('turret', cylY(0.18, 0.21, 0.10, 16), rwsX, 0.94, rwsZ);
         P.addEquipment('turret', box(0.30, 0.20, 0.28), rwsX, 1.07, rwsZ);
-        P.addEquipment('turret', box(0.06, 0.22, 0.24), rwsX - 0.18, 1.20, rwsZ + 0.03, 0, 0, -0.08);
-        P.addEquipment('turret', box(0.06, 0.22, 0.24), rwsX + 0.18, 1.20, rwsZ + 0.03, 0, 0, 0.08);
+        // 2026-10-19 (owner float sweep): the canted cheeks stood 9 mm off the body; set 10 mm inboard onto it.
+        P.addEquipment('turret', box(0.06, 0.22, 0.24), rwsX - 0.17, 1.20, rwsZ + 0.03, 0, 0, -0.08);
+        P.addEquipment('turret', box(0.06, 0.22, 0.24), rwsX + 0.17, 1.20, rwsZ + 0.03, 0, 0, 0.08);
         P.addEquipment('turret', box(0.17, 0.18, 0.17), rwsX + 0.25, 1.09, rwsZ + 0.14);
         P.add('turretGlass', box(0.11, 0.10, 0.014), rwsX + 0.25, 1.10, rwsZ + 0.232);
         const remoteRws = FITTINGS.pintleMG({ remoteControlled: true, ridingCradle: true, mats: P.mats, cls: 'nsvt', tone: 'two-tone',
@@ -988,6 +1000,12 @@ function buildCarro45T(P: ItalyBuilderPort): void {
     for (const s2 of [-1, 1]) P.add('hull', slab(                                // tail plate outer courses ABOVE the band top
       [s2 * 0.94, 1.26, -3.26], [s2 * 1.38, 1.26, -3.26], [s2 * 1.38, 1.26, -3.34], [s2 * 0.94, 1.26, -3.36],
       [s2 * 0.94, 1.45, -3.29], [s2 * 1.38, 1.45, -3.29], [s2 * 1.38, 1.45, -3.34], [s2 * 0.94, 1.45, -3.36]));
+    // The belly rises from the tub's rear edge (z -2.70, y 0.49) to the raked plate's foot (z -3.24, y 0.65) on a
+    // lower rear plate (owner 2026-10-19, "the empty gaps in hulls": the engine bay stood open 0.54 m from below, up to
+    // the deck), 40 mm into the tub and 10 mm into the raked plate.
+    P.add('hull', slab(
+      [-0.944, 0.496, -2.66], [0.944, 0.496, -2.66], [0.944, 0.656, -3.25], [-0.944, 0.656, -3.25],
+      [-0.944, 0.576, -2.66], [0.944, 0.576, -2.66], [0.944, 0.736, -3.25], [-0.944, 0.736, -3.25]));
     P.add('hull', box(1.90, 0.62, 0.11), 0, 1.02, -3.405);                       // center exhaust recess block (ref plan -3.40..-3.46 across |x|<0.95)
     P.add('hullDark', box(1.82, 0.50, 0.02), 0, 1.02, -3.455);
     P.add('hull', box(2.76, 0.30, 0.10), 0, 1.30, -3.38);                        // upper rear plate band
@@ -1018,7 +1036,8 @@ function buildCarro45T(P: ItalyBuilderPort): void {
       P.add('hull', box(0.34, 0.40, 0.25), s * 0.80, 1.00, 3.175);               // final-drive noses (FRAME LOCK: bow body edge PINNED at +3.30 — the
       P.add('hull', box(0.22, 0.18, 0.30), s * 0.80, 1.01, 3.34);                // 0.48 band ends there and everything beyond stays sub-threshold);
       P.add('hullDark', box(0.10, 0.10, 0.04), s * 0.80, 1.00, 3.475);           // pod tips carry the ref's 3.487 plan corners (thin: side band stays sub)
-      headlight(P, s * 0.35, 1.38, 3.04, -0.22, 0.052);                          // headlight pods (side 1.415@2.96-3.08, plan 3.36@±0.33..0.37)
+      // 2026-10-19 (owner float sweep): the pods stood 58 mm over the glacis; dropped onto it.
+      P.snapGroup(`carro45t-headlight-${s}`, () => headlight(P, s * 0.35, 1.38, 3.04, -0.22, 0.052), { reachM: 0.08, mode: 'down' }); // headlight pods (side 1.415@2.96-3.08, plan 3.36@±0.33..0.37)
       P.add('hull', slab(                                                        // bow corner closure wedges (inside the 1.017 lane plane, bottoms riding
         [s * 0.95, 0.30, 2.70], [s * 0.985, 0.30, 2.70], [s * 0.985, 1.00, 3.42], [s * 0.95, 1.00, 3.42],  // the ramp line so the side view keeps the print's ramp)
         [s * 0.95, 1.26, 2.70], [s * 0.985, 1.26, 2.70], [s * 0.985, 1.06, 3.42], [s * 0.95, 1.06, 3.42]));
@@ -1040,7 +1059,10 @@ function buildCarro45T(P: ItalyBuilderPort): void {
           const bz = -3.345 + 0.4596 * k + 0.2298;                                 // every 0.50 station slab contains a real end face); the run ENDS at
           const fy = k >= 13 ? 1.40 : k >= 12 ? 1.475                              // +3.09 like the print's fender line (plan front 3.005-3.093), TAPERING
             : (k >= 2 && k <= 10) ? 1.464 : 1.512;                                 // toward the bow; bays inside the turret swing ride at 1.48 (xk2_black_panther sweep law)
-          P.add('hull', box(0.27, 0.032, 0.4476), s * 1.545, fy, bz);              // toward the bow (gate tops 1.38-1.42 over the nose)
+          // owner 2026-10-19 (flaps sweep): every bay widens 15 mm inboard into the hull side the run stood 10 mm off; the
+          // stern bay (k 0) also runs 17 mm forward into bay 1 across the 12 mm seam (past the hull's end it has no other seat)
+          const bw = 0.285, bl = k === 0 ? 0.4646 : 0.4476, bc = k === 0 ? bz + 0.0085 : bz;
+          P.add('hull', box(bw, 0.032, bl), s * (1.68 - bw / 2), fy, bc);         // toward the bow (gate tops 1.38-1.42 over the nose)
           P.add('hull', box(0.035, 0.045, 0.4476), s * 1.6975, fy - 0.087, bz);    // outer hem DROOPED (gate 1.43-1.45 @ ±1.70)
           if (bz > -3.16 && bz < 2.88) P.add('hull', box(0.03, 0.56, 0.4476), s * 1.695, 1.19, bz);
         }
@@ -1048,13 +1070,13 @@ function buildCarro45T(P: ItalyBuilderPort): void {
         P.add('hull', box(0.045, 0.40, 0.40), s * 1.690, 1.15, -2.05);             // z inside the ref's ±1.74 plan front line)
         for (let k = 0; k < 7; k++) P.add('hullDark', box(0.034, 0.50, 0.016), s * 1.696, 1.19, 2.55 - k * 0.95); // apron seams
         P.add('hull', box(0.27, 0.05, 0.10), s * 1.545, 1.42, 3.13);              // mudguard tip stub (ref front edge 3.09-3.15)
-        MUDGUARDS.add(P, {
+        MUDGUARDS.add(P, { hang: true,
           label: `italy-front-flap-${s}`, x: s * 1.695, y: 1.05, z: 3.31,
           thickness: 0.03, length: 0.06, height: 0.20, material: 'rubber',
           crown: 0.006, frontCut: 0.02,
         });                                                                        // front flap stubs outboard of the shoe lane
         P.add('hullDetail', box(0.04, 0.05, 0.24), s * 1.695, 1.145, 3.20);       // fender-to-flap hanger
-        MUDGUARDS.add(P, {
+        MUDGUARDS.add(P, { hang: true,
           label: `italy-rear-flap-${s}`, x: s * 1.55, y: 1.02, z: -3.30,
           thickness: 0.03, length: 0.24, height: 0.28, material: 'rubber',
           rotation: [0, Math.PI / 2, 0], crown: 0.009, rearCut: 0.035,
@@ -1072,7 +1094,7 @@ function buildCarro45T(P: ItalyBuilderPort): void {
           links.rotation.set(0, 0, -0.995);
           P.turretG.add(links);
         } else {
-          P.add('hullDetail', box(0.07, 0.03, 0.90), -1.50, 1.545, 2.72);          // jack bar on the bow fender (outside the swing circle)
+          P.add('hullDetail', box(0.07, 0.03, 0.90), -1.50, 1.504, 2.72);          // jack bar on the bow fender (outside the swing circle; 2026-10-19 owner float sweep: was 39 mm over it)
           P.add('hullDark', box(0.16, 0.05, 0.30), -1.52, 1.55, -2.45);            // jack block aft of the swing
         }
       };
@@ -1216,8 +1238,9 @@ function buildCarro45T(P: ItalyBuilderPort): void {
         const pz = 0.16 - i * 0.57;                                              // panels superseded: the print walls cant 1.60@±1.54 -> 2.33@±1.15)
         P.add('turret', box(0.030, 0.26, 0.38), s2 * 1.40, 0.30, L(pz), 0, 0, s2 * 0.50);
         P.add('turretDark', box(0.018, 0.20, 0.30), s2 * 1.425, 0.30, L(pz), 0, 0, s2 * 0.50);
+        // 2026-10-19 (owner float sweep): the upper seam stood 24 mm off the canted panel; the three now ride its face.
         for (const dy of [-0.065, 0, 0.065]) P.add('turretDetail', box(0.020, 0.014, 0.27),
-          s2 * 1.438, 0.30 + dy, L(pz), 0, 0, s2 * 0.50);
+          s2 * (1.425 + 0.017 * Math.cos(0.5) - dy * Math.sin(0.5)), 0.30 + 0.017 * Math.sin(0.5) + dy * Math.cos(0.5), L(pz), 0, 0, s2 * 0.50);
       }
     }
     for (const s2 of [-1, 1]) P.add('turretDetail', box(0.02, 0.10, 0.16), s2 * 1.435, 0.30, L(-1.30));

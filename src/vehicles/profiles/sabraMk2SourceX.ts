@@ -93,9 +93,10 @@ function buildSabraRearDeck(P: TankBuilderPort): void {
   P.addEquipment('hullDetail',box(.24,.18,.15),0,.95,-3.276);
   P.addEquipment('hullDetail',box(.10,.062,.19),-.01,.952,-3.446);
   deckGrille(P,0,1.853,-2.59,1.62,1.05);
-  P.addHatch('hullDetail',cylY(.33,.33,.05,10),-.47,1.605,1.46);
-  P.addEquipment('hullDetail',box(.42,.10,.15),-.47,1.67,1.73);
-  P.addEquipment('hullGlass',box(.29,.048,.015),-.47,1.69,1.815);
+  // 2026-10-19 (owner float sweep): hatch and sight box stood 15 mm over the deck and the window 2.5 mm off the box.
+  P.addHatch('hullDetail',cylY(.33,.33,.05,10),-.47,1.588,1.46);
+  P.addEquipment('hullDetail',box(.42,.10,.15),-.47,1.653,1.73);
+  P.addEquipment('hullGlass',box(.29,.048,.015),-.47,1.673,1.80);
 }
 
 function buildSabraHull(P: TankBuilderPort): void {
@@ -115,14 +116,19 @@ function buildSabraHull(P: TankBuilderPort): void {
     for(let i=0;i<9;i++) {
       const z=-2.64+i*.646;
       const outer=z>.4?1.79+(z-.4)*.031:1.769;
-      P.addExternalArmor('hull',box(.014,.645,.623),side*(outer-.007),1.092,z);
-      for(const y of [.83,1.36])P.addEquipment('hullDetail',box(.035,.062,.094),side*(z>.4?1.868:1.814),y,z);
+      // owner 2026-10-19 sweep: the panels stood 7-16 cm outboard of the shelf and 5 mm under it, their bolts 2-4 cm
+      // off their faces. Each panel now rises 10 mm into a hanger rail run out from the shelf, and its bolts sit in
+      // its face.
+      P.addExternalArmor('hull',box(.014,.655,.623),side*(outer-.007),1.0975,z);
+      P.addEquipment('hullDetail',box(outer-.014-1.685+.01,.03,.56),side*((outer-.014+1.685)/2+.005),1.415,z);   // a carrier, not armour
+      for(const y of [.83,1.36])P.addEquipment('hullDetail',box(.035,.062,.094),side*(outer+.0145),y,z);
     }
     for(const z of [-2.48,-1.59])P.addEquipment('hullDetail',box(.48,.25,.68),side*1.37,1.678,z);
-    P.addMudguard('sabra-rear-'+side,'hullRubber',box(.61,.23,.055),side*1.44,1.04,-3.491,.20);
-    P.addEquipment('hullDetail',box(.61,.055,.29),side*1.44,1.175,-3.34);
+    // Owner 2026-10-19 (flaps sweep): flap and clamp 38 mm wider inboard, into the hull side they stood 33 mm off
+    P.hangMudguard('sabra-rear-'+side,'hullRubber',box(.648,.23,.055),side*1.421,1.04,-3.491,.20);
+    P.addEquipment('hullDetail',box(.648,.055,.29),side*1.421,1.175,-3.34);
     addSabraHeadlamps(P,side);
-    P.addEquipment('hullDetail',box(.055,.07,.95),side*1.38,1.68,1.20);
+    P.addEquipment('hullDetail',box(.055,.07,.95),side*1.38,1.613,1.20);          // 2026-10-19 (owner float sweep): was 65 mm over the deck
   }
   buildSabraRearDeck(P);
 }
@@ -206,7 +212,7 @@ function buildSabraTurretArmor(P: TankBuilderPort, py: number, pz: number): void
     smokeBank(P,side,1.17,2.08,1.16,5);
     for(const z of [-.74,.05,.75]){
       turretEquipment(P,'turretDetail',box(.026,.029,.59),side*1.34,2.05,z,0,side*-.09);
-      turretEquipment(P,'turretDetail',cylZ(.025,.025,10),side*1.24,2.40,z);
+      P.snapGroup(`sabra-side-stud-${side}-${z}`,()=>turretEquipment(P,'turretDetail',cylZ(.025,.025,10),side*1.24,2.40,z),{reachM:.04}); // 2026-10-19 (owner float sweep): the front stud stood 30 mm off
     }
     turretEquipment(P,'turretDetail',box(.20,.55,.24),side*1.28,2.23,-1.49,0,0,side*.07);
   }
@@ -217,7 +223,8 @@ function buildSabraBasket(P: TankBuilderPort): void {
   // support reaching -2.883m is a separate part, not the basket's height.
   for(const z of [-2.39,-2.08,-1.74]) {
     const half=.84+(z+2.39)*.36;
-    for(const y of [2.015,2.532])turretEquipment(P,'turretDetail',box(half*2,.025,.027),0,y,z+(z===-2.39?(y-2.015)*.194:0));
+    // 2026-10-19 (owner float sweep): the rear face's bottom rail stood 15 mm over the basket floor bars; it now rests on them.
+    for(const y of [2.015,2.532])turretEquipment(P,'turretDetail',box(half*2,.025,.027),0,z===-2.39&&y===2.015?1.998:y,z+(z===-2.39?(y-2.015)*.194:0));
     for(const side of [-1,1])turretEquipment(P,'turretDetail',box(.028,.54,.027),side*half,2.274,z+(z===-2.39?.05:0),z===-2.39?.192:0);
   }
   for(const side of [-1,1]) {
@@ -297,7 +304,7 @@ function buildSabraRoofFittings(P: TankBuilderPort, py: number, pz: number): voi
   const rearCover=[[0,2.46232],[.2325,2.46232],[.2230,2.54772],
     [.2089,2.56582],[.1856,2.57702],[0,2.58052]];
   P.addHatch('turretDetail',new THREE.LatheGeometry(rearCover.map(([r,y])=>new THREE.Vector2(r,y-py)),P.q?24:12),-.670,0,-1.36973-pz);
-  optic(P,.35,2.64,.30,.34,.17,.27);
+  optic(P,.35,2.59,.30,.34,.17,.27);                                             // 2026-10-19 (owner float sweep): was 48 mm over the roof
   // Raised antenna socket brackets connect the spring bases to the roof.
   turretEquipment(P,'turretDetail',cylY(.035,.062,.24,12),-.141,2.66,-1.313);
   turretEquipment(P,'turretDetail',cylY(.030,.049,.22,12),.67,2.62,-1.624);

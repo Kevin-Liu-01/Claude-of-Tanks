@@ -1,3 +1,4 @@
+import type { SnapGroupOptions } from '../tankFactoryCore.ts';
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // First-party procedural M551 Sheridan. The hull proportions were measured
@@ -64,6 +65,7 @@ interface SheridanBuilderPort {
   addGunExtraDark(geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addHatch(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addModuleVisual(module: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  snapGroup(label: string, build: () => void, options?: SnapGroupOptions): void;
   decal(
     owner: VehicleAssemblyOwner,
     kind: string,
@@ -593,7 +595,9 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   P.eraCluster('m551a1_tts_glacis_era', (put) => {
     for (let row = 0; row < 2; row++) {
       for (let col = 0; col < 6; col++) {
-        put((col - 2.5) * 0.40, 1.40 + row * 0.18, 2.38 - row * 0.37,
+        // 2026-10-19 (owner float sweep): the cassettes stood 38-44 mm off the 25-degree glacis; each sits 42 mm further
+        // in along its normal (0, -0.906, -0.423)
+        put((col - 2.5) * 0.40, 1.362 + row * 0.18, 2.362 - row * 0.37,
           -25 * D2R, 0, 0, 1.28, 1.28, 0.64);
       }
     }
@@ -604,6 +608,9 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
       const top = 1.46;
       P.addExternalArmor('hull', box(0.11, height, 0.91), side * 1.58,
         top - height * 0.5, skirtPanelZ[index]);
+      // its top hanger laps the hull's 1.496 side (owner 2026-10-19 sweep: the whole TTS skirt, its ERA and cage stood
+      // 29 mm off the hull)
+      P.add('hull', box(0.04, 0.05, 0.85), side * 1.51, top - 0.025, skirtPanelZ[index]);
       P.add('hullDetail', box(0.020, height * 0.82, 0.055), side * 1.646,
         top - height * 0.5, skirtPanelZ[index] + 0.43);
     }
@@ -730,16 +737,22 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
       -0.14, 0, 0);
     P.add('hullGlass', box(0.19, 0.10, 0.020), side * 1.02, 1.40, 2.678,
       -0.14, 0, 0);
-    P.addEquipment('turret', xform(cylY(0.075, 0.090, 0.15, P.q ? 16 : 10),
-      0, 0, 0, 0, 0, 0), side * 0.82, 0.90, -0.72);
-    P.add('turretGlass', box(0.11, 0.07, 0.020), side * 0.82, 0.92, -0.63);
+    // 2026-10-19 (owner float sweep): over the right side's lower roof the periscope stood 100 mm clear of the sight
+    // housing beside it; each periscope is seated on its nearest stock
+    P.snapGroup('tts-roof-periscope', () => {
+      P.addEquipment('turret', xform(cylY(0.075, 0.090, 0.15, P.q ? 16 : 10),
+        0, 0, 0, 0, 0, 0), side * 0.82, 0.90, -0.72);
+      P.add('turretGlass', box(0.11, 0.07, 0.020), side * 0.82, 0.92, -0.63);
+    }, { reachM: 0.12 });
   }
   P.addEquipment('turret', box(0.46, 0.26, 0.46), 0.44, 0.99, -0.52, 0, 0.10, 0);
   P.add('turretGlass', box(0.28, 0.13, 0.025), 0.44, 1.01, -0.275, 0, 0.10, 0);
+  // 2026-10-19 (owner float sweep): the aerial base stood 41 mm over the basket's front course; base and whip drop
+  // 42 mm so the base beds 2 mm into it
   P.add('turretDark', cylY(0.050, 0.070, 0.50, P.q ? 16 : 10),
-    -0.96, 1.10, -1.48);
+    -0.96, 1.058, -1.48);
   P.add('turretDetail', cylY(0.014, 0.014, 1.42, P.q ? 12 : 8),
-    -0.96, 2.04, -1.48);
+    -0.96, 1.998, -1.48);
 
   P.turretG.add(sheridanTtsAutocannon(P));
   };
@@ -985,7 +998,9 @@ function addSheridanHullProtectionAndFurniture(
   for (const side of [-1, 1]) {
     P.add('hullDark', torus(0.12, 0.015, 14), side * 0.82, 1.18, 2.73, Math.PI / 2, 0, 0);
     liftEye(P, 'hullDetail', side * 0.73, 1.55, 1.15, side * 0.08);
-    P.add('hullDetail', torus(0.10, 0.022, 12), side * 0.76, 0.73, 2.91, Math.PI / 2, 0, 0);
+    // 2026-10-19 (owner float sweep): the right tow eye stood 35 mm off the nose plate; each eye is seated on it
+    P.snapGroup('m551-tow-eye', () => P.add('hullDetail', torus(0.10, 0.022, 12), side * 0.76, 0.73, 2.91, Math.PI / 2, 0, 0),
+      { reachM: 0.05 });
   }
 
   if (!isTts) {
@@ -1109,7 +1124,9 @@ function addSheridanTurretShellAndStowage(P: SheridanBuilderPort): void {
   // them. The former full-width box filled 2.13 m of nonexistent armor and
   // dominated both the front and plan-curve error despite sharing the right
   // aggregate bounds.
-  if (P.spec.id === 'm551a1_tts') {
+  // 2026-10-19 (owner float sweep): the base Sheridan's surveyed lugs stood 0.39-0.47 m clear of its casting too; both
+  // marks seat them on the lower cheek
+  if (P.spec.id === 'm551a1_tts' || P.spec.id === 'm551_sheridan') {
     // The donor's surveyed loose lugs sat below and ahead of the casting.
     // Seat each complete three-layer lug on the actual TTS lower cheek.
     // Points/normals are measured from the bare procedural shell, not bounds.
@@ -1641,6 +1658,14 @@ function addSheridanSmokeAndAntenna(P: SheridanBuilderPort): void {
     ];
     P.add('turretDark', cylinderOnAxis(foot, axis, 0.055, 0.043,
       P.q ? 16 : 10), 0, 0, 0);
+    // 2026-10-19 (owner float sweep): the whole cheek bank (ERA, carrier rails, tubes and feet) stood 40 mm off the
+    // cast cheek; a strut from the aft tube's foot up into the cheek (its nearest point, turret-local) carries it
+    if (Math.abs(x) > 1.1 && P.spec.id !== 'm551a1_tts') {
+      const end: Vec3Tuple = [Math.sign(x) * 1.0108, 0.3093, 0.7984];
+      const v: Vec3Tuple = [end[0] - foot[0], end[1] - foot[1], end[2] - foot[2]];
+      P.add('turretDark', cylinderOnAxis([(foot[0] + end[0]) / 2, (foot[1] + end[1]) / 2, (foot[2] + end[2]) / 2],
+        v, Math.hypot(v[0], v[1], v[2]) + 0.01, 0.018, P.q ? 12 : 8), 0, 0, 0);
+    }
   }
   // Exact connected envelopes from source Object 14. The generic antenna
   // fitting used 120 mm square pedestal blocks and overran the source tips
@@ -1661,13 +1686,15 @@ function addSheridanSmokeAndAntenna(P: SheridanBuilderPort): void {
       [2.7770, 4.5299, 0.0090, 'detail'],
     ] },
   ];
-  for (const antenna of antennaStages) {
+  // 2026-10-19 (owner float sweep): the right mount's base stood 81 mm over the roof (99 mm island); each mount is
+  // seated on its nearest roof stock.
+  for (const antenna of antennaStages) P.snapGroup('m551-antenna', () => {
     for (const [minY, maxY, radius, bucket] of antenna.stages) {
       P.add(bucket === 'detail' ? 'turretDetail' : 'turretDark',
         cylY(radius, radius, maxY - minY, P.q ? 14 : 10),
         antenna.x, turretY((minY + maxY) * 0.5), antenna.z);
     }
-  }
+  }, { reachM: 0.12 });
 }
 
 function finishSheridan(P: SheridanBuilderPort, isTts: boolean): void {

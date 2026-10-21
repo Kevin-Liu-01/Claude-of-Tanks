@@ -131,7 +131,7 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
       [side * 1.10, 1.27, 3.49], [side * 1.825, 1.27, 3.49],
       [side * 1.949, 1.368, 2.90], [side * 1.10, 1.368, 2.90],
     ));
-    P.addMudguard('revolution-front-rubber', 'hullRubber', box(0.60, 0.19, 0.045), side * 1.42, 0.977, 3.606, -0.13);
+    P.hangMudguard('revolution-front-rubber', 'hullRubber', box(0.60, 0.19, 0.045), side * 1.42, 0.977, 3.606, -0.13);
     P.addMudguard('revolution-rear-rubber', 'hullRubber', box(0.54, 0.51, 0.045), side * 1.32, 0.63, -3.30, 0.12);
     for (let j = 0; j < 4; j++) {
       const z = -0.72 - j * 0.98;

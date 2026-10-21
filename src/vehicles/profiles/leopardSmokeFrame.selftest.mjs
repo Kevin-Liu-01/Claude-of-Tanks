@@ -26,6 +26,16 @@ function capture(c,quality,legacy){
   const [id,build,r,length,cr,segments,rx,ry]=c,pairs=[],retained=[];let pending,darkMaterial;
   registerProfiledBuilders({[id]:P=>build(new Proxy(P,{get(target,key){
     darkMaterial??=target.mats.dark;
+    // 2026-10-21 (float-gaps 230): leopardX.ts authors each launcher (bracket, tube, cap) in one P.snapGroup, which the
+    // build-time seat pass moves as one unit onto the narrowing flank (fittingSnap.ts). The receipt's tube/cap model
+    // follows that one move (the port's onMove), so the caps are still found triangle by triangle in the merged mesh.
+    if(key==='snapGroup')return(label,groupBuild,options={})=>{
+      const start=pairs.length;let end=start;
+      return target.snapGroup(label,()=>{groupBuild();end=pairs.length;},{...options,onMove:move=>{
+        options.onMove?.(move);
+        for(const p of pairs.slice(start,end)){p.body.translate(...move);p.cap.translate(...move);p.origin.add(new T.Vector3(...move));}
+      }});
+    };
     if(!['add','addEquipment','addMudguard'].includes(key))return Reflect.get(target,key);
     return(...original)=>{
       let args=original;const at=key==='addMudguard'?1:0,slot=args[at],g=args[at+1],p=g.parameters;

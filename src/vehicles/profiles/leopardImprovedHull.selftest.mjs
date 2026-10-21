@@ -99,6 +99,9 @@ const bare = (object) => {
   return box.getSize(new THREE.Vector3());
 };
 near(bare(source.root.getObjectByName('rig_hull')).x, 4.010000, '2A7V hull unchanged');
-near(bare(source.root.getObjectByName('rig_turret')).x, 3.180981, '2A7V turret unchanged');
+// 2026-10-21 (float-gaps 230): 3.180981 -> 3.133041. The 2A7V's right smoke bank (leopardX.ts smokeBank, a generic
+// 2 x 4 grid, not source stations) stood 46-70 mm off the narrowing flank and now seats on it (P.snapGroup, -x), so the
+// turret's +X extreme moves 1.576 -> 1.528; the -X shell side (-1.605) and the 4.010 hull width are unchanged.
+near(bare(source.root.getObjectByName('rig_turret')).x, 3.133041, '2A7V turret unchanged');
 source.dispose();
 console.log('leopardImprovedHull.selftest: ok');

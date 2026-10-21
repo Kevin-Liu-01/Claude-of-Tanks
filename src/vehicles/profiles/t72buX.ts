@@ -88,10 +88,11 @@ function deck(P:TankBuilderPort):void{
     P.addEquipment('hullDetail',box(1.88577,.045,.6856),-.0017,y,z);
     for(const dz of [-.30,.30])P.addEquipment('hullDark',box(1.77,.006,.011),-.0017,y+.024,z+dz);
   }
-  for(const x of [-.18615,.60259]){
+  // each grille unit is seated on the deck it stood 3-6 cm over (owner 2026-10-19 sweep)
+  for(const x of [-.18615,.60259])P.snapGroup('t72bu-rear-grille',()=>{
     P.addEquipment('hullDetail',box(.73877,.075,.24664),x,1.403,-2.973);
-    for(let i=0;i<7;i++)P.addEquipment('hullDark',box(.014,.008,.215),x-.28+i*.093,1.447,-2.973);
-  }
+    for(let i=0;i<7;i++)P.addEquipment('hullDark',box(.014,.008,.215),x-.28+i*.093,1.443,-2.973);   // on the plate (they stood 2.5 mm over it)
+  },{reachM:.08});
   for(const side of [-1,1])for(const [z,w,d,y]of [[-2.42153,.301,.52264,1.38385],[-1.55277,.45961,.77086,1.3942],
     [.02353,.29593,.89813,1.39938],[1.22766,.29593,.87855,1.40633],[2.19874,.30118,.6177,1.39303]]){
     P.addEquipment('hullDetail',box(w,.025,d),side*1.363,y,z);
@@ -106,11 +107,15 @@ function deck(P:TankBuilderPort):void{
   for(const x of [-.85,-.426,-.152,.152,.426,.85])P.addEquipment('hullDetail',beamBetween([x,.585,3.02],[x,.787,3.14],.017,8));
 }
 function rear(P:TankBuilderPort):void{
+  // 2026-10-21 (float-gaps 230): the source drums, bands and cradle struts stay where they were measured
+  // (t72buXGeometry.selftest.mjs pins the drum crowns); the struts' upper ends stood 15 cm off the upper rear plate, so a
+  // foot leg runs from 3 cm down each strut into that plate (its end 24 mm under the plate's face).
   for(const x of [-.59360,.58002]){
     P.addEquipment('hullDetail',cylX(.295645,.8858,32),x,1.47009,-3.4954);
     for(const dx of [-.255,.255]){
       P.addEquipment('hullDark',torus(.298,.009,28,6).rotateZ(Math.PI/2),x+dx,1.47009,-3.4954);
       P.addEquipment('hullDetail',beamBetween([x+dx,1.355,-3.125],[x+dx,1.083,-3.69],.009,8));
+      P.addEquipment('hullDetail',beamBetween([x+dx,1.342,-3.152],[x+dx,1.17,-3.08],.012,8));
     }
   }
   P.addEquipment('hullDetail',cylX(.098,3.10,24),-.0068,.90353,-3.23376);
@@ -180,8 +185,10 @@ function cases(P:TankBuilderPort):void{
     equipment(P,'turretDetail',box(.392,.012,.72).rotateY(yaw),x,y+.226,z);
     equipment(P,'turretDetail',beamBetween([x*.75,1.59,z],[x,1.57,z],.018),0,0,0);
   }
-  equipment(P,'turretDetail',cylX(.08,1.208,20),.022,1.744,-1.526);
-  for(const x of [-.647,.674])equipment(P,'turretDetail',beamBetween([x,1.63,-1.47],[x,1.85,-1.44],.02),0,0,0);
+  // 2026-10-19 (owner float sweep): the stowage tube hung 15 mm behind the case and its two stays stood beyond both ends
+  // of it (48-64 mm off the case); the tube sits on the case's back and the stays run through it into the case
+  equipment(P,'turretDetail',cylX(.08,1.208,20),.022,1.744,-1.509);
+  for(const x of [-.56,.60])equipment(P,'turretDetail',beamBetween([x,1.63,-1.47],[x,1.85,-1.44],.02),0,0,0);
 }
 function roofFittings(P:TankBuilderPort):void{
   P.addCupola('turret',cylY(.34791,.11848,32),-.58057-YAW[0],2.17808-YAW[1],-.03332-YAW[2]);
@@ -192,13 +199,13 @@ function roofFittings(P:TankBuilderPort):void{
   for(const [x,y,z,w,h,d]of [[-.59585,2.23834,.13185,.24235,.09361,.10737],[-.43353,2.226,-.17179,.189,.104,.197],
     [-.71571,2.2261,-.16958,.197,.101,.190],[.7839,2.07777,.29559,.280,.229,.243],
     [.50267,2.03381,.64896,.352,.161,.339],[.00345,2.06909,.76502,.362,.136,.157],
-    [.4412,2.13509,-.88044,.184,.165,.082]])equipment(P,'turretDetail',box(w,h,d),x,y,z);
+    [.4412,2.1115,-.88044,.184,.165,.082]])equipment(P,'turretDetail',box(w,h,d),x,y,z);   // last box on the roof (it stood 22 mm over it; 2026-10-19 owner float sweep)
   // Fused source mesh_324 island9012 identifies this separate sight hood.
   P.addModuleVisual('optics','turretDetail',boxSections([[.837,.0996,2.105,1.85],[1.08,.0996,2.14,1.85],[1.257,.0996,1.98,1.85]]).translate(.5025,0,0),-YAW[0],-YAW[1],-YAW[2]);
   P.addModuleVisual('optics','turretDark',box(.176,.085,.009),.5025-YAW[0],1.983-YAW[1],1.26-YAW[2]);
   equipment(P,'turretDetail',cylY(.0284,.7654,16),.32841,2.43068,-.83118);
   equipment(P,'turretDetail',box(.0731,.2721,.0742),.32814,2.51682,-.83181);
-  equipment(P,'turretDetail',cylY(.022,.095,16),-.24975,2.131,-.81318);
+  equipment(P,'turretDetail',cylY(.022,.095,16),-.24975,2.1005,-.81318);   // the whip's foot on the roof (it stood 29 mm over it; 2026-10-19 owner float sweep)
   equipment(P,'turretDark',cylY(.0053,1.291,10),-.24975,2.75206,-.81318);
 }
 function smoke(P:TankBuilderPort):void{
@@ -212,9 +219,13 @@ function smoke(P:TankBuilderPort):void{
   }
 }
 function machineGun(P:TankBuilderPort):void{
-  for(const [x,y,z,w,h,d]of [[-.95625,2.58946,.3938,.51045,.33676,.44685],[-.4267,2.49225,.38464,.1063,.3572,.402],
+  // 2026-10-19 (owner float sweep): the ammunition box stood 39 mm off the gun with nothing under it, the rear upright
+  // 24 mm over the hatch block and 12 mm short of the fore one; the upright sits on the block and meets the fore one,
+  // and a stay carries the box from the mount's post
+  for(const [x,y,z,w,h,d]of [[-.95625,2.58946,.3938,.51045,.33676,.44685],[-.4267,2.46625,.39464,.1063,.3572,.422],
     [-.4265,2.4587,.7467,.191,.444,.298],[-.5955,2.2467,.2605,.184,.229,.116]])equipment(P,'turretDetail',box(w,h,d),x,y,z);
   equipment(P,'turretDetail',beamBetween([-.61,2.22,.22],[-.61,2.58,.55],.035),0,0,0);
+  equipment(P,'turretDetail',beamBetween([-.73,2.50,.4767],[-.60,2.50,.4767],.02),0,0,0);
   const mg=sourceMachineGun(P,YAW);
   mg.add('turretDark',box(.15886,.11767,.6897),-.61393,2.625,.62165);
   mg.add('turretDetail',box(.07286,.14285,1.19466),-.6096,2.67241,.86528);
