@@ -26,7 +26,7 @@
 //     anywhere under it, the saddle no more than 5 mm into the boot), and keeps 10 mm from every turret mesh over the
 //     whole pitch range.
 //  Negative controls must fail the same checks: the Yun's and Kunlun's guns without their depression curves, the Qilin's
-//  station without its depression table, the fleet Type 96B's turret-fixed box sight (inside its boot), and the fleet
+//  station without its depression table, the Type 96B's box sight turret-fixed at its authored place (inside the boot), and the fleet
 //  99A2 collar on the Qilin (0.12 m off the pivot, sweeping into the B3's fenders).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -90,26 +90,32 @@ function yawSweep(measure, { near = .060, centres = [], ranges = [], stop = 0 } 
   return worst;
 }
 
-// The fleet Type 96B: its turret-fixed box sight stands inside its pitching boot (the negative control for check 5).
+// The Type 96B's box sight, turret-fixed at its authored place, stands inside the pitching boot (the negative control for
+// check 5). Release 227 (2026-10-19): the fleet Type 96B and the three Type 96 concepts carry the sight on the gun too
+// (boxSightOnGun), so no build has the turret-fixed sight left: the control places the authored box (type96bX.ts
+// TYPE96_BOX_SIGHT, source frame, its builder's optic) in the fleet turret's frame and measures it against the fleet
+// boot alone (the gunMount census part spanning the boot's stations; its saddle and sight are separate parts).
 function boxSightInsideFleetBoot() {
   const parts = [];
   const tank = createTank('type96b', null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242, partCensus(b, g) { parts.push(censusPart(b, g)); } });
   try {
     tank.root.updateMatrixWorld(true);
     const turret = tank.root.getObjectByName('rig_turret'), gun = tank.root.getObjectByName('rig_gun');
-    const sight = parts.filter((p) => p.bucket === 'turretDetail' && Math.abs(p.box.min.x + p.box.max.x) < .01 && Math.abs(p.box.max.x - p.box.min.x - .25) < .002
-      && Math.abs(p.box.max.z - p.box.min.z - .396) < .002);
-    assert.equal(sight.length, 1, 'type96b: its box sight');
-    // the boot (added outside the census on the fleet build) is the mantlet bucket's mesh under rig_gun
-    const recoilRig = tank.root.getObjectByName('rig_recoil'), boot = meshesUnder(gun, recoilRig ? [recoilRig] : []);
-    assert.ok(boot.length, 'type96b: the pitching mantlet and boot under rig_gun');
-    const bootTris = meshTriangles(boot, new THREE.Matrix4().copy(turret.matrixWorld).invert());
+    const boot = parts.filter((p) => p.bucket === 'gunMount' && Math.abs(p.box.min.z + .40) < .005 && Math.abs(p.box.max.z - .351) < .005);
+    assert.equal(boot.length, 1, 'type96b: its pitching boot (gun frame)');
+    const toTurret = new THREE.Matrix4().copy(turret.matrixWorld).invert().multiply(gun.matrixWorld), v = new THREE.Vector3();
+    const bootTris = new Float64Array(boot[0].tri.length);
+    for (let i = 0; i < bootTris.length; i += 3) { v.set(boot[0].tri[i], boot[0].tri[i + 1], boot[0].tri[i + 2]).applyMatrix4(toTurret); bootTris[i] = v.x; bootTris[i + 1] = v.y; bootTris[i + 2] = v.z; }
+    // the authored box sight (source centre 0, 2.278, 1.540; 0.25 x 0.236 x 0.396) in the turret frame
+    const authored = new THREE.BoxGeometry(.25, .236, .396).toNonIndexed().translate(0 - turret.position.x, 2.278 - turret.position.y, 1.540 - turret.position.z);
+    const sight = { tri: Float64Array.from(authored.getAttribute('position').array), box: new THREE.Box3().setFromBufferAttribute(authored.getAttribute('position')) };
+    authored.dispose();
     const grid = new SurfaceGrid(bootTris, { cell: .04, rq: .08 }), solid = { tri: bootTris, box: new THREE.Box3().setFromArray(bootTris) };
     // the sight's bottom face: how deep inside the boot do its samples lie at rest (ray parity, both faces counted)
-    const pts = densePoints(sight[0].tri, .01);
+    const pts = densePoints(sight.tri, .01);
     let deepest = 0;
     for (let i = 0; i < pts.length; i += 3) {
-      if (pts[i + 1] > sight[0].box.min.y + 1e-6) continue;
+      if (pts[i + 1] > sight.box.min.y + 1e-6) continue;
       if (insideClosed(solid, pts[i], pts[i + 1], pts[i + 2])) deepest = Math.max(deepest, grid.distance(pts[i], pts[i + 1], pts[i + 2]));
     }
     return deepest;
@@ -326,5 +332,5 @@ for (const id of (process.env.CN_CLEARANCE_IDS ?? 't72b3_qilin,t72b3m_kunlun,t80
   } finally { tank.dispose(); }
 }
 const control = boxSightInsideFleetBoot();
-assert.ok(control > .010, `negative control: the fleet Type 96B's turret-fixed box sight stands inside its boot (${(control * 1000).toFixed(1)} mm deep)`);
+assert.ok(control > .010, `negative control: the Type 96B's box sight, turret-fixed at its authored place, stands inside the fleet boot (${(control * 1000).toFixed(1)} mm deep)`);
 console.log(`cnClearance: the CN guns, undersides, collars, roof stations and box sights clear everything they sweep past PASS (${secs(T0)} s)`);

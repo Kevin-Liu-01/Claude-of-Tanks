@@ -16,7 +16,7 @@ import {weldedFlankHousing} from './weldedFlankHousing.ts';
 import {addChineseChevronFacet} from './chineseChevronEra.ts';
 import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
 import {bustleCutZ} from '../donorBustleCut.ts';
-import {NATIONAL_DONOR_TURRETS,QILIN_BUSTLE_CUT_M} from '../nationalDonorTurrets.ts';
+import {QILIN_BUSTLE_CUT_M} from '../nationalDonorTurrets.ts';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
 import {beamBetween,blindTube} from './measuredPrimitives.ts';
 import {markEraHitFaces} from './eraHitFaces.ts';
@@ -399,6 +399,17 @@ function qilinBrowChevrons(P:TankBuilderPort,side:number):void {
   }
 }
 
+/** A riser under a roof optic (its foot then seats on the riser's top): its underside follows the roof under its edges
+ * 6 mm in, its top flat `rise` over the highest roof point under it. */
+function opticRiser(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,w:number,d:number,rise:number):THREE.BufferGeometry {
+  const rows=[z-d/2,z+d/2].map(zz=>({z:zz,left:roofAt(parts,x-w/2,zz),right:roofAt(parts,x+w/2,zz)}));
+  let high=-Infinity;
+  for(const dx of [-w/2,0,w/2])for(const dz of [-d/2,0,d/2])high=Math.max(high,roofAt(parts,x+dx,z+dz));
+  const g=sectionSolid(rows.map(r=>({z:r.z,ring:[[x-w/2,r.left-.006],[x+w/2,r.right-.006],[x+w/2,high+rise],[x-w/2,high+rise]] as SectionPoint[]})));
+  P.addEquipment('turretDetail',g);
+  return g;
+}
+
 /** A compact flat sensor eye (the cast Qilin's flat eye, a size smaller: a 0.16 m pedestal under a 0.22 m head). */
 function qilinFlatEye(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number):void {
   const base=equipmentFoot(P,parts,x,z,.16,.16)-.003;
@@ -432,7 +443,11 @@ function qilin(P:TankBuilderPort):void {
   // Round guarded lamps on the crown just behind the chevrons' upper roots, 5 cm ahead of the commander's sight.
   for(const side of [-1,1])footedLamp(tagged(P,QILIN_MODEL,'lamp'),roof,side*.82,-.14,l.lamp);
   // The side camera on the left crown edge and the flat eye mirroring it on the right.
-  lowOptic(tagged(P,QILIN_MODEL,'camera'),roof,1.12,-.30,.20,.11,.19,true);
+  // Round 10 (the fleet ZTZ-99A2 lead): the 99A2's right smoke bank now stands on its launcher base on the roof edge just
+  // ahead of the camera (china.ts addZTZ99A2SmokeBanks: the base's top at y .922, the camera's lenses .873-.929), so the
+  // camera stands on an 80 mm riser and looks out over the bank; the flat eye's glass (.967-1.015) clears the left one.
+  const camera=tagged(P,QILIN_MODEL,'camera');
+  lowOptic(camera,[...roof,opticRiser(camera,roof,1.12,-.30,.18,.17,.08)],1.12,-.30,.20,.11,.19,true);
   qilinFlatEye(tagged(P,QILIN_MODEL,'flat-eye'),roof,-1.12,-.30);
   // The split-panel sensor back on the cast Qilin's own seat (nationalRoofSystems: x -0.06 on its roofZ -0.12), the
   // crown's clear centre between the commander's sight and the gunner's sight block, behind the gun throat. M1
@@ -464,20 +479,6 @@ function qilin(P:TankBuilderPort):void {
   qilinBustleFloor(tagged(P,QILIN_MODEL,'bustle-floor'));
   qilinRackLoad(P,qilinRearRack(P));
   qilinRearCamera(tagged(P,QILIN_MODEL,'rear-camera'),deck);
-  qilinCupolaRingSeat(tagged(P,QILIN_MODEL,'ring-seat'));
-}
-
-/** Round 9 (visual critic CN-R7-2: "the thin ring rail is wider than the round hatch base under it ... it reads as
- * floating"): the 99A2 cupola's fixed ring (a 14 mm round bar at r 0.265, y 0.885) stands 19 mm out past the cupola's
- * top edge (r 0.26 at y 0.8775, its side flaring to 0.28 at the roof). A ring seat under it, as on the real cupola's
- * casting: a 16.5 mm collar out to the bar's own outer radius, its top 3 mm under the cupola's top face (no shared plane)
- * and 3.5 mm into the bar's underside, its inner part buried in the cupola, in the cupola's paint and facets. The
- * pintle's rim socket (welded 4 mm into the bar) is welded 4 mm into the seat too. */
-function qilinCupolaRingSeat(P:TankBuilderPort):void {
-  const cupola=NATIONAL_DONOR_TURRETS.t72b3_qilin?.socket?.cupola;
-  if(!cupola)throw new Error(`${P.spec.id}: no 99A2 cupola for its ring seat`);
-  const top=.8745,bottom=.858;
-  P.add('turret',cylY(.279,.279,top-bottom,P.q?20:14),cupola[0],(top+bottom)/2,cupola[1]);
 }
 
 /** The Qilin's flat tiles on each flank sleeve's rear wall (turret-local z of their centres). */

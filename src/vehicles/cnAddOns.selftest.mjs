@@ -54,8 +54,7 @@ const INVENTORY = {
     'bustle-floor': [1, 0], 'cage-root': [2, 0], 'cage-front-post': [2, 0], 'cage-side-rail': [2, 0], 'cage-post': [3, 0],
     'cage-rear-rail': [3, 0], 'cage-floor': [12, 0], 'net-roll': [3, 0], 'ammo-case': [8, 0], 'kit-bag': [2, 0], 'tarp-bundle': [3, 0],
     'spare-case': [5, 0], 'rear-camera': [5, 0], 'warning-head-foot': [2, 0],
-    // round 9 (visual critic CN-R7-2): the seat under the 99A2 cupola's fixed ring
-    'ring-seat': [1, 0],
+    // (round 9's seat under the 99A2 cupola's fixed ring, critic CN-R7-2, is the donor turret's own since round 10: below)
   },
   // round 3 (critic D3): the Kunlun's 226 package on its Type 96B, its lamps now riding the Shtora heads' hoods
   t72b3m_kunlun: {
@@ -80,8 +79,7 @@ const LOAD = new Set(['net-roll', 'ammo-case', 'kit-bag', 'tarp-bundle', 'spare-
 // (cable, post, strip, seam, mark) crosses a face by no more than its own half-thickness and a few millimetres (a gun
 // band's bore is 2 mm inside the barrel's skin); a shaped foot (6 mm into the roof at its corners) swallows the roof's
 // camber under it up to 16 mm, 22 mm where the split sensor's foot welds over the chevron's raised upper root. The
-// Qilin's bustle floor (round 8) runs 25 mm into the shell's underside and the rear armour box's bottom; its cupola's
-// ring seat (round 9) is buried 19.5 mm in the cupola. Round 9 (critic CN9-01: a pair with a cage member was allowed
+// Qilin's bustle floor (round 8) runs 25 mm into the shell's underside and the rear armour box's bottom. Round 9 (critic CN9-01: a pair with a cage member was allowed
 // 46 mm, so a case driven 22 mm through the rear rails, or a bundle 12 mm into the net roll, passed): a load item and
 // anything it meets, rack or load, is allowed only its 1 mm rest on the bars' flat tops.
 const HOUSINGS = new Set(['wrap-housing', 'flank-sleeve', 'bustle-module', 'bustle-floor']);
@@ -92,7 +90,6 @@ function allowance(p, q) {
   if (HOUSINGS.has(p.role)) return .40;
   if (family(p.role) === 'cage') return .046;
   if (p.role === 'ring-race') return .040;
-  if (p.role === 'ring-seat') return .022;
   if (THIN.has(p.role)) return .013;
   if (p.role === 'split-sensor') return .022;
   return .016;
@@ -477,6 +474,15 @@ for (const quality of ['high', 'low']) {
           drawn.union(new THREE.Box3().setFromBufferAttribute(o.geometry.attributes.position).applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld))); });
         const drawnLength = drawn.max.z - drawn.min.z;
         assert.ok(drawnLength <= .905 * 4.228, `Qilin: the drawn turret is ${drawnLength.toFixed(3)} m, ${(100 * drawnLength / 4.228).toFixed(1)} % of the 226 turret's 4.228 m`);
+        // round 10 (the ZTZ-99A2 lead): the seat under the cupola's fixed ring (r .279, y .858-.8745, centred on the cupola) is
+        // the donor's own (china.ts buildZTZ99A2ProductionTurret, so the fleet 99A2 has it too); the kit adds no second one
+        const seats = parts.filter((p) => p.bucket === 'turret' && Math.abs(p.box.min.y - .858) < 1e-4 && Math.abs(p.box.max.y - .8745) < 1e-4);
+        assert.equal(seats.length, 1, `Qilin: one cupola ring seat (${seats.length})`);
+        assert.equal(seats[0].role, null, 'Qilin: the ring seat is the donor turret\'s own');
+        const [cx, cz] = NATIONAL_DONOR_TURRETS.t72b3_qilin.socket.cupola, seat = seats[0].box;
+        assert.ok(Math.abs((seat.min.x + seat.max.x) / 2 - cx) < 2e-3 && Math.abs((seat.min.z + seat.max.z) / 2 - cz) < 2e-3
+          && Math.abs(Math.max(seat.max.x - seat.min.x, seat.max.z - seat.min.z) / 2 - .279) < 1e-3,
+          `Qilin: the ring seat is centred on the cupola, out to the ring's .279 m ([${seat.min.toArray().map((v) => v.toFixed(3))}..${seat.max.toArray().map((v) => v.toFixed(3))}])`);
       }
       // ---- lamps: real emitters only where authored
       const lights = tank.root.userData.nightLightCoverage;

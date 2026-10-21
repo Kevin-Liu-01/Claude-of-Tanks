@@ -101,6 +101,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/remoteGunFleet.selftest.mjs',
     'src/vehicles/profiles/mbt70Rh202.selftest.mjs',
     'src/vehicles/roofWeaponPolicy.selftest.mjs',
+    // 2026-10-20 (the fleet ZTZ-99A2 lane): the QJC-88's arc stops short of the commander's sight (the whole moving mass
+    // swept both ways at 25 mm; the old arc and the bare depression table as negative controls)
+    'src/vehicles/ztz99a2RoofArc.selftest.mjs',
     'src/vehicles/profiles/challenger3MachineGunAssembly.selftest.mjs',
     'src/vehicles/profiles/amx30B2Roof.selftest.mjs',
     'src/vehicles/fleetRenewal.selftest.mjs',
@@ -651,6 +654,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/donorStockSeating.selftest.mjs',
     // release 227: the fleet Type 96B's gun clears its hull through traverse and pitch (trimmed boot, rear-deck curve)
     'src/vehicles/profiles/type96MantletClearance.selftest.mjs',
+    // release 227: the fleet Type 96B's box sight rides the gun at its measured top; the mantlet stands over the hull
+    'src/vehicles/profiles/type96bSightBoot.selftest.mjs',
     'src/vehicles/profiles/type99AAngularTurret.selftest.mjs',
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
     'src/vehicles/profiles/eraSeating.selftest.mjs',

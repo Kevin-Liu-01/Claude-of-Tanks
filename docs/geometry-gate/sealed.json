@@ -3466,14 +3466,36 @@
    "openPx": 0,
    "openViews": 0,
    "insideOutPx": 130,
-   "seeThroughPx": 2,
-   "netSeeThroughPx": 2790,
+   "seeThroughPx": 7,
+   "netSeeThroughPx": 2646,
    "tris": 112543,
    "frame": [
     0,
     1.65,
     1.2,
     6.8
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "the field net re-laid over the smoke banks moved onto the roof edge (release 227, fleet ZTZ-99A2 lead)",
+     "by": "kevinliu",
+     "date": "2026-10-20",
+     "from": {
+      "seeThroughPx": 2,
+      "netSeeThroughPx": 2790
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "the field net re-laid over the rail stanchions, which now stand under the yawed rail (release 229, fleet ZTZ-99A2 rail follow-up)",
+     "by": "kevinliu",
+     "date": "2026-10-20",
+     "from": {
+      "seeThroughPx": 7,
+      "netSeeThroughPx": 2666
+     }
+    }
    ]
   }
  }
