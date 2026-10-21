@@ -120,7 +120,7 @@ function buildSabraHull(P: TankBuilderPort): void {
       // off their faces. Each panel now rises 10 mm into a hanger rail run out from the shelf, and its bolts sit in
       // its face.
       P.addExternalArmor('hull',box(.014,.655,.623),side*(outer-.007),1.0975,z);
-      P.add('hull',box(outer-.014-1.685+.01,.03,.56),side*((outer-.014+1.685)/2+.005),1.415,z);
+      P.addEquipment('hullDetail',box(outer-.014-1.685+.01,.03,.56),side*((outer-.014+1.685)/2+.005),1.415,z);   // a carrier, not armour
       for(const y of [.83,1.36])P.addEquipment('hullDetail',box(.035,.062,.094),side*(outer+.0145),y,z);
     }
     for(const z of [-2.48,-1.59])P.addEquipment('hullDetail',box(.48,.25,.68),side*1.37,1.678,z);

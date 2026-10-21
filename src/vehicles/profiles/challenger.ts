@@ -3762,8 +3762,10 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
         const outerJoinX = side * (cassetteOuter + 0.001);
         const outerDepth = Math.abs(cassetteRear - cassetteFront) - 0.10;
         // 2026-10-19 (owner float sweep): the course tapers to 30 mm at its outer edge, so the face skins below stood in
-        // air (20-25 mm off anything); a thin outer wall behind them closes the cassette's outer face
-        P.add('turret', box(0.012, 0.26, Math.abs(cassetteRear - cassetteFront) + 0.10), side * (cassetteOuter - 0.005), 0.18,
+        // air (20-25 mm off anything); a thin outer wall behind them closes the cassette's outer face. It is cassette
+        // detail, not a turret armor face: as one, the authored right-side number re-seated on its 26 cm band and
+        // hung half off it (sealed see-through 2026-10-21)
+        P.add('turretDetail', box(0.012, 0.26, Math.abs(cassetteRear - cassetteFront) + 0.10), side * (cassetteOuter - 0.005), 0.18,
           (cassetteRear + cassetteFront) * 0.5);
         const buildChallenger2TurretStage19 = (): void => {
           P.add('turretDark', box(0.002, 0.022, outerDepth), outerJoinX, 0.075,

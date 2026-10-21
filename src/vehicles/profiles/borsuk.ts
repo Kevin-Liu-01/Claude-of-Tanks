@@ -30,7 +30,7 @@ function buildHull(P: TankBuilderPort): void {
       {
         const top = roof - 0.05, ring = [[1.52, 1.31], [1.62, 1.31], [1.62, top], [1.40, top]] as [number, number][];
         const backer = sectionSolid([{ z: z - .44, ring }, { z: z + .44, ring }]);
-        P.add('hull', side < 0 ? mirrorX(backer) : backer);
+        P.addEquipment('hullDetail', side < 0 ? mirrorX(backer) : backer);   // a carrier, not armour
       }
       P.addEquipment('hullDark',box(.008,.016,.89),side*1.69,1.28,z);
       for (const dz of [-.31,.31]) {

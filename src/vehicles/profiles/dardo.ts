@@ -25,7 +25,7 @@ function buildHull(P: TankBuilderPort): void {
       sideWall(P, side, 1.505, 1.545, [[z-.412, .67, 1.26], [z+.412, .67, 1.26]]);
       // a hinge web across the 11 cm between the hull's 1.40 shoulder and the section's top edge, over the track's
       // top run (owner 2026-10-19 sweep: every section floated beside the hull)
-      P.add('hull', box(.13, .045, .80), side * 1.445, 1.2375, z);
+      P.addEquipment('hullDetail', box(.13, .045, .80), side * 1.445, 1.2375, z);   // a carrier, not armour
       P.addEquipment('hullDetail', box(.043, .035, .64), side*1.545, 1.27, z);
       for (const dz of [-.29, .29]) {
         P.addEquipment('hullDetail', box(.025, .15, .035), side*1.545, .64, z+dz);

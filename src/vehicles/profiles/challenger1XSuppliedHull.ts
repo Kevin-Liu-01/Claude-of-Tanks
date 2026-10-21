@@ -148,7 +148,7 @@ function appliquePanel(P:TankBuilderPort,side:number,back:number,front:number,
   // A backer band carries the panel off the sponson's 67.9 in outer wall, over the shared height (owner 2026-10-19
   // sweep: every panel stood 7 cm off it, held by nothing).
   const bandLo=Math.max(low,50),bandHi=Math.min(high,58);
-  if(bandHi>bandLo)P.add('hull',box(m(inner+.3-67.4),m(bandHi-bandLo),m(front-back-.5)),
+  if(bandHi>bandLo)P.addEquipment('hullDetail',box(m(inner+.3-67.4),m(bandHi-bandLo),m(front-back-.5)),
     ...p(side*(inner+.3+67.4)/2,(bandLo+bandHi)/2,midZ));
   for(const y of[low+.64961,high-.64961])P.addExternalArmor('hull',
     box(m(.43307),m(1.29922),m(front-back)),...p(side*(inset+outer)/2,y,midZ));
@@ -170,7 +170,7 @@ function sideApplique(P:TankBuilderPort,side:number):void{
     if(side<0)ring.reverse();return{z:p(0,0,z)[2],ring};
   })));
   // its backer: the course's top runs 0.5 in over the sponson's wall foot, 2.3 in outboard of it
-  P.add('hull',box(m(70.45-67.3),m(.45),m(80-43)),...p(side*(70.45+67.3)/2,49.425,(80+43)/2));
+  P.addEquipment('hullDetail',box(m(70.45-67.3),m(.45),m(80-43)),...p(side*(70.45+67.3)/2,49.425,(80+43)/2));
   for(const z of[-105.315,-90.827,-76.378]){
     equipment(P,cylX(m(1.25),m(.65),12),side*76.0,26.18,z);
     caseBox(P,side*73.1,26.18,z,5.2,4.4,1.95);

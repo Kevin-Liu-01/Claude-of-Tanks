@@ -435,6 +435,8 @@ interface LeopardHullV3Config {
     readonly z1: number;
     readonly drop?: number;
     readonly followDeck?: boolean;
+    /** how far the planks' inner edge runs into the body side (default 10 mm) */
+    readonly embed?: number;
   };
   readonly fenderFore?: {
     readonly z0: number;
@@ -1963,7 +1965,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
       const drop = F.drop ?? 0.005;            // fender top below the deck line
       // The planks run inboard into the body side (owner 2026-10-19 sweep: on the 2A3 their 1.622 inner edge stood 6 cm
       // off the 1.56 body, every plank floating); the dark top keeps its authored outboard band.
-      const x0 = Math.min(F.x0, H.bodyHW - 0.01);
+      const x0 = Math.min(F.x0, H.bodyHW - (F.embed ?? 0.01));
       for (const s of [-1, 1] as const) {
         for (let k = 0; k < segN; k++) {
           const zc = F.z0 + segL * (k + 0.5);
@@ -7305,8 +7307,9 @@ function buildLeo2A7V(P: TankBuilderPort) {
       // not a deep rectangular apron between the tracks.
       rear: { wallZ: -3.78, lipZ: -3.86, yTop: 1.60, yBot: 0.75 },
       // owner 2026-10-19 sweep: the fender planks (and the skirt course hung from them) stood 80 mm off the 1.76 body
-      // side; their inner edge now runs 10 mm into it
-      fender: { x0: 1.75, x1: 1.955, y0: 1.60, y1: 1.665, z0: -3.66, z1: 2.60 },
+      // side; their inner edge runs 40 mm into it, past the cheek's taper toward the nose (10 mm left the rounded
+      // plank ends showing through it)
+      fender: { x0: 1.84, x1: 1.955, y0: 1.60, y1: 1.665, z0: -3.66, z1: 2.60, embed: 0.04 },
       // A7V deep modular skirt courses at ±2.00 EXACT (the width guard),
       // hanging to 0.55 — the deep side-protection read with the lower
       // wheel halves still visible (photo class).

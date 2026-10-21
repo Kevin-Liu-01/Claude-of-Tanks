@@ -4,5 +4,5 @@
 import type { InteriorFillRecord } from '../interiorFills.ts';
 
 export const INTERIOR_FILLS: Readonly<Record<string, InteriorFillRecord>> = Object.freeze({
-  "dardo": { v: 0.025, o: [-1.6415, 0.028234, -3.459], t: [0, 1.72, -0.3], g: [0, 2.12, 0.65], hull: "DAAmAAsAGAAmAAsAagAmAAsAdwAmAAsAEwAnAAsAFQAuAAsAbQAnAAsAbwAuAAsAEQA7AOgAEgA8AOgAcAA7AOgAcQA7AOgAcAA8AOgAcAA8AOgAFAA5AOkAFAA5AOoAbgA5AOkAbgA6AOkAFAA6AOoAFAA6AOoAcQA7AOoAcQA7AOoA", turret: "NABgAH0ANABgAH0A" },
+  "dardo": { v: 0.025, o: [-1.6415, 0.028234, -3.459], t: [0, 1.72, -0.3], g: [0, 2.12, 0.65], hull: "DAAmAAsAGAAmAAsAagAmAAsAdwAmAAsAEwAnAAsAFQAuAAsAbQAnAAsAbwAuAAsAEQA7AOgAEgA8AOgAcAA7AOgAcQA7AOgAcQA8AOgAcQA8AOgAFAA5AOkAFAA5AOoAbgA5AOkAbgA6AOkAEQA7AOkAEgA7AOoAcQA7AOkAcQA7AOoAcAA7AOoAcAA7AOoA", turret: "NABgAH0ANABgAH0A" },
 });
