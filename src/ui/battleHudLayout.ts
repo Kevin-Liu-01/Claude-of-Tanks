@@ -850,7 +850,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       noticeTop = touchPlan.noticeTop;
       alertTop = touchPlan.alertTop;
     }
-    const touchNotices = touchPlan ? ['plan', touchPlan.noticeCompact ? 'notice-compact' : '', touchPlan.alertCompact ? 'alert-compact' : '',
+    const touchNotices = touchPlan ? ['plan', touchPlan.noticeCompact ? 'notice-compact' : '', touchPlan.alertCompact ? 'alert-compact' : '', touchPlan.alertNarrow ? 'alert-narrow' : '',
       touchPlan.cleared ? '' : 'uncleared'].filter(Boolean).join(' ') : '';
     if ((document.body.dataset.touchNotices ?? '') !== touchNotices) {
       if (touchNotices) document.body.dataset.touchNotices = touchNotices;

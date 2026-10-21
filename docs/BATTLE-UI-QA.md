@@ -563,7 +563,26 @@ nothing clears, every block now counts out to its 6 px gap, so a fallback place
 no longer sits 0 px from the systems row or the quick buttons. The detection and
 the alert are also placed in whichever order reaches least far in all, and a
 notice already placed costs a hundred times a panel, so the two never stack
-while any other place remains. Placing
+while any other place remains. A place over a block costs three times one in its
+gap. At 568x256 the two notices fit only by touching the chip and the
+consumables, and margins alone had set the detection 10 px onto a consumable.
+
+Through the scope, the coordinator ruled that "0 APFSDS" and the zoom matter
+more than the map while a notice shows. The fallback weights there are:
+
+- the minimap: half the footprint's per-px² cost;
+- the circle: 1;
+- the readout rows and the range tag: 5;
+- a panel or a control: 10.
+
+The alert may also lie over the map at the map's width, 58 px tall at most, in
+the `alert-narrow` form. That happens where the map leaves room under the
+notices' first row. At 320x568 with both notices up at full bloom, the
+detection now takes the free band over the map, and the alert lies over the
+map. Before, the alert covered "0 APFSDS" and the "×" of the zoom plate. A
+short landscape's map sits beside the score, over the notices' first row, so
+its scope keeps the compact fallback. Those scenes stay notes in the receipt.
+In battle the footprint still goes before the map. Placing
 the detection first had taken the one free place at 640x360 and sent the alert
 onto the scope's zoom plate. The scan reads only the blocks that cross each row
 band, about 4 ms a plan on the smallest windows. The rendered receipt now also

@@ -8,9 +8,10 @@
 // against it, the seated warning chip, the vision plate, the aim hint and the other notices, and (r10g: the alert sat on
 // the AUTO AIM and SCOPE labels at 375x667) the controls, their labels and the panels: each keeps 3 px. Where the
 // layout found no place that keeps clear (body[data-touch-notices~='uncleared'], touchNoticePlan.ts) the gaps are notes,
-// not failures, and the report lists them, except through the scope: there a notice keeps 3 px from the sight's text
-// (the readouts, the zoom, the range tag, a countdown) wherever it sits, and covers the map first (r10g, the
-// coordinator's ruling: at 320x568 the alert sat on "0 APFSDS" and the zoom plate). No screenshot.
+// not failures, and the report lists them, except through a portrait phone's scope: there a notice keeps 3 px from the
+// sight's text (the readouts, the zoom, the range tag, a countdown) wherever it sits, the alert lying over the map
+// instead (r10g, the coordinator's ruling: at 320x568 the alert sat on "0 APFSDS" and the zoom plate). The short
+// landscapes' scope, whose map sits beside the score, over the notices' first row, keeps its notes. No screenshot.
 // node tools/hud-touch-notices.browser.mjs --url=http://127.0.0.1:5189 [--out=outputs/hud-touch-notices] [--case=360x640,...]
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -126,8 +127,8 @@ try {
         const line = `${size} ${scene}: the ${name} keeps ${gap.toFixed(2)} px from ${what}`;
         if (!staged.uncleared) failures.push(line);
       }
-      // (through the scope the sight's text binds an uncleared place too)
-      if (staging[1] === 'scope' && staged.uncleared) {
+      // (through a portrait phone's scope the sight's text binds an uncleared place too)
+      if (staging[1] === 'scope' && staged.uncleared && height > width) {
         const apart = (a, b) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
         for (const name of NOTICES) {
           const notice = staged[name];
