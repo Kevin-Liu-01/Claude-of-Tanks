@@ -753,11 +753,23 @@ let vite = null;
 let browser = null;
 // (2026-10-20, item/mp-rejoin-229) a run stopped from outside (its alarm, a kill) closes its browsers first: puppeteer's
 // Chromes sit in their own process groups and otherwise go on rendering as orphans
+// and leaves what it measured so far: the report as it stands and, with --a2-profile, the returning tab's profile
+let signalProfile = null;
+const saveOnSignal = async (signal) => {
+  report.stoppedBy = signal;
+  report.wallMs = elapsedMs();
+  report.pass = false;
+  if (signalProfile) {
+    const profile = await Promise.race([signalProfile.send('Profiler.stop').then((result) => result.profile).catch(() => null), sleep(5000).then(() => null)]);
+    if (profile) await writeFile(join(outputDir, signalProfile.file), JSON.stringify(profile)).catch(() => {});
+  }
+  await writeFile(join(outputDir, 'report.json'), JSON.stringify(report, null, 2)).catch(() => {});
+};
 for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP', 'SIGALRM']) {
   process.once(signal, () => {
     const open = [browser, ...extraBrowsers].filter(Boolean);
     const code = 128 + ({ SIGHUP: 1, SIGINT: 2, SIGALRM: 14, SIGTERM: 15 })[signal];
-    void Promise.race([Promise.allSettled(open.map((entry) => entry.close())), sleep(5000)]).finally(() => {
+    void Promise.race([saveOnSignal(signal), sleep(8000)]).then(() => Promise.race([Promise.allSettled(open.map((entry) => entry.close())), sleep(5000)])).finally(() => {
       for (const entry of open) { try { entry.process()?.kill('SIGKILL'); } catch { /* gone */ } }
       process.exit(code);
     });
@@ -1167,6 +1179,7 @@ try {
       await a2ProfileSession.send('Profiler.setSamplingInterval', { interval: 1000 }).catch(() => {});
       await a2ProfileSession.send('Profiler.start').catch(() => {});
       a2ProfileStartedAt = elapsedMs();
+      signalProfile = Object.assign(a2ProfileSession, { file: a2ProfileEntry ? 'a2-entry.cpuprofile' : 'a2-garage.cpuprofile' });
     }
   }
   await pages.a2.setViewport(testViewport);
@@ -1185,6 +1198,9 @@ try {
   void pages.a2.waitForFunction(inBattle, { timeout: 420_000, polling: 100 }).then(() => { report.rejoinTiming.revealedAfterMs = elapsedMs() - a2OpenedAtMs; }).catch(() => {});
   await waitFor(pages.a2, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A2 garage ready', 240_000);
   report.rejoinTiming.garageAfterMs = elapsedMs() - a2OpenedAtMs;
+  // (2026-10-20, item/mp-rejoin-229) the returning tab's boot by stage (main.ts BOOT_TIMINGS: numbers only)
+  report.a2BootTimings = await pages.a2.evaluate(() => Object.fromEntries(Object.entries(window.__BOOT_TIMINGS ?? {})
+    .filter(([, value]) => typeof value === 'number').map(([key, value]) => [key, Math.round(value)]))).catch(() => null);
   // (2026-10-15) the return's entry, sampled every 200 ms from its Garage to its battle: the trace's stages as they are
   // marked (a stage marked twice shows its first value replaced), the link (transport, offers, reconnects, the WELCOME),
   // the round's welcome / activation / reveal and the loader's own label — each row when anything in it changed
@@ -1218,6 +1234,7 @@ try {
   })();
   const stopEntryTrace = async () => { entryTraceOn = false; await entryTracer; };
   if (a2ProfileSession && !a2ProfileEntry) {
+    signalProfile = null;
     const profile = await a2ProfileSession.send('Profiler.stop').then((result) => result.profile).catch(() => null);
     if (profile) {
       await writeFile(join(outputDir, 'a2-garage.cpuprofile'), JSON.stringify(profile));
@@ -1330,6 +1347,7 @@ try {
   await waitFor(pages.a2, (id) => { const p = window.__MULTIPLAYER_V2?.stats?.(); return p?.session?.p2p?.role === 'peer' && p?.session?.p2p?.hostId === id && p?.session?.match?.phase === 'live'; }, 'A2 live as a peer of B', 90_000, { args: [ids.b], polling: 250 });
   await stopEntryTrace();
   if (a2ProfileSession && a2ProfileEntry) {
+    signalProfile = null;
     const profile = await a2ProfileSession.send('Profiler.stop').then((result) => result.profile).catch(() => null);
     await a2ProfileSession.detach().catch(() => {});
     if (profile) {

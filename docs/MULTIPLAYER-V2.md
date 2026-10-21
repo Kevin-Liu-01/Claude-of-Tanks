@@ -934,6 +934,22 @@ after three fresh links; a seat closed by a 2 s window re-offers once and is wel
 again after a loopback reconnect; a seat a stale offer of its own replaced re-offers and is welcomed — on main each of
 the four ends the seat (HELLO_REQUIRED twice, `handshaking`, REPLACED).
 
+**The early peer link (2026-10-20, item/mp-rejoin-229; MP-228-REJOIN lever 1).** On the 227 rejoins the returning seat's
+match transport stayed idle through its 15.5 s world load and then took 7.4 s to open, while the roster stage waited for
+the WELCOME. A seat entering a match that is already `playing` on another seat's host now opens its WebRTC link when the
+entry begins (`MatchSession.openEarlyPeerLink`), beside the presentation's world load; the match client is built on that
+link once the world is ready and says hello then (`MatchClient.connect` on an open link), so the host attaches the seat
+no earlier than before and the wire is unchanged. A starting match (its host boots after its own world), a seat the room
+names as host and a re-entry that declines keep the late link; an early link that died, or an election onto this seat,
+falls back to it; a leave closes a link no client owns yet. The browser host's `HELLO_TIMEOUT_MS` went from 15 s to 60 s
+so the early link outlives the load. A client with early links carries a prediction digest no earlier build has
+(`matchClient.ts` is in its closure, `wire/matchBuild.ts`), so an older host refuses it at its HELLO and no early link
+meets the old window. `WebRtcTransport.linkTimeline` (began / offer / answer / open) rides `SessionP2pStatus.link` into
+the e2e's rejoin entry trace (`linkMs`). Receipt: `tools/mp-p2p-early-link.selftest.mjs` (the real rooms service and
+in-process hosts): a starting match links after its load; a re-entry's link opens during a 1.5 s load with no frame sent
+and the WELCOME follows the load within a round trip on one offer; an abandoned entry closes its early link; a 400 ms
+HELLO window closes the early link and the seat is still welcomed.
+
 **A match that ends while a seat is entering (2026-10-11).** Production 215's second MP run: the returning seat's world
 loaded for 150 s while the two defenders, idle, fell to the bots; the match ended in a defeat, and the seat's entry
 waited out the whole stall window for a WELCOME the ended match could not send ("The match did not present in time",

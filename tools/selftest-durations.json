@@ -1063,6 +1063,7 @@
     "tools/mp-client-soak.selftest.mjs": 2500,
     "tools/mp-exit-e2e.selftest.mjs": 38300,
     "tools/mp-p2p-decline.selftest.mjs": 14100,
+    "tools/mp-p2p-early-link.selftest.mjs": 14000,
     "tools/mp-p2p-headless.selftest.mjs": 14400,
     "tools/mp-p2p-stepdown.selftest.mjs": 16800,
     "tools/mp-room-lifecycle.selftest.mjs": 40900,
