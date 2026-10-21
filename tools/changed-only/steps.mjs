@@ -214,6 +214,13 @@ export const DECLARED_DYNAMIC = Object.freeze({
     modeOnly: ['index.html'],
     note: 'the Vite server, Chrome and git rev-parse run only in withMapProbeSession (--headless captures); the chain runs --node',
   },
+  'tools/viteI18nStudioCatalog.ts': {
+    pin: '525a21e40aa0d260',
+    reads: [],
+    // 230 (foliage-shadow-sites-228): map-probe-runtime's probe server loads this Vite plugin; the world steps import
+    // map-probe-runtime only for isMainModule and --headless, and run no dev server (its modeOnly above).
+    note: 'a Vite plugin: reads src/ui/i18nCatalog.<locale>.json only when a dev server serves virtual:cot-i18n-studio/<locale>; the chain runs no dev server',
+  },
   'tools/wreck-bake-plan.mjs': {
     pin: '8fbacf8b8059103e',
     reads: [],
