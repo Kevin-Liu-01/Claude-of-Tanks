@@ -1171,7 +1171,7 @@ const ZTZ99A2_SMOKE_BANK = { x: 1.34, y: 0.88, z: 0.025, sink: 0.025, depth: 0.0
  * wedge's corner clears the tubes without standing on the face cassettes (which detonate and would leave it hanging), so
  * each bank stands on the roof edge just behind the chevron's upper root, firing out over the wedge's outer corner as
  * roof banks do: the same fitting without its own bracket, its tubes standing in a cast launcher base. The base's front
- * face is square to the bank's middle tube, 25 mm along the tubes from their rear ends (every tube sunk in it, the fan's
+ * face is square to the fan's mean axis (its middle tube's, near enough), 25 mm along the tubes from their rear ends (every tube sunk in it, the fan's
  * outer rims too); it reaches 15 mm past the end tubes' walls, 12 mm over their upper rims and 60 mm behind their rear
  * ends, and its underside meets the shell's roof under its four corners 5 mm in (the bank's outer end stands over the
  * roof's falling shoulder, its underside at least 30 mm over the face cassettes the shell covers there; 15 mm further
@@ -1211,7 +1211,7 @@ function addZTZ99A2SmokeBanks(P: ChinaBuilderPort): void {
         }
       }
       if (rears.length !== 5) throw new Error(`${P.spec.id}: the smoke bank registers ${rears.length} launch sockets`);
-      // the base's frame: along the middle tube, across the bank (level), and up square to both
+      // the base's frame: along the fan's mean axis, across the bank (level), and up square to both
       const a = axis.normalize(), w = a.clone().cross(new Vector3(0, 1, 0)).normalize(), n = w.clone().cross(a).normalize();
       if (n.y < 0) n.negate();
       const along = rears.map((p) => p.dot(a)), across = rears.map((p) => p.dot(w)), up = rears.map((p) => p.dot(n));
