@@ -22,7 +22,7 @@ for (const [id, mount] of Object.entries(BORED)) {
     tank.root.updateMatrixWorld(true);
     const station = tank.root.getObjectByName('rig_turret').getObjectByName(l.name), pitch = station?.getObjectByName('auxiliaryWeaponPitch');
     assert.ok(station && pitch, `${id}: yaw and pitch owners`);
-    assert.equal(pitch.getObjectByName('auxiliaryWeaponRecoil'), undefined, `${id}: the whole pitch group recoils (no recoil group)`);
+    assert.equal(pitch.getObjectByName('auxiliaryWeaponRecoil') === undefined, true, `${id}: the whole pitch group recoils (no recoil group)`);
     assert.equal(station.userData.auxiliaryRecoilM, STROKE, `${id}: the published recoil stroke stays inside the bearing's air`);
     const prof = auxiliaryWeaponProfile(l.caliber, id);
     const range = { depression: prof.depressionRad, elevation: prof.elevationRad, step: Math.PI / 180 };
