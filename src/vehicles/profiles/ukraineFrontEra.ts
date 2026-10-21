@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {blindTube} from './measuredPrimitives.ts';
 import {Stock, sectionLoft, crosswiseSolid, eraModule, sectorOf, assertHullPart, assertTurretPart, assertRoofPart, seatPlanTile,
-  nightLens, tagFrontPart, refineHeights, type LoftStation, type TileSeat, type V3} from './eraModuleKit.ts';
+  frontEnvelope, nightLens, tagFrontPart, refineHeights, type LoftStation, type TileSeat, type V3} from './eraModuleKit.ts';
 import type {SectionPoint} from './sectionSolid.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {cylX, cylZ} = KIT;
@@ -591,7 +591,6 @@ const DUPLET = {
     {z: [.14, .32], cols: [[.03, .19], [.21, .37], [.43, .61, -1], [.63, .81, -1], [.83, 1.01, -1], [1.03, 1.21]]},
     // the left flank between the cupola and the front cabinet, and behind the cupola
     {z: [-.19, -.02], cols: [[1.03, 1.21, -1]]},
-    {z: [-.38, -.21], cols: [[1.03, 1.21, -1]]},
     {z: [-.76, -.59], cols: [[.85, 1.01, -1]]},
     {z: [-.95, -.78], cols: [[.23, .41, -1]]},
     // the rear row behind the ventilator, ahead of the bustle rack (the brief's, its outer rear corners off the casting)
@@ -599,7 +598,7 @@ const DUPLET = {
     {z: [-1.39, -1.22], cols: [[.03, .21]]},
   ] as readonly {z: readonly [number, number]; cols: readonly (readonly number[])[]}[],
   rail: {w: .012, h: .025, gap: .003, sink: .003},
-  /** Every slab keeps this far from every other built part (its plan and its height). */
+  /** Every slab keeps this far from every other built part (frontEraPackages.selftest). */
   clear: .008,
 };
 
@@ -618,47 +617,19 @@ function dupletSlab(P: TankBuilderPort, seat: TileSeat): THREE.BufferGeometry {
   return sectionLoft([-sx / 2, sx / 2].map(a => ({o: origin(a), out: [fwd.x, fwd.y, fwd.z] as V3, up: [n.x, n.y, n.z] as V3, ring})));
 }
 
-/** Whether a triangle soup comes within a box (its triangles split to 1 cm pieces, every piece's corners tested): a
- * built part's real surface, not its box, so a diagonal cage brace over a lid does not veto a slab beside its foot. */
-function surfaceNear(g: THREE.BufferGeometry, box: THREE.Box3): boolean {
-  const p = g.getAttribute('position'), ix = g.index, n = ix ? ix.count : p.count;
-  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), q = new THREE.Vector3();
-  const tri = new THREE.Box3();
-  for (let i = 0; i < n; i += 3) {
-    a.fromBufferAttribute(p, ix ? ix.getX(i) : i); b.fromBufferAttribute(p, ix ? ix.getX(i + 1) : i + 1); c.fromBufferAttribute(p, ix ? ix.getX(i + 2) : i + 2);
-    tri.makeEmpty().expandByPoint(a).expandByPoint(b).expandByPoint(c);
-    if (!tri.intersectsBox(box)) continue;
-    const l = Math.max(a.distanceTo(b), b.distanceTo(c), c.distanceTo(a)), k = Math.max(1, Math.ceil(l / .01));
-    for (let u = 0; u <= k; u++) for (let v = 0; v <= k - u; v++) {
-      q.copy(a).multiplyScalar(1 - (u + v) / k).addScaledVector(b, u / k).addScaledVector(c, v / k);
-      if (box.containsPoint(q)) return true;
-    }
-  }
-  return false;
-}
-
 /** Hetman II's Duplet-T roof slabs and their sill rails, laid after every other roof and lid fitting of the turret kit.
- * Every listed slab must keep DUPLET.clear from every built part, keep out of the hatches' openings (E7) and sit on its
- * seat: one that cannot is an error (the layout was measured on the build; release 230's census, tools/r14). */
+ * The layout was measured on the build (release 230, tools/r14): every slab keeps DUPLET.clear from every other built
+ * part (frontEraPackages.selftest holds it, surface-sampled); here each must have its seat on the casting and keep out of
+ * the hatches' openings (E7) and the turret's working envelopes (E3-E6), or the build throws. */
 export function hetmanIIRoofSlabs(P: TankBuilderPort): void {
   const D = DUPLET, castingParts: THREE.BufferGeometry[] = [];
-  const built: {g: THREE.BufferGeometry; box: THREE.Box3}[] = [];
   P.forEachBucketPart(['turret'], g => castingParts.push(g));
-  P.forEachBucketPart(['turretCupola', 'turretHatch', 'turretExternalArmor', 'turretEquipment', 'turretDetail', 'turretDark', 'turretGlass',
-    'turretCloth', 'turretFittingPaint', 'turretOpenLattice', 'turretOpenLatticeDark', 'turretPaintedDetail', 'turretCanvasPale', 'turretTrack',
-    'turretTrackLinks', 'turretPermanentMarkingSurface', 'turretBark'], (g, box) => { if (box) built.push({g, box}); });
   const casting = new Stock(ID, castingParts);
   try {
-    const lay = (side: number, seatOf: () => TileSeat, name: string): void => {
-      const fail = (why: string): never => { throw new Error(`${ID}: ${name} ${why}`); };
+    const lay = (side: number, rect: readonly [number, number, number, number], name: string): void => {
       let seat: TileSeat;
-      try { seat = seatOf(); } catch { fail('has no seat'); return; }
+      try { seat = seatPlanTile(casting, side, rect); } catch { throw new Error(`${ID}: ${name} has no seat on the casting`); }
       const g = dupletSlab(P, seat);
-      g.computeBoundingBox();
-      const keep = g.boundingBox!.clone().expandByScalar(D.clear);
-      const near = built.find(o => o.box.intersectsBox(keep) && surfaceNear(o.g, keep));
-      if (near) fail(`comes within ${D.clear} m of a built part at ${near.box.min.toArray().map(v => v.toFixed(3))}`);
-      assertRoofPart(ID, name, g);
       eraModule(P, {owner: 'turret', sector: sectorOf('turret_era', side), geometry: g, outward: [seat.n.x, seat.n.y, seat.n.z], minDot: .5,
         name, guard: (nm, geo) => assertRoofPart(ID, nm, geo)});
     };
@@ -669,7 +640,7 @@ export function hetmanIIRoofSlabs(P: TankBuilderPort): void {
         const laid: [number, number][] = [];
         row.cols.forEach(([x0, x1, only], c) => {
           if (only !== undefined && only !== side) return;
-          lay(side, () => seatPlanTile(casting, side, [x0, x1, row.z[0], row.z[1]]), `Duplet-T roof slab ${r + 1}.${c + 1}`);
+          lay(side, [x0, x1, row.z[0], row.z[1]], `Duplet-T roof slab ${r + 1}.${c + 1}`);
           laid.push([x0, x1]);
         });
         // (a rail only under a run of neighbouring slabs: their joints are 2 to 6 cm; a wider gap ends the run)
@@ -690,9 +661,6 @@ export function hetmanIIRoofSlabs(P: TankBuilderPort): void {
       const g = crosswiseSolid(xs.map(x => ({x, ring: [[z0, top(x, z0) - D.rail.sink], [z1, top(x, z1) - D.rail.sink],
         [z1, top(x, z1) + D.rail.h], [z0, top(x, z0) + D.rail.h]] as [number, number][]})));
       assertRoofPart(ID, 'Duplet-T sill rail', g);
-      g.computeBoundingBox();
-      const keep = g.boundingBox!.clone().expandByScalar(.003), near = built.find(o => o.box.intersectsBox(keep) && surfaceNear(o.g, keep));
-      if (near) throw new Error(`${ID}: a Duplet-T sill rail at z ${z0.toFixed(3)} meets a built part at ${near.box.min.toArray().map(v => v.toFixed(3))}`);
       P.addEquipment(FRAME_BUCKET, g);
     }
   } finally { casting.dispose(); }
@@ -974,6 +942,62 @@ function periscopeSeat(P: TankBuilderPort, glacisAt: (z: number) => number): voi
 }
 
 /** Hetman II's hull front: called in the Hetman II kit after its hull package. */
+// ---------------------------------------------------------------------------------------------------------------------
+// Hull: the Nizh-L upper side band (release 230, UA/PL round 11)
+//
+// Round 10's measured regression UAPL-C8-4: with the T-72B3M's side Relikt boxes dropped (nativeEra: false; the fitted
+// skirt banks had buried them), Hetman II's side ERA (side-on census) fell from 1779 to 783 cells, while the upper skirt
+// band, between the banks' cassettes (tops 1.321) and the bays' top fittings (from 1.424), stood bare. A band of long,
+// single-layer raked modules on the banks' upper face in the Nizh lineage: each a run between the cage's feet and rods,
+// the camouflage carrier's brackets and the skirt joints' lap caps, its back seated on the bank's face and the chamfer
+// over it, its face raked 15 degrees inboard, its top edge chamfered (near tier).
+
+/** The band's section (side +1, hull frame x and y): its foot and top, its face's foot, rake and top chamfer; its runs (z);
+ * the clearance it keeps from every built part; and the depressed barrel's margin over it (E1's limit less this). */
+const NIZH_BAND = {
+  y0: 1.333, y1: 1.415, face: 2.209, rake: Math.tan(15 * Math.PI / 180), chamfer: .010, seatIn: .001, clear: .008, under: .13,
+  // (the brief's runs between the keep-outs, two ends fitted 1 mm shorter on the build to keep 8 mm from the carrier's
+  // brackets at z -.71 and .73; its two foremost, z 1.80-2.40, are left off: there the depressed barrel's .13 m margin
+  // over E1's limit falls to 1.36-1.34, under the band's foot)
+  runs: [[-2.397, -2.181], [-2.119, -1.803], [-1.464, -1.246], [-1.114, -.963], [-.679, -.206], [.306, .699], [.963, 1.274], [1.406, 1.557]],
+  /** A box shorter than this (its top under the gun's margin) is not laid. */
+  minHeight: .06,
+} as const;
+
+/** Hetman II's Nizh-L side band: eight runs a side (16 modules), laid after the hull's cage, before the suit. The runs
+ * were fitted on the build (release 230, tools/r14) between the cage's support pads and rods, the carrier's brackets, the
+ * skirt joints' lap caps and the bays' top fittings: every module keeps NIZH_BAND.clear from every other built part
+ * (frontEraPackages.selftest holds it, surface-sampled). Each is seated by ray on its bank at its foot, at the bank's knee
+ * and at its top. */
+export function hetmanIISideBand(P: TankBuilderPort): void {
+  const B = NIZH_BAND, stockParts: THREE.BufferGeometry[] = [];
+  const env = frontEnvelope(ID), [, , rz] = env.ring;
+  // the banks: the permanent skirt armour whose outer face stands at |x| 2.15 over the band's height
+  P.forEachBucketPart(['hullExternalArmor'], (g, box) => {
+    const x = box ? Math.max(Math.abs(box.min.x), Math.abs(box.max.x)) : 0;
+    if (box && !Object.hasOwn(g.userData, 'eraHitFaceVertexStarts') && x > 2.12 && x < 2.16 && box.max.y > 1.44 && box.min.y < 1.0) stockParts.push(g);
+  });
+  const bank = new Stock(ID, stockParts);
+  try {
+    for (const side of SIDES) for (const [z0, z1] of B.runs) {
+      // the top: under the bays' fittings, and the gun's margin over the front arc at the run's foremost station
+      const top = z1 > rz ? Math.min(B.y1, env.gunUnderside(Math.hypot(B.face, z1 - rz)) - .03 - B.under) : B.y1;
+      if (top - B.y0 < B.minHeight) throw new Error(`${ID}: the side band's run ${z0}..${z1} has only ${(top - B.y0).toFixed(3)} m under the gun's margin`);
+      const knee = Math.min(1.375, top - .02), heights = [B.y0, knee, top];
+      const ringAt = (z: number): SectionPoint[] => {
+        const back = heights.map(y => Math.abs(bank.face([side * 2.6, y, z], [-side, 0, 0]).point.x) - B.seatIn);
+        const xf = (y: number) => B.face - (y - B.y0) * B.rake, c = P.q ? B.chamfer : 0;
+        return [[back[0], B.y0], [B.face, B.y0], [xf(top - c), top - c], ...(c ? [[xf(top - c) - c, top] as SectionPoint] : []), [back[2], top], [back[1], knee]];
+      };
+      // stations at the run's ends, and between two wherever the bank's face leaves their chord by more than 1 mm
+      const zs = refineHeights(z => ringAt(z)[0][0], [z0, z1], .001);
+      const g = sectionLoft(zs.map(z => ({o: [0, 0, z] as V3, out: [side, 0, 0] as V3, up: [0, 1, 0] as V3, ring: ringAt(z)})));
+      eraModule(P, {owner: 'hull', sector: sectorOf('skirt_era', side), geometry: g, outward: [side, 0, 0], minDot: .5,
+        name: `Nizh-L side band ${z0.toFixed(2)}..${z1.toFixed(2)}`, guard: (nm, geo) => assertHullPart(ID, nm, geo)});
+    }
+  } finally { bank.dispose(); }
+}
+
 export function hetmanIIGlacis(P: TankBuilderPort): void {
   const core: THREE.BufferGeometry[] = [];
   P.forEachBucketPart(['hull'], g => core.push(g));

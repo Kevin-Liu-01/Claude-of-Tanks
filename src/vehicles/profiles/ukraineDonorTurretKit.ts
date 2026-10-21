@@ -15,7 +15,7 @@ import {eraCassette,supportedSensor,strappedPack} from './modernizationFittings.
 import {nationalLamp,nationalEye,nationalRoofSensor} from './nationalRoofSystems.ts';
 import {ukrainianDonorHull} from './nationalUkraine.ts';
 import {hetmanIIHullPackage} from './hetmanII.ts';
-import {hetmanIIProw,hetmanIIRoofSlabs,hetmanIIGlacis} from './ukraineFrontEra.ts';
+import {hetmanIIProw,hetmanIIRoofSlabs,hetmanIIGlacis,hetmanIISideBand} from './ukraineFrontEra.ts';
 import {sectionLoft} from './eraModuleKit.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {addNationalUkraineProtection,NATIONAL_UKRAINE_GHILLIE} from './nationalUkraineProtection.ts';
@@ -855,6 +855,8 @@ function fitUkraineDonorTurret(P:TankBuilderPort,id:UkraineDonorId):void {
   // The hull screens stay as the national protection lays them; the turret's own screens are this kit's (above).
   // Hetman II's bow modules (ukraineFrontEra.ts) take the place of the two forward skirt-return cassettes per side.
   addNationalUkraineProtection(P,id,{turretScreens:false,frontReturnEra:id!=='t72b3m_hetman_ii'});
+  // Release 230 (UA/PL round 11): Hetman II's Nizh-L side band on the banks' upper face, clear of the cage just laid.
+  if(id==='t72b3m_hetman_ii')hetmanIISideBand(P);
   addVehicleGhillieSuit(P,ukraineDonorSuit(id)!);
 }
 void markSmokeTube;void blindTube;void cylX;void torus;
