@@ -12,8 +12,8 @@ import { createSceneLightUniforms, readSceneLight, type SceneLightData } from '.
 import { MISSILE_AIRFRAMES, createMissileBodies, missileBodyDims } from './missileBodies.ts';
 import { usesLauncherMuzzles } from '../sim/launcherPolicy.ts';
 import { puffRandom } from './atmosRecipes.ts';
-import {SMOKE_WIND_X, SMOKE_WIND_Z} from '../sim/smokeScreen.ts';
 import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
+import { smokeWindForMap } from '../sim/smokeScreen.ts';
 /**
  * effects.ts — combat VFX orchestration (public Fx API, ARCHITECTURE §3.8.2).
  *
@@ -5673,11 +5673,12 @@ function* createFxSteps(
     blast,
     report: (id,p,caliber) => auxiliaryReport?.(id,p,caliber),
     flash: (p,d,caliber) => { spawnMuzzleFlash(p,d,caliber,0); },
-    smoke: (p,scale,density=1,life=2.4,wind=false) => {
+    smoke: (p,scale,density=1,life=2.4,wind=null) => {
       for(let i=0;i<3;i++){
         _puffO.pos[0]=p.x+(rng()-.5)*1.4*scale;_puffO.pos[1]=p.y+(i-1)*1.7*scale;_puffO.pos[2]=p.z+(rng()-.5)*1.4*scale;
-        _puffO.vel[0]=(wind?SMOKE_WIND_X:0)+(rng()-.5)*.28;
-        _puffO.vel[1]=.12+rng()*.12;_puffO.vel[2]=(wind?SMOKE_WIND_Z:0)+(rng()-.5)*.28;
+        // (FX lane 2026-10-17) a screen's puff drifts on its screen's own wind (its map's), as its sight block does
+        _puffO.vel[0]=(wind?wind.x:0)+(rng()-.5)*.28;
+        _puffO.vel[1]=.12+rng()*.12;_puffO.vel[2]=(wind?wind.z:0)+(rng()-.5)*.28;
         _puffO.life=life;_puffO.size0=(5.2+rng()*1.1)*scale;_puffO.size1=(10.5+rng()*1.4)*scale;
         _puffO.rot=rng()*Math.PI*2;_puffO.rotVel=(rng()-.5)*.14;_puffO.grav=0;_puffO.alpha=.82*density;
         col3(0xaeb6b8,_puffO.col0);col3(0xb8c1c2,_puffO.col1);_puffO.birthOffset=0;
@@ -5908,7 +5909,8 @@ function* createFxSteps(
      * @param {object} bus injected event bus
      */
     bindBus(bus: FxEventBus): void {
-      bus.on('auxiliary:smokeScreens', (payload) => { auxiliary?.setNetworkScreens((payload as {screens:SmokeScreen[]}).screens); });
+      // (FX lane 2026-10-17) a network screen drifts on this map's wind, the one its authority stamped (no wire field)
+      bus.on('auxiliary:smokeScreens', (payload) => { auxiliary?.setNetworkScreens((payload as {screens:SmokeScreen[]}).screens, smokeWindForMap(world?.()?.mapId)); });
       // destruction-fx lane: the core lane's structure stages and crater stamps (DESTRUCTION.md §11)
       bus.on(DESTRUCTION_BUS_EVENTS.stage, (payload) => {
         const e = payload as StructureStageEvent;
