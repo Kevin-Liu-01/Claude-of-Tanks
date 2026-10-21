@@ -4,7 +4,7 @@
 // resting on a turret bracket is held, not floating.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { bodyIslands, collectHullStock, hullBellyPits, markHiddenIslands, partsTouch, stockPart } from './hull-contact-census-lib.mjs';
+import { bodyIslands, collectHullStock, collectStock, hullBellyPits, markHiddenIslands, partsTouch, stockPart } from './hull-contact-census-lib.mjs';
 
 const at = (g, x, y, z, rx = 0) => g.rotateX(rx).translate(x, y, z);
 const box = (w, h, d, x, y, z, rx = 0) => stockPart('hull', at(new THREE.BoxGeometry(w, h, d), x, y, z, rx));
@@ -53,4 +53,12 @@ for (const id of ['leo2a5m', 'kf51_evo']) {
     .map((island) => island.parts.map((part) => part.bucket)), [],
     `${id}: every flap, hanger and mudguard plate reaches the hull`);
 }
-console.log('hull-contact-census.selftest: contact law, turret-held launchers, the kf51_u belly and the leo2a5m/kf51_evo rear flaps pass');
+// Challenger 1: its postAssemble re-seats the turret pivot and moves every turret child -0.562 m; the census places the
+// bucket parts where their meshes render, so the L37 stations and the bustle panels stand on the turret as built.
+{
+  const { parts } = collectStock('challenger1_mk2');
+  const floating = bodyIslands(parts, 'turret').filter((island) => (island.gapM ?? 1) >= 0.015);
+  assert.deepEqual(floating.map((island) => island.parts.map((part) => part.bucket)), [],
+    'challenger1_mk2: the L37 stations and the bustle mesh panels sit on the turret as rendered');
+}
+console.log('hull-contact-census.selftest: contact law, turret-held launchers, moved bucket meshes, the kf51_u belly and the leo2a5m/kf51_evo rear flaps pass');

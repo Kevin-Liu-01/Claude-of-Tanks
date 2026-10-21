@@ -223,7 +223,7 @@ function addStrv81Package(P: SwedishBuilderPort): void {
   }), -0.47, 0.94, -0.52, [0, -0.05, 0]);
   P.add('turret', box(0.34, 0.09, 0.32), 0.47, 0.91, -0.36);
   P.add('turretDetail', cylY(0.12, 0.14, 0.25, 14), 0.47, 1.06, -0.36);
-  P.add('turretGlass', box(0.16, 0.085, 0.022), 0.47, 1.07, -0.20);
+  P.add('turretGlass', box(0.16, 0.085, 0.022), 0.47, 1.07, -0.215);         // 2026-10-19 (owner float sweep): 9 mm off the drum
   // The source's large side ventilator/search housing is a strong profile
   // landmark. Both concentric drums are buried into the cast side wall.
   P.add('turret', cylX(0.21, 0.18, 18, 0.15), 1.13, 0.48, -0.64);
@@ -248,19 +248,22 @@ function addStrv81Package(P: SwedishBuilderPort): void {
       mats: P.mats, pods: 2, spacing: 0.14, r: 0.050,
       shield: true, seed: 8135 + (side > 0 ? 1 : 0),
     }), side * 0.78, 1.47, 3.06);
-    P.add('hullDetail', cylZ(0.035, 0.92, 10), side * 1.26, 1.52, -1.28);
-    P.add('hullDark', box(0.10, 0.07, 0.08), side * 1.26, 1.52, -0.84);
-    P.add('hullDark', box(0.10, 0.07, 0.08), side * 1.26, 1.52, -1.72);
+    // 2026-10-19 (owner float sweep): the tool tube and its clamps stood 17 mm off the hull shoulder; seated on it
+    P.add('hullDetail', cylZ(0.035, 0.92, 10), side * 1.243, 1.507, -1.28);
+    P.add('hullDark', box(0.10, 0.07, 0.08), side * 1.243, 1.507, -0.84);
+    P.add('hullDark', box(0.10, 0.07, 0.08), side * 1.243, 1.507, -1.72);
   }
 
   // Backed bustle rack and characteristic side tool cages.
-  P.add('turretDark', box(2.18, 0.30, 0.06), 0, 0.34, -2.03);
+  // 2026-10-19 (owner float sweep): the backing plate's top stood 50 mm under the rack; it reaches 10 mm into it
+  P.add('turretDark', box(2.18, 0.36, 0.06), 0, 0.37, -2.03);
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 2.10, d: 0.48, h: 0.34, fill: 0.38, rails: 3, seed: 8140,
   }), 0, 0.54, -1.90);
   for (const side of [-1, 1]) {
-    P.add('turretDetail', box(0.035, 0.035, 0.64), side * 1.12, 0.56, -1.66);
-    P.add('turretDetail', box(0.035, 0.34, 0.035), side * 1.12, 0.40, -1.98);
+    // 2026-10-19 (owner float sweep): the tool-cage rails stood 53 mm outboard of the rack's sides; against them now
+    P.add('turretDetail', box(0.035, 0.035, 0.64), side * 1.066, 0.56, -1.66);
+    P.add('turretDetail', box(0.035, 0.34, 0.035), side * 1.066, 0.40, -1.98);
   }
 
   // Closed, layered 20-pdr gun plant around the inherited bore.

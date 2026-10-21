@@ -260,9 +260,34 @@ export function collectStock(id, options = {}) {
       }
       return rigMatrix.get(name);
     };
+    // A profile may move a bucket's merged mesh inside its rig after assembly (challenger1Build's postAssemble re-seats
+    // the turret pivot and counter-translates every turret child by -0.562 m): such a bucket's parts are placed with
+    // the mesh's own transform when its geometry is still exactly the merged parts (same bounds), else with the rig's.
+    const partBounds = new Map();
+    for (const entry of raw) {
+      const box = partBounds.get(entry.bucket) ?? new THREE.Box3();
+      const T = entry.T, v = new THREE.Vector3();
+      for (let i = 0; i < T.length; i += 3) box.expandByPoint(v.set(T[i], T[i + 1], T[i + 2]));
+      partBounds.set(entry.bucket, box);
+    }
+    const bucketMatrix = new Map();
+    const bucketFrame = (bucket) => {
+      if (bucketMatrix.has(bucket)) return bucketMatrix.get(bucket);
+      let matrix = frame(BUCKET_RIG(bucket));
+      const mesh = tank.root.getObjectByName(bucket);
+      if (matrix && mesh?.isMesh && mesh.geometry) {
+        if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+        const own = new THREE.Matrix4().multiplyMatrices(inverse, mesh.matrixWorld);
+        const bounds = partBounds.get(bucket), geo = mesh.geometry.boundingBox;
+        const same = bounds && geo && bounds.min.distanceTo(geo.min) < 1e-4 && bounds.max.distanceTo(geo.max) < 1e-4;
+        if (same && !own.equals(matrix)) matrix = own;
+      }
+      bucketMatrix.set(bucket, matrix);
+      return matrix;
+    };
     const parts = [];
     for (const entry of raw) {
-      const matrix = frame(BUCKET_RIG(entry.bucket));
+      const matrix = bucketFrame(entry.bucket);
       if (!matrix) continue;
       const T = entry.T;
       const v = new THREE.Vector3();

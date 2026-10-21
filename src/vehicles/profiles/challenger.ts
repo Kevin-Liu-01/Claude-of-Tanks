@@ -1483,13 +1483,13 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     // A lower broken louvre line fills the former plain center plate.  Each
     // strip is shallow, backed by the original transom, and separated from
     // the track terminals by the full hull center lane.
-    // 2026-10-19 (owner float sweep): the two low strips stood 30-40 mm proud of the transom, which rakes forward
-    // under 1.08; each strip now slides forward onto it.
+    // 2026-10-19 (owner float sweep): the two low strips hung 30-40 mm under the transom's lower edge (the hull behind
+    // them stands 0.64 m forward); each strip rises onto that edge.
     for (const [x, w, y] of [[-0.63, 0.30, 1.04], [-0.25, 0.38, 1.08], [0.22, 0.42, 1.03], [0.67, 0.25, 1.10]]) {
       P.snapGroup('cr1-rear-louvre', () => {
         P.add('hullDark', box(w, 0.065, 0.018), x, y, -3.988);
         P.add('hullDetail', box(w * 0.84, 0.014, 0.012), x, y, -3.999);
-      }, { reachM: 0.06, direction: [0, 0, 1] });
+      }, { reachM: 0.05 });
     }
     // The live first-party casting had accumulated a tall/narrow read even
     // though its plan stations were correct.  A restrained group correction
