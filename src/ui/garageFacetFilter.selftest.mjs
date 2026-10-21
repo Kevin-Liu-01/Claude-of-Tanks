@@ -117,13 +117,12 @@ assert.match(panelSource, /panel\.style\.maxHeight = `\$\{Math\.round\(Math\.max
   'the panel takes the height above the rail');
 assert.match(panelSource, /wrap\.dataset\.more = max <= 1 \? '' :/, 'swipe rows mark the side with more chips');
 const panelCss = readFileSync(new URL('./garageFacetPanel.css', import.meta.url), 'utf8');
-const garageCssText = readFileSync(new URL('./garage.css', import.meta.url), 'utf8');
 const garageText = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');
 assert.match(panelCss, /\.cot-facet-rowwrap\{position:relative;min-width:0;/, 'a swipe row never widens the panel (blind re-check 2026-10-21)');
 assert.match(panelCss, /grid-template-columns:minmax\(0,1fr\)/, 'the panel column never grows past the panel');
 assert.match(panelCss, /\.cot-facet-rowwrap\[data-more\*='l'\]::before,\.cot-facet-rowwrap\[data-more\*='r'\]::after\{opacity:1;\}/,
   'the edge cue shows where chips continue');
-assert.match(garageCssText, /\.cot-country-rail:has\(> \.cot-facet-panel:not\(\[hidden\]\)\)\{z-index:21;\}/,
+assert.match(panelCss, /\.cot-country-rail:has\(> \.cot-facet-panel:not\(\[hidden\]\)\)\{z-index:21;\}/,
   'an open panel lifts the rail over the side cards and the Battle and Multiplayer buttons');
 assert.doesNotMatch(garageText, /facetToggle[^\n]*'\.code'/, 'the Filter toggle is an icon: its name rides in aria-label and title');
 assert.match(garageText, /if \(facetVisible\(selectedId\) \|\| vehicleLocked\) return;\n\s+const first = \(specsByCountry\.get\(countryFilter\) \|\| \[\]\)\.find\(\(spec\) => facetVisible\(spec\.id\)\);/,
@@ -138,7 +137,10 @@ assert.doesNotMatch(garageSource, /^import (?!type )[^;]*from '(?:\.\.\/vehicles
   'garage.ts never imports the facet modules statically');
 assert.match(garageSource, /\.filter\(\(s\) => facetVisible\(s\.id\)\)/, 'arrow keys walk only the filtered strip');
 assert.match(garageCss, /\.cot-facet-toggle\{position:sticky;left:0;/, 'the toggle stays at the rail start while flags scroll');
-assert.match(garageCss, /\.cot-country-chip\.is-facet-empty\{opacity:/, 'nations without a match read as empty');
+assert.match(panelCss, /\.cot-country-chip\.is-facet-empty\{opacity:/, 'nations without a match read as empty');
+// boot budget: only the toggle's idle look rides garage.css; its open/active/badge styles load with the panel
+assert.doesNotMatch(garageCss, /is-facet-empty|cot-facet-toggle\.is-active|cot-facet-toggle \.ct|cot-facet-panel/,
+  'the filter\'s panel-time styles stay off the boot stylesheet');
 
 console.log(`garageFacetFilter.selftest: ${total} Garage vehicles; ifv ${members('class', 'ifv').length},`
   + ` scout ${members('role', 'scout').length}, concept/prototype ${shown({ vehicleClass: 'concept-prototype' }).length}`);
