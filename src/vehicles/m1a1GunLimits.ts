@@ -18,9 +18,9 @@ const URBAN: GunPitchByYawCurve = Object.freeze([
   [109,-8.9], [113,-0.1], [114,1], [117,1], [118,2], [119,2.6], [122,3.3], [132,3.4], [139,3.4], [141,3.2],
   [142,2.5], [148,2.4], [149,2.3], [153,10], [154,11], [168,11], [169,10], [173,2], [174,1], [180,1],
 ]);
-// REAR_STOWAGE: the front skirt shoulders at 17-44 (-8.4) and the engine deck from 128. Dead ahead (yaw 0-8) a glacis
-// fitting stands in the barrel's own path at every pitch below +11: a geometry defect no stop cures, so that sector
-// keeps its full depression and the selftest passes it by.
+// REAR_STOWAGE: the front skirt shoulders at 17-44 (-8.4) and the engine deck from 128. Dead ahead (yaw 0-8) the full
+// depression holds since release 230 (the gun-hull lane removed the glacis wind-sensor mast that stood in the barrel's
+// own path at every pitch below +11; profiles/abrams.ts).
 const REAR_STOWAGE: GunPitchByYawCurve = Object.freeze([
   [0,-10], [17,-10], [21,-9.5], [23,-8.5], [28,-8.4], [41,-8.4], [43,-8.5], [44,-10], [128,-10], [136,-4],
   [138,-2.4], [139,-1.8], [148,0.9], [149,2], [153,10], [154,11], [168,11], [169,10], [173,2], [174,1], [180,1],

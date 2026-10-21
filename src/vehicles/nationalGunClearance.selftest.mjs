@@ -33,15 +33,17 @@ const CURVES = {
   m1a1ha: [],
   m1a1_abrams_hc: [],
   m1a1_abrams_sa: [],
-  m1a1_abrams_aim: [[0, 9, 'skip']],
+  m1a1_abrams_aim: [], // release 230: the glacis wind-sensor mast in the barrel's path at yaw 0-8 is gone (profiles/abrams.ts)
   m1a1_abrams_fep: [],
   ua_m1a1: [],
   c1_ariete: [],
   c2_ariete: [],
   m3a3_bradley: [[0, 39]], // the mantlet's underside 11 mm over the roof at -9; the M3 keeps its full forward depression
   m6_linebacker: [],
-  // release 230 (the gun-hull lane): the T-72B3's measured stops (t72b3XArmor.ts)
+  // release 230 (the gun-hull lane): the T-72B3's measured stops (t72b3XArmor.ts) and the T-72 Ryś on its raised ring
+  // (fleetRenewalSpecs.ts T72_RYS_RING_RAISE_M; before it, its mount stood in the deck through most of the traverse)
   t72b3: [],
+  t72_rys: [],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type
