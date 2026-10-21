@@ -547,7 +547,12 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
         lid: o => { const b = boxOf(o.g); return o.bucket === 'turretExternalArmor' && !o.era && Math.abs(b.max.y - .804) < .002 && b.max.y - b.min.y < .03; },
       };
       let clearMin = Infinity, clearAt = null, clearCount = 0;
-      for (const rule of CLEAR_PARTS) for (const A of fresh.filter(p => p.owner === rule.owner && p.module && rule.name.test(p.name))) {
+      for (const rule of CLEAR_PARTS) {
+        // (a part's surface buried inside the stock a tile is seated on is hidden there: the cabinet walls' tops under the
+        // lid plates)
+        const seats = others[rule.owner].filter(o => seatOf[rule.seat](o)).map(o => ({box: boxOf(o.g), solid: null, g: o.g}));
+        const inSeat = q => seats.some(S => S.box.containsPoint(q) && (S.solid ??= new Solid(trisOfCached(S.g))).inside(q));
+        for (const A of fresh.filter(p => p.owner === rule.owner && p.module && rule.name.test(p.name))) {
         clearCount++;
         const reach = boxOf(A.g).clone().expandByScalar(KEEP_CLEAR), solidA = new Solid(trisOfCached(A.g));
         const candidates = [...others[rule.owner].filter(o => !seatOf[rule.seat](o)).map(o => ({name: `existing ${o.bucket}`, g: o.g})),
@@ -555,10 +560,11 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
         for (const B of candidates) {
           if (!boxOf(B.g).intersectsBox(reach)) continue;
           for (const q of surfaceSamples(trianglesIn(trisOfCached(B.g), reach), .005)) {
-            if (!reach.containsPoint(q)) continue;
+            if (!reach.containsPoint(q) || inSeat(q)) continue;
             const d = solidA.inside(q) ? 0 : solidA.distance(q, KEEP_CLEAR + .002);
             if (d < clearMin) { clearMin = d; clearAt = `${A.name} | ${B.name} @ ${q.toArray().map(x => x.toFixed(3))}`; }
           }
+        }
         }
       }
       assert(clearCount > 0, `${label}: the round-11 parts are found`);
@@ -569,6 +575,7 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
     // stage over the whole pitch range; the yaw stage turns it about a vertical axis), and no new turret ERA module rises
     // over the cap
     if (ROOF_ERA_CAP[id] !== undefined) {
+      const boxOf = g => { if (!g.boundingBox) g.computeBoundingBox(); return g.boundingBox; };
       let station = null; turret.traverse(o => { if (o.userData.remoteControlled && !station) station = o; });
       const pitchStage = station?.getObjectByName('auxiliaryWeaponPitch');
       assert(pitchStage, `${label}: the WKM-B station's pitch stage`);

@@ -539,7 +539,9 @@ const SPINE = {
     1: [
       {cols: [[.03, .19], [.21, .37]], rows: [{z: [.56, .74], cols: [0, 1]}, {z: [.35, .53], cols: [0, 1]}, {z: [.14, .32], cols: [0, 1]}]},
       {cols: [[.03, .19], [.21, .37]], rows: [{z: [-1.19, -1.04], cols: [0, 1]}]},
-      {cols: [[.83, 1.01], [1.03, 1.21]], rows: [{z: [.35, .53], cols: [0, 1], sides: [-1]}, {z: [.35, .53], cols: [1], sides: [1]},
+      // (its front row ends at z .51: the roof row's rear frame bar runs at z .548-.568 over |x| .42-.92, and a bar of this
+      // block's in its plane would z-fight with it)
+      {cols: [[.83, 1.01], [1.03, 1.21]], rows: [{z: [.35, .51], cols: [0, 1], sides: [-1]}, {z: [.35, .51], cols: [1], sides: [1]},
         {z: [.14, .32], cols: [0, 1], sides: [-1]}, {z: [.14, .32], cols: [1], sides: [1]}]},
     ],
     2: [
