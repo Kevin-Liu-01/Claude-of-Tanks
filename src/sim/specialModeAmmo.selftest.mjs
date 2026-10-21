@@ -18,6 +18,7 @@ const AMMO = {
   standard: 'spec', capture_the_flag: 'spec', zone_control: 'spec', realistic: 'spec',
   turbo_ball: 'unlimited', gun_game: 'unlimited', ac130: 'unlimited',
   juggernaut: 'unlimited', infected: 'unlimited', endless_horde: 'unlimited', mars: 'unlimited', drone: 'unlimited', frontline_assault: 'unlimited',
+  proving_ground: 'unlimited', // 230: the test drive's range (matchRuleset.ts PROVING_GROUND ammo: 'unlimited')
 };
 assert.deepEqual(Object.keys(AMMO).sort(), [...GAME_MODE_IDS].sort(), 'every mode is classed');
 for (const mode of GAME_MODE_IDS) {

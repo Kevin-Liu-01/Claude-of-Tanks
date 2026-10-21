@@ -76,6 +76,7 @@ for (const file of sceneFiles) {
   largest = Math.max(largest, encoded.chars);
   const decoded = await decodeSceneLink(encoded.value);
   assert.ok(decoded.ok, `${file}: decodes (${decoded.reason} ${decoded.detail})`);
+  // object3d-assert-ok: a shared Studio scene record (JSON data from the scene link), not a three.js graph
   assert.deepEqual(decoded.scene, scene, `${file}: the link carries the canonical scene`);
   if (scene.storyboard) assert.deepEqual(normalizeStoryboard(scene.storyboard), scene.storyboard, `${file}: storyboard canonical`);
   if (scene.film) assert.deepEqual(normalizeFilm(scene.film), scene.film, `${file}: film canonical`);
@@ -95,6 +96,7 @@ for (const file of sceneFiles) {
   const raw = { map, actors, effects, camera };
   const plain = await encodeSceneLink(raw, { compress: false });
   assert.ok(plain.ok && plain.value.startsWith(`${SCENE_LINK_FORMAT}.j.`), 'compress: false writes the j codec');
+  // object3d-assert-ok: a shared Studio scene record (JSON data from the scene link), not a three.js graph
   assert.deepEqual((await decodeSceneLink(plain.value)).scene, sanitizeSharedScene(raw).scene);
 }
 
@@ -379,6 +381,7 @@ for (let length = 0; length < 70; length++) {
     if (result.ok) {
       decodedCount++;
       assertSafe(result.scene);
+      // object3d-assert-ok: a shared Studio scene record (JSON data from the scene link), not a three.js graph
       assert.deepEqual(sanitizeSharedScene(result.scene).scene, result.scene, `${label}: canonical`);
     } else {
       assert.ok(['too-large', 'encoding', 'version', 'unsupported', 'schema'].includes(result.reason), `${label}: ${result.reason}`);
