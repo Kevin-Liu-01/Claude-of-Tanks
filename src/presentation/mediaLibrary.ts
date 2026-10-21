@@ -1,11 +1,12 @@
 import { t } from '../ui/i18n.ts';
 
-// The media library (2026-10-19): every picture the media rounds made, each round's finals, renders, previz, review
-// sheets, candidates and frames, published by collection under /media/library-r1. A collection's index names its sets
-// and pictures; a picture's thumbnail is a cell of one of the collection's thumbnail sheets, and its web copy a byte
-// range of one of its pack files (the pictures' WebP files end to end, fetched with an HTTP range request, so ten
-// thousand pictures ship as a few dozen files). A picture the site already shows elsewhere names that file instead.
-const ROOT_URL = '/media/library-r1';
+// The media library: the current final of every subject the media rounds filmed (2026-10-20, library-r2; the owner
+// found r1's 11,215 pictures, finals with every render, review sheet and candidate behind them, "way too much"),
+// published by collection under /media/library-r2. A collection's index names its sets and pictures; a picture's
+// thumbnail is a cell of one of the collection's thumbnail sheets, and its web copy a byte range of one of its pack
+// files (the pictures' WebP files end to end, fetched with an HTTP range request). A picture the site already shows
+// elsewhere names that file instead.
+const ROOT_URL = '/media/library-r2';
 /** [name, width, height, sheet, x, y, thumb width, thumb height, pack, offset, length] or [..., published url] */
 type LibraryItem = [string, number, number, number, number, number, number, number, ...(number | string)[]];
 interface LibrarySet { key: string; title: string; kind: string; items: LibraryItem[] }
