@@ -120,6 +120,18 @@ export const OVERCAST_SKY_CUT = 0.85;
 /** Diffuse transmission of the deck: the share of the clear-sky horizontal light it passes on as its own glow. */
 export const OVERCAST_TRANSMISSION = 0.42;
 /**
+ * 2026-10-17 (the SKY lane, 227 SKY-03; Whiteout's buildings and props "float on a thin dark line"): a thin deck's aureole.
+ * Of the sunlight a deck transmits (its glow's sun part) a thin deck still sends most from a disc round the sun: its
+ * droplets scatter forward (asymmetry DECK_AUREOLE_G), and by the similarity scaling of the beam's optical depth
+ * (−ln deckBeam, the share passed straight) the light not yet diffused is deckBeam^(1 − g) — Whiteout's quarter keeps 0.81
+ * of it round the sun. The aureole is light the hemisphere already carries (nothing is added: the exposure and the open
+ * snow hold); the aerial pass takes it back where a solid hides the disc (structureAureoleBake.ts), a soft shadow dark at
+ * the solid's foot. LightModel.deckAureole is its share of the hemisphere's light, at most DECK_AUREOLE_MAX; 0 for a
+ * thick deck (deckBeam 0), an open sky, a deck with gaps (the clear sun casts there) and by night.
+ */
+export const DECK_AUREOLE_G = 0.85;
+export const DECK_AUREOLE_MAX = 0.6;
+/**
  * 2026-10-05 (the gauntlet's wave 118, both critics: "sand and lawn are bright and saturated under grey overcast"):
  * under a deck a ground sits near its own albedo against the sky — the overcast photographs' ground/sky 0.13–0.16 — and
  * the game's sat at twice that (Railyard 0.31, Titan Gorge's sand 0.48–0.57): the hemisphere carried 42 % of the clear
@@ -396,6 +408,9 @@ function resolveGrounded(
     overcast,
     deckClosure: close,
     deckBeam: thin,
+    deckAureole: hemiIntensity > 1e-6 ? clamp((thin > 0 && thin < 1 ? Math.pow(thin, 1 - DECK_AUREOLE_G) : 0)
+      * oc * close * lightTune('OVERCAST_TRANSMISSION', OVERCAST_TRANSMISSION) * thick * clearSunH * (1 - night) / hemiIntensity,
+    0, DECK_AUREOLE_MAX) : 0,
     illuminance,
     exposure,
     whiteBalance: whiteBalanceGains(L.warmth ?? 0),
