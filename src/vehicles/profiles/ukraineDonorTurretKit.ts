@@ -650,8 +650,13 @@ function commandBasket(P:TankBuilderPort,S:TurretStock):void {
   for(const dx of [-.15,.15])P.addEquipment('turretDark',box(.032,.05,.014),dx,floor+.15,-2.25);
 }
 
+// Release 230 (the turret land; the art-fixes lane's critic: "a long upright camo-painted panel standing above the far side
+// of the rear deck"): the basket's flanks carry no hanging drape. The two flank drapes (0.77 and 0.61 m long, 0.33 m deep)
+// hung 30-87 mm outboard of the basket's open lattice walls with nothing under them, so through the open basket their
+// inner faces read as solid camouflaged boards standing 18-20 cm over the engine deck. The roof net and the drape seated
+// on the basket's back screen stay; the flanks show the lattice and its stowage, as the basket's corners do.
 const hetmanIINet=():GhillieConfig=>turretSuit('t72b3m_hetman_ii',{roof:.80,x:1.95,front:1.75,rear:-2.60,marks:turretMarks('t72b3m_hetman_ii'),
-  sides:[{side:-1,z0:-2.26,z1:-1.49,bottom:.24,top:.66,out:()=>1.30},{side:1,z0:-2.26,z1:-1.65,bottom:.24,top:.66,out:()=>1.27}],
+  sides:[],
   rearFace:{zAt:(x:number)=>pathAt(HETMAN_II_BASKET,0,x),x0:-.98,x1:.98,y0:.305,y1:.63}});
 
 function hetmanII(P:TankBuilderPort,S:TurretStock):void {
