@@ -751,6 +751,18 @@ async function joinAsAlly(page, label, invite) {
 let rooms = null;
 let vite = null;
 let browser = null;
+// (2026-10-20, item/mp-rejoin-229) a run stopped from outside (its alarm, a kill) closes its browsers first: puppeteer's
+// Chromes sit in their own process groups and otherwise go on rendering as orphans
+for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP', 'SIGALRM']) {
+  process.once(signal, () => {
+    const open = [browser, ...extraBrowsers].filter(Boolean);
+    const code = 128 + ({ SIGHUP: 1, SIGINT: 2, SIGALRM: 14, SIGTERM: 15 })[signal];
+    void Promise.race([Promise.allSettled(open.map((entry) => entry.close())), sleep(5000)]).finally(() => {
+      for (const entry of open) { try { entry.process()?.kill('SIGKILL'); } catch { /* gone */ } }
+      process.exit(code);
+    });
+  });
+}
 const pages = { a: null, b: null, c: null, a2: null };
 let contextA = null;
 const contexts = { a: null, b: null, c: null };
@@ -1190,6 +1202,12 @@ try {
           session: s?.session?.phase ?? null, transport: m?.transportState ?? null, welcomed: m?.welcomed ?? null, link: m?.phase ?? null,
           reconnects: m?.reconnects ?? null, helloRetries: m?.helloRetries ?? null, close: m?.closeReason ?? null,
           offers: s?.session?.p2p?.offersSent ?? null,
+          // (2026-10-20, item/mp-rejoin-229) the peer link's newest attempt, ms from the entry's start: began/offer/answer/open
+          linkMs: (() => {
+            const t = s?.session?.p2p?.link;
+            if (!t || typeof load?.startedAt !== 'number') return null;
+            return [t.connectAtMs, t.offerAtMs, t.answerAtMs, t.openAtMs].map((at) => (typeof at === 'number' ? Math.round(at - load.startedAt) : '-')).join('/');
+          })(),
           round: s?.round ? `${s.round.welcomed ? 'W' : '-'}${s.round.activated ? 'A' : '-'}${s.round.revealed ? 'R' : '-'}` : null,
           label: (document.querySelector('.cot-bl')?.classList.contains('on') ? document.querySelector('.cot-bl')?.textContent?.replace(/\s+/g, ' ').trim().slice(0, 80) : null) ?? null,
         };
