@@ -298,6 +298,11 @@ const INVITE_GARAGE_IDLE_DELAY_MS = 12_000;
  * return is a reload or a reopened invite, and past that the match has most likely ended (a wrong guess costs boot time).
  */
 const REMEMBERED_ROUND_KEY = 'cot.mp.rememberedRound.v1';
+/**
+ * The boot is done (set beside __GAME_READY). The Garage's own first map selection during the boot is no player's pick:
+ * it must not cancel the returning tab's battlefield (the 229 block: every returning build was cancelled there).
+ */
+let garageBootDone = false;
 const REMEMBERED_ROUND_MAX_AGE_MS = 20 * 60 * 1000;
 function rememberRound(round: { roomCode: string; matchId: string; mapId: string; terrainVariant: 'assault-trenches' | null } | null): void {
   try {
@@ -1450,7 +1455,8 @@ const garage: MainGarageRuntime = await bootStage('ui', () => createGarage({
     if (mapId !== 'random') preloadImageWhenIdle(battleBackdrop(mapId));
     // Guests can browse locally without changing the host's room map. Keep
     // that build alive until canonical room state accepts another map.
-    if (!multiplayerLobby?.prepareLobby()) {
+    // (2026-10-21, item/mp-rejoin-229) the boot's own selection keeps a returning tab's battlefield (garageBootDone)
+    if (!multiplayerLobby?.prepareLobby() && garageBootDone) {
       cancelBackgroundWorldBuildsExcept(mapId === 'random' ? null : mapId);
     }
     setCamoBiome(mapId);
@@ -3683,6 +3689,7 @@ if (pendingRoomInvitePromise) {
     console.error('[room-invite] failed to open', error);
   });
 }
+garageBootDone = true;
 window.__GAME_READY = true;
 // 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)
 if (worldRuntime.pendingMapId && worldRuntime.pendingMapId !== 'random') preloadImageWhenIdle(battleBackdrop(worldRuntime.pendingMapId));
