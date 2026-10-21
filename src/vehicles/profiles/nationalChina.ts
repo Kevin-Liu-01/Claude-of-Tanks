@@ -1,88 +1,29 @@
 // Original Chinese retrofit concepts: the native T-80/T-72 tub, shallow
 // glacis, curved track guards and gear remain visible underneath the upgrades.
+// Release 227: all three carry donor fleet turrets (chinaDonorTurretKit.ts); this module keeps their hull packages and
+// the shared field-fit helpers. The cast CN turrets are gone.
 import * as THREE from 'three';
 import {KIT} from './kit.ts';
-import {addChineseChevronBank} from './chineseChevronEra.ts';
 import {addChineseFuelDrum} from './chineseFuelDrum.ts';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
-import {beamBetween,blindTube,roofSheet} from './measuredPrimitives.ts';
-import {castModernizedTurret} from './nationalDonorCore.ts';
-import {weldedFlankHousing} from './weldedFlankHousing.ts';
+import {beamBetween,roofSheet} from './measuredPrimitives.ts';
+import {machinedRing} from '../machineGunGeometry.ts';
 import {eraCassette,glacisEraCassette} from './modernizationFittings.ts';
-import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
 import type {NationalModernizationConfig} from '../nationalModernizationConfig.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 const {box,cylY,cylZ}=KIT;
 type Point=readonly [number,number,number];
-type CheekRow=readonly [z:number,inner:number,outer:number,bottom:number,top:number];
 
-/** A finite, replaceable cheek wedge. Its rear root overlaps the curved casting,
- * while the lower cast chin, crown, flank and bearing stay visibly independent. */
-function cheekModule(P:TankBuilderPort,side:number,rows:readonly CheekRow[]):void {
-  const g=weldedFlankHousing(rows,side,.035);
-  // Permanent armor wedge remains in place beneath the small ERA face tiles.
-  P.addExternalArmor('turret',g);
-  addChineseChevronBank(P,side,rows,P.spec.id==='t72b3m_kunlun'?.115:P.spec.id==='t80u_yun'?.10:.09);
-}
 
-function bustle(P:TankBuilderPort,back:number,half:number,bottom:number,top:number):void {
-  const ring=(width:number,low:number):SectionPoint[]=>{
-    const b=Math.min(.06,(top-low)*.25);
-    return [[-width+b,low],[width-b,low],[width,low+b],[width,top-b],
-      [width-b,top],[-width+b,top],[-width,top-b],[-width,low+b]];
-  };
-  P.addExternalArmor('turret',sectionSolid([
-    {z:back,ring:ring(half,bottom+.08)},
-    {z:-1.04,ring:ring(half+.06,bottom)},
-  ]));
-  P.addEquipment('turretDetail',box(half*1.55,.022,-1.04-back-.10),0,top+.006,(back-1.04)/2);
-  for(const side of [-1,1])P.addEquipment('turretDark',box(.08,.07,.02),side*half*.67,top-.035,back-.008);
-}
 
-/** A continuous flank housing joins the existing cheek root to the rear
- * bustle. Its rising lower edge leaves the original cast chin and bearing
- * readable and clear of the hull through a complete turret revolution. */
-function flankHousing(P:TankBuilderPort,side:number,rows:readonly CheekRow[]):void {
-  P.addExternalArmor('turret',weldedFlankHousing(rows,side));
-}
 
-function turretWrap(P:TankBuilderPort,c:NationalModernizationConfig):void {
-  for(const side of [-1,1]){
-    if(c.model===0){
-      flankHousing(P,side,[[-1.68,.57,1.05,.40,.59],[-1.32,.83,1.36,.34,.63],
-        [-.60,1.10,1.55,.23,.65],[.10,.88,1.50,.22,.63]]);
-    }else if(c.model===1){
-      flankHousing(P,side,[[-2.08,.91,1.21,.43,.65],[-1.61,.76,1.45,.37,.69],
-        [-.86,1.10,1.68,.26,.73],[.12,.94,1.60,.25,.70]]);
-    }else{
-      flankHousing(P,side,[[-1.76,.50,.96,.42,.54],[-1.31,.72,1.25,.34,.59],
-        [-.58,1.04,1.48,.22,.61],[.24,.80,1.44,.22,.59]]);
-    }
-  }
-  if(c.model===1){
-    // A real open maintenance bay sits behind the small original bustle: two
-    // thick outboard housings, lower sill and upper lintel surround open air.
-    P.addExternalArmor('turret',box(2.12,.075,.20),0,.465,-2.00);
-    P.addExternalArmor('turret',box(2.12,.075,.16),0,.690,-2.02);
-    for(const side of [-1,1])P.addExternalArmor('turret',box(.12,.25,.17),side*1.015,.575,-2.02);
-    for(const x of [-.57,.57])P.addEquipment('turretDetail',beamBetween([x,.47,-1.79],[x,.47,-2.055],.022));
-  }else{
-    const z=c.model===0?-1.655:-1.70,w=c.model===0?1.30:1.12,y=c.model===0?.49:.47;
-    P.addExternalArmor('turret',box(w,.14,.17),0,y,z);
-    // Exposed rear access seams make the surrounding assembly legible.
-    for(const x of [-w*.30,w*.30])P.addEquipment('turretDark',box(.015,.095,.014),x,y,z-.092);
-  }
-}
 
-function yun(P:TankBuilderPort,c:NationalModernizationConfig):void {
-  castModernizedTurret(P,{halfWidth:1.36,roofY:.70,rearZ:-1.42,frontZ:1.26,shoulderY:.49,crownHalf:.68});
-  for(const side of [-1,1]){
-    cheekModule(P,side,[[-.12,.73,1.40,.26,.65],[.53,.69,1.61,.23,.65],
-      [1.12,.43,1.20,.26,.55],[1.48,.39,.66,.28,.46]]);
-  }
-  bustle(P,-1.64,.70,.32,.58);
+
+/** The Yun's hull package (release 227: carried unchanged from its cast-turret build under the Type 96B): the twin
+ * engine-deck cooling panels, six two-course skirt modules, two glacis tile rows and the slatted transom plate. */
+function yunHull(P:TankBuilderPort,c:NationalModernizationConfig):void {
   coolingPanel(P,-.51,-2.38,.76,.91,8);
   coolingPanel(P,.51,-2.38,.76,.91,8);
   skirts(P,c,6,-2.58,2.70,1.94,.79);
@@ -92,32 +33,7 @@ function yun(P:TankBuilderPort,c:NationalModernizationConfig):void {
   for(let i=0;i<8;i++)P.addEquipment('hullDark',box(.025,.017,.23),-.56+i*.16,rearY+.042,-3.05);
 }
 
-function kunlun(P:TankBuilderPort,c:NationalModernizationConfig):void {
-  castModernizedTurret(P,{halfWidth:1.42,roofY:.77,rearZ:-1.46,frontZ:1.30,shoulderY:.52,crownHalf:.68});
-  for(const side of [-1,1]){
-    // A two-piece Type-96/VT-inspired brow surrounds visible round stock.
-    cheekModule(P,side,[[-.21,.82,1.46,.29,.72],[.34,.76,1.66,.25,.72],[.85,.58,1.43,.26,.64]]);
-    cheekModule(P,side,[[.78,.61,1.43,.28,.64],[1.26,.40,1.05,.27,.56],[1.52,.39,.68,.29,.46]]);
-  }
-  bustle(P,-1.91,.84,.32,.63);
-  for(const side of [-1,1])coolingPanel(P,side*.52,-2.49,.85,.88,9);
-  skirts(P,c,7,-2.65,3.08,1.98,.74);
-  frontTiles(P,2.19,3,.68,.29);
-}
 
-function qilin(P:TankBuilderPort,c:NationalModernizationConfig):void {
-  castModernizedTurret(P,{halfWidth:1.30,roofY:.69,rearZ:-1.36,frontZ:1.19,shoulderY:.46,crownHalf:.68});
-  for(const side of [-1,1]){
-    // Small triangular blocks expose the rounded front/side casting below.
-    cheekModule(P,side,[[.14,.77,1.24,.26,.60],[.53,.70,1.43,.24,.59],
-      [.91,.50,1.05,.25,.50],[1.32,.39,.70,.27,.44]]);
-  }
-  bustle(P,-1.53,.61,.34,.53);
-  coolingPanel(P,-.46,-2.49,.73,.83,7);
-  coolingPanel(P,.46,-2.38,.73,1.00,8);
-  skirts(P,c,5,-2.35,2.67,1.93,.85);
-  frontTiles(P,2.06,2,.57,.38);
-}
 
 export function permanentParts(P:TankBuilderPort,names:string[]):THREE.BufferGeometry[] {
   const parts:THREE.BufferGeometry[]=[];
@@ -125,22 +41,9 @@ export function permanentParts(P:TankBuilderPort,names:string[]):THREE.BufferGeo
   return parts;
 }
 
-function turretEra(P:TankBuilderPort,c:NationalModernizationConfig):void {
-  // Freeze the completed permanent housing before adding any removable face.
-  // An earlier cassette or its lid must never become the next tile's receiver.
-  const parts=permanentParts(P,['turretExternalArmor']);
-  for(const side of [-1,1]){
-    if(c.model===0){
-      for(const z of [-1.04,-.65,-.27])seatCheekTile(P,parts,side,z,.43,[.27,.075,.30]);
-    }else if(c.model===1){
-      for(const z of [-1.30,-.89,-.47])seatCheekTile(P,parts,side,z,.48,[.32,.085,.30]);
-    }else{
-      for(const z of [-.98,-.53,-.10])seatCheekTile(P,parts,side,z,.40,[.25,.07,.31]);
-    }
-  }
-}
 
-function seatCheekTile(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],side:number,z:number,y:number,size:Point):void {
+/** A flat reactive tile on the outer wall at (z, y), seated by a -X raycast onto the frozen permanent `parts`. */
+export function seatCheekTile(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],side:number,z:number,y:number,size:Point):void {
   const ray=new THREE.Raycaster(new THREE.Vector3(side*3,y,z),new THREE.Vector3(-side,0,0));
   const mat=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});let nearest:THREE.Intersection|undefined;
   for(const g of parts){
@@ -267,27 +170,70 @@ function frontTiles(P:TankBuilderPort,z:number,rows:number,w:number,d:number):vo
     glacisEraCassette(P,`glacis_era_${side<0?'L':'R'}`,side*.55,z+j*(d+.04),[w,.065,d]);
 }
 
+/** The highest permanent (non-ERA) surface of the owner's buckets under (x, z), from y = 4. Release 227, round 5 (critic
+ * CN5-04: each call built a mesh per part and cast through every triangle, a few per cent of each CN build): the same
+ * downward ray through stockRoof's cached plan index, to the bit (Mesh.raycast on a double-sided identity-frame mesh is
+ * Ray.intersectTriangle with no culling, and the topmost hit of each part is the topmost of all). */
 function receivingRoof(P:TankBuilderPort,owner:'hull'|'turret',x:number,z:number,includeArmor=false):number {
-  const ray=new THREE.Raycaster(new THREE.Vector3(x,4,z),new THREE.Vector3(0,-1,0));
-  const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});let y=-Infinity;
-  P.forEachBucketPart(includeArmor?[owner,`${owner}ExternalArmor`]:[owner],g=>{
-    if(Array.isArray(g.userData.eraHitFaceVertexStarts))return;
-    const mesh=new THREE.Mesh(g,material);mesh.updateMatrixWorld();
-    const hit=ray.intersectObject(mesh)[0];if(hit)y=Math.max(y,hit.point.y);
-  });
-  material.dispose();
-  if(!Number.isFinite(y))throw new Error(`${P.spec.id}: missing Chinese ${owner} receiving roof ${x},${z}`);
-  return y;
+  try{return stockRoof(permanentParts(P,includeArmor?[owner,`${owner}ExternalArmor`]:[owner]),x,z,4);}
+  catch{throw new Error(`${P.spec.id}: missing Chinese ${owner} receiving roof ${x},${z}`);}
 }
 
-function stockRoof(parts:readonly THREE.BufferGeometry[],x:number,z:number):number {
-  const ray=new THREE.Raycaster(new THREE.Vector3(x,3,z),new THREE.Vector3(0,-1,0));
-  const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});let y=-Infinity;
-  for(const g of parts){
-    const mesh=new THREE.Mesh(g,material);mesh.updateMatrixWorld();
-    const hit=ray.intersectObject(mesh)[0];if(hit)y=Math.max(y,hit.point.y);
+/** Release 227, round 4 (critic CN3-D2: each equipment foot cast 13 downward rays through every triangle of the frozen
+ * stock, and the Qilin's kit ran 20 % slower than its 226 build): each frozen part keeps its plan box, and a part a ray
+ * lands in more than once keeps its triangles' plan boxes filed by 5 cm strips across X (both per geometry, rebuilt if
+ * its positions change). A downward ray at (x, z) meets only triangles whose plan box holds (x, z), and each is tested
+ * with the raycaster's own Ray.intersectTriangle on the same ray (double-sided, identity frame), so every height is the
+ * one the raycaster returned, to the bit. */
+interface RoofStrips {base:number;count:number;offsets:Int32Array;tris:Int32Array;abc:Int32Array;bb:Float64Array}
+interface RoofIndex {version:number;x0:number;x1:number;z0:number;z1:number;queries:number;strips:RoofStrips|null}
+const ROOF_STRIP=.05,ROOF_INDEX=new WeakMap<THREE.BufferGeometry,RoofIndex>();
+const roofRay=new THREE.Ray(),roofA=new THREE.Vector3(),roofB=new THREE.Vector3(),roofC=new THREE.Vector3(),roofHit=new THREE.Vector3();
+const attributeVersion=(p:THREE.BufferAttribute|THREE.InterleavedBufferAttribute):number=>
+  p instanceof THREE.InterleavedBufferAttribute?p.data.version:p.version;
+function roofIndex(g:THREE.BufferGeometry):RoofIndex {
+  const p=g.attributes.position,cached=ROOF_INDEX.get(g),version=attributeVersion(p);
+  if(cached&&cached.version===version)return cached;
+  let x0=Infinity,x1=-Infinity,z0=Infinity,z1=-Infinity;
+  for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i);if(x<x0)x0=x;if(x>x1)x1=x;if(z<z0)z0=z;if(z>z1)z1=z;}
+  const index={version,x0,x1,z0,z1,queries:0,strips:null};ROOF_INDEX.set(g,index);return index;
+}
+function roofStrips(g:THREE.BufferGeometry,index:RoofIndex):RoofStrips {
+  const p=g.attributes.position,idx=g.index,n=Math.floor((idx?idx.count:p.count)/3);
+  const abc=new Int32Array(n*3),bb=new Float64Array(n*4);
+  const base=Math.floor(index.x0/ROOF_STRIP),count=Math.floor(index.x1/ROOF_STRIP)-base+1,offsets=new Int32Array(count+1);
+  for(let t=0;t<n;t++){
+    const a=idx?idx.getX(t*3):t*3,b=idx?idx.getX(t*3+1):t*3+1,c=idx?idx.getX(t*3+2):t*3+2;abc[t*3]=a;abc[t*3+1]=b;abc[t*3+2]=c;
+    const xa=p.getX(a),xb=p.getX(b),xc=p.getX(c),za=p.getZ(a),zb=p.getZ(b),zc=p.getZ(c);
+    const lx=Math.min(xa,xb,xc),hx=Math.max(xa,xb,xc);bb[t*4]=lx;bb[t*4+1]=hx;bb[t*4+2]=Math.min(za,zb,zc);bb[t*4+3]=Math.max(za,zb,zc);
+    for(let s=Math.floor(lx/ROOF_STRIP)-base;s<=Math.floor(hx/ROOF_STRIP)-base;s++)offsets[s+1]!++;
   }
-  material.dispose();
+  for(let s=0;s<count;s++)offsets[s+1]!+=offsets[s]!;
+  const fill=offsets.slice(0,count),tris=new Int32Array(offsets[count]!);
+  for(let t=0;t<n;t++)for(let s=Math.floor(bb[t*4]!/ROOF_STRIP)-base;s<=Math.floor(bb[t*4+1]!/ROOF_STRIP)-base;s++)tris[fill[s]!++]=t;
+  return {base,count,offsets,tris,abc,bb};
+}
+function roofTest(p:THREE.BufferAttribute|THREE.InterleavedBufferAttribute,a:number,b:number,c:number,y:number):number {
+  roofA.fromBufferAttribute(p,a);roofB.fromBufferAttribute(p,b);roofC.fromBufferAttribute(p,c);
+  return roofRay.intersectTriangle(roofA,roofB,roofC,false,roofHit)?Math.max(y,roofHit.y):y;
+}
+/** The highest frozen-stock surface under (x, z): a downward ray from y = `fromY` (3; throws where there is none). */
+export function stockRoof(parts:readonly THREE.BufferGeometry[],x:number,z:number,fromY=3):number {
+  roofRay.origin.set(x,fromY,z);roofRay.direction.set(0,-1,0);let y=-Infinity;
+  for(const g of parts){
+    const index=roofIndex(g);
+    if(x<index.x0||x>index.x1||z<index.z0||z>index.z1)continue;
+    const p=g.attributes.position,idx=g.index,n=idx?idx.count:p.count;
+    if(!index.strips&&++index.queries>1&&n>3*64)index.strips=roofStrips(g,index);
+    const st=index.strips;
+    if(st){
+      const s=Math.floor(x/ROOF_STRIP)-st.base;if(s<0||s>=st.count)continue;
+      for(let k=st.offsets[s]!;k<st.offsets[s+1]!;k++){
+        const t=st.tris[k]!;if(x<st.bb[t*4]!||x>st.bb[t*4+1]!||z<st.bb[t*4+2]!||z>st.bb[t*4+3]!)continue;
+        y=roofTest(p,st.abc[t*3]!,st.abc[t*3+1]!,st.abc[t*3+2]!,y);
+      }
+    }else for(let t=0;t+2<n;t+=3)y=roofTest(p,idx?idx.getX(t):t,idx?idx.getX(t+1):t+1,idx?idx.getX(t+2):t+2,y);
+  }
   if(!Number.isFinite(y))throw new Error(`Chinese equipment has no permanent seat at ${x},${z}`);
   return y;
 }
@@ -333,72 +279,15 @@ export function lowOptic(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[]
   for(const dx of [-w/2-.01,w/2+.01])P.addEquipment('turretDetail',box(.018,h+.010,.035),x+dx,base+h/2,z+d/2+.013);
 }
 
-export function serviceCable(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],points:readonly (readonly[number,number])[]):void {
+/** A service cable over the roof: segments between the points, a clip at each point. `clipEnds: false` leaves the
+ * two end points bare (each end then stops inside the receiver it plugs into, a case face or a pedestal). */
+export function serviceCable(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],points:readonly (readonly[number,number])[],clipEnds=true):void {
   const path=points.map(([x,z])=>[x,stockRoof(parts,x,z)+.013,z] as const);
   for(let i=1;i<path.length;i++)P.addEquipment('turretDark',beamBetween(path[i-1],path[i],.010,8));
-  for(const [x,y,z]of path)P.addEquipment('turretDetail',box(.045,.034,.032),x,y+.002,z);
+  path.forEach(([x,y,z],i)=>{if(clipEnds||(i>0&&i<path.length-1))P.addEquipment('turretDetail',box(.045,.034,.032),x,y+.002,z);});
 }
 
-function nationalRoofEquipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
-  const parts=permanentParts(P,['turret','turretExternalArmor']);
-  if(c.model===0){
-    // Yun uses a low turbine-support/electronics spine and paired service
-    // cases, leaving the arrowhead housing and cast roof readable.
-    serviceCase(P,parts,-1.10,-1.13,.26,.14,.28);
-    serviceCase(P,parts,1.10,-1.13,.26,.14,.28);
-    serviceCase(P,parts,0,-1.43,.77,.16,.23);
-    lowOptic(P,parts,-.94,.17,.27,.115,.22,false);
-    serviceCable(P,parts,[[-.82,-1.01],[-.84,-.86],[-.85,-.66],[-.86,-.44],[-.87,-.24],[-.88,-.02]]);
-    const y=stockRoof(parts,0,-1.43)+.026;
-    for(const x of [-.48,.48]){
-      const foot=equipmentFoot(P,parts,x,-1.36,.070,.070);
-      P.addEquipment('turretDetail',beamBetween([x,foot-.006,-1.36],[x,y+.17,-1.36],.016));
-      P.addEquipment('turretDetail',beamBetween([x,y+.17,-1.36],[x,y+.17,-1.56],.016));
-    }
-    P.addEquipment('turretDetail',beamBetween([-.48,y+.17,-1.56],[.48,y+.17,-1.56],.016));
-  }else if(c.model===1){
-    // Kunlun carries protected sensor blocks and separate removable service
-    // cases on both deep wings. No crate fills its open rear maintenance bay.
-    for(const side of [-1,1]){
-      serviceCase(P,parts,side*1.20,-1.48,.30,.15,.34);
-      // Forward guards sit beyond the complete RWS barrel sweep, including
-      // its skin at maximum depression, on the wide permanent cheek stock.
-      lowOptic(P,parts,side*1.30,.22,.22,.13,.20,true);
-    }
-    const y=serviceCase(P,parts,0,-1.50,.82,.16,.37);
-    for(const x of [-.30,0,.30])P.addEquipment('turretDetail',box(.026,.045,.33),x,y+.010,-1.50);
-    serviceCable(P,parts,[[-1.17,-1.25],[-1.24,-1.12],[-1.29,-.96]]);
-    serviceCable(P,parts,[[1.17,-1.25],[1.24,-1.12],[1.29,-.96]]);
-    // A rear grab rail follows the solid top lintel, preserving air beneath.
-    for(const x of [-.70,.70])P.addEquipment('turretDetail',box(.024,.11,.024),x,.775,-2.02);
-    P.addEquipment('turretDetail',box(1.424,.026,.024),0,.827,-2.02);
-  }else{
-    // Qilin has a compact field-tool arrangement instead of the Yun/Kunlun
-    // electronics banks: a low roll, tool chest, small rack and side camera.
-    serviceCase(P,parts,-.77,-1.02,.29,.13,.33);
-    serviceCase(P,parts,.86,-1.03,.25,.12,.29);
-    lowOptic(P,parts,.92,.28,.20,.11,.19,true);
-    const y=equipmentFoot(P,parts,0,-1.39,.72,.25);
-    P.addEquipment('turretCloth',KIT.cylX(.078,.66,16),0,y+.070,-1.39);
-    for(const x of [-.23,.23]){
-      P.addEquipment('turretDetail',box(.042,.036,.22),x,y+.007,-1.39);
-      P.addEquipment('turretDark',KIT.cylX(.082,.028,16),x,y+.070,-1.39);
-    }
-    for(const x of [-.42,.42]){
-      const foot=equipmentFoot(P,parts,x,-1.45,.070,.13);
-      P.addEquipment('turretDetail',box(.025,.145,.025),x,foot+.066,-1.45);
-      P.addEquipment('turretDetail',beamBetween([x,foot+.132,-1.60],[x,foot+.132,-1.29],.013));
-    }
-    const rackY=stockRoof(parts,.42,-1.45)+.158;
-    P.addEquipment('turretDetail',beamBetween([-.42,rackY,-1.60],[.42,rackY,-1.60],.013));
-    serviceCable(P,parts,[[-.80,-.82],[-.83,-.66],[-.85,-.46],[-.86,-.25]]);
-  }
-}
 
-function equipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
-  chinaHullEquipment(P,c);
-  turretEquipment(P,c);
-}
 
 /** Driver's hatch, periscopes and the armoured front lamps on the native glacis. */
 function chinaHullEquipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
@@ -411,97 +300,40 @@ function chinaHullEquipment(P:TankBuilderPort,c:NationalModernizationConfig):voi
   }
   const front=c.model===0?2.76:c.model===1?2.95:2.77;
   for(const side of [-1,1]){
-    const x=side*1.40,y=receivingRoof(P,'hull',x,front),y0=receivingRoof(P,'hull',x,front-.12),y1=receivingRoof(P,'hull',x,front+.12);
+    const x=side*1.40;
+    // the Yun's and the Kunlun's paired lamps on the glacis corners, under the Type 96B gun's sweep (glacisLampCowl)
+    if(c.model!==2){glacisLampCowl(P,c.model,x);continue;}
+    const y=receivingRoof(P,'hull',x,front),y0=receivingRoof(P,'hull',x,front-.12),y1=receivingRoof(P,'hull',x,front+.12);
     P.addEquipment('hullDetail',roofSheet([
       [front-.12,x-.13,x+.13,y0+.025,y0+.025],[front+.12,x-.13,x+.13,y1+.025,y1+.025],
     ],.030));
-    if(c.model===0){
-      // Yun's low paired rectangular driving lamps share an armored brow.
-      P.addEquipment('hullDetail',box(.238,.105,.11),x,y+.091,front+.014);
-      for(const dx of [-.061,.061])P.addEquipment('hullGlass',markVehicleNightLens(box(.089,.045,.012),'headlight'),x+dx,y+.092,front+.074);
-    }else if(c.model===1){
-      P.addEquipment('hullDetail',box(.242,.14,.13),x,y+.11,front+.004);
-      for(const dx of [-.059,.059])P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.043,.016,16),'headlight'),x+dx,y+.112,front+.074);
-    }else{
-      P.addEquipment('hullDark',cylZ(.078,.10,16),x,y+.097,front+.01);
-      P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.063,.014,16),'headlight'),x,y+.097,front+.068);
-    }
+    P.addEquipment('hullDark',cylZ(.078,.10,16),x,y+.097,front+.01);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.063,.014,16),'headlight'),x,y+.097,front+.068);
     for(const dx of [-.12,.12])P.addEquipment('hullDetail',beamBetween([x+dx,y-.005,front],[x+dx,y+.175,front],.012));
     P.addEquipment('hullDetail',box(.265,.020,.16),x,y+.18,front);
   }
 }
 
-function turretEquipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
-  // The central sight is retained in a low armored housing beneath the RWS
-  // depression envelope; its new finite adapter is fitted to the cast crown.
-  lowOptic(P,permanentParts(P,['turret','turretExternalArmor']),0,-.08,.28,.11,.24,false);
-  // The original right mast crossed the receiver/feed box during traverse.
-  // Its complete base and whip now sit on the opposite rear shoulder, beyond
-  // the full muzzle circle and clear of the commander's hatch.
-  const antennaZ=-.86,antennaX=-.85,antennaY=receivingRoof(P,'turret',antennaX,antennaZ);
-  P.addEquipment('turretDetail',cylY(.057,.07,.08,12),antennaX,antennaY+.025,antennaZ);
-  P.addEquipment('turretDark',cylY(.007,.010,.54,8),antennaX,antennaY+.33,antennaZ);
-  for(const side of [-1,1])for(let i=0;i<(c.model===1?6:4);i++){
-    const z=-.77+i*.12,x=side*(c.model===1?1.12:c.model===0?1.06:1.02);
-    const seats=[z-.047,z+.047].map(zz=>({z:zz,left:receivingRoof(P,'turret',x-.060,zz,true),right:receivingRoof(P,'turret',x+.060,zz,true)}));
-    const top=Math.max(...seats.flatMap(s=>[s.left,s.right]))+.035;
-    P.addEquipment('turretDetail',sectionSolid(seats.map(s=>({z:s.z,
-      ring:[[x-.060,s.left-.006],[x+.060,s.right-.006],[x+.060,top],[x-.060,top]],
-    }))));
-    P.addEquipment('turretDark',markSmokeTube(blindTube(.038,.027,.21,.13,P.q?12:8),[0,0,1],true),
-      x,top+.072,z+.025,-.66,side*.57);
-  }
+/** Where the Yun's (model 0) and the Kunlun's (model 1) lamp cowls stand on their glacis corners: [rear z, front z]. */
+const GLACIS_LAMP_Z:Readonly<Record<0|1,readonly [number,number]>>={0:[2.99,3.10],1:[3.55,3.66]};
+/** Release 227, round 5 (critic CN5-05): on the deck at the front corners (z 2.76 Yun, 2.95 Kunlun) the 226 lamp groups
+ * stood 0.19 m tall (a lamp box between two guard posts under a brow plate) where the Type 96B gun, its trunnion 0.26 m
+ * over the ring, passes 76 mm (Kunlun) and 143 mm (Yun) over the deck at -6 degrees: the gun could depress only 1.3 and
+ * 3.6 degrees over them. Each pair now sits in one armoured cowl on the glacis corner ahead of the deck (as the T-72's and
+ * the T-80U's own lamps do), its underside following the glacis under both its edges at three stations (6 mm in), its top
+ * flat 95 mm over the glacis at its rear edge, the lenses in its front face under a 3 mm proud brow plate run 35 mm out
+ * over them; every point of it stays at least 25 mm under the gun at -6 degrees (cnClearance). Same lenses, same
+ * places across: [the Yun's low rectangular pair, the Kunlun's round pair]. */
+function glacisLampCowl(P:TankBuilderPort,model:0|1,x:number):void {
+  const [zr,zf]=GLACIS_LAMP_Z[model],w=.26,top=receivingRoof(P,'hull',x,zr)+.095;
+  P.addEquipment('hullDetail',sectionSolid([zr,(zr+zf)/2,zf].map(z=>({z,ring:[[x-w/2,receivingRoof(P,'hull',x-w/2,z)-.006],
+    [x+w/2,receivingRoof(P,'hull',x+w/2,z)-.006],[x+w/2,top],[x-w/2,top]] as SectionPoint[]}))));
+  P.addEquipment('hullDetail',box(w+.012,.016,.045),x,top-.005,zf+.0125);
+  if(model===0)for(const dx of [-.061,.061])P.addEquipment('hullGlass',markVehicleNightLens(box(.089,.045,.012),'headlight'),x+dx,top-.050,zf+.004);
+  else for(const dx of [-.059,.059])P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.043,.016,16),'headlight'),x+dx,top-.064,zf+.006);
 }
 
-/** Turbine Yun, heavy Kunlun and compact Qilin carry different rear layouts.
- * Every rack attaches to permanent hull/turret stock, not to removable ERA. */
-function modernizationEquipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
-  const turret=permanentParts(P,['turret','turretExternalArmor']);
-  // Independent welded rear cages: horizontal Chinese-style slats on Yun,
-  // the deep Kunlun maintenance extension, and Qilin's smaller tool basket.
-  const cage=c.model===0?{half:.72,join:-1.59,rear:-1.98,bottom:.40,top:.76,rows:3}:
-    c.model===1?{half:1.00,join:-2.01,rear:-2.35,bottom:.46,top:.78,rows:2}:
-    {half:.52,join:-1.67,rear:-1.96,bottom:.43,top:.69,rows:2};
-  const put=(g:THREE.BufferGeometry,role:string)=>{
-    g.userData.chineseModernization={model:c.model,role};
-    P.addEquipment('turretOpenLattice',g);
-  };
-  for(const side of [-1,1]){
-    const x=side*cage.half;
-    // Embedded root strut ties directly into the existing rear armor beam.
-    put(beamBetween([x,cage.bottom,cage.join+.035],[x,cage.bottom,cage.rear],.021),'cage-root');
-    put(beamBetween([x,cage.bottom,cage.rear],[x,cage.top,cage.rear],.018),'cage-post');
-    put(beamBetween([x,cage.top,cage.rear],[x,cage.top,cage.join],.017),'cage-side-rail');
-    put(beamBetween([x,cage.bottom,cage.join],[x,cage.top,cage.join],.018),'cage-front-post');
-  }
-  for(let row=0;row<=cage.rows;row++){
-    const y=cage.bottom+(cage.top-cage.bottom)*row/cage.rows;
-    put(beamBetween([-cage.half,y,cage.rear],[cage.half,y,cage.rear],row===0||row===cage.rows?.020:.012),'cage-rear-rail');
-  }
-  for(const ratio of [-.50,0,.50]){
-    const x=cage.half*ratio;
-    put(beamBetween([x,cage.bottom,cage.join],[x,cage.bottom,cage.rear],.014),'cage-floor');
-  }
-  if(c.model===0){
-    // Wide angular side electronics remain outboard of the low cast crown.
-    for(const side of [-1,1])lowOptic(P,turret,side*1.29,.09,.22,.085,.20,false);
-  }else if(c.model===1){
-    // A three-cell armored rear maintenance console is supported by the
-    // existing lintel; it stays below the rotating roof weapon's gun plane.
-    for(const x of [-.57,0,.57]){
-      P.addEquipment('turretDetail',box(.43,.11,.10),x,.755,-2.01);
-      P.addEquipment('turretDark',box(.34,.054,.012),x,.752,-2.066);
-      for(const dx of [-.14,.14])P.addEquipment('turretDetail',box(.032,.022,.030),x+dx,.807,-2.01);
-    }
-  }else{
-    // Qilin's inexpensive retrofit keeps a compact central basket and a
-    // field-service carrier instead of the other two electronics banks.
-    const base=equipmentFoot(P,turret,-1.14,-.60,.18,.33);
-    P.addEquipment('turretDetail',box(.19,.08,.34),-1.14,base+.033,-.60);
-    for(const z of [-.70,-.60,-.50])P.addEquipment('turretDark',box(.13,.008,.017),-1.14,base+.078,z);
-  }
-  addConceptFuelDrums(P,c);
-}
+
 
 function addConceptFuelDrums(P:TankBuilderPort,c:NationalModernizationConfig):void {
   const stock=permanentParts(P,['hull']),mat=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
@@ -540,25 +372,29 @@ function addConceptFuelDrums(P:TankBuilderPort,c:NationalModernizationConfig):vo
  * turrets (nationalDonorTurret.ts): engine-deck cooling panels, heavy skirts,
  * glacis cassettes, the driver's station, armoured lamps and rear fuel drums. */
 export function chinaDonorHull(P:TankBuilderPort,c:NationalModernizationConfig):void {
-  if(c.model===1){
+  if(c.model===0)yunHull(P,c);
+  else if(c.model===1){
     for(const side of [-1,1])coolingPanel(P,side*.52,-2.49,.85,.88,9);
     skirts(P,c,7,-2.65,3.08,1.98,.74);
     frontTiles(P,2.19,3,.68,.29);
-  }else if(c.model===2){
+  }else{
     coolingPanel(P,-.46,-2.49,.73,.83,7);
     coolingPanel(P,.46,-2.38,.73,1.00,8);
     skirts(P,c,5,-2.35,2.67,1.93,.85);
     frontTiles(P,2.06,2,.57,.38);
-  }else throw new Error(`${c.id}: no donor-turret hull package`);
+  }
   chinaHullEquipment(P,c);
   addConceptFuelDrums(P,c);
+  if(c.model===0)yunRingRace(P);
 }
 
-export function buildNationalChina(P:TankBuilderPort,c:NationalModernizationConfig):void {
-  if(c.model===0)yun(P,c);else if(c.model===1)kunlun(P,c);else qilin(P,c);
-  turretWrap(P,c);
-  turretEra(P,c);
-  equipment(P,c);
-  nationalRoofEquipment(P,c);
-  modernizationEquipment(P,c);
+/** Release 227: the Yun's stationary ring race under the Type 96B ring collar, which rides 40 mm higher on the T-80U
+ * hull than the cast turret did: a machined race bedded 6-35 mm into the sloping T-80U roof, its top 2 mm under the
+ * collar's underside, so no daylight shows under the collar. Its front edge stays behind the driver's hatch rim. */
+function yunRingRace(P:TankBuilderPort):void {
+  // its top 2 mm under the Type 96B ring collar's underside (pivot 1.59158 - 0.030)
+  const g=machinedRing(.98,1.10,1.5596-1.522,.004,P.q?24:16);
+  g.userData.chineseModernization={model:0,role:'ring-race'};
+  P.addEquipment('hullDetail',g,0,1.522,.0718698169);
 }
+
