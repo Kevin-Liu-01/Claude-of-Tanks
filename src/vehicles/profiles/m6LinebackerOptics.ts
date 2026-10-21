@@ -73,7 +73,7 @@ export function linebackerOptics(P:TankBuilderPort):void {
   lens(P,panorama,.117,.058,.245,.048);
   lens(P,panorama,.117,-.076,.245,.034);
   // Sun shade, rear service lid, cooling slots and armored cable trunk.
-  panorama('turretDetail',box(.44,.027,.30),0,.196,.115);
+  panorama('turretDetail',box(.44,.027,.30),0,.191,.115); // 2026-10-19 (owner float sweep): 2.5 mm over the hood; now on it
   panorama('turretDark',box(.27,.19,.014),0,0,-.182);
   for(const x of [-.083,0,.083])panorama('turretDetail',box(.032,.14,.021),x,0,-.193);
   P.addEquipment('turretDark',cylY(.028,.028,.18,12),cx,1.055,cz-.174);

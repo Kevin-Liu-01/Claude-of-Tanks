@@ -53,7 +53,9 @@ function hull(P:TankBuilderPort):void {
     P.addMudguard('t72b1987-x-skirt','hullFixedPaintedBodywork',markFixedPaintedPanel(sectionSolid([
       [-1.38,.655,1.231],[2.55,.655,1.216],[3.01,.874,1.195],[3.36,.899,.946],
     ].map(([z,low,top])=>({z,ring:[[left,low],[right,low],[right,top],[left,top]]}))),'t72b1987-x-skirt','hullRubber'));
-    P.addEquipment('hullDetail',box(.026,.030,5.61),side*1.626,1.439,-.325);
+    // 2026-10-19 (owner float sweep): the rail and its cross-arms stood 34 mm over the hull top, the arms ending 23 mm
+    // outboard of its edge; the arms reach in over the hull and rest on it, the rail on the arms
+    P.addEquipment('hullDetail',box(.026,.030,5.61),side*1.626,1.4115,-.325);
   }
 }
 
@@ -88,9 +90,9 @@ function engineDeck(P:TankBuilderPort):void {
   for(const [x,z,w,d,y]of [[-.35,-3.14,.71,.244,1.283],[.61,-3.14,.71,.244,1.283],
     [1.396,-2.74,.393,.777,1.420],[1.395,-.81,.402,.991,1.416],[1.41,.98,.35,.971,1.372],
     [1.375,2.06,.397,.84,1.293],[-1.34,-2.7,.55,.8,1.335],[-1.34,-1.86,.55,.82,1.335]]) {
-    P.addEquipment('hullDetail',box(w,.07,d),x,y,z);P.addEquipment('hullDetail',box(w+.012,.009,d+.009),x,y+.04,z);
+    P.snapGroup('t72b1987-deck-plate',()=>{P.addEquipment('hullDetail',box(w,.07,d),x,y,z);P.addEquipment('hullDetail',box(w+.012,.009,d+.009),x,y+.04,z);},{reachM:.20,mode:'down'});
   }
-  for(const side of [-1,1])for(const z of [-2.29,-1.47,.40,1.54])P.addEquipment('hullDetail',box(.559,.029,.078),side*1.34,1.43,z);
+  for(const side of [-1,1])for(const z of [-2.29,-1.47,.40,1.54])P.addEquipment('hullDetail',box(.60,.029,.078),side*1.32,1.4025,z);
   for(const x of [-.592,.592]) {
     P.addEquipment('hullDetail',cylX(.252,.716,28),x,1.520,-3.653);
     for(const dx of [-.229,.229]) {
@@ -157,8 +159,9 @@ function turretEra(P:TankBuilderPort):void {
       onTurret(P,'turretDetail',markEraHitFaces(box(.150,.044,.260),[0,1,0]),x,top-.055,z,rx);
     });
   }
+  // 2026-10-19 (owner float sweep): these three bricks a side stood 30-41 mm over the casting; each is seated on it
   for(const side of [-1,1])for(const [x,z,y]of [[.84,.51,2.005],[1.00,.50,1.978],[1.13,.20,1.999]]) {
-    P.destructibleCluster(`turret_era_${side<0?'L':'R'}`,()=>onTurret(P,'turretDetail',markEraHitFaces(box(.151,.048,.257),[0,1,0]),side*x,y,z,.22,0,-side*.4));
+    P.destructibleCluster(`turret_era_${side<0?'L':'R'}`,()=>P.snapGroup('t72b1987-roof-era',()=>onTurret(P,'turretDetail',markEraHitFaces(box(.151,.048,.257),[0,1,0]),side*x,y,z,.22,0,-side*.4),{reachM:.06}));
   }
 }
 

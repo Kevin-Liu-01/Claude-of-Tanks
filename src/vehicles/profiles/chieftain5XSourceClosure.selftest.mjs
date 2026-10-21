@@ -21,7 +21,7 @@ function collect(build) {
     m.position.set(x, y, z); m.rotation.set(rx, ry, rz); m.updateMatrixWorld(true); pieces.push(m);
   };
   build({ add, addEquipment: add, addExternalArmor: add, addHatch: add,
-    addMudguard: (_name, ...args) => add(...args) });
+    addMudguard: (_name, ...args) => add(...args), hangMudguard: (_name, ...args) => add(...args) });
   return { pieces, dispose() { for (const m of pieces) m.geometry.dispose(); material.dispose(); } };
 }
 function contact(a, b, point, direction, label) {

@@ -21,7 +21,10 @@ function bar(a:StrvPoint,b:StrvPoint,r:number):THREE.BufferGeometry {
 function cupola(P:TankBuilderPort,x:number,z:number,r:number):void {
   // Source has a raised outer hoop and visible air below it, not a solid
   // cylinder extending to the hoop. Individual feet land on the roof.
-  add(P,'turretDetail',cylY(r-.129,r-.110,.034,48),x,2.507,z);
+  // 2026-10-19 (owner float sweep): the cupola's inner ring (and the remote weapon on it) stood 33 mm over the raked
+  // roof: the base ring runs from the roof to the inner ring (the air under the hoop stays); the two hinge blocks move
+  // in onto the inner ring (they hung 61 mm inside the hoop)
+  add(P,'turretDetail',cylY(r-.129,r-.110,.092,48),x,2.496,z);
   add(P,'turretDetail',torus(r,.017,48,10),x,2.577,z);
   add(P,'turretDetail',cylY(r-.169,r-.157,.033,40),x,2.555,z);
   for(let i=0;i<8;i++){
@@ -29,7 +32,7 @@ function cupola(P:TankBuilderPort,x:number,z:number,r:number):void {
     add(P,'turretDetail',box(.025,.097,.024),px,2.531,pz,0,a);
   }
   for(const a of [0,Math.PI])add(P,'turretDetail',box(.062,.045,.063),
-    x+Math.sin(a)*(r-.11),2.590,z+Math.cos(a)*(r-.11));
+    x+Math.sin(a)*(r-.15),2.590,z+Math.cos(a)*(r-.15));
 }
 
 function sight(P:TankBuilderPort,x:number,y:number,z:number,w:number,h:number,d:number):void {

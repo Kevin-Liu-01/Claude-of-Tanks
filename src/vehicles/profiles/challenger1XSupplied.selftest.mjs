@@ -33,7 +33,7 @@ function primitiveChecks(){
  const pieces=[];
  const add=(_slot,g)=>pieces.push(g);
  const port={add,addEquipment:add,addHatch:add,addCupola:add,addExternalArmor:add,
-  addMudguard(_label,slot,g){add(slot,g);},muzzleZ:0};
+  addMudguard(_label,slot,g){add(slot,g);},snapGroup:(_label,build)=>build(),muzzleZ:0};
  addChallenger1SuppliedHull(port);addChallenger1SuppliedTurret(port);addChallenger1SuppliedGun(port);
  try{
   assert.ok(pieces.length>300,'independent assembled fittings, not donor/template dispatch');

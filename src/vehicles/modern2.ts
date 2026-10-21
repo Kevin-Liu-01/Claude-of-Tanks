@@ -105,6 +105,8 @@ export interface Modern2BuilderPort {
     build: (put: EraPlacement) => void,
     turretLocal?: boolean,
   ): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface ArmorResistance {
@@ -935,8 +937,9 @@ function buildType99ABaseHull(P: Modern2BuilderPort) {
                                                                                //   in the 1.50 deck recess)
   // Oracle main-fender islands terminate at z=-3.59/+3.46.  Preserve that
   // thick-body span; only the supported recovery cable is allowed to reach
-  // the published full 7.76 m hull envelope.
-  fenders(P, 1.12, 1.83, 1.47, -3.59, 3.46, 0.03);
+  // the published full 7.76 m hull envelope. The outer edge runs 5 mm into the skirt's top band (inner face 1.835),
+  // which the skirt runs and the fringe hang from.
+  fenders(P, 1.12, 1.84, 1.47, -3.59, 3.46, 0.03);
   // ---- GLACIS — TWO REAL PLANES (§B1 course lines, print-measured):
   // upper 16.3 deg y(z) = 1.50 - 0.284(z - 2.02) from the deck edge to the
   // nose break (3.02, 1.215); then the 62-deg nose plate to the toe
@@ -987,16 +990,16 @@ function buildType99ABaseHull(P: Modern2BuilderPort) {
   // ---- DOZER BLADE under the bow (print y 0.39..0.53, z 2.5..3.0 center) -
   P.add('hull', box(2.10, 0.15, 0.50), 0, 0.465, 2.74);
   P.add('hullDark', box(2.06, 0.05, 0.06), 0, 0.42, 2.99);                     // blade lip
-  for (const s of [-1, 1]) P.add('hullDetail', box(0.10, 0.10, 0.55), s * 0.72, 0.44, 2.42); // ram arms
+  for (const s of [-1, 1]) P.add('hullDetail', box(0.10, 0.30, 0.55), s * 0.72, 0.545, 2.42); // ram arms, blade to belly (the blade hung 14 cm under the hull on arms as low as itself: owner 2026-10-19 float sweep)
   // front mudguards + flaps: the source's thick fender/flap body ends near
   // z=+3.52; thin brackets remain supported inside that measured envelope.
   for (const s of [-1, 1]) {
     P.add('hull', box(0.68, 0.035, 0.30), s * 1.47, 1.455, 3.40);              // fender noses END ~3.55 (probe
                                                                                //   r3: the print bow line drops to
                                                                                //   ~1.1 by z 3.5 — no tall noses)
-    P.add('hullRubber', box(0.60, 0.34, 0.028), s * 1.46, 0.91, 3.50);         // compact flap terminates at the
+    P.hangMudguard('ztz99-longwei-front-flap', 'hullRubber', box(0.60, 0.34, 0.028), s * 1.46, 0.91, 3.50);         // compact flap terminates at the
                                                                                //   oracle's +3.52 m thick-body line
-    P.add('hullDetail', box(0.12, 0.09, 0.20), s * 1.78, 1.35, 3.43);          // hanger bracket spanning the
+    P.add('hullDetail', box(0.12, 0.135, 0.20), s * 1.78, 1.3725, 3.43);       // hanger bracket spanning the (top into the fender nose: it stood 43 mm under it, owner 2026-10-19 sweep)
   }                                                                            //   skirt nose -> flap edge
   // ---- stern: compact split transom, backed grilles and raised flaps.  A
   // supported thin recovery loop supplies the oracle's -4.242 m extremum. --
@@ -1124,11 +1127,12 @@ function buildType99AHullDeckAndArmor(P: Modern2BuilderPort) {
     P.add('hull', box(0.01, 0.35, 0.26), s * 1.855, 1.075, 3.34);              //   inner face clears terminal shoes)
                                                                                //   (drops to the print tip line)
     P.add('hullDark', box(0.01, 0.90, 0.024), s * 1.855, 0.92, 2.73);          // bow panel seam
-    P.add('hull', box(0.01, 0.66, 1.39), s * 1.855, 0.84, -2.755);             // source-painted rear skirt run;
-                                                                               // only its flexible lower fringe is
-                                                                               // dark rubber, not the whole panel
+    P.add('hull', box(0.01, 0.72, 1.39), s * 1.855, 0.87, -2.755);             // source-painted rear skirt run,
+                                                                               // hung 5 mm into the top band; only
+                                                                               // its flexible lower fringe is dark
+                                                                               // rubber, not the whole panel
     for (let k = 0; k < 3; k++) P.add('hullDark', box(0.01, 0.56, 0.02), s * 1.855, 0.82, -2.32 - k * 0.52);
-    P.add('hullRubber', box(0.01, 0.12, 1.39), s * 1.855, 0.50, -2.755);       // lower fringe
+    P.hangMudguard('ztz99-longwei-skirt-fringe', 'hullRubber', box(0.01, 0.12, 1.39), s * 1.855, 0.50, -2.755);       // lower fringe
   }
   // Eight full-height FY-4 side cassettes per side.  The previous 3×11 field
   // rendered as a solid Minecraft wall and hid the characteristic six-wheel
@@ -1142,11 +1146,11 @@ function buildType99AHullDeckAndArmor(P: Modern2BuilderPort) {
   ];
   P.eraCluster('skirt_era_R', (put: EraPlacement) => {
     for (const [z, depth, height] of skirtPanels)
-      put(1.835, 0.91, z, 0, Math.PI / 2, 0, depth / 0.28, height / 0.13, 0.35);
+      put(1.835, 1.228 - height / 2, z, 0, Math.PI / 2, 0, depth / 0.28, height / 0.13, 0.35); // tops into the fender (they hung 15-30 mm under it: owner 2026-10-19 float sweep)
   });
   P.eraCluster('skirt_era_L', (put: EraPlacement) => {
     for (const [z, depth, height] of skirtPanels)
-      put(-1.835, 0.91, z, 0, -Math.PI / 2, 0, depth / 0.28, height / 0.13, 0.35);
+      put(-1.835, 1.228 - height / 2, z, 0, -Math.PI / 2, 0, depth / 0.28, height / 0.13, 0.35);
   });
   // ---- GLACIS ERA — the DISTINCTIVE ARROW/CHEVRON FIELD on the 16.3-deg
   // plane (owner identity headline; §5.29 chevron-tip kinship: the two
@@ -1704,7 +1708,9 @@ function buildMBT70(P: Modern2BuilderPort) {
   // Facet seams and lifting eyes make the broad armor read as assembled plate.
   for (const s of [-1, 1]) {
     P.add('turretDark', box(0.018, 0.50, 1.36), s * 1.39, 0.40, -0.62, 0, s * 0.08, 0);
-    P.add('turretDetail', box(0.05, 0.05, 1.30), s * 1.72, 0.54, -1.10);
+    // 2026-10-19 (owner float sweep): this side rail stood 49-140 mm off the curved flank; shortened to the flank's
+    // broad shoulder and moved in onto its widest line.
+    P.add('turretDetail', box(0.05, 0.05, 0.80), s * 1.668, 0.54, -1.37);
     liftEye(P, 'turretDetail', s * 1.12, TH + 0.02, -1.28);
   }
   // Roof hatches: structural cupolas are explicitly separated from fittings.
@@ -1733,9 +1739,10 @@ function buildMBT70(P: Modern2BuilderPort) {
     GUNNER_SIGHT_BASE_Y_M + GUNNER_SIGHT_HEIGHT_M * 0.54, 0.20);
   periscope(P, 'turretDetail', -0.58, TH + 0.16, -0.30);
   // Rear basket, smoke launchers, antennae and securely seated stowage.
-  P.add('turretDetail', box(3.20, 0.05, 0.05), 0, 0.70, -3.06);
-  P.add('turretDetail', box(3.20, 0.05, 0.05), 0, 0.19, -3.06);
-  for (let k = 0; k < 13; k++) P.add('turretDetail', box(0.035, 0.50, 0.035), -1.50 + k * 0.25, 0.45, -3.06);
+  // 2026-10-19 (owner float sweep): the basket frame stood 14 mm behind the stowage racks it closes; now on them.
+  P.add('turretDetail', box(3.20, 0.05, 0.05), 0, 0.70, -3.046);
+  P.add('turretDetail', box(3.20, 0.05, 0.05), 0, 0.19, -3.046);
+  for (let k = 0; k < 13; k++) P.add('turretDetail', box(0.035, 0.50, 0.035), -1.50 + k * 0.25, 0.45, -3.046);
   for (const [side, seed] of [[-1, 73], [1, 74]]) {
     const rack = FITTINGS.stowageRack({
       mats: P.mats, w: 1.26, d: 0.38, h: 0.28, rails: 3, fill: 0.95,
@@ -1796,7 +1803,8 @@ function buildMBT70(P: Modern2BuilderPort) {
   }
   const hullEraStations = [
     [-0.82, 1.405, 2.86], [-0.29, 1.405, 2.86], [0.29, 1.405, 2.86], [0.82, 1.405, 2.86],
-    [-0.78, 1.505, 2.38], [-0.26, 1.505, 2.38], [0.26, 1.505, 2.38], [0.78, 1.505, 2.38],
+    // 2026-10-19 (owner float sweep): the aft row stood 15 mm over the glacis; lowered onto it.
+    [-0.78, 1.489, 2.38], [-0.26, 1.489, 2.38], [0.26, 1.489, 2.38], [0.78, 1.489, 2.38],
   ];
   for (const [x, y, z] of hullEraStations) {
     P.add('hull', box(0.44, 0.09, 0.34), x, y, z, -0.035, 0, 0);
@@ -1818,8 +1826,10 @@ function buildMBT70(P: Modern2BuilderPort) {
     links.position.set(side * SPARE_TRACK_MOUNT_X_M, SPARE_TRACK_MOUNT_Y_M, SPARE_TRACK_MOUNT_Z_M);
     P.turretG.add(links);
   }
-  P.addEquipment('turret', box(0.28, 0.20, 0.32), -1.02, TH + 0.12, -0.88);
-  P.add('turretGlass', box(0.17, 0.10, 0.02), -1.02, TH + 0.15, -0.705);
+  // 2026-10-19 (owner float sweep): the sensor box stood 20 mm over the roof and its window 5 mm off its face; both
+  // seated.
+  P.addEquipment('turret', box(0.28, 0.20, 0.32), -1.02, TH + 0.099, -0.88);
+  P.add('turretGlass', box(0.17, 0.10, 0.02), -1.02, TH + 0.129, -0.711);
   P.addEquipment('turretDetail', box(0.74, 0.035, 0.06), 0, TH + 0.04, -1.24);
   {
     const leftWhip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.78, rake: -0.04, seed: 71 });

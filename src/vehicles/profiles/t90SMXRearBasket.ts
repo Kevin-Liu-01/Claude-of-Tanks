@@ -72,9 +72,20 @@ function basketAttachments(P: TankBuilderPort): void {
     [x-.0117,1.92135,-2.91174],[x+.0117,1.9418,-2.68429]);
 }
 
+// 2026-10-19 (owner float sweep): the side frames stood 9 mm above the rear frame's long rails where they cross at the
+// rear corners, so each side frame floated; a clip at each crossing joins them.
+function cornerClips(P: TankBuilderPort): void {
+  for(const row of [1,4]) {
+    const low=REAR_LEVELS[row]-.003,high=SIDE_LEVELS[row]+.003;
+    member(P,[-.893,low,-2.92],[-.853,high,-2.88]);
+    member(P,[.864,low,-2.92],[.904,high,-2.88]);
+  }
+}
+
 export function addT90SMRearBasket(P: TankBuilderPort): void {
   rearRails(P);
   sideRails(P);
+  cornerClips(P);
   sidePosts(P);
   basketAttachments(P);
 }

@@ -70,8 +70,10 @@ function sidePanniers(P: TankBuilderPort): void {
       rack(P, 'hull', side * 1.57, 1.78, z, .28, .67, .39);
       for (const dz of [-.24, .24])
         P.addEquipment('hullDetail', box(.28, .055, .07), side * 1.57, 1.77, z + dz);
+      // 2026-10-19 (owner float sweep): each load hung 19 mm over its rack floor (17 mm off the rack); it beds 2 mm
+      // into the floor grid
       KIT.stowage(P, 'hullCloth', () => .5,
-        [[side * 1.57, 1.965, z, .23, .31, .59]]);
+        [[side * 1.57, 1.944, z, .23, .31, .59]]);
     }
     // Low-profile service cases fill the forward shoulder rather than
     // covering the engine louvers or driver periscopes.

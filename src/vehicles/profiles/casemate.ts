@@ -425,7 +425,8 @@ export function buildStrv103(P: CasemateBuilderPort): void {
       KIT.headlight(P, s * 1.28 + dx, 1.38 + dy, 2.69, -0.32, 0.048);
     }
   }
-  liftEye(P, 'hullDetail', -1.55, 1.92, 0.70, 0.4); liftEye(P, 'hullDetail', 1.55, 1.92, 0.70, -0.4);
+  // 2026-10-19 (owner float sweep): the eyes stood 95 mm over the 1.80 deck edge; set on it
+  liftEye(P, 'hullDetail', -1.55, 1.823, 0.70, 0.4); liftEye(P, 'hullDetail', 1.55, 1.823, 0.70, -0.4);
   towHook(P, -0.85, 0.80, 2.55); towHook(P, 0.85, 0.80, 2.55);
   // tail: rear plate rail + thin-band exhaust pipes filling the oracle's
   // overhung tail line (band < 12% so hullLengthM stays published)
