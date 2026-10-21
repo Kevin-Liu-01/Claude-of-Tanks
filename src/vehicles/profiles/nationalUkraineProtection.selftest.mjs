@@ -103,7 +103,7 @@ for(const quality of ['high','low'])for(const id of ids){
    // 2026-10-16 (release 227; the owner: "brand new era packages for both though, donnt make it just copy the t90ms.
    // innovate for the hetman 2"): Hetman II's own frontal package (ukraineFrontEra.ts hetmanIIGlacis) is new hull ERA
    // that the continuous main-gun envelope must clear, as the skirt banks are.
-   const newEra=owner==='hull'&&g.userData.eraHitFaceVertexStarts!==undefined&&/ukrainianSkirtEra|addNationalUkraineProtection|glacisTiles|hetmanIIGlacis|ukraineFrontEra/.test(new Error().stack);
+   const newEra=owner==='hull'&&g.userData.eraHitFaceVertexStarts!==undefined&&/ukrainianSkirtEra|addNationalUkraineProtection|glacisTiles|hetmanIIGlacis|hetmanIISideBand|ukraineFrontEra/.test(new Error().stack);
    if(owner==='hull'&&(attachment||newEra))addedHull.push(g.clone());
    if(newEra&&g.userData.eraHitFaceVertexStarts.length)newHullEra++;
    if(attachment?.role==='support-pad')pads.push(attachment);

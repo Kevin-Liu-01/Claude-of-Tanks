@@ -579,9 +579,10 @@ function dazzlers(P: TankBuilderPort): void {
  * naming the one side). Round 11 measured the brief's eleven cabinet-lid slabs on the build: no lid cell of 16 cm or more
  * keeps 8 mm from the lids' fittings (the slit lamps, the sensor heads, the panoramas, the cage legs' pads, the end
  * flanges and the remaining lid cassette) outside the cupola's and the loader's hatch openings (E7), so their share of the
- * roof is laid on the casting instead: the shoulder slabs outboard of the spine and the left flank's four. */
+ * roof is laid on the casting instead: the shoulder slabs outboard of the spine. Every cell's seat on the cast dome bows
+ * at most 11.5 mm under its plan (seatPlanTile; the left flank cells beside the cupola bow 25 and 63 mm). */
 const DUPLET = {
-  base: .024, face: .018, inset: .012, chamfer: .010, sink: .004,
+  base: .024, face: .018, inset: .012, chamfer: .010,
   roof: [
     // the spine: two columns either side of the centre line in three rows ahead of the hatches (the brief), and round 11's
     // shoulder slabs outboard of it, under the roof-front wedge course, in its middle and rear rows
@@ -589,13 +590,12 @@ const DUPLET = {
     {z: [.35, .53], cols: [[.03, .19], [.21, .37], [.43, .61]]},
     // (on the right the gunner's sight's housing stands within 8 mm of the row's middle shoulder cells)
     {z: [.14, .32], cols: [[.03, .19], [.21, .37], [.43, .61, -1], [.63, .81, -1], [.83, 1.01, -1], [1.03, 1.21]]},
-    // the left flank between the cupola and the front cabinet, and behind the cupola
-    {z: [-.19, -.02], cols: [[1.03, 1.21, -1]]},
-    {z: [-.76, -.59], cols: [[.85, 1.01, -1]]},
+    // behind the cupola, on the left
     {z: [-.95, -.78], cols: [[.23, .41, -1]]},
-    // the rear row behind the ventilator, ahead of the bustle rack (the brief's, its outer rear corners off the casting)
-    {z: [-1.20, -1.03], cols: [[.03, .21], [.23, .41], [.43, .61]]},
-    {z: [-1.39, -1.22], cols: [[.03, .21]]},
+    // the rear row behind the ventilator, ahead of the bustle rack (the brief's front row of it, its cells 2 cm smaller each
+    // way: there the cast shell rolls off 10-11 mm under the brief's 18 x 17 cm; behind z -1.22 and outboard of |x| .41 it
+    // falls away 24-39 mm under a slab's plan, past the seat contract)
+    {z: [-1.19, -1.04], cols: [[.03, .19], [.21, .37]]},
   ] as readonly {z: readonly [number, number]; cols: readonly (readonly number[])[]}[],
   rail: {w: .012, h: .025, gap: .003, sink: .003},
   /** Every slab keeps this far from every other built part (frontEraPackages.selftest). */
@@ -606,12 +606,15 @@ const DUPLET = {
  * triangles; far tier: a 12-triangle block inside it, its front face the chamfer's slope run down to the seat, so it never
  * stands higher than the near tier's slab). */
 function dupletSlab(P: TankBuilderPort, seat: TileSeat): THREE.BufferGeometry {
-  const D = DUPLET, {n, centre, low, along, fwd, sx, sz} = seat, t = D.base + D.face;
+  const D = DUPLET, {n, centre, bottom, seatLow, along, fwd, sx, sz} = seat;
+  // (round 11: the slab's flat bottom where its curved seat is met within the seat contract, seat.bottom; its top 42 mm
+  // over the seat's lowest point, the face layer 18 mm of it)
+  const H = seatLow + D.base + D.face - bottom, F = H - D.face;
   const ring: SectionPoint[] = P.q
-    ? [[0, -D.sink], [sz, -D.sink], [sz, D.base], [sz - D.inset, D.base], [sz - D.inset - D.chamfer, t], [0, t]]
-    : [[0, -D.sink], [sz, -D.sink], [sz - D.inset - D.chamfer, t], [0, t]];
+    ? [[0, 0], [sz, 0], [sz, F], [sz - D.inset, F], [sz - D.inset - D.chamfer, H], [0, H]]
+    : [[0, 0], [sz, 0], [sz - D.inset - D.chamfer, H], [0, H]];
   const origin = (a: number): V3 => {
-    const o = centre.clone().addScaledVector(n, low).addScaledVector(along, a).addScaledVector(fwd, -sz / 2);
+    const o = centre.clone().addScaledVector(n, bottom).addScaledVector(along, a).addScaledVector(fwd, -sz / 2);
     return [o.x, o.y, o.z];
   };
   return sectionLoft([-sx / 2, sx / 2].map(a => ({o: origin(a), out: [fwd.x, fwd.y, fwd.z] as V3, up: [n.x, n.y, n.z] as V3, ring})));

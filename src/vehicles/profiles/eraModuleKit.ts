@@ -29,6 +29,8 @@ export class Stock {
   private readonly material = new THREE.MeshBasicMaterial({side: THREE.DoubleSide});
   private readonly ray = new THREE.Raycaster();
   private readonly id: string;
+  /** The vehicle the stock belongs to (for messages). */
+  get name(): string { return this.id; }
   constructor(id: string, geometries: readonly THREE.BufferGeometry[] = []) {
     this.id = id;
     for (const g of geometries) this.add(g);
@@ -313,7 +315,13 @@ export function assertRoofPart(id: string, name: string, g: THREE.BufferGeometry
  * along the normal from the centre (a tile laid `low - .004` deep has its lowest corner 4 mm into the stock), and the
  * tile's axes in that plane (`along`, and `fwd` towards its front edge). */
 export interface TileSeat { corners: THREE.Vector3[]; n: THREE.Vector3; centre: THREE.Vector3; low: number; along: THREE.Vector3;
-  fwd: THREE.Vector3; sx: number; sz: number }
+  fwd: THREE.Vector3; sx: number; sz: number;
+  /** Round 11: where the tile's flat bottom goes (its offset along n from the centre) so the curved seat under it (sampled
+   * 7 x 7, its corners included) is met within frontEraPackages.selftest's seat contract (at most 6 mm off, 7 mm in): its
+   * whole bottom 1 mm in where the seat bows 4.5 mm or less under the plane, else 5.5 mm in at the seat's highest point (a
+   * seat bowing over 11.5 mm is refused); and the seat's lowest
+   * point (a tile's face stands its height over it, so the curved seat never lifts its top). */
+  bottom: number; seatLow: number }
 export function seatOrientedTile(stock: Stock, x: number, z: number, dir: readonly [number, number], sx: number, sz: number): TileSeat {
   const l = Math.hypot(dir[0], dir[1]), d = [dir[0] / l, dir[1] / l], q = d[0] >= 0 ? [-d[1], d[0]] : [d[1], -d[0]];
   // (the across axis is the one with +z: a tile's front edge faces the vehicle's front)
@@ -329,7 +337,16 @@ export function seatOrientedTile(stock: Stock, x: number, z: number, dir: readon
   const along = new THREE.Vector3(d[0], 0, d[1]).addScaledVector(n, -(d[0] * n.x + d[1] * n.z)).normalize();
   const fwd = along.clone().cross(n).normalize();
   if (fwd.x * p[0] + fwd.z * p[1] < 0) fwd.negate();
-  return {corners, n, centre, low, along, fwd, sx, sz};
+  let lo = Infinity, hi = -Infinity;
+  const grid = [-.5, -1 / 3, -1 / 6, 0, 1 / 6, 1 / 3, .5];
+  for (const a of grid) for (const b of grid) {
+    const cx = x + a * d[0] * sx + b * p[0] * sz, cz = z + a * d[1] * sx + b * p[1] * sz;
+    const h = new THREE.Vector3(cx, stock.top(cx, cz), cz).sub(centre).dot(n);
+    lo = Math.min(lo, h); hi = Math.max(hi, h);
+  }
+  if (hi - lo > .0115) throw new Error(`${stock.name}: a tile at ${x.toFixed(3)}, ${z.toFixed(3)} spans a seat bowing ${(1000 * (hi - lo)).toFixed(1)} mm (11.5 mm)`);
+  const bottom = hi - lo <= .0045 ? lo - .001 : hi - .0055;
+  return {corners, n, centre, low, along, fwd, sx, sz, bottom, seatLow: lo};
 }
 /** seatOrientedTile for a plan rectangle [x0, x1, z0, z1] (|x|, mirrored by side), its sides along x and z. */
 export function seatPlanTile(stock: Stock, side: number, rect: readonly [number, number, number, number]): TileSeat {

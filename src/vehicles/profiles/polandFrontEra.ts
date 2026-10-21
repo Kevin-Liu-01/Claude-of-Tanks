@@ -528,24 +528,25 @@ type SpineRow = {z: readonly [number, number]; cols: readonly number[]; sides?: 
 type SpineBlock = {cols: readonly (readonly [number, number])[]; rows: readonly SpineRow[]};
 const SPINE = {
   // blocks of rows (front to rear), each row's tiles naming the block's columns (|x| spans) and, unless on both, its sides.
-  // The rear row's outer rear cell (|x| .23-.41 behind z -1.22) has no casting under its outer corners and is left out;
-  // its inner rear cell ends at z -1.37 (the brief's -1.39): the cast shell narrows to |x| .21 at z -1.41, under the
-  // frame's rear bar. Round 11 adds the shoulder blocks outboard of the spine, behind the cheek boxes (measured clear of
+  // The rear block keeps the brief's front row, its cells 2 cm smaller each way (the shell rolls off 10-11 mm under the
+  // brief's 18 x 17 cm): behind z -1.22 the cast shell falls away 24-39 mm under a tile's plan, past its seat contract
+  // (seatPlanTile bows at most 11.5 mm), as it does at the shoulders' z -.07 to .11. Round 11 adds the
+  // shoulder blocks outboard of the spine, behind the cheek boxes (measured clear of
   // every roof fitting on the build, tools/r14 roofcand: the commander's sensor plinth, the gunner's sight hood, the
   // cupola, the stanchions). The Zubr II keeps its right spine's front two rows bare: the mission drone dock's landing
   // (its native seat at x .20, z .57; the solver finds no other one outside the WKM-B station's sweep and the hatches).
   blocks: {
     1: [
       {cols: [[.03, .19], [.21, .37]], rows: [{z: [.56, .74], cols: [0, 1]}, {z: [.35, .53], cols: [0, 1]}, {z: [.14, .32], cols: [0, 1]}]},
-      {cols: [[.03, .21], [.23, .41], [.43, .61]], rows: [{z: [-1.20, -1.03], cols: [0, 1, 2]}, {z: [-1.37, -1.22], cols: [0]}]},
+      {cols: [[.03, .19], [.21, .37]], rows: [{z: [-1.19, -1.04], cols: [0, 1]}]},
       {cols: [[.83, 1.01], [1.03, 1.21]], rows: [{z: [.35, .53], cols: [0, 1], sides: [-1]}, {z: [.35, .53], cols: [1], sides: [1]},
-        {z: [.14, .32], cols: [0, 1], sides: [-1]}, {z: [.14, .32], cols: [1], sides: [1]}, {z: [-.07, .11], cols: [1], sides: [-1]}]},
+        {z: [.14, .32], cols: [0, 1], sides: [-1]}, {z: [.14, .32], cols: [1], sides: [1]}]},
     ],
     2: [
       {cols: [[.03, .19], [.21, .37]], rows: [{z: [.56, .74], cols: [0, 1], sides: [-1]}, {z: [.35, .53], cols: [0, 1], sides: [-1]}, {z: [.14, .32], cols: [0, 1]}]},
-      {cols: [[.03, .21], [.23, .41]], rows: [{z: [-1.20, -1.03], cols: [0, 1]}, {z: [-1.37, -1.22], cols: [0]}]},
+      {cols: [[.03, .19], [.21, .37]], rows: [{z: [-1.19, -1.04], cols: [0, 1]}]},
       {cols: [[.43, .61], [.63, .81], [.83, 1.01], [1.03, 1.21]], rows: [{z: [.35, .53], cols: [3]},
-        {z: [.14, .32], cols: [0, 1, 2, 3], sides: [-1]}, {z: [.14, .32], cols: [3], sides: [1]}, {z: [-.07, .11], cols: [3], sides: [-1]}]},
+        {z: [.14, .32], cols: [0, 1, 2, 3], sides: [-1]}, {z: [.14, .32], cols: [3], sides: [1]}]},
     ],
   } as Readonly<Record<PolishLevel, readonly SpineBlock[]>>,
   tile: {1: {base: .035, top: 0}, 2: {base: .016, top: .014, inset: .015, chamfer: .010}},
@@ -563,12 +564,15 @@ export function polishRoofSpine(P: TankBuilderPort, casting: Stock, level: Polis
     if (!rows.length) continue;
     for (const row of rows) for (const c of row.cols) {
       const [X0, X1] = all.cols[c], [z0, z1] = row.z;
-      const {n, centre, low, along, sx, sz} = seatPlanTile(casting, side, [X0, X1, z0, z1]);
+      // (the tile's flat bottom where its curved seat on the dome is met within the seat contract, seat.bottom; its top its
+      // thickness over the seat's lowest point, so a bowed seat never lifts it)
+      const {n, centre, bottom, seatLow, along, sx, sz} = seatPlanTile(casting, side, [X0, X1, z0, z1]);
+      const H = seatLow + T.base + T.top - bottom;
       let g: THREE.BufferGeometry;
-      if (!('inset' in T)) g = orientedBox([sx, sz, T.base + .004], centre.clone().addScaledVector(n, low + (T.base - .004) / 2), along, n);
+      if (!('inset' in T)) g = orientedBox([sx, sz, H], centre.clone().addScaledVector(n, bottom + H / 2), along, n);
       else {
-        const up = n.clone().cross(along).normalize(), corner = centre.clone().addScaledVector(n, low).addScaledVector(along, -sx / 2).addScaledVector(up, -sz / 2);
-        g = stackTile(P, corner, along, up, n, sx, sz, T.base, T.top, T.inset, T.chamfer);
+        const up = n.clone().cross(along).normalize(), corner = centre.clone().addScaledVector(n, bottom + .004).addScaledVector(along, -sx / 2).addScaledVector(up, -sz / 2);
+        g = stackTile(P, corner, along, up, n, sx, sz, H - .004 - T.top, T.top, T.inset, T.chamfer);
       }
       eraModule(P, {owner: 'turret', sector: sectorOf('turret_era', side), geometry: g, outward: tup(n), minDot: .5,
         name: 'roof spine tile', guard: (nm, geo) => assertRoofPart(id, nm, geo)});

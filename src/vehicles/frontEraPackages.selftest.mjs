@@ -27,27 +27,42 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from './tankFactory.ts';
 import {getSpec} from './specs.ts';
-import {frontEnvelope, mosaicLayout, SMOKE_RAYS, SMOKE_FREE, SMOKE_REACH} from './profiles/eraModuleKit.ts';
+import {frontEnvelope, mosaicLayout, SMOKE_RAYS, SMOKE_FREE, SMOKE_REACH, HATCH_ZONES, ROOF_ERA_CAP} from './profiles/eraModuleKit.ts';
 import {AUXILIARY_INVENTORY} from './auxiliaryInventory.generated.ts';
 import {minimumMechanicalGunPitch} from '../sim/gunPitchLimits.ts';
 import {vehicleNightLightEmittersFor, SEARCHLIGHT_CONE_RAD} from './vehicleNightLighting.ts';
+import {NIGHT_LED_COLOR} from '../engine/nightEmissionMaterial.ts';
 import {NATIONAL_ROOF_LOADOUTS} from './nationalRoofConfig.ts';
 import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
 import {auxiliaryState, requestAuxiliary, stepRoofGun, auxiliaryShot} from '../sim/auxiliarySystems.ts';
 import {Solid, trianglesOf, trianglesIn, surfaceSamples, deepest} from './frontEraSolids.test-support.mjs';
 import {tankPoseFromState, traceTank} from '../sim/armor.ts';
+import {eraCoverage} from './frontEraCoverage.test-support.mjs';
 
 // (FRONT_ERA_IDS=<id,...>: a debugging subset)
 const IDS = process.env.FRONT_ERA_IDS?.split(',') ?? ['t72b3m_hetman_ii', 't72b3_zubr', 't72b3_zubr_ii'];
 const SECTORS = ['glacis_era_L', 'glacis_era_R', 'skirt_era_L', 'skirt_era_R', 'turret_era_L', 'turret_era_R'];
-/** New ERA modules per sector (both sides alike), as built. */
+/** New ERA modules per sector, as built. (round 10, the blind critic's UAPL-R8-02: the Zubr II's terraces carry one row of
+ * large cassettes each, 3 + 3 + 2 a side, with the lower plate's three.) Release 230 (round 11): Hetman II's Duplet-T roof
+ * slabs (14 on *_L, 10 on *_R) and Nizh-L side band (8 a side); the Zubr's Krata roof spine, rear row and shoulders (12 /
+ * 10); the Zubr II's Krata-2 roof (13 / 6, its right spine's front rows left to the drone dock) and lid course (3 / 3). */
 const MODULES = {
-  t72b3m_hetman_ii: {glacis_era: 13, skirt_era: 1, turret_era: 19},
-  t72b3_zubr: {glacis_era: 18, skirt_era: 10, turret_era: 24},
-  // (round 10, the blind critic's UAPL-R8-02: the Zubr II's terraces carry one row of large cassettes each, 3 + 3 + 2 a
-  // side, with the lower plate's three)
-  t72b3_zubr_ii: {glacis_era: 11, skirt_era: 13, turret_era: 54},
+  t72b3m_hetman_ii: {glacis_era_L: 13, glacis_era_R: 13, skirt_era_L: 9, skirt_era_R: 9, turret_era_L: 33, turret_era_R: 29},
+  t72b3_zubr: {glacis_era_L: 18, glacis_era_R: 18, skirt_era_L: 10, skirt_era_R: 10, turret_era_L: 36, turret_era_R: 34},
+  t72b3_zubr_ii: {glacis_era_L: 11, glacis_era_R: 11, skirt_era_L: 13, skirt_era_R: 13, turret_era_L: 70, turret_era_R: 63},
 };
+/** Release 230: the round-11 parts that keep KEEP_CLEAR from every other built part but their own seat and their own frame
+ * (the builders lay fixed, measured layouts and leave this to the receipt): name pattern, the stock they are seated on, and
+ * the new parts that frame them. */
+const KEEP_CLEAR = .008;
+const CLEAR_PARTS = [
+  {name: /^Duplet-T roof slab/, owner: 'turret', seat: 'casting', frame: /^Duplet-T sill rail$/},
+  {name: /^Nizh-L side band/, owner: 'hull', seat: 'bank', frame: null},
+  {name: /^roof spine tile$/, owner: 'turret', seat: 'casting', frame: /^roof spine bar$/},
+  {name: /^cabinet lid tile$/, owner: 'turret', seat: 'lid', frame: /^bay floor$/},
+];
+/** The cool-white LED lenses (mask 3): Hetman II's two nose-sill bars (3 each), the Zubr II's eight pods and its searchlight. */
+const COOL_LENSES = {t72b3m_hetman_ii: 6, t72b3_zubr: 0, t72b3_zubr_ii: 9};
 /** The brief's cost ceilings (round 7, the critic's UAPL-R5C-8: this receipt held Hetman II to 146,669 / 110,265, looser
  * than the brief's, and never asserted LOW <= 75 % of HIGH): drawn triangles HIGH/LOW (Hetman II its gatefix2 baseline
  * 146,517 / 110,157; the Zubr 138,100 and the Zubr II 150,200 HIGH, their LOW at 75 % of that) and the gatefix2 draws
@@ -59,12 +74,9 @@ const BASELINE = {
 };
 const LOW_SHARE = .75;
 const LIGHTS = {t72b3m_hetman_ii: {headlights: 8, markers: 2}, t72b3_zubr: {headlights: 4}, t72b3_zubr_ii: {headlights: 11, markers: 4}};
-/** Hatch opening zones: plan centre, radius (the lid's plus 30 cm), and the plane nothing new may stand above there. */
-const HATCHES = {
-  t72b3m_hetman_ii: {hull: [[-.079, 1.72, .674, 1.54]], turret: [[-.627, -.359, .74, .79], [.528, -.527, .63, .70]]},
-  t72b3_zubr: {hull: [[0, 1.59, .59, 1.46]], turret: [[-.627, -.359, .74, .79], [.528, -.527, .63, .70]]},
-  t72b3_zubr_ii: {hull: [[0, 1.59, .59, 1.46]], turret: [[-.627, -.359, .74, .79], [.528, -.527, .63, .70]]},
-};
+/** Hatch opening zones (E7): plan centre, radius (the lid's plus 30 cm), and the plane nothing new may stand above there
+ * (release 230: one source with the builders' guard, eraModuleKit.ts HATCH_ZONES). */
+const HATCHES = HATCH_ZONES;
 const DEG = Math.PI / 180;
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -215,7 +227,7 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
     // sectors and module counts
     assert.deepEqual([...t.root.userData.eraClusterNames].sort(), [...SECTORS].sort(), `${label}: exactly the six ERA sectors`);
     for (const s of SECTORS) {
-      const n = modules.filter(m => m.sector === s).length, want = MODULES[id][s.slice(0, -2)];
+      const n = modules.filter(m => m.sector === s).length, want = MODULES[id][s];
       assert.equal(n, want, `${label}: ${want} new modules in ${s} (${n})`);
       for (const m of modules.filter(m2 => m2.sector === s)) {
         m.g.computeBoundingBox(); const cx = (m.g.boundingBox.min.x + m.g.boundingBox.max.x) / 2;
@@ -329,7 +341,7 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
       for (const v of vertsOf(p.g)) {
         if (p.owner === 'hull') {
           if (Math.abs(v.x) < .55 && v.z > dz) { const m = dy - tan9 * (v.z - dz) - v.y; mins.driver = Math.min(mins.driver, m); assert(m >= -1e-4, `${label}: ${p.name} blocks the driver's sight plane (${m.toFixed(4)})`); }
-          for (const [hx, hz, r, plane] of HATCHES[id].hull) if (Math.hypot(v.x - hx, v.z - hz) < r) {
+          for (const [hx, hz, r, plane] of HATCHES[id].hull) if (Math.hypot(v.x - hx, v.z - hz) < r + .01) {
             mins.hatch = Math.min(mins.hatch, plane - v.y); assert(v.y <= plane - .01, `${label}: ${p.name} stands in the driver's hatch opening (${v.y.toFixed(3)})`); }
         } else {
           if (v.y > -.052 && v.y < .628 && v.z > .765 && v.z < 1.702) { mins.mantlet = Math.min(mins.mantlet, Math.abs(v.x) - .337);
@@ -340,7 +352,7 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
             mins.smoke = Math.min(mins.smoke, dist); assert(dist >= .10, `${label}: ${p.name} is ${dist.toFixed(3)} m from smoke launch line ${k}`); }
           if (v.x > .60 && v.x < .97 && v.z > .15) { const m = .80 - .176 * (v.z - .15) - v.y; mins.sight = Math.min(mins.sight, m);
             assert(m >= -1e-4, `${label}: ${p.name} enters the gunner's sight's lower ray (${m.toFixed(4)})`); }
-          for (const [hx, hz, r, plane] of HATCHES[id].turret) if (Math.hypot(v.x - hx, v.z - hz) < r) {
+          for (const [hx, hz, r, plane] of HATCHES[id].turret) if (Math.hypot(v.x - hx, v.z - hz) < r + .01) {
             mins.hatch = Math.min(mins.hatch, plane - v.y); assert(v.y <= plane - .01, `${label}: ${p.name} stands in a cupola hatch's opening`); }
         }
       }
@@ -522,12 +534,63 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
       assert.equal(z.length, 0, `${label}: coplanar overlapping faces (z-fight) on the ${owner}: ${z.join('; ')}`);
     }
 
+    // Release 230 (round 11): the round-11 parts keep KEEP_CLEAR (8 mm) from every other built part of their owner but the
+    // stock they are seated on and their own frame, its surface sampled every 5 mm (the builders lay fixed layouts measured
+    // on the build, tools/r14, and leave this to the receipt: a fitting moved into one fails here)
+    {
+      const tris = new WeakMap(), trisOfCached = g => { let v = tris.get(g); if (!v) { v = trianglesOf(g); tris.set(g, v); } return v; };
+      const boxOf = g => { if (!g.boundingBox) g.computeBoundingBox(); return g.boundingBox; };
+      const seatOf = {
+        casting: o => o.bucket === 'turret',
+        bank: o => { const b = boxOf(o.g), x = Math.max(Math.abs(b.min.x), Math.abs(b.max.x));
+          return o.bucket === 'hullExternalArmor' && !o.era && x > 2.12 && x < 2.16 && b.max.y > 1.44 && b.min.y < 1.0; },
+        lid: o => { const b = boxOf(o.g); return o.bucket === 'turretExternalArmor' && !o.era && Math.abs(b.max.y - .804) < .002 && b.max.y - b.min.y < .03; },
+      };
+      let clearMin = Infinity, clearAt = null, clearCount = 0;
+      for (const rule of CLEAR_PARTS) for (const A of fresh.filter(p => p.owner === rule.owner && p.module && rule.name.test(p.name))) {
+        clearCount++;
+        const reach = boxOf(A.g).clone().expandByScalar(KEEP_CLEAR), solidA = new Solid(trisOfCached(A.g));
+        const candidates = [...others[rule.owner].filter(o => !seatOf[rule.seat](o)).map(o => ({name: `existing ${o.bucket}`, g: o.g})),
+          ...fresh.filter(q => q.owner === rule.owner && q !== A && !q.lamp && !(rule.frame && rule.frame.test(q.name))).map(q => ({name: q.name, g: q.g}))];
+        for (const B of candidates) {
+          if (!boxOf(B.g).intersectsBox(reach)) continue;
+          for (const q of surfaceSamples(trianglesIn(trisOfCached(B.g), reach), .005)) {
+            if (!reach.containsPoint(q)) continue;
+            const d = solidA.inside(q) ? 0 : solidA.distance(q, KEEP_CLEAR + .002);
+            if (d < clearMin) { clearMin = d; clearAt = `${A.name} | ${B.name} @ ${q.toArray().map(x => x.toFixed(3))}`; }
+          }
+        }
+      }
+      assert(clearCount > 0, `${label}: the round-11 parts are found`);
+      assert(clearMin >= KEEP_CLEAR - 1e-4, `${label}: a round-11 part comes ${clearMin.toFixed(4)} m from another built part (${KEEP_CLEAR} m): ${clearAt}`);
+      (report[id] ??= {}).keepClearMin = +Math.min(clearMin, 1).toFixed(4);
+    }
+    // E8 (round 11): the Zubrs' roof cap stands at least .20 under the lowest point their WKM-B station sweeps (its pitch
+    // stage over the whole pitch range; the yaw stage turns it about a vertical axis), and no new turret ERA module rises
+    // over the cap
+    if (ROOF_ERA_CAP[id] !== undefined) {
+      let station = null; turret.traverse(o => { if (o.userData.remoteControlled && !station) station = o; });
+      const pitchStage = station?.getObjectByName('auxiliaryWeaponPitch');
+      assert(pitchStage, `${label}: the WKM-B station's pitch stage`);
+      const prof = auxiliaryWeaponProfile(NATIONAL_ROOF_LOADOUTS[id].caliber, id), savedPitch = pitchStage.rotation.x, inv = new THREE.Matrix4();
+      let lowest = Infinity;
+      for (let p = -prof.depressionRad; p <= prof.elevationRad + 1e-9; p += (prof.elevationRad + prof.depressionRad) / 24) {
+        pitchStage.rotation.x = -p; t.root.updateMatrixWorld(true); inv.copy(turret.matrixWorld).invert();
+        pitchStage.traverse(o => { if (!o.isMesh || isShadow(o)) return; const m = inv.clone().multiply(o.matrixWorld); for (const v of vertsOf(o.geometry)) lowest = Math.min(lowest, v.applyMatrix4(m).y); });
+      }
+      pitchStage.rotation.x = savedPitch; t.root.updateMatrixWorld(true);
+      assert(ROOF_ERA_CAP[id] <= lowest - .20 + 1e-6, `${label}: the roof cap ${ROOF_ERA_CAP[id]} is .20 under the station's lowest swept point ${lowest.toFixed(4)}`);
+      let top = -Infinity; for (const m of modules.filter(q => q.owner === 'turret')) top = Math.max(top, boxOf(m.g).max.y);
+      assert(top <= ROOF_ERA_CAP[id] + 1e-6, `${label}: the new turret ERA tops ${top.toFixed(4)} stay under the roof cap ${ROOF_ERA_CAP[id]}`);
+      (report[id] ??= {}).roofCap = {cap: ROOF_ERA_CAP[id], stationLowest: +lowest.toFixed(4), eraTop: +top.toFixed(4)};
+    }
+
     // lamps: every new lens a registered emitter, open for .5 m, recessed 4-26 mm, lapping 4 mm into its housing
     const coverage = t.root.userData.nightLightCoverage;
     assert.equal(coverage.headlights, LIGHTS[id].headlights, `${label}: ${LIGHTS[id].headlights} driving lamps`);
     assert.equal(coverage.markers ?? 0, LIGHTS[id].markers ?? 0, `${label}: ${LIGHTS[id].markers ?? 0} marker lamps`);
     assert.equal(coverage.shtora, 0, `${label}: no Shtora is claimed`);
-    const solidMeshes = [], proxyMat = new THREE.MeshBasicMaterial({side: THREE.DoubleSide});
+    const solidMeshes = [], proxyMat = new THREE.MeshBasicMaterial({side: THREE.DoubleSide}), laneMat = proxyMat;
     t.root.traverse(o => { if (o.isMesh && !isShadow(o) && !/Glass$/.test(o.name) && o.material?.colorWrite !== false) {
       const m = new THREE.Mesh(o.geometry, proxyMat); m.matrixAutoUpdate = false; m.matrix.copy(o.matrixWorld); m.updateMatrixWorld(true); m.name = o.name; solidMeshes.push(m); } });
     const ray = new THREE.Raycaster();
@@ -582,6 +645,10 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
       assert(lap && lap.distance >= .0035, `${label}: ${p.name} laps ${(lap?.distance ?? 0).toFixed(4)} m into its housing (4 mm)`);
     }
     assert.equal(lenses.length, {t72b3m_hetman_ii: 8, t72b3_zubr: 2, t72b3_zubr_ii: 8}[id], `${label}: every new lens checked`);
+    // (round 11) the cool-white LED lenses (mask 3): the new lenses by their authored tint, the illuminator by its emitter
+    const coolIlluminator = illuminator ? vehicleNightLightEmittersFor(illuminator.frame)[0]?.color === NIGHT_LED_COLOR : false;
+    const cool = lenses.filter(p => p.g.userData.vehicleNightLens?.tint === 'cool').length + (coolIlluminator ? 1 : 0);
+    assert.equal(cool, COOL_LENSES[id], `${label}: ${COOL_LENSES[id]} cool-white LED lenses (${cool})`);
     // the Zubr II's station illuminator: under the weapon's pitch stage, its beam following yaw and pitch
     if (id === 't72b3_zubr_ii') {
       const l = NATIONAL_ROOF_LOADOUTS[id], station = turret.getObjectByName(l.name), pitch = station.getObjectByName('auxiliaryWeaponPitch');
@@ -632,6 +699,29 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
         station.rotation.y = 0; pitch.rotation.x = 0; gun.rotation.x = savedGun; t.root.updateMatrixWorld(true);
         assert(worst > 0, `${label}: the illuminator's cone takes in the main gun's barrel (${(worst / DEG).toFixed(2)} degrees at gun/yaw/pitch ${worstAt})`);
         (report[id] ??= {}).illuminatorBarrelMarginDeg = +(worst / DEG).toFixed(2);
+        // G3 (round 11): the searchlight's .5 m lane is open at every station pose, yaw every 10 degrees at its lowest, level
+        // and highest pitch: rays from its aperture's centre and four points at 70 % of its extent meet no own-vehicle
+        // stock outside the station's pitch stage (the suit included; the station's yaw stage at its pose)
+        const prof = auxiliaryWeaponProfile(l.caliber, id), pitchSet = new Set(); pitch.traverse(o => pitchSet.add(o));
+        const lane = [];
+        t.root.traverse(o => { if (o.isMesh && !isShadow(o) && !/Glass$/.test(o.name) && o.material?.colorWrite !== false && !pitchSet.has(o)) {
+          const m = new THREE.Mesh(o.geometry, laneMat); m.matrixAutoUpdate = false; m.userData.source = o; lane.push(m); } });
+        let laneHits = 0, lanePoses = 0;
+        for (let y = -180; y < 180; y += 10) for (const p of [-prof.depressionRad, 0, prof.elevationRad]) {
+          station.rotation.y = y * DEG; pitch.rotation.x = -p; t.root.updateMatrixWorld(true);
+          for (const m of lane) { m.matrix.copy(m.userData.source.matrixWorld); m.matrixWorld.copy(m.matrix); }
+          const at = new THREE.Vector3(...lamp.position).applyMatrix4(mesh.matrixWorld), d = new THREE.Vector3(...lamp.direction).normalize().transformDirection(mesh.matrixWorld);
+          const u = new THREE.Vector3().crossVectors(d, Math.abs(d.y) < .9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0)).normalize(), w = d.clone().cross(u);
+          for (const [du, dw] of [[0, 0], [.7, 0], [-.7, 0], [0, .7], [0, -.7]]) {
+            const from = at.clone().addScaledVector(u, du * .045).addScaledVector(w, dw * .025).addScaledVector(d, .002);
+            ray.set(from, d); ray.near = 0; ray.far = .5;
+            const hit = ray.intersectObjects(lane, false)[0];
+            if (hit) { laneHits++; assert(!hit, `${label}: the searchlight's lane meets ${hit.object.userData.source.name} at station yaw ${y}, pitch ${(p / DEG).toFixed(1)}`); }
+          }
+          lanePoses++;
+        }
+        station.rotation.y = 0; pitch.rotation.x = 0; t.root.updateMatrixWorld(true);
+        (report[id] ??= {}).searchlightLane = {poses: lanePoses, hits: laneHits};
       }
     }
     proxyMat.dispose();
@@ -709,6 +799,28 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
     for (const p of fresh) p.g.dispose();
     for (const list of [...Object.values(stock), ...Object.values(others).map(l => l.map(o => o.g))]) for (const g of list) g.dispose();
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Release 230 (round 11): the gameplay ERA coverage the round restored (frontEraCoverage.test-support.mjs, 5 cm cells, the
+// first plate along each ray). Round 10 measured the regressions: roof 222 / 228 / 234 (the donor carpet's ~925 gone),
+// Hetman II's side 783 (1779 with the T-72B3M side boxes), the Zubrs' turret fronts 162 / 192. Pinned at the round's
+// measurement. The brief's floors (Hetman II roof 700, side 880; the Zubr II's roof 750) are not reached: E7 (the
+// cupola's and loader's hatch openings over the crown and the cabinet lids), the lids' fittings, the seat contract on the
+// cast dome's falling rear and flanks (a flat tile's seat bowing over 12.5 mm), the Zubr II's dock landing, the band's
+// keep-outs and its .13 m gun margin, and the HIGH ceilings bind; the others (Hetman II front 800, the Zubr roof 450,
+// both Zubrs' turret fronts 190 / 235) are met.
+const COVERAGE = {
+  t72b3m_hetman_ii: {roof: 476, side: 866, front: 829},
+  t72b3_zubr: {roof: 486, turretFront: 251},
+  t72b3_zubr_ii: {roof: 481, turretFront: 262},
+};
+for (const id of IDS) {
+  const c = eraCoverage(id), got = {roof: c.roof.era, side: c.side.era, front: c.front.era,
+    turretFront: (c.front.bySector.turret_era_L ?? 0) + (c.front.bySector.turret_era_R ?? 0)};
+  for (const [k, want] of Object.entries(COVERAGE[id])) assert(got[k] >= want, `${id}: ${k} ERA coverage ${got[k]} cells (pinned ${want})`);
+  (report[id] ??= {}).coverage = got;
+  console.log(`${id}: ERA coverage ${JSON.stringify(got)} PASS`);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
