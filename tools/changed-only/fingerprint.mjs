@@ -72,7 +72,9 @@ export function parseGroupLoaders(text, filename = GROUP_LOADERS_FILE) {
 function readRows(root, env, tableModule = null) {
   const out = execFileSync(process.execPath, ['--max-old-space-size=4096', join(import.meta.dirname, 'rows-child.mjs'), root,
     ...(tableModule ? [tableModule] : [])], {
-    cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, timeout: 300_000,
+    // 2026-10-20: 30 minutes (was 5): at load average ~500 the rows read after a finished seats step overran 5 minutes
+    // and failed the chain with ETIMEDOUT though the step's outputs were written; the traces allow 30-60 minutes
+    cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, timeout: 1_800_000,
     env: { ...env, NODE_OPTIONS: '' }, stdio: ['ignore', 'pipe', 'pipe'],
   });
   return JSON.parse(out);

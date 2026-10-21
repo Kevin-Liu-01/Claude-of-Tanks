@@ -36,8 +36,9 @@ function bearing(P: TankBuilderPort, pivot: Point): void {
   part(P, pivot, 'turretDetail', cylY(.394, .410, .085, 40), X, 2.529, Z);
   for (let i = 0; i < 10; i++) {
     const a = i * Math.PI / 5;
-    part(P, pivot, 'turretGlass', box(.214, .070, .017),
-      X + Math.sin(a) * .452, 2.524, Z + Math.cos(a) * .452, a);
+    // each block runs back into the inner body (a 17 mm pane at r 0.452 stood 3 cm off it; owner 2026-10-19 sweep)
+    part(P, pivot, 'turretGlass', box(.214, .070, .052),
+      X + Math.sin(a) * .426, 2.524, Z + Math.cos(a) * .426, a);
     part(P, pivot, 'turretDetail', box(.043, .090, .095),
       X + Math.sin(a + Math.PI / 10) * .447, 2.529,
       Z + Math.cos(a + Math.PI / 10) * .447, a + Math.PI / 10);

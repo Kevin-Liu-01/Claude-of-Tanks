@@ -94,7 +94,7 @@ function hullKit(P:TankBuilderPort,c:NationalModernizationConfig):void {
    P.addEquipment('hullDetail',beamBetween([s*1.62,y+.022,z],[s*outer,y+.022,z],.028));
    P.addEquipment('hullDetail',box(.036,y-1.28,.16),s*outer,(y+1.28)/2,z);
    eraCassette(P,'hull',`skirt_era_${s<0?'L':'R'}`,[s*(outer+.15),1.02,z],[.15,.55,4.92/count-.07]);
-   P.addEquipment('hullDetail',cylZ(.027,.18,12),s*(outer+.205),1.37,z);
+   P.addEquipment('hullDetail',cylZ(.027,.18,12),s*(outer+.205),1.319,z);   // the cassette's grab bar on its top (it stood 48 mm over it; 2026-10-19 owner float sweep)
    if(m===1)strappedPack(P,'hull',[s*(outer+.12),.55,z],[.19,.23,4.92/count-.06]);
   }
   // Thick molded end housings turn inward only beyond the end-wheel course.

@@ -116,11 +116,15 @@ function hullFurniture(P: TankBuilderPort): void {
     // the sloped beak near Y1.21, not below the lower glacis at Y.82.
     for(const x of[.687,.911])P.addEquipment('hullDetail',box(.038,.15,.19),side*x,1.210,3.641-CENTER_Z);
     P.addEquipment('hullDetail',cylX(.036,.248,16),side*.799,1.229,3.628-CENTER_Z);
-    P.addEquipment('hullDetail',box(.278,.024,.278),side*.799,1.322,3.643-CENTER_Z,.10);
+    // 2026-10-19 (owner float sweep): the lug cover plate stood 15-46 mm over the lug pair; it rests on their tops
+    P.addEquipment('hullDetail',box(.278,.024,.278),side*.799,1.305,3.643-CENTER_Z,.10);
     P.addEquipment('hullDetail',torus(.071,.022,12,6),side*.86,.82,-3.24-CENTER_Z);
-    P.addEquipment('hullDetail',box(.1573,.1972,.1504),side*1.48585,1.5045,-3.6826-CENTER_Z);
-    P.addEquipment('hullDark',box(.103,.095,.013),side*1.48585,1.509,-3.764-CENTER_Z);
-    P.addEquipment('hullGlass',box(.070,.058,.010),side*1.48585,1.509,-3.776-CENTER_Z);
+    // 2026-10-19 (owner float sweep): the tail-lamp box stood 16 mm behind the hull; seated on it
+    P.snapGroup('k2-tail-lamp',()=>{
+      P.addEquipment('hullDetail',box(.1573,.1972,.1504),side*1.48585,1.5045,-3.6826-CENTER_Z);
+      P.addEquipment('hullDark',box(.103,.095,.013),side*1.48585,1.509,-3.764-CENTER_Z);
+      P.addEquipment('hullGlass',box(.070,.058,.010),side*1.48585,1.509,-3.776-CENTER_Z);
+    },{reachM:.03});
     // These measured aft supports, not the armor shell, define the exterior
     // hull endpoint at raw Z -3.7949.
     P.addEquipment('hullDetail',box(.0312,.3642,.2051),side*1.0967,1.5206+GROUND,-3.69235-CENTER_Z);
@@ -270,7 +274,10 @@ function roofFurniture(P: TankBuilderPort): void {
   sourceSmokeBanks(P);
   for (const [x, z] of [[-.51, -.70], [.58, .21]]) {
     P.addCupola('turret', cylY(.285, .076, 28), x, 2.420 + GROUND - YAW_Y, z - CENTER_Z - YAW_Z);
-    onTurret(P, 'turretDetail', box(.20, .019, .040), x, 2.472, z + .11);
+    // 2026-10-19 (owner float sweep): the left cupola stood 18 mm over the roof and its grab bar 5 mm over the lid;
+    // a collar ring carries the cupola and the bar sits on the lid
+    onTurret(P, 'turretDetail', cylY(.29, .024, 28), x, 2.372, z);
+    onTurret(P, 'turretDetail', box(.20, .019, .040), x, 2.4655, z + .11);
   }
   for (const side of [-1, 1]) {
     onTurret(P, 'turretDetail', box(.47, .035, .65), side * 1.15, 2.372, -.92);
@@ -282,14 +289,20 @@ function roofFurniture(P: TankBuilderPort): void {
     onTurret(P, 'turretDark', cylY(.006, 2.291, 8), side * .8355, 3.58527, -2.0202);
     // Paired roof sensor cradles, including their open gap and inclined feet.
     // Their high cheek plates are not cupolas or an enlarged MG ammunition box.
-    for(const z of[-1.078,-.715]){
-      onTurret(P,'turretDetail',box(.184,.316,.073),side*.670,2.618,z,0,0,side*.20);
-    }
-    onTurret(P,'turretDetail',box(.118,.137,.285),side*.649,2.6915,-.897);
-    for(const z of[-.970,-.8235]){
-      onTurret(P,'turretDetail',box(.231,.105,.104),side*.735,2.6915,z);
-      onTurret(P,'turretGlass',box(.012,.068,.079),side*.856,2.695,z);
-    }
+    const cradle=():void=>{
+      for(const z of[-1.078,-.715]){
+        onTurret(P,'turretDetail',box(.184,.316,.073),side*.670,2.618,z,0,0,side*.20);
+      }
+      onTurret(P,'turretDetail',box(.118,.137,.285),side*.649,2.6915,-.897);
+      for(const z of[-.970,-.8235]){
+        onTurret(P,'turretDetail',box(.231,.105,.104),side*.735,2.6915,z);
+        onTurret(P,'turretGlass',box(.012,.068,.079),side*.856,2.695,z);
+      }
+    };
+    // 2026-10-19 (owner float sweep): the right cradle's feet stood 85 mm over the roof (the left one rests on the
+    // cupola rim); it drops onto the roof
+    if(side>0)P.snapGroup('k2-sensor-cradle',cradle,{reachM:.10,mode:'down'});
+    else cradle();
   }
   const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', scale: 1.275, remoteControlled: true, seed: 2042, tone: 'two-tone', ammo: true, shield: false, ring: false });
   mg.position.set(-.74, 2.53032 + GROUND - YAW_Y, .5425 - CENTER_Z - YAW_Z);
@@ -355,20 +368,25 @@ function armorModules(P: TankBuilderPort): void {
         {z:front-CENTER_Z-YAW_Z,ring:[[1.271,1.760+GROUND-YAW_Y],[1.521,1.760+GROUND-YAW_Y],[1.521,roofFront+GROUND-YAW_Y],[1.271,roofFront+GROUND-YAW_Y]]},
       ];
       P.add('turret',sectionSolid(side<0?sections.map(station=>({...station,ring:station.ring.map(([x,y])=>[-x,y] as [number,number]).reverse()})):sections));
-      onTurret(P,'turretDetail',box(.025,.34,front-rear-.045),side*1.554,1.941,(rear+front)/2);
+      onTurret(P,'turretDetail',box(.025,.34,front-rear-.045),side*1.5315,1.941,(rear+front)/2); // on the 1.521 cassette face (20 mm off it before; owner 2026-10-19 sweep)
     }
     launcherCheek(P,side);
-    for(const z of[-1.81,-1.26,-1.06,-.48,.26,.68,1.31])onTurret(P,'turretDark',cylX(.016,.020,8),side*1.538,2.20,z);
+    // 2026-10-19 (owner float sweep): the forward bolt heads stood 7-83 mm off the cassettes' falling top edge; they sit
+    // on the face under it
+    for(const z of[-1.81,-1.26,-1.06,-.48,.26,.68,1.31])onTurret(P,'turretDark',cylX(.016,.020,8),side*1.530,Math.min(2.20,2.207-.104*z),z);
   }
   // Rear bustle is a carrier with discrete stores, not a full-width solid loaf.
   onTurret(P,'turret',box(3.04,.034,1.04),0,1.813,-2.44);
-  onTurret(P,'turretDetail',box(.828,.576,.828),-1.098,2.125,-2.518);
+  onTurret(P,'turretDetail',box(.828,.576,.828),-1.098,2.115,-2.518);   // on the carrier floor (8 mm over it before: owner 2026-10-19 float sweep)
   onTurret(P,'turretDetail',box(.901,.546,.629),1.0885,2.041,-2.2595);
   onTurret(P,'turretDetail',box(.503,.453,.457),-.1255,2.0355,-2.3185);
-  for(const y of[2.0115,2.113])onTurret(P,'turretOpenLattice',box(.032,.032,2.333),-1.573,y,-1.8215);
-  for(const z of[-2.978,-2.52,-2.06,-1.60,-1.14,-.68])onTurret(P,'turretOpenLattice',box(.022,.345,.022),-1.573,1.982,z);
-  onTurret(P,'turretOpenLattice',box(.70,.028,.028),-1.244,2.113,-2.978);
-  for(const z of[-2.88,-2.12])onTurret(P,'turretDetail',box(.83,.026,.035),-1.098,2.428,z);
+  // 2026-10-19 (owner float sweep): the side stowage rail stood 36 mm off the turret side; it is seated against it
+  P.snapGroup('k2-side-rail',()=>{
+    for(const y of[2.0115,2.113])onTurret(P,'turretOpenLattice',box(.032,.032,2.333),-1.573,y,-1.8215);
+    for(const z of[-2.978,-2.52,-2.06,-1.60,-1.14,-.68])onTurret(P,'turretOpenLattice',box(.022,.345,.022),-1.573,1.982,z);
+    onTurret(P,'turretOpenLattice',box(.70,.028,.028),-1.244,2.113,-2.978);
+  },{reachM:.05});
+  for(const z of[-2.88,-2.12])onTurret(P,'turretDetail',box(.82,.026,.035),-1.098,2.414,z); // straps sunk 2 mm into the box lid, inside its edges (the aft one read as loose: owner 2026-10-19 float sweep)
 }
 
 function gunPrism(x0: number, x1: number, outline: readonly (readonly [number,number])[]): THREE.BufferGeometry {

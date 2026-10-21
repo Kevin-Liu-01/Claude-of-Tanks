@@ -1,12 +1,12 @@
 {
-  "note": "Static bundle budget (tools/bundle-budget.mjs): the bytes and requests each page loads before its entry runs. Generated at +3 % over a reviewed build; npm run check:bundle enforces it after npm run build. 2026-10-19 (release 228n, coordinator ruling): home re-pinned at +3 % over ff8cc49e15 (raw 68101, gzip 23129, brotli 20157), was raw 63837 / gzip 22243 / brotli 19308: the owner's 10-19 ask \"all oour new frames need to goo up\" (the versus wall of 12, the trailers row, the larger hero and rail); every other page unchanged. 228p (coordinator ruling): docs raw re-pinned 177809 -> 183258 (+3 % over the measured 177920): owner-asked /docs/filming#library wiring (+111 B raw on the docs initial load; packs lazy, compressed sizes inside budget); docs gzip 46871 and brotli 40339 unchanged. 230 (coordinator ruling): game raw re-pinned 3851669 -> 3890257 (+1 % over the measured 3851739). 230: owner-asked visuals and HUD — night barrel glow +4,157, Whiteout grounding aureole +10,266, HUD r10f/g +2,111 raw; gzip/brotli inside budget (game gzip 1187589 and brotli 1005949 unchanged).",
+  "note": "Static bundle budget (tools/bundle-budget.mjs): the bytes and requests each page loads before its entry runs. Generated at +3 % over a reviewed build; npm run check:bundle enforces it after npm run build. 2026-10-19 (release 228n, coordinator ruling): home re-pinned at +3 % over ff8cc49e15 (raw 68101, gzip 23129, brotli 20157), was raw 63837 / gzip 22243 / brotli 19308: the owner's 10-19 ask \"all oour new frames need to goo up\" (the versus wall of 12, the trailers row, the larger hero and rail); every other page unchanged. 228p (coordinator ruling): docs raw re-pinned 177809 -> 183258 (+3 % over the measured 177920): owner-asked /docs/filming#library wiring (+111 B raw on the docs initial load; packs lazy, compressed sizes inside budget); docs gzip 46871 and brotli 40339 unchanged. 230 (coordinator ruling): game raw re-pinned 3851669 -> 3890257 (+1 % over the measured 3851739). 230: owner-asked visuals and HUD — night barrel glow +4,157, Whiteout grounding aureole +10,266, HUD r10f/g +2,111 raw; gzip/brotli inside budget (game gzip 1187589 and brotli 1005949 unchanged). 230 (coordinator ruling, a 230 exception; clawback queued for 231): game gzip re-pinned 1187589 -> 1204617 and brotli 1005949 -> 1017908 (+1 % over the measured 1192687 / 1007881 on 946816add): the float-gaps snap pass + 114 vehicle profile fixes sit in the game page initial graph (+5,400 gzip / +4,641 br); raw 3890257 unchanged (measured 3882327). These are the headroom for the rest of 230.",
   "headroom": 0.03,
   "pages": {
     "game": {
       "requests": 128,
       "raw": 3890257,
-      "gzip": 1187589,
-      "brotli": 1005949,
+      "gzip": 1204617,
+      "brotli": 1017908,
       "inlineCss": 5413,
       "entryRaw": 818369,
       "entryBrotli": 244533

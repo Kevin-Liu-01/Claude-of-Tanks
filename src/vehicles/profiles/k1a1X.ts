@@ -138,9 +138,10 @@ function rearGuardFold(P:TankBuilderPort,side:number):void {
     [-3.6497,.5203],[-3.6464,.5588],[-3.663,.639],[-3.660,.772],
     [-3.651,.811],[-3.4697,.9886],
   ].map(([z,y])=>new THREE.Vector2(-side*z,y)));
-  const g=new THREE.ExtrudeGeometry(outline,{depth:.7373,bevelEnabled:false,steps:1});
+  const g=new THREE.ExtrudeGeometry(outline,{depth:.7473,bevelEnabled:false,steps:1});
   g.rotateY(side*Math.PI/2);
-  P.addMudguard('k1a1-x-rear-fold','hullRubber',g,side>0?1.0078:-1.0088,0,0);
+  // Owner 2026-10-19 (flaps sweep): the fold's inner edge stood 5-6 mm off the hull side; it starts 5 mm inside it
+  P.hangMudguard('k1a1-x-rear-fold','hullRubber',g,side>0?.9978:-.9988,0,0);
 }
 
 function sideSkirtPanels(P: TankBuilderPort,side: number): void {

@@ -186,24 +186,30 @@ function addKurganetsDeckFittings(P: TankBuilderPort): void {
         [1.35622, 2.37517, -.57962, .96474, -.26319],
         [1.35966, 2.37517, -.36095, .98560, .16907],
     ];
-    for (const [x, y, z, ax, az] of fan) {
+    // the fan stands on the deck under it (owner 2026-10-19 sweep: it hovered 0.12 m over it). 2026-10-19 (owner float
+    // sweep): seated as one group, the first rod down stopped the rest 15-41 mm short of the uneven deck; each rod drops.
+    for (const [x, y, z, ax, az] of fan) P.snapGroup('kurganets-deck-fan', () => {
         P.addEquipment('hullDetail', cylZ(.062, .4043, P.q ? 16 : 9), x, y, z, 0, Math.atan2(ax, az));
-    }
+    }, { reachM: .15, mode: 'down' });
     for (const side of [-1, 1]) {
         // Owner markup 2026-10-14 on these blank deck blocks (critic panel 10-15: a low chest on the same footprint still
         // read as the same block): they are gone, and the deck beside the turret ring is clear; the decor keeps out of
         // where they stood, so its loads keep their seats (fieldChest.ts reserveDecorVolume)
         reserveDecorVolume(P.hullG, [side * 1.044 - .15, 2.27, -.81], [side * 1.044 + .15, 2.45, -.11]);
-        for (const [x, y, z] of [[.79, 2.355, -2.80], [.70, 2.355, -3.33], [1.30, 2.085, 2.014]]) {
+        // 2026-10-19 (owner float sweep): the deck boxes stood 16-55 mm over the deck, the tow pin 30 mm off the bow
+        // stock and the bow block 28 mm over the nose; each is seated on the stock under or beside it.
+        for (const [x, y, z] of [[.79, 2.355, -2.80], [.70, 2.355, -3.33], [1.30, 2.085, 2.014]]) P.snapGroup('kurganets-deck-box', () => {
             P.addEquipment('hullDetail', box(.23, .09, .32), side * x, y, z);
             P.addEquipment('hullDark', box(.15, .026, .014), side * x, y + .013, z + .167);
-        }
+        }, { reachM: .07, mode: 'down' });
         // Grounded bow hinges, tow pin and protective lamp bracket.
         P.addEquipment('hullDetail', box(.45, .028, .21), side * 1.53, 1.85, 3.07, .13);
-        P.addEquipment('hullDetail', cylX(.035, .25, 10), side * 1.45, 1.92, 3.34);
+        P.snapGroup('kurganets-tow-pin', () => P.addEquipment('hullDetail', cylX(.035, .25, 10), side * 1.45, 1.92, 3.34), { reachM: .04 });
     }
-    P.addEquipment('hullDetail', box(.48, .11, .32), 0, 1.885, 3.53);
-    P.addEquipment('hullDetail', cylX(.032, .39, 12), 0, 1.955, 3.43);
+    P.snapGroup('kurganets-bow-block', () => {
+        P.addEquipment('hullDetail', box(.48, .11, .32), 0, 1.885, 3.53);
+        P.addEquipment('hullDetail', cylX(.032, .39, 12), 0, 1.955, 3.43);
+    }, { reachM: .04, mode: 'down' });
 }
 /** Source-scale folded bow stock, authored from plate width, rake and folds. */
 function bowTransverseSection(section: readonly (readonly [number, number])[], x: number, width: number, hole?: readonly (readonly [number, number])[]): THREE.BufferGeometry {
@@ -325,13 +331,14 @@ function addKurganetsHull(P: TankBuilderPort): void {
             // |X| 2.0645 m; there are no protruding fasteners at these stations.
         }
         addKurganetsFrontFlap(P, side);
-        P.addMudguard('kurganets-rear-flap-' + side, 'hullRubber', sectionSolid([
+        P.hangMudguard('kurganets-rear-flap-' + side, 'hullRubber', sectionSolid([
             { z: -3.73, ring: [[-.269, 1.044], [.269, 1.044], [.269, 1.074], [-.269, 1.074]] },
             { z: -3.57, ring: [[-.269, 1.36], [.269, 1.36], [.269, 1.39], [-.269, 1.39]] },
         ]), side * 1.363, 0, 0);
         addLamp(P, side, 1.49, 1.858, 3.462);
         P.addEquipment('hullDetail', torus(.12, .026, P.q ? 18 : 10, 7), side * .72, 1.63, 3.70, Math.PI / 2);
-        P.addEquipment('hullDetail', box(.032, .025, 2.16), side * 1.16, 2.052, 1.65, .125);
+        // 2026-10-19 (owner float sweep): the left rail stood 20 mm over the deck; each rail drops onto it.
+        P.snapGroup('kurganets-deck-rail', () => P.addEquipment('hullDetail', box(.032, .025, 2.16), side * 1.16, 2.052, 1.65, .125), { reachM: .03, mode: 'down' });
         for (const z of [-2.88, -2.34, 2.16]) {
             const deckY = z < 0 ? 2.28 : 2.25 - (z + .25) * .124;
             P.addEquipment('hullDetail', box(.34, .035, .48), side * .96, deckY, z);

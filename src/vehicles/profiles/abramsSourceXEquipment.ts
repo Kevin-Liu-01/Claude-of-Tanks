@@ -176,8 +176,13 @@ function mainGun(C: EquipmentContext): void {
     oval(3.944565, .1166, .116535, y), oval(3.954265, .1166, .116535, y),
   ]), [0, 0, 0], 'gun', 'gun');
   for(const part of sourceMuzzleAssembly())emit(C,part.name,part.geometry,[0,0,0],'gun','gun');
-  emit(C, 'CoaxSleeve', annularZ(.04441, .014, .43585, C.P.q ? 32 : 16), [-.338839, 1.984485, 2.61298], 'gun', 'gunMount');
+  // 2026-10-19 (owner float sweep): the sleeve's back stopped 25 mm short of the mantlet; it runs 30 mm further back
+  // (its muzzle end is unchanged)
+  emit(C, 'CoaxSleeve', annularZ(.04441, .014, .46585, C.P.q ? 32 : 16), [-.338839, 1.984485, 2.59798], 'gun', 'gunMount');
   opticalHood(C, 'MantletLamp', [-.212357, 2.097845, 2.5261], [.10382, .10484, .0988], 0, 'gun');
+  // 2026-10-19 (owner float sweep): the lamp hung 0.2 m ahead of the mantlet face with nothing under it; an arm from the
+  // face carries it
+  emit(C, 'MantletLampArm', KIT.box(.04, .04, .25), [-.212357, 2.06, 2.37], 'gun', 'gunMount');
 }
 
 function mgMesh(C: EquipmentContext, group: THREE.Group, name: string, geometry: THREE.BufferGeometry,
@@ -213,7 +218,8 @@ function sourceM2(C: EquipmentContext, name: string, center: XYZ, owner: Owner,
   }
   for (const s of [-1, 1]) {
     mgMesh(C, group, `${name}Spade${s}`, KIT.box(.03299, .126, .033), [s * .0622, .004, -.348]);
-    mgMesh(C, group, `${name}SpadeLink${s}`, KIT.box(.081, .023, .052), [s * .040, -.027, -.303]);
+    // 2026-10-19 (owner float sweep): the link stopped 2.5 mm short of the grip; it runs 4 mm into it (front kept)
+    mgMesh(C, group, `${name}SpadeLink${s}`, KIT.box(.081, .023, .058), [s * .040, -.027, -.306]);
   }
   mgMesh(C, group, `${name}ChargingHandle`, KIT.cylX(.010, .064, 10), [.068, -.012, .02]);
   mgMesh(C, group, `${name}FrontSight`, KIT.box(.012, .055, .014), [0, .045, 1.166]);
@@ -260,8 +266,11 @@ function roofHatches(C: EquipmentContext): void {
   }
   commanderPeriscopes(C);
   for (const [x, label] of [[.3640055, 'Left'], [-.500608, 'Right']] as const) {
-    box(C, `BlastPanel${label}`, [.80316, .04552, 1.12474], [x, 2.429685, -1.510275], 'turret', 'turret', 0, 'hatch');
-    for (const z of [-1.80, -1.35]) emit(C, `BlastLatch${label}${z}`, KIT.cylY(.072, .072, .017, 20), [x, 2.46094, z]);
+    // 2026-10-19 (owner float sweep): the left panel and its latches stood 46 mm over the bustle roof; dropped onto it.
+    C.P.snapGroup(`abrams-blast-panel-${label}`, () => {
+      box(C, `BlastPanel${label}`, [.80316, .04552, 1.12474], [x, 2.429685, -1.510275], 'turret', 'turret', 0, 'hatch');
+      for (const z of [-1.80, -1.35]) emit(C, `BlastLatch${label}${z}`, KIT.cylY(.072, .072, .017, 20), [x, 2.46094, z]);
+    }, { reachM: .06, mode: 'down' });
   }
   gunnersPrimarySight(C);
 }
@@ -766,8 +775,10 @@ function smoke(C: EquipmentContext): void {
       const geometry = markSmokeTube(annularZ(.043, .032, .166, C.P.q ? 18 : 8),[0,0,1],true);
       geometry.rotateX(-.70);
       geometry.rotateY(side * .46);
+      // 2026-10-19 (owner float sweep): the lower tubes stood 10-29 mm over their bases; both banks sit 31 mm lower,
+      // on the bases.
       emit(C, `SmokeTube${side}_${row}_${i}`, geometry,
-        [x + (i - 1) * .096, 2.105 + row * .072, .635 - row * .105]);
+        [x + (i - 1) * .096, 2.074 + row * .072, .635 - row * .105]);
     }
   }
 }
@@ -811,7 +822,10 @@ function bustleRackStowage(C: EquipmentContext): void {
     for (const g of parts.dark) P.addEquipment('turretDark', g, x, y, z, 0, yaw, 0);
   };
   // the two middle bays: one chest each, latches aft
-  for (const x of [-.327, .190]) place(fieldChestParts(.44, .30, .42, {high, front: -1, handles: false}), x, .412, -2.930);
+  // 2026-10-19 (owner float sweep): the left chest stood 22 mm off the bustle wall, touching neither it nor the rack;
+  // each chest is seated against the wall
+  for (const x of [-.327, .190]) P.snapGroup('abrams-bustle-chest', () =>
+    place(fieldChestParts(.44, .30, .42, {high, front: -1, handles: false}), x, .412, -2.930), { reachM: .04 });
   // the outer bays behind the can trays: a row of five M2A1 cans standing long side fore and aft, latches aft, filling
   // each bay between its frame and its receiving plate (critic panel 2026-10-15: two rows of two left the bay's inner
   // third bare, its floor cross members reading as a loose dark bar, and the rows' lids overlapped 8 mm). Measured
@@ -830,7 +844,7 @@ function* rearEquipmentCooperativeSteps(C: EquipmentContext, fullLoadout: boolea
   // Four source U-shaped courses, posts and sparse floor rails. There is no
   // opaque basket-sized slab and no membrane closing the spaces between bars.
   for (const [i, y] of [1.910915, 2.029575, 2.159575, 2.28926].entries()) {
-    basketRail(C, `BasketCourse${i}`, y, -2.7842, -1.5498, 1.4209, -2.2914);
+    basketRail(C, `BasketCourse${i}`, y, -2.7842, -1.5498, 1.4209, -2.2714);   // 2026-10-19 (owner float sweep): front ends into the bustle
   }
   yield* tankProfileCheckpoint(cooperative, "rearEquipment:for (const [i, y] of [1.910915, 2.029575, 2.159575, 2.28926].entries()) {");
   const lowerStrip = sourceMainRackStrip();
@@ -844,7 +858,9 @@ function* rearEquipmentCooperativeSteps(C: EquipmentContext, fullLoadout: boolea
     for (const z of [.65, -.5, -1.52]) rail(C, `SideGuardFoot${s}_${z}`, [x, 1.71, z], [x, 1.832, z], .011);
   }
   yield* tankProfileCheckpoint(cooperative, "rearEquipment:for (const s of [-1, 1]) {");
-  for (const part of buildAbramsSourceXAftCase()) emit(C, part.name, part.geometry);
+  // 2026-10-19 (owner float sweep): the case's front face stood 18 mm behind the bustle (and with it the whole rack it
+  // carries); it sits 2 mm into the bustle face
+  for (const part of buildAbramsSourceXAftCase()) emit(C, part.name, part.geometry.translate(0, 0, .020));
   yield* tankProfileCheckpoint(cooperative, "rearEquipment:for (const part of buildAbramsSourceXAftCase()) emit(C, part.name, part.geometry);");
   rearRadioMast(C);
   yield* tankProfileCheckpoint(cooperative, "rearEquipment:rearRadioMast(C);");
@@ -874,9 +890,12 @@ function* rearEquipmentCooperativeSteps(C: EquipmentContext, fullLoadout: boolea
   for (const x of [1.069285, -1.20545]) {
     // Selected source owner58, distinct from the aft electronic mast78.
     // Its narrow upper rods retain the source's stepped section and height.
-    emit(C, `WhipFoot${x}`, KIT.cylY(.020, .033075, .0944, 24), [x, 2.421745, -2.101085]);
-    emit(C, `WhipStock${x}`, KIT.cylY(.033075, .033075, 1.1729, 24), [x, 3.055395, -2.101085]);
-    emit(C, `WhipTip${x}`, KIT.cylY(.0172, .0172, .53513, 12), [x, 3.909410, -2.101085]);
+    // 2026-10-19 (owner float sweep): each whip's foot stood 76 mm off the roof edge; seated on the nearest stock.
+    C.P.snapGroup(`abrams-whip-${x}`, () => {
+      emit(C, `WhipFoot${x}`, KIT.cylY(.020, .033075, .0944, 24), [x, 2.421745, -2.101085]);
+      emit(C, `WhipStock${x}`, KIT.cylY(.033075, .033075, 1.1729, 24), [x, 3.055395, -2.101085]);
+      emit(C, `WhipTip${x}`, KIT.cylY(.0172, .0172, .53513, 12), [x, 3.909410, -2.101085]);
+    }, { reachM: .10 });
   }
   yield* tankProfileCheckpoint(cooperative, "rearEquipment:for (const x of [1.069285, -1.20545]) {");
 }
