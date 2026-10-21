@@ -62,11 +62,14 @@ try {
     boardsDown++;
   }
   assert.equal(boardsDown, 8, 'the range runs 800 m inside the battlefield');
-  assert.equal(panels.length, boardsDown + rules.course.features.length, 'a board every 100 m and one a course feature');
+  const plaques = layout.plates.filter((plate) => plate.angleDeg >= 45).length;
+  assert.equal(plaques, 3, 'the three laid-back plates carry plaques');
+  assert.equal(panels.length, boardsDown + rules.course.features.length + 1 + plaques,
+    'a board every 100 m, one a course feature, the start board and a plaque a laid-back plate');
   // the draw budget: a two-group panel or slab is two draws, an instanced mesh one
   const draws = meshes.reduce((sum, mesh) => sum + (Array.isArray(mesh.material) ? mesh.geometry.groups.length : 1), 0);
   assert.ok(draws <= 2 * (layout.plates.length + panels.length) + 4, `the furniture draws in ${draws} calls`);
-  assert.ok(draws <= 50, `at most 50 draws (${draws})`);
+  assert.ok(draws <= 60, `at most 60 draws (${draws})`);
   for (const mesh of meshes) {
     const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     for (const material of materials) assert.ok(setUp.has(material), `${mesh.name || 'a board'}: every lit material joins the cascades`);

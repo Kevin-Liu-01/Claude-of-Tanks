@@ -38,6 +38,8 @@ const BOARD_LATERAL_M = -27;
 /** Course edge poles: one every POLE_STEP_M along each edge, POLE_OUT_M past the graded band. */
 const POLE_STEP_M = 8;
 const POLE_OUT_M = 1.2;
+/** A plate laid back this far (deg) or more gets a plaque at its foot. */
+const PLAQUE_MIN_DEG = 45;
 const PLATE_TEX_W = 256;
 const STEEL = '#69727a';
 const PAINT_WHITE = '#eef1ec';
@@ -168,6 +170,23 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
     ctx.fillText(String(rangeM), w / 2, h * 0.58);
   };
 
+  /** A plate's plaque: its thickness and the angle it is laid back, white and amber on slate. */
+  const drawPlaque = (canvas: HTMLCanvasElement, mm: number, angle: number): void => {
+    const ctx = canvas.getContext('2d')!;
+    const { width: w, height: h } = canvas;
+    ctx.fillStyle = '#1f272c'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = PAINT_AMBER; ctx.fillRect(0, 0, w, h * 0.1);
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = PAINT_WHITE;
+    ctx.font = `700 ${Math.round(h * 0.56)}px ${PROVING_DISPLAY}`;
+    ctx.fillText(String(mm), w * 0.56, h * 0.58);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = PAINT_AMBER;
+    ctx.font = `600 ${Math.round(h * 0.4)}px ${PROVING_DISPLAY}`;
+    ctx.fillText(`${angle}°`, w * 0.62, h * 0.6);
+  };
+
   /** A course board: a yellow diamond, the feature's pictogram over its figure. */
   const drawCourseBoard = (canvas: HTMLCanvasElement, kind: string, first: number): void => {
     const ctx = canvas.getContext('2d')!;
@@ -183,7 +202,13 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
     ctx.fillStyle = INK; ctx.strokeStyle = INK; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     const cx = s / 2, cy = s * 0.43, k = s / 256;
     ctx.beginPath();
-    if (kind === 'ramp') {
+    if (kind === 'start') {
+      // the way in: two chevrons pointing down the course
+      for (const dy of [-18, 14]) {
+        ctx.moveTo(cx - 42 * k, cy + (dy + 22) * k); ctx.lineTo(cx, cy + (dy - 14) * k); ctx.lineTo(cx + 42 * k, cy + (dy + 22) * k);
+      }
+      ctx.lineWidth = 14 * k; ctx.stroke();
+    } else if (kind === 'ramp') {
       const rise = Math.tan(first * Math.PI / 180) * 70 * k;
       ctx.moveTo(cx - 60 * k, cy + 22 * k); ctx.lineTo(cx + 10 * k, cy + 22 * k - rise); ctx.lineTo(cx + 60 * k, cy + 22 * k - rise);
       ctx.lineTo(cx + 60 * k, cy + 22 * k); ctx.closePath(); ctx.fill();
@@ -208,6 +233,7 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
       ctx.fillRect(10 * k, -19 * k, 34 * k, 5 * k);
       ctx.restore();
     }
+    if (kind === 'start') return;
     const figure = kind === 'ditch' || kind === 'moguls' ? `${first.toFixed(first % 1 ? 1 : 0)} m` : `${Math.round(first)}°`;
     ctx.font = `700 ${Math.round(38 * k)}px ${PROVING_DISPLAY}`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -219,14 +245,21 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
     const ctx = canvas.getContext('2d')!;
     const { width: w, height: h } = canvas;
     ctx.fillStyle = STEEL; ctx.fillRect(0, 0, w, h);
-    // mill scale: soft blotches, deterministic per plate
-    const cell = 16;
-    for (let j = 0; j < h / cell; j++) {
-      for (let i = 0; i < w / cell; i++) {
-        const n = hash(i, j, plate.index + 1);
-        ctx.fillStyle = `rgba(${n > 0.5 ? '230,236,240' : '20,26,30'},${0.04 + Math.abs(n - 0.5) * 0.16})`;
-        ctx.fillRect(i * cell, j * cell, cell, cell);
-      }
+    // mill scale: soft overlapping blotches and a fine rolling grain, deterministic per plate (no hard cells)
+    const blotches = Math.round((w * h) / 2200);
+    for (let k = 0; k < blotches; k++) {
+      const bx = hash(k, 1, plate.index + 1) * w, by = hash(k, 2, plate.index + 1) * h;
+      const br = (0.12 + hash(k, 3, plate.index + 1) * 0.3) * Math.min(w, h);
+      const light = hash(k, 4, plate.index + 1) > 0.55;
+      const glow = ctx.createRadialGradient(bx, by, 0, bx, by, br);
+      glow.addColorStop(0, light ? 'rgba(214,222,228,.12)' : 'rgba(22,28,32,.16)');
+      glow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(bx - br, by - br, br * 2, br * 2);
+    }
+    for (let k = 0; k < h; k += 3) {
+      ctx.fillStyle = `rgba(${hash(k, 5, plate.index + 1) > 0.5 ? '235,240,244' : '10,14,18'},${0.015 + hash(k, 6, plate.index + 1) * 0.035})`;
+      ctx.fillRect(0, k, w, 1);
     }
     // the cut edge, a lighter rim
     ctx.strokeStyle = 'rgba(205,212,216,.5)'; ctx.lineWidth = 5; ctx.strokeRect(2.5, 2.5, w - 5, h - 5);
@@ -281,6 +314,8 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
     const group = new THREE.Group();
     root.add(group);
     const frames: THREE.Matrix4[] = [];
+    const plaqueCanvases: Array<[HTMLCanvasElement, number, number]> = [];
+    const plaquePosts: THREE.Matrix4[] = [];
 
     // the plate rack
     for (const plate of range.plates) {
@@ -305,6 +340,13 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
       slab.name = `range-plate-${plate.index + 1}`;
       group.add(slab);
       plates.push({ plate, canvas, texture, drawn: '' });
+      // a plate laid far back shows the line little of its face: a plaque at its foot names it, upright, facing the line
+      if (plate.angleDeg >= PLAQUE_MIN_DEG) {
+        const foot = _a.copy(centre).addScaledVector(u, -plate.heightM / 2).addScaledVector(n, 0.35);
+        const canvas = canvasOf(256, 128);
+        board(group, canvas, foot.x + Math.sin(yaw) * 0.25, foot.z + Math.cos(yaw) * 0.25, yaw, 0.9, 0.45, 0.12, 1, plaquePosts);
+        plaqueCanvases.push([canvas, plate.mm, plate.angleDeg]);
+      }
       // the frame: a stile up each side behind the plate, a leg from each stile's foot to the ground, a raker from each
       // stile's head back to the ground (an upright or leaning plate), and a sill along the ground under it
       const back = thickness + 0.06;
@@ -355,6 +397,13 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
     const cf = { x: Math.sin(course.yaw), z: Math.cos(course.yaw) }, cl = { x: Math.cos(course.yaw), z: -Math.sin(course.yaw) };
     const edge = course.widthM / 2 + POLE_OUT_M;
     const courseCanvases: Array<[HTMLCanvasElement, string, number]> = [];
+    {
+      // the start board, before the gate
+      const x = course.start.x - cf.x * 9 - cl.x * (edge + 1.2), z = course.start.z - cf.z * 9 - cl.z * (edge + 1.2);
+      const canvas = canvasOf(256, 256);
+      board(group, canvas, x, z, course.yaw + Math.PI, 1.3, 1.3, 0.9, 1, boardPosts);
+      courseCanvases.push([canvas, 'start', 0]);
+    }
     for (const feature of course.features) {
       const x = feature.x0 - cf.x * 3 - cl.x * (edge + 1.2), z = feature.z0 - cf.z * 3 - cl.z * (edge + 1.2);
       const canvas = canvasOf(256, 256);
@@ -375,8 +424,9 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
     for (const side of [-1, 1]) {
       const x = course.start.x - cf.x * 6 + cl.x * side * (edge + 0.4), z = course.start.z - cf.z * 6 + cl.z * side * (edge + 0.4);
       const y = ground(x, z);
-      poles.push(beamMatrix(_a.set(x, y - 0.2, z), _b.set(x, y + 2.1, z), 0.14, 0.14, new THREE.Matrix4()));
-      caps.push(beamMatrix(_a.set(x, y + 2.1, z), _b.set(x, y + 2.7, z), 0.15, 0.15, new THREE.Matrix4()));
+      // the edge poles' own style, taller: the gate is two of them
+      poles.push(beamMatrix(_a.set(x, y - 0.2, z), _b.set(x, y + 1.9, z), 0.08, 0.08, new THREE.Matrix4()));
+      caps.push(beamMatrix(_a.set(x, y + 1.9, z), _b.set(x, y + 2.3, z), 0.085, 0.085, new THREE.Matrix4()));
     }
     const instanced = (matrices: THREE.Matrix4[], mat: THREE.Material, name: string): void => {
       const mesh = new THREE.InstancedMesh(unitBox, mat, matrices.length);
@@ -386,12 +436,13 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
       group.add(mesh);
     };
     instanced(poles, poleMaterial, 'range-course-poles');
-    instanced(boardPosts, postMaterial, 'range-board-posts');
+    instanced([...boardPosts, ...plaquePosts], postMaterial, 'range-board-posts');
     instanced(caps, capMaterial, 'range-course-caps');
 
     // draw now (fallback faces), again once the range's type has loaded
     redraw = () => {
       for (const [canvas, along] of boardCanvases) drawRangeBoard(canvas, along);
+      for (const [canvas, mm, angle] of plaqueCanvases) drawPlaque(canvas, mm, angle);
       for (const [canvas, kind, first] of courseCanvases) drawCourseBoard(canvas, kind, first);
       for (const view of plates) { view.drawn = ''; }
       for (const texture of textures) texture.needsUpdate = true;

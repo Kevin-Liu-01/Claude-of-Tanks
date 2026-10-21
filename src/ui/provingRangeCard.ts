@@ -79,8 +79,10 @@ const CSS = `
 .cot-range-card .rc-head{display:flex;align-items:center;gap:8px}
 .cot-range-card .rc-head .mi,.cot-range-card .rc-head .mi svg{display:block;width:18px;height:18px;color:${AMBER}}
 .cot-range-card .rc-round{font:700 13px ${PROVING_DISPLAY};letter-spacing:.02em;color:#fff1d6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cot-range-card .rc-rng{margin-left:auto;font:500 15px ${PROVING_MONO};color:#e8f0f5;font-variant-numeric:tabular-nums;white-space:nowrap}
-.cot-range-card .rc-rng small{font-size:11px;color:#7f909c;margin-left:2px}
+.cot-range-card .rc-rng{margin-left:auto;display:flex;align-items:center;gap:5px;font:500 15px ${PROVING_MONO};color:#e8f0f5;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.cot-range-card .rc-rng svg{width:14px;height:14px;color:#7f909c}
+.cot-range-card .rc-rng small{font-size:11px;color:#7f909c;margin-left:-3px}
 .cot-range-card .rc-shot{display:none;flex-direction:column;gap:4px;padding:7px 8px 8px;background:rgba(255,255,255,.035);
   border-left:3px solid var(--rc-tone,#9aa7b0)}
 .cot-range-card .rc-shot.on{display:flex}
@@ -91,16 +93,21 @@ const CSS = `
 .cot-range-card .rc-gauge i{position:absolute;left:0;top:0;bottom:0;background:var(--rc-tone,#9aa7b0);opacity:.85}
 .cot-range-card .rc-gauge s{position:absolute;top:-3px;bottom:-3px;width:3px;margin-left:-1.5px;background:#f4f7f9;
   box-shadow:0 0 0 1px rgba(0,0,0,.55)}
-.cot-range-card .rc-figs{display:flex;align-items:baseline;gap:6px;font:500 12px ${PROVING_MONO};color:#e8f0f5;
+.cot-range-card .rc-figs{display:flex;align-items:center;gap:10px;font:500 12px ${PROVING_MONO};color:#e8f0f5;
   font-variant-numeric:tabular-nums}
-.cot-range-card .rc-figs em{font-style:normal;color:#7f909c}
+.cot-range-card .rc-figs .rc-pen,.cot-range-card .rc-figs .rc-eff{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.cot-range-card .rc-figs svg{width:13px;height:13px;flex:0 0 auto}
+.cot-range-card .rc-figs .rc-pen svg{color:var(--rc-tone,#9aa7b0)}
+.cot-range-card .rc-figs .rc-eff svg{color:#c8d4dc}
+.cot-range-card .rc-shot.glance .rc-eff,.cot-range-card .rc-shot.glance .rc-gauge s{display:none}
 .cot-range-card .rc-figs .rc-tgt{margin-left:auto;font:600 11px ${PROVING_DISPLAY};color:#9fb0bb;max-width:46%;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cot-range-card .rc-lanes{display:flex;flex-direction:column;gap:1px}
-.cot-range-card .rc-lane{display:grid;grid-template-columns:38px 20px minmax(0,1fr) auto;gap:6px;align-items:center;
+.cot-range-card .rc-lane{display:grid;grid-template-columns:44px 20px minmax(0,1fr) auto;gap:6px;align-items:center;
   padding:3px 5px;border-left:2px solid transparent}
 .cot-range-card .rc-lane.laid{background:rgba(240,160,48,.13);border-left-color:${AMBER}}
-.cot-range-card .rc-r{font:500 12px ${PROVING_MONO};color:#e2ebf2;font-variant-numeric:tabular-nums;text-align:right}
+.cot-range-card .rc-r{font:500 12px ${PROVING_MONO};color:#e2ebf2;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.cot-range-card .rc-r small{font-size:10px;color:#7f909c;margin-left:1px}
 .cot-range-card .rc-a svg{display:block;width:20px;height:20px}
 .cot-range-card .rc-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c8d4dc}
 .cot-range-card .rc-o{font:700 10px ${PROVING_DISPLAY};letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;
@@ -124,8 +131,13 @@ body.cot-touch-layout .cot-range-card .rc-foot kbd,body.cot-touch-layout .cot-ra
 body.cot-touch-layout .cot-range-card .rc-foot{display:flex;gap:4px}
 body.cot-touch-layout .cot-range-card .rc-foot button{width:40px;min-height:40px;padding:0}
 body.cot-touch-layout .cot-range-card .rc-foot button svg{width:18px;height:18px}
-body.cot-touch-layout .cot-range-card .rc-shot{order:3;flex:1 1 100%}
-body.cot-touch-layout .cot-range-card .rc-verdict b{font-size:16px}
+/* the last shot beside the card, one line, clear of the round controls under it */
+body.cot-touch-layout .cot-range-card .rc-shot{position:absolute;left:calc(100% + 6px);top:0;width:max-content;max-width:300px;
+  flex-direction:row;align-items:center;gap:8px;padding:6px 9px;background:rgba(7,11,14,.86);border:1px solid rgba(176,194,208,.2);
+  border-left:3px solid var(--rc-tone,#9aa7b0)}
+body.cot-touch-layout .cot-range-card .rc-shot .rc-gauge,body.cot-touch-layout .cot-range-card .rc-shot .rc-tgt{display:none}
+body.cot-touch-layout .cot-range-card .rc-verdict b{font-size:15px}
+body.cot-touch-layout .cot-range-card .rc-verdict .rc-at{font-size:11px}
 `;
 
 /** A hull seen from above (its gun forward, toward the top), turned by the angle it presents to the firing line. */
@@ -150,10 +162,12 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
   const root = createElement('section', 'cot-range-card', parent);
   root.setAttribute('aria-label', t('hud.range.title'));
   root.innerHTML = `<div class="rc-head"><span class="mi">${uiIconSVG('modeProving', 18)}</span><span class="rc-round"></span>` +
-    `<span class="rc-rng" title="${t('hud.range.laid')}"><span></span><small>m</small></span></div>` +
+    `<span class="rc-rng" title="${t('hud.range.laid')}">${uiIconSVG('statRange', 14)}<span></span><small>m</small></span></div>` +
     `<div class="rc-shot" aria-live="polite"><div class="rc-verdict"><b></b><span class="rc-at"></span></div>` +
-    `<div class="rc-gauge"><i></i><s></s></div><div class="rc-figs"><span class="rc-pen"></span><em>/</em>` +
-    `<span class="rc-eff"></span><span class="rc-tgt"></span></div></div>` +
+    `<div class="rc-gauge"><i></i><s></s></div><div class="rc-figs">` +
+    `<span class="rc-pen" title="${t('hud.range.penRoll')}">${uiIconSVG('penetration', 13)}<span></span></span>` +
+    `<span class="rc-eff" title="${t('hud.range.armour')}">${uiIconSVG('shield', 13)}<span></span></span>` +
+    `<span class="rc-tgt"></span></div></div>` +
     `<div class="rc-lanes" role="list"></div>` +
     `<div class="rc-foot"><button type="button" data-range-action="reset" title="${t('action.rangeReset')}">` +
     `${uiIconSVG('reload', 15)}<span>${t('hud.range.reset')}</span><kbd></kbd></button>` +
@@ -168,8 +182,8 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
   const atEl = shotEl.querySelector<HTMLElement>('.rc-at')!;
   const barEl = shotEl.querySelector<HTMLElement>('.rc-gauge i')!;
   const tickEl = shotEl.querySelector<HTMLElement>('.rc-gauge s')!;
-  const penEl = shotEl.querySelector<HTMLElement>('.rc-pen')!;
-  const effEl = shotEl.querySelector<HTMLElement>('.rc-eff')!;
+  const penEl = shotEl.querySelector<HTMLElement>('.rc-pen span')!;
+  const effEl = shotEl.querySelector<HTMLElement>('.rc-eff span')!;
   const targetEl = shotEl.querySelector<HTMLElement>('.rc-tgt')!;
   const lanesEl = root.querySelector<HTMLElement>('.rc-lanes')!;
   const resetButton = root.querySelector<HTMLButtonElement>('[data-range-action="reset"]')!;
@@ -202,7 +216,7 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
       const outcome = card ? card.outcome : 'nopen';
       const row = createElement('div', 'rc-lane', lanesEl);
       row.setAttribute('role', 'listitem');
-      row.innerHTML = `<span class="rc-r">${lane.rangeM}</span>` +
+      row.innerHTML = `<span class="rc-r">${lane.rangeM}<small>m</small></span>` +
         `<span class="rc-a" title="${presentedAngleLabel(lane.presentDeg)}">${presentedGlyph(lane.presentDeg)}</span>` +
         `<span class="rc-t"></span><span class="rc-o ${outcome}">${t(`hud.range.outcome.${outcome}`)}</span>`;
       row.querySelector<HTMLElement>('.rc-t')!.textContent = lane.targetName || '—';
@@ -215,13 +229,15 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
     shotEl.style.setProperty('--rc-tone', verdict.color);
     verdictEl.textContent = verdict.label;
     atEl.textContent = `${Math.round(shot.rangeM)} m · ${Math.round(shot.impactAngleDeg)}°`;
-    const pen = Math.max(0, shot.penRollMm), armour = Math.max(0, shot.effectiveMm);
+    // a glance off the face tests no thickness: the roll and the angle say it (the verdict line carries the angle)
+    const glance = shot.kind === 'ricochet';
+    shotEl.classList.toggle('glance', glance);
+    const pen = Math.max(0, shot.penRollMm), armour = glance ? 0 : Math.max(0, shot.effectiveMm);
     const scale = Math.max(pen, armour, 1) * 1.12;
     barEl.style.width = `${(pen / scale) * 100}%`;
-    tickEl.style.display = armour > 0 ? '' : 'none';
     tickEl.style.left = `${(armour / scale) * 100}%`;
-    penEl.textContent = `${Math.round(pen)}`;
-    effEl.textContent = armour > 0 ? `${Math.round(armour)} mm` : '— mm';
+    penEl.textContent = `${Math.round(pen)} mm`;
+    effEl.textContent = `${Math.round(armour)} mm`;
     targetEl.textContent = shot.targetName;
   };
 
