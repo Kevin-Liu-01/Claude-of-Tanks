@@ -127,7 +127,7 @@ for (const gunSide of ['left', 'right']) {
 {
   const layerCss = readFileSync(new URL('../src/ui/heroCard.css', import.meta.url), 'utf8');
   const garageCss = readFileSync(new URL('../src/ui/garage.css', import.meta.url), 'utf8');
-  const vars = (L) => `--hc-band:${L.nameBand}px;--hc-share:${L.coreShare};--hc-hshare:${L.coreHeight};--hc-cxr:${Number(heroCenterX(L.centerX).toFixed(2))};`;
+  const vars = (L) => `--hc-band:${L.nameBand}px;--hc-share:${L.coreShare};--hc-hshare:${L.coreHeight};--hc-cxr:${Number(heroCenterX(L.centerX).toFixed(2))};--hc-pad:${L.pad}px;--hc-name:${L.nameSize}px;--hc-tier:${L.tierSize}px;`;
   assert.ok(garageCss.includes(vars(HERO_CARD_LAYOUT.roster)), `roster card vars ${vars(HERO_CARD_LAYOUT.roster)}`);
   assert.ok(garageCss.includes(vars(HERO_CARD_LAYOUT.rosterCompact)), `compact card vars ${vars(HERO_CARD_LAYOUT.rosterCompact)}`);
   assert.match(garageCss, /\.cot-card\{[^}]*container-type:size;/, 'the roster card is a size container from its first paint (no shift when the layers arrive)');
@@ -137,7 +137,7 @@ for (const gunSide of ['left', 'right']) {
   assert.match(layerCss, /\.cot-hc \.hc-flag\{[^}]*object-position:0 0;/, 'facing right: the flag anchors at the top-left (rear-top) corner');
   assert.match(layerCss, /\.cot-hc\[data-hero-facing='left'\] \.hc-flag\{object-position:100% 0;\}/, 'facing left mirrors the anchor');
   assert.match(garageCss, /\.cot-hc\[data-hero-facing='left'\] \.hc-tier,\.cot-hc\[data-hero-facing='left'\] \.dev-tag\{right:auto;left:6px;\}/, 'facing left: the tier chip takes the bow-side top corner, as the compositor draws it');
-  assert.match(layerCss, /--hc-k:min\(calc\(100cqw \* var\(--hc-share\) \/ var\(--hc-cw\)\),calc\(\(100cqh - var\(--hc-band\) - var\(--hc-lift,0px\)\) \* var\(--hc-hshare\) \/ var\(--hc-ch\)\),calc\(100cqw \* 0\.88 \/ var\(--hc-fw\)\)\)/, 'tank width is placeTank\'s k (the art box ends a second name line higher)');
+  assert.match(layerCss, /--hc-k:min\(calc\(100cqw \* var\(--hc-share\) \/ var\(--hc-cw\)\),calc\(\(100cqh - var\(--hc-band\)\) \* var\(--hc-hshare\) \/ var\(--hc-ch\)\),calc\(100cqw \* 0\.88 \/ var\(--hc-fw\)\)\)/, 'tank width is placeTank\'s k');
   assert.match(layerCss, /left:clamp\(calc\(100cqw \* 0\.06 - var\(--hc-fx0\) \* var\(--hc-k\)\),calc\(100cqw \* \(0\.5 \+ \(var\(--hc-cxr\) - 0\.5\) \* var\(--hc-gs,1\)\) - var\(--hc-cx\) \* var\(--hc-k\)\),calc\(100cqw \* 0\.94 - var\(--hc-fx1\) \* var\(--hc-k\)\)\)/, 'tank x is placeTank\'s clamped dx, the centre mirrored for a gun on the other side');
   const cardTs = readFileSync(new URL('../src/ui/heroCard.ts', import.meta.url), 'utf8');
   assert.match(cardTs, /\(row\.face\?\.\[1\] \?\? HERO_GUN_SIDE\) !== HERO_GUN_SIDE/, 'a row whose gun is on the other side mirrors the centre (--hc-gs)');
@@ -150,19 +150,35 @@ for (const gunSide of ['left', 'right']) {
     assert.match(source, /Promise\.all\(\[import\('(?:\.\/|\.\.\/ui\/)heroCard\.ts'\), import\('(?:\.\/|\.\.\/ui\/)heroCard\.css'\)\]\)/, `${surface} loads the card module with its stylesheet`);
     assert.doesNotMatch(source, /^import (?!type )[^;]*heroCard\.ts['"];/m, `${surface} never imports the card module statically (type imports are erased)`);
   }
-  assert.match(layerCss, /top:calc\(100cqh - var\(--hc-band\) - var\(--hc-lift,0px\) \+ 2px - var\(--hc-cb\) \* var\(--hc-k\)\)/, 'contact line 2 px under the art box');
-  // A two-line name lifts the art box by one name line (critic round 1, 2026-10-20: 18 names sat on the tracks):
-  // the Garage marks the card from the name's own height and the lift is the name's line height.
-  assert.match(garageCss, new RegExp(`\\.cot-card\\.hc-n2\\{--hc-lift:calc\\(var\\(--hc-name\\) \\* ${HERO_NAME_LINE_HEIGHT}\\);\\}`), 'the two-line lift is one name line');
+  assert.match(layerCss, /top:calc\(100cqh - var\(--hc-band\) \+ 2px - var\(--hc-cb\) \* var\(--hc-k\)\)/, 'contact line 2 px under the art box');
+  // A two-line name overlays the tank and never moves it (owner 2026-10-21: "double line text shouldn't push tanks
+  // up ... the text should be overlaid over the tanks", retiring round 1's lift): the Garage marks the card from the
+  // name's own height, the floor rises one name line and the name takes a halo; nothing in the layer rules moves.
+  assert.doesNotMatch(layerCss, /--hc-n2|--hc-lift/, 'the tank layer never reads the name\'s line count');
+  assert.match(garageCss, new RegExp(`\\.cot-card\\.hc-n2\\{--hc-n2:calc\\(var\\(--hc-name\\) \\* ${HERO_NAME_LINE_HEIGHT}\\);\\}`), 'the two-line floor rise is one name line');
   assert.match(garageCss, new RegExp(`\\.cot-card \\.nm\\{[^}]*font:600 var\\(--hc-name\\)/${HERO_NAME_LINE_HEIGHT} `), 'the name\'s line height is HERO_NAME_LINE_HEIGHT');
-  assert.match(garageCss, /\.cot-card::after\{[^}]*height:calc\(var\(--hc-band\) \+ var\(--hc-lift,0px\) \+ 6px\)/, 'the name floor rises with the lift');
+  assert.match(garageCss, /\.cot-card::after\{[^}]*height:calc\(var\(--hc-band\) \+ var\(--hc-n2,0px\) \+ 6px\)/, 'the name floor rises with a second line');
+  assert.match(garageCss, /\.cot-card\.hc-n2 \.nm\{text-shadow:0 1px 3px rgba\(0,0,0,\.85\),0 0 7px rgba\(0,0,0,\.75\);\}/, 'a two-line name takes the halo (the compositor\'s NAME_HALO)');
+  assert.doesNotMatch(garageCss, /--hc-lift/, 'no card rule lifts the art box');
+  // The type floor (owner: no small text; the type system's 11 px): every card size, policy and strip alike, and the
+  // compact chip's numeral alone (tierWord false). The faces are the type system's tokens.
+  for (const [kind, L] of Object.entries(HERO_CARD_LAYOUT)) {
+    for (const key of ['nameSize', 'minName', 'tierSize']) assert.ok(L[key] >= 11, `${kind}.${key} ${L[key]} px is under the 11 px floor`);
+  }
+  const sizes = [...garageCss.matchAll(/--hc-(?:name|tier):([\d.]+)px/g), ...garageCss.matchAll(/\.cot-card \.dev-tag\{[^}]*font-size:([\d.]+)px/g)].map((m) => Number(m[1]));
+  assert.ok(sizes.length >= 5 && sizes.every((size) => size >= 11), `garage card text sizes ${sizes.join(', ')} px: none under 11 px`);
+  assert.equal(HERO_CARD_LAYOUT.rosterCompact.tierWord, false, 'the compact chip shows the numeral alone');
+  assert.match(garageCss, /body\[data-cot-panels='overlay'\] \.cot-card \.hc-tier\{[^}]*font-size:0\}\nbody\[data-cot-panels='overlay'\] \.cot-card \.hc-tier b\{font-size:var\(--hc-tier\)\}/, 'the compact strip hides the chip\'s word and keeps its numeral');
+  assert.match(garageCss, /\.cot-card \.nm\{[^}]*font:600 var\(--hc-name\)\/1\.05 var\(--font-ui\);/, 'the name takes the type system\'s UI face (600: Chakra Petch SemiBold)');
+  assert.match(garageCss, /\.cot-card \.hc-tier\{[^}]*font:500 var\(--hc-tier\)\/1 var\(--font-mono\);/, 'the tier chip takes the type system\'s mono face');
   assert.match(cardTs, /new ResizeObserver\(/, 'the card marks a wrapped name from its measured height');
   assert.match(cardTs, /classList\.toggle\('hc-n2', height > line \* 1\.5\)/, 'a name taller than one and a half lines is two lines');
   assert.equal(HERO_SIDE_MARGIN, 0.06, 'the CSS margins (0.06, 0.88, 0.94) are HERO_SIDE_MARGIN');
 }
 
-// 7b. The compositor lifts the art box for a two-line name exactly as the runtime card does: the tank's contact line
-//     rises by one name line, and a one-line name keeps it.
+// 7b. The compositor overlays a two-line name exactly as the runtime card does: the tank's box and contact line are
+//     the one-line card's (owner 2026-10-21: no lift), and the floor under the name rises one name line. A white
+//     ground makes the floor's rise measurable; the magenta test survives the floor and the halo darkening it.
 {
   const lw = 400, lh = 250;
   const layer = createCanvas(lw, lh);
@@ -172,21 +188,26 @@ for (const gunSide of ['left', 'right']) {
   lctx.fillRect(10, 140, 120, 6);
   const bounds = measureBounds(layer);
   const flag = createCanvas(8, 6);
-  const lowestTankRow = (name) => {
-    const card = composeCard('roster', { tank: layer, bounds, flag, name, tier: 'X' }, 2);
+  const ground = { top: '#ffffff', mid: '#ffffff', bottom: '#ffffff', lift: 'rgba(0,0,0,0)' };
+  const L = HERO_CARD_LAYOUT.roster;
+  const compose = (name) => {
+    const card = composeCard('roster', { tank: layer, bounds, flag, name, tier: 'X', ground }, 2);
     const { data, width, height } = card.getContext('2d').getImageData(0, 0, card.width, card.height);
-    let lowest = -1;
+    let top = -1, bottom = -1;
     for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
       const o = (y * width + x) * 4;
-      if (data[o] > 150 && data[o + 2] > 150 && data[o + 1] < 90) { lowest = y; break; }
+      if (data[o] > 90 && data[o + 2] > 90 && data[o + 1] < 40) { if (top < 0) top = y; bottom = y; break; }
     }
-    return lowest;
+    // The right edge, half a name line above the one-line floor's top (the frame and the type stay clear of it).
+    const probe = (Math.round(height - 2 * (L.nameBand + 6 + 0.5 * L.nameSize * HERO_NAME_LINE_HEIGHT)) * width + width - 5) * 4;
+    return { top, bottom, floor: data[probe + 1] };
   };
-  const one = lowestTankRow('T-90M');
-  const two = lowestTankRow('Experimental Heavy Vehicle Name (Concept Prototype Two)');
-  const line = HERO_CARD_LAYOUT.roster.nameSize * 2 * HERO_NAME_LINE_HEIGHT;
-  assert.ok(one > 0 && two > 0, 'the tank draws on both cards');
-  assert.ok(Math.abs(one - two - line) <= 1.5, `a two-line name lifts the contact line one name line (${one} -> ${two}, line ${line})`);
+  const one = compose('T-90M');
+  const two = compose('Experimental Heavy Vehicle Name (Concept Prototype Two)');
+  assert.ok(one.bottom > 0 && two.bottom > 0, 'the tank draws on both cards');
+  assert.deepEqual([two.top, two.bottom], [one.top, one.bottom], `a two-line name never moves or shrinks the tank (${JSON.stringify(one)} vs ${JSON.stringify(two)})`);
+  assert.ok(one.floor > 245, `a one-line card has no floor above its band (${one.floor})`);
+  assert.ok(two.floor < one.floor - 15, `a two-line name raises the floor one name line (${one.floor} -> ${two.floor})`);
 }
 
 // 8. The turret pose (owner 2026-10-18: "the turrets should be turned towards you more"; 2026-10-20: "Whole tank

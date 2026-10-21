@@ -147,10 +147,11 @@ export async function mountRosterHeroCards(
 }
 
 /**
- * Mark the roster cards whose name wraps to a second line (.hc-n2): the card's CSS lifts the art box by one
- * name line (HERO_NAME_LINE_HEIGHT), so the tracks keep their air above the name. The name's own height
- * decides, so a font swap, a locale or a strip size that changes the wrap re-marks the card; a card hidden by
- * the nation filter measures 0 and keeps its mark until it shows again.
+ * Mark the roster cards whose name wraps to a second line (.hc-n2): the name overlays the tank's lower part
+ * (the art box never moves, owner 2026-10-21), so the card's CSS raises the name floor by one name line
+ * (HERO_NAME_LINE_HEIGHT) and gives the name a soft halo. The name's own height decides, so a font swap, a
+ * locale or a strip size that changes the wrap re-marks the card; a card hidden by the nation filter measures
+ * 0 and keeps its mark until it shows again.
  */
 function markTwoLineNames(cards: ReadonlyMap<string, HTMLElement>): void {
   if (typeof ResizeObserver !== 'function') return;

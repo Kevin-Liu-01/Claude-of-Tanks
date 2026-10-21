@@ -705,17 +705,18 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b.stat-comparison{displ
    HERO_CARD_LAYOUT.roster / .rosterCompact (tools/hero-cards.selftest.mjs). */
 .cot-card{width:156px;min-height:150px;height:150px;flex:0 0 auto;cursor:pointer;position:relative;
   isolation:isolate;overflow:hidden;container-type:size;padding:0;
-  --hc-band:36px;--hc-share:0.66;--hc-hshare:0.5;--hc-cxr:0.52;--hc-pad:9px;--hc-name:13.5px;--hc-tier:8.5px;
+  --hc-band:36px;--hc-share:0.66;--hc-hshare:0.5;--hc-cxr:0.52;--hc-pad:9px;--hc-name:13.5px;--hc-tier:11px;
   background:radial-gradient(ellipse 62% 62% at 50% 55%,rgba(120,170,205,.14),rgba(0,0,0,0) 100%),
     linear-gradient(180deg,#0f3a55 0%,#0b2a3e 55%,#0b0e11 100%);
   border:1px solid rgba(146,164,180,.26);
   transition:border-color .15s,transform .15s,box-shadow .15s;}
 .cot-card::after{content:"";position:absolute;z-index:2;left:0;right:0;bottom:0;pointer-events:none;
-  height:calc(var(--hc-band) + var(--hc-lift,0px) + 6px);
+  height:calc(var(--hc-band) + var(--hc-n2,0px) + 6px);
   background:linear-gradient(180deg,rgba(11,14,17,0) 0%,rgba(11,14,17,.5) 50%,rgba(11,14,17,.8) 100%);}
-/* A name on two lines (heroCard.ts marks .hc-n2 from the name's own height) lifts the art box by one name
-   line: HERO_NAME_LINE_HEIGHT (src/ui/heroCardPolicy.ts). */
-.cot-card.hc-n2{--hc-lift:calc(var(--hc-name) * 1.05);}
+/* A name on two lines (heroCard.ts marks .hc-n2 from the name's own height) overlays the tank's lower part and
+   never moves the art box (owner 2026-10-21): the floor rises one name line (HERO_NAME_LINE_HEIGHT,
+   src/ui/heroCardPolicy.ts) and the name takes a soft halo, so it reads on any livery. */
+.cot-card.hc-n2{--hc-n2:calc(var(--hc-name) * 1.05);}
 .cot-card:hover{border-color:rgba(210,225,240,.5);transform:translateY(-2px);}
 .cot-card.sel:hover{transform:translateY(-6px);}
 .cot-card.sel{border-color:#f0a030;transform:translateY(-6px);
@@ -750,6 +751,7 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b.stat-comparison{displ
   font:600 var(--hc-name)/1.05 var(--font-ui);
   color:#f6f3ec;letter-spacing:0;text-align:left;white-space:normal;overflow-wrap:anywhere;
   text-shadow:0 1px 3px rgba(0,0,0,.85);}
+.cot-card.hc-n2 .nm{text-shadow:0 1px 3px rgba(0,0,0,.85),0 0 7px rgba(0,0,0,.75);}
 .cot-garage .hint{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
   font-size:11px;letter-spacing:.06em;color:rgba(138,151,163,.7);text-transform:uppercase;}
 /* MAP-CONFIG WIRING: complete registered battlefield picker + random. */
@@ -1458,13 +1460,15 @@ body[data-cot-panels='overlay'] .cot-car-arrow{width:36px;flex:0 0 36px}
 body[data-cot-panels='overlay'] .cot-cards{min-width:0;flex:1 1 auto;gap:5px}
 body[data-cot-panels='overlay'] .cot-card{
   width:112px;min-height:var(--cot-roster-height);height:var(--cot-roster-height);padding:0;
-  --hc-band:24px;--hc-share:0.7;--hc-hshare:0.64;--hc-cxr:0.51;--hc-pad:6px;--hc-name:9.5px;--hc-tier:7px;
+  --hc-band:24px;--hc-share:0.7;--hc-hshare:0.64;--hc-cxr:0.51;--hc-pad:6px;--hc-name:11px;--hc-tier:11px;
 }
 body[data-cot-panels='overlay'] .cot-card.sel{transform:translateY(-3px)}
 body[data-cot-panels='overlay'] .cot-card .flag{top:4px;left:4px}
 body[data-cot-panels='overlay'] .cot-card .flag .cot-flag{width:16px}
-body[data-cot-panels='overlay'] .cot-card .hc-tier{top:3px;right:3px;padding:2px 3px 1px}
-body[data-cot-panels='overlay'] .cot-card .dev-tag{right:3px;top:17px;padding:1px 3px;font-size:5px}
+/* The compact chip shows the numeral alone at the 11 px floor ("Tier VIII" would span two thirds of a phone card). */
+body[data-cot-panels='overlay'] .cot-card .hc-tier{top:3px;right:3px;padding:2px 3px 1px;font-size:0}
+body[data-cot-panels='overlay'] .cot-card .hc-tier b{font-size:var(--hc-tier)}
+body[data-cot-panels='overlay'] .cot-card .dev-tag{right:3px;top:20px;padding:1px 3px;font-size:11px}
 body[data-cot-panels='overlay'] .cot-hc[data-hero-facing='left'] .hc-tier,body[data-cot-panels='overlay'] .cot-hc[data-hero-facing='left'] .dev-tag{right:auto;left:3px}
 body[data-cot-panels='overlay'] .cot-card .ti{width:98px;height:52px;left:4px;top:14px;
   transform:translate(var(--cot-thumb-x,-10px),var(--cot-thumb-y,-6px))
@@ -1560,7 +1564,7 @@ body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .srow 
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .srow .lr{
   flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;
 }
-body[data-cot-width='phone'] .cot-card{width:102px}
+body[data-cot-width='phone'] .cot-card{width:102px;--hc-pad:5px}
 body[data-cot-width='phone'] .cot-car-arrow{width:32px;flex-basis:32px}
 body[data-cot-width='phone'] .cot-technical-viewer-tabs{gap:3px;margin-bottom:7px}
 body[data-cot-width='phone'] .cot-technical-viewer-tab{min-height:36px;padding:0 5px;font-size:11px}
@@ -1643,8 +1647,8 @@ body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels=
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-chip{min-height:36px;padding-block:2px}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-edge{height:36px}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card{
-  min-height:var(--cot-roster-height);height:var(--cot-roster-height);width:96px;padding:0;
-  --hc-band:20px;--hc-pad:5px;--hc-name:8px;--hc-tier:6px;
+  min-height:var(--cot-roster-height);height:var(--cot-roster-height);width:102px;padding:0;
+  --hc-band:20px;--hc-pad:5px;
 }
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card .ti{width:80px;height:38px;top:10px}
 
