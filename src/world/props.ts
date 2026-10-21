@@ -10251,6 +10251,9 @@ ${snowCap ? `
     for (const rec of destructibles) {
       if (rec.kind !== 'lamp' || rec.slot < 0 || !rec.ob || !against(rec.x, rec.z, 0.3)) continue;
       if (civicPieces.some((p) => p.kind === 'lamp' && Math.hypot(p.x - rec.x, p.z - rec.z) < 0.05)) continue;
+      // (229) a set piece's own lamp (a park square's, along its paths) stands in the piece's footprint by design: it keeps
+      // its seat
+      if (landmarkDestructibles.some(([kind, x, , z]) => kind === 'lamp' && Math.hypot(x - rec.x, z - rec.z) < 0.05)) continue;
       if (onSpan(rec.x, rec.z)) { moved.push({ at: [rec.x, rec.z], kept: true }); continue; }
       let best = { d: Infinity, x: 0, z: 0, ri: -1 };
       for (let ri = 0; ri < roads.length; ri++) {
