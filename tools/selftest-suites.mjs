@@ -627,6 +627,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t72MaterialLifetime.selftest.mjs',
     'src/vehicles/profiles/t72TurretCleanup.selftest.mjs',
     'src/vehicles/profiles/ztz99a2RearService.selftest.mjs',
+    // release 227 (CN critic round 5): the fleet Type 96B's and ZTZ-99A2's donor parts each seated on real stock
+    'src/vehicles/profiles/donorStockSeating.selftest.mjs',
+    // release 227: the fleet Type 96B's gun clears its hull through traverse and pitch (trimmed boot, rear-deck curve)
+    'src/vehicles/profiles/type96MantletClearance.selftest.mjs',
     'src/vehicles/profiles/type99AAngularTurret.selftest.mjs',
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
     'src/vehicles/profiles/eraSeating.selftest.mjs',
@@ -688,6 +692,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/run-selftests.selftest.mjs',
     'tools/selftest-cache.selftest.mjs',
     'tools/selftest-cache-dir.selftest.mjs',
+    // 2026-10-20 (after 228p): listing receipts select and key on what they list (tools/selftest-scans.mjs)
+    'tools/selftest-scans.selftest.mjs',
     'tools/selftest-cpu-pool.selftest.mjs',
     'tools/selftest-schedule.selftest.mjs',
     'tools/gate.selftest.mjs',
