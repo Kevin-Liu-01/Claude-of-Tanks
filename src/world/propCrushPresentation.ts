@@ -403,8 +403,8 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
         // a fresh burn blackens: soot over the burnt paint, oxide brown showing through in mottles, the hottest upward
         // panels (roof, bonnet) burnt to grey ash, soot streaked up the sides over the waist where the flames left
         _burnt[0] = SOOT[0]; _burnt[1] = SOOT[1]; _burnt[2] = SOOT[2];
-        mixInto(_burnt, OXIDE, 0.25 + 0.45 * smoothstep(0.4, 0.8, noise3(x * 2.6, y * 2.6, z * 2.6, 303)));
-        mixInto(_burnt, RUST, smoothstep(0.55, 0.85, noise3(x * 4.1, y * 4.1, z * 4.1, 307)) * 0.35);
+        mixInto(_burnt, OXIDE, 0.12 + 0.33 * smoothstep(0.45, 0.85, noise3(x * 2.6, y * 2.6, z * 2.6, 303)));
+        mixInto(_burnt, RUST, smoothstep(0.6, 0.9, noise3(x * 4.1, y * 4.1, z * 4.1, 307)) * 0.25);
         mixInto(_burnt, ASH, smoothstep(0.45, 0.75, noise3(x * 1.7, y * 1.7, z * 1.7, 301)) * Math.max(0, ny) * 0.8 * smoothstep(belt * 0.7, top, y));
         if (Math.abs(ny) < 0.55) mixInto(_burnt, SOOT, smoothstep(belt * 0.85, top, y) * 0.6);
       }

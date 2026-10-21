@@ -66,7 +66,7 @@ const CLOTH = { squash: 0.06, noise: 0.03, fold: 0.07, foldK: 5.5, droop: 0.65, 
  *  panels' folds (m, and their pitch along and across, 1/m), the doors' bow (m), the roof's rack along the travel (m),
  *  the wheels' splay at the floor (rad) and the breakup's jitter (m). */
 const CAR = { belly: 0.42, track: 0.34, body: 0.25, glass: 0.08, crease: 0.05, alongK: 1.6, acrossK: 1.9, bow: 0.12,
-  rack: 0.2, splay: 1.15, jitter: 0.012 } as const;
+  rack: 0.2, splay: 1.0, jitter: 0.012 } as const;
 
 /** A car's anatomy over its field (its own frame): its belt line and its wheels. */
 export interface CrushVehicle {
