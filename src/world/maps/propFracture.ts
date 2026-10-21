@@ -13,7 +13,7 @@
 
 import * as THREE from 'three';
 
-export interface FracturePlan {
+interface FracturePlan {
   /** Parts longer than this (m) snap; their pieces are at least `pieceMin` long. */
   readonly snapLen: number;
   readonly pieceMin: number;
@@ -32,12 +32,12 @@ export interface FracturePlan {
   readonly debrisMax: number;
 }
 
-export const WOOD_FRACTURE: FracturePlan = Object.freeze({
+const WOOD_FRACTURE: FracturePlan = Object.freeze({
   snapLen: 0.55, pieceMin: 0.18, maxCuts: 2, jag: 0.05, scatter: 0.55, stubChance: 0.6, stubMax: 0.45, dropBelow: 0.06, debrisMax: 0.55,
 });
 /** A small building (a hut, a hide, a shed, a camp tent): its walls, roof and frame snap in larger pieces and lie
  * across and round its footprint, corner posts often left standing as low stubs. */
-export const BUILDING_FRACTURE: FracturePlan = Object.freeze({
+const BUILDING_FRACTURE: FracturePlan = Object.freeze({
   snapLen: 1.0, pieceMin: 0.4, maxCuts: 2, jag: 0.08, scatter: 0.9, stubChance: 0.7, stubMax: 0.55, dropBelow: 0.08, debrisMax: 0.6,
 });
 /** A fence or a gate: posts snap low and often stand, boards and rails lie along the line it ran. */

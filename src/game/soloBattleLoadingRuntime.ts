@@ -394,8 +394,10 @@ export function createSoloBattleLoadingRuntime(
       ]);
 
       battleLoad.progress(0.02, 'Loading battlefield');
+      // (ac130-fx-228) the AC-130's pilot builds no tank: drop the plan's first entry (the player), never every bot that
+      // shares the pilot's garage spec (duplicate picks are valid: an escort pool can be the player's own spec)
       const plannedRoster = planRoster(specId, randomRoster, campaignOperationId, normalizedGameMode)
-        .filter(id => normalizedGameMode !== 'ac130' || id !== specId);
+        .filter((_id, index) => normalizedGameMode !== 'ac130' || index !== 0);
       const plannedAutoCamoIds = planCamoOverrides(specId, resolved, randomRoster, campaignOperationId, normalizedGameMode)
         .filter(id => normalizedGameMode !== 'ac130' || id !== specId);
       const rosterTexture = battleIntent.prepareRoster({

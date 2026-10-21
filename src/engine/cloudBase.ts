@@ -22,7 +22,7 @@ const DEFAULT_BASE_M = 1400;
 /** No cap: well over any far country (a float the panorama's shader can carry). */
 export const CLOUD_BASE_NO_CAP_M = 1e5;
 
-export interface CloudBase {
+interface CloudBase {
   /** The main lane's base (m). */
   readonly baseM: number;
   /** Its top (m). */

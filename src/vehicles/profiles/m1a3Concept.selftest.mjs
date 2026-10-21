@@ -88,7 +88,7 @@ const hullRig = tank.root.getObjectByName('rig_hull');
 const turretRig = tank.root.getObjectByName('rig_turret');
 const gunRig = tank.root.getObjectByName('rig_gun');
 assert.ok(hullRig && turretRig && gunRig, 'M1A3 retains articulated hull/turret/gun ownership');
-assert.equal(gunRig.parent, turretRig, '130 mm gun articulates with the turret');
+assert.ok(gunRig.parent === turretRig, '130 mm gun articulates with the turret');
 assert.equal(turretRig.position.z, 0.15,
   'the complete M1A3 turret assembly is seated 300 mm farther forward');
 assert.ok(tank.root.getObjectByName('m1a3RemoteWeaponTower'),

@@ -54,8 +54,8 @@ try {
     'rendered turret ring matches the combat/anatomy datum');
   assert.deepEqual(gun.position.toArray(), spec.armor.gunPivot,
     'rendered gun root matches the combat/anatomy datum');
-  assert.equal(gun.getObjectByName('gunMount')?.parent, gun, 'Jaguar mantlet remains attached to the weapon root');
-  assert.equal(gun.getObjectByName('rig_recoil')?.parent, gun, 'Jaguar recoiling barrel remains attached to the weapon root');
+  assert.ok(gun.getObjectByName('gunMount')?.parent === gun, 'Jaguar mantlet remains attached to the weapon root');
+  assert.ok(gun.getObjectByName('rig_recoil')?.parent === gun, 'Jaguar recoiling barrel remains attached to the weapon root');
 
   // The Polish fit: the Jaguar's own paint, three attached cheek receivers per side over the donor's cheek ERA,
   // the donor's single roof machine gun.

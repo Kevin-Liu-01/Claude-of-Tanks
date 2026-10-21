@@ -15,7 +15,7 @@ const legacyTris = COURSED_WALLSTONE.build(mulberry32(1)).attributes.position.co
 for (const coping of ['rollschicht', 'saddleback', 'tiled', 'block', 'slab']) {
   const g = buildCoursedWall(coping), e = extent(g), tris = g.attributes.position.count / 3;
   assert.deepEqual(Object.keys(g.attributes).sort(), ['normal', 'position', 'uv'], `${coping}: the stone bucket's attributes`);
-  assert.equal(g.index, null);
+  assert.ok(g.index === null);
   // (r2, 2026-10-16: the courses dressed — their arrises off — and the coping's eaves its own thickness: up to 110)
   assert.ok(tris <= 110, `${coping}: ${tris} triangles (the legacy ${legacyTris})`);
   assert.ok(e.z <= 1.52 && e.z > 1.45, `${coping}: fills its 3 m module (${e.z.toFixed(2)})`);

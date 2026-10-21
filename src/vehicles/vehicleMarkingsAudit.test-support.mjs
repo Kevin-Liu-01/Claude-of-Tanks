@@ -101,7 +101,7 @@ export function createVehicleMarkingsAudit() {
       marks.forEach((mark, index) => {
         const seat = generatedSeats[index];
         assert.equal(seat.kind, mark.userData.markingKind, `${id}/${index}: generated kind`);
-        assert.equal(seat.parent, mark.userData.surfaceOwner, `${id}/${index}: generated owner`);
+        assert.ok(seat.parent === mark.userData.surfaceOwner, `${id}/${index}: generated owner`);
         assert(Math.abs(seat.size - mark.scale.x) < 1e-6, `${id}/${index}: generated size`);
         assert(mark.position.distanceTo(new THREE.Vector3(...seat.pos)) < 1e-6,
           `${id}/${index}: generated position matches solved surface`);

@@ -26,7 +26,7 @@ interface PropsSettings { cropFields: number; cropForm?: CropForm; architecture?
 type CropForm = 'harvest' | 'wet-upright' | 'grain' | RegionalCrop;
 type RegionalCrop = 'maize' | 'sunflower' | 'beet' | 'brassica';
 /** What the crop fields take from the props build. */
-export interface CropFieldsHost {
+interface CropFieldsHost {
   heightField: HeightField;
   P: PropsSettings;
   L: Pick<TerrainLayout, 'spawns' | 'village'>;

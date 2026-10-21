@@ -1980,7 +1980,24 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       edgeData[i * 4] = THREE.DataUtils.toHalfFloat(h);
       edgeData[i * 4 + 1] = THREE.DataUtils.toHalfFloat(seaW[i]);
       edgeData[i * 4 + 2] = THREE.DataUtils.toHalfFloat(seaL[i]);
-      edgeData[i * 4 + 3] = THREE.DataUtils.toHalfFloat(ringSkyline[k]);
+      // (the Earthrise 228 rebuild, round 3, 2026-10-18; the blind judge: "vertical, repeating stripes" on the far ridge,
+      // one to each of the ring's 431 columns, 0.84 degrees apart from anywhere on the floor) the texel took its nearest
+      // column: a staircase of 431 treads round the compass in the outer height the far country's first kilometre eases
+      // out of and in the skyline its near band is capped under (nearCap, a few metres a tread at 3 km) and its far layers
+      // rise over (`behind`). Where air hazes the far country the treads are lost in it; on an airless map the texel takes
+      // the ring's nine-column means at the two columns either side of its bearing, blended by where it falls between them
+      let sky = ringSkyline[k];
+      if (options.fogDensity === 0) {
+        const f = (angle / (Math.PI * 2)) * n, k0 = Math.floor(f), t = f - k0;
+        const mean = (arr: ArrayLike<number>, at: number, base: number): number => {
+          let sum = 0;
+          for (let d = -4; d <= 4; d++) sum += arr[base + ((at + d) % n + n) % n];
+          return sum / 9;
+        };
+        sky = mean(ringSkyline, k0, 0) * (1 - t) + mean(ringSkyline, k0 + 1, 0) * t;
+        edgeData[i * 4] = THREE.DataUtils.toHalfFloat(mean(options.ringEdge.heights, k0, start) * (1 - t) + mean(options.ringEdge.heights, k0 + 1, start) * t);
+      }
+      edgeData[i * 4 + 3] = THREE.DataUtils.toHalfFloat(sky);
     }
   }
 

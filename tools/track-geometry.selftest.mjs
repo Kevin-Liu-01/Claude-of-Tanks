@@ -175,13 +175,13 @@ for (const [id, definition] of Object.entries(TRACK_PATTERN_DEFINITIONS)) {
   assert.ok(pads?.isInstancedMesh, 'procedural gear exposes linked track pads');
   assert.ok(simplifiedPads?.isInstancedMesh,
     'procedural gear exposes the distance-simplified shoe level');
-  assert.equal(simplifiedPads.instanceMatrix, pads.instanceMatrix,
+  assert.ok(simplifiedPads.instanceMatrix === pads.instanceMatrix,
     'shoe LOD levels share one articulated instance transform buffer');
-  assert.equal(simplifiedPads.instanceColor, pads.instanceColor,
+  assert.ok(simplifiedPads.instanceColor === pads.instanceColor,
     'shoe LOD levels share one deterministic per-link color buffer');
   assert.equal(pads.parent?.levels?.[1]?.distance, 55,
     'distance-simplified shoes engage at the reviewed 55 m threshold');
-  assert.equal(P.hullG.getObjectByName('gearTrackInnerLinks'), undefined,
+  assert.ok(P.hullG.getObjectByName('gearTrackInnerLinks') === undefined,
     'connector, pin and guide detail is integrated into the one smart shoe layer');
   const matrix = new THREE.Matrix4();
   const p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();

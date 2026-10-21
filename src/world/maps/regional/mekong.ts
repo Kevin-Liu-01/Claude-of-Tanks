@@ -370,7 +370,7 @@ const collapsed: RegionalBuilder = (ctx) => {
 // (props census #23, the looks lane 2026-10-15: member-built in marketKits.ts)
 const marketStall: RegionalBuilder = (ctx) => mekongChoStall(ctx);
 
-export const MEKONG_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const MEKONG_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => stiltHouse(ctx),
   farmhouse: (ctx) => groundHouse(ctx),
   // boat shelters walled at the back, stores and rice houses walled on three sides (they keep the cover of the base

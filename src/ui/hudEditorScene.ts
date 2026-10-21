@@ -1,7 +1,7 @@
 import { getLocale, t } from './i18n.ts';
 import { HUD_PARTS, type HudPartId, type HudProfile } from './hudPreferences.ts';
 
-export interface HudPreviewPart { element: HTMLElement; x: number; y: number; width: number; height: number }
+interface HudPreviewPart { element: HTMLElement; x: number; y: number; width: number; height: number }
 export interface HudPreviewScene { frame: HTMLIFrameElement; parts: Map<HudPartId,HudPreviewPart> }
 
 /** The iframe isolates production HUD listeners and viewport rules from the live game. */

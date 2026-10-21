@@ -5,6 +5,8 @@ import { createFakeContext, fakeBuffer } from './fakeAudioContext.test-support.m
 import { createBus } from '../game/stateCore.ts';
 import { CREW_VOICE_NATIONS } from './crewVoice.ts';
 import { emitDebrisLanding, emitTurretLanding } from '../fx/clock.ts';
+import { GAME_MODE_IDS } from '../sim/matchModes.ts';
+import { matchRulesetFor } from '../sim/matchRuleset.ts';
 
 // Serve the shipped assets from disk; "decode" them as 1.5 s fake buffers.
 const publicRoot = new URL('../../public/', import.meta.url);
@@ -165,6 +167,54 @@ bus.emit('player:reload', { total: 6, kind: 'magazine', caliberMm: 120, t: 0, pr
 names = logSince(since).map((e) => e.n);
 assert.equal(names.filter((n) => n === 'drum_load_round').length, 4, `a drum refill feeds its rounds in one by one (${names})`);
 assert.ok(names.includes('drum_rotate') && names.at(-1) === 'latch_ready', 'the drum indexes and the gun locks ready');
+// Owner 2026-10-17 (out of ammo): the post-shot cycle of an empty gun loads nothing — no cue, no latch, no call.
+{
+  const stowed = me.combat.ammo.slice();
+  me.combat.ammo.fill(0);
+  since = mark();
+  for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.95]) { ctx.advance(0.6); bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 7 * (1 - progress), progress }); }
+  bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 0, progress: 1, done: true });
+  assert.deepEqual(logSince(since).filter((e) => e.b === 'interior').map((e) => e.n), [],
+    'a dry gun plays no loader machinery and no ready latch');
+  // A cycle that runs dry midway drops its half-played plan: when rounds return, the crew's cycle starts afresh
+  // instead of resuming the stale one where it stopped. (A 0.5 s cycle: no cue, no crew call and no clock advance, so
+  // the voice timeline below is undisturbed; 'reload:start' marks each fresh plan.)
+  me.combat.ammo.splice(0, stowed.length, ...stowed);
+  const starts = () => probe.soundLog.filter((e) => e.type === 'reload:start').length;
+  const cycle = (progress) => { bus.emit('player:reload', { total: 0.5, kind: 'shell', caliberMm: 125, t: 0.5 * (1 - progress), progress }); };
+  for (const progress of [0, 0.1, 0.5]) cycle(progress);
+  const started = starts();
+  me.combat.ammo.fill(0);
+  for (const progress of [0.6, 0.7]) cycle(progress);
+  me.combat.ammo.splice(0, stowed.length, ...stowed);
+  cycle(0.95);
+  assert.equal(starts(), started + 1, 'rounds back after a dry spell: the loader cycle restarts, not the stale plan');
+  // The mode's unlimited rounds (the ruleset table the HUD's shell cards read) never read spent, whatever the counters,
+  // in every ground-only unlimited mode (Juggernaut among them, after the rules head).
+  const unlimitedModes = GAME_MODE_IDS.filter((id) => matchRulesetFor(id).ammo === 'unlimited' && matchRulesetFor(id).aerial !== 'gunship');
+  assert.ok(unlimitedModes.includes('juggernaut'), `Juggernaut plays with unlimited rounds (${unlimitedModes})`);
+  const modeBefore = gameMode;
+  gameMode = 'juggernaut';
+  me.combat.ammo.fill(0);
+  const unlimitedStarts = starts();
+  for (const progress of [0, 0.3, 0.6, 0.9]) cycle(progress);
+  assert.equal(starts(), unlimitedStarts + 1, 'unlimited rounds at zero counters still run the loader cycle');
+  gameMode = modeBefore;
+  cycle(0.95); // finite again with nothing stowed: the half-played plan is dropped (no "done", no crew call)
+  // The AC-130 refills only its gunship (critic r3, matchRuleset rulesetUnlimitedFor): an escort at zero is dry and its
+  // crew loads nothing, while the gunship's cycle runs whatever its counters say.
+  gameMode = 'ac130';
+  const escortStarts = starts();
+  for (const progress of [0, 0.3, 0.6, 0.9]) cycle(progress);
+  assert.equal(starts(), escortStarts, 'an AC-130 escort out of rounds runs no loader cycle');
+  me.aerial = { kind: 'gunship' };
+  for (const progress of [0, 0.3, 0.6, 0.9]) cycle(progress);
+  assert.equal(starts(), escortStarts + 1, 'the gunship at zero counters still cycles: its rounds refill');
+  delete me.aerial;
+  gameMode = modeBefore;
+  cycle(0.95);
+  me.combat.ammo.splice(0, stowed.length, ...stowed);
+}
 
 // Being hit: exterior impact + interior response + a crew call in Russian.
 await probe.libraryIdle();

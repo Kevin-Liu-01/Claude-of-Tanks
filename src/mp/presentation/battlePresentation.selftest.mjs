@@ -168,6 +168,31 @@ presentation.applyEvent({ kind: 'tank_destroyed', payload: { id: 'foe', killerId
 assert.equal(busEvents.at(-1).type, 'tank:destroyed');
 assert.equal(busEvents.at(-1).payload.cause, 'ammorack');
 assert.deepEqual(busEvents.at(-1).payload.pos, [-91, 1.2, 64]);
+// (ac130-fx-228) a tank's own kill carries no source; the authority's AC-130 / drone source rides through, never a forged one
+assert.equal('source' in busEvents.at(-1).payload, false);
+{
+  const before = busEvents.length;
+  presentation.applyEvent({ kind: 'shell_hit', payload: { shellId: 9, shooterId: 'me', targetId: 'foe', attackerSource: 'ac130', kind: 'he_splash',
+    damage: 40, pos: [0, 0, 0], normal: [0, 1, 0], caliberMm: 152 } }, { own: false, feedbackPredicted: false });
+  const hit = busEvents.slice(before).find((e) => e.type === 'shell:hit');
+  assert.equal(hit?.payload.attackerSource, 'ac130', "the lethal hit's AC-130 source reaches the client");
+  assert.equal(hit?.payload.attackerId, 'me', 'the pilot stays the attacker');
+}
+// (r2) a forged hit source never reaches the client's bus (only the authority's two values ride)
+for (const [source, expected] of [['drone', 'drone'], ['vehicle', undefined], ['__proto__', undefined], ['<img>', undefined]]) {
+  const before = busEvents.length;
+  presentation.applyEvent({ kind: 'shell_hit', payload: { shellId: 10, shooterId: 'me', targetId: 'foe', attackerSource: source, kind: 'pen',
+    damage: 5, pos: [0, 0, 0], normal: [0, 1, 0], caliberMm: 90 } }, { own: false, feedbackPredicted: false });
+  const hit = busEvents.slice(before).find((e) => e.type === 'shell:hit');
+  assert.equal(hit?.payload.attackerSource, expected, `the ${source} hit source as the authority's values allow`);
+  if (expected === undefined) assert.equal('attackerSource' in (hit?.payload ?? {}), false, `a ${source} hit source is dropped`);
+}
+for (const [source, expected] of [['ac130', 'ac130'], ['drone', 'drone'], ['vehicle', undefined], ['<img>', undefined]]) {
+  presentation.applyEvent({ kind: 'tank_destroyed', payload: { id: `src-${source}`, killerId: 'me', cause: 'shot', source, x: 1, y: 0, z: 1 } },
+    { own: false, feedbackPredicted: false });
+  assert.equal(busEvents.at(-1).payload.source, expected, `the ${source} source passes through as the authority stamped it`);
+  assert.equal(busEvents.at(-1).payload.killerId, 'me');
+}
 presentation.applyFrame(frame({ tick: 128, entities: [sample(2, -91, 64, { hp: 0, flags: ENTITY_FLAGS.DESTROYED }), sample(3, 10.5, 10)] }));
 assert.deepEqual(destructionOrder, [['decals:1', null], ['wreck:1', true]], 'decals clear first, then the wreck pops its turret');
 assert.equal(foe.combat.destroyed, true);

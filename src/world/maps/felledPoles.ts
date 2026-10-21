@@ -207,7 +207,7 @@ function buildDownedWire(look: PoleLook, ground: (x: number, z: number) => numbe
 }
 
 /** Where props.ts set one felled pole's proxies (their frames), and the ground. */
-export interface FelledPoleSite {
+interface FelledPoleSite {
   mapId: string;
   ground: (x: number, z: number) => number;
   /** the stump cylinder's centre, height and lean (rotateZ) */

@@ -10,8 +10,9 @@
   "master": "studio.webm",
   "durationMs": 6600,
   "mimeType": "video/webm",
-  "bytes": 9482408,
+  "bytes": 179324117,
   "captureMode": "studio-ui",
+  "capture": "frame-stepped",
   "workspace": "director",
   "actors": [
     {
@@ -118,8 +119,8 @@
       "tMs": 4680
     }
   ],
-  "sha256": "15b1c4a4d91f45fef3234174d01bbb6b4f1727d78089b0c6db1919374cff3b82",
-  "frames": 200,
+  "sha256": "f829353652829096a59bd3bee56be703bfa19171879e7b66dbc7b1f021c70555",
+  "frames": 198,
   "alt": "Scene Studio on Frontier Basin at golden hour with the Director workspace open: a Type 10 rolls toward the lens as the T-90M it knocked out explodes and burns behind it, beside the sequence library, the Stage Sequence button and the site's takes as cards.",
-  "deliveredAt": "2026-10-14T02:44:19+00:00"
+  "deliveredAt": "2026-10-19T04:35:06+00:00"
 }

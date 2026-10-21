@@ -113,6 +113,29 @@ for (const medal of MEDALS) assert.ok(medalSVG(medal, 32).includes('<svg') && me
 assert.equal((achievementSVG(ACHIEVEMENTS[0], 2, 40).match(/<polygon/g) || []).length, 3);
 assert.match(achievementSVG(ACHIEVEMENTS[0], 0, 40), /is-locked/);
 
+// (ac130-fx-228 r3, the engineering critic: a multiplayer AC-130 battle's row and last-battle card named the garage tank
+// beside the kills) a battle the player flew in the gunship names the AC-130, with its icon, in both
+{
+  bus.emit('ui:battleStart', { specId: 't90am', mapId: 'verdant' });
+  clock = 400;
+  bus.emit('shell:fired', { shooterId: 'me', shellId: 900, caliberMm: 152 });
+  bus.emit('shell:hit', { attackerId: 'me', targetId: 'e1', shellId: 900, damage: 2100, kind: 'he_splash', destroyed: true, attackerSource: 'ac130' });
+  bus.emit('tank:destroyed', { id: 'e1', killerId: 'me', specId: 'spec-e1', cause: 'shot', source: 'ac130' });
+  bus.emit('battle:ended', { result: 'victory', mapId: 'verdant', durationS: 90, gameMode: 'ac130',
+    roster: [{ id: 'me', isPlayer: true, aircraft: true, team: 'player', alive: true, vehicle: 'AC-130', specId: 't90am' }] });
+  const flown = getServiceRecord();
+  assert.equal(flown.history[0].aircraft, true, 'the battle records that the player flew the AC-130');
+  const rows = recordTabMarkup('history', names, flown);
+  const first = rows.slice(rows.indexOf('<details'), rows.indexOf('</summary>'));
+  assert.match(first, /<b>AC-130<\/b>/, "the newest row names the AC-130");
+  assert.doesNotMatch(first, /veh:t90am/, 'not the garage tank');
+  assert.match(first, /cot-record-vehicle aircraft/, "the aircraft's icon in the picture's place");
+  const card = recordTabMarkup('overview', names, flown);
+  const last = card.slice(card.indexOf('cot-last-battle'));
+  assert.match(last, /cot-record-vehicle aircraft/, "the last-battle card shows the aircraft");
+  assert.match(last, /<b>AC-130 · map:verdant<\/b>/, 'and names it');
+}
+
 function medalNameOf(id) {
   return { chain_of_thought: 'Chain of Thought', step_by_step: 'Let Me Think Step by Step', zero_shot: 'Zero-Shot', few_shot: 'Few-Shot' }[id];
 }

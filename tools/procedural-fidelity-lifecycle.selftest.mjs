@@ -3,19 +3,24 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { validateSelectedIds, partitionConceptIds, conceptDesignPath } from './first-party-concept-policy.mjs';
 import {readConceptDesign} from './first-party-concept-record.mjs';
+import { boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions } from './tool-page-load.mjs';
 
 // Execute the actual entrypoint with injected resource APIs, never a browser,
 // listener, cache directory or generated report on the real filesystem.
 const source = fs.readFileSync(new URL('./procedural-fidelity.mjs', import.meta.url), 'utf8');
 const imports = source.match(/^import .+;$/gm);
-assert.equal(imports.length, 8, 'keep every entrypoint dependency explicitly injected');
+assert.equal(imports.length, 9, 'keep every entrypoint dependency explicitly injected');
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 const run = new AsyncFunction('fs', 'path', 'tmpdir', 'createServer', 'puppeteer', 'process', 'console',
   'FLEET_GROUP_BY_ID', 'validateSelectedIds', 'partitionConceptIds', 'readConceptDesign',
+  'boundOrigin', 'loadReadyPage', 'pageLoadBudget', 'toolServerOptions',
   source.replace(/^import .+;\n/gm, ''));
 
-async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, ids = ['fixture_x'], referenceAvailable = true) {
-  const events = [], logs = [], writes = [];
+// The server binds BOUND_PORT, not the port it asked for (a busy port moved on, R4c 2026-10-16): every URL must use it.
+const BOUND_PORT = 6931;
+async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, ids = ['fixture_x'], referenceAvailable = true,
+  navTimeouts = 0) {
+  const events = [], logs = [], writes = [], gotos = [];
   const primary = new Error(`injected ${failAt}`);
   const cleanup = new Map(cleanupFailures.map(stage => [stage, new Error(`injected ${stage}`)]));
   const step = (stage) => {
@@ -51,7 +56,14 @@ async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, 
     },
     on(event) { step(`page:on:${event}`); },
     async goto(url, options) {
-      assert.equal(options.timeout, 90000);
+      // the first (registry) load compiles cold: 180 s and one retry (tools/tool-page-load.mjs); the rest keep 90 s
+      assert.equal(options.timeout, url.endsWith('&registry=1') ? 180000 : 90000);
+      assert.ok(url.startsWith(`http://127.0.0.1:${BOUND_PORT}/tools/procedural-fidelity.html?`), `bound origin: ${url}`);
+      gotos.push(url);
+      if (url.endsWith('&registry=1') && navTimeouts > 0) {
+        navTimeouts--;
+        throw Object.assign(new Error('Navigation timeout of 180000 ms exceeded'), { name:'TimeoutError' });
+      }
       step('page:goto');
       currentUrl = url;
     },
@@ -69,6 +81,7 @@ async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, 
   };
   const server = {
     config:{ server:{ port:6700 } },
+    httpServer:{ address:() => ({ address:'127.0.0.1', family:'IPv4', port:BOUND_PORT }) },
     async listen() { step('server:listen'); },
     async close() { step('server:close'); },
   };
@@ -79,6 +92,8 @@ async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, 
   const createServer = async (options) => {
     assert.equal(options.cacheDir, cache);
     assert.deepEqual(options.optimizeDeps, { noDiscovery:true });
+    assert.deepEqual({ ...options.server, port:0 }, { host:'127.0.0.1', port:0, strictPort:false, hmr:false, watch:null });
+    assert.ok(options.server.port >= 6700 && options.server.port < 6920);
     step('server:create');
     return server;
   };
@@ -94,10 +109,11 @@ async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, 
   try {
     await run(fakeFs, path, () => '/fixture/tmp', createServer, puppeteer, process, console,
       { fixture_x:'fixture', unregistered_tank:'fixture', ztz100_prototype:'modern2', object695:'modern2', type100:'modern2' },
-      validateSelectedIds, partitionConceptIds, readConceptDesign);
+      validateSelectedIds, partitionConceptIds, readConceptDesign,
+      boundOrigin, loadReadyPage, pageLoadBudget, toolServerOptions);
   }
   catch (error) { failure = error; }
-  return { events, logs, writes, primary, cleanup, failure, process };
+  return { events, logs, writes, primary, cleanup, failure, process, gotos };
 }
 
 const allCleanup = ['browser:close', 'server:close', 'cache:close'];
@@ -201,4 +217,17 @@ for (const ids of [['fixture_x'], ['fixture_x','unregistered_tank']]) {
   assert.deepEqual(result.events.filter(event => event.endsWith(':close')), allCleanup);
 }
 
-console.log('procedural-fidelity-lifecycle: startup, cleanup, primary-error, scoring and registration-aware routing pass');
+// R4c (2026-10-16): a timed-out first load is retried once on the bound origin; a second timeout fails the run
+{
+  const retried = await scenario(null, [], true, ['fixture_x'], true, 1);
+  assert.equal(retried.failure, undefined, 'one timed-out first load is retried');
+  assert.equal(retried.gotos.filter(url => url.endsWith('&registry=1')).length, 2);
+  assert.equal(retried.writes.length, 2, 'the retried run publishes its report');
+  const twice = await scenario(null, [], true, ['fixture_x'], true, 2);
+  assert.match(twice.failure?.message ?? '', /Navigation timeout/, 'two timed-out first loads fail');
+  assert.equal(twice.gotos.length, 2, 'only one retry');
+  assert.deepEqual(twice.events.filter(event => event.endsWith(':close')), allCleanup);
+  assert.equal(twice.writes.length, 0);
+}
+
+console.log('procedural-fidelity-lifecycle: startup, cleanup, primary-error, scoring and registration-aware routing pass; bound origin, 180 s first load, one retry');

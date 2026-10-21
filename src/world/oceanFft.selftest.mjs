@@ -176,7 +176,7 @@ assert.deepEqual(['low', 'medium', 'high', 'ultra'].map(oceanFrameStride), [2, 2
   const field = createOceanField(renderer, smallSpectrum, state, { tier: 'desktop', preset: 'high' });
   assert.ok(field);
   assert.equal(field.grid.w, 0, 'inactive until the first transform');
-  assert.equal(field.displacement.value, null);
+  assert.ok(field.displacement.value === null);
   assert.equal(field.hs, smallSpectrum.hs);
   field.update(1 / 60);
   const renders = renderer.log.filter((e) => e[0] === 'render');
@@ -204,7 +204,7 @@ assert.deepEqual(['low', 'medium', 'high', 'ultra'].map(oceanFrameStride), [2, 2
   field.dispose();
   field.update(1 / 60);
   assert.equal(field.frames, 3, 'a disposed field never renders');
-  assert.equal(field.displacement.value, null); assert.equal(field.grid.w, 0);
+  assert.ok(field.displacement.value === null); assert.equal(field.grid.w, 0);
   const low = createOceanField(recordingRenderer(), smallSpectrum, state, { tier: 'desktop', preset: 'low' });
   low.update(1 / 60); assert.equal(low.frames, 0, 'low: the first frame is skipped');
   low.update(1 / 60); assert.equal(low.frames, 1, 'low: alternate frames transform');

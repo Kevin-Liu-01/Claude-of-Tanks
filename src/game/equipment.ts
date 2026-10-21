@@ -66,7 +66,7 @@ interface EquipmentCategory {
   label: string;
 }
 
-export interface EquipmentSpecLike {
+interface EquipmentSpecLike {
   era?: string | null;
   role?: string;
   gun?: {

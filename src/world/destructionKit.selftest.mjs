@@ -322,7 +322,7 @@ assert.deepEqual(results.collapse.result.hides, [{ section: null, partClass: nul
       spansSeen++;
       if (span.geometryId !== null) batchedSeen++;
       assert.equal(span.instanceId === null, span.geometryId === null, 'a batched span names its instance, a mesh span none');
-      assert.equal(span.position, span.mesh.geometry.getAttribute('position'), 'a span names its mesh\'s own positions');
+      assert.ok(span.position === span.mesh.geometry.getAttribute('position'), 'a span names its mesh\'s own positions');
       const tag = span.mesh.geometry.getAttribute('aDamage');
       assert.ok(tag, `the ${span.bucket} ${span.geometryId === null ? 'bucket' : 'batch'} is tagged`);
       assert.ok(span.first + span.count <= span.position.count && span.count % 3 === 0, 'whole triangles within the attribute');
@@ -357,7 +357,7 @@ assert.deepEqual(results.collapse.result.hides, [{ section: null, partClass: nul
     assert.ok(built.structureMaterials.some((e) => e.role === 'depth' && e.material === mesh.customDepthMaterial && e.mesh === mesh));
   }
   for (const entry of built.structureMaterials) {
-    if (!entry.mesh.geometry.getAttribute('aDamage')) assert.equal(entry.mesh.customDepthMaterial, undefined, 'a bucket without a structure is untouched');
+    if (!entry.mesh.geometry.getAttribute('aDamage')) assert.ok(entry.mesh.customDepthMaterial === undefined, 'a bucket without a structure is untouched');
   }
   // the patch: every distinct material once, the depth materials among them
   const { patchStructureMaterialEntries } = await import('./structureDamageSeam.ts');

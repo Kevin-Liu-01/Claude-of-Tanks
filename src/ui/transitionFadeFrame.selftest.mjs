@@ -6,6 +6,7 @@ import { createGarageFramePacer } from '../engine/garageFramePacer.ts';
 import { createGarageReturnRuntime } from '../game/garageReturnRuntime.ts';
 import { createGameState } from '../game/stateCore.ts';
 import { createTransition } from './transition.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 // Only the browser host and subsystem I/O are controlled here. The transition,
 // opacity barrier, frame/task scheduler, rematch/return owner, and rendered-frame
@@ -306,7 +307,7 @@ function assertHeld(fixture, label) {
   assert.equal(fixture.transition.holdingSceneForFadeIn, true, `${label}: scene hold remains owned`);
   assert.equal(fixture.game.phase, 'battle', `${label}: the old phase is intact`);
   assert.equal(fixture.reportVisible, true, `${label}: the result report has not been dismissed`);
-  assert.deepEqual(fixture.scene.children, [fixture.oldBattle], `${label}: scene roots have not changed`);
+  assert.deepEqual(graphLabels(fixture.scene.children), graphLabels([fixture.oldBattle]), `${label}: scene roots have not changed`);
   assert.deepEqual(fixture.lifecycleCalls, [], `${label}: no entry wait, teardown, or next-battle work`);
   const paintsBefore = fixture.paints.length;
   assert.deepEqual(fixture.tick(), ['schedule', 'network'],

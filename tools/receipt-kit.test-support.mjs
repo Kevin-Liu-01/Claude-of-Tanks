@@ -34,3 +34,52 @@ export function geometryHash(geometry, { layout = false, groups = false } = {}) 
   if (groups) hash.update(JSON.stringify(geometry.groups));
   return hash.digest('hex');
 }
+
+// A failing assert.equal/deepEqual on three.js objects dumps and diffs both operands whole (depth 1000, every typed-array
+// element): two scene graphs reached 28-40 GB in the 226 gate. tools/object3d-assert-lint.mjs bans those operands.
+const GRAPH_FLAGS = ['isObject3D', 'isBufferGeometry', 'isMaterial', 'isTexture', 'isSource', 'isBufferAttribute',
+  'isInterleavedBufferAttribute', 'isInterleavedBuffer', 'isSkeleton'];
+const graphSerials = new WeakMap();
+let nextGraphSerial = 1;
+
+/**
+ * A deepEqual-safe view of `value`: each three.js graph object (Object3D, geometry, attribute, material, texture) becomes
+ * a short identity label, `Mesh "hull" #12`, whose serial is fixed per object for the process, so two labels are equal
+ * exactly when they name the same object; so does a fixture's stand-in node with its own `parent`. Arrays, plain
+ * records, Maps and Sets are copied with their sharing and cycles kept; every other value stays itself.
+ */
+export function graphLabels(value, copies = new Map()) {
+  if (value === null || typeof value !== 'object') return value;
+  // A three.js object, or a fixture's stand-in node (anything that links up a tree through its own `parent`): deepEqual
+  // stops at the first identical reference, so these compare by identity.
+  if (GRAPH_FLAGS.some((flag) => value[flag] === true) || (!Array.isArray(value) && Object.hasOwn(value, 'parent'))) {
+    if (!graphSerials.has(value)) graphSerials.set(value, nextGraphSerial++);
+    const type = typeof value.type === 'string' && value.type ? value.type : value.constructor?.name ?? 'Object';
+    return `${type}${typeof value.name === 'string' && value.name ? ` ${JSON.stringify(value.name)}` : ''} #${graphSerials.get(value)}`;
+  }
+  if (copies.has(value)) return copies.get(value);
+  if (Array.isArray(value)) {
+    const copy = [];
+    copies.set(value, copy);
+    for (const item of value) copy.push(graphLabels(item, copies));
+    return copy;
+  }
+  if (value instanceof Map) {
+    const copy = new Map();
+    copies.set(value, copy);
+    for (const [key, item] of value) copy.set(graphLabels(key, copies), graphLabels(item, copies));
+    return copy;
+  }
+  if (value instanceof Set) {
+    const copy = new Set();
+    copies.set(value, copy);
+    for (const item of value) copy.add(graphLabels(item, copies));
+    return copy;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return value;
+  const copy = Object.create(prototype);
+  copies.set(value, copy);
+  for (const [key, item] of Object.entries(value)) copy[key] = graphLabels(item, copies);
+  return copy;
+}

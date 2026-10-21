@@ -19,7 +19,7 @@ import * as THREE from 'three';
 import type { FractureMaterial } from '../destructionKit.ts';
 import type { FractureFace, FractureLink, FractureLinkKind, FracturePiece, FractureRole, KitFractureAnatomy, Vec3 } from '../fractureAnatomy.ts';
 
-export interface CraftPieceSpec {
+interface CraftPieceSpec {
   role: FractureRole;
   material: FractureMaterial;
   face?: FractureFace;

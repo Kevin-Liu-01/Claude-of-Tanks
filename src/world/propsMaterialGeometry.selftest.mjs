@@ -8,6 +8,7 @@ import { mergePropsMaterialGeometrySteps, PROPS_CONVERSION_BATCH_LIMIT,
   PROPS_CONVERSION_BUDGET_MS } from './propsMaterialGeometry.ts';
 import { setShadowCasterProfile, shadowCasterProfileOf } from '../engine/renderLayers.ts';
 import { bindStructureSpans, tagStructureVertices } from './structureDamageSeam.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const owned = new Set();
 const own = geometry => { owned.add(geometry); return geometry; };
@@ -211,10 +212,10 @@ function structureCase() {
   assert.ok(tag && tag.array instanceof Uint16Array, 'the structure bucket is tagged');
   assert.equal(tag.getX(0), 0, 'the crate is no structure');
   assert.equal(tag.getX(36), 4, 'the wall is structure 3 (+1)');
-  assert.deepEqual(f.structureSpans.get(3).map(s => [s.mesh, s.first, s.count, s.partClass]), [[stone, 36, 36, 'wall']]);
+  assert.deepEqual(graphLabels(f.structureSpans.get(3).map(s => [s.mesh, s.first, s.count, s.partClass])), graphLabels([[stone, 36, 36, 'wall']]));
   assert.ok(stone.customDepthMaterial instanceof THREE.MeshDepthMaterial, 'it casts through a structure depth material');
-  assert.equal(wood.geometry.getAttribute('aDamage'), undefined, 'a bucket without a structure is untouched');
-  assert.equal(wood.customDepthMaterial, undefined);
+  assert.ok(wood.geometry.getAttribute('aDamage') === undefined, 'a bucket without a structure is untouched');
+  assert.ok(wood.customDepthMaterial === undefined);
   assert.deepEqual(f.structureMaterials.map(e => [e.bucket, e.role]), [['stone', 'surface'], ['stone', 'depth'], ['wood', 'surface']]);
   for (const mesh of f.group.children) { setShadowCasterProfile(mesh, null); mesh.geometry.dispose(); }
   f.material.dispose();
@@ -291,7 +292,7 @@ try {
     const error = console.error;
     try {
       console.error = () => {};
-      assert.equal(drain(mergePropsMaterialGeometrySteps(f.sources, 'invalid', () => 0)).geometry, null,
+      assert.ok(drain(mergePropsMaterialGeometrySteps(f.sources, 'invalid', () => 0)).geometry === null,
         'native incompatible-attribute result is unchanged');
     } finally { console.error = error; }
     assertReleased(f.converted); assertSourcesIntact(f.sources, f.sources.map(receipt));
@@ -320,7 +321,7 @@ try {
       assert.equal(iterator.next().done, true);
       assert.equal(m.group.children.length, 2);
       for (const mesh of m.group.children) {
-        own(mesh.geometry); assert.equal(mesh.material, m.material);
+        own(mesh.geometry); assert.ok(mesh.material === m.material);
         assert.equal(mesh.castShadow, true); assert.equal(mesh.receiveShadow, true);
         assert.equal(mesh.matrixAutoUpdate, false);
       }

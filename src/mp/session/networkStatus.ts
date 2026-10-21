@@ -30,7 +30,7 @@ export type NetworkHealthReason =
   | 'connecting' | 'live' | 'rtt' | 'jitter' | 'loss' | 'cadence' | 'stale' | 'corrections'
   | 'reconnecting' | 'stalled' | 'failed' | 'dropped' | 'closed' | 'left';
 
-export interface NetworkHealthLimits {
+interface NetworkHealthLimits {
   /** The window-minimum round trip at or above this (a busy client can only inflate a sample, never shrink one). */
   rttMs: number;
   /** The round-trip spread (median absolute deviation over the sample window) at or above this. */
@@ -91,13 +91,13 @@ export interface NetworkStatusMatchSource {
 }
 
 /** The peer-to-peer facts (P2 client lane): the session's in-place status object and its events. */
-export interface NetworkStatusP2pSource {
+interface NetworkStatusP2pSource {
   readonly p2p: Readonly<SessionP2pStatus> | null;
   onP2p(listener: (event: SessionP2pEvent) => void): Unsubscribe;
 }
 
 /** The subset of RoomClient the model reads. */
-export interface NetworkStatusRoomSource {
+interface NetworkStatusRoomSource {
   readonly phase: RoomClientPhase;
   readonly room: RoomSnapshot | null;
   readonly seat: number | null;
@@ -226,7 +226,7 @@ export type NetworkBanner =
   | { kind: 'degraded'; reason: NetworkHealthReason }
   | null;
 
-export interface NetworkStatusModelOptions {
+interface NetworkStatusModelOptions {
   clock?: () => number;
   /** How often `update()` samples the sources (the surfaces paint at this cadence). */
   sampleIntervalMs?: number;

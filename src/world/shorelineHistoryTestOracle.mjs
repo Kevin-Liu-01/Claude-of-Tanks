@@ -14,7 +14,7 @@ const clamp01 = x => Math.max(0, Math.min(1, x));
 // checks; the guard also rejects a caller replacing a canonical descriptor.
 const currentRelief = new Map([frontier, alpine].map(cfg => [cfg.id,
   structuredClone(cfg.terrain.landforms.map(form => form.relief))]));
-export function historicalPlayableReliefInput(cfg) {
+function historicalPlayableReliefInput(cfg) {
   if (!currentRelief.has(cfg.id)) return cfg;
   assert.deepEqual(cfg.terrain.landforms.map(form => form.relief), currentRelief.get(cfg.id),
     `${cfg.id}: current playable relief must match canonical descriptors before historical projection`);
@@ -51,14 +51,14 @@ const currentBadlandsAuthoring = structuredClone(badlandsAuthoring(badlands));
  * Redrock's treeline 0 postdate every frozen horizon golden. Project them back so the immutable config digests
  * keep guarding everything else; the live values are guarded by horizonResources / horizonMesaSurface.
  */
-export function historicalVistaGroundInput(cfg) {
+function historicalVistaGroundInput(cfg) {
   if (!cfg.horizon || !('ground' in cfg.horizon)) return cfg;
   const { ground: _laterVistaGround, ...horizon } = cfg.horizon;
   if (cfg.id === 'badlands') horizon.treeline = 0.06;
   return { ...cfg, horizon };
 }
 
-export function historicalBadlandsInput(cfg) {
+function historicalBadlandsInput(cfg) {
   if (cfg.id !== 'badlands') return cfg;
   assert.deepEqual(badlandsAuthoring(cfg), currentBadlandsAuthoring,
     'current Badlands authoring must match its canonical config before historical projection');
@@ -101,7 +101,7 @@ export function historicalBadlandsInput(cfg) {
 // court authoring and output are independently checked by foundryServiceCourt.
 // The later material-only villageWear/townWear pair is independently guarded
 // by villageWear's actual Foundry masks; no historical golden is refreshed.
-export function historicalFoundryServiceInput(cfg) {
+function historicalFoundryServiceInput(cfg) {
   if (cfg.id !== 'foundry') return cfg;
   const { workedGround: _laterCourtWear, villageWear: _laterCoverage, ...terrain } = cfg.terrain;
   const { foundryServiceCourt: _laterCourt, ...props } = cfg.props;
@@ -155,7 +155,7 @@ export function historicalShorelineConfig(cfg) {
 // (the commit immediately before the tests landed). The exact parent is
 // f4854d5132577f0be491de542ea5a850a82800dc; Reservoir's source Git blob is
 // df9812021b188253d21fe029dba193fe4d8f124d. Retain those inputs too.
-export function historicalReservoirConfig(cfg) {
+function historicalReservoirConfig(cfg) {
   const { navigationWaterPolicy: _laterPolicy, ...base } = cfg;
   const { hardstands: _laterHardstand, ...terrain } = cfg.terrain;
   return { ...base, terrain: { ...terrain, roads: { paths: [

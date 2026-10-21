@@ -99,7 +99,7 @@ export function resolveFarRangeAmp(settings: HorizonFarRangeSettings, deckBaseM:
 }
 
 /** Pure geometry (world xz, heights), for the mesh and the receipts. */
-export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'seed' | 'settings' | 'deckBaseM' | 'seaOpenings' | 'nearEdge' | 'massif' | 'escarpment'>): HorizonFarRangeGeometry {
+export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'seed' | 'settings' | 'deckBaseM' | 'seaOpenings' | 'nearEdge' | 'massif' | 'escarpment' | 'airless'>): HorizonFarRangeGeometry {
   const { settings: s, seed } = options;
   const n = options.nearEdge?.columns ?? HORIZON_FAR_SEGMENTS, rows = HORIZON_FAR_ROWS;
   const noise = new SimplexNoise({ random: mulberry32(seed >>> 0) });
@@ -249,6 +249,20 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
   // to its shoulder (the ranged crests through the bed stair alone were stepped pyramids — the far horns over Redrock,
   // Oasis and Sirocco in the mountains-lane census)
   const tableScratch = plateaus ? new Float32Array(n) : null;
+  // (the Earthrise 228 rebuild, round 2; the blind critics' "fence" along the far skyline) an airless map's far ranges are
+  // gardened smooth under their regolith: each row is smoothed along its columns (two [1, 2, 1] passes) so no column
+  // stands proud of its neighbours — the column-to-column relief (60 m facets) shaded as a palisade of light and dark
+  // stripes at 2.6 km with no air to soften it; the rows' step clamp below then runs as before
+  if (options.airless) {
+    const smooth = new Float32Array(n);
+    for (let row = 1; row < rows.length; row++) {
+      const off = row * n;
+      for (let pass = 0; pass < 2; pass++) {
+        for (let k = 0; k < n; k++) smooth[k] = (heights[off + (k - 1 + n) % n] + 2 * heights[off + k] + heights[off + (k + 1) % n]) / 4;
+        heights.set(smooth, off);
+      }
+    }
+  }
   for (let row = 1; row < rows.length; row++) {
     const off = row * n;
     if (tableScratch) openRowTables(heights, off, n, Math.max(2, Math.round(FAR_TABLE_HALF_M / (rows[row].r * TAU / n))), tableScratch);
@@ -362,6 +376,10 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
     uFGains: { value: new THREE.Vector2(options.gains.ambient, options.gains.sunGain) },
     uFRock: { value: options.rock.clone() }, uFSnow: { value: options.snow.clone() }, uFFog: { value: fog.clone() },
     uFSnowline: { value: s.snowline <= 1 ? s.snowline : 2 }, uFDetailOn: { value: detail ? 1 : 0 },
+    // (the Earthrise 228 rebuild, round 2; the blind critics' "fence" along the far skyline) 1 on an airless map: no water
+    // ever cut its ranges, so no striations stand on their faces (they read as palisades at 2.6 km), and a face the sun
+    // leaves takes no sky's blue
+    uFAirless: { value: options.airless ? 1 : 0 },
     // (Part 1, 2026-10-05: the clouds' shadows on the sun's term, as the panorama that replaces this range takes them —
     // the layer's shared shade map, pointed at each draw; w 0 = off)
     tCotCloudShade: { value: null as THREE.Texture | null }, uCotCloudShade: { value: new THREE.Vector4(0, 0, 1 / 12000, 0) },
@@ -372,7 +390,7 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec3 aFarNormal; attribute vec4 aFarParam;\nvarying vec3 vFPos; varying vec3 vFNrm; varying vec4 vFPar; varying vec3 vFWorld;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFPos = position; vFNrm = aFarNormal; vFPar = aFarParam; vFWorld = (modelMatrix * vec4(position, 1.0)).xyz;');
-    shader.fragmentShader = 'uniform sampler2D uFDetail; uniform vec3 uFSun; uniform vec2 uFGains; uniform vec3 uFRock; uniform vec3 uFSnow; uniform vec3 uFFog; uniform float uFSnowline; uniform float uFDetailOn;\nvarying vec3 vFPos; varying vec3 vFNrm; varying vec4 vFPar; varying vec3 vFWorld;\n' + CLOUD_SHADE_PARS_GLSL + shader.fragmentShader
+    shader.fragmentShader = 'uniform sampler2D uFDetail; uniform vec3 uFSun; uniform vec2 uFGains; uniform vec3 uFRock; uniform vec3 uFSnow; uniform vec3 uFFog; uniform float uFSnowline; uniform float uFDetailOn; uniform float uFAirless;\nvarying vec3 vFPos; varying vec3 vFNrm; varying vec4 vFPar; varying vec3 vFWorld;\n' + CLOUD_SHADE_PARS_GLSL + shader.fragmentShader
       .replace('#include <color_fragment>', /* glsl */`#include <color_fragment>
       {
         float hT = vFPar.x, haze = vFPar.y, rib = vFPar.z, marine = vFPar.w;
@@ -387,7 +405,7 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
           // 454 tiles around at 2.6 km = 36 m across a striation, 150 m down it: at 2.5-4 m per pixel a 12 m field
           // minified into a dotted grey (the first try)
           float ang = atan(vFPos.z, vFPos.x) * 0.15915494309;
-          fS = (texture2D(uFDetail, vec2(ang * 454.0 + fA * 0.35, vFPos.y * 0.0067) + vec2(0.61, 0.27)).r - 0.5) * 3.0;
+          fS = (texture2D(uFDetail, vec2(ang * 454.0 + fA * 0.35, vFPos.y * 0.0067) + vec2(0.61, 0.27)).r - 0.5) * 3.0 * (1.0 - uFAirless);
         }
         // the six-row mesh carries a face's slope at 0.10-0.16 (1 - n.y) where the near ring's stands at 0.2-0.4, so the
         // striations, not the geometry, make the faces: they tilt the normal about the face's horizontal tangent (a
@@ -417,8 +435,8 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
         float ndl = dot(n, uFSun);
         float sky = 0.55 + 0.45 * n.y;
         float shade = uFGains.x * sky + uFGains.y * max(ndl, 0.0) * cotCloudSun(vFWorld);
-        col *= shade * (1.0 + rib * 0.14);
-        col = mix(col, col * vec3(0.90, 0.94, 1.08), clamp(-ndl, 0.0, 1.0) * 0.35);
+        col *= shade * (1.0 + rib * 0.14 * (1.0 - uFAirless));
+        col = mix(col, col * vec3(0.90, 0.94, 1.08), clamp(-ndl, 0.0, 1.0) * 0.35 * (1.0 - uFAirless));
         // the sea sectors are the low sky, like the ring's far apron
         col = mix(col, uFFog * 0.9, marine);
         // aerial perspective by row: bluer and lighter with distance, never gone

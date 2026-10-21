@@ -32,8 +32,8 @@ try {
   const racks = receipt.bustleRackNames.map((name) => turretRig.getObjectByName(name));
   assert.ok(racks.every(Boolean), 'both named bustle rack assemblies are present');
   for (const rack of racks) {
-    assert.equal(rack.parent, turretRig, `${rack.name} is directly turret-owned`);
-    assert.equal(hullRig.getObjectByName(rack.name), undefined,
+    assert.ok(rack.parent === turretRig, `${rack.name} is directly turret-owned`);
+    assert.ok(hullRig.getObjectByName(rack.name) === undefined,
       `${rack.name} no longer remains stranded on the hull`);
   }
 

@@ -55,9 +55,9 @@ for (const id of DECLARED) {
     assert.notEqual(deck.regime, 'overcast', `${id}: no stratus sheet`);
     assert.equal(resolveOvercast(sky), 0, `${id}: the sun lights the yard (the cumulus regime casts shadows)`);
     const before = getGarageSkyPreset(id);
-    // (the battlefield's own sky block is the overcast for Frosthollow and Ironworks; Cinder Junction's battlefield is the
-    // same hazy summer cumulus its yard draws: the coordinator's ruling, 2026-10-16)
-    if (id !== 'railyard') assert.ok(resolveOvercast({ ...before, ...sun }) > 0.5, `${id}: (the battlefield's own sky is the overcast)`);
+    // (the battlefield's own sky block is the overcast for Frosthollow; Cinder Junction's battlefield is the same hazy
+    // summer cumulus its yard draws: the coordinator's ruling, 2026-10-16; Ironworks' since the 228 census, 2026-10-18)
+    if (id === 'winter') assert.ok(resolveOvercast({ ...before, ...sun }) > 0.5, `${id}: (the battlefield's own sky is the overcast)`);
     // what the Garage draws before the cloudscape resolver is ever loaded
     garageSkies.push({ id, sun, sky, drawn: norm(deriveCloudLayerPreset(sky)) });
   }

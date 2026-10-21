@@ -54,7 +54,8 @@ export interface StudioLightRuntime {
   /** The Studio actors whose authored lamps (headlights) join the blue-hour and night emitters. */
   setActorRoots(roots: readonly THREE.Object3D[]): void;
   /** Per rendered Studio frame (and before a capture): place the pooled lamps nearest the camera. */
-  update(cameraPosition: THREE.Vector3Like): void;
+  /** `cameraForward`: the view direction (the lamps ahead of the camera take the pooled lights). */
+  update(cameraPosition: THREE.Vector3Like, cameraForward?: THREE.Vector3Like): void;
   /** Put every mutated world value, the lamps and the readability back (the sky belongs to the battle atmosphere owner). */
   restore(): void;
   readonly plan: StudioLightPlan | null;
@@ -324,9 +325,9 @@ export function createStudioLightRuntime(options: StudioLightRuntimeOptions): St
     if (nightRoot) syncNight();
   }
 
-  function update(cameraPosition: THREE.Vector3Like): void {
+  function update(cameraPosition: THREE.Vector3Like, cameraForward?: THREE.Vector3Like): void {
     if (!nightRoot || !night) return;
-    night.update(cameraPosition);
+    night.update(cameraPosition, true, cameraForward);
     // update() re-assigns each pooled light's emitter intensity; scale it for this time (deterministic, per frame)
     const scale = (current && LAMP_LIGHT_SCALE[current.time]) ?? 1;
     if (scale !== 1) for (const light of night.lights) light.intensity *= scale;

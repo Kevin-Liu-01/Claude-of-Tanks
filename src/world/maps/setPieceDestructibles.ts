@@ -40,8 +40,6 @@ const DENSE_KINDS: ReadonlySet<string> = new Set(KINDS.filter((kind) => SET_PIEC
 
 /** Whether a collision record's kind is a set piece that stops a round (collision.ts isDenseCrushableCover). */
 export function isDenseSetPieceKind(kind: string | undefined): boolean { return !!kind && DENSE_KINDS.has(kind); }
-/** Whether a collision record's kind is any set piece. */
-export function isSetPieceKind(kind: string | undefined): boolean { return !!kind && kind.startsWith('setpiece_'); }
 
 /** The set pieces' destructible types (props.ts LOCAL_TYPES): seated on the ground under their corners, as a parked
  *  vehicle is; their own builds (the painted vertex colours, props.ts draws them with the baked family's material);
@@ -116,7 +114,7 @@ export function rollingStockDestructibleTypes(mobile = false): Record<string, De
 // their break swaps to the collapsed build, drawn with the baked material.
 
 /** The destructible kind a tram registers as: Sarajevo's K2 or Blackglass's Shanghai car (tramShanghai.ts). */
-export type TramKind = 'k2' | 'shanghai'; // the Sarajevo K2 tram's kind, not a tank id (tank-ids:keep)
+type TramKind = 'k2' | 'shanghai'; // the Sarajevo K2 tram's kind, not a tank id (tank-ids:keep)
 export function tramDestructibleKind(kind: TramKind): string { return `tram_${kind}`; }
 
 export function tramDestructibleTypes(mobile = false): Record<string, DestructiblePropType> {

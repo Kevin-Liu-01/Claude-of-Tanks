@@ -172,7 +172,7 @@ function assertBarakSensorDispatch(visual) {
   assert.ok(whips?.isInstancedMesh && whips.count === 2
     && whips.geometry.getAttribute('position')?.count > 0,
   'Barak dispatch emits the actual aerial pair, not only a receipt');
-  assert.equal(whips.parent, turret, 'Barak aerials belong to the turret yaw rig');
+  assert.ok(whips.parent === turret, 'Barak aerials belong to the turret yaw rig');
   visual.root.updateMatrixWorld(true);
   assert.ok(new THREE.Box3().setFromObject(whips).max.y > 5.60,
     'actual aerial stock reaches the registered source height');

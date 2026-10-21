@@ -427,7 +427,7 @@ await withFixture(async f => {
       release();
       const settled = await outcome;
       const succeeded = ['success', 'ordinary-coarse'].includes(when);
-      if (succeeded) assert.equal(settled.value, result);
+      if (succeeded) assert.ok(settled.value === result);
       else assert.equal(settled.error, originalFailure, 'cleanup must preserve even falsy thrown values');
       assert.equal(cancels, succeeded ? 0 : 1);
       assert.equal(closes, succeeded ? 0 : 1);

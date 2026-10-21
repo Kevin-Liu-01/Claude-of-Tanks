@@ -10,11 +10,11 @@ import * as THREE from 'three';
 import { SHADOW_CASTER_LAST_CASCADE, setShadowCasterCascades } from '../engine/renderLayers.ts';
 
 /** A hedged stretch: world points ~8 m apart along a field boundary, each with the hedge's presence (0..1). */
-export interface HedgeLine { xs: number[]; zs: number[]; w: number[] }
+interface HedgeLine { xs: number[]; zs: number[]; w: number[] }
 
-export interface HedgePalette { hue: number; sat: number; l0: number; l1: number }
+interface HedgePalette { hue: number; sat: number; l0: number; l1: number }
 
-export interface BorderHedgerowOptions {
+interface BorderHedgerowOptions {
   seed: number;
   lines: readonly HedgeLine[];
   /** The rendered ground at (x, z) (the ring's seated surface); NaN where there is none. */

@@ -41,7 +41,9 @@ export type LandmarkKind =
   // works: a mine's (mining.ts)
   | 'headframe' | 'oreBin' | 'conveyor' | 'oreCars'
   // a fjord farm's works (fjordWorks.ts)
-  | 'hayRack' | 'fishRack' | 'stabbur';
+  | 'hayRack' | 'fishRack' | 'stabbur'
+  // Taurus-Littrow Station's (lunar.ts): Challenger's site, the oxygen works and its front, the solar towers, the commons, the repeaters
+  | 'apolloSite' | 'isruWorks' | 'solarTower' | 'stationDome' | 'relayRepeater';
 
 /** A kind's parameters: numbers (metres, counts), choices (strings) and switches. */
 export type LandmarkParams = Readonly<Record<string, number | string | boolean>>;
@@ -88,7 +90,7 @@ export interface LandmarkPlacement {
 }
 
 /** One door's worn ground (LandmarkPlacement.approaches). */
-export interface LandmarkApproach {
+interface LandmarkApproach {
   /** The face the door is in, in the piece's frame at its footprint's edge: front +z, back -z, right +x, left -x. */
   side: 'front' | 'back' | 'left' | 'right';
   /** The door's offset along that face from its middle (m): toward +x on the front and back, toward +z on the sides. */

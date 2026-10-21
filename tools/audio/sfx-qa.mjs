@@ -15,7 +15,7 @@ import { deinterleave, wavFromS16, ffmpeg, bandEnergy, peakDb, rmsDb, transientA
 const SR = 48000;
 
 /** Mono mix of a raw stereo s16 48 kHz take. */
-export function loadTake(file) {
+function loadTake(file) {
   const [l, r] = deinterleave(readFileSync(file), 2);
   const mono = new Float32Array(l.length);
   for (let i = 0; i < l.length; i++) mono[i] = 0.5 * (l[i] + r[i]);

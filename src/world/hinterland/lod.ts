@@ -28,12 +28,9 @@ export interface HinterlandLodOptions {
 export const HINTERLAND_LOD_DESKTOP: Readonly<HinterlandLodOptions> = Object.freeze({
   rootHalfM: 81_920, minSizeM: 64, holeHalfM: 512, k: 2.4, maxNodes: 1400,
 });
-export const HINTERLAND_LOD_MOBILE: Readonly<HinterlandLodOptions> = Object.freeze({
-  rootHalfM: 49_152, minSizeM: 128, holeHalfM: 512, k: 1.6, maxNodes: 600,
-});
 
 /** A side-plane frustum test for an axis-aligned box (true: some of it may be in view). */
-export type HinterlandBoxVisible = (minX: number, minY: number, minZ: number, maxX: number, maxY: number, maxZ: number) => boolean;
+type HinterlandBoxVisible = (minX: number, minY: number, minZ: number, maxX: number, maxY: number, maxZ: number) => boolean;
 
 /**
  * Select the nodes for a camera. `fovDeg` is the camera's vertical field of view (the scope narrows it); `heightRange`

@@ -25,7 +25,7 @@ for(const id of SECOND_WAVE_X_IDS){
     for(const name of ['hull','rig_hull','rig_turret','rig_gun'])
       assert.ok(tank.root.getObjectByName(name),`${id}: loaded native ${name}`);
     if(id==='jpz_e100'){
-      assert.equal(tank.root.getObjectByName('turret'),undefined,
+      assert.ok(tank.root.getObjectByName('turret') === undefined,
         'the E100 casemate is fixed hull stock, not a rotating turret');
       const hull=tank.root.getObjectByName('hull');
       hull.geometry.computeBoundingBox();

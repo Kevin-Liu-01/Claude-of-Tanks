@@ -8,7 +8,7 @@ import { LocalFrame, PartSink, faceBox, facePoint, shade, type EmitOptions, type
 import { recordLattice } from './lattice.ts';
 
 /** A boat's lines: the hull a builder draws (boatHull). */
-export interface HullSpec {
+interface HullSpec {
   length: number;
   beam: number;
   /** the side's height amidships, keel to gunwale */

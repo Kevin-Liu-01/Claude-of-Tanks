@@ -18,7 +18,7 @@ import { dressedCourse } from './coursedWallKit.ts';
 export interface DressingGround { getHeightAt(x: number, z: number): number }
 
 /** The winter maps' wind, toward which the snow lenses trail (maps/mapKits.ts WINTER_WIND_YAW): downwind (cos, -sin). */
-export const SNOW_WIND_YAW = -0.6;
+const SNOW_WIND_YAW = -0.6;
 
 export function dressingRng(seed: number): () => number {
   let a = seed | 0;
@@ -85,7 +85,7 @@ function mergeParts(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
 
 // ------------------------------------------------------------------------------------------------ the snow load
 
-export interface SnowLoadOptions {
+interface SnowLoadOptions {
   /** The geometry repeats along z (a wall module): both ends meet the next one's cushion at one height. */
   seamless?: boolean;
   /** Bin length along z (m). */
@@ -468,7 +468,7 @@ export function buildMudApron(
 
 // ------------------------------------------------------------------------------------------------ the run's owner
 
-export interface WallDressingOptions {
+interface WallDressingOptions {
   ground: DressingGround;
   /** A snow map: the drift against the windward face, the snow load on the heads. */
   snow: boolean;
@@ -501,7 +501,7 @@ export interface WallDressingOptions {
   turf?: { meshAt(x: number, z: number): number; foldAt: ((x: number, z: number) => number) | null };
 }
 
-export interface WallDressing {
+interface WallDressing {
   readonly snow: boolean;
   readonly adobeBucket: string;
   readonly mudUv: number;
@@ -540,7 +540,7 @@ export interface WallDressing {
   breachTumble(adobe: boolean, x: number, z: number, ox: number, oz: number, half: number): THREE.BufferGeometry | null;
 }
 
-export type BrickPierCap = 'rollschicht' | 'saddleback' | 'hipped' | 'block' | 'slab';
+type BrickPierCap = 'rollschicht' | 'saddleback' | 'hipped' | 'block' | 'slab';
 const PIER_CAPS: Readonly<Record<string, BrickPierCap>> = Object.freeze({
   ruhr: 'rollschicht', saar: 'rollschicht', franconian: 'saddleback', shanghai: 'hipped', glencanyon: 'block',
 });

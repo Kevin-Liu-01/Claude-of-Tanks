@@ -27,6 +27,3 @@ export function killPresentation(context: KillContext) {
   return { cause, icon, label, relation, relationIcon: relation === 'self' ? 'killSelf' : relation === 'friendly' ? 'killFriendly' : 'player', relationLabel: relation ? t(`hud.kill.${relation}`) : '' };
 }
 
-export function isDroneStrike(event: { shellName?: string | null }): boolean {
-  return event.shellName === 'FPV shaped charge';
-}

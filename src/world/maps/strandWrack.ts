@@ -37,7 +37,7 @@ export interface StrandHeightField {
   _waterWetnessAt?(x: number, z: number): number;
 }
 
-export interface StrandBuckets {
+interface StrandBuckets {
   wood: THREE.BufferGeometry[];
   baked?: THREE.BufferGeometry[];
 }
@@ -49,7 +49,7 @@ export interface StrandJetty { x0: number; z0: number; x1: number; z1: number; r
 /** A landing's shore end and its azimuth from the lake centre: the larger pieces gather beside it. */
 export interface StrandLanding { x: number; z: number; angle: number }
 
-export interface StrandGroundingReceipt {
+interface StrandGroundingReceipt {
   kind: string;
   x: number;
   y: number;
@@ -73,7 +73,7 @@ export interface StrandContext {
   groundingReceipts?: StrandGroundingReceipt[] | null;
 }
 
-export interface StrandWrackCensus {
+interface StrandWrackCensus {
   lakes: number;
   stations: number;
   mats: number;
@@ -84,7 +84,7 @@ export interface StrandWrackCensus {
 }
 
 /** The strand at one azimuth, in metres from the disc centre: the water's edge and where the sand ends. */
-export interface StrandBand { edge: number; sandEnd: number }
+interface StrandBand { edge: number; sandEnd: number }
 
 const TAU = Math.PI * 2;
 const EXTENT_M = 470;
@@ -108,7 +108,7 @@ const _quat = new THREE.Quaternion();
 const _color = new THREE.Color();
 
 /** Round 67: a station's own stream (terrain.ts's mulberry32) from the lake's salt and the station's index. */
-export function stationStream(salt: number, index: number): Rng {
+function stationStream(salt: number, index: number): Rng {
   let a = (Math.imul(salt | 0, 0x9e3779b1) ^ Math.imul(index + 1, 0x85ebca6b)) | 0;
   return function () {
     a = a + 0x6D2B79F5 | 0;

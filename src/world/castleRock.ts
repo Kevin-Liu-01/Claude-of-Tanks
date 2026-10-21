@@ -29,7 +29,7 @@ export interface CastleGround {
 }
 
 /** One castle rock: the knoll it skins and what is cut into it. */
-export interface CastleRockSpec {
+interface CastleRockSpec {
   x: number;
   z: number;
   /** The knoll's radii (the rays search 1.5 x the larger). */
@@ -52,7 +52,7 @@ interface CastleMass {
   y1: number;
 }
 
-export interface CastleRockBuild {
+interface CastleRockBuild {
   geometry: THREE.BufferGeometry | null;
   masses: CastleMass[];
   triangles: number;
@@ -100,7 +100,7 @@ const lerp3 = (a: V3, b: V3, t: number): V3 => [a[0] + (b[0] - a[0]) * t, a[1] +
  * bed runs on from rock to rock across the valley), cream, rose and grey-white, wavering a little along the run.
  * Returns [rose, white] weights in [0, 1].
  */
-export function tuffBands(x: number, y: number, z: number, noise: SimplexNoise): [number, number] {
+function tuffBands(x: number, y: number, z: number, noise: SimplexNoise): [number, number] {
   const wob = noise.noise(x * 0.013 + 3.7, z * 0.013 - 1.9) * 0.9 + noise.noise(x * 0.061, z * 0.061 + 5.3) * 0.25;
   const yy = y + wob;
   const band = Math.sin(yy * 1.85 + 0.6) + 0.55 * Math.sin(yy * 0.69 + 2.1) + 0.3 * Math.sin(yy * 4.1 + 1.3);

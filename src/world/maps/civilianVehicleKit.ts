@@ -156,7 +156,7 @@ function canonicalSolid(entry: FleetEntry, role: CivilianVehicleKind): THREE.Buf
 }
 
 /** A role's collision on a fleet: its visible half extents and the contact band of its solids. */
-export interface VehicleFootprint { hw: number; hl: number; contactBand: StructureCollisionRuntimeBand }
+interface VehicleFootprint { hw: number; hl: number; contactBand: StructureCollisionRuntimeBand }
 const FOOTPRINTS = new Map<string, VehicleFootprint>();
 const mm = (v: number) => Math.round(v * 1000) / 1000;
 
@@ -239,7 +239,7 @@ export const CIVILIAN_VEHICLE_RECEIPTS = {
   truckflatbed: receipt('truckflatbed'),
 } satisfies Record<CivilianVehicleKind, RoleBox & { build: Builder; broken: Builder; footprint: () => VehicleFootprint }>;
 
-export interface CivilianVehicleOverride {
+interface CivilianVehicleOverride {
   build: Builder;
   broken: Builder;
   instancePaint: (out: THREE.Color, x: number, z: number, slot: number) => void;

@@ -43,7 +43,7 @@ f.state.night = true;
 await f.access.prepare();
 assert.equal(f.state.loads, 1); assert.equal(f.state.scans, 1);
 assert.deepEqual(f.state.calls, [['reset'], ['prepare', true], ['update', true]], 'night first uniforms warm under cover even before phase activation');
-assert.equal(f.state.sources.length, 2); assert.strictEqual(f.state.sources[0].root, f.world);
+assert.equal(f.state.sources.length, 2); assert.ok(f.state.sources[0].root === f.world);
 const source = f.state.sources[1];
 assert.equal(source.isActive(), false, 'unspotted enemy has no light even if presentation is fading');
 f.state.spotted = true; assert.equal(source.isActive(), true);
