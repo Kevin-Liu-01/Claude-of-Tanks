@@ -223,8 +223,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/tank-sealed-check.selftest.mjs',
     // 2026-10-17 (227 gun-gaps): the nine closed gun junctions at rest/elevation/depression and a seeded tube pull
     'tools/gun-junction-census.selftest.mjs',
-    // 2026-10-21 (230 gun-barrel alignment): every combat barrel runs down its drawn gun; re-measures two rows, seeded trunnion
-    'tools/gun-barrel-align-census.selftest.mjs',
     'tools/reference-supplement.selftest.mjs',
     'tools/fidelity-component-floor.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',

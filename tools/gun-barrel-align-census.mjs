@@ -31,8 +31,8 @@
 //
 // --ledger keeps one row per tank (status, kind, mouths, the worst reading of each measure) bound to the tank's turret
 // and gun group digests in docs/references/fleet-geometry-ledger.json (the hull group too for a gun fixed in the hull)
-// and to tools/gun-barrel-align.mjs combatBarrelDigest of its spec, so the receipt
-// (tools/gun-barrel-align-census.selftest.mjs) holds the whole fleet without building a tank. --update re-measures and
+// and to tools/gun-barrel-align.mjs combatBarrelDigest of its spec, so a receipt can hold the whole fleet without
+// building a tank (the ledger and its receipt land after 230: the owner's 2026-10-21 ship-without-checks ruling). --update re-measures and
 // writes the rows for --ids (or --all); --check re-measures them and compares, failing on a moved reading or a stale
 // binding. --gate exits non-zero when a measured tank is not aligned. --seed-pivot-m=<m> raises the combat trunnion by
 // m metres in the census's copy (the negative control): it must read as a ~m offset.
@@ -419,13 +419,21 @@ const report = ids.map(censusOne);
 if (RIGS_PATH) {
   const { applyCombatGunRig } = await import('../src/vehicles/combatAnatomy.ts');
   const rows = { ...COMBAT_GUN_RIGS };
+  const combat = (r) => { const a = getSpec(r.id).armor; return { turretPivot: a.turretPivot, gunPivot: a.gunPivot, lengthM: a.gunBarrel.lengthM }; };
   const rowFor = (r) => {
     const m = r.measuredRig, held = rows[r.id];
     if (!m || r.kind !== 'turret') return { skip: m ? `${r.kind} gun` : 'no measured bore (launcher or unmeasured tube)' };
-    if (m.restAngleDeg > T.angleDeg) return { skip: `drawn bore ${m.restAngleDeg} deg off the hull's +Z at rest` };
+    // A tube drawn askew on its own rig_gun (a visual fault the combat barrel cannot follow) still takes its measured
+    // pivots and length; past 2 deg the measurement itself is not trusted.
+    if (m.restAngleDeg > 2) return { skip: `drawn bore ${m.restAngleDeg} deg off the hull's +Z at rest` };
     const combatRadius = r.detail?.[0]?.combatRadiusMm / 1000;
     const radius = m.radiusM !== null && (held?.radiusM !== undefined || Math.abs(combatRadius - m.radiusM) > T.radiusM);
-    return { row: { turretPivot: m.turretPivot, gunPivot: m.gunPivot, lengthM: m.lengthM, ...(radius ? { radiusM: m.radiusM } : {}) } };
+    const row = { turretPivot: m.turretPivot, gunPivot: m.gunPivot, lengthM: m.lengthM, ...(radius ? { radiusM: m.radiusM } : {}) };
+    // a row that would only restate the combat frame (within a millimetre) is not written
+    const same = (a, b) => a && b && a.every((v, i) => Math.abs(v - b[i]) < 0.001);
+    if (!held && !radius && same(row.turretPivot, combat(r).turretPivot) && same(row.gunPivot, combat(r).gunPivot)
+      && Math.abs(row.lengthM - combat(r).lengthM) < 0.001) return { skip: 'the measured frame is the combat frame (the mismatch is the drawn tube)' };
+    return { row };
   };
   const written = [], skipped = [];
   for (const r of report) {

@@ -48,10 +48,8 @@ export const TABLES = Object.freeze({
   presentationProjections: { kind: 'module', files: ['src/vehicles/presentationAnchors.generated.ts'], exportName: 'TANK_PRESENTATION_PROJECTIONS' },
   tankAssets: { kind: 'json', files: ['public/icons/tank-assets.json'], path: ['tanks'] },
   gunJunction: { kind: 'json', files: ['docs/geometry-gate/gun-junction.json'], path: ['tanks'] },
-  // 230: the combat articulation frames measured from each builder's rig (finalizeCombatAnatomy applies a row), and the
-  // gun-barrel alignment ledger that holds every id's combat barrel on its drawn gun.
+  // 230: the combat articulation frames measured from each builder's rig (finalizeCombatAnatomy applies a row).
   combatGunRigs: { kind: 'module', files: ['src/vehicles/combatGunRigs.generated.ts'], exportName: 'COMBAT_GUN_RIGS' },
-  gunBarrelAlign: { kind: 'json', files: ['docs/geometry-gate/gun-barrel-align.json'], path: ['tanks'] },
 });
 
 /** Index and loader maps that import every shard of a table. Their bytes depend only on which shards exist, so they
@@ -174,16 +172,6 @@ export const DECLARED_DYNAMIC = Object.freeze({
     // the fleet ledger is read at each measured id's row: keyed per id by the step's rowReads, never whole
     covered: ['docs/references/fleet-geometry-ledger.json'],
     note: 'reads its own ledger (the step\'s output, to keep the other ids\' rows) and each measured id\'s fleet-ledger row, keyed per id by the step\'s rowReads (geometryLedger)',
-  },
-  // 230: the gun-barrel alignment census (the gunBarrels step).
-  'tools/gun-barrel-align-census.mjs': {
-    pin: '7bd631ead1baf15f',
-    reads: [],
-    // the fleet ledger is read at each measured id's row: keyed per id by the step's rowReads, never whole
-    covered: ['docs/references/fleet-geometry-ledger.json'],
-    // --rigs (a hand-run gameplay change: the combat-rig table) is never a chain mode
-    modeOnly: ['src/vehicles/combatGunRigs.generated.ts'],
-    note: 'reads its own ledger (the step\'s output, to keep the other ids\' rows) and each measured id\'s fleet-ledger row, keyed per id by the step\'s rowReads (geometryLedger); --rigs rewrites the combat-rig table by hand',
   },
   // 229 (guards): gen-combat-anatomy checks each measured tank against the sim-floor ledger.
   'tools/anatomy-floor-ledger.mjs': {
@@ -351,17 +339,6 @@ export const STEPS = Object.freeze([
     // the census copies each id's turret and gun digests from that id's fleet-ledger row (gun-junction-census.mjs)
     rowReads: ['geometryLedger'], outputs: ['gunJunction'],
     files: [], gb: 8, timeoutS: 3600, perIdS: 20, after: true,
-  },
-  {
-    // 230: each id's gun-barrel alignment row binds its turret and gun digests (the hull's too for a gun fixed in the
-    // hull) and its combat barrel (tools/gun-barrel-align.mjs combatBarrelDigest), so it follows the ledger. The step
-    // never rewrites the combat-rig table: a frame that moves is a gameplay change, made by hand with --rigs --update and
-    // the anatomy regen, and until then the re-measured row reads mismatch.
-    name: 'gunBarrels', device: 'cpu', tool: 'tools/gun-barrel-align-census.mjs',
-    flags: ['--ledger=docs/geometry-gate/gun-barrel-align.json', '--update'], full: ['--all'], scoped: (list) => [ids(list)],
-    check: ['--all'], checkScoped: (list) => [ids(list)], checkFlags: ['--ledger=docs/geometry-gate/gun-barrel-align.json', '--check'],
-    rowReads: ['geometryLedger'], outputs: ['gunBarrelAlign'],
-    files: [], gb: 8, timeoutS: 3600, perIdS: 15, after: true,
   },
   {
     name: 'centering', device: 'gpu', tool: 'tools/presentation-centering.mjs', entries: ['tools/icons-page.html'],
