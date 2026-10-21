@@ -270,6 +270,19 @@ export function countryFilterGroups<Spec>(
   return groups;
 }
 
+/**
+ * The national strip to show after a roster filter change (garageFacetPanel.ts): the current nation while it
+ * still has a matching vehicle, otherwise the first nation in rail order that has one; null when nothing matches.
+ */
+export function facetFilteredCountry(
+  current: string,
+  countryOrder: readonly string[],
+  hasMatch: (countryId: string) => boolean,
+): string | null {
+  if (hasMatch(current)) return current;
+  return countryOrder.find(hasMatch) ?? null;
+}
+
 /** The garage is opt-out random: a concrete battlefield is used only after
  * the player deliberately selects one of its cards. Keep this policy pure so
  * createGarage callers cannot accidentally make the first catalog row the

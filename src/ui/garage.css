@@ -633,6 +633,13 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
   background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
 .cot-country-chip .ct{font-weight:600;color:#6d7a86;letter-spacing:.04em;}
 .cot-country-chip.sel .ct{color:#d8a04c;}
+/* Roster Filter toggle, sticky at the rail's start so it stays reachable while the flags scroll beneath it. Only its
+   idle look rides the boot: its open, active and badge styles load with the panel (garageFacetPanel.css). */
+.cot-facet-toggle{position:sticky;left:0;z-index:3;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+  min-width:42px;cursor:pointer;padding:6px 10px 5px;outline:none;color:#9fb0bf;background:rgba(9,13,17,.97);
+  border:1px solid rgba(146,164,180,.3);border-bottom:2px solid rgba(146,164,180,.4);}
+.cot-facet-toggle svg{width:17px;height:17px;display:block;}
+.cot-facet-toggle:hover,.cot-facet-toggle:focus-visible{color:#c6d2dc;border-color:rgba(210,225,240,.5);}
 .cot-carousel{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);
   display:flex;align-items:stretch;gap:8px;pointer-events:auto;max-width:96vw;}
 .cot-car-arrow{width:34px;border:1px solid rgba(146,164,180,.3);cursor:pointer;
@@ -1401,6 +1408,7 @@ body[data-cot-panels='overlay'] .cot-country-chip{
   min-height:42px;padding:4px 9px 3px;font-size:7.5px;letter-spacing:.1em;gap:5px;
 }
 body[data-cot-panels='overlay'] .cot-country-chip .cot-flag{width:18px}
+body[data-cot-panels='overlay'] .cot-facet-toggle{min-height:42px;min-width:44px;padding:4px 9px 3px}
 body[data-cot-panels='overlay'] .cot-carousel{
   left:max(var(--cot-overlay-edge),env(safe-area-inset-left));
   right:max(var(--cot-overlay-edge),env(safe-area-inset-right));bottom:var(--cot-roster-bottom);
@@ -1592,6 +1600,7 @@ body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card .nm{bottom:4p
 body[data-cot-input='coarse'] .cot-garage button,
 body[data-cot-input='coarse'] .cot-garage a{touch-action:manipulation}
 body[data-cot-input='coarse'] .cot-country-chip{min-width:44px}
+body[data-cot-input='coarse'] .cot-facet-toggle{min-height:44px}
 
 /* Room setup is a separate, explicit action underneath Battle. */
 .cot-multiplayer-entry{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);

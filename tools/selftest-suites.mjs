@@ -1508,6 +1508,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-13: no two vehicles read the same (display and card names roster-wide; no X suffix).
     'src/vehicles/tankLabelUniqueness.selftest.mjs',
     'src/vehicles/taxonomy.selftest.mjs',
+    // 2026-10-17 (owner): class, battle role and design status for every playable id, once per facet.
+    'src/vehicles/vehicleFacets.selftest.mjs',
     'src/vehicles/afvBalance.selftest.mjs',
     'src/vehicles/tier.selftest.mjs',
     'src/vehicles/materialQuality.selftest.mjs',
@@ -2037,6 +2039,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageLocaleNavigation.selftest.mjs',
     'src/ui/garageVariantPicker.selftest.mjs',
     'src/ui/garageOrder.selftest.mjs',
+    'src/ui/garageFacetFilter.selftest.mjs',
     'src/ui/garageAuxiliarySummary.selftest.mjs',
     'src/vehicles/auxiliaryRoofGuns.selftest.mjs',
     // 2026-10-16 (the perf lane): the roof-gun table's compact form

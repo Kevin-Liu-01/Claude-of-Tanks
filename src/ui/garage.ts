@@ -49,8 +49,9 @@ import type { GarageTechnicalViewId } from './garageDossier.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
 import {
   compareCountryThenTierThenName, countryFilterGroups, createGarageCountrySelectionMemory,
-  defaultGarageMapId, horizontalRailState, horizontalRailWheelDelta,
+  defaultGarageMapId, facetFilteredCountry, horizontalRailState, horizontalRailWheelDelta,
 } from './garageOrder.ts';
+import type { GarageFacetPanel } from './garageFacetPanel.ts';
 import { isGarageVisibleTankId } from '../game/matchmaking.ts';
 import { tankTier, tierNumeral } from '../vehicles/tier.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
@@ -2324,13 +2325,76 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         // Return to this nation's last selected vehicle. A nation without a
         // remembered choice opens on its highest-tier, far-left card.
         const preferred = countrySelection.preferredSpec(group.id);
-        if (preferred) api.setSelected(preferred.id);
+        // Under a roster filter, a remembered vehicle the filter hides yields to the nation's first match.
+        const firstMatch = preferred && !facetVisible(preferred.id)
+          ? (specsByCountry.get(group.id) || []).find((spec) => facetVisible(spec.id)) : undefined;
+        if (firstMatch) api.setSelected(firstMatch.id);
+        else if (preferred) api.setSelected(preferred.id);
       });
       chipsEl.appendChild(chip);
       chipById.set(group.id, chip);
     }
   }
   initializeCountryChips();
+
+  // --- ROSTER FILTER (class, role, era, search) -----------------------------
+  // The Filter toggle leads the flag rail. Its panel and the fleet facet tables load on the first press
+  // (garageFacetPanel.ts), never on the game entry; the panel hands back a visible-card predicate that narrows
+  // every national strip, re-counts the flags and keeps the strip on a nation with a match.
+  let rosterFacetMatch: ((specId: string) => boolean) | null = null;
+  const facetVisible = (specId: string): boolean => !rosterFacetMatch || rosterFacetMatch(specId);
+  const facetToggle = document.createElement('button');
+  facetToggle.type = 'button';
+  facetToggle.className = 'cot-facet-toggle';
+  facetToggle.setAttribute('aria-haspopup', 'dialog');
+  facetToggle.setAttribute('aria-expanded', 'false');
+  facetToggle.setAttribute('aria-label', t('fleet.filter.toggleAria'));
+  facetToggle.title = t('fleet.filter.toggleAria');
+  // Icon only (blind critic 2026-10-21: a text chip cost the flag rail a quarter of a phone's width); the name rides in
+  // aria-label and title, and the badge counts the active filters.
+  facetToggle.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 3h12l-4.6 5.4V13' +
+    'l-2.8 1.2V8.4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>' +
+    '<span class="ct num" hidden></span>';
+  chipsEl.prepend(facetToggle);
+  function setRosterFacetFilter(match: ((specId: string) => boolean) | null): void {
+    rosterFacetMatch = match;
+    for (const group of countryGroups) {
+      const pool = specsByCountry.get(group.id) || [];
+      const shown = match ? pool.filter((spec) => match(spec.id)).length : pool.length;
+      const chip = chipById.get(group.id);
+      const countEl = chip?.querySelector<HTMLElement>('.ct');
+      if (countEl) countEl.textContent = String(shown);
+      chip?.classList.toggle('is-facet-empty', shown === 0);
+    }
+    const hasMatch = (countryId: string) => (specsByCountry.get(countryId) || []).some((spec) => facetVisible(spec.id));
+    applyCountryFilter(facetFilteredCountry(countryFilter, countryGroups.map((group) => group.id), hasMatch)
+      || countryFilter);
+    // The stage never shows a vehicle the filter hides: once the filter settles (typing stays cheap), the strip's first
+    // match takes the pedestal.
+    if (facetSelectTimer !== null) clearTimeout(facetSelectTimer);
+    facetSelectTimer = setTimeout(() => {
+      facetSelectTimer = null;
+      if (facetVisible(selectedId) || vehicleLocked) return;
+      const first = (specsByCountry.get(countryFilter) || []).find((spec) => facetVisible(spec.id));
+      if (first) api.setSelected(first.id);
+    }, 320);
+  }
+  let facetSelectTimer: ReturnType<typeof setTimeout> | null = null;
+  let facetPanel: Promise<GarageFacetPanel> | null = null;
+  facetToggle.addEventListener('click', () => {
+    emit('ui:click', {});
+    facetPanel ??= Promise.all([import('./garageFacetPanel.ts'), import('./garageFacetPanel.css')])
+      .then(([{ mountGarageFacetPanel }]) => mountGarageFacetPanel({
+        anchor: countryRailEl,
+        toggle: facetToggle,
+        specs,
+        setFilter: setRosterFacetFilter,
+        click: () => emit('ui:click', {}),
+      }));
+    facetPanel.then((panel) => panel.toggle(), () => { facetPanel = null; });
+  });
+  // --- END roster filter ------------------------------------------------------
+
   function applyCountryFilter(countryId: string): void {
     const previousCountry = renderedCountryFilter;
     countryFilter = countryId;
@@ -2348,7 +2412,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (previousCountry && previousCountry !== countryId) {
       for (const card of cardsByCountry.get(previousCountry) || []) card.style.display = 'none';
     }
-    for (const card of cardsByCountry.get(countryId) || []) card.style.display = '';
+    for (const card of cardsByCountry.get(countryId) || []) {
+      card.style.display = facetVisible(card.dataset.specId || '') ? '' : 'none';
+    }
     renderedCountryFilter = countryId;
     // One compositor animation replaces a Web Animation per vehicle. The old
     // stagger created a burst of animation objects and style flushes on every
@@ -2832,11 +2898,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   function step(dir: number): void {
     if (vehicleLocked) return;
-    // Arrows walk the active national fleet only.
-    const pool = specsByCountry.get(countryFilter) || [];
+    // Arrows walk the active national fleet only, as the roster filter shows it.
+    const pool = (specsByCountry.get(countryFilter) || []).filter((s) => facetVisible(s.id));
     if (!pool.length) return;
     const idx = pool.findIndex((s) => s.id === selectedId);
-    const next = pool[(idx + dir + pool.length) % pool.length];
+    const next = idx < 0 ? pool[dir > 0 ? 0 : pool.length - 1] : pool[(idx + dir + pool.length) % pool.length];
     emit('ui:click', {});
     api.setSelected(next.id);
   }
@@ -3410,6 +3476,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       closeGarageVariantMenu();
       closeBattleMenu();
       setGaragePanel('');
+      void facetPanel?.then((panel) => panel.close(), () => {});
       root.style.display = 'none';
       if (api.isOpen) window.removeEventListener('keydown', onKey);
       api.isOpen = false;
