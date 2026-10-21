@@ -34,6 +34,7 @@ export {
 } from './materialPainter.ts';
 import { bindVehicleReadabilityUniform } from './vehicleReadability.ts';
 import { VEHICLE_ALPHA_TAG, tagUnlitVehiclePixels } from '../engine/vehicleOcclusion.ts';
+import { bindNightOwnGunUniforms, NIGHT_OWN_GUN_GLSL } from '../engine/nightLightingRuntime.ts';
 
 export {
   CAMO_CATALOG_PATTERN_IDS, CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, CUSTOM_CAMO_ID,
@@ -2467,6 +2468,10 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   // anything compiled through the bare hook keeps the scene's full sky light, as before
   shader.uniforms.uVehEnvScale ??= { value: 1 };
   shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\nuniform float uVehEnvScale;\n${shader.fragmentShader}`;
+  // CN-7 (2026-10-20, "the main-gun barrel seen from the front shows as a bright white glowing tube"): a vehicle's own
+  // lit lamps put none of their light on its own gun (nightLightingRuntime NIGHT_OWN_GUN_GLSL); the beams are unchanged
+  bindNightOwnGunUniforms(shader.uniforms);
+  shader.fragmentShader = shader.fragmentShader.replace('#include <lights_pars_begin>', `#include <lights_pars_begin>\n${NIGHT_OWN_GUN_GLSL}`);
   shader.fragmentShader = shader.fragmentShader.replace(
     '#include <lights_fragment_maps>',
     `#include <lights_fragment_maps>
