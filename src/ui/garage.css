@@ -677,7 +677,7 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
    HERO_CARD_LAYOUT.roster / .rosterCompact (tools/hero-cards.selftest.mjs). */
 .cot-card{width:156px;min-height:150px;height:150px;flex:0 0 auto;cursor:pointer;position:relative;
   isolation:isolate;overflow:hidden;container-type:size;padding:0;
-  --hc-band:36px;--hc-share:0.66;--hc-hshare:0.5;--hc-cxr:0.56;--hc-pad:9px;--hc-name:13.5px;--hc-tier:8.5px;
+  --hc-band:36px;--hc-share:0.66;--hc-hshare:0.5;--hc-cxr:0.52;--hc-pad:9px;--hc-name:13.5px;--hc-tier:8.5px;
   background:radial-gradient(ellipse 62% 62% at 50% 55%,rgba(120,170,205,.14),rgba(0,0,0,0) 100%),
     linear-gradient(180deg,#0f3a55 0%,#0b2a3e 55%,#0b0e11 100%);
   border:1px solid rgba(146,164,180,.26);
@@ -1416,7 +1416,7 @@ body[data-cot-panels='overlay'] .cot-car-arrow{width:36px;flex:0 0 36px}
 body[data-cot-panels='overlay'] .cot-cards{min-width:0;flex:1 1 auto;gap:5px}
 body[data-cot-panels='overlay'] .cot-card{
   width:112px;min-height:var(--cot-roster-height);height:var(--cot-roster-height);padding:0;
-  --hc-band:24px;--hc-share:0.7;--hc-hshare:0.64;--hc-cxr:0.55;--hc-pad:6px;--hc-name:9.5px;--hc-tier:7px;
+  --hc-band:24px;--hc-share:0.7;--hc-hshare:0.64;--hc-cxr:0.51;--hc-pad:6px;--hc-name:9.5px;--hc-tier:7px;
 }
 body[data-cot-panels='overlay'] .cot-card.sel{transform:translateY(-3px)}
 body[data-cot-panels='overlay'] .cot-card .flag{top:4px;left:4px}

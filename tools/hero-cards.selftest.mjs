@@ -69,7 +69,7 @@ for (const gunSide of ['left', 'right']) {
     const box = { w, artH, baseline: artH, coreShare: L.coreShare, coreHeight: L.coreHeight, centerX: L.centerX, gunSide };
     const { k, dx } = drawTank(card.getContext('2d'), layer, bounds, box);
     const left = dx + bounds.fx0 * k, rightEdge = dx + bounds.fx1 * k;
-    assert.ok(left >= w * 0.035 - 0.5 && rightEdge <= w * 0.965 + 0.5, `${kind} gun ${gunSide}: whole tank inside the card (${left.toFixed(1)}..${rightEdge.toFixed(1)} of ${w})`);
+    assert.ok(left >= w * HERO_SIDE_MARGIN - 0.5 && rightEdge <= w * (1 - HERO_SIDE_MARGIN) + 0.5, `${kind} gun ${gunSide}: whole tank inside the card (${left.toFixed(1)}..${rightEdge.toFixed(1)} of ${w})`);
     assert.deepEqual(placeTank(bounds, box), { k, dx, dy: artH - bounds.cb * k }, `${kind}: drawTank is placeTank`);
     const coreCentre = dx + bounds.cx * k;
     assert.ok(gunSide === 'left' ? coreCentre >= w / 2 - 0.5 : coreCentre <= w / 2 + 0.5, `${kind} gun ${gunSide}: the core sits away from the gun's side`);
@@ -137,8 +137,8 @@ for (const gunSide of ['left', 'right']) {
   assert.match(layerCss, /\.cot-hc \.hc-flag\{[^}]*object-position:0 0;/, 'facing right: the flag anchors at the top-left (rear-top) corner');
   assert.match(layerCss, /\.cot-hc\[data-hero-facing='left'\] \.hc-flag\{object-position:100% 0;\}/, 'facing left mirrors the anchor');
   assert.match(garageCss, /\.cot-hc\[data-hero-facing='left'\] \.hc-tier,\.cot-hc\[data-hero-facing='left'\] \.dev-tag\{right:auto;left:6px;\}/, 'facing left: the tier chip takes the bow-side top corner, as the compositor draws it');
-  assert.match(layerCss, /--hc-k:min\(calc\(100cqw \* var\(--hc-share\) \/ var\(--hc-cw\)\),calc\(\(100cqh - var\(--hc-band\) - var\(--hc-lift,0px\)\) \* var\(--hc-hshare\) \/ var\(--hc-ch\)\),calc\(100cqw \* 0\.93 \/ var\(--hc-fw\)\)\)/, 'tank width is placeTank\'s k (the art box ends a second name line higher)');
-  assert.match(layerCss, /left:clamp\(calc\(100cqw \* 0\.035 - var\(--hc-fx0\) \* var\(--hc-k\)\),calc\(100cqw \* \(0\.5 \+ \(var\(--hc-cxr\) - 0\.5\) \* var\(--hc-gs,1\)\) - var\(--hc-cx\) \* var\(--hc-k\)\),calc\(100cqw \* 0\.965 - var\(--hc-fx1\) \* var\(--hc-k\)\)\)/, 'tank x is placeTank\'s clamped dx, the centre mirrored for a gun on the other side');
+  assert.match(layerCss, /--hc-k:min\(calc\(100cqw \* var\(--hc-share\) \/ var\(--hc-cw\)\),calc\(\(100cqh - var\(--hc-band\) - var\(--hc-lift,0px\)\) \* var\(--hc-hshare\) \/ var\(--hc-ch\)\),calc\(100cqw \* 0\.88 \/ var\(--hc-fw\)\)\)/, 'tank width is placeTank\'s k (the art box ends a second name line higher)');
+  assert.match(layerCss, /left:clamp\(calc\(100cqw \* 0\.06 - var\(--hc-fx0\) \* var\(--hc-k\)\),calc\(100cqw \* \(0\.5 \+ \(var\(--hc-cxr\) - 0\.5\) \* var\(--hc-gs,1\)\) - var\(--hc-cx\) \* var\(--hc-k\)\),calc\(100cqw \* 0\.94 - var\(--hc-fx1\) \* var\(--hc-k\)\)\)/, 'tank x is placeTank\'s clamped dx, the centre mirrored for a gun on the other side');
   const cardTs = readFileSync(new URL('../src/ui/heroCard.ts', import.meta.url), 'utf8');
   assert.match(cardTs, /\(row\.face\?\.\[1\] \?\? HERO_GUN_SIDE\) !== HERO_GUN_SIDE/, 'a row whose gun is on the other side mirrors the centre (--hc-gs)');
   assert.match(cardTs, /--hc-gs:-1/, 'the mirror is the --hc-gs custom property');
@@ -158,7 +158,7 @@ for (const gunSide of ['left', 'right']) {
   assert.match(garageCss, /\.cot-card::after\{[^}]*height:calc\(var\(--hc-band\) \+ var\(--hc-lift,0px\) \+ 6px\)/, 'the name floor rises with the lift');
   assert.match(cardTs, /new ResizeObserver\(/, 'the card marks a wrapped name from its measured height');
   assert.match(cardTs, /classList\.toggle\('hc-n2', height > line \* 1\.5\)/, 'a name taller than one and a half lines is two lines');
-  assert.equal(HERO_SIDE_MARGIN, 0.035, 'the CSS margins (0.035, 0.93, 0.965) are HERO_SIDE_MARGIN');
+  assert.equal(HERO_SIDE_MARGIN, 0.06, 'the CSS margins (0.06, 0.88, 0.94) are HERO_SIDE_MARGIN');
 }
 
 // 7b. The compositor lifts the art box for a two-line name exactly as the runtime card does: the tank's contact line

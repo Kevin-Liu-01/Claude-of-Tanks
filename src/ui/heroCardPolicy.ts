@@ -156,13 +156,16 @@ export type HeroCardKind = 'roster' | 'rosterCompact' | 'galleryBrowse' | 'deplo
  * fitted by its whole silhouette, so a short-gun hull (IFVs, launchers, KV-2) spanned the card edge to edge
  * at up to 1.6x a main battle tank's core height. The roster shares (0.66 / 0.50, compact 0.70 / 0.64) cap
  * those cores; 149 of 220 roster cards keep the whole-silhouette fit unchanged.
+ * Blind critic round v5 (2026-10-21, both critics): with the gun forward, the 3.5 % side margin and a 0.56 core
+ * centre pinned the rear to the right edge (5.5 px) and the long fixed guns to the left one; a 6 % margin and a
+ * 0.52 centre (compact 0.51) give both ends ~10 px (roster) and 6.7 px (compact); 136 roster cards keep their scale.
  * A name that wraps to a second line (the non-hollow kinds; HERO_NAME_LINE_HEIGHT) lifts the art box by one
  * line, so the tracks keep the one-line card's air above the name (critic round 1: 18 two-line names sat on
  * the tracks).
  */
 export const HERO_CARD_LAYOUT = Object.freeze({
-  roster: Object.freeze({ width: 156, height: 150, nameBand: 36, coreShare: 0.66, coreHeight: 0.50, centerX: 0.56, nameSize: 13.5, minName: 10.5, pad: 9, hollow: false, tier: true, tierSize: 8.5 }),
-  rosterCompact: Object.freeze({ width: 112, height: 86, nameBand: 24, coreShare: 0.70, coreHeight: 0.64, centerX: 0.55, nameSize: 9.5, minName: 8, pad: 6, hollow: false, tier: true, tierSize: 7 }),
+  roster: Object.freeze({ width: 156, height: 150, nameBand: 36, coreShare: 0.66, coreHeight: 0.50, centerX: 0.52, nameSize: 13.5, minName: 10.5, pad: 9, hollow: false, tier: true, tierSize: 8.5 }),
+  rosterCompact: Object.freeze({ width: 112, height: 86, nameBand: 24, coreShare: 0.70, coreHeight: 0.64, centerX: 0.51, nameSize: 9.5, minName: 8, pad: 6, hollow: false, tier: true, tierSize: 7 }),
   galleryBrowse: Object.freeze({ width: 264, height: 188, nameBand: 40, coreShare: 0.70, coreHeight: 0.76, centerX: 0.56, nameSize: 18, minName: 12, pad: 12, hollow: false, tier: true, tierSize: 10 }),
   deploy: Object.freeze({ width: 360, height: 240, nameBand: 58, coreShare: 0.66, coreHeight: 0.74, centerX: 0.56, nameSize: 30, minName: 20, pad: 16, hollow: true, tier: true, tierSize: 12 }),
   endScreen: Object.freeze({ width: 560, height: 360, nameBand: 90, coreShare: 0.64, coreHeight: 0.72, centerX: 0.56, nameSize: 50, minName: 32, pad: 24, hollow: true, tier: true, tierSize: 14 }),
@@ -171,7 +174,7 @@ export const HERO_CARD_KINDS = Object.freeze(Object.keys(HERO_CARD_LAYOUT) as He
 /** The name's line height (a share of its size): a second name line lifts the art box by this much. */
 export const HERO_NAME_LINE_HEIGHT = 1.05;
 /** The whole tank (muzzle to rear stowage) stays this share of the card width inside each side. */
-export const HERO_SIDE_MARGIN = 0.035;
+export const HERO_SIDE_MARGIN = 0.06;
 
 /**
  * Shipped widths (px) of the transparent tank layer (16:10, master framing) and the flag layer.
