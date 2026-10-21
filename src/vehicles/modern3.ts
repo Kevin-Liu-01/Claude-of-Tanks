@@ -3400,8 +3400,9 @@ export function buildBradley(P: Modern3BuilderPort) {
       // only, the corner post's exact seat): the b1 workorder band read was
       // a mis-paired column (the per-run plan-lottery class). Receipt: the
       // shoulder scored err 0.377 on that col in r2.)
+      // 2026-10-19 (owner float sweep): both fills stood 24 mm over the turret top; each runs 25 mm deeper (tops kept)
       stowage(P, 'turretCloth', rng, [
-        [1.12, 0.665, -0.095, 0.36, 0.38, 1.02],                                  // tower fill A x 0.94..1.30, top
+        [1.12, 0.6525, -0.095, 0.36, 0.405, 1.02],                                // tower fill A x 0.94..1.30, top
                                                                                   //   2.805 (ref 2.80; r4f: front
                                                                                   //   edge world -0.035 — the 0.015
                                                                                   //   tip painted 2.8 into st7's top;
@@ -3434,10 +3435,10 @@ export function buildBradley(P: Modern3BuilderPort) {
         // sequential per entry): the ref tower's INBOARD x 0.76..0.95 mass is
         // FRONT-HALF only (its plan 0.85 col rear ends world -0.61 while the
         // outboard tower runs to -1.05) — one fill there paid 0.19.
-        [0.855, 0.675, 0.1275, 0.19, 0.38, 0.575],                                // (r2 y -0.045: top 2.76 — the
+        [0.855, 0.6625, 0.1275, 0.19, 0.405, 0.575],                                // (r2 y -0.045: top 2.76 — the
                                                                                   //   front +0.76 col reads ref 2.76)
       ]);
-      P.add('turret', cylZ(0.027, 0.30, 28), 1.10, 0.885, -0.13);                 // tower 2.807 rail: world y top
+      P.add('turret', cylZ(0.027, 0.30, 28), 1.10, 0.875, -0.13);                 // (2026-10-19 owner float sweep: 10 mm lower, into the fill's top)                 // tower 2.807 rail: world y top
                                                                                   //   2.807, z -0.73..-0.43 — the ref
                                                                                   //   side patch; 28-seg so station
                                                                                   //   slices skip it (bmp2 r2 law)
