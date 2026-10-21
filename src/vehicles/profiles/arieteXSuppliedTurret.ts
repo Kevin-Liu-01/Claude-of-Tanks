@@ -63,17 +63,19 @@ function centralBridge(P: TankBuilderPort): void {
 }
 
 function sideArmor(P: TankBuilderPort, side: -1 | 1): void {
-  const station = (z: number, roof: number, outer: number): SolidSection => {
-    const ring: [number, number][] = [[1.134644, 1.418935], [outer, 1.418935],
+  const station = (z: number, roof: number, outer: number, inner = 1.134644): SolidSection => {
+    const ring: [number, number][] = [[inner, 1.418935], [outer, 1.418935],
       [outer, roof - .078], [Math.min(1.30707, outer - .003), roof],
-      [1.29109, roof - .00084], [1.134644, roof - .12196]];
+      [1.29109, roof - .00084], [inner, roof - .12196]];
     return { z, ring: side < 0 ? ring.map(([x, y]) => [-x, y] as [number, number]).reverse() : ring };
   };
-  for (const [a, b] of [[-.104296, .199], [.205, .512], [.518, .833]])
-    add(P, 'turretExternalArmor', sectionSolid([station(a, 1.967332, 1.443327), station(b, 1.967332, 1.443327)]));
+  // 2026-10-19 (owner float sweep): the front cassette and the wedge stood 17 mm off the narrowing body (their carriers
+  // too); both now run 20 mm deeper inboard to bear on it, outer faces unchanged.
+  for (const [a, b, inner] of [[-.104296, .199, 1.134644], [.205, .512, 1.134644], [.518, .833, 1.1146]])
+    add(P, 'turretExternalArmor', sectionSolid([station(a, 1.967332, 1.443327, inner), station(b, 1.967332, 1.443327, inner)]));
   // The forward return is a falling wedge, not another rectangular cassette.
   const wedge = arietePlaneStock([
-    [-side, 0, 0, 1.134644], [side, 0, 0, -1.443327],
+    [-side, 0, 0, 1.1146], [side, 0, 0, -1.443327],
     [0, -1, 0, 1.418935], [0, 0, -1, .84], [0, 0, 1, -1.539212],
     [-side * .626816, .779167, 0, -.722951],
     [side * .511188, .859469, 0, -2.359019],

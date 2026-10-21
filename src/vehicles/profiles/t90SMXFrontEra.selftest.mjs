@@ -56,7 +56,9 @@ addT90SMFrontEra({ destructibleCluster(name,fill) {
   equipment.push(geometry);
 } });
 assert.equal(pieces, 13, 'nine retained armor solids plus four separately raised source panels');
-assert.equal(equipment.length, 30, '16 ribs, four two-stage latches, two tabs with leaf and folded leg each');
+// 2026-10-21 (float-gaps 230): 30 -> 34: the 10-19 float sweep's four short tabs that carry the lower folded rib
+// from the covers' lower edge come last (indices 30-33), after the source fixtures indexed below.
+assert.equal(equipment.length, 34, '16 ribs, four two-stage latches, two tabs with leaf and folded leg each, four rib tabs');
 
 function inside(geometry, point) {
   const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });

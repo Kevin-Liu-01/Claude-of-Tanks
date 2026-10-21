@@ -228,6 +228,12 @@ function addKV2HullShellAndSponsons(P: SovietHeavyBuilderPort): void {
   P.add('hull', box(2.88, 0.045, 0.60), 0, 1.60, -3.125, -0.1475, 0, 0);
   P.add('hull', box(2.88, 0.04, 0.16), 0, 1.472, -3.4445, -1.119, 0, 0);
   P.add('hull', box(1.72, 0.76, 0.10), 0, 0.92, -3.45);                        // tail plate (face −3.50, top 1.30 = ref recess)
+  // lower rear plate: the belly rises from its rear edge (z −3.20, y 0.42) to the tail plate's foot (z −3.40, y 0.54)
+  // (owner 2026-10-19, "the empty gaps in hulls": the 0.20 m between them stood open from below up to the deck),
+  // 30 mm into each
+  P.add('hull', slab(
+    [-0.854, 0.426, -3.17], [0.854, 0.426, -3.17], [0.854, 0.546, -3.43], [-0.854, 0.546, -3.43],
+    [-0.854, 0.526, -3.17], [0.854, 0.526, -3.17], [0.854, 0.646, -3.43], [-0.854, 0.646, -3.43]));
   // plate-fill r1 (owner screenshot instance): the stepped stern plates
   // read as an OPEN SHELL — the chamfer/deck-slope corners hung over empty
   // caves aft of the sponson end (x 0.86..1.44, the tail plate is only

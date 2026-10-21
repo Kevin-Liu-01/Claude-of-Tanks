@@ -12,6 +12,7 @@ import { centurionBuild } from './uk.ts';
 import { buildLeo2A5 } from './leopard.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import type { SnapGroupOptions } from '../tankFactoryCore.ts';
 import { mount } from './fittingMount.ts';
 import { withSeatRole } from '../spareTrackSeat.ts';
 
@@ -77,6 +78,9 @@ interface SwedishBuilderPort {
     position: Vec3Tuple,
     ...orientation: number[]
   ): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  snapGroup(label: string, build: () => void, options?: SnapGroupOptions): void;
 }
 
 function plate(
@@ -219,7 +223,7 @@ function addStrv81Package(P: SwedishBuilderPort): void {
   }), -0.47, 0.94, -0.52, [0, -0.05, 0]);
   P.add('turret', box(0.34, 0.09, 0.32), 0.47, 0.91, -0.36);
   P.add('turretDetail', cylY(0.12, 0.14, 0.25, 14), 0.47, 1.06, -0.36);
-  P.add('turretGlass', box(0.16, 0.085, 0.022), 0.47, 1.07, -0.20);
+  P.add('turretGlass', box(0.16, 0.085, 0.022), 0.47, 1.07, -0.215);         // 2026-10-19 (owner float sweep): 9 mm off the drum
   // The source's large side ventilator/search housing is a strong profile
   // landmark. Both concentric drums are buried into the cast side wall.
   P.add('turret', cylX(0.21, 0.18, 18, 0.15), 1.13, 0.48, -0.64);
@@ -244,19 +248,22 @@ function addStrv81Package(P: SwedishBuilderPort): void {
       mats: P.mats, pods: 2, spacing: 0.14, r: 0.050,
       shield: true, seed: 8135 + (side > 0 ? 1 : 0),
     }), side * 0.78, 1.47, 3.06);
-    P.add('hullDetail', cylZ(0.035, 0.92, 10), side * 1.26, 1.52, -1.28);
-    P.add('hullDark', box(0.10, 0.07, 0.08), side * 1.26, 1.52, -0.84);
-    P.add('hullDark', box(0.10, 0.07, 0.08), side * 1.26, 1.52, -1.72);
+    // 2026-10-19 (owner float sweep): the tool tube and its clamps stood 17 mm off the hull shoulder; seated on it
+    P.add('hullDetail', cylZ(0.035, 0.92, 10), side * 1.243, 1.507, -1.28);
+    P.add('hullDark', box(0.10, 0.07, 0.08), side * 1.243, 1.507, -0.84);
+    P.add('hullDark', box(0.10, 0.07, 0.08), side * 1.243, 1.507, -1.72);
   }
 
   // Backed bustle rack and characteristic side tool cages.
-  P.add('turretDark', box(2.18, 0.30, 0.06), 0, 0.34, -2.03);
+  // 2026-10-19 (owner float sweep): the backing plate's top stood 50 mm under the rack; it reaches 10 mm into it
+  P.add('turretDark', box(2.18, 0.36, 0.06), 0, 0.37, -2.03);
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: 2.10, d: 0.48, h: 0.34, fill: 0.38, rails: 3, seed: 8140,
   }), 0, 0.54, -1.90);
   for (const side of [-1, 1]) {
-    P.add('turretDetail', box(0.035, 0.035, 0.64), side * 1.12, 0.56, -1.66);
-    P.add('turretDetail', box(0.035, 0.34, 0.035), side * 1.12, 0.40, -1.98);
+    // 2026-10-19 (owner float sweep): the tool-cage rails stood 53 mm outboard of the rack's sides; against them now
+    P.add('turretDetail', box(0.035, 0.035, 0.64), side * 1.066, 0.56, -1.66);
+    P.add('turretDetail', box(0.035, 0.34, 0.035), side * 1.066, 0.40, -1.98);
   }
 
   // Closed, layered 20-pdr gun plant around the inherited bore.
@@ -299,11 +306,16 @@ function addStrv122Package(P: SwedishBuilderPort): void {
     for (let i = 0; i < 8; i++) {
       plate(P, 'hull', side * 1.84, 1.23, 2.52 - i * 0.73,
         0.055, 0.52, 0.58, [0, 0, side * 0.018], false);
+      // 2026-10-19 (owner float sweep): aft of the bow pair the cassettes stood 77 mm off the donor's 1.731 side line; a
+      // spacer block under each cassette's top edge carries it.
+      if (i >= 2) P.add('hullDark', box(0.10, 0.20, 0.12), side * 1.775, 1.40, 2.52 - i * 0.73);
     }
 
     // Flush turret-side protection and supported rear-corner returns.
     for (let i = 0; i < 5; i++) {
-      plate(P, 'turret', side * 1.50, 0.42 + (i & 1) * 0.025,
+      // 2026-10-19 (owner float sweep): the left 3rd/4th plates stood 34/41 mm off the narrowing turret side; inset.
+      const inset = side < 0 ? [0, 0, 0.037, 0.044, 0][i] : 0;
+      plate(P, 'turret', side * (1.50 - inset), 0.42 + (i & 1) * 0.025,
         0.08 - i * 0.43, 0.13, 0.40, 0.36, [0, 0, side * 0.08], true);
     }
     P.add('turret', slab(
@@ -338,8 +350,10 @@ function addStrv122Package(P: SwedishBuilderPort): void {
     [0.17, -0.50, -0.12], [0.40, -0.43, -0.04], [0.65, -0.52, 0.10],
     [-0.52, -0.48, 0.14], [-0.73, -0.62, 0.22], [-0.08, -0.45, -0.12],
   ]) {
-    P.add('turretDetail', box(0.14, 0.048, 0.078), x, 0.94, z, 0, ry, 0);
-    P.add('turretGlass', box(0.098, 0.022, 0.014), x, 0.968, z + 0.036, 0, ry, 0);
+    // 2026-10-19 (owner float sweep): the two centre heads (off the side plates) stood 27 mm over the roof; seated.
+    const py = Math.abs(x) < 0.3 ? 0.911 : 0.94;
+    P.add('turretDetail', box(0.14, 0.048, 0.078), x, py, z, 0, ry, 0);
+    P.add('turretGlass', box(0.098, 0.022, 0.014), x, py + 0.028, z + 0.036, 0, ry, 0);
   }
   P.add('turret', box(0.34, 0.12, 0.42), 0.78, 0.95, -1.22);
   P.add('turretDark', box(0.28, 0.018, 0.34), 0.78, 1.02, -1.22);
@@ -356,8 +370,10 @@ function addStrv122Package(P: SwedishBuilderPort): void {
   // station; the second shielded Ksp 58 here is gone.
   P.add('turret', box(0.38, 0.08, 0.38), -0.58, 0.96, -0.62);
   P.add('turretDetail', cylY(0.14, 0.17, 0.32, 16), -0.58, 1.15, -0.62);
-  P.add('turretGlass', box(0.21, 0.10, 0.024), -0.58, 1.16, -0.43);
-  addSwedishRadioPair(P, 'turret', 0.73, -2.18, 12230);
+  // 2026-10-19 (owner float sweep): the panorama window stood 24 mm ahead of its head and the radio bases 20 mm over
+  // the 0.68 roof; window set into the head, bases onto the roof.
+  P.add('turretGlass', box(0.21, 0.10, 0.024), -0.58, 1.16, -0.462);
+  addSwedishRadioPair(P, 'turret', 0.708, -2.18, 12230);
 
   // Connected rear basket/slat complex. Every rail meets a post, and the
   // posts return into the backed bustle armor.
@@ -563,7 +579,7 @@ function buildUdes03(P: SwedishBuilderPort): void {
     elev: 0.05, shield: false, ammo: true, seed: 302, working: true, ridingCradle: true,
   }), 0.38, 1.70, -0.28, [0, -0.05, 0]);
   P.addEquipment('hull', box(0.24, 0.18, 0.27), 0.64, 1.72, -0.54);
-  P.add('hullGlass', box(0.14, 0.07, 0.018), 0.64, 1.75, -0.39);
+  P.add('hullGlass', box(0.14, 0.07, 0.018), 0.64, 1.75, -0.40);             // 2026-10-19 (owner float sweep): 6 mm ahead of the sight box; set into it
   periscope(P, 'hullDetail', -0.20, 1.62, 0.36);
   periscope(P, 'hullDetail', 0.18, 1.62, 0.30);
   for (const side of [-1, 1]) {
@@ -577,7 +593,7 @@ function buildUdes03(P: SwedishBuilderPort): void {
     mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 1, spacing: 0.12, r: 0.050,
       shield: true, seed: 300 + (side > 0 ? 1 : 0),
-    }), side * 1.02, 1.38, 2.62);
+    }), side * 1.25, 1.353, 2.62); // 2026-10-19 (owner float sweep): hung 128 mm clear of everything at x 1.02; on the fender nose
   }
   P.add('hull', box(0.38, 0.10, 0.34), 0.72, 1.64, -1.02);
   P.add('hullDark', box(0.34, 0.018, 0.30), 0.72, 1.70, -1.02);
@@ -804,7 +820,8 @@ function buildStrv103A(P: SwedishBuilderPort): void {
   P.add('hullDark', box(0.32, 0.02, 0.36), 0.62, 2.15, -0.94);
   P.add('hullGlass', box(0.20, 0.075, 0.022), 0.62, 2.06, -0.73);
   P.add('hull', cylY(0.26, 0.28, 0.11, 16), 0.28, 1.93, -0.40);               // commander cupola (right)
-  P.add('hull', cylY(0.145, 0.145, 0.045, 14), 0.28, 2.045, -0.40);           // cupola crown at the 2.16 cap
+  // 2026-10-19 (owner float sweep): the crown hung 38 mm over the cupola; it runs down into it (top kept).
+  P.add('hull', cylY(0.145, 0.145, 0.085, 14), 0.28, 2.025, -0.40);           // cupola crown at the 2.16 cap
   // 2026-10-07 (tank-accessories round 4, wave 216: "a thin rod on a box bracket, on a bare ring floating round the
   // cupola with no supports"): the two dark round tori that stood proud of the cupola's rim and crown become flat
   // machined rings seated on them (a chamfered race with its bolt circle), carried at the rim on four welded
@@ -896,7 +913,7 @@ function buildStrv103A(P: SwedishBuilderPort): void {
   P.add('hull', box(0.24, 0.16, 0.62), -1.46, 1.44, 1.90);                    // fixed MG box
   P.add('hullDark', cylZ(0.020, 0.26, 6), -1.52, 1.47, 2.26);
   P.add('hullDark', cylZ(0.020, 0.26, 6), -1.42, 1.47, 2.26);
-  liftEye(P, 'hullDetail', -1.50, 1.92, 0.55, 0.4); liftEye(P, 'hullDetail', 1.50, 1.92, 0.55, -0.4);
+  liftEye(P, 'hullDetail', -1.50, 1.92, 0.55, 0.4); liftEye(P, 'hullDetail', 1.50, 1.906, 0.55, -0.4); // right eye was 12 mm high (2026-10-19 float sweep)
   for (const s of [-1, 1]) {                                                  // bow tow shackles
     P.add('hullDetail', box(0.10, 0.08, 0.10), s * 0.84, 1.06, 2.92);
     P.add('hullDark', torus(0.055, 0.016, 10), s * 0.84, 1.02, 2.98);
@@ -909,7 +926,8 @@ function buildStrv103A(P: SwedishBuilderPort): void {
   for (const s of [-1, 1]) {
     P.add('hullDark', cylZ(0.075, 0.10, 10), s * 0.98, 1.34, -3.475);         // recessed exhaust outlets
     P.add('hullDetail', box(0.30, 0.22, 0.035), s * 0.98, 1.34, -3.50);
-    P.add('hullDetail', box(0.10, 0.09, 0.10), s * 1.30, 1.30, -3.46);        // rear shackle blocks
+    // 2026-10-19 (owner float sweep): the blocks hung 60 mm under the rear rail; they run up into its end.
+    P.add('hullDetail', box(0.10, 0.155, 0.10), s * 1.30, 1.3325, -3.46);     // rear shackle blocks
   }
   P.add('hullDetail', box(0.16, 0.07, 0.05), 0, 1.70, -3.49);                 // convoy light
   mount(P, 'hull', FITTINGS.stowageRack({

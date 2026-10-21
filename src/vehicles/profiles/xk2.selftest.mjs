@@ -40,7 +40,9 @@ for(const quality of ['high','low']){
     // envelope is the hull's, measured without that one fitting
     const bounds=new T.Box3(),part=new T.Box3();
     tank.root.traverse(o=>{if(!o.isMesh||/^fitting_spareTrackLinks/.test(o.name))return;part.setFromObject(o);if(!part.isEmpty())bounds.union(part);});
-    assert(Math.abs(bounds.min.z+3.769)<1e-5,'original rear hull envelope');
+    // 2026-10-21 (float-gaps 230): the convoy face and stripes that set -3.769 stood 26 mm off the stern face; seated on
+    // it, the rear envelope is the stern connector caps' -3.757 (high) and the stern detail's -3.750 (low, no caps)
+    assert(Math.abs(bounds.min.z-(quality==='low'?-3.750:-3.757))<1e-5,'original rear hull envelope');
     assert(Math.abs(bounds.max.y-D.tallestM)<1e-5,'complete donor roof equipment');
     for(const yaw of [0,Math.PI/2,Math.PI,3*Math.PI/2])receivingClearance(tank,yaw);
     for(const pitch of [-10,0,20]){
