@@ -9,6 +9,7 @@
  */
 import type { CloudscapeConfig, CloudscapeRegime } from './cloudscapes.ts';
 import type { CloudLayerPreset, CloudLayerSkyInput, CloudTimeOfDay, CloudscapeEnv } from './cloudPresets.ts';
+import { lightTune } from './lightModelCore.ts';
 
 /**
  * 2026-10-01: the diurnal cycle of convective cloud. Fair-weather cumulus is a daytime cloud — it grows with the
@@ -46,6 +47,14 @@ const degToRad = (deg: number): number => deg * Math.PI / 180;
 const greyOf = (t: readonly [number, number, number]): [number, number, number] => {
   const y = 0.2126 * t[0] + 0.7152 * t[1] + 0.0722 * t[2];
   return [y, y, y];
+};
+/** (229, the SKY lane's 228 carry: Whiteout's evening deck read "bluer steel-grey" and dark beside the warm sky after the
+ *  grey albedo) the share of the evening tint's own hue a deck keeps over its grey at sunset (0 the grey alone, 1 the
+ *  tint), at the tint's level either way; __LIGHT_TUNE.CLOUD_DECK_DUSK_WARMTH for the pairs. */
+export const DECK_DUSK_WARMTH = 0;
+const duskDeckOf = (t: readonly [number, number, number]): [number, number, number] => {
+  const g = greyOf(t), k = clamp(lightTune('CLOUD_DECK_DUSK_WARMTH', DECK_DUSK_WARMTH), 0, 1);
+  return [g[0] + (t[0] - g[0]) * k, g[1] + (t[1] - g[1]) * k, g[2] + (t[2] - g[2]) * k];
 };
 
 /** The cloudscape over the legacy derivation: the regime's row, then the map's own knobs. */
@@ -113,7 +122,7 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     // deck drew a strong orange-pink sheet) a deck at sunset keeps a grey albedo at the evening tint's level: the warm
     // tint is the light on an evening cumulus' sunward faces, while a deck's underside is the deck's own diffusion
     tint: scape.tintHex != null ? tintOf(scape.tintHex, sheet)
-      : time === 'sunset' && clamp(pick('deckLight'), 0, 1) >= 0.5 ? greyOf(tintOf(sky.cloudTintHex, sheet))
+      : time === 'sunset' && clamp(pick('deckLight'), 0, 1) >= 0.5 ? duskDeckOf(tintOf(sky.cloudTintHex, sheet))
       : tintOf(time === 'night' ? CLOUD_WEATHER_RULES.nightTintHex : sky.cloudTintHex, sheet),
     windDirRad,
     windSpeed: Math.max(0, pick('windSpeed')),
