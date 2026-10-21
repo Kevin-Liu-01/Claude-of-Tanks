@@ -684,6 +684,20 @@ const MUZZLE_LIGHT_S = 0.14;   // lighting_post r6: composed frame catches 41% o
 // with quadratic decay, so the r5 "20 m road wash" cannot return.
 const MUZZLE_LIGHT_PEAK = 460;
 const MUZZLE_LIGHT_RANGE = 12;
+/** (229, the media lane's Q2: one 460 cd, 12 m muzzle light for every gun, so a rifle-calibre burst pooled the snow white
+ *  as a 125 mm shot did) the gun's light by its bore: the peak and the reach above are a 120-125 mm gun's (the reference
+ *  bore between them), the peak scaling as the bore^1.3 (the charge grows with the bore's volume; the flash's light far
+ *  less than its energy) and the reach as its square root: a 7.62 mm gun ~14 cd over 3 m, 12.7 mm ~24 cd over 3.9 m,
+ *  30 mm ~74 cd over 5.9 m, 152 mm ~610 cd over 13.4 m. */
+const MUZZLE_LIGHT_REF_MM = 122.5, MUZZLE_LIGHT_BORE_POW = 1.3;
+function muzzleLightPeakK(caliberMm: number): number {
+  const bore = Number.isFinite(caliberMm) && caliberMm > 0 ? caliberMm / MUZZLE_LIGHT_REF_MM : 1;
+  return THREE.MathUtils.clamp(Math.pow(bore, MUZZLE_LIGHT_BORE_POW), 0.03, 1.4);
+}
+function muzzleLightRange(caliberMm: number): number {
+  const bore = Number.isFinite(caliberMm) && caliberMm > 0 ? caliberMm / MUZZLE_LIGHT_REF_MM : 1;
+  return THREE.MathUtils.clamp(MUZZLE_LIGHT_RANGE * Math.sqrt(bore), 3, 14);
+}
 /** (EF.10) the local lights' gains on the smoke and dust they reach (a radiance gain on the medium's own colour, at the
  *  light; falling off as (1 - d / range)^2): a headlight's beam, a flash at its peak, a wreck's fire at its mean */
 const LOCAL_HEADLIGHT_GAIN = 1.4, LOCAL_FLASH_GAIN = 2.4, LOCAL_FIRE_GAIN = 1.5;
@@ -1321,6 +1335,8 @@ function* createFxSteps(
     range?: number,
   ): void {
     state.light.position.copy(pos);
+    // (229) the muzzle light's reach: its gun's (muzzleLightRange), the 12 m default for every other muzzle-light pulse
+    if (state.light === muzzleLight) state.light.distance = range && range > 0 ? range : MUZZLE_LIGHT_RANGE;
     // (fx 9: 8t) the pulse's own reach (the pooled explosion light: 13 m unless the pulse asks less)
     if (state.light === explosionLight) {
       state.range = range && range > 0 ? range : 13;
@@ -4158,7 +4174,7 @@ function* createFxSteps(
     const nightK = 0.35 + 0.65 * tracers.darkLevel();
     if (muzzleLight.intensity > 0) {
       const p = muzzleLight.position;
-      addLocalPoint(p.x, p.y, p.z, MUZZLE_LIGHT_RANGE * 1.5, muzzleLight.color,
+      addLocalPoint(p.x, p.y, p.z, muzzleLight.distance * 1.5, muzzleLight.color,
         LOCAL_FLASH_GAIN * nightK * muzzleLight.intensity / MUZZLE_LIGHT_PEAK);
     }
     const blastState = lightStates[1];
@@ -6255,7 +6271,8 @@ function* createFxSteps(
       // the brightest lit surface is the muzzle itself.
       _sv.copy(pos).addScaledVector(dir, -0.15);
       _sv.y += 0.10;
-      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * lightK * muzzleLightScale, 0);
+      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * muzzleLightPeakK(caliberMm) * lightK * muzzleLightScale, 0,
+        undefined, undefined, undefined, muzzleLightRange(caliberMm));
     },
 
     /** Tank-on-tank metal contact: lateral sparks, track debris and a low
@@ -7101,7 +7118,8 @@ function* createFxSteps(
       // onto the mantlet/hull front, but the hottest lit metal is the muzzle.
       _sv.copy(muzzlePos).addScaledVector(dir, -0.18);
       _sv.y += 0.10;
-      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (rocket ? 0.3 : 1) * muzzleLightScale, ageS);
+      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (rocket ? 0.3 : muzzleLightPeakK(caliberMm)) * muzzleLightScale, ageS,
+        undefined, undefined, undefined, rocket ? MUZZLE_LIGHT_RANGE : muzzleLightRange(caliberMm));
     },
 
     /**

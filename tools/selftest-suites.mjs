@@ -368,6 +368,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/cinematicShotBlast.selftest.mjs',
     'src/fx/shellBurstColumn.selftest.mjs',
     'src/fx/killLight.selftest.mjs',
+    // (229) the muzzle flash's light by calibre: a machine gun's small kiss to a 152 mm gun's wider pool
+    'src/fx/muzzleLight.selftest.mjs',
     // 2026-10-08 (destruction core lane, P2): the Studio films the sim's own holes and falls
     'src/game/studioDestruction.selftest.mjs',
     // 2026-10-09 (destruction core lane): a Studio burst fells light props as a battle's does; strike rounds burst on the ground.
