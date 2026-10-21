@@ -40,7 +40,7 @@ assert.equal(material.customProgramCacheKey(), 'fx-crater-marks-lit-v1', 'a prog
   const seen = [];
   const lit = createCraterMarks({ setupMaterial: (m, hook) => { seen.push({ m, hook }); } });
   assert.equal(seen.length, 1, 'one registration');
-  assert.equal(seen[0].m, lit.mesh.material, 'of the mark\'s own material');
+  assert.equal(seen[0].m.uuid, lit.mesh.material.uuid, 'of the mark\'s own material');
   assert.equal(typeof seen[0].hook, 'function', 'with its shader hook (the cascades replace onBeforeCompile and chain it)');
   assert.equal(lit.mesh.material.onBeforeCompile, seen[0].hook, 'a setup that keeps no hook still compiles the surface');
 }
