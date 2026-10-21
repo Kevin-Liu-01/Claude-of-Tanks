@@ -94,15 +94,46 @@ function addType96RearDeck(P: TankBuilderPort): void {
         equipment(P, 'hull', 'Detail', box(.14, .12, .21), side * .73, 1.13, 3.34, -.18);
     }
 }
+// A shell station: z, low/shoulder/top half widths, floor, shoulder and roof heights.
+type Type96Station = readonly [z: number, lowHalf: number, shoulderHalf: number, topHalf: number,
+    floor: number, shoulder: number, roof: number];
+// The central hull's stations.
+const TYPE96_HULL_STATIONS: readonly Type96Station[] = [
+    [-3.3848, 1.02, 1.68, 1.53, .56, 1.335, 1.60],
+    [-3.20, 1.06, 1.69, 1.55, .48, 1.340, 1.60],
+    [-1.23, 1.08, 1.69, 1.55, .47, 1.350, 1.62],
+    [1.00, 1.08, 1.70, 1.54, .47, 1.370, 1.59],
+    [2.60, 1.03455, 1.70, 1.39455, .54273, 1.37727, 1.43091],
+    [2.6992, 1.03173, 1.70, 1.38553, .54724, 1.37772, 1.41240],
+];
+/** The driver's station on the roof plane between the 1.00 and 2.60 stations (level across, falling 159 mm forward).
+ * Release 227 (CN critic round 5): the level hatch lid hovered 9-65 mm over that plane and its three periscopes
+ * 108-117 mm over the roof, under the mantlet boot (the middle head stood 59 mm inside it with the gun at rest).
+ * The lid now stands on a coaming, 20 mm inside its rim, its underside 6 mm into the roof at every point of its
+ * foot, its top 2 mm into the lid; the periscope row stands 10 mm ahead of the rim, out of the boot's sweep, each
+ * head's floor 8 mm over the roof at its centre on a base cut to the roof's fall (underside 6 mm into the roof). The
+ * base stands 2 mm inside the head's sides, front and rear and reaches 8 mm into it, past the 14 mm round of its
+ * lower edges. A 30 mm neck on a 15 mm inset left slots under the head's overhang and its window that the watertight
+ * gate's 25 mm lattice reads as enclosed pockets (0.19 L a side head). */
+function addType96DriverStation(P: TankBuilderPort): void {
+    const [a, b] = [TYPE96_HULL_STATIONS[3], TYPE96_HULL_STATIONS[4]];
+    const roof = (z: number) => a[6] + (b[6] - a[6]) * (z - a[0]) / (b[0] - a[0]);
+    const lid = { y: 1.60, z: 1.50, r: .32, h: .045 };
+    hatch(P, 'hull', 0, lid.y, lid.z, lid.r);
+    const coaming = cylY(lid.r - .02, lid.r - .02, lid.h, P.q ? 28 : 16), p = coaming.getAttribute('position');
+    for (let i = 0; i < p.count; i++)
+        p.setY(i, p.getY(i) > 0 ? lid.y - lid.h / 2 + .002 : roof(lid.z + p.getZ(i)) - .006);
+    equipment(P, 'hull', 'Detail', coaming, 0, 0, lid.z);
+    const head = { w: .18, h: .06, d: .08 }, z = lid.z + lid.r + .01 + head.d / 2, floor = roof(z) + .008;
+    for (const x of [-.25, 0, .25]) {
+        optic(P, 'hull', x, floor + head.h / 2, z, head.w, head.h, head.d);
+        const x0 = x - head.w / 2 + .002, x1 = x + head.w / 2 - .002;
+        equipment(P, 'hull', 'Detail', sectionSolid([z - head.d / 2 + .002, z + head.d / 2 - .002].map(zz => ({ z: zz,
+            ring: [[x0, roof(zz) - .006], [x1, roof(zz) - .006], [x1, floor + .008], [x0, floor + .008]] as const }))), 0, 0, 0);
+    }
+}
 function buildType96Hull(P: TankBuilderPort): void {
-    P.add('hull', sectionSolid([
-        hullStation(-3.3848, 1.02, 1.68, 1.53, .56, 1.335, 1.60),
-        hullStation(-3.20, 1.06, 1.69, 1.55, .48, 1.340, 1.60),
-        hullStation(-1.23, 1.08, 1.69, 1.55, .47, 1.350, 1.62),
-        hullStation(1.00, 1.08, 1.70, 1.54, .47, 1.370, 1.59),
-        hullStation(2.60, 1.03455, 1.70, 1.39455, .54273, 1.37727, 1.43091),
-        hullStation(2.6992, 1.03173, 1.70, 1.38553, .54724, 1.37772, 1.41240),
-    ], { sideQuadDiagonal: 'convex' }));
+    P.add('hull', sectionSolid(TYPE96_HULL_STATIONS.map(row => hullStation(...row)), { sideQuadDiagonal: 'convex' }));
     // The forward central shell ends at its own nose, not the fender AABB.
     // Object_22's upper glacis is two measured planes; the former broad flat
     // roof sat above the armor blocks and hid their actual receiving faces.
@@ -134,9 +165,7 @@ function buildType96Hull(P: TankBuilderPort): void {
     // Sloped upper glacis service panels remain thin plates on the actual hull.
     for (const x of [-.59, .59])
         equipment(P, 'hull', 'Detail', box(.87, .035, 1.04), x, 1.443, 2.12, -.16);
-    hatch(P, 'hull', 0, 1.60, 1.50, .32);
-    for (const x of [-.25, 0, .25])
-        optic(P, 'hull', x, 1.650, 1.73, .18, .06, .08);   // on the deck (they stood 8 mm over it; 2026-10-19 owner float sweep)
+    addType96DriverStation(P);
     addType96RearDeck(P);
 }
 function buildType96Gear(P: TankBuilderPort): void {
@@ -228,28 +257,35 @@ function addType96Cupola(P: TankBuilderPort): void {
     equipment(P, 'turret', 'Detail', box(.418, .105, .304), -.592, 2.350, -.539);
     equipment(P, 'turret', 'Detail', cylX(.036, .34, P.q ? 20 : 12), -.592, 2.432, -.493);
 }
+// The turret shell's stations (source frame).
+const TYPE96_TURRET_STATIONS: readonly Type96Station[] = [
+    [-2.04, .79, 1.17, .97, 1.75, 1.95, 2.20],
+    [-1.57, 1.16, 1.46, 1.15, 1.67, 1.96, 2.28],
+    [-.40, 1.27, 1.51, 1.14, 1.60, 1.95, 2.30],
+    [.64, 1.18, 1.44, .93, 1.62, 1.84, 2.25],
+    [1.33, .70, 1.00, .50, 1.66, 1.83, 2.05],
+    [1.93, .29, .40, .26, 1.72, 1.84, 1.98],
+];
+// The gunner's sight housing on the right front roof: centre and width, height, depth (source frame).
+const TYPE96_GUNNER_SIGHT = { x: .649, y: 2.436, z: .36, w: .51, h: .214, d: .28 } as const;
 /** Options for reusing the Type 96B turret on another hull. mastTopY lowers the rear whip's tip (Type 96B frame,
- * default its own 5.26855 m) for a concept whose listed height is its body and roof weapon, keeping the whip's rake. */
-export interface Type96TurretOptions { mastTopY?: number }
+ * default its own 5.26855 m) for a concept whose listed height is its body and roof weapon, keeping the whip's rake.
+ * bootFloor clips the pitching mantlet boot's underside at each of its six stations (source-frame heights, null for
+ * none) so the boot clears the hull it is carried over through the whole traverse and pitch range; without it the
+ * boot keeps Object_6's measured underside. */
+export interface Type96TurretOptions { mastTopY?: number; bootFloor?: readonly (number | null)[] }
 export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptions = {}): void {
     P.add('turret', cylY(1.00, 1.04, .15, P.q ? 40 : 22), 0, .045, 0);
-    P.add('turret', sectionSolid([
-        turretStation(P, -2.04, .79, 1.17, .97, 1.75, 1.95, 2.20),
-        turretStation(P, -1.57, 1.16, 1.46, 1.15, 1.67, 1.96, 2.28),
-        turretStation(P, -.40, 1.27, 1.51, 1.14, 1.60, 1.95, 2.30),
-        turretStation(P, .64, 1.18, 1.44, .93, 1.62, 1.84, 2.25),
-        turretStation(P, 1.33, .70, 1.00, .50, 1.66, 1.83, 2.05),
-        turretStation(P, 1.93, .29, .40, .26, 1.72, 1.84, 1.98),
-    ], { sideQuadDiagonal: 'convex' }));
+    P.add('turret', sectionSolid(TYPE96_TURRET_STATIONS.map(row => turretStation(P, ...row)),
+        { sideQuadDiagonal: 'convex' }));
     addTurretBins(P);
     addType96SmokeLaunchers(P);
     addType96Cupola(P);
     addSecondaryHatch(P);
     equipment(P, 'turret', 'Detail', cylY(.205, .205, .145, P.q ? 26 : 14), -.766, 2.291, -.994);
     equipment(P, 'turret', 'Detail', cylY(.122, .122, .140, P.q ? 24 : 14), .897, 2.291, -.719);
-    // 2026-10-19 (owner float sweep): the sight head stood 24-60 mm over the roof; it sits on an armoured base
-    equipment(P, 'turret', 'Detail', box(.40, .075, .24), .649, 2.296, .36);
-    optic(P, 'turret', .649, 2.436, .36, .51, .214, .28);
+    const s = TYPE96_GUNNER_SIGHT;
+    optic(P, 'turret', s.x, s.y, s.z, s.w, s.h, s.d);
     optic(P, 'turret', 0, 2.278, 1.540, .25, .236, .396);
     // 2026-10-19 (owner float sweep): this sensor stood 113 mm over the roof, resting only on the pitching mantlet boot;
     // a bridge of two posts outboard of the boot and a crossbar under the housing carries it on the turret
@@ -273,15 +309,17 @@ export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptio
         [1.20, .250, 1.595, 2.171], [1.32, .260, 1.582, 2.212],
         [1.60, .246, 1.616, 2.173], [1.75, .216, 1.641, 2.082],
         [1.85, .190, 1.704, 2.044], [1.951, .157, 1.696, 2.017],
-    ].map(([z, half, bottom, top]) => ({
+    ].map(([z, half, bottom, top], station) => ({
         z: z - 1.6, ring: Array.from({ length: P.q ? 20 : 12 }, (_, i) => {
             const a = i * Math.PI * 2 / (P.q ? 20 : 12);
-            return [Math.cos(a) * half, (top + bottom) / 2 - 1.8602 + Math.sin(a) * (top - bottom) / 2] as const;
+            const y = (top + bottom) / 2 - 1.8602 + Math.sin(a) * (top - bottom) / 2, floor = options.bootFloor?.[station];
+            return [Math.cos(a) * half, floor == null ? y : Math.max(y, floor - 1.8602)] as const;
         }),
     }));
     // Object_6 is the pitching mantlet boot; the tube and ambiguous Object_11
     // collar remain in recoil. This changes ownership only, not neutral stock.
-    P.addGunExtra(sectionSolid(boot));
+    // A clipped underside is a flat run of contour points: its caps keep every one.
+    P.addGunExtra(options.bootFloor ? sectionSolid(boot, { preserveCapBoundary: true }) : sectionSolid(boot));
     // Source Object_13 is the outer tapered shroud. Object_14's 68 mm
     // radius belongs to its inner bore and must not become the outer barrel.
     const stations: readonly (readonly [
@@ -302,6 +340,28 @@ export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptio
         P.add('gun', cylZ(.160, .045, P.q ? 28 : 16), 0, 0, z);
     P.muzzleZ = 4.92211;
 }
+/** Release 227 (critic CN5-02): buildType96Turret draws the gunner's sight housing 59-71 mm over the roof with nothing
+ * under it. On the fleet Type 96B it stands on a cast plinth, the construction the CN lane gives its Kunlun and Yun
+ * (chinaDonorTurretKit.ts type96SightPlinth): the footprint 20 mm inside the housing's sides, front and rear, the
+ * underside 6 mm into the roof, the top 2 mm into the housing's floor. The roof there is the plane between the -.40 and
+ * .64 stations (level across, falling 50 mm forward), so the two end sections carry it exactly. Called by the fleet
+ * builder only: the turret's other users keep their own seats. */
+function addType96GunnerSightPlinth(P: TankBuilderPort): void {
+    const s = TYPE96_GUNNER_SIGHT, [a, b] = [TYPE96_TURRET_STATIONS[2], TYPE96_TURRET_STATIONS[3]];
+    const roof = (z: number) => a[6] + (b[6] - a[6]) * (z - a[0]) / (b[0] - a[0]);
+    const x0 = s.x - s.w / 2 + .02, x1 = s.x + s.w / 2 - .02, top = s.y - s.h / 2 + .002;
+    equipment(P, 'turret', 'Detail', sectionSolid([s.z - s.d / 2 + .02, s.z + s.d / 2 - .02].map(z => ({ z,
+        ring: [[x0, roof(z) - .006], [x1, roof(z) - .006], [x1, top], [x0, top]] as const }))), 0, 0, 0);
+}
+/** The fleet Type 96B's mantlet boot floors (buildType96Turret's bootFloor; the stations at source z 1.20, 1.32, 1.60,
+ * 1.75, 1.85, 1.951 about the trunnion at y 1.8602, z 1.60). Release 227: Object_6's underside (y 1.582-1.704) hung
+ * 4-10 cm below the turret's own floor and swept through this hull's roof (y 1.59-1.62) at every traverse, through the
+ * driver's hatch lid at rest, and 5.6 cm into the roof at full elevation. Behind the trunnion the clipped floor rides
+ * inside the turret at rest and swings down to the turret's floor line at +14 degrees, 15 mm over the driver's hatch
+ * handle (y 1.651); ahead of it the floor clears the rear-deck panels (y 1.6535) with the turret reversed. The two front
+ * stations, which wrap the barrel collar, keep their measured undersides. type96MantletClearance.selftest.mjs sweeps
+ * every traverse and pitch for crossings. */
+const TYPE96B_BOOT_FLOOR = [1.75, 1.73, 1.66, 1.67, null, null] as const;
 export function buildType96bX(P: TankBuilderPort): void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
@@ -315,7 +375,8 @@ export function buildType96bX(P: TankBuilderPort): void {
     P.gunG.position.set(0, frame.gun[1] - frame.turret[1], frame.gun[2] - frame.turret[2]);
     buildType96Hull(P);
     buildType96Gear(P);
-    buildType96Turret(P);
+    buildType96Turret(P, { bootFloor: TYPE96B_BOOT_FLOOR });
+    addType96GunnerSightPlinth(P);
     preserveSourceStudyGunMountAppearance(P);
     addRearFieldStowage(P);
     P.topY = 3.016 - frame.turret[1];

@@ -208,6 +208,25 @@ assert.equal(make().lookup('src/environment-object.selftest.mjs').key, undefined
   assert.deepEqual(rel(cache, 'src/aliases.selftest.mjs'), ['one.json', 'src/aliases.selftest.mjs', 'src/one.json', 'src/three.json',
     'src/two.json', 'three.json', 'two.json'], 'aliased, namespace and posix node:path joins still name their files');
 }
+// 2026-10-20: liveness and the environment come from the modules a receipt's imports execute, never from a file it only
+// names (a JSON that names a git tool, a tool it spawns). They used to count once any other receipt's walk had parsed the
+// file, so a receipt went live or stayed keyed by lookup order.
+{
+  write('src/gitTool.mjs', "import { execFileSync } from 'node:child_process';\nexecFileSync('git', ['status']);\nprocess.env.COT_GIT_TOOL;\n");
+  write('src/importsTool.selftest.mjs', "import './gitTool.mjs';\n");
+  write('src/namesTool.json', '{ "tool": "src/gitTool.mjs" }\n');
+  write('src/namesTool.selftest.mjs', "import { readFileSync } from 'node:fs';\nreadFileSync(new URL('./namesTool.json', import.meta.url));\n");
+  write('src/spawnsTool.selftest.mjs', "import { spawnSync } from 'node:child_process';\nspawnSync(process.execPath, ['src/gitTool.mjs']);\n");
+  for (const receipt of ['src/namesTool.selftest.mjs', 'src/spawnsTool.selftest.mjs']) {
+    const alone = make().lookup(receipt);
+    const later = make();
+    assert.equal(later.lookup('src/importsTool.selftest.mjs').reason, 'browser or Git state must be checked live', 'the importer runs git');
+    const after = later.lookup(receipt);
+    assert.ok(rel(later, receipt).includes('src/gitTool.mjs'), `${receipt}: the tool is in its closure`);
+    assert.deepEqual([after.reason, after.key], [alone.reason, alone.key], `${receipt}: the same verdict and key in either lookup order`);
+    assert.ok(alone.key, `${receipt}: keyed (the named tool's git and environment are not its own)`);
+  }
+}
 rmSync(root, { recursive: true, force: true });
 
 // the real repository: the receipts that moved during batch 28 see their inputs
