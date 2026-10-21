@@ -475,13 +475,15 @@ function addTurret(P: TankBuilderPort): void {
     }
     P.addEquipment('turretDetail', box(.11, .11, .09), side * 1.292, localY(2.40), localZ(-.14), 0, side * .38);
     P.addEquipment('turretGlass', box(.04, .045, .01), side * 1.31, localY(2.40), localZ(-.095), 0, side * .38);
+    // 2026-10-19 (owner float sweep): the forward launcher block runs 70 mm further inboard (outer face kept) so both
+    // rows of caps stand on it (the inner row hung over open air, 1 m above the hull)
     for (let i = 0; i < 3; i++) {
-      P.addEquipment('turretDetail', box(.14, .43, .61), side * 1.145, localY(2.34), localZ(-1.05 - i * .65));
+      P.addEquipment('turretDetail', box(i === 0 ? .21 : .14, .43, .61), side * (i === 0 ? 1.11 : 1.145), localY(2.34), localZ(-1.05 - i * .65));
       for (const y of [2.19, 2.48]) P.addEquipment('turretDark', cylZ(.012, .018, 8), side * 1.225, localY(y), localZ(-1.04 - i * .65), 0, side * Math.PI / 2);
     }
     // each launcher cap stands on the roof or box top under it (owner 2026-10-19 sweep: they hovered 1-21 cm over it)
     for (let row = 0; row < 2; row++) for (let col = 0; col < 6; col++) {
-      P.snapGroup('t14-roof-cap', () => P.addEquipment('turretDark', cylY(.039, .039, .013, 12), side * (1.04 - row * .105), localY(2.57), localZ(-.91 - col * .105)), { reachM: .25, mode: 'down' });
+      P.snapGroup('t14-roof-cap', () => P.addEquipment('turretDark', cylY(.039, .039, .013, 12), side * (1.16 - row * .105), localY(2.57), localZ(-.91 - col * .105)), { reachM: .25, mode: 'down' });
     }
     P.addEquipment('turretDetail', box(.45, .32, .12), side * 1.015, localY(2.68), localZ(-.48));
     for (let row = 0; row < 3; row++) for (let col = 0; col < 4; col++) {

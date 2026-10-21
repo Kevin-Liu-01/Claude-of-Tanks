@@ -1514,6 +1514,9 @@ export function buildT62Obr1975(P: RussiaBuilderPort): void {
   P.addGunExtra(box(0.726, 0.16, 0.12), -0.66, 0.24, -0.17);
   P.addGunExtra(KIT.xform(cylZ(0.105, 0.11, 14), 0, 0, 0), 0.572, 0.28, 0.02);
   P.add('gunMountDark', KIT.xform(cylZ(0.095, 0.014, 14), 0, 0, 0), 0.572, 0.28, 0.082);
+  // 2026-10-19 (owner float sweep): the light stood 239 mm off the mantlet with nothing holding it; its arm runs from the
+  // mantlet's right edge under the light (it elevates with the gun)
+  P.addGunExtra(box(0.36, 0.04, 0.06), 0.39, 0.19, 0.02);
   tubeGun(P, [
     [0.40, 3.05, 0.085], [3.05, 3.95, 0.135], [3.95, 4.68, 0.080],
   ], { rings: [[0.72, 0.089], [1.40, 0.089], [2.20, 0.089], [3.05, 0.139], [3.95, 0.085]], muzzle: 4.68 });
