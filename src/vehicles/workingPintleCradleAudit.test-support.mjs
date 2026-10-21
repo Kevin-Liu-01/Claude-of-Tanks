@@ -39,7 +39,10 @@ export function assertWorkingPintleClear(id, station, pitch) {
   assert.ok(Number.isFinite(station.userData.auxiliaryRecoilM) && pitch.getObjectByName('auxiliaryWeaponRecoil'),
     `${label}: a working pintle rides its cradle (FittingOptions.ridingCradle), its gun recoiling in its own group`);
   const profile = auxiliaryWeaponProfile(station.userData.caliberMm || 12.7, id);
-  const self = stationSelfClearance(station, pitch, { depression: profile.depressionRad, elevation: profile.elevationRad });
+  // 1-degree steps, 5 mm samples and a 4 mm cap (cnStations measures its two emplacements at 0.5 degrees and 4 mm): about
+  // a hundred stations ride in the default fleet pass
+  const self = stationSelfClearance(station, pitch, { depression: profile.depressionRad, elevation: profile.elevationRad,
+    step: Math.PI / 180, h: .005, cap: .004 });
   const where = `${(self.el * 180 / Math.PI).toFixed(1)} deg, recoil ${(self.r * 1000).toFixed(0)} mm`;
   assert.ok(self.d >= WORKING_PINTLE_CLEARANCE_M,
     `${label}: the moving parts keep 1.5 mm from their own mount through pitch and recoil (${(self.d * 1000).toFixed(2)} mm at ${where})`);

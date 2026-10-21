@@ -267,9 +267,10 @@ export function machinedRing(rIn: number, rOut: number, h: number, chamfer: numb
       // a fan over the closed section, wound to face away from the ring (towards the gap)
       for (let i = 1; i < 5; i++) caps.push(...(sense > 0 ? [...at(0), ...at(i), ...at(i + 1)] : [...at(0), ...at(i + 1), ...at(i)]));
     }
-    const ring = flat.getAttribute('position').array;
+    const ring = flat.getAttribute('position').array, uv = flat.getAttribute('uv').array;
     const merged = new THREE.BufferGeometry();
     merged.setAttribute('position', new THREE.Float32BufferAttribute([...ring, ...caps], 3));
+    merged.setAttribute('uv', new THREE.Float32BufferAttribute([...uv, ...new Array(caps.length / 3 * 2).fill(0)], 2));
     flat.dispose();
     flat = merged;
   }
@@ -618,7 +619,7 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
   const sweptLow = recY + (bodyBottom - recY) / Math.cos(e) + (baseRear - recZ) * Math.tan(e);
   const xBox = (u0: number, u1: number, s0: number): [number, number] => [Math.min(s0 * u0, s0 * u1), Math.max(s0 * u0, s0 * u1)];
   // the fit (release 229), each round from the release-227 emplacement's dimensions at the round's recoil stroke
-  let stroke = RIDING_CRADLE_RECOIL_M, head = near, pinIn = 0, feedFront = 0, floorFeedX = 0;
+  let stroke = RIDING_CRADLE_RECOIL_M, head = near, pinIn = 0, feedFront = 0, floorFeedX = 0, barHalf = 0;
   let pinZ: [number, number] = [0, 0], feedZ: [number, number] | null = null, floorZ: [number, number] = [0, 0];
   let shieldDZ = 0, shieldDrop = 0, portW = 0, portBelow = 0, portAbove = 0, armIn = 0, ringOut = 0, baseH = 0, baseTop = 0, ringDrop = 0, ringGap = 0;
   // pitch group: the cheeks, the floor under the receiver, the shield's carrier and the class's furniture (the pin and its
@@ -634,7 +635,7 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
     // behind the shield's inner panels (release 229: an open mount has no shield and draws no carrier)
     if (context.shieldVariant) {
       const shieldBack = trunZ + 0.035 * s - 0.015 * s + shieldDZ;
-      target.add(cradleSlot, block(0.080 * s, 0.010 * s, shieldBack - floorZ[1] + 0.002 * s), 0, floorBottom + 0.005 * s, (shieldBack + floorZ[1]) / 2);
+      target.add(cradleSlot, block(2 * barHalf, 0.010 * s, shieldBack - floorZ[1] + 0.002 * s), 0, floorBottom + 0.005 * s, (shieldBack + floorZ[1]) / 2);
       target.add(cradleSlot, block(0.180 * s, 0.010 * s, 0.025 * s), 0, floorBottom + 0.005 * s, shieldBack - 0.0125 * s + 0.002 * s);
     }
     if (context.classKey === 'nsvt') addNsvtCradleFurniture(context, target, cradleSlot, { floorBottom, cheekX: pinIn + pinT / 2, cheekT: pinT, cheekRear: pinZ[0] });
@@ -643,7 +644,7 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
     pinIn = bodyW / 2 + 0.012 * s;
     feedFront = context.ammo ? Math.min(cheekFront, canArmRear - stroke - 0.002 * s) : cheekFront;
     pinZ = [cheekRear, cheekFront]; feedZ = [cheekRear, feedFront]; floorZ = [cheekRear, feedFront]; floorFeedX = feedIn + feedT;
-    shieldDZ = 0; shieldDrop = 0.012 * s; portW = portBelow = portAbove = 0.036 * s;
+    shieldDZ = 0; shieldDrop = 0.012 * s; portW = portBelow = portAbove = 0.036 * s; barHalf = 0.040 * s;
     if (gun) {
       // the pin-side cheek: the free stretch round the pin, stepping outboard past anything at the pin itself
       for (let pass = 0; pass < 4; pass++) {
@@ -698,6 +699,13 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
           if (w <= halfW - 0.006 * s && trunY - below >= foot + 0.004 * s && trunY + above <= beamIn - 0.004 * s) {
             shieldDZ = dz; shieldDrop = drop; portW = w; portBelow = below; portAbove = above; break place;
           }
+        }
+        // the carrier bar under the barrel narrows between the side furniture over its run (a small can's strap)
+        const shieldBack = trunZ + 0.035 * s - 0.015 * s + shieldDZ;
+        const bar: FitBox = [-barHalf - airGun, floorBottom - airGun, floorZ[1] - airGun, barHalf + airGun, floorBottom + 0.010 * s + airGun, shieldBack + stroke + airGun];
+        for (let o = 0; o < gun.length; o += 9) if (triangleBoxOverlap(gun, o, bar)) {
+          const x0 = gun[o]!, x1 = gun[o + 3]!, x2 = gun[o + 6]!, inner = Math.min(Math.abs(x0), Math.abs(x1), Math.abs(x2));
+          if (Math.sign(x0) === Math.sign(x1) && Math.sign(x1) === Math.sign(x2) && inner > 0.020 * s) barHalf = Math.max(0.020 * s, Math.min(barHalf, inner - airGun - 0.0005 * s));
         }
       }
     }
