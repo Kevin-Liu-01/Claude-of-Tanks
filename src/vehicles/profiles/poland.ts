@@ -1191,7 +1191,9 @@ function addPL01RemoteWeaponStation(P: PolishBuilderPort, context: PL01BuildCont
     // window and the plinth crown stays under the 1% grace edge 2.828)
     P.addEquipment('turret', box(0.46, 0.035 * equipmentHeightScale, 0.34), -0.05, roofEquipmentY(0.7275), -1.33); // plinth
     P.addEquipment('turret', cylY(0.095, 0.11, 0.05 * equipmentHeightScale, 16), -0.05, roofEquipmentY(0.77), -1.33);
-    P.addEquipment('turret', box(0.52, 0.46 * equipmentHeightScale, 0.17), -0.05, roofEquipmentY(1.03), -1.33); // tower
+    // 2026-10-19 (owner float sweep): the tower (and the cap, sensors, chest and weapon on it) stood 33 mm over the plinth
+    // collar; it runs 34 mm deeper to it (top kept)
+    P.addEquipment('turret', box(0.52, 0.46 * equipmentHeightScale + 0.034, 0.17), -0.05, roofEquipmentY(1.03) - 0.017, -1.33); // tower
     P.add('turretDark', box(0.46, 0.035, 0.15), -0.05, roofEquipmentY(1.278), -1.33); // cap
     P.add('turretDetail', box(0.10, 0.05 * equipmentHeightScale, 0.09), 0.12, roofEquipmentY(1.315), -1.325); // sensor
     P.add('turretDark', box(0.065, 0.03, 0.06), 0.12, roofEquipmentY(1.352), -1.325);
@@ -1303,7 +1305,9 @@ function addPL01RoofSuite(P: PolishBuilderPort, context: PL01BuildContext): void
 
   // Short antenna whips, lifting eyes, and service boxes complete the roof.
   for (const [x, z, h, rake] of [[-0.88, -1.72, 0.42, -0.05], [0.86, -1.88, 0.36, 0.05]]) {
-    P.addEquipment('turretDetail', cylY(0.035, 0.045, 0.065, 10), x, roofY + 0.0325, z);
+    // 2026-10-19 (owner float sweep): the right pot stood 50 mm over the falling roof edge; each pot drops onto the roof
+    P.snapGroup('pl01-antenna-pot', () => P.addEquipment('turretDetail', cylY(0.035, 0.045, 0.065, 10), x, roofY + 0.0325, z),
+      { mode: 'down', reachM: 0.08 });
     const whip = FITTINGS.antennaWhip({
       mats: P.mats, h, r: 0.010, rake, seed: 1070 + (x > 0 ? 1 : 0),
     });

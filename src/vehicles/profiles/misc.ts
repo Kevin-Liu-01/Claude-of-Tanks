@@ -202,16 +202,24 @@ function galixBank(
   top = 0,
   topShift = 0,
   topLift = 0,
+  tail = 0,
 ): void {
   const { box, cylZ } = KIT;
   const shift = top ? topShift : 0, lift = top ? topLift : 0;
   const grow = top ? 0.15 + lift : 0;
-  P.add('turret', box(0.09, 0.26 + grow, 0.16 * Math.max(n, top) * 0.72 + Math.abs(shift)), x - side * 0.02,
-    y - 0.04 + grow / 2, z + shift / 2, 0, side * 0.55, 0);
+  // `tail` lengthens the box aft along its own line (2026-10-19 owner float sweep: the left bank's sixth upper tube
+  // overhung the box's rear end)
+  P.add('turret', box(0.09, 0.26 + grow, 0.16 * Math.max(n, top) * 0.72 + Math.abs(shift) + tail),
+    x - side * 0.02 - side * Math.sin(0.55) * tail / 2, y - 0.04 + grow / 2, z + shift / 2 - Math.cos(0.55) * tail / 2,
+    0, side * 0.55, 0);
   for (let r = top ? -1 : 0; r < rows; r++) for (let k = 0; k < (r < 0 ? top : n - (r ? 1 : 0)); k++) {
     // the upper row fans a little tighter, so its sixth tube still fires ahead of the beam (yaw at most 1.5 rad)
-    P.add('turretDark', markSmokeTube(cylZ(0.048, 0.24, 8)), x + side * (k * 0.02 - r * 0.06),
-      y + 0.05 - r * 0.15 + (r < 0 ? lift : 0), z + 0.26 - k * 0.135 + (r < 0 ? shift : 0), -0.42 + r * 0.08,
+    const tz = 0.26 - k * 0.135 + (r < 0 ? shift : 0);
+    // 2026-10-19 (owner float sweep): the upper row stepped straight aft while its box runs at the box's 0.55 yaw, so
+    // its tubes left the box 36-285 mm behind; that row now follows the box's own line
+    const tx = r < 0 ? -0.02 + 0.06 + (tz - shift / 2) * Math.tan(0.55) : k * 0.02 - r * 0.06;
+    P.add('turretDark', markSmokeTube(cylZ(0.048, 0.24, 8)), x + side * tx,
+      y + 0.05 - r * 0.15 + (r < 0 ? lift : 0), z + tz, -0.42 + r * 0.08,
       side * (r < 0 ? 0.9 + k * 0.12 : 0.95 + k * 0.14), 0);
   }
 }
@@ -1687,8 +1695,10 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
       commanderStation[0], roofAt(commanderStation[1]) + 0.008, commanderStation[1]);
     P.add('turretDark', box(0.38, 0.012, 0.03),
       commanderStation[0], roofAt(commanderStation[1]) + 0.020, commanderStation[1]);
-    addRoofCupola('turret', cylY(0.20, 0.20, 0.04, 14),
-      gunnerStation[0], roofAt(gunnerStation[1]) + 0.02, gunnerStation[1]);
+    // 2026-10-19 (owner float sweep): roofAt reads the centreline; at the S2's outboard gunner station the roof lies
+    // 152 mm lower, so the ring drops onto it
+    P.snapGroup('leclerc-gunner-ring', () => addRoofCupola('turret', cylY(0.20, 0.20, 0.04, 14),
+      gunnerStation[0], roofAt(gunnerStation[1]) + 0.02, gunnerStation[1]), { mode: 'down', reachM: 0.2 });
     if (centeredRoofStations) {
       P.turretG.userData.leclercVariantRoofStations = {
         leftPadCenterX: -0.67,
@@ -1780,7 +1790,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     // the left (+X) row sits two pitches aft: the side box ahead of that bank owns the turret side forward of z -1.30;
     // on the XLR it also rides above the side armour module (top 0.63) that runs along that flank
     galixBank(P, 1.24, 0.33, -1.38, 1, 5, 2, galixTop, -0.32, variant === 'xlr' ? 0.17 : 0);
-    galixBank(P, -1.34, 0.50, -1.62, -1, 5, 2, galixTop);
+    galixBank(P, -1.34, 0.50, -1.62, -1, 5, 2, galixTop, 0, 0, galixTop ? 0.16 : 0);
     // LARGE CYLINDRICAL DRUM on the turret right rear (photo round, read 6 —
     // the Tamiya's very visible horizontal stowage drum, axis fore-aft).
     // Measured seat r2: r 0.20 xc 1.24 (x 1.04..1.44 — the first outboard seat
