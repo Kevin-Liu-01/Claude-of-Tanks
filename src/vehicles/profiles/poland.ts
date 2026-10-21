@@ -53,6 +53,7 @@ interface PolishBuilderMaterials extends Record<string, THREE.Material> {
 
 interface PolishBuilderPort {
   postAssemble: TankBuilderPort['postAssemble'];
+  readonly snapGroup: TankBuilderPort['snapGroup'];
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
