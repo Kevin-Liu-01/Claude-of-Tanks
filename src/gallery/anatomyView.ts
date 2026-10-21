@@ -90,9 +90,17 @@ const STYLE = `
 .anatomy-badge.is-off{display:none}
 @media (pointer:coarse){.anatomy-chip,.anatomy-seg button{min-height:40px;padding:6px 11px}.anatomy-badge{width:32px;height:32px;margin:-16px 0 0 -16px}}
 body[data-cot-width='phone'] .anatomy-chip span,body[data-cot-width='compact'] .anatomy-chip span{display:none}
-body[data-cot-width='phone'] .anatomy-chip,body[data-cot-width='compact'] .anatomy-chip{padding:6px 9px}
-body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp{grid-template-columns:1fr;gap:4px;width:100%}
-body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-key{padding:3px 6px;font-size:9px}
+body[data-cot-width='phone'] .anatomy-bar,body[data-cot-width='compact'] .anatomy-bar{gap:3px;margin-bottom:4px}
+body[data-cot-width='phone'] .anatomy-chip,body[data-cot-width='compact'] .anatomy-chip,
+body[data-cot-width='phone'] .anatomy-seg button,body[data-cot-width='compact'] .anatomy-seg button{min-height:32px;padding:4px 8px;font-size:9px}
+body[data-cot-width='phone'] .anatomy-seg button,body[data-cot-width='compact'] .anatomy-seg button{min-width:0}
+body[data-cot-width='phone'] #viewport .overlay-legend.anatomy-legend{gap:3px 4px}
+body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp{grid-template-columns:auto minmax(0,1fr);gap:6px;width:100%;padding:3px 7px}
+body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp b{font-size:8.5px}
+body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp-ticks span{font-size:8px}
+body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp-ticks span[data-minor]{display:none}
+body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-key{min-height:18px;gap:4px;padding:2px 5px;font-size:8.5px;letter-spacing:.03em}
+body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-key i{width:8px;height:8px}
 `;
 
 // Plate and station ids as words (catalog.ts's technicalLabel, kept local: importing catalog.ts here would split it
@@ -341,6 +349,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         const tick = document.createElement('span');
         tick.style.left = `${(armorRampPosition(mm) * 100).toFixed(1)}%`;
         tick.textContent = mm >= 1200 ? `${formatNumber(mm)}+` : formatNumber(mm);
+        if (![0, 100, 300, 650, 1200].includes(mm)) tick.dataset.minor = '';
         ticks.append(tick);
       }
       scale.append(barElement, ticks);
