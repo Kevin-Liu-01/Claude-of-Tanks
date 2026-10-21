@@ -977,8 +977,10 @@ export function createMatchModeWorldPresentation(
       marker.visible = true;
       marker.position.set(mark.x, options.groundHeight?.(mark.x, mark.z) ?? 0, mark.z);
       fitObjectiveSurface(marker.children[0] as THREE.Mesh, marker.position.x, marker.position.y, marker.position.z, options.groundHeight);
-      const label = mark.label ?? '';
-      setIcon(marker.userData.icon, `lane:${label}`, (ctx, c) => drawLaneGlyph(ctx, c, c, 44, label, '700 46px system-ui, sans-serif'));
+      // over the field the lane's board reads its range (the minimap's smaller board keeps the lane's number)
+      const label = mark.rangeM != null ? String(mark.rangeM) : mark.label ?? '';
+      const size = label.length > 2 ? 36 : 46;
+      setIcon(marker.userData.icon, `lane:${label}`, (ctx, c) => drawLaneGlyph(ctx, c, c, 44, label, `700 ${size}px system-ui, sans-serif`));
       fadeByViewer(marker);
     }
   };
