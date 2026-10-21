@@ -619,7 +619,7 @@ function addSTB1RoofEquipment(P: JapaneseBuilderPort): void {
   for (const side of [-1, 1]) {
     P.add('turretDetail', cylZ(0.058, 0.105, 12), side * 0.87, 0.745, 0.87);
     P.add('turretGlass', cylZ(0.042, 0.018, 12), side * 0.87, 0.745, 0.931);
-    P.add('turretDark', box(0.14, 0.025, 0.025), side * 0.87, 0.885, 0.88);
+    P.add('turretDark', box(0.14, 0.025, 0.025), side * 0.87, 0.814, 0.88);   // 2026-10-19 (owner float sweep): the brow stood 70 mm over its housing
   }
   P.add('turretDetail', box(0.24, 0.17, 0.16), 0.70, 1.225, -0.52);
   P.add('turretDark', box(0.025, 0.11, 0.12), 0.835, 1.225, -0.52);

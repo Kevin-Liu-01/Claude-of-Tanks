@@ -3355,7 +3355,8 @@ function tejasRoofKit(
     // x 1.16 (the ±1.07 rack leaves that bin's rear at the shell -2.78).
     // Bar top at the ref's 2.19 side read (a 2.30 bar owned the -3.094 side
     // column +0.10 over the ref's 2.192 rack-drop line).
-    P.add('turretDetail', box(0.10, 0.05, 0.15), 1.15, 0.596, -3.365);
+    // 2026-10-19 (owner float sweep): the bar stood 20 mm off the rack side; it runs inboard to it (outer face kept)
+    P.add('turretDetail', box(0.122, 0.05, 0.15), 1.139, 0.596, -3.365);
     // Strap rail seam — trimmed to end at the wall band's rear bay (-2.60):
     // the old -3.0 tail joined the corner end-face stack the critic read as
     // invented L-bracket hardware (item 10). PANEL-PITCH: the rail rides each

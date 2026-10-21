@@ -124,7 +124,8 @@ function bow(P: TankBuilderPort): void {
   P.add('hull', course(2.34853, 3.490369, 1.374389755, 1.392771444, -1.440173, 1.422004));
   // The source driver's window is inset behind its own raised frame.
   P.addHatch('hull', box(.850255, .024, .607723), .5594245, 1.50, 1.9047535, .178);
-  P.addEquipment('hullDetail', box(.850255, .028, .15), .5594245, 1.606, 1.781, .178);
+  // 2026-10-19 (owner float sweep): the frame strip stood 12-23 mm short of its posts; it runs back onto them (front kept)
+  P.addEquipment('hullDetail', box(.850255, .028, .19), .5594245, 1.606, 1.801, .178);
   P.addEquipment('hullDetail', box(.085, .116, .24), .178, 1.565, 1.988, .178);
   P.addEquipment('hullDetail', box(.085, .116, .24), .940, 1.565, 1.988, .178);
   P.addEquipment('hullGlass', box(.628987, .003, .244), .580878, 1.563, 1.9953, .467);
