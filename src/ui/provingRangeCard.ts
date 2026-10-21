@@ -39,6 +39,7 @@ export interface RangeCardState {
   readonly lastShot: {
     readonly serial: number;
     readonly kind: string;
+    readonly targetId: string;
     readonly targetName: string;
     readonly shellName: string;
     readonly shellType: string;
@@ -109,8 +110,8 @@ const CSS = `
 .cot-range-card .rc-figs .rc-pen small{font:500 10px ${PROVING_MONO};color:#7f909c;margin-left:2px}
 .cot-range-card .rc-figs .rc-eff svg{color:#c8d4dc}
 .cot-range-card .rc-shot.glance .rc-eff,.cot-range-card .rc-shot.glance .rc-gauge s{display:none}
-.cot-range-card .rc-figs .rc-tgt{margin-left:auto;font:600 11px ${PROVING_DISPLAY};color:#9fb0bb;max-width:46%;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cot-range-card .rc-tgt{font:600 11px ${PROVING_DISPLAY};color:#9fb0bb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cot-range-card .rc-tgt:empty{display:none}
 .cot-range-card .rc-lanes{display:flex;flex-direction:column;gap:1px}
 .cot-range-card .rc-lane{display:grid;grid-template-columns:44px 20px minmax(0,1fr) auto;gap:6px;align-items:center;
   padding:3px 5px;border-left:2px solid transparent}
@@ -178,8 +179,8 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
     `<div class="rc-shot" aria-live="polite"><div class="rc-verdict"><b></b><span class="rc-at"></span></div>` +
     `<div class="rc-gauge"><i></i><s></s></div><div class="rc-figs">` +
     `<span class="rc-pen" title="${t('hud.range.penRoll')}">${uiIconSVG('penetration', 13)}<span></span><small></small></span>` +
-    `<span class="rc-eff" title="${t('hud.range.armour')}">${uiIconSVG('shield', 13)}<span></span></span>` +
-    `<span class="rc-tgt"></span></div></div>` +
+    `<span class="rc-eff" title="${t('hud.range.armour')}">${uiIconSVG('shield', 13)}<span></span></span></div>` +
+    `<div class="rc-tgt"></div></div>` +
     `<div class="rc-lanes" role="list"></div>` +
     `<div class="rc-foot"><button type="button" data-range-action="reset" title="${t('action.rangeReset')}">` +
     `${uiIconSVG('reload', 15)}<span>${t('hud.range.reset')}</span><kbd></kbd></button>` +
@@ -239,7 +240,7 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
     });
   };
 
-  const renderShot = (shot: NonNullable<RangeCardState['lastShot']>): void => {
+  const renderShot = (range: RangeCardState, shot: NonNullable<RangeCardState['lastShot']>): void => {
     const verdict = hitOutcomeFor({ kind: shot.kind, damage: shot.damage });
     shotEl.style.setProperty('--rc-tone', verdict.color);
     verdictEl.textContent = verdict.label;
@@ -257,7 +258,8 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
       flightDistM: shot.rangeM });
     avgEl.textContent = average > 0 ? t('hud.range.average', { value: String(average) }) : '';
     effEl.textContent = `${Math.round(armour)} mm`;
-    targetEl.textContent = shot.targetName;
+    // a lane's hull is named on its own line; a plate is its thickness and angle, already in the figures and the verdict
+    targetEl.textContent = range.lanes.some((lane) => lane.targetId === shot.targetId) ? shot.targetName : '';
   };
 
   const hide = (): void => {
@@ -286,7 +288,7 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
     if (serial !== lastSerial) {
       lastSerial = serial;
       shotEl.classList.toggle('on', !!range.lastShot);
-      if (range.lastShot) renderShot(range.lastShot);
+      if (range.lastShot) renderShot(range, range.lastShot);
       shotAtMs = performance.now();
       if (stale) { stale = false; shotEl.classList.remove('stale'); }
     } else if (!stale && range.lastShot && performance.now() - shotAtMs > STALE_SHOT_MS) {
