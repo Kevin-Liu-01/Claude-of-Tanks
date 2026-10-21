@@ -1115,7 +1115,7 @@ renderer.domElement.addEventListener('pointermove', (event) => {
   if (activeMode === 'markup') surfaceMarkup.hoverScreen(event.clientX, event.clientY);
   else if (event.pointerType === 'mouse') anatomyView?.hoverAt(event.clientX, event.clientY);
 });
-renderer.domElement.addEventListener('pointerleave', surfaceMarkup.clearHover);
+renderer.domElement.addEventListener('pointerleave', () => { surfaceMarkup.clearHover(); anatomyView?.clearHover(); });
 
 document.addEventListener('keydown', (event) => {
   const editing = /input|select|textarea/i.test(document.activeElement?.tagName || '')

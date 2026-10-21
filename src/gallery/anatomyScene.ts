@@ -5,7 +5,7 @@
 // pitch) → gun-follow, plus the roof-weapon mount, so presentation-only rig scales never move a drawn part.
 import * as THREE from 'three';
 import {
-  armorSurfaces, crewStations, hullFloorY, moduleParts, plateMetricMm,
+  TRACK_MODULES, armorSurfaces, crewStations, hullFloorY, moduleParts, plateMetricMm,
   type AnatomyArmor, type AnatomyShape, type ArmorSurface, type CrewStation, type ModulePart,
 } from './anatomyData.ts';
 import { ARMOR_LAYER_COLORS, armorRampRgb, type ArmorMetric } from './anatomyPalette.ts';
@@ -13,7 +13,7 @@ import { techLineMaterial, techMaterial, type TechMaterial } from './anatomyMate
 import { buildModuleModel } from './anatomyModules.ts';
 import { buildCrewModel } from './anatomyCrew.ts';
 
-export interface AnatomyFrames {
+interface AnatomyFrames {
   root: THREE.Group;
   hull: THREE.Group;
   turret: THREE.Group;
@@ -22,7 +22,7 @@ export interface AnatomyFrames {
   roofGun: THREE.Group | null;
 }
 
-export function createAnatomyFrames(armor: AnatomyArmor): AnatomyFrames {
+function createAnatomyFrames(armor: AnatomyArmor): AnatomyFrames {
   const root = new THREE.Group();
   root.name = 'gallery_anatomy';
   const hull = new THREE.Group(), turret = new THREE.Group(), trunnion = new THREE.Group(), gun = new THREE.Group();
@@ -51,6 +51,7 @@ export function createAnatomyFrames(armor: AnatomyArmor): AnatomyFrames {
 
 function frameGroup(frames: AnatomyFrames, frame: string): THREE.Object3D {
   if (frame === 'roofGun') return frames.roofGun || frames.hull;
+  if (frame === 'trunnion') return frames.trunnion;
   if (frame === 'gun') return frames.gun;
   if (frame === 'turret') return frames.turret;
   return frames.hull;
@@ -71,7 +72,7 @@ export interface AnatomyToggles {
   hits: boolean;
 }
 
-export interface AnatomySceneOptions {
+interface AnatomySceneOptions {
   caliberMm: number;
   modern: boolean;
   metric?: ArmorMetric;
@@ -85,6 +86,9 @@ interface ArmorMesh {
 }
 
 const ADD_ON_LAYERS = new Set(['era', 'spaced', 'external', 'housing']);
+const SUPPORT_MODULES = new Set(['ammoRack', 'autoloader', 'fuelTank', 'engine', 'transmission', 'feedSystem']);
+/** A module counts as under a crew member only if its top leaves at least a seated body's height below the head. */
+const CREW_SUPPORT_HEADROOM_M = 0.62;
 const STATE_YELLOW = new THREE.Color('#ffd15c');
 const STATE_RED = new THREE.Color('#ff5a4e');
 
@@ -209,7 +213,8 @@ export function buildAnatomyScene(armor: AnatomyArmor, options: AnatomySceneOpti
   const surfaces = armorSurfaces(armor, options.eraSpent);
   const armorMeshes: ArmorMesh[] = [];
   const mainMaterial = techMaterial({ vertexColors: true, flat: true });
-  const addOnMaterial = techMaterial({ vertexColors: true, flat: true, opacity: 0.62, side: THREE.DoubleSide, polygonOffset: -1 });
+  // Plates are one-sided in the sim (a shell strikes the outward face only): draw them that way, add-ons included.
+  const addOnMaterial = techMaterial({ vertexColors: true, flat: true, opacity: 0.62, polygonOffset: -1 });
   const seamMaterial = techLineMaterial('#0b0e11', 0.5);
   const addOnSeamMaterial = techLineMaterial('#e4d8ff', 0.34);
   disposables.push(mainMaterial, addOnMaterial, seamMaterial, addOnSeamMaterial);
@@ -283,6 +288,7 @@ export function buildAnatomyScene(armor: AnatomyArmor, options: AnatomySceneOpti
   const moduleItems: Array<{ part: ModulePart; group: THREE.Group; materials: TechMaterial[] }> = [];
   let moduleTriangles = 0;
   for (const part of parts) {
+    if (TRACK_MODULES.has(part.module)) continue;
     const model = buildModuleModel(part, { caliberMm: options.caliberMm, modern: options.modern });
     const pick: AnatomyPick = { kind: 'module', part };
     model.group.traverse((object) => { if (object instanceof THREE.Mesh) { object.userData.anatomyPick = pick; pickables.push(object); } });
@@ -299,8 +305,26 @@ export function buildAnatomyScene(armor: AnatomyArmor, options: AnatomySceneOpti
   const turretY = Number(armor.turretPivot?.[1] || 0);
   const crewItems: Array<{ station: CrewStation; group: THREE.Group; materials: TechMaterial[] }> = [];
   let crewTriangles = 0;
+  // A station's floor is the hull-shell floor, or the top of a stowage or powerplant module directly under the
+  // station (an AZ carousel under the turret crew): the boots rest on it instead of passing through it.
+  const pivot = armor.turretPivot || [0, 0, 0];
+  const supports = parts.filter((part) => SUPPORT_MODULES.has(part.module) && (part.frame === 'hull' || part.frame === 'turret'));
+  const stationFloor = (station: CrewStation): number => {
+    const offset = station.frame === 'turret' ? pivot : [0, 0, 0];
+    const head = [station.head[0] + Number(offset[0]), station.head[1] + Number(offset[1]), station.head[2] + Number(offset[2])];
+    let support = floor;
+    for (const part of supports) {
+      const shift = part.frame === 'turret' ? pivot : [0, 0, 0];
+      const min = part.min.map((value, axis) => value + Number(shift[axis]));
+      const max = part.max.map((value, axis) => value + Number(shift[axis]));
+      const under = [0, 0.3].some((ahead) => head[0] >= min[0] && head[0] <= max[0] && head[2] + ahead >= min[2] && head[2] + ahead <= max[2]);
+      if (under && max[1] < head[1] - CREW_SUPPORT_HEADROOM_M) support = Math.max(support, max[1]);
+    }
+    return support;
+  };
   for (const station of stations) {
-    const frameFloor = station.frame === 'hull' ? floor : floor - turretY;
+    const supportY = stationFloor(station);
+    const frameFloor = station.frame === 'hull' ? supportY : supportY - turretY;
     const model = buildCrewModel(station, frameFloor);
     const pick: AnatomyPick = { kind: 'crew', station };
     model.group.traverse((object) => { if (object instanceof THREE.Mesh) { object.userData.anatomyPick = pick; pickables.push(object); } });

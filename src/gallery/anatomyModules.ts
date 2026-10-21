@@ -51,8 +51,8 @@ class ModuleSketch {
     this.add(geometry, tone, x, y, z, axis === 'z' ? Math.PI / 2 : 0, 0, axis === 'x' ? -Math.PI / 2 : 0);
   }
 
-  ring(radius: number, tube: number, axis: 'x' | 'y' | 'z', tone: Tone, x = 0, y = 0, z = 0): void {
-    const geometry = new THREE.TorusGeometry(Math.max(radius, 0.004), Math.max(tube, 0.002), 8, 28);
+  ring(radius: number, tube: number, axis: 'x' | 'y' | 'z', tone: Tone, x = 0, y = 0, z = 0, segments = 28): void {
+    const geometry = new THREE.TorusGeometry(Math.max(radius, 0.004), Math.max(tube, 0.002), 6, segments);
     this.add(geometry, tone, x, y, z, axis === 'y' ? Math.PI / 2 : 0, axis === 'x' ? Math.PI / 2 : 0, 0);
   }
 
@@ -258,7 +258,7 @@ function canisters(s: ModuleSketch, count: number, axis: Axis): void {
       const [x, y, z] = axis === 'x' ? [0, v, u] : axis === 'y' ? [u, 0, v] : [u, v, 0];
       s.cylinder(radius, length * 0.92, axis, 'body', x, y, z, 14);
       const [ex, ey, ez] = axis === 'x' ? [length * 0.46, v, u] : axis === 'y' ? [u, length * 0.46, v] : [u, v, length * 0.46];
-      s.ring(radius * 0.98, radius * 0.1, axis, 'accent', ex, ey, ez);
+      s.ring(radius * 0.98, radius * 0.1, axis, 'accent', ex, ey, ez, 16);
     }
   }
 }
@@ -308,7 +308,9 @@ function ammunition(s: ModuleSketch, part: ModulePart, caliberMm: number): void 
     return;
   }
   if (part.module === 'missileRack') {
-    const tubes = formTubeCount(form);
+    // A launcher split into combat parts draws its share of the named tube count in each part.
+    const named = formTubeCount(form);
+    const tubes = named ? Math.max(1, Math.round(named / Math.max(1, part.parts))) : null;
     if (tubes) canisters(s, tubes, horizontal);
     else if (/vertical/i.test(form)) canisters(s, 2, 'y');
     else if (/gunLaunched/i.test(form)) rack(s, caliberMm, horizontal, false);
@@ -374,28 +376,9 @@ function genericCasing(s: ModuleSketch): void {
   s.casing(s.sx * 0.9, s.sy * 0.9, s.sz * 0.9, 'body', 0, 0, 0, 0.14);
 }
 
-function trackBelt(s: ModuleSketch): void {
-  const { sx, sy, sz } = s;
-  const thickness = Math.min(0.09, sy * 0.1);
-  const radius = Math.min(sy / 2, sz / 4) * 0.96;
-  const straight = Math.max(0.01, sz - radius * 2);
-  // A belt loop in the z–y plane, extruded across x.
-  const outer = new THREE.Shape();
-  outer.absarc(straight / 2, 0, radius, -Math.PI / 2, Math.PI / 2, false);
-  outer.absarc(-straight / 2, 0, radius, Math.PI / 2, Math.PI * 1.5, false);
-  const inner = new THREE.Path();
-  inner.absarc(straight / 2, 0, radius - thickness, -Math.PI / 2, Math.PI / 2, false);
-  inner.absarc(-straight / 2, 0, radius - thickness, Math.PI / 2, Math.PI * 1.5, false);
-  outer.holes.push(inner);
-  const geometry = new THREE.ExtrudeGeometry(outer, { depth: sx * 0.92, bevelEnabled: false, curveSegments: 10 });
-  geometry.translate(0, 0, -sx * 0.46);
-  geometry.rotateY(Math.PI / 2);
-  s.add(geometry, 'body');
-}
-
 // --- assembly ---------------------------------------------------------------------------------------------------
 
-export interface ModuleModelOptions {
+interface ModuleModelOptions {
   caliberMm: number;
   modern: boolean;
 }
@@ -416,7 +399,6 @@ function sketchPart(part: ModulePart, options: ModuleModelOptions): ModuleSketch
     case 'gun': breech(s); break;
     case 'turretRing': turretRing(s); break;
     case 'roofGun': roofWeapon(s); break;
-    case 'trackL': case 'trackR': trackBelt(s); break;
     default: genericCasing(s);
   }
   return s;
@@ -426,7 +408,7 @@ function shade(hex: string, factor: number): THREE.Color {
   return new THREE.Color(hex).multiplyScalar(factor);
 }
 
-export interface ModuleModel {
+interface ModuleModel {
   group: THREE.Group;
   materials: TechMaterial[];
   geometries: THREE.BufferGeometry[];

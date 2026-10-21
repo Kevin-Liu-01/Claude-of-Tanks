@@ -67,7 +67,7 @@ void main() {
 }
 `;
 
-export interface TechMaterialOptions {
+interface TechMaterialOptions {
   color?: THREE.ColorRepresentation;
   vertexColors?: boolean;
   flat?: boolean;
@@ -78,7 +78,7 @@ export interface TechMaterialOptions {
 }
 
 /** Tungsten: the one selection colour of the anatomy views. */
-export const ANATOMY_HIGHLIGHT = '#ffbd5c';
+const ANATOMY_HIGHLIGHT = '#ffbd5c';
 
 export type TechMaterial = THREE.ShaderMaterial & {
   uniforms: {
@@ -177,9 +177,4 @@ export function ghostMaterials(): { depth: THREE.MeshBasicMaterial; ghost: THREE
     depthFunc: THREE.LessEqualDepth,
   });
   return { depth, ghost };
-}
-
-/** Linear-space colour of an sRGB hex for a vertex-colour attribute. */
-export function linearRgb(hex: string, target = new THREE.Color()): THREE.Color {
-  return target.set(hex);
 }

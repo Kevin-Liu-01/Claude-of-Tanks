@@ -31,14 +31,14 @@ const SEGMENT = Object.freeze({
 /** Head centre above the hip joint when standing straight. */
 const HEAD_ABOVE_HIP = SEGMENT.spine + SEGMENT.neck + SEGMENT.headRadius;
 
-export interface CrewPose {
+interface CrewPose {
   /** Trunk pitch about the hips (radians): + leans forward, − reclines. */
   trunk: number;
   /** Thigh angle from straight down, forward (radians): π/2 is a horizontal thigh. */
   hip: number;
   /** Knee flexion (radians): 0 straight, π/2 a right angle. */
   knee: number;
-  /** Upper-arm angle from straight down, forward. */
+  /** Upper-arm angle from straight down, forward, in the station frame (not the trunk's): hands stay on the controls. */
   shoulder: number;
   /** Elbow flexion. */
   elbow: number;
@@ -47,20 +47,20 @@ export interface CrewPose {
 }
 
 const BASE_POSES: Readonly<Record<'driver' | 'gunner' | 'commander' | 'loaderSeated' | 'loaderStanding', CrewPose>> = Object.freeze({
-  driver: { trunk: -0.42, hip: 1.45, knee: 1.05, shoulder: 0.95, elbow: 0.75, neck: -0.25 },
-  gunner: { trunk: 0.22, hip: 1.52, knee: 1.5, shoulder: 0.95, elbow: 0.95, neck: 0.18 },
-  commander: { trunk: 0.04, hip: 1.5, knee: 1.45, shoulder: 0.45, elbow: 1.05, neck: 0 },
-  loaderSeated: { trunk: 0.12, hip: 1.45, knee: 1.5, shoulder: 0.7, elbow: 1.2, neck: 0.1 },
-  loaderStanding: { trunk: 0.14, hip: 0.22, knee: 0.3, shoulder: 0.95, elbow: 1.35, neck: 0.12 },
+  driver: { trunk: -0.42, hip: 1.45, knee: 1.05, shoulder: 1.1, elbow: 0.4, neck: -0.25 },
+  gunner: { trunk: 0.22, hip: 1.52, knee: 1.5, shoulder: 0.72, elbow: 0.86, neck: 0.18 },
+  commander: { trunk: 0.04, hip: 1.5, knee: 1.45, shoulder: 0.34, elbow: 1.15, neck: 0 },
+  loaderSeated: { trunk: 0.12, hip: 1.45, knee: 1.5, shoulder: 0.5, elbow: 1.0, neck: 0.1 },
+  loaderStanding: { trunk: 0.14, hip: 0.22, knee: 0.3, shoulder: 0.55, elbow: 1.05, neck: 0.12 },
 });
 
 /** The most tucked pose the solver may reach for each base pose. */
 const TUCKED: Readonly<Record<keyof typeof BASE_POSES, CrewPose>> = Object.freeze({
-  driver: { trunk: -1.08, hip: 1.62, knee: 1.55, shoulder: 1.0, elbow: 0.7, neck: -0.65 },
-  gunner: { trunk: -0.2, hip: 1.95, knee: 2.3, shoulder: 1.05, elbow: 1.1, neck: 0.35 },
-  commander: { trunk: -0.3, hip: 1.95, knee: 2.3, shoulder: 0.55, elbow: 1.2, neck: 0.25 },
-  loaderSeated: { trunk: -0.3, hip: 1.95, knee: 2.3, shoulder: 0.8, elbow: 1.3, neck: 0.25 },
-  loaderStanding: { trunk: 0.3, hip: 1.2, knee: 2.0, shoulder: 0.95, elbow: 1.35, neck: 0.2 },
+  driver: { trunk: -1.08, hip: 1.62, knee: 1.55, shoulder: 1.25, elbow: 0.3, neck: -0.65 },
+  gunner: { trunk: -0.2, hip: 1.95, knee: 2.3, shoulder: 0.8, elbow: 0.8, neck: 0.35 },
+  commander: { trunk: -0.3, hip: 1.95, knee: 2.3, shoulder: 0.45, elbow: 1.1, neck: 0.25 },
+  loaderSeated: { trunk: -0.3, hip: 1.95, knee: 2.3, shoulder: 0.55, elbow: 1.0, neck: 0.25 },
+  loaderStanding: { trunk: 0.3, hip: 1.2, knee: 2.0, shoulder: 0.6, elbow: 1.05, neck: 0.2 },
 });
 
 function lerpPose(a: CrewPose, b: CrewPose, t: number): CrewPose {
@@ -87,7 +87,7 @@ interface Joints {
 }
 
 /** Joint positions in the sagittal plane, pelvis at the origin, facing +z. */
-export function poseJoints(pose: CrewPose): Joints {
+function poseJoints(pose: CrewPose): Joints {
   const add = (a: [number, number], b: [number, number], s: number): [number, number] => [a[0] + b[0] * s, a[1] + b[1] * s];
   const hip: [number, number] = [0, 0];
   const spine = up(pose.trunk);
@@ -98,9 +98,9 @@ export function poseJoints(pose: CrewPose): Joints {
   const knee = add(hip, down(pose.hip), SEGMENT.thigh);
   const ankle = add(knee, down(pose.hip - pose.knee), SEGMENT.shin);
   const toe = add(ankle, [0, 1], SEGMENT.foot * 0.78);
-  const elbow = add(shoulder, down(pose.shoulder + pose.trunk), SEGMENT.upperArm);
-  const wrist = add(elbow, down(pose.shoulder + pose.trunk + pose.elbow), SEGMENT.forearm);
-  const fingertip = add(wrist, down(pose.shoulder + pose.trunk + pose.elbow), SEGMENT.hand);
+  const elbow = add(shoulder, down(pose.shoulder), SEGMENT.upperArm);
+  const wrist = add(elbow, down(pose.shoulder + pose.elbow), SEGMENT.forearm);
+  const fingertip = add(wrist, down(pose.shoulder + pose.elbow), SEGMENT.hand);
   return { hip, shoulder, neckTop, head, knee, ankle, toe, elbow, wrist, fingertip };
 }
 
@@ -111,7 +111,7 @@ function lowestBelowHead(joints: Joints): number {
   return Math.min(boot, seat, joints.knee[0] - 0.06) - joints.head[0];
 }
 
-export interface CrewFit {
+interface CrewFit {
   pose: CrewPose;
   base: keyof typeof BASE_POSES;
   tuck: number;
@@ -119,7 +119,7 @@ export interface CrewFit {
   floorClearanceM: number;
 }
 
-export function crewBasePose(station: CrewStation, floorY: number): keyof typeof BASE_POSES {
+function crewBasePose(station: CrewStation, floorY: number): keyof typeof BASE_POSES {
   const role = station.role;
   if (role === 'driver' || role === 'radio') return station.frame === 'hull' ? 'driver' : 'commander';
   if (role === 'gunner') return 'gunner';
@@ -129,7 +129,7 @@ export function crewBasePose(station: CrewStation, floorY: number): keyof typeof
 }
 
 /** Pick the least tucked pose whose lowest point clears the floor by 2 cm (bisection over the tuck blend). */
-export function fitCrewPose(station: CrewStation, floorY: number): CrewFit {
+function fitCrewPose(station: CrewStation, floorY: number): CrewFit {
   const base = crewBasePose(station, floorY);
   const clearance = (tuck: number) => {
     const pose = lerpPose(BASE_POSES[base], TUCKED[base], tuck);
@@ -155,21 +155,21 @@ type Tone = 'clay' | 'joint' | 'band';
 function capsuleBetween(a: THREE.Vector3, b: THREE.Vector3, radius: number): THREE.BufferGeometry {
   const delta = b.clone().sub(a);
   const length = Math.max(1e-4, delta.length());
-  const geometry = new THREE.CapsuleGeometry(radius, Math.max(0.001, length), 3, 10);
+  const geometry = new THREE.CapsuleGeometry(radius, Math.max(0.001, length), 2, 8);
   geometry.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize()));
   geometry.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
   return geometry;
 }
 
-function ellipsoid(center: THREE.Vector3, radii: [number, number, number], pitch = 0): THREE.BufferGeometry {
-  const geometry = new THREE.SphereGeometry(1, 14, 10);
+function ellipsoid(center: THREE.Vector3, radii: [number, number, number], pitch = 0, detail: 'body' | 'joint' = 'body'): THREE.BufferGeometry {
+  const geometry = detail === 'body' ? new THREE.SphereGeometry(1, 12, 9) : new THREE.SphereGeometry(1, 8, 6);
   geometry.scale(radii[0], radii[1], radii[2]);
   geometry.rotateX(pitch);
   geometry.translate(center.x, center.y, center.z);
   return geometry;
 }
 
-export interface CrewModel {
+interface CrewModel {
   group: THREE.Group;
   materials: TechMaterial[];
   geometries: THREE.BufferGeometry[];
@@ -191,27 +191,27 @@ export function buildCrewModel(station: CrewStation, floorY: number): CrewModel 
   const trunk = fit.pose.trunk;
   const spineDir = new THREE.Vector3(0, Math.cos(trunk), Math.sin(trunk));
   const at = (t: number) => new THREE.Vector3(0, 0, 0).addScaledVector(spineDir, t);
-  // Pelvis, abdomen and chest as clay ellipsoids along the spine.
-  pieces.clay.push(ellipsoid(at(0.02), [0.17, 0.11, 0.12], trunk));
-  pieces.clay.push(ellipsoid(at(S.spine * 0.36), [0.15, 0.12, 0.11], trunk));
-  pieces.clay.push(ellipsoid(at(S.spine * 0.72), [0.2, 0.17, 0.125], trunk));
+  // Pelvis, abdomen and chest as overlapping clay ellipsoids along the spine (one continuous torso silhouette).
+  pieces.clay.push(ellipsoid(at(0.03), [0.165, 0.11, 0.115], trunk));
+  pieces.clay.push(ellipsoid(at(S.spine * 0.3), [0.145, 0.16, 0.105], trunk));
+  pieces.clay.push(ellipsoid(at(S.spine * 0.64), [0.19, 0.2, 0.12], trunk));
   // Neck and head with a CVC helmet, ear cups and the role band.
   pieces.clay.push(capsuleBetween(p(joints.shoulder), p(joints.neckTop), 0.05));
   const head = p(joints.head);
   const headPitch = trunk + fit.pose.neck;
   pieces.clay.push(ellipsoid(head, [S.headRadius * 0.86, S.headRadius, S.headRadius * 0.96], headPitch));
-  const helmet = new THREE.SphereGeometry(S.headRadius * 1.18, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.56);
+  const helmet = new THREE.SphereGeometry(S.headRadius * 1.18, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.56);
   helmet.scale(1, 0.94, 1.06);
   helmet.rotateX(headPitch);
   helmet.translate(head.x, head.y + S.headRadius * 0.12 * Math.cos(headPitch), head.z - S.headRadius * 0.12 * Math.sin(headPitch));
   pieces.clay.push(helmet);
   for (const side of [-1, 1]) {
-    const cup = new THREE.CylinderGeometry(0.042, 0.042, 0.035, 14);
+    const cup = new THREE.CylinderGeometry(0.042, 0.042, 0.035, 10);
     cup.rotateZ(Math.PI / 2);
     cup.translate(head.x + side * S.headRadius * 1.02, head.y, head.z);
     pieces.joint.push(cup);
   }
-  const band = new THREE.TorusGeometry(S.headRadius * 1.17, 0.012, 6, 28);
+  const band = new THREE.TorusGeometry(S.headRadius * 1.17, 0.012, 4, 22);
   band.rotateX(Math.PI / 2 + headPitch);
   band.translate(head.x, head.y + S.headRadius * 0.22 * Math.cos(headPitch), head.z - S.headRadius * 0.22 * Math.sin(headPitch));
   pieces.band.push(band);
@@ -224,14 +224,14 @@ export function buildCrewModel(station: CrewStation, floorY: number): CrewModel 
     pieces.clay.push(capsuleBetween(shoulder, elbow, 0.047));
     pieces.clay.push(capsuleBetween(elbow, wrist, 0.039));
     pieces.clay.push(capsuleBetween(wrist, tip, 0.034));
-    pieces.joint.push(ellipsoid(shoulder, [0.058, 0.058, 0.058]), ellipsoid(elbow, [0.046, 0.046, 0.046]));
+    pieces.joint.push(ellipsoid(shoulder, [0.058, 0.058, 0.058], 0, 'joint'), ellipsoid(elbow, [0.046, 0.046, 0.046], 0, 'joint'));
     // Legs: hip, thigh, knee, shin, boot.
     const hip = p(joints.hip, side * S.hipHalfWidth * 1.7);
     const knee = p(joints.knee, side * S.hipHalfWidth * 1.75);
     const ankle = p(joints.ankle, side * S.hipHalfWidth * 1.75);
     pieces.clay.push(capsuleBetween(hip, knee, 0.07));
     pieces.clay.push(capsuleBetween(knee, ankle, 0.052));
-    pieces.joint.push(ellipsoid(knee, [0.058, 0.058, 0.058]), ellipsoid(hip, [0.066, 0.066, 0.066]));
+    pieces.joint.push(ellipsoid(knee, [0.058, 0.058, 0.058], 0, 'joint'), ellipsoid(hip, [0.066, 0.066, 0.066], 0, 'joint'));
     const boot = new THREE.BoxGeometry(0.1, 0.085, S.foot);
     boot.translate(ankle.x, ankle.y - S.ankle + 0.0425 - 0.02, ankle.z + S.foot * 0.3);
     pieces.joint.push(boot);

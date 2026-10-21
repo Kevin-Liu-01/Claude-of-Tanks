@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { t, formatNumber } from '../ui/i18n.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
 import { technicalLabel } from './catalog.ts';
-import { plateMetricMm, type AnatomyArmor } from './anatomyData.ts';
+import { TRACK_MODULES, plateMetricMm, type AnatomyArmor } from './anatomyData.ts';
 import { ghostMaterials } from './anatomyMaterials.ts';
 import {
   ANATOMY_SYSTEMS, ARMOR_LAYER_COLORS, ARMOR_METRICS, ARMOR_RAMP_TICKS, CREW_ROLE_COLORS, CREW_ROLE_LETTERS,
@@ -30,7 +30,7 @@ const DEFAULT_TOGGLES: Readonly<Record<AnatomyMode, ViewToggles>> = Object.freez
 });
 
 /** The toggles each layer offers, in toolbar order. */
-export const ANATOMY_CHIPS: Readonly<Record<AnatomyMode, readonly AnatomyToggle[]>> = Object.freeze({
+const ANATOMY_CHIPS: Readonly<Record<AnatomyMode, readonly AnatomyToggle[]>> = Object.freeze({
   armor: ['addOns', 'exterior'],
   modules: ['modules', 'crew', 'hits', 'exterior', 'labels'],
   crew: ['crew', 'modules', 'hits', 'exterior', 'labels'],
@@ -50,7 +50,7 @@ export interface AnatomyVehicle {
   root: THREE.Object3D;
 }
 
-export interface AnatomyReadout { id: string; owner: string; title: string; details: string }
+interface AnatomyReadout { id: string; owner: string; title: string; details: string }
 
 export interface AnatomyHost {
   renderer: THREE.WebGLRenderer;
@@ -74,15 +74,15 @@ const STYLE = `
 .anatomy-seg button{border:0;border-left:1px solid rgba(174,190,197,.18);min-width:58px;justify-content:center}
 .anatomy-seg button:first-child{border-left:0}
 .anatomy-seg button[aria-checked="true"]{background:rgba(74,46,10,.9);color:#ffd08a;box-shadow:inset 0 -2px 0 #f0a030}
-.overlay-legend.anatomy-legend{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 10px}
-.anatomy-legend .anatomy-ramp{display:grid;grid-template-columns:auto minmax(180px,300px);align-items:center;gap:8px;padding:5px 9px;background:rgba(5,9,11,.92);border:1px solid rgba(174,190,197,.2)}
-.anatomy-legend .anatomy-ramp b{color:#d9dfe1;font-size:10px;letter-spacing:.06em;white-space:nowrap}
-.anatomy-ramp-bar{position:relative;height:9px;border:1px solid rgba(0,0,0,.6)}
-.anatomy-ramp-ticks{position:relative;height:12px;margin-top:3px}
-.anatomy-ramp-ticks span{position:absolute;transform:translateX(-50%);color:#9aa5a9;font:600 9px/1 "IBM Plex Mono",ui-monospace,monospace;white-space:nowrap}
-.anatomy-legend .anatomy-key{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;background:rgba(5,9,11,.92);border:1px solid rgba(174,190,197,.2);color:#b5bfc2;font-size:10px;letter-spacing:.05em;text-transform:uppercase}
-.anatomy-key i{width:10px;height:10px;background:var(--key);box-shadow:0 0 0 1px rgba(0,0,0,.5)}
-.anatomy-key svg{width:13px;height:13px;color:var(--key)}
+#viewport .overlay-legend.anatomy-legend{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 10px}
+#viewport .anatomy-legend .anatomy-ramp{display:grid;grid-template-columns:auto minmax(180px,300px);align-items:center;gap:8px;padding:5px 9px;background:rgba(5,9,11,.92);border:1px solid rgba(174,190,197,.2)}
+#viewport .anatomy-legend .anatomy-ramp b{color:#d9dfe1;font-size:10px;letter-spacing:.06em;white-space:nowrap}
+#viewport .anatomy-legend .anatomy-ramp-bar{position:relative;height:9px;border:1px solid rgba(0,0,0,.6)}
+#viewport .anatomy-legend .anatomy-ramp-ticks{position:relative;height:12px;margin-top:3px}
+#viewport .anatomy-legend .anatomy-ramp-ticks span{position:absolute;display:block;min-height:0;padding:0;border:0;background:none;transform:translateX(-50%);color:#9aa5a9;font:600 9px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:0;text-transform:none;white-space:nowrap}
+#viewport .anatomy-legend .anatomy-key{display:inline-flex;align-items:center;gap:6px;min-height:22px;padding:4px 8px;background:rgba(5,9,11,.92);border:1px solid rgba(174,190,197,.2);color:#b5bfc2;font-size:10px;letter-spacing:.05em;text-transform:uppercase}
+#viewport .anatomy-legend .anatomy-key i{width:10px;height:10px;background:var(--key);box-shadow:0 0 0 1px rgba(0,0,0,.5)}
+#viewport .anatomy-legend .anatomy-key svg{width:13px;height:13px;color:var(--key)}
 .anatomy-badges{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden}
 .anatomy-badges[hidden]{display:none}
 .anatomy-badge{position:absolute;left:0;top:0;display:grid;place-items:center;width:26px;height:26px;margin:-13px 0 0 -13px;padding:0;border:2px solid var(--badge);border-radius:50%;background:rgba(6,9,11,.86);color:var(--badge);font:800 11px/1 "IBM Plex Mono",ui-monospace,monospace;pointer-events:auto;will-change:transform;box-shadow:0 2px 10px rgba(0,0,0,.5)}
@@ -92,8 +92,8 @@ const STYLE = `
 @media (pointer:coarse){.anatomy-chip,.anatomy-seg button{min-height:40px;padding:6px 11px}.anatomy-badge{width:32px;height:32px;margin:-16px 0 0 -16px}}
 body[data-cot-width='phone'] .anatomy-chip span,body[data-cot-width='compact'] .anatomy-chip span{display:none}
 body[data-cot-width='phone'] .anatomy-chip,body[data-cot-width='compact'] .anatomy-chip{padding:6px 9px}
-body[data-cot-width='phone'] .anatomy-legend .anatomy-ramp{grid-template-columns:1fr;gap:4px;width:100%}
-body[data-cot-width='phone'] .anatomy-legend .anatomy-key{padding:3px 6px;font-size:9px}
+body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp{grid-template-columns:1fr;gap:4px;width:100%}
+body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-key{padding:3px 6px;font-size:9px}
 `;
 
 function moduleName(module: string): string { return t(`garage.module.${module}`); }
@@ -105,7 +105,7 @@ function dimensions(min: readonly number[], max: readonly number[]): string {
 }
 
 /** Inspection text for a pick: every number is the combat data itself, in metres and millimetres. */
-export function anatomyReadout(pick: AnatomyPick, metric: ArmorMetric): AnatomyReadout {
+function anatomyReadout(pick: AnatomyPick, metric: ArmorMetric): AnatomyReadout {
   if (pick.kind === 'armor') {
     const plate = pick.surface.plate;
     const frame = pick.surface.frame;
@@ -173,6 +173,7 @@ export interface AnatomyView {
   update(): void;
   pickAt(clientX: number, clientY: number): boolean;
   hoverAt(clientX: number, clientY: number): void;
+  clearHover(): void;
   select(key: string | null): void;
   setToggle(toggle: AnatomyToggle, value: boolean): void;
   setMetric(metric: ArmorMetric): void;
@@ -183,7 +184,7 @@ export interface AnatomyView {
   dispose(): void;
 }
 
-export function pickKey(pick: AnatomyPick | null): string | null {
+function pickKey(pick: AnatomyPick | null): string | null {
   if (!pick) return null;
   if (pick.kind === 'armor') return pick.surface.plate.name ? `plate:${pick.surface.plate.name}` : `surface:${pick.index}`;
   if (pick.kind === 'module') return `module:${pick.part.module}`;
@@ -345,7 +346,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         }
       }
     } else {
-      const present = new Set(anatomy?.parts.map((part) => part.system) || []);
+      const present = new Set(anatomy?.parts.filter((part) => !TRACK_MODULES.has(part.module)).map((part) => part.system) || []);
       for (const system of ANATOMY_SYSTEMS) {
         if (system === 'crew' ? !view.crew : (!view.modules || !present.has(system))) continue;
         entries.push(key(t(`gallery.anatomy.system.${system}`), SYSTEM_COLORS[system]));
@@ -464,7 +465,8 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       const v = current();
       return (v.armor ? anatomy.surfaces.filter((surface) => surface.layer === 'main').length : 0)
         + (v.addOns ? anatomy.surfaces.filter((surface) => surface.layer !== 'main').length : 0)
-        + (v.modules ? anatomy.parts.length : 0) + (v.crew ? anatomy.stations.length : 0);
+        + (v.modules ? anatomy.parts.filter((part) => !TRACK_MODULES.has(part.module)).length : 0)
+        + (v.crew ? anatomy.stations.length : 0);
     },
     show(nextMode, nextVehicle) {
       const rebuilt = !anatomy || vehicle?.key !== nextVehicle.key;
@@ -481,6 +483,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       }
       if (mode !== nextMode) setSelected(null, false);
       mode = nextMode;
+      if (anatomy) anatomy.frames.root.visible = true;
       hideExterior(nextVehicle.root);
       applyToggles();
       view.update();
@@ -547,6 +550,11 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       return true;
     },
     hoverAt(clientX, clientY) { if (mode) hoverPending = { x: clientX, y: clientY }; },
+    clearHover() {
+      hoverPending = null;
+      anatomy?.isolate(null);
+      host.renderer.domElement.style.cursor = '';
+    },
     select(key) { if (mode) setSelected(findPick(key)); },
     setToggle(toggle, value) {
       if (!mode) return;

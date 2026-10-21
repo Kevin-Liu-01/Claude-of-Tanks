@@ -5,10 +5,10 @@
 // This tool pins that promise: the sha256 of every frozen source path (the sim, the combat-anatomy generators and
 // shards, the interior fills, the internal layout registry, the spec registry and its helpers, every vehicle
 // profile, and the legacy diagram renderer kept for the baked PNGs until BUI-G8) plus a canonical-JSON hash of
-// getSpec(id).armor for every registered vehicle, taken at main 16aeab482.
+// getSpec(id).armor for every registered vehicle, taken at the lane's reviewed base (manifest `base`).
 //
-//   node tools/anatomy-frozen.mjs --write    rewrite tools/anatomy-frozen.manifest.json (only at a reviewed base)
-//   node tools/anatomy-frozen.mjs --check    exit 1 on any drift (tools/anatomy-frozen.selftest.mjs runs this)
+//   ANATOMY_FROZEN_BASE=<sha> node tools/anatomy-frozen.mjs --write   rewrite the manifest (only at a reviewed base)
+//   node tools/anatomy-frozen.mjs --check    exit 1 on any drift (tools/anatomy-frozen-check.mjs asserts the same)
 //
 // Copyright (c) 2026 Kevin B. Liu. First-party tool; see NOTICE.md.
 import { createHash } from 'node:crypto';

@@ -2,17 +2,17 @@
 // Copyright (c) 2026 Kevin B. Liu. First-party tool; see NOTICE.md.
 //
 // Deterministic before/after capture for the anatomy lane. Run from the worktree root that is being captured
-// (cwd = the checkout: the clean 16aeab482 tree for BEFORE, the lane head for AFTER). One part per capture-lock
+// (cwd = the checkout: the lane's base tree for BEFORE, the lane head for AFTER). One part per capture-lock
 // hold (NORMAL band, fresh ticket per part, 19.5 min watchdog started only after the lock is taken).
 //
-//   node render-set.mjs --side=before|after --part=desk|phone|killcam --ids=a,b,c --out=<dir> [--lockwait=ms]
+//   node tools/anatomy-render-set.mjs --side=before|after --part=desk|phone|killcam --ids=a,b,c --out=<dir> [--lockwait=ms]
 //
-// Views (same camera everywhere: frameView('hero'), cameraFit unchanged; Crew adds the same 5 dolly ticks):
+// Views (same camera on both sides: frameView('hero'), cameraFit unchanged; Crew adds the same 5 dolly ticks):
 //   exterior  control (appearance / exterior)
-//   xray      BEFORE: the base Modules layer (no x-ray existed)   AFTER: the X-ray layer
-//   crew      BEFORE: the base Crew layer                         AFTER: the Crew layer
-//   modules   BEFORE: the base Modules layer                      AFTER: the Modules layer
-//   hitbox    BEFORE: Modules + the workbench hitbox toggle       AFTER: the Hitboxes layer
+//   armor     the Armor layer        (BEFORE: plate overlay on the exterior · AFTER: the absolute-mm heat map)
+//   modules   the Modules layer      (BEFORE: dashed kill-cam models · AFTER: the X-ray with module models and crew)
+//   crew      the Crew layer         (BEFORE: dashed capsule figures · AFTER: P50 mannequins on their head shapes)
+//   hitbox    exact combat shapes    (BEFORE: Modules + the workbench hitbox toggle · AFTER: Modules + Hit volumes)
 //   killcam   the dev shot runtime's killcam_xray stage on the same target (seeds 9001, 4242, 555, 77)
 // Output: <out>/<side>/<id>-<view>-<desktop|phone>.jpg (the #viewport stage) and …-page.jpg (the whole window).
 import { createRequire } from 'node:module';
@@ -24,9 +24,9 @@ const ROOT = process.cwd();
 const arg = (name, fallback = '') => process.argv.find(a => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const side = arg('side', 'before');
 const part = arg('part', 'desk');
-const ids = arg('ids', 't90m_proryv,leo2a7v,m1a2_abrams_sepv3,challenger2,kv2,strv103b').split(',').filter(Boolean);
-const OUT = resolve(arg('out', '/Users/kevinliu/cot-launch-state/streams/gallery-anatomy/renders/r1'), side);
-const views = arg('views', 'exterior,xray,crew,modules,hitbox').split(',').filter(Boolean);
+const ids = arg('ids', 't90m_proryv,leo2a7v,m1a2_abrams_sepv3,challenger2,merkava4,ztz99a,strv103b,kv2').split(',').filter(Boolean);
+const OUT = resolve(arg('out', '/Users/kevinliu/cot-launch-state/streams/gallery-anatomy/renders/r230'), side);
+const views = arg('views', 'exterior,armor,modules,crew,hitbox').split(',').filter(Boolean);
 const require = createRequire(join(ROOT, 'package.json'));
 const { createServer } = await import(pathToFileURL(require.resolve('vite')).href);
 const puppeteer = (await import(pathToFileURL(require.resolve('puppeteer')).href)).default;
@@ -112,17 +112,18 @@ try {
     await page.goto(`${base}/gallery?id=${ids[0]}`, { waitUntil: 'domcontentloaded', timeout: 240000 });
     await page.waitForFunction(() => window.__TANK_GALLERY?.ready, { timeout: 240000, polling: 250 });
     const api = (fn, ...a) => page.evaluate(fn, ...a);
-    const hasLayers = await api(() => typeof window.__TANK_GALLERY.setLayer === 'function');
+    const anatomy = await api(() => typeof window.__TANK_GALLERY.waitAnatomyReady === 'function');
     const setView = async (view) => {
-      const layer = { exterior: 'appearance', xray: hasLayers ? 'xray' : 'modules', crew: 'crew', modules: 'modules', hitbox: hasLayers ? 'hitboxes' : 'modules' }[view];
-      if (!hasLayers) {
+      const layer = { exterior: 'appearance', armor: 'armor', crew: 'crew', modules: 'modules', hitbox: 'modules' }[view];
+      if (!anatomy) {
         const want = view === 'hitbox';
         const pressed = await page.$eval('[data-damage-action=hitboxes]', b => b.getAttribute('aria-pressed') === 'true').catch(() => null);
         if (pressed !== null && pressed !== want) { await page.click('[data-damage-action=hitboxes]'); await settle(400); }
         await api(m => window.__TANK_GALLERY.setMode(m, false), layer);
       } else {
-        await api(m => window.__TANK_GALLERY.setLayer(m), layer);
-        await api(() => window.__TANK_GALLERY.waitAnatomyReady?.());
+        await api(m => window.__TANK_GALLERY.setMode(m, false), layer);
+        await api(() => window.__TANK_GALLERY.waitAnatomyReady());
+        if (layer === 'modules') await api(on => window.__TANK_GALLERY.setAnatomyToggle('hits', on), view === 'hitbox');
       }
       await api(() => window.__TANK_GALLERY.frameView('hero'));
       await settle(900);

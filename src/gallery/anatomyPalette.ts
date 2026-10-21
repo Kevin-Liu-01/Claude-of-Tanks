@@ -15,10 +15,10 @@ export const ARMOR_RAMP: ReadonlyArray<readonly [mm: number, hex: string]> = Obj
   [50, '#c23a3b'],
   [100, '#e26a32'],
   [180, '#f2a23a'],
-  [300, '#f4d35a'],
-  [450, '#c6e16f'],
-  [650, '#7fd9a8'],
-  [900, '#a9e9f2'],
+  [300, '#e8b440'],
+  [450, '#d8d65e'],
+  [650, '#a9e6a0'],
+  [900, '#b4eef0'],
   [1200, '#e8fbff'],
 ] as const);
 

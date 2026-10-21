@@ -12,7 +12,7 @@ import { crewRole, moduleSystem } from './anatomyPalette.ts';
 
 type Vec3 = readonly [number, number, number];
 
-export interface AnatomyPlate {
+interface AnatomyPlate {
   name?: string;
   kind?: string;
   verts?: readonly Vec3[];
@@ -33,7 +33,7 @@ export type AnatomyShape =
   | { kind: 'capsule'; a: Vec3; b: Vec3; radius: number }
   | { kind: 'ellipticCylinder'; center: Vec3; radii: readonly [number, number]; axis: 0 | 1 | 2; halfLength: number };
 
-export interface AnatomyVolume {
+interface AnatomyVolume {
   module?: string;
   crew?: string;
   min: Vec3;
@@ -51,7 +51,7 @@ export interface AnatomyVolume {
   parts?: ReadonlyArray<{ min: Vec3; max: Vec3 }>;
 }
 
-export interface AnatomyWeaponStock {
+interface AnatomyWeaponStock {
   module: string;
   min: Vec3;
   max: Vec3;
@@ -75,10 +75,10 @@ export interface AnatomyArmor {
 }
 
 /** The combat frame a drawn part rides: hull, turret (pivot + yaw), gun (pitch about the trunnion), roof weapon. */
-export type AnatomyFrame = 'hull' | 'turret' | 'gun' | 'roofGun';
+type AnatomyFrame = 'hull' | 'turret' | 'gun' | 'roofGun';
 
 /** How the heat map classes a surface: main armor takes the ramp, add-on layers keep identity colours. */
-export type ArmorLayer = 'main' | 'era' | 'spaced' | 'external' | 'housing';
+type ArmorLayer = 'main' | 'era' | 'spaced' | 'external' | 'housing';
 
 export interface ArmorSurface {
   plate: AnatomyPlate;
@@ -91,7 +91,7 @@ export interface ArmorSurface {
   weapon?: number;
 }
 
-export function plateLayer(plate: AnatomyPlate, source: ArmorSurface['source']): ArmorLayer {
+function plateLayer(plate: AnatomyPlate, source: ArmorSurface['source']): ArmorLayer {
   if (source === 'weapon' || plate.weaponHousing) return 'housing';
   const kind = plate.kind || 'main';
   if (kind === 'era') return 'era';
@@ -345,7 +345,7 @@ function inside(point: readonly number[], bounds: { min: Vec3; max: Vec3 }, marg
   return [0, 1, 2].every((axis) => point[axis] >= bounds.min[axis] - margin && point[axis] <= bounds.max[axis] + margin);
 }
 
-export function volumeFrame(volume: AnatomyVolume, armor: AnatomyArmor): AnatomyFrame {
+function volumeFrame(volume: AnatomyVolume, armor: AnatomyArmor): AnatomyFrame {
   if (volume.roofGunFollow && armor.roofGun) return 'roofGun';
   if (volume.gunFollow) return 'gun';
   return volume.turretLocal ? 'turret' : 'hull';
@@ -373,9 +373,13 @@ export interface ModulePart {
   shapes: AnatomyShape[];
 }
 
+/** Track modules: the exterior (drawn as the ghost shell) already shows the running gear, so their models are left
+ * out; their exact hit volumes still draw under Hit volumes. */
+export const TRACK_MODULES: ReadonlySet<string> = new Set(['trackL', 'trackR']);
+
 /**
- * Every drawn module part, one per combat part. Tracks are drawn from their own data (track prisms or the track
- * volume) and are listed with `module: 'trackL' | 'trackR'`.
+ * Every combat module part, one per combat part (tracks included, flagged by TRACK_MODULES). The scene draws a model
+ * for every part except the tracks.
  */
 export function moduleParts(armor: AnatomyArmor): ModulePart[] {
   const out: ModulePart[] = [];
@@ -423,19 +427,58 @@ export interface CrewStation {
   volume: AnatomyVolume;
   /** Station box centre, frame-local. */
   center: [number, number, number];
-  /** Head centre: the head of the combat body shapes built from the station box (combatAnatomy crewBodyShapes). */
+  /** Head centre: the centre of the station's combat head shape(s), where a shell finds this crew member's head. */
   head: [number, number, number];
   /** Exact crew hit shapes. */
   shapes: AnatomyShape[];
 }
 
-/** Head height inside a station box, as the combat anatomy builds the head shape (centre.y + 0.67 × half height). */
-export const CREW_HEAD_OFFSET_OF_HALF_HEIGHT = 0.67;
+/**
+ * The combat anatomy builds two body shapes per station box (combatAnatomy crewBodyShapes): a torso ellipsoid with a
+ * vertical radius of 0.72 half-heights and a head ellipsoid with a horizontal radius of at most 0.19 m and a vertical
+ * radius of max(0.08 m, 0.19 half-heights); where either crosses a hull-shell cell boundary it is refitted inside the
+ * cell, which only shrinks it, and can leave fragments wherever the original shape crossed a cell. The head shapes are
+ * the ones within the head's size; the anchor is the centre of the largest of them near the station's head position,
+ * so the drawn head always sits inside a real head hit shape.
+ */
+const CREW_HEAD_OFFSET_OF_HALF_HEIGHT = 0.67;
+const CREW_HEAD_MAX_RADIUS_M = 0.19;
+const CREW_HEAD_MIN_VERTICAL_M = 0.08;
+const CREW_HEAD_VERTICAL_OF_HALF_HEIGHT = 0.19;
+const CREW_HEAD_SEARCH_M = 0.35;
+
+function shapeVolume(shape: AnatomyShape): number {
+  if (shape.kind === 'ellipsoid') return (4 / 3) * Math.PI * shape.radii[0] * shape.radii[1] * shape.radii[2];
+  if (shape.kind === 'capsule') {
+    const length = Math.hypot(shape.b[0] - shape.a[0], shape.b[1] - shape.a[1], shape.b[2] - shape.a[2]);
+    return Math.PI * shape.radius ** 2 * (length + (4 / 3) * shape.radius);
+  }
+  return Math.PI * shape.radii[0] * shape.radii[1] * shape.halfLength * 2;
+}
+
+function crewHeadShapes(volume: AnatomyVolume): AnatomyShape[] {
+  const halfY = (volume.max[1] - volume.min[1]) / 2;
+  const vertical = Math.max(CREW_HEAD_MIN_VERTICAL_M, halfY * CREW_HEAD_VERTICAL_OF_HALF_HEIGHT);
+  return (volume.shapes || []).filter((shape) => {
+    const bounds = shapeBounds(shape);
+    const half = [0, 1, 2].map((axis) => (bounds.max[axis] - bounds.min[axis]) / 2);
+    return half[0] <= CREW_HEAD_MAX_RADIUS_M + 1e-6 && half[2] <= CREW_HEAD_MAX_RADIUS_M + 1e-6 && half[1] <= vertical + 1e-6;
+  });
+}
 
 export function crewStations(armor: AnatomyArmor): CrewStation[] {
   return (armor.crew || []).map((volume, index) => {
     const center = [0, 1, 2].map((axis) => (volume.min[axis] + volume.max[axis]) / 2) as [number, number, number];
     const halfY = (volume.max[1] - volume.min[1]) / 2;
+    const nominal: [number, number, number] = [center[0], center[1] + halfY * CREW_HEAD_OFFSET_OF_HALF_HEIGHT, center[2]];
+    const heads = crewHeadShapes(volume);
+    const near = heads.filter((shape) => {
+      const point = shapeCenter(shape);
+      return Math.hypot(point[0] - nominal[0], point[2] - nominal[2]) <= CREW_HEAD_SEARCH_M;
+    });
+    const pool = near.length ? near : heads;
+    const largest = pool.reduce<AnatomyShape | null>((best, shape) => (!best || shapeVolume(shape) > shapeVolume(best) ? shape : best), null);
+    const head = largest ? shapeCenter(largest) : nominal;
     return {
       index,
       crew: String(volume.crew || 'crew'),
@@ -443,7 +486,7 @@ export function crewStations(armor: AnatomyArmor): CrewStation[] {
       frame: volumeFrame(volume, armor),
       volume,
       center,
-      head: [center[0], center[1] + halfY * CREW_HEAD_OFFSET_OF_HALF_HEIGHT, center[2]],
+      head,
       shapes: [...(volume.shapes || [])],
     };
   });
@@ -456,15 +499,4 @@ export function hullFloorY(armor: AnatomyArmor): number {
     for (const point of cell.vertices || []) floor = Math.min(floor, point[1]);
   }
   return Number.isFinite(floor) ? floor : 0;
-}
-
-/** Counts a drawn anatomy must reproduce exactly (the receipt compares the built scene against these). */
-export function anatomyCounts(armor: AnatomyArmor): { surfaces: number; triangles: number; parts: number; crew: number } {
-  const surfaces = armorSurfaces(armor);
-  return {
-    surfaces: surfaces.length,
-    triangles: surfaces.reduce((sum, surface) => sum + surface.positions.length / 9, 0),
-    parts: moduleParts(armor).length,
-    crew: (armor.crew || []).length,
-  };
 }
