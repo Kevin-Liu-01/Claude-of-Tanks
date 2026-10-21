@@ -572,7 +572,10 @@ the detection 10 px onto a consumable.
 The touch alert takes `width: max-content` up to its place's width, as the medal
 card does. An auto width shrank to the room right of its centre. At 320x568 a
 150 px alert centred at 237 px set five lines 96 px wide onto the ammo slot. The
-rendered receipt fails a wrapped alert narrower than its place.
+rendered receipt fails a wrapped alert narrower than its place. Touch notices
+also sit one layer over the controls and the map. At the controls' layer the
+map, later in the page, painted over the alert the scope ruling sets there; the
+receipt fails a notice that lies over the map but under it.
 
 Through the scope, the coordinator ruled that "0 APFSDS" and the zoom matter
 more than the map while a notice shows. The fallback weights there are:

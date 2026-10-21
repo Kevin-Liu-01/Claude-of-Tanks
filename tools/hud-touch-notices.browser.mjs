@@ -13,7 +13,8 @@
 // instead (r10g, the coordinator's ruling: at 320x568 the alert sat on "0 APFSDS" and the zoom plate). The short
 // landscapes' scope, whose map sits beside the score, over the notices' first row, keeps its notes. A wrapped alert
 // takes the width the plan gives it (r10g: an auto width shrank to the room right of its centre, and at 320x568 a 150 px
-// alert set five lines 96 px wide onto the ammo slot). No screenshot.
+// alert set five lines 96 px wide onto the ammo slot), and a notice over the map is stacked over it (at the controls'
+// layer the map, later in the page, painted over the alert the ruling sets there). No screenshot.
 // node tools/hud-touch-notices.browser.mjs --url=http://127.0.0.1:5189 [--out=outputs/hud-touch-notices] [--case=360x640,...]
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -82,6 +83,12 @@ async function stageScene([stage, sight, bloom, warn, set, furniture]) {
       .map((node) => { const r = node.getBoundingClientRect(); return { x0: r.left, y0: r.top, x1: r.right, y1: r.bottom, what: selector }; })
       .filter((box) => box.x1 - box.x0 >= 1 && box.y1 - box.y0 >= 1)),
     uncleared: (document.body.dataset.touchNotices ?? '').split(' ').includes('uncleared'),
+    // (each notice's stacking over the map's: the same stacking context, the HUD's)
+    stacked: Object.fromEntries(['.cot-sixth.on', '.cot-alert.show'].map((selector) => {
+      const node = document.querySelector(selector);
+      const map = document.querySelector('.cot-minimap');
+      return [selector, node && map ? Number(getComputedStyle(node).zIndex) - Number(getComputedStyle(map).zIndex) : null];
+    })),
     // (the alert's place width, and its lines)
     alertW: parseFloat(document.body.style.getPropertyValue('--hud-touch-alert-w')) || null,
     alertLines: (() => {
@@ -137,6 +144,14 @@ try {
       for (const [name, [gap, what]] of short) {
         const line = `${size} ${scene}: the ${name} keeps ${gap.toFixed(2)} px from ${what}`;
         if (!staged.uncleared) failures.push(line);
+      }
+      // (a notice over the map stacked over it, cleared or not)
+      const mapBox = staged.furniture.find((box) => box.what === '.cot-minimap');
+      for (const [name, selector] of [['detection', '.cot-sixth.on'], ['alert', '.cot-alert.show']]) {
+        const notice = staged[name];
+        if (!notice || !mapBox) continue;
+        const over = Math.min(notice.x1, mapBox.x1) - Math.max(notice.x0, mapBox.x0) > 0.5 && Math.min(notice.y1, mapBox.y1) - Math.max(notice.y0, mapBox.y0) > 0.5;
+        if (over && !(staged.stacked[selector] > 0)) failures.push(`${size} ${scene}: the ${name} lies over the map but under it (z ${staged.stacked[selector]})`);
       }
       // (a wrapped alert as wide as its place, cleared or not)
       if (staged.alert && staged.alertW && staged.alertLines > 1 && staged.alert.x1 - staged.alert.x0 < staged.alertW - 1) {

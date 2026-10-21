@@ -400,6 +400,9 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-relation=friendly] .rel
 /* r10e: a touch layout's centre notices and medal card take the places battleHudLayout finds off the reticle's footprint
    and the HUD's panels (touchNoticePlan.ts): each one's centre and top, the alert's slot width, the compact pair (the short
    landscapes' 136 px notice) where only that keeps clear. Their entry slides stay vertical. */
+/* (one layer over the controls and the map: where nothing clears a notice covers the map through the scope, the
+   coordinator's ruling, and at the controls' layer the map, later in the page, painted over it, r10g) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] :is(.cot-sixth,.cot-alert){z-index:calc(var(--hud-layer-controls) + 1)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-sixth{left:var(--hud-touch-notice-cx,50%);top:var(--hud-notice-top);transform:translate(-50%,-6px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-sixth.on{transform:translate(-50%,0)}
 /* (max-content, as the medal card: an auto width shrank to the room right of its centre, and a 150 px alert centred at
