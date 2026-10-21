@@ -119,6 +119,9 @@ function buildRole(entry: FleetEntry, role: CivilianVehicleKind, ctx: BuildConte
     rust: ctx.fleet.age, burnt, wheels: modelWheels(entry.model), seed, voxelAo: !ctx.coarse,
   }));
   fitToRole(geometry, ROLE_BOXES[role]);
+  // (229, the far form: vehicleFarForm.ts) the wheels where the fit stands them
+  const fit = geometry.userData.fit as { scale: number; lift: number };
+  geometry.userData.wheels = modelWheels(entry.model).map((w) => ({ z: w.z * fit.scale, y: (w.y + fit.lift) * fit.scale, r: w.r * fit.scale }));
   // (destruction core, 2026-10-09; the owner: "destroyed vehicles should be crumpled not just turn rusty") the burnt body
   // deformed: its roof pressed in, dented flanks, on some an end pushed in (wreckCrumple.ts; collision is the intact
   // coarse build's, canonicalSolid)
