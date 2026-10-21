@@ -151,7 +151,11 @@ export type HeroCardKind = 'roster' | 'rosterCompact' | 'galleryBrowse' | 'deplo
  *   coreShare / coreHeight: the tank's dense core as a share of the card width / art-box height;
  *   centerX: the core centre for a gun pointing left (mirrored for a gun pointing right), leaving the gun its room;
  *   nameSize / minName: the display name (px); hollow: the variant suffix in tungsten outline;
- *   tier: the "Tier X" chip in the bow-side top corner (the flag holds the rear-top corner).
+ *   tier: the "Tier X" chip in the bow-side top corner (the flag holds the rear-top corner); tierWord false shows the
+ *   numeral alone (the compact cards: "Tier VIII" at 11 px would span two thirds of a phone card).
+ * No card text is under 11 px, the type system's floor (owner: no small text): nameSize, minName and tierSize, and
+ * the Garage strip's own boxes (garage.css: phone 102 px with a 5 px pad, the short landscape strip 102 px too, so the
+ * longest name, "T-72B3 Bastion-M (Concept)", needs 91.5 px and keeps to two lines).
  * Blind critic round 1 (2026-10-20, both critics): with the gun swung back over the deck every card was
  * fitted by its whole silhouette, so a short-gun hull (IFVs, launchers, KV-2) spanned the card edge to edge
  * at up to 1.6x a main battle tank's core height. The roster shares (0.66 / 0.50, compact 0.70 / 0.64) cap
@@ -165,11 +169,11 @@ export type HeroCardKind = 'roster' | 'rosterCompact' | 'galleryBrowse' | 'deplo
  * one name line (HERO_NAME_LINE_HEIGHT) under a soft halo on the name, so it reads on any livery.
  */
 export const HERO_CARD_LAYOUT = Object.freeze({
-  roster: Object.freeze({ width: 156, height: 150, nameBand: 36, coreShare: 0.66, coreHeight: 0.50, centerX: 0.52, nameSize: 13.5, minName: 10.5, pad: 9, hollow: false, tier: true, tierSize: 8.5 }),
-  rosterCompact: Object.freeze({ width: 112, height: 86, nameBand: 24, coreShare: 0.70, coreHeight: 0.64, centerX: 0.51, nameSize: 9.5, minName: 8, pad: 6, hollow: false, tier: true, tierSize: 7 }),
-  galleryBrowse: Object.freeze({ width: 264, height: 188, nameBand: 40, coreShare: 0.70, coreHeight: 0.76, centerX: 0.56, nameSize: 18, minName: 12, pad: 12, hollow: false, tier: true, tierSize: 10 }),
-  deploy: Object.freeze({ width: 360, height: 240, nameBand: 58, coreShare: 0.66, coreHeight: 0.74, centerX: 0.56, nameSize: 30, minName: 20, pad: 16, hollow: true, tier: true, tierSize: 12 }),
-  endScreen: Object.freeze({ width: 560, height: 360, nameBand: 90, coreShare: 0.64, coreHeight: 0.72, centerX: 0.56, nameSize: 50, minName: 32, pad: 24, hollow: true, tier: true, tierSize: 14 }),
+  roster: Object.freeze({ width: 156, height: 150, nameBand: 36, coreShare: 0.66, coreHeight: 0.50, centerX: 0.52, nameSize: 13.5, minName: 11, pad: 9, hollow: false, tier: true, tierWord: true, tierSize: 11 }),
+  rosterCompact: Object.freeze({ width: 112, height: 86, nameBand: 24, coreShare: 0.70, coreHeight: 0.64, centerX: 0.51, nameSize: 11, minName: 11, pad: 6, hollow: false, tier: true, tierWord: false, tierSize: 11 }),
+  galleryBrowse: Object.freeze({ width: 264, height: 188, nameBand: 40, coreShare: 0.70, coreHeight: 0.76, centerX: 0.56, nameSize: 18, minName: 12, pad: 12, hollow: false, tier: true, tierWord: true, tierSize: 11 }),
+  deploy: Object.freeze({ width: 360, height: 240, nameBand: 58, coreShare: 0.66, coreHeight: 0.74, centerX: 0.56, nameSize: 30, minName: 20, pad: 16, hollow: true, tier: true, tierWord: true, tierSize: 12 }),
+  endScreen: Object.freeze({ width: 560, height: 360, nameBand: 90, coreShare: 0.64, coreHeight: 0.72, centerX: 0.56, nameSize: 50, minName: 32, pad: 24, hollow: true, tier: true, tierWord: true, tierSize: 14 }),
 });
 export const HERO_CARD_KINDS = Object.freeze(Object.keys(HERO_CARD_LAYOUT) as HeroCardKind[]);
 /** The name's line height (a share of its size): a second name line raises the name floor by this much. */
@@ -302,13 +306,6 @@ export const HERO_FLAG_MASK = Object.freeze({
   // The flag box ends this share of the name band above the card's bottom edge: its last fade runs under
   // the name floor, never behind the type.
   bandInset: 0.35,
-});
-
-/** Card copy rules: the name only (display face), no category eyebrow; nation is the flag, tier a chip. */
-export const HERO_TYPE = Object.freeze({
-  display: 'Chakra Petch',
-  displayWeight: 600,
-  data: 'IBM Plex Mono',
 });
 
 export type HeroFlagMask = typeof HERO_FLAG_MASK;

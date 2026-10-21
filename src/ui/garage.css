@@ -686,7 +686,7 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
    HERO_CARD_LAYOUT.roster / .rosterCompact (tools/hero-cards.selftest.mjs). */
 .cot-card{width:156px;min-height:150px;height:150px;flex:0 0 auto;cursor:pointer;position:relative;
   isolation:isolate;overflow:hidden;container-type:size;padding:0;
-  --hc-band:36px;--hc-share:0.66;--hc-hshare:0.5;--hc-cxr:0.52;--hc-pad:9px;--hc-name:13.5px;--hc-tier:8.5px;
+  --hc-band:36px;--hc-share:0.66;--hc-hshare:0.5;--hc-cxr:0.52;--hc-pad:9px;--hc-name:13.5px;--hc-tier:11px;
   background:radial-gradient(ellipse 62% 62% at 50% 55%,rgba(120,170,205,.14),rgba(0,0,0,0) 100%),
     linear-gradient(180deg,#0f3a55 0%,#0b2a3e 55%,#0b0e11 100%);
   border:1px solid rgba(146,164,180,.26);
@@ -704,7 +704,7 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
   box-shadow:0 8px 26px rgba(240,140,20,.28);}
 .cot-card:hover,.cot-card.sel{--hc-flag-opacity:1;}
 .cot-card .hc-tier{position:absolute;z-index:3;top:6px;right:6px;padding:3px 4px 2px;
-  font:500 var(--hc-tier)/1 'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:0;
+  font:500 var(--hc-tier)/1 var(--font-mono);letter-spacing:0;
   color:rgba(246,243,236,.72);background:rgba(11,14,17,.72);border:1px solid rgba(246,243,236,.2);}
 .cot-card .hc-tier b{font-weight:500;color:#f0a030;}
 /* Facing left (policy v5, owner 2026-10-20 "Whole tank faces left"): the flag holds the rear-top (right) corner,
@@ -714,7 +714,7 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
 .cot-card .flag .cot-flag{display:block;object-fit:cover;box-shadow:0 1px 3px rgba(0,0,0,.55);}
 .cot-card .dev-tag{position:absolute;right:6px;top:calc(var(--hc-tier) + 14px);z-index:3;padding:2px 5px;
   border:1px solid rgba(103,191,255,.62);background:rgba(7,24,38,.86);color:#8fd0ff;
-  font-size:7px;font-weight:900;letter-spacing:.14em;line-height:1;text-transform:uppercase;
+  font-size:11px;font-weight:900;letter-spacing:.14em;line-height:1;text-transform:uppercase;
   box-shadow:0 2px 8px rgba(0,0,0,.45);}
 .cot-card.dev-only{border-color:rgba(103,191,255,.38);}
 .cot-card.dev-only.sel{border-color:#79c8ff;
@@ -729,7 +729,7 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
     scale(var(--cot-thumb-scale,1.22));}
 .cot-card .ti[data-cot-portrait-ready='true']{opacity:1;}
 .cot-card .nm{position:absolute;z-index:3;left:var(--hc-pad);right:var(--hc-pad);bottom:calc(var(--hc-pad) * 0.8);margin:0;
-  font:600 var(--hc-name)/1.05 'Chakra Petch','ABC Monument Grotesk','Inter','Segoe UI',sans-serif;
+  font:600 var(--hc-name)/1.05 var(--font-ui);
   color:#f6f3ec;letter-spacing:0;text-align:left;white-space:normal;overflow-wrap:anywhere;
   text-shadow:0 1px 3px rgba(0,0,0,.85);}
 .cot-card.hc-n2 .nm{text-shadow:0 1px 3px rgba(0,0,0,.85),0 0 7px rgba(0,0,0,.75);}
@@ -1428,13 +1428,15 @@ body[data-cot-panels='overlay'] .cot-car-arrow{width:36px;flex:0 0 36px}
 body[data-cot-panels='overlay'] .cot-cards{min-width:0;flex:1 1 auto;gap:5px}
 body[data-cot-panels='overlay'] .cot-card{
   width:112px;min-height:var(--cot-roster-height);height:var(--cot-roster-height);padding:0;
-  --hc-band:24px;--hc-share:0.7;--hc-hshare:0.64;--hc-cxr:0.51;--hc-pad:6px;--hc-name:9.5px;--hc-tier:7px;
+  --hc-band:24px;--hc-share:0.7;--hc-hshare:0.64;--hc-cxr:0.51;--hc-pad:6px;--hc-name:11px;--hc-tier:11px;
 }
 body[data-cot-panels='overlay'] .cot-card.sel{transform:translateY(-3px)}
 body[data-cot-panels='overlay'] .cot-card .flag{top:4px;left:4px}
 body[data-cot-panels='overlay'] .cot-card .flag .cot-flag{width:16px}
-body[data-cot-panels='overlay'] .cot-card .hc-tier{top:3px;right:3px;padding:2px 3px 1px}
-body[data-cot-panels='overlay'] .cot-card .dev-tag{right:3px;top:17px;padding:1px 3px;font-size:5px}
+/* The compact chip shows the numeral alone at the 11 px floor ("Tier VIII" would span two thirds of a phone card). */
+body[data-cot-panels='overlay'] .cot-card .hc-tier{top:3px;right:3px;padding:2px 3px 1px;font-size:0}
+body[data-cot-panels='overlay'] .cot-card .hc-tier b{font-size:var(--hc-tier)}
+body[data-cot-panels='overlay'] .cot-card .dev-tag{right:3px;top:20px;padding:1px 3px;font-size:11px}
 body[data-cot-panels='overlay'] .cot-hc[data-hero-facing='left'] .hc-tier,body[data-cot-panels='overlay'] .cot-hc[data-hero-facing='left'] .dev-tag{right:auto;left:3px}
 body[data-cot-panels='overlay'] .cot-card .ti{width:98px;height:52px;left:4px;top:14px;
   transform:translate(var(--cot-thumb-x,-10px),var(--cot-thumb-y,-6px))
@@ -1523,7 +1525,7 @@ body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .srow 
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .srow .lr{
   flex-direction:column;align-items:flex-start;justify-content:center;gap:1px;
 }
-body[data-cot-width='phone'] .cot-card{width:102px}
+body[data-cot-width='phone'] .cot-card{width:102px;--hc-pad:5px}
 body[data-cot-width='phone'] .cot-car-arrow{width:32px;flex-basis:32px}
 body[data-cot-width='phone'] .cot-technical-viewer-tabs{gap:3px;margin-bottom:7px}
 body[data-cot-width='phone'] .cot-technical-viewer-tab{min-height:36px;padding:0 5px;font-size:7px}
@@ -1602,8 +1604,8 @@ body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels=
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-chip{min-height:36px;padding-block:2px}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-edge{height:36px}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card{
-  min-height:var(--cot-roster-height);height:var(--cot-roster-height);width:96px;padding:0;
-  --hc-band:20px;--hc-pad:5px;--hc-name:8px;--hc-tier:6px;
+  min-height:var(--cot-roster-height);height:var(--cot-roster-height);width:102px;padding:0;
+  --hc-band:20px;--hc-pad:5px;
 }
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card .ti{width:80px;height:38px;top:10px}
 

@@ -127,7 +127,7 @@ for (const gunSide of ['left', 'right']) {
 {
   const layerCss = readFileSync(new URL('../src/ui/heroCard.css', import.meta.url), 'utf8');
   const garageCss = readFileSync(new URL('../src/ui/garage.css', import.meta.url), 'utf8');
-  const vars = (L) => `--hc-band:${L.nameBand}px;--hc-share:${L.coreShare};--hc-hshare:${L.coreHeight};--hc-cxr:${Number(heroCenterX(L.centerX).toFixed(2))};`;
+  const vars = (L) => `--hc-band:${L.nameBand}px;--hc-share:${L.coreShare};--hc-hshare:${L.coreHeight};--hc-cxr:${Number(heroCenterX(L.centerX).toFixed(2))};--hc-pad:${L.pad}px;--hc-name:${L.nameSize}px;--hc-tier:${L.tierSize}px;`;
   assert.ok(garageCss.includes(vars(HERO_CARD_LAYOUT.roster)), `roster card vars ${vars(HERO_CARD_LAYOUT.roster)}`);
   assert.ok(garageCss.includes(vars(HERO_CARD_LAYOUT.rosterCompact)), `compact card vars ${vars(HERO_CARD_LAYOUT.rosterCompact)}`);
   assert.match(garageCss, /\.cot-card\{[^}]*container-type:size;/, 'the roster card is a size container from its first paint (no shift when the layers arrive)');
@@ -160,6 +160,17 @@ for (const gunSide of ['left', 'right']) {
   assert.match(garageCss, /\.cot-card::after\{[^}]*height:calc\(var\(--hc-band\) \+ var\(--hc-n2,0px\) \+ 6px\)/, 'the name floor rises with a second line');
   assert.match(garageCss, /\.cot-card\.hc-n2 \.nm\{text-shadow:0 1px 3px rgba\(0,0,0,\.85\),0 0 7px rgba\(0,0,0,\.75\);\}/, 'a two-line name takes the halo (the compositor\'s NAME_HALO)');
   assert.doesNotMatch(garageCss, /--hc-lift/, 'no card rule lifts the art box');
+  // The type floor (owner: no small text; the type system's 11 px): every card size, policy and strip alike, and the
+  // compact chip's numeral alone (tierWord false). The faces are the type system's tokens.
+  for (const [kind, L] of Object.entries(HERO_CARD_LAYOUT)) {
+    for (const key of ['nameSize', 'minName', 'tierSize']) assert.ok(L[key] >= 11, `${kind}.${key} ${L[key]} px is under the 11 px floor`);
+  }
+  const sizes = [...garageCss.matchAll(/--hc-(?:name|tier):([\d.]+)px/g), ...garageCss.matchAll(/\.cot-card \.dev-tag\{[^}]*font-size:([\d.]+)px/g)].map((m) => Number(m[1]));
+  assert.ok(sizes.length >= 5 && sizes.every((size) => size >= 11), `garage card text sizes ${sizes.join(', ')} px: none under 11 px`);
+  assert.equal(HERO_CARD_LAYOUT.rosterCompact.tierWord, false, 'the compact chip shows the numeral alone');
+  assert.match(garageCss, /body\[data-cot-panels='overlay'\] \.cot-card \.hc-tier\{[^}]*font-size:0\}\nbody\[data-cot-panels='overlay'\] \.cot-card \.hc-tier b\{font-size:var\(--hc-tier\)\}/, 'the compact strip hides the chip\'s word and keeps its numeral');
+  assert.match(garageCss, /\.cot-card \.nm\{[^}]*font:600 var\(--hc-name\)\/1\.05 var\(--font-ui\);/, 'the name takes the type system\'s UI face (600: Chakra Petch SemiBold)');
+  assert.match(garageCss, /\.cot-card \.hc-tier\{[^}]*font:500 var\(--hc-tier\)\/1 var\(--font-mono\);/, 'the tier chip takes the type system\'s mono face');
   assert.match(cardTs, /new ResizeObserver\(/, 'the card marks a wrapped name from its measured height');
   assert.match(cardTs, /classList\.toggle\('hc-n2', height > line \* 1\.5\)/, 'a name taller than one and a half lines is two lines');
   assert.equal(HERO_SIDE_MARGIN, 0.06, 'the CSS margins (0.06, 0.88, 0.94) are HERO_SIDE_MARGIN');

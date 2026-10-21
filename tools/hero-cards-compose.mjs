@@ -450,10 +450,10 @@ function drawName(ctx, name, { x, y, size, minSize, maxWidth, font, hollow, scal
   fill(variant, y);
 }
 
-/** The tier badge, written "Tier X" in the data face: the word in muted ink, the numeral in tungsten. */
-function drawTierChip(ctx, tier, { x, right, y, size, font, scale }) {
+/** The tier badge, written "Tier X" in the data face: the word in muted ink, the numeral in tungsten (the numeral alone without `word`). */
+function drawTierChip(ctx, tier, { x, right, y, size, font, scale, word: withWord = true }) {
   ctx.font = `500 ${size}px "${font}"`;
-  const word = 'Tier ';
+  const word = withWord ? 'Tier ' : '';
   const ww = ctx.measureText(word).width;
   const tw = ww + ctx.measureText(tier).width;
   const bh = Math.round(size * 1.55), bw = Math.round(tw + size * 0.9);
@@ -474,7 +474,7 @@ function drawTierChip(ctx, tier, { x, right, y, size, font, scale }) {
 
 /**
  * Compose one card at `scale` (device pixel ratio): ground, masked flag, tank, then the name in the
- * band under the contact line (never over the hull), the tier chip in the bow-side top corner (the flag
+ * band under the contact line (a second line overlays the hull's lower part), the tier chip in the bow-side top corner (the flag
  * holds the rear-top corner) and the frame. No eyebrow, no nation text: the flag is the nation. `gunSide`
  * is the layer's measured gun side (policy v5: the bow's side, the turret turned modestly toward the lens).
  */
@@ -507,7 +507,7 @@ export function composeCard(kind, { tank, bounds, flag, name, tier, font = 'Chak
   if (L.tier && tier) {
     const inset = Math.round(pad * 0.7);
     drawTierChip(ctx, tier, {
-      x: facing === 'right' ? null : inset, right: w - inset, y: inset, size: Math.round(L.tierSize * scale), font: dataFont, scale,
+      x: facing === 'right' ? null : inset, right: w - inset, y: inset, size: Math.round(L.tierSize * scale), font: dataFont, scale, word: L.tierWord,
     });
   }
   ctx.lineWidth = selected ? 2 * scale : scale;
