@@ -166,6 +166,21 @@ function installPageRecorder(forceRelay = false) {
     new PerformanceObserver((list) => { for (const entry of list.getEntries()) if (longtasks.length < 2000) longtasks.push({ start: Math.round(entry.startTime), ms: Math.round(entry.duration) }); })
       .observe({ type: 'longtask', buffered: true });
   } catch { /* no long-task timing in this browser */ }
+  // (2026-10-21, item/mp-rejoin-229) long animation frames over 150 ms with their script attribution (where a stall's time
+  // went, at no profiler cost): the returning tab's entry reads them against its stages (report.a2LongFrames)
+  const longFrames = window.__MP_E2E_LONG_FRAMES = [];
+  try {
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        if (entry.duration < 150 || longFrames.length >= 400) continue;
+        longFrames.push({ start: Math.round(entry.startTime), ms: Math.round(entry.duration), blockingMs: Math.round(entry.blockingDuration ?? 0),
+          scripts: (entry.scripts ?? []).filter((script) => script.duration >= 20).sort((a, b) => b.duration - a.duration).slice(0, 6).map((script) => ({
+            ms: Math.round(script.duration), invoker: String(script.invoker ?? '').slice(0, 80), type: script.invokerType ?? null,
+            fn: script.sourceFunctionName || null, src: String(script.sourceURL ?? '').replace(/^https?:\/\/[^/]+/, '').slice(0, 80),
+            char: script.sourceCharPosition ?? null, forcedLayoutMs: Math.round(script.forcedStyleAndLayoutDuration ?? 0) })) });
+      }
+    }).observe({ type: 'long-animation-frame', buffered: true });
+  } catch { /* no LoAF in this browser */ }
   // (2026-10-14, the §7 side-by-side) each presented frame's interval while `track` is on (the frame cost on every page),
   // and the smoothness sampler: every other hull's presented pose frame to frame — a step well past what its own speed
   // explains is a visible snap (a first sight or a hull coming out of the fog is not: the previous frame must have shown it)
@@ -1372,6 +1387,10 @@ try {
     }
   }
   await Promise.all([pages.b, pages.c].map((page) => page.setViewport(testViewport)));
+  // (2026-10-21, item/mp-rejoin-229) the returning tab's long tasks and long animation frames (with script attribution),
+  // times on its own clock beside its entry's start (report.a2LongFrames.entryStartedAt)
+  report.a2LongFrames = await pages.a2.evaluate(() => ({ entryStartedAt: window.__NETWORK_LOAD?.startedAt ?? null,
+    longtasks: (window.__MP_E2E_LONGTASKS ?? []).slice(-400), frames: (window.__MP_E2E_LONG_FRAMES ?? []).slice() })).catch(() => null);
   // (2026-10-20, item/mp-rejoin-229) the returning tab's world load as its activation trace names it (build stages, warm)
   report.a2WorldLoad = await pages.a2.evaluate(() => JSON.parse(JSON.stringify({ load: window.__WORLD_LOAD ?? null, prefetch: window.__WORLD_PREFETCH ?? null }))).catch(() => null);
   const a2Entry = await pages.a2.evaluate(() => ({ stages: window.__NETWORK_LOAD?.stages ?? null, totalMs: window.__NETWORK_LOAD?.totalMs ?? null, status: window.__NETWORK_LOAD?.status ?? null, rewelcomes: window.__NETWORK_LOAD?.rewelcomes ?? 0, rewelcomeAtMs: window.__NETWORK_LOAD?.rewelcomeAtMs ?? null }));
