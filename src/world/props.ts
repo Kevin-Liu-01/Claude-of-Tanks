@@ -6166,6 +6166,10 @@ ${snowCap ? `
   // veto; their furniture, vehicles, lamps and railings join the destructibles after every seeded pass
   const civicPieces: CivicPiece[] = [];
   function composeCivicAreas(): void {
+    // (229) a plan's street parking, authored past its areas (a map without an area too)
+    for (const f of [...(civicPlan?.streetParking ?? []), ...(civicPlan?.streetFurniture ?? [])]) {
+      civicPieces.push({ kind: f.kind, x: f.x, z: f.z, yaw: (f.yawDeg * Math.PI) / 180, scale: f.scale ?? 1 });
+    }
     if (!civicPlan?.areas.length) return;
     const style = civicStyle(civicPlan.style);
     const areas: Array<{ id: string; census: Record<string, number> }> = [];
@@ -10488,7 +10492,9 @@ ${snowCap ? `
   }
   function separateParkedVehicleRecords(): void {
     const roles = new Set(Object.keys(CIVILIAN_VEHICLE_RECEIPTS));
-    const vehicles = destructibles.filter((record) => roles.has(record.kind) && record.state === 0);
+    // (229) a civic plan's vehicles are authored at their seats: the pass leaves them
+    const authored = (record: { kind: string; x: number; z: number }) => civicPieces.some((p) => p.kind === record.kind && Math.hypot(p.x - record.x, p.z - record.z) < 0.05);
+    const vehicles = destructibles.filter((record) => roles.has(record.kind) && record.state === 0 && !authored(record));
     if (vehicles.length < 2) return;
     const roadside = { rng: () => 0, roads: L.roads, heightField, noVegetation: noVeg, spawns: L.spawns, placedBuildings: placedB };
     const trees = sceneryTrees; // the vegetation is released above; the trees were captured with the scenery's
@@ -10544,7 +10550,7 @@ ${snowCap ? `
     const cartKinds = new Set(Object.keys(CART_RECEIPTS));
     const vehicleKinds = new Set(Object.keys(CIVILIAN_VEHICLE_RECEIPTS));
     const carts = destructibles.filter((record) => (cartKinds.has(record.kind) || vehicleKinds.has(record.kind)) && record.state === 0
-      && !record.dropped);
+      && !record.dropped && !civicPieces.some((p) => p.kind === record.kind && Math.hypot(p.x - record.x, p.z - record.z) < 0.05));
     if (!carts.length) return;
     const parked = new Map<CollisionRecord, DestructibleRecord>();
     for (const record of destructibles) {
