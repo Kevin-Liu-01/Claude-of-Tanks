@@ -22,7 +22,11 @@ for (const anchor of anchors) {
   assert.ok(sampleShorelineMask([], mangrove.terrain.lakes, tipX, tipZ) > 0.99);
   assert.ok(Math.abs(hf.getHeightAt(tipX, tipZ) - p.waterLevel) < 1e-8,
     'jetty reaches actual flat water');
-  assert.equal(p.deckY, p.waterLevel + 0.65, 'pier deck stays at a believable height above water');
+  // (2026-10-21, waterBank.ts: a lake's level is its floor and its water stands the depth over it) the deck stands over
+  // the water's top, not the floor; on a field without bodies the top is the level, as before
+  assert.equal(p.deckY, p.surface + 0.65, 'pier deck stays at a believable height above water');
+  assert.ok(p.surface >= p.waterLevel, 'the water stands on its floor');
+  assert.ok(hf.getHeightAt(p.boatX, p.boatZ) > p.surface + 0.05, 'the hauled-out boat lies over the water\'s top');
 }
 assert.equal(planRiverLanding(hf, mangrove.terrain.lakes, { lakeIndex: 999, shoreAngleDeg: 0 }), null);
 assert.equal(planRiverLanding({ ...hf, getHeightAt: () => 100 }, mangrove.terrain.lakes, anchors[0]), null,

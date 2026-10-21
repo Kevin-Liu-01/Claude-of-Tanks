@@ -93,7 +93,8 @@ export function planRiverLanding(
   // (2026-10-21, level water held in its banks: waterBank.ts) the level is the floor and the water stands the map's depth
   // over it; the bank law holds the dry shore a lip over that top, so the shore stations and the boat are measured from
   // the water's top, not the floor (Mangrove's floor sits 0.43 m under its tidal waterline). A field without bodies keeps
-  // the level as its top, as before.
+  // the level as its top, as before. The deck stands 0.65 m over that top: Mangrove's deck where it stood before its
+  // floor went under the tidal waterline (the fishery wharf's dock and foundation adapt to it unchanged).
   const body = heightField.getWaterBodySurfaceAt?.(tipX, tipZ) ?? Number.NaN;
   const surface = body === body ? body : level;
   // Validate every pile station along the actual authored length, not only
@@ -113,7 +114,7 @@ export function planRiverLanding(
   if (sampleShorelineMask([], lakes, boatX, boatZ) > 0.02
     || heightField.getHeightAt(boatX, boatZ) <= surface + 0.05) return null;
   return {
-    x, z, angle: inward, length, deckY: level + 0.65, waterLevel: level, surface,
+    x, z, angle: inward, length, deckY: surface + 0.65, waterLevel: level, surface,
     boatX, boatZ,
     boatYaw: -angle - Math.PI / 2,
     shore: null,
