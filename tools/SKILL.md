@@ -183,6 +183,17 @@ finite leaf, while interior rays retain the bay walls. Retain raw residuals, tes
 missing/moved stock and wrong-source negatives, and keep all geometry in the
 source and physical audits.
 
+Tank hero cards (Garage roster, end-screen tile, Gallery list): one policy in
+`src/ui/heroCardPolicy.ts` (policy v5, owner 2026-10-20: the whole tank faces left, the
+turret turned modestly toward the lens with the gun forward and level; turretless mounts
+keep the gun on the hull axis).
+`node tools/hero-cards-plan.mjs` names the stale ids (geometry hash and angle-render
+sha from `tank-assets.json`, flag SVG, policy keys); render only those with
+`node tools/genHeroCards.mjs --ids=<stale>` (capture lock, NORMAL band; a policy
+change needs an explicit `--all --part=i/n`), then
+`node tools/hero-cards-compose.mjs ship --layers <dir> --ids=<stale>` and
+`npm run hero-cards:check` (bow and gun sides by projection, budgets, files). Never
+hand-edit `public/icons/hero/hero-cards.json`.
 The Garage running-gear band (2026-10-17, the wheel-band lane): `tools/garage-wheel-band.browser.mjs` stages Garages
 and tanks as the Garage does (the dormant energy skin on), poses beside the run and reports the vehicle-tag share of
 the tank's pixels in the scene target's alpha and the ground occlusion's step across the belly line (the same frame

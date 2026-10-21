@@ -2068,6 +2068,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-geometry.selftest.mjs',
     'tools/marketing-shots/battle-campaign.selftest.mjs',
     'tools/marketing-shots/showcase-r2.selftest.mjs',
+    // 2026-10-17 tank hero cards: the showroom camera with the whole tank facing left, the turret turned modestly
+    // toward the lens (owner 2026-10-20, policy v5), one flag mask and one placement rule for the compositor and the Garage CSS, the
+    // whole tank inside every card, the obverse flag, band-fit tricolours
+    'tools/hero-cards.selftest.mjs',
+    // 2026-10-18 tank hero cards: every fleet vehicle has its shipped card (its nation's flag, hull and gun left
+    // by projection, no clip, files matching the manifest, byte budgets); stale rows are reported for the
+    // changed-only re-render
+    'tools/hero-cards-check.mjs',
     // the multiplayer dual view: the published WebP is the one its manifest names, from one match
     'tools/marketing-shots/capture-multiplayer-dual-screen.selftest.mjs',
     // 2026-10-12 (home r2): the live-battle capture director's clock, freezes, bursts and staging helpers

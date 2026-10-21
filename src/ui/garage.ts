@@ -14,7 +14,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { ensureFonts } from './fonts.ts';
 import { FEATURED_SHOTS } from './featuredShots.ts';
 import { preloadImage } from './imagePreload.ts';
-import { flagIconHTML, flagIconUrl } from './flags.ts';
+import { flagIconHTML } from './flags.ts';
 import { flagIconCode } from './flagCodes.ts';
 import { iconUrl } from './icons.ts';
 import { ensureTankThumbs, drainTankThumbs, requeueTankThumbs } from './tankThumbs.ts';
@@ -354,6 +354,13 @@ function equipmentPickerTiles(
     .map((item) => equipmentTileMarkup(item, spec, currentLoadout, openSlot))
     .join('');
   return emptyTile + itemTiles;
+}
+
+/** The roster card's tier chip, "Tier X": the word in the data face, the numeral in tungsten. */
+function tierChipHTML(numeral: string): string {
+  const text = t('garage.card.tier', { tier: numeral });
+  const at = text.lastIndexOf(numeral);
+  return at < 0 ? text : `${text.slice(0, at)}<b>${numeral}</b>${text.slice(at + numeral.length)}`;
 }
 
 const NATION_LABEL: Readonly<Record<string, string>> = {
@@ -2484,17 +2491,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const displayName = spec.label?.displayName || spec.name;
       const shortName = spec.label?.shortName || displayName;
       card.title = developmentOnly ? `${displayName} — local development vehicle` : displayName;
-      card.setAttribute('aria-label', `${tierNumeral(spec.id) || ''} ${displayName}${developmentOnly ? t('garage.card.developmentVehicle') : ''}`.trim());
-      card.style.setProperty('--nation-flag', `url("${flagIconUrl(spec.nation)}")`);
-      // Stable pre-rendered 3/4 portrait generated from the final first-party
-      // procedural build; no live renderer or model swap is needed here.
+      const tier = tierNumeral(spec.id) || '';
+      const nationName = t(`nation.${spec.nation}`);
+      card.setAttribute('aria-label', `${tier
+        ? t('garage.card.aria', { tier, name: displayName, nation: nationName })
+        : t('garage.card.ariaUntiered', { name: displayName, nation: nationName })}${developmentOnly ? t('garage.card.developmentVehicle') : ''}`);
+      // Tank hero card (owner, 2026-10-17): the vehicle's 3/4 hero render over its waving national flag,
+      // added by the lazy heroCard.ts from offline layers; the box, the tier chip and the untruncated
+      // name are here. No era or nation text: the cloth flag is the nation.
       card.innerHTML =
-        `<span class="card-era">${vehicleEraLabelI18n(spec.era, t, { short: true })}</span>` +
+        (tier ? `<span class="hc-tier" aria-hidden="true">${tierChipHTML(tier)}</span>` : '') +
         (developmentOnly ? `<span class="dev-tag">${spec.roster?.tag || 'DEV'}</span>` : '') +
-        `<span class="flag">${flagIconHTML(spec.nation, 20)}<i>${NATION_LABEL[spec.nation] || spec.nation}</i></span>` +
-        `<img class="ti" data-cot-thumb="${spec.id}" alt="${displayName}" width="256" height="256" ` +
-        `loading="lazy" decoding="async" fetchpriority="low">` +
-        `<div class="nm"><b class="tiern">${tierNumeral(spec.id) || ''}</b><span class="nmt"></span></div>`;
+        `<div class="nm"><span class="nmt"></span></div>`;
       requiredElement<HTMLElement>(card, '.nmt').textContent = shortName;
       card.addEventListener('pointerenter', () => signalTankIntent(spec.id), { passive: true });
       card.addEventListener('pointerleave', () => clearTankIntent(spec.id), { passive: true });
@@ -2514,9 +2522,29 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   initializeTankCards();
   applyCountryFilter(countryFilter);
-  // Packaged PNGs avoid per-card WebGL contexts and remain deterministic
-  // across the garage carousel and screenshot harness.
-  ensureTankThumbs(allSpecs, { canWork: () => api.isOpen });
+  // Hero layers arrive with the lazy heroCard chunk and its manifest. A vehicle without a hero row (or
+  // every vehicle, when the chunk or the manifest is unavailable) keeps the packaged portrait and a
+  // flag chip: no per-card WebGL either way.
+  let heroCards: typeof import('./heroCard.ts') | null = null;
+  const legacyPortraits = (ids: readonly string[]): void => {
+    if (!ids.length) return;
+    for (const id of ids) {
+      const card = cardById.get(id);
+      const spec = specById.get(id);
+      if (!card || !spec || card.querySelector('.ti')) continue;
+      card.insertAdjacentHTML('afterbegin',
+        `<span class="flag">${flagIconHTML(spec.nation, 20)}</span>` +
+        `<img class="ti" data-cot-thumb="${spec.id}" alt="" width="256" height="256" loading="lazy" decoding="async" fetchpriority="low">`);
+    }
+    ensureTankThumbs(allSpecs, { canWork: () => api.isOpen });
+  };
+  // The card module and its stylesheet load together at this lazy boundary (no static CSS import in a graph).
+  Promise.all([import('./heroCard.ts'), import('./heroCard.css')])
+    .then(([module]) => {
+      heroCards = module;
+      return module.mountRosterHeroCards(cardsEl, cardById, selectedId, (id) => legacyPortraits([id]));
+    })
+    .then(legacyPortraits, () => legacyPortraits([...cardById.keys()]));
 
   const GARAGE_INFO = Object.freeze({
     Performance: t('garage.info.Performance'),
@@ -3519,7 +3547,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     },
 
     /** Normalize packaged tank portraits (screenshot compatibility). */
-    drainThumbs() { drainTankThumbs(); },
+    drainThumbs() { drainTankThumbs(); heroCards?.drainHeroCards(cardsEl); },
 
     /** 2026-10-13: decorative Garage work (the picker's cold swatches) also holds while `covered()` is true. */
     setDecorativeWorkGate(covered: () => boolean) { garageSwatchCover = covered; },
