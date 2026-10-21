@@ -2350,10 +2350,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   facetToggle.setAttribute('aria-expanded', 'false');
   facetToggle.setAttribute('aria-label', t('fleet.filter.toggleAria'));
   facetToggle.title = t('fleet.filter.toggleAria');
+  // Icon only (blind critic 2026-10-21: a text chip cost the flag rail a quarter of a phone's width); the name rides in
+  // aria-label and title, and the badge counts the active filters.
   facetToggle.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 3h12l-4.6 5.4V13' +
     'l-2.8 1.2V8.4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>' +
-    '<span class="code"></span><span class="ct num" hidden></span>';
-  requiredElement<HTMLElement>(facetToggle, '.code').textContent = t('fleet.filter.toggle');
+    '<span class="ct num" hidden></span>';
   chipsEl.prepend(facetToggle);
   function setRosterFacetFilter(match: ((specId: string) => boolean) | null): void {
     rosterFacetMatch = match;
@@ -2368,7 +2369,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const hasMatch = (countryId: string) => (specsByCountry.get(countryId) || []).some((spec) => facetVisible(spec.id));
     applyCountryFilter(facetFilteredCountry(countryFilter, countryGroups.map((group) => group.id), hasMatch)
       || countryFilter);
+    // The stage never shows a vehicle the filter hides: once the filter settles (typing stays cheap), the strip's first
+    // match takes the pedestal.
+    if (facetSelectTimer !== null) clearTimeout(facetSelectTimer);
+    facetSelectTimer = setTimeout(() => {
+      facetSelectTimer = null;
+      if (facetVisible(selectedId) || vehicleLocked) return;
+      const first = (specsByCountry.get(countryFilter) || []).find((spec) => facetVisible(spec.id));
+      if (first) api.setSelected(first.id);
+    }, 320);
   }
+  let facetSelectTimer: ReturnType<typeof setTimeout> | null = null;
   let facetPanel: Promise<GarageFacetPanel> | null = null;
   facetToggle.addEventListener('click', () => {
     emit('ui:click', {});

@@ -110,6 +110,22 @@ assert.doesNotMatch(panelSource, /insertAdjacentHTML|outerHTML/, 'no other marku
 assert.match(panelSource, /if \(target === input\) \{\n\s+event\.stopPropagation\(\);/,
   'typed keys stay in the search (the Garage arrows never step the vehicle from it)');
 assert.doesNotMatch(panelSource, /cot-facet-label|cot-facet-hint/, 'no visible eyebrow labels or hint paragraph over the rows');
+// Blind critic round 1 (2026-10-21): the panel sits above the phone Garage's side cards, takes the height above the
+// rail, shows Clear only once something narrows, cues the swipe rows, and the stage follows the filter.
+assert.match(panelSource, /clearButton\.hidden = active === 0;/, 'Clear shows only while a filter is active');
+assert.match(panelSource, /panel\.style\.maxHeight = `\$\{Math\.round\(Math\.max\(160, Math\.min\(520, top - 16\)\)\)\}px`;/,
+  'the panel takes the height above the rail');
+assert.match(panelSource, /wrap\.dataset\.more = max <= 1 \? '' :/, 'swipe rows mark the side with more chips');
+const panelCss = readFileSync(new URL('./garageFacetPanel.css', import.meta.url), 'utf8');
+const garageCssText = readFileSync(new URL('./garage.css', import.meta.url), 'utf8');
+const garageText = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');
+assert.match(panelCss, /\.cot-facet-rowwrap\[data-more\*='l'\]::before,\.cot-facet-rowwrap\[data-more\*='r'\]::after\{opacity:1;\}/,
+  'the edge cue shows where chips continue');
+assert.match(garageCssText, /\.cot-country-rail:has\(> \.cot-facet-panel:not\(\[hidden\]\)\)\{z-index:21;\}/,
+  'an open panel lifts the rail over the side cards and the Battle and Multiplayer buttons');
+assert.doesNotMatch(garageText, /facetToggle[^\n]*'\.code'/, 'the Filter toggle is an icon: its name rides in aria-label and title');
+assert.match(garageText, /if \(facetVisible\(selectedId\) \|\| vehicleLocked\) return;\n\s+const first = \(specsByCountry\.get\(countryFilter\) \|\| \[\]\)\.find\(\(spec\) => facetVisible\(spec\.id\)\);/,
+  'a filter that hides the staged vehicle stages the strip\'s first match');
 
 // Boot budget: the Garage reaches the panel, the filter and the facet tables only through import().
 const garageSource = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');

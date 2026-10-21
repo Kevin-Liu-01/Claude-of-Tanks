@@ -124,7 +124,6 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   closeButton.setAttribute('aria-label', t('fleet.filter.close'));
   closeButton.title = t('fleet.filter.close');
   closeButton.innerHTML = uiIconSVG('close', 18);
-  head.append(tally, clearButton, closeButton);
 
   // Search: the field shows its icon and placeholder; the facet grammar is its description, not a paragraph.
   const search = document.createElement('label');
@@ -144,9 +143,20 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   hint.id = 'cot-garage-facets-hint';
   hint.textContent = t('fleet.filter.searchHint');
   search.append(input, hint);
+  // one head row where the width allows: the tally, the search, Clear (shown once something narrows) and close
+  head.append(tally, search, clearButton, closeButton);
 
   // One row per facet. 'all' is the released state, not a chip; values without a vehicle (interwar today) are left out.
+  // On phones a row is one swipeable line; its wrapper shows an edge cue on the side with more chips.
   const optionButtons = new Map<GarageFacetGroup, Map<string, HTMLButtonElement>>();
+  const rowElements: HTMLElement[] = [];
+  const updateCue = (row: HTMLElement): void => {
+    const wrap = row.parentElement;
+    if (!wrap) return;
+    const max = row.scrollWidth - row.clientWidth;
+    wrap.dataset.more = max <= 1 ? '' : `${row.scrollLeft > 1 ? 'l' : ''}${row.scrollLeft < max - 1 ? 'r' : ''}`;
+  };
+  const updateCues = (): void => { for (const row of rowElements) updateCue(row); };
   const rows = (Object.keys(GARAGE_FACET_GROUPS) as GarageFacetGroup[]).map((group) => {
     const counts = garageFacetOptionCounts(index, EMPTY_GARAGE_FACET_STATE, group);
     const row = document.createElement('div');
@@ -182,7 +192,12 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
       row.append(button);
     }
     optionButtons.set(group, buttons);
-    return row;
+    row.addEventListener('scroll', () => updateCue(row), { passive: true });
+    rowElements.push(row);
+    const wrap = document.createElement('div');
+    wrap.className = 'cot-facet-rowwrap';
+    wrap.append(row);
+    return wrap;
   });
 
   const empty = document.createElement('p');
@@ -193,7 +208,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   empty.append(emptyText);
   empty.hidden = true;
 
-  panel.append(head, search, ...rows, empty);
+  panel.append(head, ...rows, empty);
   host.anchor.append(panel);
   host.toggle.setAttribute('aria-controls', panel.id);
   host.toggle.setAttribute('aria-expanded', 'false');
@@ -216,7 +231,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     }
     if (input.value !== state.query) input.value = state.query;
     const active = garageFacetActiveCount(state);
-    clearButton.disabled = active === 0;
+    clearButton.hidden = active === 0;
     host.toggle.classList.toggle('is-active', active > 0);
     const badge = host.toggle.querySelector<HTMLElement>('.ct');
     if (badge) {
@@ -226,6 +241,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     host.toggle.setAttribute('aria-label', active
       ? t('fleet.filter.toggleActiveAria', { n: active })
       : t('fleet.filter.toggleAria'));
+    if (open) updateCues();
   }
 
   function commit(next: GarageFacetState): void {
@@ -234,12 +250,21 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
     render();
   }
 
+  /** The panel takes the height above the rail (a landscape phone has little), and the row cues follow the layout. */
+  function fit(): void {
+    if (!open) return;
+    const top = host.anchor.getBoundingClientRect().top;
+    panel.style.maxHeight = `${Math.round(Math.max(160, Math.min(520, top - 16)))}px`;
+    updateCues();
+  }
+
   function setOpen(value: boolean, { restoreFocus = false } = {}): void {
     if (open === value) return;
     open = value;
     panel.hidden = !value;
     host.toggle.setAttribute('aria-expanded', String(value));
     if (value) {
+      fit();
       // Focus the search on a fine pointer; on touch it would raise the keyboard over the roster.
       if (typeof matchMedia === 'function' && matchMedia('(pointer: fine)').matches) input.focus();
     } else if (restoreFocus) {
@@ -288,6 +313,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
       event.stopPropagation();
     }
   });
+  window.addEventListener('resize', fit, { passive: true });
   document.addEventListener('pointerdown', (event) => {
     if (!open || !(event.target instanceof Node)) return;
     if (panel.contains(event.target) || host.toggle.contains(event.target)) return;

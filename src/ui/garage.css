@@ -636,13 +636,16 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
 .cot-country-chip.is-facet-empty{opacity:.42;}
 /* Roster Filter toggle (garageFacetPanel.ts opens above the rail). Sticky at the rail's start so it stays
    reachable while the flags scroll beneath it. */
-.cot-facet-toggle{position:sticky;left:0;z-index:3;flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;
-  cursor:pointer;padding:6px 9px 5px;white-space:nowrap;outline:none;
+.cot-facet-toggle{position:sticky;left:0;z-index:3;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+  gap:5px;min-width:42px;cursor:pointer;padding:6px 10px 5px;white-space:nowrap;outline:none;
   color:#9fb0bf;background:rgba(9,13,17,.97);border:1px solid rgba(146,164,180,.3);
   border-bottom:2px solid rgba(146,164,180,.4);
   font-family:var(--font-ui,'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif);font-size:10px;
   font-weight:800;letter-spacing:.12em;text-transform:uppercase;transition:color .15s,border-color .15s,background .15s;}
-.cot-facet-toggle svg{width:14px;height:14px;display:block;}
+.cot-facet-toggle svg{width:17px;height:17px;display:block;}
+/* The open Filter panel (a child of the rail) lifts the rail over the Garage's side cards and the Battle/Multiplayer
+   buttons, which otherwise paint over it on phones; menus, drawers and the nav stay above. */
+.cot-country-rail:has(> .cot-facet-panel:not([hidden])){z-index:21;}
 .cot-facet-toggle:hover,.cot-facet-toggle:focus-visible{color:#c6d2dc;border-color:rgba(210,225,240,.5);}
 .cot-facet-toggle[aria-expanded='true'],.cot-facet-toggle.is-active{color:#ffd27a;border-color:rgba(240,176,74,.65);
   border-bottom-color:#f0a030;background:linear-gradient(180deg,rgba(32,24,12,.97),rgba(14,10,6,.98));}
@@ -1417,7 +1420,7 @@ body[data-cot-panels='overlay'] .cot-country-chip{
   min-height:42px;padding:4px 9px 3px;font-size:7.5px;letter-spacing:.1em;gap:5px;
 }
 body[data-cot-panels='overlay'] .cot-country-chip .cot-flag{width:18px}
-body[data-cot-panels='overlay'] .cot-facet-toggle{min-height:42px;padding:4px 9px 3px;font-size:7.5px;letter-spacing:.1em;gap:5px}
+body[data-cot-panels='overlay'] .cot-facet-toggle{min-height:42px;min-width:44px;padding:4px 9px 3px;font-size:7.5px;letter-spacing:.1em;gap:5px}
 body[data-cot-panels='overlay'] .cot-carousel{
   left:max(var(--cot-overlay-edge),env(safe-area-inset-left));
   right:max(var(--cot-overlay-edge),env(safe-area-inset-right));bottom:var(--cot-roster-bottom);
