@@ -451,8 +451,33 @@
    "hostSweep": []
   },
   "c2_ariete": {
-   "inputHash": "e994189119ba26e3",
-   "runs": [],
+   "inputHash": "1b89b448c4278630",
+   "runs": [
+    {
+     "index": 0,
+     "site": "adhoc:ariete-forward-carry@<anon>@profiles/arieteXSuppliedHullEquipment.ts",
+     "source": "adhoc",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [
+      "clips <= 5 cm cosmetic"
+     ],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.016,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.811,
+      "host": "hull<lowerTub@profiles/arieteXSuppliedHull.ts:20>"
+     }
+    }
+   ],
    "uncovered": [],
    "hostSweep": []
   },
@@ -3067,13 +3092,13 @@
    "hostSweep": []
   },
   "t72b3_zubr": {
-   "inputHash": "9bf212ad066d443c",
+   "inputHash": "c2ca5e2009492b46",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t72b3_zubr_ii": {
-   "inputHash": "3c1b0c8b2c8b80fa",
+   "inputHash": "436c139f2228cfd2",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3244,13 +3269,13 @@
    "hostSweep": []
   },
   "t80u_bars_m": {
-   "inputHash": "aa3e6f8adb185a5e",
+   "inputHash": "254bfda9291fdedd",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t80u_husarz": {
-   "inputHash": "86ab1ae5219f0ac8",
+   "inputHash": "2a65123fc9d942d9",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3832,7 +3857,7 @@
    "hostSweep": []
   },
   "type96b": {
-   "inputHash": "3c077477fde7ad6f",
+   "inputHash": "c85e8221de209856",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
