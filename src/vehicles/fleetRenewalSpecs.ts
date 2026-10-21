@@ -7,6 +7,19 @@ import {modernArmor,leftSidePlate,rightSidePlate,plate} from './specHelpers.ts';
 import {OPLOT_FLANK_CASSETTE,oplotFlankCassetteSeat} from './oplotFlankLayout.ts';
 import type {FleetTankSpec} from './specContracts.ts';
 
+/** Release 227: each Type 96 concept's mechanical gun clearance (absolute turret yaw, minimum pitch, degrees;
+ * sim/gunPitchLimits.ts), with its mantlet boot clipped clear of its host (sinoSovietConcepts.ts BOOT_FLOOR). The lowest
+ * clash-free pitch of the whole gun against every hull triangle was measured at 2.5-degree yaw steps (both sides) and
+ * each curve keeps at least 1 degree above every station; type96MantletClearance.selftest.mjs sweeps them.
+ * Lóng (T-72B3 deck): full depression to 132.5 degrees, -5.25..-6.75 to 157.5, then the barrel meets the rear deck's
+ * fittings (y 1.61 at x ±0.5, z -2.8..-3.2) even level: it needs +3.75..+6.25 at 162.5-177.5. Fēng (T-80U deck): full depression to 147.5, -6..-6.5 to
+ * 157.5, -1.75..-4.25 behind. Léi (T-72B3M deck): the side armour and fittings at 32.5-35 (-6, -6.75), -2..-5.75 from
+ * 132.5 to 160, then +1.75..+2.5 behind. */
+const CONCEPT_GUN_PITCH_BY_YAW_DEG:Readonly<Record<'type96_72_long'|'type96_80_feng'|'type96_72m_lei',readonly (readonly [number,number])[]>>={
+  type96_72_long:[[0,-7],[130,-7],[133,-5.75],[137,-4.25],[158,-4.25],[160.5,7.25],[180,7.25]],
+  type96_80_feng:[[0,-7],[147,-7],[149.5,-5],[158,-5],[160,-3],[161.5,0],[180,0]],
+  type96_72m_lei:[[0,-7],[29,-7],[32,-5],[35,-5],[38,-7],[130,-7],[132,-4.75],[134.5,-1],[159,-1],[161,3.5],[180,3.5]],
+};
 export const FLEET_RENEWAL_NEW_IDS=['type96_72_long','type96_80_feng','type96_72m_lei','t72_rys'] as const;
 const registry=bindFleetRegistries(TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS);
 const entries=[
@@ -146,6 +159,9 @@ export function synchronizeFleetRenewalMetadata():void{
     s.armor.modules=hybridModules(base,s);
     s.armor.crew=[...structuredClone(base.armor.crew.filter(m=>!m.turretLocal)),...s.armor.crew.filter(m=>m.turretLocal)];
     s.armor.turretPivot=[0,y,z];s.visual.trackWidthM=base.visual.trackWidthM;
+    // release 227: the Type 96B's rear-deck gun clearance (suppliedSourceFleetSpecs.ts) belongs to its own hull; each
+    // concept carries the one measured over its own deck (CONCEPT_GUN_PITCH_BY_YAW_DEG)
+    s.gunPitchByYawDeg=CONCEPT_GUN_PITCH_BY_YAW_DEG[id];
     for(const field of ['enginePowerHp','weightTons','topSpeedKmh','reverseSpeedKmh','hullTraverseDegS','terrainResistance','pivotStyle'] as const)
       Object.assign(s,{[field]:structuredClone(base[field])});
   }
