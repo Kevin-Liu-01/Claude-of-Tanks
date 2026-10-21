@@ -167,6 +167,70 @@ export const CIVIC_STYLES: Readonly<Record<string, RegionalCivicStyle>> = Object
     grate: { iron: 0x2a2a28, frame: 0x6a6c6e },
     steps: 0x6a6c6e,
   }),
+  // (229 b3) a Lorraine market town, autumn 1944 (Amberford): golden Jaumont limestone kerbs and walls, grey Vosges
+  // sandstone pavés, a cobbled caniveau, crushed-limestone gravel, a cast-iron railing round the monument's bed
+  lorrain: Object.freeze<RegionalCivicStyle>({
+    id: 'lorrain',
+    kerb: { width: 0.22, face: 0.14, unit: [0.8, 1.2], hex: 0xb8a078 },
+    pavement: { course: 0.4, length: [0.5, 0.8], hex: 0x9c9284, tone: 0.07, joint: 0x5e584e, step: 1.0, maxCourses: 3 },
+    gutter: { rows: 2, width: 0.32, dish: 0.025, hex: 0x6e685e },
+    bands: { granite: 0x948c7e, basalt: 0x4c4a46, sett: 0x8c8476, bay: 0xa49a88 },
+    edging: {
+      kerb: { width: 0.22, face: 0.15, hex: 0xb8a078 },
+      wall: { width: 0.32, height: 0.38, hex: 0xbca474, coping: 0.04 },
+      pier: { size: 0.45, height: 0.95, hex: 0xbca474 },
+      railing: { kind: 'fenceiron', pitch: 2.4, scale: 0.88 },
+    },
+    path: { hex: 0xbcb096, edgeHex: 0x9a9080, worn: 0x9e8e6c },
+    lawn: { bare: 0x7a6a48, greens: [0x5e6a34, 0x66703a, 0x6e7440, 0x5a6834] },
+    // the Toussaint's chrysanthemums (the monument's bed in October)
+    flowers: [0xc83a2a, 0xe8d8b0, 0xd87a2a, 0x8a3a6a],
+    hedge: 0x2e4a26,
+    grate: { iron: 0x2a2a28, frame: 0xa89a7a },
+    steps: 0xc0a676,
+  }),
+  // (229 b3) a Jamuna char's haat, 2010 (Jade River Delta): brick soling laid herringbone (HBB) on the beaten earth,
+  // brick-on-edge edging, a bot-tola's whitewashed brick platform, no kerbed street
+  bengal: Object.freeze<RegionalCivicStyle>({
+    id: 'bengal',
+    kerb: { width: 0.12, face: 0.08, unit: [0.24, 0.24], hex: 0x9a4a32 },
+    pavement: { course: 0.115, length: [0.24, 0.24], hex: 0x9a5038, tone: 0.1, joint: 0x6a5a48, step: 1.0, maxCourses: 3 },
+    gutter: { rows: 1, width: 0.25, dish: 0.02, hex: 0x6a4a38 },
+    bands: { granite: 0x8a8478, basalt: 0x4a4844, sett: 0x9a5038, bay: 0xa86a4a },
+    edging: {
+      kerb: { width: 0.12, face: 0.15, hex: 0x9a4a32 },
+      wall: { width: 0.25, height: 0.45, hex: 0xe6e0d2, coping: 0.03 },
+      pier: { size: 0.3, height: 0.6, hex: 0xe6e0d2 },
+      railing: null,
+    },
+    path: { hex: 0x8a7458, edgeHex: 0x9a5038, worn: 0x7a6448 },
+    lawn: { bare: 0x7a6a4a, greens: [0x4f7a2e, 0x5a8434, 0x62863a, 0x568036] },
+    flowers: [0xe87a2a, 0xd8c040, 0xc82a3a, 0xf2efe6],
+    hedge: 0x2e5a26,
+    grate: { iron: 0x2a2a28, frame: 0x8a8478 },
+    steps: 0xe6e0d2,
+  }),
+  // (229 b3) Rum village, 2008 (Redrock Divide): sand-tone interlocking pavers before the fort and the souq, pale concrete
+  // kerbs, block planter walls round the date palms, the wadi's own packed sand between
+  wadirum: Object.freeze<RegionalCivicStyle>({
+    id: 'wadirum',
+    kerb: { width: 0.15, face: 0.18, unit: [0.5, 0.5], hex: 0xd8d2c4 },
+    pavement: { course: 0.2, length: [0.2, 0.2], hex: 0xc8a882, tone: 0.06, joint: 0x9a8466, step: 1.0, maxCourses: 3 },
+    gutter: { rows: 1, width: 0.3, dish: 0.02, hex: 0xa89070 },
+    bands: { granite: 0xc0b49c, basalt: 0x6a5a4a, sett: 0xb89a74, bay: 0xd0c0a0 },
+    edging: {
+      kerb: { width: 0.15, face: 0.2, hex: 0xd8d2c4 },
+      wall: { width: 0.2, height: 0.5, hex: 0xd8c8a8, coping: 0.02 },
+      pier: { size: 0.3, height: 0.6, hex: 0xd8c8a8 },
+      railing: null,
+    },
+    path: { hex: 0xd4a874, edgeHex: 0xc8b090, worn: 0xc09868 },
+    lawn: { bare: 0xc89a6a, greens: [0x8a8a4a, 0x7a8240, 0x8e8c50, 0x82843e] },
+    flowers: [0xd84a8a, 0xe8d8c0, 0xc83a3a, 0xe8a030],
+    hedge: 0x4a5a2e,
+    grate: { iron: 0x3a3a38, frame: 0xc8bca4 },
+    steps: 0xd0c4aa,
+  }),
 });
 
 /** A plan's style row (throws on an unknown key: a plan must name a row that exists). */

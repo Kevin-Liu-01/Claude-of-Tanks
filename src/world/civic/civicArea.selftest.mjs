@@ -42,16 +42,19 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
   const plan = plans.civicPlanFor(mapId);
   const base = await build(mapId, true), civic = await build(mapId, false);
   const { built, flora, field, config } = civic;
-  const rooms = plan.areas.map((a) => a.room);
-  const inAnyRoom = (x, z) => rooms.some((r) => inRect(r, x, z, 0.5));
+  // (229 b3) a room may turn about its centre (plans.inCivicRoom)
+  const inAnyRoom = (x, z) => plan.areas.some((a) => plans.inCivicRoom(a, x, z, 0.5));
 
   // ---- stream neutrality
   assert.deepEqual(built.group.userData.streamDraws, base.built.group.userData.streamDraws, `${mapId}: the props' streams draw as on the map without the plan`);
   const key = (d) => `${d.kind}@${d.x.toFixed(1)},${d.z.toFixed(1)}`;
   const seats = [...plan.areas.flatMap((a) => [...a.furniture, ...a.parking, ...a.lamps]), ...(plan.streetParking ?? []), ...(plan.streetFurniture ?? [])];
   const ownSeat = (d) => seats.some((p) => p.kind === d.kind && Math.hypot(p.x - d.x, p.z - d.z) < 0.05);
+  // (229 b3) the map's walked monument, when the plan seats it in its area (overlay.monumentKind), moves from wherever the
+  // walk left it (Amberford's market cross at the edge of town)
+  const walkedMoves = plan.areas.some((a) => a.monument) && plan.overlay.monumentKind === 'monument';
   const outside = (b) => new Set(b.destructibles.filter((d) => d.slot >= 0 && !inAnyRoom(d.x, d.z) && !VEHICLES.has(d.kind) && d.kind !== 'hedgehog'
-    && !ownSeat(d)).map(key));
+    && !ownSeat(d) && !(walkedMoves && d.kind === 'monument')).map(key));
   const before = outside(base.built), after = outside(built);
   // (228 r2: the pieces the plan clears from round its room — pinned by kind and rectangle in the plan — the only others)
   const clears = plan.areas.flatMap((a) => a.clears);
@@ -88,8 +91,19 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
   }
   for (const area of plan.areas) {
     const tag = `${mapId}/${area.id}`, room = area.room, C = area.centre;
-    const records = built.destructibles.filter((d) => d.slot >= 0 && inRect(room, d.x, d.z));
-    const trees = flora._trees.filter((t) => inRect(room, t.x, t.z, 25));
+    const inRoom = (x, z, m = 0) => plans.inCivicRoom(area, x, z, m);
+    // the room's own axes (turned by roomYawDeg about its centre) and its world bounds
+    const ryaw = ((area.roomYawDeg ?? 0) * Math.PI) / 180, rc = Math.cos(ryaw), rs = Math.sin(ryaw);
+    const rcx = (room.x0 + room.x1) / 2, rcz = (room.z0 + room.z1) / 2, rhx = (room.x1 - room.x0) / 2, rhz = (room.z1 - room.z0) / 2;
+    const roomAt = (u, v) => [rcx + u * rc + v * rs, rcz - u * rs + v * rc];
+    const corners = [roomAt(-rhx, -rhz), roomAt(rhx, -rhz), roomAt(rhx, rhz), roomAt(-rhx, rhz)];
+    const bounds = { x0: Math.min(...corners.map((q) => q[0])), x1: Math.max(...corners.map((q) => q[0])),
+      z0: Math.min(...corners.map((q) => q[1])), z1: Math.max(...corners.map((q) => q[1])) };
+    // the room's records, and the area's own pieces wherever they stand by it
+    const areaSeats = [...area.furniture, ...area.parking, ...area.lamps];
+    const records = built.destructibles.filter((d) => d.slot >= 0 && (inRoom(d.x, d.z)
+      || areaSeats.some((p) => p.kind === d.kind && Math.hypot(p.x - d.x, p.z - d.z) < 0.05)));
+    const trees = flora._trees.filter((t) => inRoom(t.x, t.z, 25));
     // ---- the pieces at their seats, on the ground, out of the structures
     const seats = [...area.furniture, ...area.parking, ...area.lamps];
     for (const p of seats) {
@@ -105,9 +119,12 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
       const cols = built.destructibles.filter((d) => d.kind === area.monument.kind && d.slot >= 0);
       assert.equal(cols.length, 1, `${tag}: one ${area.monument.kind}`);
       assert.ok(Math.hypot(cols[0].x - area.monument.x, cols[0].z - area.monument.z) < 0.05, `${tag}: the monument at its seat`);
-      assert.ok(collision.isFortifiedCoverKind(cols[0].ob.kind) && cols[0].ob.crushMin >= 999, `${tag}: the monument is fortified`);
-      assert.ok(!collision.hullYieldingRecord(cols[0].ob), `${tag}: the bots steer round the monument`);
-      assert.equal(built.destructibles.filter((d) => d.kind === 'monument' && d.slot >= 0).length, 0, `${tag}: no walked monument`);
+      // (a kit monument is fortified cover; a map's own walked monument moved to the seat keeps its own class)
+      if (area.monument.kind !== 'monument') {
+        assert.ok(collision.isFortifiedCoverKind(cols[0].ob.kind) && cols[0].ob.crushMin >= 999, `${tag}: the monument is fortified`);
+        assert.ok(!collision.hullYieldingRecord(cols[0].ob), `${tag}: the bots steer round the monument`);
+      }
+      if (area.monument.kind !== 'monument') assert.equal(built.destructibles.filter((d) => d.kind === 'monument' && d.slot >= 0).length, 0, `${tag}: no walked monument`);
       // G3: the planner's grid with the monument is the grid without it (no edge closed, no bend added)
       const { createBotNavigationGrid } = await import('../../sim/botRoutePlanner.ts');
       const navOf = (obstacles) => createBotNavigationGrid({ heightField: field, queryObstacles: null, getObstacles: () => obstacles });
@@ -127,10 +144,15 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
     }
     for (const t of trees) assert.ok(Math.hypot(t.x - C.x, t.z - C.z) > C.ringR[1], `${tag}: a tree in the hold disc`);
     // ---- the green
-    const census = flora.group.userData.civicTrees;
+    // (229 b3 r2) a map whose areas plant no tree writes no census
+    const census = flora.group.userData.civicTrees ?? { stations: 0, planted: 0, refused: {} };
     assert.equal(census.planted, census.stations, `${tag}: every tree station planted (${JSON.stringify(census)})`);
     const civicTrees = flora._trees.filter((t) => area.trees.stations.some((s) => Math.hypot(s.x - t.x, s.z - t.z) < 0.01));
-    assert.equal(civicTrees.length, area.trees.stations.length, `${tag}: the trees stand at their stations`);
+    const astray = area.trees.stations.filter((s) => !flora._trees.some((t) => Math.hypot(s.x - t.x, s.z - t.z) < 0.01)).map((s) => {
+      const near = flora._trees.reduce((b, t) => (Math.hypot(s.x - t.x, s.z - t.z) < Math.hypot(s.x - b.x, s.z - b.z) ? t : b), flora._trees[0]);
+      return `(${s.x}, ${s.z}): nearest tree (${near?.x?.toFixed(2)}, ${near?.z?.toFixed(2)})`;
+    });
+    assert.equal(civicTrees.length, area.trees.stations.length, `${tag}: the trees stand at their stations ${astray.join('; ')}`);
     const benches = built.destructibles.filter((d) => d.kind === 'bench' && d.slot >= 0
       && area.furniture.some((f) => f.kind === 'bench' && Math.hypot(f.x - d.x, f.z - d.z) < 0.05)).length;
     const T = area.targets;
@@ -140,8 +162,10 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
     // ---- the fill: room cells more than 4 m from anything (records, trees, beds, paving), the arms and the roundel aside
     // (the census's things: every collision record's footprint box by the room — the furniture, a light building poking
     // into a corner, a house's corner — and the trunks)
-    const things = [...built.obstacles.filter((o) => o.min && o.max && o.max[0] > room.x0 - 5 && o.min[0] < room.x1 + 5 && o.max[2] > room.z0 - 5 && o.min[2] < room.z1 + 5)
-      .map((o) => [o.min[0], o.max[0], o.min[2], o.max[2]]), ...trees.map((t) => [t.x - 0.6, t.x + 0.6, t.z - 0.6, t.z + 0.6])];
+    const things = [...built.obstacles.filter((o) => o.min && o.max && o.max[0] > bounds.x0 - 5 && o.min[0] < bounds.x1 + 5 && o.max[2] > bounds.z0 - 5 && o.min[2] < bounds.z1 + 5)
+      .map((o) => [o.min[0], o.max[0], o.min[2], o.max[2]]), ...trees.map((t) => [t.x - 0.6, t.x + 0.6, t.z - 0.6, t.z + 0.6]),
+      // (229 b3) the trees' platforms
+      ...(area.platforms ?? []).map((pf) => { const r = pf.half * 1.42; return [pf.x - r, pf.x + r, pf.z - r, pf.z + r]; })];
     let open = 0, cells = 0, largest = 0, largestAt = [0, 0];
     const segDist = (x, z, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz || 1;
       const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / l2)); return Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t); };
@@ -243,14 +267,17 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
       }
     }
     const inLane = (x, z) => area.lanes.some((l) => inRect(l.rect, x, z)) || area.holds.some((h) => Math.hypot(x - h.x, z - h.z) < h.r);
-    for (let x = room.x0 + 0.5; x < room.x1; x += 1) for (let z = room.z0 + 0.5; z < room.z1; z += 1) {
+    for (let u = -rhx + 0.5; u < rhx; u += 1) for (let v = -rhz + 0.5; v < rhz; v += 1) {
+      const [x, z] = roomAt(u, v);
       let d = Infinity;
       for (const [x0, x1, z0, z1] of things) d = Math.min(d, Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(z0 - z, 0, z - z1)));
       // (229 b1 r1: a plaza's tiles laid wall to wall fill nothing — they are its floor)
       for (const r of [...area.beds.map((b) => b.rect), ...area.paving.filter((p) => p.kind !== 'tiles').map((p) => p.rect)]) {
         d = Math.min(d, Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1)));
       }
-      d = Math.min(d, x - room.x0, room.x1 - x, z - room.z0, room.z1 - z);
+      // (229 b3) the strips of paving
+      for (const st of area.strips ?? []) d = Math.min(d, Math.max(0, segDist(x, z, st.from, st.to) - st.width / 2));
+      d = Math.min(d, rhx - Math.abs(u), rhz - Math.abs(v));
       if (area.arms.some((a) => inRect(a, x, z)) || Math.hypot(x - C.x, z - C.z) < C.ringR[1] + 2 || inCorridor(x, z) || inLane(x, z)) continue;
       if (d > largest) { largest = d; largestAt = [x, z]; }
       cells++;

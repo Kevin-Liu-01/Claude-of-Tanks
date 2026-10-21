@@ -13,7 +13,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const { CIVIC_PLAN_MAPS, civicPlanFor, inCivicRect } = await import('./plans/index.ts');
+const { CIVIC_PLAN_MAPS, civicPlanFor, inCivicRect, inCivicRoom } = await import('./plans/index.ts');
 const { CIVIC_STYLES } = await import('./styles.ts');
 const { CIVIC_RECORDS } = await import('./civicFurnitureKit.ts');
 const { getMapConfig } = await import('../maps/index.ts');
@@ -44,7 +44,7 @@ for (const mapId of CIVIC_PLAN_MAPS) {
     const tag = `${mapId}/${area.id}`, room = area.room;
     assert.ok(area.pad === -1 || cfg.terrain.hardstands?.[area.pad], `${tag}: its pad ${area.pad} exists (or -1: none)`);
     for (const bed of area.beds) {
-      assert.ok(inCivicRect(room, bed.rect.x0, bed.rect.z0) && inCivicRect(room, bed.rect.x1, bed.rect.z1), `${tag}: bed ${bed.id} inside its room`);
+      assert.ok(inCivicRoom(area, bed.rect.x0, bed.rect.z0) && inCivicRoom(area, bed.rect.x1, bed.rect.z1), `${tag}: bed ${bed.id} inside its room`);
       for (const arm of area.arms) {
         const overlap = Math.min(bed.rect.x1, arm.x1) - Math.max(bed.rect.x0, arm.x0) > 0 && Math.min(bed.rect.z1, arm.z1) - Math.max(bed.rect.z0, arm.z0) > 0;
         assert.ok(!overlap, `${tag}: bed ${bed.id} keeps off the arms`);
@@ -53,7 +53,7 @@ for (const mapId of CIVIC_PLAN_MAPS) {
     const pieces = [...area.furniture, ...area.parking, ...area.lamps];
     const C = area.centre;
     for (const p of pieces) {
-      assert.ok(inCivicRect(room, p.x, p.z, 12), `${tag}: ${p.kind} at (${p.x}, ${p.z}) by its room`);
+      assert.ok(inCivicRoom(area, p.x, p.z, 12), `${tag}: ${p.kind} at (${p.x}, ${p.z}) by its room`);
       assert.ok(Math.hypot(p.x - C.x, p.z - C.z) > C.ringR[1] + 0.5, `${tag}: ${p.kind} at (${p.x}, ${p.z}) out of the roundel's hold disc`);
       // the arms' carriageways (their middle, the narrower of their half widths less 2 m) carry nothing
       for (const arm of area.arms) {
@@ -67,7 +67,7 @@ for (const mapId of CIVIC_PLAN_MAPS) {
     for (const lane of area.lanes) {
       const r = lane.rect, across = Math.min(r.x1 - r.x0, r.z1 - r.z0), alongX = r.x1 - r.x0 >= r.z1 - r.z0;
       assert.ok(across >= lane.minWidth - 1e-9, `${tag}: lane ${lane.id} ${across.toFixed(2)} m across (${lane.minWidth})`);
-      assert.ok(inCivicRect(room, r.x0, r.z0, 0.01) && inCivicRect(room, r.x1, r.z1, 0.01), `${tag}: lane ${lane.id} inside its room`);
+      assert.ok(inCivicRoom(area, r.x0, r.z0, 0.01) && inCivicRoom(area, r.x1, r.z1, 0.01), `${tag}: lane ${lane.id} inside its room`);
       const edge = (x, z) => (alongX ? Math.min(z - r.z0, r.z1 - z) : Math.min(x - r.x0, r.x1 - x)) < 0.6;
       for (const p of pieces) {
         if (!inCivicRect(r, p.x, p.z)) continue;
@@ -94,7 +94,10 @@ for (const mapId of CIVIC_PLAN_MAPS) {
     }
     // the monument: off its planner cell's six segments and its nodes
     if (area.monument) {
-      const mo = area.monument, rec = CIVIC_RECORDS[mo.kind];
+      // (229 b3) or the map's own walked monument moved to the area's seat (overlay.monumentKind; placeCentralMonument's
+      // legacy collision: a 2.6 m box)
+      const MAP_MONUMENTS = { monument: { collisionR: 1.3 } };
+      const mo = area.monument, rec = CIVIC_RECORDS[mo.kind] ?? (plan.overlay.monumentKind === mo.kind ? MAP_MONUMENTS[mo.kind] : null);
       assert.ok(rec, `${tag}: the monument's kind ${mo.kind} is the kit's`);
       const x0 = Math.floor(mo.x / LATTICE) * LATTICE, z0 = Math.floor(mo.z / LATTICE) * LATTICE, x1 = x0 + LATTICE, z1 = z0 + LATTICE;
       const segs = [[x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, x0, z1], [x0, z1, x0, z0], [x0, z0, x1, z1], [x1, z0, x0, z1]];

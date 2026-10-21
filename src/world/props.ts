@@ -4653,11 +4653,11 @@ ${snowCap ? `
    * after every ordinary prop: no pool's geometry stream and no other prop's identity moves); the record's own obstacle
    * and collider then take the placeholders' places in the lists.
    */
-  const deferredSmallProps: Array<{ kind: string; x: number; y: number; z: number; ob: CollisionRecord; col: CollisionRecord; yaw: number }> = [];
-  function deferSmallProp(kind: string, x: number, y: number, z: number, ob: CollisionRecord, col: CollisionRecord, yaw = 0): void {
+  const deferredSmallProps: Array<{ kind: string; x: number; y: number; z: number; ob: CollisionRecord; col: CollisionRecord; yaw: number; vetoed?: boolean }> = [];
+  function deferSmallProp(kind: string, x: number, y: number, z: number, ob: CollisionRecord, col: CollisionRecord, yaw = 0, vetoed = false): void {
     obstacles.push(ob);
     colliders.push(col);
-    deferredSmallProps.push({ kind, x, y, z, ob, col, yaw });
+    deferredSmallProps.push({ kind, x, y, z, ob, col, yaw, vetoed });
   }
   // The landmarks lane (round 2, 2026-10-06): the ground of the set pieces set into a finished map (a placement's
   // `ground: 'veto'`, landmarks/compose.ts). The passes after the composer draw as on the map without them; what they
@@ -4669,10 +4669,16 @@ ${snowCap ? `
   // (the maps lane, 228) a civic area's room (civic/civicAreaKit.ts): the passes after the landmarks keep their draws and
   // leave out what they would stand in it, as a set piece's veto (the kinds the plan names keep theirs: the street
   // lamps); the area's own pieces are exempt
-  const civicVetoes: Array<{ rect: CivicRect; exempt: ReadonlySet<string> }> = [];
+  // (229 b3) a room may turn about its centre (a char's haat on its diamond): the point is read in the room's own axes
+  const civicVetoes: Array<{ rect: CivicRect; exempt: ReadonlySet<string>; c: number; s: number }> = [];
   const civicVetoed: Record<string, number> = {};
+  const inVetoRoom = (v: { rect: CivicRect; c: number; s: number }, x: number, z: number): boolean => {
+    if (v.s === 0) return x >= v.rect.x0 && x <= v.rect.x1 && z >= v.rect.z0 && z <= v.rect.z1;
+    const cx = (v.rect.x0 + v.rect.x1) / 2, cz = (v.rect.z0 + v.rect.z1) / 2, dx = x - cx, dz = z - cz;
+    return Math.abs(dx * v.c - dz * v.s) <= (v.rect.x1 - v.rect.x0) / 2 && Math.abs(dx * v.s + dz * v.c) <= (v.rect.z1 - v.rect.z0) / 2;
+  };
   const civicVetoAt = (x: number, z: number, kind = ''): boolean => !landmarkFurniture && civicVetoes.some((v) =>
-    !v.exempt.has(kind) && x >= v.rect.x0 && x <= v.rect.x1 && z >= v.rect.z0 && z <= v.rect.z1);
+    !v.exempt.has(kind) && inVetoRoom(v, x, z));
   // (and the ground beside a room the scars, the rubble and the hedgehogs keep off: its keep-outs)
   const civicKeepOuts: CivicRect[] = [];
   const civicGroundVetoAt = (x: number, z: number, kind: string): boolean => civicVetoAt(x, z, kind)
@@ -6192,7 +6198,7 @@ ${snowCap ? `
         const mo = area.monument;
         civicPieces.push({ kind: mo.kind, x: mo.x, z: mo.z, yaw: Math.atan2(mo.faceX - mo.x, mo.faceZ - mo.z), scale: 1 });
       }
-      civicVetoes.push({ rect: built.veto, exempt: new Set(area.vetoExempt) });
+      civicVetoes.push({ rect: built.veto, exempt: new Set(area.vetoExempt), c: Math.cos(built.vetoYaw), s: Math.sin(built.vetoYaw) });
       civicKeepOuts.push(...area.keepOuts);
       areas.push({ id: area.id, census: built.census });
       debugPolys.push(...built.debug);
@@ -6738,9 +6744,12 @@ ${snowCap ? `
     const wy = heightField.getHeightAt(wx, wz);
     // (destruction stream, 2026-10-13) a destructible prop now, laid with the small props at the end of the build
     // (deferSmallProp); its placeholder records hold its place for every placement after it
+    // (229 b3) a well walked into a civic area's room is the room's veto's: its placeholders hold its place through the
+    // build (every later pass reads them as before) and the flush leaves it out
     deferSmallProp('well', wx, wy, wz,
       setCircleShape({ min: [wx - 1.1, wy, wz - 1.1], max: [wx + 1.1, wy + 2.6, wz + 1.1] }, wx, wz, 1.1),
-      setCircleShape({ min: [wx - 1.1, wy, wz - 1.1], max: [wx + 1.1, wy + 2.6, wz + 1.1] }, wx, wz, 1.1));
+      setCircleShape({ min: [wx - 1.1, wy, wz - 1.1], max: [wx + 1.1, wy + 2.6, wz + 1.1] }, wx, wz, 1.1),
+      0, civicVetoes.length > 0 && civicVetoAt(wx, wz, 'well'));
   }
   placeVillageWell();
 
@@ -11213,6 +11222,14 @@ ${snowCap ? `
   refitRockColliders();
   // the small props laid as destructibles (deferSmallProp): each record's obstacle and collider into its placeholders' places
   for (const small of deferredSmallProps) {
+    if (small.vetoed) {
+      for (const [list, placeholder] of [[obstacles, small.ob], [colliders, small.col]] as const) {
+        const at = list.indexOf(placeholder);
+        if (at >= 0) list.splice(at, 1);
+      }
+      civicVetoed[small.kind] = (civicVetoed[small.kind] ?? 0) + 1;
+      continue;
+    }
     const before = obstacles.length, beforeCol = colliders.length;
     const record = addDestructibleRecord(destructibleContext, small.kind, small.x, small.y, small.z, small.yaw);
     const swap = (list: CollisionRecord[], from: number, placeholder: CollisionRecord): void => {
