@@ -50,6 +50,7 @@ interface UKGeometryPort {
   readonly gunG: THREE.Group;
   readonly q?: boolean;
   readonly spec: {
+    readonly id: string;
     readonly visual: {
       readonly number?: string;
       bakeDirtDeckEq?: boolean;
