@@ -259,7 +259,12 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
     assert.ok(lamps.length >= baseLamps + area.lamps.length, `${tag}: lamps ${lamps.length} (the map's ${baseLamps} and the area's ${area.lamps.length})`);
     const roundCrossing = lamps.filter((l) => Math.hypot(l.x - C.x, l.z - C.z) <= 45).length;
     assert.ok(roundCrossing >= T.lampsAround, `${tag}: ${roundCrossing} lamps within 45 m of the crossing (${T.lampsAround})`);
-    for (const l of lamps) assert.ok(!inStructure(l.x, l.z, 0.3), `${tag}: the lamp at (${l.x.toFixed(1)}, ${l.z.toFixed(1)}) out of every structure`);
+    // (229) a set piece's own lamps stand in its footprint by design (a park square's along its paths)
+    const pieceLamps = built.group.userData.landmarkLamps ?? [];
+    for (const l of lamps) {
+      if (pieceLamps.some(([x, z]) => Math.hypot(x - l.x, z - l.z) < 0.05)) continue;
+      assert.ok(!inStructure(l.x, l.z, 0.3), `${tag}: the lamp at (${l.x.toFixed(1)}, ${l.z.toFixed(1)}) out of every structure`);
+    }
     // ---- the pad's airfield dressing off
     if (area.pad >= 0) {
       const pad = config.terrain.hardstands[area.pad];
