@@ -798,8 +798,10 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
           if (rad >= band0 && rad <= band1) { low = Math.min(low, py); tail.push(P[i]!, py, pz); }
         }
       }
-      ringDrop = Math.max(0, Math.min(0.024, top - (low - airYaw)));
-      // what still comes over the set-down ring opens it behind the gun
+      // a ring set down 8 mm at most (lower, it sinks towards the roof it stands on); where that is not enough it keeps
+      // its authored height and opens behind the gun under the tail
+      const need = Math.max(0, top - (low - airYaw));
+      ringDrop = need <= 0.008 ? need : 0;
       for (let i = 0; i < tail.length; i += 3) if (tail[i + 1]! < top - ringDrop + airYaw) {
         ringGap = Math.max(ringGap, Math.abs(Math.atan2(tail[i]!, -tail[i + 2]!)) + (airYaw + 0.002) / rr);
       }
@@ -1353,7 +1355,7 @@ export function addPintleRing(context: PintleLayout, slot?: 'dark' | 'detail', d
     const near = context.detail === 1;
     const rSlot = slot ?? (tone === 'dark' ? 'dark' : 'detail');
     // release 229: a riding cradle's ring may sit `drop` lower, under its gun's tail at full elevation (its brackets
-    // shorter), and where even that is not enough it is split `gap` radians either side of the gun's rear (the ring turns
+    // shorter; up to 8 mm), and where that is not enough it is split `gap` radians either side of the gun's rear (the ring turns
     // with the gun, so the split is always under the tail), its bolt heads and brackets kept clear of the split
     const inGap = (a: number, half: number): boolean => gap > 0 && Math.abs(Math.atan2(Math.cos(a), -Math.sin(a))) < gap + half / rr;
     parts.add(rSlot, machinedRing(rr - 0.013, rr + 0.013, 0.016, 0.004, near ? 24 : 16, gap), 0, 0.027 - drop, 0);
