@@ -96,8 +96,9 @@ interface FxEngineContext {
   camera?: THREE.Camera;
   anisotropy?: number;
   scene?: THREE.Scene;
-  /** Lit-material registration for the cascaded shadows (drone airframes and docks are lit meshes). */
-  setupShadowMaterial?(material: THREE.Material): unknown;
+  /** Lit-material registration for the cascaded shadows (drone airframes and docks are lit meshes; the crater marks
+   *  pass their shader hook, which the registration chains after the cascades' own). */
+  setupShadowMaterial?(material: THREE.Material, extraHook?: THREE.Material['onBeforeCompile'] | null): unknown;
   releaseShadowMaterial?(material: THREE.Material): unknown;
 }
 
@@ -1111,10 +1112,13 @@ function* createFxSteps(
   // hands its structure bucket materials to the mask's patch once per world, before the warm, so the programs compile
   // once) and what its stage builders write (rims, rooms, remnants, the pile) in its own materials. A phone that kept
   // a collapsed building standing would show a wall its hull drives through. Only the falling pieces scale by tier.
-  const craters: CraterMarks | null = createCraterMarks();
+  // (orange-rings-230) both lit as the ground they lie on: the engine's cascades with the marks' shader hook
+  const craterMarksOptions = { setupMaterial: (material: THREE.Material, hook: NonNullable<THREE.Material['onBeforeCompile']>) =>
+    engineCtx?.setupShadowMaterial?.(material, hook) };
+  const craters: CraterMarks | null = createCraterMarks(craterMarksOptions);
   // DST-04 (2026-10-15): the map's pre-placed craters' surfaces (world/mapCraters.ts) in slots of their own, so a
   // battle's craters never recycle them: laid once the world's bound ground holds them, again after every reset
-  const mapCraterMarks: CraterMarks | null = createCraterMarks();
+  const mapCraterMarks: CraterMarks | null = createCraterMarks(craterMarksOptions);
   let mapCratersLaidEpoch = -1;
   // a mark that dug nothing clears the cover it blew away, through the world's presentation-only seam (a dug crater's
   // cover is the overlay's own law, on every peer: the core, 2026-10-08)
@@ -5877,9 +5881,9 @@ function* createFxSteps(
       vol?.update(camera ?? engineCtx.camera ?? null);
       chunks?.update();
       craters?.setHeatView(imagesHeat(camera ?? engineCtx.camera ?? null));
-      craters?.update(particles.getTime(), engineCtx.scene ?? null);
+      craters?.update(particles.getTime());
       layMapCraters();
-      mapCraterMarks?.update(particles.getTime(), engineCtx.scene ?? null);
+      mapCraterMarks?.update(particles.getTime());
       if (!frozen) auxiliary?.update();
       printUniforms.uTime.value = particles.getTime();
       const tickDt = advanceFxClock();

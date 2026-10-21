@@ -57,6 +57,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/hullBurstEarth.selftest.mjs',
     'src/fx/heavyColumn.selftest.mjs',
     'src/fx/thermalGroundAndEmbers.selftest.mjs',
+    // (orange-rings-230) the crater marks lit as the ground they lie on (Steinburg's glowing rings)
+    'src/fx/craterMarksLight.selftest.mjs',
     'src/engine/thermalWreckCooling.selftest.mjs',
     'src/engine/thermalHullHeat.selftest.mjs',
     'src/engine/thermalLensBloom.selftest.mjs',

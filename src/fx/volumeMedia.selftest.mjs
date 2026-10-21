@@ -813,7 +813,11 @@ function captureContext(seed) {
   assert.equal(craters.count, 0);
   // (wave 273: near-black stamped ovals; a clean dark oval in snow) the surface weathers with age, its blanket is
   // pocked with clods and secondary craters, and snow's blanket is dirty snow sprayed with soil
-  const fragSrc = craters.mesh.material.fragmentShader;
+  // (orange-rings-230) the marks are three's lit standard program with their surface patched in: compile the patch over
+  // three's own shaders, so the anchors it needs are proven present
+  const compiled = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
+  craters.mesh.material.onBeforeCompile(compiled);
+  const fragSrc = compiled.fragmentShader;
   assert.match(fragSrc, /float fresh = 1\.0 - smoothstep\( 20\.0, 300\.0, age \);/, 'soot weathers away and the soil dries with age');
   assert.match(fragSrc, /float pock = apronT \* step\( 0\.8, cellH \)/, 'clods punched into the apron');
   assert.match(fragSrc, /vec3 dirty = vec3\( 0\.46, 0\.47, 0\.49 \);/, 'snow shows dirty snow and soil spray');
