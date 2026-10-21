@@ -69,8 +69,14 @@ interface TracerOptions {
   /** (ac130-fx-228 r2) this frame's camera images heat (the gunship's infrared or thermal lens, a thermal sight): a
    *  tracer's burning charge is its hottest thing whatever the daylight, so the rounds draw at their night radiance */
   thermal?(): boolean;
+  /** (ac130-barrels-230) a gunship round seen from its own lens (the camera at the orbit centre it left; `heavy` the
+   *  howitzer's): its gun's muzzle beside the lens off the round's origin (world m, out x/y/z) and the range (m,
+   *  out.rangeM) over which the drawn round joins its flight line; false when no gun is drawn there */
+  lens?(heavy: boolean, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, out: LensRound): boolean;
   capacity?: number;
 }
+/** (ac130-barrels-230) a lens gun's muzzle off its round's origin (world m) and the range (m) the drawn round joins in */
+export interface LensRound { x: number; y: number; z: number; rangeM: number }
 
 /** A round's tracer class: how its belt is mixed, how long the charge burns, its width and its light. */
 interface TracerClass {
@@ -129,6 +135,9 @@ const GUNSHIP_HOWITZER: TracerClass = { beltEvery: 1, burnS: 6, halfWidthPx: 2.3
   igniteM: 8, streakMaxM: 24, heavy: true, bead: 2.8, lensClearM: 45 };
 /** (ac130-fx-228 r3) a camera within this of a round's muzzle is that gun's own lens */
 const LENS_EYE_M = 12;
+/** (ac130-barrels-230) a round drawn from its lens gun lights this far out of the muzzle (m): seen from beside the gun its
+ *  class's ignite distance (6-8 m) is a third of its way to the screen's centre, so it would still start mid-air */
+const LENS_IGNITE_M = 0.4;
 /** (ac130-fx-228) the screenshot composer's frozen rounds held at once (pooled; the oldest reused past it) */
 const STATIC_CAPACITY = 8;
 /** (ac130-fx-228 r3) a distant backdrop round's radiance by day, as a share of its night radiance */
@@ -237,6 +246,9 @@ interface RoundRecord {
   hx: number; hy: number; hz: number; tx: number; ty: number; tz: number; k: number;
   /** last frame's speed (m/s) */
   speed: number;
+  /** (ac130-barrels-230) seen from its own lens: 0 not yet asked, 1 no gun drawn there, 2 drawn from its muzzle (lx, ly,
+   *  lz off its origin, joining its line by lr metres) */
+  lens: 0 | 1 | 2; lx: number; ly: number; lz: number; lr: number;
 }
 
 /** A spark (or a ricochet) thrown off a strike: a short streak on a ballistic arc, dying out. */
@@ -468,6 +480,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
   let dark = 0;
   /** (ac130-fx-228 r3) this frame's camera, when the caller gave it */
   let eyeX = 0, eyeY = 0, eyeZ = 0, eyeSet = false;
+  const lensOut: LensRound = { x: 0, y: 0, z: 0, rangeM: 1 };
   let drawnLast = 0;
 
   function lightLevel(): number {
@@ -482,7 +495,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     let r = records.get(shell.id);
     if (r) return r;
     r = free.pop() ?? { id: 0, lit: false, cls: TANK, core: TANK_CORE, day: TANK_DAY, halo: TANK_HALO, seed: 0,
-      seen: false, hx: 0, hy: 0, hz: 0, tx: 0, ty: 0, tz: 0, k: 0, speed: 0 };
+      seen: false, hx: 0, hy: 0, hz: 0, tx: 0, ty: 0, tz: 0, k: 0, speed: 0, lens: 0, lx: 0, ly: 0, lz: 0, lr: 1 };
     const who = o.shooter(shell.shooterId);
     const { cls, lineage, caliberMm: cal } = tracerRoundClass(shell.spec, who, o.gunship?.(shell.shooterId) === true, _roundClass);
     // the belt: a per-weapon round count (the shooter's gun of this calibre: a coax and a main gun are two belts), so a
@@ -503,6 +516,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     r.seed = ((Math.imul(h | 0, 0x9e3779b1) >>> 0) % 10007) / 10007;
     r.seen = false;
     r.k = 0;
+    r.lens = 0;
     records.set(shell.id, r);
     return r;
   }
@@ -685,13 +699,24 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       // tracer") a gunship round seen from the camera at its own muzzle (its lens rides at the orbit centre the round
       // leaves): it flies almost down the line of sight, so its first metres smear across the lens; it draws once it is
       // LENS_CLEAR_M out, a dash converging on the aim point. Any other camera sees it light at its gun as before
-      if (r.cls.lensClearM && eyeSet && speed > 1e-3) {
+      // (ac130-barrels-230, the owner: the tracers "should look like theyre cominng from behindd the camerA") seen from
+      // its lens the round leaves its gun's muzzle beside the lens (o.lens) and its drawn line runs straight from there to
+      // where it is aimed, lit at the muzzle (LENS_IGNITE_M); only with no gun drawn there does it light lensClearM out
+      if (r.cls.lensClearM && speed > 1e-3 && (r.lens === 2 || eyeSet)) {
         // a networked round carries its age, not its distance: its flight so far is its age at its speed
         const f = Number.isFinite(flown) ? flown / speed : age;
-        const ox = shell.pos.x - v.x * f - eyeX, oy = shell.pos.y - v.y * f - eyeY, oz = shell.pos.z - v.z * f - eyeZ;
-        if (Number.isFinite(f) && ox * ox + oy * oy + oz * oz < LENS_EYE_M * LENS_EYE_M) {
-          ignite = Math.max(ignite, r.cls.lensClearM);
-          flown = f * speed;
+        if (Number.isFinite(f)) {
+          const sx = shell.pos.x - v.x * f, sy = shell.pos.y - v.y * f, sz = shell.pos.z - v.z * f;
+          const ox = sx - eyeX, oy = sy - eyeY, oz = sz - eyeZ;
+          if (r.lens === 2 || ox * ox + oy * oy + oz * oz < LENS_EYE_M * LENS_EYE_M) {
+            flown = f * speed;
+            if (r.lens === 0) {
+              const drawn = o.lens?.(r.cls.heavy === true, sx, sy, sz, v.x / speed, v.y / speed, v.z / speed, lensOut) === true;
+              r.lens = drawn ? 2 : 1;
+              if (drawn) { r.lx = lensOut.x; r.ly = lensOut.y; r.lz = lensOut.z; r.lr = Math.max(1, lensOut.rangeM); }
+            }
+            ignite = r.lens === 2 ? Math.min(ignite, LENS_IGNITE_M) : Math.max(ignite, r.cls.lensClearM);
+          }
         }
       }
       const alight = flown - ignite;
@@ -700,6 +725,12 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       const inv = speed > 1e-3 ? len / speed : 0;
       r.hx = shell.pos.x; r.hy = shell.pos.y; r.hz = shell.pos.z;
       r.tx = shell.pos.x - v.x * inv; r.ty = shell.pos.y - v.y * inv; r.tz = shell.pos.z - v.z * inv;
+      if (r.lens === 2) {
+        // the muzzle's offset left at each end: whole at the muzzle, none where the round is aimed (a straight line)
+        const kh = Math.max(0, 1 - flown / r.lr), kt = Math.max(0, 1 - (flown - len) / r.lr);
+        r.hx += r.lx * kh; r.hy += r.ly * kh; r.hz += r.lz * kh;
+        r.tx += r.lx * kt; r.ty += r.ly * kt; r.tz += r.lz * kt;
+      }
       if (tumbling) {
         // the smear swings off the flight line by up to ~12 degrees as the round tumbles
         const sw = 0.2 * len * wobble;

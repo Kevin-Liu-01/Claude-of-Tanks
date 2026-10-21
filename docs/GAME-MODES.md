@@ -110,12 +110,22 @@ howitzer rounds travel through the normal ballistic and armor simulation.
 The gunship's rounds use the same effects as every other round (lane ac130-fx-228, 2026-10-19): the 30 mm autocannon
 fires a NATO red tracer belt (every second round lit), the 152 mm howitzer a heavy traced shell wider and brighter than a
 tank round's, and the guided missile is a Hellfire-class rail missile with its own airframe, motor flare and dense white
-smoke trail. Impacts use the munition recipes (the howitzer's and missile's plunging starburst and rayed crater). From the
-pilot's lens no muzzle flash or propellant cloud is drawn; other views see a small gun-port flash on the airframe, which
-is visible in the killcam, the ending's replay and any camera that is not the pilot's lens. The missile is drawn
-leaving its rail under the port wing and joins its guided line within 120 m, so from the pilot's lens it enters from the
-frame's edge rather than appearing on the glass (round 2); its smoke spreads less than the family's and thins out within
-70 m of the camera, so from the lens it reads as a line to the target. Every missile's motor core is a soft glow that
+smoke trail. Impacts use the munition recipes (the howitzer's and missile's plunging starburst and rayed crater).
+
+From the pilot's own lens the guns sit beside and behind the camera (lane ac130-barrels-230, 2026-10-21; the owner: the
+guns "behind" the camera, "barrels are visible so we can see them fire and recoil"): the 30 mm low on the left, the
+missile rail above it and the howitzer on the right, each laid on the aim point with its breech out of the frame, clear
+of the HUD on a desktop and a phone. They hold their places and sizes on the screen at every zoom (the lens guns' group is
+the camera's frame scaled across the view by the zoom). A shot recoils its gun (the 30 mm's short kick, the howitzer's
+slam and run-out, the missile leaving its rail and the next sliding on once the launcher is ready), flashes at its
+muzzle and throws its gas back in the slipstream; in the infrared and thermal lenses a firing barrel heats past the heat
+threshold and cools. Each round is drawn from its gun's muzzle on a straight line to where it is aimed, joining its
+simulated flight line by 90 % of its slant range; the missile's body leaves its rail at its rail round's size and its
+smoke fades only within 8 m of the glass. All of it is presentation: the simulation still fires every gunship round
+from the orbit centre. Every other view (the killcam, the ending's replay, any camera that is not the pilot's lens) sees
+a small gun-port flash on the airframe, and the missile drawn leaving its rail under the port wing, joining its guided
+line within 120 m; its smoke spreads less than the family's and thins out within 70 m of an aloft camera. Every
+missile's motor core is a soft glow that
 never grows past ~0.23 degrees from the camera, and a heavy charge (the howitzer's shell, the missile's warhead) bursting
 on a hull draws the full detonation the ground burst does (a white-hot dome of fireball medium cooling inside its own
 smoke), not a plate flash. A heat-imaging lens (the gimbal's infrared and thermal views, a thermal sight) sees the
