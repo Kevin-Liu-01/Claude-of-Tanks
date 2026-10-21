@@ -6086,6 +6086,8 @@ function* vegetationBuildSteps(
     r: RandomSource = rng,
     // trees round 3: a closed wood's crowns spread wider (the width and depth scale; placeTreeClusters)
     spread = 1,
+    // (229 b3 r3) where the form's position noise is read (a civic twin pair names one place: both grow the same)
+    noiseAt?: readonly [number, number],
   ): void {
     // trees round 2b: a palm outside the map's palm sites grows as its fallback species (every path: stands, lone trees,
     // belts, the rim); no draw moves
@@ -6096,15 +6098,16 @@ function* vegetationBuildSteps(
     // Independent, position-keyed width/depth/height variation changes the
     // silhouette without consuming the placement RNG stream. Stands retain
     // their authored positions while individual trees stop reading as clones.
-    const sx = sc * (0.86 + treePositionNoise(x, z, 1) * 0.28) * spread;
-    const sy = sc * (0.88 + treePositionNoise(x, z, 2) * 0.24);
-    const sz = sc * (0.86 + treePositionNoise(x, z, 3) * 0.28) * spread;
+    const nx = noiseAt ? noiseAt[0] : x, nz = noiseAt ? noiseAt[1] : z;
+    const sx = sc * (0.86 + treePositionNoise(nx, nz, 1) * 0.28) * spread;
+    const sy = sc * (0.88 + treePositionNoise(nx, nz, 2) * 0.24);
+    const sz = sc * (0.86 + treePositionNoise(nx, nz, 3) * 0.28) * spread;
     _q.setFromAxisAngle(_up, r() * Math.PI * 2);
     // r3 terrain_environment: per-instance LEAN jitter — every trunk used to
     // stand bolt vertical, a loud repetition tell in stands; a few degrees of
     // random tilt (more for palms) reads as natural growth
     const leanA = r() * Math.PI * 2;
-    const leanM = treePositionNoise(x, z, 4) * archetype.leanMaxRad;
+    const leanM = treePositionNoise(nx, nz, 4) * archetype.leanMaxRad;
     _qLean.setFromAxisAngle(_axLean.set(Math.cos(leanA), 0, Math.sin(leanA)), leanM);
     _q.multiply(_qLean);
     // height variance clamped tight (no needle-thin scaling-bug giants)
@@ -6133,7 +6136,7 @@ function* vegetationBuildSteps(
     // scattered randomly among healthy green trees, reading as a widespread asset bug", Cinder Junction and Frontier
     // Basin): the amber and browned-off tenth read as broken assets beside the grown crowns. A summer wood keeps a few
     // trees a shade drier and yellower, no more (the battle zones' snags carry the dead).
-    const dryRoll = treePositionNoise(x, z, 0);
+    const dryRoll = treePositionNoise(nx, nz, 0);
     if (pj >= 0.5 && dryRoll < 0.04) {
       _c.r *= 1.1;
       _c.g *= 0.98;
@@ -7165,7 +7168,7 @@ function* vegetationBuildSteps(
         return Math.abs(dx * c - dz * s) < p.w / 2 + 2.5 && Math.abs(dx * s + dz * c) < p.d / 2 + 2.5;
       });
       if (onPlot) { census.refused.structure++; continue; }
-      pushTree(st.x, st.z, st.species as Species, st.scale[0], st.scale[1], true, civicRng, 1);
+      pushTree(st.x, st.z, st.species as Species, st.scale[0], st.scale[1], true, civicRng, 1, st.noiseAt);
       trees[trees.length - 1].civic = true;
       census.planted++;
     }

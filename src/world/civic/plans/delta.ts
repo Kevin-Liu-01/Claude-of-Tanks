@@ -33,6 +33,26 @@ const facing = (x: number, z: number, tx: number, tz: number): number => +(Math.
 // the haat's diamond inset 3 m: its brick walk's corners (west, north, east, south)
 const IN = 25 * Math.SQRT2 - 3 * Math.SQRT2;
 const RING: CivicPoint[] = [[CX - IN, CZ], [CX, CZ + IN], [CX + IN, CZ], [CX, CZ - IN]].map(([x, z]) => [+x.toFixed(2), +z.toFixed(2)] as CivicPoint);
+// (229 b3 r3, the gameplay critic's D4: the walk ran under the field hospital, about 5 m2, and the longhouse, about 3 m2) the
+// map's own buildings at the haat's north-west and south edges (their records' boxes); a run of the walk stops 1.3 m short
+// of each (its half width and a joint), and a run under 2 m is left out
+const SHEDS: ReadonlyArray<readonly [number, number, number, number]> = [[-26.1, 30.9, -15.2, 42.2], [-15.5, -27.7, -2.9, -14.5]];
+function walkRuns(a: CivicPoint, b: CivicPoint, clearM = 1.3): Array<[CivicPoint, CivicPoint]> {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]), steps = Math.ceil(len / 0.25), runs: Array<[CivicPoint, CivicPoint]> = [];
+  const at = (t: number): CivicPoint => [+(a[0] + (b[0] - a[0]) * t).toFixed(2), +(a[1] + (b[1] - a[1]) * t).toFixed(2)];
+  const clear = (t: number) => { const [x, z] = at(t); return SHEDS.every(([x0, z0, x1, z1]) => Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(z0 - z, 0, z - z1)) > clearM); };
+  let start = -1;
+  for (let k = 0; k <= steps; k++) {
+    const t = k / steps, ok = clear(t);
+    if (ok && start < 0) start = t;
+    if ((!ok || k === steps) && start >= 0) {
+      const end = ok ? t : (k - 1) / steps;
+      if ((end - start) * len >= 2) runs.push([at(start), at(end)]);
+      start = -1;
+    }
+  }
+  return runs;
+}
 
 export const DELTA_CIVIC_PLAN: CivicPlan = {
   mapId: 'delta',
@@ -71,10 +91,11 @@ export const DELTA_CIVIC_PLAN: CivicPlan = {
     // bot-tolas)
     strips: [
       // (229 b3 r1, the critic's D4: the south end ran under the longhouse) 30 m out each way
-      { from: [CX, CZ + 30], to: [CX, CZ - 30], width: 2.6, kind: 'brick' },
-      { from: [CX - 33, CZ], to: [CX + 33, CZ], width: 2.6, kind: 'brick' },
+      // (229 b3 r3) and each lane's runs 1.6 m short of the map's sheds (its half width and a joint)
+      ...([[[CX, CZ + 30], [CX, CZ - 30]], [[CX - 33, CZ], [CX + 33, CZ]]] as Array<[CivicPoint, CivicPoint]>)
+        .flatMap(([a, b]) => walkRuns(a, b, 1.6).map(([from, to]) => ({ from, to, width: 2.6, kind: 'brick' as const }))),
       // (229 b3 r2) a brick walk round the haat inside its edge, before the stalls and sheds: corner to corner
-      ...RING.map((a, k) => ({ from: a, to: RING[(k + 1) % 4], width: 2.0, kind: 'brick' as const })),
+      ...RING.flatMap((a, k) => walkRuns(a, RING[(k + 1) % 4]).map(([from, to]) => ({ from, to, width: 2.0, kind: 'brick' as const }))),
     ],
     platforms: [],
     monument: null,
@@ -83,9 +104,12 @@ export const DELTA_CIVIC_PLAN: CivicPlan = {
     furniture: twins([
       // (229 b3 r2) the market at the haat's west corner, past the disc: the tea stall facing the haat, the DPHE tubewell
       // behind it, a rug frame and a thela
-      { kind: 'stall', x: -46.5, z: 13.5, yawDeg: facing(-46.5, 13.5, CX, CZ) },
-      { kind: 'well', x: -49.5, z: 16.5, yawDeg: 45 },
-      { kind: 'rugframe', x: -49, z: 10.5, yawDeg: 45 }, { kind: 'handcart', x: -44.5, z: 15.8, yawDeg: 135 },
+      // (229 b3 r3, the gameplay critic's D3: bravo's twins stood on road 1's carriageway, 0.7-1.7 m off its line, and
+      // the west stall on the map's firewood) each seat and its twin 4.6 m and more off every road's line, 1.4 m off the
+      // map's records and structures, quiet in the base battles (probes/pace); the thela left out (no third seat clears)
+      { kind: 'stall', x: -41.5, z: 4, yawDeg: facing(-41.5, 4, CX, CZ) },
+      { kind: 'well', x: -50, z: 16, yawDeg: 45 },
+      { kind: 'rugframe', x: -38.5, z: 6.5, yawDeg: 45 },
     ]),
     // (229 b3 r2: no seat for a Hiace within reach of the haat that its twin's hulls leave alone) none
     parking: [],
@@ -96,6 +120,6 @@ export const DELTA_CIVIC_PLAN: CivicPlan = {
     lawns: [],
     // (229 b3 r2: the zone's hold covers the haat but for its corners, where the market stands past it; the room's fill
     // is the map's own and the brick lanes)
-    targets: { records: 8, benches: 0, lawnM2: 0, lampsAround: 0, openShare: 0.08, largestDisc: 9 },
+    targets: { records: 6, benches: 0, lawnM2: 0, lampsAround: 0, openShare: 0.08, largestDisc: 9 },
   }],
 };

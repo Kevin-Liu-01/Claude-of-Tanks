@@ -31,12 +31,17 @@ const TRACK_YAW = 13.5;
 // (229 b3 r2, the coordinator's ruling: no piece on a driven line; probes/pace's six zone and six Frontline base battles)
 // the fort front's south palm (its twin on the zone's lines) to the north-east corner, the north band's to its west end,
 // the islands' palms between the lanes left out (the hulls cross them)
-const PALMS_EAST: ReadonlyArray<readonly [number, number]> = [[36.5, 6], [37.5, 18], [38.5, 26]];
+// (229 b3 r3, D1: the fort front's south palm stood 29.1 m from zone 2's middle, its north one in line-2's disc) the
+// south one north of the fort's block beside the guides' cars, the north one out to the north-east corner (both seats
+// and their twins quiet: probes/pace, six zone and six Frontline base battles)
+const PALMS_EAST: ReadonlyArray<readonly [number, number]> = [[44, 9], [37.5, 18], [45, 26]];
 const PALMS_ISLAND: ReadonlyArray<readonly [number, number]> = [];
 // (229 b3 r1, the critic's D9: a palm and its twin each the same height, the pairs a little apart)
 const withTwins = (list: ReadonlyArray<readonly [number, number]>) => list.flatMap(([x, z], i) => {
-  const [tx, tz] = rot(x, z), scale = +(0.96 + ((i * 37) % 13) / 100).toFixed(2);
-  return [{ x, z, scale }, { x: tx, z: tz, scale }];
+  // (229 b3 r3, the gameplay critic's D6: the pairs still differed 0.54-0.68 m, the form's noise read at each place) both
+  // read at the first's place
+  const [tx, tz] = rot(x, z), scale = +(0.96 + ((i * 37) % 13) / 100).toFixed(2), noiseAt = [x, z] as const;
+  return [{ x, z, scale, noiseAt }, { x: tx, z: tz, scale, noiseAt }];
 });
 const PALMS = withTwins([...PALMS_EAST, [-17.5, 33.5]]), ISLANDS = withTwins(PALMS_ISLAND);
 /** A palm's block planter: a square bed `size` m across (its wall the planter's), closed. */
@@ -73,9 +78,14 @@ export const BADLANDS_CIVIC_PLAN: CivicPlan = {
       { from: [-28, -150], to: [44, 150], half: 7 },
     ],
     lanes: [],
-    holds: [],
+    // (229 b3 r3, the gameplay critic's D1 and the coordinator's ruling: zone and line discs get flat work only) zone 2's
+    // disc and Frontline line-2's hold the plan's pieces out (the map's own stay the map's)
+    holds: [{ id: 'zone-2', x: CX, z: CZ, r: 30, planOnly: true }, { id: 'line-2', x: 14.5, z: 39.4, r: 30, planOnly: true }],
     centre: { x: CX, z: CZ, ringR: [8.5, 9.0], roseR: 3, rays: 8, inlay: false },
-    beds: [...PALMS.map((p, i) => planter(p.x, p.z, `palm-${i}`)), ...ISLANDS.map((p, i) => planter(p.x, p.z, `island-${i}`, 2.0))],
+    // (229 b3 r3) a palm past the forecourt's edge (beside the guides' cars, at the north-east corner, and their twins)
+    // stands in the wadi's sand without a block planter: the planters are the forecourt's
+    beds: [...PALMS.filter((p) => Math.abs(p.x - CX) <= 32 - 1.3 && Math.abs(p.z) <= 38 - 1.3).map((p, i) => planter(p.x, p.z, `palm-${i}`)),
+      ...ISLANDS.map((p, i) => planter(p.x, p.z, `island-${i}`, 2.0))],
     paving: [],
     // the pavers before the fort's gate (its west front runs along the track's heading) and, the twin, before the souq row
     strips: [
@@ -86,11 +96,11 @@ export const BADLANDS_CIVIC_PLAN: CivicPlan = {
     trees: { species: 'palm', scale: [0.95, 1.1], stations: [...PALMS, ...ISLANDS] },
     furniture: twins([
       // the mastaba benches between the palms along the fort's front, facing the square
-      { kind: 'bench', x: 36.4, z: 0, yawDeg: -90 + TRACK_YAW }, { kind: 'bench', x: 38.5, z: 14.5, yawDeg: -90 + TRACK_YAW },
+      // (229 b3 r3, D1: the gate's bench stood 28.4 m from zone 2's middle) under the new south palm instead
+      { kind: 'bench', x: 44, z: 13, yawDeg: -90 + TRACK_YAW }, { kind: 'bench', x: 38.5, z: 14.5, yawDeg: -90 + TRACK_YAW },
       // and in the north band under its palm
       { kind: 'bench', x: -19.5, z: 32.5, yawDeg: 180 },
-      // one on the lane's edge before the palms
-      { kind: 'bench', x: 30.9, z: 20, yawDeg: -90 },
+      // (229 b3 r3, D1: the lane-edge bench rammed in 3 of 12 base battles: left out)
     ]),
     // the guides' Hilux and Land Cruiser parked along the fort's front north of its gate (their twins before the souq)
     // (229 b3 r2: the north band was the Frontline's line; 26-28 hits a pair)
@@ -104,6 +114,6 @@ export const BADLANDS_CIVIC_PLAN: CivicPlan = {
     // (the lanes cross the square's middle: the sand they leave beside their edges is the open share)
     // (229 b3 r2: the islands and the north and south bands cleared off the battles' lines — the open sand they leave is
     // the zone's own)
-    targets: { records: 12, benches: 8, lawnM2: 0, lampsAround: 0, openShare: 0.3, largestDisc: 21 },
+    targets: { records: 12, benches: 4, lawnM2: 0, lampsAround: 0, openShare: 0.3, largestDisc: 21 },
   }],
 };

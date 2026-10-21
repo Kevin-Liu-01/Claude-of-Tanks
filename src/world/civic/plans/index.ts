@@ -155,7 +155,7 @@ export function civicPavementTest(mapId: string | null | undefined, roads: Reado
 }
 
 /** A map's civic tree stations with their species and scale band (vegetation.ts plants them on a stream of their own). */
-export function civicTreeStations(mapId: string | null | undefined): Array<{ x: number; z: number; species: string; scale: readonly [number, number] }> {
+export function civicTreeStations(mapId: string | null | undefined): Array<{ x: number; z: number; species: string; scale: readonly [number, number]; noiseAt?: readonly [number, number] }> {
   return civicPlanFor(mapId)?.areas.flatMap((a) => a.trees.stations.map((s) => ({ x: s.x, z: s.z, species: a.trees.species,
-    scale: s.scale !== undefined ? [s.scale, s.scale] as const : a.trees.scale }))) ?? [];
+    scale: s.scale !== undefined ? [s.scale, s.scale] as const : a.trees.scale, ...(s.noiseAt ? { noiseAt: s.noiseAt } : {}) }))) ?? [];
 }
