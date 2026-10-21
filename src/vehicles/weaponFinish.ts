@@ -415,13 +415,16 @@ const CARTRIDGE_BRASS_LINEAR: readonly [number, number, number] = [0.26, 0.165, 
 /**
  * Fill the vertex colours an ammunition-material mesh draws with: the can's national drab, or the rounds' brass.
  * Any other material keeps a neutral white (the camouflage and weapon-steel paths read white as "no tint").
+ * `rounds` (release 229: a riding cradle's can mesh carries its belt) are [first vertex, count] runs drawn in brass.
  */
-export function paintAmmoVertexColours(geometry: THREE.BufferGeometry, material: THREE.Material, cartridge: boolean): void {
+export function paintAmmoVertexColours(geometry: THREE.BufferGeometry, material: THREE.Material, cartridge: boolean,
+  rounds: readonly (readonly [number, number])[] = []): void {
   const drab = material.userData?.ammoDrabLinear as [number, number, number] | undefined;
   const rgb = !drab ? [1, 1, 1] : cartridge ? CARTRIDGE_BRASS_LINEAR : drab;
   const count = geometry.getAttribute('position').count;
   const colour = new Float32Array(count * 3);
   for (let i = 0; i < count; i++) colour.set(rgb, i * 3);
+  if (drab) for (const [first, n] of rounds) for (let i = first; i < first + n; i++) colour.set(CARTRIDGE_BRASS_LINEAR, i * 3);
   geometry.setAttribute('color', new THREE.BufferAttribute(colour, 3));
 }
 

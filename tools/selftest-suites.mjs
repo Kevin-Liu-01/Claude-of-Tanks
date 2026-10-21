@@ -101,6 +101,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/remoteGunFleet.selftest.mjs',
     'src/vehicles/profiles/mbt70Rh202.selftest.mjs',
     'src/vehicles/roofWeaponPolicy.selftest.mjs',
+    // 2026-10-20 (the fleet ZTZ-99A2 lane): the QJC-88's arc stops short of the commander's sight (the whole moving mass
+    // swept both ways at 25 mm; the old arc and the bare depression table as negative controls)
+    'src/vehicles/ztz99a2RoofArc.selftest.mjs',
     'src/vehicles/profiles/challenger3MachineGunAssembly.selftest.mjs',
     'src/vehicles/profiles/amx30B2Roof.selftest.mjs',
     'src/vehicles/fleetRenewal.selftest.mjs',
@@ -109,6 +112,25 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/nationalUkraineProtection.selftest.mjs',
     'src/vehicles/nationalPolandProtection.selftest.mjs',
     'src/vehicles/nationalRoof.selftest.mjs',
+    // 2026-10-16 (release 227, CN track): the Yun's and Qilin's add-ons wrapped round their base turrets, the Qilin 10 %
+    // shorter, the clearances; the three roof stations calibre-true and automatic inside their arcs
+    'src/vehicles/cnAddOns.selftest.mjs',
+    'src/vehicles/cnStations.selftest.mjs',
+    // 2026-10-20 (release 229): every working FITTINGS.pintleMG call rides its cradle, the riding rig of each class and
+    // shield clear of its own mount (the whole fleet is measured in fleetPassDefault's workingPintleCradle audit)
+    'src/vehicles/workingPintleCradle.selftest.mjs',
+    // 2026-10-17 (release 227 CN M5): the moving-part clearances (main gun over the hull and the add-ons, the underside and
+    // the ring collars, the roof stations over their arcs, the box sights on the boots): about 300 s of CPU unloaded
+    // (Qilin ~110-170 s, Kunlun ~130 s, Yun ~50-190 s; 430-830 s wall on a loaded box)
+    'src/vehicles/cnClearance.selftest.mjs',
+    // 2026-10-19 (release 227 CN round 8, owner: "the rear of qilinns turret is exposed and nnot filled"): the Qilin's cut
+    // bustle closed underneath (the ring collar hidden from behind) and its full-width rear rack loaded
+    'src/vehicles/qilinRearFill.selftest.mjs',
+    // 2026-10-18 (release 227 land stage; critics CN4-2, UAPL-R6C-1/2/3): the bored-trunnion yoke under the wedge, cradle
+    // and casemate stations (no moving part through its yoke over pitch and recoil), and the Zubr II illuminator's
+    // own-gun mask (its beam never lights its own barrel)
+    'src/vehicles/nationalStationYoke.selftest.mjs',
+    'src/vehicles/searchlightOwnGunMask.selftest.mjs',
     'src/sim/smokeBallistics.selftest.mjs',
     'src/vehicles/smokeFan.selftest.mjs',
     'src/sim/smokeScreenCover.selftest.mjs',
@@ -633,6 +655,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/donorStockSeating.selftest.mjs',
     // release 227: the fleet Type 96B's gun clears its hull through traverse and pitch (trimmed boot, rear-deck curve)
     'src/vehicles/profiles/type96MantletClearance.selftest.mjs',
+    // release 227: the fleet Type 96B's box sight rides the gun at its measured top; the mantlet stands over the hull
+    'src/vehicles/profiles/type96bSightBoot.selftest.mjs',
     'src/vehicles/profiles/type99AAngularTurret.selftest.mjs',
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
     'src/vehicles/profiles/eraSeating.selftest.mjs',
@@ -654,6 +678,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // vehicleMarkings and tankAssets (2026-10-02).
     'src/vehicles/fleetPassDefault.selftest.mjs',
     'src/vehicles/fleetFloorClearance.selftest.mjs',
+    // 2026-10-16 (release 227; the owner: "brand new era packages ... innovate for the hetman 2 and zubr 2 and also the
+    // zubr ... machine gun emplacements that are aut ocontrolled"): the three frontal ERA packages, lights, WKM-B stations
+    // and rear-arc gun curves
+    'src/vehicles/frontEraPackages.selftest.mjs',
     // the fleet pass harness itself, on a scripted factory (no fleet build)
     'src/vehicles/fleetPass.selftest.mjs',
     // 2026-10-01: the fleet geometry ledger (one full-fleet HIGH+LOW sweep) replaces the frozen per-receipt geometry pins.

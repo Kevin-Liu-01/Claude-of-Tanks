@@ -350,7 +350,7 @@ function mg(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, remot
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): where it is not the remote station it is the working
   // crew-served loader's gun
   const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: .76, sourceScale: true, remoteControlled: automatic,
-    working: !automatic, tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, seed: 260905, feed: 'right' });
+    working: !automatic, ridingCradle: true, tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, seed: 260905, feed: 'right' });
   weapon.name = `${tankSeedId(P.spec.id)}RoofMachineGun`; // schema-1 name (tankIdAliases.ts)
   weapon.scale.set(1,heightScale,lengthScale);
   weapon.position.set(x-d.turretPivot[0], y+(remote ? .22 : .08)-d.turretPivot[1], z-d.turretPivot[2]);
@@ -1025,7 +1025,7 @@ function a6LowHatchMG(P:TankBuilderPort,d:Datum): void {
   // no added tall pedestal above the already complete pintle assembly.
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
   const weapon=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.76,sourceScale:true,
-    tone:'two-tone',elev:0,ammo:true,shield:false,ring:false,seed:260905,working:true});
+    tone:'two-tone',elev:0,ammo:true,shield:false,ring:false,seed:260905,working:true,ridingCradle:true});
   weapon.name='leo2a6m_xRoofMachineGun';
   weapon.scale.set(1,1,1.75);
   weapon.position.set(-.80-d.turretPivot[0],2.546-d.turretPivot[1],.12-d.turretPivot[2]);

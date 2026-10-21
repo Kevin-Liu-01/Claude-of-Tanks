@@ -148,7 +148,7 @@ function roofKit(P: TankBuilderPort): void {
   P.addEquipment('turretDetail',box(.46,.08,.44),.36,.95,-1.03);
   P.addEquipment('turretDetail',cylY(.13,.19,.15,24),.36,1.06,-1.03);
   mount(P,'turret',FITTINGS.pintleMG({mats:P.mats,cls:'m2',tone:'two-tone',scale:.80,
-    elev:.10,shield:true,ammo:true,ring:{r:.16,stubs:3},seed:601,remoteControlled:true}),.36,1.125,-1.03);
+    elev:.10,shield:true,ammo:true,ring:{r:.16,stubs:3},seed:601,remoteControlled:true,ridingCradle:true}),.36,1.125,-1.03);
   for (const side of [-1,1]) {
     // Paired gun-adjacent lights, guards and positive mounts on the cheek roof.
     P.addEquipment('turretDetail',box(.23,.14,.27),side*.81,.75,.71);
