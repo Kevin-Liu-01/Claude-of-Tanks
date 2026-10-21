@@ -1702,6 +1702,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundCoverClearance.selftest.mjs',
     'src/world/shrubClearance.selftest.mjs', // b12 (the scenery lane): no shrub stands inside a boulder or a structure
     'src/world/civilianVehicleGeometry.selftest.mjs',
+    'src/world/maps/vehicleFarForm.selftest.mjs', // (229) the parked vehicles' far form: inside the body's box, tagged, a black livery dark far off
     'src/world/grassLighting.selftest.mjs',
     'src/world/grassAtlasPadding.selftest.mjs',
     'src/world/grassBladeShape.selftest.mjs',
