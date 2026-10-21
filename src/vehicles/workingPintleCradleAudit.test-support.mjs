@@ -17,10 +17,10 @@ import { stationSelfClearance } from './cnTurretGeometry.test-support.mjs';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 
 /** The clearance every working pintle's moving parts keep from its own mount (metres). */
-export const WORKING_PINTLE_CLEARANCE_M = 0.0015;
+const WORKING_PINTLE_CLEARANCE_M = 0.0015;
 
 /** The working FITTINGS.pintleMG stations under `root`: [{ station, pitch }]. */
-export function workingPintleStations(root) {
+function workingPintleStations(root) {
   const out = [];
   root.traverse((o) => {
     const u = o.userData;

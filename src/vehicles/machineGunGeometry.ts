@@ -348,7 +348,7 @@ export function addPintleMount(context: PintleLayout): void {
 export const RIDING_CRADLE_RECOIL_M = 0.012;
 
 /** The gun a riding cradle is fitted round (release 229): its triangles in the fitting's frame, 9 numbers each. */
-export type RidingCradleGun = ArrayLike<number>;
+type RidingCradleGun = ArrayLike<number>;
 /** What the fit decided for what the caller draws round the cradle: the shield moved `shieldDZ` forward, its gun port
  * `portW` either side of the bore and `portBelow` / `portAbove` it (addPintleShieldPort), the gun's stroke and the race
  * ring's drop. */
@@ -1527,7 +1527,7 @@ function addNsvtAmmo(context: PintleLayout): void {
  * mount), and the mount's collimator sight on its arm beside the receiver on the side away from the box.
  */
 function addNsvtMountFurniture(context: PintleLayout): void {
-  const { bodyW, colTop, feedSign: f, parts, recZ, remote, s, trunY, weaponSlot } = context;
+  const { bodyW, colTop, feedSign: f, parts, remote, s, weaponSlot } = context;
   const near = context.detail === 1;
   if (remote) return;
   const cx = bodyW / 2 + 0.008 * s;
