@@ -11,9 +11,11 @@ type Point=readonly [number,number,number];
 export function attachedCage(P:TankBuilderPort,owner:'hull'|'turret',
   center:Point,width:number,height:number,depth:number):void {
   const [x,y,z]=center,slot=`${owner}Detail`;
+  // 2026-10-19 (owner float sweep): the two brackets ran 0.15 h over the bottom rail, touching no part of the cage; they
+  // rise from that rail
   for(const sx of [-1,1]){
-    P.addEquipment(slot,beamBetween([x+sx*width*.36,y-height*.35,z+depth],
-      [x+sx*width*.36,y-height*.35,z],.018));
+    P.addEquipment(slot,beamBetween([x+sx*width*.36,y-height/2+.02,z+depth],
+      [x+sx*width*.36,y-height/2+.02,z],.018));
     P.addEquipment(slot,box(.028,height,.028),x+sx*width/2,y,z);
   }
   for(const dy of [-height/2,height/2])P.addEquipment(slot,box(width,.028,.028),x,y+dy,z);
@@ -52,8 +54,11 @@ export function supportedSensor(P:TankBuilderPort,center:Point,baseY:number):voi
 
 export function strappedPack(P:TankBuilderPort,owner:'hull'|'turret',center:Point,size:Point):void {
   const [w,h,d]=size,[x,y,z]=center,slot=`${owner}Cloth`;
-  P.addEquipment(slot,box(w,h,d),x,y,z);
-  for(const dx of [-w*.3,w*.3])P.addEquipment(`${owner}Dark`,box(.023,h+.006,d+.012),x+dx,y,z);
+  // 2026-10-19 (owner float sweep): a pack authored up to 41 mm over its deck drops onto it (a seated one stays)
+  P.snapGroup('strapped-pack',()=>{
+    P.addEquipment(slot,box(w,h,d),x,y,z);
+    for(const dx of [-w*.3,w*.3])P.addEquipment(`${owner}Dark`,box(.023,h+.006,d+.012),x+dx,y,z);
+  },{reachM:.06,mode:'down'});
 }
 
 /** Project a cassette onto its actual body shell and align its receiving face

@@ -118,19 +118,27 @@ function deckEquipment(P:TankBuilderPort,glacisLamps=true,sweptStrap=true):void 
     [-1.46,-.27,.59,1.29,1.55],[-1.46,1.04,.59,1.28,1.547],[-1.46,2.18,.59,.87,1.47],
     [1.44,-2.70,.58,.82,1.511],[1.42,-1.80,.51,.79,1.582],[1.45,-.45,.59,1.60,1.505],
     [1.43,1.04,.59,1.25,1.503],[1.43,2.20,.59,.89,1.468]]){
-    P.addEquipment('hullDetail',box(w,.024,d),x,y,z);
+    // each deck plate and its strips seat on the deck under them (owner 2026-10-19 sweep: authored 1-5 cm over it)
     // (sweptStrap false: no strap whose inner end lies within 1.4 m of the turret's yaw axis on the right covers)
-    for(const dz of [-d*.38,d*.38])if(sweptStrap||x>0||Math.hypot(Math.abs(x)-w*.42,z+dz-YAW[2])>1.4)P.addEquipment('hullDetail',box(w*.84,.020,.037),x,y+.022,z+dz);
+    P.snapGroup('t72b3m-deck-plate',()=>{
+      P.addEquipment('hullDetail',box(w,.024,d),x,y,z);
+      for(const dz of [-d*.38,d*.38])if(sweptStrap||x>0||Math.hypot(Math.abs(x)-w*.42,z+dz-YAW[2])>1.4)P.addEquipment('hullDetail',box(w*.84,.020,.037),x,y+.022,z+dz);
+    },{reachM:.06});
   }
   P.addEquipment('hullDark',box(.17,.12,.586),1.759,1.431,-1.797);
   for(const z of [-2.043,-1.917,-1.79,-1.665,-1.54])P.addEquipment('hullDetail',box(.025,.138,.018),1.828,1.43,z);
   P.addEquipment('hullDetail',cylY(.374,.043,32),-.079,1.540,1.720);
   P.addEquipment('hullDark',box(.39,.027,.085),.002,1.491,2.03);
-  if(glacisLamps)for(const x of [-.863,.868]){
-    P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.076,.105,24),'headlight'),x,1.318,2.999);
+  // each headlight with its guard is seated on the glacis (it stood 5 cm off it; owner 2026-10-19 sweep)
+  // 2026-10-19 (owner float sweep): the lamp still stood 51 mm in front of its guard after that seat; it sits back on a
+  // crossbar between the guard bars
+  if(glacisLamps)for(const x of [-.863,.868])P.snapGroup('t72b3m-headlight',()=>{
+    P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.076,.105,24),'headlight'),x,1.318,2.9355);
     for(const dx of [-.118,.118])P.addEquipment('hullDetail',beamBetween([x+dx,1.12,3.007],[x+dx,1.38,2.85],.009));
-  }
-  for(const x of [-.193,.596])for(let i=0;i<8;i++)P.addEquipment('hullDetail',box(.061,.012,.24),x-.315+i*.089,1.542,-3.214,.244);
+    P.addEquipment('hullDetail',beamBetween([x-.118,1.318,2.8874],[x+.118,1.318,2.8874],.009));
+  },{reachM:.07});
+  // each louvre slat is seated on the falling stern deck (it stood 3 cm over it; owner 2026-10-19 sweep)
+  for(const x of [-.193,.596])for(let i=0;i<8;i++)P.snapGroup('t72b3m-stern-slat',()=>P.addEquipment('hullDetail',box(.061,.012,.24),x-.315+i*.089,1.542,-3.214,.244),{reachM:.05});
 }
 
 function rearEquipment(P:TankBuilderPort):void {
@@ -138,16 +146,18 @@ function rearEquipment(P:TankBuilderPort):void {
   // upright leaves and six separate sloping lower leaves, not a filled box.
   for(const x of [-.946,-.563,-.182,.194,.571,.946]){
     P.addEquipment('hullDetail',box(.3667,.534,.013),x,1.5015,-3.665);
-    P.addEquipment('hullDetail',roofSheet([[-3.674,x-.1833,x+.1833,1.23,1.23],[-3.455,x-.1833,x+.1833,.93,.93]],.011));
-    P.addEquipment('hullDetail',beamBetween([x,1.34,-3.31],[x,1.365,-3.665],.011));
+    // the lower leaf hangs from the upright leaf's foot (its top edge stood 5 mm under and 3 mm behind it)
+    P.addEquipment('hullDetail',roofSheet([[-3.665,x-.1833,x+.1833,1.24,1.24],[-3.455,x-.1833,x+.1833,.93,.93]],.011));
+    P.addEquipment('hullDetail',beamBetween([x,1.31,-3.29],[x,1.365,-3.665],.011));   // from inside the stern plate (it started 14 mm off it)
   }
   // 2026-10-07 (tank-accessories round 4; wave 217: soft-looking rounds on the T-72B3M "wear the hull's camo decal"):
   // the transom's 2.68 m round is the unditching log, a camouflaged 28-sided cylinder until now; it is the shared
   // barked log in its own baked wood colours (hullBark, as the T-90M and the fitting logs), same axis and seat.
   const log=barkLog({len:2.68,r:.115,seed:7230,detail:P.q===false?0:1,relief:2,tinted:true});
   for(const part of [log.bark,...(log.stub?[log.stub]:[]),...log.ends,...log.grain])P.addEquipment('hullBark',part,-.001,1.012,-3.29);
-  for(const x of [-.786,.78])P.addEquipment('hullDetail',torus(.07,.023,20,8),x,.85,-3.215);
-  for(const x of [-1.58,1.576])P.addEquipment('hullDetail',torus(.06,.018,20,8),x,1.38,-3.28);
+  // the towing rings sit on the stern (3-5 cm off it; owner 2026-10-19 sweep)
+  for(const x of [-.786,.78])P.snapGroup('t72b3m-tow-ring',()=>P.addEquipment('hullDetail',torus(.07,.023,20,8),x,.85,-3.215),{reachM:.07});
+  for(const x of [-1.58,1.576])P.snapGroup('t72b3m-tow-ring',()=>P.addEquipment('hullDetail',torus(.06,.018,20,8),x,1.38,-3.28),{reachM:.07});
   for(const x of [-.60,.45]){
     P.addEquipment('hullDetail',beamBetween([x,1.29,-3.20],[x,1.25,-3.45],.015));
     P.addEquipment('hullDark',box(.26,.077,.058),x,1.11,-3.29);
@@ -204,9 +214,11 @@ function roofCassettes(P:TankBuilderPort):void {
     [-.2310,2.16151,.89975,.251],[-.4008,2.09134,1.04824,.25],[-.6545,2.0292,1.05593,.22],
     [-.816,2.0297,.93681,.22],[-.9565,2.0297,.73672,.22],[-1.106,2.04458,.52564,.22],
   ];
+  // each brick is seated on the roof under it (owner 2026-10-19 sweep: on the Zubr and 2016 roofs some stood up to
+  // 8 cm over it)
   for(const [x,y,z,pitch]of rows){
-    P.destructibleCluster(`turret_era_${x<0?'L':'R'}`,()=>P.addExternalArmor('turret',
-      markEraHitFaces(box(.160,.058,.362),[0,1,0]).rotateX(pitch),x-YAW[0],y-YAW[1],z-YAW[2]));
+    P.destructibleCluster(`turret_era_${x<0?'L':'R'}`,()=>P.snapGroup('t72b3m-roof-era',()=>P.addExternalArmor('turret',
+      markEraHitFaces(box(.160,.058,.362),[0,1,0]).rotateX(pitch),x-YAW[0],y-YAW[1],z-YAW[2]),{reachM:.10}));
   }
 }
 
@@ -264,11 +276,22 @@ function machineGun(P:TankBuilderPort):void {
   const yaw=-.25575;
   topPart(P,'turretDetail',box(.403,.296,.154).rotateY(yaw),-1.17,2.685,.013);
   topPart(P,'turretDetail',box(.413,.041,.164).rotateY(yaw),-1.17,2.837,.013);
-  for(const x of [-.903,-.787])topPart(P,'turretDetail',beamBetween([x,2.54,.18],[x,2.895,.11],.021),0,0,0);
   const mg=sourceMachineGun(P,YAW),axis=new THREE.Vector3(-.21215,.54465,.81139).normalize();
   const pivot=new THREE.Vector3(-.75156,2.85947,.10957),q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1),axis);
   mg.add('turretDark',box(.080,.134,.64).applyQuaternion(q),...pivot.toArray());
   const tip=new THREE.Vector3(-1.0939276,3.7383842,1.4189293),base=new THREE.Vector3(-.8321749,3.0664378,.4178961);
+  // 2026-10-19 (owner float sweep): the Kord stood 0.40 m over the cupola ring on two posts that began beyond its edge,
+  // and the ammunition box beside them touched nothing. A trunnion pin crosses the receiver at the trunnion the station
+  // levels about (30 % of the gun's length from its back, stationFromDrawnGun); the posts rise from inside the ring into
+  // the pin's ends and a stay carries the box.
+  const back=-.32,front=tip.clone().sub(pivot).dot(axis),trunnion=pivot.clone().addScaledVector(axis,back+.3*(front-back));
+  const heading=Math.atan2(axis.x,axis.z),across=new THREE.Vector3(Math.cos(heading),0,-Math.sin(heading));
+  const feet=[new THREE.Vector3(-.70,2.50,.10),new THREE.Vector3(-.90,2.50,0)];
+  const ends=[trunnion.clone().addScaledVector(across,.13),trunnion.clone().addScaledVector(across,-.13)];
+  for(let i=0;i<2;i++)topPart(P,'turretDetail',beamBetween(feet[i].toArray(),ends[i].toArray(),.021),0,0,0);
+  const stay=feet[1].clone().lerp(ends[1],(2.70-feet[1].y)/(ends[1].y-feet[1].y));
+  topPart(P,'turretDetail',beamBetween([stay.x-.11,2.70,stay.z],[stay.x+.01,2.70,stay.z],.016),0,0,0);
+  mg.add('turretDark',cylX(.022,.30,14).applyQuaternion(q),...trunnion.toArray());
   mg.add('turretDark',beamBetween(base.toArray(),tip.clone().addScaledVector(axis,-.030).toArray(),.0198,20),0,0,0);
   mg.add('turretDetail',beamBetween(base.toArray(),base.clone().addScaledVector(axis,.39).toArray(),.030,20),0,0,0);
   mg.add('turretDark',beamBetween(tip.clone().addScaledVector(axis,-.030).toArray(),tip.toArray(),.027,20),0,0,0);

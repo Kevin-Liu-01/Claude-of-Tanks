@@ -56,10 +56,10 @@ function buildTmlHull(P: TankBuilderPort): void {
       for(const dz of [-.27,.27]) P.addEquipment('hullDetail',box(.026,.052,.062),side*1.56,.971,z+dz);
     }
     P.addMudguard('cv90105-front-'+side,'hullRubber',box(.46,.24,.06),side*1.25,1.04,3.32,-.23);
-    P.addMudguard('cv90105-rear-'+side,'hullRubber',box(.48,.22,.055),side*1.24,.77,-3.04,.10);
+    P.hangMudguard('cv90105-rear-'+side,'hullRubber',box(.48,.22,.055),side*1.24,.77,-3.04,.10);
     P.addEquipment('hullDetail',box(.22,.095,.13),side*1.13,1.24,2.97);
     P.addEquipment('hullGlass',markVehicleNightLens(box(.15,.045,.015), 'headlight'),side*1.13,1.25,3.044);
-    for(const z of [-2.60,-1.96])P.addHatch('hullDetail',box(.76,.025,.46),side*.91,1.685,z);
+    for(const z of [-2.60,-1.96])P.addHatch('hullDetail',box(.76,.025,.46),side*.91,1.671,z); // 2026-10-19 (owner float sweep): 12 mm over the deck; seated
     P.addEquipment('hullDetail',box(.035,.045,1.48),side*1.30,1.54,1.01);
   }
   buildTmlRearRamp(P);
@@ -96,7 +96,7 @@ function buildTmlTurretArmor(P: TankBuilderPort, py: number, pz: number): void {
   ],py,pz));
   for(const side of [-1,1]) {
     smokeBank(P,side,1.13,1.98,.31,4);
-    smokeBank(P,side,.94,2.23,-2.02,3);
+    P.snapGroup(`tml-rear-smoke-${side}`,()=>smokeBank(P,side,.94,2.23,-2.02,3),{reachM:.04}); // 2026-10-19 (owner float sweep): the left bank stood 29 mm off
     for(const z of [-1.57,-1.03,-.48]) {
       turretEquipment(P,'turretDetail',box(.07,.12,.36),side*1.115,1.92,z);
       turretEquipment(P,'turretDetail',box(.035,.15,.045),side*1.15,1.93,z-.16);
@@ -108,7 +108,10 @@ function buildTmlTurretArmor(P: TankBuilderPort, py: number, pz: number): void {
 
 function buildTmlRoofFittings(P: TankBuilderPort, py: number, pz: number): void {
   // Broad, low source cupola and polygonal cover; no thin generic sight tower.
-  P.addCupola('turret',cylY(.48,.51,.145,10).scale(1,1,1.055),-.471,2.386-py,-.885-pz);
+  // 2026-10-19 (owner float sweep): the cupola stood 34 mm over the roof. 2026-10-21 (float-gaps 230): the station
+  // keeps its source heights (the hatch top is the turret's measured top, suppliedShadowCoverage.selftest.mjs) and the
+  // cupola's skirt runs 35.5 mm deeper on the same taper, 2 mm into the roof (r .5173 at its new foot).
+  P.addCupola('turret',cylY(.48,.5173,.1805,10).scale(1,1,1.055),-.471,2.36825-py,-.885-pz);
   P.addHatch('turret',cylY(.435,.455,.075,8).scale(1,1,.87),-.472,2.524-py,-.99-pz);
   for(const [x,z,ry]of[[-.80,-.785,-1.1],[-.766,-1.162,-2.2],[-.205,-1.24,2.5],[-.09,-.91,1.4]]) {
     turretEquipment(P,'turretDetail',box(.18,.09,.12),x,2.486,z,0,ry);
@@ -119,7 +122,8 @@ function buildTmlRoofFittings(P: TankBuilderPort, py: number, pz: number): void 
   P.addHatch('turret',box(.49,.046,.49),.548,2.313-py,-.303-pz);
   for(const x of [.365,.735])turretEquipment(P,'turretDetail',box(.044,.035,.13),x,2.348,-.49);
   turretEquipment(P,'turretDetail',box(.21,.023,.035),.564,2.352,-.13);
-  antenna(P,-.58,2.355,4.64523,-2.265);antenna(P,.714,2.237,4.528,.025);
+  // 2026-10-19 (owner float sweep): the left base stood ~100 mm over the 2.25 bustle roof (49 mm off the rail); seated.
+  antenna(P,-.58,2.248,4.64523,-2.265);antenna(P,.714,2.237,4.528,.025);
 }
 
 function buildTmlMantlet(P: TankBuilderPort): void {

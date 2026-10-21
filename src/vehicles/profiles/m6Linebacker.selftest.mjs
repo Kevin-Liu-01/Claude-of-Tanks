@@ -53,7 +53,10 @@ for(const quality of ['high','low']){
       minimumMechanicalGunPitch(spec,yaw*Math.PI/180)*180/Math.PI,0,15,30,45,45+.014*180/Math.PI],
       yawDegrees:Array.from({length:72},(_,i)=>i*5),recoilDistances:[0,.03,.06]});
     assert.ok(clearance.minimum>.005,`${quality}: full Linebacker gun and pod clear finite hull surfaces: ${JSON.stringify(clearance)}`);
-    assert.ok(measureGunHullClearance(tank,{pitchDegrees:[-9],yawDegrees:[145],recoilDistances:[.06]}).minimum<-.09,
+    // 2026-10-21 (float-gaps 230): the rear-shoulder pioneer kit, which stood 59-79 mm over the deck, is dropped onto
+    // it (m6Linebacker.ts flankKit, the owner's 2026-10-19 float sweep), so the unrestricted gun now sinks 39 mm into its
+    // clamp instead of 101 mm (yaw 145, both tiers): the control keeps a real intersection, from the seated kit
+    assert.ok(measureGunHullClearance(tank,{pitchDegrees:[-9],yawDegrees:[145],recoilDistances:[.06]}).minimum<-.03,
       'the former unrestricted depression really intersects rear equipment');
     assert.ok(measureGunHullClearance(tank,{pitchDegrees:[-9],yawDegrees:[0,180],recoilDistances:[0],
       pivotOverride:[gun.position.x,gun.position.y-.5,gun.position.z]}).minimum<0,

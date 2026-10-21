@@ -1,7 +1,7 @@
 import { restoreSmokeScreen } from '../sim/smokeReceipt.ts';
 import * as THREE from 'three';
 import { auxiliaryCapabilities, SMOKE_DURATION_S, type AuxiliaryState, type SmokeScreen } from '../sim/auxiliarySystems.ts';
-import {smokeVolume, smokeBankCount, smokeBankBase, smokeHoldInside, SMOKE_CLIP_DIRS, SMOKE_WIND_X, SMOKE_WIND_Z, type SmokeVolume} from '../sim/smokeScreen.ts';
+import {smokeVolume, smokeBankCount, smokeBankBase, smokeHoldInside, smokeScreenWind, SMOKE_CLIP_DIRS, type SmokeVolume} from '../sim/smokeScreen.ts';
 import { smokeCanisterPosition, smokeCanisterVelocity, SMOKE_GRAVITY_MPS2, SMOKE_SEGMENT, type SmokeCanister } from '../sim/smokeBallistics.ts';
 import type { BlastContext } from './blastRecipes.ts';
 import {
@@ -24,7 +24,8 @@ interface Ports {
   time(): number;
   report(id:string,position:THREE.Vector3,caliber:number):void;
   flash(position: THREE.Vector3, direction: THREE.Vector3, caliber: number): void;
-  smoke(position: THREE.Vector3, scale: number, density?:number, life?:number, wind?:boolean): void;
+  /** `wind`: a screen's drift (m/s, world xz: its own, sim/smokeScreen.ts), or none for a launch's or a trail's puff */
+  smoke(position: THREE.Vector3, scale: number, density?:number, life?:number, wind?:{ x: number; z: number } | null): void;
   ground(x:number,z:number): number;
   /** The media layer (desktop tiers): when given, screens are drawn as simulated smoke (atmosRecipes.ts) and the pooled
    *  `smoke` port is not used for them. The phone tier passes none and keeps the pooled sprites. */
@@ -408,6 +409,8 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       actor.smokeBorn=state.smoke.born;
     }
   }
+  /** (FX lane 2026-10-17) a screen's drift, read into this scratch (its map's wind, sim/smokeScreen.ts) */
+  const _drift={x:0,z:0};
   function puff(screen:SmokeScreen,time:number){
     const age=time-screen.born;if(age<.85||age>SMOKE_DURATION_S-.3)return;
     for(let bank=-2;bank<smokeBankCount(screen)-2;bank++){
@@ -416,7 +419,7 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       // Different-height rolling lobes overlap the shared sight-blocking volume.
       const phase=age*1.7+bank*2.4+screen.born;
       position.set(volume.x+Math.sin(phase)*.65,volume.y+Math.sin(phase*.7)*.5,volume.z+Math.cos(phase)*.65);
-      ports.smoke(position,volume.radius/5.6,volume.density,Math.min(4.8,SMOKE_DURATION_S-age),true);
+      ports.smoke(position,volume.radius/5.6,volume.density,Math.min(4.8,SMOKE_DURATION_S-age),smokeScreenWind(screen,_drift));
     }
   }
 
@@ -636,7 +639,7 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       // (fx 9) in the open it drifts on the simulation's breeze as the blocking volume does; by a wall it stays
       const drift=bodyRoom>BODY_DRIFT_ROOM_M?1:0;
       smokeBankBody(C,R,x,y,z,size,life,Math.min(.75,Math.max(.25,(BODY_ERODE_S-t)/life)),t-to,wallFeather(bodyRoom),wallDensity(bodyRoom),
-        SMOKE_WIND_X*drift,SMOKE_WIND_Z*drift);
+        smokeScreenWind(screen,_drift).x*drift,_drift.z*drift);
     }
     // 5. wisps torn off its top into the scene's wind
     const tops=Math.max(1,Math.round(TOPS*share)),topEvery=TOP_EVERY_S*TOPS/tops;
@@ -661,7 +664,8 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       spot(w,o,-back+R()*span,(R()-.5)*.25*volume.radius,volume.x,volume.z);
       holdOffWalls(walls,screen,bank-2,volume,at,400+j);
       const x=at.x,z=at.z;
-      smokeScreenHaze(C,R,x,smokeBankBase(screen,bank-2,x,z,ports.ground)+2.0+R()*1.2,z,SMOKE_WIND_X,SMOKE_WIND_Z,SCREEN_END_S-t+HAZE_LINGER_S,t-to,Math.max(1.6,2*(mediaRoom(st.walls,bank,x,z)+1)),SMOKE_DURATION_S-t);
+      smokeScreenWind(screen,_drift);
+      smokeScreenHaze(C,R,x,smokeBankBase(screen,bank-2,x,z,ports.ground)+2.0+R()*1.2,z,_drift.x,_drift.z,SCREEN_END_S-t+HAZE_LINGER_S,t-to,Math.max(1.6,2*(mediaRoom(st.walls,bank,x,z)+1)),SMOKE_DURATION_S-t);
     }
     // 7. (fx 8l) the decay: the eroding wall's top and edges taken by the scene's wind, thinning for 10-20 s past the
     //    sight block (born inside the drifting bank while the simulation still blocks)
@@ -749,12 +753,13 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
   }
 
   return {
-    setNetworkScreens(screens:readonly SmokeScreen[]){
+    /** `wind` (FX lane 2026-10-17): the match map's smoke drift, which a compact network screen restores with */
+    setNetworkScreens(screens:readonly SmokeScreen[],wind?:readonly [number,number]|null){
       // Solo already owns expanded receipts and publishes them each sim step.
       // Decode only compact network receipts, never clone the solo list per frame.
       let compact=false;
       for(const screen of screens)if(!screen.canisters&&screen.source){compact=true;break;}
-      networkScreens=compact?screens.map(restoreSmokeScreen):screens;
+      networkScreens=compact?screens.map((screen)=>restoreSmokeScreen(screen,wind)):screens;
     },
     update(){
       const now=ports.time();if(now===lastTime)return;const dt=lastTime<0?0:Math.min(.1,Math.max(0,now-lastTime));lastTime=now;

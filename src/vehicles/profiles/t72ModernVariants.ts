@@ -55,8 +55,10 @@ export function buildT64Modern(P:TankBuilderPort,ukrainian=false):void {
     P.addEquipment('hullDetail',box(.15,.04,.72),side*1.76,1.34,z);
   }
   supportedSensor(P,[.40,.88,-.49],.66);
-  attachedCage(P,'turret',[0,.31,-1.89],1.82,.46,.42);
-  strappedPack(P,'turret',[ukrainian?-.38:.38,.39,-1.64],[.55,.24,.32]);
+  // 2026-10-19 (owner float sweep): the T-64 turret's rear wall stands 0.35 m forward of the T-72's, so the cage hung in
+  // the air behind it; it moves 0.25 m forward and its brackets reach the wall
+  attachedCage(P,'turret',[0,.31,-1.64],1.82,.46,.53);
+  strappedPack(P,'turret',[ukrainian?-.38:.38,.39,-1.39],[.55,.24,.32]);   // inside the cage, 0.25 m forward with it
   if(ukrainian){
     // Two independent service bins and paired whips; no national markings
     // are borrowed from the donor's decal geometry.
@@ -79,7 +81,9 @@ export function buildJaguarModern(P:TankBuilderPort):void {
     P.addEquipment('turretDetail',box(.29,.028,.58),side*1.20,.445,-.47,0,side*.15);
   }
   supportedSensor(P,[.43,.99,-.34],.69);
-  attachedCage(P,'turret',[0,.32,-2.04],1.98,.49,.50);
-  strappedPack(P,'turret',[0,.38,-1.77],[1.15,.22,.35]);
+  // 2026-10-19 (owner float sweep): the cage stood 0.19 m behind the turret and the pack 14 mm off the rear case; the
+  // cage's top rails run on into the side cases and the pack sits against the case
+  attachedCage(P,'turret',[0,.32,-2.04],1.98,.49,.70);
+  strappedPack(P,'turret',[0,.38,-1.754],[1.15,.22,.35]);
   P.hullG.userData.familyRebuild={donor:'t72b3',revision:1,variant:'jaguar'};
 }

@@ -64,12 +64,15 @@ function sideBoxes(P:TankBuilderPort):void{
   leftCase(P);rightCarrier(P);
   for(const [x,y,z,w,h,d]of [[63.425,76.083,-8.09055,6.61,19.56,15.7874],[59.783,72.402,-44.3307,10.905,11.102,21.496],
     [62.2835,78.307,-26.3976,10.236,23.071,22.323],[58.6811,77.7953,-60.1969,11.063,21.4173,12.3622],
-    [-57,81.97,-114.0,7.1,19.3,15.4],
+    [-54.7,81.97,-113.7,7.1,19.3,15.4],
     [-60.7,81.38,-82.5,5.7,20.4,16.2],[-46.4,77.4,-111.8,10.2,12.4,21.5]]){
+    // 2026-10-19 (owner float sweep): the filler cap stood 0.6 in (15 mm) and the two lid straps 1.4 in (35 mm) over
+    // the lid, and the rear-left case (-57, -114) stood 55 mm off its neighbour; cap (centred between the straps) and
+    // straps lie on the lid, and that case moves 2.3 in inboard / 0.3 in forward against the neighbouring case
     equipment(P,cylY(m(w/2),m(w/2),m(h),12).scale(1,1,d/w),x,y,z);
     caseBox(P,x,y+h/2-.15,z,w,.30,d);
-    equipment(P,cylY(m(1.2),m(1.2),m(.8),12),x,y+h/2+1,z+d*.25);
-    for(const dz of[-d*.27,d*.27])caseBox(P,x,y+h/2+1.7,z+dz,w*.72,.6,.7);
+    equipment(P,cylY(m(1.2),m(1.2),m(.8),12),x,y+h/2+.35,z);
+    for(const dz of[-d*.27,d*.27])caseBox(P,x,y+h/2+.25,z+dz,w*.72,.6,.7);
   }
 }
 function leftCase(P:TankBuilderPort):void{
@@ -121,16 +124,19 @@ function cupola(P:TankBuilderPort):void{
   caseBox(P,-15.0,105.4,-50,1.8,4.6,12.1);
 }
 function roof(P:TankBuilderPort):void{
-  equipment(P,cylY(m(5.8),m(6.4),m(1.0),24),17,95,-11.0);
+  // 2026-10-19 (owner float sweep): the disc stood 30 mm over its seat; lowered onto it
+  equipment(P,cylY(m(5.8),m(6.4),m(1.0),24),17,93.7,-11.0);
   equipment(P,box(m(22.8),m(2.8),m(25.1)).rotateY(.18),18.07,94.4,-52.0);
   for(const x of[8.5,28.5])caseBox(P,x,96.1,-52,1.1,.7,19.0);
   caseBox(P,23.8,92.1,-21.5,10.3,2.4,10.2);
-  for(const[x,y,z]of[[-53.27,97.3,-90.81],[36.85,93.15,-102.09]]){
+  // 2026-10-19 (owner float sweep): the left aerial base stood 55 mm over the falling roof edge; each base, collar and
+  // whip is seated on the nearest stock
+  for(const[x,y,z]of[[-53.27,97.3,-90.81],[36.85,93.15,-102.09]])P.snapGroup('c1-turret-aerial',()=>{
     equipment(P,cylY(m(3.0),m(3.3),m(7.9),24),x,y,z);
     equipment(P,cylY(m(1.4),m(2.1),m(4.0),20),x,y+5.3,z);
     const top=x<0?162.519684:158.5,bottom=x<0?103.307083:99.055115;
     equipment(P,cylY(m(.40),m(.51),m(top-bottom),12),x,(top+bottom)/2,z);
-  }
+  },{reachM:.07});
   for(const[x,y,z]of[[-44,97,-35],[-39,97,-74],[38,90,-91],[41,90,-67],[41,90,-41]])
     caseBox(P,x,y,z,1.3,2.5,5.2);
 }
