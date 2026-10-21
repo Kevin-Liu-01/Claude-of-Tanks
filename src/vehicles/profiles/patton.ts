@@ -527,7 +527,7 @@ type HeightMutable = Partial<Record<HeightKey, number>>;
 
 interface TailStackBlock { hw: number; y0: number; y1: number; z0: number; z1: number }
 interface PintleHook { w: number; h: number; y: number; z0: number; z1: number }
-interface FlatFenderBlock { x0: number; x1: number; z0: number; z1: number; y: number }
+interface FlatFenderBlock { x0: number; x1: number; z0: number; z1: number; y: number; drop?: number }
 interface SlopedFenderBlock { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number }
 type FenderBlock = FlatFenderBlock | SlopedFenderBlock;
 interface BoundaryBlock { x0: number; x1: number; y0: number; y1: number; z0: number; z1: number }
@@ -1223,7 +1223,9 @@ function addUsExteriorHullFittings(
   // tow shackles at the bow, flush lift eyes at the stern (suppressible: the
   // M60 reference deck reads 1.83-1.84 there — proud eyes cost side columns)
   for (const side of [-1, 1]) {
-    P.add('hullDetail', torus(0.06, 0.015, 10), side * 0.58, F.shackleY, F.shackleZ, Math.PI / 2, 0, 0);
+    // 2026-10-19 (owner float sweep): the shackle is seated on the bow (the m47's stood 15 mm ahead of it)
+    P.snapGroup('patton-bow-shackle', () => P.add('hullDetail', torus(0.06, 0.015, 10), side * 0.58, F.shackleY, F.shackleZ,
+      Math.PI / 2, 0, 0), { reachM: 0.03 });
     if (!F.noRearEyes) liftEye(P, 'hullDetail', side * 0.62, deckAt(tailZ + 0.25) - 0.02, tailZ + 0.15);
   }
 }
@@ -2836,8 +2838,11 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
     if (cfg.bowShelf) {
       // flat fender leading box ahead of the lip (m47: 1.545 over 1.66..1.78)
       const S = cfg.bowShelf;
+      // 2026-10-19 (owner float sweep): `drop` deepens the box below its authored top (the m47 shelf hung 45 mm over
+      // the fender's end)
+      const drop = S.drop ?? 0;
       for (const side of [-1, 1]) {
-        P.add('hull', box(S.x1 - S.x0, 0.037, S.z0 - S.z1), side * (S.x0 + S.x1) / 2, S.y, (S.z0 + S.z1) / 2);
+        P.add('hull', box(S.x1 - S.x0, 0.037 + drop, S.z0 - S.z1), side * (S.x0 + S.x1) / 2, S.y - drop / 2, (S.z0 + S.z1) / 2);
       }
     }
     if (cfg.bowTabs) {
@@ -2856,9 +2861,11 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
       // Optional 4th element = z-depth (m46 r5: the ref guard band spans one
       // 96-col window pair exactly — the default 0.18 box straddled both
       // boundaries; default byte-identical for m26/m45/m47).
+      // 2026-10-19 (owner float sweep): each guard runs 35 mm deeper below its authored top so it stands on the glacis
+      // (the m47's guards and the lamps on them stood 29 mm over it); the top band is unchanged
       for (const [gx, gy2, gz, gd] of cfg.bowGuards) {
         for (const side of [-1, 1]) {
-          P.add('hullDetail', box(0.16, 0.105, gd ?? 0.18), side * gx, gy2, gz);
+          P.add('hullDetail', box(0.16, 0.14, gd ?? 0.18), side * gx, gy2 - 0.0175, gz);
         }
       }
     }
@@ -6926,7 +6933,7 @@ export const PATTON_PROFILES = {
       // slope read the 1.90-1.99 window maxima 0.07-0.09 high; the 0.10
       // step under the bowShelf lip reads as the fender stay seam.
       bowFenders: { x0: 1.00, x1: 1.755, y0: 1.19, z0: 2.102, y1: 1.44, z1: 1.78 },
-      bowShelf: { x0: 1.00, x1: 1.755, y: 1.527, z0: 1.78, z1: 1.66 },
+      bowShelf: { x0: 1.00, x1: 1.755, y: 1.527, z0: 1.78, z1: 1.64, drop: 0.05 },
       // mid-fender dip plates (ref side 1.44-1.51 over the idler bay)
       fenderRamps: [{ x0: 1.00, x1: 1.677, y0: 1.462, z0: 1.66, y1: 1.492, z1: 1.10 }],
       // ref front-view 0.32 floor at |x| ~1.0 (bump stops over the belly lip)

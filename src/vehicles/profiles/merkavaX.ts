@@ -1264,7 +1264,8 @@ export function buildNamerIfv(P: TankBuilderPort): void {
   addNamerSourceSupport(P);
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's MAG)
   const auxiliary=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.72,seed:904,tone:'two-tone',ammo:true,shield:false,ring:false,working:true});
-  auxiliary.position.set(.46,2.76-NAMER.y,-1.17-NAMER.z);P.turretG.add(auxiliary);
+  // 2026-10-19 (owner float sweep): the mount's foot stood 65 mm over the roof (2.662); it stands 2 mm into it
+  auxiliary.position.set(.46,2.697-NAMER.y,-1.17-NAMER.z);P.turretG.add(auxiliary);
   P.muzzleZ=2.51;P.topY=1.12;
   // The Namer source is a narrower/shorter Merkava-family chassis. Its turret
   // is authored directly at the registered envelope so each sensor and weapon
