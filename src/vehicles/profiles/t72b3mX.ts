@@ -281,13 +281,13 @@ function machineGun(P:TankBuilderPort):void {
   stationFromDrawnGun(group,{name:'t72b3mXRoofKord',caliberMm:12.7});
 }
 
-function mainGun(P:TankBuilderPort):void {
-  const muzzle=T72B3M_X_DATUMS.muzzleZ,floor=T72B3M_X_DATUMS.boreFloorZ;
+function mainGun(P:TankBuilderPort,chinLift=0):void {
+  const muzzle=T72B3M_X_DATUMS.muzzleZ,floor=T72B3M_X_DATUMS.boreFloorZ,c=chinLift;
   KIT.buildGun(P,{len:floor-GUN[2],r:.085,baseR:.13,sleeve:false,collar:false});
   P.add('gunMount',cylX(.238,.61,32),0,0,0);
-  P.add('gunMount',castSections([[.939,.27,.27,2.118,1.565,1.85],
-    [1.334,.337,.337,2.108,1.566,1.86],[1.50,.300,.300,2.081,1.61,1.85],
-    [1.791,.1606,.1606,1.98264,1.66135,1.82199]],GUN));
+  P.add('gunMount',castSections([[.939,.27,.27,2.118,1.565+c,1.85],
+    [1.334,.337,.337,2.108,1.566+c,1.86],[1.50,.300,.300,2.081,1.61+c,1.85],
+    [1.791,.1606,.1606,1.98264,1.66135+c,1.82199]],GUN));
   for(const [a,b,ra,rb]of [[1.791,2.302,.12879,.11855],[2.3013,3.1700,.12129,.12129],
     [3.170,3.987,.11571,.11140],[3.987,4.0365,.1222,.12607],[4.0365,4.962,.12607,.12607],
     [4.962,5.0073,.12258,.09258],[5.0067,5.84385,.102544,.102544]]){
@@ -337,6 +337,12 @@ export interface T72B3MXTurretOptions {
   /** false drops the nine Relikt cheek cells with their nine support beams and the 33 roof cassettes (a national
    * concept that fits its own frontal package on this turret, release 227). */
   reliktEra?:boolean;
+  /** Metres the cast mantlet's underside is raised at each of its four stations (default 0, the T-72B3M's own). Release
+   * 230 (UA/PL round 11; the gun-depression lane's census, 2026-10-21: the mantlet's underside passes 6-18 mm over the
+   * driver's hatch and periscope at yaw 0-25, and over the right deck cover at yaw -48..-133, at every pitch, which no
+   * depression stop cures): a concept whose gun must clear its hull by 20 mm takes a shallower chin. The trunnion boss
+   * (radius .238, 19 mm over the stock underside) stays inside the lifted mantlet for a lift up to .016. */
+  mantletChinLift?:number;
 }
 
 /** The complete T-72B3M (2016) turret in its own turret frame (the turret ring
@@ -348,7 +354,9 @@ export function buildT72B3MXTurret(P:TankBuilderPort,options:T72B3MXTurretOption
   turret(P);
   if(options.reliktEra!==false){cheekCassettes(P);roofCassettes(P);}
   bustle(P);roofEquipment(P,options.antennaMasts!==false);smoke(P);
-  if(options.commanderGun!==false)machineGun(P);mainGun(P);
+  if(options.mantletChinLift!==undefined&&!(options.mantletChinLift>=0&&options.mantletChinLift<=.016))
+    throw new RangeError(`mantletChinLift ${options.mantletChinLift}: 0 to .016 m (the trunnion boss stays inside)`);
+  if(options.commanderGun!==false)machineGun(P);mainGun(P,options.mantletChinLift??0);
 }
 export const T72B3M_X_PROFILES={t72b3m_2016:{build:buildT72B3MX}} as const;
 
