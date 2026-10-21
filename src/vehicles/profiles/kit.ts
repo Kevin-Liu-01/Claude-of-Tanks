@@ -11,6 +11,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { KIT } from '../tankFactoryCore.ts';
+import { markFixedPaintedPanel } from './fixedPaintedPanel.ts';
 import { emitSpareLink } from '../spareLinkGeometry.ts';
 import { ownFittingGeometry } from '../ownedFittingGeometry.ts';
 import {
@@ -79,7 +80,8 @@ interface ShapedMudguardOptions {
   readonly height?: number;
   /** Existing closed family geometry routed through the shared material/receipt contract. */
   readonly geometry?: THREE.BufferGeometry;
-  readonly material?: 'painted-steel' | 'rubber' | 'wood-stained';
+  /** 'painted-rubber' (2026-10-21): a rubber-fabric flap painted in the vehicle scheme, finish only (the same solid). */
+  readonly material?: 'painted-steel' | 'rubber' | 'painted-rubber' | 'wood-stained';
   /** Explicit family bucket for existing authored finishes. */
   readonly bucket?: string;
   /** Top-edge rise at the center, in metres. */
@@ -101,7 +103,7 @@ interface ShapedMudguardOptions {
 interface SharedMudguardReceipt {
   label: string;
   designFamily: 'cot-shaped-mudguard-v1';
-  material: 'painted-steel' | 'rubber' | 'wood-stained';
+  material: 'painted-steel' | 'rubber' | 'painted-rubber' | 'wood-stained';
   bucket: string;
   x: number;
   y: number;
@@ -1203,7 +1205,8 @@ function addShapedMudguard(builder: RuntimeValue, options: ShapedMudguardOptions
   const material = options.material ?? (options.bucket === 'hullRubber' ? 'rubber'
     : options.bucket === 'hullWood' ? 'wood-stained' : 'painted-steel');
   const bucket = material === 'painted-steel' ? 'hull'
-    : material === 'wood-stained' ? 'hullWood' : 'hullRubber';
+    : material === 'wood-stained' ? 'hullWood'
+    : material === 'painted-rubber' ? 'hullFixedPaintedBodywork' : 'hullRubber';
   const rotation = options.rotation ?? [0, 0, 0];
   const geometry = options.geometry ?? shapedMudguardGeometry(options);
   geometry.computeBoundingBox();
@@ -1220,6 +1223,7 @@ function addShapedMudguard(builder: RuntimeValue, options: ShapedMudguardOptions
     closedProfile: true,
     customFamilyGeometry: Boolean(options.geometry),
   };
+  if (material === 'painted-rubber') markFixedPaintedPanel(geometry, options.label, 'hullRubber');
   const register = options.hang && P.hangMudguard ? P.hangMudguard.bind(P) : P.addMudguard.bind(P);
   register(options.label, bucket, geometry,
     options.x, options.y, options.z, rotation[0], rotation[1], rotation[2]);

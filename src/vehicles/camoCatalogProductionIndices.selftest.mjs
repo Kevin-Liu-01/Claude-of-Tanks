@@ -12,6 +12,11 @@ import { resolveTankId } from './tankIdAliases.ts';
 // they only show generic camos now instead of the cool camos we had before", then "yeah our entire camo system before
 // was better" (R113, 2026-09-21: "i want the default camos of our tanks to be what they were before, but just organized
 // a lot better"). Production's camouflage system is restored. This receipt holds it to production row for row.
+// Re-pinned 2026-10-21 (art fixes 230, coordinator-approved against R113): the hero-card critic read the Merkava Mk 3
+// Baz's Caunter slate band as "a light-blue sawtooth band ... like a texture glitch". sig_merkava3d's slate patch moved
+// from #68757d (blue-grey) to the same-luminance Sinai olive-grey #76735f; the preset, scheme and every default
+// selection are unchanged. Exactly two rows moved: selection sig_merkava3d (2bf6987790749ba5 -> 87f9b1b959d01a99) and
+// tank merkava3d's Factory visual (f2284f4ef30bcf9c -> 34f578016ea95c79).
 const baseline = JSON.parse(readFileSync(new URL('./camoProductionBaseline.json', import.meta.url), 'utf8'));
 const now = camoBaselineRows({ specs, policy, materials });
 

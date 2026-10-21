@@ -455,7 +455,7 @@
   "sig_merkava1b": "09c3344f2aad5f49",
   "sig_merkava2b": "ac746f6125fe6e15",
   "sig_merkava3c": "ead1ef2dbf6a04f6",
-  "sig_merkava3d": "2bf6987790749ba5",
+  "sig_merkava3d": "87f9b1b959d01a99",
   "sig_merkava4b": "16eb0c91fb0d8403",
   "sig_merkava2d": "89d489d39ca78ab3",
   "sig_merkava3d_x": "2b518f518239503e",
@@ -1197,7 +1197,7 @@
   "merkava3d": {
    "selection": "factory",
    "stock": "sig_merkava3d",
-   "factory": "f2284f4ef30bcf9c",
+   "factory": "34f578016ea95c79",
    "auto": "tigerstripe pinkdesert merdcwinter berlin autumn dpm digitaldesert berlin urbanblock summer tigerstripe tigerstripe"
   },
   "merkava3d_x": {

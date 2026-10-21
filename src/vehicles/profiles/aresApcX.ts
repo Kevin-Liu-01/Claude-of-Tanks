@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { KIT, FITTINGS } from './kit.ts';
+import { markFixedPaintedPanel } from './fixedPaintedPanel.ts';
 import { addPintleReceiver, createPintleLayout } from '../machineGunGeometry.ts';
 import { sectionSolid, type SectionPoint, type SolidSection } from './sectionSolid.ts';
 import { blindTube, cappedTube } from './measuredPrimitives.ts';
@@ -128,7 +129,10 @@ function sideArmor(P: TankBuilderPort): void {
         P.add('hullDetail', part(cylX(0.013, 0.02, 8), 'applique-fastener'), side * 1.943, y, z);
       }
     }
-    P.hangMudguard('ares-apc-skirt', 'hullRubber', part(box(0.035, 0.58, 5.62), 'track-skirt'),
+    // Art fixes 230 (2026-10-21, hero-card critics: "the side skirt is a flat, featureless black slab"): the deep
+    // rubber-fabric track skirt is painted in the vehicle scheme like the appliqué above it. Finish only.
+    P.hangMudguard('ares-apc-skirt', 'hullFixedPaintedBodywork',
+      markFixedPaintedPanel(part(box(0.035, 0.58, 5.62), 'track-skirt'), 'ares-apc-skirt', 'hullRubber'),
       side * 1.665, 0.82, 0.20);
     // 2026-10-19 (owner float sweep): the rail stood 65 mm under the applique's 1.21 floor; its top is now 2 mm into it.
     P.add('hullDark', part(box(0.06, 0.05, 6.04), 'skirt-support-rail'), side * 1.61, 1.187, 0.20);

@@ -625,8 +625,10 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
 
     // Outer cage rails, alternating diagonal braces, and short transverse
     // stand-offs visibly close the load path into the armored skirt.
+    // Art fixes 230 (2026-10-21, hero-card critics: "a scaffolding frame", "the TTS truss"): the cage is painted steel
+    // in the open-lattice bucket like every fleet slat cage, not bare gunmetal. Finish only: the same members.
     for (const y of [0.64, 1.47]) {
-      P.add('hullDark', box(0.045, 0.045, 5.80), side * 1.75, y, -0.14);
+      P.add('hullOpenLattice', box(0.045, 0.045, 5.80), side * 1.75, y, -0.14);
     }
     // A narrow upper grating bridges the panel lip to the outer rail. It is
     // edge-on in side elevation, but prevents the stand-offs from outlining
@@ -634,13 +636,13 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
     P.add('hullDetail', box(0.17, 0.022, 5.80), side * 1.665, 1.455, -0.14);
     for (let index = 0; index < skirtCageStations.length; index++) {
       const z = skirtCageStations[index];
-      P.add('hullDark', box(0.045, 0.85, 0.045), side * 1.75, 1.055, z);
+      P.add('hullOpenLattice', box(0.045, 0.85, 0.045), side * 1.75, 1.055, z);
       for (const y of [0.73, 1.38]) {
-        P.add('hullDark', box(0.26, 0.040, 0.040), side * 1.66, y, z);
+        P.add('hullOpenLattice', box(0.26, 0.040, 0.040), side * 1.66, y, z);
       }
       if (index < skirtCageStations.length - 1) {
         const nextZ = skirtCageStations[index + 1];
-        P.add('hullDark', box(0.038, 0.038, 1.18), side * 1.75, 1.055,
+        P.add('hullOpenLattice', box(0.038, 0.038, 1.18), side * 1.75, 1.055,
           (z + nextZ) * 0.5, (index % 2 ? -1 : 1) * 0.72, 0, 0);
       }
     }
@@ -778,7 +780,7 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
 
 function addSheridanHull(P: SheridanBuilderPort): void {
   const {
-    box, cylZ, sph, torus, fenders, periscope,
+    box, cylZ, sph, torus, periscope,
   } = KIT;
 
   // Amphibious aluminum hull rebuilt from eleven source-derived convex
@@ -893,11 +895,29 @@ function addSheridanHull(P: SheridanBuilderPort): void {
     periscope(P, 'hullDetail', x, 1.585, 1.750, 0);
   }
 
-  fenders(P, 1.12, 1.48, 1.44, -2.96, 2.94, 0.035);
+  // Track guards and their side rail. Art fixes 230 (2026-10-21, hero-card critics: "a thin pale rod sticks out ahead
+  // of the bow at deck height"): the guards ran flat at y 1.44 to z 2.94 while the loft's side top falls from 1.47
+  // (z 1.5) to the 1.21 bow sponson (z 2.4), so their front metre stood in the air ahead of the bow. Each guard now
+  // stays flat to z 1.60, follows that fall to z 2.40 and runs on along the bow sponson; the rail and its bolts ride
+  // the same line.
+  const fallStartZ = 1.60, fallEndZ = 2.40, fallDropM = 0.205;
+  const fallLength = Math.hypot(fallEndZ - fallStartZ, fallDropM);
+  const fallPitch = Math.atan2(fallDropM, fallEndZ - fallStartZ);
+  const guardLine = (z: number, y: number): number => (z <= fallStartZ ? y : z >= fallEndZ ? y - fallDropM
+    : y - fallDropM * (z - fallStartZ) / (fallEndZ - fallStartZ));
   for (const side of [-1, 1]) {
-    P.add('hullDark', box(0.035, 0.10, 5.56), side * 1.39, 1.48, -0.02);
+    const x = side * 1.30;
+    P.add('hull', box(0.36, 0.035, fallStartZ + 2.96), x, 1.44, (fallStartZ - 2.96) / 2);
+    P.add('hull', box(0.36, 0.035, fallLength + 0.03), x, 1.44 - fallDropM / 2, (fallStartZ + fallEndZ) / 2,
+      fallPitch, 0, 0);
+    P.add('hull', box(0.36, 0.035, 2.94 - fallEndZ), x, 1.44 - fallDropM, (fallEndZ + 2.94) / 2);
+    P.add('hullDark', box(0.035, 0.10, fallStartZ + 2.80), side * 1.39, 1.48, (fallStartZ - 2.80) / 2);
+    P.add('hullDark', box(0.035, 0.10, fallLength + 0.03), side * 1.39, 1.48 - fallDropM / 2,
+      (fallStartZ + fallEndZ) / 2, fallPitch, 0, 0);
+    P.add('hullDark', box(0.035, 0.10, 2.76 - fallEndZ), side * 1.39, 1.48 - fallDropM, (fallEndZ + 2.76) / 2);
     for (let i = 0; i < 8; i++) {
-      P.add('hullDetail', cylZ(0.018, 0.025, 8), side * 1.415, 1.51, 2.38 - i * 0.68,
+      const z = 2.38 - i * 0.68;
+      P.add('hullDetail', cylZ(0.018, 0.025, 8), side * 1.415, guardLine(z, 1.51), z,
         0, side * Math.PI / 2, 0);
     }
   }
