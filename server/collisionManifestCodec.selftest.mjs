@@ -35,7 +35,7 @@ const codecFixtureRecords = [0, 1, 2, 3].map(p => ({
 const codecFixture = { obstacles: codecFixtureRecords, colliders: codecFixtureRecords,
   concealers: [[1.125, 2.375, 3.625, 0.75]] };
 const codecFixtureText = JSON.stringify(codecFixture);
-const encodedFixture = encodeCollisionManifest(codecFixture);
+const encodedFixture = encodeCollisionManifest(codecFixture, 'primitive-kind-dict-v4');
 assert.deepEqual(decodeCollisionManifest(encodedFixture), codecFixture);
 assert.equal(encodedFixture.obstacles[0].s[1], 0, 'fixed corpus exercises reference zero');
 assert.ok(Buffer.byteLength(JSON.stringify(encodedFixture)) < Buffer.byteLength(codecFixtureText) * 0.8,
@@ -81,7 +81,7 @@ for (const args of [['--headless', 'owned-session'], ['--headless', '--headless'
   assert.throws(() => collisionCaptureOptions(args), /headless|cache-dir/);
 }
 assert.equal(packed.encoding, 'primitive-kind-dict-v3');
-assert.equal(encodeCollisionManifest(manifest).encoding, 'primitive-kind-dict-v4', 'the writer\'s default is v4');
+assert.equal(encodeCollisionManifest(manifest).encoding, 'primitive-kind-dict-v5', 'the writer\'s default is v5');
 assert.deepEqual(packed.kinds, ['crate']);
 assert.equal(packed.obstacles[0].k, 0, 'kind reference zero is valid');
 // (v3: the interned primitive in integers of 1/10000 m, its corners as steps from the one before)
@@ -119,7 +119,7 @@ const metadataFixture = {
 const metadataEncoded = encodeCollisionManifest(metadataFixture);
 assert.deepEqual(metadataEncoded.kinds, ['frequent', 'first', '', 'second'],
   'frequent kinds receive short IDs and equal-count ties retain first-seen order');
-for (const encoding of ['primitive-dict-v1', 'primitive-kind-dict-v2', 'primitive-kind-dict-v3', 'primitive-kind-dict-v4']) {
+for (const encoding of ['primitive-dict-v1', 'primitive-kind-dict-v2', 'primitive-kind-dict-v3', 'primitive-kind-dict-v4', 'primitive-kind-dict-v5']) {
   const encoded = encodeCollisionManifest(metadataFixture, encoding);
   assert.deepEqual(decodeCollisionManifest(JSON.parse(JSON.stringify(encoded))),
     { ...metadataFixture, concealers: undefined },
@@ -167,7 +167,7 @@ assert.deepEqual(encodeCollisionManifest(decodeCollisionManifest(v2), 'primitive
     colliders: v3Fixture.colliders,
     concealers: [[12.5, -3.25, 1.68, 0.08], [40.0625, 7, 2, 0.08], [5, 5, 1, 0.1], [12.5, -3.2500001, 1, 0.08]],
   };
-  const v4 = encodeCollisionManifest(v4Fixture);
+  const v4 = encodeCollisionManifest(v4Fixture, 'primitive-kind-dict-v4');
   assert.equal(v4.encoding, 'primitive-kind-dict-v4');
   const record = v4.obstacles[0];
   assert.deepEqual(Object.keys(record), ['D', 'k', 'q', 's'], 'the steps take the bounds\' place');
@@ -186,7 +186,7 @@ assert.deepEqual(encodeCollisionManifest(decodeCollisionManifest(v2), 'primitive
     assert.deepEqual(Object.keys(back.obstacles[i]), Object.keys(v4Fixture.obstacles[i]), `record ${i} in its key order`);
     back.obstacles[i].b.forEach((n, j) => assert.ok(Object.is(n, v4Fixture.obstacles[i].b[j]), `record ${i} bound ${j} exact`));
   }
-  assert.deepEqual(encodeCollisionManifest(back), v4, 'v4 re-encodes byte-stable');
+  assert.deepEqual(encodeCollisionManifest(back, 'primitive-kind-dict-v4'), v4, 'v4 re-encodes byte-stable');
   assert.deepEqual(decodeCollisionManifest(JSON.parse(JSON.stringify(v3))), v3Fixture, 'v3 shards remain readable');
   for (const corrupt of [
     (value) => { value.obstacles[0].D = [0, 0, 0, 1, 1]; },
@@ -199,6 +199,82 @@ assert.deepEqual(encodeCollisionManifest(decodeCollisionManifest(v2), 'primitive
     const value = structuredClone(v4);
     corrupt(value);
     assert.throws(() => decodeCollisionManifest(value), /invalid/, 'reject a corrupt v4 record or concealer');
+  }
+}
+// (the maps lane, 2026-10-20: the 229 shard diet) v5 is v4 with the dictionary in order of use, a record as [its key
+// order, ...values], zero steps as 0, a list's inline compact parts chained from one position and footing to the next, and
+// a collider that is an obstacle exactly as the obstacle's index; exact both ways
+{
+  const wallPart = (x0, z0, y0, y1) => ['w', y0, y1, x0, z0, x0 + 4, z0, x0 + 4, z0 + 0.25, x0, z0 + 0.25];
+  const house = (x, z) => ({ b: [x, 0.5, z, x + 8.5, 6.5, z + 6.25], s: ['m', wallPart(x, z, 0.5, 6.5), wallPart(x + 4.5, z + 6, 0.5, 6.25),
+    ['c', x + 1.5, z + 2, 0.5, 0.5, 2.5], ['o', x + 2, z + 3, 0.5, 0.25, 0, 0.5, 1.5]], k: 'structure', g: 3 });
+  const v5Fixture = {
+    obstacles: [house(-123.4567, 250.125), house(-110.25, 251.5), ...v3Fixture.obstacles,
+      { b: [1, 0, 1, 2, 3, 2], s: ['o', 1.5, 1.5, 0.5, 0.5, 0.7853981633974483, 0, 3], k: 'crate' },
+      { b: [0, 0, 0, 1, 1, 1], s: ['p', 0, 1, 0.5, 0.5, 1, 0.1, 0.123456789, 1, 0, 0, 1, 0, 1, 1], k: 'deck' },
+      { b: [0, 0, 0, 2, 0, 2], s: ['v', 0, 0, 2, 0, 2, 2], q: 1, k: 'crate' }],
+    colliders: [],
+    concealers: v3Fixture.concealers,
+  };
+  v5Fixture.colliders = [v5Fixture.obstacles[1], structuredClone(v5Fixture.obstacles[0]), { ...v5Fixture.obstacles[3], g: 4 }, ...v3Fixture.colliders];
+  const v5 = encodeCollisionManifest(v5Fixture);
+  assert.equal(v5.encoding, 'primitive-kind-dict-v5');
+  assert.ok(Array.isArray(v5.keys) && v5.keys.every((order) => order.every((key) => typeof key === 'string')), 'a table of key orders');
+  assert.ok(v5.obstacles.every((record) => Array.isArray(record) && Number.isSafeInteger(record[0])), 'every record is [its key order, ...values]');
+  assert.deepEqual(v5.keys[v5.obstacles[0][0]], ['D', 's', 'k', 'g'], 'the bounds\' key names their encoding');
+  assert.equal(v5.colliders[0], 1, 'a collider that is an obstacle exactly is its index');
+  assert.equal(v5.colliders[1], 0, 'and so is a copy of one');
+  assert.ok(Array.isArray(v5.colliders[2]), 'one alike but for a key is its own record');
+  const steps = v5.obstacles[v5.obstacles.length - 1];
+  assert.equal(steps[v5.keys[steps[0]].indexOf('D') + 1], 0, 'steps that are all zero are 0');
+  // the second wall's first corner, 4.5 m east and 6 m north of the first wall's, as that step; its footing the same
+  const shapeOf = (record) => record[v5.keys[record[0]].indexOf('s') + 1];
+  const [, first, second] = shapeOf(v5.obstacles[0]);
+  assert.deepEqual(first.slice(0, 5), ['W', 5000, 60000, -1234567, 2501250], 'the list\'s first part from 0');
+  assert.deepEqual(second.slice(0, 5), ['W', 0, 57500, 45000, 60000], 'the next part from the one before: its footing, span and corner');
+  // (after the first house's circle and box: the box's centre and footing are the chain's when the next record starts)
+  assert.deepEqual(shapeOf(v5.obstacles[1])[1].slice(0, 5), ['W', 0, 60000, 112067, -16250], 'the chain runs on from record to record');
+  const back = decodeCollisionManifest(JSON.parse(JSON.stringify(v5)));
+  assert.deepEqual(back, v5Fixture, 'v5 decodes bit for bit');
+  for (const list of ['obstacles', 'colliders']) {
+    back[list].forEach((record, i) => {
+      assert.deepEqual(Object.keys(record), Object.keys(v5Fixture[list][i]), `${list} ${i} in its key order`);
+      record.b.forEach((n, j) => assert.ok(Object.is(n, v5Fixture[list][i].b[j]), `${list} ${i} bound ${j} exact`));
+    });
+  }
+  assert.notStrictEqual(back.colliders[0], back.obstacles[1], 'a collider named by its obstacle is its own record');
+  assert.notStrictEqual(back.colliders[0].b, back.obstacles[1].b);
+  assert.notStrictEqual(back.colliders[0].s, back.obstacles[1].s);
+  assert.deepEqual(encodeCollisionManifest(back), v5, 'v5 re-encodes byte-stable');
+  assert.deepEqual(decodeCollisionManifest(encodeCollisionManifest(v5Fixture)), v5Fixture, 'and decodes in memory');
+  // the dictionary in order of use: a primitive used three times before one used twice
+  const shared = ['v', 0, 0, 1, 0, 1, 1], twice = ['v', 5, 5, 6, 5, 6, 6];
+  const ordered = encodeCollisionManifest({ obstacles: [
+    { b: [5, 0, 5, 6, 0, 6], s: twice }, { b: [5, 0, 5, 6, 0, 6], s: twice, k: 'a' },
+    { b: [0, 0, 0, 1, 0, 1], s: shared }, { b: [0, 0, 0, 1, 0, 1], s: shared, k: 'a' }, { b: [0, 0, 0, 1, 0, 1], s: shared, k: 'b' },
+  ], colliders: [] });
+  assert.deepEqual(ordered.shapes, [['V', 0, 0, 10000, 0, 0, 10000], ['V', 50000, 50000, 10000, 0, 0, 10000]], 'the most used first');
+  assert.ok(Buffer.byteLength(JSON.stringify(encodeCollisionManifest(codecFixture))) < Buffer.byteLength(JSON.stringify(encodedFixture)),
+    'v5 is smaller than v4 on the fixed corpus');
+  for (const corrupt of [
+    (value) => { value.obstacles[0][0] = v5.keys.length; },
+    (value) => { value.obstacles[0].push(1); },
+    (value) => { value.obstacles[0] = 0; },
+    (value) => { value.colliders[0] = v5.obstacles.length; },
+    (value) => { value.colliders[0] = -1; },
+    (value) => { value.colliders[0] = 0.5; },
+    (value) => { value.keys = [['D', 's', 'b']]; },
+    (value) => { value.keys = [['__proto__']]; },
+    (value) => { value.keys[0] = [1]; },
+    (value) => { value.keys = 'D,s'; },
+    (value) => { delete value.keys; },
+    (value) => { shapeOf(value.obstacles[0])[2][3] = 0.5; },
+    (value) => { shapeOf(value.obstacles[0])[2] = ['W', 1, 2]; },
+    (value) => { const r = value.obstacles[0]; r[value.keys[r[0]].indexOf('D') + 1] = 1; },
+  ]) {
+    const value = structuredClone(v5);
+    corrupt(value);
+    assert.throws(() => decodeCollisionManifest(value), /invalid/, 'reject a corrupt v5 record, reference or key order');
   }
 }
 for (const corrupt of [
@@ -345,7 +421,10 @@ assert.equal(encodedBytes, publishedBytes, 'published shards are the canonical e
 // 2026-10-17 integ/227: 68592722 bytes after fence v2 (fence colliders +0.96 MB, blackglass/shanghai +626 KB, oasis/siwa
 // +119 KB, copper_mesa +39 KB, whiteout +37 KB, delta +35 KB, polders -22 KB, badlands -2 KB; main 16aeab482 = 66753467);
 // budget +5 % headroom (coordinator ruling), was 68660462. A 228 shard diet aims back under 68.66 MB.
-assert.ok(publishedBytes <= 72093485, 'complete roster storage cannot exceed the frozen published budget');
+// 2026-10-20 integ/229 (the maps lane, the shard diet): the v5 codec (dictionary in order of use, records by key order,
+// parts chained from one position and footing to the next, colliders that are obstacles by index) takes the same records
+// from 69027017 to 58440955 bytes, bit for bit (tools/transcode-collision-manifests.mjs); the budget is back to 68660462.
+assert.ok(publishedBytes <= 68660462, 'complete roster storage cannot exceed the frozen published budget');
 
 // Hash-valid corruptions must still be rejected by the loader's schema/census.
 const temporary = mkdtempSync(join(tmpdir(), 'cot-collision-codec-'));
@@ -373,7 +452,7 @@ try {
   writeCollisionManifestShard('verdant', manifest, fixture);
   const generated = JSON.parse(readFileSync(new URL('verdant.json', fixture), 'utf8'));
   const newest = encodeCollisionManifest(manifest);
-  assert.equal(generated.encoding, newest.encoding, 'future browser captures use the exact dictionary writer (v4)');
+  assert.equal(generated.encoding, newest.encoding, 'future browser captures use the exact dictionary writer (v5)');
   assert.deepEqual(generated.shapes, newest.shapes);
   assert.deepEqual(decodeCollisionManifest(generated), manifest);
   const install = (data, census = collisionManifestCounts(manifest)) => {

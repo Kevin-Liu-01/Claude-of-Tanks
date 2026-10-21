@@ -50,6 +50,7 @@ interface UKGeometryPort {
   readonly gunG: THREE.Group;
   readonly q?: boolean;
   readonly spec: {
+    readonly id: string;
     readonly visual: {
       readonly number?: string;
       bakeDirtDeckEq?: boolean;
@@ -2121,7 +2122,13 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
       P.add('hullRubber', box(0.0765, 0.85, 0.028), s * 1.59825, 1.05, -3.05);
       P.add('hullRubber', box(0.079, 0.841, 0.028), s * 1.597, 1.0455, 3.44);
     }
-    spareTrackStrip(P, 'hull', -0.55, 1.41, 3.05, 3);
+    // 2026-10-21 (watertight-230): the Strv 81 carries its three links on the front deck inboard of the left light
+    // cluster (x -0.90..-0.66), flat on the plate (deck y 1.475, rails 4.05 cm under the link centre, the deck's 1.8°
+    // fall to the nose): seated as authored, support 100 %, gap 0.2 cm. At the shared station below, 7 cm inside the
+    // deck, its seat search landed the run on that light and raised it on a four-post rack, whose enclosed air the
+    // interior fills filled as dark filler (the Mk 3 and Mk 5/2 searches find a flush plate 15 cm away instead).
+    if (P.spec.id === 'strv81') spareTrackStrip(P, 'hull', -0.37, 1.515, 3.05, 3, 0.031, 0);
+    else spareTrackStrip(P, 'hull', -0.55, 1.41, 3.05, 3);
     // Engine deck: louvre field + fillers, all under the ref's 1.755 ceiling.
     P.add('hull', box(1.86, 0.05, 1.35), 0, 1.705, -2.2);
     for (const i of KIT.grilleIndices(P.q, 7, 3)) {

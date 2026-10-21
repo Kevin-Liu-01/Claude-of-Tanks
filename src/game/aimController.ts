@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { queryAimArmor, tankPoseFromState, traceTank } from '../sim/armor.ts';
 import type { ArmorModel, ArmorPoseState } from '../sim/armor.ts';
 import { estimatePenRatio } from '../sim/damage.ts';
+import { provingPlateStrike, type ProvingPlateMark } from '../sim/provingGround.ts';
 import type {
   DamageArmorPlate,
   DamageShellSpec,
@@ -83,6 +84,8 @@ interface AimTank {
 interface AimGame {
   player: AimTank | null;
   tanks: AimTank[];
+  /** The proving ground's range (its plate rack stops the aim ray as it stops a round); absent in every battle. */
+  _provingRange?: { readonly plates: readonly ProvingPlateMark[] } | null;
 }
 
 interface AimRig {
@@ -157,6 +160,8 @@ export function createAimController(deps: AimControllerDependencies): AimControl
   const softHit: AimWorldHit = {
     point: new THREE.Vector3(), normal: null, dist: 0, kind: 'tank-soft',
   };
+  const plateNormal = new THREE.Vector3();
+  const plateHit: AimWorldHit = { point: new THREE.Vector3(), normal: null, dist: 0, kind: 'plate' };
   const muzzle = new THREE.Vector3();
   const bore = new THREE.Vector3();
   const gunTarget = new THREE.Vector3();
@@ -231,6 +236,19 @@ export function createAimController(deps: AimControllerDependencies): AimControl
   }
 
   function raycast(origin: THREE.Vector3, dir: THREE.Vector3, maxDist: number): AimWorldHit | null {
+    const hit = raycastWorldAndTanks(origin, dir, maxDist);
+    // the proving ground: a rack plate nearer than what the ray met is what the gun is laid on (the rangefinder reads it)
+    const plates = deps.getGame()._provingRange?.plates;
+    if (!plates?.length) return hit;
+    const strike = provingPlateStrike(plates, origin, dir, hit ? Math.min(maxDist, hit.dist) : maxDist);
+    if (!strike) return hit;
+    plateHit.point.copy(strike.point);
+    plateHit.normal = plateNormal.copy(strike.normal);
+    plateHit.dist = strike.t;
+    return plateHit;
+  }
+
+  function raycastWorldAndTanks(origin: THREE.Vector3, dir: THREE.Vector3, maxDist: number): AimWorldHit | null {
     findClosestRayHit(origin, dir, maxDist);
     const sampleNow = now();
     if (raySelection.exactTank) {

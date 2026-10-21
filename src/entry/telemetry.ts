@@ -192,10 +192,19 @@ export function telemetrySampleRate(value: unknown): number {
   return number;
 }
 
+/**
+ * URLs keep their path: a query or a fragment (a Studio scene link carries the whole scene in `#scene=`) never rides in
+ * a report. A frame's `:line:column` survives.
+ */
+function withoutUrlTails(text: string): string {
+  return text.replace(/([a-z][a-z0-9+.-]*:\/\/[^\s?#()'"]*|(?<![\w:/])\/[^\s?#()'"]*)[?#][^\s()'"]*?(?=(?::\d+){1,2}(?=[\s)'"]|$)|[\s)'"]|$)/gi, '$1');
+}
+
 /** A bounded, origin-stripped description of any thrown value: message plus the top three frames. */
 export function describeError(error: unknown, origin = ''): TelemetryErrorSummary {
   const source = error && typeof error === 'object' ? error as { message?: unknown; stack?: unknown } : null;
-  const message = cleanText(source && source.message !== undefined ? source.message : error, 200) || 'unknown';
+  const raw = source && source.message !== undefined ? source.message : error;
+  const message = cleanText(typeof raw === 'string' ? withoutUrlTails(raw) : raw, 200) || 'unknown';
   const stack = source && typeof source.stack === 'string' ? source.stack : '';
   const frames: string[] = [];
   for (const rawLine of stack.split('\n')) {
@@ -203,7 +212,8 @@ export function describeError(error: unknown, origin = ''): TelemetryErrorSummar
     if (!line || frames.length >= 3) continue;
     // V8 frames start with "at"; Firefox/Safari frames are "fn@url:line:col".
     if (!/^at\s/.test(line) && !/@.+:\d+/.test(line)) continue;
-    frames.push(cleanText(origin ? line.split(origin).join('') : line, 160));
+    const path = withoutUrlTails(line);
+    frames.push(cleanText(origin ? path.split(origin).join('') : path, 160));
   }
   return { message, frames };
 }

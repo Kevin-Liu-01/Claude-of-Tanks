@@ -66,7 +66,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   },
   "leo2a2": {
     "fitting@hull(-0.85,1.47,2.79)": [-0.57, 1.46177, 2.8292, 0.08087, 0.70247, 0.08087, 0.70247, 0],
-    "strip@turret(-0.30,0.53,-2.54)": [-2.76675, 0.35769, -1.60501, -0.14909, -0.69121, 0.14909, 0.69121, 1],
   },
   "leo2a3": {
     "fitting@hull(-0.85,1.47,2.79)": [-0.57, 1.46177, 2.8292, 0.08087, 0.70247, 0.08087, 0.70247, 0],
@@ -93,7 +92,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   },
   "leo2a4m_can": {
     "fitting@hull(0.58,1.52,2.86)": 83,
-    "strip@turret(-0.30,0.53,-2.54)": [-0.01, 1.28106, 0.43582, -0.21085, 0, 0, 0.97752, 1],
   },
   "leo2a6_ua": {
     "fitting@hull(-0.58,1.52,2.86)": 13,
@@ -152,7 +150,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
     "fitting@hull(1.68,1.68,-2.58)": [1.354, 1.8785, -3.112, 0, 0.70711, 0, 0.70711, 1],
   },
   "strv81": {
-    "strip@hull(-0.55,1.41,3.05)": [-0.08603, 4.24457, 2.16113, 0.71264, 0.01729, -0.01701, 0.70111, 1],
     "strip@hull(-1.26,1.38,-3.58)": [0.68872, -2.92869, 4.59834, 0.89522, 0, 0, 0.44562, 1],
     "strip@hull(1.26,1.38,-3.58)": [-0.63128, -2.92869, 4.59834, 0.89522, 0, 0, 0.44562, 1],
   },

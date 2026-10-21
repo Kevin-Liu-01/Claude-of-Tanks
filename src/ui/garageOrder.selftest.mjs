@@ -49,8 +49,9 @@ assert.match(garageSource,
   /target\?\.closest<HTMLButtonElement>\('\.cot-compact-equipment-trigger'\)[\s\S]*const closing = openGaragePanel\(\) === 'equipment'[\s\S]*setGaragePanel\(closing/,
   'compact equipment affordance opens the selected tank loadout instead of becoming a dead summary icon');
 assert.match(garageSource,
-  /\.cot-card \.nm\{position:absolute;left:10px;right:10px;bottom:8px;/,
-  'tank titles use the card padding as a stable bottom inset');
+  /\.cot-card \.nm\{position:absolute;z-index:3;left:var\(--hc-pad\);right:var\(--hc-pad\);bottom:calc\(var\(--hc-pad\) \* 0\.8\);[^}]*white-space:normal;/,
+  'tank titles sit on the card padding as a stable bottom inset and wrap instead of truncating');
+assert.doesNotMatch(garageSource, /\.cot-card \.nm\{[^}]*text-overflow:ellipsis/, 'tank titles are never truncated');
 assert.match(garageSource,
   /const reopening = !firstPresentation && !api\.isOpen;[\s\S]*?if \(reopening\) \{[\s\S]*?classList\.add\('enter'\)/,
   'Garage entrance motion is reserved for later reopens instead of replaying under first boot');
@@ -60,8 +61,14 @@ assert.match(garageSource,
 assert.match(garageSource, /document\.addEventListener\('cot:boot-dismiss'/,
   'Garage listens for the boot fade before revealing first-visit chrome');
 assert.match(garageSource,
-  /class="card-era">\$\{vehicleEraLabelI18n\((?:s|spec)\.era, t, \{ short: true \}\)\}<\/span>/,
-  'garage cards show the canonical vehicle era in their top-right metadata slot');
+  /Promise\.all\(\[import\('\.\/heroCard\.ts'\), import\('\.\/heroCard\.css'\)\]\)[\s\S]*?mountRosterHeroCards\(cardsEl, cardById, selectedId, \(id\) => legacyPortraits\(\[id\]\)\)[\s\S]*?\.then\(legacyPortraits, \(\) => legacyPortraits\(\[\.\.\.cardById\.keys\(\)\]\)\)/,
+  'garage cards take their hero layers from the lazy hero chunk and keep the packaged portrait when it is unavailable');
+assert.match(garageSource,
+  /<span class="hc-tier" aria-hidden="true">\$\{tierChipHTML\(tier\)\}<\/span>/,
+  'garage cards show the tier as a "Tier X" chip');
+assert.match(garageSource, /t\('garage\.card\.aria', \{ tier, name: displayName, nation: nationName \}\)/,
+  'the card label carries tier, name and nation (the nation is shown only as the flag)');
+assert.doesNotMatch(garageSource, /class="card-era"/, 'garage cards carry no era eyebrow (owner UI rules, 2026-10-17)');
 assert.doesNotMatch(garageSource,
   /class="designation">\$\{s\.markings\?\.designation/,
   'garage cards do not expose technical marking identifiers as UI metadata');

@@ -1357,6 +1357,42 @@ function weaponDamageRolls(shell: DamageShell, target: DamageTarget): Set<Module
  * @param {function} rng () => [0,1)
  * @returns {object} HitEvent
  */
+/**
+ * A round striking a reference plate outside any hull (the proving ground's plate rack, 2026-10-20): the hulls' law
+ * against one plate, so the rack answers what a hull of that armour would. The once-per-shot rolls first (ensurePenRoll,
+ * the same draws in the same order), the arc length trimmed to the strike as resolveShellHit trims it; then the ricochet
+ * test on the raw angle (overmatch suppresses it; a ricochet deflects the round off the face as off a hull, and a jet or
+ * the third bounce ends it), else the effective thickness after normalization and the slope law: a roll at or above it
+ * penetrates, a blast round's ('he_pen') included. The round stops at the plate unless it glanced off. No hull, no
+ * damage: the event names `targetId` and carries the roll, the thickness and the angle.
+ */
+export function resolvePlateStrike(shell: DamageShell, hit: PlateHit, targetId: string, rng: Rng): HitEvent {
+  const spec = shell.spec;
+  const behavior = behaviorOf(spec.type);
+  shell.distM = Math.max(0, shell.distM - Math.max(0, shell.prevPos.distanceTo(shell.pos) - shell.prevPos.distanceTo(hit.point)));
+  ensurePenRoll(shell, rng);
+  const event = baseEvent(shell, targetId);
+  // a plate has no hull to damage: no damage roll to report (the round's roll is kept on the shell for any later hit)
+  event.dmgRoll = 0;
+  const pen = shell.remainingPenMm;
+  event.zone = hit.plate.name;
+  event.plateKind = hit.plate.kind;
+  event.physicalMm = hit.plate.physicalMm;
+  event.nominalMm = behavior.kindClass === 'KE' ? hit.plate.keMm : hit.plate.ceMm;
+  if (behavior.kindClass !== 'HE' && wouldRicochet(spec, hit.impactAngleDeg, hit.plate)) {
+    event.kind = 'ricochet';
+    stampImpact(event, hit, 0, pen);
+    deflectShell(shell, hit);
+    if (behavior.kindClass === 'CE' || shell.bounces >= RICOCHET_MAX_BOUNCES) shell.dead = true;
+    return event;
+  }
+  const { effMm } = effectiveThickness(spec, hit.plate, hit.impactAngleDeg);
+  event.kind = pen >= effMm ? (behavior.kindClass === 'HE' ? 'he_pen' : 'pen') : 'nonpen';
+  stampImpact(event, hit, effMm, pen);
+  shell.dead = true;
+  return event;
+}
+
 export function resolveShellHit(
   shell: DamageShell,
   target: DamageTarget,

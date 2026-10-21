@@ -319,8 +319,11 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
   .cot-touch-aim .aimhint{display:none}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire.alt{display:none}
 }
+/* r10g (the coordinator): a portrait phone 340 px wide or less parks the chip under the map, as a short landscape does,
+   where no seat by the sight kept clear of the left FIRE button, the map and the speedometer; the map's width, so it keeps
+   8 px from the systems row's top slot (106 px ran 6 px under a wrapped row's second line) */
 @media (max-width:340px) and (orientation:portrait){
-  .cot-aim-warning{top:326px;left:94px;transform:none;width:156px}
+  .cot-aim-warning{left:8px;top:var(--hud-aim-warning-top,204px);transform:none;width:92px;font-size:9px;line-height:10px;padding:2px 8px}
 }
 
 /* Live FPS only appears after 30 frames. Reserve a small instrument row below
@@ -397,13 +400,39 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-relation=friendly] .rel
 /* r10e: a touch layout's centre notices and medal card take the places battleHudLayout finds off the reticle's footprint
    and the HUD's panels (touchNoticePlan.ts): each one's centre and top, the alert's slot width, the compact pair (the short
    landscapes' 136 px notice) where only that keeps clear. Their entry slides stay vertical. */
+/* (one layer over the controls and the map: where nothing clears a notice covers the map through the scope, the
+   coordinator's ruling, and at the controls' layer the map, later in the page, painted over it, r10g) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] :is(.cot-sixth,.cot-alert){z-index:calc(var(--hud-layer-controls) + 1)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-sixth{left:var(--hud-touch-notice-cx,50%);top:var(--hud-notice-top);transform:translate(-50%,-6px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-sixth.on{transform:translate(-50%,0)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{left:var(--hud-touch-alert-cx,50%);top:var(--hud-alert-top);bottom:auto;width:auto;max-width:var(--hud-touch-alert-w,214px);transform:translate(-50%,7px)}
+/* (max-content, as the medal card: an auto width shrank to the room right of its centre, and a 150 px alert centred at
+   237 of 320 px set five lines 96 px wide onto the ammo slot, r10g) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{left:var(--hud-touch-alert-cx,50%);top:var(--hud-alert-top);bottom:auto;width:max-content;max-width:var(--hud-touch-alert-w,214px);transform:translate(-50%,7px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert.show{transform:translate(-50%,0)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='notice-compact'] .cot-sixth{width:136px;min-height:32px;padding-block:4px;font-size:9px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='notice-compact'] .cot-sixth .sub{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert{box-sizing:border-box;font-size:8px;line-height:1.2;padding:4px 12px;min-height:28px}
+/* r10g (the coordinator's ruling): through the scope, where nothing clears, the alert may lie over the map at its width */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-narrow'] .cot-alert{padding:4px 8px}
 /* (the card's own width wherever it sits: a fixed box shrinks to the room right of its left edge, and the plan measures it) */
 body.cot-touch-layout[data-touch-notices] .cot-medal-toasts{left:var(--hud-touch-banner-cx,50%);width:max-content}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation].cot-touch-layout[data-touch-notices] .cot-prebattle{left:var(--hud-touch-countdown-cx,50%);top:var(--hud-touch-countdown-top);transform:translateX(-50%) scale(var(--hud-touch-countdown-scale,1));transform-origin:50% 0}
+
+/* r10f (the notices critic: the drive gauge 2 px from the APFSDS slot at 1024 wide): the inline tray, centred, moves right
+   by the layout's measured shift until it keeps the damage panel's 12 px gap from the gauge */
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='inline'] .cot-shells{transform:translateX(calc(-50% + var(--hud-tray-shift,0px)))}
+
+/* r10g (the r10e critic: at 320 wide the systems row scrolled out of sight, "Auto g"; at 320x568 and 360x640 it sat in
+   the band the scope's marks take over the sight): on a portrait phone under 720 px tall the layout seats the row in the
+   top slot right of the map (data-systems-slot), compact: the slot's width shared by its buttons, --hud-systems-per-row a
+   row (the layout's count: a five-control kit at 320 wide wraps to two rows), each 44 px tall and wide at the least (the
+   touch target), its icon over its label, without the keyboard's key badges a touch screen has no use for */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls{width:var(--hud-systems-width);overflow:visible;flex-wrap:wrap}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button{flex:1 1 calc((100% - (var(--hud-systems-per-row,3) - 1) * 3px) / var(--hud-systems-per-row,3));width:auto!important;min-width:44px;height:44px!important;min-height:44px;grid-template-columns:minmax(0,1fr);grid-template-rows:17px 13px;row-gap:2px;padding:5px 1px 6px}
+/* ...and what one row cannot hold sits beside the touch chrome, left of it and level with it (the layout's data-slot-beside
+   index and the chrome's offset: a five-control kit at 320 wide, whose second row met the ammo drawer's open shells) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button[data-slot-beside]{position:absolute!important;flex:none;width:44px!important;min-width:44px;top:var(--hud-systems-beside-dy);left:0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button[data-slot-beside='1']{left:47px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .si{grid-column:1;grid-row:1}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .sl{grid-column:1;grid-row:2;max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:8px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .sk{display:none}

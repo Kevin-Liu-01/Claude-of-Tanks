@@ -30,7 +30,10 @@ research inputs only; they are not playable geometry and retain their original
 authors and licenses.
 
 Third-party fonts, marks, shader code, reference models, environment props,
-and other exceptions remain the property of their respective authors. Their
+and other exceptions remain the property of their respective authors. The
+proving ground's type is Chakra Petch (Cadson Demak) and IBM Plex Mono (IBM
+Corp., Reserved Font Name "Plex"), each under the SIL Open Font License 1.1
+with its license file beside it in `public/fonts/<face>/OFL.txt`. Their
 required notices and exact paths are preserved in
 [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md) and `docs/licenses/`. The project
 licenses do not replace or relicense those works.

@@ -93,6 +93,12 @@ export interface LightModel {
    * 0 for an open sky, a legacy rig or a thick deck) — a thin deck keeps a circumsolar glow an occluder hides.
    */
   deckBeam: number;
+  /**
+   * 2026-10-17 (the SKY lane, 227): a thin deck's aureole — the share of the hemisphere's light that still arrives from a
+   * disc round the sun (lightModel.ts DECK_AUREOLE_G), which the aerial pass takes back in the solids' soft shadow
+   * (structureAureoleBake.ts); 0 or absent for an open sky, a deck with gaps, a thick deck, a legacy rig and by night.
+   */
+  deckAureole?: number;
   /** Horizontal illuminance (luminance, light units) the exposure law meters. */
   illuminance: number;
   /** Linear exposure multiplier applied before the tone curve (post.ts). */
@@ -265,6 +271,7 @@ function legacyModel(preset: LightModelPreset): LightModel {
     overcast: resolveOvercast(preset),
     deckClosure: 1,
     deckBeam: 0,
+    deckAureole: 0,
     illuminance: EXPOSURE_REFERENCE_ILLUMINANCE,
     exposure: lightTune('LEGACY_EXPOSURE', LEGACY_EXPOSURE) * (preset.postExposure ?? 1),
     whiteBalance: [1, 1, 1],
