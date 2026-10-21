@@ -108,4 +108,17 @@ assert.ok(r2.faces.some((f) => f.mesh === infillTop), 'the infill\'s top under t
 assert.ok(!r2.faces.some((f) => f.mesh === arcadeWall), 'the wall over the arcade, held at its columns as built, stands');
 assert.equal(r2.runs.length, 1, `one of the run's pieces goes (${JSON.stringify(r2.runs.map((r) => r.tris.length))})`);
 assert.ok(r2.runs[0].run === 0 && r2.runs[0].tris.length === 12 && r2.runs[0].tris.every((t) => t >= 12), 'the run\'s chunk in the air goes, its piece on the ground stands');
-console.log('structureHanging selftest: nothing comes down intact; a hidden roof\'s chimney and ladder come down, a sign stands; a hidden mast\'s sails come down; a loose room and a face\'s loose piece go; a face\'s piece held then not comes down, one held as built stands; a run\'s loose chunk goes alone — ok');
+// (round 6; the census's cliffbridge #24 farmhouse: its chimney stood over the roofless gable to the end, held by its top
+// storey's room) a room holds nothing up: a face's piece lying only on a room's top comes down, the room on the ground stands
+const roomUnder = mesh(box(60, 0, 0, 63, 3, 3));
+const onRoom = mesh(box(61, 3, 1, 62, 4.5, 2));
+const r3 = sweep2.sweep(seam2, { faces: [onRoom], runs: [], rooms: [roomUnder] });
+assert.ok(r3.faces.some((f) => f.mesh === onRoom), 'a piece held only by a room comes down');
+assert.equal(r3.rooms.length, 0, 'the room on the ground stands');
+// and a room is what it draws: one whose draw range holds only its box in the air (its box on the ground out of the range,
+// as a ceiling goes with the roof) touches nothing that stands, and goes
+const roomHalf = mesh([...box(70, 0, 0, 73, 1, 3), ...box(70, 4, 0, 73, 5, 3)]);
+roomHalf.geometry.setDrawRange(36, 36);
+const r4 = sweep2.sweep(seam2, { faces: [], runs: [], rooms: [roomHalf] });
+assert.equal(r4.rooms.length, 1, 'a room drawing only its box in the air goes (its box on the ground, out of its draw range, not read)');
+console.log('structureHanging selftest: nothing comes down intact; a hidden roof\'s chimney and ladder come down, a sign stands; a hidden mast\'s sails come down; a loose room and a face\'s loose piece go; a face\'s piece held then not comes down, one held as built stands; a run\'s loose chunk goes alone; a room holds nothing up and is read as drawn — ok');

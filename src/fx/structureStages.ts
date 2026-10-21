@@ -706,7 +706,6 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     // wall's bucket, a stack drawn from below — never the roof that falls, nor another part over the eaves until it is
     // held itself: two verge boards side by side hold nothing up); held over half its lowest points, it stands
     const goes = holdOverEaves(a, perSpan, candidates, eaveY);
-    { const zz = (globalThis as { __zzHangAt?: number[] }).__zzHangAt; if (zz) console.log('ZZR furniture', seam.structureIdx, 'eave', eaveY.toFixed(2), 'candidates', candidates.length, 'go', [...goes.values()].reduce((n, s) => n + s.size, 0)); } // ZZDBG
     for (const ps of perSpan) {
       const { span, find, n, start, drawn } = ps;
       const arr = span.position.array as Float32Array;

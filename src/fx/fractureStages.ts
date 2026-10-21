@@ -295,7 +295,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
   /** The sweep in progress (one at a time, in steps over the frames: a big building's is a few hundred thousand samples'
    *  work), the meshes it reads kept for its result. */
   let hangingJob: { idx: number; due: { seam: StructureDamageSeam; settled: boolean }; runs: THREE.Mesh[]; rooms: THREE.Mesh[];
-    gen: Generator<void, HangingResult, void>; at: number } | null = null;
+    gen: Generator<void, HangingResult, void>; at: number } | null = null; // (at: when its intact reading was ready; -1 not yet)
   /** (round 5) A sweep this young (fx s) over a building that changes again starts over, at most HANGING_RESTARTS times
    *  running: the round-4 critic's blackglass #3 civic hall (R narrow-back, seed 978345481) — a sweep begun just before its
    *  section's faces were drawn ran on 1.3 s blind to them, and the one after it took 1.6 s more, a dark face piece 2.1 m
@@ -313,10 +313,16 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
     if (fallen.has(seam.structureIdx)) return;
     hangingChain.delete(seam.structureIdx);
     const job = hangingJob;
-    if (job && job.idx === seam.structureIdx && o.now() - job.at < HANGING_RESTART_S) {
+    // (destruction-slabs 227 round 6; the round-5 census's phone tavern #7, reservoir Q narrow s637292818: a sweep begun at
+    // the first hole spent 6.4 s on the building's intact reading — the phone's slice is a third of the desktop's — then
+    // read the meshes it had listed at its start, blind to the remnants its roof's fall laid 1.4 s in; they hung to 8.6 s)
+    // a sweep still making the intact reading has read nothing yet: it starts over at no cost (the reading's steps outlive
+    // it), and its age counts from when that reading was made
+    const preparing = !!job && job.idx === seam.structureIdx && job.at < 0;
+    if (job && job.idx === seam.structureIdx && (preparing || o.now() - job.at < HANGING_RESTART_S)) {
       const n = hangingRestarts.get(job.idx) ?? 0;
-      if (n < HANGING_RESTARTS) {
-        hangingRestarts.set(job.idx, n + 1);
+      if (preparing || n < HANGING_RESTARTS) {
+        if (!preparing) hangingRestarts.set(job.idx, n + 1);
         hangingJob = null;
         const was = hangingDue.get(job.idx);
         hangingDue.set(job.idx, { seam, settled: settled && job.due.settled && (was ? was.settled : true) });
@@ -335,8 +341,9 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       // (a storey falling moves what the sweep read: it reads it again once the fall is done)
       if (host?.falling?.(job.idx)) { hangingJob = null; if (!hangingDue.has(job.idx)) hangingDue.set(job.idx, job.due); return; }
       for (let n = 0; n < HANGING_STEPS; n++) {
+        if (job.at < 0 && hangingSweep.ready(job.due.seam)) job.at = o.now();
         const r = job.gen.next();
-        if (r.done) { if ((globalThis as { __zzHangAt?: unknown }).__zzHangAt) console.log('ZZH done', job.idx, o.now().toFixed(2), 'groups', r.value.groups.length, 'faces', r.value.faces.length, 'runs', r.value.runs.length); /* ZZDBG */ hangingJob = null; hangingRestarts.delete(job.idx); applyHanging(job.idx, job.due, job.runs, job.rooms, r.value); return; }
+        if (r.done) { hangingJob = null; hangingRestarts.delete(job.idx); applyHanging(job.idx, job.due, job.runs, job.rooms, r.value); return; }
       }
       return;
     }
@@ -349,8 +356,8 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       const all = host ? host.o.debris.standingRuns(tag) : [];
       const runs = all.filter((m) => m.userData.room !== true);
       const rooms = [...all.filter((m) => m.userData.room === true), ...fracture.rooms(idx)];
-      hangingJob = { idx, due, runs, rooms, gen: hangingSweep.steps(due.seam, { faces: fracture.standing(idx), runs, rooms }), at: o.now() };
-      if ((globalThis as { __zzHangAt?: unknown }).__zzHangAt) console.log('ZZH start', idx, o.now().toFixed(2)); // ZZDBG
+      hangingJob = { idx, due, runs, rooms, gen: hangingSweep.steps(due.seam, { faces: fracture.standing(idx), runs, rooms }),
+        at: hangingSweep.ready(due.seam) ? o.now() : -1 };
       sweepHanging();
       return;
     }
