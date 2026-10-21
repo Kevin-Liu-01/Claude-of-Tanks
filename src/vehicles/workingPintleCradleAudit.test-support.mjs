@@ -11,13 +11,19 @@
 // (auxiliaryWeapons.ts, the calibre's or the vehicle's own) and the gun's recoil stroke, the moving parts keep 1.5 mm
 // from every part of the mount that does not pitch, no moving triangle crosses the yaw stage, and the recoiling gun
 // crosses nothing of its cradle. The American M2 and RWS constructions and the external cradles a host builds round the
-// gun (mount: 'external-cradle') are other constructions and are not counted.
+// gun (mount: 'external-cradle') are other constructions and are not counted. The mount measured is the one the fitting
+// builds (its meshes' `fitting`): stock a vehicle's builder hangs on the station (an RWS's housing, sensors, a tower's
+// head; 22 stations at release 229, 18 of them met by their gun as on the fleet rig before) is that builder's, and
+// the audit counts the stations carrying it.
 import assert from 'node:assert/strict';
 import { stationSelfClearance } from './cnTurretGeometry.test-support.mjs';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 
 /** The clearance every working pintle's moving parts keep from its own mount (metres). */
 const WORKING_PINTLE_CLEARANCE_M = 0.0015;
+
+/** A mesh the pintle fitting itself built (its yaw stage, cradle and gun), not stock a builder hung on the station. */
+const fittingOwn = (mesh) => mesh.userData.fitting === 'pintleMG' || mesh.userData.fitting === 'auxiliaryWeapon';
 
 /** The working FITTINGS.pintleMG stations under `root`: [{ station, pitch }]. */
 function workingPintleStations(root) {
@@ -42,7 +48,7 @@ export function assertWorkingPintleClear(id, station, pitch) {
   // 1-degree steps, 5 mm samples and a 4 mm cap (cnStations measures its two emplacements at 0.5 degrees and 4 mm): about
   // a hundred stations ride in the default fleet pass
   const self = stationSelfClearance(station, pitch, { depression: profile.depressionRad, elevation: profile.elevationRad,
-    step: Math.PI / 180, h: .005, cap: .004 });
+    step: Math.PI / 180, h: .005, cap: .004, meshes: fittingOwn });
   const where = `${(self.el * 180 / Math.PI).toFixed(1)} deg, recoil ${(self.r * 1000).toFixed(0)} mm`;
   assert.ok(self.d >= WORKING_PINTLE_CLEARANCE_M,
     `${label}: the moving parts keep 1.5 mm from their own mount through pitch and recoil (${(self.d * 1000).toFixed(2)} mm at ${where})`);
@@ -52,7 +58,7 @@ export function assertWorkingPintleClear(id, station, pitch) {
 }
 
 export function createWorkingPintleCradleAudit({ minimumStations = 1 } = {}) {
-  let stations = 0, vehicles = 0, worst = { d: Infinity, label: '' };
+  let stations = 0, vehicles = 0, hosted = 0, worst = { d: Infinity, label: '' };
   return {
     check(id, tank) {
       const found = workingPintleStations(tank.root);
@@ -62,13 +68,16 @@ export function createWorkingPintleCradleAudit({ minimumStations = 1 } = {}) {
       for (const { station, pitch } of found) {
         const self = assertWorkingPintleClear(id, station, pitch);
         stations++;
+        let carries = false; station.traverse((o) => { if (o.isMesh && !fittingOwn(o)) carries = true; });
+        if (carries) hosted++;
         if (self.d < worst.d) worst = { d: self.d, label: `${id}: ${station.name}` };
       }
     },
     finish() {
       assert.ok(stations >= minimumStations, `the audit measured ${stations} working pintles, expected at least ${minimumStations}`);
       console.log(`workingPintleCradle: ${stations} working pintles on ${vehicles} vehicles ride their cradles, `
-        + `${(WORKING_PINTLE_CLEARANCE_M * 1000).toFixed(1)} mm clear of their own mounts (closest ${(worst.d * 1000).toFixed(1)} mm, ${worst.label})`);
+        + `${(WORKING_PINTLE_CLEARANCE_M * 1000).toFixed(1)} mm clear of their own mounts (closest ${(worst.d * 1000).toFixed(1)} mm, ${worst.label}); `
+        + `${hosted} carry stock their vehicle's builder hung on them, not measured here`);
     },
   };
 }
