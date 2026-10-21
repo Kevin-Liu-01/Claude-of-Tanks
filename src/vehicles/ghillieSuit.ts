@@ -4988,8 +4988,8 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
   // that range the stations under a point (offset dy up and dz along from the trunnion) and its depth under the bore
   // (its height over it) are bounded by their values at the range's ends, the station by the point's reach too (the
   // bore's angle to the point stays inside a half turn either way). Where every station in those bounds lies wide of the
-  // point across, or (ahead of the trunnion) every box there ends short of its depth or height, sweptBy answers no to the
-  // bit; CERT_M keeps the bounds far wider than either side's rounding.
+  // point across, or every box there ends short of its depth or height (depthMiss), sweptBy answers no to the bit; CERT_M
+  // keeps the bounds far wider than either side's rounding.
   const CERT_M = 1e-5;
   const pitchLow = Math.min(tMinFront, -(spec.gunDepressionDeg ?? 0) * deg);
   let pitchHigh = tMax;
