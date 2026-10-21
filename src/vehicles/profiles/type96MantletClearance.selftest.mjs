@@ -8,7 +8,8 @@
 // (fleetRenewalSpecs.ts CONCEPT_GUN_PITCH_BY_YAW_DEG).
 // Every gun triangle is tested against every hull triangle (exact segment-triangle crossings both ways on a uniform
 // grid) at 2-degree turret steps: at the spec's minimum mechanical pitch for that yaw, at rest, and at half and full
-// elevation (each held at or above that minimum, as the sim holds it), at both qualities. Negative control: full depression with the turret reversed (below each curve) crosses
+// elevation (each held at or above that minimum, as the sim holds it), at both qualities. The box sight over the
+// mantlet rides the gun on all four, and it clears the turret at every half-degree of pitch. Negative control: full depression with the turret reversed (below each curve) crosses
 // the deck.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -126,6 +127,41 @@ for (const id of ['type96b', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei
     }
     assert.deepEqual(failures, [], `${id}/${quality}: the gun clears the hull through traverse and pitch`);
     assert.ok(pose(180, -spec.gunDepressionDeg * D) > 0, `${id}/${quality}: negative control: full depression over the rear deck crosses it`);
+
+    // The box sight over the mantlet rides the gun (buildType96Turret boxSightOnGun): turret-fixed, the pitching boot passed
+    // through it at every pitch. No turret part carries it any more (the gunner's sight and every roof fitting stay), and
+    // its own triangles (the box, bezel and glass: gunMount* triangles reaching above the boot's crown, gun-frame y > .36)
+    // cross no turret triangle at any pitch from full depression to full elevation. (The boot and the tube stand in the
+    // turret's closed front by design: they are not the sight's.)
+    gun.rotation.x = pitch0; turret.rotation.y = yaw0; tank.root.updateMatrixWorld(true);
+    const glass = []; gun.traverse((o) => { if (o.isMesh && o.name === 'gunMountGlass') glass.push(o); });
+    assert.equal(glass.length, 1, `${id}/${quality}: the box sight's glass rides the gun`);
+    const toTurret = turret.matrixWorld.clone().invert(), toGun = gun.matrixWorld.clone().invert();
+    const T = grid(soup(turret, gun, /Shadow|_ghillie_|InteriorFill/, toTurret));
+    const sightTris = [];
+    gun.traverse((o) => {
+      if (!o.isMesh || !/^gunMount/.test(o.name)) return;
+      const tri = soup(o, null, /Shadow/, toGun);
+      for (let i = 0; i < tri.length; i += 9) {
+        const ys = [tri[i + 1], tri[i + 4], tri[i + 7]], xs = [tri[i], tri[i + 3], tri[i + 6]];
+        if (o.name === 'gunMount' && !(Math.max(...ys) > .36 && Math.max(...xs.map(Math.abs)) < .2)) continue;
+        for (let k = 0; k < 9; k++) sightTris.push(tri[i + k]);
+      }
+    });
+    const sight = new Float64Array(sightTris), sightMoved = new Float64Array(sight.length);
+    assert.ok(sight.length / 9 >= 100, `${id}/${quality}: the box sight's triangles (${sight.length / 9})`);
+    const sightCrossings = [];
+    for (let deg = -spec.gunDepressionDeg; deg <= spec.gunElevationDeg; deg += .5) {
+      gun.rotation.x = pitch0 - deg * D; tank.root.updateMatrixWorld(true);
+      const e = m.multiplyMatrices(toTurret, gun.matrixWorld).elements;
+      for (let i = 0; i < sight.length; i += 3) {
+        const x = sight[i], y = sight[i + 1], z = sight[i + 2];
+        sightMoved[i] = e[0] * x + e[4] * y + e[8] * z + e[12]; sightMoved[i + 1] = e[1] * x + e[5] * y + e[9] * z + e[13]; sightMoved[i + 2] = e[2] * x + e[6] * y + e[10] * z + e[14];
+      }
+      const n = crossings(sightMoved, T);
+      if (n) sightCrossings.push(`pitch ${deg}: ${n}`);
+    }
+    assert.deepEqual(sightCrossings, [], `${id}/${quality}: the gun-mounted box sight clears the turret at every pitch`);
   } finally { tank.dispose(); }
 }
 console.log('type96MantletClearance selftest: OK');

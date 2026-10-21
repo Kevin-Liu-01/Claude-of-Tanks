@@ -7957,6 +7957,10 @@ function* createTankOwnedSteps(
       const hasGlacis = candidates.some((plate) => /glacis/i.test(plate.name));
       if (hasSkirts && hasGlacis) narrow(Math.abs(center.x) > 1.25 ? /skirt/i : /glacis/i);
     }
+    // Release 227: a visual chevron front binds to its own chevron sectors where the spec has them (the Qilin's ZTZ-99A2
+    // face panels stay turret_chevron_era beside the Qilin's own turret_era brow and flank cassettes); a vehicle without
+    // chevron-named plates keeps every candidate (narrowEraCandidates' fallback).
+    if (owner === 'turret' && /chevron/i.test(sector)) narrow(/chevron/i);
     if (center.x > 0.04) narrow(/(?:^|_)R$/i);
     else if (center.x < -0.04) narrow(/(?:^|_)L$/i);
     if (owner === 'turret'
@@ -8351,7 +8355,6 @@ function* createTankOwnedSteps(
       mesh.userData.materialOnlyPaintMigration = true;
       mesh.userData.materialOnlyPaintSourceBucket = paintSourceBucket;
     }
-    registerVehicleNightLensMesh(mesh, list);
     const parent:THREE.Object3D|undefined = mergedBucketParents[parentKey];
     if(station && parent){
       mesh.name=station.name+'_'+station.stage+'_'+bucket;
@@ -8362,9 +8365,14 @@ function* createTankOwnedSteps(
       if(!mount)throw new Error('Missing auxiliary station '+station.name);
       const target=station.stage==='pitch'?mount.getObjectByName('auxiliaryWeaponPitch')!:mount;
       root.updateMatrixWorld(true);
-      merged.applyMatrix4(new THREE.Matrix4().copy(target.matrixWorld).invert().multiply(owner.matrixWorld));
+      const toStation=new THREE.Matrix4().copy(target.matrixWorld).invert().multiply(owner.matrixWorld);
+      merged.applyMatrix4(toStation);
+      // (release 227) a station's own lamp (the Zubr II's illuminator) emits from where its lens now lies: the emitter
+      // frame follows the merged stock into the station's stage
+      registerVehicleNightLensMesh(mesh, list, toStation);
       target.add(mesh);return;
     }
+    registerVehicleNightLensMesh(mesh, list);
     if (!parent) throw new Error(`${specId}: bucket ${bucket} requires authored twin barrels`);
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
     else lodWrap(parent, mesh, detailLodDistM);

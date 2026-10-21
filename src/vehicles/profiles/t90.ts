@@ -898,7 +898,7 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
   const weapon = FITTINGS.pintleMG({
     mats: P.mats,
     cls: weaponClass,
-    remoteControlled: true,
+    remoteControlled: true, ridingCradle: true,
     // The weapon and yoke stay dark against the painted armored head so the
     // single automated package remains legible in the normal three-quarter
     // gallery view. A camouflage-painted receiver made the consolidated
@@ -6709,7 +6709,7 @@ function rebuildT90MSTurretExact(P: T90BuilderPort): void {
     }
   }
   {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'kord', remoteControlled: true, tone: 'dark', elev: -0.10, ammo: true, shield: false, scale: 1.16 });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'kord', remoteControlled: true, ridingCradle: true, tone: 'dark', elev: -0.10, ammo: true, shield: false, scale: 1.16 });
     // The Kord is carried by the top yoke, not buried beside the bustle.  Its
     // foot enters the faceted station above and the receiver/barrel now own
     // the reference-height horizontal combat silhouette.

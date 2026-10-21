@@ -83,7 +83,7 @@ function addPrototypeRoof(P: TankBuilderPort): void {
   P.addEquipment('turretDetail', box(.22,.055,.22), .77,ROOF+.025,-.48);
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
   const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'dark',
-    scale: .72, seed: 230923, elev: .03, ammo: true, shield: false, ring: false, working: true });
+    scale: .72, seed: 230923, elev: .03, ammo: true, shield: false, ring: false, working: true, ridingCradle: true });
   mg.name = 'revolutionPrototypeMachineGun';
   mg.position.set(.77,ROOF+.05,-.48);
   P.turretG.add(mg);

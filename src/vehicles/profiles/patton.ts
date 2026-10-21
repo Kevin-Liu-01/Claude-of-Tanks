@@ -5989,7 +5989,7 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
       const mg = FITTINGS.pintleMG({
         mats: P.mats, cls: M.cls ?? 'm2', tone: 'dark', scale: M.scale,
         ammoSlot: 'dark', machineGunFinish: 'gunmetal',
-        seed: 48 + i, elev: M.elev ?? 0.04, ammo: true, working: true,
+        seed: 48 + i, elev: M.elev ?? 0.04, ammo: true, working: true, ridingCradle: true,
       });
       mg.name = i === 0 ? 'm48CommanderM2' : 'm48LoaderM60';
       mg.position.set(M.x, yl(M.baseY), zl(M.z));

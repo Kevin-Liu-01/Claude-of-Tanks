@@ -178,6 +178,61 @@ assert.throws(() => createNightLightingRuntime(scene, { spotLights: 2, pointLigh
     assert.equal(four.lights.filter((light) => light.isPointLight).length, 2);
   } finally { two.dispose(); four.dispose(); scene.remove(cluster, neighbour); }
 }
+// Release 227 (round 4; the critic: "the warm ground pool has the same position and shape in all five station states"): a
+// weapon searchlight keeps its authored aim (no low-beam drop), lights its own narrow cone, and on a pool wider than one
+// vehicle's two sides it takes a spot beside both of its vehicle's driving lamps; a two-spot pool keeps both on them.
+{
+  const tank = new THREE.Group(), station = new THREE.Group(); scene.add(tank); tank.add(station);
+  tank.position.set(0, 1, 0); station.position.set(-.6, 1.4, -.3); station.rotation.y = .5;
+  const pod = (x) => ({ kind: 'headlight', position: [x, .3, 2.6], direction: [0, -.1, 1], intensity: 90, range: 42 });
+  registerNightLightEmitters(tank, [pod(-.7), pod(.7)]);
+  registerNightLightEmitters(station, [{ kind: 'headlight', position: [.3, .1, .2], direction: [0, .02, 1], intensity: 2000, range: 100,
+    searchlight: true, coneRad: .11 }]);
+  const two = createNightLightingRuntime(scene, { spotLights: 2, pointLights: 1 });
+  const four = createNightLightingRuntime(scene, { spotLights: 4, pointLights: 2 });
+  try {
+    for (const runtime of [two, four]) { runtime.prepare([{ root: tank, priority: 1 }], true); runtime.update(new THREE.Vector3(1, 3, -6)); }
+    const lit = (runtime) => runtime.lights.filter((light) => light.isSpotLight && light.intensity > 0);
+    assert.deepEqual(lit(two).map((light) => light.intensity), [90, 90], 'two spots: both driving lamps, no searchlight');
+    assert.ok(lit(two).every((light) => light.angle === HEADLIGHT_CONE_RAD), 'driving lamps keep the low-beam cone');
+    const beam = lit(four).find((light) => light.intensity === 2000);
+    assert.ok(beam, 'four spots: the searchlight takes one');
+    assert.equal(lit(four).filter((light) => light.intensity === 90).length, 2, 'beside both driving lamps');
+    assert.equal(beam.angle, .11, 'in its own narrow cone');
+    station.updateWorldMatrix(true, false);
+    near(beam.target.position.clone().sub(beam.position), new THREE.Vector3(0, .02, 1).normalize().transformDirection(station.matrixWorld),
+      'aimed as authored, turning with its station (no low-beam drop)');
+    station.rotation.y = -.4; four.update(new THREE.Vector3(1, 3, -6)); station.updateWorldMatrix(true, false);
+    near(beam.target.position.clone().sub(beam.position), new THREE.Vector3(0, .02, 1).normalize().transformDirection(station.matrixWorld),
+      'the beam follows the station');
+    const slot = four.lights.find((light) => light === beam);
+    four.prepare([{ root: tank, priority: 1 }], true); four.update(new THREE.Vector3(1, 3, -6));
+    assert.ok(four.lights.filter((light) => light.isSpotLight && light.intensity === 90).every((light) => light.angle === HEADLIGHT_CONE_RAD),
+      'a slot that held the searchlight goes back to the low-beam cone with a driving lamp'); void slot;
+  } finally { two.dispose(); four.dispose(); scene.remove(tank); }
+  // Round 6 (the critic's UAPL-R5C-10): the lift belongs to the player's searchlight only; another vehicle's searchlight
+  // 60 m off competes by distance and leaves the spots to a nearer vehicle's driving lamps.
+  {
+    const player = new THREE.Group(), near2 = new THREE.Group(), far = new THREE.Group(), farStation = new THREE.Group();
+    for (const g of [player, near2, far]) scene.add(g);
+    far.add(farStation); near2.position.set(0, 0, 20); far.position.set(0, 0, 60); farStation.position.set(-.6, 1.4, -.3);
+    registerNightLightEmitters(player, [pod(-.7), pod(.7)]);
+    registerNightLightEmitters(near2, [pod(-.7), pod(.7)]);
+    registerNightLightEmitters(far, [pod(-.7), pod(.7)]);
+    registerNightLightEmitters(farStation, [{ kind: 'headlight', position: [.3, .1, .2], direction: [0, .02, 1], intensity: 2000, range: 100,
+      searchlight: true, coneRad: .11 }]);
+    const pool = createNightLightingRuntime(scene, { spotLights: 4, pointLights: 2 });
+    try {
+      pool.prepare([{ root: player, priority: 1 }, { root: near2, priority: 0 }, { root: far, priority: 0 }], true);
+      pool.update(new THREE.Vector3(0, 3, -6));
+      const spots = pool.lights.filter((light) => light.isSpotLight && light.intensity > 0);
+      assert.equal(spots.filter((light) => light.intensity === 2000).length, 0, 'a far non-player searchlight does not outrank a nearer vehicle');
+      assert.equal(spots.filter((light) => light.intensity === 90).length, 4, 'the player and the nearer vehicle keep all four spots');
+    } finally { pool.dispose(); for (const g of [player, near2, far]) scene.remove(g); }
+  }
+  assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', position: [0, 0, 0], coneRad: .5 }]), /cone/);
+  assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'marker', position: [0, 0, 0], searchlight: true }]), /searchlight/);
+}
 // (CN-7, 2026-10-20: "the main-gun barrel seen from the front shows as a bright white glowing tube") turret lamps
 // flanking the gun put the tube 2-5 m into their cones. The beams stay exactly as authored; each lit lamp whose vehicle
 // registered its gun publishes that gun's world capsule beside its seat, and the vehicle shader drops the lamp's light
