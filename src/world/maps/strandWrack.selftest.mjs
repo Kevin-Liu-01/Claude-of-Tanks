@@ -11,6 +11,7 @@ import { shorelineDistance, shorelineRadiusAt } from '../shoreline.ts';
 import { MAP_IDS, getMapConfig } from './index.ts';
 import { dressMapExtras } from './mapKits.ts';
 import { dressStrandWrack, strandBandAt, wrackBand, wrackDensity } from './strandWrack.ts';
+import { waterContactProfile } from '../waterContact.ts';
 
 const names = ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'wood', 'dark', 'glass', 'curtain', 'straw', 'baked'];
 const strandMaps = MAP_IDS.filter(id => (getMapConfig(id).terrain.lakes ?? []).some(lake => lake.shelfM !== undefined));
@@ -67,7 +68,9 @@ function auditPiece(g, built, label) {
   assert.ok(lowest <= 0.03 && lowest >= -0.30, `${label}: seated on the sand, not floating or swallowed (${lowest.toFixed(3)} m)`);
   const level = lakeLevelAt(config.terrain.lakes, cx, cz);
   assert.ok(Number.isFinite(level), `${label}: lies on a sea lake's shore`);
-  assert.ok(field.getHeightAt(cx, cz) - level <= 0.6, `${label}: on the strand's flat, not the bank above the beach`);
+  // (2026-10-21, waterBank.ts) within reach of the water's top (the floor plus the map's depth): the strand meets it now
+  const top = level + (field.getWaterBodySurfaceAt ? waterContactProfile(config.id).depthM : 0);
+  assert.ok(field.getHeightAt(cx, cz) - top <= 0.6, `${label}: on the strand's flat, not the bank above the beach`);
   assert.ok(field._roadDist(cx, cz) >= 6, `${label}: off the roads`);
   assert.ok(Math.max(Math.abs(cx), Math.abs(cz)) <= 470, `${label}: inside the dressing square`);
   for (const spawn of [config.spawns.player, ...config.spawns.enemies]) {
@@ -101,7 +104,8 @@ for (const seed of [1337, 2049, 7719]) for (const mapId of strandMaps) {
     for (const receipt of receipts.filter(r => r.kind === 'driftwood')) {
       const level = lakeLevelAt(config.terrain.lakes, receipt.x, receipt.z);
       assert.equal(field.getWaterMaskAt(receipt.x, receipt.z), 0, `${mapId}/${seed}: driftwood on dry sand`);
-      assert.ok(field.getHeightAt(receipt.x, receipt.z) - level <= 0.6, `${mapId}/${seed}: driftwood within the high-water mark's reach`);
+      const top = level + (field.getWaterBodySurfaceAt ? waterContactProfile(config.id).depthM : 0); // (2026-10-21) the water's top
+      assert.ok(field.getHeightAt(receipt.x, receipt.z) - top <= 0.6, `${mapId}/${seed}: driftwood within the high-water mark's reach`);
       assert.ok(receipt.relief <= 0.35 && receipt.baseClearance === -0.03);
       logs++;
     }

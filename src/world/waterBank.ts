@@ -11,11 +11,12 @@
  * - under the water (coverage > 0) the bed is the surface less the depth its coverage holds (the floor under full water,
  *   rising to the waterline), so the bed plus that depth (the simulation's water top) is the surface, a lip's share over
  *   it toward the shore;
- * - past the waterline the bank is graded from the water's top instead of the floor: the same band and the same blend
- *   weight the carve grades it by, the depth added in that weight's share (terrain.ts holdWaterInBanks). The bank meets
- *   the water at its top and runs out into the native ground as before: no plateau, no levee wall, no cut at a reach;
- * - the first metres of dry shore stand a lip over the water (the sheet's edge, filtered from the mask texture, tucks
- *   under it), fading to nothing.
+ * - past the waterline the bank is graded from a lip over the water's top instead of the floor: the same band and the
+ *   same blend weight the carve grades it by, the depth and the lip added in that weight's share (terrain.ts
+ *   holdWaterInBanks). The bank meets the bed's lip at the waterline (the sheet's edge, filtered from the mask texture,
+ *   tucks under it) and runs out into the native ground as before: no plateau, no levee wall, no cut at a reach, no
+ *   crest at the water's edge;
+ * - where a bank's share stops short of whole at its waterline, the lip tops it up there, fading within a few metres.
  * Every map without liquid water and all ground outside a body's bank band is untouched. The 10-17 cut held the dry
  * shore over a 9 m plateau and cut it off at 16 m, which stepped low banks (Autumn's 2.5 m drop, the strands' 0.84 m
  * terrace); the band grading replaces it (the 230 waterside pass).

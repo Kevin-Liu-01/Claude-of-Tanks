@@ -1908,10 +1908,11 @@ function* heightFieldBuildSteps(
    * (the ground lane, 2026-10-17; MASTER #14 / GW.14; waterBank.ts) level water held in its banks: under the water (the
    * true mask: getWaterMaskAt's, so a ford's or a pad's dried water is dry ground) the bed holds the water's top at the most
    * covering body's level; a body's water dried by a road or a pad stands at least a lip over that level. (230, 2026-10-21)
-   * Past every waterline the bank is graded from the water's top, not the floor: the carve's own blend toward the bodies'
-   * levels (their bank bands and weights) stands the depth higher in its share (marshBank.lift, the lakes' liftWeight),
-   * and the first metres of dry shore keep a lip over the water. The 10-17 cut held the dry shore over a 9 m plateau and
-   * cut it off at a 16 m reach, which stepped every bank lower than the water's top.
+   * Past every waterline the bank is graded from a lip over the water's top, not from the floor: the carve's own blend
+   * toward the bodies' levels (their bank bands and weights) stands the depth and the lip higher in its share
+   * (marshBank.lift, the lakes' liftWeight), so the shore meets the bed's lip at the waterline with no crest. The 10-17
+   * cut held the dry shore over a 9 m plateau and cut it off at a 16 m reach, which stepped every bank lower than the
+   * water's top.
    */
   function holdWaterInBanks(x: number, z: number, h: number, lakesOn: boolean): number {
     // (the ring's seam row seats on the square's edge from the outland's own composition: the banks fade out over the
@@ -1938,7 +1939,9 @@ function* heightFieldBuildSteps(
       const surface = level + liquidDepthM;
       return mask > 0 ? waterBedAt(surface, liquidDepthM, mask) : Math.max(h, surface + WATER_BANK_LIP_M);
     }
-    const graded = lift > 0 ? h + liquidDepthM * lift : h;
+    // the bank graded from a lip over the water's top (the depth and the lip in the levels' share); where a bank's share
+    // stops short of whole at its waterline the lip tops it up there, fading
+    const graded = lift > 0 ? h + (liquidDepthM + WATER_BANK_LIP_M) * lift : h;
     return shoreBeyondM < WATER_BANK_LIP_FADE_M ? waterBankLip(shoreLevel + liquidDepthM, graded, shoreBeyondM) : graded;
   }
   /** (230) the bank law's share near the square's edge: whole inside 480 m, none from 508 m (the ring's seam). */

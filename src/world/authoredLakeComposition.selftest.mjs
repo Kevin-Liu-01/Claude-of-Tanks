@@ -90,7 +90,9 @@ for (const seed of [1337, 2049, 7719]) {
     if (field.getWaterMaskAt(lake.x + Math.cos(angle) * radius * .80, lake.z + Math.sin(angle) * radius * .80) === 1) {
       assert.ok(Math.abs(under - lake.level) < 1e-10, 'under full water the floor keeps the authored level');
     }
-    assert.ok(Math.abs(outside - inside) < .000001,
+    // (2026-10-21, waterBank.ts) the lip's fade past the waterline slopes the rim (at most 0.12 m x 1.5 / 4 m, 0.045 m a
+    // metre): the 0.0002 m between the two samples may carry that slope; a jump may not
+    assert.ok(Math.abs(outside - inside) < .000001 + .0002 * .05,
       `no apron/core discontinuity at ${x},${z}: ${outside - inside}`);
     coreBoundarySamples++;
   }

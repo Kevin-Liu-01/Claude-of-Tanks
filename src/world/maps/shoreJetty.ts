@@ -8,7 +8,8 @@
 // the wrack band between them is the high-water mark. The deck's shore end stands a metre landward of that band on
 // the dry upper strand; the deck runs seaward in the kit's 1.9 m spans until it stands over the lake's planar core
 // (mask 1, the bed at the level) with room for a boat alongside — sized to the shelf it crosses, or to an authored
-// length; its height is a constant freeboard over the water surface at the tip (the sheet's own law: bed + depth);
+// length; its height is a constant freeboard over the water surface at the tip (the sheet's own law: bed + depth), raised
+// on a steep bank to land on it at the water's edge (230: a bank quay, within 0.8 m of the water);
 // every pile is as long as the deck is high over the bed beneath it (mapKits jetty with a support field). A gangway
 // steps from the sand up to the shore end; a boat moors alongside the outer spans where the whole hull floats over
 // the core. Nothing is hand-placed: an azimuth's contour either admits a jetty of the kit's length or it does not,
@@ -71,8 +72,11 @@ export const JETTY_SPAWN_CLEARANCE_M = 26; // the terrain's own pad law
 export const JETTY_BANK_CLEARANCE_M = 0.18;
 export const JETTY_BANK_LANDING_M = 0.05; // on a bank shore the deck lands where the ground comes this close to its underside
 const JETTY_BANK_EDGE_M = 0.25; // and no nearer the water's edge than this
+export const JETTY_BANK_MAX_FREEBOARD_M = 0.80; // a bank quay's deck top at most this over the water surface
 export const JETTY_CORE_SEARCH_M = 12; // how far inside the water's edge the planar core is looked for
-export const GANGWAY_MIN_RISE_M = 0.40; // a shore end higher than this over the ground gets a gangway
+// a shore end higher than this over the ground gets a gangway (a riva its stone stair): 230, the strand meets the water at
+// its top, so a flat strand's deck stands 0.33 m over the sand (it had stood 1.05 m over a strand at the floor)
+export const GANGWAY_MIN_RISE_M = 0.25;
 const GANGWAY_GRADE = 0.36; // rise per metre of run (~20°)
 export const GANGWAY_MIN_RUN_M = 1.9;
 export const GANGWAY_MAX_RUN_M = 4.2;
@@ -123,8 +127,8 @@ export function planShoreJetty(
   // the deck: a constant freeboard over the water surface, which is the same over the whole planar core (bed + depth)
   const [coreX, coreZ] = radial(core);
   const surface = level + (field.getWaterDepthAt?.(coreX, coreZ) ?? 0);
-  const deckY = surface + JETTY_FREEBOARD_M - JETTY_DECK_THICKNESS_M / 2;
-  const underside = deckY - JETTY_DECK_THICKNESS_M / 2, top = deckY + JETTY_DECK_THICKNESS_M / 2;
+  let deckY = surface + JETTY_FREEBOARD_M - JETTY_DECK_THICKNESS_M / 2;
+  let underside = deckY - JETTY_DECK_THICKNESS_M / 2, top = deckY + JETTY_DECK_THICKNESS_M / 2;
   const groundAcross = (r: number): number => {
     const [cx, cz] = radial(r);
     let highest = -Infinity;
@@ -141,7 +145,14 @@ export function planShoreJetty(
     // (230, waterBank.ts) a steep bank now meets the water at its top, a lip over it, so the deck may land within a quarter
     // metre of the water's edge (it had half a metre of a bank still at the floor)
     while (shoreR > band.edge + JETTY_BANK_EDGE_M && groundAcross(shoreR) > underside - JETTY_BANK_LANDING_M) shoreR -= 0.25;
-    if (groundAcross(shoreR) > underside - JETTY_BANK_LANDING_M) return null;
+    // (230) a steep bank that meets the water over the deck's underside (a fjord arm's: it rises from the water's top a
+    // quarter metre a metre) takes a bank quay: the deck rises to land on it at the water's edge, within
+    // JETTY_BANK_MAX_FREEBOARD_M of the water
+    const rise = groundAcross(shoreR) - (underside - JETTY_BANK_LANDING_M);
+    if (rise > 0) {
+      if (top + rise - surface > JETTY_BANK_MAX_FREEBOARD_M) return null;
+      deckY += rise; underside += rise; top += rise;
+    }
   }
   const spans = options.spans ?? Math.min(JETTY_MAX_SPANS, Math.max(JETTY_MIN_SPANS,
     Math.ceil((shoreR - core + JETTY_OVER_CORE_M) / JETTY_SPAN_M)));
