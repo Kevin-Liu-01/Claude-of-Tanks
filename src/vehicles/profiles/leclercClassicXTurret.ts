@@ -58,8 +58,9 @@ function roofWell(P: TankBuilderPort): void {
   classicTurret(P, 'turretDetail', box(.014045, .071119, 1.640289), -1.1375015, 2.4211055, -1.1956665);
   for (const z of [-1.80256, -1.714976])
     classicTurret(P, 'turretDetail', box(.937246, .024, .02572), -.687031, 2.452, z);
+  // 2026-10-19 (owner float sweep): the slats stood 15-19 mm over the raked deck; each sits 2 mm into it
   for (let i = 0; i < 8; i++)
-    classicTurret(P, 'turretDetail', box(.019305, .022, .765694), -.64252 + i * .03836, 2.446, -1.103672);
+    classicTurret(P, 'turretDetail', box(.019305, .022, .765694), -.64252 + i * .03836, 2.429 - .0006 * i, -1.103672);
   classicTurret(P, 'turretDetail', box(.238798, .025, .707808), -.865866, 2.477, -1.09145);
 }
 
@@ -94,7 +95,10 @@ function panoramicSight(P: TankBuilderPort): void {
     classicTurret(P, 'turretDetail', box(.017, .405, .3137), x, 2.6747, .8158);
   for (const y of [2.483, 2.875])
     classicTurret(P, 'turretDetail', box(.40135, .022, .3137), .545325, y, .8158);
-  classicTurret(P, 'turretDark', box(.249, .315, .010), .574089, 2.684444, .90052);
+  // 2026-10-19 (owner float sweep): the window panel hung between the shelves (33 and 22 mm clear): it spans shelf to
+  // shelf. The glass keeps its recessed source station 12 mm ahead of it (the sight's optical air, leclercClassicX
+  // selftest), a pane inside the head's window
+  classicTurret(P, 'turretDark', box(.249, .392, .010), .574089, 2.679, .90052);
   classicTurret(P, 'turretGlass', box(.245412, .308755, .002),
     .574089, 2.6844435, .918432);
   // Rear roof stock measured to source diameter; contacts the crew support.

@@ -66,13 +66,18 @@ function addLynxTurretCheek(P: TankBuilderPort, side: number, py: number, pz: nu
     if(side<0)mirrorX(plate);else plate.computeVertexNormals();
     P.add('turret',plate);
     if(side>0) {
-      turretEquipment(P,'turretDark',box(.34,.22,.02),.745,2.659,1.51,-.483);
+      // 2026-10-19 (owner float sweep): the sight face stood 20 mm off both pocket walls and the window 40 mm proud of
+      // it; the face now spans the pocket and a dark housing carries the window.
+      turretEquipment(P,'turretDark',box(.39,.22,.02),.746,2.659,1.51,-.483);
+      turretEquipment(P,'turretDark',box(.22,.125,.044),.745,2.643,1.552,-.483);
       turretEquipment(P,'turretGlass',box(.20,.105,.018),.745,2.656,1.577,-.483);
       turretEquipment(P,'turretDetail',box(.34,.022,.04),.745,2.801,1.634,-.483);
     } else {
       turretEquipment(P,'turretDark',box(.071,.27,.035),-.545,2.66,1.51,-.483);
+      // 2026-10-19 (owner float sweep): the three lens barrels hung 65-80 mm ahead of their dark mount; they now run back
+      // into its face (same muzzle plane).
       for(const [x,y] of [[-.558,2.65],[-.543,2.622],[-.527,2.65]])
-        turretEquipment(P,'turretDark',cylZ(.014,.115,P.q?12:8),x,y,1.672);
+        turretEquipment(P,'turretDark',cylZ(.014,.19,P.q?12:8),x,y,1.6345);
       turretEquipment(P,'turretDetail',box(.033,.34,.045),-.596,2.70,1.58,-.483);
     }
 }
@@ -201,7 +206,7 @@ function buildLynxTurretArmor(P: TankBuilderPort, py: number, pz: number): void 
         P.addEquipment(bucket,geometry,center.x,center.y,center.z);
       }
     }
-    antenna(P,side*.855,3.02,6.4346,-1.43);
+    antenna(P,side*.855,3.01,6.4346,-1.43); // 2026-10-19 (owner float sweep): base sat 7 mm above the roof; now seated
   }
 }
 

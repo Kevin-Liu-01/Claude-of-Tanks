@@ -202,22 +202,30 @@ function addDragunSideArmor(P: TankBuilderPort): void {
         // Separate massive flotation/armor shoulders preserve daylight over the
         // wheel bay. Rear slats remain open and have real connecting stanchions.
         P.addExternalArmor('hull', box(.36, .79, 5.25), side * 1.83, 1.39, .72);
-        equipment(P, 'hull', 'Detail', box(.04, .038, 5.28), side * 2.020, 1.805, .72);
+        // 2026-10-19 (owner float sweep): the edge rail hung 27 mm off the shoulder's rounded edge and the tie bars
+        // 12 mm above its top; both now sit on the flat top (rail 4 cm inboard), crossing each other.
+        equipment(P, 'hull', 'Detail', box(.04, .038, 5.28), side * 1.970, 1.803, .72);
         for (const z of [-1.54, -.58, .38, 1.34, 2.30, 3.19]) {
-            equipment(P, 'hull', 'Detail', box(.23, .045, .040), side * 1.86, 1.82, z);
+            equipment(P, 'hull', 'Detail', box(.23, .045, .040), side * 1.86, 1.806, z);
             if (P.q)
                 for (const dz of [-.28, .28])
-                    equipment(P, 'hull', 'Detail', box(.024, .037, .032), side * 2.024, 1.10, z + dz);
+                    // 2026-10-19 (owner float sweep): the foremost bolt lies past the shoulder, 22 mm off the skirt
+                    // return's side face; it now sits on that face.
+                    equipment(P, 'hull', 'Detail', box(.024, .037, .032), side * (z + dz > 3.345 ? 1.999 : 2.024), 1.10, z + dz);
         }
-        for (const z of [-3.32, -2.68, -2.02])
-            equipment(P, 'hull', 'Detail', box(.045, .82, .044), side * 1.982, 1.37, z);
+        // 2026-10-19 (owner float sweep): the rear slat screen floated 93 mm behind the shoulder with nothing holding
+        // it; stanchions now reach the lowest slat and each stands on a strut from the hull side / rear wing.
+        for (const z of [-3.32, -2.68, -2.02]) {
+            equipment(P, 'hull', 'Detail', box(.045, .86, .044), side * 1.982, 1.35, z);
+            equipment(P, 'hull', 'Detail', box(.42, .04, .04), side * 1.76, 1.50, z);
+        }
         for (let i = 0; i < (P.q ? 12 : 7); i++) {
             const y = .94 + i * (P.q ? .072 : .132);
             equipment(P, 'hull', 'Detail', box(.040, .020, 1.34), side * 1.992, y, -2.67);
         }
         // Leading skirt return is a structural tapered end, not a duplicate belt.
         P.addExternalArmor('hull', box(.38, .64, .42), side * 1.80, 1.28, 3.61, -.25);
-        P.addMudguard(`dragun-front-${side}`, 'hullRubber', box(.42, .29, .04), side * 1.41, .98, 3.42, -.20);
+        P.hangMudguard(`dragun-front-${side}`, 'hullRubber', box(.42, .29, .04), side * 1.41, .98, 3.42, -.20);
         P.addMudguard(`dragun-rear-${side}`, 'hullRubber', box(.42, .36, .04), side * 1.41, .96, -3.31, .15);
         towEye(P, side, .76, 1.47, 3.55);
         optic(P, 'hull', side * 1.48, 1.74, 3.42, .23, .15, .18);
@@ -323,8 +331,9 @@ function buildDragunHull(P: TankBuilderPort): void {
         equipment(P, 'hull', 'Detail', wedge, 0, 0, 0);
         equipment(P, 'hull', 'Detail', cylX(.026, .504, 12), x, 1.539, 4.011);
     }
+    // 2026-10-19 (owner float sweep): the three deck periscopes stood 12 mm above the deck; now seated on it.
     for (const x of [-.95, -.63, -.31])
-        optic(P, 'hull', x, 1.973, 1.55, .18, .085, .075);
+        optic(P, 'hull', x, 1.960, 1.55, .18, .085, .075);
     equipment(P, 'hull', 'Detail', box(2.76, .045, .16), 0, 1.472, 3.80, -.26);
     for (let i = -4; i <= 4; i++)
         equipment(P, 'hull', 'Detail', box(.027, .10, .21), i * .29, 1.46, 3.79, -.26);

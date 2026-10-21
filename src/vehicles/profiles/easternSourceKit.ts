@@ -58,11 +58,14 @@ export function antenna(P: TankBuilderPort, x: number, floor: number, z: number,
 
 export function smokeBank(P: TankBuilderPort, side: number, x: number,
   y: number, z: number, count: number, spacing = .16): void {
+  // 2026-10-19 (owner float sweep): each mouth cap stood 4 mm proud of its tube and the outer tubes 41-142 mm clear of
+  // everything; the cap sits in the mouth and a mounting rail runs through the bank's tubes from the seated first one
   for (let i = 0; i < count; i++) {
     const xx = side * (x + i * .055), zz = z - i * spacing;
     equipment(P, 'turret', 'Detail', markSmokeTube(cylZ(.062, .28, P.q ? 16 : 9)), xx, y, zz, -.55, side * .30);
-    equipment(P, 'turret', 'Dark', cylZ(.048, .012, 12), xx + side * .042, y + .08, zz + .12, -.55, side * .30);
+    equipment(P, 'turret', 'Dark', cylZ(.048, .012, 12).translate(0, 0, .136), xx, y, zz, -.55, side * .30);
   }
+  if (count > 1) brace(P, 'turret', [side * x, y - .03, z], [side * (x + (count - 1) * .055), y - .03, z - (count - 1) * spacing], .04, .04);
 }
 
 export function deckGrille(P: TankBuilderPort, x: number, y: number, z: number,

@@ -1,8 +1,11 @@
 // Independently authored SM front applique from local-source scalar planes.
 // No source vertex/index data, source assets, or donor-family geometry.
 import { sectionSolid } from './sectionSolid.ts';
+import { KIT } from './kit.ts';
 import { markEraHitFaces, markEraFurniture } from './eraHitFaces.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+
+const { box } = KIT;
 
 type PointYZ = readonly [y: number, z: number];
 type Plate = {
@@ -47,6 +50,14 @@ function forwardCourse(P: TankBuilderPort): void {
     [.827125967, 3.423683405], [.830116928, 3.413158178],
     [.898902535, 3.440521717], [.895413637, 3.451048136],
   ]);
+}
+
+function ribTabs(P: TankBuilderPort): void {
+  // 2026-10-19 (owner float sweep): the forward course's air stays, but the rib hung in it with nothing holding it;
+  // four short tabs carry it from the covers' lower edge.
+  // 2026-10-21 (float-gaps 230): each tab is a closed unindexed solid like every other fixture here, and the tabs are
+  // emitted after the source fixtures so those keep their order.
+  for (const x of [-.6, -.2, .2, .6]) P.addEquipment('hullDetail', box(.03, .012, .016).toNonIndexed(), x, .9005, 3.437);
 }
 
 function rearCenterCovers(P: TankBuilderPort): void {
@@ -198,4 +209,5 @@ export function addT90SMFrontEra(P: TankBuilderPort): void {
   panelRibs(P);
   rearLatches(P);
   edgeUprights(P);
+  ribTabs(P);
 }
