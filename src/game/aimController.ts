@@ -1,6 +1,6 @@
 import type { AerialView } from '../sim/aerialCombat.ts';
 import { usesLauncherMuzzles, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
-import { magazineIndicator } from '../sim/magazineIndicator.ts';
+import { magazineFeedRounds, magazineIndicator } from '../sim/magazineIndicator.ts';
 import type { MagazineIndicator } from '../sim/magazineIndicator.ts';
 import * as THREE from 'three';
 import { queryAimArmor, tankPoseFromState, traceTank } from '../sim/armor.ts';
@@ -45,7 +45,7 @@ interface AimSpec {
   hydropneumaticAim?: HydropneumaticAim;
   dims: { heightM: number };
   armor: ArmorModel & { boundingRadiusM: number };
-  gun: { fixedLaunchCanisters?: boolean; baseAccuracy: number; shells: DamageShellSpec[]; launcherMuzzles?: readonly { x: number; y: number; z: number }[] };
+  gun: { fixedLaunchCanisters?: boolean; baseAccuracy: number; shells: DamageShellSpec[]; launcherMuzzles?: readonly { x: number; y: number; z: number }[]; launcherSalvo?: { rounds: number } | null };
 }
 
 interface ArmorTraceHit {
@@ -100,8 +100,9 @@ export interface AimFrame {
   atGunLimit?: boolean;
   gunLimitSpec: boolean;
   reload: { t: number; totalS: number; kind?: string };
-  /** The reticle's multi-round indicator (sim/magazineIndicator): cannon magazine or guided rack salvo group. */
-  magazine: { rounds: number; capacity: number; launcher: boolean };
+  /** The reticle's multi-round indicator (sim/magazineIndicator): cannon magazine or guided rack salvo group.
+   * `feed` is how many of its `capacity` rounds stowage can still load (owner 2026-10-17, out of ammo). */
+  magazine: { rounds: number; capacity: number; launcher: boolean; feed?: number };
   shellSlot: number;
   ammoSelectionPending?: boolean;
   shells: ShellCard[];
@@ -320,11 +321,17 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     frame.reload.kind = combat.reload.kind;
     // round 41: one derivation for cannon magazines AND guided rack salvos (owner 2026-09-22: "missile tanks that
     // fire twice ... need to show the autoloader ammo indicator even if they fire on their own").
-    const indicator = magazineIndicator(combat, player.spec, magazineIndicatorScratch);
-    frame.magazine.rounds = indicator?.rounds || 0;
-    frame.magazine.capacity = indicator?.capacity || 0;
-    frame.magazine.launcher = indicator?.launcher === true;
     writeAmmoFrame(frame, player);
+    const indicator = magazineIndicator(combat, player.spec, magazineIndicatorScratch);
+    const capacity = indicator?.capacity || 0;
+    // Owner 2026-10-17 (out of ammo): a group never shows more ready rounds than stowage can feed it — a full magazine
+    // reload refills to capacity whatever is stowed. The shell cards carry the ruleset's unlimited-rounds mark.
+    const unlimited = frame.shells[combat.shellSlot]?.unlimited === true;
+    const feed = Math.min(capacity, magazineFeedRounds(combat, player.spec, indicator, unlimited));
+    frame.magazine.rounds = Math.min(indicator?.rounds || 0, feed);
+    frame.magazine.capacity = capacity;
+    frame.magazine.feed = feed;
+    frame.magazine.launcher = indicator?.launcher === true;
     frame.zoom = rig.mode === 'SNIPER' ? rig.zoom : 1;
   }
 

@@ -46,7 +46,7 @@ function pitchingMount(tank,id){
   if(id==='t90a_vladimir'){
     const cloth=tank.root.getObjectByName('gunMountCanvasSkin');
     assert.ok(cloth?.isMesh&&cloth.geometry.attributes.position.count>0,`${id}: actual separately finished boot`);
-    assert.equal(cloth.parent,tank.root.getObjectByName('rig_gun'),'continuous boot keeps its original pitching owner');
+    assert.ok(cloth.parent === tank.root.getObjectByName('rig_gun'),'continuous boot keeps its original pitching owner');
     parts.push(cloth);
   }
   return parts;
@@ -80,7 +80,7 @@ function assertWheelInstances(tank,source,id) {
   // The moving shoe course itself is independently located and counted.
   const shoes=tank.root.getObjectByName('gearTrackPads');
   assert.ok(shoes?.isInstancedMesh&&shoes.count>=80,`${id}: one actual moving track shoe course`);
-  assert.equal(tank.root.getObjectByName('gearTrackInnerLinks'),undefined,`${id}: no duplicate inner/static shoe course`);
+  assert.ok(tank.root.getObjectByName('gearTrackInnerLinks') === undefined,`${id}: no duplicate inner/static shoe course`);
   assert.ok(layouts.length>=12,`${id}: actual road-wheel instances were located`);
   for(const side of [-1,1])for(const z of source.wheels) {
     assert.ok(layouts.some(p=>Math.sign(p.x)===side&&Math.abs(p.z-z)<.045),`${id}: native wheel station ${side}/${z}`);
@@ -200,7 +200,7 @@ for(const [id,source] of Object.entries(SOURCE)) {
     near(all.max.y,source.height,.095,`${id}: measured roof-equipment height`);
     near(all.min.z,source.rear,.10,`${id}: uncompressed rear equipment extent`);
     const yaw=tank.root.getObjectByName('rig_turret'),pitch=tank.root.getObjectByName('rig_gun'),muzzle=tank.root.getObjectByName('rig_muzzle');
-    assert.equal(pitch.parent,yaw,`${id}: native articulated barrel in turret`);
+    assert.ok(pitch.parent === yaw,`${id}: native articulated barrel in turret`);
     const pivot=yaw.getWorldPosition(new THREE.Vector3()),before=muzzle.getWorldPosition(new THREE.Vector3()).sub(pivot);
     yaw.rotation.y=Math.PI/2;tank.root.updateMatrixWorld(true);
     const after=muzzle.getWorldPosition(new THREE.Vector3()).sub(pivot);

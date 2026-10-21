@@ -1,5 +1,5 @@
 import { isRapidFireHit, weaponHitKind, type WeaponHitIdentity } from '../game/weaponHitKind.ts';
-export interface ReadoutHit extends WeaponHitIdentity {
+interface ReadoutHit extends WeaponHitIdentity {
   readonly shellId?: number;
   readonly targetId: string;
   readonly attackerId?: string | null;

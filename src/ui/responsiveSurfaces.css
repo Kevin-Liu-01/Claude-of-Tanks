@@ -496,7 +496,11 @@ body.cot-touch-layout[data-cot-width='phone'] .cot-special{
 }
 body.cot-touch-layout[data-cot-width='compact'] .cot-minimap,
 body.cot-touch-layout[data-cot-width='phone'] .cot-minimap{width:92px!important;height:92px!important}
-body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch-aim .aimhint::after{content:' · LANDSCAPE RECOMMENDED'}
+/* r10e (the notices critic: the hint ran under the speedometer and the left FIRE button on a 360 px phone): the advice on
+   its own line, right-aligned under the hint, which stays where it was (the scope's readouts rest over it), in a tighter
+   spacing that keeps both lines clear of the left controls */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch-aim .aimhint{text-align:right;bottom:calc(31% - 12px)}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch-aim .aimhint::after{content:'LANDSCAPE RECOMMENDED';display:block;margin-top:2px;font-size:7px;letter-spacing:.08em}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch .mobile-chrome{top:calc(max(8px,env(safe-area-inset-top)) + 48px)}
 body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-minimap{
   top:calc(max(8px,env(safe-area-inset-top)) + 100px);
@@ -573,6 +577,9 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
   right:max(10px,env(safe-area-inset-right));bottom:calc(max(28px,env(safe-area-inset-bottom)) + 274px);gap:4px;
 }
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-shell{width:44px;height:48px}
+/* a 48 px tall slot draws its shell smaller, so the tip stays clear of the top edge (critic r4b) and 3 px from the corner
+   count, standing 1 px higher so its foot keeps 3 px from the label (r6: 2.7 px to the count) */
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-shell:not(.wide) canvas{bottom:12px;transform:translateX(-50%) scale(.64)}
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-cons{
   right:max(14px,env(safe-area-inset-right));bottom:calc(max(28px,env(safe-area-inset-bottom)) + 112px);gap:7px;
 }

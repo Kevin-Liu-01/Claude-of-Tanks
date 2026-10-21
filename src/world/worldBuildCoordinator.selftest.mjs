@@ -85,7 +85,7 @@ assert.equal(coordinator.cache.size, 3, 'foreground demand may temporarily excee
 coordinator.enforceCacheBudget();
 assert.equal(coordinator.cache.size, 2);
 assert.equal(coordinator.lastRelease.id, 'verdant');
-assert.equal(verdant.group.parent, null, 'eviction detaches the released scene graph');
+assert.ok(verdant.group.parent === null, 'eviction detaches the released scene graph');
 assert.deepEqual(disposedBindings, ['verdant'], 'eviction releases external callbacks exactly once');
 // Retaining one global closure per visited map defeats the two-world cache
 // even when GPU disposal receipts look healthy. Exercise the real registry.
@@ -303,15 +303,15 @@ async function cancelledFinalYieldDisposesCompletedWorld() {
   pacing.resolve();
   assert.deepEqual(await boundedResult(pending), { value: null });
   assert.ok(completedWorld, 'final yield returns normally so completed ownership exists for disposal');
-  assert.equal(completedWorld.group.parent, null);
+  assert.ok(completedWorld.group.parent === null);
   assert.equal(externalDisposals, 1);
   assert.deepEqual(disposals.sort(), ['offTree:geometry', 'offTree:material', 'offTree:texture',
     'own:geometry', 'own:material', 'own:texture'].sort());
   assert.deepEqual(new Set(f.shadowReleases), new Set([own.material, offTree.material]));
   assert.equal(f.renderListReleases, 1);
   assert.equal(f.scene.children.length, 1);
-  assert.equal(attachedRoot.parent, f.scene);
-  assert.equal(cachedWorld.group.parent, null, 'detached cached resources are preserved too');
+  assert.ok(attachedRoot.parent === f.scene);
+  assert.ok(cachedWorld.group.parent === null, 'detached cached resources are preserved too');
   assert.deepEqual([...f.coordinator.cache.keys()], ['unrelated-dormant']);
   assert.equal(f.coordinator.stats.completed, 0);
   assert.equal(f.coordinator.stats.cancelled, 1);
@@ -526,7 +526,7 @@ for (const action of ['promote', 'cancel-mid', 'cancel-final']) {
     assert.equal(f.coordinator.stats.active, null);
     if (action === 'cancel-final') {
       assert.deepEqual(events, ['assemble'], 'already admitted final assembly creates the complete disposal owner');
-      assert.equal(assembledWorld.group.parent, null);
+      assert.ok(assembledWorld.group.parent === null);
       assert.equal(disposedWorlds, 1);
     } else {
       assert.deepEqual(events, ['admitted-slice'], 'cancellation stops at the next construction boundary before final assembly');

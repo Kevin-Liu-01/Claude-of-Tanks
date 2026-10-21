@@ -13,14 +13,24 @@
                       carries no markers and censuses ZERO by design.
                     - contiguity: top-down orthographic render of body skin
                       and ordinary fittings on a magenta key, downsampled to ~6 cm
-                      cells; uncovered cells NOT connected to the frame border
-                      are raw enclosed sky cells. Approved source openings are
+                      cells on the HULL-ANCHORED lattice (tools/contig-grid.mjs:
+                      cell edges at fixed multiples of 6 cm in the vehicle frame,
+                      re-binned at every sub-cell phase, so an add-on that moves
+                      the AABB cannot hide or reveal a gap); uncovered cells NOT
+                      connected to the frame border are raw enclosed sky cells,
+                      and a hole at another phase more than one cell from every
+                      primary hole is a phase-only hole. Approved source openings are
                       classified separately; unexpected holes must be zero. FrontSide
                       materials mean reversed-winding slabs read as holes —
                       the winding audit is built in. Explicitly separated
                       open-lattice equipment is excluded from this scan only:
                       its exterior stand-off air is present in source models.
                     -> window.__STANDARD + __STANDARD_READY
+                    Audit-only switches (tools/contig-phase-audit.mjs; the gate
+                    never passes them): legacy=1 adds the pre-227 AABB-framed
+                    scan as legacyHoles; neighbors=1 names the meshes walling
+                    each gap; addonX=<m> / addonZ=<m> seed the 226 defect class
+                    (a 1 cm add-on that moves the AABB by that much).
 
      ?fixture=fittings  KIT.fittings library self-test (no tank, no profile
                     edits): builds every fitting + variants standalone and
@@ -38,11 +48,9 @@ import { ensureInteriorFills, hasInteriorFills } from '/src/vehicles/interiorFil
 import { FITTINGS } from '/src/vehicles/profiles/kit.ts';
 import { isOpenLatticeMesh } from './standard-continuity-policy.mjs';
 import { censusEquipment } from './source-equipment-policy.mjs';
+import { anchoredContigFrame, legacyContigFrame, contigScan, LEGACY_CONTIG_FRAMING } from './contig-grid.mjs';
 
 const params = new URLSearchParams(location.search);
-const CELL_M = 0.06;   // §B2 scan grid (~6 cm)
-const SUB = 3;         // subpixels per cell edge (thin rails survive sampling)
-const MARGIN_CELLS = 2;
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: 'high-performance' });
 renderer.setPixelRatio(1);
@@ -102,86 +110,26 @@ function renderedAABB(root) {
   return bb;
 }
 
-function downsampleCoverage(buf, gridW, gridH, pw) {
-  // covered = not the magenta key (unlit black meshes still separate cleanly)
-  const covered = new Uint8Array(gridW * gridH);
-  let coveredCells = 0;
-  for (let gy = 0; gy < gridH; gy++) {
-    for (let gx = 0; gx < gridW; gx++) {
-      let hit = 0;
-      for (let sy = 0; sy < SUB && !hit; sy++) {
-        for (let sx = 0; sx < SUB && !hit; sx++) {
-          const px = gx * SUB + sx, py = gy * SUB + sy;
-          const k = (py * pw + px) * 4;
-          if (Math.abs(buf[k] - 255) + buf[k + 1] + Math.abs(buf[k + 2] - 255) > 60) hit = 1;
-        }
-      }
-      covered[gy * gridW + gx] = hit;
-      coveredCells += hit;
-    }
-  }
-  return { covered, coveredCells };
-}
+const isScanExcluded = (o) => !isColorWriting(o) || /shadow/i.test(o.name || '') || isOpenLatticeMesh(o);
 
-function exteriorCoverage(covered, gridW, gridH) {
-  // flood fill outside-background from the border; leftover uncovered = holes
-  const outside = new Uint8Array(gridW * gridH);
-  const stack = [];
-  const push = (gx, gy) => {
-    if (gx < 0 || gy < 0 || gx >= gridW || gy >= gridH) return;
-    const i = gy * gridW + gx;
-    if (covered[i] || outside[i]) return;
-    outside[i] = 1;
-    stack.push(gx, gy);
-  };
-  for (let gx = 0; gx < gridW; gx++) { push(gx, 0); push(gx, gridH - 1); }
-  for (let gy = 0; gy < gridH; gy++) { push(0, gy); push(gridW - 1, gy); }
-  while (stack.length) {
-    const gy = stack.pop(), gx = stack.pop();
-    push(gx + 1, gy); push(gx - 1, gy); push(gx, gy + 1); push(gx, gy - 1);
-  }
-  return outside;
-}
-
-function enclosedVoidCluster(i, covered, outside, seen, samples, gridW, gridH, x0, x1, z0, z1) {
-  let cells = 0, sx = 0, sy = 0;
-  const st = [i];
-  seen[i] = 1;
-  while (st.length) {
-    const j = st.pop();
-    const gx = j % gridW, gy = (j / gridW) | 0;
-    cells++; sx += gx; sy += gy;
-    samples.push({ gx, gy, x:x0+(gx+.5)*(x1-x0)/gridW, z:z1-(gy+.5)*(z1-z0)/gridH });
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const nx = gx + dx, ny = gy + dy;
-      if (nx < 0 || ny < 0 || nx >= gridW || ny >= gridH) continue;
-      const n = ny * gridW + nx;
-      if (covered[n] || outside[n] || seen[n]) continue;
-      seen[n] = 1; st.push(n);
-    }
-  }
-  return { cells, sx, sy };
-}
-
-// Top-down coverage raster + enclosed-void (hole) count on the ~6 cm grid.
-function topDownScan(root) {
+// Top-down coverage raster + enclosed-void (hole) scan on the hull-anchored ~6 cm lattice (tools/contig-grid.mjs).
+// One render: the pixel lattice is anchored too, so every sub-cell phase is a re-binning of the same pixels.
+function topDownScan(root, framing) {
   const bb = renderedAABB(root);
   if (bb.isEmpty()) return { error: 'empty AABB' };
   const hidden = [];
   root.traverse((o) => {
-    if ((o.isMesh || o.isInstancedMesh)
-        && (!isColorWriting(o) || /shadow/i.test(o.name || '') || isOpenLatticeMesh(o))
-        && o.visible) { o.visible = false; hidden.push(o); }
+    if ((o.isMesh || o.isInstancedMesh) && isScanExcluded(o) && o.visible) { o.visible = false; hidden.push(o); }
   });
-  const margin = MARGIN_CELLS * CELL_M;
-  const x0 = bb.min.x - margin, x1 = bb.max.x + margin;
-  const z0 = bb.min.z - margin, z1 = bb.max.z + margin;
-  const gridW = Math.max(4, Math.ceil((x1 - x0) / CELL_M));
-  const gridH = Math.max(4, Math.ceil((z1 - z0) / CELL_M));
-  const pw = gridW * SUB, ph = gridH * SUB;
+  const origin = new THREE.Vector3().setFromMatrixPosition(root.matrixWorld);
+  const plan = { minX: bb.min.x, maxX: bb.max.x, minZ: bb.min.z, maxZ: bb.max.z };
+  const frame = framing === LEGACY_CONTIG_FRAMING ? legacyContigFrame(plan)
+    : anchoredContigFrame(plan, { originX: origin.x, originZ: origin.z });
+  const { x0, x1, z0, z1, pw, ph } = frame;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xff00ff);
+  const parent = root.parent;
   scene.add(root);
   const cam = new THREE.OrthographicCamera(
     -(x1 - x0) / 2, (x1 - x0) / 2, (z1 - z0) / 2, -(z1 - z0) / 2, 0.1, bb.max.y - bb.min.y + 20);
@@ -199,30 +147,49 @@ function topDownScan(root) {
   renderer.setRenderTarget(null);
   target.dispose();
   scene.remove(root);
+  if (parent) parent.add(root);
   for (const o of hidden) o.visible = true;
 
-  const { covered, coveredCells } = downsampleCoverage(buf, gridW, gridH, pw);
-  const outside = exteriorCoverage(covered, gridW, gridH);
-  // cluster the enclosed voids for actionable coordinates (top 3 by size)
-  const seen = new Uint8Array(gridW * gridH);
-  const clusters = [];
-  let holeCells = 0;
-  const samples = [];
-  for (let i = 0; i < gridW * gridH; i++) {
-    if (covered[i] || outside[i] || seen[i]) continue;
-    const { cells, sx, sy } = enclosedVoidCluster(i, covered, outside, seen, samples, gridW, gridH, x0, x1, z0, z1);
-    holeCells += cells;
-    clusters.push({
-      cells,
-      // grid -> world: +x is screen right; camera up = world -z, and
-      // readRenderTargetPixels row 0 is the screen BOTTOM = world +z side,
-      // so gy counts DOWN from z1.
-      x: +(x0 + ((sx / cells) + 0.5) * (x1-x0)/gridW).toFixed(2),
-      z: +(z1 - ((sy / cells) + 0.5) * (z1-z0)/gridH).toFixed(2),
-    });
+  // covered = not the magenta key (unlit black meshes still separate cleanly). readRenderTargetPixels row 0 is the
+  // screen BOTTOM = world +z (camera up = world -z): the contig-grid row convention, rows counting DOWN from z1.
+  const hit = new Uint8Array(pw * ph);
+  for (let i = 0, k = 0; i < pw * ph; i++, k += 4) {
+    hit[i] = Math.abs(buf[k] - 255) + buf[k + 1] + Math.abs(buf[k + 2] - 255) > 60 ? 1 : 0;
   }
-  clusters.sort((a, b) => b.cells - a.cells);
-  return { holeCells, samples, bounds:{x0,x1,z0,z1}, clusters: clusters.slice(0, 3), coveredCells, gridW, gridH, cellM: CELL_M };
+  return contigScan(hit, frame);
+}
+
+// Audit only: the meshes walling each gap, from vertical rays just outside its plan extent.
+function gapNeighbors(root, gaps) {
+  root.updateMatrixWorld(true);
+  const bb = renderedAABB(root);
+  const ray = new THREE.Raycaster();
+  const down = new THREE.Vector3(0, -1, 0);
+  const named = (o) => { for (let p = o; p && p !== root; p = p.parent) if (p.name) return p.name; return '(unnamed)'; };
+  return gaps.map((gap) => {
+    const probes = [['-x', gap.x - gap.w / 2 - 0.04, gap.z], ['+x', gap.x + gap.w / 2 + 0.04, gap.z],
+      ['-z', gap.x, gap.z - gap.d / 2 - 0.04], ['+z', gap.x, gap.z + gap.d / 2 + 0.04]];
+    const walls = probes.map(([side, x, z]) => {
+      ray.set(new THREE.Vector3(x, bb.max.y + 1, z), down);
+      const hit = ray.intersectObject(root, true).find((h) => (h.object.isMesh || h.object.isInstancedMesh)
+        && effectivelyVisible(h.object, root) && !isScanExcluded(h.object));
+      return hit ? { side, mesh: named(hit.object), y: +hit.point.y.toFixed(3) } : { side, mesh: null };
+    });
+    return { ...gap, walls };
+  });
+}
+
+// Audit only: a 1 cm colour-writing cube just beyond the AABB on one axis (the 226 class: a longer gun, a proud
+// spare-link run). It closes nothing; it only moves the frame.
+function addProbeAddon(root, axis, offset) {
+  const bb = renderedAABB(root);
+  const cube = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.01, 0.01), new THREE.MeshBasicMaterial({ color: 0x808080 }));
+  cube.name = 'contigProbeAddon';
+  const c = bb.getCenter(new THREE.Vector3());
+  cube.position.copy(root.worldToLocal(new THREE.Vector3(
+    axis === 'x' ? bb.max.x + offset - 0.005 : c.x, bb.max.y - 0.005, axis === 'z' ? bb.max.z + offset - 0.005 : c.z)));
+  root.add(cube);
+  root.updateMatrixWorld(true);
 }
 
 // --------------------------------------------------------------------------
@@ -237,8 +204,15 @@ async function runTank(id) {
   tank.root.updateMatrixWorld(true);
   pinLODs(tank.root);
   const census = censusEquipment(tank.root);
+  for (const axis of ['x', 'z']) {
+    const offset = Number(params.get(`addon${axis.toUpperCase()}`));
+    if (params.has(`addon${axis.toUpperCase()}`) && Number.isFinite(offset) && offset > 0) addProbeAddon(tank.root, axis, offset);
+  }
   const holes = topDownScan(tank.root);
-  window.__STANDARD = { id, census, holes, interiorFillRecordLoaded: hasInteriorFills(id), ms: Math.round(performance.now() - t0), quality };
+  const audit = {};
+  if (params.get('legacy') === '1') audit.legacyHoles = topDownScan(tank.root, LEGACY_CONTIG_FRAMING);
+  if (params.get('neighbors') === '1' && !holes.error) audit.gapWalls = gapNeighbors(tank.root, holes.gaps);
+  window.__STANDARD = { id, census, holes, ...audit, interiorFillRecordLoaded: hasInteriorFills(id), ms: Math.round(performance.now() - t0), quality };
   window.__STANDARD_READY = true;
 }
 
@@ -276,10 +250,10 @@ function geoHash(group) {
   return total.toString(16);
 }
 
-function fixtureScan(group) {
+function fixtureScan(group, framing) {
   const holder = new THREE.Group();
   holder.add(group);
-  return topDownScan(holder);
+  return topDownScan(holder, framing);
 }
 
 function runContinuityFixtures(results, failures) {
@@ -311,6 +285,48 @@ function runContinuityFixtures(results, failures) {
     for (const object of group.children) object.geometry.dispose();
     material.dispose();
   }
+  runPhaseFixtures(results, failures);
+}
+
+// The 226 defect class on the GPU path: a 6.5 cm slot the primary phase misses (z 0.032..0.097 against lattice
+// samples at k*6 + 1/3/5 cm) must still fail as a phase-only hole, and an add-on that only moves the AABB must not
+// change any of it.
+function runPhaseFixtures(results, failures) {
+  const material = new THREE.MeshBasicMaterial({ color: 0x808080 });
+  const slotted = (addonZ) => {
+    const group = new THREE.Group();
+    const box = (xa, xb, za, zb) => {
+      const object = new THREE.Mesh(new THREE.BoxGeometry(xb - xa, 0.12, zb - za), material);
+      object.position.set((xa + xb) / 2, 0.2, (za + zb) / 2);
+      object.userData.combatHitboxRole = 'armor';
+      group.add(object);
+    };
+    box(-1, 1, 0.097, 1); box(-1, 1, -1, 0.032); box(-1, -0.6, 0.032, 0.097); box(0.6, 1, 0.032, 0.097);
+    if (addonZ !== null) box(-0.005, 0.005, 1 + addonZ - 0.01, 1 + addonZ);
+    return group;
+  };
+  // The frame may grow by whole lattice cells as the add-on reaches past a lattice line; what it finds may not change.
+  const signature = (scan) => JSON.stringify([scan.holeCells, scan.phaseOnlyCells, scan.phases, scan.gaps]);
+  const onLattice = (v) => Math.abs(v / 0.06 - Math.round(v / 0.06)) < 1e-6;
+  let reference = null;
+  for (const addonZ of [null, 0.004, 0.017, 0.031, 0.046]) {
+    const group = slotted(addonZ);
+    const scan = fixtureScan(group);
+    const label = `contig-phase:slot${addonZ === null ? '' : `+addon${addonZ}`}`;
+    if (scan.framing !== 'hull-anchored' || ![scan.bounds.x0, scan.bounds.x1, scan.bounds.z0, scan.bounds.z1].every(onLattice))
+      failures.push(`${label}: scan is not on the hull-anchored lattice`);
+    if (scan.holeCells !== 0) failures.push(`${label}: the primary phase should miss this slot (${scan.holeCells})`);
+    if (!(scan.phaseOnlyCells > 0) || scan.phaseOnlyGaps.length !== 1
+        || Math.abs(scan.phaseOnlyGaps[0].z - 0.065) > 0.04 || scan.phaseOnlyGaps[0].gap < 0.05 || scan.phaseOnlyGaps[0].gap > 0.09)
+      failures.push(`${label}: the hidden 6.5 cm slot was not reported as one phase-only gap`);
+    const sig = signature(scan);
+    if (reference === null) reference = sig;
+    else if (sig !== reference) failures.push(`${label}: an AABB-only add-on changed the hole scan`);
+    results.push({ label, meshes: group.children.length, hash: geoHash(group), coveredCells: scan.coveredCells,
+      holeCells: scan.holeCells, phaseOnlyCells: scan.phaseOnlyCells, legacyHoleCells: fixtureScan(group, LEGACY_CONTIG_FRAMING).holeCells });
+    for (const object of group.children) object.geometry.dispose();
+  }
+  material.dispose();
 }
 
 async function runFixture() {

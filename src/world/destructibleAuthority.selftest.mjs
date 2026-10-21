@@ -250,9 +250,9 @@ for (const mode of ['solo', 'authoritative event']) {
       }
     }
     for (const [mesh, geometry, buffer, material] of buffers) {
-      assert.equal(mesh.geometry, geometry, 'no replacement geometry across destruction/rematches');
+      assert.ok(mesh.geometry === geometry, 'no replacement geometry across destruction/rematches');
       assert.equal(mesh.instanceMatrix.array, buffer, 'fixed instance capacity across rematches');
-      assert.equal(mesh.material, material, 'existing shared material reused across rematches');
+      assert.ok(mesh.material === material, 'existing shared material reused across rematches');
     }
   } finally { f.dispose(); }
 }

@@ -140,6 +140,8 @@ interface TraceStep {
   specId: string;
   distM: number;
   cause: string;
+  /** (ac130-fx-228) the kill's platform when not the player's vehicle: 'ac130', 'drone' (the authority's sim/aerialCombat.ts killSourceOf) */
+  source?: string;
 }
 
 interface AwardedTier { id: AchievementId; tier: number }
@@ -150,6 +152,8 @@ export interface ServiceBattle {
   mode: string;
   mapId: string;
   vehicleId: string;
+  /** (ac130-fx-228 r3) the player flew the AC-130 that battle (its end roster's own row): the row names the aircraft */
+  aircraft?: boolean;
   kills: number;
   damage: number;
   durationS: number;
@@ -331,7 +335,8 @@ function sanitizeBattle(value: RuntimeValue): ServiceBattle | null {
   const trace: TraceStep[] = [];
   for (const entry of Array.isArray(source.trace) ? source.trace.slice(0, TRACE_LIMIT) : []) {
     const step = recordOf(entry);
-    if (step) trace.push({ t: Math.max(0, finite(step.t)), specId: text(step.specId), distM: count(step.distM), cause: text(step.cause) });
+    if (step) trace.push({ t: Math.max(0, finite(step.t)), specId: text(step.specId), distM: count(step.distM), cause: text(step.cause),
+      ...(step.source === 'ac130' || step.source === 'drone' ? { source: step.source } : {}) });
   }
   return {
     at: finite(source.at),
@@ -339,6 +344,7 @@ function sanitizeBattle(value: RuntimeValue): ServiceBattle | null {
     mode: text(source.mode) || 'standard',
     mapId: text(source.mapId),
     vehicleId: text(source.vehicleId),
+    ...(source.aircraft === true ? { aircraft: true } : {}),
     kills: count(source.kills),
     damage: count(source.damage),
     durationS: count(source.durationS),
@@ -597,7 +603,8 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
       const shot = battle.pending.find((entry) => !entry.hit && (shellId == null || entry.id == null || entry.id === shellId));
       if (shot && freshRound.hit) { shot.hit = true; battle.aimedHits++; }
       if (event.destroyed === true) {
-        battle.killShots.set(target, { distM: Math.max(0, finite(event.flightDistM)), fresh: !battle.damaged.has(target), drone: event.shellName === 'FPV shaped charge' });
+        // (ac130-fx-228) the drone's strike by the authority's source, not by the warhead's name
+        battle.killShots.set(target, { distM: Math.max(0, finite(event.flightDistM)), fresh: !battle.damaged.has(target), drone: event.attackerSource === 'drone' });
       }
       settleShots(ctx.clockS());
     }
@@ -652,7 +659,9 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     if (aerial === 'gunship' && battle.kills >= GUNSHIP_ACE_KILLS) award('gunship_ace');
     if (aerial === 'drone' && battle.kills >= DRONE_ACE_KILLS) award('drone_ace');
     if (battle.trace.length < TRACE_LIMIT) {
-      battle.trace.push({ t: Math.max(0, now), specId: text(event.specId), distM: Math.round(distM), cause: event.cause === 'ammorack' ? 'ammorack' : shot?.drone ? 'drone' : text(event.cause) || 'shot' });
+      const source = event.source === 'ac130' || event.source === 'drone' ? event.source : shot?.drone ? 'drone' : null;
+      battle.trace.push({ t: Math.max(0, now), specId: text(event.specId), distM: Math.round(distM),
+        cause: event.cause === 'ammorack' ? 'ammorack' : source === 'drone' ? 'drone' : text(event.cause) || 'shot', ...(source ? { source } : {}) });
     }
   });
 
@@ -755,8 +764,11 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     addUnique(store.nations, ctx.playerNation(), 64);
     addUnique(store.modes, mode, 32);
     const achievements = evaluateAchievements(store, now);
+    // (ac130-fx-228 r3, the engineering critic: an AC-130 battle's row showed the garage tank beside its kills) the end
+    // roster's own row says the player flew the gunship (state.ts / battlePresentation.ts resultRoster)
+    const aircraft = ownRow?.aircraft === true;
     store.history.unshift({
-      at: now, result, mode, mapId, vehicleId: tracker.vehicleId,
+      at: now, result, mode, mapId, vehicleId: tracker.vehicleId, ...(aircraft ? { aircraft: true } : {}),
       kills: tracker.kills, damage: Math.round(tracker.damage), durationS: Math.round(durationS), survived: alive,
       shots: tracker.aimedShots, hits: tracker.aimedHits, bestChain: tracker.bestChain,
       medals, achievements, trace: tracker.trace,

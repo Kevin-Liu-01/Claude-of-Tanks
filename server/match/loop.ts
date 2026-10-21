@@ -6,7 +6,7 @@
  */
 import { createHistogram, type Histogram } from './metrics.ts';
 
-export interface FixedStepLoopOptions {
+interface FixedStepLoopOptions {
   tickMs?: number;
   /** Ticks run per wake-up at most; more than this is a stall and the backlog is dropped. */
   maxCatchUpTicks?: number;

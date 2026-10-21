@@ -107,15 +107,21 @@ function capturePair({ name, angle, baseCamera }) {
   try {
     if (!callbacks.length) throw new Error('no candidate static merged meshes found');
     if (window.__DEBUG.game.phase !== 'garage') throw new Error('expected actual Garage');
-    // CRT onBeforeRender samples performance.now(), even for render(0). Keep
-    // its original scheduling side effects but compare one identical visible
-    // animation phase, without hiding screens or disabling any post pass.
-    for (const name of ['garage_battle_archive_screen', 'garage_battle_archive_screen_secondary']) {
-      const mesh = garageDressing.group.getObjectByName(name), uniform = mesh?.material?.uniforms?.uTime;
-      if (!mesh || !uniform || typeof uniform.value !== 'number') throw new Error(`missing animated CRT: ${name}`);
+    // The slideshow's onBeforeRender may start its crossfade between the two
+    // compared renders. Keep its scheduling side effects but pin one identical
+    // visible phase (both images and the crossfade), without hiding the panel
+    // or disabling any post pass.
+    for (const name of ['garage_slideshow_screen']) {
+      const mesh = garageDressing.group.getObjectByName(name), uniforms = mesh?.material?.uniforms;
+      const uniform = uniforms?.uTransition;
+      if (!mesh || !uniform || typeof uniform.value !== 'number') throw new Error(`missing slideshow: ${name}`);
       const before = mesh.onBeforeRender, time = uniform.value;
+      const imageA = uniforms.uImageA.value, imageB = uniforms.uImageB.value;
       clockCallbacks.push({ mesh, before, uniform, time });
-      mesh.onBeforeRender = function (...args) { before.apply(this, args); uniform.value = time; };
+      mesh.onBeforeRender = function (...args) {
+        before.apply(this, args);
+        uniform.value = time; uniforms.uImageA.value = imageA; uniforms.uImageB.value = imageB;
+      };
     }
     result.pinnedAnimationClocks = clockCallbacks.map(({ mesh, time }) => ({ name: mesh.name, time }));
     result.eligibleMeshes = callbacks.map(({ mesh }) => ({ name: mesh.name, id: mesh.uuid,

@@ -6,7 +6,7 @@ import type { ModuleId } from '../sim/moduleCatalog.ts';
 import type { getSpec } from '../vehicles/specs.ts';
 import type { createTank } from '../vehicles/fleetFactory.ts';
 
-export type DamageLabSpec = ReturnType<typeof getSpec>;
+type DamageLabSpec = ReturnType<typeof getSpec>;
 export type DamageLabVisual = Pick<ReturnType<typeof createTank>, 'root' | 'stripEra' | 'resetEra' | 'setTrackState' | 'setWeaponModuleState' | 'setDestroyed' | 'resetForGaragePresentation' | 'syncFromState' | 'setGroundSampler'>;
 export type DamageAction = 'damage' | 'disable' | 'remove' | 'detonate' | 'repair';
 export interface DamageTarget {

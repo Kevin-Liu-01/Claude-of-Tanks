@@ -2763,7 +2763,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * Advance the fx timeline by one dt: studio shells fly (terrain impacts
    * resolve through the real event path), per-actor continuous emitters run
    * (engine smoke, burning refresh), then the fx system ages by dt. dt=0
-   * still refreshes tracer ribbons/lights so frozen frames render correctly.
+   * still refreshes the projectile tracers and lights so frozen frames render correctly.
    * @param {number} dt seconds (already time-scaled)
    */
   function emitDamageSmoke(birthOffset: number): void {
@@ -4014,7 +4014,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       lighting.updateFrustums();
       camera.updateMatrixWorld(true);
       lighting.update(true); // every cascade fresh — deterministic capture
-      stepFx(0);             // rebuild tracer ribbons/lights for this camera
+      stepFx(0);             // rebuild the projectile tracers and lights for this camera
       cinema?.setQuality('capture'); // picture: full lens/finish tap counts
       renderCaptureFrame();
       dataURL = renderer.domElement.toDataURL(opts.type || 'image/png', opts.quality);

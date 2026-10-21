@@ -9,7 +9,7 @@ import type { StructureClearance } from './vegetationClearance.ts';
 export const FISHERY_WHARF_LAKE_INDEX = 20;
 /** The adapted fishery's local bounds: makeFishery is fixed-size (10.2 x 15.5 m) with its dock reaching the jetty.
  * mangroveFisheryWharf.selftest checks that every composed wharf stays inside them. */
-export const FISHERY_WHARF_LOCAL_BOUNDS = Object.freeze({ x0: -8.9, x1: 8.25, z0: -8.5, z1: 11.8 });
+const FISHERY_WHARF_LOCAL_BOUNDS = Object.freeze({ x0: -8.9, x1: 8.25, z0: -8.5, z1: 11.8 });
 
 /** The wharf's pose from its landing. The long dock meets the west side of the existing jetty; the boat keeps its
  * complete east-side beach and approach, and no landing kit is moved. */

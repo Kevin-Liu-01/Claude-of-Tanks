@@ -69,6 +69,30 @@ export interface MatchModeWorldPresentation {
   dispose(): void;
 }
 
+/** (ac130-fx-228 r2) the live presentations, so the covered deployment can build their objectives before its scene
+ *  compile (stageMatchModeObjectives) */
+const livePresentations = new Set<MatchModeWorldPresentation>();
+
+/**
+ * (ac130-fx-228 r2) Build the objectives of every live presentation drawn in `scene` for `state` now. The battle's frame
+ * first hands the presentation its state on the first live frame, after the covered deployment's scene compile, so a
+ * mode's markers and posts (the AC-130's escort and extraction posts) compiled their programs at the reveal; the solo
+ * deployment calls this before that compile (soloBattleDeploymentRuntime.ts). The frame's own update follows unchanged.
+ */
+export function stageMatchModeObjectives(scene: THREE.Object3D, state: MatchModePresentationState | null,
+  timeS: number): number {
+  if (!state) return 0;
+  let staged = 0;
+  for (const presentation of livePresentations) {
+    let node: THREE.Object3D | null = presentation.root;
+    while (node && node !== scene) node = node.parent;
+    if (!node) continue;
+    presentation.update(state, timeS);
+    staged++;
+  }
+  return staged;
+}
+
 /** campaign slice 3 (2026-09-12): ground fit for dressing that spreads beyond an objective centre. */
 interface MatchModeWorldPresentationOptions {
   groundHeight?: (x: number, z: number) => number;
@@ -970,5 +994,9 @@ export function createMatchModeWorldPresentation(
     root.removeFromParent();
   };
 
-  return { root, update, dispose };
+  const presentation: MatchModeWorldPresentation = {
+    root, update, dispose: () => { livePresentations.delete(presentation); dispose(); },
+  };
+  livePresentations.add(presentation);
+  return presentation;
 }

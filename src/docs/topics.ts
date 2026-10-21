@@ -271,7 +271,7 @@ export const topics: Record<string, TopicDefinition> = {
     lede: t('docs.topic.filming.lede'),
     hero: '/media/site50-r14/loops/s21-fields-assault.webm',
     icon: 'filming',
-    sectionIcons: ['specification', 'filming', 'workflow', 'navigation', 'perception', 'studio', 'critique', 'rendering', 'audio', 'release'],
+    sectionIcons: ['specification', 'filming', 'workflow', 'navigation', 'perception', 'studio', 'critique', 'rendering', 'audio', 'release', 'gallery'],
     sections: [
       [t('docs.topic.filming.s1.t'), t('docs.topic.filming.s1.p1'), t('docs.topic.filming.s1.p2')],
       [t('docs.topic.filming.s2.t'), t('docs.topic.filming.s2.p1')],
@@ -283,6 +283,8 @@ export const topics: Record<string, TopicDefinition> = {
       [t('docs.topic.filming.s8.t'), t('docs.topic.filming.s8.p1'), t('docs.topic.filming.s8.p2')],
       [t('docs.topic.filming.s9.t'), t('docs.topic.filming.s9.p1'), t('docs.topic.filming.s9.p2')],
       [t('docs.topic.filming.s10.t'), t('docs.topic.filming.s10.p1'), t('docs.topic.filming.s10.p2')],
+      // (2026-10-19) the media rounds' finals: the library, mounted by filming.ts
+      [t('docs.topic.filming.s11.t'), t('docs.topic.filming.s11.p1')],
     ],
     media: [
       ['/media/filming-r1/previz-sheet.webp', t('docs.topic.filming.media1')],

@@ -433,7 +433,7 @@ export function bakeCloudLocalWeather(size = CLOUD_LOCAL_SIZE, seed = CLOUD_NOIS
 }
 
 /** The four bakes the layer uploads from the worker (the noise volumes are baked on the GPU: cloudVolumeNoise.ts). */
-export interface CloudNoiseBake {
+interface CloudNoiseBake {
   weather: Uint8Array;
   streets: Uint8Array;
   blue: Uint8Array;

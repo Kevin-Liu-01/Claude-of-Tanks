@@ -22,7 +22,7 @@
  * Fixed arrays, no allocation per call; the oldest slot is reused when all are taken.
  */
 
-export interface TrailCadence {
+interface TrailCadence {
   /**
    * Advance a source of `kind` to (x, z) at fx time `now` (s). Returns how many bodies fall due (at most `maxBirths`);
    * their places and ages are in `births` as [x, z, ageS] triples, oldest first. A source first seen raises one body.

@@ -10,31 +10,31 @@ import '../src/vehicles/tankFactory.ts';
 import { getSpec } from '../src/vehicles/specs.ts';
 import { expectedMuzzleBoreCount } from '../src/vehicles/tankAssets.ts';
 import { muzzleSeatAxialFit } from './muzzle-seat-policy.mjs';
+import { uniqueIds } from './id-list.mjs';
+import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
 
 const idsArg = process.argv.find((arg) => arg.startsWith('--ids='));
 const outArg = process.argv.find((arg) => arg.startsWith('--out='));
 const all = process.argv.includes('--all');
-const ids = all ? [] : idsArg ? idsArg.slice(6).split(',').filter(Boolean) : ['m1a1_abrams_hc', 'bmp2', 'kv2'];
+const ids = all ? [] : idsArg ? uniqueIds(idsArg.slice(6).split(',').filter(Boolean), 'muzzle-bore-probe --ids') : ['m1a1_abrams_hc', 'bmp2', 'kv2'];
 const outDir = resolve(outArg ? outArg.slice(6) : '/private/tmp/cot-muzzle-bore-proof');
 mkdirSync(outDir, { recursive: true });
-const probePort = 30000 + (process.pid % 20000);
-
 const server = await createServer({
   root: process.cwd(), configFile: false, logLevel: 'error',
   // Probe worktrees may share a dependency symlink. Never share Vite's
   // inline-HTML proxy cache: it can otherwise replay an older detector (and
   // older tankFactory module) from a different checkout.
   cacheDir: resolve(outDir, '.vite-cache'),
-  // Use a process-unique strict IPv4 port. Vite treats port 0 as its default
+  // Use a process-spread explicit IPv4 port. Vite treats port 0 as its default
   // 5173; when another worktree owns 127.0.0.1:5173 it can bind only IPv6,
   // while a 127.0.0.1 browser URL silently reaches the stale older server.
-  server: { host: '127.0.0.1', port: probePort, strictPort: true, hmr: false, watch: null },
+  // R4c (2026-10-16): strictPort false moves a busy port to the next free one
+  // on 127.0.0.1, and the origin below is the port really bound.
+  server: toolServerOptions(30000, { span: 20000 }),
   optimizeDeps: { noDiscovery: true, include: [] },
 });
 await server.listen();
-const address = server.httpServer?.address();
-if (!address || typeof address === 'string') throw new Error('muzzle probe server did not expose a TCP port');
-const origin = `http://127.0.0.1:${address.port}`;
+const origin = boundOrigin(server);
 let browser = null;
 let page = null;
 const openProbePage = async () => {
@@ -45,13 +45,9 @@ const openProbePage = async () => {
   page = await browser.newPage();
   // A cold Vite transform of the complete procedural fleet can exceed
   // Puppeteer's 30 s navigation default when another release probe is using
-  // the local GPU. Keep the readiness assertion bounded separately below,
-  // but allow the document transform enough time to finish.
-  await page.goto(`${origin}/tools/icons-page.html`, {
-    waitUntil: 'domcontentloaded',
-    timeout: 120000,
-  });
-  await page.waitForFunction('window.__ICONS_READY === true', { timeout: 60000 });
+  // the local GPU. Keep the readiness assertion bounded separately, but allow
+  // the document transform 180 s and retry a timed-out load once (R4c).
+  await loadReadyPage(page, `${origin}/tools/icons-page.html`, { label: 'muzzle-bore', ready: 'window.__ICONS_READY === true' });
 };
 const failures = [];
 let checkedIds = ids;

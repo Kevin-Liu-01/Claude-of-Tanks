@@ -84,7 +84,7 @@ assert.ok(!targets.includes(hiddenMaterialPrimitive),
   'material-hidden primitives stay outside Studio surface picking');
 assert.ok(!targets.includes(transparentPrimitive),
   'fully transparent primitives stay outside Studio surface picking');
-assert.equal(selectablePrimitive.parent, primitiveParent,
+assert.ok(selectablePrimitive.parent === primitiveParent,
   'surface collection never reparents a visible fitting');
 assert.equal(selectablePrimitive.visible, primitiveVisible,
   'surface collection never mutates source visibility');

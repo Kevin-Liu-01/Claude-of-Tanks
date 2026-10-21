@@ -164,6 +164,8 @@ const FOG_PARS_F = `
 
 /** Burst glow slots (a ring: the oldest is replaced). */
 const GLOW_SLOTS = 4;
+/** (ac130-fx-228 follow-up) the heavy bursts' night embers: their own slots (the 30 mm's pulses never recycle them) */
+const EMBER_SLOTS = 2;
 
 const VOLUME_VERT = /* glsl */ `
 attribute vec4 aPB;
@@ -182,6 +184,10 @@ uniform vec2 uNearFade;
 uniform vec4 uBandWarp[ ${VOLUME_ATLAS.bands} ]; // per band: 1/gamma, unused...
 uniform vec4 uGlowP[ ${GLOW_SLOTS} ];  // a burst's light inside the medium: centre xyz, birth (fx clock)
 uniform vec4 uGlowK[ ${GLOW_SLOTS} ];  // its radius (m), peak, duration (s), unused
+uniform float uHeatCool;  // (ac130-fx-228 r3) the fire's cooling rate for this camera: a heat-imaging lens sees it cool slower
+uniform vec4 uEmberP[ ${EMBER_SLOTS} ]; // (ac130-fx-228 follow-up) a heavy burst's embers: centre xyz, birth (fx clock)
+uniform vec4 uEmberK[ ${EMBER_SLOTS} ]; // their radius (m), peak, duration (s), unused
+uniform vec4 uGrade2;     // (as the fragment's) .y the night level: 0 by day, 1 at night; .z the embers' level
 varying float vGlow;
 varying vec2 vUvA;
 varying vec2 vUvB;
@@ -291,7 +297,7 @@ void main() {
   float scr = 0.5 * size * projectionMatrix[1][1] / max( -mvC.z, 0.5 );
   float big = lowB * smoothstep( 0.15, 0.45, scr ) * ( 1.0 - smoothstep( 12.0, 18.0, distance( center, cameraPosition ) ) );
   vColor = vec4( mix( aCA.rgb, aCB.rgb, smoothstep( 0.0, 1.0, t ) ), aCA.w * fadeIn * near * ( 1.0 - 0.75 * big ) );
-  vHeat = aHT.x > 0.0 ? aHT.x * exp( -aHT.y * age ) : 0.0;
+  vHeat = aHT.x > 0.0 ? aHT.x * exp( -aHT.y * uHeatCool * age ) : 0.0;
   // the bursts' light inside the medium: each recent burst lights the puffs round it for a moment, falling off with the
   // distance from its heart (its own fireball and soil, and the dust of an earlier burst it landed in)
   float gl = 0.0;
@@ -303,6 +309,21 @@ void main() {
     float q = 1.0 - ga / gk.z;
     vec3 gd = center - gp.xyz;
     gl += gk.y * q * q * exp( -dot( gd, gd ) / max( gk.x * gk.x, 1e-3 ) );
+  }
+  // (ac130-fx-228 follow-up, the coordinator: "the night 152 mm smoke column holds its height for about 4 s ... light it
+  // so it reads at night") a heavy burst's embers light its column from the burning ground for a few seconds — at night
+  // only (the night level; by day nothing is added, and with no ember live nothing either), slow to fade (1 - f^2); a
+  // heat-imaging lens sees none (its blind critic: a pale veil over the target — the lens's fire gain on the ember light)
+  if ( uGrade2.z > 0.0 ) {
+    for ( int i = 0; i < ${EMBER_SLOTS}; i++ ) {
+      vec4 ep = uEmberP[ i ];
+      vec4 ek = uEmberK[ i ];
+      float ea = uTime - ep.w;
+      if ( ek.z <= 0.0 || ea < 0.0 || ea > ek.z ) continue;
+      float f = ea / ek.z;
+      vec3 ed = center - ep.xyz;
+      gl += uGrade2.z * ek.y * ( 1.0 - f * f ) * exp( -dot( ed, ed ) / max( ek.x * ek.x, 1e-3 ) );
+    }
   }
   vGlow = gl;
   // (EF.10, MASTER 19) headlights, the muzzle and burning wrecks light the medium (a burst's own pulse is uGlow's;
@@ -558,6 +579,10 @@ interface VolumeMediaOptions {
   now: () => number;
   scene?: THREE.Scene | null;
   capacity?: number;
+  /** (ac130-fx-228 r3) the fire's emission gain for this frame's camera (a heat-imaging lens reads hot gas as hot) */
+  heatGain?: (camera: THREE.Camera | null | undefined) => number;
+  /** (ac130-fx-228 r3) the fire's cooling-rate factor for this frame's camera (a heat-imaging lens sees the gas cool slower) */
+  heatCool?: (camera: THREE.Camera | null | undefined) => number;
 }
 
 /** How far the detail tear eats into a puff's thin rim (0 off). */
@@ -626,6 +651,8 @@ export interface VolumeMedia {
   readonly wind: THREE.Vector3;
   /** A burst's light inside the medium for `durS` from now + `birthOffset` (centre, radius m, peak 0..~1.5). */
   glow(x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset?: number): void;
+  /** (ac130-fx-228 follow-up) a heavy burst's embers lighting its column at night only, for `durS` (centre, radius m, peak) */
+  ember(x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset?: number): void;
   /** (EF.04) the media's own light and wind uniforms, shared with other normal-blended smoke (the missile ribbons) so
    *  it is lit as the media are, by the time of day; refreshShading() brings them up to the scene's light now */
   readonly shading: VolumeShading;
@@ -691,6 +718,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
   const uGroundCol = { value: new THREE.Vector3(0.14, 0.13, 0.11) };
   const uGrade = { value: new THREE.Vector4(1, 1, DEFAULT_TUNE.back, DEFAULT_TUNE.ms) };
   const uGrade2 = { value: new THREE.Vector4(DEFAULT_TUNE.ground, 0, 0, 0) };
+  const uHeatCool = { value: 1 };
   const totalRows = VOLUME_ATLAS.bands * VOLUME_ATLAS.rowsPerBand;
   const bandWarp: THREE.Vector4[] = [];
   for (let b = 0; b < VOLUME_ATLAS.bands; b++) bandWarp.push(new THREE.Vector4(1, 0, 0, 0));
@@ -702,6 +730,9 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
   const glowP: THREE.Vector4[] = [], glowK: THREE.Vector4[] = [];
   for (let i = 0; i < GLOW_SLOTS; i++) { glowP.push(new THREE.Vector4(0, 0, 0, -1e9)); glowK.push(new THREE.Vector4(1, 0, 0, 0)); }
   let glowNext = 0;
+  const emberP: THREE.Vector4[] = [], emberK: THREE.Vector4[] = [];
+  for (let i = 0; i < EMBER_SLOTS; i++) { emberP.push(new THREE.Vector4(0, 0, 0, -1e9)); emberK.push(new THREE.Vector4(1, 0, 0, 0)); }
+  let emberNext = 0;
   const detail = detailNoiseTexture(0x5eedde7);
   const uDetailK = { value: DETAIL_K };
   const uWarpK = { value: DEFAULT_TUNE.warp };
@@ -711,12 +742,12 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     vertexShader: VOLUME_VERT,
     fragmentShader: VOLUME_FRAG,
     uniforms: Object.assign(THREE.UniformsUtils.clone(THREE.UniformsLib.fog), {
-      uTime, uWind, uSunDir, uSunCol, uSkyCol, uGroundCol, uGrade, uGrade2,
+      uTime, uWind, uSunDir, uSunCol, uSkyCol, uGroundCol, uGrade, uGrade2, uHeatCool,
       uMapA: mapA, uMapB: mapB,
       uAtlas: { value: new THREE.Vector4(VOLUME_ATLAS.columns, totalRows, VOLUME_ATLAS.rowsPerBand, VOLUME_ATLAS.frames) },
       uFlowScale: { value: VOLUME_ATLAS.flowScale },
       uBandWarp: { value: bandWarp },
-      uGlowP: { value: glowP }, uGlowK: { value: glowK },
+      uGlowP: { value: glowP }, uGlowK: { value: glowK }, uEmberP: { value: emberP }, uEmberK: { value: emberK },
       ...localLightUniforms,
       uNearFade: { value: new THREE.Vector2(0.8, 3.4) },
       uDetail: { value: detail }, uDetailK, uWarpK,
@@ -794,6 +825,8 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
   }
 
   const o_now = o.now;
+  /** this frame's fire emission gain (the camera's heat imaging), set by update() before the light refresh */
+  let heatK = 1;
   // --- emit
   const bandOf = (p: VolumePuff): number => {
     const m = VOLUME_ATLAS.media[p.medium];
@@ -868,11 +901,14 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
       uSkyCol.value.set(lum + (sr - lum) * ks, lum + (sg - lum) * ks, lum + (sb - lum) * ks);
       uGroundCol.value.set(gr, gg, gb);
     }
-    uGrade.value.set(tune.alpha, tune.glow, tune.back, tune.ms);
+    uGrade.value.set(tune.alpha, tune.glow * heatK, tune.back, tune.ms);
     uGrade2.value.x = tune.ground;
     // (EF.11) the night level: the rig's sun (Verdant: day 4.5, sunset 2.8, night 0.6) under ~2.2 fades in the night floor
     { const sunI = rig ? (rig.sunIntensity ?? 4.5) : 4.5; const k = Math.min(1, Math.max(0, (sunI - 0.9) / 1.3));
       uGrade2.value.y = 1 - k * k * (3 - 2 * k); }
+    // (ac130-fx-228 follow-up) the embers' level: the night level, but dark to a heat-imaging camera (its raised fire gain):
+    // the ember is the column's firelight for the eye; the heat lens images the gas's own heat and the crater's
+    uGrade2.value.z = heatK > 1 ? 0 : uGrade2.value.y;
     uDetailK.value = tune.detail;
     uWarpK.value = tune.warp;
     refreshWorldWind(ud);
@@ -889,6 +925,8 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
       drawn = 0; liveCount = 0; orderCount = 0;
       return;
     }
+    heatK = o.heatGain ? o.heatGain(camera) : 1;
+    uHeatCool.value = o.heatCool ? o.heatCool(camera) : 1;
     refreshLight();
     // live set (birth <= now <= birth + life), keeping last frame's order for an almost-sorted start
     let n = 0;
@@ -968,6 +1006,8 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     drawn = 0; liveCount = 0;
     for (let i = 0; i < GLOW_SLOTS; i++) { glowP[i].set(0, 0, 0, -1e9); glowK[i].set(1, 0, 0, 0); }
     glowNext = 0;
+    for (let i = 0; i < EMBER_SLOTS; i++) { emberP[i].set(0, 0, 0, -1e9); emberK[i].set(1, 0, 0, 0); }
+    emberNext = 0;
   }
 
   function glow(x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset = 0): void {
@@ -976,6 +1016,14 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     glowNext = (glowNext + 1) % GLOW_SLOTS;
     glowP[i].set(x, y, z, o_now() + birthOffset);
     glowK[i].set(radiusM, peak, durS, 0);
+  }
+
+  function ember(x: number, y: number, z: number, radiusM: number, peak: number, durS: number, birthOffset = 0): void {
+    if (!(radiusM > 0) || !(peak > 0) || !(durS > 0)) return;
+    const i = emberNext;
+    emberNext = (emberNext + 1) % EMBER_SLOTS;
+    emberP[i].set(x, y, z, o_now() + birthOffset);
+    emberK[i].set(radiusM, peak, durS, 0);
   }
 
   return {
@@ -987,6 +1035,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     shiftTime,
     reset,
     glow,
+    ember,
     isActive: () => o_now() <= liveUntil,
     stats: () => ({ live: liveCount, capacity, drawn, wind: [uWind.value.x, uWind.value.z], ready }),
     wind: uWind.value,

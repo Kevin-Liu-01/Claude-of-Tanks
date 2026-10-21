@@ -24,10 +24,15 @@
  * One instanced draw for every tracer (a capsule quad per round, built in screen space so its width is in pixels),
  * additive, depth-tested against the world in the late effects pass, no per-frame allocation (a pooled record per
  * round in flight, reused).
+ * (lane ac130-fx-228, 2026-10-19; the owner: "make our ac 130 use our new tracers ... get rid of the old ones") the
+ * AC-130's guns draw here too, each its own class (gunshipRounds.ts resolves the gun): the 30 mm autocannon a NATO belt
+ * read from the orbit, the 152 mm howitzer a heavy traced shell whose burn outlasts its slant flight. The screenshot
+ * composer's frozen round (composeFiringMoment) is a pooled static entry of the same draw, aged on the effects clock.
  */
 import * as THREE from 'three';
 import { LATE_FX_LAYER } from './layers.ts';
 import { tankSeedId } from '../vehicles/tankIdAliases.ts';
+import { gunshipRoundOf } from './gunshipRounds.ts';
 
 type ShellKey = number | string;
 
@@ -42,7 +47,8 @@ interface TracerShell {
   shooterId?: ShellKey;
   /** times the round has been deflected (sim/damage.ts deflectShell) */
   bounces?: number;
-  spec?: { type?: string; caliberMm?: number; tracer?: string; name?: string } | null;
+  spec?: { type?: string; caliberMm?: number; tracer?: string; name?: string; reloadGroup?: string; soundProfile?: string;
+    guided?: boolean } | null;
 }
 
 /** The firing vehicle, as the tracer's ammunition lineage (and, for a networked round, its weapon) needs it. */
@@ -58,6 +64,11 @@ interface TracerOptions {
   scene?: THREE.Scene | null;
   /** the effects clock (s): flicker phase */
   now(): number;
+  /** whether the firing vehicle flies the gunship (a networked round names no weapon: its aircraft does) */
+  gunship?(id: ShellKey | undefined): boolean;
+  /** (ac130-fx-228 r2) this frame's camera images heat (the gunship's infrared or thermal lens, a thermal sight): a
+   *  tracer's burning charge is its hottest thing whatever the daylight, so the rounds draw at their night radiance */
+  thermal?(): boolean;
   capacity?: number;
 }
 
@@ -77,6 +88,19 @@ interface TracerClass {
   igniteM: number;
   /** the streak's longest (m): a dash behind the hot point, never a lit rod */
   streakMaxM: number;
+  /** a heavy shell's trace (a tank gun's, the gunship howitzer's): the deep orange compound, the hot bead, no ricochet,
+   *  the heavier strike spray */
+  heavy?: boolean;
+  /** the bead's gain at the head */
+  bead?: number;
+  /** (ac130-fx-228 r2) the day core's radiance and width gains over the shared day law (default 1 and DAY_WIDTH_K): a
+   *  round read from far off against a bright sky needs more than a ground gun's */
+  dayK?: number;
+  dayWidthK?: number;
+  /** (ac130-fx-228 r2) its own day colour over its lineage's (the gunship's cannon: read from the ground against the sky) */
+  dayRgb?: readonly number[];
+  /** (ac130-fx-228 r3) seen from a camera at its own muzzle (the gunship's lens), it lights this far out (m) */
+  lensClearM?: number;
 }
 
 // Classes by calibre: rifle and heavy machine guns, autocannons, tank guns.
@@ -87,7 +111,28 @@ const AUTOCANNON: TracerClass = { beltEvery: 4, burnS: 3.4, halfWidthPx: 1.05, h
   igniteM: 6, streakMaxM: 24 };
 // (r2, wave 310b: "a long rod anchored to the muzzle") a tank round's trace: a short dash behind the dart's hot point
 const TANK: TracerClass = { beltEvery: 1, burnS: 3.6, halfWidthPx: 1.35, haloPx: 8, core: 3.4, halo: 0.2,
-  igniteM: 10, streakMaxM: 12 };
+  igniteM: 10, streakMaxM: 12, heavy: true, bead: 2.4 };
+// (ac130-fx-228) the gunship's guns, read from a 240 m orbit through a 55-9 degree gimbal: the 30 mm autocannon's belt
+// a little denser and its core a little wider than a ground autocannon's (every second round traced: at 7 rounds a
+// second the burst still reads as a stream of dashes, not single sparks), always NATO ammunition whatever tank the
+// pilot chose; the 152 mm howitzer every round traced, its core and halo about 1.7x a tank round's, its streak the
+// exposure's (800 m/s: ~13 m by day, ~22 m in the dark), its charge burning past the 0.3-0.5 s slant flight
+// (r2, the motion critic: "by day, from the ground, thin pale-pink lines that nearly vanish against bright sky"; "in
+// daylight IR 1-2 px dots") by day its core burns over twice the shared day share and widens to about double, so the
+// strontium reads as a hot orange-red dash on sky and in the thermal lens
+// (r2b, the round's own film from the ground: "pale pink" on a blue sky) its day colour carries more of the strontium's
+// orange, so the additive dash reads hot orange-red against sky and cloud, not a pink line
+const GUNSHIP_CANNON_DAY: readonly number[] = [1.0, 0.38, 0.08];
+const GUNSHIP_CANNON: TracerClass = { beltEvery: 2, burnS: 3.4, halfWidthPx: 1.5, haloPx: 9, core: 3.4, halo: 0.24,
+  igniteM: 6, streakMaxM: 24, dayK: 2.3, dayWidthK: 1.0, dayRgb: GUNSHIP_CANNON_DAY, lensClearM: 45 };
+const GUNSHIP_HOWITZER: TracerClass = { beltEvery: 1, burnS: 6, halfWidthPx: 2.3, haloPx: 14, core: 5.6, halo: 0.34,
+  igniteM: 8, streakMaxM: 24, heavy: true, bead: 2.8, lensClearM: 45 };
+/** (ac130-fx-228 r3) a camera within this of a round's muzzle is that gun's own lens */
+const LENS_EYE_M = 12;
+/** (ac130-fx-228) the screenshot composer's frozen rounds held at once (pooled; the oldest reused past it) */
+const STATIC_CAPACITY = 8;
+/** (ac130-fx-228 r3) a distant backdrop round's radiance by day, as a share of its night radiance */
+const AMBIENT_DAY_K = 0.35;
 /** the halo's share by day (a bright scene: the spark alone reads; r2: enough of it to tint the point) */
 const HALO_DAY = 0.5;
 /** (r2, wave 310a: "by day a pale pinprick or a white orb, no warm colour") by day the core burns at this share of its
@@ -138,6 +183,22 @@ export function tracerClassFor(caliberMm: number, lineage: 'east' | 'nato'): Tra
   if (caliberMm < 15) return lineage === 'east' ? MG_EAST : MG_NATO;
   if (caliberMm < 45) return AUTOCANNON;
   return TANK;
+}
+
+interface RoundClass { cls: TracerClass; lineage: 'east' | 'nato'; caliberMm: number }
+
+/** (ac130-fx-228) A round's class and lineage: the gunship's guns their own (NATO ammunition, whatever the pilot's
+ *  garage tank), every other round by its calibre and its vehicle's lineage. (r2) Written into `out` (the runtime's
+ *  scratch: a new round allocates nothing). */
+export function tracerRoundClass(spec: TracerShell['spec'], shooter: TracerShooter | null | undefined,
+  shooterIsGunship: boolean, out: RoundClass = { cls: TANK, lineage: 'nato', caliberMm: 0 }): RoundClass {
+  const gun = gunshipRoundOf(spec, shooterIsGunship);
+  if (gun === 'cannon') { out.cls = GUNSHIP_CANNON; out.lineage = 'nato'; out.caliberMm = 30; return out; }
+  if (gun === 'howitzer') { out.cls = GUNSHIP_HOWITZER; out.lineage = 'nato'; out.caliberMm = 152; return out; }
+  out.lineage = tracerLineage(shooter);
+  out.caliberMm = tracerCaliber(spec, shooter);
+  out.cls = tracerClassFor(out.caliberMm, out.lineage);
+  return out;
 }
 
 /**
@@ -319,8 +380,8 @@ void main() {
 
 interface ProjectileTracers {
   readonly mesh: THREE.Mesh;
-  /** start a frame's write */
-  begin(): void;
+  /** start a frame's write; (ac130-fx-228 r3) `eye` is this frame's camera (world m), for the gunship's lens clearance */
+  begin(eye?: { x: number; y: number; z: number } | null): void;
   /** one round in flight this frame (non-guided, non-aerial): its tracer when it carries one */
   write(shell: TracerShell): void;
   /** close the frame: rounds not seen draw their last streak once more, then go */
@@ -335,13 +396,26 @@ interface ProjectileTracers {
   /** a round struck at `pos` (its terrain, prop or armour hit): its last dash reaches into the strike and, when its
    *  tracer still burns, the strike throws sparks (none off water) */
   strike(id: ShellKey | undefined, pos: readonly number[], water?: boolean): void;
+  /** (ac130-fx-228) a frozen round for the screenshot composer (composeFiringMoment): its tracer from tail to head as a
+   *  round of `caliberMm` draws it, born at `bornAtS` on the effects clock (full for 0.3 s, gone by 0.9 s); a rocket's
+   *  is its motor's hot streak */
+  compose(hx: number, hy: number, hz: number, tx: number, ty: number, tz: number, caliberMm: number, bornAtS: number,
+    rocket?: boolean): void;
+  /** the effects clock was rebased by `delta` s (fx.setFrozen / resetClock): the births keep their age */
+  shiftTime(delta: number): void;
+  /** (ac130-fx-228 r2) a round that is not a shell this frame (the frontline backdrop's AA fire: world/destructibles.ts
+   *  setAmbientRoundSource), drawn as an autocannon round of its lineage is: its head, unit direction, speed (m/s),
+   *  distance flown (m), strength (0..1, its own burn-out); call between begin and end */
+  ambient(hx: number, hy: number, hz: number, dx: number, dy: number, dz: number, speedMps: number, travelledM: number,
+    k: number, east: boolean): void;
   reset(): void;
   active(): boolean;
   /** receipts: tracer rounds drawn this frame, rounds tracked */
-  stats(): { drawn: number; tracked: number; dark: number; sparks: number };
+  stats(): { drawn: number; tracked: number; dark: number; sparks: number; statics: number };
 }
 
 export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
+  const _roundClass: RoundClass = { cls: TANK, lineage: 'nato', caliberMm: 0 }; // tracerRoundClass's scratch
   const capacity = Math.max(16, o.capacity ?? 512);
   const geo = new THREE.InstancedBufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute([0, -1, 0, 1, -1, 0, 1, 1, 0, 0, 1, 0], 3));
@@ -384,12 +458,16 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     renderer.getCurrentViewport(_vp);
     if (_vp.z > 0 && _vp.w > 0) uViewport.value.set(_vp.z, _vp.w);
   };
+  // the callback reads the viewport alone: the late pass may draw it through its view (engine/lateFxSceneView.ts)
+  mesh.userData.lateFxSceneAgnostic = true;
 
   const records = new Map<ShellKey, RoundRecord>();
   const free: RoundRecord[] = [];
   const beltCount = new Map<number, number>();
   let n = 0;
   let dark = 0;
+  /** (ac130-fx-228 r3) this frame's camera, when the caller gave it */
+  let eyeX = 0, eyeY = 0, eyeZ = 0, eyeSet = false;
   let drawnLast = 0;
 
   function lightLevel(): number {
@@ -406,9 +484,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     r = free.pop() ?? { id: 0, lit: false, cls: TANK, core: TANK_CORE, day: TANK_DAY, halo: TANK_HALO, seed: 0,
       seen: false, hx: 0, hy: 0, hz: 0, tx: 0, ty: 0, tz: 0, k: 0, speed: 0 };
     const who = o.shooter(shell.shooterId);
-    const lineage = tracerLineage(who);
-    const cal = tracerCaliber(shell.spec, who);
-    const cls = tracerClassFor(cal, lineage);
+    const { cls, lineage, caliberMm: cal } = tracerRoundClass(shell.spec, who, o.gunship?.(shell.shooterId) === true, _roundClass);
     // the belt: a per-weapon round count (the shooter's gun of this calibre: a coax and a main gun are two belts), so a
     // burst shows its tracers at the belt's own rhythm
     const who_ = shell.shooterId;
@@ -419,9 +495,10 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     r.id = shell.id;
     r.cls = cls;
     r.lit = beltCarriesTracer(index, cls.beltEvery);
-    if (cls === TANK) { r.core = TANK_CORE; r.day = TANK_DAY; r.halo = TANK_HALO; }
+    if (cls.heavy) { r.core = TANK_CORE; r.day = TANK_DAY; r.halo = TANK_HALO; }
     else if (lineage === 'east') { r.core = GREEN_CORE; r.day = GREEN_DAY; r.halo = GREEN_HALO; }
     else { r.core = RED_CORE; r.day = RED_DAY; r.halo = RED_HALO; }
+    if (cls.dayRgb) r.day = cls.dayRgb;
     const h = typeof shell.id === 'number' ? shell.id : hashKey(shell.id);
     r.seed = ((Math.imul(h | 0, 0x9e3779b1) >>> 0) % 10007) / 10007;
     r.seen = false;
@@ -433,18 +510,18 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
   function put(r: RoundRecord, k: number, wobble: number): void {
     if (!(k > 0.001)) return;
     const cls = r.cls;
-    write4(r.hx, r.hy, r.hz, r.tx, r.ty, r.tz, cls.halfWidthPx * (1 + DAY_WIDTH_K * (1 - dark)) * (1 + 0.3 * wobble),
+    write4(r.hx, r.hy, r.hz, r.tx, r.ty, r.tz, cls.halfWidthPx * (1 + (cls.dayWidthK ?? DAY_WIDTH_K) * (1 - dark)) * (1 + 0.3 * wobble),
       cls.haloPx * (0.45 + 0.55 * dark), r.day, r.core, cls.core * k, r.halo, cls.halo * (HALO_DAY + (1 - HALO_DAY) * dark) * k,
-      cls === TANK ? 2.4 : 1.8);
+      cls.bead ?? 1.8, cls.dayK ?? 1);
   }
   /** One capsule: head and tail (m), half width and halo radius (1080p px), the core (its day colour by day, its hot
    *  night colour in the dark) at radiance coreK, the halo at haloK, the head's bead gain. */
   function write4(hx: number, hy: number, hz: number, tx: number, ty: number, tz: number, halfW: number, haloR: number,
     dayRgb: readonly number[], nightRgb: readonly number[], coreK: number, haloRgb: readonly number[], haloK: number,
-    bead: number): void {
+    bead: number, dayK = 1): void {
     if (n >= capacity) return;
     const i = n * 4;
-    const kd = coreK * DAY_CORE_K * (1 - dark), kn = coreK * dark;
+    const kd = coreK * DAY_CORE_K * dayK * (1 - dark), kn = coreK * dark;
     head.array[i] = hx; head.array[i + 1] = hy; head.array[i + 2] = hz; head.array[i + 3] = halfW;
     tail.array[i] = tx; tail.array[i + 1] = ty; tail.array[i + 2] = tz; tail.array[i + 3] = haloR;
     core.array[i] = dayRgb[0]! * kd + nightRgb[0]! * kn;
@@ -484,7 +561,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     const R = strikeRandom(r.seed + 0.37);
     const len = Math.hypot(r.hx - r.tx, r.hy - r.ty, r.hz - r.tz) || 1;
     const dx = (r.hx - r.tx) / len, dy = (r.hy - r.ty) / len, dz = (r.hz - r.tz) / len;
-    const tank = r.cls === TANK;
+    const tank = r.cls.heavy === true;
     if (!tank && R() < 0.6) {
       // the ricochet: on along the ground's plane, kicked up 8-30 degrees, swung up to 25 degrees off the line, a third
       // to a half of its speed
@@ -534,6 +611,28 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     }
   }
 
+  // ---- (ac130-fx-228) the composer's frozen rounds: a fixed pool, each drawn as its class's tracer, fading on the clock ----
+  const statics = Array.from({ length: STATIC_CAPACITY }, () => ({ hx: 0, hy: 0, hz: 0, tx: 0, ty: 0, tz: 0, born: 0,
+    live: false, cls: TANK }));
+  let staticCursor = 0, staticsLive = 0;
+  function drawStatics(): void {
+    const t = o.now();
+    staticsLive = 0;
+    for (const s of statics) {
+      if (!s.live) continue;
+      const age = t - s.born;
+      // stepped captures age the round honestly: full for 0.3 s, gone by 0.9 s (the old ribbon's composer timing)
+      const u = Math.min(1, Math.max(0, (age - 0.3) / 0.6));
+      const fade = 1 - u * u * (3 - 2 * u);
+      if (fade <= 0.001) { if (age > 0.9) s.live = false; continue; }
+      staticsLive++;
+      const cls = s.cls, heavy = cls.heavy === true;
+      write4(s.hx, s.hy, s.hz, s.tx, s.ty, s.tz, cls.halfWidthPx * (1 + DAY_WIDTH_K * (1 - dark)),
+        cls.haloPx * (0.45 + 0.55 * dark), heavy ? TANK_DAY : RED_DAY, heavy ? TANK_CORE : RED_CORE, cls.core * fade,
+        heavy ? TANK_HALO : RED_HALO, cls.halo * (HALO_DAY + (1 - HALO_DAY) * dark) * fade, cls.bead ?? 1.8);
+    }
+  }
+
   // hoisted Map callbacks: the per-frame walks allocate nothing
   const unsee = (r: RoundRecord): void => { r.seen = false; };
   const release = (r: RoundRecord): void => { r.k = 0; free.push(r); };
@@ -547,9 +646,13 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
 
   return {
     mesh,
-    begin() {
+    begin(eye) {
       n = 0;
-      dark = lightLevel();
+      eyeSet = !!eye;
+      if (eye) { eyeX = eye.x; eyeY = eye.y; eyeZ = eye.z; }
+      // (ac130-fx-228 r2, the motion critic: in the default daylight infrared lens "the 30 mm rounds and impacts show as
+      // 1-2 px dots") a heat-imaging camera sees the burning compound as the night does: hot cores, halos, sparks
+      dark = o.thermal?.() === true ? 1 : lightLevel();
       records.forEach(unsee);
     },
     write(shell) {
@@ -576,8 +679,22 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       }
       const exposureS = EXPOSURE_DAY_S + (EXPOSURE_NIGHT_S - EXPOSURE_DAY_S) * dark;
       // (r2) the charge lights a little past the muzzle: dark before, and the smear never reaches back past that point
-      const flown = Number.isFinite(shell.distM) ? (shell.distM as number) : Infinity;
-      const alight = flown - r.cls.igniteM;
+      let flown = Number.isFinite(shell.distM) ? (shell.distM as number) : Infinity;
+      let ignite = r.cls.igniteM;
+      // (ac130-fx-228 r3, the blind critic: from the gimbal lens a 30 mm round read as "a thin needle", "more ribbon than
+      // tracer") a gunship round seen from the camera at its own muzzle (its lens rides at the orbit centre the round
+      // leaves): it flies almost down the line of sight, so its first metres smear across the lens; it draws once it is
+      // LENS_CLEAR_M out, a dash converging on the aim point. Any other camera sees it light at its gun as before
+      if (r.cls.lensClearM && eyeSet && speed > 1e-3) {
+        // a networked round carries its age, not its distance: its flight so far is its age at its speed
+        const f = Number.isFinite(flown) ? flown / speed : age;
+        const ox = shell.pos.x - v.x * f - eyeX, oy = shell.pos.y - v.y * f - eyeY, oz = shell.pos.z - v.z * f - eyeZ;
+        if (Number.isFinite(f) && ox * ox + oy * oy + oz * oz < LENS_EYE_M * LENS_EYE_M) {
+          ignite = Math.max(ignite, r.cls.lensClearM);
+          flown = f * speed;
+        }
+      }
+      const alight = flown - ignite;
       if (!(alight > 0)) { r.k = 0; return; }
       const len = Math.min(STREAK_MAX_M, r.cls.streakMaxM, speed * exposureS, Math.max(0.05, alight));
       const inv = speed > 1e-3 ? len / speed : 0;
@@ -608,6 +725,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       // a round that ended since the last frame draws its last streak once more (a fast round born and gone between
       // two frames still leaves its line), then its record is reused
       records.forEach(retire);
+      drawStatics();
       drawSparks();
       geo.instanceCount = n;
       mesh.visible = n > 0;
@@ -620,6 +738,8 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       beltCount.clear();
       for (const sp of sparks) sp.life = 0;
       sparkCursor = 0; sparksLive = 0;
+      for (const st of statics) st.live = false;
+      staticCursor = 0; staticsLive = 0;
       n = 0; drawnLast = 0;
       geo.instanceCount = 0;
       mesh.visible = false;
@@ -635,9 +755,36 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       halo.array[i + 3] = dark;
       n++;
     },
+    compose(hx, hy, hz, tx, ty, tz, caliberMm, bornAtS, rocket = false) {
+      const s = statics[staticCursor]!;
+      staticCursor = (staticCursor + 1) % STATIC_CAPACITY;
+      s.hx = hx; s.hy = hy; s.hz = hz; s.tx = tx; s.ty = ty; s.tz = tz; s.born = bornAtS; s.live = true;
+      // a tank gun's dart (every round traced), an autocannon's lit round, a rocket's motor streak (the heavy class)
+      s.cls = rocket ? GUNSHIP_HOWITZER : caliberMm >= 45 ? TANK : AUTOCANNON;
+      staticsLive++;
+    },
+    shiftTime(delta) {
+      if (!Number.isFinite(delta) || delta === 0) return;
+      for (const st of statics) if (st.live) st.born += delta;
+      for (const sp of sparks) if (sp.life > 0) sp.t0 += delta;
+    },
+    ambient(hx, hy, hz, dx, dy, dz, speedMps, travelledM, k, east) {
+      // (ac130-fx-228 r3, the blind critic: the backdrop's AA rounds read "like confetti" over a day sky) the front's guns
+      // fire 0.4-0.9 km off: by day their trace is a faint point at that range, at night the streams the camera opens to
+      k *= AMBIENT_DAY_K + (1 - AMBIENT_DAY_K) * dark;
+      if (!(k > 0.001)) return;
+      const cls = AUTOCANNON;
+      const alight = travelledM - cls.igniteM;
+      if (!(alight > 0)) return;
+      const exposureS = EXPOSURE_DAY_S + (EXPOSURE_NIGHT_S - EXPOSURE_DAY_S) * dark;
+      const len = Math.min(STREAK_MAX_M, cls.streakMaxM, speedMps * exposureS, alight);
+      write4(hx, hy, hz, hx - dx * len, hy - dy * len, hz - dz * len, cls.halfWidthPx * (1 + DAY_WIDTH_K * (1 - dark)),
+        cls.haloPx * (0.45 + 0.55 * dark), east ? GREEN_DAY : RED_DAY, east ? GREEN_CORE : RED_CORE, cls.core * k,
+        east ? GREEN_HALO : RED_HALO, cls.halo * (HALO_DAY + (1 - HALO_DAY) * dark) * k, 1.8);
+    },
     darkLevel: () => dark,
-    active: () => geo.instanceCount > 0 || sparksLive > 0,
-    stats: () => ({ drawn: geo.instanceCount, tracked: records.size, dark, sparks: sparksLive }),
+    active: () => geo.instanceCount > 0 || sparksLive > 0 || staticsLive > 0,
+    stats: () => ({ drawn: geo.instanceCount, tracked: records.size, dark, sparks: sparksLive, statics: staticsLive }),
   };
 }
 

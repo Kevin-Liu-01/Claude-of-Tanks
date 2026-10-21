@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createBattleClientAccess } from './battleClientAccess.ts';
+import { rulesetUnlimitedFor } from '../sim/matchRuleset.ts';
 
 let attempts = 0;
 let aimUpdates = 0;
@@ -42,6 +43,9 @@ const access = createBattleClientAccess(
 );
 
 assert.equal(access.isReady(), false);
+// critic r4 (D2): the shell cards' unlimited-rounds read is the rules' own per-entity function (the AC-130 refills its
+// gunship only), handed out before the battle runtime loads; a mode-wide stand-in would mark an escort's cards ∞.
+assert.equal(access.rulesetUnlimitedFor, rulesetUnlimitedFor, 'the access hands out sim/matchRuleset rulesetUnlimitedFor');
 assert.equal(access.aimController.raycast(
   new THREE.Vector3(), new THREE.Vector3(0, 0, 1), 10,
 ), terrainHit, 'garage raycast uses the terrain fallback without loading combat');

@@ -31,7 +31,7 @@ try {
   const turret = tank.root.getObjectByName('rig_turret');
   const gun = tank.root.getObjectByName('rig_gun');
   assert.ok(hull && turret && gun, 'independent Revolution keeps the canonical three-part rig');
-  assert.equal(gun.parent, turret, 'the cannon pitches inside the yawing turret');
+  assert.ok(gun.parent === turret, 'the cannon pitches inside the yawing turret');
   const body = mesh('hull');
   const bodyPoints = worldVertices(body);
   const bowPoints = bodyPoints.filter((point) => Math.abs(point.z - 3.86) < 0.0001);
@@ -220,7 +220,7 @@ try {
   const shoes = mesh('gearTrackPads');
   assert.ok(shoes.isInstancedMesh && shoes.count >= 160,
     'the single native course carries moving linked shoes on both sides');
-  assert.equal(tank.root.getObjectByName('gearTrackInnerLinks'), undefined,
+  assert.ok(tank.root.getObjectByName('gearTrackInnerLinks') === undefined,
     'no second static connector course duplicates the smart track');
 
   const muzzle = tank.root.getObjectByName('rig_muzzle');

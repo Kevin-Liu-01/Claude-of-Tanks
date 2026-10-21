@@ -54,7 +54,7 @@ await settle(16);
 assert.deepEqual(dom.state.fetches, ['/media/site50-r14/fleet/index.json'], 'the first opening loads the index');
 const figure = withTake.querySelector('.manual-take');
 assert.ok(figure, 'the vehicle gains its take');
-assert.equal(withTake.children.at(-1), figure, 'under the record\'s values');
+assert.ok(withTake.children.at(-1) === figure, 'under the record\'s values');
 assert.equal(figure.querySelector('.manual-take-label').textContent, 'In action');
 assert.equal(figure.querySelector('.fleet-take-title').textContent, take.title.en, 'captioned with the take\'s title');
 assert.equal(figure.querySelector('.fleet-take-studio').getAttribute('href'), `/studio?scene=${take.scene}`, 'opens in the Studio');

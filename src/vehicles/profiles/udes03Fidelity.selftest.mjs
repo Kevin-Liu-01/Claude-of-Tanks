@@ -27,7 +27,7 @@ for (let i = 1; i < stations.length; i++) {
 
 for (const side of ['L', 'R']) {
   const ram = visual.root.getObjectByName(`udes03HydraulicRam${side}`);
-  assert.equal(ram?.parent, hull, `UDES 03 ${side} nose ram belongs to the hull`);
+  assert.ok(ram?.parent === hull, `UDES 03 ${side} nose ram belongs to the hull`);
   assert.equal(ram?.userData.seated, true, `UDES 03 ${side} nose ram is explicitly seated`);
   assert.ok(ram.userData.axis[1] < -0.20 && ram.userData.axis[2] > 0.95,
     `UDES 03 ${side} nose ram follows the sloped glacis toward the bow`);

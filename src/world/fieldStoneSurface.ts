@@ -38,7 +38,7 @@ export interface FieldStoneBuffers {
   joint: Uint8Array;
 }
 
-export interface FieldStoneSlice { fine: true; stage: string }
+interface FieldStoneSlice { fine: true; stage: string }
 
 /** The face band's usable windows (v): a stone's window lies inside it, clear of the hearting band and its mips. */
 export const FIELD_STONE_FACE_V: readonly [number, number] = [0.03, 0.81];
@@ -49,11 +49,11 @@ const HEARTING_PAINT_V0 = 0.86;
 /** The core's height in tiles over the band's height (a 0.92 m hearting at 1.2 tiles a metre over 0.1 of a tile). */
 const HEARTING_SQUASH = (0.92 * 1.2) / (FIELD_STONE_HEARTING_V[1] - FIELD_STONE_HEARTING_V[0]);
 /** Stone lightness base (HSL): set so the face band's mean is the stone print's (the receipt pins it within 4 %). */
-export const FIELD_STONE_L0 = 0.29;
+const FIELD_STONE_L0 = 0.29;
 /** The field walls' stone: the warm fieldstone (the default) or the chalk of a chalk map (painted for itself, untoned). */
 export type FieldStoneLithology = 'fieldstone' | 'chalk';
 /** The chalk's lightness base (HSL): its face band's mean about the boulders' chalk (rockDressing.ts, 0.6). */
-export const FIELD_CHALK_L0 = 0.585;
+const FIELD_CHALK_L0 = 0.585;
 
 function hash(a: number, b: number, seed: number): number {
   let h = Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1) ^ Math.imul(seed | 0, 0x2545f491);

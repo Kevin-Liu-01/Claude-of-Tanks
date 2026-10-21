@@ -54,7 +54,10 @@ try {for(const {quality,camoPattern} of CASES){
   assert.equal(mount.material.side,T.FrontSide);
   mount.geometry.computeBoundingBox();
   const bounds=mount.geometry.boundingBox;
-  for(const [actual,value] of [[bounds.min.x,-.26],[bounds.max.x,.26],[bounds.min.y,-.2782],[bounds.max.y,.3518],[bounds.min.z,-.4],[bounds.max.z,.351]])near(actual,value,'Object_6 finite measured boot envelope');
+  // Release 227 (2026-10-19): the fleet build clips the boot's underside clear of its hull (type96bX.ts TYPE96B_BOOT_FLOOR,
+  // lowest floor y 1.66 at the trunnion station; type96MantletClearance.selftest.mjs): min y -.2782 (Object_6's 1.582)
+  // -> -.2002. Its top, width and length remain Object_6's.
+  for(const [actual,value] of [[bounds.min.x,-.26],[bounds.max.x,.26],[bounds.min.y,1.66-1.8602],[bounds.max.y,.3518],[bounds.min.z,-.4],[bounds.max.z,.351]])near(actual,value,'Object_6 finite measured boot envelope');
   const spec=getSpec('type96b');assert.equal(spec.gunDepressionDeg,7);assert.equal(spec.gunElevationDeg,14);
   const state=createTankState(spec,new T.Vector3(),0);
   const inGun=(mesh,local)=>gun.worldToLocal(mesh.localToWorld(local.clone()));

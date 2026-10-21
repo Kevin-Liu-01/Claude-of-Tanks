@@ -24,10 +24,6 @@ export interface SmallPropSinks {
   clutter?: (clutter: CrushableClutter) => void;
 }
 
-/** The size limit the census held the props to (m): a footprint's longer side and the height. */
-export const SMALL_PROP_SIDE_M = 4.5;
-export const SMALL_PROP_HEIGHT_M = 3.0;
-
 /**
  * Give one small prop, drawn as `pieces` (already in their buckets, world placed), its break path: a convex record over
  * the pieces' footprint from their lowest to their highest point, in both sinks, owned by a clutter of `kind` that

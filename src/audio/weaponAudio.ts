@@ -9,7 +9,7 @@
 
 import type { LoaderKind } from './vehicleAudioProfiles.ts';
 
-export type WeaponClassId =
+type WeaponClassId =
   | 'mg_rifle' | 'mg_heavy'
   | 'ac_20' | 'ac_25' | 'ac_30' | 'ac_40' | 'ac_50'
   | 'gun_90' | 'gun_105' | 'gun_120' | 'gun_125' | 'gun_130' | 'gun_152'
@@ -177,7 +177,7 @@ export const WEAPON_FAR: Readonly<Record<WeaponClassId, string>> = Object.freeze
  * rounds, the Viper micro-missile), or a gun barrel (Arkan, Shillelagh, the MRM). Until 2026-10-13 every one of them
  * played the one `atgm_launch` bank.
  */
-export type MissileLaunchKind = 'tube' | 'soft' | 'rail' | 'gun';
+type MissileLaunchKind = 'tube' | 'soft' | 'rail' | 'gun';
 
 /** The round's own name -> its launch (first match; the names the fx lane reads, by family). */
 const LAUNCH_BY_NAME: readonly (readonly [RegExp, MissileLaunchKind])[] = Object.freeze([

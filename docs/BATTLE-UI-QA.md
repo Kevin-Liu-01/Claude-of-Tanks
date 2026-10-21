@@ -95,6 +95,236 @@ Spawns use the same upright tank-and-return-arrow glyph on the minimap and
 world beacon, tinted for the viewer's team. The compact glyph has a dark backing,
 fits its radius, and stays inside the minimap at the map edges.
 
+### Out of ammo and unlimited rounds
+
+A weapon with no round left shows no reload sweep, countdown or ready pulse. Its
+ring turns to sparse, muted danger dashes. A single-shot gun shows one struck
+round. When the ring would cross that round or an empty rack, or come within
+3 px of its strike, the mark drops below the ring (`sightMarkTop`). The test
+covers the ring's whole circle wherever it sits, including the gun's own ring
+when a lagging lay carries it off the screen's centre. A canvas aim warning
+moves below the mark, its chip 3 px clear of every mark and of the ring. A live rack (full, short of stowage, unlimited, or
+reloading) keeps its shells' dark contours 3 px from the ring's stroke and halo
+where it sits, or drops below the ring the same way (`ringGap`). The reload
+countdown sits 3 px under the rack's contours, or under the marker, and drops
+below the ring when the ring's stroke would come within 3 px of its digits. On
+the scope it also drops under the range tag when the tag hangs on its row less
+than 16 px beside it, so the two never read as one line. The canvas aim warning
+starts under the countdown and the range tag. The scope readout line starts 3 px
+under everything above it: the rack or struck round, the countdown, the warning
+chip and the range tag where it hangs over the line. The line and the zoom plate
+keep 3 px from the ring's stroke, or drop below the ring
+(`sniperReadoutStack`). Where the line's resting place would put it any higher,
+whatever sits above it wins. Every part of the row and the warning chip also
+keeps 3 px from the HUD's panels and controls. The layout measures them on every
+relayout and hands them to the reticle (`src/ui/sightFurniture.ts`): the
+controls row and the tray, a stacked tray's speedometer and damage panel, a
+landscape phone's consumables column and systems row, a portrait phone's FIRE
+buttons, the score, the map and the vision switch. Round r9 modelled some of
+these as constant floors in `hud.ts`, and missed the consumables at 667x375 and
+the left FIRE button at 360x640. A pass can land while a panel fades or slides,
+for example the touch tray's two collapsed shell slots fading out behind the
+selected one. The end of a furniture's own opacity, visibility or transform
+transition measures it again. Before r10e, those two slots stayed published as
+furniture until some later relayout, and a recording caught them at 8 touch
+sizes. The line rests no lower than that furniture
+lets it. Where the row would still reach a panel, the zoom plate moves up beside
+the line, then the warning chip joins that row left of the line, then the chip
+moves above the ring. Then the line and the zoom plate move right of the column
+under the marker, 16 px apart, then the row goes above the ring. Last, the zoom
+plate is left out (the view itself shows the zoom). Where nothing keeps clear,
+the row takes the place that reaches least far into the furniture. A rack or
+struck round that would reach a panel goes over the ring instead. A countdown
+that would reach one moves beside the rack, or over the sight. A range tag that
+would reach one hangs at the ring's 1:30, and a chip or row set over the sight
+keeps 3 px over the tag there. On a screen over 430 px tall a rack's
+countdown also moves beside the rack. On a portrait phone the reticle seats the
+touch warning chip under the sight, where a mouse layout paints its canvas chip,
+and the scope's readouts start under it. At 50% + 48 px it met the countdown and
+a rack dropped below a wide ring. Where its seat under the sight meets the
+furniture, it first rises to just under the ring and the marks there, before
+it goes over the sight. The chip yields to the sixth-sense notice: the layout
+publishes the notice's settled box on a touch layout, and where the chip's place
+runs into it, the chip waits hidden until the notice goes. The notice never
+moves the chip or any other mark. Moving it ran the chip into the furniture
+instead: 22 px into the left FIRE button at 320x568 and 16 m. Round r10 set the
+chip over the sight at 320x568, under the DETECTED notice. A short landscape
+keeps it in the left lane under the map. On the short landscape
+scope stack the round leads the ammo readout line instead, and a rack's countdown
+sits beside the rack when the ring keeps clear of it there. The scope's vision switch sits beside the
+sight, level with the marker and past the widest ring, where no readout goes. A
+mouse layout seats it right of the sight, also past the range tag beside a small
+ring. A mouse window under 540 px wide uses the compact plate there. A shot
+report or the open combat log in the right lane covers that seat on a mouse
+window under about 1200 px wide. The switch then takes the mirror seat left of
+the sight, or waits hidden while the left lane has no room either; the I key
+still switches the view (`seatScopeVision`). Touch seats
+it left of the sight, clear of the ammo and consumables column and FIRE. A
+rack shows spent slots for rounds stowage cannot load, and an empty rack is
+struck through. The range tag starts past the rack and its strike. Between two
+rounds of a clip or a salvo rack, the round being chambered fills as the group
+cycles. That is the last ready slot, so the slot of the round just fired never
+fills. No countdown shows under the rack.
+Spent launcher and magazine-reload controls are struck and disabled. Their count
+is spoken, not printed. Every empty tray slot is struck on a danger edge with
+its 0 in the danger ink, on desktop as on the phone. The phone's collapsed empty
+slot also loses its amber frame. A dry gun dims both phone FIRE buttons. In
+every tray slot the count, the type label, the key and the shell icon keep 3 px
+of ink from each other. On the desktop tray (64 px slots, 1000 px wide and up)
+the shell icon is raised 3 px clear of the type label, and the label and the
+count share the bottom row. Every mouse tray under 1000 px wide stacks
+(`data-hud-tray='stacked'`: 48x52 slots, 44x52 below 768 px). Its bottom row
+cannot hold a label and a count, so the count takes the top-right corner beside
+a smaller key, and the shell stands on the label's floor, small enough that the
+HE drum's top keeps clear of both corners. On touch the shell stands on the
+label's floor too, so every slot height keeps the gap, and the shorter slots
+draw it smaller. The 44 px wide slots step it left of the corner count (by 1 px
+on the stacked mouse tray, 3 px on a landscape phone under 300 px tall). The
+reload shade dims a slot's picture, never its marks: the key, the count and the
+type label stand over it, so a reloading count stays white in the corner as the
+`∞` does. A count of three digits or more tightens its slot's type label
+and count, and the shell icon gives way to it: on desktop the icon rises; on
+touch and on the stacked mouse tray it shrinks and steps left, out from under
+the corner count. Under unlimited rounds nothing reads empty:
+not the ring, the rack, the tray, the magazine control or the loader audio. The
+ammo `∞` takes the numeral's size. Unlimited rounds are read per vehicle
+(`rulesetUnlimitedFor`). In the AC-130 only the gunship refills, so an escort
+shows its real empty states. On a portrait phone a systems row that crosses the
+sight (`portraitSightClearTop`) moves below the scope readouts when there is
+room, otherwise above the ring. The sight's band covers the countdown, the rack,
+the struck round and the aim warning.
+
+Round r5 described the tray as having no touching marks, with the desktop shell
+raised 3 px. Both were true only at 1000 px and up. Under 1000 px the stacked
+tray's own canvas rule replaced the raise with a centred, scaled shell, and the
+`∞` and the empty 0 printed over the type label (APFSDS|∞ by 12 px, ATGM|∞ by
+2 px and APFSDS|0 by 5.6 px at 900 px). The r5 capture had no stacked case, so
+it never measured them. The capture now covers those trays at 900 px and 640 px.
+
+Round r8 put the switch under the sight, at 50% + 145 px. It ran under the tray
+slots, the consumables and the controls row on short mouse windows (700x460,
+800x500, 1280x480). With the gun travel warning, the readouts and the chip landed
+on it at 520 to 600 px tall (13.8 px at 700x580), and a wide ring's stack landed
+on it on taller windows too. The r8 receipt modelled the controls row 112 px over
+the floor, but it starts 120 px up. The receipt skipped the 431 to 450 px windows
+with the warning, and its rings (1, 11, 16, 24 and 40 m) missed 26 to 31 m, where
+the rack or struck round drops below the ring. There the readouts ran as much as
+6.5 px into the row. The receipt now models the row where it is and sweeps those
+rings, and the capture adds the warning, the widest ring and those windows.
+
+Round r7 said the scope readout line and the canvas aim warning start under the
+countdown. That held only on screens over about 525 px tall. From 431 to about
+525 px the line's resting place (`h - 176`) won over the countdown, and the line
+was drawn on it: as much as 29.5 px over it at 800x500, 37.5 px at 900x480 and
+45.4 px at 700x460. A single gun's `24` also sat 5.5 px into its `3.2`. The same
+cap put the line on the rack, the struck round and the ring itself. Moving the
+rack and countdown below the ring in r7 roughly tripled the overlap. The warning
+chip, starting under the countdown too, overlapped the readout line, and a small
+ring's countdown sat 4 px from the range tag, so the touch scope read
+`3.2 s200 m`. Neither the receipt nor the capture had a mouse window in that
+band. In r7 the stacked and touch trays' corner count also sat under the reload
+shade, about 2:1 on its panel (`rgb(67,70,74)` on `rgb(11,10,10)`), while the
+`∞` beside it stayed white.
+
+`src/ui/hudAmmoOut.selftest.mjs` covers the derivations and the tray rules, and
+`src/ui/hudAmmoOutPaint.selftest.mjs` covers the live paint, the scope stack's
+geometry and the ring, rack and countdown gaps, all in `npm test`. Its scope
+sweep runs every reticle state, with and without the gun travel warning, over
+rings of 11 px up to the ceiling, on the short mouse windows (stacked and wide,
+431 to 600 px tall, and taller, with the rings that drop the marks below the
+ring on the short wide ones), narrow mouse windows, a phone, landscape phones and
+small touch screens. Every mark under the marker, and a ring centred on it, keeps
+3 px from the vision switch where the sheet seats it. Every mark of the sight,
+the touch warning chip the reticle seats included, keeps 3 px from the
+furniture the layout publishes, recorded on the fixture for every swept size
+(`tools/fixtures/hud-sight-furniture.json`, by
+`tools/hud-sight-furniture.browser.mjs`); a portrait phone's chip is swept
+unscoped too. The frame a reload ends on always repaints, even with the wall
+clock far ahead (round r9b: the paint cache reused the last cycling frame there,
+and the chambered round stayed part-filled). For the rendered frames
+(it takes the capture lease), run the command below. It covers a 1440 px
+desktop, the stacked mouse trays at 900 px and 640 px, six short mouse windows
+(800x500, 900x480, 700x460, 1280x480, 800x560 and 1280x440), a 480 px wide mouse
+window, a portrait phone, a 360x640 phone, four landscape phones (844x390,
+932x430, 667x375 and 740x360), and the tray states on the two 44 px tall touch
+slots (320x568 and 568x290). The mouse windows, the phones and the landscape
+phones add the gun travel warning and the widest ring to the scope's states;
+the desktop, both stacked trays, 800x500, the 390x844 phone and the 844x390 and
+667x375 landscape phones add unlimited rounds through the scope, and those four
+mouse windows a shot report and the open combat log over the right lane. It checks pixels,
+recorded canvas geometry and the tray's computed styles: every mark under the
+marker keeps 3 px from the ring's stroke, every text there keeps 3 px from the
+rack, and every mark of the sight, the warning chip and the zoom plate's rules
+included, keeps 3 px from every control (the speedometer and the minimap among
+them) and from the scope's vision switch. The marks over the ring count too. On
+a portrait phone the seated warning chip keeps 3 px from every control. The
+switch keeps 3 px from every HUD panel and control, a shot report and the open
+log included, and stays on the screen; it waits hidden only while one of those
+covers its seat. It then reads each saved frame (`tools/hud-ammo-frame-ink.mjs`):
+every mark the DOM says a visible slot shows must be in the frame's pixels. That
+covers its count, type label and empty strike, the touch chevron and an opaque
+top edge, and a white count must read at full brightness, not under the reload
+shade. Each visible slot's DOM read must name its count and label, the mouse
+tray's key, an empty slot's strike and the phone's chevron, and an empty slot's
+count must be the danger 0. A missing one is a failure, not a skipped check; the
+receipt breaks each of these on a mouse tray and on a touch tray. With a camera
+on the frame, the paint receipt also turns the gun off the camera's aim, so the
+ring sits left, right, above and below the marker; every gap holds there too.
+One older placement remains: the range tag hangs off the screen centre's 4:30,
+not the gun ring's, so a far-displaced ring can cross it. A few small windows
+leave no place where every mark keeps 3 px from the furniture under the widest
+rings. There each mark takes the place that reaches least far into it. The paint
+receipt pins how far that is (`TIGHT_FLOOR`), measured in its model and on the
+rendered fixture. Every mode but the standard battle shows its objective panel.
+The layout records that stage apart, and the receipt sweeps it with live and
+empty racks, finite and endless rounds:
+
+- 568x290: 3.34 px into the score in a standard battle (a rack set over a 43 px
+  ring). With the objective panel it is 22.75 px. The panel sits over the sight
+  and the systems row under it, so the rack has no room above or below the
+  ring; only the space right of the ring is free.
+- 320x568: 25.25 px (25.52 rendered). The readout row or the 156 px warning
+  chip sits on the systems row, and the left FIRE button sits under the sight.
+- 360x640: 8.87 px (9.64 rendered), the 24 px chip on the systems row's grey
+  underlines.
+- 375x667: 7.34 px, `0 ` on the systems row with the warning under the widest
+  ring, in every mode.
+- 740x360 and 640x360 with the objective panel: 0.37 px, an empty rack under the
+  widest ring on the systems row.
+- 1024x400 with the objective panel: 7.62 px, the warning chip set over the
+  widest ring into the panel. The rendered fixture keeps 3 px.
+
+The capture reports these windows' gaps as notes (its case's `tight` floor),
+not failures. Every other swept window keeps 3 px in a standard battle and in
+every mode, the listed capture sizes among them. Round r9 left 568x290 25.5 px
+into its systems row and 1024x400 4.5 px into its controls row. It put the
+portrait chip on the countdown and a dropped rack, and the 667x375 zoom plate
+12 px into the consumables. Before r9 the compact stack under 431 px tall had no
+floor at all, and ran as much as 34 px into a wide tray's row.
+
+The reticle never dodges the shot report, the open combat log or the centre
+notices, which come and go. On a mouse window 480 to about 640 px wide, the
+right lane's report and the open log reach over the sight, the ring's right
+side included, in battle as in the scope. That is the right lane's own dock,
+older than this item.
+Nothing touches the page between the DOM read and the frame. The ink gaps
+between count, label, key and icon are measured after the frame, from
+full-viewport shots. The tool takes no clipped screenshot. Its flow lives in
+`tools/hud-ammo-capture.mjs`. `tools/hud-ammo-frame-ink.selftest.mjs` runs that
+flow against a recording browser over a fake DOM, so it reads the calls as
+made: a clip passed in any form, a filtered findings list or a DOM read without
+a label fails it. Its fake DOM gives each text a CSS box larger than its ink, so
+a descriptor read off the CSS box fails too, and its PNG rows cover every filter
+on RGB and RGBA frames, with the Average filter's odd sums. In round r4b the gaps were measured with clipped shots taken
+before each frame. Replayed on the same tree, that flow saved 18 of 56 frames
+without the marks painted over a slot's shell icon (count, label, key, strike,
+chevron and reload shade), while hit-testing and computed styles still showed
+them. Run:
+
+```sh
+node tools/hud-ammo-states.browser.mjs --url=http://127.0.0.1:5189 --out=/absolute/new-evidence-directory
+```
+
 ### Vehicle controls and score alignment
 
 The objective follows the scoreboard's measured center, including the shifted
@@ -257,6 +487,46 @@ placed below the joystick, with a separate spectator position; multiplayer
 latency remains in the connection control. Mobile physical gun warnings use a
 measured DOM notice instead of painting over controls on the reticle canvas.
 The geometry gate includes those notices alongside detection and damage alerts.
+
+### Touch centre notices (r10e)
+
+A touch layout places its centre notices against the reticle and the measured
+furniture (`src/ui/touchNoticePlan.ts`, called by the layout on each relayout).
+These are the detection, the alert, the pre-battle countdown and the medal
+card. Integ stacked the detection and the alert centred under the systems row.
+On every phone but the tallest, that put them on the aim point, the ring, the
+struck round and rack, the scope's circle, readouts and vision plate. The alert
+also sat on the countdown's digit, and the medal card on the scope's readout
+row. The notices session's critic found this on integ ce8b634668.
+
+The plan keeps 4 px from the reticle's footprint and 6 px from the panels,
+controls and feeds. The footprint is what the reticle can draw at full bloom,
+so nothing moves as the ring breathes:
+
+- the ring at 15 % of the shorter side;
+- in battle, the column under it and over it (rack, struck round, countdown,
+  seated chip);
+- through the scope, the circle at 1.55 r + 3, the readout row and zoom plate
+  over and under it, and the range tag.
+
+The countdown goes first, in the detection's place, scaled down to 60 % where
+it must. The detection and the alert then take integ's place where that keeps
+clear. Otherwise they take the highest free place, as a stack, then apart, then
+compact (the 136 px notice, the alert in 8 px type). The medal card takes the
+highest free place off all of them, or waits with its time kept. A phone's aim
+hint sets its "LANDSCAPE RECOMMENDED" advice on its own right-aligned line. On
+one line it ran under the speedometer and the left FIRE button at 360x640.
+
+Where no place keeps clear, each notice takes the least intrusive place.
+`body[data-touch-notices~='uncleared']` marks this. The notice reaches into the
+footprint before it covers any panel or control. This happens on the 568 px
+landscapes (568x256, 568x290, 568x320) and in the scope at 640x360 at rest.
+
+`src/ui/touchNoticePlan.selftest.mjs` plans every recorded touch size and stage.
+`tools/hud-touch-notices.browser.mjs` stages the critic's scenes at 15 touch
+sizes and measures each notice against the reticle's recorded ink, the seated
+chip, the vision plate and the hint, with no screenshot. It notes the uncleared
+windows rather than failing them.
 
 ### Verified local run — 2026-10-01
 

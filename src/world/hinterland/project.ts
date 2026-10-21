@@ -12,13 +12,13 @@
 // Pure (no THREE): the shaders and their JS twins live together so a receipt can hold one against the other.
 
 /** Up to here a point is drawn where it is. */
-export const HINTERLAND_COMPRESS_FROM_M = 2500;
+const HINTERLAND_COMPRESS_FROM_M = 2500;
 /** The compressed band's depth: everything farther stands within this much past 2.5 km. */
 export const HINTERLAND_COMPRESS_SPAN_M = 800;
 /** The falloff of the compression (m): R(d) approaches 3.3 km as e^(−(d − 2.5 km) / 20 km). */
-export const HINTERLAND_COMPRESS_FALLOFF_M = 20_000;
+const HINTERLAND_COMPRESS_FALLOFF_M = 20_000;
 /** The refraction-adjusted earth radius (m). */
-export const HINTERLAND_EARTH_R_M = 7_300_000;
+const HINTERLAND_EARTH_R_M = 7_300_000;
 
 /** R(d): the compressed distance of a point d metres from the camera. */
 export function compressDistance(d: number): number {
@@ -53,7 +53,7 @@ export function compressPoint(px: number, py: number, pz: number, cx: number, cy
  * distance (the remap: geometry along exact directions, so early depth testing stays — a written depth cost 9–15 ms of
  * GPU timer in the Glacier perf A/B). */
 export const HINTERLAND_DEPTH_MARGIN_M = 60;
-export const HINTERLAND_DEPTH_RATE = 0.2;
+const HINTERLAND_DEPTH_RATE = 0.2;
 
 /** GLSL: the compression, the curvature and the inverse (the shaders' twin of the functions above). */
 export const HINTERLAND_PROJECT_GLSL = /* glsl */`
@@ -111,7 +111,7 @@ vec3 hinterlandProjectDrawn( vec3 p, vec3 c, out float trueD, out float drawnR0 
 
 /** The post pass's depth-haze density at the ground and its layer's scale height (post.ts AERIAL_HAZE_DENSITY,
  * hazeLaw.ts HAZE_LAYER_SCALE_M): the Hinterland adds back what its remapped depth takes from that pass. */
-export const HINTERLAND_POST_HAZE_SIGMA = 0.00092;
+const HINTERLAND_POST_HAZE_SIGMA = 0.00092;
 export const HINTERLAND_HAZE_LAYER_M = 400;
 
 /** The haze distance a Hinterland pixel writes as its depth (JS twin of the GLSL below): the ray's own drawn distance up

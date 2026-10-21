@@ -47,7 +47,7 @@ float cotStoneGone(vec2 xz) {
 }
 `;
 
-export const STONE_DISPLACE_GLSL = /* glsl */`
+const STONE_DISPLACE_GLSL = /* glsl */`
 #ifdef USE_INSTANCING
 {
   float cotKind = aStone.w;

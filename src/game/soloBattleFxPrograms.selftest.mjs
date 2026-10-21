@@ -9,6 +9,7 @@ import { createArmorAimOverlay } from './armorAimOverlay.ts';
 import { stageCombatFxProgramSubmission } from './battleWarmRuntime.ts';
 import { createCombatWarmCoordinator } from './combatWarmCoordinator.ts';
 import { createSoloBattleDeploymentRuntime } from './soloBattleDeploymentRuntime.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 // Actual deployment, staging, strict private-target preparation, isolated draw,
 // armor, coordinator and frame-plus-task owners. Only native I/O, effect emission
@@ -140,7 +141,7 @@ function createFixture(mode, host) {
     properties: { get: material => properties.get(material) },
     compileAsync() { assert.fail('the strict integration must not call raw compileAsync'); },
     compile(root, selectedCamera, targetScene) {
-      assert.equal(selectedCamera, camera); assert.equal(targetScene, scene);
+      assert.ok(selectedCamera === camera); assert.ok(targetScene === scene);
       const selected = [];
       root.traverse(object => { if (object.material) selected.push(object); });
       if (activeTarget !== sourceTarget) {
@@ -151,7 +152,7 @@ function createFixture(mode, host) {
         assert.equal(privateTarget.texture.type, HalfFloatType);
         assert.equal(privateTarget.texture.colorSpace, LinearSRGBColorSpace);
         assert.deepEqual([privateTarget.width, privateTarget.height], [100, 75]);
-        assert.deepEqual(selected, meshes, 'strict compilation selects the actual staged visible FX only');
+        assert.deepEqual(graphLabels(selected), graphLabels(meshes), 'strict compilation selects the actual staged visible FX only');
         assert.equal(fxRoot.visible, true, 'prepare before isolated-draw hiding');
         assert.equal(camera.layers.mask, stagedMask);
         events.push('private-compile');
@@ -167,7 +168,7 @@ function createFixture(mode, host) {
       return selectedMaterials;
     },
     render(renderScene, renderCamera) {
-      assert.equal(renderScene, scene); assert.equal(renderCamera, camera);
+      assert.ok(renderScene === scene); assert.ok(renderCamera === camera);
       if (!fxRoot.visible) return; // Separate production world/player warm cohorts.
       draws++;
       assert.equal(activeTarget, privateTarget, 'draw uses the very same prepared private target');
@@ -236,7 +237,7 @@ function createFixture(mode, host) {
     assert.equal(camera.layers.mask, stagedMask, 'only the existing staging camera lease spans a wait');
     assert.equal(fxRoot.visible, true); assert.ok(meshes.every(mesh => mesh.visible));
     assert.deepEqual(meshes.map(mesh => mesh.layers.mask), initialMeshMasks);
-    assert.deepEqual(meshes.map(mesh => mesh.material), materials);
+    assert.deepEqual(graphLabels(meshes.map(mesh => mesh.material)), graphLabels(materials));
     assert.ok(meshes.every(mesh => mesh.parent === fxRoot));
     assert.equal(worldRoot.visible, true); assert.equal(playerRoot.visible, true);
     assert.equal(retained.visible, false); assert.equal(armorMesh.visible, true);
@@ -298,7 +299,7 @@ function createFixture(mode, host) {
       assert.equal(worldRoot.visible, true); assert.equal(playerRoot.visible, true); assert.equal(retained.visible, false);
       assert.equal(alternateRoot.visible, true, 'stale predecessor cleanup cannot touch the successor FX root');
       const parent = mode === 'stale-detach' ? null : mode === 'stale-reparent' ? alternateParent : scene;
-      assert.equal(fxRoot.parent, parent, 'cleanup must preserve externally changed root ownership');
+      assert.ok(fxRoot.parent === parent, 'cleanup must preserve externally changed root ownership');
     },
     dispose() {
       coordinator.reset(); armor.dispose(); warmer.dispose(); alternateWarmer.dispose();

@@ -107,6 +107,18 @@ flush();
 assert.equal(frame([shell(801, 'd', 12.7, 0)]), 1, 'a machine-gun tracer at night');
 assert.ok(tail.getW(0) > dayHalo * 1.5 && halo.getX(0) > dayHaloRad * 1.5, 'the halo grows at night');
 assert.ok(head.getZ(0) - tail.getZ(0) > 850 / 60 + 1, 'the night camera smears a longer streak');
+// (ac130-fx-228 r3) a backdrop AA round 0.4-0.9 km off: a faint point by day, the stream the night camera opens to
+{
+  const ambientCore = (night) => {
+    scene.userData.lightModel = night ? { night: 1, exposure: 3.3 } : null;
+    tr.reset(); tr.begin(); tr.ambient(0, 300, 400, 0, 0.6, 0.8, 420, 200, 1, true); tr.end();
+    return geo.instanceCount === 1 ? core.getX(0) + core.getY(0) + core.getZ(0) : 0;
+  };
+  const dayK = ambientCore(false), nightK = ambientCore(true);
+  assert.ok(dayK > 0 && nightK > dayK * 2.5, `a backdrop round by day is a fraction of its night radiance (${dayK.toFixed(2)} vs ${nightK.toFixed(2)})`);
+  scene.userData.lightModel = { night: 1, exposure: 3.3 };
+  tr.reset();
+}
 // a gun's belts are its own: the coax's count never shifts the main gun's (and the reverse)
 tr.reset(); flush();
 assert.equal(frame([shell(900, 'a', 7.62, 0), shell(901, 'a', 120, 1), shell(902, 'a', 7.62, 2), shell(903, 'a', 120, 3)]), 3,

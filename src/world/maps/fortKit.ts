@@ -60,7 +60,7 @@ export const FORT_PRINT_MEAN = 0.42;
 export type PillboxStyle = 'regelbau' | 'dot' | 'hex' | 'logearth';
 
 /** One map's tones for its pillbox, linear albedo. */
-export interface FortTones {
+interface FortTones {
   concrete: Rgb;
   earth: Rgb;
   turf: Rgb;
@@ -694,19 +694,6 @@ function berm(m: Mesh, B: BermSpec): void {
 
 // ---------------------------------------------------------------------------------------------------------------
 // the forms
-
-export interface PillboxForm {
-  plan: Plan;
-  wallTop: number;
-  slab: number;
-  overhang: number;
-  /** the berm's height at the wall by side (front +z, flank, rear) */
-  bermFront: number;
-  bermFlank: number;
-  bermRear: number;
-  /** the berm's run per metre of height */
-  bermRun: number;
-}
 
 const GRADE = 0.08; // the placed base sits 0.08 m below grade (props.ts addDestructible('bunker', y - 0.08))
 /** The room's floor, below grade: a destroyed work's slab falls into it. */
@@ -1472,7 +1459,7 @@ function buildLogEarthPieces(O: BuildOpts): THREE.BufferGeometry {
  * runs, the − half's end facing + first; each a splintered round end, slivers out along the grain from a torn middle,
  * fresh wood inside, darker at its rim. A roof log and a door's lintel snap; walls' bands go whole.
  */
-export function logFractureEdge(material: FractureMaterial, piece: FracturePiece, score: number | 'whole', seed: number,
+function logFractureEdge(material: FractureMaterial, piece: FracturePiece, score: number | 'whole', seed: number,
   out: DamageMeshWriter): void {
   if (score === 'whole' || material !== 'timber' || (piece.role !== 'rafter' && piece.role !== 'frame')) return;
   const axis = piece.scoreAxis ?? 0;
@@ -2859,22 +2846,6 @@ export function valloBlockhaus(ctx: RegionalBuildContext): RegionalParts {
   }
   recordBody(sink, 0, 0, S, S, top, wall);
   return sink.finish();
-}
-
-/** Default tones (a temperate map); props.ts passes each map's. */
-export const TEMPERATE_TONES: FortTones = {
-  concrete: hexLin(0x9a968c), earth: hexLin(0x5a4a38), turf: hexLin(0x56622f), crest: hexLin(0x7d7a4a),
-  timber: hexLin(0x5b4a38), bag: hexLin(0x8e7f5e), age: 0.45, arid: false,
-};
-
-/** For the offline look tools: a style's two states, merged with nothing else. */
-export function buildForRender(o: { variant?: string; broken?: boolean; seed?: number; map?: string }): THREE.BufferGeometry {
-  const f = o.map ? fortFor(o.map) : null;
-  const style = f?.style ?? (o.variant as PillboxStyle) ?? 'regelbau', tones = f?.tones ?? TEMPERATE_TONES, seed = f?.seed ?? o.seed ?? 7;
-  const body = buildPillbox(style, tones, seed, !!o.broken), bank = pillboxBerm(style, tones, seed);
-  const g = mergeGeometries([body, bank], false)!;
-  body.dispose(); bank.dispose();
-  return g;
 }
 
 export { mergeGeometries as _mergeForTests };

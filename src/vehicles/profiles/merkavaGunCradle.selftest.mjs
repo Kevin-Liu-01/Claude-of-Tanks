@@ -29,7 +29,7 @@ for (const id of MERKAVA_IDS) {
     assert.ok(component?.geometry, `${id}: ${name} exists`);
     let owner = component.parent;
     while (owner && owner !== gun) owner = owner.parent;
-    assert.equal(owner, gun, `${id}: ${name} is owned by rig_gun`);
+    assert.ok(owner === gun, `${id}: ${name} is owned by rig_gun`);
   }
 
   // Exercise the same raised-gun pose used by the surface-studio audit. A

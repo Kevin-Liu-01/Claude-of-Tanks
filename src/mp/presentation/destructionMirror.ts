@@ -42,7 +42,7 @@ interface MirrorBus {
   emit(event: string, payload: unknown): void;
 }
 
-export interface DestructionMirror {
+interface DestructionMirror {
   /** The world's ground plus this round's heaps (null without a world height field): the prediction rides it. */
   readonly groundField: DeformableHeightField | null;
   readonly ground: TerrainDeformation;

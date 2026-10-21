@@ -1,5 +1,5 @@
 import type { ModeCheckpoint } from './matchModes.ts';
-import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, strikeDrone, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
+import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, strikeDrone, killSourceOf, supportKillSource, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
 import { setModeWeapon } from './modeLoadout.ts';
 import { packSmokeScreen } from './smokeReceipt.ts';
 import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, type SmokeScreen } from './auxiliarySystems.ts';
@@ -118,7 +118,8 @@ import {
 import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
-  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetLoadout, type MatchRuleset,
+  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetLoadout, rulesetUnlimitedFor,
+  type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from './matchPlacement.ts';
@@ -1916,7 +1917,8 @@ export function createAuthoritativeMatch({
     }
     // ruleset gravity rides the shooter's stamp (Turbo Ball: 0.6 g lobs); unlimited rounds refill the channel
     shell.gravityMps2 *= Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1;
-    if(ruleset.aerial!=='gunship'||isGunship(entity))refillUnlimitedAmmunition(ruleset, combat, firedSlot);
+    // ... only where the entity really refills (the AC-130's escorts never do: matchRuleset rulesetUnlimitedFor)
+    if (rulesetUnlimitedFor(ruleset, entity)) refillUnlimitedAmmunition(ruleset, combat, firedSlot);
     shells.push(shell);
     startPostShotReload(combat, entity.spec);
     selectFallbackAfterShot(entity, firedSlot);
@@ -1962,9 +1964,13 @@ export function createAuthoritativeMatch({
     const chargeKg = munitionChargeKg(shell.spec, munition);
     const blast = pendingTankBlast?.shellId === shell.id && chargeKg > 0 ? pendingTankBlast.blast : null;
     if (blast) pendingTankBlast = null;
+    // (ac130-fx-228) the attacker's weapons platform when not its vehicle (sim/aerialCombat.ts killSourceOf): free event JSON, absent for a
+    // vehicle's own guns, so an older peer reads the same payload
+    const attackerSource = supportKillSource(killSourceOf(entityById.get(shell.shooterId), shell.spec));
     emit('shell_hit', {
       ...hit,
       munition, chargeKg, ...(blast ? { blast } : {}),
+      ...(attackerSource ? { attackerSource } : {}),
       shooterId: shell.shooterId,
       attackerId: shell.shooterId,
       targetName: target?.spec.name,
@@ -1998,10 +2004,13 @@ export function createAuthoritativeMatch({
   ): void {
     if (!target || wasDestroyed || !target.combat.destroyed) return;
     if (shooter) shooter.kills += 1;
+    // (ac130-fx-228) the kill stays the shooter's; its source names the gunship or the drone that made it
+    const source = supportKillSource(killSourceOf(shooter, shell.spec));
     emit('tank_destroyed', {
       id: target.id,
       killerId: shell.shooterId,
       cause: hit.ammoRacked ? 'ammo_rack' : 'shot',
+      ...(source ? { source } : {}),
     });
   }
 
@@ -2537,8 +2546,8 @@ export function createAuthoritativeMatch({
   };
   /** The shell a roof station just fired (auxiliaryShot). */
   function fireAuxiliaryShot(entity: AuthoritativeEntity): void {
-    const shell=createShell(auxiliaryShot.shell,entity.id,!entity.bot,auxiliaryShot.origin,auxiliaryShot.direction,nextShellId++);
-    shell.gravityMps2*=entity.modeGravityScale??1;shells.push(shell);
+    const shell:DamageShell=createShell(auxiliaryShot.shell,entity.id,!entity.bot,auxiliaryShot.origin,auxiliaryShot.direction,nextShellId++);
+    shell.gravityMps2*=entity.modeGravityScale??1;shell.roofStation=true;shells.push(shell);
     spotting.notifyFired(entity.id,timeS,auxiliaryShot.shell.caliberMm);
   }
   function advanceWeapons(dt: number): void {

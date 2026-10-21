@@ -45,7 +45,7 @@ try {
   assert.equal(receipt?.longShadowProxyRemoved, true,
     'the former unselectable track-side line is recorded as removed');
 
-  assert.equal(tank.root.getObjectByName('hullShadow'), undefined,
+  assert.ok(tank.root.getObjectByName('hullShadow') === undefined,
     'no full-length render-only shadow beam may remain beside the tracks');
 
   const collect = (mesh) => {

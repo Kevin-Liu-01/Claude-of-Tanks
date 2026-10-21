@@ -27,8 +27,8 @@ try {
       const hull = tank.root.getObjectByName('rig_hull');
       const turret = tank.root.getObjectByName('rig_turret');
       const gun = tank.root.getObjectByName('rig_gun');
-      assert.equal(gun.parent, turret);
-      assert.equal(hull.parent, tank.root);
+      assert.ok(gun.parent === turret);
+      assert.ok(hull.parent === tank.root);
       const gear = hull.userData.runningGearReceipts;
       assert.equal(gear.length, 1, 'one canonical suspension/track owner');
       for (const name of ['gearTrackBandL','gearTrackBandR','gearRoadWheelTires','gearEndWheelBody']) {

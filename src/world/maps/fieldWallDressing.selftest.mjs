@@ -236,7 +236,7 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
   }
   assert.equal(down, 0, 'every triangle looks up');
   assert.deepEqual(Array.from(buildWallTurf(meshAt, foldAt, ax, az, bx, bz, half, 77).attributes.position.array), Array.from(p.array), 'the same place, the same turf');
-  assert.equal(buildWallTurf(meshAt, null, 0, 0, 0, 0.5, half, 1), null, 'no turf on a stub');
+  assert.ok(buildWallTurf(meshAt, null, 0, 0, 0, 0.5, half, 1) === null, 'no turf on a stub');
   // the owner: kept when asked, never under snow, by a mud wall or on the phones
   const ask = { meshAt, foldAt };
   const asked = createWallDressing({ ground: slope, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: 1 / 3, turf: ask });
@@ -322,7 +322,7 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
       }
     }
     const spill = d.breachTumble(false, 4, 7, 1, 0, 0.24);
-    if (snow) assert.equal(spill, null, 'no stones strewn on the snow');
+    if (snow) assert.ok(spill === null, 'no stones strewn on the snow');
     else assert.ok(spill && spill.attributes.position.count / 3 <= 90, 'the breach spills a few of its stones');
     assert.ok(d.breachTumble(true, 4, 7, 1, 0, 0.26), 'a mud wall spills its lumps');
   }

@@ -407,7 +407,7 @@ const warehouse: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const ARCTIC_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const ARCTIC_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   foundryoffice: (ctx) => moduleTrain(ctx),
   firestation: (ctx) => tropo(ctx),
   watertower: (ctx) => radarTower(ctx),

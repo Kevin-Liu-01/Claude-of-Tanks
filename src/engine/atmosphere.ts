@@ -171,7 +171,7 @@ function liveCalibration(): typeof ATMO_CALIBRATION {
  * 2026-10-09: the sky grade fades out under a low sun (fully on from the second value, degrees): a map's character hue
  * never repaints its sunset, whose own warm band is the atmosphere's.
  */
-export const SKY_GRADE_SUN_FADE_DEG: readonly [number, number] = Object.freeze([4, 16]);
+const SKY_GRADE_SUN_FADE_DEG: readonly [number, number] = Object.freeze([4, 16]);
 const IDENTITY_GRADE = Object.freeze([1, 1, 1, 0, 1, 1, 1, 0, 0.1] as const);
 /** A hue of luminance 1 (the grade replaces the sky's hue at its own luminance). */
 function hueOf(hex: number): [number, number, number] {

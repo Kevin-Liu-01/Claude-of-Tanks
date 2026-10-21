@@ -29,8 +29,8 @@ assert.equal(palette.hull.type, 'MeshStandardMaterial',
   'service paint must reuse the resident Garage shader family');
 assert.equal(palette.hull.vertexColors, false,
   'service paint must not preserve a builder-specific camouflage colour channel');
-assert.equal(palette.hull, palette.barrel, 'painted armor and gun share one static finish');
-assert.equal(palette.trackLink, palette.spareTrack, 'live and spare track steel share one static material');
+assert.ok(palette.hull === palette.barrel, 'painted armor and gun share one static finish');
+assert.ok(palette.trackLink === palette.spareTrack, 'live and spare track steel share one static material');
 for (const material of new Set([
   palette.hull,
   palette.wheels,
@@ -44,9 +44,9 @@ for (const material of new Set([
   palette.canvasCloth,
   palette.wood,
 ])) {
-  assert.equal(material.map, null, `${material.name} must remain map-free`);
-  assert.equal(material.normalMap, null, `${material.name} must remain normal-map-free`);
-  assert.equal(material.roughnessMap, null, `${material.name} must remain roughness-map-free`);
+  assert.ok(material.map === null, `${material.name} must remain map-free`);
+  assert.ok(material.normalMap === null, `${material.name} must remain normal-map-free`);
+  assert.ok(material.roughnessMap === null, `${material.name} must remain roughness-map-free`);
 }
 palette.dispose();
 

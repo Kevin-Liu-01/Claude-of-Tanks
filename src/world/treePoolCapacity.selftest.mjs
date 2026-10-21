@@ -156,7 +156,7 @@ function compare(before, after) {
   for (let i = 0; i < after.group.children.length; i++) {
     const a = before.group.children[i], b = after.group.children[i];
     for (const key of ['count', 'visible', 'castShadow', 'receiveShadow', 'frustumCulled', 'matrixAutoUpdate']) {
-      assert.equal(b[key], a[key], `pool ${i}/${key}`);
+      assert.ok(b[key] === a[key], `pool ${i}/${key}`);
     }
     assert.deepEqual(b.userData, a.userData);
     const aStreams = streams(a), bStreams = streams(b);
@@ -234,7 +234,7 @@ for (const mapId of mapIds) {
           assert.equal(trunk.castShadow, false, `${sp}/${variant}: the trunk casts through the proxy`);
           assert.equal(proxy.userData.treeCanopyShadowProxy, true);
           assert.equal(proxy.castShadow, true);
-          assert.equal(trunk.geometry.index, null, 'the near trunk is a flat merge');
+          assert.ok(trunk.geometry.index === null, 'the near trunk is a flat merge');
           const farCanopy = after.farMeshes[sp][variant % after.farMeshes[sp].length][1];
           const crownCount = farCanopy.geometry.index ? farCanopy.geometry.index.count : farCanopy.geometry.attributes.position.count;
           const trunkPositions = trunk.geometry.attributes.position;
