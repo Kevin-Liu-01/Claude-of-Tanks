@@ -282,9 +282,10 @@ assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', posi
   pool.update(new THREE.Vector3(-156, 8, 2), true, new THREE.Vector3(-1, -0.25, 0.3));
   assert.ok(lit().includes('-175,4,11'), `looking back up the street, the lamp behind the camera lights: ${lit()}`);
   // (229, the looks lane's 228 follow-up: "a lamp's point light washes the adjacent facade evenly up to the roofline")
-  // a lamp's light is a luminaire's cone aimed straight down from its lens: the pavement under it at full, a facade 4 m
-  // off lit at its foot and fading up the wall to nothing by the lamp's head, dark above it (three's spot attenuation:
-  // smoothstep(cos(angle), cos(angle (1 - penumbra)), cos of the ray's angle off the axis))
+  // a lamp's light is a lantern's, its axis straight down from its lens: the pavement round its foot at full, a facade
+  // 4 m off lit at its foot and fading up the wall (about half at the lamp's height, a fifth a metre and a half above),
+  // never cut at a line, dark toward the zenith (three's spot attenuation: smoothstep(cos(angle), cos(angle (1 -
+  // penumbra)), cos of the ray's angle off the axis); the round's first cone, nothing above the horizontal, lost its pairs)
   const lamp = pool.lights.find((light) => isLamp(light) && light.intensity > 0);
   assert.ok(lamp.isSpotLight && lamp.angle === BUILDING_LAMP_CONE_RAD && lamp.penumbra === BUILDING_LAMP_PENUMBRA);
   const axis = lamp.target.position.clone().sub(lamp.position).normalize();
@@ -295,10 +296,12 @@ assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', posi
   };
   assert.equal(cone(0, 0), 1, 'the pavement under the lamp at full');
   assert.ok(cone(2, 0) > 0.95, 'and round its foot');
-  const wall = [0, 1, 2, 3, 3.9, 5, 8].map((y) => cone(4, y));
+  const wall = [0, 1, 2, 3, 4, 5.5, 7, 9].map((y) => cone(4, y));
   for (let k = 1; k < wall.length; k++) assert.ok(wall[k] <= wall[k - 1], `the facade 4 m off fades up the wall: ${wall.map((v) => v.toFixed(2))}`);
-  assert.ok(wall[0] > 0.7 && wall[2] < 0.6 * wall[0] && wall[3] < 0.15, `lit at its foot, half gone by 2 m: ${wall.map((v) => v.toFixed(2))}`);
-  assert.equal(wall[4] + wall[5] + wall[6], 0, 'and dark from the lamp\'s head up to the roofline');
+  assert.ok(wall[0] > 0.9 && wall[4] > 0.4 && wall[4] < 0.7, `lit at its foot, about half at the lamp's height: ${wall.map((v) => v.toFixed(2))}`);
+  assert.ok(wall[5] > 0.1 && wall[5] < 0.35 && wall[7] < 0.1, `a fifth a metre and a half above it, near none at the roofline: ${wall.map((v) => v.toFixed(2))}`);
+  for (let k = 1; k < wall.length; k++) assert.ok(wall[k - 1] - wall[k] < 0.35, `no line on the wall: ${wall.map((v) => v.toFixed(2))}`);
+  assert.ok(cone(0, 8) < 0.01, 'dark toward the zenith (the lantern\'s cap)');
   pool.dispose(); lampMaterial.dispose();
 }
 

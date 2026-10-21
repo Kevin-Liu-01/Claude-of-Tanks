@@ -14,11 +14,15 @@ import { STREET_LAMP_CANDELA } from './worldNightLighting.ts';
 
 // ---- the knee
 const lampFoot = STREET_LAMP_CANDELA / (3.9 * 3.9);
-for (const [what, lux] of [['a street lamp\'s pool at its foot', lampFoot], ['a headlight\'s beam on the grass 9 m ahead', 1200 / 81],
+// (a headlight's beam meets the grass 9 m ahead at ~7 degrees over the ground: on a blade leaning 10 degrees off the
+// zenith, a third of its light)
+const beam9 = 1200 / 81 * 0.35;
+for (const [what, lux] of [['a street lamp\'s pool at its foot', lampFoot], ['a headlight\'s beam on the grass 9 m ahead', beam9],
   ['the sun', 4.5], ['the moon', 0.2], ['nothing', 0]]) {
   assert.equal(swardNearLight(lux), lux, `${what} (${lux.toFixed(2)} lux) passes unchanged`);
 }
-assert.ok(SWARD_NEAR_KNEE > lampFoot && SWARD_NEAR_KNEE > 1200 / 81, 'the knee over every pool');
+assert.ok(SWARD_NEAR_KNEE > lampFoot && SWARD_NEAR_KNEE > beam9, 'the knee over every pool');
+assert.ok(SWARD_NEAR_CAP <= 1.7 * lampFoot, 'the cap within about half again the brightest pool');
 let last = 0;
 for (let lux = 0; lux <= 5000; lux += 0.5) {
   const v = swardNearLight(lux);

@@ -8,16 +8,18 @@
 // beside its distance; in its near field a real lamp's lens and housing spread and shade it, and a thin blade lit edge-on
 // in it is a sliver the eye sees saturate to the lamp's colour, not a neon line. So a blade's light from each source
 // passes unchanged up to SWARD_NEAR_KNEE (over the brightest pool a lamp lays on the ground: every pool, the sun's and the
-// moon's light as they were) and saturates softly toward SWARD_NEAR_CAP above it, keeping its colour. Grass only: the
-// ground, the hulls and the walls keep their light, so the pools are as bright as before.
+// moon's light as they were) and saturates softly toward SWARD_NEAR_CAP above it — at most about half again the brightest
+// pool, so a blade beside a lamp reads lit as the pool round it is, not as a line of light — keeping its colour. Grass
+// only: the ground, the hulls and the walls keep their light, so the pools are as bright as before. (The round's first
+// cap, 40, still drew the blades before a turret's lamps near-white: both blind critics, "glowing lime blades".)
 //
 // Both grass families (tallGrass.ts, the blades; vegetation.ts, the carpet's tufts) are Lambert: the block replaces three's
 // RE_Direct after `lights_lambert_pars_fragment` with the same Lambert term through the knee (sun, moon, lamps, flashes).
 
-/** Lux a blade takes from one source unchanged (over every lamp pool: the street lamp's ~10 at its foot). */
-export const SWARD_NEAR_KNEE = 16;
+/** Lux a blade takes from one source unchanged (over every lamp pool: the street lamp's ~9.9 at its foot). */
+export const SWARD_NEAR_KNEE = 10;
 /** Lux a blade's light from one source approaches, however near the source. */
-export const SWARD_NEAR_CAP = 40;
+export const SWARD_NEAR_CAP = 16;
 
 /** The knee in numbers (the receipts' mirror of the shader's). */
 export function swardNearLight(lux: number): number {

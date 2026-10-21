@@ -230,11 +230,14 @@ function updateEmitter(
 export const HEADLIGHT_LOW_BEAM_DROP = .05, HEADLIGHT_CONE_RAD = .33;
 
 /** (229, the looks lane's 228 follow-up: "a lamp's point light washes the adjacent facade evenly up to the roofline, with
- *  no shadow and no height falloff") a town lamp's pooled light is a luminaire's, aimed straight down: full within ~31
- *  degrees of the vertical (the pavement under it), fading to nothing at 85 (the facade beside it lit from its foot, fading
- *  up the wall to the lamp's head, dark above it). Its candela on the axis is the lamp's, so its pool under it is as bright
- *  as the point light's was. */
-export const BUILDING_LAMP_CONE_RAD = 1.48, BUILDING_LAMP_PENUMBRA = .63;
+ *  no shadow and no height falloff") a town lamp's pooled light is a lantern's, its axis straight down: full within ~31
+ *  degrees of the nadir (the pavement round its foot), about half at the horizontal (the facade beside it at the lamp's
+ *  height, and the lamp's own head), fading through the upper half to nothing at the zenith (the lantern's dark cap): a
+ *  facade lit warm round the lamp, fading up its wall, never cut at a line. A cone this wide is three's own spot law
+ *  (smoothstep(cos(angle), cos(angle (1 - penumbra)), cos of the ray's angle off the axis)) past its documented half-turn
+ *  bound; the round's first cone (85 degrees, nothing above the horizontal) left the facade beside a lamp black and its
+ *  head unlit (both blind critics, 6 of 7 views). Its candela on the axis is the lamp's: the pool under it as before. */
+export const BUILDING_LAMP_CONE_RAD = 3.0, BUILDING_LAMP_PENUMBRA = .8;
 
 /** Which side of its vehicle a lamp sits on (authored anchor-local x): −1 left, +1 right, 0 centreline. */
 function lampSide(source: EmitterState): number {
@@ -379,7 +382,7 @@ function createSpots(group: THREE.Group, count: number): LightSlot<THREE.SpotLig
   });
 }
 
-/** The town lamps' pooled lights (the budget's `pointLights`): cones aimed down, BUILDING_LAMP_CONE_RAD. */
+/** The town lamps' pooled lights (the budget's `pointLights`): lanterns, their axes down (BUILDING_LAMP_CONE_RAD). */
 function createLamps(group: THREE.Group, count: number): LightSlot<THREE.SpotLight>[] {
   return Array.from({ length: count }, (_, index) => {
     const light = new THREE.SpotLight(0xffd79e, 0, 18, BUILDING_LAMP_CONE_RAD, BUILDING_LAMP_PENUMBRA, 2);
