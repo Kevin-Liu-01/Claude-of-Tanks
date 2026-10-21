@@ -17,6 +17,12 @@
  * shot mode: whenReady() is what the capture staging awaits). World.update republishes the handle on
  * scene.userData.structureGroundOcclusion and polls the occluders' destroyed flags; a solid that breaks or is restored
  * re-bakes its reach in the worker and the answer patches the texture in place (copyTextureToTexture).
+ *
+ * 2026-10-17 (the SKY lane, 227 SKY-03): the handle also keeps the aureole's soft shadow (structureAureoleBake.ts) — a thin
+ * deck's forward-scattered sunlight from a disc round the sun, hidden by the same solids — baked in the same worker for
+ * the sun the pass asks for (requestAureole) once the light model gives the deck an aureole (lightModel.ts deckAureole),
+ * re-baked when the sun moves and patched round destroyed solids like the occlusion. The pass's block takes the aureole's
+ * light back where a solid hides it, on the same receivers (structureAureoleBake.ts has the law).
  */
 import * as THREE from 'three';
 import {
@@ -25,6 +31,7 @@ import {
 } from './structureGroundOcclusionBake.ts';
 import { VEHICLE_ALPHA_MIN } from './vehicleOcclusion.ts';
 import { lightTune } from './lightModelCore.ts';
+import { AUREOLE_RADIUS_DEG, AUREOLE_REACH_M, bakeStructureAureole } from './structureAureoleBake.ts';
 
 /** The pass applies the term out to this distance, fading over the last SGO_RANGE_FADE_M (m). */
 export const SGO_RANGE_M = 220;
@@ -49,6 +56,30 @@ export const SGO_CARD_AMBIENT_SHARE = 0.6;
 export const SGO_FADE_IN_S = 0.6;
 /** How often the occluders' destroyed flags are polled (s). */
 export const SGO_POLL_S = 0.4;
+/**
+ * (227) The aureole's receivers: up to this far over the shading solid's base take its shadow whole, fading to none
+ * AUREOLE_GATE_SOFT_M higher (m) — wider than the occlusion's gate, for a shadow that runs tens of metres over the snow.
+ */
+export const AUREOLE_GATE_M = 2;
+export const AUREOLE_GATE_SOFT_M = 2;
+/**
+ * (227 v2; the blind pairs on Whiteout: r1 at the aureole's physical share was invisible — "a thin dark contact line
+ * only", "wall base lacks soft shade") On bright snow under a closed deck AgX's highlight shoulder leaves a tenth of
+ * darkening four display levels, so the uniform sky's ring and the aureole's quarter-strength shadow both vanish. Under a
+ * closed deck (the light model's overcast × closure) the occlusion is read broadened, occ' = 1 − (1 − occ)^k with k up to
+ * SGO_DECK_BROAD (a wall foot 0.5 → 0.82, a wall height out 0.15 → 0.33, two heights 0.05 → 0.13: a halo a height or two
+ * wide, as the snow round a hut reads in an overcast photograph), and the aureole's share is taken DECK_AUREOLE_GAIN
+ * times (at most AUREOLE_SHARE_MAX of the hemisphere's light): a soft shadow that reads, never a sunny-day one.
+ * QA: __LIGHT_TUNE.SGO_DECK_BROAD (1 = off) and DECK_AUREOLE (the gain; 0 = off).
+ */
+export const SGO_DECK_BROAD = 2;
+/** (227 v3) The deepest the block darkens a ground pixel (occlusion and aureole together): never a black pocket. */
+export const SGO_DARK_MAX = 0.6;
+
+export const DECK_AUREOLE_GAIN = 2.5;
+export const AUREOLE_SHARE_MAX = 0.6;
+/** (227) A sun moved further than this from the aureole's baked one re-bakes it (the cosine of 1°). */
+export const AUREOLE_SUN_COS = Math.cos(Math.PI / 180);
 
 export interface StructureGroundOcclusionHandle {
   readonly texture: THREE.DataTexture;
@@ -65,7 +96,15 @@ export interface StructureGroundOcclusionHandle {
   flush(renderer: THREE.WebGLRenderer): void;
   setInstant(on: boolean): void;
   dispose(): void;
-  readonly stats: { parts: number; bakeMs: number; rebakes: number; patches: number; worker: boolean };
+  /** (227) The aureole's soft shadow raster (structureAureoleBake.ts): null until a thin deck asks for it. */
+  readonly aureoleTexture: THREE.DataTexture | null;
+  /** (227) 0..1: the aureole's live strength (its bake for a sun has landed; the fade-in, the map's scale). */
+  readonly aureoleStrength: number;
+  /** (227) The pass, while the deck has an aureole: the sun (toward it) to bake it for; a sun moved 1° re-bakes. */
+  requestAureole(sun: readonly number[]): void;
+  readonly stats: {
+    parts: number; bakeMs: number; rebakes: number; patches: number; worker: boolean; aureoleMs: number; aureoleBakes: number;
+  };
 }
 
 interface WorkerLike {
@@ -82,6 +121,30 @@ export interface StructureGroundOcclusionOptions {
   scale?: number;
   /** A worker factory (null: bake on the main thread, sliced to an idle callback). */
   makeWorker?: (() => WorkerLike | null) | null;
+  /** (227) The map's own sun when its deck is thin (deckBeam): the aureole's bake starts with the occlusion's. */
+  aureoleSun?: readonly number[] | null;
+}
+
+/** A raster the handle owns: its CPU texels, its texture and the region patches that landed after its first upload. */
+interface SgoRaster {
+  data: Uint8Array;
+  texture: THREE.DataTexture;
+  uploadedOnce: boolean;
+  pending: { rect: SgoRect; rg: Uint8Array }[];
+}
+
+function makeRaster(name: string): SgoRaster {
+  const data = new Uint8Array(SGO_SIZE * SGO_SIZE * 2);
+  const texture = new THREE.DataTexture(data, SGO_SIZE, SGO_SIZE, THREE.RGFormat, THREE.UnsignedByteType);
+  texture.name = name;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.flipY = false;
+  texture.unpackAlignment = 2;
+  return { data, texture, uploadedOnce: false, pending: [] };
 }
 
 function defaultWorker(): WorkerLike | null {
@@ -118,38 +181,83 @@ function mergeRects(rects: SgoRect[]): SgoRect[] {
 export function createStructureGroundOcclusion(
   records: readonly SgoRecord[], options: StructureGroundOcclusionOptions,
 ): StructureGroundOcclusionHandle {
-  const data = new Uint8Array(SGO_SIZE * SGO_SIZE * 2);
-  const texture = new THREE.DataTexture(data, SGO_SIZE, SGO_SIZE, THREE.RGFormat, THREE.UnsignedByteType);
-  texture.name = 'structure-ground-occlusion';
-  texture.minFilter = THREE.LinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  texture.generateMipmaps = false;
-  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
-  texture.colorSpace = THREE.NoColorSpace;
-  texture.flipY = false;
-  texture.unpackAlignment = 2;
+  const sgo = makeRaster('structure-ground-occlusion');
+  const texture = sgo.texture;
   const scale = Math.max(0, Math.min(1, options.scale ?? 1));
-  const stats = { parts: 0, bakeMs: 0, rebakes: 0, patches: 0, worker: false };
+  const stats = { parts: 0, bakeMs: 0, rebakes: 0, patches: 0, worker: false, aureoleMs: 0, aureoleBakes: 0 };
   const flags = new Uint8Array(records.length);
   for (let i = 0; i < records.length; i++) flags[i] = records[i]?.dead || records[i]?.crushed ? 1 : 0;
   // each solid's parts, packed once (the shapes hold still; only the destroyed flags change): null hides no sky, so a
   // tree or a kerb that breaks re-bakes nothing
   const parts = scale > 0 ? records.map(packRecordOccluders) : [];
   let ready = false, disposed = false, instant = false, fade = 0, pollT = 0, nextId = 1;
-  let uploadedOnce = false;
-  const pending: { rect: SgoRect; rg: Uint8Array }[] = [];
   const inflight = new Map<number, true>();
+  // (227) the aureole: its raster (made on the first request), the sun its landed bake is for, the sun of the full bake in
+  // flight, its fade-in, and the promise a capture waits on while a full bake is in flight
+  let aur: SgoRaster | null = null;
+  let aurSun: number[] | null = null, aurWant: number[] | null = null, aurFade = 0;
+  let aurWait: Promise<boolean> | null = null, aurResolve: ((ok: boolean) => void) | null = null;
+  const aureoleRadius = (): number => lightTune('DECK_AUREOLE_RADIUS', AUREOLE_RADIUS_DEG);
   let resolveReady: (ok: boolean) => void = () => {};
   const readyPromise = new Promise<boolean>((resolve) => { resolveReady = resolve; });
   const worker = scale > 0 ? (options.makeWorker === null ? null : (options.makeWorker ?? defaultWorker)()) : null;
   stats.worker = !!worker;
 
-  function land(rect: SgoRect, rg: Uint8Array, full: boolean): void {
+  function landIn(raster: SgoRaster, rect: SgoRect, rg: Uint8Array, full: boolean): void {
     if (disposed) return;
     const [i0, j0, i1, j1] = rect, w = i1 - i0;
-    for (let j = j0; j < j1; j++) data.set(rg.subarray((j - j0) * w * 2, (j - j0 + 1) * w * 2), (j * SGO_SIZE + i0) * 2);
-    if (full || !uploadedOnce) { texture.needsUpdate = true; return; }
-    pending.push({ rect, rg });
+    for (let j = j0; j < j1; j++) raster.data.set(rg.subarray((j - j0) * w * 2, (j - j0 + 1) * w * 2), (j * SGO_SIZE + i0) * 2);
+    if (full || !raster.uploadedOnce) { raster.texture.needsUpdate = true; return; }
+    raster.pending.push({ rect, rg });
+  }
+  const land = (rect: SgoRect, rg: Uint8Array, full: boolean): void => landIn(sgo, rect, rg, full);
+
+  /** (227) An aureole bake landed: a full one for its sun swaps the raster in, a region one patches it. */
+  function landAureole(rect: SgoRect, rg: Uint8Array, full: boolean, sun: number[], ms: number): void {
+    if (disposed || !aur) return;
+    stats.aureoleMs += ms;
+    stats.aureoleBakes++;
+    landIn(aur, rect, rg, full);
+    if (!full) return;
+    aurSun = sun;
+    if (aurWant && aurWant.every((v, i) => v === sun[i])) {
+      aurWant = null;
+      aurResolve?.(true);
+      aurResolve = null;
+      aurWait = null;
+    }
+  }
+
+  function requestAur(rect: SgoRect | null, sun: number[]): void {
+    if (disposed || scale <= 0 || !aur) return;
+    const packed = packOccluders(records);
+    const radius = aureoleRadius();
+    if (worker) {
+      const id = nextId++;
+      inflight.set(id, true);
+      worker.postMessage({ id, kind: 'aureole', packed, rect, sun, radius }, [packed.buffer as ArrayBuffer]);
+      return;
+    }
+    const run = (): void => {
+      if (disposed) return;
+      const result = bakeStructureAureole(packed, sun, rect, radius);
+      landAureole(result.rect, result.rg, !rect, sun, result.ms);
+    };
+    const idle = (globalThis as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
+    if (idle) idle(run, { timeout: 500 }); else setTimeout(run, 0);
+  }
+
+  function wantAureole(sun: readonly number[]): void {
+    if (disposed || scale <= 0) return;
+    const l = Math.hypot(sun[0], sun[1], sun[2]);
+    if (!(l > 1e-6) || !(sun[1] > 0)) return;
+    const s = [sun[0] / l, sun[1] / l, sun[2] / l];
+    const ref = aurWant ?? aurSun;
+    if (ref && ref[0] * s[0] + ref[1] * s[1] + ref[2] * s[2] >= AUREOLE_SUN_COS) return;
+    if (!aur) aur = makeRaster('structure-aureole-shadow');
+    aurWant = s;
+    if (!aurWait) aurWait = new Promise<boolean>((resolve) => { aurResolve = resolve; });
+    requestAur(null, s);
   }
 
   function request(rect: SgoRect | null): void {
@@ -175,9 +283,10 @@ export function createStructureGroundOcclusion(
 
   if (worker) {
     worker.onmessage = (event: MessageEvent) => {
-      const msg = event.data as { id: number; rg: Uint8Array; rect: SgoRect; parts: number; ms: number };
-      const first = msg.id === 1;
+      const msg = event.data as { id: number; kind?: string; rg: Uint8Array; rect: SgoRect; parts: number; ms: number; full?: boolean; sun?: number[] };
       inflight.delete(msg.id);
+      if (msg.kind === 'aureole') { landAureole(msg.rect, msg.rg, !!msg.full, msg.sun ?? [0, 1, 0], msg.ms); return; }
+      const first = msg.id === 1;
       stats.bakeMs += msg.ms;
       if (first) stats.parts = msg.parts; else stats.rebakes++;
       land(msg.rect, msg.rg, first);
@@ -193,9 +302,15 @@ export function createStructureGroundOcclusion(
         land(result.rect, result.rg, true);
         ready = true; resolveReady(true);
       }
+      if (aurWant) {
+        const sun = aurWant, result = bakeStructureAureole(packOccluders(records), sun, null, aureoleRadius());
+        landAureole(result.rect, result.rg, true, sun, result.ms);
+      }
     };
   }
   if (scale > 0) request(null); else resolveReady(false);
+  // (227) a thin deck's map: the aureole's bake starts with the occlusion's (the pass re-bakes it if the battle's sun differs)
+  if (scale > 0 && options.aureoleSun) wantAureole(options.aureoleSun);
 
   function poll(): void {
     const rects: SgoRect[] = [];
@@ -209,50 +324,75 @@ export function createStructureGroundOcclusion(
     for (const rect of mergeRects(rects)) {
       if (rect[2] > rect[0] && rect[3] > rect[1]) request(rect);
     }
+    // (227) the aureole's shadows reach further: its re-bake grows each record by the shadow's reach
+    if (aur && aurSun) {
+      const grown: SgoRect[] = [];
+      for (const rect of rects) {
+        const m = Math.ceil((AUREOLE_REACH_M - SGO_REACH_MAX_M) / ((2 * SGO_HALF_M) / SGO_SIZE));
+        grown.push([Math.max(0, rect[0] - m), Math.max(0, rect[1] - m), Math.min(SGO_SIZE, rect[2] + m), Math.min(SGO_SIZE, rect[3] + m)]);
+      }
+      for (const rect of mergeRects(grown)) {
+        if (rect[2] > rect[0] && rect[3] > rect[1]) requestAur(rect, aurSun);
+      }
+    }
+  }
+
+  /** A raster's first bind uploads the whole texture (the patches are in its data already); later patches copy in place. */
+  function flushRaster(raster: SgoRaster, renderer: THREE.WebGLRenderer, landed: boolean): void {
+    const texture = raster.texture, pending = raster.pending;
+    if (!raster.uploadedOnce) {
+      raster.uploadedOnce = landed;
+      pending.length = 0;
+      return;
+    }
+    while (pending.length) {
+      const patch = pending.shift()!;
+      const [i0, j0, i1, j1] = patch.rect;
+      const src = new THREE.DataTexture(patch.rg, i1 - i0, j1 - j0, THREE.RGFormat, THREE.UnsignedByteType);
+      src.flipY = false;
+      src.unpackAlignment = 2;
+      try {
+        renderer.copyTextureToTexture(src, texture, null, new THREE.Vector2(i0, j0));
+        stats.patches++;
+      } catch {
+        texture.needsUpdate = true; // the whole texture again from its data
+      }
+      src.dispose();
+    }
   }
 
   return {
     texture,
     get ready() { return ready; },
     get strength() { return ready ? fade * scale * Math.max(0, lightTune('STRUCT_GROUND_AO', 1)) : 0; },
+    get aureoleTexture() { return aur && aurSun ? aur.texture : null; },
+    get aureoleStrength() { return aur && aurSun ? aurFade * scale : 0; },
+    requestAureole: wantAureole,
     active: () => !!options.group.parent && options.group.visible,
-    whenReady: () => readyPromise,
+    // (227) a capture also waits for an aureole bake in flight
+    whenReady: () => readyPromise.then(async (ok) => { if (aurWait) await aurWait; return ok; }),
     update(dt: number) {
-      if (disposed || !ready) return;
+      if (disposed) return;
+      if (aurSun) aurFade = instant || SGO_FADE_IN_S <= 0 ? 1 : Math.min(1, aurFade + Math.max(0, dt) / SGO_FADE_IN_S);
+      if (!ready) return;
       fade = instant || SGO_FADE_IN_S <= 0 ? 1 : Math.min(1, fade + Math.max(0, dt) / SGO_FADE_IN_S);
       pollT += Math.max(0, dt);
       if (pollT >= SGO_POLL_S) { pollT = 0; poll(); }
     },
     flush(renderer: THREE.WebGLRenderer) {
-      if (!uploadedOnce) {
-        // the first bind uploads the whole texture (the patches are in its data already)
-        uploadedOnce = ready;
-        pending.length = 0;
-        return;
-      }
-      while (pending.length) {
-        const patch = pending.shift()!;
-        const [i0, j0, i1, j1] = patch.rect;
-        const src = new THREE.DataTexture(patch.rg, i1 - i0, j1 - j0, THREE.RGFormat, THREE.UnsignedByteType);
-        src.flipY = false;
-        src.unpackAlignment = 2;
-        try {
-          renderer.copyTextureToTexture(src, texture, null, new THREE.Vector2(i0, j0));
-          stats.patches++;
-        } catch {
-          texture.needsUpdate = true; // the whole texture again from its data
-        }
-        src.dispose();
-      }
+      flushRaster(sgo, renderer, ready);
+      if (aur) flushRaster(aur, renderer, !!aurSun);
     },
-    setInstant(on: boolean) { instant = on; if (on && ready) fade = 1; },
+    setInstant(on: boolean) { instant = on; if (on && ready) fade = 1; if (on && aurSun) aurFade = 1; },
     dispose() {
       disposed = true;
-      pending.length = 0;
+      sgo.pending.length = 0;
       inflight.clear();
       try { worker?.terminate(); } catch { /* gone */ }
       texture.dispose();
+      if (aur) { aur.pending.length = 0; aur.texture.dispose(); }
       resolveReady(false);
+      aurResolve?.(false);
     },
     stats,
   };
@@ -263,6 +403,11 @@ export function createStructureGroundOcclusion(
 export interface StructureGroundUniforms {
   uSgo: THREE.IUniform<number>;
   tSgo: THREE.IUniform<THREE.Texture>;
+  /** (227) The aureole: x its light on up-facing ground in the rig's units, y its share of that ground's ambient. */
+  uAur: THREE.IUniform<THREE.Vector2>;
+  tAur: THREE.IUniform<THREE.Texture>;
+  /** (227 v2) The occlusion's broadening exponent under a closed deck (1 = the uniform sky's own law). */
+  uSgoBroad: THREE.IUniform<number>;
 }
 
 const EMPTY = (() => {
@@ -273,7 +418,7 @@ const EMPTY = (() => {
 })();
 
 export function createStructureGroundUniforms(): StructureGroundUniforms {
-  return { uSgo: { value: 0 }, tSgo: { value: EMPTY } };
+  return { uSgo: { value: 0 }, tSgo: { value: EMPTY }, uAur: { value: new THREE.Vector2() }, tAur: { value: EMPTY }, uSgoBroad: { value: 1 } };
 }
 
 /** Per frame (post.ts): the active world's handle, when the lever is on and its bake has landed. */
@@ -282,11 +427,32 @@ export function updateStructureGroundUniforms(
 ): void {
   const u = uniforms as StructureGroundUniforms;
   const handle = scene.userData.structureGroundOcclusion as StructureGroundOcclusionHandle | undefined;
-  const strength = enabled && handle && handle.active() ? handle.strength : 0;
-  if (!(strength > 0.001) || !handle) { u.uSgo.value = 0; u.tSgo.value = EMPTY; return; }
-  handle.flush(renderer);
-  u.uSgo.value = strength;
-  u.tSgo.value = handle.texture;
+  const on = !!(enabled && handle && handle.active());
+  // (227) the deck's aureole (lightModel.ts deckAureole: its share of the hemisphere's light), baked for the pass's sun
+  // (QA: __LIGHT_TUNE.DECK_AUREOLE is its gain, live; 0 drops it)
+  const model = scene.userData.lightModel as { deckAureole?: number; overcast?: number; deckClosure?: number; mode?: string } | undefined;
+  const share = on ? Math.min(AUREOLE_SHARE_MAX, Math.max(0, model?.deckAureole ?? 0) * Math.max(0, lightTune('DECK_AUREOLE', DECK_AUREOLE_GAIN))) : 0;
+  // (227 v2) the occlusion broadened under a closed deck
+  const deck = model?.mode === 'physical' ? Math.min(1, Math.max(0, (model.overcast ?? 0) * (model.deckClosure ?? 0))) : 0;
+  u.uSgoBroad.value = 1 + (Math.max(1, lightTune('SGO_DECK_BROAD', SGO_DECK_BROAD)) - 1) * deck;
+  const sun = (uniforms as { uSunDir?: THREE.IUniform<THREE.Vector3> }).uSunDir?.value;
+  if (share > 1e-3 && handle && sun) handle.requestAureole([sun.x, sun.y, sun.z]);
+  const strength = on && handle ? handle.strength : 0;
+  const aurStrength = share > 1e-3 && handle ? handle.aureoleStrength : 0;
+  if (handle && (strength > 0.001 || aurStrength > 0.001)) handle.flush(renderer);
+  if (!(strength > 0.001) || !handle) { u.uSgo.value = 0; u.tSgo.value = EMPTY; } else {
+    u.uSgo.value = strength;
+    u.tSgo.value = handle.texture;
+  }
+  const aurTexture = handle?.aureoleTexture ?? null;
+  const amb = (uniforms as { uContactAmb?: THREE.IUniform<THREE.Vector4> }).uContactAmb?.value;
+  const fillY = Math.max(0, (uniforms as { uContactFillDir?: THREE.IUniform<THREE.Vector3> }).uContactFillDir?.value.y ?? 0);
+  if (!(aurStrength > 0.001) || !aurTexture || !amb) { u.uAur.value.set(0, 0); u.tAur.value = EMPTY; return; }
+  // the aureole is that share of the hemisphere's light on up-facing ground (the rig's sky pole, uContactAmb.x)
+  const light = share * amb.x * aurStrength;
+  const ambUp = amb.x + amb.z + amb.w * fillY;
+  u.uAur.value.set(light, ambUp > 1e-6 ? light / ambUp : 0);
+  u.tAur.value = aurTexture;
 }
 
 const f = (x: number): string => x.toFixed(5);
@@ -299,36 +465,67 @@ export const STRUCTURE_GROUND_OCCLUSION_GLSL = /* glsl */ `
     // 2026-10-09: the ground's sky beside the world's solids (structureGroundOcclusion.ts)
     uniform float uSgo;
     uniform sampler2D tSgo;
+    // 2026-10-17 (227 SKY-03): a thin deck's aureole (structureAureoleBake.ts) — x its light on up-facing ground in the
+    // rig's units, y its share of that ground's ambient (a card's)
+    uniform vec2 uAur;
+    uniform sampler2D tAur;
+    // (227 v2) the occlusion's broadening under a closed deck: occ' = 1 - (1 - occ)^k
+    uniform float uSgoBroad;
+    // the aureole raster's gate, as the occlusion's below: its texel's base (stored modulo ${SGO_BASE_WRAP_M} m, the one nearest
+    // the pixel's own height) against the pixel's height; inside a standing solid's footprint only the ground at its base
+    float cotAurGate( vec2 near, float y, float gateM, float softM ) {
+      float d = near.g * ${f((255 / 256) * SGO_BASE_WRAP_M)} - mod( y, ${f(SGO_BASE_WRAP_M)} );
+      d -= ${f(SGO_BASE_WRAP_M)} * floor( d * ${f(1 / SGO_BASE_WRAP_M)} + 0.5 );
+      bool coveredHere = mod( floor( near.r * 255.0 + 0.5 ), 2.0 ) > 0.5;
+      return coveredHere ? 1.0 - smoothstep( ${f(SGO_COVERED_GATE_M)}, ${f(SGO_COVERED_GATE_M + SGO_COVERED_GATE_SOFT_M)}, -d )
+        : 1.0 - smoothstep( gateM, gateM + softM, -d );
+    }
     float cotStructureGroundShade( vec2 uv, vec3 P, float alpha, float dist ) {
       vec2 t = P.xz * ${f(1 / (2 * SGO_HALF_M))} + 0.5;
       if ( any( lessThan( t, vec2( 0.0 ) ) ) || any( greaterThan( t, vec2( 1.0 ) ) ) ) return 1.0;
       // the occlusion in R's upper seven bits (the covered flag's lowest bit is noise under 1/254 in the filtered read)
       float occ = texture2D( tSgo, t ).r * ${f(255 / 254)};
-      if ( occ < 0.008 ) return 1.0;
-      // the strongest occluder's base, stored modulo ${SGO_BASE_WRAP_M} m: the one nearest the pixel's own height
+      float aur = uAur.x > 0.0 ? texture2D( tAur, t ).r * ${f(255 / 254)} : 0.0;
+      if ( occ < 0.008 && aur < 0.008 ) return 1.0;
+      occ = 1.0 - pow( 1.0 - min( occ, 1.0 ), uSgoBroad );
       ivec2 ti = ivec2( min( t * ${f(SGO_SIZE)}, vec2( ${f(SGO_SIZE - 1)} ) ) );
-      vec2 near = texelFetch( tSgo, ti, 0 ).rg;
-      float baseMod = near.g * ${f((255 / 256) * SGO_BASE_WRAP_M)};
-      float d = baseMod - mod( P.y, ${f(SGO_BASE_WRAP_M)} );
-      d -= ${f(SGO_BASE_WRAP_M)} * floor( d * ${f(1 / SGO_BASE_WRAP_M)} + 0.5 );
-      // inside a standing solid's footprint only the ground at its base (the wall foot under the filter), never its top
-      bool covered = mod( floor( near.r * 255.0 + 0.5 ), 2.0 ) > 0.5;
-      float gate = covered ? 1.0 - smoothstep( ${f(SGO_COVERED_GATE_M)}, ${f(SGO_COVERED_GATE_M + SGO_COVERED_GATE_SOFT_M)}, -d )
-        : 1.0 - smoothstep( ${f(SGO_GATE_M)}, ${f(SGO_GATE_M + SGO_GATE_SOFT_M)}, -d );
-      if ( gate <= 0.0 ) return 1.0;
-      gate *= 1.0 - smoothstep( ${f(SGO_RANGE_M - SGO_RANGE_FADE_M)}, ${f(SGO_RANGE_M)}, dist );
+      float gate = 0.0;
+      if ( occ >= 0.008 ) {
+        // the strongest occluder's base, stored modulo ${SGO_BASE_WRAP_M} m: the one nearest the pixel's own height
+        vec2 near = texelFetch( tSgo, ti, 0 ).rg;
+        float baseMod = near.g * ${f((255 / 256) * SGO_BASE_WRAP_M)};
+        float d = baseMod - mod( P.y, ${f(SGO_BASE_WRAP_M)} );
+        d -= ${f(SGO_BASE_WRAP_M)} * floor( d * ${f(1 / SGO_BASE_WRAP_M)} + 0.5 );
+        // inside a standing solid's footprint only the ground at its base (the wall foot under the filter), never its top
+        bool covered = mod( floor( near.r * 255.0 + 0.5 ), 2.0 ) > 0.5;
+        gate = covered ? 1.0 - smoothstep( ${f(SGO_COVERED_GATE_M)}, ${f(SGO_COVERED_GATE_M + SGO_COVERED_GATE_SOFT_M)}, -d )
+          : 1.0 - smoothstep( ${f(SGO_GATE_M)}, ${f(SGO_GATE_M + SGO_GATE_SOFT_M)}, -d );
+      }
+      // the aureole's shade: its shading solid's base by its own texel, a wider gate for a shadow tens of metres long
+      float aGate = aur >= 0.008 ? cotAurGate( texelFetch( tAur, ti, 0 ).rg, P.y, ${f(AUREOLE_GATE_M)}, ${f(AUREOLE_GATE_SOFT_M)} ) : 0.0;
+      if ( gate <= 0.0 && aGate <= 0.0 ) return 1.0;
+      float range = 1.0 - smoothstep( ${f(SGO_RANGE_M - SGO_RANGE_FADE_M)}, ${f(SGO_RANGE_M)}, dist );
+      gate *= range;
+      aGate *= range;
       float sunVis = cotSunVisOf( alpha );
       float ambShare = ${f(SGO_CARD_AMBIENT_SHARE)};
+      float aurDark = uAur.y * aur * aGate * ${f(SGO_CARD_AMBIENT_SHARE)};
       if ( sunVis >= 0.0 ) {
         vec3 N = cotNormalAt( uv, P );
-        gate *= smoothstep( ${f(SGO_UP_MIN)}, ${f(SGO_UP_FULL)}, N.y );
-        if ( gate <= 0.0 ) return 1.0;
+        float up = smoothstep( ${f(SGO_UP_MIN)}, ${f(SGO_UP_FULL)}, N.y );
+        gate *= up;
+        aGate *= up;
+        if ( gate <= 0.0 && aGate <= 0.0 ) return 1.0;
         float T = uContactSunLum * max( dot( N, uSunDir ), 0.0 ) * clamp( sunVis, 0.0, 1.0 );
         float A = mix( uContactAmb.y, uContactAmb.x, N.y * 0.5 + 0.5 ) + uContactAmb.z
           + uContactAmb.w * max( dot( N, uContactFillDir ), 0.0 );
         ambShare = A / max( T + A, 1e-4 );
+        // the aureole's light the solid hides, over all the light the pixel takes (never the occluder's own light given back:
+        // the face turned to its shadow is the face the aureole does not light)
+        aurDark = uAur.x * aur * aGate / max( T + A, 1e-4 );
       }
-      return 1.0 - uSgo * occ * ${f(1 - SGO_RETURN)} * gate * ambShare;
+      // (v3) never deeper than SGO_DARK_MAX together: a pocket under a reel or a deck stays shade, not a hole
+      return 1.0 - min( uSgo * occ * ${f(1 - SGO_RETURN)} * gate * ambShare + aurDark, ${f(SGO_DARK_MAX)} );
     }
 `;
 
