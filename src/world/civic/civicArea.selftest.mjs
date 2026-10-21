@@ -71,6 +71,13 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
   }
   const lost = [...before].filter((k) => !after.has(k)), gained = [...after].filter((k) => !before.has(k));
   assert.deepEqual([lost, gained], [[], []], `${mapId}: every record outside the rooms stands where it stood`);
+  // (229 b1 r3, the coordinator: "a flat pavement footprint must never push a parked vehicle") the parked vehicles and
+  // carts outside the rooms stand where they stand on the map without the plan (the kit's pavements are no seat blocker)
+  const vehicleKeys = (b) => b.destructibles.filter((d) => d.slot >= 0 && VEHICLES.has(d.kind) && !inAnyRoom(d.x, d.z) && !ownSeat(d)).map(key);
+  const vBefore = new Set(vehicleKeys(base.built)), vAfter = new Set(vehicleKeys(built));
+  const vLost = [...vBefore].filter((k) => !vAfter.has(k)), vGained = [...vAfter].filter((k) => !vBefore.has(k));
+  if (vLost.length || vGained.length) console.log(`${mapId}: parked vehicles moved against the map without the plan: ${JSON.stringify({ from: vLost, to: vGained })}`);
+  assert.deepEqual([vLost, vGained], [[], []], `${mapId}: every parked vehicle and cart outside the rooms stands where it stood`);
 
   const structures = built.obstacles.filter((o) => o.kind === 'structure' || o.structureIdx != null);
   const inStructure = (x, z, m) => structures.some((o) => x > o.min[0] - m && x < o.max[0] + m && z > o.min[2] - m && z < o.max[2] + m
@@ -285,8 +292,9 @@ for (const mapId of plans.CIVIC_PLAN_MAPS.filter((m) => !ONLY || ONLY.has(m))) {
     }
     console.log(`${tag}: ${records.length} records in the room, ${civicTrees.length} trees, ${benches} benches, ${lamps.length} lamps (${roundCrossing} round the crossing), `
       + `open share ${(share * 100).toFixed(1)} %, largest free disc r ${largest.toFixed(1)} m, lanes ${JSON.stringify(widths)}, vetoed ${JSON.stringify(built.group.userData.civic?.vetoed ?? {})}`);
-    // (live records: the props' destructibles and the trees' trunks)
-    assert.ok(records.length + civicTrees.length >= T.records, `${tag}: ${records.length} records and ${civicTrees.length} trunks in the room (${T.records})`);
+    // (live records: the props' destructibles and the trees' trunks; 229 b1 r3, the critic's D4: the trunks in the room only)
+    const roomTrees = civicTrees.filter((t) => inRect(room, t.x, t.z));
+    assert.ok(records.length + roomTrees.length >= T.records, `${tag}: ${records.length} records and ${roomTrees.length} trunks in the room (${T.records})`);
     assert.ok(share <= T.openShare, `${tag}: ${(share * 100).toFixed(1)} % of the room's paving more than 4 m from anything (off the arms, the roundel, the corridors and the lanes; ${(T.openShare * 100).toFixed(0)} %)`);
     assert.ok(largest <= T.largestDisc, `${tag}: the largest free disc ${largest.toFixed(1)} m at (${largestAt[0].toFixed(1)}, ${largestAt[1].toFixed(1)}) off the arms, the corridors and the lanes (${T.largestDisc})`);
   }
