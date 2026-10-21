@@ -6,6 +6,7 @@ import {
   createFrontlineAtmosphere, FRONTLINE_INTENSITY, FRONTLINE_LIMITS, resolveFrontBearingDeg,
 } from './frontlineAtmosphere.ts';
 import { MAP_IDS } from './maps/catalog.ts';
+import { ambientRoundSource } from './destructibles.ts';
 
 // Every map has an authored front (0 = silent) and nothing leaves [0, 1].
 assert.deepEqual(Object.keys(FRONTLINE_INTENSITY).sort(), [...MAP_IDS].sort(), 'one intensity per map, no strays');
@@ -70,7 +71,7 @@ gapsWithin(a.runtime.log, 'flyover', FRONTLINE_LIMITS.flyoverIntervalS);
 
 // owner 2026-09-15 (evening, "remove the smoke in distance"): the front renders no smoke columns.
 // It keeps its artillery anchors (a fan beyond the playable half-map), flashes, flak, aircraft and AA.
-assert.equal(a.parent.getObjectByName('frontline-smoke-columns'), undefined, 'no smoke column mesh');
+assert.ok(a.parent.getObjectByName('frontline-smoke-columns') === undefined, 'no smoke column mesh');
 assert.ok(!Object.hasOwn(FRONTLINE_LIMITS, 'columnPuffs'), 'no plume limits remain');
 // owner 2026-09-17 ("distant explosions visible everywhere"): the front fan still carries most of the
 // artillery, but the rest of the horizon flashes too — no bearing is silent
@@ -138,8 +139,32 @@ assert.ok(a.parent.getObjectByName('frontline-aircraft-0'), 'aircraft slot exist
       assert.ok(aaBursts[i].timeS - aaBursts[i - 1].timeS >= FRONTLINE_LIMITS.aaBurstIntervalS[0] * 0.98, 'one gun keeps its burst interval');
     }
   }
-  const tracers = a.parent.getObjectByName('frontline-aa-tracers');
-  assert.equal(tracers.count, FRONTLINE_LIMITS.tracerCap, 'tracer pool is capped');
+  // (ac130-fx-228 r2) the AA rounds draw through the effects runtime's projectile tracers (the world/fx seam, destructibles.ts), not a
+  // shader of this layer's own: the latest front registers its rounds, they fly from the guns at the tracer speed,
+  // capped by the slot ring, in the gun's ammunition lineage; dispose withdraws the source
+  assert.ok(a.parent.getObjectByName('frontline-aa-tracers') === undefined, 'the September tracer mesh is gone');
+  for (const [mapId, east] of [['verdant', true], ['frontier', false]]) {
+    const front = make();
+    front.runtime.prepare(1337, mapId);
+    for (let t = 0; t < 240 && !front.runtime.log.some((e) => e.kind === 'aa'); t += 0.5) run(front.runtime, 0.5);
+    run(front.runtime, 0.4);
+    const source = ambientRoundSource();
+    assert.ok(source, `${mapId}: the front registers its rounds with the effects runtime`);
+    const drawn = [];
+    source.drawRounds((hx, hy, hz, dx, dy, dz, speed, flown, k, lineageEast) => drawn.push({ hx, hy, hz, dx, dy, dz, speed, flown, k, lineageEast }));
+    assert.ok(drawn.length > 0 && drawn.length <= FRONTLINE_LIMITS.tracerCap, `${mapId}: ${drawn.length} AA rounds in flight, capped by the ring`);
+    // (r3, the blind critic's "confetti") a belt: one round in three carries the tracer
+    assert.ok(drawn.length <= Math.ceil(FRONTLINE_LIMITS.tracerCap / 3), `${mapId}: one tracer in three rounds (${drawn.length} drawn)`);
+    for (const r of drawn) {
+      assert.ok(Math.abs(Math.hypot(r.dx, r.dy, r.dz) - 1) < 1e-4, 'a unit direction');
+      assert.ok(r.speed === FRONTLINE_LIMITS.tracerSpeedMps && r.flown > 0 && r.k > 0 && r.k <= 1);
+      const ox = r.hx - r.dx * r.flown, oz = r.hz - r.dz * r.flown, ring = Math.hypot(ox, oz);
+      assert.ok(ring >= FRONTLINE_LIMITS.aaRingRadiusM[0] - 5 && ring <= FRONTLINE_LIMITS.aaRingRadiusM[1] + 5, `fired from a gun on the border ring (${ring.toFixed(0)} m)`);
+      assert.equal(r.lineageEast, east, `${mapId}: ${east ? 'Soviet' : 'Western'}-lineage ammunition`);
+    }
+    front.runtime.dispose();
+    assert.equal(ambientRoundSource(), null, `${mapId}: dispose withdraws the source`);
+  }
 }
 
 // Sprite pools never exceed their cap and reset/dispose leave nothing behind.

@@ -61,7 +61,7 @@ function checkGear(tank,id,source){
   }
   assert.equal(tank.root.getObjectByName('rig_hull').userData.runningGearReceipts.length,1);
   assert.ok(tank.root.getObjectByName('gearTrackPads')?.isInstancedMesh);
-  assert.equal(tank.root.getObjectByName('gearTrackInnerLinks'),undefined);
+  assert.ok(tank.root.getObjectByName('gearTrackInnerLinks') === undefined);
   if(id==='t72b_1987'){
     const band=new THREE.Box3().setFromObject(tank.root.getObjectByName('gearTrackBandR'));
     near(band.max.x-band.min.x,.60311,.000002,'T72 source band width retained');

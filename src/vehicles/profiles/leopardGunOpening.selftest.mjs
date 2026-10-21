@@ -11,7 +11,7 @@ for(const [id,pivot] of Object.entries(datums))for(const quality of ['high','low
   try {
     const turret=t.root.getObjectByName('rig_turret'),gun=t.root.getObjectByName('rig_gun');
     const mount=t.root.getObjectByName('gunMount'),recoil=t.root.getObjectByName('rig_recoil');
-    assert.equal(mount.parent,gun);assert.notEqual(mount.parent,recoil);
+    assert.ok(mount.parent === gun);assert.ok(mount.parent !== recoil);
     assert.ok(gun.position.distanceTo(new T.Vector3(...pivot))<1e-5,`${id}: original trunnion`);
     const fixed=[],movingStock=[];
     gun.traverse(o=>{if(o.isMesh&&/^(gunMount|gunInteriorFill)/.test(o.name))movingStock.push(o);});
@@ -32,7 +32,7 @@ for(const [id,pivot] of Object.entries(datums))for(const quality of ['high','low
         const hits=new T.Raycaster(origin,direction,0,.25).intersectObjects(fixed,false);
         assert.ok(hits.length,`${id}: fixed bearing contacts trunnion axis`);
       }
-      const muzzle=t.root.getObjectByName('gun');assert.equal(muzzle.parent,recoil);
+      const muzzle=t.root.getObjectByName('gun');assert.ok(muzzle.parent === recoil);
       const direction=new T.Vector3(0,0,-1).transformDirection(gun.matrixWorld);
       const origin=gun.localToWorld(new T.Vector3(0,0,1.8));
       const contact=new T.Raycaster(origin,direction,0,1.4).intersectObject(mount,false)[0];

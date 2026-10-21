@@ -110,9 +110,9 @@ function processMarkup(): string {
 const reducedMotion = (): boolean => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /**
- * The eleventh section holds the library of every picture the media rounds made (2026-10-19, owner: "all should be
- * visible on the website"): src/presentation/mediaLibrary.ts, loaded when the section nears the screen or the page
- * opens at #library.
+ * The eleventh section holds the library of the media rounds' finals (2026-10-19, owner: "all should be visible on the
+ * website"; finals only since 2026-10-20): src/presentation/mediaLibrary.ts, loaded when the section nears the screen
+ * or the page opens at #library.
  */
 function mountLibrary(article: HTMLElement): void {
   const section = article.querySelector<HTMLElement>('#topic-section-11');
@@ -122,7 +122,10 @@ function mountLibrary(article: HTMLElement): void {
   root.className = 'filming-library';
   section.appendChild(root);
   const load = (): void => {
-    void import('../presentation/mediaLibrary.ts').then(({ mountMediaLibrary }) => mountMediaLibrary(root)).catch(() => {
+    // The stylesheet loads beside the module at this lazy boundary, never inside its graph (runtimeStyles.selftest:
+    // plain-Node receipts import mediaLibrary.ts and cannot load CSS; the media archive's pattern in publicPages.ts).
+    void Promise.all([import('../presentation/mediaLibrary.css'), import('../presentation/mediaLibrary.ts')])
+      .then(([, { mountMediaLibrary }]) => mountMediaLibrary(root)).catch(() => {
       root.dataset.libraryMounted = 'false';
     });
   };

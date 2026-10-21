@@ -142,7 +142,7 @@ function glyphFor(ch: string): Glyph {
 }
 
 /** How a line of text is cut or painted. */
-export interface TextStyle {
+interface TextStyle {
   /** the capitals' height (m) */
   capHeight: number;
   /** the widest the line may run (m): a longer line is set smaller */

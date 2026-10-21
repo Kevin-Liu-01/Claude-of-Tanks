@@ -30,6 +30,7 @@
 // Cost: about 10 s an id; one process. House rules: 4 GB heap, wall-clock alarm, --yield-load.
 
 import path from 'node:path';
+import { uniqueIds } from './id-list.mjs';
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { SPARE_TRACK_BUILD, spareTrackGeometryDigest, ledgerSiteKeys } from './spare-track-digest.mjs';
@@ -1846,7 +1847,7 @@ const UPDATE = flag('update'), CHECK = flag('check'), GATE = flag('gate');
 const SEED_PROUD = flag('seed-proud');
 if (SEED_PROUD && UPDATE) throw new Error('--seed-proud is a seeded break: it never writes the ledger (drop --update)');
 const ALL_IDS = [...(specs.ALL_TANK_IDS ?? specs.SAVED_TANK_IDS ?? specs.TANK_IDS)];
-let ids = (arg('ids', '') || '').split(',').map((s) => s.trim()).filter(Boolean);
+let ids = uniqueIds((arg('ids', '') || '').split(',').map((s) => s.trim()).filter(Boolean), 'spare-track-placement-check --ids');
 if (ids.length === 1 && ids[0] === 'all') ids = [...ALL_IDS];
 let cropJobs = null;
 if (CROPS) { cropJobs = JSON.parse(fs.readFileSync(CROPS, 'utf8')); ids = [...new Set(cropJobs.map((j) => j.id))]; }

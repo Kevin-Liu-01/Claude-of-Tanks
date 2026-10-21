@@ -72,7 +72,7 @@ interface CraterRecord {
   readonly treeIdx?: number | null;
 }
 
-export interface MapCraterGround {
+interface MapCraterGround {
   /** The base ground's drive type (terrain.ts getGroundType). */
   getGroundType?(x: number, z: number): string;
   /** Water over the ground (terrain.ts getWaterMaskAt). */

@@ -105,6 +105,9 @@ assert.equal(make().inputKey('src/simple.selftest.mjs').key, stableRegistry,
 const salted = make().inputKey('src/simple.selftest.mjs').key;
 write('package-lock.json', '{"name":"fixture","v":2}');
 assert.notEqual(make().inputKey('src/simple.selftest.mjs').key, salted, 'the lockfile salts every key');
+const guarded = make().inputKey('src/simple.selftest.mjs').key;
+write('tools/assert-graph-guard.mjs', '// the runtime guard every child preloads, edited');
+assert.notEqual(make().inputKey('src/simple.selftest.mjs').key, guarded, 'the preloaded assert guard salts every key');
 assert.notEqual(make({ nodeVersion: 'v-other' }).inputKey('src/simple.selftest.mjs').key, make().inputKey('src/simple.selftest.mjs').key,
   'the node version salts every key');
 write('src/environment.selftest.mjs', 'console.log(process.env.MODE);');
@@ -158,6 +161,71 @@ assert.equal(make().lookup('src/environment-object.selftest.mjs').key, undefined
   const browser = make(), key = browser.inputKey('src/browser.selftest.mjs').key;
   browser.recordPass('src/browser.selftest.mjs', key);
   assert.equal(make().lookup('src/browser.selftest.mjs').skip, false, 'real browser checks cannot be certified by a stale source-only PASS');
+  // 229: a receipt that only names a browser or git tool (a plan, a fixture repository) is keyed when it is listed
+  write('src/plan.selftest.mjs', 'import "./browser.selftest.mjs";');
+  const listed = make({ fixtureKeyed: ['src/plan.selftest.mjs'] }), planKey = listed.lookup('src/plan.selftest.mjs').key;
+  assert.ok(planKey, 'a listed receipt is keyed');
+  listed.recordPass('src/plan.selftest.mjs', planKey);
+  assert.equal(make({ fixtureKeyed: ['src/plan.selftest.mjs'] }).lookup('src/plan.selftest.mjs').skip, true, 'and reuses its PASS');
+  assert.equal(make().lookup('src/plan.selftest.mjs').skip, false, 'an unlisted one stays live');
+  write('src/tool.mjs', 'const name = process.argv[2]; await import(name); export const env = { ...process.env };');
+  write('src/static.selftest.mjs', 'import "./tool.mjs";');
+  assert.equal(make().lookup('src/static.selftest.mjs').reason, 'computed import/environment needs a fresh run');
+  assert.ok(make({ fixtureKeyed: ['src/static.selftest.mjs'] }).lookup('src/static.selftest.mjs').key,
+    'a listed receipt whose closure holds a computed import or a whole-environment read is keyed too');
+  // declared inputs: the receipt and its named code key it, nothing its import scan would add
+  write('src/kit/a.mjs', 'export const a = 1;'); write('src/kit/b.mjs', 'export const b = 2;'); write('src/other.ts', 'export const o = 1;');
+  write('src/fixture.selftest.mjs', 'import { readdirSync } from "node:fs"; import "./kit/a.mjs"; import "./tool.mjs"; readdirSync(".");');
+  const declare = { declaredInputs: { 'src/fixture.selftest.mjs': ['src/kit/*.mjs'] } };
+  const declaredKey = make(declare).lookup('src/fixture.selftest.mjs').key;
+  assert.ok(declaredKey, 'a declared receipt is keyed despite its computed import and directory walk');
+  assert.deepEqual(rel(make(declare), 'src/fixture.selftest.mjs'), ['src/fixture.selftest.mjs', 'src/kit/a.mjs', 'src/kit/b.mjs']);
+  write('src/other.ts', 'export const o = 2;');
+  assert.equal(make(declare).lookup('src/fixture.selftest.mjs').key, declaredKey, 'an undeclared file never re-keys it');
+  write('src/kit/b.mjs', 'export const b = 3;');
+  assert.notEqual(make(declare).lookup('src/fixture.selftest.mjs').key, declaredKey, 'a declared file re-keys it');
+  // the environment a declared file reads keys it whatever was looked up first (229, critic r3)
+  write('src/kit/env.mjs', 'export const mode = process.env.KIT_MODE;');
+  write('src/env-reader.selftest.mjs', 'import "./kit/env.mjs";');
+  const alone = make({ ...declare, env: { KIT_MODE: 'a' } }).lookup('src/fixture.selftest.mjs').key;
+  const ordered = make({ ...declare, env: { KIT_MODE: 'a' } });
+  ordered.lookup('src/env-reader.selftest.mjs');
+  assert.equal(ordered.lookup('src/fixture.selftest.mjs').key, alone, 'the same key alone and after another lookup');
+  assert.notEqual(make({ ...declare, env: { KIT_MODE: 'b' } }).lookup('src/fixture.selftest.mjs').key, alone,
+    'a variable a declared file reads keys it');
+  write('src/browser.selftest.mjs', 'import browser from "puppeteer"; export const b = 2;');
+  assert.equal(make({ fixtureKeyed: ['src/plan.selftest.mjs'] }).lookup('src/plan.selftest.mjs').skip, false, 'its inputs still key it');
+}
+// 2026-10-16 (the 226 audit): only node:path joins name files. `parts.join('')`, an array join and a Promise resolve
+// name none; a named, aliased, namespace or posix path join still does.
+{
+  write('src/nopath.selftest.mjs', "const hex = [1, 2].map(String).join('');\nconst words = ['profiles', 'one'].join('/');\nnew Promise((resolve) => resolve('profiles'));\nexport { hex, words };\n");
+  write('src/aliases.selftest.mjs', "import { readFileSync } from 'node:fs';\nimport { join as j } from 'node:path';\nimport * as p from 'node:path';\nimport path from 'node:path';\nconst here = new URL('.', import.meta.url).pathname;\nreadFileSync(j(here, 'one.json'));\nreadFileSync(p.resolve(here, 'two.json'));\nreadFileSync(path.posix.join(here, 'three.json'));\n");
+  for (const name of ['one', 'two', 'three']) write(`src/${name}.json`, '{}\n');
+  const cache = make();
+  assert.deepEqual(rel(cache, 'src/nopath.selftest.mjs'), ['src/nopath.selftest.mjs'], 'non-path joins name no file or directory');
+  // (the bare names also watch the root, as every bare filename literal does)
+  assert.deepEqual(rel(cache, 'src/aliases.selftest.mjs'), ['one.json', 'src/aliases.selftest.mjs', 'src/one.json', 'src/three.json',
+    'src/two.json', 'three.json', 'two.json'], 'aliased, namespace and posix node:path joins still name their files');
+}
+// 2026-10-20: liveness and the environment come from the modules a receipt's imports execute, never from a file it only
+// names (a JSON that names a git tool, a tool it spawns). They used to count once any other receipt's walk had parsed the
+// file, so a receipt went live or stayed keyed by lookup order.
+{
+  write('src/gitTool.mjs', "import { execFileSync } from 'node:child_process';\nexecFileSync('git', ['status']);\nprocess.env.COT_GIT_TOOL;\n");
+  write('src/importsTool.selftest.mjs', "import './gitTool.mjs';\n");
+  write('src/namesTool.json', '{ "tool": "src/gitTool.mjs" }\n');
+  write('src/namesTool.selftest.mjs', "import { readFileSync } from 'node:fs';\nreadFileSync(new URL('./namesTool.json', import.meta.url));\n");
+  write('src/spawnsTool.selftest.mjs', "import { spawnSync } from 'node:child_process';\nspawnSync(process.execPath, ['src/gitTool.mjs']);\n");
+  for (const receipt of ['src/namesTool.selftest.mjs', 'src/spawnsTool.selftest.mjs']) {
+    const alone = make().lookup(receipt);
+    const later = make();
+    assert.equal(later.lookup('src/importsTool.selftest.mjs').reason, 'browser or Git state must be checked live', 'the importer runs git');
+    const after = later.lookup(receipt);
+    assert.ok(rel(later, receipt).includes('src/gitTool.mjs'), `${receipt}: the tool is in its closure`);
+    assert.deepEqual([after.reason, after.key], [alone.reason, alone.key], `${receipt}: the same verdict and key in either lookup order`);
+    assert.ok(alone.key, `${receipt}: keyed (the named tool's git and environment are not its own)`);
+  }
 }
 rmSync(root, { recursive: true, force: true });
 
@@ -177,6 +245,10 @@ rmSync(root, { recursive: true, force: true });
   // file reads stay in the receipt's closure through the support module.
   assert.ok([...cache.closureOf(join(REPO_ROOT, 'src/vehicles/fleetPassDefault.selftest.mjs'))].some((p) => p === join(REPO_ROOT, 'public/icons')),
     'the icon audit observes its templated icon files without pulling in unrelated maps');
+  for (const file of ['src/vehicles/materials.ts', 'src/vehicles/ghillieSuit.ts']) {
+    assert.equal(cache.dependenciesOf(join(REPO_ROOT, file)).has(join(REPO_ROOT, 'src/vehicles')), false,
+      `${file}: a string join is not the vehicle directory`);
+  }
   assert.ok(!cache.lookup('tools/selftest-cache.selftest.mjs').skip || cache.lookup('tools/selftest-cache.selftest.mjs').key,
     'lookup returns a key for the running receipt');
 }

@@ -32,7 +32,7 @@ export function precedesIsoContainer(mapId: string | null | undefined): boolean 
   return year !== undefined && year < ISO_CONTAINER_INTRODUCED;
 }
 
-export type FreightForm = 'tarp' | 'crates' | 'billets' | 'lumber';
+type FreightForm = 'tarp' | 'crates' | 'billets' | 'lumber';
 
 /**
  * Each pre-container battlefield's yard goods: Ironworks' works yard (the Völklingen works, March 1945) half rolled

@@ -5,6 +5,7 @@ import { MARS_SKY_PRESET } from './marsAtmosphere.ts';
 import { MAP_IDS } from '../world/maps/catalog.ts';
 import { createBattleAtmosphereRuntime, BATTLE_WEATHER_BIOMES } from './battleAtmosphereRuntime.ts';
 import { getVehicleReadabilityScale } from '../vehicles/vehicleReadability.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 assert.deepEqual(Object.keys(BATTLE_WEATHER_BIOMES).sort(), [...MAP_IDS].sort(), 'every catalog map is covered without loading full configs');
 assert.equal(Object.isFrozen(BATTLE_WEATHER_BIOMES), true);
@@ -159,7 +160,7 @@ const horizonRuntime = createBattleAtmosphereRuntime({
   getWorldRoot: () => worldRoot, applyPreset() {},
 });
 function colorsRestored(fixture) {
-  assert.deepEqual(fixture.root.children, fixture.children, 'tinting cannot add or replace scene owners');
+  assert.deepEqual(graphLabels(fixture.root.children), graphLabels(fixture.children), 'tinting cannot add or replace scene owners');
   for (const [material, identity, color, version] of fixture.snapshots) {
     assert.strictEqual(material.color, identity); assert.deepEqual(material.color, color);
     assert.equal(material.version, version, 'no new shader/needsUpdate');

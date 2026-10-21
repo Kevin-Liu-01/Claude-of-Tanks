@@ -275,7 +275,12 @@ export function createBattlePresentationRuntime({
     } else clearJuggernautVisual(visual.root);
     if (syncMissionAttachment) syncMissionAttachment(visual.root,entity.spec,entity.aerial,!!entity.combat?.destroyed,dtFrame ?? 0);
     else if (entity.aerial) void loadMissionAttachmentVisual();
-    if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0, !entity.isPlayer && visual.root.visible);
+    // (ac130-fx-228) the pilot's own airframe draws whenever the camera is not its gimbal lens (the killcam, the ending's
+    // replay and orbit, an external camera): before, it was never drawn for the player, so a replay of a gunship kill
+    // showed an empty sky. (r2) The rig's own-vehicle visibility says which: its aerial branch hides the gunship pilot's
+    // vehicle every lens frame, an external pose shows it (engine/cameraRig.ts applyPlayerVisibility)
+    // (r3) and never while the camera is inside its hull (the ending's first beat leaves from the lens)
+    if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0, visual.root.visible, camera.position);
     else hideGunshipVisual(visual.root);
   };
 

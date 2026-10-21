@@ -74,9 +74,9 @@ assert.equal(turretDark.filter(([x, y, z]) => Math.abs(x) > 0.59
 
 // These manually-parented shadow solids bypassed Gallery Studio selection and
 // appeared as two detached near-black panels behind the turret.
-assert.equal(tank.root.getObjectByName('abramsxAftDeckShadow_0'), undefined,
+assert.ok(tank.root.getObjectByName('abramsxAftDeckShadow_0') === undefined,
   'detached center aft-deck shadow panel must not return');
-assert.equal(tank.root.getObjectByName('abramsxBustleUndercutShadow'), undefined,
+assert.ok(tank.root.getObjectByName('abramsxBustleUndercutShadow') === undefined,
   'detached bustle-undercut shadow panel must not return');
 
 // The visible cartridge arc now continues into a feed mouth which overlaps

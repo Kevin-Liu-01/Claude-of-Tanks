@@ -114,7 +114,7 @@ export const BORDER_VIEWS = Object.freeze([
 export const BORDER2_VIEWS = Object.freeze(BORDER_VIEWS.map((v) => freeze(v.kind === 'border' ? { ...v, frameClearM: BORDER_FRAME_CLEAR_M } : { ...v })));
 
 /** The camera sets a census run may shoot: the seven core views (the default), the border set or its second protocol. */
-export const CENSUS_VIEW_SETS = Object.freeze({
+const CENSUS_VIEW_SETS = Object.freeze({
   core: Object.freeze({ protocol: CENSUS_PROTOCOL, views: CENSUS_VIEWS }),
   border: Object.freeze({ protocol: BORDER_PROTOCOL, views: BORDER_VIEWS }),
   border2: Object.freeze({ protocol: BORDER2_PROTOCOL, views: BORDER2_VIEWS }),

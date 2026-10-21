@@ -249,7 +249,9 @@ export const refreshCaptureLock = sharedCaptureLock.refresh;
  *  Landing chains that share the machine with other sessions' suites set COT_SHOTS_LOCK_TIMEOUT_MS higher
  *  (2026-09-25: a chain died at 1/413 after 45 min behind another session's browser audit). */
 export const DEFAULT_SELFTEST_LOCK_TIMEOUT_MS = 45 * 60 * 1000;
-export function selftestLockTimeoutMs(env = process.env) {
+// The one variable it reads, by name: a default of the whole process.env made every receipt importing this module an
+// opaque-environment receipt the selftest cache could never key (2026-10-16, changed-only R0).
+export function selftestLockTimeoutMs(env = { COT_SHOTS_LOCK_TIMEOUT_MS: process.env.COT_SHOTS_LOCK_TIMEOUT_MS }) {
   const value = Number(env.COT_SHOTS_LOCK_TIMEOUT_MS);
   return Number.isFinite(value) && value > 0 ? value : DEFAULT_SELFTEST_LOCK_TIMEOUT_MS;
 }

@@ -75,8 +75,8 @@ export function createGunArticulationAudit() {
       }
 
       articulated++;
-      assert.equal(gun.parent, turret, `${id}: rig_gun is turret-owned`);
-      assert.equal(recoil.parent, gun, `${id}: recoil barrel is gun-owned`);
+      assert.ok(gun.parent === turret, `${id}: rig_gun is turret-owned`);
+      assert.ok(recoil.parent === gun, `${id}: recoil barrel is gun-owned`);
       const mount = gun.getObjectByName('gunMount');
       assert.ok(mount?.isMesh && mount.geometry.attributes.position.count > 0,
         `${id}: visible mantlet/cradle geometry is authored in the pitching gunMount bucket`);

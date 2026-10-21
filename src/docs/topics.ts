@@ -283,7 +283,7 @@ export const topics: Record<string, TopicDefinition> = {
       [t('docs.topic.filming.s8.t'), t('docs.topic.filming.s8.p1'), t('docs.topic.filming.s8.p2')],
       [t('docs.topic.filming.s9.t'), t('docs.topic.filming.s9.p1'), t('docs.topic.filming.s9.p2')],
       [t('docs.topic.filming.s10.t'), t('docs.topic.filming.s10.p1'), t('docs.topic.filming.s10.p2')],
-      // (2026-10-19) every picture of the media rounds: the library, mounted by filming.ts
+      // (2026-10-19) the media rounds' finals: the library, mounted by filming.ts
       [t('docs.topic.filming.s11.t'), t('docs.topic.filming.s11.p1')],
     ],
     media: [

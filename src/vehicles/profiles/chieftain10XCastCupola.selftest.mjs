@@ -85,7 +85,7 @@ for (const quality of ['high', 'low']) {
       const frame = rig.matrixWorld.clone().multiply(neutralInverse);
       checkCast(turret, all, frame);
       checkCupola(all, frame);
-      for (const [mesh, geometry] of originalGeometry) assert.equal(mesh.geometry, geometry,
+      for (const [mesh, geometry] of originalGeometry) assert.ok(mesh.geometry === geometry,
         'yaw does not recreate source-sized casting, optical or MG geometry');
     }
   } finally { tank.dispose(); }

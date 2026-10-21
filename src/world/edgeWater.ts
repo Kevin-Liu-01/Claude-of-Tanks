@@ -27,7 +27,7 @@ export interface SeaOpening {
   bankProfile?: readonly [number, number, number, number];
 }
 
-export interface EdgeWaterField {
+interface EdgeWaterField {
   size: number;
   getWaterMaskAt(x: number, z: number): number;
   getHeightAt(x: number, z: number): number;
@@ -337,7 +337,7 @@ export function resolveSeaOpenings(
 }
 
 /** Round 47 (2026-09-23): a bay's own contour evaluated past the square (terrain.ts outlandWaterAt). */
-export type OutlandWaterQuery = (x: number, z: number) => { wetness: number; level: number } | null;
+type OutlandWaterQuery = (x: number, z: number) => { wetness: number; level: number } | null;
 /** Open the full-width mouth early enough to submerge the return arcs of
  * neighbouring coves. A late, point-width fan left detached sand fragments
  * offshore. The ramp spans one carrier cell when no contour is supplied. */

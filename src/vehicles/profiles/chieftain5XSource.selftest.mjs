@@ -120,8 +120,8 @@ for (const quality of ['high', 'low']) {
       'source projector is not mislabeled as an absent complete weapon');
     const yaw = tank.root.getObjectByName('rig_turret'), gun = tank.root.getObjectByName('rig_gun');
     const recoil = tank.root.getObjectByName('rig_recoil'), hull = tank.root.getObjectByName('hull');
-    assert.equal(tank.root.getObjectByName('gunMount').parent, gun);
-    assert.equal(tank.root.getObjectByName('gun').parent, recoil);
+    assert.ok(tank.root.getObjectByName('gunMount').parent === gun);
+    assert.ok(tank.root.getObjectByName('gun').parent === recoil);
     const fixedHull = hull.matrixWorld.elements.slice();
     for (const angle of [0, -.7, .65]) {
       yaw.rotation.y = angle; gun.rotation.x = -.14;

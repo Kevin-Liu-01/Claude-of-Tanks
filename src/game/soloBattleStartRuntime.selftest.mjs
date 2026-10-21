@@ -3,6 +3,9 @@ import * as THREE from 'three';
 import { applyBurnHook, makeBurnUniforms } from '../vehicles/materials.ts';
 import { createSoloBattleStartRuntime } from './soloBattleStartRuntime.ts';
 
+/** (ac130-fx-228) the harness roster adds a bot on the player's own spec (a valid duplicate pick) */
+let dupEscort = false;
+
 function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMaskStart = () => {} } = {}) {
   const events = [];
   let clock = 0;
@@ -55,7 +58,7 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
         assert.equal(id, 'm1a1_abrams_hc');
         assert.strictEqual(activeWorld, world);
         setupOptions = options;
-        game.tanks = [{ specId: 'm1a1_abrams_hc' }, { specId: 't90am' }];
+        game.tanks = [{ specId: 'm1a1_abrams_hc', isPlayer: true }, { specId: 't90am' }, ...(dupEscort ? [{ specId: 'm1a1_abrams_hc' }] : [])];
         if (playerCreated) game.player = player;
         events.push('round:setup');
       },
@@ -71,7 +74,8 @@ function createHarness({ playerCreated = true, visual = { id: 'visual' }, onMask
       applyRosterCamo: (options) => {
         assert.deepEqual(options, {
           priorityIds: setupOptions.gameMode === 'ac130' ? [] : ['m1a1_abrams_hc'],
-          onlySpecIds: setupOptions.gameMode === 'ac130' ? ['t90am'] : ['m1a1_abrams_hc', 't90am'],
+          onlySpecIds: setupOptions.gameMode === 'ac130' ? ['t90am', ...(dupEscort ? ['m1a1_abrams_hc'] : [])]
+            : ['m1a1_abrams_hc', 't90am', ...(dupEscort ? ['m1a1_abrams_hc'] : [])],
         });
         events.push('camo:roster');
         return Promise.resolve('painted');
@@ -178,7 +182,7 @@ for (const deferVisuals of [false, true]) {
   const harness = createHarness({
     visual,
     onMaskStart(borrowed) {
-      assert.strictEqual(borrowed.material, material);
+      assert.ok(borrowed.material === material);
       assert.equal(hookCalls, 1, 'install the disarmed hook before requesting masks');
       assert.match(material.customProgramCacheKey(), /\|burn-r7$/);
       submittedRevision = { version: material.version, key: material.customProgramCacheKey() };

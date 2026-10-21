@@ -6,6 +6,7 @@ import {
   hasAmmunition,
   shellAmmunitionCapacity,
 } from '../sim/ammunition.ts';
+import { rulesetUnlimitedFor } from '../sim/matchRuleset.ts';
 
 type RuntimeModule = typeof import('./battleClientRuntime.ts');
 type RuntimeLoader = () => Promise<RuntimeModule>;
@@ -30,6 +31,8 @@ export interface BattleClientAccess {
   readonly specialActionKind: RuntimeModule['specialActionKind'];
   readonly hasAmmunition: RuntimeModule['hasAmmunition'];
   readonly shellAmmunitionCapacity: RuntimeModule['shellAmmunitionCapacity'];
+  /** Whether one entity's rounds are unlimited under the ruleset (sim/matchRuleset; the AC-130 refills its gunship only). */
+  readonly rulesetUnlimitedFor: typeof rulesetUnlimitedFor;
   readonly isPostwarVehicleEra: RuntimeModule['isPostwarVehicleEra'];
   readonly hasConsumableRule: (slot: number) => boolean;
   readonly cooldownRemaining: RuntimeModule['cooldownRemaining'];
@@ -123,6 +126,8 @@ export function createBattleClientAccess(
     // in the Garage before the full Battle runtime has been demand-loaded.
     hasAmmunition,
     shellAmmunitionCapacity,
+    // ... as is the per-entity unlimited-rounds read the shell cards carry (the composition root imports its module)
+    rulesetUnlimitedFor,
     isPostwarVehicleEra: (...args) => requireRuntime().isPostwarVehicleEra(...args),
     hasConsumableRule: (slot) => !!requireRuntime().CONSUMABLE_RULES[slot],
     cooldownRemaining: (...args) => requireRuntime().cooldownRemaining(...args),

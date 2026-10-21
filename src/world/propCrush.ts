@@ -22,7 +22,7 @@
  */
 
 /** The field's cell (m). */
-export const CRUSH_CELL_M = 0.2;
+const CRUSH_CELL_M = 0.2;
 /** How far round the prop's footprint the field reaches (m): the splay and the shove leave the footprint a little. */
 const MARGIN_M = 0.6;
 /** Under the tracks: the floor a crushed body is pressed to (m over the prop's base), and the ramp of the hull's front
@@ -191,7 +191,7 @@ export function pressField(f: CrushField, cx: number, cz: number, fx: number, fz
 
 /** The droop: each cell's effective cap is the lowest of its own and its neighbours' plus the slope over the distance
  *  between them (a two-pass chamfer over the grid). */
-export function settleField(f: CrushField): void {
+function settleField(f: CrushField): void {
   const { nx, nz, cap, eff } = f;
   eff.set(cap);
   const slope = f.cloth ? CLOTH.droop : DROOP_SLOPE;

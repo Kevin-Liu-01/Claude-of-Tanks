@@ -91,13 +91,36 @@ function smoothNormals(soup: Soup): void {
   soup.normals = out;
 }
 
+/** The session's built faces (garage r9: Glacier's cliff built once a session, then handed out as copies). */
+const faceCache = new Map<string, THREE.BufferGeometry>();
+
+/**
+ * A granite cliff face (and its tunnel) as one world-space, vertex-coloured, indexed geometry (garage r9, Glacier: "the
+ * rock retopologised to 15k tris or less: granite with vertical joint sets and horizontal benches ... snow only on
+ * low-angle facets, water stains under the ledges, no horizontal smear"; its build 282 ms -> under the pack's budget).
+ *
+ * One grid over the face, columns along it and rows up it to the crest: the plan swings in buttresses and gullies; the
+ * vertical joint sets (2.5-6 m apart, some closing in each tier) cut the face into blocks, each block a stack of planar
+ * facets that lean and turn their own way, its sheeting joints stepping it back onto snow ledges (or now and then out
+ * over a dark wet overhang) every 2.6-5.2 m up; the joints are crevices the two blocks share, each block tops out at its
+ * own height; two benches dip across the face where it lies back and the snow collects; the face batters back with
+ * height and its ends curl into the hill. Snow lies on the facets that face up (from the grid's own
+ * normals), broken by noise; water stains streak down from the benches; the joints read dark. The crest slopes back under
+ * snow, the ends close into the hill, and a horseshoe tunnel lining runs back from the opening. Built once a session per
+ * face and handed out as copies.
+ */
 export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE.BufferGeometry {
-  const soup: Soup = { positions: [], normals: [], colors: [] };
+  const key = JSON.stringify([frame.x, frame.z, frame.yaw, options, ...Array.from({ length: 9 }, (_, i) => frame.groundAt(-options.width / 2 + (i / 8) * options.width, 0))]);
+  const cached = faceCache.get(key);
+  if (cached) return cached.clone();
+  const geometry = buildGraniteFace(frame, options);
+  faceCache.set(key, geometry);
+  return geometry.clone();
+}
+
+function buildGraniteFace(frame: RockFrame, options: RockFaceOptions): THREE.BufferGeometry {
   const { width, height, depth, seed, opening } = options;
   const cos = Math.cos(frame.yaw), sin = Math.sin(frame.yaw);
-  const world = (u: number, y: number, w: number): THREE.Vector3 => new THREE.Vector3(
-    frame.x + cos * u + sin * w, y, frame.z - sin * u + cos * w);
-  // a small seeded value noise
   let state = seed >>> 0;
   const lattice = Float32Array.from({ length: 64 * 64 }, () => {
     state = (state + 0x6d2b79f5) >>> 0;
@@ -112,170 +135,256 @@ export function buildRockFace(frame: RockFrame, options: RockFaceOptions): THREE
     const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
     return (at(ix, iy) * (1 - sx) + at(ix + 1, iy) * sx) * (1 - sy) + (at(ix, iy + 1) * (1 - sx) + at(ix + 1, iy + 1) * sx) * sy;
   };
-  const fbm = (x: number, y: number): number => noise(x, y) * 0.6 + noise(x * 2.3 + 17, y * 2.3 + 5) * 0.3 + noise(x * 5.1 + 3, y * 5.1 + 29) * 0.1;
-  const half = width / 2;
-  const columns = Math.max(8, Math.round(width / (options.cell ?? 0.8)));
-  // strata of uneven thickness (0.9-1.8 m), each a fixed band
-  const stratumH = 1.3;
-  const strata = Math.ceil(height / stratumH);
+  const fbm = (x: number, y: number): number => noise(x, y) * 0.62 + noise(x * 2.3 + 17, y * 2.3 + 5) * 0.38;
   const hash = (a: number, b: number): number => {
     let h = Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1) ^ seed;
     h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
     h ^= h >>> 12;
     return ((h >>> 0) % 10000) / 10000;
   };
-  const crest = (u: number): number => height * (0.78 + 0.22 * fbm(u * 0.09 + 3, 1.7)) * (1 - 0.35 * Math.pow(Math.abs(u) / half, 3));
-  // The face's form (the re-judge, 2026-10-15: "horizontal smeared bands ... like a sliced layer cake ... no rock form,
-  // joints or facets, and snow does not sit only on the low-angle faces"): no stratum steps any more. The plan swings in
-  // and out over 6-14 m in buttresses with sharp noses and gullies between them; two benches dip across the face, where
-  // it steps back a metre or two over a metre's height and the snow lies; jointed blocks 2-4 m wide in tiers of three
-  // strata stand proud or set back; the whole face batters back with height and its ends curl into the hill.
-  const plan = (u: number): number => (1 - Math.abs(noise(u * 0.085 + 5.3, 2.1) * 2 - 1)) * 2.4 - 1.2
-    + (fbm(u * 0.21 + 1.3, 7.7) - 0.5) * 1.4;
   const smooth = (x: number): number => { const t = Math.min(1, Math.max(0, x)); return t * t * (3 - 2 * t); };
+  const half = width / 2;
+  const cell = options.cell ?? 0.8;
+  const columns = Math.max(8, Math.round(width / Math.max(0.7, cell * 0.72)));
+  const rowsN = Math.max(8, Math.round(height / 0.82));
+  const crest = (u: number): number => height * (0.8 + 0.2 * fbm(u * 0.09 + 3, 1.7)) * (1 - 0.35 * Math.pow(Math.abs(u) / half, 3));
+  // the vertical joints: boundaries 2.5-6 m apart (a fixed set across the face)
+  const joints: number[] = [];
+  for (let u = -half - 3, k = 0; u < half + 6; k += 1) { joints.push(u); u += 2.5 + 3.5 * hash(k, 41); }
+  const blockAt = (u: number): number => {
+    let lo = 0, hi = joints.length - 1;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (joints[mid] <= u) lo = mid; else hi = mid; }
+    return lo;
+  };
+  const plan = (u: number): number => (1 - Math.abs(noise(u * 0.085 + 5.3, 2.1) * 2 - 1)) * 2.4 - 1.2 + (fbm(u * 0.21 + 1.3, 7.7) - 0.5) * 1.2;
+  const benchLine = (u: number, at: number, seedU: number): number => at + 0.12 * u + (fbm(u * 0.05 + seedU, 3.3) - 0.5) * 3.0;
   const bench = (u: number, y: number, at: number, back: number, seedU: number): number => {
-    const line = at + 0.12 * u + (fbm(u * 0.05 + seedU, 3.3) - 0.5) * 3.0;
-    const reach = back * smooth((fbm(u * 0.06 + seedU * 2, 9.1) - 0.32) * 3);
-    return -reach * smooth((y - line) / 2.4); // a ledge a couple of metres deep, not a stripe (CPU canonical, 2026-10-15)
+    const reach = back * smooth((fbm(u * 0.06 + seedU * 2, 9.1) - 0.3) * 3);
+    return -reach * smooth((y - benchLine(u, at, seedU)) / 1.6);
   };
-  // the portal's cut: 1 within the headwall's reach of the opening, 0 three metres beyond it
-  const cutShare = (u: number): number => (options.cut && opening
-    ? 1 - smooth((Math.abs(u - opening.u) - options.cut.half) / 3) : 0);
-  /** The face's continuous form (its slope decides where snow lies). */
-  const formBack = (u: number, y: number): number => {
+  const cutShare = (u: number): number => (options.cut && opening ? 1 - smooth((Math.abs(u - opening.u) - options.cut.half) / 3) : 0);
+  // each joint-bounded block is a set of planar facets, one per sheet: the sheeting joints step the block back (a snow
+  // ledge) or, now and then, out (an overhang) every 2.6-5.2 m up, and every facet leans and turns a little its own way,
+  // so the face reads as squared granite blocks and not as a fluted curtain (garage r9 g1 r2: the round-1 face's
+  // rounded V-notched columns read "organ pipes" behind the hero)
+  const sheetH = (k: number): number => 2.6 + 2.6 * hash(k, 9);
+  const sheetOff = (k: number): number => hash(k, 7) * 3;
+  const sheetOf = (k: number, y: number): number => Math.max(0, Math.floor((y + sheetOff(k)) / sheetH(k)));
+  const stepOf = (k: number, s: number): number => (hash(k * 13 + s, 27) < 0.16 ? -0.35 : 0.3 + 0.55 * hash(k * 13 + s, 29));
+  const sheetBase = (k: number, s: number): number => { let w = 0; for (let i = 0; i < s; i += 1) w -= stepOf(k, i); return w; };
+  // not every vertical joint runs the full height: in each 5-7 m tier some joints close, and the block to their right
+  // carries on its left neighbour's facets there (one wider block), so the joints step and stop as real ones do
+  const jointOpen = (joint: number, y: number): boolean => {
+    const tier = Math.floor((y + hash(joint, 63) * 4) / (5 + 2 * hash(joint, 65)));
+    return hash(joint * 19 + tier, 61) > 0.38;
+  };
+  const owner = (k: number, y: number): number => { let q = k; while (q > 0 && !jointOpen(q, y)) q -= 1; return q; };
+  const facet = (k0: number, u: number, y: number): number => {
+    const k = owner(k0, y);
+    const s = sheetOf(k, y);
+    const uc = (joints[k] + joints[k + 1]) / 2, ys = s * sheetH(k) - sheetOff(k);
+    const tiltU = (hash(k * 7 + s, 21) - 0.5) * 0.5, tiltY = -0.04 - 0.16 * hash(k * 5 + s, 23);
+    return (hash(k, 3) - 0.5) * 1.3 + (hash(k * 31 + s, 5) - 0.5) * 0.45 + sheetBase(k, s) * 0.8 + tiltU * (u - uc) + tiltY * (y - ys);
+  };
+  const crevice = (k: number): number => 0.3 + 0.35 * hash(k, 11);
+  const rockAt = (u: number, y: number, w: number): number => {
     const curl = -depth * 0.45 * Math.pow(Math.abs(u) / half, 3) * (0.8 + 0.4 * fbm(y * 0.2, 4.1));
-    const rock = curl - 0.18 * y + plan(u) * (0.85 + 0.3 * fbm(y * 0.08 + 2, u * 0.02)) + bench(u, y, height * 0.34, 2.2, 1.7)
-      + bench(u, y, height * 0.66, 1.6, 6.1);
+    const rock = curl - 0.07 * y + plan(u) * 0.6 + bench(u, y, height * 0.34, 2.0, 1.7) + bench(u, y, height * 0.68, 1.5, 6.1)
+      + w + (fbm(u * 0.5 + 11, y * 0.5) - 0.5) * 0.08;
     const share = cutShare(u) * (options.cut ? 1 - smooth((y - options.cut.top) / 3) : 0);
-    return share > 0 ? rock + (options.cut!.w - rock) * share : rock; // the cut stands plumb behind the headwall
+    return share > 0 ? rock + (options.cut!.w - rock) * share : rock;
   };
-  // the face's set-back at (u, y) within stratum s (the strata only order the mesh's rows now)
-  const setBack = (u: number, y: number, s: number, _t: number): number => {
-    const tier = Math.floor(s / 3);
-    const blockWidth = 2 + hash(tier, 7) * 2;
-    const block = Math.floor(u / blockWidth + hash(tier, 3) * 3);
-    const jointed = (hash(block, tier) - 0.5) * 0.5;
-    const rough = (fbm(u * 0.3 + s * 1.7, y * 0.3) - 0.5) * 0.7 + (fbm(u * 0.9 + 11, y * 0.9 + s) - 0.5) * 0.3;
-    return formBack(u, y) + (jointed + rough) * (1 - 0.75 * cutShare(u)); // the cut face is dressed flatter
+  /** The set-back of a block's column: its facet, or at a joint the deeper of the two blocks' facets less the crevice. */
+  const setBackIn = (k: number, u: number, y: number, edge: number): number => {
+    if (edge === 0) return rockAt(u, y, facet(k, u, y));
+    const other = edge < 0 ? k - 1 : k + 1;
+    const joint = edge < 0 ? k : k + 1;
+    const ok = other >= 0 && other < joints.length - 1;
+    if (ok && !jointOpen(joint, y)) return rockAt(u, y, facet(k, u, y));
+    return rockAt(u, y, Math.min(facet(k, u, y), ok ? facet(other, u, y) : facet(k, u, y)) - crevice(joint));
   };
+  const setBack = (u: number, y: number): number => rockAt(u, y, facet(blockAt(u), u, y));
   const inOpening = (u: number, y: number, margin = 0): boolean => {
     if (!opening) return false;
     const du = Math.abs(u - opening.u);
     if (y < opening.spring) return du < opening.half + margin;
     return Math.hypot(du, y - opening.spring) < opening.half + margin;
   };
-  // the gneiss's foliation dips and folds across the face in tones pulled most of the way to their mean, so it reads as
-  // one rock with a grain, not as stripes; noses lighter, gullies darker, water streaks; snow only where the form lies
-  // back (the benches and the crest), its edge broken by noise
-  const mean = options.strata.map(linear).reduce((acc, c) => acc.add(c), new THREE.Color(0, 0, 0)).multiplyScalar(1 / options.strata.length);
-  const strataTones = options.strata.map((hex) => linear(hex).lerp(mean, 0.68));
-  const snow = linear(options.snow);
-  const snowShade = linear(0xc9d3da);
-  const tone = (_s: number, u: number, y: number, _n: THREE.Vector3): THREE.Color => {
-    const band = (y + 0.13 * u + 2.2 * fbm(u * 0.04 + 2, y * 0.05)) / 2.4;
-    const i0 = Math.floor(band), f = band - i0, n = strataTones.length;
-    const base = strataTones[((i0 % n) + n) % n].clone().lerp(strataTones[(((i0 + 1) % n) + n) % n], f * f * (3 - 2 * f));
-    base.multiplyScalar(0.86 + fbm(u * 0.15 + 9, y * 0.18) * 0.28);
-    base.multiplyScalar(0.84 + 0.16 * Math.min(1, Math.max(0, (plan(u) + 1.2) / 2.4)));
-    base.multiplyScalar(1 - Math.pow(fbm(u * 0.7 + 21, y * 0.05), 3) * 0.35);
-    if (y < 1.2) base.multiplyScalar(0.8 + y / 6);
-    const slope = (formBack(u, y + 0.35) - formBack(u, y - 0.35)) / 0.7;
-    const lying = smooth((-slope - 0.6) / 0.9) * smooth((fbm(u * 0.11 + 4, y * 0.16) - 0.3) * 2.2); // patches, broken along the ledge
-    return lying > 0 ? base.lerp(snow.clone().lerp(snowShade, fbm(u * 0.8, y * 0.8) * 0.5), lying) : base;
-  };
-  const us = Array.from({ length: columns + 1 }, (_, k) => -half + (k / columns) * width);
-  const ground = us.map((u) => frame.groundAt(u, 0));
-  // per column: the y of each stratum boundary, clipped to the crest
-  const rows = (k: number, s: number): readonly [number, number, number] => {
-    const y0 = ground[k] - 0.6 + s * stratumH, y1 = y0 + stratumH;
-    const top = Math.min(y1, ground[k] - 0.6 + crest(us[k]));
-    return [Math.min(y0, top), Math.min((y0 + y1) / 2, top), top];
-  };
-  const face = (k: number, s: number, r: 0 | 1 | 2): THREE.Vector3 => {
-    const ys = rows(k, s);
-    const t = r / 2;
-    return world(us[k], ys[r], setBack(us[k], ys[r] - ground[k], s, t));
-  };
-  const FACE_NORMAL = new THREE.Vector3(0, 0, 1);
-  for (let s = 0; s < strata; s += 1) {
-    for (let k = 0; k < columns; k += 1) {
-      for (const r of [0, 1] as const) {
-        const a = face(k, s, r), b = face(k + 1, s, r), c = face(k + 1, s, (r + 1) as 1 | 2), d = face(k, s, (r + 1) as 1 | 2);
-        if (Math.abs(c.y - b.y) < 1e-3 && Math.abs(d.y - a.y) < 1e-3) continue; // above the crest
-        const mu = (us[k] + us[k + 1]) / 2, my = (a.y + c.y) / 2 - (ground[k] + ground[k + 1]) / 2;
-        if (inOpening(mu, my, -0.15)) continue;
-        // the face's colour is a function of the vertex alone (stratum, u, height), never of the facet's normal, so
-        // neighbouring facets share their edges' colours (a snow rule on the facet's normal speckled the face with
-        // white squares: v3 stills); the snow lies on the ledges and the crest
-        const at = (p: THREE.Vector3, k0: number): THREE.Color => tone(s, us[k0], p.y - ground[k0], FACE_NORMAL);
-        const ca = at(a, k), cb = at(b, k + 1), cc = at(c, k + 1), cd = at(d, k);
-        // seen from the yard (+w): a -> b runs +u, so counter-clockwise is a, b, c and a, c, d
-        triangle(soup, a, b, c, ca, cb, cc);
-        triangle(soup, a, c, d, ca, cc, cd);
-      }
-      // the ledge between this stratum's top and the next one's foot: upward, snow-laden
-      if (s < strata - 1) {
-        const a = face(k, s, 2), b = face(k + 1, s, 2), c = face(k + 1, s + 1, 0), d = face(k, s + 1, 0);
-        const mu = (us[k] + us[k + 1]) / 2, my = a.y - ground[k];
-        if (a.y >= rows(k, s + 1)[2] - 1e-3 || inOpening(mu, my, -0.15)) continue;
-        const at = (p: THREE.Vector3, k0: number): THREE.Color => tone(s, us[k0], p.y - ground[k0], FACE_NORMAL);
-        triangle(soup, a, b, c, at(a, k), at(b, k + 1), at(c, k + 1));
-        triangle(soup, a, c, d, at(a, k), at(c, k + 1), at(d, k));
-      }
+  // the columns, block by block: each joint-bounded block its own patch (its columns shared inside it, duplicated at
+  // the joints, where both twins sit at the shared crevice), so the joints read as creases between planar blocks
+  const cellU = width / columns;
+  const usList: number[] = [], blockList: number[] = [];
+  for (let k = 0; k < joints.length - 1; k += 1) {
+    const u0 = Math.max(-half, joints[k]), u1 = Math.min(half, joints[k + 1]);
+    if (u1 - u0 < 1e-3) continue;
+    const n = Math.max(1, Math.ceil((u1 - u0) / cellU));
+    for (let i = 0; i <= n; i += 1) { usList.push(u0 + ((u1 - u0) * i) / n); blockList.push(k); }
+  }
+  const cols = usList.length, rows = rowsN + 1;
+  const columnsN = cols - 1;
+  const us = Float32Array.from(usList), colBlock = Int32Array.from(blockList);
+  const ground = Float32Array.from(us, (u) => frame.groundAt(u, 0));
+  const pos = new Float32Array(cols * rows * 3);
+  const local = new Float32Array(cols * rows); // height over the ground
+  // each block tops out at its own height (a stepped crest, not one smooth roll); a joint's twin columns take the lower
+  // of their two blocks' crests, so the skyline notches at every joint and the twins stay one seam
+  const blockCrest = (k: number, u: number): number => crest(u) + (hash(k, 51) - 0.5) * 2.4;
+  const edgeOf = new Int8Array(cols);
+  for (let k = 0; k < cols; k += 1) {
+    if (k === 0 || colBlock[k - 1] !== colBlock[k]) edgeOf[k] = -1;
+    else if (k === columnsN || colBlock[k + 1] !== colBlock[k]) edgeOf[k] = 1;
+  }
+  const colTop = Float32Array.from(us, (u, k) => {
+    const block = colBlock[k], edge = edgeOf[k];
+    if (edge === 0) return blockCrest(block, u);
+    const other = block + edge;
+    return Math.min(blockCrest(block, u), other >= 0 && other < joints.length - 1 ? blockCrest(other, u) : blockCrest(block, u)) - 0.5;
+  });
+  for (let k = 0; k < cols; k += 1) {
+    const top = colTop[k] + 0.6;
+    for (let j = 0; j < rows; j += 1) {
+      const y = -0.6 + (j / rowsN) * top;
+      const w = setBackIn(colBlock[k], us[k], y, edgeOf[k]);
+      const o = (j * cols + k);
+      local[o] = y;
+      pos[o * 3] = frame.x + cos * us[k] + sin * w;
+      pos[o * 3 + 1] = ground[k] + y;
+      pos[o * 3 + 2] = frame.z - sin * us[k] + cos * w;
     }
   }
-  // the crest slopes back into the hill under snow
-  for (let k = 0; k < columns; k += 1) {
-    const topA = face(k, strata - 1, 2), topB = face(k + 1, strata - 1, 2);
-    // the crest slopes up and back into the hill
-    const backA = world(us[k] * 0.96, topA.y + depth * 0.45, -depth), backB = world(us[k + 1] * 0.96, topB.y + depth * 0.45, -depth);
-    triangle(soup, topA, topB, backB, snow);
-    triangle(soup, topA, backB, backA, snow);
+  // the grid's normals (central differences inside each block, one-sided at its joints), turned toward the yard
+  const nrm = new Float32Array(cols * rows * 3);
+  const yard = new THREE.Vector3(sin, 0, cos); // the frame's +w
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), n = new THREE.Vector3();
+  const P = (k: number, j: number, out: THREE.Vector3): THREE.Vector3 => out.fromArray(pos, (Math.min(rowsN, Math.max(0, j)) * cols + Math.min(columnsN, Math.max(0, k))) * 3);
+  const t0 = new THREE.Vector3(), t1 = new THREE.Vector3();
+  for (let j = 0; j < rows; j += 1) {
+    for (let k = 0; k < cols; k += 1) {
+      // inside a block the facet's own normal (its edge columns, down in the crevice, left out); an edge column takes
+      // the crevice wall's
+      const same = (q: number): boolean => q >= 0 && q <= columnsN && colBlock[q] === colBlock[k];
+      let kl = same(k - 1) && (edgeOf[k] !== 0 || edgeOf[k - 1] === 0) ? k - 1 : k;
+      let kr = same(k + 1) && (edgeOf[k] !== 0 || edgeOf[k + 1] === 0) ? k + 1 : k;
+      if (kl === kr) { kl = same(k - 1) ? k - 1 : k; kr = same(k + 1) ? k + 1 : k; }
+      if (edgeOf[k] === -1) kl = k; else if (edgeOf[k] === 1) kr = k;
+      a.copy(P(kr, j, t0)).sub(P(kl, j, t1));
+      b.copy(P(k, j + 1, t0)).sub(P(k, j - 1, t1));
+      n.crossVectors(a, b);
+      if (n.lengthSq() < 1e-12) n.copy(yard); else n.normalize();
+      if (n.dot(yard) < 0) n.negate();
+      nrm.set([n.x, n.y, n.z], (j * cols + k) * 3);
+    }
+  }
+  // colour: granite grey by block, speckled; joints dark; water stains under the benches; snow on what faces up
+  const granite = [linear(0x6f6d68), linear(0x7a7772), linear(0x64625e), linear(0x75736d)];
+  const snow = linear(options.snow), snowShade = linear(0xc4cfd8), stainTone = linear(0x3e3d3a);
+  const col = new Float32Array(cols * rows * 3);
+  const c = new THREE.Color();
+  for (let j = 0; j < rows; j += 1) {
+    for (let k = 0; k < cols; k += 1) {
+      const o = j * cols + k, u = us[k], y = local[o];
+      const block = owner(colBlock[k], y), sheet = sheetOf(block, y);
+      const joint = edgeOf[k] < 0 ? colBlock[k] : colBlock[k] + 1;
+      const inCrevice = edgeOf[k] !== 0 && (joint <= 0 || joint >= joints.length - 1 || jointOpen(joint, y));
+      // tone by block and by sheet (each facet its own weathering), speckled; the crevices dark; the foot dirtier
+      c.copy(granite[block % 4]).multiplyScalar(0.8 + 0.16 * hash(block, 13) + 0.12 * hash(block * 17 + sheet, 31) + 0.12 * fbm(u * 0.9 + 9, y * 0.9));
+      if (inCrevice) c.multiplyScalar(0.62);
+      if (y < 1.2) c.multiplyScalar(0.78 + y / 6);
+      // water stains: dark streaks hanging below the benches, on some columns
+      for (const [at, seedU] of [[height * 0.34, 1.7], [height * 0.68, 6.1]] as const) {
+        const below = benchLine(u, at, seedU) - y;
+        if (below > 0 && below < 5) c.lerp(stainTone, smooth((fbm(u * 1.3 + seedU, 0.5) - 0.55) * 4) * (1 - below / 5) * 0.55);
+      }
+      // under an overhang the rock is wet and dark; on a ledge (a step back just above) the snow lies
+      const above = j < rowsN ? local[o + cols] : y;
+      const stepUp = j < rowsN && !inCrevice && sheetOf(block, above) > sheet ? stepOf(block, sheet) : 0;
+      const below = j > 0 ? local[o - cols] : y;
+      const stepBelow = j > 0 && !inCrevice && sheetOf(block, below) < sheet ? stepOf(block, sheetOf(block, below)) : 0;
+      if (stepUp < 0) c.multiplyScalar(0.7);
+      const ny = nrm[o * 3 + 1];
+      const lying = smooth((ny - 0.42) / 0.22) * smooth((fbm(u * 0.21 + 4, y * 0.3) - 0.25) * 2.4) + (y > colTop[k] - 0.2 ? 0.6 : 0)
+        + (stepUp > 0.38 || stepBelow > 0.38 ? (stepUp > 0.38 ? 1 : 0.6) * smooth((fbm(u * 0.55 + sheet * 3.1, y * 0.2 + 2) - 0.36) * 4) : 0);
+      if (lying > 0) c.lerp(snowShade.clone().lerp(snow, 0.6 + 0.4 * fbm(u * 0.7, y * 0.7)), Math.min(1, lying));
+      col.set([c.r, c.g, c.b], o * 3);
+    }
+  }
+  const index: number[] = [];
+  for (let j = 0; j < rowsN; j += 1) {
+    for (let k = 0; k < columnsN; k += 1) {
+      if (colBlock[k] !== colBlock[k + 1]) continue; // the joint: two blocks meet, no face between their twin columns
+      const mu = (us[k] + us[k + 1]) / 2, my = (local[j * cols + k] + local[(j + 1) * cols + k + 1]) / 2;
+      if (inOpening(mu, my, -0.15)) continue;
+      const i0 = j * cols + k, i1 = i0 + 1, i2 = i0 + cols, i3 = i2 + 1;
+      // seen from the yard: +u then +y is counter-clockwise
+      index.push(i0, i1, i3, i0, i3, i2);
+    }
+  }
+  const positions = Array.from(pos), normals = Array.from(nrm), colors = Array.from(col);
+  const vertex = (v: THREE.Vector3, normal: THREE.Vector3, tone: THREE.Color): number => {
+    positions.push(v.x, v.y, v.z); normals.push(normal.x, normal.y, normal.z); colors.push(tone.r, tone.g, tone.b);
+    return positions.length / 3 - 1;
+  };
+  const world = (u: number, y: number, w: number): THREE.Vector3 => new THREE.Vector3(frame.x + cos * u + sin * w, y, frame.z - sin * u + cos * w);
+  // the crest slopes up and back into the hill under snow
+  const up = new THREE.Vector3(0, 1, 0);
+  const crestRow: number[] = [], backRow: number[] = [];
+  for (let k = 0; k < cols; k += 1) {
+    const top = P(k, rowsN, t0);
+    crestRow.push(vertex(top, up, snow));
+    backRow.push(vertex(world(us[k] * 0.96, top.y + depth * 0.45, -depth), up, snowShade));
+  }
+  for (let k = 0; k < columnsN; k += 1) {
+    if (colBlock[k] === colBlock[k + 1]) index.push(crestRow[k], crestRow[k + 1], backRow[k + 1], crestRow[k], backRow[k + 1], backRow[k]);
   }
   // the two ends close back into the hill
-  for (const [k, sign] of [[0, -1], [columns, 1]] as const) {
-    for (let s = 0; s < strata; s += 1) {
-      const a = face(k, s, 0), b = face(k, s, 2);
-      const backA = world(us[k] * 0.98, a.y, -depth), backB = world(us[k] * 0.98, b.y, -depth);
-      const color = tone(s, us[k], a.y - ground[k], FACE_NORMAL).multiplyScalar(0.8);
-      if (sign < 0) { triangle(soup, a, b, backB, color); triangle(soup, a, backB, backA, color); }
-      else { triangle(soup, a, backA, backB, color); triangle(soup, a, backB, b, color); }
+  for (const [k, sign] of [[0, -1], [columnsN, 1]] as const) {
+    const side = new THREE.Vector3(cos * sign, 0, -sin * sign);
+    let prevFront = -1, prevBack = -1;
+    for (let j = 0; j < rows; j += 1) {
+      const front = P(k, j, t0).clone();
+      const tone = new THREE.Color().fromArray(col, (j * cols + k) * 3).multiplyScalar(0.8);
+      const f = vertex(front, side, tone), bk = vertex(world(us[k] * 0.98, front.y, -depth), side, tone);
+      if (j > 0) {
+        if (sign < 0) index.push(prevFront, f, bk, prevFront, bk, prevBack);
+        else index.push(prevFront, prevBack, bk, prevFront, bk, f);
+      }
+      prevFront = f; prevBack = bk;
     }
   }
-  // the tunnel: a horseshoe lining from the mouth back `length` metres, seen from inside
+  // the tunnel: a horseshoe lining from the mouth back `length` metres, seen from inside, falling dark down the bore
   if (opening) {
     const lining = linear(opening.lining);
-    const profile: Array<[number, number]> = [];
-    profile.push([-opening.half, 0], [-opening.half, opening.spring]);
+    const profile: Array<[number, number]> = [[-opening.half, 0], [-opening.half, opening.spring]];
     for (let i = 1; i < 12; i += 1) {
-      const a = Math.PI - (i / 12) * Math.PI;
-      profile.push([Math.cos(a) * opening.half, opening.spring + Math.sin(a) * opening.half]);
+      const angle = Math.PI - (i / 12) * Math.PI;
+      profile.push([Math.cos(angle) * opening.half, opening.spring + Math.sin(angle) * opening.half]);
     }
     profile.push([opening.half, opening.spring], [opening.half, 0]);
     const groundMouth = frame.groundAt(opening.u, 0);
-    const mouthW = setBack(opening.u, opening.spring, 0, 0.5) + 0.4;
+    const mouthW = setBack(opening.u, opening.spring) + 0.4;
     const rings = 6;
-    // the bore swallows the daylight within a few metres (the garage critic panel, 2026-10-14: "the tunnel is lit like
-    // outdoors ... exponential falloff along the bore to a near-black end"): the lining's tone falls off smoothly per ring
-    const falloff = (ring: number): THREE.Color => lining.clone().multiplyScalar(Math.exp(-ring * 0.62));
+    const ringIndex: number[][] = [];
+    for (let ring = 0; ring <= rings; ring += 1) {
+      const w = mouthW - (ring / rings) * opening.length;
+      const tone = lining.clone().multiplyScalar(Math.exp(-ring * 0.62));
+      ringIndex.push(profile.map(([pu, py]) => {
+        const inward = new THREE.Vector3(-Math.sign(pu) * (py < opening.spring ? 1 : Math.abs(pu) / opening.half), py < opening.spring ? 0 : -(py - opening.spring) / opening.half, 0);
+        const worldNormal = new THREE.Vector3(cos * inward.x, inward.y, -sin * inward.x).normalize();
+        return vertex(world(opening.u + pu, groundMouth + py, w), worldNormal, tone);
+      }));
+    }
     for (let ring = 0; ring < rings; ring += 1) {
-      const w0 = mouthW - (ring / rings) * opening.length, w1 = mouthW - ((ring + 1) / rings) * opening.length;
-      const near = falloff(ring), far = falloff(ring + 1);
       for (let i = 0; i < profile.length - 1; i += 1) {
-        const [u0, y0] = profile[i], [u1, y1] = profile[i + 1];
-        const a = world(opening.u + u0, groundMouth + y0, w0), b = world(opening.u + u1, groundMouth + y1, w0);
-        const c = world(opening.u + u1, groundMouth + y1, w1), d = world(opening.u + u0, groundMouth + y0, w1);
-        // the lining faces the tunnel's axis
-        triangle(soup, a, c, b, near, far, near);
-        triangle(soup, a, d, c, near, far, far);
+        const a0 = ringIndex[ring][i], b0 = ringIndex[ring][i + 1], c0 = ringIndex[ring + 1][i + 1], d0 = ringIndex[ring + 1][i];
+        index.push(a0, c0, b0, a0, d0, c0);
       }
     }
   }
-  smoothNormals(soup);
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(soup.positions, 3));
-  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(soup.normals, 3));
-  geometry.setAttribute('color', new THREE.Float32BufferAttribute(soup.colors, 3));
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(index);
   geometry.computeBoundingSphere();
   return geometry;
 }
@@ -558,7 +667,11 @@ export function buildTropicalPlants(
  * three stacked eight-sided cones, dark spruce green with snow lying on the upper faces of each tier. Points are
  * (u, w, height) in the frame. World space, vertex-coloured, for the pack's baked bucket.
  */
-export function buildConifers(frame: RockFrame, trees: ReadonlyArray<readonly [number, number, number]>, seed: number): THREE.BufferGeometry {
+export function buildConifers(frame: RockFrame, trees: ReadonlyArray<readonly [number, number, number, number?]>, seed: number): THREE.BufferGeometry {
+  // garage r9 (Frosthollow: "the rows of identical blue-grey cones"): each spruce is its own: five ragged tiers whose skirts
+  // droop at the branch tips and wander in reach, slender (a quarter of its height across), its crown leaning a little
+  // with the wind, dark needles with snow lying in patches on the tiers' upper sides (more of it high up), flat-shaded so
+  // the branch tiers read; a tree flagged 1 is a winter birch at a stand's edge: a white trunk and a bare grey crown
   const soup: Soup = { positions: [], normals: [], colors: [] };
   const cos = Math.cos(frame.yaw), sin = Math.sin(frame.yaw);
   let state = seed >>> 0;
@@ -569,43 +682,63 @@ export function buildConifers(frame: RockFrame, trees: ReadonlyArray<readonly [n
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-  const needles = new THREE.Color(0x1f2e24), needlesDeep = new THREE.Color(0x17221b), bark = new THREE.Color(0x3a2c22);
-  const snow = new THREE.Color(0xe4eaee), snowShade = new THREE.Color(0xb9c6cf);
-  const sides = 8;
-  for (const [u, w, height] of trees) {
+  const needleTones = [new THREE.Color(0x1b2a20), new THREE.Color(0x22322a), new THREE.Color(0x2a3a2f), new THREE.Color(0x1f2d25)];
+  const bark = new THREE.Color(0x3a2c22), snow = new THREE.Color(0xe6ecf0), snowShade = new THREE.Color(0xbac7d0);
+  const birchBark = new THREE.Color(0xd9d6cc), birchMark = new THREE.Color(0x3a3634), twigs = new THREE.Color(0x5e5552);
+  const sides = 7;
+  for (const [u, w, height, kind] of trees) {
     const x = frame.x + cos * u + sin * w, z = frame.z - sin * u + cos * w, ground = frame.groundAt(u, w) - 0.3;
-    const turn = rand() * Math.PI;
-    const green = needles.clone().lerp(needlesDeep, rand());
-    const ring = (y: number, r: number, k: number): THREE.Vector3 => {
+    const turn = rand() * Math.PI * 2;
+    const leanX = (rand() - 0.5) * 0.06 * height, leanZ = (rand() - 0.5) * 0.06 * height;
+    const at = (y: number, r: number, k: number, droop = 0): THREE.Vector3 => {
       const a = turn + (k / sides) * Math.PI * 2;
-      return new THREE.Vector3(x + Math.cos(a) * r, y, z + Math.sin(a) * r);
+      const t = (y - ground) / height;
+      return new THREE.Vector3(x + Math.cos(a) * r + leanX * t, y - droop, z + Math.sin(a) * r + leanZ * t);
     };
+    if (kind === 1) {
+      // the birch: a white trunk with its dark marks, and a bare crown of twigs (crossed thin cards)
+      for (let k = 0; k < sides; k += 2) {
+        const a0 = at(ground, 0.16, k), a1 = at(ground, 0.16, k + 2), b0 = at(ground + height * 0.75, 0.06, k), b1 = at(ground + height * 0.75, 0.06, k + 2);
+        triangle(soup, a0, b1, a1, birchBark, birchMark, birchBark); triangle(soup, a0, b0, b1, birchBark, birchBark, birchMark);
+      }
+      for (let c = 0; c < 3; c += 1) {
+        const a = turn + (c / 3) * Math.PI, r = height * 0.22;
+        const p0 = new THREE.Vector3(x - Math.cos(a) * r + leanX * 0.5, ground + height * 0.45, z - Math.sin(a) * r + leanZ * 0.5);
+        const p1 = new THREE.Vector3(x + Math.cos(a) * r + leanX * 0.5, ground + height * 0.45, z + Math.sin(a) * r + leanZ * 0.5);
+        const p2 = new THREE.Vector3(x + leanX, ground + height * 1.02, z + leanZ);
+        triangle(soup, p0, p1, p2, twigs); triangle(soup, p0, p2, p1, twigs);
+      }
+      continue;
+    }
+    const tone = needleTones[Math.floor(rand() * needleTones.length)];
     // the trunk below the lowest tier
     for (let k = 0; k < sides; k += 2) {
-      const a0 = ring(ground, 0.22, k), a1 = ring(ground, 0.22, k + 2), b0 = ring(ground + height * 0.22, 0.16, k), b1 = ring(ground + height * 0.22, 0.16, k + 2);
+      const a0 = at(ground, 0.2, k), a1 = at(ground, 0.2, k + 2), b0 = at(ground + height * 0.16, 0.14, k), b1 = at(ground + height * 0.16, 0.14, k + 2);
       triangle(soup, a0, b1, a1, bark); triangle(soup, a0, b0, b1, bark);
     }
-    // three tiers, each a cone from a skirt to a tip above the next one's skirt
-    const tiers: Array<[number, number, number]> = [[0.16, 0.62, 0.3], [0.42, 0.84, 0.23], [0.64, 1.0, 0.15]];
-    for (const [from, to, radius] of tiers) {
-      const y0 = ground + height * from, y1 = ground + height * to, r = height * radius * (0.85 + rand() * 0.3);
-      const tip = new THREE.Vector3(x, y1, z);
+    const tiers = 5;
+    for (let tier = 0; tier < tiers; tier += 1) {
+      const t0 = 0.12 + (tier / tiers) * 0.8, t1 = Math.min(1, t0 + 0.3);
+      const y0 = ground + height * t0, y1 = ground + height * t1;
+      const reach = height * 0.25 * (1 - t0 * 0.88);
+      const tip = new THREE.Vector3(x + leanX * t1, y1, z + leanZ * t1);
+      const skirt = Array.from({ length: sides + 1 }, (_, k) => {
+        const kk = k % sides;
+        const r = reach * (0.72 + 0.5 * rand());
+        return at(y0, kk === 0 && k === sides ? r : r, kk, (kk % 2) * height * 0.03 + rand() * height * 0.015);
+      });
+      skirt[sides] = skirt[0];
       for (let k = 0; k < sides; k += 1) {
-        const a = ring(y0 + (k % 2) * 0.12, r, k), b = ring(y0 + ((k + 1) % 2) * 0.12, r, k + 1);
-        // the snow lies on the cone's upper slopes: a white band from the skirt up, its shaded side greyer
-        // the snow lies in a band high on each tier, thin, the needles dark below and through it (CPU canonical,
-        // 2026-10-15: snow from the skirt up turned the stand into white cones against the sky)
-        const lit = Math.cos(turn + ((k + 0.5) / sides) * Math.PI * 2 - 0.6) > -0.2;
-        const mid = a.clone().lerp(tip, 0.62), midB = b.clone().lerp(tip, 0.62);
-        const cap = (lit ? snow : snowShade).clone().lerp(green, lit ? 0.6 : 0.78); // a dusting, the needles show through
-        triangle(soup, a, mid, b, green, cap, green);
-        triangle(soup, b, mid, midB, green, cap, cap);
-        triangle(soup, mid, tip, midB, cap, green, cap);
-        triangle(soup, a, b, new THREE.Vector3(x, y0 + 0.2, z), needlesDeep); // the skirt's underside
+        const a = skirt[k], b = skirt[k + 1];
+        const lying = rand() < 0.25 + tier * 0.12;
+        const cap = lying ? (rand() < 0.6 ? snow : snowShade) : tone;
+        const mid = a.clone().lerp(tip, 0.45), midB = b.clone().lerp(tip, 0.45);
+        triangle(soup, a, b, midB, tone); triangle(soup, a, midB, mid, tone);
+        triangle(soup, mid, midB, tip, cap);
+        triangle(soup, a, new THREE.Vector3(x + leanX * t0, y0 + height * 0.04, z + leanZ * t0), b, needleTones[0]); // the tier's underside
       }
     }
   }
-  smoothNormals(soup);
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(soup.positions, 3));
   geometry.setAttribute('normal', new THREE.Float32BufferAttribute(soup.normals, 3));

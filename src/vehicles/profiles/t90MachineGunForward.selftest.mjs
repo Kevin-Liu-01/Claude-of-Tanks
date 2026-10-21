@@ -50,7 +50,7 @@ for (const [id, { weaponName, stationReceipt }] of Object.entries(CASES)) {
     assert.ok(weapon, `${id}: exposes its named roof machine gun`);
     let owner = weapon.parent;
     while (owner && owner !== turret) owner = owner.parent;
-    assert.equal(owner, turret, `${id}: machine gun remains turret-owned`);
+    assert.ok(owner === turret, `${id}: machine gun remains turret-owned`);
     assert.ok(Math.abs(weapon.rotation.y) <= Number.EPSILON,
       `${id}: machine-gun barrel faces local +Z without sideways yaw`);
     const station = turret?.userData[stationReceipt];
@@ -69,7 +69,7 @@ for (const [id, { weaponName, stationReceipt }] of Object.entries(CASES)) {
       }
     });
     assert.equal(machineGuns.length, 1, `${id}: has exactly one roof machine-gun fitting`);
-    assert.equal(machineGuns[0], weapon, `${id}: named forward weapon is the live fitting root`);
+    assert.ok(machineGuns[0] === weapon, `${id}: named forward weapon is the live fitting root`);
   } finally {
     tank.dispose();
   }

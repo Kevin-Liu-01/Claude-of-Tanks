@@ -240,7 +240,7 @@ const slotScale = (im, i) => { const m = new THREE.Matrix4(); im.getMatrixAt(i, 
   const m = new THREE.Matrix4();
   copy.getMatrixAt(0, m);
   assert.ok(Math.abs(new THREE.Vector3().setFromMatrixPosition(m).y + 0.12) < 1e-3, 'settled onto its rims');
-  assert.equal(pool.imB, null, 'no broken pool needed');
+  assert.ok(pool.imB === null, 'no broken pool needed');
   // settled (a late joiner): charred at once, no fire raised
   const late = setup(null, true);
   late.record.state = 1;

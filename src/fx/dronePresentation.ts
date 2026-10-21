@@ -35,8 +35,8 @@ interface DetailPool {
 }
 /** A drone's carrier as the presentation sees it: the live dock frame (the cradle's airframe datum), and whether the
  * carrier is gone or flying again (either ends a flight home). */
-export interface DroneCarrierView { frame?: THREE.Object3D; destroyed: boolean; flying: boolean }
-export interface DronePresentationOptions {
+interface DroneCarrierView { frame?: THREE.Object3D; destroyed: boolean; flying: boolean }
+interface DronePresentationOptions {
   /** The battle world's raycast, the one the shells and the authorities sweep: a flight home avoids what it hits. */
   world?(): Pick<AerialWorldQuery,'raycast'> | null | undefined;
   resolveCarrier?(ownerId: string | number): DroneCarrierView | null;

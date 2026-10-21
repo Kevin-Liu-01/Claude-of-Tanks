@@ -79,7 +79,7 @@ for (const id of ['challenger3_proto', 'challenger3']) for (const quality of ['h
     for (const {color, original} of paint) assert.deepEqual(color.array, original,
       `${id}/${quality}: module repair restores exact support paint`);
     tank.setDestroyed(true); tank.setDestroyed(false);
-    assert.equal(tank.root.getObjectByName(stationName), mount, 'damage/reset retains the complete station');
+    assert.ok(tank.root.getObjectByName(stationName) === mount, 'damage/reset retains the complete station');
     console.log(`${id}/${quality}: cradle, sensors, housing, rails and fixed foundations PASS`);
   } finally {tank.dispose();}
 }

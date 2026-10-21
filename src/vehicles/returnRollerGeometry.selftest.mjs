@@ -8,7 +8,7 @@ import {createTankState} from '../sim/movement.ts';
 import {efficientReturnRoller} from './efficientReturnRoller.ts';
 import {normalizeTankAppearance,tagVehicleMaterial} from './appearanceAudit.ts';
 import {auditTankWheelQuality} from './wheelQuality.ts';
-import { geometryHash as kitGeometryHash } from '../../tools/receipt-kit.test-support.mjs';
+import { geometryHash as kitGeometryHash, graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const BASE={wheelR:.4,wheelW:.3,wheelZs:[-1,0,1],wheelY:.5,xc:1.3,
  sprocket:{z:-2,y:.7,r:.3},idler:{z:2,y:.7,r:.3},trackW:.5,topY:1,
@@ -49,11 +49,11 @@ for(const quality of['high','low']){
  let disposed=0,instanceDisposed=0;leaf.rotor.addEventListener('dispose',()=>disposed++);im.addEventListener('dispose',()=>instanceDisposed++);
  try{
   assert.deepEqual(snapshot(base.P.hullG),snapshot(undefinedOption.P.hullG),'Absent and explicit undefined retain the full original recipe');
-  assert.equal(im.geometry,leaf.rotor);assert.equal(geometryHash(im.geometry),before,'Already fitted width is not scaled a second time');
-  assert.equal(im.count,4);assert.equal(im.parent,candidate.P.hullG);
-  assert.equal(candidate.P.hullG.getObjectByName('gearReturnRollerTires'),undefined);
-  assert.equal(candidate.P.hullG.getObjectByName('gearReturnRollerDiscs'),undefined);
-  assert.deepEqual(im.material,[candidate.P.mats.rubber,candidate.P.mats.wheels]);
+  assert.ok(im.geometry === leaf.rotor);assert.equal(geometryHash(im.geometry),before,'Already fitted width is not scaled a second time');
+  assert.equal(im.count,4);assert.ok(im.parent === candidate.P.hullG);
+  assert.ok(candidate.P.hullG.getObjectByName('gearReturnRollerTires') === undefined);
+  assert.ok(candidate.P.hullG.getObjectByName('gearReturnRollerDiscs') === undefined);
+  assert.deepEqual(graphLabels(im.material),graphLabels([candidate.P.mats.rubber,candidate.P.mats.wheels]));
   assert.equal(Object.hasOwn(im.userData,'appearanceRole'),false,'No uniform role may repaint both physical finish groups');
   const originalPaint=candidate.P.mats.wheels.color.getHex();
   for(const f of[base,undefinedOption,candidate])normalizeTankAppearance(f.P.hullG);
@@ -123,8 +123,8 @@ for(const quality of['high','low']){
  try{tank=createTank('leo2a6m',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});}
  finally{KIT.buildRunningGear=build;}
  try{
-  const im=tank.root.getObjectByName('gearReturnRollerRotors');assert.equal(im.geometry,rotor);assert.equal(im.count,8);
-  assert.deepEqual(im.material,[captured.mats.rubber,captured.mats.wheels]);assert.equal(im.parent.name,'rig_hull');
+  const im=tank.root.getObjectByName('gearReturnRollerRotors');assert.ok(im.geometry === rotor);assert.equal(im.count,8);
+  assert.deepEqual(graphLabels(im.material),graphLabels([captured.mats.rubber,captured.mats.wheels]));assert.equal(im.parent.name,'rig_hull');
   assert.deepEqual(auditTankWheelQuality(tank.root).issues,[],'Real two-finish factory rotor passes the unchanged wider mechanical checks');
   const state=createTankState(getSpec('leo2a6m'),new T.Vector3(),.12);
   for(const distance of[15,75,200]){

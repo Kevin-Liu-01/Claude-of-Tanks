@@ -573,7 +573,7 @@ interface LeafSite {
  * (crownLobes). The lobes' smooth union is the crown hull the cards' normals bend toward and the depth their tint
  * darkens by, and the shadow hull's masses.
  */
-export interface CrownLobe { x: number; y: number; z: number; rx: number; ry: number; rz: number }
+interface CrownLobe { x: number; y: number; z: number; rx: number; ry: number; rz: number }
 interface TreeSkeleton {
   species: GrowthSpecies;
   height: number;

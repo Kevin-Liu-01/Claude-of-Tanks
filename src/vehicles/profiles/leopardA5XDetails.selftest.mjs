@@ -65,7 +65,7 @@ function roofChecks(tank, quality) {
   const turret=get('rig_turret'), neutralInverse=turret.matrixWorld.clone().invert();
   for (const name of roofNames) {
     const mesh=fixture(name);
-    assert.equal(mesh.parent,turret,`${quality}: ${name} is permanent turret equipment`);
+    assert.ok(mesh.parent === turret,`${quality}: ${name} is permanent turret equipment`);
     assert.equal(mesh.userData.combatHitboxRole,'equipment');
     assert.equal(mesh.userData.destructibleCluster,undefined,'not an ERA/ejectable assembly');
     assertClosed(mesh.geometry);
@@ -153,7 +153,7 @@ for (const quality of ['high','low']) {
         `${quality}: held-out source rounded service-cover surface`);
     for (const [side,x,z] of [['Right',.776058,-1.378049],['Left',-.765934,-1.365959]]) {
       const cover=fixture(`ServiceCover${side}`);
-      assert.equal(cover.parent,get('rig_hull'),'service covers stay on the permanent hull');
+      assert.ok(cover.parent === get('rig_hull'),'service covers stay on the permanent hull');
       assert.equal(cover.userData.combatHitboxRole,'equipment');
       assertClosed(cover.geometry);
       const deck=cast(get('hull'),[x,3,z],[0,-1,0]).point.y;

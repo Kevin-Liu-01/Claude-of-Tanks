@@ -110,7 +110,7 @@ for (const [id, expected] of Object.entries(TARGETS)) {
     assert.equal(stations.length, 1, `${id}: exposes exactly one open-yoke station`);
     const station = stations[0];
     assert.ok(turretRig && station, `${id}: exposes turret rig and open-yoke station`);
-    assert.equal(station.parent, turretRig, `${id}: complete station is directly turret-owned`);
+    assert.ok(station.parent === turretRig, `${id}: complete station is directly turret-owned`);
     assert.equal(station.userData.fitting, 'openYokeRws', `${id}: uses the new fitting family`);
     assert.equal(station.userData.designFamily, 'abramsx-open-yoke-v1',
       `${id}: records AbramsX design ancestry`);

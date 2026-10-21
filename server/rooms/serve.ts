@@ -13,7 +13,7 @@ import { createLocalRoomService, type LocalRoomService } from './localRoomServic
 import type { RoomPolicyGuards } from '../../src/mp/room/roomPolicy.ts';
 import type { RoomActorPorts } from '../../src/mp/room/roomActor.ts';
 
-export interface RoomsServerOptions {
+interface RoomsServerOptions {
   host?: string;
   port?: number;
   seatSecret: string;
@@ -33,7 +33,7 @@ export interface RoomsServerOptions {
   relayCredentials?: RoomActorPorts['relayCredentials'];
 }
 
-export interface RoomsServer {
+interface RoomsServer {
   readonly address: AddressInfo;
   /** `ws://host:port` — the room endpoint clients configure. */
   readonly url: string;

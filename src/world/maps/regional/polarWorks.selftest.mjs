@@ -74,7 +74,7 @@ for (const [kind, name] of Object.entries(FORMS)) {
   assert.deepEqual(Array.from(a.getAttribute('position').array), Array.from(b.getAttribute('position').array), `${label}: the same geometry twice`);
   for (const g of [a, broken]) {
     assert.deepEqual(Object.keys(g.attributes).sort(), ['color', 'normal', 'position', 'uv'], `${label}: position, normal, uv and colour`);
-    assert.equal(g.index, null, `${label}: non-indexed`);
+    assert.ok(g.index === null, `${label}: non-indexed`);
     assert.ok(Array.from(g.getAttribute('position').array).every(Number.isFinite), `${label}: finite`);
     facing(g, label);
   }

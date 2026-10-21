@@ -55,7 +55,7 @@ export const SCENE_WIND: Readonly<Record<MapId, { readonly dirDeg: number; reado
   cliffbridge: { dirDeg: 37, speed: 3.6 }, // ground
 });
 
-export interface SceneWind {
+interface SceneWind {
   /** The surface wind: the direction it blows toward (degrees from +X toward +Z) and its unit vector in world xz. */
   surfaceDirDeg: number;
   dirX: number;

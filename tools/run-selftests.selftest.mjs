@@ -5,8 +5,10 @@ import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
-import { runSelftestFile, runSelftestSuite, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
-  SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
+import { runSelftestFile, runSelftestSuite, selftestAdmissionSets, selftestMemoryGate, SELFTEST_DECLARED_INPUTS, selftestCpuLease, SELFTEST_EXCLUSIVE_CPU_FILES, SELFTEST_FIXTURE_KEYED_FILES, SELFTEST_GRAPH_GUARD, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
+  selftestCacheEnv, selftestRunDirectory, SELFTEST_LAST_FILES, SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
+import { createSelftestCache } from './selftest-cache.mjs';
+import { collectSelftestInputs } from './selftest-inputs.mjs';
 // The runners read COT_SHOTS_LOCK_TIMEOUT_MS (landing chains export three hours); this receipt pins the default wait.
 process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
 
@@ -68,9 +70,20 @@ assert.ok(!SELFTEST_FRESH_FILES.includes('src/vehicles/fleetLazy.selftest.mjs'),
 assert.deepEqual(selftestPlan(['a'], {
   lookup: () => ({ skip: false, reason: 'new input', inputs: 2 }),
   closureOf: () => new Set(['/fixture/src', '/fixture/tools/a.mjs']),
+  scanMatch: () => false,
 }, ['src/main.ts', 'docs/readme.md'], '/fixture'), [
-  { file: 'a', action: 'run', reason: 'new input', inputs: 2, affectedBy: ['src/main.ts'] },
-], 'impact planning is explanatory and includes directory inputs');
+  { file: 'a', action: 'run', reason: 'new input', inputs: 2, affectedBy: ['src/main.ts'], scanBy: [], broadOnly: true },
+], 'impact planning is explanatory and includes directory inputs; a match through a fallback directory alone is broad');
+// (2026-10-20, after 228p) a named file or a non-fallback directory is a read; a listing's pattern selects even a deleted path
+assert.deepEqual(selftestPlan(['a'], {
+  lookup: () => ({ skip: false, reason: 'new input', inputs: 3 }),
+  closureOf: () => new Set(['/fixture/src', '/fixture/src/ui/hud.ts', '/fixture/public/icons']),
+  scanMatch: (file, path) => path.startsWith('src/presentation/'),
+}, ['src/ui/hud.ts', 'public/icons/a.webp', 'src/presentation/gone.ts', 'src/world/map.ts', 'api/x.ts'], '/fixture'), [
+  { file: 'a', action: 'run', reason: 'new input', inputs: 3,
+    affectedBy: ['src/ui/hud.ts', 'public/icons/a.webp', 'src/presentation/gone.ts', 'src/world/map.ts'],
+    scanBy: ['src/presentation/gone.ts'], broadOnly: false },
+], 'named files, named directories and listings select; the fallback alone only explains');
 
 function fixture({ failAt, errorAt, acquireError } = {}) {
   const events = [], errors = [];
@@ -103,6 +116,108 @@ assert.equal(await runSelftestSuite('fixture', ['a', 'slow', 'b', 'browser', 'c'
 assert.deepEqual(ordered.events, ['[selftests] fixture: 6 files', 'acquire', 'a', 'slow', 'b',
   'release', 'browser', 'acquire', 'c', 'd', '[selftests] PASS fixture', 'release']);
 assert.ok(ordered.refreshes > 0, 'async child waiting refreshes the held lease');
+
+// 229: with cpuLease false the CPU children never touch the capture lock, serial or pooled; the browser child still
+// runs alone (it takes the lock itself) and nothing is released that was never taken.
+for (const concurrency of [1, 3]) {
+  const events = [];
+  const lock = { async acquire() { assert.fail('a CPU child queued for the capture lock'); }, release() { events.push('release'); },
+    refresh() { assert.fail('no lease to refresh'); }, waiting: () => 4 };
+  let active = 0;
+  const status = await runSelftestSuite('no-lease', ['a', 'b', 'browser', 'c'], { concurrency, lock, ownedLeaseFiles: ['browser'],
+    cpuLease: false, refreshMs: 5, log: () => {}, logError: () => {},
+    async runFile(file) {
+      if (file === 'browser') assert.equal(active, 0, 'the browser receipt still runs alone');
+      active++; events.push(file); await new Promise((resolve) => setTimeout(resolve, 2)); active--;
+      return { status: 0 };
+    } });
+  assert.equal(status, 0);
+  assert.deepEqual(events.filter((event) => event !== 'release').sort(), ['a', 'b', 'browser', 'c'], `concurrency ${concurrency}`);
+}
+// the memory gate: a yes is reused for 5 s, a no is asked again every 15 s; no CLI, a usage error or 0 GB opens it; 30
+// minutes of noes start the child anyway; the pool awaits it once per CPU child when there is no lease
+{
+  let clock = 0, asks = 0, answers = [0, 1, 1, 0];
+  const waits = [], said = [];
+  const gate = selftestMemoryGate({}, { ask: (gb) => { asks++; assert.equal(gb, 6); return { status: answers.shift() }; },
+    sleep: async (ms) => { waits.push(ms); clock += ms; }, clock: () => clock, log: (line) => said.push(line) });
+  await gate(); await gate(); assert.equal(asks, 1, 'a yes is reused');
+  clock += 5_000; await gate();
+  assert.equal(asks, 4, 'after 5 s it asks again and waits through two noes'); assert.deepEqual(waits, [15_000, 15_000]);
+  assert.equal(said.length, 1, 'the wait is logged once in ten minutes');
+  let missing = 0;
+  const absent = selftestMemoryGate({}, { ask: () => { missing++; return { error: Object.assign(new Error('x'), { code: 'ENOENT' }) }; },
+    log: () => {} });
+  await absent(); await absent(); assert.equal(missing, 1, 'no headroom CLI: the gate opens for good');
+  const usage = selftestMemoryGate({}, { ask: () => ({ status: 2 }), log: () => {},
+    sleep: async () => assert.fail('a usage error never waits') });
+  await usage();
+  let slept = 0, now = 0;
+  // (headroom can-start --gb 200 on a 128 GB machine answers 1, a no, for ever)
+  const stuck = selftestMemoryGate({ COT_SELFTEST_MEMORY_GB: '200' }, { ask: () => ({ status: 1 }),
+    sleep: async (ms) => { slept++; now += ms; }, clock: () => now, log: () => {} });
+  await stuck(); assert.equal(slept, 120, '30 minutes of noes, then the child starts');
+  await stuck(); await stuck(); assert.equal(slept, 120, 'and the gate stays open for the rest of the run');
+  await selftestMemoryGate({ COT_SELFTEST_MEMORY_GB: '0' }, { ask: () => assert.fail('asked with the gate off') })();
+  let defaulted = 0;
+  await selftestMemoryGate({ COT_SELFTEST_MEMORY_GB: '' }, { ask: (gb) => { defaulted = gb; return { status: 0 }; } })();
+  assert.equal(defaulted, 6, 'an empty setting is the default, not off');
+  let gated = 0;
+  const lock = { async acquire() { assert.fail('no lease'); }, release() {}, refresh() {}, waiting: () => 0 };
+  for (const concurrency of [1, 2]) {
+    gated = 0;
+    await runSelftestSuite('gated', ['a', 'browser', 'b'], { concurrency, lock, ownedLeaseFiles: ['browser'], cpuLease: false,
+      memoryGate: async () => { gated++; }, refreshMs: 5, log: () => {}, logError: () => {}, runFile: async () => ({ status: 0 }) });
+    assert.equal(gated, 2, `concurrency ${concurrency}: every CPU child passes the memory gate, the browser child does not`);
+  }
+}
+// CPU children run under nice: a real child reads its own priority
+{
+  const { mkdtempSync: temp, writeFileSync: put } = await import('node:fs');
+  const { tmpdir: tmp } = await import('node:os');
+  const { join: joinPath } = await import('node:path');
+  const dir = temp(joinPath(tmp(), 'cot-nice-')), script = joinPath(dir, 'nice.mjs'), out = joinPath(dir, 'nice.txt');
+  put(script, `import { getPriority } from 'node:os'; import { writeFileSync } from 'node:fs'; writeFileSync(${JSON.stringify(out)}, String(getPriority()));`);
+  const result = await runSelftestFile(script, { nice: 10, signals: { on() {}, removeListener() {} } });
+  assert.equal(result.status, 0);
+  assert.ok(Number((await import('node:fs')).readFileSync(out, 'utf8')) >= 10, 'the child runs at nice 10 or lower priority');
+  (await import('node:fs')).rmSync(dir, { recursive: true, force: true });
+}
+// the CLI wiring: a real one-receipt run takes no capture lease and passes (the memory gate off, a scratch cache)
+{
+  const { spawnSync: run } = await import('node:child_process');
+  const { mkdtempSync: temp } = await import('node:fs');
+  const { tmpdir: tmp } = await import('node:os');
+  const { join: joinPath } = await import('node:path');
+  const scratch = temp(joinPath(tmp(), 'cot-runner-cli-'));
+  try {
+    // the lease setting pinned off and a 1 GB memory gate, whatever the caller's environment says; 10 min under load
+    const cli = run(process.execPath, ['tools/run-selftests.mjs', 'all', '--only=tools/assert-graph-guard.selftest.mjs',
+      `--report=${joinPath(scratch, 'report.json')}`], { encoding: 'utf8', timeout: 600_000,
+      env: { ...process.env, COT_SELFTEST_CACHE_DIR: joinPath(scratch, 'cache'), COT_SELFTEST_CPU_LEASE: '', COT_SELFTEST_MEMORY_GB: '1',
+        COT_SELFTEST_WORKERS: '2' } });
+    assert.equal(cli.status, 0, cli.stdout + cli.stderr);
+    assert.match(cli.stdout, /PASS tools\/assert-graph-guard\.selftest\.mjs/);
+    const { options } = JSON.parse((await import('node:fs')).readFileSync(joinPath(scratch, 'report.json'), 'utf8'));
+    assert.equal(options.cpuLease, false, 'the CLI ran without the capture lease');
+    assert.equal(options.memoryGb, 1, 'the CLI built the memory gate from COT_SELFTEST_MEMORY_GB');
+    assert.ok(options.memoryAsks >= 1 || /memory gate off/.test(cli.stdout), 'and the pool consulted it before the CPU child');
+    assert.equal(options.childNice, 10);
+  } finally { (await import('node:fs')).rmSync(scratch, { recursive: true, force: true }); }
+}
+assert.equal(selftestCpuLease({}), false, 'the runner takes no CPU lease by default');
+assert.equal(selftestCpuLease({ COT_SELFTEST_CPU_LEASE: '1' }), true, 'COT_SELFTEST_CPU_LEASE=1 restores the shared lease');
+{
+  const leased = selftestAdmissionSets(true), free = selftestAdmissionSets(false);
+  for (const file of SELFTEST_OWNED_LEASE_FILES) {
+    assert.ok(leased.barriers.has(file) && !leased.last.has(file), `${file}: a first barrier under the shared lease`);
+    assert.ok(!free.barriers.has(file) && free.last.has(file), `${file}: last without a CPU lease, so CPU work never waits on the GPU queue`);
+  }
+  for (const file of SELFTEST_EXCLUSIVE_CPU_FILES.filter((file) => !SELFTEST_OWNED_LEASE_FILES.includes(file))) {
+    assert.ok(free.barriers.has(file), `${file}: still runs alone, first`);
+  }
+  for (const file of SELFTEST_LAST_FILES) assert.ok(free.last.has(file) && leased.last.has(file));
+}
 assert.equal(ordered.held, false);
 const refreshes = ordered.refreshes;
 await new Promise((resolve) => setTimeout(resolve, 15));
@@ -334,12 +449,94 @@ assert.deepEqual(timings, [
 ], 'execution and FIFO time stay separate, and the files after a failure are still measured');
 
 for (const env of [{ NODE_DISABLE_COMPILE_CACHE: '1' }, { NODE_COMPILE_CACHE: '/explicit' }, { NODE_V8_COVERAGE: '/coverage' }]) {
-  assert.equal(selftestChildEnv(env), env, 'respect caller opt-out, explicit cache and coverage');
+  assert.deepEqual(selftestChildEnv(env), { ...env, NODE_OPTIONS: SELFTEST_GRAPH_GUARD },
+    'respect caller opt-out, explicit cache and coverage (only the graph guard is added)');
+}
+const capped = { NODE_OPTIONS: '--max-old-space-size=4096' };
+assert.equal(selftestChildEnv(capped).NODE_OPTIONS, `--max-old-space-size=4096 ${SELFTEST_GRAPH_GUARD}`, 'the heap cap is kept');
+assert.equal(selftestChildEnv(selftestChildEnv(capped)).NODE_OPTIONS, selftestChildEnv(capped).NODE_OPTIONS, 'the guard is added once');
+assert.equal(capped.NODE_OPTIONS, '--max-old-space-size=4096', 'never mutate parent environment');
+assert.deepEqual(selftestCacheEnv(selftestChildEnv(capped)).NODE_OPTIONS, '--max-old-space-size=4096', 'the guard never keys a proof');
+assert.equal('NODE_OPTIONS' in selftestCacheEnv(selftestChildEnv({})), false);
+assert.equal(SELFTEST_GRAPH_GUARD, `--import=${new URL('./assert-graph-guard.mjs', import.meta.url).href}`,
+  'assert-graph-guard.selftest spells the same flag');
+// every declared-input receipt names all the code it runs: each declared file's relative imports, and every repository
+// path a receipt joins onto the checkout, are declared too (a missed edge would reuse a PASS the code no longer earns)
+{
+  const { readFileSync: read, readdirSync: list, existsSync: exists, statSync: statOf } = await import('node:fs');
+  const { dirname: dir, join: joinPath, relative: rel, resolve: res } = await import('node:path');
+  const root = res(import.meta.dirname, '..');
+  const { SELFTEST_SUITES } = await import('./selftest-suites.mjs');
+  const registered = new Set(Object.values(SELFTEST_SUITES).flat());
+  for (const [receipt, patterns] of Object.entries(SELFTEST_DECLARED_INPUTS)) {
+    assert.ok(registered.has(receipt), `${receipt} is a registered receipt`);
+    const declared = new Set([receipt]);
+    for (const pattern of patterns) {
+      if (!pattern.includes('*')) { assert.ok(exists(joinPath(root, pattern)), `${pattern} exists`); declared.add(pattern); continue; }
+      const folder = dir(pattern), suffix = pattern.slice(pattern.indexOf('*') + 1);
+      for (const name of list(joinPath(root, folder))) if (name.endsWith(suffix)) declared.add(`${folder}/${name}`);
+    }
+    for (const file of declared) {
+      const text = read(joinPath(root, file), 'utf8');
+      // the parsed imports (static and literal dynamic), never import text inside a fixture's source strings
+      // parsed relative imports (never import text inside a fixture's source strings), and files the code reads by
+      // new URL('./x', import.meta.url)
+      const code = text.split('\n').filter((line) => !/^\s*(?:\/\/|\*|\/\*)/.test(line)).join('\n'); // comment lines name no file
+      const urls = [...code.matchAll(/new URL\(\s*['"`](\.{1,2}\/[^'"`$]+)['"`]\s*,\s*import\.meta\.url/g),
+        ...code.matchAll(/join\(\s*import\.meta\.dirname\s*,\s*['"`](\.{1,2}\/[^'"`$]+)['"`]\s*\)/g)].map((match) => match[1]);
+      const edges = [...new Set([...collectSelftestInputs(text, file).imports, ...urls])].filter((specifier) => /^\.{1,2}\//.test(specifier))
+        .map((specifier) => rel(root, res(root, dir(file), specifier)))
+        // a directory named to find the checkout (resolve(import.meta.dirname, '../..')) reads no file itself
+        .filter((edge) => !(exists(joinPath(root, edge)) && statOf(joinPath(root, edge)).isDirectory()));
+      if (file === receipt) edges.push(...[...text.matchAll(/join\(repo,\s*'([^']+)'\)/g)].map((match) => match[1]));
+      for (const edge of edges) assert.ok(declared.has(edge), `${receipt}: ${file} reaches ${edge}, which its declaration leaves out`);
+    }
+  }
+}
+// every fixture-live receipt is registered (a stale entry would silently key nothing)
+{
+  const { SELFTEST_SUITES } = await import('./selftest-suites.mjs');
+  const registered = new Set(Object.values(SELFTEST_SUITES).flat());
+  for (const file of SELFTEST_FIXTURE_KEYED_FILES) assert.ok(registered.has(file), `${file} is a registered receipt`);
 }
 const originalEnv = { EXAMPLE: 'preserved' }, cachedEnv = selftestChildEnv(originalEnv);
 assert.equal(cachedEnv.EXAMPLE, 'preserved');
 assert.equal(originalEnv.NODE_COMPILE_CACHE, undefined, 'never mutate parent environment');
 assert.match(cachedEnv.NODE_COMPILE_CACHE, /cot-selftest-compile-/);
+
+// Test-speed R9a (2026-10-16): the run's directory for records a judge merges (COT_SELFTEST_RUN_DIR) is fresh for each
+// invocation unless the caller exported one, which it keeps; a judge is registered after the receipts it merges (the
+// serial path) and the pool admits it last (tools/selftest-schedule.mjs admissionOrder `last`).
+assert.deepEqual(selftestRunDirectory({ COT_SELFTEST_RUN_DIR: '/gate/run' }, () => assert.fail('made a directory')),
+  { dir: '/gate/run', created: false }, 'a gate\'s exported directory is used and kept');
+assert.deepEqual(selftestRunDirectory({}, () => '/tmp/cot-selftest-run-x'), { dir: '/tmp/cot-selftest-run-x', created: true });
+const madeRunDirectory = selftestRunDirectory({});
+try { assert.match(madeRunDirectory.dir, /cot-selftest-run-/); } finally { rmSync(madeRunDirectory.dir, { recursive: true, force: true }); }
+const registry = Object.values(SELFTEST_SUITES).flat();
+assert.deepEqual(SELFTEST_LAST_FILES, ['server/battlePacing.selftest.mjs']);
+for (const judge of SELFTEST_LAST_FILES) assert.ok(registry.includes(judge), `${judge} is registered`);
+const shardIndices = registry.map((file, index) => (/^server\/battlePacingShard\d\.selftest\.mjs$/.test(file) ? index : -1))
+  .filter((index) => index >= 0);
+assert.equal(shardIndices.length, 8, 'the eight battlePacing shards are registered');
+assert.ok(shardIndices.every((index) => index < registry.indexOf('server/battlePacing.selftest.mjs')),
+  'the shards precede their judge in registry order');
+// the result cache keys a receipt on the variables its files read, but not on the run directory: its path changes every
+// run (keyed, a receipt that reads it would never be reused), and a receipt reads only what its own run wrote there
+const cacheEnvRoot = mkdtempSync(join(tmpdir(), 'cot-selftest-run-dir-key-'));
+try {
+  writeFileSync(join(cacheEnvRoot, 'judge.selftest.mjs'),
+    'console.log(process.env.COT_SELFTEST_RUN_DIR, process.env.COT_PACING_JOBS);\n');
+  const keyWith = (env) => createSelftestCache({ root: cacheEnvRoot, cacheDir: join(cacheEnvRoot, '.cache'), env, argv: [],
+    nodeVersion: 'v-test' }).inputKey('judge.selftest.mjs').key;
+  const runA = { COT_SELFTEST_RUN_DIR: '/tmp/cot-selftest-run-a', COT_PACING_JOBS: '4', NODE_COMPILE_CACHE: '/c' };
+  const runB = { ...runA, COT_SELFTEST_RUN_DIR: '/tmp/cot-selftest-run-b' };
+  assert.notEqual(keyWith(runA), keyWith(runB), 'the raw environment keys on the run directory (the defect left out below)');
+  assert.equal(keyWith(selftestCacheEnv(runA)), keyWith(selftestCacheEnv(runB)), 'two runs\' directories, one key');
+  assert.notEqual(keyWith(selftestCacheEnv(runA)), keyWith(selftestCacheEnv({ ...runA, COT_PACING_JOBS: '1' })),
+    'every other variable a receipt reads still keys it');
+  assert.deepEqual(selftestCacheEnv(runA), { COT_PACING_JOBS: '4', NODE_COMPILE_CACHE: '/c' });
+  assert.equal(runA.COT_SELFTEST_RUN_DIR, '/tmp/cot-selftest-run-a', 'the caller\'s environment is left alone');
+} finally { rmSync(cacheEnvRoot, { recursive: true, force: true }); }
 
 // Real fresh processes prove that compiled code reuse does not cache test
 // results/global state and that editing the source cannot reuse a stale pass.
@@ -380,6 +577,24 @@ try {
   const realLog = join(logFixture, 'speaks.log');
   assert.deepEqual(await runSelftestFile(script, { logFile: realLog }), { status: 3, error: undefined });
   assert.equal(readFileSync(realLog, 'utf8'), 'to stdout\nto stderr\n', 'a fresh child writes both streams to its log');
+  // test-speed R9a: the runner sets the run directory on its own environment after it built the cache, and every child
+  // it launches then reads it (a judge finds its shards' records there), with or without a preset compile cache
+  const runDirProbe = join(logFixture, 'run-dir-probe.mjs');
+  writeFileSync(runDirProbe, "process.exitCode = process.env.COT_SELFTEST_RUN_DIR === '/tmp/cot-selftest-run-probe' ? 0 : 7;\n");
+  const savedRunDir = process.env.COT_SELFTEST_RUN_DIR, savedCompileCache = process.env.NODE_COMPILE_CACHE;
+  try {
+    for (const compileCache of [undefined, join(logFixture, 'compile')]) {
+      if (compileCache === undefined) delete process.env.NODE_COMPILE_CACHE; else process.env.NODE_COMPILE_CACHE = compileCache;
+      delete process.env.COT_SELFTEST_RUN_DIR;
+      assert.equal((await runSelftestFile(runDirProbe, { logFile: join(logFixture, 'probe.log') })).status, 7);
+      process.env.COT_SELFTEST_RUN_DIR = '/tmp/cot-selftest-run-probe';
+      assert.equal((await runSelftestFile(runDirProbe, { logFile: join(logFixture, 'probe.log') })).status, 0,
+        `a child reads the run directory (compile cache ${compileCache ? 'preset' : 'the runner\'s'})`);
+    }
+  } finally {
+    if (savedRunDir === undefined) delete process.env.COT_SELFTEST_RUN_DIR; else process.env.COT_SELFTEST_RUN_DIR = savedRunDir;
+    if (savedCompileCache === undefined) delete process.env.NODE_COMPILE_CACHE; else process.env.NODE_COMPILE_CACHE = savedCompileCache;
+  }
   assert.equal(selftestCommand(['--logs=/tmp/receipt-logs']).logs, '/tmp/receipt-logs');
   assert.throws(() => selftestCommand(['--write-durations', '--logs=/tmp/x']), /records the whole registry/);
 } finally { rmSync(logFixture, { recursive: true, force: true }); }

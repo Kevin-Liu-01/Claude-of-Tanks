@@ -898,7 +898,7 @@ const church: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const LONGLEAF_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const LONGLEAF_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   logcabin: workerHouse,
   farmhouse: managerHouse,
   rangerlodge: boardingHouse,

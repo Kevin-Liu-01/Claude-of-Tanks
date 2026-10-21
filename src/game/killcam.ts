@@ -105,6 +105,7 @@ import type { ArmorEnvelope, CrewBox, ModuleBox } from '../vehicles/specHelpers.
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import type { WorldRayHit } from '../world/map.ts';
 import { t } from '../ui/i18n.ts';
+import { attackerLabel, killSourceIdentity } from '../ui/killSourceIdentity.ts';
 
 type Vec3Tuple = [number, number, number];
 type ModuleStateName = 'ok' | 'yellow' | 'red';
@@ -246,6 +247,8 @@ export interface KillcamHitEvent {
   attackerId?: string;
   attackerName?: string;
   attackerSpecId?: string;
+  /** (ac130-fx-228) the attacker's platform when not its vehicle (the authority's sim/aerialCombat.ts killSourceOf): 'ac130', 'drone' */
+  attackerSource?: string;
   targetId?: string;
   targetName?: string;
   targetSpecId?: string;
@@ -2494,24 +2497,26 @@ export function createKillCam(deps: KillcamDeps) {
     // battle endings: a final blow between two other tanks reads as a neutral "A destroyed B" line; the
     // player's own kill and the player's own death keep their existing titles
     const finalBlow = pb.kind === 'final' && !playerKill && !pb.isDeathView;
+    // (ac130-fx-228) an AC-130's or a drone's shot names its platform, not the pilot's garage tank
+    const attackerName = attackerLabel(event);
     d.root.classList.toggle('ammo-racked', !!event.ammoRacked);
     d.titleT.textContent = event.ammoRacked ? t('killcam.ammoRackDetonation') : playerKill || finalBlow ? t('killcam.finalBlow') : t('killcam.killCam');
     d.titleS.textContent = finalBlow
       ? t(pb.replayKind === 'collision' ? 'killcam.finalRamLine' : 'killcam.finalBlowLine', {
-        attacker: event.attackerName || t('killcam.enemy'), target: event.targetName || t('killcam.enemy'),
+        attacker: attackerName || t('killcam.enemy'), target: event.targetName || t('killcam.enemy'),
       })
       : pb.replayKind === 'collision'
         ? (playerKill
           ? t('killcam.rammedTarget', { name: event.targetName || t('killcam.enemy') })
-          : t('killcam.rammedBy', { name: event.attackerName || t('killcam.enemy') }))
+          : t('killcam.rammedBy', { name: attackerName || t('killcam.enemy') }))
         : (playerKill
           ? t('killcam.destroyedTarget', { name: event.targetName || t('killcam.enemy') })
-          : t('killcam.destroyedByLine', { name: event.attackerName || t('killcam.enemyFire') }));
+          : t('killcam.destroyedByLine', { name: attackerName || t('killcam.enemyFire') }));
     const shellName = shellDisplayName(event);
     d.hdK.textContent = shellName
       ? `${event.shellType || ''} · ${shellName}`
       : (event.shellType || '');
-    d.hdW.textContent = `${event.attackerName || t('killcam.enemy')} → ${event.targetName || ''}`;
+    d.hdW.textContent = `${attackerName || t('killcam.enemy')} → ${event.targetName || ''}`;
     d.rows.textContent = '';
     if (pb.replayKind === 'collision') populateCollisionStats(d, event);
     else populateBallisticStats(d, event);
@@ -5135,22 +5140,26 @@ export function createKillCam(deps: KillcamDeps) {
       d.killer.root.classList.remove('on', 'rv');
       return;
     }
+    // (ac130-fx-228) an AC-130's or a drone's kill: the platform's name and icon, no tank tier or silhouette
+    const source = killSourceIdentity(event.attackerSource);
     let vehicleSpec: FleetTankSpec | null = null;
     try {
-      vehicleSpec = event.attackerSpecId ? getSpec(event.attackerSpecId) : null;
+      vehicleSpec = event.attackerSpecId && !source ? getSpec(event.attackerSpecId) : null;
     } catch (_) {
       vehicleSpec = null;
     }
-    const killerName = event.attackerName || vehicleSpec?.name || t('killcam.enemy');
+    const killerName = source?.label || event.attackerName || vehicleSpec?.name || t('killcam.enemy');
     d.killer.name.textContent = killerName;
     const vehicleBits: string[] = [];
-    const tier = event.attackerSpecId ? tierNumeral(event.attackerSpecId) : '';
+    const tier = event.attackerSpecId && !source ? tierNumeral(event.attackerSpecId) : '';
     if (tier) vehicleBits.push(t('killcam.tier', { tier }));
     if (vehicleSpec && !killerName.toLowerCase().includes(vehicleSpec.name.toLowerCase())) {
       vehicleBits.push(vehicleSpec.name);
     }
+    if (source?.source === 'ac130') vehicleBits.push(t('flight.gunship.role'));
     d.killer.veh.textContent = vehicleBits.join(' · ');
-    d.killer.sil.style.backgroundImage = event.attackerSpecId
+    d.killer.sil.innerHTML = source ? uiIconSVG(source.icon, 30, '#f28f8f') : '';
+    d.killer.sil.style.backgroundImage = event.attackerSpecId && !source
       ? `url(${iconUrl(event.attackerSpecId, 'side_silhouette')})`
       : 'none';
     d.killer.rows.textContent = '';

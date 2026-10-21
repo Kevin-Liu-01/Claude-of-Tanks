@@ -130,7 +130,7 @@ try {
   for (const yaw of [0, Math.PI / 2]) {
     turretRig.rotation.y = yaw;
     tank.root.updateMatrixWorld(true);
-    assert.equal(remoteKord.parent, turretRig, `remote Kord remains turret-owned through yaw ${yaw}`);
+    assert.ok(remoteKord.parent === turretRig, `remote Kord remains turret-owned through yaw ${yaw}`);
   }
 } finally {
   tank.dispose();

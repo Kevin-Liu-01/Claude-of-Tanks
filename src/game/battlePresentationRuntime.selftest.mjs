@@ -133,14 +133,14 @@ function createHarness({
   const me = createEntity({ id: 'me', team: 'player', isPlayer: true }).entity;
   const harness = createHarness({ tanks: [hidden.entity], spotted: false, player: me });
   harness.runtime.update(1 / 60);
-  assert.equal(hidden.root.parent, null, 'fully hidden opponents leave scene traversal');
+  assert.ok(hidden.root.parent === null, 'fully hidden opponents leave scene traversal');
   assert.equal(hidden.root.userData.battleVisibilityDetached, true);
   assert.equal(hidden.syncs.length, 0, 'hidden opponents skip visual and track work');
   assert.equal(harness.effects.exhaust.length, 0, 'hidden opponents leak no FX');
 
   harness.game.spotting.isSpotted = () => true;
   harness.runtime.update(1);
-  assert.equal(hidden.root.parent, harness.scene,
+  assert.ok(hidden.root.parent === harness.scene,
     'a legal spotting edge restores owner-detached residency before sync');
   assert.equal(hidden.syncs.length, 1);
   harness.runtime.update();
@@ -154,7 +154,7 @@ function createHarness({
   const harness = createHarness({ tanks: [foreign.entity], spotted: true, player: me });
   foreign.root.removeFromParent();
   harness.runtime.update(1 / 60);
-  assert.equal(foreign.root.parent, null,
+  assert.ok(foreign.root.parent === null,
     'spotting cannot resurrect a visual detached by another lifecycle owner');
 }
 
@@ -321,10 +321,10 @@ console.log('battlePresentationRuntime.selftest: interpolation, visibility, deta
  const material=new MeshStandardMaterial(),mesh=new Mesh(new BoxGeometry(),material);root.add(mesh);
  entity.state.modeScale=1.12;entity.combat.hp=100;entity.combat.maxHp=100;
  const {runtime,game}=createHarness({tanks:[entity]});
- runtime.update(.016,1);assert.notEqual(mesh.material,material);
- game.phase='ended';runtime.update(.016,1);assert.equal(mesh.material,material,'post-battle readout clears the aura');assert.equal(root.scale.x,1);
+ runtime.update(.016,1);assert.ok(mesh.material !== material);
+ game.phase='ended';runtime.update(.016,1);assert.ok(mesh.material === material,'post-battle readout clears the aura');assert.equal(root.scale.x,1);
  game.phase='garage';game.matchModeState={boss:{id:entity.id}};runtime.update(.016,1);
- assert.equal(mesh.material,material,'stale boss identity/scale cannot reactivate a garage aura');assert.equal(root.scale.x,1);
+ assert.ok(mesh.material === material,'stale boss identity/scale cannot reactivate a garage aura');assert.equal(root.scale.x,1);
  mesh.geometry.dispose();material.dispose();
 }
 
@@ -345,15 +345,15 @@ console.log('battlePresentationRuntime.selftest: interpolation, visibility, deta
  game.matchModeState.perspectiveTeam='bravo';runtime.update(.016,1);
  assert.equal(shader.uniforms.energyColor.value.getHex(),0x6fe887,'color matches the flag marker for the local viewer');
  flag.carrierId=null;flag.status='dropped';runtime.update(.016,1);
- assert.equal(mesh.material,material,'dropping the flag removes its aura');
+ assert.ok(mesh.material === material,'dropping the flag removes its aura');
  game.matchModeState={id:'infected',factions:[{id:entity.id,team:'alpha'}]};runtime.update(.016,1);
- assert.equal(mesh.material,material,'survivors do not glow');
+ assert.ok(mesh.material === material,'survivors do not glow');
  game.matchModeState.factions[0].team='bravo';runtime.update(.016,1);
  mesh.material.onBeforeCompile(shader,{});
  assert.equal(shader.uniforms.energyColor.value.getHex(),0x80ef35);
  assert.equal(shader.uniforms.energyPattern.value,2,'infection uses uneven vein pulses');
  assert.equal(root.scale.x,1);
- entity.combat.destroyed=true;runtime.update(.016,1);assert.equal(mesh.material,material,'dead infected stops glowing');
+ entity.combat.destroyed=true;runtime.update(.016,1);assert.ok(mesh.material === material,'dead infected stops glowing');
  mesh.geometry.dispose();material.dispose();
 }
 
@@ -383,7 +383,7 @@ console.log('battlePresentationRuntime.selftest: interpolation, visibility, deta
  const preview=createGarageModePreview();preview.update(root,entity.spec,'juggernaut',0);
  const resident=mesh.material;let disposals=0;resident.addEventListener('dispose',()=>disposals++);
  for(let frame=0;frame<60;frame++){preview.update(root,entity.spec,'juggernaut',1/60);runtime.update(1/60);}
- assert.equal(mesh.material,resident,'Garage preview survives the subsequent battle-presentation stage');
+ assert.ok(mesh.material === resident,'Garage preview survives the subsequent battle-presentation stage');
  assert.equal(disposals,0,'Garage frames do not dispose and recreate energy shaders');
  preview.clear();geometry.dispose();paint.dispose();
 }

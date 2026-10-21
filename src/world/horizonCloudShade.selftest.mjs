@@ -40,7 +40,7 @@ shared.uCotCloudShade.value.set(120, -60, 1 / 12000, 1);
 shared.uCotCloudSun.value.set(0.3, 0.9, 0.3, 1500);
 const layer = { active: true, cloudShade: shared };
 assert.equal(bindHorizonCloudShade(uniforms, layer), true, 'a live map binds');
-assert.equal(uniforms.uVCMap.value, map);
+assert.ok(uniforms.uVCMap.value === map);
 assert.equal(uniforms.uVCRect.value, shared.uCotCloudShade.value, 'the square by reference (the layer re-snaps it in place)');
 assert.equal(uniforms.uVCBase.value, 1500); assert.equal(uniforms.uVCShade.value, 1);
 shared.uCotCloudShade.value.x = 400;

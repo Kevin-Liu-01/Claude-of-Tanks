@@ -14,7 +14,7 @@ interface WorkerLike {
 }
 
 /** Wrap a Worker (or anything with its message surface) as the host runtime's port. */
-export function workerHostPort(worker: WorkerLike): HostPort<HostToWorkerMessage, WorkerToHostMessage> {
+function workerHostPort(worker: WorkerLike): HostPort<HostToWorkerMessage, WorkerToHostMessage> {
   return {
     post(message, transfer) { worker.postMessage(message, transfer ?? []); },
     onMessage(listener) {

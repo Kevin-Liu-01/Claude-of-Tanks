@@ -267,9 +267,8 @@ const factoryJs = ts.transpileModule(`
     const console = { warn() { events.push('warn'); } };
     let battleScreenGeneration = 0, battleScreenTimer = null, battleScreenFrame = null;
     let battleScreenLoading = false, battleScreenCurrentTexture = null;
-    let battleScreenNextTexture = null, battleScreenSecondaryTexture = null, battleScreenFallbackTexture = null;
-    let battleScreenMesh = null, battleScreenSecondaryMesh = null;
-    let battleScreenMaterial = null, battleScreenSecondaryMaterial = null;
+    let battleScreenNextTexture = null, battleScreenFallbackTexture = null;
+    let battleScreenMesh = null, battleScreenMaterial = null;
     const setVariant = (id) => id;
     ${['WORKSHOP_PRESENTATION_OPTIONS', 'WORKSHOP_CHUNK_VEHICLE_IDS', 'WORKSHOP_CHUNK_LABELS']
       .map((name) => declaration(name, syntax.statements)).join('\n')}
@@ -315,7 +314,7 @@ for (let bay = 1; bay <= 5; bay++) {
   await f.runtime.pump(() => valid);
   assert.equal(creates, 1, 'return reuses the exact completed transfer');
   assert.equal(resets, 1, 'retained visuals are not reset twice');
-  assert.equal(f.group.children[0], visual.root);
+  assert.ok(f.group.children[0] === visual.root);
   assert.equal(visual.root.visible, false, 'assembly still precedes its separate quiet reveal');
   valid = false; await f.runtime.pump(() => valid);
   assert.equal(visual.root.visible, false);

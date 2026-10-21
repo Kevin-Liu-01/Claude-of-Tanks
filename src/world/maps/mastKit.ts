@@ -9,8 +9,7 @@
 //
 // The kit is renderer-agnostic about paint: the caller hands an `emit(geometry, colour, piece)` that paints the part
 // (structureKit's vertex colours) and files it under a fracture piece (a section, the head, a guy, an anchor), so each
-// piece's triangles stay one contiguous run once the caller merges its parts in order (fractureRuns below; the
-// destructible lane's fracture anatomy reads runs, OBBs and links from there).
+// piece's triangles stay one contiguous run once the caller merges its parts in order.
 import * as THREE from 'three';
 
 type Vec3 = readonly [number, number, number];
@@ -329,35 +328,4 @@ export function corrugatedFace(options: CorrugatedFaceOptions): THREE.BufferGeom
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
   return geometry;
-}
-
-/** One fracture piece's contiguous triangle run in a merged geometry (merged in the parts' order). */
-interface FractureRun {
-  piece: string;
-  firstTriangle: number;
-  triangleCount: number;
-}
-
-/**
- * The contiguous triangle runs of each piece in the merge of `parts` (structureKit merges in order, non-indexed): a
- * piece whose parts are not consecutive throws, so a builder can never scatter one piece through another's.
- */
-export function fractureRuns(parts: readonly THREE.BufferGeometry[], pieces: readonly string[]): FractureRun[] {
-  if (parts.length !== pieces.length) throw new Error('fractureRuns: one piece per part');
-  const runs: FractureRun[] = [];
-  const closed = new Set<string>();
-  let triangle = 0;
-  for (let i = 0; i < parts.length; i++) {
-    const geometry = parts[i];
-    const triangles = (geometry.index ? geometry.index.count : geometry.getAttribute('position').count) / 3;
-    const piece = pieces[i], last = runs[runs.length - 1];
-    if (last && last.piece === piece) last.triangleCount += triangles;
-    else {
-      if (closed.has(piece)) throw new Error(`fractureRuns: piece ${piece} is not contiguous`);
-      if (last) closed.add(last.piece);
-      runs.push({ piece, firstTriangle: triangle, triangleCount: triangles });
-    }
-    triangle += triangles;
-  }
-  return runs;
 }

@@ -62,7 +62,7 @@ export function rod(sink: PartSink, bucket: RegionalBucket, a: Vec3, b: Vec3, r:
 }
 
 /** One ring of a pad: its height and how far its outline stands in from the pad's base. */
-export interface PadRing { y: number; inset: number }
+interface PadRing { y: number; inset: number }
 
 /**
  * A body laid on the ground over the plan x0..x1, z0..z1: its outline's corners cut `corner`, lofted through `rings`

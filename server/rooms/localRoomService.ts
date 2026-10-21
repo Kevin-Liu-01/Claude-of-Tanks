@@ -30,7 +30,7 @@ import { statusOf } from '../match/control.ts';
 import type { MatchService } from '../match/service.ts';
 import { silentLogger, type Logger } from '../match/log.ts';
 
-export interface LocalRoomServiceOptions {
+interface LocalRoomServiceOptions {
   matchService: MatchService;
   seatSecret: string;
   /** Exact origins allowed to connect; null allows any (LAN / development). */
@@ -114,10 +114,10 @@ export function createInProcessMatchHost({
 }
 
 /** How long a drain waits for graceful close handshakes before terminating what is left. */
-export const ROOM_DRAIN_GRACE_MS = 1000;
+const ROOM_DRAIN_GRACE_MS = 1000;
 
 /** Resolve once every client socket of `wss` is closed, terminating the ones still open after `graceMs`. */
-export async function terminateAfterGrace(wss: WebSocketServer, graceMs: number): Promise<void> {
+async function terminateAfterGrace(wss: WebSocketServer, graceMs: number): Promise<void> {
   const deadline = Date.now() + graceMs;
   while (wss.clients.size > 0 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 20));
   for (const socket of wss.clients) { try { socket.terminate(); } catch { /* already gone */ } }

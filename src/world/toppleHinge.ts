@@ -10,7 +10,7 @@
 /** A shaft's hinge over its foot (m), the most. */
 export const TOPPLE_HINGE_M = 1.5;
 /** The share of an open frame's height its standing bays reach. */
-export const LATTICE_HINGE_SHARE = 0.5;
+const LATTICE_HINGE_SHARE = 0.5;
 
 /** The hinge (m over the foot) of a toppling structure `heightM` tall: an open frame's (`lattice`) or a shaft's. */
 export function toppleHingeM(heightM: number, lattice: boolean): number {
