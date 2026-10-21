@@ -4165,7 +4165,8 @@ function* createFxSteps(
       const kids = nightPool.children;
       for (let i = 0; i < kids.length; i++) {
         const L = kids[i] as THREE.SpotLight;
-        if (!L.isSpotLight || !(L.intensity > 0)) continue;
+        // (229) the headlights' beams only: the town lamps' cones (night-building-light-*) light no smoke, as before
+        if (!L.isSpotLight || !(L.intensity > 0) || !L.name.startsWith('night-headlight')) continue;
         const p = L.position, t = L.target.position;
         addLocalSpot(p.x, p.y, p.z, L.distance || 42, L.color, LOCAL_HEADLIGHT_GAIN, t.x - p.x, t.y - p.y, t.z - p.z,
           Math.cos(L.angle), Math.cos(L.angle * (1 - L.penumbra)));

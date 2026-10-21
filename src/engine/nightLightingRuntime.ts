@@ -33,6 +33,7 @@ export interface NightLightingRoot {
 
 export interface NightLightingBudget {
   readonly spotLights: number;
+  /** The town lamps' pooled lights (named for the point lights they were before 229: cones aimed down now). */
   readonly pointLights: number;
 }
 
@@ -191,6 +192,13 @@ function updateEmitter(
  *  upper edge (+11.5 degrees) leaves the gun barrel over the lamps dark; the road ahead keeps the beam. */
 export const HEADLIGHT_LOW_BEAM_DROP = .05, HEADLIGHT_CONE_RAD = .33;
 
+/** (229, the looks lane's 228 follow-up: "a lamp's point light washes the adjacent facade evenly up to the roofline, with
+ *  no shadow and no height falloff") a town lamp's pooled light is a luminaire's, aimed straight down: full within ~31
+ *  degrees of the vertical (the pavement under it), fading to nothing at 85 (the facade beside it lit from its foot, fading
+ *  up the wall to the lamp's head, dark above it). Its candela on the axis is the lamp's, so its pool under it is as bright
+ *  as the point light's was. */
+export const BUILDING_LAMP_CONE_RAD = 1.48, BUILDING_LAMP_PENUMBRA = .63;
+
 /** Which side of its vehicle a lamp sits on (authored anchor-local x): −1 left, +1 right, 0 centreline. */
 function lampSide(source: EmitterState): number {
   const x = source.emitter.position[0];
@@ -240,6 +248,18 @@ function applyLight<T extends THREE.SpotLight | THREE.PointLight>(slot: LightSlo
   slot.light.intensity = source.emitter.intensity ?? 80;
 }
 
+function updateLamps(slots: LightSlot<THREE.SpotLight>[], emitters: EmitterState[]): void {
+  for (let index = 0; index < slots.length; index++) {
+    const source = chooseEmitter(emitters, slots, index, 'building');
+    const slot = slots[index];
+    applyLight(slot, source);
+    if (!source) continue;
+    slot.light.target.position.copy(source.position);
+    slot.light.target.position.y -= 1;
+    slot.light.target.updateMatrixWorld();
+  }
+}
+
 function updateSpots(slots: LightSlot<THREE.SpotLight>[], emitters: EmitterState[]): void {
   for (let index = 0; index < slots.length; index++) {
     const source = chooseEmitter(emitters, slots, index, 'headlight');
@@ -260,11 +280,12 @@ function createSpots(group: THREE.Group, count: number): LightSlot<THREE.SpotLig
   });
 }
 
-function createPoints(group: THREE.Group, count: number): LightSlot<THREE.PointLight>[] {
+/** The town lamps' pooled lights (the budget's `pointLights`): cones aimed down, BUILDING_LAMP_CONE_RAD. */
+function createLamps(group: THREE.Group, count: number): LightSlot<THREE.SpotLight>[] {
   return Array.from({ length: count }, (_, index) => {
-    const light = new THREE.PointLight(0xffd79e, 0, 18, 2);
+    const light = new THREE.SpotLight(0xffd79e, 0, 18, BUILDING_LAMP_CONE_RAD, BUILDING_LAMP_PENUMBRA, 2);
     light.name = `night-building-light-${index}`; light.castShadow = false;
-    group.add(light);
+    group.add(light, light.target);
     return { light, source: null };
   });
 }
@@ -321,7 +342,7 @@ export function createNightLightingRuntime(scene: THREE.Scene, budget: NightLigh
   // desktop lights both headlights of the player and of the nearest other vehicle (2026-09-18); mobile keeps 2 + 1
   requireBounded(budget.spotLights, 8, 'spot budget'); requireBounded(budget.pointLights, 4, 'point budget');
   const group = new THREE.Group(); group.name = 'night-light-pool';
-  const spots = createSpots(group, budget.spotLights), points = createPoints(group, budget.pointLights);
+  const spots = createSpots(group, budget.spotLights), points = createLamps(group, budget.pointLights);
   const lights = Object.freeze([...spots.map(slot => slot.light), ...points.map(slot => slot.light)]);
   const emitters: EmitterState[] = [], emissions = new Map<THREE.MeshStandardMaterial, EmissionState>();
   const emissionList: EmissionState[] = [];
@@ -361,9 +382,7 @@ export function createNightLightingRuntime(scene: THREE.Scene, budget: NightLigh
     for (const emitter of emitters) updateEmitter(emitter, scene, reference, seen, frame, _focus);
     for (const emission of emissionList) setEmission(emission, emission.active);
     updateSpots(spots, emitters);
-    for (let index = 0; index < points.length; index++) {
-      applyLight(points[index], chooseEmitter(emitters, points, index, 'building'));
-    }
+    updateLamps(points, emitters);
   }
   function dispose(): void {
     if (disposed) return;

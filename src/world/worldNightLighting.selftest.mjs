@@ -56,7 +56,9 @@ try {
   runtime.prepare([{ root }], true);
   assert.equal(runtime.emitterCount, 3, 'two real lamp fixtures and the existing curtain material');
   runtime.update(expected);
-  const light = runtime.lights.find(light => light.isPointLight);
+  const light = runtime.lights.find(light => light.name.startsWith('night-building-light-'));
+  assert.ok(light.isSpotLight && light.target.position.x === light.position.x && light.target.position.y < light.position.y,
+    'a lamp lights as a luminaire aimed straight down from its lens (229: no wash up the facade)');
   assert.ok(light.position.distanceTo(expected) < 1e-10, 'light uses actual tilted/scaled instance lens, not pole base');
   // (the looks lane, 228: at 6 cd — two stops under the captured 24 — no lamp pool showed at any pose; the pool now reads
   // beside a headlight's, its range still bounding the unshadowed spill)

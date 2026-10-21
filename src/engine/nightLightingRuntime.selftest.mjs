@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
-import { createNightLightingRuntime, registerNightLightEmitters, HEADLIGHT_LOW_BEAM_DROP, HEADLIGHT_CONE_RAD, BUILDING_FOCUS_AHEAD_M } from './nightLightingRuntime.ts';
+import { createNightLightingRuntime, registerNightLightEmitters, HEADLIGHT_LOW_BEAM_DROP, HEADLIGHT_CONE_RAD, BUILDING_FOCUS_AHEAD_M,
+  BUILDING_LAMP_CONE_RAD, BUILDING_LAMP_PENUMBRA } from './nightLightingRuntime.ts';
 import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
+// the pool's two kinds of slot by name (229: both are cones now): the headlights' beams and the town lamps' luminaires
+const isHeadlight = (light) => light.name.startsWith('night-headlight-');
+const isLamp = (light) => light.name.startsWith('night-building-light-');
 // (EF.11) a driving lamp's beam is its authored aim dropped to a low beam in its vehicle's frame
 const lowBeam = (d) => { const v = new THREE.Vector3(...d); v.y -= HEADLIGHT_LOW_BEAM_DROP * Math.hypot(v.x, v.z); return v.normalize(); };
 
@@ -33,8 +37,9 @@ const runtime = createNightLightingRuntime(scene, budget);
 const objects = [...runtime.group.children], lights = [...runtime.lights];
 const positions = lights.map(light => light.position), lightColors = lights.map(light => light.color);
 assert.equal(scene.children.includes(runtime.group), false, 'constructor does not light Garage');
-assert.equal(lights.length, 3); assert.equal(lights.filter(light => light.isSpotLight).length, 2);
-assert.equal(lights.filter(light => light.isPointLight).length, 1);
+assert.equal(lights.length, 3); assert.equal(lights.filter(isHeadlight).length, 2);
+assert.equal(lights.filter(isLamp).length, 1);
+assert.ok(lights.every((light) => light.isSpotLight), 'headlight beams and lamp luminaires are cones');
 assert.ok(lights.every(light => !light.castShadow && light.shadow?.map == null));
 budget.spotLights = 0; budget.pointLights = 0;
 assert.equal(runtime.lights.length, 3, 'budget is fixed at construction, not a live mutable knob');
@@ -163,7 +168,7 @@ assert.throws(() => createNightLightingRuntime(scene, { spotLights: 2, pointLigh
       runtime.prepare([{ root: cluster, priority: 1 }, { root: neighbour }], true);
       runtime.update(new THREE.Vector3(1.4, 2, -4)); // chase camera offset to the right flank
     }
-    const sides = (runtime) => runtime.lights.filter((light) => light.isSpotLight && light.intensity > 0)
+    const sides = (runtime) => runtime.lights.filter((light) => isHeadlight(light) && light.intensity > 0)
       .map((light) => ({ side: Math.sign(light.position.x - (light.position.x > 4 ? 9 : 0)), vehicle: light.position.x > 4 ? 'neighbour' : 'cluster' }));
     const twoSides = sides(two);
     assert.equal(twoSides.length, 2);
@@ -172,7 +177,7 @@ assert.throws(() => createNightLightingRuntime(scene, { spotLights: 2, pointLigh
     const fourSides = sides(four);
     assert.equal(fourSides.length, 4);
     assert.deepEqual(fourSides.filter((s) => s.vehicle === 'neighbour').map((s) => s.side).sort(), [-1, 1], 'the desktop budget lights both headlights of the next vehicle too');
-    assert.equal(four.lights.filter((light) => light.isPointLight).length, 2);
+    assert.equal(four.lights.filter(isLamp).length, 2);
   } finally { two.dispose(); four.dispose(); scene.remove(cluster, neighbour); }
 }
 assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'glass', position: [0, 0, 0] }]), /kind/);
@@ -190,13 +195,31 @@ assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', posi
     emission: { material: lampMaterial, color: 0xffffff, intensity: 3 } })));
   const pool = createNightLightingRuntime(town, { spotLights: 1, pointLights: 2 });
   pool.prepare([{ root: lamps }], true);
-  const lit = () => pool.lights.filter((light) => light.isPointLight && light.intensity > 0).map((light) => light.position.toArray().map(Math.round).join(','));
+  const lit = () => pool.lights.filter((light) => isLamp(light) && light.intensity > 0).map((light) => light.position.toArray().map(Math.round).join(','));
   pool.update(new THREE.Vector3(-156, 8, 2), true);
   assert.equal(lit().length, 2, 'two street lamps on one anchor and one side of the origin both take a point light');
   pool.update(new THREE.Vector3(-156, 8, 2), true, new THREE.Vector3(1, -0.25, -0.1));
   assert.deepEqual(lit().sort(), ['-124,4,9', '-150,4,0'], `the lamps within reach of the point ${BUILDING_FOCUS_AHEAD_M} m ahead along the view light, once each: ${lit()}`);
   pool.update(new THREE.Vector3(-156, 8, 2), true, new THREE.Vector3(-1, -0.25, 0.3));
   assert.ok(lit().includes('-175,4,11'), `looking back up the street, the lamp behind the camera lights: ${lit()}`);
+  // (229, the looks lane's 228 follow-up: "a lamp's point light washes the adjacent facade evenly up to the roofline")
+  // a lamp's light is a luminaire's cone aimed straight down from its lens: the pavement under it at full, a facade 4 m
+  // off lit at its foot and fading up the wall to nothing by the lamp's head, dark above it (three's spot attenuation:
+  // smoothstep(cos(angle), cos(angle (1 - penumbra)), cos of the ray's angle off the axis))
+  const lamp = pool.lights.find((light) => isLamp(light) && light.intensity > 0);
+  assert.ok(lamp.isSpotLight && lamp.angle === BUILDING_LAMP_CONE_RAD && lamp.penumbra === BUILDING_LAMP_PENUMBRA);
+  const axis = lamp.target.position.clone().sub(lamp.position).normalize();
+  assert.ok(axis.y < -0.999999, 'aimed straight down');
+  const cone = (x, y) => {
+    const ray = new THREE.Vector3(x, y, 0).sub(new THREE.Vector3(0, 4, 0)).normalize();
+    return THREE.MathUtils.smoothstep(ray.dot(axis), Math.cos(lamp.angle), Math.cos(lamp.angle * (1 - lamp.penumbra)));
+  };
+  assert.equal(cone(0, 0), 1, 'the pavement under the lamp at full');
+  assert.ok(cone(2, 0) > 0.95, 'and round its foot');
+  const wall = [0, 1, 2, 3, 3.9, 5, 8].map((y) => cone(4, y));
+  for (let k = 1; k < wall.length; k++) assert.ok(wall[k] <= wall[k - 1], `the facade 4 m off fades up the wall: ${wall.map((v) => v.toFixed(2))}`);
+  assert.ok(wall[0] > 0.7 && wall[2] < 0.6 * wall[0] && wall[3] < 0.15, `lit at its foot, half gone by 2 m: ${wall.map((v) => v.toFixed(2))}`);
+  assert.equal(wall[4] + wall[5] + wall[6], 0, 'and dark from the lamp\'s head up to the roofline');
   pool.dispose(); lampMaterial.dispose();
 }
 
