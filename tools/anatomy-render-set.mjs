@@ -54,6 +54,8 @@ for (const side of new Set(plan.map((item) => item.side))) {
   const { createServer } = await import(pathToFileURL(require.resolve('vite')).href);
   const server = await createServer({
     root, logLevel: 'error',
+    // Each run keeps its own dependency cache: two servers on one checkout re-optimise a shared cache under each other.
+    cacheDir: join(root, 'node_modules', `.vite-anatomy-${swiftshader ? 'sw' : 'gpu'}`),
     // Sources stay watched (no HMR): an edit made while the ticket waits is what the hold captures.
     server: { host: '127.0.0.1', port: 0, strictPort: false, hmr: false,
       watch: { ignored: ['**/node_modules/**', '**/.git/**', '**/public/**', '**/dist/**', '**/shots/**', '**/docs/**', '**/tools/**', '**/server/**', '**/api/**'] } },
