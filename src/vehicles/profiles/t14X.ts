@@ -540,8 +540,16 @@ function addRwsCradle(P: TankBuilderPort): void {
   };
   // Source front slope retreats from Z−1.384 at Y2.60 to −1.626 at
   // Y3.14. Only the fork walls extend above the receiver-bearing floor.
-  section(-.210, .110, 2.568, 2.87, -1.79, -1.377, -1.844, -1.463);
-  for (const x of [-.210, .110]) {
+  // Release 230 (the owner's field-equipment standard: nothing that moves passes through what does not): the 1.5-scale
+  // MAG's can swept through the negative-X fork wall at every pitch (to X -0.264) and its receiver's rear into the
+  // floor from 34 degrees of elevation (to Y 2.798), and the gun's trunnion side (to X 0.044) and the cradle's pin
+  // turned inside the positive-X support. The negative-X wall stands outboard of the can's sweep on a floor widened to
+  // carry it, the floor's crown comes down under the receiver's sweep (Y 2.785, its front on the source slope) and each
+  // wall rises from it, and the support's inner face stands clear of the trunnion side (X 0.052). The source's
+  // positive-X wall and the support's front slope are unchanged.
+  section(-.330, .110, 2.568, 2.785, -1.79, -1.377, -1.832, -1.439);
+  for (const x of [-.330, .110]) {
+    section(x, x + .058, 2.785, 2.87, -1.832, -1.439, -1.844, -1.463);
     section(x, x + .058, 2.87, 2.96, -1.844, -1.463, -1.844, -1.507);
     section(x, x + .058, 2.96, 3.150, -1.844, -1.507, -1.766, -1.633);
     P.addEquipment('turretDark', cylZ(.025, .016, 12), x + .029, localY(3.055), localZ(-1.842));
@@ -550,9 +558,9 @@ function addRwsCradle(P: TankBuilderPort): void {
   // Source Object_15 is a full-depth positive-X support beside the weapon,
   // not an empty fork across this entire width. The narrow negative-X gap
   // and forward receiver clearance remain genuinely open.
-  section(-.001210, .161313, 2.898874, 2.973030, -1.844, -1.474581, -1.843788, -1.515167);
-  section(-.001210, .161313, 2.973030, 3.144819, -1.843788, -1.515167, -1.768057, -1.629514);
-  section(-.001210, .161708, 3.144819, 3.150478, -1.768057, -1.629514, -1.758765, -1.640078);
+  section(.052, .161313, 2.898874, 2.973030, -1.844, -1.474581, -1.843788, -1.515167);
+  section(.052, .161313, 2.973030, 3.144819, -1.843788, -1.515167, -1.768057, -1.629514);
+  section(.052, .161708, 3.144819, 3.150478, -1.768057, -1.629514, -1.758765, -1.640078);
 }
 
 function addCannon(P: TankBuilderPort): void {

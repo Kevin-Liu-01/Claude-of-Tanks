@@ -164,6 +164,18 @@ function bin(P: MiscBuilderPort, x: number, y: number, z: number, w: number, h: 
   P.add('hullDark', box(w * 1.03, h * 0.72, 0.024), x, y + h * 0.06, z + d * 0.28);
 }
 
+// Release 230 (the owner's field-equipment standard: nothing that moves passes through what does not): a roof RWS's
+// gun shield with an embrasure in its top edge. The plate (w x h x t at x, y, z, tilted rx about x) is drawn as its two
+// wings and the panel under the embrasure (nw wide, its floor nd under the plate's top edge), so the gun's barrel and
+// receiver pass through the embrasure over the station's whole pitch range and recoil, not through the plate.
+function embrasuredShield(P: MiscBuilderPort, w: number, h: number, t: number, x: number, y: number, z: number, rx: number,
+  nw: number, nd: number): void {
+  const { box } = KIT;
+  const wing = (w - nw) / 2;
+  for (const side of [-1, 1]) P.addEquipment('turret', box(wing, h, t), x + side * (nw + wing) / 2, y, z, rx, 0, 0);
+  P.addEquipment('turret', box(nw, h - nd, t), x, y - nd / 2 * Math.cos(rx), z - nd / 2 * Math.sin(rx), rx, 0, 0);
+}
+
 // Armored optics housing: body + dark split doors/aperture + glass slit.
 // frame: 'turret' | 'hull'. face: +z aperture.
 function sightBox(
@@ -2011,8 +2023,9 @@ function buildLeclercXLR(P: MiscBuilderPort): void {
   P.add('turretGlass', box(0.16, 0.10, 0.025), xlrRwsX, 0.9595, -0.088);
   // The shield follows the roof drop and the weapon receiver advances into
   // its rear plane. This makes shield, gun and body one continuous load path.
-  P.addEquipment('turret', box(0.50, 0.28, 0.045),
-    xlrRwsX, 1.0395, 0.01, -0.18, 0, 0);
+  // Release 230: the barrel crossed the plate's top at rest and through 22 degrees of elevation; it rides in an
+  // embrasure 108 mm wide whose floor clears the barrel's lowest pass at full depression.
+  embrasuredShield(P, 0.50, 0.28, 0.045, xlrRwsX, 1.0395, 0.01, -0.18, 0.108, 0.067);
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.08, seed: 104, scale: 0.78, ammo: true,
       remoteControlled: true, ridingCradle: true });
@@ -2128,7 +2141,9 @@ function buildAMX56(P: MiscBuilderPort): void {
   P.addEquipment('turret', cylY(0.24, 0.24, 0.08, 16), amxRwsX, 0.792, amxRwsZ);
   P.addEquipment('turret', box(0.40, 0.18, 0.38), amxRwsX, 0.922, -0.25);
   P.add('turretGlass', box(0.15, 0.10, 0.025), amxRwsX, 0.942, -0.04);
-  P.addEquipment('turret', box(0.52, 0.30, 0.045), amxRwsX, 1.052, -0.025, -0.16, 0, 0);
+  // release 230: the receiver's front swept 4 cm into the shield's top edge from full depression to 2 degrees of
+  // elevation; it passes through an embrasure 124 mm wide and 44 mm deep
+  embrasuredShield(P, 0.52, 0.30, 0.045, amxRwsX, 1.052, -0.025, -0.16, 0.124, 0.044);
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'heavy', tone: 'dark', elev: 0.06, seed: 56, scale: 0.82, ammo: true,
       remoteControlled: true, ridingCradle: true });

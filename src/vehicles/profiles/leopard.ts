@@ -3,6 +3,7 @@ import { lathedWheelSection } from './lathedWheelStock.ts';
 import { withSpareTrackRun } from '../spareTrackSeat.ts';
 import { addModernFieldCage } from './modernFieldCage.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
+import { auxiliaryWeaponProfile } from '../auxiliaryWeapons.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Leopard 2 lineage + KF51 procedural profiles (fidelity oracles:
 // leo2a6_buh, recovered leo2a4_v / leo2_improved / leo2_revolution / leopard2_proto,
@@ -242,6 +243,14 @@ interface LeopardRemoteWeaponStationOptions {
   readonly towerTop?: number | null;
   readonly towerW?: number;
   readonly towerZ?: number;
+  /**
+   * Release 230: a fit narrower than its gun (the A4 family's 0.12 width) draws no yoke. Its 28 mm trough, arms,
+   * cross-shaft, plates, bin, feed chute and pointer stood inside the gun's receiver, which pitched through them at every
+   * angle; the gun rides its own cradle on the drum and the pod stays forward, under its depression.
+   */
+  readonly compact?: boolean;
+  /** Release 230: the open yoke's sensor pod beside its right arm (default) or on the bin's outer face. */
+  readonly podSide?: 'right' | 'left';
   /**
    * The station is the hull's working roof weapon (2026-10-08): its M2 is remote-controlled and every piece of the
    * station is its stock. Owner order §5.09-5 (2026-08-07) put the FLW 200 on these Leopards; his 2A5M precedent
@@ -6369,97 +6378,244 @@ function buildLeo2A5A5NL(builder: object) {
 //      top local y; null = none), towerZ (tower z-center, local),
 //      towerW (z window, default 0.16), shields (flank armor), seed }
 // ---------------------------------------------------------------------------
+interface FlwSlot { readonly x0: number; readonly x1: number; readonly z0: number; readonly z1: number }
+
+/**
+ * Release 230: a turntable part's convex plan (x, z points about its axis) less the slot the gun's breech and barrel
+ * sweep through: the convex pieces either side of the slot and ahead of and behind it (each the plan clipped by half
+ * planes), each a prism `h` tall standing on y 0. The pieces abut along the slot's lines.
+ */
+function slottedPrisms(plan: readonly (readonly [number, number])[], h: number, slot: FlwSlot): THREE.BufferGeometry[] {
+  type Point = readonly [number, number];
+  const clip = (poly: readonly Point[], f: (p: Point) => number): Point[] => {
+    const out: Point[] = [];
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i]!, b = poly[(i + 1) % poly.length]!, fa = f(a), fb = f(b);
+      if (fa >= 0) out.push(a);
+      if ((fa >= 0) !== (fb >= 0)) { const t = fa / (fa - fb); out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); }
+    }
+    return out;
+  };
+  const inSlotX = (poly: readonly Point[]): Point[] => clip(clip(poly, (p) => p[0] - slot.x0), (p) => slot.x1 - p[0]);
+  const pieces = [
+    clip(plan, (p) => slot.x0 - p[0]),
+    clip(plan, (p) => p[0] - slot.x1),
+    clip(inSlotX(plan), (p) => p[1] - slot.z1),
+    clip(inSlotX(plan), (p) => slot.z0 - p[1]),
+  ];
+  const out: THREE.BufferGeometry[] = [];
+  for (const piece of pieces) {
+    let area = 0;
+    for (let i = 0; i < piece.length; i++) { const a = piece[i]!, b = piece[(i + 1) % piece.length]!; area += a[0] * b[1] - b[0] * a[1]; }
+    if (piece.length < 3 || Math.abs(area) < 2e-5) continue;
+    const shape = new THREE.Shape(piece.map(([x, z]) => new THREE.Vector2(x, -z)));
+    out.push(new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false }).rotateX(-Math.PI / 2));
+  }
+  return out;
+}
+
+/**
+ * Release 230: where an FLW station's moving parts reach, in the station's frame before it is placed: their x extent
+ * (pitch about the trunnion's x axis and recoil along the bore keep every point's x), and `lowest`, the lowest any of
+ * them comes over a footprint (station x and z) through the weapon's pitch range, the gun at rest and recoiled (its
+ * vertices a degree apart, kept per centimetre cell).
+ */
+function flwReach(mg: THREE.Object3D, depression: number, elevation: number) {
+  mg.updateMatrixWorld(true);
+  const pitch = mg.getObjectByName('auxiliaryWeaponPitch')!, recoil = mg.getObjectByName('auxiliaryWeaponRecoil');
+  const stroke = Number(mg.userData.auxiliaryRecoilM) || 0, cell = 0.01;
+  const toPitch = new THREE.Matrix4().copy(pitch.matrixWorld).invert(), toPitchFrame = new THREE.Matrix4();
+  const points: number[] = [], recoils: boolean[] = [];
+  let minX = Infinity, maxX = -Infinity;
+  pitch.traverse((node) => {
+    const mesh = node as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    let inRecoil = false;
+    for (let up: THREE.Object3D | null = mesh; up && !inRecoil; up = up.parent) inRecoil = up === recoil;
+    toPitchFrame.multiplyMatrices(toPitch, mesh.matrixWorld);
+    const position = mesh.geometry.getAttribute('position'), index = mesh.geometry.index;
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), p = new THREE.Vector3();
+    const n = index ? index.count : position.count;
+    // each triangle sampled in rows along its longest edge, a cell apart both ways (its vertices alone miss the faces
+    // a box spans between its corners)
+    for (let t = 0; t + 2 < n; t += 3) {
+      const at = (k: number, out: THREE.Vector3): THREE.Vector3 => out.fromBufferAttribute(position, index ? index.getX(t + k) : t + k).applyMatrix4(toPitchFrame);
+      at(0, a); at(1, b); at(2, c);
+      const rows = Math.max(1, Math.ceil(Math.max(a.distanceTo(b), b.distanceTo(c), c.distanceTo(a)) / cell));
+      for (let i = 0; i <= rows; i++) for (let j = 0; j <= rows - i; j++) {
+        p.copy(a).multiplyScalar(1 - (i + j) / rows).addScaledVector(b, i / rows).addScaledVector(c, j / rows);
+        points.push(p.x, p.y, p.z); recoils.push(inRecoil);
+        minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+      }
+    }
+  });
+  const floor = new Map<number, number>(), key = (x: number, z: number): number => Math.floor(x / cell) * 100000 + Math.floor(z / cell);
+  const pivot = pitch.position, pitches: number[] = [];
+  for (let e = -depression; e < elevation; e += Math.PI / 180) pitches.push(e);
+  pitches.push(elevation);
+  for (const e of pitches) {
+    const c = Math.cos(e), sn = Math.sin(e);
+    for (const r of stroke ? [0, stroke] : [0]) for (let i = 0; i < points.length; i += 3) {
+      if (r && !recoils[i / 3]) continue;
+      const x = points[i]!, y = points[i + 1]!, z = points[i + 2]! - r;
+      const sy = pivot.y + y * c + z * sn, sz = pivot.z - y * sn + z * c, k = key(pivot.x + x, sz);
+      if (sy < (floor.get(k) ?? Infinity)) floor.set(k, sy);
+    }
+  }
+  return {
+    minX: pivot.x + minX,
+    maxX: pivot.x + maxX,
+    /** The cells over [x0, x1] x [z0, z1] the moving parts come lower than y in: their bounds, or null. */
+    slot(y: number, x0: number, x1: number, z0: number, z1: number): FlwSlot | null {
+      let sx0 = Infinity, sx1 = -Infinity, sz0 = Infinity, sz1 = -Infinity;
+      for (let i = Math.floor(x0 / cell); i <= Math.floor(x1 / cell); i++) {
+        for (let j = Math.floor(z0 / cell); j <= Math.floor(z1 / cell); j++) {
+          if ((floor.get(i * 100000 + j) ?? Infinity) >= y) continue;
+          sx0 = Math.min(sx0, i * cell); sx1 = Math.max(sx1, (i + 1) * cell); sz0 = Math.min(sz0, j * cell); sz1 = Math.max(sz1, (j + 1) * cell);
+        }
+      }
+      return sx0 <= sx1 ? { x0: sx0, x1: sx1, z0: sz0, z1: sz1 } : null;
+    },
+    lowest(x0: number, x1: number, z0: number, z1: number): number {
+      let low = Infinity;
+      for (let i = Math.floor(x0 / cell) - 1; i <= Math.floor(x1 / cell) + 1; i++) {
+        for (let j = Math.floor(z0 / cell) - 1; j <= Math.floor(z1 / cell) + 1; j++) low = Math.min(low, floor.get(i * 100000 + j) ?? Infinity);
+      }
+      return low;
+    },
+  };
+}
+
 function leoFLW200(P: TankBuilderPort, o: LeopardRemoteWeaponStationOptions) {
   const { box, cylY, cylZ } = KIT;
   const gunName = `${tankSeedId(P.spec.id)}Flw200Gun`; // schema-1 name (tankIdAliases.ts)
-  const finishStation = o.automatic ? captureAuxiliaryStock(P, gunName) : null;
   const s = o.s ?? 1.0;
   const ws = o.widthScale ?? s;
   const X = o.x, Y = o.y, Z = o.z;
   const seg = P.q ? 18 : 12;
+  // THE GUN — §B3-census pintleMG (m2 class), FITTING-SUNK at o.gunY,
+  // FORWARD rest (no rotation), slight elevation. Its own ammo can is
+  // disabled where the class supports it via scale/tone defaults; the
+  // station bin is the feed. Built first: the station stands clear of it.
+  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone',
+    scale: o.gunScale ?? (1.05 * s), elev: o.elev ?? 0.03, ammo: false, seed: o.seed ?? 13,
+    remoteControlled: o.automatic === true, ridingCradle: o.automatic === true });
+  // Release 230 (the owner's field-equipment standard: nothing that moves passes through what does not; the
+  // coordinator's ruling for the 230 RWS clearance lane): these squat fits sink the M2 into its own station, so its
+  // receiver's rear swept through the drum and slew ring from 20-30 degrees of elevation and the trough, cross-shaft,
+  // rear plate and forward pod held the gun at rest and in depression. Each part now stands clear of everything the gun
+  // and its cradle sweep through the weapon's whole pitch range and recoil (flwReach; workingPintleCradleAudit measures
+  // the station): the turntable's base, slew ring, gussets, drum and neck keep their heights and are slotted where the
+  // breech (and a compact fit's barrel) sweeps below their tops, the cable drop stops under the sweep, and the station is
+  // an open armoured yoke: arms and flank plates
+  // outboard of the gun (bosses on the arms where the cross-shaft crossed the gun's path), the bin and its feed chute gun-
+  // left, the pointer on the right arm and the sensor pod beside the yoke (o.podSide) rather than a trough under the
+  // gun and a pod in front of it. A compact fit (o.compact) is narrower than its gun: it draws no yoke, only the
+  // turntable and the forward pod under the gun's depression. Heights (the dims grace lines) and the -10/+43 degree range
+  // are kept.
+  const reach = o.automatic ? flwReach(mg, auxiliaryWeaponProfile(12.7, P.spec.id).depressionRad,
+    auxiliaryWeaponProfile(12.7, P.spec.id).elevationRad) : null;
+  const clear = 0.008; // the audit's 1.5 mm, its sampling and room
+  /** The highest a part over the builder-frame footprint may crown (Infinity where the gun never reaches). */
+  const crown = (x0: number, x1: number, z0: number, z1: number): number => (reach
+    ? o.gunY + reach.lowest(x0 - X, x1 - X, z0 - Z, z1 - Z) - clear : Infinity);
+  const finishStation = o.automatic ? captureAuxiliaryStock(P, gunName) : null;
+  /** A turntable part h tall from y0 over its convex plan (about cx, cz from the station's axis): round where the gun
+   * never sweeps under its top, slotted where it does (flwReach, slottedPrisms). */
+  const turntablePart = (bucket: string, round: () => THREE.BufferGeometry, plan: readonly (readonly [number, number])[],
+    y0: number, h: number, cx = 0, cz = 0): void => {
+    const xs = plan.map((q) => q[0] + cx), zs = plan.map((q) => q[1] + cz);
+    const slot = reach?.slot(y0 + h - o.gunY + clear, Math.min(...xs) - clear, Math.max(...xs) + clear, Math.min(...zs) - clear, Math.max(...zs) + clear);
+    if (!slot) { P.add(bucket, round(), X + cx, y0 + h / 2, Z + cz); return; }
+    const cut = { x0: slot.x0 - clear - cx, x1: slot.x1 + clear - cx, z0: slot.z0 - clear - cz, z1: slot.z1 + clear - cz };
+    for (const piece of slottedPrisms(plan, h, cut)) P.add(bucket, piece, X + cx, y0, Z + cz);
+  };
+  const rect = (hx: number, hz: number): [number, number][] => [[-hx, -hz], [hx, -hz], [hx, hz], [-hx, hz]];
+  const disc = (r: number, n: number): [number, number][] => Array.from({ length: n }, (_, i) => [r * Math.sin(2 * Math.PI * i / n), r * Math.cos(2 * Math.PI * i / n)] as [number, number]);
   // base plate + corner gussets tie the station into the roof (§B2 attached)
-  P.add('turret', box(0.50 * ws, 0.030, 0.50 * s), X, Y + 0.015, Z);
-  P.add('turretDark', box(0.42 * ws, 0.026, 0.05), X, Y + 0.042, Z - 0.21 * s);
-  P.add('turretDark', box(0.42 * ws, 0.026, 0.05), X, Y + 0.042, Z + 0.21 * s);
+  turntablePart('turret', () => box(0.50 * ws, 0.030, 0.50 * s), rect(0.25 * ws, 0.25 * s), Y, 0.030);
+  for (const side of [-1, 1]) {
+    turntablePart('turretDark', () => box(0.42 * ws, 0.026, 0.05), rect(0.21 * ws, 0.025), Y + 0.029, 0.026, 0, side * 0.21 * s);
+  }
   // powered slew ring + drum (the automated tell — a ringed turntable, not
   // a pintle post). drumH squashes for low-profile fits (proto dims line).
   const dh = o.drumH ?? 0.10;
-  P.add('turretDark', cylY(0.21 * s, 0.21 * s, 0.024, seg + 4), X, Y + 0.042, Z);
-  P.add('turret', cylY(0.16 * s, 0.185 * s, dh, seg + 4), X, Y + 0.05 + dh / 2, Z);
-  P.add('turretDark', cylY(0.135 * s, 0.135 * s, 0.05, seg), X, Y + 0.045 + dh, Z); // drum neck
+  turntablePart('turretDark', () => cylY(0.21 * s, 0.21 * s, 0.024, seg + 4), disc(0.21 * s, seg + 4), Y + 0.030, 0.024);
+  turntablePart('turret', () => cylY(0.16 * s, 0.185 * s, dh, seg + 4), disc(0.1725 * s, seg + 4), Y + 0.05, dh);
+  turntablePart('turretDark', () => cylY(0.135 * s, 0.135 * s, 0.05, seg), disc(0.135 * s, seg), Y + 0.02 + dh, 0.05); // drum neck
+  const deckTop = Y + 0.05 + dh;
   // pedestal column up to the cradle (the fitting column emerges inside
   // it); skipped when the cradle plane sits at/under the roof (squat fit —
-  // the trough then connects straight onto the drum).
+  // the cradle then connects straight onto the drum).
   const pedTop = o.gunY + 0.10;
   if (pedTop - Y - 0.18 > 0.04) {
     P.add('turretDark', box(0.15 * ws, pedTop - Y - 0.18, 0.19 * s), X, (Y + 0.18 + pedTop) / 2, Z);
     P.add('turretDark', box(0.22 * ws, 0.026, 0.26 * s), X, pedTop - 0.013, Z);  // slew plate under the cradle
   }
-  // armored gun trough: the protected weapon cradle the receiver emerges
-  // from (the FLW's boxy armored housing — the "huge" central mass).
-  // On squat fits the trough tucks 2 cm into the roof plane (ring-well
-  // recess) so its top stays under the tank's grace line.
+  // the cradle line: the yoke arms', bin's and pointer's heights (the former armored trough's centre)
   const troughC = Math.max(pedTop + 0.10 * s, Y - 0.02 + 0.0675 * s);
-  // elevation cradle: two side arms flanking the trough root
-  const armY = troughC - 0.045 * s;
-  P.add('turretDark', box(0.038, 0.15 * s, 0.17 * s), X - 0.125 * ws, armY, Z - 0.02 * s);
-  P.add('turretDark', box(0.038, 0.15 * s, 0.17 * s), X + 0.125 * ws, armY, Z - 0.02 * s);
-  P.add('turretDark', cylZ(0.030 * s, 0.30 * ws, 10), X, armY + 0.02 * s, Z - 0.02 * s, 0, Math.PI / 2, 0); // trunnion cross-shaft (x-axis)
-  P.add('turret', box(0.235 * ws, 0.135 * s, 0.56 * s), X, troughC, Z + 0.06 * s);
-  P.add('turretDetail', box(0.20 * ws, 0.016, 0.50 * s), X, troughC + 0.0675 * s + 0.008, Z + 0.06 * s); // trough crown lick
-  P.add('turretDark', box(0.24 * ws, 0.018, 0.02), X, troughC + 0.055 * s, Z + 0.34 * s);             // trough front lip
-  if (o.shields) {
-    // flank shield plates + rear plate box the trough (armor surround)
-    P.add('turret', box(0.016, 0.17 * s, 0.46 * s), X - 0.135 * ws, troughC + 0.005 * s, Z + 0.02 * s);
-    P.add('turret', box(0.016, 0.17 * s, 0.46 * s), X + 0.135 * ws, troughC + 0.005 * s, Z + 0.02 * s);
-    P.add('turret', box(0.25 * ws, 0.15 * s, 0.016), X, troughC, Z - 0.225 * s);
-  }
-  // SENSOR POD front-center UNDER the gun line (FLW 200 anatomy): housing +
-  // crown + day/thermal windows recessed ON the aim face + LRF + wiper bar.
-  // podY/podH override for low-profile fits (pod rides forward-high).
-  const podY = o.podY ?? (pedTop - 0.045 * s);
+  // the yoke's arms stand outboard of everything that moves (the fitting's cradle and the gun), on the deck
+  const armX = (side: number): number => side * Math.max(0.125 * ws,
+    (side < 0 ? -(reach?.minX ?? -0.1) : (reach?.maxX ?? 0.1)) + clear + 0.019);
+  const armTop = troughC + 0.03 * s, armBottom = Math.min(troughC - 0.12 * s, deckTop - 0.005), armZ = Z - 0.02 * s;
   const podH = o.podH ?? 0.185 * s;
-  P.add('turretDark', box(0.27 * ws, podH, 0.17 * s), X, podY, Z + 0.42 * s);
-  P.add('turretDetail', box(0.275 * ws, 0.016, 0.175 * s), X, podY + podH / 2 + 0.008, Z + 0.42 * s);
-  P.add('turretGlass', box(0.085 * ws, Math.min(0.065 * s, podH * 0.42), 0.012), X - 0.055 * ws, podY + podH * 0.14, Z + 0.505 * s);
-  P.add('turretGlass', box(0.060 * ws, Math.min(0.050 * s, podH * 0.34), 0.012), X + 0.065 * ws, podY + podH * 0.08, Z + 0.505 * s);
-  P.add('turretDark', cylZ(0.020 * s, 0.014, 8), X + 0.065 * ws, podY - podH * 0.27, Z + 0.51 * s);   // LRF aperture
-  P.add('turretDark', box(0.20 * ws, 0.014, 0.014), X, podY - podH * 0.43, Z + 0.505 * s);            // wiper bar
-  // ammo bin GUN-LEFT of the trough + bracket + feed chute (feed law)
-  P.add('turretDetail', box(0.135 * ws, 0.15 * s, 0.30 * s), X - 0.20 * ws, troughC - 0.025 * s, Z - 0.04 * s);
-  P.add('turretDark', box(0.06 * ws, 0.04, 0.05), X - 0.145 * ws, troughC - 0.065 * s, Z - 0.04 * s);  // bin bracket -> pedestal
-  P.add('turretDark', box(0.014, 0.05, 0.10 * s), X - 0.135 * ws, troughC + 0.045 * s, Z - 0.02 * s); // feed chute -> receiver left rail
-  // IR pointer pod on the right cradle rail (§4.9999 lights)
-  P.add('turretDetail', cylZ(0.022 * s, 0.09 * s, 10), X + 0.125 * ws, troughC + 0.015 * s, Z + 0.16 * s);
-  P.add('turretGlass', cylZ(0.016 * s, 0.008, 10), X + 0.125 * ws, troughC + 0.015 * s, Z + 0.21 * s);
-  // cable drop + flush roof conduit (§4.9999 cabling — powered station)
-  P.add('turretDark', box(0.032, Math.max(0.05, pedTop - Y - 0.06), 0.05), X + 0.10 * s, Y + Math.max(0.05, pedTop - Y - 0.06) / 2 + 0.01, Z - 0.10 * s);
-  P.add('turretDark', box(0.028, 0.006, 0.30), X + 0.06, Y + 0.003, Z - 0.36 * s);
-  // THE GUN — §B3-census pintleMG (m2 class), FITTING-SUNK at o.gunY,
-  // FORWARD rest (no rotation), slight elevation. Its own ammo can is
-  // disabled where the class supports it via scale/tone defaults; the
-  // station bin above is the feed.
-  {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone',
-      scale: o.gunScale ?? (1.05 * s), elev: o.elev ?? 0.03, ammo: false, seed: o.seed ?? 13,
-      remoteControlled: o.automatic === true, ridingCradle: o.automatic === true });
-    if (o.automatic) mg.name = gunName;
-    mg.position.set(X, o.gunY, Z);
-    P.turretG.add(mg);
+  let podX = X, podZ = Z + 0.42 * s, podY = o.podY ?? (pedTop - 0.045 * s);
+  if (!o.compact) {
+    for (const side of [-1, 1]) {
+      P.add('turretDark', box(0.038, armTop - armBottom, 0.17 * s), X + armX(side), (armBottom + armTop) / 2, armZ);
+      // the trunnion's boss on the arm's outer face
+      P.add('turretDark', cylZ(0.030 * s, 0.03, 10), X + armX(side) + side * 0.034, troughC - 0.025 * s, armZ, 0, Math.PI / 2, 0);
+      // flank armour on each arm (no rear plate: the receiver's rear swings down behind the gun)
+      if (o.shields) P.add('turret', box(0.016, 0.17 * s, 0.46 * s), X + armX(side) + side * 0.010 * ws, troughC + 0.005 * s, Z + 0.02 * s);
+    }
+    // ammo bin GUN-LEFT outboard of the yoke + bracket + feed chute (feed law)
+    const binX = X + armX(-1) - 0.019 - 0.0675 * ws + 0.005;
+    P.add('turretDetail', box(0.135 * ws, 0.15 * s, 0.30 * s), binX, troughC - 0.025 * s, Z - 0.04 * s);
+    P.add('turretDark', box(0.06 * ws, 0.04, 0.05), binX + 0.055 * ws, troughC - 0.065 * s, Z - 0.04 * s);  // bin bracket -> arm
+    P.add('turretDark', box(0.014, 0.05, 0.10 * s), binX + 0.065 * ws, troughC + 0.045 * s, Z - 0.02 * s); // feed chute -> the gun's left
+    // IR pointer pod on the right arm's front (§4.9999 lights)
+    const irZ = armZ + 0.085 * s + 0.045 * s - 0.01;
+    P.add('turretDetail', cylZ(0.022 * s, 0.09 * s, 10), X + armX(1), troughC + 0.015 * s, irZ);
+    P.add('turretGlass', cylZ(0.016 * s, 0.008, 10), X + armX(1), troughC + 0.015 * s, irZ + 0.05 * s);
+    // the sensor pod beside the yoke, on its arm (right) or on the bin's outer face (left)
+    podZ = o.podSide === 'left' ? Z - 0.04 * s : armZ;
+    podX = o.podSide === 'left' ? binX - 0.0675 * ws - 0.135 * ws + 0.002 : X + armX(1) + 0.019 + 0.135 * ws - 0.004;
+    podY = Math.max(podY, Y + podH / 2 + 0.002);
+  } else {
+    // the compact fit's pod stays forward under the gun's depression
+    podY = Math.min(podY, crown(X - 0.1375 * ws, X + 0.1375 * ws, podZ - 0.0875 * s, podZ + 0.0875 * s) - podH / 2 - 0.016);
   }
+  // SENSOR POD (FLW 200 anatomy): housing + crown + day/thermal windows recessed ON the aim face + LRF + wiper bar.
+  // podY/podH override for low-profile fits (pod rides forward-high).
+  P.add('turretDark', box(0.27 * ws, podH, 0.17 * s), podX, podY, podZ);
+  P.add('turretDetail', box(0.275 * ws, 0.016, 0.175 * s), podX, podY + podH / 2 + 0.008, podZ);
+  P.add('turretGlass', box(0.085 * ws, Math.min(0.065 * s, podH * 0.42), 0.012), podX - 0.055 * ws, podY + podH * 0.14, podZ + 0.085 * s);
+  P.add('turretGlass', box(0.060 * ws, Math.min(0.050 * s, podH * 0.34), 0.012), podX + 0.065 * ws, podY + podH * 0.08, podZ + 0.085 * s);
+  P.add('turretDark', cylZ(0.020 * s, 0.014, 8), podX + 0.065 * ws, podY - podH * 0.27, podZ + 0.09 * s);   // LRF aperture
+  P.add('turretDark', box(0.20 * ws, 0.014, 0.014), podX, podY - podH * 0.43, podZ + 0.085 * s);            // wiper bar
+  // the compact pod hangs on a bracket from the drum, under the gun's depression
+  if (o.compact) P.add('turretDark', box(0.03, 0.022, 0.225 * s), X, podY - podH * 0.38, Z + 0.2225 * s);
+  // cable drop + flush roof conduit (§4.9999 cabling — powered station), the drop under the gun's sweep
+  const cableTop = Math.min(Y + Math.max(0.05, pedTop - Y - 0.06) + 0.01, crown(X + 0.10 * s - 0.016, X + 0.10 * s + 0.016, Z - 0.10 * s - 0.025, Z - 0.10 * s + 0.025));
+  if (cableTop - Y - 0.01 >= 0.01) P.add('turretDark', box(0.032, cableTop - Y - 0.01, 0.05), X + 0.10 * s, (Y + 0.01 + cableTop) / 2, Z - 0.10 * s);
+  P.add('turretDark', box(0.028, 0.006, 0.30), X + 0.06, Y + 0.003, Z - 0.36 * s);
+  if (o.automatic) mg.name = gunName;
+  mg.position.set(X, o.gunY, Z);
+  P.turretG.add(mg);
   // OPTIC TOWER (garage-distance height in a narrow z-window — the m1a1_abrams_hc
-  // FULL-CROWS-MAST precedent): riser + compact panoramic head + glass.
+  // FULL-CROWS-MAST precedent): riser + compact panoramic head + glass, beside the gun's reach (release 230).
   if (o.towerTop != null) {
     const tw = o.towerW ?? 0.16;
     const tz = o.towerZ ?? (Z - 0.30 * s);
+    const tx = X + Math.max(0.02, (reach?.maxX ?? 0) + clear + 0.11 * s);
     const headH = 0.12 * s;
     const headTop = o.towerTop;
     const riserTop = headTop - headH;
-    P.add('turretDark', box(0.075, riserTop - pedTop, Math.min(0.075, tw * 0.5)), X + 0.02, (pedTop + riserTop) / 2, tz);
-    P.add('turretDark', box(0.22 * s, headH, tw), X + 0.02, headTop - headH / 2, tz);      // panoramic head (wide across — x is mask-free)
-    P.add('turretDetail', box(0.225 * s, 0.014, tw + 0.005), X + 0.02, headTop - 0.007, tz);
-    P.add('turretGlass', box(0.13 * s, 0.055 * s, 0.010), X + 0.02, headTop - headH / 2, tz + tw / 2 - 0.002);
-    P.add('turretDark', cylZ(0.016 * s, 0.012, 8), X + 0.02 - 0.08 * s, headTop - headH / 2, tz + tw / 2 - 0.010); // head LRF (recessed INTO the face — stays inside the tower's z-window)
+    P.add('turretDark', box(0.075, riserTop - pedTop, Math.min(0.075, tw * 0.5)), tx, (pedTop + riserTop) / 2, tz);
+    P.add('turretDark', box(0.22 * s, headH, tw), tx, headTop - headH / 2, tz);      // panoramic head (wide across — x is mask-free)
+    P.add('turretDetail', box(0.225 * s, 0.014, tw + 0.005), tx, headTop - 0.007, tz);
+    P.add('turretGlass', box(0.13 * s, 0.055 * s, 0.010), tx, headTop - headH / 2, tz + tw / 2 - 0.002);
+    P.add('turretDark', cylZ(0.016 * s, 0.012, 8), tx - 0.08 * s, headTop - headH / 2, tz + tw / 2 - 0.010); // head LRF (recessed INTO the face — stays inside the tower's z-window)
   }
   finishStation?.();
 }
@@ -7025,7 +7181,10 @@ export function buildLeo2A4(builder: object) {
     // height (no oracle; §5.73-1 P95-envelope heightM datum note in packet).
     // 2026-10-08: the station is the A4's working roof weapon (owner order §5.09-5 put it here; his 2A5M precedent in
     // main 6763d7cc0 activates such a station). Gameplay change: functional roof guns 0 -> 1 on leo2a2 and leo2a3.
-    leoFLW200(P, { x: 0.78, y: 0.69, z: -1.12, s: 0.54, widthScale: 0.12, gunY: 0.77, shields: true, seed: 13, automatic: true });
+    // Release 230: the compact fit (narrower than its gun: no yoke inside the receiver), so the gun pitches clear of its
+    // station (leoFLW200)
+    leoFLW200(P, { x: 0.78, y: 0.69, z: -1.12, s: 0.54, widthScale: 0.12, gunY: 0.77, shields: true, seed: 13, automatic: true,
+      compact: true });
     // ---- Rh 120 L/44 (§B3.1: tube cylinder + thermal sleeve segments with
     // clamp rings + mid-tube bore evacuator + MRS collar; plate mantlet on a
     // trunnion roll — never a prism). The complete gun rig is seated 90 mm
@@ -8000,7 +8159,7 @@ function buildLeo2Proto(P: TankBuilderPort) {
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the owner's station is a working remote station
   leoFLW200(P, { x: 0.02, y: 0.65, z: -1.58, s: 1.1, gunY: 0.46, gunScale: 0.92,
     drumH: 0.05, podY: 0.70, podH: 0.16, shields: false, elev: 0.07,
-    towerTop: 1.06, towerZ: -1.52, towerW: 0.16, seed: 17, automatic: true });
+    towerTop: 1.06, towerZ: -1.52, towerW: 0.16, seed: 17, automatic: true, podSide: 'left' });
 
   // Owner-directed replacement: a finite, clipped welded shield with a
   // real recoil passage and split journals, seated in the original gun frame.
@@ -14558,7 +14717,9 @@ function buildLeo2A4M(P: TankBuilderPort) {
     // as-copied seat broke the 2.62/2.64 hardware line).
     // 2026-10-08: activated as on the A4 (owner order §5.09-5 covers "other leopards too"; the 2A5M precedent).
     // Gameplay change: functional roof guns 0 -> 1.
-    leoFLW200(P, { x: 0.78, y: 0.64, z: -1.12, s: 0.54, widthScale: 0.12, gunY: 0.72, shields: true, seed: 13, automatic: true });
+    // Release 230: the compact fit, as on the A4
+    leoFLW200(P, { x: 0.78, y: 0.64, z: -1.12, s: 0.54, widthScale: 0.12, gunY: 0.72, shields: true, seed: 13, automatic: true,
+      compact: true });
     // ---- wrapper-era A4M turret package (pre-wave germany.js addA4MPackage,
     // TURRET-owned rows verbatim via the wrap* helpers). The matching hull
     // armor/cage course was restored above over the current two-band inner
