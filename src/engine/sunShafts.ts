@@ -33,24 +33,24 @@ export const SUN_SHAFT_TAPS = 12;
 export const SUN_SHAFT_DECAY = 0.90;
 export const SUN_SHAFT_SPANS = Object.freeze([1.0, 1 / SUN_SHAFT_TAPS]);
 /** Radius of the sky region around the sun that feeds the shafts (screen-height units, aspect corrected). */
-export const SUN_SHAFT_MASK_RADIUS = 0.40;
+const SUN_SHAFT_MASK_RADIUS = 0.40;
 /** Linear HDR gain of the fully lit shaft field (the sky near the sun sits around 1.0–1.45). */
 export const SUN_SHAFT_GAIN = 0.16;
 /** Share of the ray field the open sky keeps: the rays read against silhouettes, not as a wash over the sky. */
 export const SUN_SHAFT_OPEN_SKY = 0.25;
-export const SUN_SHAFT_TINT = Object.freeze([1.0, 0.93, 0.80] as const);
+const SUN_SHAFT_TINT = Object.freeze([1.0, 0.93, 0.80] as const);
 /** The sun may leave the frame by this much (NDC) before the rays fade out. */
-export const SUN_SHAFT_FRAME_FADE = Object.freeze([1.0, 1.55] as const);
+const SUN_SHAFT_FRAME_FADE = Object.freeze([1.0, 1.55] as const);
 /** Sun elevation band over which the shafts fade out (degrees): long near-air paths below, nearly none above. */
-export const SUN_SHAFT_ELEVATION_FADE_DEG = Object.freeze([26, 46] as const);
+const SUN_SHAFT_ELEVATION_FADE_DEG = Object.freeze([26, 46] as const);
 /** Aerosol proxy band (turbidity × mieCoefficient × 40, round 65's mie mapping without its 1.25). */
-export const SUN_SHAFT_AEROSOL_BAND = Object.freeze([0.6, 2.2] as const);
+const SUN_SHAFT_AEROSOL_BAND = Object.freeze([0.6, 2.2] as const);
 /** Fog density band (1/m). */
-export const SUN_SHAFT_FOG_BAND = Object.freeze([0.0004, 0.0009] as const);
+const SUN_SHAFT_FOG_BAND = Object.freeze([0.0004, 0.0009] as const);
 /** The dome's night law (sky.ts nightAmount): full night at .08, none from .30 up. */
 const NIGHT_FULL = 0.08, NIGHT_TOP = 0.30;
 
-export interface SunShaftSkyInputs {
+interface SunShaftSkyInputs {
   fogDensity: number;
   turbidity: number;
   mieCoefficient: number;

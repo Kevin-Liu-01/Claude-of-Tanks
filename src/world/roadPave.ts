@@ -15,14 +15,14 @@
 export const ROAD_HARD_M = 4.3;
 
 /** The map's road paving (its splat config's fields, terrain.ts SplatConfig). */
-export interface RoadPaveSplat {
+interface RoadPaveSplat {
   readonly pavedRoads?: boolean;
   readonly roadTexMix?: number;
   readonly townPaving?: boolean;
 }
 
 /** The paved town rect (the layout's village; only with `townPaving`). */
-export interface RoadPaveRect {
+interface RoadPaveRect {
   readonly x0: number;
   readonly x1: number;
   readonly z0: number;

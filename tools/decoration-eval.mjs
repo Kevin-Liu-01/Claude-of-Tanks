@@ -12,6 +12,7 @@
 // summary table. Exits 1 when any tank assertion fails.
 
 import { createServer } from 'vite';
+import { uniqueIds } from './id-list.mjs';
 import puppeteer from 'puppeteer';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,7 +22,7 @@ const args = process.argv.slice(2);
 const arg = (k, d) => { const a = args.find((x) => x.startsWith(`--${k}=`)); return a ? a.split('=').slice(1).join('=') : d; };
 const OUT = path.resolve(ROOT, arg('out', 'shots/decorations-r1'));
 // tiger1, t34_85, m4a3e8 and isu152 retired 2026-09-23 (owner: "no hidden tanks").
-const TANKS = arg('ids', 'm60a1,kv2,leo2a4,xk2_black_panther').split(',').map((s) => s.trim()).filter(Boolean);
+const TANKS = uniqueIds(arg('ids', 'm60a1,kv2,leo2a4,xk2_black_panther').split(',').map((s) => s.trim()).filter(Boolean), 'decoration-eval --ids');
 const CATALOG_ONLY = args.includes('--catalog-only');
 const TANKS_ONLY = args.includes('--tanks-only');
 fs.mkdirSync(OUT, { recursive: true });

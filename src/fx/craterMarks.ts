@@ -34,13 +34,15 @@ const INDICES_PER_SLOT = SEG * 3 + (RINGS - 1) * SEG * 6;
 /** A disc reaches 2.4 rim radii (round 7: a crater's apron reaches ~2.2 R; the deformed ground fades by 2 R). */
 const MARK_REACH = 2.4;
 const CRATER_REACH = 2.4;
+/** (ac130-fx-228 follow-up) a heavy shell's ground heat to a heat-imaging lens: its peak emission and time constant (s) */
+export const CRATER_HEAT_PEAK = 5, CRATER_HEAT_S = 10;
 
 /** What kind of mark a burst leaves (round 7, wave 276): a kinetic gouge, an HE round's crater or mark, a shaped
  *  charge's scar (no bowl: the core never digs one), HESH's shallow scorch (never dug either); (FX lane 10-15, FX-05) a
  *  heavy shell's rayed crater (the gunship's howitzer and missile: long dark rays of thrown soil out past the apron, a
  *  wider scorch) and a drone warhead's pocked scorch (a small black blast spot, a dense ring of fragment pocks, the
  *  battery's melted black patch beside it). */
-export type CraterMarkKind = 'gouge' | 'he' | 'scar' | 'hesh' | 'rayed' | 'drone';
+type CraterMarkKind = 'gouge' | 'he' | 'scar' | 'hesh' | 'rayed' | 'drone';
 const KIND_INDEX: Readonly<Record<CraterMarkKind, number>> = Object.freeze({ gouge: 0, he: 1, scar: 2, hesh: 3, rayed: 4, drone: 5 });
 /** The mark a munition leaves (sim/destructionEvents.ts MunitionClass). */
 export function markKindFor(munition: string, explosive: boolean): CraterMarkKind {
@@ -114,6 +116,7 @@ uniform float uTime;
 uniform vec3 uSunDir;
 uniform vec3 uSunCol;
 uniform vec3 uSkyCol;
+uniform float uHeatView;  // (ac130-fx-228 follow-up) 1 under a heat-imaging lens (infrared, thermal), else 0
 varying vec2 vDisc;
 varying vec4 vInfo;
 varying vec4 vShape;
@@ -296,6 +299,13 @@ void main() {
   if ( a < 0.01 ) discard;
   float ndl = clamp( dot( n, uSunDir ), 0.0, 1.0 );
   col *= uSunCol * ( 0.35 + 0.65 * ndl ) + uSkyCol;
+  // (ac130-fx-228 follow-up, the coordinator: "a 152 mm impact keeps a hot ground signature that fades over 10-20 s")
+  // a heavy shell's scorched pit and its halo stay hot to a heat-imaging lens (the grade images luminance over ~1.55):
+  // CRATER_HEAT_PEAK at the burst, falling as exp(-age / CRATER_HEAT_S); white-hot ~5 s, warm to ~12 s. Never evaluated
+  // under any other lens.
+  if ( uHeatView > 0.5 && kind > 3.5 && kind < 4.5 ) {
+    col += vec3( ${CRATER_HEAT_PEAK.toFixed(2)} ) * exp( -age / ${CRATER_HEAT_S.toFixed(2)} ) * ( 1.0 - smoothstep( 0.2, 0.9, qw ) );
+  }
   #ifdef USE_FOG
     #ifdef FOG_EXP2
       float fogFactor = 1.0 - exp( -fogDensity * fogDensity * vFogDepth * vFogDepth );
@@ -311,7 +321,7 @@ void main() {
 `;
 
 /** A deforming crater's surface (crater-render-spec §D). */
-export interface CraterSurfaceInput {
+interface CraterSurfaceInput {
   x: number; z: number;
   radiusM: number;
   /** the simulation's wobble phases (sim/terrainDeformation.ts craterWobblePhases) */
@@ -336,6 +346,8 @@ export interface CraterMarks {
   stamp(x: number, z: number, rimRadiusM: number, surface: SurfaceKind, kind: CraterMarkKind | boolean, seed: number, birth: number,
     groundY: (x: number, z: number) => number, climate?: CraterClimate): void;
   update(now: number, scene: THREE.Scene | null | undefined): void;
+  /** (ac130-fx-228 follow-up) this frame's camera images heat: a heavy shell's ground stays hot to it */
+  setHeatView(on: boolean): void;
   shiftTime(delta: number): void;
   reset(): void;
   /** receipts: slots in use (craters + marks), craters alone */
@@ -393,13 +405,14 @@ export function createCraterMarks(): CraterMarks {
   geo.setIndex(index);
   geo.setDrawRange(0, 0);
   const uTime = { value: 0 };
+  const uHeatView = { value: 0 };
   const uSunDir = { value: new THREE.Vector3(0.527, 0.574, -0.627).normalize() };
   const uSunCol = { value: new THREE.Vector3(1.3, 1.25, 1.15) };
   const uSkyCol = { value: new THREE.Vector3(0.3, 0.32, 0.36) };
   const material = new THREE.ShaderMaterial({
     vertexShader: VERT,
     fragmentShader: FRAG,
-    uniforms: Object.assign(THREE.UniformsUtils.clone(THREE.UniformsLib.fog), { uTime, uSunDir, uSunCol, uSkyCol }),
+    uniforms: Object.assign(THREE.UniformsUtils.clone(THREE.UniformsLib.fog), { uTime, uSunDir, uSunCol, uSkyCol, uHeatView }),
     transparent: true,
     depthWrite: false,
     polygonOffset: true,
@@ -477,6 +490,7 @@ export function createCraterMarks(): CraterMarks {
       write(slot, x, z, rimRadiusM * MARK_REACH, seed * Math.PI * 2, groundY, 0.04, birth, SURFACE_INDEX[surface], KIND_INDEX[k], seed,
         0, 0, 0, 0, rimRadiusM);
     },
+    setHeatView(on) { uHeatView.value = on ? 1 : 0; },
     update(now, scene) {
       uTime.value = now;
       if (highest < 0) return;

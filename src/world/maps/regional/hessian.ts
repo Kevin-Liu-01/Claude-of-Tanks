@@ -44,7 +44,7 @@ export interface FachwerkPalette {
   upperBars?: WindowStyle['bars'];
 }
 
-export const HESSIAN_PALETTE: FachwerkPalette = Object.freeze({
+const HESSIAN_PALETTE: FachwerkPalette = Object.freeze({
   // v1 captures: the pale grey-brown (0x6c625a) read as concrete in sun; oak darkens to brown-black or is painted oxblood
   timbers: [0x5c4434, 0x6e3024, 0x4a3a2f, 0x7a3a28, 0x45362c, 0x56483e].map(rgb),
   frame: rgb(0xcfcabd),
@@ -67,7 +67,7 @@ const ZINC = rgb(0x8c9193);
 const DRESSING_TINT: Rgb = [1.16, 1.13, 1.08];
 const GATE = rgb(0x7a5d44);
 
-export interface HessianState {
+interface HessianState {
   rng: () => number;
   timber: Rgb;
   infill: RegionalBucket;
@@ -451,7 +451,7 @@ export function roofFor(rng: () => number, opts: { halfHip?: number; pitch?: [nu
 }
 
 /** Openings of a house body: the street gable (front), the eaves sides and the back. */
-export function houseOpenings(w: number, d: number, sts: HouseSpec['storeys'], door: { face: Opening['face']; u: number } | null,
+function houseOpenings(w: number, d: number, sts: HouseSpec['storeys'], door: { face: Opening['face']; u: number } | null,
   st: HessianState, extra: Opening[] = []): Opening[] {
   const out: Opening[] = [...extra];
   const doorW = 1.0, doorH = 2.12;
@@ -472,7 +472,7 @@ export function houseOpenings(w: number, d: number, sts: HouseSpec['storeys'], d
   return out;
 }
 
-export function chimneyFor(rng: () => number, d: number, bucket: RegionalBucket): HouseSpec['chimneys'] {
+function chimneyFor(rng: () => number, d: number, bucket: RegionalBucket): HouseSpec['chimneys'] {
   return [{ x: (rng() < 0.5 ? -1 : 1) * 0.42, z: (rng() - 0.5) * d * 0.5, sx: 0.52, sz: 0.62, above: 0.75 + rng() * 0.3, bucket, cap: 'slab' }];
 }
 
@@ -536,7 +536,7 @@ const BOX_COLOURS: readonly Rgb[] = [0x4a3a2c, 0x3e5a3a, 0x6a4a30].map(rgb);
  * `clear`: spans of a face another body stands against (a farmhouse's stable wing): a window there keeps its draws but
  * hangs no flower box, which would stand in that body's wall.
  */
-export function dressHessianHouse(sink: PartSink, frame: HouseFrame, st: HessianState,
+function dressHessianHouse(sink: PartSink, frame: HouseFrame, st: HessianState,
   opts: { aerial?: number; boxes?: number; clear?: ReadonlyArray<{ face: Opening['face']; u0: number; u1: number }> } = {}): void {
   const rng = st.rng;
   const boxes = rng() < (opts.boxes ?? 0.55), bloom = pick(rng, BLOOMS), boxColour = pick(rng, BOX_COLOURS);
@@ -613,7 +613,7 @@ function houseDressing(sink: PartSink, frame: HouseFrame, st: HessianState, rng:
 }
 
 /** A wrought-iron bracket with a hanging inn sign at the street gable. */
-export function innSign(sink: PartSink, frame: HouseFrame, st: HessianState): void {
+function innSign(sink: PartSink, frame: HouseFrame, st: HessianState): void {
   const face = frame.faces.front, y = frame.floors[1] - 0.25 || 2.9;
   const u = face.width / 2 - 0.6;
   faceBox(sink, 'dark', face, u, y, 0.45, 0.06, 0.06, 0.9, { decor: true });
@@ -630,7 +630,7 @@ export function innSign(sink: PartSink, frame: HouseFrame, st: HessianState): vo
  * down and out between them, the dark of the chamber behind and its bell; the slate spire and finial over it. It is the
  * roof's crown (house.ts roofCrown): it falls with the roof in its own pieces.
  */
-export function roofTurret(sink: PartSink, frame: HouseFrame, st: HessianState, zFrac: number): void {
+function roofTurret(sink: PartSink, frame: HouseFrame, st: HessianState, zFrac: number): void {
   const rg = frame.roof, z = rg.halfD * zFrac;
   const top = rg.topAt(0, z) ?? rg.ridgeTopY;
   const s = 0.62;
@@ -1016,7 +1016,7 @@ const mill: RegionalBuilder = (ctx) => {
 };
 
 /** The Fachwerk builders, by plan structure id, unbound: a kit binds them to its palette (withPalette). */
-export const FACHWERK_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const FACHWERK_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => hessianDwelling(ctx),
   tavern: (ctx) => hessianDwelling(ctx, { storeys: 3, tavern: true }),
   schoolhouse: (ctx) => hessianDwelling(ctx, { school: true }),
@@ -1030,7 +1030,7 @@ export function bindFachwerk(p: FachwerkPalette, ids: readonly string[]): Record
 }
 
 /** The Hessian kit's builders, by plan structure id. */
-export const HESSIAN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze(bindFachwerk(HESSIAN_PALETTE,
+const HESSIAN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze(bindFachwerk(HESSIAN_PALETTE,
   ['cottage', 'tavern', 'schoolhouse', 'cornershop', 'farmhouse', 'barn', 'granary', 'woodshed', 'depot', 'ruin', 'church', 'chapel', 'mill']));
 
 export const HESSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({

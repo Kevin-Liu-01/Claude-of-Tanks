@@ -773,7 +773,7 @@ const netYard: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const BRETON_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const BRETON_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => dwelling(ctx),
   tavern: (ctx) => dwelling(ctx, { longere: false, storeys: 2 }),
   cornershop: (ctx) => dwelling(ctx, { longere: false, storeys: 2 }),

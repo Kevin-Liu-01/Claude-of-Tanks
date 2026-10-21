@@ -1,5 +1,4 @@
 import { t } from '../ui/i18n.ts';
-import './mediaLibrary.css';
 
 // The media library (2026-10-19): every picture the media rounds made, each round's finals, renders, previz, review
 // sheets, candidates and frames, published by collection under /media/library-r1. A collection's index names its sets

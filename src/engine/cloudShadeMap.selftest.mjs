@@ -13,6 +13,7 @@ import {
   cloudSunShareAt, createCloudShadeUniforms, physicalParsWithoutDfgLut, programTextureUnits, publishCloudShade,
 } from './cloudShadeMap.ts';
 import { CLOUD_FAR_SHADE_EVERY, CLOUD_FAR_SHADE_SIZE, CLOUD_FAR_SHADE_SPAN_M, CLOUD_SHADOW_CORE } from './volumetricClouds.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const here = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 const clouds = here('./volumetricClouds.ts'), lighting = here('./lighting.ts'), post = here('./post.ts');
@@ -83,7 +84,7 @@ assert.ok(CLOUD_SHADE_EDGE_FADE > 0.6 && CLOUD_SHADE_EDGE_FADE < 0.95 && CLOUD_S
   assert.equal(u.uCotCloudShade.value.w, 0, 'off until the clouds publish');
   const tex = new THREE.Texture();
   publishCloudShade(u, { texture: tex, rect: new THREE.Vector3(10, 20, 12000), baseM: 1500 }, new THREE.Vector3(0, 1, 0));
-  assert.deepEqual([u.tCotCloudShade.value, ...u.uCotCloudShade.value.toArray(), u.uCotCloudSun.value.w], [tex, 10, 20, 1 / 12000, 1, 1500]);
+  assert.deepEqual(graphLabels([u.tCotCloudShade.value, ...u.uCotCloudShade.value.toArray(), u.uCotCloudSun.value.w]), graphLabels([tex, 10, 20, 1 / 12000, 1, 1500]));
   publishCloudShade(u, null, new THREE.Vector3(0, 1, 0));
   assert.equal(u.uCotCloudShade.value.w, 0, 'dropped');
   const shader = { uniforms: {} };

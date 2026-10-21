@@ -66,6 +66,8 @@ console.log('sixModesAuthority: all six modes spawn and step; multiplayer flight
   if(tick>90&&!pilot.aerial.active)break;
  }
  assert.ok(hits.length,'FPV collision produces a real shell impact');
+ // (ac130-fx-228) the authority names the drone as the hit's source (sim/aerialCombat.ts killSourceOf); the pilot stays the attacker
+ assert.ok(hits.every(hit=>hit.attackerSource==='drone'&&hit.attackerId==='pilot'),'the FPV hit carries its drone source');
  assert.ok(target.combat.hp<target.combat.maxHp||target.combat.destroyed,'FPV explosion damages the enemy');
  assert.equal(pilot.aerial.active,false,'impact exits flight');
  assert.ok(Math.hypot(pilot.state.pos.x,pilot.state.pos.z)<2,'flight inputs do not drive the parked tank');

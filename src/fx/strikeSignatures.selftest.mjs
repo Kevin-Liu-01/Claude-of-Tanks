@@ -125,6 +125,17 @@ assert.ok(fpv.media.filter((m) => m.medium === 'billow' && Math.abs(m.r0 - 0.5) 
   assert.ok(pAtgm.sparks.filter((sp) => isCol(sp.col, MOLTEN)).length >= 26 && pAtgm.chunk.length >= 5, 'its liner and airframe');
   assert.ok(pFpv.fire.filter((f) => isCol(f.col0, LITHIUM)).length >= 8 && pFpv.chunk.length >= 10, "a drone on a hull: its battery burns, its frame thrown");
   assert.ok(pGun.sparks.filter((sp) => isCol(sp.col, FRAG_HOT)).length >= 30, 'the heavy shell\'s fragments off a hull');
+  // (ac130-fx-228 r2) a heavy charge on a hull is the full detonation: a white-hot dome of fireball medium (never only a
+  // flash and dust), a few small tongues of fire (never broad additive petals), its lobed smoke climbing
+  const pMissile = plate('missile', 10);
+  for (const [name, p] of [['howitzer', pGun], ['missile', pMissile]]) {
+    const dome = p.media.filter((m) => m.medium === 'billow' && m.heat >= 1.5);
+    assert.ok(dome.length >= 4 && Math.min(...dome.map((m) => m.size1)) >= 6, `the ${name} on a hull: a fireball dome (${dome.length})`);
+    assert.ok(p.fire.length <= 3 && Math.max(...p.fire.map((f) => f.size1)) <= 0.5 * Math.max(...dome.map((m) => m.size1)),
+      `the ${name} on a hull: small tongues of fire at the heart, never petals`);
+    assert.ok(p.media.filter((m) => m.medium === 'billow' && m.heat < 0.5 && m.life >= 9).length >= 8, `the ${name} on a hull: its smoke`);
+  }
+  assert.ok(pHe.media.every((m) => m.heat < 1.5), 'tank HE on armour keeps its own burst');
   assert.equal(flashTimes(pHe).length, 1, 'HE on armour: one flash');
   assert.equal(pHe.sparks.filter((sp) => !isCol(sp.col, [1, 0.78, 0.45])).length, 0, 'HE on armour: its sparks only');
 }

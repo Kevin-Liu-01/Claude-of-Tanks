@@ -4278,6 +4278,7 @@
   "hud.kill.friendly": "友军误伤",
   "hud.kill.you": "你的击毁",
   "hud.kill.victim": "你被击毁",
+  "hud.source.drone": "FPV 无人机",
   "hud.roster.kills": "击毁 {count}",
   "endScreen.finalBlow.ammorack": "{attacker} 引爆了 {target} 的弹药架",
   "endScreen.comparison": "战斗对比",

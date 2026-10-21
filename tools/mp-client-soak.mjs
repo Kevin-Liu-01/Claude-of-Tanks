@@ -33,7 +33,7 @@ import { MESSAGE_TYPE, NO_ENTITY, TEAM, TICK_HZ, decodeMessage, encodeMessage } 
 const TICK_MS = 1000 / TICK_HZ;
 const SEAT_SECRET = 'mp-client-soak-seat-secret-0123456789';
 
-export const SOAK_SPEC = {
+const SOAK_SPEC = {
   enginePowerHp: 1500, weightTons: 60, topSpeedKmh: 65, reverseSpeedKmh: 30, hullTraverseDegS: 42,
   turretTraverseDegS: 40, gunPitchDegS: 25, gunElevationDeg: 20, gunDepressionDeg: 10, pivotStyle: 'neutral',
   terrainResistance: { hard: 0.8, medium: 1, soft: 1.8 },

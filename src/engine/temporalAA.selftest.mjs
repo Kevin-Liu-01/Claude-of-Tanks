@@ -75,7 +75,7 @@ assert.match(TAA_RESOLVE_FRAGMENT, /abs\(hs\.a - expectedPrevLinear\)\n\s*> max\
   const depth = new THREE.DepthTexture(320, 180);
   const pass = new TemporalAAPass(camera, depth, 320, 180);
   assert.equal(pass.needsSwap, true, 'the composer swaps after the pass');
-  assert.equal(pass.material.uniforms.tDepth.value, depth);
+  assert.ok(pass.material.uniforms.tDepth.value === depth);
   assert.ok(pass.material.uniforms.uNearFar, 'near/far feed the linear depth');
   assert.deepEqual(pass.material.uniforms.uTexel.value.toArray(), [1 / 320, 1 / 180]);
   assert.equal(pass.material.uniforms.uSeed.value, 1, 'the first frame is a seed');

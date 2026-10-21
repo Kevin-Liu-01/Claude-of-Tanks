@@ -20,7 +20,7 @@ try{for(const quality of ['high','low']){
     assert.equal(skin.parent.name,'rig_hull','fixed bodywork never disappears with greeble LOD');
     assert.equal(skin.userData.combatHitboxRole,'nonArmor','cosmetic skin does not create structural ballistic armor');
     assert.equal(skin.userData.appearanceRole,'armorPaint');
-    assert.equal(skin.material,hull.material,'same camouflaged body material');
+    assert.ok(skin.material === hull.material,'same camouflaged body material');
     assert.ok(skin.material.map&&skin.geometry.attributes.uv&&skin.geometry.attributes.color,'real camo UVs and weathering');
     assert.equal(skin.geometry.attributes.position.count/3,144,'two twenty-triangle long returns plus two 52-triangle curved bow returns');
     const added=extrusionStock(skin),old=extrusionStock(hull);

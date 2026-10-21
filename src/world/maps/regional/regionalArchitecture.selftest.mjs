@@ -125,7 +125,7 @@ for (const style of STYLES) {
         for (const g of list) {
           const names = Object.keys(g.attributes).sort().join(',');
           sets.add(names);
-          assert.equal(g.index, null, `${style.id}/${id}/${bucket}: non-indexed`);
+          assert.ok(g.index === null, `${style.id}/${id}/${bucket}: non-indexed`);
           assert.ok(g.userData.regional && g.userData.uvJitter === 'none', `${style.id}/${id}/${bucket}: regional tags`);
           assert.ok(g.hasAttribute('uv') && g.hasAttribute('normal'), `${style.id}/${id}/${bucket}: uv + normal`);
           assert.equal(g.hasAttribute('color'), COLOURED.has(bucket), `${style.id}/${id}/${bucket}: vertex colour exactly in the coloured buckets`);

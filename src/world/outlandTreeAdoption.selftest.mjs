@@ -23,6 +23,7 @@ import { PLAYABLE_HALF_EXTENT_M } from './battlefieldBounds.ts';
 import { shadowCasterCascadesOf, shadowCasterProfileOf } from '../engine/renderLayers.ts';
 import { getMapConfig } from './maps/index.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const savedDocument = globalThis.document, savedImageData = globalThis.ImageData;
 globalThis.ImageData = ImageData;
@@ -121,11 +122,11 @@ try {
     // the build untouched: records, colliders, concealers, its pools, children, registrations and instance buffers
     assert.equal(recordHash(world), before.hash, `${id}: the build's tree records unchanged`);
     assert.equal(world._trees.length, before.trees); assert.equal(world.treeObstacles.length, before.obstacles); assert.equal(world.concealers.length, before.concealers);
-    assert.deepEqual(world.group.children.slice(0, children.length), children, `${id}: the build's scene children kept, in order`);
+    assert.deepEqual(graphLabels(world.group.children.slice(0, children.length)), graphLabels(children), `${id}: the build's scene children kept, in order`);
     pools.forEach((m, i) => {
       assert.equal(m.instanceMatrix.count, before.capacity[i], `${id}: ${m.name}: its capacity`);
       assert.strictEqual(shadowCasterProfileOf(m), before.profiles[i]); assert.strictEqual(shadowCasterCascadesOf(m), before.cascades[i]);
-      ['aFadeI', 'aLodF', 'aImpRow'].forEach((n, k) => assert.strictEqual(m.geometry.getAttribute(n), before.attributes[i][k], `${id}: ${m.name}: its own ${n}`));
+      ['aFadeI', 'aLodF', 'aImpRow'].forEach((n, k) => assert.ok(m.geometry.getAttribute(n) === before.attributes[i][k], `${id}: ${m.name}: its own ${n}`));
     });
     const outlandMeshes = world.group.children.slice(children.length);
     assert.ok(outlandMeshes.length > 0 && outlandMeshes.every(m => m.userData.outlandTree), `${id}: the batch's pools appended after the build's`);

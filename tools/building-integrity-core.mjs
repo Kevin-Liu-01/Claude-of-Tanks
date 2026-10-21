@@ -23,7 +23,7 @@ export const FLAG_FINE = 1;
 export const FLAG_TRANSPARENT = 2;
 export const FLAG_DOUBLE = 4;
 
-export const DEFAULT_ELEVATIONS = Object.freeze([-35, -12, 0, 15, 40]);
+const DEFAULT_ELEVATIONS = Object.freeze([-35, -12, 0, 15, 40]);
 const EYE_M = 1.6;
 const SEAM_EPS = 0.004;
 const INVERTED_DEPTH = 0.08;
@@ -51,7 +51,7 @@ export function viewDirections(elevations = DEFAULT_ELEVATIONS, azimuths = 8, ov
 }
 
 /** A sampled ground: `fn(x, z)` on a regular grid over [x0, x1] x [z0, z1], read back bilinearly. */
-export function groundGrid(fn, x0, x1, z0, z1, step = 0.5) {
+function groundGrid(fn, x0, x1, z0, z1, step = 0.5) {
   const nx = Math.max(2, Math.ceil((x1 - x0) / step) + 1), nz = Math.max(2, Math.ceil((z1 - z0) / step) + 1);
   const h = new Float32Array(nx * nz);
   let max = -Infinity, min = Infinity;
@@ -139,7 +139,7 @@ function pointTriangleDist2(p, o, px, py, pz) {
  * of the ground is floating. Returns every floating assembly over MIN_FLOATING_M2, and each triangle's assembly
  * (-1 grounded) for the views to count what of it shows.
  */
-export function floatingParts(pos, flags, bucketOf, buckets, ground) {
+function floatingParts(pos, flags, bucketOf, buckets, ground) {
   const triCount = pos.length / 9;
   const keyOf = new Map(); const vid = new Int32Array(triCount * 3);
   for (let v = 0; v < triCount * 3; v++) {
@@ -294,7 +294,7 @@ export function floatingParts(pos, flags, bucketOf, buckets, ground) {
  * the grid's border (the ground is solid), then the outside dilated back by `k`: what remains is the solid closed over
  * every gap narrower than about 2k cells. `inside(x, y, z)` reads it.
  */
-export function closedEnvelope(pos, ground, { V = 0.2, k = 2, maxCells = 6e6 } = {}) {
+function closedEnvelope(pos, ground, { V = 0.2, k = 2, maxCells = 6e6 } = {}) {
   const b = boundsOf(pos);
   const span = Math.max(b[3] - b[0], 1) * Math.max(b[4] - b[1], 1) * Math.max(b[5] - b[2], 1);
   V = Math.max(V, Math.cbrt(span / maxCells));
@@ -371,7 +371,7 @@ const KIND_NAMES = ['', 'hole', 'inverted', 'inside', 'gap'];
  * Rasterise one view of the building (`pos`, its flags) among its occluders, clipped by the ground, and classify its
  * pixels. Returns the clusters over MIN_CLUSTER_M2 with their world places and the buckets they show.
  */
-export function rasterView(view, own, occ, ground, envelope, sphere, res, setOfTri = null) {
+function rasterView(view, own, occ, ground, envelope, sphere, res, setOfTri = null) {
   const d = view.d;
   const up0 = Math.abs(d[1]) < 0.99 ? [0, 1, 0] : [1, 0, 0];
   // right = up0 x d, up = d x right
@@ -546,7 +546,7 @@ export function rasterView(view, own, occ, ground, envelope, sphere, res, setOfT
 }
 
 /** Degenerate (zero-area) and sliver (longer than 0.5 m, altitude under 1/1000 of it) triangles. */
-export function triangleQuality(pos) {
+function triangleQuality(pos) {
   let degenerate = 0, sliver = 0;
   for (let o = 0; o < pos.length; o += 9) {
     const e0 = Math.hypot(pos[o + 3] - pos[o], pos[o + 4] - pos[o + 1], pos[o + 5] - pos[o + 2]);

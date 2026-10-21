@@ -29,7 +29,7 @@ const defaultWhenIdle = (load: () => void): void => {
 };
 
 /** The presentation and the promise of its module: resolved once it is in (or its load failed and was logged). */
-export interface LazyMatchModeWorldPresentation extends MatchModeWorldPresentation {
+interface LazyMatchModeWorldPresentation extends MatchModeWorldPresentation {
   ready(): Promise<void>;
 }
 

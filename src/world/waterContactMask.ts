@@ -1,4 +1,4 @@
-export interface WaterContactField {
+interface WaterContactField {
   getWaterMaskAt?(x: number, z: number): number;
   getHeightAt?(x: number, z: number): number;
   getWaterDepthAt?(x: number, z: number): number;

@@ -63,8 +63,8 @@ for(const high of[true,false])for(const batch of[false,true]){
   trackOutsoleDimensions:{padHeight:.08,grouserHeight:.08},
   trackShoeBuilder:p=>{calls.push(p);const g=new T.BoxGeometry(p.trackW,.08,p.pitch*.8);shoes.push(g);return g;}});
  try{assert.deepEqual(calls.map(p=>[p.far,p.high]),[[false,high],[true,high]]);
-  assert.equal(c.P.hullG.getObjectByName('gearRoadWheelTires').geometry,road.tire);
-  assert.equal(c.P.hullG.getObjectByName('gearRoadWheelDiscs').geometry,road.disc);
+  assert.ok(c.P.hullG.getObjectByName('gearRoadWheelTires').geometry === road.tire);
+  assert.ok(c.P.hullG.getObjectByName('gearRoadWheelDiscs').geometry === road.disc);
   assert.equal(c.P.disposables.filter(g=>g===road.tire).length,1);
   assert.ok(shoes.every(g=>c.P.disposables.includes(g)));
   const spindles=[];c.P.hullG.traverse(o=>{if(o.name==='gearReturnRollerSpindles')spindles.push(o);});

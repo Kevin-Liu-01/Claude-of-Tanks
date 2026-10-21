@@ -14,7 +14,7 @@ import { join, dirname } from 'node:path';
 import { bandEnergy } from './pcm.mjs';
 
 /** Wrap padding (samples at 48 kHz) either side of a loop body. */
-export const WRAP_PAD = 4096;
+const WRAP_PAD = 4096;
 
 /**
  * Mastering presets. `mMax` = target momentary-maximum loudness (LUFS) for
@@ -55,7 +55,7 @@ function run(cmd, args) {
 }
 
 /** Fold stereo to mono without phase cancellation (fall back to the stronger side when L/R oppose). */
-export function foldMono(l, r) {
+function foldMono(l, r) {
   let corr = 0;
   let el = 0;
   let er = 0;
@@ -119,7 +119,7 @@ export function fades(channels, sr, fadeInS = 0.0015, fadeOutS = 0.1) {
  * drop them, so the body's end flows into its start. Generated "loop" takes
  * are usually close already; this guarantees it.
  */
-export function repairLoop(channels, sr, crossfadeS = 0.08) {
+function repairLoop(channels, sr, crossfadeS = 0.08) {
   const n = channels[0].length;
   const x = Math.min(Math.round(crossfadeS * sr), Math.floor(n / 4));
   return channels.map((ch) => {
@@ -134,7 +134,7 @@ export function repairLoop(channels, sr, crossfadeS = 0.08) {
 }
 
 /** [last P | body | first P] so any decoder offset < P still loops seamlessly. */
-export function wrapPad(channels, pad = WRAP_PAD) {
+function wrapPad(channels, pad = WRAP_PAD) {
   return channels.map((ch) => {
     const n = ch.length;
     const p = Math.min(pad, n);
@@ -175,7 +175,7 @@ function writeF32Wav(file, channels, sr) {
  * `holdMs` after the onset, then falling with time constant `tauMs` down to `floorDb` re that window) onto
  * the target. The crack and everything quieter than the floor (the echo) pass untouched.
  */
-export function shapeTransient(channels, sr, [holdMs, tauMs, floorDb]) {
+function shapeTransient(channels, sr, [holdMs, tauMs, floorDb]) {
   const n = channels[0].length;
   const w = Math.max(1, Math.round(0.002 * sr));
   const sq = new Float32Array(n);

@@ -49,7 +49,7 @@ const SLACK_V = 1.6, SLACK_T = 0.45, FADE0 = 2.2, FADE1 = 3.6;
 /** the two strands of a twin-wire round ride this far apart (m) */
 const STRAND_GAP = 0.035;
 
-export interface MissileWires {
+interface MissileWires {
   readonly mesh: THREE.Mesh;
   /** A wire for round `key`, `strands` (1 or 2), paid out from the tube mouth at (x, y, z) at fx time `now`. */
   begin(key: number, strands: number, x: number, y: number, z: number, now: number): number;
@@ -208,6 +208,8 @@ export function createMissileWires(light: SceneLightUniforms): MissileWires {
     renderer.getCurrentViewport(_vp);
     uViewport.value.set(Math.max(1, _vp.z), Math.max(1, _vp.w));
   };
+  // the callback reads the viewport alone: the late pass may draw it through its view (engine/lateFxSceneView.ts)
+  mesh.userData.lateFxSceneAgnostic = true;
 
   // a slot's round (its key may be any number, negative too: whether a slot is taken is its own flag)
   const keys = new Float64Array(WIRE_SLOTS);

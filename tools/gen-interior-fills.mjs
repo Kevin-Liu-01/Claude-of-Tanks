@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // Generate interior fill solids for tank bodies so every hull and turret is watertight by construction.
 //
-//   node tools/gen-interior-fills.mjs --ids=a,b | --all [--voxel=0.025] [--cell=2] [--out=src/vehicles/generated/interiorFills.generated.ts] [--stats]
+//   node tools/gen-interior-fills.mjs --ids=a,b | --all [--release] [--voxel=0.025] [--cell=2] [--out=src/vehicles/generated/interiorFills.generated.ts] [--stats]
+//   node tools/gen-interior-fills.mjs --ids=a,b | --all --merge-from=partA,partB   # write parts measured with --out-dir
+//   The defaults are --rounds=8 --min-fine=1, the flags every shipped record is generated with (229; --release names
+//   them and refuses a contradicting flag). Other values are exploration, and a warning says so.
 //
 // For each tank the body is voxelised (tools/tank-voxel-body.mjs), the exterior flood-filled and the deep interior
 // found exactly as tools/tank-watertight-check.mjs does. Every deep-interior voxel the water reaches (a leak) is a
@@ -18,7 +21,7 @@
 // the air this generator leaves for the moving gun apart from a leak.
 // The generated module is consumed by tankFactory at build time (applyInteriorFills) and excluded from the authored
 // geometry fingerprints.
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { stripTypeScriptTypes } from 'node:module';
 import { VEHICLE_SIZE_FACTORS } from '../src/vehicles/vehicleSizePolicy.ts';
@@ -29,7 +32,7 @@ import { readdirSync, unlinkSync } from 'node:fs';
 import { voxelise, floodExterior, deepInterior, DEFAULT_EXCLUDE } from './tank-voxel-body.mjs';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
-import { interiorFillSelection, mergeInteriorFillGroup } from './interior-fill-selection.mjs';
+import { interiorFillOptions, interiorFillSelection, INTERIOR_FILL_RELEASE, mergeInteriorFillGroup } from './interior-fill-selection.mjs';
 import { interiorFillBoundaryTriangles } from './interior-fill-body-policy.mjs';
 import { createBarakBayFillPolicy } from './barak-rear-bay-fill-policy.mjs';
 import { createM1A1FillClearance } from './m1a1-fill-clearance.mjs';
@@ -43,8 +46,15 @@ const flag = (name) => args.includes(`--${name}`);
 if (flag('stats')) console.log('[interior-fills] Statistics only: no generated files will be written.');
 const VOXEL = Number(opt('voxel', '0.025'));
 const CELL = Math.max(1, Math.round(Number(opt('cell', '2'))));
-// fine-pass boxes below this many voxels are slivers along sloped plates: dropped (they stay as residual)
-const MIN_FINE = Math.max(0, Number(opt('min-fine', '12')));
+// fine-pass boxes below this many voxels are slivers along sloped plates: dropped (they stay as residual);
+// chase-to-zero (owner 2026-09-14): repeat the fill until the residual stops shrinking — boxes create new
+// enclosures between themselves and sloped plates, which the next round closes. --release fixes both (R4c).
+const { rounds: ROUNDS, minFine: MIN_FINE, release: RELEASE_PRESET } = interiorFillOptions(args);
+// (--rekey and --uniform-from measure nothing, so they skip the line)
+if (!flag('rekey') && !opt('uniform-from', null)) console.log(RELEASE_PRESET
+  ? `[interior-fills] release preset: --rounds=${ROUNDS} --min-fine=${MIN_FINE}`
+  : `[interior-fills] WARNING not the release preset (--rounds=${ROUNDS} --min-fine=${MIN_FINE}): shipped records are `
+    + `generated with --release (--rounds=${INTERIOR_FILL_RELEASE.rounds} --min-fine=${INTERIOR_FILL_RELEASE.minFine})`);
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 // --all covers the whole registered fleet (fleetManifest), not the 27 legacy specs ids (2026-09-14 fix:
 // 80 tanks had never received fills because --all read ALL_TANK_IDS).
@@ -53,9 +63,6 @@ const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const rekey = flag('rekey');
 const requestedIds = flag('all') ? Object.keys(FLEET_GROUP_BY_ID) : opt('ids', 'abramsx').split(',').filter(Boolean);
 const ids = rekey ? [] : interiorFillSelection(FLEET_GROUP_BY_ID, requestedIds);
-// chase-to-zero (owner 2026-09-14): repeat the fill until the residual stops shrinking — boxes create new
-// enclosures between themselves and sloped plates, which the next round closes.
-const ROUNDS = Math.max(1, Number(opt('rounds', '4')));
 
 /** Per-voxel component (1 hull, 2 turret, 0 none) from the deep-interior column spans. */
 function componentAt(grid, x, y, z) {
@@ -118,9 +125,34 @@ async function uniformRecord(id) {
     ...(prior.g ? { g: prior.g.map(v => v * factor) } : {}) };
   return { record, factor };
 }
+// --merge-from=dirA,dirB (2026-10-16, changed-only regen): records that parallel scoped runs measured into scratch
+// --out-dir directories (each run's moving-clearance-air.json beside its shards) are written as though this run had
+// measured them, through the same merge and serializer, so N parts write exactly the bytes one process writes.
+const mergeFrom = opt('merge-from', null)?.split(',').filter(Boolean) ?? null;
+const mergedRecords = new Map(), mergedClearance = new Map();
+if (mergeFrom) for (const dir of mergeFrom) {
+  for (const name of readdirSync(resolve(dir)).sort()) {
+    if (!name.endsWith('.generated.ts')) continue;
+    const records = (await import(pathToFileURL(resolve(dir, name)).href)).INTERIOR_FILLS;
+    for (const [id, record] of Object.entries(records)) {
+      if (mergedRecords.has(id)) throw new Error(`${id}: measured by more than one --merge-from part`);
+      mergedRecords.set(id, record);
+    }
+  }
+  const partClearance = resolve(dir, 'moving-clearance-air.json');
+  if (existsSync(partClearance)) for (const [id, record] of Object.entries(JSON.parse(readFileSync(partClearance, 'utf8')).tanks ?? {})) mergedClearance.set(id, record);
+}
 const out = {}; const stats = []; const clearanceAir = {};
 for (const id of ids) {
   const t0 = performance.now();
+  if (mergeFrom) {
+    const record = mergedRecords.get(id);
+    if (!record) throw new Error(`${id}: no measured record in --merge-from`);
+    out[id] = { ...record }; clearanceAir[id] = mergedClearance.get(id) ?? null;
+    const boxes = ['hull', 'turret', 'gun'].reduce((n, key) => n + (record[key] ? Buffer.from(record[key], 'base64').length / 12 : 0), 0);
+    stats.push({ id, boxes, tris: boxes * 12, leakL: 0, residualL: 0, merged: true });
+    continue;
+  }
   if (uniformCommit) {
     const { record, factor } = await uniformRecord(id);
     out[id] = record; clearanceAir[id] = null; // a replayed lattice carries no measured clearance cells

@@ -98,10 +98,10 @@ function makeFixture(mapId = 'verdant') {
   let result;
   do { result = steps.next(); } while (!result.done);
   const { mats, grimeTex, retainedSurfaceMaterials } = result.value;
-  assert.equal(mats.roof.map, atlases.roofT.albedo);
-  assert.equal(mats.roof.normalMap, atlases.roofT.normal);
-  assert.equal(mats.roof.roughnessMap, atlases.roofT.surface);
-  assert.equal(mats.roof.aoMap, atlases.roofT.surface);
+  assert.ok(mats.roof.map === atlases.roofT.albedo);
+  assert.ok(mats.roof.normalMap === atlases.roofT.normal);
+  assert.ok(mats.roof.roughnessMap === atlases.roofT.surface);
+  assert.ok(mats.roof.aoMap === atlases.roofT.surface);
   assert.equal(mats.roof.roughness, mapId === 'foundry' ? 1.3 : 1,
     'map-specific roof preparation retains the same owned texture identities');
   const materials = Object.values(mats);
@@ -150,7 +150,7 @@ for (const mapId of ['verdant', 'winter', 'foundry']) {
     const suspended = releaseObject3DGpuResources(fixture.group);
     assert.deepEqual(suspended, { objects: 2, geometries: 1, materials: 23, textures: 53 },
       'attached and declared references are deduplicated during GPU suspension');
-    assert.equal(fixture.group.parent, fixture.parent, 'GPU suspension preserves the scene graph');
+    assert.ok(fixture.group.parent === fixture.parent, 'GPU suspension preserves the scene graph');
     assert.equal(fixture.csm.shaders.size, 23, 'suspension preserves shadow registration for resume');
     fixture.textures.forEach((texture, index) => assert.equal(texture.image, images[index],
       'texture backing and sourced in-place replacement identity survive suspension'));
@@ -158,7 +158,7 @@ for (const mapId of ['verdant', 'winter', 'foundry']) {
     compileSurfaces(fixture);
   }
   assert.deepEqual(evict(fixture), { objects: 2, geometries: 1, materials: 23, textures: 53 });
-  assert.equal(fixture.group.parent, null);
+  assert.ok(fixture.group.parent === null);
   assert.equal(fixture.csm.shaders.size, 0, 'final eviction clears used AND unused CSM material roots');
   for (const count of fixture.disposals.values()) assert.equal(count, 4,
     'each distinct resource is released exactly once per suspension or final eviction');

@@ -15,8 +15,8 @@ import {
   PAGE_CATALOG_META, scanPageCatalogs,
 } from './i18n-page-catalogs.mjs';
 import {
-  bootChunkProblems, BOOT_RUNTIME_MODULES, catalogChunkFiles, i18nPageCatalogs, insertModulePreload, nameCatalogChunks,
-  pageCatalogModuleUrl, rewriteLazyImports, VITE_PRELOAD_HELPER,
+  bootChunkProblems, BOOT_RUNTIME_MODULES, catalogChunkFiles, CHUNK_IMPORT_ALIAS, i18nPageCatalogs, insertModulePreload,
+  nameCatalogChunks, pageCatalogModuleUrl, rewriteLazyImports, VITE_PRELOAD_HELPER,
 } from './viteI18nPageCatalogs.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -320,6 +320,21 @@ for (const url of ['//cdn.test/x.js', 'https://cdn.test/x.js', '/\\cdn.test/x.js
 }
 assert.equal(lazyCatalogUrl('en-US'), null, 'Node has no document');
 assert.equal(globalThis.__cotI18nLazy, undefined, 'without a document the runtime registers no loader');
+// the chunk import (2026-10-16): Node resolves the registry's ./i18nChunkImport.ts to the module without the URL import
+// (a stand-in document that names a chunk without the plugin's alias fails loudly: the runtime below); the plugin
+// aliases the specifier the registry imports to the URL import (src/ui/i18nChunkImport.browser.ts) for every document
+// it builds and serves
+assert.match(registrySource, /^import \{ importCatalogChunk \} from '\.\/i18nChunkImport\.ts';$/m,
+  'the registry imports its chunk importer by the specifier the plugin aliases');
+assert.ok(CHUNK_IMPORT_ALIAS.find.test('./i18nChunkImport.ts') && !CHUNK_IMPORT_ALIAS.find.test('../ui/i18nChunkImport.ts'));
+assert.equal(CHUNK_IMPORT_ALIAS.replacement, resolve(ROOT, 'src/ui/i18nChunkImport.browser.ts'));
+assert.deepEqual(i18nPageCatalogs().config(), { resolve: { alias: [{ ...CHUNK_IMPORT_ALIAS }] } },
+  'the page catalog plugin carries the alias into every Vite config it joins');
+const [nodeImporter, browserImporter] = await Promise.all(['src/ui/i18nChunkImport.ts', CHUNK_IMPORT_ALIAS.replacement]
+  .map((file) => import(pathToFileURL(resolve(ROOT, file)).href)));
+assert.deepEqual(Object.keys(browserImporter), Object.keys(nodeImporter), 'both importers export the same names');
+assert.match(readFileSync(CHUNK_IMPORT_ALIAS.replacement, 'utf8'), /\bimport\(\/\* @vite-ignore \*\/ url\)/,
+  'the document\'s importer imports the URL itself');
 // loading (a fresh process, so no registry state of this one): a lazy chunk joins its locale's boot chunk, a failed one
 // is retried, and a locale that loads after a lazy module takes its lazy chunk with it
 const chunkDir = mkdtempSync(join(tmpdir(), 'cot-i18n-lazy-chunks-'));
@@ -332,11 +347,22 @@ try {
     'data-en-us-lazy': join(chunkDir, 'missing.mjs'), 'data-zh-cn': chunkFile('zh.mjs', { 'boot.key': '启动' }),
     'data-zh-cn-lazy': chunkFile('zh-lazy.mjs', { 'lazy.key': '懒' }) };
   const enLazy = chunkFile('en-lazy.mjs', { 'lazy.key': 'Lazy' });
+  // (a registry instance as Node resolves it refuses the chunk; the child then resolves the registry's chunk importer as
+  // the plugin's alias does, so the instance under test runs the document's URL import)
   const script = `import assert from 'node:assert/strict';
+import { registerHooks } from 'node:module';
+const registryUrl = ${JSON.stringify(pathToFileURL(resolve(ROOT, 'src/ui/i18nDictionaries.ts')).href)};
 const attributes = ${JSON.stringify(attributes)};
 globalThis.document = { querySelector: (selector) => (selector === 'meta[name="${PAGE_CATALOG_META}"]'
   ? { getAttribute: (name) => attributes[name] ?? null } : null) };
-const registry = await import(${JSON.stringify(pathToFileURL(resolve(ROOT, 'src/ui/i18nDictionaries.ts')).href)});
+const unaliased = await import(registryUrl + '?node');
+await assert.rejects(unaliased.loadLocaleDictionary('en-US'), /only a Vite document imports/,
+  'without the plugin alias the registry imports no chunk URL');
+assert.equal(unaliased.localeDictionary('en-US'), undefined);
+const aliasFind = new RegExp(${JSON.stringify(CHUNK_IMPORT_ALIAS.find.source)});
+registerHooks({ resolve: (specifier, context, next) => (context.parentURL === registryUrl && aliasFind.test(specifier)
+  ? next(${JSON.stringify(pathToFileURL(CHUNK_IMPORT_ALIAS.replacement).href)}, context) : next(specifier, context)) });
+const registry = await import(registryUrl);
 assert.equal(globalThis.__cotI18nLazy, registry.loadLazyCatalog, 'a document registers the loader the build calls');
 await registry.loadLocaleDictionary('en-US');
 assert.equal(registry.catalogText('en-US', 'boot.key'), 'Boot');
@@ -398,8 +424,8 @@ const chunk = (fileName, extra = {}) => ({ type: 'chunk', fileName, moduleIds: [
   isEntry: false, facadeModuleId: null, ...extra });
 const bundle = {
   'assets/i18n-r1.js': chunk('assets/i18n-r1.js', {
-    moduleIds: ['\0vite/modulepreload-polyfill.js', '/p/src/ui/localeRouting.ts', '/p/src/ui/i18nDictionaries.ts',
-      '/p/src/ui/i18n.ts', '/p/src/presentation/staticI18n.ts', '/p/src/ui/responsiveLayout.ts'],
+    moduleIds: ['\0vite/modulepreload-polyfill.js', '/p/src/ui/localeRouting.ts', '/p/src/ui/i18nChunkImport.browser.ts',
+      '/p/src/ui/i18nDictionaries.ts', '/p/src/ui/i18n.ts', '/p/src/presentation/staticI18n.ts', '/p/src/ui/responsiveLayout.ts'],
     imports: ['assets/preload-helper-p1.js'],
     dynamicImports: ['assets/i18nCatalogEnUS-e1.js', 'assets/i18nCatalogZhCN-z1.js'],
     code: 'import("./i18nCatalogEnUS-e1.js");import("./i18nCatalogZhCN-z1.js")',
@@ -436,10 +462,16 @@ assert.match(bootChunkProblems(polluted).join('\n'), /holds \\0vite\/preload-hel
 const workerReach = { ...bundle, 'assets/wreckBakeWorker-w1.js': { ...bundle['assets/wreckBakeWorker-w1.js'],
   imports: ['assets/main-m1.js'] } };
 assert.match(bootChunkProblems(workerReach).join('\n'), /wreckBakeWorker-w1\.js \(a worker or emitted entry\) statically loads/);
-for (const id of ['/p/src/ui/i18n.ts', '/p/src/ui/i18nDictionaries.ts', '/p/src/ui/localeRouting.ts', '/p/src/ui/responsiveLayout.ts',
-  '/p/src/presentation/staticI18n.ts', '\0vite/modulepreload-polyfill.js']) assert.ok(BOOT_RUNTIME_MODULES.test(id), id);
+// a build without the plugin's alias bundles Node's importer, under which no page could load its catalog chunk
+const unaliased = { ...bundle, 'assets/i18n-r1.js': { ...bundle['assets/i18n-r1.js'],
+  moduleIds: bundle['assets/i18n-r1.js'].moduleIds.map((id) => id.replace('i18nChunkImport.browser.ts', 'i18nChunkImport.ts')) } };
+assert.deepEqual(bootChunkProblems(unaliased), ['assets/i18n-r1.js holds /p/src/ui/i18nChunkImport.ts, which is not boot runtime',
+  'assets/i18n-r1.js lacks src/ui/i18nChunkImport.browser.ts: a page could not import its catalog chunk (the page catalog '
+  + 'plugin aliases the registry\'s ./i18nChunkImport.ts to it)']);
+for (const id of ['/p/src/ui/i18n.ts', '/p/src/ui/i18nDictionaries.ts', '/p/src/ui/i18nChunkImport.browser.ts', '/p/src/ui/localeRouting.ts',
+  '/p/src/ui/responsiveLayout.ts', '/p/src/presentation/staticI18n.ts', '\0vite/modulepreload-polyfill.js']) assert.ok(BOOT_RUNTIME_MODULES.test(id), id);
 for (const id of ['/p/src/ui/i18nCatalogEnUS.ts', '/p/src/ui/i18nCatalog.en-US.json', '/p/src/ui/i18nCatalogZhCN.ts',
-  '\0vite/preload-helper.js', '/p/src/ui/i18n.selftest.mjs']) assert.ok(!BOOT_RUNTIME_MODULES.test(id), id);
+  '\0vite/preload-helper.js', '/p/src/ui/i18n.selftest.mjs', '/p/src/ui/i18nChunkImport.ts']) assert.ok(!BOOT_RUNTIME_MODULES.test(id), id);
 
 // The dev server serves the same subsets as virtual modules and names them on the page.
 const plugin = i18nPageCatalogs();

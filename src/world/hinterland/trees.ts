@@ -20,7 +20,7 @@ import type { HinterlandAir } from './air.ts';
 
 type MaterialShader = Parameters<THREE.Material['onBeforeCompile']>[0];
 
-export interface HinterlandTreeImpostorOptions {
+interface HinterlandTreeImpostorOptions {
   library: TreeImpostorLibrary;
   rimMix: ReadonlyArray<readonly [string, number]>;
   rimTreeTint?: readonly [number, number, number];
@@ -34,7 +34,7 @@ export interface HinterlandTreeImpostorOptions {
 }
 
 /** A Hinterland tree as the battlefield's tiers take it (vegetation.ts OutlandTreeSpec). */
-export interface HinterlandAdoptedTree {
+interface HinterlandAdoptedTree {
   x: number; y: number; z: number; yaw: number; species: string; variant: number; mirror: boolean; scale: number;
   tint: [number, number, number];
 }

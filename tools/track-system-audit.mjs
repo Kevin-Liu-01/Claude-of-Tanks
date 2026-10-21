@@ -10,6 +10,7 @@
 // and captures both sides for mandatory visual review of the complete shoe run.
 
 import { createServer } from 'vite';
+import { uniqueIds } from './id-list.mjs';
 import puppeteer from 'puppeteer';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -28,7 +29,7 @@ const runBattle = process.argv.includes('--battle') || runTurning;
 const runRound = process.argv.includes('--round');
 const skipStatic = process.argv.includes('--skip-static');
 const ids = idArg
-  ? idArg.slice(6).split(',').map((id) => id.trim()).filter(Boolean)
+  ? uniqueIds(idArg.slice(6).split(',').map((id) => id.trim()).filter(Boolean), 'track-system-audit --ids')
   : [...ALL_TANK_IDS];
 const maps = (mapArg ? mapArg.slice(7) : 'badlands')
   .split(',').map((id) => id.trim()).filter(Boolean);

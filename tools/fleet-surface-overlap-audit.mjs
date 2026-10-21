@@ -6,6 +6,7 @@
 //   node tools/fleet-surface-overlap-audit.mjs --ids=type10b --report-only
 //   node tools/fleet-surface-overlap-audit.mjs --check --out=/tmp/surface-overlaps.json
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -17,7 +18,7 @@ const option = (name, fallback = '') => {
   const index = args.indexOf(`--${name}`);
   return index >= 0 ? args[index + 1] : fallback;
 };
-const selectedIds = option('ids').split(',').map((id) => id.trim()).filter(Boolean);
+const selectedIds = uniqueIds(option('ids').split(',').map((id) => id.trim()).filter(Boolean), 'fleet-surface-overlap-audit --ids');
 const requestedWorkers = Number.parseInt(option('workers', '4'), 10);
 const workerCount = Number.isFinite(requestedWorkers)
   ? Math.max(1, Math.min(8, requestedWorkers))

@@ -117,7 +117,7 @@ for (const onRestored of [undefined, () => false, () => { throw new Error('fresh
   const nativeRender = function (actualLights, actualScene, actualCamera) {
     order.push('native-shadow');
     assert.equal(this, map, 'native replacement keeps its receiver');
-    assert.equal(actualLights, lights); assert.equal(actualScene, scene); assert.equal(actualCamera, camera);
+    assert.equal(actualLights, lights); assert.ok(actualScene === scene); assert.ok(actualCamera === camera);
     assert.equal(camera.layers.mask, mask | (1 << SHADOW_ONLY_LAYER), 'shadow-only proxies participate');
     if (fail) throw nativeError;
   };

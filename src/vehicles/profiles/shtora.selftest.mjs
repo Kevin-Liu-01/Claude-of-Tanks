@@ -60,7 +60,7 @@ for (const id of ['t90', 't90a', 't90a_vladimir', 't90a_2004', 't90a_2006']) for
     });
     assert.equal(lenses.length, 2, `${id}/${quality} has two real emitters`);
     for (const { mesh: lens, lamp } of lenses) {
-      assert.equal(lens.parent, turret, 'eyes belong to the moving turret, not the gun or hull');
+      assert.ok(lens.parent === turret, 'eyes belong to the moving turret, not the gun or hull');
       assert.equal(lens.material.color.getHex(), 0x54180e, 'round emitter uses canonical deep red, not blue glass or camouflage');
       assert.equal(lens.material.emissive.getHex(), 0x7c2410);
       // Low detail legitimately batches the pair into one mesh. Inspect each

@@ -20,7 +20,7 @@
  * inside the tile (the x axis wraps through the sampler, the y axis through the pad).
  */
 
-export type OceanKind = 'coast' | 'lake' | 'river' | 'marsh';
+type OceanKind = 'coast' | 'lake' | 'river' | 'marsh';
 
 /** A map's authored sea state (the `ocean` block of its config); every field is optional and defaults per water kind. */
 export interface OceanConfig {
@@ -71,7 +71,7 @@ export interface OceanState {
 
 export const OCEAN_FFT_SIZE = 128;
 export const OCEAN_CASCADES = 3;
-export const OCEAN_GRAVITY = 9.81;
+const OCEAN_GRAVITY = 9.81;
 /** A wave belongs to the smallest patch that still holds this many of its wavelengths. */
 export const OCEAN_BAND_WAVELENGTHS = 6;
 const TWO_PI = Math.PI * 2;
@@ -352,7 +352,7 @@ export function oceanStagePlan(n: number): number[] {
  * the group's base input (j = q·ns + jm); the R inputs sit ns·R/ns… at stride n/R, each turned by the twiddle
  * e^{+2πi·rr·jm/(ns·R)} before the R-point DFT. `src`/`dst` are interleaved complex arrays of length 2n.
  */
-export function stockhamStage(src: ArrayLike<number>, dst: Float64Array, n: number, ns: number, radix: number): void {
+function stockhamStage(src: ArrayLike<number>, dst: Float64Array, n: number, ns: number, radix: number): void {
   const span = ns * radix, stride = n / radix;
   for (let o = 0; o < n; o++) {
     const q = Math.floor(o / span), rem = o - q * span, r = Math.floor(rem / ns), jm = rem - r * ns, j = q * ns + jm;
@@ -442,7 +442,7 @@ export function spatialFieldReference(spectrum: ArrayLike<number>, n: number): F
 
 // ---------------------------------------------------------------------------------------------------- the shaders
 
-export interface OceanStageShaderOptions {
+interface OceanStageShaderOptions {
   n: number;
   cascades: number;
   radix: number;

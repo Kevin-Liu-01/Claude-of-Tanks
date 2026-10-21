@@ -12,7 +12,7 @@
 import * as THREE from 'three';
 import type { SimplexNoise } from '../engine/simplexFast.ts';
 
-export interface JebelSkinSpec {
+interface JebelSkinSpec {
   /** The dome's centre (the search starts at its highest ground within half the radius). */
   x: number;
   z: number;
@@ -28,12 +28,12 @@ export interface JebelSkinSpec {
   bulgeM?: number;
 }
 
-export interface JebelSkinGround {
+interface JebelSkinGround {
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
 }
 
-export interface JebelSkinBuild {
+interface JebelSkinBuild {
   geometry: THREE.BufferGeometry | null;
   triangles: number;
   /** The wall's rays that carry skin, of all rays. */

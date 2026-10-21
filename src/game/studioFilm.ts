@@ -60,7 +60,7 @@ export interface StudioFilmPorts {
   seek(ms: number): void;
   /** Monotone, unrounded timeline advance to `ms`. */
   advanceTo(ms: number): void;
-  /** Camera-facing FX (tracer ribbons, light cards) for the current camera; no time passes. */
+  /** Camera-facing FX (projectile tracers, light cards) for the current camera; no time passes. */
   refreshFxForCamera(): void;
   /** World LOD/streaming for the current camera, completing pending terrain lookahead. */
   prepareWorld(complete: boolean): void;
