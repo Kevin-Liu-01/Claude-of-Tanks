@@ -294,11 +294,11 @@ const pendingRoomInvitePromise = startupIntent.pendingRoomInvite;
 const INVITE_GARAGE_IDLE_DELAY_MS = 12_000;
 /**
  * 2026-10-20 (item/mp-rejoin-229): the network round this browser last entered (the composition's rememberRound port),
- * so a tab reopened on that room's invite builds the match's battlefield during its boot. Two hours at most: past that
- * the room has long moved on.
+ * so a tab reopened on that room's invite builds the match's battlefield during its boot. Twenty minutes at most: a
+ * return is a reload or a reopened invite, and past that the match has most likely ended (a wrong guess costs boot time).
  */
 const REMEMBERED_ROUND_KEY = 'cot.mp.rememberedRound.v1';
-const REMEMBERED_ROUND_MAX_AGE_MS = 2 * 60 * 60 * 1000;
+const REMEMBERED_ROUND_MAX_AGE_MS = 20 * 60 * 1000;
 function rememberRound(round: { roomCode: string; matchId: string; mapId: string; terrainVariant: 'assault-trenches' | null } | null): void {
   try {
     if (round) localStorage.setItem(REMEMBERED_ROUND_KEY, JSON.stringify({ ...round, at: Date.now() }));
@@ -821,14 +821,14 @@ const { stage: garageStage, dressing: garageDressing } = await bootStage('garage
 });
 // 2026-10-20 (item/mp-rejoin-229; the MP-05 rejoin row): a tab reopened on the invite of the room whose match it last
 // entered is on its way back into that match, and its battlefield was built only after the whole boot (15.5 s of the
-// 227 rejoins' 37 s). The remembered round's battlefield now builds on the room-intent background lane from here,
-// beside the rest of the boot; the battle entry promotes the build instead of starting it (worldBuildCoordinator).
-// A wrong guess (the match ended, the room moved on) is a background build the room's lobby state cancels. Phones keep
-// their boot memory for the boot.
+// 227 rejoins' 37 s). The remembered round's battlefield now builds from here, beside the rest of the boot, on the
+// room-intent lane at a covered load's pace (the boot screen covers this tab, and its battle needs the world before
+// anything else); the battle entry promotes the build instead of starting it (worldBuildCoordinator). A wrong guess
+// (the match ended, the room moved on) is a build the room's lobby state cancels. Phones keep their boot memory.
 if (pendingRoomInvitePromise && getDeviceTier() !== 'mobile') {
   void pendingRoomInvitePromise.then((invite) => {
     const round = invite ? rememberedRoundFor(invite.roomCode) : null;
-    if (round) prefetchWorld(round.terrainVariant ? `${round.mapId}#${round.terrainVariant}` : round.mapId, { intent: true });
+    if (round) prefetchWorld(round.terrainVariant ? `${round.mapId}#${round.terrainVariant}` : round.mapId, { intent: true, pace: 'loading' });
   }).catch(() => { /* the entry builds it */ });
 }
 // FEEL r12: stable zero-work diagnostics facade. Explicit QA and automation

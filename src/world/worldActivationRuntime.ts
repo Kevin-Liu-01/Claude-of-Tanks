@@ -133,7 +133,7 @@ export interface WorldActivationRuntime<
   readonly lastRelease: WorldBuildCoordinator<World>['lastRelease'];
   loadModule(): ReturnType<WorldBuildCoordinator<World>['loadModule']>;
   enforceCacheBudget(): void;
-  prefetch(mapId: string, options?: { intent?: boolean }): Promise<World | null> | null;
+  prefetch(mapId: string, options?: { intent?: boolean; pace?: 'background' | 'loading' }): Promise<World | null> | null;
   cancelBackgroundExcept(mapId?: string | null): void;
   setPendingMapId(mapId: string): void;
   raycast(
