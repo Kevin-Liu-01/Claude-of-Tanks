@@ -812,15 +812,15 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
 // Release 230 (round 11): the gameplay ERA coverage the round restored (frontEraCoverage.test-support.mjs, 5 cm cells, the
 // first plate along each ray). Round 10 measured the regressions: roof 222 / 228 / 234 (the donor carpet's ~925 gone),
 // Hetman II's side 783 (1779 with the T-72B3M side boxes), the Zubrs' turret fronts 162 / 192. Pinned at the round's
-// measurement. The brief's floors (Hetman II roof 700, side 880; the Zubr II's roof 750) are not reached: E7 (the
-// cupola's and loader's hatch openings over the crown and the cabinet lids), the lids' fittings, the seat contract on the
-// cast dome's falling rear and flanks (a flat tile's seat bowing over 12.5 mm), the Zubr II's dock landing, the band's
-// keep-outs and its .13 m gun margin, and the HIGH ceilings bind; the others (Hetman II front 800, the Zubr roof 450,
-// both Zubrs' turret fronts 190 / 235) are met.
+// measurement, on the anatomy regenerated id-scoped from the round's final geometry. The brief's floors (Hetman II roof
+// 700, side 880; the Zubr II's roof 750) are not reached: E7 (the cupola's and loader's hatch openings over the crown and
+// the cabinet lids), the lids' fittings, the seat contract on the cast dome's falling rear and flanks (a flat tile's seat
+// bowing over 12.5 mm), the Zubr II's dock landing, the band's keep-outs and its .13 m gun margin, and the HIGH ceilings
+// bind; the others (Hetman II front 800, the Zubr roof 450, both Zubrs' turret fronts 190 / 235) are met.
 const COVERAGE = {
-  t72b3m_hetman_ii: {roof: 476, side: 866, front: 829},
-  t72b3_zubr: {roof: 486, turretFront: 251},
-  t72b3_zubr_ii: {roof: 481, turretFront: 262},
+  t72b3m_hetman_ii: {roof: 452, side: 866, front: 827},
+  t72b3_zubr: {roof: 468, turretFront: 249},
+  t72b3_zubr_ii: {roof: 469, turretFront: 262},
 };
 for (const id of IDS) {
   const c = eraCoverage(id), got = {roof: c.roof.era, side: c.side.era, front: c.front.era,

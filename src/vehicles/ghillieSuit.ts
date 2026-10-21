@@ -82,7 +82,8 @@ interface TopPanel {
    * into a block between its corners, and the net spans every gap and step narrower than twice the reach.
    */
   envelopeM?: number;
-  envelopeZ?: readonly [number, number];
+  /** (230 round 11: or several bands, as Hetman II's forward and rear roof slab fields with its hatches between) */
+  envelopeZ?: readonly [number, number] | readonly (readonly [number, number])[];
   /**
    * Release 227 round 6 (the critic's UAPL-R5C-1 era census; the suit receipt: "hull net piece of 24 vertices ... nearest
    * armour 2.4 cm"): the smallest piece (triangles) a laid sheet keeps (default 8). Over Hetman II's shingled glacis
@@ -990,6 +991,10 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
   // raised over the roof) and is cut round anything standing taller on that surface (a box, a post, a sight head)
   const tall = new Uint8Array(NX * NZ);
   const laidRest = new Float64Array(NX * NZ).fill(NaN);
+  // release 227 (envelopeM): the z bands of the stepped ERA fields (one, or several: 230 round 11)
+  const envZ = panel.envelopeZ;
+  const bands = envZ === undefined ? undefined : typeof envZ[0] === 'number' ? [envZ as readonly [number, number]]
+    : envZ as readonly (readonly [number, number])[];
   const laidAt = (x: number, z: number): { rest: number | null; standing: boolean } => {
     const ceiling = panel.yAt(x, z) + (panel.riseLimitM ?? 0.35);
     let rest: number | null = null, centre: number | null = null, standing = false;
@@ -1008,10 +1013,10 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
       }
     }
     // release 227 (envelopeM): over a stepped ERA field the net rests on the highest top within its reach
-    const env = panel.envelopeM, band = panel.envelopeZ;
+    const env = panel.envelopeM;
     // (a point just past the field's edge, over no armour, rests on the edge within its reach: the net's last cell
     // there lies level off the edge instead of hanging down through the edge's top corner)
-    if (env !== undefined && !standing && (!band || (z >= band[0] && z <= band[1]))) {
+    if (env !== undefined && !standing && (!bands || bands.some(([z0b, z1b]) => z >= z0b && z <= z1b))) {
       const ref = centre ?? rest;
       let top = ref === null ? null : rest !== null && rest - ref < ENVELOPE_RISE_M ? Math.max(rest, ref) : ref;
       for (const [ux, uz] of ENVELOPE_RING) {
