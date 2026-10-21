@@ -71,7 +71,7 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     return files;
   };
   const fileHashes = new Map(), dirFingerprints = new Map(), edges = new Map(), closures = new Map();
-  const runSets = new Map(), scanSets = new Map(), patternMembers = new Map(), importClosures = new Map();
+  const runSets = new Map(), scanSets = new Map(), patternMembers = new Map(), executedSets = new Map();
   const executableEdges = new Map();
   const metadata = new Map();
   const unresolvedImports = new Set();
@@ -206,23 +206,29 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
       const files = declaredClosure(declared);
       // inspected for the environment they read, so the key never depends on which receipts were looked up first
       for (const member of files) if (SOURCE_EXTENSIONS.has(extname(member)) && isFile(member)) inspect(member);
-      importClosures.set(file, files); closures.set(file, files); return files;
+      executedSets.set(file, files); closures.set(file, files); return files;
     }
-    const seen = new Set(), expanded = new Set(), stack = [[file, true]];
+    const seen = new Set(), expanded = new Set(), executed = new Set(), stack = [[file, true]];
     while (stack.length) {
       const [current, execute] = stack.pop(); seen.add(current);
       if (isDir(current) || expanded.has(current) || (!execute && extname(current) !== '.json')) continue;
       expanded.add(current);
+      if (execute) executed.add(current);
       for (const dependency of dependenciesOf(current)) stack.push([dependency, executableEdges.get(current)?.has(dependency)]);
     }
     // Every file a listing module it runs lists is a named input (data, never followed): the key changes when one
-    // appears, changes or goes, and a reader of closures (selection) sees the read directly. Its flags and environment
-    // never count: another receipt's walk may have parsed it, so they would depend on lookup order.
-    importClosures.set(file, new Set(seen));
+    // appears, changes or goes, and a reader of closures (selection) sees the read directly.
     for (const pattern of scanOf(file).lists) for (const member of membersOf(pattern)) seen.add(member);
+    executedSets.set(file, executed);
     closures.set(file, seen); return seen;
   };
-  const importClosureOf = file => { closureOf(file); return importClosures.get(file); };
+  // The files whose flags (browser, Git, computed imports) and environment reads count for a receipt: the modules its
+  // import graph executes, never a file it only names or lists. Another receipt's walk may have parsed a named file, so
+  // counting it made liveness and keys depend on lookup order (2026-10-20: tools/contig-hidden-gaps.selftest.mjs went
+  // live after any receipt that imports tools/source-x-oracle.mjs, which a research receipt JSON only names). A tool a
+  // receipt spawns keeps the fallback key and does not make it live (wreckBakePlanDrift, ~500 s, would run every time
+  // for its tool's git revision stamp).
+  const executedOf = file => { closureOf(file); return executedSets.get(file); };
   // The modules a receipt runs: its import graph, and the repository modules a child-process user names (a tool it
   // may spawn) with theirs. Listing declarations are inherited along it; the cache key's flags are not.
   const modules = new Map();
@@ -300,7 +306,7 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
     const rows = [...closure].map(file => `${isDir(file) ? 'dir' : 'file'}:${relative(root, file)}:${isDir(file) ? fingerprintDir(file) : hashFile(file)}`).sort();
     const hash = createHash('sha256');
     hash.update(`v${SELFTEST_CACHE_VERSION}\0node:${nodeVersion}\0platform:${process.platform}/${process.arch}\0options:${env.NODE_OPTIONS ?? ''}\0`);
-    const environment = new Set([...importClosureOf(resolve(root, receipt))].flatMap(file => metadata.get(file)?.environment ?? []));
+    const environment = new Set([...executedOf(resolve(root, receipt))].flatMap(file => metadata.get(file)?.environment ?? []));
     for (const name of [...environment].sort()) hash.update(`env:${name}:${env[name] ?? '<unset>'}\n`);
     for (const salt of GLOBAL_SALT_FILES) hash.update(`salt:${salt}:${hashFile(join(root, salt))}\n`);
     rows.forEach(row => hash.update(row + '\n'));
@@ -315,12 +321,12 @@ export function createSelftestCache({ root = REPO_ROOT, cacheDir, env = process.
   // Why a receipt is never keyed (it runs every time), or null when its inputs key it.
   const liveReason = receipt => {
     if (freshFiles.has(receipt)) return 'fresh environment/timing check';
-    const closure = importClosureOf(resolve(root, receipt));
-    if (keyedFixtures.has(receipt)) return null;
-    if ([...closure].some(file => metadata.get(file)?.browser || metadata.get(file)?.git)) {
+    if (keyedFixtures.has(receipt)) { closureOf(resolve(root, receipt)); return null; }
+    const runs = executedOf(resolve(root, receipt));
+    if ([...runs].some(file => metadata.get(file)?.browser || metadata.get(file)?.git)) {
       return 'browser or Git state must be checked live';
     }
-    if ([...closure].some(file => metadata.get(file)?.opaqueImport || metadata.get(file)?.opaqueEnvironment || unresolvedImports.has(file))) {
+    if ([...runs].some(file => metadata.get(file)?.opaqueImport || metadata.get(file)?.opaqueEnvironment || unresolvedImports.has(file))) {
       return 'computed import/environment needs a fresh run';
     }
     return null;

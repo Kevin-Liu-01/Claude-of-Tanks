@@ -53,6 +53,7 @@ export function collectSelftestInputs(text, filename) {
       specifiers.add(value);
       imports.add(value);
       if (value === 'node:child_process' || value === 'child_process') { broad = true; spawns = true; }
+      if (value === 'node:worker_threads' || value === 'worker_threads') spawns = true;
       if (/^(?:puppeteer|playwright)(?:-core)?(?:\/|$)/.test(value)) { broad = true; browser = true; }
     };
     const isTypeOnly = node => {

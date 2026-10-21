@@ -530,10 +530,16 @@ included) and `broadOnly` (matched only through the fallback). A targeted select
 `affectedBy` that is not `broadOnly`, and never drops a `scanBy` row. `tools/selftest-scans.selftest.mjs` replays 228p
 through the runner on a fixture: a static CSS import in a non-main module selects runtimeStyles and fails it, and a
 cached PASS never hides it. It fails on an undeclared listing module, a `caller` library run by an undeclared module, a
-stale entry, a missing directory, a root-recursive `lists` pattern and a keyed receipt with tracked listings. A listed
-file is data: its flags and environment never reach the lister's key or liveness, so they cannot depend on which
-receipt parsed it first. Census on 2026-10-20: 111 modules (45 lists, 12 tracked, 8 caller, 19 outside, 11 identity,
-11 cli, 5 none). Listings key and select 54 receipts; tracked listings select 12.
+stale entry, a missing directory, a root-recursive `lists` pattern and a keyed receipt with tracked listings. Census on
+2026-10-20: 111 modules (45 lists, 12 tracked, 8 caller, 19 outside, 11 identity, 11 cli, 5 none). Listings key and
+select 54 receipts; tracked listings select 12.
+
+Liveness (browser, Git, computed imports) and the environment a key records come from the modules a receipt's imports
+execute, never from a file it only names, lists or spawns. They used to count once any other receipt's walk had parsed
+the file, so liveness depended on lookup order. In registry order six receipts were live only through a file they name:
+four reach `tools/source-x-oracle.mjs` through a research receipt JSON, and two read tool sources as text. They are now
+keyed. No receipt became live. A spawned tool's git or browser use still does not make its spawner live:
+`src/world/wreckBakePlanDrift.selftest.mjs` (about 500 s) spawns a tool that stamps a git revision.
 
 **One fleet pass per build (2026-10-02).** Ten receipts used to rebuild the whole fleet each (219 playable tanks
 since main's Hetman II and Zubr II), and the build is nearly all of their cost (the audits themselves take under 5 s
