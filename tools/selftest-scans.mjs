@@ -127,6 +127,11 @@ export const SELFTEST_SCANS = Object.freeze({
   // computeState of this checkout against release/fingerprints.tsv (live: it reads the manifest no closure holds)
   'tools/changed-only/fresh.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,json}', 'tools/**/*.{ts,mts,mjs,js,json}'),
 
+  // this table's census: every module a registered receipt runs (and the fixture repository it writes under tmpdir)
+  'tools/selftest-scans.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,cjs}', 'tools/**/*.{ts,mts,mjs,js,cjs}',
+    'server/**/*.{ts,mts,mjs,js,cjs}', 'scripts/**/*.{ts,mts,mjs,js,cjs}', 'cloudflare/**/*.{ts,mts,mjs,js,cjs}',
+    'api/**/*.{ts,mts,mjs,js,cjs}', '*.{ts,mts,mjs,js,cjs}'),
+
   // ---- libraries that list what their caller passes
   'tools/changed-only/fingerprint.mjs': caller('computeState({ root }): the fleet steps\' closures and tables under root'),
   'tools/changed-only/rows-child.mjs': caller("the data modules under the root its spawner passes (argv[2])"),

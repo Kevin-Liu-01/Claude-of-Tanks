@@ -83,6 +83,19 @@ try {
   assert.match(readFileSync(logOf(runs), 'utf8'), /only src\/main\.ts imports stylesheets statically/);
   lines.length = 0;
   assert.equal(await suite(cacheOf()), 1, 'and it stays red on the next run: a FAIL records nothing');
+  // a listed file is data: its flags and environment never reach the lister, whichever receipt parsed it first
+  write('src/tools/gitty.ts', "import { execFileSync } from 'node:child_process';\nexecFileSync('git', ['status']);\nprocess.env.COT_GITTY;\n");
+  write('src/gitty.selftest.mjs', "import './tools/gitty.ts';\n");
+  {
+    const stylesFirst = cacheOf(), gittyFirst = cacheOf();
+    const first = stylesFirst.lookup(STYLES);
+    assert.equal(gittyFirst.lookup('src/gitty.selftest.mjs').reason, 'browser or Git state must be checked live');
+    const second = gittyFirst.lookup(STYLES);
+    assert.equal(gittyFirst.closureOf(join(root, STYLES)).has(join(root, 'src/tools/gitty.ts')), true, 'the git module is a listed input');
+    assert.deepEqual([first.reason, second.reason, second.key], ['no PASS for these inputs', 'no PASS for these inputs', first.key],
+      'and the lister stays keyed, on the same key, in either lookup order');
+  }
+  rmSync(join(root, 'src/tools'), { recursive: true }); rmSync(join(root, 'src/gitty.selftest.mjs'));
   // a deleted file still selects its listers: the pattern, not the tree, decides
   rmSync(join(root, SHELF));
   assert.deepEqual(selftestPlan([STYLES], cacheOf(), [SHELF], root)[0].scanBy, [SHELF], 'a deleted path selects the listing receipt');
