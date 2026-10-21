@@ -15,6 +15,10 @@ import {
   garageFacetOptionCounts,
 } from './garageFacetFilter.ts';
 import { facetFilteredCountry } from './garageOrder.ts';
+import {
+  VEHICLE_CLASS_GLYPH_IDS, VEHICLE_ROLE_GLYPH_IDS, facetControlGlyphSVG, vehicleClassGlyphSVG, vehicleRoleGlyphSVG,
+} from './vehicleFacetIcons.ts';
+import { VEHICLE_BATTLE_ROLE_ORDER, VEHICLE_CLASS_ORDER } from '../vehicles/vehicleFacets.ts';
 
 const en = JSON.parse(readFileSync(new URL('./i18nCatalog.en-US.json', import.meta.url), 'utf8'));
 const zh = JSON.parse(readFileSync(new URL('./i18nCatalog.zh-CN.json', import.meta.url), 'utf8'));
@@ -72,6 +76,40 @@ const order = ['us', 'ru', 'gb', 'de'];
 assert.equal(facetFilteredCountry('ru', order, () => true), 'ru', 'a nation with a match keeps the strip');
 assert.equal(facetFilteredCountry('ru', order, (id) => id === 'de'), 'de', 'otherwise the first nation with one');
 assert.equal(facetFilteredCountry('ru', order, () => false), null, 'nothing matches: no nation');
+
+// Glyphs (owner UI rules 2026-10-17: tank icons, less text): one silhouette per class chip and one symbol per role
+// chip, constant markup keyed by own facet ids, so no typed or prototype key ever reaches the markup.
+assert.deepEqual([...VEHICLE_CLASS_GLYPH_IDS].sort(), [...VEHICLE_CLASS_ORDER, 'concept-prototype'].sort(),
+  'every class filter option has its silhouette');
+assert.deepEqual([...VEHICLE_ROLE_GLYPH_IDS].sort(), [...VEHICLE_BATTLE_ROLE_ORDER].sort(), 'every role has its symbol');
+assert.ok(GARAGE_FACET_GROUPS.vehicleClass.every((value) => value === 'all' || VEHICLE_CLASS_GLYPH_IDS.includes(value)),
+  'the panel can draw every class option');
+const glyphs = [
+  ...VEHICLE_CLASS_GLYPH_IDS.map((id) => vehicleClassGlyphSVG(id)), ...VEHICLE_ROLE_GLYPH_IDS.map((id) => vehicleRoleGlyphSVG(id)),
+  facetControlGlyphSVG('search'), facetControlGlyphSVG('clear'),
+];
+assert.equal(new Set(glyphs).size, glyphs.length, 'no two facet glyphs are the same drawing');
+for (const svg of glyphs) {
+  assert.match(svg, /^<svg class="cot-facet-glyph" viewBox="0 0 (?:32 16|24 24)" width="\d+" height="\d+" aria-hidden="true" focusable="false">/);
+  assert.doesNotMatch(svg, /<(?:script|foreignObject|image|use|a)\b|\bon[a-z]+=|href|url\(/i, 'glyphs are inert shapes');
+}
+for (const hostile of ['constructor', '__proto__', 'toString', '<img src=x onerror=alert(1)>', '']) {
+  assert.equal(vehicleClassGlyphSVG(hostile), '', `no class glyph for ${JSON.stringify(hostile)}`);
+  assert.equal(vehicleRoleGlyphSVG(hostile), '', `no role glyph for ${JSON.stringify(hostile)}`);
+}
+
+// The panel writes markup only from the glyph builders and the icon table; every label, count and search string is text.
+const panelSource = readFileSync(new URL('./garageFacetPanel.ts', import.meta.url), 'utf8');
+const markupWrites = [...panelSource.matchAll(/\.innerHTML = ([^;]+);/g)].map((match) => match[1].trim());
+assert.ok(markupWrites.length >= 4, 'the panel draws its glyphs');
+for (const rhs of markupWrites) {
+  assert.match(rhs, /^(?:view\.glyph|(?:facetControlGlyphSVG|uiIconSVG)\('[a-z-]+', \d+\)|vehicleClassGlyphSVG\(CONCEPT_PROTOTYPE_CLASS_FILTER, \d+\))$/,
+    `panel markup comes from a glyph builder: ${rhs}`);
+}
+assert.doesNotMatch(panelSource, /insertAdjacentHTML|outerHTML/, 'no other markup sink in the panel');
+assert.match(panelSource, /if \(target === input\) \{\n\s+event\.stopPropagation\(\);/,
+  'typed keys stay in the search (the Garage arrows never step the vehicle from it)');
+assert.doesNotMatch(panelSource, /cot-facet-label|cot-facet-hint/, 'no visible eyebrow labels or hint paragraph over the rows');
 
 // Boot budget: the Garage reaches the panel, the filter and the facet tables only through import().
 const garageSource = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');

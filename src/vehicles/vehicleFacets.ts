@@ -45,8 +45,6 @@ export interface VehicleFacetValueMeta {
   readonly shortKey: string;
   /** Optional one-line explanation (role tooltips). */
   readonly hintKey?: string;
-  /** uiIcons.ts id for the interim filter controls (the brand overhaul replaces these). */
-  readonly icon: string;
   /** Extra lowercase search words and `class:` / `role:` / `status:` token values. */
   readonly aliases: readonly string[];
 }
@@ -54,78 +52,78 @@ export interface VehicleFacetValueMeta {
 export const VEHICLE_CLASS_META: Readonly<Record<VehicleClass, VehicleFacetValueMeta>> = Object.freeze({
   mbt: Object.freeze({
     label: 'Main battle tank', shortLabel: 'MBT', labelKey: 'fleet.class.mbt', shortKey: 'fleet.class.mbt.short',
-    icon: 'gun', aliases: Object.freeze(['mbt', 'main battle tank', 'main-battle-tank', 'tank']),
+    aliases: Object.freeze(['mbt', 'main battle tank', 'main-battle-tank', 'tank']),
   }),
   medium: Object.freeze({
     label: 'Medium tank', shortLabel: 'Medium', labelKey: 'fleet.class.medium', shortKey: 'fleet.class.medium.short',
-    icon: 'gun', aliases: Object.freeze(['medium', 'medium tank', 'medium-tank', 'mt']),
+    aliases: Object.freeze(['medium', 'medium tank', 'medium-tank', 'mt']),
   }),
   heavy: Object.freeze({
     label: 'Heavy tank', shortLabel: 'Heavy', labelKey: 'fleet.class.heavy', shortKey: 'fleet.class.heavy.short',
-    icon: 'shield', aliases: Object.freeze(['heavy', 'heavy tank', 'heavy-tank', 'ht']),
+    aliases: Object.freeze(['heavy', 'heavy tank', 'heavy-tank', 'ht']),
   }),
   light: Object.freeze({
     label: 'Light tank', shortLabel: 'Light', labelKey: 'fleet.class.light', shortKey: 'fleet.class.light.short',
-    icon: 'speed', aliases: Object.freeze(['light', 'light tank', 'light-tank', 'lt']),
+    aliases: Object.freeze(['light', 'light tank', 'light-tank', 'lt']),
   }),
   ifv: Object.freeze({
     label: 'Infantry fighting vehicle', shortLabel: 'IFV', labelKey: 'fleet.class.ifv', shortKey: 'fleet.class.ifv.short',
-    icon: 'crew', aliases: Object.freeze(['ifv', 'infantry fighting vehicle', 'infantry-fighting-vehicle', 'cfv']),
+    aliases: Object.freeze(['ifv', 'infantry fighting vehicle', 'infantry-fighting-vehicle', 'cfv']),
   }),
   apc: Object.freeze({
     label: 'Armored personnel carrier', shortLabel: 'APC', labelKey: 'fleet.class.apc', shortKey: 'fleet.class.apc.short',
-    icon: 'crew', aliases: Object.freeze(['apc', 'armored personnel carrier', 'armoured personnel carrier', 'carrier']),
+    aliases: Object.freeze(['apc', 'armored personnel carrier', 'armoured personnel carrier', 'carrier']),
   }),
   td: Object.freeze({
     label: 'Tank destroyer', shortLabel: 'TD', labelKey: 'fleet.class.td', shortKey: 'fleet.class.td.short',
-    icon: 'scope', aliases: Object.freeze(['td', 'tank destroyer', 'tank-destroyer', 'destroyer', 'casemate']),
+    aliases: Object.freeze(['td', 'tank destroyer', 'tank-destroyer', 'destroyer', 'casemate']),
   }),
   spaa: Object.freeze({
     label: 'Self-propelled anti-aircraft', shortLabel: 'SPAA', labelKey: 'fleet.class.spaa', shortKey: 'fleet.class.spaa.short',
-    icon: 'altitude', aliases: Object.freeze(['spaa', 'aa', 'anti-aircraft', 'anti-air', 'air defense', 'air defence']),
+    aliases: Object.freeze(['spaa', 'aa', 'anti-aircraft', 'anti-air', 'air defense', 'air defence']),
   }),
   'fire-support': Object.freeze({
     label: 'Fire support vehicle', shortLabel: 'Fire support', labelKey: 'fleet.class.fireSupport',
-    shortKey: 'fleet.class.fireSupport.short', icon: 'rocket',
+    shortKey: 'fleet.class.fireSupport.short',
     aliases: Object.freeze(['fire-support', 'fire support', 'fsv', 'bmpt', 'mrl', 'rocket artillery', 'tank support']),
   }),
 });
 
 export const CONCEPT_PROTOTYPE_FILTER_META: VehicleFacetValueMeta = Object.freeze({
   label: 'Concept & prototype', shortLabel: 'Concept & prototype', labelKey: 'fleet.filter.conceptPrototype',
-  shortKey: 'fleet.filter.conceptPrototype', icon: 'lightbulb',
+  shortKey: 'fleet.filter.conceptPrototype',
   aliases: Object.freeze(['concept-prototype', 'concepts', 'prototypes']),
 });
 
 export const VEHICLE_BATTLE_ROLE_META: Readonly<Record<VehicleBattleRole, VehicleFacetValueMeta>> = Object.freeze({
   breakthrough: Object.freeze({
     label: 'Breakthrough', shortLabel: 'Breakthrough', labelKey: 'fleet.role.breakthrough',
-    shortKey: 'fleet.role.breakthrough', hintKey: 'fleet.role.breakthrough.hint', icon: 'shield',
+    shortKey: 'fleet.role.breakthrough', hintKey: 'fleet.role.breakthrough.hint',
     aliases: Object.freeze(['breakthrough', 'assault', 'brawler', 'spearhead']),
   }),
   frontline: Object.freeze({
     label: 'Frontline', shortLabel: 'Frontline', labelKey: 'fleet.role.frontline',
-    shortKey: 'fleet.role.frontline', hintKey: 'fleet.role.frontline.hint', icon: 'team',
+    shortKey: 'fleet.role.frontline', hintKey: 'fleet.role.frontline.hint',
     aliases: Object.freeze(['frontline', 'front-line', 'line', 'all-rounder', 'allrounder', 'flexible']),
   }),
   flanker: Object.freeze({
     label: 'Flanker', shortLabel: 'Flanker', labelKey: 'fleet.role.flanker',
-    shortKey: 'fleet.role.flanker', hintKey: 'fleet.role.flanker.hint', icon: 'speed',
+    shortKey: 'fleet.role.flanker', hintKey: 'fleet.role.flanker.hint',
     aliases: Object.freeze(['flanker', 'flank', 'skirmisher']),
   }),
   sniper: Object.freeze({
     label: 'Sniper', shortLabel: 'Sniper', labelKey: 'fleet.role.sniper',
-    shortKey: 'fleet.role.sniper', hintKey: 'fleet.role.sniper.hint', icon: 'scope',
+    shortKey: 'fleet.role.sniper', hintKey: 'fleet.role.sniper.hint',
     aliases: Object.freeze(['sniper', 'precision', 'long-range', 'overwatch']),
   }),
   scout: Object.freeze({
     label: 'Scout', shortLabel: 'Scout', labelKey: 'fleet.role.scout',
-    shortKey: 'fleet.role.scout', hintKey: 'fleet.role.scout.hint', icon: 'optics',
+    shortKey: 'fleet.role.scout', hintKey: 'fleet.role.scout.hint',
     aliases: Object.freeze(['scout', 'recon', 'reconnaissance', 'spotter']),
   }),
   support: Object.freeze({
     label: 'Support', shortLabel: 'Support', labelKey: 'fleet.role.support',
-    shortKey: 'fleet.role.support', hintKey: 'fleet.role.support.hint', icon: 'repair',
+    shortKey: 'fleet.role.support', hintKey: 'fleet.role.support.hint',
     aliases: Object.freeze(['support', 'escort']),
   }),
 });
@@ -133,15 +131,15 @@ export const VEHICLE_BATTLE_ROLE_META: Readonly<Record<VehicleBattleRole, Vehicl
 export const VEHICLE_DESIGN_STATUS_META: Readonly<Record<VehicleDesignStatus, VehicleFacetValueMeta>> = Object.freeze({
   service: Object.freeze({
     label: 'In service', shortLabel: 'In service', labelKey: 'fleet.status.service', shortKey: 'fleet.status.service',
-    icon: 'check', aliases: Object.freeze(['service', 'in-service', 'production', 'series']),
+    aliases: Object.freeze(['service', 'in-service', 'production', 'series']),
   }),
   prototype: Object.freeze({
     label: 'Prototype', shortLabel: 'Prototype', labelKey: 'fleet.status.prototype', shortKey: 'fleet.status.prototype',
-    icon: 'lightbulb', aliases: Object.freeze(['prototype', 'proto', 'demonstrator', 'pre-series']),
+    aliases: Object.freeze(['prototype', 'proto', 'demonstrator', 'pre-series']),
   }),
   concept: Object.freeze({
     label: 'Concept', shortLabel: 'Concept', labelKey: 'fleet.status.concept', shortKey: 'fleet.status.concept',
-    icon: 'lightbulb', aliases: Object.freeze(['concept', 'paper', 'fictional']),
+    aliases: Object.freeze(['concept', 'paper', 'fictional']),
   }),
 });
 

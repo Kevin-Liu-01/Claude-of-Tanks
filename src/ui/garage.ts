@@ -2352,7 +2352,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   facetToggle.title = t('fleet.filter.toggleAria');
   facetToggle.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 3h12l-4.6 5.4V13' +
     'l-2.8 1.2V8.4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>' +
-    `<span class="code">${t('fleet.filter.toggle')}</span><span class="ct" hidden></span>`;
+    '<span class="code"></span><span class="ct num" hidden></span>';
+  requiredElement<HTMLElement>(facetToggle, '.code').textContent = t('fleet.filter.toggle');
   chipsEl.prepend(facetToggle);
   function setRosterFacetFilter(match: ((specId: string) => boolean) | null): void {
     rosterFacetMatch = match;

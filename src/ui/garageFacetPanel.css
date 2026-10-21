@@ -1,54 +1,74 @@
 /* Garage roster Filter panel (garageFacetPanel.ts), loaded with the panel on the first Filter press.
-   Interim styling on the Garage's chip vocabulary; the brand overhaul's components replace it. */
-.cot-facet-panel{position:absolute;z-index:6;right:var(--country-edge,34px);bottom:calc(100% + 8px);
-  width:min(560px,calc(100% - var(--country-edge,34px)));
-  max-height:max(220px,min(460px,calc(100vh - 330px)));overflow-y:auto;overscroll-behavior:contain;
-  display:grid;gap:10px;padding:12px 12px 10px;box-sizing:border-box;
+   Owner UI rules 2026-10-17: no eyebrows, less text and more showing (class silhouettes, role symbols, live counts,
+   the landing's hollow outline on the fleet total). Type reads the brand tokens when a page defines them
+   (--font-ui, --font-display) and today's Garage stack otherwise. */
+.cot-facet-panel{--facet-font:var(--font-ui,'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif);
+  --facet-display:var(--font-display,var(--facet-font));
+  position:absolute;z-index:6;right:var(--country-edge,34px);bottom:calc(100% + 8px);
+  width:min(620px,calc(100% - var(--country-edge,34px)));
+  max-height:max(220px,min(480px,calc(100vh - 300px)));overflow-y:auto;overscroll-behavior:contain;
+  display:grid;gap:9px;padding:10px 12px 12px;box-sizing:border-box;
   color:#c6d2dc;background:linear-gradient(180deg,rgba(16,22,28,.97),rgba(7,10,14,.985));
   border:1px solid rgba(240,176,74,.42);box-shadow:0 18px 44px rgba(0,0,0,.55);
-  font-family:'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-  scrollbar-width:thin;scrollbar-color:#785424 #0a0e11;pointer-events:auto;}
+  font-family:var(--facet-font);scrollbar-width:thin;scrollbar-color:#785424 #0a0e11;pointer-events:auto;}
 .cot-facet-panel[hidden]{display:none;}
-.cot-facet-head{display:flex;align-items:center;gap:10px;min-width:0;}
-.cot-facet-head strong{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#ffd27a;}
-.cot-facet-count{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  font-size:10px;letter-spacing:.04em;color:#8798a5;}
-.cot-facet-close{display:grid;place-items:center;width:30px;height:30px;flex:0 0 30px;cursor:pointer;
-  color:#91a2af;background:rgba(11,15,20,.82);border:1px solid rgba(146,164,180,.28);outline:none;}
-.cot-facet-close:hover,.cot-facet-close:focus-visible{color:#ffd27a;border-color:rgba(240,176,74,.72);}
-.cot-facet-search{display:grid;gap:5px;}
-.cot-facet-search>span,.cot-facet-label{font-size:8px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;
-  color:#829096;}
-.cot-facet-search input{width:100%;height:36px;box-sizing:border-box;padding:0 10px;border-radius:0;outline:none;
+.cot-facet-panel .cot-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+  clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;}
+.cot-facet-panel .num{font-variant-numeric:lining-nums tabular-nums;}
+.cot-facet-head{display:flex;align-items:center;gap:8px;min-width:0;}
+.cot-facet-tally{flex:1 1 auto;min-width:0;margin:0;display:flex;align-items:baseline;gap:3px;line-height:.9;
+  font-family:var(--facet-display);font-weight:800;letter-spacing:-.02em;}
+.cot-facet-tally b{font-size:32px;font-weight:800;color:#ffd27a;}
+.cot-facet-tally>.num:not(b){font-size:32px;color:transparent;-webkit-text-stroke:1px rgba(198,210,220,.5);}
+.cot-facet-clear,.cot-facet-close{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:0 0 auto;
+  min-height:32px;cursor:pointer;outline:none;color:#9fb0bf;background:rgba(11,15,20,.82);
+  border:1px solid rgba(146,164,180,.28);transition:color .14s,border-color .14s,opacity .14s;}
+.cot-facet-clear{padding:0 10px;font:700 11px var(--facet-font);letter-spacing:.02em;}
+.cot-facet-close{width:32px;padding:0;}
+.cot-facet-clear svg,.cot-facet-close svg{display:block;flex:0 0 auto;}
+.cot-facet-clear:hover:not(:disabled),.cot-facet-clear:focus-visible,.cot-facet-close:hover,.cot-facet-close:focus-visible{
+  color:#ffd27a;border-color:rgba(240,176,74,.72);}
+.cot-facet-clear:focus-visible,.cot-facet-close:focus-visible{outline:2px solid #f0a030;outline-offset:1px;}
+.cot-facet-clear:disabled{cursor:default;opacity:.32;}
+.cot-facet-search{position:relative;display:flex;align-items:center;}
+.cot-facet-search>svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#7d8d99;pointer-events:none;}
+.cot-facet-search input{width:100%;height:38px;box-sizing:border-box;padding:0 10px 0 35px;border-radius:0;outline:none;
   color:#e3e9ec;background:linear-gradient(#11171b,#090d10);border:1px solid rgba(174,190,197,.22);
-  font:600 12px 'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;}
+  font:600 12.5px var(--facet-font);}
+.cot-facet-search input::placeholder{color:#6f7f8b;}
 .cot-facet-search input:focus{border-color:#f0a030;box-shadow:inset 3px 0 0 #f0a030;}
-.cot-facet-hint{margin:-4px 0 0;font-size:9.5px;line-height:1.35;color:#6f7f8b;}
-.cot-facet-group{display:grid;gap:5px;}
-.cot-facet-options{display:flex;flex-wrap:wrap;gap:4px;}
-.cot-facet-option{display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:3px 8px;cursor:pointer;
-  color:#9fb0bf;background:rgba(11,15,20,.82);border:1px solid rgba(146,164,180,.28);
-  border-bottom:2px solid rgba(146,164,180,.36);outline:none;white-space:nowrap;
-  font:800 9.5px 'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-  letter-spacing:.08em;text-transform:uppercase;transition:color .14s,border-color .14s,background .14s;}
-.cot-facet-option svg{width:14px;height:14px;display:block;flex:0 0 14px;color:#8a9aa6;}
-.cot-facet-option .ct{font-weight:600;letter-spacing:.02em;color:#6d7a86;}
-.cot-facet-option:hover:not(:disabled),.cot-facet-option:focus-visible{color:#c6d2dc;border-color:rgba(210,225,240,.5);}
+.cot-facet-search:focus-within>svg{color:#f0a030;}
+.cot-facet-row{display:flex;flex-wrap:wrap;gap:5px;padding-top:9px;border-top:1px solid rgba(146,164,180,.13);}
+.cot-facet-option{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:4px 9px 3px;cursor:pointer;
+  color:#a9b8c4;background:rgba(11,15,20,.82);border:1px solid rgba(146,164,180,.26);
+  border-bottom:2px solid rgba(146,164,180,.34);outline:none;white-space:nowrap;
+  font:700 11.5px var(--facet-font);letter-spacing:.02em;transition:color .14s,border-color .14s,background .14s;}
+.cot-facet-option svg{display:block;flex:0 0 auto;color:#8597a4;transition:color .14s;}
+.cot-facet-option[data-facet='vehicleClass'] svg{width:26px;height:13px;}
+.cot-facet-option[data-facet='battleRole'] svg,.cot-facet-option[data-facet='era'] svg{width:16px;height:16px;}
+.cot-facet-option .ct{min-width:1.6em;font-size:10.5px;font-weight:600;text-align:right;color:#66778a;}
+.cot-facet-option:hover:not(:disabled),.cot-facet-option:focus-visible{color:#dbe5ec;border-color:rgba(210,225,240,.5);}
+.cot-facet-option:hover:not(:disabled) svg,.cot-facet-option:focus-visible svg{color:#c6d2dc;}
 .cot-facet-option:focus-visible{outline:2px solid #f0a030;outline-offset:1px;}
 .cot-facet-option[aria-pressed='true']{color:#ffd27a;border-color:rgba(240,176,74,.65);border-bottom-color:#f0a030;
-  background:linear-gradient(180deg,rgba(32,24,12,.92),rgba(14,10,6,.94));}
-.cot-facet-option[aria-pressed='true'] svg,.cot-facet-option[aria-pressed='true'] .ct{color:#d8a04c;}
-.cot-facet-option:disabled{cursor:default;opacity:.38;}
-.cot-facet-empty{margin:0;padding:8px 10px;font-size:11px;color:#e3b36b;border:1px dashed rgba(240,176,74,.4);}
+  background:linear-gradient(180deg,rgba(40,29,12,.94),rgba(16,11,6,.96));}
+.cot-facet-option[aria-pressed='true'] svg{color:#f0a030;}
+.cot-facet-option[aria-pressed='true'] .ct{color:#d8a04c;}
+.cot-facet-option:disabled{cursor:default;opacity:.34;}
+.cot-facet-empty{display:flex;align-items:center;gap:12px;margin:0;padding:10px 12px;font-size:12px;color:#e3b36b;
+  border:1px dashed rgba(240,176,74,.4);}
+.cot-facet-empty svg{flex:0 0 auto;color:#e3b36b;opacity:.8;}
 .cot-facet-empty[hidden]{display:none;}
-.cot-facet-foot{display:flex;justify-content:flex-end;}
-.cot-facet-clear{min-height:30px;padding:0 12px;cursor:pointer;color:#c6d2dc;background:rgba(11,15,20,.82);
-  border:1px solid rgba(146,164,180,.32);outline:none;
-  font:800 9.5px 'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-  letter-spacing:.1em;text-transform:uppercase;}
-.cot-facet-clear:hover:not(:disabled),.cot-facet-clear:focus-visible{color:#ffd27a;border-color:rgba(240,176,74,.65);}
-.cot-facet-clear:disabled{cursor:default;opacity:.4;}
-body[data-cot-panels='overlay'] .cot-facet-panel{right:0;width:100%;max-height:max(200px,calc(100vh - 300px));}
-body[data-cot-input='coarse'] :is(.cot-facet-option,.cot-facet-clear,.cot-facet-close){min-height:44px;}
-body[data-cot-input='coarse'] .cot-facet-close{width:44px;flex-basis:44px;}
-@media (prefers-reduced-motion:reduce){.cot-facet-option{transition:none;}}
+/* Phones: each facet is one swipeable line of chips, so the panel stays short above the roster. */
+body[data-cot-panels='overlay'] .cot-facet-panel{right:0;width:100%;gap:8px;padding:8px 10px 10px;
+  max-height:max(190px,calc(100vh - 260px));}
+body[data-cot-panels='overlay'] .cot-facet-tally b,
+body[data-cot-panels='overlay'] .cot-facet-tally>.num:not(b){font-size:26px;}
+body[data-cot-panels='overlay'] .cot-facet-row{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;
+  scrollbar-width:none;margin-inline:-10px;padding-inline:10px;scroll-padding-inline:10px;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 10px,#000 calc(100% - 22px),transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 10px,#000 calc(100% - 22px),transparent);}
+body[data-cot-panels='overlay'] .cot-facet-row::-webkit-scrollbar{display:none;}
+body[data-cot-input='coarse'] :is(.cot-facet-option,.cot-facet-clear,.cot-facet-close,.cot-facet-search input){min-height:44px;}
+body[data-cot-input='coarse'] .cot-facet-close{width:44px;}
+@media (prefers-reduced-motion:reduce){.cot-facet-option,.cot-facet-option svg,.cot-facet-clear,.cot-facet-close{transition:none;}}

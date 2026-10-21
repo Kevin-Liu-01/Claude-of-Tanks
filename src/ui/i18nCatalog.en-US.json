@@ -2232,7 +2232,6 @@
   "fleet.filter.era": "Era",
   "fleet.filter.allClasses": "All classes",
   "fleet.filter.allRoles": "All roles",
-  "fleet.filter.allEras": "All eras",
   "fleet.filter.conceptPrototype": "Concept & prototype",
   "fleet.filter.toggle": "Filter",
   "fleet.filter.toggleAria": "Filter vehicles by class, role, era or search",

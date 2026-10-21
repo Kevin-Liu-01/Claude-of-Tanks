@@ -26,10 +26,9 @@ import {
   VEHICLE_BATTLE_ROLE_ORDER,
   VEHICLE_CLASS_META,
   VEHICLE_CLASS_ORDER,
-  isVehicleBattleRole,
-  isVehicleClass,
   vehicleFacetLabel,
 } from '../vehicles/vehicleFacets.ts';
+import { vehicleClassGlyphSVG, vehicleRoleGlyphSVG } from '../ui/vehicleFacetIcons.ts';
 import { createInspectionOverlay, inspectionLegend } from './overlays.ts';
 import type { InspectionMode } from './overlays.ts';
 import {
@@ -870,11 +869,6 @@ const GALLERY_ERA_ICONS: Readonly<Record<string, string>> = Object.freeze({
   [VEHICLE_ERAS.NEXT_GENERATION]: 'eraNextGeneration',
 });
 
-function galleryClassIcon(value: string): string {
-  if (value === CONCEPT_PROTOTYPE_CLASS_FILTER) return CONCEPT_PROTOTYPE_FILTER_META.icon;
-  return isVehicleClass(value) ? VEHICLE_CLASS_META[value].icon : 'globe';
-}
-
 function createGallerySelectIcon(
   select: HTMLSelectElement,
   option: HTMLOptionElement,
@@ -891,10 +885,16 @@ function createGallerySelectIcon(
     icon.append(flag);
     return icon;
   }
-  const iconId = select.id === 'eraFilter' ? (GALLERY_ERA_ICONS[option.value] || 'clock')
-    : select.id === 'classFilter' ? galleryClassIcon(option.value)
-      : select.id === 'roleFilter' && isVehicleBattleRole(option.value) ? VEHICLE_BATTLE_ROLE_META[option.value].icon
-        : 'globe';
+  // Class and role options show the fleet glyphs (constant markup, keyed by the option's facet id).
+  const facetGlyph = option.value === 'all' ? ''
+    : select.id === 'classFilter' ? vehicleClassGlyphSVG(option.value)
+      : select.id === 'roleFilter' ? vehicleRoleGlyphSVG(option.value) : '';
+  if (facetGlyph) {
+    if (select.id === 'classFilter') icon.classList.add('gallery-select-icon--wide');
+    icon.insertAdjacentHTML('beforeend', facetGlyph);
+    return icon;
+  }
+  const iconId = select.id === 'eraFilter' ? (GALLERY_ERA_ICONS[option.value] || 'clock') : 'globe';
   icon.insertAdjacentHTML('beforeend', uiIconSVG(iconId, 16));
   return icon;
 }
