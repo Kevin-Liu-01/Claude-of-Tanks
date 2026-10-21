@@ -122,6 +122,7 @@ body[data-studio-workspace] .cot-studio .dock{width:var(--studio-dock)}
 .cot-studio .production-exports{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .cot-studio .production-exports button{min-height:42px;font-size:10px;text-transform:none;letter-spacing:.03em}
 .cot-studio .production-exports button:last-child{color:#ffca83;border-color:#966e32}
+.cot-studio .director .production-link-status:empty{display:none}
 .cot-studio .director .production-link{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:8px;min-height:40px;font-size:10px;text-transform:none;letter-spacing:.03em}
 .cot-studio .director .production-link svg{display:block;flex:0 0 auto}
 .cot-studio .studio-frame-guides{position:absolute;left:0;top:0;width:var(--studio-preview-width);height:var(--studio-preview-height);overflow:hidden;pointer-events:none;display:flex;align-items:center;justify-content:center}
@@ -421,7 +422,7 @@ export function mountStudioProductionPanel(S: StudioPanelApi, root: HTMLElement,
   });
   exportButtons.append(photo, video);
   // Copy scene link (studioSceneLinkUi.ts): the staged scene itself rides in the link's #fragment, never a server.
-  const linkStatus = node('div', 'production-status');
+  const linkStatus = node('div', 'production-status production-link-status');
   linkStatus.setAttribute('role', 'status');
   linkStatus.setAttribute('aria-live', 'polite');
   const linkButton = button('', () => {
@@ -431,10 +432,11 @@ export function mountStudioProductionPanel(S: StudioPanelApi, root: HTMLElement,
     });
   }, 'production-link');
   linkButton.innerHTML = SCENE_LINK_GLYPHS.link;
-  linkButton.append(node('span', '', t('studio.sceneLink.copy')));
+  linkButton.append(node('span', '', t('studio.sceneLink.copyButton')));
   linkButton.title = t('studio.sceneLink.copyTitle');
   linkButton.dataset.sceneLinkCopy = '';
-  exports.append(exportButtons, linkButton, linkStatus, node('p', 'production-note', productionLabel('photoHint')), node('p', 'production-note', productionLabel('videoHint')), node('p', 'production-note', productionLabel('nativeVideo')));
+  // the export captions stay under their buttons; the link button and its status follow them
+  exports.append(exportButtons, node('p', 'production-note', productionLabel('photoHint')), node('p', 'production-note', productionLabel('videoHint')), node('p', 'production-note', productionLabel('nativeVideo')), linkButton, linkStatus);
   director.append(exports);
   dock.prepend(director);
 

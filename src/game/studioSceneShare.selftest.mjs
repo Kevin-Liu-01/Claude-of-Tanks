@@ -439,7 +439,7 @@ for (const none of ['', '#', '#other=1', null, undefined, 7]) assert.equal(scene
   const done = await copied;
   assert.ok(done.ok);
   assert.equal(written, done.url);
-  assert.match(done.message, /^Scene link copied \(\d+\.\d KB\)\.$/);
+  assert.match(done.message, /^Scene link copied \(\d+(?:\.\d)? KB\)\.$/);
   assert.match(done.url, /^https:\/\/cot\.example\/studio#scene=1\.[zj]\./);
   assert.ok((await decodeSceneLink(sceneLinkValue(new URL(done.url).hash))).ok, 'the copied link opens');
   let bar = '';
@@ -452,11 +452,20 @@ for (const none of ['', '#', '#other=1', null, undefined, 7]) assert.equal(scene
   assert.match(failed.message, /could not be copied/);
   const tooBig = await ui.copySceneLink(hugeScene(), env);
   assert.equal(tooBig.ok, false);
-  assert.match(tooBig.message, /too large for a link \(\d+\.\d KB; the limit is 16\.0 KB\)\. Use Save JSON/);
-  assert.match(ui.sceneLinkOpenFailure({ ok: false, reason: 'too-large', detail: 'link' }).message, /over the 16\.0 KB limit/);
+  assert.match(tooBig.message, /too large for a link \(\d+(?:\.\d)? KB; the limit is 16 KB\)\. Use Save JSON/);
+  // each refusal names its cause and the next step (blind critic 2026-10-21); the link's size is quoted
+  assert.match(ui.sceneLinkOpenFailure({ ok: false, reason: 'too-large', detail: 'link', chars: 21_800 }).message,
+    /^This scene link is 21\.3 KB; the Studio opens links up to 16 KB\. Ask the sender to share the scene as a file with Save JSON\.$/);
+  assert.match(ui.sceneLinkOpenFailure({ ok: false, reason: 'too-large', detail: 'scene JSON' }).message, /unpacks to more than the Studio opens/);
+  assert.equal((await decodeSceneLink('A'.repeat(SCENE_LINK_MAX_CHARS + 7))).chars, SCENE_LINK_MAX_CHARS + 7, 'an oversized link reports its size');
   const damaged = ui.sceneLinkOpenFailure({ ok: false, reason: 'schema', detail: 'scene.map: is not a battlefield of this build' });
-  assert.match(damaged.message, /^This scene link is damaged or is not a Studio scene, so it was not opened\.$/, 'the sentence is plain language');
+  assert.match(damaged.message, /^This scene is set on a battlefield this version of the game does not have\. Reload to update, then open the link again\.$/,
+    'a missing battlefield reads as such, with the next step');
   assert.equal(damaged.detail, 'scene.map: is not a battlefield of this build', 'the schema path rides apart, as text');
+  assert.match(ui.sceneLinkOpenFailure({ ok: false, reason: 'schema', detail: 'scene.actors[1].id: is not a vehicle of this build' }).message, /stages a tank this version/);
+  assert.match(ui.sceneLinkOpenFailure({ ok: false, reason: 'schema', detail: 'scene.actors[0].camo: is not a camo of this build' }).message, /camouflage this version/);
+  assert.match(ui.sceneLinkOpenFailure({ ok: false, reason: 'schema', detail: 'scene.actors[0].state: is not a known value' }).message,
+    /^This scene link is damaged or is not a Studio scene\. Ask the sender to copy it again\.$/);
   assert.match(ui.sceneLinkOpenFailure({ ok: false, reason: 'version', detail: 'format 2' }).message, /newer version/);
   assert.match(ui.sceneLinkOpenFailure({ ok: false, reason: 'unsupported', detail: 'DecompressionStream' }).message, /cannot open compressed/);
   const notShareable = await ui.copySceneLink({ map: 'atlantis' }, env);

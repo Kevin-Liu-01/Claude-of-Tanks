@@ -5534,7 +5534,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     await enter({ map: json.map || fallbackMap });
     try {
       await load(json);
-      panel.notice(t('studio.sceneLink.opened'));
+      // what opened: its battlefield, its tanks and its length
+      const mapId = getWorld()?.mapId ?? json.map ?? 'verdant';
+      panel.notice(t('studio.sceneLink.openedScene', {
+        map: getMapConfig(mapId).name || mapId, tanks: actors.length, seconds: (storyboard.durationMs / 1000).toFixed(1),
+      }));
     } catch (error) {
       console.error('[studio] scene link failed to stage', error);
       panel.notice(t('studio.sceneLink.loadFailed'), 'error');

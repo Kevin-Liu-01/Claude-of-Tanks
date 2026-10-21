@@ -335,8 +335,9 @@ const CSS = `
 .cot-studio .busy{position:absolute;top:16px;left:50%;transform:translateX(-50%);
   padding:8px 18px;background:rgba(6,9,12,.88);border:1px solid rgba(230,154,45,.5);
   color:#ffd27a;font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;display:none;}
-.cot-studio .notice{position:absolute;top:56px;left:50%;transform:translateX(-50%);z-index:2;pointer-events:auto;
-  width:max-content;max-width:min(540px,calc(100% - 32px));box-sizing:border-box;display:none;
+.cot-studio .notice{position:absolute;top:72px;left:calc(var(--studio-preview-width,100%) / 2);transform:translateX(-50%);
+  z-index:2;pointer-events:auto;width:max-content;max-width:min(540px,calc(var(--studio-preview-width,100%) - 32px));
+  box-sizing:border-box;display:none;
   grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:12px;padding:12px 10px 12px 14px;
   background:rgba(6,9,12,.94);border:1px solid rgba(230,154,45,.5);border-left:3px solid #e69a2d;
   box-shadow:0 14px 36px rgba(0,0,0,.5);color:#f3e2bd;}
@@ -344,9 +345,11 @@ const CSS = `
 .cot-studio .notice .ng svg{display:block;margin-top:1px;color:#ffd27a;}
 .cot-studio .notice .nt{display:grid;gap:5px;min-width:0;}
 .cot-studio .notice .nt b{font-size:13px;font-weight:600;line-height:1.4;letter-spacing:0;text-transform:none;}
-.cot-studio .notice .nt code{font:500 10.5px/1.4 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+.cot-studio .notice .nd[hidden]{display:none;}
+.cot-studio .notice .nd summary{width:max-content;cursor:pointer;font-size:11px;font-weight:600;color:#a7b4bf;}
+.cot-studio .notice .nd summary:focus-visible{outline:2px solid #ffd27a;outline-offset:2px;}
+.cot-studio .notice .nd code{display:block;margin-top:4px;font:500 10.5px/1.4 ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
   color:#a7b4bf;overflow-wrap:anywhere;}
-.cot-studio .notice .nt code:empty{display:none;}
 .cot-studio .notice .nx{display:grid;place-items:center;width:28px;height:28px;padding:0;margin:-4px 0;font-size:16px;
   line-height:1;letter-spacing:0;color:#9fb0bf;background:transparent;border-color:transparent;box-shadow:none;}
 .cot-studio .notice .nx:hover,.cot-studio .notice .nx:focus-visible{color:#ffd27a;border-color:rgba(230,154,45,.6);}
@@ -690,8 +693,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const noticeGlyph = el('span', 'ng');
   const noticeText = el('div', 'nt');
   const noticeMessage = el('b');
+  // the technical reason (a refused field's path) waits behind Details; the sentence says what happened and what to do
+  const noticeMore = el('details', 'nd');
   const noticeDetail = el('code');
-  noticeText.append(noticeMessage, noticeDetail);
+  noticeMore.append(el('summary', null, t('studio.sceneLink.details')), noticeDetail);
+  noticeText.append(noticeMessage, noticeMore);
   const noticeClose = el('button', 'nx', '×');
   noticeClose.type = 'button';
   noticeClose.setAttribute('aria-label', t('studio.sceneLink.dismiss'));
@@ -2078,6 +2084,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       noticeGlyph.innerHTML = tone === 'error' ? SCENE_LINK_GLYPHS.broken : SCENE_LINK_GLYPHS.done;
       noticeMessage.textContent = text;
       noticeDetail.textContent = detail;
+      noticeMore.hidden = !detail;
+      noticeMore.open = false;
       notice.dataset.tone = tone;
       notice.setAttribute('role', tone === 'error' ? 'alert' : 'status');
       notice.setAttribute('aria-live', tone === 'error' ? 'assertive' : 'polite');

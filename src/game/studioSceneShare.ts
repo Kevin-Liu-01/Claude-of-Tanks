@@ -91,7 +91,7 @@ type SceneLinkFailure = 'too-large' | 'encoding' | 'version' | 'unsupported' | '
 type SharedScene = Record<string, unknown>;
 export type SceneLinkDecoded =
   | { readonly ok: true; readonly scene: SharedScene; readonly jsonBytes: number }
-  | { readonly ok: false; readonly reason: SceneLinkFailure; readonly detail: string };
+  | { readonly ok: false; readonly reason: SceneLinkFailure; readonly detail: string; readonly chars?: number };
 export type SceneLinkEncoded =
   | { readonly ok: true; readonly value: string; readonly chars: number; readonly jsonBytes: number }
   | { readonly ok: false; readonly reason: 'too-large' | 'schema'; readonly chars: number; readonly detail: string };
@@ -723,7 +723,7 @@ async function inflate(bytes: Uint8Array, cap: number): Promise<Uint8Array | 'to
 
 /** The size in KB the Studio's messages quote (one decimal). */
 export function sceneLinkKb(chars: number): string {
-  return (chars / 1024).toFixed(1);
+  return (chars / 1024).toFixed(1).replace(/\.0$/, '');
 }
 
 /**
@@ -750,7 +750,7 @@ const LINK_VALUE = /^(\d{1,4})\.([a-z])\.([A-Za-z0-9_-]*)$/;
 export async function decodeSceneLink(value: unknown): Promise<SceneLinkDecoded> {
   try {
     if (typeof value !== 'string' || value === '') return { ok: false, reason: 'encoding', detail: 'empty link' };
-    if (value.length > SCENE_LINK_MAX_CHARS) return { ok: false, reason: 'too-large', detail: 'link' };
+    if (value.length > SCENE_LINK_MAX_CHARS) return { ok: false, reason: 'too-large', detail: 'link', chars: value.length };
     const match = LINK_VALUE.exec(value);
     if (!match) return { ok: false, reason: 'encoding', detail: 'not a scene link' };
     const format = Number(match[1]);

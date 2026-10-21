@@ -74,16 +74,31 @@ export function copySceneLink(scene: unknown, env: SceneLinkCopyEnv): Promise<Sc
   }).catch(() => ({ ok: false, message: t('studio.sceneLink.copyFailed'), detail: '' }));
 }
 
+/** A refusal names its cause first (blind critic 2026-10-21: a missing battlefield read as a damaged link). */
+const SCHEMA_CAUSES: readonly (readonly [RegExp, string])[] = Object.freeze([
+  [/: is not a battlefield of this build$/, 'studio.sceneLink.unknownMap'],
+  [/: is not a vehicle of this build$/, 'studio.sceneLink.unknownTank'],
+  [/: is not a camo of this build$/, 'studio.sceneLink.unknownCamo'],
+]);
+
 /**
- * The notice for a link that could not be opened: the sentence, and for a damaged link the schema path that refused it
- * (built from this build's own field names, never from the link's keys or values).
+ * The notice for a link that could not be opened: a plain sentence with the cause and the next step, and for a refused
+ * scene the schema path that refused it, shown behind Details (built from this build's own field names, never from the
+ * link's keys or values).
  */
 export function sceneLinkOpenFailure(result: Exclude<SceneLinkDecoded, { ok: true }>): { message: string; detail: string } {
+  const max = sceneLinkKb(SCENE_LINK_MAX_CHARS);
   switch (result.reason) {
-    case 'too-large': return { message: t('studio.sceneLink.tooLarge', { max: sceneLinkKb(SCENE_LINK_MAX_CHARS) }), detail: '' };
+    case 'too-large': return {
+      message: result.chars ? t('studio.sceneLink.tooLarge', { size: sceneLinkKb(result.chars), max }) : t('studio.sceneLink.tooLargeScene'),
+      detail: '',
+    };
     case 'version': return { message: t('studio.sceneLink.newer'), detail: '' };
     case 'unsupported': return { message: t('studio.sceneLink.unsupported'), detail: '' };
-    default: return { message: t('studio.sceneLink.invalid'), detail: result.detail };
+    default: {
+      const cause = SCHEMA_CAUSES.find(([pattern]) => pattern.test(result.detail));
+      return { message: t(cause ? cause[1] : 'studio.sceneLink.invalid'), detail: result.detail };
+    }
   }
 }
 
