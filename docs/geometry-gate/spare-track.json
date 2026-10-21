@@ -451,13 +451,38 @@
    "hostSweep": []
   },
   "c2_ariete": {
-   "inputHash": "2f6e3e3654efda9a",
-   "runs": [],
+   "inputHash": "1b89b448c4278630",
+   "runs": [
+    {
+     "index": 0,
+     "site": "adhoc:ariete-forward-carry@<anon>@profiles/arieteXSuppliedHullEquipment.ts",
+     "source": "adhoc",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [
+      "clips <= 5 cm cosmetic"
+     ],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.016,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.811,
+      "host": "hull<lowerTub@profiles/arieteXSuppliedHull.ts:20>"
+     }
+    }
+   ],
    "uncovered": [],
    "hostSweep": []
   },
   "c2_ariete_proto": {
-   "inputHash": "d16d5f4c6d5ddd40",
+   "inputHash": "70cc78e7662ccbf8",
    "runs": [
     {
      "index": 0,
@@ -2502,7 +2527,7 @@
    "hostSweep": []
   },
   "pt91a_twardy": {
-   "inputHash": "6d4b5ec7450d3b52",
+   "inputHash": "0be7496ecb027214",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3020,31 +3045,31 @@
    "hostSweep": []
   },
   "t72b3_bastion_m": {
-   "inputHash": "d35780ea154a4274",
+   "inputHash": "859d02525cc575d7",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t72b3_qilin": {
-   "inputHash": "b063702288d1085b",
+   "inputHash": "9085c78b7d542d81",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t72b3_sich": {
-   "inputHash": "498ac4b4d00e37d9",
+   "inputHash": "4079275e00bc7f73",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t72b3_zubr": {
-   "inputHash": "0830f8e02271df31",
+   "inputHash": "73aec8a5c4e6e49a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t72b3_zubr_ii": {
-   "inputHash": "839eaefa7c201c3c",
+   "inputHash": "e28f9c439bec6375",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3062,31 +3087,31 @@
    "hostSweep": []
   },
   "t72b3m_bulat_m": {
-   "inputHash": "360c88aa24d68749",
+   "inputHash": "12bf1ca10383990e",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t72b3m_hetman": {
-   "inputHash": "f5e6485dfe41e6cc",
+   "inputHash": "0afdc6443567f4fd",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t72b3m_hetman_ii": {
-   "inputHash": "32ca4287ddb74f08",
+   "inputHash": "83b6d0ec0eee25b7",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t72b3m_kunlun": {
-   "inputHash": "f5c9fd1fd695c754",
+   "inputHash": "53f622c8adef7b8f",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t72b3m_wilk": {
-   "inputHash": "890b96136d2ffffd",
+   "inputHash": "de12515aa8c7ce72",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3116,7 +3141,7 @@
    "hostSweep": []
   },
   "t80": {
-   "inputHash": "51d9e0b3eb4df036",
+   "inputHash": "103f60679829bdd9",
    "runs": [
     {
      "index": 0,
@@ -3139,7 +3164,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.967,
-      "host": "hull<loftHull@profiles/russia.ts:504>"
+      "host": "hull<loftHull@profiles/russia.ts:487>"
      }
     }
    ],
@@ -3147,7 +3172,7 @@
    "hostSweep": []
   },
   "t80b": {
-   "inputHash": "0005c24c73901e69",
+   "inputHash": "3c261373ad0c58c1",
    "runs": [
     {
      "index": 0,
@@ -3170,7 +3195,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.978,
-      "host": "hull<loftHull@profiles/russia.ts:504>"
+      "host": "hull<loftHull@profiles/russia.ts:487>"
      }
     }
    ],
@@ -3178,7 +3203,7 @@
    "hostSweep": []
   },
   "t80bv": {
-   "inputHash": "015e799757ede7f1",
+   "inputHash": "93cc57925b1dcaa9",
    "runs": [
     {
      "index": 0,
@@ -3201,7 +3226,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.967,
-      "host": "hull<loftHull@profiles/russia.ts:504>"
+      "host": "hull<loftHull@profiles/russia.ts:487>"
      }
     }
    ],
@@ -3215,13 +3240,13 @@
    "hostSweep": []
   },
   "t80u_bars_m": {
-   "inputHash": "6fa0cc62ff42508b",
+   "inputHash": "7a72ef57abbb098d",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t80u_husarz": {
-   "inputHash": "7137bc34456ae583",
+   "inputHash": "eb385e800693c84e",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3233,13 +3258,13 @@
    "hostSweep": []
   },
   "t80u_yun": {
-   "inputHash": "d407149cdbc99e91",
+   "inputHash": "1dafff933ce0abe3",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t80u_zoria": {
-   "inputHash": "3d47994303579313",
+   "inputHash": "566bac69e6130516",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3251,7 +3276,7 @@
    "hostSweep": []
   },
   "t84": {
-   "inputHash": "b54b76297141b1ab",
+   "inputHash": "a254edf51e3f49be",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3286,7 +3311,7 @@
    "hostSweep": []
   },
   "t90": {
-   "inputHash": "7a308d5381b9dc13",
+   "inputHash": "a33d40e3cc3ade49",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3327,7 +3352,7 @@
    "hostSweep": []
   },
   "t90a_2004": {
-   "inputHash": "e9b21233b7b32c66",
+   "inputHash": "665402c1131c426c",
    "runs": [
     {
      "index": 0,
@@ -3350,7 +3375,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<loftHull@profiles/russia.ts:504>"
+      "host": "hull<loftHull@profiles/russia.ts:487>"
      }
     }
    ],
@@ -3466,7 +3491,7 @@
    "hostSweep": []
   },
   "t90sm_2013": {
-   "inputHash": "bd47d6e194b65a11",
+   "inputHash": "b696e40025c008a8",
    "runs": [
     {
      "index": 0,
@@ -3487,7 +3512,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.989,
-      "host": "turretDetail<Proxy.add<-addT90SMLegacyBustleCageAndSystems@profiles/t90.ts:4181>"
+      "host": "turretDetail<Proxy.add<-addT90SMLegacyBustleCageAndSystems@profiles/t90.ts:4148>"
      }
     }
    ],
@@ -3785,25 +3810,25 @@
    "hostSweep": []
   },
   "type96_72_long": {
-   "inputHash": "1181eb2ebac45689",
+   "inputHash": "6f2f1eee2363883f",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "type96_72m_lei": {
-   "inputHash": "9f7d0fd6199ddf58",
+   "inputHash": "17acd99479f6d3aa",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "type96_80_feng": {
-   "inputHash": "1efaa8155549aed8",
+   "inputHash": "f18193caca37ee7a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "type96b": {
-   "inputHash": "443b65e4af36b7c5",
+   "inputHash": "784eadd39ea06014",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

@@ -71,6 +71,15 @@ const POLISH_FIELD: Readonly<Partial<Record<Layout['id'], {
     roof: .70, brow: .20, marks: [[-.356, -.776], [-1.136, -.018]]},
 };
 
+/** The Zubr II's glacis terrace nets: z0, z1 and half width. Round 7 (polandFrontEra.ts TERRACES: the two upper terraces
+ * carried two rows of cassettes, the rear row 4-5 cm above the front one on the 16.8-degree terrace top; one net a terrace
+ * laid the rear row's height out over the front row, and the ghillieSuit receipt found three of its pieces 2.2 cm over
+ * everything): one net per cassette row, over the row (its z span along the terrace top) and no further, so no cloth
+ * bridges a row's step; the front terrace stops short of the LED cluster housings. Round 10 (the blind critic's
+ * UAPL-R8-02: each terrace now carries one row of large cassettes): one net a terrace, over its one row. */
+const ZUBR_II_TERRACE_NETS: readonly (readonly [number, number, number])[] = [[2.235, 2.525, 1.0], [2.595, 2.847, 1.0],
+  [2.915, 3.106, .78]];
+
 const square = ([x, z]: readonly [number, number], r: number): Point2[] => [[x - r, z - r], [x + r, z - r], [x + r, z + r], [x - r, z + r]];
 const circle = (z: number, r: number): Point2[] => Array.from({length: 24}, (_, k): Point2 =>
   [Math.cos(k * Math.PI / 12) * r, z + Math.sin(k * Math.PI / 12) * r]);
@@ -100,10 +109,26 @@ function fieldSuit(d: Layout, m: number): GhillieConfig {
     // the owner's performance push (the coordinator, 2026-10-13): 70 % of each clump's cards, broader, so the clump covers
     // the same net; the far tier (LOW) keeps 35 % of them (the Zubr II's LOW was already 75.4 % of its HIGH bare)
     garnishBudget: {clumpCards: .7, lowShare: .35},
+    // release 227 (round 2): the Zubrs' Krata glacis fields and cheek grids: no card passes into a cassette or a riser
+    // (round 7: spent, the cloth and garnish over a sector's modules fall onto the stock under them: eraSpentDrape.ts)
+    ...(d.id === 't72b3_zubr' || d.id === 't72b3_zubr_ii' ? {cardsClearOfArmour: true, dropOverSpentEra: true} : {}),
     light: [0x68724b, 0x73744d, 0x657547, 0x747852][m]!, dark: 0x2f3a2c, netColor: 'rgba(49,61,37,0.88)', netTextureSeed: 1101,
     hull: {
-      top: [laid({x0: -2.12, x1: 2.12, z0: f.stern, z1: f.bow, nx: 42, nz: Math.round((f.bow - f.stern) / .1), yAt: deckAt,
-        holes: [circle(f.pivot, f.ring)], garnishRiseM: .12, seed: 31})],
+      top: d.id === 't72b3_zubr_ii' ? [
+        // release 227 (round 4; the critic: "the camouflage-suit net and foliage lie in the gaps between the new glacis ERA
+        // rows and pass under the module rows"): the Zubr II's deck net ends at its glacis terraces, and each terrace
+        // carries its own net laid on its cassettes' tops (5 cm cells, ghillieSuit.ts envelopeM 4 cm: over the 1.5 cm
+        // gaps between cassettes), ending at the terrace's front lip: no cloth hangs down a step or lies in a gap
+        laid({x0: -2.12, x1: 2.12, z0: f.stern, z1: ZUBR_II_TERRACE_NETS[0][0] - .02, nx: 42,
+          nz: Math.round((ZUBR_II_TERRACE_NETS[0][0] - .02 - f.stern) / .1), yAt: deckAt, holes: [circle(f.pivot, f.ring)], garnishRiseM: .12, seed: 31}),
+        ...ZUBR_II_TERRACE_NETS.map(([z0, z1, hx], k) => laid({x0: -hx, x1: hx, z0, z1, nx: Math.round(2 * hx / .05),
+          nz: Math.max(3, Math.round((z1 - z0) / .05)), yAt: deckAt, garnishRiseM: .05, seed: 41 + k * 7, envelopeM: .04})),
+      ] : [laid({x0: -2.12, x1: 2.12, z0: f.stern, z1: f.bow, nx: 42, nz: Math.round((f.bow - f.stern) / .1), yAt: deckAt,
+        holes: [circle(f.pivot, f.ring)], garnishRiseM: .12, seed: 31,
+        // release 227 (round 4): over the Zubr's framed glacis fields the net lies on the cassettes' tops (ghillieSuit.ts
+        // envelopeM: 9 cm, over half its 10 cm cells' diagonal), spanning the gaps between them: no cloth passes into a
+        // cassette, and its garnish lies on that, never down in a gap
+        ...(d.id === 't72b3_zubr' ? {envelopeM: .09, envelopeZ: [2.12, 3.25] as const} : {})})],
       // tied under each bay's top rail (tiedTop), hung over the slats to the bottom rail
       side: [-1, 1].flatMap((side) => d.hullPanels.map(([a, b], i) => ({
         side, z0: a + .055, z1: b - .055, nz: Math.max(10, Math.round((b - a) / .09)), ny: 7, seed: 37 + side + i * 17,

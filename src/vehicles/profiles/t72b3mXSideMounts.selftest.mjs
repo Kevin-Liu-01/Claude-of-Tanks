@@ -193,6 +193,19 @@ function attachment(tank,all){
   assert.ok(all.includes(detail));
 }
 
+// Release 227, round 6 (the critic's UAPL-R5C-1): under a national hull's own fitted skirt banks (t72b3mX nativeEra
+// false, Hetman II) the mounts only the side-skirt Relikt carried are left out, and nothing else: the rearmost upper link
+// a side (it held only the rear skirt box) and the rail fields' four lower strips a side (wholly inside the banks).
+{
+  const parts=skirtEra=>{const out=[];addT72B3MSideMounts({addEquipment(_b,g,x=0,y=0,z=0){g.computeBoundingBox();out.push(g.boundingBox.clone().translate(new T.Vector3(x,y,z)));g.dispose();}},{skirtEra});return out;};
+  const all=parts(true),without=parts(false),key=b=>[...b.min.toArray(),...b.max.toArray()].map(v=>v.toFixed(4)).join();
+  const kept=new Set(without.map(key)),dropped=all.filter(b=>!kept.has(key(b)));
+  assert.equal(all.length-without.length,2+2*8,'two rearmost links and sixteen lower rail strips are left out');
+  assert.equal(dropped.length,18,'every other mount is kept unchanged');
+  assert.equal(dropped.filter(b=>b.max.z< -3.1).length,2,'the two rearmost upper links');
+  assert.equal(dropped.filter(b=>b.max.z>-3.1&&b.max.y<1.47&&Math.abs(b.max.x)>1.95).length,16,'the rail fields\' lower strips');
+}
+
 for(const quality of ['high','low']){
   const tank=createTank('t72b3m_2016',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{

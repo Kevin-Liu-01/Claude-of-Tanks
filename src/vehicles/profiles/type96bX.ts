@@ -270,31 +270,101 @@ const TYPE96_TURRET_STATIONS: readonly Type96Station[] = [
 const TYPE96_GUNNER_SIGHT = { x: .649, y: 2.436, z: .36, w: .51, h: .214, d: .28 } as const;
 /** Options for reusing the Type 96B turret on another hull. mastTopY lowers the rear whip's tip (Type 96B frame,
  * default its own 5.26855 m) for a concept whose listed height is its body and roof weapon, keeping the whip's rake.
- * bootFloor clips the pitching mantlet boot's underside at each of its six stations (source-frame heights, null for
+ * Release 227 (each defaults to the Type 96B's own output, byte-identical): `bins: false` leaves out the two open side
+ * bins and `smoke: false` the twelve cheek launchers, for a concept whose own armour housing fills their volume and
+ * which carries its own smoke tubes; `bootHeel: true` lifts the mantlet boot's rear rings (behind the trunnion) to a
+ * heel line, so the boot clears a lower host's driver's hatch at full elevation and its shoulder covers at every yaw.
+ * `boxSightOnGun: true` (release 227, CN track) builds the box sight over the mantlet on the gun's pitch group rather
+ * than the turret: on the fleet build it stands 10-50 mm inside the pitching boot under it at rest; here it rides the
+ * boot, its flat bottom 2 mm into the boot's highest point under it and a saddle whose underside follows the boot's top
+ * 1-5 mm in filling the rest, so the sight pitches with the gun it lays and never meets the boot at any pitch (the
+ * boot, saddle and sight go through add() into the same mantlet buckets, so the part census sees the seat).
+ * `bootFloor` clips the pitching mantlet boot's underside at each of its six stations (source-frame heights, null for
  * none) so the boot clears the hull it is carried over through the whole traverse and pitch range; without it the
- * boot keeps Object_6's measured underside. */
-export interface Type96TurretOptions { mastTopY?: number; bootFloor?: readonly (number | null)[] }
+ * boot keeps Object_6's measured underside (applied after `bootHeel`, where both are given).
+ * `boxSightSourceTop: true` (with `boxSightOnGun`; release 227, 2026-10-20) keeps the sight's measured top (source y
+ * 2.396): the box stands from its flat bottom on the boot's crown up to that top, as the source draws it over the boot,
+ * instead of the whole authored box raised onto the crown (its top then 46 mm over the source's on the Type 96B's boot);
+ * its window keeps the authored size, centred on the shorter face. */
+export interface Type96TurretOptions {
+    mastTopY?: number; bins?: boolean; smoke?: boolean; bootHeel?: boolean; boxSightOnGun?: boolean;
+    bootFloor?: readonly (number | null)[]; boxSightSourceTop?: boolean;
+}
+
+// The box sight over the mantlet (Type 96B source frame): centre, width, height, depth.
+const TYPE96_BOX_SIGHT = { x: 0, y: 2.278, z: 1.540, w: .25, h: .236, d: .396 } as const;
+/** The box sight seated on the pitching boot (gun frame): `boot` is the boot's geometry in that frame; `sourceTop` keeps
+ * the authored top (Type96TurretOptions.boxSightSourceTop). */
+function addBoxSightOnBoot(P: TankBuilderPort, boot: THREE.BufferGeometry, bootStations: readonly number[], sourceTop = false): void {
+    const s = TYPE96_BOX_SIGHT, origin = P.turretG.position.clone().add(P.gunG.position);
+    const x = s.x - origin.x, cy = s.y - origin.y, cz = s.z - origin.z, z0 = cz - s.d / 2, z1 = cz + s.d / 2;
+    const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), mesh = new THREE.Mesh(boot, material);
+    mesh.updateMatrixWorld(true);
+    const ray = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 3);
+    const top = (px: number, pz: number): number => {
+        ray.ray.origin.set(px, cy + 1, pz);
+        const hit = ray.intersectObject(mesh, false)[0];
+        if (!hit) throw new Error(`${P.spec.id}: no mantlet boot under the box sight at ${px.toFixed(3)}, ${pz.toFixed(3)}`);
+        return hit.point.y;
+    };
+    try {
+        // the saddle (4 mm inside the sight's footprint, so no face of it lies in a face of the sight): its stations are its
+        // ends, the boot's own ring stations under it (the boot's top creases there) and a 6 cm grid between, with nine
+        // samples across, so its underside lies 1-5 mm into the boot everywhere and never above it
+        const inset = .004, sz0 = z0 + inset, sz1 = z1 - inset;
+        const xs = Array.from({ length: 9 }, (_, k) => x + (k / 4 - 1) * (s.w / 2 - inset));
+        const zs = [sz0, sz1, ...bootStations.filter((z) => z > sz0 + .01 && z < sz1 - .01)];
+        for (let k = 1; k < 6; k++) zs.push(sz0 + (sz1 - sz0) * k / 6);
+        zs.sort((a, b) => a - b);
+        const rows = zs.filter((z, i) => i === 0 || z - zs[i - 1] > .015).map((z) => ({ z, under: xs.map((px) => top(px, z)) }));
+        const bottom = Math.max(...rows.flatMap((r) => r.under)) - .002;
+        P.add('gunMount', sectionSolid(rows.map((r) => ({
+            z: r.z, ring: [...xs.map((px, i) => [px, r.under[i] - .001] as const), [xs[8], bottom + .002] as const, [xs[0], bottom + .002] as const],
+        }))));
+        const [y, h] = sourceTop ? [(bottom + cy + s.h / 2) / 2, cy + s.h / 2 - bottom] : [bottom + s.h / 2, s.h];
+        if (h < s.h * .70 + .01) throw new Error(`${P.spec.id}: the box sight's face (${h.toFixed(3)} m) no longer holds its window`);
+        P.add('gunMount', box(s.w, h, s.d), x, y, cz);
+        P.add('gunMountDark', box(s.w * .76, s.h * .70, .018), x, y, z1 + .005);
+        P.add('gunMountGlass', box(s.w * .62, s.h * .52, .012), x, y, z1 + .017);
+    } finally { material.dispose(); }
+}
+
+// The boot's heel line in the gun frame (z, y): the lower points of the rings at and behind the trunnion rise to it (the
+// trunnion ring's lowest point 8 mm); ahead of the trunnion nothing moves.
+const TYPE96_BOOT_HEEL: readonly (readonly [number, number])[] = [[-.40, -.149], [-.28, -.178], [0, -.236]];
+function bootHeelY(z: number): number {
+    const h = TYPE96_BOOT_HEEL;
+    if (z <= h[0][0]) return h[0][1];
+    for (let i = 1; i < h.length; i++) if (z <= h[i][0] + 1e-9) {
+        const t = (z - h[i - 1][0]) / (h[i][0] - h[i - 1][0]);
+        return h[i - 1][1] + (h[i][1] - h[i - 1][1]) * t;
+    }
+    return -Infinity;
+}
 export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptions = {}): void {
     P.add('turret', cylY(1.00, 1.04, .15, P.q ? 40 : 22), 0, .045, 0);
     P.add('turret', sectionSolid(TYPE96_TURRET_STATIONS.map(row => turretStation(P, ...row)),
         { sideQuadDiagonal: 'convex' }));
-    addTurretBins(P);
-    addType96SmokeLaunchers(P);
+    if (options.bins !== false) addTurretBins(P);
+    if (options.smoke !== false) addType96SmokeLaunchers(P);
     addType96Cupola(P);
     addSecondaryHatch(P);
     equipment(P, 'turret', 'Detail', cylY(.205, .205, .145, P.q ? 26 : 14), -.766, 2.291, -.994);
     equipment(P, 'turret', 'Detail', cylY(.122, .122, .140, P.q ? 24 : 14), .897, 2.291, -.719);
     const s = TYPE96_GUNNER_SIGHT;
     optic(P, 'turret', s.x, s.y, s.z, s.w, s.h, s.d);
-    optic(P, 'turret', 0, 2.278, 1.540, .25, .236, .396);
-    // 2026-10-19 (owner float sweep): this sensor stood 113 mm over the roof, resting only on the pitching mantlet boot;
-    // a bridge of two posts outboard of the boot and a crossbar under the housing carries it on the turret.
-    // 2026-10-21 (float-gaps 230): the bridge stands at the housing's front end (z 1.665..1.735), not mid-housing: there
-    // the crossbar hid the boot's shoulders from above at full elevation (type96GunOwnership.selftest.mjs; the shoulder
-    // line crosses it at z 1.50..1.65 over -7..14 degrees) and nearly met the boot's rising rear at full depression.
-    for (const side of [-1, 1])
-        equipment(P, 'turret', 'Detail', box(.06, .25, .07), side * .30, 2.12, 1.70);
-    equipment(P, 'turret', 'Detail', box(.66, .03, .07), 0, 2.23, 1.70);
+    // the turret-fixed box sight (without boxSightOnGun; every 230 caller rides it on the gun's boot instead)
+    if (!options.boxSightOnGun) {
+        optic(P, 'turret', TYPE96_BOX_SIGHT.x, TYPE96_BOX_SIGHT.y, TYPE96_BOX_SIGHT.z, TYPE96_BOX_SIGHT.w, TYPE96_BOX_SIGHT.h, TYPE96_BOX_SIGHT.d);
+        // 2026-10-19 (owner float sweep): this sensor stood 113 mm over the roof, resting only on the pitching mantlet boot;
+        // a bridge of two posts outboard of the boot and a crossbar under the housing carries it on the turret.
+        // 2026-10-21 (float-gaps 230): the bridge stands at the housing's front end (z 1.665..1.735), not mid-housing: there
+        // the crossbar hid the boot's shoulders from above at full elevation (type96GunOwnership.selftest.mjs; the shoulder
+        // line crosses it at z 1.50..1.65 over -7..14 degrees) and nearly met the boot's rising rear at full depression.
+        for (const side of [-1, 1])
+            equipment(P, 'turret', 'Detail', box(.06, .25, .07), side * .30, 2.12, 1.70);
+        equipment(P, 'turret', 'Detail', box(.66, .03, .07), 0, 2.23, 1.70);
+    }
     // Object_12's mast is supported by a finite stem and two square collars.
     // Retain the original upper rod; the omitted lower stock caused a real
     // 173 mm air gap to the native turret roof, not a comparison artifact.
@@ -316,13 +386,20 @@ export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptio
         z: z - 1.6, ring: Array.from({ length: P.q ? 20 : 12 }, (_, i) => {
             const a = i * Math.PI * 2 / (P.q ? 20 : 12);
             const y = (top + bottom) / 2 - 1.8602 + Math.sin(a) * (top - bottom) / 2, floor = options.bootFloor?.[station];
-            return [Math.cos(a) * half, floor == null ? y : Math.max(y, floor - 1.8602)] as const;
+            const heeled = options.bootHeel && z - 1.6 <= 1e-9 ? Math.max(y, bootHeelY(z - 1.6)) : y;
+            return [Math.cos(a) * half, floor == null ? heeled : Math.max(heeled, floor - 1.8602)] as const;
         }),
     }));
     // Object_6 is the pitching mantlet boot; the tube and ambiguous Object_11
     // collar remain in recoil. This changes ownership only, not neutral stock.
-    // A clipped underside is a flat run of contour points: its caps keep every one.
-    P.addGunExtra(options.bootFloor ? sectionSolid(boot, { preserveCapBoundary: true }) : sectionSolid(boot));
+    // (with the box sight riding it, the boot and the sight go through add(): the same mantlet bucket, and the part census
+    // sees the seat; a clipped underside is a flat run of contour points: its caps keep every one)
+    const bootGeometry = options.bootFloor ? sectionSolid(boot, { preserveCapBoundary: true }) : sectionSolid(boot);
+    if (options.boxSightOnGun) {
+        P.add('gunMount', bootGeometry);
+        addBoxSightOnBoot(P, bootGeometry, boot.map((r) => r.z), options.boxSightSourceTop);
+    }
+    else P.addGunExtra(bootGeometry);
     // Source Object_13 is the outer tapered shroud. Object_14's 68 mm
     // radius belongs to its inner bore and must not become the outer barrel.
     const stations: readonly (readonly [
@@ -379,7 +456,9 @@ export function buildType96bX(P: TankBuilderPort): void {
     P.gunG.position.set(0, frame.gun[1] - frame.turret[1], frame.gun[2] - frame.turret[2]);
     buildType96Hull(P);
     buildType96Gear(P);
-    buildType96Turret(P, { bootFloor: TYPE96B_BOOT_FLOOR });
+    // Release 227: the box sight over the mantlet rides the pitching boot (boxSightOnGun); turret-fixed, the boot passed
+    // through it at every pitch. It keeps its measured top (boxSightSourceTop; type96bSightBoot.selftest.mjs).
+    buildType96Turret(P, { bootFloor: TYPE96B_BOOT_FLOOR, boxSightOnGun: true, boxSightSourceTop: true });
     addType96GunnerSightPlinth(P);
     preserveSourceStudyGunMountAppearance(P);
     addRearFieldStowage(P);

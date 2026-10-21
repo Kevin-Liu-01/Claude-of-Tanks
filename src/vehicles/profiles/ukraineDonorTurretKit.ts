@@ -15,6 +15,9 @@ import {eraCassette,supportedSensor,strappedPack} from './modernizationFittings.
 import {nationalLamp,nationalEye,nationalRoofSensor} from './nationalRoofSystems.ts';
 import {ukrainianDonorHull} from './nationalUkraine.ts';
 import {hetmanIIHullPackage} from './hetmanII.ts';
+import {hetmanIIProw,hetmanIIRoofSlabs,hetmanIIGlacis,hetmanIISideBand} from './ukraineFrontEra.ts';
+import {sectionLoft} from './eraModuleKit.ts';
+import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {addNationalUkraineProtection,NATIONAL_UKRAINE_GHILLIE} from './nationalUkraineProtection.ts';
 import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
 import {addVehicleGhillieSuit,type GhillieConfig} from '../ghillieSuit.ts';
@@ -182,7 +185,26 @@ function seatedEra(P:TankBuilderPort,S:TurretStock,origin:THREE.Vector3,dir:THRE
   if(!hit)throw new Error(`${P.spec.id}: ERA cassette has no permanent seat at ${origin.toArray()}`);
   const n=hit.n,x=across.clone().addScaledVector(n,-across.dot(n)).normalize();
   const center=hit.point.clone().addScaledVector(n,size[1]/2-.004);
-  eraCassette(P,'turret',`turret_era_${center.x<0?'L':'R'}`,center.toArray(),size,basisEuler(x,n));
+  if(P.spec.id==='t72b3m_hetman_ii')chamferedCassette(P,`turret_era_${center.x<0?'L':'R'}`,center.toArray(),size,basisEuler(x,n));
+  else eraCassette(P,'turret',`turret_era_${center.x<0?'L':'R'}`,center.toArray(),size,basisEuler(x,n));
+}
+
+/** Release 227, round 7 (cost: the brief's primitive rule, "never KIT.box for a part 6 cm or more in every dimension",
+ * and fleet-style-performance-priority.md): Hetman II's flank-cabinet cassettes as section lofts with a 12 mm chamfer
+ * round their face, 20 triangles where the rounded box drew 108, at the same seat, size, sector and outward face, with
+ * a flat lid plate on the face (sunk 1 mm). Their 1,850 triangles saved pay for the field net's whole glacis (its LED
+ * lenses no longer read as looking back over it) inside the gatefix2 baseline. The Hetman's and the Sich's cassettes
+ * are unchanged. */
+function chamferedCassette(P:TankBuilderPort,sector:string,center:readonly number[],size:V3,rotation:V3):void {
+  const [w,t,d]=size,c=.012;
+  const ring=(i:number):[number,number][]=>[[-w/2+i,-d/2+i],[w/2-i,-d/2+i],[w/2-i,d/2-i],[-w/2+i,d/2-i]];
+  const at=(y:number,i:number)=>({o:[0,y,0] as V3,out:[1,0,0] as V3,up:[0,0,1] as V3,ring:ring(i)});
+  const g=sectionLoft([at(-t/2,0),at(t/2-c,0),at(t/2,c)]);
+  const lid=new THREE.BoxGeometry(w-2*c-.01,.006,d-2*c-.01).translate(0,t/2+.002,0);
+  P.destructibleCluster(sector,()=>{
+    P.addExternalArmor('turret',markEraHitFaces(g,[0,1,0]),center[0],center[1],center[2],...rotation);
+    P.addExternalArmor('turret',markEraFurniture(lid),center[0],center[1],center[2],...rotation);
+  });
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -389,8 +411,14 @@ function turretSuit(id:UkraineDonorId,n:TurretNet):GhillieConfig {
   const opening=([x,z]:readonly[number,number]):[number,number][]=>[[x-.26,z-.26],[x+.26,z-.26],[x+.26,z+.26],[x-.26,z+.26]];
   return {...base,turret:{
     // The roof net opens round the marks and over the drone dock's landing (its 12 m lift column stays clear).
+    // (230 round 11: over Hetman II's Duplet-T slab fields, the forward field and the rear pair behind the hatches, the net
+    // lies on the slabs' tops (ghillieSuit.ts envelopeM), as the glacis net does over the chevron bands. Laid on the roof
+    // between them it ran into the rear slabs, and its lying garnish met the slabs' sides: 26 % of the net covered, under the
+    // garnish receipt's 30 %. That coverage swings with the net's seed on this roof (26 to 37 % over seeds 151 to 158,
+    // whichever bands): seed 155 keeps 36 % with these bands, 31 to 36 % with the others)
     top:[{yFromArmour:true,clipToArmour:true,autoOpeningsM:.07,rimScale:.5,x0:-n.x,x1:n.x,z0:n.rear,z1:n.front,nx:38,
-      nz:Math.round((n.front-n.rear)/.1),yAt:()=>n.roof,garnishRiseM:.16,seed:151,holes:[...n.marks.map(opening),landingOpening(id)]}],
+      nz:Math.round((n.front-n.rear)/.1),yAt:()=>n.roof,garnishRiseM:.16,seed:151,holes:[...n.marks.map(opening),landingOpening(id)],
+      ...(id==='t72b3m_hetman_ii'?{envelopeM:.09,envelopeZ:[[.10,.80],[-1.25,-.70]] as const,seed:155}:{})}],
     side:n.sides.map((s,i)=>({side:s.side,z0:s.z0,z1:s.z1,nz:Math.max(6,Math.round((s.z1-s.z0)/.07)),ny:7,seed:71+s.side+i*13,
       topAt:()=>s.top-.026,bottomAt:(z:number)=>s.bottom+.068+.017*Math.sin(z*5.2),
       outAt:(z:number,t:number)=>s.out(z)+.028+(1-t)*.015})),
@@ -591,7 +619,8 @@ function commandBasket(P:TankBuilderPort,S:TurretStock):void {
   // The outer frame's front corners meet the cabinets' rear flanges.
   for(const [i,j]of [[0,0],[O.length-1,F.length-1]] as const)beam([O[i][0],floor,O[i][1]],[F[j][0],floor,F[j][1]],.020);
   // Goose-neck stays: up from the beam behind the rear boxes, over their roofs, and clamped down on the roofs' high
-  // inner ends (the casting's rear roof under them is all Relikt).
+  // inner ends (on the Hetman II the casting's rear roof under them is bare since release 227, but the stays keep their
+  // seats on the box roofs).
   for(const i of [2,3,4]){
     const [x,z]=F[i],postTop=.84,target=S.pad(x*.80,z*.80,postTop,{search:.12,radius:.022,buckets:FIXED});
     if(!target)throw new Error(`${P.spec.id}: basket stay has no pad near ${x*.8},${z*.8}`);
@@ -621,22 +650,33 @@ function commandBasket(P:TankBuilderPort,S:TurretStock):void {
   for(const dx of [-.15,.15])P.addEquipment('turretDark',box(.032,.05,.014),dx,floor+.15,-2.25);
 }
 
+// Release 230 (the turret land; the art-fixes lane's critic: "a long upright camo-painted panel standing above the far side
+// of the rear deck"): the basket's flanks carry no hanging drape. The two flank drapes (0.77 and 0.61 m long, 0.33 m deep)
+// hung 30-87 mm outboard of the basket's open lattice walls with nothing under them, so through the open basket their
+// inner faces read as solid camouflaged boards standing 18-20 cm over the engine deck. The roof net and the drape seated
+// on the basket's back screen stay; the flanks show the lattice and its stowage, as the basket's corners do.
 const hetmanIINet=():GhillieConfig=>turretSuit('t72b3m_hetman_ii',{roof:.80,x:1.95,front:1.75,rear:-2.60,marks:turretMarks('t72b3m_hetman_ii'),
-  sides:[{side:-1,z0:-2.26,z1:-1.49,bottom:.24,top:.66,out:()=>1.30},{side:1,z0:-2.26,z1:-1.65,bottom:.24,top:.66,out:()=>1.27}],
+  sides:[],
   rearFace:{zAt:(x:number)=>pathAt(HETMAN_II_BASKET,0,x),x0:-.98,x1:.98,y0:.305,y1:.63}});
 
 function hetmanII(P:TankBuilderPort,S:TurretStock):void {
+  // Release 227: the stepped prow first (ukraineFrontEra.ts), seated on the bare donor casting; the cabinets follow.
+  hetmanIIProw(P);
+  S.refresh();
   const l=NATIONAL_ROOF_LOADOUTS.t72b3m_hetman_ii,sweep=stationSweep(P);
   // Lid stations kept clear of lid ERA: the cage legs, then per flank the lamp, the sensor head and the panorama.
   const fit={l:{lamp:.74,eye:.44,pan:-.62},r:{lamp:.22,eye:-.08,pan:-.80}};
   const station=(side:number,dBack:number,fa:number):[number,number]=>{const p=b3mFlank(side).at(b3mFlank(side).face-dBack,fa,0);return [p.x,p.z];};
   const reservedL:[number,number][]=[[-1.17,.06],[-1.17,-.86],[-1.42,.06],[-1.42,-.86],station(-1,.12,fit.l.lamp),station(-1,.16,fit.l.eye),station(-1,.20,fit.l.pan)];
-  const reservedR:[number,number][]=[[.98,-.32],[.98,-.90],[1.40,-.32],[1.40,-.90],station(1,.12,fit.r.lamp),station(1,.16,fit.r.eye),station(1,.20,fit.r.pan)];
+  // Release 227 (national lamp clearance): the right wing's front outer leg stands inboard of the right lamp (outerAt), at
+  // 1.40 m it ran 48.5 mm up through the lamp's body; the lamp keeps its lid station.
+  const RIGHT_FRONT_OUTER_LEG=1.26;
+  const reservedR:[number,number][]=[[.98,-.32],[.98,-.90],[RIGHT_FRONT_OUTER_LEG,-.32],[1.40,-.90],station(1,.12,fit.r.lamp),station(1,.16,fit.r.eye),station(1,.20,fit.r.pan)];
   const L=flankCabinet(P,S,-1,-.84,.86,3,reservedL),R=flankCabinet(P,S,1,-1.00,.33,2,reservedR);
   S.refresh();
   roofCageWings(P,S,[
     {side:-1,inner:1.10,outer:1.92,z0:-1.06,z1:.26,y:1.16,legX:[1.17,1.42],legZ:[.06,-.86]},
-    {side:1,inner:.95,outer:1.80,z0:-1.26,z1:-.16,y:1.16,legX:[.98,1.40],legZ:[-.32,-.90]},
+    {side:1,inner:.95,outer:1.80,z0:-1.26,z1:-.16,y:1.16,legX:[.98,1.40],legZ:[-.32,-.90],outerAt:[RIGHT_FRONT_OUTER_LEG,1.40]},
   ]);
   S.refresh();
   commandBasket(P,S);
@@ -661,6 +701,9 @@ function hetmanII(P:TankBuilderPort,S:TurretStock):void {
     P.addEquipment('turretDetail',cylY(.050,.062,.055,12),x,.737,z);
     P.addEquipment('turretDark',cylY(.007,.014,h,10),x,.765+h/2,z);
   }
+  // Release 230 (UA/PL round 11): the Duplet-T roof slabs last, clear of every roof and lid fitting laid above.
+  hetmanIIRoofSlabs(P);
+  S.refresh();
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -808,6 +851,8 @@ export function buildUkraineDonorKit(P:TankBuilderPort,c:NationalModernizationCo
 /** Hetman II: its own heavy hull package, then the turret fit. */
 export function buildHetmanIIDonorKit(P:TankBuilderPort):void {
   hetmanIIHullPackage(P);
+  // Release 227: the framed chevron glacis, nose sill with its LED bars, lower-plate aprons and bow modules.
+  hetmanIIGlacis(P);
   fitUkraineDonorTurret(P,'t72b3m_hetman_ii');
 }
 
@@ -819,7 +864,10 @@ export function ukraineDonorSuit(id:string):GhillieConfig|undefined {
 function fitUkraineDonorTurret(P:TankBuilderPort,id:UkraineDonorId):void {
   turretUpArmour(P,id);
   // The hull screens stay as the national protection lays them; the turret's own screens are this kit's (above).
-  addNationalUkraineProtection(P,id,{turretScreens:false});
+  // Hetman II's bow modules (ukraineFrontEra.ts) take the place of the two forward skirt-return cassettes per side.
+  addNationalUkraineProtection(P,id,{turretScreens:false,frontReturnEra:id!=='t72b3m_hetman_ii'});
+  // Release 230 (UA/PL round 11): Hetman II's Nizh-L side band on the banks' upper face, clear of the cage just laid.
+  if(id==='t72b3m_hetman_ii')hetmanIISideBand(P);
   addVehicleGhillieSuit(P,ukraineDonorSuit(id)!);
 }
 void markSmokeTube;void blindTube;void cylX;void torus;

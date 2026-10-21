@@ -89,7 +89,7 @@ export function stationClass(stations) {
  * punishinng"; AERIAL_RULES.drone.hitsToDown 1 -> 1.1): the share of level pilot runs (LEVEL_APPROACHES, flat open
  * ground) whose drone the stations bring down. Anchors at 1.1, seeds 1-20 per approach (60 runs), and at 1 for the
  * defect it closed: lone 7.62 (m1a1) 25.0 % (1: 36.7), lone 12.7 (t90a_2004 18.3, t72b3_qilin 16.7; 1: 26.7), lone 30 mm
- * (t72b3m_hetman, the Zubrs, the Kunlun) 36.7 % (1: 43.3), the 30 mm + 7.62 roof (leo2a7v 88.3, leo2a5 90.0,
+ * (t72b3m_hetman, the Zubrs, the Kunlun) 36.7 % (1: 43.3; release 230: the Zubrs' WKM-B emplacements are lone 12.7, 18.3 %), the 30 mm + 7.62 roof (leo2a7v 88.3, leo2a5 90.0,
  * leo2_revolution 93.3, leclerc_xlr 93.3), the 12.7 + 7.62 roof (m1a1_abrams_hc) 95.0 %. A class's band is wide enough
  * for a new station of the class and narrow enough that a station which cannot answer a drone, or answers it as a
  * different class does, falls out; the selftest's narrower band on its own seeds is the one that separates 1.1 from 1.

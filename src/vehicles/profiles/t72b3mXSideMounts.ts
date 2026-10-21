@@ -63,8 +63,11 @@ function receivingEdges(P:TankBuilderPort,side:number):void {
 const UPPER_Z=[-3.13632,-2.58136,-2.52904,-2.2460,-1.37103,-.81168,-.76675,-.20740,-.16112,
   .39824,.44104,1.00039,1.04750,1.60686,1.65377,2.21312,2.26040,2.74039] as const;
 
-function upperLinks(P:TankBuilderPort,side:number):void {
+function upperLinks(P:TankBuilderPort,side:number,skirtEra=true):void {
   for(const z of UPPER_Z){
+    // (release 227, round 6; the critic's UAPL-R5C-1: with the skirt Relikt off, the rearmost link held nothing: its only
+    // contact was the rear skirt box, and it stood 2.7-2.9 cm off any stock)
+    if(!skirtEra&&z<-3.1)continue;
     const front=z>2.24,y=front?1.405785:1.45793;
     const inner=side>0?1.813628+.00061*z:1.818966-.00061*z,outer=inner+.157423;
     const station=z+(side<0?.002216:0);
@@ -74,7 +77,8 @@ function upperLinks(P:TankBuilderPort,side:number):void {
   // Only the source's open rail fields between the major cassettes: five
   // narrow horizontal strips, never a solid plate behind their genuine air.
   for(const [a,b]of [[-2.559,-2.217],[-1.730,-1.389]]){
-    for(const y of [1.32556,1.36966,1.41375,1.45785])
+    // (round 6, UAPL-R5C-1: under a national hull's own skirt banks the four lower strips lie wholly inside the banks)
+    if(skirtEra)for(const y of [1.32556,1.36966,1.41375,1.45785])
       P.addEquipment('hullDetail',KIT.box(.0118,.01327,b-a+.010),side>0?1.9629:-1.9669,y,(a+b)/2);
     P.addEquipment('hullDetail',KIT.box(.0213,.0310,b-a+.010),side>0?1.9556:-1.9637,1.51643,(a+b)/2);
   }
@@ -182,6 +186,9 @@ function railFieldBacking(P:TankBuilderPort,side:number):void {
   }
 }
 
-export function addT72B3MSideMounts(P:TankBuilderPort):void {
-  for(const side of [-1,1]){receivingEdges(P,side);upperLinks(P,side);lowerLinks(P,side);shoulderCover(P,side);railFieldBacking(P,side);}
+/** `skirtEra: false` (a national hull without the T-72B3M's side-skirt Relikt, t72b3mX nativeEra) leaves out the mounts
+ * only those boxes carried: the rearmost upper link a side and the rail fields' four lower strips. */
+export function addT72B3MSideMounts(P:TankBuilderPort,options:{skirtEra?:boolean}={}):void {
+  const skirtEra=options.skirtEra!==false;
+  for(const side of [-1,1]){receivingEdges(P,side);upperLinks(P,side,skirtEra);lowerLinks(P,side);shoulderCover(P,side);railFieldBacking(P,side);}
 }
