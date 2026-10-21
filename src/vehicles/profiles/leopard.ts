@@ -8160,9 +8160,11 @@ function buildLeo2Proto(P: TankBuilderPort) {
   // Every strip is buried in the 0.65 roof plane or backed by the bustle.
   P.add('turret', box(0.58, 0.024, 0.58), 0.55, 0.648, -0.55);
   P.add('turret', box(0.54, 0.024, 0.54), -0.60, 0.648, -0.45);
-  P.add('turretDark', box(0.68, 0.010, 0.024), 0.10, 0.657, -1.56);
-  P.add('turretDark', box(0.026, 0.010, 0.62), -0.18, 0.657, -1.43);
-  for (const [x, z] of [[-0.74, -1.68], [-0.22, -1.78], [0.34, -1.74], [0.78, -1.63]]) {
+  // (release 230: the two weld courses that crossed the OWS ring now stop at the ring's flange, and the two latches
+  // that overhung the well stand on the flange)
+  P.add('turretDark', box(0.055, 0.010, 0.024), 0.4125, 0.657, -1.56);
+  P.add('turretDark', box(0.026, 0.010, 0.16), -0.18, 0.657, -1.20);
+  for (const [x, z] of [[-0.74, -1.68], [-0.27, -1.85], [0.37, -1.76], [0.78, -1.63]]) {
     P.add('turretDetail', box(0.12, 0.032, 0.055), x, 0.665, z);
   }
   // early IR/white-light searchlight box on the roof left-front (hood +
