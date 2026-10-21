@@ -158,7 +158,7 @@ export interface MatchModeEntity {
   id: string;
   team: string;
   bot?: boolean;
-  spec?: {dims:{widthM:number;heightM:number;hullLengthM:number};armor:{boundingRadiusM?:number};role?:string};
+  spec?: {dims:{widthM:number;heightM:number;hullLengthM:number};armor:{boundingRadiusM?:number};role?:string;topSpeedKmh?:number};
   state: { pos: Vec3Like; yaw: number; speed: number; modeScale?:number };
   combat: {
     hp: number;
@@ -635,6 +635,17 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const across = (k - (n - 1) / 2) * KICKOFF_SPACING_M;
     return { x: base.x + ux * backM + uz * across, z: base.z + uz * backM - ux * across, yaw: Math.atan2(-ux, -uz) };
   };
+  // Turbo Ball's revive slot (ball.respawnBackM; round 3, the critic's M6: a revive at the deployment stood 150 m behind
+  // its own goal, out of the play for half a minute): `backM` behind the team's own goal, spread across the axis
+  const ballRespawnBackM = ruleset.ball?.respawnBackM ?? null;
+  const ballRespawnSpot = (entity: Entity, backM: number): MatchModeSpawn | null => {
+    const team = teamOf(entity), own = goals.find((goal) => goal.team === team);
+    if (!own) return null;
+    const ox = own.x - midX, oz = own.z - midZ, olen = Math.hypot(ox, oz) || 1, ux = ox / olen, uz = oz / olen;
+    const members = teams[team], k = Math.max(0, members.indexOf(entity)), n = members.length;
+    const across = (k - (n - 1) / 2) * KICKOFF_SPACING_M;
+    return { x: own.x + ux * backM + uz * across, z: own.z + uz * backM - ux * across, yaw: Math.atan2(-ux, -uz) };
+  };
   const pickups: PickupState[] = [];
   const hordeEnemies = teams.bravo.filter((entity) => !!entity.bot);
   // a horde with no hostile pool would clear empty waves forever (the v2 co-op rooms seated none): refuse it
@@ -713,6 +724,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       }
     }
     if (!at && flagRespawnBackM != null) at = flagRespawnSpot(entity, flagRespawnBackM);
+    if (!at && ballRespawnBackM != null) at = ballRespawnSpot(entity, ballRespawnBackM);
     const spawn = at ?? spawns.get(entity.id);
     if (!spawn) return;
     const safeSpawn = placement ? placement.respawn(spawn, entity.id, occupiedBy(entity)) : spawn;
@@ -877,19 +889,35 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     cx /= n; cz /= n;
     const base = Math.atan2(centers.bravo.x - cx, centers.bravo.z - cz);
     const sectors = Math.max(1, Math.floor(rules.spawnSectors));
-    const [ringMin, ringMax] = rules.spawnRingM;
-    for (let c = 0; c < rules.spawnCandidates; c++) {
-      const sector = (spawnSector + c) % sectors;
-      const centre = sectors === 1 ? 0 : -rules.sectorSpreadDeg + sector * (2 * rules.sectorSpreadDeg / (sectors - 1));
-      const angle = base + (centre + (spawnRng() - 0.5) * rules.sectorWidthDeg) * Math.PI / 180;
-      const radius = ringMin + spawnRng() * (ringMax - ringMin);
-      const x = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, cx + Math.sin(angle) * radius));
-      const z = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, cz + Math.cos(angle) * radius));
-      const yaw = Math.atan2(cx - x, cz - z);
-      const point = placement ? placement.respawnNear({ x, z, yaw }, entity.id, occupiedBy(entity), rules.spawnRingM[0] * 0.15) : { x, z, yaw };
-      if (!point || !arrivalClear(point.x, point.z, rules, ignoreSight, cx, cz, leadScale)) continue;
-      spawnSector = (sector + 1) % sectors;
-      return { x: point.x, z: point.z, yaw };
+    let [ringMin, ringMax] = rules.spawnRingM;
+    // the ring pulled in to the hull's own reach at the wave's pace (spawnReachS; round 3): a slow hull arrives nearer,
+    // and where no point of that nearer ring is clear the full ring is tried before the hostile base
+    const topKmh = entity.spec?.topSpeedKmh;
+    let passes = 1;
+    if (rules.spawnReachS && topKmh) {
+      const reach = topKmh / 3.6 * leadScale * rules.spawnReachS;
+      if (reach < ringMax) {
+        const f = reach / ringMax, floor = rules.spawnMinHumanM + 10;
+        ringMin = Math.max(floor, ringMin * f);
+        ringMax = Math.max(ringMin, ringMax * f);
+        passes = 2;
+      }
+    }
+    for (let pass = 0; pass < passes; pass++) {
+      if (pass === 1) [ringMin, ringMax] = rules.spawnRingM;
+      for (let c = 0; c < rules.spawnCandidates; c++) {
+        const sector = (spawnSector + c) % sectors;
+        const centre = sectors === 1 ? 0 : -rules.sectorSpreadDeg + sector * (2 * rules.sectorSpreadDeg / (sectors - 1));
+        const angle = base + (centre + (spawnRng() - 0.5) * rules.sectorWidthDeg) * Math.PI / 180;
+        const radius = ringMin + spawnRng() * (ringMax - ringMin);
+        const x = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, cx + Math.sin(angle) * radius));
+        const z = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, cz + Math.cos(angle) * radius));
+        const yaw = Math.atan2(cx - x, cz - z);
+        const point = placement ? placement.respawnNear({ x, z, yaw }, entity.id, occupiedBy(entity), rules.spawnRingM[0] * 0.15) : { x, z, yaw };
+        if (!point || !arrivalClear(point.x, point.z, rules, ignoreSight, cx, cz, leadScale)) continue;
+        spawnSector = (sector + 1) % sectors;
+        return { x: point.x, z: point.z, yaw };
+      }
     }
     return null;
   };
@@ -1807,6 +1835,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   type FlagRole = 'recover' | 'escort' | 'defend' | 'raid';
   const flagRoles = new Map<string, { role: FlagRole; rank: number }>();
   let flagRolesAt = -Infinity;
+  /** The raid's stage per raider (flagBots.raidStageM): when it reached the stage, and whether it has gone in. */
+  const raidStaged = new Map<string, { atS: number; go: boolean }>();
   // the flags' state the roles were dealt for (status and carrier per flag), compared in place: no key is built per call
   const flagRolesSeen: { status: FlagState['status'] | null; carrierId: string | null }[] = [];
   const flagsChanged = (): boolean => {
@@ -1836,6 +1866,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     for (const team of ['alpha', 'bravo'] as const) {
       const ownFlag = flagForTeam(team), enemyFlag = flagForTeam(otherTeam(team));
       if (!ownFlag || !enemyFlag) continue;
+      // a raid's stage holds only while the enemy flag stands at its base; a fallen raider stages afresh
+      for (const e of teams[team]) if (enemyFlag.status !== 'home' || e.combat.destroyed) raidStaged.delete(e.id);
       const squad = teams[team].filter((e) => e.bot && activeFriend(e, team) && !flagCarriedBy(e.id)).sort((a, b) => (a.id < b.id ? -1 : 1));
       const free = new Set(squad);
       // ranks run on across two deals of one role (the escorts' leading three, then the rearguard)
@@ -1899,6 +1931,25 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       // with our carrier running: the return area, clear of its road; otherwise in front of home
       const back = enemyFlag.carrierId ? 35 : 28, spread = enemyFlag.carrierId ? 18 + job.rank * 5 : 24;
       return { x: home.x - nx * back + nz * side * spread, z: home.z - nz * back - nx * side * spread, mission: 'defend' };
+    }
+    // the raid goes in as a group (raidStageM; round 3, the critic's M5): inside the stage a raider waits on the line
+    // until raidMinGroup friends are within raidGroupM of it, or raidWaitS pass; the lift clears the stage (assignFlagRoles)
+    const stage = flagRules.raidStageM ?? 0;
+    if (stage > 0 && enemyFlag.status === 'home' && squaredDistance(entity, enemyFlag.x, enemyFlag.z) <= stage * stage) {
+      let staged = raidStaged.get(entity.id);
+      if (!staged) { staged = { atS: placementTimeS, go: false }; raidStaged.set(entity.id, staged); }
+      if (!staged.go) {
+        const groupSq = (flagRules.raidGroupM ?? 70) ** 2;
+        let group = 0;
+        for (const friend of teams[team]) {
+          if (friend !== entity && activeFriend(friend, team) && squaredDistance(friend, entity.state.pos.x, entity.state.pos.z) <= groupSq) group++;
+        }
+        if (group >= (flagRules.raidMinGroup ?? 2) || placementTimeS - staged.atS >= (flagRules.raidWaitS ?? 12)) staged.go = true;
+      }
+      if (!staged.go) {
+        const out = stage - (flagRules.raidHoldInM ?? 25), across = side * (10 + 8 * (job.rank >> 1));
+        return { x: enemyFlag.x + nx * out + nz * across, z: enemyFlag.z + nz * out - nx * across, mission: 'raid' };
+      }
     }
     // One runner touches the flag; the other attackers approach on separated
     // lanes until nearby. This opens crossfire without sacrificing the runner.

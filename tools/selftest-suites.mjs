@@ -1336,6 +1336,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/ai.honestSenses.selftest.mjs',
     // round 3 (the critic's M3/M4): the jockey and the rolling turn — classic stands and pivots as before
     'src/game/ai.jockey.selftest.mjs',
+    // round 3 (the critic's M2/M3): the hunt's run-in beside its quarry and the orbit rings spread by the pack
+    'src/game/ai.huntRunIn.selftest.mjs',
     'src/sim/teamNations.selftest.mjs',
     'src/sim/nationIndex.selftest.mjs',
     'src/mp/room/roomBots.selftest.mjs',

@@ -181,6 +181,30 @@ for (const arrival of a.arrivals) {
     for (const human of g.humans) assert.ok(!sees(human, arrival.x, arrival.z, tight), `${arrival.id}: out of sight`);
   }
 }
+// the ring is pulled in to a slow hull's reach (spawnReachS; round 3, the critic's M2: 35 km/h heavies took 39-50 s from
+// the 320-440 m ring to their first shot): its top speed at the wave's pace times spawnReachS bounds the ring's outer
+// edge, never inside spawnMinHumanM + 10; a fast hull keeps the full ring
+{
+  // a 40 m ridge ring 132-148 m round the humans hides every ring point beyond it
+  const tight = (x, z) => { const r = Math.hypot(x, z + 150); return r > 132 && r < 148 ? 40 : 0; };
+  const ringOf = (kmh) => {
+    const r = run(47, tight);
+    for (const z of r.pool) z.spec = { dims: { widthM: 3.4, heightM: 2.4, hullLengthM: 7 }, armor: {}, topSpeedKmh: kmh };
+    const before = r.arrivals.length;
+    // the opening arrived before the specs: clear it and let the trickle bring the wave back in
+    for (let i = 0; i < 40; i++) { for (const z of live(r.pool)) z.combat.destroyed = true; r.clock += 0.5; r.mode.step(1 / 60, r.clock); }
+    const cx = r.humans.reduce((s, h) => s + h.state.pos.x, 0) / r.humans.length, cz = r.humans.reduce((s, h) => s + h.state.pos.z, 0) / r.humans.length;
+    return r.arrivals.slice(before).map((a) => Math.hypot(a.x - cx, a.z - cz));
+  };
+  const [lo, hi] = horde.horde.spawnRingM;
+  const slow = ringOf(35), fast = ringOf(70);
+  const reach = 35 / 3.6 * horde.horde.spawnReachS;
+  assert.ok(slow.length > 0 && fast.length > 0, 'both arrive');
+  const slack = lo * 0.15 + 1; // the placement's own nudge round a ring point (respawnNear)
+  assert.ok(slow.every((d) => d <= reach + slack && d >= horde.horde.spawnMinHumanM + 10 - 1),
+    `35 km/h: inside its ${reach.toFixed(0)} m reach (${Math.min(...slow).toFixed(0)}-${Math.max(...slow).toFixed(0)} m)`);
+  assert.ok(fast.every((d) => d >= lo - slack && d <= hi + slack), `70 km/h: the full ring (${Math.min(...fast).toFixed(0)}-${Math.max(...fast).toFixed(0)} m)`);
+}
 // the same seed replays the same arrivals
 {
   const c = run(31);
@@ -211,4 +235,4 @@ for (const arrival of a.arrivals) {
   assert.deepEqual(reborn.pool.filter((z) => z.modeActive === false).map((z) => z.id).sort(), resting, 'the same identities rest');
 }
 console.log(`hordeWaveLaw.selftest: totals ${totals.join(', ')}, peak ${peak} on the field, ${a.arrivals.length} arrivals from 20 identities, `
-  + 'all out of reach and sight, an 8 s lull, the trickle and the replay');
+  + 'all out of reach and sight, a slow hull on a ring its reach allows, an 8 s lull, the trickle and the replay');

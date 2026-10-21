@@ -125,9 +125,9 @@ export interface BotDoctrine {
   readonly settleShots: boolean;
   /**
    * Round 3 (the critic's M4: Frontline's bots stood still in 28-33 % of their engaged samples — a hold band's angled
-   * stand, a zone hold, the sortie's stand-off): an engaged hull its drivers leave standing rocks along its own line
-   * instead, `jockeyS` seconds a leg forward, then back, at JOCKEY_DRIVE.throttle, the steering and the gun as its drivers
-   * laid them (a moving firing position). 0 = it stands, as the classic controller does.
+   * stand, a zone hold, the sortie's stand-off): an engaged hull its drivers leave standing `jockeyS` seconds circles the
+   * point it stood at instead (JOCKEY_DRIVE: ringM out, at its throttle), the gun as its drivers laid it — a moving firing
+   * position that keeps way on. 0 = it stands, as the classic controller does.
    */
   readonly jockeyS: number;
 
@@ -194,6 +194,10 @@ const RUSH_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
  */
 export const RUSH_DRIVE = Object.freeze({
   directM: 70, orbitInM: 28, orbitMinM: 16, orbitMaxM: 28, noRamM: 12,
+  /** The run-in (directM to orbitInM) aims this far beside the target on the orbit's side, never at its hull (round 3). */
+  runInSideM: 24,
+  /** Each friendly hunter already nearer a seen target puts the orbit this much further out, at most orbitRings rings (round 3). */
+  orbitStepM: 10, orbitRings: 3,
   /** The orbit's aim point runs this far along the tangent (closingLeadM while closing inside noRamM: out, not in). */
   tangentLeadM: 18, closingLeadM: 6,
   /** The no-ram lane: the two half-widths plus laneMarginM, and a crossing hull's place lookaheadS on. */
@@ -207,15 +211,22 @@ export const RUSH_DRIVE = Object.freeze({
   brakeGapM: 3, backOffGapM: 1.5, backOffThrottle: 0.5, swerveThrottle: 0.45,
 });
 /**
- * The jockey (doctrine jockeyS): a hull standing in a fight (its drivers' throttle under standThrottle, held afterS) rolls
- * at `throttle` along its own line; a leg that has not made blockedMps for blockedS once legSettleS under way (a wall, a
- * hull, the safety brakes) turns about at once. The safety brakes after it (allies, solids, water, the no-ram lane) still stop it.
+ * The jockey (doctrine jockeyS): a hull standing in a fight (its drivers' throttle under standThrottle, held the doctrine's
+ * jockeyS) strafes round its target at the range it has, aiming leadM on round, at `throttle`; ringM from where it stood
+ * round the circle (after legMinS) it turns about toward the target and strafes back; a leg that has not made
+ * blockedMps for blockedS once legSettleS under way (a wall, a hull, the safety brakes) turns about at once; while its
+ * drivers only call it back to that ground (leashM) the strafe keeps the hull. The safety brakes after it (allies,
+ * solids, water, the no-ram lane) still stop it.
  */
-export const JOCKEY_DRIVE = Object.freeze({ throttle: 0.85, standThrottle: 0.1, afterS: 0.35, blockedS: 0.7, blockedMps: 0.4,
-  /** A leg is judged for a stall only after this long under way (the turn-about itself passes through a stand). */
+export const JOCKEY_DRIVE = Object.freeze({ throttle: 0.35, standThrottle: 0.1, ringM: 16, leadM: 10, legMinS: 3, blockedS: 0.7, blockedMps: 0.4,
+  /** A strafe under way keeps the hull while its drivers' goal stays this near where it stood (their call back to that ground). */
+  leashM: 24,
+  /** A lap is judged for a stall only after this long under way (the roll-off itself starts from a stand). */
   legSettleS: 1.0,
   /** The rolling turn (doctrine rollingTurns): this drive and at most this steer, an arc in place of the pivot's lock. */
-  rollThrottle: 0.6, rollSteer: 0.6 });
+  rollThrottle: 0.6, rollSteer: 0.6,
+  /** The 'angle' hit reaction's drive (doctrine hitReactions 'angle'): the turn onto the shot keeps way on. */
+  reactRollThrottle: 0.7 });
 /**
  * A bot's shot at the Turbo Ball (BallBotRules.shootBall): the gun within `bearRad` of the ball's bearing, and no teammate
  * within `clearM` of the line to it nor within clearM × `clearBallScale` of the ball. An enemy hull within `contestM` of
@@ -359,6 +370,13 @@ export interface ArrivalRules {
    */
   readonly sightLeadM: number;
   readonly spawnCandidates: number;
+  /**
+   * The ring is pulled in to the arriving hull's own reach (round 3, the critic's M2: on Verdant a wave of 35 km/h
+   * heavies needed 39-50 s from the 320-440 m ring to its first shot, against 8-25): its top speed at the wave's pace
+   * times spawnReachS, when that is under the ring's outer edge, scales both edges down (never inside spawnMinHumanM
+   * plus 10 m); absent: the ring as it stands.
+   */
+  readonly spawnReachS?: number;
 }
 
 interface HordeRules extends ArrivalRules {
@@ -479,6 +497,17 @@ interface FlagBotRules {
   readonly defendMinSquad: number;
   /** Recoverers aim at the enemy carrier's point this far ahead along its line home (the flag marker is public). */
   readonly interceptLeadS: number;
+  /**
+   * The raid goes in as a group (round 3, the critic's M5: the escorts stood within 80 m of their carrier in 26-31 % of
+   * its run, the raiders having reached the flag one at a time): a raider within `raidStageM` of the enemy flag at its
+   * base waits `raidStageM - raidHoldInM` out, spread across the line, until `raidMinGroup` friends are within
+   * `raidGroupM` of it or `raidWaitS` pass, then goes in; the flag lifted, the next raid stages afresh (absent: no stage).
+   */
+  readonly raidStageM?: number;
+  readonly raidHoldInM?: number;
+  readonly raidGroupM?: number;
+  readonly raidMinGroup?: number;
+  readonly raidWaitS?: number;
 }
 /** Turbo Ball bots (gameplay-modes-228: "pursuing ball"). */
 interface BallBotRules {
@@ -536,6 +565,8 @@ interface BallPitchRules {
   readonly kickoffM?: number | null;
   /** The bots take that line-up at the opening kick-off too (a human starts at its deployment). */
   readonly kickoffAtStart?: boolean;
+  /** A revive after a death stands this far behind the team's own goal, spread across the axis (absent or null: the deployment). */
+  readonly respawnBackM?: number | null;
 }
 /**
  * Capture the Flag pitch rules (gameplay-modes-228 round 2: with the flags on the deployment centres a carrier picked its
@@ -930,13 +961,13 @@ const ASSAULT_ATTACKER_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   missionOwnsRoute: true,
   openingRead: false, conserveRounds: false, missionSpeed: 1, missionBreakOffHp: 0, missionLocalReachM: 60, spearheadGuard: false, coverScale: 0.5,
   fallbackScale: 0.25, scoot: false, settleShots: false, hitReactions: 'angle', stalemateSilentS: 6, holdBandScale: 0.6, searchRouting: 'spotted',
-  routeRefreshS: 1.25, routeMoveM: 8, jockeyS: 3.2, rollingTurns: true,
+  routeRefreshS: 1.25, routeMoveM: 8, jockeyS: 0.4, rollingTurns: true,
 });
 const ASSAULT_DEFENDER_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   missionOwnsRoute: true,
   openingRead: false, conserveRounds: false, missionSpeed: 1, missionBreakOffHp: 0.15, missionLocalReachM: 60, zoneSortieM: 80, coverScale: 0.75,
   fallbackScale: 0.25, scoot: false, settleShots: false, hitReactions: 'angle', holdBandScale: 0.7, stalemateSilentS: 6, routeRefreshS: 1.25, routeMoveM: 8,
-  jockeyS: 3.2, rollingTurns: true,
+  jockeyS: 0.4, rollingTurns: true,
 });
 // round 2: no shoot-and-scoot and a quarter of the fallback (the A/B: 33 % of samples scooting and 11 % falling back;
 // off, the flags were run, not traded from cover)
@@ -970,7 +1001,8 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   capture_the_flag: Object.freeze({ ...STANDARD, mode: 'capture_the_flag', respawnS: 6,
     bots: Object.freeze({ alpha: FLAG_DOCTRINE, bravo: FLAG_DOCTRINE }),
     flagBots: Object.freeze({ recoverShare: 0.5, recoverMin: 2, huntWhenHomeFlagTaken: false, escorts: 3, carrierGuards: 1,
-      escortAheadM: 24, escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5 }),
+      escortAheadM: 24, escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5,
+      raidStageM: 120, raidHoldInM: 25, raidGroupM: 70, raidMinGroup: 2, raidWaitS: 12 }),
     flagPitch: Object.freeze({ baseAxisM: 400 }) }),
   // Zones: respawning hold-the-ground play; the 750-point target resolves inside the clock.
   zone_control: Object.freeze({ ...STANDARD, mode: 'zone_control', respawnS: 6 }),
@@ -1020,7 +1052,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
       waveSize: 6, waveStep: 3, waveCurve: 0.35, perHumanTotal: 0.25, maxAlive: 16, maxAlivePerHuman: 1, maxAliveCap: 20,
       trickleS: 1.5, stallTrickles: 4, recycleAfterS: 6, strandedS: 40, strandedGainM: 20, strandedContactM: 50, strandedRingM: Object.freeze([160, 230] as const), spawnRingM: Object.freeze([320, 440] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
       spawnMinHumanM: 150, spawnOutOfSight: true, sightRangeM: 450, sightStepM: 8, sightEyeM: 2.4, sightHullM: 1.5, sightMarginM: 1,
-      sightLeadM: 60, spawnCandidates: 12,
+      sightLeadM: 60, spawnCandidates: 12, spawnReachS: 26,
       intermissionS: 8, waveRepair: 0.3,
       hostileHpScale: 0.15, hpPerWave: 0.02, hpPerWaveLate: 0.06, lateFromWave: 11,
       runnerEvery: 4, runnerSpeed: 1.25, swarmEvery: 5, swarmTrickleScale: 0.5, swarmHull: 0.10,

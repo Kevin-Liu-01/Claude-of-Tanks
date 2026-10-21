@@ -5726,6 +5726,13 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       case 'angle': {
         const want = threatBearing + reactSide * REACT_ANGLE_OFFSET_RAD;
         faceYaw(input, want);
+        // the 'angle' policy turns onto the shot and keeps coming (gameplay-modes-228 round 3: the turn was a stand and
+        // a pivot of up to REACT_DURATION_S.angle every hit, the survivors' and the attack's largest still share): the
+        // turn is driven round with way on
+        if (doctrineOf().hitReactions === 'angle') {
+          input.throttle = JOCKEY_DRIVE.reactRollThrottle;
+          input.brake = false;
+        }
         if (Math.abs(wrapAngle(want - st.yaw)) < 0.08) reaction = null;
         return true;
       }
@@ -5874,9 +5881,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   /**
    * The hunt (mission 'hunt' under a rush doctrine; gameplay-modes-228): the hunt point (the team's spotted quarry, its
    * last sighting or a sweep: matchModes.ts) is driven at full pace with the gun firing on the move; a VISIBLE target
-   * inside RUSH_DRIVE.directM is driven at straight, and inside orbitInM the hull orbits it at orbitMinM-orbitMaxM with
-   * the turret laid; it steers off a ram (a point on the orbit stands off the hull, and closing inside noRamM steers out;
-   * a hull that turns into it can still touch it: the harness counts those contacts).
+   * inside RUSH_DRIVE.directM is run in on, aimed runInSideM beside it, and inside orbitInM the hull orbits it at
+   * orbitMinM-orbitMaxM with the turret laid — each friendly hunter already nearer it putting this one a ring further
+   * out (orbitRingFor); it steers off a ram (a point on the orbit stands off the hull, and closing inside noRamM steers
+   * out; a hull that turns into it can still touch it: the harness counts those contacts).
    */
   function driveHunt(input: AiInput, objective: AiObjective): boolean {
     const st = entity.state;
@@ -5884,11 +5892,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const tp = target.state.pos;
       const dist = Math.hypot(st.pos.x - tp.x, st.pos.z - tp.z) || 1;
       if (dist < RUSH_DRIVE.directM) {
-        if (dist >= RUSH_DRIVE.orbitInM) {
-          driveToXZ(input, tp.x, tp.z, 1);
+        const out = orbitRingFor(tp.x, tp.z, dist);
+        if (dist >= RUSH_DRIVE.orbitInM + out) {
+          // the run-in aims beside the target, on the orbit's ring at the side it will circle (round 3, the critic's
+          // M2/M3: aimed at the hull itself, the run-in met the no-ram brake 10-20 m out at full pace and stood the
+          // hunter still beside its quarry — 4-10 hunter contacts a run); it still closes the whole way
+          const ux = (tp.x - st.pos.x) / dist, uz = (tp.z - st.pos.z) / dist, ring = (RUSH_DRIVE.runInSideM + out) * orbitSide;
+          driveToXZ(input, tp.x + uz * ring, tp.z - ux * ring, 1);
           return true;
         }
-        orbitAround(input, tp.x, tp.z, dist);
+        orbitAround(input, tp.x, tp.z, dist, out);
         return true;
       }
     }
@@ -5897,7 +5910,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // 2: the hunter rams the guard counted were these)
     const pointDist = Math.hypot(st.pos.x - objective.x, st.pos.z - objective.z) || 1;
     if (pointDist < RUSH_DRIVE.orbitInM) {
-      orbitAround(input, objective.x, objective.z, pointDist);
+      orbitAround(input, objective.x, objective.z, pointDist, 0);
       return true;
     }
     if (missionRouteNeedsRefresh(objective.x, objective.z) || !waypointsAreMission()) {
@@ -5912,14 +5925,32 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     drivePatrol(input);
     return true;
   }
-  /** The rush's orbit round (cx, cz) at RUSH_DRIVE's ring, the turret free to lay; closing at point blank, out along the tangent. */
-  function orbitAround(input: AiInput, cx: number, cz: number, dist: number): void {
+  /**
+   * The ring a hunter orbits a seen target on (round 3, the critic's M2: on Verdant up to a dozen zombies orbited the
+   * same humans 16-28 m out, yielding to one another and wedged nose to tail): each friendly hunter already nearer the
+   * target puts this hull orbitStepM further out, at most orbitRings rings. Own-team positions only.
+   */
+  function orbitRingFor(cx: number, cz: number, dist: number): number {
+    if (!getAllies) return 0;
+    const friends = getAllies();
+    let inner = 0;
+    for (let i = 0; i < friends.length; i++) {
+      const f = friends[i]!;
+      if (f === entity || !f.combat || f.combat.destroyed || (f as { modeActive?: boolean }).modeActive === false) continue;
+      const fd = Math.hypot(f.state.pos.x - cx, f.state.pos.z - cz);
+      if (fd < dist && fd < RUSH_DRIVE.orbitMaxM + RUSH_DRIVE.orbitStepM * RUSH_DRIVE.orbitRings) inner++;
+    }
+    return Math.min(inner, RUSH_DRIVE.orbitRings) * RUSH_DRIVE.orbitStepM;
+  }
+  /** The rush's orbit round (cx, cz) at RUSH_DRIVE's ring (plus `out`), the turret free to lay; closing at point blank, out along the tangent. */
+  function orbitAround(input: AiInput, cx: number, cz: number, dist: number, out: number): void {
     const st = entity.state;
     const rx = (st.pos.x - cx) / dist, rz = (st.pos.z - cz) / dist; // radial: centre → this hull
     const tx = -rz * orbitSide, tz = rx * orbitSide;                 // tangent
     // round 3 (the critic's M3: the infected advanced in 64-66 % of samples): inside the band the hull runs the tangent
     // at the radius it has, never out to a wider ring; inside noRamM out to orbitMinM, beyond the band in to orbitMaxM
-    const ring = dist < RUSH_DRIVE.noRamM ? RUSH_DRIVE.orbitMinM : dist > RUSH_DRIVE.orbitMaxM ? RUSH_DRIVE.orbitMaxM : dist;
+    const lo = RUSH_DRIVE.orbitMinM + out, hi = RUSH_DRIVE.orbitMaxM + out;
+    const ring = dist < RUSH_DRIVE.noRamM + out ? lo : dist > hi ? hi : dist;
     const closing = dist < RUSH_DRIVE.noRamM && (Math.sin(st.yaw) * -rx + Math.cos(st.yaw) * -rz) * st.speed > 0;
     const lead = closing ? RUSH_DRIVE.closingLeadM : RUSH_DRIVE.tangentLeadM;
     driveToXZ(input, cx + rx * ring + tx * lead, cz + rz * ring + tz * lead, 1);
@@ -6016,34 +6047,70 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   /**
-   * The jockey (doctrine jockeyS; round 3, the critic's M4): an engaged hull its drivers left standing — a hold band's
-   * angled stand, a zone hold, the sortie's stand-off, a hit turn — rolls along its own line instead, jockeyS seconds a
-   * leg forward, then back, the steering as its drivers laid it; a leg that stalls (a wall, a hull, the safety brakes
-   * that still run after it) turns about at once. Never on the settled-shot halt, the gun nudge or an empty rack.
+   * The jockey (doctrine jockeyS; round 3, the critic's M4): an engaged hull its drivers left standing jockeyS seconds — a
+   * hold band's angled stand, a zone hold, the sortie's stand-off — strafes instead: it runs round its target at the range
+   * it has, JOCKEY_DRIVE.throttle, the target on its beam and the gun laid as its drivers laid it (a moving firing
+   * position). Once ringM from where it stood and running on away, it turns about TOWARD the target (the gun keeps its
+   * front arc: a turn the other way swung the target over the rear deck, where the gun cannot depress) and strafes back,
+   * each turn-about a few metres closer in. A strafe keeps way on where a rock along the hull's line braked through a stand at
+   * every turn-about (the rocking jockey's turn-abouts were a third of Frontline's still samples). A leg that stalls (a
+   * wall, a hull, the safety brakes that still run after it) turns about at once. Never on the settled-shot halt, the gun
+   * nudge or an empty rack.
    */
-  let jockeyDir = 1, jockeyLegUntilS = -Infinity, jockeyStandS = 0, jockeyStallS = 0, jockeyLegs = 0;
+  let jockeyDir = 1, jockeyStandS = 0, jockeyStallS = 0, jockeyLegs = 0, jockeyAtS = -Infinity;
+  let jockeyAX = 0, jockeyAZ = 0, jockeyRange = 1, jockeyAnchored = false;
   function driveJockey(input: AiInput, dt: number, timeS: number): void {
-    const leg = doctrineOf().jockeyS;
+    const after = doctrineOf().jockeyS;
     const st = entity.state;
-    if (leg <= 0 || mode !== 'engage' || !target || !enemyAlive(target) || !st.grounded || emptyRack
-      || timeS < settleUntilS || timeS < nudgeUntilS || timeS < unstickUntilS
-      || Math.abs(input.throttle) >= JOCKEY_DRIVE.standThrottle) {
+    // a strafe under way holds the hull while its drivers only call it back to the ground it strafes (a mission's hold
+    // point, a hold band's stand: their goal this tick within leashM of where it stood, the hull within twice ringM of
+    // it); the drivers' call back drove it in and braked it to a stand at every leg
+    const leashed = jockeyAnchored && driveGoalAtS === nowS
+      && Math.hypot(driveGoalX - jockeyAX, driveGoalZ - jockeyAZ) <= JOCKEY_DRIVE.leashM
+      && Math.hypot(st.pos.x - jockeyAX, st.pos.z - jockeyAZ) <= 2 * JOCKEY_DRIVE.ringM;
+    // a target the side sees, in the gun's line: the strafe runs round its place, which no hidden hull gives away
+    if (after <= 0 || mode !== 'engage' || !target || !enemyAlive(target) || !losClear || !isVisibleToTeam(target)
+      || !st.grounded || emptyRack || timeS < settleUntilS || timeS < nudgeUntilS || timeS < unstickUntilS
+      || (Math.abs(input.throttle) >= JOCKEY_DRIVE.standThrottle && !leashed)) {
       jockeyStandS = 0;
       jockeyStallS = 0;
+      jockeyAnchored = false;
       return;
     }
     jockeyStandS += dt;
-    if (jockeyStandS < JOCKEY_DRIVE.afterS) return;
-    const settled = timeS - (jockeyLegUntilS - leg) >= JOCKEY_DRIVE.legSettleS;
-    jockeyStallS = settled && Math.abs(st.speed) < JOCKEY_DRIVE.blockedMps ? jockeyStallS + dt : 0;
-    if (timeS >= jockeyLegUntilS || jockeyStallS > JOCKEY_DRIVE.blockedS) {
-      // the first leg of a stand keeps the last one's direction turned about (a new stand starts where the old left off)
+    if (jockeyStandS < after && !jockeyAnchored) return;
+    const tp = target.state.pos;
+    const rdx = st.pos.x - tp.x, rdz = st.pos.z - tp.z, range = Math.hypot(rdx, rdz) || 1;
+    if (!jockeyAnchored) {
+      // the first leg runs the way the hull's bow already points across the line to the target
+      jockeyAnchored = true;
+      jockeyAX = st.pos.x;
+      jockeyAZ = st.pos.z;
+      jockeyRange = range;
+      jockeyAtS = timeS;
+      jockeyStallS = 0;
+      jockeyDir = Math.sin(st.yaw) * -rdz + Math.cos(st.yaw) * rdx >= 0 ? 1 : -1;
+      jockeyLegs++;
+    }
+    const legS = timeS - jockeyAtS;
+    jockeyStallS = legS >= JOCKEY_DRIVE.legSettleS && Math.abs(st.speed) < JOCKEY_DRIVE.blockedMps ? jockeyStallS + dt : 0;
+    // how far round the circle the leg has run from where the hull stood (+ the way this leg runs)
+    const run = wrapAngle(Math.atan2(rdx, rdz) - Math.atan2(jockeyAX - tp.x, jockeyAZ - tp.z)) * jockeyRange * jockeyDir;
+    if (jockeyStallS > JOCKEY_DRIVE.blockedS || (legS >= JOCKEY_DRIVE.legMinS && run > JOCKEY_DRIVE.ringM)) {
       jockeyDir = -jockeyDir;
-      jockeyLegUntilS = timeS + leg;
+      jockeyAtS = timeS;
       jockeyStallS = 0;
       jockeyLegs++;
     }
-    input.throttle = jockeyDir * JOCKEY_DRIVE.throttle;
+    // the leg's lead point: leadM on round the circle about the target at the range the hull has (the circle bends toward
+    // the target, so a turn-about swings the bow through it, never the stern: the gun keeps its front arc)
+    const bearing = Math.atan2(rdx, rdz) + jockeyDir * JOCKEY_DRIVE.leadM / range;
+    const px = tp.x + Math.sin(bearing) * range, pz = tp.z + Math.cos(bearing) * range;
+    // steered straight at it: no route, no arrival and none of the wedge watchdogs (a lap's lead point is never reached,
+    // so the orbit watchdog read a strafe as a wedge after six seconds and reversed it out)
+    const err = wrapAngle(Math.atan2(px - st.pos.x, pz - st.pos.z) - st.yaw);
+    input.steer = clamp(err * 2.2, -1, 1);
+    input.throttle = JOCKEY_DRIVE.throttle;
     input.brake = false;
   }
 
