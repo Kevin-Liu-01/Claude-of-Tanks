@@ -16,6 +16,14 @@
  * below (its kind's data: the destructible type's crushFloor). Over a floor the body keeps more of its bulk, its upper
  * works rack over along the hull's travel and its panels buckle, so it ends a crumpled machine, not a pancake.
  *
+ * Map cars (the car-wreck lane, 2026-10-20; Steinburg r5's blind critics, both: a run-over Golf "flattened into a wavy
+ * tarp-like sheet with no readable wheels, arches or roofline"): a field may carry the car's anatomy (its belt line and
+ * its wheels, vehicleAnatomy, read from its own geometry). Over it the hull's belly, between its tracks, leaves the
+ * car its belly's clearance and only the tracks press it to the floor; what stands over a cap is pressed in order — the
+ * greenhouse folds down onto the belt line first, the doors buckle into less of themselves, so the roof stays a roof on
+ * top of the body — the panels fold in creases, the doors bow out and the roof racks over along the hull's travel; the
+ * wheels are never squashed into the heap: they splay out about their outer foot as the cap over them comes down.
+ *
  * Pure and deterministic: the field moves only with the hull poses it is given, and the crumple's breakup is hashed
  * from the vertex's rest place. The presentation draws this; the simulation's crush event stays the authority on
  * collision (props.ts: the record's obstacle is ghosted by the event, never by the press).
@@ -53,6 +61,90 @@ const HEAVY = { squash: 0.42, rack: 0.5, buckle: 0.07, noise: 0.16 } as const;
 /** Canvas (wave 352: "canvas never reads as cloth"): it lies flat, folds in soft waves, drapes down wide and is dragged on
  *  with the hull. */
 const CLOTH = { squash: 0.06, noise: 0.03, fold: 0.07, foldK: 5.5, droop: 0.65, push: 0.55, lift: 1 };
+/** A car (its anatomy on the field): the belly's clearance between the tracks (m over the base) and the tracks' share of
+ *  the hull's half width; what is left of the body under the belt line and of the greenhouse over it once pressed; the
+ *  panels' folds (m, and their pitch along and across, 1/m), the doors' bow (m), the roof's rack along the travel (m),
+ *  the wheels' splay at the floor (rad) and the breakup's jitter (m). */
+const CAR = { belly: 0.42, track: 0.34, body: 0.25, glass: 0.08, crease: 0.05, alongK: 1.6, acrossK: 1.9, bow: 0.12,
+  rack: 0.2, splay: 1.15, jitter: 0.012 } as const;
+
+/** A car's anatomy over its field (its own frame): its belt line and its wheels. */
+export interface CrushVehicle {
+  /** The belt line (the glass's foot, m over the base) and the top. */
+  readonly belt: number;
+  /** The wheels, packed [zc, yc, r, xIn, xOut, side] (side −1 left, +1 right; xIn/xOut the tyre's |x| span). */
+  readonly wheels: Float32Array;
+  /** Per vertex of the rest it was read from: the wheel it belongs to, or −1. */
+  readonly wheelOf: Int8Array;
+}
+
+/**
+ * A car's anatomy from its own rest positions and surface stream (vehicleMesh.ts `surf`: roughness, metalness, paint
+ * mask, `scale` 255 for the normalized bytes): its belt line is the foot of its glass (the 5th percentile of the glass
+ * heights over the lower third), its wheels the round clusters of rubber standing on the ground at its flanks. Null when
+ * it has no surface stream. Allocates (once per copy, at the crush).
+ */
+export function vehicleAnatomy(rest: ArrayLike<number>, surf: ArrayLike<number> | null, scale: number, top: number, hw: number): CrushVehicle | null {
+  if (!surf) return null;
+  const count = Math.floor(rest.length / 3);
+  const glass: number[] = [];
+  const rubber: number[] = [];
+  for (let v = 0; v < count; v++) {
+    const rough = surf[v * 3] / scale, metal = surf[v * 3 + 1] / scale, paint = surf[v * 3 + 2] / scale;
+    const x = rest[v * 3], y = rest[v * 3 + 1];
+    if (rough < 0.12 && metal < 0.25 && paint < 0.05 && y > top * 0.35) glass.push(y);
+    else if (rough > 0.8 && metal < 0.05 && paint < 0.05 && y < top * 0.55 && Math.abs(x) > hw * 0.35) rubber.push(v);
+  }
+  glass.sort((a, b) => a - b);
+  const belt = glass.length >= 8 ? glass[Math.floor(glass.length * 0.05)] : top * 0.58;
+  // the wheels: on each flank the rubber touching the ground gathers at the axles (a gap of 0.3 m splits two); each
+  // wheel's radius is the median of its rubber's circle through the ground under its axle ((dz² + y²) / 2y), so a
+  // moulding or a mud flap beside it never stretches it
+  const wheels: number[] = [];
+  for (const side of [-1, 1]) {
+    const flank = rubber.filter((v) => Math.sign(rest[v * 3]) === side);
+    const ground = flank.filter((v) => rest[v * 3 + 1] < 0.1).sort((a, b) => rest[a * 3 + 2] - rest[b * 3 + 2]);
+    let start = 0;
+    for (let k = 1; k <= ground.length; k++) {
+      if (k < ground.length && rest[ground[k] * 3 + 2] - rest[ground[k - 1] * 3 + 2] < 0.3) continue;
+      let z0 = Infinity, z1 = -Infinity, x0 = Infinity, x1 = -Infinity;
+      for (let q = start; q < k; q++) {
+        const v = ground[q], ax = Math.abs(rest[v * 3]), z = rest[v * 3 + 2];
+        z0 = Math.min(z0, z); z1 = Math.max(z1, z); x0 = Math.min(x0, ax); x1 = Math.max(x1, ax);
+      }
+      start = k;
+      const zc = (z0 + z1) / 2, radii: number[] = [];
+      for (const v of flank) {
+        const ax = Math.abs(rest[v * 3]), y = rest[v * 3 + 1], dz = rest[v * 3 + 2] - zc;
+        if (y < 0.05 || ax < x0 - 0.06 || ax > x1 + 0.06 || Math.abs(dz) > 0.75) continue;
+        const r = (dz * dz + y * y) / (2 * y);
+        if (r > 0.15 && r < 0.8) radii.push(r);
+      }
+      if (radii.length < 8) continue;
+      radii.sort((a, b) => a - b);
+      const r = radii[Math.floor(radii.length / 2)];
+      wheels.push(zc, r, r, x0, x1, side);
+    }
+  }
+  const packed = new Float32Array(wheels);
+  const wheelOf = new Int8Array(count).fill(-1);
+  for (let v = 0; v < count; v++) {
+    const x = rest[v * 3], y = rest[v * 3 + 1], z = rest[v * 3 + 2], ax = Math.abs(x);
+    for (let w = 0; w < packed.length; w += 6) {
+      const r = packed[w + 2] * 1.06, dz = z - packed[w], dy = y - packed[w + 1];
+      if (Math.sign(x) === packed[w + 5] && ax > packed[w + 3] - 0.05 && ax < packed[w + 4] + 0.08 && dz * dz + dy * dy < r * r) {
+        wheelOf[v] = w / 6;
+        break;
+      }
+    }
+  }
+  return { belt: Math.max(top * 0.3, Math.min(top * 0.8, belt)), wheels: packed, wheelOf };
+}
+
+/** A triangle wave of period 1 in [−1, 1]: a fold's crease (flat-shaded, its ridges read as folded sheet). */
+function tri(t: number): number {
+  return 2 * Math.abs(2 * (t - Math.floor(t + 0.5))) - 1;
+}
 
 /** One prop's field. */
 export interface CrushField {
@@ -83,6 +175,8 @@ export interface CrushField {
   /** A burst's dents (wave 351: a near miss must show): each a crater pushed in along its direction, packed
    *  [cx, cy, cz, dx, dy, dz, r, depth] in the prop's frame, at most MAX_DENTS (the deepest kept). */
   readonly dents: number[];
+  /** A car's anatomy (CAR: its belly and tracks, its pressed layers, its wheels), or null. */
+  readonly vehicle: CrushVehicle | null;
 }
 
 /** A prop keeps this many burst dents at most. */
@@ -106,8 +200,10 @@ export function addDent(f: CrushField, cx: number, cy: number, cz: number, dx: n
   return true;
 }
 
-/** A field over a footprint of half extents (hw, hl) about the prop's origin, its rest top `top`. */
-export function createCrushField(hw: number, hl: number, top: number, cell = CRUSH_CELL_M, cloth = false, floor = 0): CrushField {
+/** A field over a footprint of half extents (hw, hl) about the prop's origin, its rest top `top` (`vehicle`: a car's
+ *  anatomy, vehicleAnatomy). */
+export function createCrushField(hw: number, hl: number, top: number, cell = CRUSH_CELL_M, cloth = false, floor = 0,
+  vehicle: CrushVehicle | null = null): CrushField {
   const x0 = -hw - MARGIN_M, z0 = -hl - MARGIN_M;
   const nx = Math.max(2, Math.ceil((2 * (hw + MARGIN_M)) / cell) + 1);
   const nz = Math.max(2, Math.ceil((2 * (hl + MARGIN_M)) / cell) + 1);
@@ -115,7 +211,7 @@ export function createCrushField(hw: number, hl: number, top: number, cell = CRU
   const cap = new Float32Array(n).fill(Infinity);
   return { x0, z0, nx, nz, cell, top: Math.max(0.2, top), cap, eff: new Float32Array(n).fill(Infinity),
     pushX: new Float32Array(n), pushZ: new Float32Array(n), touched: false, stale: false, cloth, dents: [],
-    floor: Math.max(0, Math.min(0.9, floor)), dirX: 0, dirZ: 0 };
+    floor: Math.max(0, Math.min(0.9, floor)), dirX: 0, dirZ: 0, vehicle };
 }
 
 /** Whether a hull rectangle (centre, unit forward, half extents; the prop's frame) meets the prop's box (half extents
@@ -160,6 +256,8 @@ export function pressField(f: CrushField, cx: number, cz: number, fx: number, fz
         // dragged under the tracks too: it keeps being pulled on along the hull's travel)
         const s = halfLength - u;
         cap = FLOOR_M + RAMP_H * Math.max(0, 1 - s / RAMP_M);
+        // a car: between the tracks the belly leaves it its clearance; only the tracks press it to the floor
+        if (f.vehicle && av < halfWidth * (1 - CAR.track)) cap = Math.max(cap, CAR.belly);
         if (f.cloth) push = CLOTH.push * Math.max(0, 1 - s / (2 * halfLength)) * 0.8;
       } else if (av <= halfWidth) {
         // the band ahead of its front: the glacis meets it, shoves it on and bends it down a little
@@ -251,11 +349,55 @@ function sample(f: CrushField, a: Float32Array, x: number, z: number, empty: num
 export function deformPositions(f: CrushField, rest: ArrayLike<number>, out: Float32Array): void {
   if (f.stale) settleField(f);
   const high = f.top + 10;
+  const car = f.vehicle, halfWidth = -f.x0 - MARGIN_M;
   for (let v = 0; v < rest.length; v += 3) {
     const x = rest[v], y = rest[v + 1], z = rest[v + 2];
     let cap = sample(f, f.eff, x, z, high);
     let ny = y, nx = x, nz = z;
-    if (cap < high) {
+    if (car) {
+      const w = car.wheelOf[v / 3];
+      if (w >= 0) {
+        // a wheel splays out about its tyre's outer foot as the cap over its hub comes down (never squashed into the heap)
+        const o = w * 6, side = car.wheels[o + 5], xOut = side * car.wheels[o + 4];
+        const wheelTop = car.wheels[o + 1] + car.wheels[o + 2];
+        const hub = sample(f, f.eff, side * (car.wheels[o + 3] + car.wheels[o + 4]) * 0.5, car.wheels[o], high);
+        const k = Math.max(0, Math.min(1, (wheelTop - hub) / Math.max(0.2, wheelTop - FLOOR_M)));
+        if (k > 0) {
+          const a = CAR.splay * k * Math.sqrt(k), c = Math.cos(a), s = Math.sin(a), dx = x - xOut;
+          nx = xOut + dx * c + side * y * s;
+          ny = y * c - side * dx * s;
+        }
+        cap = hub;
+      } else if (cap < high) {
+        const pressed = Math.max(0, Math.min(1, (f.top - cap) / Math.max(0.2, f.top - FLOOR_M)));
+        if (y > cap) {
+          // pressed in order: the greenhouse folds down onto the belt line first, the body under it buckles into less of
+          // itself (the roof stays on top of the doors, the doors on the sills)
+          const bodyOver = Math.max(0, Math.min(y, car.belt) - cap), glassOver = Math.max(0, y - Math.max(car.belt, cap));
+          ny = cap + bodyOver * CAR.body + glassOver * CAR.glass;
+          const up = Math.min(1, (y - cap) / 0.3);
+          // the panels fold in creases across the length and the width (the same rest place folds the same)
+          const along = tri(z * CAR.alongK + x * 0.35 + 0.17), across = tri(x * CAR.acrossK - z * 0.25 + 0.61);
+          ny += CAR.crease * pressed * up * (0.65 * along + 0.35 * across) + hash3(x, y, z) * CAR.jitter * pressed;
+          // the doors bow out at the crushed body's waist, creased with it
+          const flank = Math.max(0, Math.min(1, (Math.abs(x) / Math.max(0.3, halfWidth) - 0.55) / 0.4));
+          const t = Math.min(1, (y - cap) / Math.max(0.3, f.top - cap));
+          nx += Math.sign(x || 1) * flank * pressed * (CAR.bow * 4 * t * (1 - t) + CAR.crease * 0.7 * along);
+          // the roof racks over along the hull's travel as the pillars fold
+          if (y > car.belt) {
+            const rack = CAR.rack * pressed * Math.min(1, (y - car.belt) / Math.max(0.2, f.top - car.belt));
+            nx += f.dirX * rack; nz += f.dirZ * rack;
+          }
+        }
+      }
+      if (cap < high) {
+        const px = sample(f, f.pushX, x, z, 0), pz = sample(f, f.pushZ, x, z, 0);
+        if (px !== 0 || pz !== 0) {
+          const lift = Math.max(0.25, Math.min(1, (y - FLOOR_M) / Math.max(0.4, f.top * 0.75)));
+          nx += px * lift; nz += pz * lift;
+        }
+      }
+    } else if (cap < high) {
       // the crumple's breakup where it is pressed (more where it was pressed further); canvas in soft folds instead
       const pressed = Math.max(0, Math.min(1, (f.top - cap) / f.top));
       if (f.cloth) cap += (Math.sin(x * CLOTH.foldK + z * 1.7) * 0.7 + Math.sin(z * CLOTH.foldK * 0.8 - x) * 0.3) * CLOTH.fold * pressed
@@ -313,17 +455,24 @@ export function flatNormals(position: ArrayLike<number>, index: ArrayLike<number
   }
 }
 
+/** A battle tank's contact half width (m): the hull a car's unseen crush is swept with (its belly and tracks). */
+const TANK_HALF_WIDTH_M = 1.8;
+
 /**
  * A crush the presentation never saw a hull make (a remote or late event, a hull out of view): a hull of the record's
  * width plus a margin crossing it along (dirX, dirZ) in its own frame, from its near edge to its far one; `k` (0..1) how
- * far along. Writes the hull's centre and forward into `out` [cx, cz, fx, fz, halfLength, halfWidth].
+ * far along. Writes the hull's centre and forward into `out` [cx, cz, fx, fz, halfLength, halfWidth]. `tank`: a car's
+ * crush, swept by a battle tank's own width across its middle (its belly and its tracks where they fall), not a hull
+ * wide enough to flatten all of it.
  */
-export function sweepPose(hw: number, hl: number, dirX: number, dirZ: number, k: number, out: number[]): number[] {
+export function sweepPose(hw: number, hl: number, dirX: number, dirZ: number, k: number, out: number[], tank = false): number[] {
   const l = Math.hypot(dirX, dirZ) || 1;
   const fx = dirX / l, fz = dirZ / l;
   // the prop's extent along the travel, and a hull wide enough to cross all of it
   const along = Math.abs(fx) * hw + Math.abs(fz) * hl, across = Math.abs(fz) * hw + Math.abs(fx) * hl;
-  const halfLength = 3.4, halfWidth = Math.max(1.7, across + 0.2);
+  // (a car longer across the travel than a tank is wide — a truck, a van crossed side on — is swept whole: the ends a
+  // tank's width left standing rose from its ruts as ramps)
+  const halfLength = 3.4, halfWidth = tank && across <= TANK_HALF_WIDTH_M + 0.4 ? TANK_HALF_WIDTH_M : Math.max(1.7, across + 0.2);
   const start = -along - halfLength - AHEAD_M, end = along + halfLength;
   const s = start + (end - start) * Math.max(0, Math.min(1, k));
   out[0] = fx * s; out[1] = fz * s; out[2] = fx; out[3] = fz; out[4] = halfLength; out[5] = halfWidth;

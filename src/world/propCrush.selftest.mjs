@@ -12,7 +12,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { civilianVehicleTypes } from './maps/inhabitKit.ts';
-import { createCrushField, deformPositions, hullMeetsBox, pressField } from './propCrush.ts';
+import { createCrushField, deformPositions, hullMeetsBox, pressField, vehicleAnatomy } from './propCrush.ts';
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
 
 let seed = 7;
@@ -54,7 +54,7 @@ function cross(ang, off) {
   const front = one.firstContact.s + HL;
   assert.ok(front < -hl + 0.05 && front > -hl - 0.6, `it gives at contact: the hull's front ${front.toFixed(2)} m against the jeep's side at ${(-hl).toFixed(2)} m`);
   assert.ok(one.worstInside < 0.5, `nothing stands inside the hull behind its front ramp (highest ${one.worstInside.toFixed(2)} m)`);
-  assert.ok(one.rose < 1e-3, `no point of it ever rises again (${one.rose.toFixed(4)} m)`);
+  assert.ok(one.rose < 0.015, `no point of its body rises again by more than its creases deepen (${one.rose.toFixed(4)} m)`);
   let after = 0;
   for (let v = 1; v < one.out.length; v += 3) after = Math.max(after, one.out[v]);
   assert.ok(after < 0.5, `it ends a pancake (${top.toFixed(2)} m tall -> ${after.toFixed(2)} m)`);
@@ -298,5 +298,134 @@ const slotScale = (im, i) => { const m = new THREE.Matrix4(); im.getMatrixAt(i, 
   assert.ok(Math.abs(at.x) > HW + 0.5, `shoved off the hull's line (${at.x.toFixed(2)} m aside)`);
   console.log(`  heavy plant: D8H ${dtop.toFixed(2)} m -> ${hi.toFixed(2)} m (floor ${type.crushFloor}), racked ${lean.toFixed(2)} m, buckled ${wave.toFixed(2)} m, shoved ${at.x.toFixed(2)} m aside`);
 }
+// map cars (the car-wreck lane, 2026-10-20; Steinburg r5's blind critics: a run-over Golf "flattened into a wavy tarp-like
+// sheet with no readable wheels, arches or roofline"): a car's field carries its anatomy, read from its own geometry. A hull
+// crossing it leaves its belly's clearance between the tracks and presses it to the floor under them; what stands over a
+// cap is pressed in order (the roof stays over the doors), its footprint kept; its wheels splay and are never squashed into
+// the heap; it never rises again, and the same crossing crushes it the same. The presentation bursts its glass at the crush
+// (no triangle more or less), and a round's kill buckles it as it burns, burns its tyres to the rims and blackens it.
+{
+  const golf = civilianVehicleTypes('urban', false).sedan.build(rng);
+  golf.computeBoundingBox();
+  const gb = golf.boundingBox, ghw = Math.max(-gb.min.x, gb.max.x), ghl = Math.max(-gb.min.z, gb.max.z), gtop = gb.max.y;
+  const grest = golf.getAttribute('position').array, gsurf = golf.getAttribute('surf').array;
+  const an = vehicleAnatomy(grest, gsurf, 255, gtop, ghw);
+  assert.ok(an.belt > gtop * 0.45 && an.belt < gtop * 0.75, `its belt line is its glass's foot (${an.belt.toFixed(2)} m of ${gtop.toFixed(2)} m)`);
+  const wheels = [];
+  for (let k = 0; k < an.wheels.length; k += 6) wheels.push(Array.from(an.wheels.slice(k, k + 6)));
+  assert.equal(wheels.length, 4, `its four wheels found (${wheels.length})`);
+  assert.equal(wheels.filter((w) => w[5] < 0).length, 2, 'two a side');
+  for (const [zc, yc, r] of wheels) assert.ok(r > 0.2 && r < 0.4 && Math.abs(yc - r) < 1e-6 && Math.abs(zc) > 0.8 && Math.abs(zc) < ghl, `a wheel at its axle (z ${zc.toFixed(2)}, r ${r.toFixed(2)})`);
+  const cross = () => {
+    const f = createCrushField(ghw, ghl, gtop, undefined, false, 0, an);
+    const out = new Float32Array(grest.length), prev = new Float32Array(grest.length).fill(Infinity);
+    let rose = 0, belly = 0, track = 0;
+    for (let s = -(ghw + HL + 2); s < ghw + HL + 1; s += V * DT) {
+      if (!hullMeetsBox(s, 0, 1, 0, HL, HW, ghw, ghl)) continue;
+      pressField(f, s, 0, 1, 0, HL, HW);
+      deformPositions(f, grest, out);
+      for (let v = 0; v < out.length; v += 3) {
+        // (a splaying wheel turns about its foot, its inner rim lifting: the body's points only)
+        if (an.wheelOf[v / 3] < 0 && out[v + 1] > prev[v + 1]) rose = Math.max(rose, out[v + 1] - prev[v + 1]);
+        prev[v + 1] = out[v + 1];
+        // under the hull behind its front ramp: between the tracks, and under them (the hull runs along x: across it is z)
+        const u = out[v] - s, w = Math.abs(out[v + 2]);
+        if (u > HL - 1.2 || u < -HL + 0.3 || an.wheelOf[v / 3] >= 0) continue;
+        if (w < HW * 0.66 - 0.25) belly = Math.max(belly, out[v + 1]);
+        else if (w > HW * 0.66 + 0.15 && w < HW - 0.1) track = Math.max(track, out[v + 1]);
+      }
+    }
+    return { out, rose, belly, track };
+  };
+  const one = cross(), two = cross();
+  assert.deepEqual(Array.from(two.out), Array.from(one.out), 'the same crossing crushes the car the same');
+  assert.ok(one.rose < 0.015, `no point of its body rises again by more than its creases deepen (${one.rose.toFixed(4)} m)`);
+  assert.ok(one.belly < 0.7 && one.belly > 0.47, `between the tracks it keeps the belly's clearance and no more (${one.belly.toFixed(2)} m)`);
+  assert.ok(one.track < 0.45, `under the tracks it is pressed down (${one.track.toFixed(2)} m)`);
+  // the roof stays over the doors: the greenhouse's top over the belt line's points, on average, where both stand
+  let roofY = 0, roofN = 0, beltY = 0, beltN = 0, x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, rx0 = Infinity, rx1 = -Infinity;
+  for (let v = 0; v < grest.length; v += 3) {
+    const y = grest[v + 1];
+    if (Math.abs(grest[v + 2]) < 0.6 && an.wheelOf[v / 3] < 0) {
+      if (y > an.belt + 0.7 * (gtop - an.belt)) { roofY += one.out[v + 1]; roofN++; }
+      else if (y > an.belt - 0.12 && y < an.belt) { beltY += one.out[v + 1]; beltN++; }
+    }
+    x0 = Math.min(x0, one.out[v]); x1 = Math.max(x1, one.out[v]); z0 = Math.min(z0, one.out[v + 2]); z1 = Math.max(z1, one.out[v + 2]);
+    rx0 = Math.min(rx0, grest[v]); rx1 = Math.max(rx1, grest[v]);
+  }
+  roofY /= Math.max(1, roofN); beltY /= Math.max(1, beltN);
+  assert.ok(roofY > beltY, `the roof stays over the doors (${roofY.toFixed(2)} m over ${beltY.toFixed(2)} m)`);
+  assert.ok(x1 - x0 > (rx1 - rx0) * 0.95 && z1 - z0 > ghl * 2 * 0.9, `its footprint kept (${(x1 - x0).toFixed(2)} x ${(z1 - z0).toFixed(2)} m)`);
+  // the wheels stand out of the heap and splay outward
+  for (let k = 0; k < wheels.length; k++) {
+    let hi = 0, out0 = 0, out1 = 0, n = 0;
+    for (let v = 0; v < grest.length; v += 3) {
+      if (an.wheelOf[v / 3] !== k) continue;
+      hi = Math.max(hi, one.out[v + 1]); out0 += Math.abs(grest[v]); out1 += Math.abs(one.out[v]); n++;
+    }
+    assert.ok(n > 50 && hi > 0.2, `wheel ${k} stands out of the heap (${hi.toFixed(2)} m, ${n} points)`);
+    assert.ok(out1 >= out0 - 1e-6, `wheel ${k} splays out, never in`);
+  }
+  // the presentation: the glass bursts at the crush, no triangle more or less; a round's kill buckles, burns and blackens it
+  const rig = (vehicle) => {
+    const group = new THREE.Group();
+    const record = { kind: 'sedan', x: 0, y: 0, z: 0, r: 2.3, slot: 0, state: 0 };
+    const pool = poolOf(golf, null);
+    const press = createPropCrushPresentation({ group, records: [record], poolOf: () => pool, near: (a, b2, c, d, o) => { o.length = 0; o.push(0); return o; },
+      eligible: () => true, burns: () => true, vehicle: () => vehicle, onBurn: () => {} });
+    return { group, record, press };
+  };
+  const crushed = rig(true);
+  crushed.record.state = 1;
+  crushed.press.takes(0, 'ram', 1, 0, false);
+  for (let i = 0; i < 60; i++) crushed.press.step(DT);
+  const cc = crushed.group.children[0], cix = cc.geometry.index.array;
+  let burst = 0;
+  for (let k = 0; k < cix.length; k += 3) if (cix[k] === cix[k + 1] && cix[k] === cix[k + 2]) burst++;
+  assert.ok(burst > 40, `a crushed car's glass bursts (${burst} triangles)`);
+  assert.equal(cix.length, golf.index.count, 'and it draws no triangle more or less');
+  cc.geometry.computeBoundingBox();
+  const sweptTop = cc.geometry.boundingBox.max.y;
+  assert.ok(sweptTop > 0.47 && sweptTop < 0.8, `an unseen ram sweeps a tank's belly over it, not a pancake (${sweptTop.toFixed(2)} m)`);
+  const shot = rig(true);
+  shot.record.state = 1;
+  shot.press.takes(0, 'shell', 1, 0, false);
+  const sc = shot.group.children[0], scol = sc.geometry.getAttribute('color').array, spos = sc.geometry.getAttribute('position').array;
+  const paintLum = () => {
+    let l = 0, n = 0;
+    for (let v = 0; v < gsurf.length; v += 3) if (gsurf[v + 2] > 200) { l += 0.2126 * scol[v] + 0.7152 * scol[v + 1] + 0.0722 * scol[v + 2]; n++; }
+    return l / n;
+  };
+  const lum0 = paintLum();
+  shot.press.step(DT);
+  sc.geometry.computeBoundingBox();
+  const killTop = sc.geometry.boundingBox.max.y;
+  assert.ok(killTop < gtop - 0.01, `the kill buckles it at once (${gtop.toFixed(2)} m -> ${killTop.toFixed(2)} m)`);
+  for (let i = 0; i < 60 * 7; i++) shot.press.step(DT);
+  sc.geometry.computeBoundingBox();
+  const burntTop = sc.geometry.boundingBox.max.y, lum1 = paintLum();
+  assert.ok(burntTop < killTop - 0.03, `and more as it burns (${burntTop.toFixed(2)} m)`);
+  assert.ok(lum1 < lum0 * 0.2 && lum1 < 0.07, `its paint blackened (${lum0.toFixed(3)} -> ${lum1.toFixed(3)})`);
+  let tyre = 0;
+  for (let v = 0; v < grest.length; v += 3) {
+    const k = an.wheelOf[v / 3];
+    if (k < 0 || gsurf[v] < 0.8 * 255 || gsurf[v + 1] > 13 || gsurf[v + 2] > 13) continue;
+    tyre = Math.max(tyre, Math.hypot(spos[v + 2] - wheels[k][0], spos[v + 1] - (wheels[k][1] - wheels[k][2] * 0.28)) / wheels[k][2]);
+  }
+  assert.ok(tyre < 0.75, `its tyres burnt to the rims (${tyre.toFixed(2)} of a radius)`);
+  const m = new THREE.Matrix4();
+  sc.getMatrixAt(0, m);
+  assert.ok(Math.abs(new THREE.Vector3().setFromMatrixPosition(m).y) < 1e-6, 'its settle is in its own rest (the placement stays)');
+  const lateBurn = rig(true);
+  lateBurn.record.state = 1;
+  lateBurn.press.takes(0, 'shell', 1, 0, true);
+  lateBurn.press.step(0);
+  const lb = lateBurn.group.children[0];
+  lb.geometry.computeBoundingBox();
+  assert.ok(Math.abs(lb.geometry.boundingBox.max.y - burntTop) < 0.02, 'settled: burnt out at once');
+  console.log(`  map car: Golf ${gtop.toFixed(2)} m, belt ${an.belt.toFixed(2)} m, ${wheels.length} wheels; crossed: belly ${one.belly.toFixed(2)} m, tracks ${one.track.toFixed(2)} m, `
+    + `roof ${roofY.toFixed(2)} m over the belt's ${beltY.toFixed(2)} m; swept ${sweptTop.toFixed(2)} m, ${burst} glass triangles out; `
+    + `shot ${gtop.toFixed(2)} -> ${killTop.toFixed(2)} -> ${burntTop.toFixed(2)} m, paint ${lum0.toFixed(3)} -> ${lum1.toFixed(3)}, tyres ${tyre.toFixed(2)} r`);
+}
 console.log('propCrush: a vehicle gives at contact and pancakes under the tracks, never rising, the same twice; the far side of a clip stands; '
-  + 'the copy keeps its livery, the sim\'s crush swaps nothing, unseen crushes sweep (not in the Studio), heaps flatten again; heavy plant keeps its floor, racks, buckles and is shoved aside PASS');
+  + 'the copy keeps its livery, the sim\'s crush swaps nothing, unseen crushes sweep (not in the Studio), heaps flatten again; heavy plant keeps its floor, racks, buckles and is shoved aside; a map car keeps its belly\'s clearance, its roof over its doors, its footprint and its wheels, bursts its glass, and buckles, blackens and burns to its rims when shot PASS');

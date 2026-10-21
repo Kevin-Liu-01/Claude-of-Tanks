@@ -17,6 +17,7 @@ import { registerWorldNightLighting } from './worldNightLighting.ts';
 import { setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
 import { createAuthorityObstacles } from '../mp/presentation/authorityObstacles.ts';
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
+import { CIVILIAN_VEHICLE_RECEIPTS } from './maps/civilianVehicleKit.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { isFortifiedCoverRecord } from '../sim/fortifiedCover.ts';
 import { shellSparesStoppedRecord } from './collision.ts';
@@ -114,6 +115,8 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
     structurePlacements: new Map(), structureDamage: new Map(), structureSpans: new Map(), structureMaterials: [],
     // (destruction core, 2026-10-10) the hull's crush presses the map vehicles, huts, stalls and tents (propCrushPresentation)
     createPropCrushPresentation, DESTRUCTIBLE_BUILDING_TYPES,
+    // (the car-wreck lane, 2026-10-20) the map's cars: the press reads their anatomy, their break throws metal
+    CIVILIAN_VEHICLE_RECEIPTS,
     // (Plan W, 2026-10-13) the build joins its pooled structure shells before it returns; none are pooled here
     joinStructureShells() {},
     // (F2, 2026-10-13) and merges its buildings' roof decks into the records before it returns; no structures here either
