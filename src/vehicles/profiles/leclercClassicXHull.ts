@@ -124,7 +124,8 @@ function bow(P: TankBuilderPort): void {
   P.add('hull', course(2.34853, 3.490369, 1.374389755, 1.392771444, -1.440173, 1.422004));
   // The source driver's window is inset behind its own raised frame.
   P.addHatch('hull', box(.850255, .024, .607723), .5594245, 1.50, 1.9047535, .178);
-  P.addEquipment('hullDetail', box(.850255, .028, .15), .5594245, 1.606, 1.781, .178);
+  // 2026-10-19 (owner float sweep): the frame strip stood 12-23 mm short of its posts; it runs back onto them (front kept)
+  P.addEquipment('hullDetail', box(.850255, .028, .19), .5594245, 1.606, 1.801, .178);
   P.addEquipment('hullDetail', box(.085, .116, .24), .178, 1.565, 1.988, .178);
   P.addEquipment('hullDetail', box(.085, .116, .24), .940, 1.565, 1.988, .178);
   P.addEquipment('hullGlass', box(.628987, .003, .244), .580878, 1.563, 1.9953, .467);
@@ -159,8 +160,11 @@ function engine(P: TankBuilderPort): void {
     for (let i = 0; i < 13; i++)
       P.addEquipment('hullDetail', box(.045065, .01715, .788),
         side < 0 ? -1.67330 : 1.64536, 1.3146 + i * .024, -2.9366);
-    P.addMudguard('leclerc-classic-rear-flexible-guard', 'hullRubber',
-      box(.653465, .283212, .015), side < 0 ? -1.314717 : 1.290715,  .972035, -3.340);
+    // Owner 2026-10-19 (flaps sweep): the left guard stood 22 mm behind and 8 mm inboard of the hull corner it hangs
+    // from (the right one meets its corner); it moves 28 mm forward and widens 15.5 mm outboard into that corner.
+    const left = side < 0;
+    P.hangMudguard('leclerc-classic-rear-flexible-guard', 'hullRubber',
+      box(left ? .669 : .653465, .283212, .015), left ? -1.322467 : 1.290715, .972035, left ? -3.312 : -3.340);
   }
 }
 

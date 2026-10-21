@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-21T08:53:07.351Z",
+ "generatedAt": "2026-10-21T13:53:31.242Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening), inside-out, see-through and netting pixel totals over the 33 census views, one row per playable id, each measured in the census frame recorded on its row (frame: [x, y, z, radius] in the tank root, so an unrelated extremity edit never moves the pixel grid). Gate: a tank may not exceed its ledger open px, nor its see-through px (the world seen through glass, markings or undeclared alpha-cut parts), by more than max(12, 10%), and a sealed tank must stay sealed; its netting px (sky between declared alpha-cut net and leaf dressing, netSeeThroughPx) must stay within max(12, 2%) of the row either way; an open row may not open in a view outside its openViewNames. The frame is fixed: a build whose own frame is within min(0.5 m, 15%) of it is judged in it; past that it fails OUT OF FRAME or FRAME STALE, the only cases --reframe serves (no column may exceed the row in the row's frame; never past half again the row's first frame). A plain update never changes a row; --tighten-ledger lowers one, --accept-see-through=<id>:<reason> raises see-through or netting and --reframe=<id>:<reason> re-frames, each recorded in the row's accepts history. (guards 229, 2026-10-20: every row re-measured in its recorded frame on integ/229 93cfe22c21.)",
@@ -372,13 +372,25 @@
    "openViews": 0,
    "insideOutPx": 254,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 3364,
+   "netSeeThroughPx": 3294,
    "tris": 111649,
    "frame": [
     0,
     2.2,
     1.45,
     6.7
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "float-gaps 230: the ghillie net re-drapes over the parts the owner's 2026-10-19 float sweep seated (same net extents, none lifted)",
+     "by": "kevinliu",
+     "date": "2026-10-21",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 3364
+     }
+    }
    ]
   },
   "c2_ariete_proto": {
@@ -387,13 +399,25 @@
    "openViews": 0,
    "insideOutPx": 278,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 4003,
+   "netSeeThroughPx": 3877,
    "tris": 111764,
    "frame": [
     0,
     2,
     1.15,
     6.2
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "float-gaps 230: the ghillie net re-drapes over the parts the owner's 2026-10-19 float sweep seated (same net extents, none lifted)",
+     "by": "kevinliu",
+     "date": "2026-10-21",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 4003
+     }
+    }
    ]
   },
   "carro45t": {
@@ -597,13 +621,25 @@
    "openViews": 0,
    "insideOutPx": 512,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 4731,
+   "netSeeThroughPx": 4633,
    "tris": 80482,
    "frame": [
     0,
     1.55,
     -0.1,
     4.4
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "float-gaps 230: the ghillie net re-drapes over the parts the owner's 2026-10-19 float sweep seated (same net extents, none lifted)",
+     "by": "kevinliu",
+     "date": "2026-10-21",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 4731
+     }
+    }
    ]
   },
   "cv90105_tml": {
@@ -1097,7 +1133,7 @@
    "openViews": 0,
    "insideOutPx": 190,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 6616,
+   "netSeeThroughPx": 6389,
    "tris": 114498,
    "frame": [
     0,
@@ -1114,6 +1150,16 @@
      "from": {
       "seeThroughPx": 0,
       "netSeeThroughPx": 6766
+     }
+    },
+    {
+     "kind": "see-through",
+     "reason": "float-gaps 230: the ghillie net re-drapes over the parts the owner's 2026-10-19 float sweep seated (same net extents, none lifted)",
+     "by": "kevinliu",
+     "date": "2026-10-21",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 6616
      }
     }
    ]
@@ -1890,13 +1936,25 @@
    "openViews": 0,
    "insideOutPx": 246,
    "seeThroughPx": 39,
-   "netSeeThroughPx": 4494,
+   "netSeeThroughPx": 4642,
    "tris": 123401,
    "frame": [
     0,
     1.6,
     0,
     5.2
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "float-gaps 230: the ghillie net re-drapes over the parts the owner's 2026-10-19 float sweep seated (same net extents, none lifted)",
+     "by": "kevinliu",
+     "date": "2026-10-21",
+     "from": {
+      "seeThroughPx": 39,
+      "netSeeThroughPx": 4494
+     }
+    }
    ]
   },
   "namer_ifv": {
@@ -2235,13 +2293,25 @@
    "openViews": 0,
    "insideOutPx": 118,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 3486,
+   "netSeeThroughPx": 3381,
    "tris": 106436,
    "frame": [
     0.1,
     2.75,
     0.95,
     6.1
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "float-gaps 230: the ghillie net re-drapes over the parts the owner's 2026-10-19 float sweep seated (same net extents, none lifted)",
+     "by": "kevinliu",
+     "date": "2026-10-21",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 3486
+     }
+    }
    ]
   },
   "t72_rys": {
@@ -3154,13 +3224,25 @@
    "openViews": 0,
    "insideOutPx": 246,
    "seeThroughPx": 0,
-   "netSeeThroughPx": 2818,
+   "netSeeThroughPx": 3440,
    "tris": 90649,
    "frame": [
     0,
     2.65,
     1.35,
     6.2
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "inherited from integ/230 itself (the type96 donor-main work): 3443 px measured on integ 3324529d05 against the 2818 row, 3440 on this branch",
+     "by": "kevinliu",
+     "date": "2026-10-21",
+     "from": {
+      "seeThroughPx": 0,
+      "netSeeThroughPx": 2818
+     }
+    }
    ]
   },
   "ua_challenger2": {
@@ -3168,14 +3250,26 @@
    "openPx": 8,
    "openViews": 0,
    "insideOutPx": 90,
-   "seeThroughPx": 91,
-   "netSeeThroughPx": 7783,
+   "seeThroughPx": 90,
+   "netSeeThroughPx": 7503,
    "tris": 137343,
    "frame": [
     0,
     1.65,
     1.85,
     7.1
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "float-gaps 230: the ghillie net re-drapes over the parts the owner's 2026-10-19 float sweep seated (same net extents, none lifted)",
+     "by": "kevinliu",
+     "date": "2026-10-21",
+     "from": {
+      "seeThroughPx": 91,
+      "netSeeThroughPx": 7783
+     }
+    }
    ]
   },
   "ua_m1a1": {
@@ -3409,13 +3503,25 @@
    "openViews": 0,
    "insideOutPx": 130,
    "seeThroughPx": 2,
-   "netSeeThroughPx": 2790,
+   "netSeeThroughPx": 2710,
    "tris": 112543,
    "frame": [
     0,
     1.65,
     1.2,
     6.8
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "float-gaps 230: the ghillie net re-drapes over the parts the owner's 2026-10-19 float sweep seated (same net extents, none lifted)",
+     "by": "kevinliu",
+     "date": "2026-10-21",
+     "from": {
+      "seeThroughPx": 2,
+      "netSeeThroughPx": 2790
+     }
+    }
    ]
   }
  }

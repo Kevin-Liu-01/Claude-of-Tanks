@@ -1245,6 +1245,13 @@ window.__TANK_GALLERY = {
   loadTank,
   setMode,
   frameView,
+  /** Reproduces a camera a surface-markup export recorded (its camera.position and camera.target). */
+  setCamera: (position: readonly [number, number, number], target: readonly [number, number, number]) => {
+    camera.up.set(0, 1, 0);
+    camera.position.set(...position);
+    controls.target.set(...target);
+    controls.update();
+  },
   getState: () => ({
     selectedId,
     mode: activeMode,

@@ -22,6 +22,7 @@ type Quad = [Vec3Tuple, Vec3Tuple, Vec3Tuple, Vec3Tuple];
 
 interface JapaneseBuilderPort {
   readonly forEachBucketPart: TankBuilderPort['forEachBucketPart'];
+  readonly snapGroup: TankBuilderPort['snapGroup'];
   readonly hullG: THREE.Group;
   readonly turretG: THREE.Group;
   readonly gunG: THREE.Group;
@@ -101,6 +102,8 @@ interface JapaneseBuilderPort {
     owner: VehicleAssemblyOwner,
     build: () => void,
   ): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface FaceSample {
@@ -264,6 +267,10 @@ function joinedBasket(
     P.add('turretDetail', KIT.box(width + 0.18 * s, 0.026 * s, 0.030 * s), 0, yy, z - depth - 0.025 * s);
   for (let i = 0; i < 8; i++) P.add('turretDetail', KIT.box(0.026 * s, 0.38 * s, 0.030 * s),
     -width * 0.47 + i * (width * 0.94 / 7), y, z - depth - 0.025 * s);
+  // 2026-10-19 (owner float sweep): the rail-and-post frame stood ~14 cm aft of the back panel with nothing between; side
+  // bars at the end posts run it back to the panel.
+  for (const sx of [-1, 1]) P.add('turretDetail', KIT.box(0.026 * s, 0.026 * s, depth * 0.5 + 0.04 * s),
+    sx * width * 0.47, y, z - depth * 0.75 - 0.0075 * s);
   mount(P, FITTINGS.stowageRack({
     mats: P.mats, w: width * 0.76, d: depth * 0.62, h: 0.22 * s,
     fill: 0.45, rails: 3, seed,
@@ -612,7 +619,7 @@ function addSTB1RoofEquipment(P: JapaneseBuilderPort): void {
   for (const side of [-1, 1]) {
     P.add('turretDetail', cylZ(0.058, 0.105, 12), side * 0.87, 0.745, 0.87);
     P.add('turretGlass', cylZ(0.042, 0.018, 12), side * 0.87, 0.745, 0.931);
-    P.add('turretDark', box(0.14, 0.025, 0.025), side * 0.87, 0.885, 0.88);
+    P.add('turretDark', box(0.14, 0.025, 0.025), side * 0.87, 0.814, 0.88);   // 2026-10-19 (owner float sweep): the brow stood 70 mm over its housing
   }
   P.add('turretDetail', box(0.24, 0.17, 0.16), 0.70, 1.225, -0.52);
   P.add('turretDark', box(0.025, 0.11, 0.12), 0.835, 1.225, -0.52);

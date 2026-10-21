@@ -32,7 +32,7 @@ function closed(g){
 }
 function helper(){
   const meshes=[],mat=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
-  const p={addEquipment(slot,g,x=0,y=0,z=0){assert.ok(['turretDetail','turretDark'].includes(slot));closed(g);
+  const p={snapGroup:(_label,build)=>build(),addEquipment(slot,g,x=0,y=0,z=0){assert.ok(['turretDetail','turretDark'].includes(slot));closed(g);
     g.translate(x+pivot.x,y+pivot.y,z+pivot.z);const m=new THREE.Mesh(g,mat);m.updateMatrixWorld();meshes.push(m);}};
   addT90AWAAReceiver(p);addT90AWOpticalHeads(p);return{meshes,mat};
 }

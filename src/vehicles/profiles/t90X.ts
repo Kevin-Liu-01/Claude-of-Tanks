@@ -122,7 +122,8 @@ function onTurret(P: TankBuilderPort,d: Datum,bucket: string,g: THREE.BufferGeom
 }
 
 function ring(P: TankBuilderPort,_d: Datum,r: number): void {
-  P.add('turret',cylY(r,.082,48),0,.029,0);
+  // the ring collar reaches the turret floor (it stood 42 mm below it)
+  P.add('turret',cylY(r,.13,48),0,.053,0);
 }
 
 function barrel(P: TankBuilderPort,d: Datum,r: number,evacZ: number,evacLength: number): void {
@@ -264,12 +265,19 @@ function engineDeck(P: TankBuilderPort,y: number,rear: number,width: number): vo
 
 function bowGear(P: TankBuilderPort,y: number,z: number,modern: boolean,driverY=modern?1.54:1.50,driverZ=1.81,sourceM=false,finalBowStrip=true): void {
   for(const side of [-1,1]) {
-    P.addEquipment('hullDark',cylZ(.09,.10,14),side*.85,y,z);
-    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.066,.015,16), 'headlight'),side*.85,y,z+.062);
-    P.addEquipment('hullDetail',box(.27,.028,.28),side*.85,y+.115,z-.018,-.12);
-    for(const dx of [-.105,.105])P.addEquipment('hullDetail',cylY(.013,.16,8),side*.85+dx,y+.034,z+.074);
-    P.addEquipment('hullDetail',torus(.055,.020,12,6),side*.79,.64,z+.02);
-    P.addEquipment('hullDetail',box(.07,.08,.10),side*.79,.64,z-.05);
+    // 2026-10-19 (owner float sweep): the headlight cluster stood 96 mm off the glacis; it is seated on it.
+    P.snapGroup('t90-headlight',()=>{
+      P.addEquipment('hullDark',cylZ(.09,.10,14),side*.85,y,z);
+      P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.066,.015,16), 'headlight'),side*.85,y,z+.057);
+      P.addEquipment('hullDetail',box(.27,.028,.28),side*.85,y+.115,z-.018,-.12);
+      // the guard's posts stand on the housing's face (they stood 24 mm clear of it, outside its rim)
+      for(const dx of [-.07,.07])P.addEquipment('hullDetail',cylY(.013,.16,8),side*.85+dx,y+.034,z+.06);
+    },{reachM:.12});
+    // the tow hook and its block are seated on the nose (on the SM they stood 128 mm ahead of it)
+    P.snapGroup('t90-tow-hook',()=>{
+      P.addEquipment('hullDetail',torus(.055,.020,12,6),side*.79,.64,z+.02);
+      P.addEquipment('hullDetail',box(.07,.08,.10),side*.79,.64,z-.05);
+    },{reachM:.15});
   }
   if(sourceM)mDriverHatch(P);
   else {
@@ -280,8 +288,11 @@ function bowGear(P: TankBuilderPort,y: number,z: number,modern: boolean,driverY=
     }
   }
   if(finalBowStrip) {
-    P.addEquipment('hullDark',box(1.88,.055,.06),0,y-.08,z-.10);
-    for(let i=0;i<7;i++)P.addEquipment('hullDetail',cylZ(.019,.012,8),-.79+i*.264,y-.08,z-.06);
+    // the strip is seated on the bow and its bolt heads sit in its face (they stood 4 mm proud of it)
+    P.snapGroup('t90-bow-strip',()=>{
+      P.addEquipment('hullDark',box(1.88,.055,.06),0,y-.08,z-.10);
+      for(let i=0;i<7;i++)P.addEquipment('hullDetail',cylZ(.019,.012,8),-.79+i*.264,y-.08,z-.072);
+    },{reachM:.05});
   }
 }
 
@@ -290,8 +301,9 @@ function mDriverHatch(P: TankBuilderPort): void {
   P.addEquipment('hullDetail',box(.0458,.0697,.0479),-.4032,1.3555,1.6859);
   P.addEquipment('hullDark',box(.1597,.0611,.0485),.002,1.3264,1.911);
   P.addEquipment('hullGlass',box(.133,.026,.008),.002,1.337,1.936);
-  P.addEquipment('hullDetail',box(.070,.0165,.1089),.182,1.3803,1.6948);
-  P.addEquipment('hullDetail',box(.0977,.0165,.0434),-.0928,1.3806,1.748);
+  // the two pads lie on the hatch leaf (they stood 19 mm above it)
+  P.addEquipment('hullDetail',box(.070,.0165,.1089),.182,1.3608,1.6948);
+  P.addEquipment('hullDetail',box(.0977,.0165,.0434),-.0928,1.3608,1.748);
 }
 
 function fenders(P: TankBuilderPort,tag: string,half: number,top: number): void {
@@ -394,7 +406,8 @@ function aSideArmor(P: TankBuilderPort,side:number,index:number): void {
     P.addExternalArmor('hull',eraHitFaces(sectionSolid([{z:z-.346,ring:cross},{z:z+.346,ring:cross}]),side));
     for(const dz of [-.26,.26])P.addEquipment('hullDetail',eraFurniture(box(.012,.036,.040)),side*1.880,top-.08,z+dz);
   });
-  const backing=ring.map(([x,y])=>[side*(x-.0101),y] as const);
+  // the backing runs from a plumb inner face on the hull side (the slanted copy stood 13 mm off it) into the tile
+  const backing=([[1.808,low],[1.8398,low],[1.8833,top],[1.808,top]] as const).map(([x,y])=>[side*x,y] as const);
   const backingCross=side>0?backing:backing.reverse();
   P.addEquipment('hullDetail',sectionSolid([{z:z-.346,ring:backingCross},{z:z+.346,ring:backingCross}]));
 }
@@ -437,12 +450,16 @@ function aGlacis(P:TankBuilderPort):void {
   for(const side of [-1,1]) {
     inclinedHullPlate(P,side*.782,.306,2.057,2.325,1.482,1.381,.046,true);
     inclinedHullPlate(P,side*.401,.440,2.125,2.306,1.456,1.388,.046,true);
+    plateBacker(P,side*.782,.306,2.057,2.325,1.482,1.381,.046,-1);
+    plateBacker(P,side*.401,.440,2.125,2.306,1.456,1.388,.046,-1);
   }
   inclinedHullPlate(P,.0177,2.150,2.650,3.187,.479,.816,.041);
   P.addEquipment('hullDetail',box(.372,.257,1.668),-1.087,1.481,-2.416);
   P.addEquipment('hullDetail',box(1.220,.239,.334),-.2753,1.602,-1.710);
-  P.addEquipment('hullDetail',cylX(.099,3.008,20),.0114,.913,-3.419);
-  for(const side of [-1,1])P.addEquipment('hullDetail',box(.112,.225,.239),.0114+side*1.548,.910,-3.421);
+  // the unditching log stood 108 mm behind the sloped lower stern plate (its end brackets stand over the sprockets):
+  // log and brackets run 95 mm forward, the log's crown on the plate
+  P.addEquipment('hullDetail',cylX(.099,3.008,20),.0114,.913,-3.324);
+  for(const side of [-1,1])P.addEquipment('hullDetail',box(.112,.225,.239),.0114+side*1.548,.910,-3.326);
 }
 
 function mGlacis(P:TankBuilderPort):void {
@@ -468,6 +485,14 @@ function mGlacis(P:TankBuilderPort):void {
   for(const side of [-1,1])inclinedHullPlate(P,.0065+side*.778,.574,2.760,3.205,.388,.542,.040);
 }
 
+// 2026-10-19 (owner float sweep): the Vladimir's lower nose plates and the T-90A's upper glacis tiles stood 15-17 mm
+// proud of the hull; a 24 mm backer under each closes that seam (hidden behind the plate, it carries no armour).
+// `inward` is the side of the plate's local +y the hull lies on.
+function plateBacker(P:TankBuilderPort,x:number,width:number,rear:number,front:number,high:number,low:number,thickness:number,inward:1|-1=1):void {
+  const angle=Math.atan2(high-low,front-rear),length=Math.hypot(front-rear,high-low),out=inward*(thickness/2+.012);
+  P.addEquipment('hullDetail',box(width*.96,.024,length*.96),x,(high+low)/2+Math.cos(angle)*out,(front+rear)/2+Math.sin(angle)*out,angle);
+}
+
 function vGlacis(P:TankBuilderPort):void {
   // Source Vladimir has shallow, staggered fittings on a continuous glacis,
   // not eight thick rectangular blocks standing above the hull plane.
@@ -477,10 +502,12 @@ function vGlacis(P:TankBuilderPort):void {
     inclinedHullPlate(P,side*.707,.3366,2.636,2.862,1.202,1.127,.012,true);
     inclinedHullPlate(P,side*.365,.3366,2.943,3.169,1.102,1.028,.012,true);
     inclinedHullPlate(P,side*.882,.508,2.906,3.431,.491,.839,.029);
+    plateBacker(P,side*.882,.508,2.906,3.431,.491,.839,.029);
   }
   inclinedHullPlate(P,0,1.7336,2.873,3.308,.399,.811,.026);
-  P.addEquipment('hullDetail',box(1.682,.014,.036),0,1.132,2.917);
-  for(let i=0;i<9;i++)P.addEquipment('hullDetail',cylZ(.013,.017,6),-.778+i*.1945,.828,3.324);
+  plateBacker(P,0,1.7336,2.873,3.308,.399,.811,.026);
+  P.snapGroup('t90-glacis-strip',()=>P.addEquipment('hullDetail',box(1.682,.014,.036),0,1.132,2.917),{reachM:.03});
+  for(let i=0;i<9;i++)P.snapGroup('t90-glacis-bolt',()=>P.addEquipment('hullDetail',cylZ(.013,.017,6),-.778+i*.1945,.828,3.324),{reachM:.08});
 }
 
 type EraModule = { w:number; depth:number; low:number; high:number; nose:number; backLow?:number; noseLow?:number };
@@ -493,11 +520,11 @@ function eraWedge(P: TankBuilderPort,d: Datum,x: number,z: number,rotation: numb
   ]);
   bindEra(P,sector,x-d.yaw[0],()=> {
     P.addExternalArmor('turret',hitFace?eraHitFaces(g):eraFurniture(g),x-d.yaw[0],-d.yaw[1],z-d.yaw[2],0,rotation);
-    if(d===A) {
-      const seam=box(p.w*.70,.018,.043).rotateX(Math.atan2(p.high-p.nose,p.depth))
-        .translate(0,p.high+(p.nose-p.high)*.13+.012,-p.depth*.37).rotateY(rotation);
-      onTurret(P,d,'turretDetail',eraFurniture(seam),x,0,z);
-    } else onTurret(P,d,'turretDetail',eraFurniture(box(p.w*.70,.018,.043)),x,p.high+.007,z-p.depth*.37,0,rotation);
+    // the seam strip lies on the module's sloped top on every datum (level at the back height, it stood up to 4 cm
+    // over the falling top of the T-90M/SM/B3M modules; owner 2026-10-19 sweep)
+    const seam=box(p.w*.70,.018,.043).rotateX(Math.atan2(p.high-p.nose,p.depth))
+      .translate(0,p.high+(p.nose-p.high)*.13+.007,-p.depth*.37).rotateY(rotation);
+    onTurret(P,d,'turretDetail',eraFurniture(seam),x,0,z);
   });
 }
 
@@ -666,7 +693,9 @@ function classicBins(P: TankBuilderPort,d: Datum): void {
   for(const [x,y,z,w,h,len,angle] of rows) {
     onTurret(P,d,'turretDetail',box(w,h,len),x,y,z,0,angle);
     onTurret(P,d,'turretDetail',box(w+.02,.020,len+.025),x,y+h/2+.007,z,0,angle);
-    for(const dz of [-.26,.26])onTurret(P,d,'turretDark',box(.036,.055,.020),x+Math.sign(x)*w*.49,y+h*.28,z+dz,0,angle);
+    // the latch tabs turn with the box (they stood off its yawed face)
+    const ox=Math.sign(x)*w*.49,c=Math.cos(angle),sn=Math.sin(angle);
+    for(const dz of [-.26,.26])onTurret(P,d,'turretDark',box(.036,.055,.020),x+ox*c+dz*sn,y+h*.28,z-ox*sn+dz*c,0,angle);
   }
   if(d===A) {
     onTurret(P,d,'turretDetail',box(1.454,.428,.457),.009,1.867,-1.530);
@@ -709,20 +738,22 @@ function mSmoke(P:TankBuilderPort):void {
 }
 
 function classicASmoke(P: TankBuilderPort): void {
-  addT90ASmokeTubes(P);
-  for(const side of [-1,1]) {
+  // each bank's mounting plate is seated on the turret with its bank (t90AXSmoke.ts)
+  addT90ASmokeTubes(P,(side)=>{
     const y=side<0?1.86:1.83,x=side<0?-1.278:1.389;
     onTurret(P,A,'turretDetail',box(.038,.39,.28),x,y,-.205,0,side*.42);
-    onTurret(P,A,'turretDetail',box(.30,.028,.40),side*1.18,2.115,-.17,0,side*.2,side*.17);
-  }
+  });
+  for(const side of [-1,1]) onTurret(P,A,'turretDetail',box(.30,.028,.40),side*1.18,2.115,-.17,0,side*.2,side*.17);
 }
 
 function classicRoof(P: TankBuilderPort,d: Datum,mirror: number): void {
   for(const side of [-1,1]) {
-    const x=side*.56,z=-.37,roof=d.roof-(side===mirror?.015:.045);
-    P.addCupola('turret',cylY(.36,side===mirror?.145:.075,32),x-d.yaw[0],roof-d.yaw[1],z-d.yaw[2]);
-    onTurret(P,d,'turretDetail',cylY(.32,.045,32),x,roof+.098,z);
-    onTurret(P,d,'turretDetail',box(.18,.024,.035),x,roof+.134,z+.10);
+    const x=side*.56,z=-.37,roof=d.roof-(side===mirror?.015:.045),cupolaH=side===mirror?.145:.075;
+    P.addCupola('turret',cylY(.36,cupolaH,32),x-d.yaw[0],roof-d.yaw[1],z-d.yaw[2]);
+    // the hatch ring sits on its cupola (the low cupola's stood 38 mm above it)
+    const ringY=Math.min(roof+.098,roof+cupolaH/2+.020);
+    onTurret(P,d,'turretDetail',cylY(.32,.045,32),x,ringY,z);
+    onTurret(P,d,'turretDetail',box(.18,.024,.035),x,ringY+.0325,z+.10);
     if(side===mirror)for(let i=0;i<6;i++) {
       const angle=i*Math.PI/3;
       onTurret(P,d,'turretDark',box(.11,.052,.10),x+Math.sin(angle)*.29,roof+.102,z+Math.cos(angle)*.29,0,angle);
@@ -749,10 +780,14 @@ function classicVCradle(P: TankBuilderPort): void {
   weapon.add('turretDetail',box(.0454,.1046,.0162),-.6125,2.755,1.4727);
   weapon.add('turretDetail',box(.1012,.0343,.1937),-.6244,2.7481,.3273);
   weapon.add('turretDetail',box(.1184,.0373,.2197),-.6248,2.776,.5527);
+  // 2026-10-19 (owner float sweep): the gun stood clear of its yoke; a trunnion pin through the pivot carries it in the
+  // yoke cheeks, the cradle legs run forward to the face plate and back to the ammunition box, and the face plate sits
+  // on the base.
+  weapon.add('turretDark',cylX(.018,.22,14),-.6125,2.66,.294);
   weapon.stage('yaw');
   weapon.add('turretDetail',box(.208,.183,.140),-.6655,2.3868,-.0258);
-  for(const x of [-.7935,-.4772])weapon.add('turretDetail',box(.0481,.2098,.1876),x,2.4069,.2728);
-  weapon.add('turretDetail',box(.3342,.1728,.0266),-.6515,2.4185,.0632);
+  for(const x of [-.7935,-.4772])weapon.add('turretDetail',box(.0481,.2098,.3285),x,2.4069,.23575);
+  weapon.add('turretDetail',box(.3342,.1728,.0386),-.6515,2.4185,.0572);
   weapon.add('turretDetail',box(.2682,.030,.1421),-.6353,2.5078,.2909);
   for(const x of [-.725,-.511])weapon.add('turretDetail',box(.0141,.233,.132),x,2.6335,.294);
   weapon.add('turretDetail',box(.1796,.3217,.3059),-.434,2.5566,.5513);
@@ -760,7 +795,7 @@ function classicVCradle(P: TankBuilderPort): void {
   weapon.add('turretDetail',box(.4744,.2772,.3382),-1.0399,2.6868,.3268);
   weapon.add('turretDetail',box(.5186,.0828,.3825),-1.0173,2.8288,.3435);
   weapon.add('turretDetail',box(.2868,.2853,.3019),-.9469,2.7024,.0768);
-  weapon.add('turretDetail',cylX(.025,.470,14),-.8685,2.54,.135);
+  weapon.add('turretDetail',cylX(.03,.470,14),-.8685,2.537,.135);
   weapon.finish();
 }
 
@@ -866,7 +901,9 @@ function mRearCage(P:TankBuilderPort):void {
         P.addEquipment('hullOpenLattice',box(.03057,.012,.5708),x,y,-1.39344);
       } else P.addEquipment('hullOpenLattice',box(.03057,.012,1.19689),x,y,-1.70649);
     }
-    for(const [z,low]of [[-2.9536,.92966],[-2.3902,.93022],[-2.2462,.84312],[-1.8015,.71449]] as const) {
+    // 2026-10-19 (owner float sweep): the front upright closes the bars' forward ends (the right side's split bars
+    // hung free ahead of the -1.80 upright)
+    for(const [z,low]of [[-2.9536,.92966],[-2.3902,.93022],[-2.2462,.84312],[-1.8015,.71449],[-1.1150,.5958]] as const) {
       P.addEquipment('hullOpenLattice',box(.02784,1.317-low,.014),x,(1.317+low)/2,z);
     }
     for(const [z,inset]of [[-2.8856,.198],[-2.3561,.166],[-2.2775,.166],[-1.1755,.128]] as const) {
@@ -933,7 +970,7 @@ function smRearFixtures(P: TankBuilderPort): void {
   }
   P.addEquipment('hullDetail',box(.4013,.3689,.2337),.0018,.855,-3.2142);
   for(const side of [-1,1]) {
-    P.addEquipment('hullDark',torus(.10,.018,16,6),side*.839,1.057,-3.466,0,Math.PI/2);
+    P.snapGroup('t90sm-tow-eye',()=>P.addEquipment('hullDark',torus(.10,.018,16,6),side*.839,1.057,-3.466,0,Math.PI/2),{reachM:.07});
   }
   addT90SMTowCable(P);
 }
@@ -1236,8 +1273,9 @@ function modernSight(P: TankBuilderPort,d: Datum,sm: boolean): void {
     [x-half,2.244],[x+half,2.244],[x+half,top],[x-half,top],
   ]});
   onTurret(P,d,'turretDetail',sectionSolid([section(.4045,.1935,2.5365),section(.490,.110,2.5365)]),0,0,0);
-  onTurret(P,d,'turretDark',box(.285,.17,.025),x,y+.015,z+.194);
-  onTurret(P,d,'turretGlass',box(.22,.13,.012),x,y+.015,z+.210);
+  // the window frame stands on the hood's front face (it stood 2.5 mm off it)
+  onTurret(P,d,'turretDark',box(.285,.17,.025),x,y+.015,z+.190);
+  onTurret(P,d,'turretGlass',box(.22,.13,.012),x,y+.015,z+.207);
   onTurret(P,d,'turretDetail',box(.387,.0115,.280),x,2.53075,.2645);
   for(const fx of [-.83263,-.55403]) {
     onTurret(P,d,'turretDetail',box(.01322,.21982,.013),fx,2.35383,.50011);
@@ -1391,10 +1429,11 @@ function modernRoof(P: TankBuilderPort,d: Datum,sm: boolean): void {
   if(sm){modernSmRws(P);modernSmRearAntenna(P);}else modernMRws(P);
   modernMasts(P,d,sm);
   if(!sm){mWarningReceivers(P);return;}
-  for(const side of [-1,1]) {
+  // the laser-warning heads are seated on the roof edge (they stood 50 mm off it)
+  for(const side of [-1,1]) P.snapGroup('t90sm-warning-head',()=>{
     onTurret(P,d,'turretDetail',box(.22,.13,.23),side*.88,d.roof+.02,-.86);
-    onTurret(P,d,'turretGlass',box(.13,.071,.010),side*.88,d.roof+.025,-.737);
-  }
+    onTurret(P,d,'turretGlass',box(.13,.071,.010),side*.88,d.roof+.025,-.7415);
+  },{reachM:.10});
 }
 
 function mWarningReceivers(P:TankBuilderPort):void {
@@ -1412,12 +1451,13 @@ function mWarningReceivers(P:TankBuilderPort):void {
 function modernMasts(P: TankBuilderPort,d: Datum,sm: boolean): void {
   const x=sm?-.284:.205,z=sm?-.928:-.879;
   if(sm) {
-    onTurret(P,d,'turretDetail',cylY(.029,.474,12),x,2.498,z);
+    // the mast's foot stands in the roof and its upper tube on the junction box (they stood 27 and 30 mm clear)
+    onTurret(P,d,'turretDetail',cylY(.029,.52,12),x,2.475,z);
     onTurret(P,d,'turretDetail',box(.242,.065,.277),x,2.717,z);
-    onTurret(P,d,'turretDetail',cylY(.042,.313,12),x,2.936,z);
+    onTurret(P,d,'turretDetail',cylY(.042,.346,12),x,2.9195,z);
     onTurret(P,d,'turretDark',cylY(.014,.058,10),x,3.121,z);
     onTurret(P,d,'turretDetail',cylY(.081,.165,14),-.374,2.504,-.992);
-    onTurret(P,d,'turretDetail',box(.064,.291,.069),-.952,2.400,-.201);
+    onTurret(P,d,'turretDetail',box(.064,.305,.069),-.952,2.393,-.201);
     onTurret(P,d,'turretDetail',cylY(.056065,.01944,24).scale(1,1,1.0958),-.95161,2.55520,-.20063);
     const warningCap=new THREE.LatheGeometry([
       new THREE.Vector2(0,2.56343),new THREE.Vector2(.054105,2.56343),

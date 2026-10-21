@@ -4,6 +4,6 @@
 import type { InteriorFillRecord } from '../interiorFills.ts';
 
 export const INTERIOR_FILLS: Readonly<Record<string, InteriorFillRecord>> = Object.freeze({
-  "amx10p": { v: 0.025, o: [-1.48, 0.016772, -3.0525], t: [-0.28, 1.91, -0.05], g: [-0.06, 2.39, 0.4], hull: "ZABMABQAZABMABQAbwA9AJIAbwA9AJIA" },
+  "amx10p": { v: 0.025, o: [-1.48, 0.016772, -3.0525], t: [-0.28, 1.91, -0.05], g: [-0.06, 2.39, 0.4], hull: "EQBLABQAEQBLABQAZABMABQAZABMABQADgBNABQADgBNABQAZgBNABQAZgBNABQAbwA9AJIAbwA9AJIA" },
   "amx10p_25": { v: 0.025, o: [-1.460094, 0.016772, -2.955], t: [0, 1.91, -0.05], g: [0.18, 2.39, 0.67] },
 });

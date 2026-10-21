@@ -73,6 +73,9 @@ function hull(P: TankBuilderPort): void {
       P.addEquipment('hullDetail',cylZ(r+.010,.062,P.q?20:12),side*lampX,lampY,3.444+dz);
       P.addEquipment('hullGlass',markVehicleNightLens(cylZ(r,.009,P.q?20:12), 'headlight'),side*lampX,lampY,3.477);
     }
+    // 2026-10-19 (owner float sweep): the pods hung 20-48 mm under the nose's lower edge; a housing plate behind
+    // both rises into the nose
+    P.addEquipment('hullDark',box(.34,.20,.065),side*1.337,1.29,3.3825);
     // The source towing eyes stand in the YZ plane: only 55 mm across X.
     P.addEquipment('hullDetail',box(.0552,.2373,.037),side*1.0105,1.28245,3.3310);
     P.addEquipment('hullDetail',torus(.06515,.0276,P.q?24:16,8)
@@ -235,7 +238,8 @@ function rearDoorAndPlatform(P: TankBuilderPort): void {
   P.addEquipment('hullDetail',cylZ(.1001,.039,P.q?24:14),.090218,1.597843,-2.3279,-.08017);
   for(const [y,z]of[[.83169,-2.26127],[1.83969,-2.34157]])
     P.addEquipment('hullDetail',box(.1964,.0437,.0769),-.53538,y,z);
-  P.addEquipment('hullDetail',box(.0354,.2981,.0484),.68232,1.48699,-2.34812);
+  // 2026-10-19 (owner float sweep): the handle stood 20 mm proud of the plate behind it; it bears on it
+  P.addEquipment('hullDetail',box(.0354,.2981,.0484),.68232,1.48699,-2.32612);
   // The port rear lamp, not the central door, defines the source stern tip.
   P.addEquipment('hullDetail',cylZ(.0723,.1074,P.q?24:14),-1.62305,1.9333,-3.0537);
   // Source starboard rear platform has a rounded projecting end. It is
@@ -441,8 +445,9 @@ function turretRoofEquipment(P: TankBuilderPort, add: EquipmentAdder): void {
     add('turretDetail',deckPlate(.476,.433,.016),side*.931,3.021,-.276);
     for(const z of [-1.12,-.78]) {
       const y=2.851+(z+1.16)*.251;
-      add('turretDetail',deckPlate(.67,.31,.018),side*.375,y+.041,z,-.247);
-      for(const dx of [-.17,.17])add('turretDetail',cylY(.079,.079,.035,P.q?18:10),side*.375+dx,y+.07,z);
+      // 2026-10-19 (owner float sweep): plate and pads stood 28 mm over the rear roof; they drop 30 mm onto it
+      add('turretDetail',deckPlate(.67,.31,.018),side*.375,y+.011,z,-.247);
+      for(const dx of [-.17,.17])add('turretDetail',cylY(.079,.079,.035,P.q?18:10),side*.375+dx,y+.04,z);
     }
   }
   griffinRoofM2(P,add);

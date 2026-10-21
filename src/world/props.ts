@@ -11780,7 +11780,14 @@ ${snowCap ? `
     // a vehicle a round destroys burns (its char over seconds, never a flip to the burnt pool), and a near miss shows on it;
     // (Lane C, #8 r2) nothing burns in the Moon's vacuum (the audio's atmosphere there is 'vacuum' too): its rovers break
     burns: (kind) => mapId !== 'moon' && dPools.get(kind)?.meta.mat === 'vehicle',
-    onBurn: (x, y, z, heightM) => emitBreakFx('vehicleburn', x, y + 0.3, z, 0, 0, heightM),
+    // (the car-wreck lane, 2026-10-20) the map's cars: a crush reads each one's own anatomy, a kill buckles and chars it
+    vehicle: (kind) => kind in CIVILIAN_VEHICLE_RECEIPTS,
+    // a car's fire takes hold in its cabin, the flames licking out of its windows and over its roof (the column's licks
+    // start about a metre over its base: a tank's deck line)
+    onBurn: (x, y, z, heightM, kind, axisX, axisZ) => {
+      const car = kind in CIVILIAN_VEHICLE_RECEIPTS;
+      emitBreakFx('vehicleburn', x, y + (car ? -0.25 : 0.3), z, car ? axisX : 0, car ? axisZ : 0, heightM);
+    },
   });
 
   // Loose bodies can cross the shell hash's 8 m cells. Re-key only on a cell
@@ -12030,7 +12037,12 @@ ${snowCap ? `
       // (1 = shell-grade break; a 14 m/s overrun throws ~2.6x as hard)
       const throwK = 1 + Math.min(speed, 14) * 0.115;
       // (the destructible-kits lane, round 2: a pillbox breaks in the map's make; a fracture-ready kind churns its ground)
-      const fxKind = rec.kind === 'bunker' && fort ? (fort.style === 'logearth' ? 'bunker-logearth' : 'bunker-concrete') : rec.kind;
+      // (the car-wreck lane, 2026-10-20; Steinburg r5: a run-over Golf threw a tan cloud of wood dust and planks, read as
+      // an orange "ghost" over the next car) a motor vehicle, a works machine, a wagon or a tram breaks as metal: a hull's
+      // crunch (glass and sparks, no fire), or a round's kill (its fire is its burn's)
+      const fxKind = rec.kind === 'bunker' && fort ? (fort.style === 'logearth' ? 'bunker-logearth' : 'bunker-concrete')
+        : rec.kind in CIVILIAN_VEHICLE_RECEIPTS || /^(setpiece|rolling|tram)_/.test(rec.kind) ? (cause === 'ram' ? 'vehiclecrush' : 'vehiclewreck')
+          : rec.kind;
       const scarM = (pool?.imI?.geometry.userData.fracture as { groundScarM?: number } | undefined)?.groundScarM ?? 0;
       emitBreakFx(fxKind, rec.x, rec.y + Math.min(0.5, rec.h * 0.3), rec.z,
         (dx / l) * throwK, (dz / l) * throwK, rec.h, scarM * rec.sc);
