@@ -61,8 +61,9 @@ interface PropCrushHost {
   burns?(kind: string): boolean;
   /** Whether a kind is a car (the map's civilian vehicles): its crush reads its anatomy, its burn buckles and chars it. */
   vehicle?(kind: string): boolean;
-  /** A prop of `kind` began burning at (x, y, z), `heightM` tall (the fire and smoke the effects raise over it). */
-  onBurn?(x: number, y: number, z: number, heightM: number, kind: string): void;
+  /** A prop of `kind` began burning at (x, y, z), `heightM` tall, its length along (axisX, axisZ) (its nose's half
+   *  length, world): the fire and smoke the effects raise over it. */
+  onBurn?(x: number, y: number, z: number, heightM: number, kind: string, axisX: number, axisZ: number): void;
 }
 
 /** A crush event the presentation never pressed sweeps a hull across the prop over this long (s). */
@@ -83,8 +84,9 @@ const CHAR_RGB = [0.07, 0.06, 0.055];
 /** A car's burn: the share of its burnt-out crumple the kill gives at once, the share of the burn its colours are
  *  updated at (a cheap upload) and its shape redrawn at (the press's full redraw), what is left of a tyre's radius on its
  *  rim, and the burnt build's colours (linear; vehicleMesh.ts shadeVertex's burn). */
-const CAR_BURN = { impact: 0.3, colourStep: 0.03, shapeStep: 0.1, rim: 0.72 } as const;
+const CAR_BURN = { impact: 0.3, colourStep: 0.03, shapeStep: 0.1, rim: 0.72, canvas: 0.3 } as const;
 const SOOT: readonly [number, number, number] = [0.022, 0.019, 0.017];
+const STEEL: readonly [number, number, number] = [0.05, 0.048, 0.046];
 const OXIDE: readonly [number, number, number] = [0.105, 0.042, 0.018];
 const RUST: readonly [number, number, number] = [0.16, 0.062, 0.026];
 const ASH: readonly [number, number, number] = [0.2, 0.19, 0.175];
@@ -99,6 +101,8 @@ interface CarBurn {
   readonly col1: Float32Array;
   readonly surf0: Uint8Array;
   readonly surf1: Uint8Array;
+  /** Its canvas's triangles (their first index), burnt away once the fire has taken it; null when it has none. */
+  canvas: Uint32Array | null;
   /** The share of the burn last coloured and last redrawn (−1: not yet). */
   coloured: number;
   drawn: number;
@@ -349,7 +353,10 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     if (t.mesh.instanceColor) { t.mesh.getColorAt(0, _c); from[0] = _c.r; from[1] = _c.g; from[2] = _c.b; }
     t.burn = { t: settled ? CHAR_T0 + CHAR_S + 1 : 0, from, swapped: false };
     if (t.field.vehicle) t.carBurn = carBurnOf(t);
-    if (!settled && rec) host.onBurn?.(rec.x, rec.y, rec.z, t.field.top, rec.kind);
+    if (!settled && rec) {
+      const e = t.placement.elements;
+      host.onBurn?.(rec.x, rec.y, rec.z, t.field.top, rec.kind, e[8] * t.hl, e[10] * t.hl);
+    }
     if (t.carBurn) carBurnStep(t);
     else tint(t);
     t.dirty = true; t.idle = 0;
@@ -387,35 +394,61 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
       }
       to[v * 3 + 1] = Math.max(0, to[v * 3 + 1] - settle);
     }
-    // its burnt colours (the burnt build's palette, vehicleMesh.ts shadeVertex, blackened as a fresh burn is): paint,
-    // sheet and chrome to soot with oxide mottles and grey ash on the hottest upward panels; glass, rubber and the cabin
-    // to soot
+    // its livery baked into its colours at the kill (r1c, both critics: a car early in its burn read "washed-out pale" —
+    // the paint mask faded out while its colours were still light, so the livery went to the bare paint's light grey):
+    // the char then takes the livery itself down, the mask off from the start
+    let inst: THREE.Color | null = null;
+    if (t.mesh.instanceColor) { t.mesh.getColorAt(0, _c); inst = _c; }
     const col0 = (color.array as Float32Array).slice(0, n), col1 = new Float32Array(n);
     const surf0 = (sa as Uint8Array).slice(0, n), surf1 = new Uint8Array(n);
+    for (let v = 0; v < n / 3; v++) {
+      const p = surf0[v * 3 + 2] / scale;
+      if (inst && p > 0) { col0[v * 3] *= 1 + (inst.r - 1) * p; col0[v * 3 + 1] *= 1 + (inst.g - 1) * p; col0[v * 3 + 2] *= 1 + (inst.b - 1) * p; }
+      surf0[v * 3 + 2] = 0;
+    }
+    // its burnt colours (r1c: the critics read a uniform rust-orange by day and a black lump by night): over the waist the
+    // fire burns the panels through to grey ash and dark steel with oxide flecks, under it the paint is scorched dark
+    // (its own colour still under the soot), soot streaks the sides at the waist and darkens the underside; glass, rubber
+    // and the cabin go to soot
     const na = normal.array as Float32Array, top = t.field.top, belt = car.belt;
-    for (let v = 0; v < col0.length / 3; v++) {
+    for (let v = 0; v < n / 3; v++) {
       const x = from[v * 3], y = from[v * 3 + 1], z = from[v * 3 + 2], ny = na[v * 3 + 1];
-      const rough = surf0[v * 3] / scale, metal = surf0[v * 3 + 1] / scale, paint = surf0[v * 3 + 2] / scale;
-      // glass, rubber and the cabin (no metal, no paint; glossy or matte) go to soot
-      const soft = metal < 0.05 && paint < 0.05 && (rough < 0.12 || rough > 0.8);
+      const rough = surf0[v * 3] / scale, metal = surf0[v * 3 + 1] / scale;
+      const soft = metal < 0.05 && sa[v * 3 + 2] / scale < 0.05 && (rough < 0.12 || rough > 0.8);
       if (soft) { _burnt[0] = SOOT[0]; _burnt[1] = SOOT[1]; _burnt[2] = SOOT[2]; }
       else {
-        // a fresh burn blackens: soot over the burnt paint, oxide brown showing through in mottles, the hottest upward
-        // panels (roof, bonnet) burnt to grey ash, soot streaked up the sides over the waist where the flames left
-        _burnt[0] = SOOT[0]; _burnt[1] = SOOT[1]; _burnt[2] = SOOT[2];
-        mixInto(_burnt, OXIDE, 0.12 + 0.33 * smoothstep(0.45, 0.85, noise3(x * 2.6, y * 2.6, z * 2.6, 303)));
-        mixInto(_burnt, RUST, smoothstep(0.6, 0.9, noise3(x * 4.1, y * 4.1, z * 4.1, 307)) * 0.25);
-        mixInto(_burnt, ASH, smoothstep(0.45, 0.75, noise3(x * 1.7, y * 1.7, z * 1.7, 301)) * Math.max(0, ny) * 0.8 * smoothstep(belt * 0.7, top, y));
-        if (Math.abs(ny) < 0.55) mixInto(_burnt, SOOT, smoothstep(belt * 0.85, top, y) * 0.6);
+        // over the waist and on the faces the fire rose past: steel burnt through to ash
+        _burnt[0] = STEEL[0]; _burnt[1] = STEEL[1]; _burnt[2] = STEEL[2];
+        mixInto(_burnt, ASH, 0.25 + 0.5 * smoothstep(0.35, 0.75, noise3(x * 1.7, y * 1.7, z * 1.7, 301)) * (0.5 + 0.5 * Math.max(0, ny)));
+        mixInto(_burnt, OXIDE, smoothstep(0.6, 0.9, noise3(x * 3.3, y * 3.3, z * 3.3, 303)) * 0.35);
+        // under the waist: the paint scorched, its colour still there under the soot
+        const k = ny > 0.5 ? 0 : 1 - smoothstep(belt * 0.55, belt * 1.05, y);
+        if (k > 0) {
+          _burnt[0] += (col0[v * 3] * 0.2 + SOOT[0] - _burnt[0]) * k;
+          _burnt[1] += (col0[v * 3 + 1] * 0.2 + SOOT[1] - _burnt[1]) * k;
+          _burnt[2] += (col0[v * 3 + 2] * 0.2 + SOOT[2] - _burnt[2]) * k;
+        }
+        // the soot the flames left streaked up the sides from the windows and round the wheel arches
+        if (Math.abs(ny) < 0.55) mixInto(_burnt, SOOT, smoothstep(0.5, 0.85, noise3(x * 2.4, y * 0.9, z * 2.4, 311)) * 0.55);
       }
       // the ground's and the underside's shade (the build's occlusion, which the burnt colours replace)
       const shade = (0.62 + 0.38 * smoothstep(0, 0.85, y)) * (ny < 0 ? 1 + 0.55 * ny : 1);
       col1[v * 3] = _burnt[0] * shade; col1[v * 3 + 1] = _burnt[1] * shade; col1[v * 3 + 2] = _burnt[2] * shade;
-      surf1[v * 3] = soft ? 250 : 230; surf1[v * 3 + 1] = soft ? 0 : 13; surf1[v * 3 + 2] = 0;
+      surf1[v * 3] = soft ? 250 : 230; surf1[v * 3 + 1] = soft ? 0 : 20; surf1[v * 3 + 2] = 0;
+    }
+    // its canvas (a tilt, a hood: matte cloth over the waist) burns away as the fire takes it (r1c: a burnt tilt read as
+    // "a smooth black balloon")
+    let canvas: Uint32Array | null = null;
+    if (t.geometry.index) {
+      const ix = t.geometry.index.array, cloth = (v: number): boolean => v * 3 < n && sa[v * 3] / scale > 0.935
+        && sa[v * 3 + 1] / scale < 0.05 && sa[v * 3 + 2] / scale < 0.05 && from[v * 3 + 1] > belt && car.wheelOf[v] < 0;
+      const tris: number[] = [];
+      for (let k = 0; k + 2 < (t.tris ?? ix).length; k += 3) if (cloth(ix[k]) && cloth(ix[k + 1]) && cloth(ix[k + 2])) tris.push(k);
+      if (tris.length) canvas = Uint32Array.from(tris);
     }
     const live = new Float32Array(from);
     t.rest = live;
-    return { live, from, to, col0, col1, surf0, surf1, coloured: -1, drawn: -1 };
+    return { live, from, to, col0, col1, surf0, surf1, canvas, coloured: -1, drawn: -1 };
   }
 
   /** A car's burn at its clock: the char (its colours every CAR_BURN.colourStep of the burn) and the crumple (a share at
@@ -433,6 +466,12 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
         sa[i] = Math.round(cb.surf0[i] + (cb.surf1[i] - cb.surf0[i]) * e);
       }
       color.needsUpdate = true; surf.needsUpdate = true;
+    }
+    if (cb.canvas && e >= CAR_BURN.canvas && t.geometry.index) {
+      const ix = t.geometry.index.array as Uint16Array | Uint32Array;
+      for (let k = 0; k < cb.canvas.length; k++) { const a = cb.canvas[k]; ix[a + 1] = ix[a]; ix[a + 2] = ix[a]; }
+      t.geometry.index.needsUpdate = true;
+      cb.canvas = null;
     }
     if (burnDue(cb.drawn, CAR_BURN.shapeStep, e)) {
       cb.drawn = e;

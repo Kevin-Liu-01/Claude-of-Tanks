@@ -11341,7 +11341,10 @@ ${snowCap ? `
     vehicle: (kind) => kind in CIVILIAN_VEHICLE_RECEIPTS,
     // a car's fire takes hold in its cabin, the flames licking out of its windows and over its roof (the column's licks
     // start about a metre over its base: a tank's deck line)
-    onBurn: (x, y, z, heightM, kind) => emitBreakFx('vehicleburn', x, y + (kind in CIVILIAN_VEHICLE_RECEIPTS ? -0.25 : 0.3), z, 0, 0, heightM),
+    onBurn: (x, y, z, heightM, kind, axisX, axisZ) => {
+      const car = kind in CIVILIAN_VEHICLE_RECEIPTS;
+      emitBreakFx('vehicleburn', x, y + (car ? -0.25 : 0.3), z, car ? axisX : 0, car ? axisZ : 0, heightM);
+    },
   });
 
   // Loose bodies can cross the shell hash's 8 m cells. Re-key only on a cell

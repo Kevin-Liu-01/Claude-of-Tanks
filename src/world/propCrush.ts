@@ -62,12 +62,15 @@ const HEAVY = { squash: 0.42, rack: 0.5, buckle: 0.07, noise: 0.16 } as const;
  *  with the hull. */
 const CLOTH = { squash: 0.06, noise: 0.03, fold: 0.07, foldK: 5.5, droop: 0.65, push: 0.55, lift: 1 };
 /** A car (its anatomy on the field): the belly's clearance between the tracks (m over the base) and the tracks' share of
- *  the hull's half width; its floor (the share of its wheels' tops its chassis, axles and engine stand at: nothing presses
- *  it lower between the tracks, and under them a share of that); what is left of the body under the belt line and of the
- *  greenhouse over it once pressed; the panels' folds (m, and their pitch along and across, 1/m), the doors' bow (m), the
- *  roof's rack along the travel (m), the wheels' splay at the floor (rad) and the breakup's jitter (m). */
-const CAR = { belly: 0.45, track: 0.34, floor: 0.85, trackFloor: 0.75, body: 0.33, glass: 0.12, crease: 0.05, alongK: 1.6,
-  acrossK: 1.9, bow: 0.12, rack: 0.2, splay: 1.0, jitter: 0.012 } as const;
+ *  the hull's half width; its floor (the share of its wheels' tops its chassis, axles and engine stand at, at most
+ *  floorMax m — a truck's frame bends under a tank too: nothing presses it lower between the tracks, and under them a
+ *  share of that); what is left of the body under the belt line and of the greenhouse over it once pressed; the droop
+ *  beside a crush (m a metre: a car's ends sag with it, a tall body stays standing past a sharp fold); the panels' folds
+ *  (m, and their pitch along and across, 1/m), the doors' bow (m), the roof's rack along the travel (m), the wheels'
+ *  splay and their tyres' squash at the worst (rad, share of the height) and the breakup's jitter (m). */
+const CAR = { belly: 0.45, track: 0.34, floor: 0.85, floorMax: 0.5, trackFloor: 0.75, body: 0.33, glass: 0.12,
+  droop: 0.7, tallDroop: 2.4, tallTop: 1.9, crease: 0.05, alongK: 1.6, acrossK: 1.9, bow: 0.12, rack: 0.2, splay: 1.0,
+  squash: 0.22, jitter: 0.012 } as const;
 
 /** A car's anatomy over its field (its own frame): its belt line and its wheels. */
 export interface CrushVehicle {
@@ -75,6 +78,8 @@ export interface CrushVehicle {
   readonly belt: number;
   /** Its floor (m over the base): its chassis, axles and engine (CAR.floor of its highest wheel's top). */
   readonly floor: number;
+  /** The droop beside a crush (m a metre): CAR.droop, or CAR.tallDroop for a tall body (a van's box, a truck's tilt). */
+  readonly droop: number;
   /** The wheels, packed [zc, yc, r, xIn, xOut, side] (side −1 left, +1 right; xIn/xOut the tyre's |x| span). */
   readonly wheels: Float32Array;
   /** Per vertex of the rest it was read from: the wheel it belongs to, or −1. */
@@ -145,8 +150,9 @@ export function vehicleAnatomy(rest: ArrayLike<number>, surf: ArrayLike<number> 
   }
   let wheelTop = 0;
   for (let w = 0; w < packed.length; w += 6) wheelTop = Math.max(wheelTop, packed[w + 1] + packed[w + 2]);
-  const floor = wheelTop > 0 ? Math.max(0.3, Math.min(1.1, wheelTop * CAR.floor)) : top * 0.3;
-  return { belt: Math.max(top * 0.3, Math.min(top * 0.8, belt)), floor, wheels: packed, wheelOf, hubCap: new Float32Array(packed.length / 6) };
+  const floor = wheelTop > 0 ? Math.max(0.3, Math.min(CAR.floorMax, wheelTop * CAR.floor)) : Math.min(CAR.floorMax, top * 0.3);
+  return { belt: Math.max(top * 0.3, Math.min(top * 0.8, belt)), floor, droop: top > CAR.tallTop ? CAR.tallDroop : CAR.droop,
+    wheels: packed, wheelOf, hubCap: new Float32Array(packed.length / 6) };
 }
 
 /** A triangle wave of period 1 in [−1, 1]: a fold's crease (flat-shaded, its ridges read as folded sheet). */
@@ -301,7 +307,7 @@ export function pressField(f: CrushField, cx: number, cz: number, fx: number, fz
 function settleField(f: CrushField): void {
   const { nx, nz, cap, eff } = f;
   eff.set(cap);
-  const slope = f.cloth ? CLOTH.droop : DROOP_SLOPE;
+  const slope = f.cloth ? CLOTH.droop : f.vehicle ? f.vehicle.droop : DROOP_SLOPE;
   const d1 = slope * f.cell, d2 = slope * f.cell * Math.SQRT2;
   for (let j = 0; j < nz; j++) {
     for (let i = 0; i < nx; i++) {
@@ -373,15 +379,16 @@ export function deformPositions(f: CrushField, rest: ArrayLike<number>, out: Flo
     if (car) {
       const w = car.wheelOf[v / 3];
       if (w >= 0) {
-        // a wheel splays out about its tyre's outer foot as the cap over its hub comes down (never squashed into the heap)
+        // a wheel is never squashed into the heap: as the cap over its hub comes down (or the body over it is crushed) its
+        // tyre goes flat and it splays out about its outer foot
         const o = w * 6, side = car.wheels[o + 5], xOut = side * car.wheels[o + 4];
         const wheelTop = car.wheels[o + 1] + car.wheels[o + 2];
         const hub = car.hubCap[w];
-        const k = Math.max(0, Math.min(1, (wheelTop - hub) / Math.max(0.2, wheelTop - FLOOR_M)));
+        const k = Math.max(0, Math.min(1, Math.max((wheelTop - hub) / Math.max(0.2, wheelTop - FLOOR_M), 0.55 * (f.top - hub) / Math.max(0.2, f.top - FLOOR_M))));
         if (k > 0) {
-          const a = CAR.splay * k * Math.sqrt(k), c = Math.cos(a), s = Math.sin(a), dx = x - xOut;
-          nx = xOut + dx * c + side * y * s;
-          ny = y * c - side * dx * s;
+          const a = CAR.splay * k * Math.sqrt(k), c = Math.cos(a), s = Math.sin(a), dx = x - xOut, fy = y * (1 - CAR.squash * k);
+          nx = xOut + dx * c + side * fy * s;
+          ny = fy * c - side * dx * s;
         }
         cap = hub;
       } else if (cap < high) {

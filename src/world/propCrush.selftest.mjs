@@ -391,21 +391,35 @@ const slotScale = (im, i) => { const m = new THREE.Matrix4(); im.getMatrixAt(i, 
   shot.record.state = 1;
   shot.press.takes(0, 'shell', 1, 0, false);
   const sc = shot.group.children[0], scol = sc.geometry.getAttribute('color').array, spos = sc.geometry.getAttribute('position').array;
-  const paintLum = () => {
-    let l = 0, n = 0;
-    for (let v = 0; v < gsurf.length; v += 3) if (gsurf[v + 2] > 200) { l += 0.2126 * scol[v] + 0.7152 * scol[v + 1] + 0.0722 * scol[v + 2]; n++; }
-    return l / n;
+  // the paint's mean colour (its livery baked in at the kill: the instance colour no longer multiplies it), over the waist or
+  // under it
+  const paintRgb = (where = 'all') => {
+    let r = 0, g = 0, b = 0, n = 0;
+    for (let v = 0; v < gsurf.length; v += 3) {
+      if (gsurf[v + 2] <= 200) continue;
+      const y = grest[v + 1], ny = golf.getAttribute('normal').array[v + 1];
+      if (where === 'upper' && !(ny > 0.6 && y > an.belt)) continue;
+      if (where === 'lower' && !(Math.abs(ny) < 0.4 && y < an.belt * 0.55)) continue;
+      r += scol[v]; g += scol[v + 1]; b += scol[v + 2]; n++;
+    }
+    return [r / n, g / n, b / n];
   };
-  const lum0 = paintLum();
+  const lum = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
   shot.press.step(DT);
+  const rgb0 = paintRgb(), lum0 = lum(rgb0);
+  for (let i = 0; i < 60; i++) shot.press.step(DT);
+  const rgbEarly = paintRgb();
+  assert.ok(lum(rgbEarly) <= lum0 + 1e-6 && rgbEarly[1] / rgbEarly[0] > (rgb0[1] / rgb0[0]) * 0.8,
+    `early in its burn it keeps its livery and only darkens (green/red ${(rgb0[1] / rgb0[0]).toFixed(2)} -> ${(rgbEarly[1] / rgbEarly[0]).toFixed(2)}, luminance ${lum0.toFixed(3)} -> ${lum(rgbEarly).toFixed(3)}; r1c: "washed-out pale")`);
   sc.geometry.computeBoundingBox();
   const killTop = sc.geometry.boundingBox.max.y;
   assert.ok(killTop < gtop - 0.01, `the kill buckles it at once (${gtop.toFixed(2)} m -> ${killTop.toFixed(2)} m)`);
-  for (let i = 0; i < 60 * 7; i++) shot.press.step(DT);
+  for (let i = 0; i < 60 * 6; i++) shot.press.step(DT);
   sc.geometry.computeBoundingBox();
-  const burntTop = sc.geometry.boundingBox.max.y, lum1 = paintLum();
+  const burntTop = sc.geometry.boundingBox.max.y, lum1 = lum(paintRgb()), upper = lum(paintRgb('upper')), lower = lum(paintRgb('lower'));
   assert.ok(burntTop < killTop - 0.03, `and more as it burns (${burntTop.toFixed(2)} m)`);
-  assert.ok(lum1 < lum0 * 0.2 && lum1 < 0.07, `its paint blackened (${lum0.toFixed(3)} -> ${lum1.toFixed(3)})`);
+  assert.ok(lum1 < lum0 * 0.5, `its paint burnt dark (${lum0.toFixed(3)} -> ${lum1.toFixed(3)})`);
+  assert.ok(upper > lower * 1.5 && upper > 0.05, `its upper panels burnt through to ash over its scorched sides (${upper.toFixed(3)} over ${lower.toFixed(3)}; r1c: "a black lump" at night)`);
   let tyre = 0;
   for (let v = 0; v < grest.length; v += 3) {
     const k = an.wheelOf[v / 3];
@@ -465,7 +479,7 @@ const slotScale = (im, i) => { const m = new THREE.Matrix4(); im.getMatrixAt(i, 
   }
   console.log(`  map car: Golf ${gtop.toFixed(2)} m, belt ${an.belt.toFixed(2)} m, ${wheels.length} wheels; crossed: belly ${one.belly.toFixed(2)} m, tracks ${one.track.toFixed(2)} m, `
     + `roof ${roofY.toFixed(2)} m over the belt's ${beltY.toFixed(2)} m; swept ${sweptTop.toFixed(2)} m, ${burst} glass triangles out; `
-    + `shot ${gtop.toFixed(2)} -> ${killTop.toFixed(2)} -> ${burntTop.toFixed(2)} m, paint ${lum0.toFixed(3)} -> ${lum1.toFixed(3)}, tyres ${tyre.toFixed(2)} r`);
+    + `shot ${gtop.toFixed(2)} -> ${killTop.toFixed(2)} -> ${burntTop.toFixed(2)} m, paint ${lum0.toFixed(3)} -> ${lum1.toFixed(3)} (ash ${upper.toFixed(3)}, scorched ${lower.toFixed(3)}), tyres ${tyre.toFixed(2)} r`);
 }
 console.log('propCrush: a vehicle gives at contact and pancakes under the tracks, never rising, the same twice; the far side of a clip stands; '
   + 'the copy keeps its livery, the sim\'s crush swaps nothing, unseen crushes sweep (not in the Studio), heaps flatten again; heavy plant keeps its floor, racks, buckles and is shoved aside; a map car keeps its belly\'s clearance, its roof over its doors, its footprint and its wheels, bursts its glass, and buckles, blackens and burns to its rims when shot PASS');

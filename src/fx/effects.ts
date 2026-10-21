@@ -334,6 +334,9 @@ interface SmokeColumn {
   /** false: a shell burst on open ground — smoke only, no flame licks on a deck line nothing stands on, no ember
    * smolder after (2026-10-03, the Studio's floating fire: shell hits left 40 s of flame over bare ice and water). */
   flame?: boolean;
+  /** A burning map car's length (its nose's half length, world XZ): its flames lick out along its cabin and bonnet, not
+   *  over a tank's deck (the car-wreck lane, 2026-10-21; r1c's critics: "round bright sprites floating over the roof"). */
+  car?: [number, number];
 }
 
 interface LiveShell {
@@ -746,8 +749,10 @@ const LIGHT_GROUND_CAP = 2.0, LIGHT_REACH_K = 4.5, LIGHT_COOL_HEX = 0xb83a14;
 // evidence a tank just died" — WoT wrecks pump a column for 20 s+ and
 // smolder for the rest of the match).
 const SMOKE_COLUMN_S = 40;
-/** A burning map vehicle's fire and smoke (s): it chars over the first seconds, then smoulders out. */
+/** A burning map vehicle's fire and smoke (s): it chars over the first seconds, then smoulders out; a car burns longer
+ *  (r1c: night wrecks killed a minute before had no fire left; a car fire burns for many minutes). */
 const VEHICLE_BURN_S = 18;
+const CAR_BURN_S = 30;
 const SMOKE_SMOLDER_S = 35;    // post-column ember/wisp stage on the wreck
 const SHELL_BURST_COLUMN_S = 14; // a shell hit's smoke-only column (the Studio's stand-in blast; no wreck burns)
 // r5 column-continuity rebuild: 0.05 (was 0.11) — the 9 Hz cadence of very
@@ -3903,7 +3908,8 @@ function* createFxSteps(
       if (rng() < (COLUMN_TICK_S / 0.16) * lod) {
         mediaColumnPuff(blast, col.pos[0], col.pos[1], col.pos[2], stage, col.scale * dk / Math.sqrt(lod), birthOffset);
       }
-      if (rng() < 0.70 + 0.30 * stage) {
+      if (col.car) emitCarLicks(col, stage, dk, birthOffset);
+      else if (rng() < 0.70 + 0.30 * stage) {
         _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
         _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
         _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
@@ -4006,7 +4012,8 @@ function* createFxSteps(
     // hull"): licks are born ON the deck line, rise slowly, live SHORT and
     // SHRINK with age — fire that licks up off the wreck and dies before it
     // can drift free. Higher rate so the base always carries flame.
-    if (col.flame !== false && rng() < 0.70 + 0.30 * stage) {
+    if (col.car) emitCarLicks(col, stage, dk, birthOffset);
+    else if (col.flame !== false && rng() < 0.70 + 0.30 * stage) {
       const licks = rng() < 0.35 ? 2 : 1;
       for (let li = 0; li < licks; li++) {
         _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
@@ -4021,6 +4028,32 @@ function* createFxSteps(
         _puffO.alpha = 0.95; _puffO.grav = 1.4; _puffO.birthOffset = birthOffset - rng() * 0.15;
         particles.emit('fire', _puffO);
       }
+    }
+  }
+
+  /**
+   * A burning car's flames (the car-wreck lane, 2026-10-21): two or three short licks a tick out of its cabin and bonnet,
+   * anywhere along its length and across its width, born at its window line, rising a little and dying fast — fire in the
+   * car, never orbs over its roof.
+   */
+  function emitCarLicks(col: SmokeColumn, stage: number, dk: number, birthOffset: number): void {
+    const car = col.car!;
+    if (rng() > 0.8 + 0.2 * stage) return;
+    const len = Math.hypot(car[0], car[1]) || 1, ux = car[0] / len, uz = car[1] / len;
+    const licks = rng() < 0.5 ? 3 : 2;
+    for (let li = 0; li < licks; li++) {
+      const along = (rng() * 2 - 1) * 0.75 * len, across = (rng() - 0.5) * 1.1;
+      _puffO.pos[0] = col.pos[0] + ux * along - uz * across;
+      _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.45;
+      _puffO.pos[2] = col.pos[2] + uz * along + ux * across;
+      _puffO.vel[0] = (rng() - 0.5) * 0.4; _puffO.vel[1] = 0.7 + rng() * 0.7; _puffO.vel[2] = (rng() - 0.5) * 0.4;
+      _puffO.life = 0.26 + rng() * 0.24;
+      _puffO.size0 = (0.8 + rng() * 0.35) * col.scale * dk;
+      _puffO.size1 = (0.45 + rng() * 0.25) * col.scale * dk;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
+      col3(0xffb850, _puffO.col0); col3(0xff4810, _puffO.col1);
+      _puffO.alpha = 0.9; _puffO.grav = 1.2; _puffO.birthOffset = birthOffset - rng() * 0.15;
+      particles.emit('fire', _puffO);
     }
   }
 
@@ -4207,14 +4240,15 @@ function* createFxSteps(
       const col = columns[columns.length - 1];
       // (wave 266: the wreck fire's light left a red patch on the ground and the hull's deck) a living flicker over the
       // wreck, set higher and softer: the flames on the deck carry the fire, the light only warms round them
-      explosionLight.position.set(col.pos[0], col.pos[1] + 3.4, col.pos[2]);
+      // (a car's fire is lower and lights the car and the ground round it: r1c, "the fire lights almost nothing at night")
+      explosionLight.position.set(col.pos[0], col.pos[1] + (col.car ? 2.2 : 3.4), col.pos[2]);
       explosionLight.distance = 12;
       // (fx round 7c) a burst's pulse may have left its own hue on the pooled light: the wreck's fire is the kill orange
       explosionLight.color.setHex(EXPLOSION_LIGHT_HEX);
       const time = particles.getTime();
       explosionLight.intensity = (
         9.5 + 3.2 * Math.sin(time * 13.7) + 2.2 * Math.sin(time * 7.1 + 1.9)
-      ) * col.scale * (blast ? 0.45 : 1);
+      ) * col.scale * (blast ? 0.45 : 1) * (col.car ? 1.6 : 1);
       return;
     }
     const pulseRange = explosionState.range ?? 13;
@@ -5479,8 +5513,8 @@ function* createFxSteps(
   function emitVehicleCrunch(pos: THREE.Vector3, dir: THREE.Vector3, heightM: number, gy: number, wreck: boolean): void {
     _v3.set(pos.x, gy + Math.min(0.9, heightM * 0.45), pos.z);
     sparkFan(_v3, _UP, wreck ? 12 : 6, wreck ? 10 : 6, 1.25, 0xffd6a0, 0.35, 0.03, 0.03, 0, 0.1);
-    // the glass: small pale shards, thrown low and along the blow
-    for (let i = 0; i < 12; i++) {
+    // the glass: small shards, thrown low and along the blow
+    for (let i = 0; i < 16; i++) {
       _debO.pos[0] = pos.x + (rng() - 0.5) * 1.6;
       _debO.pos[1] = gy + 0.75 + rng() * Math.min(0.6, heightM * 0.3);
       _debO.pos[2] = pos.z + (rng() - 0.5) * 1.6;
@@ -5507,8 +5541,8 @@ function* createFxSteps(
       _debO.groundY = gy; _debO.hot = wreck && rng() < 0.3 ? 0.45 : 0; _debO.seed = rng(); _debO.birthOffset = 0;
       particles.emit('debris', _debO);
     }
-    // the road dust its sills kick: thin, low, quick to settle
-    for (let i = 0; i < 4; i++) {
+    // the road dust its sills kick: low, settling over a couple of seconds (r1c: "no dust or debris a second after the crush")
+    for (let i = 0; i < 7; i++) {
       const a = rng() * Math.PI * 2;
       _puffO.pos[0] = pos.x + Math.cos(a) * (0.8 + rng() * 0.8);
       _puffO.pos[1] = gy + 0.15 + rng() * 0.2;
@@ -5516,11 +5550,11 @@ function* createFxSteps(
       _puffO.vel[0] = Math.cos(a) * (0.9 + rng() * 0.8) + dir.x * 0.8;
       _puffO.vel[1] = 0.25 + rng() * 0.35;
       _puffO.vel[2] = Math.sin(a) * (0.9 + rng() * 0.8) + dir.z * 0.8;
-      _puffO.life = 1.0 + rng() * 0.6;
-      _puffO.size0 = 0.45 + rng() * 0.25; _puffO.size1 = 1.5 + rng() * 0.6;
+      _puffO.life = 1.4 + rng() * 0.8;
+      _puffO.size0 = 0.5 + rng() * 0.3; _puffO.size1 = 1.8 + rng() * 0.8;
       _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.5;
       col3(0x7a766e, _puffO.col0); col3(0x6a665f, _puffO.col1);
-      _puffO.alpha = 0.18 + rng() * 0.08; _puffO.grav = -0.2; _puffO.birthOffset = 0;
+      _puffO.alpha = 0.26 + rng() * 0.1; _puffO.grav = -0.2; _puffO.birthOffset = 0;
       particles.emit('dust', _puffO);
     }
     if (!wreck) return;
@@ -6930,8 +6964,12 @@ function* createFxSteps(
       // (dcore 2026-10-10, waves 350/351: a killed map vehicle flipped to the burnt wreck in a frame) a vehicle a round
       // destroys burns: its fire and smoke column take hold over it while its paint chars (props.ts, the crush copy)
       if (family === 'vehicleburn') {
-        const col: SmokeColumn = { key: null, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0, ttl: VEHICLE_BURN_S,
-          scale: Math.max(0.45, Math.min(0.75, heightM * 0.3)), flame: true };
+        // (the car-wreck lane) a map car passes its length (its nose's half length) as `dir`: its flames along it, a little
+        // bigger, burning longer
+        const car = Math.hypot(dir.x, dir.z) > 0.3;
+        const col: SmokeColumn = { key: null, pos: [pos.x, car ? pos.y : Math.max(pos.y, gy), pos.z], acc: 0, ttl: car ? CAR_BURN_S : VEHICLE_BURN_S,
+          scale: car ? Math.max(0.6, Math.min(0.8, heightM * 0.42)) : Math.max(0.45, Math.min(0.75, heightM * 0.3)), flame: true,
+          ...(car ? { car: [dir.x, dir.z] as [number, number] } : {}) };
         columns.push(col);
         emitColumnPuff(col);
         capColumns();
