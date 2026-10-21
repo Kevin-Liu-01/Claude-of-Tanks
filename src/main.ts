@@ -956,8 +956,12 @@ const battleIntent = createBattleIntentRuntime({
   loadWorldModule,
   prefetchWorld,
   ensureTankBuilders,
-  planRoster: (specId) => planBattleParticipantIds(game, specId, true)
-    .filter(id => garagePreviewMode !== 'ac130' || id !== specId),
+  // the hover prefetch plans the battle the garage's mode would field (TEAM NATIONS included), as the loading plan does
+  planRoster: (specId) => {
+    const plan = soloRosterPlan(garagePreviewMode, null, true);
+    return planBattleParticipantIds(game, specId, true, plan.nations, plan.slots, plan.formationLead, plan.national)
+      .filter(id => garagePreviewMode !== 'ac130' || id !== specId);
+  },
   getSpec,
   prebakeSharedTextures,
   createBudgetYield: createFrameBudgetYielder,
@@ -1242,7 +1246,7 @@ const playSurface = createPlaySurfaceRuntime({
       maps: garageMaps,
       vehicles: VISIBLE_TANK_IDS.map((id) => {
         const spec = getSpec(id);
-        return { id, name: spec.name, tier: tankTier(id) };
+        return { id, name: spec.name, tier: tankTier(id), nation: spec.nation };
       }),
       getSelection: () => ({
         specId: garage.getSelected(),
@@ -2304,11 +2308,11 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     // team arrangement (2026-09-15): the plan sizes the field and leads with the arranged nation like setupBattle
     planRoster: (specId: string, randomRoster: boolean, campaignOperationId: string | null = null, gameMode: string | null = null) => {
       const plan = soloRosterPlan(gameMode, campaignOperationId, randomRoster);
-      return planBattleParticipantIds(game, specId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.alliedSlots);
+      return planBattleParticipantIds(game, specId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.national);
     },
     planCamoOverrides: (specId: string, mapId: string, randomRoster: boolean, campaignOperationId: string | null = null, gameMode: string | null = null) => {
       const plan = soloRosterPlan(gameMode, campaignOperationId, randomRoster);
-      return planBattleCamoOverrides(game, specId, mapId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.alliedSlots);
+      return planBattleCamoOverrides(game, specId, mapId, randomRoster, plan.nations, plan.slots, plan.formationLead, plan.national);
     },
     ensureTankBuilders,
     preloadSoloAuthority: preloadSoloBattleRuntime,

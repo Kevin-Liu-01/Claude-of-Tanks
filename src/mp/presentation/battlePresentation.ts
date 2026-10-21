@@ -24,7 +24,7 @@ import { createTankState, shotRecoilScale } from '../../sim/movement.ts';
 import type { TankState } from '../../sim/movement.ts';
 import { SPECIAL_ACTION_KINDS, createSpecialActionState } from '../../sim/specialActionPolicy.ts';
 import type { SpecialActionState } from '../../sim/specialActionPolicy.ts';
-import { AERIAL_RULES, matchRulesetFor } from '../../sim/matchRuleset.ts';
+import { AERIAL_RULES, matchRulesetFor, rulesetVerdictSide } from '../../sim/matchRuleset.ts';
 import type { MatchRuleset } from '../../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../../sim/matchModes.ts';
 import { createTank, ensureTankBuilder } from '../../vehicles/fleetFactory.ts';
@@ -770,8 +770,8 @@ export function createBattlePresentation({
   function applyVerdict(verdict: VerdictId, reason: string): void {
     if (game.result || verdict === VERDICT.NONE) return;
     const winner = VERDICT_RESULTS[verdict];
-    const result = spectator || winner === 'draw' ? 'draw'
-      : winner === (viewerTeam === TEAM.ALPHA ? 'alpha' : 'bravo') ? 'victory' : 'defeat';
+    const side = rulesetVerdictSide(matchRulesetFor(normalizeGameMode(game.gameMode)), viewerTeam === TEAM.ALPHA ? 'alpha' : 'bravo');
+    const result = spectator || winner === 'draw' ? 'draw' : winner === side ? 'victory' : 'defeat';
     endMatch(result, reason || 'elimination');
   }
 

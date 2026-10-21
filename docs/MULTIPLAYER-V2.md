@@ -2349,6 +2349,67 @@ with the production lease: the host's socket and links drop at once, both peers 
 against 8.0 s), `mp-p2p-headless.selftest`, `mp-room-lifecycle.selftest`, `roomWorkerProgram.selftest` (the Worker
 program typechecks). Ships with the rooms Worker (a planned Worker release) and the client; either alone is inert.
 
+### 13.27 The room's bots: seated by one planner, TEAM NATIONS (gameplay-modes-228, 2026-10-18)
+
+**Why.** Every room bot cloned a human's pick (an empty side cloned the host's tank), and the co-op rooms seated no
+hostiles at all, so a room's Endless Horde and Frontline Assault waves came up empty forever. The owner, 2026-10-18:
+"make the allied/enemy tank country enforcement work properly", "be able to select wehtehr we want team enemies to be
+mononation or just random".
+
+**What.** `src/mp/room/roomBots.ts` `planRoomBots(settings, seats, bots, seed)` seats a room's bots from the room's
+settings and the match seed. The room's `planStart` (the rooms Worker and the LAN service) and the hosting seat's own
+derivation (`hostPlan.planFromRoom`, with `match_start.seed`) both call it, so they name the same bots; the host boots
+from its derivation and hands the roster to every seat in WELCOME, as before. Symmetric modes fill each side to the
+team size when the room fills with bots; Juggernaut, Infected and the AC-130 seal their roles; the co-op modes seat
+their hostiles always (Frontline's twelve defenders, the Horde's twenty-strong pool) and their allied bots (three, four)
+when the room fills with bots, and the authority refuses to start a wave on an empty pool. TEAM NATIONS is the host's
+room setting (`room.settings.arrangement.teamNations`, `'mono'` by default or `'random'`): MONO-NATION seats each side
+from its humans' majority country and the enemy side from one other country (the campaign operation's, the arranged
+country, or AUTO's), filling from the closest allied countries with every fill noted in the plan
+(`RoomStartPlan.teamNations`); RANDOM seats any contemporary vehicle. At most six distinct bot vehicles a side
+(`TEAM_NATIONS_RULES.mpDistinctBotSpecsPerSide`), each a vehicle profile every seat loads. Bot ids stay
+`bot-<team>-<n>` / `mode-<team>-<n>`. A guest's `set_arrangement` is refused; `set_game_mode` keeps TEAM NATIONS; a
+migrated host re-reads it from the room's settings. The rooms Worker reads countries from
+`src/sim/nationIndex.generated.ts` (it may not import `src/vehicles`; `tools/nation-index.mjs --check`).
+
+No wire change: the setting rides the arrangement JSON. The client carries the planner; RANDOM in a room needs the rooms
+Worker release that whitelists `teamNations` in `readArrangement` (an older Worker drops the field, so its rooms play
+MONO-NATION, the default), and that release also moves the Worker's own `planStart` onto the planner.
+
+Receipts: `roomBots.selftest` (every mode's seating, MONO and RANDOM, co-op hostiles, the six-vehicle budget, the host's
+decision and the mode change), `hostPlan.selftest` (planStart and planFromRoom name the same bots for a seed; co-op 20 + 4
+and 12 + 3), `roomPolicy.selftest`, `roomWorkerProgram.selftest` (the Worker program typechecks), `nationIndex.selftest`;
+the census rows `mp1`, `mp2` and `coop` of `tools/mode-aggression-harness.mjs roster` (docs/GAME-MODES.md "Team nations").
+
+**Round 2 (2026-10-19, the critic's E10-E12).** A host migration in Endless Horde or Frontline Assault now resumes the
+match where it stood: the sealed mode checkpoint (`captureModeCheckpoint`, host to host only, never a seat) carries the
+wave modes' state as well — the wave, its queue and kind, which pool identities rest and since when, the caches, and
+Frontline's live line, its zones' control, the counter-attack, the trickle and the allied revives
+(`ModeCheckpoint.waves`); before, the new host rebuilt the controller from scratch (wave 1, a fresh draw, every hostile
+revived on the ring). The lobby's arrangement reset keeps the room's TEAMS choice (it sent a null arrangement, which put a
+RANDOM room back to MONO without a word); a new room already takes the host's remembered choice
+(`playMenu.connectRoom` sends `readTeamArrangement`, which folds `cot.game.teamNations.v1` in; `roomPolicy.createRoom`
+keeps it — pinned by `roomBots.selftest`). The Worker's own copy of the protocol is unchanged by this round; RANDOM in a
+room still needs the Worker release named above (no protocol version moves: an older Worker drops the field and its rooms
+play MONO, the default). The loading screen's TEAMS flags in a room read off the seated vehicles: each side's most common
+country and, by count, the countries that filled it (`sim/countries.ts` `sideFlags`, called by
+`mp/session/browserComposition.ts` `showRoundLoad` under MONO-NATION; RANDOM shows none) — under MONO-NATION those are
+exactly the side's country and its noted fills, so no plan record leaves the host and no protocol field is added.
+Receipts: `hordeWaveLaw.selftest` (a migrated host fields the same wave, total, queue, kind and resting identities),
+`teamNations.selftest` (`sideFlags`).
+
+**Round 3 (2026-10-20, the critic's E-R2-5, E-R2-6 and E-R2-8).** AUTO never draws a country an allied human drives,
+the majority's or not (a room of 2 American humans and 1 Russian drew an all-Russian enemy in 74 of 400 seeds; now 0, and
+an arranged minority clash is noted), pinned by `teamNations.selftest`. The WELCOME's ruleset string grew with the
+doctrine tables (the widest table 885 → 2,100 bytes of `MAX_RULESET_JSON_BYTES` = 4,096, the codec throws past it):
+`hostRuleset.selftest` now holds every mode × arrangement (sides presets, the extremes, TEAMS, an enemy country, the
+juggernaut roles, Mars settings) × campaign operation under the cap and prints the widest. The checkpoint's Horde state
+adds the straggler count (`waves.horde.stranded`, optional, read as 0 from an older host). **Release dependency:** the
+rooms Worker bundle imports `roomPolicy` → `roomBots` → `teamNations` / `nationIndex`, so a room run by the deployed
+Worker (cot-rooms, 2026-10-13 at 5797d9750) keeps the old `planStart` bots and drops `teamNations` (MONO) until a
+`node tools/release.mjs workers <sha> --only=rooms` release after this lands (docs/DEPLOYS.md); the Vercel deploy does
+not ship the Worker. No protocol or room version moves.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers

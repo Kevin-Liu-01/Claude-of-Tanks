@@ -144,6 +144,9 @@ const CSS = `
 .cot-bl .thead{height:var(--bl-heading);display:flex;align-items:center;gap:9px;padding:0 8px 8px;
   border-bottom:1px solid rgba(146,164,180,.24);font-family:${FONT_COND};
   font-size:11px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;}
+.cot-bl .thead .flags{display:inline-flex;align-items:center;gap:3px;}
+.cot-bl .thead .flags i{font-style:normal;opacity:.6;font-size:10px;}
+.cot-bl .thead .flags .cot-flag{border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.35);}
 .cot-bl .team.ally .thead{color:#7fdc8a;border-bottom-color:rgba(127,220,138,.4);}
 .cot-bl .team.foe .thead{color:#f07a72;border-bottom-color:rgba(240,122,114,.4);}
 .cot-bl .team.foe .thead{flex-direction:row-reverse;}
@@ -243,6 +246,17 @@ export interface PendingBattlefield {
   readonly thumb?: string;
 }
 
+/**
+ * TEAM NATIONS (gameplay-modes-228): each side's country (a spec nation for its flag) and the countries that filled it
+ * ("+UK"), or null for RANDOM / no country.
+ */
+interface BattleLoadTeams {
+  readonly allied: string | null;
+  readonly enemy: string | null;
+  readonly alliedFills: readonly string[];
+  readonly enemyFills: readonly string[];
+}
+
 export interface BattleLoadScreen {
   readonly root: HTMLElement;
   readonly visible: boolean;
@@ -252,6 +266,7 @@ export interface BattleLoadScreen {
   rosters(
     allies: readonly BattleLoadRosterRow[],
     enemies: readonly BattleLoadRosterRow[],
+    teams?: BattleLoadTeams | null,
   ): void;
   progress(fraction: number, label?: string): void;
   countdown(seconds: number): void;
@@ -288,10 +303,10 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     `<main class="briefing"><div class="cap"><div class="kicker">${t('battleLoad.kicker')}</div>` +
     `<div class="mapname"></div></div>` +
     `<div class="teams">` +
-    `<div class="team ally"><div class="thead"><span>${t('battleLoad.allies')}</span><span class="n">0</span></div>` +
+    `<div class="team ally"><div class="thead"><span>${t('battleLoad.allies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
     `<div class="vs">${t('battleLoad.vs')}</div>` +
-    `<div class="team foe"><div class="thead"><span>${t('battleLoad.enemies')}</span><span class="n">0</span></div>` +
+    `<div class="team foe"><div class="thead"><span>${t('battleLoad.enemies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
     `</div>` +
     `<div class="foot" aria-live="polite"><div class="fmeta"><div class="fstage">${t('battleLoad.loading')}</div>` +
@@ -365,6 +380,23 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   let shownFill = '';
   let shownPercent = -1;
   let shownStage = '';
+
+  const allyFlags = requiredElement<HTMLSpanElement>(root, '.team.ally .flags');
+  const foeFlags = requiredElement<HTMLSpanElement>(root, '.team.foe .flags');
+  /**
+   * A side's country flag and its fills, small (owner UI rules: flags over words). The flag module (its SVG assets) is
+   * the garage's, already loaded in the browser; it is imported on demand so this screen's module stays Node-loadable.
+   */
+  let flagsPass = 0;
+  function fillFlags(host: HTMLElement, nation: string | null, fills: readonly string[]): void {
+    const pass = String(++flagsPass);
+    host.dataset.flagsPass = pass;
+    if (!nation) { host.innerHTML = ''; return; }
+    void import('./flags.ts').then(({ flagIconHTML }) => {
+      if (host.dataset.flagsPass !== pass) return; // a later roster took this side
+      host.innerHTML = flagIconHTML(nation, 18, 13) + fills.map((fill) => `<i>+</i>${flagIconHTML(fill, 14, 10)}`).join('');
+    });
+  }
 
   function fillTeam(
     host: HTMLElement,
@@ -448,9 +480,12 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     rosters(
       allies: readonly BattleLoadRosterRow[],
       enemies: readonly BattleLoadRosterRow[],
+      teams: BattleLoadTeams | null = null,
     ) {
       fillTeam(allyRows, allyN, allyTeam, allies);
       fillTeam(foeRows, foeN, foeTeam, enemies);
+      fillFlags(allyFlags, teams?.allied ?? null, teams?.alliedFills ?? []);
+      fillFlags(foeFlags, teams?.enemy ?? null, teams?.enemyFills ?? []);
     },
 
     /**

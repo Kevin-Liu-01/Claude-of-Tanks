@@ -1,3 +1,4 @@
+import { teamNationsFlags } from '../sim/teamNations.ts';
 import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';
 import type { MainFxRuntime } from '../app/mainContracts.ts';
 import type { LazyAudio } from '../audio/lazyAudio.ts';
@@ -516,7 +517,8 @@ export function createSoloBattleLoadingRuntime(
       playerVisualTiming.postCompileYieldMs = playerStageReceipt.postCompileYieldMs;
       playerVisualTiming.totalMs = Math.round(now() - playerVisualStartedAt);
       mark('roster');
-      battleLoad.rosters(rosterRows('player'), rosterRows('enemy'));
+      // TEAM NATIONS: each side's flag and its fills over the team sheets
+      battleLoad.rosters(rosterRows('player'), rosterRows('enemy'), teamNationsFlags((game as { teamNations?: Parameters<typeof teamNationsFlags>[0] }).teamNations));
       warmShotCards(game.tanks.filter(entity => normalizedGameMode !== 'ac130' || !entity.isPlayer).map((entity) => entity.specId));
       battleLoad.progress(0.58, 'Painting vehicles');
       const openingVisual = (entity: BattleVisualEntity): boolean =>

@@ -118,8 +118,8 @@ import {
 import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
-  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetLoadout, rulesetUnlimitedFor,
-  type MatchRuleset,
+  applyRulesetToCombat, rulesetSeatHullScale, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetBotDoctrine,
+  rulesetLoadout, rulesetObjectiveAxisM, rulesetRoutePush, rulesetUnlimitedFor, type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from './matchPlacement.ts';
@@ -936,7 +936,7 @@ export function createAuthoritativeMatch({
     // the map's own ground, as the solo step places on it (state.ts): the match's pre-placed craters (world/mapCraters.ts)
     // must not move a deployment slot (deploymentParity)
     heightField: baseHeightField, obstacles: staticObstacles, queryObstacles: worldCollision?.queryObstacles,
-    anchors: matchPlacementAnchors(layout.spawns), mode: normalizedGameMode,
+    anchors: matchPlacementAnchors(layout.spawns), mode: normalizedGameMode, objectiveAxisM: rulesetObjectiveAxisM(ruleset),
     // index-aligned carved sectors (null where the terrain dropped a line), exactly as the solo path passes them
     assaultLines: (trenchLines?.sectors ?? trenchLines?.lines ?? null) as never,
   });
@@ -991,7 +991,7 @@ export function createAuthoritativeMatch({
       loadout,
       spec,
     );
-    applyRulesetToCombat(combat, spec.gun.shells, ruleset);
+    applyRulesetToCombat(combat, spec.gun.shells, ruleset, rulesetSeatHullScale(ruleset, team, bot));
     const entity: AuthoritativeEntity = {
       id,
       specId: spec.id,
@@ -1071,6 +1071,8 @@ export function createAuthoritativeMatch({
     entity.aiCtl = createAI(entity, {
       // the seat's difficulty, stepped down for the Horde's zombies by the ruleset
       difficulty: rulesetBotDifficulty(ruleset, entity.team, playerRecordById.get(entity.id)?.difficulty || 'normal'),
+      // the side's doctrine, read live: an Infected convert plays the infected's table from its first tick
+      doctrine: () => rulesetBotDoctrine(ruleset, entity.team),
       rng: botRng,
       deps: {
         heightField,
@@ -1098,6 +1100,11 @@ export function createAuthoritativeMatch({
         },
         // bot philosophy r1: the mode's live objective ranks targets (objective → closest → weakest)
         getObjective: () => modeController.botObjective(entity),
+        // what the side knows (the honest search): its freshest sighting, else the enemy's deployment
+        intel: {
+          freshestContact: () => modeController.freshestSighting(entity),
+          enemyDeployment: () => modeController.enemyDeployment(entity),
+        },
         ...(navigation ? {
           planRoute: (start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
             options?: { requireGoalLevel?: boolean }) => planBotRoute({
@@ -1205,12 +1212,14 @@ export function createAuthoritativeMatch({
     terrainHeight: (x, z) => heightField.getHeightAt(x, z),
     ballFloorHeight: (x, z, previousBottomY) => bridgeBallFloor(heightField, x, z, previousBottomY),
     emit,
+    // what each side has spotted (the honest hunt): the authority's own spotting, never sent anywhere
+    spotting: { isSpotted: (id, side) => spotting.isSpotted(id, side) },
   });
   for (const entity of entities) {
     initializeAerial(entity, ruleset);
     if (isGunship(entity)) setModeWeapon(entity, 'gunship');
   }
-  let nextModeRouteS = 0;
+  const nextModeRouteS = { alpha: 0, bravo: 0 };
 
   function applyNetworkInput(
     entity: AuthoritativeEntity,
@@ -2314,23 +2323,26 @@ export function createAuthoritativeMatch({
     return true;
   }
 
-  function isFastRouteMode(): boolean {
-    return normalizedGameMode === 'turbo_ball' || normalizedGameMode === 'endless_horde' || normalizedGameMode === 'mars';
-  }
-
+  /**
+   * The mode route push: each side on its cadence (sim/matchRuleset.ts rulesetRoutePush: the doctrine's, or the
+   * authority's legacy 3 s / 12 m, 1.25 s on any move in its fast modes) re-routes a bot whose destination moved that far.
+   */
   function refreshModeBotRoutes(): void {
-    if (normalizedGameMode === 'standard' || timeS < nextModeRouteS) return;
-    const fastRouteMode = isFastRouteMode();
-    nextModeRouteS = timeS + (fastRouteMode ? 1.25 : 3);
+    if (normalizedGameMode === 'standard') return;
+    const alphaDue = timeS >= nextModeRouteS.alpha, bravoDue = timeS >= nextModeRouteS.bravo;
+    if (!alphaDue && !bravoDue) return;
+    if (alphaDue) nextModeRouteS.alpha = timeS + rulesetRoutePush(ruleset, 'alpha', 'authority').refreshS;
+    if (bravoDue) nextModeRouteS.bravo = timeS + rulesetRoutePush(ruleset, 'bravo', 'authority').refreshS;
     for (const entity of entities) {
       if (!entity.bot || entity.modeActive === false || entity.combat.destroyed) continue;
+      if (entity.team === 'bravo' ? !bravoDue : !alphaDue) continue;
       const target = modeController.botTarget(entity);
       if (!target) continue;
       const moved = Math.hypot(
         target.x - (entity._modeTargetX ?? Infinity),
         target.z - (entity._modeTargetZ ?? Infinity),
       );
-      if (moved < 12 && !fastRouteMode) continue;
+      if (moved < rulesetRoutePush(ruleset, entity.team, 'authority').moveM) continue;
       entity._modeTargetX = target.x;
       entity._modeTargetZ = target.z;
       entity.aiCtl?.setWaypoints([[target.x, target.z]], { loop: false });
@@ -2832,7 +2844,8 @@ export function createAuthoritativeMatch({
     },
 
     captureModeCheckpoint() {
-      if (!['juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'ac130'].includes(normalizedGameMode)) return null;
+      // the wave modes carry their waves, line and queue too (round 2: a migrated host restarted them from the beginning)
+      if (!['juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'ac130'].includes(normalizedGameMode) && !isWaveMode(normalizedGameMode)) return null;
       const flightStates: NewModeCheckpoint['flights'] = [];
       for (const entity of entities) { const flight = captureAerial(entity); if (flight) flightStates.push({ id: entity.id, flight }); }
       return { mode: modeController.captureCheckpoint(timeS + modeTimeOffsetS), flights: flightStates };

@@ -27,7 +27,7 @@ import type { BotMission } from '../sim/matchModes.ts';
 import { createBotAbilityPlanner, type BotAbilityContext } from './botAbilities.ts';
 import { computeDispersionRadM, IMPACT_SOURCE_COLLIDER } from '../sim/movement.ts';
 import { createBotTerrainSafety } from '../sim/botTerrainSafety.ts';
-import type { RulesetPhysics } from '../sim/matchRuleset.ts';
+import { BALL_SHOT, CLASSIC_BOT_DOCTRINE, JOCKEY_DRIVE, RUSH_DRIVE, SORTIE_DRIVE, STRIKER_JUMP, type BotDoctrine, type RulesetPhysics } from '../sim/matchRuleset.ts';
 import type { NavigationBridgeDeck } from '../sim/bridgeDeckNavigation.ts';
 import { createNavigationLiquidSafety } from '../sim/navigationLiquidSafety.ts';
 import { solveBallisticGunLay } from '../sim/ballistics.ts';
@@ -169,6 +169,12 @@ interface AiObjective {
   x: number;
   z: number;
   radiusM: number;
+  /** Turbo Ball: the ball itself (the striker's jump and its shot at the ball read it; the ball is public). */
+  ball?: { x: number; y: number; z: number } | null;
+  /** Turbo Ball: the bot may fire at the ball now (in range, in the cone toward the opponent goal)… */
+  shootBall?: boolean;
+  /** …and that shot comes before a tank target farther than the ball. */
+  ballFirst?: boolean;
 }
 
 /** What the integration knows about a hit that reached this bot's team. */
@@ -330,12 +336,22 @@ interface AiDependencies {
    */
   planRoute?(start: { x: number; z: number }, goal: { x: number; z: number; y?: number },
     options?: { requireGoalLevel?: boolean }): ReadonlyArray<readonly [number, number]>;
+  /**
+   * What this bot's TEAM knows (gameplay-modes-228, `searchRouting: 'spotted'`): its freshest sighting of an enemy and
+   * the enemy's public deployment centre. The honest no-contact search routes on these, never on a live position.
+   */
+  intel?: {
+    freshestContact(): { x: number; z: number } | null;
+    enemyDeployment(): { x: number; z: number } | null;
+  };
 }
 
 interface CreateAiOptions {
   difficulty?: AiDifficulty;
   rng?: RandomSource;
   deps: AiDependencies;
+  /** The side's doctrine (sim/matchRuleset.ts rulesetBotDoctrine), read live (an Infected convert changes side). */
+  doctrine?: () => BotDoctrine;
 }
 
 interface RoleSpec {
@@ -449,6 +465,8 @@ const ROLE_TUNE = {
 };
 // scout kiting: closer than this to any live opponent → break off and orbit
 const SCOUT_KITE_M = 130;
+// a target claimed inside the doctrine's claimRangeM is held out to this multiple of it (sim/matchRuleset.ts BotDoctrine)
+const CLAIM_HOLD_SCALE = 1.5;
 // retreat-toward-support (universal): hp fraction / window / cooldown
 const FALLBACK_HP_FRAC = {
   brawler: 0.38,
@@ -582,7 +600,7 @@ const MAX_FIRE_RANGE_M  = 620;
 const UNDER_FIRE_WINDOW_S = 15;       // chase/engage window after a team hit
 const UNDER_FIRE_RANGE_BONUS_M = 180; // engage-envelope extension toward the shooter
 
-const STALEMATE_SILENT_S = 12;   // no shot fired this long w/ contact → push
+// no shot fired the doctrine's stalemateSilentS (12 s classic) with a contact → push (sim/matchRuleset.ts BotDoctrine)
 const STALEMATE_PUSH_S = 8;      // duration of one forced push window
 // The settled-shot halt (r7's direct trigger, updateEngagementSettle: a starved trigger with a clear ray halts the hull
 // for a clean shot) waits for a trigger that has starved: SETTLE_STARVED_S of contact with its target without a shot
@@ -1025,6 +1043,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   const deps = opts.deps;
   const tier = selectDifficultyTier(opts.difficulty);
   const rng = selectRandomSource(opts.rng);
+  // the side's doctrine (classic when the integration supplies none): every read below is one knob site
+  const doctrineOf: () => BotDoctrine = typeof opts.doctrine === 'function' ? opts.doctrine : () => CLASSIC_BOT_DOCTRINE;
   const abilities = createBotAbilityPlanner(entity.spec);
   const abilityContext: BotAbilityContext = { hitBearing: 0, hitAtS: -Infinity, retreating: false, reloadS: 0, contactM: Infinity, safeJump: false };
   const jumpOrigin = new Vector3(), jumpDirection = new Vector3();
@@ -1082,9 +1102,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return -1;
   };
   const angleRad = casemate ? 0 : tune.angle;
-  const roleEngageR = () => tier.engageRangeM * tune.engage;
+  const roleEngageR = () => tier.engageRangeM * tune.engage * doctrineOf().engageRangeScale;
   const roleHoldR = () => {
-    const base = Math.min(tier.holdRangeM * tune.hold, roleEngageR() - 60);
+    const base = Math.min(tier.holdRangeM * tune.hold, roleEngageR() - 60) * doctrineOf().holdBandScale;
     // a commander's posture widens or shrinks the hold band (order gated: classic value otherwise)
     if (order === null || nowS >= order.untilS) return base;
     if (order.posture === 'push') return base * 0.55;
@@ -1092,7 +1112,18 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return base;
   };
   const getAllies = selectAllies(deps);
-  const getObjective = typeof deps.getObjective === 'function' ? deps.getObjective : null;
+  // the mode objective, read once a tick (round 2, the critic's E8: ten sites a tick each allocated the controller's
+  // objective; the controller's answer cannot change inside one bot's tick, so the first read serves the rest)
+  // Only inside update(): a call between two updates (a hit's reaction, the builder's route push) reads the live answer,
+  // as it always did, so the cache never hands a pre-step objective to a post-step caller.
+  const readObjective = typeof deps.getObjective === 'function' ? deps.getObjective : null;
+  let objectiveTick = 0, objectiveReadTick = -1, inUpdate = false;
+  let objectiveNow: AiObjective | null = null;
+  const getObjective = readObjective ? (): AiObjective | null => {
+    if (!inUpdate) return readObjective();
+    if (objectiveReadTick !== objectiveTick) { objectiveNow = readObjective(); objectiveReadTick = objectiveTick; }
+    return objectiveNow;
+  } : null;
   const selfEyeM = spec.dims.heightM * EYE_FRAC;
   // A real match opens with a deployment/read phase, not both teams driving
   // straight into an immediate DPM check.  Roles release progressively:
@@ -1100,8 +1131,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // overwatch.  Close contacts still trigger a fight, and return-fire/aggro
   // paths intentionally bypass this gate, so this is tactics rather than an
   // invulnerability timer.
-  const deploymentUntilS = DEPLOYMENT_TUNING[role].untilS;
   const deploymentEngageM = DEPLOYMENT_TUNING[role].engageM;
+  // the read phase lasts the role's window unless the side's doctrine skips it (openingRead false)
+  const deploymentUntil = (): number => (doctrineOf().openingRead ? DEPLOYMENT_TUNING[role].untilS : 0);
+  // targets are claimed out to the side's claim range (unlimited unless the doctrine sets one)
+  const claimRangeSq = (): number => {
+    const range = doctrineOf().claimRangeM;
+    return range == null ? Infinity : range * range;
+  };
   // Gun trunnion height above ground contact — the movement sim aims the
   // barrel from here (movement.ts gunPivotHeight), so the alignment gate must
   // measure the wanted pitch from the same origin, not from the eye point.
@@ -1185,6 +1222,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   let shotsFromSpot = 0;
   const scootPoint = { x: 0, z: 0 };
   let scootUntilS = -1;
+  // the pocket escape drives the scoot leg too, but it is navigation (a hull boxed in), not a relocation after a shot:
+  // the probes read that part of the scoot window apart (debugInfo escaping)
+  let pocketEscapeUntilS = -1;
   let scootLine = 0;          // a casemate's scoot along its line of fire: -1 back, +1 up, 0 a free leg
   let lineScootUp = false;    // the casemate's next scoot goes up the line (it last backed off it)
   let relocations = 0;   // probe-visible shoot-and-scoot counter
@@ -1427,7 +1467,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // (reload discipline), brawlers hold the line they pushed.
   const effCoverIQ = () => {
     if (nowS < pressUntilS) return 0;
-    const classic = clamp(tier.coverIQ * tune.cover, 0, 1) * clamp(1.15 - nowS / 240, 0.35, 1);
+    const classic = clamp(tier.coverIQ * tune.cover, 0, 1) * clamp(1.15 - nowS / 240, 0.35, 1) * doctrineOf().coverScale;
     if (!orderActive()) return classic;
     // a holding posture and a high threat read both raise the cover discipline
     let iq = classic;
@@ -1573,6 +1613,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   ): boolean {
     const aggressor = activeAggressor(timeS);
     if (!aggressor || aggressor === target || aggressor.id === unbearableId) return false;
+    // a rusher claims nothing beyond its claim range, the gun that hit it included: the hunt brings it closer
+    if (entity.state.pos.distanceToSquared(aggressor.state.pos) > claimRangeSq()) return false;
     if (target && enemyAlive(target) && isVisibleToTeam(target)) {
       const current = target.state.pos;
       const currentClear = hasLos(eyeX, eyeYPosition, eyeZ, current.x, eyeY(target), current.z);
@@ -1599,7 +1641,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     eyeX: number, eyeYPosition: number, eyeZ: number): boolean {
     if (!target) return false;
     const currentDistanceSq = entity.state.pos.distanceToSquared(target.state.pos);
-    const localRange = timeS < deploymentUntilS ? Math.min(120, deploymentEngageM) : 120;
+    const localRange = timeS < deploymentUntil() ? Math.min(120, deploymentEngageM) : 120;
     let best: AiEntity | null = null;
     let bestPriority = Infinity;
     for (const candidate of enemies) {
@@ -1681,6 +1723,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       lastSeenAtS = -Infinity;
       return false;
     }
+    // a close-claiming side (claimRangeM: the zombies) lets a target go once it is past the claim range's hold
+    // (CLAIM_HOLD_SCALE): the hunt brings the hull back in rather than a long shot from where the target slipped away
+    // (round 2: the zombies' engaged distance read 80-140 m against their 60 m claim)
+    if (entity.state.pos.distanceToSquared(target.state.pos) > claimRangeSq() * CLAIM_HOLD_SCALE * CLAIM_HOLD_SCALE) {
+      target = null;
+      losClear = false;
+      return false;
+    }
     const position = target.state.pos;
     const visible = isVisibleToTeam(target);
     losClear = visible
@@ -1731,6 +1781,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     let best: AiEntity | null = null;
     let bestPriority = Infinity;
     const deploymentRangeSq = deploymentEngageM * deploymentEngageM;
+    const deploymentUntilS = deploymentUntil();
+    const claimSq = claimRangeSq();
     for (let index = 0; index < enemies.length; index++) {
       const candidate = enemies[index];
       if (!enemyAlive(candidate) || !isVisibleToTeam(candidate)) continue;
@@ -1739,6 +1791,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const dz = position.z - eyeZ;
       const distanceSq = dx * dx + dz * dz;
       if (timeS < deploymentUntilS && distanceSq > deploymentRangeSq) continue;
+      if (distanceSq > claimSq) continue;
       const priority = targetPriority(candidate, distanceSq);
       if (priority >= bestPriority) continue;
       if (!hasLos(eyeX, eyeYPosition, eyeZ, position.x, eyeY(candidate), position.z)) {
@@ -1779,8 +1832,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!candidate) return;
     const dx = candidate.state.pos.x - eyeX;
     const dz = candidate.state.pos.z - eyeZ;
-    const range = timeS < deploymentUntilS ? deploymentEngageM : roleEngageR();
-    if (dx * dx + dz * dz >= range * range) return;
+    const range = timeS < deploymentUntil() ? deploymentEngageM : roleEngageR();
+    if (dx * dx + dz * dz >= range * range || dx * dx + dz * dz > claimRangeSq()) return;
     claimTarget(candidate, timeS, false, true);
     losBlockedT = Math.max(losBlockedT, 5);
   }
@@ -3063,6 +3116,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     scootPoint.x = bx;
     scootPoint.z = bz;
     scootUntilS = nowS + 6;
+    pocketEscapeUntilS = scootUntilS;
     scootLine = 0;
     routeTimer = 0;
     return true;
@@ -3221,6 +3275,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         pivotCreeps++;
         return false;
       }
+      // a side that drives its hard turns round (doctrine rollingTurns) keeps way on through them: a rolling turn
+      if (doctrineOf().rollingTurns) {
+        input.throttle = JOCKEY_DRIVE.rollThrottle * speedScale;
+        input.steer = clamp(input.steer, -JOCKEY_DRIVE.rollSteer, JOCKEY_DRIVE.rollSteer);
+        return false;
+      }
       // A pivot is a turn in place, and its drive only breaks friction: above PIVOT_ROLL_MAX_MPS it is cut (see there).
       if (Math.abs(st.speed) > PIVOT_ROLL_MAX_MPS) {
         input.throttle = 0;
@@ -3344,7 +3404,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // push is a transit, not a patrol — WoT rounds reach contact in
     // 30-60 s and every second of dawdling here is dead air. After the
     // first minute (contact made or not) drop back to patrol pace.
-    if (driveToXZ(input, wp.x, wp.z, nowS < 60 ? 1.0 : 0.85)) {
+    if (driveToXZ(input, wp.x, wp.z, nowS < 60 ? 1.0 : doctrineOf().missionSpeed)) {
       if (wpIndex < waypoints.length - 1) wpIndex++;
       else if (loopWaypoints) wpIndex = 0;
     }
@@ -3453,6 +3513,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function updateEngagementSettle(timeS: number): void {
     const reload = entity.combat && entity.combat.reload;
     if (conserving || emptyRack) return; // round 62: the silence is a held round or an empty rack, not a bad lay
+    // a rusher fires on the move: it never halts for a settled shot; nor does a side whose doctrine fires on the move
+    if (doctrineOf().rush || !doctrineOf().settleShots) return;
     if (!triggerStarved(timeS) || timeS < settleUntilS ||
         timeS < settleCdUntilS || !reload || reload.t > 0.5) return;
     settleStreak = timeS - settleUntilS < 1.5 ? settleStreak + 1 : 0;
@@ -3650,7 +3712,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (driveToEngagementEnvelope(input, timeS, distToTarget, navX, navZ)) return;
     if (driveOrderedPosture(input, distToTarget, navX, navZ)) return;
     // round 62 pacing: a lay the rack cannot afford at this range is closed on, not taken (see shouldConserve)
-    if (conserving && timeS >= deploymentUntilS && !outnumberedSolo()) {
+    if (conserving && timeS >= deploymentUntil() && !outnumberedSolo()) {
       chaseToXZ(input, navX, navZ, 0.9);
       return;
     }
@@ -3710,7 +3772,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * @returns {boolean}
    */
   function outnumberedSolo(): boolean {
-    if (!target || !target.state || !getAllies) return false;
+    if (!target || !target.state || !getAllies || !doctrineOf().spearheadGuard) return false;
     if (nowS < guardReleaseUntilS) return false;
     const list = deps.getEnemies();
     let near = 0;
@@ -3762,13 +3824,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     navZ: number,
   ): void {
     const st = entity.state;
-    if (timeS >= kiteUntilS) {
+    const doctrine = doctrineOf();
+    if (doctrine.scoutKite && timeS >= kiteUntilS) {
       let nd2 = Infinity;
       let nearest: AiEntity | null = null;
       const list = deps.getEnemies();
+      // an honest side kites only from what its team has spotted (searchRouting 'spotted')
+      const spottedOnly = doctrine.searchRouting === 'spotted';
       for (let i = 0; i < list.length; i++) {
         const e = list[i];
-        if (!enemyAlive(e)) continue;
+        if (!enemyAlive(e) || (spottedOnly && !isVisibleToTeam(e))) continue;
         const dx = e.state.pos.x - st.pos.x, dz = e.state.pos.z - st.pos.z;
         const d2 = dx * dx + dz * dz;
         if (d2 < nd2) { nd2 = d2; nearest = e; }
@@ -4347,16 +4412,63 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       if (order!.fire === 'press') return false;
       return hitChance < Math.max(conserveThreshold(), 0.7) + (conserving ? CONSERVE_CLOSE_MARGIN : 0);
     }
+    if (!doctrineOf().conserveRounds) return false; // the side fires every ready lay (unlimited rounds, no stand-off)
     if (target.isPlayer && !targetPassive(timeS)) return false;
     return hitChance < conserveThreshold() + (conserving ? CONSERVE_CLOSE_MARGIN : 0);
   }
 
+  /**
+   * The Turbo Ball striker's shot at the ball (gameplay-modes-228; the ball is public): when its objective says the ball
+   * lies toward the opponent goal (shootBall) and no enemy holds the gun, lay on the ball and fire (HE first) once the
+   * gun bears, the ball is in sight and no teammate stands by the ball or on the line to it.
+   */
+  let ballShots = 0;
+  function ballShotFirst(): boolean {
+    const objective = getObjective?.();
+    const ball = objective?.ballFirst && objective.shootBall ? objective.ball : null;
+    if (!ball || !target) return false;
+    const st = entity.state, tp = target.state.pos;
+    return (ball.x - st.pos.x) ** 2 + (ball.z - st.pos.z) ** 2 < (tp.x - st.pos.x) ** 2 + (tp.z - st.pos.z) ** 2;
+  }
+  function shootTheBall(input: AiInput, timeS: number): boolean {
+    const objective = getObjective?.();
+    const ball = objective?.shootBall ? objective.ball : null;
+    if (!ball) return false;
+    const st = entity.state;
+    if (heSlot >= 0 && slotHasAmmo(heSlot)) chosenSlot = heSlot;
+    input.shellSlot = clamp(chosenSlot, 0, spec.gun.shells.length - 1);
+    input.aimPoint.set(ball.x, ball.y, ball.z);
+    input.fire = false;
+    if ((entity.combat?.reload?.t ?? 0) > 1e-3) return true;
+    const dx = ball.x - st.pos.x, dz = ball.z - st.pos.z, distance = Math.hypot(dx, dz) || 1;
+    _hullEuler.set(-(st.visualPitch || 0), st.yaw, st.visualRoll || 0, 'YXZ');
+    _hullQuat.setFromEuler(_hullEuler);
+    _vF.set(Math.sin(st.turretYaw) * Math.cos(st.gunPitch), Math.sin(st.gunPitch), Math.cos(st.turretYaw) * Math.cos(st.gunPitch))
+      .applyQuaternion(_hullQuat).normalize();
+    if (Math.abs(wrapAngle(Math.atan2(dx, dz) - Math.atan2(_vF.x, _vF.z))) > BALL_SHOT.bearRad) return true;
+    if (!hasLos(st.pos.x, st.pos.y + selfEyeM, st.pos.z, ball.x, ball.y, ball.z)) return true;
+    const friends = getAllies ? getAllies() : [];
+    for (let i = 0; i < friends.length; i++) {
+      const f = friends[i]!.state.pos;
+      const along = clamp(((f.x - st.pos.x) * dx + (f.z - st.pos.z) * dz) / (distance * distance), 0, 1);
+      const off = Math.hypot(st.pos.x + dx * along - f.x, st.pos.z + dz * along - f.z);
+      if (off < BALL_SHOT.clearM || Math.hypot(f.x - ball.x, f.z - ball.z) < BALL_SHOT.clearM * BALL_SHOT.clearBallScale) return true;
+    }
+    input.fire = true;
+    lastFiredAtS = timeS;
+    ballShots++;
+    return true;
+  }
+
   function aimAndFire(input: AiInput, dt: number, timeS: number): void {
     if (!target || !enemyAlive(target)) {
-      setIdleScan(input, timeS);
       conserving = false;
+      if (shootTheBall(input, timeS)) return;
+      setIdleScan(input, timeS);
       return;
     }
+    // Turbo Ball (ballFirst): the ball nearer than the tank target is the shot to take
+    if (ballShotFirst() && shootTheBall(input, timeS)) { conserving = false; return; }
     const shell = selectedShell(entity.combat);
     if (!shell) {
       input.fire = false;
@@ -4785,26 +4897,45 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         searching = false;
         searchFailures = 0;
       }
-      if (timeS - lastFiredAtS > STALEMATE_SILENT_S && timeS >= pressUntilS) {
+      if (timeS - lastFiredAtS > doctrineOf().stalemateSilentS && timeS >= pressUntilS) {
         pressUntilS = timeS + STALEMATE_PUSH_S;
         hasMoveTarget = false;
         hasCoverPoint = false;
         if (mode === 'seekCover' || mode === 'patrol') mode = 'engage';
         if (target && !losClear && findVantage()) hasVantage = true;
         // the push's halt waits until the gun may fire on the contact (the reaction gate; see SETTLE_STARVED_S)
-        if (target && losClear && !conserving && !emptyRack && timeS - acquiredAtS >= tier.reactionS) {
+        if (target && losClear && !conserving && !emptyRack && timeS - acquiredAtS >= tier.reactionS && !doctrineOf().rush) {
           settleUntilS = timeS + 3.5;
         }
       }
       return;
     }
-    // Deployment limits distant opening shots, not movement toward the battle.
-    const maySearch = timeS >= 25 && timeS - lastFiredAtS > 25 && !emptyRack; // an empty rack
-    if (!maySearch) return;                                                                   // retires, it does not hunt
-    const enemy = nearestLivingEnemy();
+    // Deployment limits distant opening shots, not movement toward the battle. A labelled mission owns the hull's
+    // waypoints (gameplay-modes-228: the search's leg used to replace a mission's route, outlive the contact and end in
+    // the 20 s mission release; 6-28 % of Frontline samples): the objective already says where to go.
+    // (missionOwnsRoute: the classic controller lets the search take a mission's hull, as it always did)
+    const ownsRoute = doctrineOf().missionOwnsRoute;
+    const maySearch = timeS >= 25 && timeS - lastFiredAtS > 25 && !emptyRack // an empty rack retires, it does not hunt
+      && !(ownsRoute && getObjective?.()?.mission);
+    if (!maySearch) {
+      if (ownsRoute && searching && getObjective?.()?.mission) { searching = false; searchFailures = 0; }
+      return;
+    }
+    const enemy = doctrineOf().searchRouting === 'spotted' ? honestSearchGoal() : nearestLivingEnemy();
     if (!enemy) return;
     if (!searching) beginSearchLeg(enemy, timeS);
     else updateSearchLeg(enemy, timeS);
+  }
+
+  // The honest search goal (searchRouting 'spotted'): the team's freshest sighting, else the enemy's public deployment
+  // centre, as a stand-in the search legs read like an enemy (searchCandidateGoal and updateSearchLeg read its position).
+  const searchGhost = { id: '__search__', team: '', state: { pos: { x: 0, y: 0, z: 0 } } } as unknown as AiEntity;
+  function honestSearchGoal(): AiEntity | null {
+    const point = deps.intel?.freshestContact() ?? deps.intel?.enemyDeployment() ?? null;
+    if (!point) return null;
+    searchGhost.state.pos.x = point.x;
+    searchGhost.state.pos.z = point.z;
+    return searchGhost;
   }
 
   function currentTargetDistance(): number {
@@ -4817,6 +4948,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   }
 
   function beginScoot(durationS: number, line = 0, arc = false): void {
+    if (doctrineOf().rush) return; // the hunt owns a rusher's hull: no relocation leg is ever driven
     scootUntilS = nowS + durationS;
     scootLine = line;
     arcScoot = arc;
@@ -4903,7 +5035,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         missStreak++;
         missLastShotS = timeS;
       }
-      const shouldScoot = tune.scootAfter > 0
+      const shouldScoot = tune.scootAfter > 0 && doctrineOf().scoot
         && shotsFromSpot >= tune.scootAfter
         && timeS >= scootUntilS
         && !targetPassive(timeS); // round 60 pacing: a solution on a passive target is kept, not scooted away from
@@ -4919,7 +5051,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // an empty rack's probe finds no zone because no round is aboard, not because the hull is masked: its scoots cut
     // every ram run short (see RAM_FINISH_MARGIN)
     probeMissT = probeMiss && target && losClear && !emptyRack ? probeMissT + dt : 0;
-    if (probeMissT <= 6 || timeS < scootUntilS) return;
+    if (probeMissT <= 6 || timeS < scootUntilS || !doctrineOf().scoot) return;
     if (pickScoot()) beginScoot(10);
     probeMissT = 0;
   }
@@ -4935,7 +5067,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     timeS: number,
     distance: number,
   ): boolean {
-    if (timeS < fallbackUntilS || timeS < fallbackCdS || mode !== 'engage' || !getAllies) {
+    const fallbackScale = doctrineOf().fallbackScale;
+    if (timeS < fallbackUntilS || timeS < fallbackCdS || mode !== 'engage' || !getAllies || fallbackScale <= 0) {
       return false;
     }
     // round 60 pacing: nothing is shooting — a passive target is finished, not retreated from
@@ -4946,9 +5079,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const hpFraction = combat?.maxHp ? combat.hp / combat.maxHp : 1;
     const reloading = !!combat?.reload && combat.reload.t > 0.8;
     const burstHit = !!combat?.maxHp && timeS <= burstDamageUntilS
-      && burstDamage / combat.maxHp >= BURST_RETREAT_FRAC
+      && burstDamage / combat.maxHp >= BURST_RETREAT_FRAC / fallbackScale
       && (reloading || outnumberedSolo());
-    return hpFraction < FALLBACK_HP_FRAC[role] || hasDisabledTrack(combat) || burstHit;
+    return hpFraction < FALLBACK_HP_FRAC[role] * fallbackScale || hasDisabledTrack(combat) || burstHit;
   }
 
   function nearestSupport(): AiEntity | null {
@@ -5401,7 +5534,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
   function updatePassivePress(dt: number, timeS: number, distance: number): void {
     updateTargetActivity(dt, timeS);
-    const eligible = targetPassive(timeS) && !!target && losClear && timeS >= deploymentUntilS && !emptyRack;
+    const eligible = targetPassive(timeS) && !!target && losClear && timeS >= deploymentUntil() && !emptyRack;
     if (!eligible) {
       passivePressing = false;
       return;
@@ -5529,7 +5662,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    *  - seen frontal shooter while reloading in the open → JINK.
    */
   function reactToHit(shooter: AiEntity, seen: boolean, info: HitReactionInfo): void {
-    if (nowS < reactCdUntilS || !shooter.state) return;
+    const reactionPolicy = doctrineOf().hitReactions;
+    if (nowS < reactCdUntilS || !shooter.state || reactionPolicy === 'none') return;
     const st = entity.state;
     const sp = shooter.state.pos;
     threatBearing = Math.atan2(sp.x - st.pos.x, sp.z - st.pos.z);
@@ -5540,7 +5674,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const burst = cb && cb.maxHp ? burstDamage / cb.maxHp : 0;
     const aspect = Math.abs(wrapAngle(threatBearing - st.yaw));
     let pick: Reaction | null = null;
-    if (!seen) {
+    if (reactionPolicy === 'angle') {
+      // the hull turns onto the shot and keeps coming: no cover, no backoff, no jink
+      if (aspect > REACT_ANGLE_RAD && !casemate && role !== 'scout') pick = 'angle';
+    } else if (!seen) {
       pick = findCrestAlong(ax, az, sp.x, eyeY(shooter), sp.z, reactPoint, true) ? 'cover' : 'jink';
     } else if (info.damaging !== false && (hpFrac < REACT_BACKOFF_HP || burst >= BURST_RETREAT_FRAC)) {
       pick = 'backoff';
@@ -5589,6 +5726,16 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       case 'angle': {
         const want = threatBearing + reactSide * REACT_ANGLE_OFFSET_RAD;
         faceYaw(input, want);
+        // the 'angle' policy turns onto the shot and keeps coming (gameplay-modes-228 round 3: the turn was a stand and
+        // a pivot of up to REACT_DURATION_S.angle every hit, the survivors' and the attack's largest still share): the
+        // turn is driven round with way on
+        if (doctrineOf().hitReactions === 'angle') {
+          input.throttle = JOCKEY_DRIVE.reactRollThrottle;
+          // an arc, not a pivot at that throttle (round 3b: a full lock at 0.7 still turned most hulls almost in place,
+          // under a walking pace, the attack's largest still share in Frontline)
+          input.steer = clamp(input.steer, -JOCKEY_DRIVE.rollSteer, JOCKEY_DRIVE.rollSteer);
+          input.brake = false;
+        }
         if (Math.abs(wrapAngle(want - st.yaw)) < 0.08) reaction = null;
         return true;
       }
@@ -5727,14 +5874,136 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return true;
   }
 
+  /** The waypoints hold the mission's own route (its planned end), not a search leg's or another driver's. */
+  function waypointsAreMission(): boolean {
+    const last = waypoints[waypoints.length - 1];
+    if (!last) return true; // an empty plan is the mission's (missionRouteEnded reads it)
+    return last.x === missionRouteEndX && last.z === missionRouteEndZ;
+  }
+
+  /**
+   * The hunt (mission 'hunt' under a rush doctrine; gameplay-modes-228): the hunt point (the team's spotted quarry, its
+   * last sighting or a sweep: matchModes.ts) is driven at full pace with the gun firing on the move; a VISIBLE target
+   * inside RUSH_DRIVE.directM is run in on, aimed runInSideM beside it, and inside orbitInM the hull orbits it at
+   * orbitMinM-orbitMaxM with the turret laid — each friendly hunter already nearer it putting this one a ring further
+   * out (orbitRingFor); it steers off a ram (a point on the orbit stands off the hull, and closing inside noRamM steers
+   * out; a hull that turns into it can still touch it: the harness counts those contacts).
+   */
+  function driveHunt(input: AiInput, objective: AiObjective): boolean {
+    const st = entity.state;
+    if (target && enemyAlive(target) && losClear && isVisibleToTeam(target)) {
+      const tp = target.state.pos;
+      const dist = Math.hypot(st.pos.x - tp.x, st.pos.z - tp.z) || 1;
+      if (dist < RUSH_DRIVE.directM) {
+        const out = orbitRingFor(tp.x, tp.z, dist);
+        if (dist >= RUSH_DRIVE.orbitInM + out) {
+          // the run-in aims beside the target, on the orbit's ring at the side it will circle (round 3, the critic's
+          // M2/M3: aimed at the hull itself, the run-in met the no-ram brake 10-20 m out at full pace and stood the
+          // hunter still beside its quarry — 4-10 hunter contacts a run); it still closes the whole way
+          const ux = (tp.x - st.pos.x) / dist, uz = (tp.z - st.pos.z) / dist, ring = (RUSH_DRIVE.runInSideM + out) * orbitSide;
+          driveToXZ(input, tp.x + uz * ring, tp.z - ux * ring, 1);
+          return true;
+        }
+        orbitAround(input, tp.x, tp.z, dist, out);
+        return true;
+      }
+    }
+    // the hunt point itself (the spotted quarry's place, its last sighting, a sweep point) is circled, never driven
+    // into: behind a corner the quarry has no line of sight yet, and a straight drive at its place would ram it (round
+    // 2: the hunter rams the guard counted were these)
+    const pointDist = Math.hypot(st.pos.x - objective.x, st.pos.z - objective.z) || 1;
+    if (pointDist < RUSH_DRIVE.orbitInM) {
+      orbitAround(input, objective.x, objective.z, pointDist, 0);
+      return true;
+    }
+    if (missionRouteNeedsRefresh(objective.x, objective.z) || !waypointsAreMission()) {
+      missionRouteX = Infinity; // a route another driver left in the waypoints is replaced, never followed
+      setWaypoints([[objective.x, objective.z]], { loop: false });
+    }
+    if (routeUsedUp()) {
+      // the plan ends short (another connected component, a sweep point on a slope): the local router drives on
+      driveToXZ(input, objective.x, objective.z, 1);
+      return true;
+    }
+    drivePatrol(input);
+    return true;
+  }
+  /**
+   * The ring a hunter orbits a seen target on (round 3, the critic's M2: on Verdant up to a dozen zombies orbited the
+   * same humans 16-28 m out, yielding to one another and wedged nose to tail): each friendly hunter already nearer the
+   * target puts this hull orbitStepM further out, at most orbitRings rings. Own-team positions only.
+   */
+  function orbitRingFor(cx: number, cz: number, dist: number): number {
+    if (!getAllies) return 0;
+    const friends = getAllies();
+    let inner = 0;
+    for (let i = 0; i < friends.length; i++) {
+      const f = friends[i]!;
+      if (f === entity || !f.combat || f.combat.destroyed || (f as { modeActive?: boolean }).modeActive === false) continue;
+      const fd = Math.hypot(f.state.pos.x - cx, f.state.pos.z - cz);
+      if (fd < dist && fd < RUSH_DRIVE.orbitMaxM + RUSH_DRIVE.orbitStepM * RUSH_DRIVE.orbitRings) inner++;
+    }
+    return Math.min(inner, RUSH_DRIVE.orbitRings) * RUSH_DRIVE.orbitStepM;
+  }
+  /** The rush's orbit round (cx, cz) at RUSH_DRIVE's ring (plus `out`), the turret free to lay; closing at point blank, out along the tangent. */
+  function orbitAround(input: AiInput, cx: number, cz: number, dist: number, out: number): void {
+    const st = entity.state;
+    const rx = (st.pos.x - cx) / dist, rz = (st.pos.z - cz) / dist; // radial: centre → this hull
+    const tx = -rz * orbitSide, tz = rx * orbitSide;                 // tangent
+    // round 3 (the critic's M3: the infected advanced in 64-66 % of samples): inside the band the hull runs the tangent
+    // at the radius it has, never out to a wider ring; inside noRamM out to orbitMinM, beyond the band in to orbitMaxM
+    const lo = RUSH_DRIVE.orbitMinM + out, hi = RUSH_DRIVE.orbitMaxM + out;
+    const ring = dist < RUSH_DRIVE.noRamM + out ? lo : dist > hi ? hi : dist;
+    const closing = dist < RUSH_DRIVE.noRamM && (Math.sin(st.yaw) * -rx + Math.cos(st.yaw) * -rz) * st.speed > 0;
+    const lead = closing ? RUSH_DRIVE.closingLeadM : RUSH_DRIVE.tangentLeadM;
+    driveToXZ(input, cx + rx * ring + tx * lead, cz + rz * ring + tz * lead, 1);
+    input.brake = false;
+  }
+
+  /** A zone holder's sortie (zoneSortieM): a SPOTTED enemy this far outside the zone's edge is driven at, then home. */
+  function driveZoneSortie(input: AiInput, objective: AiObjective): boolean {
+    const reach = doctrineOf().zoneSortieM;
+    if (reach <= 0 || !target || !enemyAlive(target) || !isVisibleToTeam(target)) return false;
+    const tp = target.state.pos, st = entity.state;
+    const targetOff = Math.hypot(tp.x - objective.x, tp.z - objective.z);
+    if (targetOff <= objective.radiusM || targetOff > objective.radiusM + reach) return false;
+    // never further from the zone than the sortie's reach: past it the hull turns for home
+    if (Math.hypot(st.pos.x - objective.x, st.pos.z - objective.z) > objective.radiusM + reach) return false;
+    if (Math.hypot(tp.x - st.pos.x, tp.z - st.pos.z) <= SORTIE_DRIVE.standoffM) {
+      input.throttle = 0;
+      input.brake = Math.abs(st.speed) > 0.5;
+      return true;
+    }
+    chaseToXZ(input, tp.x, tp.z, 1);
+    return true;
+  }
+
+  /**
+   * The Turbo Ball striker's jump (offensiveJump): its objective is the ball (`ball` on the objective) within
+   * STRIKER_JUMP.rangeM ahead of the bow, on the line the hull is driving (inside STRIKER_JUMP.coneRad).
+   */
+  let offensiveJumps = 0;
+  function offensiveJumpDue(): boolean {
+    if (!doctrineOf().offensiveJump) return false;
+    const objective = getObjective?.();
+    const ball = objective?.mission === 'striker' ? objective.ball : null;
+    if (!ball) return false;
+    const st = entity.state;
+    const dx = ball.x - st.pos.x, dz = ball.z - st.pos.z, dist = Math.hypot(dx, dz);
+    if (dist > STRIKER_JUMP.rangeM || dist < STRIKER_JUMP.minM) return false;
+    return Math.abs(wrapAngle(Math.atan2(dx, dz) - st.yaw)) < STRIKER_JUMP.coneRad;
+  }
+
   function driveMission(input: AiInput): boolean {
     const objective = getObjective?.();
     if (!objective?.mission) return false;
     const destination = objective.mission === 'capture' && orderActive() && order!.point
       && (order!.posture === 'capture' || order!.posture === 'support') ? order!.point! : objective;
+    const doctrine = doctrineOf();
+    if (objective.mission === 'hunt' && doctrine.rush) return driveHunt(input, objective);
     // A flag carrier and a striker must keep doing their job under contact.
     // Other roles may briefly retreat at critical health, then resume it.
-    const critical = (entity.combat?.hp ?? 1) / (entity.combat?.maxHp ?? 1) < .25;
+    const critical = (entity.combat?.hp ?? 1) / (entity.combat?.maxHp ?? 1) < doctrine.missionBreakOffHp;
     if (critical && objective.mission !== 'carrier' && objective.mission !== 'striker'
         && nowS < fallbackUntilS) return false;
     if (objective.mission === 'striker' && Math.hypot(destination.x - entity.state.pos.x, destination.z - entity.state.pos.z) < 55) {
@@ -5747,16 +6016,30 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const offObjective = Math.hypot(destination.x - entity.state.pos.x, destination.z - entity.state.pos.z)
       > objective.radiusM;
     missionOffObjective = offObjective;
+    const zoneMission = objective.mission === 'capture' || objective.mission === 'assault';
+    if (zoneMission && driveZoneSortie(input, objective)) return true;
     // a zone is held from ground a hull can stand on (see ZONE_HOLD_RINGS_M)
-    const hold = objective.mission === 'capture' || objective.mission === 'assault'
-      ? zoneHoldPoint(destination.x, destination.z, objective.radiusM) : destination;
-    if (missionRouteNeedsRefresh(hold.x, hold.z)) {
+    const hold = zoneMission ? zoneHoldPoint(destination.x, destination.z, objective.radiusM) : destination;
+    // the mission owns its waypoints (missionOwnsRoute): a route another driver left there (a level route, a lane
+    // fallback) is taken back; the classic controller re-plans only when the hold point moves
+    if (doctrine.missionOwnsRoute) {
+      if (missionRouteNeedsRefresh(hold.x, hold.z) || !waypointsAreMission()) {
+        missionRouteX = Infinity;
+        setWaypoints([[hold.x, hold.z]], { loop: false });
+      }
+    } else if (missionRouteNeedsRefresh(hold.x, hold.z)) {
       setWaypoints([[hold.x, hold.z]], { loop: false });
     }
     // a route used up short of the objective (the mission's own, or a search leg that took the waypoints) is no
     // reason to park: the classic drivers take the hull for a while (Sirocco Wadi frontline seed 57001: a defender
     // stood 254 s at a search leg's end 116 m from the idle host, its gate shut on the host's front)
     if (offObjective && routeUsedUp()) {
+      // a short way off (the doctrine's missionLocalReachM): the local router finishes it, the mission keeps the hull
+      const reach = doctrine.missionLocalReachM;
+      if (reach > 0 && Math.hypot(hold.x - entity.state.pos.x, hold.z - entity.state.pos.z) <= reach) {
+        driveToXZ(input, hold.x, hold.z, nowS < 60 ? 1.0 : doctrine.missionSpeed);
+        return true;
+      }
       missionReleaseUntilS = nowS + MISSION_RELEASE_S;
       missionReleases++;
       return false;
@@ -5764,6 +6047,74 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!offObjective && driveObjectiveShift(input)) return true;
     drivePatrol(input);
     return true;
+  }
+
+  /**
+   * The jockey (doctrine jockeyS; round 3, the critic's M4): an engaged hull its drivers left standing jockeyS seconds — a
+   * hold band's angled stand, a zone hold, the sortie's stand-off — strafes instead: it runs round its target at the range
+   * it has, JOCKEY_DRIVE.throttle, the target on its beam and the gun laid as its drivers laid it (a moving firing
+   * position). Once ringM from where it stood and running on away, it turns about TOWARD the target (the gun keeps its
+   * front arc: a turn the other way swung the target over the rear deck, where the gun cannot depress) and strafes back,
+   * each turn-about a few metres closer in. A strafe keeps way on where a rock along the hull's line braked through a stand at
+   * every turn-about (the rocking jockey's turn-abouts were a third of Frontline's still samples). A leg that stalls (a
+   * wall, a hull, the safety brakes that still run after it) turns about at once. Never on the settled-shot halt, the gun
+   * nudge or an empty rack.
+   */
+  let jockeyDir = 1, jockeyStandS = 0, jockeyStallS = 0, jockeyLegs = 0, jockeyAtS = -Infinity;
+  let jockeyAX = 0, jockeyAZ = 0, jockeyRange = 1, jockeyAnchored = false;
+  function driveJockey(input: AiInput, dt: number, timeS: number): void {
+    const after = doctrineOf().jockeyS;
+    const st = entity.state;
+    // a strafe under way holds the hull while its drivers only call it back to the ground it strafes (a mission's hold
+    // point, a hold band's stand: their goal this tick within leashM of where it stood, the hull within twice ringM of
+    // it); the drivers' call back drove it in and braked it to a stand at every leg
+    const leashed = jockeyAnchored && driveGoalAtS === nowS
+      && Math.hypot(driveGoalX - jockeyAX, driveGoalZ - jockeyAZ) <= JOCKEY_DRIVE.leashM
+      && Math.hypot(st.pos.x - jockeyAX, st.pos.z - jockeyAZ) <= 2 * JOCKEY_DRIVE.ringM;
+    // a target the side sees, in the gun's line: the strafe runs round its place, which no hidden hull gives away
+    if (after <= 0 || mode !== 'engage' || !target || !enemyAlive(target) || !losClear || !isVisibleToTeam(target)
+      || !st.grounded || emptyRack || timeS < settleUntilS || timeS < nudgeUntilS || timeS < unstickUntilS
+      || (Math.abs(input.throttle) >= JOCKEY_DRIVE.standThrottle && !leashed)) {
+      jockeyStandS = 0;
+      jockeyStallS = 0;
+      jockeyAnchored = false;
+      return;
+    }
+    jockeyStandS += dt;
+    if (jockeyStandS < after && !jockeyAnchored) return;
+    const tp = target.state.pos;
+    const rdx = st.pos.x - tp.x, rdz = st.pos.z - tp.z, range = Math.hypot(rdx, rdz) || 1;
+    if (!jockeyAnchored) {
+      // the first leg runs the way the hull's bow already points across the line to the target
+      jockeyAnchored = true;
+      jockeyAX = st.pos.x;
+      jockeyAZ = st.pos.z;
+      jockeyRange = range;
+      jockeyAtS = timeS;
+      jockeyStallS = 0;
+      jockeyDir = Math.sin(st.yaw) * -rdz + Math.cos(st.yaw) * rdx >= 0 ? 1 : -1;
+      jockeyLegs++;
+    }
+    const legS = timeS - jockeyAtS;
+    jockeyStallS = legS >= JOCKEY_DRIVE.legSettleS && Math.abs(st.speed) < JOCKEY_DRIVE.blockedMps ? jockeyStallS + dt : 0;
+    // how far round the circle the leg has run from where the hull stood (+ the way this leg runs)
+    const run = wrapAngle(Math.atan2(rdx, rdz) - Math.atan2(jockeyAX - tp.x, jockeyAZ - tp.z)) * jockeyRange * jockeyDir;
+    if (jockeyStallS > JOCKEY_DRIVE.blockedS || (legS >= JOCKEY_DRIVE.legMinS && run > JOCKEY_DRIVE.ringM)) {
+      jockeyDir = -jockeyDir;
+      jockeyAtS = timeS;
+      jockeyStallS = 0;
+      jockeyLegs++;
+    }
+    // the leg's lead point: leadM on round the circle about the target at the range the hull has (the circle bends toward
+    // the target, so a turn-about swings the bow through it, never the stern: the gun keeps its front arc)
+    const bearing = Math.atan2(rdx, rdz) + jockeyDir * JOCKEY_DRIVE.leadM / range;
+    const px = tp.x + Math.sin(bearing) * range, pz = tp.z + Math.cos(bearing) * range;
+    // steered straight at it: no route, no arrival and none of the wedge watchdogs (a lap's lead point is never reached,
+    // so the orbit watchdog read a strafe as a wedge after six seconds and reversed it out)
+    const err = wrapAngle(Math.atan2(px - st.pos.x, pz - st.pos.z) - st.yaw);
+    input.steer = clamp(err * 2.2, -1, 1);
+    input.throttle = JOCKEY_DRIVE.throttle;
+    input.brake = false;
   }
 
   /** Drive the scoot leg under way; where it arrives is the new firing spot. */
@@ -5949,6 +6300,74 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!driveIntent) navNoProgressT = 0;
   }
 
+  /**
+   * The rush's no-ram rule (RUSH_DRIVE.noRamM): a rushing hunter never drives its hull into an enemy hull, whichever
+   * driver set the throttle (the orbit, the hunt route, the engagement's press; its own pack is the ally avoidance's).
+   * Every seen enemy hull whose footprint reaches the hull's path ahead (its centre within the two half-widths
+   * plus laneMarginM across the line, now or `lookaheadS` on along its own motion) is measured by the gap left before the
+   * two footprints touch. Inside the stopping distance plus `brakeGapM` the hull stops (it backs off inside `backOffGapM`);
+   * inside the doctrine's buffer beyond that it keeps rolling at `swerveThrottle` and turns off the line, so a hunter
+   * swerves round a hull rather than braking to a stand in the fight (round 3, the critic's E-R2-2: braking alone still
+   * met hulls at 2-3 m/s, and stood the zombies still).
+   */
+  let ramHoldOffs = 0;
+  let ramGap = Infinity, ramCross = 0;
+  function laneGap(other: AiEntity, fx: number, fz: number, buffer: number, stopM: number): void {
+    const st = entity.state, od = other.spec?.dims;
+    const otherHalf = Math.hypot((od?.hullLengthM || od?.lengthM || 6) * 0.5, (od?.widthM || 3) * 0.5);
+    const halfLane = (spec.dims.widthM || 3) * 0.5 + otherHalf + RUSH_DRIVE.laneMarginM;
+    const os = other.state.speed || 0, oyaw = other.state.yaw || 0;
+    for (let k = 0; k < 2; k++) {
+      const lead = k === 0 ? 0 : RUSH_DRIVE.lookaheadS;
+      const rx = other.state.pos.x + Math.sin(oyaw) * os * lead - st.pos.x;
+      const rz = other.state.pos.z + Math.cos(oyaw) * os * lead - st.pos.z;
+      const along = rx * fx + rz * fz, cross = fz * rx - fx * rz;
+      if (along <= 0 || Math.abs(cross) > halfLane) continue;
+      const gap = along - ownHalfLengthM() - otherHalf;
+      if (gap > buffer + stopM || gap >= ramGap) continue;
+      ramGap = gap; ramCross = cross;
+    }
+  }
+  function holdOffEnemyHulls(input: AiInput): void {
+    const doctrine = doctrineOf();
+    if (!(doctrine.rush || doctrine.noRamLane) || !entity.state.grounded) return;
+    // the Turbo Ball is played for: a hull contesting it is no ram to avoid
+    const ball = doctrine.noRamLane ? getObjective?.()?.ball ?? null : null;
+    const st = entity.state, speed = st.speed;
+    if (speed <= 0.5 && input.throttle <= 0) return;
+    // moving backwards the lane is behind the hull
+    const sign = speed < -0.5 || (speed <= 0.5 && input.throttle < 0) ? -1 : 1;
+    const fx = Math.sin(st.yaw) * sign, fz = Math.cos(st.yaw) * sign;
+    const stopM = Math.abs(speed) ** 2 / (2 * SOLID_STOP_MPS2);
+    ramGap = Infinity; ramCross = 0;
+    const list = deps.getEnemies();
+    for (let i = 0; i < list.length; i++) {
+      const other = list[i];
+      if (!other || other.modeActive === false || other.combat?.destroyed || !other.state) continue;
+      // only a hull the team sees (round 2, the critic's E6: braking for a hidden hull acted on knowledge the bot does not
+      // have and gave the bush away; inside the spotting's 50 m proximity floor every hull is seen)
+      if (!isVisibleToTeam(other)) continue;
+      if (ball && Math.hypot(other.state.pos.x - ball.x, other.state.pos.z - ball.z) < BALL_SHOT.contestM) continue;
+      laneGap(other, fx, fz, RUSH_DRIVE.noRamM, stopM);
+    }
+    if (!Number.isFinite(ramGap)) return;
+    ramHoldOffs++;
+    input.steer = (Math.sign(-ramCross) || orbitSide) * sign;
+    if (ramGap <= stopM + RUSH_DRIVE.brakeGapM) {
+      // all but touching and standing: back off the hull (turning off its line)
+      if (ramGap <= (doctrine.rush ? RUSH_DRIVE.backOffGapM : RUSH_DRIVE.laneBackOffGapM) && Math.abs(speed) <= 1) {
+        input.throttle = -sign * RUSH_DRIVE.backOffThrottle;
+        input.brake = false;
+      } else {
+        input.throttle = 0;
+        input.brake = Math.abs(speed) > 0.5;
+      }
+      return;
+    }
+    input.throttle = sign > 0 ? Math.min(input.throttle, RUSH_DRIVE.swerveThrottle) : Math.max(input.throttle, -RUSH_DRIVE.swerveThrottle);
+    input.brake = false;
+  }
+
   function finishStep(input: AiInput, dt: number, timeS: number): void {
     avoidAllies(input, dt, timeS);
     if (liquidSafe && entity.state.grounded) {
@@ -6025,6 +6444,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       terrainBlocked = false;
       terrainCheckAtS = -Infinity;
     }
+    // the no-ram lane last of the drivers (round 2: run before the terrain escape, the escape's creep throttle drove a
+    // rushing hull into the stationary hull ahead of it — the hunter rams the guard still counted, at 2-3 m/s)
+    holdOffEnemyHulls(input);
     supportContext.safeToReloadMagazine = !target || !losClear || mode === 'seekCover';
     supportContext.wantsSuspensionAim = !!target && losClear
       && Math.abs(entity.state.speed) < 1.5
@@ -6035,6 +6457,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     abilityContext.reloadS = slotReloadS(chosenSlot);
     abilityContext.contactM = target && losClear && isVisibleToTeam(target) ? currentTargetDistance() : Infinity;
     abilityContext.safeJump = false;
+    abilityContext.offensive = offensiveJumpDue();
     if (abilities.jumpEligible(entity, timeS, abilityContext) && input.throttle > 0.2 && !input.brake) {
       const st = entity.state;
       const travel = st.speed * 2 * entity.modeJumpMps! / (9.81 * Math.max(0.1, entity.modeGravityScale ?? 1));
@@ -6052,7 +6475,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       }
       abilityContext.safeJump = safe;
     }
-    input.actionBits |= abilities.update(entity, timeS, abilityContext);
+    const abilityBits = abilities.update(entity, timeS, abilityContext);
+    if (abilityContext.offensive && (abilityBits & PLAYER_ACTION_BITS.SELF_RIGHT)) offensiveJumps++;
+    input.actionBits |= abilityBits;
     if (entity.state.overturned === true) {
       // round 60 pacing: on its roof the drive only resets the rollover settle (see chooseAiSupportActionBits)
       input.throttle = 0;
@@ -6066,6 +6491,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // ---- main update ----------------------------------------------------------
 
   function update(dt: number, timeS: number): void {
+    objectiveTick++;
+    inUpdate = true;
+    try { updateTick(dt, timeS); } finally { inUpdate = false; }
+  }
+  function updateTick(dt: number, timeS: number): void {
     if (spec !== entity.spec) { spec = entity.spec; heSlot = findHeShellSlot(spec); chosenSlot = 0; }
     nowS = timeS;
     const input = entity.input;
@@ -6091,6 +6521,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
     driveCurrentMode(input, timeS, distToTarget);
     driveTrafficDetour(input, timeS);
+    driveJockey(input, dt, timeS);
 
     // ---- stuck detection & recovery ----
     // Real displacement rate (EMA). The drivetrain `st.speed` lies when the
@@ -6336,7 +6767,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       role, relocations, shotsFromSpot, terrainBlocked, terrainAvoiding: nowS < terrainAvoidUntilS,
       // bot philosophy r1: live hit reaction, count, and the unseen gun the hull is turning onto
       reaction, reactions, suspectId: suspect && nowS < suspectUntilS ? suspect.id : null,
+      // (the probes' scooting window counts the pocket escape's leg as it always did; `escaping` names that part of it)
       scooting: nowS < scootUntilS,
+      escaping: nowS < scootUntilS && nowS < pocketEscapeUntilS,
       kiting: nowS < kiteUntilS,
       settling: nowS < settleUntilS,
       colliderStops,
@@ -6384,7 +6817,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       objectiveShiftZ: objectiveShifting ? +objectiveShiftPoint.z.toFixed(1) : null,
       zoneHoldX: Number.isFinite(zoneHoldForX) ? +zoneHold.x.toFixed(1) : null,
       zoneHoldZ: Number.isFinite(zoneHoldForZ) ? +zoneHold.z.toFixed(1) : null,
-      missionReleases, missionReleased: nowS < missionReleaseUntilS,
+      missionReleases, missionReleased: nowS < missionReleaseUntilS, offensiveJumps, ballShots, ramHoldOffs, jockeyLegs,
       levelRouting, levelRoutes, unbearableVerdicts, unbearable: unbearableId, elevationLockT: +elevationLockT.toFixed(1),
       pressing: nowS < pressUntilS,
       pressPointX: passivePressing ? pressPoint.x : NaN, // round 67: the chosen press point (NaN while not pressing)

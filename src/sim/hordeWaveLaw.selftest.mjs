@@ -1,0 +1,258 @@
+// Endless Horde's wave law (gameplay-modes-228; owner 2026-10-18: "make it work a lot more properly like youd expect,
+// more enemies per round"). The controller, headless: every wave brings its law's TOTAL (6, 9, 13, 18, 24, 30, 37 …,
+// rising every round: a swarm wave keeps the law's total and swarms in at its weaker hull, twice as fast) through the
+// twenty-identity pool, at most maxAlive on the field at once, the queue trickling in one identity every trickleS (a
+// wreck only once it has lain recycleAfterS); every arrival on the ring round the humans, never within 150 m of one nor
+// in a human's terrain sight (the ridge field), else deferred; the lull exactly intermissionS; the HUD's state (total,
+// queued, remaining = alive + queued, the special); the same seed replays it; a migrated host takes the wave up.
+import assert from 'node:assert/strict';
+import { createMatchModeController } from './matchModes.ts';
+import { hordeMaxAlive, hordeTrickleS, hordeWaveSpeedScale, hordeWaveTotal, matchRulesetFor } from './matchRuleset.ts';
+
+const horde = matchRulesetFor('endless_horde');
+const RIDGE_R = 200;
+/** The humans stand in a bowl: a 40 m ridge ring 190-210 m round (0, -150) hides everything beyond it. */
+const bowl = (x, z) => { const r = Math.hypot(x, z + 150); return r > RIDGE_R - 10 && r < RIDGE_R + 10 ? 40 : 0; };
+const tank = (id, team, x, z, bot = true) => ({ id, team, bot, state: { pos: { x, y: 0, z }, yaw: 0, speed: 0 },
+  combat: { hp: 1000, maxHp: 1000, destroyed: false, ammo: [20], ammoCapacity: [20] } });
+function run(seed, terrain = bowl) {
+  const humans = [tank('human', 'alpha', 0, -150, false), tank('ally-0', 'alpha', 10, -150), tank('ally-1', 'alpha', -10, -140)];
+  const pool = Array.from({ length: 20 }, (_, i) => tank(`z${i}`, 'bravo', i * 6 - 60, 380));
+  const events = [];
+  const arrivals = [];
+  let clock = 0;
+  // the wave an arrival belongs to: the opening burst revives before its wave_started, so a cleared wave hands over
+  let wave = 1;
+  const mode = createMatchModeController({ mode: 'endless_horde', entities: [...humans, ...pool], seed, terrainHeight: terrain,
+    emit: (type, payload) => { events.push({ type, payload }); if (type === 'mode_wave_cleared') wave = payload.wave + 1; },
+    setActive(target, active) { target.modeActive = active; },
+    revive(target, spawn, healthScale) {
+      Object.assign(target.state.pos, { x: spawn.x, y: terrain(spawn.x, spawn.z), z: spawn.z });
+      target.combat = { hp: 0, maxHp: Math.round(1000 * horde.hpScale * healthScale), destroyed: false, ammo: [20], ammoCapacity: [20] };
+      target.combat.hp = target.combat.maxHp;
+      if (target.team === 'bravo') arrivals.push({ id: target.id, x: spawn.x, z: spawn.z, atS: clock, wave });
+    } });
+  return { humans, pool, mode, events, arrivals, get clock() { return clock; }, set clock(v) { clock = v; } };
+}
+const live = (pool) => pool.filter((z) => z.modeActive !== false && !z.combat.destroyed);
+/** An independent terrain sight test (the harness's): eye 2.4 m up to hull 1.5 m up, marched every 4 m, no margin. */
+const sees = (from, x, z, terrain) => {
+  const d = Math.hypot(x - from.state.pos.x, z - from.state.pos.z);
+  for (let s = 4; s < d - 2; s += 4) {
+    const f = s / d, y = from.state.pos.y + 2.4 + (terrain(x, z) + 1.5 - from.state.pos.y - 2.4) * f;
+    if (terrain(from.state.pos.x + (x - from.state.pos.x) * f, from.state.pos.z + (z - from.state.pos.z) * f) > y) return false;
+  }
+  return true;
+};
+
+const a = run(31);
+const totals = [];
+const lulls = [];
+let peak = 0;
+for (let wave = 1; wave <= 6; wave++) {
+  assert.equal(a.mode.state.horde.wave, wave);
+  const total = hordeWaveTotal(horde.horde, wave, 1);
+  assert.equal(a.mode.state.horde.total, total, `wave ${wave}: the law's total`);
+  totals.push(total);
+  assert.equal(a.mode.state.horde.special, wave === 4 ? 'runner' : wave === 5 ? 'swarm' : null, `wave ${wave}: its kind`);
+  // fight it: destroy what stands every half second until the lull begins
+  let clearedAt = null;
+  for (let guard = 0; guard < 2000 && clearedAt == null; guard++) {
+    const standing = live(a.pool);
+    peak = Math.max(peak, standing.length);
+    assert.ok(standing.length <= hordeMaxAlive(horde.horde, 1, 20), `wave ${wave}: never more than maxAlive at once`);
+    assert.equal(a.mode.state.horde.remaining, standing.length + a.mode.state.horde.queued, 'remaining = alive + queued');
+    for (const z of standing) z.combat.destroyed = true;
+    a.clock += 0.5; a.mode.step(1 / 60, a.clock);
+    if (a.events.some((e) => e.type === 'mode_wave_cleared' && e.payload.wave === wave)) clearedAt = a.clock;
+  }
+  assert.ok(clearedAt != null, `wave ${wave} clears`);
+  assert.equal(a.arrivals.filter((r) => r.wave === wave).length, total, `wave ${wave}: exactly its total arrived (trickled through the pool)`);
+  const startedNext = () => a.events.find((e) => e.type === 'mode_wave_started' && e.payload.wave === wave + 1);
+  for (let i = 0; i < 40 && !startedNext(); i++) { a.clock += 0.25; a.mode.step(1 / 60, a.clock); }
+  lulls.push(a.clock - clearedAt);
+}
+assert.deepEqual(totals, [6, 9, 13, 18, 24, 30], 'the totals rise past the old twenty cap');
+for (let w = 1; w < 40; w++) assert.ok(hordeWaveTotal(horde.horde, w + 1, 1) > hordeWaveTotal(horde.horde, w, 1), `wave ${w + 1} brings more than wave ${w}`);
+assert.equal(hordeTrickleS(horde.horde, 5), horde.horde.trickleS * horde.horde.swarmTrickleScale, 'a swarm trickles in faster');
+assert.equal(hordeTrickleS(horde.horde, 6), horde.horde.trickleS);
+assert.ok(lulls.every((s) => s >= 8 - 0.26 && s <= 8 + 0.26), `the lull is the ruleset's 8 s (${lulls.join(', ')})`);
+assert.equal(peak, 16, 'the field peaks at maxAlive');
+assert.equal(new Set(a.arrivals.map((r) => r.id)).size, 20, 'every arrival is one of the twenty pool identities');
+for (const arrival of a.arrivals) {
+  for (const human of a.humans) {
+    assert.ok(Math.hypot(arrival.x - human.state.pos.x, arrival.z - human.state.pos.z) >= 150, `${arrival.id}: never within 150 m of a human`);
+    assert.ok(!sees(human, arrival.x, arrival.z, bowl), `${arrival.id} at (${arrival.x.toFixed(0)}, ${arrival.z.toFixed(0)}): out of ${human.id}'s terrain sight`);
+  }
+}
+// the trickle: a wreck's identity rests recycleAfterS before it returns
+{
+  const lastDeath = new Map();
+  const b = run(32);
+  for (let t = 0; t < 60; t++) {
+    for (const z of live(b.pool)) { z.combat.destroyed = true; lastDeath.set(z.id, b.clock); }
+    b.clock += 0.5; b.mode.step(1 / 60, b.clock);
+  }
+  for (const arrival of b.arrivals) {
+    const died = lastDeath.get(arrival.id);
+    if (died != null && arrival.atS > died) assert.ok(arrival.atS - died >= horde.horde.recycleAfterS - 0.51, `${arrival.id}: rested ${(arrival.atS - died).toFixed(1)} s`);
+  }
+}
+// an open, flat field: every ring point is in sight, so the hostiles come from their base, which lies beyond the
+// humans' sight range (sightRangeM) here
+{
+  const flat = run(33, () => 0);
+  assert.equal(live(flat.pool).length, 6, 'the opening arrives');
+  for (const arrival of flat.arrivals) {
+    assert.ok(flat.humans.every((h) => Math.hypot(arrival.x - h.state.pos.x, arrival.z - h.state.pos.z) > horde.horde.sightRangeM), 'from beyond sight range');
+  }
+}
+// a flat field whose hostile base is in sight too: nothing arrives in sight; once the field has stood empty a while the
+// wave takes ring points out of reach (in sight) rather than stall forever
+{
+  const humans = [tank('human', 'alpha', 0, -150, false)];
+  const pool = Array.from({ length: 6 }, (_, i) => tank(`n${i}`, 'bravo', i * 6, 100));
+  const spots = [];
+  let t = 0;
+  const mode = createMatchModeController({ mode: 'endless_horde', entities: [...humans, ...pool], seed: 34, terrainHeight: () => 0,
+    setActive(target, active) { target.modeActive = active; },
+    revive(target, spawn) { Object.assign(target.state.pos, { x: spawn.x, z: spawn.z }); target.combat.destroyed = false; spots.push(spawn); } });
+  assert.equal(live(pool).length, 0, 'no arrival in the humans\' sight');
+  for (let i = 0; i < 40; i++) { t += 0.5; mode.step(1 / 60, t); }
+  assert.ok(live(pool).length > 0, 'a stalled field takes ring points out of reach rather than stall the wave');
+  assert.ok(spots.every((p) => Math.hypot(p.x, p.z + 150) >= 150), 'still never within 150 m');
+}
+// a stranded hostile (cut off by the ground, it never closes on the humans) is benched and queued again after strandedS,
+// so the wave never stalls on it; one inside strandedContactM of a human is in the fight and stays
+{
+  const d = run(35);
+  const recycled = () => d.events.filter((e) => e.type === 'mode_horde_recycled').length;
+  const opening = live(d.pool);
+  assert.equal(opening.length, 6);
+  const fighter = opening[0];
+  Object.assign(fighter.state.pos, { x: 0, z: -150 + horde.horde.strandedContactM - 10 });
+  for (let i = 0; i < 2 * (horde.horde.strandedS + 2); i++) { d.clock += 0.5; d.mode.step(1 / 60, d.clock); }
+  assert.ok(recycled() >= 5, `the five stranded hostiles are benched and queued again (${recycled()})`);
+  assert.ok(d.events.filter((e) => e.type === 'mode_horde_recycled').every((e) => e.payload.id !== fighter.id), 'the one in the fight stays');
+  assert.equal(d.mode.state.horde.remaining, 6, 'the wave still owes all six (queued again, never lost)');
+  assert.ok(d.arrivals.length > 6, 'the benched re-arrive on the ring');
+}
+// a straggler benched more than strandedRetireAfter times in one wave is retired from it (round 3b, the critic's M1: a
+// zombie that never finds the humans re-arrived twenty times and wave 1 never cleared): the wave owes it no more, so
+// once the one in the fight falls the wave clears; the next wave owes its full total again
+{
+  const d = run(36);
+  const retired = () => d.events.filter((e) => e.type === 'mode_horde_retired').length;
+  const fighter = live(d.pool)[0];
+  const rules = horde.horde;
+  const hold = () => Object.assign(fighter.state.pos, { x: 0, z: -150 + rules.strandedContactM - 10 });
+  hold();
+  const budget = (rules.strandedRetireAfter + 2) * (rules.strandedS + 8);
+  for (let i = 0; i < 2 * budget; i++) { d.clock += 0.5; hold(); d.mode.step(1 / 60, d.clock); }
+  assert.equal(retired(), 5, `the five stragglers retire after ${rules.strandedRetireAfter} benchings each (${retired()})`);
+  const benched = d.events.filter((e) => e.type === 'mode_horde_recycled');
+  assert.ok(benched.every((e) => benched.filter((o) => o.payload.id === e.payload.id).length <= rules.strandedRetireAfter), 'never benched more than that');
+  assert.equal(d.mode.state.horde.remaining, 1, 'the wave owes only the one in the fight');
+  fighter.combat.destroyed = true; fighter.combat.hp = 0;
+  for (let i = 0; i < 8; i++) { d.clock += 0.5; d.mode.step(1 / 60, d.clock); }
+  assert.ok(d.events.some((e) => e.type === 'mode_wave_cleared' && e.payload.wave === 1), 'and wave 1 clears');
+}
+// the approach stays hidden too (sightLeadM; round 3, the critic's E-R2-3: with the lead check disabled every receipt
+// passed): the humans stand on a plain ringed by a 30 m-deep moat 280-470 m out. An arrival anywhere in the moat is out
+// of sight, but its first sightLeadM toward the humans (that stretch times the wave's speed scale) must be too — so every
+// arrival stands at least that far beyond the moat's inner rim, the plain's edge in sight of every human
+{
+  const human = { x: 0, z: -150 };
+  const moat = (x, z) => { const r = Math.hypot(x - human.x, z - human.z); return r > 280 && r < 470 ? -30 : 0; };
+  for (const [seed, waves] of [[41, 1], [42, 4]]) {
+    const m = run(seed, moat);
+    for (let w = 1; w < waves; w++) {
+      for (let guard = 0; guard < 400 && m.mode.state.horde.wave === w; guard++) {
+        for (const z of live(m.pool)) z.combat.destroyed = true;
+        m.clock += 0.5; m.mode.step(1 / 60, m.clock);
+      }
+    }
+    const wave = m.mode.state.horde.wave;
+    const lead = horde.horde.sightLeadM * hordeWaveSpeedScale(horde.horde, wave);
+    const arrived = m.arrivals.filter((r) => r.wave === wave);
+    assert.ok(arrived.length > 0, `wave ${wave}: arrivals in the moat`);
+    for (const arrival of arrived) {
+      const r = Math.hypot(arrival.x - human.x, arrival.z - human.z);
+      assert.ok(r - lead >= 280 - 1, `wave ${wave} ${arrival.id}: ${r.toFixed(0)} m out, its ${lead.toFixed(0)} m approach stays in the moat`);
+    }
+  }
+}
+// a benched straggler re-arrives on the nearer strandedRingM (round 3, the critic's M1: re-arrived 320-440 m out, a lone
+// zombie never found the humans again), still out of reach and sight
+{
+  // a tighter bowl: a 40 m ridge ring 132-148 m round the humans hides the whole nearer ring
+  const tight = (x, z) => { const r = Math.hypot(x, z + 150); return r > 132 && r < 148 ? 40 : 0; };
+  const g = run(43, tight);
+  const opening = live(g.pool);
+  const before = g.arrivals.length;
+  for (let i = 0; i < 2 * (horde.horde.strandedS + 2); i++) { g.clock += 0.5; g.mode.step(1 / 60, g.clock); }
+  const back = g.arrivals.slice(before);
+  assert.ok(back.length > 0 && opening.length === 6, 'the stranded opening is benched and re-arrives');
+  const [lo, hi] = horde.horde.strandedRingM;
+  const cx = g.humans.reduce((s, h) => s + h.state.pos.x, 0) / g.humans.length, cz = g.humans.reduce((s, h) => s + h.state.pos.z, 0) / g.humans.length;
+  for (const arrival of back) {
+    const r = Math.hypot(arrival.x - cx, arrival.z - cz);
+    assert.ok(r >= lo * 0.85 - 1 && r <= hi + lo * 0.15 + 1, `${arrival.id}: re-arrived ${r.toFixed(0)} m out (the nearer ring ${lo}-${hi})`);
+    for (const human of g.humans) assert.ok(!sees(human, arrival.x, arrival.z, tight), `${arrival.id}: out of sight`);
+  }
+}
+// the ring is pulled in to a slow hull's reach (spawnReachS; round 3, the critic's M2: 35 km/h heavies took 39-50 s from
+// the 320-440 m ring to their first shot): its top speed at the wave's pace times spawnReachS bounds the ring's outer
+// edge, never inside spawnMinHumanM + 10; a fast hull keeps the full ring
+{
+  // a 40 m ridge ring 132-148 m round the humans hides every ring point beyond it
+  const tight = (x, z) => { const r = Math.hypot(x, z + 150); return r > 132 && r < 148 ? 40 : 0; };
+  const ringOf = (kmh) => {
+    const r = run(47, tight);
+    for (const z of r.pool) z.spec = { dims: { widthM: 3.4, heightM: 2.4, hullLengthM: 7 }, armor: {}, topSpeedKmh: kmh };
+    const before = r.arrivals.length;
+    // the opening arrived before the specs: clear it and let the trickle bring the wave back in
+    for (let i = 0; i < 40; i++) { for (const z of live(r.pool)) z.combat.destroyed = true; r.clock += 0.5; r.mode.step(1 / 60, r.clock); }
+    const cx = r.humans.reduce((s, h) => s + h.state.pos.x, 0) / r.humans.length, cz = r.humans.reduce((s, h) => s + h.state.pos.z, 0) / r.humans.length;
+    return r.arrivals.slice(before).map((a) => Math.hypot(a.x - cx, a.z - cz));
+  };
+  const [lo, hi] = horde.horde.spawnRingM;
+  const slow = ringOf(35), fast = ringOf(70);
+  const reach = 35 / 3.6 * horde.horde.spawnReachS;
+  assert.ok(slow.length > 0 && fast.length > 0, 'both arrive');
+  const slack = lo * 0.15 + 1; // the placement's own nudge round a ring point (respawnNear)
+  assert.ok(slow.every((d) => d <= reach + slack && d >= horde.horde.spawnMinHumanM + 10 - 1),
+    `35 km/h: inside its ${reach.toFixed(0)} m reach (${Math.min(...slow).toFixed(0)}-${Math.max(...slow).toFixed(0)} m)`);
+  assert.ok(fast.every((d) => d >= lo - slack && d <= hi + slack), `70 km/h: the full ring (${Math.min(...fast).toFixed(0)}-${Math.max(...fast).toFixed(0)} m)`);
+}
+// the same seed replays the same arrivals
+{
+  const c = run(31);
+  for (let i = 0; i < 20; i++) { for (const z of live(c.pool)) z.combat.destroyed = true; c.clock += 0.5; c.mode.step(1 / 60, c.clock); }
+  assert.deepEqual(c.arrivals.slice(0, 12).map((r) => [r.id, r.x, r.z]), a.arrivals.slice(0, 12).map((r) => [r.id, r.x, r.z]), 'deterministic');
+}
+// a migrated host takes the wave up where the old one left it (round 2, the critic's E12: wave 1 again, every hostile
+// revived): the wave, the queue, the special and which pool identities rest ride the sealed checkpoint
+{
+  const e = run(36);
+  for (let wave = 1; wave <= 3; wave++) {
+    for (let guard = 0; guard < 400 && e.mode.state.horde.wave === wave; guard++) {
+      for (const z of live(e.pool)) z.combat.destroyed = true;
+      e.clock += 0.5; e.mode.step(1 / 60, e.clock);
+    }
+  }
+  for (let i = 0; i < 3; i++) { e.clock += 0.5; e.mode.step(1 / 60, e.clock); }
+  const before = { ...e.mode.state.horde };
+  const checkpoint = JSON.parse(JSON.stringify(e.mode.captureCheckpoint(e.clock)));
+  assert.ok(before.wave >= 4 && checkpoint.waves?.horde, `the checkpoint carries wave ${before.wave}`);
+  const resting = e.pool.filter((z) => z.modeActive === false).map((z) => z.id).sort();
+  const reborn = run(36);
+  for (const [i, z] of e.pool.entries()) { reborn.pool[i].combat.destroyed = z.combat.destroyed; Object.assign(reborn.pool[i].state.pos, z.state.pos); }
+  reborn.mode.restoreCheckpoint(checkpoint);
+  const after = reborn.mode.state.horde;
+  assert.deepEqual([after.wave, after.total, after.queued, after.special], [before.wave, before.total, before.queued, before.special],
+    `the new host fields the same wave (${after.wave}), total, queue and kind`);
+  assert.deepEqual(reborn.pool.filter((z) => z.modeActive === false).map((z) => z.id).sort(), resting, 'the same identities rest');
+}
+console.log(`hordeWaveLaw.selftest: totals ${totals.join(', ')}, peak ${peak} on the field, ${a.arrivals.length} arrivals from 20 identities, `
+  + 'all out of reach and sight, a slow hull on a ring its reach allows, an 8 s lull, the trickle and the replay');

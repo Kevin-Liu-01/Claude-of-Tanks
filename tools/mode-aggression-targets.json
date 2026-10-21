@@ -1,0 +1,2299 @@
+{
+ "tool": "tools/mode-aggression-harness.mjs compare",
+ "about": "gameplay-modes-228 targets (the build plan TARGETS table). Run: compare --base=<baseline dir> --dir=<after dir> --targets=tools/mode-aggression-targets.json. Sub-batches: horde-team, frontline-16, frontline-park, frontline-shield, classic-random (standard + juggernaut under TEAM NATIONS RANDOM), census. The Frontline fight-seat base is ../ext-fl3 (the integ/228 tree re-run with this harness: the fight seat plays the objective). The run-dry guards cover the unlimited-ammunition modes (Capture the Flag fields the spec loadout).",
+ "targets": [
+  {
+   "id": "guard.endless_horde.huntHonesty",
+   "mode": "endless_horde",
+   "path": "huntHonesty.unspottedShare",
+   "op": "<=",
+   "value": 0.02,
+   "note": "hunts routed on an unspotted opponent (solo engine)"
+  },
+  {
+   "id": "guard.infected.huntHonesty",
+   "mode": "infected",
+   "path": "huntHonesty.unspottedShare",
+   "op": "<=",
+   "value": 0.02,
+   "note": "hunts routed on an unspotted opponent (solo engine)"
+  },
+  {
+   "id": "guard.frontline_assault.alpha.stuck",
+   "mode": "frontline_assault",
+   "path": "alpha.stuckShare",
+   "op": "<=",
+   "value": 0.02,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "guard.frontline_assault.alpha.bunch",
+   "mode": "frontline_assault",
+   "path": "alpha.bunchShare",
+   "op": "<=",
+   "value": 0.05,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "guard.frontline_assault.bravo.stuck",
+   "mode": "frontline_assault",
+   "path": "bravo.stuckShare",
+   "op": "<=",
+   "value": 0.02,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "guard.frontline_assault.bravo.bunch",
+   "mode": "frontline_assault",
+   "path": "bravo.bunchShare",
+   "op": "<=",
+   "value": 0.05,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "guard.frontline_assault.ramDeaths",
+   "mode": "frontline_assault",
+   "path": "ramStats.botOnBotDeathsMean",
+   "op": "<=base",
+   "value": 1.1,
+   "plus": 0.25,
+   "note": "bot-on-bot ram deaths: baseline + 10 %",
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "guard.frontline_assault.alpha.ranDry",
+   "mode": "frontline_assault",
+   "path": "alpha.ranDryTotal",
+   "op": "==",
+   "value": 0,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "guard.frontline_assault.bravo.ranDry",
+   "mode": "frontline_assault",
+   "path": "bravo.ranDryTotal",
+   "op": "==",
+   "value": 0,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "guard.frontline_assault.playerRanDry",
+   "mode": "frontline_assault",
+   "path": "playerRanDry",
+   "op": "==",
+   "value": 0,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "guard.endless_horde.alpha.stuck",
+   "mode": "endless_horde",
+   "path": "alpha.stuckShare",
+   "op": "<=",
+   "value": 0.02
+  },
+  {
+   "id": "guard.endless_horde.alpha.bunch",
+   "mode": "endless_horde",
+   "path": "alpha.bunchShare",
+   "op": "<=",
+   "value": 0.05
+  },
+  {
+   "id": "guard.endless_horde.bravo.stuck",
+   "mode": "endless_horde",
+   "path": "bravo.stuckShare",
+   "op": "<=",
+   "value": 0.02
+  },
+  {
+   "id": "guard.endless_horde.bravo.bunch",
+   "mode": "endless_horde",
+   "path": "bravo.bunchShare",
+   "op": "<=",
+   "value": 0.05
+  },
+  {
+   "id": "guard.endless_horde.ramDeaths",
+   "mode": "endless_horde",
+   "path": "ramStats.botOnBotDeathsMean",
+   "op": "<=base",
+   "value": 1.1,
+   "plus": 0.25,
+   "note": "bot-on-bot ram deaths: baseline + 10 %"
+  },
+  {
+   "id": "guard.endless_horde.alpha.ranDry",
+   "mode": "endless_horde",
+   "path": "alpha.ranDryTotal",
+   "op": "==",
+   "value": 0
+  },
+  {
+   "id": "guard.endless_horde.bravo.ranDry",
+   "mode": "endless_horde",
+   "path": "bravo.ranDryTotal",
+   "op": "==",
+   "value": 0
+  },
+  {
+   "id": "guard.endless_horde.playerRanDry",
+   "mode": "endless_horde",
+   "path": "playerRanDry",
+   "op": "==",
+   "value": 0
+  },
+  {
+   "id": "guard.capture_the_flag.alpha.stuck",
+   "mode": "capture_the_flag",
+   "path": "alpha.stuckShare",
+   "op": "<=",
+   "value": 0.02
+  },
+  {
+   "id": "guard.capture_the_flag.alpha.bunch",
+   "mode": "capture_the_flag",
+   "path": "alpha.bunchShare",
+   "op": "<=",
+   "value": 0.05
+  },
+  {
+   "id": "guard.capture_the_flag.bravo.stuck",
+   "mode": "capture_the_flag",
+   "path": "bravo.stuckShare",
+   "op": "<=",
+   "value": 0.02
+  },
+  {
+   "id": "guard.capture_the_flag.bravo.bunch",
+   "mode": "capture_the_flag",
+   "path": "bravo.bunchShare",
+   "op": "<=",
+   "value": 0.05
+  },
+  {
+   "id": "guard.capture_the_flag.ramDeaths",
+   "mode": "capture_the_flag",
+   "path": "ramStats.botOnBotDeathsMean",
+   "op": "<=base",
+   "value": 1.1,
+   "plus": 0.25,
+   "note": "bot-on-bot ram deaths: baseline + 10 %"
+  },
+  {
+   "id": "guard.turbo_ball.alpha.stuck",
+   "mode": "turbo_ball",
+   "path": "alpha.stuckShare",
+   "op": "<=",
+   "value": 0.02
+  },
+  {
+   "id": "guard.turbo_ball.alpha.bunch",
+   "mode": "turbo_ball",
+   "path": "alpha.bunchShare",
+   "op": "<=",
+   "value": 0.05
+  },
+  {
+   "id": "guard.turbo_ball.bravo.stuck",
+   "mode": "turbo_ball",
+   "path": "bravo.stuckShare",
+   "op": "<=",
+   "value": 0.02
+  },
+  {
+   "id": "guard.turbo_ball.bravo.bunch",
+   "mode": "turbo_ball",
+   "path": "bravo.bunchShare",
+   "op": "<=",
+   "value": 0.05
+  },
+  {
+   "id": "guard.turbo_ball.ramDeaths",
+   "mode": "turbo_ball",
+   "path": "ramStats.botOnBotDeathsMean",
+   "op": "<=base",
+   "value": 1.1,
+   "plus": 0.25,
+   "note": "bot-on-bot ram deaths: baseline + 10 %"
+  },
+  {
+   "id": "guard.turbo_ball.alpha.ranDry",
+   "mode": "turbo_ball",
+   "path": "alpha.ranDryTotal",
+   "op": "==",
+   "value": 0
+  },
+  {
+   "id": "guard.turbo_ball.bravo.ranDry",
+   "mode": "turbo_ball",
+   "path": "bravo.ranDryTotal",
+   "op": "==",
+   "value": 0
+  },
+  {
+   "id": "guard.turbo_ball.playerRanDry",
+   "mode": "turbo_ball",
+   "path": "playerRanDry",
+   "op": "==",
+   "value": 0
+  },
+  {
+   "id": "guard.infected.alpha.stuck",
+   "mode": "infected",
+   "path": "alpha.stuckShare",
+   "op": "<=",
+   "value": 0.02
+  },
+  {
+   "id": "guard.infected.alpha.bunch",
+   "mode": "infected",
+   "path": "alpha.bunchShare",
+   "op": "<=",
+   "value": 0.05
+  },
+  {
+   "id": "guard.infected.bravo.stuck",
+   "mode": "infected",
+   "path": "bravo.stuckShare",
+   "op": "<=",
+   "value": 0.02
+  },
+  {
+   "id": "guard.infected.bravo.bunch",
+   "mode": "infected",
+   "path": "bravo.bunchShare",
+   "op": "<=",
+   "value": 0.05
+  },
+  {
+   "id": "guard.infected.ramDeaths",
+   "mode": "infected",
+   "path": "ramStats.botOnBotDeathsMean",
+   "op": "<=base",
+   "value": 1.1,
+   "plus": 0.25,
+   "note": "bot-on-bot ram deaths: baseline + 10 %"
+  },
+  {
+   "id": "guard.infected.alpha.ranDry",
+   "mode": "infected",
+   "path": "alpha.ranDryTotal",
+   "op": "==",
+   "value": 0
+  },
+  {
+   "id": "guard.infected.bravo.ranDry",
+   "mode": "infected",
+   "path": "bravo.ranDryTotal",
+   "op": "==",
+   "value": 0
+  },
+  {
+   "id": "guard.infected.playerRanDry",
+   "mode": "infected",
+   "path": "playerRanDry",
+   "op": "==",
+   "value": 0
+  },
+  {
+   "id": "guard.endless_horde.hunterRams",
+   "mode": "endless_horde",
+   "path": "ramStats.hunterRamsTotal",
+   "op": "==",
+   "value": 0,
+   "note": "hunters never ram"
+  },
+  {
+   "id": "guard.infected.hunterRams",
+   "mode": "infected",
+   "path": "ramStats.hunterRamsTotal",
+   "op": "==",
+   "value": 0,
+   "note": "hunters never ram"
+  },
+  {
+   "id": "guard.classic.standard",
+   "mode": "standard",
+   "op": "equalsBase",
+   "dir": "classic-random",
+   "baseDir": "",
+   "ignore": [
+    "wallMs",
+    "generated",
+    "dir",
+    "arrangement",
+    "hunterContacts",
+    "engagedStillSettledShare"
+   ],
+   "note": "classic doctrine: every run under TEAM NATIONS RANDOM (the old roster path) reproduces its integ/228 baseline run field for field (hunterContacts, engagedStillSettledShare: measurement fields newer than the baseline)",
+   "perRun": true
+  },
+  {
+   "id": "guard.classic.juggernaut",
+   "mode": "juggernaut",
+   "op": "equalsBase",
+   "dir": "classic-random",
+   "baseDir": "",
+   "ignore": [
+    "wallMs",
+    "generated",
+    "dir",
+    "arrangement",
+    "hunterContacts",
+    "engagedStillSettledShare"
+   ],
+   "note": "classic doctrine: every run under TEAM NATIONS RANDOM (the old roster path) reproduces its integ/228 baseline run field for field (hunterContacts, engagedStillSettledShare: measurement fields newer than the baseline)",
+   "perRun": true
+  },
+  {
+   "id": "horde.law",
+   "op": "check",
+   "check": "hordeLaw",
+   "note": "every cleared wave fielded the ruleset law round(6+3(w-1)+0.35(w-1)^2) exactly (a swarm keeps the law and swarms in faster), rising every round"
+  },
+  {
+   "id": "horde.law.team",
+   "op": "check",
+   "check": "hordeLaw",
+   "dir": "horde-team"
+  },
+  {
+   "id": "horde.peakAlive",
+   "mode": "endless_horde",
+   "path": "horde.law.peakAliveMax",
+   "op": "<=",
+   "value": 16
+  },
+  {
+   "id": "horde.peakAlive.team",
+   "mode": "endless_horde",
+   "path": "horde.law.peakAliveMax",
+   "op": "<=",
+   "value": 16,
+   "dir": "horde-team"
+  },
+  {
+   "id": "horde.pool",
+   "mode": "endless_horde",
+   "path": "horde.law.poolIdentitiesMax",
+   "op": "<=",
+   "value": 20
+  },
+  {
+   "id": "horde.spawnNear",
+   "mode": "endless_horde",
+   "path": "horde.law.spawnNear",
+   "op": "==",
+   "value": 0,
+   "note": "arrivals inside 150 m of a human"
+  },
+  {
+   "id": "horde.spawnSeen",
+   "mode": "endless_horde",
+   "path": "horde.law.spawnSeen",
+   "op": "==",
+   "value": 0,
+   "note": "arrivals in a human's terrain line of sight"
+  },
+  {
+   "id": "horde.spawnNear.team",
+   "mode": "endless_horde",
+   "path": "horde.law.spawnNear",
+   "op": "==",
+   "value": 0,
+   "note": "arrivals inside 150 m of a human",
+   "dir": "horde-team"
+  },
+  {
+   "id": "horde.spawnSeen.team",
+   "mode": "endless_horde",
+   "path": "horde.law.spawnSeen",
+   "op": "==",
+   "value": 0,
+   "note": "arrivals in a human's terrain line of sight",
+   "dir": "horde-team"
+  },
+  {
+   "id": "horde.firstContact",
+   "mode": "endless_horde",
+   "path": "horde.law.firstContactOutside8to25",
+   "op": "==",
+   "value": 0,
+   "note": "wave start to first contact 8-25 s on every wave"
+  },
+  {
+   "id": "horde.intermission.min",
+   "mode": "endless_horde",
+   "path": "horde.law.intermissionMinS",
+   "op": ">=",
+   "value": 7.9
+  },
+  {
+   "id": "horde.intermission.max",
+   "mode": "endless_horde",
+   "path": "horde.law.intermissionMaxS",
+   "op": "<=",
+   "value": 8.1
+  },
+  {
+   "id": "horde.hull",
+   "op": "check",
+   "check": "hordeHull",
+   "band": [
+    0.15,
+    0.177
+   ],
+   "swarmEvery": 5,
+   "late": 0.23,
+   "dir": "horde-team",
+   "note": "zombie hull share of own: waves 1-10 in 0.15-0.177, the swarm waves exactly 0.10 (checked), wave 15 <= 0.23",
+   "swarmHull": 0.1
+  },
+  {
+   "id": "horde.zombie.engagedStill",
+   "mode": "endless_horde",
+   "path": "bravo.engagedStillShare",
+   "op": "<=",
+   "value": 0.05
+  },
+  {
+   "id": "horde.zombie.engageDist",
+   "mode": "endless_horde",
+   "path": "bravo.engageDistM",
+   "op": "<=",
+   "value": 50
+  },
+  {
+   "id": "horde.zombie.advance",
+   "mode": "endless_horde",
+   "path": "bravo.advance",
+   "op": ">=",
+   "value": 0.8
+  },
+  {
+   "id": "horde.zombie.fallingBack",
+   "mode": "endless_horde",
+   "path": "bravo.flags.fallingBack",
+   "op": "<=",
+   "value": 0,
+   "default": 0
+  },
+  {
+   "id": "horde.zombie.scooting",
+   "mode": "endless_horde",
+   "path": "bravo.flags.scooting",
+   "op": "<=",
+   "value": 0,
+   "default": 0
+  },
+  {
+   "id": "horde.zombie.kiting",
+   "mode": "endless_horde",
+   "path": "bravo.flags.kiting",
+   "op": "<=",
+   "value": 0,
+   "default": 0
+  },
+  {
+   "id": "horde.zombie.settling",
+   "mode": "endless_horde",
+   "path": "bravo.flags.settling",
+   "op": "<=",
+   "value": 0.03,
+   "default": 0
+  },
+  {
+   "id": "horde.rounds.fight",
+   "mode": "endless_horde",
+   "path": "horde.roundsReachedMedian",
+   "op": ">=",
+   "value": 4
+  },
+  {
+   "id": "horde.rounds.team",
+   "mode": "endless_horde",
+   "path": "horde.roundsReachedMedian",
+   "op": "between",
+   "value": [
+    7,
+    11
+   ],
+   "dir": "horde-team"
+  },
+  {
+   "id": "horde.endedBy15",
+   "mode": "endless_horde",
+   "path": "horde.law.runsEndedBy15",
+   "op": "==",
+   "value": 8,
+   "dir": "horde-team",
+   "note": "capS 1500: the curve ends every run"
+  },
+  {
+   "id": "horde.killsPerHumanDeath",
+   "mode": "endless_horde",
+   "path": "horde.zombieKillsPerHumanDeath",
+   "op": "between",
+   "value": [
+    6,
+    12
+   ]
+  },
+  {
+   "id": "infected.firstInfection",
+   "mode": "infected",
+   "path": "infected.firstInfectionS",
+   "op": "<=",
+   "value": 60
+  },
+  {
+   "id": "infected.infectionsPerMin",
+   "mode": "infected",
+   "path": "infected.infectionsPerMin",
+   "op": ">=",
+   "value": 3.5
+  },
+  {
+   "id": "infected.within150",
+   "mode": "infected",
+   "path": "infected.huntWithin150Share",
+   "op": ">=",
+   "value": 0.8
+  },
+  {
+   "id": "infected.distToSurvivor",
+   "mode": "infected",
+   "path": "infected.huntDistToSurvivorM",
+   "op": "<=",
+   "value": 90
+  },
+  {
+   "id": "infected.engagedStill",
+   "mode": "infected",
+   "path": "bravo.engagedStillShare",
+   "op": "<=",
+   "value": 0.06
+  },
+  {
+   "id": "infected.advance",
+   "mode": "infected",
+   "path": "bravo.advance",
+   "op": ">=",
+   "value": 0.75
+  },
+  {
+   "id": "infected.fallingBack",
+   "mode": "infected",
+   "path": "bravo.flags.fallingBack",
+   "op": "<=",
+   "value": 0.02,
+   "default": 0
+  },
+  {
+   "id": "infected.scooting",
+   "mode": "infected",
+   "path": "bravo.flags.scooting",
+   "op": "<=",
+   "value": 0.05,
+   "default": 0
+  },
+  {
+   "id": "infected.shots",
+   "mode": "infected",
+   "path": "infected.infectedSide.shotsPerBotMin",
+   "op": ">=",
+   "value": 8
+  },
+  {
+   "id": "infected.ranking",
+   "op": "check",
+   "check": "engagedStillRanking",
+   "note": "engaged-still: Horde zombies <= the infected <= every other side"
+  },
+  {
+   "id": "infected.survivors.shots",
+   "mode": "infected",
+   "path": "infected.survivors.shotsPerBotMin",
+   "op": ">=",
+   "value": 5.5
+  },
+  {
+   "id": "infected.survivorWins",
+   "mode": "infected",
+   "path": "infected.survivorWins",
+   "op": "between",
+   "value": [
+    1,
+    4
+   ]
+  },
+  {
+   "id": "infected.outbreakEnd",
+   "mode": "infected",
+   "path": "infected.outbreakEndMedianS",
+   "op": "between",
+   "value": [
+    150,
+    330
+   ],
+   "optional": true,
+   "note": "when the outbreak wins"
+  },
+  {
+   "id": "frontline.sector1Fight",
+   "mode": "frontline_assault",
+   "path": "frontline.sector1FightRuns",
+   "op": ">=",
+   "value": 7,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "frontline.firstSector",
+   "mode": "frontline_assault",
+   "path": "frontline.firstSectorS",
+   "op": ">=",
+   "value": 45,
+   "baseDir": "../ext-fl3/s1-8",
+   "note": "contested: no sector falls unfought"
+  },
+  {
+   "id": "frontline.defenderDist",
+   "mode": "frontline_assault",
+   "path": "frontline.defenderDistToLiveZoneM",
+   "op": "<=",
+   "value": 80,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "frontline.attackersInZone",
+   "mode": "frontline_assault",
+   "path": "frontline.attackerZoneShare",
+   "op": ">=",
+   "value": 0.2,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "frontline.attackers.engagedStill",
+   "mode": "frontline_assault",
+   "path": "alpha.engagedStillShare",
+   "op": "<=",
+   "value": 0.12,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "frontline.defenders.engagedStill",
+   "mode": "frontline_assault",
+   "path": "bravo.engagedStillShare",
+   "op": "<=",
+   "value": 0.15,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "frontline.attackers.kpm",
+   "mode": "frontline_assault",
+   "path": "killsPerMin.alpha",
+   "op": ">=",
+   "value": 2.0,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "frontline.defenders.kpm",
+   "mode": "frontline_assault",
+   "path": "killsPerMin.bravo",
+   "op": ">=",
+   "value": 2.0,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "frontline.alpha.missionReleased",
+   "mode": "frontline_assault",
+   "path": "alpha.flags.missionReleased",
+   "op": "<=",
+   "value": 0.01,
+   "default": 0,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "frontline.alpha.searching",
+   "mode": "frontline_assault",
+   "path": "alpha.flags.searching",
+   "op": "<=",
+   "value": 0.08,
+   "default": 0,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "frontline.alpha.fallingBack",
+   "mode": "frontline_assault",
+   "path": "alpha.flags.fallingBack",
+   "op": "<=",
+   "value": 0.07,
+   "default": 0,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "frontline.bravo.missionReleased",
+   "mode": "frontline_assault",
+   "path": "bravo.flags.missionReleased",
+   "op": "<=",
+   "value": 0.01,
+   "default": 0,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "frontline.bravo.searching",
+   "mode": "frontline_assault",
+   "path": "bravo.flags.searching",
+   "op": "<=",
+   "value": 0.08,
+   "default": 0,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "frontline.bravo.fallingBack",
+   "mode": "frontline_assault",
+   "path": "bravo.flags.fallingBack",
+   "op": "<=",
+   "value": 0.07,
+   "default": 0,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "frontline.park.progress",
+   "mode": "frontline_assault",
+   "path": "frontline.progressMean",
+   "op": ">=",
+   "value": 0.67,
+   "dir": "frontline-park"
+  },
+  {
+   "id": "frontline.shield.endMedian",
+   "mode": "frontline_assault",
+   "path": "endS.median",
+   "op": "<=",
+   "value": 300,
+   "dir": "frontline-shield"
+  },
+  {
+   "id": "frontline.matchLength",
+   "mode": "frontline_assault",
+   "path": "endS.median",
+   "op": ">=",
+   "value": 150,
+   "baseDir": "../ext-fl3/s1-8"
+  },
+  {
+   "id": "frontline.attackerWins",
+   "mode": "frontline_assault",
+   "path": "frontline.attackerWinShare",
+   "op": "between",
+   "value": [
+    0.4,
+    0.55
+   ],
+   "dir": "frontline-16",
+   "baseDir": "../ext-fl3",
+   "note": "seeds 1-16, the owner's 2026-10-08 band"
+  },
+  {
+   "id": "ctf.captures",
+   "mode": "capture_the_flag",
+   "path": "ctf.capturesPerMatch",
+   "op": ">=",
+   "value": 1.5
+  },
+  {
+   "id": "ctf.matchesWithCapture",
+   "mode": "capture_the_flag",
+   "path": "ctf.matchesWithCapture",
+   "op": ">=",
+   "value": 6
+  },
+  {
+   "id": "ctf.decidedByCaptures",
+   "mode": "capture_the_flag",
+   "path": "ctf.matchesDecidedByCaptures",
+   "op": ">=",
+   "value": 2
+  },
+  {
+   "id": "ctf.draws",
+   "mode": "capture_the_flag",
+   "path": "draws",
+   "op": "<=",
+   "value": 4
+  },
+  {
+   "id": "ctf.firstPickup",
+   "mode": "capture_the_flag",
+   "path": "ctf.firstPickupS",
+   "op": "<=",
+   "value": 70
+  },
+  {
+   "id": "ctf.carried",
+   "mode": "capture_the_flag",
+   "path": "ctf.carriedShare",
+   "op": ">=",
+   "value": 0.25
+  },
+  {
+   "id": "ctf.escort",
+   "mode": "capture_the_flag",
+   "path": "ctf.pursuit.escortWithin80Share",
+   "op": ">=",
+   "value": 0.35
+  },
+  {
+   "id": "ctf.pursuers120",
+   "mode": "capture_the_flag",
+   "path": "ctf.pursuit.within120Share",
+   "op": ">=",
+   "value": 0.55
+  },
+  {
+   "id": "ctf.nearestPursuer",
+   "mode": "capture_the_flag",
+   "path": "ctf.pursuit.nearestPursuerM",
+   "op": "<=",
+   "value": 35
+  },
+  {
+   "id": "ctf.alpha.missionReleased",
+   "mode": "capture_the_flag",
+   "path": "alpha.flags.missionReleased",
+   "op": "<=",
+   "value": 0.01,
+   "default": 0
+  },
+  {
+   "id": "ctf.alpha.kpm",
+   "mode": "capture_the_flag",
+   "path": "killsPerMin.alpha",
+   "op": "<=",
+   "value": 5,
+   "note": "flag play, not a bigger mid-field brawl"
+  },
+  {
+   "id": "ctf.bravo.missionReleased",
+   "mode": "capture_the_flag",
+   "path": "bravo.flags.missionReleased",
+   "op": "<=",
+   "value": 0.01,
+   "default": 0
+  },
+  {
+   "id": "ctf.bravo.kpm",
+   "mode": "capture_the_flag",
+   "path": "killsPerMin.bravo",
+   "op": "<=",
+   "value": 5,
+   "note": "flag play, not a bigger mid-field brawl"
+  },
+  {
+   "id": "ball.goals",
+   "mode": "turbo_ball",
+   "path": "ball.goalsPerMatch",
+   "op": ">=",
+   "value": 1.5
+  },
+  {
+   "id": "ball.goalless",
+   "mode": "turbo_ball",
+   "path": "ball.matchesWithNoGoal",
+   "op": "<=",
+   "value": 2
+  },
+  {
+   "id": "ball.touchesPerMin",
+   "mode": "turbo_ball",
+   "path": "ball.touchesPerMin",
+   "op": ">=",
+   "value": 18
+  },
+  {
+   "id": "ball.under40",
+   "mode": "turbo_ball",
+   "path": "ball.matchesUnder40Touches",
+   "op": "==",
+   "value": 0
+  },
+  {
+   "id": "ball.redrock",
+   "mode": "turbo_ball",
+   "path": "ball.touchesByMap.badlands",
+   "op": ">=",
+   "value": 100
+  },
+  {
+   "id": "ball.steinburg",
+   "mode": "turbo_ball",
+   "path": "ball.touchesByMap.urban",
+   "op": ">=",
+   "value": 100
+  },
+  {
+   "id": "ball.still",
+   "mode": "turbo_ball",
+   "path": "ball.goalApproach.stillShare",
+   "op": "<=",
+   "value": 0.25
+  },
+  {
+   "id": "ball.endThird",
+   "mode": "turbo_ball",
+   "path": "ball.goalApproach.endThirdShare",
+   "op": ">=",
+   "value": 0.35
+  },
+  {
+   "id": "ball.possession",
+   "mode": "turbo_ball",
+   "path": "ball.possessionChangesPerMatch",
+   "op": ">=",
+   "value": 60
+  },
+  {
+   "id": "ball.alpha.nearest",
+   "mode": "turbo_ball",
+   "path": "ball.pursuit.nearestBotM.alpha",
+   "op": "<=",
+   "value": 30
+  },
+  {
+   "id": "ball.alpha.within40",
+   "mode": "turbo_ball",
+   "path": "ball.pursuit.within40Share.alpha",
+   "op": ">=",
+   "value": 0.2
+  },
+  {
+   "id": "ball.alpha.striker",
+   "mode": "turbo_ball",
+   "path": "ball.pursuit.strikerShare.alpha",
+   "op": "between",
+   "value": [
+    0.22,
+    0.34
+   ],
+   "note": "about 28 % (2 of 7)"
+  },
+  {
+   "id": "ball.alpha.engageDist",
+   "mode": "turbo_ball",
+   "path": "alpha.engageDistM",
+   "op": "<=",
+   "value": 150
+  },
+  {
+   "id": "ball.bravo.nearest",
+   "mode": "turbo_ball",
+   "path": "ball.pursuit.nearestBotM.bravo",
+   "op": "<=",
+   "value": 30
+  },
+  {
+   "id": "ball.bravo.within40",
+   "mode": "turbo_ball",
+   "path": "ball.pursuit.within40Share.bravo",
+   "op": ">=",
+   "value": 0.2
+  },
+  {
+   "id": "ball.bravo.striker",
+   "mode": "turbo_ball",
+   "path": "ball.pursuit.strikerShare.bravo",
+   "op": "between",
+   "value": [
+    0.22,
+    0.34
+   ],
+   "note": "about 28 % (2 of 7)"
+  },
+  {
+   "id": "ball.bravo.engageDist",
+   "mode": "turbo_ball",
+   "path": "bravo.engageDistM",
+   "op": "<=",
+   "value": 150
+  },
+  {
+   "id": "ball.crowd",
+   "mode": "turbo_ball",
+   "path": "ball.crowdOkShare",
+   "op": ">=",
+   "value": 0.98,
+   "note": "at most 3 bots a team within 30 m of the ball"
+  },
+  {
+   "id": "nations.standard.default.outsidePlan",
+   "mode": "standard",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "note": "every bot from the side country or a printed allied-country fill",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.default.shared",
+   "mode": "standard",
+   "path": "sharedRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "note": "no country on both sides",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.default.enemyIsPlayer",
+   "mode": "standard",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.default.pickKept",
+   "mode": "standard",
+   "path": "playerPickKeptRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "default",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.default.farEra",
+   "mode": "standard",
+   "path": "farEraSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "optional": true,
+   "note": "far-era seats only where contemporaries run out (the plan prints them)",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.mono.outsidePlan",
+   "mode": "standard",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "note": "every bot from the side country or a printed allied-country fill",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.mono.shared",
+   "mode": "standard",
+   "path": "sharedRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "note": "no country on both sides",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.mono.enemyIsPlayer",
+   "mode": "standard",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.mono.pickKept",
+   "mode": "standard",
+   "path": "playerPickKeptRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mono",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.mono.farEra",
+   "mode": "standard",
+   "path": "farEraSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "optional": true,
+   "note": "far-era seats only where contemporaries run out (the plan prints them)",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.both.outsidePlan",
+   "mode": "standard",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "both",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline_assault.default.outsidePlan",
+   "mode": "frontline_assault",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "note": "every bot from the side country or a printed allied-country fill",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline_assault.default.shared",
+   "mode": "frontline_assault",
+   "path": "sharedRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "note": "no country on both sides",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline_assault.default.enemyIsPlayer",
+   "mode": "frontline_assault",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline_assault.default.pickKept",
+   "mode": "frontline_assault",
+   "path": "playerPickKeptRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "default",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline_assault.default.farEra",
+   "mode": "frontline_assault",
+   "path": "farEraSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "optional": true,
+   "note": "far-era seats only where contemporaries run out (the plan prints them)",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline_assault.mono.outsidePlan",
+   "mode": "frontline_assault",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "note": "every bot from the side country or a printed allied-country fill",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline_assault.mono.shared",
+   "mode": "frontline_assault",
+   "path": "sharedRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "note": "no country on both sides",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline_assault.mono.enemyIsPlayer",
+   "mode": "frontline_assault",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline_assault.mono.pickKept",
+   "mode": "frontline_assault",
+   "path": "playerPickKeptRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mono",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline_assault.mono.farEra",
+   "mode": "frontline_assault",
+   "path": "farEraSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "optional": true,
+   "note": "far-era seats only where contemporaries run out (the plan prints them)",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline_assault.both.outsidePlan",
+   "mode": "frontline_assault",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "both",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.endless_horde.default.outsidePlan",
+   "mode": "endless_horde",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "note": "every bot from the side country or a printed allied-country fill",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.endless_horde.default.shared",
+   "mode": "endless_horde",
+   "path": "sharedRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "note": "no country on both sides",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.endless_horde.default.enemyIsPlayer",
+   "mode": "endless_horde",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.endless_horde.default.pickKept",
+   "mode": "endless_horde",
+   "path": "playerPickKeptRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "default",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.endless_horde.default.farEra",
+   "mode": "endless_horde",
+   "path": "farEraSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "optional": true,
+   "note": "far-era seats only where contemporaries run out (the plan prints them)",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.endless_horde.mono.outsidePlan",
+   "mode": "endless_horde",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "note": "every bot from the side country or a printed allied-country fill",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.endless_horde.mono.shared",
+   "mode": "endless_horde",
+   "path": "sharedRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "note": "no country on both sides",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.endless_horde.mono.enemyIsPlayer",
+   "mode": "endless_horde",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.endless_horde.mono.pickKept",
+   "mode": "endless_horde",
+   "path": "playerPickKeptRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mono",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.endless_horde.mono.farEra",
+   "mode": "endless_horde",
+   "path": "farEraSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "optional": true,
+   "note": "far-era seats only where contemporaries run out (the plan prints them)",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.endless_horde.both.outsidePlan",
+   "mode": "endless_horde",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "both",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.default.outsidePlan",
+   "mode": "capture_the_flag",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "note": "every bot from the side country or a printed allied-country fill",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.default.shared",
+   "mode": "capture_the_flag",
+   "path": "sharedRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "note": "no country on both sides",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.default.enemyIsPlayer",
+   "mode": "capture_the_flag",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.default.pickKept",
+   "mode": "capture_the_flag",
+   "path": "playerPickKeptRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "default",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.default.farEra",
+   "mode": "capture_the_flag",
+   "path": "farEraSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "optional": true,
+   "note": "far-era seats only where contemporaries run out (the plan prints them)",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.mono.outsidePlan",
+   "mode": "capture_the_flag",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "note": "every bot from the side country or a printed allied-country fill",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.mono.shared",
+   "mode": "capture_the_flag",
+   "path": "sharedRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "note": "no country on both sides",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.mono.enemyIsPlayer",
+   "mode": "capture_the_flag",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.mono.pickKept",
+   "mode": "capture_the_flag",
+   "path": "playerPickKeptRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mono",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.mono.farEra",
+   "mode": "capture_the_flag",
+   "path": "farEraSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "optional": true,
+   "note": "far-era seats only where contemporaries run out (the plan prints them)",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.both.outsidePlan",
+   "mode": "capture_the_flag",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "both",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.default.outsidePlan",
+   "mode": "turbo_ball",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "note": "every bot from the side country or a printed allied-country fill",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.default.shared",
+   "mode": "turbo_ball",
+   "path": "sharedRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "note": "no country on both sides",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.default.enemyIsPlayer",
+   "mode": "turbo_ball",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.default.pickKept",
+   "mode": "turbo_ball",
+   "path": "playerPickKeptRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "default",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.default.farEra",
+   "mode": "turbo_ball",
+   "path": "farEraSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "optional": true,
+   "note": "far-era seats only where contemporaries run out (the plan prints them)",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.mono.outsidePlan",
+   "mode": "turbo_ball",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "note": "every bot from the side country or a printed allied-country fill",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.mono.shared",
+   "mode": "turbo_ball",
+   "path": "sharedRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "note": "no country on both sides",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.mono.enemyIsPlayer",
+   "mode": "turbo_ball",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.mono.pickKept",
+   "mode": "turbo_ball",
+   "path": "playerPickKeptRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mono",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.mono.farEra",
+   "mode": "turbo_ball",
+   "path": "farEraSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "optional": true,
+   "note": "far-era seats only where contemporaries run out (the plan prints them)",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.both.outsidePlan",
+   "mode": "turbo_ball",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "both",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.infected.default.outsidePlan",
+   "mode": "infected",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "note": "every bot from the side country or a printed allied-country fill",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.infected.default.shared",
+   "mode": "infected",
+   "path": "sharedRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "note": "no country on both sides",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.infected.default.enemyIsPlayer",
+   "mode": "infected",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.infected.default.pickKept",
+   "mode": "infected",
+   "path": "playerPickKeptRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "default",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.infected.default.farEra",
+   "mode": "infected",
+   "path": "farEraSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "optional": true,
+   "note": "far-era seats only where contemporaries run out (the plan prints them)",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.infected.mono.outsidePlan",
+   "mode": "infected",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "note": "every bot from the side country or a printed allied-country fill",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.infected.mono.shared",
+   "mode": "infected",
+   "path": "sharedRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "note": "no country on both sides",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.infected.mono.enemyIsPlayer",
+   "mode": "infected",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.infected.mono.pickKept",
+   "mode": "infected",
+   "path": "playerPickKeptRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mono",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.infected.mono.farEra",
+   "mode": "infected",
+   "path": "farEraSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "optional": true,
+   "note": "far-era seats only where contemporaries run out (the plan prints them)",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.infected.both.outsidePlan",
+   "mode": "infected",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "both",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.juggernaut.default.outsidePlan",
+   "mode": "juggernaut",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "note": "every bot from the side country or a printed allied-country fill",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.juggernaut.default.shared",
+   "mode": "juggernaut",
+   "path": "sharedRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "note": "no country on both sides",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.juggernaut.default.enemyIsPlayer",
+   "mode": "juggernaut",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.juggernaut.default.pickKept",
+   "mode": "juggernaut",
+   "path": "playerPickKeptRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "default",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.juggernaut.default.farEra",
+   "mode": "juggernaut",
+   "path": "farEraSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "default",
+   "optional": true,
+   "note": "far-era seats only where contemporaries run out (the plan prints them)",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.juggernaut.mono.outsidePlan",
+   "mode": "juggernaut",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "note": "every bot from the side country or a printed allied-country fill",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.juggernaut.mono.shared",
+   "mode": "juggernaut",
+   "path": "sharedRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "note": "no country on both sides",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.juggernaut.mono.enemyIsPlayer",
+   "mode": "juggernaut",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.juggernaut.mono.pickKept",
+   "mode": "juggernaut",
+   "path": "playerPickKeptRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mono",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.juggernaut.mono.farEra",
+   "mode": "juggernaut",
+   "path": "farEraSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mono",
+   "optional": true,
+   "note": "far-era seats only where contemporaries run out (the plan prints them)",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.juggernaut.both.outsidePlan",
+   "mode": "juggernaut",
+   "path": "planned.outsidePlanSeats",
+   "op": "==",
+   "value": 0,
+   "arrangement": "both",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.random.allies",
+   "mode": "standard",
+   "path": "allies.distinct",
+   "op": ">=",
+   "value": 4,
+   "arrangement": "random",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.random.enemies",
+   "mode": "standard",
+   "path": "enemies.distinct",
+   "op": ">=",
+   "value": 4,
+   "arrangement": "random",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.random.shared",
+   "mode": "standard",
+   "path": "sharedNations",
+   "op": ">=",
+   "value": 1.5,
+   "arrangement": "random",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.random.allies",
+   "mode": "capture_the_flag",
+   "path": "allies.distinct",
+   "op": ">=",
+   "value": 4,
+   "arrangement": "random",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.random.enemies",
+   "mode": "capture_the_flag",
+   "path": "enemies.distinct",
+   "op": ">=",
+   "value": 4,
+   "arrangement": "random",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.random.shared",
+   "mode": "capture_the_flag",
+   "path": "sharedNations",
+   "op": ">=",
+   "value": 1.5,
+   "arrangement": "random",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.random.allies",
+   "mode": "turbo_ball",
+   "path": "allies.distinct",
+   "op": ">=",
+   "value": 4,
+   "arrangement": "random",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.random.enemies",
+   "mode": "turbo_ball",
+   "path": "enemies.distinct",
+   "op": ">=",
+   "value": 4,
+   "arrangement": "random",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.random.shared",
+   "mode": "turbo_ball",
+   "path": "sharedNations",
+   "op": ">=",
+   "value": 1.5,
+   "arrangement": "random",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.endless_horde.random.enemies",
+   "mode": "endless_horde",
+   "path": "enemies.distinct",
+   "op": ">=",
+   "value": 3,
+   "arrangement": "random",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline_assault.random.enemies",
+   "mode": "frontline_assault",
+   "path": "enemies.distinct",
+   "op": ">=",
+   "value": 3,
+   "arrangement": "random",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.mp1.noClones",
+   "mode": "standard",
+   "path": "seated.botsCloneHostRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mp1",
+   "optional": false,
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.mp1.enemyIsHost",
+   "mode": "standard",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mp1",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.mp1.parity",
+   "mode": "standard",
+   "path": "seated.hostParityRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mp1",
+   "note": "planStart and planFromRoom name the same bots",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.standard.mp2.parity",
+   "mode": "standard",
+   "path": "seated.hostParityRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mp2",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline_assault.mp1.noClones",
+   "mode": "frontline_assault",
+   "path": "seated.botsCloneHostRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mp1",
+   "optional": false,
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline_assault.mp1.enemyIsHost",
+   "mode": "frontline_assault",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mp1",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline_assault.mp1.parity",
+   "mode": "frontline_assault",
+   "path": "seated.hostParityRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mp1",
+   "note": "planStart and planFromRoom name the same bots",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline_assault.mp2.parity",
+   "mode": "frontline_assault",
+   "path": "seated.hostParityRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mp2",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.endless_horde.mp1.noClones",
+   "mode": "endless_horde",
+   "path": "seated.botsCloneHostRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mp1",
+   "optional": false,
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.endless_horde.mp1.enemyIsHost",
+   "mode": "endless_horde",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mp1",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.endless_horde.mp1.parity",
+   "mode": "endless_horde",
+   "path": "seated.hostParityRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mp1",
+   "note": "planStart and planFromRoom name the same bots",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.endless_horde.mp2.parity",
+   "mode": "endless_horde",
+   "path": "seated.hostParityRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mp2",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.mp1.noClones",
+   "mode": "capture_the_flag",
+   "path": "seated.botsCloneHostRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mp1",
+   "optional": false,
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.mp1.enemyIsHost",
+   "mode": "capture_the_flag",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mp1",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.mp1.parity",
+   "mode": "capture_the_flag",
+   "path": "seated.hostParityRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mp1",
+   "note": "planStart and planFromRoom name the same bots",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.capture_the_flag.mp2.parity",
+   "mode": "capture_the_flag",
+   "path": "seated.hostParityRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mp2",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.mp1.noClones",
+   "mode": "turbo_ball",
+   "path": "seated.botsCloneHostRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mp1",
+   "optional": false,
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.mp1.enemyIsHost",
+   "mode": "turbo_ball",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mp1",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.mp1.parity",
+   "mode": "turbo_ball",
+   "path": "seated.hostParityRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mp1",
+   "note": "planStart and planFromRoom name the same bots",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.turbo_ball.mp2.parity",
+   "mode": "turbo_ball",
+   "path": "seated.hostParityRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mp2",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.infected.mp1.noClones",
+   "mode": "infected",
+   "path": "seated.botsCloneHostRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mp1",
+   "optional": false,
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.infected.mp1.enemyIsHost",
+   "mode": "infected",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mp1",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.infected.mp1.parity",
+   "mode": "infected",
+   "path": "seated.hostParityRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mp1",
+   "note": "planStart and planFromRoom name the same bots",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.infected.mp2.parity",
+   "mode": "infected",
+   "path": "seated.hostParityRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mp2",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.juggernaut.mp1.noClones",
+   "mode": "juggernaut",
+   "path": "seated.botsCloneHostRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mp1",
+   "optional": true,
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.juggernaut.mp1.enemyIsHost",
+   "mode": "juggernaut",
+   "path": "enemyHoldsPlayerNationRuns",
+   "op": "==",
+   "value": 0,
+   "arrangement": "mp1",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.juggernaut.mp1.parity",
+   "mode": "juggernaut",
+   "path": "seated.hostParityRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mp1",
+   "note": "planStart and planFromRoom name the same bots",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.juggernaut.mp2.parity",
+   "mode": "juggernaut",
+   "path": "seated.hostParityRuns",
+   "op": "==",
+   "value": 32,
+   "arrangement": "mp2",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.horde.coop.allies",
+   "mode": "endless_horde",
+   "path": "seated.alphaBots",
+   "op": "==",
+   "value": 4,
+   "arrangement": "coop",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.horde.coop.pool",
+   "mode": "endless_horde",
+   "path": "seated.bravoBots",
+   "op": "==",
+   "value": 20,
+   "arrangement": "coop",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline.coop.allies",
+   "mode": "frontline_assault",
+   "path": "seated.alphaBots",
+   "op": "==",
+   "value": 3,
+   "arrangement": "coop",
+   "dir": "census",
+   "roster": true
+  },
+  {
+   "id": "nations.frontline.coop.defenders",
+   "mode": "frontline_assault",
+   "path": "seated.bravoBots",
+   "op": "==",
+   "value": 12,
+   "arrangement": "coop",
+   "dir": "census",
+   "roster": true
+  }
+ ]
+}

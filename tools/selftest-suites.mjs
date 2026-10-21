@@ -1469,6 +1469,27 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/matchModes.selftest.mjs',
     // 2026-10-03 (bots lane): the frontline attack regroups before the last sector.
     'src/sim/frontlineRegroup.selftest.mjs',
+    // 2026-10-18 (owner, gameplay-modes-228): per-mode bot doctrine (classic byte-identical), the Horde's wave law and
+    // arrival ring, the honest hunt, Frontline's line and counter-attack, CTF and Turbo Ball roles, the revived bot's
+    // fresh route, a mission owns its waypoints, TEAM NATIONS (planner, nation index, room seating) and the harness gate
+    'src/sim/botDoctrine.selftest.mjs',
+    'src/sim/hordeWaveLaw.selftest.mjs',
+    'src/sim/honestHunt.selftest.mjs',
+    'src/sim/frontlineDefenders.selftest.mjs',
+    'src/sim/flagBots.selftest.mjs',
+    'src/sim/ballIntercept.selftest.mjs',
+    'src/sim/reviveClearsModeTarget.selftest.mjs',
+    'src/game/ai.missionOwnership.selftest.mjs',
+    // round 2 (the critic's E5/E6): the scout kite, the no-ram lane and the zone sortie act only on hulls the side spots
+    'src/game/ai.honestSenses.selftest.mjs',
+    // round 3 (the critic's M3/M4): the jockey and the rolling turn — classic stands and pivots as before
+    'src/game/ai.jockey.selftest.mjs',
+    // round 3 (the critic's M2/M3): the hunt's run-in beside its quarry and the orbit rings spread by the pack
+    'src/game/ai.huntRunIn.selftest.mjs',
+    'src/sim/teamNations.selftest.mjs',
+    'src/sim/nationIndex.selftest.mjs',
+    'src/mp/room/roomBots.selftest.mjs',
+    'tools/mode-aggression-harness.selftest.mjs',
     'src/sim/matchRuleset.selftest.mjs',
     // 2026-10-17 (v2 progression): the proving ground's ruleset row, practice partition, range layout, card and drive.
     'src/sim/provingGround.selftest.mjs',

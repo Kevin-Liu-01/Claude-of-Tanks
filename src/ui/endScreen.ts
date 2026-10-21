@@ -841,6 +841,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     if (sum.reason === 'network_disconnect') {
       return t('endScreen.outcome.disconnect');
     }
+    // Infected's own endings (the outbreak took every survivor; the survivors held out to extraction)
+    if (sum.reason === 'outbreak_complete') return t('endScreen.outcome.outbreak');
+    if (sum.reason === 'survivors_extracted') return t('endScreen.outcome.extracted');
     if (result === 'victory') {
       return sum.playerDead
         ? t('endScreen.outcome.victory.survived')

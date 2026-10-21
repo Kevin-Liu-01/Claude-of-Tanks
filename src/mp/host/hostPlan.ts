@@ -1,13 +1,13 @@
-import { arrangeModeRoster } from './modeRoster.ts';
+import { planRoomBots } from '../room/roomBots.ts';
 /**
  * The boot plan of a peer-to-peer match as the hosting seat derives it (P2 client lane): the room's `match_start`
  * names the match, the map, the mode and the seed but not the roster it planned, so the host reads the room snapshot
  * it holds at that moment — the state the room broadcast right before the start — the way `planStart` in
- * roomPolicy.ts read it: every connected player with a vehicle (spectators seated as spectators), bots on the empty
- * slots per team unless the mode is co-operative, the same ids, names and vehicle choice. A room that hands the plan
+ * roomPolicy.ts read it: every connected player with a vehicle (spectators seated as spectators), the bots the room's
+ * planner seats (room/roomBots.ts, with the match seed: the symmetric fill, the asymmetric roles, the co-op hostiles),
+ * the same ids, names and vehicles. A room that hands the plan
  * itself (`match_start.plan`, an addendum P1 may adopt) wins over the derivation. Pure and DOM-free.
  */
-import { isCoopGameMode } from '../room/roomPolicy.ts';
 import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
 import type { HostBootBot, HostBootSeat } from './hostProtocol.ts';
 import { TANK_IDS, type TankIdResolver } from '../../vehicles/tankIdAliases.ts';
@@ -18,15 +18,6 @@ export interface HostBootPlan {
 }
 
 const DEFAULT_BOT_SPEC = 'm1a1_abrams_hc';
-
-function botSpecFor(seats: readonly HostBootSeat[], team: 'alpha' | 'bravo', fallback: string): string {
-  const counts = new Map<string, number>();
-  for (const seat of seats) if (seat.team === team) counts.set(seat.specId, (counts.get(seat.specId) ?? 0) + 1);
-  let best: string | null = null;
-  let bestCount = 0;
-  for (const [specId, count] of counts) if (count > bestCount) { best = specId; bestCount = count; }
-  return best ?? seats[0]?.specId ?? fallback;
-}
 
 function isSeat(value: unknown): value is HostBootSeat {
   if (!value || typeof value !== 'object') return false;
@@ -56,7 +47,7 @@ export function planFromMatchStart(matchStart: RoomMatchStartPayload, tankIds: T
 /** The roster as the room froze it at the start, read from the snapshot the room broadcast before `match_start`. */
 export function planFromRoom(
   room: RoomSnapshot,
-  { botSpecFallback = DEFAULT_BOT_SPEC, tankIds = TANK_IDS }: { botSpecFallback?: string; tankIds?: TankIdResolver } = {},
+  { botSpecFallback = DEFAULT_BOT_SPEC, tankIds = TANK_IDS, seed = 0 }: { botSpecFallback?: string; tankIds?: TankIdResolver; seed?: number } = {},
 ): HostBootPlan {
   const seats: HostBootSeat[] = [];
   for (const player of room.players) {
@@ -68,21 +59,14 @@ export function planFromRoom(
     seats.push({ seat: player.seat, playerId: player.id, name: player.name, team: player.team, specId, equipment: player.equipment.slice() });
   }
   const bots: HostBootBot[] = [];
-  if (room.settings.botsFill && !isCoopGameMode(room.settings.gameMode)) {
-    for (const team of ['alpha', 'bravo'] as const) {
-      const humans = seats.filter((seat) => seat.team === team).length;
-      for (let index = humans; index < room.settings.teamSize; index++) {
-        bots.push({ playerId: `bot-${team}-${index + 1}`, name: `Bot ${bots.length + 1}`, team, specId: botSpecFor(seats, team, botSpecFallback) });
-      }
-    }
-  }
-  arrangeModeRoster(room.settings.gameMode, room.settings.arrangement, seats, bots);
+  // the room's own bot planner with the match seed: the same bots, vehicles and countries the room's planStart froze
+  planRoomBots(room.settings, seats, bots, seed >>> 0);
   return { seats, bots };
 }
 
 /** The plan the host boots with: the room's own when it sent one, else the derivation. Throws when the host's own seat is missing. */
 export function planHostBoot(room: RoomSnapshot, matchStart: RoomMatchStartPayload, hostId: string): HostBootPlan {
-  const plan = planFromMatchStart(matchStart) ?? planFromRoom(room);
+  const plan = planFromMatchStart(matchStart) ?? planFromRoom(room, { seed: matchStart.seed });
   if (!plan.seats.some((seat) => seat.playerId === hostId)) throw new Error('the host is not seated in the plan');
   return plan;
 }

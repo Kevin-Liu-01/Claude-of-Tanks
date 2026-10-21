@@ -432,6 +432,10 @@ export default defineConfig({
             // dependencies.
             { name: 'icons', test: /[\\/]src[\\/]ui[\\/](?:icons|killSourceIdentity)\.ts$/, includeDependenciesRecursively: false },
             { name: 'groundBounce', test: /(?:[\\/]three[\\/]examples[\\/]jsm[\\/]postprocessing[\\/]Pass\.js|[\\/]src[\\/]engine[\\/](?:atmosphere|cloudscapes|lightModelCore|hazeLaw|groundBounce)\.ts)$/, includeDependenciesRecursively: false },
+            // 2026-10-19 (gameplay-modes-228 round 2): TEAM NATIONS' country table and its planner are one chunk — the
+            // garage's TEAMS switch reads the table, the solo roster plans with both, the rooms read both — instead of
+            // two boot requests (the table and the planner each split off on their own)
+            { name: 'teamNations', test: /[\\/]src[\\/]sim[\\/](?:countries|teamNations)\.ts$/, includeDependenciesRecursively: false },
           ],
         },
       },
