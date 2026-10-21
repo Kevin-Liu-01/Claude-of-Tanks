@@ -17,13 +17,19 @@
 // (auxiliaryWeapons.ts, the calibre's or the vehicle's own) and the gun's recoil stroke, the moving parts keep 1.5 mm
 // from every part of the mount that does not pitch, no moving triangle crosses the yaw stage, and the recoiling gun
 // crosses nothing of its cradle. The external cradles a host builds round the gun (mount: 'external-cradle') are other
-// constructions and are not counted; nor is an open-yoke optics tower that carries no gun.
+// constructions and are not counted; nor is an open-yoke optics tower that carries no gun. The mount measured is the one
+// the fitting builds (its meshes' `fitting`): stock a vehicle's builder hangs on the station (an RWS's housing, sensors, a
+// tower's head; 22 stations at release 229, 18 of them met by their gun as on the fleet rig before) is that builder's, and
+// the audit counts the stations carrying it.
 import assert from 'node:assert/strict';
 import { stationSelfClearance } from './cnTurretGeometry.test-support.mjs';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 
 /** The clearance every working pintle's moving parts keep from its own mount (metres). */
 const WORKING_PINTLE_CLEARANCE_M = 0.0015;
+
+/** A mesh the station's fitting itself built (its yaw stage, cradle and gun), not stock a builder hung on the station. */
+const fittingOwn = (mesh) => ['pintleMG', 'openYokeRws', 'auxiliaryWeapon'].includes(mesh.userData.fitting);
 
 /** The construction a working station under its fitting's userData was built by, or null for one the audit does not
  * count. */
@@ -57,7 +63,7 @@ export function assertWorkingPintleClear(id, station, pitch) {
   // 1-degree steps, 5 mm samples and a 4 mm cap (cnStations measures its two emplacements at 0.5 degrees and 4 mm): about
   // a hundred and twenty stations ride in the default fleet pass
   const self = stationSelfClearance(station, pitch, { depression: profile.depressionRad, elevation: profile.elevationRad,
-    step: Math.PI / 180, h: .005, cap: .004 });
+    step: Math.PI / 180, h: .005, cap: .004, meshes: fittingOwn });
   const where = `${(self.el * 180 / Math.PI).toFixed(1)} deg, recoil ${(self.r * 1000).toFixed(0)} mm`;
   assert.ok(self.d >= WORKING_PINTLE_CLEARANCE_M,
     `${label}: the moving parts keep 1.5 mm from their own mount through pitch and recoil (${(self.d * 1000).toFixed(2)} mm at ${where})`);
@@ -70,7 +76,7 @@ export function assertWorkingPintleClear(id, station, pitch) {
  * construction fails the audit rather than passing it unmeasured). */
 export function createWorkingPintleCradleAudit({ minimumStations = { pintleMG: 1 } } = {}) {
   const stations = {}, vehicles = new Set();
-  let worst = { d: Infinity, label: '' };
+  let hosted = 0, worst = { d: Infinity, label: '' };
   return {
     check(id, tank) {
       const found = workingStations(tank.root);
@@ -80,6 +86,8 @@ export function createWorkingPintleCradleAudit({ minimumStations = { pintleMG: 1
       for (const { station, pitch, construction } of found) {
         const self = assertWorkingPintleClear(id, station, pitch);
         stations[construction] = (stations[construction] ?? 0) + 1;
+        let carries = false; station.traverse((o) => { if (o.isMesh && !fittingOwn(o)) carries = true; });
+        if (carries) hosted++;
         if (self.d < worst.d) worst = { d: self.d, label: `${id}: ${station.name}` };
       }
     },
@@ -90,7 +98,8 @@ export function createWorkingPintleCradleAudit({ minimumStations = { pintleMG: 1
       }
       const counts = Object.entries(stations).map(([k, n]) => `${n} ${k}`).join(', ');
       console.log(`workingPintleCradle: ${counts} working stations on ${vehicles.size} vehicles ride their cradles, `
-        + `${(WORKING_PINTLE_CLEARANCE_M * 1000).toFixed(1)} mm clear of their own mounts (closest ${(worst.d * 1000).toFixed(1)} mm, ${worst.label})`);
+        + `${(WORKING_PINTLE_CLEARANCE_M * 1000).toFixed(1)} mm clear of their own mounts (closest ${(worst.d * 1000).toFixed(1)} mm, ${worst.label}); `
+        + `${hosted} carry stock their vehicle's builder hung on them, not measured here`);
     },
   };
 }
