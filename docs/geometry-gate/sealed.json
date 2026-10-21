@@ -2624,14 +2624,26 @@
    "openPx": 0,
    "openViews": 0,
    "insideOutPx": 102,
-   "seeThroughPx": 7,
-   "netSeeThroughPx": 3812,
+   "seeThroughPx": 6,
+   "netSeeThroughPx": 4013,
    "tris": 117792,
    "frame": [
     0,
     1.55,
     1.3,
     5.8
+   ],
+   "accepts": [
+    {
+     "kind": "see-through",
+     "reason": "release 227 CN track (owner 2026-10-16): the Yun's leafy net drapes the Type 96B turret and its horseshoe wrap (netting 3812 -> 4013 px, see-through 7 -> 6)",
+     "by": "kevinliu",
+     "date": "2026-10-20",
+     "from": {
+      "seeThroughPx": 7,
+      "netSeeThroughPx": 3812
+     }
+    }
    ]
   },
   "t80u_zoria": {

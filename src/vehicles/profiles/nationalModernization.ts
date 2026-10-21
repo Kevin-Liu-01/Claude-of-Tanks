@@ -9,13 +9,12 @@ import {buildT72B3MXRunningGear,buildT72B3MXFenders,buildT72B3MXHullCore} from '
 import {buildT72B3XRunningGear,buildT72B3XFenders,buildT72B3XHullCore} from './t72b3X.ts';
 import {buildNationalUkraine} from './nationalUkraine.ts';
 import {buildNationalPoland} from './nationalPoland.ts';
-import {buildNationalChina} from './nationalChina.ts';
 import {buildNationalRussia} from './nationalRussia.ts';
 import {buildHetmanII} from './hetmanII.ts';
 import {buildZubrII} from './zubrII.ts';
 import {NATIONAL_LEGACY_CONFIG} from '../nationalLegacyConfig.ts';
 import {boxSections} from './measuredPrimitives.ts';
-import {nationalRoofWeapon} from './nationalRoofWeapon.ts';
+import {nationalCupolaPintle,nationalPintleSocket,nationalRoofWeapon} from './nationalRoofWeapon.ts';
 import {nationalRoofSystems} from './nationalRoofSystems.ts';
 import {NATIONAL_ROOF_LOADOUTS} from '../nationalRoofConfig.ts';
 import {NATIONAL_MODERNIZATION_CONFIG,type NationalModernizationConfig} from '../nationalModernizationConfig.ts';
@@ -64,15 +63,20 @@ function mainWeapon(P:TankBuilderPort,c:NationalModernizationConfig|Pick<Nationa
 /** Owner 2026-10-15 (VEH-19..VEH-22): the donor fleet turret on this hull, its remote station on the commander's
  * cupola (replacing the donor's own commander gun), then the country's hull package and turret up-armour. */
 function fitDonorTurret(P:TankBuilderPort,id:string,kit:()=>void):void {
- const d=buildNationalDonorTurret(P,id),l=NATIONAL_ROOF_LOADOUTS[id];
- // The pedestal stands on the cupola's own top: probes stay inside its rim (the 99A2's commander periscope stands just
- // outside a 0.16 m ring and held the Qilin's station 3 cm in the air).
- const [x,z]=d.station,top=donorTurretSeatY(P,x,z,.12),riser=d.stationRiserM??0,base=top+riser;
- // The Qilin's 99A2 commander sight stands tall beside the cupola: a short adapter collar lifts the station so its
- // barrel clears that sight at full depression, seated on the cupola's top.
- if(riser>0)P.addEquipment('turretDetail',cylY(.20,.21,riser+.006,32),x,top+riser/2-.003,z);
- nationalRoofWeapon(P,[x,base,z],null,l);
- P.turretG.userData.nationalDonorStation={seat:[x,base,z],loadout:l.name};
+ const d=buildNationalDonorTurret(P,id),l=NATIONAL_ROOF_LOADOUTS[id],[x,z]=d.station;
+ if(l.mount==='pintle'){
+  // Release 227: a classic emplacement on the commander's cupola. Its flange sits 2 mm into the cupola's own top (the
+  // highest permanent surface inside the 0.10 m foot, never the periscopes beyond it). Round 4 (critics D10, S1): with a
+  // rim socket it sits 2 mm into the socket post's collar at the cupola's rim instead, off the hatch lid.
+  const base=(d.socket?nationalPintleSocket(P,[x,donorTurretSeatY(P,x,z),z],d.socket):donorTurretSeatY(P,x,z,.10))-.002;
+  nationalCupolaPintle(P,[x,base,z],l);
+  P.turretG.userData.nationalDonorStation={seat:[x,base,z],loadout:l.name,emplacement:true};
+ }else{
+  // The pedestal stands on the cupola's own top (or the roof seat the donor row lists): probes stay inside its rim.
+  const base=donorTurretSeatY(P,x,z,.12);
+  nationalRoofWeapon(P,[x,base,z],null,l);
+  P.turretG.userData.nationalDonorStation={seat:[x,base,z],loadout:l.name};
+ }
  kit();
  P.topY=d.roofY;
 }
@@ -94,7 +98,9 @@ function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
    primaryTurret:`${donor.donor}-turret-with-national-up-armour`,turretDonor:donor.donor};
   return;
  }
- ({ua:buildNationalUkraine,pl:buildNationalPoland,cn:buildNationalChina,ru:buildNationalRussia}[c.package])(P,c);
+ // Release 227: every Chinese concept carries a donor fleet turret (nationalDonorTurrets.ts); the cast CN turrets are gone.
+ if(c.package==='cn')throw new Error(`${c.id}: the Chinese concepts carry donor turrets (nationalDonorTurrets.ts)`);
+ ({ua:buildNationalUkraine,pl:buildNationalPoland,ru:buildNationalRussia}[c.package])(P,c);
  P.add('turret',cylY(.94,.94,.20,64),0,.005,0);
  mainWeapon(P,c);
  const d=nationalModernizationDesign(c),l=NATIONAL_ROOF_LOADOUTS[c.id];
@@ -103,7 +109,7 @@ function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
  // Zoria's roof gun sweeps all of its roof inboard of the left cage wing, so
  // its drone rides on a receiver laid across that wing (missionAttachmentReceiver.ts).
  if(c.id==='t80u_zoria')addMissionAttachmentReceiver(P,'t80u_zoria');
- if(c.package==='cn'||c.id==='t72b3m_bulat_m')addRearFieldStowage(P,c.package==='cn');
+ if(c.id==='t72b3m_bulat_m')addRearFieldStowage(P,false);
  P.topY=nationalModernizationDesign(c).roofY;
  P.hullG.userData.familyRebuild={donor:c.donor,package:c.package,model:c.model,revision:6,concept:true,
   preserved:'native-hull-core-running-gear-and-fenders',primaryHull:'donor-with-add-on-modernization',primaryTurret:'cast-ancestry-with-national-armor'};
@@ -115,8 +121,10 @@ export const NATIONAL_MODERNIZATION_PROFILES={
    if(donor){
     P.hullG.position.set(0,0,0);
     if(c.package==='ua'){
-     // Hetman II (as buildHetmanII): the complete native T-72B3M hull, then its own heavy hull package (the kit).
-     buildT72B3MXHull(P);
+     // Hetman II (as buildHetmanII): the native T-72B3M hull, then its own heavy hull package (the kit). Release 227: its
+     // own frontal package (ukraineFrontEra.ts) replaces the native glacis Relikt, skirt boxes and glacis lamps; the deck
+     // cover strap in its mantlet's sweep is left off.
+     buildT72B3MXHull(P,{nativeEra:false,glacisLamps:false,sweptStrap:false});
      fitDonorTurret(P,c.id,()=>buildHetmanIIDonorKit(P));
     }else{
      buildZubrIIHull(P);

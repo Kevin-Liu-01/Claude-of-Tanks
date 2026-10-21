@@ -12,13 +12,17 @@ import type {FleetTankSpec} from './specContracts.ts';
  * clash-free pitch of the whole gun against every hull triangle was measured at 2.5-degree yaw steps (both sides) and
  * each curve keeps at least 1 degree above every station; type96MantletClearance.selftest.mjs sweeps them.
  * Lóng (T-72B3 deck): full depression to 132.5 degrees, -5.25..-6.75 to 157.5, then the barrel meets the rear deck's
- * fittings (y 1.61 at x ±0.5, z -2.8..-3.2) even level: it needs +3.75..+6.25 at 162.5-177.5. Fēng (T-80U deck): full depression to 147.5, -6..-6.5 to
- * 157.5, -1.75..-4.25 behind. Léi (T-72B3M deck): the side armour and fittings at 32.5-35 (-6, -6.75), -2..-5.75 from
- * 132.5 to 160, then +1.75..+2.5 behind. */
+ * fittings (y 1.61 at x ±0.5, z -2.8..-3.2) even level: it needs +3.75..+6.25 at 162.5-177.5. Fēng (T-80U deck): full
+ * depression to 147.5, -6..-6.5 to 157.5, -1.75..-4.25 behind. Léi (T-72B3M deck): the side armour and fittings at
+ * 32.5-35 (-6, -6.75), -2..-5.75 from 132.5 to 160, then +1.75..+2.5 behind.
+ * The 2026-10-20 follow-up (tools/gun-depression-sweep.mjs: the whole gun 26 mm off every hull mesh at every degree,
+ * nationalGunClearance.selftest.mjs) holds each curve and adds where it was short: Lóng's side rubber at 32-35 (-6.2)
+ * and its deck from 128 (-5.8..-3.4); Fēng's deck at 143-149; Léi's side armour at 27-54 (down to -4.7 at 49-51), its
+ * deck from 122 and its mantlet over the deck at 148-158 (+1.5). */
 const CONCEPT_GUN_PITCH_BY_YAW_DEG:Readonly<Record<'type96_72_long'|'type96_80_feng'|'type96_72m_lei',readonly (readonly [number,number])[]>>={
-  type96_72_long:[[0,-7],[130,-7],[133,-5.75],[137,-4.25],[158,-4.25],[160.5,7.25],[180,7.25]],
-  type96_80_feng:[[0,-7],[147,-7],[149.5,-5],[158,-5],[160,-3],[161.5,0],[180,0]],
-  type96_72m_lei:[[0,-7],[29,-7],[32,-5],[35,-5],[38,-7],[130,-7],[132,-4.75],[134.5,-1],[159,-1],[161,3.5],[180,3.5]],
+  type96_72_long:[[0,-7],[30,-7],[32,-6.2],[35,-6.2],[38,-7],[127,-7],[130,-5.8],[135,-4.2],[144,-3.8],[145,-3.4],[147,-3.4],[149,-3.6],[151,-4.2],[156,-4.2],[157,-1.9],[159,7.3],[180,7.3]],
+  type96_80_feng:[[0,-7],[143,-7],[148,-5],[156,-5],[158,-3.4],[160,0],[180,0]],
+  type96_72m_lei:[[0,-7],[27,-7],[30,-5.3],[31,-5],[36,-5],[37,-5.3],[40,-7],[41,-6.5],[42,-6.3],[44,-6.3],[46,-6],[49,-4.7],[51,-4.7],[52,-5.1],[54,-7],[122,-7],[123,-6.2],[124,-5.5],[126,-5.5],[128,-6.2],[129,-5.2],[130,-3.5],[131,-2.9],[132,-1.4],[133,-0.6],[134,-0.5],[138,-0.5],[139,-0.1],[142,-0.1],[145,-1],[147,-0.4],[148,0.8],[149,1.5],[158,1.5],[160,3.5],[180,3.5]],
 };
 export const FLEET_RENEWAL_NEW_IDS=['type96_72_long','type96_80_feng','type96_72m_lei','t72_rys'] as const;
 const registry=bindFleetRegistries(TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS);
