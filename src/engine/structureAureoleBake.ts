@@ -119,13 +119,66 @@ const smoothstep = (a: number, b: number, x: number): number => {
 };
 
 /**
+ * (229; the blind pairs on Whiteout, 2026-10-17: "a dark blue-grey patch on the snow slope that belongs to no object") the
+ * terrain under the raster: heights on a `size` x `size` grid of points over [-half, half]^2 (corners included), read
+ * bilinearly. Given it, the bake receives each shadow on the ground itself — a texel at height h is in a direction's shadow
+ * when the ray from (x, h, z) toward the sun passes through the solid between max(y0, h) and y1 — instead of on the
+ * solid's base plane (a slope rising into the shadow took a base-plane shadow it never gets, a falling one lost the
+ * shadow's far end), and each shadowed texel carries its own ground's height for the pass's gate, not the solid's base.
+ */
+export interface AureoleGround {
+  readonly size: number;
+  readonly half: number;
+  readonly heights: Float32Array;
+}
+
+/** The ground's height at (x, z) (clamped to the grid). */
+export function aureoleGroundAt(g: AureoleGround, x: number, z: number): number {
+  const n = g.size - 1, cell = (2 * g.half) / n;
+  const fx = Math.min(n, Math.max(0, (x + g.half) / cell)), fz = Math.min(n, Math.max(0, (z + g.half) / cell));
+  const i = Math.min(n - 1, Math.floor(fx)), j = Math.min(n - 1, Math.floor(fz)), u = fx - i, v = fz - j;
+  const r0 = j * g.size + i, r1 = r0 + g.size, h = g.heights;
+  return (h[r0] * (1 - u) + h[r0 + 1] * u) * (1 - v) + (h[r1] * (1 - u) + h[r1 + 1] * u) * v;
+}
+
+/** Sample a height function onto an aureole ground grid (`size` points a side over [-half, half]). */
+export function sampleAureoleGround(heightAt: (x: number, z: number) => number, size = 513, half = SGO_HALF_M): AureoleGround {
+  const heights = new Float32Array(size * size), cell = (2 * half) / (size - 1);
+  for (let j = 0; j < size; j++) for (let i = 0; i < size; i++) heights[j * size + i] = heightAt(-half + i * cell, -half + j * cell);
+  return { size, half, heights };
+}
+
+/**
+ * (229) Whether a ground point (x, z) is in a direction's shadow of a convex footprint (counter-clockwise, `n` corners at
+ * packed[po..]): the points of its ray toward the sun from `a` to `b` metres over the point, each cast at (x, z) minus
+ * height x (ox, oz), the direction's ground displacement per metre, meet the footprint (Cyrus-Beck clip of that segment).
+ */
+function rayMeetsFootprint(packed: Float32Array, po: number, n: number, x: number, z: number, a: number, b: number,
+  ox: number, oz: number): boolean {
+  const px = x - a * ox, pz = z - a * oz, dx = (a - b) * ox, dz = (a - b) * oz;
+  let t0 = 0, t1 = 1;
+  for (let q = 0; q < n; q++) {
+    const r = q + 1 === n ? 0 : q + 1;
+    const ax = packed[po + 2 * q], az = packed[po + 2 * q + 1];
+    // the edge's outward normal (ez, -ex): inside where it is <= 0
+    const nx = packed[po + 2 * r + 1] - az, nz = -(packed[po + 2 * r] - ax);
+    const num = nx * (px - ax) + nz * (pz - az), den = nx * dx + nz * dz;
+    if (Math.abs(den) < 1e-12) { if (num > 0) return false; continue; }
+    const t = -num / den;
+    if (den > 0) { if (t < t1) t1 = t; } else if (t > t0) t0 = t;
+    if (t0 > t1) return false;
+  }
+  return true;
+}
+
+/**
  * Bake the aureole's shadow raster (or one rectangle of it) from packed occluders (structureGroundOcclusionBake.ts
  * packOccluders) and the direction toward the sun. A rectangle is computed in full: every solid whose shadow reaches it
  * contributes, so a re-bake around a destroyed solid matches a full bake there.
  */
 export function bakeStructureAureole(
   packed: Float32Array, sun: readonly number[], rect: SgoRect | null = null, radiusDeg = AUREOLE_RADIUS_DEG,
-  size = SGO_SIZE, half = SGO_HALF_M,
+  size = SGO_SIZE, half = SGO_HALF_M, ground: AureoleGround | null = null,
 ): SgoBakeResult {
   const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
   const texel = (2 * half) / size;
@@ -147,7 +200,7 @@ export function bakeStructureAureole(
   };
   // the parts once: footprint, heights, centroid, bounds
   interface Part { o: number; n: number; lo: number; hi: number; base: number; cx: number; cz: number; standing: boolean;
-    minX: number; minZ: number; maxX: number; maxZ: number }
+    minX: number; minZ: number; maxX: number; maxZ: number; groundLo: number; groundHi: number }
   const parts: Part[] = [];
   for (let o = 0; o < packed.length;) {
     const n = packed[o], y0 = packed[o + 1], y1 = packed[o + 2], base = packed[o + 3], po = o + 4;
@@ -164,8 +217,19 @@ export function bakeStructureAureole(
     // a part whose shadow cannot reach the rectangle stays out
     const [pi0, pj0, pi1, pj1] = sgoRectOf(minX - reach, minZ - reach, maxX + reach, maxZ + reach, size, half);
     if (Math.max(pi0, i0) >= Math.min(pi1, i1) || Math.max(pj0, j0) >= Math.min(pj1, j1)) continue;
+    // (229) the ground's lowest and highest round the part, within its shadow's reach (the swept polygon's bounds)
+    let groundLo = base, groundHi = base;
+    if (ground) {
+      const step = (2 * ground.half) / (ground.size - 1);
+      for (let z = minZ - reach; z <= maxZ + reach + step; z += step) {
+        for (let x = minX - reach; x <= maxX + reach + step; x += step) {
+          const gh = aureoleGroundAt(ground, x, z);
+          if (gh < groundLo) groundLo = gh; if (gh > groundHi) groundHi = gh;
+        }
+      }
+    }
     parts.push({ o: po, n, lo: Math.max(0, y0 - base), hi, base, cx: cx / n, cz: cz / n, standing: y0 - base < SGO_OVERHANG_M,
-      minX, minZ, maxX, maxZ });
+      minX, minZ, maxX, maxZ, groundLo, groundHi });
   }
   // the standing footprints: covered texels (the pass holds them to receivers at the base itself)
   for (const p of parts) {
@@ -189,7 +253,12 @@ export function bakeStructureAureole(
     const ux = ol > 1e-9 ? ox / ol : 0, uz = ol > 1e-9 ? oz / ol : 0;
     const dirId = k + 1;
     for (const p of parts) {
-      const far = Math.min(p.hi * ol, AUREOLE_REACH_M), near = Math.min(p.lo * ol, far);
+      // on the ground (229) the sweep spans every receiver height round the part: from the top over the lowest ground to
+      // the foot over the highest; each texel then takes its own exact test below
+      const top = p.base + p.hi, foot = p.base + p.lo;
+      const far = Math.min((ground ? top - p.groundLo : p.hi) * ol, AUREOLE_REACH_M);
+      if (ground && !(far > 0)) continue;
+      const near = Math.min((ground ? Math.max(0, foot - p.groundHi) : p.lo) * ol, far);
       const n = p.n, po = p.o;
       let m = 0, ext = -Infinity;
       for (let q = 0; q < n; q++) {
@@ -227,6 +296,12 @@ export function bakeStructureAureole(
         const row = (j - j0) * w - i0;
         for (let i = ia; i <= ib; i++) {
           const idx = row + i;
+          let gh = 0;
+          if (ground) {
+            const x = -half + (i + 0.5) * texel;
+            gh = aureoleGroundAt(ground, x, z);
+            if (!(top > gh) || !rayMeetsFootprint(packed, po, n, x, z, Math.max(foot, gh) - gh, top - gh, ox, oz)) continue;
+          }
           let wt = 255;
           if (fades) {
             const along = (-half + (i + 0.5) * texel - p.cx) * ux + (z - p.cz) * uz - ext;
@@ -239,7 +314,7 @@ export function bakeStructureAureole(
             stamp[idx] = dirId;
             last[idx] = wt;
             acc[idx] += wt;
-            if (!covered[idx] && wt >= 128) baseByte[idx] = bw;
+            if (!covered[idx] && wt >= 128) baseByte[idx] = ground ? wrap(gh) : bw;
           } else if (wt > last[idx]) {
             acc[idx] += wt - last[idx];
             last[idx] = wt;

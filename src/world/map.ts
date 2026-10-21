@@ -47,7 +47,7 @@ import { getDeviceTier } from '../engine/quality.ts';
 import { splitProgramVariants } from '../engine/programVariants.ts';
 import { loadEarthLand, skyDrawsEarth } from '../engine/earthLandAccess.ts';
 import { createStructureGroundOcclusion, type StructureGroundOcclusionHandle } from '../engine/structureGroundOcclusion.ts';
-import { aureoleSunOf } from '../engine/structureAureoleBake.ts';
+import { aureoleSunOf, sampleAureoleGround } from '../engine/structureAureoleBake.ts';
 import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
 import { supplyHinterland, withdrawHinterland } from './hinterlandHook.ts';
 import { selectHinterland } from './hinterland/select.ts';
@@ -632,7 +632,9 @@ function assembleWorld(
     ? aureoleSunOf(mapSky.sunElevationDeg, mapSky.sunAzimuthDeg) : null;
   const groundOcclusion: StructureGroundOcclusionHandle | null = getDeviceTier() !== 'mobile' && groundOcclusionScale > 0
     && (engineCtx as { renderer?: THREE.WebGLRenderer }).renderer
-    ? createStructureGroundOcclusion(props.obstacles, { group, scale: groundOcclusionScale, aureoleSun }) : null;
+    // (229) and its shadows received on the ground itself (a 2 m grid, sampled only for a thin deck's map)
+    ? createStructureGroundOcclusion(props.obstacles, { group, scale: groundOcclusionScale, aureoleSun,
+      aureoleGround: aureoleSun ? sampleAureoleGround((x, z) => heightField.getHeightAt(x, z)) : null }) : null;
   if (groundOcclusion) engineCtx.scene.userData.structureGroundOcclusion = groundOcclusion;
   // 2026-10-07 (the map-vehicles lane): the moored hulls stand in the water as a standing tank does, and lap it
   // through the same disturbance sources the vehicles feed (props.ts waterContacts); they follow the frame's own sources

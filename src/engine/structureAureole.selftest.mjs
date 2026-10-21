@@ -10,7 +10,8 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { SGO_HALF_M, SGO_TEXEL_M, packOccluders } from './structureGroundOcclusionBake.ts';
 import {
-  AUREOLE_MIN_ELEVATION_DEG, AUREOLE_RADIUS_DEG, AUREOLE_REACH_M, AUREOLE_SAMPLES, aureoleOffsets, aureoleSunOf, bakeStructureAureole,
+  AUREOLE_MIN_ELEVATION_DEG, AUREOLE_RADIUS_DEG, AUREOLE_REACH_M, AUREOLE_SAMPLES, aureoleGroundAt, aureoleOffsets, aureoleSunOf,
+  bakeStructureAureole, sampleAureoleGround,
 } from './structureAureoleBake.ts';
 import {
   AUREOLE_GATE_M, AUREOLE_SHARE_MAX, DECK_AUREOLE_GAIN, SGO_DARK_MAX, SGO_DECK_BROAD, STRUCTURE_GROUND_OCCLUSION_GLSL,
@@ -69,6 +70,29 @@ assert.equal(at(-30, 0).v, 0, 'and ends');
 // the covered texels: their open neighbours' mean, so the sunlit foot never takes the inside's shade
 assert.ok(at(1.75, 0).covered && at(1.75, 0).v === 0, 'the sun side\'s wall line stays lit');
 assert.ok(at(-1.75, 0).covered && at(-1.75, 0).v > 0.9, 'the far side\'s wall line is the shadow\'s');
+
+// ---- 2b. (229; the blind pairs on Whiteout: "a dark blue-grey patch on the snow slope that belongs to no object") the
+// shadow received on the ground itself: the same box with the ground rising into its shadow (0.3, steeper than the 13°
+// sun) ends where the slope rises out of it (~6.5 m behind the box, the base plane's ran 13 m); falling away, it runs on;
+// level ground keeps the base plane's shadow; and each shadowed texel carries its own ground's height for the gate
+{
+  const ramp = (k) => sampleAureoleGround((x) => (x < 0 ? -k * x : 0));
+  const level = sampleAureoleGround(() => 0);
+  near(aureoleGroundAt(ramp(0.3), -8, 5), 2.4, 1e-4, 'the ground grid reads its heights back');
+  const up = sampler(bakeStructureAureole(packOccluders([box(0, 0, 2, 2, 3)]), sunX, rect, undefined, undefined, undefined, ramp(0.3)));
+  // (falling away gently: a slope steeper than the sun away from it lies in the ground's own shadow)
+  const down = sampler(bakeStructureAureole(packOccluders([box(0, 0, 2, 2, 3)]), sunX, rect, undefined, undefined, undefined, ramp(-0.1)));
+  const flat = sampler(bakeStructureAureole(packOccluders([box(0, 0, 2, 2, 3)]), sunX, rect, undefined, undefined, undefined, level));
+  for (const x of [-2.25, -4, -8, -11, -30]) near(flat(x, 0).v, at(x, 0).v, 1e-9, `level ground keeps the base plane's shadow (${x} m)`);
+  near(up(-2.25, 0).v, 1, 0.02, 'the slope behind the box in its shadow');
+  assert.ok(up(-9, 0).v < 0.1 && at(-9, 0).v > 0.9, `the slope rises out of the shadow (9 m: ${up(-9, 0).v.toFixed(2)}, the base plane ${at(-9, 0).v.toFixed(2)})`);
+  for (const x of [-14, -15.5]) { // (inside the baked rectangle, 16 m round the box)
+    assert.ok(down(x, 0).v > at(x, 0).v + 0.15, `falling away, the shadow runs on (${x} m: ${down(x, 0).v.toFixed(2)} vs ${at(x, 0).v.toFixed(2)})`);
+  }
+  const wrapped = (y) => Math.round(((((y % 64) + 64) % 64) / 64) * 256) & 255;
+  assert.equal(up(-4, 0).base, wrapped(1.2), 'a shadowed texel carries its ground\'s height (1.2 m up the slope), not the box\'s base');
+  assert.equal(down(-8, 0).base, wrapped(-0.8), 'and down it');
+}
 
 // ---- 3. one count a direction: two solids over one shadow shade it no more than one
 const two = bakeStructureAureole(packOccluders([box(0, 0, 2, 2, 3), box(-0.5, 0, 1, 1, 2.5)]), sunX, rect);
@@ -139,7 +163,9 @@ updateStructureGroundUniforms(u, scene, renderer, true);
 const share = Math.min(AUREOLE_SHARE_MAX, 0.2 * DECK_AUREOLE_GAIN);
 near(u.uAur.value.x, share * 0.4, 1e-9, 'the aureole\'s light on up-facing ground (its gain, its cap)');
 near(u.uAur.value.y, share * 0.4 / 0.5, 1e-9, 'its share of that ground\'s ambient');
-near(u.uSgoBroad.value, SGO_DECK_BROAD, 1e-9, 'the occlusion broadened under a closed deck');
+// (229) the broadening off by default (v4b's blotches in the snow hollows); the knob keeps the pairs' arm
+near(u.uSgoBroad.value, SGO_DECK_BROAD, 1e-9, 'the occlusion under a closed deck as the knob sets it');
+assert.equal(SGO_DECK_BROAD, 1, 'no broadening by default');
 assert.equal(u.tAur.value, handle.aureoleTexture);
 updateStructureGroundUniforms(u, scene, renderer, false);
 assert.equal(u.uAur.value.x, 0, 'off with the contact-shadow lever');
@@ -162,9 +188,13 @@ assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, new RegExp(`cotAurGate\\( texelFet
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, new RegExp(`return 1\\.0 - min\\( uSgo \\* occ .*, ${SGO_DARK_MAX.toFixed(5)} \\);`), 'never deeper than the cap: shade, not a hole');
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /occ = 1\.0 - pow\( 1\.0 - min\( occ, 1\.0 \), uSgoBroad \);/, 'the broadened occlusion');
 const worker = read('./structureGroundOcclusionWorker.ts');
-assert.match(worker, /if \(data\.kind === 'aureole' && data\.sun\) \{\s*const aureole = bakeStructureAureole\(data\.packed, data\.sun, data\.rect, data\.radius\);/, 'baked off the main thread');
+assert.match(worker, /if \(data\.kind === 'aureole' && data\.sun\) \{\s*const aureole = bakeStructureAureole\(data\.packed, data\.sun, data\.rect, data\.radius, undefined, undefined, data\.ground \?\? null\);/,
+  'baked off the main thread, on the ground');
 const map = read('../world/map.ts');
 assert.match(map, /aureoleSunOf\(mapSky\.sunElevationDeg, mapSky\.sunAzimuthDeg\)/, 'a thin deck\'s map starts the bake with its own sun');
+assert.match(map, /aureoleGround: aureoleSun \? sampleAureoleGround\(\(x, z\) => heightField\.getHeightAt\(x, z\)\) : null/, 'and its ground (229)');
+assert.equal(read('./structureGroundOcclusion.ts').match(/options\.aureoleGround \?\? null/g)?.length, 3,
+  'every bake of the aureole (the worker, the idle slice, a failed worker\'s fallback) on the ground');
 const runtime = read('./structureGroundOcclusion.ts');
 assert.match(runtime, /lightTune\('DECK_AUREOLE', DECK_AUREOLE_GAIN\)/, 'the live gain');
 assert.ok(AUREOLE_RADIUS_DEG >= 4 && AUREOLE_RADIUS_DEG <= 12, 'a disc of a few degrees');

@@ -31,7 +31,7 @@ import {
 } from './structureGroundOcclusionBake.ts';
 import { VEHICLE_ALPHA_MIN } from './vehicleOcclusion.ts';
 import { lightTune } from './lightModelCore.ts';
-import { AUREOLE_RADIUS_DEG, AUREOLE_REACH_M, bakeStructureAureole } from './structureAureoleBake.ts';
+import { AUREOLE_RADIUS_DEG, AUREOLE_REACH_M, bakeStructureAureole, type AureoleGround } from './structureAureoleBake.ts';
 
 /** The pass applies the term out to this distance, fading over the last SGO_RANGE_FADE_M (m). */
 export const SGO_RANGE_M = 220;
@@ -72,7 +72,9 @@ export const AUREOLE_GATE_SOFT_M = 2;
  * times (at most AUREOLE_SHARE_MAX of the hemisphere's light): a soft shadow that reads, never a sunny-day one.
  * QA: __LIGHT_TUNE.SGO_DECK_BROAD (1 = off) and DECK_AUREOLE (the gain; 0 = off).
  */
-export const SGO_DECK_BROAD = 2;
+// (229) off by default: Whiteout's pairs found its broadened halo painting grey blotches where small solids crowd a snow
+// hollow (v4b, 2026-10-17); the aureole alone grounds the solids
+export const SGO_DECK_BROAD = 1;
 /** (227 v3) The deepest the block darkens a ground pixel (occlusion and aureole together): never a black pocket. */
 export const SGO_DARK_MAX = 0.6;
 
@@ -123,6 +125,8 @@ export interface StructureGroundOcclusionOptions {
   makeWorker?: (() => WorkerLike | null) | null;
   /** (227) The map's own sun when its deck is thin (deckBeam): the aureole's bake starts with the occlusion's. */
   aureoleSun?: readonly number[] | null;
+  /** (229) The ground under the raster: the aureole's shadows fall on it, not on each solid's base plane. */
+  aureoleGround?: AureoleGround | null;
 }
 
 /** A raster the handle owns: its CPU texels, its texture and the region patches that landed after its first upload. */
@@ -235,12 +239,12 @@ export function createStructureGroundOcclusion(
     if (worker) {
       const id = nextId++;
       inflight.set(id, true);
-      worker.postMessage({ id, kind: 'aureole', packed, rect, sun, radius }, [packed.buffer as ArrayBuffer]);
+      worker.postMessage({ id, kind: 'aureole', packed, rect, sun, radius, ground: options.aureoleGround ?? null }, [packed.buffer as ArrayBuffer]);
       return;
     }
     const run = (): void => {
       if (disposed) return;
-      const result = bakeStructureAureole(packed, sun, rect, radius);
+      const result = bakeStructureAureole(packed, sun, rect, radius, undefined, undefined, options.aureoleGround ?? null);
       landAureole(result.rect, result.rg, !rect, sun, result.ms);
     };
     const idle = (globalThis as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
@@ -303,7 +307,8 @@ export function createStructureGroundOcclusion(
         ready = true; resolveReady(true);
       }
       if (aurWant) {
-        const sun = aurWant, result = bakeStructureAureole(packOccluders(records), sun, null, aureoleRadius());
+        const sun = aurWant, result = bakeStructureAureole(packOccluders(records), sun, null, aureoleRadius(), undefined, undefined,
+          options.aureoleGround ?? null);
         landAureole(result.rect, result.rg, true, sun, result.ms);
       }
     };

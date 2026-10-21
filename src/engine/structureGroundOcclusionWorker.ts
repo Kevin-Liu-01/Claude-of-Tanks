@@ -5,7 +5,7 @@
 // (structureAureoleBake.ts); its answer echoes the kind, the sun and whether it was the whole raster.
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { bakeStructureGroundOcclusion, type SgoRect } from './structureGroundOcclusionBake.ts';
-import { bakeStructureAureole } from './structureAureoleBake.ts';
+import { bakeStructureAureole, type AureoleGround } from './structureAureoleBake.ts';
 
 interface SgoRequest {
   id: number;
@@ -14,6 +14,8 @@ interface SgoRequest {
   kind?: 'aureole';
   sun?: number[];
   radius?: number;
+  /** (229) the ground under the raster: the aureole's shadows received on it (structureAureoleBake.ts AureoleGround) */
+  ground?: AureoleGround | null;
 }
 
 interface SgoWorkerScope {
@@ -31,7 +33,7 @@ if (!isSgoWorkerScope(scope)) throw new TypeError('structure ground occlusion wo
 
 scope.onmessage = ({ data }) => {
   if (data.kind === 'aureole' && data.sun) {
-    const aureole = bakeStructureAureole(data.packed, data.sun, data.rect, data.radius);
+    const aureole = bakeStructureAureole(data.packed, data.sun, data.rect, data.radius, undefined, undefined, data.ground ?? null);
     scope.postMessage({ id: data.id, kind: 'aureole', sun: data.sun, full: data.rect === null, rg: aureole.rg, rect: aureole.rect,
       parts: aureole.parts, ms: aureole.ms }, [aureole.rg.buffer as ArrayBuffer]);
     return;
