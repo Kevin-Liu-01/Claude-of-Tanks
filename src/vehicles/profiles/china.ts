@@ -28,6 +28,7 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { Float32BufferAttribute, Vector3, type BufferGeometry } from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { mount } from './fittingMount.ts';
+import { markFixedPaintedPanel } from './fixedPaintedPanel.ts';
 import { DRUM_ISSUE_PAINTS, fuelDrumParts, hash01, place } from '../accessoryPrimitives.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
@@ -257,9 +258,12 @@ function buildZTZ85IIIHullEdges(P: ChinaBuilderPort): void {
     P.add('hullDark', box(0.10, 0.11, 0.12),
       side * 0.66, 0.58, -3.82, 0.3, 0, 0);
     P.add('hull', box(0.50, 0.055, 0.30), side * 1.45, 1.155, -3.82);
-    P.add('hullRubber', box(0.52, 0.46, 0.045), side * 1.45, 0.90, -3.97);
+    // Art fixes 230 (2026-10-21, hero-card critics: "two flat untextured dark slabs ... hang below the front of the
+    // hull"): the ZTZ-85-III's rubber flaps, rear and front, are painted in the vehicle scheme. Finish only.
+    P.add('hullFixedPaintedBodywork', markFixedPaintedPanel(box(0.52, 0.46, 0.045),
+      `ztz85iii-rear-flap-${side}`, 'hullRubber'), side * 1.45, 0.90, -3.97);
   }
-  ruFlaps(P, { x: 1.45, w: 0.55, front: [0.94, 0.46], frontZ: 2.47 });
+  ruFlaps(P, { x: 1.45, w: 0.55, front: [0.94, 0.46], frontZ: 2.47, material: 'painted-rubber' });
   for (const side of [-1, 1]) {
     P.add('hullDark', box(0.04, 0.07, 0.20),
       side * 1.30, 1.13, 2.40, -0.32, 0, 0);

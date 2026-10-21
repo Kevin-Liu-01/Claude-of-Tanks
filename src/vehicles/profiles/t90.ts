@@ -10,6 +10,7 @@ import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { DRUM_ISSUE_PAINTS, barkLog, fabricRollParts, fuelDrumParts, latheY, place, sweptTube } from '../accessoryPrimitives.ts';
 import { cloneFloorlessVehicleMaterial } from '../materials.ts';
 import { pushConvexQuad } from '../factoryGeometry.ts';
+import { markFixedPaintedPanel } from './fixedPaintedPanel.ts';
 import { clippedArmorSkin } from './armorFaceSampling.ts';
 import { buildPT91MPendekar } from './pt91mPendekar.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -4496,15 +4497,17 @@ function buildT90(P: T90BuilderPort): void {
     // into its fender. The rear sheet also reaches the first shelf segment
     // across the deliberate 35 mm longitudinal seam; both are registered
     // with the fleet's five-centimetre physical seating audit.
+    // Art fixes 230 (2026-10-21, hero-card critics: "two flat untextured dark slabs hang below the near front fender"):
+    // the rubber sheets are painted in the vehicle scheme with the fenders they hang from. Finish only.
     MUDGUARDS.add(P, {
       label: `t90-rear-mudguard-${side}`, x: s * 1.52, y: 1.065, z: -3.06,
-      thickness: 0.05, length: 0.36, height: 0.83, material: 'rubber',
+      thickness: 0.05, length: 0.36, height: 0.83, material: 'painted-rubber',
       rotation: [0, Math.PI / 2, 0], crown: 0.018, rearCut: 0.075,
     });
     P.add('hullDark', box(0.34, 0.035, 0.054), s * 1.52, 1.455, -3.06); // rear fender clamp
     MUDGUARDS.add(P, {
       label: `t90-front-mudguard-${side}`, x: s * 1.48, y: 0.825, z: 3.345,
-      thickness: 0.05, length: 0.44, height: 0.55, material: 'rubber',
+      thickness: 0.05, length: 0.44, height: 0.55, material: 'painted-rubber',
       rotation: [0, Math.PI / 2, 0], crown: 0.018, frontCut: 0.07,
     });
     P.add('hullDark', box(0.42, 0.03, 0.054), s * 1.48, 1.085, 3.345);  // front fender clamp
@@ -5914,7 +5917,10 @@ function buildT90MS(P: T90BuilderPort): void {
   widthAnchor(P, 1.89, 0.95, -1.60);
   ruSkirtBand(P, { x: 1.7675, th: 0.036, z0: -2.72, z1: 2.82, yTop: 1.28, yBot: 1.00, panels: 7, lipX: 1.755 });
   ([-1, 1] as const).forEach((s) => {
-    P.add('hullRubber', box(0.36, 0.30, 0.05), s * 1.52, 0.80, -3.06);
+    // Art fixes 230 (2026-10-21, hero-card critics: "two flat untextured dark slabs hang below the near front fender"):
+    // the rear flap and the front drop are painted in the vehicle scheme with their fenders. Finish only.
+    P.add('hullFixedPaintedBodywork', markFixedPaintedPanel(box(0.36, 0.30, 0.05),
+      `t90ms-rear-flap-${s < 0 ? 'left' : 'right'}`, 'hullRubber'), s * 1.52, 0.80, -3.06);
     const side = s < 0 ? 'left' : 'right';
     const flapLabel = `t90ms-front-guard-${side}-rubber-drop`;
     tagilFrontGuardLabels.push(flapLabel);
@@ -5923,7 +5929,7 @@ function buildT90MS(P: T90BuilderPort): void {
     // to the fender instead of hanging below it as a separate rubber card.
     MUDGUARDS.add(P, {
       label: flapLabel, x: s * 1.53, y: 0.73, z: 3.345,
-      thickness: 0.05, length: 0.40, height: 0.72, material: 'rubber',
+      thickness: 0.05, length: 0.40, height: 0.72, material: 'painted-rubber',
       rotation: [0, Math.PI / 2, 0], crown: 0.018, frontCut: 0.075,
     });
     P.add('hullDark', box(0.38, 0.035, 0.060), s * 1.53, 1.075, 3.345);

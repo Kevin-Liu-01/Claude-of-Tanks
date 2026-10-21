@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { KIT, type RunningGearConfig, type TankBuilderPort } from './tankFactoryCore.ts';
 import { FITTINGS, convexSlab } from './profiles/kit.ts';
 import { facetedSlab } from './profiles/facetedSlab.ts';
+import { markFixedPaintedPanel } from './profiles/fixedPaintedPanel.ts';
 import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './profiles/type10GunSeat.ts';
 import { K2_ROAD_WHEELS } from './profiles/k2RoadWheels.ts';
 import './modern3Specs.ts';
@@ -3800,12 +3801,17 @@ function buildM2A2Bradley(P: Modern3BuilderPort) {
 
 function addBMP2Fenders(P: Modern3BuilderPort): void {
   const { box, slab } = KIT;
+  // Art fixes 230 (2026-10-21, hero-card critics: "a large flat dark box sits on the nose", "flat black slab panels
+  // hang on the hull side"): the rubber-fabric shields over the sprocket and idler runs and their end flaps are
+  // painted in the vehicle scheme like the rest of the hull, as crews paint them. Finish only: the same solids.
+  const shield = (label: string, w: number, h: number, d: number) =>
+    markFixedPaintedPanel(box(w, h, d), label, 'hullRubber');
   for (const s of [-1, 1]) {
     P.add('hull', box(0.21, 0.055, 1.16), s * 1.42, 1.23, 2.44);
     P.add('hull', box(0.23, 0.055, 1.14), s * 1.43, 1.23, -2.685);
     P.add('hull', box(0.15, 0.08, 0.46), s * 1.4975, 0.9925, -0.24);
-    P.add('hullRubber', box(0.15, 0.56, 0.60), s * 1.475, 0.955, 2.20);
-    P.add('hullRubber', box(0.15, 0.56, 1.40), s * 1.475, 0.955, -2.40);
+    P.add('hullFixedPaintedBodywork', shield('bmp2-front-shield', 0.15, 0.56, 0.60), s * 1.475, 0.955, 2.20);
+    P.add('hullFixedPaintedBodywork', shield('bmp2-rear-shield', 0.15, 0.56, 1.40), s * 1.475, 0.955, -2.40);
     P.add('hull', box(0.025, 0.21, 0.44), s * 1.5625, 0.955, 2.64);
     P.add('hull', box(0.05, 0.06, 0.20), s * 1.5475, 0.955, 1.80);
     for (const [zc, zl] of [[-2.885, 0.43], [-2.44, 0.44], [-2.055, 0.31], [-1.675, 0.44]]) {
@@ -3825,8 +3831,8 @@ function addBMP2Fenders(P: Modern3BuilderPort): void {
       [-1.365, 1.30, -0.01], [-1.29, 1.30, -0.01], [-1.29, 1.30, -0.47], [-1.365, 1.30, -0.47],
       [-1.365, 1.42, -0.01], [-1.29, 1.52, -0.01], [-1.29, 1.52, -0.47], [-1.365, 1.42, -0.47],
     ), 0, 0, 0);
-    P.add('hullRubber', box(0.21, 0.34, 0.05), s * 1.42, 1.03, 2.72);
-    P.add('hullRubber', box(0.21, 0.28, 0.045), s * 1.44, 1.10, -3.165);
+    P.add('hullFixedPaintedBodywork', shield('bmp2-front-flap', 0.21, 0.34, 0.05), s * 1.42, 1.03, 2.72);
+    P.add('hullFixedPaintedBodywork', shield('bmp2-rear-flap', 0.21, 0.28, 0.045), s * 1.44, 1.10, -3.165);
   }
 }
 

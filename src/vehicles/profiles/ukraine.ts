@@ -1910,7 +1910,10 @@ function addAbramsCageFineLattice(P: UkraineBuilderPort): void {
       for (const side of [-1, 1]) {
         const base = lerp(a.base, b.base, t);
         const roof = lerp(a.roof, b.roof, t);
-        bar(rod, roof - base - 0.05, rod, side * (lerp(a.x, b.x, t) + 0.012), (base + roof) * 0.5, z);
+        // Art fixes 230 (2026-10-21): the rods stopped 9 mm short of the 32 mm base and roof rails and followed the
+        // station taper while each bay's rails stand at its mean x, so eight hung free. Each now stands inside the
+        // rails' half-thickness at the bay's x and runs 6 mm into both.
+        bar(rod, roof - base - 0.012, rod, side * ((a.x + b.x) * 0.5 + 0.012), (base + roof) * 0.5, z);
       }
     }
   }
@@ -1918,7 +1921,7 @@ function addAbramsCageFineLattice(P: UkraineBuilderPort): void {
   const rearColumns = Math.round((rear.x * 2 - 0.10) / pitch);
   for (let i = 0; i <= rearColumns; i++) {
     const x = -rear.x + 0.05 + i * ((rear.x * 2 - 0.10) / rearColumns);
-    bar(rod, rear.roof - rear.base - 0.05, rod, x, (rear.roof + rear.base) * 0.5, rear.z - 0.012);
+    bar(rod, rear.roof - rear.base - 0.012, rod, x, (rear.roof + rear.base) * 0.5, rear.z - 0.012);
   }
   P.turretG.userData.uaM1A1CageLatticeReceipt = Object.freeze({ rodM: rod, pitchM: pitch, rods });
 }
@@ -1956,6 +1959,10 @@ function addAbramsDroneCage(P: UkraineBuilderPort): void {
   P.add('turretGlass', box(0.28, 0.095, 0.026), 0, 1.17, 0.855);
   P.addEquipment('turret', box(0.24, 0.20, 0.20), -0.96, 1.04, -1.62);
   P.add('turretGlass', box(0.13, 0.07, 0.024), -0.96, 1.07, -1.505);
+  // Art fixes 230 (2026-10-21, hero-card critics asked whether the UA cages are seated): this aft EO head hung
+  // 0.17 m above the turret roof (y 0.773 under it) with nothing holding it. A pedestal on a base plate carries it.
+  P.add('turretDetail', box(0.16, 0.02, 0.16), -0.96, 0.78, -1.62);
+  P.add('turretDetail', KIT.cylY(0.03, 0.03, 0.17, 12), -0.96, 0.865, -1.62);
   P.decal('turret', 'number', 'UA M1', 0.24, [-1.48, 0.32, -0.80], -Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.48);
 }

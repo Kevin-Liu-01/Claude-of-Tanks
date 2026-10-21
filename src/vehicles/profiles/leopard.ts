@@ -14287,11 +14287,18 @@ function buildLeo2A4M(P: TankBuilderPort) {
         P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.632, 1.74, bz + bl * 0.28);
         P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.632, 1.74, bz - bl * 0.28);
       }
-      P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * 1.60, 1.82, 3.42);
-      P.add('hullDetail', sph(0.016, 8), s * 1.60, 1.98, 3.42);
+      // Width-marker rods. Art fixes 230 (2026-10-21, hero-card critics: "a small detached vertical sliver floats in the
+      // air just ahead of the nose"): the rod stood at |x| 1.60 with its foot at y 1.67, 0.34 m above anything. It now
+      // stands on a clamp on the front fender strip (x 1.697..1.857, top 1.334) and keeps its ball tip.
+      P.add('hullDetail', box(0.05, 0.03, 0.05), s * 1.777, 1.348, 3.42);
+      P.add('hullDetail', cylY(0.008, 0.008, 0.44, 6), s * 1.777, 1.575, 3.42);
+      P.add('hullDetail', sph(0.016, 8), s * 1.777, 1.80, 3.42);
     }
-    P.add('hullDark', box(0.09, 0.07, 0.11), -1.30, 1.47, 3.30);
-    P.add('hullDark', xform(cylZ(0.035, 0.02, 10), 0, 0, 0.062), -1.30, 1.47, 3.30);
+    // Bosch horn: it stood at z 3.30, a third of a metre ahead of the sloped upper glacis (z 2.975 at y 1.435, 2.807
+    // at 1.505) with nothing under it. Its lower back edge now rests 1 cm into that plate (art fixes 230, same seating
+    // pass as the width rods).
+    P.add('hullDark', box(0.09, 0.07, 0.11), -1.30, 1.47, 3.02);
+    P.add('hullDark', xform(cylZ(0.035, 0.02, 10), 0, 0, 0.062), -1.30, 1.47, 3.02);
     // §5.345: pioneer tools re-seated on the STERN SHELF fully aft of the
     // turret casting envelope (every part z < -3.04; the jackDark tone fix
     // shrank the wood bucket to the mid-deck tools and the AABB-coarse §B5
