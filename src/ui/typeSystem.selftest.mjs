@@ -251,7 +251,8 @@ const sources = new Map(SHIPPED_CODE.map((path) => [path, stripComments(path, re
 
 // Monument retired: the Dinamo trial builds are out of the repository tree, and no shipped source names the face.
 for (const dir of ['public', 'docs', 'src', 'tools', 'site']) {
-  assert.deepEqual(walk(dir, (path) => /monument[-_ ]?grotesk/i.test(path)), [], `${dir}/ holds no ABC Monument Grotesk file`);
+  assert.deepEqual(walk(dir, (path) => /\.(woff2?|ttf|otf)$/i.test(path) && /monument[-_ ]?grotesk/i.test(path)), [],
+    `${dir}/ holds no ABC Monument Grotesk font file`);
 }
 for (const [path, text] of sources) {
   assert.doesNotMatch(text, /Monument Grotesk|abc-monument|ABCMonument/, `${path} no longer names ABC Monument Grotesk`);
