@@ -42,7 +42,7 @@ const original=near.instanceColor.array.slice();
 normalizeTankAppearance(tracks);normalizeTankAppearance(tracks);
 assert.equal(shoeMaterial.color.getHex(),0xffffff,'instance shade is not multiplied by a second dark base');
 assert.deepEqual(near.instanceColor.array,original,'neutral source palettes retain their exact linear colors');
-assert.equal(near.instanceColor,far.instanceColor,'near/far still share one immutable color buffer');
+assert.ok(near.instanceColor === far.instanceColor,'near/far still share one immutable color buffer');
 for(let i=0;i<3;i++) {
   const color=new THREE.Color();near.getColorAt(i,color);color.multiply(shoeMaterial.color);
   assert.equal(color.getHex(),shades[i],'effective shader color equals the intended track shade');

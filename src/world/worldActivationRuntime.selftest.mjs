@@ -4,6 +4,7 @@ import { Group } from 'three';
 import { createWorldActivationRuntime } from './worldActivationRuntime.ts';
 import { createBattleAtmosphereAccess } from '../engine/battleAtmosphereAccess.ts';
 import { createBattleAtmosphereRuntime } from '../engine/battleAtmosphereRuntime.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 function group(childCount = 3) {
   return {
@@ -114,10 +115,10 @@ assert.ok(!events.some(([kind]) => kind === 'shadow'), 'fast activation skips ex
 
 runtime.setDormant(true);
 assert.equal(runtime.dormant, true);
-assert.deepEqual(events.at(-1), ['dormant', cachedWorld.group, false]);
+assert.deepEqual(graphLabels(events.at(-1)), graphLabels(['dormant', cachedWorld.group, false]));
 runtime.setDormant(false);
 assert.equal(runtime.dormant, false);
-assert.deepEqual(events.at(-1), ['dormant', cachedWorld.group, true]);
+assert.deepEqual(graphLabels(events.at(-1)), graphLabels(['dormant', cachedWorld.group, true]));
 
 const progress = () => undefined;
 await runtime.ensure('built', progress);
@@ -143,10 +144,10 @@ const bakedSkies = events.filter(([kind]) => kind === 'sky').length;
 runtime.setDormant(true);
 runtime.invalidateSkyPresentation(); // the Garage now shows another map's sky
 runtime.setDormant(false);
-assert.deepEqual(events.slice(-4), [
+assert.deepEqual(graphLabels(events.slice(-4)), graphLabels([
   ['skyPresentation', 'desert'], ['fog', 0.0012], ['sun', 'desert'],
   ['dormant', cachedWorld.group, true],
-], 'resuming the same battlefield restores its atmosphere before revealing it');
+]), 'resuming the same battlefield restores its atmosphere before revealing it');
 assert.equal(events.filter(([kind]) => kind === 'sky').length, bakedSkies,
   'restoring a Garage-overridden sky must reuse the existing battlefield PMREM');
 const afterRestore = events.length;

@@ -6,6 +6,7 @@ import {
   clearBattleAfterExit,
   resetBattleTankForGarage,
 } from './garageTankLifecycle.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const order = [];
 resetBattleTankForGarage({
@@ -145,16 +146,16 @@ console.log('garageTankLifecycle.selftest: FX and tank state end at the garage b
  const dims={widthM:3,hullLengthM:7,heightM:3};
  syncJuggernautVisual(root,dims,1.12,100,100,.016);pulseJuggernautImpact(root,[0,1,0]);
  const visual={root,resetForGaragePresentation(){
-  assert.equal(mesh.material,source,'aura cleared before the showroom resets or adopts the hero');
+  assert.ok(mesh.material === source,'aura cleared before the showroom resets or adopts the hero');
   assert.equal(root.scale.x,1,'battle enlargement removed before showroom posing');
  }};
  resetBattleTankForGarage({fx:{resetAll(){}},visual});
- assert.equal(root.parent,scene,'no removal/reparent was required to clean the retained hero');
+ assert.ok(root.parent === scene,'no removal/reparent was required to clean the retained hero');
  assert.equal(pulseJuggernautImpact(root,[0,1,0]),false);
  syncJuggernautVisual(root,dims,1.12,100,100,.016);
  const game={allTanks:[{visual,team:'ally',isPlayer:true}],tanks:[],shells:[]};
  clearBattleAfterExit({game,preservedVisual:visual});
- assert.equal(mesh.material,source,'preserved and pooled actors are also cleared by roster teardown');assert.equal(root.scale.x,1);
+ assert.ok(mesh.material === source,'preserved and pooled actors are also cleared by roster teardown');assert.equal(root.scale.x,1);
  mesh.geometry.dispose();source.dispose();
 }
 
@@ -172,8 +173,8 @@ console.log('garageTankLifecycle.selftest: FX and tank state end at the garage b
  resetBattleTankForGarage({fx:{resetAll(){}},visual:{root,resetForGaragePresentation(){
    mesh.material=captured;root.add(fitting);
  }}});
- assert.equal(mesh.material,source,'repair cannot resurrect a disposed boss highlight');
- assert.deepEqual(fitting.material,[source,source],'reattached multi-material fittings are clean');
+ assert.ok(mesh.material === source,'repair cannot resurrect a disposed boss highlight');
+ assert.deepEqual(graphLabels(fitting.material),graphLabels([source,source]),'reattached multi-material fittings are clean');
  assert.equal(root.scale.x,1);
  geometry.dispose();source.dispose();
 }

@@ -13,10 +13,10 @@
 import type { CollisionRecord, SimpleCollisionShape } from './collision.ts';
 
 /** A placed vehicle: its centre, heading (local +Z = sin/cos of yaw), and scale. */
-export interface ParkedVehicle { kind: string; x: number; z: number; yaw: number; sc: number }
+interface ParkedVehicle { kind: string; x: number; z: number; yaw: number; sc: number }
 
 /** A vehicle's half-width and half-length at scale 1 (its role's box). */
-export interface ParkedFootprint { hw: number; hl: number }
+interface ParkedFootprint { hw: number; hl: number }
 
 /** The gap every placed vehicle keeps from every other, metres between their footprints. */
 export const PARKED_VEHICLE_CLEARANCE = 0.4;
@@ -46,7 +46,7 @@ export function parkedFootprintsOverlap(a: ParkedVehicle, fa: ParkedFootprint, b
   return true;
 }
 
-export interface ParkedSeparationOptions<T extends ParkedVehicle> {
+interface ParkedSeparationOptions<T extends ParkedVehicle> {
   /** The footprint of a vehicle kind (its role's box). */
   footprint(kind: string): ParkedFootprint;
   /** Whether a seat suits the vehicle on everything but the other vehicles (the roadside rules, the road core, the
@@ -58,7 +58,7 @@ export interface ParkedSeparationOptions<T extends ParkedVehicle> {
   drop(vehicle: T): void;
 }
 
-export interface ParkedSeparationReceipt {
+interface ParkedSeparationReceipt {
   vehicles: number;
   overlapping: number;
   moved: { kind: string; from: [number, number]; to: [number, number] }[];
@@ -173,7 +173,7 @@ export const VEHICLE_RELOCATE_MAX_M = 16;
 const CART_SLIDE_STEP_M = 0.25;
 const CART_SLIDE_HEADINGS = 16;
 
-export interface CartSeatOptions<T extends ParkedVehicle> {
+interface CartSeatOptions<T extends ParkedVehicle> {
   /** Whether the cart standing at (x, z) meets anything: an obstacle, a tree, a vehicle or a cart already seated. */
   blocked(cart: T, x: number, z: number): boolean;
   /** The way out of its seat (away from what it meets), or null: the headings are tried nearest it first. */
@@ -195,7 +195,7 @@ export interface CartSeatOptions<T extends ParkedVehicle> {
   prepareRelocation?(cart: T, reach: number): void;
 }
 
-export interface CartSeatReceipt {
+interface CartSeatReceipt {
   carts: number;
   blocked: number;
   slid: { kind: string; from: [number, number]; to: [number, number]; by: number }[];

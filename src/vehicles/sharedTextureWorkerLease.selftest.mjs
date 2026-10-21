@@ -495,7 +495,7 @@ try {
     assert.equal(jobs.length, 2);
     assert.notEqual(jobs[0].message.request.identity, jobs[1].message.request.identity);
     const a = visual(s), b = visual(s, 'low', 'winter');
-    assert.notEqual(a.hull.map, b.hull.map);
+    assert.ok(a.hull.map !== b.hull.map);
     assert.deepEqual(digest(a), expectedFactory); assert.deepEqual(digest(b), expectedWinter);
     const bMaps = maps(b);
     a.dispose(); factoryOwner.release();

@@ -74,7 +74,7 @@ try {
       .getImageData(0, 0, image.width, image.height).data).digest('hex');
     const pixels = imageDigest(), source = left.source;
     try {
-      assert.notEqual(left, right, 'each side retains its own texture view');
+      assert.ok(left !== right, 'each side retains its own texture view');
       assert.equal(right.source, source, 'L/R share exact immutable pixel storage');
       assert.equal(right.image, image);
       for (const key of ['mapping', 'channel', 'wrapS', 'wrapT', 'magFilter', 'minFilter',
@@ -86,8 +86,8 @@ try {
         assert.notEqual(left[key], right[key], `${key} remains per-side state`);
         assert.deepEqual(left[key].toArray(), right[key].toArray());
       }
-      assert.equal(v.trackL.map, left); assert.equal(v.trackL.bumpMap, left);
-      assert.equal(v.trackR.map, right); assert.equal(v.trackR.bumpMap, right);
+      assert.ok(v.trackL.map === left); assert.ok(v.trackL.bumpMap === left);
+      assert.ok(v.trackR.map === right); assert.ok(v.trackR.bumpMap === right);
       left.offset.set(0.125, -0.375); left.updateMatrix();
       assert.deepEqual(right.offset.toArray(), [0, 0]);
       const leftMatrix = left.matrix.toArray();
@@ -243,7 +243,7 @@ try {
     const s = spec('lease-independent-camo');
     const factory = await lease(s, 4, 'low', 'factory'), winter = await lease(s, 4, 'low', 'winter');
     const a = visual(s), b = visual(s, 'low', 'winter'), before = digest(a);
-    assert.notEqual(a.hull.map, b.hull.map, 'explicit camos own distinct cache entries');
+    assert.ok(a.hull.map !== b.hull.map, 'explicit camos own distinct cache entries');
     setCamoOverride(s.id, 'desert'); setCamoBiome('winter');
     applyCamoPatterns(s.id); await applyCamoPatternsChunked({ onlySpecIds: [s.id] });
     assert.deepEqual(digest(a), before, 'fixed lease ignores mutable camo sweeps');

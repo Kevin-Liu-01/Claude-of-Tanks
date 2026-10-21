@@ -4518,7 +4518,151 @@
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
+  },
+  "littrow/barn": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.116,
+   "gapM2": 3.401,
+   "invertedM2": 0
+  },
+  "littrow/chapel": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 2.072,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "littrow/farmhouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0.33,
+   "invertedM2": 0
+  },
+  "littrow/granary": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0.116,
+   "invertedM2": 0
+  },
+  "littrow/schoolhouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.15,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "littrow/cottage": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "littrow/mill": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 52.216,
+   "invertedM2": 0
+  },
+  "littrow/gantry": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 2.759,
+   "invertedM2": 0
+  },
+  "littrow/containerRow": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.257,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/moon:relayRepeater#9": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 7.66,
+   "invertedM2": 0
+  },
+  "landmark/moon:isruWorks#1": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 6.881,
+   "invertedM2": 0
+  },
+  "landmark/moon:solarTower#3": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 3.246,
+   "invertedM2": 0
+  },
+  "landmark/moon:apolloSite#0": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/moon:isruWorks#2": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/moon:solarTower#5": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/moon:stationDome#7": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-18T00:26:58.738Z"
+ "updatedAt": "2026-10-19T11:18:52.724Z"
 }

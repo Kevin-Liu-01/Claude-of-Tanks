@@ -12,7 +12,7 @@ import { PartSink, faceBox, facePoint, rgb, shade, type Face, type RegionalBucke
 import { buildHouse, type HouseFrame, type Opening } from './house.ts';
 import { doorUnit, windowUnit } from './openings.ts';
 
-export interface HallSpec {
+interface HallSpec {
   /** the body across (x) and along (z), its front (+z) the apron gable; the eave height over the floor */
   w: number;
   d: number;

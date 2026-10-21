@@ -21,7 +21,9 @@
 //   reels/<id>.mp4, reels/<id>.webp                1280×720 H.264 with its sound (the delivery's mobile cut), poster
 //   frames/<b>.webp, frames/<b>-thumb.webp         the fifty frames (R181) at 1920×1080 and 640×360
 //   frames/sheet-<n>.webp                          contact sheets, ten frames each (2400 × 540)
-//   films/trailer.mp4, films/trailer.jpg           the trailer at 1920×1080 with its score
+//   films/<film>.webm, .mp4, .jpg                  the trailers (picks.films: the main cut, the 30 s cut, the
+//                                                  vertical), each a VP9 webm with Opus and an H.264 mp4 with AAC
+//                                                  and its poster, as delivered (sources.trailers)
 //   films/reel.webm, films/reel.jpg                the picked takes crossfaded, 1600×900 VP9, silent (the home page's film)
 //   films/reel.mp4                                 the same at 1600×900 H.264 (the fallback for a browser without VP9)
 //   home/<group>/<id>.webp, <id>-640.webp          the home page's feature, mechanic and mode shots (home r2,
@@ -126,7 +128,11 @@ const webp = (src, out, q, size) => run('cwebp', ['-quiet', '-m', '6', '-sharp_y
 // sources.deliverOver (r14b, 2026-10-12): a later round that re-filmed some takes (round 15: the rut-ring takes) is looked
 // up first, so its takes replace round 14's and the rest stay round 14's; both are current
 // sources.deliverFleet (2026-10-12): the fleet takes' own round (a take for every production vehicle, fleet-plan.mjs)
-const CURRENT = [PICKS.sources.deliverOver, PICKS.sources.deliver, PICKS.sources.deliverFleet].filter(Boolean);
+// sources.deliverCombat (2026-10-17): the combat round's takes (tools/media-r5/combat-check.mjs; s225-s228 on 226)
+// sources.deliverFleetOver (2026-10-17): the fleet takes rendered again on 226, looked up before deliverFleet, so their
+// takes replace the earlier ones and the rest stay deliverFleet's
+const CURRENT = [PICKS.sources.deliverOver, PICKS.sources.deliver, PICKS.sources.deliverCombat, PICKS.sources.deliverFleetOver,
+  PICKS.sources.deliverFleet].filter(Boolean);
 const ROUNDS = [...CURRENT, ...(fallback ? ['shots/media-r5/site50/deliver-r13', 'shots/media-r5/site50/deliver'] : [])];
 const deliveries = new Map();
 function delivery(id) {
@@ -165,7 +171,8 @@ for (const f of PICKS.featured) if (f.still === 'close' && f.fourK) throw new Er
 function slots() {
   const out = [];
   const add = (slot, id, kind) => out.push({ slot, id, kind });
-  PICKS.home.hero.forEach((h, i) => add(`home.hero[${i}]`, h.id, h.still));
+  // (a hero slide may be a versus still instead of a take: versusSlots)
+  PICKS.home.hero.forEach((h, i) => { if (!h.versus) add(`home.hero[${i}]`, h.id, h.still); });
   PICKS.home.rail.forEach((id, i) => add(`home.rail[${i}]`, id, 'moment'));
   PICKS.home.mosaic.forEach((m, i) => add(`home.mosaic[${i}]`, m.id, m.still));
   add('home.cta', PICKS.home.cta.id, PICKS.home.cta.still);
@@ -189,6 +196,15 @@ function slots() {
   // the home page's shots stand in on a site fifty still until their own are delivered
   // (a slot with no honest stand-in has none: it hides until its shot lands)
   for (const s of homeSlots()) if (s.standIn) add(`home.${s.group}.${s.id}`, s.standIn.id, s.standIn.still);
+  return out;
+}
+// The landing page's versus stills (2026-10-19, the owner: "all our new frames need to go up with no removals of old
+// ones"): the hero's first slides ({ versus, focus }) and the versus wall (picks.home.versus) show versus-media.mjs's
+// published stills (public/media/versus-r1), which this build does not make; it checks that each one is there.
+function versusSlots() {
+  const out = [];
+  PICKS.home.hero.forEach((h, i) => { if (h.versus) out.push({ slot: `home.hero[${i}]`, id: h.versus }); });
+  (PICKS.home.versus ?? []).forEach((id, i) => out.push({ slot: `home.versus[${i}]`, id }));
   return out;
 }
 
@@ -227,6 +243,11 @@ function checkPicks() {
     if (s.kind === 'close' && !d.close) problems.push(`${s.slot}: ${s.id} has no close still in ${d.round}`);
     if ((s.kind === 'reel' || s.kind === 'loop') && !d.sound) problems.push(`${s.slot}: ${s.id} is delivered without its sound (${d.round})`);
   }
+  const versusManifest = join(ROOT, 'public/media/versus-r1/manifest.json');
+  const versus = new Set(existsSync(versusManifest) ? JSON.parse(readFileSync(versusManifest, 'utf8')).items.map((v) => v.id) : []);
+  for (const s of versusSlots()) if (!versus.has(s.id)) problems.push(`${s.slot}: ${s.id} is not a published versus still (public/media/versus-r1)`);
+  // the landing page's trailers row plays films this build ships
+  for (const film of PICKS.home.trailers ?? []) if (!(PICKS.films ?? []).includes(film)) problems.push(`home.trailers: ${film} is not one of the films`);
   // a delivered home shot keeps its slot's frame (a 16:9 card, the 24:7 multiplayer band): the build never stretches one
   for (const s of homeSlots()) {
     const png = homeDelivery(s);
@@ -326,18 +347,33 @@ function buildLoops() {
   }
 }
 
-function proxy(source, out, crf) {
-  run('ffmpeg', ['-v', 'error', '-y', '-i', source, '-an', '-vf', 'scale=960:540:flags=lanczos,fps=24,format=yuv420p',
-    '-c:v', 'libx264', '-preset', 'slow', '-crf', String(crf), '-profile:v', 'high', '-movflags', '+faststart', out]);
+// A job with kbps (the Studio card's proxy) is encoded in two veryslow passes at that rate: it fills the room the
+// takes' proxies leave in the budget whatever its motion (2026-10-15: the frame-stepped Studio loop moves in every
+// frame, and at CRF 27 its proxy alone, 984 KB, would have stepped every proxy down a CRF to fit; at 610 kbit/s it is
+// 509 KB at VMAF 86.3, where one slow pass of the same size scores 83.6).
+function proxy(source, out, crf, kbps) {
+  const encode = ['-v', 'error', '-y', '-i', source, '-an', '-vf', 'scale=960:540:flags=lanczos,fps=24,format=yuv420p',
+    '-c:v', 'libx264'];
+  if (!kbps) {
+    run('ffmpeg', [...encode, '-preset', 'slow', '-crf', String(crf), '-profile:v', 'high', '-movflags', '+faststart', out]);
+    return;
+  }
+  mkdirSync(TMP, { recursive: true });
+  const log = join(TMP, 'proxy-2pass');
+  const rate = ['-preset', 'veryslow', '-b:v', `${kbps}k`, '-profile:v', 'high'];
+  run('ffmpeg', [...encode, ...rate, '-pass', '1', '-passlogfile', log, '-f', 'mp4', '/dev/null']);
+  run('ffmpeg', [...encode, ...rate, '-pass', '2', '-passlogfile', log, '-movflags', '+faststart', out]);
 }
 function buildProxies() {
   mkdirSync(PROXIES, { recursive: true });
-  // the home page's Studio loop, once delivered, takes the landing-r1 recording's place and its proxy's
+  // the home page's Studio loop, once delivered, takes the landing-r1 recording's place and its proxy's; the proxy is cut
+  // from the delivered master, as the takes' are from their deliveries, not from the light web encode
   const studioLoop = join(OUT, 'home', 'features', 'studio.mp4');
-  const studio = homeStudioDelivery() && existsSync(studioLoop);
+  const studioDelivery = homeStudioDelivery();
+  const studio = studioDelivery && existsSync(studioLoop);
   const jobs = proxyIds.map((id) => ({ path: `${id}-mobile.mp4`, source: delivery(id)?.hd, crf: 27, url: `${BASE_URL}/loops/${id}.webm` }))
     .concat([{ path: 'reel-mobile.mp4', source: join(OUT, 'films', 'reel.mp4'), crf: 29, url: `${BASE_URL}/films/reel.mp4` }])
-    .concat(studio ? [{ path: HOME_STUDIO_PROXY, source: studioLoop, crf: 27, url: `${BASE_URL}/home/features/studio.mp4` }] : [])
+    .concat(studio ? [{ path: HOME_STUDIO_PROXY, source: studioDelivery.video, crf: 27, kbps: 610, url: `${BASE_URL}/home/features/studio.mp4` }] : [])
     .filter((job) => job.source && existsSync(job.source));
   if (studio) for (const p of PROXY_KEPT) if (existsSync(join(PROXIES, p))) rmSync(join(PROXIES, p));
   const kept = PROXY_KEPT.filter((p) => existsSync(join(PROXIES, p)));
@@ -346,14 +382,17 @@ function buildProxies() {
     for (const job of jobs) {
       const out = join(PROXIES, job.path);
       if (pass > 0 || force || !existsSync(out) || statSync(out).mtimeMs < statSync(job.source).mtimeMs) {
-        proxy(job.source, `${out}.tmp.mp4`, job.crf);
+        proxy(job.source, `${out}.tmp.mp4`, job.crf, job.kbps);
         renameSync(`${out}.tmp.mp4`, out);
       }
     }
     const total = keptBytes + jobs.reduce((sum, job) => sum + statSync(join(PROXIES, job.path)).size, 0);
     if (total < PROXY_BUDGET_BYTES) break;
     console.log(`[site-media] proxies ${total} B over the ${PROXY_BUDGET_BYTES} B budget: one CRF step down`);
-    for (const job of jobs) job.crf += 1;
+    for (const job of jobs) {
+      job.crf += 1;
+      if (job.kbps) job.kbps = Math.round(job.kbps * 0.9);
+    }
   }
   // a re-pick leaves proxies of takes no path names any more (retire.mjs would also drop them as unreferenced)
   const current = new Set(jobs.map((job) => job.path));
@@ -426,16 +465,36 @@ function reelTakes() {
   return PICKS.home.reel.takes.map((id) => delivery(id)).filter((d) => d?.hd);
 }
 function buildFilms() {
-  const trailer = join(MEDIA, PICKS.sources.trailer);
-  const poster = PICKS.posters ?? { trailer: 3 };
-  if (existsSync(trailer)) {
-    // (the trailer plays on a click, preload=metadata: its encode is unchanged)
-    make(join(OUT, 'films', 'trailer.mp4'), trailer, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', trailer,
-      '-vf', 'scale=1920:1080:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '21',
-      '-maxrate', '4.5M', '-bufsize', '9M', '-profile:v', 'high', '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', tmp]),
-    { film: 'trailer-24h' });
-    make(join(OUT, 'films', 'trailer.jpg'), trailer, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-ss', String(poster.trailer),
-      '-i', trailer, '-frames:v', '1', '-vf', 'scale=1920:1080:flags=lanczos', '-q:v', '3', tmp]), { film: 'trailer-24h' });
+  // the trailers (round six, 2026-10-15, the owner: "also make better new trailers"): the main cut, the 30 s cut and the
+  // vertical, as delivered. Each is a VP9 webm with Opus and an H.264 mp4 with AAC from one master, each the light encode
+  // of its delivery (deliver-index.json records its CRF, rate and VMAF against the master), and its poster. They play on
+  // a click (preload=metadata), so none weighs on a page before it is asked for.
+  const trailers = join(MEDIA, PICKS.sources.trailers);
+  const index = join(trailers, 'deliver-index.json');
+  const delivered = existsSync(index) ? JSON.parse(readFileSync(index, 'utf8')).films : {};
+  for (const name of PICKS.films ?? []) {
+    const film = delivered[name];
+    if (!film) continue;
+    for (const ext of ['webm', 'mp4']) {
+      const e = film[ext];
+      copy(join(OUT, 'films', `${name}.${ext}`), join(trailers, e.file),
+        { film: name, encode: { ...(e.crf != null ? { crf: e.crf } : { passes: e.passes }), kbps: e.kbps, vmaf: e.vmaf, vmafMin: e.vmafMin,
+          ...(e.capped ? { capped: true } : {}) } });
+    }
+    copy(join(OUT, 'films', `${name}.jpg`), join(trailers, film.poster.file), { film: name });
+    // the landing's trailers row (2026-10-19) shows each film at an action moment, picks.home.trailerPosters (the
+    // delivered poster is its title card); a moment picked on another delivery is not used on this one
+    const moment = PICKS.home.trailerPosters?.[name];
+    if (moment && moment.source === PICKS.sources.trailers) {
+      const src = join(trailers, film.mp4.file), out = join(OUT, 'films', `${name}-row.jpg`);
+      // (make() goes by mtime: a moment picked again is cut again)
+      const manifest = join(OUT, 'manifest.json');
+      const was = existsSync(manifest) ? JSON.parse(readFileSync(manifest, 'utf8')).files
+        .find((f) => f.path === relative(join(ROOT, 'public'), out).split('\\').join('/'))?.posterAtS : undefined;
+      if (existsSync(out) && was !== moment.atS) rmSync(out);
+      make(out, src, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-ss', String(moment.atS), '-i', src,
+        '-frames:v', '1', '-q:v', '3', tmp]), { film: name, posterAtS: moment.atS });
+    }
   }
   const takes = reelTakes();
   if (takes.length === PICKS.home.reel.takes.length) {
@@ -574,9 +633,12 @@ function buildHome() {
   const studio = homeStudioDelivery();
   if (!studio) return;
   const extra = { home: 'features/studio' };
+  // a light encode at the loops' VMAF floor (2026-10-15, the frame-stepped loop: CRF 28 scores 93.6 against its master,
+  // every frame at 30 fps, in 3.4 MB; CRF 21 was 98.0 in 6.1 MB), a keyframe every 2 s and level 4.1 as the landing-r1
+  // publisher made it
   make(join(OUT, 'home', 'features', 'studio.mp4'), studio.video, (tmp) => run('ffmpeg', ['-v', 'error', '-y', '-i', studio.video, '-an',
-    '-vf', 'scale=1920:1080:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', '-maxrate', '8M',
-    '-bufsize', '16M', '-profile:v', 'high', '-movflags', '+faststart', tmp]), extra);
+    '-vf', 'scale=1920:1080:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '28', '-maxrate', '8M',
+    '-bufsize', '16M', '-profile:v', 'high', '-level', '4.1', '-g', '60', '-keyint_min', '60', '-movflags', '+faststart', tmp]), extra);
   make(join(OUT, 'home', 'features', 'studio.jpg'), studio.video, (tmp) => run('ffmpeg', ['-v', 'error', '-y',
     '-ss', String(PICKS.home.studio?.posterS ?? 2), '-i', studio.video, '-frames:v', '1', '-vf', 'scale=1920:1080:flags=lanczos', '-q:v', '3', tmp]), extra);
   copy(join(OUT, 'home', 'features', 'studio.json'), studio.receipt, extra);
@@ -615,9 +677,10 @@ function main() {
       const d = delivery(s.id);
       console.log(`${s.slot.padEnd(22)} ${s.id.padEnd(24)} ${s.kind.padEnd(7)} ${d ? `${relative('shots/media-r5/site50', d.round)}${d.sound ? '' : ' (silent)'}` : 'MISSING'}`);
     }
+    for (const s of versusSlots()) console.log(`${s.slot.padEnd(22)} ${s.id.padEnd(24)} versus  public/media/versus-r1`);
     const frames = frameList();
     console.log(`frames: ${frames.length} (${frames.filter((f) => f.current).length} from ${PICKS.sources.frames})`);
-    console.log(`trailer: ${existsSync(join(MEDIA, PICKS.sources.trailer)) ? PICKS.sources.trailer : 'MISSING'}`);
+    console.log(`films: ${(PICKS.films ?? []).map((name) => `${name} ${existsSync(join(MEDIA, PICKS.sources.trailers, `${name}.webm`)) ? 'delivered' : 'MISSING'}`).join(', ')}`);
     console.log(`reel: ${reelTakes().length} of ${PICKS.home.reel.takes.length} takes delivered (${PICKS.home.reel.takes.join(', ')})`);
     const home = homeSlots();
     const delivered = home.filter((s) => homeDelivery(s));

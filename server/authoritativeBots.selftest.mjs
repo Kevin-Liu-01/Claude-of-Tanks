@@ -121,6 +121,9 @@ assert.ok(calibrationShots >= 50,
 // 2026-10-02 (Verdant rebuilt to the layout brief): the same four spawns now meet on the village square and its even
 // fields instead of the old 1.0-scale roll, and the rate on the same eight seeds rose 67.0 % (124/185, the PR head
 // before the rebuild) -> 71.7 % (119/166) with the aim model untouched; ceiling 0.70 -> 0.76.
+// 2026-10-17 (227 guards): the sampled hulls' belly pans and combat hull boxes are pinned in
+// docs/geometry-gate/sim-floors.json. On 226 the T-90M blade dropped t90am's to ~0.2 m and this rate rose 75.0 % ->
+// 78.9 % through a routine regen; with the aim code unchanged, a rate move points at that ledger first.
 assert.ok(movingHitRate >= 0.12 && movingHitRate <= 0.76,
   `moving-battle hit rate stays useful but non-robotic (${(movingHitRate * 100).toFixed(1)}%)`);
 console.log(`authoritativeBots.selftest: route/ally/aim gates passed; live moving-battle hit rate ${(movingHitRate * 100).toFixed(1)}% (${calibrationHits}/${calibrationShots})`);

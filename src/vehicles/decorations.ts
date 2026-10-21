@@ -59,7 +59,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { DecorReservedBox } from './profiles/fieldChest.ts';
 import {
-  vehicleAmbientFloorHook, getKitPaintTexture, getSharedRoughnessTexture, resolveCamoVisual, followVehicleScheme,
+  vehicleAmbientFloorHook, registerVehicleMaterial, getKitPaintTexture, getSharedRoughnessTexture, resolveCamoVisual, followVehicleScheme,
   type MaterialTankSpec,
 } from './materials.ts';
 import { garnishedNetTextures, NET_TILE_M, theatreOfHex, type SuitTheatre } from './camoNetTexture.ts';
@@ -1494,17 +1494,11 @@ function buildDecorMaterials(
   engineCtx: ShadowEngineContext | null | undefined,
 ): DecorMaterials {
   const equipmentPalette = equipmentPaletteForNation(spec.nation || '');
-  const setup = isRealShadowCtx(engineCtx)
-    ? (m: THREE.MeshStandardMaterial) => {
-      engineCtx?.setupShadowMaterial?.(m, vehicleAmbientFloorHook);
-      m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-      return m;
-    }
-    : (m: THREE.MeshStandardMaterial) => {
-      m.onBeforeCompile = vehicleAmbientFloorHook;
-      m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-      return m;
-    };
+  // through the vehicle registration (materials.ts registerVehicleMaterial): the cascade setup with the bare readability
+  // hook on a real context, the hook alone otherwise, so a clone of a kit material (the Garage's dormant energy skin)
+  // keeps its cascade registration and its vehicle tag (2026-10-17, the wheel-band lane)
+  const cascaded = isRealShadowCtx(engineCtx);
+  const setup = (m: THREE.MeshStandardMaterial) => registerVehicleMaterial(engineCtx, m, 'veh-ambient-floor-v2', cascaded);
 
   const made: Partial<Record<DecorMaterialKey, THREE.MeshStandardMaterial>> = {};
   // garage parity (2026-09-13): the Garage exhibit worker builds the workshop

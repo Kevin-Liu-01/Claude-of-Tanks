@@ -1,13 +1,13 @@
 import type { InfoGuideId } from './infoGuideTypes.ts';
 
 type Point = readonly [number, number];
-export interface GuideAnnotation {
+interface GuideAnnotation {
   /** Image percentages, shared by the photograph, SVG leaders and touch targets. */
   at: Point;
   target: Point;
   paths?: readonly string[];
 }
-export interface GuideCapture {
+interface GuideCapture {
   file: string;
   annotations: readonly [GuideAnnotation, GuideAnnotation, GuideAnnotation];
   stepFiles?: readonly [string, string, string];

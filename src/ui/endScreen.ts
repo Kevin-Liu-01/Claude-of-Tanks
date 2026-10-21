@@ -35,6 +35,7 @@ import { awardDetails } from './awardDetails.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
 import { iconUrl, maskIcon } from './icons.ts';
+import { killSourceIdentity } from './killSourceIdentity.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import type { EventBus } from '../game/stateCore.ts';
@@ -51,6 +52,8 @@ export interface EndScreenTeamRow {
   id: string;
   name?: string | null;
   specId?: string | null;
+  /** (ac130-fx-228) flew the AC-130: the aircraft's icon in the silhouette's place */
+  aircraft?: boolean;
   dmg: number;
   kills: number;
   /** Deaths this battle (owner 2026-09-21): shown in reviving modes, where `dead` is the state at the end. */
@@ -94,6 +97,8 @@ export interface EndScreenSummary {
   reason?: string | null;
   playerVehicle?: string;
   playerSpecId?: string | null;
+  /** (ac130-fx-228) the player flew the AC-130: the debrief's vehicle card shows the aircraft */
+  playerAircraft?: boolean;
   playerDead?: boolean;
   /** The player's deaths this battle (owner 2026-09-21: a stat in reviving modes, not a terminal state). */
   playerDeaths?: number;
@@ -774,7 +779,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   ): void {
     const row = el('div', `es-tr ${hostile ? 'foe' : 'ally'}${result.isPlayer ? ' me' : ''}${result.dead ? ' dead' : ''}`, listRoot);
     row.setAttribute('role', 'listitem');
-    const vehicle = vehicleName(result.specId);
+    // (ac130-fx-228) a gunship pilot's row: the AC-130, not the garage tank under the gunship's guns
+    const vehicle = result.aircraft ? killSourceIdentity('ac130')?.label ?? '' : vehicleName(result.specId);
     const details: string[] = [vehicle, ...rosterRowDetails(result, revives)];
     row.innerHTML =
       '<span class="si"></span>' +
@@ -798,7 +804,11 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     stateMark.setAttribute('role', 'img');
     stateMark.setAttribute('aria-label', result.dead ? t('endScreen.destroyed') : t('endScreen.survived'));
     stateMark.title = result.dead ? t('endScreen.destroyed') : t('endScreen.survived');
-    maskIcon(requiredDescendant<HTMLElement>(row, '.si'), result.specId || result.id,
+    const silhouette = requiredDescendant<HTMLElement>(row, '.si');
+    if (result.aircraft) {
+      silhouette.innerHTML = uiIconSVG('modeAc130', 16, result.dead ? 'rgba(242,143,143,.8)' : 'rgba(206,220,232,0.8)');
+      silhouette.style.display = 'inline-flex'; silhouette.style.alignItems = 'center'; silhouette.style.justifyContent = 'center';
+    } else maskIcon(silhouette, result.specId || result.id,
       'side_silhouette', result.dead ? 'rgba(242,143,143,.8)' : 'rgba(206,220,232,0.8)');
   }
 
@@ -1038,7 +1048,15 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     heading.innerHTML = `<span class="titleline">${uiIconSVG('battleRecord', 18)}` +
       `<span class="ey">${t('endScreen.personal.title')}</span></span>`;
     const statGrid = el('div', 'es-stat-grid', personal);
-    if (sum.playerSpecId) {
+    if (sum.playerAircraft) {
+      // (ac130-fx-228) the AC-130's icon in the vehicle card's place
+      statGrid.classList.add('has-vehicle');
+      const vehicleCard = el('div', 'es-vehicle-card', statGrid);
+      const aircraft = killSourceIdentity('ac130');
+      vehicleCard.innerHTML = uiIconSVG(aircraft?.icon ?? 'modeAc130', 56, 'rgba(206,220,232,0.9)');
+      vehicleCard.setAttribute('role', 'img');
+      vehicleCard.setAttribute('aria-label', t('endScreen.vehicle.alt', { name: aircraft?.label ?? '' }));
+    } else if (sum.playerSpecId) {
       statGrid.classList.add('has-vehicle');
       const vehicleCard = el('div', 'es-vehicle-card', statGrid);
       const vehicle = el('img', '', vehicleCard);

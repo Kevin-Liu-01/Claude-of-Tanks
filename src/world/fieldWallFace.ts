@@ -33,7 +33,7 @@ export const DRY_WALL_CROWN_MID_V = 0.69;
 export const DRY_WALL_STONE_V: readonly [number, number] = [0.82, 0.99];
 export const DRY_WALL_STONE_MID_V = 0.905;
 
-export interface DryWallBuffers {
+interface DryWallBuffers {
   size: number;
   /** sRGB albedo, RGBA8. */
   px: Uint8ClampedArray;
@@ -45,7 +45,7 @@ export interface DryWallBuffers {
   stones: ReadonlyArray<{ u0: number; u1: number; y0: number; y1: number }>;
 }
 
-export interface DryWallSlice { fine: true; stage: string }
+interface DryWallSlice { fine: true; stage: string }
 
 function hash(a: number, b: number, seed: number): number {
   let h = Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1) ^ Math.imul(seed | 0, 0x2545f491);

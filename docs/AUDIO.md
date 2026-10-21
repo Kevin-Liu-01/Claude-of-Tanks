@@ -1036,3 +1036,12 @@ and supply a running Vite server, like `custom-select.browser.mjs`.
   without a tower in earshot stays silent. The front's flyover event does not
   name its aircraft yet, so a map with fighters and bombers picks between their
   sounds at random until it does.
+- **2026-10-19, the AC-130's kill calls (lane ac130-fx-228).** The gunship crew
+  confirms its own kills: `gunship_kill` ("Good hit. Target destroyed." /
+  "Splash. Target down.") and `gunship_double` ("Second target destroyed." /
+  "Another one down. Good effect."), the gunner's voice in all 13 languages, two
+  takes each (1,754 credits, 0 flagged takes). The engine picks them by the
+  kill's source, which the authority stamps on `tank:destroyed`
+  (`sim/aerialCombat.ts` `killSourceOf`): an `ac130` kill is the gunship crew's
+  call, never the tank crew's `target_destroyed` / `double_kill`
+  ("Tank knocked out.", "Target stop.").

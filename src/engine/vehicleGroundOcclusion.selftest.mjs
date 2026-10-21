@@ -468,7 +468,7 @@ function builtHull(name, { z = 0, bands = true, contact = true, shoes = true, sl
 }
 {
   const { root, proxy } = builtHull('t90_1992');
-  assert.equal(hullProxyOf(root), proxy, 'the hull proxy');
+  assert.ok(hullProxyOf(root) === proxy, 'the hull proxy');
   const h = measureVehicleGroundHull(root);
   for (const [key, want] of Object.entries({ hx: 1.79, yb: 0.31, yt: 1.37, fz0: -3.42, fz1: 3.68, hr: 0, hf: 0, pz0: -3.42, pz1: 3.68,
     y0: 0, xi: 1.2, xo: 1.7, tz0: -2.25 - 0.72 - 0.07, tz1: 2.45 + 0.72 + 0.07, cz0: -2.15 - 0.07, cz1: 2.35 + 0.07,
@@ -545,7 +545,7 @@ assert.equal(u.uVehGround.value, 0, 'the lever off: no hulls');
     return wheels[side].length;
   };
   const h = measureVehicleGroundHull(root);
-  assert.equal(root.userData.groundAoRunOwner, hullG, 'the hull group publishes the runs');
+  assert.ok(root.userData.groundAoRunOwner === hullG, 'the hull group publishes the runs');
   const ur = createVehicleGroundOcclusionUniforms();
   const runRow = ur.uVehGroundR.value[0];
   assert.equal(ur.uVehGroundR.value.length, GROUND_AO_MAX_HULLS * 4, 'four vec4 a hull (eight knots a side)');
@@ -938,7 +938,9 @@ assert.match(post, /if \( vgVehicle \) \{\s*texel\.rgb \*= cotVehicleGrime\( vgP
 // keeps the old law
 const fac5 = here('../vehicles/tankFactoryCore.ts'), mats5 = here('../vehicles/materials.ts');
 assert.ok(fac5.includes('const padMat = cloneVehicleMaterial(mats.trackLink || mats.dark);')
-  && mats5.includes('VEHICLE_MATERIAL_SETUP.set(material, setup);') && mats5.includes('gl_FragColor.a += ${VEHICLE_ALPHA_TAG.toFixed(1)};'),
+  // (2026-10-18, the wheel-band lane, round 3: a clone re-registers through its source's family, one registration record)
+  && mats5.includes('VEHICLE_REGISTRATION.set(material, { family, hook: registration });')
+  && mats5.includes('VEHICLE_REGISTRATION.get(programVariantOrigin(source))?.family.setup') && mats5.includes('gl_FragColor.a += ${VEHICLE_ALPHA_TAG.toFixed(1)};'),
   'the shoes are tagged vehicle pixels');
 const lane5 = { x: 1.5, y: 0.08, z: 0 };
 assert.ok(isRunShoe(lane5, T, true), 'a card in the lane over the floor: the old law called it a shoe');

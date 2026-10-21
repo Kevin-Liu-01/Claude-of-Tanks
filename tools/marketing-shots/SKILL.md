@@ -24,6 +24,14 @@ captures reproducible and separate from runtime assets.
 Read the screenshot contract, run one known shot, compare composition and pixel
 dimensions, then generate the requested set.
 
+Live battle frames in a game mode (the home page's mode and mechanic slots):
+`mode-battle-shots.mjs --queue=<file>` runs per-slot recipes from
+`mode-battle-recipes.mjs` (battle by spec, map, mode and hour; mode-state waits;
+scripted driving; chase, scope or external cameras) and freezes candidates on the
+frame an event produced (`mode-battle-director.mjs`); review the contact sheets,
+then `--pick=<slot>:<n>`. It holds the shared capture lock in short normal-ticket
+batches and starts its dev server only while holding it.
+
 ## Gotchas
 
 Kevin personally directs promotional media. Do not generate or publish a new

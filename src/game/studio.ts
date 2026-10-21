@@ -238,7 +238,7 @@ interface StudioContext {
   /** The applied light runtime (blue-hour / night lamps follow the actors and the camera). */
   getStudioLight?(): {
     setActorRoots(roots: readonly THREE.Object3D[]): void;
-    update(cameraPosition: THREE.Vector3Like): void;
+    update(cameraPosition: THREE.Vector3Like, cameraForward?: THREE.Vector3Like): void;
   } | null;
   setGarageSpots(enabled: boolean): void;
   setGarageSunTrim(enabled: boolean): void;
@@ -630,6 +630,8 @@ const _v1 = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
+/** The camera's view for the night lamps (studioLightRuntime.update): the lamps ahead of it take the pooled lights. */
+const _lampFwd = new THREE.Vector3();
 const _up = new THREE.Vector3(0, 1, 0);
 const _size = new THREE.Vector2();
 const _ray = new THREE.Raycaster();
@@ -2761,7 +2763,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * Advance the fx timeline by one dt: studio shells fly (terrain impacts
    * resolve through the real event path), per-actor continuous emitters run
    * (engine smoke, burning refresh), then the fx system ages by dt. dt=0
-   * still refreshes tracer ribbons/lights so frozen frames render correctly.
+   * still refreshes the projectile tracers and lights so frozen frames render correctly.
    * @param {number} dt seconds (already time-scaled)
    */
   function emitDamageSmoke(birthOffset: number): void {
@@ -2861,7 +2863,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     getWorld()?.syncGround?.();
     fx.update(dt, shells, camera, resolveFxSubject);
     // the held (frozen) frame: blue-hour / night lamps nearest the camera (playback updates in advanceTimeline)
-    if (dt === 0) ctx.getStudioLight?.()?.update(camera.position);
+    if (dt === 0) ctx.getStudioLight?.()?.update(camera.position, camera.getWorldDirection(_lampFwd));
     cinematics?.update(dt, clockMs / 1000, shells, trackActors(), camera.position);
   }
 
@@ -3105,7 +3107,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     applyStoryboardFrame(target, 0);
     advanceCrushes(fromMs, target);
     if (clockMs >= storyboard.durationMs) timeScale = 0;
-    ctx.getStudioLight?.()?.update(camera.position); // blue-hour / night lamps follow the posed actors and camera
+    ctx.getStudioLight?.()?.update(camera.position, camera.getWorldDirection(_lampFwd)); // blue-hour / night lamps follow the posed actors and camera
     return Math.round(clockMs);
   }
 
@@ -4012,7 +4014,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       lighting.updateFrustums();
       camera.updateMatrixWorld(true);
       lighting.update(true); // every cascade fresh — deterministic capture
-      stepFx(0);             // rebuild tracer ribbons/lights for this camera
+      stepFx(0);             // rebuild the projectile tracers and lights for this camera
       cinema?.setQuality('capture'); // picture: full lens/finish tap counts
       renderCaptureFrame();
       dataURL = renderer.domElement.toDataURL(opts.type || 'image/png', opts.quality);

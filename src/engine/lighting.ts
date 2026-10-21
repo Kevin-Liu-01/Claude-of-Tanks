@@ -1332,6 +1332,8 @@ export function createLighting(
   // of the sky it sits under (the round-42 wall term already reads the fog colour). Without a published
   // irradiance (the mobile tier's Preetham dome) the engine constant stays.
   const hemiSkyConstant = new THREE.Color(HEMI_SKY_COLOR);
+  const shadeHue = new THREE.Color();
+  const colorLuminance = (c: THREE.Color): number => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
   const hemiSkyLuminance = 0.2126 * hemiSkyConstant.r + 0.7152 * hemiSkyConstant.g + 0.0722 * hemiSkyConstant.b;
   function applyHemisphereSkyHue(): void {
     const irradiance = scene.userData.skyIrradiance as THREE.Color | undefined;
@@ -1523,6 +1525,18 @@ export function createLighting(
       hemi.groundColor.setHex(HEMI_GROUND_COLOR);
       applyHemisphereSkyHue();
     }
+    // (the Earthrise 228 rebuild, 2026-10-18) an authored shade light (lightModelCore.ts LightModelPreset.shadeHex): the
+    // hemisphere's two poles and the anti-sun fill take its hue, each at its own luminance (the key:fill ratios unchanged);
+    // without one the cool sky's fill as before
+    fill.color.setHex(FILL_COLOR);
+    if (model.mode !== 'physical' && opts.shadeHex != null) {
+      shadeHue.setHex(opts.shadeHex);
+      const shadeLum = Math.max(1e-6, colorLuminance(shadeHue));
+      hemi.color.copy(shadeHue).multiplyScalar(colorLuminance(hemi.color) / shadeLum);
+      hemi.groundColor.copy(shadeHue).multiplyScalar(colorLuminance(hemi.groundColor) / shadeLum);
+      fill.color.copy(shadeHue).multiplyScalar(colorLuminance(fill.color) / shadeLum);
+    }
+    lightRig.fillColor.copy(fill.color);
     const sun = csm.lightDirection;
     const fx = sun.x, fz = sun.z; // csm.lightDirection points FROM the sun: its xz is the anti-sun azimuth
     const fl = Math.hypot(fx, fz) || 1;

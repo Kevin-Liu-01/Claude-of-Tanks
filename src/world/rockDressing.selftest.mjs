@@ -423,7 +423,7 @@ assert.deepEqual(shader.uniforms.uRockStoneMean.value.toArray(), [0.214, 0.214, 
   assert.equal(owned.uniforms.uRockStoneMean.value, mean, 'the owner\'s vector, updated in place when the stone lands');
 }
 assert.deepEqual(shader.uniforms.uRockPhoto.value.toArray(), [...rockDressingFor('verdant', null).photo], 'the lithology\'s photo treatment');
-assert.equal(shader.uniforms.uRockLichenTile.value, tile);
+assert.ok(shader.uniforms.uRockLichenTile.value === tile);
 assert.ok(shader.uniforms.uRockLichen.value.x > 0.1, 'the climate\'s lichen cover');
 assert.match(shader.vertexShader, /attribute float aRockGround;[\s\S]*vRockAbove = vGrimeW\.y - aRockGround;/);
 assert.match(shader.vertexShader, /#ifdef USE_INSTANCING\nattribute vec2 aRockSlope;\n#endif/, 'a boulder carries the slope of its ground');

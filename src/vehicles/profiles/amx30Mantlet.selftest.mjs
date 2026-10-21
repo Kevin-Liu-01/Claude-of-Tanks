@@ -15,7 +15,7 @@ for (const id of ids) {
   const mount = gunRig?.getObjectByName('gunMount');
   assert.ok(gunRig && recoilRig && mount?.geometry,
     `${id}: articulated gun and gun-owned mantlet geometry exist`);
-  assert.equal(mount.parent, gunRig,
+  assert.ok(mount.parent === gunRig,
     `${id}: mantlet pitches with the gun instead of recoiling with the tube`);
 
   const position = mount.geometry.getAttribute('position');

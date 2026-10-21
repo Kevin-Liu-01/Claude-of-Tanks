@@ -78,7 +78,7 @@ function restore<T, K extends keyof T>(target: T, keys: readonly K[], values: re
   return offset;
 }
 
-export function validMovementValues(values: readonly number[], count = MOVEMENT_CHECKPOINT_VALUES): boolean {
+function validMovementValues(values: readonly number[], count = MOVEMENT_CHECKPOINT_VALUES): boolean {
   if (values.length !== count) return false;
   for (const value of values) {
     if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > MAX_ABS_VALUE) return false;

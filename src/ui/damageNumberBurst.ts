@@ -1,5 +1,5 @@
 import { isRapidFireHit, type WeaponHitIdentity } from '../game/weaponHitKind.ts';
-export interface DamageNumberHit extends WeaponHitIdentity {
+interface DamageNumberHit extends WeaponHitIdentity {
   targetId?: string | null;
   attackerId?: string | null;
   damage: number;

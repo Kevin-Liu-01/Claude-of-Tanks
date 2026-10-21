@@ -27,7 +27,7 @@ type ToneFunction = (hue: number, saturation: number, lightness: number) => read
 /** The rock a battlefield's boulders are made of: what their forms and their detail tile draw. */
 export type BoulderLithology = 'granite' | 'gneiss' | 'sandstone' | 'limestone' | 'slate' | 'basalt' | 'chalk';
 
-export interface RockDressing {
+interface RockDressing {
   /** Moss / lichen weight on the shaded and upward faces (0 on snow and arid maps). */
   moss: number;
   /** Dust cap and skirt weight (arid maps). */
@@ -966,7 +966,7 @@ export function projectsInsideHull(geometry: THREE.BufferGeometry, hull: readonl
 
 interface RockDetailSlice { fine: true; stage: string }
 
-export interface RockDetailTextures {
+interface RockDetailTextures {
   albedo: THREE.CanvasTexture;
   normal: THREE.CanvasTexture;
   surface: THREE.CanvasTexture;

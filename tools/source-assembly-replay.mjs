@@ -1,5 +1,6 @@
 // Local source-reference preparation only. This module never builds playable geometry.
 import assert from 'node:assert/strict';
+import { uniqueIds } from './id-list.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -306,7 +307,7 @@ export async function prepareRegisteredSourceAssembly(id, { root = repoRoot } = 
 }
 
 async function main() {
-  const ids = process.argv.find(arg => arg.startsWith('--ids='))?.slice(6).split(',').filter(Boolean);
+  const ids = uniqueIds(process.argv.find(arg => arg.startsWith('--ids='))?.slice(6).split(',').filter(Boolean), 'source-assembly-replay --ids');
   if (!ids?.length) throw new Error('Usage: node tools/source-assembly-replay.mjs --ids=<comma-separated registered IDs>');
   for (const id of ids) console.log(JSON.stringify(await prepareRegisteredSourceAssembly(id)));
 }

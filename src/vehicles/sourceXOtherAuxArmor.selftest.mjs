@@ -54,7 +54,7 @@ function trackShoeMaterial(root){
   for(const mesh of shoes)assert.ok(mesh.geometry.getAttribute('color')?.count===mesh.geometry.getAttribute('position').count,
     `${mesh.name} carries its worn-steel vertex colours`);
   for(const mesh of shoes){
-    assert.equal(mesh.material,material,'near and far shoes share their actual material');
+    assert.ok(mesh.material === material,'near and far shoes share their actual material');
     assert.equal(mesh.isInstancedMesh,true);
     assert.ok(mesh.count>0&&mesh.instanceColor?.count>=mesh.count,'every shoe has an instance palette entry');
     assert.equal(mesh.geometry.getAttribute('color')?.count,mesh.geometry.getAttribute('position').count,
@@ -245,12 +245,12 @@ for(const[id,donor]of Object.entries(DONORS).filter(([id])=>!selected||selected.
         unrelated.name='unrelated-shared-material';tank.root.add(unrelated);
         try{assert.throws(()=>trackShoeMaterial(tank.root),/only canonical shoes/);}
         finally{tank.root.remove(unrelated);}
-        assert.equal(trackShoeMaterial(tank.root),shoeMaterial,'negative controls leave the actual shoe material intact');
+        assert.ok(trackShoeMaterial(tank.root) === shoeMaterial,'negative controls leave the actual shoe material intact');
       }
       if(['leclerc_xlr','amx40','type10'].includes(id)){
         const painted=tank.root.getObjectByName('hullPaintedDetail');
         // The rendered texture/name/UV contract is checked by registeredGuardPaint.
-        assert.equal(painted?.material,tank.root.getObjectByName('hull').material);
+        assert.ok(painted?.material === tank.root.getObjectByName('hull').material);
         assert.equal(painted?.userData.combatHitboxRole,'nonArmor');
         assert.equal(painted?.userData.materialOnlyPaintSourceBucket,'hullDetail');
       }

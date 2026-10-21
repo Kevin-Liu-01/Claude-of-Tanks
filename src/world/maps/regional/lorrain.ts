@@ -896,7 +896,7 @@ const ruine: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const LORRAIN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const LORRAIN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => maison(ctx, { bays: ctx.info.w * ctx.info.d > 52 ? ['logis', 'stable'] : ['logis'], storeys: 2 }),
   farmhouse: (ctx) => maison(ctx, { bays: ['logis', 'cart', 'stable'], storeys: 2 }),
   tavern: (ctx) => maison(ctx, { bays: ['shop', 'logis'], storeys: 3, fascia: rgb(0x3f5a46) }),

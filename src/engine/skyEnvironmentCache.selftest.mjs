@@ -47,17 +47,17 @@ for (const invalidate of [f => { f.renderer.info = {}; }, f => f.replaceContext(
 }
 const loss = fixture(); loss.install('day'); loss.lose();
 assert.throws(() => loss.install('day'), /live graphics context/);
-assert.equal(loss.scene.environment, null); assert.equal(loss.targets.length, 1);
+assert.ok(loss.scene.environment === null); assert.equal(loss.targets.length, 1);
 loss.restore(); loss.install('day'); assert.equal(loss.targets.length, 2);
 
 for (const dispose of [t => t.dispose(), t => t.texture.dispose()]) {
   const f = fixture(); f.install('day'); const first = f.targets[0]; dispose(first);
-  assert.equal(f.scene.environment, null); f.install('day');
+  assert.ok(f.scene.environment === null); f.install('day');
   assert.equal(f.targets.length, 2); assert.equal(first.disposals, 1, 'external disposal evicts without duplicate RT disposal');
 }
 const rejected = fixture(); rejected.install('day'); rejected.install('night');
 rejected.install('day', { validate: () => { rejected.scene.environment = null; return false; } });
-assert.equal(rejected.scene.environment, null, 'invalid cache hit preserves the validator rescue, not stale IBL');
+assert.ok(rejected.scene.environment === null, 'invalid cache hit preserves the validator rescue, not stale IBL');
 assert.equal(rejected.targets[0].disposals, 1); rejected.install('day');
 assert.equal(rejected.targets.length, 3, 'rejected targets never become another cache hit');
 
@@ -68,7 +68,7 @@ for (const step of ['create', 'validate']) {
     create: () => { if (step === 'create') throw originalError; return f.create(); },
     validate: () => { throw originalError; },
   }), error => error === originalError);
-  assert.equal(f.scene.environment, previous);
+  assert.ok(f.scene.environment === previous);
   assert.equal(f.scene.environmentIntensity, 0.75);
   if (step === 'validate') assert.equal(f.targets[1].disposals, 1);
 }
@@ -77,13 +77,13 @@ assert.throws(() => throwingDisposal.install('night', {
   create: () => { const t = throwingDisposal.create(); t.addEventListener('dispose', () => { throw new Error('cleanup'); }); return t; },
   validate: () => { throw originalError; },
 }), error => error === originalError, 'cleanup cannot replace the original validation error');
-assert.equal(throwingDisposal.scene.environment, throwingDisposal.targets[0].texture);
+assert.ok(throwingDisposal.scene.environment === throwingDisposal.targets[0].texture);
 
 for (const key of ['day', 'night']) {
   const f = fixture(); f.install('day'); const previous = f.targets[0];
   assert.throws(() => f.install(key, { validate: () => { previous.texture.dispose(); throw originalError; } }),
     error => error === originalError);
-  assert.equal(f.scene.environment, null, 'an externally disposed prior environment cannot be resurrected by catch');
+  assert.ok(f.scene.environment === null, 'an externally disposed prior environment cannot be resurrected by catch');
 }
 for (const boundary of ['create', 'validate']) {
   const f = fixture(); f.install('day');
@@ -91,7 +91,7 @@ for (const boundary of ['create', 'validate']) {
     create: () => { const t = f.create(); if (boundary === 'create') f.renderer.info = {}; return t; },
     validate: () => { f.renderer.info = {}; return true; },
   }), /outlived/);
-  assert.equal(f.scene.environment, null); assert.ok(f.targets.every(t => t.disposals === 1));
+  assert.ok(f.scene.environment === null); assert.ok(f.targets.every(t => t.disposals === 1));
 }
 const drain = fixture(); drain.install('day'); drain.install('night');
 drain.targets[0].addEventListener('dispose', () => { throw originalError; });
@@ -103,11 +103,11 @@ drain.install('day'); assert.equal(drain.targets.length, 3);
 const rollback = fixture(); rollback.install('day'); rollback.install('night'); rollback.install('day');
 rollback.targets[1].addEventListener('dispose', () => { throw originalError; });
 assert.throws(() => rollback.install('third'), error => error === originalError);
-assert.equal(rollback.scene.environment, rollback.targets[0].texture, 'eviction failure restores the live prior owner');
+assert.ok(rollback.scene.environment === rollback.targets[0].texture, 'eviction failure restores the live prior owner');
 assert.throws(() => rollback.install('fourth', { validate: () => {
   rollback.targets[0].texture.dispose(); throw originalError;
 } }), error => error === originalError);
-assert.equal(rollback.scene.environment, null, 'rollback retains ownership tracking for a later disposal/failure');
+assert.ok(rollback.scene.environment === null, 'rollback retains ownership tracking for a later disposal/failure');
 
 // Execute the actual sky key/state/bake owner with pinned Sky geometry and
 // recording PMREM. Native render parity remains a separate qualification.
@@ -207,7 +207,7 @@ function skyFixture() {
 }
 const sky = skyFixture(); sky.rig.bakeEnvironment(); const day = sky.scene.environment;
 sky.preset.skyIntensity = 0.05; sky.rig.bakeEnvironment(); sky.preset.skyIntensity = 1; sky.rig.bakeEnvironment();
-assert.equal(sky.scene.environment, day); assert.equal(sky.state.bakes, 2); assert.equal(sky.state.validations, 3);
+assert.ok(sky.scene.environment === day); assert.equal(sky.state.bakes, 2); assert.equal(sky.state.validations, 3);
 assert.deepEqual(sky.state.inputs[0], [1, 4, 1.2, 0.006 * 1.25, 0.82, ...sky.sunDir.toArray(), 0]);
 assert.equal(sky.state.geometryDisposals, 2); assert.equal(sky.state.materialDisposals, 2); sky.assertRestored();
 for (const field of ['skyIntensity', 'turbidity', 'rayleigh', 'mieCoefficient', 'mieDirectionalG']) {
@@ -229,7 +229,7 @@ for (const failure of ['bake', 'validate', 'geometry', 'restore']) {
   const f = skyFixture(); f.rig.bakeEnvironment(); const previous = f.scene.environment;
   f.preset.skyIntensity = 0.05; f.state.failure = failure;
   assert.throws(() => f.rig.bakeEnvironment(), error => error === originalError, failure);
-  assert.equal(f.scene.environment, previous, `${failure}: original live environment remains installed`);
+  assert.ok(f.scene.environment === previous, `${failure}: original live environment remains installed`);
   assert.equal(f.state.geometryDisposals, 2); assert.equal(f.state.materialDisposals, 2);
   f.assertRestored();
   if (failure === 'validate' || failure === 'geometry') assert.equal(f.state.targets[1].disposals, 1);

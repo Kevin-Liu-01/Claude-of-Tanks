@@ -44,7 +44,7 @@ try {
   assert.ok(turret && gun && barrel?.geometry && barrelDark?.geometry
     && gunMount?.geometry && gunMountDark?.geometry,
   'T-90A keeps its articulated turret, cannon, and complete recoil housing geometry');
-  assert.equal(gun.parent, turret, 'cannon remains owned by the moved turret');
+  assert.ok(gun.parent === turret, 'cannon remains owned by the moved turret');
   assert.ok(gunMount.parent === gun,
     'cast mantlet and recoil housing rise with the articulated cannon');
   assert.ok(gunMountDark.parent?.parent === gun,
@@ -173,7 +173,7 @@ try {
   assert.ok(remoteNsvt, 'T-90A exposes one named remote NSVT fitting');
   assert.equal(remoteNsvt.userData.fittingRoot, true,
     'remote NSVT remains one semantic fitting assembly');
-  assert.equal(remoteNsvt.parent, turret, 'complete remote NSVT remains turret-owned');
+  assert.ok(remoteNsvt.parent === turret, 'complete remote NSVT remains turret-owned');
   near(remoteNsvt.rotation.y, 0, 'remote NSVT faces vehicle-forward local +Z');
   const station = turret.userData.t90aAutomatedStationReceipt;
   assert.equal(station?.family, 'tagil-integrated-automated-station-r1',
@@ -220,7 +220,7 @@ try {
   for (const yawDeg of [0, 45, -90, 180]) {
     turret.rotation.y = THREE.MathUtils.degToRad(yawDeg);
     tank.root.updateMatrixWorld(true);
-    assert.equal(gun.parent, turret,
+    assert.ok(gun.parent === turret,
       `cannon follows the rearward turret through yaw ${yawDeg}`);
   }
 } finally {

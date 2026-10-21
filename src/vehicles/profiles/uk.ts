@@ -13,7 +13,7 @@ import { weaponAssembly } from './weaponStock.ts';
 // that module imports this file's shared UK kit (export block at the tail).
 import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
-import { vehicleAmbientFloorHook } from '../materials.ts';
+import { cloneRehookedVehicleMaterial, rehookVehicleMaterial } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 const {
@@ -1407,13 +1407,10 @@ function towCableUK(
 // call this — its own r5/r6 gear tones live in CHIEFTAIN_HULL config.
 // ---------------------------------------------------------------------------
 function ukToneKit(P: UKMaterialPort, o: UKToneOptions = {}): void {
-  const rehook = (m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
-    // Material.clone() drops onBeforeCompile — re-attach the family ambient
-    // floor (merkava r12 gearFloor law / leo r13b gearDarkLift pattern).
-    m.onBeforeCompile = vehicleAmbientFloorHook;
-    m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    return m;
-  };
+  // Material.clone() drops onBeforeCompile — re-attach the family ambient
+  // floor (merkava r12 gearFloor law / leo r13b gearDarkLift pattern); a
+  // registered material keeps its registration (2026-10-17, the wheel-band lane).
+  const rehook = rehookVehicleMaterial;
   if (o.glass !== false) {
     // Blue-glass calm (patton C1 / m60 r4 lineage): the shared 'glass' lens
     // is a blue-grey MIRROR (0x2a3540, metalness 0.85) — under the PMREM sky
@@ -1498,13 +1495,11 @@ function ukGearAirBackers(
   plates: readonly (readonly [number, number, number, number, number, number])[],
   hex = 0x20261c,
 ): void {
-  const m = P.mats.shadow.clone();
+  const m = cloneRehookedVehicleMaterial(P.mats.shadow);
   m.color.setHex(hex);
   m.roughness = 0.97;
   m.metalness = 0.0;
   m.envMapIntensity = 0.14;
-  m.onBeforeCompile = vehicleAmbientFloorHook;
-  m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
   P.disposables.push(m);
   for (const [w, h, d, x, y, z] of plates) {
     for (const side of [-1, 1]) {
@@ -2486,12 +2481,10 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
         // the 1.5875 plan boundary — the r7 withdrawal was the INBOARD 1.469
         // face against the 1.4625 boundary).
         if (mk === 5) {
-          const weaveMat = P.mats.detail.clone();
+          const weaveMat = cloneRehookedVehicleMaterial(P.mats.detail);
           weaveMat.color.setHex(0x474e38);
           weaveMat.roughness = 0.95;
           weaveMat.envMapIntensity = 0.16;
-          weaveMat.onBeforeCompile = vehicleAmbientFloorHook;
-          weaveMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
           P.disposables.push(weaveMat);
           const wg = new THREE.BoxGeometry(0.05, 0.46, 0.55);
           const wall = new THREE.Mesh(wg, weaveMat);
@@ -3415,18 +3408,24 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
       [-0.76, 0.34, -0.62], [0.76, 0.34, -0.62], [0.61, 0.30, -1.36], [-0.61, 0.30, -1.36],
       [-0.75, 0.62, -0.62], [0.75, 0.62, -0.62], [0.60, 0.54, -1.36], [-0.60, 0.54, -1.36]));
     // ---- gun mount: dark vertical slot recess ON the raked face, cast
-    // collar — §B3.1: cylinders and cast shapes only, no prisms on the run
-    P.add('turretDark', box(0.40, 0.34, 0.025), -0.10, 0.30, 0.505, -0.651, 0, 0);
+    // collar — §B3.1: cylinders and cast shapes only, no prisms on the run.
+    // 227 gun-gaps r4: the slot, its cheeks, lintel and lower cradle block (and
+    // the coax port beside them, below) are centred on the RARDEN (gunG x 0.05).
+    // The 2026-08-12 restore moved the gun 0.15 m right of the -0.10 slot it had
+    // shared, so the gun's root sleeve ran into the right cheek casting instead
+    // of entering the slot between them.
+    const slotX = P.gunG.position.x;
+    P.add('turretDark', box(0.40, 0.34, 0.025), slotX, 0.30, 0.505, -0.651, 0, 0);
     // uk round 2026-08-07 (owner identity list): the RARDEN's DISTINCTIVE
     // MANTLET CHEEKS — the paired angular castings flanking the mount slot
     // on the real Warrior face, riding ON the raked plane (§B1.1: detail on
     // the plane, never replacing it) + the lintel over the slot.
-    P.add('turret', box(0.15, 0.30, 0.075), -0.335, 0.295, 0.515, -0.651, 0, 0); // left cheek casting
-    P.add('turret', box(0.15, 0.30, 0.075), 0.135, 0.295, 0.515, -0.651, 0, 0);  // right cheek casting
-    P.add('turret', box(0.44, 0.09, 0.065), -0.10, 0.475, 0.425, -0.651, 0, 0);  // mantlet lintel
-    P.add('turretDark', box(0.13, 0.02, 0.078), -0.335, 0.30, 0.517, -0.651, 0, 0); // cheek bolt seams
-    P.add('turretDark', box(0.13, 0.02, 0.078), 0.135, 0.30, 0.517, -0.651, 0, 0);
-    P.add('turret', box(0.44, 0.22, 0.65), -0.10, 0.10, 0.75, -0.18, 0, 0);
+    P.add('turret', box(0.15, 0.30, 0.075), slotX - 0.235, 0.295, 0.515, -0.651, 0, 0); // left cheek casting
+    P.add('turret', box(0.15, 0.30, 0.075), slotX + 0.235, 0.295, 0.515, -0.651, 0, 0); // right cheek casting
+    P.add('turret', box(0.44, 0.09, 0.065), slotX, 0.475, 0.425, -0.651, 0, 0);  // mantlet lintel
+    P.add('turretDark', box(0.13, 0.02, 0.078), slotX - 0.235, 0.30, 0.517, -0.651, 0, 0); // cheek bolt seams
+    P.add('turretDark', box(0.13, 0.02, 0.078), slotX + 0.235, 0.30, 0.517, -0.651, 0, 0);
+    P.add('turret', box(0.44, 0.22, 0.65), slotX, 0.10, 0.75, -0.18, 0, 0);
     // ---- twin sight heads: BGTI hood (the 2.795 height anchor) + commander
     // day sight; hooded visors + glass slits (§B3 tells) ----
     P.add('turret', box(0.44, 0.36, 0.18), -0.26, 0.64, -1.40);
@@ -3546,6 +3545,18 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     // dark ring vents, slotted tip; NO evacuator, NO thermal sleeve; the
     // muzzle never clears the +3.17 nose, so overhang masks stay empty) =====
     P.addGunExtra(cylZ(0.075, 0.30, 12, 0.092), 0, 0, 0.26);
+    // 227 gun-gaps (owner 2026-10-17, "fix any of these" with the C2 gun gap): the turret buckets are offset 0.25 m
+    // aft below (the measured turret station) while the gun group stays at z 0.55, so the raked face sits 0.27 m behind
+    // the trunnion and the recoiling base ended 0.075 m behind it: from 12-14 of 24 directions the background showed
+    // along the gun line between the RARDEN and the face (83-305 mm behind the pivot, 80-350 mm at -9 deg). The cradle
+    // now continues aft as a 0.070 m sleeve (just over the 0.067 m recoiling base it receives) from 0.03 m behind the
+    // trunnion into the face, keeping its rear behind the raked face at rest, +30 and -9 deg. r3 (critic): at full
+    // depression the r2 sleeve's full-radius rear (0.49 m aft) broke 14 mm up through the seam groove between the roof
+    // plate and the add-on block ahead of it. The full section now ends 0.36 m aft (the face's rake reaches 0.32 m at
+    // -9 deg) and its last 0.09 m tapers to a 0.036 m rim 0.45 m aft, so at full depression the sleeve passes 18 mm
+    // under that groove's floor.
+    P.addGunExtra(cylZ(0.070, 0.33, 12), 0, 0, -0.195);
+    P.addGunExtra(cylZ(0.070, 0.09, 12, 0.036), 0, 0, -0.405);
     buildGun(P, { len: 1.84, r: 0.030, sleeve: false, evac: null, collar: false, baseR: 0.058 });
     // Fleet visual standard (2026-09-12): the mouth sits ON the tip face at
     // 1.872 (the former seat at 1.84 was buried inside the dark hider nose
@@ -3566,9 +3577,11 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     P.add('gun', cylZ(0.037, 0.05, 12), 0, 0, 1.84);            // hider nose 1.815..1.865
     P.add('gunDark', cylZ(0.0375, 0.006, 12), 0, 0, 1.858);     // slot read behind the tip
     P.add('gun', cylZ(0.030, 0.012, 12), 0, 0, 1.866);          // tip collar 1.860..1.872 (bore face)
-    // coax 7.62 chain gun port left of the main gun (dark ring + stub)
-    P.add('turretDark', cylZ(0.032, 0.02, 10), -0.42, 0.30, 0.52);
-    P.add('turretDark', cylZ(0.014, 0.16, 8), -0.42, 0.30, 0.58);
+    // coax 7.62 chain gun port left of the main gun (dark ring + stub), at the
+    // left cheek casting's outer edge, 0.32 m from the RARDEN as authored
+    const coaxX = P.gunG.position.x - 0.32;
+    P.add('turretDark', cylZ(0.032, 0.02, 10), coaxX, 0.30, 0.52);
+    P.add('turretDark', cylZ(0.014, 0.16, 8), coaxX, 0.30, 0.58);
     // Match the measured 1.68 m Warrior roof without individually nudging a
     // hundred authored plates. This affine correction touches our primitives
     // only; no source vertices enter the runtime builder.

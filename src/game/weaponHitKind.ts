@@ -5,7 +5,7 @@ export interface WeaponHitIdentity {
   readonly shellName?: string;
   readonly shellType?: string;
 }
-export type WeaponHitKind = 'machineGun' | 'missile' | 'cannon';
+type WeaponHitKind = 'machineGun' | 'missile' | 'cannon';
 export function weaponHitKind(hit: WeaponHitIdentity): WeaponHitKind {
   if (hit.guided === true || hit.shellType === 'ATGM') return 'missile';
   // 20 mm and larger are cannons, including IFV primary autocannons.

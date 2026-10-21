@@ -1,3 +1,5 @@
+import { hypot2 } from './scalarHypot.ts';
+
 /** Downward translation that keeps a complete finite straight span below a
  * circular road-wheel envelope. Solve the minimum of the lower semicircle
  * minus the line analytically, not with sampled points at the axles. */
@@ -8,20 +10,20 @@ export function loadedSpanDrop(
   const hi=Math.min(Math.max(z0,z1),wheelZ+radius);
   if(lo>=hi||Math.abs(z1-z0)<1e-10)return 0;
   const slope=(y1-y0)/(z1-z0);
-  const z=Math.max(lo,Math.min(hi,wheelZ+slope*radius/Math.hypot(1,slope)));
+  const z=Math.max(lo,Math.min(hi,wheelZ+slope*radius/hypot2(1,slope)));
   const underside=wheelY-Math.sqrt(Math.max(0,radius*radius-(z-wheelZ)**2));
   return Math.max(0,y0+slope*(z-z0)-underside);
 }
 
 interface RoadContact {z:number;y:number;r:number;voff?:number;}
 interface Positions {readonly length:number;[index:number]:number;}
-interface ContactScratch {y:Float64Array;z:Float64Array;drop:Float64Array;}
+interface ContactScratch {y:Float64Array;z:Float64Array;drop:Float64Array;lower:Uint8Array;}
 
 /** Maximum fitted-band slope (drop per metre of run, ~39°) — see the spreading pass below. */
 const MAX_FIT_SLOPE=0.8;
 
 export function loadedContactScratch(pointCount:number):ContactScratch {
-  return {y:new Float64Array(pointCount),z:new Float64Array(pointCount),drop:new Float64Array(pointCount)};
+  return {y:new Float64Array(pointCount),z:new Float64Array(pointCount),drop:new Float64Array(pointCount),lower:new Uint8Array(pointCount)};
 }
 
 // The 24 vertices per native carrier cell duplicate its two cross-sections.
@@ -44,7 +46,9 @@ export function fitLoadedTrackContact(
    * never pulls them back toward their authored tire gap; the clearance passes still push them out of a tire */
   pinned:Uint8Array|null=null,
 ):void {
-  const {y,z,drop}=scratch,n=y.length;drop.fill(0);
+  // per-frame on every loaded band: scratch only, and hypot2 for Math.hypot (V8's allocates its argument array per call;
+  // hypot2 is the same number bit for bit, src/vehicles/scalarHypot.ts)
+  const {y,z,drop,lower}=scratch,n=y.length;drop.fill(0);lower.fill(0);
   for(let i=0;i<n;i++) {
     const base=i*72;
     if(fromOuterFace) {
@@ -58,7 +62,6 @@ export function fitLoadedTrackContact(
       z[i]=(positions[base+8]+positions[base+20])/2;
     }
   }
-  const lower=new Uint8Array(n);
   // 2026-09-17: per-STATION clearance instead of per-span translation. Translating a whole span by its
   // worst violation dragged the axle vertex (already exactly on the tire) down with a flank vertex that
   // needed 1–3 cm, so every drooping wheel showed 1–5 cm of daylight under it. The loaded run now
@@ -160,7 +163,7 @@ export function fitLoadedTrackContact(
   for(let pass=0;pass<2;pass++)for(let step=0;step<n;step++) {
     const i=pass?n-1-step:step,j=(i+1)%n;
     if(!lower[i]||!lower[j])continue;
-    const limit=MAX_FIT_SLOPE*Math.hypot(z[j]-z[i],y[j]-y[i]);
+    const limit=MAX_FIT_SLOPE*hypot2(z[j]-z[i],y[j]-y[i]);
     if(drop[j]>drop[i]+limit)drop[i]=drop[j]-limit;
     if(drop[i]>drop[j]+limit)drop[j]=drop[i]-limit;
   }

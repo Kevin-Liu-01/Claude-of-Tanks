@@ -4,6 +4,8 @@ import { registerNightLightEmitters, type NightLightEmitter } from '../engine/ni
 import { installNightEmissionMask } from '../engine/nightEmissionMaterial.ts';
 
 export const WORLD_LAMP_ACTIVE_ATTRIBUTE = 'nightFixtureActive';
+/** A street lamp's pooled point light (candela): its pool reads on the pavement and the facade beside it (228: the s228 calibration, 45 / 90 / 180 cd). */
+export const STREET_LAMP_CANDELA = 150;
 
 /** Call after the world's ordinary CSM/grime hooks have been installed. */
 export function configureWorldLampMaterial(material: MeshStandardMaterial): void {
@@ -83,7 +85,10 @@ export function registerWorldNightLighting(
       kind: 'building', position: [lens.x, lens.y, lens.z],
       // Restrain nearby facade spill from the existing unshadowed point.
       // The visible bulb keeps its original radiance and physical seat.
-      color: 0xffc889, intensity: 6, range: 17,
+      // (the looks lane, 228: at 6 cd a lamp lit 0.4 lux under itself, a twentieth of a headlight's pool, and no
+      // pool showed at any pose) the lamp's pool reads on the pavement beside a headlight's; its range still bounds the
+      // unshadowed spill to the lamp's own stretch of street
+      color: 0xffc889, intensity: STREET_LAMP_CANDELA, range: 17,
       emission: { material, color: 0xffffff, intensity: 3 },
       isActive: () => {
         const enabled = record.state === 0 ? 1 : 0;

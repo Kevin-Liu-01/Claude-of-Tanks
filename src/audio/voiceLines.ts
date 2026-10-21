@@ -68,6 +68,9 @@ export const VOICE_LINES: Readonly<Record<string, VoiceLineMeta>> = Object.freez
   gunship_cannon: V(1, 2.5, 'ammo', 0.6),
   gunship_howitzer: V(1, 2.5, 'ammo', 0.6),
   gunship_missile: V(1, 2.5, 'ammo', 0.6),
+  // (ac130-fx-228) the gunship crew confirms the AC-130's kills (the tank crew's target_destroyed / double_kill)
+  gunship_kill: V(3, 3.5, 'shot_result', 2.0),
+  gunship_double: V(3, 20, 'shot_result', 2.0),
   ammo_low: V(1, 45, 'ammo', 1.2),
   ammo_empty: V(1, 6, 'ammo', 1.0),
   ammo_out_all: V(3, 30, 'ammo', 1.2),

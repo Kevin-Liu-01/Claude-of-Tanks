@@ -125,6 +125,14 @@ for (const id of ['pl01', 'pl01_105']) {
     && near(gunMountBounds.min.y, -0.23328)
     && near(gunMountBounds.min.z, 0.43),
   `${id} gun housing must begin on the turret throat's full lower/shoulder profile`);
+  // 2026-10-18 (227 gun-gaps, r4): behind that profile a dark round cradle tube on the gun line runs from 2 cm inside
+  // the ring to z 0.30 (88 mm radius at the ring, 74 mm at its rear), so at +20 deg no notch opens behind the raised
+  // housing; at rest and at full depression it lies inside the nose ridge.
+  const cradle = gun.getObjectByName('gunMountDark');
+  assert.ok(cradle?.isMesh, `${id} must carry the gun's dark cradle stock`);
+  cradle.geometry.computeBoundingBox();
+  const cradleBounds = cradle.geometry.boundingBox;
+  assert.ok(near(cradleBounds.min.z, 0.30), `${id} cradle tube reaches z 0.30 behind the housing (${cradleBounds.min.z})`);
   const housingPositions = gunMount.geometry.getAttribute('position');
   const rearProfile = new Set();
   for (let index = 0; index < housingPositions.count; index++) {
@@ -158,7 +166,7 @@ for (const id of ['pl01', 'pl01_105']) {
     `${id} must retain exactly one linked track course per side`);
 
   // 2026-10-08 (the owner's field standard, main 6763d7cc0): the remote module is the PL-01's only secondary weapon
-  assert.equal(tank.root.getObjectByName('pl01_loader_mg'), undefined,
+  assert.ok(tank.root.getObjectByName('pl01_loader_mg') === undefined,
     `${id} carries no loader machine gun beside its remote station`);
   assert.ok(tank.root.getObjectByName('turretCupola'),
     `${id} must expose structural cupola geometry`);
@@ -180,12 +188,12 @@ for (const id of ['pl01', 'pl01_105']) {
       'PL-01 105 CROWS must be seated on the corrected roof');
     assert.equal(crows.rotation.y, 0,
       'PL-01 105 CROWS must rest aimed forward');
-    assert.equal(rws, undefined,
+    assert.ok(rws === undefined,
       'PL-01 105 must not inherit the base low-observable RWS');
   } else {
-    assert.equal(spareLinks, undefined,
+    assert.ok(spareLinks === undefined,
       'base PL-01 must not inherit the 105 glacis protection pack');
-    assert.equal(crows, undefined,
+    assert.ok(crows === undefined,
       'base PL-01 keeps its own low-observable RWS');
     assert.ok(rws?.parent === turret && near(rws.position.y, 0.76208),
       'base PL-01 RWS must be seated on the corrected roof');

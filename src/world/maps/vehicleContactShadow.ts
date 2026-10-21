@@ -216,7 +216,7 @@ function trampleTexture(anisotropy: number): THREE.Texture {
 }
 
 /** A track strip's look: its texture, the mesh's name, and the uv's v in repeats of `pitch` metres (none: 0..1). */
-export interface TrackStyle { readonly texture: 'runner' | 'chevron' | 'trample'; readonly name: string; readonly pitch?: number }
+interface TrackStyle { readonly texture: 'runner' | 'chevron' | 'trample'; readonly name: string; readonly pitch?: number }
 
 /**
  * Round 3 (wave 234: sleds on "pristine snow with no runner track, sinkage or drift"), round 4 (wave 260: "two
@@ -578,7 +578,7 @@ export function buildBoatMudRims(records: readonly BoatMudRecord[], field: Conta
 
 /** A works set piece's contact with the ground (props.ts: the map-content lane's R6): its place and heading, its plan
  * half extents, and the rectangles its running gear meets the ground in, local (vehicleSetPieces.ts runningGearOf). */
-export interface SetPieceContact {
+interface SetPieceContact {
   readonly x: number;
   readonly z: number;
   readonly yaw: number;

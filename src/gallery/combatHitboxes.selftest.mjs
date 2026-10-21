@@ -26,8 +26,8 @@ for(let axis=0;axis<3;axis++) {
  ext.forEach((v,i)=>near(v,expected[i]));
 }
 const capsule = bounds(pickables[4]); near(capsule.min.z,-1);near(capsule.max.z,5);
-assert.equal(pickables[4].parent,gun,'gun-follow stock owns the pitching frame');
-assert.equal(pickables[5].parent,turret,'turret volumes follow articulation');
+assert.ok(pickables[4].parent === gun,'gun-follow stock owns the pitching frame');
+assert.ok(pickables[5].parent === turret,'turret volumes follow articulation');
 assert.equal(pickables.filter(p=>p.userData.inspection.module==='trackL').length,1,'no old padded track AABB');
 const track=bounds(pickables[7]); assert.deepEqual(track.min.toArray(),[-3,0,-4]);assert.deepEqual(track.max.toArray(),[-2,1,4]);
 turret.rotation.y=Math.PI/2;gun.rotation.x=-.2;root.updateMatrixWorld(true);

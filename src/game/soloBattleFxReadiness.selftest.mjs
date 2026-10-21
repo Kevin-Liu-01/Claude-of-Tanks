@@ -6,6 +6,7 @@ import { createArmorAimOverlay } from './armorAimOverlay.ts';
 import { stageCombatFxProgramSubmission } from './battleWarmRuntime.ts';
 import { createCombatWarmCoordinator } from './combatWarmCoordinator.ts';
 import { createSoloBattleDeploymentRuntime } from './soloBattleDeploymentRuntime.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 // The deployment, FX staging/restoration, armor-visibility owner, readiness
 // coordinator, and isolated cohort generator are production implementations.
@@ -179,7 +180,7 @@ function createFixture(failure) {
       assert.equal(camera.layers.mask, initialCameraMask, 'late-FX camera mask does not leak');
       assert.equal(worldRoot.visible, true); assert.equal(playerRoot.visible, true);
       assert.equal(retainedRoot.visible, false);
-      assert.deepEqual(scene.children, originalSceneRoots, 'all scene ownership survives renderer errors');
+      assert.deepEqual(graphLabels(scene.children), graphLabels(originalSceneRoots), 'all scene ownership survives renderer errors');
     },
     dispose() {
       coordinator.reset();

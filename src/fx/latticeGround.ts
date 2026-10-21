@@ -18,7 +18,7 @@ const STEP = 128 / 96;
 const CELLS = 768;
 const N = CELLS + 1;
 
-export interface LatticeGround {
+interface LatticeGround {
   (x: number, z: number): number;
   /** Forget every vertex (the ground changed under it: a crater, a heap, a new battle). */
   clear(): void;

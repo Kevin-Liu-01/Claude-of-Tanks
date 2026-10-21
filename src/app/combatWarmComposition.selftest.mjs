@@ -41,9 +41,9 @@ hiddenRoot.add(hiddenMesh);
 game.tanks.push({ team: 'enemy', networkVisible: false, visual: { root: hiddenRoot } });
 let warmCalls = 0;
 forwardProgramWarm.initializeSteps = function* (root) {
-  assert.equal(root.parent, scene, 'detached enemies warm with the real scene');
+  assert.ok(root.parent === scene, 'detached enemies warm with the real scene');
   assert.equal(root.visible, true);
-  assert.notEqual(hiddenMesh.material, sourceMaterial);
+  assert.ok(hiddenMesh.material !== sourceMaterial);
   warmCalls++; yield;
 };
 let studioTrace = null;
@@ -76,15 +76,15 @@ const owner = createCombatWarmComposition({
 });
 
 for (const _ of owner.warmVisionSteps()) {
-  assert.equal(hiddenRoot.parent, null, 'unspotted enemies stay detached between warm slices');
+  assert.ok(hiddenRoot.parent === null, 'unspotted enemies stay detached between warm slices');
   assert.equal(hiddenRoot.visible, false);
-  assert.equal(hiddenMesh.material, sourceMaterial);
+  assert.ok(hiddenMesh.material === sourceMaterial);
 }
 assert.equal(warmCalls, 1);
 assert.equal([...owner.warmVisionSteps()].length, 0, 'owner reuses prepared roster');
 scene.add(hiddenRoot); hiddenRoot.visible = true; game.tanks[0].networkVisible = true;
 owner.thermalVehicles.begin(game.tanks, true, 'player');
-assert.notEqual(hiddenMesh.material, sourceMaterial, 'live frame uses warmed owner');
+assert.ok(hiddenMesh.material !== sourceMaterial, 'live frame uses warmed owner');
 owner.thermalVehicles.end();
 scene.remove(hiddenRoot); hiddenRoot.visible = false;
 

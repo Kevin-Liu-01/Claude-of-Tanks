@@ -63,7 +63,7 @@ function smooth(a: number, b: number, v: number): number {
 }
 
 /** The compiled paddies: their frames, ready for the height and water queries. */
-export interface CompiledPaddies {
+interface CompiledPaddies {
   readonly paddies: readonly PaddyConfig[];
   readonly frames: readonly PaddyFrame[];
   /** Each paddy's floor (world y): null until resolvePaddyFloors has sampled the finished ground. */
@@ -152,7 +152,7 @@ export function paddyWaterLevelAt(compiled: CompiledPaddies, x: number, z: numbe
 }
 
 /** How far each paddy's own water surface runs in under its bund past the water's edge (the bund clips it there). */
-export const PADDY_SURFACE_TUCK_M = 0.6;
+const PADDY_SURFACE_TUCK_M = 0.6;
 /** Each paddy's own level water surface (the shallow-water sheet draws it instead of its eight-metre lattice there): its
  *  centre, axes, half extents (the water's, tucked under the bund) and level. */
 export interface PaddyWaterQuad { x: number; z: number; c: number; s: number; hw: number; hl: number; level: number }

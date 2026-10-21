@@ -2,6 +2,7 @@
 // First-party procedural vehicle artwork and engineering: Kevin Liu.
 
 import fs from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTank } from '../src/vehicles/tankFactory.ts';
@@ -16,7 +17,7 @@ const check = process.argv.includes('--check');
 // --ids=a,b re-solves only those tanks and keeps every other record as generated (a targeted lane update).
 const onlyIds = (() => {
   const arg = process.argv.find((a) => a.startsWith('--ids='));
-  return arg ? new Set(arg.slice(6).split(',').filter(Boolean)) : null;
+  return arg ? new Set(uniqueIds(arg.slice(6).split(',').filter(Boolean), 'gen-vehicle-marking-seats --ids')) : null;
 })();
 const previous = onlyIds ? (await import('../src/vehicles/vehicleMarkingSeats.generated.ts')).VEHICLE_MARKING_SEATS : {};
 for (const id of onlyIds ?? []) if (!ALL_TANK_IDS.includes(id)) throw new Error(`[marking-seats] unknown id ${id}`);

@@ -11,8 +11,8 @@
 //   <id>.mp4              1920x1080 H.264 High crf 16, silent           (landing loops)
 //   <id>.webm             1920x1080 VP9 crf 24, silent                  (hero rails, docs topic heroes, feature loops)
 //   <id>-mobile.mp4       1280x720 H.264 crf 22, capped at 3 Mbit/s     (phone variants)
-//   <id>.gif              960 px, 25 fps, loop palette, error diffusion (full-quality GIF)
-//   <id>-share.gif        640 px / 20 fps, stepped down to 560/18, 480/16, 400/15 until under 15 MB (upload limits)
+//   <id>.gif              960 px, 25 fps, loop palette, error diffusion (full-quality GIF; --gifs only)
+//   <id>-share.gif        640 px / 20 fps, stepped down to 560/18, 480/16, 400/15 until under 15 MB (--gifs only)
 //   <id>.jpg              1920x1080 poster = the loop's first frame
 //   <id>-4k.png           the 4K still master; <id>-4k.jpg (q95) and <id>.webp (1920, q92) from it
 //   <id>.scene.json       the Studio scene the take was rendered from (map, hour, cast and paint, turrets, effects,
@@ -49,10 +49,12 @@ const VIDEO = [
   ['webm', '.webm', `${DOWN(1920)},format=yuv420p`, ['-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '24', '-row-mt', '1', '-tile-columns', '2', '-deadline', 'good', '-cpu-used', '1', '-auto-alt-ref', '1', '-lag-in-frames', '25']],
   ['mobile', '-mobile.mp4', `${DOWN(1280)},format=yuv420p`, ['-c:v', 'libx264', '-preset', 'slow', '-crf', '22', '-maxrate', '3M', '-bufsize', '6M', '-profile:v', 'high', '-movflags', '+faststart']],
 ];
-const GIF = [
+// The GIFs only with --gifs (owner 2026-10-14: "they can be good quality but shouldnt be too heavy on storage"; the two
+// GIFs were 45 + 10-15 MB a take, more than every video format together, and nothing ships them)
+const GIF = flags.has('--gifs') ? [
   ['gif', '.gif', 'hqdn3d=3:2.5:6:5,fps=25,' + DOWN(960), 'palettegen=max_colors=256:stats_mode=diff', 'paletteuse=dither=sierra2_4a:diff_mode=rectangle'],
   ['gifShare', '-share.gif', 'hqdn3d=3:2.5:6:5,fps=20,' + DOWN(640), 'palettegen=max_colors=256:stats_mode=diff', 'paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle'],
-];
+] : [];
 // 15 MB fits the common GIF limits; busy smoke-and-fire loops came out at 18-21 MB at 640 px / 20 fps (2026-10-03)
 const SHARE_GIF_MAX = 15e6, SHARE_LADDER = [[560, 18, 'bayer:bayer_scale=4'], [480, 16, 'bayer:bayer_scale=4'], [400, 15, 'bayer:bayer_scale=4']];
 mkdirSync(deliver, { recursive: true });
@@ -80,9 +82,10 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
   let L = null, uhd = false;
   if (!stillsOnly) {
   // up to date: every format newer than its film and still (several passes may cover one shot; --force re-encodes)
-  const done = existsSync(join(out, `${id}.mp4`)) && existsSync(join(out, `${id}-share.gif`)) && (!still || existsSync(join(out, `${id}-4k.png`)));
+  const shareGif = join(out, `${id}-share.gif`);
+  const done = existsSync(join(out, `${id}.mp4`)) && (!GIF.length || existsSync(shareGif)) && (!still || existsSync(join(out, `${id}-4k.png`)));
   const newest = Math.max(statSync(master).mtimeMs, still ? statSync(still).mtimeMs : 0);
-  if (done && !flags.has('--force') && statSync(join(out, `${id}-share.gif`)).mtimeMs > newest && statSync(join(out, `${id}.mp4`)).mtimeMs > newest) {
+  if (done && !flags.has('--force') && (!GIF.length || statSync(shareGif).mtimeMs > newest) && statSync(join(out, `${id}.mp4`)).mtimeMs > newest) {
     console.log(`${id}: formats up to date`); continue;
   }
   mkdirSync(out, { recursive: true });
@@ -109,7 +112,7 @@ for (const id of (existsSync(join(renders, 'films')) ? readdirSync(join(renders,
     files[key] = `${id}/${id}${suffix}`;
   }
   // the share GIF must fit common upload limits: step down size and rate until it is under SHARE_GIF_MAX
-  for (const [w, fps, dither] of SHARE_LADDER) {
+  for (const [w, fps, dither] of GIF.length ? SHARE_LADDER : []) {
     if (statSync(join(out, `${id}-share.gif`)).size <= SHARE_GIF_MAX) break;
     ff(...inputs, '-filter_complex', `${loop};[loop]hqdn3d=3:2.5:6:5,fps=${fps},${DOWN(w)},split[g1][g2];[g1]palettegen=max_colors=256:stats_mode=diff[p];[g2][p]paletteuse=dither=${dither}:diff_mode=rectangle[v]`,
       '-map', '[v]', '-loop', '0', join(out, `${id}-share.gif`));

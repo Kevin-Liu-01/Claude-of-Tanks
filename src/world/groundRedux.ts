@@ -39,7 +39,7 @@ export interface TallGrassBiome {
   windDir: readonly [number, number];
 }
 
-export interface GroundReduxProfile {
+interface GroundReduxProfile {
   /** Height-and-noise blend strength at the dirt / rock / scree borders (0 = the smooth mixes of round 55). */
   heightBlend: number;
   /** The 26–150 m detail-normal octave's strength. */

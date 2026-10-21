@@ -18,6 +18,7 @@ import { floodMast } from './airfieldWorks.ts';
 import { oreCars } from './mining.ts';
 import { conveyor, headframe, oreBin } from './mineWorks.ts';
 import { fishRack, hayRack, stabbur } from './fjordWorks.ts';
+import { apolloSite, isruWorks, relayRepeater, solarTower, stationDome } from './lunar.ts';
 import { belfry, campanile, fireLookout, windmill } from './towers.ts';
 import { valveTower, waterTower } from './waterWorks.ts';
 import type { LandmarkBuilder, LandmarkKind } from './types.ts';
@@ -25,6 +26,7 @@ import type { LandmarkBuilder, LandmarkKind } from './types.ts';
 export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBuilder>>> = Object.freeze({
   aircraftWreck,
   airstrip,
+  apolloSite,
   baileyBridge,
   bandstand,
   belfry,
@@ -50,6 +52,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   granary,
   houseRow,
   hayRack,
+  isruWorks,
   khan,
   kolkhozArch,
   lavoir,
@@ -73,6 +76,9 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   statue,
   slipway,
   snowFence,
+  solarTower,
+  stationDome,
+  relayRepeater,
   stairway,
   stabbur,
   stationHall,

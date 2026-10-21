@@ -4,7 +4,7 @@
 // cupola with its eaves ring, the ventilator ball and the lightning rod. The caller lays the gallery floor it stands on.
 import { LocalFrame, PartSink, type EmitOptions, type Rgb, type Vec3 } from './geometry.ts';
 
-export interface LanternSpec {
+interface LanternSpec {
   /** the lantern's axis */
   x: number;
   z: number;

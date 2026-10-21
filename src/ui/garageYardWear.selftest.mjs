@@ -20,9 +20,9 @@ import { GARAGE_PLATFORM_GEOMETRY } from '../game/garagePresentationPose.ts';
 // its service facilities take shared weathered steel, enamel and concrete albedos instead of brick and flat colour.
 
 // plain Node has no canvas: the textures are skipped, never faked
-assert.equal(garageHardstandAlbedo('slab-sand', { x: 0, z: 10 }), null, 'no canvas, no albedo');
-assert.equal(garageHardstandNormal('slab'), null, 'no canvas, no normal');
-assert.equal(garageFacilityAlbedo('steel'), null, 'no canvas, no facility albedo');
+assert.ok(garageHardstandAlbedo('slab-sand', { x: 0, z: 10 }) === null, 'no canvas, no albedo');
+assert.ok(garageHardstandNormal('slab') === null, 'no canvas, no normal');
+assert.ok(garageFacilityAlbedo('steel') === null, 'no canvas, no facility albedo');
 
 // one floor per Garage, and the floors differ by region
 const outdoor = GARAGE_VARIANTS.filter((variant) => variant.id !== 'verdant_motor_pool');
