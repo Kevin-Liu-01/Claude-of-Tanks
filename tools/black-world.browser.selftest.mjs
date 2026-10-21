@@ -157,8 +157,14 @@ try {
         && b.offsetParent !== null && !b.classList.contains('leave'));
       confirm?.click();
     });
-    await page.waitForFunction(() => window.__DEBUG.game.phase === 'garage', { timeout: 120_000, polling: 250 });
-    await sleep(1500);
+    // the Garage settled as a player sees it (its BATTLE control shown, no transition cover) before BATTLE again: an entry
+    // begun while the return still presents supersedes it ("Garage return was superseded by another presentation")
+    await page.waitForFunction(() => {
+      const battle = document.querySelector('.cot-battle');
+      return window.__DEBUG.game.phase === 'garage' && !!battle && battle.offsetParent !== null
+        && !document.querySelector('.cot-trans.on, .cot-bl.on');
+    }, { timeout: 120_000, polling: 250 });
+    await sleep(3000);
     await page.evaluate(() => { setTimeout(() => window.__DEBUG.beginSoloBattle({ specId: 't72b3m_bulat_m', mapId: 'badlands' }), 0); });
     await page.waitForFunction(() => window.__DEBUG.game.phase === 'battle' && !document.querySelector('.cot-bl.on')
       && window.__COT_BLACK_GUARD?.stats().active === true, { timeout: 420_000, polling: 250 });
