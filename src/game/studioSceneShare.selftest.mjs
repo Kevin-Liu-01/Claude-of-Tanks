@@ -9,8 +9,8 @@ import { fileURLToPath } from 'node:url';
 import { deflateRawSync } from 'node:zlib';
 import {
   SCENE_ACTOR_STATES, SCENE_EFFECT_PARAMS, SCENE_EFFECT_TYPES, SCENE_LINK_FORMAT, SCENE_LINK_LIMITS, SCENE_LINK_MAX_CHARS,
-  SCENE_LINK_MAX_JSON_BYTES, base64UrlToBytes, bytesToBase64Url, decodeSceneLink, encodeSceneLink, safeSceneText,
-  sanitizeSharedScene, sceneLinkUrl, sceneLinkValue,
+  SCENE_LINK_MAX_JSON_BYTES, SCENE_SHELL_TYPES, SCENE_IMPACT_KINDS, base64UrlToBytes, bytesToBase64Url, decodeSceneLink,
+  encodeSceneLink, safeSceneText, sanitizeSharedScene, sceneLinkUrl, sceneLinkValue,
 } from './studioSceneShare.ts';
 import { normalizeFilm } from './studioFilmPlan.ts';
 import { STUDIO_FX_PARAMS } from './studioFxSettings.ts';
@@ -31,12 +31,12 @@ const fullParams = (index) => Object.fromEntries(Object.entries(SCENE_EFFECT_PAR
   switch (rule.kind) {
     case 'number': return [key, rule.digits ? rule.hi - 0.123 : rule.hi];
     case 'flag': return [key, true];
-    case 'word': return [key, rule.allowed ? rule.allowed[0] : long(48)];
+    case 'word': return [key, [...rule.allowed].sort((a, b) => b.length - a.length)[0]];
     case 'point': return [key, [rule.bound - 0.123, rule.bound - 0.456, 0.789 - rule.bound]];
-    default: return [key, { name: long(48), type: long(48), caliberMm: 399.123, velocityMps: 2999.123, blastRadiusM: 99.123, pen100Mm: 2999.123 }];
+    default: return [key, { name: long(48), type: 'APFSDS', caliberMm: 399.123, velocityMps: 2999.123, blastRadiusM: 99.123, pen100Mm: 2999.123 }];
   }
 }));
-const hugeScene = () => ({ map: 'verdant', effects: Array.from({ length: SCENE_LINK_LIMITS.effects }, (_, i) => ({ id: `fx${i}`.padEnd(48, 'x'), type: 'dust', params: fullParams(i) })) });
+const hugeScene = () => ({ map: 'verdant', effects: Array.from({ length: SCENE_LINK_LIMITS.effects }, (_, i) => ({ id: `fx${i}`.padEnd(48, 'x'), actor: `a${i}`.padEnd(48, 'y'), type: 'dust', params: fullParams(i) })) });
 
 /** Every decoded scene: plain prototypes, no prototype keys, finite numbers inside int32 (seeds), safe strings. */
 function assertSafe(value, path = 'scene') {
@@ -178,6 +178,30 @@ refused({ effects: [{ type: 'detrack', params: { side: 1 } }] }, /params\.side/,
 refused({ effects: [{ type: 'explosion', params: { munition: 'constructor' } }] }, /params\.munition/, 'munition constructor');
 refused({ effects: [{ type: 'explosion', params: { munition: '__proto__' } }] }, /params\.munition/, 'munition __proto__');
 refused({ effects: [{ type: 'flare', params: { color: 'toString' } }] }, /params\.color/, 'flare colour toString');
+// allow-listed ids: every map, vehicle, camo and handler word is one this build has
+refused({ map: 'atlantis' }, /scene\.map: is not a battlefield of this build/, 'an unknown map');
+refused({ map: 'constructor' }, /scene\.map: is not a battlefield/, 'map constructor');
+refused({ actors: [{ id: 't1000' }] }, /actors\[0\]\.id: is not a vehicle of this build/, 'an unknown vehicle');
+refused({ actors: [{ id: 'constructor' }] }, /actors\[0\]\.id: is not a vehicle/, 'vehicle constructor (an inherited spec key)');
+refused({ actors: [{ specId: 'hasownproperty' }] }, /actors\[0\]\.specId: is not a vehicle/, 'an unknown specId');
+refused({ tankIdSchema: 3, actors: [{ id: 'm1a2' }] }, /actors\[0\]\.id: is not a vehicle/, 'a schema-1 id stamped as current');
+refused({ tankIdSchema: 'x', actors: [] }, /scene\.tankIdSchema: must be a finite number/, 'a schema string');
+refused({ actors: [{ id: 't90am', camo: 'tiger_stripes_9000' }] }, /actors\[0\]\.camo: is not a camo of this build/, 'an unknown camo');
+refused({ actors: [{ id: 't90am', camo: 'constructor' }] }, /actors\[0\]\.camo/, 'camo constructor');
+refused({ effects: [{ type: 'impact', params: { kind: 'constructor' } }] }, /params\.kind: is not a known value/, 'impact kind constructor');
+refused({ effects: [{ type: 'impact', params: { kind: 'nuke' } }] }, /params\.kind/, 'an unknown impact kind');
+refused({ effects: [{ type: 'tracer', params: { shellType: 'PLASMA' } }] }, /params\.shellType/, 'an unknown shell type');
+refused({ effects: [{ type: 'explosion', params: { size: 'gigantic' } }] }, /params\.size/, 'an unknown blast size');
+refused({ effects: [{ type: 'tank_kill', params: { cause: 'toString' } }] }, /params\.cause/, 'cause toString');
+refused({ effects: [{ type: 'strike', params: { shell: { type: 'NUKE' } } }] }, /params\.shell\.type/, 'an unknown strike round');
+{
+  // an old scene names its vehicles in its own schema: accepted, spelling kept for load()'s own migration
+  const legacy = sanitizeSharedScene({ tankIdSchema: 1, map: 'desert', actors: [{ id: 'm1a2', camo: 'inherit' }, { id: 't90m', camo: 'urban' }] });
+  assert.ok(legacy.ok, legacy.detail);
+  assert.deepEqual(legacy.scene.actors.map((a) => a.id), ['m1a2', 't90m'], 'schema-1 ids resolve through the renames and keep their spelling');
+  assert.ok(sanitizeSharedScene({ actors: [{ id: 'fv510_milan_x' }] }).ok, 'an unstamped scene is schema 1');
+  for (const kind of SCENE_IMPACT_KINDS) assert.ok(sanitizeSharedScene({ effects: [{ type: 'impact', params: { kind } }] }).ok, `impact kind ${kind}`);
+}
 refused({ effects: [{ type: 'fire', params: { tracer: 'no' } }] }, /params\.tracer/, 'a flag string');
 refused({ effects: [{ type: 'dust', params: { count: '1e9' } }] }, /params\.count: must be a finite number/, 'a count string');
 refused({ camera: { pos: [1, 2] } }, /camera\.pos/, 'a 2-number camera position');
@@ -264,8 +288,8 @@ await failsWith(zLink([1, 2, 3, 4, 5]), 'encoding', 'corrupt deflate');
     state ^= state << 13; state ^= state >>> 17; state ^= state << 5;
     return 'abcdefghijklmnopqrstuvwxyz0123456789'[(state >>> 0) % 36];
   };
-  const words = () => Object.fromEntries(['cause', 'kind', 'size', 'shellType'].map((key) => [key, `w${Array.from({ length: 40 }, noise).join('')}`]));
-  const noisy = { map: 'verdant', effects: Array.from({ length: 256 }, (_, i) => ({ type: 'dust', id: `fx${i}`, params: words() })) };
+  const word = () => `w${Array.from({ length: 47 }, noise).join('')}`;
+  const noisy = { map: 'verdant', effects: Array.from({ length: 256 }, () => ({ type: 'dust', id: word(), actor: word() })) };
   const overLink = await encodeSceneLink(noisy);
   assert.equal(overLink.ok, false);
   assert.equal(overLink.reason, 'too-large');
@@ -409,10 +433,23 @@ for (const none of ['', '#', '#other=1', null, undefined, 7]) assert.equal(scene
   const tooBig = await ui.copySceneLink(hugeScene(), env);
   assert.equal(tooBig.ok, false);
   assert.match(tooBig.message, /too large for a link \(\d+\.\d KB; the limit is 16\.0 KB\)\. Use Save JSON/);
-  assert.match(ui.sceneLinkOpenFailure({ ok: false, reason: 'too-large', detail: 'link' }), /over the 16\.0 KB limit/);
-  assert.match(ui.sceneLinkOpenFailure({ ok: false, reason: 'schema', detail: 'scene.map: must be a short identifier' }), /damaged or is not a Studio scene \(scene\.map/);
-  assert.match(ui.sceneLinkOpenFailure({ ok: false, reason: 'version', detail: 'format 2' }), /newer version/);
-  assert.match(ui.sceneLinkOpenFailure({ ok: false, reason: 'unsupported', detail: 'DecompressionStream' }), /cannot open compressed/);
+  assert.match(ui.sceneLinkOpenFailure({ ok: false, reason: 'too-large', detail: 'link' }).message, /over the 16\.0 KB limit/);
+  const damaged = ui.sceneLinkOpenFailure({ ok: false, reason: 'schema', detail: 'scene.map: is not a battlefield of this build' });
+  assert.match(damaged.message, /^This scene link is damaged or is not a Studio scene, so it was not opened\.$/, 'the sentence is plain language');
+  assert.equal(damaged.detail, 'scene.map: is not a battlefield of this build', 'the schema path rides apart, as text');
+  assert.match(ui.sceneLinkOpenFailure({ ok: false, reason: 'version', detail: 'format 2' }).message, /newer version/);
+  assert.match(ui.sceneLinkOpenFailure({ ok: false, reason: 'unsupported', detail: 'DecompressionStream' }).message, /cannot open compressed/);
+  const notShareable = await ui.copySceneLink({ map: 'atlantis' }, env);
+  assert.equal(notShareable.ok, false);
+  assert.equal(notShareable.detail, 'scene.map: is not a battlefield of this build');
+  // a refused link's detail never quotes the link: it is built from this build's field names only
+  const quoted = await decodeSceneLink(plainLink({ map: 'verdant', actors: [{ id: 'evil-site-com-login-now', name: 'x' }] }));
+  assert.equal(quoted.ok, false);
+  assert.doesNotMatch(quoted.detail, /evil/, 'the refusal names the field, not the value');
+  for (const glyph of Object.values(ui.SCENE_LINK_GLYPHS)) {
+    assert.match(glyph, /^<svg viewBox="0 0 24 24" width="\d+" height="\d+" aria-hidden="true" focusable="false">/);
+    assert.doesNotMatch(glyph, /<(?:script|foreignObject|image|use|a)\b|\bon[a-z]+=|href|url\(/i, 'link glyphs are inert shapes');
+  }
 }
 
 // 8. Both locales carry every message with the same placeholders, in the Studio's demand-loaded slice.
@@ -429,6 +466,7 @@ for (const none of ['', '#', '#other=1', null, undefined, 7]) assert.equal(scene
   const used = new Set([read('src/ui/studioSceneLinkUi.ts'), read('src/ui/studioPanel.ts'), read('src/ui/studioProductionPanel.ts'), read('src/game/studio.ts')]
     .flatMap((text) => [...text.matchAll(/'(studio\.sceneLink\.\w+)'/g)].map((m) => m[1])));
   for (const key of used) assert.ok(keys.includes(key), `${key} is in the catalog`);
+  for (const key of keys) assert.ok(used.has(key), `${key} is shown somewhere (no stale message)`);
   const { isStudioCatalogKey } = await import('../ui/i18nStudioKeys.ts');
   for (const key of keys) assert.ok(isStudioCatalogKey(key), `${key} loads with the Studio's chunk, not the game's boot catalog`);
 }
@@ -460,7 +498,15 @@ for (const none of ['', '#', '#other=1', null, undefined, 7]) assert.equal(scene
   assert.match(studio, /const linkValue = sceneLinkValue\(window\.location\.hash\);\n\s+const shared = linkValue != null \? decodeSceneLink\(linkValue\) : null;/,
     'auto-entry reads the scene from the fragment');
   assert.match(studio, /\? shared\.then\(\(result\) => openSharedScene\(result, map\)\)/, 'a shared link wins over a path link');
-  assert.match(studio, /panel\.notice\(sceneLinkOpenFailure\(result\), 'error'\);/, 'a refused link is explained on screen');
+  assert.match(studio, /const failure = sceneLinkOpenFailure\(result\);\n\s+panel\.notice\(failure\.message, 'error', failure\.detail\);/,
+    'a refused link is explained on screen');
+  // the shell and tracer types are the FX layer's own (fx/effects.ts TracerType)
+  const tracerUnion = read('src/fx/effects.ts').match(/type TracerType = ([^;]+);/);
+  assert.ok(tracerUnion, 'fx/effects.ts declares TracerType');
+  assert.deepEqual([...tracerUnion[1].matchAll(/'([A-Z]+)'/g)].map((m) => m[1]).sort(), [...SCENE_SHELL_TYPES].sort(),
+    'SCENE_SHELL_TYPES equals the FX layer\'s TracerType');
+  const effectsSource = read('src/fx/effects.ts');
+  for (const kind of SCENE_IMPACT_KINDS) assert.match(effectsSource, new RegExp(`'${kind}'`), `impact kind ${kind} is one the FX bus draws`);
   assert.match(studio, /window\.addEventListener\('hashchange'/, 'a link pasted into an open Studio opens');
   assert.match(studio, /!window\.confirm\(t\('studio\.sceneLink\.replace'\)\)/, 'replacing a staged scene asks first');
   for (const panel of ['src/ui/studioPanel.ts', 'src/ui/studioProductionPanel.ts']) {
@@ -473,7 +519,34 @@ for (const none of ['', '#', '#other=1', null, undefined, 7]) assert.equal(scene
   assert.doesNotMatch(read('index.html'), /src=["']\/src\/analytics\.ts["']/, 'the game entry mounts no analytics');
 }
 
-// 10. Boot budget: the codec, schema and messages load with the Studio's chunk, never on the game entry.
+// 10. Nothing from a link reaches markup or script: every HTML sink in the Studio's own sources writes constant markup,
+//     a translated string or an icon from the code's tables, and the notice and statuses write scene text as text.
+{
+  const files = execFileSync('git', ['ls-files', 'src/game/studio*.ts', 'src/ui/studio*.ts'], { cwd: ROOT, encoding: 'utf8' })
+    .trim().split('\n').filter((file) => !file.endsWith('.selftest.mjs'));
+  assert.ok(files.length >= 20, `the Studio's sources are found (${files.length})`);
+  const constantMarkup = /^(?:''|SCENE_LINK_GLYPHS\.[a-z]+|tone === 'error' \? SCENE_LINK_GLYPHS\.broken : SCENE_LINK_GLYPHS\.done|uiIconSVG\([^)]*\)|`[^`]*`)$/;
+  let sinks = 0;
+  for (const file of files) {
+    const source = read(file);
+    assert.doesNotMatch(source, /\beval\(|new Function\(|document\.write|outerHTML\s*=|\.srcdoc\s*=|setTimeout\(\s*['"`]/, `${file}: no script sink`);
+    for (const match of source.matchAll(/\.innerHTML\s*=\s*([\s\S]*?);\n|insertAdjacentHTML\(\s*'[a-z]+',\s*([\s\S]*?)\);\n/g)) {
+      const rhs = (match[1] ?? match[2]).trim();
+      sinks++;
+      assert.match(rhs, constantMarkup, `${file}: markup is constant or translated: ${rhs.slice(0, 120)}`);
+      // a template may interpolate only translations and icons, never scene or actor data
+      for (const hole of rhs.matchAll(/\$\{([^}]*)\}/g)) {
+        assert.match(hole[1].trim(), /^(?:t\('[\w.]+'(?:, \{[^}]*\})?\)|uiIconSVG\([^)]*\))$/, `${file}: only t() and icons are interpolated: ${hole[1]}`);
+      }
+    }
+  }
+  assert.ok(sinks >= 5, `the Studio's markup sinks are audited (${sinks})`);
+  const panel = read('src/ui/studioPanel.ts');
+  assert.match(panel, /noticeMessage\.textContent = text;\n\s+noticeDetail\.textContent = detail;/, 'the notice writes the message and detail as text');
+  assert.match(read('src/ui/studioProductionPanel.ts'), /linkStatus\.textContent = /, 'the Director status writes text');
+}
+
+// 11. Boot budget: the codec, schema and messages load with the Studio's chunk, never on the game entry.
 {
   const closure = staticImportClosure('src/main.ts', { root: ROOT });
   for (const file of ['src/game/studioSceneShare.ts', 'src/ui/studioSceneLinkUi.ts']) {

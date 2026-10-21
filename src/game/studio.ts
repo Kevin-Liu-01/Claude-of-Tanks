@@ -5516,7 +5516,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (!result.ok) {
       console.warn(`[studio] scene link refused (${result.reason}): ${result.detail}`);
       await enter({ map: fallbackMap });
-      panel.notice(sceneLinkOpenFailure(result), 'error');
+      const failure = sceneLinkOpenFailure(result);
+      panel.notice(failure.message, 'error', failure.detail);
       return;
     }
     const json = result.scene as StudioSceneInput;
@@ -5526,7 +5527,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       panel.notice(t('studio.sceneLink.opened'));
     } catch (error) {
       console.error('[studio] scene link failed to stage', error);
-      panel.notice(t('studio.sceneLink.loadFailed', { error: error instanceof Error ? error.message : String(error) }), 'error');
+      panel.notice(t('studio.sceneLink.loadFailed'), 'error', error instanceof Error ? error.message : String(error));
     }
   }
 

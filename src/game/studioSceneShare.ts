@@ -13,7 +13,10 @@
  *     objects built key by key (a `__proto__`, `constructor` or `prototype` key is never assigned, so nothing reaches a
  *     prototype); unknown fields are dropped; a known field of the wrong type or an unknown enum value refuses the link;
  *     numbers are clamped into their ranges and rounded (1 mm, 0.001 degree); strings are short tokens or short text
- *     without markup, control or bidi-override characters. Effect parameters are the closed set the handlers read
+ *     without markup, control or bidi-override characters. Every id is allow-listed against this build's own tables:
+ *     the map (mapIds.ts), each vehicle (the registered fleet, after the scene's tankIdSchema renames), each camo
+ *     (camoPolicy.ts), each effect type and every word an effect handler branches on (impact kind, shell type, size,
+ *     cause, munition, flare colour, structure stage). Effect parameters are the closed set the handlers read
  *     (SCENE_EFFECT_PARAMS), each typed and bounded so no link can ask for a million puffs or a kilometre-wide blast.
  *     The pure normalizers load() runs (storyboard, film, picture, light, fx) canonicalize their blocks, so what decodes
  *     is exactly what load() accepts.
@@ -28,6 +31,13 @@ import { normalizeStudioLight, STUDIO_TIMES } from './studioLight.ts';
 import { NEUTRAL_PICTURE, pictureStateJson, resolvePicture } from './studioPicture.ts';
 import { normalizeStoryboard, STUDIO_FILM_MAX_DURATION_MS } from './studioTimeline.ts';
 import { MUNITION_PROFILES } from '../sim/destructionEvents.ts';
+import { isMapId } from '../world/maps/mapIds.ts';
+// The one ordered fleet registration (spec data only): the vehicle allow-list is the whole registered fleet on every
+// path, Node receipts included, whichever module loaded this first.
+import '../vehicles/fleetRegistration.ts';
+import { TANK_SPECS } from '../vehicles/specs.ts';
+import { TANK_IDS } from '../vehicles/tankIdAliases.ts';
+import { isBuiltInCamoId } from '../vehicles/camoPolicy.ts';
 
 /** The link format this build writes and the newest it opens. */
 export const SCENE_LINK_FORMAT = 1;
@@ -65,6 +75,17 @@ const PRODUCTION_FORMATS = Object.freeze(['landscape', 'portrait', 'square'] as 
 const CAMERA_MODES = Object.freeze(['fly', 'orbit'] as const);
 const SHOT_TRANSITIONS = Object.freeze(['bezier', 'spline', 'smooth', 'linear', 'cut'] as const);
 const KEY_TRANSITIONS = Object.freeze(['drive', 'smooth', 'linear', 'cut'] as const);
+/** Impact kinds the battle FX bus draws (fx/effects.ts 'shell:hit'; docs/STUDIO.md `impact`). */
+export const SCENE_IMPACT_KINDS = Object.freeze([
+  'pen', 'nonpen', 'ricochet', 'he_pen', 'he_splash', 'era', 'spaced_absorb', 'structure', 'terrain',
+] as const);
+/** Projectile and tracer types (fx/effects.ts TracerType, kept equal by the receipt). */
+export const SCENE_SHELL_TYPES = Object.freeze(['DRONE', 'ATGM', 'AP', 'APCR', 'HEAT', 'HE', 'HESH', 'APFSDS'] as const);
+/** `explosion` and `barrage` sizes, and the destruction causes the handlers branch on. */
+const SCENE_BLAST_SIZES = Object.freeze(['small', 'medium', 'large', 'huge', 'mixed'] as const);
+const SCENE_BLAST_CAUSES = Object.freeze(['ammorack', 'shot', 'fire', 'blast', 'kinetic', 'ram'] as const);
+/** Actor camo values beside the built-in patterns (studio.ts: 'inherit' keeps the spec's own; materials.ts: 'urban'). */
+const EXTRA_CAMO_IDS = Object.freeze(['inherit', 'urban']);
 
 export type SceneLinkFailure = 'too-large' | 'encoding' | 'version' | 'unsupported' | 'schema';
 export type SharedScene = Record<string, unknown>;
@@ -193,15 +214,34 @@ const actorRef = (value: unknown, path: string): string | number => (
 );
 const ageS = nullable((value, path) => num(value, path, 0, 3600));
 
-const ACTOR_FIELDS = Object.freeze({
-  id: (value: unknown, path: string) => token(value, path, LOWER_TOKEN),
-  specId: (value: unknown, path: string) => token(value, path, LOWER_TOKEN),
+/**
+ * A vehicle id as the scene spells it, accepted only when it names a vehicle of this build's fleet once the scene's
+ * own tankIdSchema renames are applied (load() applies them again: sceneInCurrentTankIds). The spelling is kept, so a
+ * scene round-trips byte for byte.
+ */
+function tankId(value: unknown, path: string, schema: number): string {
+  const id = token(value, path, LOWER_TOKEN);
+  const current = TANK_IDS.resolve(id, schema);
+  if (typeof current !== 'string' || !Object.hasOwn(TANK_SPECS, current)) refuse(path, 'is not a vehicle of this build');
+  return id;
+}
+
+/** An actor camo: a built-in pattern (camoPolicy.ts) or the Studio's own 'inherit' and 'urban'. */
+function camoId(value: unknown, path: string): string {
+  const id = token(value, path, LOWER_TOKEN);
+  if (!isBuiltInCamoId(id) && !EXTRA_CAMO_IDS.includes(id)) refuse(path, 'is not a camo of this build');
+  return id;
+}
+
+const actorFields = (schema: number) => Object.freeze({
+  id: (value: unknown, path: string) => tankId(value, path, schema),
+  specId: (value: unknown, path: string) => tankId(value, path, schema),
   name: nullable((value, path) => text(value, path, 48)),
   pos: groundPos,
   facingDeg: (value: unknown, path: string) => num(value, path, -ANGLE_DEG, ANGLE_DEG),
   turretDeg: (value: unknown, path: string) => num(value, path, -ANGLE_DEG, ANGLE_DEG),
   gunDeg: (value: unknown, path: string) => num(value, path, -90, 90),
-  camo: nullable((value, path) => token(value, path, LOWER_TOKEN)),
+  camo: nullable(camoId),
   camoSeed: (value: unknown, path: string) => int(value, path, -INT32, INT32),
   state: (value: unknown, path: string) => oneOf(value, path, SCENE_ACTOR_STATES),
   authoredState: (value: unknown, path: string) => oneOf(value, path, SCENE_ACTOR_STATES),
@@ -216,20 +256,19 @@ const ACTOR_FIELDS = Object.freeze({
   authoredBurning: bool,
 });
 
-function actor(value: unknown, path: string): Record<string, unknown> {
-  return fields(record(value, path), path, ACTOR_FIELDS);
+function actor(value: unknown, path: string, schema: number): Record<string, unknown> {
+  return fields(record(value, path), path, actorFields(schema));
 }
 
 type ParamRule =
   | { readonly kind: 'number'; readonly lo: number; readonly hi: number; readonly digits: number }
   | { readonly kind: 'flag' }
-  | { readonly kind: 'word'; readonly allowed?: readonly string[] }
+  | { readonly kind: 'word'; readonly allowed: readonly string[] }
   | { readonly kind: 'point'; readonly bound: number }
   | { readonly kind: 'shell' };
 
 const pNum = (lo: number, hi: number, digits = 3): ParamRule => ({ kind: 'number', lo, hi, digits });
 const P_FLAG: ParamRule = { kind: 'flag' };
-const P_WORD: ParamRule = { kind: 'word' };
 const pWord = (allowed: readonly string[]): ParamRule => ({ kind: 'word', allowed });
 const pPoint = (bound: number): ParamRule => ({ kind: 'point', bound });
 
@@ -244,7 +283,7 @@ export const SCENE_EFFECT_PARAMS: Readonly<Record<string, ParamRule>> = Object.f
   ageS: pNum(0, 3600),
   burnS: pNum(0, 120),
   caliberMm: pNum(0, 400),
-  cause: P_WORD,
+  cause: pWord(SCENE_BLAST_CAUSES),
   chargeKg: pNum(0, 1000),
   color: pWord(Object.keys(STUDIO_FLARE_COLORS)),
   count: pNum(0, 80, 0),
@@ -260,7 +299,7 @@ export const SCENE_EFFECT_PARAMS: Readonly<Record<string, ParamRule>> = Object.f
   hot: pNum(0, 1),
   intensity: pNum(0, 4),
   isPlayer: P_FLAG,
-  kind: P_WORD,
+  kind: pWord(SCENE_IMPACT_KINDS),
   launch: P_FLAG,
   massTons: pNum(0, 500),
   munition: pWord(Object.keys(MUNITION_PROFILES)),
@@ -280,9 +319,9 @@ export const SCENE_EFFECT_PARAMS: Readonly<Record<string, ParamRule>> = Object.f
   seedDeg: pNum(-ANGLE_DEG, ANGLE_DEG),
   settled: P_FLAG,
   shell: { kind: 'shell' },
-  shellType: P_WORD,
+  shellType: pWord(SCENE_SHELL_TYPES),
   side: pWord(['L', 'R', 'l', 'r']),
-  size: P_WORD,
+  size: pWord(SCENE_BLAST_SIZES),
   slot: pNum(0, 15, 0),
   smoke: P_FLAG,
   sooty: P_FLAG,
@@ -298,7 +337,7 @@ export const SCENE_EFFECT_PARAMS: Readonly<Record<string, ParamRule>> = Object.f
 /** A strike's round (studio.ts fireStrike): its name, class and bounded ballistics. */
 const SHELL_FIELDS = Object.freeze({
   name: (value: unknown, path: string) => text(value, path, 48),
-  type: (value: unknown, path: string) => token(value, path),
+  type: (value: unknown, path: string) => oneOf(value, path, SCENE_SHELL_TYPES),
   caliberMm: (value: unknown, path: string) => num(value, path, 0, 400),
   velocityMps: (value: unknown, path: string) => num(value, path, 0, 3000),
   blastRadiusM: (value: unknown, path: string) => num(value, path, 0, 100),
@@ -313,7 +352,7 @@ function paramValue(rule: ParamRule, value: unknown, path: string, key: string, 
       return num(value, path, Math.max(rule.lo, def?.min ?? rule.lo), Math.min(rule.hi, def?.max ?? rule.hi), rule.digits);
     }
     case 'flag': return bool(value, path);
-    case 'word': return rule.allowed ? oneOf(value, path, rule.allowed) : token(value, path);
+    case 'word': return oneOf(value, path, rule.allowed);
     case 'point': return vec(value, path, [3], [rule.bound]);
     case 'shell': return fields(record(value, path), path, SHELL_FIELDS);
   }
@@ -488,13 +527,19 @@ function light(value: unknown, path: string): unknown {
 export function sanitizeSharedScene(raw: unknown): SceneSanitized {
   try {
     const source = record(raw, 'scene');
+    const schemaValue = own(source, 'tankIdSchema');
+    const schema = TANK_IDS.schemaOf(schemaValue === undefined ? undefined : int(schemaValue, 'scene.tankIdSchema', 1, 1000));
     const scene: Record<string, unknown> = fields(source, 'scene', {
       tankIdSchema: (value, path) => int(value, path, 1, 1000),
-      map: (value, path) => token(value, path, LOWER_TOKEN),
+      map: (value, path) => {
+        const id = token(value, path, LOWER_TOKEN);
+        if (!isMapId(id)) refuse(path, 'is not a battlefield of this build');
+        return id;
+      },
       timeOfDay: (value, path) => oneOf(value, path, STUDIO_TIMES),
       productionFormat: (value, path) => oneOf(value, path, PRODUCTION_FORMATS),
       seed: (value, path) => int(value, path, -INT32, INT32),
-      actors: (value, path) => list(value, path, SCENE_LINK_LIMITS.actors, actor),
+      actors: (value, path) => list(value, path, SCENE_LINK_LIMITS.actors, (entry, at) => actor(entry, at, schema)),
       effects: (value, path) => list(value, path, SCENE_LINK_LIMITS.effects, effect),
       storyboard,
       camera: (value, path) => fields(record(value, path), path, CAMERA_FIELDS),

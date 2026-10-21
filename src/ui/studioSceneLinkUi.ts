@@ -21,14 +21,27 @@ export interface SceneLinkCopyEnv {
 
 export interface SceneLinkNotice {
   readonly ok: boolean;
+  /** The plain-language sentence. */
   readonly message: string;
+  /** The technical reason (a schema path), shown apart from the sentence; '' when there is none. */
+  readonly detail: string;
   readonly url?: string;
 }
 
-function encodeFailure(encoded: Exclude<SceneLinkEncoded, { ok: true }>): string {
+/**
+ * The Studio's link glyphs (constant first-party markup: the copy button and the notice card). No value from a scene or
+ * a link is ever part of this markup; the notice writes every message and detail as text.
+ */
+export const SCENE_LINK_GLYPHS = Object.freeze({
+  link: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path d="M10.2 13.8a4 4 0 0 0 5.7 0l3.4-3.4a4 4 0 0 0-5.7-5.7l-1.2 1.2M13.8 10.2a4 4 0 0 0-5.7 0l-3.4 3.4a4 4 0 0 0 5.7 5.7l1.2-1.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  broken: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path d="m13.3 6.1 1-1a4 4 0 0 1 5.6 5.6l-1 1M10.7 17.9l-1 1a4 4 0 0 1-5.6-5.6l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 3v3M3 8h3M16 21v-3M21 16h-3M9 15l6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".7"/></svg>',
+  done: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".55"/><path d="m7.4 12.4 3.2 3.2 6-6.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+});
+
+function encodeFailure(encoded: Exclude<SceneLinkEncoded, { ok: true }>): { message: string; detail: string } {
   return encoded.reason === 'too-large'
-    ? t('studio.sceneLink.tooLargeToCopy', { size: sceneLinkKb(encoded.chars), max: sceneLinkKb(SCENE_LINK_MAX_CHARS) })
-    : t('studio.sceneLink.cannotShare', { detail: encoded.detail });
+    ? { message: t('studio.sceneLink.tooLargeToCopy', { size: sceneLinkKb(encoded.chars), max: sceneLinkKb(SCENE_LINK_MAX_CHARS) }), detail: '' }
+    : { message: t('studio.sceneLink.cannotShare'), detail: encoded.detail };
 }
 
 /** Encode the scene, copy its link and return the message to show. Never throws. */
@@ -47,27 +60,30 @@ export function copySceneLink(scene: unknown, env: SceneLinkCopyEnv): Promise<Sc
   }
   copying.catch(() => {});
   return encoding.then(async (encoded): Promise<SceneLinkNotice> => {
-    if (!encoded.ok) return { ok: false, message: encodeFailure(encoded) };
+    if (!encoded.ok) return { ok: false, ...encodeFailure(encoded) };
     const url = await link;
     const size = sceneLinkKb(url.length);
     try {
       await copying;
-      return { ok: true, url, message: t('studio.sceneLink.copied', { size }) };
+      return { ok: true, url, message: t('studio.sceneLink.copied', { size }), detail: '' };
     } catch (_) {
-      if (!env.showInAddressBar) return { ok: false, url, message: t('studio.sceneLink.copyFailed') };
+      if (!env.showInAddressBar) return { ok: false, url, message: t('studio.sceneLink.copyFailed'), detail: '' };
       env.showInAddressBar(url);
-      return { ok: true, url, message: t('studio.sceneLink.copyManual', { size }) };
+      return { ok: true, url, message: t('studio.sceneLink.copyManual', { size }), detail: '' };
     }
-  }).catch(() => ({ ok: false, message: t('studio.sceneLink.copyFailed') }));
+  }).catch(() => ({ ok: false, message: t('studio.sceneLink.copyFailed'), detail: '' }));
 }
 
-/** The message for a link that could not be opened. */
-export function sceneLinkOpenFailure(result: Exclude<SceneLinkDecoded, { ok: true }>): string {
+/**
+ * The notice for a link that could not be opened: the sentence, and for a damaged link the schema path that refused it
+ * (built from this build's own field names, never from the link's keys or values).
+ */
+export function sceneLinkOpenFailure(result: Exclude<SceneLinkDecoded, { ok: true }>): { message: string; detail: string } {
   switch (result.reason) {
-    case 'too-large': return t('studio.sceneLink.tooLarge', { max: sceneLinkKb(SCENE_LINK_MAX_CHARS) });
-    case 'version': return t('studio.sceneLink.newer');
-    case 'unsupported': return t('studio.sceneLink.unsupported');
-    default: return t('studio.sceneLink.invalid', { detail: result.detail });
+    case 'too-large': return { message: t('studio.sceneLink.tooLarge', { max: sceneLinkKb(SCENE_LINK_MAX_CHARS) }), detail: '' };
+    case 'version': return { message: t('studio.sceneLink.newer'), detail: '' };
+    case 'unsupported': return { message: t('studio.sceneLink.unsupported'), detail: '' };
+    default: return { message: t('studio.sceneLink.invalid'), detail: result.detail };
   }
 }
 
