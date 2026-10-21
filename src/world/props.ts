@@ -159,6 +159,7 @@ import { felledPoleDebris } from './maps/felledPoles.ts';
 import { buildHardstandDressing } from './hardstandDressing.ts';
 // the maps lane (228): the civic-area and pathway kit a map adopts through its plan (world/civic/; Steinburg the pilot)
 import { applyCivicOverlay, civicPlanFor } from './civic/plans/index.ts';
+import { roadLifeFor } from './civic/roadLife.ts'; // (229) every map's road life
 import { civicStyle } from './civic/styles.ts';
 import { composeCivicArea, type CivicPiece } from './civic/civicAreaKit.ts';
 import { buildPathwayNetwork } from './civic/pathwayKit.ts';
@@ -6169,8 +6170,9 @@ ${snowCap ? `
   // veto; their furniture, vehicles, lamps and railings join the destructibles after every seeded pass
   const civicPieces: CivicPiece[] = [];
   function composeCivicAreas(): void {
-    // (229) a plan's street parking, authored past its areas (a map without an area too)
-    for (const f of [...(civicPlan?.streetParking ?? []), ...(civicPlan?.streetFurniture ?? [])]) {
+    // (229) a plan's street parking, authored past its areas (a map without an area too), and every map's road life
+    // (civic/roadLife.ts: the owner's "cars and stuff on roads")
+    for (const f of [...(civicPlan?.streetParking ?? []), ...(civicPlan?.streetFurniture ?? []), ...roadLifeFor(mapId)]) {
       civicPieces.push({ kind: f.kind, x: f.x, z: f.z, yaw: (f.yawDeg * Math.PI) / 180, scale: f.scale ?? 1 });
     }
     if (!civicPlan?.areas.length) return;
