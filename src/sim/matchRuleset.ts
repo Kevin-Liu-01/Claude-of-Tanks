@@ -1029,13 +1029,17 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // all-out recovery left the robbed side never raiding); no opening read, full pace, no mission break-off, no scoot.
   // Round 2: the flag bases stand 400 m apart on the axis (flagPitch), in front of the spawns — picked up among the
   // enemy's 6 s respawns and run 800 m home, a flag was taken 19 times a match and captured 0.75 (A/B over seeds
-  // 101-108: 480 m 1.5 captures, 400 m 2.25, with first pickup 102 s -> 62 s and ram deaths 22 -> 16 a match)
+  // 101-108: 480 m 1.5 captures, 400 m 2.25, with first pickup 102 s -> 62 s and ram deaths 22 -> 16 a match).
+  // Round 3b (the critic's M5: escorts within 80 m of the carrier 26 %, pursuers within 120 m 41 %, the nearest 45 m): a
+  // revive stands 100 m behind its own flag base (flagPitch.respawnBackM; at the deployment, 200 m further back, a robbed
+  // team's revives chased the carrier from behind its run's start), and a carrier takes 4 escorts with no guard left home
+  // (the A/B over seeds 401-402: pursuers within 120 m 0.28 -> 0.38, escorts within 80 m 0.32 -> 0.47, captures 2 a match)
   capture_the_flag: Object.freeze({ ...STANDARD, mode: 'capture_the_flag', respawnS: 6,
     bots: Object.freeze({ alpha: FLAG_DOCTRINE, bravo: FLAG_DOCTRINE }),
-    flagBots: Object.freeze({ recoverShare: 0.5, recoverMin: 2, huntWhenHomeFlagTaken: false, escorts: 3, carrierGuards: 1,
+    flagBots: Object.freeze({ recoverShare: 0.5, recoverMin: 2, huntWhenHomeFlagTaken: false, escorts: 4, carrierGuards: 0,
       escortAheadM: 24, escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5,
       raidStageM: 120, raidHoldInM: 25, raidGroupM: 70, raidMinGroup: 2, raidWaitS: 12 }),
-    flagPitch: Object.freeze({ baseAxisM: 400 }) }),
+    flagPitch: Object.freeze({ baseAxisM: 400, respawnBackM: 100 }) }),
   // Zones: respawning hold-the-ground play; the 750-point target resolves inside the clock.
   zone_control: Object.freeze({ ...STANDARD, mode: 'zone_control', respawnS: 6 }),
   // Turbo Ball: arcade physics — 0.6 g so hulls and shells fly, 1.85× speed, tough hulls, half
@@ -1047,13 +1051,19 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     criticalDamage: false, jumpMps: 13, recoilLaunchScale: 12, shellKnockScale: 2.5, respawnS: 3, timeLimitS: 600,
     destruction: DESTRUCTION_OFF,
     // gameplay-modes-228 ("pursuing ball"): two strikers on an intercept course, screens and a keeper, at most three a
-    // team on the ball; strikers jump at it and shoot it toward the goal; the goals sit goalAxisM apart (A/B-chosen)
+    // team on the ball; strikers jump at it and shoot it toward the goal; the goals sit goalAxisM apart (A/B-chosen).
+    // Round 3b (the critic's M6: the nearest bot 65-67 m from the ball, the crowd cap broken on Coastal): the support
+    // striker runs 10 m behind and 12 m beside the intercept (was 25 / 14), the bots keep two a team within 30 m so the
+    // three the cap allows hold through a pass-by (crowdCap 2: the screen nearest the ball stands off too), a striker lined
+    // up behind the ball may shoot it from 12 m (the line-up stands 20 m back: at a 20 m floor the ball lay still while the
+    // striker went round it), the teams line up at the kick-off at the start too and a revive stands 40 m behind its own
+    // goal (ball.kickoffAtStart, ball.respawnBackM; the A/B over seeds 401-402: nearest bot 46-75 -> 20-54 m)
     bots: Object.freeze({ alpha: BALL_DOCTRINE, bravo: BALL_DOCTRINE }),
-    ballBots: Object.freeze({ strikers: 2, supportBackM: 25, supportSideM: 14, strikerHoldS: 3, swapM: 25, leadMaxS: 3,
-      leadIterations: 2, screens: 2, screenNear: 0.85, screenFar: 0.6, screenSideM: 28, keepers: 1, keeperM: 30, crowdCap: 3,
+    ballBots: Object.freeze({ strikers: 2, supportBackM: 10, supportSideM: 12, strikerHoldS: 3, swapM: 25, leadMaxS: 3,
+      leadIterations: 2, screens: 2, screenNear: 0.85, screenFar: 0.6, screenSideM: 28, keepers: 1, keeperM: 30, crowdCap: 2,
       crowdM: 30, crowdMarginM: 5, wingM: 40, wingStepM: 20, lineUpM: 7, goRoundM: 16, behindM: 20, throughM: 18,
-      shootBall: Object.freeze({ maxRangeM: 160, minRangeM: 20, coneDeg: 30, everyRole: true, overTanks: true }) }),
-    ball: Object.freeze({ goalAxisM: 480, idleResetS: 30, kickoffM: 60 }),
+      shootBall: Object.freeze({ maxRangeM: 160, minRangeM: 12, coneDeg: 30, everyRole: true, overTanks: true }) }),
+    ball: Object.freeze({ goalAxisM: 480, idleResetS: 30, kickoffM: 60, kickoffAtStart: true, respawnBackM: 40 }),
   }),
   // Horde: survival — the player with four allied bots on alpha (co-op humans join it), a pool of
   // twenty hostile identities on the far side drawn afresh every wave (six on the first wave,
@@ -1089,7 +1099,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
       hostileHpScale: 0.15, hpPerWave: 0.02, hpPerWaveLate: 0.06, lateFromWave: 11,
       runnerEvery: 4, runnerSpeed: 1.25, swarmEvery: 5, swarmTrickleScale: 0.5, swarmHull: 0.10,
       speedPerWave: 0.045, speedPerWaveMax: 0.55, cacheHeal: Object.freeze({ first: 0.62, perWave: 0.055, floor: 0.08 }),
-      hostileDifficultyStep: 0, hostileReloadScale: 1, hunt: 'spotted', allyLeashM: 120, allyScreenM: 40, allyScreenSpreadM: 22,
+      hostileDifficultyStep: 1, hostileReloadScale: 1, hunt: 'spotted', allyLeashM: 120, allyScreenM: 40, allyScreenSpreadM: 22,
     }),
     bots: Object.freeze({ bravo: RUSH_DOCTRINE, alpha: HORDE_ALLY_DOCTRINE }),
   }),

@@ -2,7 +2,7 @@
 // sim reads, their determinism, the campaign difficulty fold, and the rule lines the cards show.
 import assert from 'node:assert/strict';
 import { GAME_MODE_IDS } from './matchModes.ts';
-import {
+import { rulesetSeatHullScale,
   matchRulesetFor, rulesetLines, rulesetAmmoCapacity, rulesetReloadMultiplier, RULESET_SCORE_TARGETS,
   applyRulesetToCombat, rulesetLoadout, refillUnlimitedAmmunition, rulesetAllyCap,
   FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, TEAM_ARRANGEMENT_LIMITS, normalizeTeamArrangement,
@@ -65,6 +65,7 @@ assert.equal(horde.enemies, 20, 'a twenty-strong pool of hostile identities');
   assert.deepEqual([h.intermissionS, h.waveRepair, h.hostileHpScale, h.hpPerWave, h.hpPerWaveLate, h.lateFromWave], [8, 0.3, 0.15, 0.02, 0.06, 11]);
   assert.deepEqual([h.runnerEvery, h.runnerSpeed, h.swarmEvery, h.swarmTrickleScale, h.swarmHull], [4, 1.25, 5, 0.5, 0.10], 'runner and swarm waves');
   assert.deepEqual([h.hostileDifficultyStep, h.hunt, h.allyLeashM], [1, 'spotted', 120]);
+  assert.deepEqual([h.strandedS, [...h.strandedRingM], h.strandedRetireAfter], [40, [160, 230], 2], 'a straggler re-arrives nearer, and a slot benched twice retires (round 3b)');
   assert.ok(h.hostileReloadScale >= 1, 'a zombie never reloads faster than its gun');
 }
 // the base law: 6, 9, 13, 18, 24, 30, 37, 44, 52, 61 — strictly rising, no cap (the pool caps only what stands at once)
@@ -159,16 +160,21 @@ assert.equal(matchRulesetFor('endless_horde', null, { allies: 13, enemies: 14 })
 
 const ctf = matchRulesetFor('capture_the_flag');
 assert.equal(ctf.respawnS, 6); assert.equal(RULESET_SCORE_TARGETS.capture_the_flag, 3);
-assert.deepEqual({ ...ctf.flagBots }, { recoverShare: 0.5, recoverMin: 2, huntWhenHomeFlagTaken: false, escorts: 3, carrierGuards: 1,
-  escortAheadM: 24, escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5 },
-  'the flag bots run the flags: half recover, the rest raid back; a carrier\'s team escorts it with one guard home (round 2)');
+assert.deepEqual({ ...ctf.flagBots }, { recoverShare: 0.5, recoverMin: 2, huntWhenHomeFlagTaken: false, escorts: 4, carrierGuards: 0,
+  escortAheadM: 24, escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5,
+  raidStageM: 120, raidHoldInM: 25, raidGroupM: 70, raidMinGroup: 2, raidWaitS: 12 },
+  'the flag bots run the flags: half recover, the rest raid back as a group; a carrier\'s team escorts it, four strong, no guard home (round 3b)');
+assert.deepEqual({ ...ctf.flagPitch }, { baseAxisM: 400, respawnBackM: 100 }, 'the bases 400 m apart, a revive 100 m behind its own (round 3b)');
 {
   const ball = matchRulesetFor('turbo_ball');
   assert.deepEqual([ball.ballBots.strikers, ball.ballBots.strikerHoldS, ball.ballBots.swapM, ball.ballBots.leadMaxS, ball.ballBots.screens,
     ball.ballBots.screenNear, ball.ballBots.screenFar, ball.ballBots.keepers, ball.ballBots.keeperM, ball.ballBots.crowdCap, ball.ballBots.crowdM],
-  [2, 3, 25, 3, 2, 0.85, 0.6, 1, 30, 3, 30], 'two strikers on the intercept, two screens, a keeper, at most three on the ball');
-  assert.deepEqual({ ...ball.ballBots.shootBall }, { maxRangeM: 160, minRangeM: 20, coneDeg: 30, everyRole: true, overTanks: true },
-    'every role shoots the ball toward the opponent goal, before a farther tank (round 2)');
+  [2, 3, 25, 3, 2, 0.85, 0.6, 1, 30, 2, 30], 'two strikers on the intercept, two screens, a keeper; the bots keep two on the ball so the three the cap allows hold (round 3b)');
+  assert.deepEqual([ball.ballBots.supportBackM, ball.ballBots.supportSideM], [10, 12], 'the support striker beside the intercept (round 3b)');
+  assert.deepEqual({ ...ball.ballBots.shootBall }, { maxRangeM: 160, minRangeM: 12, coneDeg: 30, everyRole: true, overTanks: true },
+    'every role shoots the ball toward the opponent goal, before a farther tank (round 2), a lined-up striker from 12 m (round 3b)');
+  assert.ok(ball.ballBots.shootBall.minRangeM < ball.ballBots.behindM, 'a striker lined up behind the ball may shoot it');
+  assert.deepEqual([ball.ball.kickoffAtStart, ball.ball.respawnBackM, ball.ball.kickoffM], [true, 40, 60], 'the opening kick-off line, a revive behind its own goal (round 3b)');
   assert.deepEqual([ball.ballBots.crowdMarginM, ball.ballBots.wingM, ball.ballBots.wingStepM, ball.ballBots.lineUpM, ball.ballBots.goRoundM,
     ball.ballBots.behindM, ball.ballBots.throughM], [5, 40, 20, 7, 16, 20, 18], 'the role geometry the controller reads');
   assert.equal(ball.ball.idleResetS, 30);
@@ -199,9 +205,15 @@ assert.deepEqual({ ...assault.assault, lineBandM: [...assault.assault.lineBandM]
   defendersStartOnLine: true, lineBandM: [70, 110], lineGuard: { minAttackM: 200, outOfSight: true, stepBackM: 20, tries: 4 },
   counterAttack: { squad: 2, afterCaptureS: 8, forS: 40 },
   reinforceTrickleS: 45, reinforceExtra: 0, reinforceRearM: 140, contestReachM: 60, lineSpacingM: 16, lineJitterM: 8, allyReviveBackM: 40,
-  holdSpreadM: 14, regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: 30, hostileDifficultyStep: 1, hostileReloadScale: 1.35,
-}, 'every sector fought for, and winnable (round 2): 3 / 4 / 5 on the line, out of the spawn\'s reach and sight, a counter-attack, a trickle up to the count, defenders\' guns x1.35 slower (no scoot either side), a 25 s regroup');
-assert.equal(assault.hpScale, 1.35, 'the attack\'s hull (round 2: the one-life sortie lost 0/16 to the dug-in line); the defenders field their own');
+  holdSpreadM: 14, regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: 20, hostileDifficultyStep: 1, hostileReloadScale: 1,
+  allyBotHull: 1,
+}, 'every sector fought for, and winnable (round 3): 3 / 4 / 5 on the line, out of the spawn\'s reach and sight, a counter-attack, a trickle up to the count, the defenders\' guns at their own rate (round 2 had slowed them x1.35), an allied bot back 20 s after its death, a 25 s regroup');
+assert.equal(assault.hpScale, 1.8, 'the attack\'s hull (round 3: at x1.35 with the defence at its own reload the one-life sortie won 1-2 of 8); the defenders field their own');
+assert.equal(rulesetSeatHullScale(assault, 'alpha', true), 1, 'the allied bots take the attack\'s whole hull (assault.allyBotHull)');
+assert.equal(rulesetSeatHullScale({ assault: { ...assault.assault, allyBotHull: 0.6 } }, 'player', true), 0.6, 'a share of it for an allied bot when the rule says so');
+assert.equal(rulesetSeatHullScale({ assault: { ...assault.assault, allyBotHull: 0.6 } }, 'player', false), 1, 'never for a human seat');
+assert.equal(rulesetSeatHullScale({ assault: { ...assault.assault, allyBotHull: 0.6 } }, 'enemy', true), 1, 'nor a defender');
+assert.equal(rulesetSeatHullScale(matchRulesetFor('standard'), 'alpha', true), 1, 'every other mode: 1');
 assert.deepEqual({ ...assault.assaultBots }, { pushAfterS: 15, pushMinGroup: 2, pushGroupM: 80, stageM: 20, flankShare: 0.4, flankOffsetM: 60, flankConvergeM: 80 });
 // Frontline's last line (modes lane 2026-10-08, owner decision: attackers win 40-55 % of bot tests): the third sector's
 // counter-attack arrives at 1.15x instead of the ramp's 1.32x; the first two sectors keep 1 + sectors taken x 0.16.
@@ -224,7 +236,7 @@ const op4Short = matchRulesetFor('frontline_assault', { difficulty: 4, timeLimit
 assert.equal(op4Short.timeLimitS, 600, 'an operation may shorten the clock');
 assert.equal(matchRulesetFor('standard', { difficulty: 4 }), standard, 'difficulty only folds into Frontline Assault');
 assert.ok(rulesetLines(op4).some((line) => line.key === 'assaultWaves' && line.values.value === '4' && line.values.hp === '+18 %'));
-assert.ok(rulesetLines(assault).some((line) => line.key === 'hp' && line.values.value === '+35 % / 0 %'), 'the card pairs the attack\'s hull with the defenders\' own');
+assert.ok(rulesetLines(assault).some((line) => line.key === 'hp' && line.values.value === '+80 % / 0 %'), 'the card pairs the attack\'s hull with the defenders\' own');
 assert.ok(rulesetLines(assault).some((line) => line.key === 'clockDefeat' && line.values.value === '12'));
 
 assert.equal(rulesetAmmoCapacity(turbo, 'AP', 24), 24, 'unlimited keeps the loadout shape (the sim refills it)');

@@ -19,10 +19,12 @@ const infected = matchRulesetFor('infected');
 const horde = matchRulesetFor('endless_horde');
 
 // --- the rules ------------------------------------------------------------------------------------------------------
-assert.deepEqual({ ...infected.infection }, { infectedSpeed: 1.3, survivorHpScale: 1.5, infectedHpScale: 0.25, infectedReloadScale: 1.8, hunt: true },
-  'Infected: sturdy survivors, fragile infected that hunt at +30 % speed and reload x1.8 (round 2: their lever is the charge)');
+assert.deepEqual({ ...infected.infection }, { infectedSpeed: 1.3, survivorHpScale: 1.5, infectedHpScale: 0.25, infectedReloadScale: 1, hunt: true },
+  'Infected: sturdy survivors, fragile infected that hunt at +30 % speed at their own reload (round 3, the critic\'s M3: round 2\'s x1.8 made the outbreak a shooting gallery)');
+assert.deepEqual([...infected.infectionBots.arrival.spawnRingM, ...infected.infectionBots.arrival.fallbackRingM, infected.infectionBots.arrival.spawnMinHumanM],
+  [70, 120, 120, 200, 60], 'the infected rise 70-120 m round the survivors, else 120-200 m, never inside 60 m (round 3b: never at a base a minute off)');
 assert.equal('infectedRespawnS' in infected.infection, false, 'one respawn clock: the dead infectedRespawnS is gone');
-assert.equal(infected.respawnS, 5); assert.equal(infected.hpScale, 1); assert.equal(infected.timeLimitS, 300, 'a five-minute round (round 2)'); assert.equal(infected.ammo, 'unlimited');
+assert.equal(infected.respawnS, 5); assert.equal(infected.hpScale, 1); assert.equal(infected.timeLimitS, 420, 'the plan\'s seven-minute round (round 3: round 2\'s five minutes moved the survivors\' wins into the band by the clock)'); assert.equal(infected.ammo, 'unlimited');
 assert.equal(infected.enemies, 5, 'five initial infected: the outbreak comes on numbers'); assert.equal(matchRulesetFor('infected', null, { enemies: 1 }).enemies, 3, 'at least three');
 assert.equal(matchRulesetFor('infected', null, { enemies: 8 }).enemies, 8, 'an arranged outbreak keeps its size');
 assert.equal(horde.hpScale, 2, 'Horde: the humans\' hull doubled'); assert.equal(horde.horde.hostileHpScale, 0.15, 'the zombies at 15 % of their own');
