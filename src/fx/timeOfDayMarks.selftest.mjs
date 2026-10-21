@@ -33,8 +33,17 @@ assert.ok(Math.max(night.r, night.g, night.b) < 0.45, `night is dim (${night.r.t
 // dark medium never falls under a share of the sky's own light (no flat black cut-out), the level from the rig's sun
 const media = await readFile(new URL('./volumeMedia.ts', import.meta.url), 'utf8');
 assert.match(media, /skyC = mix\( vec3\( skyLum \), skyC, smoothstep\( 0\.15, 0\.6, cov \) \);/, 'the thin rim is lit grey by the sky');
-assert.match(media, /float floorL = skyLum \* uGrade2\.y \* 0\.25 \* \( 0\.45 \+ 0\.35 \* U \+ 0\.2 \* front \);\s*col = max\( col, vec3\( floorL \) \);/,
-  'the night floor: a quarter of the sky\'s light, neutral grey, shaded by top and front (round 2: "pink-beige ... as if by day")');
+// (FX 10-17, re-pinned 230 with its cause: the media critics' "flat black plume" on ~15 night takes) the floor's share is
+// tunable (uGrade2.w, volumeTune.night; .z is the embers' level) and lifts the body's top over its heart; a blind ranking
+// of 0.25/0.5/0.8/1.1 on s63/s169/s214 against integ/230 put 0.5 first (mean rank 1.5 of 5, both critics; 0.25 and the
+// old floor read as flat black cut-outs, 1.1 as milky) — still neutral grey and under the sky's own level (EF.11)
+assert.match(media, /float floorL = skyLum \* uGrade2\.y \* uGrade2\.w \* \( 0\.35 \+ 0\.5 \* U \+ 0\.15 \* front \);\s*col = max\( col, vec3\( floorL \) \);/,
+  'the night floor: a share of the sky\'s light, neutral grey, its top lit over its heart (round 2: "pink-beige ... as if by day")');
+assert.match(media, /ground: 1\.0, night: 0\.5 \}\);/, 'the night floor\'s share: half the sky\'s light at the top (the blind ranking\'s pick)');
+assert.match(media, /uGrade2\.value\.w = tune\.night;/, 'the share rides .w, apart from the embers\' .z');
+const puffSrc = await readFile(new URL('./particles.ts', import.meta.url), 'utf8');
+assert.match(puffSrc, /export const NIGHT_SMOKE_FLOOR = 0\.14;/, 'the pooled puffs\' night floor (the same ranking\'s pick, with the media at 0.5)');
+assert.match(puffSrc, /float floorL = L \* uNightFloor \* \( 1\.0 - smoothstep\( 0\.3, 0\.6, L \) \)/, 'gone by day (the tint over ~0.6)');
 const fxSrc = await readFile(new URL('./effects.ts', import.meta.url), 'utf8');
 assert.match(fxSrc, /const LOCAL_FIRE_REACH_M = 5;/, 'a wreck fire lights only a few metres of its smoke');
 assert.match(fxSrc, /addLocalPoint\(col\.pos\[0\], col\.pos\[1\] \+ 1\.2, col\.pos\[2\], LOCAL_FIRE_REACH_M \* col\.scale,/, 'from the flames');
