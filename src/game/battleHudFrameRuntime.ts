@@ -40,7 +40,7 @@ interface KillcamView {
 
 interface InputView {
   getSettings(): { armorAimOverlay?: boolean };
-  getBinding(actionId: 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'drone' | 'aerialVision' | 'supplyAmmo' | 'supplyHeal' | 'shell1' | 'shell2' | 'shell3',slot?:0|1): string | null;
+  getBinding(actionId: 'selfRight' | 'smoke' | 'lights' | 'roofGun' | 'drone' | 'aerialVision' | 'supplyAmmo' | 'supplyHeal' | 'shell1' | 'shell2' | 'shell3' | 'rangeReset' | 'rangeMoving',slot?:0|1): string | null;
   labelFor(code: string | null): string;
 }
 
@@ -255,6 +255,11 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     keys.supplyHeal=input.labelFor(input.getBinding('supplyHeal',0)??input.getBinding('supplyHeal',1));
     keys.aerialVision = input.labelFor(input.getBinding('aerialVision', 0) ?? input.getBinding('aerialVision', 1));
     keys.drone = input.labelFor(input.getBinding('drone', 0) ?? input.getBinding('drone', 1));
+    // the proving ground's range card names its two keys (v2 progression, 2026-10-17)
+    if (game.matchModeState?.range) {
+      keys.rangeReset = input.labelFor(input.getBinding('rangeReset', 0) ?? input.getBinding('rangeReset', 1));
+      keys.rangeMoving = input.labelFor(input.getBinding('rangeMoving', 0) ?? input.getBinding('rangeMoving', 1));
+    }
     keys.missile = missileSlot >= 0 && missileSlot < 3 ? input.labelFor(input.getBinding((['shell1','shell2','shell3'] as const)[missileSlot]!,0) ?? input.getBinding((['shell1','shell2','shell3'] as const)[missileSlot]!,1)) : '—';
     updateSpotting(focus);
   };

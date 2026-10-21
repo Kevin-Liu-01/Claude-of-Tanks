@@ -2,6 +2,7 @@ import { weaponHitKind } from './weaponHitKind.ts';
 import { FiredRoundLedger } from './battleEventStats.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { getPlayerRecord } from './profile.ts';
+import { rulesetKeepsRecords } from '../sim/matchRuleset.ts';
 // Medals and achievements: what a commander did, kept on this device beside
 // the battle record (profile.ts). A medal is earned inside one battle — some
 // the moment they happen, the rest when it ends; an achievement is a lifetime
@@ -538,7 +539,8 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
   };
   // A medal earned mid-battle is announced the moment it happens; the ones judged at the end wait for the debrief.
   const award = (id: MedalId, live = true) => {
-    if (!battle || battle.medals.has(id)) return;
+    // a practice mode keeps no record: nothing on the proving ground earns a medal (sim/matchRuleset.ts records)
+    if (!battle || battle.medals.has(id) || !rulesetKeepsRecords(ctx.gameMode())) return;
     battle.medals.add(id);
     if (live) bus.emit('service:medal', { id });
   };
@@ -709,6 +711,7 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     const tracker = battle;
     if (!tracker) return;
     if (event.reason === 'network_disconnect') { battle = null; return; }
+    if (!rulesetKeepsRecords(text(event.gameMode) || ctx.gameMode())) { battle = null; return; }
     settleShots(ctx.clockS(), true);
     const result = resultOf(event.result);
     const player = me();

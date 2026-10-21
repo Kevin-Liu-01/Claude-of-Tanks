@@ -1,5 +1,7 @@
 import type { DamageLab, DamageLabVisual } from './damageLab.ts';
 import type { InActionBlock } from './inAction.ts';
+import type { AnatomyHost, AnatomyMode, AnatomyToggle, AnatomyView, AnatomyVehicle } from './anatomyView.ts';
+import type { ArmorMetric } from './anatomyPalette.ts';
 import { createDamageWorkbench } from './damageWorkbench.ts';
 import { createDamageBurst } from './damageBurst.ts';
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
@@ -9,6 +11,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { pinchRestoresPage } from '../ui/pinchZoomGuard.ts';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { linkTankId, stampTankIdLink } from '../game/tankIdBoundaries.ts';
+import { testDriveHref } from '../game/testDriveLink.ts';
+import { hrefForLocale } from '../ui/localeRouting.ts';
 import { migrateStoredTankIds } from '../game/tankIdStorageMigration.ts';
 import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.ts';
 import {
@@ -18,9 +22,18 @@ import {
   technicalLabel,
 } from './catalog.ts';
 import type { GalleryRecord, GalleryVehicleSpec } from './catalog.ts';
-import { compareVehicleEras, VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
-import { createInspectionOverlay, inspectionLegend } from './overlays.ts';
-import type { InspectionMode } from './overlays.ts';
+import type { HeroManifest } from '../ui/heroCard.ts';
+import { compareVehicleEras, isPostwarVehicleEra, VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
+import {
+  CONCEPT_PROTOTYPE_CLASS_FILTER,
+  CONCEPT_PROTOTYPE_FILTER_META,
+  VEHICLE_BATTLE_ROLE_META,
+  VEHICLE_BATTLE_ROLE_ORDER,
+  VEHICLE_CLASS_META,
+  VEHICLE_CLASS_ORDER,
+  vehicleFacetLabel,
+} from '../vehicles/vehicleFacets.ts';
+import { vehicleClassGlyphSVG, vehicleRoleGlyphSVG } from '../ui/vehicleFacetIcons.ts';
 import {
   createSurfaceMarkup,
   MARKUP_OPERATIONS,
@@ -35,7 +48,9 @@ import { t, onLocaleChange, getLocale, formatNumber } from '../ui/i18n.ts';
 import { bindStaticI18nAuto } from '../presentation/staticI18n.ts';
 import { applyGalleryCameraRange, galleryFitDistance, resizeGalleryCamera } from './cameraFit.ts';
 
-type GalleryMode = InspectionMode | 'markup';
+type GalleryMode = 'appearance' | AnatomyMode | 'markup';
+const ANATOMY_MODES: readonly GalleryMode[] = ['armor', 'modules', 'crew'];
+const isAnatomyMode = (mode: GalleryMode): mode is AnatomyMode => ANATOMY_MODES.includes(mode);
 type GalleryView = 'hero' | 'front' | 'left' | 'right' | 'rear' | 'top'
   | 'elevated-left' | 'elevated-right';
 
@@ -267,7 +282,6 @@ let damageLab: DamageLab | null = null;
 const damageBurst = createDamageBurst(scene);
 const damagePoint = new THREE.Vector3();
 const damageEnd = new THREE.Vector3();
-let overlay = createInspectionOverlay(null, null, 'appearance');
 let selectedId: string | null = null;
 let activeMode: GalleryMode = 'appearance';
 let filteredRecords: GalleryRecord[] = records;
@@ -284,9 +298,8 @@ const damageWorkbench = createDamageWorkbench(damageHost, {
     emphasizeDamageTarget();
   },
   change(action) {
-    if (action === 'detonate') {
-      const picker = overlay.pickables.find(object => object.userData.inspection?.plateName === damageLab?.selected.slice(6));
-      if (picker) { new THREE.Box3().setFromObject(picker).getCenter(damagePoint); damageBurst.play(damagePoint); }
+    if (action === 'detonate' && damageLab && anatomyView?.plateCenterWorld(damageLab.selected.slice(6), damagePoint)) {
+      damageBurst.play(damagePoint);
     }
     for (const id of ['hullYaw', 'turretYaw', 'gunPitch']) $("#" + id).disabled = !!damageLab?.combat.destroyed;
     if (action === 'reset') { damageBurst.clear(); updateArticulation(); }
@@ -294,8 +307,9 @@ const damageWorkbench = createDamageWorkbench(damageHost, {
     emphasizeDamageTarget();
   },
   overlay() {
-    if (activeMode === 'appearance' || activeMode === 'markup') setMode('modules', false);
+    if (!isAnatomyMode(activeMode) || activeMode === 'armor') setMode('modules', false);
     else setMode(activeMode, false);
+    void anatomyReady.then(() => anatomyView?.setToggle('hits', damageWorkbench.hitboxes));
   },
   copy() { if (damageLab) writeClipboard(JSON.stringify({ vehicleId: selectedId, ...damageLab.snapshot() }, null, 2), t('gallery.damage.copied')); },
 });
@@ -334,30 +348,86 @@ function showInAction(id: string): void {
   );
   void inActionLoad.then(() => { if (selectedId === id) inAction?.show(id); });
 }
-function inspectionTarget(object: THREE.Object3D): string {
-  const data = object.userData.inspection;
-  if (data?.plateName && damageLab?.targets.some(target => target.key === `plate:${data.plateName}`)) return `plate:${data.plateName}`;
-  if (data?.module) return `module:${data.module}`;
-  if (data?.crew) return `crew:${data.crew}`;
-  return '';
+function damageTargetKey(key: string | null): string {
+  if (!key || !damageLab) return '';
+  return damageLab.targets.some(target => target.key === key) ? key : '';
 }
 function emphasizeDamageTarget(): void {
-  const picker = overlay.pickables.find(object => inspectionTarget(object) === damageLab?.selected);
-  overlay.emphasize(picker || null);
+  void anatomyReady.then(() => { if (damageLab?.selected) anatomyView?.select(damageLab.selected); });
 }
 function colorDamageOverlay(): void {
-  if (!damageLab) return;
-  for (const picker of overlay.pickables) {
-    const target = damageLab.targets.find(part => part.key === inspectionTarget(picker));
-    if (!target) continue;
-    const state = damageLab.condition(target); if (state === 'ok') continue;
-    const model = picker.userData.inspectionVisual || picker;
-    model.traverse((object: THREE.Object3D) => {
-      if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.LineSegments)) return;
-      const materials = Array.isArray(object.material) ? object.material : [object.material];
-      for (const material of materials) if (material instanceof THREE.MeshBasicMaterial || material instanceof THREE.LineBasicMaterial) material.color.set(state === 'yellow' ? '#ffc457' : '#ed6254');
-    });
-  }
+  if (!damageLab || !anatomyView) return;
+  const lab = damageLab;
+  anatomyView.setStates((pick) => {
+    const key = pick.kind === 'module' ? `module:${pick.part.module}` : pick.kind === 'crew' ? `crew:${pick.station.crew}` : '';
+    const target = lab.targets.find(part => part.key === key);
+    return target ? lab.condition(target) : 'ok';
+  });
+}
+
+// Anatomy layers (Armor, Modules, Crew) draw real models from the combat armor model. The view and its builders load
+// through import() the first time one of them opens, so the Gallery's first load and the game boot graph stay as they
+// were; the scene is built once per vehicle and specimen state and kept while the layers switch.
+type AnatomyModule = typeof import('./anatomyView.ts');
+let anatomyModule: Promise<AnatomyModule> | null = null;
+let anatomyView: AnatomyView | null = null;
+let anatomyReady: Promise<void> = Promise.resolve();
+let armorMetric: ArmorMetric = 'ke';
+function loadAnatomy(): Promise<AnatomyModule> {
+  anatomyModule ??= import('./anatomyView.ts').catch((error: unknown) => { anatomyModule = null; throw error; });
+  return anatomyModule;
+}
+const anatomyHost = (): AnatomyHost => ({
+  renderer, scene, camera, viewport,
+  console: $<HTMLElement>('.viewer-bottom-console'),
+  legend: $<HTMLElement>('#overlayLegend'),
+  onSelect(pick, readout) {
+    const panel = $('#inspectionReadout');
+    if (!readout || !pick) { panel.hidden = true; return; }
+    $('#inspectionId').textContent = readout.id;
+    $('#inspectionOwner').textContent = readout.owner;
+    $('#inspectionTitle').textContent = readout.title;
+    const combatModule = pick.kind === 'module' ? damageLab?.combat.modules[pick.part.module as keyof DamageLab['combat']['modules']] : null;
+    $('#inspectionDetails').textContent = combatModule
+      ? `${readout.details} · ${t('gallery.anatomy.detail.hp', { hp: Math.round(combatModule.maxHp) })}` : readout.details;
+    panel.hidden = false;
+    const key = pick.kind === 'armor' ? `plate:${pick.surface.plate.name}` : pick.kind === 'module' ? `module:${pick.part.module}`
+      : pick.kind === 'crew' ? `crew:${pick.station.crew}` : 'module:gun';
+    const target = damageTargetKey(key);
+    if (target) damageWorkbench.select(target, false);
+  },
+  onToggle() { updateUrl(); },
+});
+function anatomyVehicle(): AnatomyVehicle | null {
+  if (!visual || !selectedId) return null;
+  const spec = getSpec(selectedId) as GalleryVehicleSpec & { era?: string; gun?: { caliberMm?: number; shells?: Array<{ caliberMm?: number }> } };
+  const removed = damageLab ? [...damageLab.snapshot().removed].sort() : [];
+  return {
+    id: selectedId,
+    key: `${selectedId}|${removed.join(',')}`,
+    armor: (damageLab ? damageLab.armor() : spec.armor) as AnatomyVehicle['armor'],
+    caliberMm: Number(spec.gun?.shells?.[0]?.caliberMm || spec.gun?.caliberMm || 0),
+    modern: isPostwarVehicleEra(spec.era as Parameters<typeof isPostwarVehicleEra>[0]),
+    root: visual.root,
+  };
+}
+function showAnatomy(mode: AnatomyMode, announce: boolean): void {
+  const slow = setTimeout(() => showToast(t('gallery.anatomy.loading')), 250);
+  anatomyReady = loadAnatomy().then((module) => {
+    clearTimeout(slow);
+    const vehicle = anatomyVehicle();
+    if (!vehicle || activeMode !== mode) return;
+    if (!anatomyView) {
+      anatomyView = module.createAnatomyView(anatomyHost());
+      anatomyView.setMetric(armorMetric);
+    }
+    anatomyView.show(mode, vehicle);
+    colorDamageOverlay();
+    if (announce) showToast(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }));
+  }, () => {
+    clearTimeout(slow);
+    showToast(t('gallery.anatomy.loadFailed'));
+  });
 }
 
 const VIEW_DIRECTIONS: Readonly<Record<GalleryView, readonly [number, number, number]>> = Object.freeze({
@@ -483,19 +553,22 @@ function updateUrl(): void {
   stampTankIdLink(url.searchParams);
   if (activeMode === 'appearance') url.searchParams.delete('layer');
   else url.searchParams.set('layer', activeMode);
+  const metric = anatomyView?.state().metric || armorMetric;
+  if (activeMode === 'armor' && metric !== 'ke') url.searchParams.set('metric', String(metric));
+  else url.searchParams.delete('metric');
   history.replaceState({ id: selectedId, layer: activeMode }, '', `${url.pathname}${url.search}`);
 }
 
 function renderLegend(): void {
   const root = $('#overlayLegend');
-  const legend: ReadonlyArray<readonly [string, string]> = damageWorkbench.hitboxes && (activeMode === 'modules' || activeMode === 'crew')
-    ? [[t(activeMode === 'modules' ? 'gallery.legend.module' : 'gallery.legend.crew'), activeMode === 'modules' ? '#e9a346' : '#64cfdb'], [t('gallery.damage.state.yellow'), '#ffc457'], [t('gallery.damage.state.red'), '#ed6254']]
-    : activeMode === 'markup'
+  if (isAnatomyMode(activeMode)) return; // the anatomy view owns the legend in its layers
+  root.classList.remove('anatomy-legend');
+  const legend: ReadonlyArray<readonly [string, string]> = activeMode === 'markup'
     ? [
         [t('gallery.legend.markup.selected'), '#ff5a5f'],
         [t('gallery.legend.markup.hover'), '#65a9ff'],
       ]
-    : inspectionLegend(activeMode as InspectionMode);
+    : [];
   root.replaceChildren(...legend.map(([label, color]) => {
     const item = document.createElement('span');
     item.style.setProperty('--legend', color);
@@ -504,6 +577,17 @@ function renderLegend(): void {
     return item;
   }));
 }
+
+let heroCards: { module: typeof import('../ui/heroCard.ts'); manifest: HeroManifest } | null = null;
+Promise.all([import('../ui/heroCard.ts'), import('../ui/heroCard.css')])
+  .then(async ([module]) => {
+    const manifest = await module.loadHeroManifest();
+    if (!manifest) return;
+    heroCards = { module, manifest };
+    vehicleList.style.setProperty('--hc-flag-mask', module.heroCardFlagMask(manifest));
+    renderRoster();
+  })
+  .catch(() => { /* the packaged angle icons stay */ });
 
 function renderRoster(): void {
   const fragment = document.createDocumentFragment();
@@ -520,6 +604,12 @@ function renderRoster(): void {
     image.alt = '';
     image.loading = 'lazy';
     image.addEventListener('error', () => { image.style.visibility = 'hidden'; }, { once: true });
+    // The tank hero card (3/4 render over the nation's waving flag) once the lazy hero chunk has its
+    // manifest; the packaged angle icon until then, and for any vehicle without a hero row.
+    const thumb = document.createElement('span');
+    thumb.className = 'vehicle-thumb';
+    thumb.append(image);
+    if (heroCards?.module.decorateHeroCard(thumb, record.id, heroCards.manifest, { tankSizes: '90px', flagSizes: '110px' })) image.remove();
     const copy = document.createElement('span');
     const meta = document.createElement('small');
     meta.textContent = `${record.nation} // ${record.era}`;
@@ -531,13 +621,15 @@ function renderRoster(): void {
     }
     const title = document.createElement('strong');
     title.textContent = record.displayName;
-    const era = document.createElement('small');
-    era.textContent = record.era;
-    copy.append(meta, title, era);
+    // Class and role read under the name (nation and era already head the card).
+    const facets = document.createElement('small');
+    facets.textContent = [record.vehicleClass?.shortLabel, record.battleRole?.label].filter(Boolean).join(' · ')
+      || record.era;
+    copy.append(meta, title, facets);
     const tier = document.createElement('span');
     tier.className = 'vehicle-tier';
     tier.textContent = record.tierNumeral;
-    button.append(image, copy, tier);
+    button.append(thumb, copy, tier);
     button.addEventListener('click', () => loadTank(record.id));
     fragment.append(button);
   }
@@ -557,7 +649,8 @@ function renderRoster(): void {
 function renderDossier(record: GalleryRecord): void {
   const allIndex = records.findIndex((item) => item.id === record.id) + 1;
   $('#dossierIndex').textContent = String(allIndex).padStart(3, '0');
-  $('#dossierMeta').textContent = `${record.nation} // ${record.era} // Tier ${record.tierNumeral}`;
+  $('#dossierMeta').textContent = [record.nation, record.era, record.vehicleClass?.label,
+    `Tier ${record.tierNumeral}`].filter(Boolean).join(' // ');
   $('#dossierName').textContent = record.displayName;
   $('#dossierDesignation').textContent = `fleet://${record.id} · ${record.era}`;
   $('#dossierAuthor').textContent = t('gallery.dossier.authorLine', {
@@ -664,8 +757,8 @@ function updateArticulation(): void {
   const gun = visual.root.getObjectByName('rig_gun');
   if (turret) turret.rotation.y = THREE.MathUtils.degToRad(turretYaw);
   if (gun) gun.rotation.x = -THREE.MathUtils.degToRad(gunPitch);
-  overlay.update?.();
   visual.root.updateMatrixWorld(true);
+  anatomyView?.update();
   $('#hullYawValue').textContent = `${hullYaw}°`;
   $('#turretYawValue').textContent = `${turretYaw}°`;
   $('#gunPitchValue').textContent = `${Number(gunPitch.toFixed(2))}°`;
@@ -691,19 +784,13 @@ function configureArticulation(spec: GalleryVehicleSpec): void {
 function setMode(requestedMode: string | undefined, announce = true): void {
   const nextMode: GalleryMode = !damageLab?.combat.destroyed && ['appearance', 'armor', 'modules', 'crew', 'markup']
     .includes(requestedMode || '') ? requestedMode as GalleryMode : 'appearance';
+  const previousMode = activeMode;
   activeMode = nextMode;
-  overlay.clear();
-  const spec = selectedId ? getSpec(selectedId) : null;
-  overlay = createInspectionOverlay(
-    spec && damageLab ? { ...spec, armor: damageLab.armor() } : spec,
-    visual,
-    activeMode === 'markup' ? 'appearance' : activeMode,
-    damageWorkbench.hitboxes,
-  );
-  colorDamageOverlay();
+  if (isAnatomyMode(activeMode)) showAnatomy(activeMode, announce);
+  else anatomyView?.hide();
   surfaceMarkup.setActive(activeMode === 'markup');
   modeButtons.forEach((button) => { button.classList.toggle('active', button.dataset.mode === activeMode); button.disabled = !!damageLab?.combat.destroyed && button.dataset.mode !== 'appearance'; });
-  $('#inspectionReadout').hidden = true;
+  if (previousMode !== activeMode || !isAnatomyMode(activeMode)) $('#inspectionReadout').hidden = true;
   $('#viewerHelp').innerHTML = activeMode === 'markup'
     ? `${viewerHelpItem('rematch', t('gallery.view.modeDockHelp'))}${viewerHelpItem('check', t('gallery.view.modeDockHelpShift'))}${viewerHelpItem('autoAim', t('gallery.view.modeDockHelpMarkup'))}`
     : `${viewerHelpItem('rematch', t('gallery.view.modeDockHelp'))}${viewerHelpItem('optics', t('gallery.view.modeDockHelpZoom'))}${viewerHelpItem('autoAim', t('gallery.view.modeDockHelpSelect'))}`;
@@ -716,7 +803,6 @@ function setMode(requestedMode: string | undefined, announce = true): void {
   if (announce) {
     if (activeMode === 'appearance') showToast(t('gallery.view.toast.appearanceRestored'));
     else if (activeMode === 'markup') showToast(t('gallery.view.toast.markupReady', { count: surfaceMarkup.getState().selectableMeshes }));
-    else showToast(t('gallery.view.toast.modeVisible', { count: overlay.count, mode: t(`gallery.view.mode.${activeMode}`).toLowerCase() }));
   }
 }
 
@@ -725,8 +811,7 @@ function disposeTank(): void {
   damageWorkbench.attach(null);
   damageLab?.dispose(); damageLab = null; damageBurst.clear();
   surfaceMarkup.detachTank();
-  overlay.clear();
-  overlay = createInspectionOverlay(null, null, 'appearance');
+  anatomyView?.release();
   if (visual) {
     visual.root.removeFromParent();
     visual.dispose();
@@ -793,46 +878,8 @@ async function loadTank(
   window.__TANK_GALLERY_READY = true;
 }
 
-function renderInspection(hit: THREE.Intersection<THREE.Object3D> | undefined): void {
-  const data = hit?.object?.userData?.inspection as Record<string, RuntimeValue> | undefined;
-  const readout = $('#inspectionReadout');
-  if (!data || !hit) {
-    readout.hidden = true;
-    overlay.emphasize(null);
-    return;
-  }
-  overlay.emphasize(hit.object as THREE.Mesh);
-  damageWorkbench.select(inspectionTarget(hit.object), false);
-  $('#inspectionId').textContent = String(data.id || '');
-  $('#inspectionOwner').textContent = String(data.owner || '');
-  $('#inspectionTitle').textContent = String(data.title || '');
-  if (data.mode === 'armor') {
-    $('#inspectionDetails').textContent = t('gallery.inspection.armorDetail', {
-      kind: String(technicalLabel(data.kind)),
-      layer: String(t('gallery.inspection.layer')),
-      physical: Number(data.physicalMm || 0),
-      ke: Number(data.keMm || 0),
-      ce: Number(data.ceMm || 0),
-    });
-  } else {
-    const dimensions = Array.isArray(data.dimensionsM) ? data.dimensionsM : [];
-    const external = data.kind === 'external';
-    $('#inspectionDetails').textContent = t('gallery.inspection.moduleDetail', {
-      label: external ? technicalLabel(data.kind)
-        : String(data.mode === 'crew' ? t('gallery.legend.crew') : t('gallery.legend.module')),
-      dimensions: dimensions.join(' × '),
-      killCam: external ? '' : String(t('gallery.legend.killCam')),
-    });
-  }
-  readout.hidden = false;
-}
-
 function pickInspection(clientX: number, clientY: number): void {
-  if (!overlay.pickables.length) return;
-  const rect = renderer.domElement.getBoundingClientRect();
-  pointerNdc.set(((clientX - rect.left) / rect.width) * 2 - 1, -(((clientY - rect.top) / rect.height) * 2 - 1));
-  raycaster.setFromCamera(pointerNdc, camera);
-  renderInspection(raycaster.intersectObjects(overlay.pickables, false)[0]);
+  anatomyView?.pickAt(clientX, clientY);
 }
 
 function applyFilters(): void {
@@ -840,6 +887,8 @@ function applyFilters(): void {
     query: $('#gallerySearch').value,
     nation: $('#nationFilter').value,
     era: $('#eraFilter').value,
+    vehicleClass: $('#classFilter').value,
+    battleRole: $('#roleFilter').value,
   });
   renderRoster();
 }
@@ -870,9 +919,16 @@ function createGallerySelectIcon(
     icon.append(flag);
     return icon;
   }
-  const iconId = select.id === 'eraFilter'
-    ? (GALLERY_ERA_ICONS[option.value] || 'clock')
-    : 'globe';
+  // Class and role options show the fleet glyphs (constant markup, keyed by the option's facet id).
+  const facetGlyph = option.value === 'all' ? ''
+    : select.id === 'classFilter' ? vehicleClassGlyphSVG(option.value)
+      : select.id === 'roleFilter' ? vehicleRoleGlyphSVG(option.value) : '';
+  if (facetGlyph) {
+    if (select.id === 'classFilter') icon.classList.add('gallery-select-icon--wide');
+    icon.insertAdjacentHTML('beforeend', facetGlyph);
+    return icon;
+  }
+  const iconId = select.id === 'eraFilter' ? (GALLERY_ERA_ICONS[option.value] || 'clock') : 'globe';
   icon.insertAdjacentHTML('beforeend', uiIconSVG(iconId, 16));
   return icon;
 }
@@ -1021,10 +1077,20 @@ function populateFilters(): void {
       a[0] as Parameters<typeof compareVehicleEras>[0],
       b[0] as Parameters<typeof compareVehicleEras>[1],
     ));
+  // Class and role list only the values the registry holds, in the facet table's order.
+  const classes = VEHICLE_CLASS_ORDER.filter((id) => records.some((record) => record.vehicleClass?.id === id));
+  const roles = VEHICLE_BATTLE_ROLE_ORDER.filter((id) => records.some((record) => record.battleRole?.id === id));
   $('#nationFilter').append(...nations.map((nation) => new Option(nation, nation)));
   $('#eraFilter').append(...eras.map(([key, label]) => new Option(label, key)));
+  $('#classFilter').append(
+    ...classes.map((id) => new Option(vehicleFacetLabel(VEHICLE_CLASS_META[id], t), id)),
+    new Option(vehicleFacetLabel(CONCEPT_PROTOTYPE_FILTER_META, t), CONCEPT_PROTOTYPE_CLASS_FILTER),
+  );
+  $('#roleFilter').append(...roles.map((id) => new Option(vehicleFacetLabel(VEHICLE_BATTLE_ROLE_META[id], t), id)));
   mountGallerySelect($<HTMLSelectElement>('#nationFilter'));
   mountGallerySelect($<HTMLSelectElement>('#eraFilter'));
+  mountGallerySelect($<HTMLSelectElement>('#classFilter'));
+  mountGallerySelect($<HTMLSelectElement>('#roleFilter'));
 }
 
 async function writeClipboard(text: string, successMessage: string): Promise<void> {
@@ -1054,6 +1120,8 @@ function resize(): void {
 $('#gallerySearch').addEventListener('input', applyFilters);
 $('#nationFilter').addEventListener('change', applyFilters);
 $('#eraFilter').addEventListener('change', applyFilters);
+$('#classFilter').addEventListener('change', applyFilters);
+$('#roleFilter').addEventListener('change', applyFilters);
 $('#hullYaw').addEventListener('input', updateArticulation);
 $('#turretYaw').addEventListener('input', updateArticulation);
 $('#gunPitch').addEventListener('input', updateArticulation);
@@ -1066,6 +1134,11 @@ $('#autoRotate').addEventListener('click', () => {
   showToast(controls.autoRotate
     ? t('gallery.toast.turntableOn')
     : t('gallery.toast.turntableOff'));
+});
+// the proving ground (v2 progression, 2026-10-17): this vehicle on the game's measured range (game/testDriveLink.ts)
+$('#testDrive').addEventListener('click', () => {
+  if (!selectedId) return;
+  location.href = hrefForLocale(testDriveHref(selectedId), getLocale());
 });
 $('#copyLink').addEventListener('click', () => writeClipboard(
   location.href,
@@ -1099,10 +1172,11 @@ renderer.domElement.addEventListener('pointerup', (event) => {
   else pickInspection(event.clientX, event.clientY);
 });
 renderer.domElement.addEventListener('pointermove', (event) => {
-  if (activeMode !== 'markup' || event.buttons) return;
-  surfaceMarkup.hoverScreen(event.clientX, event.clientY);
+  if (event.buttons) return;
+  if (activeMode === 'markup') surfaceMarkup.hoverScreen(event.clientX, event.clientY);
+  else if (event.pointerType === 'mouse') anatomyView?.hoverAt(event.clientX, event.clientY);
 });
-renderer.domElement.addEventListener('pointerleave', surfaceMarkup.clearHover);
+renderer.domElement.addEventListener('pointerleave', () => { surfaceMarkup.clearHover(); anatomyView?.clearHover(); });
 
 document.addEventListener('keydown', (event) => {
   const editing = /input|select|textarea/i.test(document.activeElement?.tagName || '')
@@ -1143,9 +1217,11 @@ new ResizeObserver(resize).observe(viewport);
 let previousFrameTime = performance.now();
 function animate() {
   const time = performance.now(), dt = Math.min(.05, (time - previousFrameTime) / 1000); previousFrameTime = time;
-  damageLab?.update(dt); damageBurst.update(dt); overlay.update?.();
+  damageLab?.update(dt); damageBurst.update(dt);
   controls.update();
-  renderer.render(scene, camera);
+  anatomyView?.update();
+  if (anatomyView?.mode) anatomyView.render();
+  else renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }
 
@@ -1155,6 +1231,7 @@ resize();
 animate();
 
 const initial = new URLSearchParams(location.search);
+if (initial.get('metric') === 'ce' || initial.get('metric') === 'physical') armorMetric = initial.get('metric') as ArmorMetric;
 // A link names its vehicle under its own id schema (`&ids=`; none = 1, SSOT 2.19).
 const preferredId = linkTankId(initial);
 const initialId = preferredId && recordById.has(preferredId)
@@ -1171,7 +1248,8 @@ window.__TANK_GALLERY = {
   getState: () => ({
     selectedId,
     mode: activeMode,
-    overlayCount: overlay.count,
+    overlayCount: anatomyView?.mode ? anatomyView.count : 0,
+    anatomy: anatomyView?.state() || null,
     damage: damageLab?.snapshot(),
     markup: surfaceMarkup.getState(),
     camera: { position: camera.position.toArray(), target: controls.target.toArray() },
@@ -1182,6 +1260,10 @@ window.__TANK_GALLERY = {
     return changed;
   },
   resetDamage: () => { damageLab?.reset(); updateArticulation(); setMode(activeMode, false); damageWorkbench.refresh(); },
+  waitAnatomyReady: () => anatomyReady,
+  setAnatomyToggle: (toggle: AnatomyToggle, value: boolean) => anatomyView?.setToggle(toggle, value),
+  setArmorMetric: (metric: ArmorMetric) => { armorMetric = metric; anatomyView?.setMetric(metric); },
+  selectPart: (key: string | null) => anatomyView?.select(key),
   setMarkupOperation: surfaceMarkup.setOperation,
   selectSurface: surfaceMarkup.selectScreen,
   exportMarkupJSON: surfaceMarkup.exportRecord,

@@ -6,7 +6,7 @@ import {tankTier} from '../src/vehicles/tier.ts';
 import {viewRangeOf} from '../src/sim/spotting.ts';
 import {auxiliaryCapabilities} from '../src/vehicles/auxiliaryInventory.ts';
 import {MAP_IDS,getMapName,RANDOM_BATTLE_MAP_IDS} from '../src/world/maps/mapIds.ts';
-import {GAME_MODE_IDS} from '../src/sim/matchModes.ts';
+import {BATTLE_MODE_IDS} from '../src/sim/matchModes.ts';
 import {matchRulesetFor,modeCopyValues,RULESET_SCORE_TARGETS} from '../src/sim/matchRuleset.ts';
 const data={
   vehicles:PRODUCTION_TANK_IDS.map(id=>{const s=TANK_SPECS[id],a=auxiliaryCapabilities(s);return {
@@ -17,7 +17,7 @@ const data={
     missile:s.gun.shells.some(shell=>shell.guided),suspension:!!s.hydropneumaticAim,
   };}),
   maps:MAP_IDS.map(id=>({id,name:getMapName(id),random:RANDOM_BATTLE_MAP_IDS.includes(id)})),
-  modes:GAME_MODE_IDS.map(id=>{const r=matchRulesetFor(id);return {
+  modes:BATTLE_MODE_IDS.map(id=>{const r=matchRulesetFor(id);return {
     id,clock:r.timeLimitS,respawn:r.respawnS,score:RULESET_SCORE_TARGETS[id]??null,
     speed:r.speedMultiplier,hp:r.hpScale,reload:r.reloadScale,ammo:r.ammo,
     equipment:r.equipmentSlots,consumables:r.consumables,jump:r.jumpMps,

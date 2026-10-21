@@ -191,8 +191,10 @@ export default {
     rocks: 235, outcrops: 48, craters: 82, rubblePiles: 28,
     sandbagLines: 22, hedgehogs: 16,
     // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules) a fence run's module or gate that
-    // meets a building's plot is left out; the field works as they were (fieldWorksLevel is off for 227, the coordinator's ruling: its first cuts dropped local cover; 228 seats each module on its own ground)
-    dressingRules: { fencesClearBuildings: true },
+    // meets a building's plot is left out; (229) and a run in line with a shop's front keeps clear of its corners (the
+    // market's wattle pressed against the cornershop's counter, the 227 blind's split pose). The field works sit on their
+    // own ground since 229 (props.ts placeFieldWorks).
+    dressingRules: { fencesClearBuildings: true, fenceFrontageClear: true },
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
     tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },

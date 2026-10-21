@@ -1,0 +1,427 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>tank hero layer renderer</title></head>
+<body>
+<script type="module">
+// Offscreen studio for tools/genHeroCards.mjs: renders each vehicle's hero tank
+// layer (transparent, front three-quarter, bow toward the policy's facing, the
+// turret turned toward the lens by HERO_POSE) from the shipped procedural build under
+// one studio light rig, then places it on the master layer by the dense-core
+// framing rule. The flag and the card are composed
+// on the CPU (tools/hero-cards-compose.mjs); nothing here draws type or flags.
+// First-party tooling: Kevin B. Liu (NOTICE.md).
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { createTank } from '/src/vehicles/tankFactory.ts';
+import { ensureInteriorFills } from '/src/vehicles/interiorFills.ts';
+import { getSpec } from '/src/vehicles/specs.ts';
+import { geometryFingerprint } from '/src/vehicles/tankAssets.ts';
+import { measurePortraitCoreBounds } from '/src/ui/portraitFraming.ts';
+import { minimumMechanicalGunPitch } from '/src/sim/gunPitchLimits.ts';
+import {
+  HERO_CAMERA, HERO_FRAME, HERO_LIGHTS, HERO_POLICY_VERSION, HERO_POSE, heroCenterX, heroTurretTraverseDeg,
+} from '/src/ui/heroCardPolicy.ts';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.setClearColor(0x000000, 0);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+const roomEnvironment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const lights = new THREE.Group();
+scene.add(lights);
+const hemi = new THREE.HemisphereLight();
+const key = new THREE.DirectionalLight();
+const fill = new THREE.DirectionalLight();
+const rim = new THREE.DirectionalLight();
+const kicker = new THREE.DirectionalLight();
+lights.add(hemi, key, fill, rim, kicker, key.target, fill.target, rim.target, kicker.target);
+key.castShadow = true;
+key.shadow.mapSize.set(4096, 4096);
+key.shadow.bias = -0.00025;
+key.shadow.normalBias = 0.02;
+key.shadow.radius = 3;
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.ShadowMaterial({ opacity: 0.4 }));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const deg = (value) => value * Math.PI / 180;
+
+function configureLights(rig, center, mirror, radius) {
+  renderer.toneMappingExposure = rig.exposure;
+  scene.environment = rig.environmentIntensity > 0 ? roomEnvironment : null;
+  scene.environmentIntensity = rig.environmentIntensity;
+  hemi.color.set(rig.hemisphere.sky);
+  hemi.groundColor.set(rig.hemisphere.ground);
+  hemi.intensity = rig.hemisphere.intensity;
+  for (const [light, def] of [[key, rig.key], [fill, rig.fill], [rim, rig.rim], [kicker, rig.kicker]]) {
+    light.color.set(def.color);
+    light.intensity = def.intensity;
+    light.position.set(center.x + def.position[0] * mirror, center.y + def.position[1], center.z + def.position[2]);
+    light.target.position.copy(center);
+    light.target.updateMatrixWorld();
+  }
+  const cam = key.shadow.camera;
+  const half = radius * 1.25;
+  cam.left = -half; cam.right = half; cam.top = half; cam.bottom = -half;
+  cam.near = 0.5; cam.far = radius * 8 + 30;
+  cam.updateProjectionMatrix();
+  ground.material.opacity = rig.groundShadowOpacity;
+}
+
+function paintFingerprint(root) {
+  // Paint inputs the geometry hash cannot see: material colours, roughness/metalness and
+  // texture identities (size + a sparse pixel sample of canvas-backed camo textures).
+  const parts = [];
+  const sampled = new Map();
+  root.traverse((object) => {
+    if (!object.isMesh || !object.visible) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const m of materials) {
+      if (!m) continue;
+      let entry = `${m.type}:${m.color ? m.color.getHexString() : '-'}:${(m.roughness ?? -1).toFixed(3)}:${(m.metalness ?? -1).toFixed(3)}`;
+      const map = m.map;
+      if (map && map.image) {
+        const img = map.image;
+        let tag = sampled.get(img);
+        if (!tag) {
+          tag = `${img.width || 0}x${img.height || 0}`;
+          try {
+            if (img.getContext) {
+              const ctx = img.getContext('2d');
+              const step = Math.max(1, Math.floor(img.width / 16));
+              let acc = 0x811c9dc5;
+              for (let y = 0; y < img.height; y += step) {
+                const row = ctx.getImageData(0, y, img.width, 1).data;
+                for (let x = 0; x < row.length; x += step * 4) acc = Math.imul(acc ^ row[x] ^ (row[x + 1] << 8) ^ (row[x + 2] << 16), 16777619) >>> 0;
+              }
+              tag += `:${acc.toString(16)}`;
+            }
+          } catch { /* non-canvas image: size only */ }
+          sampled.set(img, tag);
+        }
+        entry += `:map=${tag}`;
+      }
+      parts.push(entry);
+    }
+  });
+  parts.sort();
+  let hash = 0x811c9dc5;
+  for (const part of parts) for (let i = 0; i < part.length; i++) hash = Math.imul(hash ^ part.charCodeAt(i), 16777619) >>> 0;
+  return hash.toString(16).padStart(8, '0');
+}
+
+function fullBounds(pixels, width, height, threshold = 8) {
+  let x0 = width, y0 = height, x1 = -1, y1 = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (pixels[(y * width + x) * 4 + 3] <= threshold) continue;
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+  }
+  return x1 >= x0 ? { x0, y0, x1, y1 } : null;
+}
+
+/**
+ * The studio floor's shadow as a soft pool under the hull: the shadow catcher's pixels (the full
+ * render minus the vehicle), blurred, kept inside an ellipse on the contact line, the vehicle on top.
+ * A hard cast shadow drew the barrel and the hull edge as lines across the card's empty ground.
+ */
+function softContactShadow(fullCanvas, vehicleCanvas, core, def) {
+  const w = fullCanvas.width, h = fullCanvas.height;
+  const only = document.createElement('canvas');
+  only.width = w; only.height = h;
+  const oc = only.getContext('2d');
+  oc.drawImage(fullCanvas, 0, 0);
+  oc.globalCompositeOperation = 'destination-out';
+  oc.drawImage(vehicleCanvas, 0, 0);
+  const out = document.createElement('canvas');
+  out.width = w; out.height = h;
+  const ctx = out.getContext('2d');
+  ctx.filter = `blur(${Math.max(1, Math.round(core.width * def.blurRatio))}px)`;
+  ctx.globalAlpha = def.opacity;
+  ctx.drawImage(only, 0, 0);
+  ctx.filter = 'none';
+  ctx.globalAlpha = 1;
+  // destination-in is unbounded: the gradient fill covers the whole canvas on purpose.
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.save();
+  ctx.translate(core.centerX, core.bottom - core.height * def.liftRatio);
+  ctx.scale(core.width * def.radiusX, core.height * def.radiusY);
+  const pool = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+  pool.addColorStop(0, 'rgba(0,0,0,1)');
+  pool.addColorStop(def.inner, 'rgba(0,0,0,1)');
+  pool.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = pool;
+  ctx.fillRect(-1e4, -1e4, 2e4, 2e4);
+  ctx.restore();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(vehicleCanvas, 0, 0);
+  return out;
+}
+
+/**
+ * First row (top down) whose opaque run inside [x0, x1] is wider than a whip: thin masts and
+ * antennas above it never set the vertical fit.
+ */
+function solidTop(pixels, width, height, x0, x1, share, threshold = 8) {
+  const need = Math.max(12, Math.round((x1 - x0 + 1) * share));
+  for (let y = 0; y < height; y++) {
+    const row = y * width * 4;
+    let count = 0;
+    for (let x = x0; x <= x1; x++) if (pixels[row + x * 4 + 3] > threshold) count++;
+    if (count >= need) return y;
+  }
+  return 0;
+}
+
+/** The bore's world direction: the gun cradle's +Z (the turret's when a vehicle has no separate cradle). */
+function boreDirection(turret, gun) {
+  return (gun || turret).getWorldDirection(new THREE.Vector3());
+}
+
+/**
+ * Pose the vehicle for its card (HERO_POSE): traverse the turret by the policy angle within its legal arc,
+ * on the side whose bore points more toward the lens (chosen by the bore direction against the lens
+ * vector, never by the yaw sign), then lay the gun level, raised only to the spec's yaw-dependent
+ * mechanical minimum over the rear deck and never past its elevation limit. Children of the turret
+ * (roof stations, coaxial and secondary mounts) turn with it; hull-mounted stations stay at rest.
+ */
+function applyHeroPose(root, spec, pose, toLens) {
+  const turret = root.getObjectByName('rig_turret');
+  const gun = root.getObjectByName('rig_gun');
+  const restYaw = turret ? turret.rotation.y : 0;
+  const traverseDeg = turret ? heroTurretTraverseDeg(spec, pose) : 0;
+  let yaw = restYaw;
+  if (turret && traverseDeg > 0) {
+    let best = -Infinity;
+    for (const sign of [1, -1]) {
+      turret.rotation.y = restYaw + sign * deg(traverseDeg);
+      root.updateMatrixWorld(true);
+      const bore = boreDirection(turret, gun).setY(0).normalize();
+      const toward = bore.dot(new THREE.Vector3(toLens.x, 0, toLens.z).normalize());
+      if (toward > best) { best = toward; yaw = turret.rotation.y; }
+    }
+    turret.rotation.y = yaw;
+  }
+  const low = minimumMechanicalGunPitch(spec, yaw);
+  const high = deg(Math.abs(Number(spec.gunElevationDeg ?? 20)));
+  const pitch = Math.min(high, Math.max(deg(pose.gunPitchDeg), low));
+  if (gun) gun.rotation.x = -pitch;
+  root.updateMatrixWorld(true);
+  const round = (value) => Number((value * 180 / Math.PI).toFixed(2));
+  return {
+    turretYawDeg: round(yaw), restYawDeg: round(restYaw), gunPitchDeg: round(pitch),
+    traverseDeg: Number.isFinite(traverseDeg) ? traverseDeg : null, turret: !!turret, turretless: !!spec.armor?.turretless,
+  };
+}
+
+/**
+ * Screen sides by projection through the card lens (source pixels): the bow from the hull origin to a point
+ * ahead of it on hull +Z, the gun from its trunnion to its muzzle tip.
+ */
+function measureSides(root, visual, cam, sw, sh) {
+  const project = (world) => {
+    const p = world.clone().project(cam);
+    return { x: (p.x + 1) / 2 * sw, y: (1 - p.y) / 2 * sh };
+  };
+  const hull0 = project(root.localToWorld(new THREE.Vector3(0, 0, 0)));
+  const hull1 = project(root.localToWorld(new THREE.Vector3(0, 0, 4)));
+  const turret = root.getObjectByName('rig_turret');
+  const gun = root.getObjectByName('rig_gun') || turret;
+  const pivotWorld = gun ? gun.getWorldPosition(new THREE.Vector3()) : root.getWorldPosition(new THREE.Vector3());
+  let muzzleWorld = null;
+  try { muzzleWorld = visual.gunMuzzleWorld ? visual.gunMuzzleWorld(new THREE.Vector3()) : null; } catch { muzzleWorld = null; }
+  if (!muzzleWorld || !Number.isFinite(muzzleWorld.x) || muzzleWorld.distanceTo(pivotWorld) < 0.2) {
+    muzzleWorld = pivotWorld.clone().addScaledVector(boreDirection(turret || root, gun), 4);
+  }
+  const pivot = project(pivotWorld);
+  const muzzle = project(muzzleWorld);
+  return {
+    bowSide: hull1.x >= hull0.x ? 'right' : 'left',
+    gunSide: muzzle.x >= pivot.x ? 'right' : 'left',
+    pivot, muzzle,
+  };
+}
+
+/**
+ * Render one vehicle's hero layer. `overrides` replaces fields of HERO_CAMERA / HERO_POSE / HERO_LIGHTS /
+ * HERO_FRAME (sample boards only; the shipped renderer passes none).
+ */
+function renderHero(id, overrides = {}) {
+  const camera = { ...HERO_CAMERA, ...(overrides.camera || {}) };
+  const pose = { ...HERO_POSE, ...(overrides.pose || {}) };
+  const rig = { ...HERO_LIGHTS, ...(overrides.lights || {}) };
+  const frame = { ...HERO_FRAME, ...(overrides.frame || {}) };
+  const shadows = overrides.shadows !== false;
+  const spec = getSpec(id);
+  const visual = createTank(id, null, { camoSeed: 4100, quality: 'high' });
+  const root = visual.root;
+  scene.add(root);
+  try {
+    root.updateMatrixWorld(true);
+    const geometryHash = geometryFingerprint(root);
+    const mirror = camera.facing === 'right' ? -1 : 1;
+    const az = deg(camera.azimuthDeg);
+    const el = deg(camera.elevationDeg);
+    // Unit vector from the vehicle toward the lens (the hull's front three-quarter on the facing's flank).
+    const dir = new THREE.Vector3(Math.sin(az) * mirror * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+    const posed = applyHeroPose(root, spec, pose, dir);
+    root.traverse((object) => {
+      if (object.isMesh) { object.castShadow = shadows; object.receiveShadow = shadows; }
+    });
+    root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(root);
+    const anchor = visual.assetPresentationAnchor || visual.presentationAnchor;
+    const center = box.getCenter(new THREE.Vector3());
+    center.x = anchor.xM;
+    center.z = anchor.zM;
+    const radius = Math.hypot(
+      Math.max(center.x - box.min.x, box.max.x - center.x),
+      Math.max(center.y - box.min.y, box.max.y - center.y),
+      Math.max(center.z - box.min.z, box.max.z - center.z),
+    );
+    ground.position.y = box.min.y + 0.002;
+    ground.visible = shadows;
+    configureLights(rig, center, mirror, radius);
+    key.castShadow = shadows;
+
+    const aspect = frame.width / frame.height;
+    const vHalf = deg(camera.fovDeg) / 2;
+    const hHalf = Math.atan(Math.tan(vHalf) * aspect);
+    const dist = (radius * camera.margin) / Math.sin(Math.min(vHalf, hHalf));
+    const cam = new THREE.PerspectiveCamera(camera.fovDeg, aspect, 0.1, dist * 4);
+    cam.position.copy(center).addScaledVector(dir, dist);
+    cam.lookAt(center);
+    cam.updateMatrixWorld(true);
+
+    const sw = frame.width * frame.supersample;
+    const sh = frame.height * frame.supersample;
+    renderer.setSize(sw, sh, false);
+    renderer.render(scene, cam);
+    const src = document.createElement('canvas');
+    src.width = sw; src.height = sh;
+    const sc = src.getContext('2d', { willReadFrequently: true });
+    sc.drawImage(renderer.domElement, 0, 0);
+    const pixels = sc.getImageData(0, 0, sw, sh).data;
+    // Measure the vehicle alone (the shadow catcher writes alpha too): re-render without it.
+    let vehiclePixels = pixels;
+    let vehicleCanvas = null;
+    if (shadows) {
+      ground.visible = false;
+      renderer.render(scene, cam);
+      vehicleCanvas = document.createElement('canvas');
+      vehicleCanvas.width = sw; vehicleCanvas.height = sh;
+      const tc = vehicleCanvas.getContext('2d', { willReadFrequently: true });
+      tc.drawImage(renderer.domElement, 0, 0);
+      vehiclePixels = tc.getImageData(0, 0, sw, sh).data;
+      ground.visible = true;
+    }
+    const core = measurePortraitCoreBounds(vehiclePixels, sw, sh);
+    const full = fullBounds(vehiclePixels, sw, sh);
+    if (!core || !full) throw new Error(`${id}: empty hero render`);
+    const layerSource = vehicleCanvas ? softContactShadow(src, vehicleCanvas, core, rig.contactShadow) : src;
+    const top = solidTop(vehiclePixels, sw, sh, full.x0, full.x1, frame.solidRowShare);
+    // The dense core fills its share unless the solid silhouette (gun, roof weapons, stowage) would
+    // leave the layer: every card crops from this master, so the master never loses a solid pixel.
+    // Whips above the solid top may rise into the fade band instead of shrinking the tank.
+    const clearPx = frame.edgeClearPx;
+    const fadePx = frame.height * frame.whipFadeRatio;
+    const coreScale = Math.min(frame.width * frame.coreWidthRatio / core.width, frame.height * frame.coreHeightRatio / core.height);
+    const fullScale = Math.min(
+      (frame.width - 2 * clearPx) / (full.x1 + 1 - full.x0),
+      (frame.height * frame.baselineRatio - fadePx) / Math.max(1, core.bottom - top),
+    );
+    const scale = Math.min(coreScale, fullScale);
+    // The gun's screen side, by projection through this lens, sets which side the framing leaves open.
+    const sides = measureSides(root, visual, cam, sw, sh);
+    const centerX = heroCenterX(frame.centerXRatio, sides.gunSide);
+    let dx = frame.width * centerX - core.centerX * scale;
+    // Slide (never scale) the silhouette back inside the layer when the gun or the rear overhangs an edge.
+    dx = Math.min(dx, frame.width - clearPx - (full.x1 + 1) * scale);
+    dx = Math.max(dx, clearPx - full.x0 * scale);
+    const dy = frame.height * frame.baselineRatio - core.bottom * scale;
+    const out = document.createElement('canvas');
+    out.width = frame.width; out.height = frame.height;
+    const oc = out.getContext('2d');
+    oc.imageSmoothingEnabled = true;
+    oc.imageSmoothingQuality = 'high';
+    oc.drawImage(layerSource, dx, dy, sw * scale, sh * scale);
+    const placed = {
+      x0: full.x0 * scale + dx, x1: (full.x1 + 1) * scale + dx,
+      y0: full.y0 * scale + dy, y1: (full.y1 + 1) * scale + dy,
+    };
+    const solidY0 = top * scale + dy;
+    const whipsFaded = placed.y0 < fadePx;
+    if (whipsFaded) {
+      // destination-out is a bounded operation: only the band changes, alpha ramps 0 -> 1 down it.
+      const fade = oc.createLinearGradient(0, 0, 0, fadePx);
+      fade.addColorStop(0, 'rgba(0,0,0,1)');
+      fade.addColorStop(1, 'rgba(0,0,0,0)');
+      oc.globalCompositeOperation = 'destination-out';
+      oc.fillStyle = fade;
+      oc.fillRect(0, 0, frame.width, Math.ceil(fadePx));
+      oc.globalCompositeOperation = 'source-over';
+    }
+    const clear = frame.edgeClearPx;
+    // Half a pixel of tolerance: a silhouette slid exactly onto the clearance is not clipped.
+    const clipped = placed.x0 < clear - 0.5 || solidY0 < fadePx - 0.5
+      || placed.x1 > frame.width - clear + 0.5 || placed.y1 > frame.height - clear + 0.5;
+    return {
+      dataUrl: out.toDataURL('image/png'),
+      meta: {
+        id,
+        policyVersion: HERO_POLICY_VERSION,
+        geometryHash,
+        paintHash: paintFingerprint(root),
+        facing: camera.facing,
+        camera: { azimuthDeg: camera.azimuthDeg, elevationDeg: camera.elevationDeg, fovDeg: camera.fovDeg },
+        pose: posed,
+        // Measured by projection through the card lens: the hull's bow side and the gun's side, with the
+        // trunnion and muzzle tip in layer pixels.
+        bowSide: sides.bowSide,
+        gunSide: sides.gunSide,
+        pivot: { x: Number((sides.pivot.x * scale + dx).toFixed(1)), y: Number((sides.pivot.y * scale + dy).toFixed(1)) },
+        muzzle: { x: Number((sides.muzzle.x * scale + dx).toFixed(1)), y: Number((sides.muzzle.y * scale + dy).toFixed(1)) },
+        coreBounds: { x0: core.x0 * scale + dx, x1: (core.x1 + 1) * scale + dx, y0: core.y0 * scale + dy, bottom: core.bottom * scale + dy },
+        coreFill: Number((scale / coreScale).toFixed(4)), // 1 = the core fills its share; < 1 = the silhouette limited it
+        fullBounds: placed,
+        solidTop: Number(solidY0.toFixed(1)),
+        whipsFaded,
+        clipped,
+        scale,
+      },
+    };
+  } finally {
+    scene.remove(root);
+    visual.dispose();
+  }
+}
+
+window.__HERO_WARM = async (ids) => {
+  await ensureInteriorFills(ids);
+  for (const id of ids) createTank(id, null, { camoSeed: 4100, quality: 'high', staticPreview: true }).dispose();
+  return true;
+};
+
+window.__HERO_RENDER = (jobs) => {
+  const results = [];
+  for (const job of jobs) {
+    try { results.push({ name: job.name, ...renderHero(job.id, job.overrides || {}) }); }
+    catch (error) { results.push({ name: job.name, error: String(error && error.stack || error) }); }
+  }
+  return results;
+};
+
+window.__HERO_READY = true;
+</script>
+</body>
+</html>

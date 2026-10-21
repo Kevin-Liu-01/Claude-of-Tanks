@@ -6,6 +6,8 @@
 export {
   createCollider,
   prepareNextOpeningRoute,
+  resetProvingRange,
+  setProvingTargetsMoving,
   setupBattle,
   simStep,
 } from './state.ts';

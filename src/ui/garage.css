@@ -534,6 +534,8 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
   border-top:1px solid rgba(146,164,180,.14);font:800 6.5px 'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif;
   letter-spacing:.09em;line-height:1.3;text-transform:uppercase;}
 .cot-technical-gallery{margin-top:6px;}
+/* the proving ground's test drive (v2 progression, 2026-10-17), under the Gallery link */
+.cot-test-drive{margin-top:6px;}
 .cot-technical-viewer .cot-modal__body{padding:clamp(12px,2vw,22px);background:#05090c;}
 .cot-technical-viewer-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:10px;}
 .cot-technical-viewer-tab{min-height:38px;padding:0 12px;color:#9dabb5;background:rgba(13,19,24,.9);
@@ -633,6 +635,13 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
   background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
 .cot-country-chip .ct{font-weight:600;color:#6d7a86;letter-spacing:.04em;}
 .cot-country-chip.sel .ct{color:#d8a04c;}
+/* Roster Filter toggle, sticky at the rail's start so it stays reachable while the flags scroll beneath it. Only its
+   idle look rides the boot: its open, active and badge styles load with the panel (garageFacetPanel.css). */
+.cot-facet-toggle{position:sticky;left:0;z-index:3;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+  min-width:42px;cursor:pointer;padding:6px 10px 5px;outline:none;color:#9fb0bf;background:rgba(9,13,17,.97);
+  border:1px solid rgba(146,164,180,.3);border-bottom:2px solid rgba(146,164,180,.4);}
+.cot-facet-toggle svg{width:17px;height:17px;display:block;}
+.cot-facet-toggle:hover,.cot-facet-toggle:focus-visible{color:#c6d2dc;border-color:rgba(210,225,240,.5);}
 .cot-carousel{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);
   display:flex;align-items:stretch;gap:8px;pointer-events:auto;max-width:96vw;}
 .cot-car-arrow{width:34px;border:1px solid rgba(146,164,180,.3);cursor:pointer;
@@ -668,42 +677,49 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
 /* DRAG-SCROLL CAROUSEL: grabbing cursor while the strip is being panned */
 .cot-cards.dragging{cursor:grabbing;}
 .cot-cards.dragging .cot-card{cursor:grabbing;}
-.cot-card{width:156px;min-height:150px;flex:0 0 auto;cursor:pointer;position:relative;
-  isolation:isolate;overflow:hidden;
-  background:linear-gradient(180deg,rgba(13,18,23,.90),rgba(8,11,14,.96));
+/* TANK HERO CARD (owner 2026-10-17: "make the tank icons look like my image"; 2026-10-20: "Whole tank faces
+   left"). Layers, back to front: the steel ground (this box), the nation's waving
+   cloth flag under the policy feather (.hc-flag, mask from src/ui/heroCardPolicy.ts), the vehicle's 3/4
+   hero render (.hc-tank, placed by placeTank in container units; both layers' rules live in the lazy
+   src/ui/heroCard.css), the name floor (::after), then the name and the tier chip. The card is a size
+   container so every strip size runs the same rule; the per-kind shares below are
+   HERO_CARD_LAYOUT.roster / .rosterCompact (tools/hero-cards.selftest.mjs). */
+.cot-card{width:156px;min-height:150px;height:150px;flex:0 0 auto;cursor:pointer;position:relative;
+  isolation:isolate;overflow:hidden;container-type:size;padding:0;
+  --hc-band:36px;--hc-share:0.66;--hc-hshare:0.5;--hc-cxr:0.52;--hc-pad:9px;--hc-name:13.5px;--hc-tier:8.5px;
+  background:radial-gradient(ellipse 62% 62% at 50% 55%,rgba(120,170,205,.14),rgba(0,0,0,0) 100%),
+    linear-gradient(180deg,#0f3a55 0%,#0b2a3e 55%,#0b0e11 100%);
   border:1px solid rgba(146,164,180,.26);
-  padding:9px 10px 8px;transition:border-color .15s,transform .15s,box-shadow .15s;}
-.cot-card::before{content:"";position:absolute;z-index:-2;inset:-10%;pointer-events:none;
-  background-image:var(--nation-flag);background-size:cover;background-position:center;
-  opacity:.24;filter:saturate(.84) contrast(1.04);transform:scale(1.03);
-  transition:opacity .18s,filter .18s;}
-.cot-card::after{content:"";position:absolute;z-index:-1;inset:0;pointer-events:none;
-  background:linear-gradient(180deg,rgba(7,11,15,.08) 0%,rgba(7,11,15,.36) 46%,
-    rgba(7,11,15,.94) 82%,rgba(7,11,15,.98) 100%);}
+  transition:border-color .15s,transform .15s,box-shadow .15s;}
+.cot-card::after{content:"";position:absolute;z-index:2;left:0;right:0;bottom:0;pointer-events:none;
+  height:calc(var(--hc-band) + var(--hc-lift,0px) + 6px);
+  background:linear-gradient(180deg,rgba(11,14,17,0) 0%,rgba(11,14,17,.5) 50%,rgba(11,14,17,.8) 100%);}
+/* A name on two lines (heroCard.ts marks .hc-n2 from the name's own height) lifts the art box by one name
+   line: HERO_NAME_LINE_HEIGHT (src/ui/heroCardPolicy.ts). */
+.cot-card.hc-n2{--hc-lift:calc(var(--hc-name) * 1.05);}
 .cot-card:hover{border-color:rgba(210,225,240,.5);transform:translateY(-2px);}
-.cot-card:hover::before{opacity:.32;filter:saturate(.96) contrast(1.08);}
 .cot-card.sel:hover{transform:translateY(-6px);}
 .cot-card.sel{border-color:#f0a030;transform:translateY(-6px);
-  box-shadow:0 8px 26px rgba(240,140,20,.28);
-  background:linear-gradient(180deg,rgba(32,24,12,.92),rgba(14,10,6,.94));}
-.cot-card.sel::before{opacity:.38;filter:saturate(1.02) contrast(1.08);}
-.cot-card .flag{display:inline-flex;align-items:center;gap:5px;margin-bottom:5px;
-  font-size:8.5px;font-weight:800;letter-spacing:.14em;color:#9fb0bf;}
-.cot-card .flag .cot-flag{display:block;object-fit:cover;
-  box-shadow:0 1px 3px rgba(0,0,0,.55);}
-.cot-card .flag i{font-style:normal;}
-.cot-card.sel .flag{color:#d8c39a;}
-.cot-card .card-era{float:right;font-size:7px;font-weight:850;letter-spacing:.12em;
-  color:#9ba9b4;padding:2px 0;text-transform:uppercase;}
-.cot-card.sel .card-era{color:#e0ad5c;}
-.cot-card .dev-tag{position:absolute;right:8px;top:31px;z-index:2;padding:2px 5px;
+  box-shadow:0 8px 26px rgba(240,140,20,.28);}
+.cot-card:hover,.cot-card.sel{--hc-flag-opacity:1;}
+.cot-card .hc-tier{position:absolute;z-index:3;top:6px;right:6px;padding:3px 4px 2px;
+  font:500 var(--hc-tier)/1 'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:0;
+  color:rgba(246,243,236,.72);background:rgba(11,14,17,.72);border:1px solid rgba(246,243,236,.2);}
+.cot-card .hc-tier b{font-weight:500;color:#f0a030;}
+/* Facing left (policy v5, owner 2026-10-20 "Whole tank faces left"): the flag holds the rear-top (right) corner,
+   so the tier chip and the dev tag take the bow-side (left) one, as the compositor draws them. */
+.cot-hc[data-hero-facing='left'] .hc-tier,.cot-hc[data-hero-facing='left'] .dev-tag{right:auto;left:6px;}
+.cot-card .flag{position:absolute;z-index:3;top:7px;left:7px;line-height:0;}
+.cot-card .flag .cot-flag{display:block;object-fit:cover;box-shadow:0 1px 3px rgba(0,0,0,.55);}
+.cot-card .dev-tag{position:absolute;right:6px;top:calc(var(--hc-tier) + 14px);z-index:3;padding:2px 5px;
   border:1px solid rgba(103,191,255,.62);background:rgba(7,24,38,.86);color:#8fd0ff;
   font-size:7px;font-weight:900;letter-spacing:.14em;line-height:1;text-transform:uppercase;
   box-shadow:0 2px 8px rgba(0,0,0,.45);}
 .cot-card.dev-only{border-color:rgba(103,191,255,.38);}
 .cot-card.dev-only.sel{border-color:#79c8ff;
   box-shadow:0 8px 26px rgba(64,154,219,.23);}
-.cot-card .ti{display:block;margin:-3px auto -5px;width:140px;height:88px;
+/* Fallback portrait (no hero row, or the hero chunk/manifest unavailable): the packaged angle render. */
+.cot-card .ti{display:block;position:absolute;z-index:1;left:7px;top:24px;width:140px;height:88px;
   object-fit:contain;object-position:center 46%;
   filter:drop-shadow(0 6px 8px rgba(0,0,0,.78)) saturate(1.04) contrast(1.03);
   opacity:0;transition:opacity var(--cot-motion-fast,140ms) var(--cot-ease-out,ease-out);
@@ -711,12 +727,10 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
   transform:translate(var(--cot-thumb-x,-12px),var(--cot-thumb-y,-7px))
     scale(var(--cot-thumb-scale,1.22));}
 .cot-card .ti[data-cot-portrait-ready='true']{opacity:1;}
-.cot-card .nm{position:absolute;left:10px;right:10px;bottom:8px;
-  font-size:11px;font-weight:650;color:#f3f7fa;letter-spacing:-.01em;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;text-align:left;
+.cot-card .nm{position:absolute;z-index:3;left:var(--hc-pad);right:var(--hc-pad);bottom:calc(var(--hc-pad) * 0.8);margin:0;
+  font:600 var(--hc-name)/1.05 'Chakra Petch','ABC Monument Grotesk','Inter','Segoe UI',sans-serif;
+  color:#f6f3ec;letter-spacing:0;text-align:left;white-space:normal;overflow-wrap:anywhere;
   text-shadow:0 1px 3px rgba(0,0,0,.85);}
-.cot-card .nm .tiern{font-weight:900;color:#d8a04c;margin-right:5px;letter-spacing:.04em;}
-.cot-card.sel .nm .tiern{color:#f0b04a;}
 .cot-garage .hint{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
   font-size:9.5px;letter-spacing:.14em;color:rgba(138,151,163,.7);text-transform:uppercase;}
 /* MAP-CONFIG WIRING: complete registered battlefield picker + random. */
@@ -1401,6 +1415,7 @@ body[data-cot-panels='overlay'] .cot-country-chip{
   min-height:42px;padding:4px 9px 3px;font-size:7.5px;letter-spacing:.1em;gap:5px;
 }
 body[data-cot-panels='overlay'] .cot-country-chip .cot-flag{width:18px}
+body[data-cot-panels='overlay'] .cot-facet-toggle{min-height:42px;min-width:44px;padding:4px 9px 3px}
 body[data-cot-panels='overlay'] .cot-carousel{
   left:max(var(--cot-overlay-edge),env(safe-area-inset-left));
   right:max(var(--cot-overlay-edge),env(safe-area-inset-right));bottom:var(--cot-roster-bottom);
@@ -1410,17 +1425,18 @@ body[data-cot-panels='overlay'] .cot-garage.enter .cot-carousel{animation-name:c
 body[data-cot-panels='overlay'] .cot-car-arrow{width:36px;flex:0 0 36px}
 body[data-cot-panels='overlay'] .cot-cards{min-width:0;flex:1 1 auto;gap:5px}
 body[data-cot-panels='overlay'] .cot-card{
-  width:112px;min-height:var(--cot-roster-height);height:var(--cot-roster-height);padding:5px 6px 4px;
+  width:112px;min-height:var(--cot-roster-height);height:var(--cot-roster-height);padding:0;
+  --hc-band:24px;--hc-share:0.7;--hc-hshare:0.64;--hc-cxr:0.51;--hc-pad:6px;--hc-name:9.5px;--hc-tier:7px;
 }
 body[data-cot-panels='overlay'] .cot-card.sel{transform:translateY(-3px)}
-body[data-cot-panels='overlay'] .cot-card .flag{margin-bottom:1px;font-size:6px;gap:3px}
+body[data-cot-panels='overlay'] .cot-card .flag{top:4px;left:4px}
 body[data-cot-panels='overlay'] .cot-card .flag .cot-flag{width:16px}
-body[data-cot-panels='overlay'] .cot-card .card-era{font-size:5.5px;padding:1px 0;letter-spacing:.08em}
-body[data-cot-panels='overlay'] .cot-card .dev-tag{right:4px;top:22px;padding:1px 3px;font-size:5px}
-body[data-cot-panels='overlay'] .cot-card .ti{width:98px;height:52px;margin:-5px auto -6px;
+body[data-cot-panels='overlay'] .cot-card .hc-tier{top:3px;right:3px;padding:2px 3px 1px}
+body[data-cot-panels='overlay'] .cot-card .dev-tag{right:3px;top:17px;padding:1px 3px;font-size:5px}
+body[data-cot-panels='overlay'] .cot-hc[data-hero-facing='left'] .hc-tier,body[data-cot-panels='overlay'] .cot-hc[data-hero-facing='left'] .dev-tag{right:auto;left:3px}
+body[data-cot-panels='overlay'] .cot-card .ti{width:98px;height:52px;left:4px;top:14px;
   transform:translate(var(--cot-thumb-x,-10px),var(--cot-thumb-y,-6px))
     scale(var(--cot-thumb-scale,1.2))}
-body[data-cot-panels='overlay'] .cot-card .nm{left:6px;right:6px;bottom:5px;font-size:8px;margin:0}
 body[data-cot-panels='overlay'] .cot-garage .hint{display:none}
 
 body[data-cot-width='phone'] .cot-garage .title span,
@@ -1584,14 +1600,15 @@ body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels=
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-chip{min-height:36px;padding-block:2px}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-edge{height:36px}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card{
-  min-height:var(--cot-roster-height);height:var(--cot-roster-height);width:96px;padding-block:3px;
+  min-height:var(--cot-roster-height);height:var(--cot-roster-height);width:96px;padding:0;
+  --hc-band:20px;--hc-pad:5px;--hc-name:8px;--hc-tier:6px;
 }
-body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card .ti{width:80px;height:38px;margin:-5px auto -5px}
-body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card .nm{bottom:4px}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card .ti{width:80px;height:38px;top:10px}
 
 body[data-cot-input='coarse'] .cot-garage button,
 body[data-cot-input='coarse'] .cot-garage a{touch-action:manipulation}
 body[data-cot-input='coarse'] .cot-country-chip{min-width:44px}
+body[data-cot-input='coarse'] .cot-facet-toggle{min-height:44px}
 
 /* Room setup is a separate, explicit action underneath Battle. */
 .cot-multiplayer-entry{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);
