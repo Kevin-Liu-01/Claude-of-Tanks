@@ -1465,7 +1465,7 @@ function buildK1A1Turret(P: Modern3BuilderPort) {
     P.add('turretDetail', torus(0.235, 0.014, 22), 0.58, 0.735, -0.62);
     // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): both crew guns are working stations
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', seed: 14,
-      elev: 0.02, ammo: true, ring: { r: 0.23, stubs: 4 }, working: true });
+      elev: 0.02, ammo: true, ring: { r: 0.23, stubs: 4 }, working: true, ridingCradle: true });
     mg.name = 'k1CommanderK6';
     mg.position.set(0.58, 0.734, -0.62);
     P.turretG.add(mg);
@@ -1473,7 +1473,7 @@ function buildK1A1Turret(P: Modern3BuilderPort) {
     // receiver stays below the K6 datum and retains a visible three-stub base.
     P.add('turretDetail', torus(0.185, 0.011, 18), -0.52, 0.685, -0.55);
     const mg2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 15,
-      elev: 0.02, ammo: false, ring: { r: 0.17, stubs: 3 }, working: true });
+      elev: 0.02, ammo: false, ring: { r: 0.17, stubs: 3 }, working: true, ridingCradle: true });
     mg2.name = 'k1LoaderM60';
     mg2.position.set(-0.52, 0.690, -0.55);
     P.turretG.add(mg2);
@@ -2107,7 +2107,7 @@ function buildType10Native2026(
     P.add('turretDetail', box(0.242, 0.0385, 0.286), 1.276, 0.484, -0.055);       // swing platform
     {
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the Type 10's roof M2 is a working station
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.99, seed: 12, elev: -0.02, ammo: false, rotation: [0, -0.28, 0], working: true });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.99, seed: 12, elev: -0.02, ammo: false, rotation: [0, -0.28, 0], working: true, ridingCradle: true });
       mg.name = 'type10RoofM2';
       mg.position.set(1.32, 0.5038, -0.055);
       P.turretG.add(mg);

@@ -649,7 +649,7 @@ export function buildAriete(P: MiscBuilderPort): void {
   // 0.55: the r4 0.63 seat printed the receiver 2.52 vs the ref 2.31 at
   // z_w -1.4 — the gate's own worst column)
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's AA MG 42/59)
-  const mag = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 5, working: true });
+  const mag = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 5, working: true, ridingCradle: true });
   mag.name = 'arieteLoaderMg';
   const buildArieteTurretStage3 = (): void => {
     mag.position.set(-0.55, 0.69, -0.90);                                       // foot planted directly on the loader station
@@ -1714,7 +1714,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
       if (!centeredRoofStations) {
         // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
         const anf1 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.18, seed: 11, scale: 0.78, ammo: true, barrelBridge: true,
-          working: true });
+          working: true, ridingCradle: true });
         anf1.name = 'leclercRoofAnf1';
         anf1.position.set(-0.85, 0.610, 0.413);
         anf1.userData.roofContactY = 0.610;
@@ -2015,7 +2015,7 @@ function buildLeclercXLR(P: MiscBuilderPort): void {
     xlrRwsX, 1.0395, 0.01, -0.18, 0, 0);
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.08, seed: 104, scale: 0.78, ammo: true,
-      remoteControlled: true });
+      remoteControlled: true, ridingCradle: true });
     mg.name = 'leclercXlrRoofRwsGun';
     mg.position.set(xlrRwsX, xlrBodyTopY, -0.17);
     mg.userData.mountContactY = xlrBodyTopY;
@@ -2131,7 +2131,7 @@ function buildAMX56(P: MiscBuilderPort): void {
   P.addEquipment('turret', box(0.52, 0.30, 0.045), amxRwsX, 1.052, -0.025, -0.16, 0, 0);
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'heavy', tone: 'dark', elev: 0.06, seed: 56, scale: 0.82, ammo: true,
-      remoteControlled: true });
+      remoteControlled: true, ridingCradle: true });
     mg.name = 'amx56RoofRwsGun';
     mg.position.set(amxRwsX, 1.012, -0.23);
     mg.userData.mountContactY = 1.012;
@@ -2587,7 +2587,7 @@ function buildType90Turret(P: MiscBuilderPort): void {
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the Type 90's roof M2)
   const m2 = FITTINGS.pintleMG({
     mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.94,
-    shield: true, ammo: true, ring: { r: 0.17, stubs: 3 }, seed: 9, working: true,
+    shield: true, ammo: true, ring: { r: 0.17, stubs: 3 }, seed: 9, working: true, ridingCradle: true,
   });
   m2.name = 'type90RoofM2';
   m2.scale.y = 1.24;                                                          // counter the complete turret-height correction so the weapon keeps a readable receiver/shield silhouette
@@ -3108,7 +3108,7 @@ function buildType74(P: MiscBuilderPort): void {
   // 2.10-2.13 front-view band)
   cupola(P, 'turret', 0.40, 0.46, -0.46, 0.20, 0.16, 6);                       // planted on the low cast crown
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the Type 74's roof M2)
-  const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', seed: 7, working: true });
+  const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', seed: 7, working: true, ridingCradle: true });
   m2.name = 'type74RoofM2';
   m2.position.set(0.44, 0.61, -0.48);                                          // receiver+sight seated on the cupola lid
   P.turretG.add(m2);
@@ -3756,7 +3756,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
       const base=.79;
       P.addEquipment('turret',cylY(.075,.10,y-base,16),x,(y+base)/2,z);
       P.add('turretDark',box(.17,.045,.21),x,y,z);
-      const gun=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale,tone:'dark',elev:.03,ammo:true,working:true});
+      const gun=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale,tone:'dark',elev:.03,ammo:true,working:true,ridingCradle:true});
       gun.name=`amx30b2_${name}_machine_gun`;gun.position.set(x,y+.015,z);P.turretG.add(gun);
     }
     for(const side of [-1,1]){
@@ -3819,7 +3819,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
       P.add('turretDark', geometryXform(box(0.09, 0.055, 0.17), 0, 0.012, railR, 0, 0, 0), cupX, railY, cupZ, 0, mgA, 0); // carriage saddle
       P.add('turretDark', geometryXform(box(0.05, 0.05, 0.15), 0, -0.02, 0.36, 0.9, 0, 0), cupX, 0.97, cupZ, 0, mgA, 0);  // mount arm into the drum
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's cupola 7.62 mm AA gun)
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.04, seed: b2 ? 302 : 301, scale: 1.0, ammo: false, working: true });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.04, seed: b2 ? 302 : 301, scale: 1.0, ammo: false, working: true, ridingCradle: true });
       mg.name = 'amx30CupolaMg';
       mg.position.set(mgX, 1.036, mgZ + 0.04);
       P.turretG.add(mg);

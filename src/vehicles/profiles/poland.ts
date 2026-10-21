@@ -610,7 +610,7 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's NSVT)
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'nsvt', tone: 'two-tone', scale: 1.0,
-    ammo: true, seed: 9321, feed: 'left', reflexSight: true, ring: { r: 0.155, stubs: 3 }, working: true,
+    ammo: true, seed: 9321, feed: 'left', reflexSight: true, ring: { r: 0.155, stubs: 3 }, working: true, ridingCradle: true,
   }), 1.00, 0.605, -0.30, [0, -0.08, 0]);
 
   // PCO SKO-1M/Drawa-T sight suite (gunner right-front, hooded) + commander
@@ -1196,7 +1196,7 @@ function addPL01RemoteWeaponStation(P: PolishBuilderPort, context: PL01BuildCont
     const rwsWeapon = FITTINGS.pintleMG({
       mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.66, elev: 0.12,
       ammo: true, shield: true, ring: { r: 0.16, stubs: 4 }, seed: 1020, feed: 'right',
-      remoteControlled: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
+      remoteControlled: true, ridingCradle: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
     });
     rwsWeapon.name = 'pl01_rws_weapon';
     mount(P, 'turret', rwsWeapon, -0.05, turretRoofLocalY + 0.14, -1.33, [0, Math.PI / 2, 0]);
@@ -1231,7 +1231,7 @@ function addPL01RemoteWeaponStation(P: PolishBuilderPort, context: PL01BuildCont
       cx - 0.28, roofEquipmentY(1.085), cz - 0.02);
     const crowsGun = FITTINGS.pintleMG({
       mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.78,
-      elev: 0.05, ammo: true, shield: 'armored', remoteControlled: true, seed: 1058,
+      elev: 0.05, ammo: true, shield: 'armored', remoteControlled: true, ridingCradle: true, seed: 1058,
     });
     crowsGun.name = 'pl01_105_crows_weapon';
     crowsGun.position.set(cx, turretRoofLocalY + 0.16, cz + 0.06);

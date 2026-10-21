@@ -327,7 +327,7 @@ function merkava3TurretDetails(P: TankBuilderPort): void {
   put('turretDetail',box(.0581,.052,.130),1.112,2.7758,-.6635);
   for(const [x,y,z,cls,scale]of[[-.87,2.528,-.91,'mag',.96],[1.12405,2.7498,-.61,'mag',.8667]] as const){
     // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's and loader's MAGs)
-    const mg=FITTINGS.pintleMG({mats:P.mats,cls,scale,seed:330+Math.round(x*10),tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:true,working:true});
+    const mg=FITTINGS.pintleMG({mats:P.mats,cls,scale,seed:330+Math.round(x*10),tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:true,working:true,ridingCradle:true});
     mg.name=x<0?'merkava3dXCommanderMag':'merkava3dXLoaderMag';
     mg.position.set(x,y+MK3.ground-MK3.y,z-MK3.center-MK3.z);P.turretG.add(mg);
   }
@@ -623,7 +623,7 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4'|'merkava4_trophy
   }
   for(const x of[-.82038,.89347])put('turretDetail',box(.21,.29,.26),x,2.527,-3.015);
   merkava4Basket(P);
-  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:1.0,remoteControlled:true,seed:444,tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:candidate==='merkava4_trophy'}); // true scale (round 3; was 1.48, a 115 % GPMG)
+  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:1.0,remoteControlled:true,ridingCradle:true,seed:444,tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:candidate==='merkava4_trophy'}); // true scale (round 3; was 1.48, a 115 % GPMG)
   const mgSeatY={merkava4:2.577,merkava4_trophy:2.400}[candidate];
   mg.position.set(-.83,mgSeatY-MK4.y,-.752-MK4.z);P.turretG.add(mg);
 }
@@ -862,7 +862,7 @@ function addBarakRearMissionModule(P: TankBuilderPort): void {
   topPart(P,MK4,'turretDetail',box(bracketIn-bracketOut,.045,.07),(bracketIn+bracketOut)/2,bracketTop-.0225,az);
   topPart(P,MK4,'turretDetail',cylY(.042,.02,P.q?16:12),ax,ay-.01,az);
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
-  const roofWeapon=FITTINGS.pintleMG({mats:P.mats,cls:'mag',ammo:true,tone:'two-tone',seed:4417,working:true});
+  const roofWeapon=FITTINGS.pintleMG({mats:P.mats,cls:'mag',ammo:true,tone:'two-tone',seed:4417,working:true,ridingCradle:true});
   roofWeapon.position.set(ax,ay-MK4.y,az-MK4.z);
   roofWeapon.name='merkava4BarakArmWeapon';
   P.turretG.add(roofWeapon);
@@ -1235,7 +1235,7 @@ export function buildNamerIfv(P: TankBuilderPort): void {
   P.add('gunDark',box(.16,.07,.18),0,.015,.54);
   addNamerSourceSupport(P);
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's MAG)
-  const auxiliary=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.72,seed:904,tone:'two-tone',ammo:true,shield:false,ring:false,working:true});
+  const auxiliary=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.72,seed:904,tone:'two-tone',ammo:true,shield:false,ring:false,working:true,ridingCradle:true});
   auxiliary.position.set(.46,2.76-NAMER.y,-1.17-NAMER.z);P.turretG.add(auxiliary);
   P.muzzleZ=2.51;P.topY=1.12;
   // The Namer source is a narrower/shorter Merkava-family chassis. Its turret

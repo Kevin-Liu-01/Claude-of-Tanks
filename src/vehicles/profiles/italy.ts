@@ -782,7 +782,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
         P.addEquipment('turret', box(0.06, 0.22, 0.24), rwsX + 0.18, 1.20, rwsZ + 0.03, 0, 0, 0.08);
         P.addEquipment('turret', box(0.17, 0.18, 0.17), rwsX + 0.25, 1.09, rwsZ + 0.14);
         P.add('turretGlass', box(0.11, 0.10, 0.014), rwsX + 0.25, 1.10, rwsZ + 0.232);
-        const remoteRws = FITTINGS.pintleMG({ remoteControlled: true, mats: P.mats, cls: 'nsvt', tone: 'two-tone',
+        const remoteRws = FITTINGS.pintleMG({ remoteControlled: true, ridingCradle: true, mats: P.mats, cls: 'nsvt', tone: 'two-tone',
           elev: -0.04, ammo: true, shield: true, scale: 0.88, seed: 46 });
         remoteRws.name = 'arieteC2RemoteRws';
         remoteRws.userData.remoteControlled = true;
@@ -794,7 +794,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       const buildArieteMkMarkingsCourse2 = (): void => {
         // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's AA MG 42/59)
         const loaderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone',
-          elev: 0, shield: false, scale: 0.62, seed: 45, working: true });
+          elev: 0, shield: false, scale: 0.62, seed: 45, working: true, ridingCradle: true });
         loaderMg.name = 'arieteC1LoaderMg';
         addFitting(P, 'turret', loaderMg, -0.42, 0.87, L(-0.60), [0, 2.9, 0]);
         P.decal('turret', 'number', 'C1 32', 0.24, [-1.29, 0.40, L(-0.55)], -Math.PI / 2, 0, -0.02);
@@ -1184,7 +1184,7 @@ function buildCarro45T(P: ItalyBuilderPort): void {
       [0, Math.PI, 0]);                                                          // rear rack: embedded feet, open face points outboard (-Z)
     // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
     addFitting(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
-      elev: 0, shield: false, scale: 0.50, seed: 72, working: true }), 0.30, roofY(0.30, L(-0.62)) - 0.015, L(-0.62), [0, 2.85, 0]); // commander's Breda, with its pedestal embedded in the roof
+      elev: 0, shield: false, scale: 0.50, seed: 72, working: true, ridingCradle: true }), 0.30, roofY(0.30, L(-0.62)) - 0.015, L(-0.62), [0, 2.85, 0]); // commander's Breda, with its pedestal embedded in the roof
     // Canted corner launchers retain broad shoes seated on each roof shoulder.
     for (const s of [-1, 1]) addFitting(P, 'turret', FITTINGS.smokeBank({
       mats: P.mats, count: 5, r: 0.040, len: 0.24, splay: s * 0.95,
