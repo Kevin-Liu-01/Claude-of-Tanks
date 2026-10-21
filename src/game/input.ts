@@ -89,6 +89,9 @@ const ACTION_DEFS = [
   // Multiplayer v2 status surface (multiplayerStatus.ts): the network panel and the two-press leave
   { id: 'networkPanel', label: 'action.networkPanel', group: 'settings.group.interface' },
   { id: 'leaveBattle', label: 'action.leaveBattle', group: 'settings.group.interface' },
+  // the proving ground (v2 progression, 2026-10-17): reset the range and switch moving targets (no-ops in a battle)
+  { id: 'rangeReset', label: 'action.rangeReset', group: 'settings.group.interface' },
+  { id: 'rangeMoving', label: 'action.rangeMoving', group: 'settings.group.interface' },
   { id: 'settingsMenu', label: 'action.settingsMenu', group: 'settings.group.interface' },
 ] as const;
 
@@ -237,6 +240,8 @@ export const DEFAULT_BINDINGS: Partial<Record<ActionId, string>> = {
   perfHud: 'F8', // FEEL r12: fps / frame-time / stall overlay
   networkPanel: 'F3', // multiplayer v2: expand the network strip (v1's diagnostics key)
   leaveBattle: 'F4', // multiplayer v2: arm, then confirm with a second press
+  rangeReset: 'KeyR', // proving ground: every hull back on its mark
+  rangeMoving: 'KeyY', // proving ground: moving targets on / off
   settingsMenu: 'Escape',
 };
 

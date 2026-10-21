@@ -197,6 +197,8 @@ button{cursor:pointer}
 .dossier-actions{right:14px;top:14px;gap:4px}
 .dossier-actions button{height:30px;padding:0 9px;border:1px solid rgba(174,190,197,.2)!important;background:linear-gradient(#12191d,#080c0f);box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
 .dossier-actions button:hover{border-color:rgba(233,163,70,.58)!important;background:linear-gradient(rgba(89,57,18,.62),rgba(35,24,12,.82))}
+/* the proving ground's test drive (v2 progression, 2026-10-17): the dossier's one action that leaves for the game */
+.dossier-actions .test-drive{color:var(--amber-pale)}
 .dossier-identity{display:grid;grid-template-columns:104px minmax(0,1fr);align-items:center;gap:12px;margin-top:14px;padding:10px;border:1px solid var(--workspace-line);background:linear-gradient(110deg,rgba(18,26,31,.92),rgba(7,11,14,.76));box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
 .dossier-tank-frame{height:72px;display:grid;place-items:center;border-right:1px solid rgba(233,163,70,.22);background:radial-gradient(ellipse at 50% 67%,rgba(110,128,135,.17),transparent 70%)}
 .dossier-tank-frame img{width:98px;height:70px;object-fit:contain;filter:drop-shadow(0 9px 10px rgba(0,0,0,.62))}

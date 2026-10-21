@@ -9,6 +9,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { pinchRestoresPage } from '../ui/pinchZoomGuard.ts';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { linkTankId, stampTankIdLink } from '../game/tankIdBoundaries.ts';
+import { testDriveHref } from '../game/testDriveLink.ts';
+import { hrefForLocale } from '../ui/localeRouting.ts';
 import { migrateStoredTankIds } from '../game/tankIdStorageMigration.ts';
 import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.ts';
 import {
@@ -1100,6 +1102,11 @@ $('#autoRotate').addEventListener('click', () => {
   showToast(controls.autoRotate
     ? t('gallery.toast.turntableOn')
     : t('gallery.toast.turntableOff'));
+});
+// the proving ground (v2 progression, 2026-10-17): this vehicle on the game's measured range (game/testDriveLink.ts)
+$('#testDrive').addEventListener('click', () => {
+  if (!selectedId) return;
+  location.href = hrefForLocale(testDriveHref(selectedId), getLocale());
 });
 $('#copyLink').addEventListener('click', () => writeClipboard(
   location.href,

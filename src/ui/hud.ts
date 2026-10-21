@@ -38,13 +38,15 @@ import { canSelfRightTank } from '../sim/rollover.ts';
 // RULESETS (2026-09-14): the clock, the objective targets and the pre-battle rule lines read the
 // same table the sim applies (sim/matchRuleset.ts)
 import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset } from '../sim/matchRuleset.ts';
-import { normalizeGameMode } from '../sim/matchModes.ts';
+import { GAME_MODE_DEFINITIONS, isPracticeMode, normalizeGameMode } from '../sim/matchModes.ts';
 import { markersStandOnSpawns, objectiveMarkers, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
 import {
-  OBJECTIVE_PALETTE, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawPennant, drawPickupGlyph,
+  OBJECTIVE_PALETTE, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawPickupGlyph,
   drawProgressArc, drawSpawnGlyph, sideColor, sideFill,
 } from './objectiveGlyphs.ts';
 import { shellTypeLabel } from './garageDossier.ts';
+// the proving ground's range card (2026-10-17): loaded the first time a frame carries the range (updateRangeCard)
+import type { RangeCardState } from './provingRangeCard.ts';
 import type { CombatState } from '../sim/damage.ts';
 import type {
   SpecialActionKind,
@@ -238,6 +240,8 @@ export interface HudMatchModeState extends ObjectiveStateView {
   boss?: { id?: string; hp: number; maxHp: number };
   infection?: { survivors: number; infected: number };
   weaponStage?: { index: number; total: number; name: string; kills: number; required: number };
+  /** proving ground: the range's lanes and its card (sim/matchModes.ts ProvingRangePresentation) */
+  range?: RangeCardState | null;
   id?: string;
   label?: string;
   perspectiveTeam?: 'alpha' | 'bravo';
@@ -263,7 +267,7 @@ export interface HudFrame {
   /** Ruleset clock in seconds (null = no clock); undefined lets the HUD derive it from the mode. */
   timeLimitS?: number | null;
   selfRightKeyLabel?: string;
-  auxiliaryKeyLabels?: {smoke:string;lights:string;roofGun:string;missile:string;drone?:string;aerialVision?:string;supplyAmmo?:string;supplyHeal?:string};
+  auxiliaryKeyLabels?: {smoke:string;lights:string;roofGun:string;missile:string;drone?:string;aerialVision?:string;supplyAmmo?:string;supplyHeal?:string;rangeReset?:string;rangeMoving?:string};
 }
 
 interface HudHeightField {
@@ -1877,6 +1881,10 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-shell[hidden]{display:none!important}
 .cot-aerial-readout{position:absolute;top:calc(50% + 64px);left:50%;transform:translateX(-50%);max-width:80vw;color:#dbffef;font:700 11px monospace;letter-spacing:.08em;text-align:center;pointer-events:none;text-shadow:0 1px 3px #000}
 .cot-aerial-readout[hidden]{display:none}
+/* the proving ground: no sides to count (the rosters and the two scores leave; the clock keeps its place) */
+.range-mode .cot-ear,.range-mode .cot-top .sc{visibility:hidden!important}
+/* a target hull has no commander: the laid hull's plate names its vehicle, not a callsign */
+.range-mode .cot-tgt .nick{visibility:hidden}
 .realistic-mode .hprow,.realistic-mode .hptrack,.realistic-mode .hpm,.realistic-mode .cot-hpb .tr,.realistic-mode .cot-tgt .hp,.realistic-mode .cot-tgt .bar{display:none!important}
 
 body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);font-size:9px}
@@ -2074,6 +2082,9 @@ export function initHud(bus: EventBus): HudRuntime {
   const modeStatusValue = requireElement<HTMLElement>(modeStatusEl, '.mv');
   let lastModeStatus = '';
   const standardModeStatus: HudMatchModeState = {id:'standard',target:0};
+  // proving ground (2026-10-17): the range card, a lazy chunk; its buttons reach the session through the bus
+  let rangeCard: ReturnType<typeof import('./provingRangeCard.ts').createProvingRangeCard> | null = null;
+  let rangeCardLoad: Promise<void> | null = null;
   let objectiveTeam: 'alpha' | 'bravo' = 'alpha';
 
   // --- ping/fps readout (WoT battle constant, top-right corner) ---
@@ -2389,7 +2400,10 @@ export function initHud(bus: EventBus): HudRuntime {
   let sixthPendingS = -1; // sim time the lamp should light (spot time + 3 s)
   let sixthUntilS = -1;
   let sixthOn = false;
+  /** On the proving ground the hulls are targets, not observers: no sixth sense (updateRangeCard keeps it). */
+  let rangeActive = false;
   on('player:spotted', ({ timeS = 0 }) => {
+    if (rangeActive) return;
     if (sixthPendingS < 0 && !(sixthOn && timeS < sixthUntilS - SIXTH_SENSE_DELAY_S)) {
       sixthPendingS = timeS + SIXTH_SENSE_DELAY_S;
     }
@@ -3189,6 +3203,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function modeTimerLabel(modeId: string, waiting: boolean, limitS: number | null, target?: number | null): string {
     if (waiting) return t('hud.timer.nextWave');
+    if (isPracticeMode(modeId)) return t('hud.timer.range');
     if (modeId === 'capture_the_flag') return t('hud.timer.capture', { target: String(target ?? RULESET_SCORE_TARGETS.capture_the_flag) });
     if (modeId === 'zone_control' || modeId === 'mars') return t('hud.timer.first', { target: String(target ?? RULESET_SCORE_TARGETS.zone_control) });
     if (modeId === 'turbo_ball') return t('hud.timer.first', { target: String(target ?? RULESET_SCORE_TARGETS.turbo_ball) });
@@ -3197,6 +3212,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function additionalModeStatusCopy(modeState: HudMatchModeState, ownScore: string | number): string | null {
+    if (modeState.range) return t(modeState.range.moving ? 'hud.modeStatus.provingMoving' : 'hud.modeStatus.proving', { lanes: modeState.range.lanes.length });
     if (modeState.id === 'juggernaut') return t(modeState.boss?.id === playerRef?.id ? 'hud.modeStatus.juggernautBoss' : 'hud.modeStatus.juggernaut', { hp: Math.ceil(modeState.boss?.hp ?? 0), max: Math.ceil(modeState.boss?.maxHp ?? 0) });
     if (modeState.id === 'infected') return t('hud.modeStatus.infected', { survivors: modeState.infection?.survivors ?? 0, infected: modeState.infection?.infected ?? 0 });
     if(modeState.id==='ac130'){const e=modeState.escort;return t('hud.modeStatus.ac130',{alive:e?.alive??0,rescued:e?.rescued??0,required:e?.required??1,progress:Math.round((e?.progress??0)*100)});}
@@ -3233,6 +3249,8 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function modeStatusIconName(modeId: string): string {
+    // the mode's own icon where its definition names one the status chip has no table entry for (the practice modes)
+    if (isPracticeMode(modeId)) return GAME_MODE_DEFINITIONS[modeId].icon;
     const icon = { juggernaut: 'modeJuggernaut', infected: 'modeInfected', realistic: 'modeRealistic', gun_game: 'modeGunGame', drone: 'modeDrone', ac130: 'modeAc130' }[modeId];
     if (icon) return icon;
     if (modeId === 'standard') return 'modeStandard';
@@ -5175,6 +5193,9 @@ export function initHud(bus: EventBus): HudRuntime {
   } {
     if (!tank || tank.isPlayer || !tank.combat || tank.combat.destroyed) return false;
     if (tank.id === aimTargetId) return false;
+    // the proving ground: the lanes stand in a row down the sightline, so their plates would stack; the range card names
+    // every hull and the laid one keeps its own target plate
+    if (rangeActive) return false;
     return tank.team === (playerRef?.team ?? 'player') || isSpotted(tank.id);
   }
 
@@ -6388,6 +6409,9 @@ export function initHud(bus: EventBus): HudRuntime {
         case 'pickup':
           drawPickupGlyph(mmCtx, x, y, 6, marker.status === 'heal' ? 'heal' : 'ammo');
           break;
+        case 'lane':
+          drawLaneGlyph(mmCtx, x, y, 6.5, marker.label || '', `700 8px ${FONT_COND}`);
+          break;
         default:
           break;
       }
@@ -7320,6 +7344,7 @@ export function initHud(bus: EventBus): HudRuntime {
       droneButton.querySelector('.sk')!.textContent=frame.auxiliaryKeyLabels.drone || 'V';
     }
     root.classList.toggle('realistic-mode', frame.matchModeState?.id === 'realistic');
+    updateRangeCard(frame);
     updateSpecialAction(frame.player || playerRef, frame.aim);
     const flier = frame.player || playerRef;
     aerialHud.update(flier,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone || 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision || 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort,
@@ -7329,6 +7354,28 @@ export function initHud(bus: EventBus): HudRuntime {
     shotInfo.setPlayer(playerId);
     indexHudTankNames(frame.tanks || []);
     return state;
+  }
+
+  /** The proving ground's range card: the loaded round against every lane, the lane the gun is laid on lit. */
+  function updateRangeCard(frame: HudFrame): void {
+    const range = frame.matchModeState?.range;
+    if (rangeActive !== !!range) root.classList.toggle('range-mode', !!range);
+    rangeActive = !!range;
+    if (!range) { rangeCard?.hide(); return; }
+    if (!rangeCard) {
+      rangeCardLoad ??= import('./provingRangeCard.ts').then((module) => {
+        rangeCard = module.createProvingRangeCard(root, (type) => bus.emit(type, {}));
+      }).catch((error) => { rangeCardLoad = null; console.error('[hud] range card failed to load', error); });
+      return;
+    }
+    const player = frame.player || playerRef;
+    const slot = player?.combat?.shellSlot ?? 0;
+    rangeCard.update({
+      range, shellSlot: slot,
+      shellName: player?.spec?.gun?.shells?.[slot]?.name || shellTypeLabel(player?.spec?.gun?.shells?.[slot]?.type || ''),
+      laidTargetId: frame.aim?.gunTargetId ?? null, laidRangeM: frame.aim?.distM ?? null,
+      resetKey: frame.auxiliaryKeyLabels?.rangeReset || 'R', movingKey: frame.auxiliaryKeyLabels?.rangeMoving || 'Y',
+    });
   }
 
   function updateHudWorldPanels(frame: HudFrame, camera: THREE.PerspectiveCamera | null): void {
@@ -7458,7 +7505,8 @@ export function initHud(bus: EventBus): HudRuntime {
       conSep.style.display = noConsumables ? 'none' : '';
       conBox.style.display = noConsumables ? 'none' : '';
       pbRules.replaceChildren();
-      if (!ruleset) return;
+      // the proving ground's rules show on the range itself (its card, its boards): no rule chips over the count
+      if (!ruleset || ruleset.provingGround) return;
       for (const line of rulesetLines(ruleset)) {
         const chip = document.createElement('span');
         chip.textContent = t(`rules.line.${line.key}`, line.key === 'enemyNation' ? { value: t(`campaign.enemy.${line.values.value}`) } : line.values);
