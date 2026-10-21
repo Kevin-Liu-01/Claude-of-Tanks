@@ -12,9 +12,12 @@ import {
   rulesetLines, acceptsTeamArrangement,
 } from './matchRuleset.ts';
 import {
-  PROVING_PEN_RATIO, planProvingRange, plateLimitMm, provingCentreAim, provingOutcome, provingPatrolInput, provingShellCard,
-  wrapAngle,
+  PROVING_PEN_RATIO, planProvingCourse, planProvingRange, plateLimitMm, provingCentreAim, provingOutcome, provingPatrolInput,
+  provingPlateIndex, provingPlateStrike, provingShellCard, wrapAngle,
 } from './provingGround.ts';
+import { courseProfile, createTerrainDeformation, stampBounds } from './terrainDeformation.ts';
+import { resolvePlateStrike } from './damage.ts';
+import { mulberry32 } from '../game/stateCore.ts';
 import { penAtDistanceMm } from './ballistics.ts';
 import { createTankState } from './movement.ts';
 import { defaultRoomSettings } from '../mp/room/roomPolicy.ts';
@@ -122,6 +125,159 @@ assert.throws(() => planProvingRange(rules, { heightAt: () => 0, standable: () =
 assert.throws(() => planProvingRange(rules, { heightAt: () => 0, standable: (x) => x < layout.origin.x + 10 }), /no clear mark/,
   'a lane with nowhere to stand fails closed');
 
+// --- the plate rack on synthetic ground ---------------------------------------------------------------------------------
+{
+  const rack = rules.plateRack;
+  assert.equal(layout.plates.length, rack.plates.length);
+  for (const [index, plate] of layout.plates.entries()) {
+    const rule = rack.plates[index];
+    assert.equal(plate.id, `range-plate-${index + 1}`);
+    assert.deepEqual([plate.plate.physicalMm, plate.plate.keMm, plate.plate.ceMm, plate.plate.kind], [rule.mm, rule.mm, rule.mm, 'main'],
+      'rolled homogeneous armour: one thickness to every round');
+    const n = [plate.nx, plate.ny, plate.nz], r = [plate.rx, 0, plate.rz], u = [plate.ux, plate.uy, plate.uz];
+    const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    for (const [name, v] of [['normal', n], ['right', r], ['up', u]]) assert.ok(Math.abs(dot(v, v) - 1) < 1e-9, `plate ${index + 1}: unit ${name}`);
+    assert.ok(Math.abs(dot(n, r)) < 1e-9 && Math.abs(dot(n, u)) < 1e-9 && Math.abs(dot(r, u)) < 1e-9, `plate ${index + 1}: an orthonormal face`);
+    assert.ok(Math.abs(Math.asin(plate.ny) - rule.angleDeg * DEG) < 1e-9, `plate ${index + 1}: laid back ${rule.angleDeg} deg`);
+    // a level round from the firing line's height meets the face at its laid angle
+    const from = { x: layout.origin.x, y: plate.y, z: layout.origin.z };
+    const d = { x: plate.x - from.x, y: 0, z: plate.z - from.z };
+    const length = Math.hypot(d.x, d.z); d.x /= length; d.z /= length;
+    const strike = provingPlateStrike(layout.plates, from, d, length + 10);
+    assert.ok(strike, `plate ${index + 1}: a round laid on its centre strikes it`);
+    assert.equal(provingPlateIndex(layout.plates, strike), index);
+    assert.ok(Math.abs(strike.t - length) < 1e-6 && Math.abs(strike.impactAngleDeg - rule.angleDeg) < 1e-6, `plate ${index + 1}: at its centre and angle`);
+    assert.ok(strike.normal.x * d.x + strike.normal.z * d.z < 0, 'the struck face looks back at the round');
+    assert.equal(provingPlateStrike(layout.plates, from, d, length - 0.5), null, 'a step that stops short misses it');
+    // from behind: the back face, its normal toward the round
+    const back = { x: plate.x + d.x * 20, y: plate.y, z: plate.z + d.z * 20 };
+    const behind = provingPlateStrike(layout.plates, back, { x: -d.x, y: 0, z: -d.z }, 30);
+    assert.ok(behind && provingPlateIndex(layout.plates, behind) === index, 'a round from behind strikes the back face');
+    assert.ok(behind.normal.x * -d.x + behind.normal.z * -d.z < 0);
+    // past its edge: no strike
+    const wide = { x: from.x + plate.rx * (plate.halfW + 0.05), y: plate.y, z: from.z + plate.rz * (plate.halfW + 0.05) };
+    const wideHit = provingPlateStrike([plate], wide, d, length + 10);
+    assert.equal(wideHit, null, `plate ${index + 1}: a round past its edge flies on`);
+  }
+  // the nearest of two plates in line is the one struck
+  const near = layout.plates[0], far = { ...near, x: near.x + 30 * Math.sin(near.yaw + Math.PI), z: near.z + 30 * Math.cos(near.yaw + Math.PI), plate: { ...near.plate } };
+  const from = { x: layout.origin.x, y: near.y, z: layout.origin.z };
+  const d = { x: near.x - from.x, y: 0, z: near.z - from.z };
+  const length = Math.hypot(d.x, d.z); d.x /= length; d.z /= length;
+  assert.equal(provingPlateStrike([far, near], from, d, 500).plate, near.plate, 'the nearer plate is struck');
+
+  // the damage law on a plate (sim/damage.ts resolvePlateStrike), on a synthetic round
+  const shellOf = (spec) => ({ id: 1, spec, shooterId: 'p', pos: new Vector3(), prevPos: new Vector3(), vel: new Vector3(), distM: 100, ageS: 0.1,
+    bounces: 0, dead: false, penRollDone: false, remainingPenMm: 0, freshPenRollMm: 0, dmgRoll: 0 });
+  const strikeOn = (shell, mm, angleDeg) => {
+    const plateHit = { kind: 'plate', t: 0, point: new Vector3(0, 1, 0), normal: new Vector3(0, 0, -1), impactAngleDeg: angleDeg,
+      plate: { name: 'test', verts: [], physicalMm: mm, keMm: mm, ceMm: mm, kind: 'main' }, impactFrame: 'plate',
+      impactLocalX: 0, impactLocalY: 0, impactLocalZ: 0, impactLocalDirX: 0, impactLocalDirY: 0, impactLocalDirZ: 0 };
+    shell.vel.set(Math.sin(angleDeg * DEG), 0, Math.cos(angleDeg * DEG)).multiplyScalar(1500);
+    shell.pos.set(0, 1, 5); shell.prevPos.set(0, 1, -5);
+    return resolvePlateStrike(shell, plateHit, 'range-plate-x', mulberry32(7));
+  };
+  const apfsds = { type: 'APFSDS', name: 'rod', caliberMm: 120, pen100Mm: 600, pen1000Mm: 500, dmg: 400, velocityMps: 1600 };
+  const heat = { type: 'HEAT', name: 'jet', caliberMm: 120, pen100Mm: 500, pen1000Mm: 500, dmg: 400, velocityMps: 1100 };
+  const he = { type: 'HE', name: 'he', caliberMm: 120, pen100Mm: 40, pen1000Mm: 40, dmg: 400, velocityMps: 900 };
+  const rod = shellOf(apfsds);
+  const square = strikeOn(rod, 100, 0);
+  assert.equal(square.kind, 'pen');
+  assert.ok(square.penRollMm >= 600 * 0.75 * 0.99 && square.penRollMm <= 600 * 1.25 * 1.01, 'the ±25 % roll');
+  assert.equal(square.targetId, 'range-plate-x');
+  assert.equal(square.damage, 0);
+  assert.equal(rod.dead, true, 'a round stops at the plate it strikes');
+  const roll = square.penRollMm;
+  assert.equal(strikeOn(shellOf(apfsds), 100, 0).penRollMm, roll, 'the same seed, the same roll');
+  const glance = shellOf(apfsds);
+  const glanced = strikeOn(glance, 60, 82);
+  assert.equal(glanced.kind, 'ricochet', 'a rod past 78 deg glances off');
+  assert.equal(glance.dead, false, 'and flies on, deflected');
+  assert.ok(glance.vel.z < 0, 'off the face');
+  assert.equal(strikeOn(shellOf(apfsds), 20, 82).kind, 'pen', 'overmatched (the rod overmatches at 72 mm, 3 calibres of 20 mm): no ricochet');
+  const jet = shellOf(heat);
+  const cut = strikeOn(jet, 60, 82);
+  assert.notEqual(cut.kind, 'ricochet', 'a jet does not ricochet under 85 deg');
+  assert.ok(Math.abs(cut.effectiveMm - 60 / Math.cos(82 * DEG)) < 1e-6, 'the slope law (a jet sees line-of-sight thickness)');
+  assert.equal(cut.kind === 'pen', cut.penRollMm >= cut.effectiveMm);
+  const burst = strikeOn(shellOf(he), 100, 0);
+  assert.equal(burst.kind, 'nonpen', 'HE stops on 100 mm');
+  assert.equal(strikeOn(shellOf(he), 10, 0).kind, 'he_pen', 'and holes 10 mm');
+  assert.equal(strikeOn(shellOf(he), 10, 88).kind, 'nonpen', 'HE never ricochets: at 88 deg it bursts on the face');
+}
+
+// --- the drive course ----------------------------------------------------------------------------------------------------
+{
+  const course = planProvingCourse(rules, layout.origin);
+  assert.deepEqual(planProvingCourse(rules, layout.origin), course, 'a pure function of the rules and the firing line');
+  assert.equal(course.stamps.length, rules.course.features.length);
+  assert.deepEqual(course.features.map((feature) => feature.kind), rules.course.features.map((feature) => feature.kind));
+  const lx = Math.cos(layout.origin.yaw), lz = -Math.sin(layout.origin.yaw);
+  const across = (p) => (p.x - layout.origin.x) * lx + (p.z - layout.origin.z) * lz;
+  assert.ok(Math.abs(across(course.start) - rules.course.lateralM) < 1e-9, 'the course runs on its line across the range');
+  for (let i = 1; i < course.features.length; i++) {
+    const prev = course.features[i - 1], next = course.features[i];
+    const gap = Math.hypot(next.x0 - prev.x1, next.z0 - prev.z1);
+    const lead = (prev.kind === 'sideSlope' ? rules.course.skirtM : 0) + (next.kind === 'sideSlope' ? rules.course.skirtM : 0);
+    assert.ok(Math.abs(gap - rules.course.gapM - lead) < 1e-6, `features ${i} and ${i + 1}: the level gap between them`);
+  }
+  // every stamp's profile meets the ground at its ends, so no feature leaves a step
+  const overlay = createTerrainDeformation();
+  for (const stamp of course.stamps) {
+    assert.equal(stamp.profile[1], 0);
+    assert.equal(stamp.profile[stamp.profile.length - 1], 0);
+    overlay.addCourse(stamp);
+  }
+  const box = [0, 0, 0, 0];
+  for (const [index, stamp] of course.stamps.entries()) {
+    stampBounds(stamp, box);
+    const feature = course.features[index];
+    for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+      const x = feature.x0 + (feature.x1 - feature.x0) * t, z = feature.z0 + (feature.z1 - feature.z0) * t;
+      const e = 1e-6;
+      assert.ok(x >= box[0] - e && x <= box[2] + e && z >= box[1] - e && z <= box[3] + e, `feature ${index + 1} inside its stamp's bounds`);
+    }
+  }
+  const at = (feature, t, side = 0) => overlay.offsetAt(feature.x0 + (feature.x1 - feature.x0) * t + lx * side,
+    feature.z0 + (feature.z1 - feature.z0) * t + lz * side);
+  const [gentle, ditch, moguls, steep, side] = course.features;
+  const rule = rules.course.features;
+  assert.ok(Math.abs(at(gentle, 0.5) - rule[0].heightM) < 1e-9, 'the gentle ramp\'s top');
+  // its climb: the grade along the line on the way up
+  const climb = (at(gentle, 0.2) - at(gentle, 0.1)) / (0.1 * Math.hypot(gentle.x1 - gentle.x0, gentle.z1 - gentle.z0));
+  assert.ok(Math.abs(Math.atan(climb) / DEG - rule[0].upDeg) < 1e-6, `climbs at ${rule[0].upDeg} deg`);
+  assert.ok(Math.abs(at(ditch, 0.5) + rule[1].depthM) < 1e-9, 'the ditch\'s floor');
+  assert.ok(Math.abs(at(moguls, 1 / 8) - rule[2].heightM) < 1e-9 && Math.abs(at(moguls, 1 / 4)) < 1e-9, 'a mogul\'s crest and trough');
+  assert.ok(Math.abs(at(steep, 0.5) - rule[3].heightM) < 1e-9, 'the steep ramp\'s top');
+  const half = rules.course.widthM / 2, rise = rules.course.widthM * Math.tan(rule[4].deg * DEG);
+  assert.ok(Math.abs(at(side, 0.5, -half)) < 1e-9 && Math.abs(at(side, 0.5, half) - rise) < 1e-9, 'the side slope: level right, raised left');
+  assert.ok(Math.abs((at(side, 0.5, 1) - at(side, 0.5, -1)) / 2 - Math.tan(rule[4].deg * DEG)) < 1e-9, `tilted ${rule[4].deg} deg across the line`);
+  // the band's skirt: full across its band, half way down the cosine at the skirt's middle, nothing past it
+  assert.ok(Math.abs(at(gentle, 0.5, half) - rule[0].heightM) < 1e-9);
+  assert.ok(Math.abs(at(gentle, 0.5, half + rules.course.skirtM / 2) - rule[0].heightM / 2) < 1e-9);
+  assert.equal(at(gentle, 0.5, half + rules.course.skirtM + 0.01), 0);
+  assert.equal(overlay.offsetAt(layout.origin.x, layout.origin.z), 0, 'the firing line keeps its ground');
+  assert.ok(overlay.maxRaiseM >= rule[3].heightM, 'the ray march ceiling covers the course');
+  // craters and heaps read the ground they always did: the course sums apart (its own clamp, theirs unchanged)
+  const plain = createTerrainDeformation(), withCourse = createTerrainDeformation();
+  plain.addCrater(-200, 100, 3, 1.2, 0.4, 99); withCourse.addCrater(-200, 100, 3, 1.2, 0.4, 99);
+  plain.addRubble(-150, 100, 6, 8, 0.3, 2.4); withCourse.addRubble(-150, 100, 6, 8, 0.3, 2.4);
+  for (const stamp of course.stamps) withCourse.addCourse(stamp);
+  for (const [x, z] of [[-200, 100], [-198, 101], [-150, 100], [-145, 96]]) {
+    assert.equal(withCourse.offsetAt(x, z), plain.offsetAt(x, z), `the battle's ground at (${x}, ${z}) is unchanged`);
+  }
+  // a pit in the course keeps the course's own law: the course adds past the battle's clamp
+  const pit = course.stamps[0];
+  const stack = createTerrainDeformation();
+  stack.addCourse(pit);
+  const top = at(gentle, 0.5);
+  for (let i = 0; i < 3; i++) stack.addRubble(gentle.x0 + (gentle.x1 - gentle.x0) * 0.5, gentle.z0 + (gentle.z1 - gentle.z0) * 0.5, 3, 3, 0, 2.6);
+  const mx = gentle.x0 + (gentle.x1 - gentle.x0) * 0.5, mz = gentle.z0 + (gentle.z1 - gentle.z0) * 0.5;
+  assert.ok(Math.abs(stack.offsetAt(mx, mz) - (top + 3)) < 1e-9, 'heaps on the course clamp at +3 m over it');
+  // a profile reads 0 off its ends
+  assert.equal(courseProfile(pit, pit.cx + Math.sin(pit.yaw) * 1000, pit.cz + Math.cos(pit.yaw) * 1000), 0);
+}
+
 // --- the layout on the real battlefield ---------------------------------------------------------------------------------
 const world = createDedicatedWorldCollision(rules.mapId);
 let real;
@@ -211,4 +367,4 @@ assert.ok(out.steer > 0, 'a hull turned off its line steers back');
   assert.ok(maxOff < 4, `it holds its line (${maxOff.toFixed(2)} m off)`);
 }
 
-console.log(`provingGround.selftest: ruleset row, practice partition (rooms refuse it), ${rules.lanes.length}-lane layout on synthetic ground and ${rules.mapId}, range card ballistics and the moving-target drive pass`);
+console.log(`provingGround.selftest: ruleset row, practice partition (rooms refuse it), ${rules.lanes.length}-lane layout on synthetic ground and ${rules.mapId}, the ${rules.plateRack.plates.length}-plate rack (faces, strikes, the damage law), the ${rules.course.features.length}-feature drive course (profiles, skirts, the battle's ground unchanged), range card ballistics and the moving-target drive pass`);

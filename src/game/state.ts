@@ -1273,12 +1273,12 @@ export function setupBattle(
   ground.overlay.reset();
   // DST-04: the map's pre-placed craters, laid first (the authority and every seat lay the same; world/mapCraters.ts)
   stampMapCraters(ground.overlay, mapCraterStampsOf(world));
-  // the proving ground (2026-10-20): its range laid out on this battlefield before the ground binds, the drive course
-  // raised in the overlay after the map's craters (sim/provingGround.ts; fails closed)
+  world.bindGroundOverlay?.(ground.overlay);
+  // the proving ground (2026-10-20): its range laid out on this battlefield, the drive course raised in the overlay after
+  // the map's craters (sim/provingGround.ts; fails closed); the bound ground reads every stamp as it lands
   const provingLayout = game.ruleset.provingGround ? planSoloProvingRange(game.ruleset.provingGround, world) : null;
   game._provingRange = provingLayout;
   if (provingLayout) for (const stamp of provingLayout.course.stamps) ground.overlay.addCourse(stamp);
-  world.bindGroundOverlay?.(ground.overlay);
   restoreConcealers(world.getConcealment ? world.getConcealment() : null);
   const blasts: number[] = game._destructionBlasts = [];
   game._destruction = createDestructionMatch({
