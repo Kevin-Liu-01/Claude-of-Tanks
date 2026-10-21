@@ -950,6 +950,17 @@ in-process hosts): a starting match links after its load; a re-entry's link open
 and the WELCOME follows the load within a round trip on one offer; an abandoned entry closes its early link; a 400 ms
 HELLO window closes the early link and the seat is still welcomed.
 
+**The returning tab's battlefield (2026-10-20, item/mp-rejoin-229, lever 3).** The boot never builds a battlefield (boot
+r8), so a tab reopened on a room's invite built the running match's world only after its whole Garage boot. The
+composition now remembers the round this browser entered (`BrowserLoadPorts.rememberRound`: room code, match, map,
+terrain variant; localStorage, two hours) and forgets it on an explicit leave or a room that is gone; a tab whose invite
+names that room starts the battlefield on the room-intent background lane after its Garage stage (`prefetchWorld`, the
+`#assault-trenches` key for Frontline), and the battle entry promotes the build instead of starting it. Phones skip it.
+The e2e records the returning tab's activation trace and prefetch stats (`report.a2WorldLoad`) and its boot stages
+(`report.a2BootTimings`). The same item guards a migration on a match link the client already closed (its recovery
+gave up): `handleHostChanged` replaced the closed transport and threw "transport closed" in the page
+(`matchSessionP2p.selftest`).
+
 **A match that ends while a seat is entering (2026-10-11).** Production 215's second MP run: the returning seat's world
 loaded for 150 s while the two defenders, idle, fell to the bots; the match ended in a defeat, and the seat's entry
 waited out the whole stall window for a WELCOME the ended match could not send ("The match did not present in time",
