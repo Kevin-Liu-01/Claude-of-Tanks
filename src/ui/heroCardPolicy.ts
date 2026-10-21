@@ -41,8 +41,11 @@ export const HERO_CAMERA = Object.freeze({
  *   turretTowardCameraDeg: traverse from the hull's forward axis, on whichever side brings the gun toward
  *     the lens (the renderer picks the sign by projecting the gun into the camera, never by the yaw
  *     convention alone). With the 50 deg camera the gun points at the lens at 50 deg, so any traverse
- *     below it keeps the gun on the bow's side (heroGunSide). Pose study r2 (15/30/45 deg toward the lens
- *     on 8 vehicles, blind pick) fixes the angle; 30 is the provisional middle.
+ *     below it keeps the gun on the bow's side (heroGunSide). Fixed at 30 by pose study r2 (15/30/45 deg on
+ *     8 vehicles, samples/pose-r2; two blind critics both picked 30, runner-up 15): at 30 the mantlet and turret
+ *     face show on 7 of 8 while the gun still leads left and forward; 15 barely turns the turret; 45 aims the
+ *     gun at the lens and shrinks it to a stub at roster size. Both noted the thin or pale guns (Puma, Merkava)
+ *     keep more length at 15.
  *     (v4, retired: 105 deg swung the gun back past the lens to the far side, pose study r1.)
  *   gunPitchDeg: the gun is level.
  * A turretless vehicle (casemate, hydraulic fixed gun) keeps its gun on the hull axis; a turreted mount with
