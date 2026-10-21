@@ -17,6 +17,7 @@ import {
   type AdvancedIfvScalePort,
 } from './advancedIfvScale.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
+import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { mountRotated as mount } from './fittingMount.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { hatchParts, reserveDecorVolume } from './fieldChest.ts';
@@ -25,6 +26,7 @@ type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
 
 interface CvBuilderPort extends AdvancedIfvScalePort {
+  readonly snapGroup: TankBuilderPort['snapGroup'];
   readonly gunG: THREE.Group;
   readonly mats: Record<string, THREE.Material> & {
     readonly canvasCloth: THREE.MeshStandardMaterial;
@@ -119,6 +121,9 @@ function buildCv90Hull(P: CvBuilderPort): void {
 
   P.add('hullDark', box(1.92, 1.00, 0.045), 0, 1.09, -3.48);
   P.add('hull', box(1.72, 0.84, 0.050), 0, 1.09, -3.51);
+  // lower stern wall: the belly ended at z -3.31 and the rear plates start at -3.4575 with their feet at 0.59, so the
+  // 0.15 m between them stood open from below up to the troop deck (owner 2026-10-19, "the empty gaps in hulls")
+  P.add('hull', box(2.12, 0.40, 0.20), 0, 0.44, -3.38);
   for (const x of [-0.64, 0, 0.64]) P.add('hullDark', cylX(0.050, 0.18, 12), x, 1.58, -3.54);
   // Rear corner boxes, marker lamps and deck stowage close the formerly empty
   // overhang without lengthening the suspension course.
@@ -148,8 +153,9 @@ function buildCv90Hull(P: CvBuilderPort): void {
     P.addEquipment('hull', box(0.28, 0.20, 0.26), side * 1.08, 1.43, 2.49, -0.22, 0, 0);
     P.addModuleVisual('optics', 'hullGlass', box(0.17, 0.080, 0.016),
       side * 1.08, 1.47, 2.63, -0.22, 0, 0);
-    P.add('hullDetail', KIT.torus(0.075, 0.018, 12), side * 0.78, 0.78, 3.30,
-      Math.PI / 2, 0, 0);
+    // 2026-10-19 (owner float sweep): the tow eyes hung 114 mm clear of the nose; each seats on it.
+    P.snapGroup(`cv90-tow-eye-${side}`, () => P.add('hullDetail', KIT.torus(0.075, 0.018, 12), side * 0.78, 0.78, 3.30,
+      Math.PI / 2, 0, 0), { reachM: 0.14 });
   }
   KIT.towCable(P, [[-1.17, 1.36, 2.50], [-0.58, 1.20, 2.99],
     [0.58, 1.20, 2.99], [1.17, 1.36, 2.50]]);
@@ -412,13 +418,18 @@ function buildCv90MkivHull(P: CvBuilderPort): void {
   ]));
   P.add('hullDark', box(2.12, 1.09, 0.050), 0, 1.14, -3.69);
   P.add('hull', box(1.92, 0.91, 0.055), 0, 1.14, -3.725);
+  // stern floor: the belly ends at z -3.51 (its rear face carries the towing hooks) and the rear plates stand from
+  // -3.665 with their feet at 0.595, so the slot between them stood open from below up to the troop roof (owner
+  // 2026-10-19, "the empty gaps in hulls"); a floor at the plates' feet closes it over the hooks
+  P.add('hull', box(2.24, 0.04, 0.21), 0, 0.58, -3.605);
   // critic panel 2026-10-15: the four bare cylinders over the door were the fuel drums' band mounts and read as spools
   // on a rail once the drums went; they go with them.
   for (const side of [-1, 1]) {
     P.addEquipment('hull', box(0.38, 0.46, 0.34), side * 1.30, 1.48, -3.50);
-    P.add('hullDark', box(0.23, 0.24, 0.022), side * 1.30, 1.46, -3.744);
+    // 2026-10-19 (owner float sweep): the lamp plate stood 63 mm behind its box (outboard of the rear plates); set on it.
+    P.add('hullDark', box(0.23, 0.24, 0.022), side * 1.30, 1.46, -3.679);
     P.addModuleVisual('optics', 'hullGlass', box(0.13, 0.090, 0.012),
-      side * 1.30, 1.54, -3.758);
+      side * 1.30, 1.54, -3.693);
     P.addEquipment('hull', box(0.52, 0.22, 0.56), side * 1.04, 1.86, -3.08);
   }
   // Owner markup 2026-10-14 ("actual tank equipment ... in lieu of random thingies", on this bare rear): the two
@@ -470,7 +481,8 @@ function buildCv90MkivHull(P: CvBuilderPort): void {
     P.addEquipment('hull', box(0.34, 0.23, 0.31), side * 1.20, 1.50, 2.63, -0.24, 0, 0);
     P.addModuleVisual('optics', 'hullGlass', box(0.21, 0.10, 0.018),
       side * 1.20, 1.55, 2.79, -0.24, 0, 0);
-    P.add('hullDetail', KIT.torus(0.082, 0.020, 12), side * 0.86, 0.81, 3.51,
+    // 2026-10-19 (owner float sweep): the tow eyes hung 0.14 m ahead of/below the raked lower glacis; hung from it.
+    P.add('hullDetail', KIT.torus(0.082, 0.020, 12), side * 0.86, 0.90, 3.40,
       Math.PI / 2, 0, 0);
   }
   KIT.towCable(P, [[-1.29, 1.43, 2.67], [-0.66, 1.27, 3.20],
@@ -530,8 +542,9 @@ function buildCv90MkivRunningGear(P: CvBuilderPort): void {
   }
   for (const x of [-1.47, 1.47]) {
     for (const y of [1.97, 2.37]) P.add('hullDetail', KIT.box(0.035, 0.035, 2.26), x, y, -1.57);
+    // 2026-10-19 (owner float sweep): rails and posts stood 62-110 mm over the 1.89 roof; the posts now reach it.
     for (const z of [-2.67, -2.12, -1.57, -1.02, -0.47]) {
-      P.add('hullDetail', KIT.box(0.035, 0.38, 0.035), x, 2.19, z);
+      P.add('hullDetail', KIT.box(0.035, 0.493, 0.035), x, 2.1335, z);
     }
   }
 }
@@ -646,7 +659,7 @@ function buildCv90MkivTurret(P: CvBuilderPort): void {
   });
   rws.name = 'cv90MkivK2bStyleRws';
   rws.userData.hostVariant = 'cv90_mk4_concept';
-  mount(P, 'turret', rws, 0.68, 0.88, -1.19, [0, -0.04, 0]);
+  mount(P, 'turret', rws, 0.68, 0.858, -1.19, [0, -0.04, 0]);                  // 2026-10-19 (owner float sweep): was 20 mm over the roof
   P.add('turret', cylY(0.22, 0.25, 0.11, 20), -0.58, 0.88, -0.50);
   P.addEquipment('turret', box(0.37, 0.34, 0.34), -0.58, 1.10, -0.50);
   P.addModuleVisual('optics', 'turretGlass', box(0.23, 0.16, 0.018), -0.58, 1.11, -0.31);

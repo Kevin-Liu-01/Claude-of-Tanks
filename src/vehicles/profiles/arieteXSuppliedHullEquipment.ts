@@ -29,9 +29,11 @@ function forwardCarry(P0: TankBuilderPort): void {
   const P = P0;
   for (const side of [-1, 1]) {
     const x = side * .877267;
-    P.addEquipment('hullDetail', box(.118, .087, .092), x, 1.133, 3.264);
-    P.addEquipment('hullDetail', torus(.047, .012, 16, 6), x, 1.09, 3.432, Math.PI / 2);
-    P.addEquipment('hullDetail', cylZ(.017, .200, 12), x, 1.084, 3.390);
+    // 2026-10-19 (owner float sweep): block and pin stood 14 mm over the plate and the eye hung clear round the pin;
+    // block and pin seated, the eye hangs on the pin.
+    P.addEquipment('hullDetail', box(.118, .087, .092), x, 1.1196, 3.264);
+    P.addEquipment('hullDetail', torus(.047, .012, 16, 6), x, 1.051, 3.432, Math.PI / 2);
+    P.addEquipment('hullDetail', cylZ(.017, .200, 12), x, 1.0706, 3.390);
   }
 }
 
@@ -177,12 +179,13 @@ function backFace(P: TankBuilderPort): void {
   P.addEquipment('hullDetail', box(1.186, .402, .070), .023, 1.248, -3.188);
   for (const x of [-.792, .861]) {
     P.addEquipment('hullDetail', box(.126, .135, .103), x, 1.401, -3.204);
-    P.addEquipment('hullDetail', torus(.055, .014, 18, 6), x, 1.329, -3.330, Math.PI / 2);
+    P.addEquipment('hullDetail', torus(.055, .014, 18, 6), x, 1.305, -3.330, Math.PI / 2); // 2026-10-19 (owner float sweep): eye hangs on its pin (was clear round it)
     P.addEquipment('hullDetail', cylZ(.019, .129, 12), x, 1.329, -3.268);
   }
   for (const y of [1.21665, 1.40254]) {
-    P.addEquipment('hullDetail', box(.39616, .172, .155), -1.137587, y, -3.275);
-    for (const x of [-1.28, -.999]) P.addEquipment('hullDetail', cylZ(.009, .009, 8), x, y, -3.357);
+    // 2026-10-19 (owner float sweep): the paired cases stood 40 mm behind the rear plate; set on it.
+    P.addEquipment('hullDetail', box(.39616, .172, .155), -1.137587, y, -3.233);
+    for (const x of [-1.28, -.999]) P.addEquipment('hullDetail', cylZ(.009, .009, 8), x, y, -3.315);
   }
   rearTowHead(P); rearLever(P);
   lowerCoupling(P);

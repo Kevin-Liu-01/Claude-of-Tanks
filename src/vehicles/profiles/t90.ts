@@ -14,6 +14,7 @@ import { clippedArmorSkin } from './armorFaceSampling.ts';
 import { buildPT91MPendekar } from './pt91mPendekar.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
+import type { SnapGroupOptions } from '../tankFactoryCore.ts';
 import {
   loftHull,
   meshDomeCurved,
@@ -106,6 +107,10 @@ interface T90BuilderPort {
     slots: readonly string[],
     visit: (geometry: THREE.BufferGeometry, bounds: THREE.Box3) => void,
   ): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  /** Seats the fittings authored in `build` on their rig group's stock once the profile is done (fittingSnap.ts). */
+  snapGroup(label: string, build: () => void, options?: SnapGroupOptions): void;
 }
 
 const KIT = UNTYPED_KIT;
@@ -533,8 +538,10 @@ function addT90SternFaceKit(
   const squashY = (geo: THREE.BufferGeometry): THREE.BufferGeometry => (
     sy === 1 ? geo : KIT.xform(geo, 0, 0, 0, 0, 0, 0, [1, sy, 1])
   );
+  // 2026-10-19 (owner float sweep): the upper centre strip spanned only the stern's centre notch and stood 22 mm short
+  // of the rack plates either side; it is 50 mm wider so both ends land on them.
   for (let i = 0; i < 5; i++) {
-    P.add('hullDetail', box(width / 5 - 0.035, 0.026 * sy, 0.012), -width * 0.4 + i * width * 0.2, y, z);
+    P.add('hullDetail', box(width / 5 - 0.035 + (i === 2 ? 0.05 : 0), 0.026 * sy, 0.012), -width * 0.4 + i * width * 0.2, y, z);
     P.add('hullDetail', box(width / 5 - 0.035, 0.026 * sy, 0.012), -width * 0.4 + i * width * 0.2, y - 0.11 * sy, z);
   }
   for (const s of [-1, 1]) {
@@ -553,9 +560,10 @@ function addT90SternFaceKit(
     P.add('hullDetail', squashY(cylZ(0.018, 0.028, 8)), s * width * 0.145, y - 0.16 * sy, z - 0.006);
     P.add('hullDetail', squashY(cylZ(0.018, 0.028, 8)), s * width * 0.145, y - 0.28 * sy, z - 0.006);
   }
-  for (let i = -2; i <= 2; i++) {
+  // 2026-10-19 (owner float sweep): the louvre slats hung 17-43 mm under the stern stock; each rises onto it.
+  for (let i = -2; i <= 2; i++) P.snapGroup('t90-stern-louvre', () => {
     P.add('hullDark', box(width * 0.105, 0.022 * sy, 0.015), i * width * 0.11, y - 0.41 * sy, z - 0.001);
-  }
+  }, { reachM: 0.05, direction: [0, 1, 0] });
 }
 
 // Shared first-party welded turret foundation. T-90SM remains the geometry
@@ -645,19 +653,19 @@ function addT90RearQuarterSlatCage(P: T90BuilderPort, {
         P.add('hull', box(0.048, cageHeight + 0.04, 0.042), s * xOuter, cageCenterY, z);
       }
 
-      // Paired outboard stubs and inboard mounting posts describe the cage's
+      // Paired stand-off arms and inboard mounting posts describe the cage's
       // stand-off load path without drawing a solid bar through the live shoe
-      // envelope.  Leaving the small service gap between them is deliberate:
-      // it keeps the open cage volume ventilated in plan view instead of
-      // partitioning it into false enclosed hull cells.
+      // envelope. 2026-10-19 (owner float sweep): the posts stood 80-130 mm
+      // clear of everything (a deliberate "service gap" to the short stubs);
+      // each arm now runs from the cage to its post and each post spans both
+      // arms, so the posts are carried by the cage. The arms stay four
+      // separate teeth in plan, closing no hull cell.
       for (let i = 0; i < bracketStations; i++) {
         const z = cageRearZ + cageDepth * (i + 0.5) / bracketStations;
-        const stubDepth = Math.min(0.065, standoff * 0.40);
         for (const y of [yBottom + 0.09, yTop - 0.09]) {
-          P.add('hull', box(stubDepth, 0.052, 0.065),
-            s * (xOuter - stubDepth * 0.5), y, z);
+          P.add('hull', box(standoff, 0.052, 0.065), s * xMid, y, z);
         }
-        P.add('hull', box(0.052, cageHeight * 0.62, 0.070),
+        P.add('hull', box(0.052, cageHeight - 0.128, 0.070),
           s * xInner, cageCenterY, z);
       }
       P.add('hull', box(standoff + 0.08, 0.09, 0.11),
@@ -988,6 +996,8 @@ interface T90ALegacyOptions {
   gunAssemblyRaiseM?: number;
   adoptT90MFamilyGun?: boolean;
   recordSeatReceipt?: boolean;
+  /** The fender lips' inner edge runs into the hull side (false on the Burlak: addT90ALegacyHull). */
+  fenderLipHullSeat?: boolean;
 }
 
 type ResolvedT90ALegacyOptions = Required<T90ALegacyOptions>;
@@ -1004,7 +1014,10 @@ interface T90ALegacyTurretReceiptContext {
   };
 }
 
-function addT90ALegacyHull(P: T90BuilderPort): void {
+// K-5 skirt course hangers (addT90ALegacyHullDeckAndGear): two per 0.56 m block, at its centre +-0.18.
+const T90A_K5_HANGER_ZS: readonly number[] = [0, 1, 2, 3].flatMap((i) => [2.40 - i * 0.55 + 0.18, 2.40 - i * 0.55 - 0.18]);
+
+function addT90ALegacyHull(P: T90BuilderPort, fenderLipHullSeat = true): void {
   const { box } = KIT;
   // VERTEX ROUND r2 (batch-12 oracle normalized to published dims): re-anchor
   // to docs/references/vertex/t90a.json — hull mask +-3.43 (6.865), deck
@@ -1058,19 +1071,25 @@ function addT90ALegacyHull(P: T90BuilderPort): void {
     // The tall corner shoulders stop before the source's final thin nose
     // lip.  Extending their full 240 mm height to z=3.43 made the side
     // section blunt and hid the real low terminal plane.
-    P.add('hull', box(0.23, 0.24, 0.10), s * 1.175, 0.90, 3.30);
+    // (owner 2026-10-19, flaps sweep: the shoulders, lip and flap stood 50 mm outboard of the nose plate's outer face at
+    // 1.01; the inner shoulder and the lip now start at 1.00, inside it)
+    P.add('hull', box(0.29, 0.24, 0.10), s * 1.145, 0.90, 3.30);
     P.add('hull', box(0.34, 0.24, 0.10), s * 1.46, 0.90, 3.30);
-    P.add('hull', box(0.57, 0.08, 0.095), s * 1.345, 0.85, 3.3975);
+    P.add('hull', box(0.63, 0.08, 0.095), s * 1.315, 0.85, 3.3975);
   }
   // rear rack side plates carry the -3.43/-3.40 tail columns (x 0.14..0.75)
   for (const s of [-1, 1]) {
     P.add('hull', box(0.20, 0.30, 0.42), s * 0.24, 1.20, -3.19);
     P.add('hull', box(0.71, 0.26, 0.41), s * 0.685, 1.18, -3.145);
     P.add('hull', box(0.71, 0.07, 0.09), s * 0.685, 1.28, -3.395);
-    P.add('hullDark', box(0.16, 0.08, 0.03), s * 0.24, 1.2765, -3.44);
+    // 2026-10-19 (owner float sweep): the tail plate stood 10 mm short of the rack bar beside it and the left upper
+    // block met the lower one only along a corner line (16-21 mm in the census): the plate is 25 mm wider, and a
+    // 30 mm fillet strip welds the two blocks.
+    P.add('hullDark', box(0.185, 0.08, 0.03), s * 0.24, 1.2765, -3.44);
     if (s < 0) {
       P.add('hull', box(0.08, 0.16, 0.24), -1.09, 1.39, -3.07);
       P.add('hull', box(0.11, 0.16, 0.24), -1.195, 1.23, -3.07);
+      P.add('hull', box(0.03, 0.03, 0.24), -1.14, 1.31, -3.07);
     } else {
       P.add('hull', box(0.20, 0.16, 0.24), 1.15, 1.28, -3.07);
     }
@@ -1078,7 +1097,13 @@ function addT90ALegacyHull(P: T90BuilderPort): void {
   // fender tips held behind the loft bow (they merge with the gun band)
   for (const s of [-1, 1]) P.add('hull', box(0.64, 0.07, 0.26), s * 1.43, 1.08, 3.02);
   // fender lips: thin shelves at the ref's 1.14-1.22 outer band (segmented
-  // per the r7c prism law so station slices see end faces)
+  // per the r7c prism law so station slices see end faces). Their inner edge runs 10 mm into the 1.60 hull side (owner
+  // 2026-10-19 sweep: at 1.62 the whole fender course, and the skirt hung from it, stood 20 mm off the hull).
+  // 2026-10-21 (float-gaps 230): not on the Burlak (`fenderLipHullSeat` false): its narrowed hull reseats every
+  // outboard plate to a 1.68 inner clearance and carries the lips on its closing shelves, and a widened lip's inner
+  // edge (0.94 x 1.59 = 1.495) fell inside that reseat's 1.50 test, leaving the lips 10 cm inboard and the pinned
+  // hull 20 cm narrower (fleetResize20261002).
+  const lipW = fenderLipHullSeat ? 0.19 : 0.16, lipX = fenderLipHullSeat ? 1.685 : 1.70;
   for (const s of [-1, 1]) for (let i = 0; i < 11; i++) {
     // Independent front/side station truth: this is the low outer fender
     // band (1.14..1.22 m), not the inner 1.36 m engine deck.  The old seat
@@ -1093,18 +1118,18 @@ function addT90ALegacyHull(P: T90BuilderPort): void {
       // z -2.82 left open air between the seat and the track, a pocket enclosed in plan: 2 hole cells on the T-90A and
       // 8 on the BMPT T-90 at its 1.05 size in the standard check's top-down scan.
       const seatFront = T90A_REAR_SEAT_FRONT_Z_M;
-      P.add('hull', box(0.16, 0.05, seatFront + 3.00), s * 1.70, 1.17, (seatFront - 3.00) / 2);
+      P.add('hull', box(lipW, 0.05, seatFront + 3.00), s * lipX, 1.17, (seatFront - 3.00) / 2);
       P.add('hull', box(0.056, 0.05, -2.50 - seatFront), s * 1.752, 1.17, (seatFront - 2.50) / 2);
     } else if (i === 1) {
       // The rear climb passes under this segment. Keep the original plan
       // footprint, but seat the shelf on the deck/fender datum instead of
       // through the rising native course.
       P.add('hull', box(0.056, 0.05, 0.255), s * 1.752, 1.27, -2.3275);
-      P.add('hull', box(0.16, 0.05, 0.245), s * 1.70, 1.27, -2.0775);
+      P.add('hull', box(lipW, 0.05, 0.245), s * lipX, 1.27, -2.0775);
     } else {
       // The matching forward transition is i=9. Raise only that supported
       // shelf; the long mid-run course and every side-armor panel stay put.
-      P.add('hull', box(0.16, 0.05, 0.50), s * 1.70, i === 9 ? 1.27 : 1.17, -2.75 + i * 0.545);
+      P.add('hull', box(lipW, 0.05, 0.50), s * lipX, i === 9 ? 1.27 : 1.17, -2.75 + i * 0.545);
     }
   }
 }
@@ -1190,8 +1215,8 @@ function addT90ALegacyHullDeckAndGear(P: T90BuilderPort): void {
     P.add('hullDark', cylZ(0.147, 0.022, 14), s * 0.72, 1.325, -3.33);
   }
   for (const s of [-1, 1]) {
-    P.add('hullRubber', box(0.36, 0.30, 0.05), s * 1.52, 0.80, -3.06); // rear mud flaps (ref plan rear -3.08 at x 1.33+, floor 0.645)
-    P.add('hullRubber', box(0.40, 0.36, 0.05), s * 1.55, 0.85, 3.345); // front mud flaps (ref plan 3.367 at ±1.76; lower edge 0.67 m)
+    P.hangMudguard('t90a-rear-flap', 'hullRubber', box(0.36, 0.30, 0.05), s * 1.52, 0.80, -3.06); // rear mud flaps (ref plan rear -3.08 at x 1.33+, floor 0.645)
+    P.hangMudguard('t90a-front-flap', 'hullRubber', box(0.40, 0.36, 0.05), s * 1.55, 0.85, 3.345); // front mud flaps (ref plan 3.367 at ±1.76; lower edge 0.67 m)
   }
   // §B3.2 DENSITY (owner directive 2026-08-06): common-kit fittings on the
   // deck, FLUSH-RECESSED to the certified deck lines (t84 r32 recipe — the
@@ -1271,7 +1296,10 @@ function addT90ALegacyHullDeckAndGear(P: T90BuilderPort): void {
   // r10c: the ref outer skirt face is a THIN high band (0.978..1.138 at the
   // +-1.80-1.83 cols); its deep 0.67..1.18 course lives at 1.74-1.79 (studs)
   ruSkirtBand(P, { x: 1.7675, th: 0.036, z0: -2.88, z1: 2.97, yTop: 1.14, yBot: 0.98, panels: 7, lipX: 1.755 });
-  widthAnchor(P, 1.89, 0.95, 0.46);
+  // (2026-10-21, float-gaps 230: the stud stands at z 0.60, inside the course's aft block (0.47..1.03) on the T-90A
+  // and, reseated with the Burlak's narrowed band, inside that band's lower trim (0.51..1.29); at 0.46 it cleared the
+  // Burlak's trims by 22 mm, at the 10-19 sweep's 0.40 it cleared the T-90A course by 79 mm.)
+  widthAnchor(P, 1.89, 0.95, 0.60);
   // r10b: outer course deepened to the ref's 0.691..1.223 band (front cols
   // +-1.84..1.90 read it; the old 0.93..1.11 studs left 0.18 x 4 cols)
   P.visualEraCluster('t90a-k5-skirt-era', 'hull', () => {
@@ -1280,6 +1308,15 @@ function addT90ALegacyHullDeckAndGear(P: T90BuilderPort): void {
     P.add('hullDark', box(0.04, 0.42, 0.03), s * 1.859, 0.95, 2.15 - i * 0.55);
   }
   });
+  // 2026-10-19 (owner float sweep): the course stood 53 mm outboard of the skirt band (1.7855) with nothing between.
+  // 2026-10-21 (float-gaps 230): the course keeps its measured outboard station (outer face 1.888, the front columns'
+  // width carrier; the 10-19 sweep had slid it 61 mm inboard, 126 mm on the Burlak); two hangers per block run from
+  // 6.5 mm inside the band to 7 mm inside the course, at band-panel stations clear of the panel joints and of the
+  // band's own hangers (y 1.11+). Permanent hull detail, not ERA: they stay when a block is lost. The Burlak, whose
+  // narrowed band stands 124 mm inboard of the unscaled course, extends each one (buildT90BurlakHybridNative2026).
+  for (const s of [-1, 1]) for (const z of T90A_K5_HANGER_ZS) {
+    P.add('hullDetail', box(0.066, 0.05, 0.04), s * 1.812, 1.06, z);
+  }
 }
 
 function addT90ALegacyTurret(P: T90BuilderPort, {
@@ -1315,8 +1352,10 @@ function addT90ALegacyTurret(P: T90BuilderPort, {
   // sight head below); spike A z-deepened so the ref's continuous
   // 2.257-2.284 side band keeps a carrier across the -0.787w column.
   P.add('turret', box(0.065, 0.42, 0.13), 0.3025, 0.72, -1.114);
-  P.add('turret', box(0.065, 0.44, 0.065), 0.3025, 0.735, -1.3465);
-  P.add('turret', box(0.065, 0.10, 0.10), 0.3025, 0.845, -0.96);
+  // 2026-10-19 (owner float sweep): spike B stood 24 mm off the shell and the forward tab 39 mm ahead of spike A; B is
+  // seated on the shell and the tab's back now bears on A's front face.
+  P.snapGroup('t90a-roof-spike', () => P.add('turret', box(0.065, 0.44, 0.065), 0.3025, 0.735, -1.3465), { reachM: 0.04 });
+  P.add('turret', box(0.065, 0.10, 0.10), 0.3025, 0.845, -0.997);
   // r10 k5: clamshell leaves forward + long (ref plan front 2.48-2.53 at
   // |x| 0.7-0.9, faces 1.46@1.36); bottoms hold the 1.42 line
   // §B3.1 (prism sweep 2026-08-06): k5Seg sections the clamshell leaves
@@ -1361,7 +1400,9 @@ function addT90ALegacyTurret(P: T90BuilderPort, {
     // previous zero offset left most of both rows inside the T-90SM-derived
     // foundation even though their plan geometry was otherwise correct.
     forwardM: chevronForwardM,
-    centerClosure: { width: 0.40, height: 0.23, depth: 0.060, y: 0.225, z: 1.62, rx: -0.24 },
+    // 2026-10-19 (owner float sweep): the closure stood 9-19 mm short of both carriers; 40 mm wider and 10 mm aft it
+    // laps into them.
+    centerClosure: { width: 0.44, height: 0.23, depth: 0.060, y: 0.225, z: 1.61, rx: -0.24 },
   });
   const shtoraHousingRearZ = shtoraEyeZ - 0.11 * p5.eyeScale;
   const shtoraHousingFrontZ = shtoraEyeZ + 0.11 * p5.eyeScale;
@@ -1528,8 +1569,9 @@ function addT90ALegacyTurret(P: T90BuilderPort, {
   // lower half penetrates the dome and its lid remains below the adjacent
   // mast profile, so it closes the source front-view step without creating
   // a new profile spike or an unsupported decoration.
-  P.add('turret', box(0.13, 0.335, 0.08), -0.36, 0.7175, -1.28);
-  P.add('turretDark', box(0.11, 0.014, 0.065), -0.36, 0.878, -1.28);
+  // 2026-10-19 (owner float sweep): the collar stood 25 mm over the dome; it and its lid sit 27 mm lower.
+  P.add('turret', box(0.13, 0.335, 0.08), -0.36, 0.6905, -1.28);
+  P.add('turretDark', box(0.11, 0.014, 0.065), -0.36, 0.851, -1.28);
   // T4A: cross-wind mast head raised toward the ref's 2.296 line at the
   // -0.229 front column (proc read 2.195) — CAPPED at 2.24 (inside the 1%
   // heightM grace: at 2.29 the head became a 4th-5th >grace column and
@@ -1783,6 +1825,7 @@ function buildT90ALegacy(P: T90BuilderPort, {
   gunAssemblyRaiseM = T90A_GUN_ASSEMBLY_RAISE_M,
   adoptT90MFamilyGun = true,
   recordSeatReceipt = true,
+  fenderLipHullSeat = true,
 }: T90ALegacyOptions = {}): void {
   const options: ResolvedT90ALegacyOptions = {
     turretSeatZ,
@@ -1796,8 +1839,9 @@ function buildT90ALegacy(P: T90BuilderPort, {
     gunAssemblyRaiseM,
     adoptT90MFamilyGun,
     recordSeatReceipt,
+    fenderLipHullSeat,
   };
-  addT90ALegacyHull(P);
+  addT90ALegacyHull(P, fenderLipHullSeat);
   addT90ALegacyHullDeckAndGear(P);
   const receiptContext = addT90ALegacyTurret(P, options);
   addT90ALegacyGun(P, options, receiptContext);
@@ -2106,8 +2150,10 @@ function buildT90AVladimirLegacy(P: T90BuilderPort): void {
   P.visualEraCluster('t90a-vladimir-k5-skirt-era', 'hull', () => {
   for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
     const zc5 = 1.12 - i * 0.46;
-    P.add('hull', box(0.05, 0.63, 0.50), s * 1.845, 1.045, zc5);
-    P.add('hull', box(0.014, 0.18, 0.50), s * 1.883, 1.25, zc5);
+    // 2026-10-19 (owner float sweep): the panels stood 20 mm off the skirt face (1.80) and the upper lip 6 mm off the
+    // panels; the panel backs now bear on the skirt and the lip on the panel face (outer faces 1.87/1.89 unchanged).
+    P.add('hull', box(0.072, 0.63, 0.50), s * 1.834, 1.045, zc5);
+    P.add('hull', box(0.022, 0.18, 0.50), s * 1.879, 1.25, zc5);
     P.add('hullDark', box(0.04, 0.55, 0.03), s * 1.851, 1.045, zc5 - 0.25);
   }
   });
@@ -3521,7 +3567,8 @@ function addT90SMLegacyHullFront(P: T90BuilderPort): void {
       [s * 0.995, 1.12, 3.25], [s * 1.385, 1.12, 3.25], [s * 1.385, 0.92, 3.465], [s * 0.995, 0.92, 3.465],
     ));
     P.add('hullDark', box(0.20, 0.022, 0.022), s * 0.805, 1.02, 3.196);
-    P.add('hullDark', box(0.16, 0.022, 0.022), s * 1.255, 1.02, 3.416);
+    // 2026-10-19 (owner float sweep): the outer strip stood 26 mm over the falling prong; it is seated on it.
+    P.snapGroup('t90sm-bow-strip', () => P.add('hullDark', box(0.16, 0.022, 0.022), s * 1.255, 1.02, 3.416), { reachM: 0.05 });
   }
   // rear tail r9c (fresh plan): the -3.43 run is CENTER-carried (|x|<0.85,
   // ref -3.428 at +-0.37..0.83) stepping to -3.265@1.04 / -3.02@1.34-1.45 /
@@ -3565,7 +3612,9 @@ function addT90SMLegacyHullFront(P: T90BuilderPort): void {
       [s * 0.80, 1.38, -2.885], [s * 0.87, 1.38, -2.885], [s * 0.87, 1.38, -3.17], [s * 0.80, 1.38, -3.17],
     ));
     P.add('hull', box(0.07, 0.28, 0.20), s * 0.835, 1.24, -3.28);     // tall rack body follows the recovered -3.18..-3.38 / 1.10..1.38 adjacent band
-    P.add('hull', box(0.07, 0.29, 0.05), s * 0.835, 1.045, -3.41);    // datum-height terminal toe occupies only the source's final thin -3.385..-3.435 sliver
+    // 2026-10-19 (owner float sweep): the toe stood 5 mm aft of the rack body; it is 7 mm deeper forward (rear face
+    // still -3.435) so it bears on it.
+    P.add('hull', box(0.07, 0.29, 0.057), s * 0.835, 1.045, -3.4065);    // datum-height terminal toe occupies only the source's final thin -3.385..-3.435 sliver
     P.add('hullDark', box(0.06, 0.06, 0.022), s * 0.835, 1.15, -3.41); // end-frame plate remains wholly on the low terminal bar
     P.add('hull', box(0.145, 0.32, 0.20), s * 1.1325, 1.17, -3.06);   // outer rack pair x 1.06..1.205 rear -3.16 (T5H-c teeter compromise: the ±1.05..1.13 col rear reads -3.24 in one frame, -3.02 in the next; band 1.01..1.33 per the ref 1.006 line)
     P.add('hull', box(0.26, 0.40, 0.20), s * 1.30, 1.12, -3.05);      // corner bin rear -3.15 (T5H-b teeter compromise) — T5H-e: front -2.95 / bottom 0.92 (its 0.88 bottom-front corner grazed the sprocket wrap-shoe envelope: exact-audit 18 vox)
@@ -3602,7 +3651,8 @@ function addT90SMLegacyHullDeckAndGear(P: T90BuilderPort): void {
   // eyeX 0.98: the default w*0.36=1.26 tori sat INSIDE the track lane and
   // the idler wrap arc (clip-audit front class) — bedded on the ±1.0 lower
   // tub face instead
-  ruGlacisKit(P, { w: 3.5, y: 1.18, z: 2.61, eyeX: 0.98, eyeZ: 2.88, hookY: 0.69, hookZ: 2.99, hlY: 1.13, hlX: 1.02 });
+  // 2026-10-19 (owner float sweep): the default w*0.30 hooks stood 59 mm outboard of the nose; hookX 0.99 seats them.
+  ruGlacisKit(P, { w: 3.5, y: 1.18, z: 2.61, eyeX: 0.98, eyeZ: 2.88, hookX: 0.99, hookY: 0.69, hookZ: 2.99, hlY: 1.13, hlX: 1.02 });
   // r12: rows pulled aft+down — row1's 1.325 top sat in station slice 12
   // (z 2.48..2.97) where the ref nose line reads ~0.96 (topPct 16 class)
   // T4S RELIKT GLACIS ROWS (verdict order 3): the two lone chevrons on a
@@ -3733,7 +3783,7 @@ function addT90SMLegacyHullDeckAndGear(P: T90BuilderPort): void {
   // (t72bu_1989 fender-prong class), hung at the fender line so the side rack
   // band keeps its 1.0 raked floor.
   for (const s of [-1, 1]) {
-    P.add('hullRubber', box(0.44, 0.19, 0.19), s * 1.475, 1.04, -3.055); // T5H-b/e: corner flaps rear -3.15 (teeter compromise); front -2.96 clear of the -2.905 shoe reach
+    P.hangMudguard('t90sm-corner-flap', 'hullRubber', box(0.44, 0.19, 0.19), s * 1.475, 1.04, -3.055); // T5H-b/e: corner flaps rear -3.15 (teeter compromise); front -2.96 clear of the -2.905 shoe reach
     P.add('hull', box(0.05, 0.16, 0.16), s * 1.44, 1.10, -3.04);      // flap bracket onto the corner bin (§B2) — T5H-e: front -2.96 (the -2.72 front rode the sprocket-wrap shoe envelope: exact-audit rear blind-spot 24 vox, band 0; §B4 shoe bar). Still bridges flap (-3.15..-2.93) onto bin (-3.15..-2.91).
   }
   // The former solid outer aft course is likewise removed; the replacement
@@ -3955,8 +4005,9 @@ function addT90SMLegacyRoof(
   P.add('turret', box(0.12, 0.155, 0.69), 0.95, 0.6275, 0.035);
   P.add('turret', box(0.12, 0.085, 0.21), 0.95, 0.7475, -0.205);
   P.add('turretDark', box(0.10, 0.016, 0.19), 0.95, 0.782, -0.205);
-  P.add('turretDark', box(0.022, 0.05, 0.014), 0.88, 0.60, 0.39);      // latch pair
-  P.add('turretDark', box(0.022, 0.05, 0.014), 0.70, 0.60, 0.39);
+  // 2026-10-19 (owner float sweep): the latch pair stood 63 mm over the shell; each is dropped onto it.
+  P.snapGroup('t90sm-latch', () => P.add('turretDark', box(0.022, 0.05, 0.014), 0.88, 0.60, 0.39), { reachM: 0.07, mode: 'down' });      // latch pair
+  P.snapGroup('t90sm-latch', () => P.add('turretDark', box(0.022, 0.05, 0.014), 0.70, 0.60, 0.39), { reachM: 0.07, mode: 'down' });
   // Sosna-U gunner sight (right of the gun on the MS): housing + hood +
   // aperture on the crown plate, stepping 2.095 -> 2.015 down the ref line.
   P.add('turretDetail', box(0.34, 0.165, 0.15), 0.30, 0.6675, 0.335); // main housing top 2.15 (ref 2.157 @ 0.32-0.43w)
@@ -3984,8 +4035,9 @@ function addT90SMLegacyRoof(
   // The remaining +0.15 of the literal order is dims-blocked (reported).
   P.add('turretDetail', cylY(0.045, 0.045, 0.30, 12), -0.455, 0.675, -0.665);  // thin neck
   P.add('turretDetail', box(0.23, 0.13, 0.22), -0.455, 0.78, -0.665);          // head (top 2.245w)
-  P.add('turretDark', box(0.17, 0.08, 0.012), -0.455, 0.778, -0.518);          // window slot (head front face)
-  P.add('turretGlass', box(0.13, 0.06, 0.008), -0.455, 0.778, -0.512);
+  // 2026-10-19 (owner float sweep): the slot and glass stood 31 mm ahead of the head's front face (-0.555); seated on it.
+  P.add('turretDark', box(0.17, 0.08, 0.012), -0.455, 0.778, -0.559);          // window slot (head front face)
+  P.add('turretGlass', box(0.13, 0.06, 0.008), -0.455, 0.778, -0.553);
   P.add('turretDark', box(0.25, 0.015, 0.24), -0.455, 0.8375, -0.665);         // mushroom cap lip (T5H: top 2.245w — the tail-extreme trim re-phased the side grid and the old 2.2525 grace-line seat sampled 2.2532 > the 2.2523 grace, dims 99.7 measured; 2.245 keeps the mushroom read with margin)
   P.add('turretDetail', box(0.13, 0.13, 0.26), -0.635, 0.745, -0.665);  // meteo/EW cluster (old tower zone)
   P.add('turretDark', box(0.09, 0.022, 0.20), -0.635, 0.80, -0.665);
@@ -4257,7 +4309,9 @@ function addT90SMLegacyGunAndFinish(
   // The Relikt carrier leaves one raster-cell pocket at each forward
   // shoulder.  Back it with a buried hull plate rather than stretching the
   // reactive cassette or changing its registered damage sector.
-  for (const s of [-1, 1]) P.add('hull', box(0.16, 0.025, 0.16), s * 1.14, 1.34, 2.90);
+  // 2026-10-19 (owner float sweep): the backing plate stood 97 mm over the hull with nothing under it; it is dropped
+  // onto the hull (its plan cover is unchanged).
+  for (const s of [-1, 1]) P.snapGroup('t90sm-shoulder-backer', () => P.add('hull', box(0.16, 0.025, 0.16), s * 1.14, 1.34, 2.90), { reachM: 0.11, mode: 'down' });
   // T4S: rear log off the loud tan default (t72b3m_2022 ORDER-3 recipe — the
   // ref tail is olive-brown; render-only, per-tank wood slot).
   P.mats.wood.color.setHex(0x473e32);
@@ -4284,10 +4338,12 @@ function buildT90SMLegacy(P: T90BuilderPort): void {
 
 
 function addT90FenderShelves(P: T90BuilderPort): void {
+  // 2026-10-19 (owner float sweep): the aft shelves stood 21 mm outboard of the narrowing hull side; every shelf is
+  // 25 mm wider inboard (outer face unchanged at 1.78) and any still clear drops onto the stock under it.
   for (const side of [-1, 1]) {
     for (let index = 0; index < 11; index++) {
-      P.add('hull', KIT.box(0.16, 0.05, 0.50),
-        side * 1.70, 1.475, -2.75 + index * 0.545);
+      P.snapGroup('t90-fender-shelf', () => P.add('hull', KIT.box(0.185, 0.05, 0.50),
+        side * 1.6875, 1.475, -2.75 + index * 0.545), { reachM: 0.10, mode: 'down' });
     }
   }
 }
@@ -4354,7 +4410,9 @@ function buildT90(P: T90BuilderPort): void {
   ruDeck(P, { deckY: 1.545, hatchY: 1.34, hatchZ: 2.16, gz: -1.72, grilles: 5, gw: 1.5, periY: 1.26 });  // hatch/periscopes ON the glacis slab line
   // eyeX 0.98 (§B4 fix-round: the default w*0.36=1.26 tori sat INSIDE the
   // track lane over the idler wrap — the t90sm_2013/pt91m lesson)
-  ruGlacisKit(P, { w: 3.5, y: 1.15, z: 2.72, eyeX: 0.82, eyeZ: 2.98, eyeSplit: true, hookX: 0.99, hookY: 0.66, hookZ: 3.05, hlY: 1.13, lights: false });
+  // 2026-10-19 (owner float sweep): hookX 0.99 hung the hooks 116 mm outboard of the narrow nose; 0.82 (the T-90MS
+  // seat) plants them in it.
+  ruGlacisKit(P, { w: 3.5, y: 1.15, z: 2.72, eyeX: 0.82, eyeZ: 2.98, eyeSplit: true, hookX: 0.82, hookY: 0.66, hookZ: 3.05, hlY: 1.13, lights: false });
   {
     // bow light pods on rehooked shadow-olive clones — re-seated to the
     // FENDER SHOULDERS (critic defect 3 companion: the mid-glacis seats
@@ -4502,7 +4560,7 @@ function buildT90(P: T90BuilderPort): void {
       rotation: [0, Math.PI / 2, 0], crown: 0.018, rearCut: 0.075,
     });
     P.add('hullDark', box(0.34, 0.035, 0.054), s * 1.52, 1.455, -3.06); // rear fender clamp
-    MUDGUARDS.add(P, {
+    MUDGUARDS.add(P, { hang: true,
       label: `t90-front-mudguard-${side}`, x: s * 1.48, y: 0.825, z: 3.345,
       thickness: 0.05, length: 0.44, height: 0.55, material: 'rubber',
       rotation: [0, Math.PI / 2, 0], crown: 0.018, frontCut: 0.07,
@@ -4814,8 +4872,11 @@ function finishT90BaseAuthored(P: T90BuilderPort): void {
     [-0.22, 0.78, -0.49, 0.18], [0.16, 0.79, -0.42, -0.14],
     [0.40, 0.78, -0.47, 0.13], [0.62, 0.73, -0.59, 0.22],
   ]) {
-    P.add('turretDark', box(0.105, 0.052, 0.065), x, y, z, 0, yaw, 0);
-    P.add('turretGlass', box(0.070, 0.029, 0.010), x, y + 0.010, z + 0.038, 0, yaw, 0);
+    // 2026-10-19 (owner float sweep): two of these stood 29-57 mm off the roof and rings; each head is seated.
+    P.snapGroup('t90-roof-periscope', () => {
+      P.add('turretDark', box(0.105, 0.052, 0.065), x, y, z, 0, yaw, 0);
+      P.add('turretGlass', box(0.070, 0.029, 0.010), x, y + 0.010, z + 0.038, 0, yaw, 0);
+    }, { reachM: 0.07 });
   }
 
   // The base bins and open rack are already built by the common cast helper.
@@ -4865,6 +4926,9 @@ function finishT90BaseAuthored(P: T90BuilderPort): void {
     P.add('hullDetail', box(r * 1.75, 0.045, 0.10), x, y - r * 0.82, -3.34);
     P.add('hullDetail', box(0.045, 0.24, 0.10), x, y - 0.08, -3.25);
   }
+  // 2026-10-19 (owner float sweep): the small right drum and its cradle hung 65-80 mm under the stern cover box; a
+  // strap from the cover box down over the drum carries it.
+  P.add('hullDetail', box(0.045, 0.125, 0.03), 1.10, 1.1375, -3.46);
   KIT.towCable(P, [[-0.92, 1.02, -3.50], [-0.36, 0.88, -3.54], [0.32, 0.86, -3.54], [0.92, 1.00, -3.50]]);
   for (const [x, y] of [[-0.56, 0.72], [0.48, 0.69]]) {
     P.add('hullDark', KIT.torus(0.084, 0.020, 14), x, y, -3.54, Math.PI / 2, 0, 0);
@@ -4872,8 +4936,10 @@ function finishT90BaseAuthored(P: T90BuilderPort): void {
   }
   // Upper transom rails, offset service cover and lamps preserve the source's
   // uneven horizontal cadence; all faces overlap the backed rear field.
+  // 2026-10-19 (owner float sweep): the top rail ran 110 mm behind the transom bins' rear face with nothing under it;
+  // it now lies on that face (z -3.426).
   for (const [y, x, w] of [[1.46, -0.20, 1.44], [1.36, 0.16, 1.22], [1.27, -0.34, 0.86]]) {
-    P.add('hullDetail', box(w, 0.035, 0.035), x, y, -3.535);
+    P.add('hullDetail', box(w, 0.035, 0.035), x, y, y > 1.4 ? -3.426 : -3.535);
   }
   P.add('hull', box(0.40, 0.26, 0.08), 0.92, 1.32, -3.49);
   P.add('hullDark', box(0.30, 0.16, 0.018), 0.92, 1.32, -3.535);
@@ -5533,8 +5599,11 @@ function buildT90AVladimir(P: T90BuilderPort): void {
     [-1.82, 1.46, 0.36, 0.62],
     [-2.29, 1.18, 0.34, 0.56],
   ]) {
-    P.add('turretDark', KIT.box(w, 0.018, d), 0, y, z);
-    P.add('turretDetail', KIT.box(w * 0.76, 0.014, 0.040), 0, y + 0.016, z + d * 0.38);
+    // 2026-10-19 (owner float sweep): the aft lids stood 14-30 mm over the falling bustle roof; each is dropped onto it.
+    P.snapGroup('t90a-vladimir-bustle-lid', () => {
+      P.add('turretDark', KIT.box(w, 0.018, d), 0, y, z);
+      P.add('turretDetail', KIT.box(w * 0.76, 0.014, 0.040), 0, y + 0.016, z + d * 0.38);
+    }, { reachM: 0.05, mode: 'down' });
   }
   for (const s of [-1, 1]) {
     for (const [x, z, d, yaw] of [
@@ -5679,8 +5748,9 @@ function buildT90SM(P: T90BuilderPort): void {
   // The center keel and right inner skirt lug are likewise source-visible
   // front stations, seated into existing structure rather than free details.
   P.add('hull', KIT.box(0.09, 0.05, 4.40), 0, 0.425, 0);
-  P.add('hullRubber', KIT.box(0.04, 0.37, 0.33), 1.68, 1.055, -1.70);
-  P.add('hull', KIT.box(0.020, 0.050, 0.18), -1.880, 1.365, -1.60);
+  P.hangMudguard('t90sm-side-flap', 'hullRubber', KIT.box(0.04, 0.37, 0.33), 1.68, 1.055, -1.70);
+  // 2026-10-19 (owner float sweep): the lug stood 74 mm outboard of the skirt; it is seated on it.
+  P.snapGroup('t90sm-skirt-lug', () => P.add('hull', KIT.box(0.020, 0.050, 0.18), -1.880, 1.365, -1.60), { reachM: 0.08 });
   // Recovered rear-deck service module: the source front envelope carries a
   // 1.54 m asymmetric plateau from x -0.49..+0.89, and its side envelope
   // carries the same crest only through z -2.85..-2.72.  The module enters
@@ -5743,9 +5813,12 @@ function buildT90MS(P: T90BuilderPort): void {
     P.add('hull', cylX(r, len, 14), x, 1.49, -3.40);
     for (const sx of [-0.28, 0.28]) P.add('hullDark', cylX(r + 0.009, 0.035, 14), x + sx * len, 1.49, -3.40);
   });
+  // 2026-10-19 (owner float sweep): as addT90FenderShelves — the shelves stood 21 mm outboard of the hull side (the bow
+  // one 89 mm over the falling nose); 25 mm wider inboard, and any still clear drops onto the stock under it.
   ([-1, 1] as const).forEach((s) => {
     for (let i = 0; i < 11; i++) {
-      P.add('hull', box(0.16, 0.05, 0.50), s * 1.70, 1.475, -2.75 + i * 0.545);
+      P.snapGroup('t90ms-fender-shelf', () => P.add('hull', box(0.185, 0.05, 0.50), s * 1.6875, 1.475, -2.75 + i * 0.545),
+        { reachM: 0.10, mode: 'down' });
     }
   });
   // Forward fender/mudguard assemblies carry the print's falling bow-side
@@ -5914,7 +5987,7 @@ function buildT90MS(P: T90BuilderPort): void {
   widthAnchor(P, 1.89, 0.95, -1.60);
   ruSkirtBand(P, { x: 1.7675, th: 0.036, z0: -2.72, z1: 2.82, yTop: 1.28, yBot: 1.00, panels: 7, lipX: 1.755 });
   ([-1, 1] as const).forEach((s) => {
-    P.add('hullRubber', box(0.36, 0.30, 0.05), s * 1.52, 0.80, -3.06);
+    P.hangMudguard('t90ms-rear-flap', 'hullRubber', box(0.36, 0.30, 0.05), s * 1.52, 0.80, -3.06);
     const side = s < 0 ? 'left' : 'right';
     const flapLabel = `t90ms-front-guard-${side}-rubber-drop`;
     tagilFrontGuardLabels.push(flapLabel);
@@ -6416,7 +6489,9 @@ function rebuildT90MSTurretExact(P: T90BuilderPort): void {
       }
     }
   }
-  P.add('turretDark', box(0.42, 0.28, 0.055), 0, 0.30, 1.52, -0.28, 0, 0);
+  // 2026-10-19 (owner float sweep): the centre closure stood 101 mm ahead of and between the two Relikt fans; it is
+  // 220 mm wider and set 54 mm back / 43 mm lower so its edges lap into both fans' inner tiles.
+  P.add('turretDark', box(0.64, 0.28, 0.055), 0, 0.257, 1.466, -0.28, 0, 0);
   });
 
   // Source-dominant paired frontal optic heads. Their buried rectangular
@@ -6908,7 +6983,7 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
       material: 'painted-steel', rotation: [0, -s * 0.20 + Math.PI / 2, 0],
       crown: 0.025, frontCut: 0.04, rearCut: 0.02,
     });
-    MUDGUARDS.add(P, {
+    MUDGUARDS.add(P, { hang: true,
       label: `t90m-proryv-rear-mudguard-${s < 0 ? 'left' : 'right'}`,
       x: s * 1.64, y: 0.78, z: -3.02,
       thickness: 0.055, length: 0.34, height: 0.58,
@@ -7321,7 +7396,8 @@ function enhanceT90MProryvSurface2026(P: T90BuilderPort): void {
     // Bustle lids, latch shoes and short side-return ribs break the old
     // rectangular magazine boxes while staying entirely inside their plan.
     for (const [z, w] of [[-1.48, 0.38], [-1.96, 0.34], [-2.42, 0.29]]) {
-      P.add('turretDark', box(w, 0.014, 0.030), s * 0.78, 0.695, z);
+      // 2026-10-19 (owner float sweep): the aft lid strip stood 27 mm over the falling bustle; each strip is seated on it.
+      P.snapGroup('t90m-bustle-lid-strip', () => P.add('turretDark', box(w, 0.014, 0.030), s * 0.78, 0.695, z), { reachM: 0.06 });
       P.add('turretDetail', box(0.030, 0.050, 0.040), s * 0.94, 0.58, z + 0.16);
       P.add('turretDetail', box(0.025, 0.025, 0.26), s * 1.02, 0.42, z);
     }
@@ -7450,7 +7526,9 @@ function finishT90MProryvOwner2026(P: T90BuilderPort): void {
   }
   P.add('hullDetail', box(1.46, 0.038, 0.038), 0, 0.76, -3.11);
   for (const s of [-1, 1]) {
-    P.add('hullDetail', box(0.045, 0.25, 0.040), s * 1.18, 0.86, -3.10, 0, 0, -s * 0.16);
+    // 2026-10-19 (owner float sweep): the braces stood 50-82 mm clear of the louvre court and the corner box above; each
+    // runs 90 mm higher, into that box.
+    P.add('hullDetail', box(0.045, 0.34, 0.040), s * 1.18, 0.905, -3.10, 0, 0, -s * 0.16);
     P.add('hullDark', box(0.22, 0.13, 0.040), s * 1.28, 1.13, -3.10);
   }
 
@@ -7836,16 +7914,22 @@ function addT90BurlakBustleNative2026(
     [-1.34, 1.54, 0.32, 0.68], [-1.80, 1.44, 0.35, 0.69],
     [-2.29, 1.26, 0.36, 0.67], [-2.83, 1.04, 0.36, 0.62],
   ]) {
-    P.add('turretDark', box(fit(w), fit(0.018), fit(d)), 0, fit(y), fitZ(z));
-    P.add('turretDetail', box(fit(w * 0.80), fit(0.012), fit(0.040)),
-      0, fit(y + 0.015), fitZ(z + d * 0.39));
+    // 2026-10-19 (owner float sweep): the lids kept a flat seat while the bustle roof falls aft, leaving them 8-16 mm
+    // up; each lid and its strip is dropped onto the roof.
+    P.snapGroup('t90-burlak-bustle-lid', () => {
+      P.add('turretDark', box(fit(w), fit(0.018), fit(d)), 0, fit(y), fitZ(z));
+      P.add('turretDetail', box(fit(w * 0.80), fit(0.012), fit(0.040)),
+        0, fit(y + 0.015), fitZ(z + d * 0.39));
+    }, { reachM: 0.04, mode: 'down' });
   }
   for (const s of [-1, 1]) {
-    for (const [x, z, d] of [[1.00, -2.12, 0.33], [0.92, -2.53, 0.31], [0.82, -2.91, 0.29]]) {
+    // 2026-10-19 (owner float sweep): the yawed side pods stood 25-46 mm off the tapering bustle wall; each pod and its
+    // face plate is seated on the wall.
+    for (const [x, z, d] of [[1.00, -2.12, 0.33], [0.92, -2.53, 0.31], [0.82, -2.91, 0.29]]) P.snapGroup('t90-burlak-bustle-pod', () => {
       P.add('turret', box(fit(0.19), fit(0.28), fit(d)), s * fit(x), fit(0.37), fitZ(z), 0, -s * 0.32, 0);
       P.add('turretDark', box(fit(0.015), fit(0.22), fit(d * 0.80)),
         s * fit(x + 0.105), fit(0.37), fitZ(z), 0, -s * 0.32, 0);
-    }
+    }, { reachM: 0.06 });
     if (scale < 0.999) {
       // Keep optional reduced comparison envelopes watertight without changing
       // the visible armour-pod proportions. Production vehicles remain scale=1.
@@ -7893,12 +7977,19 @@ function finishT90BurlakNative2026(P: T90BuilderPort): void {
   // cast shell itself.
   P.add('turret', box(0.52, 0.14, 0.48), 0.38, 0.63, -0.70);
   P.add('turretDark', torus(0.22, 0.022, 18), 0.38, 0.71, -0.70);
+  // 2026-10-19 (owner float sweep): the sight head stood 40 mm over its seat box (and its window 19 mm off its face),
+  // and the left hatch ring 74 mm over the crown with the commander station on it. The window lies on the head's
+  // raked face, and the ring's collar runs down into the crown.
+  // 2026-10-21 (float-gaps 230): the head keeps its 0.92 station (its crown is the turret's top, pinned by
+  // fleetResize20261002; the 10-19 sweep had dropped it 42 mm into the box); a 50 mm neck inside the slew ring
+  // (corners 21 mm inside the ring's tube) runs from 2.5 mm inside the seat box to 7.5 mm inside the head.
+  P.add('turret', box(0.26, 0.05, 0.24), 0.38, 0.7225, -0.70);
   P.add('turret', orientedSlab(
     [-0.15, -0.18, -0.14], [0.15, -0.18, -0.14], [0.15, -0.18, 0.14], [-0.15, -0.18, 0.14],
     [-0.11, 0.18, -0.10], [0.11, 0.18, -0.10], [0.11, 0.18, 0.10], [-0.11, 0.18, 0.10],
   ), 0.38, 0.92, -0.70);
-  P.add('turretGlass', box(0.19, 0.16, 0.012), 0.38, 0.92, -0.555);
-  P.add('turret', cylY(0.25, 0.28, 0.10, 18), -0.48, 0.78, -0.34);
+  P.add('turretGlass', box(0.19, 0.16, 0.012), 0.38, 0.92, -0.576, -0.111, 0, 0);
+  P.add('turret', cylY(0.25, 0.28, 0.22, 18), -0.48, 0.72, -0.34);
   P.add('turretDark', cylY(0.22, 0.22, 0.022, 16), -0.48, 0.84, -0.34);
   P.add('turret', cylY(0.20, 0.23, 0.09, 16), 0.38, 0.77, -0.24);
   P.add('turretDark', cylY(0.17, 0.17, 0.020, 14), 0.38, 0.825, -0.24);
@@ -8021,6 +8112,7 @@ function buildT90BurlakHybridNative2026(P: T90BuilderPort): void {
     gunAssemblyRaiseM: 0,
     adoptT90MFamilyGun: false,
     recordSeatReceipt: false,
+    fenderLipHullSeat: false,
   });
   // Burlak's hull shoulders sit inside the common T-90A track lanes.  Keep
   // the certified native six-wheel course at full gauge, but narrow the
@@ -8048,6 +8140,21 @@ function buildT90BurlakHybridNative2026(P: T90BuilderPort): void {
     if (rightPlate) geo.translate(1.68 - bounds.min.x, 0, 0);
     else if (leftPlate) geo.translate(-1.68 - bounds.max.x, 0, 0);
   });
+  // 2026-10-21 (float-gaps 230): the K-5 skirt course (visual ERA, outside the section scale) keeps its unscaled
+  // 1.838..1.888 station, 124 mm outboard of the reseated band (1.68..1.714). Each shared course hanger, scaled with
+  // the hull detail to 1.672..1.734 at y x0.92+0.12 and z x1.02, gets an extension from 9 mm inside its outboard end to
+  // 7 mm inside the course.
+  for (const s of [-1, 1]) for (const z of T90A_K5_HANGER_ZS) {
+    P.add('hullDetail', KIT.box(0.12, 0.034, 0.036), s * 1.785, 1.095, z * 1.02);
+  }
+  // The fender lips keep their reseated 1.68..1.83 station (fenderLipHullSeat false). Aft of the closing shelves
+  // (z < -1.30) nothing carries them: the low i=2 lip stands 4.6 mm over the reseated band (top 1.1688) and the raised
+  // i=1 pair 97 mm over it. A spacer pair and a web, inside the band's outboard plan (1.68..1.714), carry them from
+  // 5.8 mm inside the band to 6.6 mm inside the lip.
+  for (const s of [-1, 1]) {
+    for (const z of [-1.85, -1.55]) P.add('hullDetail', KIT.box(0.02, 0.017, 0.04), s * 1.695, 1.1715, z);
+    P.add('hullDetail', KIT.box(0.02, 0.109, 0.06), s * 1.695, 1.2175, -2.17);
+  }
   // Closing fender shelves. Narrowing the inherited T-90A hull and then
   // reseating its outboard skirt course used to leave a 20–30 cm open air
   // channel down both shoulders. These mirrored, segmented plates overlap

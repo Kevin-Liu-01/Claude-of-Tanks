@@ -47,8 +47,11 @@ function hull(P: TankBuilderPort): void {
     // Both mirror heads and their continuous stalk use the measured bow
     // station; the upper head must remain above the roof from front/rear.
     P.addEquipment('hullDetail',box(.027,.734,.027),side*1.795,1.805,2.891,0,0,-side*.323);
-    P.addEquipment('hullDetail',box(.154,.290,.028),side*1.908,1.858,2.852);
-    P.addEquipment('hullGlass',box(.124,.260,.008),side*1.908,1.858,2.833);
+    // 2026-10-19 (owner float sweep): the lower head stood 19 mm off its stalk; it seats onto it.
+    P.snapGroup('puma-lower-mirror',()=>{
+      P.addEquipment('hullDetail',box(.154,.290,.028),side*1.908,1.858,2.852);
+      P.addEquipment('hullGlass',box(.124,.260,.008),side*1.908,1.858,2.833);
+    },{reachM:.04});
     P.addEquipment('hullDetail',box(.212,.154,.032),side*1.922,2.106,2.862);
     P.addEquipment('hullGlass',box(.180,.122,.008),side*1.922,2.106,2.841);
   }
@@ -81,11 +84,11 @@ function hull(P: TankBuilderPort): void {
   P.addHatch('hull',box(1.29,.95,.055),0,1.44,-3.715);
   P.addEquipment('hullDetail',box(1.30,.08,.05),0,1.62,-3.755);
   for(const x of [-.51,.51])P.addEquipment('hullDetail',cylX(.055,.18,12),x,.58,-3.27);
-  P.addEquipment('hullDetail',box(.18,.035,.04),.39,1.49,-3.788);
+  P.addEquipment('hullDetail',box(.18,.035,.04),.39,1.49,-3.761); // 2026-10-19 (owner float sweep): was 25 mm off the door
   for(const s of [-1,1]) {
     P.addEquipment('hullDetail',box(.028,.16,1.18),s*1.18,1.996,-3.04);
     P.addEquipment('hullDetail',box(.96,.028,.028),s*.71,2.066,-3.60);
-    P.addEquipment('hullGlass',box(.19,.09,.018),s*1.29,1.75,-3.735);
+    P.addEquipment('hullGlass',box(.19,.09,.018),s*1.29,1.75,-3.687); // 2026-10-19 (owner float sweep): was 46 mm behind the -3.68 tail
   }
   P.addEquipment('hullDark',cylY(.010,.020,2.24,P.q?10:6),-1.31,3.26,-3.49);
   P.addEquipment('hullDetail',cylY(.055,.07,.30,12),-1.31,2.066,-3.49);
@@ -144,6 +147,10 @@ function turret(P: TankBuilderPort): void {
   for(const side of [-1,1]) {
     const x=side<0?-.48:1.27;
     turretEquipment(P,'turretDetail',box(.075,.48,.22),x,2.55,-2.16);
+    // 2026-10-19 (owner float sweep): the banks stood 8 cm (right) and 22 cm (left) off the turret flanks; a bracket
+    // runs from each flank into the bank's mounting plate.
+    const [bx0,bx1]=side<0?[-.21,-.45]:[1.143,1.24];
+    turretEquipment(P,'turretDetail',box(Math.abs(bx1-bx0),.05,.10),(bx0+bx1)/2,2.40,-2.16);
     for(let i=0;i<4;i++)turretEquipment(P,'turretDetail',markSmokeTube(cylZ(.036,.16,10)),x,2.36+i*.109,-2.02,-.42,side*.53);
   }
 }

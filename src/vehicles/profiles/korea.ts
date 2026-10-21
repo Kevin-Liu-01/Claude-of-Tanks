@@ -121,11 +121,15 @@ function addK2BPackage(P: ProceduralBuilderPort): void {
       const h = i === 0 || i === 7 ? 0.82 : 0.94;
       cassette(P, 'hull', side * 1.86, 1.12 + (i % 2) * 0.008, z,
         0.075, h, 0.70, [0, 0, side * (i < 2 ? 0.035 : -0.012)], false);
-      P.add('hullDark', box(0.020, 0.040, 0.56), side * 1.905,
+      // the two bow cassettes lean in 0.035 rad: their top strip follows the leaning face (it stood 10 mm off it)
+      P.add('hullDark', box(0.020, 0.040, 0.56), side * (i < 2 ? 1.8925 : 1.905),
         1.48, z);
       P.add('hullDetail', box(0.020, 0.54, 0.025), side * 1.907,
         1.13, z + 0.33);
     }
+    // The cassettes stand 10 cm outboard of the K2 skirt (outer face 1.72): a mounting rail along the skirt top carries
+    // them (owner 2026-10-19 sweep: they floated beside it with nothing joining them to the hull).
+    P.add('hull', box(0.12, 0.05, 6.10), side * 1.77, 1.46, -0.15);
     // Folded bow shoulder closes into the frontal armor instead of ending
     // as a flat applique plate.
     P.add('hull', slab(

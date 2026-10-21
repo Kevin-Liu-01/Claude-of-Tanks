@@ -16,10 +16,12 @@ function sight(P:TankBuilderPort,g:THREE.BufferGeometry,x=0,y=0,z=0,dark=false):
   P.addModuleVisual('optics',dark?'turretDark':'turretDetail',g,x-YAW[0],y-YAW[1],z-YAW[2]);
 }
 
+/** The side case's inner (turret-facing) wall at its lid, u in the case frame at station v. */
+const caseInner=(v:number)=>Math.max(1.32672,Math.min(1.41494,1.32672+.28221*(v+.6496),1.32672+.27668*(.3843-v)));
 function caseSection(v:number,side:number):readonly SectionPoint[]{
   // Intersections of the measured inner approach, outer vertical wall, and
   // chamfer planes. The lower outer wall slopes inward, leaving turret air.
-  const inner=Math.max(1.32672,Math.min(1.41494,1.32672+.28221*(v+.6496),1.32672+.27668*(.3843-v)));
+  const inner=caseInner(v);
   const outer=Math.min(1.73557,1.55555+1.29643*(v+.7287),1.55633+1.327745*(.46321-v));
   const lowOuter=Math.min(1.5563,outer-.0003),shoulder=1.6165+Math.max(.0005,outer-1.5563)*1.8140;
   const ring:Array<SectionPoint>=[[inner+.04982,1.6165],[lowOuter,1.6165],[outer,shoulder],[outer,2.0467],[inner,2.0467]];
@@ -36,11 +38,15 @@ function sideCase(P:TankBuilderPort,side:number):void{
       -Math.sin(CASE_ANGLE)*u+Math.cos(CASE_ANGLE)*v+SHIFT);
   }
 }
+/** The rear case's vertical front (turret-facing) wall, world z at x (linear between its stations). */
+function rearCaseFront(x:number):number{
+  const inset=Math.max(0,Math.min(1,(x+.4469)/.2972,(.5207-x)/.2937));
+  return -1.3949-.1323*inset+SHIFT;
+}
 function rearCase(P:TankBuilderPort):void{
   const xs=[-.5207,-.4469,-.3929,-.1497,.227,.4667,.5207,.5946];
   const rows=xs.map(x=>{
-    const inset=Math.max(0,Math.min(1,(x+.4469)/.2972,(.5207-x)/.2937));
-    const front=-1.3949-.1323*inset+SHIFT;
+    const front=rearCaseFront(x);
     const rear=-1.6828-.0797*Math.max(0,Math.min(1,(x+.5207)/.1278,(.5946-x)/.1279))+SHIFT;
     return{z:x,ring:[[-front,1.6585],[-rear-.1618,1.6585],[-rear,2.0326],[-rear,2.1419],[-front,2.1419]] as readonly SectionPoint[]};
   });
@@ -49,8 +55,25 @@ function rearCase(P:TankBuilderPort):void{
     .map(([z,r,top])=>({z,ring:[[.03725-r,2.1419],[.03725+r,2.1419],[.03725+r,top],[.03725-r,top]]}))));
   for(const x of [-.2123,.03855,.28945])add(P,KIT.box(.0469,.0074,.0857),x,2.1586,-1.53850);
 }
+// 2026-10-21 (float-gaps 230): the source cases stand where they were measured (t72b3XEquipment.selftest.mjs pins
+// their roofs, lids and inclined rear wall), 10-17 cm off this narrower cast turret (the source's wall sits outside it);
+// welded bracket plates carry them instead of moving them. Each plate runs from 6 cm inside the case wall to 2 cm
+// inside the casting at the plate's top, where the cast wall has curved farthest in (measured by ray on the shell).
+const SIDE_CASE_BRACKETS:readonly(readonly[v:number,leftU:number,rightU:number])[]=[[-.45,1.257,1.265],[.20,1.239,1.283]];
+const REAR_CASE_BRACKETS:readonly(readonly[x:number,wallZ:number])[]=[[-.35,-1.1655],[.35,-1.1848]];
+function caseBrackets(P:TankBuilderPort):void{
+  const c=Math.cos(CASE_ANGLE),sn=Math.sin(CASE_ANGLE);
+  for(const side of [-1,1])for(const [v,leftU,rightU]of SIDE_CASE_BRACKETS){
+    const uIn=side<0?leftU:rightU,uOut=caseInner(v)+.06,u=(uIn+uOut)/2;
+    add(P,KIT.box(uOut-uIn,.18,.016).rotateY(side*CASE_ANGLE),side*(c*u+sn*v)+(side>0?-.0007:0),1.71,-sn*u+c*v+SHIFT);
+  }
+  for(const [x,wallZ]of REAR_CASE_BRACKETS){
+    const zOut=rearCaseFront(x)-.04;
+    add(P,KIT.box(.016,.185,wallZ-zOut),x,1.7575,(wallZ+zOut)/2);
+  }
+}
 export function addT72B3Stowage(P:TankBuilderPort):void{
-  sideCase(P,-1);sideCase(P,1);rearCase(P);
+  sideCase(P,-1);sideCase(P,1);rearCase(P);caseBrackets(P);
 }
 
 type MachineGun=ReturnType<typeof sourceMachineGun>;
@@ -98,6 +121,8 @@ function commanderOptic(P:TankBuilderPort):void{
     [.07835,-.7003,-.5267,2.4021,2.4021]],.026));
   add(P,roofSheet([[-.16395,-.8581,-.3694,2.462,2.462],[-.12875,-.8581,-.3694,2.4894,2.4894],
     [-.09355,-.8581,-.3694,2.462,2.462]],.0273));
+  // 2026-10-19 (owner float sweep): the sight stood 50 mm over its saddle; a pedestal carries it
+  add(P,KIT.box(.10,.09,.07),-.61415,2.445,.035);
 }
 function sosnaHousing(P:TankBuilderPort):void{
   // Tall optical head only occupies the rear/right course. Front courses are

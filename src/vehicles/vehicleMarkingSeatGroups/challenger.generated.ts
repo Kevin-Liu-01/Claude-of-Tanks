@@ -411,7 +411,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilitySamples": 9,
         "visibilityClearSamples": 7,
         "visibilityRatio": 0.7777778,
-        "maximumSurfaceErrorM": 0.122143
+        "maximumSurfaceErrorM": 0.1448797
       },
       {
         "kind": "designation",

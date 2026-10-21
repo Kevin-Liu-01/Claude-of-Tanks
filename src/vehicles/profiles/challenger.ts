@@ -135,7 +135,8 @@ interface RoofSeatReceipt {
 
 interface SmokeMouthReceipt {
   readonly side: number;
-  readonly tubeCenter: readonly number[];
+  /** Moves with its bank when the bank is seated (P.snapGroup). */
+  tubeCenter: readonly number[];
   readonly rotation: readonly number[];
   readonly mouthOffsetZ: number;
 }
@@ -384,7 +385,7 @@ function challenger1Build(P: ChallengerBuilderPort): void {
       // sweep (<=4.065) and the 4.047 column boundary (§C). The wrap owns
       // the 3.982 column's 0.49 bottom regardless (the flap never painted
       // it), so the move is mask-free.
-      P.add('hullRubber', box(0.16, 0.30, 0.04), s * 1.62, 0.85, 4.02);
+      P.hangMudguard('challenger1-front-flap', 'hullRubber', box(0.16, 0.30, 0.04), s * 1.62, 0.85, 4.02);
       // (r3 note: trim planks were TRIED here per the revolution r15 recipe
       // and removed — r15's plank painted a line its band couldn't reach
       // behind the skirt window; HERE the band is visible and reads LOWER
@@ -872,13 +873,14 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     P.add('turret', slab(
       [-0.52, 0.79, 0.42], [-0.28, 0.79, 0.42], [-0.28, 0.79, 0.76], [-0.52, 0.79, 0.76],
       [-0.49, 1.16, 0.46], [-0.31, 1.16, 0.46], [-0.31, 1.16, 0.72], [-0.49, 1.16, 0.72]));
+    // 2026-10-19 (owner float sweep): the visor's 0.76 rear face stood 31-40 mm ahead of the sight body's raked front
+    // (0.72..0.73); its rear face now runs back to 0.715, into the body.
     P.add('turret', slab(
-      [-0.52, 1.08, 0.83], [-0.28, 1.08, 0.83], [-0.28, 1.08, 0.76], [-0.52, 1.08, 0.76],
-      [-0.50, 1.14, 0.83], [-0.30, 1.14, 0.83], [-0.31, 1.16, 0.76], [-0.49, 1.16, 0.76]));
-    // glass tucked under the visor lip (rear face embeds 10 mm into the visor
-    // front — the old 0.91 seat floated 50 mm ahead once the body face moved;
-    // plan-free: the nose plane owns every plan column this band touches)
-    P.add('turretGlass', box(0.19, 0.045, 0.03), -0.40, 1.045, 0.835);
+      [-0.52, 1.08, 0.83], [-0.28, 1.08, 0.83], [-0.28, 1.08, 0.715], [-0.52, 1.08, 0.715],
+      [-0.50, 1.14, 0.83], [-0.30, 1.14, 0.83], [-0.31, 1.16, 0.715], [-0.49, 1.16, 0.715]));
+    // glass tucked under the visor lip (2026-10-19 owner float sweep: the 0.835 seat stood 87 mm ahead of the body's
+    // 0.733 face; its rear face now sits 3-8 mm into that face, under the visor)
+    P.add('turretGlass', box(0.19, 0.045, 0.03), -0.40, 1.045, 0.745);
     P.add('turret', slab(
       [-0.73, 0.64, 1.00], [-0.48, 0.64, 1.00], [-0.48, 0.64, 1.43], [-0.73, 0.64, 1.43],
       [-0.70, 0.94, 1.04], [-0.51, 0.94, 1.04], [-0.51, 0.94, 1.39], [-0.70, 0.94, 1.39]));
@@ -1481,9 +1483,13 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     // A lower broken louvre line fills the former plain center plate.  Each
     // strip is shallow, backed by the original transom, and separated from
     // the track terminals by the full hull center lane.
+    // 2026-10-19 (owner float sweep): the two low strips hung 30-40 mm under the transom's lower edge (the hull behind
+    // them stands 0.64 m forward); each strip rises onto that edge.
     for (const [x, w, y] of [[-0.63, 0.30, 1.04], [-0.25, 0.38, 1.08], [0.22, 0.42, 1.03], [0.67, 0.25, 1.10]]) {
-      P.add('hullDark', box(w, 0.065, 0.018), x, y, -3.988);
-      P.add('hullDetail', box(w * 0.84, 0.014, 0.012), x, y, -3.999);
+      P.snapGroup('cr1-rear-louvre', () => {
+        P.add('hullDark', box(w, 0.065, 0.018), x, y, -3.988);
+        P.add('hullDetail', box(w * 0.84, 0.014, 0.012), x, y, -3.999);
+      }, { reachM: 0.05 });
     }
     // The live first-party casting had accumulated a tall/narrow read even
     // though its plan stations were correct.  A restrained group correction
@@ -2207,7 +2213,9 @@ function buildChallenger2VariantPackage(
       const buildChallenger2VariantPackageTurretCourse1 = (): void => {
         const buildChallenger2VariantPackageHullStage1 = (): void => {
           for (const side of [-1, 1]) {
-            P.add('hull', box(0.09, 0.76, 6.82), side * 1.81, 0.98, -0.08);
+            // 2026-10-19 (owner float sweep): the carrier stood 10 mm off the 1.755 skirt course (75 mm island with its
+            // bricks); its inner face now runs 12 mm into the course, outer face kept at 1.855.
+            P.add('hull', box(0.112, 0.76, 6.82), side * 1.799, 0.98, -0.08);
             P.add('hullDark', box(0.025, 0.10, 6.88), side * 1.862, 1.34, -0.08);
             for (let k = 0; k < 8; k++) {
               const z = 2.92 - k * 0.84;
@@ -2220,7 +2228,8 @@ function buildChallenger2VariantPackage(
         const buildChallenger2VariantPackageAssemblyStage1 = (): void => {
           P.eraCluster('cr2e_skirt_era_R', (put) => {
             for (let c = 0; c < 6; c++) for (let row = 0; row < 3; row++) {
-              put(1.905, 0.82 + row * 0.22, 3.00 - c * 0.55, 0, Math.PI / 2, 0, 1.18, 1.32, 0.72);
+              // 2026-10-19 (owner float sweep): bricks stood 25 mm off the carrier's 1.855 face; inner face now 2 mm into it
+              put(1.878, 0.82 + row * 0.22, 3.00 - c * 0.55, 0, Math.PI / 2, 0, 1.18, 1.32, 0.72);
             }
           });
         };
@@ -2228,7 +2237,7 @@ function buildChallenger2VariantPackage(
         const buildChallenger2VariantPackageAssemblyStage2 = (): void => {
           P.eraCluster('cr2e_skirt_era_L', (put) => {
             for (let c = 0; c < 6; c++) for (let row = 0; row < 3; row++)
-              put(-1.905, 0.82 + row * 0.22, 3.00 - c * 0.55, 0, -Math.PI / 2, 0, 1.18, 1.32, 0.72);
+              put(-1.878, 0.82 + row * 0.22, 3.00 - c * 0.55, 0, -Math.PI / 2, 0, 1.18, 1.32, 0.72);
           });
         };
         buildChallenger2VariantPackageAssemblyStage2();
@@ -2295,7 +2304,9 @@ function buildChallenger2VariantPackage(
                   .addScaledVector(frame.horizontal, (c - (columns - 1) * 0.5) * horizontalPitch)
                   .addScaledVector(placementVertical,
                     (row - (rows - 1) * 0.5) * verticalPitch - surfaceLowering)
-                  .addScaledVector(frame.normal, surfaceOffset);
+                  // 2026-10-19 (owner float sweep): the cheek falls away under the upper row's two middle cassettes
+                  // (35 mm islands, 62 mm off at their centres); they sink 46 mm along the normal onto it.
+                  .addScaledVector(frame.normal, surfaceOffset - (row === 1 && (c === 1 || c === 2) ? 0.046 : 0));
                 put(point.x, pivotY + point.y, pivotZ + point.z,
                   ...frame.rotation, widthScale, heightScale, 0.82);
                 placedYs.push(pivotY + point.y);
@@ -2523,7 +2534,9 @@ function buildChallenger2VariantPackage(
           const bottomY = carrierY - 0.010;
           const height = canopyRailY - bottomY;
           P.add('turretDetail', box(0.035, height, 0.035), x, bottomY + height * 0.5, z);
-          receipt.cagePosts++;
+          // 2026-10-19 (owner float sweep): the posts stand 80-120 mm inboard of the canopy's side rails, so the frame
+          // floated over them; a tie bar from each post head runs out to the side rail
+          P.add('turretDetail', box(0.12, 0.024, 0.024), Math.sign(x) * 1.335, canopyRailY, z);
         }
         receipt.canopyMaximumLegGapM = 0;
         receipt.canopyLoweringM = 1.32 - canopyRailY;
@@ -2632,7 +2645,7 @@ function buildChallenger3XSkirts(
       for (let row = 0; row < 3; row++) {
         for (let station = 0; station < 13; station++) {
           place(
-            side * 1.965, 0.79 + row * 0.235, 3.18 - station * 0.55,
+            side * 1.943, 0.79 + row * 0.235, 3.18 - station * 0.55,   // backs 2 mm into the skirt's 1.90 face (22 mm off it)
             0, side * Math.PI / 2, 0,
             1.72, 1.42, 1.22,
           );
@@ -2657,7 +2670,11 @@ function buildChallenger3XGlacisEra(
         for (let station = 0; station < 5; station++) {
           const point = new THREE.Vector3(side * (0.18 + station * 0.29), surfaceY, z)
             .addScaledVector(glacisFrame.normal, 0.020);
-          place(point.x, point.y, point.z, ...glacisFrame.rotation, 0.94, 1.76, 0.80);
+          // seated along the plate normal on this hull's glacis, which runs 14 cm under the CR2 surface line the
+          // stations follow (owner 2026-10-19 sweep)
+          const n = glacisFrame.normal;
+          P.snapGroup('c3-glacis-era', () => place(point.x, point.y, point.z, ...glacisFrame.rotation, 0.94, 1.76, 0.80),
+            { reachM: 0.20, direction: [-n.x, -n.y, -n.z] });
           receipt.glacisEraCassettes++;
         }
       }
@@ -2696,12 +2713,13 @@ function buildChallenger3XTurretEra(
     P.eraCluster(sideSector, (place) => {
       for (let row = 0; row < 3; row++) {
         for (let station = 0; station < 8; station++) {
-          place(
-            side * 1.75, turretPivotY + 0.20 + row * 0.205,
+          // each cassette backs onto the falling turret side behind it (owner 2026-10-19 sweep: 8-43 mm off it)
+          P.snapGroup('c3-turret-side-era', () => place(
+            side * 1.74, turretPivotY + 0.20 + row * 0.205,
             turretPivotZ - 2.90 + station * 0.37,
             0, side * Math.PI / 2, 0,
             1.24, 1.30, 1.20,
-          );
+          ), { reachM: 0.06 });
           receipt.turretSideEraCassettes++;
         }
       }
@@ -2988,6 +3006,12 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     cr2ProfileStrip(P, 0.25, 0.33,
       [[2.80, cr2At(hullTop, 2.80)], ...hullTop.filter(([z]) => z > 2.80 && z < 3.80), [3.80, 1.31]],
       [[2.80, cr2At(hullBottom, 2.80)], ...hullBottom.filter(([z]) => z > 2.80 && z < 3.80), [3.80, 1.02]]);
+    // 2026-10-19 (owner float sweep): the same 0.25..0.33 m seam stayed open aft, between the centre strip and the
+    // stern cross-loft (z -3.66..-2.90), an 80 mm see-through slot in the stern belly; the stern bridge follows the
+    // centre strip's own profile and closes it.
+    cr2ProfileStrip(P, 0.25, 0.33,
+      [...centerHullTop.filter(([z]) => z < -2.90), [-2.90, cr2At(centerHullTop, -2.90)]],
+      [...centerHullBottom.filter(([z]) => z < -2.90), [-2.90, cr2At(centerHullBottom, -2.90)]]);
   };
   buildChallenger2AssemblyStage3();
 
@@ -3059,8 +3083,9 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
         P.add('hullDetail', box(0.010, 0.15, 0.05), sx(1.750), 1.24, z);
         P.add('hullDark', box(0.012, 0.025, 0.20), sx(1.701), 1.07, z + 0.08);
       }
+      // lower tabs hang from the skirt faces' 0.73 bottom edge (owner 2026-10-19 sweep: authored 0.115 m under it)
       for (const z of [2.38, 1.28, 0.18, -0.92, -2.02]) {
-        P.add('hull', box(0.05, 0.13, 0.30), sx(1.660), 0.55, z);
+        P.add('hull', box(0.05, 0.26, 0.30), sx(1.660), 0.615, z);
       }
     }
 
@@ -3078,13 +3103,16 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
         // rake at 10 mm thickness instead of crossing the outer top edge.
         [sx(1.18), 1.48, -0.55], [sx(shoulderOuter), side < 0 ? 1.47 : 1.46, -0.55],
         [sx(shoulderOuter), side < 0 ? 1.47 : 1.46, 0.55], [sx(1.18), 1.48, 0.55],
-        [sx(1.18), 1.49, -0.55], [sx(shoulderOuter), side < 0 ? 1.48 : 1.47, -0.55],
-        [sx(shoulderOuter), side < 0 ? 1.48 : 1.47, 0.55], [sx(1.18), 1.49, 0.55]));
+        // top 20 mm higher, into the ring landing's 1.5075 underside (it stood 18 mm under it, nothing else holding it)
+        [sx(1.18), 1.51, -0.55], [sx(shoulderOuter), side < 0 ? 1.50 : 1.49, -0.55],
+        [sx(shoulderOuter), side < 0 ? 1.50 : 1.49, 0.55], [sx(1.18), 1.51, 0.55]));
       // These were accidentally authored as 1.54 m VERTICAL rubber strips.
       // Lay the same rails longitudinally on the fender shoulder instead.
       // The slight fore/aft rake follows the live deck course at z +/-0.77.
+      // 2026-10-19 (owner float sweep): the rails stood 35-47 mm over the 1.58..1.60 deck lane (their 0.027 rake was
+      // shallower than the deck's 0.035); same rake as the deck now, bottoms 2 mm into it.
       P.add('hullDetail', box(side < 0 ? 0.08 : 0.14, 0.045, 1.54),
-        sx(side < 0 ? 1.62 : 1.65), 1.365, 0, 0.027, 0, 0);
+        sx(side < 0 ? 1.62 : 1.65), 1.322, 0, 0.035, 0, 0);
     }
     P.hullG.userData.challenger2FenderReceipt = {
       rails: 2,
@@ -3096,8 +3124,8 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     // actual load surface (centered on armorChallenger2.turretPivot.z), not a
     // second turret silhouette; it closes the former visual/physical seam.
     P.add('hull', box(2.75, 0.035, 1.00), 0, 1.525, 1.00);
-    for (const side of [-1, 1]) P.add('hull', box(0.025, 0.12, 0.12), side * 1.005, 0.435, 0);
-    P.add('hull', box(0.04, 0.04, 0.12), 1.72, 1.42, 0);
+    for (const side of [-1, 1]) P.add('hull', box(0.06, 0.12, 0.12), side * 0.99, 0.435, 0);   // from the 0.96 belly side out
+    P.snapGroup('cr2-fender-lug', () => P.add('hull', box(0.04, 0.04, 0.12), 1.72, 1.42, 0), { reachM: 0.06 });
 
     // Glacis/deck furniture and the characteristic CR2 engine field. All are
     // seated on the measured profile and remain inside its silhouette except
@@ -3134,7 +3162,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
       P.add('hullDark', box(0.34, 0.025, 0.018), side * 1.085, 1.24, 3.542,
         0, 0, side * 0.25);
       towHook2(P, side * 0.78, 0.84, 3.79);
-      liftEye(P, 'hullDetail', side * 1.46, 1.48, -3.20);
+      liftEye(P, 'hullDetail', side * 1.46, 1.435, -3.20);   // 2026-10-19 (owner float sweep): 42 mm over the deck; now seated
       P.add('hullDark', box(0.28, 0.32, 0.035), side * 1.03, 1.25, -4.045);       // twin rear grille bays
     }
     for (let k = 0; k < 5; k++) P.add('hullDetail', box(0.72, 0.035, 0.030), 0, 1.19 + k * 0.075, -3.55);
@@ -3171,7 +3199,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     P.add('hullDark', box(0.44, 0.018, 0.016), 0.34, 1.13, 3.792, 0, 0, 0.28);
     for (const side of [-1, 1]) {
       P.add('hullDark', box(0.20, 0.065, 0.018), side * 1.06, 1.155, 3.74, -0.10, 0, 0);
-      P.add('hullGlass', box(0.075, 0.045, 0.016), side * 1.18, 1.225, 3.70);
+      P.add('hullGlass', box(0.075, 0.045, 0.016), side * 1.10, 1.16, 3.756);   // 2026-10-19 (owner float sweep): the lens hung 23 mm behind its plate; on its face
       liftEye(P, 'hullDetail', side * 0.62, 1.13, 3.70);
     }
     // Closed V-course on the existing lower-bow plane.  It does not widen or
@@ -3607,7 +3635,8 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     };
     P.add('turretDark', box(0.12, 0.20, 0.020), -0.27, 0.17, 1.945);
     P.add('turretDark', box(0.12, 0.20, 0.020), 0.27, 0.17, 1.945);
-    for (const x of [-0.35, 0.35]) for (const y of [0.10, 0.22, 0.34])
+    // 2026-10-19 (owner float sweep): the bolt heads stood 6 mm outboard of the slot cheeks (the top row above them); set on them
+    for (const x of [-0.32, 0.32]) for (const y of [0.10, 0.17, 0.24])
       P.add('turretDetail', cylZ(0.014, 0.014, 8), x, y, 1.958);
   };
   buildChallenger2TurretStage4();
@@ -3626,7 +3655,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
             const sightRim = torus(0.115, 0.014, P.q ? 20 : 14);
             sightRim.scale(1.45, 1, 0.72);
             P.add('turretDetail', sightRim, side * 0.91, 0.23, 1.715, Math.PI / 2, 0, 0);
-            P.add('turretGlass', box(0.15, 0.055, 0.014), side * 0.91, 0.23, 1.724);
+            P.add('turretGlass', box(0.15, 0.055, 0.014), side * 0.91, 0.23, 1.712);   // 2026-10-19 (owner float sweep): in the rim (was proud of it)
           }
         };
         buildChallenger2TurretStage10();
@@ -3732,6 +3761,12 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
         // without repeating the earlier wide-box plan violation at x=1.55.
         const outerJoinX = side * (cassetteOuter + 0.001);
         const outerDepth = Math.abs(cassetteRear - cassetteFront) - 0.10;
+        // 2026-10-19 (owner float sweep): the course tapers to 30 mm at its outer edge, so the face skins below stood in
+        // air (20-25 mm off anything); a thin outer wall behind them closes the cassette's outer face. It is cassette
+        // detail, not a turret armor face: as one, the authored right-side number re-seated on its 26 cm band and
+        // hung half off it (sealed see-through 2026-10-21)
+        P.add('turretDetail', box(0.012, 0.26, Math.abs(cassetteRear - cassetteFront) + 0.10), side * (cassetteOuter - 0.005), 0.18,
+          (cassetteRear + cassetteFront) * 0.5);
         const buildChallenger2TurretStage19 = (): void => {
           P.add('turretDark', box(0.002, 0.022, outerDepth), outerJoinX, 0.075,
             (cassetteRear + cassetteFront) * 0.5);
@@ -3855,6 +3890,9 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
       P.add('turretDetail', box(0.24, 0.045, 0.045), side * 0.98, 0.37, -3.31);
       P.add('turretDetail', box(0.20, 0.045, 0.045), side * 1.18, 0.37, -3.15);
       for (let k = 0; k < 3; k++) P.add('turretDetail', box(0.030, 0.14, 0.030), side * (0.88 + k * 0.14), 0.37, k < 2 ? -3.31 : -3.15);
+      // 2026-10-19 (owner float sweep): the rear rail and its two posts stood 70-80 mm behind the stowage; a short
+      // fore-aft rail now joins them to the seated -3.15 rail.
+      P.add('turretDetail', box(0.030, 0.045, 0.19), side * 1.09, 0.37, -3.23);
     }
     stowage(P, 'turretCloth', rng, [[-1.00, 0.22, -3.08, 0.20, 0.12, 0.20], [1.00, 0.22, -3.08, 0.20, 0.12, 0.20]]);
     tarpRoll(P, 'turretCloth', 1.05, 0.23, -3.05, 0.25, 0.09, true);
@@ -3987,10 +4025,12 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
       };
       buildChallenger2AssemblyStage8();
       const buildChallenger2TurretStage40 = (): void => {
-        if (P.q) for (const [x, z, a] of [
+        // 2026-10-19 (owner float sweep): the right inner one stood off its neighbour's block, 0.27 m over the low roof;
+        // it sits on that roof
+        if (P.q) for (const [x, z, a, y = 0.704] of [
           [-0.77, -1.03, -Math.PI / 2], [-0.68, -1.20, -0.5], [-0.45, -1.25, 0], [-0.28, -1.12, 0.6],
-          [0.71, -1.22, 0], [0.83, -1.09, 0.6],
-        ]) periscope(P, 'turretDetail', x, 0.704, z, a);
+          [0.71, -1.22, 0, 0.414], [0.83, -1.09, 0.6],
+        ]) periscope(P, 'turretDetail', x, y, z, a);
       };
       buildChallenger2TurretStage40();
       // Exact low roof fittings recovered from the source component census
@@ -4004,8 +4044,11 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
           [-0.216, -0.728, 0.12, 0.14, 0.18], [-0.828, -1.269, 0.13, 0.13, -0.30],
           [-0.921, -1.048, 0.09, 0.13, 0.15], [-0.895, -0.846, 0.09, 0.13, -0.18],
         ]) {
-          P.add('turretDark', box(w, 0.022, d), x, 0.590, z, 0, a, 0);
-          P.add('turretDetail', box(w * 0.62, 0.018, d * 0.55), x, 0.610, z, 0, a, 0);
+          // 2026-10-19 (owner float sweep): the roof falls under some of these (50 mm); each drops onto it
+          P.snapGroup('cr2-roof-fitting', () => {
+            P.add('turretDark', box(w, 0.022, d), x, 0.590, z, 0, a, 0);
+            P.add('turretDetail', box(w * 0.62, 0.018, d * 0.55), x, 0.610, z, 0, a, 0);
+          }, { reachM: 0.07 });
         }
       };
       buildChallenger2TurretStage41();
@@ -4240,11 +4283,11 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
       };
       buildChallenger2AssemblyStage16();
       const buildChallenger2TurretStage67 = (): void => {
-        P.add('turret', box(0.04, 0.12, 0.20), 1.41, 0.33, -1.42);
+        P.snapGroup('cr2-side-lug', () => P.add('turret', box(0.04, 0.12, 0.20), 1.41, 0.33, -1.42), { reachM: 0.03 });   // 2026-10-19 (owner float sweep): seated (19 mm off)
       };
       buildChallenger2TurretStage67();
       const buildChallenger2TurretStage68 = (): void => {
-        P.add('turret', box(0.04, 0.12, 0.20), -1.41, 0.15, -1.42);
+        P.snapGroup('cr2-side-lug', () => P.add('turret', box(0.04, 0.12, 0.20), -1.41, 0.15, -1.42), { reachM: 0.03 });
       };
       buildChallenger2TurretStage68();
       const buildChallenger2TurretStage69 = (): void => {
@@ -4252,7 +4295,7 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
       };
       buildChallenger2TurretStage69();
       const buildChallenger2TurretStage70 = (): void => {
-        P.add('turretDetail', box(0.10, 0.12, 0.10), -1.57, 0.28, -1.985);
+        P.snapGroup('cr2-rear-box', () => P.add('turretDetail', box(0.10, 0.12, 0.10), -1.57, 0.28, -1.985), { reachM: 0.16 });   // 2026-10-19 (owner float sweep): 150 mm off; seated
       };
       buildChallenger2TurretStage70();
       const buildChallenger2TurretStage71 = (): void => {
@@ -4296,11 +4339,15 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
       // The former upright dark discs were only approximated in world space and
       // visibly hovered beside the pitched tube ends.
       const buildChallenger2TurretStage76 = (): void => {
-        for (const side of [-1, 1]) {
+        // Each five-tube bank is seated on the turret wall it stood 65 mm off (owner 2026-10-19 sweep); its mouth
+        // receipts move with it.
+        for (const side of [-1, 1]) P.snapGroup('cr2-smoke-bank', () => {
           const x = side * 1.08;
           const y = 0.38;
           const z = 1.25;
           const yaw = side * 0.82;
+          // the bank's mounting plate runs under all five tubes, so the bank is one assembly
+          P.add('turretDark', box(0.52, 0.03, 0.10), x, y - 0.04, z, 0, yaw, 0);
           for (let k = 0; k < 5; k++) {
             const f = k - 2;
             const angle = yaw + f * (0.65 / 5);
@@ -4314,7 +4361,11 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
             smokeMouths.push({ side, tubeCenter: [tubeX, y, tubeZ], rotation: [-0.5, angle, 0],
               mouthOffsetZ: 0.124 });
           }
-        }
+        }, { reachM: 0.08, onMove: (move) => {
+          for (const mouth of smokeMouths.filter((entry) => entry.side === side && entry.mouthOffsetZ === 0.124)) {
+            mouth.tubeCenter = mouth.tubeCenter.map((v, i) => v + move[i]);
+          }
+        } });
       };
       buildChallenger2TurretStage76();
     };
@@ -4646,6 +4697,8 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       // P95 datum carrier: one attached rear guard keeps the published
       // 8.33 m hull datum without bloating the armored stern courses.
       P.add('hullDetail', box(0.05, 0.66, 0.04), s * 0.98, 1.36, -4.21);
+      // its bracket runs back from the stern lug (the bar stood 0.24 m behind it with nothing holding it)
+      P.add('hullDetail', box(0.22, 0.05, 0.30), s * 0.895, 1.45, -4.075);
     }
     P.add('hullDetail', box(0.30, 0.16, 0.04), 0, 1.20, -3.785);                 // convoy plate on the center plate
     P.add('hullDetail', box(0.12, 0.14, 0.22), 0, 1.20, -3.89);                  // center tow pintle preserves the print's narrow -3.98 plan tip

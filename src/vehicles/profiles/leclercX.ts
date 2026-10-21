@@ -177,7 +177,7 @@ function deck(P: TankBuilderPort): void {
     P.addEquipment('hullGlass', markVehicleNightLens(box(.087, .028, .006), 'headlight'), x, 1.256, 3.333);
     P.addEquipment('hullDetail', box(.40, .08, .13), side * 1.05, 1.339, 3.09, .17);
   }
-  P.addEquipment('hullDetail', cylY(.102, .102, .21, 20), 1.496, 1.477, -3.416);
+  P.addEquipment('hullDetail', cylY(.102, .102, .21, 20), 1.496, 1.477, -3.312);  // 2026-10-19 (owner float sweep): was 102 mm behind the stern
   P.addHatch('hullDetail', box(.63, .034, .41), .70, 1.513, 1.77, .080);
   P.addEquipment('hullDetail', box(.53, .075, .108), .70, 1.528, 1.972);
   P.addEquipment('hullDark', box(.45, .034, .028), .70, 1.556, 2.018);

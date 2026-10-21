@@ -63,7 +63,7 @@ function hull(P:TankBuilderPort):void {
   ]));
   addAmx40HullSkirts(P);addAmx40HullSideFittings(P);addAmx40FrontFittings(P);
   for(const s of[-1,1]) {
-    P.addMudguard('amx40-x-aft-flap','hullRubber',box(.560,.425,.025),s*1.277,.885,-3.39,.14);
+    P.hangMudguard('amx40-x-aft-flap','hullRubber',box(.560,.425,.025),s*1.277,.885,-3.39,.14);
     put(P,'hullDetail',box(.17,.14,.13),s*.697,.739,-3.344);
     put(P,'hullDark',torus(.061,.017,18,8),s*.697,.739,-3.408,Math.PI/2);
     put(P,'hullDetail',box(.092,.135,.115),s*.76,.88,3.03);
@@ -79,7 +79,9 @@ function hullDeck(P:TankBuilderPort):void {
   }
   for(const s of[-1,1]) {
     put(P,'hullDetail',box(.945,.024,1.068),s*.48,1.698,-1.644,.101);
-    for(let i=0;i<18;i++)put(P,'hullDark',box(.865,.015,.026),s*.48,1.72+i*.0049,-2.15+i*.056);
+    // 2026-10-19 (owner float sweep): the slats rose while the grille fell (24-45 mm clear by slat 8-10); each slat now
+    // rides the grille top where it would stand above it.
+    for(let i=0;i<18;i++){const z=-2.15+i*.056;put(P,'hullDark',box(.865,.015,.026),s*.48,Math.min(1.72+i*.0049,1.7155-(z+1.644)*.1008),z);}
     put(P,'hullDark',box(.45,.239,.047),s*1.133,1.430,-3.37);
     for(let i=0;i<7;i++)put(P,'hullDetail',box(.469,.018,.042),s*1.133,1.321+i*.034,-3.40);
     put(P,'hullDetail',cylZ(.046,.78,20),s*1.49,1.448,-2.86);
@@ -89,8 +91,9 @@ function hullDeck(P:TankBuilderPort):void {
     put(P,'hullDetail',box(.171,.071,.094),x,1.617,1.774);
     put(P,'hullGlass',box(.137,.035,.004),x,1.628,1.823);
   }
-  put(P,'hullDetail',box(.72,.084,.031),.04,1.069,-3.443);
-  put(P,'hullDetail',box(.112,.22,.064),0,.88,-3.43);
+  // 2026-10-19 (owner float sweep): both stood 57-87 mm behind the -3.341 rear plate; set onto it.
+  put(P,'hullDetail',box(.72,.084,.031),.04,1.069,-3.3543);
+  put(P,'hullDetail',box(.112,.22,.064),0,.88,-3.3708);
 }
 
 type TurretRow=readonly[z:number,low:number,roof:number,left:number,right:number,upper:number];
@@ -109,8 +112,9 @@ function turretCasting(P:TankBuilderPort):void {
   addAmx40CastNose(P);
   frontRoofBridge(P);
   addAmx40RearStowage(P);
+  // 2026-10-19 (owner float sweep): the two rear roof plates stood 75-111 mm over the casting roof; each drops onto it.
   for(const[x,w]of[[-.610,.5705],[.307,1.2483]])
-    put(P,'turretDetail',box(w,.019,.96),x,2.431,-1.383,-.106);
+    P.snapGroup(`amx40-rear-roof-plate-${x}`,()=>put(P,'turretDetail',box(w,.019,.96),x,2.431,-1.383,-.106),{reachM:.13,mode:'down'});
   for(const s of[-1,1]) {
     const path:[number,number,number][]=[[s*.989,2.016,.66],[s*1.537,2.016,.50],[s*1.527,2.016,-1.44],[s*1.02,2.016,-1.807]];
     for(let i=0;i<path.length-1;i++)put(P,'turretDetail',beamBetween(path[i],path[i+1],.015),0,0,0);
@@ -193,7 +197,11 @@ function turretRoof(P:TankBuilderPort):void {
   put(P,'turretDetail',cylY(.2845,.2845,.0293,32),.446,2.416,.00919);
   for(const x of[.24,.66])put(P,'turretDetail',beamBetween([x,2.435,-.05],[x,2.48,.10],.014),0,0,0);
   // The separate source rear meteo mast is unchanged by cupola correction.
-  const mast=[[0,2.35049],[.114,2.35049],[.114,2.58729],[.04945,2.66349],
+  // 2026-10-19 (owner float sweep): the mast foot stood 74 mm over the roof.
+  // 2026-10-21 (float-gaps 230): the mast keeps its source stations (amx40X.selftest's tapered meteo mast); its foot
+  // drum runs on down from 2.35049 to 2.255, through the rear roof plate the sweep dropped 121 mm under it (top 2.269-
+  // 2.289 over the footprint) and into the casting, instead of the mast dropping 38 mm onto the rear stowage.
+  const mast=[[0,2.255],[.114,2.255],[.114,2.58729],[.04945,2.66349],
     [.04945,2.86369],[.03415,2.86369],[.03415,3.06489],[.04093,3.07069],
     [.04093,3.11269],[0,3.11269]];
   put(P,'turretDetail',new THREE.LatheGeometry(mast.map(([r,y])=>new THREE.Vector2(r,y)),24),.01306,0,-1.77856);
@@ -209,10 +217,13 @@ function turretRoof(P:TankBuilderPort):void {
 
 function cannon(P:TankBuilderPort):void {
   addAmx40Mantlet(P);
-  for(const x of[-.901,-.752])put(P,'gunMount',cylX(.023,.032,16),x,2.163,1.9239);
   // Proud left sight shield and trunnion hinge caps belong to the pitching
   // mantlet, not to the stationary turret shell.
-  put(P,'gunMount',box(.2251,.2284,.0474),-.82695,2.28267,1.9239);
+  // 2026-10-19 (owner float sweep): shield and caps stood 32 mm over the mantlet; the pair drops onto it.
+  P.snapGroup('amx40-sight-shield',()=>{
+    for(const x of[-.901,-.752])put(P,'gunMount',cylX(.023,.032,16),x,2.163,1.9239);
+    put(P,'gunMount',box(.2251,.2284,.0474),-.82695,2.28267,1.9239);
+  },{reachM:.05,mode:'down'});
   for(const x of[-.635,.560])put(P,'gunMount',cylX(.032,.095,20),x,2.2166,1.563);
   put(P,'gunMount',torus(.027,.007,20,8),.00225,2.1747,1.937,0,0,Math.PI/2);
   put(P,'gunMountDark',blindTube(.0544,.027,.498,.034,24),.39113,1.93393,2.5472);
