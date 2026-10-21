@@ -13,7 +13,7 @@ import {
   ANATOMY_SYSTEMS, ARMOR_LAYER_COLORS, ARMOR_METRICS, ARMOR_RAMP_TICKS, CREW_ROLE_COLORS, CREW_ROLE_LETTERS,
   SYSTEM_COLORS, armorRampGradient, armorRampPosition, type ArmorMetric,
 } from './anatomyPalette.ts';
-import { buildAnatomyScene, type AnatomyPick, type AnatomyScene, type AnatomyToggles } from './anatomyScene.ts';
+import { HIT_VOLUME_COLOR, buildAnatomyScene, type AnatomyPick, type AnatomyScene, type AnatomyToggles } from './anatomyScene.ts';
 
 export type AnatomyMode = 'armor' | 'modules' | 'crew';
 export type AnatomyToggle = keyof AnatomyToggles | 'exterior' | 'labels';
@@ -370,17 +370,17 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
     } else {
       const present = new Set(anatomy?.parts.filter((part) => !TRACK_MODULES.has(part.module)).map((part) => part.system) || []);
       for (const system of ANATOMY_SYSTEMS) {
-        if (system === 'crew' ? !view.crew || mode === 'crew' : (!view.modules || !present.has(system))) continue;
+        if (system === 'crew' || !view.modules || !present.has(system)) continue;
         entries.push(key(t(`gallery.anatomy.system.${system}`), SYSTEM_COLORS[system]));
       }
-      if (mode === 'crew' && view.crew) {
+      if (view.crew) {
         // The Crew layer keys its role colours (helmet bands and tinted figures), one key per role on board.
         const roles = [...new Set(anatomy?.stations.map((station) => station.role) || [])];
         for (const role of (['commander', 'gunner', 'loader', 'driver', 'radio'] as const).filter((entry) => roles.includes(entry))) {
           entries.push(key(t(`gallery.anatomy.role.${role}`), CREW_ROLE_COLORS[role]));
         }
       }
-      if (view.hits) entries.push(key(t('gallery.anatomy.toggle.hits'), '#5fe3ff'));
+      if (view.hits) entries.push(key(t('gallery.anatomy.toggle.hits'), HIT_VOLUME_COLOR));
     }
     host.legend.replaceChildren(...entries);
   }
@@ -390,6 +390,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
     badges.replaceChildren();
     if (!anatomy) return;
     const seen = new Set<string>();
+    const roleCount = new Map<string, number>();
     for (const anchor of anatomy.anchors) {
       const pick = anchor.pick;
       if (pick.kind !== 'module' && pick.kind !== 'crew') continue;
@@ -409,7 +410,10 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         element.title = moduleName(pick.part.module);
       } else {
         element.style.setProperty('--badge', CREW_ROLE_COLORS[pick.station.role]);
-        element.textContent = CREW_ROLE_LETTERS[pick.station.role];
+        // A second crew member in one role (assistant loader, second weapon operator) reads L2, G2.
+        const count = (roleCount.get(pick.station.role) || 0) + 1;
+        roleCount.set(pick.station.role, count);
+        element.textContent = `${CREW_ROLE_LETTERS[pick.station.role]}${count > 1 ? count : ''}`;
         element.setAttribute('aria-label', crewName(pick.station.crew));
         element.title = crewName(pick.station.crew);
       }

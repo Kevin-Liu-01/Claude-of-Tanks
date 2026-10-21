@@ -86,6 +86,8 @@ interface ArmorMesh {
 }
 
 const ADD_ON_LAYERS = new Set(['era', 'spaced', 'external', 'housing']);
+/** Hit volumes glow lime: apart from every system colour (electronics is cyan) and from the glass shell. */
+export const HIT_VOLUME_COLOR = '#b6ff4d';
 const SUPPORT_MODULES = new Set(['ammoRack', 'autoloader', 'fuelTank', 'engine', 'transmission', 'feedSystem']);
 /** A module counts as under a crew member only if its top leaves at least a seated body's height below the head. */
 const CREW_SUPPORT_HEADROOM_M = 0.62;
@@ -152,7 +154,7 @@ void main() {
 
 function hitMaterial(): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
-    uniforms: { uColor: { value: new THREE.Color('#5fe3ff') }, uStrength: { value: 1 } },
+    uniforms: { uColor: { value: new THREE.Color(HIT_VOLUME_COLOR) }, uStrength: { value: 1 } },
     vertexShader: HIT_VERTEX, fragmentShader: HIT_FRAGMENT,
     transparent: true, depthWrite: false, side: THREE.DoubleSide,
   });
@@ -163,7 +165,7 @@ export interface AnatomyScene {
   surfaces: ArmorSurface[];
   parts: ModulePart[];
   stations: CrewStation[];
-  groups: { armor: THREE.Group; addOns: THREE.Group; modules: THREE.Group; crew: THREE.Group; hits: THREE.Group };
+  groups: { armor: THREE.Group; addOns: THREE.Group; modules: THREE.Group; crew: THREE.Group; hits: THREE.Group; barrel: THREE.Group };
   pickables: THREE.Object3D[];
   /** World-space anchor of each module part and crew station (for screen badges). */
   anchors: Array<{ key: string; pick: AnatomyPick; object: THREE.Object3D; local: THREE.Vector3 }>;
@@ -193,6 +195,7 @@ export function buildAnatomyScene(armor: AnatomyArmor, options: AnatomySceneOpti
   let metric: ArmorMetric = options.metric || 'ke';
   const groups = {
     armor: new THREE.Group(), addOns: new THREE.Group(), modules: new THREE.Group(), crew: new THREE.Group(), hits: new THREE.Group(),
+    barrel: new THREE.Group(),
   };
   for (const [name, group] of Object.entries(groups)) group.name = `anatomy_${name}`;
   // Category groups live inside each frame; one holder per (frame, category) keeps toggling a visibility flip.
@@ -278,7 +281,8 @@ export function buildAnatomyScene(armor: AnatomyArmor, options: AnatomySceneOpti
     barrelMesh = new THREE.Mesh(geometry, material);
     barrelMesh.name = 'anatomy_barrel';
     barrelMesh.userData.anatomyPick = { kind: 'barrel', lengthM, radiusM } satisfies AnatomyPick;
-    holder('armor', 'trunnion').add(barrelMesh);
+    // Every anatomy layer shows the barrel: inside the glass shell it is the gun's real reference line.
+    holder('barrel', 'trunnion').add(barrelMesh);
     pickables.push(barrelMesh);
     disposables.push(geometry, material);
   }
@@ -379,8 +383,8 @@ export function buildAnatomyScene(armor: AnatomyArmor, options: AnatomySceneOpti
   let toggles: AnatomyToggles = { armor: true, addOns: true, modules: true, crew: true, hits: false };
   function applyToggles(): void {
     for (const [key, group] of holders) {
-      const category = key.split(':')[0] as keyof AnatomyToggles;
-      group.visible = toggles[category];
+      const category = key.split(':')[0];
+      group.visible = category === 'barrel' ? true : toggles[category as keyof AnatomyToggles];
     }
   }
   applyToggles();

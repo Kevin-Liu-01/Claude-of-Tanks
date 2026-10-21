@@ -293,9 +293,20 @@ export function buildCrewModel(station: CrewStation, floorY: number, inside?: In
     boot.translate(ankle.x, ankle.y - S.ankle + 0.0425 - 0.02, ankle.z + S.foot * 0.3);
     pieces.joint.push(boot);
   }
+  // A graphite seat pan and backrest under every seated figure (a standing loader has none), following the trunk.
+  if (fit.base !== 'loaderStanding') {
+    const pan = new THREE.BoxGeometry(0.4, 0.05, 0.38);
+    pan.translate(0, -0.13, 0.06);
+    pieces.joint.push(pan);
+    const back = new THREE.BoxGeometry(0.4, 0.46, 0.05);
+    back.rotateX(trunk);
+    const along = 0.25, behind = 0.15;
+    back.translate(0, Math.cos(trunk) * along + Math.sin(trunk) * behind, Math.sin(trunk) * along - Math.cos(trunk) * behind);
+    pieces.joint.push(back);
+  }
   // Role-tinted clay (the role colour lifted toward the crew paper tone), graphite joints, full-strength role band.
   const role = CREW_ROLE_COLORS[station.role as CrewRole];
-  const clay = '#' + new THREE.Color(role).lerp(new THREE.Color(SYSTEM_COLORS.crew), 0.52).getHexString();
+  const clay = '#' + new THREE.Color(role).lerp(new THREE.Color(SYSTEM_COLORS.crew), 0.3).getHexString();
   const colors: Record<Tone, string> = { clay, joint: '#3a434e', band: role };
   const group = new THREE.Group();
   group.name = `anatomy_crew_${station.crew}_${station.index}`;
