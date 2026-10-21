@@ -235,8 +235,6 @@ export const RUSH_DRIVE = Object.freeze({
 export const JOCKEY_DRIVE = Object.freeze({ throttle: 0.35, standThrottle: 0.1, ringM: 16, leadM: 10, legMinS: 3, blockedS: 0.7, blockedMps: 0.4,
   /** A strafe under way keeps the hull while its drivers' goal stays this near where it stood (their call back to that ground). */
   leashM: 24,
-  /** A contact lost from sight (inside the target memory) is strafed round where it was last seen, from at least this far. */
-  memoryMinM: 20,
   /** A lap is judged for a stall only after this long under way (the roll-off itself starts from a stand). */
   legSettleS: 1.0,
   /** The rolling turn (doctrine rollingTurns): this drive and at most this steer, an arc in place of the pivot's lock. */

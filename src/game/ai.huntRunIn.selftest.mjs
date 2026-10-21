@@ -3,7 +3,8 @@
 // zombies orbited the same humans 16-28 m out, yielding to one another and wedged nose to tail). Pins: a rusher run in
 // on a seen target aims RUSH_DRIVE.runInSideM beside it and passes it on its orbit's side — it never closes inside
 // orbitMinM nor stands still on the way; and each friendly hunter already nearer the target puts the next hunter's orbit
-// orbitStepM further out (own-team positions only).
+// orbitStepM further out (own-team positions only). Round 3b: a quarry a level above is orbited no nearer than the range
+// the gun's elevation stop reaches it from (RUSH_DRIVE.bear*: on rolling ground the orbit's guns were laid on nothing).
 import { Vector3 } from 'three';
 import '../vehicles/fleetFactory.ts';
 import { getSpec } from '../vehicles/specs.ts';
@@ -23,8 +24,9 @@ function tank(id, team, x, z, yaw = 0) {
 }
 const RUSH = rulesetBotDoctrine(matchRulesetFor('endless_horde'), 'bravo');
 /** A rushing hunter 65 m from a seen, stationary quarry, its hunt objective on the quarry; `friends` stand where placed. */
-function hunt({ seconds = 25, friends = [] } = {}) {
+function hunt({ seconds = 25, friends = [], quarryY = 0 } = {}) {
   const bot = tank('bot', 'bravo', 0, 0, 0), quarry = tank('quarry', 'alpha', 0, 65, Math.PI);
+  quarry.state.pos.y = quarryY;
   const ctl = createAI(bot, { difficulty: 'normal', rng: mulberry32(9), doctrine: () => RUSH, deps: {
     heightField: field, raycast: () => null, getEnemies: () => [quarry], getAllies: () => [bot, ...friends], getObstacles: () => [],
     spotting: { isSpotted: () => true }, getObjective: () => ({ x: quarry.state.pos.x, z: quarry.state.pos.z, mission: 'hunt', radiusM: 25 }),
@@ -67,5 +69,16 @@ console.log('[2] a friendly hunter already nearer the quarry puts this one a rin
   ok(crowded.still / crowded.engaged < 0.05, `and keeps way on (${crowded.still} of ${crowded.engaged} still)`);
 }
 
+console.log('[3] a quarry a level above is orbited from where the gun can be laid on it');
+{
+  const rise = 8, spec = getSpec('t90a');
+  const arc = spec.gunElevationDeg * Math.PI / 180 - 0.026;
+  const bear = Math.min(RUSH_DRIVE.bearMaxM, rise / Math.tan(arc) + RUSH_DRIVE.bearPadM);
+  const above = hunt({ quarryY: rise, seconds: 30 });
+  ok(bear > RUSH_DRIVE.orbitMaxM, `the gun needs ${bear.toFixed(1)} m on an ${rise} m rise (the level orbit stops at ${RUSH_DRIVE.orbitMaxM} m)`);
+  ok(above.lateMean >= bear - 4, `orbits out there (${above.lateMean.toFixed(1)} m on average against ${alone.lateMean.toFixed(1)} m on the level)`);
+  ok(above.still / above.engaged < 0.05, `and keeps way on (${above.still} of ${above.engaged} still)`);
+}
+
 if (failures) { console.error(`ai.huntRunIn.selftest: ${failures} failure(s)`); process.exit(1); }
-console.log('ai.huntRunIn.selftest: the run-in passes beside its quarry onto the orbit, the orbit spreads ring by ring');
+console.log('ai.huntRunIn.selftest: the run-in passes beside its quarry onto the orbit, the orbit spreads ring by ring, a level above is orbited from where the gun bears');

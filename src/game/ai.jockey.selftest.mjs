@@ -131,21 +131,23 @@ console.log("[5] the 'angle' hit reaction turns onto the shot with way on; the c
     beam.state.pos.x = bot.state.pos.x + Math.cos(bot.state.yaw) * 60; beam.state.pos.z = bot.state.pos.z - Math.sin(bot.state.yaw) * 60;
     enemies.push(beam);
     ctl.notifyUnderFire(beam, { selfHit: true, damaging: true });
-    let throttle = 0, n = 0, moved = 0, prev = { x: bot.state.pos.x, z: bot.state.pos.z };
+    let throttle = 0, n = 0, moved = 0, lock = 0, prev = { x: bot.state.pos.x, z: bot.state.pos.z };
     for (let i = 0; i < 2 / SIM_DT; i++) {
       ctl.update(SIM_DT, 7 + i * SIM_DT);
-      if (ctl.debugInfo().reaction === 'angle') { throttle += bot.input.throttle; n++; }
+      if (ctl.debugInfo().reaction === 'angle') { throttle += bot.input.throttle; n++; lock = Math.max(lock, Math.abs(bot.input.steer)); }
       updateTank(bot, field, SIM_DT, null);
       moved += Math.hypot(bot.state.pos.x - prev.x, bot.state.pos.z - prev.z); prev = { x: bot.state.pos.x, z: bot.state.pos.z };
       front.combat.hp = front.combat.maxHp; beam.combat.hp = beam.combat.maxHp;
     }
-    return { throttle: n ? throttle / n : 0, n, moved };
+    return { throttle: n ? throttle / n : 0, n, moved, lock };
   };
   const classicTurn = hitTurn(CLASSIC_BOT_DOCTRINE), rolled = hitTurn({ ...CLASSIC_BOT_DOCTRINE, hitReactions: 'angle' });
   ok(classicTurn.n > 0 && rolled.n > 0, `both turn onto the shot (${classicTurn.n} and ${rolled.n} reacting ticks)`);
   ok(classicTurn.throttle === 0, `classic: a stand and a pivot (mean throttle ${classicTurn.throttle.toFixed(2)})`);
   ok(rolled.throttle >= JOCKEY_DRIVE.reactRollThrottle - 1e-9 && rolled.moved > classicTurn.moved + 2,
     `'angle': driven round (mean throttle ${rolled.throttle.toFixed(2)}, ${rolled.moved.toFixed(1)} m against ${classicTurn.moved.toFixed(1)} m)`);
+  // round 3b: an arc at the rolling steer, never the full lock (at 0.7 a full lock still turned the hull nearly in place)
+  ok(rolled.lock <= JOCKEY_DRIVE.rollSteer + 1e-9, `'angle': at most the rolling steer (${rolled.lock.toFixed(2)} against ${JOCKEY_DRIVE.rollSteer})`);
 }
 
 if (failures) { console.error(`ai.jockey.selftest: ${failures} failure(s)`); process.exit(1); }
