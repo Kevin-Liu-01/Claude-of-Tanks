@@ -69,6 +69,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/killSurfaces.selftest.mjs',
     // (r2) the AC-130's airframe, its own chunk staged under the cover, hidden only in its own lens; the warm path
     'src/game/gunshipAirframe.selftest.mjs',
+    // (ac130-barrels-230, the owner) the guns beside the gimbal lens: seen firing and recoiling, their rounds, missile and
+    // smoke leaving their muzzles
+    'src/fx/gunshipLens.selftest.mjs',
     'src/fx/timeOfDayMarks.selftest.mjs',
     'src/fx/localLights.selftest.mjs',
     'src/fx/worldWindPalette.selftest.mjs',

@@ -1,7 +1,7 @@
 import { createAuxiliaryPresentation, type AuxiliaryVisualEntity } from './auxiliaryPresentation.ts';
 // atmospherics lane: rounds in flight (tracers); (ac130-fx-228) the gunship's rounds and the composer's frozen round
 // draw here too: the pre-October ribbon block is gone
-import { createProjectileTracers } from './projectileTracers.ts';
+import { createProjectileTracers, type LensRound } from './projectileTracers.ts';
 import { gunshipCaliberMm, gunshipRoundOf, gunshipShotOf, type GunshipRound } from './gunshipRounds.ts';
 import { firedIsMissile, missileFlicker, missileLookFor, missileSpin, missileTrailOf, missileWobble, MISSILE_LOOKS, type MissileLook,
   type MissileTrail } from './missileLooks.ts';
@@ -42,6 +42,7 @@ import { syncSubjectEmitterAnchor } from './effectAttachments.ts';
 import { isEraActivation } from '../game/eraActivation.ts';
 import { resetEquipmentDamage, type EquipmentDamageEvent } from '../vehicles/equipmentDamage.ts';
 import type { EventBus } from '../game/stateCore.ts';
+import type { GunshipLensGuns } from '../game/gunshipAirframe.ts';
 // world-dressing r1: destructible small-prop seam — fx registers the
 // kind-flavored break bursts and forwards shell flight/impact data so light
 // props (fences, carts, barrels, bales...) break under fire without the sim
@@ -305,6 +306,12 @@ interface GuidedTrail {
   /** (ac130-fx-228 r2) a gunship missile's rail: where the drawn round left the wing pylon relative to its guided line
    *  (world m), converging onto that line by GUNSHIP_PYLON_MERGE_M; null for every other round */
   pylon?: [number, number, number] | null;
+  /** (ac130-barrels-230) the distance (m) its drawn round joins its line in: GUNSHIP_PYLON_MERGE_M, or from the lens's rail
+   *  LENS_MERGE_K of its slant range */
+  pylonM?: number;
+  /** (ac130-barrels-230) from the lens's rail: the lens's scale across the view at the launch (its rail's round is drawn at
+   *  that size), the drawn body growing from it to its own size as it joins its line; undefined for every other round */
+  lensK?: number;
 }
 
 interface FxTimer {
@@ -634,6 +641,25 @@ const GUNSHIP_PYLON_MERGE_M = 120;
  *  airframe) gets the fade and the width cap (missileTrails.ts); a camera near the ground sees the whole trail */
 const GUNSHIP_TRAIL_NEAR_M = 70;
 const GUNSHIP_LENS_TRAIL_M = 120;
+/** (ac130-barrels-230, the owner: the guns "behind" the camera, "barrels are visible so we can see them fire and recoil",
+ *  the tracers, missile trace and smoke "cominng from behindd the camerA") a camera this near an AC-130's gimbal point (m)
+ *  is that aircraft's own lens: its guns are drawn beside it (game/gunshipAirframe.ts buildGunshipLensGuns), and its
+ *  rounds, missiles, flash and smoke leave their muzzles there and join their flight lines by LENS_MERGE_K of their slant
+ *  range. The lens's missile smoke fades only LENS_TRAIL_NEAR_M from the glass (the width cap still thins its nearest
+ *  stretch, seen down its length, so it is never a wedge) */
+const LENS_NEAR_M = 1.5;
+const LENS_MERGE_K = 0.9;
+const LENS_TRAIL_NEAR_M = 8;
+/** (round 2) the lens missile's smoke at the nozzle, after the jet's first expansion and grown (m), no wider in the boost:
+ *  from beside the rail its nearest stretch is seen down its length, where the family's 0.64 m jet (x1.3 boosting) a few
+ *  metres from the glass was a translucent wedge over a quarter of the frame */
+const LENS_TRAIL_R0_M = 0.05, LENS_TRAIL_JET_M = 0.16, LENS_TRAIL_R1_M = 1.6;
+/** a lens gun's gas: swept out of the frame past its gun (lens m/s, scaled with the lens across the view:
+ *  gunshipLensGuns.scale), never across the sight */
+const LENS_SLIP_MPS = 4.5;
+/** (round 2) the lens's missile eases off its rail over its first LENS_LAUNCH_M (it is at full speed from the
+ *  simulation's first step, and from beside the lens one frame would carry it a third of the way to the centre) */
+const LENS_LAUNCH_M = 60;
 /** (ac130-fx-228 r3, the blind critic's "the 152 mm burst has essentially no hot signature" in the gunship's infrared
  *  lens) the heat lens images the HDR luminance over ~1.55-3.1 (engine/post.ts thermalHeat), and the media's fire is
  *  white-hot only on its first frame: its cooling orange heart (luminance ~0.5-1) read cold a frame later, where a real
@@ -1375,6 +1401,8 @@ function* createFxSteps(
     gunship: (id) => id != null && subjectFor(id)?.aerial?.kind === 'gunship',
     // (ac130-fx-228 r2) the camera images heat this frame (writeLiveShellTracers reads it off the camera, as the grade does)
     thermal: () => heatCamera,
+    // (ac130-barrels-230) a gunship round seen from its own lens leaves its gun drawn beside the lens
+    lens: (heavy, ox, oy, oz, dx, dy, dz, out) => lensOffset(heavy ? 'howitzer' : 'cannon', ox, oy, oz, dx, dy, dz, out),
   });
   group.add(tracers.mesh);
   // ---- atmospherics lane (end)
@@ -4394,13 +4422,13 @@ function* createFxSteps(
     return out.copy(GUNSHIP_PYLON_LOCAL).applyQuaternion(_pylQ);
   }
   /** how much of the pylon offset remains `d` metres down the line (1 at the rail, 0 joined), and its slope */
-  function pylonK(d: number): number {
-    const x = Math.max(0, Math.min(1, d / GUNSHIP_PYLON_MERGE_M));
+  function pylonK(d: number, m = GUNSHIP_PYLON_MERGE_M): number {
+    const x = Math.max(0, Math.min(1, d / m));
     return 1 - x * x * (3 - 2 * x);
   }
-  function pylonSlope(d: number): number {
-    const x = d / GUNSHIP_PYLON_MERGE_M;
-    return x <= 0 || x >= 1 ? 0 : -6 * x * (1 - x) / GUNSHIP_PYLON_MERGE_M;
+  function pylonSlope(d: number, m = GUNSHIP_PYLON_MERGE_M): number {
+    const x = d / m;
+    return x <= 0 || x >= 1 ? 0 : -6 * x * (1 - x) / m;
   }
   /** the covered warm's motor glow colour */
   const WARM_GLOW_RGB: readonly number[] = [0.82, 0.82, 0.78];
@@ -4467,8 +4495,17 @@ function* createFxSteps(
       // (ac130-fx-228 r2) the gunship's missile is drawn off its wing pylon (gunshipPylonOffset)
       const shooter = shell.shooterId != null ? subjectFor(shell.shooterId) : null;
       if (gunshipRoundOf(shell.spec, shooter?.aerial?.kind === 'gunship') === 'missile') {
-        gunshipPylonOffset(shooter?.state?.yaw, shell.vel.x, shell.vel.z, _pyl);
-        trail.pylon = [_pyl.x, _pyl.y, _pyl.z];
+        // (ac130-barrels-230) seen from its own lens it leaves the rail drawn beside the lens
+        const l = trail.launch;
+        if (l && lensOffset('missile', l[0], l[1], l[2], _v1.x, _v1.y, _v1.z, _lensRound)) {
+          trail.pylon = [_lensRound.x, _lensRound.y, _lensRound.z];
+          trail.pylonM = _lensRound.rangeM;
+          trail.lensK = lensGuns ? lensGuns.scale : 1;
+        } else {
+          gunshipPylonOffset(shooter?.state?.yaw, shell.vel.x, shell.vel.z, _pyl);
+          trail.pylon = [_pyl.x, _pyl.y, _pyl.z];
+          trail.pylonM = GUNSHIP_PYLON_MERGE_M;
+        }
       } else trail.pylon = null;
       trail.lastD = -1;
       trail.smokeSlot = -1;
@@ -4500,6 +4537,9 @@ function* createFxSteps(
       d = trail.fallbackD as number;
     }
     const t = Number.isFinite(shell.ageS) ? (shell.ageS as number) : d / speed;
+    // (ac130-barrels-230 r2) off the lens's rail the drawn round eases off the rail (LENS_LAUNCH_M): it is drawn `dd` down
+    // its line, its motor, plume and smoke with it, where the simulation's round is `d` down it
+    const dd = trail.lensK !== undefined && d < LENS_LAUNCH_M ? d * d / LENS_LAUNCH_M : d;
     // the steering corrections: a small lateral offset off the authoritative line, the same at every frame rate (a round
     // that carries neither its flight time nor its distance flies its line: its time is not known)
     const timed = Number.isFinite(shell.ageS) || Number.isFinite(shell.distM);
@@ -4507,24 +4547,29 @@ function* createFxSteps(
     if (_mSide.lengthSq() < 1e-6) _mSide.set(1, 0, 0); else _mSide.normalize();
     _mUp.crossVectors(_mSide, dir).normalize();
     missileWobble(look, timed ? t : 0, seedU, _wob);
-    _mPos.copy(shell.pos).addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]);
+    _mPos.copy(shell.pos).addScaledVector(dir, dd - d).addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]);
     _mDir.copy(dir);
     const pylon = trail.pylon;
+    let bodyK = 1;
     if (pylon) {
       // (ac130-fx-228 r2) off the wing pylon onto the guided line: the offset still left here, the axis along that curve
-      const k = pylonK(d), sl = pylonSlope(d);
+      const k = pylonK(dd, trail.pylonM), sl = pylonSlope(dd, trail.pylonM);
       _mPos.x += pylon[0] * k; _mPos.y += pylon[1] * k; _mPos.z += pylon[2] * k;
       _mDir.x += pylon[0] * sl; _mDir.y += pylon[1] * sl; _mDir.z += pylon[2] * sl;
       _mDir.normalize();
+      // (ac130-barrels-230) off the lens's rail: its rail round's size at the launch, its own once on its line
+      if (trail.lensK !== undefined) bodyK = trail.lensK + (1 - trail.lensK) * (1 - k);
     }
-    const lit = d >= look.igniteM;
+    const lit = dd >= look.igniteM;
     const flick = missileFlicker(look, t, seedU);
     // (FX lane 10-15) a roll-stabilised round rolls at its roll rate (its fins with its tracer's helix); the others fly
     // with their fins in an X
     const roll = look.spinHz ? Math.PI * 2 * look.spinHz * (timed ? t : 0) + seedU * 6.2831853 : Math.PI / 4;
-    writeGuidedBody(_mPos, _mDir, look, lit, flick, trail.calMm ?? 0, roll);
+    // (missileBodyDims reads a calibre under 20 mm as none: the family's own)
+    const calMm = bodyK < 1 ? Math.max(21, missileBodyDims(look.id, trail.calMm ?? 0, _bodyDims)[0] * 1000 / 0.94 * bodyK) : trail.calMm ?? 0;
+    writeGuidedBody(_mPos, _mDir, look, lit, flick, calMm, roll);
     // the motor at the body's tail; (EF.04) a roll-stabilised round's tracer rides its helix about the axis
-    const tailM = trail.tailM ?? 1.3;
+    const tailM = (trail.tailM ?? 1.3) * bodyK;
     _mHead.copy(_mPos).addScaledVector(_mDir, -tailM);
     if (look.spinM) {
       missileSpin(look, timed ? t : 0, seedU, _wob);
@@ -4533,13 +4578,13 @@ function* createFxSteps(
     // the motor lighting clear of the launcher (crossed since the last frame)
     const lastD = trail.lastD as number;
     if (blast && look.igniteM > 0.5 && lit && lastD >= 0 && lastD < look.igniteM) {
-      const back = d - look.igniteM;
+      const back = dd - look.igniteM;
       missileIgnition(blast, puffRandom(seed ^ 0x2c1b3c6d), look,
         _mPos.x - dir.x * back, _mPos.y - dir.y * back, _mPos.z - dir.z * back, dir.x, dir.y, dir.z, -back / speed);
     }
     if (lit) {
       // its plume streaming back from the motor (no longer than it has burned)
-      const plume = Math.max(0.15, Math.min(look.plumeM, d - look.igniteM + 0.3));
+      const plume = Math.max(0.15, Math.min(look.plumeM, dd - look.igniteM + 0.3));
       const dark = tracers.darkLevel();
       const fk = look.flareK * flick;
       tracers.glow(_mHead.x, _mHead.y, _mHead.z,
@@ -4547,10 +4592,10 @@ function* createFxSteps(
         look.flarePx * (1 + 0.25 * (1 - dark)), look.haloPx * (0.55 + 0.45 * dark), look.flareCore, fk,
         look.flareHalo, fk * (0.05 + 0.12 * dark), 1.4);
       renderedAtgmTrailSegments++;
-      layTrail(trail, look, shell, d, t, speed, seedU, dir);
+      layTrail(trail, look, shell, d, t, speed, seedU, dir, dd);
     }
     if (look.wires > 0) payOutWire(trail, shell, look, dir);
-    trail.lastD = d;
+    trail.lastD = dd;
   }
 
   /** (ac130-fx-228 r2) the gunship missile's trail: its family's, fading within GUNSHIP_TRAIL_NEAR_M of the camera and
@@ -4566,12 +4611,29 @@ function* createFxSteps(
     }
     return t;
   }
+  /** (ac130-barrels-230 r2) the lens missile's trail: the gunship's, narrow at the rail (LENS_TRAIL_*) */
+  const lensTrails = new Map<MissileTrail, MissileTrail>();
+  /** this frame's near fade for the derived looks (no iterator per frame) */
+  let trailNear = 0;
+  const applyTrailNear = (look: MissileTrail): void => smokeTrails.setNear(look, trailNear);
+  function lensTrailOf(base: MissileTrail): MissileTrail {
+    let t = lensTrails.get(base);
+    if (!t) {
+      t = Object.freeze({ ...base, nearM: LENS_TRAIL_NEAR_M, r0: LENS_TRAIL_R0_M, rJet: LENS_TRAIL_JET_M,
+        r1: Math.min(base.r1, LENS_TRAIL_R1_M), boostK: 1 });
+      lensTrails.set(base, t);
+    }
+    return t;
+  }
   /** (ac130-fx-228 r3) this frame's camera: is it aloft (a gunship's lens, the killcam's orbit round the airframe)? The
    *  derived looks' near fade is on for it and off for a camera near the ground, which sees the whole trail */
   function setGunshipTrailNear(cam: THREE.Vector3): void {
-    if (!gunshipTrails.size) return;
+    if (!gunshipTrails.size && !lensTrails.size) return;
     const aloft = cam.y - groundY(cam.x, cam.z) > GUNSHIP_LENS_TRAIL_M;
-    for (const look of gunshipTrails.values()) smokeTrails.setNear(look, aloft ? GUNSHIP_TRAIL_NEAR_M : 0);
+    const near = lensUp ? LENS_TRAIL_NEAR_M : aloft ? GUNSHIP_TRAIL_NEAR_M : 0;
+    trailNear = near;
+    gunshipTrails.forEach(applyTrailNear);
+    lensTrails.forEach(applyTrailNear);
   }
 
   /** the live presentation entity a shooter id names (the Studio's actors first, else the battle's) */
@@ -4659,6 +4721,170 @@ function* createFxSteps(
     }
   }
 
+  // ---- (ac130-barrels-230) the pilot's own guns beside its gimbal lens -------------------------------------------------
+  /** the lens guns (built from the airframe's chunk the first time a gunship lens is seen), and whether they are posed on
+   *  this frame's camera */
+  let lensGuns: GunshipLensGuns | null = null;
+  let lensLoading = false;
+  let lensUp = false;
+  /** the aircraft whose gimbal point the camera rides (re-found at most every LENS_SCAN_FRAMES while none is) */
+  let lensCarrier: unknown = null;
+  let lensScanIn = 0;
+  const LENS_SCAN_FRAMES = 30;
+  const _lensM = new THREE.Vector3(), _lensD = new THREE.Vector3(), _lensOut = new THREE.Vector3(), _lensFwd = new THREE.Vector3();
+  const _lensSide = new THREE.Vector3();
+  const _lensRound: LensRound = { x: 0, y: 0, z: 0, rangeM: 1 };
+  type LensView = { kind?: string; active?: boolean; x: number; y: number; z: number };
+  function ridesLens(entity: unknown, eye: THREE.Vector3): boolean {
+    const a = (entity as { aerial?: LensView } | null)?.aerial;
+    if (!a || a.kind !== 'gunship' || !a.active) return false;
+    // the aerial camera rides 0.12 m over the gimbal point (engine/aerialCamera.ts)
+    const dx = eye.x - a.x, dy = eye.y - a.y - 0.12, dz = eye.z - a.z;
+    return dx * dx + dy * dy + dz * dz < LENS_NEAR_M * LENS_NEAR_M;
+  }
+  /** the camera is an AC-130's own gimbal lens this frame: the aerial camera drives it (its heat-lens flag, no drone's
+   *  feed) and it rides that aircraft's gimbal point (an external pose, the killcam or the ending's orbit leaves it) */
+  function onGunshipLens(cam: THREE.Camera): boolean {
+    const ud = cam.userData as { thermalFlight?: boolean; aerialPilotId?: unknown };
+    if (ud.thermalFlight !== true || ud.aerialPilotId != null || !(cam as THREE.PerspectiveCamera).isPerspectiveCamera) return false;
+    if (ridesLens(lensCarrier, cam.position)) return true;
+    lensCarrier = null;
+    if (!auxiliaryEntities || --lensScanIn > 0) return false;
+    lensScanIn = LENS_SCAN_FRAMES;
+    for (const entity of auxiliaryEntities()) if (ridesLens(entity, cam.position)) { lensCarrier = entity; return true; }
+    return false;
+  }
+  function poseLensGuns(cam: THREE.Camera, dt: number): void {
+    if (!onGunshipLens(cam)) {
+      if (lensUp) { lensGuns?.hide(); lensUp = false; }
+      return;
+    }
+    if (!lensGuns) {
+      if (!lensLoading) {
+        lensLoading = true;
+        void import('../game/gunshipAirframe.ts').then((module) => {
+          lensGuns = module.buildGunshipLensGuns({ setup: (m) => engineCtx.setupShadowMaterial?.(m), release: (m) => engineCtx.releaseShadowMaterial?.(m) });
+          group.add(lensGuns.root);
+        }, (error: unknown) => { lensLoading = false; console.warn('[fx] the gunship lens guns did not load:', error); });
+      }
+      return;
+    }
+    lensGuns.pose(cam as THREE.PerspectiveCamera, dt, imagesHeat(cam));
+    lensUp = true;
+  }
+  /** the slant range (m) from (ox, oy, oz) down the unit line (dx, dy, dz) to the ground */
+  function slantRange(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number): number {
+    if (!(dy < -0.05)) return 600;
+    let t = (oy - groundY(ox, oz)) / -dy;
+    for (let i = 0; i < 3; i++) t = Math.max(1, (oy - groundY(ox + dx * t, oz + dz * t)) / -dy);
+    return t;
+  }
+  /** a gunship round leaving the orbit centre at (ox, oy, oz) along the unit line (dx, dy, dz), seen from its own lens: its
+   *  gun's muzzle off that origin and the distance its drawn round joins its line in; false when no gun is drawn there */
+  function lensOffset(gun: GunshipRound, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number,
+    out: LensRound): boolean {
+    if (!lensUp || !lensGuns) return false;
+    const cam = engineCtx && engineCtx.camera;
+    if (!cam || cam.position.distanceToSquared(_lensM.set(ox, oy, oz)) > GUNSHIP_LENS_M * GUNSHIP_LENS_M) return false;
+    if (!lensGuns.muzzle(gun, _lensM)) return false;
+    out.x = _lensM.x - ox; out.y = _lensM.y - oy; out.z = _lensM.z - oz;
+    out.rangeM = LENS_MERGE_K * slantRange(ox, oy, oz, dx, dy, dz);
+    return true;
+  }
+  /**
+   * (ac130-barrels-230) A gunship shot seen from its own lens: the gun beside the lens recoils, its muzzle flashes and its
+   * gas streams back in the slipstream; the missile's rail flashes and its launch blows back off the rail. Sizes and the
+   * drift off the lens are scaled with the lens across the view (gunshipLensGuns.scale), so they hold their size and
+   * their pace on the screen at every zoom. With no gun drawn there nothing is (the glass stays clear, as before).
+   */
+  /** the lens's scale across the view and the aircraft's velocity for this shot's flash, gas and tongues */
+  let lensFxK = 1;
+  const _lensVel = new THREE.Vector3();
+  /** one puff of a lens gun's gas: from `at` lens m down the bore, on down it at `boreMps`, out of the frame at `outMps`
+   *  and sideways at `sideMps` (lens m/s) */
+  function lensGas(at: number, boreMps: number, outMps: number, sideMps: number, life: number, size0: number, size1: number,
+    alpha: number, hex0: number, hex1: number): void {
+    const M = _lensM, D = _lensD, k = lensFxK, cv = _lensVel;
+    _puffO.pos[0] = M.x + D.x * at * k; _puffO.pos[1] = M.y + D.y * at * k; _puffO.pos[2] = M.z + D.z * at * k;
+    _puffO.vel[0] = cv.x + k * (D.x * boreMps + _lensOut.x * outMps + _lensSide.x * sideMps + (rng() - 0.5) * 0.6);
+    _puffO.vel[1] = cv.y + k * (D.y * boreMps + _lensOut.y * outMps + _lensSide.y * sideMps + (rng() - 0.5) * 0.6);
+    _puffO.vel[2] = cv.z + k * (D.z * boreMps + _lensOut.z * outMps + _lensSide.z * sideMps + (rng() - 0.5) * 0.6);
+    _puffO.life = life; _puffO.size0 = size0 * k; _puffO.size1 = size1 * k;
+    _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.2;
+    col3(hex0, _puffO.col0); col3(hex1, _puffO.col1);
+    _puffO.alpha = alpha; _puffO.grav = 0; _puffO.birthOffset = 0;
+    particles.emit('smoke', _puffO);
+  }
+  /** one flash card at `at` lens m down the bore */
+  function lensFlash(at: number, life: number, size0: number, size1: number, alpha: number, hex0: number, hex1: number): void {
+    const M = _lensM, D = _lensD, k = lensFxK, cv = _lensVel;
+    _puffO.pos[0] = M.x + D.x * at * k; _puffO.pos[1] = M.y + D.y * at * k; _puffO.pos[2] = M.z + D.z * at * k;
+    _puffO.vel[0] = cv.x + D.x * 2 * k; _puffO.vel[1] = cv.y + D.y * 2 * k; _puffO.vel[2] = cv.z + D.z * 2 * k;
+    _puffO.life = life; _puffO.size0 = size0 * k; _puffO.size1 = size1 * k;
+    _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
+    col3(hex0, _puffO.col0); col3(hex1, _puffO.col1);
+    _puffO.alpha = alpha; _puffO.grav = 0; _puffO.birthOffset = 0;
+    particles.emit('flash', _puffO);
+  }
+  /** one tongue of flame from the muzzle along `ax` (lens m) */
+  function lensJet(ax: THREE.Vector3, life: number, width: number, len0: number, len1: number): void {
+    const M = _lensM, k = lensFxK;
+    _jetO.pos[0] = M.x; _jetO.pos[1] = M.y; _jetO.pos[2] = M.z;
+    _jetO.axis[0] = ax.x; _jetO.axis[1] = ax.y; _jetO.axis[2] = ax.z;
+    _jetO.life = life; _jetO.width = width * k; _jetO.len0 = len0 * k; _jetO.len1 = len1 * k;
+    _jetO.seed = rng(); col3(0xffe2a8, _jetO.col); _jetO.alpha = 1; _jetO.birthOffset = 0;
+    particles.emit('jet', _jetO);
+  }
+  function lensMuzzleFx(gun: GunshipRound): void {
+    if (!lensUp || !lensGuns || !lensGuns.muzzle(gun, _lensM, _lensD)) return;
+    lensGuns.fire(gun);
+    lensFxK = lensGuns.scale;
+    _lensVel.copy(lensGuns.velocity);
+    const heavy = gun === 'howitzer', missile = gun === 'missile';
+    const D = _lensD, M = _lensM;
+    // out of the frame: from the lens's axis out through the gun
+    const cam = engineCtx.camera;
+    if (cam) {
+      cam.getWorldDirection(_lensFwd);
+      _lensOut.copy(M).sub(cam.position);
+      _lensOut.addScaledVector(_lensFwd, -_lensOut.dot(_lensFwd));
+      if (_lensOut.lengthSq() > 1e-8) _lensOut.normalize(); else _lensOut.set(0, 1, 0);
+    } else _lensOut.set(0, 1, 0);
+    _lensSide.crossVectors(D, _UP);
+    if (_lensSide.lengthSq() < 1e-6) _lensSide.set(1, 0, 0); else _lensSide.normalize();
+    if (missile) {
+      // the rail: a white flash at the round's motor (its tail, 0.83 lens m behind its middle) and its blast thrown back
+      // off the rail and out of the frame
+      M.addScaledVector(D, -0.83 * lensFxK);
+      flashLight(lightStates[0], M, MUZZLE_LIGHT_PEAK * 0.3 * muzzleLightScale, 0);
+      lensFlash(0, 0.12, 0.3, 1.1, 0.85, 0xfff6e0, 0xffb060);
+      for (let i = 0; i < 4; i++) lensGas(-0.2 - 0.3 * i, -1.5 - rng() * 1.5, LENS_SLIP_MPS * 1.4, 0, 1 + rng() * 0.5, 0.2, 0.95 + rng() * 0.35, 0.28, 0xd8d6d0, 0xb9b7b0);
+      return;
+    }
+    // the flash: a white-hot core at the brake, its orange bloom and tongue down the bore (the howitzer's brake also
+    // vents its two baffles sideways)
+    const s = heavy ? 2.3 : 1;
+    lensFlash(0.12 * s, heavy ? 0.07 : 0.045, 0.3 * s, 0.75 * s, 1, 0xffffff, 0xffe2a8);
+    lensFlash(0.45 * s, heavy ? 0.12 : 0.07, 0.5 * s, 1.45 * s, 0.85, 0xfff0c0, 0xff8a30);
+    lensJet(D, heavy ? 0.09 : 0.05, 0.22 * s, 0.5 * s, 1.9 * s);
+    if (heavy) {
+      _lensFwd.copy(D).multiplyScalar(0.35).add(_lensSide).normalize(); lensJet(_lensFwd, 0.08, 0.32, 0.6, 2.2);
+      _lensFwd.copy(D).multiplyScalar(0.35).sub(_lensSide).normalize(); lensJet(_lensFwd, 0.08, 0.32, 0.6, 2.2);
+    }
+    // the gas off the brake: a little way down the bore, then swept out of the frame past the gun
+    if (heavy) {
+      for (let i = 0; i < 6; i++) {
+        const side = i < 2 ? 0 : (i % 2 ? 1 : -1) * (2.5 + rng() * 2);
+        lensGas(0.4, 1.5 + rng() * 2, LENS_SLIP_MPS * (0.7 + rng() * 0.6), side, 0.9 + rng() * 0.5, 0.3, 1.15 + rng() * 0.4, 0.32,
+          0x8f8a80, 0x9a978f);
+      }
+    } else {
+      for (let i = 0; i < 2; i++) lensGas(0.3, 2 + rng() * 2, LENS_SLIP_MPS * (0.8 + rng() * 0.5), 0, 0.45 + rng() * 0.25, 0.1, 0.5, 0.15,
+        0xc2beb4, 0xa8a59d);
+    }
+    flashLight(lightStates[0], M, MUZZLE_LIGHT_PEAK * (heavy ? 0.5 : 0.2) * muzzleLightScale, 0);
+  }
+
   /**
    * (ac130-fx-228) A gunship shot's muzzle. The simulation fires every gunship round from the orbit centre, where the
    * pilot's gimbal camera rides: in that lens nothing is drawn at the muzzle (no tank flash cards, no propellant media a
@@ -4671,7 +4897,7 @@ function* createFxSteps(
     _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
     _v4.set(e.dir[0], e.dir[1], e.dir[2]);
     const cam = engineCtx && engineCtx.camera;
-    if (cam && cam.position.distanceToSquared(_v3) < GUNSHIP_LENS_M * GUNSHIP_LENS_M) return;
+    if (cam && cam.position.distanceToSquared(_v3) < GUNSHIP_LENS_M * GUNSHIP_LENS_M) { lensMuzzleFx(gun); return; }
     _gpSide.set(_v4.x, 0, _v4.z);
     if (_gpSide.lengthSq() < 1e-6) _gpSide.set(1, 0, 0); else _gpSide.normalize();
     _gpPos.copy(_v3).addScaledVector(_gpSide, 2.4);
@@ -4727,17 +4953,17 @@ function* createFxSteps(
    * it ends where the round struck (or was last seen) and dissolves there.
    */
   function layTrail(trail: GuidedTrail, look: MissileLook, shell: LiveShell, d: number, t: number, speed: number,
-    seedU: number, dir: THREE.Vector3): void {
+    seedU: number, dir: THREE.Vector3, drawnD = d): void {
     const base: MissileTrail | null = missileTrailOf(look);
     if (!base) return;
     // (ac130-fx-228 r2) the gunship's own missile: its smoke, born 8 m from the gimbal lens, thins out near the camera
-    const tl = trail.pylon ? gunshipTrailOf(base) : base;
+    const tl = trail.pylon ? (trail.lensK !== undefined ? lensTrailOf(base) : gunshipTrailOf(base)) : base;
     const key = trail.seed as number;
     let slot = trail.smokeSlot ?? -1;
     if (slot < 0 || smokeTrails.slotOf(key) !== slot) {
       slot = smokeTrails.begin(key, smokeTrails.lookIndex(tl), seedU);
       trail.smokeSlot = slot;
-      trail.nextSmokeD = Math.max(look.igniteM, d - 60);
+      trail.nextSmokeD = Math.max(look.igniteM, drawnD - 60);
     }
     const seg = shell.prevPos ? shell.pos.distanceTo(shell.prevPos) : 0;
     const motorBack = trail.tailM ?? 1.3;
@@ -4746,9 +4972,11 @@ function* createFxSteps(
     // seconds since the flight motor lit (its boost phase) at a point the nozzle passed `back` metres ago
     const igniteS = look.igniteM / speed;
     const stepM = Math.max(smokeTrails.stepOf(slot), TRAIL_STEP_M, speed / 90);
-    let next = Math.max(trail.nextSmokeD as number, look.igniteM, d - 60);
+    // (ac130-barrels-230 r2) laid only as far as the drawn round (easing off the lens's rail, it is behind the
+    // simulation's), each point where the line passed it
+    let next = Math.max(trail.nextSmokeD as number, look.igniteM, drawnD - 60);
     let n = 0;
-    while (next <= d && n < 64) {
+    while (next <= drawnD && n < 64) {
       const back = d - next;
       // along this frame's path (its curve) where it reaches, straight back along the line beyond
       if (shell.prevPos && seg > 1e-3 && back <= seg) _v6.copy(shell.pos).lerp(shell.prevPos, back / seg);
@@ -4756,7 +4984,7 @@ function* createFxSteps(
       missileWobble(look, timed ? Math.max(0, t - back / speed) : 0, seedU, _wob);
       _v6.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]).addScaledVector(dir, -motorBack);
       // (ac130-fx-228 r2) a gunship missile's smoke where its drawn body passed (off the pylon)
-      if (trail.pylon) { const k = pylonK(next); _v6.x += trail.pylon[0] * k; _v6.y += trail.pylon[1] * k; _v6.z += trail.pylon[2] * k; }
+      if (trail.pylon) { const k = pylonK(next, trail.pylonM); _v6.x += trail.pylon[0] * k; _v6.y += trail.pylon[1] * k; _v6.z += trail.pylon[2] * k; }
       smokeTrails.point(slot, _v6.x, _v6.y, _v6.z, now - back / speed, timed ? Math.max(0, t - back / speed - igniteS) : 99);
       next += stepM;
       n++;
@@ -5976,6 +6204,8 @@ function* createFxSteps(
       writeLocalLights();
       advanceTimedFx(tickDt);
       sweepShellsThroughProps(shells);
+      // (ac130-barrels-230) the pilot's guns on this frame's lens, before its rounds are drawn from their muzzles
+      poseLensGuns(camera, dt);
       writeLiveShellTracers(shells, camera);
       commitAtgmInstances();
       // (FX lane 10-14) the trails and wires after their rounds (the clock, the wind; a wire's sag, its launcher's pull, its
@@ -7056,6 +7286,7 @@ function* createFxSteps(
       replaySuppressed = false;
       auxiliaryClock = null;
       auxiliary?.reset(); drones.reset();
+      lensGuns?.hide(); lensUp = false; lensCarrier = null;
       particles.resetAll();
       vol?.reset();
       smokeTrails.reset();

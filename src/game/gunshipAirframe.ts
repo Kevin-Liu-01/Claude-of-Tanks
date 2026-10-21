@@ -300,3 +300,255 @@ export function buildGunshipAirframe(hooks: GunshipMaterialHooks | null): BuiltA
     },
   };
 }
+
+// ---- (ac130-barrels-230) the pilot's own guns, as its gimbal lens sees them -------------------------------------------
+/**
+ * The owner (2026-10-21): the guns sit "behind" the camera, "barrels are visible so we can see them fire and recoil", and
+ * the rounds, the missile and their smoke come from behind it. The lens rides at the orbit centre the simulation fires
+ * every gunship round from (sim/aerialCombat.ts), so the guns are drawn beside and behind it: the 30 mm low on the left,
+ * the missile's rail above it, the howitzer on the right, each laid on the aim point, its breech out of the frame. Their
+ * places keep clear of the HUD on a desktop (the rosters up the sides, the weapons console low in the middle, the minimap
+ * low on the right) and on a phone (the minimap high on the left, zoom low on the left, fire low on the right). Presentation only: the shot's origin, direction and timing stay the simulation's; the drawn rounds leave these
+ * muzzles and join their flight lines (fx/effects.ts, fx/projectileTracers.ts).
+ *
+ * The lens zooms (55 degrees / zoom): the guns hold their places on the screen at every zoom, as a weapon held in front of
+ * a camera does. Their group is the camera's frame scaled across the view by tan(fov/2) / tan(27.5 deg) (`scale`) and
+ * not along it, so a barrel keeps its screen size, its place and its line to the centre; the fx scale a muzzle's flash,
+ * smoke and drift by the same factor. Lens metres below are at the reference field of view (55 degrees).
+ */
+export type LensGun = 'cannon' | 'howitzer' | 'missile';
+export const LENS_GUNS: readonly LensGun[] = Object.freeze(['cannon', 'howitzer', 'missile']);
+/** each gun's mount on the screen (normalised device x, y: -1..1) and its distance ahead of the lens (lens m) */
+export const LENS_GUN_PLACE: Readonly<Record<LensGun, readonly [number, number, number]>> = Object.freeze({
+  cannon: [-0.8, -0.32, 3.4], howitzer: [0.8, -0.2, 4.6], missile: [-0.7, 0.24, 4.2],
+});
+/** the reference field of view's half-angle tangent (55 degrees, the lens at zoom 1) */
+export const LENS_T0 = Math.tan(THREE.MathUtils.degToRad(55) / 2);
+/** the guns are laid on a point this far down the lens's axis (lens m): the slant range of the orbit's aim */
+const LENS_AIM_M = 260;
+/** recoil strokes (lens m): the 30 mm's short kick, the howitzer's slam and run-out */
+const CANNON_STROKE_M = 0.085, HOWITZER_STROKE_M = 0.8;
+const HOWITZER_RECOIL_S = 0.035, HOWITZER_HOLD_S = 0.09, HOWITZER_RUNOUT_S = 0.85;
+/** the rail's next round shows once the gun is ready again (sim/matchRuleset.ts GUNSHIP_WEAPONS reloadS 7 s) */
+const MISSILE_RAIL_S = 6.6, MISSILE_SLIDE_S = 0.4;
+/** barrel heat: each shot's share, its cooling (s); the heat lens reads emission 1.55..3.1 as cold..white-hot
+ *  (engine/post.ts thermalHeat), so a resting gun stays under it and a firing barrel crosses it */
+const HEAT_SHOT: Readonly<Record<LensGun, number>> = Object.freeze({ cannon: 0.035, howitzer: 0.3, missile: 0 });
+const HEAT_COOL_S = 22, HEAT_REST = 0.8, HEAT_HOT = 3.4, HEAT_MOUNT = 0.6;
+/** (round 2) each shot's flash of heat in the barrel and brake (emission over the rest, and its fall, s): one shot of
+ *  either gun crosses the heat lens's threshold, so the heat lens sees each gun fire */
+const HEAT_FLASH: Readonly<Record<LensGun, readonly [number, number]>> = Object.freeze({
+  cannon: [1.3, 0.3], howitzer: [2.2, 0.7], missile: [0, 1],
+});
+const GUNMETAL = 0x383c3f, BLACKENED = 0x222527, PORTS = 0x0b0c0d, MOUNT = 0x50575b, OLIVE = 0x3d452c, BAND = 0xc49a2a,
+  SEEKER = 0x101418;
+
+export interface GunshipLensGuns {
+  readonly root: THREE.Group;
+  /** this frame's lens scale across the view (1 at zoom 1) */
+  readonly scale: number;
+  /** the camera's velocity (m/s), from its last poses */
+  readonly velocity: THREE.Vector3;
+  /** place the guns on this frame's camera and run their recoil and heat; `heatLens` draws the barrels' heat */
+  pose(camera: THREE.PerspectiveCamera, dt: number, heatLens: boolean): void;
+  hide(): void;
+  /** a shot: the gun recoils and warms (the rail's round leaves it) */
+  fire(gun: LensGun): void;
+  /** the gun's muzzle (world m; the missile's: its round on the rail) and its bore's world direction this frame; false
+   *  while the guns are not posed */
+  muzzle(gun: LensGun, pos: THREE.Vector3, dir?: THREE.Vector3): boolean;
+  dispose(): void;
+}
+
+/** a cylinder along -z (the bore) from z0 to z1 (z1 > z0: toward the breech), radius r0 at z0 and r1 at z1 */
+function bore(parts: Parts, x: number, y: number, z0: number, z1: number, r0: number, r1: number, hex: number, seg = 14): void {
+  const g = new THREE.CylinderGeometry(r0, r1, z1 - z0, seg, 1, false);
+  g.rotateX(-Math.PI / 2); // its top (radius r0) from +y to -z
+  g.translate(x, y, (z0 + z1) / 2);
+  const c = lin(hex);
+  parts.add(g, () => c);
+}
+
+/** the 30 mm (GAU-23/A class): its muzzle brake, barrel and jacket recoil; its cradle stays */
+function cannonParts(slide: Parts, mount: Parts): void {
+  bore(slide, 0, 0, 0, 0.3, 0.068, 0.068, BLACKENED);
+  for (const z of [0.06, 0.16]) bore(slide, 0, 0, z, z + 0.05, 0.071, 0.071, PORTS);
+  bore(slide, 0, 0, 0.3, 2.9, 0.05, 0.054, GUNMETAL);
+  bore(slide, 0, 0, 1.9, 2.95, 0.074, 0.08, BLACKENED, 12);
+  box(slide, 0.3, 0.34, 1.1, 0, -0.02, 3.45, GUNMETAL);
+  box(mount, 0.24, 0.08, 1.7, 0, -0.12, 2.5, MOUNT);
+  box(mount, 0.08, 0.36, 0.9, 0.17, -0.06, 3.1, MOUNT);
+}
+
+/** the howitzer: its double-baffle brake, the tapered barrel with its evacuator, the breech ring; its cradle sleeve,
+ *  recuperators and mount stay */
+function howitzerParts(slide: Parts, mount: Parts): void {
+  bore(slide, 0, 0, 0, 0.42, 0.16, 0.16, BLACKENED, 16);
+  for (const z of [0.07, 0.25]) for (const s of [-1, 1]) box(slide, 0.05, 0.2, 0.12, s * 0.15, 0, z + 0.06, PORTS);
+  bore(slide, 0, 0, 0.42, 4.0, 0.11, 0.135, GUNMETAL, 16);
+  bore(slide, 0, 0, 1.2, 1.6, 0.152, 0.152, BLACKENED, 16);
+  box(slide, 0.44, 0.44, 0.5, 0, 0, 4.25, GUNMETAL);
+  bore(mount, 0, 0, 2.6, 4.2, 0.185, 0.19, MOUNT, 16);
+  for (const s of [-1, 1]) bore(mount, s * 0.11, 0.22, 2.2, 4.4, 0.06, 0.06, MOUNT, 10);
+  box(mount, 0.52, 0.3, 1.4, 0, -0.3, 3.5, MOUNT);
+}
+
+/** the missile: a Hellfire-class round on its rail (it leaves on a shot and the next slides on), the rail and the pylon
+ *  up into the wing */
+function missileParts(round: Parts, mount: Parts): void {
+  const R = 0.089;
+  {
+    const nose = new THREE.ConeGeometry(R, 0.26, 14, 1, false);
+    nose.rotateX(-Math.PI / 2); // the tip to -z
+    nose.translate(0, 0, 0.13);
+    const c = lin(OLIVE);
+    round.add(nose, () => c);
+    const dome = new THREE.SphereGeometry(0.05, 10, 8);
+    dome.translate(0, 0, 0.02);
+    const g = lin(SEEKER);
+    round.add(dome, () => g);
+  }
+  bore(round, 0, 0, 0.26, 1.63, R, R, OLIVE);
+  bore(round, 0, 0, 0.42, 0.47, R + 0.003, R + 0.003, BAND);
+  for (let i = 0; i < 4; i++) {
+    const a = Math.PI / 4 + (i * Math.PI) / 2, cx = Math.cos(a), cy = Math.sin(a);
+    const fin = new THREE.BoxGeometry(0.012, 0.11, 0.26);
+    fin.rotateZ(a - Math.PI / 2);
+    fin.translate(cx * (R + 0.05), cy * (R + 0.05), 1.45);
+    const c = lin(OLIVE);
+    round.add(fin, () => c);
+    const canard = new THREE.BoxGeometry(0.01, 0.06, 0.09);
+    canard.rotateZ(a - Math.PI / 2);
+    canard.translate(cx * (R + 0.025), cy * (R + 0.025), 0.42);
+    round.add(canard, () => c);
+  }
+  box(mount, 0.16, 0.08, 1.9, 0, R + 0.06, 0.95, MOUNT);
+  box(mount, 0.1, 0.55, 1.0, 0, R + 0.37, 1.25, MOUNT);
+}
+
+export function buildGunshipLensGuns(hooks: GunshipMaterialHooks | null): GunshipLensGuns {
+  const root = new THREE.Group();
+  root.name = 'AC-130 lens guns';
+  root.visible = false;
+  // one lit program with the airframe's (the same parameters: its covered compile serves them); emission per material
+  const materials: THREE.MeshStandardMaterial[] = [];
+  const material = (name: string): THREE.MeshStandardMaterial => {
+    const m = new THREE.MeshStandardMaterial({ name, vertexColors: true, metalness: 0.32, roughness: 0.6 });
+    hooks?.setup(m);
+    materials.push(m);
+    return m;
+  };
+  const mountMaterial = material('ac130-lens-mounts');
+  const geometries: THREE.BufferGeometry[] = [];
+  interface Gun { mount: THREE.Group; slide: THREE.Mesh; hot: THREE.MeshStandardMaterial; since: number; heat: number }
+  const guns = {} as Record<LensGun, Gun>;
+  for (const id of LENS_GUNS) {
+    const slideParts = new Parts(), mountParts = new Parts();
+    if (id === 'cannon') cannonParts(slideParts, mountParts);
+    else if (id === 'howitzer') howitzerParts(slideParts, mountParts);
+    else missileParts(slideParts, mountParts);
+    const mount = new THREE.Group();
+    mount.name = `ac130-lens-${id}`;
+    const hot = material(`ac130-lens-${id}`);
+    const slideGeo = slideParts.geometry(), mountGeo = mountParts.geometry();
+    geometries.push(slideGeo, mountGeo);
+    const slide = new THREE.Mesh(slideGeo, hot);
+    slide.name = `ac130-lens-${id}-${id === 'missile' ? 'round' : 'barrel'}`;
+    const fixed = new THREE.Mesh(mountGeo, mountMaterial);
+    fixed.name = `ac130-lens-${id}-mount`;
+    for (const mesh of [slide, fixed]) { mesh.castShadow = false; mesh.frustumCulled = false; }
+    mount.add(slide, fixed);
+    root.add(mount);
+    guns[id] = { mount, slide, hot, since: Infinity, heat: 0 };
+  }
+  let scale = 1, aspect = 0, posed = false, haveLast = false;
+  const velocity = new THREE.Vector3(), last = new THREE.Vector3(), _aim = new THREE.Vector3(), _v = new THREE.Vector3();
+  const _m = new THREE.Matrix4();
+  const UP = new THREE.Vector3(0, 1, 0);
+
+  /** the mounts on this aspect's screen places, laid on the aim point (their bores along local -z) */
+  function place(a: number): void {
+    aspect = a;
+    for (const id of LENS_GUNS) {
+      const [nx, ny, z] = LENS_GUN_PLACE[id];
+      const g = guns[id];
+      g.mount.position.set(nx * z * LENS_T0 * a, ny * z * LENS_T0, -z);
+      _aim.set(0, 0, -LENS_AIM_M);
+      // Matrix4.lookAt turns -z toward the target (the camera's convention): the bore
+      _m.lookAt(g.mount.position, _aim, UP);
+      g.mount.quaternion.setFromRotationMatrix(_m);
+    }
+  }
+
+  function stroke(id: LensGun, t: number): number {
+    if (!(t < 2)) return 0;
+    if (id === 'cannon') return CANNON_STROKE_M * (t < 0.012 ? t / 0.012 : Math.exp(-(t - 0.012) / 0.028));
+    if (id === 'howitzer') {
+      if (t < HOWITZER_RECOIL_S) return HOWITZER_STROKE_M * (t / HOWITZER_RECOIL_S) * (2 - t / HOWITZER_RECOIL_S);
+      const u = (t - HOWITZER_RECOIL_S - HOWITZER_HOLD_S) / HOWITZER_RUNOUT_S;
+      return HOWITZER_STROKE_M * (u <= 0 ? 1 : u >= 1 ? 0 : 1 - u * u * (3 - 2 * u));
+    }
+    return 0;
+  }
+
+  return {
+    root,
+    get scale() { return scale; },
+    velocity,
+    pose(camera, dt, heatLens) {
+      if (camera.aspect !== aspect) place(camera.aspect);
+      scale = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) / LENS_T0;
+      if (haveLast && dt > 1e-4) {
+        _v.copy(camera.position).sub(last).divideScalar(dt);
+        // a jump (a new lens, a teleport) is no velocity
+        if (_v.lengthSq() < 400 * 400) velocity.lerp(_v, Math.min(1, dt * 12)); else velocity.set(0, 0, 0);
+      }
+      last.copy(camera.position);
+      haveLast = true;
+      root.position.copy(camera.position);
+      root.quaternion.copy(camera.quaternion);
+      root.scale.set(scale, scale, 1);
+      for (const id of LENS_GUNS) {
+        const g = guns[id];
+        g.since += dt;
+        g.heat *= Math.exp(-dt / HEAT_COOL_S);
+        if (id === 'missile') {
+          // the next round slides onto the rail once the launcher is ready again
+          const t = g.since - MISSILE_RAIL_S;
+          g.slide.visible = !(g.since < MISSILE_RAIL_S);
+          g.slide.position.set(0, g.since < 0.25 ? 0.012 * Math.sin(g.since * 90) * Math.exp(-g.since / 0.08) : 0,
+            t > 0 && t < MISSILE_SLIDE_S ? 1.2 * (1 - t / MISSILE_SLIDE_S) ** 2 : 0);
+          // the rail shudders as the round leaves
+          g.mount.children[1]!.position.y = g.since < 0.25 ? 0.01 * Math.sin(g.since * 80) * Math.exp(-g.since / 0.07) : 0;
+        } else g.slide.position.z = stroke(id, g.since);
+        // (the rail's round is as cool as the mount: its motor has not lit)
+        const [flash, fall] = HEAT_FLASH[id];
+        g.hot.emissive.setScalar(!heatLens ? 0 : id === 'missile' ? HEAT_MOUNT
+          : HEAT_REST + (HEAT_HOT - HEAT_REST) * Math.min(1, g.heat) + flash * Math.exp(-g.since / fall));
+      }
+      mountMaterial.emissive.setScalar(heatLens ? HEAT_MOUNT : 0);
+      root.visible = true;
+      root.updateMatrixWorld(true);
+      posed = true;
+    },
+    hide() { root.visible = false; posed = false; haveLast = false; velocity.set(0, 0, 0); },
+    fire(gun) {
+      const g = guns[gun];
+      g.since = 0;
+      g.heat = Math.min(1.2, g.heat + HEAT_SHOT[gun]);
+    },
+    muzzle(gun, pos, dir) {
+      if (!posed) return false;
+      const g = guns[gun];
+      // the missile leaves from its round's middle on the rail; a barrel's muzzle is its mount's origin (at rest)
+      pos.set(0, 0, gun === 'missile' ? 0.8 : 0).applyMatrix4(g.mount.matrixWorld);
+      if (dir) dir.set(0, 0, -1).transformDirection(g.mount.matrixWorld);
+      return true;
+    },
+    dispose() {
+      root.removeFromParent();
+      for (const g of geometries) g.dispose();
+      for (const m of materials) { hooks?.release(m); m.dispose(); }
+    },
+  };
+}
