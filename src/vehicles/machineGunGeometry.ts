@@ -917,7 +917,11 @@ export function addPintleReceiver(context: PintleLayout): void {
   parts.add(weaponSlot, block(bodyW * 0.86, coverH * 0.55, rd * 0.36), 0, coverY + coverH * 0.275, recZ - rd * 0.3);
   if (near) parts.add(weaponSlot, roundBar([-bodyW * 0.44, coverY + coverH * 0.55, recZ + rd * 0.46], [bodyW * 0.44, coverY + coverH * 0.55, recZ + rd * 0.46],
     0.0062 * s, 6));
-  parts.add(weaponSlot, block(bodyW * 0.36, coverH * 0.95, 0.014 * s), 0, coverY + coverH * 0.48, recZ - rd * 0.125);
+  // 2026-10-20 (release 227 coplanar census: the latch's underside lay 0.1 mm over the cover's and the rear plate's,
+  // two same-facing faces over 1.6 and 3.0 cm2 on the QJC-88): its foot runs 1 mm down into the receiver box under
+  // them, its top where it was
+  const latchTop = coverY + coverH * 0.955, latchFoot = coverY - 0.001;
+  parts.add(weaponSlot, block(bodyW * 0.36, latchTop - latchFoot, 0.014 * s), 0, (latchTop + latchFoot) / 2, recZ - rd * 0.125);
   if (near) parts.add(weaponSlot, place(block(0.007 * s, 0.008 * s, 0.032 * s), 0, 0, 0, 0.3, 0, 0), -f * bodyW * 0.36, coverTop + 0.003 * s, recZ - rd * 0.15);
   // the feedway on the feed side where the belt enters, and the side plates' riveted trunnion lugs at the front
   parts.add(weaponSlot, block(0.022 * s, bodyH * 0.3, 0.075 * s), f * (bodyW / 2 + 0.009 * s), trunY + bodyH * 0.12, recZ + rd * 0.16);
