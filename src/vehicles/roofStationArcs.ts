@@ -6,8 +6,10 @@
 // (coordinator ruling 2026-10-15: the guns park while their own drone launches) each keeps 210 or 260 degrees round its
 // bow and the side away from the stand, and the stand sits in the gap (the T-62's to the gun's left rear, the Type 59's
 // to its right rear). An arc authored on
-// the station itself (userData.yawArc: the M551A1 TTS, the MBT-70) takes precedence. tools/vehicle-controls-inventory.mjs
-// writes these into the inventory the authority, the presentation and the stand seats read.
+// the station itself (userData.yawArc: the M551A1 TTS, the MBT-70, the ZTZ-99A2) takes precedence. tools/vehicle-controls-inventory.mjs
+// writes these into the inventory the authority, the presentation and the stand seats read. The ZTZ-99A2's QJC-88 left
+// this table on 2026-10-20: its own arc stops short of the commander's sight and the cupola periscope, inside the
+// stand's (profiles/china.ts, src/vehicles/ztz99a2RoofArc.selftest.mjs).
 export const ROOF_STATION_ARCS: Readonly<Record<string, Readonly<Record<string, readonly [number, number]>>>> = Object.freeze({
   merkava1b: { merkavaRoofMag1: [-1.7802, 1.8326] },
   merkava2b: { merkavaRoofMag1: [-2.1118, 2.1642], merkavaRoofMag2: [-1.85, 1.885] },
@@ -16,7 +18,6 @@ export const ROOF_STATION_ARCS: Readonly<Record<string, Readonly<Record<string, 
   t72bu_1989: { t72buXRoofNsvt: [-3.5256, 0.384] },
   type59: { type59RoofDShK: [-1.4835, 3.0543] },
   ztz85_iii: { fitting_browningDerived_qjc88: [-0.8029, 2.7925] },
-  ztz99a2: { fitting_browningDerived_qjc88: [-1.7104, 1.6581] },
   m551_sheridan: { m551CommanderM2: [-2.1118, 2.042], m551LoaderMg: [-2.2864, 2.3562] },
   t90: { t90XMountedNsvt: [-1.693, 1.7453] },
 });
