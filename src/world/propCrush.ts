@@ -62,16 +62,19 @@ const HEAVY = { squash: 0.42, rack: 0.5, buckle: 0.07, noise: 0.16 } as const;
  *  with the hull. */
 const CLOTH = { squash: 0.06, noise: 0.03, fold: 0.07, foldK: 5.5, droop: 0.65, push: 0.55, lift: 1 };
 /** A car (its anatomy on the field): the belly's clearance between the tracks (m over the base) and the tracks' share of
- *  the hull's half width; what is left of the body under the belt line and of the greenhouse over it once pressed; the
- *  panels' folds (m, and their pitch along and across, 1/m), the doors' bow (m), the roof's rack along the travel (m),
- *  the wheels' splay at the floor (rad) and the breakup's jitter (m). */
-const CAR = { belly: 0.42, track: 0.34, body: 0.25, glass: 0.08, crease: 0.05, alongK: 1.6, acrossK: 1.9, bow: 0.12,
-  rack: 0.2, splay: 1.0, jitter: 0.012 } as const;
+ *  the hull's half width; its floor (the share of its wheels' tops its chassis, axles and engine stand at: nothing presses
+ *  it lower between the tracks, and under them a share of that); what is left of the body under the belt line and of the
+ *  greenhouse over it once pressed; the panels' folds (m, and their pitch along and across, 1/m), the doors' bow (m), the
+ *  roof's rack along the travel (m), the wheels' splay at the floor (rad) and the breakup's jitter (m). */
+const CAR = { belly: 0.45, track: 0.34, floor: 0.85, trackFloor: 0.75, body: 0.33, glass: 0.12, crease: 0.05, alongK: 1.6,
+  acrossK: 1.9, bow: 0.12, rack: 0.2, splay: 1.0, jitter: 0.012 } as const;
 
 /** A car's anatomy over its field (its own frame): its belt line and its wheels. */
 export interface CrushVehicle {
-  /** The belt line (the glass's foot, m over the base) and the top. */
+  /** The belt line (the glass's foot, m over the base). */
   readonly belt: number;
+  /** Its floor (m over the base): its chassis, axles and engine (CAR.floor of its highest wheel's top). */
+  readonly floor: number;
   /** The wheels, packed [zc, yc, r, xIn, xOut, side] (side −1 left, +1 right; xIn/xOut the tyre's |x| span). */
   readonly wheels: Float32Array;
   /** Per vertex of the rest it was read from: the wheel it belongs to, or −1. */
@@ -140,7 +143,10 @@ export function vehicleAnatomy(rest: ArrayLike<number>, surf: ArrayLike<number> 
       }
     }
   }
-  return { belt: Math.max(top * 0.3, Math.min(top * 0.8, belt)), wheels: packed, wheelOf, hubCap: new Float32Array(packed.length / 6) };
+  let wheelTop = 0;
+  for (let w = 0; w < packed.length; w += 6) wheelTop = Math.max(wheelTop, packed[w + 1] + packed[w + 2]);
+  const floor = wheelTop > 0 ? Math.max(0.3, Math.min(1.1, wheelTop * CAR.floor)) : top * 0.3;
+  return { belt: Math.max(top * 0.3, Math.min(top * 0.8, belt)), floor, wheels: packed, wheelOf, hubCap: new Float32Array(packed.length / 6) };
 }
 
 /** A triangle wave of period 1 in [−1, 1]: a fold's crease (flat-shaded, its ridges read as folded sheet). */
@@ -258,8 +264,8 @@ export function pressField(f: CrushField, cx: number, cz: number, fx: number, fz
         // dragged under the tracks too: it keeps being pulled on along the hull's travel)
         const s = halfLength - u;
         cap = FLOOR_M + RAMP_H * Math.max(0, 1 - s / RAMP_M);
-        // a car: between the tracks the belly leaves it its clearance; only the tracks press it to the floor
-        if (f.vehicle && av < halfWidth * (1 - CAR.track)) cap = Math.max(cap, CAR.belly);
+        // a car: between the tracks the belly leaves it its clearance and its chassis; the tracks press it a little lower
+        if (f.vehicle) cap = Math.max(cap, av < halfWidth * (1 - CAR.track) ? Math.max(CAR.belly, f.vehicle.floor) : f.vehicle.floor * CAR.trackFloor);
         if (f.cloth) push = CLOTH.push * Math.max(0, 1 - s / (2 * halfLength)) * 0.8;
       } else if (av <= halfWidth) {
         // the band ahead of its front: the glacis meets it, shoves it on and bends it down a little
@@ -273,6 +279,7 @@ export function pressField(f: CrushField, cx: number, cz: number, fx: number, fz
         lat = SPLAY_M * w * (v < 0 ? -1 : 1);
       }
       if (cap < least) cap = least;
+      if (f.vehicle && cap < f.vehicle.floor * CAR.trackFloor) cap = f.vehicle.floor * CAR.trackFloor;
       if (cap < f.cap[k] - 1e-4) { f.cap[k] = cap; changed = true; }
       if (push > 0 || lat !== 0) {
         // the shove along the hull's travel and its splay across it, each kept at the largest it has been

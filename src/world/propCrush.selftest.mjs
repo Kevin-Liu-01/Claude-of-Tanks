@@ -340,8 +340,8 @@ const slotScale = (im, i) => { const m = new THREE.Matrix4(); im.getMatrixAt(i, 
   const one = cross(), two = cross();
   assert.deepEqual(Array.from(two.out), Array.from(one.out), 'the same crossing crushes the car the same');
   assert.ok(one.rose < 0.015, `no point of its body rises again by more than its creases deepen (${one.rose.toFixed(4)} m)`);
-  assert.ok(one.belly < 0.7 && one.belly > 0.47, `between the tracks it keeps the belly's clearance and no more (${one.belly.toFixed(2)} m)`);
-  assert.ok(one.track < 0.45, `under the tracks it is pressed down (${one.track.toFixed(2)} m)`);
+  assert.ok(one.belly < 0.85 && one.belly > an.floor + 0.08, `between the tracks it keeps its chassis and the belly's clearance, its body over them and no more (${one.belly.toFixed(2)} m, floor ${an.floor.toFixed(2)} m)`);
+  assert.ok(one.track < one.belly - 0.03, `under the tracks it is pressed lower (${one.track.toFixed(2)} m)`);
   // the roof stays over the doors: the greenhouse's top over the belt line's points, on average, where both stand
   let roofY = 0, roofN = 0, beltY = 0, beltN = 0, x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, rx0 = Infinity, rx1 = -Infinity;
   for (let v = 0; v < grest.length; v += 3) {
@@ -386,7 +386,7 @@ const slotScale = (im, i) => { const m = new THREE.Matrix4(); im.getMatrixAt(i, 
   assert.equal(cix.length, golf.index.count, 'and it draws no triangle more or less');
   cc.geometry.computeBoundingBox();
   const sweptTop = cc.geometry.boundingBox.max.y;
-  assert.ok(sweptTop > 0.47 && sweptTop < 0.8, `an unseen ram sweeps a tank's belly over it, not a pancake (${sweptTop.toFixed(2)} m)`);
+  assert.ok(sweptTop > 0.55 && sweptTop < 0.9, `an unseen ram sweeps a tank's belly over it, not a pancake (${sweptTop.toFixed(2)} m)`);
   const shot = rig(true);
   shot.record.state = 1;
   shot.press.takes(0, 'shell', 1, 0, false);
