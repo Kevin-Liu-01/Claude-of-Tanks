@@ -119,6 +119,8 @@ assert.match(panelSource, /wrap\.dataset\.more = max <= 1 \? '' :/, 'swipe rows 
 const panelCss = readFileSync(new URL('./garageFacetPanel.css', import.meta.url), 'utf8');
 const garageCssText = readFileSync(new URL('./garage.css', import.meta.url), 'utf8');
 const garageText = readFileSync(new URL('./garage.ts', import.meta.url), 'utf8');
+assert.match(panelCss, /\.cot-facet-rowwrap\{position:relative;min-width:0;/, 'a swipe row never widens the panel (blind re-check 2026-10-21)');
+assert.match(panelCss, /grid-template-columns:minmax\(0,1fr\)/, 'the panel column never grows past the panel');
 assert.match(panelCss, /\.cot-facet-rowwrap\[data-more\*='l'\]::before,\.cot-facet-rowwrap\[data-more\*='r'\]::after\{opacity:1;\}/,
   'the edge cue shows where chips continue');
 assert.match(garageCssText, /\.cot-country-rail:has\(> \.cot-facet-panel:not\(\[hidden\]\)\)\{z-index:21;\}/,
