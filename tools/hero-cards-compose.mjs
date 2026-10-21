@@ -21,7 +21,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
   HERO_CAMERA, HERO_CARD_LAYOUT, HERO_ENCODE, HERO_FLAG_MASK, HERO_FRAME, HERO_GROUND, HERO_GUN_SIDE,
-  HERO_POLICY_VERSION, HERO_POSE, HERO_RUNGS, flagMaskStops, heroFlagFiles, heroFlagPolicy, heroTankFiles, nameParts, placeTank,
+  HERO_NAME_LINE_HEIGHT, HERO_POLICY_VERSION, HERO_POSE, HERO_RUNGS, flagMaskStops, heroFlagFiles, heroFlagPolicy, heroTankFiles, nameParts, placeTank,
 } from '../src/ui/heroCardPolicy.ts';
 import {
   FLAG_SVG_DIR, HERO_DIR, HERO_MANIFEST_PATH, fleetIds, fleetRecords, flagInputs, flagPolicyKey, planHeroCards,
@@ -391,6 +391,14 @@ function fitFont(ctx, text, family, weight, size, maxWidth, minSize) {
   return s;
 }
 
+/** How many lines the name takes on a card (the hollow kinds and a name that fits keep one line). */
+function nameLines(ctx, name, { size, maxWidth, font, hollow }) {
+  const { variant } = nameParts(name);
+  if (hollow || !variant) return 1;
+  ctx.font = `600 ${size}px "${font}"`;
+  return ctx.measureText(name).width <= maxWidth ? 1 : 2;
+}
+
 function drawName(ctx, name, { x, y, size, minSize, maxWidth, font, hollow, scale }) {
   const { solid, variant } = nameParts(name);
   ctx.textBaseline = 'alphabetic';
@@ -455,23 +463,24 @@ export function composeCard(kind, { tank, bounds, flag, name, tier, font = 'Chak
   const ctx = canvas.getContext('2d');
   groundFill(ctx, w, h, ground);
   const band = L.nameBand * scale;
+  const pad = L.pad * scale;
+  const nameBox = { size: L.nameSize * scale, minSize: L.minName * scale, maxWidth: w - pad * 2, font, hollow: L.hollow };
+  // A second name line lifts the art box by one line (the runtime card's .hc-n2 --hc-lift).
+  const lift = nameLines(ctx, name, nameBox) === 2 ? L.nameSize * scale * HERO_NAME_LINE_HEIGHT : 0;
   drawFlag(ctx, flag, 0, 0, w, h - band * HERO_FLAG_MASK.bandInset, { facing, selected });
-  const artH = h - band;
+  const artH = h - band - lift;
   drawTank(ctx, tank, bounds, {
     w, artH, baseline: artH + 2 * scale, coreShare: L.coreShare, coreHeight: L.coreHeight, centerX: L.centerX, gunSide,
   });
   // A quiet floor under the name so the type never fights the flag's last fade.
-  const floor = ctx.createLinearGradient(0, h - band - 6 * scale, 0, h);
+  const floorTop = h - band - lift - 6 * scale;
+  const floor = ctx.createLinearGradient(0, floorTop, 0, h);
   floor.addColorStop(0, 'rgba(11,14,17,0)');
   floor.addColorStop(0.5, 'rgba(11,14,17,0.5)');
   floor.addColorStop(1, 'rgba(11,14,17,0.8)');
   ctx.fillStyle = floor;
-  ctx.fillRect(0, h - band - 6 * scale, w, band + 6 * scale);
-  const pad = L.pad * scale;
-  drawName(ctx, name, {
-    x: pad, y: h - pad * 0.95, size: L.nameSize * scale, minSize: L.minName * scale,
-    maxWidth: w - pad * 2, font, hollow: L.hollow, scale,
-  });
+  ctx.fillRect(0, floorTop, w, h - floorTop);
+  drawName(ctx, name, { x: pad, y: h - pad * 0.95, ...nameBox, scale });
   if (L.tier && tier) {
     const inset = Math.round(pad * 0.7);
     drawTierChip(ctx, tier, {

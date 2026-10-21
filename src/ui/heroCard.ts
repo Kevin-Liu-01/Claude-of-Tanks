@@ -10,8 +10,8 @@
 // First-party: Kevin B. Liu (NOTICE.md).
 
 import {
-  HERO_GUN_SIDE, HERO_MANIFEST_FILE, HERO_POLICY_VERSION, HERO_PUBLIC_DIR, heroFlagFiles, heroFlagMaskCss, heroTankFiles,
-  type HeroFacing,
+  HERO_GUN_SIDE, HERO_MANIFEST_FILE, HERO_NAME_LINE_HEIGHT, HERO_POLICY_VERSION, HERO_PUBLIC_DIR, heroFlagFiles, heroFlagMaskCss,
+  heroTankFiles, type HeroFacing,
 } from './heroCardPolicy.ts';
 
 interface HeroLayerRow {
@@ -142,7 +142,32 @@ export async function mountRosterHeroCards(
     });
     if (!decorated) missing.push(specId);
   }
+  markTwoLineNames(cards);
   return missing;
+}
+
+/**
+ * Mark the roster cards whose name wraps to a second line (.hc-n2): the card's CSS lifts the art box by one
+ * name line (HERO_NAME_LINE_HEIGHT), so the tracks keep their air above the name. The name's own height
+ * decides, so a font swap, a locale or a strip size that changes the wrap re-marks the card; a card hidden by
+ * the nation filter measures 0 and keeps its mark until it shows again.
+ */
+function markTwoLineNames(cards: ReadonlyMap<string, HTMLElement>): void {
+  if (typeof ResizeObserver !== 'function') return;
+  const cardByName = new Map<Element, HTMLElement>();
+  for (const card of cards.values()) {
+    const name = card.querySelector('.nm');
+    if (name) cardByName.set(name, card);
+  }
+  const observer = new ResizeObserver((entries) => {
+    for (const entry of entries) {
+      const height = entry.contentRect.height;
+      if (!height) continue;
+      const line = parseFloat(getComputedStyle(entry.target).fontSize) * HERO_NAME_LINE_HEIGHT;
+      cardByName.get(entry.target)?.classList.toggle('hc-n2', height > line * 1.5);
+    }
+  });
+  for (const name of cardByName.keys()) observer.observe(name);
 }
 
 /** The policy's flag feather as a CSS mask-image, for a host list that holds many cards. */

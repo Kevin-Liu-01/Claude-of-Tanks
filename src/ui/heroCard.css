@@ -4,6 +4,7 @@
      --hc-share  the dense core's share of the card width
      --hc-hshare the dense core's share of the art-box height
      --hc-cxr    the core centre for the policy's gun side (HERO_GUN_SIDE: the turret swung past the lens)
+     --hc-lift   a second name line's height (0 by default): the art box ends that much higher
    heroCard.ts puts each vehicle's bounds on its tank image (--hc-cx/-cw/-ch/-cb/-fx0/-fx1/-fw, and --hc-gs:-1
    for a gun on the other side, which mirrors the centre) and the policy's feather on the host (--hc-flag-mask). The tank width and offsets below are placeTank's
    expression in container units: the core fills its share unless the whole tank would cross the 3.5 %
@@ -14,10 +15,10 @@
   opacity:var(--hc-flag-opacity,.94);pointer-events:none;transition:opacity .18s;}
 .cot-hc[data-hero-facing='left'] .hc-flag{object-position:100% 0;}
 .cot-hc .hc-tank{position:absolute;z-index:1;max-width:none;height:auto;pointer-events:none;
-  --hc-k:min(calc(100cqw * var(--hc-share) / var(--hc-cw)),calc((100cqh - var(--hc-band)) * var(--hc-hshare) / var(--hc-ch)),calc(100cqw * 0.93 / var(--hc-fw)));
+  --hc-k:min(calc(100cqw * var(--hc-share) / var(--hc-cw)),calc((100cqh - var(--hc-band) - var(--hc-lift,0px)) * var(--hc-hshare) / var(--hc-ch)),calc(100cqw * 0.93 / var(--hc-fw)));
   width:var(--hc-k);
   left:clamp(calc(100cqw * 0.035 - var(--hc-fx0) * var(--hc-k)),calc(100cqw * (0.5 + (var(--hc-cxr) - 0.5) * var(--hc-gs,1)) - var(--hc-cx) * var(--hc-k)),calc(100cqw * 0.965 - var(--hc-fx1) * var(--hc-k)));
-  top:calc(100cqh - var(--hc-band) + 2px - var(--hc-cb) * var(--hc-k));
+  top:calc(100cqh - var(--hc-band) - var(--hc-lift,0px) + 2px - var(--hc-cb) * var(--hc-k));
   opacity:0;transition:opacity var(--cot-motion-fast,140ms) var(--cot-ease-out,ease-out);}
 .cot-hc.hc-loaded .hc-tank{opacity:1;}
 @media (prefers-reduced-motion:reduce){.cot-hc .hc-flag,.cot-hc .hc-tank{transition:none;}}

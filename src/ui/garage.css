@@ -677,14 +677,17 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
    HERO_CARD_LAYOUT.roster / .rosterCompact (tools/hero-cards.selftest.mjs). */
 .cot-card{width:156px;min-height:150px;height:150px;flex:0 0 auto;cursor:pointer;position:relative;
   isolation:isolate;overflow:hidden;container-type:size;padding:0;
-  --hc-band:36px;--hc-share:0.76;--hc-hshare:0.8;--hc-cxr:0.56;--hc-pad:9px;--hc-name:13.5px;--hc-tier:8.5px;
+  --hc-band:36px;--hc-share:0.66;--hc-hshare:0.5;--hc-cxr:0.56;--hc-pad:9px;--hc-name:13.5px;--hc-tier:8.5px;
   background:radial-gradient(ellipse 62% 62% at 50% 55%,rgba(120,170,205,.14),rgba(0,0,0,0) 100%),
     linear-gradient(180deg,#0f3a55 0%,#0b2a3e 55%,#0b0e11 100%);
   border:1px solid rgba(146,164,180,.26);
   transition:border-color .15s,transform .15s,box-shadow .15s;}
 .cot-card::after{content:"";position:absolute;z-index:2;left:0;right:0;bottom:0;pointer-events:none;
-  height:calc(var(--hc-band) + 6px);
+  height:calc(var(--hc-band) + var(--hc-lift,0px) + 6px);
   background:linear-gradient(180deg,rgba(11,14,17,0) 0%,rgba(11,14,17,.5) 50%,rgba(11,14,17,.8) 100%);}
+/* A name on two lines (heroCard.ts marks .hc-n2 from the name's own height) lifts the art box by one name
+   line: HERO_NAME_LINE_HEIGHT (src/ui/heroCardPolicy.ts). */
+.cot-card.hc-n2{--hc-lift:calc(var(--hc-name) * 1.05);}
 .cot-card:hover{border-color:rgba(210,225,240,.5);transform:translateY(-2px);}
 .cot-card.sel:hover{transform:translateY(-6px);}
 .cot-card.sel{border-color:#f0a030;transform:translateY(-6px);
@@ -1410,7 +1413,7 @@ body[data-cot-panels='overlay'] .cot-car-arrow{width:36px;flex:0 0 36px}
 body[data-cot-panels='overlay'] .cot-cards{min-width:0;flex:1 1 auto;gap:5px}
 body[data-cot-panels='overlay'] .cot-card{
   width:112px;min-height:var(--cot-roster-height);height:var(--cot-roster-height);padding:0;
-  --hc-band:24px;--hc-share:0.8;--hc-hshare:0.82;--hc-cxr:0.55;--hc-pad:6px;--hc-name:9.5px;--hc-tier:7px;
+  --hc-band:24px;--hc-share:0.7;--hc-hshare:0.64;--hc-cxr:0.55;--hc-pad:6px;--hc-name:9.5px;--hc-tier:7px;
 }
 body[data-cot-panels='overlay'] .cot-card.sel{transform:translateY(-3px)}
 body[data-cot-panels='overlay'] .cot-card .flag{top:4px;left:4px}

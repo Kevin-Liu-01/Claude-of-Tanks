@@ -5,10 +5,10 @@ import { readFileSync } from 'node:fs';
 import { createCanvas } from '@napi-rs/canvas';
 import { GARAGE_CAMERA_AZIMUTH_RAD, GARAGE_CAMERA_PITCH_RAD } from '../src/game/garagePresentationPose.ts';
 import {
-  HERO_CAMERA, HERO_CARD_LAYOUT, HERO_FLAG, HERO_FLAG_MASK, HERO_GUN_SIDE, HERO_POSE, HERO_SIDE_MARGIN, flagMaskStops,
+  HERO_CAMERA, HERO_CARD_LAYOUT, HERO_FLAG, HERO_FLAG_MASK, HERO_GUN_SIDE, HERO_NAME_LINE_HEIGHT, HERO_POSE, HERO_SIDE_MARGIN, flagMaskStops,
   heroCenterX, heroFlagMaskCss, heroFlagPolicy, heroGunSide, heroTurretTraverseDeg, heroTurretTraverseLimitDeg, placeTank,
 } from '../src/ui/heroCardPolicy.ts';
-import { applyFlagMask, drawTank, horizontalBands, measureBounds, renderFlagLayer } from './hero-cards-compose.mjs';
+import { applyFlagMask, composeCard, drawTank, horizontalBands, measureBounds, renderFlagLayer } from './hero-cards-compose.mjs';
 
 const deg = (rad) => rad * 180 / Math.PI;
 const right = HERO_CAMERA.facing === 'right';
@@ -136,7 +136,7 @@ for (const gunSide of ['left', 'right']) {
   assert.match(layerCss, /\.cot-hc \.hc-flag\{[^}]*mask-image:var\(--hc-flag-mask\)/, 'the flag takes the policy mask');
   assert.match(layerCss, /\.cot-hc \.hc-flag\{[^}]*object-position:0 0;/, 'facing right: the flag anchors at the top-left (rear-top) corner');
   assert.match(layerCss, /\.cot-hc\[data-hero-facing='left'\] \.hc-flag\{object-position:100% 0;\}/, 'facing left mirrors the anchor');
-  assert.match(layerCss, /--hc-k:min\(calc\(100cqw \* var\(--hc-share\) \/ var\(--hc-cw\)\),calc\(\(100cqh - var\(--hc-band\)\) \* var\(--hc-hshare\) \/ var\(--hc-ch\)\),calc\(100cqw \* 0\.93 \/ var\(--hc-fw\)\)\)/, 'tank width is placeTank\'s k');
+  assert.match(layerCss, /--hc-k:min\(calc\(100cqw \* var\(--hc-share\) \/ var\(--hc-cw\)\),calc\(\(100cqh - var\(--hc-band\) - var\(--hc-lift,0px\)\) \* var\(--hc-hshare\) \/ var\(--hc-ch\)\),calc\(100cqw \* 0\.93 \/ var\(--hc-fw\)\)\)/, 'tank width is placeTank\'s k (the art box ends a second name line higher)');
   assert.match(layerCss, /left:clamp\(calc\(100cqw \* 0\.035 - var\(--hc-fx0\) \* var\(--hc-k\)\),calc\(100cqw \* \(0\.5 \+ \(var\(--hc-cxr\) - 0\.5\) \* var\(--hc-gs,1\)\) - var\(--hc-cx\) \* var\(--hc-k\)\),calc\(100cqw \* 0\.965 - var\(--hc-fx1\) \* var\(--hc-k\)\)\)/, 'tank x is placeTank\'s clamped dx, the centre mirrored for a gun on the other side');
   const cardTs = readFileSync(new URL('../src/ui/heroCard.ts', import.meta.url), 'utf8');
   assert.match(cardTs, /\(row\.face\?\.\[1\] \?\? HERO_GUN_SIDE\) !== HERO_GUN_SIDE/, 'a row whose gun is on the other side mirrors the centre (--hc-gs)');
@@ -149,8 +149,43 @@ for (const gunSide of ['left', 'right']) {
     assert.match(source, /Promise\.all\(\[import\('(?:\.\/|\.\.\/ui\/)heroCard\.ts'\), import\('(?:\.\/|\.\.\/ui\/)heroCard\.css'\)\]\)/, `${surface} loads the card module with its stylesheet`);
     assert.doesNotMatch(source, /^import (?!type )[^;]*heroCard\.ts['"];/m, `${surface} never imports the card module statically (type imports are erased)`);
   }
-  assert.match(layerCss, /top:calc\(100cqh - var\(--hc-band\) \+ 2px - var\(--hc-cb\) \* var\(--hc-k\)\)/, 'contact line 2 px under the art box');
+  assert.match(layerCss, /top:calc\(100cqh - var\(--hc-band\) - var\(--hc-lift,0px\) \+ 2px - var\(--hc-cb\) \* var\(--hc-k\)\)/, 'contact line 2 px under the art box');
+  // A two-line name lifts the art box by one name line (critic round 1, 2026-10-20: 18 names sat on the tracks):
+  // the Garage marks the card from the name's own height and the lift is the name's line height.
+  assert.match(garageCss, new RegExp(`\\.cot-card\\.hc-n2\\{--hc-lift:calc\\(var\\(--hc-name\\) \\* ${HERO_NAME_LINE_HEIGHT}\\);\\}`), 'the two-line lift is one name line');
+  assert.match(garageCss, new RegExp(`\\.cot-card \\.nm\\{[^}]*font:600 var\\(--hc-name\\)/${HERO_NAME_LINE_HEIGHT} `), 'the name\'s line height is HERO_NAME_LINE_HEIGHT');
+  assert.match(garageCss, /\.cot-card::after\{[^}]*height:calc\(var\(--hc-band\) \+ var\(--hc-lift,0px\) \+ 6px\)/, 'the name floor rises with the lift');
+  assert.match(cardTs, /new ResizeObserver\(/, 'the card marks a wrapped name from its measured height');
+  assert.match(cardTs, /classList\.toggle\('hc-n2', height > line \* 1\.5\)/, 'a name taller than one and a half lines is two lines');
   assert.equal(HERO_SIDE_MARGIN, 0.035, 'the CSS margins (0.035, 0.93, 0.965) are HERO_SIDE_MARGIN');
+}
+
+// 7b. The compositor lifts the art box for a two-line name exactly as the runtime card does: the tank's contact line
+//     rises by one name line, and a one-line name keeps it.
+{
+  const lw = 400, lh = 250;
+  const layer = createCanvas(lw, lh);
+  const lctx = layer.getContext('2d');
+  lctx.fillStyle = '#ff00ff';
+  lctx.fillRect(120, 120, 220, 90);
+  lctx.fillRect(10, 140, 120, 6);
+  const bounds = measureBounds(layer);
+  const flag = createCanvas(8, 6);
+  const lowestTankRow = (name) => {
+    const card = composeCard('roster', { tank: layer, bounds, flag, name, tier: 'X' }, 2);
+    const { data, width, height } = card.getContext('2d').getImageData(0, 0, card.width, card.height);
+    let lowest = -1;
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      const o = (y * width + x) * 4;
+      if (data[o] > 150 && data[o + 2] > 150 && data[o + 1] < 90) { lowest = y; break; }
+    }
+    return lowest;
+  };
+  const one = lowestTankRow('T-90M');
+  const two = lowestTankRow('Experimental Heavy Vehicle Name (Concept Prototype Two)');
+  const line = HERO_CARD_LAYOUT.roster.nameSize * 2 * HERO_NAME_LINE_HEIGHT;
+  assert.ok(one > 0 && two > 0, 'the tank draws on both cards');
+  assert.ok(Math.abs(one - two - line) <= 1.5, `a two-line name lifts the contact line one name line (${one} -> ${two}, line ${line})`);
 }
 
 // 8. The turret pose (owner 2026-10-18: "the turrets should be turned towards you more and they should be facing left
