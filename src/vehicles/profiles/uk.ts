@@ -3305,7 +3305,9 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
   const fv510PhotoBuildHullStage3 = (): void => {
     P.add('hullDark', box(0.20, 0.08, 0.012), 0.12, 1.72, -3.164);
     P.add('hullDark', box(0.05, 0.16, 0.014), -0.50, 1.30, -2.891);
-    for (const hy of [1.05, 1.68]) P.add('hullDetail', box(0.07, 0.12, 0.05), 0.60, hy, -2.89);
+    // 2026-10-19 (owner float sweep): the upper hinge block stood 16 mm off the raked rear plate; both run 20 mm deeper
+    // forward into it (rear faces kept)
+    for (const hy of [1.05, 1.68]) P.add('hullDetail', box(0.07, 0.12, 0.07), 0.60, hy, -2.88);
     for (const s of [-1, 1]) {
       // photo-parity r2 gap #6: BIG loaded rear corner bins — lid seam,
       // latches, cinch straps (a loaded vehicle, not parade-clean)
@@ -3582,7 +3584,7 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
   fv510PhotoBuildAssemblyStage5();
   const waRear = FITTINGS.antennaWhip({ mats: P.mats, h: 0.65, r: 0.009, rake: 0.02, seed: 12 });
   const fv510PhotoBuildAssemblyStage6 = (): void => {
-    waRear.position.set(-0.60, 0.462, -1.737);
+    waRear.position.set(-0.51, 0.462, -1.737);   // 2026-10-19 (owner float sweep): its pot stood 85 mm outboard of the narrowing bustle
     P.turretG.add(waRear);
   };
   fv510PhotoBuildAssemblyStage6();

@@ -595,7 +595,9 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   P.eraCluster('m551a1_tts_glacis_era', (put) => {
     for (let row = 0; row < 2; row++) {
       for (let col = 0; col < 6; col++) {
-        put((col - 2.5) * 0.40, 1.40 + row * 0.18, 2.38 - row * 0.37,
+        // 2026-10-19 (owner float sweep): the cassettes stood 38-44 mm off the 25-degree glacis; each sits 42 mm further
+        // in along its normal (0, -0.906, -0.423)
+        put((col - 2.5) * 0.40, 1.362 + row * 0.18, 2.362 - row * 0.37,
           -25 * D2R, 0, 0, 1.28, 1.28, 0.64);
       }
     }
@@ -735,9 +737,13 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
       -0.14, 0, 0);
     P.add('hullGlass', box(0.19, 0.10, 0.020), side * 1.02, 1.40, 2.678,
       -0.14, 0, 0);
-    P.addEquipment('turret', xform(cylY(0.075, 0.090, 0.15, P.q ? 16 : 10),
-      0, 0, 0, 0, 0, 0), side * 0.82, 0.90, -0.72);
-    P.add('turretGlass', box(0.11, 0.07, 0.020), side * 0.82, 0.92, -0.63);
+    // 2026-10-19 (owner float sweep): over the right side's lower roof the periscope stood 100 mm clear of the sight
+    // housing beside it; each periscope is seated on its nearest stock
+    P.snapGroup('tts-roof-periscope', () => {
+      P.addEquipment('turret', xform(cylY(0.075, 0.090, 0.15, P.q ? 16 : 10),
+        0, 0, 0, 0, 0, 0), side * 0.82, 0.90, -0.72);
+      P.add('turretGlass', box(0.11, 0.07, 0.020), side * 0.82, 0.92, -0.63);
+    }, { reachM: 0.12 });
   }
   P.addEquipment('turret', box(0.46, 0.26, 0.46), 0.44, 0.99, -0.52, 0, 0.10, 0);
   P.add('turretGlass', box(0.28, 0.13, 0.025), 0.44, 1.01, -0.275, 0, 0.10, 0);
