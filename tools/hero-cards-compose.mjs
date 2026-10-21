@@ -399,7 +399,28 @@ function nameLines(ctx, name, { size, maxWidth, font, hollow }) {
   return ctx.measureText(name).width <= maxWidth ? 1 : 2;
 }
 
-function drawName(ctx, name, { x, y, size, minSize, maxWidth, font, hollow, scale }) {
+/** The two-line name's shadows over the tank, bottom first (garage.css .cot-card.hc-n2 .nm): a 7 px halo, a 3 px drop. */
+const NAME_HALO = Object.freeze([{ y: 0, blur: 7, color: 'rgba(0,0,0,0.75)' }, { y: 1, blur: 3, color: 'rgba(0,0,0,0.85)' }]);
+
+/**
+ * The text's shadows alone (the glyphs drawn off canvas, each shadow offset back; shadowBlur and a CSS blur
+ * radius are the same number), then the text once on top, as CSS paints a text-shadow list.
+ */
+function fillHalo(ctx, text, x, y, scale) {
+  const away = 2 * ctx.canvas.width;
+  ctx.save();
+  for (const shadow of NAME_HALO) {
+    ctx.shadowColor = shadow.color;
+    ctx.shadowBlur = shadow.blur * scale;
+    ctx.shadowOffsetX = away;
+    ctx.shadowOffsetY = shadow.y * scale;
+    ctx.fillText(text, x - away, y);
+  }
+  ctx.restore();
+  ctx.fillText(text, x, y);
+}
+
+function drawName(ctx, name, { x, y, size, minSize, maxWidth, font, hollow, scale, halo = false }) {
   const { solid, variant } = nameParts(name);
   ctx.textBaseline = 'alphabetic';
   if (hollow && variant) {
@@ -424,8 +445,9 @@ function drawName(ctx, name, { x, y, size, minSize, maxWidth, font, hollow, scal
   const lines = [solid, variant];
   const s2 = Math.max(...lines.map((line) => fitFont(ctx, line, font, 600, size, maxWidth, minSize)));
   ctx.font = `600 ${Math.min(size, s2)}px "${font}"`;
-  ctx.fillText(solid, x, y - Math.min(size, s2) * 1.05);
-  ctx.fillText(variant, x, y);
+  const fill = halo ? (text, ty) => fillHalo(ctx, text, x, ty, scale) : (text, ty) => ctx.fillText(text, x, ty);
+  fill(solid, y - Math.min(size, s2) * HERO_NAME_LINE_HEIGHT);
+  fill(variant, y);
 }
 
 /** The tier badge, written "Tier X" in the data face: the word in muted ink, the numeral in tungsten. */
@@ -465,22 +487,23 @@ export function composeCard(kind, { tank, bounds, flag, name, tier, font = 'Chak
   const band = L.nameBand * scale;
   const pad = L.pad * scale;
   const nameBox = { size: L.nameSize * scale, minSize: L.minName * scale, maxWidth: w - pad * 2, font, hollow: L.hollow };
-  // A second name line lifts the art box by one line (the runtime card's .hc-n2 --hc-lift).
-  const lift = nameLines(ctx, name, nameBox) === 2 ? L.nameSize * scale * HERO_NAME_LINE_HEIGHT : 0;
+  // A second name line overlays the tank's lower part (the art box never moves, owner 2026-10-21): the floor
+  // rises one name line and the name takes the runtime card's halo (garage.css .cot-card.hc-n2).
+  const twoLines = nameLines(ctx, name, nameBox) === 2;
   drawFlag(ctx, flag, 0, 0, w, h - band * HERO_FLAG_MASK.bandInset, { facing, selected });
-  const artH = h - band - lift;
+  const artH = h - band;
   drawTank(ctx, tank, bounds, {
     w, artH, baseline: artH + 2 * scale, coreShare: L.coreShare, coreHeight: L.coreHeight, centerX: L.centerX, gunSide,
   });
   // A quiet floor under the name so the type never fights the flag's last fade.
-  const floorTop = h - band - lift - 6 * scale;
+  const floorTop = h - band - (twoLines ? L.nameSize * scale * HERO_NAME_LINE_HEIGHT : 0) - 6 * scale;
   const floor = ctx.createLinearGradient(0, floorTop, 0, h);
   floor.addColorStop(0, 'rgba(11,14,17,0)');
   floor.addColorStop(0.5, 'rgba(11,14,17,0.5)');
   floor.addColorStop(1, 'rgba(11,14,17,0.8)');
   ctx.fillStyle = floor;
   ctx.fillRect(0, floorTop, w, h - floorTop);
-  drawName(ctx, name, { x: pad, y: h - pad * 0.95, ...nameBox, scale });
+  drawName(ctx, name, { x: pad, y: h - pad * 0.95, ...nameBox, scale, halo: twoLines });
   if (L.tier && tier) {
     const inset = Math.round(pad * 0.7);
     drawTierChip(ctx, tier, {

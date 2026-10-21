@@ -159,9 +159,10 @@ export type HeroCardKind = 'roster' | 'rosterCompact' | 'galleryBrowse' | 'deplo
  * Blind critic round v5 (2026-10-21, both critics): with the gun forward, the 3.5 % side margin and a 0.56 core
  * centre pinned the rear to the right edge (5.5 px) and the long fixed guns to the left one; a 6 % margin and a
  * 0.52 centre (compact 0.51) give both ends ~10 px (roster) and 6.7 px (compact); 136 roster cards keep their scale.
- * A name that wraps to a second line (the non-hollow kinds; HERO_NAME_LINE_HEIGHT) lifts the art box by one
- * line, so the tracks keep the one-line card's air above the name (critic round 1: 18 two-line names sat on
- * the tracks).
+ * A name that wraps to a second line (the non-hollow kinds) overlays the tank's lower part: the art box and the
+ * tank stay exactly where a one-line name keeps them (owner 2026-10-21: "double line text shouldn't push tanks
+ * up ... the text should be overlaid over the tanks", retiring round 1's one-line lift), and the name floor rises
+ * one name line (HERO_NAME_LINE_HEIGHT) under a soft halo on the name, so it reads on any livery.
  */
 export const HERO_CARD_LAYOUT = Object.freeze({
   roster: Object.freeze({ width: 156, height: 150, nameBand: 36, coreShare: 0.66, coreHeight: 0.50, centerX: 0.52, nameSize: 13.5, minName: 10.5, pad: 9, hollow: false, tier: true, tierSize: 8.5 }),
@@ -171,7 +172,7 @@ export const HERO_CARD_LAYOUT = Object.freeze({
   endScreen: Object.freeze({ width: 560, height: 360, nameBand: 90, coreShare: 0.64, coreHeight: 0.72, centerX: 0.56, nameSize: 50, minName: 32, pad: 24, hollow: true, tier: true, tierSize: 14 }),
 });
 export const HERO_CARD_KINDS = Object.freeze(Object.keys(HERO_CARD_LAYOUT) as HeroCardKind[]);
-/** The name's line height (a share of its size): a second name line lifts the art box by this much. */
+/** The name's line height (a share of its size): a second name line raises the name floor by this much. */
 export const HERO_NAME_LINE_HEIGHT = 1.05;
 /** The whole tank (muzzle to rear stowage) stays this share of the card width inside each side. */
 export const HERO_SIDE_MARGIN = 0.06;
