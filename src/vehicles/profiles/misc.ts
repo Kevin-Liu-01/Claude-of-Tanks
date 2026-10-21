@@ -2847,7 +2847,9 @@ function buildType90Gun(P: MiscBuilderPort): void {
   // placement bisected the barrel and left the broad square reading as a
   // stray side fin.  The 10 mm overlap makes the attachment intentional
   // without swallowing the shallow housing.
-  const type90MrsSupportRadiusM = 0.08125;
+  // 2026-10-19 (owner float sweep): at the MRS station the support is the bare tube (r 0.065), not a 0.08125 sleeve: the
+  // plate stood 5 mm over it
+  const type90MrsSupportRadiusM = 0.065;
   const type90MrsSupportEmbedM = 0.010;
   const type90MrsHeightM = 0.05;
   const type90MrsCenterYM = type90MrsSupportRadiusM
