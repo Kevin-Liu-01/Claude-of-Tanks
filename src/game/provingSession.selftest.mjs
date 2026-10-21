@@ -97,13 +97,28 @@ function plateRun(log) {
   const { game, fireAt } = rangeBattle(log);
   const plates = game.matchModeState.range.plates;
   const centre = (index) => new Vector3(plates[index].x, plates[index].y, plates[index].z);
-  return [[0, 0], [7, 0], [7, 1], [1, 2]].map(([plate, slot]) => {
+  const shots = [[0, 0], [7, 0], [7, 1], [1, 2]].map(([plate, slot]) => {
     const hit = fireAt(centre(plate), slot);
     assert.ok(hit, `the round reaches plate ${plate + 1}`);
     return { plate, slot, kind: hit.kind, targetId: hit.targetId, targetName: hit.targetName, penRollMm: hit.penRollMm,
       effectiveMm: hit.effectiveMm, impactAngleDeg: hit.impactAngleDeg, physicalMm: hit.physicalMm, damage: hit.damage,
       pos: hit.pos.map((value) => Math.round(value * 1000) / 1000) };
   });
+  // the range card's last shot and the plates' faces carry the player's strikes; a reset wipes them
+  const range = game.matchModeState.range;
+  assert.equal(range.lastShot.targetId, 'range-plate-2', 'the card reads the last hit');
+  assert.equal(range.lastShot.serial, shots.length, 'one readout a hit');
+  assert.equal(range.lastShot.kind, shots[3].kind);
+  assert.ok(range.lastShot.rangeM > 90 && range.lastShot.rangeM < 115, `at its range (${range.lastShot.rangeM.toFixed(1)} m)`);
+  assert.deepEqual(range.plates.map((plate) => plate.strikes.length), [1, 1, 0, 0, 0, 0, 0, 2], 'each strike marks its plate');
+  assert.deepEqual(range.plates[7].strikes.map((mark) => mark.kind), ['ricochet', 'pen']);
+  for (const plate of range.plates) for (const mark of plate.strikes) {
+    assert.ok(Math.abs(mark.u) <= plate.widthM / 2 + 1e-6 && Math.abs(mark.v) <= plate.heightM / 2 + 1e-6, 'a mark lies on its face');
+  }
+  assert.equal(resetProvingRange(game), true);
+  assert.equal(range.lastShot, null, 'a reset clears the card');
+  assert.ok(range.plates.every((plate) => plate.strikes.length === 0), 'and every face');
+  return shots;
 }
 
 try {

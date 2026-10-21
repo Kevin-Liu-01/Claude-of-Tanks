@@ -9,6 +9,7 @@ import { collisionFootprintContainsPoint, type CollisionRecord } from '../world/
 import { placementTerrainSafe, type PlacementTerrain } from '../sim/matchPlacement.ts';
 import type { ProvingGroundRules } from '../sim/matchRuleset.ts';
 import type { ProvingLanePresentation, ProvingRangePresentation } from '../sim/matchModes.ts';
+import type { HitEvent } from '../sim/damage.ts';
 import {
   planProvingRange, provingCentreAim, provingPatrolInput, provingShellCard,
   type ProvingLaneMark, type ProvingMark, type ProvingPatrolState, type ProvingRangeLayout,
@@ -96,7 +97,7 @@ export function provingRangePresentation(
     plates: layout.plates.map((plate) => ({
       index: plate.index, id: plate.id, mm: plate.mm, angleDeg: plate.angleDeg, rangeM: plate.rangeM,
       x: plate.x, y: plate.y, z: plate.z, groundY: plate.groundY, yaw: plate.yaw,
-      widthM: plate.halfW * 2, heightM: plate.halfH * 2,
+      widthM: plate.halfW * 2, heightM: plate.halfH * 2, strikes: [],
     })),
     course: {
       yaw: course.yaw, widthM: course.widthM, start: { ...course.start }, end: { ...course.end },
@@ -105,6 +106,7 @@ export function provingRangePresentation(
         first: feature.first, second: feature.second,
       })),
     },
+    lastShot: null,
   };
 }
 
@@ -131,4 +133,46 @@ export function driveProvingTarget(entity: ProvingDriven, rules: ProvingGroundRu
   }
   entity.input.brake = false;
   provingPatrolInput(mark, entity.state, rules.patrol, entity._provingPatrol ??= { dir: 1 }, entity.input);
+}
+
+/** The marks a plate keeps (its oldest go first). */
+export const PROVING_STRIKE_MARKS = 24;
+
+/**
+ * The player's hit on the range, recorded for the range card and the plate dressing (only the player's, only on a lane's
+ * hull or a plate): the last shot's readout, and on a plate its mark on the face, across and up from the face's centre.
+ * Called once a hit, never a frame.
+ */
+export function noteProvingHit(
+  range: ProvingRangePresentation,
+  layout: ProvingRangeLayout,
+  event: HitEvent & { targetName?: string; flightDistM?: number },
+): void {
+  const targetId = event.targetId;
+  if (!targetId) return;
+  const lane = range.lanes.find((entry) => entry.targetId === targetId);
+  const index = layout.plates.findIndex((plate) => plate.id === targetId);
+  if (!lane && index < 0) return;
+  range.lastShot = {
+    serial: (range.lastShot?.serial ?? 0) + 1,
+    kind: event.kind, targetId, targetName: event.targetName ?? lane?.targetName ?? '', shellName: event.shellName,
+    rangeM: event.flightDistM ?? 0, penRollMm: event.penRollMm, effectiveMm: event.effectiveMm,
+    impactAngleDeg: event.impactAngleDeg, damage: event.damage,
+  };
+  if (index < 0) return;
+  const plate = layout.plates[index];
+  const [x, y, z] = event.pos;
+  const dx = x - plate.x, dy = y - plate.y, dz = z - plate.z;
+  const marks = range.plates[index].strikes;
+  if (marks.length >= PROVING_STRIKE_MARKS) marks.shift();
+  marks.push({
+    u: dx * plate.rx + dz * plate.rz, v: dx * plate.ux + dy * plate.uy + dz * plate.uz,
+    kind: event.kind === 'ricochet' ? 'ricochet' : event.kind === 'pen' || event.kind === 'he_pen' ? 'pen' : 'nonpen',
+  });
+}
+
+/** A reset's clean range: no last shot, every plate's face clean. */
+export function clearProvingMarks(range: ProvingRangePresentation): void {
+  range.lastShot = null;
+  for (const plate of range.plates) plate.strikes.length = 0;
 }

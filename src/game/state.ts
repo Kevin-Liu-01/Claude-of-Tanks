@@ -41,6 +41,7 @@ import type {
   MatchModePresentationState,
   MatchModeResult,
   MatchModeSpawn,
+  ProvingRangePresentation,
 } from '../sim/matchModes.ts';
 // RULESETS (2026-09-14): one pure description per mode of how the sim bends — hull, damage taken,
 // reload, ammunition, equipment slots, gravity, roster split and the clock (sim/matchRuleset.ts).
@@ -148,7 +149,9 @@ import { structureRubbleHeightM } from '../sim/structureDamage.ts';
 import { fellConcealersAt, restoreConcealers } from '../sim/spotting.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from '../sim/matchPlacement.ts';
 // the proving ground (v2 progression, 2026-10-17): the range laid out on the battlefield, its marks, card and target drive
-import { driveProvingTarget, planSoloProvingRange, provingRangePresentation, provingSpawn } from './provingRange.ts';
+import {
+  clearProvingMarks, driveProvingTarget, noteProvingHit, planSoloProvingRange, provingRangePresentation, provingSpawn,
+} from './provingRange.ts';
 import { provingPlateIndex, provingPlateStrike, type ProvingMark, type ProvingPatrolState, type ProvingRangeLayout } from '../sim/provingGround.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from './consumables.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
@@ -371,6 +374,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _destructionBlasts?: number[];
   /** The proving ground's range on this battlefield (its plate rack is struck in stepLiveShell); null in every battle. */
   _provingRange?: ProvingRangeLayout | null;
+  /** The range as the mode state carries it (the player's hits are noted on it). */
+  _provingPresentation?: ProvingRangePresentation | null;
 }
 
 interface SpawnPoint {
@@ -1466,6 +1471,7 @@ export function setupBattle(
     ? provingRangePresentation(provingRules, spawnContext.provingLayout, game.player, spawnContext.provingTargets,
       (x, z) => world.heightField.getHeightAt(x, z))
     : null;
+  game._provingPresentation = range;
   game.matchModeController = createMatchModeController<SoloEntity>({
     mode: game.gameMode,
     ruleset: game.ruleset,
@@ -1942,6 +1948,10 @@ function emitHitOutcome(game: SoloGameState, bus: EventBus, event: SoloHitEvent,
   const target = event.targetId ? game.tankById.get(event.targetId) || null : null;
   enrichHitEvent(game, event, target, shellSpec);
   game.killcam?.onShellHit(event, target);
+  // the proving ground: the player's hit on a lane's hull or a plate, for the range card and the plates' faces
+  if (game._provingPresentation && game._provingRange && event.attackerId === game.player?.id) {
+    noteProvingHit(game._provingPresentation, game._provingRange, event);
+  }
   bus.emit('shell:hit', event);
   emitHitStateEvents(bus, event);
   if (event.destroyed && isActiveSoloEntity(target) && !target._destroyedAnnounced) {
@@ -3363,6 +3373,7 @@ export function resetProvingRange(game: SoloGameState): boolean {
   const player = game.player;
   const slot = player?.combat?.shellSlot ?? 0;
   game.matchModeController.reviveAll();
+  if (game._provingPresentation) clearProvingMarks(game._provingPresentation);
   if (player?.combat && slot > 0 && selectShell(player.combat, slot, player.spec)) player.input.shellSlot = slot;
   for (const entity of game.tanks) entity._provingPatrol = entity._provingMark ? { dir: 1 } : null;
   return true;

@@ -378,6 +378,31 @@ export interface ProvingPlatePresentation {
   yaw: number;
   widthM: number;
   heightM: number;
+  /** The player's strikes on its face, oldest first (PROVING_STRIKE_MARKS at most): across and up the face from its
+   * centre (m) and the verdict (the dressing paints a hole, a gouge or a scrape). */
+  strikes: ProvingStrikeMark[];
+}
+
+/** A strike's mark on a plate's face. */
+export interface ProvingStrikeMark {
+  u: number;
+  v: number;
+  kind: 'pen' | 'nonpen' | 'ricochet';
+}
+
+/** The player's last hit on the range (a lane's hull or a plate), as the range card reads it. */
+export interface ProvingShotReadout {
+  /** Grows with every hit: the card and the dressing redraw on a change. */
+  serial: number;
+  kind: string;
+  targetId: string;
+  targetName: string;
+  shellName: string;
+  rangeM: number;
+  penRollMm: number;
+  effectiveMm: number;
+  impactAngleDeg: number;
+  damage: number;
 }
 
 /** The drive course as the world dressing reads it: its line, graded width and features (sim/provingGround.ts). */
@@ -399,6 +424,8 @@ export interface ProvingRangePresentation {
   lanes: ProvingLanePresentation[];
   plates: ProvingPlatePresentation[];
   course: ProvingCoursePresentation;
+  /** The player's last hit (null until the first, and after a reset). */
+  lastShot: ProvingShotReadout | null;
 }
 
 /** Sealed host checkpoint; never publish this private respawn state to spectators. */
