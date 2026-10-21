@@ -25,9 +25,10 @@ import {
 } from './russia.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import { Float32BufferAttribute, Vector3, type BufferGeometry } from 'three';
+import { DoubleSide, Float32BufferAttribute, Mesh, MeshBasicMaterial, Raycaster, Vector3, type BufferGeometry } from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { mount } from './fittingMount.ts';
+import { smokeSocketsFor } from '../vehicleAuxiliaryGeometry.ts';
 import { DRUM_ISSUE_PAINTS, fuelDrumParts, hash01, place } from '../accessoryPrimitives.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { bustleCutZ, ZTZ99A2_BUSTLE_CUT_FRONT_Z, ZTZ99A2_BUSTLE_CUT_REAR_Z } from '../donorBustleCut.ts';
@@ -1157,6 +1158,78 @@ export interface ZTZ99A2TurretOptions {
   ringCollar?: { readonly z: number; readonly radiusM: number };
 }
 
+/** The production 99A2's smoke banks (turret frame): each bank's mount (x mirrored a side), and its launcher base: the
+ * face the tubes stand in `sink` along them from their rear ends, `depth` deep, reaching `end` past the end tubes' walls
+ * and `top` over the tubes' upper rims, its underside `seat` into the roof. */
+const ZTZ99A2_SMOKE_BANK = { x: 1.34, y: 0.88, z: 0.025, sink: 0.025, depth: 0.085, end: 0.015, top: 0.012, seat: 0.005 } as const;
+
+/** Release 227 (the fleet ZTZ-99A2 lead, after the CN lane's visual critic on the Qilin, which carries this turret): the
+ * two five-tube banks stood at (+-1.33, 0.48, 0.25) with most of each 0.30 m tube and the fitting's own bracket buried in
+ * the chevron's outer upper facet and its face cassettes (the three inboard tubes' axes entered the facet 96-100 mm behind
+ * their mouths, the outer two a cassette and the side wall 26-27 mm behind theirs), rising out of the armour with nothing
+ * under them. Moved as one with every tube's direction kept (the five launch sockets and their fan), no seat on the
+ * wedge's corner clears the tubes without standing on the face cassettes (which detonate and would leave it hanging), so
+ * each bank stands on the roof edge just behind the chevron's upper root, firing out over the wedge's outer corner as
+ * roof banks do: the same fitting without its own bracket, its tubes standing in a cast launcher base. The base's front
+ * face is square to the bank's middle tube, 25 mm along the tubes from their rear ends (every tube sunk in it, the fan's
+ * outer rims too); it reaches 15 mm past the end tubes' walls, 12 mm over their upper rims and 60 mm behind their rear
+ * ends, and its underside meets the shell's roof under its four corners 5 mm in (the bank's outer end stands over the
+ * roof's falling shoulder, its underside at least 30 mm over the face cassettes the shell covers there; 15 mm further
+ * outboard the left base's outer corner, over the fuller left shoulder, met an exposed cassette). Measured on the built
+ * turret, every tube clears the shell, the chevrons, their cassettes, the rail and the roof equipment by at least 15 mm
+ * along its whole length outside the base. */
+function addZTZ99A2SmokeBanks(P: ChinaBuilderPort): void {
+  const B = ZTZ99A2_SMOKE_BANK, r = 0.043, len = 0.30;
+  // the shell's own roof (the permanent 'turret' bucket: never a cassette), straight down at a plan point
+  const material = new MeshBasicMaterial({ side: DoubleSide }), roof: Mesh[] = [];
+  P.forEachBucketPart('turret', (g) => { const m = new Mesh(g, material); m.updateMatrixWorld(true); roof.push(m); });
+  const ray = new Raycaster(new Vector3(), new Vector3(0, -1, 0), 0, 8);
+  const roofY = (x: number, z: number): number => {
+    ray.ray.origin.set(x, 4, z);
+    const hit = ray.intersectObjects(roof, false)[0];
+    if (!hit) throw new Error(`${P.spec.id}: no turret roof under the smoke bank's base at ${x.toFixed(3)}, ${z.toFixed(3)}`);
+    return hit.point.y;
+  };
+  try {
+    for (const side of [-1, 1]) {
+      const bank = FITTINGS.smokeBank({
+        mats: P.mats, count: 5, r, len, splay: side * 1.02,
+        pitch: -0.44, arc: 0.58, spacing: 0.10, slot: 'detail', base: false,
+        rotation: [0, 0, -side * 0.12], seed: 9996 + (side > 0 ? 1 : 0),
+      });
+      mount(P, 'turret', bank, side * B.x, B.y, B.z);
+      // the tubes' rear ends and axes in the turret frame, from the fitting's own launch sockets
+      bank.updateMatrix();
+      const rears: Vector3[] = [], axis = new Vector3();
+      for (const part of bank.children) {
+        part.updateMatrix();
+        const m = bank.matrix.clone().multiply(part.matrix);
+        for (const s of smokeSocketsFor(part)) {
+          const d = new Vector3(...s.direction).transformDirection(m);
+          rears.push(new Vector3(...s.position).applyMatrix4(m).addScaledVector(d, -len));
+          axis.add(d);
+        }
+      }
+      if (rears.length !== 5) throw new Error(`${P.spec.id}: the smoke bank registers ${rears.length} launch sockets`);
+      // the base's frame: along the middle tube, across the bank (level), and up square to both
+      const a = axis.normalize(), w = a.clone().cross(new Vector3(0, 1, 0)).normalize(), n = w.clone().cross(a).normalize();
+      if (n.y < 0) n.negate();
+      const along = rears.map((p) => p.dot(a)), across = rears.map((p) => p.dot(w)), up = rears.map((p) => p.dot(n));
+      const front = Math.max(...along) + B.sink, back = front - B.depth, top = Math.max(...up) + r + B.top;
+      const ends = [Math.min(...across) - r - B.end, Math.max(...across) + r + B.end];
+      const corner = (s: number, e: number): Vector3 => a.clone().multiplyScalar(s).addScaledVector(w, e).addScaledVector(n, top);
+      // each bottom corner straight under its top corner (along -n), `seat` into the roof under it
+      const seat = (p: Vector3): Vector3 => {
+        let q = p.clone();
+        for (let i = 0; i < 4; i++) q = p.clone().addScaledVector(n, -(p.y - (roofY(q.x, q.z) - B.seat)) / n.y);
+        return q;
+      };
+      const tops = [corner(front, ends[0]), corner(front, ends[1]), corner(back, ends[1]), corner(back, ends[0])];
+      P.add('turretDetail', orientedSlab(...tops.map(seat).map((p) => p.toArray()), ...tops.map((p) => p.toArray())));
+    }
+  } finally { material.dispose(); }
+}
+
 /** The production ZTZ-99A2 turret in its own turret frame. It places P.turretG
  * at the 99A2 hull's ring; a reusing caller moves the group onto its own ring. */
 export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99A2TurretOptions = {}): void {
@@ -1297,6 +1370,14 @@ export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99
   P.add('turretGlass', box(0.20, 0.06, 0.018), 0.44, 0.91, 0.544);
   P.add('turret', cylY(0.26, 0.28, 0.065, seg), 0.52, 0.845, -0.88);
   P.add('turretDark', torus(0.265, 0.014, seg), 0.52, 0.885, -0.88);
+  // Release 227 (visual critic CN-R7-2 on the Qilin, which carries this turret: "the thin ring rail is wider than the round
+  // hatch base under it ... it reads as floating"): the fixed ring (a 14 mm round bar at r 0.265, y 0.885) stands 19 mm out
+  // past the cupola's top edge (r 0.26 at y 0.8775, its side flaring to 0.28 at the roof). A ring seat under it, as on the
+  // real cupola's casting: a 16.5 mm collar out to the bar's own outer radius, its top 3 mm under the cupola's top face (no
+  // shared plane) and 3.5 mm into the bar's underside, its inner part buried in the cupola, in the cupola's paint and
+  // facets. (The Qilin's kit carried this seat itself until the fleet turret drew it.)
+  const ringSeatTop = 0.8745, ringSeatBottom = 0.858;
+  P.add('turret', cylY(0.279, 0.279, ringSeatTop - ringSeatBottom, seg), 0.52, (ringSeatTop + ringSeatBottom) / 2, -0.88);
   periscope(P, 'turretDetail', 0.30, 0.90, -0.88);
   // 2026-10-08 (round 5, the coordinator: the right gun per nation): the QJC-88 (the W85's vehicle form) at true scale.
   if (options.roofGun !== false) mount(P, 'turret', FITTINGS.pintleMG({
@@ -1314,7 +1395,7 @@ export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99
       rake: -s * 0.04, seed: 9992 + (s > 0 ? 1 : 0),
     }), ax, 0.86, az);
   }
-  addSmokeBanks(P, 1.33, 0.48, 0.25, 5, 9996);
+  addZTZ99A2SmokeBanks(P);
 
   // ZPT-98 in an open chevron throat, with the recoil collar buried into
   // the connected nose rather than carried by a separate mantlet shell.
