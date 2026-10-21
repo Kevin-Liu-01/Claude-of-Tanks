@@ -2395,7 +2395,10 @@ export function initHud(bus: EventBus): HudRuntime {
   let sixthPendingS = -1; // sim time the lamp should light (spot time + 3 s)
   let sixthUntilS = -1;
   let sixthOn = false;
+  /** On the proving ground the hulls are targets, not observers: no sixth sense (updateRangeCard keeps it). */
+  let rangeActive = false;
   on('player:spotted', ({ timeS = 0 }) => {
+    if (rangeActive) return;
     if (sixthPendingS < 0 && !(sixthOn && timeS < sixthUntilS - SIXTH_SENSE_DELAY_S)) {
       sixthPendingS = timeS + SIXTH_SENSE_DELAY_S;
     }
@@ -7288,6 +7291,7 @@ export function initHud(bus: EventBus): HudRuntime {
   /** The proving ground's range card: the loaded round against every lane, the lane the gun is laid on lit. */
   function updateRangeCard(frame: HudFrame): void {
     const range = frame.matchModeState?.range;
+    rangeActive = !!range;
     if (!range) { rangeCard?.hide(); return; }
     if (!rangeCard) {
       rangeCardLoad ??= import('./provingRangeCard.ts').then((module) => {

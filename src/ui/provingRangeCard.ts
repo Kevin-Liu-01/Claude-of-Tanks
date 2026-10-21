@@ -114,9 +114,17 @@ const CSS = `
 .cot-range-card .rc-foot button[aria-pressed='true']{color:#fff1d6;border-color:${AMBER};background:rgba(240,160,48,.18)}
 .cot-range-card .rc-foot button svg{width:15px;height:15px;flex:0 0 auto}
 .cot-range-card .rc-foot kbd{font:500 10px ${PROVING_MONO};color:${AMBER};border:1px solid rgba(240,160,48,.45);padding:0 4px}
-body.cot-touch-layout .cot-range-card{width:min(232px,var(--hud-side-width,232px));padding:7px 8px 8px;gap:5px}
-body.cot-touch-layout .cot-range-card .rc-lanes,body.cot-touch-layout .cot-range-card .rc-foot kbd{display:none}
-body.cot-touch-layout .cot-range-card .rc-foot button{min-height:42px}
+/* a phone: one row (the range, then the three controls as icons) and the last shot under it; the left lane is short there,
+   so the card never scrolls or clips its controls */
+body.cot-touch-layout .cot-range-card{width:min(236px,var(--hud-side-width,236px));max-height:none;overflow:visible;
+  flex-direction:row;flex-wrap:wrap;align-items:center;padding:6px 7px;gap:5px}
+body.cot-touch-layout .cot-range-card .rc-head{flex:1 1 auto;min-width:0}
+body.cot-touch-layout .cot-range-card .rc-round,body.cot-touch-layout .cot-range-card .rc-lanes,
+body.cot-touch-layout .cot-range-card .rc-foot kbd,body.cot-touch-layout .cot-range-card .rc-foot span{display:none}
+body.cot-touch-layout .cot-range-card .rc-foot{display:flex;gap:4px}
+body.cot-touch-layout .cot-range-card .rc-foot button{width:40px;min-height:40px;padding:0}
+body.cot-touch-layout .cot-range-card .rc-foot button svg{width:18px;height:18px}
+body.cot-touch-layout .cot-range-card .rc-shot{order:3;flex:1 1 100%}
 body.cot-touch-layout .cot-range-card .rc-verdict b{font-size:16px}
 `;
 
