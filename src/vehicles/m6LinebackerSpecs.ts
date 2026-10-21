@@ -16,8 +16,11 @@ Object.assign(spec, {hp: 2400, enginePowerHp: 800, weightTons: 39.5,
 // The cannon clears the rear stowage at these traverse-dependent stops. Keep
 // full depression over the front; use the shared simulation/gallery policy so
 // rearward aiming cannot drive the recoiling barrel through the deck equipment.
+// 2026-10-20 follow-up (tools/gun-depression-sweep.mjs, nationalGunClearance.selftest.mjs): the stowage at 123-163 holds
+// the gun higher than these stations did (-4.5 at 141-144).
 spec.gunPitchByYawDeg = Object.freeze([
-  [0, -9], [125, -9], [140, -5], [150, -5], [160, -7], [180, -7],
+  [0, -9], [123, -9], [130, -7.2], [131, -6.5], [140, -4.6], [141, -4.5], [144, -4.5], [151, -5], [152, -5.1], [163, -7],
+  [180, -7],
 ] as const);
 spec.dims = {hullLengthM: 6.71, overallLengthM: 6.71, widthM: 4.12, heightM: LINEBACKER_RING[1] + (3.75-LINEBACKER_RING[1])*T};
 // Penetration and damage are game balance, not claims about Stinger armor performance.

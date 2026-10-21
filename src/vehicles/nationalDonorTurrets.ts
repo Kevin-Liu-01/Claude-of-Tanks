@@ -169,19 +169,38 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
 export const NATIONAL_DONOR_TURRET_IDS = Object.freeze(Object.keys(NATIONAL_DONOR_TURRETS));
 
 /**
- * Release 227: the lowest main-gun pitch by absolute turret yaw (degrees, in the gunPitchLimits format: yaw 0..180 from
- * the hull's front, minimum pitch). The brief's defect 3: the gun's full depression over the rear arc cut the deck stock
- * (the Zubr's deck cases, the Zubr II's deck cabinets, the Hetman II's T-72B3M engine deck). Round 2 (2026-10-16, the
- * critic's D7: "at the -6 the curves keep in the front arc, the whole main gun still cuts existing hull stock"): over the
- * front quarters too, where the barrel at -6 met the front skirt bays' straps, rails and modules (the Zubrs, yaw 32-47)
- * and the hull package's skirt fronts (Hetman II, yaw 26-52); dead ahead and broadside the gun keeps its -6. Each
- * station is the lowest pitch, in half degrees, at which the whole gun (recoil 0 and -.135) keeps its barrel 1.5 cm off
- * every hull stock triangle and its mantlet off all of them, at that yaw and both neighbouring degrees (the lane's
- * gunclear probe, 1 degree steps over 0..180, both sides). Data only: sim/gunPitchLimits.ts applies it; matchRuleset.ts is
- * untouched.
+ * The lowest main-gun pitch by absolute turret yaw (degrees, in the gunPitchLimits format: yaw 0..180 from the hull's
+ * front, minimum pitch) of the national concepts whose gun meets its own hull at full depression. Release 227 put the
+ * first rows here (the Zubrs' and the Hetman II's rear decks and front skirt bays, 1.5 cm off the hull). The follow-up
+ * (2026-10-20, the CN lane's cnClearance method carried to every national concept) re-measures each with
+ * tools/gun-depression-sweep.mjs: at every degree, both sides, the lowest pitch keeping the whole gun (mantlet, boot,
+ * sights, and the barrel at recoil 0 and 0.135 m) 26 mm off every hull mesh, nets included. Each curve is then fitted
+ * conservatively through each degree's shallowest neighbour, keeping the full -6 wherever it is clear. The Zubr II's
+ * curve covers its geometry on both this branch and item/vehicles-uapl-era-227 (--envelope). What the rows stop:
+ * - front quarters: the barrel over the skirt bays' fronts, rails and modules (Sich, Hetman, both Zubrs, Hetman II, yaw
+ *   26-55);
+ * - the rear: the barrel over the engine deck's grilles, its deck cases and cabinets and their nets (the Zubrs need about
+ *   level at 149-157, the Hetman II +2.4 over its T-72B3M engine deck, the Wilk +0.6), the T-80Us' rear hull from 141-159;
+ * - straight ahead on the Bulat-M and Bastion-M, the mantlet's chin over the glacis armour and the driver's periscope
+ *   (-2.9 and -3.9 at yaw 0-20).
+ * Two standing mantlet conflicts no depression stop cures are left to the geometry (nationalGunClearance.selftest.mjs
+ * holds only the barrel there):
+ * - the T-72B3M turret's mantlet underside 6-18 mm over the driver's hatch at yaw 0-25 at every pitch (Hetman, Hetman II,
+ *   Zubr, Zubr II; the fleet T-72B3M has it too);
+ * - the T-72B3M hull's right-side fitting under the turret overhang (x -1.26, y 1.57-1.58), which the mantlet's lower
+ *   corner passes through at yaw -48..-133 (the Hetman II, as on the fleet T-72B3M).
+ * Data only: sim/gunPitchLimits.ts applies it; matchRuleset.ts is untouched.
  */
 export const NATIONAL_GUN_PITCH_BY_YAW: Readonly<Record<string, readonly (readonly [number, number])[]>> = {
-  t72b3m_hetman_ii: [[0,-6],[25,-6],[26,-5.5],[27,-5],[29,-5],[30,-5.5],[37,-5.5],[38,-6],[39,-6],[40,-5.5],[43,-5.5],[44,-6],[46,-6],[47,-5.5],[48,-5],[51,-5],[52,-5.5],[53,-6],[129,-6],[130,-5.5],[131,-5],[132,-4],[133,-3.5],[134,-3.5],[135,-3],[139,-3],[140,-3.5],[141,-3],[142,-2.5],[160,-2.5],[161,1.5],[162,2],[166,2],[167,2.5],[171,2.5],[172,2],[180,2]],
-  t72b3_zubr: [[0,-6],[31,-6],[32,-5.5],[33,-5],[35,-5],[36,-4.5],[38,-4.5],[39,-4],[41,-4],[42,-4.5],[43,-4.5],[44,-5],[45,-5.5],[47,-5.5],[48,-6],[128,-6],[129,-5.5],[133,-5.5],[134,-5],[135,-5],[136,-4.5],[137,-4.5],[138,-4],[142,-4],[143,-3.5],[144,-1.5],[145,-1],[147,-1],[148,-0.5],[149,0],[152,0],[153,-0.5],[156,-0.5],[157,-1],[159,-1],[160,-1.5],[161,-2.5],[162,-5.5],[163,-5],[167,-5],[168,-5.5],[172,-5.5],[173,-6],[180,-6]],
-  t72b3_zubr_ii: [[0,-6],[31,-6],[32,-5],[33,-4.5],[42,-4.5],[43,-5],[45,-5],[46,-5.5],[47,-5.5],[48,-6],[129,-6],[130,-5.5],[131,-5.5],[132,-4.5],[133,-4],[134,-3],[135,-3],[136,-2.5],[137,-2],[143,-2],[144,-1.5],[145,-1],[158,-1],[159,-1.5],[160,-2],[161,-5.5],[162,-5],[164,-5],[165,-5.5],[168,-5.5],[169,-6],[171,-6],[172,-5.5],[179,-5.5],[180,-6]],
+  t72b3m_hetman: [[0,-6],[25,-6],[26,-5.3],[27,-5],[29,-5],[35,-5.5],[42,-5.5],[43,-5.3],[46,-5.3],[48,-6],[124,-6],[126,-5],[127,-4.8],[129,-4.8],[134,-5.5],[135,-4.5],[137,-3.5],[138,-3.2],[139,-3.1],[150,-3.2],[151,-3.3],[152,-4.1],[161,-3.9],[163,-3.6],[180,-4.1]],
+  t72b3m_hetman_ii: [[0,-6],[25,-6],[26,-5.4],[27,-5.1],[40,-5.5],[41,-5.3],[47,-5.3],[48,-4.9],[49,-4.7],[51,-4.7],[52,-4.9],[55,-6],[122,-6],[123,-5.5],[124,-5.3],[127,-5.3],[129,-5.7],[130,-4.8],[132,-3.7],[133,-3.3],[135,-2.8],[136,-2.7],[139,-2.7],[141,-2.8],[142,-2.3],[144,-2.2],[160,-2.1],[161,1.5],[162,2.1],[168,2.4],[180,2.3]],
+  t72b3_sich: [[0,-6],[31,-6],[32,-5.5],[35,-4.5],[38,-4.5],[39,-4.6],[44,-5.3],[45,-5.3],[46,-5.5],[48,-6],[132,-6],[134,-5.5],[135,-4.8],[136,-4.5],[142,-4.4],[146,-4.1],[150,-4.1],[151,-4.2],[156,-5.8],[159,-6],[180,-6]],
+  t72b3_zubr: [[0,-6],[30,-6],[31,-5.2],[32,-4.8],[35,-4],[38,-3.8],[41,-3.8],[43,-4],[44,-4.4],[46,-5.3],[53,-6],[126,-6],[128,-5.5],[134,-4.7],[137,-3.9],[140,-3.8],[142,-3.8],[144,-1.4],[145,-0.8],[149,0],[152,0],[158,-0.2],[160,-1.3],[161,-2.1],[162,-4.8],[165,-4.8],[178,-5.5],[179,-5.5],[180,-5.8]],
+  t72b3_zubr_ii: [[0,-6],[31,-6],[32,-4.9],[33,-4.3],[35,-4.2],[42,-4.3],[44,-4.6],[50,-6],[117,-6],[118,-5.8],[120,-5.8],[122,-6],[125,-6],[131,-5],[132,-4],[133,-3.2],[137,-1.5],[138,-1.4],[141,-1.4],[143,-1.7],[144,-1.3],[145,-1],[149,-0.5],[153,-0.3],[157,-0.3],[158,-0.4],[159,-1],[160,-1.8],[161,-3.2],[162,-5],[163,-4.9],[179,-5.2],[180,-5.3]],
+  t80u_zoria: [[0,-6],[157,-6],[160,-5.1],[163,-5],[180,-5.4]],
+  t80u_husarz: [[0,-6],[139,-6],[150,-4.4],[151,-4.1],[152,-3.9],[156,-3.9],[161,-4.5],[162,-4.1],[165,-3.9],[177,-4.1],[180,-4.5]],
+  t72b3m_wilk: [[0,-6],[25,-6],[30,-5.3],[33,-5.3],[37,-6],[124,-6],[125,-5.9],[136,-5.2],[139,-4.5],[141,-4.3],[142,-2],[143,-0.6],[144,-0.1],[149,0.5],[152,0.6],[157,0.5],[161,0],[162,-0.4],[163,-1.6],[164,-4.2],[179,-4.4],[180,-4.6]],
+  t80u_bars_m: [[0,-6],[155,-6],[159,-5],[163,-4.5],[169,-4.6],[179,-5],[180,-5.3]],
+  t72b3m_bulat_m: [[0,-3.6],[1,-3.3],[2,-3.1],[15,-2.9],[17,-3.4],[19,-4.6],[20,-4.6],[21,-5.7],[22,-6],[25,-6],[30,-5.3],[32,-5.1],[34,-5.1],[35,-5.2],[37,-5.6],[38,-6],[43,-6],[44,-5.9],[46,-5.9],[47,-6],[54,-6],[56,-5.8],[65,-5.7],[66,-5.1],[67,-4.7],[68,-4.5],[71,-4.5],[72,-4.6],[75,-5.8],[87,-5.7],[89,-4.5],[91,-4.3],[93,-4.3],[94,-4.5],[95,-4.9],[96,-5.6],[109,-5.6],[111,-4.4],[113,-4.1],[115,-4.1],[117,-4.6],[120,-5.5],[124,-5.4],[127,-5.4],[129,-5.6],[130,-4.9],[131,-4.5],[137,-4.2],[138,-3.7],[139,-3.5],[144,-3.6],[152,-4.3],[153,-3.6],[154,-2.2],[155,-1.6],[156,-1.3],[161,-1.1],[163,-1.2],[164,-1.5],[165,-2.3],[166,-4.7],[179,-5],[180,-5.2]],
+  t72b3_bastion_m: [[0,-4.4],[5,-3.9],[7,-3.9],[11,-4.7],[17,-4.7],[20,-4.8],[22,-6],[73,-6],[75,-5.6],[77,-5.6],[80,-6],[100,-6],[103,-5.4],[105,-5.4],[106,-5.5],[108,-6],[128,-6],[129,-5.4],[130,-5],[136,-4.8],[137,-4.2],[138,-4],[139,-3.9],[142,-3.9],[149,-4.8],[152,-5.3],[154,-3.9],[155,-3.4],[158,-2.9],[162,-2.9],[163,-3],[164,-3.4],[165,-4.4],[166,-6],[180,-6]],
 };
