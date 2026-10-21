@@ -46,7 +46,9 @@ roots while retaining their exact reusable objects;
 under the covered solo and network entries by `blackWorldGuardInstall.ts`) wraps
 `post.render` and `sceneAA.render` on their instances, probes the resolved scene
 every 12 frames and heals a black world (receipts in `window.__GL_DIAG.blackWorld`,
-telemetry `render-black-world:<class>:<step>`); `postLazyPasses.ts` is the post
+telemetry `render-black-world:<class>:<step>`, at most two records a page). Its NaN test
+reads the bits: the sun disc saturates the half-float scene target (65504, or +Inf), and
+saturated HDR is light, never a fault; `guard.timing` measures its own cost; `postLazyPasses.ts` is the post
 chain's demand-loaded half (SMAA and the first-frame warm). Inactive retained phases may
 release geometry buffers and textures, but preserve compiled materials and
 restore through a covered real render rather than isolated `compileAsync`;

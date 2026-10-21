@@ -82,7 +82,10 @@ A black world inside a revealed battle (black-screen-228: the sky and world exac
 `inject:<fault>` heal proofs for the battle's guard, `engine/blackWorldGuard.ts`);
 each part takes its own capture-lock ticket, and `node
 tools/black-world-repro-summary.mjs <part dirs>` tables the rate, the guard's
-incidents and the heal latencies (an unwatched window counts as a harness error).
+incidents and the heal latencies (an unwatched window counts as a harness error),
+the `sunscan:<s>` rows (a day sun circled in frame must open nothing) and the
+`guardtiming` rows (the guard's own CPU and probe GPU ms). No hold outlives
+`--hold-max-min` (20): a watchdog closes the run's own browser and releases the lock.
 Cold-start claims require `npm run perf:cold`; use `--sessions` for repeated
 cache-disabled contexts and record `--cpu`, `--down-kbps`, `--up-kbps`, and
 `--latency` so a warm navigation cannot masquerade as first-visit reliability.

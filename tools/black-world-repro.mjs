@@ -1790,7 +1790,9 @@ try {
           const lm = D?.scene?.userData?.lightModel;
           return D ? { mapId: D.game?.mapId, gameMode: D.game?.gameMode, phase: D.game?.phase, night: lm ? +(+lm.night).toFixed(2) : null,
             sky: D.scene?.userData?.skyPreset ?? D.game?.skyPreset ?? null, tanks: D.game?.tanks?.length ?? null,
-            player: D.game?.player?.specId ?? null } : null;
+            player: D.game?.player?.specId ?? null,
+            // (round 3, eng E2) the scene target's samples as this entry presents them (H3 lasts one battle)
+            msaa: D.post?.sceneAA?.sceneTarget?.samples ?? null, preset: D.quality?.resolvePresetName?.() ?? null } : null;
         }).catch(() => null);
         log(`${label}: in battle after ${((row.entryMs ?? 0) / 1000).toFixed(1)} s ${JSON.stringify(row.entry)}`);
         const w = await sampleWindow(page, label, { healthyDiag: r === 0 && step.action !== 'inject', inject: step.action === 'inject' });
