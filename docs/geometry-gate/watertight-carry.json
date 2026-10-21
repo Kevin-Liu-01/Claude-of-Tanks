@@ -1,29 +1,11 @@
 {
- "note": "Named carries for the fleet watertight gate (tools/watertight-carry.mjs, read by the watertight audit fleetPassDefault runs). Hand-edited. Each row is a hull that leaks past the 0.05 L gate with its shipped interior fills: leakL is its leak volume in litres at the measurement resolution (0.01 L), with the owner who clears it, the date it was carried and the cause. The gate passes a listed hull at exactly its leakL (229 ratchet: below fails until the row is lowered) and fails on any unlisted leak, any listed hull that measures more, and any listed hull that now holds water (delete its row). Lower or delete rows; never raise one to turn a red green. Seeded 2026-10-16 from the 32 hulls that leaked at the 226 freeze (57600d613) and read the same volumes at the final 226 gate (4edd0e686); coordinator ruling 2026-10-16 14:35: a named 226 carry, the first job of the 227 regen. Re-based 2026-10-20 on integ/229 93cfe22c21 from fleetPassDefault on item/tests-speed-229: 10 rows deleted (they hold water now), 3 lowered, 4 raised to their 229 measurement with the cause; 22 rows.",
+ "note": "Named carries for the fleet watertight gate (tools/watertight-carry.mjs, read by the watertight audit fleetPassDefault runs). Hand-edited. Each row is a hull that leaks past the 0.05 L gate with its shipped interior fills: leakL is its leak volume in litres at the measurement resolution (0.01 L), with the owner who clears it, the date it was carried and the cause. The gate passes a listed hull at exactly its leakL (229 ratchet: below fails until the row is lowered) and fails on any unlisted leak, any listed hull that measures more, and any listed hull that now holds water (delete its row). Lower or delete rows; never raise one to turn a red green. Seeded 2026-10-16 from the 32 hulls that leaked at the 226 freeze (57600d613) and read the same volumes at the final 226 gate (4edd0e686); coordinator ruling 2026-10-16 14:35: a named 226 carry, the first job of the 227 regen. Re-based 2026-10-20 on integ/229 93cfe22c21 from fleetPassDefault on item/tests-speed-229: 10 rows deleted (they hold water now), 3 lowered, 4 raised to their 229 measurement with the cause; 22 rows. 2026-10-20 229 freeze (integ/229 13d8eba045 gate): 9 rows deleted, they hold water since the donor-main-229 interior fills regen (51480cb695) on main 7b5bfed48a: strv121, xk2_black_panther, c1_ariete_proto_serie1, c2_ariete_proto, leo2a4_v, leo2a4m, type59, ajax, m6_linebacker; 13 rows.",
  "tanks": {
-  "ajax": {
-   "leakL": 0.06,
-   "owner": "VEHICLES",
-   "date": "2026-10-16",
-   "cause": "Inherited: 0.06 L in 1 gap(s) at the 226 freeze (57600d613) and the same at the final 226 gate (4edd0e686); the shipped interior fills leave the body open to the deep interior. Largest gap 0.06 L at (0.52, 2.46, -0.98) near turret, turretInteriorFill, turretDetail. The 227 fills regen (--rounds=8 --min-fine=1) or a geometry fix closes it; delete the row once it holds water."
-  },
   "c1_ariete_preserie": {
    "leakL": 0.06,
    "owner": "VEHICLES",
    "date": "2026-10-16",
    "cause": "Inherited: 0.06 L in 2 gap(s) at the 226 freeze (57600d613) and the same at the final 226 gate (4edd0e686); the shipped interior fills leave the body open to the deep interior. Largest gap 0.03 L at (-0.55, 1.44, -3.29) near hull, hullInteriorFill. The 227 fills regen (--rounds=8 --min-fine=1) or a geometry fix closes it; delete the row once it holds water."
-  },
-  "c1_ariete_proto_serie1": {
-   "leakL": 0.22,
-   "owner": "VEHICLES",
-   "date": "2026-10-16",
-   "cause": "Inherited: 0.22 L in 2 gap(s) at the 226 freeze (57600d613) and the same at the final 226 gate (4edd0e686); the shipped interior fills leave the body open to the deep interior. Largest gap 0.16 L at (0.88, 1.82, -2.54) near turretInteriorFill, hull, turretDark. The 227 fills regen (--rounds=8 --min-fine=1) or a geometry fix closes it; delete the row once it holds water."
-  },
-  "c2_ariete_proto": {
-   "leakL": 0.22,
-   "owner": "VEHICLES",
-   "date": "2026-10-20",
-   "cause": "Re-based on integ/229 (93cfe22c21, 2026-10-20): 0.22 L in 2 gap(s); largest 0.16 L at (0.88, 1.82, -2.54) near turretInteriorFill, hull, turretDark. It fell from the 226 carry of 4.56 L between 226 and 229 (227/228 geometry rounds, fills not regenerated for it) and is pinned at its 229 measurement (the ratchet: a lower reading fails until the row comes down). The fills regen (--rounds=8 --min-fine=1) or a geometry fix closes it; delete the row once it holds water."
   },
   "carro45t": {
    "leakL": 0.13,
@@ -43,18 +25,6 @@
    "date": "2026-10-16",
    "cause": "Inherited: 5.58 L in 10 gap(s) at the 226 freeze (57600d613) and the same at the final 226 gate (4edd0e686); the shipped interior fills leave the body open to the deep interior. Largest gap 2.05 L at (-0.24, 2.32, -1.71) near turret, turretTrackLinks, turretDetail. The 227 fills regen (--rounds=8 --min-fine=1) or a geometry fix closes it; delete the row once it holds water."
   },
-  "leo2a4_v": {
-   "leakL": 0.78,
-   "owner": "VEHICLES",
-   "date": "2026-10-16",
-   "cause": "Inherited: 0.78 L in 4 gap(s) at the 226 freeze (57600d613) and the same at the final 226 gate (4edd0e686); the shipped interior fills leave the body open to the deep interior. Largest gap 0.27 L at (0.88, 1.99, -2.76) near turretDark, Mesh, turretInteriorFill, turretDetail. The 227 fills regen (--rounds=8 --min-fine=1) or a geometry fix closes it; delete the row once it holds water."
-  },
-  "leo2a4m": {
-   "leakL": 7.48,
-   "owner": "VEHICLES",
-   "date": "2026-10-16",
-   "cause": "Inherited: 7.48 L in 4 gap(s) at the 226 freeze (57600d613) and the same at the final 226 gate (4edd0e686); the shipped interior fills leave the body open to the deep interior. Largest gap 3.72 L at (-1.23, 1.79, -2.02) near hull, hullDark, hullInteriorFill. The 227 fills regen (--rounds=8 --min-fine=1) or a geometry fix closes it; delete the row once it holds water."
-  },
   "leo2a4m_can": {
    "leakL": 5.06,
    "owner": "VEHICLES",
@@ -66,18 +36,6 @@
    "owner": "VEHICLES",
    "date": "2026-10-16",
    "cause": "Inherited: 0.14 L in 1 gap(s) at the 226 freeze (57600d613) and the same at the final 226 gate (4edd0e686); the shipped interior fills leave the body open to the deep interior. Largest gap 0.14 L at (0.45, 2.54, -0.35) near turret, turretDetail. The 227 fills regen (--rounds=8 --min-fine=1) or a geometry fix closes it; delete the row once it holds water."
-  },
-  "m6_linebacker": {
-   "leakL": 1.17,
-   "owner": "VEHICLES",
-   "date": "2026-10-20",
-   "cause": "Re-based on integ/229 (93cfe22c21, 2026-10-20): 1.17 L in 6 gap(s); largest 0.69 L at (-0.99, 1.25, 2.87) near hullInteriorFill, hull. It grew from the 226 carry of 0.31 L between 226 and 229 (227/228 geometry rounds, fills not regenerated for it) and is pinned at its 229 measurement (the ratchet: a lower reading fails until the row comes down). The fills regen (--rounds=8 --min-fine=1) or a geometry fix closes it; delete the row once it holds water."
-  },
-  "strv121": {
-   "leakL": 0.95,
-   "owner": "VEHICLES",
-   "date": "2026-10-16",
-   "cause": "Inherited: 0.95 L in 4 gap(s) at the 226 freeze (57600d613) and the same at the final 226 gate (4edd0e686); the shipped interior fills leave the body open to the deep interior. Largest gap 0.28 L at (0.67, 1.99, -2.75) near turretDark, turret, turretDetail, turretInteriorFill. The 227 fills regen (--rounds=8 --min-fine=1) or a geometry fix closes it; delete the row once it holds water."
   },
   "strv81": {
    "leakL": 1.61,
@@ -120,18 +78,6 @@
    "owner": "VEHICLES",
    "date": "2026-10-20",
    "cause": "Re-based on integ/229 (93cfe22c21, 2026-10-20): 8.28 L in 69 gap(s); largest 1.11 L at (0.01, 1.71, -1.88) near hull, hullInteriorFill. It fell from the 226 carry of 8.39 L between 226 and 229 (227/228 geometry rounds, fills not regenerated for it) and is pinned at its 229 measurement (the ratchet: a lower reading fails until the row comes down). The fills regen (--rounds=8 --min-fine=1) or a geometry fix closes it; delete the row once it holds water."
-  },
-  "type59": {
-   "leakL": 2.11,
-   "owner": "VEHICLES",
-   "date": "2026-10-20",
-   "cause": "Re-based on integ/229 (93cfe22c21, 2026-10-20): 2.11 L in 13 gap(s); largest 0.78 L at (0.51, 1.32, -2.39) near hullTrackLinks, hull, hullDetail. It fell from the 226 carry of 9.78 L between 226 and 229 (227/228 geometry rounds, fills not regenerated for it) and is pinned at its 229 measurement (the ratchet: a lower reading fails until the row comes down). The fills regen (--rounds=8 --min-fine=1) or a geometry fix closes it; delete the row once it holds water."
-  },
-  "xk2_black_panther": {
-   "leakL": 4.89,
-   "owner": "VEHICLES",
-   "date": "2026-10-20",
-   "cause": "Re-based on integ/229 (93cfe22c21, 2026-10-20): 4.89 L in 19 gap(s); largest 1.8 L at (-0.59, 1.19, 3.49) near hull, hullInteriorFill. It grew from the 226 carry of 2.22 L between 226 and 229 (227/228 geometry rounds, fills not regenerated for it) and is pinned at its 229 measurement (the ratchet: a lower reading fails until the row comes down). The fills regen (--rounds=8 --min-fine=1) or a geometry fix closes it; delete the row once it holds water."
   }
  }
 }
