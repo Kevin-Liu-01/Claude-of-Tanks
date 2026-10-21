@@ -2165,7 +2165,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/docs/referenceTakes.selftest.mjs',
     'src/ui/garageFleetTake.selftest.mjs',
     'tools/marketing-shots/landing-media.selftest.mjs',
-    // 2026-10-19: the media library (public/media/library-r2 since 10-20: the finals), by pack range and sheet
+    // 2026-10-19: the media library (public/media/library-r3 since 10-21: the finished pictures of the current rounds), by pack range and sheet
     'tools/marketing-shots/media-library.selftest.mjs',
     // home r2 (2026-10-12): the home page's feature, mechanic and mode slots, their picks and the modes' registry order
     'tools/marketing-shots/home-shots.selftest.mjs',
