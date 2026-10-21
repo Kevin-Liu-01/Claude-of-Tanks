@@ -1390,10 +1390,10 @@ export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99
     // 2026-10-20: the drone stand's arc alone (-98..+95 deg) swung the gun through the commander's stabilised sight
     // across the roof. Measured with the whole moving mass both ways (tools/roof-station-sweep.mjs: 15 mm samples at
     // recoil 0, half and full, 25 mm kept from level to full elevation): the sight blocks -79..-58 deg and the arc stops
-    // a degree short of it; the other end is the drone stand's (tools/roof-station-arcs.mjs --dock, +112 deg). Over the
-    // gunner's sight ahead and the left smoke bank the barrel depresses only as far as the table lets it (28 mm kept,
-    // each degree the smallest of it and its neighbours).
-    qjc88.userData.yawArc = [-0.9774, 1.9548];
+    // a degree short of it; the other end is the drone stand's (its whole-arc check, missionAttachmentMotionClear, clears
+    // to +96 deg; +95). Over the gunner's sight ahead and the left smoke bank the barrel depresses only as far as the
+    // table lets it (28 mm kept, each degree the smallest of it and its neighbours).
+    qjc88.userData.yawArc = [-0.9774, 1.6581];
     qjc88.userData.depressionByYaw = [[-0.2967, 0.18], [-0.2793, 0.17], [-0.2618, 0.16], [-0.2443, 0.152], [-0.2269, 0.147],
       [-0.2094, 0.145], [0.0873, 0.145], [0.1047, 0.147], [0.1222, 0.155], [0.1396, 0.165], [0.1571, 0.18], [0.5236, 0.18],
       [0.5411, 0.172], [0.5585, 0.167], [0.6109, 0.167], [0.6283, 0.17], [0.6458, 0.165], [0.6807, 0.165], [0.6981, 0.167],

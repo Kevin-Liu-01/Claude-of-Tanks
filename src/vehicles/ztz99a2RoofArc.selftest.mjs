@@ -3,16 +3,18 @@
 // drone stand left it (src/vehicles/roofStationArcs.ts, tools/roof-station-arcs.mjs --dock), and swung its barrel and
 // receiver through the commander's stabilised sight on the right of the roof. Its arc is now the station's own,
 // measured against the whole moving mass (tools/roof-station-sweep.mjs: the CN clearance receipt's two-way dense sweep,
-// src/vehicles/cnClearance.selftest.mjs check 4): it stops short of the sight (-79..-58 deg) and, on the other side,
-// of the cupola periscope the gun's rear passes 17 mm over at full elevation (from +58 deg).
+// src/vehicles/cnClearance.selftest.mjs check 4): it stops short of the sight (-79..-58 deg); its other end is the
+// drone stand's. The pintle stands on a 10 mm riser (the coordinator's approval): on the old seat the gun's rear passed
+// 17 mm over the cupola periscope at full elevation from +58 deg on.
 //  1. The built station publishes its own arc and depression table; the inventory and the combat anatomy carry them,
 //     and the drone-stand table no longer lists the station (a station's own arc takes precedence).
 //  2. The moving mass (the pitch group at rest, half and full recoil, and the yaw stage above its foot) keeps 25 mm
 //     from every other turret mesh over the arc and its pitch range [-depression(yaw), elevation].
 //  3. The barrel's axis lines (tools/roof-station-arcs.mjs) clear the stock over the arc from level to full elevation
 //     and at the table's depression.
-//  4. The arc is tight: within 4 degrees past each end the moving mass meets the stock (the sight, the periscope).
-//  5. The drone stand clears the station's sweep over the new arc, and would not over the full circle.
+//  4. The arc is tight: within 4 degrees past its sight end the moving mass meets the stock.
+//  5. The drone stand clears the station's sweep over the new arc; 4 degrees past its other end, or over the full
+//     circle, the station would sweep the stand.
 // Negative controls: the old arc's stretch over the sight meets it, and without its depression table the station
 // meets the roof under its barrel.
 import assert from 'node:assert/strict';
@@ -44,7 +46,8 @@ try {
 
   // ---- 1. the published arc and table
   assert.ok(Array.isArray(arc) && arc[0] < 0 && arc[1] > 0, `${ID}: the station carries its own arc round its rest bearing`);
-  assert.ok(arc[0] > OLD_ARC[0] && arc[1] <= OLD_ARC[1], `${ID}: the arc lies inside the drone stand's (${arc.map((r) => (r / DEG).toFixed(0))} deg)`);
+  // the pintle's 10 mm riser: the trunnion stands 0.314 m over the foot (0.304 on the plain column)
+  assert.ok(Math.abs(station.userData.auxiliaryPivot[1] - .314) < 1e-6, `${ID}: the QJC-88 stands on its 10 mm riser (trunnion ${station.userData.auxiliaryPivot[1]} m)`);
   const gun = AUXILIARY_INVENTORY[ID].guns.find((g) => g.name === NAME);
   assert.deepEqual(gun.yawArc, [...arc], `${ID}: the inventory carries the station's arc`);
   assert.deepEqual(gun.depressionByYaw ?? null, table && table.map((r) => [...r]), `${ID}: the inventory carries the station's table`);
@@ -72,21 +75,23 @@ try {
     assert.ok(!probe(yaw, -depAt(yaw)), `${ID}: the barrel clears the roof at ${(yaw / DEG).toFixed(0)} deg at its depression ${depAt(yaw).toFixed(3)}`);
   }
 
-  // ---- 4. tight: within four degrees past each end the moving mass meets the stock (the sight, the periscope)
+  // ---- 4. tight at the sight: within four degrees past the arc's start the moving mass meets the stock
   const meets = (yaw) => pitchSteps(0, profile.elevationRad, .0125).some((el) => model.recoils.some((rc) => model.pose(yaw, el, rc, true, .025) < .025));
-  const past = [-1, 1].map((side) => [1, 2, 3, 4].find((k) => meets(arc[side < 0 ? 0 : 1] + side * k * DEG)));
-  assert.ok(past.every((k) => k !== undefined), `${ID}: the arc ends within 4 degrees of the stock it keeps clear of (${past.join(', ')})`);
+  const past = [1, 2, 3, 4].find((k) => meets(arc[0] - k * DEG));
+  assert.ok(past !== undefined, `${ID}: the arc starts within 4 degrees of the sight it keeps clear of`);
 
   // ---- 5. the drone stand
   const seat = MISSION_ATTACHMENT_SEATS[ID];
   assert.ok(missionAttachmentMotionClear({ ...TANK_SPECS[ID] }, seat), `${ID}: the drone stand clears the station's sweep over its arc`);
   const saved = gun.yawArc;
   try {
+    gun.yawArc = [arc[0], arc[1] + 4 * DEG];
+    assert.equal(missionAttachmentMotionClear({ ...TANK_SPECS[ID] }, seat), false, `${ID}: the arc ends within 4 degrees of the drone stand`);
     gun.yawArc = [-Math.PI, Math.PI];
     assert.equal(missionAttachmentMotionClear({ ...TANK_SPECS[ID] }, seat), false, 'negative control: over the full circle the station sweeps the drone stand');
   } finally { gun.yawArc = saved; }
 
   console.log(`ztz99a2RoofArc: the QJC-88 traverses ${(arc[0] / DEG).toFixed(0)}..${(arc[1] / DEG).toFixed(0)} deg, ${mm(s2.d)} mm at worst `
     + `(${where(s2)})${table ? `, ${table.length} depression samples` : ''}; the old arc meets the sight (${mm(old.d)} mm at ${where(old)}); `
-    + `the stock ${past.join(' and ')} deg past the ends; the stand clear PASS (${secs()} s)`);
+    + `the sight ${past} deg past the start, the stand within 4 deg past the end PASS (${secs()} s)`);
 } finally { tank.dispose(); }

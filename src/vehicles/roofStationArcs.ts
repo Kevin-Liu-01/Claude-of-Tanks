@@ -8,8 +8,8 @@
 // to its right rear). An arc authored on
 // the station itself (userData.yawArc: the M551A1 TTS, the MBT-70, the ZTZ-99A2) takes precedence. tools/vehicle-controls-inventory.mjs
 // writes these into the inventory the authority, the presentation and the stand seats read. The ZTZ-99A2's QJC-88 left
-// this table on 2026-10-20: its own arc stops short of the commander's sight and the cupola periscope, inside the
-// stand's (profiles/china.ts, src/vehicles/ztz99a2RoofArc.selftest.mjs).
+// this table on 2026-10-20: its own arc stops short of the commander's sight and ends at the stand's
+// (profiles/china.ts, src/vehicles/ztz99a2RoofArc.selftest.mjs).
 export const ROOF_STATION_ARCS: Readonly<Record<string, Readonly<Record<string, readonly [number, number]>>>> = Object.freeze({
   merkava1b: { merkavaRoofMag1: [-1.7802, 1.8326] },
   merkava2b: { merkavaRoofMag1: [-2.1118, 2.1642], merkavaRoofMag2: [-1.85, 1.885] },

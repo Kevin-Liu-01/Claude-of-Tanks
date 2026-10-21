@@ -13,7 +13,9 @@
 // 25 mm, there is blocked: a depression table cannot lift the barrel) and the deepest depression that keeps `keep`
 // (the CN lane's 28 mm: the receipt's 25 mm and a margin for the yaws between the whole degrees). The arc is the clear run
 // round the rest bearing, stopped a degree short of each blocked degree, and inside the station's drone-stand arc
-// (tools/roof-station-arcs.mjs --dock, from the stand's seat) when the stand limits it; the depression table
+// (tools/roof-station-arcs.mjs --dock, from the stand's seat; a stand-limited end then comes in until the stand's own
+// whole-arc check clears, a degree short; the stand reads the generated inventory's pivot and collision parts, so
+// after the station's geometry moves run tools/vehicle-controls-inventory.mjs --ids=<id> first); the depression table
 // covers the yaws where the roof under the barrel stops the weapon's full depression, each degree the smallest of it
 // and its neighbours (the authority holds the smaller of two samples between them, src/sim/auxiliarySystems.ts).
 import * as THREE from 'three';
@@ -283,6 +285,9 @@ if (isMain) {
   const { auxiliaryWeaponProfile } = await import('../src/vehicles/auxiliaryWeapons.ts');
   const { dockClearArcs } = await import('./roof-station-arcs.mjs');
   const { MISSION_ATTACHMENT_SEATS } = await import('../src/sim/missionAttachmentSeats.generated.ts');
+  const { missionAttachmentMotionClear } = await import('../src/sim/missionAttachment.ts');
+  const { AUXILIARY_INVENTORY } = await import('../src/vehicles/auxiliaryInventory.generated.ts');
+  const { TANK_SPECS } = await import('../src/vehicles/specs.ts');
   const keep = Number(arg('keep', '.028')), block = Number(arg('block', '.025')), out = [];
   for (const id of uniqueIds(arg('ids', 'ztz99a2').split(',').filter(Boolean), 'roof-station-sweep --ids')) {
     const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242, decor: true });
@@ -298,6 +303,20 @@ if (isMain) {
       const m = measureStation(model, profile, { keep, block, ...span, log: (r) => { if (r.up < .085 || r.dep < profile.depressionRad) process.stderr.write(`${r.deg}:${(r.up * 1000).toFixed(0)}/${r.dep.toFixed(3)} `); } });
       process.stderr.write('\n');
       const arcDeg = m.arcDeg && dock ? [Math.max(m.arcDeg[0], dock[0]), Math.min(m.arcDeg[1], dock[1])] : m.arcDeg ?? dock ?? null;
+      // The stand's own check sweeps the arc in chunks with conservative boxes (src/sim/missionAttachment.ts
+      // missionAttachmentMotionClear, the seat generator's and droneRecon's), so an end at the per-yaw limit can still
+      // meet it: each stand-limited end comes in a degree at a time until the whole arc clears, then a degree more.
+      if (arcDeg && dock) {
+        const gun = AUXILIARY_INVENTORY[id]?.guns.find((g) => g.name === station.name), saved = gun?.yawArc;
+        const clear = (a) => { gun.yawArc = a.map((d) => Math.round(d * DEG * 1e4) / 1e4); return missionAttachmentMotionClear({ ...TANK_SPECS[id] }, MISSION_ATTACHMENT_SEATS[id]); };
+        try {
+          const ends = [0, 1].filter((k) => arcDeg[k] === dock[k]);
+          if (gun && ends.length && !clear(arcDeg)) {
+            while (!clear(arcDeg) && arcDeg[1] - arcDeg[0] > 2) for (const k of ends) arcDeg[k] += k ? -1 : 1;
+            for (const k of ends) arcDeg[k] += k ? -1 : 1;
+          }
+        } finally { if (gun) { if (saved) gun.yawArc = saved; else delete gun.yawArc; } }
+      }
       const runs = [];
       for (const d of m.blocked) { const last = runs.at(-1); if (last && d - last[1] <= 1) last[1] = d; else runs.push([d, d]); }
       const table = arcDeg ? depressionTable(m.rows, arcDeg, profile.depressionRad) : null;
