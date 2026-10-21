@@ -59,7 +59,9 @@ try {for(const {quality,camoPattern} of CASES){
   // -> -.2002. Its width and length remain Object_6's. Release 227 (2026-10-19): the box sight over the mantlet rides the
   // boot in the same mantlet mesh (buildType96Turret boxSightOnGun; turret-fixed, the pitching boot passed through it):
   // the mesh's top is the sight's, .3518 -> .5821786 (its floor 2 mm into the boot's highest point under it).
-  for(const [actual,value] of [[bounds.min.x,-.26],[bounds.max.x,.26],[bounds.min.y,1.66-1.8602],[bounds.max.y,.5821786],[bounds.min.z,-.4],[bounds.max.z,.351]])near(actual,value,'Object_6 finite measured boot envelope');
+  // Release 227 (2026-10-20): the riding sight keeps its measured top (boxSightSourceTop: source y 2.278 + .236 / 2 =
+  // 2.396, 46 mm under the raised box's): .5821786 -> 2.396 - 1.8602 = .5358.
+  for(const [actual,value] of [[bounds.min.x,-.26],[bounds.max.x,.26],[bounds.min.y,1.66-1.8602],[bounds.max.y,2.396-1.8602],[bounds.min.z,-.4],[bounds.max.z,.351]])near(actual,value,'Object_6 finite measured boot envelope');
   const spec=getSpec('type96b');assert.equal(spec.gunDepressionDeg,7);assert.equal(spec.gunElevationDeg,14);
   const state=createTankState(spec,new T.Vector3(),0);
   const inGun=(mesh,local)=>gun.worldToLocal(mesh.localToWorld(local.clone()));
@@ -69,7 +71,7 @@ try {for(const {quality,camoPattern} of CASES){
    return new T.Raycaster(gun.localToWorld(new T.Vector3(...point)),dir,0,3).intersectObject(mesh,false)[0];}
   function finiteSeat(){
    // the box sight's top over the boot crown, in the gun frame at every pitch (it rides the boot)
-   const top=ray(mount,[0,1,0],[0,-1,0]);assert.ok(top,'actual outward box sight top exists');near(gun.worldToLocal(top.point.clone()).y,.5821786,'box sight top riding the boot',2e-6);
+   const top=ray(mount,[0,1,0],[0,-1,0]);assert.ok(top,'actual outward box sight top exists');near(gun.worldToLocal(top.point.clone()).y,2.396-1.8602,'box sight top riding the boot at its measured height',2e-6);
    const surfaces=[];root.traverseVisible(o=>{if(o.isMesh)surfaces.push(o)});
    // The box sight riding the boot covers x within +/-125 mm.
    // Both measured boot shoulders outside it must be exposed.
