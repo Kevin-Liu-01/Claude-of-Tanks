@@ -218,7 +218,7 @@ export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentation
   type96_72_long: Object.freeze({ xM: 0.0123, zM: -0.1249 }),
   type96_72m_lei: Object.freeze({ xM: -0.0055, zM: 0.0082 }),
   type96_80_feng: Object.freeze({ xM: 0, zM: -0.1188 }),
-  type96b: Object.freeze({ xM: 0.0044, zM: -0.0886 }),
+  type96b: Object.freeze({ xM: 0.0073, zM: -0.1009 }),
   ua_challenger2: Object.freeze({ xM: -0.0031, zM: 0.0645 }),
   ua_m1a1: Object.freeze({ xM: -0.0073, zM: 0.0327 }),
   ua_m1a2_abrams: Object.freeze({ xM: 0.0099, zM: -0.0003 }),
@@ -235,7 +235,7 @@ export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentation
   ztz85_iii: Object.freeze({ xM: 0, zM: -0.7897 }),
   ztz99_longwei: Object.freeze({ xM: -0.0006, zM: -0.2772 }),
   ztz99a: Object.freeze({ xM: 0.0005, zM: -0.4341 }),
-  ztz99a2: Object.freeze({ xM: 0.0021, zM: -0.4336 }),
+  ztz99a2: Object.freeze({ xM: 0.0022, zM: -0.4297 }),
 });
 
 export function presentationAnchorFor(id: string): TankPresentationAnchor | null {
@@ -448,7 +448,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   type96_72_long: Object.freeze({ centerYM: 2.572, topHalfM: 7.343, sideHalfM: 3.6715 }),
   type96_72m_lei: Object.freeze({ centerYM: 2.607, topHalfM: 7.2527, sideHalfM: 3.6264 }),
   type96_80_feng: Object.freeze({ centerYM: 2.617, topHalfM: 7.3432, sideHalfM: 3.6716 }),
-  type96b: Object.freeze({ centerYM: 2.6345, topHalfM: 7.0735, sideHalfM: 3.5367 }),
+  type96b: Object.freeze({ centerYM: 2.6345, topHalfM: 7.0866, sideHalfM: 3.5433 }),
   ua_challenger2: Object.freeze({ centerYM: 2.1115, topHalfM: 8.674, sideHalfM: 4.337 }),
   ua_m1a1: Object.freeze({ centerYM: 1.6946, topHalfM: 6.171, sideHalfM: 3.0855 }),
   ua_m1a2_abrams: Object.freeze({ centerYM: 2.0885, topHalfM: 6.2164, sideHalfM: 3.1082 }),
@@ -465,7 +465,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   ztz85_iii: Object.freeze({ centerYM: 2.4346, topHalfM: 6.2388, sideHalfM: 3.1194 }),
   ztz99_longwei: Object.freeze({ centerYM: 2.0898, topHalfM: 8.695, sideHalfM: 4.3475 }),
   ztz99a: Object.freeze({ centerYM: 1.8304, topHalfM: 7.9886, sideHalfM: 3.9943 }),
-  ztz99a2: Object.freeze({ centerYM: 1.7855, topHalfM: 8.309, sideHalfM: 4.1545 }),
+  ztz99a2: Object.freeze({ centerYM: 1.7855, topHalfM: 8.3048, sideHalfM: 4.1524 }),
 });
 
 export function presentationProjectionFor(id: string): TankPresentationProjection | null {
