@@ -31,7 +31,7 @@ import {
 } from './structureGroundOcclusionBake.ts';
 import { VEHICLE_ALPHA_MIN } from './vehicleOcclusion.ts';
 import { lightTune } from './lightModelCore.ts';
-import { AUREOLE_RADIUS_DEG, AUREOLE_REACH_M, bakeStructureAureole, type AureoleGround } from './structureAureoleBake.ts';
+import { AUREOLE_RADIUS_DEG, AUREOLE_REACH_M, bakeStructureAureole, sampleAureoleGroundSliced, type AureoleGround } from './structureAureoleBake.ts';
 
 /** The pass applies the term out to this distance, fading over the last SGO_RANGE_FADE_M (m). */
 export const SGO_RANGE_M = 220;
@@ -125,8 +125,9 @@ export interface StructureGroundOcclusionOptions {
   makeWorker?: (() => WorkerLike | null) | null;
   /** (227) The map's own sun when its deck is thin (deckBeam): the aureole's bake starts with the occlusion's. */
   aureoleSun?: readonly number[] | null;
-  /** (229) The ground under the raster: the aureole's shadows fall on it, not on each solid's base plane. */
-  aureoleGround?: AureoleGround | null;
+  /** (229) The ground's height: the aureole's shadows fall on it, not on each solid's base plane (sampled in idle slices
+   *  before the aureole's first bake, which waits for it). */
+  aureoleGroundAt?: ((x: number, z: number) => number) | null;
 }
 
 /** A raster the handle owns: its CPU texels, its texture and the region patches that landed after its first upload. */
@@ -206,6 +207,19 @@ export function createStructureGroundOcclusion(
   const readyPromise = new Promise<boolean>((resolve) => { resolveReady = resolve; });
   const worker = scale > 0 ? (options.makeWorker === null ? null : (options.makeWorker ?? defaultWorker)()) : null;
   stats.worker = !!worker;
+  // (229) the ground under the aureole's raster, sampled in idle slices from the start; the aureole's bakes wait for it
+  let ground: AureoleGround | null = null;
+  const groundWaits: (() => void)[] = [];
+  const awaitGround = (run: () => void): boolean => {
+    if (!options.aureoleGroundAt || ground) return false;
+    groundWaits.push(run);
+    return true;
+  };
+  const cancelGround = scale > 0 && options.aureoleGroundAt ? sampleAureoleGroundSliced(options.aureoleGroundAt, (g) => {
+    if (disposed) return;
+    ground = g;
+    for (const run of groundWaits.splice(0)) run();
+  }) : null;
 
   function landIn(raster: SgoRaster, rect: SgoRect, rg: Uint8Array, full: boolean): void {
     if (disposed) return;
@@ -234,17 +248,18 @@ export function createStructureGroundOcclusion(
 
   function requestAur(rect: SgoRect | null, sun: number[]): void {
     if (disposed || scale <= 0 || !aur) return;
+    if (awaitGround(() => requestAur(rect, sun))) return;
     const packed = packOccluders(records);
     const radius = aureoleRadius();
     if (worker) {
       const id = nextId++;
       inflight.set(id, true);
-      worker.postMessage({ id, kind: 'aureole', packed, rect, sun, radius, ground: options.aureoleGround ?? null }, [packed.buffer as ArrayBuffer]);
+      worker.postMessage({ id, kind: 'aureole', packed, rect, sun, radius, ground }, [packed.buffer as ArrayBuffer]);
       return;
     }
     const run = (): void => {
       if (disposed) return;
-      const result = bakeStructureAureole(packed, sun, rect, radius, undefined, undefined, options.aureoleGround ?? null);
+      const result = bakeStructureAureole(packed, sun, rect, radius, undefined, undefined, ground);
       landAureole(result.rect, result.rg, !rect, sun, result.ms);
     };
     const idle = (globalThis as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
@@ -306,11 +321,12 @@ export function createStructureGroundOcclusion(
         land(result.rect, result.rg, true);
         ready = true; resolveReady(true);
       }
-      if (aurWant) {
-        const sun = aurWant, result = bakeStructureAureole(packOccluders(records), sun, null, aureoleRadius(), undefined, undefined,
-          options.aureoleGround ?? null);
+      const bakeHere = (): void => {
+        if (!aurWant || disposed) return;
+        const sun = aurWant, result = bakeStructureAureole(packOccluders(records), sun, null, aureoleRadius(), undefined, undefined, ground);
         landAureole(result.rect, result.rg, true, sun, result.ms);
-      }
+      };
+      if (aurWant && !awaitGround(bakeHere)) bakeHere();
     };
   }
   if (scale > 0) request(null); else resolveReady(false);
@@ -391,6 +407,8 @@ export function createStructureGroundOcclusion(
     setInstant(on: boolean) { instant = on; if (on && ready) fade = 1; if (on && aurSun) aurFade = 1; },
     dispose() {
       disposed = true;
+      cancelGround?.();
+      groundWaits.length = 0;
       sgo.pending.length = 0;
       inflight.clear();
       try { worker?.terminate(); } catch { /* gone */ }

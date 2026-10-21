@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { SGO_HALF_M, SGO_TEXEL_M, packOccluders } from './structureGroundOcclusionBake.ts';
 import {
   AUREOLE_MIN_ELEVATION_DEG, AUREOLE_RADIUS_DEG, AUREOLE_REACH_M, AUREOLE_SAMPLES, aureoleGroundAt, aureoleOffsets, aureoleSunOf,
-  bakeStructureAureole, sampleAureoleGround,
+  bakeStructureAureole, sampleAureoleGround, sampleAureoleGroundSliced,
 } from './structureAureoleBake.ts';
 import {
   AUREOLE_GATE_M, AUREOLE_SHARE_MAX, DECK_AUREOLE_GAIN, SGO_DARK_MAX, SGO_DECK_BROAD, STRUCTURE_GROUND_OCCLUSION_GLSL,
@@ -151,6 +151,33 @@ assert.equal(handle.stats.aureoleBakes, 1, 'the same sun asks for nothing');
 handle.requestAureole(aureoleSunOf(13, 300));
 await handle.whenReady();
 assert.equal(handle.stats.aureoleBakes, 2, 'a sun moved re-bakes');
+// (229) the ground, sampled in idle slices (the same grid as the one-shot sampler; no slice of the main thread over a few
+// rows), and a handle given the ground's height bakes the aureole on it once the grid is in, the capture waiting for it
+{
+  const hill = (x, z) => 0.02 * x + 3 * Math.sin(z / 40);
+  const sync = sampleAureoleGround(hill, 65, 64);
+  const sliced = await new Promise((resolve) => sampleAureoleGroundSliced(hill, resolve, 65, 64));
+  assert.deepEqual(Array.from(sliced.heights), Array.from(sync.heights), 'the sliced grid is the one-shot grid');
+  let slices = 0, rowsMax = 0;
+  const idleBefore = globalThis.requestIdleCallback;
+  globalThis.requestIdleCallback = (cb) => setTimeout(() => { slices++; let rows = 0; cb({ timeRemaining: () => (rows++ < 4 ? 10 : 0) }); rowsMax = Math.max(rowsMax, rows); }, 0);
+  try { await new Promise((resolve) => sampleAureoleGroundSliced(hill, resolve, 65, 64)); }
+  finally { if (idleBefore) globalThis.requestIdleCallback = idleBefore; else delete globalThis.requestIdleCallback; }
+  assert.ok(slices >= 12 && rowsMax <= 6, `the main thread in idle slices of a few rows (${slices} slices)`);
+  const grounded = createStructureGroundOcclusion(records, { group, makeWorker: null, aureoleSun: sunX, aureoleGroundAt: hill });
+  assert.equal(await grounded.whenReady(), true);
+  const tex = grounded.aureoleTexture;
+  assert.ok(tex instanceof THREE.DataTexture, 'the grounded aureole lands, the capture waiting for its ground');
+  const direct = bakeStructureAureole(packOccluders(records), sunX, null, undefined, undefined, undefined, sampleAureoleGround(hill));
+  const [i0, j0, i1] = direct.rect, w = i1 - i0;
+  let same = 0, shaded = 0;
+  for (let j = 990; j < 1060; j++) for (let i = 990; i < 1060; i++) {
+    const a = tex.image.data[(j * 2048 + i) * 2], b = direct.rg[((j - j0) * w + (i - i0)) * 2];
+    if (a === b) same++; if (b >> 1) shaded++;
+  }
+  assert.ok(shaded > 50 && same === 70 * 70, `the handle's raster is the ground's bake (${same}/4900, ${shaded} shaded)`);
+  grounded.dispose();
+}
 // the pass's uniforms: the light model's share, scaled by the lever, on the rig's sky pole
 const scene = new THREE.Scene();
 scene.add(group);
@@ -192,9 +219,12 @@ assert.match(worker, /if \(data\.kind === 'aureole' && data\.sun\) \{\s*const au
   'baked off the main thread, on the ground');
 const map = read('../world/map.ts');
 assert.match(map, /aureoleSunOf\(mapSky\.sunElevationDeg, mapSky\.sunAzimuthDeg\)/, 'a thin deck\'s map starts the bake with its own sun');
-assert.match(map, /aureoleGround: aureoleSun \? sampleAureoleGround\(\(x, z\) => heightField\.getHeightAt\(x, z\)\) : null/, 'and its ground (229)');
-assert.equal(read('./structureGroundOcclusion.ts').match(/options\.aureoleGround \?\? null/g)?.length, 3,
-  'every bake of the aureole (the worker, the idle slice, a failed worker\'s fallback) on the ground');
+assert.match(map, /aureoleGroundAt: aureoleSun \? \(x, z\) => heightField\.getHeightAt\(x, z\) : null/, 'and its ground (229)');
+const handleSource = read('./structureGroundOcclusion.ts');
+assert.match(handleSource, /worker\.postMessage\(\{ id, kind: 'aureole', packed, rect, sun, radius, ground \}/, 'the worker bakes on the ground');
+assert.equal(handleSource.match(/undefined, undefined, ground\)/g)?.length, 2,
+  'and so do the idle slice and a failed worker\'s fallback (229)');
+assert.ok(!/sampleAureoleGround\(/.test(map), 'the world build samples nothing on its own thread');
 const runtime = read('./structureGroundOcclusion.ts');
 assert.match(runtime, /lightTune\('DECK_AUREOLE', DECK_AUREOLE_GAIN\)/, 'the live gain');
 assert.ok(AUREOLE_RADIUS_DEG >= 4 && AUREOLE_RADIUS_DEG <= 12, 'a disc of a few degrees');

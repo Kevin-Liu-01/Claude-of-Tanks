@@ -141,6 +141,33 @@ export function aureoleGroundAt(g: AureoleGround, x: number, z: number): number 
   return (h[r0] * (1 - u) + h[r0 + 1] * u) * (1 - v) + (h[r1] * (1 - u) + h[r1 + 1] * u) * v;
 }
 
+/**
+ * The same grid, sampled in idle slices: a row at a time while the idle callback's deadline holds (without one, ~4 ms a
+ * slice), so the main thread never takes the 513^2 heights at once (~0.7 s on Whiteout's entry); `done` takes the grid.
+ * Returns a cancel.
+ */
+export function sampleAureoleGroundSliced(heightAt: (x: number, z: number) => number, done: (ground: AureoleGround) => void,
+  size = 513, half = SGO_HALF_M): () => void {
+  const heights = new Float32Array(size * size), cell = (2 * half) / (size - 1);
+  const now = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const idle = (globalThis as { requestIdleCallback?: (cb: (d?: { timeRemaining(): number }) => void, o?: { timeout: number }) => void })
+    .requestIdleCallback;
+  let row = 0, cancelled = false;
+  const step = (deadline?: { timeRemaining(): number }): void => {
+    if (cancelled) return;
+    const t0 = now();
+    do {
+      const z = -half + row * cell, o = row * size;
+      for (let i = 0; i < size; i++) heights[o + i] = heightAt(-half + i * cell, z);
+      row++;
+    } while (row < size && (deadline ? deadline.timeRemaining() > 1 : now() - t0 < 4));
+    if (row < size) schedule(); else done({ size, half, heights });
+  };
+  const schedule = (): void => { if (idle) idle(step, { timeout: 250 }); else setTimeout(step, 0); };
+  schedule();
+  return () => { cancelled = true; };
+}
+
 /** Sample a height function onto an aureole ground grid (`size` points a side over [-half, half]). */
 export function sampleAureoleGround(heightAt: (x: number, z: number) => number, size = 513, half = SGO_HALF_M): AureoleGround {
   const heights = new Float32Array(size * size), cell = (2 * half) / (size - 1);
