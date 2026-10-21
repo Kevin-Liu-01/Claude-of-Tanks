@@ -38,13 +38,15 @@ import { canSelfRightTank } from '../sim/rollover.ts';
 // RULESETS (2026-09-14): the clock, the objective targets and the pre-battle rule lines read the
 // same table the sim applies (sim/matchRuleset.ts)
 import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset } from '../sim/matchRuleset.ts';
-import { normalizeGameMode } from '../sim/matchModes.ts';
+import { GAME_MODE_DEFINITIONS, isPracticeMode, normalizeGameMode } from '../sim/matchModes.ts';
 import { markersStandOnSpawns, objectiveMarkers, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
 import {
-  OBJECTIVE_PALETTE, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawPennant, drawPickupGlyph,
+  OBJECTIVE_PALETTE, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawPickupGlyph,
   drawProgressArc, drawSpawnGlyph, sideColor, sideFill,
 } from './objectiveGlyphs.ts';
 import { shellTypeLabel } from './garageDossier.ts';
+// the proving ground's range card (2026-10-17): loaded the first time a frame carries the range (updateRangeCard)
+import type { RangeCardState } from './provingRangeCard.ts';
 import type { CombatState } from '../sim/damage.ts';
 import type {
   SpecialActionKind,
@@ -238,6 +240,8 @@ export interface HudMatchModeState extends ObjectiveStateView {
   boss?: { id?: string; hp: number; maxHp: number };
   infection?: { survivors: number; infected: number };
   weaponStage?: { index: number; total: number; name: string; kills: number; required: number };
+  /** proving ground: the range's lanes and its card (sim/matchModes.ts ProvingRangePresentation) */
+  range?: RangeCardState | null;
   id?: string;
   label?: string;
   perspectiveTeam?: 'alpha' | 'bravo';
@@ -263,7 +267,7 @@ export interface HudFrame {
   /** Ruleset clock in seconds (null = no clock); undefined lets the HUD derive it from the mode. */
   timeLimitS?: number | null;
   selfRightKeyLabel?: string;
-  auxiliaryKeyLabels?: {smoke:string;lights:string;roofGun:string;missile:string;drone?:string;aerialVision?:string;supplyAmmo?:string;supplyHeal?:string};
+  auxiliaryKeyLabels?: {smoke:string;lights:string;roofGun:string;missile:string;drone?:string;aerialVision?:string;supplyAmmo?:string;supplyHeal?:string;rangeReset?:string;rangeMoving?:string};
 }
 
 interface HudHeightField {
@@ -1680,6 +1684,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-alert-icon{width:18px;height:18px;display:grid;place-items:center;flex:0 0 auto;}
 .cot-alert-icon svg{display:block;width:18px;height:18px;}
 .cot-alert-copy{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.cot-alert-bound{white-space:nowrap;}
 .cot-alert.danger{color:#ff9b91;--notice-edge:#ef6157;}
 .cot-alert.success{color:#a8e8b2;--notice-edge:#68cf78;}
 .cot-alert.info{color:#cbd8e2;--notice-edge:#8fa3b4;}
@@ -1876,6 +1881,10 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-shell[hidden]{display:none!important}
 .cot-aerial-readout{position:absolute;top:calc(50% + 64px);left:50%;transform:translateX(-50%);max-width:80vw;color:#dbffef;font:700 11px monospace;letter-spacing:.08em;text-align:center;pointer-events:none;text-shadow:0 1px 3px #000}
 .cot-aerial-readout[hidden]{display:none}
+/* the proving ground: no sides to count (the rosters and the two scores leave; the clock keeps its place) */
+.range-mode .cot-ear,.range-mode .cot-top .sc{visibility:hidden!important}
+/* a target hull has no commander: the laid hull's plate names its vehicle, not a callsign */
+.range-mode .cot-tgt .nick{visibility:hidden}
 .realistic-mode .hprow,.realistic-mode .hptrack,.realistic-mode .hpm,.realistic-mode .cot-hpb .tr,.realistic-mode .cot-tgt .hp,.realistic-mode .cot-tgt .bar{display:none!important}
 
 body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);font-size:9px}
@@ -2073,6 +2082,9 @@ export function initHud(bus: EventBus): HudRuntime {
   const modeStatusValue = requireElement<HTMLElement>(modeStatusEl, '.mv');
   let lastModeStatus = '';
   const standardModeStatus: HudMatchModeState = {id:'standard',target:0};
+  // proving ground (2026-10-17): the range card, a lazy chunk; its buttons reach the session through the bus
+  let rangeCard: ReturnType<typeof import('./provingRangeCard.ts').createProvingRangeCard> | null = null;
+  let rangeCardLoad: Promise<void> | null = null;
   let objectiveTeam: 'alpha' | 'bravo' = 'alpha';
 
   // --- ping/fps readout (WoT battle constant, top-right corner) ---
@@ -2388,7 +2400,10 @@ export function initHud(bus: EventBus): HudRuntime {
   let sixthPendingS = -1; // sim time the lamp should light (spot time + 3 s)
   let sixthUntilS = -1;
   let sixthOn = false;
+  /** On the proving ground the hulls are targets, not observers: no sixth sense (updateRangeCard keeps it). */
+  let rangeActive = false;
   on('player:spotted', ({ timeS = 0 }) => {
+    if (rangeActive) return;
     if (sixthPendingS < 0 && !(sixthOn && timeS < sixthUntilS - SIXTH_SENSE_DELAY_S)) {
       sixthPendingS = timeS + SIXTH_SENSE_DELAY_S;
     }
@@ -2792,6 +2807,11 @@ export function initHud(bus: EventBus): HudRuntime {
   /** The seated touch warning chip's last written place (paintAimWarning writes the DOM only when it moves). */
   const touchWarningSeat = { seated: false, x: NaN, y: NaN, w: NaN };
   const sniperTagScratch = { text: '', metres: NaN, x0: 0, x1: 0, y: 0, y0: 0, y1: 0 };
+  // The boxes the reticle's marks took this frame (noteSightInk; prepareReticleDraw empties it): the scope's cross arms
+  // and mil ticks yield to them (paintScopeSkeleton, r10f).
+  const sightInk = { count: 0, boxes: Array.from({ length: 24 }, () => ({ x0: 0, y0: 0, x1: 0, y1: 0 })) };
+  // (the cut runs of one cross arm: start and end pairs, sorted in place)
+  const scopeCutScratch = new Float64Array(2 * 80);
   const reticleDrawScratch: ReticleDrawState = {
     cx: 0, cy: 0, radius: RET_FLOOR_PX, circleX: 0, circleY: 0,
     sniper: false, blocked: false, limited: false,
@@ -3183,6 +3203,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function modeTimerLabel(modeId: string, waiting: boolean, limitS: number | null, target?: number | null): string {
     if (waiting) return t('hud.timer.nextWave');
+    if (isPracticeMode(modeId)) return t('hud.timer.range');
     if (modeId === 'capture_the_flag') return t('hud.timer.capture', { target: String(target ?? RULESET_SCORE_TARGETS.capture_the_flag) });
     if (modeId === 'zone_control' || modeId === 'mars') return t('hud.timer.first', { target: String(target ?? RULESET_SCORE_TARGETS.zone_control) });
     if (modeId === 'turbo_ball') return t('hud.timer.first', { target: String(target ?? RULESET_SCORE_TARGETS.turbo_ball) });
@@ -3191,6 +3212,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function additionalModeStatusCopy(modeState: HudMatchModeState, ownScore: string | number): string | null {
+    if (modeState.range) return t(modeState.range.moving ? 'hud.modeStatus.provingMoving' : 'hud.modeStatus.proving', { lanes: modeState.range.lanes.length });
     if (modeState.id === 'juggernaut') return t(modeState.boss?.id === playerRef?.id ? 'hud.modeStatus.juggernautBoss' : 'hud.modeStatus.juggernaut', { hp: Math.ceil(modeState.boss?.hp ?? 0), max: Math.ceil(modeState.boss?.maxHp ?? 0) });
     if (modeState.id === 'infected') return t('hud.modeStatus.infected', { survivors: modeState.infection?.survivors ?? 0, infected: modeState.infection?.infected ?? 0 });
     if(modeState.id==='ac130'){const e=modeState.escort;return t('hud.modeStatus.ac130',{alive:e?.alive??0,rescued:e?.rescued??0,required:e?.required??1,progress:Math.round((e?.progress??0)*100)});}
@@ -3227,6 +3249,8 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function modeStatusIconName(modeId: string): string {
+    // the mode's own icon where its definition names one the status chip has no table entry for (the practice modes)
+    if (isPracticeMode(modeId)) return GAME_MODE_DEFINITIONS[modeId].icon;
     const icon = { juggernaut: 'modeJuggernaut', infected: 'modeInfected', realistic: 'modeRealistic', gun_game: 'modeGunGame', drone: 'modeDrone', ac130: 'modeAc130' }[modeId];
     if (icon) return icon;
     if (modeId === 'standard') return 'modeStandard';
@@ -3370,48 +3394,68 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.restore();
   }
 
-  function appendHorizontalScopeRun(
-    start: number,
-    end: number,
-    y: number,
-    cutStart: number | null,
-    cutEnd: number | null,
-  ): void {
-    if (cutStart == null || cutEnd == null || cutEnd <= start || cutStart >= end) {
-      ctx.moveTo(start, y);
-      ctx.lineTo(end, y);
-      return;
-    }
-    if (cutStart - start > 1) {
-      ctx.moveTo(start, y);
-      ctx.lineTo(cutStart, y);
-    }
-    if (end - cutEnd > 1) {
-      ctx.moveTo(cutEnd, y);
-      ctx.lineTo(end, y);
-    }
+  /** How far a scope cross arm's run stops short of a mark or a panel on its line, and a mil tick keeps from one. */
+  const SCOPE_CUT_GAP = 5;
+  const SCOPE_TICK_GAP = 2;
+  let scopeCutCount = 0;
+
+  /** Adds the box's span along a cross arm's line (`across`: its y on a horizontal arm, its x on a vertical one) to the
+   *  run's cuts, `pad` either side, where the box crosses that line. */
+  function addScopeCut(horizontal: boolean, across: number, x0: number, y0: number, x1: number, y1: number, pad: number): void {
+    if (across < (horizontal ? y0 : x0) - pad || across > (horizontal ? y1 : x1) + pad) return;
+    if (scopeCutCount * 2 >= scopeCutScratch.length) return;
+    scopeCutScratch[scopeCutCount * 2] = (horizontal ? x0 : y0) - pad;
+    scopeCutScratch[scopeCutCount * 2 + 1] = (horizontal ? x1 : y1) + pad;
+    scopeCutCount++;
   }
 
-  function appendVerticalScopeRun(
-    start: number,
-    end: number,
-    x: number,
-    cutStart: number | null,
-    cutEnd: number | null,
-  ): void {
-    if (cutStart == null || cutEnd == null || cutEnd <= start || cutStart >= end) {
-      ctx.moveTo(x, start);
-      ctx.lineTo(x, end);
-      return;
+  /** Appends a cross arm's run from `a` to `b` along its line, cut around every mark this frame (sightInk), the HUD's
+   *  furniture and the over-target plate on that line. */
+  function appendScopeRun(horizontal: boolean, a: number, b: number, across: number): void {
+    scopeCutCount = 0;
+    for (let i = 0; i < sightInk.count; i++) {
+      const box = sightInk.boxes[i];
+      addScopeCut(horizontal, across, box.x0, box.y0, box.x1, box.y1, SCOPE_CUT_GAP);
     }
-    if (cutStart - start > 1) {
-      ctx.moveTo(x, start);
-      ctx.lineTo(x, cutStart);
+    for (let i = 0; i < sightFurniture.count; i++) {
+      const box = sightFurniture.boxes[i];
+      addScopeCut(horizontal, across, box.x0, box.y0, box.x1, box.y1, SCOPE_CUT_GAP);
     }
-    if (end - cutEnd > 1) {
-      ctx.moveTo(x, cutEnd);
-      ctx.lineTo(x, end);
+    const plate = tgtShown ? tgtRect : null;
+    if (plate) addScopeCut(horizontal, across, plate.cx - plate.hw, plate.top, plate.cx + plate.hw, plate.bottom, 5);
+    const cuts = scopeCutScratch;
+    for (let i = 1; i < scopeCutCount; i++) {
+      const start = cuts[i * 2];
+      const end = cuts[i * 2 + 1];
+      let j = i - 1;
+      while (j >= 0 && cuts[j * 2] > start) { cuts[j * 2 + 2] = cuts[j * 2]; cuts[j * 2 + 3] = cuts[j * 2 + 1]; j--; }
+      cuts[j * 2 + 2] = start;
+      cuts[j * 2 + 3] = end;
     }
+    let from = a;
+    for (let i = 0; i < scopeCutCount && from < b; i++) {
+      const start = cuts[i * 2];
+      const end = cuts[i * 2 + 1];
+      if (end <= from) continue;
+      if (start >= b) break;
+      if (start - from > 1) appendScopeSegment(horizontal, from, start, across);
+      from = Math.max(from, end);
+    }
+    if (b - from > 1) appendScopeSegment(horizontal, from, b, across);
+  }
+
+  function appendScopeSegment(horizontal: boolean, a: number, b: number, across: number): void {
+    if (horizontal) { ctx.moveTo(a, across); ctx.lineTo(b, across); }
+    else { ctx.moveTo(across, a); ctx.lineTo(across, b); }
+  }
+
+  /** Whether a mil tick's box keeps SCOPE_TICK_GAP from every mark this frame, the furniture and the over-target plate. */
+  function scopeTickClear(x0: number, y0: number, x1: number, y1: number): boolean {
+    for (let i = 0; i < sightInk.count; i++) {
+      const box = sightInk.boxes[i];
+      if (Math.max(box.x0 - x1, x0 - box.x1, box.y0 - y1, y0 - box.y1) < SCOPE_TICK_GAP) return false;
+    }
+    return sightFurnitureGap(x0, y0, x1, y1) >= SCOPE_TICK_GAP;
   }
 
   function paintScopeCrossArms(
@@ -3422,32 +3466,13 @@ export function initHud(bus: EventBus): HudRuntime {
     color: string,
     lineWidth: number,
   ): void {
-    const plate = tgtShown ? tgtRect : null;
-    const verticalCut = plate && Math.abs(plate.cx - cx) < plate.hw + 3 ? plate : null;
-    const horizontalCut = plate && cy > plate.top - 5 && cy < plate.bottom + 5 ? plate : null;
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
     ctx.beginPath();
-    appendHorizontalScopeRun(
-      cx - armEnd, cx - gap, cy + 0.5,
-      horizontalCut ? horizontalCut.cx - horizontalCut.hw - 5 : null,
-      horizontalCut ? horizontalCut.cx + horizontalCut.hw + 5 : null,
-    );
-    appendHorizontalScopeRun(
-      cx + gap, cx + armEnd, cy + 0.5,
-      horizontalCut ? horizontalCut.cx - horizontalCut.hw - 5 : null,
-      horizontalCut ? horizontalCut.cx + horizontalCut.hw + 5 : null,
-    );
-    appendVerticalScopeRun(
-      cy - armEnd, cy - gap, cx + 0.5,
-      verticalCut ? verticalCut.top - 5 : null,
-      verticalCut ? verticalCut.bottom + 5 : null,
-    );
-    appendVerticalScopeRun(
-      cy + gap, cy + armEnd, cx + 0.5,
-      verticalCut ? verticalCut.top - 5 : null,
-      verticalCut ? verticalCut.bottom + 5 : null,
-    );
+    appendScopeRun(true, cx - armEnd, cx - gap, cy + 0.5);
+    appendScopeRun(true, cx + gap, cx + armEnd, cy + 0.5);
+    appendScopeRun(false, cy - armEnd, cy - gap, cx + 0.5);
+    appendScopeRun(false, cy + gap, cy + armEnd, cx + 0.5);
     ctx.stroke();
   }
 
@@ -3465,34 +3490,45 @@ export function initHud(bus: EventBus): HudRuntime {
     for (let i = 1; i <= count; i++) {
       const distance = i * spacing;
       const tick = i % 2 === 0 ? 4.5 : 3;
-      ctx.moveTo(cx - tick, cy - distance + 0.5); ctx.lineTo(cx + tick, cy - distance + 0.5);
-      ctx.moveTo(cx - tick, cy + distance + 0.5); ctx.lineTo(cx + tick, cy + distance + 0.5);
-      ctx.moveTo(cx - distance + 0.5, cy - tick); ctx.lineTo(cx - distance + 0.5, cy + tick);
-      ctx.moveTo(cx + distance + 0.5, cy - tick); ctx.lineTo(cx + distance + 0.5, cy + tick);
+      const reach = tick + lineWidth / 2;
+      // (each tick left out where it would meet a mark: the rack, the struck round, the countdown under the marker)
+      for (let s = 0; s < 2; s++) {
+        const side = s ? 1 : -1;
+        const y = cy + side * distance + 0.5;
+        if (scopeTickClear(cx - reach, y - lineWidth / 2, cx + reach, y + lineWidth / 2)) { ctx.moveTo(cx - tick, y); ctx.lineTo(cx + tick, y); }
+        const x = cx + side * distance + 0.5;
+        if (scopeTickClear(x - lineWidth / 2, cy - reach, x + lineWidth / 2, cy + reach)) { ctx.moveTo(x, cy - tick); ctx.lineTo(x, cy + tick); }
+      }
     }
     ctx.stroke();
   }
 
   function drawScope(view: HudAimView): void {
     const zoom = view.zoom || 2;
-    // Sight furniture follows the actual server-aim projection. This matters
-    // while the cursor-follow camera is easing onto a newly selected point:
-    // the scope remains truthful instead of showing a second cross at screen
-    // centre. The optical vignette itself remains centred on the lens.
+    ensureScopeGradients(zoom);
+    paintScopeVignette(scopeFadeAlpha());
+    // (the cross arms and mil ticks come after the reticle's marks, which they yield to: paintScopeSkeleton)
+  }
+
+  /**
+   * The scope's cross arms and mil ticks, painted once the reticle has placed its marks (r10f, the notices critic: the
+   * right arm ran through the Daylight vision plate, the lower post across the gun travel chip, a mil tick across the
+   * rack onto the struck round). Each arm's run is cut SCOPE_CUT_GAP around every mark this frame (sightInk), the HUD's
+   * furniture (the vision plate among it) and the over-target plate; a tick that would come within SCOPE_TICK_GAP of one is
+   * left out.
+   *
+   * SHORT cross arms off the dispersion-circle rim (r4 MAJOR): vanilla WoT sniper mode has NO full-screen crosshair (the r8
+   * edge-to-edge hairlines read as a third-party mod / generic FPS scope). The arms start at the circle rim and stop at
+   * ~1.55x the circle radius, so the sight furniture stays central: circle + ticks + short cross skeleton. They follow the
+   * actual server-aim projection (while the cursor-follow camera eases onto a newly selected point the scope stays
+   * truthful instead of showing a second cross at screen centre); the optical vignette stays centred on the lens.
+   */
+  function paintScopeSkeleton(view: HudAimView): void {
+    const zoom = view.zoom || 2;
     const anchor = resolveReticleAnchor(view, _reticleAnchor);
     const cx = anchor.x ?? view.cx;
     const cy = anchor.y ?? view.cy;
-    ensureScopeGradients(zoom);
-    const fadeK = scopeFadeAlpha();
-    paintScopeVignette(fadeK);
-    ctx.globalAlpha = fadeK;
-    // SHORT cross arms off the dispersion-circle rim (r4 MAJOR): vanilla WoT
-    // sniper mode has NO full-screen crosshair — the r8 edge-to-edge
-    // hairlines read as a third-party mod / generic FPS scope. The arms now
-    // start at the circle rim and stop at ~1.55x the circle radius, so the
-    // sight furniture stays central: circle + ticks + short cross skeleton.
-    // The arms still yield to the over-target plate (a line slicing through
-    // the enemy's name text read as a rendering bug, not a sight element).
+    ctx.globalAlpha = scopeFadeAlpha();
     const radius = clampRetR(smoothRadPx);
     const gap = radius + 3;
     const armEnd = radius * 1.55 + 3;
@@ -4131,6 +4167,7 @@ export function initHud(bus: EventBus): HudRuntime {
     state.warningY = 0;
     state.warningW = 0;
     state.aboveTopY = Infinity;
+    sightInk.count = 0;
     state.tagTopY = Infinity;
     return state;
   }
@@ -4173,6 +4210,9 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     draw.magazineBottomY = y0 + shellH;
     draw.magazineHalfW = totalW * 0.5;
+    // (its shells turned on their arc, their contours, a struck rack's strike 3 px past it)
+    noteSightInk(draw.cx - totalW * 0.5 - RACK_TURN_X - RACK_CONTOUR - 3, y0 - AUTOLOADER_HUD_ARC_DEPTH - RACK_CONTOUR - 3,
+      draw.cx + totalW * 0.5 + RACK_TURN_X + RACK_CONTOUR + 3, y0 + shellH + AUTOLOADER_HUD_ARC_DEPTH + RACK_CONTOUR + 3);
     lastMagazineIndicatorY = y0;
     lastMagazineIndicatorState = magazine;
     const shellInk = magazine.reloading ? AUTOLOADER_SHELL_RELOADING : RELOAD_ACCENT;
@@ -4276,6 +4316,7 @@ export function initHud(bus: EventBus): HudRuntime {
     // the strike reaches 4 px past the round, 1 px past its ends, and its round cap 1.7 px further (paintStruckRound)
     const top = sightColumnTop(draw, shellW * 0.5 + 6, shellH + 3, sightMarkTop(draw, shellW * 0.5 + 6, shellH + 3));
     paintStruckRound(draw.cx - shellW * 0.5, top, shellW, shellH);
+    noteSightInk(draw.cx - shellW * 0.5 - 6, top - 3, draw.cx + shellW * 0.5 + 6, top + shellH + 3);
     draw.magazineBottomY = top + shellH;
   }
 
@@ -4447,6 +4488,7 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     draw.countdownBottomY = y + COUNTDOWN_DESCENT;
     draw.countdownRightX = x + textW + unitW;
+    noteSightInk(x, y - COUNTDOWN_ASCENT, x + textW + unitW, y + COUNTDOWN_DESCENT);
     ctx.textAlign = 'left';
     ctx.font = FONT_COUNTDOWN;
     ctx.fillText(text, x, y);
@@ -4820,12 +4862,30 @@ export function initHud(bus: EventBus): HudRuntime {
     paintSniperAmmoReadout(draw, stack.lineX, stack.y);
     paintSniperDistance(view, draw);
     if (!sniperRowScratch.noZoom) paintSniperZoom(view, stack.zoomX, stack.zoomY);
+    // (the row's line and zoom plate, its rules included, and the range tag, for the cross arms to yield to)
+    for (let part = 0; part < 2; part++) {
+      if (!sniperRowPart(draw, part, sniperRowScratch.mode)) continue;
+      const p = sniperPartScratch;
+      noteSightInk(p.x0, stack.y - p.top, p.x1, stack.y + p.foot);
+    }
+    const tag = sniperDistanceTag(view, draw);
+    if (tag) noteSightInk(tag.x0, tag.y0, tag.x1, tag.y1);
+  }
+
+  /** Notes a box the reticle's marks took this frame (sightInk): the scope's cross arms and mil ticks keep off it. */
+  function noteSightInk(x0: number, y0: number, x1: number, y1: number): void {
+    if (sightInk.count >= sightInk.boxes.length) return;
+    const box = sightInk.boxes[sightInk.count++];
+    box.x0 = x0; box.y0 = y0; box.x1 = x1; box.y1 = y1;
   }
 
   /** Whether a touch layout's warning chip sits under the sight, seated by the reticle (a portrait, or a landscape 550 px
    *  tall or more; a shorter landscape parks it in the left lane under the map: battleHudLayout.css). */
   function touchWarningSeated(): boolean {
-    return document.body.classList.contains('cot-touch-layout') && !(w > h && h < 550);
+    // (a short landscape parks it beside the map, and so does a portrait phone 340 px wide or less, where every seat by
+    // the sight met the left FIRE button, the map or the speedometer: r10g, the coordinator; the struck round or rack
+    // still shows the empty gun there)
+    return document.body.classList.contains('cot-touch-layout') && !(w > h && h < 550) && !(h >= w && w <= 340);
   }
 
   /**
@@ -4834,7 +4894,8 @@ export function initHud(bus: EventBus): HudRuntime {
    * countdown and, on the scope, the range tag, and 3 px from the ring. The scope's readout line and zoom plate then
    * start under the chip. A mouse layout paints the chip on the canvas; a touch layout shows a DOM chip, which the
    * reticle seats in the same place, the same height (critic r9: at 50% + 48 px the phone's chip met the scope's
-   * countdown and a rack dropped below a wide ring), unless a short landscape parks it beside the map.
+   * countdown and a rack dropped below a wide ring), unless a short landscape or a portrait phone 340 px wide or less
+   * parks it under the map.
    */
   function placeAimWarning(view: HudAimView, draw: ReticleDrawState): void {
     const warning = aimWarningState(view, aimWarningScratch);
@@ -4904,6 +4965,12 @@ export function initHud(bus: EventBus): HudRuntime {
     const yielded = seated && sightNoticeGap(draw.warningX - draw.warningW / 2, draw.warningY - AIM_WARNING_CHIP_ABOVE,
       draw.warningX + draw.warningW / 2, draw.warningY + AIM_WARNING_CHIP_BELOW) < SIGHT_MARK_RING_GAP;
     if (touchAimWarning.hidden === (touchWarning && !yielded)) touchAimWarning.hidden = !touchWarning || yielded;
+    // (the chip, canvas or seated, for the scope's cross arms to yield to; its seat even while it waits hidden for the
+    // notice, which moves no mark)
+    if (seated || (!touchWarning && warning.visible && draw.warningY > 0)) {
+      noteSightInk(draw.warningX - draw.warningW / 2, draw.warningY - AIM_WARNING_CHIP_ABOVE,
+        draw.warningX + draw.warningW / 2, draw.warningY + AIM_WARNING_CHIP_BELOW);
+    }
     if (touchWarning) {
       if (touchAimWarning.textContent !== warning.text) touchAimWarning.textContent = warning.text;
       if (touchAimWarning.dataset.kind !== warning.kind) touchAimWarning.dataset.kind = warning.kind;
@@ -5126,6 +5193,9 @@ export function initHud(bus: EventBus): HudRuntime {
   } {
     if (!tank || tank.isPlayer || !tank.combat || tank.combat.destroyed) return false;
     if (tank.id === aimTargetId) return false;
+    // the proving ground: the lanes stand in a row down the sightline, so their plates would stack; the range card names
+    // every hull and the laid one keeps its own target plate
+    if (rangeActive) return false;
     return tank.team === (playerRef?.team ?? 'player') || isSpotted(tank.id);
   }
 
@@ -6339,6 +6409,9 @@ export function initHud(bus: EventBus): HudRuntime {
         case 'pickup':
           drawPickupGlyph(mmCtx, x, y, 6, marker.status === 'heal' ? 'heal' : 'ammo');
           break;
+        case 'lane':
+          drawLaneGlyph(mmCtx, x, y, 6.5, marker.label || '', `700 8px ${FONT_COND}`);
+          break;
         default:
           break;
       }
@@ -6749,7 +6822,18 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function showAlert(text: string, { tone = 'warning', icon = 'info' }: AlertOptions = {}): void {
-    alertCopyEl.textContent = text;
+    // (a wrapped alert breaks before its separator, never after it: each dot and the word after it share a nowrap span,
+    // their space an ordinary one, r10f. A no-break space there set narrower than the space before the dot, "EMPTY
+    // ·SELECT", and a word joiner after an ordinary space left the break in Chrome, r10g.)
+    const parts = text.split(' · ');
+    alertCopyEl.replaceChildren(parts[0]);
+    for (let i = 1; i < parts.length; i++) {
+      const space = parts[i].indexOf(' ');
+      const bound = document.createElement('span');
+      bound.className = 'cot-alert-bound';
+      bound.textContent = `· ${space < 0 ? parts[i] : parts[i].slice(0, space)}`;
+      alertCopyEl.append(' ', bound, space < 0 ? '' : parts[i].slice(space));
+    }
     alertIconEl.innerHTML = uiIconSVG(icon, 18);
     alertEl.classList.remove('danger', 'warning', 'success', 'info');
     alertEl.classList.add(tone);
@@ -7145,6 +7229,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (mode === 'sniper' && !aerial) drawScope(aimView);
     drawHitIndicators(lastTimeS);
     if (!aerial) drawReticle(aimView, dt);
+    if (mode === 'sniper' && !aerial) paintScopeSkeleton(aimView);
     if (aerial) paintAerialHitMark(lastTimeS);
     else { hideAerialHitMark(); drawHitMark(ctx, aimView.cx, aimView.cy, lastTimeS); }
     captureReticlePaint(aimView);
@@ -7259,6 +7344,7 @@ export function initHud(bus: EventBus): HudRuntime {
       droneButton.querySelector('.sk')!.textContent=frame.auxiliaryKeyLabels.drone || 'V';
     }
     root.classList.toggle('realistic-mode', frame.matchModeState?.id === 'realistic');
+    updateRangeCard(frame);
     updateSpecialAction(frame.player || playerRef, frame.aim);
     const flier = frame.player || playerRef;
     aerialHud.update(flier,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone || 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision || 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort,
@@ -7268,6 +7354,28 @@ export function initHud(bus: EventBus): HudRuntime {
     shotInfo.setPlayer(playerId);
     indexHudTankNames(frame.tanks || []);
     return state;
+  }
+
+  /** The proving ground's range card: the loaded round against every lane, the lane the gun is laid on lit. */
+  function updateRangeCard(frame: HudFrame): void {
+    const range = frame.matchModeState?.range;
+    if (rangeActive !== !!range) root.classList.toggle('range-mode', !!range);
+    rangeActive = !!range;
+    if (!range) { rangeCard?.hide(); return; }
+    if (!rangeCard) {
+      rangeCardLoad ??= import('./provingRangeCard.ts').then((module) => {
+        rangeCard = module.createProvingRangeCard(root, (type) => bus.emit(type, {}));
+      }).catch((error) => { rangeCardLoad = null; console.error('[hud] range card failed to load', error); });
+      return;
+    }
+    const player = frame.player || playerRef;
+    const slot = player?.combat?.shellSlot ?? 0;
+    rangeCard.update({
+      range, shellSlot: slot,
+      shellName: player?.spec?.gun?.shells?.[slot]?.name || shellTypeLabel(player?.spec?.gun?.shells?.[slot]?.type || ''),
+      laidTargetId: frame.aim?.gunTargetId ?? null, laidRangeM: frame.aim?.distM ?? null,
+      resetKey: frame.auxiliaryKeyLabels?.rangeReset || 'R', movingKey: frame.auxiliaryKeyLabels?.rangeMoving || 'Y',
+    });
   }
 
   function updateHudWorldPanels(frame: HudFrame, camera: THREE.PerspectiveCamera | null): void {
@@ -7397,7 +7505,8 @@ export function initHud(bus: EventBus): HudRuntime {
       conSep.style.display = noConsumables ? 'none' : '';
       conBox.style.display = noConsumables ? 'none' : '';
       pbRules.replaceChildren();
-      if (!ruleset) return;
+      // the proving ground's rules show on the range itself (its card, its boards): no rule chips over the count
+      if (!ruleset || ruleset.provingGround) return;
       for (const line of rulesetLines(ruleset)) {
         const chip = document.createElement('span');
         chip.textContent = t(`rules.line.${line.key}`, line.key === 'enemyNation' ? { value: t(`campaign.enemy.${line.values.value}`) } : line.values);

@@ -20,6 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer, preview } from 'vite';
 import puppeteer from 'puppeteer';
+import { i18nStudioCatalog } from './viteI18nStudioCatalog.ts';
 
 export const MAP_PROBE_PORT_BASE = 5300;
 export const MAP_PROBE_PORT_SPAN = 90;
@@ -149,9 +150,19 @@ function resolveProbeCacheDir(cacheDir) {
 export function mapProbeServerOptions(root, cacheDir) {
   return {
     root, configFile: false, cacheDir, logLevel: 'error',
+    // 2026-10-20: the Studio's string slices (virtual:cot-i18n-studio/<locale>) resolve here as in vite.config.ts. Without
+    // the plugin the dependency scan failed outright, so three's addons were found one by one as lazy modules loaded, and
+    // each find re-bundled three under a new ?v= hash. With hmr off the page never took the reload: modules it loaded
+    // afterwards imported a second three whose ShaderChunk CSM never patched (gameplay-modes-228 r2d, the first battle:
+    // "world/vegetation: expected three directional shadow sites, found 1", then a 300 s wait).
+    plugins: [i18nStudioCatalog()],
     optimizeDeps: {
       entries: ['index.html'],
-      include: ['three', 'three/examples/jsm/utils/BufferGeometryUtils.js', 'three/examples/jsm/geometries/RoundedBoxGeometry.js'],
+      // 2026-10-21: the scan drops a dynamic import in code it proves dead (sky.ts's HDRI override, HDRI_ENV_URL null),
+      // while serving sky.ts still registers it, so a late RGBELoader re-bundled three during boot (modes-228 confirmation
+      // r3). Every dynamic import of three's addons is listed here (the receipt checks).
+      include: ['three', 'three/examples/jsm/utils/BufferGeometryUtils.js', 'three/examples/jsm/geometries/RoundedBoxGeometry.js',
+        'three/examples/jsm/loaders/RGBELoader.js', 'three/examples/jsm/postprocessing/SMAAPass.js'],
     },
     server: {
       host: '127.0.0.1', port: MAP_PROBE_PORT_BASE + (process.pid % MAP_PROBE_PORT_SPAN), strictPort: false, hmr: false,
@@ -167,6 +178,25 @@ export function mapProbeLaunchOptions({ width, height, executablePath = null, pr
 }
 
 /**
+ * A dependency re-bundle mid-session is a full reload the probe page never takes (hmr off): the modules it loads after
+ * it import the new ?v= copy of three beside the old one. Say so when it happens, not later as a stock ShaderChunk or a
+ * battle that never starts.
+ */
+export function reportOptimizerReloads(server) {
+  const hot = server.environments?.client?.hot;
+  if (typeof hot?.send !== 'function') return false;
+  const send = hot.send.bind(hot);
+  hot.send = (payload, ...rest) => {
+    if (payload?.type === 'full-reload') {
+      console.error('[map-probe] vite re-bundled its dependencies mid-session: a page opened before now holds a second copy '
+        + 'of three (add the late dependency to mapProbeServerOptions optimizeDeps.include)');
+    }
+    return send(payload, ...rest);
+  };
+  return true;
+}
+
+/**
  * Own one vite server and one browser for the run. Cleanup runs browser → server → temporary cache, and a cleanup
  * failure never replaces the run's own error (the same discipline as tools/isolated-capture-browser.mjs).
  */
@@ -176,6 +206,7 @@ export async function withMapProbeSession({ root, cacheDir = null, launch = {} }
   let server = null, browser = null, primaryFailed = false;
   try {
     server = await createServer(mapProbeServerOptions(root, cache.dir));
+    reportOptimizerReloads(server);
     await server.listen();
     const port = server.httpServer.address().port;
     browser = await puppeteer.launch(mapProbeLaunchOptions(launch));
@@ -235,6 +266,8 @@ export async function openGamePage(browser, { port, viewport, query = MAP_PROBE_
   const errors = [];
   await page.setViewport({ deviceScaleFactor: 1, ...viewport });
   page.on('pageerror', (error) => errors.push(String(error?.message ?? error)));
+  // three's own warning when a second copy loads (reportOptimizerReloads): every later capture of the page is suspect
+  page.on('console', (message) => { if (message.text().includes('Multiple instances of Three.js')) errors.push(message.text()); });
   await page.goto(`http://127.0.0.1:${port}/?${query}`, { waitUntil: 'domcontentloaded', timeout: 180000 });
   await page.waitForFunction('window.__GAME_READY === true', { timeout: readyTimeoutMs });
   return { page, errors };

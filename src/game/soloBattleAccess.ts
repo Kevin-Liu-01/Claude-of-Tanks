@@ -4,6 +4,9 @@ interface SoloBattleRuntime {
   simStep(...args: RuntimeValue[]): RuntimeValue;
   createCollider(...args: RuntimeValue[]): RuntimeValue;
   prepareNextOpeningRoute(...args: RuntimeValue[]): RuntimeValue;
+  /** The proving ground's quick reset and its moving-target switch (game/state.ts). */
+  resetProvingRange(...args: RuntimeValue[]): RuntimeValue;
+  setProvingTargetsMoving(...args: RuntimeValue[]): RuntimeValue;
 }
 
 type SoloBattleRuntimeLoader = () => Promise<SoloBattleRuntime>;
@@ -51,5 +54,7 @@ export function createSoloBattleRuntimeAccess(
     simStep: (...args) => requireRuntime().simStep(...args),
     createCollider: (...args) => requireRuntime().createCollider(...args),
     prepareNextOpeningRoute: (...args) => requireRuntime().prepareNextOpeningRoute(...args),
+    resetProvingRange: (...args) => requireRuntime().resetProvingRange(...args),
+    setProvingTargetsMoving: (...args) => requireRuntime().setProvingTargetsMoving(...args),
   };
 }

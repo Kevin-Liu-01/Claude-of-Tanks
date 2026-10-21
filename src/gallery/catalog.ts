@@ -1,6 +1,17 @@
 import { tankDisplayName, tankLabelRecord } from '../vehicles/tankLabels.ts';
 import { tankTier, tierNumeral } from '../vehicles/tier.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
+import {
+  VEHICLE_BATTLE_ROLE_META,
+  VEHICLE_CLASS_META,
+  VEHICLE_DESIGN_STATUS_META,
+  matchesVehicleClassFilter,
+  matchesVehicleRoleFilter,
+  vehicleFacetLabel,
+  vehicleFacetSearchWords,
+  vehicleFacetsForId,
+} from '../vehicles/vehicleFacets.ts';
+import { matchesVehicleFacetQuery, parseVehicleFacetQuery } from '../vehicles/vehicleFacetSearch.ts';
 import { getLocale, t } from '../ui/i18n.ts';
 
 interface GalleryShellSpec {
@@ -75,6 +86,10 @@ interface GalleryFilters {
   query?: string;
   nation?: string;
   era?: string;
+  /** A vehicle class, 'concept-prototype' or 'all' (vehicleFacets.ts). */
+  vehicleClass?: string;
+  /** A battle role or 'all'. */
+  battleRole?: string;
 }
 
 function clamp(value: number, min = 0, max = 100): number {
@@ -388,6 +403,20 @@ export function createGalleryRecord(spec: GalleryVehicleSpec) {
   const tier = tankTier(spec.id);
   const nation = String(spec.nation || t('gallery.nation.unknown'));
   const era = vehicleEraLabelI18n(spec.era, t);
+  const facets = vehicleFacetsForId(spec.id);
+  const vehicleClass = facets ? Object.freeze({
+    id: facets.vehicleClass,
+    label: vehicleFacetLabel(VEHICLE_CLASS_META[facets.vehicleClass], t),
+    shortLabel: vehicleFacetLabel(VEHICLE_CLASS_META[facets.vehicleClass], t, { short: true }),
+  }) : null;
+  const battleRole = facets ? Object.freeze({
+    id: facets.battleRole,
+    label: vehicleFacetLabel(VEHICLE_BATTLE_ROLE_META[facets.battleRole], t),
+  }) : null;
+  const designStatus = facets ? Object.freeze({
+    id: facets.designStatus,
+    label: vehicleFacetLabel(VEHICLE_DESIGN_STATUS_META[facets.designStatus], t),
+  }) : null;
 
   return Object.freeze({
     id: spec.id,
@@ -398,6 +427,10 @@ export function createGalleryRecord(spec: GalleryVehicleSpec) {
     nation,
     era,
     eraKey: spec.era,
+    facets,
+    vehicleClass,
+    battleRole,
+    designStatus,
     developmentOnly: Boolean(spec.roster?.developmentOnly),
     rosterTag: spec.roster?.tag || '',
     rosterReason: spec.roster?.reason || t('gallery.roster.production'),
@@ -406,6 +439,7 @@ export function createGalleryRecord(spec: GalleryVehicleSpec) {
     image: `/icons/${spec.id}_angle.webp`,
     searchText: [
       label.searchAliases.join(' '), nation, era, tier,
+      vehicleFacetSearchWords(facets, t),
       gun.autoloader ? t('gallery.shell.family') : '',
       spec.roster?.developmentOnly ? t('gallery.roster.dev', { reason: spec.roster.reason || '' }) : t('gallery.roster.production'),
     ].join(' ').toLocaleLowerCase('en-US'),
@@ -429,12 +463,21 @@ export function filterGalleryRecords(
   records: readonly GalleryRecord[],
   filters: GalleryFilters = {},
 ): GalleryRecord[] {
-  const query = String(filters.query || '').trim().toLocaleLowerCase('en-US');
+  // Words AND together; `class:td`, `role:scout`, `era:modern`, `status:concept`, `nation:…` and `tier:8-10`
+  // constrain a facet (vehicleFacetSearch.ts).
+  const query = parseVehicleFacetQuery(String(filters.query || ''));
   return records.filter((record) => {
     if (filters.nation && filters.nation !== 'all' && record.nation !== filters.nation) return false;
     if (filters.era && filters.era !== 'all' && record.eraKey !== filters.era) return false;
-    if (query && !record.searchText.includes(query)) return false;
-    return true;
+    if (!matchesVehicleClassFilter(record.facets, filters.vehicleClass)) return false;
+    if (!matchesVehicleRoleFilter(record.facets, filters.battleRole)) return false;
+    return matchesVehicleFacetQuery({
+      searchText: record.searchText,
+      facets: record.facets,
+      era: record.eraKey,
+      nationTerms: [record.nation.toLocaleLowerCase('en-US')],
+      tier: record.tier,
+    }, query);
   });
 }
 
@@ -447,6 +490,9 @@ export function serializeGallerySpec(spec: GalleryVehicleSpec) {
     authorship: record.authorship,
     nation: record.nation,
     era: { id: record.eraKey, label: record.era },
+    vehicleClass: record.vehicleClass && { id: record.vehicleClass.id, label: record.vehicleClass.label },
+    battleRole: record.battleRole,
+    designStatus: record.designStatus,
     tier: record.tier,
     dimensionsM: record.dimensions,
     mobility: {

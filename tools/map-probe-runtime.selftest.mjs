@@ -12,7 +12,7 @@ import { PerspectiveCamera, Vector3 } from 'three';
 import {
   HULL_RELATIVE_POSES, MAP_PROBE_BROWSER_ARGS, MAP_PROBE_HEIGHT_CLAMP, MAP_PROBE_PORT_BASE, MAP_PROBE_PORT_SPAN,
   MAP_PROBE_SETTLE_MS, mapProbeLaunchOptions, mapProbeServerOptions, parseProbeArgs, probeHelp, receiptPath,
-  resolveGroundPose, resolveHullRelativePose, screenRightOf, writeProbeReceipt,
+  reportOptimizerReloads, resolveGroundPose, resolveHullRelativePose, screenRightOf, writeProbeReceipt,
 } from './map-probe-runtime.mjs';
 import { MAP_VIEW_PROBE_FOV, MAP_VIEW_PROBE_HALF, MAP_VIEW_PROBE_VIEWPORT, MAP_VIEW_PROBE_VIEWS, selectMapViews } from './map-view-probe-views.mjs';
 import { parseMapViewProbeArgs } from './map-view-probe.mjs';
@@ -162,6 +162,48 @@ assert.ok(serverOptions.server.port >= MAP_PROBE_PORT_BASE && serverOptions.serv
 assert.equal(MAP_PROBE_PORT_BASE, 5300); assert.equal(MAP_PROBE_PORT_SPAN, 90);
 assert.ok(![5197, 5198, 5199].some((p) => p >= MAP_PROBE_PORT_BASE && p < MAP_PROBE_PORT_BASE + MAP_PROBE_PORT_SPAN), 'never the owner ports');
 assert.deepEqual(serverOptions.server.watch, { ignored: ['**/*'] }); assert.equal(serverOptions.optimizeDeps.noDiscovery, undefined, 'discovery stays on: one three instance');
+// 2026-10-20 (gameplay-modes-228 r2d): one unresolvable import fails vite's whole dependency scan, three's addons are then
+// found one by one mid-session and the page (hmr off) ends up holding two copies of three. Every virtual module the
+// game's sources import resolves through the probe server's own plugins.
+const virtualImports = new Set();
+const virtualFiles = execFileSync('git', ['grep', '-I', '-l', '-F', '--untracked', '--threads', '4', '-e', 'virtual:', '--', 'src',
+  ':!*.selftest.mjs', ':!*.d.ts'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+for (const file of virtualFiles) {
+  for (const m of readFileSync(path.join(ROOT, file), 'utf8').matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*)['"](virtual:[^'"]+)['"]/g)) virtualImports.add(m[1]);
+}
+assert.ok(virtualImports.has('virtual:cot-i18n-studio/en-US'), 'the scan finds the Studio string slices');
+// A dynamic import the scan proves dead is still registered when its module is served (sky.ts's RGBELoader, 2026-10-21):
+// every dynamic import of three or its addons is in the prebundle's include list.
+const dynamicThree = new Set();
+const dynamicFiles = execFileSync('git', ['grep', '-I', '-l', '-F', '--untracked', '--threads', '4', '-e', "import('three", '--', 'src',
+  ':!*.selftest.mjs', ':!*.d.ts', ':!*.test-support.mjs'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+for (const file of dynamicFiles) {
+  for (const m of readFileSync(path.join(ROOT, file), 'utf8').matchAll(/\bimport\(\s*['"](three(?:\/[^'"]+)?)['"]\s*\)/g)) dynamicThree.add(m[1]);
+}
+assert.ok(dynamicThree.has('three/examples/jsm/loaders/RGBELoader.js'), 'the scan finds sky.ts\'s HDRI loader');
+for (const id of dynamicThree) {
+  assert.ok(id === 'three' || serverOptions.optimizeDeps.include.includes(id), `the probe prebundles ${id} (a dynamic import)`);
+}
+const pluginContext = { error(message) { throw new Error(message); } };
+for (const id of virtualImports) {
+  assert.ok(serverOptions.plugins.some((plugin) => plugin.resolveId?.call(pluginContext, id)), `the probe server resolves ${id}`);
+}
+{
+  const sent = [];
+  const logged = [];
+  const fake = { environments: { client: { hot: { send: (payload) => sent.push(payload.type) } } } };
+  const consoleError = console.error;
+  console.error = (line) => logged.push(line);
+  try {
+    assert.equal(reportOptimizerReloads(fake), true);
+    fake.environments.client.hot.send({ type: 'update' });
+    fake.environments.client.hot.send({ type: 'full-reload', path: '*' });
+  } finally { console.error = consoleError; }
+  assert.deepEqual(sent, ['update', 'full-reload'], 'every payload still goes out');
+  assert.equal(logged.length, 1, 'a mid-session re-bundle is reported once');
+  assert.match(logged[0], /second copy of three/);
+  assert.equal(reportOptimizerReloads({}), false, 'a server without a client hot channel is left alone');
+}
 const launch = mapProbeLaunchOptions({ width: 1600, height: 900 });
 assert.equal(launch.headless, 'new'); assert.deepEqual(launch.args, [...MAP_PROBE_BROWSER_ARGS, '--window-size=1600,900']); assert.equal(launch.executablePath, undefined);
 assert.equal(mapProbeLaunchOptions({ executablePath: '/x' }).executablePath, '/x');

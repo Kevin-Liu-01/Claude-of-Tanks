@@ -1,12 +1,12 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { closeSync, mkdirSync, mkdtempSync, openSync, rmSync, writeFileSync } from 'node:fs';
 import { availableParallelism, constants, getPriority, setPriority, tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCaptureLock, selftestLockTimeoutMs } from './capture-lock.mjs';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { captureQueueHasWaiters, runSelftestCpuPool } from './selftest-cpu-pool.mjs';
-import { createSelftestCache, REPO_ROOT } from './selftest-cache.mjs';
+import { createSelftestCache, REPO_ROOT, SELFTEST_BROAD_DIRS } from './selftest-cache.mjs';
 import { resolveSelftestCacheDir } from './selftest-cache-dir.mjs';
 import { createHash } from 'node:crypto';
 import { admissionOrder, createRuntimeIndex, DURATION_SNAPSHOT_URL, durationSnapshotText, loadDurationSnapshot,
@@ -415,16 +415,36 @@ function writeDurationsConflict(options) {
     || options.changed || options.report || options.logs || options.order !== 'longest');
 }
 
+/**
+ * How a receipt reads a changed path (relative or absolute; it may no longer exist): 'scan' when a listing it runs
+ * covers the path (tools/selftest-scans.mjs), 'named' when its closure holds the file or a directory above it other than
+ * the broad fallback, 'broad' when only a fallback directory (SELFTEST_BROAD_DIRS) holds it, else null.
+ * A broad match alone is the cache's caution, not a read: the 228p selection could not tell it from runtimeStyles' scan.
+ */
+export function selftestReadOf(cache, file, path, root = process.cwd()) {
+  const closure = cache.closureOf(resolve(root, file));
+  const absolute = resolve(root, path);
+  if (cache.scanMatch(file, relative(root, absolute))) return 'scan';
+  if (closure.has(absolute)) return 'named';
+  let broad = false;
+  for (let dir = dirname(absolute); dir.startsWith(root + sep); dir = dirname(dir)) {
+    if (!closure.has(dir)) continue;
+    if (!SELFTEST_BROAD_DIRS.includes(relative(root, dir))) return 'named';
+    broad = true;
+  }
+  return broad ? 'broad' : null;
+}
+
 export function selftestPlan(files, cache, changed = null, root = process.cwd()) {
   return files.map(file => {
     const proof = cache.lookup(file);
-    const inputs = changed ? [...cache.closureOf(resolve(root, file))] : [];
-    const affected = changed?.filter(path => inputs.some(input => {
-      const absolute = resolve(root, path);
-      return input === absolute || absolute.startsWith(input + '/');
-    }));
-    return { file, action: proof.skip ? 'reuse' : 'run', reason: proof.reason,
-      inputs: proof.inputs, ...(affected ? { affectedBy: affected } : {}) };
+    const row = { file, action: proof.skip ? 'reuse' : 'run', reason: proof.reason, inputs: proof.inputs };
+    if (!changed) return row;
+    const reads = changed.map(path => [path, selftestReadOf(cache, file, path, root)]).filter(([, read]) => read);
+    // affectedBy: every changed path the receipt may read; scanBy: those a listing covers (select it, deleted paths
+    // included); broadOnly: it matches only through the fallback, which never by itself names a read
+    return { ...row, affectedBy: reads.map(([path]) => path), scanBy: reads.filter(([, read]) => read === 'scan').map(([path]) => path),
+      broadOnly: reads.length > 0 && reads.every(([, read]) => read === 'broad') };
   });
 }
 
@@ -455,7 +475,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       console.log(JSON.stringify({ checks: checks.length,
         run: checks.filter(row => row.action === 'run').length,
         reuse: checks.filter(row => row.action === 'reuse').length,
-        ...(command.changed ? { affected: checks.filter(row => row.affectedBy.length).length } : {}),
+        ...(command.changed ? { affected: checks.filter(row => row.affectedBy.length).length,
+          scanned: checks.filter(row => row.scanBy.length).length, broadOnly: checks.filter(row => row.broadOnly).length } : {}),
         rows: checks }, null, 2));
       cache.persist();
     } else {

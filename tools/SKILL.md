@@ -107,6 +107,9 @@ on post-ready environment texture warming, eager fleet/map artwork, frame-gap
 spikes, long-task bursts, or console errors. Environment-transition claims use
 `tools/garage-variants-probe.mjs`; exercise all ten destinations, rapid stale
 selection, cache eviction, persisted reload, iPad, and phone layouts.
+Gallery anatomy before/after packets (the Armor, Modules and Crew layers; 2026-10-21) come from
+`tools/anatomy-render-set.mjs`: both sides served from their own checkouts, one capture hold, the same
+cameras on both (`--plan=before:desk,after:desk,... --before-root --after-root --ids --out`).
 Pinch-zoom claims (a trackpad pinch only magnifies; 2026-10-16) use the manual
 `npm run qa:pinch -- --base=<served origin> --out=<report.json>`
 (`tools/pinch-zoom-probe.mjs`): a real CDP trackpad pinch to 2x, a pan and a
@@ -183,6 +186,17 @@ finite leaf, while interior rays retain the bay walls. Retain raw residuals, tes
 missing/moved stock and wrong-source negatives, and keep all geometry in the
 source and physical audits.
 
+Tank hero cards (Garage roster, end-screen tile, Gallery list): one policy in
+`src/ui/heroCardPolicy.ts` (policy v5, owner 2026-10-20: the whole tank faces left, the
+turret turned modestly toward the lens with the gun forward and level; turretless mounts
+keep the gun on the hull axis).
+`node tools/hero-cards-plan.mjs` names the stale ids (geometry hash and angle-render
+sha from `tank-assets.json`, flag SVG, policy keys); render only those with
+`node tools/genHeroCards.mjs --ids=<stale>` (capture lock, NORMAL band; a policy
+change needs an explicit `--all --part=i/n`), then
+`node tools/hero-cards-compose.mjs ship --layers <dir> --ids=<stale>` and
+`npm run hero-cards:check` (bow and gun sides by projection, budgets, files). Never
+hand-edit `public/icons/hero/hero-cards.json`.
 The Garage running-gear band (2026-10-17, the wheel-band lane): `tools/garage-wheel-band.browser.mjs` stages Garages
 and tanks as the Garage does (the dormant energy skin on), poses beside the run and reports the vehicle-tag share of
 the tank's pixels in the scene target's alpha and the ground occlusion's step across the belly line (the same frame
@@ -326,7 +340,13 @@ The probe mutex is the caller's: hold `$SP/probe.lock` around the whole run and
 use `nice -n 19`. The tools take neither it nor the `/tmp/cot-shots` FIFO, so
 never run one beside `npm test` or the release gate; never edit tracked source
 while one is capturing (vite serves the tree live); the server binds
-127.0.0.1:5300–5399, never 5197–5199. `--dist=<dir>` (where a tool accepts it) serves a built dist through vite
+127.0.0.1:5300–5399, never 5197–5199. The dev server's dependency scan must resolve every import the game makes:
+a `virtual:` module without its plugin in `mapProbeServerOptions` fails the whole scan, vite then re-bundles three
+mid-session, and the probe page (hmr off) never reloads, so it holds two copies of three (2026-10-20, modes-228 r2d:
+"world/vegetation: expected three directional shadow sites, found 1"). The scan also drops a dynamic import in code it
+proves dead (sky.ts's RGBELoader), so every dynamic `import('three/...')` sits in its `optimizeDeps.include`. The receipt
+checks that list and every `virtual:` import;
+`[map-probe] vite re-bundled its dependencies mid-session` on stderr names the event. `--dist=<dir>` (where a tool accepts it) serves a built dist through vite
 preview instead (`withDistProbeSession`): a before/after pair from two builds shares no module graph or optimizer
 cache, and nothing reads the live tree. Receipts:
 `map-probe-runtime.selftest.mjs` (arguments, the pinned view table, pose math,

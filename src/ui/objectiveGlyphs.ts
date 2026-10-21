@@ -312,3 +312,37 @@ export function drawCheck(ctx: Ctx, x: number, y: number, s: number, color: stri
   ctx.stroke();
   ctx.restore();
 }
+
+/**
+ * The proving ground's lane mark (v2 progression, 2026-10-17): a square target board on a dark keyline, a ring round
+ * the aim point and the lane's number, so a lane reads as a range lane on the map and over the field alike.
+ */
+export function drawLaneGlyph(ctx: Ctx, x: number, y: number, r: number, label: string, font?: string): void {
+  const half = r * 0.86;
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.rect(x - half, y - half, half * 2, half * 2);
+  ctx.fillStyle = 'rgba(14,20,24,0.82)';
+  ctx.fill();
+  ctx.lineWidth = Math.max(1.4, r * 0.3);
+  ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
+  ctx.stroke();
+  ctx.lineWidth = Math.max(1, r * 0.14);
+  ctx.strokeStyle = OBJECTIVE_PALETTE.chalk;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.62, 0, Math.PI * 2);
+  ctx.lineWidth = Math.max(0.9, r * 0.12);
+  ctx.strokeStyle = OBJECTIVE_PALETTE.contested;
+  ctx.stroke();
+  ctx.font = font || `700 ${Math.round(r * 0.95)}px system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = Math.max(1, r * 0.2);
+  ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
+  ctx.strokeText(label, x, y + r * 0.06);
+  ctx.fillStyle = OBJECTIVE_PALETTE.chalk;
+  ctx.fillText(label, x, y + r * 0.06);
+  ctx.restore();
+}

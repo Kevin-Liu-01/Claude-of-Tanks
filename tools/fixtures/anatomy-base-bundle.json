@@ -1,0 +1,54 @@
+{
+ "note": "Bundle measurement of main 16aeab482 (npm run build; node tools/bundle-budget.mjs --json), the Gallery anatomy lane base: the Gallery static graph must not grow against it and the game static graph must not change.",
+ "base": "16aeab482",
+ "pages": {
+  "game": {
+   "requests": 118,
+   "raw": 3850518,
+   "gzip": 1173923,
+   "brotli": 990659,
+   "entryRaw": 815787,
+   "entryBrotli": 223710
+  },
+  "home": {
+   "requests": 7,
+   "raw": 62520,
+   "gzip": 21885,
+   "brotli": 19004,
+   "entryRaw": 1238,
+   "entryBrotli": 582
+  },
+  "docs": {
+   "requests": 12,
+   "raw": 176374,
+   "gzip": 46323,
+   "brotli": 39853,
+   "entryRaw": 7295,
+   "entryBrotli": 2543
+  },
+  "gallery": {
+   "requests": 66,
+   "raw": 2475965,
+   "gzip": 727902,
+   "brotli": 612010,
+   "entryRaw": 87563,
+   "entryBrotli": 24890
+  },
+  "notFound": {
+   "requests": 5,
+   "raw": 18338,
+   "gzip": 7047,
+   "brotli": 6183,
+   "entryRaw": 259,
+   "entryBrotli": 171
+  },
+  "cn": {
+   "requests": 119,
+   "raw": 3999200,
+   "gzip": 1226324,
+   "brotli": 1033084,
+   "entryRaw": 815787,
+   "entryBrotli": 223710
+  }
+ }
+}
