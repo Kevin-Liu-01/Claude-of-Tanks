@@ -47,6 +47,8 @@ interface Footprint { radius: number; relief: number; normalY: number; solidOnly
 const SPAWN_NORMAL_Y = .90;
 const OBJECTIVE_NORMAL_Y = .94;
 const SEARCH_RADII = [8, 16, 24, 32, 48, 64, 80, 104, 128, 160, 200, 248, 304, 368];
+/** An axis objective moves at most this far across the axis (or inward) before the ring search takes over. */
+const OBJECTIVE_SPAN_SHIFT_M = 160;
 
 /** Uses ALL authored pads, never the selected roster or relocated vehicles. */
 export function matchPlacementAnchors(spawns: {
@@ -412,10 +414,31 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
       const radius = mode === 'turbo_ball' ? 18 : 12;
       const halfExtent = mode === 'turbo_ball' ? MATCH_MODE_ARENA_HALF_EXTENT_M : undefined;
       const footprint = { radius, relief: 5, normalY: OBJECTIVE_NORMAL_Y, solidOnly: true, halfExtent };
-      const at = (side: -1 | 1) => ({ x: middle.x + bx / span * side * 0.5 * objectiveSpan, z: middle.z + bz / span * side * 0.5 * objectiveSpan });
+      const ax = bx / span, az = bz / span;
+      const at = (side: -1 | 1) => ({ x: middle.x + ax * side * 0.5 * objectiveSpan, z: middle.z + az * side * 0.5 * objectiveSpan });
+      // the span is the rule: a point the footprint refuses moves across the axis (or inward) first, so the pitch keeps
+      // its length (round 3: the plain ring search took one Desert goal 80 m outward, a 560 m pitch), then the ring search
+      const reserveOnSpan = (side: -1 | 1, key: string): PlacementPoint => {
+        const preferred = at(side), probe = { x: 0, z: 0 };
+        if (acceptable(preferred, footprint, key, side, [])) {
+          reservations.push({ ...preferred, radius: footprint.radius, key });
+          return preferred;
+        }
+        for (const radius of SEARCH_RADII) {
+          if (radius > OBJECTIVE_SPAN_SHIFT_M) break;
+          for (const [ux, uz] of [[az, -ax], [-az, ax], [-ax * side, -az * side]] as const) {
+            probe.x = preferred.x + ux * radius; probe.z = preferred.z + uz * radius;
+            if (!acceptable(probe, footprint, key, side, [])) continue;
+            const found = { x: probe.x, z: probe.z };
+            reservations.push({ ...found, radius: footprint.radius, key });
+            return found;
+          }
+        }
+        return reserve(preferred, footprint, key, side);
+      };
       objectives = Object.freeze({
-        alpha: Object.freeze(reserve(at(-1), footprint, 'objective-alpha', -1)),
-        bravo: Object.freeze(reserve(at(1), footprint, 'objective-bravo', 1)),
+        alpha: Object.freeze(reserveOnSpan(-1, 'objective-alpha')),
+        bravo: Object.freeze(reserveOnSpan(1, 'objective-bravo')),
       });
     }
   }

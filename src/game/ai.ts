@@ -27,7 +27,7 @@ import type { BotMission } from '../sim/matchModes.ts';
 import { createBotAbilityPlanner, type BotAbilityContext } from './botAbilities.ts';
 import { computeDispersionRadM, IMPACT_SOURCE_COLLIDER } from '../sim/movement.ts';
 import { createBotTerrainSafety } from '../sim/botTerrainSafety.ts';
-import { BALL_SHOT, CLASSIC_BOT_DOCTRINE, RUSH_DRIVE, SORTIE_DRIVE, STRIKER_JUMP, type BotDoctrine, type RulesetPhysics } from '../sim/matchRuleset.ts';
+import { BALL_SHOT, CLASSIC_BOT_DOCTRINE, JOCKEY_DRIVE, RUSH_DRIVE, SORTIE_DRIVE, STRIKER_JUMP, type BotDoctrine, type RulesetPhysics } from '../sim/matchRuleset.ts';
 import type { NavigationBridgeDeck } from '../sim/bridgeDeckNavigation.ts';
 import { createNavigationLiquidSafety } from '../sim/navigationLiquidSafety.ts';
 import { solveBallisticGunLay } from '../sim/ballistics.ts';
@@ -1223,7 +1223,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   const scootPoint = { x: 0, z: 0 };
   let scootUntilS = -1;
   // the pocket escape drives the scoot leg too, but it is navigation (a hull boxed in), not a relocation after a shot:
-  // the probes read the two apart (debugInfo scooting / escaping)
+  // the probes read that part of the scoot window apart (debugInfo escaping)
   let pocketEscapeUntilS = -1;
   let scootLine = 0;          // a casemate's scoot along its line of fire: -1 back, +1 up, 0 a free leg
   let lineScootUp = false;    // the casemate's next scoot goes up the line (it last backed off it)
@@ -3273,6 +3273,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
         input.throttle = 0;
         input.brake = true;
         pivotCreeps++;
+        return false;
+      }
+      // a side that drives its hard turns round (doctrine rollingTurns) keeps way on through them: a rolling turn
+      if (doctrineOf().rollingTurns) {
+        input.throttle = JOCKEY_DRIVE.rollThrottle * speedScale;
+        input.steer = clamp(input.steer, -JOCKEY_DRIVE.rollSteer, JOCKEY_DRIVE.rollSteer);
         return false;
       }
       // A pivot is a turn in place, and its drive only breaks friction: above PIVOT_ROLL_MAX_MPS it is cut (see there).
@@ -5911,8 +5917,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const st = entity.state;
     const rx = (st.pos.x - cx) / dist, rz = (st.pos.z - cz) / dist; // radial: centre → this hull
     const tx = -rz * orbitSide, tz = rx * orbitSide;                 // tangent
-    const ring = dist < RUSH_DRIVE.orbitMinM ? RUSH_DRIVE.orbitMaxM
-      : dist > RUSH_DRIVE.orbitMaxM ? RUSH_DRIVE.orbitMinM : (RUSH_DRIVE.orbitMinM + RUSH_DRIVE.orbitMaxM) * 0.5;
+    // round 3 (the critic's M3: the infected advanced in 64-66 % of samples): inside the band the hull runs the tangent
+    // at the radius it has, never out to a wider ring; inside noRamM out to orbitMinM, beyond the band in to orbitMaxM
+    const ring = dist < RUSH_DRIVE.noRamM ? RUSH_DRIVE.orbitMinM : dist > RUSH_DRIVE.orbitMaxM ? RUSH_DRIVE.orbitMaxM : dist;
     const closing = dist < RUSH_DRIVE.noRamM && (Math.sin(st.yaw) * -rx + Math.cos(st.yaw) * -rz) * st.speed > 0;
     const lead = closing ? RUSH_DRIVE.closingLeadM : RUSH_DRIVE.tangentLeadM;
     driveToXZ(input, cx + rx * ring + tx * lead, cz + rz * ring + tz * lead, 1);
@@ -6004,23 +6011,39 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       return false;
     }
     if (!offObjective && driveObjectiveShift(input)) return true;
-    // the holder's jockey (doctrine holdJockeyM; round 3): on its objective with a target in sight it circles its hold
-    // point at that radius, the turret laid, a moving firing position rather than a parked one
-    const jockey = doctrine.holdJockeyM;
-    if (jockey > 0 && !offObjective && target && losClear && enemyAlive(target) && isVisibleToTeam(target)) {
-      const st = entity.state, d = Math.hypot(st.pos.x - hold.x, st.pos.z - hold.z) || 1;
-      circleAround(input, hold.x, hold.z, d, jockey, doctrine.missionSpeed);
-      return true;
-    }
     drivePatrol(input);
     return true;
   }
-  /** A circuit round (cx, cz) at `ring` (the holder's jockey): toward the ring, then along its tangent. */
-  function circleAround(input: AiInput, cx: number, cz: number, dist: number, ring: number, throttle: number): void {
+
+  /**
+   * The jockey (doctrine jockeyS; round 3, the critic's M4): an engaged hull its drivers left standing — a hold band's
+   * angled stand, a zone hold, the sortie's stand-off, a hit turn — rolls along its own line instead, jockeyS seconds a
+   * leg forward, then back, the steering as its drivers laid it; a leg that stalls (a wall, a hull, the safety brakes
+   * that still run after it) turns about at once. Never on the settled-shot halt, the gun nudge or an empty rack.
+   */
+  let jockeyDir = 1, jockeyLegUntilS = -Infinity, jockeyStandS = 0, jockeyStallS = 0, jockeyLegs = 0;
+  function driveJockey(input: AiInput, dt: number, timeS: number): void {
+    const leg = doctrineOf().jockeyS;
     const st = entity.state;
-    const rx = (st.pos.x - cx) / dist, rz = (st.pos.z - cz) / dist;
-    const tx = -rz * orbitSide, tz = rx * orbitSide;
-    driveToXZ(input, cx + rx * ring + tx * ring, cz + rz * ring + tz * ring, throttle);
+    if (leg <= 0 || mode !== 'engage' || !target || !enemyAlive(target) || !st.grounded || emptyRack
+      || timeS < settleUntilS || timeS < nudgeUntilS || timeS < unstickUntilS
+      || Math.abs(input.throttle) >= JOCKEY_DRIVE.standThrottle) {
+      jockeyStandS = 0;
+      jockeyStallS = 0;
+      return;
+    }
+    jockeyStandS += dt;
+    if (jockeyStandS < JOCKEY_DRIVE.afterS) return;
+    const settled = timeS - (jockeyLegUntilS - leg) >= JOCKEY_DRIVE.legSettleS;
+    jockeyStallS = settled && Math.abs(st.speed) < JOCKEY_DRIVE.blockedMps ? jockeyStallS + dt : 0;
+    if (timeS >= jockeyLegUntilS || jockeyStallS > JOCKEY_DRIVE.blockedS) {
+      // the first leg of a stand keeps the last one's direction turned about (a new stand starts where the old left off)
+      jockeyDir = -jockeyDir;
+      jockeyLegUntilS = timeS + leg;
+      jockeyStallS = 0;
+      jockeyLegs++;
+    }
+    input.throttle = jockeyDir * JOCKEY_DRIVE.throttle;
     input.brake = false;
   }
 
@@ -6261,8 +6284,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     ramHoldOffs++;
     input.steer = (Math.sign(-ramCross) || orbitSide) * sign;
     if (ramGap <= stopM + RUSH_DRIVE.brakeGapM) {
-      // slow already: back off the hull (turning off its line) rather than stand at it
-      if (Math.abs(speed) <= RUSH_DRIVE.backOffMps) {
+      // all but touching and standing: back off the hull (turning off its line)
+      if (ramGap <= RUSH_DRIVE.backOffGapM && Math.abs(speed) <= 1) {
         input.throttle = -sign * RUSH_DRIVE.backOffThrottle;
         input.brake = false;
       } else {
@@ -6428,6 +6451,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
 
     driveCurrentMode(input, timeS, distToTarget);
     driveTrafficDetour(input, timeS);
+    driveJockey(input, dt, timeS);
 
     // ---- stuck detection & recovery ----
     // Real displacement rate (EMA). The drivetrain `st.speed` lies when the
@@ -6673,7 +6697,8 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       role, relocations, shotsFromSpot, terrainBlocked, terrainAvoiding: nowS < terrainAvoidUntilS,
       // bot philosophy r1: live hit reaction, count, and the unseen gun the hull is turning onto
       reaction, reactions, suspectId: suspect && nowS < suspectUntilS ? suspect.id : null,
-      scooting: nowS < scootUntilS && nowS >= pocketEscapeUntilS,
+      // (the probes' scooting window counts the pocket escape's leg as it always did; `escaping` names that part of it)
+      scooting: nowS < scootUntilS,
       escaping: nowS < scootUntilS && nowS < pocketEscapeUntilS,
       kiting: nowS < kiteUntilS,
       settling: nowS < settleUntilS,
@@ -6722,7 +6747,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       objectiveShiftZ: objectiveShifting ? +objectiveShiftPoint.z.toFixed(1) : null,
       zoneHoldX: Number.isFinite(zoneHoldForX) ? +zoneHold.x.toFixed(1) : null,
       zoneHoldZ: Number.isFinite(zoneHoldForZ) ? +zoneHold.z.toFixed(1) : null,
-      missionReleases, missionReleased: nowS < missionReleaseUntilS, offensiveJumps, ballShots, ramHoldOffs,
+      missionReleases, missionReleased: nowS < missionReleaseUntilS, offensiveJumps, ballShots, ramHoldOffs, jockeyLegs,
       levelRouting, levelRoutes, unbearableVerdicts, unbearable: unbearableId, elevationLockT: +elevationLockT.toFixed(1),
       pressing: nowS < pressUntilS,
       pressPointX: passivePressing ? pressPoint.x : NaN, // round 67: the chosen press point (NaN while not pressing)

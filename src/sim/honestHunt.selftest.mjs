@@ -67,6 +67,18 @@ const at = (point, target) => Math.hypot(point.x - target.state.pos.x, point.z -
   const rejoin = withAlly.botObjective(ally);
   assert.equal(rejoin.mission, 'escort', 'an ally beyond the leash rejoins the humans');
   assert.ok(at(rejoin, human) < 1, 'at the humans\' centroid');
+  // round 3: with no zombie spotted within the leash it screens the humans toward the threat (the zombies' deployment
+  // here: nothing has been seen), allyScreenM out — never at a hidden zombie
+  spotted.clear();
+  Object.assign(ally.state.pos, { x: 10, z: -290 });
+  const screen = withAlly.botObjective(ally);
+  const rules = matchRulesetFor('endless_horde').horde;
+  assert.equal(screen.mission, 'escort', 'the screen is a labelled escort slot');
+  assert.ok(Math.abs(at(screen, human) - rules.allyScreenM) < 1 + rules.allyScreenSpreadM, `${rules.allyScreenM} m out from the humans (${at(screen, human).toFixed(0)} m)`);
+  const deployment = withAlly.enemyDeployment(ally);
+  assert.ok(Math.hypot(screen.x - deployment.x, screen.z - deployment.z) < Math.hypot(human.state.pos.x - deployment.x, human.state.pos.z - deployment.z),
+    'on the side of the threat');
+  for (const h of hunters) if (h.modeActive !== false && !h.combat.destroyed) assert.ok(at(screen, h) > 2, 'never a hidden zombie\'s place');
 }
 // Infected survivors close ranks on their own centroid (own-side positions only)
 {
@@ -119,6 +131,45 @@ const at = (point, target) => Math.hypot(point.x - target.state.pos.x, point.z -
   const yawError = Math.abs(Math.atan2(Math.sin(player.state.yaw - faces), Math.cos(player.state.yaw - faces)));
   assert.ok(yawError < 0.35, `and faces the sighting (${yawError.toFixed(2)} rad off its bearing)`);
 }
+// The arrival's orders (HUNT_RULES.lead; round 3, the critic's M1: on Verdant a lone wave-1 zombie re-arrived round the
+// humans for 900 s and never found them). A director-placed hunter with nothing spotted drives on along the facing the
+// director gave it, to a point round the ring's centre as it stood at the arrival — a fixed point, never the survivors'
+// live positions as they move — and once there it spirals out round that point.
+{
+  spotted.clear();
+  const rules = matchRulesetFor('infected');
+  const arrival = { ...rules.infectionBots.arrival, spawnRingM: [60, 80], spawnMinHumanM: 40, spawnOutOfSight: false };
+  const survivors = [tank('a', 'alpha', 0, 0), tank('b', 'alpha', 24, 0), tank('c', 'alpha', 0, 24)];
+  const player = tank('player', 'alpha', 12, 12, false);
+  const infected = [0, 1, 2].map((i) => tank(`i${i}`, 'bravo', i * 20, 400));
+  const mode = make('infected', [player, ...survivors, ...infected], { ...rules, infectionBots: { ...rules.infectionBots, arrival } });
+  const centre = { x: 9, z: 9 };
+  let t = 0;
+  mode.step(1 / 60, t += 0.25);
+  const leads = infected.map((bot) => {
+    const objective = mode.botObjective(bot);
+    assert.equal(objective.mission, 'hunt');
+    const rose = Math.hypot(bot.state.pos.x - centre.x, bot.state.pos.z - centre.z);
+    const off = Math.hypot(objective.x - centre.x, objective.z - centre.z);
+    assert.ok(off <= rose * 0.45, `a fresh arrival goes in toward the ring's centre (${off.toFixed(0)} m off it, rose ${rose.toFixed(0)} m out)`);
+    for (const s of [player, ...survivors]) assert.ok(at(objective, s) > 2, 'never a survivor\'s own position');
+    return { x: objective.x, z: objective.z };
+  });
+  // the survivors move away unseen: the orders stand where the director gave them; nothing follows the hidden hulls
+  for (const s of [player, ...survivors]) s.state.pos.x += 300;
+  for (let i = 0; i < 3; i++) mode.step(1 / 60, t += 0.6);
+  infected.forEach((bot, k) => {
+    const objective = mode.botObjective(bot);
+    assert.ok(Math.hypot(objective.x - leads[k].x, objective.z - leads[k].z) < 1, 'the lead point is fixed at the arrival');
+    for (const s of [player, ...survivors]) assert.ok(at(objective, s) > 200, 'and names none of the moved survivors');
+  });
+  // there: the hunter spirals out round the lead point (localSweep)
+  Object.assign(infected[0].state.pos, { x: leads[0].x, z: leads[0].z });
+  for (let i = 0; i < 2; i++) mode.step(1 / 60, t += 0.6);
+  const sweep = mode.botObjective(infected[0]);
+  const ring = Math.hypot(sweep.x - leads[0].x, sweep.z - leads[0].z);
+  assert.ok(Math.abs(ring - HUNT_RULES.localSweep.firstM) < 1, `at its lead point the hunter sweeps out round it (${ring.toFixed(0)} m)`);
+}
 // The network authority hands its own spotting to the hunt (round 2, the critic's M14: without the hook every survivor
 // read as spotted, so a room's hunters would have routed on hidden survivors). Survivors 1.1 km from the infected on a
 // flat field, past every view range: after the first seconds the infected side has no sighting at all.
@@ -146,4 +197,4 @@ const at = (point, target) => Math.hypot(point.x - target.state.pos.x, point.z -
     assert.ok(!hunt || Math.hypot(hunt.x - survivor.state.pos.x, hunt.z - survivor.state.pos.z) > 60, `the authority's hunt does not name hidden ${id}`);
   }
 }
-console.log('honestHunt.selftest: the hunt names only spotted quarry, then its last sighting, then a sweep; the hunters spread; the allies leash; survivors rally; the infected rise on the ring, a converted human only round its side\'s sighting');
+console.log('honestHunt.selftest: the hunt names only spotted quarry, then its last sighting, then its arrival orders or a sweep; the hunters spread; the allies leash; survivors rally; the infected rise on the ring, a converted human only round its side\'s sighting');

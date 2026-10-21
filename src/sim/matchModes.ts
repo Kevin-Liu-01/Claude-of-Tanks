@@ -143,8 +143,8 @@ const BALL_LINEAR_DRAG = 0.992;
 const BALL_DRAG_TAU_S = -1 / (60 * Math.log(BALL_LINEAR_DRAG));
 const BALL_GRAVITY_MPS2 = 9.81;
 const PICKUP_RADIUS_M = 7;
-/** Own-side slots (ball.pitchSpawnM, flagPitch.respawnBackM, ball.kickoffM): a team's hulls this far apart across the axis. */
-const PITCH_SPAWN_SPACING_M = 14;
+/** The Turbo Ball kick-off line-up (ball.kickoffM) and the CTF revive slot (flagPitch.respawnBackM): a team's hulls this far apart across the axis. */
+const KICKOFF_SPACING_M = 14;
 /** The team's sightings are refreshed this often (the honest hunt and search read them; a once-a-second rule). */
 // Mars mode boost caches: the first drop and the interval between drops (seconds).
 
@@ -611,28 +611,30 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       const at = goalAt(team);
       return { team, x: at.x, y: terrainHeight(at.x, at.z) + 0.2, z: at.z };
     }) : [];
-  // the objective modes' own-side slots (round 3, the critic's M5/M6: every death — and in Turbo Ball every goal — sent
-  // a hull back to its deployment some 200 m behind its flag base or 400 m from the kick-off, so pursuers, escorts and
-  // strikers spent their lives driving back to the play): a slot `backM` from (originX, originZ) further toward the
-  // team's own end of the axis (its objective: the goal or the flag base), the team spread across it, facing the middle —
-  // a revive's (ball.pitchSpawnM / flagPitch.respawnBackM behind its own objective) and the kick-off line-up's
-  // (ball.kickoffM off the spot)
-  const ownObjective = (team: ObjectiveTeam): { x: number; z: number } | null =>
-    ball ? goals.find((goal) => goal.team === team) ?? null : flagBases ? flagBases[team] : null;
-  const pitchSpawnBackM = ball ? ruleset.ball?.pitchSpawnM ?? null : flagBases ? ruleset.flagPitch?.respawnBackM ?? null : null;
-  const ownSideSlot = (entity: Entity, originX: number, originZ: number, backM: number): MatchModeSpawn | null => {
-    const team = teamOf(entity), own = ownObjective(team);
+  // the Turbo Ball's kick-off line-up (ball.kickoffM; round 3, the critic's M6: every goal sent the bots back to their
+  // deployments 300-440 m from the kick-off, and the ball lay still with no bot near it while they drove back): each
+  // side `backM` off the spot toward its own goal, spread across the axis, facing the middle
+  const kickoffSpot = (entity: Entity, backM: number): MatchModeSpawn | null => {
+    const team = teamOf(entity), own = goals.find((goal) => goal.team === team);
     if (!own) return null;
     const ox = own.x - midX, oz = own.z - midZ, olen = Math.hypot(ox, oz) || 1, ux = ox / olen, uz = oz / olen;
     const members = teams[team], k = Math.max(0, members.indexOf(entity)), n = members.length;
-    const across = (k - (n - 1) / 2) * PITCH_SPAWN_SPACING_M;
-    return { x: originX + ux * backM + uz * across, z: originZ + uz * backM - ux * across, yaw: Math.atan2(-ux, -uz) };
+    const across = (k - (n - 1) / 2) * KICKOFF_SPACING_M;
+    return { x: midX + ux * backM + uz * across, z: midZ + uz * backM - ux * across, yaw: Math.atan2(-ux, -uz) };
   };
-  const pitchSpawn = (entity: Entity, backM: number): MatchModeSpawn | null => {
-    const own = ownObjective(teamOf(entity));
-    return own ? ownSideSlot(entity, own.x, own.z, backM) : null;
+  // Capture the Flag's revive slot (flagPitch.respawnBackM; round 3, the critic's M5: a revive at the deployment stood
+  // 200 m behind its own flag base, so a third of each squad spent its life driving back to the play and the carrier's
+  // pursuers and escorts were rarely near it): `backM` behind the team's own flag base, spread across the axis, facing
+  // the middle
+  const flagRespawnBackM = flagBases ? ruleset.flagPitch?.respawnBackM ?? null : null;
+  const flagRespawnSpot = (entity: Entity, backM: number): MatchModeSpawn | null => {
+    if (!flagBases) return null;
+    const team = teamOf(entity), base = flagBases[team];
+    const ox = base.x - midX, oz = base.z - midZ, olen = Math.hypot(ox, oz) || 1, ux = ox / olen, uz = oz / olen;
+    const members = teams[team], k = Math.max(0, members.indexOf(entity)), n = members.length;
+    const across = (k - (n - 1) / 2) * KICKOFF_SPACING_M;
+    return { x: base.x + ux * backM + uz * across, z: base.z + uz * backM - ux * across, yaw: Math.atan2(-ux, -uz) };
   };
-  const kickoffSpot = (entity: Entity, backM: number): MatchModeSpawn | null => ownSideSlot(entity, midX, midZ, backM);
   const pickups: PickupState[] = [];
   const hordeEnemies = teams.bravo.filter((entity) => !!entity.bot);
   // a horde with no hostile pool would clear empty waves forever (the v2 co-op rooms seated none): refuse it
@@ -689,7 +691,11 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const sightings: Record<ObjectiveTeam, Map<string, Sighting>> = { alpha: new Map(), bravo: new Map() };
   // where each hunter rose (its own position, the only lead a hull fresh from the director's ring has): the stale sweep's
   // centre (round 3, the critic's M1: a straggler re-arrived round the humans swept the fight they had left 500 m back)
-  const huntAnchor = new Map<string, { x: number; z: number; atS: number }>();
+  // and the arrival's orders (round 3, the critic's M1/M3): a director-placed hunter drives on along the facing the
+  // director gave it — at the ring's centre as it stood at the arrival, never updated — to a seeded point HUNT_RULES.lead
+  // gives or takes round it (lx, lz; NaN for a hull that rose anywhere else)
+  const huntAnchor = new Map<string, { x: number; z: number; atS: number; lx: number; lz: number; swept: boolean }>();
+  let arrivals = 0;
   const occupiedBy = (entity: Entity): { x: number; z: number; radius: number }[] =>
     entities.filter(other => other !== entity && !other.combat.destroyed && other.modeActive !== false)
       .map(other => ({ x: other.state.pos.x, z: other.state.pos.z, radius: 4.5 }));
@@ -706,7 +712,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         at = arrivalPoint(entity, infectionArrival, false, around) ?? arrivalPoint(entity, infectionArrival, true, around);
       }
     }
-    if (!at && pitchSpawnBackM != null) at = pitchSpawn(entity, pitchSpawnBackM);
+    if (!at && flagRespawnBackM != null) at = flagRespawnSpot(entity, flagRespawnBackM);
     const spawn = at ?? spawns.get(entity.id);
     if (!spawn) return;
     const safeSpawn = placement ? placement.respawn(spawn, entity.id, occupiedBy(entity)) : spawn;
@@ -722,9 +728,25 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     revive(entity, safeSpawn, healthScale);
     restedAt.delete(entity.id);
     if (entity.bot && teamOf(entity) === 'bravo') {
-      const anchor = huntAnchor.get(entity.id);
-      if (anchor) { anchor.x = safeSpawn.x; anchor.z = safeSpawn.z; anchor.atS = placementTimeS; }
-      else huntAnchor.set(entity.id, { x: safeSpawn.x, z: safeSpawn.z, atS: placementTimeS });
+      let anchor = huntAnchor.get(entity.id);
+      if (!anchor) { anchor = { x: 0, z: 0, atS: 0, lx: NaN, lz: NaN, swept: false }; huntAnchor.set(entity.id, anchor); }
+      anchor.x = safeSpawn.x; anchor.z = safeSpawn.z; anchor.atS = placementTimeS; anchor.lx = NaN; anchor.lz = NaN; anchor.swept = false;
+      // a director arrival (the Horde's ring, the infected's ring) goes in along its facing, the ring's own distance on
+      if (at && (ruleset.horde || infectionArrival)) {
+        let cx = 0, cz = 0, n = 0;
+        for (const human of teams.alpha) {
+          if (human.modeActive === false || human.combat.destroyed) continue;
+          cx += human.state.pos.x; cz += human.state.pos.z; n++;
+        }
+        if (n) {
+          const lead = HUNT_RULES.lead, k = arrivals++;
+          const u1 = (Math.imul(k + 1, 2654435761) >>> 0) / 4294967296, u2 = (Math.imul(k + 7, 2246822519) >>> 0) / 4294967296;
+          const reach = Math.hypot(cx / n - safeSpawn.x, cz / n - safeSpawn.z) * (lead.reachMin + (lead.reachMax - lead.reachMin) * u1);
+          const heading = at.yaw + (u2 - 0.5) * 2 * lead.spreadDeg * Math.PI / 180;
+          anchor.lx = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.x + Math.sin(heading) * reach));
+          anchor.lz = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, safeSpawn.z + Math.cos(heading) * reach));
+        }
+      }
     }
     stampInfection(entity);
     if (ruleset.gunGame) setWeaponStage(entity, Math.min(GUN_GAME_WEAPONS.length - 1, Math.floor((weaponKills.get(entity.id) ?? 0) / ruleset.gunGame.killsPerWeapon)));
@@ -1002,6 +1024,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   if (id === 'endless_horde') startHordeWave();
   // the outbreak opens among the survivors: the starting infected rise on the arrival ring too
   if (infectionArrival) for (const entity of teams.bravo) reviveAtSpawn(entity, 1);
+  // Turbo Ball's opening kick-off (ball.kickoffAtStart; round 3, the critic's M6: the bots spent the first 25-35 s of
+  // every match driving 300-400 m in from their deployments to a ball no one stood near): the bots line up as after a
+  // goal; a human starts at its own deployment as ever
+  if (ball && ruleset.ball?.kickoffAtStart && ruleset.ball.kickoffM != null) {
+    for (const entity of entities) if (entity.bot) reviveAtSpawn(entity, 1, kickoffSpot(entity, ruleset.ball.kickoffM));
+  }
 
   // ----------------------------------------------------- frontline assault ---
   let lineIndex = 0;
@@ -1354,7 +1382,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     flag.status = 'carried';
     flag.carrierId = entity.id;
     flag.returnAtS = null;
-    stampPhysics(entity, baseSpeed * FLAG_CARRIER_SPEED_SCALE); // the carrier is slower until it scores or falls
+    // the carrier is slower until it scores or falls (the ruleset's flagPitch.carrierSpeedScale, else the standing 85 %)
+    stampPhysics(entity, baseSpeed * (ruleset.flagPitch?.carrierSpeedScale ?? FLAG_CARRIER_SPEED_SCALE));
     emit('mode_flag_taken', { team: flag.team, by: entity.id });
     return true;
   };
@@ -1705,8 +1734,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       }
       if (!Number.isFinite(nearSq)) return;
       const near = Math.sqrt(nearSq), track = strandTrack.get(hostile.id);
-      if (!track || near <= hordeRules.strandedContactM || near <= track.bestM - hordeRules.strandedGainM) {
-        strandTrack.set(hostile.id, { bestM: near, sinceS: timeS });
+      if (!track) { strandTrack.set(hostile.id, { bestM: near, sinceS: timeS }); continue; }
+      if (near <= hordeRules.strandedContactM || near <= track.bestM - hordeRules.strandedGainM) {
+        track.bestM = near; track.sinceS = timeS; // reused: the once-a-second check allocates only a new hostile's track
         continue;
       }
       if (timeS - track.sinceS < hordeRules.strandedS) continue;
@@ -2091,7 +2121,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       let best: Entity | null = null, bestCost = Infinity;
       for (const t of quarry) {
         const load = huntLoad.get(t.id) ?? 0;
-        const cost = Math.sqrt(squaredDistance(hunter, t.state.pos.x, t.state.pos.z)) + HUNT_RULES.crowdPenaltyM * Math.max(0, load + 1 - fair);
+        const d = Math.sqrt(squaredDistance(hunter, t.state.pos.x, t.state.pos.z));
+        const cost = d + (d > HUNT_RULES.spreadBeyondM ? HUNT_RULES.crowdPenaltyM * Math.max(0, load + 1 - fair) : 0);
         if (cost < bestCost) { bestCost = cost; best = t; }
       }
       let tx: number, tz: number;
@@ -2103,12 +2134,23 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         const seen = freshestFor(side, hunter.state.pos.x, hunter.state.pos.z);
         if (seen) { tx = seen.x; tz = seen.z; } else {
           // the sweep: a seeded bearing per hunter and sweep epoch round the last contact (the opponents' deployment
-          // before any); once that contact is sweepStaleS old the hunter spirals out round where it rose instead
-          // (localSweep: firstM, then stepM more each epoch, at most maxM) — its own position, no one else's
+          // before any); a director arrival first drives on to its lead point (HUNT_RULES.lead) and then spirals out round
+          // it; once the side's contact is sweepStaleS old any other hunter spirals out round where it rose instead
+          // (localSweep: firstM, then stepM more each epoch, at most maxM) — its own position and orders, no one else's
           const epoch = Math.floor(placementTimeS / HUNT_RULES.sweepEpochS);
           const angle = (Math.imul((rank + 1) * 2654435761, epoch + 7) >>> 0) / 4294967296 * Math.PI * 2;
           const anchor = huntAnchor.get(hunter.id);
-          if (lastContact.set && placementTimeS - lastContact.atS > HUNT_RULES.sweepStaleS && anchor) {
+          const stale = !lastContact.set || placementTimeS - lastContact.atS > HUNT_RULES.sweepStaleS;
+          // the hunter's own lead outranks a side contact older than its arrival (or stale)
+          const own = !!anchor && (stale || anchor.atS > lastContact.atS);
+          if (own && anchor && Number.isFinite(anchor.lx)
+            && squaredDistance(hunter, anchor.lx, anchor.lz) <= HUNT_RULES.lead.arriveM ** 2) {
+            // there: the sweep spirals out round the lead point from now on
+            anchor.x = anchor.lx; anchor.z = anchor.lz; anchor.atS = placementTimeS; anchor.lx = NaN; anchor.lz = NaN; anchor.swept = true;
+          }
+          if (own && anchor && Number.isFinite(anchor.lx)) {
+            tx = anchor.lx; tz = anchor.lz;
+          } else if (anchor && ((own && anchor.swept) || (stale && lastContact.set))) {
             const local = HUNT_RULES.localSweep;
             const ring = Math.min(local.maxM, local.firstM + local.stepM * Math.floor((placementTimeS - anchor.atS) / HUNT_RULES.sweepEpochS));
             tx = anchor.x + Math.sin(angle) * ring; tz = anchor.z + Math.cos(angle) * ring;
@@ -2157,7 +2199,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   /**
    * The Horde's allied bots stay within reach of the humans (allyLeashM of their centroid; beyond it they rejoin as
    * an escort) and hunt only the zombies their side spots within that reach — they no longer drift to the zombie base,
-   * which put the next wave on top of the humans.
+   * which put the next wave on top of the humans — and with none in reach they screen the humans (allyScreenM).
    */
   function hordeAllyTarget(entity: Entity): BotDestination | null {
     let cx = 0, cz = 0, n = 0;
@@ -2174,7 +2216,21 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       const d = squaredDistance(entity, t.state.pos.x, t.state.pos.z);
       if (d < bestD) { bestD = d; best = t; }
     }
-    return best ? { x: best.state.pos.x, z: best.state.pos.z } : null;
+    if (best) return { x: best.state.pos.x, z: best.state.pos.z };
+    // the screen (allyScreenM; round 3): between the humans and the threat — the side's freshest sighting of a
+    // zombie, else the zombies' deployment (public) — one slot each across it, in id order
+    const screen = hordeRules.allyScreenM;
+    if (!screen) return null;
+    const threat = freshestFor('alpha', cx, cz) ?? centers.bravo;
+    const tx = threat.x - cx, tz = threat.z - cz, tl = Math.hypot(tx, tz) || 1, ux = tx / tl, uz = tz / tl;
+    let rank = 0, count = 0;
+    for (const e of teams.alpha) {
+      if (!e.bot || !activeFriend(e, 'alpha')) continue;
+      if (e.id < entity.id) rank++;
+      count++;
+    }
+    const across = (rank - (count - 1) / 2) * (hordeRules.allyScreenSpreadM ?? 20);
+    return { x: cx + ux * screen + uz * across, z: cz + uz * screen - ux * across, mission: 'escort' };
   }
   /** Infected survivors close ranks: one off their own living centroid by more than survivorRallyM heads back to it. */
   function survivorRallyTarget(entity: Entity): ObjectivePoint | null {
