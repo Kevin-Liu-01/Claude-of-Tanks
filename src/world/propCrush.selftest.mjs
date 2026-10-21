@@ -423,6 +423,46 @@ const slotScale = (im, i) => { const m = new THREE.Matrix4(); im.getMatrixAt(i, 
   const lb = lateBurn.group.children[0];
   lb.geometry.computeBoundingBox();
   assert.ok(Math.abs(lb.geometry.boundingBox.max.y - burntTop) < 0.02, 'settled: burnt out at once');
+  // (the maps lane's far LOD, 2026-10-20) a build carrying its far form at the end of its streams (userData.vehicleFar,
+  // tagged aVehicleLod for the material's fold): the copy draws its body alone at every distance and reads only the body
+  const farGolf = (() => {
+    const g = golf.clone(), count = golf.getAttribute('position').count, ix = Array.from(golf.index.array);
+    const extraV = 300, extraT = 120;
+    for (const [name, attr] of Object.entries(golf.attributes)) {
+      const a = attr.array, k = attr.itemSize, out = new a.constructor(a.length + extraV * k);
+      out.set(a); out.set(a.subarray(0, extraV * k), a.length);
+      g.setAttribute(name, new THREE.BufferAttribute(out, k, attr.normalized));
+    }
+    const far = [];
+    for (let t = 0; t < extraT * 3; t++) far.push(count + (ix[t] % extraV));
+    g.setIndex([...ix, ...far]);
+    const tag = new Uint8Array(count + extraV).fill(1);
+    tag.fill(2, count);
+    g.setAttribute('aVehicleLod', new THREE.BufferAttribute(tag, 1));
+    g.userData.vehicleFar = { vertexStart: count, indexStart: ix.length };
+    return g;
+  })();
+  {
+    const group = new THREE.Group();
+    const record = { kind: 'sedan', x: 0, y: 0, z: 0, r: 2.3, slot: 0, state: 1 };
+    const pool = poolOf(farGolf, null);
+    const press = createPropCrushPresentation({ group, records: [record], poolOf: () => pool, near: (a, b2, c, d, o) => { o.length = 0; o.push(0); return o; },
+      eligible: () => true, burns: () => true, vehicle: () => true, onBurn: () => {} });
+    press.takes(0, 'ram', 1, 0, false);
+    for (let i = 0; i < 60; i++) press.step(DT);
+    const fc = group.children[0];
+    assert.equal(fc.geometry.drawRange.count, golf.index.count, 'a far-form build\'s copy draws its body\'s triangles alone');
+    assert.equal(fc.geometry.getAttribute('aVehicleLod'), undefined, 'and carries no fold tag (it never folds)');
+    assert.ok(farGolf.getAttribute('aVehicleLod'), 'the pool\'s own build keeps its tag');
+    const fp = fc.geometry.getAttribute('position').array, cp = cc.geometry.getAttribute('position').array;
+    let same = true;
+    for (let i = 0; i < cp.length; i++) if (Math.abs(fp[i] - cp[i]) > 1e-6) { same = false; break; }
+    assert.ok(same, 'its body crushes exactly as the plain build does');
+    const shotFar = createPropCrushPresentation({ group: new THREE.Group(), records: [{ ...record }], poolOf: () => poolOf(farGolf, null),
+      near: (a, b2, c, d, o) => { o.length = 0; o.push(0); return o; }, eligible: () => true, burns: () => true, vehicle: () => true, onBurn: () => {} });
+    shotFar.takes(0, 'shell', 1, 0, false);
+    for (let i = 0; i < 60 * 7; i++) shotFar.step(DT);
+  }
   console.log(`  map car: Golf ${gtop.toFixed(2)} m, belt ${an.belt.toFixed(2)} m, ${wheels.length} wheels; crossed: belly ${one.belly.toFixed(2)} m, tracks ${one.track.toFixed(2)} m, `
     + `roof ${roofY.toFixed(2)} m over the belt's ${beltY.toFixed(2)} m; swept ${sweptTop.toFixed(2)} m, ${burst} glass triangles out; `
     + `shot ${gtop.toFixed(2)} -> ${killTop.toFixed(2)} -> ${burntTop.toFixed(2)} m, paint ${lum0.toFixed(3)} -> ${lum1.toFixed(3)}, tyres ${tyre.toFixed(2)} r`);

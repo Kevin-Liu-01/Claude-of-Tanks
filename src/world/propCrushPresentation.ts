@@ -109,8 +109,11 @@ interface CrushTarget {
   readonly kind: string;
   readonly mesh: THREE.InstancedMesh;
   readonly geometry: THREE.BufferGeometry;
-  /** The rest it is drawn from: the pool's own (never written), or a car's burning rest (CarBurn.live). */
+  /** The rest it is drawn from: the pool's own (never written; its body's alone when the build carries a far form), or a
+   *  car's burning rest (CarBurn.live). */
   rest: Float32Array;
+  /** The triangles it draws (its index, or its body's share of it). */
+  readonly tris: Uint16Array | Uint32Array | null;
   readonly field: CrushField;
   readonly inverse: THREE.Matrix4;
   /** The source it hid: the pool's intact slot, or its broken mesh's. */
@@ -194,12 +197,22 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     const box = src.boundingBox!;
     const hw = Math.max(-box.min.x, box.max.x, 0.2), hl = Math.max(-box.min.z, box.max.z, 0.2);
     const geometry = src.clone();
+    // a build that carries its far form (the maps lane's vehicleFarForm.ts: its vertices and triangles at the end of the
+    // streams, tagged aVehicleLod for the material's fold past 120 m): the copy draws its body alone at every distance — the
+    // far form's triangles out of its draw range, the tag gone (an untagged vertex never folds) — and reads, deforms and
+    // burns the body alone
+    const far = src.userData.vehicleFar as { vertexStart: number; indexStart: number } | undefined;
+    if (far) {
+      geometry.setDrawRange(0, far.indexStart);
+      if (geometry.getAttribute('aVehicleLod')) geometry.deleteAttribute('aVehicleLod');
+    }
     const position = geometry.getAttribute('position') as THREE.BufferAttribute;
     position.setUsage(THREE.DynamicDrawUsage);
     (geometry.getAttribute('normal') as THREE.BufferAttribute | undefined)?.setUsage(THREE.DynamicDrawUsage);
     const material = source.mesh.material;
     const mesh = new THREE.InstancedMesh(geometry, material, 1);
-    const restArray = (src.getAttribute('position') as THREE.BufferAttribute).array as Float32Array;
+    const allRest = (src.getAttribute('position') as THREE.BufferAttribute).array as Float32Array;
+    const restArray = far ? allRest.subarray(0, far.vertexStart * 3) : allRest;
     const surf = src.getAttribute('surf') as THREE.BufferAttribute | undefined;
     // a car reads its own anatomy (its belt line, its wheels) for the crush
     const anatomy = host.vehicle?.(rec.kind) && surf
@@ -222,6 +235,7 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     source.mesh.instanceMatrix.needsUpdate = true;
     const target: CrushTarget = {
       index, kind: rec.kind, mesh, geometry, rest: restArray,
+      tris: geometry.index ? (far ? (geometry.index.array as Uint16Array | Uint32Array).subarray(0, far.indexStart) : geometry.index.array as Uint16Array | Uint32Array) : null,
       field: createCrushField(hw, hl, box.max.y, undefined, host.cloth?.(rec.kind) ?? false, pool.meta?.crushFloor ?? 0, anatomy),
       inverse: new THREE.Matrix4().copy(matrix).invert(), fromBroken: source.broken,
       hw, hl, dirty: false, idle: 0, frozen: false, sweep: null,
@@ -352,11 +366,11 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     const surf = t.geometry.getAttribute('surf') as THREE.BufferAttribute | undefined;
     const normal = t.geometry.getAttribute('normal') as THREE.BufferAttribute | undefined;
     if (!car || !color || !surf || !normal || !(color.array instanceof Float32Array) || !(surf.array instanceof Uint8Array)) return null;
-    const from = new Float32Array(t.rest);
+    const from = new Float32Array(t.rest), n = from.length;
     // the crumple, on a scratch geometry of its own rest (positions and the rest's normals)
     const scratch = new THREE.BufferGeometry();
     scratch.setAttribute('position', new THREE.BufferAttribute(new Float32Array(from), 3));
-    scratch.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(normal.array as Float32Array), 3));
+    scratch.setAttribute('normal', new THREE.BufferAttribute((normal.array as Float32Array).slice(0, n), 3));
     crumpleBurntVehicle(scratch, (Math.imul(t.index + 1, 2654435761) >>> 0) & 0x7fffffff);
     const to = (scratch.getAttribute('position') as THREE.BufferAttribute).array as Float32Array;
     scratch.dispose();
@@ -376,8 +390,8 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     // its burnt colours (the burnt build's palette, vehicleMesh.ts shadeVertex, blackened as a fresh burn is): paint,
     // sheet and chrome to soot with oxide mottles and grey ash on the hottest upward panels; glass, rubber and the cabin
     // to soot
-    const col0 = new Float32Array(color.array as Float32Array), col1 = new Float32Array(col0.length);
-    const surf0 = new Uint8Array(sa as Uint8Array), surf1 = new Uint8Array(surf0.length);
+    const col0 = (color.array as Float32Array).slice(0, n), col1 = new Float32Array(n);
+    const surf0 = (sa as Uint8Array).slice(0, n), surf1 = new Uint8Array(n);
     const na = normal.array as Float32Array, top = t.field.top, belt = car.belt;
     for (let v = 0; v < col0.length / 3; v++) {
       const x = from[v * 3], y = from[v * 3 + 1], z = from[v * 3 + 2], ny = na[v * 3 + 1];
@@ -414,7 +428,7 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
       cb.coloured = e;
       const color = t.geometry.getAttribute('color') as THREE.BufferAttribute, surf = t.geometry.getAttribute('surf') as THREE.BufferAttribute;
       const ca = color.array as Float32Array, sa = surf.array as Uint8Array;
-      for (let i = 0; i < ca.length; i++) {
+      for (let i = 0; i < cb.col0.length; i++) {
         ca[i] = cb.col0[i] + (cb.col1[i] - cb.col0[i]) * e;
         sa[i] = Math.round(cb.surf0[i] + (cb.surf1[i] - cb.surf0[i]) * e);
       }
@@ -590,7 +604,7 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
         deformPositions(t.field, t.rest, position.array as Float32Array);
         position.needsUpdate = true;
         if (normal) {
-          flatNormals(position.array as Float32Array, t.geometry.index ? t.geometry.index.array : null, normal.array as Float32Array);
+          flatNormals(position.array as Float32Array, t.tris, normal.array as Float32Array);
           normal.needsUpdate = true;
         }
         t.dirty = false;
