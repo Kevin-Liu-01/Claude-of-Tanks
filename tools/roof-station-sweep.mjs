@@ -232,7 +232,7 @@ export function tableDepression(table, weapon) {
  * over the threshold is clear, and only the closer ones are measured fine (both ways). Blocked degrees (up < block)
  * end the arc, which stops a degree short of each; degrees outside the measured span count as blocked.
  */
-export function measureStation(model, profile, { keep = .028, block = .025, fromDeg = -180, toDeg = 179, log = () => {} } = {}) {
+function measureStation(model, profile, { keep = .028, block = .025, fromDeg = -180, toDeg = 179, log = () => {} } = {}) {
   const { pose, yawStage, recoils } = model, rows = [];
   const screened = (yaw, el, rc, need) => { const c = pose(yaw, el, rc, false); return c - COARSE_M >= need ? c : pose(yaw, el, rc, true, need); };
   const upPitches = pitchSteps(0, profile.elevationRad, .0125);
@@ -263,7 +263,7 @@ export function measureStation(model, profile, { keep = .028, block = .025, from
 
 /** The depression table over an arc (degrees): each degree the smallest of it and its neighbours, from one degree with
  * the weapon's full depression before the first limited degree to one after the last, constant runs closed up. */
-export function depressionTable(rows, arcDeg, weapon) {
+function depressionTable(rows, arcDeg, weapon) {
   const depAt = new Map(rows.map((r) => [r.deg, r.dep]));
   const at = (deg) => depAt.get(((deg + 540) % 360) - 180) ?? weapon;
   const degs = []; for (let d = arcDeg[0]; d <= arcDeg[1]; d++) degs.push(d);
