@@ -9,7 +9,8 @@
 // listed litres and fails any other leak, a larger or smaller one, or a listed hull that now holds water (2026-10-16, R7c).
 // The running-gear registration audit (2026-10-04) reads first: the units P.gear registers are the units drawn.
 // Release 229: every working pintle rides its cradle, its moving parts 1.5 mm clear of its own mount through its profile's
-// pitch range and recoil (workingPintleCradleAudit.test-support.mjs; it reads the build and poses nothing).
+// pitch range and recoil (workingPintleCradleAudit.test-support.mjs; it reads the build and poses nothing). Release 230:
+// so do the American M2 and M240 working stations, the TTS-derived RWS towers and the armed open-yoke towers.
 import { runFleetPass } from './fleetPass.test-support.mjs';
 import { createTank } from './tankFactory.ts';
 import { ALL_TANK_IDS } from './specs.ts';
@@ -33,7 +34,8 @@ await runFleetPass({
     { name: 'mudguardFenderSeating', create: createMudguardFenderSeatingAudit },
     { name: 'vehicleMarkings', create: createVehicleMarkingsAudit },
     { name: 'watertight', create: createWatertightAudit },
-    { name: 'workingPintleCradle', create: () => createWorkingPintleCradleAudit({ minimumStations: 60 }) },
+    { name: 'workingPintleCradle', create: () => createWorkingPintleCradleAudit({
+      minimumStations: { pintleMG: 60, americanM2: 12, americanRws: 3, openYokeRws: 9 } }) },
     { name: 'tankAssets', create: createTankAssetsAudit },
   ],
 });

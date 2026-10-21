@@ -6,12 +6,18 @@
 // on the yaw stage while the gun pitched about the receiver's centre, so at full elevation the receiver swept ~22 mm into
 // the bridge, the barrel passed through the shield's top beam and the can met the shield's brace.
 //
+// Release 230: the American constructions ride theirs too (profiles/kit.ts): the M2HB and M240 working stations of
+// FITTINGS.americanM2 (the Abrams loaders' skate, LGS and LAGS mounts, the Sheridan's, Patton's and M60's commander guns),
+// the TTS-derived FITTINGS.americanRws towers and the armed FITTINGS.openYokeRws towers. Their fleet rigs sat at 0 mm with
+// 2,900-6,300 crossing triangle pairs each (the receiver through the yoke head or the cross-shaft, the barrel through the
+// shield, the coffin through the fork arm or the sensor head).
+//
 // The audit (fleetPassDefault's build) finds every such station on every vehicle and measures it as it stands on the
 // vehicle (cnTurretGeometry.test-support.mjs stationSelfClearance): through its weapon profile's whole pitch range
 // (auxiliaryWeapons.ts, the calibre's or the vehicle's own) and the gun's recoil stroke, the moving parts keep 1.5 mm
 // from every part of the mount that does not pitch, no moving triangle crosses the yaw stage, and the recoiling gun
-// crosses nothing of its cradle. The American M2 and RWS constructions and the external cradles a host builds round the
-// gun (mount: 'external-cradle') are other constructions and are not counted.
+// crosses nothing of its cradle. The external cradles a host builds round the gun (mount: 'external-cradle') are other
+// constructions and are not counted; nor is an open-yoke optics tower that carries no gun.
 import assert from 'node:assert/strict';
 import { stationSelfClearance } from './cnTurretGeometry.test-support.mjs';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
@@ -19,15 +25,24 @@ import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 /** The clearance every working pintle's moving parts keep from its own mount (metres). */
 const WORKING_PINTLE_CLEARANCE_M = 0.0015;
 
-/** The working FITTINGS.pintleMG stations under `root`: [{ station, pitch }]. */
-function workingPintleStations(root) {
+/** The construction a working station under its fitting's userData was built by, or null for one the audit does not
+ * count. */
+function workingConstruction(u) {
+  if (u.americanRwsFamily) return 'americanRws';
+  if (u.designFamily === 'abramsx-open-yoke-v1') return u.hasWeapon ? 'openYokeRws' : null;
+  if (u.americanWeaponStandard) return u.remoteControlled ? 'americanM2' : null;
+  if (u.fitting !== 'pintleMG' || u.browningDerivedStandard !== 'cot-browning-family-v2' || !u.remoteControlled) return null;
+  return u.weaponClass && u.mount !== 'external-cradle' ? 'pintleMG' : null;
+}
+
+/** The working stations under `root`: [{ station, pitch, construction }]. */
+function workingStations(root) {
   const out = [];
   root.traverse((o) => {
-    const u = o.userData;
-    if (u.fitting !== 'pintleMG' || u.browningDerivedStandard !== 'cot-browning-family-v2' || !u.remoteControlled) return;
-    if (!u.weaponClass || u.americanWeaponStandard || u.americanRwsFamily || u.mount === 'external-cradle') return;
+    const construction = workingConstruction(o.userData);
+    if (!construction) return;
     const pitch = o.children.find((c) => c.name === 'auxiliaryWeaponPitch');
-    if (pitch) out.push({ station: o, pitch });
+    if (pitch) out.push({ station: o, pitch, construction });
   });
   return out;
 }
@@ -37,10 +52,10 @@ function workingPintleStations(root) {
 export function assertWorkingPintleClear(id, station, pitch) {
   const label = `${id}: ${station.name}`;
   assert.ok(Number.isFinite(station.userData.auxiliaryRecoilM) && pitch.getObjectByName('auxiliaryWeaponRecoil'),
-    `${label}: a working pintle rides its cradle (FittingOptions.ridingCradle), its gun recoiling in its own group`);
+    `${label}: a working station rides its cradle, its gun recoiling in its own group`);
   const profile = auxiliaryWeaponProfile(station.userData.caliberMm || 12.7, id);
   // 1-degree steps, 5 mm samples and a 4 mm cap (cnStations measures its two emplacements at 0.5 degrees and 4 mm): about
-  // a hundred stations ride in the default fleet pass
+  // a hundred and twenty stations ride in the default fleet pass
   const self = stationSelfClearance(station, pitch, { depression: profile.depressionRad, elevation: profile.elevationRad,
     step: Math.PI / 180, h: .005, cap: .004 });
   const where = `${(self.el * 180 / Math.PI).toFixed(1)} deg, recoil ${(self.r * 1000).toFixed(0)} mm`;
@@ -51,23 +66,30 @@ export function assertWorkingPintleClear(id, station, pitch) {
   return self;
 }
 
-export function createWorkingPintleCradleAudit({ minimumStations = 1 } = {}) {
-  let stations = 0, vehicles = 0, worst = { d: Infinity, label: '' };
+/** `minimumStations`: the fewest stations of each construction the fleet must show (a selector that stops finding a
+ * construction fails the audit rather than passing it unmeasured). */
+export function createWorkingPintleCradleAudit({ minimumStations = { pintleMG: 1 } } = {}) {
+  const stations = {}, vehicles = new Set();
+  let worst = { d: Infinity, label: '' };
   return {
     check(id, tank) {
-      const found = workingPintleStations(tank.root);
+      const found = workingStations(tank.root);
       if (!found.length) return;
       tank.root.updateMatrixWorld(true);
-      vehicles++;
-      for (const { station, pitch } of found) {
+      vehicles.add(id);
+      for (const { station, pitch, construction } of found) {
         const self = assertWorkingPintleClear(id, station, pitch);
-        stations++;
+        stations[construction] = (stations[construction] ?? 0) + 1;
         if (self.d < worst.d) worst = { d: self.d, label: `${id}: ${station.name}` };
       }
     },
     finish() {
-      assert.ok(stations >= minimumStations, `the audit measured ${stations} working pintles, expected at least ${minimumStations}`);
-      console.log(`workingPintleCradle: ${stations} working pintles on ${vehicles} vehicles ride their cradles, `
+      for (const [construction, minimum] of Object.entries(minimumStations)) {
+        assert.ok((stations[construction] ?? 0) >= minimum,
+          `the audit measured ${stations[construction] ?? 0} working ${construction} stations, expected at least ${minimum}`);
+      }
+      const counts = Object.entries(stations).map(([k, n]) => `${n} ${k}`).join(', ');
+      console.log(`workingPintleCradle: ${counts} working stations on ${vehicles.size} vehicles ride their cradles, `
         + `${(WORKING_PINTLE_CLEARANCE_M * 1000).toFixed(1)} mm clear of their own mounts (closest ${(worst.d * 1000).toFixed(1)} mm, ${worst.label})`);
     },
   };

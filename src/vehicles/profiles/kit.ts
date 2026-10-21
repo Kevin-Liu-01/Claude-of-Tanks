@@ -1663,9 +1663,117 @@ interface AmericanM2BuildContext {
   readonly trunZ: number;
   readonly shieldVariant: FittingOptions['shield'];
   readonly aim: (geometry: THREE.BufferGeometry, dz: number, dy?: number) => THREE.BufferGeometry;
+  /**
+   * Release 230 (a working station's shield rides its cradle, americanM2RidingStation): the gun the cradle carries, its
+   * triangles in the fitting's frame. With it every shield plate is cut round the gun's port (americanShieldPlate), a
+   * strut or bolt the gun meets is left off, and the plates the cradle's carrier bears on are listed in `loadPlates`.
+   */
+  readonly gun?: ArrayLike<number>;
+  readonly loadPlates?: PlatePlacement[];
 }
 
-function addAmericanM2Ring(context: AmericanM2BuildContext): void {
+/** A shield plate's box (w, h, d) and its placement (KIT.xform's translation and XYZ turn). */
+type PlatePlacement = readonly [w: number, h: number, d: number, x: number, y: number, z: number, rx: number, ry: number, rz: number];
+
+/** Release 230: the air a riding cradle's shield keeps from the gun it carries (m). */
+const SHIELD_PORT_AIR_M = 0.003;
+
+function plateMatrix([, , , x, y, z, rx, ry, rz]: PlatePlacement): THREE.Matrix4 {
+  return new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)),
+    new THREE.Vector3(1, 1, 1));
+}
+
+/**
+ * Release 230: where a gun recoiling `stroke` back along -Z passes through a placed plate. At each millimetre of the
+ * stroke the gun's triangles are clipped to the plate's slab with SHIELD_PORT_AIR_M either side; the rectangle round every
+ * section that meets the plate's face (x0, y0, x1, y1 in the plate's own frame), widened by the same air and clipped to
+ * the face, or null where the gun misses the plate.
+ */
+function gunPortRect(gun: ArrayLike<number>, stroke: number, plate: PlatePlacement): [number, number, number, number] | null {
+  const [w, h, d] = plate, air = SHIELD_PORT_AIR_M;
+  const inv = plateMatrix(plate).invert(), back = new THREE.Vector3(0, 0, -1).transformDirection(inv), v = new THREE.Vector3();
+  const local = new Float64Array(gun.length);
+  for (let i = 0; i < gun.length; i += 3) {
+    v.set(gun[i]!, gun[i + 1]!, gun[i + 2]!).applyMatrix4(inv);
+    local[i] = v.x; local[i + 1] = v.y; local[i + 2] = v.z;
+  }
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  const steps = Math.max(1, Math.ceil(stroke / 0.001));
+  for (let k = 0; k <= steps; k++) {
+    const r = stroke * k / steps;
+    for (let t = 0; t < local.length; t += 9) {
+      let poly = [0, 3, 6].map((o) => [local[t + o]! + back.x * r, local[t + o + 1]! + back.y * r, local[t + o + 2]! + back.z * r]);
+      for (const [bound, dir] of [[-d / 2 - air, 1], [d / 2 + air, -1]] as const) {
+        const next: number[][] = [];
+        for (let i = 0; i < poly.length; i++) {
+          const a = poly[i]!, c = poly[(i + 1) % poly.length]!, da = dir * (a[2]! - bound), dc = dir * (c[2]! - bound);
+          if (da >= 0) next.push(a);
+          if (da * dc < 0) { const u = da / (da - dc); next.push([a[0]! + (c[0]! - a[0]!) * u, a[1]! + (c[1]! - a[1]!) * u, a[2]! + (c[2]! - a[2]!) * u]); }
+        }
+        poly = next;
+        if (!poly.length) break;
+      }
+      if (!poly.length) continue;
+      let px0 = Infinity, py0 = Infinity, px1 = -Infinity, py1 = -Infinity;
+      for (const p of poly) { px0 = Math.min(px0, p[0]!); px1 = Math.max(px1, p[0]!); py0 = Math.min(py0, p[1]!); py1 = Math.max(py1, p[1]!); }
+      if (px1 < -w / 2 - air || px0 > w / 2 + air || py1 < -h / 2 - air || py0 > h / 2 + air) continue;
+      x0 = Math.min(x0, px0); x1 = Math.max(x1, px1); y0 = Math.min(y0, py0); y1 = Math.max(y1, py1);
+    }
+  }
+  if (x0 > x1) return null;
+  return [Math.max(-w / 2, x0 - air), Math.max(-h / 2, y0 - air), Math.min(w / 2, x1 + air), Math.min(h / 2, y1 + air)];
+}
+
+/**
+ * A shield plate (KIT.box w x h x d, placed). Release 230: on a riding cradle (context.gun) the plate is cut round the
+ * gun's port (gunPortRect): drawn as the plates round it, the port's two full-height sides and the strips under and over
+ * it, so a port at the plate's edge is a notch and a plate the gun misses is the plate as authored. `load`: a plate the
+ * cradle's carrier bears on.
+ */
+function americanShieldPlate(context: AmericanM2BuildContext, slot: string, w: number, h: number, d: number,
+  x: number, y: number, z: number, rx = 0, ry = 0, rz = 0, load = false): void {
+  const { gun, parts } = context;
+  const plate: PlatePlacement = [w, h, d, x, y, z, rx, ry, rz];
+  if (load) context.loadPlates?.push(plate);
+  const port = gun ? gunPortRect(gun, RIDING_CRADLE_RECOIL_M, plate) : null;
+  if (!port) { parts.add(slot, KIT.box(w, h, d), x, y, z, rx, ry, rz); return; }
+  const [px0, py0, px1, py1] = port;
+  for (const [a, b, c, e] of [[-w / 2, -h / 2, px0, h / 2], [px1, -h / 2, w / 2, h / 2], [px0, -h / 2, px1, py0], [px0, py1, px1, h / 2]] as const) {
+    if (c - a < 0.002 || e - b < 0.002) continue;
+    parts.add(slot, KIT.xform(KIT.box(c - a, e - b, d), (a + c) / 2, (b + e) / 2, 0), x, y, z, rx, ry, rz);
+  }
+}
+
+/** A shield's strut or bolt (its box w x h x d round its origin). Release 230: left off a riding cradle where the gun's
+ * recoil stroke meets it. */
+function americanShieldFitting(context: AmericanM2BuildContext, slot: string, geometry: () => THREE.BufferGeometry,
+  w: number, h: number, d: number, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0): void {
+  if (context.gun && gunPortRect(context.gun, RIDING_CRADLE_RECOIL_M, [w, h, d, x, y, z, rx, ry, rz])) return;
+  context.parts.add(slot, geometry(), x, y, z, rx, ry, rz);
+}
+
+/**
+ * Release 230: the z a riding cradle's shield carrier runs to (addPintleRidingCradle's hostShield): the furthest forward
+ * of the load plates' back faces where the carrier's cross-bar ends meet them (0.09 s either side of the bore, at the
+ * cradle floor's mid-height), so the cross-bar buries 2 mm into the shield at both ends.
+ */
+function shieldCarrierTo(loadPlates: readonly PlatePlacement[], layout: PintleLayout): number {
+  const y = layout.bodyBottom - 0.0055 * layout.s;
+  let to = -Infinity;
+  for (const x of [-0.09 * layout.s, 0.09 * layout.s]) for (const plate of loadPlates) {
+    const m = plateMatrix(plate), n = new THREE.Vector3(0, 0, 1).transformDirection(m), c = new THREE.Vector3(0, 0, -plate[2] / 2).applyMatrix4(m);
+    const z = c.z - (n.x * (x - c.x) + n.y * (y - c.y)) / n.z;
+    const local = new THREE.Vector3(x, y, z).applyMatrix4(m.clone().invert());
+    if (Math.abs(local.x) <= plate[0] / 2 && Math.abs(local.y) <= plate[1] / 2) to = Math.max(to, z);
+  }
+  if (!Number.isFinite(to)) throw new Error('KIT.fittings.americanM2: the shield carrier meets no shield plate');
+  return to;
+}
+
+/** The race ring round the pintle's foot. Release 230: a riding cradle's ring may sit `drop` lower under its gun's tail and
+ * open `gap` radians either side of the gun's rear (addPintleRidingCradle's ringDrop and ringGap), its brackets clear of
+ * the opening. */
+function addAmericanM2Ring(context: AmericanM2BuildContext, drop = 0, gap = 0): void {
   const { box } = KIT;
   const { opts, parts, s } = context;
   const ring = fittingRing(opts);
@@ -1676,91 +1784,89 @@ function addAmericanM2Ring(context: AmericanM2BuildContext): void {
     // the race and its brackets with the vehicle, as a mount is painted; the gun stays weapon steel.
     const ringSlot = opts.ringSlot === 'detail' ? 'detail' : 'dark';
     // 2026-10-07 (round 4): a flat machined race on its brackets, not a round dark tube (the critics' "rubber hose")
-    parts.add(ringSlot, machinedRing(rr - 0.015 * s, rr + 0.015 * s, 0.018 * s, 0.005 * s, 28), 0, 0.023 * s, 0);
+    parts.add(ringSlot, machinedRing(rr - 0.015 * s, rr + 0.015 * s, 0.018 * s, 0.005 * s, 28, gap), 0, 0.023 * s - drop, 0);
     for (let index = 0; index < (ring.stubs || 4); index++) {
       const a = 0.55 + index * Math.PI * 2 / (ring.stubs || 4);
-      parts.add(ringSlot, box(0.030 * s, 0.045 * s, 0.030 * s),
-        Math.cos(a) * rr, 0.020 * s, Math.sin(a) * rr);
+      if (gap > 0 && Math.abs(Math.atan2(Math.cos(a), -Math.sin(a))) < gap + 0.015 * s / rr) continue;
+      parts.add(ringSlot, box(0.030 * s, 0.045 * s - drop, 0.030 * s),
+        Math.cos(a) * rr, 0.020 * s - drop / 2, Math.sin(a) * rr);
       }
   }
 }
 
 function addAmericanM2LowShield(context: AmericanM2BuildContext): void {
-  const { box } = KIT;
-  const { parts, recY, s, trunZ } = context;
+  const { recY, s, trunZ } = context;
   for (const side of [-1, 1]) {
-    parts.add('hull', box(0.215 * s, 0.21 * s, 0.030 * s),
+    americanShieldPlate(context, 'hull', 0.215 * s, 0.21 * s, 0.030 * s,
       side * 0.125 * s, recY - 0.015 * s, trunZ + 0.085 * s,
-      0, -side * 0.045, side * 0.025);
-    parts.add('dark', box(0.022 * s, 0.175 * s, 0.034 * s),
+      0, -side * 0.045, side * 0.025, true);
+    americanShieldPlate(context, 'dark', 0.022 * s, 0.175 * s, 0.034 * s,
       side * 0.235 * s, recY - 0.018 * s, trunZ + 0.072 * s);
   }
-  parts.add('dark', box(0.15 * s, 0.075 * s, 0.035 * s),
+  americanShieldPlate(context, 'dark', 0.15 * s, 0.075 * s, 0.035 * s,
     0, recY - 0.015 * s, trunZ + 0.108 * s);
 }
 
 function addAmericanM2SplitShield(context: AmericanM2BuildContext): void {
-  const { box } = KIT;
-  const { parts, recY, s, trunZ } = context;
+  const { recY, s, trunZ } = context;
   for (const side of [-1, 1]) {
-    parts.add('hull', box(0.205 * s, 0.30 * s, 0.032 * s),
+    americanShieldPlate(context, 'hull', 0.205 * s, 0.30 * s, 0.032 * s,
       side * 0.145 * s, recY + 0.015 * s, trunZ + 0.090 * s,
-      0, -side * 0.055, 0);
-    parts.add('dark', box(0.022 * s, 0.275 * s, 0.040 * s),
+      0, -side * 0.055, 0, true);
+    americanShieldPlate(context, 'dark', 0.022 * s, 0.275 * s, 0.040 * s,
       side * 0.252 * s, recY + 0.010 * s, trunZ + 0.080 * s);
   }
-  parts.add('hull', box(0.36 * s, 0.040 * s, 0.045 * s),
+  americanShieldPlate(context, 'hull', 0.36 * s, 0.040 * s, 0.045 * s,
     0, recY + 0.175 * s, trunZ + 0.085 * s);
 }
 
 function addAmericanM2ArmoredShield(context: AmericanM2BuildContext): void {
-  const { box } = KIT;
-  const { parts, recY, s, trunZ } = context;
-  parts.add('hull', box(0.58 * s, 0.34 * s, 0.040 * s),
-    0, recY + 0.020 * s, trunZ + 0.090 * s);
+  const { recY, s, trunZ } = context;
+  americanShieldPlate(context, 'hull', 0.58 * s, 0.34 * s, 0.040 * s,
+    0, recY + 0.020 * s, trunZ + 0.090 * s, 0, 0, 0, true);
   for (const side of [-1, 1]) {
-    parts.add('hull', box(0.035 * s, 0.30 * s, 0.23 * s),
+    americanShieldPlate(context, 'hull', 0.035 * s, 0.30 * s, 0.23 * s,
       side * 0.272 * s, recY + 0.005 * s, trunZ - 0.010 * s,
       0, -side * 0.10, 0);
   }
-  parts.add('hull', box(0.57 * s, 0.035 * s, 0.25 * s),
+  americanShieldPlate(context, 'hull', 0.57 * s, 0.035 * s, 0.25 * s,
     0, recY + 0.205 * s, trunZ - 0.005 * s);
-  parts.add('dark', box(0.18 * s, 0.115 * s, 0.045 * s),
+  americanShieldPlate(context, 'dark', 0.18 * s, 0.115 * s, 0.045 * s,
     0, recY, trunZ + 0.120 * s);
 }
 
 function addAmericanM2StandardShield(context: AmericanM2BuildContext): void {
   const { box } = KIT;
-  const { parts, recY, s, trunZ } = context;
+  const { recY, s, trunZ } = context;
   for (const side of [-1, 1]) {
-    parts.add('hull', box(0.245 * s, 0.30 * s, 0.035 * s),
+    americanShieldPlate(context, 'hull', 0.245 * s, 0.30 * s, 0.035 * s,
       side * 0.145 * s, recY + 0.015 * s, trunZ + 0.090 * s,
-      0, -side * 0.055, side * 0.035);
-    parts.add('dark', box(0.023 * s, 0.268 * s, 0.040 * s),
+      0, -side * 0.055, side * 0.035, true);
+    americanShieldPlate(context, 'dark', 0.023 * s, 0.268 * s, 0.040 * s,
       side * 0.274 * s, recY + 0.005 * s, trunZ + 0.076 * s);
-    parts.add('dark', box(0.024 * s, 0.024 * s, 0.18 * s),
+    americanShieldFitting(context, 'dark', () => box(0.024 * s, 0.024 * s, 0.18 * s), 0.024 * s, 0.024 * s, 0.18 * s,
       side * 0.175 * s, recY - 0.115 * s, trunZ + 0.005 * s,
       -0.28, 0, side * 0.08);
   }
-  parts.add('hull', box(0.36 * s, 0.038 * s, 0.040 * s),
+  americanShieldPlate(context, 'hull', 0.36 * s, 0.038 * s, 0.040 * s,
     0, recY + 0.178 * s, trunZ + 0.085 * s);
-  parts.add('dark', box(0.17 * s, 0.11 * s, 0.040 * s),
+  americanShieldPlate(context, 'dark', 0.17 * s, 0.11 * s, 0.040 * s,
     0, recY, trunZ + 0.115 * s);
 }
 
 function addAmericanM2ShieldDetails(context: AmericanM2BuildContext): void {
-  const { box, cylZ } = KIT;
-  const { parts, recY, s, shieldVariant, trunZ } = context;
+  const { cylZ } = KIT;
+  const { recY, s, shieldVariant, trunZ } = context;
   const shieldH = shieldVariant === 'low' ? 0.21 : shieldVariant === 'armored' ? 0.34 : 0.30;
   const lipW = shieldVariant === 'armored' ? 0.58 : 0.49;
-  parts.add('hull', box(lipW * s, 0.026 * s, 0.055 * s),
+  americanShieldPlate(context, 'hull', lipW * s, 0.026 * s, 0.055 * s,
     0, recY + shieldH * 0.56 * s, trunZ + 0.065 * s, 0.10, 0, 0);
   for (const side of [-1, 1]) {
-    parts.add('shadow', box(0.095 * s, 0.036 * s, 0.014 * s),
+    americanShieldPlate(context, 'shadow', 0.095 * s, 0.036 * s, 0.014 * s,
       side * 0.145 * s, recY + 0.070 * s, trunZ + 0.112 * s,
       0, -side * 0.055, 0);
     for (const sy of [-0.075, 0.125]) {
-      parts.add('dark', cylZ(0.010 * s, 0.014 * s, 8),
+      americanShieldFitting(context, 'dark', () => cylZ(0.010 * s, 0.014 * s, 8), 0.020 * s, 0.020 * s, 0.014 * s,
         side * 0.235 * s, recY + sy * s, trunZ + 0.116 * s);
     }
   }
@@ -1843,18 +1949,16 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
     feed: ammoSide > 0 ? 'left' : 'right',
   }, parts);
   const installationS = cls === 'm2' ? layout.s : createPintleLayout({ cls: 'm2', scale: opts.scale || 1 }, { add() {} }).s;
-  addPintleMount(layout);
-  // VH.14: a working M2 carries its receiver, barrel and can on the trunnion's pitch rig; the cradle, ring and shield
-  // turn with the pintle (fittingPintleMG's working station)
-  const weapon = opts.working ? fitParts() : parts;
-  const weaponLayout = opts.working ? { ...layout, parts: weapon } : layout;
-  addPintleReceiver(weaponLayout);
-  addPintleBarrel(weaponLayout);
-  addPintleAmmo(weaponLayout);
   const context: AmericanM2BuildContext = {
     opts, s: installationS, ammoSide, parts, recY: layout.recY, recZ: layout.recZ, trunZ: layout.trunZ,
     shieldVariant: opts.shield === true ? 'standard' : opts.shield, aim: placeMachineGunBarrelGeometry,
   };
+  // VH.14: a working station (release 230: riding its cradle)
+  if (opts.working) return americanM2RidingStation(context, layout);
+  addPintleMount(layout);
+  addPintleReceiver(layout);
+  addPintleBarrel(layout);
+  addPintleAmmo(layout);
   addAmericanM2Ring(context);
   addAmericanM2Shield(context);
   // 2026-10-16 (226 gate, abramsRoofSeating): the 7.62 mm M240 (VH.14's calibre-true Abrams loader gun) carries its
@@ -1869,17 +1973,67 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
     parts.add(layout.weaponSlot, KIT.box(0.115 * layout.s, riseTop - yokeTop + 0.004 * layout.s, 0.15 * layout.s),
       0, (riseTop + yokeTop - 0.004 * layout.s) / 2, 0.01);
   }
-  const fitting = assembleAmericanM2(context, layout);
-  if (opts.working) {
-    fitting.userData.remoteControlled = true;
-    fitting.userData.crewServed = true;
-    fitting.userData.barrelAxisLocalY = layout.trunY;
-    fitting.userData.muzzleLocalZ = layout.trunZ + .10 * layout.s + layout.barrelLength + layout.cls.flashL * layout.s + .011;
-    attachAuxiliaryWeapon(fitting, weapon, opts, layout.recY, 0, layout.recZ);
-    const m2 = layout.classKey === 'm2';
-    nameWorkingStation(fitting, m2 ? 'americanM2HBBody' : 'americanM240Body', m2 ? 'americanM2HBMount' : 'americanM240Mount',
-      m2 ? 'sheridanCommanderM2AmmoBox' : 'americanM240AmmoBox');
+  return assembleAmericanM2(context, layout);
+}
+
+/**
+ * Release 230 (the owner's field-equipment standard: nothing that moves passes through what does not; the fleet's working
+ * pintles rode their cradles in release 229, machineGunGeometry.ts addPintleRidingCradle): the American working stations
+ * (the Abrams loaders' 7.62 mm M240 on its skate, LGS and LAGS mounts; the Sheridan's, Patton's and M60's commander M2HB)
+ * ride their cradles too. Their VH.14 rig kept the yoke, the cradle, the shield and the race ring on the yaw stage while
+ * the gun pitched about the receiver's centre, so the receiver swept through the yoke head and the cradle floor and the
+ * barrel through the shield's centre plate (0 mm, 2,900-6,300 crossing triangle pairs a station). Now the gun (receiver,
+ * barrel, can and belt) recoils in its own group inside a cradle fitted round it (cheeks, floor, trunnion pin, and the
+ * carrier bar and cross-bar under the barrel), the American shield rides that cradle on the carrier, every plate cut round
+ * the gun's port and a brace or bolt the gun meets left off (americanShieldPlate), and the yaw stage (flange, column, yoke
+ * base, side arm and its bearing round the pin) and the race ring keep 1.6 mm of air from everything that moves through the
+ * fleet's pitch range. The pivot, the bore and the muzzle are the VH.14 rig's; the station is built once per option set.
+ */
+function americanM2RidingStation(context: AmericanM2BuildContext, layout: PintleLayout): THREE.Group {
+  const { opts, parts, shieldVariant } = context;
+  const cradle = fitParts(), gun = fitParts();
+  // the cradle and the yaw stage in the mount's tone: the gun's steel on the American dark mount
+  const cradleSlot = layout.tone === 'dark' ? 'dark' : 'detail';
+  const key = `americanM2:${ridingCradleKey(opts)}`, stored = RIDING_CRADLE_PARTS.get(key);
+  let fit = stored?.fit;
+  if (stored) restoreFittingParts(stored.parts, [parts, cradle, gun]);
+  else {
+    const gunLayout = { ...layout, parts: gun, canTrayPainted: true };
+    addPintleReceiver(gunLayout);
+    addPintleBarrel(gunLayout);
+    addPintleAmmo(gunLayout);
+    const gunTriangles = fittingTriangles(gun);
+    // the shield on the cradle, cut round the gun it carries
+    const shield = fitParts(), loadPlates: PlatePlacement[] = [];
+    addAmericanM2Shield({ ...context, parts: shield, gun: gunTriangles, loadPlates });
+    // the fit sets the race ring down or opens it under the gun's tail: its band and height cover the American ring's
+    const ring = fittingRing(opts);
+    const fitLayout = ring ? { ...layout, ring: { r: (ring.r || 0.235) * context.s / layout.s, stubs: ring.stubs } } : layout;
+    fit = addPintleRidingCradle(fitLayout, cradle, cradleSlot, gunTriangles,
+      shieldVariant ? { carrierTo: shieldCarrierTo(loadPlates, layout), moving: fittingTriangles(shield) } : undefined);
+    for (const [slot, geos] of Object.entries(shield.bySlot)) (cradle.bySlot[slot] ??= []).push(...geos);
+    addAmericanM2Ring(context, fit.ringDrop, fit.ringGap);
+    // the belt's rounds draw in the can's mesh (one ammunition material, their brass a vertex colour), as on the fleet's
+    // riding pintles
+    const rounds = gun.bySlot[MG_CARTRIDGE_SLOT], can = gun.bySlot[MG_AMMO_CAN_SLOT];
+    if (rounds?.length && can?.length) {
+      for (const g of rounds) g.userData.ammoCartridge = true;
+      can.push(...rounds);
+      delete gun.bySlot[MG_CARTRIDGE_SLOT];
+    }
+    pitchFrameParts([cradle, gun], layout.recY, 0, layout.recZ);
+    RIDING_CRADLE_PARTS.set(key, { parts: storeFittingParts([parts, cradle, gun]), fit });
   }
+  const fitting = assembleAmericanM2(context, layout);
+  fitting.userData.remoteControlled = true;
+  fitting.userData.crewServed = true;
+  fitting.userData.barrelAxisLocalY = layout.trunY;
+  fitting.userData.muzzleLocalZ = layout.trunZ + .10 * layout.s + layout.barrelLength + layout.cls.flashL * layout.s + .011;
+  attachAuxiliaryWeapon(fitting, cradle, opts, layout.recY, 0, layout.recZ, gun, true);
+  fitting.userData.auxiliaryRecoilM = fit!.stroke;
+  const m2 = layout.classKey === 'm2';
+  nameWorkingStation(fitting, m2 ? 'americanM2HBBody' : 'americanM240Body', m2 ? 'americanM2HBMount' : 'americanM240Mount',
+    m2 ? 'sheridanCommanderM2AmmoBox' : 'americanM240AmmoBox');
   return fitting;
 }
 
@@ -1910,6 +2064,16 @@ function nameWorkingStation(fitting: THREE.Group, body: string, mount: string, a
  * M551A1-TTS-derived remote station family.  Variants share a buried slew
  * drum, armored cradle, M2HB receiver/feed system and forward EO face while
  * changing the protection and sensor silhouette for each host vehicle.
+ *
+ * Release 230 (the owner's field-equipment standard: nothing that moves passes through what does not): the station rides
+ * its cradle. Its fleet rig pitched the receiver, its saddle, the receiver guards, the coffin and the service tower as one
+ * group about the bore line over the head: the saddle and the guards stood in the head and its brow, and the coffin in
+ * the head's side and the ammunition-side cheek (0 mm, thousands of crossing triangle pairs). Now the gun (receiver,
+ * barrel, belt and feed box, the coffin, and the guard cage with its service tower) recoils inside a cradle (a saddle
+ * under the receiver and two side plates whose trunnion pins turn in bearings on brackets standing on the head); the
+ * coffin hangs clear of the head's side; the head stands as much lower as its gun's sweep asks, the bore, pivot and muzzle
+ * staying where they were; the plates the coffin stood round on the ammunition side are not drawn; and every other
+ * yaw-stage plate is cut round the moving parts' sweep (ridingYawPlate).
  */
 interface AmericanRwsBuildContext {
   readonly opts: FittingOptions;
@@ -1928,9 +2092,13 @@ interface AmericanRwsBuildContext {
   readonly headH: number;
   readonly headD: number;
   readonly recY: number;
+  /** Release 230: how much lower the head's top stands than the fleet rig's (its bottom stays), under the gun's sweep. */
+  readonly headDrop: number;
+  /** Release 230: the moving parts, once drawn (the yaw stage is cut round their sweep). */
+  readonly moving?: RidingStationMoving;
 }
 
-function createAmericanRwsBuildContext(opts: FittingOptions): AmericanRwsBuildContext {
+function createAmericanRwsBuildContext(opts: FittingOptions, headDrop = 0, moving?: RidingStationMoving): AmericanRwsBuildContext {
   const variant = opts.variant || 'compact';
   const s = opts.scale || 1;
   const standard = variant === 'standard';
@@ -1945,11 +2113,13 @@ function createAmericanRwsBuildContext(opts: FittingOptions): AmericanRwsBuildCo
   const body = opts.bodySlot || 'detail';
   const baseR = (low ? 0.25 : 0.28) * s;
   const pedestalH = (low ? 0.19 : armored ? 0.30 : 0.26) * s;
-  const headY = pedestalH + (low ? 0.19 : 0.24) * s;
+  const fleetHeadY = pedestalH + (low ? 0.19 : 0.24) * s;
   const headW = (low ? 0.52 : armored ? 0.48 : 0.42) * s;
-  const headH = (low ? 0.22 : armored ? 0.36 : 0.30) * s;
+  const fleetHeadH = (low ? 0.22 : armored ? 0.36 : 0.30) * s;
   const headD = (low ? 0.48 : 0.44) * s;
-  const recY = headY + headH / 2 + 0.090 * s;
+  const recY = fleetHeadY + fleetHeadH / 2 + 0.090 * s;
+  // release 230: the head keeps its foot and stands `headDrop` lower
+  const headH = fleetHeadH - headDrop, headY = fleetHeadY - headDrop / 2;
 
   return {
     opts,
@@ -1968,147 +2138,232 @@ function createAmericanRwsBuildContext(opts: FittingOptions): AmericanRwsBuildCo
     headH,
     headD,
     recY,
+    headDrop,
+    moving,
+  };
+}
+
+/** Release 230: the plate and fitting adds the station's yaw stage draws through (ridingYawPlate, ridingYawFitting), and
+ * the test for the ammunition side's plates its coffin hangs over (not drawn; the coffin is on the station's left, -X). */
+function americanRwsYaw(context: AmericanRwsBuildContext): {
+  plate: (slot: string, w: number, h: number, d: number, x: number, y: number, z: number, rx?: number, ry?: number, rz?: number,
+    geometry?: () => THREE.BufferGeometry) => void;
+  fitting: (slot: string, geometry: () => THREE.BufferGeometry, w: number, h: number, d: number, x: number, y: number, z: number,
+    rx?: number, ry?: number, rz?: number) => void;
+  underCoffin: (side: number) => boolean;
+} {
+  const { parts, moving } = context;
+  return {
+    plate: (slot, w, h, d, x, y, z, rx = 0, ry = 0, rz = 0, geometry = () => KIT.box(w, h, d)) =>
+      ridingYawPlate(parts, moving, slot, geometry, w, h, d, x, y, z, rx, ry, rz),
+    fitting: (slot, geometry, w, h, d, x, y, z, rx = 0, ry = 0, rz = 0) =>
+      ridingYawFitting(parts, moving, slot, geometry, w, h, d, x, y, z, rx, ry, rz),
+    underCoffin: (side) => side < 0,
   };
 }
 
 function addAmericanRwsPedestal(context: AmericanRwsBuildContext): void {
-  const { box, cylY, torus } = KIT;
-  const { baseR, body, parts, pedestalH, s } = context;
+  const { cylY, torus } = KIT;
+  const { baseR, body, pedestalH, s } = context;
+  const { plate, fitting } = americanRwsYaw(context);
 
-  parts.add(body, cylY(baseR * 0.92, baseR, 0.105 * s, 20), 0, 0.0525 * s, 0);
-  parts.add('dark', torus(baseR * 0.88, 0.025 * s, 24), 0, 0.108 * s, 0);
-  parts.add(body, box(0.24 * s, pedestalH, 0.22 * s), 0,
+  fitting(body, () => cylY(baseR * 0.92, baseR, 0.105 * s, 20), 2 * baseR, 0.105 * s, 2 * baseR, 0, 0.0525 * s, 0);
+  fitting('dark', () => torus(baseR * 0.88, 0.025 * s, 24), 2 * (baseR * 0.88 + 0.025 * s), 0.05 * s, 2 * (baseR * 0.88 + 0.025 * s),
+    0, 0.108 * s, 0);
+  plate(body, 0.24 * s, pedestalH, 0.22 * s, 0,
     0.095 * s + pedestalH / 2, 0);
-  parts.add('dark', box(0.34 * s, 0.055 * s, 0.31 * s), 0,
+  plate('dark', 0.34 * s, 0.055 * s, 0.31 * s, 0,
     0.095 * s + pedestalH, 0);
   // Exposed load-carrying yoke: four tied steel legs make the extra height
   // look engineered rather than like a floating box on a stretched post.
   for (const side of [-1, 1]) {
-    parts.add('dark', box(0.028 * s, pedestalH * 0.76, 0.036 * s),
+    plate('dark', 0.028 * s, pedestalH * 0.76, 0.036 * s,
       side * 0.125 * s, 0.095 * s + pedestalH * 0.56, 0.055 * s,
       0, 0, -side * 0.105);
-    parts.add('dark', box(0.028 * s, pedestalH * 0.64, 0.036 * s),
+    plate('dark', 0.028 * s, pedestalH * 0.64, 0.036 * s,
       side * 0.105 * s, 0.095 * s + pedestalH * 0.52, -0.065 * s,
       0, 0, side * 0.090);
   }
 }
 
 function addAmericanRwsSensorHead(context: AmericanRwsBuildContext): void {
-  const { box, cylZ } = KIT;
-  const { body, headD, headH, headW, headY, parts, s } = context;
+  const { cylZ } = KIT;
+  const { body, headD, headH, headW, headY, s } = context;
+  const { plate, fitting } = americanRwsYaw(context);
   // Armored sensor/weapon head and serviceable top cover.
-  parts.add(body, box(headW, headH, headD), 0, headY, 0.04 * s);
-  parts.add('detail', box(headW - 0.025 * s, 0.026 * s, headD - 0.035 * s),
+  plate(body, headW, headH, headD, 0, headY, 0.04 * s);
+  plate('detail', headW - 0.025 * s, 0.026 * s, headD - 0.035 * s,
     0, headY + headH / 2 + 0.013 * s, 0.04 * s);
-  parts.add('glass', box(0.115 * s, 0.095 * s, 0.020 * s),
+  plate('glass', 0.115 * s, 0.095 * s, 0.020 * s,
     -0.105 * s, headY + 0.035 * s, headD / 2 + 0.050 * s);
-  parts.add('glass', box(0.070 * s, 0.060 * s, 0.020 * s),
+  plate('glass', 0.070 * s, 0.060 * s, 0.020 * s,
     0.085 * s, headY - 0.045 * s, headD / 2 + 0.050 * s);
-  parts.add('dark', box(0.055 * s, 0.050 * s, 0.022 * s),
+  plate('dark', 0.055 * s, 0.050 * s, 0.022 * s,
     0.088 * s, headY + 0.065 * s, headD / 2 + 0.052 * s);
   // Paired protected work/identification lights share the forward EO face.
   for (const x of [0.155, 0.225]) {
-    parts.add('dark', cylZ(0.031 * s, 0.040 * s, 12),
+    fitting('dark', () => cylZ(0.031 * s, 0.040 * s, 12), 0.062 * s, 0.062 * s, 0.040 * s,
       x * s, headY - 0.075 * s, headD / 2 + 0.052 * s);
-    parts.add('glass', cylZ(0.024 * s, 0.006 * s, 12),
+    fitting('glass', () => cylZ(0.024 * s, 0.006 * s, 12), 0.048 * s, 0.048 * s, 0.006 * s,
       x * s, headY - 0.075 * s, headD / 2 + 0.075 * s);
   }
 }
 
-function addAmericanRwsWeaponSystem(context: AmericanRwsBuildContext): void {
-  const { box } = KIT;
-  const { body, headY, headH, parts, recY, s } = context;
+/** Release 230: the gun's M2 (the fleet's Browning construction in its remote form, at the station's datum) and the
+ * receiver's half-width at its rear, where the cradle's side plates stand. */
+function americanRwsGun(context: AmericanRwsBuildContext): { readonly layout: PintleLayout; readonly dy: number; readonly dz: number } {
+  const { recY, s } = context;
+  const probe = createPintleLayout({cls:'m2',scale:s,remote:true,ammo:false,mount:'external-cradle',feed:'left'},{add(){}});
+  const dz = 0.16 * s - probe.recZ, dy = recY - probe.trunY;
+  const barrelLength = 1.223 * s - dz - probe.trunZ - 0.10 * probe.s - MG_CLASSES.m2.flashL * probe.s - 0.011;
+  return { layout: createPintleLayout({cls:'m2',scale:s,remote:true,ammo:false,mount:'external-cradle',feed:'left',barrelLength},{add(){}}), dy, dz };
+}
+
+/** Release 230: the station's trunnion, outward from the receiver's side (as |x|): the cradle's side plate, 2.5 mm of
+ * air, the bearing ring on the bracket's inner face (its flats 1.7 mm off the pin), and the bracket. */
+function americanRwsTrunnion(context: AmericanRwsBuildContext, receiverHalfW: number): { readonly plateIn: number; readonly plateOut: number;
+  readonly ringIn: number; readonly ringT: number; readonly bracketIn: number; readonly bracketOut: number; readonly pinR: number;
+  readonly boreIn: number; readonly boreOut: number; readonly seg: number } {
+  const { s } = context, seg = 20, pinR = 0.012 * s;
+  const plateIn = receiverHalfW + 0.004 * s, plateOut = plateIn + 0.014 * s, ringIn = plateOut + 0.0025, ringT = 0.010 * s;
+  const bracketIn = ringIn + ringT - 0.001;
+  return { plateIn, plateOut, ringIn, ringT, bracketIn, bracketOut: bracketIn + 0.016 * s, pinR, seg,
+    boreIn: (pinR + 0.0017) / Math.cos(Math.PI / seg), boreOut: pinR + 0.012 * s };
+}
+
+/** The cradle (`cradle`: its saddle, side plates and trunnion pins) and the gun (`gun`: release 230, everything that
+ * recoils inside it). */
+function addAmericanRwsWeaponSystem(context: AmericanRwsBuildContext, cradle: FittingParts, gun: FittingParts): void {
+  const { box, cylX } = KIT;
+  const { body, headD, headW, headY, recY, s, standard } = context;
   // 2026-10-11 (fleet-weapons lane, round 3b; wave 348b's critics on the SEPv3's station: "flat untextured grey boxes
   // with a plain rod barrel"): the M2 is the fleet's Browning construction in its remote form (receiver with feed cover
   // and feedway, solenoid at the back plate, perforated barrel support, heavy barrel, flash hider), its receiver centred
   // where the receiver block stood (z 0.16 s) on the station's bore line, its muzzle at the published 1.223 s, carried by
   // a cradle saddle on the head's roof; it was a receiver box, a cover plate and two plain tubes.
-  const probe = createPintleLayout({cls:'m2',scale:s,remote:true,ammo:false,mount:'external-cradle',feed:'left'},{add(){}});
-  const dz = 0.16 * s - probe.recZ, dy = recY - probe.trunY;
-  const barrelLength = 1.223 * s - dz - probe.trunZ - 0.10 * probe.s - MG_CLASSES.m2.flashL * probe.s - 0.011;
-  const gun = createPintleLayout({cls:'m2',scale:s,remote:true,ammo:false,mount:'external-cradle',feed:'left',barrelLength},{
+  const { layout: probe, dy, dz } = americanRwsGun(context);
+  const layout = createPintleLayout({cls:'m2',scale:s,remote:true,ammo:false,mount:'external-cradle',feed:'left',
+    barrelLength:probe.barrelLength},{
     add(slot:string,geometry:THREE.BufferGeometry,x=0,y=0,z=0,rx=0,ry=0,rz=0){
-      parts.add(slot === 'shadow' ? 'shadow' : 'dark',KIT.xform(geometry,x,y,z,rx,ry,rz),0,dy,dz);
+      gun.add(slot === 'shadow' ? 'shadow' : 'dark',KIT.xform(geometry,x,y,z,rx,ry,rz),0,dy,dz);
     },
   });
-  addPintleReceiver(gun);
-  addPintleBarrel(gun);
-  const headTop = headY + headH / 2, receiverBottom = dy + gun.bodyBottom;
-  parts.add('dark', box(0.16 * s, receiverBottom - headTop + 0.004, 0.40 * s),
-    0, (receiverBottom + headTop) / 2, 0.16 * s);
-  parts.add(body, box(0.25 * s, 0.28 * s, 0.34 * s),
-    -0.29 * s, headY + 0.02 * s, -0.01 * s);
-  parts.add('dark', box(0.10 * s, 0.10 * s, 0.18 * s),
+  addPintleReceiver(layout);
+  addPintleBarrel(layout);
+  // release 230: the saddle rides the cradle under the receiver's rear (its top 0.5 mm under the receiver's floor line, a
+  // slide fit), the side plates stand from it past the pivot beside the receiver, and their pins turn in the brackets'
+  // bearings (2 mm short of the brackets)
+  const receiverBottom = dy + layout.bodyBottom;
+  cradle.add('dark', box(0.16 * s, 0.030 * s, 0.16 * s), 0, receiverBottom - 0.0005 - 0.015 * s, 0.04 * s);
+  const { plateIn, plateOut, bracketIn, pinR } = americanRwsTrunnion(context, layout.bodyW / 2);
+  for (const side of [-1, 1]) {
+    const plateBottom = receiverBottom - 0.0005 - 0.026 * s, plateTop = recY + 0.030 * s;
+    cradle.add('dark', box(plateOut - plateIn, plateTop - plateBottom, 0.08 * s),
+      side * (plateIn + plateOut) / 2, (plateTop + plateBottom) / 2, 0);
+    const pinIn = plateOut - 0.004 * s, pinOut = bracketIn - 0.002;
+    cradle.add('dark', cylX(pinR, pinOut - pinIn, 12), side * (pinIn + pinOut) / 2, recY, 0);
+  }
+  // the armoured coffin on the station's left (release 230: its inner face 2 mm clear of the head's side, or of the
+  // standard head's brow), riding with the gun
+  const coffinIn = Math.max(0.165 * s, (standard ? headW + 0.09 * s : headW) / 2 + 0.002);
+  gun.add(body, box(0.25 * s, 0.28 * s, 0.34 * s),
+    -(coffinIn + 0.125 * s), headY + context.headDrop / 2 + 0.02 * s, -0.01 * s);
+  gun.add('dark', box(0.10 * s, 0.10 * s, 0.18 * s),
     -0.17 * s, recY - 0.02 * s, 0.24 * s, 0, -0.22, 0);
   // Visible disintegrating-link run from the armored ammunition coffin into
   // the receiver. Alternating gunmetal and shadow-steel links keep the belt
   // legible without sampling the host camouflage onto the ammunition.
+  // (release 230: from the coffin's face, wherever the coffin hangs)
+  const beltStart = -(coffinIn + 0.040 * s);
   for (let index = 0; index < 8; index++) {
     const t = index / 7;
-    const x = (-0.205 + t * 0.205) * s;
+    const x = beltStart * (1 - t);
     const y = recY + (-0.025 + t * 0.030) * s;
     const z = (0.175 + t * 0.045) * s;
-    parts.add('dark', box(0.030 * s, 0.040 * s, 0.028 * s), x, y, z,
+    gun.add('dark', box(0.030 * s, 0.040 * s, 0.028 * s), x, y, z,
       0, 0, -0.08 + t * 0.13);
-    parts.add('shadow', box(0.011 * s, 0.044 * s, 0.031 * s),
+    gun.add('shadow', box(0.011 * s, 0.044 * s, 0.031 * s),
       x + 0.008 * s, y, z);
   }
   // Receiver guard and service tower carry the added lights, wiring, and
   // ammunition hardware.  The guard is dark steel; the tower stays in the
   // same continuous fitting-paint finish as the armored head.
+  // (release 230: they end at the receiver's floor line, over the head they used to stand in)
   for (const side of [-1, 1]) {
-    parts.add('dark', box(0.026 * s, 0.245 * s, 0.034 * s),
-      side * 0.165 * s, recY - 0.015 * s, 0.105 * s,
+    gun.add('dark', box(0.026 * s, 0.19 * s, 0.034 * s),
+      side * 0.165 * s, recY + 0.0125 * s, 0.105 * s,
       0, 0, side * 0.115);
   }
-  parts.add('dark', box(0.355 * s, 0.028 * s, 0.034 * s),
+  gun.add('dark', box(0.355 * s, 0.028 * s, 0.034 * s),
     0, recY + 0.105 * s, 0.105 * s);
   const serviceY = recY + 0.105 * s;
-  parts.add(body, box(0.175 * s, 0.205 * s, 0.165 * s),
+  gun.add(body, box(0.175 * s, 0.205 * s, 0.165 * s),
     0.205 * s, serviceY, -0.065 * s);
   // round 5 (contact receipt): the cap overhangs the tower's rounded top, so it carries stations over the flat
-  parts.add('dark', new THREE.BoxGeometry(0.195 * s, 0.022 * s, 0.185 * s, 3, 1, 3),
+  gun.add('dark', new THREE.BoxGeometry(0.195 * s, 0.022 * s, 0.185 * s, 3, 1, 3),
     0.205 * s, serviceY + 0.113 * s, -0.065 * s);
-  parts.add('glass', box(0.095 * s, 0.070 * s, 0.018 * s),
+  // (release 230: the tower's window in the shadow steel, so the recoiling gun draws no more meshes than the fleet rig's
+  // pitch group did)
+  gun.add('shadow', box(0.095 * s, 0.070 * s, 0.018 * s),
     0.205 * s, serviceY + 0.025 * s, 0.027 * s);
+  void headD;
+}
+
+/** Release 230: the trunnion brackets on the head (on its top cover, or the standard head's brow), each with its bearing
+ * ring round the cradle's pin. */
+function addAmericanRwsTrunnions(context: AmericanRwsBuildContext): void {
+  const { headH, headY, parts, recY, s, standard } = context;
+  const { layout } = americanRwsGun(context);
+  const { ringIn, ringT, bracketIn, bracketOut, boreIn, boreOut, seg } = americanRwsTrunnion(context, layout.bodyW / 2);
+  const foot = headY + headH / 2 + (standard ? 0.051 : 0.026) * s - 0.004, top = recY + boreOut;
+  for (const side of [-1, 1]) {
+    parts.add('dark', KIT.box(bracketOut - bracketIn, top - foot, 0.05 * s), side * (bracketIn + bracketOut) / 2, (top + foot) / 2, 0);
+    parts.add('dark', place(machinedRing(boreIn, boreOut, ringT, 0.002 * s, seg), 0, 0, 0, 0, 0, Math.PI / 2),
+      side * (ringIn + ringT / 2) + ringT / 2, recY, 0);
+  }
 }
 
 function addAmericanRwsVariantArmor(context: AmericanRwsBuildContext): void {
-  const { box, cylY } = KIT;
+  const { cylY } = KIT;
   const {
-    armored, body, headD, headH, headW, headY, hunter, low, parts, recY, s, standard,
+    armored, body, headD, headH, headW, headY, hunter, low, recY, s, standard,
   } = context;
+  const { plate, fitting, underCoffin } = americanRwsYaw(context);
   if (standard) {
     // Baseline M1A2 station: open service cheeks and a narrow sensor brow.
     // It keeps the TTS-derived gun/head anatomy while remaining visibly
     // lighter than the TUSK compact and SEP armored installations.
     // round 5 (contact receipt): the brow rests on the head's top cover (it hovered 3 cm over it) and carries
     // stations where it bears on the cover
-    parts.add(body, new THREE.BoxGeometry(headW + 0.09 * s, 0.025 * s, headD + 0.05 * s, 3, 1, 3),
-      0, headY + headH / 2 + 0.0385 * s, 0.04 * s);
+    plate(body, headW + 0.09 * s, 0.025 * s, headD + 0.05 * s,
+      0, headY + headH / 2 + 0.0385 * s, 0.04 * s, 0, 0, 0,
+      () => new THREE.BoxGeometry(headW + 0.09 * s, 0.025 * s, headD + 0.05 * s, 3, 1, 3));
     for (const side of [-1, 1]) {
-      parts.add('dark', box(0.025 * s, headH * 0.68, headD + 0.03 * s),
+      if (underCoffin(side)) continue;
+      plate('dark', 0.025 * s, headH * 0.68, headD + 0.03 * s,
         side * (headW / 2 + 0.030 * s), headY - 0.02 * s, 0.04 * s,
         0, 0, side * 0.055);
     }
   } else if (armored) {
-    parts.add(body, box(headW + 0.16 * s, 0.030 * s, headD + 0.10 * s),
+    plate(body, headW + 0.16 * s, 0.030 * s, headD + 0.10 * s,
       0, recY + 0.105 * s, 0.08 * s);
     for (const side of [-1, 1]) {
-      parts.add(body, box(0.035 * s, headH + 0.27 * s, headD + 0.08 * s),
+      if (underCoffin(side)) continue;
+      plate(body, 0.035 * s, headH + 0.27 * s, headD + 0.08 * s,
         side * (headW / 2 + 0.06 * s), headY + 0.08 * s, 0.04 * s,
         0, 0, side * 0.06);
     }
   } else if (hunter) {
-    parts.add(body, box(0.25 * s, 0.28 * s, 0.25 * s),
+    plate(body, 0.25 * s, 0.28 * s, 0.25 * s,
       0.31 * s, headY + 0.06 * s, 0.00);
-    parts.add('glass', box(0.15 * s, 0.13 * s, 0.022 * s),
+    plate('glass', 0.15 * s, 0.13 * s, 0.022 * s,
       0.31 * s, headY + 0.07 * s, 0.137 * s);
-    parts.add('detail', cylY(0.045 * s, 0.060 * s, 0.10 * s, 14),
+    fitting('detail', () => cylY(0.045 * s, 0.060 * s, 0.10 * s, 14), 0.12 * s, 0.10 * s, 0.12 * s,
       0.31 * s, headY + 0.25 * s, 0.00);
   } else if (low) {
     for (const side of [-1, 1]) {
-      parts.add(body, box(0.030 * s, headH + 0.08 * s, headD + 0.04 * s),
+      if (underCoffin(side)) continue;
+      plate(body, 0.030 * s, headH + 0.08 * s, headD + 0.04 * s,
         side * (headW / 2 + 0.015 * s), headY, 0.04 * s);
       }
   }
@@ -2134,12 +2389,58 @@ function assembleAmericanRws(context: AmericanRwsBuildContext): THREE.Group {
   fitting.userData.firingAxis = '+Z';
   fitting.userData.barrelAxisLocal = [0, 0, 1];
   fitting.userData.barrelElevationRad = 0;
-  const weaponMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
-  if (weaponMesh) {
-    weaponMesh.name = 'americanRwsMachineGun';
-    weaponMesh.userData.appearanceRole = 'machineGun';
-  }
   return fitting;
+}
+
+/** Release 230: the lowest a riding station's moving parts come over the footprint x0..x1, z0..z1 (fitting frame) through
+ * the pitch range and the recoil stroke (Infinity where nothing passes over it); `reach` bounds the distance from the
+ * pivot's axis of the points that matter, so the poses step finely enough that none moves more than the air between two. */
+function sweptLow(moving: RidingStationMoving, x0: number, x1: number, z0: number, z1: number, reach: number): number {
+  const { pivotY, pivotZ, stroke, triangles: T } = moving, air = RIDING_STATION_AIR_M, v = new THREE.Vector3();
+  const candidates: number[] = [];
+  for (let t = 0; t < T.length; t += 9) {
+    const a = Math.min(T[t]!, T[t + 3]!, T[t + 6]!), b = Math.max(T[t]!, T[t + 3]!, T[t + 6]!);
+    if (b >= x0 - air && a <= x1 + air) candidates.push(t);
+  }
+  const clip = (poly: number[][], axis: number, bound: number, dir: number): number[][] => {
+    const next: number[][] = [];
+    for (let i = 0; i < poly.length; i++) {
+      const p = poly[i]!, q = poly[(i + 1) % poly.length]!, dp = dir * (p[axis]! - bound), dq = dir * (q[axis]! - bound);
+      if (dp >= 0) next.push(p);
+      if (dp * dq < 0) { const u = dp / (dp - dq); next.push([0, 1, 2].map((k) => p[k]! + (q[k]! - p[k]!) * u)); }
+    }
+    return next;
+  };
+  const step = Math.min(Math.PI / 180, air / Math.max(reach, 0.01));
+  const poses: number[] = [];
+  for (let e = RIDING_STATION_PITCH[0]; e < RIDING_STATION_PITCH[1]; e += step) poses.push(e);
+  poses.push(RIDING_STATION_PITCH[1]);
+  let low = Infinity;
+  for (const e of poses) for (const r of stroke > 0 ? [0, stroke] : [0]) {
+    const turn = new THREE.Matrix4().makeRotationX(-e), pivot = new THREE.Matrix4().makeTranslation(0, pivotY, pivotZ);
+    const full = pivot.clone().multiply(turn).multiply(new THREE.Matrix4().makeTranslation(0, -pivotY, -pivotZ));
+    const gunM = pivot.clone().multiply(turn).multiply(new THREE.Matrix4().makeTranslation(0, -pivotY, -pivotZ - r));
+    for (const t of candidates) {
+      const M = t / 9 < moving.gunTriangles ? gunM : full;
+      let poly = [0, 3, 6].map((o) => v.set(T[t + o]!, T[t + o + 1]!, T[t + o + 2]!).applyMatrix4(M).toArray());
+      for (const [axis, bound, dir] of [[0, x0, 1], [0, x1, -1], [2, z0, 1], [2, z1, -1]] as const) {
+        poly = clip(poly, axis, bound, dir);
+        if (!poly.length) break;
+      }
+      for (const p of poly) low = Math.min(low, p[1]!);
+    }
+  }
+  return low;
+}
+
+/** Release 230: how much lower the head (its top cover, or the standard head's brow) must stand to keep the air from
+ * everything that moves over it. */
+function americanRwsHeadDrop(context: AmericanRwsBuildContext, moving: RidingStationMoving): number {
+  const { headD, headH, headW, headY, recY, s, standard } = context;
+  const halfW = (standard ? headW + 0.09 * s : headW) / 2, halfD = (standard ? headD + 0.05 * s : headD) / 2, z = 0.04 * s;
+  const top = headY + headH / 2 + (standard ? 0.051 : 0.026) * s, foot = headY - headH / 2;
+  const low = sweptLow(moving, -halfW, halfW, z - halfD, z + halfD, Math.hypot(recY - foot, Math.abs(z) + halfD));
+  return Math.max(0, top - (low - RIDING_STATION_AIR_M));
 }
 
 /** Moves weapon parts from the fitting's frame into the pitch group's (its origin on the pivot). */
@@ -2160,17 +2461,143 @@ function attachAuxiliaryWeapon(fitting: THREE.Group, parts: FittingParts, opts: 
   weapon.traverse(o=>{if(o instanceof THREE.Mesh)o.userData.appearanceRole='machineGun';});
 }
 function fittingAmericanRws(opts: FittingOptions = {}): THREE.Group {
-  const context = createAmericanRwsBuildContext(opts);
+  // release 230: the cradle and the gun first, then the head as low as their sweep asks, then the yaw stage round them
+  const fleet = createAmericanRwsBuildContext(opts);
+  const cradle = fitParts(), gun = fitParts();
+  addAmericanRwsWeaponSystem(fleet, cradle, gun);
+  const moving = ridingStationMoving(cradle, gun, fleet.recY, 0, RIDING_CRADLE_RECOIL_M);
+  const context = createAmericanRwsBuildContext(opts, americanRwsHeadDrop(fleet, moving), moving);
   addAmericanRwsPedestal(context);
   addAmericanRwsSensorHead(context);
-  const weapon=fitParts(), weaponContext={...context,parts:weapon};
-  addAmericanRwsWeaponSystem(weaponContext);
+  addAmericanRwsTrunnions(context);
   addAmericanRwsVariantArmor(context);
-  const fitting=assembleAmericanRws(context);
-  fitting.userData.barrelAxisLocalY=context.recY;
-  fitting.userData.muzzleLocalZ=1.223*context.s;
-  attachAuxiliaryWeapon(fitting,weapon,opts,context.recY);
+  const fitting = assembleAmericanRws(context);
+  fitting.userData.barrelAxisLocalY = context.recY;
+  fitting.userData.muzzleLocalZ = 1.223 * context.s;
+  attachAuxiliaryWeapon(fitting, cradle, opts, context.recY, 0, 0, gun);
+  fitting.userData.auxiliaryRecoilM = RIDING_CRADLE_RECOIL_M;
+  // the gun's steel (its receiver, barrel, belt and guard cage) is the station's machine gun
+  const weaponMesh = fitting.getObjectByName('auxiliaryWeaponRecoil')?.children.find((child) => child.userData.fittingSlot === 'dark');
+  if (weaponMesh) {
+    weaponMesh.name = 'americanRwsMachineGun';
+    weaponMesh.userData.appearanceRole = 'machineGun';
+  }
   return fitting;
+}
+
+/**
+ * Release 230 (the owner's field-equipment standard: nothing that moves passes through what does not): a remote station's
+ * moving parts as its yaw stage sees them: the cradle's and the gun's triangles in the fitting's frame (the gun's first,
+ * `gunTriangles` of them, recoiling `stroke` back along its axis inside the cradle), turning about the pivot
+ * (0, pivotY, pivotZ) over the fleet's pitch range (machineGunGeometry.ts addPintleRidingCradle's: 0.18 rad down to
+ * 0.76 rad up).
+ */
+interface RidingStationMoving {
+  readonly triangles: Float64Array;
+  readonly gunTriangles: number;
+  readonly pivotY: number;
+  readonly pivotZ: number;
+  readonly stroke: number;
+}
+const RIDING_STATION_PITCH: readonly [number, number] = [-0.18, 0.76];
+/** The air a riding station's yaw stage keeps from its moving parts (m; the fleet audit asks 1.5 mm). */
+const RIDING_STATION_AIR_M = 0.002;
+
+function ridingStationMoving(cradle: FittingParts, gun: FittingParts, pivotY: number, pivotZ: number, stroke: number): RidingStationMoving {
+  const g = fittingTriangles(gun), c = fittingTriangles(cradle), triangles = new Float64Array(g.length + c.length);
+  triangles.set(g); triangles.set(c, g.length);
+  return { triangles, gunTriangles: g.length / 9, pivotY, pivotZ, stroke };
+}
+
+/**
+ * Release 230: where a riding station's moving parts pass through a placed yaw-stage plate over the pitch range and the
+ * recoil stroke: the rectangle (x0, y0, x1, y1 in the plate's own face) round every section of them through the plate's
+ * slab (RIDING_STATION_AIR_M either side) that meets the face, widened by the same air and clipped to the face, or null
+ * where nothing passes. The poses step finely enough that no point within the plate's reach moves more than the air
+ * between two of them; only the triangles that reach the plate's span across and round the pivot are posed.
+ */
+function sweptPortRect(moving: RidingStationMoving, plate: PlatePlacement): [number, number, number, number] | null {
+  const [w, h, d] = plate, air = RIDING_STATION_AIR_M, { pivotY, pivotZ, stroke, triangles: T } = moving;
+  const m = plateMatrix(plate), inv = m.clone().invert(), v = new THREE.Vector3();
+  // the plate's reach: its x span and its distance from the pivot's axis
+  let px0 = Infinity, px1 = -Infinity, rFar = 0, py0 = Infinity, py1 = -Infinity, pz0 = Infinity, pz1 = -Infinity;
+  for (const cx of [-1, 1]) for (const cy of [-1, 1]) for (const cz of [-1, 1]) {
+    v.set(cx * w / 2, cy * h / 2, cz * d / 2).applyMatrix4(m);
+    px0 = Math.min(px0, v.x); px1 = Math.max(px1, v.x); py0 = Math.min(py0, v.y); py1 = Math.max(py1, v.y); pz0 = Math.min(pz0, v.z); pz1 = Math.max(pz1, v.z);
+    rFar = Math.max(rFar, Math.hypot(v.y - pivotY, v.z - pivotZ));
+  }
+  const rNear = Math.hypot(Math.max(0, py0 - pivotY, pivotY - py1), Math.max(0, pz0 - pivotZ, pivotZ - pz1));
+  const candidates: number[] = [];
+  for (let t = 0; t < T.length; t += 9) {
+    let x0 = Infinity, x1 = -Infinity, r0 = Infinity, r1 = 0, edge = 0;
+    for (let k = 0; k < 9; k += 3) {
+      x0 = Math.min(x0, T[t + k]!); x1 = Math.max(x1, T[t + k]!);
+      const r = Math.hypot(T[t + k + 1]! - pivotY, T[t + k + 2]! - pivotZ); r0 = Math.min(r0, r); r1 = Math.max(r1, r);
+      const n = (k + 3) % 9; edge = Math.max(edge, Math.hypot(T[t + n]! - T[t + k]!, T[t + n + 1]! - T[t + k + 1]!, T[t + n + 2]! - T[t + k + 2]!));
+    }
+    if (x1 < px0 - air || x0 > px1 + air) continue;
+    if (r1 + stroke < rNear - air || r0 - edge - stroke > rFar + air) continue;
+    candidates.push(t);
+  }
+  if (!candidates.length) return null;
+  const step = Math.min(Math.PI / 180, air / Math.max(rFar + stroke, 0.01));
+  const poses: number[] = [];
+  for (let e = RIDING_STATION_PITCH[0]; e < RIDING_STATION_PITCH[1]; e += step) poses.push(e);
+  poses.push(RIDING_STATION_PITCH[1]);
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  const turn = new THREE.Matrix4(), full = new THREE.Matrix4(), pivot = new THREE.Matrix4().makeTranslation(0, pivotY, pivotZ);
+  for (const e of poses) for (const r of stroke > 0 ? [0, stroke / 2, stroke] : [0]) {
+    turn.makeRotationX(-e);
+    // fitting frame -> pitch frame (and the recoil) -> turned -> fitting frame -> the plate's frame
+    const gunM = inv.clone().multiply(pivot).multiply(turn).multiply(new THREE.Matrix4().makeTranslation(0, -pivotY, -pivotZ - r));
+    full.copy(inv).multiply(pivot).multiply(turn).multiply(new THREE.Matrix4().makeTranslation(0, -pivotY, -pivotZ));
+    for (const t of candidates) {
+      const M = t / 9 < moving.gunTriangles ? gunM : full;
+      let poly = [0, 3, 6].map((o) => v.set(T[t + o]!, T[t + o + 1]!, T[t + o + 2]!).applyMatrix4(M).toArray());
+      for (const [bound, dir] of [[-d / 2 - air, 1], [d / 2 + air, -1]] as const) {
+        const next: number[][] = [];
+        for (let i = 0; i < poly.length; i++) {
+          const a = poly[i]!, c = poly[(i + 1) % poly.length]!, da = dir * (a[2]! - bound), dc = dir * (c[2]! - bound);
+          if (da >= 0) next.push(a);
+          if (da * dc < 0) { const u = da / (da - dc); next.push([a[0]! + (c[0]! - a[0]!) * u, a[1]! + (c[1]! - a[1]!) * u, a[2]! + (c[2]! - a[2]!) * u]); }
+        }
+        poly = next;
+        if (!poly.length) break;
+      }
+      if (!poly.length) continue;
+      let qx0 = Infinity, qy0 = Infinity, qx1 = -Infinity, qy1 = -Infinity;
+      for (const p of poly) { qx0 = Math.min(qx0, p[0]!); qx1 = Math.max(qx1, p[0]!); qy0 = Math.min(qy0, p[1]!); qy1 = Math.max(qy1, p[1]!); }
+      if (qx1 < -w / 2 - air || qx0 > w / 2 + air || qy1 < -h / 2 - air || qy0 > h / 2 + air) continue;
+      x0 = Math.min(x0, qx0); x1 = Math.max(x1, qx1); y0 = Math.min(y0, qy0); y1 = Math.max(y1, qy1);
+    }
+  }
+  if (x0 > x1) return null;
+  return [Math.max(-w / 2, x0 - air), Math.max(-h / 2, y0 - air), Math.min(w / 2, x1 + air), Math.min(h / 2, y1 + air)];
+}
+
+/**
+ * A remote station's yaw-stage plate (`geometry`, a box w x h x d round its origin, placed). Release 230: on a riding
+ * station (`moving`) the plate is cut round its moving parts' sweep (sweptPortRect): drawn as the plates round the port,
+ * the port's two full-height sides and the strips under and over it, so a port at an edge is a notch, a plate the sweep
+ * covers is left off, and a plate nothing passes through is the plate as authored.
+ */
+function ridingYawPlate(parts: FittingParts, moving: RidingStationMoving | undefined, slot: string, geometry: () => THREE.BufferGeometry,
+  w: number, h: number, d: number, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0): void {
+  const port = moving ? sweptPortRect(moving, [w, h, d, x, y, z, rx, ry, rz]) : null;
+  if (!port) { parts.add(slot, geometry(), x, y, z, rx, ry, rz); return; }
+  const [px0, py0, px1, py1] = port;
+  for (const [a, b, c, e] of [[-w / 2, -h / 2, px0, h / 2], [px1, -h / 2, w / 2, h / 2], [px0, -h / 2, px1, py0], [px0, py1, px1, h / 2]] as const) {
+    if (c - a < 0.004 || e - b < 0.004) continue;
+    parts.add(slot, KIT.xform(KIT.box(c - a, e - b, d), (a + c) / 2, (b + e) / 2, 0), x, y, z, rx, ry, rz);
+  }
+}
+
+/** A remote station's small yaw-stage fitting (a lamp, bolt, lens or bezel: `geometry`, within a box w x h x d round its
+ * origin). Release 230: left off a riding station whose moving parts sweep through it. */
+function ridingYawFitting(parts: FittingParts, moving: RidingStationMoving | undefined, slot: string, geometry: () => THREE.BufferGeometry,
+  w: number, h: number, d: number, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0): void {
+  if (moving && sweptPortRect(moving, [w, h, d, x, y, z, rx, ry, rz])) return;
+  parts.add(slot, geometry(), x, y, z, rx, ry, rz);
 }
 
 /**
@@ -2181,6 +2608,16 @@ function fittingAmericanRws(opts: FittingOptions = {}): THREE.Group {
  * receiver rails, ammunition coffin and EO head remain visibly separate.
  * Host-specific variants change protection and sensor layout while retaining
  * the same mechanical load path. Origin is the mounting foot; +Z is fire.
+ *
+ * Release 230 (the owner's field-equipment standard: nothing that moves passes through what does not): an armed station
+ * rides its cradle. Its fleet rig kept the cross-shaft and the recoil rails on the yaw stage, through the receiver and the
+ * saddle at the pivot, and pitched the coffin through the ammunition side's fork arm and strut (0 mm, thousands of
+ * crossing triangle pairs). Now the cradle (saddle, recoil rails, two side plates and their trunnion pins, and the
+ * variant's under-gun lamps) pitches about the pivot, the trunnions turning in bearings on the fork arms' inner faces
+ * where the cross-shaft ran; the gun (receiver, barrel, chute, coffin and its lid) recoils inside the cradle; the coffin
+ * hangs just outboard of its fork arm, which carries no outer strut; the variant plates the coffin stood round on the
+ * ammunition side are not drawn; and every other yaw-stage plate is cut round the moving parts' sweep (ridingYawPlate).
+ * The pivot, bore and muzzle are the fleet rig's.
  */
 interface OpenYokeBuildContext {
   readonly opts: FittingOptions;
@@ -2201,6 +2638,10 @@ interface OpenYokeBuildContext {
   readonly panther: boolean;
   readonly twinOptics: boolean;
   readonly sensorY: number;
+  /** Release 230: an armed station's moving parts, once its cradle and gun are drawn (the yaw stage is cut round them). */
+  readonly moving?: RidingStationMoving;
+  /** Release 230: an armed station's cradle (the variant's under-gun lamps ride it). */
+  readonly cradle?: FittingParts;
 }
 
 function createOpenYokeContext(opts: FittingOptions): OpenYokeBuildContext {
@@ -2234,6 +2675,29 @@ function createOpenYokeContext(opts: FittingOptions): OpenYokeBuildContext {
   };
 }
 
+/** Release 230: an armed station's fork arm (box w x h x d, centred at x, y, z, leaning rz): its face towards the bore and
+ * its outer face at the height y, and its outer face's farthest reach (the foot's outer corner), all as |x|. */
+function openYokeArm(s: number): { readonly w: number; readonly h: number; readonly d: number; readonly x: number; readonly y: number;
+  readonly z: number; readonly lean: number; readonly innerAt: (y: number) => number; readonly outer: number } {
+  const w = 0.065 * s, h = 0.30 * s, d = 0.105 * s, x = 0.165 * s, y = 0.34 * s, z = -0.015 * s, lean = 0.075;
+  // the arm on +X leans its head inboard (rz +lean): the inner face's point at height y
+  const innerAt = (at: number): number => {
+    const ly = (at - y + w / 2 * Math.sin(lean)) / Math.cos(lean);
+    return x - w / 2 * Math.cos(lean) - ly * Math.sin(lean);
+  };
+  return { w, h, d, x, y, z, lean, innerAt, outer: x + w / 2 * Math.cos(lean) + h / 2 * Math.sin(lean) };
+}
+
+/** Release 230: an armed station's trunnion: the pin's radius, the bearing on each fork arm's inner face (its ring's
+ * width), and the cradle side plates' outer face (2.5 mm inside the bearing), as |x|. */
+function openYokeTrunnion(context: OpenYokeBuildContext): { readonly pinR: number; readonly ringIn: number; readonly ringOut: number;
+  readonly ringT: number; readonly armInner: number; readonly plateOuter: number; readonly seg: number } {
+  const { receiverY, s } = context, seg = 24, pinR = 0.018 * s, ringT = 0.016 * s;
+  const armInner = openYokeArm(s).innerAt(receiverY);
+  return { pinR, seg, ringT, armInner, ringIn: (pinR + 0.0017) / Math.cos(Math.PI / seg), ringOut: 0.045 * s,
+    plateOuter: armInner - ringT + 0.001 - 0.0025 };
+}
+
 function addOpenYokeBase(context: OpenYokeBuildContext): void {
   const {box,cylX,cylY,torus}=KIT;
   const {body,parts,s,yokeCenterY}=context;
@@ -2245,18 +2709,23 @@ function addOpenYokeBase(context: OpenYokeBuildContext): void {
   parts.add('dark',box(0.28 * s,0.025 * s,0.24 * s),0,0.2025 * s,-0.015 * s);
 
   // Open fork, exposed cross-shaft and recoil rails are the AbramsX cues.
+  // (release 230: an armed station's cross-shaft is its trunnion bearings below, its rails ride its cradle, and the
+  // ammunition side's arm carries no outer strut where the coffin swings)
   for (const side of [-1,1]) {
     parts.add(body,box(0.065 * s,0.30 * s,0.105 * s),
       side * 0.165 * s,0.34 * s,-0.015 * s,0,0,side * 0.075);
-    parts.add('dark',box(0.027 * s,0.25 * s,0.040 * s),
+    if (!(context.hasWeapon && side === context.ammoSide)) parts.add('dark',box(0.027 * s,0.25 * s,0.040 * s),
       side * 0.213 * s,0.345 * s,0.010 * s,0,0,side * 0.14);
-    // 2026-10-10 (fleet-weapons lane, round 3; wave 348a's critics on the Puma S1 and Type 89 panoramic towers: "a
-    // stubby fat dark cylinder over a flat grey plank ... unreadable as any real gun"): an optics-only tower carries no
-    // gun, so it carries no recoil rails or weapon cross-shaft either; its fork closes on a slim sensor spindle.
-    if (context.hasWeapon) parts.add('dark',box(0.032 * s,0.035 * s,0.42 * s),
-      side * 0.090 * s,yokeCenterY - 0.045 * s,0.145 * s);
   }
-  if (context.hasWeapon) parts.add('dark',cylX(0.050 * s,0.41 * s,14),0,yokeCenterY,0.025 * s);
+  if (context.hasWeapon) {
+    // release 230: a bearing on each fork arm's inner face, its ring 1 mm into the arm, round the cradle's trunnion pin
+    // with 1.7 mm of air (the ring's flats taken out)
+    const { ringIn, ringOut, ringT, armInner, seg } = openYokeTrunnion(context);
+    for (const side of [-1,1]) {
+      parts.add('dark',place(machinedRing(ringIn,ringOut,ringT,0.003 * s,seg),0,0,0,0,0,Math.PI / 2),
+        side * (armInner + 0.001 - ringT / 2) + ringT / 2,context.receiverY,0);
+    }
+  }
   else {
     // round 4 (2026-10-11; wave 386's critics on the Puma S1 and Type 89 sight towers: "a black tube skewered through its
     // column"): the sensor head's pitch shaft stays inside the head; only its trunnion caps show, on the fork arms'
@@ -2265,10 +2734,14 @@ function addOpenYokeBase(context: OpenYokeBuildContext): void {
   }
 }
 
-function addOpenYokeWeapon(context: OpenYokeBuildContext): void {
+/**
+ * The station's weapon: the cradle (`cradle`, the pitch group's parts) and the gun (`gun`, its recoil group's; release
+ * 230: the receiver, barrel, chute, coffin and lid recoil together inside the cradle, as a riding pintle's gun and can do).
+ */
+function addOpenYokeWeapon(context: OpenYokeBuildContext, cradle: FittingParts, gun: FittingParts): void {
   if (!context.hasWeapon) return;
-  const {box}=KIT;
-  const {ammoSide,body,parts,receiverY,receiverZ,s,yokeCenterY}=context;
+  const {box,cylX}=KIT;
+  const {ammoSide,body,receiverY,receiverZ,s,yokeCenterY}=context;
   // 2026-10-08 (tank-accessories round 5; wave 253 on the SEPv3 station: "a shoebox with a gun stuck on its face,
   // with no sensor window detail, feed chute, cable run or flash hider, so it reads as a simplified toy"): the M2 in
   // the cradle is the fleet's Browning construction in its remote form (the M2HB's true receiver section, feed cover
@@ -2279,35 +2752,49 @@ function addOpenYokeWeapon(context: OpenYokeBuildContext): void {
   const clsKey=isMgClass(context.opts.cls) ? context.opts.cls : 'm2', cls=MG_CLASSES[clsKey];
   const sigma=0.43 * s / cls.rec[2];
   const flash=cls.flashL * sigma;
-  const gun=createPintleLayout({cls:clsKey,scale:sigma / cls.s,remote:true,ammo:false,mount:'external-cradle',
+  const layout=createPintleLayout({cls:clsKey,scale:sigma / cls.s,remote:true,ammo:false,mount:'external-cradle',
     feed:ammoSide > 0 ? 'left' : 'right',
     barrelLength:1.295 * s - (receiverZ + 0.215 * s) - 0.10 * sigma - flash - 0.011},{
     add(slot,geometry,x=0,y=0,z=0,rx=0,ry=0,rz=0){
-      parts.add(slot === 'shadow' ? 'shadow' : 'dark',geometry,x,y,z,rx,ry,rz);
+      gun.add(slot === 'shadow' ? 'shadow' : 'dark',geometry,x,y,z,rx,ry,rz);
     },
   });
-  const dy=receiverY - gun.trunY, dz=receiverZ - gun.recZ;
-  const shifted={...gun,parts:{add(slot:string,geometry:THREE.BufferGeometry,x=0,y=0,z=0,rx=0,ry=0,rz=0){
-    gun.parts.add(slot,KIT.xform(geometry,x,y,z,rx,ry,rz),0,dy,dz);
+  const dy=receiverY - layout.trunY, dz=receiverZ - layout.recZ;
+  const shifted={...layout,parts:{add(slot:string,geometry:THREE.BufferGeometry,x=0,y=0,z=0,rx=0,ry=0,rz=0){
+    layout.parts.add(slot,KIT.xform(geometry,x,y,z,rx,ry,rz),0,dy,dz);
   }}};
   addPintleReceiver(shifted);
   addPintleBarrel(shifted);
-  // the cradle saddle under the receiver, on the recoil rails
-  parts.add('dark',box(0.150 * s,0.030 * s,0.36 * s),0,receiverY - gun.trunY + gun.bodyBottom - 0.015 * s,receiverZ);
+  // the cradle saddle under the receiver, and (release 230) the recoil rails beside it, which ride the cradle
+  // (release 230: its top 0.5 mm under the receiver's floor line, a slide fit as a riding pintle's floor)
+  cradle.add('dark',box(0.150 * s,0.030 * s,0.36 * s),0,receiverY - layout.trunY + layout.bodyBottom - 0.0155 * s,receiverZ);
+  for (const side of [-1,1]) cradle.add('dark',box(0.032 * s,0.035 * s,0.42 * s),
+    side * 0.090 * s,yokeCenterY - 0.045 * s,0.145 * s);
+  // release 230: the cradle's two side plates, from the rails up past the pivot, and their trunnion pins through the fork
+  // arms' bearings (4 mm short of the arms)
+  const { pinR, armInner, plateOuter } = openYokeTrunnion(context), plateT = 0.016 * s;
+  const plateBottom = yokeCenterY - 0.045 * s + 0.0175 * s - 0.004 * s, plateTop = receiverY + 0.040 * s;
+  for (const side of [-1,1]) {
+    cradle.add('dark',box(plateT,plateTop - plateBottom,0.09 * s),side * (plateOuter - plateT / 2),(plateTop + plateBottom) / 2,0);
+    const pinIn = plateOuter - 0.004 * s, pinOut = armInner - 0.004;
+    cradle.add('dark',cylX(pinR,pinOut - pinIn,16),side * (pinIn + pinOut) / 2,receiverY,0);
+  }
 
-  // Asymmetric ammunition coffin and its lid on the ammo side.
-  const ammoX=ammoSide * 0.305 * s;
-  parts.add(body,box(0.245 * s,0.255 * s,0.31 * s),
+  // Asymmetric ammunition coffin and its lid on the ammo side (release 230: hung 2 mm outboard of its fork arm's foot,
+  // where it swings with the gun).
+  const ammoX=ammoSide * Math.max(0.305 * s,openYokeArm(s).outer + 0.002 + 0.1225 * s);
+  gun.add(body,box(0.245 * s,0.255 * s,0.31 * s),
     ammoX,yokeCenterY - 0.055 * s,0.015 * s);
-  // the lid on the coffin's flat top (the coffin's edges are rounded; an overhanging lid's corners touched nothing)
-  parts.add('detail',box(0.245 * s - 0.05,0.023 * s,0.31 * s - 0.05),
+  // the lid on the coffin's flat top (the coffin's edges are rounded; an overhanging lid's corners touched nothing; release
+  // 230: in the coffin's paint and mesh, as rendered builds paint it, so the cradle's mesh draws no more than the fleet rig)
+  gun.add(body,box(0.245 * s - 0.05,0.023 * s,0.31 * s - 0.05),
     ammoX,yokeCenterY + 0.084 * s,0.015 * s);
-  parts.add('dark',box(0.022 * s,0.22 * s,0.27 * s),
+  gun.add('dark',box(0.022 * s,0.22 * s,0.27 * s),
     ammoX + ammoSide * 0.133 * s,yokeCenterY - 0.055 * s,0.015 * s);
   // The feed chute: a flexible channel of hinged links from the coffin's lid rising over the cradle into the receiver's
   // feedway (it was a stair of loose blocks), its open floor dark where the belt runs.
   const lidTop=yokeCenterY + 0.0955 * s;
-  const feedX=ammoSide * (gun.bodyW / 2 + 0.012 * sigma), feedY=receiverY + gun.bodyH * 0.12;
+  const feedX=ammoSide * (layout.bodyW / 2 + 0.012 * sigma), feedY=receiverY + layout.bodyH * 0.12;
   const p0=[ammoX - ammoSide * 0.03 * s,lidTop - 0.01 * s,0.06 * s], p3=[feedX,feedY,receiverZ - 0.02 * s];
   const apex=Math.max(lidTop,feedY) + 0.075 * s;
   const at=(t:number):number[]=>{
@@ -2319,15 +2806,36 @@ function addOpenYokeWeapon(context: OpenYokeBuildContext): void {
     const a=at(index / links), b=at((index + 1) / links);
     const mid=[0,1,2].map((k)=>(a[k] + b[k]) / 2), len=Math.hypot(b[0] - a[0],b[1] - a[1]) + 0.012 * s;
     const roll=Math.atan2(b[1] - a[1],b[0] - a[0]);
-    parts.add('dark',box(len,0.016 * s,0.085 * s),mid[0],mid[1],mid[2],0,0,roll);
-    parts.add('shadow',box(len * 0.92,0.008 * s,0.06 * s),mid[0],mid[1] + 0.012 * s * Math.cos(roll),mid[2] - 0.0,0,0,roll);
+    gun.add('dark',box(len,0.016 * s,0.085 * s),mid[0],mid[1],mid[2],0,0,roll);
+    gun.add('shadow',box(len * 0.92,0.008 * s,0.06 * s),mid[0],mid[1] + 0.012 * s * Math.cos(roll),mid[2] - 0.0,0,0,roll);
   }
+}
+
+/** Release 230: the adds an open-yoke station's sensor head and armour draw through: plates cut round an armed station's
+ * moving parts' sweep, small fittings left off where it passes (ridingYawPlate, ridingYawFitting), and the test for the
+ * ammunition side's plates an armed station's coffin hangs over (not drawn). */
+function openYokeYaw(context: OpenYokeBuildContext): {
+  plate: (slot: string, w: number, h: number, d: number, x: number, y: number, z: number, rx?: number, ry?: number, rz?: number,
+    geometry?: () => THREE.BufferGeometry) => void;
+  fitting: (slot: string, geometry: () => THREE.BufferGeometry, w: number, h: number, d: number, x: number, y: number, z: number,
+    rx?: number, ry?: number, rz?: number) => void;
+  underCoffin: (side: number) => boolean;
+} {
+  const { parts, moving } = context;
+  return {
+    plate: (slot, w, h, d, x, y, z, rx = 0, ry = 0, rz = 0, geometry = () => KIT.box(w, h, d)) =>
+      ridingYawPlate(parts, moving, slot, geometry, w, h, d, x, y, z, rx, ry, rz),
+    fitting: (slot, geometry, w, h, d, x, y, z, rx = 0, ry = 0, rz = 0) =>
+      ridingYawFitting(parts, moving, slot, geometry, w, h, d, x, y, z, rx, ry, rz),
+    underCoffin: (side) => context.hasWeapon && Math.sign(side) === context.ammoSide,
+  };
 }
 
 function addOpenYokeSensorHead(context: OpenYokeBuildContext): void {
   if (context.opts.sensorHead === false) return;
-  const {box,cylZ}=KIT;
+  const {cylZ}=KIT;
   const {body,parts,roofSensor,s,sensorSide,sensorX,sensorY,twinOptics}=context;
+  const {plate,fitting}=openYokeYaw(context);
   // Independent EO/thermal head on the opposite cheek. Hosts with a proper
   // roof-seated panoramic tower can omit this compact side head so the weapon
   // has an unobstructed firing lane and the two systems remain visually
@@ -2336,23 +2844,23 @@ function addOpenYokeSensorHead(context: OpenYokeBuildContext): void {
     // Carry the panoramic head from the fork tips. The unarmed variant has
     // no receiver above the shaft, so the former raised shelf floated here.
     const footY = 0.46 * s, shelfY = sensorY - 0.12 * s;
-    for (const side of [-1, 1]) parts.add(body,
-      box(0.055 * s, shelfY - footY, 0.105 * s),
+    for (const side of [-1, 1]) plate(body,
+      0.055 * s, shelfY - footY, 0.105 * s,
       side * 0.145 * s, (footY + shelfY) / 2, -0.015 * s);
-    parts.add(body,box(0.34 * s,0.040 * s,0.29 * s),
+    plate(body,0.34 * s,0.040 * s,0.29 * s,
       0,shelfY,0.025 * s);
   }
-  parts.add(body,box(0.215 * s,(twinOptics ? 0.20 : 0.24) * s,0.215 * s),
+  plate(body,0.215 * s,(twinOptics ? 0.20 : 0.24) * s,0.215 * s,
     sensorX,sensorY,0.055 * s);
-  parts.add('dark',box(0.190 * s,0.024 * s,0.19 * s),
+  plate('dark',0.190 * s,0.024 * s,0.19 * s,
     sensorX,sensorY + (twinOptics ? 0.112 : 0.132) * s,0.055 * s);
   const opticXs=twinOptics ? [-0.045,0.045] : [0];
   for (const dx of opticXs) {
-    parts.add('glass',box((twinOptics ? 0.065 : 0.125) * s,
-      (twinOptics ? 0.075 : 0.105) * s,0.014 * s),
+    plate('glass',(twinOptics ? 0.065 : 0.125) * s,
+      (twinOptics ? 0.075 : 0.105) * s,0.014 * s,
     sensorX + dx * s,sensorY + 0.018 * s,0.170 * s);
   }
-  parts.add('glass',cylZ(0.026 * s,0.014 * s,10),
+  fitting('glass',() => cylZ(0.026 * s,0.014 * s,10),0.052 * s,0.052 * s,0.014 * s,
     sensorX - sensorSide * 0.055 * s,sensorY - 0.075 * s,0.171 * s);
   // Round 5 (wave 253: "no sensor window detail"): each aperture sits in a dark bezel proud of the face (the day/thermal
   // window, the laser rangefinder's port beside the small lens), under a sun hood, and the head's power and video
@@ -2360,13 +2868,16 @@ function addOpenYokeSensorHead(context: OpenYokeBuildContext): void {
   const faceZ=0.055 * s + 0.1075 * s;
   for (const dx of opticXs) {
     const w=(twinOptics ? 0.065 : 0.125) * s, h=(twinOptics ? 0.075 : 0.105) * s;
-    parts.add('dark',box(w + 0.022 * s,h + 0.022 * s,0.010 * s),sensorX + dx * s,sensorY + 0.018 * s,faceZ + 0.003 * s);
+    plate('dark',w + 0.022 * s,h + 0.022 * s,0.010 * s,sensorX + dx * s,sensorY + 0.018 * s,faceZ + 0.003 * s);
   }
-  parts.add('dark',cylZ(0.036 * s,0.016 * s,12),sensorX - sensorSide * 0.055 * s,sensorY - 0.075 * s,faceZ + 0.006 * s);
-  parts.add('dark',cylZ(0.022 * s,0.02 * s,10),sensorX + sensorSide * 0.055 * s,sensorY - 0.075 * s,faceZ + 0.008 * s);
-  parts.add('glass',cylZ(0.014 * s,0.008 * s,10),sensorX + sensorSide * 0.055 * s,sensorY - 0.075 * s,faceZ + 0.016 * s);
+  fitting('dark',() => cylZ(0.036 * s,0.016 * s,12),0.072 * s,0.072 * s,0.016 * s,
+    sensorX - sensorSide * 0.055 * s,sensorY - 0.075 * s,faceZ + 0.006 * s);
+  fitting('dark',() => cylZ(0.022 * s,0.02 * s,10),0.044 * s,0.044 * s,0.02 * s,
+    sensorX + sensorSide * 0.055 * s,sensorY - 0.075 * s,faceZ + 0.008 * s);
+  fitting('glass',() => cylZ(0.014 * s,0.008 * s,10),0.028 * s,0.028 * s,0.008 * s,
+    sensorX + sensorSide * 0.055 * s,sensorY - 0.075 * s,faceZ + 0.016 * s);
   // the sun hood rests on the head's lid and runs out over the window
-  parts.add(body,box(0.19 * s,0.014 * s,0.07 * s),sensorX,sensorY + (twinOptics ? 0.124 : 0.144) * s + 0.007 * s,
+  plate(body,0.19 * s,0.014 * s,0.07 * s,sensorX,sensorY + (twinOptics ? 0.124 : 0.144) * s + 0.007 * s,
     faceZ - 0.02 * s,-0.12,0,0);
   if (!roofSensor) {
     parts.add('dark',sweptTube([[sensorX - sensorSide * 0.06 * s,sensorY - 0.11 * s,-0.02 * s],
@@ -2376,136 +2887,148 @@ function addOpenYokeSensorHead(context: OpenYokeBuildContext): void {
 }
 
 function addOpenYokeSepv3Armor(context: OpenYokeBuildContext): void {
-  const {box,cylX}=KIT;
-  const {body,parts,s,sensorSide,sensorX,sensorY,yokeCenterY}=context;
+  const {cylX}=KIT;
+  const {body,s,sensorSide,sensorX,sensorY,yokeCenterY}=context;
+  const {plate,fitting,underCoffin}=openYokeYaw(context);
   // 2026-10-08 (tank-accessories round 5; wave 253: "a shoebox with a gun stuck on its face"): the M1A2C's CROWS-LP
   // carries its sensors and rangefinder beside the gun, not under it, and the gun runs in the open. The full-width
   // roof plate and the two tall cheeks that boxed the cradle in are gone; the sensor head takes its armour (a
   // sloped top plate over the head and an outboard cheek, both bolted to the fork), and a low splash guard runs along
   // the cradle's ammunition side.
   const sx=sensorX, headTop=sensorY + 0.132 * s + 0.012 * s;
-  parts.add(body,box(0.27 * s,0.03 * s,0.27 * s),sx,headTop + 0.015 * s,0.055 * s,-0.10,0,0);
-  parts.add(body,box(0.03 * s,0.30 * s,0.25 * s),sx + sensorSide * 0.124 * s,sensorY + 0.01 * s,0.055 * s,0,0,sensorSide * 0.06);
+  plate(body,0.27 * s,0.03 * s,0.27 * s,sx,headTop + 0.015 * s,0.055 * s,-0.10,0,0);
+  plate(body,0.03 * s,0.30 * s,0.25 * s,sx + sensorSide * 0.124 * s,sensorY + 0.01 * s,0.055 * s,0,0,sensorSide * 0.06);
   for (const dz of [-0.08,0.08]) {
-    parts.add('dark',cylX(0.009 * s,0.012 * s,6),sx + sensorSide * 0.141 * s,sensorY + 0.09 * s,0.055 * s + dz * s);
-    parts.add('dark',cylX(0.009 * s,0.012 * s,6),sx + sensorSide * 0.141 * s,sensorY - 0.07 * s,0.055 * s + dz * s);
+    fitting('dark',() => cylX(0.009 * s,0.012 * s,6),0.012 * s,0.018 * s,0.018 * s,
+      sx + sensorSide * 0.141 * s,sensorY + 0.09 * s,0.055 * s + dz * s);
+    fitting('dark',() => cylX(0.009 * s,0.012 * s,6),0.012 * s,0.018 * s,0.018 * s,
+      sx + sensorSide * 0.141 * s,sensorY - 0.07 * s,0.055 * s + dz * s);
   }
-  parts.add(body,box(0.03 * s,0.08 * s,0.36 * s),-sensorSide * 0.205 * s,yokeCenterY - 0.07 * s,0.12 * s);
+  if (!underCoffin(-sensorSide)) plate(body,0.03 * s,0.08 * s,0.36 * s,-sensorSide * 0.205 * s,yokeCenterY - 0.07 * s,0.12 * s);
 }
 
 function addOpenYokeTuskArmor(context: OpenYokeBuildContext): void {
-  const {box,cylZ}=KIT;
-  const {body,parts,s,yokeCenterY}=context;
+  const {cylZ}=KIT;
+  const {body,hasWeapon,s,yokeCenterY}=context;
+  const {plate,fitting}=openYokeYaw(context);
+  // (release 230: an armed station's plates stand 3 mm further forward, clear of its receiver's slide handle)
   for (const side of [-1,1]) {
-    parts.add(body,box(0.25 * s,0.25 * s,0.030 * s),
-      side * 0.225 * s,yokeCenterY + 0.015 * s,0.275 * s,0,-side * 0.08,0);
+    plate(body,0.25 * s,0.25 * s,0.030 * s,
+      side * 0.225 * s,yokeCenterY + 0.015 * s,0.275 * s + (hasWeapon ? 0.003 : 0),0,-side * 0.08,0);
   }
-  for (const x of [-0.095,0.095]) {
-    parts.add('dark',cylZ(0.032 * s,0.040 * s,12),
-      x * s,yokeCenterY - 0.105 * s,0.265 * s);
-    parts.add('glass',cylZ(0.024 * s,0.008 * s,12),
-      x * s,yokeCenterY - 0.105 * s,0.289 * s);
+  // the paired lamps under the gun; an armed station's cradle sweeps that place, so (release 230) they stand on the fork
+  // arms' fronts, 0.30 s up, their housings 1 mm into the arms
+  const arm=openYokeArm(s), lampY=0.30 * s, lampZ=arm.z + arm.d / 2 + 0.020 * s - 0.001;
+  for (const side of [-1,1]) {
+    const x=hasWeapon ? side * (arm.x + (arm.y - lampY) * Math.tan(arm.lean)) : side * 0.095 * s;
+    const y=hasWeapon ? lampY : yokeCenterY - 0.105 * s, z=hasWeapon ? lampZ : 0.265 * s;
+    fitting('dark',() => cylZ(0.032 * s,0.040 * s,12),0.064 * s,0.064 * s,0.040 * s,x,y,z);
+    fitting('glass',() => cylZ(0.024 * s,0.008 * s,12),0.048 * s,0.048 * s,0.008 * s,x,y,z + 0.024 * s);
   }
 }
 
 function addOpenYokeArcticArmor(context: OpenYokeBuildContext): void {
-  const {box}=KIT;
-  const {body,parts,s,sensorX,sensorY,yokeCenterY}=context;
-  parts.add(body,box(0.29 * s,0.030 * s,0.25 * s),
+  const {body,s,sensorSide,sensorX,sensorY,yokeCenterY}=context;
+  const {plate,underCoffin}=openYokeYaw(context);
+  plate(body,0.29 * s,0.030 * s,0.25 * s,
     sensorX,sensorY + 0.148 * s,0.055 * s);
-  parts.add('dark',box(0.030 * s,0.18 * s,0.20 * s),
+  if (!underCoffin(-sensorSide)) plate('dark',0.030 * s,0.18 * s,0.20 * s,
     -sensorX,yokeCenterY - 0.05 * s,0.06 * s);
 }
 
 function addOpenYokeA7vArmor(context: OpenYokeBuildContext): void {
-  const {box}=KIT;
-  const {body,parts,s,yokeCenterY}=context;
-  parts.add(body,box(0.58 * s,0.030 * s,0.28 * s),
+  const {body,s,yokeCenterY}=context;
+  const {plate}=openYokeYaw(context);
+  plate(body,0.58 * s,0.030 * s,0.28 * s,
     0,yokeCenterY + 0.135 * s,0.035 * s);
-  parts.add('dark',box(0.44 * s,0.075 * s,0.028 * s),
+  plate('dark',0.44 * s,0.075 * s,0.028 * s,
     0,yokeCenterY - 0.105 * s,0.23 * s);
 }
 
 function addOpenYokePumaArmor(context: OpenYokeBuildContext): void {
-  const {box}=KIT;
-  const {body,parts,s,yokeCenterY}=context;
+  const {body,s,yokeCenterY}=context;
+  const {plate,underCoffin}=openYokeYaw(context);
   // Puma S1 signature: a narrow arrow brow, tall faceted yoke cheeks and a
   // central recoil bridge echo the RCT30 turret without widening the roof
   // footprint. This station is deliberately independent of the panoramic
   // optics tower fitted on the opposite side of the roof.
-  parts.add(body,box(0.46 * s,0.034 * s,0.27 * s),
+  plate(body,0.46 * s,0.034 * s,0.27 * s,
     0,yokeCenterY + 0.145 * s,0.025 * s);
-  parts.add('detail',box(0.28 * s,0.026 * s,0.035 * s),
+  plate('detail',0.28 * s,0.026 * s,0.035 * s,
     0,yokeCenterY + 0.172 * s,0.175 * s);
   for (const side of [-1,1]) {
-    parts.add(body,box(0.042 * s,0.23 * s,0.25 * s),
+    if (underCoffin(side)) continue;
+    plate(body,0.042 * s,0.23 * s,0.25 * s,
       side * 0.265 * s,yokeCenterY + 0.018 * s,0.020 * s,
       0,-side * 0.10,side * 0.14);
   }
 }
 
 function addOpenYokeLightTigerArmor(context: OpenYokeBuildContext): void {
-  const {box}=KIT;
-  const {body,parts,s,yokeCenterY}=context;
+  const {body,s,yokeCenterY}=context;
+  const {plate,underCoffin}=openYokeYaw(context);
   // Light Tiger signature: split low shoulders and clipped outer guards
   // create a lighter Japanese demonstrator silhouette while preserving the
   // same real bearing/yoke/receiver load path.
   for (const side of [-1,1]) {
-    parts.add(body,box(0.20 * s,0.034 * s,0.29 * s),
+    plate(body,0.20 * s,0.034 * s,0.29 * s,
       side * 0.12 * s,yokeCenterY + 0.140 * s,0.020 * s,
       0,0,-side * 0.08);
-    parts.add('detail',box(0.032 * s,0.18 * s,0.22 * s),
+    if (!underCoffin(side)) plate('detail',0.032 * s,0.18 * s,0.22 * s,
       side * 0.255 * s,yokeCenterY + 0.005 * s,0.035 * s,
       0,-side * 0.08,side * 0.12);
   }
-  parts.add('dark',box(0.30 * s,0.045 * s,0.032 * s),
+  plate('dark',0.30 * s,0.045 * s,0.032 * s,
     0,yokeCenterY - 0.118 * s,0.235 * s);
 }
 
 function addOpenYokeKoreanArmor(context: OpenYokeBuildContext): void {
-  const {parts,s,yokeCenterY}=context;
+  const {s,yokeCenterY}=context;
+  const {plate,underCoffin}=openYokeYaw(context);
   for (const side of [-1,1]) {
+    if (underCoffin(side)) continue;
     // round 5 (contact receipt): the plates are bolted to the fork arms (they stood 3 cm off them)
-    parts.add('detail',new THREE.BoxGeometry(0.028 * s,0.16 * s,0.27 * s,1,2,4),
+    plate('detail',0.028 * s,0.16 * s,0.27 * s,
       side * 0.215 * s,yokeCenterY - 0.04 * s,0.045 * s,
-      0,0,side * 0.12);
+      0,0,side * 0.12,() => new THREE.BoxGeometry(0.028 * s,0.16 * s,0.27 * s,1,2,4));
   }
 }
 
 function addOpenYokePantherArmor(context: OpenYokeBuildContext): void {
-  const {box}=KIT;
-  const {body,classicPanther,parts,s,sensorX,sensorY,yokeCenterY}=context;
+  const {body,classicPanther,s,sensorX,sensorY,yokeCenterY}=context;
+  const {plate,underCoffin}=openYokeYaw(context);
   // Panther signature: a low arrow brow and two outward-canted armor
   // cheeks echo the main turret's faceting without hiding the open
   // mechanism. The base KF51 carries the denser demonstrator package:
   // three independently readable work lights, an elevated dual-channel
   // optic hood and two side warning apertures.
-  parts.add(body,box(0.62 * s,0.035 * s,0.30 * s),
+  plate(body,0.62 * s,0.035 * s,0.30 * s,
     0,yokeCenterY + 0.175 * s,0.035 * s,0,0,0);
-  parts.add('detail',box(0.44 * s,0.022 * s,0.025 * s),
+  plate('detail',0.44 * s,0.022 * s,0.025 * s,
     0,yokeCenterY + 0.198 * s,0.188 * s);
   for (const side of [-1,1]) {
-    parts.add(body,box(0.040 * s,0.27 * s,0.30 * s),
+    if (underCoffin(side)) continue;
+    plate(body,0.040 * s,0.27 * s,0.30 * s,
       side * 0.325 * s,yokeCenterY + 0.035 * s,0.030 * s,
       0,-side * 0.10,side * 0.16);
-    parts.add('detail',box(0.026 * s,0.15 * s,0.22 * s),
+    plate('detail',0.026 * s,0.15 * s,0.22 * s,
       side * 0.365 * s,yokeCenterY - 0.015 * s,0.045 * s,
       0,-side * 0.10,side * 0.16);
   }
   if (!classicPanther) return;
-  parts.add('dark',box(0.50 * s,0.105 * s,0.040 * s),
+  plate('dark',0.50 * s,0.105 * s,0.040 * s,
     0,yokeCenterY - 0.135 * s,0.274 * s);
   for (const x of [-0.155,0,0.155]) {
-    parts.add('glass',box(0.105 * s,0.058 * s,0.014 * s),
+    plate('glass',0.105 * s,0.058 * s,0.014 * s,
       x * s,yokeCenterY - 0.135 * s,0.300 * s);
   }
-  parts.add(body,box(0.31 * s,0.075 * s,0.245 * s),
+  plate(body,0.31 * s,0.075 * s,0.245 * s,
     sensorX,sensorY + 0.158 * s,0.048 * s);
   for (const side of [-1,1]) {
-    parts.add('dark',box(0.075 * s,0.085 * s,0.032 * s),
+    plate('dark',0.075 * s,0.085 * s,0.032 * s,
       side * 0.365 * s,yokeCenterY + 0.025 * s,0.218 * s,
       0,-side * 0.09,0);
-    parts.add('glass',box(0.047 * s,0.050 * s,0.014 * s),
+    plate('glass',0.047 * s,0.050 * s,0.014 * s,
       side * 0.365 * s,yokeCenterY + 0.025 * s,0.239 * s,
       0,-side * 0.09,0);
   }
@@ -2576,11 +3099,13 @@ function stampOpenYokeMetadata(
 }
 
 function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
-  const context=createOpenYokeContext(opts);
-  const { hasWeapon, parts }=context;
-  addOpenYokeBase(context);
-  const weapon=fitParts();
-  addOpenYokeWeapon({...context,parts:weapon});
+  const base=createOpenYokeContext(opts);
+  addOpenYokeBase(base);
+  // release 230: an armed station's cradle and gun first, so its yaw stage is drawn round their sweep
+  const cradle=fitParts(), gun=fitParts();
+  addOpenYokeWeapon(base,cradle,gun);
+  const context: OpenYokeBuildContext=base.hasWeapon
+    ? {...base,cradle,moving:ridingStationMoving(cradle,gun,base.receiverY,0,RIDING_CRADLE_RECOIL_M)} : base;
   addOpenYokeSensorHead(context);
   addOpenYokeVariantArmor(context);
 
@@ -2590,11 +3115,12 @@ function fittingOpenYokeRws(opts: FittingOptions = {}): THREE.Group {
   // This adds height without inflating the weapon, sensors or side armor.
   const towerRise = applyOpenYokeTowerRise(context);
 
-  const fitting = fitAssemble('openYokeRws', parts, opts);
+  const fitting = fitAssemble('openYokeRws', context.parts, opts);
   stampOpenYokeMetadata(fitting, context, towerRise);
-  attachAuxiliaryWeapon(fitting,weapon,opts,context.receiverY+towerRise,towerRise);
+  attachAuxiliaryWeapon(fitting,cradle,opts,context.receiverY+towerRise,towerRise,0,context.hasWeapon ? gun : undefined);
+  if (context.hasWeapon) fitting.userData.auxiliaryRecoilM=RIDING_CRADLE_RECOIL_M;
   const weaponMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
-  if (hasWeapon && weaponMesh) {
+  if (context.hasWeapon && weaponMesh) {
     weaponMesh.name = 'openYokeRwsMachineGun';
     weaponMesh.userData.appearanceRole = 'machineGun';
   }
