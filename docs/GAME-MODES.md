@@ -118,10 +118,13 @@ missile rail above it and the howitzer on the right, each laid on the aim point 
 of the HUD on a desktop and a phone. They hold their places and sizes on the screen at every zoom (the lens guns' group is
 the camera's frame scaled across the view by the zoom). A shot recoils its gun (the 30 mm's short kick, the howitzer's
 slam and run-out, the missile leaving its rail and the next sliding on once the launcher is ready), flashes at its
-muzzle and throws its gas back in the slipstream; in the infrared and thermal lenses a firing barrel heats past the heat
-threshold and cools. Each round is drawn from its gun's muzzle on a straight line to where it is aimed, joining its
-simulated flight line by 90 % of its slant range; the missile's body leaves its rail at its rail round's size and its
-smoke fades only within 8 m of the glass. All of it is presentation: the simulation still fires every gunship round
+muzzle and sweeps its gas out of the frame past the gun; in the infrared and thermal lenses each shot flashes its barrel
+past the heat threshold, and a barrel fired hard stays hot and cools. Each round is drawn from its gun's muzzle on a
+straight line to where it is aimed, joining its simulated flight line by 90 % of its slant range, and its first 48 m
+also draw as an even line from the muzzle (from beside the gun its nearest metres fill most of its length on the
+screen). The missile eases off its rail over its first 60 m at its rail round's size, its smoke laid through a narrow
+look of its own (no wedge seen down its length) that fades only within 8 m of the glass. All of it is presentation:
+the simulation still fires every gunship round
 from the orbit centre. Every other view (the killcam, the ending's replay, any camera that is not the pilot's lens) sees
 a small gun-port flash on the airframe, and the missile drawn leaving its rail under the port wing, joining its guided
 line within 120 m; its smoke spreads less than the family's and thins out within 70 m of an aloft camera. Every
