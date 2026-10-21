@@ -951,6 +951,13 @@ try {
     waitFor(pages.b, inBattle, 'B battle revealed', 240_000, { entryOf: 'B' }),
     waitFor(pages.c, inBattle, 'C battle revealed', 240_000, { entryOf: 'C' }),
   ]);
+  // (2026-10-20, item/mp-rejoin-229) each seat's own cold entry: its boot stages, the entry's stages, its world build
+  report.joinLoads = Object.fromEntries(await Promise.all(['a', 'b', 'c'].map(async (label) => [label.toUpperCase(),
+    await pages[label].evaluate(() => JSON.parse(JSON.stringify({
+      boot: Object.fromEntries(Object.entries(window.__BOOT_TIMINGS ?? {}).filter(([, value]) => typeof value === 'number').map(([key, value]) => [key, Math.round(value)])),
+      entry: window.__NETWORK_LOAD ? { stages: window.__NETWORK_LOAD.stages, totalMs: window.__NETWORK_LOAD.totalMs } : null,
+      world: window.__WORLD_LOAD ?? null,
+    }))).catch(() => null)])));
   if(mobile||phoneSeat==='c'){
     const baseViewport = mobile ? mobileViewport : phoneViewport;
     for(const viewport of [baseViewport,{...baseViewport,width:568,height:256},{...baseViewport,width:320,height:568},baseViewport]){
