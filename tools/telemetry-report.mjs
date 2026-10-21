@@ -15,7 +15,7 @@
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import {
-  TELEMETRY_BLOBS, TELEMETRY_DOUBLES, TELEMETRY_STAGE_SLOTS, telemetryRowFromRecord, telemetryRowFromSql,
+  TELEMETRY_BLOBS, TELEMETRY_DOUBLES, TELEMETRY_STAGE_SLOTS, readRenderBlackWorld, telemetryRowFromRecord, telemetryRowFromSql,
   validateTelemetryRecord,
 } from '../server/telemetryRecord.ts';
 
@@ -134,6 +134,8 @@ export function summarizeTelemetry(rows, { since = null } = {}) {
   const capFlags = new Map();
   const capVerdicts = new Map();
   const notes = new Map();
+  // (2026-10-19, black-screen-228) the black-world guard's incidents: class / heal step, with one sample receipt each
+  const blackWorld = new Map();
   const noteFailure = (kind, stage, code, build, weight, sample) => {
     const key = `${kind}|${stage || '-'}|${code || '-'}|${build || '-'}`;
     const entry = failures.get(key) || { kind, stage: stage || null, code: code || null, build: build || null, count: 0, sample: null };
@@ -192,6 +194,15 @@ export function summarizeTelemetry(rows, { since = null } = {}) {
       if (row.ready === true) session.ready = true;
       session.stage = session.stage || row.stage;
       noteFailure('error', row.stage, row.code, row.build, row.sampleInterval, row.message);
+      const incident = readRenderBlackWorld(row);
+      if (incident) {
+        const key = `${incident.blackClass}|${incident.step}`;
+        const entry = blackWorld.get(key) || { blackClass: incident.blackClass, step: incident.step, count: 0, builds: new Set(), sample: null };
+        entry.count += row.sampleInterval;
+        entry.builds.add(row.build || 'unknown');
+        entry.sample ??= incident.fields;
+        blackWorld.set(key, entry);
+      }
     }
   }
 
@@ -242,6 +253,8 @@ export function summarizeTelemetry(rows, { since = null } = {}) {
     }])),
     failures: [...failures.values()].map((row) => ({ ...row, count: round(row.count) }))
       .sort((a, b) => b.count - a.count).slice(0, 40),
+    blackWorld: [...blackWorld.values()].map((row) => ({ ...row, count: round(row.count), builds: [...row.builds] }))
+      .sort((a, b) => b.count - a.count),
   };
 }
 
@@ -289,6 +302,14 @@ export function formatTelemetryReport(summary) {
   for (const [build, row] of Object.entries(summary.builds)) {
     lines.push(`  ${build.padEnd(28)} sessions ${n(row.sessions).padStart(7)}  ready ${n(row.ready).padStart(7)}`
       + `  entered ${n(row.entered).padStart(7)}  errored ${n(row.errored)}`);
+  }
+  if (summary.blackWorld?.length) {
+    // the guard's receipts name the scene-pass calls, the camera mask, the roots, the framebuffer, the GL error and the warm
+    lines.push('RENDER BLACK WORLD (class / heal step → count, builds, a sample receipt)');
+    for (const row of summary.blackWorld) {
+      lines.push(`  ${row.blackClass.padEnd(18)} ${row.step.padEnd(5)} ${n(row.count).padStart(6)}  ${row.builds.join(',')}`);
+      lines.push(`    ${Object.entries(row.sample || {}).map(([key, value]) => `${key}=${value}`).join(' ')}`);
+    }
   }
   lines.push('FAILURES (kind / stage / code / build → count, sample)');
   if (!summary.failures.length) lines.push('  none');

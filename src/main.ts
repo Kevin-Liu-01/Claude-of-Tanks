@@ -80,7 +80,7 @@ import { createFrontlineAtmosphereAccess } from './world/frontlineAtmosphereAcce
 import { createNightLightingAccess } from './engine/nightLightingAccess.ts';
 import { createMissionBrief } from './ui/missionBrief.ts';
 import { createLighting } from './engine/lighting.ts';
-import { createPost } from './engine/post.ts';
+import { createPost, type PostRuntime } from './engine/post.ts';
 import {
   createFrameBudgetYielder,
   createOpaqueLoadingYielder,
@@ -1681,6 +1681,8 @@ const nightLighting = createNightLightingAccess({
     : entity.team !== 'enemy' || game.spotting?.isSpotted(entity.id, 'player', game.player) === true,
 });
 const post = createPost(renderer, scene, camera);
+// (black-screen-228) the network entry arms the black-world guard through the engine context
+(engineCtx as { post?: PostRuntime }).post = post;
 // 2026-10-01 (engine/post.ts AERIAL_LAYER_H): the aerial haze is a layer over the battlefield's ground
 post.setGroundHeightSource((x, z) => hfProxy.getHeightAt(x, z));
 const viewport = createViewportRuntime({

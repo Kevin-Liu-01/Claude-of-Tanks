@@ -3,6 +3,7 @@ import {
   Vector3,
   type BufferGeometry,
   type Camera,
+  type DirectionalLight,
   type Material,
   type Object3D,
   type PerspectiveCamera,
@@ -15,6 +16,7 @@ import type {
   IsolatedForwardWarmOptions,
 } from '../engine/deploymentWarm.ts';
 import type { DeploymentShadowWarmOwner } from '../engine/deploymentShadowWarm.ts';
+import { warmDepthProgramSteps } from '../engine/depthProgramWarm.ts';
 import {
   captureNewProgramUniformSteps,
   ProgramUniformPreparationError,
@@ -1105,6 +1107,8 @@ interface CombatWarmWorld extends BattleWarmWorld {
 
 interface CombatWarmLightingPort {
   updateFrustums?(): void;
+  /** The cascades the rare warm's depth-program pass renders through (depthProgramWarm.ts). */
+  csm?: { lights?: readonly DirectionalLight[] } | null;
 }
 
 interface CombatWarmTrace {
@@ -1427,6 +1431,8 @@ function* compileHiddenVariantsSteps(
     finally {
       camera.fov = priorFov;
       camera.updateProjectionMatrix();
+      // (2026-10-19, black-screen-228 RC3) the live frames between steps fit their cascades to the live fov, not 20 or 8
+      lighting?.updateFrustums?.();
       unflip();
     }
     yield;
@@ -1436,11 +1442,27 @@ function* compileHiddenVariantsSteps(
   return undefined;
 }
 
+/**
+ * (2026-10-19, black-screen-228 RC3) a cooperative warm in a revealed battle runs between frames the player sees: it may
+ * hide nothing across a yield and may not reset the live effects. Its effect volleys (spawned at a far corner or beside
+ * the player, then wiped with fx.resetAll, under a hidden effect root) are covered-load and Garage work only; live, the
+ * effect root's programs are compiled in place instead (forwardProgramWarm.initializeSteps: no spawn, no visibility).
+ */
+function warmsBetweenLiveFrames(context: CombatWarmRuntimeContext, execution?: CombatWarmExecution): boolean {
+  return execution?.cooperative === true && (context.game as { phase?: string }).phase === 'battle';
+}
+
+function noteRareWarmStep(step: string | null): void {
+  (globalThis as { __COMBAT_RARE_WARM_STEP?: string | null }).__COMBAT_RARE_WARM_STEP = step;
+}
+
 export function* createCombatOpeningWarmSteps(
   context: CombatWarmRuntimeContext,
+  execution?: CombatWarmExecution,
 ): WarmGenerator {
   if (context.isOpeningReady()) return;
   const { game, fx, post, renderer, camera, scene } = context;
+  const live = warmsBetweenLiveFrames(context, execution);
   const warmTrace: CombatWarmTrace = { stages: {} };
   const warmStartedAt = performance.now();
   let warmMarkedAt = warmStartedAt;
@@ -1467,7 +1489,13 @@ export function* createCombatOpeningWarmSteps(
     effectDetailAt = now;
   };
   markEffectDetail('start');
-  {
+  if (live) {
+    effectDetail.live = true;
+    // (round 2, eng D4) the idle pools too: a shock ring, a muzzle ring or a smoke volume sits hidden until it fires
+    try { yield* context.forwardProgramWarm.initializeSteps(fx.group, null, { includeHidden: true }); }
+    catch (error) { console.warn('[warm] live fx programs failed (continuing):', error); }
+    markEffectDetail('livePrograms');
+  } else {
     const position = new Vector3(-460, 0, -460);
     const normal = new Vector3(0, 1, 0);
     const direction = new Vector3(0, 0, 1);
@@ -1548,10 +1576,19 @@ export function* createCombatOpeningWarmSteps(
 
 function* warmCombatDestructionEffectSteps(
   context: CombatWarmRuntimeContext,
+  execution?: CombatWarmExecution,
 ): WarmGenerator {
   if (context.isDestructionWarmed()) return { cached: true, totalMs: 0, batches: 0 };
   const { game, fx, post, camera, scene } = context;
   const startedAt = performance.now();
+  if (warmsBetweenLiveFrames(context, execution)) {
+    let failure: RuntimeValue = null;
+    try { yield* context.forwardProgramWarm.initializeSteps(fx.group, null, { includeHidden: true }); }
+    catch (cause) { failure = cause; console.warn('[warm] live destruction programs failed (continuing):', cause); }
+    if (!failure) context.setDestructionWarmed(true);
+    return { cached: false, live: true, batches: 0, totalMs: Math.round(performance.now() - startedAt),
+      error: failure ? String(failure) : null };
+  }
   const playerPosition = game.player?.state?.pos;
   const position = playerPosition
     ? new Vector3(playerPosition.x, playerPosition.y + 1.4, playerPosition.z + 4)
@@ -1613,7 +1650,7 @@ export function* createCombatRareWarmSteps(
   execution?: CombatWarmExecution,
 ): WarmGenerator {
   if (context.isRareReady()) return;
-  if (!context.isOpeningReady()) yield* createCombatOpeningWarmSteps(context);
+  if (!context.isOpeningReady()) yield* createCombatOpeningWarmSteps(context, execution);
   const { game, fx, renderer } = context;
   const rareTrace: CombatWarmTrace = { stages: {} };
   const startedAt = performance.now();
@@ -1624,6 +1661,7 @@ export function* createCombatRareWarmSteps(
     markedAt = now;
   };
 
+  noteRareWarmStep('wreckVariants');
   yield* warmDestroyedRosterVariantsSteps(context, execution);
   mark('wreckVariants');
   // One warm-only armour scar per fielded hull lets the hidden-variant compile below prepare the impact-decal
@@ -1633,6 +1671,7 @@ export function* createCombatRareWarmSteps(
   // survived into the battle on hulls that were never hit.
   const warmScars: Array<{ root: Object3D }> = [];
   try {
+    noteRareWarmStep('armorScars');
     for (const entity of game.tanks) {
       if (!entity.visual?.root || !entity.state) continue;
       context.scratch1.copy(entity.state.pos);
@@ -1645,8 +1684,10 @@ export function* createCombatRareWarmSteps(
       yield;
     }
     mark('armorScars');
-    yield* warmCombatDestructionEffectSteps(context);
+    noteRareWarmStep('destructionEffects');
+    yield* warmCombatDestructionEffectSteps(context, execution);
     mark('destructionEffects');
+    noteRareWarmStep('textures');
 
     context.warmWreckTextures(renderer);
     fx.group.traverse((object) => {
@@ -1660,13 +1701,17 @@ export function* createCombatRareWarmSteps(
     yield;
     mark('textures');
 
-    for (const _ of context.deploymentShadowWarm.warmDepthProgramSteps()) yield;
+    noteRareWarmStep('shadows');
+    for (const _ of warmDepthProgramSteps({ lights: context.lighting?.csm?.lights ?? [], scene: context.scene,
+      warmRender: context.warmRender, worldGroup: context.world()?.group ?? null })) yield;
     mark('shadows');
+    noteRareWarmStep('hiddenVariants');
     rareTrace.hiddenDetail = { startedAt: performance.now() };
     try { yield* compileHiddenVariantsSteps(context, rareTrace.hiddenDetail, execution); }
     finally { rareTrace.hiddenDetail.finishedAt = performance.now(); }
     mark('hiddenVariants');
   } finally {
+    noteRareWarmStep(null);
     for (const scar of warmScars) fx.clearVehicleDecals(scar);
   }
   context.markRareReady();

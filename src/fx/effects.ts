@@ -1347,7 +1347,8 @@ function* createFxSteps(
     if (state.light === explosionLight && state.hotHex !== undefined && k > 0) {
       state.light.color.setHex(state.hotHex).lerp(_lightCool, Math.min(1, (1 - k) * 1.15));
     }
-    state.light.intensity = v;
+    // (black-screen-228 RC6) a scene light with a NaN intensity poisons every lit fragment, even at zero
+    state.light.intensity = Number.isFinite(v) ? v : 0;
   }
 
   function flashLight(
@@ -1360,6 +1361,8 @@ function* createFxSteps(
     hex?: number,
     range?: number,
   ): void {
+    // (black-screen-228 RC6) a pulse with a non-finite place never moves a light there
+    if (!(Number.isFinite(pos.x) && Number.isFinite(pos.y) && Number.isFinite(pos.z))) return;
     state.light.position.copy(pos);
     // (fx 9: 8t) the pulse's own reach (the pooled explosion light: 13 m unless the pulse asks less)
     if (state.light === explosionLight) {
@@ -1373,7 +1376,8 @@ function* createFxSteps(
       // (the combat review 10-13) no flat clipped disc and no visible edge: the ground under the light takes at most
       // LIGHT_GROUND_CAP x the sun (at least a dusk sun's worth, so a night flash still lights its ground), and the reach
       // runs out where the inverse square has already faded the pool
-      const h = Math.max(1, pos.y - groundY(pos.x, pos.z));
+      const ground = groundY(pos.x, pos.z);
+      const h = Number.isFinite(ground) ? Math.max(1, pos.y - ground) : 1;
       const rig = (engineCtx.scene?.userData as { lightRig?: { sunIntensity?: number } } | undefined)?.lightRig;
       const sunI = Math.max(2, rig?.sunIntensity ?? 4.5);
       peak = Math.min(peak, LIGHT_GROUND_CAP * sunI * h * h);
@@ -1381,7 +1385,7 @@ function* createFxSteps(
       state.light.distance = state.range;
     }
     state.bornAt = particles.getTime() - ageS;
-    state.peak = peak;
+    state.peak = Number.isFinite(peak) ? peak : 0;
     state.dur = durS && durS > 0 ? durS : state.baseDur;
     state.pow = pow && pow > 0 ? pow : state.basePow;
     applyLight(state);

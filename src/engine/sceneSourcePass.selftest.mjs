@@ -149,4 +149,26 @@ for (const failure of ['scene', 'SceneAAPass.Copy']) {
   assert.equal(f.camera.layers.mask, f.initialLayers);
 }
 
-console.log('sceneSourcePass.selftest: direct color/depth ownership, swaps, warm, resize, bypass and restoration PASS');
+{
+  // (2026-10-20, black-screen-228 round 2, D1) a resize sizes the depth texture's image with the target at once: three
+  // allocates a DepthTexture's storage immutably wherever it is first bound after the resize's dispose, and its image
+  // was only resized when the framebuffer was set up, so a sampler bound first (a soft particle, the cloud trace, a lone
+  // warm pass) allocated the OLD size and left the scene target FRAMEBUFFER_INCOMPLETE_DIMENSIONS
+  const depth = new THREE.DepthTexture(1512, 945);
+  const target = new THREE.WebGLRenderTarget(1512, 945, { type: THREE.HalfFloatType, depthTexture: depth });
+  const pass = new SceneAAPass(new THREE.Scene(), new THREE.PerspectiveCamera(), target);
+  let disposed = 0;
+  target.addEventListener('dispose', () => { disposed++; });
+  pass.setSize(2268.4, 1417.5);
+  assert.equal(disposed, 1, 'the resize disposes the target (its storage reallocates at the next bind)');
+  assert.deepEqual([target.width, target.height], [2268, 1417], 'whole pixels');
+  assert.deepEqual([depth.image.width, depth.image.height], [2268, 1417],
+    'the depth image takes the new size with the target: a sampler-first bind allocates the right storage');
+  pass.setSize(0.4, 0.8);
+  assert.deepEqual([target.width, target.height, depth.image.width, depth.image.height], [1, 1, 1, 1], 'never a zero-size target');
+  const post = readFileSync(new URL('./post.ts', import.meta.url), 'utf8');
+  assert.match(post, /this\.target\.setSize\(width, height\);\s*sizeDepthWithTarget\(this\.target\);/,
+    'the late-FX composite sizes its depth texture with its target too');
+}
+
+console.log('sceneSourcePass.selftest: direct color/depth ownership, swaps, warm, resize (the depth image with its target), bypass and restoration PASS');

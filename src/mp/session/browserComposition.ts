@@ -1331,6 +1331,15 @@ export function createBrowserComposition({
     const check = (detail: string): void => {
       if (signal.aborted || round !== active || disposed) throw new RoundSupersededError(detail);
     };
+    // (2026-10-19, black-screen-228) the black-world guard, armed under this cover (engine/blackWorldGuard.ts): fresh
+    // temporal histories before the reveal, the revealed state snapshotted on the first battle frame; optional
+    void import('../../engine/blackWorldGuardInstall.ts').then(({ armBlackWorldGuard }) => {
+      const engine = scene.engineCtx as EngineContext & { renderer?: unknown; camera?: unknown; post?: unknown };
+      if (round === active && engine.post) {
+        armBlackWorldGuard({ renderer: engine.renderer, scene: engine.scene as never, camera: engine.camera,
+          post: engine.post, game: scene.game, lifecycle: lifecycle as { pending?: boolean; renderingCovered?: boolean } });
+      }
+    }).catch(() => { /* the guard is optional */ });
     try {
       if (!active.lit) {
         activation.setGarageLighting(false);

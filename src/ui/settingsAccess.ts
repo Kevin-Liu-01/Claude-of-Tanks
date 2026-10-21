@@ -16,6 +16,8 @@ interface SettingsAccessEnvironment {
   createGear(): HTMLButtonElement;
   modalOpen(): boolean;
   now(): number;
+  /** The battle entry's opaque loading cover is up (.cot-bl.on). */
+  loadCovered?(): boolean;
 }
 
 interface SettingsAccess {
@@ -53,6 +55,7 @@ const DEFAULT_ENVIRONMENT: SettingsAccessEnvironment = {
   createGear: createDefaultGear,
   modalOpen: isAnyModalOpen,
   now: () => performance.now(),
+  loadCovered: () => !!document.querySelector('.cot-bl.on'),
 };
 
 const loadDefaultSettings = async (): Promise<SettingsModule> =>
@@ -79,7 +82,9 @@ export function createSettingsAccess(
     gear.style.display = options.gearVisible?.() ? 'flex' : 'none';
   };
   const replayOwnsScreen = () => killcamActive || environment.now() - killcamDoneAt < 250;
-  const canOpen = () => !replayOwnsScreen() && !environment.modalOpen();
+  // (2026-10-20, black-screen-228 round 2, D5) never under the battle entry's opaque loading cover: a pause panel there is
+  // invisible, it pauses the battle behind the loader, and the entry held on PREPARING with the countdown frozen
+  const canOpen = () => !replayOwnsScreen() && !environment.modalOpen() && !environment.loadCovered?.();
 
   const preload = (): Promise<SettingsRuntime> => {
     if (current) return Promise.resolve(current);

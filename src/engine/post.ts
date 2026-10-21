@@ -1,4 +1,3 @@
-import { createVisionWarmSteps } from './visionWarm.ts';
 /**
  * post.ts — the full post-processing chain.
  *
@@ -83,7 +82,7 @@ import {
   presentationFrameBudgetMs,
 } from './frameLoopScheduler.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
-import { SceneAAPass, SceneAerialPass } from './sceneSourcePass.ts';
+import { SceneAAPass, SceneAerialPass, sizeDepthWithTarget } from './sceneSourcePass.ts';
 import { ATMOSPHERE_SKY_GLSL, ATMO_GROUND_KM } from './atmosphere.ts';
 import type { AtmospherePublishedState } from './sky.ts';
 import { TemporalAAPass, applyProjectionJitter, taaJitterOffset } from './temporalAA.ts';
@@ -1999,7 +1998,10 @@ export class LateFxPass extends Pass {
   }
   setSize(width: number, height: number): void {
     this.directColorSource?.endDirectColorFrame();
+    width = Math.max(1, Math.floor(width));
+    height = Math.max(1, Math.floor(height));
     this.target.setSize(width, height);
+    sizeDepthWithTarget(this.target);
     if (this.softState) this.softState.uSoftViewport.value.set(width, height);
     this.prepared = false;
   }
@@ -2145,6 +2147,17 @@ export function createPost(
   lateTarget.texture.name = 'SceneAAPass.lateColor';
   lateDepth.name = 'SceneAAPass.lateDepth';
   const composer = new EffectComposer(renderer, target);
+  // (2026-10-19, black-screen-228 RC2) whole pixels for every composer target and pass, at least one: the GPU allocates
+  // the truncated size anyway, and a fraction under one pixel (a 1-px layout at Ultra Low's 0.8 ratio) was a zero-size
+  // texStorage2D that left the scene, aerial and late-FX framebuffers incomplete
+  composer.setSize = function (this: EffectComposer & { _width: number; _height: number; _pixelRatio: number }, width, height) {
+    this._width = width;
+    this._height = height;
+    const w = Math.max(1, Math.floor(width * this._pixelRatio)), h = Math.max(1, Math.floor(height * this._pixelRatio));
+    this.renderTarget1.setSize(w, h);
+    this.renderTarget2.setSize(w, h);
+    for (const pass of this.passes) pass.setSize(w, h);
+  };
   const softState = asLateFxSoftState(
     scene.getObjectByName('fx')?.userData?.softParticles,
   );
@@ -2329,8 +2342,11 @@ export function createPost(
         uniform vec2 uTexel;
         uniform float uSeed, uBlendK;
         varying vec2 vUv;
+        // (black-screen-228 RC6) finite AO only: a NaN or Inf texel is no occlusion, never a value the history keeps
+        bool fin(vec4 c) { return all(lessThan(abs(c), vec4(6e4))); }
         void main() {
           vec4 now = texture2D(tNow, vUv);
+          if (!fin(now)) now = vec4(1.0);
           float depth = texture2D(tDepth, vUv).x;
           // world position of this texel, reprojected into last frame
           vec4 world = uInvViewProj * vec4(vUv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
@@ -2365,7 +2381,9 @@ export function createPost(
           float k = (off || depthMismatch || uSeed > 0.5) ? 1.0 : uBlendK;
           // Preserve current device depth beside AO so the next frame can
           // reject history from a different surface without another target.
-          gl_FragColor = vec4(mix(hist, now.rgb, k), depth);
+          // A rejected or reset history is never read (NaN * 0 is NaN): the frame seeds from now.
+          vec3 ao = k >= 1.0 || !fin(historySample) ? now.rgb : mix(hist, now.rgb, k);
+          gl_FragColor = fin(vec4(ao, depth)) ? vec4(ao, depth) : vec4(1, 1, 1, depth);
         }`,
       depthTest: false,
       depthWrite: false,
@@ -2541,7 +2559,11 @@ export function createPost(
   smaaSlot.enabled = false;
   smaaSlot.needsSwap = false;
   composer.addPass(smaaSlot);
-  const smaaReady = import('three/examples/jsm/postprocessing/SMAAPass.js').then(({ SMAAPass: SmaaPass }) => {
+  // (2026-10-19, black-screen-228) the chain's first-frame warm loads in the same chunk (postLazyPasses.ts): only covered
+  // loads and the Garage boot run it, and both await `ready` first
+  let warmFirstFrameNow: typeof import('./postLazyPasses.ts').warmPostFirstFrame;
+  const smaaReady = import('./postLazyPasses.ts').then(({ SMAAPass: SmaaPass, warmPostFirstFrame }) => {
+    warmFirstFrameNow = warmPostFirstFrame;
     const smaa = new SmaaPass() as ExtendedSmaaPass;
     // Three's stock pass uses its medium preset (0.10 edge threshold / 8 search
     // steps). The HUD-scale gun tubes, wires, fences and vehicle silhouettes
@@ -3175,56 +3197,13 @@ export function createPost(
     get lastCompletedFrame() { return frameAccounting.lastCompletedFrame; },
 
     /**
-     * Compile and allocate the active post chain one pass per browser frame.
-     * A first EffectComposer.render() links every fullscreen program in one
-     * JavaScript task, which can freeze a cold ANGLE session for hundreds of
-     * milliseconds even though the boot veil is visible. Running the same
-     * passes individually preserves every shader and render target while
-     * giving the browser a paint opportunity between independent programs.
-     * The following normal render produces the exact complete frame.
+     * Compile and allocate the active post chain one pass per browser frame (postLazyPasses.ts): a first
+     * EffectComposer.render() links every fullscreen program in one task, which can freeze a cold ANGLE session for
+     * hundreds of milliseconds. Each pass renders alone inside its own synchronous transaction, so a frame presented
+     * between steps sees the whole chain; an overlapping call returns the running warm.
      */
-    async warmFirstFrame(yieldBeforePass = null) {
-      const passes = composer.passes;
-      const enabled = passes.map((pass) => pass.enabled);
-      const renderToScreen = composer.renderToScreen;
-      const timings = [];
-      try {
-        composer.renderToScreen = false;
-        for (const pass of passes) pass.enabled = false;
-        for (let index = 0; index < passes.length; index++) {
-          if (!enabled[index]) continue;
-          const pass = passes[index];
-          if (yieldBeforePass) {
-            const label = pass.constructor?.name || `post-pass-${index + 1}`;
-            await yieldBeforePass(label);
-          }
-          const startedAt = performance.now();
-          if (pass === grade) {
-            const visionSteps = createVisionWarmSteps(grade.uniforms.uThermal, () => {
-              pass.enabled = true;
-              try { composer.render(1 / 60); }
-              finally { pass.enabled = false; }
-            });
-            for (const mode of visionSteps) {
-              if (yieldBeforePass) await yieldBeforePass(`vision-${mode}`);
-            }
-          } else {
-            pass.enabled = true;
-            composer.render(1 / 60);
-            pass.enabled = false;
-          }
-          timings.push({
-            label: pass.constructor?.name || `post-pass-${index + 1}`,
-            ms: Math.round(performance.now() - startedAt),
-          });
-        }
-      } finally {
-        composer.renderToScreen = renderToScreen;
-        for (let index = 0; index < passes.length; index++) {
-          passes[index].enabled = enabled[index];
-        }
-      }
-      return timings;
+    warmFirstFrame(yieldBeforePass = null) {
+      return smaaReady.then(() => warmFirstFrameNow(composer, grade, yieldBeforePass));
     },
 
     /**
@@ -3250,7 +3229,8 @@ export function createPost(
       qualityPolicy.reconcileDynamicScaleFloor(
         dynamicScaleFloor(renderer.getPixelRatio(), preset),
       );
-      applySize(w, h);
+      // (black-screen-228 RC2) never below 16 CSS px (viewportRuntime.ts MIN_VIEWPORT_CSS_PX)
+      applySize(w > 16 ? w : 16, h > 16 ? h : 16);
     },
 
     /** Allocate the late-FX color/depth targets behind a loading screen. */
@@ -3275,8 +3255,8 @@ export function createPost(
     lateFx,
     aerial,
 
-    /** Scene-only hardware AA. Display-space SMAA + FSR1 follow it. */
-    get msaaSamples() { return msaaSamples; },
+    /** Scene-only hardware AA (what the scene target holds: the guard's H3 may lower it for one battle). */
+    get msaaSamples() { return sceneTarget.samples; },
     taa,
     get taaEnabled() { return taaEnabled; },
 
