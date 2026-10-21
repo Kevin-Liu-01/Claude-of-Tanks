@@ -7,7 +7,6 @@
 import * as THREE from 'three';
 import { t, formatNumber } from '../ui/i18n.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
-import { technicalLabel } from './catalog.ts';
 import { TRACK_MODULES, plateMetricMm, type AnatomyArmor } from './anatomyData.ts';
 import { ghostMaterials } from './anatomyMaterials.ts';
 import {
@@ -95,6 +94,12 @@ body[data-cot-width='phone'] .anatomy-chip,body[data-cot-width='compact'] .anato
 body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp{grid-template-columns:1fr;gap:4px;width:100%}
 body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-key{padding:3px 6px;font-size:9px}
 `;
+
+// Plate and station ids as words (catalog.ts's technicalLabel, kept local: importing catalog.ts here would split it
+// and tankLabels into chunks shared with the game page and add a request to the game's first load).
+function technicalLabel(value: string): string {
+  return value.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()).trim();
+}
 
 function moduleName(module: string): string { return t(`garage.module.${module}`); }
 function crewName(crew: string): string { return t(`garage.crew.${crew}`); }
