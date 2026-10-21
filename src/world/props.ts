@@ -138,6 +138,9 @@ import { RUNNER_SNOW_SINK_M } from './maps/cartBodies.ts';
 // the map-vehicles lane (2026-10-05): the vehicles' surface stream and liveries, their ground-contact patches
 import { applyVehicleSurfaceHook, VEHICLE_SURFACE_PROGRAM } from './maps/vehicleSurface.ts';
 import {
+  appendVehicleFarForm, appendVehicleFarShadow, setVehicleEye, vehicleCasterDepthMaterial, vehicleLodDefaults, vehicleLodHook, VEHICLE_LOD_KEY,
+} from './maps/vehicleFarForm.ts'; // (229) the parked vehicles' far form
+import {
   boatMudHoles, buildBoatMud, buildBoatMudRims, buildHullWaterRings, buildRunnerTracks, buildSetPieceContacts,
   buildVehicleContactShadows, vehicleShadowCaster,
 } from './maps/vehicleContactShadow.ts';
@@ -11367,8 +11370,10 @@ ${snowCap ? `
   function vehicleSurfaceMaterial(): typeof mats.vehicle {
     if (vehicleSurface) return vehicleSurface;
     const material = mats.vehicle.clone();
-    engineCtx.setupShadowMaterial(material, (shader) => { grimeHook(shader); applyVehicleSurfaceHook(shader); });
-    material.customProgramCacheKey = () => `world-props-vehicle-${VEHICLE_SURFACE_PROGRAM}-v7${snowCap ? 's' : ''}`;
+    // (229) and folding a parked vehicle's body to its far form past 120 m (vehicleFarForm.ts; untagged geometry reads 0)
+    vehicleLodDefaults(material);
+    engineCtx.setupShadowMaterial(material, (shader) => { grimeHook(shader); applyVehicleSurfaceHook(shader); vehicleLodHook(shader); });
+    material.customProgramCacheKey = () => `world-props-vehicle-${VEHICLE_SURFACE_PROGRAM}${VEHICLE_LOD_KEY}-v7${snowCap ? 's' : ''}`;
     retainedSurfaceMaterials.push(material);
     vehicleSurface = material;
     return material;
@@ -11396,6 +11401,9 @@ ${snowCap ? `
     }
     const { geoI, groundCoverDetail } = yield* prepareDestructiblePoolGeometry(kind, pool);
     if (groundCoverDetail) sealGroundCoverPlacements(pool, groundCoverDetail);
+    // (229; the coordinator: "cars beyond about 120 m use a merged low form with a cheap shadow") a parked vehicle's body
+    // gains its far form, inside its box: bounds, caster height and colliders (the role's collision solid) unchanged
+    const far = material === vehicleSurface && kind in CIVILIAN_VEHICLE_RECEIPTS ? appendVehicleFarForm(geoI) : null;
     const imI = new THREE.InstancedMesh(geoI, material, pool.mats4.length);
     if (material === mats.fieldStone && kind === 'wallstone' && geoI.getAttribute('aStone')) {
       // (b14: the dry-stone walls' settling and copes by world place, and the same in the shadows)
@@ -11424,7 +11432,13 @@ ${snowCap ? `
     imI.name = 'destructible-' + kind;
     // the map-vehicles lane (2026-10-05): a vehicle casts through its coarse stand-in on the pool's own matrices
     const shadowGeo = castsDynamicShadow && meta.shadowBuild ? meta.shadowBuild() : null;
-    if (shadowGeo) group.add(vehicleShadowCaster(imI, shadowGeo, casterHeightM(shadowGeo, pool.mats4)));
+    if (shadowGeo) {
+      // (229) the stand-in folds to the far form's hull too, by the eye's place (vehicleFarForm.ts)
+      if (far) appendVehicleFarShadow(shadowGeo, far.hull);
+      const caster = vehicleShadowCaster(imI, shadowGeo, casterHeightM(shadowGeo, pool.mats4));
+      if (far) caster.customDepthMaterial = vehicleCasterDepthMaterial();
+      group.add(caster);
+    }
     else if (castsDynamicShadow) setShadowCasterProfile(imI, { heightM: casterHeightM(geoI, pool.mats4), instanced: true }); // round 79
     if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imI, true);
     group.add(imI);
@@ -12168,6 +12182,7 @@ ${snowCap ? `
   }
 
   function updateProps(dt: number, cameraPos: THREE.Vector3 | null = null): void {
+    if (cameraPos) setVehicleEye(cameraPos); // (229) the vehicle stand-ins' shadow fold
     updatePoleLod(cameraPos);
     updateRockLod(cameraPos);
     updateFineDetail(cameraPos);
