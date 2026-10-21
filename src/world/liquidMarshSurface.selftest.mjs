@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, LIQUID_MARSH_STRIDE, MAX_LIQUID_RIVER_SLOPE } from './liquidMarshSurface.ts';
 import { shorelineDistance, shorelineRadiusAt, sampleShorelineMask } from './shoreline.ts';
+import { WATER_BANK_LIP_M } from './waterBank.ts';
 import { createHeightField, createLayout } from './terrain.ts';
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness, LIQUID_INDEX_CELLS } from './liquidMarshIndex.ts';
@@ -124,9 +125,12 @@ for (const seed of [1337, 2049]) {
 }
 
 const mangroveRoadWater = createHeightField(1337, getMapConfig('mangrove'));
+// (2026-10-21, waterBank.ts) the lakes' floor is their level: Mangrove's went under its tidal waterline (-2.3 - 0.43)
+const mangroveFloor = getMapConfig('mangrove').terrain.lakes[0].level;
+assert.ok(Math.abs(mangroveFloor + 2.73) < 1e-12, 'Mangrove\'s floor under its tidal waterline');
 for (const [x, z] of [[83.66666666666667, -181], [73.5, -178]]) {
   assert.equal(mangroveRoadWater.getWaterMaskAt(x, z), 1, 'road-apron regression points are fully liquid');
-  assert.ok(Math.abs(mangroveRoadWater.getHeightAt(x, z) + 2.3) < 1e-10,
+  assert.ok(Math.abs(mangroveRoadWater.getHeightAt(x, z) - mangroveFloor) < 1e-10,
     'the late road ditch cannot depress a fully flat lake by either 0.096mm or 5mm');
 }
 const roadLakeConfig = {
@@ -145,8 +149,16 @@ for (const x of [110, 128, 146]) for (const offset of [0, 4, 7, 11.5, 14, 16, 18
     'frozen/non-liquid road and apron arithmetic stays bit-identical');
   if (offset <= 14) {
     assert.equal(roadLake.getWaterMaskAt(x, z), 0, 'protected road shoulders are still dry');
-    assert.equal(roadLake.getHeightAt(x, z), dryRoadLake.getHeightAt(x, z),
-      'dry road shoulders retain their original berm/ditch heights');
+    // (2026-10-21, waterBank.ts: a body's water dried by a road stands a lip over the water's top) the causeway's crown
+    // keeps its dry height; its shoulders are never lowered and rise at most to the lip over the water's top (they had
+    // lain on the floor, under the water beside them)
+    const wet = roadLake.getHeightAt(x, z), dryHeight = dryRoadLake.getHeightAt(x, z);
+    const held = roadLake.getWaterBodySurfaceAt(x, z) + WATER_BANK_LIP_M;
+    if (offset === 0) assert.equal(wet, dryHeight, 'the causeway\'s crown keeps its dry height');
+    // (the road's shoulder blends its crown into the ground beside it, held now: the shoulder rises in that blend's share,
+    // never by more than the hold lifts the floor)
+    assert.ok(wet >= dryHeight - 1e-9 && wet - dryHeight <= held - (-2.3) + 1e-9,
+      `dry road shoulders keep their berm/ditch heights over the water's top (${x}, ${z}: ${wet} from ${dryHeight}, held ${held})`);
   } else if (roadLake.getWaterMaskAt(x, z) === 1) {
     assert.ok(Math.abs(roadLake.getHeightAt(x, z) + 2.3) < 1e-10,
       'lake-road transitions reach the exact waterline as soon as the canonical mask reaches one');
@@ -217,7 +229,12 @@ for (const name of ['delta', 'monsoon', 'autumn', 'polders', 'mangrove']) {
         const sz = (field.getHeightAt(x, z + 0.25) - field.getHeightAt(x, z - 0.25)) * 2;
         const slope = Math.hypot(sx, sz);
         if (field.getWaterMaskAt(x, z) > 0.98) {
-          assert.ok(slope <= 0.01001, `${name}: water slopes ${slope} exceed the 1% hydraulic grade`);
+          // (2026-10-21, waterBank.ts) the water's top is its own surface now (getWaterBodySurfaceAt), the bed shelving
+          // under it toward the waterline: the grade is the top's, and the bed is flat where the water is whole all round
+          const top = (px, pz) => field.getWaterBodySurfaceAt(px, pz);
+          const full = [[0.25, 0], [-0.25, 0], [0, 0.25], [0, -0.25]].every(([dx, dz]) => field.getWaterMaskAt(x + dx, z + dz) === 1);
+          const grade = Math.hypot((top(x + 0.25, z) - top(x - 0.25, z)) * 2, (top(x, z + 0.25) - top(x, z - 0.25)) * 2);
+          assert.ok(grade <= 0.01001 && (!full || slope <= 0.01001), `${name}: water slopes ${grade} (its bed ${slope}) exceed the 1% hydraulic grade`);
           checkedWater++;
           coreCount++;
           assert.equal(field._noVeg(x, z), true, `${name}: open water excludes foliage`);

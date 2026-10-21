@@ -26,6 +26,8 @@ interface WaterworksTerrain {
   getHeightAt(x: number, z: number): number;
   getWaterMaskAt(x: number, z: number): number;
   _roadDist(x: number, z: number): number;
+  /** (2026-10-21, waterBank.ts) the water's top over a body's floor (its level plus the map's depth); absent, the level. */
+  getWaterBodySurfaceAt?(x: number, z: number): number;
   _layout: {
     lakes: readonly { level?: number }[];
     spawns: { player: { x: number; z: number }; enemies: readonly { x: number; z: number }[] };
@@ -78,6 +80,9 @@ function addBudget(out: Budget, geometry: BufferGeometry): void {
   }
 }
 
+/** (2026-10-21) the bank's coping over its highest ground (the base's 1.1 m over the floor less its 0.18 m shore). */
+const BANK_COPING_OVER_GROUND_M = 0.92;
+
 function safePoint(field: WaterworksTerrain, x: number, z: number): boolean {
   if (!Number.isFinite(x) || !Number.isFinite(z) || Math.max(Math.abs(x), Math.abs(z)) > 455
       || field._roadDist(x, z) < 8) return false;
@@ -111,7 +116,7 @@ function sampleBodySupport(name: Body['name'], field: WaterworksTerrain, rect: S
 }
 
 function planBody(name: Body['name'], center: Point2, width: number, depth: number,
-  field: WaterworksTerrain, level: number, blockers: readonly CollisionRecord[],
+  field: WaterworksTerrain, level: number, surface: number, blockers: readonly CollisionRecord[],
   ignored: ReadonlySet<CollisionRecord>): Body | null {
   const [x, z] = center, x0 = x - width / 2, x1 = x + width / 2;
   const z0 = z - depth / 2, z1 = z + depth / 2;
@@ -120,11 +125,15 @@ function planBody(name: Body['name'], center: Point2, width: number, depth: numb
   const support = sampleBodySupport(name, field, { x0, z0, x1, z1 });
   if (!support) return null;
   const { min, max } = support;
-  if (name === 'kiosk' ? max - min > 0.65 : min < level - 0.02 || max > level + 0.4) return null;
-  // Water height is the visible liquid surface, not a claim about the lakebed.
+  // (2026-10-21, waterBank.ts) a hydraulic body's dry side stands at most 0.4 m over the water's top: the shore now meets
+  // the water there (it had lain on the floor, under the water's edge)
+  if (name === 'kiosk' ? max - min > 0.65 : min < level - 0.02 || max > surface + 0.4) return null;
+  // The level is the floor the water stands on (the planar core's bed); the bodies' heights keep to it.
   // Both hydraulic foundations continue below it; the dry body buries its toe.
   const bottom = name === 'kiosk' ? min - 0.12 : level - 1.2;
-  const top = name === 'kiosk' ? max + 3.2 : level + (name === 'intake' ? 7.4 : 1.1);
+  // (2026-10-21, waterBank.ts) the bank's coping stands at least BANK_COPING_OVER_GROUND_M over its highest ground: the
+  // shore that now meets the water's top (on the base's shore, 0.18 m over the floor, the level's 1.1 m held it)
+  const top = name === 'kiosk' ? max + 3.2 : name === 'intake' ? level + 7.4 : Math.max(level + 1.1, max + BANK_COPING_OVER_GROUND_M);
   return { name, x, z, width, depth, bottom, top, collisionTop: top + 0.06,
     supportMin: min, supportMax: max };
 }
@@ -194,9 +203,11 @@ function planWorks(config: ReservoirWaterworksConfig, field: WaterworksTerrain,
   const waterLevel = field._layout.lakes[config.lakeIndex]?.level;
   if (!Number.isFinite(waterLevel)) return null;
   const level = waterLevel!;
-  const kiosk = planBody('kiosk', config.kiosk, 6, 6, field, level, blockers, ignored);
-  const bank = planBody('bank', config.bank, 7, 12, field, level, blockers, ignored);
-  const intake = planBody('intake', config.intake, 7, 6, field, level, blockers, ignored);
+  const top = field.getWaterBodySurfaceAt?.(config.intake[0], config.intake[1]) ?? Number.NaN;
+  const surface = top === top ? top : level;
+  const kiosk = planBody('kiosk', config.kiosk, 6, 6, field, level, surface, blockers, ignored);
+  const bank = planBody('bank', config.bank, 7, 12, field, level, surface, blockers, ignored);
+  const intake = planBody('intake', config.intake, 7, 6, field, level, surface, blockers, ignored);
   if (!kiosk || !bank || !intake) return null;
   // Bank and intake share one closed, supported interface, not a water gap.
   if (Math.abs(bank.x + bank.width / 2 - (intake.x - intake.width / 2)) > 0.001

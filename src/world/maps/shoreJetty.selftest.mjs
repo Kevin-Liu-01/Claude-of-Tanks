@@ -14,7 +14,7 @@ import { createHeightField, mulberry32 } from '../terrain.ts';
 import { MAP_IDS, getMapConfig } from './index.ts';
 import { dressMapExtras } from './mapKits.ts';
 import {
-  GANGWAY_MAX_RUN_M, GANGWAY_MIN_RISE_M, GANGWAY_MIN_RUN_M, JETTY_BANK_CLEARANCE_M, JETTY_BANK_LANDING_M,
+  GANGWAY_MAX_RUN_M, GANGWAY_MIN_RISE_M, GANGWAY_MIN_RUN_M, JETTY_BANK_CLEARANCE_M, JETTY_BANK_LANDING_M, JETTY_BANK_MAX_FREEBOARD_M,
   JETTY_DECK_HALF_WIDTH_M, JETTY_DECK_THICKNESS_M, JETTY_FREEBOARD_M, JETTY_MAX_SPANS, JETTY_MIN_SPANS,
   JETTY_ROAD_CLEARANCE_M, JETTY_SPAN_M, MOORED_BOAT_DRAFT_M, landingStream, planShoreJetty,
 } from './shoreJetty.ts';
@@ -38,7 +38,12 @@ function auditPlan(field, lake, plan, spawns, label) {
     near(field.getHeightAt(tx, tz), level, 1e-6, `${label}: over the planar bed`);
     near(plan.surface, level + field.getWaterDepthAt(tx, tz), 1e-9, `${label}: the surface is bed + depth`);
   }
-  near(plan.deckY + JETTY_DECK_THICKNESS_M / 2, plan.surface + JETTY_FREEBOARD_M, 1e-9, `${label}: deck top a constant freeboard over the water`);
+  // (2026-10-21, waterBank.ts) a constant freeboard over the water, or on a steep bank (one that meets the water over the
+  // deck's underside) a bank quay raised to land on it, within JETTY_BANK_MAX_FREEBOARD_M
+  const freeboard = plan.deckY + JETTY_DECK_THICKNESS_M / 2 - plan.surface;
+  assert.ok(freeboard >= JETTY_FREEBOARD_M - 1e-9 && freeboard <= JETTY_BANK_MAX_FREEBOARD_M + 1e-9,
+    `${label}: deck top a constant freeboard over the water, or a bank quay's (${freeboard.toFixed(3)} m)`);
+  if (freeboard > JETTY_FREEBOARD_M + 1e-9) assert.equal(plan.gangway, null, `${label}: a raised deck is a bank quay, no gangway`);
   const underside = plan.deckY - JETTY_DECK_THICKNESS_M / 2, top = plan.deckY + JETTY_DECK_THICKNESS_M / 2;
   let shoreGround = -Infinity;
   for (let k = 0; k <= plan.spans; k++) for (const side of [-1, 1]) {
