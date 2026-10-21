@@ -320,9 +320,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire.alt{display:none}
 }
 /* r10g (the coordinator): a portrait phone 340 px wide or less parks the chip under the map, as a short landscape does,
-   where no seat by the sight kept clear of the left FIRE button, the map and the speedometer */
+   where no seat by the sight kept clear of the left FIRE button, the map and the speedometer; the map's width, so it keeps
+   8 px from the systems row's top slot (106 px ran 6 px under a wrapped row's second line) */
 @media (max-width:340px) and (orientation:portrait){
-  .cot-aim-warning{left:8px;top:var(--hud-aim-warning-top,204px);transform:none;width:106px;font-size:9px;line-height:10px;padding:2px 10px}
+  .cot-aim-warning{left:8px;top:var(--hud-aim-warning-top,204px);transform:none;width:92px;font-size:9px;line-height:10px;padding:2px 8px}
 }
 
 /* Live FPS only appears after 30 frames. Reserve a small instrument row below
@@ -421,6 +422,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
    touch target), its icon over its label, without the keyboard's key badges a touch screen has no use for */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls{width:var(--hud-systems-width);overflow:visible;flex-wrap:wrap}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button{flex:1 1 calc((100% - (var(--hud-systems-per-row,3) - 1) * 3px) / var(--hud-systems-per-row,3));width:auto!important;min-width:44px;height:44px!important;min-height:44px;grid-template-columns:minmax(0,1fr);grid-template-rows:17px 13px;row-gap:2px;padding:5px 1px 6px}
+/* ...and what one row cannot hold sits beside the touch chrome, left of it and level with it (the layout's data-slot-beside
+   index and the chrome's offset: a five-control kit at 320 wide, whose second row met the ammo drawer's open shells) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button[data-slot-beside]{position:absolute!important;flex:none;width:44px!important;min-width:44px;top:var(--hud-systems-beside-dy);left:0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button[data-slot-beside='1']{left:47px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .si{grid-column:1;grid-row:1}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .sl{grid-column:1;grid-row:2;max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:8px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .sk{display:none}

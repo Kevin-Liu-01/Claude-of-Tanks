@@ -11,8 +11,9 @@ import { planTouchNotices, touchFreePlace, touchSightKeepOut, TOUCH_COMPACT_ALER
   from './touchNoticePlan.ts';
 
 const FURNITURE = JSON.parse(readFileSync(new URL('../../tools/fixtures/hud-sight-furniture.json', import.meta.url), 'utf8'));
-// the furniture a notice covers first where nothing clears (battleHudLayout TOUCH_NOTICE_SOFT)
-const SOFT = new Set(['.cot-minimap', '.cot-top', '.cot-mode-status.show', '.cot-ear']);
+// the furniture a notice covers first where nothing clears (battleHudLayout TOUCH_NOTICE_SOFT, the map apart: `map`)
+const SOFT = new Set(['.cot-top', '.cot-mode-status.show', '.cot-ear']);
+const MAP = '.cot-minimap';
 const apart = (a, b) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
 const boxOf = (cx, y, size) => ({ x0: cx - size.w / 2, y0: y, x1: cx + size.w / 2, y1: y + size.h });
 
@@ -50,6 +51,36 @@ const boxOf = (cx, y, size) => ({ x0: cx - size.w / 2, y0: y, x1: cx + size.w / 
   }
 }
 
+// 1c. r10g (the coordinator's ruling): through the scope, where nothing clears, a notice covers the minimap before the
+// sight's footprint (its "0 APFSDS" and zoom matter more, and the notice is brief: at 320x568 the alert sat on them); in
+// battle the footprint, mostly the ring's empty middle, still goes before the map. The only room: the map's corner and
+// the footprint's main box (the ring, or the scope's circle); 40 px walls everywhere else.
+{
+  const grid = 40;
+  for (const scope of [true, false]) {
+    const [width, height] = [1000, 800];
+    const keep = touchSightKeepOut(width, height, scope, false);
+    const snap = (b) => ({ x0: Math.floor(b.x0 / grid) * grid, y0: Math.floor(b.y0 / grid) * grid,
+      x1: Math.ceil(b.x1 / grid) * grid, y1: Math.ceil(b.y1 / grid) * grid });
+    const map = { x0: 40, y0: 40, x1: 240, y1: 160 };
+    const room = [map, snap(keep[0])];
+    const walls = [];
+    for (let y = 0; y < height; y += grid) for (let x = 0; x < width; x += grid) {
+      const cell = { x0: x, y0: y, x1: x + grid, y1: y + grid };
+      if (!room.some((r) => apart(cell, r) < 0)) walls.push(cell);
+    }
+    const plan = planTouchNotices({ width, height, top: 20, obstacles: walls, soft: [], map, scope, seated: false,
+      notice: { w: 300, h: 60 }, alert: { w: 300, h: 60 }, countdown: null, banner: null, fallbackTop: 0 });
+    assert.ok(!plan.cleared, `${scope ? 'scope' : 'battle'}: no clear place`);
+    const placed = [['detection', boxOf(plan.noticeCx, plan.noticeTop, TOUCH_COMPACT_NOTICE)],
+      ['alert', boxOf(plan.alertCx, plan.alertTop, TOUCH_COMPACT_ALERT)]];
+    const onMap = placed.filter(([, box]) => apart(box, map) < 0).map(([name]) => name);
+    const onSight = placed.filter(([, box]) => keep.some((block) => apart(box, block) < 0)).map(([name]) => name);
+    if (scope) assert.ok(onMap.length === 2 && !onSight.length, `scope: the notices cover the map (${onMap}), not the sight (${onSight}): ${JSON.stringify(plan)}`);
+    else assert.ok(!onMap.length && onSight.length === 2, `battle: the notices reach into the footprint (${onSight}), not the map (${onMap}): ${JSON.stringify(plan)}`);
+  }
+}
+
 // 2. Every recorded touch size and stage.
 const uncleared = new Set();
 let planned = 0;
@@ -60,8 +91,9 @@ for (const [key, recorded] of Object.entries(FURNITURE.sizes)) {
   const width = Number(match[1]);
   const height = Number(match[2]);
   const boxes = recorded.map(([name, x0, y0, x1, y1]) => ({ name, x0, y0, x1, y1 }));
-  const obstacles = boxes.filter((box) => !SOFT.has(box.name));
+  const obstacles = boxes.filter((box) => !SOFT.has(box.name) && box.name !== MAP);
   const soft = boxes.filter((box) => SOFT.has(box.name));
+  const map = boxes.find((box) => box.name === MAP) ?? null;
   const top = Math.max(...boxes.filter((box) => box.name === '.cot-top' || box.name === '.cot-mode-status.show').map((box) => box.y1), 62);
   // (integ's place: under the score and the objective, 12 % down at the least, the stack centred)
   const fallbackTop = Math.max(top + 8, height * 0.12);
@@ -72,7 +104,7 @@ for (const [key, recorded] of Object.entries(FURNITURE.sizes)) {
   for (const scope of [false, true]) for (const countdown of [null, { w: Math.min(228, width - 24), h: 136 }])
     for (const banner of [null, { w: Math.min(250, width - 32), h: 64 }]) {
       const at = `${key} ${scope ? 'scope' : 'battle'}${countdown ? ', countdown' : ''}${banner ? ', medal' : ''}`;
-      const plan = planTouchNotices({ width, height, top, obstacles, soft, scope, seated, notice, alert: { w: notice.w, h: 40 },
+      const plan = planTouchNotices({ width, height, top, obstacles, soft, map, scope, seated, notice, alert: { w: notice.w, h: 40 },
         countdown, banner, fallbackTop });
       planned++;
       if (!plan.cleared) { uncleared.add(`${key}${countdown ? ' countdown' : ''}`); continue; }
@@ -86,7 +118,7 @@ for (const [key, recorded] of Object.entries(FURNITURE.sizes)) {
       for (const [i, [name, box]] of parts.entries()) {
         assert.ok(box.x0 >= TOUCH_NOTICE_GAP - 1e-6 && box.x1 <= width - TOUCH_NOTICE_GAP + 1e-6 && box.y1 <= height - TOUCH_NOTICE_GAP + 1e-6,
           `${at}: ${name} is on the screen`);
-        for (const block of [...obstacles, ...soft]) {
+        for (const block of [...obstacles, ...soft, ...(map ? [map] : [])]) {
           assert.ok(apart(box, block) >= TOUCH_NOTICE_GAP - 1e-6, `${at}: ${name} keeps ${apart(box, block).toFixed(2)} px from ${block.name}`);
         }
         for (const block of keep) {
@@ -110,8 +142,8 @@ assert.deepEqual(plain, ['320x568t', '568x290t', '640x360t', '667x375t'], `no cl
 {
   const key = '360x640t';
   const boxes = FURNITURE.sizes[key].map(([name, x0, y0, x1, y1]) => ({ name, x0, y0, x1, y1 }));
-  const plan = planTouchNotices({ width: 360, height: 640, top: 62, obstacles: boxes.filter((box) => !SOFT.has(box.name)),
-    soft: boxes.filter((box) => SOFT.has(box.name)), scope: false, seated: true, notice: { w: 214, h: 42 }, alert: { w: 214, h: 40 },
+  const plan = planTouchNotices({ width: 360, height: 640, top: 62, obstacles: boxes.filter((box) => !SOFT.has(box.name) && box.name !== MAP),
+    soft: boxes.filter((box) => SOFT.has(box.name)), map: boxes.find((box) => box.name === MAP), scope: false, seated: true, notice: { w: 214, h: 42 }, alert: { w: 214, h: 40 },
     countdown: null, banner: null, fallbackTop: 264 });
   const ring = touchSightKeepOut(360, 640, false, true)[0];
   assert.ok(apart(boxOf(180, 264, { w: 214, h: 90 }), ring) < 0, '360x640: integ\'s centred stack crosses the ring');

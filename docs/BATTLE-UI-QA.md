@@ -149,7 +149,12 @@ runs into it, the chip waits hidden until the notice goes. The notice never
 moves the chip or any other mark. Moving it ran the chip into the furniture
 instead: 22 px into the left FIRE button at 320x568 and 16 m. Round r10 set the
 chip over the sight at 320x568, under the DETECTED notice. A short landscape
-keeps it in the left lane under the map. On the short landscape
+keeps it in the left lane under the map, and so does a portrait phone 340 px
+wide or less (r10g, the coordinator's call), at the map's width so it keeps
+8 px from the systems row. There every seat by the sight ran
+into the left FIRE button, the map or the speedometer, 12.22 px at worst. The
+struck round or rack still shows the empty gun by the sight. The left lane
+starts under the parked chip, and the notices' footprint leaves out its seat. On the short landscape
 scope stack the round leads the ammo readout line instead, and a rack's countdown
 sits beside the rack when the ring keeps clear of it there. The scope's vision switch sits beside the
 sight, level with the marker and past the widest ring, where no readout goes. A
@@ -195,10 +200,13 @@ room, otherwise above the ring. The sight's band covers the countdown, the rack,
 the struck round and the aim warning. On a portrait phone under 720 px tall the
 row takes the top slot instead: right of the map, 4 px under the touch chrome, in
 a compact form (icons over labels, no key badges, the slot's width shared:
-`body[data-systems-slot='top']`). Each button keeps the 44 px touch target. A kit
-wider than the slot wraps to balanced rows, so the five-control kit at 320 wide
-takes two. A 44 px row 8 px under the chrome left the scope's notices no clear
-band under it at 360x640, so the slot sits 4 px under the chrome. Round r10e's critic found the row clipped at
+`body[data-systems-slot='top']`). Each button keeps the 44 px touch target. What
+one row cannot hold sits beside the touch chrome, left of it and level with it,
+where that leaves a 44 px place (`data-slot-beside`). The five-control kit at
+320 wide puts its fifth button there: as a second row it met the ammo drawer's
+open shells. A wider overflow wraps to balanced rows. A 44 px row 8 px under the
+chrome left the scope's notices no clear band under it at 360x640, so the slot
+sits 4 px under the chrome. Round r10e's critic found the row clipped at
 320 wide ("Auto g"), the scope's readouts on its labels and the rack and struck
 round on the left FIRE button at 320x568, and the gun travel chip on its key
 badges at 360x640. Over the ring, the marks set there (the readout row, the chip,
@@ -553,7 +561,9 @@ keeps clear of them too. Where nothing clears, a notice covers a label before th
 sight's footprint (`labels`, a quarter of the footprint's cost per px²). Where
 nothing clears, every block now counts out to its 6 px gap, so a fallback place
 no longer sits 0 px from the systems row or the quick buttons. The detection and
-the alert are also placed in whichever order reaches least far in all. Placing
+the alert are also placed in whichever order reaches least far in all, and a
+notice already placed costs a hundred times a panel, so the two never stack
+while any other place remains. Placing
 the detection first had taken the one free place at 640x360 and sent the alert
 onto the scope's zoom plate. The scan reads only the blocks that cross each row
 band, about 4 ms a plan on the smallest windows. The rendered receipt now also
@@ -580,9 +590,11 @@ furniture.
 The same critic found three text and layout defects:
 
 - **Alert separator.** The ammunition alert left its "·" at a line end (1024x600
-  and the phones). It now breaks before the separator. A word joiner after the
-  space keeps the dot with its next word. The no-break space r10f first used
-  rendered narrower than the space before the dot ("EMPTY ·SELECT").
+  and the phones). It now breaks before the separator: each dot and the word
+  after it share a nowrap span, with an ordinary space between them. r10f first
+  used a no-break space, which rendered narrower than the space before the dot
+  ("EMPTY ·SELECT", 9.1 px against 4.1 px at 1024x768). A word joiner after an
+  ordinary space did not hold the break in Chrome.
 - **Medal wrap.** The medal card's description left "last." alone on its last
   line, so it wraps evenly now (`text-wrap: pretty`).
 - **Tray gap.** A mouse layout's inline tray sat 4 px from the drive gauge at

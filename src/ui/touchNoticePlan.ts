@@ -24,8 +24,9 @@
  * then the detection, then both in their compact form (the short landscapes' 136 px notice, the alert in 8 px type). The
  * alert's slot is the detection's width, so its wrapped height holds. Where no place keeps clear (the smallest phones),
  * each element takes the least intrusive one, reaching into the footprint (modelled at full bloom) before it covers any
- * panel or control, and over a button's label before the footprint, each block counted out to its gap, the detection and
- * the alert in the order that reaches least far in all (`cleared` false). The medal card takes the highest free place off them all, or waits (`bannerReady` false), keeping its time.
+ * panel or control, and over a button's label before the footprint (through the scope over the minimap too: its readouts
+ * matter more), each block counted out to its gap, the detection and the alert in the order that reaches least far in
+ * all (`cleared` false). The medal card takes the highest free place off them all, or waits (`bannerReady` false), keeping its time.
  *
  * DOM-free and deterministic; battleHudLayout.ts measures the inputs on each relayout. touchNoticePlan.selftest.mjs checks
  * every recorded touch size; tools/hud-touch-notices.browser.mjs measures the rendered boxes against the reticle's ink.
@@ -152,8 +153,12 @@ interface TouchNoticeInput {
   readonly top: number;
   /** The panels and controls the notices keep TOUCH_NOTICE_GAP from (the vision plate, the systems row among them). */
   readonly obstacles: readonly TouchBox[];
-  /** The map, the score and the objective, the rosters, the network readouts, the feed lanes: kept clear of alike. */
+  /** The score and the objective, the rosters, the network readouts, the feed lanes: kept clear of alike. */
   readonly soft: readonly TouchBox[];
+  /** The minimap: kept clear of alike; through the scope, where nothing clears, a notice covers it before the sight's
+   *  footprint (MAP_SCOPE_WEIGHT; r10g, the coordinator: the scope's "0 APFSDS" and zoom matter more than the map while
+   *  a notice shows, briefly, and at 320x568 the alert sat on them). */
+  readonly map?: TouchBox | null;
   /** The round buttons' labels: kept clear of alike; where nothing clears, a notice covers one before the footprint
    *  (a few letters of a label under it, rather than the sight's readouts: LABEL_WEIGHT). */
   readonly labels?: readonly TouchBox[];
@@ -184,8 +189,12 @@ interface TouchNoticePlan {
 
 /** The countdown's scales, largest first. */
 const COUNTDOWN_SCALES = [1, 0.8, 0.6];
-/** A label's cost in a least intrusive place, per px² (the footprint's is 1, a panel's or a control's 10). */
+/** A label's cost in a least intrusive place, per px² (the footprint's is 1, a panel's or a control's 10), and a notice
+ *  already placed (the countdown, the first of the detection and the alert). */
 const LABEL_WEIGHT = 0.25;
+const PLACED_WEIGHT = 1000;
+/** The minimap's cost through the scope (in battle a panel's: the footprint there is mostly the ring's empty middle). */
+const MAP_SCOPE_WEIGHT = 0.5;
 const scaled = (size: TouchSize, scale: number): TouchSize => ({ w: size.w * scale, h: size.h * scale });
 
 /** The candidates after integ's place: [together, the detection compact, the alert compact] (see the module's note). */
@@ -200,7 +209,8 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
   // (the footprint's boxes drawn in by the difference, so a uniform gap keeps TOUCH_SIGHT_GAP from them)
   const keep = touchSightKeepOut(width, height, scope, seated).map((box) => grow(box, TOUCH_SIGHT_GAP - gap));
   const labels = input.labels ?? [];
-  const blocks = [...input.obstacles, ...input.soft, ...labels, ...keep];
+  const map = input.map ? [input.map] : [];
+  const blocks = [...input.obstacles, ...input.soft, ...map, ...labels, ...keep];
   // (integ's 8 px under the score and the objective)
   const start = top + INTEG_STACK_GAP;
   const plan: TouchNoticePlan = { noticeCx: cx, noticeTop: input.fallbackTop, alertCx: cx,
@@ -208,8 +218,10 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     countdownCx: cx, countdownTop: start, countdownScale: 1, cleared: true, bannerCx: cx, bannerTop: start, bannerReady: false };
   // (where nothing clears, a notice reaches into the footprint before it covers a panel or a control: the footprint is
   // modelled at full bloom, and the panels are there whole)
-  const layers = (extra: readonly TouchBox[]) =>
-    [[keep, 1], [[...input.obstacles, ...extra], 10], [input.soft, 10], [labels, LABEL_WEIGHT]] as const;
+  // (a notice already placed counts a hundred times a panel: the notices never stack on each other while any other place
+  // remains, r10g: at 568x256 the gap-wide costs set the detection on the alert)
+  const layers = (extra: readonly TouchBox[]) => [[keep, 1], [input.obstacles, 10], [input.soft, 10],
+    [map, scope ? MAP_SCOPE_WEIGHT : 10], [labels, LABEL_WEIGHT], [extra, PLACED_WEIGHT]] as const;
   // the countdown first: the alert may show with it, the detection never (nothing spots the player before the roll-out)
   const placed: TouchBox[] = [];
   if (input.countdown) {

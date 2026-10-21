@@ -93,8 +93,8 @@ const SIGHT_FURNITURE = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con
   '.cot-scope-vision', '.cot-aim-warning:not([hidden]):not([data-seat])', '.flight-identity', '.cot-ear'].join(',');
 /** What a touch layout's centre notices, countdown and medal card keep clear of besides the reticle's footprint
  *  (touchNoticePlan.ts): the controls, the ammunition and consumables, the instruments, the vision plate, the warning
- *  chip (seated or parked) and a shot report or open combat log (the systems row by its new place); and the map, the
- *  score and the objective, the rosters, the network readouts and the feed lanes (`soft`). */
+ *  chip (seated or parked) and a shot report or open combat log (the systems row by its new place); and the score and
+ *  the objective, the rosters, the network readouts and the feed lanes (`soft`; the map apart, touchNoticePlan `map`). */
 const TOUCH_NOTICE_OBSTACLES = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-touch.on .round,.cot-touch.on .joy,'
   + '.cot-touch.on .quick,.cot-touch-aim.on .aimhint,.cot-dp,.cot-drive,.cot-scope-vision,'
   + '.cot-aim-warning:not([hidden]),.flight-identity,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,'
@@ -102,7 +102,7 @@ const TOUCH_NOTICE_OBSTACLES = '.cot-vehicle-controls>button,.cot-shell,.cot-con
 /** The round buttons' labels hung under them (r10g: the alert sat on AUTO AIM and SCOPE at 375x667; touchNoticePlan
  *  `labels`). */
 const TOUCH_NOTICE_LABELS = '.cot-touch.on .round>.lb';
-const TOUCH_NOTICE_SOFT = '.cot-minimap,.cot-top,.cot-mode-status.show,.cot-ear,.cot-net,.cot-mp-status.battle,'
+const TOUCH_NOTICE_SOFT = '.cot-top,.cot-mode-status.show,.cot-ear,.cot-net,.cot-mp-status.battle,'
   + '.cot-si-toasthost,.cot-room-chat:not([hidden]),.cot-spec.show';
 /** The alert's height while none shows (two lines at the touch type size in the detection's width), so places hold. */
 const TOUCH_ALERT_RESERVE_H = 40;
@@ -140,6 +140,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
   // Relayouts caused only by kill rows, toasts, chat, the shot log and report, the medal card or the notices themselves
   // leave the mouse notice plan's inputs as they were: those reuse the plan without measuring its inputs again.
   let planInputs = true;
+  /** Some systems button sits beside the touch chrome (the top slot's overflow: data-slot-beside). */
+  let besideMarked = false;
   /** A queued medal card whose place clears the battle sight only: the scope flag decides whether it shows. */
   let medalScopeSensitive = false;
   const transientParts = ['cot-kill-lane', 'cot-si-toasthost', 'cot-room-chat', 'cot-si-log', 'cot-si-cardhost', 'cot-medal-toasts', 'cot-sixth', 'cot-alert'];
@@ -605,10 +607,17 @@ export function installBattleHudLayout(root: HTMLElement): void {
       }
     }
     let systemsCount = 0;
+    // (what one row cannot hold sits beside the touch chrome, left of it and level with it, where that leaves a 44 px
+    // place: a five-control kit at 320 wide, whose second row met the ammo drawer's open shells; else balanced rows)
+    let systemsBeside = 0;
+    const besideRoom = touchChrome ? touchChrome.left - 8 - (map ? map.right + 8 : 0) : 0;
+    const besideFits = besideRoom >= TOUCH_TARGET ? Math.floor((besideRoom + SYSTEMS_GAP) / (TOUCH_TARGET + SYSTEMS_GAP)) : 0;
     const slotRows = () => {
       const fits = Math.max(1, Math.floor((systemsWidth + SYSTEMS_GAP) / (TOUCH_TARGET + SYSTEMS_GAP)));
-      const rows = Math.max(1, Math.ceil(systemsCount / fits));
-      systemsPerRow = Math.max(1, Math.ceil(systemsCount / rows));
+      systemsBeside = systemsCount > fits && systemsCount - fits <= besideFits ? systemsCount - fits : 0;
+      const inRow = systemsCount - systemsBeside;
+      const rows = Math.max(1, Math.ceil(inRow / fits));
+      systemsPerRow = Math.max(1, Math.ceil(inRow / rows));
       systemsHeight = rows * TOUCH_TARGET + (rows - 1) * SYSTEMS_GAP;
     };
     if (systemsSlot) {
@@ -625,6 +634,23 @@ export function installBattleHudLayout(root: HTMLElement): void {
       dockWidth = Math.min(systemsWidth, naturalWidth);
       // (the top slot's rows in the width the ammo column leaves it)
       if (systemsSlot) { dockWidth = systemsWidth; slotRows(); }
+    }
+    // (the buttons beside the chrome: the row's last ones, each 44 px, from the slot's left edge; the marks cleared once
+    // none sits there)
+    if (systemsElement && (systemsBeside || besideMarked)) {
+      besideMarked = systemsBeside > 0;
+      let index = 0;
+      let beside = 0;
+      const buttons = systemsElement.children;
+      for (let i = 0; i < buttons.length; i++) {
+        const button = buttons[i] as HTMLElement;
+        const shown = systemsBeside > 0 && button.checkVisibility();
+        const place = shown && index++ >= systemsCount - systemsBeside ? String(beside++) : '';
+        if ((button.dataset.slotBeside ?? '') !== place) {
+          if (place) button.dataset.slotBeside = place;
+          else delete button.dataset.slotBeside;
+        }
+      }
     }
     const sideWidth = Math.min(400, width / 2 - 24);
     const chat = !!read('.cot-room-chat:not([hidden])');
@@ -814,7 +840,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const soft = boxes(TOUCH_NOTICE_SOFT);
       if (killsLeft) soft.push({ x0: 0, y0: leftAnchor, x1: sideWidth, y1: leftAnchor + killHeightLeft });
       if (killsRight) soft.push({ x0: width - sideWidth, y0: rightAnchor, x1: width, y1: rightAnchor + killHeightRight });
+      // (the map apart: through the scope a notice that finds no clear place covers it before the sight's readouts)
       touchPlan = planTouchNotices({ width, height, top, obstacles, soft, labels: boxes(TOUCH_NOTICE_LABELS),
+        map: map ? { x0: map.left, y0: map.top, x1: map.right, y1: map.bottom } : null,
         scope: !!read('.cot-scope-vision'), seated: !touchChipParked(width, height), notice: noticeSize,
         alert: { w: noticeSize.w, h: alertBox?.height ?? TOUCH_ALERT_RESERVE_H },
         countdown: touchCountdown,
@@ -887,6 +915,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'roster-left-height': battleRosterHeight(height, leftBottom - (read('.cot-ear.l')?.top ?? 52), root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48, Number(root.querySelector<HTMLElement>('.cot-ear.l')?.dataset.count) || 0, root.classList.contains('rosters-expanded')),
       'roster-right-height': Math.min(battleRosterHeight(height, rightBottom - rosterStart, root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, rosterCount, root.classList.contains('rosters-expanded')), dockReport ? Math.max(0, report.top - rosterStart - 32) : Infinity),
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
+      'systems-beside-dy': systemsBeside && touchChrome ? touchChrome.top - systemsTop : 0,
       'portrait-countdown-top': systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
       'notice-top': noticeTop, 'alert-top': alertTop,
       // (the touch plan's own names: the mouse layout's planner writes its own, on its side of the split)

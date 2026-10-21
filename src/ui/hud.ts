@@ -1680,6 +1680,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-alert-icon{width:18px;height:18px;display:grid;place-items:center;flex:0 0 auto;}
 .cot-alert-icon svg{display:block;width:18px;height:18px;}
 .cot-alert-copy{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.cot-alert-bound{white-space:nowrap;}
 .cot-alert.danger{color:#ff9b91;--notice-edge:#ef6157;}
 .cot-alert.success{color:#a8e8b2;--notice-edge:#68cf78;}
 .cot-alert.info{color:#cbd8e2;--notice-edge:#8fa3b4;}
@@ -6797,9 +6798,18 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function showAlert(text: string, { tone = 'warning', icon = 'info' }: AlertOptions = {}): void {
-    // (a wrapped alert breaks before its separator, never after it: a word joiner after the space keeps the dot with its
-    // following word, r10f; a no-break space there set narrower than the space before the dot, "EMPTY ·SELECT", r10g)
-    alertCopyEl.textContent = text.replace(/ · /g, ' · \u2060');
+    // (a wrapped alert breaks before its separator, never after it: each dot and the word after it share a nowrap span,
+    // their space an ordinary one, r10f. A no-break space there set narrower than the space before the dot, "EMPTY
+    // ·SELECT", and a word joiner after an ordinary space left the break in Chrome, r10g.)
+    const parts = text.split(' · ');
+    alertCopyEl.replaceChildren(parts[0]);
+    for (let i = 1; i < parts.length; i++) {
+      const space = parts[i].indexOf(' ');
+      const bound = document.createElement('span');
+      bound.className = 'cot-alert-bound';
+      bound.textContent = `· ${space < 0 ? parts[i] : parts[i].slice(0, space)}`;
+      alertCopyEl.append(' ', bound, space < 0 ? '' : parts[i].slice(space));
+    }
     alertIconEl.innerHTML = uiIconSVG(icon, 18);
     alertEl.classList.remove('danger', 'warning', 'success', 'info');
     alertEl.classList.add(tone);

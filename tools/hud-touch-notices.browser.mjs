@@ -8,7 +8,9 @@
 // against it, the seated warning chip, the vision plate, the aim hint and the other notices, and (r10g: the alert sat on
 // the AUTO AIM and SCOPE labels at 375x667) the controls, their labels and the panels: each keeps 3 px. Where the
 // layout found no place that keeps clear (body[data-touch-notices~='uncleared'], touchNoticePlan.ts) the gaps are notes,
-// not failures, and the report lists them. No screenshot.
+// not failures, and the report lists them, except through the scope: there a notice keeps 3 px from the sight's text
+// (the readouts, the zoom, the range tag, a countdown) wherever it sits, and covers the map first (r10g, the
+// coordinator's ruling: at 320x568 the alert sat on "0 APFSDS" and the zoom plate). No screenshot.
 // node tools/hud-touch-notices.browser.mjs --url=http://127.0.0.1:5189 [--out=outputs/hud-touch-notices] [--case=360x640,...]
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -123,6 +125,19 @@ try {
       for (const [name, [gap, what]] of short) {
         const line = `${size} ${scene}: the ${name} keeps ${gap.toFixed(2)} px from ${what}`;
         if (!staged.uncleared) failures.push(line);
+      }
+      // (through the scope the sight's text binds an uncleared place too)
+      if (staging[1] === 'scope' && staged.uncleared) {
+        const apart = (a, b) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
+        for (const name of NOTICES) {
+          const notice = staged[name];
+          if (!notice) continue;
+          for (const ink of staged.ink) {
+            if (ink.what === 'ring' || ink.what === 'stroke' || !String(ink.what).trim()) continue;
+            const gap = apart(notice, ink);
+            if (gap < 3 - 1e-6) { failures.push(`${size} ${scene}: through the scope the ${name} keeps ${gap.toFixed(2)} px from "${ink.what}"`); break; }
+          }
+        }
       }
       reports.push({ size, scene, staging, gaps, uncleared: staged.uncleared, short: short.map(([name, [gap, what]]) => ({ name, gap, what })) });
       await page.close();

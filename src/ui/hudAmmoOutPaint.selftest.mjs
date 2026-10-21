@@ -1039,14 +1039,15 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
   const ring = ringOf(ops);
   const warning = warn ? aimWarningState({ gunLimitSpec: true }) : null;
   const warningText = warning && ops.find((op) => op.op === 'fillText' && op.text === warning.text);
-  // (a touch layout's chip is the DOM chip the reticle seats, where it sits under the sight; a short landscape parks it
-  // in the left lane, with the furniture)
+  // (a touch layout's chip is the DOM chip the reticle seats, where it sits under the sight; a short landscape and a
+  // portrait phone 340 px wide or less park it in the left lane, with the furniture: r10g)
   const seated = touch ? seatedChipBox() : null;
   // (the canvas chip by its 1 px outline's ink, not its fill: r10 critic, the outline came 2.5 px from the ring)
   const chip = seated ? { op: 'dom', box: seated }
     : warningText && ops.find((op) => op.op === 'stroke' && op.box && op.path.length === 6 && contains(op.box, warningText.box));
   // (or, while the sixth-sense notice shows, waits hidden where its place would run into the notice: r10e, section 19e)
   assert.ok(!warn || chip || (touch && windowStub.innerWidth > windowStub.innerHeight && windowStub.innerHeight < 550)
+    || (touch && windowStub.innerHeight >= windowStub.innerWidth && windowStub.innerWidth <= 340)
     || (touch && touchChip.hidden && sightNotice.on), `${at}: the warning's chip is seated`);
   assert.ok(touch || !warningText === !warn, `${at}: the canvas paints the warning only on a mouse layout`);
   const countdown = ops.filter((op) => op.op === 'fillText' && op.style === INK.reload && op.text.trim() && !op.text.startsWith('+'));
@@ -1225,6 +1226,12 @@ function assertFurnitureClear(items, boxes, at, key = null) {
         tank.state.gunLimitSpec = true;
         const at = `${width}x${height} touch battle, ${metres} m, ${label}, gun travel warning`;
         const { ring, chip, furniture } = reticleGaps(quickPaint(tank, 'battle'), at, { warn: true, scoped: false, touch: true });
+        // (r10g, the coordinator: 320 wide parks it under the map, where every seat by the sight met the furniture)
+        if (width <= 340) {
+          assert.ok(!chip, `${at}: the chip parks under the map, unseated`);
+          assertFurnitureClear(furniture, boxes, at, `${width}x${height}t`);
+          continue;
+        }
         assert.equal(chip?.op, 'dom', `${at}: the chip is seated under the sight`);
         // (a portrait under 375 px wide narrows it to 156 px, clear of the speedometer beside the sight at 360x640)
         assert.equal(chip.box.x1 - chip.box.x0, width < 375 ? 156 : 180, `${at}: the seated chip's width`);
