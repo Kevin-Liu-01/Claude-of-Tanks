@@ -7,7 +7,7 @@ import type { GarageKitPlacement } from './garageKitPlacement.ts';
  * the Grande Croix from the map). Coordinates are the opening view's frame (garageKitPlacements.ts).
  *
  * The cells: an overhead crane in the bore at work on a turret, seen at the mouth; the portal's header with the crest and
- * wordmark plate over the opening and its tunnel number; the guard post at the portal's right: its LED panel on legs
+ * wordmark plate over the opening and its tunnel number; the guard post at the portal's right: the slideshow's CRT on its stand
  * (garageSlideshowPlacement.ts: the bore and the portal stand behind the hero, in the halo no display may enter), its
  * computer station and the crest on a post; the route
  * board with three prints at the left; the heated fuel cell (the bowser, drums, the spill kit, the no-smoking and

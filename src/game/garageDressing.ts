@@ -31,7 +31,7 @@ import {
   mulberry32, canvasTexture, makeHazardTexture,
 } from '../ui/garageStage.ts';
 import { FEATURED_SHOTS } from '../ui/featuredShots.ts';
-import { garageSlideshowPose } from '../ui/garageSlideshowPlacement.ts';
+import { GARAGE_SLIDESHOW_GLASS_BULGE, GARAGE_VERDANT_SLIDESHOW, garageSlideshowPose } from '../ui/garageSlideshowPlacement.ts';
 import { buildGarageVerdantKit } from '../ui/garageVerdantKit.ts';
 import {
   createGarageDecalMaterial, createGarageDisplayMaterial, garageDisplayRectHasAlpha, garageDisplaySignRect, garageDisplayRect,
@@ -1200,14 +1200,16 @@ export function createGarageDressing(
 
   // The Garage's one slideshow (garage r9, 2026-10-17; the owner: "remove that screen glitching through the floor ... we
   // already have one"): the old primary archive monitor stood inside Verdant's back-wall mezzanine, its deck slicing the
-  // picture, so it is not built at all; the west-wall panel the owner kept is the only display and owns the driver. It is
-  // a flat LED panel now (the CRT curvature, raster lines and roll are gone), still dimmed and drained toward grey (the re-judge, 2026-10-15),
-  // and its stills are decoded at 1024 x 576 (createImageBitmap resize, a canvas where that is missing): 3.1 MB resident
+  // picture, so it is not built at all; the west-wall screen the owner kept is the only display and owns the driver. It is
+  // a CRT again (garage 231; the owner, 2026-10-21: "make it a crt screen like the one we removed"): bulged glass, the
+  // picture barrel-warped into rounded corners, raster lines, a slow hum bar and vignetted corners, in the kit's CRT
+  // housing (garageDisplayKit.ts buildSlideshowFrame), still dimmed and drained toward grey (the re-judge, 2026-10-15).
+  // Its stills are decoded at 1024 x 576 (createImageBitmap resize, a canvas where that is missing): 3.1 MB resident
   // each instead of 10.55 MB, the current image alone at rest and the next one only for the 720 ms crossfade.
   let battleScreenMaterial: THREE.ShaderMaterial | null = null;
   let battleScreenMesh: THREE.Mesh | null = null;
-  // Verdant's panel (its legs, bezel and cabinet) and the yard mount the outdoor Garages hang the same screen on, at the
-  // pose their pack builds its frame (garageSlideshowPlacement.ts): one screen, one material, one driver
+  // Verdant's screen root (its CRT housing is Verdant's kit's) and the yard mount the outdoor Garages hang the same screen
+  // on, at the pose their pack builds its housing (garageSlideshowPlacement.ts): one screen, one material, one driver
   let battleScreenVerdantRoot: THREE.Group | null = null;
   const battleScreenYardRoot = new THREE.Group();
   battleScreenYardRoot.name = 'garage_slideshow_yard_mount';
@@ -1410,7 +1412,7 @@ export function createGarageDressing(
         battleScreenMesh.scale.setScalar(pose.width / BATTLE_SCREEN_PANEL_W);
       } else if (battleScreenVerdantRoot) {
         battleScreenVerdantRoot.add(battleScreenMesh);
-        battleScreenMesh.position.set(0, 0, 0.115);
+        battleScreenMesh.position.set(0, 0, GARAGE_VERDANT_SLIDESHOW.glassZ);
         battleScreenMesh.scale.setScalar(1);
       }
       // the workshop optimizer freezes every static matrix under the dressing (matrixAutoUpdate off): a moved mount
@@ -1784,17 +1786,18 @@ export function createGarageDressing(
   // CHUNK 1 — static workshop clutter on every wall + floor decals
   // ==========================================================================
   function buildBattleArchiveMonitors(): number {
-    // The Garage's one slideshow panel (garage r9). The old primary stood at (0, 4.15, -18.25) inside the back-wall
+    // The Garage's one slideshow screen (garage r9). The old primary stood at (0, 4.15, -18.25) inside the back-wall
     // mezzanine, whose deck, column and rails cut through its picture (the owner's screenshot, 2026-10-17): it is not
-    // built, so neither its parts nor the static merge's copies of them exist. The west-wall installation the owner kept
-    // stands free on its legs and feet, its lit face turned back into the yard (+X) toward the hero; a flat LED panel
-    // in a slim bezel with a service cabinet behind, not a CRT. A shader crossfades two resident textures; it never
-    // uploads a canvas every frame, and the timer sleeps completely while the garage is detached for battle.
+    // built, so neither its parts nor the static merge's copies of them exist. The west-hall screen the owner kept stands
+    // free of the wall, its lit face turned back into the yard (+X) toward the hero; since garage 231 it is a CRT's
+    // bulged glass in the CRT housing Verdant's kit builds on its stand (the slideshow clearance receipt keeps every
+    // deck, rail and column out of it). A shader crossfades two resident textures; it never uploads a canvas every
+    // frame, and the timer sleeps completely while the garage is detached for battle.
     const screenRoot = new THREE.Group();
     screenRoot.name = 'garage_slideshow_panel';
     screenRoot.position.set(-18.35, 4.15, 2.4);
     // Local +Z is the lit face. The west-side installation must point that face back into the service yard (+X),
-    // otherwise the camera sees only the cabinet and the panel reads as a black slab.
+    // otherwise the camera sees only the housing and the screen reads as a black slab.
     screenRoot.rotation.y = Math.PI / 2;
     screenRoot.userData.mountMode = 'freestanding-west';
     screenRoot.userData.displayFacing = 'inward-to-hero';
@@ -1802,27 +1805,6 @@ export function createGarageDressing(
     legacyVerdantRoot.add(battleScreenOwner);
     battleScreenOwner.add(screenRoot);
     battleScreenVerdantRoot = screenRoot;
-    // bezel, the cabinet behind it, and a status LED at the bezel's foot
-    put(track(new THREE.BoxGeometry(6.06, 3.5, 0.1)), mat.steelDark,
-      0, 0, 0.06, 0, 0, 0, 1, screenRoot, false);
-    put(track(new THREE.BoxGeometry(5.2, 2.8, 0.18)), mat.steelMid,
-      0, 0, -0.08, 0, 0, 0, 1, screenRoot, false);
-    const statusLedMaterial = track(new THREE.MeshBasicMaterial({ color: 0x5f9f72 }));
-    put(track(new THREE.BoxGeometry(0.05, 0.02, 0.01)), statusLedMaterial,
-      2.78, -1.7, 0.115, 0, 0, 0, 1, screenRoot, false);
-    // Connected legs, crossbar, feet and rear braces make this an honest freestanding installation.
-    const displayPostGeometry = track(new THREE.BoxGeometry(0.18, 2.45, 0.18));
-    for (const x of [-2.4, 2.4]) {
-      put(displayPostGeometry, mat.steelMid,
-        x, -3.0, -0.08, 0, 0, 0, 1, screenRoot);
-      put(track(new THREE.BoxGeometry(1.15, 0.14, 1.05)), mat.steelDark,
-        x, -4.08, -0.08, 0, 0, 0, 1, screenRoot);
-      const brace = put(track(new THREE.BoxGeometry(0.13, 2.55, 0.13)), mat.steelDark,
-        x, -3.05, -0.54, 0, 0.38, 0, 1, screenRoot);
-      brace.castShadow = true;
-    }
-    put(track(new THREE.BoxGeometry(5.0, 0.16, 0.2)), mat.steelMid,
-      0, -1.82, -0.08, 0, 0, 0, 1, screenRoot);
 
     const fallbackTexture = track(new THREE.DataTexture(
       new Uint8Array([10, 20, 18, 255]), 1, 1, THREE.RGBAFormat,
@@ -1836,6 +1818,7 @@ export function createGarageDressing(
         uImageA: { value: fallbackTexture },
         uImageB: { value: fallbackTexture },
         uTransition: { value: 0 },
+        uTime: { value: 0 },
       },
       vertexShader: `
         varying vec2 vUv;
@@ -1848,6 +1831,7 @@ export function createGarageDressing(
         uniform sampler2D uImageA;
         uniform sampler2D uImageB;
         uniform float uTransition;
+        uniform float uTime;
         varying vec2 vUv;
 
         // Each still is exposed for the panel by its own mean (its smallest mip, one texel): a night street or a
@@ -1860,34 +1844,55 @@ export function createGarageDressing(
         }
 
         void main() {
-          vec2 uv = clamp(vUv, 0.001, 0.999);
+          // the tube's face: the picture bows with the glass (a barrel warp) and rounds off at its corners into dark glass
+          vec2 c = vUv * 2.0 - 1.0;
+          c *= 1.0 + dot(c, c) * 0.04;
+          vec2 uv = clamp(c * 0.5 + 0.5, 0.001, 0.999);
+          float d = length(max(abs(c) * vec2(1.778, 1.0) - vec2(1.658, 0.88), 0.0)) - 0.12;
           vec3 color = mix(exposed(uImageA, uv), exposed(uImageB, uv), uTransition);
-          // an LED panel's faint fall-off toward its bezel
-          vec2 centered = vUv * 2.0 - 1.0;
-          color *= 1.0 - smoothstep(0.7, 1.6, dot(centered, centered)) * 0.18;
+          // raster lines and the phosphor stripes, each fading to its mean before it can alias (far, or on a phone)
+          float y = uv.y * 180.0, x = uv.x * 320.0;
+          color *= 1.0 + 0.3 * (1.0 - smoothstep(0.3, 0.7, fwidth(y))) * cos(6.2832 * y);
+          color *= 1.0 + 0.1 * (1.0 - smoothstep(0.3, 0.7, fwidth(x))) * cos(6.2832 * (x - vec3(0.0, 0.333, 0.667)));
+          // a slow hum bar rolling up the picture (20 s a pass) and the tube's darker corners
+          float r = (fract(uv.y - uTime * 0.05) - 0.5) * 5.0;
+          color *= (1.0 + 0.05 * exp(-r * r)) * (1.0 - 0.32 * smoothstep(0.3, 2.2, dot(c, c)));
           // dimmed and drained toward grey beside the hero (the re-judge, 2026-10-15: the screens were "the brightest
           // and most saturated rectangles in the frame after the tank")
           float luma = dot(color, vec3(0.299, 0.587, 0.114));
           color = mix(vec3(luma), color, 0.55) * 0.62;
+          // the unlit glass round the picture (its edge a pixel soft; never a zero-width smoothstep), its sheen high left
+          float aa = max(fwidth(d), 1e-4);
+          color = mix(vec3(0.012, 0.016, 0.015), color, 1.0 - smoothstep(-aa, aa, d));
+          color += 0.018 * (1.0 - smoothstep(0.0, 0.42, length((vUv - vec2(0.28, 0.78)) * vec2(1.6, 1.0))));
           gl_FragColor = vec4(color, 1.0);
           #include <colorspace_fragment>
         }
       `,
     }));
     battleScreenMaterial.name = 'garage_slideshow_material';
-    // 16:9 at 5.86 x 3.296 m inside the bezel
-    const screenGeometry = track(new THREE.PlaneGeometry(BATTLE_SCREEN_PANEL_W, BATTLE_SCREEN_PANEL_W * 9 / 16));
+    // 16:9 at 5.86 x 3.296 m: the CRT's glass, its 48 triangles bowed out to 1.5 % of its width at the centre and
+    // flush with the housing's face plane at its edges (garageSlideshowPlacement.ts GARAGE_SLIDESHOW_GLASS_BULGE)
+    const screenGeometry = track(new THREE.PlaneGeometry(BATTLE_SCREEN_PANEL_W, BATTLE_SCREEN_PANEL_W * 9 / 16, 6, 4));
+    const glass = screenGeometry.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < glass.count; i++) {
+      const u = glass.getX(i) / (BATTLE_SCREEN_PANEL_W / 2), v = glass.getY(i) / (BATTLE_SCREEN_PANEL_W * 9 / 32);
+      glass.setZ(i, (1 - u * u) * (1 - v * v) * GARAGE_SLIDESHOW_GLASS_BULGE * BATTLE_SCREEN_PANEL_W);
+    }
+    screenGeometry.computeBoundingSphere();
     battleScreenMesh = put(screenGeometry, battleScreenMaterial,
-      0, 0, 0.115, 0, 0, 0, 1, screenRoot, false);
+      0, 0, GARAGE_VERDANT_SLIDESHOW.glassZ, 0, 0, 0, 1, screenRoot, false);
     battleScreenMesh.name = 'garage_slideshow_screen';
     battleScreenMesh.userData.keepWorkshopMesh = true;
     battleScreenMesh.userData.mountMode = 'freestanding-west';
     battleScreenMesh.onBeforeRender = () => {
+      // the hum bar's clock, wrapped at 1,000 s (fifty whole passes, so the wrap never jumps)
+      if (battleScreenMaterial) battleScreenMaterial.uniforms.uTime.value = (performance.now() % 1e6) * 1e-3;
       if (battleScreenTimer === null && battleScreenFrame === null
           && group.userData.battleScreenCurrentImage) scheduleBattleScreenAdvance();
     };
     group.userData.mapImageCount = 0;
-    group.userData.battleScreenMode = 'led-crossfade-slideshow';
+    group.userData.battleScreenMode = 'crt-crossfade-slideshow';
     group.userData.battleScreenWallBay = 'west-freestanding';
     group.userData.battleScreenDisplayCount = 1;
     group.userData.battleScreenImageCount = GARAGE_BATTLE_SCREEN_SHOTS.length;
