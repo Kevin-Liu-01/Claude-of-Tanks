@@ -1880,6 +1880,8 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-shell[hidden]{display:none!important}
 .cot-aerial-readout{position:absolute;top:calc(50% + 64px);left:50%;transform:translateX(-50%);max-width:80vw;color:#dbffef;font:700 11px monospace;letter-spacing:.08em;text-align:center;pointer-events:none;text-shadow:0 1px 3px #000}
 .cot-aerial-readout[hidden]{display:none}
+/* the proving ground: no sides to count (the rosters and the two scores leave; the clock keeps its place) */
+.range-mode .cot-ear,.range-mode .cot-top .sc{visibility:hidden!important}
 .realistic-mode .hprow,.realistic-mode .hptrack,.realistic-mode .hpm,.realistic-mode .cot-hpb .tr,.realistic-mode .cot-tgt .hp,.realistic-mode .cot-tgt .bar{display:none!important}
 
 body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);font-size:9px}
@@ -5140,6 +5142,9 @@ export function initHud(bus: EventBus): HudRuntime {
   } {
     if (!tank || tank.isPlayer || !tank.combat || tank.combat.destroyed) return false;
     if (tank.id === aimTargetId) return false;
+    // the proving ground: the lanes stand in a row down the sightline, so their plates would stack; the range card names
+    // every hull and the laid one keeps its own target plate
+    if (rangeActive) return false;
     return tank.team === (playerRef?.team ?? 'player') || isSpotted(tank.id);
   }
 
@@ -7291,6 +7296,7 @@ export function initHud(bus: EventBus): HudRuntime {
   /** The proving ground's range card: the loaded round against every lane, the lane the gun is laid on lit. */
   function updateRangeCard(frame: HudFrame): void {
     const range = frame.matchModeState?.range;
+    if (rangeActive !== !!range) root.classList.toggle('range-mode', !!range);
     rangeActive = !!range;
     if (!range) { rangeCard?.hide(); return; }
     if (!rangeCard) {
@@ -7436,7 +7442,8 @@ export function initHud(bus: EventBus): HudRuntime {
       conSep.style.display = noConsumables ? 'none' : '';
       conBox.style.display = noConsumables ? 'none' : '';
       pbRules.replaceChildren();
-      if (!ruleset) return;
+      // the proving ground's rules show on the range itself (its card, its boards): no rule chips over the count
+      if (!ruleset || ruleset.provingGround) return;
       for (const line of rulesetLines(ruleset)) {
         const chip = document.createElement('span');
         chip.textContent = t(`rules.line.${line.key}`, line.key === 'enemyNation' ? { value: t(`campaign.enemy.${line.values.value}`) } : line.values);
