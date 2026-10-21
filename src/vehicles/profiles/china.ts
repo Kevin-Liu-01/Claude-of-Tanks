@@ -169,9 +169,11 @@ function addZTZ99A2RearServiceComplex(P: ChinaBuilderPort): void {
   // Keep the service complex slightly embedded in the shell so the three
   // cabinets, their drip rail and the basket cradle read as one supported
   // installation instead of a second armor slab floating behind the turret.
+  // Release 227 (CN critic round 5): the drip rails hung 10 mm over and 9 mm under this slab (y .15-.71); each now
+  // overlaps it by 2 mm, the upper rail on its top, the lower rail under its floor.
   P.addEquipment('turret', box(2.18, 0.56, 0.085), 0, 0.43, -1.738);
-  P.add('turretDark', box(2.06, 0.030, 0.055), 0, 0.735, -1.782);
-  P.add('turretDark', box(2.06, 0.032, 0.055), 0, 0.125, -1.782);
+  P.add('turretDark', box(2.06, 0.030, 0.055), 0, 0.71 - 0.002 + 0.015, -1.782);
+  P.add('turretDark', box(2.06, 0.032, 0.055), 0, 0.15 + 0.002 - 0.016, -1.782);
   const cabinets = [
     { x: -0.74, w: 0.52, h: 0.34, y: 0.43 },
     { x: 0, w: 0.66, h: 0.42, y: 0.42 },
@@ -192,9 +194,11 @@ function addZTZ99A2RearServiceComplex(P: ChinaBuilderPort): void {
   for (const x of [-0.91, -0.57, 0.57, 0.91]) {
     P.add('turretDetail', box(0.036, 0.12, 0.035), x, 0.43, -1.947);
   }
+  // The fasteners stood 19-48 mm off anything, in the cabinet doors' plane above and below the cabinets; they bolt the
+  // slab, 2 mm into its rear face (z -1.7805) and inside its flat band clear of the rounded edges.
   for (const x of [-0.99, -0.49, 0.49, 0.99]) {
-    for (const y of [0.18, 0.68]) {
-      P.add('turretDark', cylZ(0.022, 0.035, 8), x, y, -1.952);
+    for (const y of [0.195, 0.66]) {
+      P.add('turretDark', cylZ(0.022, 0.035, 8), x, y, -1.7805 - 0.035 / 2 + 0.002);
     }
   }
   // Transverse recovery/tool tube and two positive straps.  Its ends remain
@@ -674,6 +678,9 @@ function crownRimTrim(
 // rear fuel drums hanging 1.5..2.1 behind the transom.  This tank is
 // DISTINCT from the resident ztz99_longwei: longer/deeper cheek wedge, revised
 // roof optics, drum rack — and its own frame throughout.
+// The lofted hull's plate top line [z, y], stern to bow toe.
+const ZTZ99A2_DECK: readonly (readonly [number, number])[] = [[-4.05, 1.60], [-3.80, 1.68], [-2.05, 1.72],
+  [-0.30, 1.68], [1.90, 1.64], [3.55, 1.02]];
 export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   const { box, cylY, cylZ, torus, buildRunningGear, headlight, periscope, towCable, liftEye } = KIT;
 
@@ -699,8 +706,7 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // ---- lofted hull: stern -4.05, bow toe +3.55, rear deck 1.70 (print
   // 1.72), long shallow glacis to the published 7.6 envelope.
   loftHull(P, {
-    deck: [[-4.05, 1.60], [-3.80, 1.68], [-2.05, 1.72], [-0.30, 1.68],
-      [1.90, 1.64], [3.55, 1.02]],
+    deck: ZTZ99A2_DECK,
     belly: [[-4.05, 0.70], [-3.35, 0.46], [2.15, 0.46], [3.10, 0.60],
       [3.55, 0.96]],
     wUp: [[-4.05, 1.66], [3.10, 1.66], [3.55, 1.26]],
@@ -823,9 +829,23 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // ---- rear deck + transom: louvre field, service transom, twin fuel drums
   // on real angle brackets and a center rack (print band 1.5..2.1 at the
   // stern — the silhouette rows in specs carry this overhang).
+  // Release 227 (CN critic round 5): the deck falls 40 mm from its -2.05 crest to -3.80, and the field drawn level at
+  // the crest stood 5-17 mm over it from the second bar aft, on all three hulls this builder makes (the ZTZ-99A2, its
+  // prototype and the VT-4A1). Seated, each slot plate and bar follows the deck line at its station, tilted to the
+  // fall: the dark plate 2 mm proud of the deck, the bar's underside 2 mm into it.
+  const deckAt = (z: number): [y: number, slope: number] => {
+    let i = 1;
+    while (i < ZTZ99A2_DECK.length - 1 && ZTZ99A2_DECK[i][0] < z) i++;
+    const [z0, y0] = ZTZ99A2_DECK[i - 1], [z1, y1] = ZTZ99A2_DECK[i], slope = (y1 - y0) / (z1 - z0);
+    return [y0 + slope * (z - z0), slope];
+  };
+  const louvre = (bucket: string, g: BufferGeometry, z: number, lift: number) => {
+    const [y, slope] = deckAt(z);
+    P.add(bucket, g, 0, y + lift, z, -Math.atan(slope), 0, 0);
+  };
   Array.from({ length: 7 }, (_, index) => index).forEach((i) => {
-    P.add('hullDark', box(2.50, 0.018, 0.075), 0, 1.712, -2.10 - i * 0.24);
-    P.add('hullDetail', box(2.50, 0.028, 0.026), 0, 1.735, -2.22 - i * 0.24);
+    louvre('hullDark', box(2.50, 0.018, 0.075), -2.10 - i * 0.24, 0.002 - 0.009);
+    louvre('hullDetail', box(2.50, 0.028, 0.026), -2.22 - i * 0.24, 0.014 - 0.002);
   });
   ([[-0.85, -1.75], [0.72, -1.88]] as const).forEach(([x, z]) => {
     P.add('hullDetail', cylY(0.095, 0.095, 0.032, 10), x, 1.725, z);
@@ -900,7 +920,8 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
     { height: crown99, inset: inset99, centerHeight: 0.89 },
   ]));
   crownRimTrim(P, plan99, inset99, crown99);
-  P.add('turret', cylY(1.10, 1.16, 0.11, seg), 0, -0.04, -0.30);
+  // the race ring (y -.095) reaches 5 mm into the shell's floor at y .03; it stopped 15 mm short of it
+  P.add('turret', cylY(1.10, 1.16, 0.13, seg), 0, -0.03, -0.30);
   // Turret-side service modules are socketed into the shell rather than
   // hovering beyond it. Their inner faces cross the belt envelope, while the
   // rails and weld strips sit fractionally proud of the installed cassettes.
@@ -938,11 +959,12 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   // the cheek slope past the crown lip; the channel stays clear through the
   // full elevation arc (§B3.1).  §5.266 fix 3: chord widened with the plan
   // nose (walls now span x 0.20..0.56 per side — the broad-arrow read).
+  // addChineseThroatStock keeps only |x| > .40 of them ahead of the channel; the dark seam bar each carried at x .34
+  // was left 45 mm off any stock inside the moving mantlet (half width .377) and is gone (release 227, CN critic 5).
   for (const s of [-1, 1]) {
     addChineseThroatStock(P, orientedSlab(
       [s * 0.20, 0.30, 1.60], [s * 0.56, 0.32, 1.42], [s * 0.50, 0.40, 0.98], [s * 0.18, 0.38, 1.10],
       [s * 0.20, 0.50, 1.68], [s * 0.56, 0.52, 1.50], [s * 0.44, 0.84, 0.84], [s * 0.16, 0.82, 0.92]));
-    P.add('turretDark', box(0.030, 0.030, 0.62), s * 0.34, 0.60, 1.24, -0.36, 0, 0);
   }
   // Owner markup 2026-10-14 ("actual tank equipment ... in lieu of random thingies"): the two dark 3 cm bars laid along
   // the belt shoulder and the cheek corner as "weld beads" read as loose sticks on the armour and are gone; the belt's
@@ -967,10 +989,12 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   // the W-85 cluster sits over the print's own rear-right 2.9-class roof
   // band, sharing columns with the mast station behind it
   // 2026-10-08 (round 5, the coordinator: the right gun per nation): the QJC-88 (the W85's vehicle form) at true scale.
+  // Release 227 (CN critic round 5): the station's foot stood 35 mm over the cupola's top (y .965); it now stands 2 mm
+  // into it.
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'qjc88', scale: 1.0, tone: 'two-tone', elev: 0.12,
     ammo: true, rotation: [0, 0.10, 0], seed: 9960, working: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
-  }), 0.52, 1.00, -0.79);
+  }), 0.52, 0.9275 + 0.075 / 2 - 0.002, -0.79);
   P.add('turret', cylY(0.24, 0.25, 0.045, seg), -0.50, 0.9125, -0.55);
   P.add('turretDark', torus(0.245, 0.013, seg), -0.50, 0.935, -0.55);
   // rear-right mast: planted base, tube, compact head (print's 2.99 cluster)
