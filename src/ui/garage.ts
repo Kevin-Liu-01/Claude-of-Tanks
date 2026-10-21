@@ -3465,6 +3465,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       closeGarageVariantMenu();
       closeBattleMenu();
       setGaragePanel('');
+      void facetPanel?.then((panel) => panel.close(), () => {});
       root.style.display = 'none';
       if (api.isOpen) window.removeEventListener('keydown', onKey);
       api.isOpen = false;
