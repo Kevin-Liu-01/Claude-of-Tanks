@@ -55,6 +55,9 @@ interface StructureFractureOptions {
   /** The room behind a holed storey's material for a bucket (structureStages' fx-structure-room in that bucket's texture:
    *  dim, vertex-tinted, compiled at the battle warm); absent, the wall's own. */
   roomMaterial?(seam: StructureDamageSeam, bucket: string): THREE.Material | null;
+  /** (round 6) Claim a storey's room (its interior's key) for this structure: false when the kit laid it already (the two
+   *  drawn in one place fought: urban church #15's nave, its far wall flickering through itself). */
+  claimRoom?(seam: StructureDamageSeam, key: string): boolean;
   /**
    * Cells that fell or were knocked through but found no body (the share full of moving bodies, the pool refusing): never
    * left standing in the air nor lost — the caller throws them through the program path (structureDebris pieces, which
@@ -315,6 +318,9 @@ const CRACK_MPS = 3;
 const DUST_COAT = 0.42;
 /** A room's light behind a breach (its walls; the floor and ceiling by their own shade): the wall's colour in shade. */
 const ROOM_SHADE = 0.6;
+/** (destruction-slabs 227 round 6; the round-5 films' tavern #7: its roofless top storey's inner walls glared white, lit at the
+ *  face's full tint) a top storey's room open to the sky is lit a quarter under the sunlit face: it stands inside its walls. */
+const OPEN_ROOM_SHADE = 0.75;
 /** (round 5) A room's floor this far over its floor line (m): the storey under it draws its own top there. */
 const ROOM_FLOOR_LIFT_M = 0.02;
 const CRACK_MIN_CELLS = 6;
@@ -1131,6 +1137,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     const hx = g.origin[0] + g.u[0] * hu - g.out[0] * back, hz = g.origin[2] + g.u[2] * hu - g.out[2] * back;
     const interior = storeyInterior(a, storey, hx, hz, (a.storeys[storey + 1]?.y0 ?? st.y1) - 0.02);
     if (!interior || live.roomStoreys.has(interior.key)) return;
+    if (o.claimRoom && !o.claimRoom(live.seam, interior.key)) return;
     live.roomStoreys.add(interior.key);
     const roomLayout: Layout = { names: ['uv', 'color'], sizes: [2, 3], stride: 11 };
     const room = o.roomMaterial?.(live.seam, draw.core.bucket) ?? null;
@@ -1147,7 +1154,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     // (round 5) and lit as the sky lights it, not in an interior's shade
     const open = storey === a.storeys.length - 1 && !!a.roof && roofGone.has(live.seam.structureIdx);
     const q = (p0: number[], p1: number[], p2: number[], p3: number[], n: number[], shade: number) =>
-      pushQuad(list, layout, p0, p1, p2, p3, n, col, room && !open ? shade * ROOM_SHADE : shade);
+      pushQuad(list, layout, p0, p1, p2, p3, n, col, room ? shade * (open ? OPEN_ROOM_SHADE : ROOM_SHADE) : shade);
     for (const [ax, az, bx, bz, nx, nz] of interior.walls) q([ax, y0, az], [bx, y0, bz], [bx, y1, bz], [ax, y1, az], [nx, 0, nz], Math.abs(nx) > 0.5 ? 0.9 : 1);
     // (round 5) its floor a hand over the floor line, where the storey under it draws its top
     const fy = y0 + ROOM_FLOOR_LIFT_M;
@@ -1163,6 +1170,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     mesh.userData.roomKey = interior.key;
     mesh.userData.ceilFrom = ceilFrom;
     mesh.userData.roomShade = room && !open ? ROOM_SHADE : 1;
+    if (room && open) mesh.userData.openToSky = true;
     mesh.matrixAutoUpdate = false;
     bodyToWorld(live, mesh.matrix);
     mesh.matrix.elements[13] -= (live.sunk[storey] ?? 0) + (live.flight[storey] ?? 0);
@@ -2165,7 +2173,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         const col = m.geometry.getAttribute('color') as THREE.InterleavedBufferAttribute | undefined;
         if (!col) continue;
         const n = m.userData.ceilFrom as number;
-        for (let i = 0; i < n; i++) col.setXYZ(i, col.getX(i) / shade, col.getY(i) / shade, col.getZ(i) / shade);
+        const k = OPEN_ROOM_SHADE / shade;
+        for (let i = 0; i < n; i++) col.setXYZ(i, col.getX(i) * k, col.getY(i) * k, col.getZ(i) * k);
         col.data.needsUpdate = true;
       }
     },

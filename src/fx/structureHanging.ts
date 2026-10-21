@@ -642,7 +642,7 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
    * stands or none is left: `flag` 1 stands, 2 touches nothing that stands.
    */
   function* standsSteps(model: Model, sm: Sampled, holderXyz: Float32Array[], ground: (x: number, z: number) => number,
-    queries: readonly number[]): Generator<void, Uint8Array, void> {
+    queries: readonly number[], roomFrom = holderXyz.length): Generator<void, Uint8Array, void> {
     const P = model.parts.length, M = P + holderXyz.length;
     const parent = new Int32Array(M);
     for (let i = 0; i < M; i++) parent[i] = i;
@@ -676,6 +676,10 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
       work += 2;
       if (work >= SLICE) { work = 0; yield; }
     }
+    { const zz = (globalThis as { __zzHangAt?: number[] }).__zzHangAt; // ZZDBG
+      if (zz) for (let p = 0; p < P; p++) { const b = model.parts[p]!.box; if (Math.abs((b[0]! + b[3]!) / 2 - zz[0]!) < 0.6 && Math.abs((b[2]! + b[5]!) / 2 - zz[2]!) < 0.6 && Math.abs((b[1]! + b[4]!) / 2 - zz[1]!) < 1.5) { // ZZDBG
+        const mates: string[] = []; for (let q = 0; q < P; q++) if (q !== p && find(q) === find(p)) { const c = model.parts[q]!.box; mates.push(`${q}(span ${model.parts[q]!.span} dead ${dead[q]} alive ${alive[q] ? 'part' : 'whole'} box ${Array.from(c).map((v) => v.toFixed(1)).join(',')})`); } // ZZDBG
+        console.log('ZZC', p, 'grounded', grounded[find(p)], 'alive', alive[p] ? 'part' : 'whole', 'mates', mates.length, mates.slice(0, 12).join(' ')); } } } // ZZDBG
     const flag = new Uint8Array(M), seen = new Uint8Array(M);
     const D2 = JOIN * JOIN;
     const samplesOf = (a: number): Float32Array | null => (a < P ? sm.xyz[a] ?? model.parts[a]!.xyz : holderXyz[a - P] ?? null);
@@ -705,11 +709,13 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
               work += l.length / 5;
               for (let j = 0; j < l.length; j += 5) {
                 const b = l[j + 3]!;
-                if (b === a || (src === 1 && !draws(b, l[j + 4]!))) continue;
+                // (round 6; cliffbridge #24's chimney held to the end by its top storey's room) a room holds nothing up: it
+                // stands inside its walls, touching through it is no hold
+                if (b === a || (src === 1 && !draws(b, l[j + 4]!)) || b - P >= roomFrom) continue;
                 const dx = l[j]! - x, dy = l[j + 1]! - y, dz = l[j + 2]! - z;
                 if (dx * dx + dy * dy + dz * dz > D2) continue;
                 join(a, b);
-                if (grounded[find(b)] || flag[b] === 1) { ok = true; break search; }
+                if (grounded[find(b)] || flag[b] === 1) { ok = true; { const zz = (globalThis as { __zzHangAt?: number[] }).__zzHangAt; if (zz && q0 < P) { const qb = model.parts[q0]!.box; if (Math.abs((qb[0]! + qb[3]!) / 2 - zz[0]!) < 0.6 && Math.abs((qb[2]! + qb[5]!) / 2 - zz[2]!) < 0.6) console.log('ZZS', q0, 'via', a, '->', b, b < P ? `part span ${model.parts[b]!.span} box ${Array.from(model.parts[b]!.box).map((v) => v.toFixed(2)).join(',')}` : `holder ${b - P}`, 'at', x.toFixed(2), y.toFixed(2), z.toFixed(2), 'grounded', grounded[find(b)], 'flag', flag[b]); } } /* ZZDBG */ break search; }
                 if (!seen[b]) { seen[b] = 1; visited.push(b); queue.push(b); }
               }
             }
@@ -761,14 +767,21 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
     if (!pos) return new Float32Array(0);
     mesh.updateWorldMatrix(true, false);
     const M = mesh.matrixWorld, ix = g!.index;
-    const n = ix ? ix.count : pos.count;
+    // (round 6; the census's cliffbridge #24 farmhouse, R pass: its chimney stood over the roofless gable to the end, held by
+    // its top storey's room — by that room's ceiling, gone from its draw range with the roof) what the room draws: its draw
+    // range, a triangle drawn as a point left out
+    const all = ix ? ix.count : pos.count;
+    const from = Math.max(0, g!.drawRange.start - (g!.drawRange.start % 3));
+    const n = Math.min(all, g!.drawRange.start + (Number.isFinite(g!.drawRange.count) ? g!.drawRange.count : all));
     const out: number[] = [];
-    for (let t = 0; t + 2 < n; t += 3) {
+    for (let t = from; t + 2 < n; t += 3) {
       for (let k = 0; k < 3; k++) {
         const i = ix ? ix.getX(t + k) : t + k;
         _v.set(pos.getX(i), pos.getY(i), pos.getZ(i)).applyMatrix4(M);
         a3[k * 3] = _v.x; a3[k * 3 + 1] = _v.y; a3[k * 3 + 2] = _v.z;
       }
+      const ux = a3[3]! - a3[0]!, uy = a3[4]! - a3[1]!, uz = a3[5]! - a3[2]!, vx = a3[6]! - a3[0]!, vy = a3[7]! - a3[1]!, vz = a3[8]! - a3[2]!;
+      if (!((uy * vz - uz * vy) ** 2 + (uz * vx - ux * vz) ** 2 + (ux * vy - uy * vx) ** 2 > 1e-12)) continue;
       sampleA3(out, null, 0);
     }
     return Float32Array.from(out);
@@ -879,6 +892,9 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
         work += 4 * ((room.geometry as THREE.BufferGeometry).getAttribute('position')?.count ?? 0);
         if (work >= SLICE) { work = 0; yield; }
       }
+      { const zz = (globalThis as { __zzHangAt?: number[] }).__zzHangAt; if (zz) { // ZZDBG
+        for (let h = 0; h < hx.length; h++) { const xyz = hx[h]!; let near = false; for (let i = 0; i < xyz.length && !near; i += 3) if (Math.abs(xyz[i]! - zz[0]!) < 1 && Math.abs(xyz[i + 2]! - zz[2]!) < 1 && Math.abs(xyz[i + 1]! - zz[1]!) < 2) near = true; // ZZDBG
+          if (near) { const pc = h < J ? pieces[h]! : null, mesh = pc ? pc.mesh : rooms[h - J]!; console.log('ZZX holder', h, h < J ? (pc!.run < 0 ? 'face' : `run ${pc!.run}`) : `room ${h - J}`, mesh.name, 'visible', mesh.visible, 'dropped', mesh.userData.dropped, 'draw', JSON.stringify(mesh.geometry.drawRange), 'tris', pc ? pc.tris.length : -1); } } } } // ZZDBG
       const sm = yield* sampleNowSteps(seam, model, hx, J);
       holdLimit = R;
       const sup = yield* propagateSteps(sm, R, cellGround);
@@ -890,7 +906,7 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
         queries.push(p);
       }
       for (let h = 0; h < hx.length; h++) if (hx[h]!.length) queries.push(P + h);
-      const flag = yield* standsSteps(model, sm, hx, cellGround, queries);
+      const flag = yield* standsSteps(model, sm, hx, cellGround, queries, J);
       // what the presentation draws touching nothing that stands goes; a piece held where it stood in the intact building
       // (the parts as built round it, its own twin left out) and held no more — over a metre up — comes down too
       const loose = (id: number, xyz: Float32Array): boolean => xyz.length > 0 && flag[id] === 2;
@@ -928,9 +944,13 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
       const down: number[] = [];
       for (let p = 0; p < P; p++) {
         const part = model.parts[p]!, env = sm.env[p];
+        { const zz = (globalThis as { __zzHangAt?: number[] }).__zzHangAt; const b0 = part.box; if (zz && Math.abs((b0[0]! + b0[3]!) / 2 - zz[0]!) < 1.5 && Math.abs((b0[2]! + b0[5]!) / 2 - zz[2]!) < 1.5 && Math.abs((b0[1]! + b0[4]!) / 2 - zz[1]!) < 2.5) console.log('ZZP', p, 'span', part.span, 'env', !!env, 'lo', sm.lo[p]?.toFixed(2), 'g0', sm.xyz[p] ? o.groundAt(sm.xyz[p]![0]!, sm.xyz[p]![2]!).toFixed(2) : '-', 'gmid', o.groundAt((b0[0]! + b0[3]!) / 2, (b0[2]! + b0[5]!) / 2).toFixed(2), 'box', Array.from(b0).map((v) => v.toFixed(2)).join(',')); } // ZZDBG
         if (!env) continue;
         // what stands on the ground stands
         if (sm.lo[p]! - o.groundAt(sm.xyz[p]![0]!, sm.xyz[p]![2]!) < TOUCH) continue;
+        const zz = (globalThis as { __zzHangAt?: number[] }).__zzHangAt; // ZZDBG
+        const zzNear = zz && Math.abs((part.box[0]! + part.box[3]!) / 2 - zz[0]!) < 1.5 && Math.abs((part.box[2]! + part.box[5]!) / 2 - zz[2]!) < 1.5 && Math.abs((part.box[1]! + part.box[4]!) / 2 - zz[1]!) < 2.5; // ZZDBG
+        if (zzNear) console.log('ZZH part', p, 'span', part.span, 'box', Array.from(part.box).map((v) => v.toFixed(2)).join(','), 'stood0', part.stood0, 'flag', flag[p], 'sup0', part.sup0, 'sup', sup[p], 'held0', part.held0.toFixed(2)); // ZZDBG
         if (part.stood0 && flag[p] === 2) { down.push(p); continue; }
         if (!part.sup0 || sup[p]) continue;
         if ((yield* heldSteps(sm, env, p, sup, cellGround, null, heldPts)) <= part.held0 - DROP) down.push(p);

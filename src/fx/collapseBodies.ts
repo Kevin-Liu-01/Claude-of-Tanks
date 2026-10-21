@@ -374,6 +374,15 @@ const PERCH_PLATE_M2 = 4;
 /** (round 5) A flat plate a roof body draws lies high past the walls with this share of it past them (the slab check: 5 %
  *  and a square metre). */
 const PLATE_PAST_SHARE = 0.05;
+/**
+ * (destruction-slabs 227 round 5; the round-5 films' reservoir #7 tavern: its roof's fall left one 10 x 11 m slate side
+ * lying across the standing top storey's walls — from above one flat dark lid over the roofless storey, the critics'
+ * "dark lid" — which the slab check passes by design: inside the walls, on the top floor, "a fallen roof where it belongs")
+ * a roof plate at rest inside a standing shell with LID_M2 or more of it in the top storey (over its floor line less
+ * LID_UNDER_M, up to its wall heads and LID_OVER_M over them), lying no steeper than LID_LEVEL, reads as a lid: the slab
+ * cracks into its sheets, a sheet breaks up where it lies (its dust and broken tiles thrown) — the roof caved in.
+ */
+const LID_M2 = 8, LID_UNDER_M = 0.3, LID_OVER_M = 0.5, LID_LEVEL = 0.5;
 const _boxMid: [number, number] = [0, 0];
 const _boxHalf = [0, 0, 0];
 /** panelsStanding's body frame (one, reused: it runs each frame of a collapse's first 40 s). */
@@ -1212,6 +1221,29 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     }
     return out >= 0.1 * n;
   }
+  /** (round 5) Whether a roof body at rest draws a lid over its standing shell (LID_M2): a plate of it, level enough, with
+   *  LID_M2 or more of its surface inside the top storey's walls, between its floor line and its wall heads. */
+  function lidOverShell(c: LiveCollapse, meshes: readonly THREE.Mesh[]): boolean {
+    if (fallenUnder(c)) return false;
+    const a = c.seam.anatomy, f = frameOf(a), band = a.storeys.length - 1;
+    if (band < 0) return false;
+    const heads = a.placement.y + a.storeys[band]!.y1 + LID_OVER_M, floor = a.placement.y + a.storeys[band]!.y0 - LID_UNDER_M;
+    for (const m of meshes) {
+      const comps = componentsOf(m);
+      for (let k = 0; k < comps; k++) {
+        if (!drawnSamples(m, k) || drawnLevel < LID_LEVEL || pb[4]! < floor || pb[1]! > heads) continue;
+        let lid = 0;
+        for (let q = 0; q < perchSamples.length; q += 4) {
+          const wx = perchSamples[q]!, wy = perchSamples[q + 1]!, wz = perchSamples[q + 2]!;
+          if (wy < floor || wy > heads) continue;
+          const bx = (wx - f.x) * f.c - (wz - f.z) * f.s, bz = (wx - f.x) * f.s + (wz - f.z) * f.c;
+          if (enclosedAt(a, bx, bz, 0.3, band) === true) lid += perchSamples[q + 3]!;
+        }
+        if (lid >= LID_M2) return true;
+      }
+    }
+    return false;
+  }
   /** (round 5) The share of the last drawnSamples' plate (perchSamples, by area) past the walls of the band at its height
    *  (a standing building's top storey; a fallen one's where it lies), or over a spot drawn 1.5 m and more under it. */
   function pastWallsShare(c: LiveCollapse): number {
@@ -1925,7 +1957,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     if (!highPastWalls(c, pose, p.box, piecesMeshes(p))) {
       // (round 4) perched over nothing, or on its edge high over the heap: a slab of several sheets cracks into them (each
       // looked at in turn), a one-sheet slab breaks up where it lies
-      if (perchedAt(pose, p.box, p.handle, piecesMeshes(p))) {
+      if (perchedAt(pose, p.box, p.handle, piecesMeshes(p)) || lidOverShell(c, piecesMeshes(p))) {
         p.shoves = -1;
         if (p.parts.length > 1 && !p.broken) { p.broken = true; breaking.push(c, p); return true; }
         byHandle.delete(p.handle); pool.release(p.handle); p.handle = -1;
@@ -1986,7 +2018,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     const pbox = part.box ?? [-spec.half[0], -spec.half[1], -spec.half[2], spec.half[0], spec.half[1], spec.half[2]];
     if (!highPastWalls(c, pose, pbox, part.meshes)) {
       // (round 4) perched over nothing, or on its edge high over the heap: it breaks up where it lies
-      if (perchedAt(pose, pbox, part.handle, part.meshes)) {
+      if (perchedAt(pose, pbox, part.handle, part.meshes) || lidOverShell(c, part.meshes)) {
         part.shoves = -1;
         byHandle.delete(part.handle); pool.release(part.handle); part.handle = -1;
         breakUp(c, part, pbox, spec.massKg);

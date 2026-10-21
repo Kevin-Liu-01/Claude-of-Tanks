@@ -65,6 +65,10 @@ export interface FractureHost {
   spanMaterials(seam: StructureDamageSeam): Map<string, THREE.Material>;
   /** The room behind a hole in a source material's texture (structureStages roomMaterialFor). */
   roomMaterialFor(source: THREE.Material | null | undefined): THREE.Material;
+  /** (round 6) The sweep took parts of a structure down: true when that took most of its roof (its top storey opened). */
+  roofDropped?(seam: StructureDamageSeam): boolean;
+  /** (round 6) Claim a storey's room for the fracture (false: the kit's room stands there already). */
+  claimRoom?(seam: StructureDamageSeam, key: string): boolean;
 }
 
 /** A round burst on a wall (structureStages' pending strike). */
@@ -248,6 +252,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
     holdBake: (structureIdx, y) => bodies.floorHolds(structureIdx, y),
     materialFor: (seam, bucket) => resolverOf(seam)(bucket),
     roomMaterial: (seam, bucket) => (host ? host.roomMaterialFor(resolverOf(seam)(bucket)) : null),
+    claimRoom: (seam, key) => host?.claimRoom?.(seam, key) ?? true,
     onLanding: o.onLanding,
     onRefused(seam, x, y, z, sizeM, slot, vx, vy, vz) {
       let list = refused.get(seam);
@@ -331,7 +336,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       if (host?.falling?.(job.idx)) { hangingJob = null; if (!hangingDue.has(job.idx)) hangingDue.set(job.idx, job.due); return; }
       for (let n = 0; n < HANGING_STEPS; n++) {
         const r = job.gen.next();
-        if (r.done) { hangingJob = null; hangingRestarts.delete(job.idx); applyHanging(job.idx, job.due, job.runs, job.rooms, r.value); return; }
+        if (r.done) { if ((globalThis as { __zzHangAt?: unknown }).__zzHangAt) console.log('ZZH done', job.idx, o.now().toFixed(2), 'groups', r.value.groups.length, 'faces', r.value.faces.length, 'runs', r.value.runs.length); /* ZZDBG */ hangingJob = null; hangingRestarts.delete(job.idx); applyHanging(job.idx, job.due, job.runs, job.rooms, r.value); return; }
       }
       return;
     }
@@ -345,6 +350,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       const runs = all.filter((m) => m.userData.room !== true);
       const rooms = [...all.filter((m) => m.userData.room === true), ...fracture.rooms(idx)];
       hangingJob = { idx, due, runs, rooms, gen: hangingSweep.steps(due.seam, { faces: fracture.standing(idx), runs, rooms }), at: o.now() };
+      if ((globalThis as { __zzHangAt?: unknown }).__zzHangAt) console.log('ZZH start', idx, o.now().toFixed(2)); // ZZDBG
       sweepHanging();
       return;
     }
@@ -380,7 +386,12 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       if (m.userData.room === true && host) host.o.debris.dropRun(m); else fracture.dropRoom(idx, m);
     }
     if (swept.faces.length) fracture.dropPieces(idx, swept.faces);
-    if (groups.length) { landmarks.drop(due.seam, groups, due.settled); bump(idx); }
+    if (groups.length) {
+      landmarks.drop(due.seam, groups, due.settled); bump(idx);
+      // (round 6; urban church #15's nave roof came down as these bodies, no roof section's fall) most of the roof gone so:
+      // the top storey is open to the sky, as a roof's fall leaves it
+      if (host?.roofDropped?.(due.seam)) fracture.roofFell(idx);
+    }
     if (groups.length || swept.faces.length || swept.runs.length || swept.rooms.length) {
       const n = (hangingChain.get(idx) ?? 0) + 1;
       if (n <= HANGING_CHAIN) { hangingDue.set(idx, due); hangingChain.set(idx, n); }

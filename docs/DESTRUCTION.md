@@ -1424,8 +1424,15 @@ churches never taken to their end, the mills' pops).** The branch carries `origi
 
 What stays open after round 5:
 
-- fjord #0's truss beam at two seeds of three (`R narrow-back` 1114308791, 854166144): the hanging sweep's intact reading
-  has it 40 % held (it never bore), the slab check's 100 %; the roof-furniture pass holds it by its neighbours.
+- fjord #0's truss beam at two seeds of three (`R narrow-back` 1114308791, 854166144): a 1.41 m beam lying 0.5 m over
+  the eaves, 40 % of it on the wall head and the rest on the roof's frame (the slab check's intact reading, roof and all:
+  100 %; the hanging sweep's, which counts only what bears: 40 %, so it never bore and is not read again). At the roof's
+  fall `holdOverEaves` reads it on its 0.5 m grid as three cells, all held through the 3 x 3 neighbourhood and two of them
+  in their own cell. Tried (r5/dev/v6, v7; `r5/dev/v7/hoe-flat-own.patch`): a part lying flat (0.5 m or less from its
+  lowest point to its highest) held only over three quarters of its own cells — fjord #0 passes at all three seeds and the
+  R passes on verdant, reservoir, frontier and urban pass, but it also takes with the roof a stack's plaster cap (four of
+  six own cells) and the urban factory's stone cornice (ten of fourteen), which overhang what holds them. Not shipped: it
+  wants an own reading finer than the grid (or the part's middle over what holds it).
 - The sweep's frame cost (thread CPU per frame with sweep work at 4edd9817a9, load ~120, `r5/perf/sweepframe.txt`): verdant
   #9 p99 9.2 ms (round 4: 9.5), urban #15 p99 15.0 ms, 2 frames over 16.7 ms, its total 739 ms over a 24 s barrage (623: a
   restarted sweep's work is redone), skybridge #27 p99 11.9 ms (14.2). Weighing its units at their cost is still to do.

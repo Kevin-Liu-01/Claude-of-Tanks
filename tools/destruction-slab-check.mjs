@@ -61,7 +61,7 @@
  * snapshot flags a stray slab.
  */
 import * as THREE from 'three';
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { deflateSync } from 'node:zlib';
 import path from 'node:path';
@@ -919,7 +919,7 @@ export function renderPng(file, layers, { eye, target, fov = 50, width = 1280, h
 export async function runSlabCheck({
   mapId = 'verdant', ids = null, builders = null, perBuilder = 1, rounds = 40, roundGapS = 0.45, settleS = 10, stopAfterRoof: stopAfterRoofAll = false, upper = true,
   sections = true, fracture = true, renderDir = null, maxSnapshots = 40, storeys = [0], log = () => {}, rejoin: rejoinAll = true,
-  faces = ['wide'], seed = null, filmS = 0, filmFromS = 0, facesFor = null, fingerprint = null,
+  faces = ['wide'], seed = null, filmS = 0, filmFromS = 0, facesFor = null, fingerprint = null, strikePlan = null,
 } = {}) {
   installWorldBuildFixture();
   const [maps, terrain, vegetation, props, models, fleet] = await Promise.all([
@@ -938,7 +938,7 @@ export async function runSlabCheck({
   const { createStructureDamageSeam } = await import('../src/world/structureDamageSeam.ts');
   const { createStructureDamage } = await import('../src/sim/structureDamage.ts');
   const { rubbleHeightFor, rubbleMoundHeightAt } = await import('../src/sim/terrainDeformation.ts');
-  const { createObstacleGrid, shellPassesThroughCollisionRecord } = await import('../src/world/collision.ts');
+  const { createObstacleGrid, shellPassesThroughCollisionRecord, nearestColliderHitAlongRay } = await import('../src/world/collision.ts');
   const { munitionClassForShell, munitionChargeKg } = await import('../src/sim/munitionBlast.ts');
   const { STAGE_RUN_TAG, COLLAPSE_S } = await import('../src/fx/structureMask.ts');
   await models.preloadPropModels();
@@ -1010,6 +1010,41 @@ export async function runSlabCheck({
   const query = createObstacleGrid(solids, 16);
   const queryOut = [];
   const ground0 = (x, z) => (field.getContactHeightAt ? field.getContactHeightAt(x, z) : field.getHeightAt(x, z));
+  // (destruction-slabs 227 round 6; the round-5 films' tavern #7, depot #8 and urban church #15 roofless under a flat dark
+  // plane: the films' rounds are fixed points at fixed times, the check's its own seeded rounds, so no run of the check
+  // ever stood in a film's state) `strikePlan`: a film's own strikes ({ tMs, at, dirDeg, pitchDeg, shell, speedMps } each,
+  // the Studio's 'strike' effects), fired as the Studio fires them — each from its point along its heading, traced
+  // through the world's colliders as the world's raycast traces a round (map.ts nearestPropHit: a structure's openings
+  // let it through a hole) and the ground, the sim's strike where it stops and the presentation's on a structure
+  // (effects.ts: the burst's hole in its courses). The run is the film's: every building it names is struck.
+  const filmColliders = strikePlan ? createObstacleGrid(built.colliders) : null;
+  const filmScratch = [], filmNormal = new THREE.Vector3(), filmHit = { distance: Infinity, record: null };
+  const filmDir = new THREE.Vector3(), filmFrom = new THREE.Vector3();
+  /** The film's strike `s` traced: [x, y, z, record | null (the ground)] where it stops, or null (it flew off). */
+  const traceFilm = (s) => {
+    const h = (Number(s.dirDeg) || 0) * Math.PI / 180, p = (Number(s.pitchDeg) || 0) * Math.PI / 180;
+    filmDir.set(Math.sin(h) * Math.cos(p), Math.sin(p), Math.cos(h) * Math.cos(p));
+    filmFrom.set(s.at[0], s.at[1], s.at[2]);
+    const range = Number.isFinite(s.rangeM) ? s.rangeM : 600;
+    nearestColliderHitAlongRay(filmColliders, filmFrom, filmDir, range, filmNormal, filmHit, filmScratch);
+    // the ground first where it lies nearer (the world's march: half the clearance a step, 0.5-2 m)
+    const reach = Math.min(range, filmHit.record ? filmHit.distance : range);
+    let d = 0, clear = filmFrom.y - ground0(filmFrom.x, filmFrom.z), terrainT = clear <= 0 ? 0 : -1;
+    while (terrainT < 0 && d < reach) {
+      const prev = d;
+      d = Math.min(reach, d + Math.min(Math.max(clear * 0.5, 0.5), 2));
+      const x = filmFrom.x + filmDir.x * d, y = filmFrom.y + filmDir.y * d, z = filmFrom.z + filmDir.z * d;
+      clear = y - ground0(x, z);
+      if (clear <= 0) {
+        let lo = prev, hi = d;
+        for (let k = 0; k < 6; k++) { const m = (lo + hi) / 2; if (filmFrom.y + filmDir.y * m - ground0(filmFrom.x + filmDir.x * m, filmFrom.z + filmDir.z * m) <= 0) hi = m; else lo = m; }
+        terrainT = (lo + hi) / 2;
+      }
+    }
+    const t = terrainT >= 0 ? terrainT : filmHit.record ? filmHit.distance : -1;
+    if (t < 0) return null;
+    return [filmFrom.x + filmDir.x * t, filmFrom.y + filmDir.y * t, filmFrom.z + filmDir.z * t, terrainT >= 0 ? null : filmHit.record];
+  };
 
   const rows = [];
   // (destruction-slabs 227 round 2) each building struck from every face asked for (`faces`: wide, wide-back, narrow,
@@ -1120,7 +1155,7 @@ export async function runSlabCheck({
     const OPEN_ROOM_S = 1.0;
     const topStorey = seam.anatomy.storeys.length - 1;
     const openRoomAt = (meshes) => {
-      if (!(roofDownAt >= 0 && clock >= roofDownAt + OPEN_ROOM_S) || !seam.anatomy.roof) return [];
+      if (!(roofOpenAt >= 0 && clock >= roofOpenAt + OPEN_ROOM_S) || !seam.anatomy.roof) return [];
       const found = [];
       for (const d of meshes) {
         if (!ROOM_RUN.test(d.name)) continue;
@@ -1145,6 +1180,50 @@ export async function runSlabCheck({
       }
       return found;
     };
+    /**
+     * (destruction-slabs 227 round 6; the round-5 films' tavern #7 — the check replaying the film's strikes, `--strikes`:
+     * its roof down at 2.55 s, three of its bodies at rest on the top storey's floor and over its wall heads, from the film's
+     * camera one flat dark slate plane filling the roofless storey to the clip's end, the critics' "dark lid"; the slab
+     * rules pass a fallen roof lying inside the walls by design) while the building stands roofless, a fallen roof's body at
+     * rest drawing a plate (its least axis's rise LID_LEVEL or more) with LID_M2 or more of its surface inside the top
+     * storey's walls, between its floor line (less 0.3 m) and its wall heads (0.5 m over them), is the lid.
+     */
+    const LID_M2 = 8, LID_LEVEL = 0.5;
+    const roofLidAt = (meshes, settledNow) => {
+      if (!(roofOpenAt >= 0 && clock >= roofOpenAt + OPEN_ROOM_S) || !a.roof || !a.storeys.length || felled) return [];
+      const st = a.storeys[a.storeys.length - 1];
+      const floor = a.placement.y + st.y0 - 0.3, heads = a.placement.y + st.y1 + 0.5;
+      const walls = bandFootprint(a.placement.y + st.y0, a.placement.y + st.y1);
+      const found = [];
+      for (const d of meshes) {
+        if (!/^fx-collapse-roof-/.test(d.name) || !(settledNow || rested(d.name))) continue;
+        for (const tris of piecesOfTriangles(d.tris)) {
+          const sh = shapeOf(tris);
+          if (Math.abs(sh.axes[2][1]) < LID_LEVEL || sh.max[1] < floor || sh.min[1] > heads) continue;
+          let inside = 0;
+          for (let o = 0; o + 8 < tris.length; o += 9) {
+            const ux = tris[o + 3] - tris[o], uy = tris[o + 4] - tris[o + 1], uz = tris[o + 5] - tris[o + 2];
+            const vx = tris[o + 6] - tris[o], vy = tris[o + 7] - tris[o + 1], vz = tris[o + 8] - tris[o + 2];
+            const area = Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) / 2;
+            if (!(area > 1e-4)) continue;
+            const ks = Math.max(1, Math.min(24, Math.round(area / 0.25)));
+            for (let k = 0; k < ks; k++) {
+              let u = ((k + 0.5) * 0.618034) % 1, v = ((k + 0.5) * 0.754878) % 1;
+              if (u + v > 1) { u = 1 - u; v = 1 - v; }
+              const x = tris[o] + ux * u + vx * v, y = tris[o + 1] + uy * u + vy * v, z = tris[o + 2] + uz * u + vz * v;
+              if (y >= floor && y <= heads && walls.has(x, z)) inside += area / ks;
+            }
+          }
+          if (inside < LID_M2) continue;
+          found.push({ mesh: d.name, sheet: false, material: d.material.name, map: d.material.map, tint: [0, 0, 0], slab: isSlab(sh), orientation: Math.abs(sh.axes[2][1]) > 0.8 ? 'horizontal' : 'tilted',
+            extentsM: sh.ext.map((e) => +e.toFixed(2)), areaM2: +(sh.ext[0] * sh.ext[1]).toFixed(1), centre: sh.centre.map((c) => +c.toFixed(2)),
+            liftM: +(sh.min[1] - ground(sh.centre[0], sh.centre[2])).toFixed(2), outsideShare: 0, outsideM2: 0, floatingShare: 0, triangles: sh.tris,
+            reasons: [`lid: a fallen roof's plate at rest over the roofless top storey (${inside.toFixed(1)} m² inside its walls, ${(st.y0 + a.placement.y).toFixed(1)}-${(st.y1 + a.placement.y).toFixed(1)} m)`],
+            attributes: [], _tris: tris });
+        }
+      }
+      return found;
+    };
     const floorLists = drawnSpanTriangles(seam.spans.filter((sp) => sp.partClass !== 'roof'));
     const topFloorY = a.placement.y + (a.storeys.length ? a.storeys[a.storeys.length - 1].y0 : 0) + 0.5;
     const standingFloorAt = floorsOf(floorLists, topFloorY);
@@ -1162,6 +1241,23 @@ export async function runSlabCheck({
     const rested = (name) => /^fx-collapse-roof-/.test(name) && firstSeen.has(name) && clock - firstSeen.get(name) >= SLAB.restedS
       && clock - (lastMoved.get(name) ?? -Infinity) >= SLAB.stillS;
     let roofDownAt = -1;
+    // (round 6; urban church #15: its nave's roof came down as the hanging sweep's bodies, no roof section's fall) the roof is
+    // open to the sky from its section's fall or from when half its triangles are gone, whichever is first
+    let roofOpenAt = -1;
+    const roofSpans = seam.spans.filter((sp) => sp.partClass === 'roof');
+    const roofShare = () => {
+      let all = 0, drawn = 0;
+      for (const span of roofSpans) {
+        const arr = span.position.array;
+        for (let k = span.first; k + 2 < span.first + span.count; k += 3) {
+          const i = k * 3;
+          all++;
+          const ux = arr[i + 3] - arr[i], uy = arr[i + 4] - arr[i + 1], uz = arr[i + 5] - arr[i + 2], vx = arr[i + 6] - arr[i], vy = arr[i + 7] - arr[i + 1], vz = arr[i + 8] - arr[i + 2];
+          if ((uy * vz - uz * vy) ** 2 + (uz * vx - ux * vz) ** 2 + (ux * vy - uy * vx) ** 2 > 1e-18) drawn++;
+        }
+      }
+      return all ? drawn / all : 1;
+    };
     const mask = createStructureMask(4096, { holes: true });
     const env = { groundAt: (x, z) => ground(x, z), queryStatic: query, isSolid: (r) => !r.crushed && !r.dead };
     const bodies = rubbleMod ? rubbleMod.createRubbleBodies({ now: () => clock, environment: () => env, capacity: rubbleMod.RUBBLE_BODY_CAPACITY,
@@ -1192,7 +1288,7 @@ export async function runSlabCheck({
         }
       }
       replay.push({ type, e: { ...e } });
-      if (e?.structureId === id && type === DESTRUCTION_BUS_EVENTS.breach && e.sectionDown && e.sectionKind === 'roof' && roofDownAt < 0) roofDownAt = clock;
+      if (e?.structureId === id && type === DESTRUCTION_BUS_EVENTS.breach && e.sectionDown && e.sectionKind === 'roof' && roofDownAt < 0) { roofDownAt = clock; if (roofOpenAt < 0) roofOpenAt = clock; }
       if (e?.structureId === id) {
         lastEventAt = clock;
         events.push({ t: +clock.toFixed(3), type, stage: e.stage ?? null, hole: e.hole ?? null, storeyDown: !!e.storeyDown,
@@ -1294,12 +1390,32 @@ export async function runSlabCheck({
       if (!renderDir) return null;
       mkdirSync(renderDir, { recursive: true });
       const layers = [{ tris: groundPatch(groundFn, mid[0], mid[2], reach * 1.2, 3), rgb: [0.36, 0.48, 0.26] }];
-      if (standingSpans) for (const t of drawnSpanTriangles(seam.spans)) layers.push({ tris: t, rgb: [0.82, 0.8, 0.76] });
-      for (const m of meshes) layers.push({ tris: m.tris, rgb: tintOf(m), side: m.material.side });
+      // (round 6, a diagnosis aid) COT_SLAB_FALSE=1: each span and mesh its own colour (logged), to name what a film shows
+      const falseRgb = process.env.COT_SLAB_FALSE ? (key) => {
+        const hh = createHash('md5').update(key).digest();
+        return [0.25 + (hh[0] / 255) * 0.7, 0.25 + (hh[1] / 255) * 0.7, 0.25 + (hh[2] / 255) * 0.7];
+      } : null;
+      if (standingSpans) drawnSpanTriangles(seam.spans, true).forEach((t, k) => {
+        if (!t.length) return;
+        const key = `span ${k} ${seam.spans[k].mesh.name || seam.spans[k].bucket}`;
+        const rgb = falseRgb ? falseRgb(key) : [0.82, 0.8, 0.76];
+        if (falseRgb) log(`  false ${label} ${key} rgb ${rgb.map((v) => v.toFixed(2)).join(',')}`);
+        layers.push({ tris: t, rgb });
+      });
+      for (const m of meshes) {
+        const rgb = falseRgb ? falseRgb(m.name) : tintOf(m);
+        if (falseRgb) log(`  false ${label} mesh ${m.name} rgb ${rgb.map((v) => v.toFixed(2)).join(',')}`);
+        layers.push({ tris: m.tris, rgb, side: m.material.side });
+      }
       const base = path.join(renderDir, `${mapId}-s${id}${faceName === 'wide' ? '' : `-${faceName}`}-${String(rendered++).padStart(2, '0')}-${label}`);
       // as drawn (the CPU's approximation: flat tints, no texture, no hole cuts), then with the flagged pieces magenta
       renderPng(`${base}-look.png`, layers, { eye, target: mid });
       renderPng(`${base}-low.png`, layers, { eye: eyeLow, target: mid });
+      // (COT_SLAB_CAM=x,y,z,tx,ty,tz: a third view from a film's own camera)
+      if (process.env.COT_SLAB_CAM) {
+        const v = process.env.COT_SLAB_CAM.split(',').map(Number);
+        if (v.length === 6 && v.every(Number.isFinite)) renderPng(`${base}-cam.png`, layers, { eye: v.slice(0, 3), target: v.slice(3) });
+      }
       for (const f of findings) layers.push({ tris: f._tris, rgb: [1, 0.1, 0.85], bias: 0.06 });
       // (the flags view shows every flagged surface from both sides; the look views cull as the materials do)
       renderPng(`${base}-flags.png`, layers, { eye, target: mid });
@@ -1336,7 +1452,7 @@ export async function runSlabCheck({
       // look within HANG_SETTLE_S of the building's last event is none)
       holdFloors = !felled;
       { const st = spansState(); if (st !== 'moving' && clock - lastEventAt >= HANG_SETTLE_S) judged.findings.push(...hangingAt(meshes, st === 'drawn', ground)); }
-      if (spansState() === 'drawn') judged.findings.push(...openRoomAt(meshes));
+      if (spansState() === 'drawn') judged.findings.push(...openRoomAt(meshes), ...roofLidAt(meshes, false));
       const flagged = judged.findings.length > 0;
       const firstFlag = flagged && !snapshots.some((p) => p.findings.length);
       const tag = `t${clock.toFixed(1)}-${label}`;
@@ -1347,7 +1463,10 @@ export async function runSlabCheck({
     const due = [];
     let lastEventCount = 0, fired = 0;
     let nextFilm = filmFromS;
-    const lastS = rounds * roundGapS + settleS + 4;
+    // (round 6) a film's strikes: fired at their own times; the run lasts the film's last strike and the settle
+    const plan = strikePlan ? strikePlan.filter((s) => s && Array.isArray(s.at)).slice().sort((p, q) => p.tMs - q.tMs) : null;
+    let planAt = 0;
+    const lastS = plan ? (plan.length ? plan[plan.length - 1].tMs / 1000 : 0) + settleS + 4 : rounds * roundGapS + settleS + 4;
     // (destruction-slabs 227 round 4; the engineering critic's reservoir #11 cottage, roof pass from the narrow back: a
     // roof sheet shoved off a rest high past the walls was judged in mid-tumble off the corner, the standing end come in
     // its flight) the end waits for the building's bodies to come to rest and its hanging sweep to settle, REST_WAIT_S at
@@ -1356,7 +1475,24 @@ export async function runSlabCheck({
     for (let tick = 0; tick * STEP <= lastS + REST_WAIT_S; tick++) {
       clock = tick * STEP;
       for (let i = 0; i < ownRecords.length; i++) prevOwnState[i] = (ownRecords[i].crushed ? 1 : 0) | (ownRecords[i].dead ? 2 : 0);
-      if (collapsedAt < 0 && fired < rounds && !(stopAfterRoof && roofDownAt >= 0) && clock >= 0.3 + fired * roundGapS) {
+      while (plan && planAt < plan.length && clock + 1e-9 >= plan[planAt].tMs / 1000) {
+        const s = plan[planAt++];
+        const given = s.shell && typeof s.shell === 'object' ? s.shell : {};
+        const fspec = { name: 'film', type: typeof given.type === 'string' ? given.type : 'HE', caliberMm: Number(given.caliberMm) || 125,
+          velocityMps: Number(s.speedMps) || Number(given.velocityMps) || 800 };
+        const hit = traceFilm(s);
+        if (!hit) continue;
+        const [hx, hy, hz, rec] = hit;
+        const len = Math.hypot(filmDir.x, filmDir.z) || 1, dx = filmDir.x / len, dz = filmDir.z / len;
+        strikes.push([+hx.toFixed(2), +hy.toFixed(2), +hz.toFixed(2), +clock.toFixed(2)]);
+        if (!rec) { sd.strike(fspec, null, hx, hy, hz, dx, dz, false); fired++; continue; }
+        sd.strike(fspec, rec, hx, hy, hz, filmDir.x, filmDir.z);
+        const sid = typeof rec.structureIdx === 'number' ? rec.structureIdx : -1;
+        const fm = munitionClassForShell(fspec), fkg = munitionChargeKg(fspec, fm);
+        if (sid >= 0 && seamOf(sid)) stages.strike(sid, seamOf(sid), hx, hy, hz, filmDir.x, filmDir.z, fm, fkg, fspec.caliberMm);
+        fired++;
+      }
+      if (!plan && collapsedAt < 0 && fired < rounds && !(stopAfterRoof && roofDownAt >= 0) && clock >= 0.3 + fired * roundGapS) {
         const [b0, b1] = bandsUp[fired % bandsUp.length];
         const uu = offs[fired % offs.length] * face.width * 0.8;
         const y = b0 + Math.max(Math.min(0.6, (b1 - b0) / 2), Math.min(b1 - b0 - 0.6, ys[fired % ys.length] * (b1 - b0)));
@@ -1374,6 +1510,7 @@ export async function runSlabCheck({
       fx?.update();
       debris.update();
       bodies?.update();
+      if (roofOpenAt < 0 && roofSpans.length && tick % 6 === 0 && roofShare() <= 0.5) roofOpenAt = clock;
       fxGroup.traverse((m) => {
         if (!m.isMesh || !m.name) return;
         if (!firstSeen.has(m.name)) firstSeen.set(m.name, clock);
@@ -1432,7 +1569,7 @@ export async function runSlabCheck({
             floorAt: felled ? null : floorOrLine });
           holdFloors = !felled;
           { const st = spansState(); if (st !== 'moving' && (atEnd || clock - lastEventAt >= HANG_SETTLE_S)) judged.findings.push(...hangingAt(meshes, st === 'drawn', ground)); }
-          if (spansState() === 'drawn') judged.findings.push(...openRoomAt(meshes));
+          if (spansState() === 'drawn') judged.findings.push(...openRoomAt(meshes), ...roofLidAt(meshes, atEnd));
           const last = events[events.length - 1];
           const label = atEnd ? 'final' : `t${clock.toFixed(1)}-${last ? (last.stage ?? (last.storeyDown ? 'storeyDown' : last.hole === 255 ? 'sectionDown' : 'hole')) : 'none'}`;
           const flagged = judged.findings.length > 0;
@@ -1617,6 +1754,19 @@ function groundPatch(groundAt, cx, cz, half, cell) {
   return Float32Array.from(tris);
 }
 
+/**
+ * (round 6) `--strikes=<file>[#<case id>]`: a film's strikes — a Studio capture's frames.json (its scene), a case ({ scene }),
+ * or a plan ([{ map, cases }]: the case named after `#`, else the first) — as the Studio fires them (`strikePlan`).
+ */
+function readStrikePlan(spec) {
+  const [file, caseId] = spec.split('#');
+  const j = JSON.parse(readFileSync(file, 'utf8'));
+  const cases = Array.isArray(j) ? j.flatMap((m) => m.cases ?? []) : [j];
+  const c = caseId ? cases.find((k) => k.id === caseId || k.case === caseId) : cases[0];
+  if (!c?.scene?.effects) throw new Error(`--strikes: no scene with effects in ${spec}`);
+  return c.scene.effects.filter((e) => e.type === 'strike').map((e) => ({ tMs: Number(e.tMs) || 0, at: e.at, ...(e.params ?? {}) }));
+}
+
 function parseArgs(argv) {
   const args = {};
   for (const arg of argv) {
@@ -1639,6 +1789,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     storeys: typeof args.storeys === 'string' ? args.storeys.split(',').map(Number) : [0],
     faces: typeof args.faces === 'string' ? args.faces.split(',') : ['wide'], seed: args.seed !== undefined ? Number(args.seed) : null,
     filmS: Number(args.film ?? 0), filmFromS: Number(args['film-from'] ?? 0),
+    strikePlan: typeof args.strikes === 'string' ? readStrikePlan(args.strikes) : null,
     log: (...m) => console.log('[slab-check]', ...m),
   });
   if (typeof args.json === 'string') writeFileSync(args.json, JSON.stringify(report, null, 1));

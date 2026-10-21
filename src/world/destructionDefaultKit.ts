@@ -577,10 +577,13 @@ function breach(anatomy: StructureDamageAnatomy, hole: BreachSpec, out: DamageWr
   // (destruction-slabs 227 round 4; the census's reservoir #17 valve tower: a rim laid straight across a round tower's wall
   // stood half in the air past its curve) a rim only where the drawn wall runs flat across the hole's width: the wall
   // behind its edges (where one is read) within a hand of the wall behind its middle (no enclosure: the faces are the walls)
+  // (round 6; the census's verdant #9 church, narrow back, seed 1872341908: a hole at its cornice's corner laid its rim on
+  // round the corner, a quarter of it standing in the air past the walls 10 m up to the end — no wall read behind an edge
+  // passed as flat) and a wall read behind both its edges
   const fi = storey.faces.indexOf(face);
   const flatAcross = !anatomy.enclosure || [-1.3, 1.3].every((k) => {
     const sb = faceSetback(anatomy, storey.index, fi, hole.u + k * radius);
-    return !Number.isFinite(sb) || Math.abs(sb - back) <= 0.25;
+    return Number.isFinite(sb) && Math.abs(sb - back) <= 0.25;
   });
   if (flatAcross && mesh.begin(slot.bucket, 'rim')) {
     layRaggedCourses(mesh, face, slot, rng, cx, cy, cz, radius * 0.75, radius * 1.25, unitW, unitH, depth * 0.1, depth * 0.9, 0.95,

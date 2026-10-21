@@ -120,8 +120,9 @@ const FALL_SLOW = 1.25, FALL_MIN_S = 0.45, FALL_MAX_S = 1.6;
  *  points (the slab check: a part held a quarter less than it was in the intact building hangs). */
 const HOLD_OVER_EAVES = 0.75;
 /** (destruction-slabs 227 round 5) A top storey's room open to the sky (its roof fallen): its walls and floor lit as the
- *  outside is (laid dim, 0.55-0.6, they read as one flat dark plane over the roofless storey: the critics' tavern lid). */
-const OPEN_ROOM_WALL = 0.95, OPEN_ROOM_FLOOR = 0.85;
+ *  outside is (laid dim, 0.55-0.6, they read as one flat dark plane over the roofless storey: the critics' tavern lid) —
+ *  (round 6: at 0.95 and 0.85 the round-5 films' tavern's inner walls glared white in the sun) a quarter under it. */
+const OPEN_ROOM_WALL = 0.72, OPEN_ROOM_FLOOR = 0.68;
 /** A room's floor this far over its floor line (m): the storey under it draws its own top there. */
 const ROOM_FLOOR_LIFT_M = 0.02;
 /** A tank round's hole through a wall (no charge: the shot's own): a ragged pierce sized by its calibre, its rim spalled. */
@@ -538,6 +539,46 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     set.add(section);
     return true;
   };
+  /**
+   * (destruction-slabs 227 round 6; the round-5 films' urban church #15: its nave's roof came down as the hanging sweep's
+   * bodies once the top bands of its walls fell — no roof section's fall, so its rooms kept their ceilings and their shade,
+   * one flat dark plane over the roofless nave at its wall heads to the film's end) the structures whose roof the sweep
+   * took down (ROOF_GONE_SHARE of its triangles gone): open to the sky as a roof section's fall leaves them.
+   */
+  const roofOpened = new Set<number>();
+  const ROOF_GONE_SHARE = 0.5;
+  /** Whether a structure's roof is down: its section fell, or the sweep took most of it. */
+  const roofDown = (seam: StructureDamageSeam): boolean => {
+    const roof = seam.anatomy.roof;
+    return !!roof && (roofOpened.has(seam.structureIdx) || !!fallenSections.get(seam.structureIdx)?.has(roof.section));
+  };
+  /** The roof's spans' share of their triangles still drawn (no roof span: 1). */
+  function roofDrawnShare(seam: StructureDamageSeam): number {
+    let all = 0, drawn = 0;
+    for (const span of seam.spans) {
+      if (span.partClass !== 'roof') continue;
+      const arr = span.position.array as Float32Array;
+      const start = span.first + ((3 - (span.first % 3)) % 3);
+      const n = Math.max(0, Math.floor((span.first + span.count - start) / 3));
+      for (let t = 0; t < n; t++) {
+        const i = (start + t * 3) * 3;
+        all++;
+        const ux = arr[i + 3]! - arr[i]!, uy = arr[i + 4]! - arr[i + 1]!, uz = arr[i + 5]! - arr[i + 2]!;
+        const vx = arr[i + 6]! - arr[i]!, vy = arr[i + 7]! - arr[i + 1]!, vz = arr[i + 8]! - arr[i + 2]!;
+        if ((uy * vz - uz * vy) ** 2 + (uz * vx - ux * vz) ** 2 + (ux * vy - uy * vx) ** 2 > 1e-18) drawn++;
+      }
+    }
+    return all ? drawn / all : 1;
+  }
+  /** (round 6) The sweep took parts of a structure down: once most of its roof is gone, its top storey opens to the sky
+   *  (rooms without ceilings, lit; what stood over the eaves looked at again). True when it opened now. */
+  function roofDropped(seam: StructureDamageSeam): boolean {
+    if (!seam.anatomy.roof || roofDown(seam) || roofDrawnShare(seam) > ROOF_GONE_SHARE) return false;
+    roofOpened.add(seam.structureIdx);
+    const opened = openTopRooms(seam);
+    if (flattenRoofFurniture(seam) || opened) seam.touchShadows();
+    return true;
+  }
 
   /** What a stage returns: its cuts into the mask (body frame to world), its part-class hides flattened. */
   function apply(seam: StructureDamageSeam, result: DamageStageResult | null | undefined, holeSeed?: number,
@@ -665,6 +706,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     // wall's bucket, a stack drawn from below — never the roof that falls, nor another part over the eaves until it is
     // held itself: two verge boards side by side hold nothing up); held over half its lowest points, it stands
     const goes = holdOverEaves(a, perSpan, candidates, eaveY);
+    { const zz = (globalThis as { __zzHangAt?: number[] }).__zzHangAt; if (zz) console.log('ZZR furniture', seam.structureIdx, 'eave', eaveY.toFixed(2), 'candidates', candidates.length, 'go', [...goes.values()].reduce((n, s) => n + s.size, 0)); } // ZZDBG
     for (const ps of perSpan) {
       const { span, find, n, start, drawn } = ps;
       const arr = span.position.array as Float32Array;
@@ -1156,6 +1198,14 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
 
   /** The rooms laid, per structure: one per storey and enclosed component (structureEnclosure storeyInterior). */
   const interiors = new Map<number, Set<string>>();
+  /** A storey's room claimed (its interior's key): false when one is laid there already, the kit's or the fracture's. */
+  function claimRoom(seam: StructureDamageSeam, key: string): boolean {
+    let laid = interiors.get(seam.structureIdx);
+    if (!laid) { laid = new Set(); interiors.set(seam.structureIdx, laid); }
+    if (laid.has(key)) return false;
+    laid.add(key);
+    return true;
+  }
   /** The bucket's tile density (repeats a metre) the kits' fallback surface uses (regional fracture.ts fallbackSurface). */
   const tileDensity = (bucket: string): number => bucket.includes('Stone') || bucket === 'stone' ? 0.5
     : /laster/i.test(bucket) ? 0.42 : 0.55;
@@ -1180,10 +1230,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     const eaveCap = a.roof ? a.roof.eaveY - 0.15 : Infinity;
     const room = storeyInterior(a, storeyIndex, hintX, hintZ, Math.min(eaveCap, (above ? above.y0 : storey.y1) - 0.06));
     if (!room) return;
-    let laid = interiors.get(seam.structureIdx);
-    if (!laid) { laid = new Set(); interiors.set(seam.structureIdx, laid); }
-    if (laid.has(room.key)) return;
-    laid.add(room.key);
+    if (!claimRoom(seam, room.key)) return;
     const { y0, y1 } = room;
     // its materials: the walls' render or infill where they have one (an interior is plastered), else their masonry
     const face = storey.faces[0]!;
@@ -1218,7 +1265,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     // (destruction-slabs 227 round 4, the visual and the engineering critics' tavern #7: a hole on the top storey after the
     // roof fell laid a room whose ceiling stood as a flat dark plane at the wall heads, the roofless tavern read as a box with
     // a lid) no ceiling under a roof that has fallen — (round 5) and open to the sky it is lit as the sky lights it
-    const open = !above && !!a.roof && !!fallenSections.get(seam.structureIdx)?.has(a.roof.section);
+    const open = !above && roofDown(seam);
     // its walls, facing in along the room's drawn boundary
     for (const [ax, az, bx, bz, nx, nz] of room.walls) {
       // (round 3: the owner's "dark grey-navy slabs" — a room's walls at 0.4 of the render read as one flat dark plane through
@@ -1526,7 +1573,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   }
 
   const fracture = o.fracture?.({ o, keep, dropRuns, clampPanel, finishFalls, run, worldMaterial, spanMaterials, roomMaterialFor,
-    originalOf: (span) => originals.get(span) ?? null,
+    originalOf: (span) => originals.get(span) ?? null, roofDropped, claimRoom,
     falling: (structureIdx) => storeyFalls.some((f) => f.structureId === structureIdx) }) ?? null;
   return {
     stage(e, seam) {
@@ -1758,7 +1805,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         }
         // (destruction-slabs 227 round 3) a wall gone under a roof that fell before it: what stood over the eaves on it (the
         // verge boards along a gable the roof left standing) is looked at again — held by nothing now, it goes
-        if (a.roof && fallenSections.get(e.structureId)?.has(a.roof.section)) { const opened = openTopRooms(seam); changed = flattenRoofFurniture(seam) || opened || changed; }
+        if (roofDown(seam)) { const opened = openTopRooms(seam); changed = flattenRoofFurniture(seam) || opened || changed; }
         if (ev.storeyDown === true && storey) {
           // the band down to its floor line, what stood on it lowered by its height, its holes' runs and cuts gone, then
           // the kit's heap on the floor line (laid last: it stands); live, it comes down over gravity's time (the core
@@ -1828,6 +1875,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       pendingStrikes.length = 0;
       heldHides.length = 0;
       fallenSections.clear();
+      roofOpened.clear();
       flattened.length = 0;
       flattenedSpans = new WeakSet();
       falling.length = 0;

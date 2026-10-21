@@ -236,6 +236,11 @@ export function layUprightPlates(geometry: THREE.BufferGeometry, matrix: THREE.M
  *  ground at its middle, this share or more of its area over nothing within the band under it. (The slab check flags
  *  40 % over nothing a metre up, within 0.8 m: laid sooner.) */
 const FLAT_NY = 0.8, PERCH_LIFT_M = 0.9, PERCH_SHARE = 0.3, PERCH_BAND_M = 0.8;
+/** (destruction-slabs 227 round 6; the round-5 census's airfield #0 tower, R narrow, seed 1926340207: a 3.3 x 2.6 m plate
+ *  of its heap lying tilted 1.1 m up with all of it over nothing, from its bake to the settled ruin — the slab check calls a
+ *  plate tilted from 0.3 to 0.8 of its normal's rise, and floats it at any tilt; this pass read flat plates alone) a plate
+ *  tilted this far or less from flat (its thin axis's rise) is judged too; one held by nothing is laid flat on the ground. */
+const TILTED_NY = 0.3;
 /** Tilted off its hold's edge onto the ground at most this steep (rad, 50 degrees); steeper, or held by nothing, it is
  *  lowered flat onto the ground under it. */
 const TILT_MAX = 0.87;
@@ -368,6 +373,7 @@ function piecesWithTriangles(w: Float64Array, count: number, index: THREE.Buffer
 }
 
 const _pq = new THREE.Quaternion(), _pa = new THREE.Vector3(), _pe1 = new THREE.Vector3(), _pe2 = new THREE.Vector3(), _pc = new THREE.Vector3();
+const _UPV = new THREE.Vector3(0, 1, 0);
 
 /**
  * Lay the perched flat plates of drawings come to rest (in place): `edit` are laid, `also` hold them (their drawn tops)
@@ -432,7 +438,8 @@ export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly P
         cv[0] += x * x; cv[1] += x * y; cv[2] += x * z; cv[3] += y * y; cv[4] += y * z; cv[5] += z * z;
       }
       const ax = leastAxis(cv);
-      if (!ax || Math.abs(ax[1]) < FLAT_NY) continue;
+      if (!ax || Math.abs(ax[1]) < TILTED_NY) continue;
+      const level = Math.abs(ax[1]) >= FLAT_NY;
       // a plate: thin through it, broad both ways in its plane
       _n.set(ax[0], ax[1], ax[2]);
       _a.set(1, 0, 0).cross(_n);
@@ -592,6 +599,33 @@ export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly P
             tilted = true;
           }
         }
+      }
+      if (!tilted && !level) {
+        // (round 6) a tilted plate held by nothing turns flat about its middle first (lowered as it lies, it would stand on
+        // its low edge in the ground)
+        _v.set(ax[0], ax[1], ax[2]);
+        if (_v.y < 0) _v.negate();
+        _pq.setFromUnitVectors(_v.normalize(), _UPV);
+        for (const i of list) {
+          _pc.set(w[i * 3]! - mx, w[i * 3 + 1]! - my, w[i * 3 + 2]! - mz).applyQuaternion(_pq);
+          w[i * 3] = _pc.x + mx; w[i * 3 + 1] = _pc.y + my; w[i * 3 + 2] = _pc.z + mz;
+          changed[i] = 1;
+        }
+        const nrm = d.geometry.getAttribute('normal') as THREE.BufferAttribute | THREE.InterleavedBufferAttribute | undefined;
+        if (nrm) {
+          if (d.matrix) { _nm.getNormalMatrix(d.matrix); _nmInv.copy(_nm).invert(); }
+          for (const i of list) {
+            _pc.set(nrm.getX(i), nrm.getY(i), nrm.getZ(i));
+            if (d.matrix) _pc.applyMatrix3(_nm);
+            _pc.applyQuaternion(_pq);
+            if (d.matrix) _pc.applyMatrix3(_nmInv);
+            _pc.normalize();
+            nrm.setXYZ(i, _pc.x, _pc.y, _pc.z);
+          }
+          if (nrm instanceof THREE.InterleavedBufferAttribute) nrm.data.needsUpdate = true; else nrm.needsUpdate = true;
+        }
+        y0 = Infinity;
+        for (const i of list) if (w[i * 3 + 1]! < y0) y0 = w[i * 3 + 1]!;
       }
       if (!tilted) {
         const every = Math.max(1, Math.floor(list.length / 48)), gs: number[] = [groundAt(mx, mz)];
