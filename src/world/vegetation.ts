@@ -5341,11 +5341,14 @@ function* vegetationBuildSteps(
       #include <shadowmap_vertex>`);
     {
       // The CSM chunk carries three directional sites: the fading and the plain cascade loops, and the non-CSM
-      // loop that USE_CSM compiles out; every one takes the floor, the count guards the installed chunk.
+      // loop that USE_CSM compiles out; every one takes the floor, the count guards the installed chunk. One site is
+      // three's stock chunk: this module's three is not the copy createLighting's CSM patched (2026-10-20: a probe dev
+      // server that re-bundled three mid-session, tools/map-probe-runtime.mjs).
       const begin = THREE.ShaderChunk.lights_fragment_begin;
       const site = 'getShadow( directionalShadowMap[ i ]';
       const sites = begin.split(site).length - 1;
-      if (sites !== 3) throw new Error(`world/vegetation: expected three directional shadow sites, found ${sites}`);
+      if (sites !== 3) throw new Error(`world/vegetation: expected three directional shadow sites, found ${sites}`
+        + (sites === 1 ? ' (three\'s stock chunk: a second copy of three, or a compile before createLighting)' : ''));
       const soft = begin.replaceAll(site, `cotLeafShadow( ${site}`)
         .replaceAll('vDirectionalShadowCoord[ i ] ) : 1.0;', 'vDirectionalShadowCoord[ i ] ) ) : 1.0;');
       if (soft.split('cotLeafShadow(').length - 1 !== 3 || soft.split(') ) : 1.0;').length - 1 !== 3) {
