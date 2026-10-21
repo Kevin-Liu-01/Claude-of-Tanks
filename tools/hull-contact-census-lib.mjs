@@ -422,7 +422,9 @@ const islandMembers = new WeakMap();
  * contact law but nobody sees them. */
 function islandEnclosed(island, parts) {
   const own = new Set(islandMembers.get(island) ?? []);
-  const solids = parts.filter((part) => !own.has(part) && !part.gear && /^(hull|turret)(ExternalArmor)?$/.test(part.bucket));
+  // (the gun's receiver and mantlet count: a stationary seal recessed inside the gun's receiver is as hidden)
+  const solids = parts.filter((part) => !own.has(part) && !part.gear
+    && /^(hull|turret)(ExternalArmor)?$|^gunMount$/.test(part.bucket));
   const min = island.min, max = island.max, c = min.map((v, k) => (v + max[k]) / 2);
   const points = [c];
   for (const dx of [-1, 1]) for (const dy of [-1, 1]) for (const dz of [-1, 1]) {

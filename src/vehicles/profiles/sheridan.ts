@@ -1124,7 +1124,9 @@ function addSheridanTurretShellAndStowage(P: SheridanBuilderPort): void {
   // them. The former full-width box filled 2.13 m of nonexistent armor and
   // dominated both the front and plan-curve error despite sharing the right
   // aggregate bounds.
-  if (P.spec.id === 'm551a1_tts') {
+  // 2026-10-19 (owner float sweep): the base Sheridan's surveyed lugs stood 0.39-0.47 m clear of its casting too; both
+  // marks seat them on the lower cheek
+  if (P.spec.id === 'm551a1_tts' || P.spec.id === 'm551_sheridan') {
     // The donor's surveyed loose lugs sat below and ahead of the casting.
     // Seat each complete three-layer lug on the actual TTS lower cheek.
     // Points/normals are measured from the bare procedural shell, not bounds.
