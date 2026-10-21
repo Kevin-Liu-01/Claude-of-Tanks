@@ -1861,8 +1861,9 @@ export function createGarageDressing(
           // and most saturated rectangles in the frame after the tank")
           float luma = dot(color, vec3(0.299, 0.587, 0.114));
           color = mix(vec3(luma), color, 0.55) * 0.62;
-          // the unlit glass round the picture, and its sheen high on the left
-          color = mix(vec3(0.012, 0.016, 0.015), color, 1.0 - smoothstep(-fwidth(d), fwidth(d), d));
+          // the unlit glass round the picture (its edge a pixel soft; never a zero-width smoothstep), its sheen high left
+          float aa = max(fwidth(d), 1e-4);
+          color = mix(vec3(0.012, 0.016, 0.015), color, 1.0 - smoothstep(-aa, aa, d));
           color += 0.018 * (1.0 - smoothstep(0.0, 0.42, length((vUv - vec2(0.28, 0.78)) * vec2(1.6, 1.0))));
           gl_FragColor = vec4(color, 1.0);
           #include <colorspace_fragment>
