@@ -122,7 +122,7 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   parkGate: { family: 'park', spansRoad: true, defaults: { width: 4.4, railing: 10 },
     footprint: (p) => [num(p, 'width') / 2 + num(p, 'railing') + 2.3, 2.2] },
   // a square: a lawn, its paths and railing, benches and lamps (the props destructibles) round a centre piece
-  parkSquare: { family: 'park', dressing: () => true, defaults: { width: 30, depth: 24, paths: 'cross', railing: true, benches: 4, lamps: 4, centre: 'none', centreHeight: 0 },
+  parkSquare: { family: 'park', dressing: () => true, defaults: { width: 30, depth: 24, paths: 'cross', railing: true, benches: 4, lamps: 4, centre: 'none', centreHeight: 0, centreStyle: '' },
     footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'depth') / 2 + 1.0] },
   // the ground before a church's front: its fence round the open sides, the holy gate (or a plain one), the path and
   // the graves (the gateway's piers and cornice 0.35 m past the front fence)
