@@ -42,7 +42,7 @@ import {
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, tagUnlitVehicleMaterials, LIVE_HULL_DENTS,
   LIVE_TURRET_DENTS,
 } from './materials.ts';
-import { bendGeometry, dentSamples, planBend, planDents, wreckRandom, type WreckDent } from './wreckDents.ts';
+import { bendGeometry, dentSamples, planBend, planDents, wreckBarrelSpan, wreckRandom, type WreckDent } from './wreckDents.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
@@ -9397,14 +9397,12 @@ function* createTankOwnedSteps(
     // the gun: past a point along it the barrel bends (down, or any way on a turret the blast threw)
     gunG.updateMatrixWorld(true);
     const gunInv = gunG.matrixWorld.clone().invert();
-    let barrel: THREE.Mesh | null = null;
-    gunG.traverse((object) => { if (!barrel && object instanceof THREE.Mesh && object.name === 'gun') barrel = object; });
-    const bore = barrel as THREE.Mesh | null;
-    if (!bore?.geometry?.attributes?.position) return;
-    bore.geometry.computeBoundingBox();
+    const gunMeshes: THREE.Mesh[] = [];
+    gunG.traverse((object) => { if (object instanceof THREE.Mesh) gunMeshes.push(object); });
     const toGun = new THREE.Matrix4();
-    box.copy(bore.geometry.boundingBox!).applyMatrix4(toGun.multiplyMatrices(gunInv, bore.matrixWorld));
-    const bend = planBend(box.min.z, box.max.z, rng, pop);
+    const span = wreckBarrelSpan(gunMeshes, (mesh) => toGun.multiplyMatrices(gunInv, mesh.matrixWorld));
+    if (!span) return;
+    const bend = planBend(span.zMin, span.zMax, rng, pop);
     if (!bend) return;
     gunG.traverse((object) => {
       if (!(object instanceof THREE.Mesh) || object instanceof THREE.InstancedMesh || !object.geometry?.attributes?.position) return;

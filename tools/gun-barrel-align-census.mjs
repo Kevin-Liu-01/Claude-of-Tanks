@@ -36,7 +36,7 @@
 // writes the rows for --ids (or --all); --check re-measures them and compares, failing on a moved reading or a stale
 // binding. --gate exits non-zero when a measured tank is not aligned. --seed-pivot-m=<m> raises the combat trunnion by
 // m metres in the census's copy (the negative control): it must read as a ~m offset.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
 import './tank-surface-collect.mjs'; // node canvas shim: builders paint their canvas textures as in the browser
@@ -292,9 +292,17 @@ function measuredRig(root, spec, combat, rest) {
   const hullFixed = rest.kind !== 'turret';
   const tp = hullFixed || !turret ? new THREE.Vector3().fromArray(combat.turretPivot || [0, 0, 0]) : new THREE.Vector3().setFromMatrixPosition(turret.matrixWorld);
   const trunnion = hullFixed || !gun ? tp.clone().add(new THREE.Vector3().fromArray(combat.gunPivot || [0, 0, 0])) : new THREE.Vector3().setFromMatrixPosition(gun.matrixWorld);
-  const Q = P.clone().addScaledVector(d, trunnion.clone().sub(P).dot(d));
+  // A rig still at the factory's seat (the combat pivot) stays there: the drawn bore rides that frame, so moving the pivot
+  // onto the bore line would move the drawn bore by the same offset (no fixpoint). Only a rig the builder seated itself
+  // has its trunnion projected onto the drawn bore.
+  const combatTp = new THREE.Vector3().fromArray(combat.turretPivot || [0, 0, 0]);
+  const combatTrunnion = combatTp.clone().add(new THREE.Vector3().fromArray(combat.gunPivot || [0, 0, 0]));
+  if (tp.distanceTo(combatTp) < 0.001) tp.copy(combatTp);
+  const factorySeat = trunnion.distanceTo(combatTrunnion) < 0.001;
+  const along = trunnion.clone().sub(P).dot(d);
+  const Q = factorySeat ? combatTrunnion.clone() : P.clone().addScaledVector(d, along);
   return {
-    turretPivot: tp.toArray().map(r4), gunPivot: Q.clone().sub(tp).toArray().map(r4), lengthM: r4(P.clone().sub(Q).dot(d)),
+    turretPivot: tp.toArray().map(r4), gunPivot: Q.clone().sub(tp).toArray().map(r4), lengthM: r4(-along),
     radiusM: r4(rest.line.radius), boreOffsetMm: r1(trunnion.distanceTo(Q) * 1000),
     restAngleDeg: r2(Math.acos(Math.min(1, Math.max(-1, d.z))) / DEG),
   };
@@ -408,7 +416,9 @@ if (RIGS_PATH) {
   }
   const lines = Object.keys(rows).sort().map((id) => `  ${JSON.stringify(id)}: ${JSON.stringify(rows[id])},`);
   const head = readFileSync(resolve(RIGS_PATH), 'utf8').split('export const COMBAT_GUN_RIGS')[0];
-  writeFileSync(resolve(RIGS_PATH), `${head}export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.freeze({\n${lines.join('\n')}\n});\n`);
+  // written whole and renamed into place: a census starting meanwhile imports the old table or the new one, never half
+  writeFileSync(`${resolve(RIGS_PATH)}.tmp`, `${head}export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.freeze({\n${lines.join('\n')}\n});\n`);
+  renameSync(`${resolve(RIGS_PATH)}.tmp`, resolve(RIGS_PATH));
   console.log(`gun-barrel-align rigs: ${written.length} row(s) written to ${RIGS_PATH} (${Object.keys(rows).length} held)${written.length ? ': ' + written.join(', ') : ''}`);
   for (const line of skipped) console.log(`  no row: ${line}`);
   let drift = 0;
