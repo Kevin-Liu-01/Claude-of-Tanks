@@ -1,78 +1,118 @@
 {
- "version": 1,
+ "version": 2,
  "count": 836,
  "collections": [
   {
-   "key": "fifty",
-   "title": "The fifty takes",
-   "blurb": "The site's fifty scenes: each scene's current final, its close portrait and other moments of the same round, the motion-blur studies.",
+   "key": "scenes",
+   "title": {
+    "en-US": "Battle scenes",
+    "zh-CN": "战斗场景"
+   },
+   "blurb": {
+    "en-US": "Every battle scene filmed in the game engine, by battlefield: each scene with its close-up and other moments, then the motion-blur studies.",
+    "zh-CN": "在游戏引擎中拍摄的全部战斗场景，按战场分组：每个场景附特写与其他瞬间，最后是运动模糊研究。"
+   },
    "count": 227,
-   "sets": 8,
-   "bytes": 5004205
+   "sets": 14,
+   "bytes": 10523324
   },
   {
-   "key": "fleet",
-   "title": "Fleet takes",
-   "blurb": "Every vehicle's current final, its close portrait and the other moments of the same round.",
-   "count": 382,
-   "sets": 10,
-   "bytes": 15748890
+   "key": "vehicles",
+   "title": {
+    "en-US": "Vehicles",
+    "zh-CN": "载具"
+   },
+   "blurb": {
+    "en-US": "Every vehicle on its battlefield, with a close-up and other moments, by country.",
+    "zh-CN": "每辆载具在其战场上的画面，附特写与其他瞬间，按国家分组。"
+   },
+   "count": 394,
+   "sets": 14,
+   "bytes": 23923814
   },
   {
-   "key": "versus",
-   "title": "Versus",
-   "blurb": "The versus stills: two tanks, one frame.",
-   "count": 12,
-   "sets": 1,
-   "bytes": 46209
+   "key": "duels",
+   "title": {
+    "en-US": "Head to head",
+    "zh-CN": "正面交锋"
+   },
+   "blurb": {
+    "en-US": "Two tanks, one frame: the duels, by time of day.",
+    "zh-CN": "两辆坦克，同框对决：按时段分组的对决。"
+   },
+   "count": 16,
+   "sets": 3,
+   "bytes": 301275
   },
   {
    "key": "combat",
-   "title": "Combat duels",
-   "blurb": "The combat duels: current finals, night versions, close portraits and other moments.",
-   "count": 24,
-   "sets": 9,
-   "bytes": 1428962
+   "title": {
+    "en-US": "Firefights",
+    "zh-CN": "交火"
+   },
+   "blurb": {
+    "en-US": "Firefights filmed in the game engine: one on one, and one against two.",
+    "zh-CN": "在游戏引擎中拍摄的交火：一对一，以及以一敌二。"
+   },
+   "count": 12,
+   "sets": 2,
+   "bytes": 770115
   },
   {
-   "key": "home",
-   "title": "Features, mechanics and modes",
-   "blurb": "The home page's features, mechanics and modes.",
+   "key": "gameplay",
+   "title": {
+    "en-US": "Gameplay",
+    "zh-CN": "玩法"
+   },
+   "blurb": {
+    "en-US": "The pictures of the home page's features, mechanics and game modes.",
+    "zh-CN": "首页功能、机制与游戏模式的图片。"
+   },
    "count": 43,
-   "sets": 1,
-   "bytes": 407974
+   "sets": 3,
+   "bytes": 1076506
   },
   {
    "key": "keyart",
-   "title": "Key art and posters",
-   "blurb": "Key art and posters from the media kit, every format.",
+   "title": {
+    "en-US": "Key art",
+    "zh-CN": "主视觉"
+   },
+   "blurb": {
+    "en-US": "Key art from the media kit, by time of day, and the posters.",
+    "zh-CN": "媒体包中的主视觉，按时段分组，以及海报。"
+   },
    "count": 66,
-   "sets": 3,
-   "bytes": 2800607
+   "sets": 7,
+   "bytes": 2810413
   },
   {
-   "key": "maps",
-   "title": "Battlefields",
-   "blurb": "Map cards and plates of the battlefields.",
+   "key": "battlefields",
+   "title": {
+    "en-US": "Battlefields",
+    "zh-CN": "战场"
+   },
+   "blurb": {
+    "en-US": "Every battlefield seen from above, and its map card.",
+    "zh-CN": "每个战场的俯瞰图，以及它的地图卡。"
+   },
    "count": 67,
    "sets": 2,
-   "bytes": 935399
-  },
-  {
-   "key": "showcase",
-   "title": "Showcase",
-   "blurb": "The showcase's latest deliveries.",
-   "count": 4,
-   "sets": 1,
-   "bytes": 250431
+   "bytes": 939191
   },
   {
    "key": "interface",
-   "title": "Interface",
-   "blurb": "The interface: garage, HUD, gallery and multiplayer screens.",
+   "title": {
+    "en-US": "Interface",
+    "zh-CN": "界面"
+   },
+   "blurb": {
+    "en-US": "The game's screens: in battle, the Tank Gallery and the Scene Studio.",
+    "zh-CN": "游戏的各个界面：战斗中、坦克画廊与场景工作室。"
+   },
    "count": 11,
-   "sets": 1,
-   "bytes": 47978
+   "sets": 3,
+   "bytes": 189662
   }
  ]
 }

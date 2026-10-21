@@ -1,11 +1,13 @@
 // The media library (2026-10-19, owner: "lets get all our images on main, all of them ... all should be visible on the
 // website"; 2026-10-20 on r1's 11,215 pictures: "wth that seems like way too much"; 2026-10-21 on r2's 391 finals: "i
 // feel like were missing so many pictures"): public/media/library-r3 holds every finished picture of the media rounds'
-// current takes (finals, close portraits, other moments, key art), by collection. Each collection's index
+// current takes, grouped by what they show (battle scenes by battlefield, vehicles by country, duels by time of day, key
+// art...), each with a caption in every locale: its title, a line about it, and its shot. Each collection's index
 // names its sets and pictures; a picture is a byte range of a pack file (WebP files end to end, read by the page with an
 // HTTP range request) or a file the site already publishes, and its thumbnail is a cell of a thumbnail sheet. This
 // receipt reads every range back as a WebP of the stated size, holds every cell inside its sheet, every pack covered
-// end to end, and the counts the pages print equal to the index.
+// end to end, every caption worded in each locale (never a file name, never the media rounds' own words), and the
+// counts the pages print equal to the index.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, openSync, readSync, closeSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -57,11 +59,27 @@ if (!existsSync(join(LIB, 'index.json'))) {
   process.exit(0);
 }
 const top = JSON.parse(readFileSync(join(LIB, 'index.json'), 'utf8'));
-assert.equal(top.version, 1);
+assert.equal(top.version, 2, 'a captioned library');
+const LOCALES = ['en-US', 'zh-CN'];
+// the words a visitor reads, in a locale: a text is one string for every locale or a string per locale
+const said = (text, locale) => (typeof text === 'string' ? text : text?.[locale]);
+const ROUND_WORDS = /\b(?:round \d+|build \d+|finals|deliver(?:y|ies|ed)?|r\d+)\b/i;
+function worded(text, what, optional = false) {
+  if (text == null && optional) return;
+  for (const locale of LOCALES) {
+    const words = said(text, locale);
+    assert.ok(typeof words === 'string' && words.trim(), `${what}: worded in ${locale}`);
+    assert.ok(!/^[a-z0-9]+(?:-[a-z0-9]+)+$/.test(words), `${what}: "${words}" is a file name, not a title`);
+    if (locale === 'en-US') assert.ok(!ROUND_WORDS.test(words), `${what}: "${words}" names a media round`);
+  }
+}
+let captions = 0;
 assert.ok(top.collections.length >= 6, 'the library holds the finals by collection');
 let pictures = 0, ranges = 0, links = 0, sheets = 0, bytes = 0;
 for (const summary of top.collections) {
   assert.match(summary.key, /^[a-z0-9-]+$/);
+  worded(summary.title, `${summary.key}: the title`);
+  worded(summary.blurb, `${summary.key}: the blurb`);
   const dir = join(LIB, summary.key);
   const collection = JSON.parse(readFileSync(join(dir, 'index.json'), 'utf8'));
   assert.equal(collection.key, summary.key);
@@ -75,6 +93,15 @@ for (const summary of top.collections) {
   let count = 0;
   for (const set of collection.sets) {
     assert.match(set.key, /^[a-z0-9-]+$/, `${summary.key}: set key ${set.key}`);
+    worded(set.title, `${summary.key}/${set.key}: the title`);
+    assert.equal(set.captions?.length, set.items.length, `${summary.key}/${set.key}: a caption a picture`);
+    set.captions.forEach(([title, about, shot], k) => {
+      const what = `${summary.key}/${set.key}/${set.items[k][0]}`;
+      worded(title, `${what}: the title`);
+      worded(about, `${what}: the about line`, true);
+      worded(shot, `${what}: the shot`, true);
+      captions++;
+    });
     const names = new Set();
     for (const item of set.items) {
       const [name, w, h, sheet, x, y, tw, th, ...ref] = item;
@@ -114,4 +141,5 @@ assert.ok(printed, 'the manual index links the library with its count');
 assert.equal(Number(printed[1].replaceAll(',', '')), top.count, 'the manual index prints the library count');
 assert.match(docs, /href="\/docs\/filming#library"/, 'the manual index opens the library');
 console.log(`media-library.selftest: ${pictures} pictures in ${top.collections.length} collections (${ranges} pack ranges, `
-  + `${links} published files, ${sheets} thumbnail sheets, ${(bytes / 1048576).toFixed(0)} MB of packs) read back`);
+  + `${links} published files, ${sheets} thumbnail sheets, ${(bytes / 1048576).toFixed(0)} MB of packs) read back, `
+  + `${captions} captions worded in ${LOCALES.join(' and ')}`);
