@@ -24,6 +24,9 @@
 // the lanes the hulls drive to and from it — no piece on a driven line — and the balance is held where each symmetric
 // mode fights: zone 2's 30 m disc (zone control, mars; the turbo kickoff the same seat) holds no hull-high piece either
 // side, its oaks north 3, south 4; the room-wide count stands as before.)
+// (229, the coordinator's ruling on the 3-of-6 rule: a plan piece is "on a driven line" when the branch's own battles
+// bring hull contacts to it — rams and crushes — in 3 or more of 6 seeds of a mode; shell kills do not count: dressing
+// that breaks when it is shot along a fire line is what the owner asked of the map's objects.)
 // (228 r2, the blind critics on r1: the bay lines read as the car park the owner rejected, the oaks stood on the railing
 // lines, the church and the column were hidden behind crowns, the market was thin, a modern garage, a checkpoint hut and
 // oil drums stood about the room: each answered below.)
@@ -79,6 +82,19 @@ const OAK_N = 27.5, OAK_S = 13.0;
 export const URBAN_CIVIC_PLAN: CivicPlan = {
   mapId: 'urban',
   style: 'franconian',
+  // (229, the owner: "add a lot of cars in civic areas") the town's own saloons, estates and pickups (the map's pools:
+  // no new kind, so no new draw) at the kerbs of the streets round the Marktplatz and on the square's west and south
+  // edges, parked with the traffic a little off true, each a seat no base battle's hull touched in twelve (probes/pace
+  // carseats.mjs: six zone, six Frontline); none on the square's own edges (its walks and arms keep their width)
+  streetParking: [
+    { kind: 'sedan', x: -53.18, z: -52.87, yawDeg: 5 }, { kind: 'wagon', x: -53.71, z: -60.85, yawDeg: 3.5 },
+    { kind: 'wagon', x: -54.25, z: -68.84, yawDeg: 2.9 },
+    { kind: 'pickup', x: 16.25, z: -12.03, yawDeg: -84.8 },
+    { kind: 'sedan', x: 18, z: -24.79, yawDeg: 4.1 }, { kind: 'sedan', x: 17.35, z: -38, yawDeg: -0.8 },
+    { kind: 'wagon', x: 17.35, z: -46, yawDeg: 0.9 }, { kind: 'sedan', x: 17.35, z: -54, yawDeg: -0.4 },
+    { kind: 'wagon', x: -51.89, z: 66.57, yawDeg: 0.7 },
+    { kind: 'sedan', x: -7.3, z: 66.64, yawDeg: -72.4 }, { kind: 'sedan', x: -19.52, z: 69.99, yawDeg: -80.9 },
+  ],
   overlay: { hedgehogsAtApproaches: true, monumentKind: 'memorialcolumn' },
   pathways: {
     // the Hauptstrasse and the trade road are the main streets; the back lanes and the alleys are Gassen, kerbed low with
