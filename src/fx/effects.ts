@@ -334,8 +334,9 @@ interface SmokeColumn {
   /** false: a shell burst on open ground — smoke only, no flame licks on a deck line nothing stands on, no ember
    * smolder after (2026-10-03, the Studio's floating fire: shell hits left 40 s of flame over bare ice and water). */
   flame?: boolean;
-  /** A burning map car's length (its nose's half length, world XZ): its flames lick out along its cabin and bonnet, not
-   *  over a tank's deck (the car-wreck lane, 2026-10-21; r1c's critics: "round bright sprites floating over the roof"). */
+  /** A burning map car (the car-wreck lane, 2026-10-21): its length (its nose's half length, world XZ); its fire's light
+   *  sits lower over it and burns brighter as the night falls (r1c: "the fire lights almost nothing at night"; r2: "a red
+   *  spotlight in full sun" when it burned bright by day too). */
   car?: [number, number];
 }
 
@@ -3908,8 +3909,7 @@ function* createFxSteps(
       if (rng() < (COLUMN_TICK_S / 0.16) * lod) {
         mediaColumnPuff(blast, col.pos[0], col.pos[1], col.pos[2], stage, col.scale * dk / Math.sqrt(lod), birthOffset);
       }
-      if (col.car) emitCarLicks(col, stage, dk, birthOffset);
-      else if (rng() < 0.70 + 0.30 * stage) {
+      if (rng() < 0.70 + 0.30 * stage) {
         _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
         _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
         _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
@@ -4012,8 +4012,7 @@ function* createFxSteps(
     // hull"): licks are born ON the deck line, rise slowly, live SHORT and
     // SHRINK with age — fire that licks up off the wreck and dies before it
     // can drift free. Higher rate so the base always carries flame.
-    if (col.car) emitCarLicks(col, stage, dk, birthOffset);
-    else if (col.flame !== false && rng() < 0.70 + 0.30 * stage) {
+    if (col.flame !== false && rng() < 0.70 + 0.30 * stage) {
       const licks = rng() < 0.35 ? 2 : 1;
       for (let li = 0; li < licks; li++) {
         _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
@@ -4028,32 +4027,6 @@ function* createFxSteps(
         _puffO.alpha = 0.95; _puffO.grav = 1.4; _puffO.birthOffset = birthOffset - rng() * 0.15;
         particles.emit('fire', _puffO);
       }
-    }
-  }
-
-  /**
-   * A burning car's flames (the car-wreck lane, 2026-10-21): two or three short licks a tick out of its cabin and bonnet,
-   * anywhere along its length and across its width, born at its window line, rising a little and dying fast — fire in the
-   * car, never orbs over its roof.
-   */
-  function emitCarLicks(col: SmokeColumn, stage: number, dk: number, birthOffset: number): void {
-    const car = col.car!;
-    if (rng() > 0.8 + 0.2 * stage) return;
-    const len = Math.hypot(car[0], car[1]) || 1, ux = car[0] / len, uz = car[1] / len;
-    const licks = rng() < 0.5 ? 3 : 2;
-    for (let li = 0; li < licks; li++) {
-      const along = (rng() * 2 - 1) * 0.75 * len, across = (rng() - 0.5) * 1.1;
-      _puffO.pos[0] = col.pos[0] + ux * along - uz * across;
-      _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.45;
-      _puffO.pos[2] = col.pos[2] + uz * along + ux * across;
-      _puffO.vel[0] = (rng() - 0.5) * 0.4; _puffO.vel[1] = 0.7 + rng() * 0.7; _puffO.vel[2] = (rng() - 0.5) * 0.4;
-      _puffO.life = 0.26 + rng() * 0.24;
-      _puffO.size0 = (0.8 + rng() * 0.35) * col.scale * dk;
-      _puffO.size1 = (0.45 + rng() * 0.25) * col.scale * dk;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
-      col3(0xffb850, _puffO.col0); col3(0xff4810, _puffO.col1);
-      _puffO.alpha = 0.9; _puffO.grav = 1.2; _puffO.birthOffset = birthOffset - rng() * 0.15;
-      particles.emit('fire', _puffO);
     }
   }
 
@@ -4248,7 +4221,7 @@ function* createFxSteps(
       const time = particles.getTime();
       explosionLight.intensity = (
         9.5 + 3.2 * Math.sin(time * 13.7) + 2.2 * Math.sin(time * 7.1 + 1.9)
-      ) * col.scale * (blast ? 0.45 : 1) * (col.car ? 1.6 : 1);
+      ) * col.scale * (blast ? 0.45 : 1) * (col.car ? 0.45 + 1.15 * tracers.darkLevel() : 1);
       return;
     }
     const pulseRange = explosionState.range ?? 13;
@@ -6964,11 +6937,11 @@ function* createFxSteps(
       // (dcore 2026-10-10, waves 350/351: a killed map vehicle flipped to the burnt wreck in a frame) a vehicle a round
       // destroys burns: its fire and smoke column take hold over it while its paint chars (props.ts, the crush copy)
       if (family === 'vehicleburn') {
-        // (the car-wreck lane) a map car passes its length (its nose's half length) as `dir`: its flames along it, a little
-        // bigger, burning longer
+        // (the car-wreck lane) a map car passes its length (its nose's half length) as `dir`: it burns longer, its fire in
+        // its cabin (its base under the car's), its light lower and night-scaled
         const car = Math.hypot(dir.x, dir.z) > 0.3;
         const col: SmokeColumn = { key: null, pos: [pos.x, car ? pos.y : Math.max(pos.y, gy), pos.z], acc: 0, ttl: car ? CAR_BURN_S : VEHICLE_BURN_S,
-          scale: car ? Math.max(0.6, Math.min(0.8, heightM * 0.42)) : Math.max(0.45, Math.min(0.75, heightM * 0.3)), flame: true,
+          scale: Math.max(0.45, Math.min(0.75, heightM * 0.3)), flame: true,
           ...(car ? { car: [dir.x, dir.z] as [number, number] } : {}) };
         columns.push(col);
         emitColumnPuff(col);
