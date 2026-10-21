@@ -306,7 +306,7 @@ function read(tank) {
     'and shrinks and steps left under a three-digit count');
   assert.match(layout, stacked("\\.cot-shell \\.cnt\\{top:2px;right:3px;bottom:auto;font-size:11px\\}"), 'its count takes the top-right corner');
   assert.match(layout, stacked("\\.cot-shell\\.wide \\.cnt\\{top:1px;right:2px;font-size:11px\\}"), 'a three-digit count keeps the 11 px floor there');
-  assert.match(layout, stacked("\\.cot-shell \\.ty\\{left:1px;right:1px;text-align:center\\}"), 'the label centres on the narrow slot\'s floor');
+  assert.match(layout, stacked("\\.cot-shell \\.ty\\{left:0;right:0;text-align:center\\}"), 'the label centres on the narrow slot\'s floor');
   assert.match(layout, stacked("\\.cot-shell\\.unlimited \\.cnt\\{font-size:16px;line-height:11px\\}"), 'the ∞ at the corner numeral\'s size');
   assert.match(layout, stacked(":is\\(\\.cot-shell,\\.cot-con\\) \\.key\\{top:1px;left:1px;padding:0 2px;font-size:11px;line-height:12px\\}"),
     'the key keeps the top-left corner at the 11 px floor (the consumables\' too, so the tray\'s keys match)');

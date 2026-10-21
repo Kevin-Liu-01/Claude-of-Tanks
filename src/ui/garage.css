@@ -1411,6 +1411,17 @@ body[data-cot-panels='overlay'] .cot-garage .srow .sicon{left:5px;top:8px;width:
 body[data-cot-panels='overlay'] .cot-garage .srow .sicon svg{width:13px;height:13px}
 body[data-cot-panels='overlay'] .cot-garage .srow .lr{font-size:11px;letter-spacing:0em}
 body[data-cot-panels='overlay'] .cot-garage .srow .lr b{font-size:11px}
+/* The overlay's Performance cards read like the docked panel's (owner, 2026-10-21: "in the performance need to be
+   updated"): the icon leads its label on one line and the value sits under them, clear of the bar. At the 11 px floor a
+   29 px icon column wrapped "Power / weight" and "Magazine reload" and set their values on the bar. The equipment
+   view and short landscape phones keep their own rules (later and as specific). */
+body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .cot-performance-section .srow{display:block;min-height:0;padding:6px 6px 9px;line-height:1.15;text-wrap:balance}
+body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .cot-performance-section .srow .sicon{position:static;display:inline-grid;vertical-align:-3px;width:14px;height:14px;margin-right:5px;background:none;border:0}
+body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .cot-performance-section .srow .sicon svg{width:13px;height:13px}
+body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .cot-performance-section .srow .lr{display:contents}
+body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .cot-performance-section .srow .lr>span{font-size:11px;line-height:1.15;color:#93a3af}
+body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .cot-performance-section .srow .lr b{display:block;margin-top:3px;font-size:13px;line-height:1.1;white-space:normal;overflow:visible}
+body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .cot-performance-section .srow .lr b.stat-comparison{display:flex}
 body[data-cot-panels='overlay'] .cot-garage .cot-loadout-section{
   margin:0;padding:10px;border:0;box-shadow:none;background:rgba(8,12,16,.32);
 }

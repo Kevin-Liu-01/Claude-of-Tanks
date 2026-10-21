@@ -149,7 +149,7 @@ body.cot-touch-layout .cot-shells.touch-open .cot-shell.sel::after{content:'›'
 body.cot-touch-layout .cot-shell canvas{top:auto;bottom:11px;transform:translateX(-50%) scale(.76);transform-origin:50% 100%;}
 body.cot-touch-layout .cot-shell .key,body.cot-touch-layout .cot-con .key{display:none;}
 body.cot-touch-layout .cot-shell .tip{display:none!important;}
-body.cot-touch-layout .cot-shell .ty{font-size:11px;left:1px;right:1px;text-align:center;letter-spacing:-.04em}
+body.cot-touch-layout .cot-shell .ty{font-size:11px;left:0;right:0;text-align:center;letter-spacing:-.04em}
 body.cot-touch-layout .cot-shell .cnt{font-size:11px;}
 /* stronger ACTIVE-AMMO read at glance distance: brighter amber frame, inner
    keyline + glow (the desktop .sel border alone washes out at phone size) */
