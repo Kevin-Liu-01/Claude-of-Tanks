@@ -141,6 +141,9 @@ worktree and never stage generated tank work wholesale.
   hash-pinned sources (vehicle profiles, terrain, sky, impact decals, the authority,
   match placement) to their receipts.
 - Add focused `*.selftest.mjs` coverage and include it in `npm test`.
+- A receipt or tool that lists a tree (readdir, glob, `git ls-files`/`grep`) declares what it lists in
+  `tools/selftest-scans.mjs`; `tools/selftest-scans.selftest.mjs` fails until it does (228p shipped a red its
+  changed-file selection could not see).
 - Any playable tank addition or geometry/profile change regenerates with
   `npm run tank:regen:changed`: every fleet generator (controls, fills, seats,
   spare-track, anatomy, marking, ledger, gun lines, centering, icons) runs only
