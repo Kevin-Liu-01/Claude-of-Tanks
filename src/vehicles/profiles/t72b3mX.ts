@@ -122,6 +122,7 @@ function deckEquipment(P:TankBuilderPort,glacisLamps=true,sweptStrap=true):void 
     // (sweptStrap false: no strap whose inner end lies within 1.4 m of the turret's yaw axis on the right covers)
     P.snapGroup('t72b3m-deck-plate',()=>{
       P.addEquipment('hullDetail',box(w,.024,d),x,y,z);
+      // (sweptStrap false: no strap whose inner end lies within 1.4 m of the turret's yaw axis on the right covers)
       for(const dz of [-d*.38,d*.38])if(sweptStrap||x>0||Math.hypot(Math.abs(x)-w*.42,z+dz-YAW[2])>1.4)P.addEquipment('hullDetail',box(w*.84,.020,.037),x,y+.022,z+dz);
     },{reachM:.06});
   }

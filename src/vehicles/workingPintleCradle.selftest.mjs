@@ -7,6 +7,9 @@
 //   heavy and rifle profiles' pitch ranges and its recoil stroke, with its yaw stage one mesh in the mount's tone and no
 //   slot the fleet rig of the same options does not draw (materials flat);
 // - negative control: the fleet's yaw-stage rig of the same options fails the audit.
+// Release 230: the American M2/M240 working stations and the TTS-derived and open-yoke remote towers ride theirs too;
+// the shields, classes and variants the fleet does not carry clear their own mounts (coarse), and a riding station whose
+// yaw stage is lifted into its cradle's swing fails.
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -95,5 +98,45 @@ for (const opts of CASES) {
   assert.ok(self.d < .0015 && self.crossings > 0, `negative control: the fleet rig's gun passes through its own mount (${(self.d * 1000).toFixed(1)} mm, ${self.crossings} pairs)`);
   fleet.traverse((o) => o.geometry?.dispose?.());
 }
+// ---- release 230: the American M2/M240 working stations and the remote towers ride their cradles. The fleet's own
+// stations are measured on their vehicles in fleetPassDefault (workingPintleCradleAudit); these are the shields, classes
+// and variants the fleet does not carry, at 3-degree steps and 8 mm samples, with what each must publish unchanged.
+const COARSE = { step: 3 * Math.PI / 180, h: .008, cap: .004 };
+const REMOTE_CASES = [
+  ['americanM2', { cls: 'mag', working: true, scale: .6, shield: 'standard', ammoSide: -1 }],
+  ['americanM2', { working: true, shield: 'low', ring: { r: .22, stubs: 4 } }],
+  ['americanM2', { working: true, shield: 'armored', scale: .58 }],
+  ['americanM2', { working: true, shield: 'split', ammoSide: -1 }],
+  ['americanRws', { variant: 'compact', scale: 2 / 3 }],
+  ['americanRws', { variant: 'lowProfile', scale: .68 }],
+  ['openYokeRws', { bodySlot: 'hull', variant: 'a6m-arctic', sizeStandard: 'leopard-reduced-tower', scale: 1.12, towerRise: .14, ammoSide: 1, sensorSide: -1 }],
+  ['openYokeRws', { bodySlot: 'hull', variant: 'a7v-low', sizeStandard: 'leopard-reduced-tower', scale: 1.12, towerRise: .14, ammoSide: 1, sensorSide: -1 }],
+  ['openYokeRws', { bodySlot: 'hull', variant: 'puma-s1-compact', scale: .8, towerRise: .08, ammoSide: -1 }],
+  ['openYokeRws', { bodySlot: 'hull', variant: 'expeditionary' }],
+];
+let remoteWorst = Infinity;
+for (const [kind, opts] of REMOTE_CASES) {
+  const label = `${kind} ${opts.variant ?? `${opts.cls ?? 'm2'} ${opts.shield}`}`;
+  const station = FITTINGS[kind]({ mats, ...opts });
+  station.updateMatrixWorld(true);
+  const pitch = station.getObjectByName('auxiliaryWeaponPitch');
+  assert.ok(Number.isFinite(station.userData.auxiliaryRecoilM) && pitch?.getObjectByName('auxiliaryWeaponRecoil'),
+    `${label}: rides its cradle, its gun recoiling in its own group`);
+  const self = stationSelfClearance(station, pitch, { depression: .18, elevation: .75, ...COARSE });
+  assert.ok(self.d >= .0015 && self.crossings === 0 && self.gunCradle?.crossings === 0,
+    `${label}: ${(self.d * 1000).toFixed(2)} mm from its own mount, ${self.crossings} yaw and ${self.gunCradle?.crossings} cradle crossings`);
+  remoteWorst = Math.min(remoteWorst, self.d);
+  station.traverse((o) => o.geometry?.dispose?.());
+}
+// negative control: the M240 loader's riding station with its yaw stage lifted 25 mm into its cradle's swing fails
+{
+  const station = FITTINGS.americanM2({ mats, cls: 'mag', working: true, scale: .64, shield: 'low', ammoSide: 1 });
+  for (const yaw of station.children.filter((c) => c.isMesh)) yaw.position.y += .025;
+  station.updateMatrixWorld(true);
+  const self = stationSelfClearance(station, station.getObjectByName('auxiliaryWeaponPitch'), { depression: .18, elevation: .75, ...COARSE });
+  assert.ok(self.d < .0015 && self.crossings > 0, `negative control: a lifted yaw stage meets the moving parts (${(self.d * 1000).toFixed(1)} mm, ${self.crossings} pairs)`);
+  station.traverse((o) => o.geometry?.dispose?.());
+}
 for (const m of Object.values(mats)) m.dispose();
-console.log(`workingPintleCradle: ${calls} working pintle calls ride their cradles; ${CASES.length} classes and shields clear their own mounts (closest ${(worst * 1000).toFixed(1)} mm), the fleet rig fails PASS`);
+console.log(`workingPintleCradle: ${calls} working pintle calls ride their cradles; ${CASES.length} classes and shields clear their own mounts (closest ${(worst * 1000).toFixed(1)} mm), the fleet rig fails; `
+  + `${REMOTE_CASES.length} American and remote constructions the fleet does not carry ride theirs (closest ${(remoteWorst * 1000).toFixed(1)} mm) PASS`);

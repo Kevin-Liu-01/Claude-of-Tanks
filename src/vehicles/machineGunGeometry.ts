@@ -592,9 +592,15 @@ function recordingParts(parts: MachineGunParts, boxes: { box: FitBox; spins: boo
  *   outboard of any part that would come within 3 mm of the pin), and the yoke base's top drops under the lowest
  *   anything comes over its footprint, its thickness giving way to a riser's sleeve before the build fails.
  * Without `gun` (and wherever nothing of the gun is in the way) every dimension is the release-227 emplacement's.
+ *
+ * Release 230 (the American M2 and M240 working stations ride their cradles, profiles/kit.ts fittingAmericanM2): a host
+ * that draws its own shield on the pitch group passes `hostShield` (the context carries no shieldVariant then): the
+ * cradle's carrier bar and cross-bar run forward to `carrierTo` (the shield's back face, which they bury 2 mm), narrowed
+ * between the gun's side furniture as for the fleet shield, and the yaw stage keeps its air from the shield's triangles
+ * (`moving`, in the fitting's frame) as from the cradle.
  */
 export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunParts, cradleSlot = 'detail',
-  gun?: RidingCradleGun): RidingCradleFit {
+  gun?: RidingCradleGun, hostShield?: { readonly carrierTo: number; readonly moving: ArrayLike<number> }): RidingCradleFit {
   if (context.mount === 'external-cradle') throw new Error('addPintleRidingCradle: a pintle mount only');
   const { bodyBottom, bodyW, feedSign: f, parts, recY, recZ, s, trunY, trunZ, weaponSlot } = context;
   const near = context.detail === 1;
@@ -622,6 +628,8 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
   let stroke = RIDING_CRADLE_RECOIL_M, head = near, pinIn = 0, feedFront = 0, floorFeedX = 0, barHalf = 0;
   let pinZ: [number, number] = [0, 0], feedZ: [number, number] | null = null, floorZ: [number, number] = [0, 0];
   let shieldDZ = 0, shieldDrop = 0, portW = 0, portBelow = 0, portAbove = 0, armIn = 0, ringOut = 0, armHalf = 0, baseH = 0, baseTop = 0, ringDrop = 0, ringGap = 0;
+  // the shield carrier's front: the fleet shield's back face, or the host's (release 230)
+  const carrierBack = (): number => hostShield ? hostShield.carrierTo : trunZ + 0.035 * s - 0.015 * s + shieldDZ;
   // pitch group: the cheeks, the floor under the receiver, the shield's carrier and the class's furniture (the pin and its
   // head are drawn last)
   const drawCradle = (target: MachineGunParts): void => {
@@ -633,8 +641,8 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
     target.add(cradleSlot, block(Math.abs(floorX1 - floorX0), 0.010 * s, floorZ[1] - floorZ[0]), (floorX0 + floorX1) / 2, floorBottom + 0.005 * s, (floorZ[1] + floorZ[0]) / 2);
     // the shield's carrier under the barrel: a bar forward from the floor's front, inboard of the can, and a cross-bar
     // behind the shield's inner panels (release 229: an open mount has no shield and draws no carrier)
-    if (context.shieldVariant) {
-      const shieldBack = trunZ + 0.035 * s - 0.015 * s + shieldDZ;
+    if (context.shieldVariant || hostShield) {
+      const shieldBack = carrierBack();
       target.add(cradleSlot, block(2 * barHalf, 0.010 * s, shieldBack - floorZ[1] + 0.002 * s), 0, floorBottom + 0.005 * s, (shieldBack + floorZ[1]) / 2);
       target.add(cradleSlot, block(0.180 * s, 0.010 * s, 0.025 * s), 0, floorBottom + 0.005 * s, shieldBack - 0.0125 * s + 0.002 * s);
     }
@@ -700,8 +708,10 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
             shieldDZ = dz; shieldDrop = drop; portW = w; portBelow = below; portAbove = above; break place;
           }
         }
+      }
+      if (context.shieldVariant || hostShield) {
         // the carrier bar under the barrel narrows between the side furniture over its run (a small can's strap)
-        const shieldBack = trunZ + 0.035 * s - 0.015 * s + shieldDZ;
+        const shieldBack = carrierBack();
         const bar: FitBox = [-barHalf - airGun, floorBottom - airGun, floorZ[1] - airGun, barHalf + airGun, floorBottom + 0.010 * s + airGun, shieldBack + stroke + airGun];
         for (let o = 0; o < gun.length; o += 9) if (triangleBoxOverlap(gun, o, bar)) {
           const x0 = gun[o]!, x1 = gun[o + 3]!, x2 = gun[o + 6]!, inner = Math.min(Math.abs(x0), Math.abs(x1), Math.abs(x2));
@@ -717,6 +727,7 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
     drawCradle(recordingParts({ add: () => {} }, drawn));
     const moving: { T: ArrayLike<number>; stroke: number }[] = [{ T: gun, stroke }];
     for (const d of drawn) moving.push({ T: boxTriangles(d.box), stroke: 0 });
+    if (hostShield) moving.push({ T: hostShield.moving, stroke: 0 });
     // the fleet's pitch range: 10.3 degrees down (the heavy and rifle profiles) to 0.76 rad up (their 0.75)
     const poses: number[] = []; for (let a = -0.18; a < 0.76; a += Math.PI / 180) poses.push(a); poses.push(0.76);
     let shorter = 0;

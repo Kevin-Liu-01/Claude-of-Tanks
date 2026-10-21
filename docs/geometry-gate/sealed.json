@@ -3561,7 +3561,7 @@
    "openViews": 0,
    "insideOutPx": 130,
    "seeThroughPx": 7,
-   "netSeeThroughPx": 2646,
+   "netSeeThroughPx": 2710,
    "tris": 112543,
    "frame": [
     0,
@@ -3572,22 +3572,12 @@
    "accepts": [
     {
      "kind": "see-through",
-     "reason": "the field net re-laid over the smoke banks moved onto the roof edge (release 227, fleet ZTZ-99A2 lead)",
+     "reason": "float-gaps 230: the ghillie net re-drapes over the parts the owner's 2026-10-19 float sweep seated (same net extents, none lifted)",
      "by": "kevinliu",
-     "date": "2026-10-20",
+     "date": "2026-10-21",
      "from": {
       "seeThroughPx": 2,
       "netSeeThroughPx": 2790
-     }
-    },
-    {
-     "kind": "see-through",
-     "reason": "the field net re-laid over the rail stanchions, which now stand under the yawed rail (release 229, fleet ZTZ-99A2 rail follow-up)",
-     "by": "kevinliu",
-     "date": "2026-10-20",
-     "from": {
-      "seeThroughPx": 7,
-      "netSeeThroughPx": 2666
      }
     }
    ]

@@ -1,23 +1,9 @@
 {
- "schemaVersion": 1,
- "generator": "tools/gun-junction-census.mjs --ledger",
- "settings": {
-  "resMm": 4,
-  "azimuths": 12,
-  "poses": [
-   "rest",
-   "elev",
-   "dep",
-   "e0.5",
-   "d0.5"
-  ],
-  "minMm": 4,
-  "minPx": 12,
-  "bandM": 0.45,
-  "behindM": 0.35
- },
- "binding": "turret and gun group digests (hull too for a gun fixed in the hull) of docs/references/fleet-geometry-ledger.json at high quality",
- "tanks": {
+  "schemaVersion": 1,
+  "generator": "tools/gun-junction-census.mjs --ledger",
+  "settings": {"resMm": 4, "azimuths": 12, "poses": ["rest", "elev", "dep", "e0.5", "d0.5"], "minMm": 4, "minPx": 12, "bandM": 0.45, "behindM": 0.35},
+  "binding": "turret and gun group digests (hull too for a gun fixed in the hull) of docs/references/fleet-geometry-ledger.json at high quality",
+  "tanks": {
   "abramsx": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6ef725b9c82ad23a","gun":"334c15522f562056"}},
   "aft10": {"status":"launcher","kind":"none","mouths":0,"geometry":{"turret":"6a266d93d1f57b16","gun":"11a32b8d44459066"}},
   "ajax": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f11a34304f7e1197","gun":"30941a067d8902b6"}},
@@ -172,8 +158,8 @@
   "t72b3m_2022": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"da8b8b389eb27266","gun":"78500d8deecc91a9"}},
   "t72b3m_bulat_m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f7dcddb7ca516426","gun":"908c739abea772f2"}},
   "t72b3m_hetman": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2734bc63ab601b97","gun":"7f25f744e02a177d"}},
-  "t72b3m_hetman_ii": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"46fc1a79477d8562","gun":"be0f5ad06ca3c13a"}},
-  "t72b3m_kunlun": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0dfe44d75bbbcd13","gun":"d73b6ed809b0569d"}},
+  "t72b3m_hetman_ii": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"974631fb7cc4558d","gun":"7d2b03b01e535693"}},
+  "t72b3m_kunlun": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"33d63c7de220eff3","gun":"d73b6ed809b0569d"}},
   "t72b3m_wilk": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"45e3b34fdfb9f5af","gun":"e71d3dcbc87cfe02"}},
   "t72b_1987": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"095bb48b679c4d95","gun":"10a2740169d27e7b"}},
   "t72bu": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"763e8d28faba70c8","gun":"c059ae53b84bbea0"}},
@@ -186,7 +172,7 @@
   "t80u_bars_m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"db7cb99ddd884323","gun":"dd091c2e0939ca66"}},
   "t80u_husarz": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"8ae4c85423ad258c","gun":"5d26d56d83333eb7"}},
   "t80u_kursk": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0904c4de8b6e7a00","gun":"fb01eccfee59b2f4"}},
-  "t80u_yun": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"40b7e2cc4776111f","gun":"6576cf15589f2256"}},
+  "t80u_yun": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a8be855b5da94911","gun":"6576cf15589f2256"}},
   "t80u_zoria": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"603b87deded0615b","gun":"a67037e1b520a38c"}},
   "t80uk": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"89aa7f4c84d2404f","gun":"95cd4ec0720df871"}},
   "t84": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"fa3431171864ce89","gun":"cd675cf3e1f6691f"}},
@@ -217,10 +203,10 @@
   "type90": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2a530c6451af4a66","gun":"b0f075433481631a"}},
   "type90_kyumaru": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e2ed19157b418491","gun":"0ea0273aaf3b1a79"}},
   "type90a": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e304b00ea46175a6","gun":"0e0caee51aeb7862"}},
-  "type96_72_long": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e0f9573c71e87ea5","gun":"1d4a7ff58609768a"}},
-  "type96_72m_lei": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5c01ad1cb672e76c","gun":"28bd354280284ed3"}},
-  "type96_80_feng": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c754a710f1aca8c6","gun":"f03516d352a05743"}},
-  "type96b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"cdd23bb789158864","gun":"ce43772ec391f208"}},
+  "type96_72_long": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d5312b1503faddd3","gun":"1d4a7ff58609768a"}},
+  "type96_72m_lei": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"829f0c25cabbae9f","gun":"28bd354280284ed3"}},
+  "type96_80_feng": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"19c3cab941c7097c","gun":"f03516d352a05743"}},
+  "type96b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"bbd96ce80b88c7ad","gun":"ce43772ec391f208"}},
   "ua_challenger2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b68b70a69d6d1ca6","gun":"c8d745d73be4ae19"}},
   "ua_m1a1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"1cabc7a147e279ff","gun":"730ff911f8d2b5a1"}},
   "ua_m1a2_abrams": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"7d4b0bfb18b6cf0e","gun":"2b57710357a0a314"}},
@@ -238,5 +224,5 @@
   "ztz99_longwei": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c60d94e2fe8a8a8d","gun":"5c6c7d414e21530d"}},
   "ztz99a": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"50cf9564505f6a88","gun":"571e0358be797657"}},
   "ztz99a2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"7d349a0da09108e1","gun":"642232069d3a2a43"}}
- }
+  }
 }
