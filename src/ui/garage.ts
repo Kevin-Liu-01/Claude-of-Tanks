@@ -62,6 +62,7 @@ import {
 import { t, formatNumber, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
+import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
   isWaveMode, matchRulesetFor, modeCopyValues, rulesetSides, BATTLE_FIELD_LIMIT, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
 } from '../sim/matchRuleset.ts';
@@ -203,6 +204,8 @@ export interface GarageRuntime {
   attachSettingsControl(control: HTMLElement): void;
   getSelectedMap(): string;
   startSolo(): void;
+  /** Test drive a vehicle (default: the selected one) on the proving ground; false when it cannot launch now. */
+  testDrive(specId?: string | null): boolean;
   setSelectedMap(mapId: string): void;
 }
 
@@ -2100,6 +2103,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       activateTechnicalTab(technicalTab);
       return;
     }
+    if (target?.closest('[data-test-drive]')) {
+      startTestDrive(selectedId);
+      return;
+    }
     const galleryLink = target?.closest<HTMLElement>('[data-gallery-layer]');
     if (galleryLink) {
       openSelectedInGallery(galleryLink.dataset.galleryLayer || 'appearance');
@@ -2676,6 +2683,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<button class="cot-gallery-link cot-technical-gallery" type="button" ` +
       `data-gallery-layer="${initialTechnicalView.galleryLayer}" data-technical-gallery>` +
       `${uiIconSVG('gallery', 15)}<span>${t('garage.dossier.inspectGallery')}</span>` +
+      `<span class="go">&#8250;</span></button>` +
+      // the proving ground (v2 progression, 2026-10-17): this vehicle on the measured range, one press from its dossier
+      `<button class="cot-gallery-link cot-test-drive" type="button" data-test-drive ` +
+      `aria-label="${escapeHtmlAttribute(t('garage.dossier.testDrive.aria', { name: spec.label?.displayName || spec.name }))}">` +
+      `${uiIconSVG('modeProving', 15)}<span>${t('garage.dossier.testDrive')}</span>` +
       `<span class="go">&#8250;</span></button></section>`;
     const moduleRows = garageModuleRows(spec);
     const crewRows = garageCrewRows(spec);
@@ -2861,6 +2873,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       console.error('[garage] battle-start listener failed:', err);
     }
     if (onBattle) onBattle(specId, mapId, { gameMode }); // MAP-CONFIG WIRING
+  }
+
+  /** The proving ground with this vehicle (the dossier's button, the Gallery's link): never inside a room's lobby. */
+  function startTestDrive(specId: string | null | undefined): boolean {
+    if (vehicleLocked || !specId || !specById.has(specId)) return false;
+    if (specId !== selectedId) {
+      if (!applySelection(specId)) return false;
+      onSelect?.(specId);
+    }
+    closeBattleMenu();
+    setGaragePanel('');
+    const launch = testDriveLaunch(specId);
+    launchBattle(launch.specId, launch.mapId, { gameMode: launch.gameMode });
+    return true;
   }
 
   function openMultiplayer(mode: 'private' | 'lan' = 'private'): void {
@@ -3537,6 +3563,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     /** Enter the currently selected solo battle without reopening the play menu. */
     startSolo() {
       if (selectedId) launchBattle(selectedId, selectedMapId);
+    },
+
+    testDrive(specId?: string | null) {
+      return startTestDrive(specId ?? selectedId);
     },
 
     /**

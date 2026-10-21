@@ -242,6 +242,8 @@ import { deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchR
 import { normalizeGameMode } from './sim/matchModes.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
+import { createProvingControls } from './game/provingGroundSession.ts';
+import { readTestDriveIntent, withoutTestDriveIntent } from './game/testDriveLink.ts';
 import { createBattleEntryAcquisition } from './game/battleEntryAcquisition.ts';
 import { createBattleEntryLifecycle, revealTimeoutForField } from './game/battleEntryLifecycle.ts';
 import { createStudioAccess } from './game/studioAccess.ts';
@@ -308,6 +310,8 @@ const {
   simStep,
   createCollider,
   prepareNextOpeningRoute,
+  resetProvingRange,
+  setProvingTargetsMoving,
 } = createSoloBattleRuntimeAccess();
 const battleWarm = createBattleWarmAccess();
 const battleEntryAcquisition = createBattleEntryAcquisition();
@@ -2091,6 +2095,20 @@ input.onAction('leaveBattle', () => {
   if (v2?.inMatch && v2.pressLeave() !== 'ignored') return;
   if (battlePhase.canLeaveBattle()) settings.open();
 });
+// The proving ground (v2 progression, 2026-10-17): R resets the range, Y switches moving targets; the range card's buttons
+// say the same through the bus. Inert in every other battle (a network battle's local session never plays the range).
+const provingControls = createProvingControls({
+  active: () => game.phase === 'battle' && !!game.ruleset?.provingGround && game.result === null && isSoloBattleRuntimeReady(),
+  reset: () => Boolean(resetProvingRange(game)),
+  setMoving: (moving) => Boolean(setProvingTargetsMoving(game, moving)),
+  moving: () => !!game.ruleset?.provingGround?.moving,
+});
+const pressRangeReset = () => { if (provingControls.reset()) bus.emit('ui:click', {}); };
+const pressRangeMoving = () => { if (provingControls.toggleMoving()) bus.emit('ui:click', {}); };
+input.onAction('rangeReset', pressRangeReset);
+input.onAction('rangeMoving', pressRangeMoving);
+bus.on('ui:rangeReset', pressRangeReset);
+bus.on('ui:rangeMoving', pressRangeMoving);
 
 // ---------------------------------------------------------------------------
 // Game flow
@@ -3635,6 +3653,15 @@ if (pendingRoomInvitePromise) {
   }).catch((error) => {
     console.error('[room-invite] failed to open', error);
   });
+}
+// The Gallery's "Test drive" opens the game at /?testdrive=<id> (game/provingGroundSession.ts): once the entry gate is
+// passed the Garage launches it, and the address drops the intent so a reload lands in the Garage.
+const testDriveSpecId = !STUDIO_BOOT_INTENT && !pendingRoomInvitePromise ? readTestDriveIntent(location.search) : null;
+if (testDriveSpecId) {
+  try { history.replaceState(history.state, '', withoutTestDriveIntent(location.href)); } catch { /* the address keeps it */ }
+  void entryReady.then(() => {
+    if (game.phase === 'garage' && !battleEntryLifecycle.pending) garage.testDrive(testDriveSpecId);
+  }).catch((error) => console.error('[test-drive] failed to launch', error));
 }
 window.__GAME_READY = true;
 // 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)

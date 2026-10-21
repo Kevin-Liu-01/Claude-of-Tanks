@@ -9,7 +9,7 @@ import { arrangeModeRoster } from '../host/modeRoster.ts';
  * timestamps and seeds in, so the Durable Object, the LAN service and the
  * receipts drive the same code.
  */
-import { GAME_MODE_IDS, normalizeGameMode } from '../../sim/matchModes.ts';
+import { BATTLE_MODE_IDS, normalizeGameMode } from '../../sim/matchModes.ts';
 import type { SerializedLobby } from './lobbyShape.ts';
 import { normalizeTeamArrangement, type TeamArrangement } from '../../sim/matchRuleset.ts';
 import { resolveMapId } from '../../world/maps/mapIds.ts';
@@ -23,7 +23,13 @@ import type {
   RoomSnapshot, RoomTeam,
 } from './protocol.ts';
 
-const GAME_MODE_SET: ReadonlySet<string> = new Set(GAME_MODE_IDS);
+// rooms host the battle modes only: a practice mode (the proving ground) is solo by definition (sim/matchModes.ts)
+const GAME_MODE_SET: ReadonlySet<string> = new Set(BATTLE_MODE_IDS);
+/** The battle mode a room plays for a requested id: an unknown or practice id falls back to Standard. */
+function roomGameMode(value: unknown) {
+  const gameMode = normalizeGameMode(value);
+  return GAME_MODE_SET.has(gameMode) ? gameMode : 'standard';
+}
 
 /** Cooperative modes: every human deploys on Alpha against authority-held defenders (v1 rule). */
 export function isCoopGameMode(gameMode: string | null | undefined): boolean {
@@ -228,7 +234,7 @@ function createPlayer(room: RoomSnapshot, {
 }
 
 export function defaultRoomSettings(settings: RoomCreateSettings | null | undefined): RoomSettings {
-  const gameMode = normalizeGameMode(settings?.gameMode);
+  const gameMode = roomGameMode(settings?.gameMode);
   const teamSize = settings?.teamSize == null ? 7 : cleanTeamSize(settings.teamSize);
   const maxSpectators = settings?.maxSpectators == null ? ROOM_MAX_SPECTATORS : Number(settings.maxSpectators);
   if (!Number.isInteger(maxSpectators) || maxSpectators < 0 || maxSpectators > ROOM_MAX_SPECTATORS) throw new RoomError('invalid_payload', 'maxSpectators');

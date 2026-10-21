@@ -35,7 +35,11 @@ export interface AerialView {
   returnS?: number;
 }
 
-export const GAME_MODE_IDS = Object.freeze([
+/**
+ * The battle modes: the ones a room hosts, the play menu and the Garage list, the site and the manual count. Their order
+ * is the wire's and the marketing cards' order; a new battle mode is appended here.
+ */
+export const BATTLE_MODE_IDS = Object.freeze([
   'standard',
   'capture_the_flag',
   'zone_control',
@@ -51,7 +55,24 @@ export const GAME_MODE_IDS = Object.freeze([
   'ac130',
 ] as const);
 
+/**
+ * The practice modes (v2 progression, owner 2026-10-17: "build out all the options" — the proving ground / test drive):
+ * solo sessions on the same simulation with no opponent, no verdict and no record. Rooms never host them and they are
+ * never listed as a battle; the Garage dossier and the Gallery launch them directly.
+ */
+export const PRACTICE_MODE_IDS = Object.freeze(['proving_ground'] as const);
+
+/** Every mode the simulation plays: the battle modes, then the practice modes. */
+export const GAME_MODE_IDS = Object.freeze([...BATTLE_MODE_IDS, ...PRACTICE_MODE_IDS] as const);
+
 export type GameModeId = typeof GAME_MODE_IDS[number];
+type PracticeModeId = typeof PRACTICE_MODE_IDS[number];
+
+const PRACTICE_MODE_SET: ReadonlySet<string> = new Set(PRACTICE_MODE_IDS);
+/** A practice mode: solo only, no opponent, no verdict, no record (rooms refuse it; lists leave it out). */
+export function isPracticeMode(mode: unknown): mode is PracticeModeId {
+  return typeof mode === 'string' && PRACTICE_MODE_SET.has(mode);
+}
 export type ObjectiveTeam = 'alpha' | 'bravo';
 
 interface GameModeDefinition {
@@ -117,6 +138,10 @@ export const GAME_MODE_DEFINITIONS: Readonly<Record<GameModeId, GameModeDefiniti
       description: 'Fight in your tank, launch an FPV attack drone, then pilot it into an enemy. Your parked tank stays vulnerable.', respawns: true }),
     ac130: Object.freeze({ id: 'ac130', label: 'AC-130', shortLabel: 'AC-130', icon: 'modeAc130',
       description: 'Protect vulnerable ground troops as they reach extraction. Save at least half using your autocannon, 152 mm howitzer and missiles.', respawns: false }),
+    // the proving ground (v2 progression, 2026-10-17): a test drive on a measured range — target hulls at set ranges
+    // and angles, every shot's outcome on the shot card, no enemies, no clock, nothing recorded
+    proving_ground: Object.freeze({ id: 'proving_ground', label: 'Proving Ground', shortLabel: 'RANGE', icon: 'modeProving',
+      description: 'Test drive any tank on a measured range: target hulls at set ranges and angles show every penetration outcome. No enemies, no clock, nothing recorded.', respawns: true }),
   });
 
 const MODE_SET = new Set<string>(GAME_MODE_IDS);
@@ -206,6 +231,8 @@ interface MatchModeControllerOptions<Entity extends MatchModeEntity>
   placement?: MatchPlacement;
   /** The rules this match plays by; derived from the mode when absent (campaign operations pass theirs). */
   ruleset?: MatchRuleset;
+  /** The proving ground's laid-out range (game/state.ts plans it on the battlefield before the controller starts). */
+  range?: ProvingRangePresentation | null;
 }
 
 export type BotMission = 'carrier' | 'recover' | 'escort' | 'raid' | 'defend' | 'striker' | 'screen' | 'capture' | 'assault';
@@ -304,6 +331,45 @@ export interface MatchModePresentationState {
   infection?: { survivors: number; infected: number };
   weaponStages?: { id: string; index: number }[];
   weaponStage?: { index: number; total: number; kills: number; required: number; name: string };
+  /** proving_ground: the range's lanes, their target hulls and the range card (sim/provingGround.ts). */
+  range?: ProvingRangePresentation;
+}
+
+/** A round's expected outcome on the range card: the aim overlay's bands (sim/provingGround.ts PROVING_PEN_RATIO). */
+export type ProvingOutcome = 'pen' | 'marginal' | 'nopen';
+
+/** One round of the player's loadout measured at one lane's range. */
+export interface ProvingShellCard {
+  /** The average round's penetration at the lane's range (mm). */
+  penMm: number;
+  /** Penetration over the effective armor laid on the target's centre of mass (0: no plate defeated or met). */
+  ratio: number;
+  outcome: ProvingOutcome;
+  /** The thickest rolled homogeneous plate defeated at each of the range's plate angles (mm; 0 none). */
+  plateMm: number[];
+}
+
+/** One lane of the proving ground as the HUD, the minimap and the receipts read it. */
+export interface ProvingLanePresentation {
+  index: number;
+  rangeM: number;
+  presentDeg: number;
+  x: number;
+  z: number;
+  targetId: string;
+  targetSpecId: string;
+  targetName: string;
+  /** Per shell slot of the player's loadout, in slot order. */
+  shells: ProvingShellCard[];
+}
+
+/** The proving ground's range: the firing line, the lanes and the plate angles the card measures against. */
+export interface ProvingRangePresentation {
+  mapId: string;
+  moving: boolean;
+  plateAnglesDeg: number[];
+  origin: { x: number; z: number };
+  lanes: ProvingLanePresentation[];
 }
 
 /** Sealed host checkpoint; never publish this private respawn state to spectators. */
@@ -337,6 +403,8 @@ export interface MatchModeController<
   /** The objective the bot's targets are ranked against: the same point with its capture reach. */
   botObjective(entity: Entity): { x: number; z: number; radiusM: number; mission?: BotMission } | null;
   serialize(viewerId?: string | null): MatchModePresentationState;
+  /** Every vehicle back on its spawn at full health at once (the proving ground's quick reset). */
+  reviveAll(): void;
   captureCheckpoint(elapsedS: number): ModeCheckpoint;
   restoreCheckpoint(checkpoint: ModeCheckpoint): void;
 }
@@ -396,7 +464,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   mode = 'standard', entities, seed = 6000, revive, setActive = () => {},
   terrainHeight = () => 0, ballFloorHeight = terrainHeight, emit = () => {},
   placement, setWeaponStage = () => {},
-  ruleset: rulesetOption,
+  ruleset: rulesetOption, range = null,
 }: MatchModeControllerOptions<Entity>): MatchModeController<Entity> {
   if (!Array.isArray(entities) || entities.length < 1 || typeof revive !== 'function') {
     throw new TypeError('match mode controller requires entities and a revive hook');
@@ -568,10 +636,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     // tactical map 2026-09-15: the team spawn centres (Zone Control marks both, the co-op modes only the human side;
     // CTF and Turbo Ball mark their bases instead). Symmetric deployments (2026-10-08): the centroid of the side's
     // deployment slots in use, from the same placement call that seats its tanks (sim/deployment.ts).
-    spawns: (['alpha', 'bravo'] as const).filter((team) => teams[team].length > 0).map((team) => {
-      const at = placement ? placement.deploymentCenter(team, teams[team].length) : centers[team];
-      return { team, x: at.x, y: terrainHeight(at.x, at.z) + 0.1, z: at.z };
-    }),
+    // the proving ground's one place to mark is its firing line (its targets stand on their lanes)
+    spawns: range ? [{ team: 'alpha', x: range.origin.x, y: terrainHeight(range.origin.x, range.origin.z) + 0.1, z: range.origin.z }]
+      : (['alpha', 'bravo'] as const).filter((team) => teams[team].length > 0).map((team) => {
+        const at = placement ? placement.deploymentCenter(team, teams[team].length) : centers[team];
+        return { team, x: at.x, y: terrainHeight(at.x, at.z) + 0.1, z: at.z };
+      }),
     horde: id === 'endless_horde' || id === 'frontline_assault' ? {
       wave, alive: 0, total: 0, nextWaveInS: 0, healChance: 0,
     } : null,
@@ -582,6 +652,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     ...(escort ? { escort:escort.state } : {}),
     ...(boss ? { boss: { id: boss.id, team: teamOf(boss), hp: boss.combat.hp, maxHp: boss.combat.maxHp } } : {}),
     ...(ruleset.infection ? { infection: { survivors: teams.alpha.length, infected: teams.bravo.length } } : {}),
+    ...(range ? { range } : {}),
   };
 
   const resetFlag = (flag: FlagState): void => {
@@ -1261,6 +1332,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         required: ruleset.gunGame.killsPerWeapon,
         name: GUN_GAME_WEAPONS[Math.min(GUN_GAME_WEAPONS.length - 1, Math.floor((weaponKills.get(viewer.id) ?? 0) / ruleset.gunGame.killsPerWeapon))]!.name,
       } } : {}),
+      ...(state.range ? { range: state.range } : {}),
     };
   };
 
@@ -1511,6 +1583,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     },
     botTarget,
     botObjective,
+    reviveAll() {
+      if (result) return;
+      for (const entity of entities) reviveAtSpawn(entity, 1);
+    },
     captureCheckpoint(elapsedS) {
       return { elapsedS, score: { ...score }, weaponKills: [...weaponKills], teams: entities.map(entity => [entity.id, teamOf(entity)]),
         respawns: [...respawnAt].map(([key, value]) => [key, { ...value }]), destroyed: [...destroyed], scored: [...scoredDeaths], ...(escort?{escortRescued:escort.capture(),support:{ammoAt,healAt,sequence:pickupSequence,pickups:pickups.map(p=>({...p}))}}:{}) };

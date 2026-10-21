@@ -821,6 +821,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/rosterRotationMemory.selftest.mjs',
     'src/game/waveFormationSplit.selftest.mjs',
     'src/game/battleSides.selftest.mjs',
+    // 2026-10-17 (v2 progression): the proving ground run for real on its range, and the test drive's entry points.
+    'src/game/provingSession.selftest.mjs',
     // 2026-10-08 (modes lane): the solo sim and the host seat every side on the same deployment slots.
     'src/game/deploymentParity.selftest.mjs',
     'src/game/rosterVisualStaging.selftest.mjs',
@@ -1401,6 +1403,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-03 (bots lane): the frontline attack regroups before the last sector.
     'src/sim/frontlineRegroup.selftest.mjs',
     'src/sim/matchRuleset.selftest.mjs',
+    // 2026-10-17 (v2 progression): the proving ground's ruleset row, practice partition, range layout, card and drive.
+    'src/sim/provingGround.selftest.mjs',
     'src/sim/assaultLines.selftest.mjs',
     'src/sim/matchPlacement.selftest.mjs',
     'src/sim/authoritativeMatch.selftest.mjs',

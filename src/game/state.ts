@@ -147,6 +147,9 @@ import {
 import { structureRubbleHeightM } from '../sim/structureDamage.ts';
 import { fellConcealersAt, restoreConcealers } from '../sim/spotting.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from '../sim/matchPlacement.ts';
+// the proving ground (v2 progression, 2026-10-17): the range laid out on the battlefield, its marks, card and target drive
+import { driveProvingTarget, planSoloProvingRange, provingRangePresentation, provingSpawn } from './provingRange.ts';
+import type { ProvingMark, ProvingPatrolState, ProvingRangeLayout } from '../sim/provingGround.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from './consumables.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
 import {
@@ -282,6 +285,9 @@ type SoloPooledEntity = Omit<RosterEntity,
     _modeTargetZ?: number;
     _reloadEvent?: ReloadPresentationEvent;
     _repairedModules?: string[];
+    /** Proving ground: the mark this target hull stands on (null for every other seat) and its patrol direction. */
+    _provingMark?: ProvingMark | null;
+    _provingPatrol?: ProvingPatrolState | null;
   };
 
 type SoloEntity = Omit<SoloPooledEntity, 'state' | 'combat' | 'specialAction'> & {
@@ -866,6 +872,9 @@ interface BattleSpawnContext {
   botNavigation: Readonly<BotNavigationGrid>;
   enemyIndex: number;
   allyIndex: number;
+  /** Proving ground: the range laid out on this battlefield and the target hull seated on each lane (lane order). */
+  provingLayout: ProvingRangeLayout | null;
+  provingTargets: SoloEntity[];
 }
 
 interface OpeningLane {
@@ -886,6 +895,9 @@ function selectEntitySpawn(
   isAlly: boolean,
 ): SpawnPoint {
   const team = isPlayer || isAlly ? 'alpha' : 'bravo';
+  // the proving ground seats the player on the firing line and each target hull on its lane's mark
+  const mark = context.provingLayout ? provingSpawn(context.provingLayout, isPlayer, isPlayer ? 0 : context.enemyIndex++) : null;
+  if (mark) return { pos: [mark.x, context.world.heightField.getHeightAt(mark.x, mark.z), mark.z], yaw: mark.yaw };
   const slot = context.placement.deploymentSlot(team, team === 'alpha' ? context.allyIndex++ : context.enemyIndex++);
   return { pos: [slot.x, context.world.heightField.getHeightAt(slot.x, slot.z), slot.z], yaw: slot.yaw };
 }
@@ -927,6 +939,8 @@ function initializeBattleEntity(
   entity._impactAccumMps = 0;
   entity._impactAccumT = -1e9;
   entity.ai = null;
+  entity._provingMark = null;
+  entity._provingPatrol = null;
   entity.visual?.resetDestroyed?.();
   if (isPlayer) {
     context.game.player = entity;
@@ -1157,6 +1171,14 @@ function createBattleBot(
   else prepare();
 }
 
+/** A proving-ground target hull: no AI (it never fires); it holds its mark, or shuttles about it with moving targets on. */
+function seatProvingTarget(context: BattleSpawnContext, entity: SoloEntity, spawn: SpawnPoint): void {
+  entity.aiCtl = null;
+  entity._provingMark = Object.freeze({ x: spawn.pos[0], z: spawn.pos[2], yaw: spawn.yaw });
+  entity._provingPatrol = { dir: 1 };
+  context.provingTargets.push(entity);
+}
+
 function warmStartBattleEntity(
   entity: SoloEntity,
   world: SoloWorld,
@@ -1181,7 +1203,8 @@ function spawnBattleEntities(context: BattleSpawnContext): void {
       entity.id, placementTankRadius(entity.spec));
     const spawn: SpawnPoint = { pos: [safe.x, context.world.heightField.getHeightAt(safe.x, safe.z), safe.z], yaw: safe.yaw };
     initializeBattleEntity(context, entity, spawn, isPlayer, isAlly);
-    if (!isPlayer) createBattleBot(context, entity, index, spawn);
+    if (!isPlayer && context.provingLayout) seatProvingTarget(context, entity, spawn);
+    else if (!isPlayer) createBattleBot(context, entity, index, spawn);
     warmStartBattleEntity(entity, context.world);
   }
 }
@@ -1215,7 +1238,9 @@ function createJevBattleView(game: SoloGameState): JevBattleView {
  */
 function attachBattleCommander(game: SoloGameState): void {
   const brains = game.brains ?? DEFAULT_BRAIN_SETTINGS;
-  const teams: TeamId[] = brains.opponent === 'jev' ? (brains.allies ? ['enemy', 'player'] : ['enemy']) : [];
+  // the proving ground's targets have no brain to command
+  const teams: TeamId[] = game.ruleset.provingGround ? []
+    : brains.opponent === 'jev' ? (brains.allies ? ['enemy', 'player'] : ['enemy']) : [];
   if (teams.length) {
     jevTransport ??= createJevFetchTransport({ url: jevEndpointUrl() });
     game.jev = createJevCommander({ transport: jevTransport, teams });
@@ -1425,11 +1450,20 @@ export function setupBattle(
     botNavigation,
     enemyIndex: 0,
     allyIndex: 0,
+    // the proving ground lays its range out on this battlefield (fails closed: sim/provingGround.ts)
+    provingLayout: game.ruleset.provingGround ? planSoloProvingRange(game.ruleset.provingGround, world) : null,
+    provingTargets: [],
   };
   spawnBattleEntities(spawnContext);
+  const provingRules = game.ruleset.provingGround;
+  const range = provingRules && spawnContext.provingLayout && game.player
+    ? provingRangePresentation(provingRules, spawnContext.provingLayout, game.player, spawnContext.provingTargets,
+      (x, z) => world.heightField.getHeightAt(x, z))
+    : null;
   game.matchModeController = createMatchModeController<SoloEntity>({
     mode: game.gameMode,
     ruleset: game.ruleset,
+    range,
     entities: game.tanks,
     seed: COMBAT_SEED + game.battleCount,
     setWeaponStage: setModeWeapon,
@@ -2466,9 +2500,12 @@ function stepBotControllers(game: SoloGameState): void {
     syncNavigationWrecks(game._botNavigation, game._navigationWrecks,
       collectNavigationWrecks(game.tanks, game._navigationWrecks));
   }
+  const proving = game.ruleset.provingGround;
   for (const entity of game.tanks) {
     if (entity.modeActive !== false && entity.aiCtl && !entity.combat.destroyed) {
       entity.aiCtl.update(SIM_DT, game.timeS);
+    } else if (proving && entity._provingMark && entity.modeActive !== false && !entity.combat.destroyed) {
+      driveProvingTarget(entity, proving);
     }
   }
 }
@@ -3280,4 +3317,31 @@ function stepDestruction(game: SoloGameState, bus: EventBus, world: SoloWorld): 
  */
 export function createCollider(game: SoloGameState, world: SoloWorld): CollisionBundle {
   return makeCollide(game, world);
+}
+
+/**
+ * The proving ground's quick reset (v2 progression, 2026-10-17): every hull back on its mark at full health and full
+ * rounds, the rounds in flight gone, the patrols restarted. Only a proving-ground battle resets; returns whether it did.
+ */
+export function resetProvingRange(game: SoloGameState): boolean {
+  if (!game.ruleset.provingGround || !game.matchModeController || game.result !== null) return false;
+  for (const shell of game.shells) {
+    if (_shellPool.length < 64) _shellPool.push(shell);
+  }
+  game.shells.length = 0;
+  // the player keeps the round they were testing (a revive loads the first slot)
+  const player = game.player;
+  const slot = player?.combat?.shellSlot ?? 0;
+  game.matchModeController.reviveAll();
+  if (player?.combat && slot > 0 && selectShell(player.combat, slot, player.spec)) player.input.shellSlot = slot;
+  for (const entity of game.tanks) entity._provingPatrol = entity._provingMark ? { dir: 1 } : null;
+  return true;
+}
+
+/** Moving targets on or off (the proving ground's arrangement, through the ruleset), then a reset onto the marks. */
+export function setProvingTargetsMoving(game: SoloGameState, moving: boolean): boolean {
+  if (!game.ruleset.provingGround) return false;
+  game.ruleset = matchRulesetFor(game.gameMode, null, moving ? { movingTargets: true } : null);
+  if (game.matchModeState?.range) game.matchModeState.range.moving = !!game.ruleset.provingGround?.moving;
+  return resetProvingRange(game);
 }
