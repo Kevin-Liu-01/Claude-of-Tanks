@@ -508,6 +508,39 @@ exercise each case. The impact plan reduces deployment-note invalidation from
 roughly 500 checks to 161 on this revision; fresh environmental checks are additional.
 This is a dependency count, not a claim about elapsed time on a busy host.
 
+**Listing receipts (2026-10-20, after 228p).** A receipt that lists a tree (readdir, opendir, glob, `git ls-files` or
+`grep`, a name-only diff) reads every file in it, not only what it imports. Release 228p ran the 125 receipts whose
+closures named a changed file and shipped a red: `src/presentation/mediaLibrary.ts` gained a static CSS import, which
+`src/ui/runtimeStyles.selftest.mjs` forbids outside main.ts. runtimeStyles lists all of src, so its only match for the
+file was the fallback every listing gets (`SELFTEST_BROAD_DIRS` in `tools/selftest-cache.mjs`: src, tools, server,
+public, docs, scripts, cloudflare). That fallback keys the proof, so the cache was not the hole, but a selection cannot
+tell it from a real read, so the selection dropped it. `tools/selftest-scans.mjs` declares what each listing module a
+registered receipt runs (its imports, and the repository tools a child-process user names) lists:
+
+- `lists` patterns (the `--only` glob syntax) put every matching file into the receipt's closure. The key changes when a
+  match appears, changes or goes, including roots outside the fallback such as the root `*.html` pages
+  `src/ui/i18n.selftest.mjs` lists. Any reader of closures sees the read as direct.
+- `tracked` patterns (git's index) select a receipt that git state already keeps live.
+- `caller` libraries (the cache itself, the changed-only graph) move the declaration to every module that runs them.
+- `outside`, `identity`, `cli` and `none` give the reason a listing selects nothing: tmp fixtures and queues, provenance
+  digests, a command-line-only path, or a constant imported from a `caller` module.
+
+`npm run test:plan -- --changed=<paths>` rows carry `scanBy` (the changed paths a listing covers, deleted paths
+included) and `broadOnly` (matched only through the fallback). A targeted selection runs every row with a non-empty
+`affectedBy` that is not `broadOnly`, and never drops a `scanBy` row. `tools/selftest-scans.selftest.mjs` replays 228p
+through the runner on a fixture: a static CSS import in a non-main module selects runtimeStyles and fails it, and a
+cached PASS never hides it. It fails on an undeclared listing module, a `caller` library run by an undeclared module, a
+stale entry, a missing directory, a root-recursive `lists` pattern and a keyed receipt with tracked listings. Census on
+2026-10-20: 111 modules (45 lists, 12 tracked, 8 caller, 19 outside, 11 identity, 11 cli, 5 none). Listings key and
+select 54 receipts; tracked listings select 12.
+
+Liveness (browser, Git, computed imports) and the environment a key records come from the modules a receipt's imports
+execute, never from a file it only names, lists or spawns. They used to count once any other receipt's walk had parsed
+the file, so liveness depended on lookup order. In registry order six receipts were live only through a file they name:
+four reach `tools/source-x-oracle.mjs` through a research receipt JSON, and two read tool sources as text. They are now
+keyed. No receipt became live. A spawned tool's git or browser use still does not make its spawner live:
+`src/world/wreckBakePlanDrift.selftest.mjs` (about 500 s) spawns a tool that stamps a git revision.
+
 **One fleet pass per build (2026-10-02).** Ten receipts used to rebuild the whole fleet each (219 playable tanks
 since main's Hetman II and Zubr II), and the build is nearly all of their cost (the audits themselves take under 5 s
 per fleet). Three fleet passes now build each tank once
