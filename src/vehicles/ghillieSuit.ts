@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {drapeSuitOverSpentEra, type EraDrapePort} from './eraSpentDrape.ts';
 import { KIT } from './profiles/kit.ts';
 import { cloneVehicleMaterial, followVehicleScheme, resolveCamoVisual, type MaterialTankSpec } from './materials.ts';
 import type { MaterialVisual } from './materialPainter.ts';
@@ -219,6 +220,14 @@ export interface GhillieConfig {
    * on the suits of the hulls carrying those fields; unset suits keep their cards as laid.
    */
   cardsClearOfArmour?: boolean;
+  /**
+   * Release 227, round 7 (2026-10-18; the critic's UAPL-R5C-4: spent, "the nets laid over the new ERA keep their height
+   * and float in the air over the empty bays"): the cloth and garnish resting on an authored ERA cluster fall onto the
+   * permanent stock under it when the cluster is spent and rise back on reset (eraSpentDrape.ts; the port's
+   * eraClusterAt / bindEraDrape). Set on the suits of the hulls carrying the national frontal ERA; unset suits are
+   * unchanged.
+   */
+  dropOverSpentEra?: boolean;
 
   /**
    * The netting lane: the seed of the painted net texture (default: the suit's seed). Suits sharing one share a single
@@ -259,6 +268,9 @@ interface GhillieBuilderPort {
    * return its work as checkpoints; the factory runs it after the core build, one checkpoint per slice.
    */
   afterAssemble?: Array<(rig: never) => void | Generator<void, void, void>>;
+  /** The ERA drape hooks (tankFactoryCore; GhillieConfig.dropOverSpentEra). */
+  eraClusterAt?: EraDrapePort['eraClusterAt'];
+  bindEraDrape?: EraDrapePort['bindEraDrape'];
 }
 
 // Shared physical-ghillie authoring process.
@@ -5512,6 +5524,10 @@ function* buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): Generator
     if (!panels) continue;
     if (owner === 'turret') clearance?.addHullSuit();
     yield* addGhillieOwner(P, cfg, owner, parent, panels, others, theatre, cover, clearance, cap);
+  }
+  if (cfg.dropOverSpentEra && P.eraClusterAt && P.bindEraDrape) {
+    yield;
+    drapeSuitOverSpentEra({eraClusterAt: P.eraClusterAt, bindEraDrape: P.bindEraDrape}, owners.filter(([o]) => o !== 'gun').map(([, parent, others]) => [parent, others] as const));
   }
 }
 

@@ -14,8 +14,12 @@
 //   - every new lens: its night emitter registered, its aperture open for .5 m, recessed 4-26 mm in its housing and
 //     lapping at least 4 mm into it; the light counts; the Zubr II's illuminator under its station's pitch stage,
 //     its beam following yaw and pitch;
-//   - drawn triangles and draws within the gatefix2 baseline (draws: Zubr +0, Zubr II +1 for the illuminator, Hetman II
-//     +1 for its first hull glass: the field net opens only round Glass stock);
+//   - drawn triangles within the brief's ceilings and LOW at most 75 % of HIGH, draws within the gatefix2 baseline
+//     (Zubr +0, Zubr II +1 for the illuminator, Hetman II +1 for its first hull glass: the field net opens only round
+//     Glass stock);
+//   - (round 7) every new permanent part held by permanent stock, nothing of any new part more than 7 mm inside another
+//     closed piece of its owner (the shell included), every module's face the first gameplay plate along its outward
+//     axis (its own sector's ERA), and spent, no suit vertex that lay on the armour over 30 mm off it;
 // and a deterministic Node case of both Zubrs' stations through src/sim/auxiliarySystems.ts: with no player input
 // each slews to and fires at an enemy drone in range (counter-drone) and at a soft vehicle, holds fire on a main battle
 // tank's front, stops at the B toggle, and repeats identically.
@@ -30,6 +34,8 @@ import {vehicleNightLightEmittersFor, SEARCHLIGHT_CONE_RAD} from './vehicleNight
 import {NATIONAL_ROOF_LOADOUTS} from './nationalRoofConfig.ts';
 import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
 import {auxiliaryState, requestAuxiliary, stepRoofGun, auxiliaryShot} from '../sim/auxiliarySystems.ts';
+import {Solid, trianglesOf, trianglesIn, surfaceSamples, deepest} from './frontEraSolids.test-support.mjs';
+import {tankPoseFromState, traceTank} from '../sim/armor.ts';
 
 // (FRONT_ERA_IDS=<id,...>: a debugging subset)
 const IDS = process.env.FRONT_ERA_IDS?.split(',') ?? ['t72b3m_hetman_ii', 't72b3_zubr', 't72b3_zubr_ii'];
@@ -38,14 +44,20 @@ const SECTORS = ['glacis_era_L', 'glacis_era_R', 'skirt_era_L', 'skirt_era_R', '
 const MODULES = {
   t72b3m_hetman_ii: {glacis_era: 13, skirt_era: 1, turret_era: 19},
   t72b3_zubr: {glacis_era: 18, skirt_era: 10, turret_era: 24},
-  t72b3_zubr_ii: {glacis_era: 14, skirt_era: 13, turret_era: 54},
+  // (round 10, the blind critic's UAPL-R8-02: the Zubr II's terraces carry one row of large cassettes each, 3 + 3 + 2 a
+  // side, with the lower plate's three)
+  t72b3_zubr_ii: {glacis_era: 11, skirt_era: 13, turret_era: 54},
 };
-/** The gatefix2 baseline (integ/226 c3cc76fa8, this receipt's census): drawn triangles HIGH/LOW and draws HIGH/LOW. */
+/** The brief's cost ceilings (round 7, the critic's UAPL-R5C-8: this receipt held Hetman II to 146,669 / 110,265, looser
+ * than the brief's, and never asserted LOW <= 75 % of HIGH): drawn triangles HIGH/LOW (Hetman II its gatefix2 baseline
+ * 146,517 / 110,157; the Zubr 138,100 and the Zubr II 150,200 HIGH, their LOW at 75 % of that) and the gatefix2 draws
+ * HIGH/LOW (integ/226 c3cc76fa8) plus at most one; and on every build LOW at most 75 % of its own HIGH. */
 const BASELINE = {
-  t72b3m_hetman_ii: {tris: [146669, 110265], draws: [59, 55], extraDraws: 1},
-  t72b3_zubr: {tris: [132458, 96242], draws: [60, 56], extraDraws: 0},
-  t72b3_zubr_ii: {tris: [147729, 110249], draws: [59, 55], extraDraws: 1},
+  t72b3m_hetman_ii: {tris: [146517, 110157], draws: [59, 55], extraDraws: 1},
+  t72b3_zubr: {tris: [138100, 103575], draws: [60, 56], extraDraws: 0},
+  t72b3_zubr_ii: {tris: [150200, 112650], draws: [59, 55], extraDraws: 1},
 };
+const LOW_SHARE = .75;
 const LIGHTS = {t72b3m_hetman_ii: {headlights: 8, markers: 2}, t72b3_zubr: {headlights: 4}, t72b3_zubr_ii: {headlights: 11, markers: 4}};
 /** Hatch opening zones: plan centre, radius (the lid's plus 30 cm), and the plane nothing new may stand above there. */
 const HATCHES = {
@@ -95,13 +107,27 @@ function intersects(a, b) {
 class Grid {
   constructor(tris, cell = .1) {
     this.cell = cell; this.map = new Map(); this.box = new THREE.Box3();
+    // (round 10, the critic's UAPL-C8-6: this receipt was the slowest in the suite) the highest point of any triangle
+    // listed in each cell: a posed triangle wholly above every triangle of the cells under it meets none of them
+    this.maxY = new Map();
     for (const t of tris) {
       this.box.union(t.box);
       for (let i = Math.floor(t.box.min.x / cell); i <= Math.floor(t.box.max.x / cell); i++)
         for (let k = Math.floor(t.box.min.z / cell); k <= Math.floor(t.box.max.z / cell); k++) {
           const key = i * 100003 + k; let list = this.map.get(key); if (!list) this.map.set(key, list = []); list.push(t);
+          if (!(this.maxY.get(key) >= t.box.max.y)) this.maxY.set(key, t.box.max.y);
         }
     }
+  }
+  /** Whether a box can meet any listed triangle: false when it lies outside the grid's box or above every triangle of
+   * the cells under it (an exact filter: every candidate near() would return has its top at or under that height). */
+  reaches(min, max) {
+    if (min.x > this.box.max.x || max.x < this.box.min.x || min.y > this.box.max.y || max.y < this.box.min.y
+      || min.z > this.box.max.z || max.z < this.box.min.z) return false;
+    const c = this.cell;
+    for (let i = Math.floor(min.x / c); i <= Math.floor(max.x / c); i++)
+      for (let k = Math.floor(min.z / c); k <= Math.floor(max.z / c); k++) if (this.maxY.get(i * 100003 + k) >= min.y) return true;
+    return false;
   }
   near(box) {
     const out = new Set(), c = this.cell;
@@ -159,7 +185,7 @@ function coplanarPairs(parts) {
   return [...pairs].map(([k, a]) => `${k} (${(a * 1e4).toFixed(1)} cm2)`);
 }
 const seatMat = new THREE.MeshBasicMaterial({side: THREE.DoubleSide}), seatRay = new THREE.Raycaster();
-const AXES = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)], overlapRay = new THREE.Ray(), overlapPt = new THREE.Vector3();
+const overlapPt = new THREE.Vector3();
 const isShadow = o => o.userData.shadowOnly || o.userData.authoredShadowProxy || /^procShadow/.test(o.name);
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -175,7 +201,7 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
     const era = Object.hasOwn(g.userData, 'eraHitFaceVertexStarts');
     if (g.userData.frontEraPart) fresh.push({owner, bucket, g: g.clone(), name: g.userData.frontEraPart, sector: g.userData.frontEraSector,
       module: era && g.userData.eraHitFaceVertexStarts.length > 0, era, lamp: g.userData.frontEraLamp});
-    else if (!/Glass|Cloth/.test(bucket)) others[owner].push({bucket, g: g.clone(), seat: bucket === owner || (bucket === `${owner}ExternalArmor` && !era)});
+    else if (!/Glass|Cloth/.test(bucket)) others[owner].push({bucket, g: g.clone(), era, seat: bucket === owner || (bucket === `${owner}ExternalArmor` && !era)});
     if ((bucket === owner || bucket === `${owner}ExternalArmor`) && !era) stock[owner].push(g.clone());
   }});
   try {
@@ -197,6 +223,31 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
       }
     }
     assert(!fresh.some(p => p.era && p.owner === 'turret' && /gunMount/.test(p.bucket)), `${label}: no ERA on the gun mount`);
+
+    // Round 7 (2026-10-18; the critic's UAPL-R5C-5: "the main-armour polygon sits in front of the visible upper-glacis
+    // ERA. Frontal fire meets main armour before the ERA face, so these modules are bound but can never act first"):
+    // in the authoritative hit model (src/sim/armor.ts traceTank on the calibrated spec), a shot along each new module's
+    // outward axis onto its hit faces' centre meets that module's own sector's ERA plate before any other plate (HIGH)
+    if (high) {
+      const pose = tankPoseFromState({pos: new THREE.Vector3(), yaw: 0, visualPitch: 0, visualRoll: 0, turretYaw: 0, gunPitch: 0});
+      const rigs = {hull: hullRig, turret}, a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+      for (const m of modules) {
+        const pos = m.g.getAttribute('position'), ix = m.g.index, centre = new THREE.Vector3();
+        let area = 0;
+        for (const st of m.g.userData.eraHitFaceVertexStarts) {
+          const at = k => ix ? ix.getX(st + k) : st + k;
+          a.fromBufferAttribute(pos, at(0)); b.fromBufferAttribute(pos, at(1)); c.fromBufferAttribute(pos, at(2));
+          const ar = b.clone().sub(a).cross(c.clone().sub(a)).length() / 2;
+          centre.addScaledVector(a.clone().add(b).add(c), ar / 3); area += ar;
+        }
+        centre.divideScalar(area);
+        const n = new THREE.Vector3(...m.g.userData.frontEraOutward).transformDirection(rigs[m.owner].matrixWorld);
+        const cw = centre.applyMatrix4(rigs[m.owner].matrixWorld);
+        const first = traceTank(cw.clone().addScaledVector(n, 3), cw.clone().addScaledVector(n, -1), pose, spec.armor).find(h => h.kind === 'plate');
+        assert(first?.plate.kind === 'era' && first.plate.name === m.sector,
+          `${label}: a shot onto ${m.name} meets ${first ? `${first.plate.name}/${first.plate.kind}` : 'no plate'} first, not its ERA (${m.sector})`);
+      }
+    }
 
     // every module seated on permanent stock over its whole seat (round 2, 2026-10-16; the critic's D6: one vertex near the
     // stock let a tile hang 11.6 cm off a skirt return's end and tilted tiles pass): its seat faces are the faces turned
@@ -330,17 +381,45 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
     const gunMeshes = [];
     gun.traverse(o => { if (o.isMesh && !isShadow(o) && o.material?.colorWrite !== false) gunMeshes.push(o); });
     const gunLocal = gunMeshes.map(o => ({o, tris: trisOf(o.geometry), mount: /gunMount/.test(o.name)}));
-    const posed = (frameRig, lower = 0, dx = 0, only = null) => {
+    // (round 10, UAPL-C8-6) the gun's triangles posed in a rig's frame and tested against a grid. A triangle whose posed
+    // box cannot reach the grid (Grid.reaches, exact) is skipped before it is built; one that can is tested as pieces no
+    // longer than 15 cm (its own area, split at its longest edges, each piece behind the same exact filter): the barrel's
+    // 5 m strips no longer gather every hull triangle under their whole length for each pose
+    const PIECE = .15;
+    const piecesOf = tr => tr.pieces ??= (() => {
+      const out = [], stack = [tr.v];
+      while (stack.length) {
+        const [a, b, c] = stack.pop(), e = [[a, b, c], [b, c, a], [c, a, b]].map(([p, q, r]) => ({p, q, r, l: p.distanceTo(q)}));
+        const longest = e.reduce((x, y) => (y.l > x.l ? y : x));
+        if (longest.l <= PIECE) { out.push([a, b, c]); continue; }
+        const mid = longest.p.clone().lerp(longest.q, .5);
+        stack.push([longest.p, mid, longest.r], [mid, longest.q, longest.r]);
+      }
+      return out;
+    })();
+    const sweepHits = (grid, frameRig, lower = 0, dx = 0, only = null) => {
       t.root.updateMatrixWorld(true);
-      const inv = new THREE.Matrix4().copy(frameRig.matrixWorld).invert(), out = [];
+      const inv = new THREE.Matrix4().copy(frameRig.matrixWorld).invert(), m = new THREE.Matrix4(), shift = new THREE.Matrix4().makeTranslation(dx, -lower, 0);
+      const q = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()], lo = new THREE.Vector3(), hi = new THREE.Vector3();
+      const test = v3 => {
+        for (let k = 0; k < 3; k++) q[k].copy(v3[k]).applyMatrix4(m);
+        lo.copy(q[0]).min(q[1]).min(q[2]); hi.copy(q[0]).max(q[1]).max(q[2]);
+        if (!grid.reaches(lo, hi)) return null;
+        const v = q.map(p => p.clone()), tri = new THREE.Triangle(...v);
+        return grid.hits([{v, tri, plane: tri.getPlane(new THREE.Plane()), box: new THREE.Box3(lo.clone(), hi.clone())}]);
+      };
       for (const {o, tris, mount} of gunLocal) {
         if (only === 'mount' && !mount) continue;
         if (only === 'barrel' && mount) continue;
-        const m = inv.clone().multiply(o.matrixWorld).premultiply(new THREE.Matrix4().makeTranslation(dx, -lower, 0));
-        for (const tr of tris) { const v = tr.v.map(q => q.clone().applyMatrix4(m)), tri = new THREE.Triangle(...v);
-          out.push({v, tri, plane: tri.getPlane(new THREE.Plane()), box: new THREE.Box3().setFromPoints(v)}); }
+        m.copy(inv).multiply(o.matrixWorld).premultiply(shift);
+        for (const tr of tris) {
+          for (let k = 0; k < 3; k++) q[k].copy(tr.v[k]).applyMatrix4(m);
+          lo.copy(q[0]).min(q[1]).min(q[2]); hi.copy(q[0]).max(q[1]).max(q[2]);
+          if (!grid.reaches(lo, hi)) continue;
+          for (const piece of piecesOf(tr)) { const hit = test(piece); if (hit) return hit; }
+        }
       }
-      return out;
+      return null;
     };
     const turretFresh = new Grid(fresh.filter(p => p.owner === 'turret').flatMap(p => trisOf(p.g)), .1);
     const hullFresh = new Grid(fresh.filter(p => p.owner === 'hull').flatMap(p => trisOf(p.g)), .1);
@@ -350,9 +429,9 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
       turret.rotation.y = 0;
       for (let pitch = -spec.gunDepressionDeg; pitch <= spec.gunElevationDeg + 1e-9; pitch += 1) for (const travel of [0, .135]) {
         gun.rotation.x = -pitch * DEG; recoil.position.z = -travel;
-        const hit = turretFresh.hits(posed(turret));
+        const hit = sweepHits(turretFresh, turret);
         assert(!hit, `${label}: the main gun at pitch ${pitch}, recoil ${travel} meets new turret stock`);
-        if (travel === 0) for (const dx of [-.05, .05]) assert(!turretFresh.hits(posed(turret, 0, dx, 'mount')), `${label}: the mantlet keeps 5 cm from new turret stock at pitch ${pitch}`);
+        if (travel === 0) for (const dx of [-.05, .05]) assert(!sweepHits(turretFresh, turret, 0, dx, 'mount'), `${label}: the mantlet keeps 5 cm from new turret stock at pitch ${pitch}`);
       }
       // hull parts: every degree of yaw at its lowest legal pitch, both recoil states; 3 cm under the barrel over the front arc
       for (let yaw = -179; yaw <= 180; yaw += 1) {
@@ -360,7 +439,7 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
         turret.rotation.y = yaw * DEG; gun.rotation.x = -low;
         for (const travel of [0, .135]) {
           recoil.position.z = -travel;
-          assert(!hullFresh.hits(posed(hullRig, Math.abs(yaw) <= 90 ? .03 : 0)), `${label}: the main gun at yaw ${yaw} (pitch ${(low / DEG).toFixed(1)}, recoil ${travel}) keeps ${Math.abs(yaw) <= 90 ? '3 cm over' : 'clear of'} new hull stock`);
+          assert(!sweepHits(hullFresh, hullRig, Math.abs(yaw) <= 90 ? .03 : 0), `${label}: the main gun at yaw ${yaw} (pitch ${(low / DEG).toFixed(1)}, recoil ${travel}) keeps ${Math.abs(yaw) <= 90 ? '3 cm over' : 'clear of'} new hull stock`);
         }
       }
       // the pitch curves over the whole circle (round 2; the critic's D7: at -6 the gun met the existing hull stock in the
@@ -372,50 +451,68 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
         turret.rotation.y = yaw; gun.rotation.x = -low;
         for (const travel of [0, .135]) {
           recoil.position.z = -travel;
-          const hit = hullGrid.hits(posed(hullRig, .015, 0, 'barrel')) ?? hullGrid.hits(posed(hullRig, 0, 0, 'mount'));
+          const hit = sweepHits(hullGrid, hullRig, .015, 0, 'barrel') ?? sweepHits(hullGrid, hullRig, 0, 0, 'mount');
           assert(!hit, `${label}: the pitch curve keeps the gun off the hull at yaw ${sgn * a} (pitch ${(low / DEG).toFixed(2)}, recoil ${travel})${hit ? ` ${JSON.stringify(hit.map(h => h.v.map(q => q.toArray().map(n => +n.toFixed(3)))))}` : ''}`);
         }
       }
     } finally { [turret.rotation.y, gun.rotation.x, recoil.position.z] = saved; t.root.updateMatrixWorld(true); }
 
     // interpenetration, both ways (round 2; the critic's D4-D6: an existing screen-arm shoe buried 11.5 mm in a new
-    // cassette, tiles entering each other and sinking 12 mm into the next wall passed the one-way test): the deepest
-    // vertex of either part inside the other (closed parts: the +X, +Y and +Z parities all say inside), by its distance to
-    // the other's surface: a new part and an existing non-seat part (every existing part but the owner's own shell, its
-    // existing welded armour included), 7 mm (a 4 mm seat); two new ERA modules, 1.5 mm (they never meet); a module and a
-    // new permanent part (its carrier, frame or a neighbour's wall), 7 mm
-    let overlapMax = 0;
-    const solidOf = (g, extra) => { g.computeBoundingBox(); return {box: g.boundingBox.clone(), tris: trisOf(g), ...extra}; };
-    const insideAll = (v, tris) => {
-      for (const dir of AXES) { overlapRay.set(v, dir); let n = 0; for (const tr of tris) if (overlapRay.intersectTriangle(tr.tri.a, tr.tri.b, tr.tri.c, false, overlapPt)) n++; if (n % 2 === 0) return false; }
-      return true;
-    };
-    const depthInto = (A, B) => {
-      let d = 0;
-      for (const tr of A.tris) for (const v of tr.v) {
-        if (!B.box.containsPoint(v) || !insideAll(v, B.tris)) continue;
-        let m = Infinity; for (const b of B.tris) { b.tri.closestPointToPoint(v, overlapPt); m = Math.min(m, overlapPt.distanceTo(v)); }
-        d = Math.max(d, m);
-      }
-      return d;
-    };
-    const pairDepth = (A, B) => A.box.clone().expandByScalar(.002).intersectsBox(B.box) ? Math.max(depthInto(A, B), depthInto(B, A)) : 0;
+    // cassette, tiles entering each other and sinking 12 mm into the next wall passed the one-way test). Round 7
+    // (2026-10-18; the critic's UAPL-R5C-3: "the new receipt does not bite on permanent new parts (frames, bars,
+    // uprights, lids, end plates, housings): a part floating off its seat, or buried in the casting or hull shell,
+    // passes"; R5C-6: corners were never measured): the deepest point of either part inside the other, its vertices and
+    // points over its faces 12 mm apart (a straight bar's middle buried in a convex dome has no vertex there), by its
+    // distance to the other's surface (closed pieces: frontEraSolids.test-support.mjs), against every closed piece of the
+    // owner, the owner's own shell (the casting, the hull) included: a new part and an existing part, 7 mm (a 4 mm seat
+    // and its tolerance); two new ERA modules, 1.5 mm (they never meet); a module and a new permanent part, or two new
+    // permanent parts, 7 mm
+    let overlapMax = 0, overlapAt = null;
     for (const owner of ['hull', 'turret']) {
-      const existing = others[owner].filter(o => o.bucket !== owner).map(o => solidOf(o.g, {name: `existing ${o.bucket}`}));
-      const news = fresh.filter(q => q.owner === owner && !q.lamp).map(q => solidOf(q.g, {name: q.name, module: q.module, hardware: q.era && !q.module, sector: q.sector}));
-      for (const A of news) {
-        for (const B of existing) {
-          const d = pairDepth(A, B); overlapMax = Math.max(overlapMax, d);
-          assert(d <= .007, `${label}: ${A.name} and ${B.name} stock overlap ${d.toFixed(4)} m (7 mm seat)`);
-        }
-        if (!A.module) continue;
-        for (const B of news) {
-          if (B === A || B.hardware) continue;
-          if (B.module && news.indexOf(B) < news.indexOf(A)) continue;
-          const d = pairDepth(A, B), limit = B.module ? .0015 : .007;
-          assert(d <= limit, `${label}: ${A.name} and ${B.name} overlap ${d.toFixed(4)} m (${limit * 1000} mm)`);
+      const piece = (g, extra) => { const tris = trianglesOf(g), box = new THREE.Box3(); for (const t2 of tris) box.union(t2.box); return {tris, box, ...extra}; };
+      const existing = others[owner].map(o => piece(o.g, {name: `existing ${o.bucket}`}));
+      const news = fresh.filter(q => q.owner === owner && !q.lamp).map(q => piece(q.g, {name: q.name, module: q.module, hardware: q.era && !q.module, sector: q.sector}));
+      const solid = A => A.solid ??= new Solid(A.tris);
+      // (B's points inside A's box only: a whole shell sampled every 12 mm would be tens of thousands of points)
+      const pointsIn = (B, box) => surfaceSamples(trianglesIn(B.tris, box), .012).filter(q => box.containsPoint(q));
+      const pairDepth = (A, B) => {
+        if (!A.box.clone().expandByScalar(.002).intersectsBox(B.box)) return {depth: 0};
+        const a = deepest(pointsIn(A, B.box), solid(B)), b = deepest(pointsIn(B, A.box), solid(A));
+        return a.depth >= b.depth ? a : b;
+      };
+      const check = (A, B, limit) => {
+        const {depth, at} = pairDepth(A, B);
+        if (depth > overlapMax) { overlapMax = depth; overlapAt = `${A.name} | ${B.name} @ ${at?.toArray().map(x => x.toFixed(3))}`; }
+        assert(depth <= limit, `${label}: ${A.name} and ${B.name} overlap ${depth.toFixed(4)} m (${limit * 1000} mm) at ${at?.toArray().map(x => x.toFixed(3))}`);
+      };
+      for (const [i, A] of news.entries()) {
+        for (const B of existing) check(A, B, .007);
+        if (A.hardware) continue;
+        for (const B of news.slice(i + 1)) {
+          if (B.hardware) continue;
+          check(A, B, A.module && B.module ? .0015 : .007);
         }
       }
+      // Round 7 (R5C-3): every new permanent part is held: it touches (enters, or lies within 0.5 mm of) an existing
+      // permanent part of its owner, or a new permanent part that is itself held so, never an ERA module alone (spent,
+      // the module is gone); and every module's hardware touches its module or permanent stock
+      const permanent = news.filter(q => !q.module && !q.hardware), held = new Set();
+      const stockPieces = existing.filter((_, k) => !others[owner][k].era);
+      const touches = (A, B) => {
+        if (!A.box.clone().expandByScalar(.001).intersectsBox(B.box)) return false;
+        const near = (pts, S) => pts.some(q => S.distance(q, .0006) <= .0005 || S.inside(q));
+        return near(pointsIn(A, B.box.clone().expandByScalar(.001)), solid(B)) || near(pointsIn(B, A.box.clone().expandByScalar(.001)), solid(A));
+      };
+      for (const A of permanent) if (stockPieces.some(B => touches(A, B))) held.add(A);
+      for (let grew = true; grew;) {
+        grew = false;
+        for (const A of permanent) if (!held.has(A) && permanent.some(B => held.has(B) && touches(A, B))) { held.add(A); grew = true; }
+      }
+      for (const A of permanent) {
+        A.box.getCenter(overlapPt);
+        assert(held.has(A), `${label}: ${A.name} at ${overlapPt.toArray().map(x => x.toFixed(3))} touches no permanent stock (it floats, or stands on ERA alone)`);
+      }
+      for (const A of news.filter(q => q.hardware)) assert([...existing, ...news].some(B => B !== A && touches(A, B)), `${label}: ${A.name} touches nothing`);
     }
 
     // no new part shares a face's plane with another part of its owner, facing the same way (HIGH)
@@ -543,12 +640,51 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
     const digest = names => { const h = []; t.root.traverse(o => { if (o.isMesh && names.includes(o.name)) h.push(o.geometry.attributes.position.array.length, o.visible, o.geometry.drawRange.count); }); return JSON.stringify(h); };
     const permanentNames = ['hull', 'turret', 'hullDetail', 'turretDetail', 'gunMount', 'hullOpenLattice', 'turretOpenLattice'];
     const permanent = digest(permanentNames);
+    // Round 7 (2026-10-18; the critic's UAPL-R5C-4: spent, "the nets laid over the new ERA keep their height and float in
+    // the air over the empty bays", 212-487 suit vertices over 30 mm off, the worst 20.6 cm): the field suit's vertices
+    // lying on the owner's armour live (within 15 mm of it) stand no more than 30 mm off it with all six sectors spent
+    // (eraSpentDrape.ts drops them onto what stays), and are back where they were once the ERA is reset
+    const suitMeshes = []; t.root.traverse(o => { if (o.isMesh && /_ghillie_(hull|turret)_/.test(o.name)) suitMeshes.push(o); });
+    const suitPositions = () => suitMeshes.map(o => Float32Array.from(o.geometry.getAttribute('position').array));
+    const standOff = () => {
+      t.root.updateMatrixWorld(true);
+      const out = [];
+      for (const [owner, rig] of [['hull', hullRig], ['turret', turret]]) {
+        const inv = new THREE.Matrix4().copy(rig.matrixWorld).invert(), cell = .05, grid = new Map();
+        rig.traverse(o => {
+          // (every visible mesh under the rig, as the critic's measure takes it)
+          if (!o.isMesh || /_ghillie_|^procShadow/.test(o.name) || o.isInstancedMesh) return;
+          const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+          for (const tr of trianglesOf(o.geometry, m)) {
+            const b = tr.box.clone().expandByScalar(.06);
+            for (let x = Math.floor(b.min.x / cell); x <= Math.floor(b.max.x / cell); x++) for (let y = Math.floor(b.min.y / cell); y <= Math.floor(b.max.y / cell); y++)
+              for (let z = Math.floor(b.min.z / cell); z <= Math.floor(b.max.z / cell); z++) { const k = `${x},${y},${z}`; let l = grid.get(k); if (!l) grid.set(k, l = []); l.push(tr.tri); }
+          }
+        });
+        const near = v => { let best = Infinity; const cp = new THREE.Vector3(); for (const tri of grid.get(`${Math.floor(v.x / cell)},${Math.floor(v.y / cell)},${Math.floor(v.z / cell)}`) ?? []) { tri.closestPointToPoint(v, cp); best = Math.min(best, cp.distanceTo(v)); } return best; };
+        for (const o of suitMeshes) {
+          if (!o.name.includes(`_ghillie_${owner}_`)) continue;
+          const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld), p = o.geometry.getAttribute('position');
+          for (let i = 0; i < p.count; i++) out.push(near(new THREE.Vector3().fromBufferAttribute(p, i).applyMatrix4(m)));
+        }
+      }
+      return out;
+    };
+    const liveSuit = high ? suitPositions() : null, liveNear = high ? standOff() : null;
     for (const s of SECTORS) {
       assert(t.stripEra(s), `${label}: ${s} is live`);
       assert.equal(digest(permanentNames), permanent, `${label}: stripping ${s} keeps the permanent stock`);
     }
+    if (high) {
+      const spentNear = standOff();
+      let floating = 0, worst = 0;
+      liveNear.forEach((d, i) => { if (d <= .015 && spentNear[i] > .03) { floating++; if (Number.isFinite(spentNear[i])) worst = Math.max(worst, spentNear[i]); } });
+      assert.equal(floating, 0, `${label}: spent, ${floating} suit vertices that lay on the armour stand over 30 mm off it (worst ${(worst * 100).toFixed(1)} cm)`);
+      (report[id] ??= {}).suitOnArmour = liveNear.filter(d => d <= .015).length;
+    }
     assert(t.resetEra(), `${label}: ERA resets`);
     assert.equal(digest(permanentNames), permanent, `${label}: reset keeps the permanent stock`);
+    if (high) suitPositions().forEach((a, k) => assert(a.every((x, i) => x === liveSuit[k][i]), `${label}: reset puts the suit back as laid (${suitMeshes[k].name})`));
 
     // cost
     let tris = 0, draws = 0;
@@ -560,7 +696,12 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
     const k = high ? 0 : 1, base = BASELINE[id];
     assert(tris <= base.tris[k], `${label}: drawn triangles ${tris} within the baseline ${base.tris[k]}`);
     assert(draws <= base.draws[k] + base.extraDraws, `${label}: draws ${draws} within ${base.draws[k]} + ${base.extraDraws}`);
-    (report[id] ??= {})[quality] = {modules: modules.length, tris, draws, ringMin: +ringMin.toFixed(4), overlapMax: +overlapMax.toFixed(4), seatWorst: +seatWorst.toFixed(4), sinkWorst: +sinkWorst.toFixed(4), sinkWorstAt,
+    if (!high) {
+      const hi = report[id]?.high?.tris;
+      assert(hi, `${label}: the HIGH build is measured before the LOW one`);
+      assert(tris <= LOW_SHARE * hi, `${label}: LOW ${tris} triangles at most ${LOW_SHARE * 100} % of HIGH ${hi} (${(100 * tris / hi).toFixed(2)} %)`);
+    }
+    (report[id] ??= {})[quality] = {modules: modules.length, tris, draws, ringMin: +ringMin.toFixed(4), overlapMax: +overlapMax.toFixed(4), overlapAt, seatWorst: +seatWorst.toFixed(4), sinkWorst: +sinkWorst.toFixed(4), sinkWorstAt,
       mins: Object.fromEntries(Object.entries(mins).map(([key, value]) => [key, +value.toFixed(4)]))};
     console.log(`${label}: ${modules.length} new ERA modules, six sectors, seated; envelopes ${JSON.stringify(report[id][quality].mins)}, ring ${ringMin.toFixed(3)}, gun sweeps clear; ${lenses.length} lenses; ${tris} triangles, ${draws} draws PASS`);
   } finally {

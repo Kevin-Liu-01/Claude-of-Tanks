@@ -107,8 +107,10 @@ function validateEmitter(emitter: NightLightEmitter): void {
     requirePoint(emitter.direction, 'direction');
     if (Math.hypot(...emitter.direction) < 1e-6) throw new RangeError('Night light direction must be nonzero');
   }
-  requireBounded(emitter.intensity ?? 80, emitter.kind === 'headlight' ? 2000 : 300, 'intensity');
-  requireBounded(emitter.range ?? 42, 100, 'range');
+  // (release 227, round 7: a weapon searchlight's narrow beam throws up to 6,000 cd to 150 m; a driving lamp's stays
+  // within 2,000 cd and 100 m)
+  requireBounded(emitter.intensity ?? 80, emitter.kind === 'headlight' ? emitter.searchlight ? 6000 : 2000 : 300, 'intensity');
+  requireBounded(emitter.range ?? 42, emitter.searchlight ? 150 : 100, 'range');
   requireBounded(emitter.color ?? 0xffe2ad, 0xffffff, 'color');
   if (emitter.coneRad !== undefined && !(emitter.coneRad > 0 && emitter.coneRad <= HEADLIGHT_CONE_RAD)) {
     throw new RangeError('Night light cone must be a positive half-angle no wider than a driving lamp\'s');

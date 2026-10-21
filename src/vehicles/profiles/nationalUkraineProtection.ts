@@ -88,7 +88,8 @@ function camouflage(id:ProtectionId,index:number):GhillieConfig{
     // the hull's suit keeps under the protection receipt's continuous main-gun envelope (its glacis boughs lie low)
     conservativeGunEnvelope:true,
     // release 227 (round 2): Hetman II's stepped prow and chevron glacis: no card passes into a course or a band
-    ...(id==='t72b3m_hetman_ii'?{cardsClearOfArmour:true}:{}),
+    // (round 7: spent, the cloth and garnish over a sector's modules fall onto the stock under them: eraSpentDrape.ts)
+    ...(id==='t72b3m_hetman_ii'?{cardsClearOfArmour:true,dropOverSpentEra:true}:{}),
     light:0x6d7e48,dark:0x31482d,netColor:'rgba(38,53,30,0.83)',
     hull:{
      // 2026-10-12 (cam-netting): the glacis netted to the bow plate, the driver's hatch and periscopes open (the

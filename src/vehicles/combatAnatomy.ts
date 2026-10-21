@@ -114,6 +114,8 @@ interface CollisionCell extends Bounds {
   faces: CollisionFace[];
   structureKind: string | null;
   sourceStock?: string;
+  /** Release 227 (gen-combat-anatomy HULL_LATERAL_CUTS): a slice cut at a hull's glacis edges, one of its bands. */
+  lateralBand?: boolean;
 }
 
 interface ArmorAnatomy {
@@ -398,6 +400,7 @@ function collisionCellFromCalibration(
     faces,
     structureKind: source.structureKind || null,
     ...(source.sourceStock === undefined ? {} : { sourceStock: source.sourceStock }),
+    ...(source.lateralBand ? { lateralBand: true } : {}),
   };
 }
 
@@ -414,12 +417,20 @@ function collisionBoundaryCounts(cells: readonly CollisionCell[]): Map<number, n
 
 function markInternalCollisionFaces(cells: readonly CollisionCell[]): void {
   const boundaryCounts = collisionBoundaryCounts(cells);
+  // (release 227: the band cuts of a laterally cut hull, x planes two of its bands share)
+  const lateralCounts = new Map<number, number>();
+  for (const cell of cells) if (cell.lateralBand) for (const x of [cell.min[0], cell.max[0]]) {
+    const key = Math.round(x * 10000);
+    lateralCounts.set(key, (lateralCounts.get(key) || 0) + 1);
+  }
   for (const cell of cells) {
     const candidates = cell.sourceStock === undefined ? cells : stockCollisionCoverCandidates(cell, cells);
     for (const face of cell.faces) {
       const key = Math.round(face.center[2] * 10000);
       face.internal = cell.sourceStock === undefined
-        ? Math.abs(face.normal[2]) > 0.985 && (boundaryCounts.get(key) || 0) > 1
+        ? (Math.abs(face.normal[2]) > 0.985 && (boundaryCounts.get(key) || 0) > 1)
+          || (cell.lateralBand === true && Math.abs(face.normal[0]) > 0.985
+            && (lateralCounts.get(Math.round(face.center[0] * 10000)) || 0) > 1)
         : stockCollisionFaceCovered(cell, face, candidates);
     }
   }
