@@ -15,6 +15,8 @@ import { createProvingControls, testDriveLaunch } from './provingGroundSession.t
 import { TEST_DRIVE_PARAM, readTestDriveIntent, testDriveHref, withoutTestDriveIntent } from './testDriveLink.ts';
 import { createTankIdResolver } from '../vehicles/tankIdAliases.ts';
 import { readTeamArrangement } from './teamArrangement.ts';
+import { createTankState } from '../sim/movement.ts';
+import { Vector3 } from 'three';
 
 const rules = PROVING_GROUND_RULES;
 const PLAYER = 'm1a1_abrams_hc';
@@ -46,16 +48,67 @@ world.spawnPoints = { player: spawn(authored.player), enemies: authored.enemies.
 const visual = () => ({ root: {}, setVisible() {}, syncFromState() {}, dispose() {}, resetDestroyed() {}, setDestroyed() {}, recoilKick() {} });
 const events = [];
 const bus = createBus((name, payload) => events.push([name, payload]));
-try {
-  const layout = planSoloProvingRange(rules, world);
+// the ground overlay the battle binds (the drive course is raised in it)
+let boundOverlay = null;
+const bindOverlay = world.bindGroundOverlay.bind(world);
+world.bindGroundOverlay = (overlay) => { boundOverlay = overlay; bindOverlay(overlay); };
+const SETUP = { gameMode: TEST_DRIVE.gameMode, random: true, arrangement: null, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: true };
+
+/** A fresh proving-ground battle on the shared world, its stepper, and a headless gun laid on any point. */
+function rangeBattle(log) {
   const game = createGameState({ rosterSeed: 3 });
   game.mapId = rules.mapId;
   spawnTanks(game, { scene: { remove() {} } });
   for (const entity of game.allTanks) entity.visual = visual();
-  setupBattle(game, PLAYER, world, { gameMode: TEST_DRIVE.gameMode, random: true, arrangement: null, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: true });
+  const battleBus = log === events ? bus : createBus((name, payload) => log.push([name, payload]));
+  setupBattle(game, PLAYER, world, SETUP);
   const collider = createCollider(game, world);
-  const step = (n) => { for (let i = 0; i < n; i++) simStep(game, bus, world, null, collider); };
+  const step = (n) => { for (let i = 0; i < n; i++) simStep(game, battleBus, world, null, collider); };
   const player = game.player;
+  /** Lay the gun on `point` (headless: the barrel from 2.4 m over the hull), load `slot`, fire once; the round's hit. */
+  const fireAt = (point, slot) => {
+    const muzzle = (out) => out.set(player.state.pos.x, player.state.pos.y + 2.4, player.state.pos.z);
+    player.visual = { ...visual(), gunMuzzleWorld: (out) => muzzle(out),
+      gunDirWorld: (out) => muzzle(out).multiplyScalar(-1).add(point).normalize() };
+    player.input.aimPoint.set(point.x, point.y, point.z);
+    player.input.shellSlot = slot;
+    // the aim settles before the shot (a fresh lay blooms the dispersion)
+    player.input.fire = false;
+    step(60 * 4);
+    const before = log.length;
+    const fired = () => log.slice(before).find(([name, payload]) => name === 'shell:fired' && payload?.shooterId === player.id);
+    for (let i = 0; i < 60 * 20 && !fired(); i++) { player.input.fire = true; step(1); }
+    player.input.fire = false;
+    const shot = fired()?.[1];
+    assert.ok(shot, `the gun fires slot ${slot}`);
+    let hit = null;
+    for (let i = 0; i < 60 * 3 && !hit; i++) {
+      step(1);
+      hit = log.slice(before).find(([name, payload]) => name === 'shell:hit' && payload?.shellId === shot.shellId)?.[1] ?? null;
+    }
+    return hit;
+  };
+  return { game, step, player, fireAt };
+}
+
+/** The four plate shots every run fires: APFSDS square on the thinnest plate and on the 82° plate, HEAT on the 82° plate,
+ * HE on the 100 mm plate; their outcomes as the shot card reads them. */
+function plateRun(log) {
+  const { game, fireAt } = rangeBattle(log);
+  const plates = game.matchModeState.range.plates;
+  const centre = (index) => new Vector3(plates[index].x, plates[index].y, plates[index].z);
+  return [[0, 0], [7, 0], [7, 1], [1, 2]].map(([plate, slot]) => {
+    const hit = fireAt(centre(plate), slot);
+    assert.ok(hit, `the round reaches plate ${plate + 1}`);
+    return { plate, slot, kind: hit.kind, targetId: hit.targetId, targetName: hit.targetName, penRollMm: hit.penRollMm,
+      effectiveMm: hit.effectiveMm, impactAngleDeg: hit.impactAngleDeg, physicalMm: hit.physicalMm, damage: hit.damage,
+      pos: hit.pos.map((value) => Math.round(value * 1000) / 1000) };
+  });
+}
+
+try {
+  const layout = planSoloProvingRange(rules, world);
+  const { game, step, player } = rangeBattle(events);
   const targets = game.tanks.filter((entity) => entity !== player);
   assert.equal(game.ruleset.provingGround, rules);
   assert.equal(targets.length, rules.lanes.length, 'one target hull per lane');
@@ -110,6 +163,75 @@ try {
     assert.ok(hit, 'the round down lane 1 strikes its hull');
     assert.equal(typeof hit[1].kind, 'string', `and resolves to an outcome (${hit[1].kind})`);
     step(60 * 5);
+  }
+
+  // the plate rack: a live round on a plate resolves by the hulls' damage law (sim/damage.ts resolvePlateStrike), names the
+  // plate by its thickness and angle, and never damages anything; the same shots twice give the same verdicts
+  {
+    const range = game.matchModeState.range;
+    assert.equal(range.plates.length, rules.plateRack.plates.length, 'every plate of the rack stands on the range');
+    for (const [index, plate] of range.plates.entries()) {
+      assert.equal(plate.id, `range-plate-${index + 1}`);
+      assert.equal(plate.mm, rules.plateRack.plates[index].mm);
+      const along = (plate.x - layout.origin.x) * Math.sin(layout.origin.yaw) + (plate.z - layout.origin.z) * Math.cos(layout.origin.yaw);
+      assert.ok(Math.abs(along - rules.plateRack.rangeM) < 2, `plate ${index + 1} at the rack's range down the axis (${along.toFixed(1)} m)`);
+      for (const lane of layout.lanes) {
+        // the rack never stands across a lane's sightline (its nearest edge is well outside the lane's bearing)
+        const toLane = Math.atan2(lane.x - layout.origin.x, lane.z - layout.origin.z);
+        const toPlate = Math.atan2(plate.x - layout.origin.x, plate.z - layout.origin.z);
+        const off = Math.abs(Math.atan2(Math.sin(toPlate - toLane), Math.cos(toPlate - toLane)));
+        assert.ok(off * plate.rangeM > plate.widthM + rules.targetRadiusM, `plate ${index + 1} clear of lane ${lane.index + 1}`);
+      }
+    }
+    const first = plateRun([]);
+    const second = plateRun([]);
+    assert.deepEqual(second, first, 'the same plate shots give the same verdicts, rolls and points (seeded combat RNG)');
+    const [thin, glance, jet, blast] = first;
+    for (const shot of first) {
+      const spec = rules.plateRack.plates[shot.plate];
+      assert.equal(shot.targetId, `range-plate-${shot.plate + 1}`);
+      assert.equal(shot.targetName, `${spec.mm} mm · ${spec.angleDeg}°`, 'the shot card names the plate');
+      assert.equal(shot.physicalMm, spec.mm);
+      assert.equal(shot.damage, 0, 'a plate takes no damage');
+      assert.ok(Math.abs(shot.impactAngleDeg - spec.angleDeg) < 3, `struck near its laid angle (${shot.impactAngleDeg.toFixed(1)}°)`);
+      if (shot.kind !== 'ricochet') {
+        assert.ok(shot.effectiveMm >= spec.mm - 1e-9, 'the slope law never thins a plate');
+        assert.equal(shot.kind === 'pen' || shot.kind === 'he_pen', shot.penRollMm >= shot.effectiveMm, `${shot.kind}: the roll against the effective thickness decides`);
+      }
+    }
+    assert.equal(thin.kind, 'pen', 'APFSDS goes through 50 mm square on');
+    assert.equal(glance.kind, 'ricochet', `APFSDS glances off 60 mm laid back 82° (${glance.impactAngleDeg.toFixed(1)}°)`);
+    assert.equal(jet.kind, 'pen', 'a HEAT jet does not ricochet there and cuts it');
+    assert.equal(blast.kind, 'nonpen', 'HE stops on 100 mm');
+  }
+
+  // the drive course: its earthworks are raised in the battle's ground (what the hull drives and the terrain mesh draws)
+  {
+    assert.ok(boundOverlay, 'the battle bound its ground overlay');
+    const course = game.matchModeState.range.course;
+    assert.deepEqual(course.features.map((feature) => feature.kind), rules.course.features.map((feature) => feature.kind));
+    const mid = (feature, t) => ({ x: feature.x0 + (feature.x1 - feature.x0) * t, z: feature.z0 + (feature.z1 - feature.z0) * t });
+    const at = (point) => boundOverlay.offsetAt(point.x, point.z);
+    const [gentle, ditch, moguls, steep, side] = course.features;
+    assert.ok(Math.abs(at(mid(gentle, 0.5)) - rules.course.features[0].heightM) < 0.05, `the gentle ramp's top (${at(mid(gentle, 0.5)).toFixed(2)} m)`);
+    assert.ok(Math.abs(at(mid(ditch, 0.5)) + rules.course.features[1].depthM) < 0.05, `the ditch's floor (${at(mid(ditch, 0.5)).toFixed(2)} m)`);
+    assert.ok(Math.abs(at(mid(moguls, 1 / 8)) - rules.course.features[2].heightM) < 0.05, 'the first mogul\'s crest');
+    assert.ok(Math.abs(at(mid(steep, 0.5)) - rules.course.features[3].heightM) < 0.05, `the steep ramp's top (${at(mid(steep, 0.5)).toFixed(2)} m)`);
+    const rise = rules.course.widthM * Math.tan(rules.course.features[4].deg * Math.PI / 180);
+    assert.ok(Math.abs(at(mid(side, 0.5)) - rise / 2) < 0.05, `the side slope at the course line (${at(mid(side, 0.5)).toFixed(2)} m)`);
+    assert.equal(at(layout.origin), 0, 'the firing line stands on its own ground');
+    for (const lane of layout.lanes) assert.equal(at(lane), 0, `lane ${lane.index + 1}'s mark stands on its own ground`);
+    for (const plate of game.matchModeState.range.plates) assert.equal(at(plate), 0, `plate ${plate.index + 1} stands on its own ground`);
+    // the hull climbs the gentle ramp: from the course's start, full throttle along it
+    const start = new Vector3(course.start.x - Math.sin(course.yaw) * 6, 0, course.start.z - Math.cos(course.yaw) * 6);
+    start.y = world.heightField.getHeightAt(start.x, start.z);
+    player.state = createTankState(player.spec, start, course.yaw);
+    const startY = player.state.pos.y;
+    let topY = -Infinity;
+    for (let i = 0; i < 60 * 8; i++) { player.input.throttle = 1; player.input.steer = 0; step(1); topY = Math.max(topY, player.state.pos.y); }
+    player.input.throttle = 0;
+    assert.ok(topY - startY > rules.course.features[0].heightM - 0.6, `the hull rides up the ramp (${(topY - startY).toFixed(2)} m)`);
+    assert.equal(resetProvingRange(game), true);
   }
 
   // a destroyed hull stands again on its mark, and the range never ends
@@ -190,4 +312,4 @@ try {
 } finally {
   world.release();
 }
-console.log(`provingSession.selftest: test-drive entry points, ${rules.lanes.length} target lanes seated on ${rules.mapId}, a live round resolved on its hull, still and moving targets that never fire, respawn on the mark, quick reset, no verdict and the controls pass`);
+console.log(`provingSession.selftest: test-drive entry points, ${rules.lanes.length} target lanes seated on ${rules.mapId}, a live round resolved on its hull, ${rules.plateRack.plates.length} plates resolved by the damage law (deterministic twice), the drive course raised and climbed, still and moving targets that never fire, respawn on the mark, quick reset, no verdict and the controls pass`);

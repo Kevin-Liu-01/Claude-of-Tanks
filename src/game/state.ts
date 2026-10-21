@@ -82,9 +82,9 @@ import { requestTankSelfRight, stepRolloverLifecycle } from '../sim/rollover.ts'
 import {
   createShell, stepShell, applyDispersion, guideShellToward, shellGravityMps2,
 } from '../sim/ballistics.ts';
-import { tankPoseFromState, traceTank } from '../sim/armor.ts';
+import { tankPoseFromState, traceTank, type ArmorPlateIntersection } from '../sim/armor.ts';
 import {
-  createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
+  createCombatState, resolveShellHit, resolvePlateStrike, resolveHeBurst, tickFire, tickModuleRepairs,
   selectFirstAvailableShell, selectShell, startPostShotReload, tickReload, isHeClass,
   repairAllModules, startMagazineReload, selectedWeaponModuleState, mainWeaponModuleState, hullDamageTaken,
 } from '../sim/damage.ts';
@@ -149,7 +149,7 @@ import { fellConcealersAt, restoreConcealers } from '../sim/spotting.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from '../sim/matchPlacement.ts';
 // the proving ground (v2 progression, 2026-10-17): the range laid out on the battlefield, its marks, card and target drive
 import { driveProvingTarget, planSoloProvingRange, provingRangePresentation, provingSpawn } from './provingRange.ts';
-import type { ProvingMark, ProvingPatrolState, ProvingRangeLayout } from '../sim/provingGround.ts';
+import { provingPlateIndex, provingPlateStrike, type ProvingMark, type ProvingPatrolState, type ProvingRangeLayout } from '../sim/provingGround.ts';
 import { CONSUMABLE_RULES, cooldownRemaining } from './consumables.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
 import {
@@ -369,6 +369,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _destructionCraters?: TerrainCraterEvent[];
   /** Blasts the destruction match reported, waiting for their light props to fall (fellBlastProps). */
   _destructionBlasts?: number[];
+  /** The proving ground's range on this battlefield (its plate rack is struck in stepLiveShell); null in every battle. */
+  _provingRange?: ProvingRangeLayout | null;
 }
 
 interface SpawnPoint {
@@ -1271,6 +1273,11 @@ export function setupBattle(
   ground.overlay.reset();
   // DST-04: the map's pre-placed craters, laid first (the authority and every seat lay the same; world/mapCraters.ts)
   stampMapCraters(ground.overlay, mapCraterStampsOf(world));
+  // the proving ground (2026-10-20): its range laid out on this battlefield before the ground binds, the drive course
+  // raised in the overlay after the map's craters (sim/provingGround.ts; fails closed)
+  const provingLayout = game.ruleset.provingGround ? planSoloProvingRange(game.ruleset.provingGround, world) : null;
+  game._provingRange = provingLayout;
+  if (provingLayout) for (const stamp of provingLayout.course.stamps) ground.overlay.addCourse(stamp);
   world.bindGroundOverlay?.(ground.overlay);
   restoreConcealers(world.getConcealment ? world.getConcealment() : null);
   const blasts: number[] = game._destructionBlasts = [];
@@ -1450,8 +1457,7 @@ export function setupBattle(
     botNavigation,
     enemyIndex: 0,
     allyIndex: 0,
-    // the proving ground lays its range out on this battlefield (fails closed: sim/provingGround.ts)
-    provingLayout: game.ruleset.provingGround ? planSoloProvingRange(game.ruleset.provingGround, world) : null,
+    provingLayout,
     provingTargets: [],
   };
   spawnBattleEntities(spawnContext);
@@ -2384,6 +2390,23 @@ function resolveWorldShellImpact(
   });
 }
 
+/**
+ * A round on the proving ground's plate rack (2026-10-20): the damage law's verdict for that plate (sim/damage.ts
+ * resolvePlateStrike: the shell stops, or glances off), the burst on the steel as on a hull, and the shot card's event
+ * naming the plate by its thickness and angle.
+ */
+function resolveRangePlateStrike(game: SoloGameState, bus: EventBus, shell: DamageShell, strike: ArmorPlateIntersection): void {
+  const plates = game._provingRange?.plates ?? [];
+  const mark = plates[provingPlateIndex(plates, strike)];
+  if (!mark) return;
+  const point = strike.point, normal = strike.normal;
+  const blast = munitionBlastEventFor(shell.spec, point.x, point.y, point.z, normal.x, normal.y, normal.z, 'tank');
+  if (blast) bus.emit(DESTRUCTION_BUS_EVENTS.blast, blast);
+  const event: SoloHitEvent = resolvePlateStrike(shell, strike, mark.id, game.combatRng);
+  event.targetName = `${mark.mm} mm · ${mark.angleDeg}°`;
+  emitHitOutcome(game, bus, event, shell.spec);
+}
+
 function emitAirExpiry(bus: EventBus, shell: DamageShell): void {
   bus.emit('shell:expired', {
     shellId: shell.id,
@@ -2414,14 +2437,21 @@ function stepLiveShell(
     segmentLength,
     nearest.distance,
   );
+  const tankStop = nearest.entity && nearest.intersections ? nearest.distance : Infinity;
+  // the proving ground's plate rack, nearer than the hull and the world the step meets (null in every other battle)
+  const plates = game._provingRange?.plates;
+  const plate = plates?.length
+    ? provingPlateStrike(plates, shell.prevPos, _seg, Math.min(segmentLength, worldTrace?.distance ?? Infinity, tankStop))
+    : null;
   // (2026-10-12) the light cover the round flies through before what stops it breaks: fences, crates, carts, the parked
   // cars (sim/shellLightCover.ts; the authority sweeps the same)
   if (shell.spec.tracer !== 'DRONE') {
-    const stop = Math.min(segmentLength, worldTrace?.distance ?? Infinity,
-      nearest.entity && nearest.intersections ? nearest.distance : Infinity);
+    const stop = Math.min(segmentLength, worldTrace?.distance ?? Infinity, tankStop, plate ? plate.t : Infinity);
     crushLightCoverAlong(world, bus, shell, stop);
   }
-  if (nearest.entity && nearest.intersections &&
+  if (plate) {
+    resolveRangePlateStrike(game, bus, shell, plate);
+  } else if (nearest.entity && nearest.intersections &&
       nearest.distance <= (worldTrace?.distance ?? Infinity)) {
     resolveTankShellImpact(game, bus, shell, nearest);
   } else if (worldTrace) {

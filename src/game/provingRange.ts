@@ -89,9 +89,22 @@ export function provingRangePresentation(
       shells: player.spec.gun.shells.map((shell) => provingShellCard(shell, lane.measuredM, aim, rules.plateAnglesDeg)),
     };
   });
+  const course = layout.course;
   return {
     mapId: rules.mapId, moving: rules.moving, plateAnglesDeg: [...rules.plateAnglesDeg],
     origin: { x: layout.origin.x, z: layout.origin.z }, lanes,
+    plates: layout.plates.map((plate) => ({
+      index: plate.index, id: plate.id, mm: plate.mm, angleDeg: plate.angleDeg, rangeM: plate.rangeM,
+      x: plate.x, y: plate.y, z: plate.z, groundY: plate.groundY, yaw: plate.yaw,
+      widthM: plate.halfW * 2, heightM: plate.halfH * 2,
+    })),
+    course: {
+      yaw: course.yaw, widthM: course.widthM, start: { ...course.start }, end: { ...course.end },
+      features: course.features.map((feature) => ({
+        kind: feature.kind, x0: feature.x0, z0: feature.z0, x1: feature.x1, z1: feature.z1,
+        first: feature.first, second: feature.second,
+      })),
+    },
   };
 }
 

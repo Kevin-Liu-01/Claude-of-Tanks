@@ -363,13 +363,42 @@ export interface ProvingLanePresentation {
   shells: ProvingShellCard[];
 }
 
-/** The proving ground's range: the firing line, the lanes and the plate angles the card measures against. */
+/** One plate of the rack as the world dressing and the HUD read it (sim/provingGround.ts ProvingPlateMark). */
+export interface ProvingPlatePresentation {
+  index: number;
+  id: string;
+  mm: number;
+  angleDeg: number;
+  rangeM: number;
+  /** The face's centre, the ground under its foot, the heading the face looks along, the face's width and height (m). */
+  x: number;
+  y: number;
+  z: number;
+  groundY: number;
+  yaw: number;
+  widthM: number;
+  heightM: number;
+}
+
+/** The drive course as the world dressing reads it: its line, graded width and features (sim/provingGround.ts). */
+export interface ProvingCoursePresentation {
+  yaw: number;
+  widthM: number;
+  start: { x: number; z: number };
+  end: { x: number; z: number };
+  features: { kind: 'ramp' | 'ditch' | 'moguls' | 'sideSlope'; x0: number; z0: number; x1: number; z1: number; first: number; second: number }[];
+}
+
+/** The proving ground's range: the firing line, the lanes, the plate angles the card measures against, the plate rack
+ * and the drive course. */
 export interface ProvingRangePresentation {
   mapId: string;
   moving: boolean;
   plateAnglesDeg: number[];
   origin: { x: number; z: number };
   lanes: ProvingLanePresentation[];
+  plates: ProvingPlatePresentation[];
+  course: ProvingCoursePresentation;
 }
 
 /** Sealed host checkpoint; never publish this private respawn state to spectators. */
