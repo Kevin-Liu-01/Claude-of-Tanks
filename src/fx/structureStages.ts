@@ -26,9 +26,11 @@
 import * as THREE from 'three';
 import type { MunitionClass, StructureBreachEvent, StructureStageEvent } from '../sim/destructionEvents.ts';
 import {
-  damageRng, damageSeed, type DamageFace, type DamageRole, type DamageStageResult, type DamageStorey, type DamageWriters,
-  type DebrisShape, type FractureMaterial, type FractureSlot,
+  anatomyCentre, damageRng, damageSeed, type DamageFace, type DamageFall, type DamageRole, type DamageStageResult, type DamageStorey, type DamageWriters,
+  type DebrisShape, type FractureMaterial, type FractureSlot, type StructureDamageAnatomy,
 } from '../world/destructionKit.ts';
+import { clearOverEaves, drawnOverAt, faceSetback, faceSetbackMedian, roofFurnitureAt, storeyInterior } from '../world/structureEnclosure.ts';
+import { clampPieceTops } from './uprightPlates.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import { toppleHingeM } from '../world/toppleHinge.ts';
 import { breachBlowFor } from './structureFx.ts';
@@ -39,6 +41,15 @@ import type { StructureDebris } from './structureDebris.ts';
 import { bindMaterialEnvIntensity } from '../engine/materialEnvIntensity.ts';
 import type { StructureScars } from './structureScars.ts';
 import type { FractureHost, StageFracture } from './fractureStages.ts';
+
+/** A span's parts as flattenRoofFurniture reads them: its drawn triangles (from `start`, `n` of them) and their roots. */
+interface OverEavesSpan {
+  readonly span: StructureSpan;
+  readonly find: (t: number) => number;
+  readonly n: number;
+  readonly start: number;
+  readonly drawn: Uint8Array;
+}
 
 export interface StructureStages {
   /** A stage event, with its structure's seam (null: the mask alone — a world without the seam). */
@@ -64,6 +75,8 @@ export interface StructureStages {
   warm(at: { x: number; y: number; z: number }, buckets: Iterable<string>): number;
   /** Per render frame: touch the casters of every building still falling. */
   update(): void;
+  /** Whether a structure's storey is coming down now (its fall in flight: what stood over it moves with it). */
+  falling(structureIdx: number): boolean;
   shiftTime(delta: number): void;
   /** Stand every building up again: the mask is the caller's to reset; the flattened parts come back here. */
   reset(): void;
@@ -88,10 +101,30 @@ function dampPieces(out: DamageWriters, k: number, maxY = Infinity): DamageWrite
   return Object.assign(Object.create(Object.getPrototypeOf(out) as object) as DamageWriters, out, { pieces });
 }
 
+/** The writers with their mesh runs refused but the pile's (a late joiner's settled roof fall: its rubble only). */
+function rubbleOnly(out: DamageWriters): DamageWriters {
+  const mesh0 = out.mesh;
+  const mesh = Object.create(mesh0) as DamageWriters['mesh'];
+  mesh.begin = (bucket: string, role: DamageRole): boolean => (role === 'rubble' ? mesh0.begin(bucket, role) : false);
+  return Object.assign(Object.create(Object.getPrototypeOf(out) as object) as DamageWriters, out, { mesh });
+}
+
 /** Strike holes a standing building takes (the mask keeps MAX_HOLES; three are left for the stages' own cuts). 2026-10-10
  *  (the owner: "shooting buildings should cause destruction too"): every burst and every armour-piercing round leaves its
  *  hole, a dozen hits a building before it falls (it went from three, the rest of a battle's hits showing nothing). */
 const STRIKE_HOLES = 9;
+/** (round 5) A set piece's piece falls over gravity's time from its middle's drop, this much slower (it turns as it
+ *  goes), never quicker or longer than these (s). */
+const FALL_SLOW = 1.25, FALL_MIN_S = 0.45, FALL_MAX_S = 1.6;
+/** (round 5) A part over the eaves stands with the roof gone when what stands under it holds this share of its lowest
+ *  points (the slab check: a part held a quarter less than it was in the intact building hangs). */
+const HOLD_OVER_EAVES = 0.75;
+/** (destruction-slabs 227 round 5) A top storey's room open to the sky (its roof fallen): its walls and floor lit as the
+ *  outside is (laid dim, 0.55-0.6, they read as one flat dark plane over the roofless storey: the critics' tavern lid) —
+ *  (round 6: at 0.95 and 0.85 the round-5 films' tavern's inner walls glared white in the sun) a quarter under it. */
+const OPEN_ROOM_WALL = 0.72, OPEN_ROOM_FLOOR = 0.68;
+/** A room's floor this far over its floor line (m): the storey under it draws its own top there. */
+const ROOM_FLOOR_LIFT_M = 0.02;
 /** A tank round's hole through a wall (no charge: the shot's own): a ragged pierce sized by its calibre, its rim spalled. */
 function pierceHoleRadius(munition: MunitionClass, caliberMm: number): number {
   if (munition !== 'kinetic') return 0;
@@ -180,6 +213,22 @@ const BUCKET_ALIASES: Readonly<Record<string, readonly string[]>> = Object.freez
 /** The world's buckets of the same stuff as `bucket`, in the order a missing one is looked for. */
 export function bucketAliases(bucket: string): readonly string[] {
   return BUCKET_ALIASES[bucket] ?? [];
+}
+
+/**
+ * (destruction-slabs 227 round 4; the census's 242 runs of remnant piers 1-7 m over the building as drawn at their spot:
+ * a firestation's steel stub, a stack's stump, a ruin's collapse stub over its banked heap) a remnant run's pieces cut
+ * down to half a metre over the drawn form where their tops stand (the anatomy's enclosure: its tallest drawn over the
+ * spot and the cells round it); where the drawn form is not known, as drawn. Its runs are world-space (structureDebris).
+ */
+function clampRemnantTops(mesh: THREE.Mesh, a: StructureDamageSeam['anatomy']): void {
+  if (!a.enclosure) return;
+  const { x: px, y: py, z: pz, yaw } = a.placement;
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  clampPieceTops(mesh.geometry, (x, z) => {
+    const dx = x - px, dz = z - pz, top = drawnOverAt(a, dx * c - dz * s, dx * s + dz * c, 1);
+    return top >= 0 && Number.isFinite(top) ? py + top : NaN;
+  }, 0.5);
 }
 
 export function createStructureStages(o: StructureStagesOptions): StructureStages {
@@ -349,19 +398,21 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
    *  its floor line, whatever its part's share; a part going down whole is flattened (no lid over the storey below);
    *  what stood on the storey (the storeys above, gables, chimney tops) comes down by the storey's height; a roof that
    *  rises above the band rides down whole (its eaves dip into the band). The storey below keeps its top. */
-  function storeyReach(seam: StructureDamageSeam, storey: DamageStorey): [number, number] {
+  function storeyReach(seam: StructureDamageSeam, storey: DamageStorey): [number, number, number, number] {
     const a = seam.anatomy, jet = Math.max(0, ...storey.jetty);
-    return [a.w / 2 + jet + 1.5, a.d / 2 + jet + 1.5];
+    // (destruction-slabs 227) about the body's own centre (the default reading's faces stand about its walls' box)
+    const [cx, cz] = anatomyCentre(a);
+    return [a.w / 2 + jet + 1.5, a.d / 2 + jet + 1.5, cx, cz];
   }
   function clampStorey(seam: StructureDamageSeam, storey: DamageStorey): boolean {
-    const [reachX, reachZ] = storeyReach(seam, storey);
+    const [reachX, reachZ, cx, cz] = storeyReach(seam, storey);
     const dropM = storey.y1 - storey.y0;
     const rides = new Set<StructureSpan>();
     for (const span of seam.spans) {
       if (span.partClass === 'roof' && !flattenedSpans.has(span) && spanTop(seam, span) > storey.y1 + SLAB_EPS) rides.add(span);
     }
     let changed = clampStructure(seam, () => true, (bx, by, bz) => {
-      if (Math.abs(bx) > reachX || Math.abs(bz) > reachZ || !(by > storey.y0 + 0.02)) return null;
+      if (Math.abs(bx - cx) > reachX || Math.abs(bz - cz) > reachZ || !(by > storey.y0 + 0.02)) return null;
       return by <= storey.y1 + SLAB_EPS ? storey.y0 : by - dropM;
     }, { minShare: 0, line: storey.y0, skip: (span) => rides.has(span) });
     for (const span of rides) changed = lowerSpan(span, dropM) || changed;
@@ -398,7 +449,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   /** A dropped storey's neighbours among the structure's standing runs (its own are gone) settle by the clamp's law, per
    *  vertex over the footprint: over the band down by the storey's height, in it onto the floor line (a fallen roof's
    *  wreckage rides down and its hanging rafters lie on the line; an upper storey's heap rides down onto it). */
-  function settleRuns(seam: StructureDamageSeam, storey: DamageStorey, reachX: number, reachZ: number): boolean {
+  function settleRuns(seam: StructureDamageSeam, storey: DamageStorey, reachX: number, reachZ: number, cx = 0, cz = 0): boolean {
     const { x: px, y: py, z: pz, yaw } = seam.anatomy.placement;
     const c = Math.cos(yaw), s = Math.sin(yaw);
     const dropM = storey.y1 - storey.y0;
@@ -408,7 +459,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       let touched = false;
       for (let i = 0; i < pos.count; i++) {
         const wx = pos.getX(i) - px, wz = pos.getZ(i) - pz;
-        if (Math.abs(wx * c - wz * s) > reachX || Math.abs(wx * s + wz * c) > reachZ) continue;
+        if (Math.abs(wx * c - wz * s - cx) > reachX || Math.abs(wx * s + wz * c - cz) > reachZ) continue;
         const by = pos.getY(i) - py;
         if (!(by > storey.y0 + 0.02)) continue;
         pos.setY(i, (by > storey.y1 + SLAB_EPS ? by - dropM : storey.y0) + py);
@@ -488,6 +539,46 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     set.add(section);
     return true;
   };
+  /**
+   * (destruction-slabs 227 round 6; the round-5 films' urban church #15: its nave's roof came down as the hanging sweep's
+   * bodies once the top bands of its walls fell — no roof section's fall, so its rooms kept their ceilings and their shade,
+   * one flat dark plane over the roofless nave at its wall heads to the film's end) the structures whose roof the sweep
+   * took down (ROOF_GONE_SHARE of its triangles gone): open to the sky as a roof section's fall leaves them.
+   */
+  const roofOpened = new Set<number>();
+  const ROOF_GONE_SHARE = 0.5;
+  /** Whether a structure's roof is down: its section fell, or the sweep took most of it. */
+  const roofDown = (seam: StructureDamageSeam): boolean => {
+    const roof = seam.anatomy.roof;
+    return !!roof && (roofOpened.has(seam.structureIdx) || !!fallenSections.get(seam.structureIdx)?.has(roof.section));
+  };
+  /** The roof's spans' share of their triangles still drawn (no roof span: 1). */
+  function roofDrawnShare(seam: StructureDamageSeam): number {
+    let all = 0, drawn = 0;
+    for (const span of seam.spans) {
+      if (span.partClass !== 'roof') continue;
+      const arr = span.position.array as Float32Array;
+      const start = span.first + ((3 - (span.first % 3)) % 3);
+      const n = Math.max(0, Math.floor((span.first + span.count - start) / 3));
+      for (let t = 0; t < n; t++) {
+        const i = (start + t * 3) * 3;
+        all++;
+        const ux = arr[i + 3]! - arr[i]!, uy = arr[i + 4]! - arr[i + 1]!, uz = arr[i + 5]! - arr[i + 2]!;
+        const vx = arr[i + 6]! - arr[i]!, vy = arr[i + 7]! - arr[i + 1]!, vz = arr[i + 8]! - arr[i + 2]!;
+        if ((uy * vz - uz * vy) ** 2 + (uz * vx - ux * vz) ** 2 + (ux * vy - uy * vx) ** 2 > 1e-18) drawn++;
+      }
+    }
+    return all ? drawn / all : 1;
+  }
+  /** (round 6) The sweep took parts of a structure down: once most of its roof is gone, its top storey opens to the sky
+   *  (rooms without ceilings, lit; what stood over the eaves looked at again). True when it opened now. */
+  function roofDropped(seam: StructureDamageSeam): boolean {
+    if (!seam.anatomy.roof || roofDown(seam) || roofDrawnShare(seam) > ROOF_GONE_SHARE) return false;
+    roofOpened.add(seam.structureIdx);
+    const opened = openTopRooms(seam);
+    if (flattenRoofFurniture(seam) || opened) seam.touchShadows();
+    return true;
+  }
 
   /** What a stage returns: its cuts into the mask (body frame to world), its part-class hides flattened. */
   function apply(seam: StructureDamageSeam, result: DamageStageResult | null | undefined, holeSeed?: number,
@@ -524,8 +615,266 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       for (const span of seam.spans) if (span.partClass === hide.partClass) { flattenSpan(span); changed = true; }
       // (a building whose roof has its own bucket loses it above; one whose roof shares the walls' bucket loses its faces)
       if (hide.partClass === 'roof' && !seam.spans.some((sp) => sp.partClass === 'roof')) changed = flattenRoofFaces(seam) || changed;
+      // (destruction-slabs 227 round 2) and the roof's furniture goes with it (a chimney or a dormer on the covering: the
+      // roof's slabs carry it down; stood in the world it was left in the sky, or on the attic floor)
+      if (hide.partClass === 'roof') changed = flattenRoofFurniture(seam) || changed;
     }
     if (changed) seam.touchShadows();
+  }
+
+  /**
+   * The roof's furniture out of the world's buckets when its roof falls (destruction-slabs 227 round 2): every triangle of
+   * the structure's other spans wholly over the eaves line (less 15 cm), centred in the footprint plus 1.5 m, over a cluster
+   * structureEnclosure roofFurnitureAt reads as furniture (a chimney or a dormer on the covering: small, not drawn from
+   * below — one decision a cluster, its frames and glass with its plaster) collapses to a point; collapsePieces'
+   * furnitureAt reads the same, so the roof's slabs carry what the world drops. Needs the drawn enclosure (none: nothing
+   * goes). Non-indexed spans.
+   * (round 3, the engineering critic: a cottage's verge boards stood as an A-frame over its roofless walls, a farmhouse's
+   * roof ladder hung beside its gable, a dormer's cap at antenna height — fine trim the enclosure never measures) And every
+   * connected part (its corners welded) that starts within a metre under the eaves and reaches 30 cm over them, centred in
+   * the footprint, over no cluster standing over the eaves (a gable, a tower, a stack drawn from below: their trim stays
+   * with them) goes whole: what the roof carried (a ladder, an aerial, a verge board, a ridge's tiles) goes with it.
+   */
+  function flattenRoofFurniture(seam: StructureDamageSeam): boolean {
+    const a = seam.anatomy;
+    if (!a.roof || !a.enclosure || !a.storeys.length) return false;
+    const eaveY = a.roof.eaveY, ridgeY = a.roof.ridgeY;
+    const eave = eaveY - 0.15;
+    const reachX = a.w / 2 + 1.5, reachZ = a.d / 2 + 1.5;
+    const [bcx, bcz] = anatomyCentre(a);
+    const { x: px, y: py, z: pz, yaw } = a.placement;
+    const c = Math.cos(yaw), sn = Math.sin(yaw);
+    let changed = false;
+    const perSpan: OverEavesSpan[] = [];
+    const candidates: Array<{ span: StructureSpan; r: number }> = [];
+    const topSt = a.storeys[a.storeys.length - 1]!;
+    const topHalf = (topSt.y0 + topSt.y1) / 2;
+    for (const span of seam.spans) {
+      if (span.count < 3 || span.partClass === 'roof' || span.piece || flattenedSpans.has(span)) continue;
+      const geo = (span.mesh as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
+      if (!geo || geo.index) continue;
+      spanMatrices(span);
+      const arr = span.position.array as Float32Array;
+      const start = span.first + ((3 - (span.first % 3)) % 3);
+      const n = Math.max(0, Math.floor((span.first + span.count - start) / 3));
+      if (!n) continue;
+      // each triangle's corners in the world (the buckets stand at identity) and its connected part (corners welded)
+      const parent = new Int32Array(n);
+      for (let t = 0; t < n; t++) parent[t] = t;
+      const find = (t: number): number => { while (parent[t] !== t) { parent[t] = parent[parent[t]]!; t = parent[t]!; } return t; };
+      const owner = new Map<string, number>();
+      const drawn = new Uint8Array(n);
+      for (let t = 0; t < n; t++) {
+        const i = start + t * 3;
+        _ta.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+        _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
+        _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
+        _e1.subVectors(_tb, _ta); _e2.subVectors(_tc, _ta);
+        if (!(_e1.cross(_e2).lengthSq() > 1e-18)) continue;
+        drawn[t] = 1;
+        for (const v of [_ta, _tb, _tc]) {
+          const key = `${Math.round(v.x * 1000)},${Math.round(v.y * 1000)},${Math.round(v.z * 1000)}`;
+          const prev = owner.get(key);
+          if (prev === undefined) owner.set(key, t);
+          else { const ra = find(prev), rb = find(t); if (ra !== rb) parent[ra] = rb; }
+        }
+      }
+      // per part: its lowest and highest corner (body y) and its middle (body frame)
+      const lo = new Map<number, number>(), hi = new Map<number, number>(), mid = new Map<number, [number, number, number]>();
+      for (let t = 0; t < n; t++) {
+        if (!drawn[t]) continue;
+        const r = find(t), i = start + t * 3;
+        _ta.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+        _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
+        _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
+        const y0 = Math.min(_ta.y, _tb.y, _tc.y) - py, y1 = Math.max(_ta.y, _tb.y, _tc.y) - py;
+        lo.set(r, Math.min(lo.get(r) ?? Infinity, y0)); hi.set(r, Math.max(hi.get(r) ?? -Infinity, y1));
+        const wx = (_ta.x + _tb.x + _tc.x) / 3 - px, wz = (_ta.z + _tb.z + _tc.z) / 3 - pz;
+        const m = mid.get(r) ?? [0, 0, 0];
+        m[0] += wx * c - wz * sn; m[1] += wx * sn + wz * c; m[2]++;
+        mid.set(r, m);
+      }
+      for (const [r, y0] of lo) {
+        const m = mid.get(r)!;
+        if (!(y0 >= eaveY - 1 && hi.get(r)! > eaveY + 0.3)) continue;
+        if (Math.abs(m[0] / m[2] - bcx) > reachX || Math.abs(m[1] / m[2] - bcz) > reachZ) continue;
+        candidates.push({ span, r });
+      }
+      perSpan.push({ span, find, n, start, drawn });
+    }
+    // what holds a part over the eaves up: the structure's other parts standing under it (its walls, a gable drawn in a
+    // wall's bucket, a stack drawn from below — never the roof that falls, nor another part over the eaves until it is
+    // held itself: two verge boards side by side hold nothing up); held over half its lowest points, it stands
+    const goes = holdOverEaves(a, perSpan, candidates, eaveY);
+    for (const ps of perSpan) {
+      const { span, find, n, start, drawn } = ps;
+      const arr = span.position.array as Float32Array;
+      spanMatrices(span);
+      let touched = false;
+      for (let t = 0; t < n; t++) {
+        if (!drawn[t]) continue;
+        const i = start + t * 3;
+        if (!goes.get(span)?.has(find(t))) {
+          _ta.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+          _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
+          _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
+          // (round 3, the visual critic: a tavern's top storey stood capped by one flat dark plane, its interior's dark
+          // volume's top the roof had covered) the dark bucket's level tops in the top storey's upper half go too
+          // its centroid in the body frame
+          const wx = (_ta.x + _tb.x + _tc.x) / 3 - px, wz = (_ta.z + _tb.z + _tc.z) / 3 - pz;
+          const mx = wx * c - wz * sn, mz = wx * sn + wz * c;
+          if (Math.abs(mx - bcx) > reachX || Math.abs(mz - bcz) > reachZ) continue;
+          if (!darkTop(span, py, topHalf)) {
+            if (Math.min(_ta.y, _tb.y, _tc.y) - py < eave) continue;
+            // (and a level surface over the eaves under no standing cluster: the attic's lid the roof covered — left, it
+            // capped the roofless storey as one clean flat roof, the critic's "flat raft")
+            if (!roofFurnitureAt(a, mx, mz, eaveY, ridgeY)) {
+              const ux = _tb.x - _ta.x, uy = _tb.y - _ta.y, uz = _tb.z - _ta.z, vx = _tc.x - _ta.x, vy = _tc.y - _ta.y, vz = _tc.z - _ta.z;
+              const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+              if (!(Math.abs(ny) > 0.85 * Math.hypot(nx, ny, nz)) || !clearOverEaves(a, mx, mz, eaveY, ridgeY)) continue;
+            }
+          }
+        }
+        if (!touched) { keep(span); touched = true; }
+        for (let q = 1; q < 3; q++) {
+          arr[(i + q) * 3] = arr[i * 3]; arr[(i + q) * 3 + 1] = arr[i * 3 + 1]; arr[(i + q) * 3 + 2] = arr[i * 3 + 2];
+        }
+      }
+      if (touched) {
+        span.position.addUpdateRange(span.first * 3, span.count * 3);
+        span.position.needsUpdate = true;
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
+  /**
+   * (destruction-slabs 227 round 4, the critics' tavern #7: the roofless top storey capped by one flat dark plane at its
+   * wall heads — the ceiling of the room laid behind its holes before the roof fell) the top storey's rooms lose their
+   * ceilings with the roof: open to the sky. True when one changed.
+   */
+  function openTopRooms(seam: StructureDamageSeam): boolean {
+    const a = seam.anatomy;
+    const top = a.storeys.length - 1;
+    let changed = false;
+    for (const m of debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1)) {
+      if (m.userData.room !== true || (m.userData.runOwner as RunOwner | undefined)?.storey !== top) continue;
+      const g = m.geometry, ix = g.index, nrm = g.getAttribute('normal') as THREE.BufferAttribute | undefined;
+      if (!ix || !nrm) continue;
+      // (round 5; the round-4 critics' tavern #7, depot #8 and urban church #15 in the game's films: the roofless top storey
+      // under one flat dark plane — its room's walls and floor, laid dim for a glimpse through a hole, open to the sky now)
+      // lit as the sky lights it, once
+      if (m.userData.openToSky !== true) {
+        m.userData.openToSky = true;
+        const col = g.getAttribute('color') as THREE.BufferAttribute | undefined;
+        if (col) {
+          for (let i = 0; i < col.count; i++) {
+            const ny = nrm.getY(i);
+            const k = ny > 0.9 ? OPEN_ROOM_FLOOR / 0.55 : Math.abs(ny) < 0.5 ? OPEN_ROOM_WALL / (Math.abs(nrm.getX(i)) > 0.5 ? 0.56 : 0.6) : 1;
+            if (k !== 1) col.setXYZ(i, col.getX(i) * k, col.getY(i) * k, col.getZ(i) * k);
+          }
+          col.needsUpdate = true;
+          changed = true;
+        }
+      }
+      const tris: number[] = [];
+      for (let t = 0; t * 3 + 2 < ix.count; t++) {
+        const v = ix.getX(t * 3);
+        if (ix.getX(t * 3 + 1) === v && ix.getX(t * 3 + 2) === v) continue;
+        if (nrm.getY(v) < -0.9) tris.push(t);
+      }
+      if (tris.length) { debris.dropRunTris(m, tris); changed = true; }
+    }
+    return changed;
+  }
+
+  /** Whether the triangle in _ta.._tc is a level top of the dark bucket (an interior's dark volume) over `overY` (body y). */
+  function darkTop(span: StructureSpan, py: number, overY: number): boolean {
+    if (span.bucket !== 'dark') return false;
+    if ((_ta.y + _tb.y + _tc.y) / 3 - py < overY) return false;
+    _e1.subVectors(_tb, _ta); _e2.subVectors(_tc, _ta);
+    const n = _e1.cross(_e2);
+    return n.y > 0.85 * n.length();
+  }
+  /**
+   * Which parts over the eaves the structure's standing parts do not hold up (flattenRoofFurniture, round 3): per span, the
+   * roots of the parts (`candidates`) that go. A body-frame grid (0.5 m) of the highest point drawn per cell by every part
+   * that is no candidate (the walls, a stack drawn from below; the roof's spans are not among them); a candidate whose
+   * lowest points (per cell) stand within 0.8 m over that grid's tops round them for half or more of its cells is held, and
+   * holds in its turn (a gable drawn in a wall's bucket from the eaves holds its verge boards), until none more is.
+   */
+  function holdOverEaves(a: StructureDamageAnatomy, perSpan: readonly OverEavesSpan[], candidates: ReadonlyArray<{ span: StructureSpan; r: number }>,
+    eaveY: number): Map<StructureSpan, Set<number>> {
+    const goes = new Map<StructureSpan, Set<number>>();
+    if (!candidates.length) return goes;
+    const CELL = 0.5;
+    const [bcx, bcz] = anatomyCentre(a);
+    const half = Math.max(a.w, a.d) / 2 + 3;
+    const x0 = bcx - half, z0 = bcz - half, nx = Math.ceil((2 * half) / CELL), N = nx * nx;
+    const top = new Float32Array(N).fill(-Infinity);
+    const { x: px, y: py, z: pz, yaw } = a.placement;
+    const c = Math.cos(yaw), sn = Math.sin(yaw);
+    const pending = new Map<StructureSpan, Set<number>>();
+    for (const { span, r } of candidates) { let set = pending.get(span); if (!set) pending.set(span, set = new Set()); set.add(r); }
+    /** Every sample (body frame, ~0.4 m apart) of span `ps`'s triangles in parts `pick(root)`: visit(cell, y). */
+    const samples = (ps: OverEavesSpan, pick: (root: number) => boolean, visit: (cell: number, y: number) => void): void => {
+      spanMatrices(ps.span);
+      const arr = ps.span.position.array as Float32Array;
+      for (let t = 0; t < ps.n; t++) {
+        if (!ps.drawn[t] || !pick(ps.find(t))) continue;
+        const i = ps.start + t * 3;
+        _ta.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+        _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
+        _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
+        const la = _ta.distanceTo(_tb), lb = _tb.distanceTo(_tc), lc = _tc.distanceTo(_ta);
+        const k = Math.max(1, Math.min(40, Math.ceil(Math.max(la, lb, lc) / 0.4)));
+        for (let u = 0; u <= k; u++) for (let v = 0; v <= k - u; v++) {
+          const wa = 1 - (u + v) / k, wb = u / k, wc = v / k;
+          const x = _ta.x * wa + _tb.x * wb + _tc.x * wc - px, y = _ta.y * wa + _tb.y * wb + _tc.y * wc - py, z = _ta.z * wa + _tb.z * wb + _tc.z * wc - pz;
+          const bx = x * c - z * sn, bz = x * sn + z * c;
+          const ci = Math.floor((bx - x0) / CELL), ck = Math.floor((bz - z0) / CELL);
+          if (ci < 0 || ck < 0 || ci >= nx || ck >= nx) continue;
+          visit(ck * nx + ci, y);
+        }
+      }
+    };
+    for (const ps of perSpan) {
+      const mine = pending.get(ps.span);
+      samples(ps, (root) => !mine?.has(root), (cell, y) => { if (y > top[cell]!) top[cell] = y; });
+    }
+    for (let pass = 0; pass < 6; pass++) {
+      let held = 0;
+      for (const ps of perSpan) {
+        const mine = pending.get(ps.span);
+        if (!mine?.size) continue;
+        for (const root of [...mine]) {
+          const low = new Map<number, number>();
+          samples(ps, (r) => r === root, (cell, y) => { const v = low.get(cell); if (v === undefined || y < v) low.set(cell, y); });
+          let ok = 0;
+          for (const [cell, y] of low) {
+            const ci = cell % nx, ck = (cell - ci) / nx;
+            let t = -Infinity;
+            for (let dk = -1; dk <= 1; dk++) for (let di = -1; di <= 1; di++) {
+              const ii = ci + di, kk = ck + dk;
+              if (ii >= 0 && kk >= 0 && ii < nx && kk < nx) t = Math.max(t, top[kk * nx + ii]!);
+            }
+            if (t >= y - 0.8) ok++;
+          }
+          // (round 5; the census's fjord #0 fishery, R narrow-back: a 1.4 m beam of its roof's frame 6.6 m up, held over half
+          // its cells, hung 40 % held once the roof fell — the slab check calls a quarter less than it was held hanging) held
+          // over three quarters of its lowest points, it stands
+          if (low.size && ok >= HOLD_OVER_EAVES * low.size) {
+            mine.delete(root); held++;
+            samples(ps, (r) => r === root, (cell, y) => { if (y > top[cell]!) top[cell] = y; });
+          }
+        }
+      }
+      if (!held) break;
+    }
+    for (const [span, set] of pending) if (set.size) goes.set(span, set);
+    void eaveY;
+    return goes;
   }
 
   /** A roof drawn in another bucket (a sheet hall's in structureMetal, shingles in wood: their spans are 'wall' by
@@ -542,13 +891,14 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     const top = a.storeys.length ? a.storeys[a.storeys.length - 1]!.y1 : 0;
     const eave = a.roof ? a.roof.eaveY - 0.15 : top - 0.1;
     const reachX = a.w / 2 + 1.5, reachZ = a.d / 2 + 1.5;
+    const [bcx, bcz] = anatomyCentre(a);
     const { x: px, y: py, z: pz, yaw } = a.placement;
     const c = Math.cos(yaw), sn = Math.sin(yaw);
     // the triangle reaches over the eaves line (its highest corner) and stands in the footprint (its centroid)
     const inBody = (ta: THREE.Vector3, tb: THREE.Vector3, tc: THREE.Vector3): boolean => {
       if (Math.max(ta.y, tb.y, tc.y) - py < eave) return false;
       const wx = (ta.x + tb.x + tc.x) / 3 - px, wz = (ta.z + tb.z + tc.z) / 3 - pz;
-      return Math.abs(wx * c - wz * sn) <= reachX && Math.abs(wx * sn + wz * c) <= reachZ;
+      return Math.abs(wx * c - wz * sn - bcx) <= reachX && Math.abs(wx * sn + wz * c - bcz) <= reachZ;
     };
     let changed = false;
     for (const span of seam.spans) {
@@ -660,6 +1010,119 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     : Math.max(2, Math.min(STRIKE_BODIES_MAX, Math.round(2 + 1.6 * Math.sqrt(Math.max(0, chargeKg)))));
   /** A live run's named-piece hides, held to its wreck's birth (227, lane B co-hold: a piece laid after the run's delay stood till it shows). */
   const heldHides: { seam: StructureDamageSeam; hides: DamageStageResult['hides']; at: number }[] = [];
+
+  /**
+   * (destruction-slabs 227 round 5; the round-4 critic's films: polders #46's tower mill lost its upper shaft, cap and sails
+   * in one 100 ms step, a stump with chunks already on the ground in their place; verdant #17's post mill swapped its body's
+   * silhouette and lost its sails the same way) the E12 kit lays a set piece's pieces at rest at once: each laid by one
+   * rigid turn (DamageFall) is shown falling there — a copy of its own triangles turned and dropped over gravity's time,
+   * its turn eased in as a fall's is — and the stage's laid copy shows when the fall ends, where the fall ends.
+   */
+  interface PieceFall { seam: StructureDamageSeam; meshes: THREE.Mesh[]; axis: THREE.Vector3; angle: number; pivot: THREE.Vector3; t: THREE.Vector3;
+    t0: number; T: number }
+  const pieceFalls: PieceFall[] = [];
+  const _fq = new THREE.Quaternion(), _fm = new THREE.Matrix4(), _fb = new THREE.Matrix4(), _fbi = new THREE.Matrix4(), _fv = new THREE.Vector3();
+  const _fr = new THREE.Matrix4(), _fp = new THREE.Vector3(), _fs = new THREE.Vector3(1, 1, 1), _fup = new THREE.Vector3(0, 1, 0);
+  /** A body-frame fall's pose `k` of the way (0..1) as a world matrix into _fm (the meshes' vertices are in the world). */
+  function fallMatrix(f: PieceFall, k: number): THREE.Matrix4 {
+    const { x, y, z, yaw } = f.seam.anatomy.placement;
+    _fb.compose(_fp.set(x, y, z), _fq.setFromAxisAngle(_fup, yaw), _fs);
+    _fbi.copy(_fb).invert();
+    _fq.setFromAxisAngle(f.axis, f.angle * k);
+    _fr.makeRotationFromQuaternion(_fq);
+    // body frame: v -> R_k (v - pivot) + pivot + t k
+    _fv.copy(f.pivot).applyQuaternion(_fq).negate().add(f.pivot).addScaledVector(f.t, k);
+    _fr.setPosition(_fv);
+    return _fm.copy(_fb).multiply(_fr).multiply(_fbi);
+  }
+  function startPieceFalls(seam: StructureDamageSeam, falls: readonly DamageFall[], made: readonly THREE.Mesh[]): void {
+    let until = 0;
+    const { x: px, y: py, z: pz, yaw } = seam.anatomy.placement;
+    const c = Math.cos(yaw), sn = Math.sin(yaw);
+    for (const fall of falls) {
+      const spans = seam.spans.filter((sp) => sp.piece === fall.piece && sp.count >= 3 && !flattenedSpans.has(sp));
+      if (!spans.length) continue;
+      // its own triangles as they stand (world), per material; its middle (body frame) for its drop
+      const byMat = new Map<THREE.Material, { geometry: THREE.BufferGeometry; names: string[]; data: number[][] }>();
+      let mx = 0, my = 0, mz = 0, n = 0;
+      for (const span of spans) {
+        const mesh = span.mesh as THREE.Mesh;
+        const geometry = mesh.geometry as THREE.BufferGeometry;
+        const material = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as THREE.Material;
+        let e = byMat.get(material);
+        if (!e) {
+          const names = Object.keys(geometry.attributes).filter((nm) => nm !== 'position' && nm !== 'aDamage');
+          e = { geometry, names, data: [[], ...names.map(() => [])] };
+          byMat.set(material, e);
+        }
+        spanMatrices(span);
+        const arr = span.position.array as Float32Array;
+        const start = span.first + ((3 - (span.first % 3)) % 3);
+        const end = start + Math.floor((span.first + span.count - start) / 3) * 3;
+        for (let i = start; i < end; i++) {
+          _fv.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+          e.data[0]!.push(_fv.x, _fv.y, _fv.z);
+          const wx = _fv.x - px, wz = _fv.z - pz;
+          mx += wx * c - wz * sn; my += _fv.y - py; mz += wx * sn + wz * c; n++;
+          e.names.forEach((nm, j) => {
+            const attr = e!.geometry.getAttribute(nm) as THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
+            for (let q = 0; q < attr.itemSize; q++) e!.data[j + 1]!.push(attr.getComponent(i, q));
+          });
+        }
+      }
+      if (!n) continue;
+      mx /= n; my /= n; mz /= n;
+      const meshes: THREE.Mesh[] = [];
+      for (const [material, e] of byMat) {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(e.data[0]!, 3));
+        e.names.forEach((nm, j) => {
+          const attr = e.geometry.getAttribute(nm) as THREE.BufferAttribute;
+          g.setAttribute(nm, new THREE.Float32BufferAttribute(e.data[j + 1]!, attr.itemSize, attr.normalized));
+        });
+        g.computeBoundingSphere();
+        const mesh = new THREE.Mesh(g, material);
+        mesh.name = `fx-landmark-piece-fall-${seam.structureIdx}-${fall.piece}`;
+        mesh.matrixAutoUpdate = false;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        debris.group.add(mesh);
+        meshes.push(mesh);
+      }
+      // the turn as an axis and an angle; its middle's drop sets the fall's time
+      _fr.set(fall.r[0]!, fall.r[1]!, fall.r[2]!, 0, fall.r[3]!, fall.r[4]!, fall.r[5]!, 0, fall.r[6]!, fall.r[7]!, fall.r[8]!, 0, 0, 0, 0, 1);
+      _fq.setFromRotationMatrix(_fr).normalize();
+      const angle = 2 * Math.acos(Math.min(1, Math.abs(_fq.w)));
+      const sw = _fq.w < 0 ? -1 : 1, sl = Math.sqrt(Math.max(0, 1 - _fq.w * _fq.w));
+      const axis = sl > 1e-6 ? new THREE.Vector3(sw * _fq.x / sl, sw * _fq.y / sl, sw * _fq.z / sl) : new THREE.Vector3(0, 1, 0);
+      const pivot = new THREE.Vector3(fall.pivot[0], fall.pivot[1], fall.pivot[2]), t = new THREE.Vector3(fall.t[0], fall.t[1], fall.t[2]);
+      _fv.set(mx, my, mz).sub(pivot).applyMatrix4(_fr).add(pivot).add(t);
+      const drop = Math.max(0.3, my - _fv.y);
+      const T = Math.min(FALL_MAX_S, Math.max(FALL_MIN_S, Math.sqrt(2 * drop / 9.81) * FALL_SLOW));
+      const f: PieceFall = { seam, meshes, axis, angle, pivot, t, t0: o.now(), T };
+      fallMatrix(f, 0);
+      for (const m of meshes) { m.matrix.copy(_fm); m.matrixWorldNeedsUpdate = true; }
+      pieceFalls.push(f);
+      until = Math.max(until, f.t0 + T);
+    }
+    if (until > 0) for (const m of made) debris.showFrom(m, until);
+  }
+  function stepPieceFalls(): void {
+    if (!pieceFalls.length) return;
+    const now = o.now();
+    let k = 0;
+    for (const f of pieceFalls) {
+      // (gone the moment the laid copy shows: the debris reads the same sum)
+      if (now >= f.t0 + f.T) { for (const m of f.meshes) { m.removeFromParent(); m.geometry.dispose(); } f.seam.touchShadows(); continue; }
+      const u = Math.min(1, Math.max(0, (now - f.t0) / f.T));
+      // (a fall gathers speed: its turn and its drop eased in)
+      fallMatrix(f, u * u);
+      for (const m of f.meshes) { m.matrix.copy(_fm); m.matrixWorldNeedsUpdate = true; }
+      f.seam.touchShadows();
+      pieceFalls[k++] = f;
+    }
+    pieceFalls.length = k;
+  }
   /** A stage's builder through the writers. `standing`: its runs belong to the standing building (a breach's rim and
    *  room, a spall's units) and fall with it; a collapse's own stubs and pile stay where they lie. */
   function run(seam: StructureDamageSeam, delayS: number, settled: boolean, build: (out: DamageWriters) => DamageStageResult,
@@ -682,61 +1145,92 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     let wantsRoom = false;
     const mesh0 = out.mesh;
     const meshW = Object.create(mesh0) as DamageWriters['mesh'];
+    // (destruction-slabs 227, Copper Mesa's ore bin: the regional kit's open storey behind a fallen section, its side and
+    // opposite walls, boards and joists in the building's own buckets, stood between the bin's legs on the faces' box) a
+    // kit's room of any bucket is the storey's one interior
     meshW.begin = (bucket: string, role: DamageRole): boolean => {
-      if (role === 'room' && bucket === 'dark') { wantsRoom = true; return false; }
+      if (role === 'room') { wantsRoom = true; return false; }
       return mesh0.begin(bucket, role);
     };
     const writers: DamageWriters = { mesh: meshW, pieces: out.pieces };
     let result: DamageStageResult | null = null;
     try { result = build(writers); } catch { result = null; }
     const made = debris.commit();
+    // (round 5) a set piece's pieces the stage laid at rest are seen falling there first (a live stage laid at once)
+    if (!settled && !(delayS > 0) && result?.falls?.length) startPieceFalls(seam, result.falls, made);
+    // (destruction-slabs 227 round 4) no remnant stands taller than the building was drawn where it stands
+    for (const mesh of made) if (mesh.name.startsWith('fx-structure-remnant-')) clampRemnantTops(mesh, seam.anatomy);
     if (owner) for (const mesh of made) mesh.userData.runOwner = owner;
     const held = !settled && delayS > 0 && result?.hides?.some((h) => h.piece) ? result.hides.filter((h) => h.piece) : null;
     if (held) heldHides.push({ seam, hides: held, at: o.now() + delayS });
     apply(seam, held ? { ...result!, hides: result!.hides.filter((h) => !h.piece) } : result, holeSeed, holeKind, made);
-    if (wantsRoom && standing && !piecesOnly) layInterior(seam, owner && owner.storey >= 0 ? owner.storey : 0, settled);
+    if (wantsRoom && standing && !piecesOnly) {
+      const storey = owner && owner.storey >= 0 ? owner.storey : 0;
+      const hint = roomHint(seam, storey, owner?.section ?? -1, result);
+      layInterior(seam, storey, settled, hint[0], hint[1]);
+    }
   }
 
-  /** The storeys whose interior is laid, per structure. */
-  const interiors = new Map<number, Set<number>>();
+  /**
+   * Where the room behind a stage's opening is (body frame, a plan point inside the drawn wall): a hole's cut pushed in
+   * past the wall's depth; a fallen panel's middle behind its drawn wall (its setback); else the body's middle.
+   */
+  function roomHint(seam: StructureDamageSeam, storey: number, section: number, result: DamageStageResult | null): [number, number] {
+    const cuts = result?.cuts ?? [];
+    for (let i = cuts.length - 1; i >= 0; i--) {
+      const cut = cuts[i];
+      if (!(cut.depthM >= 0.2)) continue;
+      return [cut.x - cut.nx * (cut.depthM + 0.4), cut.z - cut.nz * (cut.depthM + 0.4)];
+    }
+    const st = seam.anatomy.storeys[storey];
+    const fi = st ? st.faces.findIndex((f) => f.section === section) : -1;
+    if (st && fi >= 0) {
+      const face = st.faces[fi];
+      let back = faceSetback(seam.anatomy, storey, fi, 0);
+      if (!Number.isFinite(back)) back = faceSetbackMedian(seam.anatomy, storey, fi).median;
+      if (!Number.isFinite(back)) back = 0;
+      const t = face.layers.reduce((sum, l) => sum + l.thicknessM, 0) || 0.3;
+      return [face.origin[0] - face.out[0] * (back + t + 0.5), face.origin[2] - face.out[2] * (back + t + 0.5)];
+    }
+    return anatomyCentre(seam.anatomy);
+  }
+
+  /** The rooms laid, per structure: one per storey and enclosed component (structureEnclosure storeyInterior). */
+  const interiors = new Map<number, Set<string>>();
+  /** A storey's room claimed (its interior's key): false when one is laid there already, the kit's or the fracture's. */
+  function claimRoom(seam: StructureDamageSeam, key: string): boolean {
+    let laid = interiors.get(seam.structureIdx);
+    if (!laid) { laid = new Set(); interiors.set(seam.structureIdx, laid); }
+    if (laid.has(key)) return false;
+    laid.add(key);
+    return true;
+  }
   /** The bucket's tile density (repeats a metre) the kits' fallback surface uses (regional fracture.ts fallbackSurface). */
   const tileDensity = (bucket: string): number => bucket.includes('Stone') || bucket === 'stone' ? 0.5
     : /laster/i.test(bucket) ? 0.42 : 0.55;
   /**
-   * A storey's interior, laid once at its first hole (2026-10-12, the owner: broken faces show the building's own
-   * material with proper inner faces): the inside of its walls, its floor and its ceiling as one inward-facing box just
-   * behind the walls' thickness, in the building's own buckets (the walls' render or masonry, the floor's boards or
-   * stone, the ceiling's joists), dimly lit. A standing run: holes look into it (no cut takes it), it falls, folds and
-   * drops with its storey like the rest of the building.
+   * A storey's room, laid once at the first hole into it (2026-10-12, the owner: broken faces show the building's own
+   * material with proper inner faces): the inside of its walls, its floor and its ceiling facing in, just behind the
+   * walls, in the building's own buckets (the walls' render or masonry, the floor's boards or stone, the ceiling's
+   * joists), dimly lit. A standing run: holes look into it (no cut takes it), it falls, folds and drops with its storey.
+   * (destruction-slabs 227, the owner's Verdant church: "these weird ugly boxes/surfaces still randomly come up") it is
+   * the drawn enclosure behind the hole (structureEnclosure.ts storeyInterior: the enclosed component behind `hint`, under
+   * what covers it, its ceiling at the band's drawn wall top), never the box the storey's faces span: a church's forecourt
+   * and towers, a station's canopy, a windmill's sails stood inside that box. No room where the band encloses under half
+   * its box (a frame, a trestle, a pipe run, a tank farm) or where the room would be under 2 m².
    */
-  function layInterior(seam: StructureDamageSeam, storeyIndex: number, settled: boolean): void {
+  function layInterior(seam: StructureDamageSeam, storeyIndex: number, settled: boolean, hintX: number, hintZ: number): void {
     const a = seam.anatomy;
     const storey = a.storeys[storeyIndex];
     if (!storey || !storey.faces.length) return;
-    let laid = interiors.get(seam.structureIdx);
-    if (!laid) { laid = new Set(); interiors.set(seam.structureIdx, laid); }
-    if (laid.has(storeyIndex)) return;
-    laid.add(storeyIndex);
-    // the footprint the storey's faces enclose (body frame), inside their thickness
-    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, thick = 0.2;
-    for (const f of storey.faces) {
-      const hw = f.width / 2;
-      for (const k of [-1, 1]) {
-        const x = f.origin[0] + f.u[0] * hw * k, z = f.origin[2] + f.u[2] * hw * k;
-        x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z);
-      }
-      thick = Math.max(thick, f.layers.reduce((sum, l) => sum + l.thicknessM, 0));
-    }
-    const inset = Math.min(thick + 0.08, 0.9);
-    x0 += inset; x1 -= inset; z0 += inset; z1 -= inset;
-    if (!(x1 - x0 > 0.6 && z1 - z0 > 0.6)) return;
     const above = a.storeys[storeyIndex + 1];
-    const y0 = storey.y0 + 0.03;
     // under the eaves: the mask lets what stands over them ride the roof down (the battle strips: the old room boxes reached
     // the eaves, rode the falling roof and stood over the heap as slate panels until the fold)
     const eaveCap = a.roof ? a.roof.eaveY - 0.15 : Infinity;
-    const y1 = Math.min(eaveCap, Math.max(y0 + 1, (above ? above.y0 : storey.y1) - 0.06));
-    if (!(y1 - y0 > 0.8)) return;
+    const room = storeyInterior(a, storeyIndex, hintX, hintZ, Math.min(eaveCap, (above ? above.y0 : storey.y1) - 0.06));
+    if (!room) return;
+    if (!claimRoom(seam, room.key)) return;
+    const { y0, y1 } = room;
     // its materials: the walls' render or infill where they have one (an interior is plastered), else their masonry
     const face = storey.faces[0]!;
     const wallSlot = face.layers.find((l) => l.material === 'plaster' || l.material === 'infill')
@@ -747,9 +1241,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     const ceilSlot = above?.floor?.structure ?? a.roof?.structure ?? floorSlot;
     const byBucket = spanMaterials(seam);
     const resolve = (bucket: string): THREE.Material => roomMaterialFor(worldMaterial(byBucket, bucket));
-    const out = debris.begin(a.placement, resolve, 0, settled, { tag: STAGE_RUN_TAG + seam.structureIdx + 1, pieces: false });
+    const out = debris.begin(a.placement, resolve, 0, settled, { tag: STAGE_RUN_TAG + seam.structureIdx + 1, pieces: false, structure: seam.structureIdx });
     const m = out.mesh;
-    // a quad facing `n` (body frame), its tile laid by the bucket's density on the plane it faces
+    // a quad facing `n` (body frame; wound to face it), its tile laid by the bucket's density on the plane it faces
     const quad = (bucket: string, tint: readonly number[], shade: number, n: readonly [number, number, number],
       corners: ReadonlyArray<readonly [number, number, number]>): void => {
       if (!m.begin(bucket, 'room')) return;
@@ -759,22 +1253,37 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         const v = n[1] !== 0 ? z * d : y * d;
         return m.vertex(x, y, z, n[0], n[1], n[2], u, v, tint[0]! * shade, tint[1]! * shade, tint[2]! * shade);
       });
-      m.triangle(ids[0]!, ids[1]!, ids[2]!);
-      m.triangle(ids[0]!, ids[2]!, ids[3]!);
+      const [p0, p1, p2] = corners;
+      const ex = p1![0] - p0![0], ey = p1![1] - p0![1], ez = p1![2] - p0![2], fx = p2![0] - p0![0], fy = p2![1] - p0![1], fz = p2![2] - p0![2];
+      const facing = (ey * fz - ez * fy) * n[0] + (ez * fx - ex * fz) * n[1] + (ex * fy - ey * fx) * n[2] >= 0;
+      if (facing) { m.triangle(ids[0]!, ids[1]!, ids[2]!); m.triangle(ids[0]!, ids[2]!, ids[3]!); }
+      else { m.triangle(ids[0]!, ids[2]!, ids[1]!); m.triangle(ids[0]!, ids[3]!, ids[2]!); }
       m.end();
     };
     const wt = wallSlot.tint, wb = wallSlot.bucket;
-    // walls, facing in: the front (+z) faces -z, the back faces +z, the right (+x) faces -x, the left faces +x
-    quad(wb, wt, 0.42, [0, 0, -1], [[x1, y0, z1], [x0, y0, z1], [x0, y1, z1], [x1, y1, z1]]);
-    quad(wb, wt, 0.42, [0, 0, 1], [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0]]);
-    quad(wb, wt, 0.4, [-1, 0, 0], [[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]]);
-    quad(wb, wt, 0.4, [1, 0, 0], [[x0, y0, z1], [x0, y0, z0], [x0, y1, z0], [x0, y1, z1]]);
-    // its floor (up) and its ceiling (down)
-    quad(floorSlot.bucket, floorSlot.tint, 0.45, [0, 1, 0], [[x0, y0, z1], [x1, y0, z1], [x1, y0, z0], [x0, y0, z0]]);
-    quad(ceilSlot.bucket, ceilSlot.tint, 0.26, [0, -1, 0], [[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]]);
+    // (destruction-slabs 227 round 4, the visual and the engineering critics' tavern #7: a hole on the top storey after the
+    // roof fell laid a room whose ceiling stood as a flat dark plane at the wall heads, the roofless tavern read as a box with
+    // a lid) no ceiling under a roof that has fallen — (round 5) and open to the sky it is lit as the sky lights it
+    const open = !above && roofDown(seam);
+    // its walls, facing in along the room's drawn boundary
+    for (const [ax, az, bx, bz, nx, nz] of room.walls) {
+      // (round 3: the owner's "dark grey-navy slabs" — a room's walls at 0.4 of the render read as one flat dark plane through
+      // a blown-out facade) in shade, its texture readable
+      quad(wb, wt, open ? OPEN_ROOM_WALL : Math.abs(nx) > 0.5 ? 0.56 : 0.6, [nx!, 0, nz!], [[ax!, y0, az!], [bx!, y0, bz!], [bx!, y1, bz!], [ax!, y1, az!]]);
+    }
+    // its floor (up) and its ceiling (down), rectangle by rectangle; (round 5) the floor a hand over the floor line (the
+    // storey under it draws its top there: the two fought, a dark and a pale floor flickering through each other)
+    const fy = y0 + ROOM_FLOOR_LIFT_M;
+    for (const [x0, z0, x1, z1] of room.rects) {
+      quad(floorSlot.bucket, floorSlot.tint, open ? OPEN_ROOM_FLOOR : 0.55, [0, 1, 0], [[x0!, fy, z1!], [x1!, fy, z1!], [x1!, fy, z0!], [x0!, fy, z0!]]);
+      if (!open) quad(ceilSlot.bucket, ceilSlot.tint, 0.4, [0, -1, 0], [[x0!, y1, z0!], [x1!, y1, z0!], [x1!, y1, z1!], [x0!, y1, z1!]]);
+    }
     const made = debris.commit();
     for (const mesh of made) {
       mesh.userData.runOwner = { section: -1, storey: storeyIndex } satisfies RunOwner;
+      mesh.userData.room = true;
+      // (round 5) laid open to the sky, lit so (openTopRooms leaves it as it is)
+      if (open) mesh.userData.openToSky = true;
       // inside the walls its shadow is the building's own; drawn through the default depth program it would stand as a
       // box's shadow once the building folded away
       mesh.castShadow = false;
@@ -914,12 +1423,15 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
    *  scars too (a fall in flight has moved them itself). */
   function dropStorey(structureId: number, seam: StructureDamageSeam, storey: DamageStorey, settled: boolean, holes: boolean): boolean {
     const a = seam.anatomy;
+    fracture?.storeyDown(seam, storey.index);
     let changed = clampStorey(seam, storey);
-    const [reachX, reachZ] = storeyReach(seam, storey);
+    const [reachX, reachZ, rcx, rcz] = storeyReach(seam, storey);
     const dropM = storey.y1 - storey.y0;
-    changed = dropRuns(seam, (bx, by, bz) => by > storey.y0 + 0.02 && by <= storey.y1 + SLAB_EPS && Math.abs(bx) <= reachX
-      && Math.abs(bz) <= reachZ, (owner) => owner.storey === storey.index) || changed;
-    changed = settleRuns(seam, storey, reachX, reachZ) || changed;
+    // (destruction-slabs 227 round 3) the faces the fracture draws over it come down with the world's spans
+    fracture?.lowerOver(seam, storey.index, dropM, true);
+    changed = dropRuns(seam, (bx, by, bz) => by > storey.y0 + 0.02 && by <= storey.y1 + SLAB_EPS && Math.abs(bx - rcx) <= reachX
+      && Math.abs(bz - rcz) <= reachZ, (owner) => owner.storey === storey.index) || changed;
+    changed = settleRuns(seam, storey, reachX, reachZ, rcx, rcz) || changed;
     if (holes) {
       mask.moveHoles(seam.structureIdx, a.placement.y + storey.y0 + 0.02, a.placement.y + storey.y1 + SLAB_EPS, dropM);
       o.scars?.clearWhere(structureId, (_x, y) => y > a.placement.y + storey.y0 + 0.02);
@@ -941,25 +1453,27 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   interface StoreyFall {
     structureId: number; seam: StructureDamageSeam; storey: DamageStorey; settled: boolean;
     t0: number; T: number; dropM: number; d: number;
-    px: number; py: number; pz: number; c: number; s: number; reachX: number; reachZ: number;
+    px: number; py: number; pz: number; c: number; s: number; reachX: number; reachZ: number; rcx: number; rcz: number;
     spans: FallSpan[]; runs: FallRun[];
   }
   const G = 9.81;
   const storeyFalls: StoreyFall[] = [];
   /** The clamp's law at depth d (body frame): over the footprint, the band toward its floor line, above it down by d. */
   function fallTo(f: StoreyFall, bx: number, by: number, bz: number, d: number): number {
-    if (Math.abs(bx) > f.reachX || Math.abs(bz) > f.reachZ || !(by > f.storey.y0 + 0.02)) return by;
+    if (Math.abs(bx - f.rcx) > f.reachX || Math.abs(bz - f.rcz) > f.reachZ || !(by > f.storey.y0 + 0.02)) return by;
     return by <= f.storey.y1 + SLAB_EPS ? Math.max(f.storey.y0, by - d) : by - d;
   }
   function startStoreyFall(structureId: number, seam: StructureDamageSeam, storey: DamageStorey, settled: boolean): void {
     const a = seam.anatomy;
     const { x: px, y: py, z: pz, yaw } = a.placement;
     const c = Math.cos(yaw), s = Math.sin(yaw);
-    const [reachX, reachZ] = storeyReach(seam, storey);
+    const [reachX, reachZ, rcx, rcz] = storeyReach(seam, storey);
     const dropM = storey.y1 - storey.y0;
     const f: StoreyFall = { structureId, seam, storey, settled, t0: o.now(), T: Math.sqrt(2 * Math.max(0.1, dropM) / G), dropM, d: 0,
-      px, py, pz, c, s, reachX, reachZ, spans: [], runs: [] };
-    // the band's holes are crushed with it at once, and the phone's scars above the floor line go
+      px, py, pz, c, s, reachX, reachZ, rcx, rcz, spans: [], runs: [] };
+    // the band's holes are crushed with it at once, and the phone's scars above the floor line go; the fracture's rooms
+    // in it and over it with them
+    fracture?.storeyDown(seam, storey.index);
     mask.moveHoles(seam.structureIdx, py + storey.y0 + 0.02, py + storey.y1 + SLAB_EPS, 0);
     o.scars?.clearWhere(structureId, (_x, y) => y > py + storey.y0 + 0.02);
     for (const span of seam.spans) {
@@ -1024,6 +1538,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       mask.moveHoles(f.seam.structureIdx, f.py + f.storey.y0 + 0.02, f.py + f.storey.y1 + SLAB_EPS - f.d, d - f.d);
       f.d = d;
     }
+    fracture?.lowerOver(f.seam, f.storey.index, d, false);
     f.seam.touchShadows();
   }
   /** The fall's end: everything back where it stood, then the instant drop's own path lays the exact end. */
@@ -1056,7 +1571,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     storeyFalls.length = k;
   }
 
-  const fracture = o.fracture?.({ o, keep, dropRuns, clampPanel, finishFalls, run, worldMaterial, spanMaterials, roomMaterialFor }) ?? null;
+  const fracture = o.fracture?.({ o, keep, dropRuns, clampPanel, finishFalls, run, worldMaterial, spanMaterials, roomMaterialFor,
+    originalOf: (span) => originals.get(span) ?? null, roofDropped, claimRoom,
+    falling: (structureIdx) => storeyFalls.some((f) => f.structureId === structureIdx) }) ?? null;
   return {
     stage(e, seam) {
       finishFalls(e.structureId);
@@ -1065,6 +1582,11 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (took === 1) { downed.add(e.structureId); return; }
       if (took === 2) notePunched(e.structureId, e.x, e.y, e.z);
       const settled = e.settled === true;
+      if (e.stage === 'collapsed' && settled && seam) {
+        // (destruction-slabs 227) settled, the building is gone at once: its standing runs with it (the fracture's ready()
+        // drops them so live; the mask folds them away, but a run left in the scene stands for any reader of it)
+        for (const r of debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1)) debris.dropRun(r);
+      }
       if (e.stage === 'collapsed') {
         // the roof drops into it and the walls come down along the crumble front over COLLAPSE_S, then it is gone
         // (settled: gone at once); the mask needs its eaves and footprint for the roof
@@ -1084,6 +1606,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         }
       }
       if (!seam) return;
+      // (destruction-slabs 227 round 3) what a stage's hides left hanging comes down once the faces are drawn
+      if (e.stage !== 'collapsed') fracture?.hanging(seam, settled);
       const stageSeed = (stage: number): number => damageSeed(seam.anatomy.seed, stage);
       // a blow that jumps a stage lays the one it skipped: a breach out of an intact building is damaged too
       if (e.stage === 'damaged' || (e.stage === 'breached' && e.previous === 'intact')) {
@@ -1117,7 +1641,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         const dl = Math.hypot(e.dirX || 0, e.dirZ || 0) || 1;
         const dx = (e.dirX || 0) / dl, dz = (e.dirZ || 0) / dl;
         const wx = blow.x - a.placement.x, wz = blow.z - a.placement.z;
-        const bx = wx * c - wz * sn, bz = wx * sn + wz * c, bdx = dx * c - dz * sn, bdz = dx * sn + dz * c;
+        const [rcx, rcz] = anatomyCentre(a);
+        const bx = wx * c - wz * sn - rcx, bz = wx * sn + wz * c - rcz, bdx = dx * c - dz * sn, bdz = dx * sn + dz * c;
         const hw = a.w / 2, hd = a.d / 2;
         const tx = bdx > 1e-3 ? (hw - bx) / bdx : bdx < -1e-3 ? (-hw - bx) / bdx : Infinity;
         const tz = bdz > 1e-3 ? (hd - bz) / bdz : bdz < -1e-3 ? (-hd - bz) / bdz : Infinity;
@@ -1202,11 +1727,16 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (!e.sectionDown) {
         if (!(e.radiusM > 0)) return;
         realHoles.add(e.structureId);
-        if (!settled && fracture?.hole(e, seam)) return;
+        // (destruction-slabs 227) a late joiner's settled hole breaks the wall as the live one did (cut and drawn at once):
+        // the kit's rim and room are for the walls the fracture does not draw (a landmark's, a declined strike's)
+        if (fracture?.hole(e, seam, settled)) return;
         const spec = seam.holeAt(e.x, e.y, e.z, e.radiusM, 0, 0, e.munition, cause, e.hole);
         if (spec) {
           bodiesNext = 5;
           run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
+          // (round 4; the census's hostomel warehouse: an earlier rim's pieces a later kit hole cut round stood in the air)
+          // what a kit hole left hanging comes down too
+          fracture?.hanging(seam, settled);
         }
         return;
       }
@@ -1221,13 +1751,18 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         if (roof && fallOnce(e.structureId, roof.section)) {
           // the roof's own patches and eave bands from earlier blows go with it (first: the fall's own runs stand)
           const reachX = a.w / 2 + 1.5, reachZ = a.d / 2 + 1.5;
-          changed = dropRuns(seam, (bx, by, bz) => by >= roof.eaveY - 0.25 && Math.abs(bx) <= reachX && Math.abs(bz) <= reachZ,
+          const [rcx, rcz] = anatomyCentre(a);
+          changed = dropRuns(seam, (bx, by, bz) => by >= roof.eaveY - 0.25 && Math.abs(bx - rcx) <= reachX && Math.abs(bz - rcz) <= reachZ,
             (owner) => owner.section === roof.section) || changed;
           o.scars?.clearWhere(e.structureId, (_x, y) => y >= a.placement.y + roof.eaveY - 0.25);
           bodiesNext = 8;
           const slabs = !settled && !!fracture?.fallRoof(e, seam);
-          run(seam, 0, settled, (out) => seam.sectionDown(roof.section, damageSeed(a.seed, roof.section, 255), out), true,
+          // (destruction-slabs 227) settled (a late joiner): the roof hidden and the kit's roof rubble laid, no eave band or
+          // patch over walls the live fall took down as bodies
+          run(seam, 0, settled, (out) => seam.sectionDown(roof.section, damageSeed(a.seed, roof.section, 255), settled ? rubbleOnly(out) : out), true,
             { section: roof.section, storey: -1 }, slabs, slabs);
+          // (round 5) the top storey's rooms open to the sky with the roof (their ceilings went only with a later wall's fall)
+          changed = openTopRooms(seam) || changed;
         }
       } else {
         const spec = seam.holeAt(e.x, e.y, e.z, 0.01, 0, 0, e.munition, cause, 255);
@@ -1237,7 +1772,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           // the panel above its stub (a metre over the base; an upper storey's falls to its floor line)
           const y0 = e.y0 - a.placement.y, y1 = e.y1 - a.placement.y;
           const stubTop = Math.max(y0, baseY + 1 - a.placement.y, storey.y0), top = Math.max(y1, storey.y1);
-          const cells = !settled && !!fracture?.fallPanel(e, seam, storey, face, stubTop, top);
+          const cells = !!fracture?.fallPanel(e, seam, storey, face, stubTop, top, settled);
           if (!cells) changed = clampPanel(seam, face, stubTop, top) || changed;
           // the panel's own rims and the room behind its holes go with it (before the kit's fall: its own runs stand)
           const t = Math.max(0.12, face.layers.reduce((sum, layer) => sum + (layer.thicknessM || 0), 0));
@@ -1259,6 +1794,17 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           if (!cells) run(seam, 0, settled, (out) => seam.sectionDown(spec.section, damageSeed(a.seed, spec.section, 255), out), true,
             { section: spec.section, storey: storey.index }, ev.storeyDown === true);
         }
+        // (destruction-slabs 227) every wall of the storey down: its room stands in the open (a dark box in the ruin, its
+        // ceiling a plate over nothing) — it goes
+        if (storey && storey.faces.every((f) => fallenSections.get(e.structureId)?.has(f.section))) {
+          fracture?.storeyDown(seam, storey.index, true);
+          for (const r of debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1)) {
+            if (r.userData.room === true && (r.userData.runOwner as RunOwner | undefined)?.storey === storey.index) { debris.dropRun(r); changed = true; }
+          }
+        }
+        // (destruction-slabs 227 round 3) a wall gone under a roof that fell before it: what stood over the eaves on it (the
+        // verge boards along a gable the roof left standing) is looked at again — held by nothing now, it goes
+        if (roofDown(seam)) { const opened = openTopRooms(seam); changed = flattenRoofFurniture(seam) || opened || changed; }
         if (ev.storeyDown === true && storey) {
           // the band down to its floor line, what stood on it lowered by its height, its holes' runs and cuts gone, then
           // the kit's heap on the floor line (laid last: it stands); live, it comes down over gravity's time (the core
@@ -1267,9 +1813,12 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           else startStoreyFall(e.structureId, seam, storey, settled);
         }
       }
+      // (destruction-slabs 227 round 3) what the section's fall left hanging comes down once the faces are drawn
+      fracture?.hanging(seam, settled);
       if (changed) seam.touchShadows();
     },
     update() {
+      stepPieceFalls();
       if (heldHides.length) { let k = 0; for (const h of heldHides) if (o.now() >= h.at) apply(h.seam, { cuts: [], hides: h.hides }); else heldHides[k++] = h; heldHides.length = k; }
       if (pendingStrikes.length) {
         const t = o.now();
@@ -1298,14 +1847,18 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       for (const f of falling) { f.seam.touchShadows(); if (now <= f.until) falling[k++] = f; }
       falling.length = k;
     },
+    falling: (structureIdx) => storeyFalls.some((f) => f.structureId === structureIdx),
     shiftTime(delta) {
       for (const p of pendingStrikes) p.at += delta;
       for (const h of heldHides) h.at += delta;
       for (const f of falling) f.until += delta;
       for (const f of storeyFalls) f.t0 += delta;
+      for (const f of pieceFalls) f.t0 += delta;
     },
     reset() {
       storeyFalls.length = 0;
+      for (const f of pieceFalls) for (const m of f.meshes) { m.removeFromParent(); m.geometry.dispose(); }
+      pieceFalls.length = 0;
       for (const [span, saved] of originals) {
         const pos = span.position;
         (pos.array as Float32Array).set(saved, span.first * 3);
@@ -1321,6 +1874,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       pendingStrikes.length = 0;
       heldHides.length = 0;
       fallenSections.clear();
+      roofOpened.clear();
       flattened.length = 0;
       flattenedSpans = new WeakSet();
       falling.length = 0;

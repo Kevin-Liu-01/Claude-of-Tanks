@@ -1227,13 +1227,17 @@ function* createFxSteps(
     pieceLandingFx(blast, x, y, z, speed, mass, look);
     landingSpillFx(blast, x, y, z, speed, mass, look);
   };
-  const fractureStages: FractureStages | null = mediaTier ? createFractureStages({
+  // (destruction-slabs 227 round 4; the round-3 critics: "phones get none of the round-3 hanging fix") the phone keeps the
+  // kit's holes, falls and heaps but has what they leave hanging come down too: the stages' sweep alone (a third of the
+  // desktop's work a frame, in steps a third the size) and a small pool for what it drops
+  const fractureStages: FractureStages | null = createFractureStages({
     group, now: () => particles.getTime(), environment: bodyEnvironment, groundAt: landingGround,
     materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null,
     onLanding: pieceLanding,
     onShards: (x, y, z, vx, vy, vz, mass, id) => { if (blast) breakShardsFx(blast, x, y, z, vx, vy, vz, mass, lookOf(id)); },
     hulls: auxiliaryEntities ? () => auxiliaryEntities() as Iterable<unknown> : undefined,
-  }) : null;
+    ...(mediaTier ? {} : { sweepOnly: true, capacity: 16, poolShare: 0, hangingSteps: 4, hangingSlice: 4000 }),
+  });
   const stages: StructureStages | null = structMask && structDebris
     ? createStructureStages({ mask: structMask, debris: structDebris, now: () => particles.getTime(),
       materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars, crumble: mediaTier ? 1 : 0.15,

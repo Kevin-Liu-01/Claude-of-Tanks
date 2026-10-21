@@ -1069,6 +1069,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/particleTextureAssets.selftest.mjs',
     'src/fx/volumeMedia.selftest.mjs',
     'src/fx/structureStages.selftest.mjs',
+    // destruction-slabs 227 round 3: what a building's damage leaves hanging comes down (a roof's chimney and ladder, a mill's
+    // sails, a loose room or face piece)
+    'src/fx/structureHanging.selftest.mjs',
+    // destruction-slabs 227 round 4: no debris plate rests on its edge, no remnant stands over the building as drawn
+    'src/fx/uprightPlates.selftest.mjs',
     'src/fx/structureStagesPieceHides.selftest.mjs', // 2026-10-16 props lane B (227 co-hold): a live run's named-piece hides wait for its wreck's birth, a settled run's apply at once
     'src/fx/structureDebris.selftest.mjs', // 2026-10-12: thrown pieces lie where their flight meets the ground; still pieces belong to their building
     'src/fx/rubbleBodies.selftest.mjs', // 2026-10-12: a building's larger falling pieces are bodies of the one physics engine
@@ -1081,6 +1086,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/collapseBodies.selftest.mjs',
     'src/fx/fractureStages.selftest.mjs',
     'tools/destruction-check.selftest.mjs', // 2026-10-12: Steinburg's buildings destroyed and judged (textured, nothing hanging, rubble at rest on the ground)
+    'tools/destruction-slab-check.selftest.mjs', // 2026-10-17: the stray-slab detector's judgement (a room past the walls, a floating plate, a flattened matrix)
     'src/fx/structureMask.selftest.mjs', // 2026-10-13: nothing hangs from a falling building (straddling triangles come down with the front)
     'src/fx/latticeGround.selftest.mjs', // 2026-10-13: the landing solves read the ground as drawn from its lattice's vertices, once each
     'src/ui/hitEventFormat.selftest.mjs',
@@ -1449,6 +1455,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/collapseCascade.selftest.mjs',
     // 2026-10-16 (destruction lane): a collapse leaves a ruin, never a raft (the r2 sweep's anti-raft floors), every kit
     'src/world/collapseRuin.selftest.mjs',
+    // 2026-10-17 (destruction-slabs 227, the owner's church slabs): one drawn enclosure per structure; the room, floor
+    // and ruin writers place through it
+    'src/world/structureEnclosure.selftest.mjs',
+    // 2026-10-18 (destruction-slabs 227 round 4): the intact and enclosure measures made off the parts when first asked
+    // for (never in the props build), the same read back through the placement
+    'src/world/structureDeferredMeasure.selftest.mjs',
     // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
     'src/world/destructionKit.selftest.mjs',
     'src/world/fractureAnatomy.selftest.mjs',
@@ -2226,5 +2238,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // FSP-01: real Garage, warm switches gated on main-thread blocking and
     // first painted frame; cold switches reported only.
     'tools/garage-switch-probe.selftest.mjs',
+    // destruction-slabs 227 (2026-10-17, the owner's church slabs): the stray-slab detector over every destructible kind of
+    // every map, one props build per map in a worker pool (no plate, wall or run standing past the walls, none floating)
+    'tools/destruction-slab-kinds.selftest.mjs',
   ]),
 });

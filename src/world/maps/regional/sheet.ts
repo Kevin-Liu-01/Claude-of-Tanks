@@ -442,10 +442,13 @@ export function collapseSheet(anatomy: StructureDamageAnatomy, seed: number, out
     for (const f of st0.faces) {
       const pen = new FacePen(f, fallbackSurface(f));
       for (const u of frameOf(f).columns) {
-        const base = at(pen, u, 0, -0.17);
+        // (destruction-slabs 227 round 3) the stump from the ground, a hand into it, whatever the face's foot stood on (a
+        // pad, a slab: the collapse takes them; stumps from the face's foot stood 0.4-0.8 m over the ground, cut loose)
+        const foot = at(pen, u, 0, -0.17);
+        const base: Vec3 = [foot[0], -0.1, foot[2]];
         const h = 0.8 + rng() * 2.2, ang = rng() * Math.PI * 2, bend = 0.15 + rng() * 0.9;
         const kneeH = Math.min(h, 0.6 + rng() * 0.8);
-        const knee: Vec3 = [base[0], base[1] + kneeH, base[2]];
+        const knee: Vec3 = [base[0], foot[1] + kneeH, base[2]];
         const tip: Vec3 = [knee[0] + Math.cos(ang) * bend, knee[1] + (h - kneeH) * 0.6, knee[2] + Math.sin(ang) * bend];
         beamBetween(mesh, base, knee, 0.18, 0.2, [0, 1, 0], STEEL);
         beamBetween(mesh, knee, tip, 0.18, 0.2, [0, 1, 0], STEEL);
