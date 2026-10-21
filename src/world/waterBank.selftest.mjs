@@ -22,6 +22,7 @@ import { shorelineWetnessFromDistance } from './shoreline.ts';
 import { createHeightField } from './terrain.ts';
 import { shallowWaterGeometrySteps } from './shallowWater.ts';
 import { getMapConfig } from './maps/index.ts';
+import { VISIBLE_WATER_MIN } from './visibleWater.ts';
 
 // ---- 1. the laws
 for (const rampStart of [0.30, 0.40, 0.55]) {
@@ -73,6 +74,9 @@ for (const [id, allowed] of Object.entries(ALLOWED)) {
     if (rise <= 0.1) continue;
     const cx = (pos.getX(vs[0]) + pos.getX(vs[1]) + pos.getX(vs[2])) / 3, cz = (pos.getZ(vs[0]) + pos.getZ(vs[1]) + pos.getZ(vs[2])) / 3;
     if ((ys[0] + ys[1] + ys[2]) / 3 <= hf.getHeightAt(cx, cz) + 0.02) continue;
+    // (the sheet's fragment discard, visibleWater.ts: no water is drawn where the mask is under VISIBLE_WATER_MIN; a cell
+    // a road dried, Reservoir's at its causeway, follows the ground there)
+    if (hf.getWaterMaskAt(cx, cz) < VISIBLE_WATER_MIN) continue;
     if (Math.max(Math.abs(cx), Math.abs(cz)) > 480) { edgeTilt++; continue; }
     visibleTilt++; worst = Math.max(worst, rise);
   }
