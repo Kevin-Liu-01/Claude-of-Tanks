@@ -131,10 +131,11 @@ function sideArmor(P: TankBuilderPort): void {
     }
     // Art fixes 230 (2026-10-21, hero-card critics: "the side skirt is a flat, featureless black slab"): the deep
     // rubber-fabric track skirt is painted in the vehicle scheme like the appliqué above it. Finish only.
-    P.addMudguard('ares-apc-skirt', 'hullFixedPaintedBodywork',
+    P.hangMudguard('ares-apc-skirt', 'hullFixedPaintedBodywork',
       markFixedPaintedPanel(part(box(0.035, 0.58, 5.62), 'track-skirt'), 'ares-apc-skirt', 'hullRubber'),
       side * 1.665, 0.82, 0.20);
-    P.add('hullDark', part(box(0.06, 0.05, 6.04), 'skirt-support-rail'), side * 1.61, 1.12, 0.20);
+    // 2026-10-19 (owner float sweep): the rail stood 65 mm under the applique's 1.21 floor; its top is now 2 mm into it.
+    P.add('hullDark', part(box(0.06, 0.05, 6.04), 'skirt-support-rail'), side * 1.61, 1.187, 0.20);
   }
 }
 
@@ -160,7 +161,7 @@ function roofHatches(P: TankBuilderPort): void {
   const hatches = [
     [0.326, 2.30, -1.83, 0.833, 0.966, 0.03],
     [0.68, 2.04, 1.55, 0.76, 0.79, -0.10],
-    [0.62, 2.39, 0.22, 0.83, 0.78, 0.02],
+    [0.62, 2.311, 0.22, 0.83, 0.78, 0.02], // 2026-10-19 (owner float sweep): sat 77 mm over the 2.278 roof; now on it
     [-0.43, 2.30, -0.30, 0.76, 0.72, 0.02],
   ] as const;
   for (const [x, y, z, w, d, rz] of hatches) {
@@ -173,7 +174,8 @@ function roofHatches(P: TankBuilderPort): void {
       { height: 0, inset: 1 },
       { height: 0.055, inset: 0.96 },
     ]), 'beveled-roof-hatch'), x, y - 0.035, z, 0, 0, rz);
-    P.add('hullDark', part(box(w * 0.70, 0.018, 0.028), 'hatch-hinge'), x, y + 0.035, z - d * 0.48, 0, 0, rz);
+    // 2026-10-19 (owner float sweep): the hinge stood 6 mm over the hatch's y+0.02 top; now 2 mm into it
+    P.add('hullDark', part(box(w * 0.70, 0.018, 0.028), 'hatch-hinge'), x, y + 0.027, z - d * 0.48, 0, 0, rz);
     P.add('hullDark', part(torus(0.065, 0.012, P.q ? 12 : 8), 'hatch-handle'), x + w * 0.25, y + 0.045, z + d * 0.18, Math.PI / 2);
   }
   for (const x of [-0.78, 0.82]) {
@@ -301,6 +303,9 @@ function remoteWeaponStation(P: TankBuilderPort): void {
     P.add('turretDark', part(box(0.055, 0.72, 0.16), 'rws-cradle-arm'), side * 0.40, 0.57, -0.06, 0, 0, side * 0.05);
     P.add('turretDark', part(cylX(0.05, 0.08, P.q ? 14 : 8), 'rws-cradle-cap'), side * 0.40, 0.82, -0.10);
   }
+  // 2026-10-19 (owner float sweep): the cradle arms stood ~0.09 m clear of the 0.56 pedestal (99 mm islands); a yoke
+  // base plate through the pedestal now carries both arm feet.
+  P.add('turretDark', part(box(0.86, 0.05, 0.16), 'rws-yoke-base'), 0, 0.24, -0.06);
   P.add('turret', part(box(0.28, 0.38, 0.42), 'rws-service-box'), 0.31, 0.55, -0.22);
   P.addModuleVisual('optics', 'turretGlass', part(box(0.16, 0.12, 0.016), 'rws-fixed-optic'), -0.02, 0.64, 0.411);
   P.add('turretDark', part(cylY(0.008, 0.008, 0.46, 8), 'rws-vertical-aerial'), 0.17, 0.76, -0.34);

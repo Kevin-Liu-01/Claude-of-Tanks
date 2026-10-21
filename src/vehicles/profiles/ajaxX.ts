@@ -99,7 +99,7 @@ function rearEquipment(P:TankBuilderPort):void {
   P.addEquipment('hullDetail',box(.028,.39,.027),-.263,1.38,-3.408);
   for(const side of [-1,1]) {
     P.addEquipment('hullDetail',box(.056,.66,.052),side*1.964,1.732,-4.187);
-    P.addEquipment('hullDetail',cylZ(.047,.024,P.q?18:10),side*1.868,1.787,-4.223);
+    P.addEquipment('hullDetail',cylZ(.047,.024,P.q?18:10),side*1.893,1.787,-4.223); // 2026-10-19 (owner float sweep): was 21 mm off its post
     P.addEquipment('hullDetail',box(.11,.08,.19),side*.885,.737,-3.326);
     P.addEquipment('hullDetail',torus(.051,.014,P.q?16:10,6),side*.885,.704,-3.418);
   }
@@ -199,7 +199,8 @@ function turret(P:TankBuilderPort):void {
   for(const side of [-1,1]) {
     smokeBankCarrier(P, add, side);
     smokeBankSockets(P, add, side);
-    for(const z of [-2.42,-1.24])add('turretDetail',box(.065,.14,.08),side*1.30,2.60,z);
+    // 2026-10-19 (owner float sweep): the boxes stood 25-40 mm off the wall's raked upper band; set into it
+    for(const z of [-2.42,-1.24])add('turretDetail',box(.065,.14,.08),side*1.255,2.60,z);
   }
   turretServicePlateAndAntennas(P, add);
   turretHatches(P, add);
@@ -431,6 +432,9 @@ function panoramicSight(P: TankBuilderPort, add: EquipmentAdder): void {
   add('turretDetail',box(.469,.300,.038),.569,3.46,-2.495);
   add('turretDetail',box(.469,.040,.377),.569,3.589,-2.326);
   for(const x of [.355,.783])add('turretDetail',box(.041,.243,.315),x,3.433,-2.327);
+  // 2026-10-19 (owner float sweep): the cheeks stood 22 mm clear of the lens housing on both sides, so the roof, cheeks
+  // and top floated; a web behind the lens joins each cheek to the housing
+  for(const x of [.3865,.7515])add('turretDetail',box(.030,.080,.060),x,3.36,-2.30);
   for(const x of [.461,.677])add('turretDetail',box(.014,.045,.020),x,3.631,-2.265);
   add('turretDetail',box(.216,.014,.020),.569,3.653,-2.265);
   add('turretGlass',box(.267,.223,.018),.569,3.321,-2.130);

@@ -67,8 +67,9 @@ export function addPL01FieldTurret(P: FieldTurretPort, roofY: number): void {
     for (const dz of [-.18,.18])
       P.addEquipment('turretDark',box(.425,.239,.028),x,.567,z+dz);
     // Rear-facing cameras live in the basket corner guards, below the MG sweep.
-    P.addEquipment('turretDetail',box(.15,.12,.105),x,.63,z-.36);
-    P.addEquipment('turretGlass',cylZ(.039,.014,12),x,.63,z-.42);
+    // 2026-10-19 (owner float sweep): the camera hung between the guard rails (17 mm clear); it sits on the lower rail.
+    P.addEquipment('turretDetail',box(.15,.12,.105),x,.58,z-.36);
+    P.addEquipment('turretGlass',cylZ(.039,.014,12),x,.58,z-.42);
   }
 
   // Low electronics/radio enclosure behind the weapon pedestal. A flat

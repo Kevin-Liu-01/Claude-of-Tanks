@@ -12,9 +12,18 @@
  * every hull on its tracks, turns the sweep off. Cost: a copy is redrawn only on the frames its field changed, at most
  * REDRAW_MAX copies a frame (the rest the next), with the scratch reused; a copy left alone FREEZE_FRAMES frames stops
  * being redrawn and is culled by its own bounds again.
+ *
+ * A map car (the car-wreck lane, 2026-10-20; Steinburg r5's blind critics: a run-over car read as "a flat, wavy green
+ * sheet with no wheels", a shot one kept its showroom shape under a char tint): its copy reads its own anatomy (propCrush.ts
+ * vehicleAnatomy) so a hull leaves it a crushed car, its glass bursting at the first press; a round's kill buckles it as
+ * it burns (wreckCrumple.ts's burnt-out crumple, a share at the kill and the rest as the fire takes it), burns its tyres
+ * to the rims and blackens its paint, chrome and rubber in its own colours (soot, oxide mottles, ash on the hot panels).
  */
 import * as THREE from 'three';
-import { addDent, createCrushField, deformPositions, flatNormals, hullMeetsBox, pressField, sweepPose, type CrushField } from './propCrush.ts';
+import {
+  addDent, createCrushField, deformPositions, flatNormals, hullMeetsBox, pressField, sweepPose, vehicleAnatomy, type CrushField,
+} from './propCrush.ts';
+import { crumpleBurntVehicle } from './wreckCrumple.ts';
 
 /** A destructible record as this reads it (props.ts DestructibleRecord). */
 interface CrushRecordLike {
@@ -50,8 +59,11 @@ interface PropCrushHost {
   cloth?(kind: string): boolean;
   /** Whether a kind burns when a round destroys it (the map vehicles): its char comes over seconds, then its burnt build. */
   burns?(kind: string): boolean;
-  /** A prop began burning at (x, y, z), `heightM` tall (the fire and smoke the effects raise over it). */
-  onBurn?(x: number, y: number, z: number, heightM: number): void;
+  /** Whether a kind is a car (the map's civilian vehicles): its crush reads its anatomy, its burn buckles and chars it. */
+  vehicle?(kind: string): boolean;
+  /** A prop of `kind` began burning at (x, y, z), `heightM` tall, its length along (axisX, axisZ) (its nose's half
+   *  length, world): the fire and smoke the effects raise over it. */
+  onBurn?(x: number, y: number, z: number, heightM: number, kind: string, axisX: number, axisZ: number): void;
 }
 
 /** A crush event the presentation never pressed sweeps a hull across the prop over this long (s). */
@@ -69,13 +81,42 @@ const CHAR_T0 = 0.6;
 const CHAR_S = 4.5;
 /** Char: the paint's colour at the end of its burn. */
 const CHAR_RGB = [0.07, 0.06, 0.055];
+/** A car's burn: the share of its burnt-out crumple the kill gives at once, the share of the burn its colours are
+ *  updated at (a cheap upload) and its shape redrawn at (the press's full redraw), what is left of a tyre's radius on its
+ *  rim, and the burnt build's colours (linear; vehicleMesh.ts shadeVertex's burn). */
+const CAR_BURN = { impact: 0.3, colourStep: 0.03, shapeStep: 0.1, rim: 0.72, canvas: 0.3 } as const;
+const SOOT: readonly [number, number, number] = [0.022, 0.019, 0.017];
+const STEEL: readonly [number, number, number] = [0.05, 0.048, 0.046];
+const OXIDE: readonly [number, number, number] = [0.105, 0.042, 0.018];
+const ASH: readonly [number, number, number] = [0.2, 0.19, 0.175];
+
+/** A car's burn in flight: its rest as it burns (the press draws from it), the intact and the burnt rests, colours and
+ *  surface streams; `drawn` the share last drawn. */
+interface CarBurn {
+  readonly live: Float32Array;
+  readonly from: Float32Array;
+  readonly to: Float32Array;
+  readonly col0: Float32Array;
+  readonly col1: Float32Array;
+  readonly surf0: Uint8Array;
+  readonly surf1: Uint8Array;
+  /** Its canvas's triangles (their first index), burnt away once the fire has taken it; null when it has none. */
+  canvas: Uint32Array | null;
+  /** The share of the burn last coloured and last redrawn (−1: not yet). */
+  coloured: number;
+  drawn: number;
+}
 
 interface CrushTarget {
   readonly index: number;
   readonly kind: string;
   readonly mesh: THREE.InstancedMesh;
   readonly geometry: THREE.BufferGeometry;
-  readonly rest: Float32Array;
+  /** The rest it is drawn from: the pool's own (never written; its body's alone when the build carries a far form), or a
+   *  car's burning rest (CarBurn.live). */
+  rest: Float32Array;
+  /** The triangles it draws (its index, or its body's share of it). */
+  readonly tris: Uint16Array | Uint32Array | null;
   readonly field: CrushField;
   readonly inverse: THREE.Matrix4;
   /** The source it hid: the pool's intact slot, or its broken mesh's. */
@@ -97,6 +138,8 @@ interface CrushTarget {
   rammed: boolean;
   /** Burning: its clock (s since the kill), the paint it chars from, whether the burnt build has taken its place. */
   burn: { t: number; from: [number, number, number]; swapped: boolean } | null;
+  /** A car's burn (its crumple, its tyres and its colours), or null. */
+  carBurn: CarBurn | null;
 }
 
 interface PropCrushPresentation {
@@ -130,6 +173,7 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
   const _m = new THREE.Matrix4(), _zero = new THREE.Matrix4().makeScale(0, 0, 0), _v = new THREE.Vector3(), _c = new THREE.Color();
   const _m2 = new THREE.Matrix4(), _m3 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
   const _axis = new THREE.Vector3();
+  const _burnt: [number, number, number] = [0, 0, 0];
   const _pose: number[] = [0, 0, 0, 0, 0, 0];
   let sweeps = true;
   let cursor = 0;
@@ -156,11 +200,26 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     const box = src.boundingBox!;
     const hw = Math.max(-box.min.x, box.max.x, 0.2), hl = Math.max(-box.min.z, box.max.z, 0.2);
     const geometry = src.clone();
+    // a build that carries its far form (the maps lane's vehicleFarForm.ts: its vertices and triangles at the end of the
+    // streams, tagged aVehicleLod for the material's fold past 120 m): the copy draws its body alone at every distance — the
+    // far form's triangles out of its draw range, the tag gone (an untagged vertex never folds) — and reads, deforms and
+    // burns the body alone
+    const far = src.userData.vehicleFar as { vertexStart: number; indexStart: number } | undefined;
+    if (far) {
+      geometry.setDrawRange(0, far.indexStart);
+      if (geometry.getAttribute('aVehicleLod')) geometry.deleteAttribute('aVehicleLod');
+    }
     const position = geometry.getAttribute('position') as THREE.BufferAttribute;
     position.setUsage(THREE.DynamicDrawUsage);
     (geometry.getAttribute('normal') as THREE.BufferAttribute | undefined)?.setUsage(THREE.DynamicDrawUsage);
     const material = source.mesh.material;
     const mesh = new THREE.InstancedMesh(geometry, material, 1);
+    const allRest = (src.getAttribute('position') as THREE.BufferAttribute).array as Float32Array;
+    const restArray = far ? allRest.subarray(0, far.vertexStart * 3) : allRest;
+    const surf = src.getAttribute('surf') as THREE.BufferAttribute | undefined;
+    // a car reads its own anatomy (its belt line, its wheels) for the crush
+    const anatomy = host.vehicle?.(rec.kind) && surf
+      ? vehicleAnatomy(restArray, surf.array as ArrayLike<number>, surf.normalized ? 255 : 1, box.max.y, hw) : null;
     const matrix = pool.mats4[rec.slot];
     mesh.setMatrixAt(0, matrix);
     if (source.mesh.instanceColor) {
@@ -178,10 +237,12 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     source.mesh.setMatrixAt(source.slot, _zero);
     source.mesh.instanceMatrix.needsUpdate = true;
     const target: CrushTarget = {
-      index, kind: rec.kind, mesh, geometry, rest: (src.getAttribute('position') as THREE.BufferAttribute).array as Float32Array,
-      field: createCrushField(hw, hl, box.max.y, undefined, host.cloth?.(rec.kind) ?? false, pool.meta?.crushFloor ?? 0), inverse: new THREE.Matrix4().copy(matrix).invert(), fromBroken: source.broken,
+      index, kind: rec.kind, mesh, geometry, rest: restArray,
+      tris: geometry.index ? (far ? (geometry.index.array as Uint16Array | Uint32Array).subarray(0, far.indexStart) : geometry.index.array as Uint16Array | Uint32Array) : null,
+      field: createCrushField(hw, hl, box.max.y, undefined, host.cloth?.(rec.kind) ?? false, pool.meta?.crushFloor ?? 0, anatomy),
+      inverse: new THREE.Matrix4().copy(matrix).invert(), fromBroken: source.broken,
       hw, hl, dirty: false, idle: 0, frozen: false, sweep: null,
-      placement: matrix.clone(), shove: null, glassOut: false, rammed: false, burn: null,
+      placement: matrix.clone(), shove: null, glassOut: false, rammed: false, burn: null, carBurn: null,
     };
     targets.set(index, target);
     order.push(target);
@@ -202,6 +263,8 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     lfx /= l; lfz /= l;
     if (pressField(t.field, cx, cz, lfx, lfz, halfLength * l, halfWidth * l)) {
       t.dirty = true; t.idle = 0;
+      // a car's glass bursts as the hull comes onto it
+      if (t.field.vehicle) glassOut(t);
       if (t.frozen) { t.frozen = false; t.mesh.frustumCulled = false; }
       if (t.field.floor > 0 && !t.rammed) shoveAside(t, x, z, fx, fz, halfWidth);
     }
@@ -259,8 +322,9 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
         tilt = t.shove.tilt * Math.sin(Math.PI * k) * (1 - k * 0.6);
         yaw = t.shove.yaw * ease; ax = t.shove.ax; az = t.shove.az;
       }
-      // a burnt body settles onto its rims as its tyres go (until that is baked into its placement)
-      if (t.burn && !t.burn.swapped) oy -= 0.12 * Math.min(1, Math.max(0, (t.burn.t - CHAR_T0) / CHAR_S));
+      // a burnt body settles onto its rims as its tyres go (until that is baked into its placement; a car's tyres burn to
+      // its rims in its own rest)
+      if (t.burn && !t.burn.swapped && !t.carBurn) oy -= 0.12 * Math.min(1, Math.max(0, (t.burn.t - CHAR_T0) / CHAR_S));
       _q.setFromAxisAngle(_axis.set(ax, 0, az), tilt);
       _q2.setFromAxisAngle(_axis.set(0, 1, 0), yaw);
       _q.multiply(_q2);
@@ -287,9 +351,134 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     const from: [number, number, number] = [1, 1, 1];
     if (t.mesh.instanceColor) { t.mesh.getColorAt(0, _c); from[0] = _c.r; from[1] = _c.g; from[2] = _c.b; }
     t.burn = { t: settled ? CHAR_T0 + CHAR_S + 1 : 0, from, swapped: false };
-    if (!settled && rec) host.onBurn?.(rec.x, rec.y, rec.z, t.field.top);
-    tint(t);
+    if (t.field.vehicle) t.carBurn = carBurnOf(t);
+    if (!settled && rec) {
+      const e = t.placement.elements;
+      host.onBurn?.(rec.x, rec.y, rec.z, t.field.top, rec.kind, e[8] * t.hl, e[10] * t.hl);
+    }
+    if (t.carBurn) carBurnStep(t);
+    else tint(t);
     t.dirty = true; t.idle = 0;
+  }
+
+  /**
+   * A car's burn, planned at the kill (allocates once): its burnt-out crumple (wreckCrumple.ts, seeded by its record),
+   * its tyres burnt to the rims and the body settled onto them, and its burnt colours and surfaces. Null without the
+   * colour and surface streams (the instance tint chars it instead).
+   */
+  function carBurnOf(t: CrushTarget): CarBurn | null {
+    const car = t.field.vehicle;
+    const color = t.geometry.getAttribute('color') as THREE.BufferAttribute | undefined;
+    const surf = t.geometry.getAttribute('surf') as THREE.BufferAttribute | undefined;
+    const normal = t.geometry.getAttribute('normal') as THREE.BufferAttribute | undefined;
+    if (!car || !color || !surf || !normal || !(color.array instanceof Float32Array) || !(surf.array instanceof Uint8Array)) return null;
+    const from = new Float32Array(t.rest), n = from.length;
+    // the crumple, on a scratch geometry of its own rest (positions and the rest's normals)
+    const scratch = new THREE.BufferGeometry();
+    scratch.setAttribute('position', new THREE.BufferAttribute(new Float32Array(from), 3));
+    scratch.setAttribute('normal', new THREE.BufferAttribute((normal.array as Float32Array).slice(0, n), 3));
+    crumpleBurntVehicle(scratch, (Math.imul(t.index + 1, 2654435761) >>> 0) & 0x7fffffff);
+    const to = (scratch.getAttribute('position') as THREE.BufferAttribute).array as Float32Array;
+    scratch.dispose();
+    // the tyres burnt to the rims, the body settled onto them by what its smallest tyre lost
+    const scale = surf.normalized ? 255 : 1, sa = surf.array, w = car.wheels;
+    let settle = 0;
+    for (let k = 0; k < w.length; k += 6) settle = settle ? Math.min(settle, w[k + 2] * (1 - CAR_BURN.rim)) : w[k + 2] * (1 - CAR_BURN.rim);
+    for (let v = 0; v < car.wheelOf.length; v++) {
+      const k = car.wheelOf[v];
+      if (k >= 0 && sa[v * 3] / scale > 0.8 && sa[v * 3 + 1] / scale < 0.05 && sa[v * 3 + 2] / scale < 0.05) {
+        const o = k * 6, dz = to[v * 3 + 2] - w[o], dy = to[v * 3 + 1] - w[o + 1];
+        const r = Math.hypot(dz, dy), keep = r > w[o + 2] * CAR_BURN.rim ? (w[o + 2] * CAR_BURN.rim) / r : 1;
+        to[v * 3 + 1] = w[o + 1] + dy * keep; to[v * 3 + 2] = w[o] + dz * keep;
+      }
+      to[v * 3 + 1] = Math.max(0, to[v * 3 + 1] - settle);
+    }
+    // its livery baked into its colours at the kill (r1c, both critics: a car early in its burn read "washed-out pale" —
+    // the paint mask faded out while its colours were still light, so the livery went to the bare paint's light grey):
+    // the char then takes the livery itself down, the mask off from the start
+    let inst: THREE.Color | null = null;
+    if (t.mesh.instanceColor) { t.mesh.getColorAt(0, _c); inst = _c; }
+    const col0 = (color.array as Float32Array).slice(0, n), col1 = new Float32Array(n);
+    const surf0 = (sa as Uint8Array).slice(0, n), surf1 = new Uint8Array(n);
+    for (let v = 0; v < n / 3; v++) {
+      const p = surf0[v * 3 + 2] / scale;
+      if (inst && p > 0) { col0[v * 3] *= 1 + (inst.r - 1) * p; col0[v * 3 + 1] *= 1 + (inst.g - 1) * p; col0[v * 3 + 2] *= 1 + (inst.b - 1) * p; }
+      surf0[v * 3 + 2] = 0;
+    }
+    // its burnt colours (r1c: the critics read a uniform rust-orange by day and a black lump by night): over the waist the
+    // fire burns the panels through to grey ash and dark steel with oxide flecks, under it the paint is scorched dark
+    // (its own colour still under the soot), soot streaks the sides at the waist and darkens the underside; glass, rubber
+    // and the cabin go to soot
+    const na = normal.array as Float32Array, belt = car.belt;
+    for (let v = 0; v < n / 3; v++) {
+      const x = from[v * 3], y = from[v * 3 + 1], z = from[v * 3 + 2], ny = na[v * 3 + 1];
+      const rough = surf0[v * 3] / scale, metal = surf0[v * 3 + 1] / scale;
+      const soft = metal < 0.05 && sa[v * 3 + 2] / scale < 0.05 && (rough < 0.12 || rough > 0.8);
+      if (soft) { _burnt[0] = SOOT[0]; _burnt[1] = SOOT[1]; _burnt[2] = SOOT[2]; }
+      else {
+        // over the waist and on the faces the fire rose past: steel burnt through to ash
+        _burnt[0] = STEEL[0]; _burnt[1] = STEEL[1]; _burnt[2] = STEEL[2];
+        mixInto(_burnt, ASH, 0.25 + 0.5 * smoothstep(0.35, 0.75, noise3(x * 1.7, y * 1.7, z * 1.7, 301)) * (0.5 + 0.5 * Math.max(0, ny)));
+        mixInto(_burnt, OXIDE, smoothstep(0.6, 0.9, noise3(x * 3.3, y * 3.3, z * 3.3, 303)) * 0.35);
+        // under the waist: the paint scorched, its colour still there under the soot
+        const k = ny > 0.5 ? 0 : 1 - smoothstep(belt * 0.55, belt * 1.05, y);
+        if (k > 0) {
+          _burnt[0] += (col0[v * 3] * 0.2 + SOOT[0] - _burnt[0]) * k;
+          _burnt[1] += (col0[v * 3 + 1] * 0.2 + SOOT[1] - _burnt[1]) * k;
+          _burnt[2] += (col0[v * 3 + 2] * 0.2 + SOOT[2] - _burnt[2]) * k;
+        }
+        // the soot the flames left streaked up the sides from the windows and round the wheel arches
+        if (Math.abs(ny) < 0.55) mixInto(_burnt, SOOT, smoothstep(0.5, 0.85, noise3(x * 2.4, y * 0.9, z * 2.4, 311)) * 0.55);
+      }
+      // the ground's and the underside's shade (the build's occlusion, which the burnt colours replace)
+      const shade = (0.62 + 0.38 * smoothstep(0, 0.85, y)) * (ny < 0 ? 1 + 0.55 * ny : 1);
+      col1[v * 3] = _burnt[0] * shade; col1[v * 3 + 1] = _burnt[1] * shade; col1[v * 3 + 2] = _burnt[2] * shade;
+      surf1[v * 3] = soft ? 250 : 230; surf1[v * 3 + 1] = soft ? 0 : 20; surf1[v * 3 + 2] = 0;
+    }
+    // its canvas (a tilt, a hood: matte cloth over the waist) burns away as the fire takes it (r1c: a burnt tilt read as
+    // "a smooth black balloon")
+    let canvas: Uint32Array | null = null;
+    if (t.geometry.index) {
+      const ix = t.geometry.index.array, cloth = (v: number): boolean => v * 3 < n && sa[v * 3] / scale > 0.935
+        && sa[v * 3 + 1] / scale < 0.05 && sa[v * 3 + 2] / scale < 0.05 && from[v * 3 + 1] > belt && car.wheelOf[v] < 0;
+      const tris: number[] = [];
+      for (let k = 0; k + 2 < (t.tris ?? ix).length; k += 3) if (cloth(ix[k]) && cloth(ix[k + 1]) && cloth(ix[k + 2])) tris.push(k);
+      if (tris.length) canvas = Uint32Array.from(tris);
+    }
+    const live = new Float32Array(from);
+    t.rest = live;
+    return { live, from, to, col0, col1, surf0, surf1, canvas, coloured: -1, drawn: -1 };
+  }
+
+  /** A car's burn at its clock: the char (its colours every CAR_BURN.colourStep of the burn) and the crumple (a share at
+   *  the kill, the rest as the fire takes hold; its shape redrawn every CAR_BURN.shapeStep). */
+  function carBurnStep(t: CrushTarget): void {
+    const cb = t.carBurn, b = t.burn;
+    if (!cb || !b) return;
+    const e = smoothstep(0, 1, (b.t - CHAR_T0) / CHAR_S);
+    if (burnDue(cb.coloured, CAR_BURN.colourStep, e)) {
+      cb.coloured = e;
+      const color = t.geometry.getAttribute('color') as THREE.BufferAttribute, surf = t.geometry.getAttribute('surf') as THREE.BufferAttribute;
+      const ca = color.array as Float32Array, sa = surf.array as Uint8Array;
+      for (let i = 0; i < cb.col0.length; i++) {
+        ca[i] = cb.col0[i] + (cb.col1[i] - cb.col0[i]) * e;
+        sa[i] = Math.round(cb.surf0[i] + (cb.surf1[i] - cb.surf0[i]) * e);
+      }
+      color.needsUpdate = true; surf.needsUpdate = true;
+    }
+    if (cb.canvas && e >= CAR_BURN.canvas && t.geometry.index) {
+      const ix = t.geometry.index.array as Uint16Array | Uint32Array;
+      for (let k = 0; k < cb.canvas.length; k++) { const a = cb.canvas[k]; ix[a + 1] = ix[a]; ix[a + 2] = ix[a]; }
+      t.geometry.index.needsUpdate = true;
+      cb.canvas = null;
+    }
+    if (burnDue(cb.drawn, CAR_BURN.shapeStep, e)) {
+      cb.drawn = e;
+      const bend = CAR_BURN.impact + (1 - CAR_BURN.impact) * e;
+      for (let i = 0; i < cb.live.length; i++) cb.live[i] = cb.from[i] + (cb.to[i] - cb.from[i]) * bend;
+      t.dirty = true; t.idle = 0;
+      if (t.frozen) { t.frozen = false; t.mesh.frustumCulled = false; }
+    }
   }
 
   /** The paint's char at the burn's clock. */
@@ -357,10 +546,11 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
         burn(t, dirX, dirZ, settled);
         return true;
       }
-      if (have) return true;
+      if (have) { if (have.field.vehicle) glassOut(have); return true; }
       // (the record breaks this moment from its intact slot: breakRecord has marked it broken already)
       const t = begin(index, true);
       if (!t) return false;
+      if (t.field.vehicle) glassOut(t);
       if (sweeps) {
         // the direction in its own frame
         _v.set(rec.x, rec.y, rec.z).applyMatrix4(t.inverse);
@@ -369,7 +559,7 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
         t.sweep = { dx: _v.x - ox, dz: _v.z - oz, k: 0 };
         if (settled) {
           for (let s = 0; s <= 24; s++) {
-            sweepPose(t.hw, t.hl, t.sweep.dx, t.sweep.dz, s / 24, _pose);
+            sweepPose(t.hw, t.hl, t.sweep.dx, t.sweep.dz, s / 24, _pose, !!t.field.vehicle);
             if (pressField(t.field, _pose[0], _pose[1], _pose[2], _pose[3], _pose[4], _pose[5])) t.dirty = true;
           }
           t.sweep = null;
@@ -411,7 +601,11 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
             t.shove.t = SHOVE_S;
           }
         }
-        if (t.burn && !t.burn.swapped) { t.burn.t += Math.max(0, dt); tint(t); }
+        if (t.burn && !t.burn.swapped) {
+          t.burn.t += Math.max(0, dt);
+          if (t.carBurn) carBurnStep(t);
+          else tint(t);
+        }
         place(t);
         t.idle = 0;
         // both settled (a shove thrown, a burn charred): where it lies now is its placement — the presses' and the
@@ -431,7 +625,7 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
         const k0 = t.sweep.k, k1 = Math.min(1, k0 + Math.max(0, dt) / SWEEP_S);
         // a few presses over the step (a fast sweep must not jump cells)
         for (let s = 1; s <= 3; s++) {
-          sweepPose(t.hw, t.hl, t.sweep.dx, t.sweep.dz, k0 + (k1 - k0) * (s / 3), _pose);
+          sweepPose(t.hw, t.hl, t.sweep.dx, t.sweep.dz, k0 + (k1 - k0) * (s / 3), _pose, !!t.field.vehicle);
           if (pressField(t.field, _pose[0], _pose[1], _pose[2], _pose[3], _pose[4], _pose[5])) { t.dirty = true; t.idle = 0; }
         }
         t.sweep.k = k1;
@@ -448,7 +642,7 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
         deformPositions(t.field, t.rest, position.array as Float32Array);
         position.needsUpdate = true;
         if (normal) {
-          flatNormals(position.array as Float32Array, t.geometry.index ? t.geometry.index.array : null, normal.array as Float32Array);
+          flatNormals(position.array as Float32Array, t.tris, normal.array as Float32Array);
           normal.needsUpdate = true;
         }
         t.dirty = false;
@@ -489,4 +683,42 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
       return { copies: order.length, deforming, frozen };
     },
   };
+}
+
+/** Whether a burn's update last made at share `last` (−1: none) is due again at share `e`, every `step` and at its end. */
+function burnDue(last: number, step: number, e: number): boolean {
+  return last < 0 || (last < 1 && (e >= 1 || e - last >= step));
+}
+
+/** Mix colour `o` toward `c` by `k` (in place). */
+function mixInto(o: [number, number, number], c: readonly [number, number, number], k: number): void {
+  o[0] += (c[0] - o[0]) * k; o[1] += (c[1] - o[1]) * k; o[2] += (c[2] - o[2]) * k;
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+function smoothstep(a: number, b: number, x: number): number {
+  const k = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return k * k * (3 - 2 * k);
+}
+
+/** A lattice hash in [0, 1). */
+function hash01(i: number, j: number, k: number, seed: number): number {
+  let h = Math.imul(i | 0, 73856093) ^ Math.imul(j | 0, 19349663) ^ Math.imul(k | 0, 83492791) ^ Math.imul(seed | 0, 0x27d4eb2d);
+  h = Math.imul(h ^ (h >>> 13), 0x5bd1e995);
+  h ^= h >>> 15;
+  return (h >>> 0) / 4294967296;
+}
+
+/** Smooth value noise in [0, 1) over the unit lattice (the burn's mottle; once per vertex at a kill). */
+function noise3(x: number, y: number, z: number, seed: number): number {
+  const i = Math.floor(x), j = Math.floor(y), k = Math.floor(z);
+  const fx = x - i, fy = y - j, fz = z - k;
+  const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy), w = fz * fz * (3 - 2 * fz);
+  return lerp(
+    lerp(lerp(hash01(i, j, k, seed), hash01(i + 1, j, k, seed), u), lerp(hash01(i, j + 1, k, seed), hash01(i + 1, j + 1, k, seed), u), v),
+    lerp(lerp(hash01(i, j, k + 1, seed), hash01(i + 1, j, k + 1, seed), u), lerp(hash01(i, j + 1, k + 1, seed), hash01(i + 1, j + 1, k + 1, seed), u), v),
+    w);
 }

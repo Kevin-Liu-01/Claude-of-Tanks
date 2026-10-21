@@ -20,8 +20,9 @@ assert.deepEqual(calls.pop(), ['fx', 'fence', 1, 2, 3, 4, 5, 6, 0],
 emitBreakFx('bunker-concrete', 1, 2, 3, 4, 5, 6, 3.6);
 assert.deepEqual(calls.pop(), ['fx', 'bunker-concrete', 1, 2, 3, 4, 5, 6, 3.6], 'a pillbox passes its own make and its ground scar');
 const propsSource = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-assert.match(propsSource, /const fxKind = rec\.kind === 'bunker' && fort \? \(fort\.style === 'logearth' \? 'bunker-logearth' : 'bunker-concrete'\) : rec\.kind;/,
-  'props break a pillbox in its map\'s construction (concrete or log-and-earth); every other kind as itself');
+assert.match(propsSource, /const fxKind = rec\.kind === 'bunker' && fort \? \(fort\.style === 'logearth' \? 'bunker-logearth' : 'bunker-concrete'\)\s*: rec\.kind in CIVILIAN_VEHICLE_RECEIPTS \|\| \/\^\(setpiece\|rolling\|tram\)_\/\.test\(rec\.kind\) \? \(cause === 'ram' \? 'vehiclecrush' : 'vehiclewreck'\)\s*: rec\.kind;/,
+  'props break a pillbox in its map\'s construction (concrete or log-and-earth), a motor vehicle, works machine, wagon or tram as metal '
+  + '(a hull\'s crunch or a round\'s wreck: the car-wreck lane, 2026-10-20, no wood dust off a car); every other kind as itself');
 assert.match(propsSource, /emitBreakFx\(fxKind,[^;]*scarM \* rec\.sc\);/, 'props pass the broken kind\'s own ground scar, scaled by the instance');
 setBreakFxProvider(null);
 emitBreakFx('barrel', 0, 0, 0, 0, 0, 0);

@@ -53,6 +53,7 @@ import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { PolyMultiLoftRing } from '../factoryGeometry.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 import { mount as wrapMount } from './fittingMount.ts';
+import { beamBetween } from './measuredPrimitives.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -434,6 +435,8 @@ interface LeopardHullV3Config {
     readonly z1: number;
     readonly drop?: number;
     readonly followDeck?: boolean;
+    /** how far the planks' inner edge runs into the body side (default 10 mm) */
+    readonly embed?: number;
   };
   readonly fenderFore?: {
     readonly z0: number;
@@ -587,6 +590,8 @@ interface LeopardWedgeV3Config {
   readonly hatchTopL?: number;
   readonly hatchRound?: boolean;
   readonly mastTop?: number;
+  readonly mastBaseY?: number;
+  readonly liftEyeY?: number;
   readonly mastX?: number;
   readonly mastZ: number;
   readonly whips?: ReadonlyArray<{
@@ -1679,6 +1684,21 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
       const nfF = H.noseFillZFront ?? (tip[0] - 0.40);
       const nfB = tip[0] - 1.50;
       P.add('hull', box(GLC ? Math.min(hw * 1.6, GLC.x * 2) : hw * 1.6, 0.5, nfF - nfB), 0, tip[1] - 0.42, (nfF + nfB) / 2);
+      // Without the lower-front closure below, a tub stopping short of the nose fill left the belly open between them
+      // up to the glacis (owner 2026-10-19: "fill in the underside of the kf51u", "the empty gaps in hulls are
+      // annoying": 0.84 m on the KF51-U, 0.36 m on the 2 Improved, the 2A4 V and 2A4M, the Strv 121). One lower
+      // front plate joins them: its rear ring 30 mm inside the tub and its front ring 30 mm inside the nose fill (past
+      // their rounded edges), each 6 mm inside that section so no face is shared, its floor rising from the tub belly
+      // to the nose fill's underside.
+      const tubFrontZ = deck[0][0] - 0.05;
+      if (!UGC && tubFrontZ < nfB) {
+        const rx = innerW / 2 - 0.006, fx = (GLC ? Math.min(hw * 1.6, GLC.x * 2) : hw * 1.6) / 2 - 0.006;
+        const rearFloorY = bellyY - 0.054, rearTopY = H.sponsonY - 0.006;
+        const frontFloorY = tip[1] - 0.664, frontTopY = tip[1] - 0.176, rz = tubFrontZ - 0.03, fz = nfB + 0.03;
+        P.add('hull', slab(
+          [-rx, rearFloorY, rz], [rx, rearFloorY, rz], [fx, frontFloorY, fz], [-fx, frontFloorY, fz],
+          [-rx, rearTopY, rz], [rx, rearTopY, rz], [fx, frontTopY, fz], [-fx, frontTopY, fz]));
+      }
     }
     // Optional Leopard-family lower-front closure. The upper glacis is a
     // chain of armored slabs, but without this receding lower plate and belly
@@ -1943,12 +1963,15 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
       const segL = (F.z1 - F.z0) / segN;
       const th = F.y1 - F.y0;
       const drop = F.drop ?? 0.005;            // fender top below the deck line
+      // The planks run inboard into the body side (owner 2026-10-19 sweep: on the 2A3 their 1.622 inner edge stood 6 cm
+      // off the 1.56 body, every plank floating); the dark top keeps its authored outboard band.
+      const x0 = Math.min(F.x0, H.bodyHW - (F.embed ?? 0.01));
       for (const s of [-1, 1] as const) {
         for (let k = 0; k < segN; k++) {
           const zc = F.z0 + segL * (k + 0.5);
           const yTop = F.followDeck === false ? F.y1 : Math.min(F.y1, deckYAt(deck, zc) - drop);
-          P.add('hull', box(F.x1 - F.x0, th, segL - 0.02),
-            s * (F.x0 + F.x1) / 2, yTop - th / 2, zc);
+          P.add('hull', box(F.x1 - x0, th, segL - 0.02),
+            s * (x0 + F.x1) / 2, yTop - th / 2, zc);
           P.add('hullDark', box((F.x1 - F.x0) * 0.7, 0.012, segL - 0.06),
             s * (F.x0 + F.x1) / 2, yTop + 0.006, zc);
         }
@@ -2022,7 +2045,8 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
     const fsTh = FS.th ?? 0.10;
     const fsX = FS.lip ? FS.lip.x - 0.04 : FS.x;
     segRun('hull', fsX, fsTh, FS.y0, FS.y1, FS.z0, FS.z1);
-    if (FS.lip) segRun('hull', FS.lip.x, 0.02, FS.lip.y0, FS.lip.y1, FS.lip.z0, FS.lip.z1);
+    // 2026-10-19 (owner float sweep): the 20 mm lip stood 20 mm off the block (fsX = lip.x - 0.04); 42 mm deep it meets it.
+    if (FS.lip) segRun('hull', FS.lip.x, 0.042, FS.lip.y0, FS.lip.y1, FS.lip.z0, FS.lip.z1);
     if (FS.flap !== false) {
       for (const s of [-1, 1] as const) {
         P.add('hull', box(fsTh, 0.12, FS.z1 - FS.z0 - 0.06), s * (fsX - fsTh / 2 - 0.005), FS.y0 - 0.02, (FS.z0 + FS.z1) / 2, 0, 0, -s * 0.22);
@@ -2916,7 +2940,9 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
   wedgeTurretV3TurretStage8();
   const mTop = T.mastTop ?? (h + 0.06);
   const wedgeTurretV3TurretStage9 = (): void => {
-    P.add('turretDetail', cylY(0.014, 0.018, mTop - h - 0.02, 8), T.mastX ?? -0.85, (h + mTop) / 2 - 0.01, T.mastZ);
+    // 2026-10-19 (owner float sweep): mastBaseY runs a bustle mast down to its lower roof (A5: 80 mm short of 0.68).
+    const mB = T.mastBaseY ?? h;
+    P.add('turretDetail', cylY(0.014, 0.018, mTop - mB - 0.02, 8), T.mastX ?? -0.85, (mB + mTop) / 2 - 0.01, T.mastZ);
     P.add('turretDark', box(0.04, 0.035, 0.10), T.mastX ?? -0.85, mTop - 0.017, T.mastZ);
     for (const w of T.whips ?? []) {
       P.add('turretDetail', box(0.06, 0.12, 0.06), w.x, w.baseY, w.z);
@@ -2935,7 +2961,7 @@ function wedgeTurretV3(P: TankBuilderPort, T: LeopardWedgeV3Config): void {
         smokeCluster(P, s * (sm.x + 0.02), sm.y + 0.10, sm.z + 0.14, 4, s * 0.95, 0.85);
         smokeCluster(P, s * (sm.x + 0.02), sm.y - 0.06, sm.z - 0.06, 4, s * 0.95, 0.85);
       }
-      liftEye(P, 'turretDetail', s * (T.body[0].x * 0.58), h - 0.02, E.z - 0.5, s * 0.4);
+      liftEye(P, 'turretDetail', s * (T.body[0].x * 0.58), T.liftEyeY ?? h - 0.02, E.z - 0.5, s * 0.4); // 2026-10-19 (owner float sweep): liftEyeY seats eyes over a lower roof corner
     }
     if (T.smoke && P.geometryReceipt) {
       P.turretG.userData.leopardSideSmokeReceipt = Object.freeze({
@@ -3260,14 +3286,16 @@ function buildLeo2A6(P: TankBuilderPort) {
     }
     // RIGHT fender outer strip: the print's right fender reaches x 1.72 where
     // the left ends at 1.66 (front col +1.71 reads the 1.62 fender line)
+    // 2026-10-19 (owner float sweep): the rearmost strip (with its tail plate) overhung 30 mm clear of the next strip;
+    // it now runs forward to meet it (both sides).
     for (let k = 0; k < 12; k++) {
-      P.add('hull', box(0.06, 0.055, 0.44), 1.69, 1.635, -3.42 + k * 0.47);
+      P.add('hull', box(0.06, 0.055, k ? 0.44 : 0.473), 1.69, 1.635, -3.42 + k * 0.47 + (k ? 0 : 0.0165));
     }
     // LEFT fender outer strip, 0.045 lower and 0.03 inboard (print asym:
     // front col -1.70 tops 1.614 vs the right 1.66); the inboard x keeps it
     // out of the -1.755 plan column whose ref is the bare -3.44 bracket line
     for (let k = 0; k < 12; k++) {
-      P.add('hull', box(0.06, 0.055, 0.44), -1.66, 1.59, -3.42 + k * 0.47);
+      P.add('hull', box(0.06, 0.055, k ? 0.44 : 0.473), -1.66, 1.59, -3.42 + k * 0.47 + (k ? 0 : 0.0165));
     }
     // rear-corner tail plates: ref plan bot steps to -3.688 ONLY on the
     // |x| 1.60..1.69 columns (corner chamfer). x-narrow so the 1.755+
@@ -3277,7 +3305,10 @@ function buildLeo2A6(P: TankBuilderPort) {
     // rear skirt-mount brackets: the ref plan reads x +-1.71..1.83 back to
     // z -3.5 as a gap-inclusive band — ONE stud per side carries it; stations
     // see it in a single (trimmed) slice only
-    for (const s2 of [-1, 1]) P.add('hullDetail', box(0.035, 0.30, 0.07), s2 * 1.765, 1.06, -3.40);
+    // 2026-10-19 (owner float sweep): the studs stood 16 mm off the 1.732 hull side (x 1.765 -> 1.747); a post on the
+    // right stud now carries the chamfer piece below, which hung 166 mm clear of everything.
+    for (const s2 of [-1, 1]) P.add('hullDetail', box(0.035, 0.30, 0.07), s2 * 1.747, 1.06, -3.40);
+    P.add('hullDetail', box(0.035, 0.10, 0.025), 1.747, 1.255, -3.42);
     // RIGHT rear-mudguard corner chamfer piece: the ref right fender band is
     // CONTINUOUS across x 1.70..1.75 at z -3.47 — without it the resampler
     // bridges the deep strip (-3.64) straight to the bracket (-3.43) and
@@ -4134,6 +4165,8 @@ function buildLeo2A6(P: TankBuilderPort) {
   const buildLeo2A6RunningGearStage1 = (): void => {
     for (const s2 of [-1, 1]) {
       P.add('turretCloth', box(0.016, 0.42, 0.545), s2 * 1.148, 0.32, -2.7175);
+      // 2026-10-19 (owner float sweep): the left board stood 20 mm off the bulkhead's 1.12 end; a corner tab joins them.
+      P.add('turretDetail', box(0.04, 0.42, 0.016), s2 * 1.13, 0.32, -2.455);
       for (const sz of [-2.60, -2.84]) {
         P.add('turretDetail', box(0.012, 0.40, 0.032), s2 * 1.162, 0.32, sz);
       }
@@ -4258,7 +4291,7 @@ function buildLeo2A6(P: TankBuilderPort) {
       P.add('gunDark', KIT.cylZ(0.1195, 0.04, gseg), 0, 0, 4.945);
       P.add('gunDark', KIT.cylZ(0.1195, 0.04, gseg), 0, 0, 5.255);
       P.add('gun', box(0.315, 0.20, 0.18), -0.0425, 0.005, 5.195);               // MRS mirror housing (ref plan -0.17 col to 6.84w; right edge 0.115 stays under the +0.137 subcolumn after +x pixel growth)
-      P.add('gun', box(0.07, 0.18, 0.09), 0.165, 0, 5.09);                       // right MRS lug (ref plan +0.20 col ends 6.685w)
+      P.add('gun', box(0.09, 0.18, 0.09), 0.155, 0, 5.09);                       // right MRS lug (ref plan +0.20 col ends 6.685w); 2026-10-19 (owner float sweep): 17 mm off the sleeve, widened inboard onto the housing
       // r2 #9: readable MRS — dark mirror window flush on the housing front
       // face + dark collar seam under it (all inside the certified housing
       // dims; the -0.17/+0.137 plan columns cannot move)
@@ -4922,6 +4955,8 @@ export function buildLeo2A5(builder: object) {
         }
         for (const sx of [-0.085, 0.085]) {
           P.add('hullDetail', box(0.010, 0.010, 0.095), s * (0.90 + sx), 1.402, 3.620, -0.30, 0, 0);
+          // 2026-10-19 (owner float sweep): the top bar stood 17 mm clear of the stays; an upright ties the three bars.
+          P.add('hullDetail', box(0.010, 0.084, 0.010), s * (0.90 + sx), 1.402, 3.660);
         }
       }
       antiSlipGeos.push(KIT.xform(box(0.46, 0.008, 0.32), 0, gY(3.40) + 0.004, 3.40, -0.0745, 0, 0));
@@ -5045,7 +5080,7 @@ export function buildLeo2A5(builder: object) {
       // turretDark box was the critic's "grey-mauve slab, no face split")
       peri: { x: -0.30, z: -0.72, top: 0.873, mat: 'turret' },
       cmdr: { x: 0.60, z: -0.30 }, loader: { x: -0.62, z: -0.30 },
-      mastX: -0.85, mastZ: -2.255, mastTop: 0.82,
+      mastX: -0.85, mastZ: -2.255, mastTop: 0.82, mastBaseY: 0.677,
       whips: [
         // r3 POST-WARP: the band-flatten warp (batch-29 fbc4f14) folded the
         // print's 4.105/4.113 whip spikes into the knee-map tail — ONE side
@@ -5081,6 +5116,8 @@ export function buildLeo2A5(builder: object) {
     for (let k = 0; k < 3; k++) {
       P.add('turretDetail', box(0.058, 0.005, 0.37), 1.3865, 0.2625, -2.7833 + k * 0.4133);
     }
+    // 2026-10-19 (owner float sweep): the right bustle module band stood 40 mm off the narrowing wall; backer.
+    P.add('turret', box(0.055, 0.14, 1.20), 1.3325, 0.18, -2.37);
     for (const s of [-1, 1] as const) {
       for (const mz of [-0.35, 0.55]) {
         P.add('turretDetail', box(0.005, 0.13, 0.05), s * 1.4045, 0.18, mz);   // module lift-strap glints (inside the 1.4075 dark-strip plane)
@@ -5218,6 +5255,8 @@ export function buildLeo2A5(builder: object) {
     // roof wedge at the ref's +0.19..+0.40 front ridge (2.621-2.633), parked
     // in the already-lit side −0.376w column, top 2.625 UNDER the 2.653 line.
     P.add('turret', box(0.21, 0.02, 0.045), 0.295, 0.835, -0.676);
+    // 2026-10-19 (owner float sweep): the wedge stood 65 mm over the bare roof (leo2a4m); a web carries it.
+    P.add('turret', box(0.21, 0.08, 0.02), 0.295, 0.787, -0.676);
     P.add('turret', box(0.28, 0.06, 0.10), -0.30, 0.79, -1.126);                 // PERI-rear step (ref 2.596 at w -0.83)
     // roof clutter: vent box at the ref 2.639@w −0.94..−1.05 line, stowed MG
     // mount trimmed to the ref 2.526 line at w −1.25
@@ -5252,6 +5291,8 @@ export function buildLeo2A5(builder: object) {
     // −0.43..+0.11 — the warped plan rear dips to −2.904 over the −0.38..+0.07
     // columns while +0.182 steps back to −2.82 (rack line)
     P.add('turret', box(0.54, 0.17, 0.14), -0.16, 0.495, -3.15);
+    // 2026-10-19 (owner float sweep): the bin hung 31 mm behind/below the rack's top rail; two straps hold it.
+    for (const sx of [-0.34, 0.02]) P.add('turretDetail', box(0.03, 0.06, 0.03), sx, 0.585, -3.075);
     // r3 bustle roof step: the warped side −2.403 column reads 2.498 over the
     // flat 2.46 slice-7 roof — full-width thin plate (front-invisible: the
     // ±1.0 front columns top at the 2.67-2.74 whip/base line). z-parked
@@ -6271,7 +6312,8 @@ function buildLeo2A5A5NL(builder: object) {
     // Cassette dividers and four visible load paths prevent the field kit
     // from reading as a floating wall when viewed from above or behind.
     for (let station = 0; station <= 10; station++) {
-      const z = -3.245 + station * 0.65;
+      // 2026-10-19 (owner float sweep): the two end dividers stood 72 mm past the end cassettes; they now close them.
+      const z = station === 0 ? -3.170 : station === 10 ? 3.180 : -3.245 + station * 0.65;
       P.add('hullDark', box(0.045, 0.66, 0.025), side * 1.9675, 1.13, z);
     }
     for (const z of [-2.72, -0.78, 1.16, 2.78]) {
@@ -6287,6 +6329,9 @@ function buildLeo2A5A5NL(builder: object) {
         side * (1.34 + lamp * 0.09), 1.67, 3.444);
     }
     P.addEquipment('hullDark', box(0.025, 0.22, 0.22), side * 1.61, 1.66, 3.35);
+    // 2026-10-19 (owner float sweep): the block hung 120 mm ahead of the tie rail's 3.12 end over the idler; a bracket
+    // runs from the rail end to the block's side plate.
+    P.addEquipment('hullDark', box(0.05, 0.045, 0.16), side * 1.63, 1.58, 3.19);
 
     // Modern side-awareness pod, recessed glass, and paired smoke bank.
     const podX = side * 1.35;
@@ -6301,11 +6346,15 @@ function buildLeo2A5A5NL(builder: object) {
   }
 
   // Low-profile panoramic day/thermal head on a buried bearing.
-  P.addEquipment('turret', cylY(0.20, 0.22, 0.07, P.q ? 20 : 14), 0.48, 0.895, -0.72);
-  P.addEquipment('turretDark', torus(0.19, 0.018, P.q ? 20 : 14), 0.48, 0.936, -0.72);
-  P.addEquipment('turret', box(0.35, 0.27, 0.31), 0.48, 1.055, -0.72);
-  P.addEquipment('turretGlass', box(0.23, 0.12, 0.016), 0.48, 1.07, -0.548);
-  P.addEquipment('turretGlass', box(0.08, 0.07, 0.017), 0.61, 1.13, -0.548);
+  // 2026-10-19 (owner float sweep): the head stood 66 mm over the A5 roof and its windows 9 mm ahead of it; the
+  // windows are set into the head and the group drops onto the roof.
+  P.snapGroup('a5nl-panoramic-head', () => {
+    P.addEquipment('turret', cylY(0.20, 0.22, 0.07, P.q ? 20 : 14), 0.48, 0.895, -0.72);
+    P.addEquipment('turretDark', torus(0.19, 0.018, P.q ? 20 : 14), 0.48, 0.936, -0.72);
+    P.addEquipment('turret', box(0.35, 0.27, 0.31), 0.48, 1.055, -0.72);
+    P.addEquipment('turretGlass', box(0.23, 0.12, 0.016), 0.48, 1.07, -0.559);
+    P.addEquipment('turretGlass', box(0.08, 0.07, 0.017), 0.61, 1.13, -0.559);
+  }, { reachM: 0.10, mode: 'down' });
 
   // 2026-10-08 (the owner's field standard in main 6763d7cc0; the coordinator's ruling on the lane's audit): no
   // open-yoke tower. A 2A4M carries no RWS, and the tower stood 0.98 m from the loader's gun, which is now the hull's
@@ -6313,16 +6362,24 @@ function buildLeo2A5A5NL(builder: object) {
 
   // Roof electronics, warning beacons and whip bases add the requested
   // modern-service density while remaining attached to broad roof stations.
-  P.addEquipment('turret', box(0.46, 0.14, 0.32), 0.06, 0.91, -1.73);
-  P.addEquipment('turretDark', box(0.40, 0.025, 0.27), 0.06, 0.995, -1.73);
+  // 2026-10-19 (owner float sweep): the box, beacons and whip bases stood 66-133 mm over the falling A5 roof (the
+  // box lid 2.5 mm over the box); each station drops onto the roof as one group.
+  P.snapGroup('a5nl-roof-electronics', () => {
+    P.addEquipment('turret', box(0.46, 0.14, 0.32), 0.06, 0.91, -1.73);
+    P.addEquipment('turretDark', box(0.40, 0.025, 0.27), 0.06, 0.991, -1.73);
+    P.addEquipment('turretDark', cylZ(0.024, 0.30, 10), 0.02, 0.94, -2.04);
+    P.addEquipment('turretGlass', box(0.08, 0.08, 0.012), 0.02, 0.94, -1.882);
+  }, { reachM: 0.10, mode: 'down' });
   for (const side of [-1, 1] as const) {
-    P.addEquipment('turret', cylY(0.055, 0.065, 0.08, 12), side * 0.92, 0.91, -1.96);
-    P.addEquipment('turretGlass', sph(0.048, 10), side * 0.92, 0.985, -1.96);
-    P.addEquipment('turretDark', cylY(0.020, 0.025, 0.07, 10), side * 1.08, 0.92, -2.13);
-    P.addEquipment('turretDark', cylY(0.010, 0.012, 1.18, 8), side * 1.08, 1.53, -2.13);
+    P.snapGroup(`a5nl-beacon-${side}`, () => {
+      P.addEquipment('turret', cylY(0.055, 0.065, 0.08, 12), side * 0.92, 0.91, -1.96);
+      P.addEquipment('turretGlass', sph(0.048, 10), side * 0.92, 0.985, -1.96);
+    }, { reachM: 0.16, mode: 'down' });
+    P.snapGroup(`a5nl-whip-${side}`, () => {
+      P.addEquipment('turretDark', cylY(0.020, 0.025, 0.07, 10), side * 1.08, 0.92, -2.13);
+      P.addEquipment('turretDark', cylY(0.010, 0.012, 1.18, 8), side * 1.08, 1.53, -2.13);
+    }, { reachM: 0.26, mode: 'down' });
   }
-  P.addEquipment('turretDark', cylZ(0.024, 0.30, 10), 0.02, 0.94, -2.04);
-  P.addEquipment('turretGlass', box(0.08, 0.08, 0.012), 0.02, 0.94, -1.882);
 
   P.decal('turret', 'crossgrey', null, 0.30, [1.46, 0.39, -0.92], Math.PI / 2);
   P.decal('turret', 'number', 'A5NL', 0.18, [-1.46, 0.39, -0.92], -Math.PI / 2);
@@ -6552,7 +6609,9 @@ export function buildLeo2A4(builder: object) {
       rear: { wallZ: -3.78, lipZ: -3.86, yTop: 1.69, yBot: 0.75 },
       // fender runs to 2.92 (photo class — the real plank ends just short of
       // the idler ramp; pad top on the flat run is 1.10 there, 0.44 clear).
-      fender: { x0: 1.622, x1: 1.737, y0: 1.50, y1: 1.565, z0: -3.12, z1: 2.92 },
+      // 2026-10-19 (owner float sweep): the planks hung 16-35 mm under the lifted outboard deck slab (deck line 1.575-1.60)
+      // with nothing else holding them; they now follow the deck line 2 mm into the slab's underside.
+      fender: { x0: 1.622, x1: 1.737, y0: 1.635, y1: 1.70, z0: -3.12, z1: 2.92, drop: -0.002 },
       // §SRCFIX-0808: helper skirts OPTED OUT — the segRun curtain read as a
       // uniform plank fence in the owner's garage view. The real 2A4 skirt is
       // built BESPOKE below: heavy fore armor blocks at ±1.85 EXACT (the §D
@@ -6597,6 +6656,7 @@ export function buildLeo2A4(builder: object) {
   const sideSkirtLiftY = 0.10;
   const sideSkirtTopY = 1.26 + sideSkirtLiftY;
   const outerRailX = 1.7975;
+  const outerRailOuterX = outerRailX + 0.035 / 2, railSeatX = 1.775;
   const outerRailY = sideSkirtTopY - 0.0275;
   const buildLeo2A4RunningGearStage1 = (): void => {
     for (const s of [-1, 1] as const) {
@@ -6632,10 +6692,11 @@ export function buildLeo2A4(builder: object) {
         P.add('hullDark', box(0.024, 0.40, 0.015), s * 1.76, 0.85, z0 + L * k);
       }
       P.add('hullDark', box(0.026, 0.022, z1 - z0 - 0.02), s * 1.76, 1.055, (z0 + z1) / 2); // horizontal band joint
-      // The outer rail's inner face lands exactly on the panel face at
-      // |x|=1.780. Its hangers climb from the raised armor into the fender,
+      // The outer rail's inner face lands exactly on the panel face where it
+      // seats, at the skirt top (|x| 1.775: the panels taper from 1.780 at
+      // their hems). Its hangers climb from the raised armor into the fender,
       // leaving no exposed/floating rail course above the curtain.
-      P.add('hullDetail', box(0.035, 0.055, 7.02), s * outerRailX, outerRailY, 0.06);
+      P.add('hullDetail', box(outerRailOuterX - railSeatX, 0.055, 7.02), s * (outerRailOuterX + railSeatX) / 2, outerRailY, 0.06);
       for (const zh of [-3.10, -2.325, -1.55, -0.775, 0.00, 0.775, 1.55, 2.29, 2.97, 3.22]) {
         P.add('hullDetail', box(0.030, 0.27, 0.055), s * outerRailX, 1.36, zh);
       }
@@ -6651,9 +6712,9 @@ export function buildLeo2A4(builder: object) {
         topY: sideSkirtTopY,
         foreBottomY: 0.62,
         aftBottomY: 0.64,
-        panelOuterHalfWidth: 1.78,
-        outerRailCenterHalfWidth: outerRailX,
-        outerRailInnerHalfWidth: outerRailX - 0.035 / 2,
+        panelOuterHalfWidth: railSeatX,
+        outerRailCenterHalfWidth: (outerRailOuterX + railSeatX) / 2,
+        outerRailInnerHalfWidth: railSeatX,
         outerRailY,
         outerRailTopY: outerRailY + 0.055 / 2,
         hangerBottomY: 1.36 - 0.27 / 2,
@@ -6713,7 +6774,7 @@ export function buildLeo2A4(builder: object) {
     // (top 2 cm behind the band bottom — no slit); the wheels read below it.
     for (const s of [-1, 1] as const) {
       for (let k = 0; k < 6; k++) {
-        P.add('hullRubber', box(0.020, 0.05, 0.80), s * 1.785, 0.615, -3.45 + 0.858 * k + 0.42);
+        P.hangMudguard('leo2a3-skirt-hem', 'hullRubber', box(0.020, 0.05, 0.80), s * 1.785, 0.615, -3.45 + 0.858 * k + 0.42);
       }
     }
     // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the Germany nation
@@ -6753,13 +6814,16 @@ export function buildLeo2A4(builder: object) {
       // only a 1.5 cm lap on the skirt's top edge, so from behind it read as a loose plate. It now rides the skirt and
       // post as their top flange (|x| 1.70..1.85, 6 cm inboard of the skirt face, clear of the 1.69 m track band).
       P.add('hull', box(0.15, 0.030, 0.38), s * 1.775, 1.49, 3.80);
+      // 2026-10-19 (owner float sweep): the cap still stood 75 mm over/ahead of the envelope bead's 3.59 end; a post from
+      // the bead's end carries its outer edge.
+      P.add('hullDetail', box(0.025, 0.111, 0.05), s * 1.8375, 1.4225, 3.61);
       // wing band FULLY past the shoe-orbit far edge (idler orbit r 0.425 ->
       // z 3.905; a first cut at z 3.84..3.92 ate 126 shoe voxels x -1.54..
       // +1.54 y 1.06..1.12 — the exact-audit box). Widened to the post so
       // the lip reads attached.
       P.add('hull', box(0.90, 0.20, 0.04), s * 1.35, 1.14, 3.98);                // mudguard lip forward of shoe orbit
       P.add('hullDetail', box(0.86, 0.022, 0.024), s * 1.35, 1.033, 3.976);      // hinge line under the lip
-      P.add('hullRubber', box(0.50, 0.32, 0.024), s * 1.36, 0.82, 3.965);        // compact flap; terminal course remains exposed
+      P.hangMudguard('leo2a2-front-flap', 'hullRubber', box(0.50, 0.32, 0.024), s * 1.36, 0.82, 3.965);        // compact flap; terminal course remains exposed
     }
     // rear mudflaps hang from the FENDER ends (photo class — the kit's
     // knee-height plank + floating bracket read detached at the rear
@@ -6780,11 +6844,14 @@ export function buildLeo2A4(builder: object) {
     // donor tell that landed on the wrong nation's hull; the packet's "the
     // real Leopard 2 carries the same board" claim does not survive the
     // photo class). Notek convoy light IS real Bundeswehr fit — kept.
-    P.add('hullDetail', box(0.10, 0.052, 0.08), -0.70, 1.617, 2.545, 0.40, 0, 0);
-    P.add('hullDark', box(0.084, 0.012, 0.014), -0.70, 1.612, 2.586, 0.40, 0, 0);
+    // 2026-10-19 (owner float sweep): the Notek stood 61 mm off the upper glacis; seated onto it.
+    P.snapGroup('leo2a4-notek', () => {
+      P.add('hullDetail', box(0.10, 0.052, 0.08), -0.70, 1.617, 2.545, 0.40, 0, 0);
+      P.add('hullDark', box(0.084, 0.012, 0.014), -0.70, 1.612, 2.586, 0.40, 0, 0);
+    }, { reachM: 0.10 });
     // stepped-deck course seams (real deck-course panel joints, mask-interior)
     P.add('hullDark', box(2.00, 0.005, 0.022), 0, 1.703, -1.00);
-    P.add('hullDark', box(2.00, 0.005, 0.022), 0, 1.713, -2.40);
+    P.add('hullDark', box(2.00, 0.005, 0.022), 0, 1.6015, -2.40);                // 2026-10-19 (owner float sweep): was 90 mm over the 1.60 deck
     P.decal('hull', 'number', '414', 0.26, [0.62, 1.22, -3.79], Math.PI, 0);
 
     // ---- turret: our native welded A4 construction.  The recovered build
@@ -6874,7 +6941,8 @@ export function buildLeo2A4(builder: object) {
     P.add('turretDark', box(0.78, 0.025, 0.66), 0.64, 0.325, 0.75);              // roof attachment flange
     // PERI R17 panoramic periscope (commander, fwd-right of the hatch) — the
     // tallest fixed point (top 2.79w = the published-height spike budget).
-    P.add('turretDetail', cylY(0.055, 0.065, 0.34, 12), 0.36, 0.89, -0.32);
+    // 2026-10-19 (owner float sweep): the base stood 40 mm over the 0.68 roof; it now runs 3 mm into it.
+    P.add('turretDetail', cylY(0.055, 0.065, 0.383, 12), 0.36, 0.8685, -0.32);
     P.add('turretDetail', cylY(0.08, 0.08, 0.05, 12), 0.36, 1.065, -0.32);
     P.add('turretDark', box(0.17, 0.20, 0.19), 0.36, 1.06, -0.32);
     P.add('turretGlass', box(0.11, 0.10, 0.018), 0.36, 1.08, -0.222);
@@ -6902,7 +6970,7 @@ export function buildLeo2A4(builder: object) {
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's MG3)
       const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0], working: true });
       mg.name = 'leo2LoaderMg3';
-      mg.position.set(-0.42, 0.70, -0.38);
+      mg.position.set(-0.42, 0.678, -0.38);                                      // 2026-10-19 (owner float sweep): 20 mm over the roof; seated
       P.turretG.add(mg);
     }
     // crosswind sensor mast (rear-left roof) + twin whip antennas at the
@@ -7243,12 +7311,15 @@ function buildLeo2A7V(P: TankBuilderPort) {
       // The A7V transom is a shallow service face above the terminal course,
       // not a deep rectangular apron between the tracks.
       rear: { wallZ: -3.78, lipZ: -3.86, yTop: 1.60, yBot: 0.75 },
-      fender: { x0: 1.84, x1: 1.955, y0: 1.60, y1: 1.665, z0: -3.66, z1: 2.60 },
+      // owner 2026-10-19 sweep: the fender planks (and the skirt course hung from them) stood 80 mm off the 1.76 body
+      // side; their inner edge runs 40 mm into it, past the cheek's taper toward the nose (10 mm left the rounded
+      // plank ends showing through it)
+      fender: { x0: 1.84, x1: 1.955, y0: 1.60, y1: 1.665, z0: -3.66, z1: 2.60, embed: 0.04 },
       // A7V deep modular skirt courses at ±2.00 EXACT (the width guard),
       // hanging to 0.55 — the deep side-protection read with the lower
       // wheel halves still visible (photo class).
       frontSkirt: { x: 2.00, z0: 0.90, z1: 3.18, y0: 0.55, y1: 1.30, th: 0.12 },
-      rearSkirt: { x: 2.00, z0: -3.10, z1: 0.90, y0: 0.55, y1: 1.28, th: 0.12 },
+      rearSkirt: { x: 2.00, z0: -3.10, z1: 0.90, y0: 0.55, y1: 1.29, th: 0.12 },  // top 5 mm into the cassettes over it
       // §B6: raised idler AND sprocket at the real Leopard 2 end-wheel
       // geometry (the print-frame 0.56/0.64 centers gave a near-flat run).
       wheelR: 0.395, wheelY: 0.42, span: [2.60, -2.40],
@@ -7280,7 +7351,7 @@ function buildLeo2A7V(P: TankBuilderPort) {
       // Continuous supported cap/hinge line tying the cassette course into
       // the existing fender. The outer face remains at the certified ±2.00m
       // width and is clear of the native track lane at every station.
-      P.add('hullDark', box(0.045, 0.035, 5.54), s * 1.9775, 1.585, -0.24);
+      P.add('hullDark', box(0.055, 0.035, 5.54), s * 1.9725, 1.585, -0.24);      // inner edge 10 mm under the fender planks' outer edge
       for (const z of [-2.72, -1.50, -0.28, 0.94, 2.16]) {
         P.add('hullDetail', box(0.05, 0.055, 0.12), s * 1.975, 1.555, z);
       }
@@ -7307,7 +7378,10 @@ function buildLeo2A7V(P: TankBuilderPort) {
       P.add('hull', box(0.04, 0.21, 0.36), s * 1.98, 1.15, 3.78);                // mudguard post (skirt front cap)
       P.add('hull', box(0.80, 0.20, 0.04), s * 1.60, 1.14, 3.91);                // mudguard lip (x 1.20..2.00)
       P.add('hullDetail', box(0.76, 0.022, 0.024), s * 1.60, 1.033, 3.906);      // hinge line
-      P.add('hullRubber', box(0.64, 0.44, 0.024), s * 1.53, 0.80, 3.895);        // rubber flap, forward of terminal shoes
+      P.hangMudguard('leo2-improved-front-flap', 'hullRubber', box(0.64, 0.44, 0.024), s * 1.53, 0.80, 3.895);        // rubber flap, forward of terminal shoes
+      // Owner 2026-10-19 (flaps sweep): the post, lip, hinge and flap floated as one, the lip's inner end 0.10 m short of
+      // the glacis edge; a bracket from the lip back into the glacis (clear of the terminal shoes) carries them.
+      P.add('hull', box(0.16, 0.10, 0.07), s * 1.16, 1.17, 3.875);
     }
     // rear mudflaps hanging from the fender ends (a4 recipe; sprocket orbit
     // far edge -3.725, flap z -3.80 clear).
@@ -7404,7 +7478,7 @@ function buildLeo2A7V(P: TankBuilderPort) {
       peri: { x: 0.36, z: -0.55, top: 1.20, w: 0.21, d: 0.09, mat: 'turret' },
       cmdr: { x: 0.60, z: -0.25 }, loader: { x: -0.64, z: -0.22 },
       hatchTop: 0.88, hatchRound: true,
-      mastX: -0.45, mastZ: -2.30, mastTop: 0.84,
+      mastX: -0.45, mastZ: -2.30, mastTop: 0.84, mastBaseY: 0.696, liftEyeY: 0.645, // 2026-10-19 (owner float sweep): eyes were 85 mm up
       whips: [
         // Preserve the authored whip lengths; the complete antenna mounts rise
         // with the turret, but the rods do not grow to chase the global box.
@@ -7435,7 +7509,10 @@ function buildLeo2A7V(P: TankBuilderPort) {
       for (const z of [-1.64, -1.06, -0.47, 0.12, 0.62]) {
         P.add('turretDark', box(0.014, 0.092, 0.026), s * 1.343, 0.185, z);
       }
-      P.add('turretDetail', box(0.022, 0.024, 1.54), s * 1.315, 0.675, -0.57);
+      // 2026-10-19 (owner float sweep): the strip stood 0.30 m over the side module and 0.36 m outboard of the roof edge;
+      // it drops onto the module top.
+      P.snapGroup(`a7v-side-strip-${s}`, () => P.add('turretDetail', box(0.022, 0.024, 1.54), s * 1.315, 0.675, -0.57),
+        { reachM: 0.36, mode: 'down' });
       P.add('turretDark', box(0.020, 0.018, 0.42), s * 0.93, 0.656, 0.20,
         0, s * 0.36, 0);
     }
@@ -7469,8 +7546,11 @@ function buildLeo2A7V(P: TankBuilderPort) {
       [0.34, 0.08, -0.10], [0.57, 0.02, -0.28], [0.77, -0.12, -0.46],
       [-0.38, 0.05, 0.12], [-0.59, -0.04, 0.30], [-0.77, -0.20, 0.48],
     ]) {
-        P.add('turretDark', box(0.14, 0.035, 0.075), x, 0.765, z, 0, ry, 0);
-        P.add('turretGlass', box(0.102, 0.022, 0.014), x, 0.780, z + 0.032, 0, ry, 0);
+        // 2026-10-19 (owner float sweep): the inner right head stood 27 mm ahead of the roof's front edge; each head seats.
+        P.snapGroup(`a7v-periscope-${x}`, () => {
+          P.add('turretDark', box(0.14, 0.035, 0.075), x, 0.765, z, 0, ry, 0);
+          P.add('turretGlass', box(0.102, 0.022, 0.014), x, 0.780, z + 0.032, 0, ry, 0);
+        }, { reachM: 0.04 });
     }
     P.add('turretDetail', box(0.24, 0.024, 0.032), 0.58, 0.772, -0.49, 0, -0.18, 0);
     P.add('turretDetail', box(0.22, 0.024, 0.032), -0.62, 0.772, -0.47, 0, 0.18, 0);
@@ -7541,9 +7621,12 @@ function buildLeo2A7V(P: TankBuilderPort) {
     // countermeasure fittings — §B3 tells: body + dark lens + conduit).
     for (const s of [-1, 1] as const) {
       for (const [pz, ry] of [[0.30, s * 0.5], [-1.95, s * 2.6]]) {
-        P.add('turretDetail', box(0.10, 0.085, 0.10), s * 1.05, 0.785, pz, 0, ry, 0);
-        P.add('turretDark', box(0.075, 0.055, 0.014), s * 1.05 + Math.sin(ry) * 0.052, 0.79, pz + Math.cos(ry) * 0.052, 0, ry, 0);
-        P.add('turretDark', box(0.022, 0.022, 0.16), s * 1.05, 0.752, pz - 0.10, 0, 0, 0);
+        // 2026-10-19 (owner float sweep): three pods stood 86-121 mm over the roof edge; each pod drops onto it.
+        P.snapGroup(`a7v-ads-pod-${s}-${pz}`, () => {
+          P.add('turretDetail', box(0.10, 0.085, 0.10), s * 1.05, 0.785, pz, 0, ry, 0);
+          P.add('turretDark', box(0.075, 0.055, 0.014), s * 1.05 + Math.sin(ry) * 0.052, 0.79, pz + Math.cos(ry) * 0.052, 0, ry, 0);
+          P.add('turretDark', box(0.022, 0.022, 0.16), s * 1.05, 0.752, pz - 0.10, 0, 0, 0);
+        }, { reachM: 0.15, mode: 'down' });
       }
     }
     // Crosses sit on the real A6-family side-module faces instead of floating
@@ -7671,7 +7754,9 @@ function addLeo2PrototypeMudguards(P: TankBuilderPort): void {
     P.add('hullFixedPaintedBodywork', box(0.0225, 0.185, 0.38), side * 1.71875, 1.1625, 3.75);
     P.add('hull', box(0.90, 0.20, 0.04), side * 1.35, 1.14, 3.93);
     P.add('hullDetail', box(0.86, 0.022, 0.024), side * 1.35, 1.033, 3.926);
-    P.add('hullRubber', box(0.66, 0.40, 0.024), side * 1.36, 0.78, 3.849);
+    // Owner 2026-10-19 (flaps sweep): the flap hung 49 mm behind and 60 mm under the bow plate (y 1.04-1.24, z 3.91-
+    // 3.95); 56 mm forward and 70 mm up it runs 7 mm into the plate's back and 10 mm into its underside.
+    P.hangMudguard('leopard2-proto-front-flap', 'hullRubber', box(0.66, 0.40, 0.024), side * 1.36, 0.85, 3.905);
   }
   for (const side of [-1, 1] as const) {
     P.add('hullRubber', box(0.38, 0.64, 0.032), side * 1.53, 1.24, -3.80);
@@ -7887,7 +7972,8 @@ function buildLeo2Proto(P: TankBuilderPort) {
     P.add('turretDark', box(0.075, 0.055, 0.03), bx, 0.712, bz, 0, a, 0);      // vision block
     P.add('turretGlass', box(0.055, 0.030, 0.012), 0.55 + Math.sin(a) * 0.232, 0.716, -0.55 + Math.cos(a) * 0.232, 0, a, 0);
   }
-  P.add('turret', cylY(0.215, 0.215, 0.028, P.q ? 18 : 14), 0.55, 0.766, -0.55); // flat lid (crown 2.50w)
+  // 2026-10-19 (owner float sweep): the lid stood 12-17 mm over the drum and its vision blocks; it runs down onto them.
+  P.add('turret', cylY(0.215, 0.215, 0.045, P.q ? 18 : 14), 0.55, 0.7575, -0.55); // flat lid (crown 2.50w)
   P.add('turretDark', box(0.30, 0.012, 0.032), 0.55, 0.784, -0.55);            // lid handle seam
   P.add('turret', cylY(0.21, 0.21, 0.045, 14), -0.60, 0.6725, -0.45);
   P.add('turretDark', box(0.36, 0.014, 0.035), -0.60, 0.702, -0.45);
@@ -7978,6 +8064,8 @@ function buildLeo2Proto(P: TankBuilderPort) {
   }
   P.add('turretDark', openRackGrid(2.02, 0.23, 0.012, 4, 10),
     0, 0.355, -3.215, Math.PI / 2, 0, 0);                                      // open mesh back panel
+  // 2026-10-19 (owner float sweep): the overhung basket stood 82 mm clear of the bustle box; four arms carry it.
+  for (const bx of [-0.78, 0.78]) for (const y of [0.22, 0.43]) P.add('turretDetail', box(0.028, 0.028, 0.11), bx, y, -3.18);
   // cross decals pinned on the BIN faces (§5.04 vertical flank law)
   P.decal('turret', 'crossgrey', null, 0.26, [1.224, 0.26, -0.325], Math.PI / 2, 0, 0.042);
   P.decal('turret', 'crossgrey', null, 0.26, [-1.224, 0.26, -0.325], -Math.PI / 2, 0, -0.042);
@@ -9295,7 +9383,17 @@ function buildKF51(P: TankBuilderPort) {
       // onto the new flap line. Side col -3.70 keeps its certified 0.39
       // bottom (the flap bottom IS the carrier, z EXACT); vacated rear cols
       // x 1.06..1.21 fall back to the sprocket wrap like the ref's own.
-      P.add('hullShadow', box(0.36, 0.20, 0.02), s * 1.39, 0.91, -3.695);        // mudguard shadow above the flap (y 0.81..1.01 = old top line)
+      // Owner 2026-10-19 (Gallery markup, "floating"): the flap, the mudguard
+      // shadow remnant above it (y 0.81..1.01) and the hanger stopped 0.30 m
+      // under the fender plank (y 1.31..1.36, x 1.61..1.79, rear end −3.7025),
+      // with nothing over them inboard of it. The remnant becomes the steel
+      // mudguard the flap hangs from: a 24 mm plate standing 2 mm inside the
+      // flap's faces and 5 mm inside its sides, its foot 20 mm into the flap
+      // and its top 35 mm into the plank's rear end; a strut braces its
+      // inboard top into the sponson-tail wing's rear face (z −3.60), 0.24 m
+      // behind the sprocket course and clear of the plate's louvre slats.
+      P.addMudguard('kf51-rear-mudguard-hanger', 'hull', box(0.49, 0.555, 0.024), s * 1.46, 1.0675, -3.698);
+      P.add('hullDetail', beamBetween([s * 1.40, 1.30, -3.698], [s * 1.40, 1.47, -3.583], 0.014));
       // r4 CONTAINMENT: hanger steps 25 mm aft — its −3.61 front face shared
       // the wrap rim's voxel column (band rear extreme −3.629).
       P.add('hullDetail', box(0.07, 0.10, 0.10), s * 1.46, 0.86, -3.685);        // flap hanger bracket onto the tail (y 0.81..0.91)
@@ -9712,7 +9810,8 @@ function buildKF51(P: TankBuilderPort) {
       P.add('hullDark', box(0.36, 0.010, 0.028), s * 1.30, 1.833, -2.42);        // lid straps (flush, top 1.838)
       P.add('hullDark', box(0.36, 0.010, 0.028), s * 1.30, 1.833, -2.24);
       P.add('hullDark', box(0.32, 0.010, 0.028), s * 1.28, 1.833, -2.80);
-      P.add('hullDetail', cylY(0.09, 0.09, 0.02, 12), s * 1.30, 1.815, -1.60);   // torsion caps (kept — real deck fittings)
+      // 2026-10-19 (owner float sweep): the caps hung 27 mm over the 1.778 deck; they now sit 2 mm into it.
+      P.add('hullDetail', cylY(0.09, 0.09, 0.02, 12), s * 1.30, 1.786, -1.60);   // torsion caps (kept — real deck fittings)
     }
     P.add('hullDark', box(2.6, 0.016, 0.44), 0, 1.826, -3.28);                   // transverse grille inset (dark panel kept; pale slats -> dot rows in the tone block)
     P.add('hullDark', box(1.9, 0.014, 0.03), 0, 1.612, 2.20);                    // crease weld seam
@@ -10440,7 +10539,8 @@ function buildKF51(P: TankBuilderPort) {
     P.add('turretDetail', cylY(0.011, 0.011, 0.88, 8), 0.998, 1.30, -2.64);      // R rod: side col −2.18 reads 3.434 = ref; front col +0.9929
     P.add('turretDark', box(0.022, 1.375, 0.04), 0.998, 1.1675, -2.647);         // R front spike folded onto the R rod (front col +0.9929; top 3.565)
     P.add('turretDetail', box(0.04, 0.045, 0.10), 1.03, 1.135, -2.52);           // R base pot 2.87w @ z −2.07w
-    P.add('turretDetail', box(0.018, 0.26, 0.018), 1.03, 0.99, -2.52);           // pot stem onto the shelf (floater guard)
+    // 2026-10-19 (owner float sweep): the stem stopped 30 mm over the shelf and 1 mm outboard of it; it now runs into it.
+    P.add('turretDetail', box(0.018, 0.292, 0.018), 1.05, 0.974, -2.52);         // pot stem onto the shelf (floater guard)
     // smoke clusters on the mid-wall chamfer plane (tube tips ≤1.39: the
     // ±1.44 front columns are the ref's falling cheek line, no smoke there)
     for (const s of [-1, 1] as const) {
@@ -11344,6 +11444,8 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     P.mats.rubber.color.setHex(0x33352b);
   };
   buildKF51OwnerExactAssemblyStage1();
+  // (The belly between the tub and the nose fill, open 0.84 m in the owner's 2026-10-19 markup, is closed by leoHullV3's
+  // lower front plate.)
   // (running gear now rides INSIDE the leoHullV3 call above — the KF51B
   // wheel/course refinements and §5.262 tones live there; no second course
   // exists.)
@@ -11447,8 +11549,11 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
       P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.44, 1.89, -3.14);
       P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.44, 1.89, -3.46);
       // width-indicator rods on the front mudguards
-      P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * 1.66, 1.42, 3.42);
-      P.add('hullDetail', KIT.sph(0.016, 8), s * 1.66, 1.58, 3.42);
+      // 2026-10-19 (owner float sweep): the rods stood 60 mm clear of the mudguard; each seats on its edge.
+      P.snapGroup(`kf51u-width-rod-${s}`, () => {
+        P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * 1.66, 1.42, 3.42);
+        P.add('hullDetail', KIT.sph(0.016, 8), s * 1.66, 1.58, 3.42);
+      }, { reachM: 0.08 });
       // headlight brush guards (three bars riding the glacis plane)
       for (const d of [-0.10, 0, 0.10]) {
         P.add('hullDetail', box(0.018, 0.12, 0.12), s * 0.78 + d, 1.375, 3.40, -0.16, 0, 0);
@@ -11458,16 +11563,19 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
       P.add('hullDark', KIT.cylZ(0.028, 0.05, 8), s * 0.62, 1.06, 3.78);
       // rear mudflaps behind the sprocket wrap (far edge -3.74; flap plane
       // -3.79 clear) hung from the deck-band rear with a real hinge arm
-      P.add('hullRubber', box(0.44, 0.42, 0.028), s * 1.26, 0.72, -3.79);
+      P.addMudguard('kf51u-rear-flap', 'hullRubber', box(0.44, 0.42, 0.028), s * 1.26, 0.72, -3.79);
       P.add('hullDetail', box(0.44, 0.035, 0.05), s * 1.26, 0.945, -3.785);
-      P.add('hullDetail', box(0.05, 0.30, 0.05), s * 1.26, 1.075, -3.70);
+      // Owner 2026-10-19 ("the flaps often hang off many tanks"): the single post stopped 0.46 m under the deck
+      // overhang (1.685) and 35 mm forward of the clamp bar. Two posts rise from inside the clamp bar 20 mm into
+      // the overhang, 0.33 m behind the sprocket course.
+      for (const dx of [-0.15, 0.15]) P.add('hullDetail', box(0.04, 0.775, 0.04), s * 1.26 + dx, 1.3175, -3.775);
       // front mudguard wing + shortened flap (§B4: idler shoe orbit tops
       // 0.75 at z 3.79-3.81 — flap bottom 0.80 clears; wing rides above) +
       // connector strap back to the fore-fender end (floater law; strap
       // underside 1.17 clears the wrap crest 1.07 at z 3.55)
       P.add('hull', box(0.70, 0.16, 0.04), s * 1.40, 1.13, 3.80);
       P.add('hullDetail', box(0.66, 0.018, 0.024), s * 1.40, 1.045, 3.796);
-      P.add('hullRubber', box(0.40, 0.20, 0.024), s * 1.32, 0.90, 3.80);
+      P.hangMudguard('kf51u-front-flap', 'hullRubber', box(0.40, 0.20, 0.024), s * 1.32, 0.90, 3.80);
       P.add('hull', box(0.05, 0.045, 0.56), s * 1.72, 1.195, 3.54);
       // mudguard well sheet over the idler (§B2: the open corridor between
       // the strap and the 1.556 wrap outer read as enclosed top-down cells;
@@ -11485,7 +11593,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
       P.add('hullGlass', box(0.05, 0.04, 0.014), s * 1.42, 1.71, -3.705);
       P.add('hullDetail', box(0.16, 0.022, 0.07), s * 1.42, 1.775, -3.68);
       // stern shackle bows on the inter-track rear wall
-      P.add('hullDetail', cylX(0.030, 0.22, 8), s * 0.58, 1.02, -3.76);
+      P.add('hullDetail', cylX(0.030, 0.22, 8), s * 0.58, 1.02, -3.708);        // 2026-10-19 (owner float sweep): stood 50 mm off the wall
     }
     P.add('hullDark', box(0.09, 0.07, 0.11), -1.05, 1.49, 2.60);                // Bosch horn on the glacis sheet
     P.add('hullDark', KIT.xform(cylZ(0.035, 0.02, 10), 0, 0, 0.062), -1.05, 1.49, 2.60, -0.16, 0, 0);
@@ -11506,7 +11614,7 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     P.add('hullWood', box(0.03, 0.022, 0.58), 1.22, 1.832, -3.36);              // axe helve
     P.add('hullDark', box(0.05, 0.028, 0.14), 1.22, 1.834, -3.14);              // axe head
     P.add('hullDark', box(0.028, 0.024, 0.72), -0.95, 1.832, -3.32);            // crowbar
-    P.add('hullDetail', box(0.30, 0.16, 0.015), 0.02, 1.30, -3.835);            // convoy plate on the tail lip
+    P.add('hullDetail', box(0.30, 0.16, 0.015), 0.02, 1.30, -3.674);            // convoy plate on the tail lip (2026-10-19 owner float sweep: hung 148 mm behind it)
     jerryCan(P, 'hullCloth', 0.42, 1.90, -3.42, 0.14);                          // stern jerry can pair
     jerryCan(P, 'hullCloth', 0.68, 1.90, -3.42, 0.14);
 
@@ -12048,6 +12156,11 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       [0.80, upperGlacisFrontY + 0.06, upperGlacisFrontZ],
       [-0.80, upperGlacisFrontY + 0.06, upperGlacisFrontZ]));
     P.add('hull', box(2.50, 0.60, 0.15), 0, 1.21, -3.47);
+    // lower rear plate: the belly rises from its rear edge (z -3.26, y 0.41) to the rear plate's foot (z -3.395,
+    // y 0.91) (owner 2026-10-19 sweep: the slot between them stood open from below up to the deck), 30 mm into each
+    P.add('hull', slab(
+      [-0.944, 0.416, -3.23], [0.944, 0.416, -3.23], [0.944, 0.916, -3.425], [-0.944, 0.916, -3.425],
+      [-0.944, 0.496, -3.23], [0.944, 0.496, -3.23], [0.944, 0.996, -3.425], [-0.944, 0.996, -3.425]));
     P.add('hull', box(2.62, 0.06, 0.20), 0, 1.50, -3.43);
 
     // The source's fenders are a continuous structural shelf, not two thin
@@ -12064,17 +12177,20 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       // The shelf bridges the sealed side wall to the outer fender fascia.
       // A shallow camouflaged shoulder below it removes the bright background
       // slit while preserving clearance around the moving top links.
-      P.add('hullDetail', box(0.55, 0.045, 6.78), s * 1.405, fenderShelfY, -0.02);
+      // (2026-10-19, flaps sweep: 25 mm wider outboard, to the fascia it stood 14 mm short of, its end inside the fascia)
+      P.add('hullDetail', box(0.575, 0.045, 6.78), s * 1.4175, fenderShelfY, -0.02);
       P.add('hullDetail', box(0.08, 0.28, 6.16), s * 1.01, 1.195, -0.08);
       P.add('hullDetail', box(0.012, 0.18, 6.04), s * 1.70, 1.195, -0.10);
       P.add('hullDetail', slab(
         [s * 1.10, 1.27, 3.34], [s * 1.67, 1.27, 3.36], [s * 1.67, 1.27, 2.70], [s * 1.13, 1.27, 2.62],
         [s * 1.10, 1.33, 3.42], [s * 1.67, 1.33, 3.42], [s * 1.67, 1.33, 2.70], [s * 1.13, 1.33, 2.62]));
-      P.add('hullRubber', box(0.014, 0.31, 0.36), s * 1.715, 1.045, 3.31, -0.06, 0, 0);
-      P.add('hullRubber', box(0.014, 0.34, 0.40), s * 1.715, 1.02, -3.34, 0.08, 0, 0);
+      // Owner 2026-10-19 (flaps sweep): the hems stood 2 mm outboard of the fascia's outer face (1.706); at 1.711 they
+      // overlap it by 2 mm.
+      P.hangMudguard('leo1a5-front-skirt-hem', 'hullRubber', box(0.014, 0.31, 0.36), s * 1.711, 1.045, 3.31, -0.06, 0, 0);
+      P.hangMudguard('leo1a5-rear-skirt-hem', 'hullRubber', box(0.014, 0.34, 0.40), s * 1.711, 1.02, -3.34, 0.08, 0, 0);
       for (let k = 0; k < 7; k++) {
         const z = 2.40 - k * 0.82;
-        P.add('hullRubber', box(0.014, 0.31, 0.76), s * 1.715, 0.995, z);
+        P.hangMudguard('leo1a5-skirt-hem', 'hullRubber', box(0.014, 0.31, 0.76), s * 1.711, 0.995, z);
         P.add('hullDetail', box(0.012, 0.34, 0.026), s * 1.707, 1.00, z - 0.395);
         P.add('hullDetail', box(0.36, 0.035, 0.055), s * 1.47, 1.345, z);
       }
@@ -12299,7 +12415,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
     // EMES-18: compact two-window armored sight rooted in the right roof.
     P.addEquipment('turret', box(0.46, 0.10, 0.44), 0.48, 0.76, 0.32);
     P.addEquipment('turret', box(0.50, 0.24, 0.47), 0.48, 0.92, 0.32);
-    P.addEquipment('turret', box(0.54, 0.035, 0.51), 0.48, 1.06, 0.32);
+    P.addEquipment('turret', box(0.54, 0.035, 0.51), 0.48, 1.056, 0.32);     // 2026-10-19 (owner float sweep): lid sat 2.5 mm over the head; seated
     P.add('turretDark', box(0.38, 0.16, 0.025), 0.48, 0.92, 0.568);
     for (const x of [0.39, 0.57]) {
       P.add('turretGlass', box(0.115, 0.105, 0.014), x, 0.92, 0.584);
@@ -12385,7 +12501,7 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       [0.56, 0.51, -2.54, 0.46, 0.31, 0.46],
     ]);
     jerryCan(P, 'turretCloth', 0.68, 0.47, -2.65, 0.16);
-    tarpRoll(P, 'turretCloth', -0.04, 0.76, -2.45, 0.96, 0.095, true, P.q ? 12 : 8);
+    tarpRoll(P, 'turretCloth', -0.04, 0.736, -2.45, 0.96, 0.095, true, P.q ? 12 : 8); // 2026-10-19 (owner float sweep): stood 21 mm over the load
     ammoCan(P, 'turretDark', -0.72, 0.45, -2.66, 0.12);
 
     P.turretG.userData.leopard1A5TurretFinishReceipt = {
@@ -13232,8 +13348,9 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
         P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.632, 1.74, bz + bl * 0.28);
         P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.632, 1.74, bz - bl * 0.28);
       }
-      P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * 1.60, 1.455, 3.42);  // seated width-indicator rods
-      P.add('hullDetail', sph(0.016, 8), s * 1.60, 1.620, 3.42);
+      // 2026-10-19 (owner float sweep): the rods stood 112 mm ahead of the 1.31 shelf's 3.30 edge; moved back onto it.
+      P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * 1.60, 1.455, 3.29);  // seated width-indicator rods
+      P.add('hullDetail', sph(0.016, 8), s * 1.60, 1.620, 3.29);
     }
     if (P.geometryReceipt) {
       P.hullG.userData.leopardWidthIndicatorSeat = {
@@ -13244,8 +13361,8 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
         capCenterY: 1.620,
       };
     }
-    P.add('hullDark', box(0.09, 0.07, 0.11), -1.30, 1.47, 3.30);                // Bosch horn
-    P.add('hullDark', xform(cylZ(0.035, 0.02, 10), 0, 0, 0.062), -1.30, 1.47, 3.30);
+    P.add('hullDark', box(0.09, 0.07, 0.11), -1.30, 1.407, 3.30);               // Bosch horn; 2026-10-19 (owner float sweep): was 61 mm up
+    P.add('hullDark', xform(cylZ(0.035, 0.02, 10), 0, 0, 0.062), -1.30, 1.407, 3.30);
     shovelTool(P, -1.28, 1.825, -1.15);
     P.add('hullWood', box(0.03, 0.022, 0.62), 1.30, 1.822, -1.60);              // axe helve
     P.add('hullDark', box(0.05, 0.028, 0.15), 1.30, 1.824, -1.36);              // axe head
@@ -13256,10 +13373,12 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
       st.position.set(-0.58, 1.52, 2.86);                                       // glacis spare links
       P.hullG.add(st);
     }
-    P.add('hullDetail', box(0.30, 0.16, 0.015), 0.02, 1.32, -3.755);            // convoy plate
+    // 2026-10-19 (owner float sweep): the convoy plate hung 27 mm off the stern cage, the bow eyes 32 mm over the nose
+    // and the shackles 41 mm under the cage brackets; the plate now bolts to the cage's bottom bar and centre post.
+    P.add('hullDetail', box(0.30, 0.16, 0.015), 0.02, 1.36, -3.794);            // convoy plate
     for (const s of [-1, 1] as const) {
-      P.add('hullDetail', box(0.09, 0.09, 0.12), s * 0.72, 1.28, 3.66);         // bow tow eyes
-      P.add('hullDetail', cylX(0.030, 0.22, 8), s * 0.62, 0.98, -3.70);         // stern shackle bows
+      P.add('hullDetail', box(0.09, 0.09, 0.12), s * 0.72, 1.248, 3.66);        // bow tow eyes
+      P.add('hullDetail', cylX(0.030, 0.22, 8), s * 0.62, 1.024, -3.70);        // stern shackle bows
     }
   };
   buildLeo2A6MHullStage1();
@@ -13349,7 +13468,7 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
       mastX: -0.85, mastZ: -2.35, mastTop: 0.82,
       // raised whips (print carries them raised to ~3.4 world — thin 1-column
       // spikes: the whole-mask bbox needs them, the p95 law ignores them)
-      whips: [{ x: 1.05, z: -2.80, baseY: 0.70, top: 1.62 }, { x: -1.05, z: -2.80, baseY: 0.70, top: 1.62 }],
+      whips: [{ x: 1.05, z: -2.80, baseY: 0.674, top: 1.62 }, { x: -1.05, z: -2.80, baseY: 0.674, top: 1.62 }], // 2026-10-19 (owner float sweep): bases were 24 mm up
     });
     leopardA6MantletRoofBridge(P, { frontHalfWidth: 0.13, cheekInnerX: 0.26 });
     // The helper's dark basket stopped 35-40 mm above the A6M deck and made
@@ -13463,7 +13582,7 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
   const buildLeo2A6MTurretStage1 = (): void => {
     for (let i = 0; i < 7; i++) {
       const x = -1.00 + i * (2.00 / 6);
-      P.add('turretDetail', box(0.026, 0.55, 0.026), x, 0.335, -3.46);
+      P.add('turretDetail', box(0.026, 0.60, 0.026), x, 0.36, -3.46);            // 2026-10-19 (owner float sweep): posts reach the top bar (was 28 mm short)
       if (i % 2 === 0) P.add('turretDark', box(0.034, 0.034, 0.14), x, 0.30, -3.40);
     }
     // Wegmann 2x4 smoke banks on the rear chamfer slopes (proud, visible)
@@ -13782,7 +13901,8 @@ function addLeopardUaHullCage(P: TankBuilderPort): void {
   for (const side of [-1, 1] as const) {
     P.add('hullDark', box(0.56, 0.035, 0.20), side * 1.94, 1.46, -3.29);
   }
-  P.add('hullDetail', box(0.44, 0.035, 0.20), 0, 1.33, 3.61);
+  // 2026-10-19 (owner float sweep): the bow step stood 68 mm over the nose; dropped onto it.
+  P.snapGroup('leo2a6ua-bow-step', () => P.add('hullDetail', box(0.44, 0.035, 0.20), 0, 1.33, 3.61), { reachM: 0.10, mode: 'down' });
 }
 
 function addLeopardUaTurretCage(P: TankBuilderPort): void {
@@ -14061,7 +14181,8 @@ function buildLeo2A4M(P: TankBuilderPort) {
         upperShoulderFill: true,
         upperShoulderFloorY: 1.30,
       },
-      headlightY: 1.44, headlightZ: 3.20,
+      // 2026-10-19 (owner float sweep): the pods stood 47 mm proud of the lane-cut glacis tip (z 3.13); 50 mm aft they sit on it.
+      headlightY: 1.44, headlightZ: 3.15,
       rear: { wallZ: -3.62, lipZ: -3.74, yTop: 1.80, yBot: 1.13 },
       tailFrame: { z0: -3.62, z1: -3.79, yLo: 1.47, yHi: 1.775, w: 2.9, posts: [0.5, 1.38] },
       fender: { x0: 1.56, x1: 1.66, y0: 1.60, y1: 1.665, z0: -3.00, z1: 2.10 },
@@ -14144,7 +14265,7 @@ function buildLeo2A4M(P: TankBuilderPort) {
         // fore lower rubber hem, segmented under the module bays
         for (let k = 0; k < 5; k++) {
           const buildLeo2A4MHullCourse3 = (): void => {
-            P.add('hullRubber', box(0.028, 0.325, 0.68), s * 1.85, 0.6825, 3.28 - k * 0.71);
+            P.hangMudguard('leo2a4m-can-skirt-hem', 'hullRubber', box(0.028, 0.325, 0.68), s * 1.85, 0.6825, 3.28 - k * 0.71);
           };
           buildLeo2A4MHullCourse3();
         }
@@ -14153,8 +14274,10 @@ function buildLeo2A4M(P: TankBuilderPort) {
         // the 17 cm fender<->skirt trench read 101 enclosed top-down cells per
         // side, the 9.5 cm rear trench 10 — the real vehicles carry exactly
         // this rail; the a6m's 10 cm gap class needed none)
-        P.add('hull', box(0.16, 0.025, 3.26), s * 1.7775, 1.322, 1.98);           // fore rail (z 0.35..3.61)
-        P.add('hull', box(0.115, 0.020, 4.40), s * 1.7175, 1.428, -0.78);         // rear rail (z -2.98..1.42)
+        // Owner 2026-10-19 (flaps sweep): both rails stopped 8-15 cm short of the hull side (x 1.56-1.58), so the whole
+        // course floated; they now run to x 1.55, into it.
+        P.add('hull', box(0.3075, 0.025, 3.26), s * 1.70375, 1.322, 1.98);        // fore rail (z 0.35..3.61)
+        P.add('hull', box(0.225, 0.020, 4.40), s * 1.6625, 1.428, -0.78);         // rear rail (z -2.98..1.42)
         // rear paneled course at the print's ±1.78 line
         {
           const z0 = -3.00, z1 = 1.44, n = 6, L = (z1 - z0) / n;
@@ -14162,7 +14285,7 @@ function buildLeo2A4M(P: TankBuilderPort) {
             const zc = z0 + L * (k + 0.5);
             P.add('hull', box(0.045, 0.13, L - 0.02), s * 1.7775, 1.355, zc);     // proud mounting band
             P.add('hull', box(0.035, 0.445, L - 0.02), s * 1.7625, 1.0675, zc);   // recessed panel
-            P.add('hullRubber', box(0.028, 0.325, L - 0.02), s * 1.764, 0.6825, zc); // rubber hem
+            P.hangMudguard('leo2a4m-can-skirt-hem', 'hullRubber', box(0.028, 0.325, L - 0.02), s * 1.764, 0.6825, zc); // rubber hem
             P.add('hullDark', box(0.010, 0.06, 0.05), s * 1.782, 1.355, zc);      // band latch dot
           }
           for (let k = 1; k < n; k++) {
@@ -14274,10 +14397,13 @@ function buildLeo2A4M(P: TankBuilderPort) {
       P.add('hullDetail', box(0.32, 0.020, 0.07), s * 1.05, 1.645, -3.665);     // box lid lip
       P.add('hullDark', box(0.010, 0.05, 0.05), s * 1.20, 1.50, -3.668);        // box latch
       P.add('hullDetail', box(0.16, 0.022, 0.11), s * 1.76, 1.522, -3.625);     // rear pod guard bar
+      // 2026-10-19 (owner float sweep): the outer guards floated 53-102 mm off the glacis; the guards follow the pod 50 mm
+      // aft and a base bar through their lower corners ties all three into the headlight pod.
       for (const d of [-0.13, 0, 0.13]) {                                       // headlight brush guards
-        P.add('hullDetail', box(0.018, 0.13, 0.13), s * 1.043 + d, 1.475, 3.27, -0.33, 0, 0);
+        P.add('hullDetail', box(0.018, 0.13, 0.13), s * 1.043 + d, 1.475, 3.22, -0.33, 0, 0);
       }
-      P.add('hullDark', cylX(0.022, 0.15, 8), s * 0.72, 1.26, 3.705);           // tow-eye shackle pins
+      P.add('hullDetail', box(0.30, 0.02, 0.04), s * 1.043, 1.40, 3.185);       // guard base bar into the pod
+      P.add('hullDark', cylX(0.022, 0.15, 8), s * 0.72, 1.225, 3.69);           // tow-eye shackle pins
     }
     // ---- German fender grammar + pioneer kit
     for (const s of [-1, 1] as const) {
@@ -14287,18 +14413,14 @@ function buildLeo2A4M(P: TankBuilderPort) {
         P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.632, 1.74, bz + bl * 0.28);
         P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.632, 1.74, bz - bl * 0.28);
       }
-      // Width-marker rods. Art fixes 230 (2026-10-21, hero-card critics: "a small detached vertical sliver floats in the
-      // air just ahead of the nose"): the rod stood at |x| 1.60 with its foot at y 1.67, 0.34 m above anything. It now
-      // stands on a clamp on the front fender strip (x 1.697..1.857, top 1.334) and keeps its ball tip.
-      P.add('hullDetail', box(0.05, 0.03, 0.05), s * 1.777, 1.348, 3.42);
-      P.add('hullDetail', cylY(0.008, 0.008, 0.44, 6), s * 1.777, 1.575, 3.42);
-      P.add('hullDetail', sph(0.016, 8), s * 1.777, 1.80, 3.42);
+      // 2026-10-19 (owner float sweep): the width rods stood 336 mm over the fore skirt rail (top 1.3345); seated on it
+      // (the 2A6M seat class).
+      P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * 1.60, 1.4825, 3.42);
+      P.add('hullDetail', sph(0.016, 8), s * 1.60, 1.6475, 3.42);
     }
-    // Bosch horn: it stood at z 3.30, a third of a metre ahead of the sloped upper glacis (z 2.975 at y 1.435, 2.807
-    // at 1.505) with nothing under it. Its lower back edge now rests 1 cm into that plate (art fixes 230, same seating
-    // pass as the width rods).
-    P.add('hullDark', box(0.09, 0.07, 0.11), -1.30, 1.47, 3.02);
-    P.add('hullDark', xform(cylZ(0.035, 0.02, 10), 0, 0, 0.062), -1.30, 1.47, 3.02);
+    // 2026-10-19 (owner float sweep): the horn hung 139 mm ahead of the lane-cut glacis edge; it sits on the plate.
+    P.add('hullDark', box(0.09, 0.07, 0.11), -1.30, 1.44, 3.00);
+    P.add('hullDark', xform(cylZ(0.035, 0.02, 10), 0, 0, 0.062), -1.30, 1.44, 3.00);
     // §5.345: pioneer tools re-seated on the STERN SHELF fully aft of the
     // turret casting envelope (every part z < -3.04; the jackDark tone fix
     // shrank the wood bucket to the mid-deck tools and the AABB-coarse §B5
@@ -14321,7 +14443,9 @@ function buildLeo2A4M(P: TankBuilderPort) {
     for (const s of [-1, 1] as const) P.add('hull', box(0.225, 0.02, 0.58), s * 0.8725, 1.155, 3.42);
     P.add('hullDetail', box(0.30, 0.16, 0.015), 0.02, 1.32, -3.755);            // convoy plate
     for (const s of [-1, 1] as const) {
-      P.add('hullDetail', box(0.09, 0.09, 0.12), s * 0.72, 1.28, 3.66);
+      // 2026-10-19 (owner float sweep): the tow eyes hung 32 mm over the glacis tip; lowered and lengthened aft into it
+      // (front face kept at 3.72).
+      P.add('hullDetail', box(0.09, 0.09, 0.15), s * 0.72, 1.245, 3.645);
       P.add('hullDetail', cylX(0.030, 0.22, 8), s * 0.62, 0.98, -3.70);
       // mudflaps: front pair at the skirt line ahead of the idler, rear pair
       // behind the sprocket (the print's lower-corner mass at both ends).
@@ -14329,20 +14453,26 @@ function buildLeo2A4M(P: TankBuilderPort) {
       // 20/10 — inner edge now 1.70, outboard of the 1.66 shoe envelope. The
       // 3.70 column stays the hullLengthM bow anchor (the idler wrap behind
       // it carries the 12% band — an x-trim cannot drop the column).
-      P.add('hullRubber', box(0.18, 0.36, 0.028), s * 1.79, 0.72, 3.70);
+      P.hangMudguard('leo2a4m-can-front-flap', 'hullRubber', box(0.18, 0.36, 0.028), s * 1.79, 0.72, 3.70);
       P.add('hullDetail', box(0.18, 0.04, 0.034), s * 1.79, 0.92, 3.70);
       // hinge arm into the front-skirt plate (floater law — the outboard
       // flap no longer overlaps the course, so it must SEAT somewhere real)
-      P.add('hullDetail', box(0.14, 0.04, 0.10), s * 1.832, 0.92, 3.665);
-      P.add('hullRubber', box(0.18, 0.40, 0.028), s * 1.79, 0.70, -3.58);
+      // (2026-10-19: lengthened 35 mm aft, into the short module's front face at 3.60 it stopped 15 mm short of)
+      P.add('hullDetail', box(0.14, 0.04, 0.135), s * 1.832, 0.92, 3.6475);
+      P.hangMudguard('leo2a4m-can-rear-flap', 'hullRubber', box(0.18, 0.40, 0.028), s * 1.79, 0.70, -3.58);
       P.add('hullDetail', box(0.18, 0.04, 0.034), s * 1.79, 0.92, -3.58);
       // rear hinge arm to the hull side wall (behind the sprocket wrap — no
       // course exists at z -3.58, §B4-safe)
-      P.add('hullDetail', box(0.33, 0.05, 0.05), s * 1.715, 0.92, -3.58);
+      // (2026-10-19: the arm ended 10 cm short of any stock; it now reaches x 1.50 and a post rises from its inner
+      // end 20 mm into the hull wall's underside at 1.148)
+      P.add('hullDetail', box(0.38, 0.05, 0.05), s * 1.69, 0.92, -3.58);
+      P.add('hullDetail', box(0.04, 0.27, 0.05), s * 1.52, 1.035, -3.58);
       // rear-corner light/convoy pods (ref rear view carries them proud;
       // pulled in from ±1.80/-3.66 — the quarter-view bbox grew procOnly)
       P.add('hullDark', box(0.14, 0.14, 0.10), s * 1.76, 1.44, -3.62);
-      P.add('hullGlass', box(0.05, 0.04, 0.014), s * 1.76, 1.46, -3.68);
+      P.add('hullGlass', box(0.05, 0.04, 0.014), s * 1.76, 1.46, -3.676);
+      // 2026-10-19 (owner float sweep): the pods stood 100 mm off the lifted sponson side; a bracket joins the guard bar to it.
+      P.add('hullDark', box(0.12, 0.06, 0.08), s * 1.635, 1.555, -3.60);
     }
     // ---- rear hull stowage rack (the -3.78 tail dims anchor: overall 9.96 =
     // muzzle 6.24 - (-3.78) within the bore-mouth law; robust >12% body band).
@@ -14440,7 +14570,8 @@ function buildLeo2A4M(P: TankBuilderPort) {
     // stations and the p95 landed on its third column (2.82 read, +7.7%);
     // the family law grants the PERI spike ≤2 columns ("PERI compact
     // 2.77-2.84 ≤2 cols", §5.248 dossier).
-    P.add('turretDetail', cylY(0.055, 0.065, 0.34, 12), 0.36, 0.89, -0.28);
+    // 2026-10-19 (owner float sweep): the base stood 40 mm over the 0.68 roof; it now runs 3 mm into it.
+    P.add('turretDetail', cylY(0.055, 0.065, 0.383, 12), 0.36, 0.8685, -0.28);
     P.add('turretDetail', cylY(0.065, 0.065, 0.05, 12), 0.36, 1.065, -0.28);
     P.add('turretDark', box(0.17, 0.20, 0.14), 0.36, 1.06, -0.28);
     P.add('turretGlass', box(0.11, 0.10, 0.018), 0.36, 1.08, -0.204);
@@ -14469,7 +14600,7 @@ function buildLeo2A4M(P: TankBuilderPort) {
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's C6)
       const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 4, rotation: [0, 0.35, 0], working: true });
       mg.name = 'leo2LoaderC6';
-      mg.position.set(-0.42, 0.70, -0.38);
+      mg.position.set(-0.42, 0.678, -0.38);                                      // 2026-10-19 (owner float sweep): 20 mm over the roof; seated
       P.turretG.add(mg);
     }
     // crosswind sensor mast (rear-left roof) + twin SEM 25 whips at the
@@ -14581,6 +14712,13 @@ function buildLeo2A4M(P: TankBuilderPort) {
       wrapSideSlat(P, 'turret', side, {
         outer: 1.72, seat: 1.53, y0: 0.22, y1: 0.66, z0: -2.50, z1: -0.54, sections: 3,
       });
+      // 2026-10-19 (owner float sweep): the three rear side plates and the slat cage stood 8-16 cm off the tapering wall
+      // (x 1.20 -> 1.10) with nothing between; low stand-off brackets (under the smoke banks and grab rails) carry each
+      // plate and the rearmost slat section from the wall.
+      for (const [bz, by, x0] of [[-0.68, 0.26, 1.195], [-1.02, 0.27, 1.175], [-1.64, 0.235, 1.14]] as const) {
+        P.add('turretDark', box(1.53 - x0, 0.04, 0.05), side * (1.53 + x0) / 2, by, bz);
+      }
+      P.add('turretDark', box(0.432, 0.038, 0.04), side * 1.304, 0.22, -1.981);
     }
     wrapRearSlat(P, 2.88, 0.22, 0.67, -2.70, -2.48);
     wrapCanadianSmoke(P, 6, 2460);
