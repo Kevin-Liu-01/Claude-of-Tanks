@@ -101,6 +101,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/remoteGunFleet.selftest.mjs',
     'src/vehicles/profiles/mbt70Rh202.selftest.mjs',
     'src/vehicles/roofWeaponPolicy.selftest.mjs',
+    // 2026-10-20 (the fleet ZTZ-99A2 lane): the QJC-88's arc stops short of the commander's sight (the whole moving mass
+    // swept both ways at 25 mm; the old arc and the bare depression table as negative controls)
+    'src/vehicles/ztz99a2RoofArc.selftest.mjs',
     'src/vehicles/profiles/challenger3MachineGunAssembly.selftest.mjs',
     'src/vehicles/profiles/amx30B2Roof.selftest.mjs',
     'src/vehicles/fleetRenewal.selftest.mjs',
