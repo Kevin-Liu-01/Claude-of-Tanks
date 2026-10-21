@@ -35,6 +35,8 @@ const phoneIds = (arg('phone-ids') || ids.join(',')).split(',').filter(Boolean);
 const OUT_ROOT = resolve(arg('out', '/Users/kevinliu/cot-launch-state/streams/gallery-anatomy/renders/r230'));
 const views = arg('views', 'exterior,armor,modules,crew,hitbox').split(',').filter(Boolean);
 const toolRoot = roots[plan[0].side];
+// --swiftshader: a CPU-only preview set (no GPU, no capture lock) for early critic rounds; the GPU hold makes the finals.
+const swiftshader = process.argv.includes('--swiftshader');
 const toolRequire = createRequire(join(toolRoot, 'package.json'));
 const puppeteer = (await import(pathToFileURL(toolRequire.resolve('puppeteer')).href)).default;
 const { createCaptureLock } = await import(pathToFileURL(join(toolRoot, 'tools/capture-lock.mjs')).href);
@@ -52,7 +54,9 @@ for (const side of new Set(plan.map((item) => item.side))) {
   const { createServer } = await import(pathToFileURL(require.resolve('vite')).href);
   const server = await createServer({
     root, logLevel: 'error',
-    server: { host: '127.0.0.1', port: 0, strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
+    // Sources stay watched (no HMR): an edit made while the ticket waits is what the hold captures.
+    server: { host: '127.0.0.1', port: 0, strictPort: false, hmr: false,
+      watch: { ignored: ['**/node_modules/**', '**/.git/**', '**/public/**', '**/dist/**', '**/shots/**', '**/docs/**', '**/tools/**', '**/server/**', '**/api/**'] } },
     optimizeDeps: { entries: ['index.html', 'site/gallery.html'], include: ['three'] },
   });
   await server.listen();
@@ -63,7 +67,7 @@ for (const side of new Set(plan.map((item) => item.side))) {
   log('vite warm', side, root, servers[side].base);
 }
 
-const lock = createCaptureLock();
+const lock = swiftshader ? { acquire: async () => {}, refresh() {}, release() {} } : createCaptureLock();
 await lock.acquire(Number(arg('lockwait', String(5 * 60 * 60 * 1000))));
 const holdStart = Date.now();
 log('capture lock held');
@@ -78,9 +82,9 @@ async function shutdown(code) {
   } catch {}
   process.exit(code);
 }
-setTimeout(() => { log('watchdog: 19.5 min hold cap'); receipts.errors.push('watchdog'); void shutdown(124); }, 19.5 * 60 * 1000).unref();
+if (!swiftshader) setTimeout(() => { log('watchdog: 19.5 min hold cap'); receipts.errors.push('watchdog'); void shutdown(124); }, 19.5 * 60 * 1000).unref();
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => void shutdown(143));
-const HOLD_LIMIT_MS = 17 * 60 * 1000;
+const HOLD_LIMIT_MS = swiftshader ? Infinity : 17 * 60 * 1000;
 const settle = (ms = 700) => new Promise(r => setTimeout(r, ms));
 
 const allIds = ids;
@@ -172,7 +176,8 @@ async function captureItem({ side, part }) {
 
 try {
   browser = await puppeteer.launch({ channel: 'chrome', headless: true,
-    args: ['--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--use-angle=metal', '--hide-scrollbars'] });
+    args: swiftshader ? ['--disable-gpu', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--hide-scrollbars']
+      : ['--ignore-gpu-blocklist', '--enable-gpu-rasterization', '--use-angle=metal', '--hide-scrollbars'] });
   for (const item of plan) {
     if (Date.now() - holdStart > HOLD_LIMIT_MS) { receipts.skipped.push(`${item.side}:${item.part}`); continue; }
     log('item', item.side, item.part);
