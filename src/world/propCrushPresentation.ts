@@ -88,7 +88,6 @@ const CAR_BURN = { impact: 0.3, colourStep: 0.03, shapeStep: 0.1, rim: 0.72, can
 const SOOT: readonly [number, number, number] = [0.022, 0.019, 0.017];
 const STEEL: readonly [number, number, number] = [0.05, 0.048, 0.046];
 const OXIDE: readonly [number, number, number] = [0.105, 0.042, 0.018];
-const RUST: readonly [number, number, number] = [0.16, 0.062, 0.026];
 const ASH: readonly [number, number, number] = [0.2, 0.19, 0.175];
 
 /** A car's burn in flight: its rest as it burns (the press draws from it), the intact and the burnt rests, colours and
@@ -410,7 +409,7 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     // fire burns the panels through to grey ash and dark steel with oxide flecks, under it the paint is scorched dark
     // (its own colour still under the soot), soot streaks the sides at the waist and darkens the underside; glass, rubber
     // and the cabin go to soot
-    const na = normal.array as Float32Array, top = t.field.top, belt = car.belt;
+    const na = normal.array as Float32Array, belt = car.belt;
     for (let v = 0; v < n / 3; v++) {
       const x = from[v * 3], y = from[v * 3 + 1], z = from[v * 3 + 2], ny = na[v * 3 + 1];
       const rough = surf0[v * 3] / scale, metal = surf0[v * 3 + 1] / scale;

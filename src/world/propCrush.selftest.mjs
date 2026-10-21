@@ -466,8 +466,8 @@ const slotScale = (im, i) => { const m = new THREE.Matrix4(); im.getMatrixAt(i, 
     for (let i = 0; i < 60; i++) press.step(DT);
     const fc = group.children[0];
     assert.equal(fc.geometry.drawRange.count, golf.index.count, 'a far-form build\'s copy draws its body\'s triangles alone');
-    assert.equal(fc.geometry.getAttribute('aVehicleLod'), undefined, 'and carries no fold tag (it never folds)');
-    assert.ok(farGolf.getAttribute('aVehicleLod'), 'the pool\'s own build keeps its tag');
+    assert.equal(fc.geometry.hasAttribute('aVehicleLod'), false, 'and carries no fold tag (it never folds)');
+    assert.equal(farGolf.hasAttribute('aVehicleLod'), true, 'the pool\'s own build keeps its tag');
     const fp = fc.geometry.getAttribute('position').array, cp = cc.geometry.getAttribute('position').array;
     let same = true;
     for (let i = 0; i < cp.length; i++) if (Math.abs(fp[i] - cp[i]) > 1e-6) { same = false; break; }
