@@ -180,7 +180,9 @@ function nationalCannon(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w
  g.add('turretDark',cylZ(.036,tip-barrelStart-brakeL,24),x,y,z+(barrelStart+tip-brakeL)/2);
  const gasEnd=barrelStart+(tip-barrelStart-brakeL)*.55;
  g.add('turretDark',cylZ(.016,gasEnd-barrelStart,16),x,y-.058,z+(barrelStart+gasEnd)/2);
- g.add('turretDark',box(.022,.04,.03),x,y-.038,z+gasEnd-.015);
+ // 2026-10-20 (release 227 coplanar census: the gas block's front face lay in the gas cylinder's front cap, 3.2 cm2):
+ // the block's front stands 1 mm ahead of the cap, its back where it was
+ g.add('turretDark',box(.022,.04,.031),x,y-.038,z+gasEnd-.0145);
  g.add('turretDark',blindTube(.050,l.caliber/2000,brakeL,.070,24),x,y,z+tip-brakeL/2);
  // the brake's baffles are rings round its body (round 4: solid discs closed the bore the station receipt looks into)
  for(const at of [-.115,-.07,-.025])g.add('turretDark',machinedRing(.048,.058,.014,.003,24).rotateX(Math.PI/2),x,y,z+tip+at-.007);
