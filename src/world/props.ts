@@ -10229,6 +10229,8 @@ ${snowCap ? `
   const placementDraws = { main: mainDraws, destruction: destructionDraws };
   landmarkFurniture = true;
   for (const [kind, x, y, z, yaw, scale] of landmarkDestructibles) addDestructible(kind, x, y, z, yaw, scale);
+  // (229) the set pieces' own lamps, for the receipts (they stand in their pieces' footprints by design)
+  group.userData.landmarkLamps = landmarkDestructibles.filter(([kind]) => kind === 'lamp').map(([, x, , z]) => [x, z]);
   // (the maps lane, 228) the civic areas' furniture, parked vehicles, lamps and railings, as authored (no veto moves them)
   for (const piece of civicPieces) addDestructible(piece.kind, piece.x, heightField.getHeightAt(piece.x, piece.z), piece.z, piece.yaw, piece.scale);
   // (the maps lane, 228; review R6) the lamp-seat snap of a civic plan's pathways: a street lamp the passes stood in or
@@ -10244,6 +10246,9 @@ ${snowCap ? `
     for (const rec of destructibles) {
       if (rec.kind !== 'lamp' || rec.slot < 0 || !rec.ob || !against(rec.x, rec.z, 0.3)) continue;
       if (civicPieces.some((p) => p.kind === 'lamp' && Math.hypot(p.x - rec.x, p.z - rec.z) < 0.05)) continue;
+      // (229) a set piece's own lamp (a park square's, along its paths) stands in the piece's footprint by design: it keeps
+      // its seat
+      if (landmarkDestructibles.some(([kind, x, , z]) => kind === 'lamp' && Math.hypot(x - rec.x, z - rec.z) < 0.05)) continue;
       let best = { d: Infinity, x: 0, z: 0, ri: -1 };
       for (let ri = 0; ri < roads.length; ri++) {
         const cls = pw.classes[ri];
