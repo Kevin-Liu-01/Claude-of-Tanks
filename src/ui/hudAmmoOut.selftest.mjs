@@ -261,17 +261,20 @@ function read(tank) {
   // critic r3: desktop empty slots read OUT the way the phone's do — struck on a danger edge, their 0 in the token
   assert.match(hud, /\.cot-shell\.empty\{[^}]*border-bottom-color:var\(--hud-danger\)[^}]*box-shadow:inset 0 -2px 0 var\(--hud-danger\)/,
     'a desktop empty slot sits on a danger edge');
-  // (critic r4 advisory: the values the capture reads are pinned here too — the strike is drawn, the label is 7.5 px)
+  // (critic r4 advisory: the values the capture reads are pinned here too — the strike is drawn)
   assert.match(hud, /\.cot-shell\.empty::before\{content:'';[^}]*background:var\(--hud-danger\)[^}]*rotate\(-45deg\)/, 'struck through');
   assert.match(hud, /\.cot-shell\.empty \.cnt\{color:var\(--hud-danger\);\}/, 'its 0 in the danger ink');
-  assert.match(hud, /\.cot-shell\.wide \.ty\{[^}]*font-size:7\.5px;[^}]*\}\n\.cot-shell\.wide \.cnt\{[^}]*\}/,
-    'a three-digit count tightens its row');
-  // critic r4: the shell gives way to a three-digit count — rising on desktop, shrinking and stepping out from under the
-  // touch corner count
+  // Release 230 type floor: at 11 px one row cannot hold a type label and its count (APFSDS alone is 41 px of the 62 px
+  // slot), so every tray sets them as the stacked and touch trays did since critic r6: the count in the top-right
+  // corner, the label alone on the floor, never under 11 px.
+  assert.doesNotMatch(hud, /\.cot-shell\.wide \.ty\{/, 'the label keeps its size beside a three-digit count (it no longer shares its row)');
+  assert.match(hud, /\n\.cot-shell \.ty\{position:absolute;bottom:2px;left:4px;right:3px;font-size:11px;font-weight:700;/,
+    'the type label sits on the slot\'s floor at the 11 px floor');
+  assert.match(hud, /\n\.cot-shell\.wide \.cnt\{right:3px;font-size:12px;letter-spacing:0;\}/, 'a three-digit count sets a step smaller in its corner');
+  // critic r4: the shell gives way to a three-digit count — shrinking and stepping out from under the touch corner count
   // (the rendered ink gap, 3 px at the least, is the capture's)
-  assert.match(hud, /\n\.cot-shell\.wide canvas\{transform:translate\(-50%,calc\(-50% - 4px\)\) scale\(\.88\);\}/,
-    'a desktop slot\'s shell rises clear of its three-digit count');
-  assert.match(touch, /body\.cot-touch-layout \.cot-shell\.wide \.cnt\{top:1px;right:2px;font-size:10px;\}\n/,
+  assert.doesNotMatch(hud, /\n\.cot-shell\.wide canvas\{/, 'the desktop shell needs no step for a three-digit count: the count sits above its drum');
+  assert.match(touch, /body\.cot-touch-layout \.cot-shell\.wide \.cnt\{top:1px;right:2px;font-size:11px;\}\n/,
     'the phone sets a three-digit count smaller in its corner');
   assert.match(touch, /body\.cot-touch-layout \.cot-shell\.wide canvas\{bottom:12px;transform:translateX\(calc\(-50% - 5px\)\) scale\(\.6\);\}/,
     'and its shell shrinks and steps left, out from under it, 3 px over the label');
@@ -279,9 +282,9 @@ function read(tank) {
   // the label's floor (bottom-anchored, so every slot height keeps the gap) and shrinks on the shorter slots (the
   // rendered label-to-icon ink gap, 3 px at the least, is the capture's)
   const responsive = readFileSync(new URL('./responsiveSurfaces.css', import.meta.url), 'utf8');
-  assert.match(hud, /\n\.cot-shell canvas\{position:absolute;left:50%;top:50%;transform:translate\(-50%,calc\(-50% - 3px\)\);\}/,
-    'a desktop slot\'s shell clears its type label');
-  assert.match(hud, /\n\.cot-shell \.cnt\{position:absolute;bottom:1px;right:3px;/, 'and its count keeps clear of the HE drum');
+  assert.match(hud, /\n\.cot-shell canvas\{position:absolute;left:50%;top:50%;transform:translate\(-50%,-50%\) scale\(\.78\);\}/,
+    'a desktop slot\'s shell stands between its corner count and its type label');
+  assert.match(hud, /\n\.cot-shell \.cnt\{position:absolute;top:2px;right:3px;/, 'and its count takes the top-right corner');
   assert.match(touch, /body\.cot-touch-layout \.cot-shell canvas\{top:auto;bottom:11px;transform:translateX\(-50%\) scale\(\.76\);transform-origin:50% 100%;\}/,
     'a touch slot\'s shell stands on the label\'s floor');
   assert.match(responsive, /\[data-cot-orientation='landscape'\] \.cot-shell:not\(\.wide\) canvas\{bottom:12px;transform:translateX\(-50%\) scale\(\.64\)\}/,
@@ -297,15 +300,16 @@ function read(tank) {
   // three-digit count, and an empty slot's strike spans the icon (the rendered 3 px ink gaps are the capture's).
   const stacked = (rule) => new RegExp(`:not\\(\\.cot-touch-layout\\)\\[data-hud-tray='stacked'\\] ${rule}`);
   assert.doesNotMatch(layout, stacked("\\.cot-shell canvas\\{transform:translate\\(-50%,-50%\\)"), 'no centred stacked shell over the label');
-  assert.match(layout, stacked("\\.cot-shell canvas\\{top:auto;bottom:12px;transform:translateX\\(-50%\\) scale\\(\\.6\\);transform-origin:50% 100%\\}"),
+  assert.match(layout, stacked("\\.cot-shell canvas\\{top:auto;bottom:14px;transform:translateX\\(-50%\\) scale\\(\\.6\\);transform-origin:50% 100%\\}"),
     'a stacked slot\'s shell stands on the label\'s floor');
   assert.match(layout, stacked("\\.cot-shell\\.wide canvas\\{transform:translateX\\(calc\\(-50% - 3px\\)\\) scale\\(\\.54\\)\\}"),
     'and shrinks and steps left under a three-digit count');
   assert.match(layout, stacked("\\.cot-shell \\.cnt\\{top:2px;right:3px;bottom:auto;font-size:11px\\}"), 'its count takes the top-right corner');
-  assert.match(layout, stacked("\\.cot-shell\\.wide \\.cnt\\{top:1px;right:2px;font-size:10px\\}"), 'a three-digit count sets smaller there');
+  assert.match(layout, stacked("\\.cot-shell\\.wide \\.cnt\\{top:1px;right:2px;font-size:11px\\}"), 'a three-digit count keeps the 11 px floor there');
+  assert.match(layout, stacked("\\.cot-shell \\.ty\\{left:1px;right:1px;text-align:center\\}"), 'the label centres on the narrow slot\'s floor');
   assert.match(layout, stacked("\\.cot-shell\\.unlimited \\.cnt\\{font-size:16px;line-height:11px\\}"), 'the ∞ at the corner numeral\'s size');
-  assert.match(layout, stacked(":is\\(\\.cot-shell,\\.cot-con\\) \\.key\\{top:1px;left:1px;padding:0 2px;font-size:8px;line-height:10px\\}"),
-    'a smaller key keeps the top-left corner (the consumables\' too, so the tray\'s keys match)');
+  assert.match(layout, stacked(":is\\(\\.cot-shell,\\.cot-con\\) \\.key\\{top:1px;left:1px;padding:0 2px;font-size:11px;line-height:12px\\}"),
+    'the key keeps the top-left corner at the 11 px floor (the consumables\' too, so the tray\'s keys match)');
   assert.match(layout, stacked("\\.cot-shell\\.empty::before\\{left:12px;right:12px\\}"), 'an empty slot\'s strike spans its icon');
   assert.match(layout, /\[data-hud-tray='stacked'\]:is\(\[data-cot-width='phone'\],\[data-cot-width='compact'\]\) \.cot-shell:not\(\.wide\) canvas\{transform:translateX\(calc\(-50% - 1px\)\) scale\(\.56\)\}/,
     'the 44 px wide stacked slots draw it smaller and 1 px left, clear of a two-digit count');

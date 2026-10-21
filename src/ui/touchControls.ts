@@ -117,6 +117,9 @@ body.cot-touch-layout[data-cot-orientation='portrait'] .cot-touch .mobile-chrome
 .cot-touch .quick svg{width:18px;height:18px;display:block;}
 .cot-touch .quick .ql{font-family:${FONT_COND};font-size:11px;font-weight:700;line-height:1;
   letter-spacing:0em;text-transform:uppercase;white-space:nowrap;}
+/* A 44 px button holds an 11 px word of four or five letters: the sound and settings buttons speak through their icons
+   (their names stay for assistive technology), and the graphics button prints only its level under the monitor. */
+.cot-touch .quick:is(.sound,.settings) .ql{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 .cot-touch .quick.muted{color:#f08b75;border-color:rgba(240,102,83,.55);}
 /* Recompose the existing live HUD instead of duplicating ammo/state UI. */
 body.cot-touch-layout{overscroll-behavior:none;}
@@ -146,7 +149,7 @@ body.cot-touch-layout .cot-shells.touch-open .cot-shell.sel::after{content:'›'
 body.cot-touch-layout .cot-shell canvas{top:auto;bottom:11px;transform:translateX(-50%) scale(.76);transform-origin:50% 100%;}
 body.cot-touch-layout .cot-shell .key,body.cot-touch-layout .cot-con .key{display:none;}
 body.cot-touch-layout .cot-shell .tip{display:none!important;}
-body.cot-touch-layout .cot-shell .ty{font-size:11px;left:1px;right:1px;text-align:center}
+body.cot-touch-layout .cot-shell .ty{font-size:11px;left:1px;right:1px;text-align:center;letter-spacing:-.04em}
 body.cot-touch-layout .cot-shell .cnt{font-size:11px;}
 /* stronger ACTIVE-AMMO read at glance distance: brighter amber frame, inner
    keyline + glow (the desktop .sel border alone washes out at phone size) */
@@ -754,7 +757,7 @@ export function createTouchControls({
         : label === 'Quality' ? t('touch.gfx.qual')
           : label === 'Ultra Low' ? t('touch.gfx.ultraLow')
             : label;
-    graphicsButton.querySelector<HTMLElement>('.ql')!.textContent = t('touch.gfx.label', { short });
+    graphicsButton.querySelector<HTMLElement>('.ql')!.textContent = short;
     graphicsButton.setAttribute('aria-label', t('touch.gfx.aria', { label }));
     graphicsButton.title = t('touch.gfx.title', { label });
   }

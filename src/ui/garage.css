@@ -1537,7 +1537,7 @@ body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-p
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>svg,
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>.cot-info-trigger{display:none}
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>span{
-  font-size:11px;letter-spacing:.04em;
+  font-size:11px;letter-spacing:0;
 }
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-grid{grid-template-columns:1fr;gap:3px}
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .srow{
