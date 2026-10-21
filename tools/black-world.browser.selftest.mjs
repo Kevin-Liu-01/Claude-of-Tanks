@@ -13,6 +13,9 @@
 //  - Esc, LEAVE BATTLE, the Garage, BATTLE again (the owner's "esc out and come back in"): a complete scene target, no
 //    incident, the world drawn;
 //  - a late composite cleared to zero over a healthy scene target (D2) is named downstream-black.
+// Round 3 (2026-10-21, eng E1): the battle is a day battle, and the camera circles the map's own sun for 6 s: the disc
+// saturates the half-float scene target (65504 on Metal, read back to prove the case ran) and opens no incident (the
+// round-2 probe called it a NaN); a real NaN over the scene target (from its bits) is still named nan-history.
 // It takes the capture lock itself (an owned lease, run-selftests.mjs) and the hardware ANGLE path.
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
@@ -20,6 +23,7 @@ import { createServer } from 'vite';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { createCaptureLock } from './capture-lock.mjs';
 import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-browser-launch.mjs';
+import { nanSceneFault, sunScan } from './black-world-page-probes.mjs';
 
 const VIEW = { width: 1280, height: 720 };
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -88,7 +92,11 @@ try {
   await page.evaluateOnNewDocument(() => {
     // the frame scheduler presents only to a focused document; a headless page has no OS focus
     Document.prototype.hasFocus = () => true;
-    try { localStorage.setItem('cot.telemetry', 'off'); localStorage.setItem('cot.game.mode.v1', 'drone'); } catch { /* none */ }
+    try {
+      localStorage.setItem('cot.telemetry', 'off'); localStorage.setItem('cot.game.mode.v1', 'drone');
+      // (round 3) a day battle: Redrock's sun at ~30 deg, its disc over the half-float range
+      localStorage.setItem('cot.battle.times.v2', JSON.stringify(['day']));
+    } catch { /* none */ }
   });
   const port = server.httpServer.address().port;
   await page.goto(`http://127.0.0.1:${port}/?nosplash=1&debug=1&telemetry=off&tier=desktop`, { waitUntil: 'domcontentloaded', timeout: 240_000 });
@@ -115,6 +123,18 @@ try {
     assert.ok(zero < 0.8, `${label}: the world region is not black (${zero.toFixed(3)} exactly zero)`);
   };
   await judge('battle start');
+
+  // (round 3, eng E1) a player looking toward the day sun: saturated HDR is light, never a NaN, and opens nothing
+  await page.evaluate(sunScan, 6);
+  await page.waitForFunction(() => window.__bwrSunScan?.done === true, { timeout: 60_000, polling: 250 });
+  report.checks.daySun = await page.evaluate(() => window.__bwrSunScan);
+  const sun = report.checks.daySun;
+  assert.ok(sun.over6e4Texels > 0, `the case ran: the disc saturated the scene target (${JSON.stringify(sun)})`);
+  assert.equal(sun.guard.incidents, 0, `the sun disc opens no incident (${JSON.stringify(sun)})`);
+  assert.ok(sun.guard.probes >= 12, `the guard probed throughout (${sun.guard.probes})`);
+  assert.equal(sun.guard.lastNan, false, 'the saturated disc is no NaN');
+  await judge('after the day sun');
+
 
   // Esc (the pause menu), a dwell, Resume
   await page.keyboard.press('Escape');
@@ -232,6 +252,17 @@ try {
   });
   report.checks.downstream = downstream;
   assert.ok(downstream.opened.some((r) => r.class === 'downstream-black'), `the cleared late composite is named downstream-black (${JSON.stringify(downstream)})`);
+
+  // the NaN class's positive control: a NaN (from its bits) over the scene target for 1.2 s is named nan-history
+  {
+    const before = await page.evaluate(() => (window.__GL_DIAG?.blackWorld ?? []).length);
+    report.checks.nanScene = { fault: await page.evaluate(nanSceneFault, 1.2) };
+    await sleep(3000);
+    report.checks.nanScene.opened = await page.evaluate((n) => (window.__GL_DIAG?.blackWorld ?? []).slice(n)
+      .map((r) => ({ class: r.class, healedBy: r.healedBy, closed: r.closed, nanCells: r.probe?.nan ?? null })), before);
+    assert.ok(report.checks.nanScene.opened.some((r) => r.class === 'nan-history'),
+      `a NaN over the scene target is named nan-history (${JSON.stringify(report.checks.nanScene)})`);
+  }
 } catch (error) {
   report.errors.push(String(error?.stack ?? error).slice(0, 1200));
 } finally {

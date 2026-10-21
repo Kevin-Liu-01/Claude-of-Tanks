@@ -14,6 +14,9 @@
  * reads 0.846 near-black. A sample re-read from a lossless PNG counts on its own exact-zero share too. Control and
  * injection frames never count as natural.
  *
+ * (Round 3) Sun scans (a day sun circled in frame: the disc saturates the half-float scene target, which must open no
+ * incident) and the guard's own measured cost (guardtiming rows) get a table each; both rows also count as natural rows.
+ *
  * (Round 2) A harness-error row (an unwatched window) still counts its guard incidents and any black frame it did see:
  * natural incidents are never dropped with the window. The target column is the build the page ran (prod, dev,
  * local-prod: a production build served on this machine), not the host.
@@ -96,6 +99,8 @@ function readPart(dir) {
 export function summarizeParts(dirs) {
   const rows = new Map();
   const injections = [];
+  const sunScans = [];
+  const timings = [];
   for (const dir of dirs) {
     const part = readPart(dir);
     if (!part) continue;
@@ -124,6 +129,18 @@ export function summarizeParts(dirs) {
           // a NaN fault's own readback: did a non-finite value reach its target (a fault that landed nothing proves nothing)
           landed: detail.nanLanded ? (detail.nanLanded.nonFinite ? `non-finite ${detail.nanLanded.target ?? ''}`.trim() : 'finite') : null });
         continue;
+      }
+      if (detail.sunscan) {
+        const after = detail.sunscan.after ?? {};
+        sunScans.push({ part: path.basename(dir), map: run.map, elevationDeg: after.elevationDeg ?? detail.sunscan.elevationDeg ?? null,
+          maxSeen: after.maxSeen ?? null, over6e4Texels: after.over6e4Texels ?? null, nonFiniteTexels: after.nonFiniteTexels ?? null,
+          frames: after.frames ?? null, probes: after.guard?.probes ?? null, incidents: after.guard?.incidents ?? null,
+          rowIncidents: ownIncidents(run.guard ?? detail.guard ?? null, injectedSoFar) });
+      }
+      if (detail.guardTiming?.after) {
+        const t = detail.guardTiming.after;
+        timings.push({ part: path.basename(dir), map: run.map, frames: t.timedFrames, cpuMean: t.selfCpuMsMean, cpuMax: t.selfCpuMsMax,
+          probes: t.timedProbes, gpuMean: t.probeGpuMsMean });
       }
       const key = `${target}|${chrome}|${scenario}|dsf${summary.dsf ?? 1}|${run.map}`;
       const row = rows.get(key) ?? { target, chrome, scenario, dsf: summary.dsf ?? 1, map: run.map, runs: 0, black: 0, suspect: 0,
@@ -173,10 +190,10 @@ export function summarizeParts(dirs) {
     unwatched: sum.unwatched + row.unwatched, incidents: sum.incidents + row.incidents, frames: sum.frames + row.frames,
     blackFrames: sum.blackFrames + row.blackFrames, emptyPassFrames: sum.emptyPassFrames + row.emptyPassFrames }),
   { runs: 0, black: 0, errors: 0, unwatched: 0, incidents: 0, frames: 0, blackFrames: 0, emptyPassFrames: 0 });
-  return { table, injections, totals };
+  return { table, injections, totals, sunScans, timings };
 }
 
-export function formatSummary({ table, injections, totals }) {
+export function formatSummary({ table, injections, totals, sunScans = [], timings = [] }) {
   const lines = [];
   lines.push('| target | chrome | scenario | dsf | map | runs | BLACK-WORLD runs | suspect | harness errors | guard incidents | black frames / frames | longest black (s) | first black at (s) | max sample gap (s) | empty scene-pass frames | parts |');
   lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
@@ -198,6 +215,22 @@ export function formatSummary({ table, injections, totals }) {
         + `${r.openedAfterMs ?? '-'} | ${r.healedAfterMs ?? '-'} | ${r.confirmedAfterMs ?? '-'} | ${r.clearedBy === 'fault-end' ? (r.afterFaultEndMs ?? '-') : '-'} | `
         + `${r.tinySizes ?? '-'} | ${r.passErrors} | ${r.landed ?? '-'} |`);
     }
+  }
+  if (sunScans.length) {
+    lines.push('');
+    lines.push('| part | map | sun elevation (deg) | max at the disc | texels >= 6e4 | non-finite texels | frames | probes | incidents in the scan | row incidents |');
+    lines.push('|---|---|---|---|---|---|---|---|---|---|');
+    for (const r of sunScans) {
+      lines.push(`| ${r.part} | ${r.map} | ${r.elevationDeg ?? '-'} | ${r.maxSeen ?? '-'} | ${r.over6e4Texels ?? '-'} | ${r.nonFiniteTexels ?? '-'} | `
+        + `${r.frames ?? '-'} | ${r.probes ?? '-'} | ${r.incidents ?? '-'} | ${r.rowIncidents} |`);
+    }
+  }
+  if (timings.length) {
+    lines.push('');
+    lines.push('| part | map | timed frames | guard CPU ms / frame (mean) | guard CPU ms (max frame) | timed probes | probe GPU ms (mean) |');
+    lines.push('|---|---|---|---|---|---|---|');
+    const ms = (v, d = 4) => (v == null ? '-' : Number(v).toFixed(d));
+    for (const r of timings) lines.push(`| ${r.part} | ${r.map} | ${r.frames} | ${ms(r.cpuMean)} | ${ms(r.cpuMax, 3)} | ${r.probes} | ${ms(r.gpuMean)} |`);
   }
   return lines.join('\n');
 }

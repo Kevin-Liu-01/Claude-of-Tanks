@@ -69,6 +69,16 @@
  *                  every inject row records the guard's receipts (window.__GL_DIAG.blackWorld) opened after the fault,
  *                  their class, heal rung and latency from the fault to the healthy verdict
  * Every row records the guard's incidents and stats (natural runs must show none).
+ * (round 3, 2026-10-21) the critic's harness findings:
+ *   the capture-lock hold is bounded inside a run too (R2-HARNESS-HOLD): a watchdog closes this run's own browser (its
+ *   exact PID) and releases the lock once a hold reaches --hold-max-min (default 20), and every sample, resume and key
+ *   press is bounded (--call-timeout-s, default 30) so a page that stops answering costs seconds, not 600 s a call;
+ *   plain rows read the guard's monotonic counter before their action too (R2-HARNESS-PLAIN-COUNT);
+ *   --fat-profile keeps Chrome's HTTP and GPU-program disk caches (default off: a cold profile was ~205 MB, 176 MB of it
+ *   the HTTP cache, and the critic's disk sat at its 30 GB floor; a fresh profile starts with empty caches either way);
+ *   session steps sunscan:<s> (eng E1: the camera circles the map's own sun for s seconds, the scene target read back at
+ *   the disc; with --times=day the disc saturates the half-float target and the row, a natural one, must open nothing)
+ *   and guardtiming (the guard's own main-thread and probe GPU ms over the window that follows, measured in the page)
  */
 import { mkdirSync, mkdtempSync, writeFileSync, appendFileSync, existsSync, renameSync } from 'node:fs';
 import { tmpdir, homedir, loadavg } from 'node:os';
@@ -134,18 +144,18 @@ const throttleEntry = opt('throttle-entry', '');
 const resizeDuringLoad = opt('resize-during-load', '');
 const escDuringCover = opt('esc-during-cover', '');
 async function cdpKey(page, key = 'Escape', code = 'Escape', vk = 27) {
-  const cdp = await page.createCDPSession();
+  const cdp = await bounded(page.createCDPSession(), callTimeoutMs, 'CDP session');
   try {
-    await cdp.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
-    await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
-  } finally { await cdp.detach().catch(() => {}); }
+    await bounded(cdp.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk }), callTimeoutMs, `${key} down`);
+    await bounded(cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk }), callTimeoutMs, `${key} up`);
+  } finally { await bounded(cdp.detach(), 5000, 'detach').catch(() => {}); }
 }
 /** After a perturbation: a pause panel or resume veil left open is closed the way a player does (RESUME / a click). */
 async function ensureResumed(page) {
-  const st = await page.evaluate(() => ({ settings: !!document.querySelector('.cot-settings.open'), resume: (() => { const b = document.querySelector('.cot-set-btn.resume'); return !!b && b.offsetParent !== null; })(),
-    veil: !!document.querySelector('.cot-resume-veil.on, .cot-resume.on'), locked: !!document.pointerLockElement })).catch(() => null);
-  if (st?.resume) { try { await page.click('.cot-set-btn.resume'); } catch { await page.evaluate(() => document.querySelector('.cot-set-btn.resume')?.click()); } await sleep(400); }
-  else if (st?.veil) { await page.mouse.click(vw / 2, vh / 2); await sleep(400); }
+  const st = await bounded(page.evaluate(() => ({ settings: !!document.querySelector('.cot-settings.open'), resume: (() => { const b = document.querySelector('.cot-set-btn.resume'); return !!b && b.offsetParent !== null; })(),
+    veil: !!document.querySelector('.cot-resume-veil.on, .cot-resume.on'), locked: !!document.pointerLockElement })), callTimeoutMs, 'resume state').catch(() => null);
+  if (st?.resume) { try { await bounded(page.click('.cot-set-btn.resume'), callTimeoutMs, 'RESUME'); } catch { await bounded(page.evaluate(() => document.querySelector('.cot-set-btn.resume')?.click()), callTimeoutMs, 'RESUME').catch(() => {}); } await sleep(400); }
+  else if (st?.veil) { await bounded(page.mouse.click(vw / 2, vh / 2), callTimeoutMs, 'veil click').catch(() => {}); await sleep(400); }
   return st;
 }
 let entryCdp = null;
@@ -170,6 +180,10 @@ const awayAtS = Number(opt('away-at', '1'));
 // looks around first, so the Garage's deferred work (dressing, GPU warm, camo bakes, idle preloads) finishes first
 const garageDwellS = Number(opt('garage-dwell', '0'));
 const holdMs = Number(opt('hold-min', '18')) * 60_000;
+// (round 3, R2-HARNESS-HOLD) the hard cap: no hold outlives it, whatever a CDP call is waiting for
+const holdMaxMs = Math.max(holdMs, Number(opt('hold-max-min', '20')) * 60_000);
+const callTimeoutMs = Number(opt('call-timeout-s', '30')) * 1000;
+const fatProfile = flag('fat-profile');
 const useLock = !flag('no-lock');
 // (calibrated on the owner's own frame, owner-redrock-black.webp: 84.6 % of its world region is at or under luma 6 and
 // 81.4 % exactly 0,0,0 — the dust puffs cover the rest — so the brief's 85 % would miss it; healthy frames read <= 0.1 %)
@@ -190,6 +204,8 @@ const puppeteer = (await import('puppeteer')).default;
 const { createCanvas, loadImage } = await import('@napi-rs/canvas');
 const { createCaptureLock } = await import('./capture-lock.mjs');
 const { nativeBrowserLaunchOptions } = await import('./native-browser-launch.mjs');
+// (round 3) the page functions shared with the black-world browser receipt
+const { sunScan } = await import('./black-world-page-probes.mjs');
 
 const started = Date.now();
 const log = (m) => console.log(`[bwr ${String(Math.round((Date.now() - started) / 1000)).padStart(5)}s] ${m}`);
@@ -228,6 +244,25 @@ function release() {
 process.on('exit', () => { try { lock.release(); } catch { /* none */ } });
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { try { lock.release(); } catch { /* none */ } process.exit(130); });
 const holdLeftMs = () => (holdingSince ? holdMs - (Date.now() - holdingSince) : Infinity);
+/** A call that answers within ms or rejects (the page stays as it is; the caller records the miss). */
+function bounded(promise, ms = callTimeoutMs, what = 'call') {
+  let timer = null;
+  return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${what} timed out after ${ms} ms`)), ms); })])
+    .finally(() => clearTimeout(timer));
+}
+// (round 3) the hold watchdog: a hold at its hard cap ends now — this run's own browser closed by its exact PID (a
+// renderer blocked outside JS never answers browser.close()), the lock released; the pending calls reject into the row
+let holdBreaks = 0;
+const holdWatchdog = setInterval(() => {
+  if (!holdingSince || Date.now() - holdingSince < holdMaxMs) return;
+  holdBreaks++;
+  log(`hold watchdog: ${Math.round((Date.now() - holdingSince) / 1000)} s held, at the ${holdMaxMs / 60_000} min cap: closing this run's browser and releasing the lock`);
+  const b = browser;
+  browser = null;
+  try { const pid = b?.process()?.pid; if (pid) process.kill(pid, 'SIGKILL'); } catch { /* gone */ }
+  release();
+}, 5000);
+holdWatchdog.unref?.();
 
 // ---------------------------------------------------------------------------------------------------------------------
 // the server under test
@@ -268,7 +303,9 @@ async function launchBrowser(fresh) {
     ignoreDefaultArgs: ['--enable-automation'],
     args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage',
       '--disable-blink-features=AutomationControlled', '--autoplay-policy=no-user-gesture-required',
-      `--window-size=${vw},${vh + 120}`, '--enable-precise-memory-info'],
+      `--window-size=${vw},${vh + 120}`, '--enable-precise-memory-info',
+      // (round 3) a lean profile: no HTTP or GPU-program disk cache kept (a fresh profile starts empty either way)
+      ...(fatProfile ? [] : ['--disk-cache-size=1048576', '--media-cache-size=1048576', '--disable-gpu-shader-disk-cache'])],
   });
   browser = await puppeteer.launch(launchOptions);
   return browser;
@@ -1395,8 +1432,8 @@ async function sampleWindow(page, label, meta) {
     }
     let g, st;
     try {
-      g = await grab(page);
-      st = await page.evaluate(pageState).catch(() => null);
+      g = await bounded(grab(page), callTimeoutMs, 'sample grab');
+      st = await bounded(page.evaluate(pageState), callTimeoutMs, 'sample state').catch(() => null);
     } catch (error) {
       frames.push({ at, error: String(error?.message ?? error).slice(0, 200) });
       continue;
@@ -1411,7 +1448,7 @@ async function sampleWindow(page, label, meta) {
     if ((black || suspect) && !meta?.inject && blackCount + suspectCount < 12) {
       // the lossless re-read: the same moment's exact-zero share (a black world reads ~0.8 exact zeros, a dark night none)
       try {
-        const png = await page.screenshot({ type: 'png', captureBeyondViewport: false });
+        const png = await bounded(page.screenshot({ type: 'png', captureBeyondViewport: false }), callTimeoutMs, 'png re-read');
         const img = await loadImage(png);
         const c = createCanvas(img.width, img.height); const cx = c.getContext('2d'); cx.drawImage(img, 0, 0);
         const full = worldStats(cx.getImageData(0, 0, img.width, img.height).data, img.width, img.height);
@@ -1546,7 +1583,7 @@ try {
       const [action, m] = token.split(':');
       const whole = token.slice(action.length + 1);
       // value steps (preset:<name>, away:<s>, esclong:<s>, inject:<fault> / inject:persist:<fault>:<s>) keep the current map
-      if (['preset', 'away', 'awayhidden', 'esclong', 'inject', 'dynflap', 'escspam', 'bounce'].includes(action)) { steps.push({ action, value: action === 'inject' || action === 'bounce' ? whole : m, map: action === 'bounce' ? m : (steps.at(-1)?.map ?? maps[0]) }); continue; }
+      if (['preset', 'away', 'awayhidden', 'esclong', 'inject', 'dynflap', 'escspam', 'bounce', 'sunscan', 'guardtiming'].includes(action)) { steps.push({ action, value: action === 'inject' || action === 'bounce' ? whole : m, map: action === 'bounce' ? m : (steps.at(-1)?.map ?? maps[0]) }); continue; }
       steps.push({ action: action === 'enter' ? 'boot' : action, map: m ?? steps.at(-1)?.map ?? maps[0] });
     }
   } else {
@@ -1575,8 +1612,9 @@ try {
         const continuing = step.action !== 'boot' && page && !page.isClosed();
         // (round 2, D3) the guard's monotonic incident counter and the page clock before this row's action: an incident
         // opened during the re-entry's reveal is this row's own (a count read after the entry dropped it)
-        const guardBefore = continuing && !plain
-          ? await page.evaluate(() => ({ incidents: window.__COT_BLACK_GUARD?.stats().incidents ?? 0, at: performance.now() })).catch(() => null)
+        // (round 3, R2-HARNESS-PLAIN-COUNT) plain rows too: the guard and its ring live in every build (no ?debug needed)
+        const guardBefore = continuing
+          ? await bounded(page.evaluate(() => ({ incidents: window.__COT_BLACK_GUARD?.stats().incidents ?? 0, at: performance.now() })), callTimeoutMs, 'guard counter').catch(() => null)
           : { incidents: 0, at: 0 };
         if (!continuing) {
           if (scenario === 'cold' || !browser) await launchBrowser(scenario !== 'warm' || !browser);
@@ -1704,6 +1742,19 @@ try {
           row.inject = await page.evaluate(injectFault, step.value);
           row.action = `inject-${step.value}`;
           log(`  inject ${step.value}: ${JSON.stringify(row.inject)}`);
+        } else if (step.action === 'guardtiming') {
+          // (round 3, R2-PERF-INCONCLUSIVE) the guard's own cost over the window that follows: its main-thread ms outside
+          // the frame it wraps and its probe's GPU ms (a timer query), measured in the page itself
+          row.guardTiming = await bounded(page.evaluate(() => { const g = window.__COT_BLACK_GUARD; if (!g) return { error: 'no guard' };
+            g.resetTiming(); g.timing = true; return { started: true }; }), callTimeoutMs, 'guard timing').catch((e) => ({ error: String(e) }));
+          row.action = 'guardtiming';
+        } else if (step.action === 'sunscan') {
+          // (round 3, eng E1) a player looking toward the map's own sun: the camera circles 1.2-3 deg about the disc for s
+          // seconds (the window samples meanwhile); the disc saturates the half-float scene target (65504 on Metal), which
+          // must open no incident (a natural row); the scene target's values at the disc are read back as evidence
+          row.sunscan = await bounded(page.evaluate(sunScan, Number(step.value ?? 12)), callTimeoutMs, 'sunscan').catch((e) => ({ error: String(e) }));
+          row.action = `sunscan-${step.value ?? 12}s`;
+          log(`  sunscan: ${JSON.stringify(row.sunscan)}`);
         } else if (step.action === 'esclong') {
           if (realEsc) row.escape = await realEscape(page, Number(step.value ?? 30));
           else {
@@ -1751,12 +1802,22 @@ try {
           if (row.nanLanded) log(`  the fault's value in the ${row.nanLanded.target}: ${JSON.stringify(row.nanLanded)}`);
           row.injectUndo = await page.evaluate(() => { try { return window.__bwrUndo?.() ?? null; } catch (e) { return String(e); } });
         }
+        if (step.action === 'guardtiming') {
+          row.guardTiming.after = await bounded(page.evaluate(() => { const g = window.__COT_BLACK_GUARD; const s = g?.stats() ?? null;
+            if (g) g.timing = false; return s && { timedFrames: s.timedFrames, selfCpuMsMean: s.selfCpuMsMean, selfCpuMsMax: s.selfCpuMsMax,
+              timedProbes: s.timedProbes, probeGpuMsMean: s.probeGpuMsMean, probes: s.probes, frames: s.frames }; }), callTimeoutMs, 'guard timing result').catch(() => null);
+          log(`  guard timing: ${JSON.stringify(row.guardTiming.after)}`);
+        }
+        if (step.action === 'sunscan') {
+          row.sunscan.after = await bounded(page.evaluate(() => window.__bwrSunScan ?? null), callTimeoutMs, 'sunscan result').catch(() => null);
+          log(`  sunscan after: ${JSON.stringify(row.sunscan.after)}`);
+        }
         if (step.action === 'dynflap') {
           row.dynflap.seen = await page.evaluate(() => { clearInterval(window.__bwrFlap); window.__DEBUG.post.pinDynScale(null); return window.__bwrFlapSeen ?? null; });
           log(`  dynflap scales seen ${JSON.stringify(row.dynflap.seen)}`);
         }
         Object.assign(row, w);
-        row.guard = await page.evaluate((sinceAt) => {
+        row.guard = await bounded(page.evaluate((sinceAt) => {
           const g = window.__COT_BLACK_GUARD;
           const ring = window.__GL_DIAG?.blackWorld ?? [];
           const own = ring.filter((r) => r.openedAtMs >= sinceAt);
@@ -1764,7 +1825,7 @@ try {
             receipts: own.slice(-4).map((r) => ({ class: r.class, healedBy: r.healedBy, steps: r.steps.map((x) => x.step), healMs: r.healMs,
               endedBy: r.endedBy ?? null, sinceRevealMs: r.sinceRevealMs, cpu: r.cpu, probe: r.probe, roots: r.roots, target: r.target, gl: r.gl,
               state: r.state, warm: r.warm })) };
-        }, guardBefore?.at ?? 0).catch(() => null);
+        }, guardBefore?.at ?? 0), callTimeoutMs, 'guard receipts').catch(() => null);
         // a natural row counts the incidents opened since its action began (the monotonic counter; the ring holds 8)
         if (row.guard && guardBefore && row.guard.total != null) row.guard.incidents = Math.max(0, row.guard.total - guardBefore.incidents);
         if (row.guard && step.action === 'inject') row.guard.incidents = 0;
@@ -1778,7 +1839,7 @@ try {
           row.error = `unwatched window: ${row.coverage.valid} readable samples over ${row.coverage.spanS} s (${row.coverage.errors} grab errors; first ${String(w.frames.find((f) => f.error)?.error ?? '-').slice(0, 120)})`;
           log(`${label}: ${row.error}`);
         }
-        row.events = await page.evaluate(() => (window.__BWR?.events ?? []).slice(0, 20)).catch(() => null);
+        row.events = await bounded(page.evaluate(() => (window.__BWR?.events ?? []).slice(0, 20)), callTimeoutMs, 'events').catch(() => null);
       } catch (error) {
         row.verdict = 'harness-error';
         row.error = String(error?.stack ?? error).slice(0, 600);
@@ -1799,6 +1860,8 @@ try {
   try { await browser?.close(); } catch { /* closed */ }
   await stopStress();
   release();
+  clearInterval(holdWatchdog);
+  summary.holdBreaks = holdBreaks;
   await viteServer?.close();
   for (const dir of ownTemp) trashOwnTemp(dir);
   summary.finishedAt = new Date().toISOString();

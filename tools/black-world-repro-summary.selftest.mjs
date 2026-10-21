@@ -5,6 +5,8 @@
 // Round 2 (2026-10-20, critic D3): a JPEG sample near-black past 0.8 is BLACK-WORLD (the samples never keep exact zeros),
 // as is a PNG re-read past the zero share; an unwatched window still reports its guard incidents; a production build
 // served on this machine is never labelled 'dev'; a fault that cleared at its own end is never a heal.
+// Round 3 (2026-10-21): sun-scan rows (a day sun circled in frame) and the guard's own measured cost get their tables,
+// and both rows stay natural rows (an incident in a sun scan is a false positive the totals count).
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -75,6 +77,22 @@ try {
       clearedBy: 'fault-end', steps: ['H1', 'H2'], openedAfterMs: 140, healedAfterMs: null, confirmedAfterMs: 3270, afterFaultEndMs: 270 }],
     tinySizes: 0, passErrors: [] } },
   ]);
+  const sun = write('sun', { target: 'dev', scenario: 'session', drive: true, dsf: 2, intervalMs: 250, seconds: 5, runs: [
+    { label: '001', map: 'badlands', action: 'sunscan-12s', verdict: 'ok', guard: { total: 0, incidents: 0 } },
+    { label: '002', map: 'desert', action: 'guardtiming', verdict: 'ok', guard: { total: 0, incidents: 0 } },
+  ] }, [
+    { label: '001', frames: healthy, sunscan: { started: true, elevationDeg: 30.1, after: { elevationDeg: 30.1, maxSeen: 65504, over6e4Texels: 812,
+      nonFiniteTexels: 0, frames: 700, guard: { probes: 58, incidents: 0 } } } },
+    { label: '002', frames: healthy, guardTiming: { started: true, after: { timedFrames: 1400, selfCpuMsMean: 0.0123, selfCpuMsMax: 0.41,
+      timedProbes: 110, probeGpuMsMean: 0.0311 } } },
+  ]);
+  const probes = summarizeParts([sun]);
+  assert.deepEqual(probes.sunScans.map((r) => [r.map, r.maxSeen, r.over6e4Texels, r.incidents, r.rowIncidents]), [['badlands', 65504, 812, 0, 0]]);
+  assert.deepEqual(probes.timings.map((r) => [r.map, r.frames, r.cpuMean, r.gpuMean]), [['desert', 1400, 0.0123, 0.0311]]);
+  assert.equal(probes.totals.runs, 2, 'a sun scan and a timing row are natural rows');
+  const probeText = formatSummary(probes);
+  assert.match(probeText, /\| sun-\S+ \| badlands \| 30\.1 \| 65504 \| 812 \| 0 \| 700 \| 58 \| 0 \| 0 \|/);
+  assert.match(probeText, /\| desert \| 1400 \| 0\.0123 \| 0\.410 \| 110 \| 0\.0311 \|/);
   const { table, injections, totals } = summarizeParts([cold, heal, path.join(root, 'missing')]);
   const badlands = table.find((row) => row.map === 'badlands' && row.scenario === 'cold+drive');
   assert.equal(badlands.runs, 2, 'harness errors are not runs');
@@ -113,4 +131,4 @@ try {
   rmSync(root, { recursive: true, force: true });
 }
 
-console.log('black-world-repro-summary.selftest: the zero-share and near-black verdicts, natural frames, watched windows, longest stretch, guard incidents (unwatched rows too), the build kind and the heal table');
+console.log('black-world-repro-summary.selftest: the zero-share and near-black verdicts, natural frames, watched windows, longest stretch, guard incidents (unwatched rows too), the build kind and the heal table; round 3: sun scans and the guard\'s own cost');
