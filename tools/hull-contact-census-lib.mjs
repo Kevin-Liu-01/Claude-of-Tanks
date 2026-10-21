@@ -438,13 +438,15 @@ function islandEnclosed(island, parts) {
   return inside >= points.length - 1;
 }
 
-/** Whether a gun-body island rests on the turret at the rest pose (a turret-side launcher or sight on the elevating mass,
- * carried on a turret bracket): the gun's own law reads it as floating, but it is not seen floating. */
+/** Whether an island rests on the other articulated body at the rest pose: a gun-body island on the turret (a
+ * turret-side launcher or sight on the elevating mass, carried on a turret bracket) or a turret island on the gun's
+ * mount (the slot frame around a mantlet). Each body's own law reads it as floating, but it is not seen floating. */
 function islandHeldByTurret(island, parts) {
-  if (island.body !== 'gun') return false;
+  if (island.body !== 'gun' && island.body !== 'turret') return false;
+  const other = island.body === 'gun' ? 'turret' : 'gun';
   const own = islandMembers.get(island) ?? [];
   const lo = island.min, hi = island.max, tol = CONTACT_TOL_M;
-  const turret = parts.filter((part) => part.body === 'turret' && !part.gear
+  const turret = parts.filter((part) => part.body === other && !part.gear
     && part.box.max.x >= lo[0] - tol && part.box.min.x <= hi[0] + tol && part.box.max.y >= lo[1] - tol
     && part.box.min.y <= hi[1] + tol && part.box.max.z >= lo[2] - tol && part.box.min.z <= hi[2] + tol);
   return own.some((member) => turret.some((part) => partsTouch(member, part, tol)));
