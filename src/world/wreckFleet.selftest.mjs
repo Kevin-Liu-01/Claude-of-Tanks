@@ -61,7 +61,7 @@ function validateTopology(geometry, label, visible) {
     if (geometry.index.array.constructor === Uint16Array) assert.ok(count <= 65535, `${label}: no WebGL2 restart index`);
     for (const index of geometry.index.array) assert.ok(index < count, `${label}: in-range index`);
   }
-  if (!visible) assert.equal(geometry.index, null, `${label}: authored proxy remains nonindexed`);
+  if (!visible) assert.ok(geometry.index === null, `${label}: authored proxy remains nonindexed`);
   const bytes = Object.values(geometry.attributes).reduce((sum, attribute) => sum + attribute.array.byteLength, 0)
     + (geometry.index?.array.byteLength ?? 0);
   // This is proportional to this donor's actual ordered triangles, not an

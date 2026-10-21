@@ -33,7 +33,7 @@ exactClosed(backing);exactClosed(cover);
 // nowhere near them must preserve their complete native triangle sequence.
 const tiny=new THREE.BoxGeometry(.00001,.00001,.0000001).toNonIndexed();
 const remote=partitionEraCover(tiny,[[2,2],[3,2],[3,3],[2,3]],.002);
-assert.equal(remote.cover,null);
+assert.ok(remote.cover === null);
 assert.deepEqual(remote.backing.attributes.position.array,tiny.attributes.position.array);
 exactClosed(remote.backing);remote.backing.dispose();tiny.dispose();
 // Two real-style banks share their z planes but not their footprint. The

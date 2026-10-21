@@ -148,7 +148,7 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
         }
       }
       const movingGun=tank.root.getObjectByName('gun'),recoil=tank.root.getObjectByName('rig_recoil');
-      assert.equal(movingGun.parent,recoil,`${id}: tube and muzzle-reference sight own recoil`);
+      assert.ok(movingGun.parent === recoil,`${id}: tube and muzzle-reference sight own recoil`);
       assert.ok(new THREE.Box3().setFromObject(tank.root.getObjectByName('gunMount')).max.z<4.68,
         `${id}: far muzzle-reference sight is not hidden in the static mount bucket`);
       near(verticalHit(movingGun,0,6.70),2.0719,.003,`${id}: physical muzzle-reference sight height`);
@@ -177,7 +177,7 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
       if (o.isInstancedMesh && o.userData.runningGear && o.userData.trackShoeCountPerSide > 0) shoeLayers.push(o);
     });
     assert.ok(shoeLayers.length >= 1 && shoeLayers.length <= 3, `${id}: only native animated shoe layers`);
-    assert.equal(tank.root.getObjectByName('gearTrackInnerLinks'), undefined, `${id}: no duplicate static track course`);
+    assert.ok(tank.root.getObjectByName('gearTrackInnerLinks') === undefined, `${id}: no duplicate static track course`);
 
     const rig = tank.root.getObjectByName('rig_gun');
     // The last 20 mm of the hollow muzzle is in gunDark, not the painted
@@ -199,7 +199,7 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
     if (id === 'kf51_panther') {
       near(verticalHit(tank.root.getObjectByName('gun'), 0, 5), 1.95691, .006, `${id}: broad fore-tube jacket before reduced terminal`);
     }
-    assert.equal(rig.parent, tank.root.getObjectByName('rig_turret'), `${id}: gun pitches within turret yaw`);
+    assert.ok(rig.parent === tank.root.getObjectByName('rig_turret'), `${id}: gun pitches within turret yaw`);
   } finally {
     tank.dispose();
   }

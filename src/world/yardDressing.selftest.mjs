@@ -78,7 +78,7 @@ const seen = new Set();
 for (const family of Object.keys(YARD_FAMILY_RADIUS)) {
   const built = buildYardFamily(family);
   assert.equal(built.family, family);
-  assert.equal(built.material, YARD_FAMILY_MATERIAL[family]);
+  assert.ok(built.material === YARD_FAMILY_MATERIAL[family]);
   const g = built.geometry;
   for (const name of ['position', 'normal', 'uv']) assert.ok(g.getAttribute(name), `${family}: ${name} attribute`);
   assert.equal(!!g.getAttribute('color'), built.material !== 'wood', `${family}: vertex colour only on the tinted materials`);

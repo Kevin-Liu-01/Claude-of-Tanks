@@ -22,8 +22,8 @@ await warmGarageGpuPipeline({
     update(force) { calls.push(['light', force]); },
     async primeShadowMaps(activeRenderer, activeScene, activeCamera, options) {
       assert.equal(activeRenderer, renderer);
-      assert.equal(activeScene, scene);
-      assert.equal(activeCamera, camera);
+      assert.ok(activeScene === scene);
+      assert.ok(activeCamera === camera);
       assert.equal(options.cascadeLimit, undefined);
       await options.yieldBeforeCascade();
       return [7, 3, 1];
@@ -31,7 +31,7 @@ await warmGarageGpuPipeline({
   },
   forwardPrograms: {
     compile(root) {
-      assert.equal(root, scene);
+      assert.ok(root === scene);
       calls.push(['compile']);
     },
   },
@@ -48,8 +48,8 @@ await warmGarageGpuPipeline({
   createYielder: () => async (force) => { calls.push(['yield', force]); },
   warmScene: async (activeRenderer, activeScene, activeCamera, options) => {
     assert.equal(activeRenderer, renderer);
-    assert.equal(activeScene, scene);
-    assert.equal(activeCamera, camera);
+    assert.ok(activeScene === scene);
+    assert.ok(activeCamera === camera);
     assert.equal(options.maxObjects, 64);
     assert.equal(options.maxWeight, 240_000);
     await options.yieldBeforeBatch(0);
@@ -82,8 +82,8 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
       update(force) { restoreCalls.push(['light', force]); },
       async primeShadowMaps(activeRenderer, activeScene, activeCamera, options) {
         assert.equal(activeRenderer, renderer);
-        assert.equal(activeScene, scene);
-        assert.equal(activeCamera, camera);
+        assert.ok(activeScene === scene);
+        assert.ok(activeCamera === camera);
         assert.equal(options.cascadeLimit, 2);
         await options.yieldBeforeCascade(0);
         return [13, 5];
@@ -91,7 +91,7 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
     },
     forwardPrograms: {
       *initializeSteps(root, stats, options) {
-        assert.equal(root, scene, 'restore prepares background and fittings as well as the hero');
+        assert.ok(root === scene, 'restore prepares background and fittings as well as the hero');
         assert.equal(options.requireCompletion, true, 'Garage cannot mistake owner cancellation for completion');
         restoreCalls.push(['programSteps']);
         stats.totalCompileMs = 6;
@@ -119,8 +119,8 @@ assert.ok(progress.length >= 4, 'each bounded GPU unit renews boot progress');
     yieldProgramReadiness: async () => { restoreCalls.push(['readiness-frame']); },
     warmScene: async (activeRenderer, activeScene, activeCamera, options) => {
       assert.equal(activeRenderer, renderer);
-      assert.equal(activeScene, scene);
-      assert.equal(activeCamera, camera);
+      assert.ok(activeScene === scene);
+      assert.ok(activeCamera === camera);
       assert.equal(options.scale, 0.0625);
       assert.equal(options.maxObjects, 24);
       assert.equal(options.maxWeight, 90_000);

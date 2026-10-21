@@ -15,7 +15,7 @@ fifty frames (R181, motion-blur stills) and the films. The owner chose it to rep
 | `public/media/site50-r14/loops/` | The 6 s loops the pages play (1920×1080 VP9 with sound, posters; 960×540 for the archive dialog) |
 | `public/media/site50-r14/reels/` | The manual's twenty battle takes, 1280×720 with their sound |
 | `public/media/site50-r14/frames/` | The fifty frames at 1920×1080 and 640×360, and five contact sheets of ten |
-| `public/media/site50-r14/films/` | The trailer (1080p with its score) and the landing page's reel (five takes crossfaded, 1080p, silent) |
+| `public/media/site50-r14/films/` | The trailers with their score (round six: the main cut, `trailer-30` and the 1080x1920 `trailer-vertical`, each a VP9 webm, an H.264 mp4 and a poster) and the landing page's reel (five takes crossfaded, silent) |
 | `public/media/site50-r14/scenes/` | Each take's scene as the Studio loads it, and index.json, which the Studio's Director lists as presets |
 | `public/media/web-video-r1/` | The landing page's 960×540 mobile proxies, inside its nine-megabyte budget |
 

@@ -635,7 +635,7 @@ function mFrontFixtures(P: TankBuilderPort): void {
 function classicSensors(P: TankBuilderPort,d: Datum,_mirror: number): void {
   // Use the original fleet's round red OTShU drums, fins and cheek plates.
   // The narrow carrier overlaps the actual fore casting and emitter stock.
-  addShtoraEyes({ mats: P.mats, turretG: P.turretG,
+  addShtoraEyes({ mats: P.mats, turretG: P.turretG, disposables: P.disposables,
     add: (slot, geometry, x, y, z) => P.addEquipment(slot, geometry, x, y, z),
   }, { x: .82, y: d.gun[1] - .02, z: 1.65, scale: 1.3, round: true, kit: true,
     offset: [-d.yaw[0], -d.yaw[1], -d.yaw[2]] });

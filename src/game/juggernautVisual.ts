@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { cloneVehicleMaterial, releaseVehicleMaterial, runVehicleHookChain } from '../vehicles/materials.ts';
+import { programVariantOrigin, splitProgramVariants } from '../engine/programVariants.ts';
 
 interface Surface {mesh:THREE.Mesh;original:THREE.Material|THREE.Material[];highlight:THREE.Material|THREE.Material[]}
 const IMPACT_COUNT=6;
@@ -54,13 +56,18 @@ export function clearJuggernautVisual(root:THREE.Object3D,restoreSavedMaterials=
   const scale=scales.get(root)??1;
   if(scale!==1)root.scale.multiplyScalar(1/scale);
   scales.delete(root);
-  if(restoreSavedMaterials)root.traverse(object=>{
+  if(!restoreSavedMaterials)return;
+  root.traverse(object=>{
     if(!(object instanceof THREE.Mesh))return;
     const current=object.material;
     if(Array.isArray(current)){
       if(current.some(m=>highlightSources.has(m)))object.material=current.map(originalMaterial);
     }else object.material=originalMaterial(current);
   });
+  // (2026-10-19, the 229 perf pass) a saved skin unwraps to its original material: a battle build re-seats the
+  // program-variant twins its meshes drew (only materials its build split: the shared shadow-proxy material stays whole),
+  // or they would flip programs again and fall out of their depth layers
+  if(root.userData.programVariants)splitProgramVariants(root,{onlyAlreadySplit:true});
 }
 
 /** Keep compiled Garage materials resident across mode switches. A zero
@@ -100,9 +107,9 @@ export function syncTankEnergyVisual(root:THREE.Object3D,_dims:{widthM:number;hu
       for(const surface of surfaces){
         if(surface.mesh.material===surface.highlight)surface.mesh.material=surface.original;
       }
-      // Existing vehicle shader hooks include CSM registrations keyed by the
-      // source material. Recompile the restored source to rebind those hooks.
-      for(const [source,material] of materials){source.removeEventListener('dispose',dispose);source.needsUpdate=true;material.dispose();}
+      // Each skin clone holds its own cascade registration (cloneVehicleMaterial): release it before the clone goes.
+      // The restored source still recompiles, as it did when the clone compiled through the source's CSM entry.
+      for(const [source,material] of materials){source.removeEventListener('dispose',dispose);source.needsUpdate=true;releaseVehicleMaterial(material);material.dispose();}
       for(const object of watched){
         object.removeEventListener('childadded',markDirty);
         object.removeEventListener('childremoved',markDirty);
@@ -192,21 +199,32 @@ export function pulseJuggernautImpact(root:THREE.Object3D,pos:readonly number[],
   return true;
 }
 
-function highlightMaterial(source:THREE.Material,shield:Shield):THREE.Material {
-  if(!(source instanceof THREE.MeshStandardMaterial)||!source.colorWrite||source.transparent)return source;
+function highlightMaterial(drawn:THREE.Material,shield:Shield):THREE.Material {
+  if(!(drawn instanceof THREE.MeshStandardMaterial)||!drawn.colorWrite||drawn.transparent)return drawn;
+  // (2026-10-19, the 229 perf pass) a program-variant twin wears its original's skin: one skin per material, made in
+  // the order the tank's materials are met, so the skinned tank draws (and sorts) exactly as before the split
+  const source=programVariantOrigin(drawn) as THREE.MeshStandardMaterial;
   const existing=shield.materials.get(source);if(existing)return existing;
-  const material=source.clone();material.name=shield.style.name;
-  // Camouflage repaints shared texture canvases and retints the factory's
-  // fitting colors. The dormant skin must follow those live paint bindings.
-  material.color=source.color;material.emissive=source.emissive;
-  // Shader drivers (especially the prewarmed burn uniforms) are live objects,
-  // not serializable metadata. Preserve their identities when isolating paint.
-  material.userData={...source.userData};
-  // clone() omits custom shader hooks. Keep camouflage, burn masks, ambient
-  // floor and shadow setup; only add a rim contribution to their final light.
-  const compile=source.onBeforeCompile,cacheKey=source.customProgramCacheKey.call(source);
+  // 2026-10-17 (the wheel-band lane; the owner: "in garage, on all tanks, i can see this weird shadow on wheels"): a raw
+  // clone() lost the cascade registration (three's copy resets the defines: USE_CSM, CSM_*, COT_CLOUD_SHADE and the
+  // vehicle's COT_* switches), so every skinned pixel lit with all four cascade suns unshadowed and wrote neither the
+  // sun state nor the vehicle tag: the ground occlusion took the Garage tank's road wheels for ground under the hull
+  // (a dark band below the belly line). cloneVehicleMaterial joins the clone to its source's registration under its
+  // own cascade entry, which the dispose above releases.
+  const material=cloneVehicleMaterial(source,clone=>{
+    clone.name=shield.style.name;
+    // Camouflage repaints shared texture canvases and retints the factory's
+    // fitting colors. The dormant skin must follow those live paint bindings.
+    clone.color=source.color;clone.emissive=source.emissive;
+    // Shader drivers (especially the prewarmed burn uniforms) are live objects,
+    // not serializable metadata. Preserve their identities when isolating paint.
+    clone.userData={...source.userData};
+  });
+  // Keep camouflage, burn masks, weapon wear and every other wrapper of the source's hook chain, compiled over the
+  // clone's own registration (runVehicleHookChain); only add a rim contribution to their final light.
+  const cacheKey=source.customProgramCacheKey.call(source);
   material.onBeforeCompile=function(shader,renderer){
-    compile.call(this,shader,renderer);
+    runVehicleHookChain(source,this,shader,renderer);
     shader.uniforms.juggernautStrength=shield.strength;shader.uniforms.juggernautTime=shield.time;
     shader.uniforms.energyColor=shield.color;shader.uniforms.energyPattern=shield.pattern;
     shader.uniforms.juggernautRootInverse=shield.rootInverse;shader.uniforms.juggernautHits=shield.hitPositions;shader.uniforms.juggernautActiveHits=shield.activeHits;

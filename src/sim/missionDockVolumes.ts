@@ -4,7 +4,9 @@
 // without missionAttachment.ts's seat search, whose vehicle auxiliary inventory and weapons are battle-only: through
 // decorations.ts they put about 400 kB into the garage boot (tools/boot-static-closure.selftest.mjs, the bundle budget).
 // Moved verbatim: the values, and the mission-attachment signatures that hash DRONE_DOCK_VOLUMES, do not change.
-import { AERIAL_RULES } from './matchRuleset.ts';
+// The launch column's height is the ruleset's AERIAL_RULES.drone.launchHeightM, read from its leaf (2026-10-16): the
+// ruleset itself would put every mode rule into every vehicle build's import graph (src/sim/droneDockRules.ts).
+import { DRONE_LAUNCH_HEIGHT_M } from './droneDockRules.ts';
 import type { MissionAttachment } from './missionAttachment.ts';
 
 type Vec3Tuple = readonly [number, number, number];
@@ -37,7 +39,7 @@ export const DRONE_DOCK_VOLUMES:readonly Bounds[]=REFERENCE_STOCK.map(b=>({min:s
 export function missionAirframeVolumes(seat:MissionAttachment,takeoff=false):Bounds[] {
  const [x,z]=seat.payloadOffset??[0,0];
  return DRONE_DOCK_VOLUMES.map(part=>({min:[part.min[0]!+x,part.min[1]!,part.min[2]!+z],
-  max:[part.max[0]!+x,part.max[1]!+(takeoff?AERIAL_RULES.drone.launchHeightM:0),part.max[2]!+z]}));
+  max:[part.max[0]!+x,part.max[1]!+(takeoff?DRONE_LAUNCH_HEIGHT_M:0),part.max[2]!+z]}));
 }
 /** Exact open cradle solids, shared by the renderer and native collision audit. */
 interface MissionCradleVolume extends Bounds { roofContact?:boolean; brace?:{start:Vec3Tuple;end:Vec3Tuple;thickness:number} }

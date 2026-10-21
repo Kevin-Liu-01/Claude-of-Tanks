@@ -504,7 +504,7 @@ const customsHouse: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const DALMATIAN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const DALMATIAN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => dwelling(ctx),
   tavern: (ctx) => dwelling(ctx, { storeys: 3, tavern: true }),
   cornershop: (ctx) => dwelling(ctx, { shop: true, render: true }),

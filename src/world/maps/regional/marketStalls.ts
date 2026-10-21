@@ -15,11 +15,11 @@ import { emitRoof, roofGeometry, type RoofGeometry, type RoofSpec } from './hous
 import { recordLattice } from './lattice.ts';
 import { bevelMember, bevelSpan } from './millWorks.ts';
 
-export type StallPost = 'bamboo' | 'timber' | 'concrete';
-export type StallCover = 'sheet' | 'nipa' | 'canvas';
+type StallPost = 'bamboo' | 'timber' | 'concrete';
+type StallCover = 'sheet' | 'nipa' | 'canvas';
 
 /** The goods a region's stalls carry. */
-export interface StallGoods {
+interface StallGoods {
   /** heaps of produce (fruit, vegetables, spice): their colours */
   produce: readonly Rgb[];
   /** basket colours (willow, bamboo, plastic) */

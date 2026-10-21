@@ -56,7 +56,7 @@ const NATION_PARENS = Object.freeze({ ukraine: 'ua', rok: 'rok', poland: 'pl', c
 const NATION_CODES = new Set(['ua', 'pl', 'cn', 'ru', 'rok']);
 const FREE_TAGS = new Set(['concept']);
 
-export function foldText(text) {
+function foldText(text) {
   return String(text || '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
     .replace(/[łøßæœđ]/g, (c) => FOLD[c] || c);
 }
@@ -98,7 +98,7 @@ function wordsOf(text) {
  * must glue to the family word before it), a drop cost (0 = free, 1 = one
  * dropped word, Infinity = never dropped) and a role.
  */
-export function parseDisplayName(name) {
+function parseDisplayName(name) {
   const parens = [];
   const main = String(name || '').replace(/\(([^)]*)\)/g, (_, inner) => { parens.push(inner.trim()); return ' '; });
   const units = [];
@@ -225,7 +225,7 @@ export function canonicalSlug(name) {
   return best?.slug ?? '';
 }
 
-export function levenshtein(a, b) {
+function levenshtein(a, b) {
   const m = a.length, n = b.length;
   const row = Array.from({ length: n + 1 }, (_, j) => j);
   for (let i = 1; i <= m; i += 1) {
@@ -329,7 +329,7 @@ function classifyMismatch(id, acceptable, displayName) {
 
 // The coordinator's rulings of 2026-10-13 (the owner gave a free hand). Names
 // apply to the table until tankLabels.ts carries them; ids override the slug.
-export const COORDINATOR_RULINGS = Object.freeze({
+const COORDINATOR_RULINGS = Object.freeze({
   date: '2026-10-13',
   names: Object.freeze({
     warrior_tes_h: {
@@ -348,7 +348,7 @@ export const COORDINATOR_RULINGS = Object.freeze({
 });
 
 /** Apply the ruled display and short names to a fleet listing. */
-export function applyRuledNames(vehicles, rulings = COORDINATOR_RULINGS) {
+function applyRuledNames(vehicles, rulings = COORDINATOR_RULINGS) {
   return vehicles.map((v) => {
     const ruled = rulings.names[v.id];
     if (!ruled || (ruled.displayName === v.displayName && (ruled.shortName ?? v.shortName) === v.shortName
@@ -436,7 +436,7 @@ function idPattern(ids) {
   return new RegExp(`(?<![A-Za-z0-9_])(${alts.join('|')})(?![A-Za-z0-9])`, 'g');
 }
 
-export function scanUsage(roots, ids) {
+function scanUsage(roots, ids) {
   const pattern = idPattern(ids);
   const usage = new Map(ids.map((id) => [id, new Map()])); // id -> path -> {category, hits, path, url}
   const record = (id, path, kind) => {

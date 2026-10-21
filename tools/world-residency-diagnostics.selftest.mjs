@@ -140,10 +140,10 @@ for (let attempt = 0; attempt < 16; attempt++) {
   await tick();
   if (!released.root.deref() && !released.mesh.deref() && !disposed.root.deref() && !disposed.mesh.deref()) break;
 }
-assert.equal(released.root.deref(), undefined, 'live geometry and its dispose callback do not retain the old world');
-assert.equal(released.mesh.deref(), undefined, 'the callback also does not retain the originating mesh');
-assert.equal(disposed.root.deref(), undefined, 'disposed geometry and its tracker history do not retain the world');
-assert.equal(disposed.mesh.deref(), undefined);
+assert.ok(released.root.deref() === undefined, 'live geometry and its dispose callback do not retain the old world');
+assert.ok(released.mesh.deref() === undefined, 'the callback also does not retain the originating mesh');
+assert.ok(disposed.root.deref() === undefined, 'disposed geometry and its tracker history do not retain the world');
+assert.ok(disposed.mesh.deref() === undefined);
 assert.equal(released.geometry.hasEventListener('dispose', released.geometry._listeners.dispose[0]), true,
   'the undisposed geometry still owns the registered diagnostic callback throughout collection');
 assert.equal(disposed.geometry._listeners.dispose.length, 0, 'disposed geometry detached its callback');

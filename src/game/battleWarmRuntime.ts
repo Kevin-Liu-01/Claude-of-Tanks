@@ -768,6 +768,39 @@ export interface CombatFxSubmission {
   restore(): void;
 }
 
+interface LateFxCopyPort {
+  lateFx?: {
+    copyMaterial?: { uniforms: { tDiffuse: { value: unknown } } };
+    copyQuad?: { render(renderer: WebGLRenderer): void };
+    target?: { texture: unknown };
+    sceneTarget?: { texture: unknown };
+  };
+  composer?: { renderer?: WebGLRenderer };
+}
+
+/**
+ * (ac130-fx-228 r2) The late pass's copy program, linked under the cover with the FX (prepareSoftParticles has made its
+ * targets): it compiled at a battle's first late-pass frame, which in an AC-130 battle is its first cannon burst mid-fight
+ * (139-157 ms in the critics' cold runs). One full-screen copy of the scene target into the late target, which every late
+ * frame clears or overwrites first.
+ */
+function warmLateFxCopy(post: BattlePostPort): void {
+  const port = post as BattlePostPort & LateFxCopyPort;
+  const pass = port.lateFx, renderer = port.composer?.renderer;
+  if (!renderer || !pass?.copyMaterial || !pass.copyQuad || !pass.target || !pass.sceneTarget) return;
+  const prior = renderer.getRenderTarget();
+  const source = pass.copyMaterial.uniforms.tDiffuse.value;
+  try {
+    pass.copyMaterial.uniforms.tDiffuse.value = pass.sceneTarget.texture;
+    renderer.setRenderTarget(pass.target as Parameters<WebGLRenderer['setRenderTarget']>[0]);
+    pass.copyQuad.render(renderer);
+  } catch (_) { /* warm only */ }
+  finally {
+    pass.copyMaterial.uniforms.tDiffuse.value = source;
+    renderer.setRenderTarget(prior);
+  }
+}
+
 /** Stage every first-combat FX pool behind the covered deployment compile. */
 export function stageCombatFxProgramSubmission({
   game,
@@ -818,6 +851,7 @@ export function stageCombatFxProgramSubmission({
     // missile body, its smoke trail and wire join the covered render here too, as the network staging does (after update())
     try { fx.warmProjectilePresentation?.(position, direction); } catch (_) { /* warm only */ }
     post.prepareSoftParticles();
+    warmLateFxCopy(post);
     camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
     fx.group.visible = true;
     staged = true;
@@ -1137,7 +1171,7 @@ function* prebakeDestroyedVariantSteps(
   } catch (_) { /* warm only */ }
 }
 
-/** Preserve the synchronous solo/capture drain; only network wreck warming is cooperative. */
+/** The synchronous solo/capture drain's reflection (the deferred warm polls readiness first). */
 function initializeNewProgramUniforms(renderer: WebGLRenderer, before: number): void {
   const programs = renderer.info.programs || [];
   for (let index = before; index < programs.length; index += 1) {
@@ -1145,15 +1179,29 @@ function initializeNewProgramUniforms(renderer: WebGLRenderer, before: number): 
   }
 }
 
+/**
+ * A destroyed visual's programs, compiled in its wreck state (reset before anything waits). The deferred (cooperative)
+ * warm returns its readiness poller: each program's uniforms are reflected once KHR_parallel_shader_compile reports
+ * its link complete, so no frame waits on a link (2026-10-19, the 229 perf pass: the burnt fallback's synchronous
+ * LINK_STATUS wait held the main thread 0.5-0.6 s three to six seconds into every battle, 10-17 entry census). The
+ * synchronous drain reflects them at once, as before.
+ */
 function warmDestroyedVisual(
   context: CombatWarmRuntimeContext,
   visual: BattleWarmVisual & Required<Pick<BattleWarmVisual, 'root' | 'setDestroyed' | 'resetDestroyed'>>,
-): void {
+  isCurrent: (() => boolean) | null,
+): { uniforms: Generator<void, void, void>; submitted: NonNullable<WebGLRenderer['info']['programs']> } | null {
   const { renderer, forwardProgramWarm } = context;
   const rootWasVisible = visual.root.visible;
   try {
     visual.setDestroyed({ pop: true, ageS: 0 });
     visual.root.visible = true;
+    if (isCurrent) {
+      const before = snapshotRendererPrograms(renderer);
+      forwardProgramWarm.compile(visual.root);
+      const submitted = (renderer.info.programs || []).filter((program) => !before.has(program));
+      return { uniforms: captureNewProgramUniformSteps(renderer, before, { isCurrent }), submitted };
+    }
     const before = (renderer.info.programs || []).length;
     forwardProgramWarm.compile(visual.root);
     initializeNewProgramUniforms(renderer, before);
@@ -1162,6 +1210,7 @@ function warmDestroyedVisual(
     try { visual.resetDestroyed(); } catch (_) { /* warm only */ }
     visual.root.visible = rootWasVisible;
   }
+  return null;
 }
 
 function warmDestroyedTrackState(visual: BattleWarmVisual): void {
@@ -1174,15 +1223,38 @@ function warmDestroyedTrackState(visual: BattleWarmVisual): void {
 
 function* warmDestroyedRosterVariantsSteps(
   context: CombatWarmRuntimeContext,
+  execution: CombatWarmExecution = { cooperative: false },
 ): WarmGenerator {
-  const { game } = context;
+  const { game, renderer } = context;
+  let isCurrent: (() => boolean) | null = null;
+  if (execution.cooperative) {
+    const generation = warmGeneration, info = renderer.info, gl = renderer.getContext();
+    isCurrent = () => generation === warmGeneration && renderer.info === info
+      && renderer.getContext() === gl && !gl.isContextLost?.();
+  }
   for (const entity of game.tanks.slice()) {
     const visual = entity.visual;
     if (!entity.specId || !visual?.root || !visual.setDestroyed || !visual.resetDestroyed) continue;
     for (const _ of prebakeDestroyedVariantSteps(context, entity.specId)) yield;
-    warmDestroyedVisual(context, visual as BattleWarmVisual & Required<Pick<
+    const pending = warmDestroyedVisual(context, visual as BattleWarmVisual & Required<Pick<
       BattleWarmVisual, 'root' | 'setDestroyed' | 'resetDestroyed'
-    >>);
+    >>, execution.cooperative ? isCurrent : null);
+    if (pending) {
+      try {
+        for (const _step of pending.uniforms) {
+          yield COMBAT_WARM_PROGRAM_CHECKPOINT;
+          if (execution.cooperative) continue;
+          // drained: the rest reflect now, as the synchronous warm does (never spin the KHR poller synchronously)
+          pending.uniforms.return();
+          for (const program of pending.submitted) {
+            if (isCurrent?.() === false || !renderer.info.programs?.includes(program)) continue;
+            try { program.getUniforms(); } catch (_) { /* warm only */ }
+          }
+          break;
+        }
+      } catch (_) { /* warm only */ }
+      finally { pending.uniforms.return(); }
+    }
     warmDestroyedTrackState(visual);
     yield;
   }
@@ -1552,7 +1624,7 @@ export function* createCombatRareWarmSteps(
     markedAt = now;
   };
 
-  yield* warmDestroyedRosterVariantsSteps(context);
+  yield* warmDestroyedRosterVariantsSteps(context, execution);
   mark('wreckVariants');
   // One warm-only armour scar per fielded hull lets the hidden-variant compile below prepare the impact-decal
   // program inside every hull before a real hit needs it. The scars are this warm's own state and leave with it

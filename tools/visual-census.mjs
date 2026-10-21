@@ -113,7 +113,7 @@ export function parseCensusPoses(raw) {
 }
 
 /** --overlay=colliders[:<radius>] (the hitbox lane, 2026-10-07): a second frame of each view with the collider view. */
-export function parseCensusOverlay(raw) {
+function parseCensusOverlay(raw) {
   if (raw === undefined) return null;
   const match = /^colliders(?::(\d+(?:\.\d+)?))?$/.exec(raw);
   if (!match) throw new Error(`--overlay needs colliders or colliders:<radius m> (got "${raw}")`);

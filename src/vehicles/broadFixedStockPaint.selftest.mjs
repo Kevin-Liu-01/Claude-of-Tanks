@@ -66,7 +66,7 @@ function painted(tank,id){const names=[...directNames];
  return names.map(name=>{const o=tank.root.getObjectByName(name);assert.ok(o?.isMesh);
   assert.equal(o.parent.name,'rig_hull','original direct always-visible hull owner, not a new LOD or armor mesh');
   assert.equal(o.userData.combatHitboxRole,'equipment');
-  assert.equal(o.material.name,'cot:armor-paint');assert.equal(o.material.map,tank.root.getObjectByName('hull').material.map);
+  assert.equal(o.material.name,'cot:armor-paint');assert.ok(o.material.map === tank.root.getObjectByName('hull').material.map);
   assert.ok(o.material.map?.isTexture);const uv=o.geometry.attributes.uv;
   assert.ok(uv&&Array.from(uv.array).every(Number.isFinite)&&new Set(uv.array).size>8);return o;});}
 const restore=installCanvasFixture(),rows=[];let rays=0;

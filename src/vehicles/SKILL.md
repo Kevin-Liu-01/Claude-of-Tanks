@@ -325,8 +325,16 @@ For every added or changed playable tank, run this required sequence:
 1. `npm run tank:anatomy:update` — remeasure the complete playable fleet and
    regenerate every tank's armor, module, and crew cards.
 2. `npm run tank:anatomy:check` — fail on stale receipts or visual drift.
+   Both steps also hold each tank's belly pan, track bottom, combat hull box and turret floor to
+   `docs/geometry-gate/sim-floors.json`: a move over 5 cm fails and names the part and
+   its builder line. Keep accessories above the belly and out of the structural
+   buckets; accept an intended move only with a reason
+   (`node tools/anatomy-floor-drift.mjs --accept=<ids>:<reason>`).
 3. `npm run tank:release:check -- --ids=<changed ids> --gate` — assets,
-   tracks, muzzle, geometry, full tests and private build.
+   tracks, muzzle, geometry, full tests and private build. A lane adds
+   `--lane`: the same steps without the full tests and the private build,
+   which the integrator mode and the release gate (every receipt and
+   `npm run build`) run (`docs/DEVELOPMENT.md` "Fast checks").
 
 Never hand-edit `combatAnatomyCalibrations.ts` or the generated technical PNGs.
 The authored receipt boundaries are `combatAnatomyCalibrationRegistry.ts`,
@@ -408,7 +416,50 @@ cascade registration — three resets a standard material's `defines` and never 
 no sun state or vehicle tag for the aerial pass. Clone through `cloneVehicleMaterial(source)` (materials.ts), which
 re-registers the clone exactly as its source and keeps its shader switches (`COT_WHEEL_PAINT_READABILITY`);
 `vehicleMaterialClone.selftest.mjs` pins the running-gear clones (shoes, isolated gear roles, band finishes). About
-forty profile-pack clones still re-hook by hand (`rehook`, `'veh-ambient-floor-v2'`) and predate it.
+forty profile-pack clones re-hooked by hand (`rehook`, `'veh-ambient-floor-v2'`) until round 2 of the wheel-band lane
+(below).
+2026-10-17 (the wheel-band lane; the owner: "in garage, on all tanks, i can see this weird shadow on wheels"): the
+Garage's dormant energy skin (`juggernautVisual.ts`, on every pedestal tank since 16f624704; the battle's Juggernaut,
+flag-carrier and Infected skins too) made raw clones, so every skinned pixel lost the vehicle tag, and since 045cdbed4
+the ground occlusion took the untagged road wheels for ground under the hull: a dark band under the belly line on every
+wheel. A material registered outside `createTankMaterials` goes through `registerVehicleMaterial(engineCtx, m, key)`
+(the decorations' kit), so its clones keep the registration; a clone of an unregistered cascade material says so in a
+dev build. A clone that draws in its source's place (the skin) compiles the source's whole hook chain over its own
+registration with `runVehicleHookChain(source, clone, …)` — the burn mask, the weapon wear and a profile's lift stay —
+and is released with `releaseVehicleMaterial(clone)` before it is disposed. `vehicleMaterialRawClone.selftest.mjs`
+keeps raw clones to a reviewed list (the profiles' set-member clones may only fall);
+`tools/garage-wheel-band.browser.mjs` measures the band and the tag share in the Garage.
+Round 2 (2026-10-17): the tanks' own materials left the registration the same three ways, and banded in the Garage and
+in battle alike (the M46/M47 camouflaged road wheels, the KF51's tyres, the T-90's dark wheels; the Abrams', KF51's and
+Merkava's tracks drew near-black). Every opaque lit material a tank draws holds its own registration:
+- a profile's re-hooked clone is `cloneRehookedVehicleMaterial(P.mats.x)` — the bare hook and `'veh-ambient-floor-v2'`
+  the hand re-hook gave (no switches, the scene's whole sky light, so a renderer stub compiles exactly what it did),
+  through the source's cascade registration;
+- a deliberately floorless one (a void, a bore, a hookless wheel) is `cloneFloorlessVehicleMaterial` /
+  `setVehicleMaterialFloorless` (`COT_VEHICLE_FLOORLESS` holds the readability floors and the ground occlusion out, the
+  tag stays);
+- a profile's shader patch over a material is `chainVehicleMaterialHook(m, key, patch)`, never an assigned hook, and a
+  retone that re-hooks what it finds is `rehookVehicleMaterial` (a registered material keeps its registration);
+- push every clone into `P.disposables`: each holds a cascade entry until the tank releases it.
+`vehicleMaterialRegistration.selftest.mjs` builds the band's tanks through a recording cascade context and audits every
+drawn material (registered, its cascade entry bound under its own key, the vehicle tag written, released on dispose);
+`tools/vehicle-material-registration.mjs --ids=…|all` sweeps the fleet the same way and runs in `tank:release:check`;
+`vehicleMaterialRawClone.selftest.mjs` bans a set member's raw clone, a hand re-hook and an emptied hook.
+Program-variant twins (2026-10-19, the 229 perf pass): a battle or Garage-hero build (`batchStatic`) gives each further
+program variant of a material (instanced, batched) a prototype twin (`engine/programVariants.ts`), so a mesh may draw
+an object that is not `P.mats.x` itself. Code that patches, clones or looks up a mesh's material by its registration
+resolves `programVariantOrigin(material)` first (the burn hook, `cloneVehicleMaterial`, the registration check do);
+an identity test against `P.mats.x` belongs in the build, before the split.
+Round 3 (2026-10-18): every opaque material a tank draws carries the tag, lit or not. The light-immune flat class (an
+opaque `MeshBasicMaterial`: the KF51's mud flaps and fender boards, the bore discs) never takes the cascade setup and wrote
+a card's alpha, so the KF51's flaps kept the straight edge at the belly + 2 cm; the factory now runs
+`tagUnlitVehicleMaterials(engineCtx, root)` after the appearance pass (the unlit tag, `engine/vehicleOcclusion.ts`
+`tagUnlitVehiclePixels`: 2 + sun 1 + tag 2, opaque draws only, wherever the cascades run), and the thermal view's heat
+stand-ins write it too. The audit holds unlit parts to it. `chainVehicleMaterialHook` binds the bare hook's whole sky
+light (`uVehEnvScale` 1) after the registration: the hook it replaced never bound the material's own trim, so the fix
+brings the cascade back without newly honouring a dead `envMapIntensity` dial (the Abrams' track bands, the KF51's). The
+readability hook's GLSL notes are TypeScript comments between the template pieces: keep comments out of that shader text
+(it ships in the game page's bundle and in every vehicle program).
 The field camouflages (`catalogCamoPainter.ts` paintField) and the digital patterns paint production's 2 m tile
 (fix/camo-defaults, 2026-10-09: the v2/v3 patch fields, 4 m wide tiles, digital clusters, per-triangle box projection,
 bore-wrapped gun UVs and camouflage panels are retired with the rest of PR #9's camouflage system).
@@ -439,7 +490,9 @@ where they are drawn; a main gun fixed in the hull draws into `hullGun`/`hullGun
 and `tank:anatomy:check`); never fix a run with a per-tank `p: 0` or a coordinate nudge. The search is the pass's only
 real cost, so `--update` also records its answers in the generated `spareTrackSeatPlan.ts` (a failing run goes straight
 to its station, or is not built); `--check` fails a stale record. Every built run is still measured, so a stale record
-costs time, never a bad seat.
+costs time, never a bad seat. A ledger row keys each run by source, part and authoring function and file, never a line
+number (`ledgerSiteKeys` in `tools/spare-track-digest.mjs`), so an unrelated edit never fails `--gate`; `--rekey`
+rewrites an older ledger's keys and nothing else.
 The shared checkout often contains active tank-generation WIP. Never stage
 builders, profiles, icons, GLBs, or generated geometry ledgers by directory.
 Chassis closure (FSP-05, 2026-09-25): a mirrored `for s of [-1, 1]` slab, a
@@ -449,3 +502,28 @@ camera; bind slabs through `orientedSlab`, hand twisted rings to `convexSlab`,
 and prove the result with `node tools/tank-sealed-check.mjs --ids=<id>
 --ledger=docs/geometry-gate/sealed.json` (0 open views) — the audit and the
 per-family causes are in `docs/tank-generation/chassis-closure-audit-20260925.md`.
+See-through gates too (227 guards, 2026-10-16): the sealed check holds each
+row's `seeThroughPx` (world seen through glass, markings or any undeclared
+alpha-cut part) to max(12 px, 10 %), and counts sky between declared netting
+apart as `netSeeThroughPx`, held to max(12 px, 2 %) either way (an unchanged
+suit reproduces it exactly; a suit that floats, doubles, sinks or goes missing
+moves it). Netting must declare itself:
+alpha-cut, `combatHitboxRole: 'nonArmor'`, and `continuityRole: 'open-lattice'`
+(the ghillie suit) or a `decor_<frame>_net|foliage` bucket
+(`alphaCutNetting` in `tools/tank-surface-collect.mjs`). A new alpha-cut part
+without that declaration fails its row; a hole behind netting is still a hole.
+Every playable id has a row, measured in the census frame recorded on it (an
+extremity edit never re-aliases its counts); a new vehicle must be sealed with
+no see-through cluster. The frame is fixed: a build whose own frame stays
+within min(0.5 m, 15 % of the radius) of it (an antenna, a slightly longer
+gun) is judged in it with no re-frame; past that it fails OUT OF FRAME (a part
+thrown metres out: fix the build) or FRAME STALE. `--update-ledger` never changes an existing
+row; `--tighten-ledger=<ids>` lowers one to its measurement. Raise a row's
+see-through or netting, or record a new vehicle whose see-through cluster is
+accepted, only with `--update-ledger --accept-see-through=<id>:<reason>`;
+no flag accepts an opening. `--reframe=<id>:<reason>` serves only OUT OF FRAME
+(at most half again the row's first frame) and FRAME STALE, and the build may not exceed
+its row in the row's frame in any column (with `--accept-see-through` for the
+id, see-through and netting may move there; openings never). Open rows list
+their hole views: a hole in another view fails. Each appends the reason, who,
+when and the old values to the row's `accepts`.

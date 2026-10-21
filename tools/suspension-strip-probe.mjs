@@ -43,7 +43,7 @@ const VIEWPORT = Object.freeze({ width: 1280, height: 720 });
  * stage (searched on the live height field, clear of obstacles); `kind` how the capture window is anchored: `landing`
  * (touchdown), `stop` (brake and stop), `drive` (steady travel), `rest`.
  */
-export const STRIP_CASES = Object.freeze({
+const STRIP_CASES = Object.freeze({
   rough: { map: 'badlands', mode: 'standard', find: 'rough', kind: 'drive', speed: 11, throttle: 1, view: 'side',
     frames: [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8] },
   hardstop: { map: 'steppe', mode: 'standard', find: 'flat', kind: 'stop', speed: 'top', throttle: 1, brakeAtS: 1.0, view: 'side' },
@@ -113,9 +113,9 @@ export const STRIP_CASES = Object.freeze({
 });
 
 /** Step offsets (sim ticks) captured around a landing's touchdown and around a hard stop. */
-export const LANDING_STEPS = Object.freeze([-10, -1, 0, 1, 2, 4, 8, 16, 32]);
+const LANDING_STEPS = Object.freeze([-10, -1, 0, 1, 2, 4, 8, 16, 32]);
 /** Step offsets around a trench crossing's anchor (the root over the trench's centre line), at 11 m/s. */
-export const CROSS_STEPS = Object.freeze([-45, -30, -18, -9, 0, 9, 18, 27, 36, 48, 66, 90]);
+const CROSS_STEPS = Object.freeze([-45, -30, -18, -9, 0, 9, 18, 27, 36, 48, 66, 90]);
 const STOP_STEPS = Object.freeze([-6, 6, 15, 30, 60]);       // from the brake
 const STOPPED_STEPS = Object.freeze([0, 9, 24, 48]);        // from the stop
 
@@ -125,7 +125,7 @@ const HELP = probeHelp({
   notes: ['Cases: ' + Object.keys(STRIP_CASES).join(', ')],
 });
 
-export function parseStripArgs(argv) {
+function parseStripArgs(argv) {
   const parsed = parseProbeArgs(argv, { tool: TOOL, accepts: ACCEPTS, defaults: { tag: 'a', spec: 't90am' } });
   if (parsed.help) return parsed;
   const ids = parsed.options.ids ?? Object.keys(STRIP_CASES);

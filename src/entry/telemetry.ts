@@ -41,7 +41,7 @@ const NAMED_STAGES = new Set([
  *  and `mp_drop` (`code` the wire reason) only count; `mp_exit` folds the battle's link into one
  *  note — `mp:<exit>:<health>:r<reconnects>:d<drops>:<lastDrop>:i<impaired s>` — and, when the
  *  session record already left, posts one `entry` follow-up carrying it (`code` `mp_<exit>`). */
-export type TelemetryKind = 'boot_stage' | 'boot_ready' | 'boot_error' | 'entry_result' | 'capability'
+type TelemetryKind = 'boot_stage' | 'boot_ready' | 'boot_error' | 'entry_result' | 'capability'
   | 'slow_reveal' | 'room_failure' | 'ice_degraded' | 'hud_mask_failed' | 'mp_reconnect' | 'mp_drop' | 'mp_exit'
   /** Peer-to-peer (2026-09-28): `mp_host` (this seat hosted; `reason` `start` | `migrate`) and `mp_migrate` (an election reached this
    *  seat; `code` its new role, `reason` the room's) only count; the counts ride the `mp_exit` note as `:h<hosted>:m<migrations>` when nonzero. */
@@ -69,7 +69,7 @@ interface EntryResult {
 }
 
 /** What a multiplayer v2 battle's link left behind (the status model's summary, a few bytes). */
-export interface TelemetryLinkSummary {
+interface TelemetryLinkSummary {
   health: string;
   worst?: string;
   reconnects: number;

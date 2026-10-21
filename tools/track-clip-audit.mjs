@@ -1,4 +1,5 @@
 import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { uniqueIds } from './id-list.mjs';
 // Track-containment audit driver (owner law 2026-08-03, GEOMETRY-GATE.md #4): fleet audit
 // driver for tools/track-clip-audit.html. Lists procedural-source ids, audits
 // each for track-band interpenetration with hull solids at the bow/stern
@@ -22,6 +23,8 @@ import { join } from 'node:path';
 import { trackClipOptions } from './track-clip-options.mjs';
 const { quality, outDir } = trackClipOptions(process.argv.slice(2));
 
+// A repeated --ids entry fails before the capture hold (2026-10-16, test-speed R4c)
+uniqueIds(process.argv.find((a) => a.startsWith('--ids='))?.slice(6).split(','), 'track-clip-audit --ids');
 await acquireLock(45 * 60 * 1000);
 process.on('exit', releaseLock);
 const refresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);

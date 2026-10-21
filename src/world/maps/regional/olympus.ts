@@ -142,7 +142,7 @@ const cargoModules: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const OLYMPUS_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const OLYMPUS_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   gantry: isruGantry,
   containerRow: cargoModules,
 });

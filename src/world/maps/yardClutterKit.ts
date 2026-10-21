@@ -14,7 +14,7 @@ import { crateFormOf, palletFormOf, spoolFormOf } from './clutterKit.ts';
 
 export type YardMaterial = 'steel' | 'wood' | 'baked';
 
-export interface YardFamilyGeometry {
+interface YardFamilyGeometry {
   family: YardFamily;
   material: YardMaterial;
   geometry: THREE.BufferGeometry;
@@ -22,7 +22,7 @@ export interface YardFamilyGeometry {
 }
 
 /** Livery colourways (authored sRGB) an instance colour selects by the placement's variant. */
-export const YARD_LIVERIES: Readonly<Record<'brownfield' | 'polar' | 'martian', Readonly<Record<'drum' | 'skip' | 'fuelTank', readonly number[]>>>> = Object.freeze({
+export const YARD_LIVERIES: Readonly<Record<'brownfield' | 'polar' | 'martian' | 'lunar', Readonly<Record<'drum' | 'skip' | 'fuelTank', readonly number[]>>>> = Object.freeze({
   brownfield: {
     drum: [0x4a6fa8, 0x9a4634, 0x66744d, 0x878c91, 0xd8702a, 0x3d3f42, 0xbfa676, 0x4c7a76],
     skip: [0x66744d, 0x9a4634, 0xd8702a, 0x3d5d84],
@@ -37,6 +37,12 @@ export const YARD_LIVERIES: Readonly<Record<'brownfield' | 'polar' | 'martian', 
     drum: [0xe1e3e5, 0xd97d2e, 0x9ea4aa, 0xcdc6b8, 0xe1e3e5, 0xd97d2e, 0x9ea4aa, 0xcdc6b8],
     skip: [0xe1e3e5, 0xd97d2e, 0x9ea4aa, 0xcdc6b8],
     fuelTank: [0xe1e3e5, 0xd97d2e, 0x9ea4aa, 0xcdc6b8],
+  },
+  // (the Earthrise 228 rebuild) a lunar station's canisters and dewars: dusted white, safety orange, steel, the dust's grey
+  lunar: {
+    drum: [0xdedcd6, 0xd46f2a, 0x9a978f, 0xbdb8ae, 0xdedcd6, 0x8d8a84, 0xdedcd6, 0xd46f2a],
+    skip: [0xdedcd6, 0xd46f2a, 0x9a978f, 0xbdb8ae],
+    fuelTank: [0xeceae4, 0xdedcd6, 0xd46f2a, 0xbdb8ae],
   },
 });
 

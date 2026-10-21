@@ -1,6 +1,6 @@
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
 
-export type FlankStation=readonly [z:number,inner:number,outer:number,bottom:number,top:number];
+type FlankStation=readonly [z:number,inner:number,outer:number,bottom:number,top:number];
 
 /** A welded housing whose corresponding contour edges stay parallel:
  * horizontal shelves, a vertical wall, and 45-degree bevels. Thus every

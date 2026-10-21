@@ -95,17 +95,22 @@ export function unknownRunMs(knownRunMs) {
 }
 
 /**
- * Admission order as registry indices: barrier receipts (exclusive CPU and self-leasing browser
- * checks, which run alone anyway) first in registry order, so no worker idles while the pool
- * drains for them; then longest-first (LPT) by run time; ties keep registry order.
+ * Admission order as registry indices: barrier receipts (the runner passes the exclusive CPU and,
+ * under the CPU lease, the self-leasing browser checks; without it the browser checks are `last`)
+ * first in registry order, so no worker idles while the pool drains for them; then longest-first (LPT) by run time; ties keep registry order. `last`
+ * receipts (judges that merge what other receipts of the same run wrote, such as
+ * server/battlePacing.selftest.mjs over its eight shards) come after everything else, in
+ * registry order, whatever their run time.
  */
-export function admissionOrder(files, { runMsOf = () => undefined, barriers = new Set(), unknownMs } = {}) {
+export function admissionOrder(files, { runMsOf = () => undefined, barriers = new Set(), last = new Set(), unknownMs } = {}) {
   const observed = files.map((file) => runMsOf(file));
   const fallback = unknownMs ?? unknownRunMs(observed);
   return files.map((file, index) => ({
-    index, barrier: barriers.has(file), ms: isRunMs(observed[index]) ? observed[index] : fallback,
+    index, barrier: barriers.has(file), last: last.has(file) && !barriers.has(file),
+    ms: isRunMs(observed[index]) ? observed[index] : fallback,
   })).sort((a, b) => (Number(b.barrier) - Number(a.barrier))
-    || (a.barrier ? 0 : b.ms - a.ms)
+    || (Number(a.last) - Number(b.last))
+    || (a.barrier || a.last ? 0 : b.ms - a.ms)
     || (a.index - b.index)).map((row) => row.index);
 }
 

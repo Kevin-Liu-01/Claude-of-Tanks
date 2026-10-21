@@ -279,7 +279,7 @@ export function createMainFrameRuntime({
     camera.userData.thermalFlight = thermal;
     const vision=thermal?(camera.userData.flightVision??1):(frame.inBattle&&!frame.killcamActive?camera.userData.scopeVision:0);
     camera.userData.sensorVision=vision;
-    thermalVehicles.begin(game.tanks,(vision===1||vision===2),game.player?.team);
+    thermalVehicles.begin(game.tanks,(vision===1||vision===2),game.player?.team,frame.inBattle?game.timeS:undefined);
     try { post.render(dtSeconds, frameWallDtSeconds); }
     finally { thermalVehicles.end(); }
     const frameFinishedAt = profileGarageReturn ? performance.now() : 0;

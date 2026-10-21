@@ -9,7 +9,7 @@ function fill(root) {
 }
 const a=fill(reference),b=fill(candidate),sentinel=b.levels[1].object;
 assert.equal(detachEmptyLodSentinels(candidate),1);
-assert.equal(b.levels[1].object,sentinel);assert.equal(sentinel.parent,null);
+assert.ok(b.levels[1].object === sentinel);assert.ok(sentinel.parent === null);
 assert.equal(detachEmptyLodSentinels(candidate),0,'idempotent finalization');
 const camera=new THREE.PerspectiveCamera();
 for(const distance of [0,149,150,151,149,136,135,134,1000,0]) {

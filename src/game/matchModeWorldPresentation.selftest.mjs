@@ -6,6 +6,7 @@ import { createMatchModeWorldPresentation, LINE_WORKS, planLineWorks } from './m
 import { createMatchModeController } from '../sim/matchModes.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { objectiveMarkers } from '../ui/minimapObjectives.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const ALLY = 0x6fe887;
 const ENEMY = 0xf26a62;
@@ -116,7 +117,7 @@ assert.equal(bravoColumn.geometry.type, 'CylinderGeometry');
 assert.equal(bravoColumn.material.blending, 2, 'the light column is additive'); // THREE.AdditiveBlending
 assert.equal(bravoColumn.material.color.getHex(), ENEMY);
 assert.equal(bravoColumn.material.depthWrite, false);
-assert.notEqual(alphaFlag.children[1].material.map, bravoFlag.children[1].material.map,
+assert.ok(alphaFlag.children[1].material.map !== bravoFlag.children[1].material.map,
   'own and enemy pennant icons are different rasters');
 
 view.update({
@@ -129,7 +130,7 @@ view.update({
   ],
 }, 1.5);
 assert.equal(view.root.children.length, 4, 'flag markers and bases are retained');
-assert.equal(view.root.getObjectByName('alpha-flag'), alphaFlag);
+assert.ok(view.root.getObjectByName('alpha-flag') === alphaFlag);
 assertVector(alphaFlag.position, [3, 6.5, -96], 'dropped flag placement');
 close(alphaFlag.rotation.y, 0, 'retained mast remains fixed');
 assert.equal(bravoFlag.visible, false, 'unused retained flag is hidden');
@@ -161,7 +162,7 @@ const zoneExpected = [
 assert.equal(zoneMarkers[0].userData.arc.visible, false, 'an owned zone shows no partial arc');
 assert.equal(zoneMarkers[1].userData.arc.visible, false, 'an owned contested zone keeps the dashed badge, not an arc');
 assert.equal(zoneMarkers[2].userData.arc.visible, false);
-assert.notEqual(zoneMarkers[0].userData.icon.material.map, zoneMarkers[1].userData.icon.material.map,
+assert.ok(zoneMarkers[0].userData.icon.material.map !== zoneMarkers[1].userData.icon.material.map,
   'zone badges differ by letter and side');
 for (let index = 0; index < zoneMarkers.length; index += 1) {
   const marker = zoneMarkers[index];
@@ -187,7 +188,7 @@ for (let index = 0; index < zoneMarkers.length; index += 1) {
   assert.equal(postBody.geometry.name, 'objective-post-mast');
   assert.equal(postFlag.material.color.getHex(), zoneExpected[index].color, `zone ${index + 1} pennant follows the owner`);
   assert.equal(postBody.castShadow, true, 'the post casts its shadow');
-  assert.equal(marker.userData.markerMaterial, ring.material);
+  assert.ok(marker.userData.markerMaterial === ring.material);
   assertBasicMaterial(ring.material, zoneExpected[index].color,
     zoneExpected[index].opacity, `zone ${index + 1} material`);
 }
@@ -202,8 +203,8 @@ view.update({
     { id: 'a', x: -30, y: 2, z: 9, control: 0, owner: null, contested: false },
   ],
 }, 1.8);
-assert.deepEqual([1, 2, 3].map((index) => view.root.getObjectByName(`capture-zone-${index}`)),
-  retainedZones, 'zone markers are retained');
+assert.deepEqual(graphLabels([1, 2, 3].map((index) => view.root.getObjectByName(`capture-zone-${index}`))),
+  graphLabels(retainedZones), 'zone markers are retained');
 assertVector(zoneMarkers[0].position, [-30, 2, 9],
   'zone transforms remain live without an optional material reference');
 assert.equal(zoneMarkers[0].visible, true);
@@ -256,15 +257,15 @@ for (let index = 0; index < goalMarkers.length; index += 1) {
   const [ring, gantry] = hoop.children;
   assert.equal(ring.geometry.name, 'turbo-goal-hoop');
   assert.equal(gantry.geometry.name, 'turbo-goal-gantry');
-  assert.equal(marker.userData.markerMaterial, ring.material);
+  assert.ok(marker.userData.markerMaterial === ring.material);
   assert.equal(ring.material.type, 'MeshStandardMaterial');
   assert.equal(ring.material.color.getHex(), index === 0 ? ALLY : ENEMY, `goal ${index + 1} paint`);
 }
 const retainedTurbo = { ball, goals: [...goalMarkers], childCount: view.root.children.length };
 view.update({ ...base, id: 'turbo_ball', label: 'Turbo Ball' }, 2.5);
-assert.equal(view.root.getObjectByName('turbo-ball'), retainedTurbo.ball);
-assert.deepEqual(['alpha-turbo-goal', 'bravo-turbo-goal'].map((name) =>
-  view.root.getObjectByName(name)), retainedTurbo.goals);
+assert.ok(view.root.getObjectByName('turbo-ball') === retainedTurbo.ball);
+assert.deepEqual(graphLabels(['alpha-turbo-goal', 'bravo-turbo-goal'].map((name) =>
+  view.root.getObjectByName(name))), graphLabels(retainedTurbo.goals));
 assert.equal(view.root.children.length, retainedTurbo.childCount,
   'Turbo markers are retained rather than rebuilt');
 assert.equal(ball.visible, false);
@@ -530,12 +531,12 @@ assert.equal(pickupMarkers[0].visible, true,
   assert.equal(bagsMesh.instanceMatrix.version, version, 'unchanged sectors keep their matrices');
   front.update({ ...frontState, zones: lines.map((zone) => ({ ...zone, z: zone.z + 20 })) }, 3);
   assert.ok(bagsMesh.instanceMatrix.version > version, 'moved sectors refill the works');
-  assert.equal(front.root.getObjectByName('line-works'), works, 'the works group is retained across layouts');
-  assert.equal(front.root.getObjectByName('line-works-bags'), bagsMesh, 'the bag pool is retained');
+  assert.ok(front.root.getObjectByName('line-works') === works, 'the works group is retained across layouts');
+  assert.ok(front.root.getObjectByName('line-works-bags') === bagsMesh, 'the bag pool is retained');
   // fewer sectors rebuild the pools to size
   front.update({ ...frontState, zones: lines.slice(0, 2) }, 3.5);
   const rebuilt = front.root.getObjectByName('line-works-bags');
-  assert.notEqual(rebuilt, bagsMesh);
+  assert.ok(rebuilt !== bagsMesh);
   assert.equal(rebuilt.count, 2 * 60, 'two sectors, two sectors of bags');
   // other modes hide the works
   front.update({ ...base, id: 'zone_control', label: 'Zone Control', zones: lines }, 4);

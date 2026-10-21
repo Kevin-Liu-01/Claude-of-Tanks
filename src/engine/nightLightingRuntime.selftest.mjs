@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
-import { createNightLightingRuntime, registerNightLightEmitters, HEADLIGHT_LOW_BEAM_DROP, HEADLIGHT_CONE_RAD } from './nightLightingRuntime.ts';
+import { createNightLightingRuntime, registerNightLightEmitters, HEADLIGHT_LOW_BEAM_DROP, HEADLIGHT_CONE_RAD, BUILDING_FOCUS_AHEAD_M } from './nightLightingRuntime.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 // (EF.11) a driving lamp's beam is its authored aim dropped to a low beam in its vehicle's frame
 const lowBeam = (d) => { const v = new THREE.Vector3(...d); v.y -= HEADLIGHT_LOW_BEAM_DROP * Math.hypot(v.x, v.z); return v.normalize(); };
 
@@ -54,7 +55,7 @@ try {
   runtime.prepare(roots, false); runtime.update(new THREE.Vector3());
   assert.equal(runtime.emitterCount, 0); assertAuthored();
   runtime.prepare(roots, true);
-  assert.equal(runtime.emitterCount, 5); assert.equal(runtime.group.parent, scene);
+  assert.equal(runtime.emitterCount, 5); assert.ok(runtime.group.parent === scene);
   let sceneAdds = 0; scene.addEventListener('childadded', () => sceneAdds++);
   const reference = new THREE.Vector3();
   runtime.update(reference);
@@ -81,8 +82,8 @@ try {
   // 1 m over the lamps reaches no closer than its last 0.5 m to the cone (the rest of the barrel, steeper, sits outside)
   assert.ok(lights[0].angle === HEADLIGHT_CONE_RAD && HEADLIGHT_CONE_RAD < .43, 'a narrower cone');
   { const up = Math.atan(-.08 - HEADLIGHT_LOW_BEAM_DROP) + HEADLIGHT_CONE_RAD; assert.ok(up < Math.atan(1 / 4.5), `the cone's upper edge ${(up * 180 / Math.PI).toFixed(1)} deg passes under the barrel`); }
-  assert.deepEqual(runtime.group.children, objects, 'constant night light/target object count');
-  assert.deepEqual(runtime.lights, lights);
+  assert.deepEqual(graphLabels(runtime.group.children), graphLabels(objects), 'constant night light/target object count');
+  assert.deepEqual(graphLabels(runtime.lights), graphLabels(lights));
   lights.forEach((light, index) => {
     assert.strictEqual(light.position, positions[index]); assert.strictEqual(light.color, lightColors[index]);
   });
@@ -102,15 +103,15 @@ try {
   building.visible = true;
   runtime.update(reference, false);
   assert.ok(lights.every(light => light.intensity === 0)); assertAuthored();
-  assert.equal(runtime.group.parent, scene, 'temporary inactive render does not re-key light count');
+  assert.ok(runtime.group.parent === scene, 'temporary inactive render does not re-key light count');
   runtime.update(reference); assert.equal(white.emissiveIntensity, 2);
-  runtime.reset(); assertAuthored(); assert.equal(runtime.group.parent, null);
+  runtime.reset(); assertAuthored(); assert.ok(runtime.group.parent === null);
   assert.equal(runtime.emitterCount, 0);
   for (let i = 0; i < 16; i++) {
     runtime.prepare(roots, true); runtime.update(reference); runtime.prepare(roots, false); assertAuthored();
   }
   runtime.prepare(roots, true); runtime.update(reference); runtime.dispose(); assertAuthored();
-  assert.equal(runtime.group.parent, null); assert.equal(runtime.group.children.length, 0);
+  assert.ok(runtime.group.parent === null); assert.equal(runtime.group.children.length, 0);
   runtime.dispose(); runtime.reset(); runtime.update(reference);
   assert.throws(() => runtime.prepare(roots, true), /disposed/);
 } finally { runtime.dispose(); }
@@ -123,7 +124,7 @@ registerNightLightEmitters(alias, [{ kind: 'marker', position: [0, 0, 0],
 { kind: 'marker', position: [1, 0, 0], emission: { material: white, color: 0x00ff00, intensity: 1 } }]);
 const limited = createNightLightingRuntime(scene, { spotLights: 1, pointLights: 1 });
 assert.throws(() => limited.prepare([{ root: alias }], true), /conflicting/);
-assert.equal(limited.emitterCount, 0); assert.equal(limited.group.parent, null); assertAuthored();
+assert.equal(limited.emitterCount, 0); assert.ok(limited.group.parent === null); assertAuthored();
 assert.equal(limited.lights.length, 2, 'immutable constrained constructor budget is supported');
 let lampIntact = true;
 const lateBuilding = new THREE.Group(); scene.add(lateBuilding);
@@ -139,7 +140,7 @@ assert.equal(limited.lights[1].intensity, 0, 'destroyed lamp retires independent
 assert.equal(warm.emissiveIntensity, authored[2].intensity);
 assert.throws(() => limited.appendRoot({ root: alias }), /conflicting/);
 assert.equal(limited.emitterCount, 1, 'invalid late registration cannot partially publish');
-assert.deepEqual(limited.lights, lateLights, 'late actor registration never adds lights');
+assert.deepEqual(graphLabels(limited.lights), graphLabels(lateLights), 'late actor registration never adds lights');
 limited.reset(); limited.appendRoot({ root: lateBuilding });
 assert.equal(limited.emitterCount, 0, 'day/Garage late construction cannot activate night lighting');
 limited.dispose();
@@ -174,12 +175,88 @@ assert.throws(() => createNightLightingRuntime(scene, { spotLights: 2, pointLigh
     assert.equal(four.lights.filter((light) => light.isPointLight).length, 2);
   } finally { two.dispose(); four.dispose(); scene.remove(cluster, neighbour); }
 }
+// Release 227 (round 4; the critic: "the warm ground pool has the same position and shape in all five station states"): a
+// weapon searchlight keeps its authored aim (no low-beam drop), lights its own narrow cone, and on a pool wider than one
+// vehicle's two sides it takes a spot beside both of its vehicle's driving lamps; a two-spot pool keeps both on them.
+{
+  const tank = new THREE.Group(), station = new THREE.Group(); scene.add(tank); tank.add(station);
+  tank.position.set(0, 1, 0); station.position.set(-.6, 1.4, -.3); station.rotation.y = .5;
+  const pod = (x) => ({ kind: 'headlight', position: [x, .3, 2.6], direction: [0, -.1, 1], intensity: 90, range: 42 });
+  registerNightLightEmitters(tank, [pod(-.7), pod(.7)]);
+  registerNightLightEmitters(station, [{ kind: 'headlight', position: [.3, .1, .2], direction: [0, .02, 1], intensity: 2000, range: 100,
+    searchlight: true, coneRad: .11 }]);
+  const two = createNightLightingRuntime(scene, { spotLights: 2, pointLights: 1 });
+  const four = createNightLightingRuntime(scene, { spotLights: 4, pointLights: 2 });
+  try {
+    for (const runtime of [two, four]) { runtime.prepare([{ root: tank, priority: 1 }], true); runtime.update(new THREE.Vector3(1, 3, -6)); }
+    const lit = (runtime) => runtime.lights.filter((light) => light.isSpotLight && light.intensity > 0);
+    assert.deepEqual(lit(two).map((light) => light.intensity), [90, 90], 'two spots: both driving lamps, no searchlight');
+    assert.ok(lit(two).every((light) => light.angle === HEADLIGHT_CONE_RAD), 'driving lamps keep the low-beam cone');
+    const beam = lit(four).find((light) => light.intensity === 2000);
+    assert.ok(beam, 'four spots: the searchlight takes one');
+    assert.equal(lit(four).filter((light) => light.intensity === 90).length, 2, 'beside both driving lamps');
+    assert.equal(beam.angle, .11, 'in its own narrow cone');
+    station.updateWorldMatrix(true, false);
+    near(beam.target.position.clone().sub(beam.position), new THREE.Vector3(0, .02, 1).normalize().transformDirection(station.matrixWorld),
+      'aimed as authored, turning with its station (no low-beam drop)');
+    station.rotation.y = -.4; four.update(new THREE.Vector3(1, 3, -6)); station.updateWorldMatrix(true, false);
+    near(beam.target.position.clone().sub(beam.position), new THREE.Vector3(0, .02, 1).normalize().transformDirection(station.matrixWorld),
+      'the beam follows the station');
+    const slot = four.lights.find((light) => light === beam);
+    four.prepare([{ root: tank, priority: 1 }], true); four.update(new THREE.Vector3(1, 3, -6));
+    assert.ok(four.lights.filter((light) => light.isSpotLight && light.intensity === 90).every((light) => light.angle === HEADLIGHT_CONE_RAD),
+      'a slot that held the searchlight goes back to the low-beam cone with a driving lamp'); void slot;
+  } finally { two.dispose(); four.dispose(); scene.remove(tank); }
+  // Round 6 (the critic's UAPL-R5C-10): the lift belongs to the player's searchlight only; another vehicle's searchlight
+  // 60 m off competes by distance and leaves the spots to a nearer vehicle's driving lamps.
+  {
+    const player = new THREE.Group(), near2 = new THREE.Group(), far = new THREE.Group(), farStation = new THREE.Group();
+    for (const g of [player, near2, far]) scene.add(g);
+    far.add(farStation); near2.position.set(0, 0, 20); far.position.set(0, 0, 60); farStation.position.set(-.6, 1.4, -.3);
+    registerNightLightEmitters(player, [pod(-.7), pod(.7)]);
+    registerNightLightEmitters(near2, [pod(-.7), pod(.7)]);
+    registerNightLightEmitters(far, [pod(-.7), pod(.7)]);
+    registerNightLightEmitters(farStation, [{ kind: 'headlight', position: [.3, .1, .2], direction: [0, .02, 1], intensity: 2000, range: 100,
+      searchlight: true, coneRad: .11 }]);
+    const pool = createNightLightingRuntime(scene, { spotLights: 4, pointLights: 2 });
+    try {
+      pool.prepare([{ root: player, priority: 1 }, { root: near2, priority: 0 }, { root: far, priority: 0 }], true);
+      pool.update(new THREE.Vector3(0, 3, -6));
+      const spots = pool.lights.filter((light) => light.isSpotLight && light.intensity > 0);
+      assert.equal(spots.filter((light) => light.intensity === 2000).length, 0, 'a far non-player searchlight does not outrank a nearer vehicle');
+      assert.equal(spots.filter((light) => light.intensity === 90).length, 4, 'the player and the nearer vehicle keep all four spots');
+    } finally { pool.dispose(); for (const g of [player, near2, far]) scene.remove(g); }
+  }
+  assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', position: [0, 0, 0], coneRad: .5 }]), /cone/);
+  assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'marker', position: [0, 0, 0], searchlight: true }]), /searchlight/);
+}
 assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'glass', position: [0, 0, 0] }]), /kind/);
 assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', position: [NaN, 0, 0] }]), /finite/);
 assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', position: [0, 0, 0], direction: [0, 0, 0] }]), /nonzero/);
 assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', position: [0, 0, 0], intensity: 2001 }]), /intensity/);
+// (the looks lane, 228: Steinburg's streets dark at night) a town's street lamps share one instanced anchor and carry
+// world positions: each takes a pooled point light of its own (the one-lamp-per-side rule is a vehicle's headlights'),
+// two lamps in one place light it once, and the lamps ahead of the camera along its view take the lights
+{
+  const town = new THREE.Scene(), lamps = new THREE.Group(), lampMaterial = new THREE.MeshStandardMaterial();
+  town.add(lamps);
+  const at = [[-150, 4, 0], [-124, 4, 9], [-124.5, 4, 9.2], [-175, 4, 11], [-100, 4, -6]];
+  registerNightLightEmitters(lamps, at.map((position) => ({ kind: 'building', position, color: 0xffc889, intensity: 90, range: 17,
+    emission: { material: lampMaterial, color: 0xffffff, intensity: 3 } })));
+  const pool = createNightLightingRuntime(town, { spotLights: 1, pointLights: 2 });
+  pool.prepare([{ root: lamps }], true);
+  const lit = () => pool.lights.filter((light) => light.isPointLight && light.intensity > 0).map((light) => light.position.toArray().map(Math.round).join(','));
+  pool.update(new THREE.Vector3(-156, 8, 2), true);
+  assert.equal(lit().length, 2, 'two street lamps on one anchor and one side of the origin both take a point light');
+  pool.update(new THREE.Vector3(-156, 8, 2), true, new THREE.Vector3(1, -0.25, -0.1));
+  assert.deepEqual(lit().sort(), ['-124,4,9', '-150,4,0'], `the lamps within reach of the point ${BUILDING_FOCUS_AHEAD_M} m ahead along the view light, once each: ${lit()}`);
+  pool.update(new THREE.Vector3(-156, 8, 2), true, new THREE.Vector3(-1, -0.25, 0.3));
+  assert.ok(lit().includes('-175,4,11'), `looking back up the street, the lamp behind the camera lights: ${lit()}`);
+  pool.dispose(); lampMaterial.dispose();
+}
+
 const source = readFileSync(new URL('./nightLightingRuntime.ts', import.meta.url), 'utf8');
 assert.doesNotMatch(source, /Math\.random\(|performance\.|setTimeout\(|requestAnimationFrame\(|needsUpdate\s*=/);
 assert.doesNotMatch(source, /from ['"].*(?:quality|fleet|tankFactory)/, 'runtime stays independent of fleet and quality overrides');
 for (const material of materials) material.dispose();
-console.log('nightLightingRuntime self-test: bounded lights, authored emission, visibility/death, rolled poses, exact reset and disposal PASS');
+console.log('nightLightingRuntime self-test: bounded lights, authored emission, visibility/death, rolled poses, searchlights, exact reset and disposal PASS');

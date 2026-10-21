@@ -86,7 +86,7 @@ function library(species, fade, environment) {
   assert.equal(foliage.length, species.length, 'the complete production species material library exists');
   const impostor = registered.filter(material => material.customProgramCacheKey() === 'world-tree-impostor-v3'); // round 77c: the elevated ring; p2 trees lane: the gust lift
   assert.equal(impostor.length, 1, 'one impostor material per world, registered with the cascades');
-  assert.strictEqual(vegetation._treeImpostors?.material, impostor[0]);
+  assert.ok(vegetation._treeImpostors?.material === impostor[0]);
   const foliageMats = Object.fromEntries(species.map((sp, index) => [sp, foliage[index]]));
   const foliageTex = Object.fromEntries(species.map(sp => [sp, foliageMats[sp].map]));
   const depthByMaterial = new Map();
@@ -146,8 +146,8 @@ function checkSpeciesShaderKeys(world, species, environment) {
     assert.equal(row.key, rows[0].key, `${sp}: installed Three generates equal complete key`);
     assert.strictEqual(row.parameters.uniforms.uCanopyDet.value, world.detail);
     assert.strictEqual(row.parameters.uniforms.uWindTime, world.uWindTime);
-    assert.strictEqual(material.map, world.foliageTex[sp]);
-    assert.strictEqual(world.foliageDepthMats[sp].map, material.map);
+    assert.ok(material.map === world.foliageTex[sp]);
+    assert.ok(world.foliageDepthMats[sp].map === material.map);
     assert.equal(world.foliageDepthMats[sp].alphaTest, sp === 'palm' ? .62 : .38);
     assert.strictEqual(world.csm.shaders.get(material), row.parameters);
   }
@@ -415,7 +415,7 @@ function checkShrubMaterial(environment) {
     // their shadow caster reads too
     assert.equal(bush.material.map?.name, 'shrubAtlas:oak', 'the shrubs paint their own atlas');
     assert.equal(bush.material.map.image.width, crown.map.image.width * 2, 'at twice the crowns\' texels');
-    assert.equal(bush.customDepthMaterial?.map, bush.material.map, 'their shadow caster reads it');
+    assert.ok(bush.customDepthMaterial?.map === bush.material.map, 'their shadow caster reads it');
     assert.equal(bush.material.customProgramCacheKey(), 'world-tree-foliage-v25', 'on the one foliage program');
     assert.deepEqual(bush.material.defines, crown.defines, 'with the crown material\'s defines (the facing clusters, the edge fade)');
     const shrubProgram = environment.expand(bush.material), crownProgram = environment.expand(crown);

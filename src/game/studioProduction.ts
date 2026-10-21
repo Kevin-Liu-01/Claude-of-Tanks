@@ -7,7 +7,7 @@ export type ProductionFormat = 'landscape' | 'portrait' | 'square';
 export type ProductionRigId = 'hero' | 'track' | 'rear' | 'overhead' | 'detail';
 type Vec3 = [number, number, number];
 type Vec2 = [number, number];
-export interface ProductionPreset {
+interface ProductionPreset {
   id: string; title: string; description: string; map: string;
   timeOfDay: BattleTimeOfDay; durationMs: number; category: string; shots: readonly string[];
 }
@@ -23,17 +23,17 @@ export const PRODUCTION_PRESETS: readonly ProductionPreset[] = [
     shots: ['Patrol follow', 'Low side portrait', 'Bay reveal'] },
 ];
 export interface ProductionOptions { presetId: string; format?: ProductionFormat; vehicleId?: string }
-export interface ProductionActor { id: string; name: string; pos: Vec2; facingDeg: number; turretDeg: number; camo: string; camoSeed: number }
-export interface ProductionEffect {
+interface ProductionActor { id: string; name: string; pos: Vec2; facingDeg: number; turretDeg: number; camo: string; camoSeed: number }
+interface ProductionEffect {
   id: string; type: string; actor?: string; at?: Vec2; tMs: number;
   params: { count?: number; intensity?: number; slot?: number; tracer?: boolean; recoil?: boolean; kind?: string; caliberMm?: number; cause?: string; pop?: boolean };
 }
-export interface ProductionScene {
+interface ProductionScene {
   map: string; timeOfDay: BattleTimeOfDay; productionFormat: ProductionFormat; seed: number; actors: ProductionActor[];
   effects: ProductionEffect[]; storyboard: Storyboard; fxTime: number; timeScale: number;
   camera: { pos: Vec3; lookAt: Vec3; fov: number };
 }
-export type ProductionHeight = (x: number, z: number) => number;
+type ProductionHeight = (x: number, z: number) => number;
 
 export function productionPreset(id: string): ProductionPreset {
   const preset = PRODUCTION_PRESETS.find(item => item.id === id);

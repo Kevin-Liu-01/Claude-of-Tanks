@@ -197,7 +197,7 @@ export function buildAdobeWall(kind: AdobeCrown, env: Envelope, broken = false, 
 }
 
 /** The mud wall's record on a map (props.ts LOCAL_TYPES walladobe): the legacy module's numbers and material. */
-export type AdobeWallType = Omit<DestructiblePropType, 'mat'> & { fitGeometry?: THREE.BufferGeometry; mat: string };
+type AdobeWallType = Omit<DestructiblePropType, 'mat'> & { fitGeometry?: THREE.BufferGeometry; mat: string };
 
 /**
  * The mud field wall in its region's build: `legacy` still builds first on the pool's stream (its draws, its envelope;

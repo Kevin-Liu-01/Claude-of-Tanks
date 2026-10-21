@@ -24,6 +24,7 @@
 // The classification is lexical evidence, not a verdict: every row carries the file:line and the authoring text
 // so a reviewer can read the part's intent. --gate exits 1 when any camo-on-accessory violation remains.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import './tank-surface-collect.mjs'; // node canvas shim: materials are set as shipped
@@ -40,7 +41,7 @@ const { createTank, bucketMaterialKey } = await import('../src/vehicles/tankFact
 const { ALL_TANK_IDS, PRODUCTION_TANK_IDS, TANK_SPECS } = await import('../src/vehicles/specs.ts');
 // tankFactory.ts registers the whole roster for node tools; fleetFactory (the browser's lazy owner) must not be imported here.
 const ids = flag('all') ? [...ALL_TANK_IDS]
-  : opt('ids', '') ? opt('ids', '').split(',').map((id) => id.trim()).filter(Boolean)
+  : opt('ids', '') ? uniqueIds(opt('ids', '').split(',').map((id) => id.trim()).filter(Boolean), 'material-roles-audit --ids')
     : [...PRODUCTION_TANK_IDS];
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');

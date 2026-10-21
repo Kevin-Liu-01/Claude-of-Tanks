@@ -400,7 +400,7 @@ const bellTower: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const KOHIMA_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const KOHIMA_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   bathhouse: bungalow,
   farmhouse: nagaHouse,
   cornershop: bazaarShop,

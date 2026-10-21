@@ -23,7 +23,7 @@ const finishOf = (id) => {
     assert.deepEqual(bands.map((band) => band.name).sort(), ['gearTrackBandL', 'gearTrackBandR'],
       `${id}: exactly one continuous track band remains on each side`);
     return bands.map((band) => {
-      assert.equal(band.material.map, null, `${id} ${band.name}: no camouflage map on the track band`);
+      assert.ok(band.material.map === null, `${id} ${band.name}: no camouflage map on the track band`);
       assert.equal(band.userData?.appearanceRole, 'trackBand', `${id} ${band.name}: semantic track role survives`);
       const { r, g, b } = band.material.color;
       assert.ok(Math.max(r, g, b) - Math.min(r, g, b) < 0.03, `${id} ${band.name}: neutral steel, not camouflage green`);

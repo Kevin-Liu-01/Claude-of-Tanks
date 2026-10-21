@@ -14,6 +14,16 @@ export interface NightLightEmitter {
   readonly color?: number;
   readonly intensity?: number;
   readonly range?: number;
+  /**
+   * Release 227 (round 4; the critic on the Zubr II's station illuminator: "the warm ground pool has the same position
+   * and shape in all five station states"): a weapon searchlight, boresighted with the station that carries it. It
+   * keeps its authored aim (no low-beam drop), lights its own narrow cone (`coneRad`, the spot's half-angle), and on a
+   * pool wider than one vehicle's two sides (desktop's four spots) it ranks half a priority step ahead of its vehicle's
+   * driving lamps, so it holds a beam while their two sides keep theirs; on a two-spot pool (mobile) it ranks half a
+   * step behind them, which keep both spots.
+   */
+  readonly searchlight?: boolean;
+  readonly coneRad?: number;
   /** Construction-time callback for a destructible lamp or emissive fitting. */
   readonly isActive?: () => boolean;
   readonly emission?: {
@@ -90,6 +100,10 @@ function validateEmitter(emitter: NightLightEmitter): void {
   requireBounded(emitter.intensity ?? 80, emitter.kind === 'headlight' ? 2000 : 300, 'intensity');
   requireBounded(emitter.range ?? 42, 100, 'range');
   requireBounded(emitter.color ?? 0xffe2ad, 0xffffff, 'color');
+  if (emitter.coneRad !== undefined && !(emitter.coneRad > 0 && emitter.coneRad <= HEADLIGHT_CONE_RAD)) {
+    throw new RangeError('Night light cone must be a positive half-angle no wider than a driving lamp\'s');
+  }
+  if (emitter.searchlight && emitter.kind !== 'headlight') throw new TypeError('Only a lamp casting a beam can be a searchlight');
   if (emitter.emission) {
     if (!emitter.emission.material?.isMeshStandardMaterial) throw new TypeError('Night light requires a dedicated emissive material');
     requireBounded(emitter.emission.intensity, 8, 'emission intensity');
@@ -151,9 +165,17 @@ function belongsToVisibleScene(anchor: THREE.Object3D, scene: THREE.Scene, sourc
   return false;
 }
 
+/**
+ * (the looks lane, 228: Steinburg's lamps lit no ground) a town's lamps — the building emitters, pooled into a point
+ * light or two — are chosen round a point this far ahead of the camera along its view, on its own level: the lamps in
+ * front of it light the street it looks down, not the one behind or beside it. Headlights keep the camera's distance.
+ */
+export const BUILDING_FOCUS_AHEAD_M = 14;
+const _focus = new THREE.Vector3();
+
 function updateEmitter(
   state: EmitterState, scene: THREE.Scene, reference: THREE.Vector3Like,
-  seen: Map<THREE.Object3D, number>, frame: number,
+  seen: Map<THREE.Object3D, number>, frame: number, focus: THREE.Vector3Like = reference,
 ): void {
   state.active = (state.source.isActive?.() ?? true)
     && (state.emitter.isActive?.() ?? true)
@@ -164,15 +186,17 @@ function updateEmitter(
     seen.set(state.anchor, frame);
   }
   state.position.fromArray(state.emitter.position).applyMatrix4(state.anchor.matrixWorld);
-  const x = state.position.x - reference.x, y = state.position.y - reference.y, z = state.position.z - reference.z;
+  const from = state.emitter.kind === 'building' ? focus : reference;
+  const x = state.position.x - from.x, y = state.position.y - from.y, z = state.position.z - from.z;
   state.distanceSquared = x * x + y * y + z * z;
   if (state.emission) state.emission.active = true;
   if (state.emitter.kind === 'headlight') {
     if (state.emitter.direction) state.direction.fromArray(state.emitter.direction);
     else state.direction.set(0, -.08, 1);
     // (EF.11, DO-FX-08: "barrels glowing gold at night") a driving lamp is a low beam: dropped in its own vehicle's
-    // frame, so the cone's upper edge passes under the gun barrel above the lamps instead of flooding it gold
-    state.direction.y -= HEADLIGHT_LOW_BEAM_DROP * Math.hypot(state.direction.x, state.direction.z);
+    // frame, so the cone's upper edge passes under the gun barrel above the lamps instead of flooding it gold; a weapon
+    // searchlight looks where its station aims
+    if (!state.emitter.searchlight) state.direction.y -= HEADLIGHT_LOW_BEAM_DROP * Math.hypot(state.direction.x, state.direction.z);
     state.direction.normalize().transformDirection(state.anchor.matrixWorld);
   }
 }
@@ -196,7 +220,12 @@ function assignedEarlier<T extends THREE.SpotLight | THREE.PointLight>(slots: Li
     // owner 2026-09-18 ("lights seem to only come from one headlight"): with two scene spot lights and a chase
     // camera offset to one flank, the two nearest lamps were both pods of the SAME headlight cluster. One lamp per
     // side of a vehicle: the next slot goes to the vehicle's other headlight before a farther vehicle's lamp.
-    if (taken.anchor === source.anchor && taken.emitter.kind === source.emitter.kind && lampSide(taken) === lampSide(source)) return true;
+    // (the looks lane, 228: Steinburg's streets dark at night) a vehicle's lamps only: a town's street lamps share one
+    // instanced anchor with world positions, and read as one vehicle's left side they gave a whole town one lit lamp
+    if (taken.emitter.kind === 'headlight' && taken.anchor === source.anchor && taken.emitter.kind === source.emitter.kind
+      && lampSide(taken) === lampSide(source)) return true;
+    // two lamps standing in one place (a square's lamp and the street's at its node) light it once
+    if (taken.emitter.kind === 'building' && source.emitter.kind === 'building' && taken.position.distanceToSquared(source.position) < 4) return true;
   }
   return false;
 }
@@ -211,7 +240,13 @@ function chooseEmitter<T extends THREE.SpotLight | THREE.PointLight>(
     if (candidate.distanceSquared > reach * reach) continue;
     // Mild retention prevents nearly equidistant lamps swapping every frame.
     const retained = slots[index].source === candidate ? .85 : 1;
-    const score = candidate.distanceSquared * retained - (candidate.source.priority ?? 0) * 1e8;
+    // (release 227) a searchlight ranks half a priority step ahead of its own vehicle's lamps on a pool with room for
+    // more than one vehicle's two sides, and half a step behind them on a smaller one (they keep both of its spots).
+    // Round 6 (the critic's UAPL-R5C-10: the lift applied whoever carried the searchlight, so another vehicle's beam up
+    // to 180 m off outranked every nearer vehicle's lamps): only a prioritised (the player's) vehicle's searchlight is
+    // lifted; anyone else's competes by distance like any lamp.
+    const lift = candidate.emitter.searchlight && (candidate.source.priority ?? 0) > 0 ? slots.length > 2 ? .5 : -.5 : 0;
+    const score = candidate.distanceSquared * retained - ((candidate.source.priority ?? 0) + lift) * 1e8;
     if (score < bestScore) { best = candidate; bestScore = score; }
   }
   return best;
@@ -232,6 +267,8 @@ function updateSpots(slots: LightSlot<THREE.SpotLight>[], emitters: EmitterState
     const slot = slots[index];
     applyLight(slot, source);
     if (!source) continue;
+    // a uniform, never a shader define: the cone changes with the lamp the slot holds
+    slot.light.angle = source.emitter.coneRad ?? HEADLIGHT_CONE_RAD;
     slot.light.target.position.copy(source.position).add(source.direction);
     slot.light.target.updateMatrixWorld();
   }
@@ -288,7 +325,8 @@ export interface NightLightingRuntime {
   prepare(roots: readonly NightLightingRoot[], night: boolean): void;
   /** Explicit visual-construction event only, never call from the frame loop. */
   appendRoot(source: NightLightingRoot): void;
-  update(reference: THREE.Vector3Like, active?: boolean): void;
+  /** `forward`: the camera's view direction; a town's lamps are chosen round a point BUILDING_FOCUS_AHEAD_M ahead of it. */
+  update(reference: THREE.Vector3Like, active?: boolean, forward?: THREE.Vector3Like): void;
   reset(): void;
   dispose(): void;
 }
@@ -335,12 +373,15 @@ export function createNightLightingRuntime(scene: THREE.Scene, budget: NightLigh
     if (disposed) throw new Error('Night lighting is disposed');
     if (enabled) collectRoot(source, seen, emitters, emissions, emissionList);
   }
-  function update(reference: THREE.Vector3Like, active = true): void {
+  function update(reference: THREE.Vector3Like, active = true, forward?: THREE.Vector3Like): void {
     if (!enabled || disposed) return;
     if (!active) { darken(); return; }
     frame++;
+    _focus.set(reference.x, reference.y, reference.z);
+    const level = forward ? Math.hypot(forward.x, forward.z) : 0;
+    if (forward && level > 1e-6) _focus.x += forward.x / level * BUILDING_FOCUS_AHEAD_M, _focus.z += forward.z / level * BUILDING_FOCUS_AHEAD_M;
     for (const emission of emissionList) emission.active = false;
-    for (const emitter of emitters) updateEmitter(emitter, scene, reference, seen, frame);
+    for (const emitter of emitters) updateEmitter(emitter, scene, reference, seen, frame, _focus);
     for (const emission of emissionList) setEmission(emission, emission.active);
     updateSpots(spots, emitters);
     for (let index = 0; index < points.length; index++) {

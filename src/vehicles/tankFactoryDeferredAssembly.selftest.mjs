@@ -84,11 +84,11 @@ try {
     steps.return(undefined);
     for (const resource of owned) assert.ok((disposed.get(resource) ?? 0) >= 1, `cancelled at slice ${depth}: a core resource is released`);
     for (const [object, parent] of atCore) {
-      assert.equal(object.parent, parent, `cancelled at slice ${depth}: ${object.name || object.type} keeps its parent`);
+      assert.ok(object.parent === parent, `cancelled at slice ${depth}: ${object.name || object.type} keeps its parent`);
       if (parent) assert.ok(parent.children.includes(object), `cancelled at slice ${depth}: ${object.name || object.type} is back under its parent`);
     }
     assert.equal(registered.size, 0, `cancelled at slice ${depth}: no material stays in the shadow registry`);
-    assert.equal(visual.root.parent, null, 'a cancelled visual was never published');
+    assert.ok(visual.root.parent === null, 'a cancelled visual was never published');
     assert.equal(steps.next().done, true, 'a cancelled build cannot resume');
     checks += 4;
   }

@@ -70,6 +70,7 @@ assert.equal(fleet.fleetTakeText(take, 'title', 'en-US'), S21.title.en);
 assert.equal(fleet.fleetTakeText(take, 'short', 'zh-CN'), S21.short.zh);
 assert.equal(fleet.fleetTakeStudioHref(take, 'en-US'), `/studio?scene=${S21.scene}`);
 assert.equal(fleet.fleetTakeStudioHref(take, 'zh-CN'), `/cn/studio?scene=${S21.scene}`);
+// object3d-assert-ok: S21.scene is a Studio scene id string, not a THREE.Scene
 assert.equal(sceneLinkPath(new URL(fleet.fleetTakeStudioHref(take, 'en-US'), 'https://cot.kevinliu.studio').searchParams.get('scene')),
   S21.scene, 'the link opens the take\'s scene in the Studio');
 

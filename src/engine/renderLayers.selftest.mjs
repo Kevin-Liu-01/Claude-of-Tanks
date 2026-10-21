@@ -19,6 +19,7 @@ import {
   setShadowCasterDynamicMask,
   shadowCasterDynamicMaskOf,
 } from './renderLayers.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const proxy = markShadowOnly(new THREE.Mesh(
   new THREE.BoxGeometry(1, 1, 1),
@@ -56,9 +57,9 @@ function warmFixture({ routed = true } = {}) {
   const shadowMap = {
     render(actualLights, actualScene, actualCamera) {
       assert.equal(this, shadowMap);
-      assert.equal(actualLights, lights);
-      assert.equal(actualScene, scene);
-      assert.equal(actualCamera, camera);
+      assert.ok(actualLights === lights);
+      assert.ok(actualScene === scene);
+      assert.ok(actualCamera === camera);
       order.push(['shadow', actualCamera.layers.mask]);
       duringShadow();
     },
@@ -216,7 +217,7 @@ console.log('renderLayers.selftest: shadow routing and scoped warm suppression/r
   renderer.shadowMap.render(lights, scene, camera);
   assert.equal(calls.length, 4, 'masked casters split the lights without a policy');
   calls.forEach((call, i) => {
-    assert.deepEqual(call.lights, [lights[i]], `cascade ${i} rendered alone`);
+    assert.deepEqual(graphLabels(call.lights), graphLabels([lights[i]]), `cascade ${i} rendered alone`);
     assert.deepEqual(call.visible.slice(0, 4), [0, 1, 2, 3].map((g) => g === i), `only gobo ${i} is visible in cascade ${i}`);
     assert.equal(call.visible[4], i < 2, 'the near-only caster casts into cascades 0 and 1');
     assert.equal(call.visible[5], true, 'an unregistered caster is never touched');
@@ -322,7 +323,7 @@ console.log('renderLayers.selftest: shadow routing and scoped warm suppression/r
   assert.equal(shadowCasterDynamicMaskOf(bucket), null, 'no dynamic mask before an evaluation');
   const walked = [];
   forEachShadowCasterProfile((object, p) => walked.push([object, p]));
-  assert.deepEqual(walked, [[bucket, profile], [pending, shadowCasterProfileOf(pending)]], 'the walk visits every profile once, in registration order');
+  assert.deepEqual(graphLabels(walked), graphLabels([[bucket, profile], [pending, shadowCasterProfileOf(pending)]]), 'the walk visits every profile once, in registration order');
   calls.length = 0;
   renderer.shadowMap.render(lights, scene, camera);
   assert.equal(calls.length, 4, 'a registered profile splits the lights');
@@ -367,7 +368,7 @@ console.log('renderLayers.selftest: shadow routing and scoped warm suppression/r
   setShadowCasterCascades(bucket, 0b0011);
   const seen = [];
   forEachShadowCasterProfile((object) => seen.push(object));
-  assert.deepEqual(seen, [bucket], 'one listing per caster whatever the registration order');
+  assert.deepEqual(graphLabels(seen), graphLabels([bucket]), 'one listing per caster whatever the registration order');
   setShadowCasterProfile(bucket, null);
   setShadowCasterCascades(bucket, null);
 }
