@@ -76,6 +76,8 @@ export interface CrushVehicle {
   readonly wheels: Float32Array;
   /** Per vertex of the rest it was read from: the wheel it belongs to, or −1. */
   readonly wheelOf: Int8Array;
+  /** Scratch: each wheel's cap over its hub, for one redraw (deformPositions). */
+  readonly hubCap: Float32Array;
 }
 
 /**
@@ -138,7 +140,7 @@ export function vehicleAnatomy(rest: ArrayLike<number>, surf: ArrayLike<number> 
       }
     }
   }
-  return { belt: Math.max(top * 0.3, Math.min(top * 0.8, belt)), wheels: packed, wheelOf };
+  return { belt: Math.max(top * 0.3, Math.min(top * 0.8, belt)), wheels: packed, wheelOf, hubCap: new Float32Array(packed.length / 6) };
 }
 
 /** A triangle wave of period 1 in [−1, 1]: a fold's crease (flat-shaded, its ridges read as folded sheet). */
@@ -350,6 +352,13 @@ export function deformPositions(f: CrushField, rest: ArrayLike<number>, out: Flo
   if (f.stale) settleField(f);
   const high = f.top + 10;
   const car = f.vehicle, halfWidth = -f.x0 - MARGIN_M;
+  // each wheel's cap over its hub, once a redraw
+  if (car) {
+    for (let w = 0; w < car.hubCap.length; w++) {
+      const o = w * 6;
+      car.hubCap[w] = sample(f, f.eff, car.wheels[o + 5] * (car.wheels[o + 3] + car.wheels[o + 4]) * 0.5, car.wheels[o], high);
+    }
+  }
   for (let v = 0; v < rest.length; v += 3) {
     const x = rest[v], y = rest[v + 1], z = rest[v + 2];
     let cap = sample(f, f.eff, x, z, high);
@@ -360,7 +369,7 @@ export function deformPositions(f: CrushField, rest: ArrayLike<number>, out: Flo
         // a wheel splays out about its tyre's outer foot as the cap over its hub comes down (never squashed into the heap)
         const o = w * 6, side = car.wheels[o + 5], xOut = side * car.wheels[o + 4];
         const wheelTop = car.wheels[o + 1] + car.wheels[o + 2];
-        const hub = sample(f, f.eff, side * (car.wheels[o + 3] + car.wheels[o + 4]) * 0.5, car.wheels[o], high);
+        const hub = car.hubCap[w];
         const k = Math.max(0, Math.min(1, (wheelTop - hub) / Math.max(0.2, wheelTop - FLOOR_M)));
         if (k > 0) {
           const a = CAR.splay * k * Math.sqrt(k), c = Math.cos(a), s = Math.sin(a), dx = x - xOut;

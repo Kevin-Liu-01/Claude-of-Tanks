@@ -17,7 +17,7 @@
  * sheet with no wheels", a shot one kept its showroom shape under a char tint): its copy reads its own anatomy (propCrush.ts
  * vehicleAnatomy) so a hull leaves it a crushed car, its glass bursting at the first press; a round's kill buckles it as
  * it burns (wreckCrumple.ts's burnt-out crumple, a share at the kill and the rest as the fire takes it), burns its tyres
- * to the rims and chars its paint, chrome and rubber to the burnt build's soot, oxide and ash in its own colours.
+ * to the rims and blackens its paint, chrome and rubber in its own colours (soot, oxide mottles, ash on the hot panels).
  */
 import * as THREE from 'three';
 import {
@@ -80,9 +80,10 @@ const CHAR_T0 = 0.6;
 const CHAR_S = 4.5;
 /** Char: the paint's colour at the end of its burn. */
 const CHAR_RGB = [0.07, 0.06, 0.055];
-/** A car's burn: the share of its burnt-out crumple the kill gives at once, the share of the burn redrawn at a time, what
- *  is left of a tyre's radius on its rim, and the burnt build's colours (linear; vehicleMesh.ts shadeVertex's burn). */
-const CAR_BURN = { impact: 0.3, step: 0.04, rim: 0.72 } as const;
+/** A car's burn: the share of its burnt-out crumple the kill gives at once, the share of the burn its colours are
+ *  updated at (a cheap upload) and its shape redrawn at (the press's full redraw), what is left of a tyre's radius on its
+ *  rim, and the burnt build's colours (linear; vehicleMesh.ts shadeVertex's burn). */
+const CAR_BURN = { impact: 0.3, colourStep: 0.03, shapeStep: 0.1, rim: 0.72 } as const;
 const SOOT: readonly [number, number, number] = [0.022, 0.019, 0.017];
 const OXIDE: readonly [number, number, number] = [0.105, 0.042, 0.018];
 const RUST: readonly [number, number, number] = [0.16, 0.062, 0.026];
@@ -98,6 +99,8 @@ interface CarBurn {
   readonly col1: Float32Array;
   readonly surf0: Uint8Array;
   readonly surf1: Uint8Array;
+  /** The share of the burn last coloured and last redrawn (−1: not yet). */
+  coloured: number;
   drawn: number;
 }
 
@@ -370,8 +373,9 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
       }
       to[v * 3 + 1] = Math.max(0, to[v * 3 + 1] - settle);
     }
-    // the burnt build's colours: paint, sheet and chrome to mottled oxide, the hottest upward panels to ash, soot in
-    // patches and up the sides over the waist; glass, rubber, the cabin and the lamps to soot
+    // its burnt colours (the burnt build's palette, vehicleMesh.ts shadeVertex, blackened as a fresh burn is): paint,
+    // sheet and chrome to soot with oxide mottles and grey ash on the hottest upward panels; glass, rubber and the cabin
+    // to soot
     const col0 = new Float32Array(color.array as Float32Array), col1 = new Float32Array(col0.length);
     const surf0 = new Uint8Array(sa as Uint8Array), surf1 = new Uint8Array(surf0.length);
     const na = normal.array as Float32Array, top = t.field.top, belt = car.belt;
@@ -397,28 +401,32 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     }
     const live = new Float32Array(from);
     t.rest = live;
-    return { live, from, to, col0, col1, surf0, surf1, drawn: -1 };
+    return { live, from, to, col0, col1, surf0, surf1, coloured: -1, drawn: -1 };
   }
 
-  /** A car's burn at its clock: the crumple (a share at the kill, the rest as the fire takes hold) and the char, redrawn
-   *  every CAR_BURN.step of it. */
+  /** A car's burn at its clock: the char (its colours every CAR_BURN.colourStep of the burn) and the crumple (a share at
+   *  the kill, the rest as the fire takes hold; its shape redrawn every CAR_BURN.shapeStep). */
   function carBurnStep(t: CrushTarget): void {
     const cb = t.carBurn, b = t.burn;
     if (!cb || !b) return;
     const e = smoothstep(0, 1, (b.t - CHAR_T0) / CHAR_S);
-    if (cb.drawn >= 1 || (cb.drawn >= 0 && e < 1 && e - cb.drawn < CAR_BURN.step)) return;
-    cb.drawn = e;
-    const bend = CAR_BURN.impact + (1 - CAR_BURN.impact) * e;
-    for (let i = 0; i < cb.live.length; i++) cb.live[i] = cb.from[i] + (cb.to[i] - cb.from[i]) * bend;
-    const color = t.geometry.getAttribute('color') as THREE.BufferAttribute, surf = t.geometry.getAttribute('surf') as THREE.BufferAttribute;
-    const ca = color.array as Float32Array, sa = surf.array as Uint8Array;
-    for (let i = 0; i < ca.length; i++) {
-      ca[i] = cb.col0[i] + (cb.col1[i] - cb.col0[i]) * e;
-      sa[i] = Math.round(cb.surf0[i] + (cb.surf1[i] - cb.surf0[i]) * e);
+    if (burnDue(cb.coloured, CAR_BURN.colourStep, e)) {
+      cb.coloured = e;
+      const color = t.geometry.getAttribute('color') as THREE.BufferAttribute, surf = t.geometry.getAttribute('surf') as THREE.BufferAttribute;
+      const ca = color.array as Float32Array, sa = surf.array as Uint8Array;
+      for (let i = 0; i < ca.length; i++) {
+        ca[i] = cb.col0[i] + (cb.col1[i] - cb.col0[i]) * e;
+        sa[i] = Math.round(cb.surf0[i] + (cb.surf1[i] - cb.surf0[i]) * e);
+      }
+      color.needsUpdate = true; surf.needsUpdate = true;
     }
-    color.needsUpdate = true; surf.needsUpdate = true;
-    t.dirty = true; t.idle = 0;
-    if (t.frozen) { t.frozen = false; t.mesh.frustumCulled = false; }
+    if (burnDue(cb.drawn, CAR_BURN.shapeStep, e)) {
+      cb.drawn = e;
+      const bend = CAR_BURN.impact + (1 - CAR_BURN.impact) * e;
+      for (let i = 0; i < cb.live.length; i++) cb.live[i] = cb.from[i] + (cb.to[i] - cb.from[i]) * bend;
+      t.dirty = true; t.idle = 0;
+      if (t.frozen) { t.frozen = false; t.mesh.frustumCulled = false; }
+    }
   }
 
   /** The paint's char at the burn's clock. */
@@ -623,6 +631,11 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
       return { copies: order.length, deforming, frozen };
     },
   };
+}
+
+/** Whether a burn's update last made at share `last` (−1: none) is due again at share `e`, every `step` and at its end. */
+function burnDue(last: number, step: number, e: number): boolean {
+  return last < 0 || (last < 1 && (e >= 1 || e - last >= step));
 }
 
 /** Mix colour `o` toward `c` by `k` (in place). */
