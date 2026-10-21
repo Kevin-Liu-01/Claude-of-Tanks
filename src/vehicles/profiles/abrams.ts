@@ -5068,8 +5068,6 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
       // hull kit below (wind sensor, cable, CIPs, APU read, rear panel,
       // stowage) stays at its certified lines.
       const buildTejasFamilyHullCourse2 = (): void => {
-        const hb2 = (bk: string, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number): void =>   // world-corner box helper
-          P.add(bk, box(x1 - x0, y1 - y0, z1 - z0), (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
         // §5.74 SEPv2 passive-armor flavor: ONE broad course of rectangular
         // hull cassettes and four large bustle-side slabs per flank.  This is
         // intentionally unlike TUSK's two-course ARAT shingles and SEPv3's
@@ -5212,14 +5210,13 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
           };
           buildTejasFamilyHullCourse14();
         }
-        // Driver's wind SENSOR (print glsaa_5 — genuine hull-side kit): the
-        // certified 1.925 head over the exact [2.612..2.642] window, slim
-        // mast reaching the tejas 1.353 glacis line, base bracket embedded.
-        hb2('hullDetail', -0.225, -0.13, 1.845, 1.925, 2.612, 2.642);          // sensor head
-        P.add('hullDark', box(0.075, 0.024, 0.004), -0.1775, 1.887, 2.610);    // lens slot
-        P.add('hullDark', cylY(0.015, 0.015, 0.50, 10), -0.1775, 1.605, 2.627); // mast
-        P.add('hullDark', cylY(0.021, 0.021, 0.018, 10), -0.1775, 1.836, 2.627); // collar
-        hb2('hullDetail', -0.225, -0.13, 1.335, 1.42, 2.612, 2.642);           // base bracket
+        // Release 230 (the gun-hull lane; nationalGunClearance.selftest): the
+        // driver's wind sensor that stood here on a 0.50 m mast over the glacis
+        // (x -0.18, z 2.61-2.64, head 1.925) is gone. It stood in the main gun's
+        // own path at yaw 0-8 at every pitch below +11 (the barrel at -10 passes
+        // 5 cm over the glacis there, so not even its 1.42 base bracket fits).
+        // The real SEPv2 reads crosswind from its turret-roof mast, which this
+        // turret carries (tejasRoofKit's wind sensor).
         // §H.4 TOW CABLE draped across the right forward deck (the landed
         // sepv2 tell re-derived on the TEJAS deck polyline — half-sunk lay:
         // centers deck+0.004, crowns +17 mm, the run draping over the 1.51

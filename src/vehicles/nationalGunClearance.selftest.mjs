@@ -33,19 +33,25 @@ const CURVES = {
   m1a1ha: [],
   m1a1_abrams_hc: [],
   m1a1_abrams_sa: [],
-  m1a1_abrams_aim: [[0, 9, 'skip']],
+  m1a1_abrams_aim: [], // release 230: the glacis wind-sensor mast in the barrel's path at yaw 0-8 is gone (profiles/abrams.ts)
   m1a1_abrams_fep: [],
   ua_m1a1: [],
   c1_ariete: [],
   c2_ariete: [],
   m3a3_bradley: [[0, 39]], // the mantlet's underside 11 mm over the roof at -9; the M3 keeps its full forward depression
   m6_linebacker: [],
+  // release 230 (the gun-hull lane): the T-72B3's measured stops (t72b3XArmor.ts) and the T-72 Ryś on its raised ring
+  // (fleetRenewalSpecs.ts T72_RYS_RING_RAISE_M; before it, its mount stood in the deck through most of the traverse)
+  t72b3: [],
+  t72_rys: [],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type
-// 96B's hull net 15.8 mm at yaw 29 at its stop, the Zubr II's rear leaves 23.8 mm at yaw 174 at its stop, the Ukrainian
-// M1A1's rear leaves touching the gun at level at yaw 143, the C2 Ariete's glacis net 13.2 mm at yaw 8 at its stop).
-const SUIT_TOO_CLOSE = new Set(['type96b', 't72b3_zubr_ii', 'ua_m1a1', 'c2_ariete']);
+// 96B's hull net 15.8 mm at yaw 29 at its stop, the Zubr II's rear leaves 23.8 mm at yaw 174 at its stop). Release 230 (the
+// gun-hull lane): the C2 Ariete's glacis net (13.2 mm at yaw 8) and the Ukrainian M1A1's leaves (touching the gun at level
+// at yaw 143 and under the mantlet at -10 ahead) were fixed in their suits and are held with them, and so are the Type 96B
+// (clothClearsGunStops) and the Zubr II (conservativeGunEnvelope), regenerated on the combined turret tree.
+const SUIT_TOO_CLOSE = new Set([]);
 // GUN_CLEARANCE_IDS=<ids> limits a local run (the suite runs them all)
 const ids = process.env.GUN_CLEARANCE_IDS?.split(',') ?? Object.keys(CURVES);
 for (const id of ids) {

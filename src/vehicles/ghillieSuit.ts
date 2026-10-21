@@ -150,6 +150,12 @@ interface SidePanel {
    * cut, and no garnish reaches into it either (yLo documents the fitting's foot).
    */
   cuts?: readonly (readonly [number, number, number, number])[];
+  /**
+   * Release 230 (the gun-hull lane; nationalGunClearance.selftest: the Ukrainian M1A1's boughs touching its gun at
+   * level at yaw -143): spans [z0, z1] of a round-5 drape where no bough tucked under the top cord stands up past the
+   * roof line. They hang down the drape like its other boughs, under the main gun's low sweep over that stretch.
+   */
+  boughsHangAt?: readonly (readonly [number, number])[];
 }
 
 interface FacePanel {
@@ -213,6 +219,15 @@ export interface GhillieConfig {
    * yaw-aware clearance over the decks behind and ahead of the turret. Needs fieldClearanceM.
    */
   conservativeGunEnvelope?: boolean;
+  /**
+   * Release 230 (the gun-hull lane; nationalGunClearance.selftest: the C2 Ariete's glacis net 13.2 mm under its gun at
+   * yaw 8): the hull's cloth lying flat on a deck takes no exemption under the gun. The exemption keeps flat cloth where
+   * the bare gun at its lowest pitch already comes down to within 4 cm of the deck, which is the case where nothing fits
+   * under it. A measured depression curve (gunPitchByYawDeg) holds the gun 26 mm off its bare deck, so the cloth would
+   * lie a centimetre or two under the barrel there. With this set, that cloth is cut like any other point the gun sweeps
+   * (fieldClearanceM), and the suit keeps 25 mm from the gun at its stops. Needs fieldClearanceM.
+   */
+  clothClearsGunStops?: boolean;
   /**
    * Release 227 (round 2, 2026-10-16; the critic on the new national frontal ERA: "net blades and leaf clumps sink into the
    * new brick rows and stick out between them"): no point of a garnish card may lie inside the owner's armour (the
@@ -2376,7 +2391,8 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
       } else {
         dir = norm3([nn[0] * nn[1], -1 + nn[1] * nn[1], nn[2] * nn[1]]);
         // a bough tucked under the top cord stands up past the roof line (it breaks the outline); others hang
-        if (bough && clump.v > 0.78) dir = [-dir[0], -dir[1], -dir[2]];
+        const hangs = (panel as unknown as SidePanel).boughsHangAt?.some(([z0, z1]) => clump.u >= z0 && clump.u <= z1);
+        if (bough && clump.v > 0.78 && !hangs) dir = [-dir[0], -dir[1], -dir[2]];
       }
       const side = norm3([nn[1] * dir[2] - nn[2] * dir[1], nn[2] * dir[0] - nn[0] * dir[2], nn[0] * dir[1] - nn[1] * dir[0]]);
       let placed: FoliageCard | null = null;
@@ -3810,10 +3826,20 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
       top: [{ x0: -1.68, x1: 1.68, z0: -3.62, z1: 3.62, nx: 28, nz: 56,
         yAt: abramsHullY,
         outline: [[-1.22, -3.62], [1.22, -3.62], [1.68, -3.12], [1.68, 2.65], [1.04, 3.62], [-1.04, 3.62], [-1.68, 2.65], [-1.68, -3.12]],
-        holes: [rect(-1.58, 1.58, -2.88, 1.72), rect(-0.30, 0.30, 0.86, 1.70)], seed: 221 }],
+        holes: [rect(-1.58, 1.58, -2.88, 1.72), rect(-0.30, 0.30, 0.86, 1.70)], seed: 221,
+        // release 230 (the gun-hull lane; nationalGunClearance.selftest: its deck leaves touching the mantlet at -10
+        // degrees ahead and the net's folds 15 mm under the mantlet's right corner): no garnish under the mantlet's arc
+        // at full depression (yaw +-20) or the barrel's path over the glacis, and the deck net laid flatter, as a deck
+        // under the turret's sweep keeps it
+        foliageExclude: [[[-1.0, 1.70], [1.0, 1.70], [1.0, 2.20], [0.75, 2.52], [-0.75, 2.52], [-1.0, 2.20]],
+          [[-1.12, 2.92], [1.12, 2.92], [1.12, 3.64], [-1.12, 3.64]]],
+        reliefScale: 0.35, rimScale: 0.5 }],
       side: [-1, 1].map((side) => ({ side, z0: -3.18, z1: 3.08, nz: 44, ny: 10,
         topAt: (z) => abramsHullY(0, z), bottomAt: (z) => 0.72 + Math.sin(z * 2.6) * 0.034,
-        outAt: (_z, t) => 1.94 + (1 - t) * 0.10, seed: 229 + side })),
+        outAt: (_z, t) => 1.94 + (1 - t) * 0.10, seed: 229 + side,
+        // release 230: over the rear quarters the gun sweeps level across the drapes' top cords (yaw 140-148, its stop
+        // -2..+1 there): the boughs tucked under the cord hang there instead of standing up into the barrel
+        boughsHangAt: [[-2.95, -2.25]] })),
       face: [{ z: 3.94, x0: -1.12, x1: 1.12, y0: 0.96, y1: 1.33, nx: 16, ny: 6,
         outline: [[-0.90, 0.96], [0.90, 0.96], [1.12, 1.12], [0.74, 1.33], [-0.74, 1.33], [-1.12, 1.12]],
         holes: [rect(-0.80, -0.40, 1.03, 1.31), rect(0.40, 0.80, 1.03, 1.31)], seed: 237 }],
@@ -4783,7 +4809,7 @@ function rangeMax(values: Float64Array): (a: number, b: number) => number {
   };
 }
 
-function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGun = false): FieldClearance {
+function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGun = false, clothClearsStops = false): FieldClearance {
   const hull = P.hullG, turret = P.turretG, gun = P.gunG;
   // the rigs may be siblings under the vehicle's root: bring every frame up to date before reading any
   for (const g of [hull, turret, gun]) g.updateWorldMatrix(true, true);
@@ -5154,7 +5180,7 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
         // inside the turret)
         // the coordinator on the fix round's audit (the TUSK's and Type 90's decks): garnish clears the gun's whole
         // elevation sweep, full depression included; it never takes the cloth's lying-flat exemption
-        if (garnish) return true;
+        if (garnish || clothClearsStops) return true;
         if (plate === undefined) plate = deckAt(p[0], p[2]);
         if (plate === null || !(p[1] <= plate + 0.04) || along - gunAt.z < 0.05) return true;
         for (const dy of FLAT_PROBES) if (sweptBy(lateral, plate + dy - pivot.y, along, lo, lo, clearance, 0)) return false;
@@ -5840,7 +5866,7 @@ function* buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): Generator
   ];
   // the netting lane: the working vehicle's clearances, read once off the assembled build (the hull's top re-read
   // before the turret's suit, so that suit also clears the hull's)
-  const clearance = cfg.fieldClearanceM !== undefined ? fieldClearance(P, cfg.fieldClearanceM, cfg.conservativeGunEnvelope === true) : null;
+  const clearance = cfg.fieldClearanceM !== undefined ? fieldClearance(P, cfg.fieldClearanceM, cfg.conservativeGunEnvelope === true, cfg.clothClearsGunStops === true) : null;
   const cap = isFieldNet(cfg) ? suitCapOf(P) : null;
   yield;
   for (const [owner, parent, others] of owners) {

@@ -348,6 +348,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   c2_ariete: {
     id: 'c2_ariete', seed: 2042, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.42, hemFloorM: 0.78,
+    // release 230: the front deck's net was lying 13 mm under the barrel at its -6 degree stops (yaw -13..23)
+    clothClearsGunStops: true,
     turret: {
       top: [laid({
         x0: -2.09, x1: 2.09, z0: -3.27, z1: 1.70, nx: 52, nz: 62, y: 0.95,
@@ -459,6 +461,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   type96b: {
     id: 'type96b', seed: 9602, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 1.94, hemFloorM: 1.07,
+    // release 230 (the gun-hull lane): its hull net was lying 15.8 mm under the gun at its stop at yaw 29 (as the C2's)
+    clothClearsGunStops: true,
     turret: {
       // open round the rounded secondary hatch on the right of the roof (its stepped lid is turret detail, not a hatch
       // bucket the builder opens; profiles/easternSourceContact "rounded secondary hatch must expose its measured lid")

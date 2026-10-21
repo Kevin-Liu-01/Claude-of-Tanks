@@ -109,6 +109,10 @@ function fieldSuit(d: Layout, m: number): GhillieConfig {
     // the owner's performance push (the coordinator, 2026-10-13): 70 % of each clump's cards, broader, so the clump covers
     // the same net; the far tier (LOW) keeps 35 % of them (the Zubr II's LOW was already 75.4 % of its HIGH bare)
     garnishBudget: {clumpCards: .7, lowShare: .35},
+    // release 230 (the gun-hull lane; nationalGunClearance.selftest: the Zubr II's rear leaves 23.8 mm under its gun at yaw
+    // 174): the hull's suit keeps under the main gun's continuous envelope, as the Ukrainian suits do (ghillieSuit.ts
+    // conservativeGunEnvelope)
+    conservativeGunEnvelope: true,
     // release 227 (round 2): the Zubrs' Krata glacis fields and cheek grids: no card passes into a cassette or a riser
     // (round 7: spent, the cloth and garnish over a sector's modules fall onto the stock under them: eraSpentDrape.ts)
     ...(d.id === 't72b3_zubr' || d.id === 't72b3_zubr_ii' ? {cardsClearOfArmour: true, dropOverSpentEra: true} : {}),
