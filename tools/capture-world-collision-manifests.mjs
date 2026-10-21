@@ -26,6 +26,10 @@
  *   node tools/capture-world-collision-manifests.mjs --node --maps desert
  *   node tools/capture-world-collision-manifests.mjs --check
  *   node tools/capture-world-collision-manifests.mjs --tier=mobile   # a phone's build against the desktop's shards
+ *
+ * 2026-10-20 (the maps lane, 229): COT_FIELD_WORKS_RECEIPTS=<directory> also writes each built map's field works as they
+ * were seated (props group.userData.fieldWorks) to <directory>/<map>[@variant].json, for the breastworks' cover census
+ * (the same build, no second one).
  */
 
 import { execFileSync } from 'node:child_process';
@@ -40,6 +44,15 @@ import {
 import { packCollisionRecord } from './headlessWorldCollision.mjs';
 
 const options = collisionCaptureOptions(process.argv.slice(2));
+/** (229) COT_FIELD_WORKS_RECEIPTS: an inspect hook per variant that writes each map's field-work seats, or null. */
+async function fieldWorksReceipts() {
+  const directory = process.env.COT_FIELD_WORKS_RECEIPTS;
+  if (!directory) return null;
+  const { mkdirSync, writeFileSync } = await import('node:fs');
+  mkdirSync(directory, { recursive: true });
+  return (variant) => ({ mapId, dressing }) => writeFileSync(path.join(directory, `${variant ? `${mapId}@${variant}` : mapId}.json`),
+    JSON.stringify(dressing.group.userData.fieldWorks ?? null));
+}
 /** Two packed decimals of 4 places that round apart differ by one unit in the last place; anything more is drift. */
 const CHECK_ROUNDING_M = 2e-4;
 /** The first difference beyond rounding between two decoded manifests (null when none), and the records within it. */
@@ -126,8 +139,9 @@ if (options.node && options.variant) {
   const variants = readCollisionManifestVariants();
   const entries = { ...(variants[options.variant] ?? {}) };
   let drifted = 0;
+  const fieldWorks = await fieldWorksReceipts();
   for (const mapId of options.mapIds) {
-    const data = await buildWorldCollisionData(mapId, { variant: options.variant });
+    const data = await buildWorldCollisionData(mapId, { variant: options.variant, inspect: fieldWorks?.(options.variant) });
     const label = `${mapId}@${options.variant}`;
     if (!options.check) {
       entries[mapId] = writeCollisionManifestShard(mapId, data, collisionManifestDirectory, options.variant);
@@ -187,8 +201,10 @@ if (options.node && options.variant) {
   // one line per map with set pieces, read by the receipt
   const placement = process.env.COT_LANDMARK_PLACEMENT === '1' ? await import('../src/world/landmarks/landmarkPlacement.test-support.mjs') : null;
   const { getMapConfig } = placement ? await import('../src/world/maps/index.ts') : {};
-  const inspectAll = shape || placement ? (args) => {
+  const fieldWorks = (await fieldWorksReceipts())?.(null);
+  const inspectAll = shape || placement || fieldWorks ? (args) => {
     inspect?.(args);
+    fieldWorks?.(args);
     if (!placement) return;
     const landmarks = getMapConfig(args.mapId).props?.landmarks ?? [];
     if (!landmarks.length) return;

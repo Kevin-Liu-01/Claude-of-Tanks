@@ -784,6 +784,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/debrisPhysics.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
+    // 2026-10-20: the Gallery anatomy layers draw the combat data exactly, all vehicles (traceTank rays, module parts,
+    // crew head shapes, hit volumes, armor model untouched)
+    'src/gallery/anatomyFidelity.selftest.mjs',
     'src/gallery/damageLab.selftest.mjs',
     'src/gallery/combatHitboxes.selftest.mjs',
     'src/game/armorAimOverlay.selftest.mjs',
@@ -1743,6 +1746,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // the scenery lane (b13, wave 87): the karst field walls laid as dry stone, their face print, the T cut back
     'src/world/fieldWalls.selftest.mjs',
     'src/world/fieldWallCollision.selftest.mjs', // 2026-10-15 physics PH.15: the field walls' crushable spans and their press
+    'src/world/fieldWorkSeat.selftest.mjs', // 2026-10-20 maps 229: the breastworks' modules seated on their own ground, sheared to it
     // the scenery lane (b15, wave 106): the regions' field stacks and the straw props' hay print
     'src/world/haystacks.selftest.mjs',
     'src/world/maps/sceneryR2.selftest.mjs', // 2026-10-16 props lane A, the r2 sweep: the scenery and field-stack kinds to the bunker r2 standard
@@ -1759,6 +1763,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/wadiRumPosts.selftest.mjs',
     // the map-content lane (L2, wave 358a): a polar station's field works in its own stock (drums, drift fence)
     'src/world/maps/regional/polarWorks.selftest.mjs',
+    // (the 229 follow-up) Taurus-Littrow's dish arms seated in their bowls' shells, none proud of a bowl's face
+    'src/world/maps/regional/littrow.selftest.mjs',
     // (the Earthrise 228 rebuild, 2026-10-18) a lunar station's works and clutter in its own stock (regolith bags, the tether)
     'src/world/maps/regional/lunarWorks.selftest.mjs',
     // props census #12 (2026-10-15): the stations as the Moon and Mars build them (maps/spaceKit.ts)

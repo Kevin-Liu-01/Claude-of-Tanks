@@ -386,8 +386,13 @@ export async function createMapAsync(
   const propModelsReady = preloadPropModels();
   // (the 228 entry diet) the land mask of a sky that draws the Earth (the Moon's) loads with its world, beside the
   // terrain, instead of with the game's entry chunk; awaited before the world exists (earthLandAccess.ts)
-  const earthLandReady = skyDrawsEarth((config as { sky?: { earth?: number } }).sky) ? loadEarthLand() : null;
-  earthLandReady?.catch(() => undefined); // observed at its await below; a failure fails this build there
+  // (229) a failed fetch of the mask's chunk no longer fails the world: the sky binds its one-texel placeholder and asks
+  // for the module again on its first draw (sky.ts earthLandTexture), so the Moon builds with its Earth a sea until then
+  const earthLandReady = skyDrawsEarth((config as { sky?: { earth?: number } }).sky)
+    ? loadEarthLand().then(() => undefined, (error: unknown) => {
+      console.warn('[world] the Earth\'s land mask did not load; the sky keeps its placeholder', error);
+    })
+    : null;
   const terrainConfig: TerrainMapConfig = config;
   const terrainSources = prepareSourcedTerrain(config.id, terrainConfig.splat || {}, { worker: true });
   // (the time-to-battle lane, 2026-10-07) the map's planned wreck bakes start in their own worker now, beside the

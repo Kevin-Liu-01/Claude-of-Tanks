@@ -158,7 +158,11 @@ export function mapProbeServerOptions(root, cacheDir) {
     plugins: [i18nStudioCatalog()],
     optimizeDeps: {
       entries: ['index.html'],
-      include: ['three', 'three/examples/jsm/utils/BufferGeometryUtils.js', 'three/examples/jsm/geometries/RoundedBoxGeometry.js'],
+      // 2026-10-21: the scan drops a dynamic import in code it proves dead (sky.ts's HDRI override, HDRI_ENV_URL null),
+      // while serving sky.ts still registers it, so a late RGBELoader re-bundled three during boot (modes-228 confirmation
+      // r3). Every dynamic import of three's addons is listed here (the receipt checks).
+      include: ['three', 'three/examples/jsm/utils/BufferGeometryUtils.js', 'three/examples/jsm/geometries/RoundedBoxGeometry.js',
+        'three/examples/jsm/loaders/RGBELoader.js', 'three/examples/jsm/postprocessing/SMAAPass.js'],
     },
     server: {
       host: '127.0.0.1', port: MAP_PROBE_PORT_BASE + (process.pid % MAP_PROBE_PORT_SPAN), strictPort: false, hmr: false,

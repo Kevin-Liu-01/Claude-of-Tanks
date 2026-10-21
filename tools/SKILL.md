@@ -107,6 +107,9 @@ on post-ready environment texture warming, eager fleet/map artwork, frame-gap
 spikes, long-task bursts, or console errors. Environment-transition claims use
 `tools/garage-variants-probe.mjs`; exercise all ten destinations, rapid stale
 selection, cache eviction, persisted reload, iPad, and phone layouts.
+Gallery anatomy before/after packets (the Armor, Modules and Crew layers; 2026-10-21) come from
+`tools/anatomy-render-set.mjs`: both sides served from their own checkouts, one capture hold, the same
+cameras on both (`--plan=before:desk,after:desk,... --before-root --after-root --ids --out`).
 Pinch-zoom claims (a trackpad pinch only magnifies; 2026-10-16) use the manual
 `npm run qa:pinch -- --base=<served origin> --out=<report.json>`
 (`tools/pinch-zoom-probe.mjs`): a real CDP trackpad pinch to 2x, a pan and a
@@ -340,7 +343,9 @@ while one is capturing (vite serves the tree live); the server binds
 127.0.0.1:5300–5399, never 5197–5199. The dev server's dependency scan must resolve every import the game makes:
 a `virtual:` module without its plugin in `mapProbeServerOptions` fails the whole scan, vite then re-bundles three
 mid-session, and the probe page (hmr off) never reloads, so it holds two copies of three (2026-10-20, modes-228 r2d:
-"world/vegetation: expected three directional shadow sites, found 1"). The receipt checks every `virtual:` import;
+"world/vegetation: expected three directional shadow sites, found 1"). The scan also drops a dynamic import in code it
+proves dead (sky.ts's RGBELoader), so every dynamic `import('three/...')` sits in its `optimizeDeps.include`. The receipt
+checks that list and every `virtual:` import;
 `[map-probe] vite re-bundled its dependencies mid-session` on stderr names the event. `--dist=<dir>` (where a tool accepts it) serves a built dist through vite
 preview instead (`withDistProbeSession`): a before/after pair from two builds shares no module graph or optimizer
 cache, and nothing reads the live tree. Receipts:
