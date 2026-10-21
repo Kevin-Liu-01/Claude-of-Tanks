@@ -969,9 +969,12 @@ function addNsvtReceiver(context: PintleLayout): void {
   if (near) {
     parts.add(weaponSlot, roundBar([-bodyW * 0.45, top + coverH * 0.5, frontZ - 0.006 * s], [bodyW * 0.45, top + coverH * 0.5, frontZ - 0.006 * s],
       0.006 * s, 6));
-    // the cover latch at its rear edge and the barrel-lock wedge on the front top, away from the feed
-    parts.add(weaponSlot, block(bodyW * 0.4, coverH * 0.9, 0.012 * s), 0, top + coverH * 0.45, coverZ - coverD / 2);
-    parts.add(weaponSlot, place(block(0.014 * s, 0.012 * s, 0.07 * s), 0, 0, 0, 0, -f * 0.18, 0), -f * bodyW * 0.3, top + coverH + 0.006 * s, frontZ - 0.05 * s);
+    // the cover latch at its rear edge and the barrel-lock wedge on the front top, away from the feed. 2026-10-20
+    // (release 227 coplanar census: the latch's underside lay in the cover's, 2.2 cm2, and the wedge's in the feed-slide
+    // hump's): each foot runs 1 mm down into the stock under it (the latch's into the receiver, the wedge's into the
+    // cover), their tops where they were
+    parts.add(weaponSlot, block(bodyW * 0.4, coverH * 0.9 + 0.001, 0.012 * s), 0, top + coverH * 0.45 - 0.0005, coverZ - coverD / 2);
+    parts.add(weaponSlot, place(block(0.014 * s, 0.012 * s + 0.001, 0.07 * s), 0, 0, 0, 0, -f * 0.18, 0), -f * bodyW * 0.3, top + coverH + 0.006 * s - 0.0005, frontZ - 0.05 * s);
     // the pressed flutes along both walls
     for (const side of [-1, 1]) {
       parts.add(weaponSlot, block(0.004 * s, bodyH * 0.07, len * 0.8), side * (bodyW / 2 + 0.0015 * s), bodyBottom + boxH * 0.42, midZ);
