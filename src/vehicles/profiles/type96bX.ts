@@ -279,16 +279,23 @@ const TYPE96_GUNNER_SIGHT = { x: .649, y: 2.436, z: .36, w: .51, h: .214, d: .28
  * boot, its flat bottom 2 mm into the boot's highest point under it and a saddle whose underside follows the boot's top
  * 1-5 mm in filling the rest, so the sight pitches with the gun it lays and never meets the boot at any pitch (the
  * boot, saddle and sight go through add() into the same mantlet buckets, so the part census sees the seat).
- * bootFloor clips the pitching mantlet boot's underside at each of its six stations (source-frame heights, null for
+ * `bootFloor` clips the pitching mantlet boot's underside at each of its six stations (source-frame heights, null for
  * none) so the boot clears the hull it is carried over through the whole traverse and pitch range; without it the
- * boot keeps Object_6's measured underside. */
-export interface Type96TurretOptions { mastTopY?: number; bins?: boolean; smoke?: boolean; bootHeel?: boolean; boxSightOnGun?: boolean;
-    bootFloor?: readonly (number | null)[] }
+ * boot keeps Object_6's measured underside (applied after `bootHeel`, where both are given).
+ * `boxSightSourceTop: true` (with `boxSightOnGun`; release 227, 2026-10-20) keeps the sight's measured top (source y
+ * 2.396): the box stands from its flat bottom on the boot's crown up to that top, as the source draws it over the boot,
+ * instead of the whole authored box raised onto the crown (its top then 46 mm over the source's on the Type 96B's boot);
+ * its window keeps the authored size, centred on the shorter face. */
+export interface Type96TurretOptions {
+    mastTopY?: number; bins?: boolean; smoke?: boolean; bootHeel?: boolean; boxSightOnGun?: boolean;
+    bootFloor?: readonly (number | null)[]; boxSightSourceTop?: boolean;
+}
 
 // The box sight over the mantlet (Type 96B source frame): centre, width, height, depth.
 const TYPE96_BOX_SIGHT = { x: 0, y: 2.278, z: 1.540, w: .25, h: .236, d: .396 } as const;
-/** The box sight seated on the pitching boot (gun frame): `boot` is the boot's geometry in that frame. */
-function addBoxSightOnBoot(P: TankBuilderPort, boot: THREE.BufferGeometry, bootStations: readonly number[]): void {
+/** The box sight seated on the pitching boot (gun frame): `boot` is the boot's geometry in that frame; `sourceTop` keeps
+ * the authored top (Type96TurretOptions.boxSightSourceTop). */
+function addBoxSightOnBoot(P: TankBuilderPort, boot: THREE.BufferGeometry, bootStations: readonly number[], sourceTop = false): void {
     const s = TYPE96_BOX_SIGHT, origin = P.turretG.position.clone().add(P.gunG.position);
     const x = s.x - origin.x, cy = s.y - origin.y, cz = s.z - origin.z, z0 = cz - s.d / 2, z1 = cz + s.d / 2;
     const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), mesh = new THREE.Mesh(boot, material);
@@ -314,8 +321,9 @@ function addBoxSightOnBoot(P: TankBuilderPort, boot: THREE.BufferGeometry, bootS
         P.add('gunMount', sectionSolid(rows.map((r) => ({
             z: r.z, ring: [...xs.map((px, i) => [px, r.under[i] - .001] as const), [xs[8], bottom + .002] as const, [xs[0], bottom + .002] as const],
         }))));
-        const y = bottom + s.h / 2;
-        P.add('gunMount', box(s.w, s.h, s.d), x, y, cz);
+        const [y, h] = sourceTop ? [(bottom + cy + s.h / 2) / 2, cy + s.h / 2 - bottom] : [bottom + s.h / 2, s.h];
+        if (h < s.h * .70 + .01) throw new Error(`${P.spec.id}: the box sight's face (${h.toFixed(3)} m) no longer holds its window`);
+        P.add('gunMount', box(s.w, h, s.d), x, y, cz);
         P.add('gunMountDark', box(s.w * .76, s.h * .70, .018), x, y, z1 + .005);
         P.add('gunMountGlass', box(s.w * .62, s.h * .52, .012), x, y, z1 + .017);
     } finally { material.dispose(); }
@@ -374,10 +382,12 @@ export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptio
     // Object_6 is the pitching mantlet boot; the tube and ambiguous Object_11
     // collar remain in recoil. This changes ownership only, not neutral stock.
     // (with the box sight riding it, the boot and the sight go through add(): the same mantlet bucket, and the part census
-    // sees the seat)
-    // A clipped underside is a flat run of contour points: its caps keep every one.
+    // sees the seat; a clipped underside is a flat run of contour points: its caps keep every one)
     const bootGeometry = options.bootFloor ? sectionSolid(boot, { preserveCapBoundary: true }) : sectionSolid(boot);
-    if (options.boxSightOnGun) { P.add('gunMount', bootGeometry); addBoxSightOnBoot(P, bootGeometry, boot.map((r) => r.z)); }
+    if (options.boxSightOnGun) {
+        P.add('gunMount', bootGeometry);
+        addBoxSightOnBoot(P, bootGeometry, boot.map((r) => r.z), options.boxSightSourceTop);
+    }
     else P.addGunExtra(bootGeometry);
     // Source Object_13 is the outer tapered shroud. Object_14's 68 mm
     // radius belongs to its inner bore and must not become the outer barrel.
@@ -434,7 +444,9 @@ export function buildType96bX(P: TankBuilderPort): void {
     P.gunG.position.set(0, frame.gun[1] - frame.turret[1], frame.gun[2] - frame.turret[2]);
     buildType96Hull(P);
     buildType96Gear(P);
-    buildType96Turret(P, { bootFloor: TYPE96B_BOOT_FLOOR });
+    // Release 227: the box sight over the mantlet rides the pitching boot (boxSightOnGun); turret-fixed, the boot passed
+    // through it at every pitch. It keeps its measured top (boxSightSourceTop; type96bSightBoot.selftest.mjs).
+    buildType96Turret(P, { bootFloor: TYPE96B_BOOT_FLOOR, boxSightOnGun: true, boxSightSourceTop: true });
     addType96GunnerSightPlinth(P);
     preserveSourceStudyGunMountAppearance(P);
     addRearFieldStowage(P);
