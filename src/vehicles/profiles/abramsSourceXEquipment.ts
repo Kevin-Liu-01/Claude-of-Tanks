@@ -176,8 +176,13 @@ function mainGun(C: EquipmentContext): void {
     oval(3.944565, .1166, .116535, y), oval(3.954265, .1166, .116535, y),
   ]), [0, 0, 0], 'gun', 'gun');
   for(const part of sourceMuzzleAssembly())emit(C,part.name,part.geometry,[0,0,0],'gun','gun');
-  emit(C, 'CoaxSleeve', annularZ(.04441, .014, .43585, C.P.q ? 32 : 16), [-.338839, 1.984485, 2.61298], 'gun', 'gunMount');
+  // 2026-10-19 (owner float sweep): the sleeve's back stopped 25 mm short of the mantlet; it runs 30 mm further back
+  // (its muzzle end is unchanged)
+  emit(C, 'CoaxSleeve', annularZ(.04441, .014, .46585, C.P.q ? 32 : 16), [-.338839, 1.984485, 2.59798], 'gun', 'gunMount');
   opticalHood(C, 'MantletLamp', [-.212357, 2.097845, 2.5261], [.10382, .10484, .0988], 0, 'gun');
+  // 2026-10-19 (owner float sweep): the lamp hung 0.2 m ahead of the mantlet face with nothing under it; an arm from the
+  // face carries it
+  emit(C, 'MantletLampArm', KIT.box(.04, .04, .25), [-.212357, 2.06, 2.37], 'gun', 'gunMount');
 }
 
 function mgMesh(C: EquipmentContext, group: THREE.Group, name: string, geometry: THREE.BufferGeometry,
@@ -213,7 +218,8 @@ function sourceM2(C: EquipmentContext, name: string, center: XYZ, owner: Owner,
   }
   for (const s of [-1, 1]) {
     mgMesh(C, group, `${name}Spade${s}`, KIT.box(.03299, .126, .033), [s * .0622, .004, -.348]);
-    mgMesh(C, group, `${name}SpadeLink${s}`, KIT.box(.081, .023, .052), [s * .040, -.027, -.303]);
+    // 2026-10-19 (owner float sweep): the link stopped 2.5 mm short of the grip; it runs 4 mm into it (front kept)
+    mgMesh(C, group, `${name}SpadeLink${s}`, KIT.box(.081, .023, .058), [s * .040, -.027, -.306]);
   }
   mgMesh(C, group, `${name}ChargingHandle`, KIT.cylX(.010, .064, 10), [.068, -.012, .02]);
   mgMesh(C, group, `${name}FrontSight`, KIT.box(.012, .055, .014), [0, .045, 1.166]);
@@ -838,7 +844,7 @@ function* rearEquipmentCooperativeSteps(C: EquipmentContext, fullLoadout: boolea
   // Four source U-shaped courses, posts and sparse floor rails. There is no
   // opaque basket-sized slab and no membrane closing the spaces between bars.
   for (const [i, y] of [1.910915, 2.029575, 2.159575, 2.28926].entries()) {
-    basketRail(C, `BasketCourse${i}`, y, -2.7842, -1.5498, 1.4209, -2.2914);
+    basketRail(C, `BasketCourse${i}`, y, -2.7842, -1.5498, 1.4209, -2.2714);   // 2026-10-19 (owner float sweep): front ends into the bustle
   }
   yield* tankProfileCheckpoint(cooperative, "rearEquipment:for (const [i, y] of [1.910915, 2.029575, 2.159575, 2.28926].entries()) {");
   const lowerStrip = sourceMainRackStrip();
@@ -852,7 +858,9 @@ function* rearEquipmentCooperativeSteps(C: EquipmentContext, fullLoadout: boolea
     for (const z of [.65, -.5, -1.52]) rail(C, `SideGuardFoot${s}_${z}`, [x, 1.71, z], [x, 1.832, z], .011);
   }
   yield* tankProfileCheckpoint(cooperative, "rearEquipment:for (const s of [-1, 1]) {");
-  for (const part of buildAbramsSourceXAftCase()) emit(C, part.name, part.geometry);
+  // 2026-10-19 (owner float sweep): the case's front face stood 18 mm behind the bustle (and with it the whole rack it
+  // carries); it sits 2 mm into the bustle face
+  for (const part of buildAbramsSourceXAftCase()) emit(C, part.name, part.geometry.translate(0, 0, .020));
   yield* tankProfileCheckpoint(cooperative, "rearEquipment:for (const part of buildAbramsSourceXAftCase()) emit(C, part.name, part.geometry);");
   rearRadioMast(C);
   yield* tankProfileCheckpoint(cooperative, "rearEquipment:rearRadioMast(C);");

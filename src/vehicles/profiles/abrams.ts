@@ -1583,7 +1583,9 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
         P.add('hullDark', box(0.02, 0.13 * s, 0.15), side * (bowLightX + 0.12 * s), noseTipY - 0.12, bowLightZ - 0.24);
         P.add('hullDark', box(0.26 * s, 0.02, 0.15), side * bowLightX, noseTipY - 0.06, bowLightZ - 0.24);
       }
-      P.add('hullDetail', torus(0.05 * s, 0.015, 12), side * 1.05 * s, boardY - 0.06, boardZ - 0.22, Math.PI / 2, 0, 0);
+      // 2026-10-19 (owner float sweep): the bow ring is seated on the board (the AbramsX's hung 27 mm under it)
+      P.snapGroup('abrams-bow-ring', () => P.add('hullDetail', torus(0.05 * s, 0.015, 12), side * 1.05 * s, boardY - 0.06,
+        boardZ - 0.22, Math.PI / 2, 0, 0), { reachM: 0.04 });
       const toeY = lineAt(noseRake, bowZ + (g.nose - bowZ) * 0.35);
       P.add('hullDetail', box(0.1 * s, 0.09 * s, 0.1 * s), side * bw * 0.45, toeY + 0.1, bowZ + (g.nose - bowZ) * 0.35, -0.5, 0, 0);
       P.add(g.cleanBow ? 'hullDetail' : 'hullDark', torus(0.055 * s, 0.017, 12), side * bw * 0.45, toeY + 0.12, bowZ + (g.nose - bowZ) * 0.35 + 0.06, 0.9, 0, 0);
@@ -6932,9 +6934,10 @@ function buildAbramsX(P: AbramsBuilderPort): void {
         2.405 - 1.95, -0.518 + 0.39);
       // Individual rear-deck fasteners preserve the nine-piece rhythm seen
       // in the oracle without copying any source topology.
+      // 2026-10-19 (owner float sweep): the fasteners stood 91 mm over the rear deck; each drops onto it
       for (let bi = 0; bi < 4; bi++) {
-        P.add('turretDetail', cylY(0.018, 0.018, 0.018, 8),
-          side * (0.18 + bi * 0.18), 2.407 - 1.95, -1.834 + 0.39);
+        P.snapGroup('abramsx-deck-fastener', () => P.add('turretDetail', cylY(0.018, 0.018, 0.018, 8),
+          side * (0.18 + bi * 0.18), 2.407 - 1.95, -1.834 + 0.39), { reachM: 0.12, mode: 'down' });
       }
       // Edge electronics and tie-down blocks. Their plan envelopes come from
       // the receipt, while their vertical bands are seated on the final shell
@@ -7689,8 +7692,10 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     P.add('turretDark', box(0.014, 0.009, 1.28), -0.368, 0.517, 0.514);
     P.add('turretDark', box(0.014, 0.009, 1.28), 0.368, 0.517, 0.514);
     if (P.q) for (const side of [-1, 1]) for (let ri = 0; ri < 9; ri++) {
+      // 2026-10-19 (owner float sweep): the roof falls away under the outer rivet line by 50-211 mm (the forward pair
+      // overhangs the narrowing edge); each is seated on the nearest roof face
       P.snapGroup('abramsx-roof-rivet', () => P.add('turretDetail', cylY(0.009, 0.009, 0.010, 6), side * 1.075,
-        0.457, -1.45 + ri * 0.31), { reachM: 0.04, mode: 'down' });
+        0.457, -1.45 + ri * 0.31), { reachM: 0.25 });
     }
     // 2026-10-19 (owner float sweep): the bar stood 93 mm off the bustle's rear face; it lies on it
     P.add('turretDark', box(1.30, 0.055, 0.026), 0, 0.105, -2.102);
@@ -7862,7 +7867,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
       // Rides the AX_WHIPS_TURRET toggle with its masts (coupled landing).
       for (const sx of [-1, 1]) {
         if (AX_WHIPS_TURRET) {
-          P.add('turretDark', box(0.07, 0.05, 0.06), sx * 1.15, 0.335, -1.50);
+          P.add('turretDark', box(0.07, 0.05, 0.06), sx * 1.15, 0.312, -1.50);   // 2026-10-19 (owner float sweep): was 23 mm over the deck
         } else {
           P.add('hullDark', box(0.07, 0.05, 0.06), sx * 1.15, 2.335, -1.89);
         }
