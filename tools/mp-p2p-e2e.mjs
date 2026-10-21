@@ -42,6 +42,7 @@
  * src/mp/session/browserComposition.ts — but the proof keeps the load honest rather than leaning on it).
  */
 import { mkdir, writeFile } from 'node:fs/promises';
+import { writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import net from 'node:net';
 import { join, resolve } from 'node:path';
@@ -763,7 +764,8 @@ const saveOnSignal = async (signal) => {
     const profile = await Promise.race([signalProfile.send('Profiler.stop').then((result) => result.profile).catch(() => null), sleep(5000).then(() => null)]);
     if (profile) await writeFile(join(outputDir, signalProfile.file), JSON.stringify(profile)).catch(() => {});
   }
-  await writeFile(join(outputDir, 'report.json'), JSON.stringify(report, null, 2)).catch(() => {});
+  // synchronous: a starved process may be ended before an asynchronous write lands, leaving an empty report
+  try { writeFileSync(join(outputDir, 'report.json'), JSON.stringify(report, null, 2)); } catch { /* the directory is gone */ }
 };
 for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP', 'SIGALRM']) {
   process.once(signal, () => {
