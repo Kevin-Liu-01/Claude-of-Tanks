@@ -99,7 +99,8 @@ function addBowTowStock(P: TankBuilderPort): void {
     const x=side*.5834;
     put(P,'hullDetail',KIT.box(.081,.115,.155),x,.859,3.352,-.61);
     put(P,'hullDetail',towingHook(),x);
-    for(const [y,z]of[[.571,3.125],[.860,3.354]])
+    // 2026-10-19 (owner float sweep): the lower pin stood 30 mm off the bow plate; it sits 2 mm into it
+    for(const [y,z]of[[.597,3.106],[.860,3.354]])
       put(P,'hullDetail',KIT.cylX(.054,.087,16),x,y,z);
     put(P,'hullDetail',KIT.box(.036,.265,.042),x,.729,3.239,-.70);
   }
@@ -111,8 +112,9 @@ function addDriverEquipment(P: TankBuilderPort): void {
   put(P,'hullDetail',KIT.box(.520,.108,.399),.532,1.997,.256,-.200);
   put(P,'hullDetail',KIT.box(.348,.036,.292),.518,2.057,.229,-.093);
   put(P,'hullDark',KIT.box(.435,.064,.017),.532,2.003,.460,-.095);
-  put(P,'hullDetail',KIT.box(.225,.142,.196),-.0407,2.0105,.7403);
-  put(P,'hullDark',KIT.box(.165,.078,.016),-.0407,2.020,.846);
+  // 2026-10-19 (owner float sweep): the sight block and its window stood 20 mm over the deck; seated on it
+  put(P,'hullDetail',KIT.box(.225,.142,.196),-.0407,1.9885,.7403);
+  put(P,'hullDark',KIT.box(.165,.078,.016),-.0407,1.998,.846);
   for(const side of[-1,1]){
     put(P,'hullDetail',KIT.box(.214,.021,.194),side*.77,1.536,2.721,.232);
     put(P,'hullDetail',KIT.cylX(.027,.176,16),side*.77,1.553,2.72);

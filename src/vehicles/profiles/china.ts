@@ -266,7 +266,7 @@ function buildZTZ85IIIHullEdges(P: ChinaBuilderPort): void {
       side * 1.30, 1.13, 2.40, -0.32, 0, 0);
     P.add('hullDark', box(0.04, 0.08, 0.15), side * 1.42, 1.06, -3.90);
     P.add('hullDark', cylX(0.045, 0.46, 10), side * 1.45, 0.41, 2.46);
-    P.add('hullDark', box(0.04, 0.22, 0.045), side * 1.45, 0.55, 2.46);
+    P.add('hullDark', box(0.04, 0.30, 0.045), side * 1.45, 0.59, 2.46);   // its stay reaches the flap (50 mm short of it before: owner 2026-10-19 float sweep)
   }
 
   // The segmented shelf and raised lip carry the 3.45-m width datum from
@@ -276,6 +276,8 @@ function buildZTZ85IIIHullEdges(P: ChinaBuilderPort): void {
       P.add('hull', box(0.185, 0.030, 0.48),
         side * 1.635, 1.115, -3.60 + index * 0.518);
     }
+    // The bow tip carries the shelf on to the front flap, which hangs from its edge.
+    P.add('hull', box(0.185, 0.030, 0.13), side * 1.635, 1.115, 2.405);
     for (let index = 0; index < 8; index++) {
       P.add('hull', box(0.045, 0.16, 0.46),
         side * 1.70, 1.20, -3.38 + index * 0.78);
@@ -307,7 +309,7 @@ function buildZTZ85IIIDeckFurniture(P: ChinaBuilderPort): void {
     P.add('hullDark', box(1.46, 0.018, 0.075),
       0, 1.412, -2.42 - index * 0.24);
     P.add('hullDetail', box(1.46, 0.028, 0.026),
-      0, 1.44, -2.54 - index * 0.24);
+      0, 1.42, -2.54 - index * 0.24);                                    // on the deck (18 mm over it before: owner 2026-10-19 float sweep)
   }
   for (const [x, z] of [[-0.62, -1.72], [0.55, -1.86], [0.95, -2.10]]) {
     P.add('hullDetail', cylY(0.09, 0.09, 0.03, 10), x, 1.452, z);
@@ -334,7 +336,7 @@ function buildZTZ85IIIDeckFurniture(P: ChinaBuilderPort): void {
     P.add('hullDark', box(0.022, 0.20, 0.022), x0, yc, zc, -0.30, 0, 0);
     P.add('hullDark', box(0.022, 0.20, 0.022), x1, yc, zc, -0.30, 0, 0);
     P.add('hullDark', box(x1 - x0 + 0.022, 0.022, 0.022),
-      xm, yc + 0.085, zc + 0.026, -0.30, 0, 0);
+      xm, yc + 0.085, zc - 0.026, -0.30, 0, 0);                          // on the raked posts' axis (it stood 5 cm ahead of them: owner 2026-10-19 float sweep)
     P.add('hullDark', box(x1 - x0 + 0.022, 0.022, 0.022),
       xm, yc - 0.045, zc + 0.065, -0.30, 0, 0);
   }
@@ -357,7 +359,7 @@ function buildZTZ85IIIStorageBaskets(P: ChinaBuilderPort): number {
     }
     for (const z of [0.24, -0.34, -0.92, -1.50, -2.08, -2.34]) {
       P.add('turretDetail', box(0.035, 0.40, 0.035),
-        side * 1.155, 0.34, z, 0, -side * 0.05, 0);
+        side * (1.157 - 0.04 * (z + 1.04)), 0.34, z, 0, -side * 0.05, 0); // on the toed-in rails (the end posts stood 16-36 mm off them: owner 2026-10-19 float sweep)
     }
     // Open-slat backing keeps the basket see-through like the reference.
     for (const y of [0.205, 0.295, 0.385, 0.475]) {
@@ -555,7 +557,7 @@ function buildZTZ85III(P: ChinaBuilderPort): void {
   // roof lift eyes + side grab rails
   for (const s of [-1, 1]) {
     liftEye(P, 'turretDetail', s * 0.72, 0.78, 0.12);
-    P.add('turretDetail', box(0.026, 0.026, 0.62), s * 1.00, 0.62, 0.30, 0, -s * 0.42, 0);
+    P.snapGroup('ztz85-grab-rail', () => P.add('turretDetail', box(0.026, 0.026, 0.62), s * 1.00, 0.62, 0.30, 0, -s * 0.42, 0), { reachM: 0.07 }); // seated (60 mm off the turret before: owner 2026-10-19 float sweep)
   }
 
   // ---- 125 mm autoloaded gun: axis 1.70 world, compact Soviet-style saddle
@@ -718,8 +720,9 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   // stern to bow shoulder — segmented plates bridge sponson edge to the
   // skirt hanger line.
   ([-1, 1] as const).forEach((s) => {
+    // a plate the falling bow leaves over air is seated on the hanger line under it (the fore two stood 2-5 cm over it)
     for (let i = 0; i < 12; i++) {
-      P.add('hull', box(0.20, 0.032, 0.52), s * 1.755, 1.60, -3.70 + i * 0.575);
+      P.snapGroup('ztz99-fender-plate', () => P.add('hull', box(0.20, 0.032, 0.52), s * 1.755, 1.60, -3.70 + i * 0.575), { reachM: 0.06 });
     }
     // lower tub side strakes: the print's hull side wall hangs to ~0.34
     // at the sponson line while the centre belly stays at 0.46 — real
@@ -1043,13 +1046,17 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   mount(P, 'turret', FITTINGS.antennaWhip({
     mats: P.mats, h: 0.65, r: 0.012, rake: -0.05, seed: 9971,
   }), -1.02, 0.93, -1.42);
-  P.add('turretDetail', cylY(0.032, 0.042, 0.055, 10), 1.10, 0.88, -1.55);
-  mount(P, 'turret', FITTINGS.antennaWhip({
-    mats: P.mats, h: 0.55, r: 0.011, rake: 0.05, seed: 9972,
-  }), 1.10, 0.91, -1.55);
+  // 2026-10-19 (owner float sweep): the right whip and its pedestal stood 60-78 mm off the turret and the side grab
+  // rails 38-50 mm outboard of it; each is seated on it
+  P.snapGroup('ztz99a-right-whip', () => {
+    P.add('turretDetail', cylY(0.032, 0.042, 0.055, 10), 1.10, 0.88, -1.55);
+    mount(P, 'turret', FITTINGS.antennaWhip({
+      mats: P.mats, h: 0.55, r: 0.011, rake: 0.05, seed: 9972,
+    }), 1.10, 0.91, -1.55);
+  }, { reachM: 0.08 });
   for (const s of [-1, 1]) {
     liftEye(P, 'turretDetail', s * 0.95, 0.90, -0.90);
-    P.add('turretDetail', box(0.026, 0.026, 0.88), s * 1.44, 0.66, -0.75, 0, -s * 0.06, 0);
+    P.snapGroup('ztz99a-grab-rail', () => P.add('turretDetail', box(0.026, 0.026, 0.88), s * 1.44, 0.66, -0.75, 0, -s * 0.06, 0), { reachM: 0.06 });
   }
 
   // ---- ZPT-98 plant: axis 1.95 world, annular root collar in the open
@@ -1569,8 +1576,9 @@ function buildType59(P: ChinaBuilderPort): void {
   // anatomy) — vent crown held at the dome-apex line (p95 window).
   P.add('turret', cylY(0.16, 0.17, 0.24, 12), 0, 0.78, 0.91);
   P.add('turret', KIT.sph(0.16, 12, Math.PI / 2), 0, 0.88, 0.91);
-  P.addModuleVisual('optics', 'turretDetail', box(0.10, 0.08, 0.14), -0.242, 1.00, 1.01);
-  P.addModuleVisual('optics', 'turretDetail', box(0.10, 0.08, 0.14), 0.242, 1.00, 1.01);
+  // 2026-10-19 (owner float sweep): the periscope heads stood 66 mm clear beside the dome; each seats against it
+  P.snapGroup('type59-periscope', () => P.addModuleVisual('optics', 'turretDetail', box(0.10, 0.08, 0.14), -0.242, 1.00, 1.01), { reachM: 0.08 });
+  P.snapGroup('type59-periscope', () => P.addModuleVisual('optics', 'turretDetail', box(0.10, 0.08, 0.14), 0.242, 1.00, 1.01), { reachM: 0.08 });
   // curved rear stowage rack on the dome tail (turret-owned, §B5; the
   // Chinese service-rack grammar) + dark saddle straps into the skin.
   {

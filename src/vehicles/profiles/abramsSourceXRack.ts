@@ -32,9 +32,11 @@ function uPath(left: number, right: number, rear: number, radius: number, front:
 }
 
 /** Source59/1564 curved lower receiving strip: only ~5mm stock. */
+// 2026-10-19 (owner float sweep): the rack's open front ends stopped 6-18 mm short of the bustle's rear face (the whole
+// 80-part rack floated); the strip, the floor frame and the courses run 20 mm further forward into it.
 export function sourceMainRackStrip(): RackPart {
-  const outer=uPath(-1.56495,1.436,-2.799245,.20625,-2.291675);
-  const inner=uPath(-1.55997,1.43102,-2.794265,.20127,-2.291675);
+  const outer=uPath(-1.56495,1.436,-2.799245,.20625,-2.271675);
+  const inner=uPath(-1.55997,1.43102,-2.794265,.20127,-2.271675);
   const ring=ccw([...outer,...inner.reverse()]);
   return part('MainLowerStrip',closedSectionLoft([
     {z:1.912785,ring},{z:2.028185,ring},
@@ -66,8 +68,8 @@ function mainReceivingRib(name: string, x: number, center: boolean): RackPart {
 
 /** Open floor frame and actual three bracket stocks shared by the family. */
 export function sourceMainRackSupports(): RackPart[] {
-  const outer=uPath(-1.54723,1.40885,-2.789785,.1960,-2.291195);
-  const inner=uPath(-1.52672,1.38834,-2.769275,.17549,-2.311765);
+  const outer=uPath(-1.54723,1.40885,-2.789785,.1960,-2.271195);
+  const inner=uPath(-1.52672,1.38834,-2.769275,.17549,-2.291765);
   const ring=ccw([...outer,...inner.reverse()]);
   return [
     part('MainFloorFrame',closedSectionLoft([{z:1.91861,ring},{z:1.92481,ring}]).rotateX(-Math.PI/2)),

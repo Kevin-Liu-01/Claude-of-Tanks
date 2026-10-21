@@ -94,7 +94,10 @@ assert.ok(Math.abs(size.z - spec.dims.overallLengthM) < 0.08,
 assert.ok(Math.abs(size.x - spec.dims.widthM) < 0.08,
   `complete width follows the 3.51 m source datum (${size.x.toFixed(3)})`);
 // 2026-09-17 ground datum: the hull sits ~2 cm lower on the 28 mm band (3.232); the station's seat on the turret is unchanged
-assert.ok(size.y > 3.21 && size.y < 3.36,
+// 2026-10-21 (float-gaps 230): the envelope's top is the 0.92 m right whip's tip, not the Rh 202 station (3.200). Both
+// rear whip pots hovered 22.5 mm over the roof at their x 0.94 seats; the factory now drops them onto it (fittingSnap
+// seatOnRig, kit.ts antennaWhip), so the tip and the envelope fall 24.5 mm (3.230 -> 3.205). The station is unmoved.
+assert.ok(size.y > 3.19 && size.y < 3.36,
   `commander station remains seated on the low rounded turret (${size.y.toFixed(3)})`);
 for (const name of ['rig_hull', 'rig_turret', 'rig_gun', 'rig_muzzle']) {
   assert(tank.root.getObjectByName(name), `${name} articulation exists`);

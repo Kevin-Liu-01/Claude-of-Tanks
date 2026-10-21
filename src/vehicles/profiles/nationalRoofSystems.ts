@@ -68,7 +68,9 @@ export function nationalEye(P:TankBuilderPort,x:number,z:number,base:number,l:Na
   P.addEquipment('turretDetail',cylZ(r+.026,.27,32),x,y,z);
   P.addEquipment('turretDark',cylZ(r,.021,32),x,y,z+.143);
   P.addModuleVisual('optics','turretGlass',cylZ(r*.78,.014,32),x,y,z+.16);
-  P.addEquipment('turretDetail',box((r+.035)*2,.021,.22),x,y+r+.037,z+.014);
+  // 2026-10-19 (owner float sweep): the hood stood clear of the body (its corners 15-87 mm off any face); it spans the
+  // body's length and rests on its crown
+  P.addEquipment('turretDetail',box((r+.035)*2,.021,.29),x,y+r+.034,z);
   for(const side of [-1,1])P.addEquipment('turretDetail',box(.026,r+.10,.18),x+side*(r+.033),y-.02,z);
  }
 }

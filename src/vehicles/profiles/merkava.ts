@@ -488,6 +488,12 @@ function merkavaSourceRearFinish(P: TankBuilderPort, c: MerkavaChassisConfig): v
     const doorH = Math.min(0.28, height * 0.30);
     const doorY = bot + doorH * 0.62;
     P.add('hullDetail', box(doorW, doorH, 0.038), x, doorY, zFace - 0.004);
+    // 2026-10-19 (owner float sweep): on the 4B (and 2B) the door, its handle, hinges and tow ring hung 173 mm (18-24 mm)
+    // under the bay with open stern below; c.sternDoorFill: a stern panel closes the door to the bay's lower edge
+    const bayBot = bayY - bayH / 2, doorTop = doorY + doorH / 2;
+    if (c.sternDoorFill && bayBot > doorTop) {
+      P.add('hull', box(doorW, bayBot - doorTop + 0.006, 0.030), x, (bayBot + doorTop) / 2, zFace - 0.004);
+    }
     P.add('hullDark', box(doorW * 0.72, 0.018, 0.018), x, doorY + doorH * 0.32, zFace - 0.032);
     for (const hx of [-0.38, 0.38]) {
       P.add('hullDark', box(0.026, 0.055, 0.020), x + hx * doorW, doorY - doorH * 0.30, zFace - 0.034);
@@ -500,10 +506,14 @@ function merkavaSourceRearFinish(P: TankBuilderPort, c: MerkavaChassisConfig): v
 
   const centerH = Math.min(0.34, height * 0.40);
   const centerY = bot + centerH * 0.68;
-  P.add('hull', box(0.48, centerH, 0.045), 0, centerY, zFace - 0.004);
-  P.add('hullDark', box(0.32, 0.022, 0.020), 0, centerY + centerH * 0.30, zFace - 0.034);
-  P.add('hullDark', box(0.18, 0.11, 0.16), 0, bot + 0.065, zFace - 0.085);
-  P.add('hullDetail', cylZ(0.040, 0.18, 12), 0, bot + 0.065, zFace - 0.18);
+  // the centre plate, its handle bar and the tow block sit on the recessed stern between the bays (owner 2026-10-19
+  // sweep: at the bays' face line they floated up to 0.8 m behind it, in the open stern bay)
+  P.snapGroup('merkava-stern-centre', () => {
+    P.add('hull', box(0.48, centerH, 0.045), 0, centerY, zFace - 0.004);
+    P.add('hullDark', box(0.32, 0.022, 0.020), 0, centerY + centerH * 0.30, zFace - 0.034);
+    P.add('hullDark', box(0.18, 0.11, 0.16), 0, bot + 0.065, zFace - 0.085);
+    P.add('hullDetail', cylZ(0.040, 0.18, 12), 0, bot + 0.065, zFace - 0.18);
+  }, { reachM: 0.90, direction: [0, 0, 1] });
   P.add('hullDark', box(halfW * 0.82, 0.028, 0.028), 0, top - 0.035, zFace - 0.050);
 }
 
@@ -827,7 +837,8 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
             // so the read is unchanged. Siblings without the param byte-exact.
             const bH = sc.backH ?? 0.42;
             const bz0 = sc.backZ0 ?? sc.z0;
-            P.add('hull', box(0.030, bH, bz0 - sc.z1 - 0.05), s * 1.10, sc.bot + 0.05 - bH / 2, (bz0 + sc.z1) / 2);
+            // 2026-10-19 (owner float sweep): at x 1.10 the 1B backer stood 25 mm off the keel side (1.06); it rides 1.072
+            P.add('hull', box(0.030, bH, bz0 - sc.z1 - 0.05), s * 1.072, sc.bot + 0.05 - bH / 2, (bz0 + sc.z1) / 2);
             // r13b order 2b opt-in sc.lipFill (1B): the 25 mm slot between the
             // fender-plank outer edge and the curtain sheet dropped 0.4 m to
             // the gear and drew TWO 41.5-class hairlines the full hull length
@@ -892,7 +903,16 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
             // c.lipNoHem (1B r4 grammar audit, order item 5 "delete the hem bar"):
             // the full-length rubber strip under the lip WAS the ruled dark hem
             // bar (61-76L across 6 m vs the ref's uniform 91-94 side) — deleted.
-            if (!c.lipNoHem) P.add('hullRubber', box(0.02, 0.10, z0 - z1 - 0.05), s * (fl.x - 0.012), fl.y - 0.06, (z0 + z1) / 2);
+            if (!c.lipNoHem) P.hangMudguard('merkava-fender-hem', 'hullRubber', box(0.02, 0.10, z0 - z1 - 0.05), s * (fl.x - 0.012), fl.y - 0.06, (z0 + z1) / 2);
+            // Owner 2026-10-19 ("the flaps often hang off many tanks - check merkavas"): the 2B/2D skirt run (panels,
+            // hem, lip) hung 0.20 m under the fender plank with nothing between. c.lipHangerZ: flat steel hangers from
+            // the lip's centre line into the plank's, where the two overlap in plan, between the wheel stations.
+            if (c.lipHangerZ && c.fenderPlank && fl === c.fenderLip) {
+              const fp = c.fenderPlank, lo = Math.max(fl.x - fl.w, fp.x0), hi = Math.min(fl.x, fp.x1);
+              for (const hz of c.lipHangerZ) {
+                P.add('hullDetail', box(Math.min(0.02, hi - lo - 0.006), fp.y - fl.y, 0.12), s * (lo + hi) / 2, (fl.y + fp.y) / 2, hz);
+              }
+            }
             if (c.lipNoHem && fl === c.fenderLip) {
               // r8 housekeeping (critic r7: 1B rear-deck sub-55 census 3.3x ref —
               // the biggest class is the deck-to-lip shadow slot along both rear
@@ -917,8 +937,8 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
       for (const s2 of [-1, 1]) {
         const bz0 = Array.isArray(fb.z0) ? fb.z0[s2 < 0 ? 0 : 1] : fb.z0;
         const bx1 = Array.isArray(fb.x1) ? fb.x1[s2 < 0 ? 0 : 1] : fb.x1;
-        P.add('hull', box(bx1 - fb.x0, 0.05, bz0 - fb.z1), s2 * (fb.x0 + bx1) / 2, fb.y, (bz0 + fb.z1) / 2);
-        P.add('hullRubber', box(bx1 - fb.x0 - 0.05, 0.14, 0.028), s2 * (fb.x0 + bx1) / 2, fb.y - 0.09, bz0 + 0.005, -0.25, 0, 0);
+        P.hangMudguard('merkava-front-board', 'hull', box(bx1 - fb.x0, 0.05, bz0 - fb.z1), s2 * (fb.x0 + bx1) / 2, fb.y, (bz0 + fb.z1) / 2);
+        P.hangMudguard('merkava-bow-hem', 'hullRubber', box(bx1 - fb.x0 - 0.05, 0.14, 0.028), s2 * (fb.x0 + bx1) / 2, fb.y - 0.09, bz0 + 0.005, -0.25, 0, 0);
       }
     }
   };
@@ -1489,7 +1509,10 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
       }
     }
     for (const fz of [rd + 0.35, rd + 0.95]) {
-      P.add('hullDetail', KIT.cylY(0.055, 0.055, 0.030, 10), w * 0.36, deckY + 0.012, fz);
+      // 2026-10-19 (owner float sweep): on the 2B the aft filler cap stood 47 mm over the falling deck; each drops onto it
+      P.snapGroup('merkava-deck-filler', () => {
+        P.add('hullDetail', KIT.cylY(0.055, 0.055, 0.030, 10), w * 0.36, deckY + 0.012, fz);
+      }, { reachM: 0.07, mode: 'down' });
     }
     liftEye(P, 'hullDetail', -w * 0.34, deckY - 0.055, rd + 0.32);
     liftEye(P, 'hullDetail', w * 0.34, deckY - 0.055, rd + 0.32);
@@ -1729,6 +1752,14 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
                 const [stL, stR] = s > 0 ? [inT, outT] : [outT, inT];
                 const skSegN = Math.max(2, Math.round((z0 - z1) / 0.50));
                 const skSegL = (z0 - z1) / skSegN;
+                // 2026-10-19 (owner float sweep): the 3D's right skirt run hung 43 mm clear of the sponson side (the left
+                // one only met the front board) — sk.hangX: a flat hanger from the sponson side (x hangX) into every
+                // plate segment's inner face, 6 cm under the skirt top
+                const hangSeg = (sz0: number, sz1: number): void => {
+                  if (sk.hangX === undefined) return;
+                  const hx1 = sx - 0.024;
+                  P.add('hullDetail', box(hx1 - sk.hangX, 0.05, 0.08), s * (sk.hangX + hx1) / 2, sk.top - 0.06, (sz0 + sz1) / 2);
+                };
                 const merkavaChassisHullStage37 = (): void => {
                   if (c.segJit) { // jittered plate-segment boundaries (see plank note)
                     const bs = [z0];
@@ -1739,12 +1770,14 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
                       P.add('hull', slab(
                         [sbL, plateBot, sz0], [sbR, plateBot, sz0], [sbR, plateBot, sz1], [sbL, plateBot, sz1],
                         [stL, sk.top, sz0], [stR, sk.top, sz0], [stR, sk.top, sz1], [stL, sk.top, sz1]));
+                      hangSeg(sz0, sz1);
                     }
                   } else for (let k = 0; k < skSegN; k++) {
                     const sz0 = z0 - k * skSegL, sz1 = sz0 - skSegL + 0.012;
                     P.add('hull', slab(
                       [sbL, plateBot, sz0], [sbR, plateBot, sz0], [sbR, plateBot, sz1], [sbL, plateBot, sz1],
                       [stL, sk.top, sz0], [stR, sk.top, sz0], [stR, sk.top, sz1], [stL, sk.top, sz1]));
+                    hangSeg(sz0, sz1);
                   }
                 };
                 merkavaChassisHullStage37();
@@ -2074,7 +2107,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
               // sub-60 through the steep views' arch line (3D was the only
               // cutHem-without-wavy mark; every sibling keeps its exact path).
               const merkavaChassisHullStage39 = (): void => {
-                if (!sk.wavy && !sk.cutHem) P.add('hullRubber', box(0.024, 0.12, z0 - z1), s * (sx + 0.012), sk.bot + 0.04, (z0 + z1) / 2);
+                if (!sk.wavy && !sk.cutHem) P.hangMudguard('merkava-skirt-hem', 'hullRubber', box(0.024, 0.12, z0 - z1), s * (sx + 0.012), sk.bot + 0.04, (z0 + z1) / 2);
               };
               merkavaChassisHullStage39();
               // End flares: the measured skirts run ~+-1.83 mid-hull (stations read
@@ -2125,7 +2158,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
                       const flapW = sk.flapW ?? 0.30;
                       const flapH = sk.flapH ?? 0.34;
                       const sprocketFlapZ = c.sprocket.z + c.sprocket.r + 0.16;
-                      MUDGUARDS.add(P, {
+                      MUDGUARDS.add(P, { hang: true,
                         label: `merkava-sprocket-flap-${s}`,
                         x: s * xc, y: sk.bot + 0.05, z: sprocketFlapZ,
                         thickness: 0.035, length: flapW, height: flapH,
@@ -2161,7 +2194,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
               // the default offset stood coincident with the idler-wrap rear face
               // (§B4 120 exact voxels) — it steps rearward, clear of the band.
               const merkavaChassisHullStage43 = (): void => {
-                MUDGUARDS.add(P, {
+                MUDGUARDS.add(P, { hang: true,
                   label: `merkava-idler-flap-${s}`,
                   x: s * xc, y: sk.idlerFlapY ?? (sk.bot + 0.02),
                   z: c.idler.z - c.idler.r - (sk.idlerFlapDz ?? 0.12),
@@ -2178,7 +2211,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
                   const merkavaChassisHullCourse83 = (): void => {
                     const merkavaChassisHullCourse76 = (): void => {
                       const rf2 = c.rearFlaps[flapIndex]; // { z, bot, top?, w?, x?, mat?, wood? }
-                      MUDGUARDS.add(P, {
+                      MUDGUARDS.add(P, { hang: true,
                         label: `merkava-rear-flap-${s}-${flapIndex}`,
                         x: s * (rf2.x ?? xc), y: ((rf2.top ?? 0.95) + rf2.bot) / 2, z: rf2.z,
                         thickness: 0.05, length: rf2.w ?? 0.26,
@@ -2230,6 +2263,17 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
                         : [[-3.70, 0.215, 0.42], [-3.815, 0.315, 0.60], [-3.885, 0.395, 0.62]];
                       for (const [cz, cy0, cy1, cw] of tiers) {
                         P.add('hullWood', box(cw ?? 0.54, cy1 - cy0, 0.024), s * 1.445, (cy0 + cy1) / 2, cz);
+                      }
+                      // 2026-10-19 (owner float sweep): the 3C's four tiers hung 118-267 mm clear of everything; c.cornerRail
+                      // [[z, y]...]: two hanger rods per corner run through every tier into the first rear flap
+                      if (c.cornerRail) {
+                        for (const rx of [1.235, 1.655]) {
+                          for (let i = 1; i < c.cornerRail.length; i++) {
+                            const [za, ya] = c.cornerRail[i - 1], [zb, yb] = c.cornerRail[i];
+                            P.add('hullDark', box(0.022, 0.018, Math.hypot(zb - za, yb - ya) + 0.02),
+                              s * rx, (ya + yb) / 2, (za + zb) / 2, Math.atan2(yb - ya, za - zb), 0, 0);
+                          }
+                        }
                       }
                     };
                     merkavaChassisHullCourse77();
@@ -2664,7 +2708,11 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
             // the 3D ref's -3.63 center plan line. Siblings keep 0.55.
             // r11 (defect D center bay): the low rail leaves the sub-70 band on
             // rackX/3D (detail tone); 1B/siblings byte-identical.
-            P.add(c.rackX && c.paleKit ? 'hullDetail' : 'hullDark', box(x0 * 2, c.rackVoid ? 0.024 : 0.035, c.rackVoid ? 0.024 : 0.035), 0, tr.bot + 0.04, tr.z1 + (tr.railZ ?? 0.55));
+            // 2026-10-19 (owner float sweep): on the 2B/2D (1B) the rail hung 56-67 mm (15 mm) under/aft of the keel tail;
+            // it seats on the nearest stern stock
+            P.snapGroup('merkava-tail-low-rail', () => {
+              P.add(c.rackX && c.paleKit ? 'hullDetail' : 'hullDark', box(x0 * 2, c.rackVoid ? 0.024 : 0.035, c.rackVoid ? 0.024 : 0.035), 0, tr.bot + 0.04, tr.z1 + (tr.railZ ?? 0.55));
+            }, { reachM: 0.08 });
             if (c.rackX && c.paleKit) {
               // r11c (defect D center bay med 94.4 vs ref 98.4): two sun-graze
               // strips + a seam on the clamshell-notch face — the flat-94 center
@@ -2871,7 +2919,9 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
                         // the window p5 floor. z-extremes (hullLength carriers) and the
                         // wg.top-0.012 edge line stay within a hair.
                         P.add(wB('hullDetail'), box(0.036, 0.012, wlen + 0.02), xm, wg.top - 0.0185 + wY, wmid + wZ, 0, 0, -0.42 * s);
-                        P.add(wB('hullDetail'), box(0.036, 0.012, wlen + 0.02), xm, wg.bot + 0.0185 + wY, wmid + wZ, 0, 0, -0.42 * s);
+                        // 2026-10-19 (owner float sweep): the wing's plate ends 20 mm above wg.bot on the 3D (the
+                        // bottom hairline hung under it); the rail rises onto the plate's lower edge
+                        P.add(wB('hullDetail'), box(0.036, 0.012, wlen + 0.02), xm, wg.bot + 0.0385 + wY, wmid + wZ, 0, 0, -0.42 * s);
                       };
                       merkavaChassisHullCourse50();
                     };
@@ -3348,6 +3398,12 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
         const mh = Array.isArray(c.markerRods.h) ? c.markerRods.h[s < 0 ? 0 : 1] : c.markerRods.h;
         P.add('hullDark', box(0.05, mh, 0.05), s * c.markerRods.x, c.markerRods.y + mh / 2, c.markerRods.z);
         P.add('hullDetail', box(0.06, 0.06, 0.06), s * c.markerRods.x, c.markerRods.y + 0.02, c.markerRods.z);
+        // 2026-10-19 (owner float sweep): the 2D rods stood 34 mm outboard of the hull side; markerRods.mountX: a bracket
+        // from the hull side (x mountX) into each rod's foot block
+        const mx = c.markerRods.mountX;
+        if (mx !== undefined) {
+          P.add('hullDetail', box(c.markerRods.x - mx, 0.04, 0.05), s * (mx + c.markerRods.x) / 2, c.markerRods.y - 0.005, c.markerRods.z);
+        }
       }
     }
     // free-standing hull posts/brackets (measured 1-2 column hull-mask spikes)
@@ -3355,6 +3411,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
       for (const hp of c.hullPosts) { // { x, z, top, base }
         P.add('hullDark', box(0.028, hp.top - hp.base, 0.028), hp.x, (hp.top + hp.base) / 2, hp.z);
         P.add('hullDetail', box(0.07, 0.05, 0.05), hp.x, hp.base + 0.025, hp.z);
+        if (hp.brace !== undefined) P.add('hullDetail', box(0.028, 0.04, hp.z - hp.brace), hp.x, hp.base + 0.06, (hp.z + hp.brace) / 2);
       }
     }
   };
@@ -3543,8 +3600,9 @@ function addMerkavaWideMachineGunBody(
       x + side * 0.085 * scale, y + 0.185 * scale, z + 0.115 * scale,
       -0.55, 0, side * 0.12);
   }
+  // 2026-10-19 (owner float sweep): the feed-cover block stood 15-20 mm ahead of the ammunition can; it abuts the can
   P.add('turretDetail', box(0.05 * scale, 0.05 * scale, 0.09 * scale),
-    x - 0.125 * scale, y + 0.235 * scale, z + 0.10 * scale);
+    x - 0.125 * scale, y + 0.235 * scale, z + 0.082 * scale);
   // Thin tone-on-tone lids retain the low-contrast roof read while every
   // vertical receiver/feed face remains neutral gunmetal.
   P.add('turretDark', box(0.15 * scale * 0.92, 0.010, 0.44 * scale * 0.92),
@@ -4293,12 +4351,14 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
             const slY = b.bot + 0.115 + sl * 0.098;
             for (let sg2 = 0; sg2 < 2; sg2++) {
               const za2 = b.z0 - 0.14 - sg2 * 0.52 - sl * 0.045;
-              P.add(rimMat, box(0.028, 0.022, 0.46),
-                slX9, slY + sg2 * 0.007 + ((sl * 7) % 3) * 0.004, za2 - 0.23, 0, 0, -0.72 - sl * 0.04);
+              // 2026-10-19 (owner float sweep): the rolled slats stood 26-57 mm off the basket frame; each is seated on it
+              P.snapGroup('merkava-basket-slat', () => P.add(rimMat, box(0.028, 0.022, 0.46),
+                slX9, slY + sg2 * 0.007 + ((sl * 7) % 3) * 0.004, za2 - 0.23, 0, 0, -0.72 - sl * 0.04), { reachM: 0.07 });
             }
           }
           P.add(rimMat, box(b.hw * 0.86, 0.024, 0.030), bx + b.hw * 0.44, b.bot + 0.155, b.z1 + 0.055, 0.58, 0, 0.015);
-          P.add(rimMat, box(b.hw * 0.80, 0.024, 0.028), bx + b.hw * 0.47, b.bot + 0.265, b.z1 + 0.058, 0.55, 0, -0.012);
+          P.snapGroup('merkava-basket-bar', () => P.add(rimMat, box(b.hw * 0.80, 0.024, 0.028), bx + b.hw * 0.47, b.bot + 0.265,
+            b.z1 + 0.058, 0.55, 0, -0.012), { reachM: 0.04 });
           // pack rear-FACE ledge crowns (r13b third cut: the first strips sat
           // at y 0.36-0.62 bH INSIDE the solid pack — embedded, invisible;
           // the pack fills to bot+0.74 bH and its rear face is z -3.564).
@@ -4309,8 +4369,8 @@ function merkavaBasket(P: TankBuilderPort, b: MerkavaBasketConfig): void {
             [0.52, 0.34, 0.66, 0.60], [0.20, 0.28, 0.615, 0.56], [0.68, 0.26, 0.50, 0.62],
             [0.34, 0.22, 0.44, 0.58], [0.58, 0.24, 0.36, 0.60], [0.30, 0.20, 0.295, 0.56],
           ]) {
-            P.add(rimMat, box(b.hw * lw9, 0.020, 0.028), bx + b.hw * lf9,
-              b.bot + (b.top - b.bot) * ly9, pkRear9, lr9, ((lf9 * 9) % 2 - 0.5) * 0.08, 0);
+            P.snapGroup('merkava-basket-ledge', () => P.add(rimMat, box(b.hw * lw9, 0.020, 0.028), bx + b.hw * lf9,
+              b.bot + (b.top - b.bot) * ly9, pkRear9, lr9, ((lf9 * 9) % 2 - 0.5) * 0.08, 0), { reachM: 0.03 });
           }
         }
       };
@@ -7570,7 +7630,14 @@ function buildMerkavaMark(builder: object, p: MerkavaProfileData): void {
                 buildMerkavaMarkAssemblyCourse12();
               }
             };
-            buildMerkavaMarkTurretStage3Iteration1();
+            // 2026-10-19 (owner float sweep): roof cans/pots that stood up to 50 mm off the bulkhead or roof (the 3D's
+            // aft can spike) seat on the nearest turret stock; seated pots are untouched
+            P.snapGroup('merkava-roof-pot', buildMerkavaMarkTurretStage3Iteration1, { reachM: 0.06 });
+          }
+          // 2026-10-19 (owner float sweep): the 1B's right shoulder bins stood 127-220 mm outboard of the side panel;
+          // p.potArms: flat support arms from the panel through the inner bin into the outer one
+          if (p.potArms) {
+            for (const arm of p.potArms) P.add('turretDetail', box(arm.x1 - arm.x0, 0.03, 0.05), (arm.x0 + arm.x1) / 2, V(arm.y), L(arm.z));
           }
         };
         buildMerkavaMarkTurretStage3();
@@ -9197,7 +9264,11 @@ function merkavaSourceOracleTurret(
         });
       } else {
         seamZs.forEach((z) => {
-          P.add('turretDark', box(0.020, 0.39, 0.026), s * faceX, V(seamY), L(z), -0.05, 0, s * -0.03);
+          // 2026-10-19 (owner float sweep): on the 2D the foremost seam strip stood 35 mm off the receding cheek; each
+          // strip seats on the face it rides
+          P.snapGroup('merkava-turret-seam', () => {
+            P.add('turretDark', box(0.020, 0.39, 0.026), s * faceX, V(seamY), L(z), -0.05, 0, s * -0.03);
+          }, { reachM: 0.05 });
           P.add('turretDetail', box(0.026, 0.020, 0.055), s * (faceX + 0.004), V(seamY - 0.12), L(z - 0.08));
         });
         P.add('turretDark', box(0.022, 0.025, 1.78), s * faceX, V(seamY + 0.18), L(-0.58), -0.02, 0, 0);
@@ -9644,10 +9715,14 @@ function merkavaSourceFinish(
     const top = Math.min(capWorld, roofWorld + h);
     const actualH = Math.max(0.10, top - roofWorld);
     // Broad tapered shoe prevents the familiar stand-off-box failure.
-    P.add('turret', box(w * 1.25, 0.055, d * 1.20), x, V(roofWorld + 0.018), L(z), 0, yaw, 0);
-    P.add('turretDetail', box(w, actualH, d), x, V(roofWorld + actualH / 2), L(z), -0.08, yaw, 0);
-    P.add('turretDark', box(w * 0.72, actualH * 0.42, 0.018), x, V(roofWorld + actualH * 0.62), L(z + d * 0.51), -0.08, yaw, 0);
-    P.add('turretGlass', box(w * 0.52, actualH * 0.25, 0.012), x, V(roofWorld + actualH * 0.67), L(z + d * 0.53), -0.08, yaw, 0);
+    // 2026-10-19 (owner float sweep): the caller's roof height is the centreline's; off it the sight drops onto the roof
+    // (the 3C's stood 51 mm over it)
+    P.snapGroup('merkava-roof-sight', () => {
+      P.add('turret', box(w * 1.25, 0.055, d * 1.20), x, V(roofWorld + 0.018), L(z), 0, yaw, 0);
+      P.add('turretDetail', box(w, actualH, d), x, V(roofWorld + actualH / 2), L(z), -0.08, yaw, 0);
+      P.add('turretDark', box(w * 0.72, actualH * 0.42, 0.018), x, V(roofWorld + actualH * 0.62), L(z + d * 0.51), -0.08, yaw, 0);
+      P.add('turretGlass', box(w * 0.52, actualH * 0.25, 0.012), x, V(roofWorld + actualH * 0.67), L(z + d * 0.53), -0.08, yaw, 0);
+    }, { mode: 'down', reachM: 0.08 });
   };
 
   const deckRod = (pts: readonly Vec3Tuple[], mat = 'turretDark', width = 0.022, lift = 0.028): void => {
@@ -10376,14 +10451,18 @@ function merkavaSourceFinish(
       const d = 0.24 + ((i + 1) % 3) * 0.07;
       const h = Math.max(0.07, Math.min(0.15 + (i % 2) * 0.035, capWorld - roof - 0.02));
       const mat = i % 3 === 2 ? 'turretCloth' : 'turretDetail';
-      P.add('turret', box(w * 1.10, 0.045, d * 1.10), x, V(roof + 0.005), L(z), 0, s * 0.08, 0);
-      P.add(mat, box(w, h, d), x, V(roof + h * 0.50), L(z), 0.02, s * 0.08, 0);
-      P.add('turretDark', box(0.022, h * 1.04, d * 0.96), x,
-        V(roof + h * 0.50), L(z), 0.02, s * 0.08, 0);
-      if (i % 2 === 0) {
-        P.add('turretDark', box(w * 0.70, 0.018, 0.026), x,
-          V(roof + h * 0.88), L(z + d * 0.28), 0.02, s * 0.08, 0);
-      }
+      // 2026-10-19 (owner float sweep): roofAt reads the centreline; out on the shoulders the roof falls away under the
+      // shoes (18-51 mm on the 1B/3C), so each case drops onto it with its shoe and straps
+      P.snapGroup('merkava-roof-case', () => {
+        P.add('turret', box(w * 1.10, 0.045, d * 1.10), x, V(roof + 0.005), L(z), 0, s * 0.08, 0);
+        P.add(mat, box(w, h, d), x, V(roof + h * 0.50), L(z), 0.02, s * 0.08, 0);
+        P.add('turretDark', box(0.022, h * 1.04, d * 0.96), x,
+          V(roof + h * 0.50), L(z), 0.02, s * 0.08, 0);
+        if (i % 2 === 0) {
+          P.add('turretDark', box(w * 0.70, 0.018, 0.026), x,
+            V(roof + h * 0.88), L(z + d * 0.28), 0.02, s * 0.08, 0);
+        }
+      }, { mode: 'down', reachM: 0.08 });
     }
 
     // Mk.4B's explicit fourth-generation roof pass already owns three rack-top
@@ -10396,15 +10475,19 @@ function merkavaSourceFinish(
       for (const s of [-1, 1]) {
         const z = -2.18;
         const roof = Math.min(capWorld - 0.12, roofAt(z));
-        P.add('turret', box(0.48, 0.045, 0.34), s * 0.70, V(roof + 0.004), L(z), 0, s * 0.06, 0);
-        P.add('turretCloth', cylX(0.115, 0.44, 16), s * 0.70, V(roof + 0.115), L(z), 0, 0, s * 0.08);
-        P.add('turretDark', box(0.025, 0.25, 0.30), s * 0.70, V(roof + 0.115), L(z), 0, s * 0.06, 0);
+        P.snapGroup('merkava-roof-roll', () => {
+          P.add('turret', box(0.48, 0.045, 0.34), s * 0.70, V(roof + 0.004), L(z), 0, s * 0.06, 0);
+          P.add('turretCloth', cylX(0.115, 0.44, 16), s * 0.70, V(roof + 0.115), L(z), 0, 0, s * 0.08);
+          P.add('turretDark', box(0.025, 0.25, 0.30), s * 0.70, V(roof + 0.115), L(z), 0, s * 0.06, 0);
+        }, { mode: 'down', reachM: 0.08 });
       }
       const caseZ = -1.20;
       const caseRoof = Math.min(capWorld - 0.18, roofAt(caseZ));
-      P.add('turret', box(0.36, 0.048, 0.32), -0.06, V(caseRoof + 0.006), L(caseZ), 0, -0.05, 0);
-      P.add('turretDetail', box(0.31, 0.14, 0.28), -0.06, V(caseRoof + 0.075), L(caseZ), 0.02, -0.05, 0);
-      P.add('turretGlass', box(0.13, 0.050, 0.014), -0.06, V(caseRoof + 0.095), L(caseZ + 0.148), 0.02, -0.05, 0);
+      P.snapGroup('merkava-roof-case', () => {
+        P.add('turret', box(0.36, 0.048, 0.32), -0.06, V(caseRoof + 0.006), L(caseZ), 0, -0.05, 0);
+        P.add('turretDetail', box(0.31, 0.14, 0.28), -0.06, V(caseRoof + 0.075), L(caseZ), 0.02, -0.05, 0);
+        P.add('turretGlass', box(0.13, 0.050, 0.014), -0.06, V(caseRoof + 0.095), L(caseZ + 0.148), 0.02, -0.05, 0);
+      }, { mode: 'down', reachM: 0.08 });
 
       // Additional radio/ammunition cases on the bustle shoulders.  Each case
       // has a painted shoe and a dark transverse strap returning into the roof.
@@ -10414,11 +10497,13 @@ function merkavaSourceFinish(
       ] satisfies ReadonlyArray<readonly [Side, number, number, boolean]>) {
         const roof = Math.min(capWorld - 0.24, roofAt(z));
         const x = s * 0.82;
-        P.add('turret', box(0.42, 0.045, 0.34), x, V(roof + 0.004), L(z), 0, yaw, 0);
-        P.add(cloth ? 'turretCloth' : 'turretDetail', box(0.36, 0.18, 0.29),
-          x, V(roof + 0.105), L(z), 0.02, yaw, 0);
-        P.add('turretDark', box(0.024, 0.19, 0.30), x, V(roof + 0.105), L(z), 0.02, yaw, 0);
-        P.add('turretDark', box(0.28, 0.018, 0.026), x, V(roof + 0.185), L(z + 0.08), 0.02, yaw, 0);
+        P.snapGroup('merkava-roof-case', () => {
+          P.add('turret', box(0.42, 0.045, 0.34), x, V(roof + 0.004), L(z), 0, yaw, 0);
+          P.add(cloth ? 'turretCloth' : 'turretDetail', box(0.36, 0.18, 0.29),
+            x, V(roof + 0.105), L(z), 0.02, yaw, 0);
+          P.add('turretDark', box(0.024, 0.19, 0.30), x, V(roof + 0.105), L(z), 0.02, yaw, 0);
+          P.add('turretDark', box(0.28, 0.018, 0.026), x, V(roof + 0.185), L(z + 0.08), 0.02, yaw, 0);
+        }, { mode: 'down', reachM: 0.08 });
       }
     }
   };
@@ -12401,6 +12486,7 @@ const MERKAVA_PROFILE_DATA = {
     // Whips on the warped ref columns: left x -0.855 @ z -2.96 (top 3.42),
     // right x 0.795 @ z -2.38 (top 3.44).
     antennas: [{ x: -0.845, y: 2.40, z: -2.96, h: 1.03, stem: 0.35 }, { x: 0.795, y: 2.40, z: -2.38, h: 1.05, stem: 0.35 }],
+    potArms: [{ x0: 1.06, x1: 1.345, y: 2.38, z: -0.80 }, { x0: 1.06, x1: 1.345, y: 2.38, z: -1.25 }],  // shoulder-bin supports (2026-10-19)
     pots: [
       { x: 0.785, z: -2.545, top: 2.628, base: 2.38, w: 0.05, d: 0.10 },  // whip-can pot band (side 2.631 @ -2.52..-2.57)
       { x: -0.855, z: -2.96, top: 2.772, base: 2.40, w: 0.04, d: 0.05 },  // left whip feather col (front 2.772; p95 spike #3)
@@ -12491,6 +12577,7 @@ const MERKAVA_PROFILE_DATA = {
   // whips -2.85/-2.27 tops 4.83/4.91 with 3.0 pot bands beside them.
   merkava2b: {
     ...MK12_GEAR, sourceOracleTurret: true,
+    sternDoorFill: true, // stern doors close up to the bays (owner float sweep 2026-10-19)
     turretScale: { y: 0.80 },
     bodyTrackClear: { hw: 1.06, y: 1.28 },
     deckY: 1.68, rearDeckZ: -2.55,
@@ -12523,6 +12610,8 @@ const MERKAVA_PROFILE_DATA = {
     podX: 0.62, podIn: -0.42, podY: 0.98, podSupport: true,
     fenderPlank: { x0: 1.40, x1: 1.80, z0: 2.94, z1: -4.02, y: 1.47 },
     fenderLip: { x: 1.84, w: 0.07, z0: 2.42, z1: -3.58, y: 1.22 },
+    // the skirt run hangs from the plank between the wheel stations (lipHangerZ, 2026-10-19)
+    lipHangerZ: [2.2, 1.32, 0.46, -0.40, -1.26, -2.12, -3.0],
     wheelZs: [1.75, 0.89, 0.03, -0.83, -1.69, -2.55],
     sprocket: { z: 2.52, y: 0.82, r: 0.29 }, idler: { z: -3.17, y: 0.70, r: 0.27 },
     runningGearRevision: 'terminal-course-reseat-r3',
@@ -12619,6 +12708,8 @@ const MERKAVA_PROFILE_DATA = {
     podX: 0.62, podIn: 0.0, podY: 0.98,
     fenderPlank: { x0: 1.40, x1: 1.80, z0: 2.94, z1: -4.00, y: 1.47 },
     fenderLip: { x: 1.84, w: 0.07, z0: 2.42, z1: -3.58, y: 1.22 },
+    // the skirt run hangs from the plank between the wheel stations (lipHangerZ, 2026-10-19)
+    lipHangerZ: [2.2, 1.32, 0.46, -0.40, -1.26, -2.12, -3.0],
     wheelZs: [1.75, 0.89, 0.03, -0.83, -1.69, -2.55],
     sprocket: { z: 2.52, y: 0.82, r: 0.29 }, idler: { z: -3.17, y: 0.70, r: 0.27 },
     runningGearRevision: 'terminal-course-reseat-r3',
@@ -12626,8 +12717,9 @@ const MERKAVA_PROFILE_DATA = {
     sprocketForwardM: 0.47, sprocketRaiseM: 0.28,
     rollers: [1.35, 0.5, -0.4, -1.3, -2.15],
     skirt: { z0: 2.46, z1: -2.65, top: 1.14, bot: 0.62, scallop: true, x: 1.83, idlerFlapDz: 0.24 },
-    markerRods: { x: 1.76, y: 1.62, z: -3.50, h: [0.93, 0.89] },
-    hullPosts: [{ x: -0.60, z: 2.85, top: 2.33, base: 1.60 }],
+    markerRods: { x: 1.76, y: 1.62, z: -3.50, h: [0.93, 0.89], mountX: 1.68 },
+    // 2026-10-19 (owner float sweep): the bow post's foot stood 153 mm over the glacis tiles (base 1.60); it reaches them
+    hullPosts: [{ x: -0.60, z: 2.85, top: 2.33, base: 1.395 }],
     tailRack: {
       z0: -3.60, z1: -4.06, top: 1.58, bot: 0.55, hw: 1.70, x0: 0.35,
       frontClear: { z: -3.76, bot: 1.12 },
@@ -12754,6 +12846,7 @@ const MERKAVA_PROFILE_DATA = {
     // §B5-r2: per-bin tiers on the ref bottom line, tops under the wrap
     // shell (see the 3B cornerCurtain note).
     cornerCurtain: [[-3.66, 0.278, 0.290, 0.50], [-4.00, 0.34, 0.362, 0.50], [-4.07, 0.365, 0.46, 0.50], [-4.14, 0.415, 0.62, 0.50]],
+    cornerRail: [[-3.645, 0.284], [-4.00, 0.351], [-4.29, 0.495]],
     // r7 float law (see 3B roofSpine note): fwd half vacates the rod-float
     // sky zone; front x +-0.40 cols keep the 2.53 top (z-agnostic).
     roofSpine: { z0: -1.28, zR: -1.46, z1: -1.99, hw: 0.40, top: 2.53 },
@@ -12959,7 +13052,9 @@ const MERKAVA_PROFILE_DATA = {
     // to a render-real ±0.03 spread (the r4 ±0.02 rendered 1-3% — the
     // critic's 48.3 px metronome; jitter now 16-33% of the arch height).
     skirt: { z0: [2.32, 2.24], z1: -3.81, top: 1.36, bot: 0.63, scallop: false, x: 1.833, flush: true,
-      cutHem: true, archH: 0.19, lobeBot: 0.64, lintelBot: 0.652, lobeIn: 0.016, round: true,
+      // 2026-10-19 (owner float sweep): the hem lobes/lintels stood 9-10 mm outboard of the plate's tucked hem (lobeIn
+      // 0.016) and hung free; at 0.005 they meet it. hangX: the run's hangers start on the sponson side (x 1.70).
+      cutHem: true, archH: 0.19, lobeBot: 0.64, lintelBot: 0.652, lobeIn: 0.005, round: true, hangX: 1.70,
       lintelJit: [0.012, -0.030, 0.018, -0.024, 0.032, -0.014], soft: true,
       // r12 §B4: in-band backer walls/run filler clamp clear of both wrap
       // rings; the idler flap steps 7 cm rearward off the wrap's rear face.
@@ -13299,6 +13394,7 @@ const MERKAVA_PROFILE_DATA = {
   // capped; the MG253 is modelled short (4.29 vs L/44 true 4.74) —
   // wholeCurves coverage cap.
   merkava4b: {
+    sternDoorFill: true, // stern doors close up to the bays (owner float sweep 2026-10-19)
     // The source-oracle shell was rejected at the paired-view gate: despite
     // matching component bounds it read as a tall solid pyramid and erased
     // the Mk.4B's low undercut/profile.  The independently-authored swept
@@ -13375,7 +13471,8 @@ const MERKAVA_PROFILE_DATA = {
         { x0: 0.60, x1: 1.10, z1: -3.88, top: 1.47, bot: 1.20 },
       ],
     },
-    hullPosts: [{ x: -0.62, z: 3.52, top: 1.20, base: 1.00 }],
+    // 2026-10-19 (owner float sweep): the post stood 86 mm proud of the bow face; brace: a strap back to it (z 3.41)
+    hullPosts: [{ x: -0.62, z: 3.52, top: 1.20, base: 1.00, brace: 3.41 }],
     pivotZ: -0.55,
     turretStyle: 'mod',
     // The supplied Mk.4B oracle carries the compact MG253 gun run. Preserve

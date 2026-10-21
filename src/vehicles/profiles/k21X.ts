@@ -255,7 +255,7 @@ function addK21HullSides(P: TankBuilderPort): void {
                         equipment(P, 'hull', 'Detail', box(.012, .022, .031), side * 1.738, y, z + dz);
                     }
         }
-        P.addMudguard(`k21-front-${side}`, 'hullRubber', box(.45, .28, .036), side * 1.235, 1.10, 3.29, -.23);
+        P.hangMudguard(`k21-front-${side}`, 'hullRubber', box(.45, .28, .036), side * 1.235, 1.10, 3.29, -.23);
         rearFender(P, side);
         // Source Object_20 rear stowage cases rake with the hull rear wall.
         // Preserve the exposed rear face; extend only the hidden receiver face
@@ -264,7 +264,8 @@ function addK21HullSides(P: TankBuilderPort): void {
         const caseY = 1.6608 + .006 * Math.sin(-caseAngle), caseZ = -3.7183 + .006 * Math.cos(caseAngle);
         equipment(P, 'hull', 'Detail', box(.302, .392, caseDepth), side * 1.04785, caseY, caseZ, caseAngle);
         for (const z of [-3.27, -2.65, 1.60]) {
-            const y = z < 0 ? 1.912 : 2.079;
+            // 2026-10-19 (owner float sweep): the bow tie-down bar stood 93 mm above the flat roof; now on it.
+            const y = z < 0 ? 1.912 : 1.984;
             equipment(P, 'hull', 'Detail', box(.16, .045, .035), side * 1.35, y, z);
         }
     }
@@ -319,8 +320,10 @@ function buildK21Hull(P: TankBuilderPort): void {
     frontLampHoods(P);
     frontLampReceivers(P);
     hatch(P, 'hull', -.69, 2.005, .93, .35);
+    // 2026-10-19 (owner float sweep): the outer periscopes stood 29 mm above the roof (only the middle one sits on
+    // the hatch ring); they now sit on the roof.
     for (const x of [-1.01, -.69, -.37])
-        optic(P, 'hull', x, 2.05, 1.28, .21, .09, .08);
+        optic(P, 'hull', x, x === -.69 ? 2.05 : 2.021, 1.28, .21, .09, .08);
     panel(P, 'hull', .725, 2.022, 1.695, .67, .93, .042, .085, -.13);
     bowTowFittings(P);
     bowFascia(P);
@@ -328,7 +331,8 @@ function buildK21Hull(P: TankBuilderPort): void {
     // Object_6's actual rear hatch has a low stepped rim and clipped corners.
     panel(P, 'hull', .0012, 1.9545, -3.09475, .9985, .6699, .007, .060);
     panel(P, 'hull', .0012, 1.9696, -3.09475, 1.0254, .6973, .0234, .072);
-    equipment(P, 'hull', 'Detail', box(.5669, .0215, .0235), -.0011, 1.99105, -3.47655);
+    // 2026-10-19 (owner float sweep): the hatch hinge bar stood 26 mm above the flat rear roof; now on it.
+    equipment(P, 'hull', 'Detail', box(.5669, .0215, .0235), -.0011, 1.9635, -3.47655);
     for (const side of [-1, 1])
         for (const z of [-3.3809, -2.9551]) {
             const x = side < 0 ? -.6170 : .6193;
@@ -371,7 +375,9 @@ function addBasket(P: TankBuilderPort): void {
             equipment(P, 'turret', 'Detail', box(.032, .032, .73), x, y, -2.082);
     }
     // Independently authored rounded bags/rolls from Object_20 envelope study.
-    for (const [x, y, z, w, h, d] of [[.602, 2.300, -2.062, .237, .482, .383], [-.601, 2.287, -2.071, .354, .447, .290],
+    // 2026-10-19 (owner float sweep): the left roll (x -.601) hung between floor bars 20 mm off the turret wall;
+    // it now leans on the wall (z -2.071 -> -2.049).
+    for (const [x, y, z, w, h, d] of [[.602, 2.300, -2.062, .237, .482, .383], [-.601, 2.287, -2.049, .354, .447, .290],
         [.130, 2.477, -2.029, .615, .320, .297], [-.006, 2.252, -2.231, 1.003, .324, .331],
         [-.116, 2.236, -1.905, .439, .319, .437], [.260, 2.247, -1.872, .374, .368, .402]]) {
         const g = new THREE.SphereGeometry(1, P.q ? 14 : 10, P.q ? 10 : 6).scale(w / 2, h / 2, d / 2);
@@ -448,8 +454,9 @@ function buildK21Turret(P: TankBuilderPort): void {
     // Object_22's actual 2.606 m datum so the narrow neck is visible.
     const sightProfile = [[0, 0], [.153, 0], [.150, .035], [.132, .075],
         [.159, .115], [.186, .175], [.201, .275], [.197, .375], [.165, .420], [0, .428]];
-    equipment(P, 'turret', 'Detail', new THREE.LatheGeometry(sightProfile.map(([r, y]) => new THREE.Vector2(r, y)), P.q ? 28 : 16), .711, 2.6112, -.166);
-    optic(P, 'turret', .711, 2.906, -.009, .18, .125, .075);
+    // 2026-10-19 (owner float sweep): the sight and its head stood 12 mm above the roof; now seated on it.
+    equipment(P, 'turret', 'Detail', new THREE.LatheGeometry(sightProfile.map(([r, y]) => new THREE.Vector2(r, y)), P.q ? 28 : 16), .711, 2.5977, -.166);
+    optic(P, 'turret', .711, 2.8925, -.009, .18, .125, .075);
     for (const x of [-.797, -.667, -.537]) {
         equipment(P, 'turret', 'Detail', box(.120, .066, .060), x, 2.666, -.126);
         equipment(P, 'turret', 'Glass', box(.095, .034, .010), x, 2.671, -.092);

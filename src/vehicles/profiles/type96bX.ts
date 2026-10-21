@@ -55,7 +55,7 @@ function addType96HullSides(P: TankBuilderPort): void {
                 for (const dz of [-.41, .41])
                     equipment(P, 'hull', 'Detail', box(.018, .020, .038), side * 1.728, 1.414, z + dz);
         }
-        P.addMudguard(`type96-front-${side}`, 'hullRubber', box(.57, .29, .033), side * 1.381, 1.315, 3.46, -.41);
+        P.addMudguard(`type96-front-${side}`, 'hullRubber', box(.57, .29, .033), side * 1.381, 1.235, 3.46, -.41); // bottom edge seated in the bow fender sheet
         P.addMudguard(`type96-rear-${side}`, 'hullRubber', box(.57, .32, .034), side * 1.381, 1.235, -3.42, .18);
         // These two bow fixtures are driving lamps, not crew optics.
         equipment(P, 'hull', 'Detail', box(.23, .13, .17), side * .98, 1.31, 2.96);
@@ -347,7 +347,18 @@ export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptio
     equipment(P, 'turret', 'Detail', cylY(.122, .122, .140, P.q ? 24 : 14), .897, 2.291, -.719);
     const s = TYPE96_GUNNER_SIGHT;
     optic(P, 'turret', s.x, s.y, s.z, s.w, s.h, s.d);
-    if (!options.boxSightOnGun) optic(P, 'turret', TYPE96_BOX_SIGHT.x, TYPE96_BOX_SIGHT.y, TYPE96_BOX_SIGHT.z, TYPE96_BOX_SIGHT.w, TYPE96_BOX_SIGHT.h, TYPE96_BOX_SIGHT.d);
+    if (!options.boxSightOnGun) {
+        optic(P, 'turret', TYPE96_BOX_SIGHT.x, TYPE96_BOX_SIGHT.y, TYPE96_BOX_SIGHT.z, TYPE96_BOX_SIGHT.w, TYPE96_BOX_SIGHT.h, TYPE96_BOX_SIGHT.d);
+        // 2026-10-19 (owner float sweep): this sensor stood 113 mm over the roof, resting only on the pitching mantlet boot;
+        // a bridge of two posts outboard of the boot and a crossbar under the housing carries it on the turret.
+        // 2026-10-21 (float-gaps 230): the bridge stands at the housing's front end (z 1.665..1.735), not mid-housing: there
+        // the crossbar hid the boot's shoulders from above at full elevation (type96GunOwnership.selftest.mjs; the shoulder
+        // line crosses it at z 1.50..1.65 over -7..14 degrees) and nearly met the boot's rising rear at full depression.
+        // (A box sight riding the boot, boxSightOnGun, needs no bridge: it pitches with the gun.)
+        for (const side of [-1, 1])
+            equipment(P, 'turret', 'Detail', box(.06, .25, .07), side * .30, 2.12, 1.70);
+        equipment(P, 'turret', 'Detail', box(.66, .03, .07), 0, 2.23, 1.70);
+    }
     // Object_12's mast is supported by a finite stem and two square collars.
     // Retain the original upper rod; the omitted lower stock caused a real
     // 173 mm air gap to the native turret roof, not a comparison artifact.
@@ -405,8 +416,9 @@ export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptio
  * (chinaDonorTurretKit.ts type96SightPlinth): the footprint 20 mm inside the housing's sides, front and rear, the
  * underside 6 mm into the roof, the top 2 mm into the housing's floor. The roof there is the plane between the -.40 and
  * .64 stations (level across, falling 50 mm forward), so the two end sections carry it exactly. Called by the fleet
- * builder only: the turret's other users keep their own seats. */
-function addType96GunnerSightPlinth(P: TankBuilderPort): void {
+ * builder and the Sino-Soviet concepts (2026-10-21, float-gaps 230: their reused turrets drew the housing 60 mm over
+ * the roof with nothing under it); the Kunlun and Yun keep their own seats. */
+export function addType96GunnerSightPlinth(P: TankBuilderPort): void {
     const s = TYPE96_GUNNER_SIGHT, [a, b] = [TYPE96_TURRET_STATIONS[2], TYPE96_TURRET_STATIONS[3]];
     const roof = (z: number) => a[6] + (b[6] - a[6]) * (z - a[0]) / (b[0] - a[0]);
     const x0 = s.x - s.w / 2 + .02, x1 = s.x + s.w / 2 - .02, top = s.y - s.h / 2 + .002;

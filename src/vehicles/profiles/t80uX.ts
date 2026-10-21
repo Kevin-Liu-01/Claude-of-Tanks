@@ -107,7 +107,9 @@ function engineDeck(P:TankBuilderPort):void {
   for(let i=0;i<13;i++)P.addEquipment('hullDark',box(1.759,.006,.014),0,1.615,-3.045+i*.041);
   for(const side of [-1,1]) {
     P.addEquipment('hullDetail',box(.494,.052,1.388),side*1.35,1.516,-2.043);
-    for(const z of [-2.884,-2.10,-1.04,.32,1.73])P.addEquipment('hullDetail',box(.568,.029,.079),side*1.364,1.507,z);
+    // 2026-10-19 (owner float sweep): the tread strips kept one flat seat over the bowed fender and stood 20-82 mm over
+    // it at the ends and the middle; each drops onto the fender.
+    for(const z of [-2.884,-2.10,-1.04,.32,1.73])P.snapGroup('t80u-fender-strip',()=>P.addEquipment('hullDetail',box(.568,.029,.079),side*1.364,1.507,z),{reachM:.10,mode:'down'});
     for(const z of [-2.855,-2.61]) {
       P.addEquipment('hullDetail',box(.118,.016,.021),side*.346,1.646,z);
       for(const dx of [-.053,.053])P.addEquipment('hullDetail',box(.014,.05,.021),side*.346+dx,1.629,z);
@@ -135,9 +137,11 @@ function glacisEra(P:TankBuilderPort):void {
     });
     P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.0735,.074,24),'headlight'),side*.8475,1.28473,2.62253);
     for(const dx of [-.066,.066])P.addEquipment('hullDetail',beamBetween([side*.8475+dx,1.199,2.60],[side*.8475+dx,1.346,2.67],.0108));
-    P.addEquipment('hullDetail',beamBetween([side*.8475-.067,1.366,2.557],[side*.8475+.067,1.366,2.557],.010));
+    // 2026-10-19 (owner float sweep): the guard's cross bar ran 90 mm behind its uprights' tops; it now joins them.
+    P.addEquipment('hullDetail',beamBetween([side*.8475-.067,1.346,2.67],[side*.8475+.067,1.346,2.67],.010));
   }
-  P.addEquipment('hullDetail',box(.79994,.022,.089),0,1.216,2.7015,.42);
+  // 2026-10-19 (owner float sweep): the splash strip stood 16 mm over the ERA sheet (y 1.216); seated 2 mm in.
+  P.addEquipment('hullDetail',box(.79994,.022,.089),0,1.199,2.7015,.42);
 }
 
 function casting(P:TankBuilderPort):void {
@@ -196,7 +200,8 @@ function roofEquipment(P:TankBuilderPort):void {
   sight(P,'turretDark',box(.248,.074,.018),-.7565,2.111,.740);
   onTurret(P,'turretDetail',cylZ(.1935,.150,28),.5355,1.756,1.439);
   onTurret(P,'turretDetail',box(.095,.065,.095),.5355,1.586,1.394);
-  onTurret(P,'turretDetail',box(.058,.042,.064),.772,1.740,1.623);
+  // 2026-10-19 (owner float sweep): the small sensor block stood 78 mm ahead of the sight drum; it is seated on it.
+  P.snapGroup('t80u-sight-block',()=>onTurret(P,'turretDetail',box(.058,.042,.064),.772,1.740,1.623),{reachM:.09});
 }
 
 function smoke(P:TankBuilderPort):void {
