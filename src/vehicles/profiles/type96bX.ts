@@ -279,11 +279,13 @@ const TYPE96_GUNNER_SIGHT = { x: .649, y: 2.436, z: .36, w: .51, h: .214, d: .28
  * boot, its flat bottom 2 mm into the boot's highest point under it and a saddle whose underside follows the boot's top
  * 1-5 mm in filling the rest, so the sight pitches with the gun it lays and never meets the boot at any pitch (the
  * boot, saddle and sight go through add() into the same mantlet buckets, so the part census sees the seat).
- * bootFloor clips the pitching mantlet boot's underside at each of its six stations (source-frame heights, null for
+ * `bootFloor` clips the pitching mantlet boot's underside at each of its six stations (source-frame heights, null for
  * none) so the boot clears the hull it is carried over through the whole traverse and pitch range; without it the
- * boot keeps Object_6's measured underside. */
-export interface Type96TurretOptions { mastTopY?: number; bins?: boolean; smoke?: boolean; bootHeel?: boolean; boxSightOnGun?: boolean;
-    bootFloor?: readonly (number | null)[] }
+ * boot keeps Object_6's measured underside (applied after `bootHeel`, where both are given). */
+export interface Type96TurretOptions {
+    mastTopY?: number; bins?: boolean; smoke?: boolean; bootHeel?: boolean; boxSightOnGun?: boolean;
+    bootFloor?: readonly (number | null)[];
+}
 
 // The box sight over the mantlet (Type 96B source frame): centre, width, height, depth.
 const TYPE96_BOX_SIGHT = { x: 0, y: 2.278, z: 1.540, w: .25, h: .236, d: .396 } as const;
@@ -374,8 +376,7 @@ export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptio
     // Object_6 is the pitching mantlet boot; the tube and ambiguous Object_11
     // collar remain in recoil. This changes ownership only, not neutral stock.
     // (with the box sight riding it, the boot and the sight go through add(): the same mantlet bucket, and the part census
-    // sees the seat)
-    // A clipped underside is a flat run of contour points: its caps keep every one.
+    // sees the seat; a clipped underside is a flat run of contour points: its caps keep every one)
     const bootGeometry = options.bootFloor ? sectionSolid(boot, { preserveCapBoundary: true }) : sectionSolid(boot);
     if (options.boxSightOnGun) { P.add('gunMount', bootGeometry); addBoxSightOnBoot(P, bootGeometry, boot.map((r) => r.z)); }
     else P.addGunExtra(bootGeometry);
