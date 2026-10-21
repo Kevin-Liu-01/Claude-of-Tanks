@@ -1621,6 +1621,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/civic/civicPlans.selftest.mjs',
     'src/world/civic/civicFurniture.selftest.mjs',
     'src/world/civic/civicArea.selftest.mjs',
+    'src/world/civic/roadLife.selftest.mjs', // (229) every map's road life: at its seats, out of the discs, no new pool, stream-neutral
     'src/world/civic/civicPathways.selftest.mjs',
     'src/world/maps/wellKit.selftest.mjs', // 2026-10-13 the looks lane: each place's village well and square monument
     'src/world/propsTextureRows.selftest.mjs',
