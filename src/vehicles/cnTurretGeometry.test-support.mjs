@@ -382,13 +382,14 @@ function posed(T, M) {
  * steps) — `crossings` (must be 0) and `bearing` (its closest approach: the receiver bears on the cradle floor).
  * `wholeRecoil` recoils the whole pitch group `travel` (the pre-round-4 runtime: a negative control). `station` is the
  * fitting root (its yaw owner), `pitch` its auxiliaryWeaponPitch; both world-placed. */
-export function stationSelfClearance(station, pitch, { depression, elevation, step = .5 * Math.PI / 180, h = .004, travel, wholeRecoil = false, cap = .008 } = {}) {
+export function stationSelfClearance(station, pitch, { depression, elevation, step = .5 * Math.PI / 180, h = .004, travel, wholeRecoil = false, cap = .008, meshes = () => true } = {}) {
   const sInv = new THREE.Matrix4().copy(station.matrixWorld).invert(), pInv = new THREE.Matrix4().copy(pitch.matrixWorld).invert();
   const recoilGroup = pitch.getObjectByName('auxiliaryWeaponRecoil') ?? null;
   const stroke = travel ?? (recoilGroup ? Number(station.userData.auxiliaryRecoilM) : .025);
   const under = (o, g) => { for (let q = o; q; q = q.parent) if (q === g) return true; return false; };
   const cradleMeshes = [], gunMeshes = [], yawMeshes = [];
-  station.traverse((o) => { if (!o.isMesh) return; if (!under(o, pitch)) yawMeshes.push(o); else if (recoilGroup && under(o, recoilGroup) && !wholeRecoil) gunMeshes.push(o); else (recoilGroup && !wholeRecoil ? cradleMeshes : gunMeshes).push(o); });
+  // `meshes` (release 229, the fleet's working pintles): which of the station's meshes to measure (default all)
+  station.traverse((o) => { if (!o.isMesh || !meshes(o)) return; if (!under(o, pitch)) yawMeshes.push(o); else if (recoilGroup && under(o, recoilGroup) && !wholeRecoil) gunMeshes.push(o); else (recoilGroup && !wholeRecoil ? cradleMeshes : gunMeshes).push(o); });
   // with no recoil group (or the whole-group control) everything under the pitch group recoils: it is all "gun"
   const C = meshTriangles(cradleMeshes, pInv), G = meshTriangles(gunMeshes, pInv), Y = meshTriangles(yawMeshes, sInv);
   const rest = pitch.position.clone(), v = new THREE.Vector3();
