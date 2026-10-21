@@ -85,12 +85,6 @@
    "date": "2026-10-16",
    "cause": "Inherited: 1.61 L in 11 gap(s) at the 226 freeze (57600d613) and the same at the final 226 gate (4edd0e686); the shipped interior fills leave the body open to the deep interior. Largest gap 0.38 L at (-0.45, 1.17, 3.5) near hullTrackLinks, hullDetail. The 227 fills regen (--rounds=8 --min-fine=1) or a geometry fix closes it; delete the row once it holds water."
   },
-  "t72b3m_hetman": {
-   "leakL": 0.19,
-   "owner": "VEHICLES",
-   "date": "2026-10-16",
-   "cause": "Inherited: 0.19 L in 3 gap(s) at the 226 freeze (57600d613) and the same at the final 226 gate (4edd0e686); the shipped interior fills leave the body open to the deep interior. Largest gap 0.08 L at (-1.09, 1.39, 3.27) near hull. The 227 fills regen (--rounds=8 --min-fine=1) or a geometry fix closes it; delete the row once it holds water."
-  },
   "t72b3m_hetman_ii": {
    "leakL": 0.19,
    "owner": "VEHICLES",
