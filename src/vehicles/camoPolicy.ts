@@ -521,8 +521,11 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'desert', base: '#b09466', weather: '#c4ad7d', patches: ['#7a5f43', '#947c52', '#cbb489'], camoScale: 0.52 }),
   preset('sig_merkava3c', 'merkava3c', signatureTags('il', 'desert', 'digital'),
     { scheme: 'digital', base: '#a8905f', weather: '#b59d6d', patches: ['#c6b487', '#7a6041', '#57503f'], camoScale: 0.42, digitalCellK: 1.5 }),
+  // Art fixes 230 (2026-10-21; hero-card critic: "a light-blue sawtooth band runs the length of the hull side. It looks
+  // like a texture glitch"): the Caunter slate patch #68757d (blue-grey) is the same-luminance Sinai olive-grey #76735f.
+  // Same preset, scheme and default selection (R113); camoProductionBaseline.json re-pins its two rows.
   preset('sig_merkava3d', 'merkava3_baz', signatureTags('il', 'desert', 'stripes'),
-    { scheme: 'caunter', base: '#b49a7d', weather: '#c2a98a', patches: ['#68757d', '#5c5442'], camoScale: 0.46 }),
+    { scheme: 'caunter', base: '#b49a7d', weather: '#c2a98a', patches: ['#76735f', '#5c5442'], camoScale: 0.46 }),
   preset('sig_merkava4b', 'merkava4b', signatureTags('il', 'desert', 'geometric'),
     { scheme: 'hexfield', base: '#827f6a', weather: '#918d77', patches: ['#5f6254', '#aaa287'], camoScale: 0.38 }),
   // Stock Israeli liveries; the plain delivery color remains separately selectable.
