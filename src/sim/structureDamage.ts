@@ -131,7 +131,7 @@ export interface StructureState {
 }
 
 /** One blow, as the caller saw it (where, which way, what made it). */
-export interface StructureBlow {
+interface StructureBlow {
   cause: DestructionCause;
   munition: MunitionClass | null;
   x: number;
@@ -148,7 +148,7 @@ export interface StructureBlow {
   sourceId?: string | null;
 }
 
-export interface StructureDamageOptions {
+interface StructureDamageOptions {
   /** Multiplies every structure point dealt (the ruleset's structureDamageScale). */
   damageScale?: number;
   /** The map's house walls (structureMaterial.ts wallMaterialForMap; masonry when absent). */
@@ -337,7 +337,7 @@ const TOP_HEAVY_SECTION = 1.5;
 const TOP_HEAVY_SHARE = 0.25;
 const TOP_HEAVY_MAX = 2;
 /** The points factor a slender masonry or concrete body takes over the volume law (1 for every other). */
-export function slenderMasonryFactor(material: StructureMaterial, slenderness: number, topHeavy = false): number {
+function slenderMasonryFactor(material: StructureMaterial, slenderness: number, topHeavy = false): number {
   if (material !== 'masonry' && material !== 'concrete') return 1;
   return Math.min(topHeavy ? TOP_HEAVY_MAX : SLENDER_MAX, 1 + SLENDER_RATE * Math.max(0, slenderness - SLENDER_FROM));
 }

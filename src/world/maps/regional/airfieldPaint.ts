@@ -11,7 +11,7 @@ const NUMBER_WHITE = rgb(0xe8e6de);
  * A painted numeral on a face: seven-segment strokes of paint, `h` tall with its foot at y, centred at u, `o` out from
  * the face (dressing), in one opaque paint (where two strokes meet they share the colour).
  */
-export function paintedNumeral(sink: PartSink, face: Face, u: number, y: number, h: number, digit: number, colour: Rgb, o = 0.05): void {
+function paintedNumeral(sink: PartSink, face: Face, u: number, y: number, h: number, digit: number, colour: Rgb, o = 0.05): void {
   const w = h * 0.55, t = h * 0.12;
   const seg: Record<string, [number, number, number, number]> = {
     a: [u, y + h - t / 2, w, t], d: [u, y + t / 2, w, t], g: [u, y + h / 2, w, t],

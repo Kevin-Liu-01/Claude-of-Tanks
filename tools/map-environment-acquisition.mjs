@@ -38,44 +38,49 @@ export function requireTimingPhaseOwnership(receipt, phase, mapId) {
   }
 }
 
-/** Match the production archive's recurring pair, not its one-off boot pair. */
+/** Match the production slideshow's recurring image (the second of Verdant's rotation), not its boot image. */
 export function selectTimingArchiveTarget(featuredShots) {
-  const shots = featuredShots.filter(shot => shot.maps?.length).slice(0, 6);
-  const target = { primary: shots[1]?.img, secondary: shots[0]?.img };
-  if (Object.values(target).some(source => typeof source !== 'string' || !source.startsWith('/media/'))
-      || target.primary === target.secondary) throw new Error('Missing canonical Garage archive pair');
+  const shots = featuredShots.filter(shot => shot.maps?.length);
+  const target = { primary: shots[1]?.img };
+  if (typeof target.primary !== 'string' || !target.primary.startsWith('/media/')
+      || target.primary === shots[0]?.img) throw new Error('Missing canonical Garage archive image');
   return target;
 }
 
-/** Browser predicate: wait for the actual producer, never for stable counts. */
+/**
+ * Browser predicate: wait for the actual producer, never for stable counts. Garage r9 keeps one slideshow panel whose
+ * stills are decoded to 1024 x 576 (an ImageBitmap or a canvas), so the source comes from the texture's own record.
+ */
 export function captureTimingGarageArchive(target, waitForDeparture = false) {
   const root = window.__DEBUG.garageDressing.group;
   const data = root.userData;
-  const names = ['garage_battle_archive_screen', 'garage_battle_archive_screen_secondary'];
-  const sources = [data.battleScreenCurrentImage, data.battleScreenSecondaryImage];
-  const screens = names.map((name, index) => {
-    const uniforms = root.getObjectByName(name)?.material?.uniforms;
-    if (!uniforms?.uImageA || !uniforms.uImageB || !uniforms.uTransition) {
-      throw new Error(`Missing Garage archive producer: ${name}`);
+  const name = 'garage_slideshow_screen';
+  const uniforms = root.getObjectByName(name)?.material?.uniforms;
+  if (!uniforms?.uImageA || !uniforms.uImageB || !uniforms.uTransition) {
+    throw new Error(`Missing Garage archive producer: ${name}`);
+  }
+  const texture = uniforms.uImageA.value;
+  const image = texture?.image;
+  const width = image?.naturalWidth || image?.width || 0;
+  const height = image?.naturalHeight || image?.height || 0;
+  const recorded = texture?.userData?.archiveSource;
+  let screen = null;
+  if (texture?.isTexture && !texture.isDataTexture && texture === uniforms.uImageB.value
+      && uniforms.uTransition.value === 0 && image && image.complete !== false
+      && width > 1 && height > 1 && typeof recorded === 'string') {
+    const source = new URL(recorded, window.location.href).pathname;
+    if (source === data.battleScreenCurrentImage) {
+      screen = { name, source, width, height,
+        format: texture.format, type: texture.type, minFilter: texture.minFilter,
+        magFilter: texture.magFilter, generateMipmaps: texture.generateMipmaps,
+        colorSpace: texture.colorSpace, anisotropy: texture.anisotropy,
+        transition: 0, pairedUniforms: true };
     }
-    const texture = uniforms.uImageA.value;
-    const image = texture?.image;
-    if (!texture?.isTexture || texture.isDataTexture || texture !== uniforms.uImageB.value
-        || uniforms.uTransition.value !== 0 || image?.complete !== true
-        || !(image.naturalWidth > 1 && image.naturalHeight > 1)) return null;
-    const source = new URL(image.currentSrc || image.src, window.location.href).pathname;
-    if (source !== sources[index]) return null;
-    return { name, source, width: image.naturalWidth, height: image.naturalHeight,
-      format: texture.format, type: texture.type, minFilter: texture.minFilter,
-      magFilter: texture.magFilter, generateMipmaps: texture.generateMipmaps,
-      colorSpace: texture.colorSpace, anisotropy: texture.anisotropy,
-      transition: 0, pairedUniforms: true };
-  });
-  if (data.battleScreenDisplayCount !== 2 || data.battleScreenResidentImageCount !== 2
-      || screens.some(screen => !screen) || sources[0] !== target.primary
-      || sources[1] !== target.secondary) return waitForDeparture ? true : null;
+  }
+  if (data.battleScreenDisplayCount !== 1 || data.battleScreenResidentImageCount !== 1
+      || !screen || screen.source !== target.primary) return waitForDeparture ? true : null;
   if (waitForDeparture) return null;
-  return { protocol: 'decoded-canonical-archive-v1', displayCount: 2, residentImageCount: 2, screens };
+  return { protocol: 'decoded-canonical-archive-v2', displayCount: 1, residentImageCount: 1, screens: [screen] };
 }
 
 /** Observe a natural noncanonical→canonical edge, not an unknown-age hold. */
@@ -139,7 +144,7 @@ export function warmTimingGarage({ archive, timeoutMs = 30000 } = {}) {
     const uniforms = root.getObjectByName(screen.name).material.uniforms;
     return { uniforms, texture: uniforms.uImageA.value };
   });
-  const archiveUnchanged = () => root.userData.battleScreenResidentImageCount === 2
+  const archiveUnchanged = () => root.userData.battleScreenResidentImageCount === 1
     && monitors.every(({ uniforms, texture }) => uniforms.uImageA.value === texture
       && uniforms.uImageB.value === texture && uniforms.uTransition.value === 0);
   const original = post.render;
@@ -478,29 +483,27 @@ export function requireTimingGarageSetup(setup) {
 }
 
 function requireTimingGarageArchive(archive, target) {
-  const names = ['garage_battle_archive_screen', 'garage_battle_archive_screen_secondary'];
-  const sources = [target?.primary, target?.secondary];
-  if (archive?.protocol !== 'decoded-canonical-archive-v1' || archive.displayCount !== 2
-      || archive.residentImageCount !== 2 || archive.screens?.length !== 2
-      || sources.some(source => typeof source !== 'string' || !source.startsWith('/media/'))
-      || sources[0] === sources[1]) throw new Error('Invalid canonical Garage archive receipt');
-  for (let index = 0; index < 2; index++) {
-    const screen = archive.screens[index];
-    if (screen.name !== names[index] || screen.source !== sources[index]
-        || screen.transition !== 0 || screen.pairedUniforms !== true
-        || typeof screen.generateMipmaps !== 'boolean' || typeof screen.colorSpace !== 'string') {
-      throw new Error('Invalid decoded Garage archive screen');
-    }
-    for (const key of ['width', 'height', 'format', 'type', 'minFilter', 'magFilter', 'anisotropy']) {
-      if (!Number.isInteger(screen[key]) || screen[key] < (key === 'width' || key === 'height' ? 2 : 1)) {
-        throw new Error(`Invalid Garage archive capacity: ${key}`);
-      }
+  const source = target?.primary;
+  if (archive?.protocol !== 'decoded-canonical-archive-v2' || archive.displayCount !== 1
+      || archive.residentImageCount !== 1 || archive.screens?.length !== 1
+      || typeof source !== 'string' || !source.startsWith('/media/')) {
+    throw new Error('Invalid canonical Garage archive receipt');
+  }
+  const screen = archive.screens[0];
+  if (screen.name !== 'garage_slideshow_screen' || screen.source !== source
+      || screen.transition !== 0 || screen.pairedUniforms !== true
+      || typeof screen.generateMipmaps !== 'boolean' || typeof screen.colorSpace !== 'string') {
+    throw new Error('Invalid decoded Garage archive screen');
+  }
+  for (const key of ['width', 'height', 'format', 'type', 'minFilter', 'magFilter', 'anisotropy']) {
+    if (!Number.isInteger(screen[key]) || screen[key] < (key === 'width' || key === 'height' ? 2 : 1)) {
+      throw new Error(`Invalid Garage archive capacity: ${key}`);
     }
   }
 }
 
 export function requireSameTimingGarageArchive(reference, current) {
-  const target = { primary: reference?.screens?.[0]?.source, secondary: reference?.screens?.[1]?.source };
+  const target = { primary: reference?.screens?.[0]?.source };
   requireTimingGarageArchive(reference, target);
   requireTimingGarageArchive(current, target);
   if (!identical(reference, current)) throw new Error('Timing Garage archive capacity changed');

@@ -59,7 +59,7 @@ export function proceduralPoleParts(post: { x: number; y: number; z: number }, y
 }
 
 /** The line's wires: one instanced ribbon pool, a thin cylinder per catenary segment of each side's conductor. */
-export interface UtilityWires {
+interface UtilityWires {
   readonly mesh: THREE.InstancedMesh;
   /** Re-lay the given spans (a pole fell or stood up again), or every span. */
   rebuild(indices?: readonly number[] | null): void;

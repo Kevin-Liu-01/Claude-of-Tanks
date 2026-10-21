@@ -55,7 +55,7 @@ export function munitionFromType(shellType: string | undefined, caliberMm: numbe
  * debris are coloured by). Until this every building broke as brick: a timber barn, an adobe ksar, a concrete block
  * and a stone church alike.
  */
-export type StructureSoundMaterial = 'brick' | 'stone' | 'timber' | 'concrete' | 'plaster' | 'steel';
+type StructureSoundMaterial = 'brick' | 'stone' | 'timber' | 'concrete' | 'plaster' | 'steel';
 export const STRUCTURE_SOUND_MATERIALS: readonly StructureSoundMaterial[] = Object.freeze(['brick', 'stone', 'timber', 'concrete', 'plaster', 'steel']);
 
 /** A fracture material (fx/structureFx.ts FRACTURE_BASE) as its walls sound; roofing, glass and canvas are not walls. */

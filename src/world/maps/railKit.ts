@@ -24,6 +24,7 @@ import { makeContainerRow } from './containerRowKit.ts';
 // (the gantry and the shed are rebuilt in their own file: maps/railYardR2.ts; the looks lane's r2 sweep, 2026-10-16)
 import { hallPlinth, hallSlab, makeGantry, makeShed } from './railYardR2.ts';
 import { terraceLayout, terraceUnits } from './terraceLayout.ts';
+import { tagLatticeReading, type LatticeReading } from './regional/lattice.ts';
 
 const gablePrism = (width: number, height: number, depth: number): THREE.BufferGeometry => (
   createGablePrism(width, height, depth, 0.5)
@@ -109,7 +110,7 @@ function worldBox(x0: number, y0: number, z0: number, x1: number, y1: number, z1
 
 /** A hole through a hall's wall: its centre along the wall (`at`: z on the ±x walls, x on the ±z walls), its width, sill
  *  and head. */
-export interface WallHole { at: number; w: number; y0: number; y1: number }
+interface WallHole { at: number; w: number; y0: number; y1: number }
 
 /**
  * A rectangular hall's walls `t` thick round its core, the holes cut through them (props census #13 and #4, lane B
@@ -149,10 +150,10 @@ function cutWalls(out: THREE.BufferGeometry[], w: number, d: number, h: number, 
   wall('x', -w / 2 + t, w / 2 - t, -d / 2, -d / 2 + t, 'pz', holes.nz);
 }
 
-export type HallHoles = { px: WallHole[]; nx: WallHole[]; pz: WallHole[]; nz: WallHole[] };
+type HallHoles = { px: WallHole[]; nx: WallHole[]; pz: WallHole[]; nz: WallHole[] };
 /** A part a cut hall's opening holds (a pane, a shutter, a catalog plate): laid on the face as the old build laid it (the
  *  catalog pass reads it there) and moved to `offset` before the core's face by settleCatalogCuts. */
-export interface HallUnit { g: THREE.BufferGeometry; side: 'px' | 'nx' | 'pz' | 'nz'; offset: number }
+interface HallUnit { g: THREE.BufferGeometry; side: 'px' | 'nx' | 'pz' | 'nz'; offset: number }
 type HallSide = keyof HallHoles;
 const SIDE_OF = (b: THREE.Box3, w: number, d: number): HallSide | null => {
   const cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2;
@@ -897,6 +898,28 @@ export function makeTerrace(
   return { w: W, d: layout.d, h: wallH + roofH + 1.4 };
 }
 
+/**
+ * The gantry crane (railYardR2.ts makeGantry) with its frame carried on its parts (lane B, 2026-10-16, for 227; the anti-raft
+ * floor: it fell as the default kit's heap at its feet, 18-23 % of its height): its two A-frame leg towers' four legs from the
+ * runway to the crossheads, the cross members at a third and two thirds, the A-frames the braced faces, the bridge girder
+ * what stood on it — so it falls as its lattice (regional latticeFall.ts: the leg towers' lower bays standing, the girder
+ * down beyond them). The dimensions are makeGantry's own (its plot: the span plus 5 m, its height the legs' plus the
+ * girder's plus 0.8 m).
+ */
+function gantryFrame(rng: () => number, buckets: GeometryBuckets): StructureDimensions {
+  const dims = makeGantry(rng, buckets);
+  const span = dims.w - 5, legH = dims.h - 2.15;
+  const legs = ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as const).map(([sx, sz]) => ({
+    foot: [sx * span / 2, 0, sz * 1.7] as [number, number, number], head: [sx * span / 2, legH, sz * 1.7] as [number, number, number] }));
+  const reading: LatticeReading = {
+    legs, girts: [legH * 0.33, legH * 0.66, legH], size: 0.42, bucket: 'dark', colour: null, faces: [false, true, false, true],
+    crown: { x0: -span / 2 - 1.45, x1: span / 2 + 3.05, y0: legH, y1: legH + 1.35, z0: -0.75, z1: 0.75, bucket: 'dark', tint: [0.3, 0.3, 0.32] },
+  };
+  const dark = buckets.dark;
+  if (dark.length) { tagLatticeReading(dark[0], reading); tagLatticeReading(dark[dark.length - 1], reading); }
+  return dims;
+}
+
 /** Builders keyed by plan name — spread into URBAN_BUILDERS (props.ts
  * BUILDER_BY_NAME contract, see maps/urbanKit.ts). */
 export const RAIL_BUILDERS: Record<string, StructureBuilder> = {
@@ -904,7 +927,7 @@ export const RAIL_BUILDERS: Record<string, StructureBuilder> = {
   // the colliery colony's terraced rows (terraceLayout.ts; Cinder Junction)
   terrace: makeTerrace,
   containerRow: makeContainerRow,
-  gantry: makeGantry,
+  gantry: gantryFrame,
   watertower: makeWaterTower,
   stack: makeStack,
   shed: makeShed,

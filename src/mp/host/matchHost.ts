@@ -20,15 +20,15 @@ import type { CloseReasonId } from '../wire/constants.ts';
 import { HOST_LOOPBACK_PEER } from './hostProtocol.ts';
 import type { HostBootConfig, HostCoreStats, HostMatchReport, HostPort, HostToWorkerMessage, WorkerToHostMessage } from './hostProtocol.ts';
 
-export type MatchHostState = 'idle' | 'booting' | 'live' | 'stopped' | 'failed';
+type MatchHostState = 'idle' | 'booting' | 'live' | 'stopped' | 'failed';
 
-export interface MatchHostRoomPort {
+interface MatchHostRoomPort {
   signaler: Signaler;
   /** The host's report to the room (a `room_command`); rejections are logged, never fatal. */
   reportMatch(report: HostMatchReport): Promise<unknown>;
 }
 
-export interface MatchHostOptions {
+interface MatchHostOptions {
   playerId: string;
   /** The room's current host generation (the acceptor refuses offers for any other). */
   generation: () => number;
@@ -46,7 +46,7 @@ export interface MatchHostOptions {
   bootTimeoutMs?: number;
 }
 
-export interface MatchHostStats {
+interface MatchHostStats {
   state: MatchHostState;
   generation: number;
   peersConnected: number;

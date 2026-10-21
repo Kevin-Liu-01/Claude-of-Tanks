@@ -137,7 +137,7 @@ function channelMean(bytes, channel) {
 // thread); the volumes are baked and warm() runs once they are linked; without compileAsync it is warm() at once
 {
   const layer = Object.create(VolumetricCloudLayer.prototype);
-  const calls = [];
+  const calls = [], normals = [];
   let finishCompile = null;
   const renderer = {
     xr: { enabled: true }, toneMapping: THREE.ACESFilmicToneMapping, autoClear: true,
@@ -147,6 +147,7 @@ function channelMean(bytes, channel) {
     getContext: () => ({}), properties: { get: () => ({}) }, state: { bindTexture() {}, unbindTexture() {} },
     compileAsync: (scene) => {
       calls.push(['compile', scene.children.map((mesh) => mesh.material.name), renderer.toneMapping, renderer.xr.enabled]);
+      normals.push(scene.children.map((mesh) => !!mesh.geometry.getAttribute('normal')));
       return new Promise((resolve) => { finishCompile = resolve; });
     },
   };
@@ -167,6 +168,9 @@ function channelMean(bytes, channel) {
   ], 'every program the warm draws, and the volume bakes, submitted at the quad\'s variant (the tier first), the renderer restored');
   assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
   assert.equal(renderer.xr.enabled, true);
+  // 2026-10-19: each at the geometry it draws (HAS_NORMAL is in the program key): the passes through FullScreenQuad's
+  // normal-less triangle, the bakes through their plane
+  assert.deepEqual(normals[0], [false, false, false, false, true, true, true], 'the passes link without normals, the bakes with theirs');
   assert.equal(layer.warmAsync(), pending, 'one link in flight');
   layer.beforeSceneRender(renderer, {}, 0.016, 4, 4);
   assert.equal(layer.dome.visible, false, 'nothing draws while the programs link (a draw would read their link synchronously)');
@@ -334,7 +338,7 @@ for (const id of MAP_IDS) {
   if (p.shearM > 0) assert.ok(p.shearM <= p.thicknessM * 2, `${id}: the lean is bounded by the slab`);
 }
 assert.deepEqual(table, {
-  verdant: { regime: 'fair-weather-cumulus', coverage: 0.36, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.45, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
+  verdant: { regime: 'fair-weather-cumulus', coverage: 0.51, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.45, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
   desert: { regime: 'cumulus-humilis', coverage: 0.14, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.5, farBand: 0.15, contrails: 2, rain: 0.3, virga: 0.85, fogBank: 0 },
   winter: { regime: 'stratocumulus-deck', coverage: 0.92, baseM: 700, thicknessM: 420, shadow: false, streets: 0.2, cirrus: 0, farBand: 0.6, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   // (2026-10-15: Steinburg's altocumulus, a broken 0.60 cell layer, moved to Verdant's cumulus — the coordinator's ruling)
@@ -355,7 +359,8 @@ assert.deepEqual(table, {
   monsoon: { regime: 'cumulonimbus-front', coverage: 0.4, baseM: 1000, thicknessM: 3000, shadow: true, streets: 0.1, cirrus: 0.25, farBand: 0.4, contrails: 0, rain: 0.85, virga: 0, fogBank: 0 },
   alpine: { regime: 'towering-cumulus', coverage: 0.26, baseM: 1900, thicknessM: 900, shadow: true, streets: 0, cirrus: 0.3, farBand: 0.5, contrails: 0, rain: 0.15, virga: 0.1, fogBank: 0 },
   caldera: { regime: 'cumulus-humilis', coverage: 0.22, baseM: 1500, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.45, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
-  foundry: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 850, thicknessM: 520, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  // (2026-10-18, the SKY lane's 228 census: Ironworks back on cumulus — the approved s146's lumpy cumulus over blue)
+  foundry: { regime: 'fair-weather-cumulus', coverage: 0.71, baseM: 1100, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   ruinspires: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1100, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0.25, virga: 0.6, fogBank: 0 },
   // (2026-10-15: Suzhou Creek's ash veil, a low broken cell deck, moved to Verdant's cumulus — the 10-13 ruling on every map)
   blackglass: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1250, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
@@ -373,7 +378,7 @@ assert.deepEqual(table, {
   whiteout: { regime: 'low-stratus', coverage: 1, baseM: 180, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   orchard: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.4, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
   longleaf: { regime: 'fair-weather-cumulus', coverage: 0.32, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.5, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0.3, virga: 0, fogBank: 0 },
-  mangrove: { regime: 'towering-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3, contrails: 0, rain: 0.45, virga: 0.1, fogBank: 0 },
+  mangrove: { regime: 'towering-cumulus', coverage: 0.5, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3, contrails: 0, rain: 0.45, virga: 0.1, fogBank: 0 },
   saltwind: { regime: 'sea-streets', coverage: 0.3, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.55, contrails: 0, rain: 0, virga: 0, fogBank: 0.35 },
   reservoir: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
   mars: { regime: 'thin-ice-clouds', coverage: 0.06, baseM: 2500, thicknessM: 400, shadow: false, streets: 0.2, cirrus: 0.45, farBand: 0, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
@@ -428,11 +433,19 @@ assert.deepEqual(table, {
   // so no base lumps and no cells)
   assert.deepEqual([titan.lumps, titan.cells, titan.deckLight], [0, 0, 0], 'titan: fair-weather cumulus, no deck structure');
   const foundry = deriveCloudLayerPreset(skyOf('foundry'));
-  assert.ok(foundry.regime === 'industrial-stratocumulus' && foundry.baseM === 850 && foundry.cells === 0.9 && foundry.deckLight === 1 && foundry.cirrus === 0, 'foundry: a low cellular industrial deck, no cirrus over it');
-  assert.ok(foundry.tint[0] > foundry.tint[2] && foundry.tint[0] > 0.75, 'foundry: the smog rides on the deck\'s base as a warm-grey albedo');
+  // (2026-10-18, the 228 census: Ironworks under fair-weather cumulus — no deck structure, its clouds cast their shadows;
+  // the smog keeps its warm-grey albedo on the cumulus)
+  assert.deepEqual([foundry.regime, foundry.cells, foundry.deckLight, foundry.shadow, foundry.baseM], ['fair-weather-cumulus', 0, 0, true, 1100], 'foundry: fair-weather cumulus, no deck');
+  assert.ok(foundry.tint[0] > foundry.tint[2] && foundry.tint[0] > 0.75, 'foundry: the smog rides on the cumulus as a warm-grey albedo');
   const railyard = deriveCloudLayerPreset(skyOf('railyard'));
   // (2026-10-16: Cinder Junction under hazy fair-weather cumulus everywhere — no deck structure, its clouds cast their shadows)
   assert.deepEqual([railyard.regime, railyard.cells, railyard.deckLight, railyard.shadow], ['fair-weather-cumulus', 0, 0, true], 'railyard: fair-weather cumulus, no deck');
+  // (2026-10-18, the s187 bisect) at sunset a deck keeps a grey albedo at the evening tint's level (Frosthollow's approved
+  // grey evening sheet); an evening cumulus keeps the warm tint on its sunward faces
+  const evening = (id) => deriveCloudLayerPreset({ ...skyOf(id), sunElevationDeg: 7, skyIntensity: 0.72, cloudTintHex: 0xeab492 });
+  const wEve = evening('winter'), vEve = evening('verdant');
+  assert.ok(wEve.tint[0] === wEve.tint[1] && wEve.tint[1] === wEve.tint[2] && wEve.tint[0] > 0.6, `winter at sunset: a grey deck albedo (${wEve.tint})`);
+  assert.ok(vEve.tint[0] > vEve.tint[2] + 0.2, `verdant at sunset: the warm evening cumulus (${vEve.tint})`);
   const urban = deriveCloudLayerPreset(skyOf('urban'));
   // (2026-10-15: Steinburg on Verdant's cumulus under the 10-13 ruling; the altocumulus row stays in the vocabulary, unused)
   assert.ok(urban.regime === 'fair-weather-cumulus' && urban.cells === 0, 'urban: fair-weather cumulus, no cell layer');
@@ -789,7 +802,7 @@ for (const term of ['uCirrus', 'halo', 'seaFogBank(', 'slabRain(', 'contrailDept
 // take the vertical depth over the point in its cell (by the lane's flatness), the ground's return at a deck's base is the
 // light the deck passes down (cloudGroundLight), not the map's ambient scale over the open sky's blue irradiance
 for (const term of ['vec2 cell = cl2Cell( p.xz, wLod );\n\t\t\tvec4 shell = cl2Shell( h, w, cell, hf );',
-  'float tauV = od * max( sunUp, 0.2 );', 'float deckK = dot( wgt, uLayerFlat ) * uDeckTune.x;', 'tauV = mix( tauV, tauUp, deckK );',
+  'float tauV = od * max( sunUp, 0.2 );', 'float deckK = dot( wgt, uLayerFlat ) * uDeckTune.x * ( 1.0 - uDeckDusk.x * duskK );', 'tauV = mix( tauV, tauUp, deckK );',
   'radiance += eTop * ( diffuse * ( 1.0 - exp( -od * 0.3 ) ) / ( 1.0 + 0.1125 * tauV ) / CL_PI );', 'float skyThrough = 1.0 / ( 1.0 + 0.1125 * tauV );',
   'mix( uAmbientScale, 1.0, flatK * uDeckTune.y )']) {
   assert.ok(shadersSource.includes(term), `the trace carries ${term}`);
@@ -820,6 +833,11 @@ assert.match(layerSource, /set\(Math\.max\(1, Math\.round\(lightTune\('CLOUD_LIG
 assert.match(layerSource, /lightTune\('CLOUD_SUN_STEPS_LOW', CLOUD2_LOW_SUN_EXTRA_STEPS\)/, 'on by default (2026-10-15)');
 // (2026-10-15) the Beer map's share off at the horizon, on from 17 degrees; the deck tune the critic picked on Frosthollow
 assert.match(layerSource, /lightTune\('CLOUD_BSM_LOWSUN', 0\), lightTune\('CLOUD_BSM_LOWSUN_UP', 0\.3\)/);
+// (2026-10-18, the s187 bisect) a closing deck's deep diffusion drops a low sun's share at dusk (the evening deck grey, not
+// orange-pink); the day's sun (over 17 degrees) keeps all of it
+assert.ok(shadersSource.includes('float deckK = dot( wgt, uLayerFlat ) * uDeckTune.x * ( 1.0 - uDeckDusk.x * duskK );'), 'the dusk hands the depth back to the sun ray');
+assert.ok(shadersSource.includes('vec3 eTop = sunE * sunUp * lobe * ( 1.0 - uDeckDusk.y * duskK ) + uSkyIrradiance * CL_PI;'), 'the dusk share');
+assert.match(layerSource, /\(t\.uDeckDusk\.value as THREE\.Vector2\)\.set\(lightTune\('CLOUD_DECK_DUSK_TAU', CLOUD_DECK_DUSK_TAU\), lightTune\('CLOUD_DECK_DUSK', CLOUD_DECK_DUSK\)\);/, 'read each frame');
 assert.match(readFileSync(new URL('./cloudLayers.ts', import.meta.url), 'utf8'), /CLOUD_DECK_FILTER: 1\.6, CLOUD_DECK_COVER: 1, CLOUD_DECK_SHAPE: 1\.4, CLOUD_DECK_DETAIL: 1\.4,/, 'the tune lives in the light stack module (the world reads it: cloudBase.ts)');
 assert.match(layerSource, /if \(lane\.flat >= 0\.5 && \(lane\.cells >= 0\.5 \|\| lightTune\(knob, -1\) !== -1\)\)/, 'a stratocumulus deck\'s lanes only, unless a knob is set');
 assert.match(layerSource, /const k = lightTune\(knob, CLOUD_DECK_TUNE\[knob\] \?\? 1\);/);
@@ -854,7 +872,7 @@ assert.match(layerSource, /t\.uOpaqueCut\.value = lightTune\('CLOUD_OPAQUE_CUT',
 }
 // and the sun's light diffused through a deck keeps a broad forward lobe (its mean over the sky unchanged): a readable
 // sun direction under a closed deck without a disc
-assert.match(shadersSource, /float lobe = 1\.0 \+ uDeckLobe \* \( mix\( phaseHG\( cosT, 0\.6 \), phaseHG\( cosT, -0\.225 \), 0\.3 \) \* 4\.0 \* CL_PI - 1\.0 \);\s*vec3 eTop = sunE \* sunUp \* lobe \+ uSkyIrradiance \* CL_PI;/,
+assert.match(shadersSource, /float lobe = 1\.0 \+ uDeckLobe \* \( mix\( phaseHG\( cosT, 0\.6 \), phaseHG\( cosT, -0\.225 \), 0\.3 \) \* 4\.0 \* CL_PI - 1\.0 \);[\s\S]{0,600}?vec3 eTop = sunE \* sunUp \* lobe \* \( 1\.0 - uDeckDusk\.y \* duskK \) \+ uSkyIrradiance \* CL_PI;/,
   'the lobe on the sun\'s diffused share only, the sky\'s untouched');
 // (round 6, wave 222: an overcast with no brighter patch toward the sun — the lobe at 0.45)
 assert.match(layerSource, /export const CLOUD_DECK_SUN_LOBE = 0\.45;/);
@@ -903,4 +921,13 @@ assert.match(layerSource, /t\.uDeckLobe\.value = lightTune\('CLOUD_DECK_SUN_LOBE
   a.dispose();
   b.dispose();
 }
-console.log('volumetricClouds.selftest: the cut ray opaque (no disc through a closed deck), the forward lobe of a deck PASS');
+// (227 SKY-01) a convective base breaks under the detail: the erosion exponent 4 (blind WIN over round 1's 6), the medium's
+// default and the frame's lever both reading it, and the shader taking the uniform
+{
+  const vc = here('./volumetricClouds.ts'), sh = here('./cloudShaders.ts');
+  assert.match(vc, /const CLOUD2_BASE_ERODE = 4;/, 'the base erosion exponent');
+  assert.match(vc, /uBaseErode: \{ value: CLOUD2_BASE_ERODE \}/, 'the medium starts at it');
+  assert.match(vc, /m\.uBaseErode\.value = Math\.max\(1, lightTune\('CLOUD_BASE_ERODE', CLOUD2_BASE_ERODE\)\);/, 'each frame, under its QA lever');
+  assert.match(sh, /vec4 modifier = mix\( vec4\( pow\( dn, uBaseErode \) \), topErode,/, 'the base modifier reads it');
+}
+console.log('volumetricClouds.selftest: the cut ray opaque (no disc through a closed deck), the forward lobe of a deck, the base erosion PASS');

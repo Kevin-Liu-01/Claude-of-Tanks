@@ -1,6 +1,6 @@
 /** Construction-only frontage geometry. No random draws or runtime update work. */
 export interface RoadFrontageSite { x: number; z: number; tx: number; tz: number; side: number }
-export interface FrontagePose { x: number; z: number; rot: number }
+interface FrontagePose { x: number; z: number; rot: number }
 type Road = readonly (readonly [number, number])[];
 
 // These axes are the actual doors/open bays in props.ts and villageKit.ts.

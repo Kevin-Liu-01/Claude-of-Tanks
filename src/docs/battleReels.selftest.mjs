@@ -14,8 +14,10 @@ const picks = JSON.parse(readFileSync(join(ROOT, 'tools/media-r5/site-media/pick
 const manifest = JSON.parse(readFileSync(join(ROOT, `public/media/${picks.collection}/manifest.json`), 'utf8'));
 const files = new Map(manifest.files.map((file) => [`/${file.path}`, file]));
 
-assert.equal(BATTLE_REELS.length, 20, 'the manual plays twenty of the site fifty\'s takes');
-assert.equal(new Set(BATTLE_REELS.map(({ id }) => id)).size, 20, 'take identifiers must be unique');
+// (2026-10-17: and the combat round's four, s225-s228)
+assert.equal(BATTLE_REELS.length, picks.docs.reels.length, 'the manual plays every picked battle take');
+assert.ok(BATTLE_REELS.length >= 20, 'twenty of the site fifty\'s takes at least');
+assert.equal(new Set(BATTLE_REELS.map(({ id }) => id)).size, BATTLE_REELS.length, 'take identifiers must be unique');
 assert.deepEqual(BATTLE_REELS.map(({ id }) => id), picks.docs.reels, 'the takes are the picks, in their order');
 
 for (const reel of BATTLE_REELS) {
@@ -40,6 +42,6 @@ const library = /<div class="battle-reels"[\s\S]*?<\/div>\s*<h3[^>]*data-i18n="d
 assert.ok(library, 'Docs Studio chapter must contain the take library before the review process');
 assert.equal((library.match(/<video\b/g) || []).length, 1, 'Docs must load takes through one shared player');
 assert.ok(library.includes(`src="${BATTLE_REELS[0].video}"`), 'the player opens on the first take');
-assert.match(home, /href="\/docs#battle-reels"[^>]*>[\s\S]*?Watch 20 battle takes/);
+assert.match(home, new RegExp(`href="/docs#battle-reels"[^>]*>[\\s\\S]*?Watch ${picks.docs.reels.length} battle takes`));
 
 console.log('battle reels selftest passed');

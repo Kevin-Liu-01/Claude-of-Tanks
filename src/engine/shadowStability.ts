@@ -76,7 +76,7 @@ export function shadowDepthBiasForTexel(worldUnitsPerTexel: number, filterRadius
  * polygon offset on their depth draw only (SHADOW_DOUBLE_SIDED_OFFSET; lighting.ts patchShadowDepthPacking) — never a
  * slope-scaled offset on the shared depth materials, which would push the stored back faces away and widen the seam.
  */
-export const SHADOW_BACKFACE_BIAS_TEXELS = 1.5;
+const SHADOW_BACKFACE_BIAS_TEXELS = 1.5;
 export function shadowDepthBiasBackFace(worldUnitsPerTexel: number): number {
   if (!(worldUnitsPerTexel > 0) || !Number.isFinite(worldUnitsPerTexel)) return SHADOW_DEPTH_BIAS_MAX_M;
   return Math.min(SHADOW_DEPTH_BIAS_MAX_M, Math.max(SHADOW_DEPTH_BIAS_MIN_M, SHADOW_BACKFACE_BIAS_TEXELS * worldUnitsPerTexel));

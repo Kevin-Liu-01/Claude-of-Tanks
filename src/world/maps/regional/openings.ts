@@ -9,8 +9,12 @@ export interface WindowStyle {
   frame: Rgb;
   frameWidth: number;
   frameOut: number;
-  /** glazing bars: 'cross' (one mullion + one transom), 'six' (two-by-three lights), 'none' */
-  bars: 'cross' | 'six' | 'two' | 'none';
+  /**
+   * glazing bars: 'cross' (one mullion + one transom), 'six' (two-by-three lights), 'none'; 'grille' (the looks lane,
+   * 2026-10-17, the Bengal kit): the South Asian window's iron grille, round rods upright across the opening a hand apart
+   * in the frame, a flat bar across them in a tall light, the shutters within
+   */
+  bars: 'cross' | 'six' | 'two' | 'none' | 'grille';
   /** dressed surround in a masonry bucket (stone / plaster) and its width and projection, or null */
   surround: { bucket: RegionalBucket; width: number; out: number; lintel?: number; colour?: Rgb } | null;
   /** the sill */
@@ -100,6 +104,12 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
   if (style.bars === 'cross') faceBox(sink, 'structureWood', face, u, y + h * 0.64, back + barO / 2, w - 2 * F, bar, barO, fc, 'ends');
   if (style.bars === 'six') {
     for (const t of [1 / 3, 2 / 3]) faceBox(sink, 'structureWood', face, u, y + h * t, back + barO / 2, w - 2 * F, bar, barO, fc, 'ends');
+  }
+  if (style.bars === 'grille') {
+    // the rods from the bottom rail to the head, in the frame's middle depth (fine ironwork: drawn near the camera)
+    const iron = { colour: [0.15, 0.15, 0.16] as Rgb, decor: true, fine: true }, n = Math.max(3, Math.round((w - 2 * F) / 0.11));
+    for (let k = 1; k < n; k++) faceBox(sink, 'structureMetal', face, u - w / 2 + F + (w - 2 * F) * k / n, y + h / 2, back + O / 2, 0.016, h - 2 * F, 0.016, iron, 'caps');
+    if (h > 0.6) faceBox(sink, 'structureMetal', face, u, y + h * 0.5, back + O / 2 + 0.012, w - 2 * F, 0.03, 0.008, iron, 'ends');
   }
   const carved = style.surround && style.carved && facadeOn() ? style.carved : null;
   if (style.surround && carved) {
@@ -212,8 +222,12 @@ export interface DoorStyle {
   frame: { bucket: RegionalBucket; width: number; out: number; colour?: Rgb; arch?: boolean; tint?: Rgb };
   /** a glazed transom over the leaf */
   transom?: boolean;
-  /** step treads */
-  steps: { bucket: RegionalBucket; colour?: Rgb } | null;
+  /**
+   * step treads; `start` (the looks lane, 2026-10-17, the Bengal kit): the steps begin that far out of the face, at the
+   * edge of a platform before the door (a veranda's deck, a raised plinth) whose top is the floor, the first a rise
+   * below it, each `rise` high (default 0.19) and `tread` deep (default 0.3)
+   */
+  steps: { bucket: RegionalBucket; colour?: Rgb; start?: number; rise?: number; tread?: number } | null;
   /** panelled (two raised panels) or planked (battens) */
   leafKind: 'panel' | 'plank' | 'glazed';
 }
@@ -276,7 +290,15 @@ export function doorUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
     faceBox(sink, f.bucket, face, u, y + h + fw + 0.12, f.out / 2 + 0.01, 0.26, 0.24, f.out + 0.02, fo);
     for (const side of [-1, 1]) faceBox(sink, f.bucket, face, u + side * (w / 2 - 0.05), y + h + fw + 0.04, f.out / 2, 0.42, 0.14, f.out, fo);
   }
-  if (style.steps && floorY > 0.12) {
+  if (style.steps && style.steps.start !== undefined) {
+    // from a platform's edge down to the ground: n rises, the platform's top the first, so n - 1 treads
+    const s = style.steps, n = Math.max(2, Math.ceil(floorY / (s.rise ?? 0.19))), tread = s.tread ?? 0.3, sw = w + 2 * fw + 0.3;
+    for (let k = 1; k < n; k++) {
+      const top = floorY * (n - k) / n;
+      faceBox(sink, s.bucket, face, u, (top - 0.35) / 2, s.start! + tread * (k - 0.5), sw, top + 0.35, tread,
+        { decor: true, ...(s.colour ? { colour: s.colour } : {}) });
+    }
+  } else if (style.steps && floorY > 0.12) {
     const n = Math.min(6, Math.ceil(floorY / 0.19)), tread = 0.3;
     const sw = w + 2 * fw + 0.3;
     for (let k = 1; k <= n; k++) {
@@ -291,7 +313,7 @@ export function doorUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
 }
 
 /** An open shop's fittings (openShop): its timber, its shutter boards and how they stand by day, its goods' colours. */
-export interface ShopStyle {
+interface ShopStyle {
   timber: Rgb;
   /**
    * the shutter boards: taken down and stacked against a jamb inside, hinged up over the opening and propped on two poles
@@ -388,7 +410,7 @@ const CHARRED: Rgb = [0.09, 0.08, 0.07];
 const GATE_IRON: Rgb = [0.15, 0.14, 0.13];
 
 /** Options for a gate pair: whether a leaf wide and tall enough carries a wicket (default yes). */
-export interface GateOptions { wicket?: boolean; /** a timber leaf's ledges' height (default 0.14) */ ledge?: number }
+interface GateOptions { wicket?: boolean; /** a timber leaf's ledges' height (default 0.14) */ ledge?: number }
 
 /**
  * A pair of ledged-and-braced gate leaves in a wide opening (the barn, the cart shed, the yard gate). Props census E2

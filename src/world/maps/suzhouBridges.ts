@@ -19,7 +19,7 @@ import { cloneCollisionRecord, setCompoundShape, type SimpleCollisionShape } fro
 import type { DressingBridgeDeck } from './archedStoneBridge.ts';
 import type { DressingBuckets, DressingHeightField, FocusedDressingContext } from './mapKits.ts';
 
-export type SuzhouBridgeForm = 'girder' | 'truss';
+type SuzhouBridgeForm = 'girder' | 'truss';
 
 const GRANITE: Rgb = rgb(0x8e8a82), GRANITE_DARK: Rgb = rgb(0x6f6b64), CONCRETE: Rgb = rgb(0xa49e92);
 const STEEL: Rgb = rgb(0x3f4640), STEEL_DARK: Rgb = rgb(0x2c312d), IRON: Rgb = rgb(0x24262a), LAMP: Rgb = rgb(0xd8cfa8);

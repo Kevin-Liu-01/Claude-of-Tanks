@@ -18,7 +18,7 @@ import {
   addUpstand, hallWallFrame, HallMesh, type HallOpening,
 } from './garageHallKit.ts';
 
-export interface VerdantHallParts {
+interface VerdantHallParts {
   /** Profiled wall sheeting with UVs for the wall map (repeat 3 x 1 over a 46 x 10 m wall). */
   readonly sheeting: HallMesh;
   /** Profiled roof sheeting (ribs across the purlins) with UVs for the roof deck map (repeat 4 x 4). */

@@ -119,7 +119,7 @@ function assertShoeMaterial(visual) {
   // stream without the attribute would multiply the palette by black.
   assert.equal(material.vertexColors, true, 'actual shoes read their worn-steel vertex colours');
   for (const mesh of shoes) {
-    assert.equal(mesh.material, material, 'near and far shoes share the actual material');
+    assert.ok(mesh.material === material, 'near and far shoes share the actual material');
     assert.equal(mesh.isInstancedMesh, true);
     assert.ok(mesh.count > 0 && mesh.instanceColor?.count >= mesh.count);
     const wear = mesh.geometry.getAttribute('color');

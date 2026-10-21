@@ -29,7 +29,7 @@ export interface BorderLandUse {
 }
 
 /** A traced boundary stretch: world points ~8 m apart, each with the presence 0..1 (the caller's fades applied). */
-export interface LandUseLine { xs: number[]; zs: number[]; w: number[] }
+interface LandUseLine { xs: number[]; zs: number[]; w: number[] }
 
 const STEP_M = 8;
 const SCAN_STEP_M = 3;

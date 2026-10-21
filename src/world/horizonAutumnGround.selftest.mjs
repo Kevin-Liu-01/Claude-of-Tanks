@@ -61,8 +61,8 @@ try {
  const bands=horizon.userData.horizonRing.ridgeRow,near=bands*HORIZON_SEGMENTS*6;
  assert.ok(bands>=3,'the seated skirt span carries several interpolated rows');
  bindAutumnHorizonGround(horizon,terrainMaterial,[grass,normal],{columns:HORIZON_SEGMENTS,bands});
- assert.equal(horizon.geometry,g);assert.deepEqual(g.attributes.position.array,oldPositions);assert.deepEqual(g.attributes.normal.array,oldNormals);
- assert.equal(horizon.material[0],far);assert.equal(horizon.material[1],terrainMaterial);
+ assert.ok(horizon.geometry === g);assert.deepEqual(g.attributes.position.array,oldPositions);assert.deepEqual(g.attributes.normal.array,oldNormals);
+ assert.ok(horizon.material[0] === far);assert.ok(horizon.material[1] === terrainMaterial);
  assert.deepEqual(g.groups,[{start:0,count:near,materialIndex:1},{start:near,count:old.length-near,materialIndex:0}]);
  assert.deepEqual(g.index.array.slice(near),old.slice(near),'outer indices exact');
  for(let i=0;i<near;i+=3){assert.deepEqual([g.index.getX(i),g.index.getX(i+1),g.index.getX(i+2)],[old[i],old[i+2],old[i+1]],'same geometric triangle, explicit upward winding');const [a,b,c]=[g.index.getX(i),g.index.getX(i+1),g.index.getX(i+2)],p=g.attributes.position;assert.ok((p.getZ(b)-p.getZ(a))*(p.getX(c)-p.getX(a))-(p.getX(b)-p.getX(a))*(p.getZ(c)-p.getZ(a))>0);}
@@ -97,8 +97,8 @@ try {
   assert.equal(g.groups.length,1,'no vista-material strip can cross the beach, and no empty vista group remains');
   const distant=coast.getObjectByName('horizon-far-range');
   assert.ok(distant,'the production coast includes the distant apron');
-  assert.equal(distant.material[1],coast.material[1],'distant ground shares the live terrain material');
-  assert.equal(distant.geometry.getAttribute('normal'),distant.geometry.getAttribute('aFarNormal'),
+  assert.ok(distant.material[1] === coast.material[1],'distant ground shares the live terrain material');
+  assert.ok(distant.geometry.getAttribute('normal') === distant.geometry.getAttribute('aFarNormal'),
     'the terrain shader receives real upward normals, preventing a black unlit far range');
   assert.deepEqual(distant.geometry.groups,[{start:0,count:distant.geometry.index.count,materialIndex:1}]);
   assert.equal(distant.geometry.getAttribute('shore').count,distant.geometry.getAttribute('position').count);

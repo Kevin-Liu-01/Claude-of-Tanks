@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRetainedAmmunitionSlot } from './hudAmmunitionPresentation.ts';
-import { ammunitionSelectionLabel, ammunitionSlotViewState } from './hud.ts';
+import { ammunitionSelectionLabel, ammunitionSlotViewState, hordeStatusCopy } from './hud.ts';
+import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { shellTypeLabel } from './garageDossier.ts';
 import { getLocale, setLocale } from './i18n.ts';
 
@@ -276,6 +277,8 @@ assert.match(hudSource, /locale: getLocale,/,
   const { elements } = fixtures[2];
   assert.equal(elements.count.textContent, '∞', 'unlimited rounds print the infinity mark');
   assert.equal(elements.button.classes.has('empty'), false, 'an unlimited slot never reads as empty');
+  // Owner 2026-10-17 (endless ammo): the slot marks itself so its ∞ takes the numeral's size and ink.
+  assert.equal(elements.button.classes.has('unlimited'), true, 'the unlimited slot carries its class');
   assert.match(String(elements.button.attributes.get('aria-label')), /unlimited rounds/, 'the label says unlimited rounds');
   assert.ok(mutations.some(([, kind]) => kind === 'text' || true), 'the change wrote the slot');
   mutations.length = 0;
@@ -284,6 +287,56 @@ assert.match(hudSource, /locale: getLocale,/,
   cards[2] = previous;
   render();
   assert.equal(elements.count.textContent, String(ammunitionSlotViewState(previous).count), 'a finite card prints its count again');
+  assert.equal(elements.button.classes.has('unlimited'), false, 'and drops the unlimited class');
 }
 
-console.log('hudAmmunitionPresentation.selftest: retained mutations, mutable cards, pending selection, touch, reload and locale passed');
+// critic r3 (APFSDS180): a count of three digits or more marks its slot wide (the slot's bottom row tightens); fewer
+// digits, or the ∞, drop the mark, and an unchanged count writes nothing.
+{
+  const previous = cards[0];
+  const { elements } = fixtures[0];
+  for (const [count, wide] of [[180, true], [1000, true], [99, false], [100, true], [0, false]]) {
+    cards[0] = { ...previous, count };
+    render();
+    assert.equal(elements.button.classes.has('wide'), wide, `${count} rounds: ${wide ? '' : 'not '}wide`);
+  }
+  cards[0] = { ...previous, count: 240 };
+  render();
+  mutations.length = 0;
+  for (let frame = 0; frame < 30; frame++) render();
+  assert.deepEqual(mutations, [], 'an unchanged wide count performs no writes');
+  cards[0] = { ...previous, count: 0, unlimited: true };
+  render();
+  assert.equal(elements.button.classes.has('wide'), false, 'the ∞ is never wide');
+  cards[0] = previous;
+  render();
+}
+
+{
+  const rule = /\.cot-shell\.unlimited \.cnt\{([^}]*)\}/.exec(hudSource)?.[1] ?? '';
+  const size = (css) => Number(/font-size:(\d+(?:\.\d+)?)px/.exec(css)?.[1]);
+  const numeral = /\.cot-shell \.cnt\{([^}]*)\}/.exec(hudSource)?.[1] ?? '';
+  assert.ok(size(rule) > size(numeral), 'the ammo ∞ is set larger than the numerals (the glyph draws small)');
+  assert.match(rule, /color:var\(--hud-text\)/, 'in the numeral ink');
+  assert.match(rule, /z-index:4/, 'above the reload shade, which dims the numerals');
+}
+
+// owner 2026-10-17 ("for special modes like juggernaut, ammo should be endless"): the Horde's status line drops its
+// ammunition count under unlimited rounds; the live ruleset decides when it is the mode's, else the mode's own table
+{
+  const previousLocale = getLocale();
+  setLocale('en-US');
+  try {
+    const horde = { id: 'endless_horde', horde: { wave: 4, alive: 7 }, playerAmmo: 30, playerAmmoCapacity: 42 };
+    const specRounds = { ...matchRulesetFor('endless_horde'), ammo: 'spec' };
+    assert.equal(matchRulesetFor('endless_horde').ammo, 'unlimited');
+    assert.equal(hordeStatusCopy(horde, null), 'WAVE 4 · 7 HOSTILES', 'unlimited rounds: wave and hostiles, no count');
+    assert.equal(hordeStatusCopy(horde, matchRulesetFor('endless_horde')), 'WAVE 4 · 7 HOSTILES', 'the live Horde ruleset agrees');
+    assert.equal(hordeStatusCopy(horde, matchRulesetFor('standard')), 'WAVE 4 · 7 HOSTILES', 'another mode\'s ruleset is ignored');
+    assert.equal(hordeStatusCopy(horde, specRounds), 'WAVE 4 · 7 HOSTILES · AMMO 30 / 42', 'finite rounds keep the count');
+  } finally {
+    setLocale(previousLocale);
+  }
+}
+
+console.log('hudAmmunitionPresentation.selftest: retained mutations, mutable cards, pending selection, touch, reload, locale and the Horde line under unlimited rounds passed');

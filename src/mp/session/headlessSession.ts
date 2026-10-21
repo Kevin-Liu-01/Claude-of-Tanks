@@ -12,7 +12,7 @@ import type { RoomClientOptions, StorageLike } from '../room/roomClient.ts';
 import { MatchSession } from './matchSession.ts';
 import type { MatchSessionOptions, SessionRound } from './matchSession.ts';
 
-export interface HeadlessSessionOptions {
+interface HeadlessSessionOptions {
   endpoint: string;
   player: { id: string; name: string };
   createSocket: SocketFactory;

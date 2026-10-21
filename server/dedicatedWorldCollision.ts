@@ -23,7 +23,7 @@ function terrain(): NonNullable<typeof terrainCache> {
 }
 
 /** The map's config as the variant builds it (sim/matchRuleset.ts terrainVariant; the world's map.ts does the same). */
-export function variantMapConfig(id: string, variant: string | null) {
+function variantMapConfig(id: string, variant: string | null) {
   const config = getMapConfig(id);
   if (variant === null) return config;
   if (variant !== 'assault-trenches') throw new Error(`unknown battlefield variant ${variant}`);

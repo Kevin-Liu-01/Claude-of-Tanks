@@ -28,7 +28,7 @@ import { ammoCanParts, fieldChestParts } from './fieldChest.ts';
 import * as THREE from 'three';
 import { M1A3_TURRET_VERTICAL_OFFSET_M, M1A3_VISIBLE_TURRET_RING_HEIGHT_M } from '../abramsUpgradeDatums.ts';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
-import { vehicleAmbientFloorHook } from '../materials.ts';
+import { chainVehicleMaterialHook, cloneRehookedVehicleMaterial } from '../materials.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { buildHollowPairedRoadWheel, hollowPairedRoadWheelWidth } from '../hollowRoadWheelStock.ts';
@@ -3550,8 +3550,11 @@ function tejasRoofKit(
     // ARAT surfaces, so they complete the load path without changing the
     // certified exterior silhouette.
     if (P.spec.id === 'm1a1_abrams_sa') {
+      // The tray runs forward under the front ARAT block (z 2.24): the old
+      // 2.32 front edge left a 5 cm see-through slot between the block's aft
+      // face and the tray (B2 contiguity, |x| 1.85-1.89, z 2.28-2.33).
       for (const side of [-1, 1]) {
-        P.add('hull', box(0.22, 0.025, 0.22), side * 1.86, 1.28, 2.43);
+        P.add('hull', box(0.22, 0.025, 0.30), side * 1.86, 1.28, 2.39);
       }
     } else if (P.spec.id === 'm1a1_abrams_fep') {
       for (const side of [-1, 1]) {
@@ -4133,21 +4136,19 @@ function tejasToneKit(P: AbramsBuilderPort): void {
   // scale outgoing light by (1 - k*saturate(normal.y)) chained after the
   // fleet floor hook; vertical faces (the certified front/side pad reads)
   // render byte-identical. Own cache keys; per-build materials only.
+  // 2026-10-17 (the wheel-band lane, round 2): chained after the material's own hook (chainVehicleMaterialHook) —
+  // assigned as the whole hook it dropped the cascade registration of the set's track bands and spare-track steel
+  // (USE_CSM stayed, its uniforms never bound: a near-black track in battle and on the Garage pedestal).
   const grime = (
     m: THREE.MeshStandardMaterial,
     key: string,
     k = '0.30',
-  ): THREE.MeshStandardMaterial => {
-    m.onBeforeCompile = (shader) => {
-      vehicleAmbientFloorHook(shader);
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <opaque_fragment>',
-        `outgoingLight *= ( 1.0 - ${k} * saturate( normal.y ) );\n\t#include <opaque_fragment>`,
-      );
-    };
-    m.customProgramCacheKey = () => key;
-    return m;
-  };
+  ): THREE.MeshStandardMaterial => chainVehicleMaterialHook(m, key, (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <opaque_fragment>',
+      `outgoingLight *= ( 1.0 - ${k} * saturate( normal.y ) );\n\t#include <opaque_fragment>`,
+    );
+  });
   // r5 rust cool: R spread 1.31 -> 1.22 with a slight blue lift — the rear
   // corner wrap's VERTICAL canvas faces sampled H60 vs the ref zone's H73
   // (grime is a no-op at normal.y ~ 0, so the multiplier owns this read).
@@ -4199,10 +4200,8 @@ function tejasToneKit(P: AbramsBuilderPort): void {
   // shaded response must OVERCOME the floor to land the ref band's
   // 47-60/255: 0x262a1e reads mid-shadow in the recesses and a soft
   // seam-gray (not ink) on lit faces.
-  const midShade = P.mats.shadow.clone();
+  const midShade = cloneRehookedVehicleMaterial(P.mats.shadow);
   midShade.color.setHex(0x2e3223);
-  midShade.onBeforeCompile = vehicleAmbientFloorHook;
-  midShade.customProgramCacheKey = () => 'veh-ambient-floor-v2';
   P.disposables.push(midShade);
   if (!P.gear) throw new Error('Abrams tone kit requires running gear');
   const gear = P.gear;
@@ -6001,13 +6000,11 @@ function buildAbramsX(P: AbramsBuilderPort): void {
   // proud of the stock planes.)
   const buildAbramsXHullStage2 = (): void => {
     {
-      const faceMat = P.mats.detail.clone();
+      const faceMat = cloneRehookedVehicleMaterial(P.mats.detail);
       // The reference wheel faces catch substantially more light than the
       // tires and skirt.  A medium olive steel keeps the nested 0.49 m face
       // countable at garage distance without turning it into a pale toy disc.
       faceMat.color = new THREE.Color(0x373d36);
-      faceMat.onBeforeCompile = vehicleAmbientFloorHook;
-      faceMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       for (const side of [-1, 1]) {
         // Keep each side as its own lane-local mesh. Besides matching the
         // actual independent suspension runs, this prevents the two distant
@@ -7796,10 +7793,8 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     // Subtle structural bands at the source casing joins; fixed steel keeps
     // them readable without inflating the measured diameter.
     {
-      const ribMat = P.mats.detail.clone();
+      const ribMat = cloneRehookedVehicleMaterial(P.mats.detail);
       ribMat.color = new THREE.Color(0x8e948c);
-      ribMat.onBeforeCompile = vehicleAmbientFloorHook;
-      ribMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       P.disposables.push(ribMat);
       for (const [rc, rt, rz] of [
         [0.104, 0.008, 2.785], [0.104, 0.008, 3.015],

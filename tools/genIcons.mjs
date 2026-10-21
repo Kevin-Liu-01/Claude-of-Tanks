@@ -15,10 +15,13 @@
 
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { filterPublishedImage } from './media-r5/master-filter.mjs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS } from '../src/vehicles/tankAssets.ts';
+import { uniqueIds } from './id-list.mjs';
+import { boundOrigin, loadReadyPage, toolServerOptions } from './tool-page-load.mjs';
 
 const args = process.argv.slice(2);
 function opt(name, fallback = '') {
@@ -31,7 +34,7 @@ function opt(name, fallback = '') {
 
 const outDir = resolve(opt('out', 'public/icons'));
 const selected = opt('tanks') || opt('ids');
-const onlyTanks = selected ? selected.split(',').map((id) => id.trim()).filter(Boolean) : [];
+const onlyTanks = selected ? uniqueIds(selected.split(',').map((id) => id.trim()).filter(Boolean), 'genIcons --ids') : [];
 const metadataOnly = args.includes('--metadata-only');
 const portraitOnly = args.includes('--portraits-only');
 let selectedViews = metadataOnly ? [] : opt('views')
@@ -114,16 +117,15 @@ function assetRecord(file, view) {
 }
 
 const viteCacheDir = resolve('/tmp', `cot-icons-vite-${process.pid}`);
+// R4c (2026-10-16): strictPort false, and the URL from the address really bound (tools/tool-page-load.mjs)
 const server = await createServer({
   root: process.cwd(), configFile: false, cacheDir: viteCacheDir,
   logLevel: 'error',
   optimizeDeps: { noDiscovery: true },
-  server: { host: '127.0.0.1', port: 7400 + (process.pid % 200), strictPort: true, hmr: false, watch: null },
+  server: toolServerOptions(7400),
 });
 await server.listen();
-const address = server.httpServer.address();
-const port = typeof address === 'object' && address ? address.port : server.config.server.port;
-const url = `http://127.0.0.1:${port}/tools/icons-page.html`;
+const url = `${boundOrigin(server)}/tools/icons-page.html`;
 console.log(`[tank-assets] studio ${url}`);
 
 const browser = await puppeteer.launch({
@@ -145,8 +147,8 @@ page.on('console', (message) => {
 
 let failed = false;
 try {
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 180000 });
-  await page.waitForFunction('window.__ICONS_READY === true', { timeout: 60000 });
+  // 180 s for the first load and one retry of a load that timed out (tools/tool-page-load.mjs)
+  await loadReadyPage(page, url, { label: 'tank-assets', ready: 'window.__ICONS_READY === true' });
   // Metadata receipts are just as dependent on the real demand-loaded builder
   // as rendered files. Auditing before this settle gate can fingerprint a
   // lightweight fallback rig and silently poison an otherwise valid manifest.
@@ -174,9 +176,11 @@ try {
       console.error(`[tank-assets] ${name}: ${dataUrl}`);
       continue;
     }
-    const buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
+    const raw = Buffer.from(dataUrl.split(',')[1], 'base64');
     const outputPath = resolve(outDir, name);
     mkdirSync(dirname(outputPath), { recursive: true });
+    const buffer = await filterPublishedImage(raw, `icon-${name.replace(/\.[^.]+$/, '')}`,
+      { type: name.endsWith('.png') ? 'image/png' : 'image/webp', quality: 90 });
     writeFileSync(outputPath, buffer);
     console.log(`[tank-assets] wrote ${name} (${Math.round(buffer.length / 1024)} KB)`);
   }

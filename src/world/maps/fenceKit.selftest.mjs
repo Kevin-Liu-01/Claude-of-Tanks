@@ -2,14 +2,17 @@
 // kinds build on the structure wood's attributes inside their old module (2.4 m along z, a post sunk at its start), under
 // their triangle caps, deterministic; each map's forms are its region's (keyed as the gates are, so fence and gate agree);
 // the WORKLIST #6 guardrail maps (Saltwind, the delta, the coast, the desert) draw no more fence triangles than before;
-// the collision is the legacy module's exactly (its draws spent, its contact band frozen, its footprint); the broken state
-// lies low; props.ts lays them.
+// the legacy module's draws spent, its footprint and its obstacle (what a hull crushes) kept; a collider of the drawn module
+// (the looks lane, 227): at most three boxes a module, stopping at least 97 % of the lines through its opaque spans, never
+// thinner than the fence it draws; the broken
+// state lies low; props.ts lays them.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DESTRUCTIBLE_TYPES } from './inhabitKit.ts';
 import { GATE_STYLES } from './gateKit.ts';
-import { FENCE_FORMS, FENCE_KINDS, FENCE_TRIANGLE_CAP, buildFence, fenceFormsFor, fenceTypes } from './fenceKit.ts';
-import { deriveRuntimeStructureContactBand } from '../structureCollision.ts';
+import { FENCE_FORMS, FENCE_KINDS, FENCE_TRIANGLE_CAP, buildFence, drawnRecordBand, fenceFormsFor, fenceTypes } from './fenceKit.ts';
+import { applyStructureCollisionBand, deriveRuntimeStructureContactBand } from '../structureCollision.ts';
+import { rayCollisionRecord } from '../collision.ts';
 import { gateStyleFor } from './gateKit.ts';
 
 function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -23,7 +26,7 @@ for (const key of regions) {
   for (const kind of FENCE_KINDS) {
     const g = buildFence(kind, gate, forms), label = `${key ?? 'default'}/${kind}/${g.userData.fenceForm}`;
     assert.deepEqual(Object.keys(g.attributes).sort(), ['color', 'normal', 'position', 'uv'], `${label}: the structure wood's attributes`);
-    assert.equal(g.index, null, `${label}: unindexed`);
+    assert.ok(g.index === null, `${label}: unindexed`);
     const p = g.attributes.position, n = p.count / 3;
     assert.ok(n >= 12 && n <= FENCE_TRIANGLE_CAP[kind], `${label}: ${n} triangles (cap ${FENCE_TRIANGLE_CAP[kind]})`);
     tris[`${g.userData.fenceForm}/${kind}`] = n;
@@ -88,7 +91,7 @@ for (const [arch, mapId, counts, load, walls] of [
   assert.ok(after - walls <= before + load * 0.015, `${mapId}: fence triangles ${after} (walls saved ${walls}) within 1.5 % of the legacy ${before}`);
 }
 
-// 4. the collision is the legacy module's: the same draws, the same frozen band, the same footprint
+// 4. the legacy module's draws, footprint and obstacle band; a collider, its band the drawn module's
 const types = fenceTypes('kolkhoz', 'verdant', DESTRUCTIBLE_TYPES, () => mulberry32(0x0f0f7));
 for (const kind of FENCE_KINDS) {
   const t = types[kind], legacy = DESTRUCTIBLE_TYPES[kind];
@@ -103,9 +106,68 @@ for (const kind of FENCE_KINDS) {
   const built = t.build(() => { drawsA++; return a(); });
   const old = legacy.build(() => { drawsB++; return b(); });
   assert.equal(drawsA, drawsB, `${kind}: the legacy draws are spent exactly`);
-  assert.deepEqual(t.contactBand, deriveRuntimeStructureContactBand({ baked: [old] }), `${kind}: the frozen band is the legacy module's`);
+  assert.deepEqual(t.contactBand, deriveRuntimeStructureContactBand({ baked: [old] }), `${kind}: the obstacle's band is the legacy module's (a hull crushes it as before)`);
+  assert.equal(t.collider, true, `${kind}: a collider of its own`);
+  assert.deepEqual(t.colliderBand, drawnRecordBand(built), `${kind}: the collider's band is the drawn module's`);
   assert.deepEqual(t.footprintBuild().attributes.position.array, legacy.build(mulberry32(0x0f0f7)).attributes.position.array, `${kind}: the legacy footprint`);
   built.dispose(); old.dispose();
+}
+
+// 4c. what's drawn is what stops a line (the coordinator, 227: "a fence that LOOKS solid is seen and shot through between
+// the old rails"): every region's every form, its module seen along x on a 1.5 cm grid — every ray through an opaque span
+// of the drawn module (the ray and its eight neighbours all meet a member) meets the record. (The coordinator, 227: the
+// published shard budget — "collapse each module's record to the minimal box set that still blocks at least 95%":
+// at most three boxes a module, at least 97 % of its opaque-span rays stopped, was every one; a panel's box spans its
+// gaps, so the record is never thinner than the drawn fence)
+{
+  const hitsTri = (oy, oz, p, i) => {
+    // a ray along +x at (y, z): the triangle's projection onto the (z, y) plane holds the point
+    const az = p[i + 2], ay = p[i + 1], bz = p[i + 5], by = p[i + 4], cz = p[i + 8], cy = p[i + 7];
+    const den = (by - cy) * (az - cz) + (cz - bz) * (ay - cy);
+    if (Math.abs(den) < 1e-12) return false;
+    const l1 = ((by - cy) * (oz - cz) + (cz - bz) * (oy - cy)) / den, l2 = ((cy - ay) * (oz - cz) + (az - cz) * (oy - cy)) / den;
+    return l1 >= 0 && l2 >= 0 && l1 + l2 <= 1;
+  };
+  const seen = new Set();
+  let checked = 0, interiorRays = 0;
+  const n = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } };
+  for (const key of regions) for (const kind of FENCE_KINDS) {
+    const t = fenceTypes(key, key ?? 'selftest', DESTRUCTIBLE_TYPES, () => mulberry32(0x0f0f7))[kind];
+    const built = t.build(mulberry32(5));
+    const form = built.userData.fenceForm;
+    if (seen.has(`${kind}:${form}`)) { built.dispose(); continue; }
+    seen.add(`${kind}:${form}`);
+    const flat = built.index ? built.toNonIndexed() : built, p = flat.getAttribute('position').array;
+    built.computeBoundingBox();
+    const top = built.boundingBox.max.y, step = 0.015, zs = [], ys = [];
+    for (let z = -1.15; z <= 1.15; z += step) zs.push(z);
+    for (let y = 0.05; y <= top - 0.03; y += step) ys.push(y);
+    const drawn = ys.map((y) => zs.map((z) => { for (let i = 0; i < p.length; i += 9) if (hitsTri(y, z, p, i)) return true; return false; }));
+    const rec = { min: [0, t.colliderBand.minY, 0], max: [0, t.colliderBand.maxY, 0] };
+    applyStructureCollisionBand(rec, t.colliderBand, 0, 0, 0, 0);
+    const blocks = (y, z) => rayCollisionRecord({ x: -2, y, z }, { x: 1, y: 0, z: 0 }, rec, 4, n) >= 0;
+    let drawnN = 0, recN = 0, open = 0, interiorHere = 0;
+    for (let j = 0; j < ys.length; j++) for (let i = 0; i < zs.length; i++) {
+      const r = blocks(ys[j], zs[i]);
+      if (r) recN++;
+      if (!drawn[j][i]) continue;
+      drawnN++;
+      let interior = j > 0 && i > 0 && j + 1 < ys.length && i + 1 < zs.length;
+      for (let dj = -1; interior && dj <= 1; dj++) for (let di = -1; interior && di <= 1; di++) interior = drawn[j + dj][i + di];
+      if (!interior) continue;
+      interiorRays++; interiorHere++;
+      if (!r) open++;
+    }
+    const cells = ys.length * zs.length;
+    assert.ok(t.colliderBand.parts.length <= 3, `${kind} ${form}: ${t.colliderBand.parts.length} boxes in its record (at most 3)`);
+    assert.ok(open <= interiorHere * 0.03, `${kind} ${form}: ${open} of ${interiorHere} rays through its opaque spans pass its record (at most 3 %)`);
+    assert.ok(recN / cells >= drawnN / cells - 0.05, `${kind} ${form}: the record covers ${(recN / cells).toFixed(2)} of the face, thinner than the drawn fence's ${(drawnN / cells).toFixed(2)}`);
+    checked++;
+    if (flat !== built) flat.dispose();
+    built.dispose();
+  }
+  assert.ok(checked >= 20, `every form checked (${checked})`);
+  assert.ok(interiorRays > 4000, `the opaque spans sampled (${interiorRays} rays)`);
 }
 
 // 4b. the bunker r2 standard (tools/r2-standard.mjs; the LOOKS sweep's bar): every form of every kind on its maps
@@ -131,4 +193,4 @@ const local = props.slice(props.indexOf('const LOCAL_TYPES:'), props.indexOf('co
 assert.ok(local.includes('...fenceTypes(regionalArchitecture?.id, mapId, DESTRUCTIBLE_TYPES, () => mulberry32(0x0f0f7))'), 'props.ts lays the fences');
 assert.ok(local.indexOf('...fenceTypes(') < local.indexOf('REGIONAL_DESTRUCTIBLE_TYPES'), 'a kit\'s own variants still win');
 const forms = [...new Set(Object.keys(tris))].length;
-console.log(`fenceKit.selftest: ${regions.length} regions x 4 kinds (${forms} forms) under their caps and the r2 standard, guardrail maps within the r2 allowance, legacy collision, pushed-over wrecks, wired`);
+console.log(`fenceKit.selftest: ${regions.length} regions x 4 kinds (${forms} forms) under their caps and the r2 standard, guardrail maps within the r2 allowance, drawn collision (at most 3 boxes a module, 97 % of the opaque spans' lines stopped), pushed-over wrecks, wired`);

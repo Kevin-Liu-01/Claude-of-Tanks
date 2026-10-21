@@ -16,7 +16,7 @@ export type StructureMaterial = 'timber' | 'adobe' | 'masonry' | 'concrete';
 /** The regional styles whose walls are earth (mudbrick under render). */
 export const EARTH_ARCHITECTURE_STYLES: ReadonlySet<string> = new Set(['wadirum', 'ksar', 'siwa', 'navajo', 'kolkhoz']);
 /** The regional styles whose walls are poured concrete. */
-export const CONCRETE_ARCHITECTURE_STYLES: ReadonlySet<string> = new Set(['glencanyon']);
+const CONCRETE_ARCHITECTURE_STYLES: ReadonlySet<string> = new Set(['glencanyon']);
 
 /**
  * A map's house walls from its architecture style (its config's `props.architecture`; null: none): earth, concrete,

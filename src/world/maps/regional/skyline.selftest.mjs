@@ -57,7 +57,7 @@ for (const [id, make] of Object.entries(BUILDERS)) {
         const sets = new Set();
         for (const g of list) {
           sets.add(Object.keys(g.attributes).sort().join(','));
-          assert.equal(g.index, null, `${id}/${bucket}: non-indexed`);
+          assert.ok(g.index === null, `${id}/${bucket}: non-indexed`);
           assert.ok(g.userData.regional && g.userData.uvJitter === 'none', `${id}/${bucket}: regional tags`);
           assert.equal(g.hasAttribute('color'), COLOURED.has(bucket), `${id}/${bucket}: vertex colour exactly in the coloured buckets`);
           assert.equal(g.hasAttribute(NIGHT_EMISSION_ATTRIBUTE), bucket === 'curtain', `${id}/${bucket}: night mask exactly on curtain panes`);

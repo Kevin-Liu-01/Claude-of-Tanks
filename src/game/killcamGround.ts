@@ -8,11 +8,11 @@
  * killcamGround.selftest.mjs over every map).
  */
 
-export interface KillcamGround {
+interface KillcamGround {
   getHeightAt(x: number, z: number): number;
 }
 
-export interface KillcamPoint {
+interface KillcamPoint {
   x: number;
   y: number;
   z: number;
@@ -25,7 +25,7 @@ export const KILLCAM_MUZZLE_GROUND_M = 2.8;
 /** The line from the muzzle to the aim point clears the terrain by this much... */
 export const KILLCAM_LINE_CLEAR_M = 0.2;
 /** ...except over its last metres, which are the target's own ground. */
-export const KILLCAM_LINE_END_M = 15;
+const KILLCAM_LINE_END_M = 15;
 /** The shooter's seat behind the muzzle along the horizontal shot direction (the original staging's 4.2 m). */
 export const KILLCAM_SHOOTER_BACK_M = 4.2;
 /** Line samples a candidate is tested at (every ~5 m over 440 m). */
@@ -41,7 +41,7 @@ export const KILLCAM_STAGE_CANDIDATES: ReadonlyArray<readonly [number, number]> 
   [0.35, 80], [0.6, 80], [0.15, 80],
 ].map((row) => Object.freeze(row) as readonly [number, number]));
 
-export interface KillcamFlankStage {
+interface KillcamFlankStage {
   muzzle: KillcamPoint;
   /** Which candidate won (its index in KILLCAM_STAGE_CANDIDATES). */
   candidate: number;

@@ -28,7 +28,7 @@ export interface StudioPlanFeatures {
 
 type PlanSide = 'hero' | 'ally' | 'foe';
 /** A tank on the plan: its storyboard name (tracks key by it), where it stands and which side it reads as. */
-export interface PlanActor {
+interface PlanActor {
   readonly name: string;
   readonly x: number;
   readonly z: number;
@@ -36,7 +36,7 @@ export interface PlanActor {
 }
 interface PlanRoute { readonly name: string; readonly side: PlanSide; readonly points: Float32Array }
 /** What the plan draws, independent of the canvas: the window, the routes, the camera's track and the take's graph. */
-export interface PlanGeometry {
+interface PlanGeometry {
   readonly bounds: { readonly cx: number; readonly cz: number; readonly half: number };
   readonly routes: readonly PlanRoute[];
   readonly rail: Float32Array | null;

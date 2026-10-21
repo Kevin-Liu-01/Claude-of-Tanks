@@ -42,7 +42,7 @@ interface FinSet {
   readonly roll?: number;
 }
 
-export interface MissileAirframe {
+interface MissileAirframe {
   readonly id: string;
   /** length over calibre (the probe included) */
   readonly ld: number;
@@ -348,7 +348,7 @@ void main() {
 }
 `;
 
-export interface MissileBodies {
+interface MissileBodies {
   /** the airframes' instanced meshes (the late FX layer) */
   readonly group: THREE.Group;
   readonly material: THREE.ShaderMaterial;

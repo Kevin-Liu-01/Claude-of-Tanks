@@ -15,7 +15,7 @@ import { PartSink, type EmitOptions, type RegionalBucket, type Rgb, type Vec3 } 
 import { GATE_WIDTH, gateKindForFence } from '../maps/gateKit.ts';
 
 /** The ground over the piece's base at a point of its frame (LandmarkBuildContext.ground; flat when absent). */
-export type GroundAt = ((lx: number, lz: number) => number) | undefined;
+type GroundAt = ((lx: number, lz: number) => number) | undefined;
 
 /** A set-piece destructible (types.ts LandmarkBuild.destructibles). */
 export interface GroundsDestructible { kind: string; x: number; z: number; yawDeg: number; scale?: number }
@@ -29,7 +29,7 @@ const MODULE_LENGTH: Readonly<Record<string, number>> = Object.freeze({
  * left for it. */
 const GATE_SPAN = GATE_WIDTH.gate, GATE_GAP = 2.3;
 
-export interface FenceRunOptions {
+interface FenceRunOptions {
   /** a gate's gap centred this far along the run (m) */
   gateAt?: number;
   /** the destructible hung in the gap ('gate'), or null for an open gap */
@@ -92,7 +92,7 @@ export function enclosure(out: GroundsDestructible[], kind: string, rect: { cx: 
   }
 }
 
-export interface DrapeOptions {
+interface DrapeOptions {
   /** the surface's height over the ground (m; default 0.05) */
   lift?: number;
   /** the grid's cell (m; default 1) */
@@ -149,6 +149,9 @@ export function drapedPath(sink: PartSink, bucket: RegionalBucket, ground: Groun
 export type GraveMarker = 'orthodox' | 'latin' | 'stone' | 'railed';
 
 const WEATHERED_WOOD: Rgb = [0.36, 0.32, 0.27], IRON_BLACK: Rgb = [0.13, 0.13, 0.13], EARTH: Rgb = [0.27, 0.22, 0.17];
+/** A Latin grave's dressed stone (its headstone, the plinths): a grey of its own, not the walls' stone bucket (on a brick
+ *  map that bucket is brick, and a headstone in it read as "a brick pier crowding the doorway"). */
+const HEADSTONE_GREY: Rgb = [0.5, 0.5, 0.48], PLINTH_GREY: Rgb = [0.4, 0.41, 0.4];
 
 /**
  * A grave at (x, z) facing +z (its marker at the head, the -z end): a low mound of earth, and its marker — the
@@ -162,9 +165,24 @@ export function grave(sink: PartSink, ground: GroundAt, x: number, z: number, ya
     sink.prism('structureWood', [[-0.42, -0.2, -0.95], [0.42, -0.2, -0.95], [0.32, 0.16, -0.85], [-0.32, 0.16, -0.85]] as Vec3[], [0, 0, 1], 1.8,
       { colour: EARTH, decor: true });
     const hz = -1.05;
+    // (2026-10-17, the maps lane; the Polders village blind 227's follow-ups, pose 5: "the crosses are flat and plain and
+    // some headstones are paper-thin") a Latin grave's marker stands in dressed stone: the headstone a hand thick on its
+    // plinth, its shoulders rounded to the head; the cross a hand's breadth square, its head capped, morticed into a
+    // stepped base
     if (marker === 'stone') {
-      sink.span('stone', -0.3, -0.2, hz - 0.08, 0.3, 0.75, hz + 0.08, { decor: true });
-      sink.span('stone', -0.34, 0.75, hz - 0.1, 0.34, 0.83, hz + 0.1, { decor: true, fine: true });
+      sink.span('structureMetal', -0.36, -0.2, hz - 0.17, 0.36, 0.1, hz + 0.17, { colour: PLINTH_GREY, decor: true });
+      const z0 = hz - 0.075, top = 0.92, shoulder = 0.74;
+      sink.prism('structureMetal', [[-0.27, 0.06, z0], [0.27, 0.06, z0], [0.27, shoulder, z0], [0.2, top - 0.06, z0], [0.08, top, z0],
+        [-0.08, top, z0], [-0.2, top - 0.06, z0], [-0.27, shoulder, z0]] as Vec3[], [0, 0, 1], 0.15, { colour: HEADSTONE_GREY, decor: true });
+      return;
+    }
+    if (marker === 'latin') {
+      sink.span('structureMetal', -0.26, -0.2, hz - 0.2, 0.26, 0.1, hz + 0.2, { colour: PLINTH_GREY, decor: true });
+      sink.span('structureMetal', -0.17, 0.1, hz - 0.13, 0.17, 0.22, hz + 0.13, { colour: PLINTH_GREY, decor: true, fine: true });
+      const h = 1.45, t = 0.065, latin: EmitOptions = { colour: WEATHERED_WOOD, decor: true };
+      sink.span('structureWood', -t, 0.18, hz - t, t, h, hz + t, latin);
+      sink.span('structureWood', -t - 0.018, h, hz - t - 0.018, t + 0.018, h + 0.035, hz + t + 0.018, { ...latin, fine: true });
+      sink.span('structureWood', -0.4, h - 0.47, hz - t * 0.85, 0.4, h - 0.34, hz + t * 0.85, latin);
       return;
     }
     const wood = marker === 'railed' ? 'structureMetal' : 'structureWood';

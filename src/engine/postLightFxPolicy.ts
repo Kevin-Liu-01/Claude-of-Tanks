@@ -22,14 +22,14 @@ export const POST_LIGHT_FX_NAMES = Object.freeze({
   contact: 'contactShadows', bounce: 'groundBounce', shafts: 'sunShafts', flare: 'lensFlare', cavity: 'vehicleOcclusion',
 } as const);
 
-export type PostLightFxQueryName = keyof typeof POST_LIGHT_FX_NAMES;
+type PostLightFxQueryName = keyof typeof POST_LIGHT_FX_NAMES;
 
 export const POST_LIGHT_FX_OFF: PostLightFxFlags = Object.freeze({
   contactShadows: false, groundBounce: false, sunShafts: false, lensFlare: false, vehicleOcclusion: false,
 });
 
 /** `?fx=` query: null = the preset decides, 'off' = nothing, otherwise the named effects only. */
-export type PostLightFxQuery = null | 'off' | ReadonlySet<PostLightFxQueryName>;
+type PostLightFxQuery = null | 'off' | ReadonlySet<PostLightFxQueryName>;
 
 /** Parse a location search string (with or without its leading `?`). Unknown names are ignored, not errors. */
 export function parsePostLightFxQuery(search: string | null | undefined): PostLightFxQuery {
