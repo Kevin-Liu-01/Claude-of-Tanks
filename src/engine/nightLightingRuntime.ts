@@ -61,10 +61,19 @@ interface EmitterState {
   readonly source: NightLightingRoot;
   readonly emitter: NightLightEmitter;
   readonly emission: EmissionState | null;
+  /** A headlight's own vehicle's gun (registerNightBeamClearance), which its beam must not light. */
+  readonly clearance: ClearanceState | null;
   readonly position: THREE.Vector3;
   readonly direction: THREE.Vector3;
   active: boolean;
   distanceSquared: number;
+}
+
+interface ClearanceState {
+  readonly gun: THREE.Object3D;
+  readonly start: THREE.Vector3;
+  readonly end: THREE.Vector3;
+  readonly radius: number;
 }
 
 interface LightSlot<T extends THREE.SpotLight | THREE.PointLight> {
@@ -73,6 +82,7 @@ interface LightSlot<T extends THREE.SpotLight | THREE.PointLight> {
 }
 
 const REGISTRATIONS = new WeakMap<THREE.Object3D, readonly NightLightEmitter[]>();
+const CLEARANCES = new WeakMap<THREE.Object3D, ClearanceState>();
 const MAX_EMITTERS = 1024;
 const DEFAULT_BUDGET = Object.freeze({ spotLights: 2, pointLights: 1 });
 
@@ -125,6 +135,33 @@ export function registerNightLightEmitters(anchor: THREE.Object3D, emitters: rea
     direction: emitter.direction ? Object.freeze([...emitter.direction]) as LocalPoint : undefined,
     emission: emitter.emission ? Object.freeze({ ...emitter.emission }) : undefined,
   })));
+}
+
+/**
+ * (CN-7, 2026-10-20: "the main-gun barrel seen from the front shows as a bright white glowing tube") A vehicle's own
+ * gun, which the beams of the headlights under `owner` (its root) must not light: lamps beside the gun (turret lamps
+ * flanking the mantlet) put the tube 2-5 m into their cone, where a 1200 cd beam outshines everything else in the frame.
+ * The capsule (`start`/`end` on the bore axis and `radius`, in `gun`'s frame: the recoiling rig, so it follows
+ * traverse, elevation and recoil) bounds the gun's surface. The beams keep their aim, cone, intensity and reach: the
+ * vehicle shader (NIGHT_OWN_GUN_GLSL) drops a lamp's light only on its own gun. Construction-time, like
+ * registerNightLightEmitters.
+ */
+export function registerNightBeamClearance(owner: THREE.Object3D, gun: THREE.Object3D,
+  capsule: { readonly start: LocalPoint; readonly end: LocalPoint; readonly radius: number }): void {
+  if (!owner?.isObject3D || !gun?.isObject3D) throw new TypeError('Night beam clearance requires Object3D owners');
+  requirePoint(capsule.start, 'clearance start'); requirePoint(capsule.end, 'clearance end');
+  requireBounded(capsule.radius, 2, 'clearance radius');
+  CLEARANCES.set(owner, Object.freeze({ gun, start: new THREE.Vector3(...capsule.start), end: new THREE.Vector3(...capsule.end),
+    radius: capsule.radius }));
+}
+
+/** The clearance of the nearest owner above `anchor` (its own vehicle), shared by every lamp of that vehicle. */
+function clearanceFor(anchor: THREE.Object3D): ClearanceState | null {
+  for (let owner: THREE.Object3D | null = anchor; owner; owner = owner.parent) {
+    const clearance = CLEARANCES.get(owner);
+    if (clearance) return clearance;
+  }
+  return null;
 }
 
 function collectEmission(emitter: NightLightEmitter, states: Map<THREE.MeshStandardMaterial, EmissionState>): EmissionState | null {
@@ -262,6 +299,7 @@ function applyLight<T extends THREE.SpotLight | THREE.PointLight>(slot: LightSlo
 }
 
 function updateSpots(slots: LightSlot<THREE.SpotLight>[], emitters: EmitterState[]): void {
+  let ownGuns = 0;
   for (let index = 0; index < slots.length; index++) {
     const source = chooseEmitter(emitters, slots, index, 'headlight');
     const slot = slots[index];
@@ -271,8 +309,69 @@ function updateSpots(slots: LightSlot<THREE.SpotLight>[], emitters: EmitterState
     slot.light.angle = source.emitter.coneRad ?? HEADLIGHT_CONE_RAD;
     slot.light.target.position.copy(source.position).add(source.direction);
     slot.light.target.updateMatrixWorld();
+    if (source.clearance) publishOwnGun(ownGuns++, source, source.clearance);
   }
+  OWN_GUN_UNIFORMS.uCotOwnGunCount.value = ownGuns;
 }
+
+/** (CN-7) A spot pool lights at most 8 headlights (the budget's bound), so at most 8 own-gun records. */
+const OWN_GUN_RECORDS = 8;
+/** (CN-7) This frame's lit headlights that carry their vehicle's gun: the lamp's seat (the spot's world position) and
+ *  the gun's world capsule (A.xyz to B, radius A.w). Shared by reference with every vehicle program. */
+const OWN_GUN_UNIFORMS = {
+  uCotOwnGunCount: { value: 0 },
+  uCotOwnGunSeat: { value: Array.from({ length: OWN_GUN_RECORDS }, () => new THREE.Vector3()) },
+  uCotOwnGunA: { value: Array.from({ length: OWN_GUN_RECORDS }, () => new THREE.Vector4()) },
+  uCotOwnGunB: { value: Array.from({ length: OWN_GUN_RECORDS }, () => new THREE.Vector3()) },
+};
+
+function publishOwnGun(record: number, source: EmitterState, clearance: ClearanceState): void {
+  clearance.gun.updateWorldMatrix(true, false);
+  const world = clearance.gun.matrixWorld;
+  OWN_GUN_UNIFORMS.uCotOwnGunSeat.value[record].copy(source.position);
+  const a = OWN_GUN_UNIFORMS.uCotOwnGunA.value[record];
+  a.set(clearance.start.x, clearance.start.y, clearance.start.z, 1).applyMatrix4(world);
+  a.w = clearance.radius * world.getMaxScaleOnAxis();
+  OWN_GUN_UNIFORMS.uCotOwnGunB.value[record].copy(clearance.end).applyMatrix4(world);
+}
+
+/** (CN-7) The vehicle shader's own-gun uniforms (materials.ts vehicleAmbientFloorHook binds them with NIGHT_OWN_GUN_GLSL). */
+export function bindNightOwnGunUniforms(uniforms: Record<string, unknown>): void {
+  Object.assign(uniforms, OWN_GUN_UNIFORMS);
+}
+
+/**
+ * (CN-7) Placed after `#include <lights_pars_begin>` in a vehicle program: every spot light's incident light, then none
+ * of it on a fragment inside the gun capsule of the vehicle whose lit lamp that spot is (its seat within 1 cm). The
+ * beam itself is untouched: the road, the trees and every other vehicle keep it, and other vehicles' lamps still light
+ * this gun. World positions come back from the view-space light and fragment through the view matrix's rotation.
+ */
+export const NIGHT_OWN_GUN_GLSL = `#if NUM_SPOT_LIGHTS > 0
+uniform int uCotOwnGunCount;
+uniform vec3 uCotOwnGunSeat[ ${OWN_GUN_RECORDS} ];
+uniform vec4 uCotOwnGunA[ ${OWN_GUN_RECORDS} ];
+uniform vec3 uCotOwnGunB[ ${OWN_GUN_RECORDS} ];
+void cotOwnGunSpotLightInfo( const in SpotLight spotLight, const in vec3 geometryPosition, out IncidentLight light ) {
+	getSpotLightInfo( spotLight, geometryPosition, light );
+	if ( uCotOwnGunCount == 0 || ! light.visible ) return;
+	vec3 cotLamp = cameraPosition + ( vec4( spotLight.position, 0.0 ) * viewMatrix ).xyz;
+	for ( int k = 0; k < ${OWN_GUN_RECORDS}; k ++ ) {
+		if ( k >= uCotOwnGunCount ) break;
+		vec3 cotSeat = cotLamp - uCotOwnGunSeat[ k ];
+		if ( dot( cotSeat, cotSeat ) > 1e-4 ) continue;
+		vec3 cotFrag = cameraPosition + ( vec4( geometryPosition, 0.0 ) * viewMatrix ).xyz - uCotOwnGunA[ k ].xyz;
+		vec3 cotBore = uCotOwnGunB[ k ] - uCotOwnGunA[ k ].xyz;
+		vec3 cotOff = cotFrag - cotBore * clamp( dot( cotFrag, cotBore ) / max( dot( cotBore, cotBore ), 1e-6 ), 0.0, 1.0 );
+		if ( dot( cotOff, cotOff ) <= uCotOwnGunA[ k ].w * uCotOwnGunA[ k ].w ) {
+			light.color = vec3( 0.0 );
+			light.visible = false;
+		}
+		return;
+	}
+}
+#define getSpotLightInfo cotOwnGunSpotLightInfo
+#endif
+`;
 
 function createSpots(group: THREE.Group, count: number): LightSlot<THREE.SpotLight>[] {
   return Array.from({ length: count }, (_, index) => {
@@ -307,6 +406,7 @@ function collectRoot(
     for (const emitter of definitions) {
       if (existing.length + additions.length >= MAX_EMITTERS) throw new RangeError('Night light scene exceeds bounded capacity');
       additions.push({ anchor, source, emitter, emission: collectEmission(emitter, nextEmissions),
+        clearance: emitter.kind === 'headlight' ? clearanceFor(anchor) : null,
         position: new THREE.Vector3(), direction: new THREE.Vector3(), active: false, distanceSquared: Infinity });
     }
   });
