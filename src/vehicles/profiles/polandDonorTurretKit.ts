@@ -332,9 +332,11 @@ function zubrIICabinets(P: TankBuilderPort, casting: Stock): void {
       P.addEquipment('turretDark', box(.07, .018, .10), side * (w.x - .17), w.top + .034, z);
     }
     if (side < 0) {
+      // Release 227 (national lamp guards): the bar ends 20 mm behind the lamp's base plate (it ran on under the plate's
+      // inboard end, its front clamp's top 1.5 mm under the plate's top: a z-fight the longer guarded plate would widen).
       const bx = side * (w.x - w.lid + .06);
-      P.addEquipment('turretDark', beamBetween([bx, w.top + .022, .34], [bx, w.top + .022, -.84], .015, seg(P, 10, 6)));
-      for (const z of [.26, -.76]) P.addEquipment('turretDark', box(.05, .03, .03), bx, w.top + .016, z);
+      P.addEquipment('turretDark', beamBetween([bx, w.top + .022, .23], [bx, w.top + .022, -.84], .015, seg(P, 10, 6)));
+      for (const z of [.15, -.76]) P.addEquipment('turretDark', box(.05, .03, .03), bx, w.top + .016, z);
     }
     // Square driving lamps on the cabinets' front ends.
     nationalLamp(P, side * (w.x - .17), w.front - .09, w.top + .004, NATIONAL_ROOF_LOADOUTS.t72b3_zubr_ii.lamp);

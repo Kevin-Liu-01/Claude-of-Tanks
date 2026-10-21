@@ -42,11 +42,14 @@ export function nationalRoofSystems(P:TankBuilderPort,l:NationalRoofLoadout):voi
  }finally{material.dispose();}
 }
 
+/** The guard posts' inset from the lamp's base-plate ends (release 227, national lamp guards: every national lamp). */
+export const NATIONAL_LAMP_GUARD_INSET_M=.010;
 /** A guarded driving/search lamp on its own foot (base = the receiving surface's height). `guardInset` (release 227, CN
  * lane) lengthens the base plate by that much at each end, so the guard posts stand inside the plate's ends rather than
  * flush with them (a post's flat face coplanar with the plate's end face z-fights); the posts keep their place, clear of
- * the lamp body (a post moved inboard would pass through the round lamp's body). The default 0 is the original lamp. */
-export function nationalLamp(P:TankBuilderPort,x:number,z:number,base:number,shape:NationalRoofLoadout['lamp'],guardInset=0):void {
+ * the lamp body (a post moved inboard would pass through the round lamp's body). Release 227 (national lamp guards,
+ * nationalLampGuards.selftest.mjs): every national lamp takes the CN lamps' 10 mm by default; 0 is the original flush lamp. */
+export function nationalLamp(P:TankBuilderPort,x:number,z:number,base:number,shape:NationalRoofLoadout['lamp'],guardInset=NATIONAL_LAMP_GUARD_INSET_M):void {
  const y=base+.117;
  P.addEquipment('turretDetail',box(.13,.11,.13),x,base+.043,z);
  const round=shape==='round',w=shape==='slit'?.26:.20,h=shape==='slit'?.10:.17;
