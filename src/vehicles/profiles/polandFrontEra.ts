@@ -15,7 +15,7 @@ import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {blindTube} from './measuredPrimitives.ts';
 import {Stock, sectionLoft, crosswiseSolid, eraModule, sectorOf, hardwareBlock, mosaicLayout, assertHullPart,
-  assertTurretPart, nightLens, tagFrontPart, refineHeights, type LoftStation, type V3} from './eraModuleKit.ts';
+  assertTurretPart, assertRoofPart, seatPlanTile, seatOrientedTile, nightLens, tagFrontPart, refineHeights, type LoftStation, type V3} from './eraModuleKit.ts';
 import type {SectionPoint} from './sectionSolid.ts';
 import type {PolishFrontSkirt} from './nationalPoland.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -82,7 +82,10 @@ interface BoxPlan {
 const BOXES: Readonly<Record<PolishLevel, BoxPlan>> = {
   1: {path: [[.39, 1.44], [.98, 1.44], [1.40, 1.02], [1.40, .62]], y0: .11, y1: .47, wall: .025, floor: .025, lid: .024, rake: 0,
     columns: [[.175, .175, .175], [.175, .175, .175], [.175, .175]],
-    rows: [[.1475, .2775], [.3075, .4375]], bars: [[.125, .14], [.285, .30], [.445, .46]], tile: {single: .055},
+    // (release 230, UA/PL round 11, Z2: round 10's measured turret-front ERA, 269 -> 162 cells, the Krata bars taking the
+    // joints: the middle bar goes, the two rows close to a 6 mm seam over the gunmetal bay floor, the tiles 3 mm off the
+    // perimeter bars; one full-height mullion per column joint reads the Krata as columns)
+    rows: [[.143, .2895], [.2955, .4415]], bars: [[.125, .14], [.445, .46]], tile: {single: .055},
     // (round 2, 2026-10-16; the critic: the Zubr's cheek "reads as a plain two-row crate ... the thin frame posts barely
     // show"): the Krata frame stands 4 cm out between its .055 m tiles, a mullion between every two columns
     frame: {proud: .040, mullions: true}},
@@ -95,7 +98,8 @@ const BOXES: Readonly<Record<PolishLevel, BoxPlan>> = {
     // (counts; fitted widths of about .11, .15, .165 and .17 m: a raked face shortens as it rises, by .035 m at each
     // mitred corner at the top course, and every tile stays on its own face at every height)
     columns: [[.15], [.19, .19], [.185, .185, .185], [.185, .185]], fit: {gap: .016},
-    rows: [[.13, .243], [.263, .376], [.396, .509]], bars: [[.11, .13], [.243, .263], [.376, .396], [.509, .529]],
+    // (release 230, round 11, Y2: the bars between the rows go, as on the Zubr; three rows in 6 mm seams)
+    rows: [[.132, .2505], [.2565, .3835], [.3895, .507]], bars: [[.11, .13], [.509, .529]],
     // (round 6, the critic's D4: "no module shape or arrangement carries over" between the two Zubrs): the Zubr's Krata
     // frame, 4 cm bars with a mullion between every two columns, at both levels
     // (round 7, UAPL-1: no row stands prouder than the one above: the rows were read as tiers)
@@ -297,9 +301,12 @@ function cheekFaces(P: TankBuilderPort, wall: Stock, side: number, plan: BoxPlan
           [.024, .016, .008], {x: tup(s.dir), y: tup(up)})];
         eraModule(P, {owner: 'turret', sector: sectorOf('turret_era', side), geometry: g, outward: tup(n), minDot: .5,
           name: `cheek cassette ${i}.${r}`, hardware: bolt, guard: (nm, geo) => assertTurretPart(id, nm, geo)});
-        const hh = (r1 - r0) / Math.cos(plan.rake * Math.PI / 180);
-        bayFloor(P, 'turret', id, w, hh, corner.clone().addScaledVector(s.dir, w / 2).addScaledVector(up, hh / 2), s.dir, n);
       });
+      // (round 11) one gunmetal bay floor up the column, under its tiles and the 6 mm seams between them
+      {
+        const r0 = plan.rows[0][0], r1 = plan.rows[plan.rows.length - 1][1], hh = (r1 - r0) / Math.cos(plan.rake * Math.PI / 180);
+        bayFloor(P, 'turret', id, w, hh, seatOn(s, at, r0).addScaledVector(s.dir, w / 2).addScaledVector(up, hh / 2), s.dir, n);
+      }
       at += w + gap;
       // a mullion in the gap after this column (not after the last). Round 7 (the critic's geometry lens: a mullion ran
       // through the bars between the rows, 7.5 mm inside them): one mullion per row, butting 1 mm short of the bars
@@ -507,16 +514,142 @@ export function polishRoofGrid(P: TankBuilderPort, casting: Stock, level: Polish
   }
 }
 
+/** Release 230 (UA/PL round 11; round 10's measured regression UAPL-R8-03: roof ERA, top-down, 922 -> 228 cells on the
+ * Zubr and 234 on the Zubr II once the donor's 33-cassette Relikt roof carpet went): the Krata roof spine, two columns
+ * either side of the turret's centre line in three rows ahead of the hatches, and the rear row behind the ventilator, two
+ * columns in two rows ahead of the bustle stowage, in the roof grid's own frame language: level 1 single .035 m tiles
+ * (12-triangle blocks) in a three-bar frame (a bar across each row's front and rear, shared between rows, and one
+ * between its tiles), level 2 two-layer tiles (a .016 m base and a .014 m face inset 15 mm with 10 mm chamfers) in a
+ * seven-bar frame (bars along each column's outer sides and between the columns, and a front and a rear bar per column
+ * at each row's edges). Each tile is tilted to the plane of its four seat corners on the dome, its lowest corner 4 mm in
+ * (seatPlanTile); its tops under the cupola's hatch plane (E7) and the roof cap (E8). No bay floors: a flat floor on the
+ * dome's curve lies within a fraction of a millimetre of it (a z-fight once spent); the bars stand over the bare dome. */
+type SpineRow = {z: readonly [number, number]; cols: readonly number[]; sides?: readonly number[]};
+type SpineBlock = {cols: readonly (readonly [number, number])[]; rows: readonly SpineRow[]};
+const SPINE = {
+  // blocks of rows (front to rear), each row's tiles naming the block's columns (|x| spans) and, unless on both, its sides.
+  // The rear row's outer rear cell (|x| .23-.41 behind z -1.22) has no casting under its outer corners and is left out;
+  // its inner rear cell ends at z -1.37 (the brief's -1.39): the cast shell narrows to |x| .21 at z -1.41, under the
+  // frame's rear bar. Round 11 adds the shoulder blocks outboard of the spine, behind the cheek boxes (measured clear of
+  // every roof fitting on the build, tools/r14 roofcand: the commander's sensor plinth, the gunner's sight hood, the
+  // cupola, the stanchions). The Zubr II keeps its right spine's front two rows bare: the mission drone dock's landing
+  // (its native seat at x .20, z .57; the solver finds no other one outside the WKM-B station's sweep and the hatches).
+  blocks: {
+    1: [
+      {cols: [[.03, .19], [.21, .37]], rows: [{z: [.56, .74], cols: [0, 1]}, {z: [.35, .53], cols: [0, 1]}, {z: [.14, .32], cols: [0, 1]}]},
+      {cols: [[.03, .21], [.23, .41], [.43, .61]], rows: [{z: [-1.20, -1.03], cols: [0, 1, 2]}, {z: [-1.37, -1.22], cols: [0]}]},
+      {cols: [[.83, 1.01], [1.03, 1.21]], rows: [{z: [.35, .53], cols: [0, 1], sides: [-1]}, {z: [.35, .53], cols: [1], sides: [1]},
+        {z: [.14, .32], cols: [0, 1], sides: [-1]}, {z: [.14, .32], cols: [1], sides: [1]}, {z: [-.07, .11], cols: [1], sides: [-1]}]},
+    ],
+    2: [
+      {cols: [[.03, .19], [.21, .37]], rows: [{z: [.56, .74], cols: [0, 1], sides: [-1]}, {z: [.35, .53], cols: [0, 1], sides: [-1]}, {z: [.14, .32], cols: [0, 1]}]},
+      {cols: [[.03, .21], [.23, .41]], rows: [{z: [-1.20, -1.03], cols: [0, 1]}, {z: [-1.37, -1.22], cols: [0]}]},
+      {cols: [[.43, .61], [.63, .81], [.83, 1.01], [1.03, 1.21]], rows: [{z: [.35, .53], cols: [3]},
+        {z: [.14, .32], cols: [0, 1, 2, 3], sides: [-1]}, {z: [.14, .32], cols: [3], sides: [1]}, {z: [-.07, .11], cols: [3], sides: [-1]}]},
+    ],
+  } as Readonly<Record<PolishLevel, readonly SpineBlock[]>>,
+  tile: {1: {base: .035, top: 0}, 2: {base: .016, top: .014, inset: .015, chamfer: .010}},
+  bar: {w: .02, mid: .014, h: .020, hx: .017, out: .012},
+} as const;
+export function polishRoofSpine(P: TankBuilderPort, casting: Stock, level: PolishLevel): void {
+  const id = idOf(level), S = SPINE, T = S.tile[level], B = S.bar;
+  for (const side of SIDES) for (const all of S.blocks[level]) {
+    // (the block's rows on this side; rows sharing a z span merged)
+    const rows: {z: readonly [number, number]; cols: number[]}[] = [];
+    for (const r of all.rows) if (!r.sides || r.sides.includes(side)) {
+      const same = rows.find(q => q.z[0] === r.z[0] && q.z[1] === r.z[1]);
+      if (same) same.cols.push(...r.cols); else rows.push({z: r.z, cols: [...r.cols]});
+    }
+    if (!rows.length) continue;
+    for (const row of rows) for (const c of row.cols) {
+      const [X0, X1] = all.cols[c], [z0, z1] = row.z;
+      const {n, centre, low, along, sx, sz} = seatPlanTile(casting, side, [X0, X1, z0, z1]);
+      let g: THREE.BufferGeometry;
+      if (!('inset' in T)) g = orientedBox([sx, sz, T.base + .004], centre.clone().addScaledVector(n, low + (T.base - .004) / 2), along, n);
+      else {
+        const up = n.clone().cross(along).normalize(), corner = centre.clone().addScaledVector(n, low).addScaledVector(along, -sx / 2).addScaledVector(up, -sz / 2);
+        g = stackTile(P, corner, along, up, n, sx, sz, T.base, T.top, T.inset, T.chamfer);
+      }
+      eraModule(P, {owner: 'turret', sector: sectorOf('turret_era', side), geometry: g, outward: tup(n), minDot: .5,
+        name: 'roof spine tile', guard: (nm, geo) => assertRoofPart(id, nm, geo)});
+    }
+    // the block's welded frame, each bar following the dome (conformBar). The cross positions: each row's front and rear
+    // edge, 12 mm out (one shared bar between two rows); the long positions: each column's sides, 12 mm out (the narrower
+    // bar between two columns)
+    const R = rows.length, cols = all.cols, C = cols.length;
+    const zs = [rows[0].z[1] + B.out, ...rows.slice(1).map((r, i) => (rows[i].z[0] + r.z[1]) / 2), rows[R - 1].z[0] - B.out];
+    const xs = [cols[0][0] - B.out, ...cols.slice(1).map((c, i) => (cols[i][1] + c[0]) / 2), cols[C - 1][1] + B.out];
+    const ws = xs.map((_, j) => (j === 0 || j === C ? B.w : B.mid));
+    // which columns stand at a cross position (the rows either side of it) and which rows at a long position
+    const colsAt = (k: number) => [...new Set([...(rows[k - 1]?.cols ?? []), ...(rows[k]?.cols ?? [])])];
+    const rowsAt = (j: number) => rows.map((r, i) => (r.cols.some(c => c === j - 1 || c === j) ? i : -1)).filter(i => i >= 0);
+    // (runs of neighbouring columns or rows: a bar never spans a cell the row or column does not carry)
+    const runs = (v: number[]) => { v.sort((p, q) => p - q); const out: number[][] = []; for (const x of v) { const l = out[out.length - 1]; if (l && x === l[l.length - 1] + 1) l.push(x); else out.push([x]); } return out; };
+    const bars: {x0: number; z0: number; x1: number; z1: number; w: number; h: number}[] = [];
+    if (level === 1) {
+      // bars across at the rows' edges (whole, over the columns there), a bar between two tiles of a row butting between them
+      zs.forEach((z, k) => { for (const run of runs(colsAt(k))) bars.push({x0: xs[run[0]], z0: z, x1: xs[run[run.length - 1] + 1], z1: z, w: B.w, h: B.h}); });
+      rows.forEach((r, i) => { for (let j = 1; j < C; j++) if (r.cols.includes(j - 1) && r.cols.includes(j))
+        bars.push({x0: xs[j], z0: zs[i] - B.w / 2 - .001, x1: xs[j], z1: zs[i + 1] + B.w / 2 + .001, w: B.mid, h: B.hx}); });
+    } else {
+      // bars along the columns' sides (whole, over the rows there), bars across each column butting between them
+      xs.forEach((x, j) => { for (const run of runs(rowsAt(j))) bars.push({x0: x, z0: zs[run[0]] + B.w / 2, x1: x, z1: zs[run[run.length - 1] + 1] - B.w / 2, w: ws[j], h: B.h}); });
+      zs.forEach((z, k) => { for (const c of colsAt(k)) bars.push({x0: xs[c] + ws[c] / 2 + .001, z0: z, x1: xs[c + 1] - ws[c + 1] / 2 - .001, z1: z, w: B.w, h: B.hx}); });
+    }
+    for (const b of bars) {
+      const g = conformBar(casting, new THREE.Vector3(side * b.x0, 0, b.z0), new THREE.Vector3(side * b.x1, 0, b.z1), b.w, b.h, .004, .40, P.q ? .001 : .002);
+      assertRoofPart(id, 'roof spine bar', g);
+      P.addEquipment('turretDetail', g);
+    }
+  }
+}
+
+/** Release 230 (UA/PL round 11, Y6): the Zubr II's cabinet-lid course, level 2 only: two-layer tiles (.016 + .014, 15 mm
+ * inset, 10 mm chamfers) laid flat on the permanent cabinet lids (top .804) in the lids' own frame, each over a gunmetal
+ * bay floor. The brief's course of 14-16 was measured on the build (tools/r14 lidcand): on the lids' flat run only two
+ * tiles a side keep 8 mm from the bolted access lids, their handles, the driving lamps and (left) the clamped crowbar,
+ * and on the 45-degree shoulder one, behind the rear stanchion's arm; the lids' inboard columns lie off the lids. Each
+ * tile is [|x| centre, z centre, the lid's direction (degrees from +x towards -z, the shoulder 45), width across it,
+ * length along the lid]. Tops .834 under the roof cap (.844, E8). */
+const LID_COURSE = {
+  tiles: [[1.775, -.40, 0, .26, .26], [1.775, -.12, 0, .26, .26], [1.296, -1.312, 45, .26, .30]] as readonly (readonly [number, number, number, number, number])[],
+  top: .804, base: .016, face: .014, inset: .015, chamfer: .010,
+};
+export function zubrIILidCourse(P: TankBuilderPort, lidParts: readonly THREE.BufferGeometry[]): void {
+  const id = idOf(2), L = LID_COURSE, lids = new Stock(id, lidParts);
+  try {
+    for (const side of SIDES) for (const [cx, cz, ang, sx, sz] of L.tiles) {
+      const a = ang * Math.PI / 180;
+      const seat = seatOrientedTile(lids, side * cx, cz, [side * Math.cos(a), -Math.sin(a)], sx, sz);
+      if (seat.corners.some(c => Math.abs(c.y - L.top) > .002)) throw new Error(`${id}: a lid tile at ${cx}, ${cz} is not wholly on its lid`);
+      const {n, centre, low, along, fwd} = seat;
+      const corner = centre.clone().addScaledVector(n, low).addScaledVector(along, -sx / 2).addScaledVector(fwd, -sz / 2);
+      const g = stackTile(P, corner, along, fwd, n, sx, sz, L.base, L.face, L.inset, L.chamfer);
+      eraModule(P, {owner: 'turret', sector: sectorOf('turret_era', side), geometry: g, outward: tup(n), minDot: .5,
+        name: 'cabinet lid tile', guard: (nm, geo) => assertRoofPart(id, nm, geo)});
+      bayFloor(P, 'turret', id, sx, sz, centre.clone().addScaledVector(n, low), along, n);
+    }
+  } finally { lids.dispose(); }
+}
+
 /** A frame bar laid on the dome between two plan points: `w` wide, its foot `sink` into the casting along both of its
  * edges and its top `h` over the casting there, stations at most 5 cm apart (the dome's sag between two stations is
  * under half a millimetre). */
-function conformBar(casting: Stock, a: THREE.Vector3, b: THREE.Vector3, w: number, h: number, sink = .004): THREE.BufferGeometry {
+function conformBar(casting: Stock, a: THREE.Vector3, b: THREE.Vector3, w: number, h: number, sink = .004, step = .05, tol = 0): THREE.BufferGeometry {
   const d = b.clone().sub(a).setY(0), len = d.length();
   d.normalize();
-  const across = new THREE.Vector3(d.z, 0, -d.x), n = Math.max(1, Math.ceil(len / .05));
-  return sectionLoft(Array.from({length: n + 1}, (_, k) => {
-    const c = a.clone().addScaledVector(d, len * k / n);
-    const yl = casting.top(c.x + across.x * w / 2, c.z + across.z * w / 2), yr = casting.top(c.x - across.x * w / 2, c.z - across.z * w / 2);
+  const across = new THREE.Vector3(d.z, 0, -d.x), n = Math.max(1, Math.ceil(len / step));
+  const edges = (t: number): [number, number] => {
+    const c = a.clone().addScaledVector(d, len * t);
+    return [casting.top(c.x + across.x * w / 2, c.z + across.z * w / 2), casting.top(c.x - across.x * w / 2, c.z - across.z * w / 2)];
+  };
+  // (release 230: with `tol`, stations every `step` and between two wherever the dome under either edge leaves their
+  // chord by more than tol; without it, every `step`)
+  const seed = Array.from({length: n + 1}, (_, k) => k / n);
+  const ts = tol > 0 ? [...new Set([...refineHeights(t => edges(t)[0], seed, tol, 5, .002), ...refineHeights(t => edges(t)[1], seed, tol, 5, .002)])].sort((u, v) => u - v)
+    : seed;
+  return sectionLoft(ts.map(t => {
+    const c = a.clone().addScaledVector(d, len * t), [yl, yr] = edges(t);
     return {o: tup(c.setY(0)), out: tup(across), up: [0, 1, 0] as V3,
       ring: [[-w / 2, yr - sink], [w / 2, yl - sink], [w / 2, yl + h], [-w / 2, yr + h]] as SectionPoint[]};
   }));

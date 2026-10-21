@@ -20,7 +20,7 @@ import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {beamBetween} from './measuredPrimitives.ts';
 import {Stock, loft, eraModule} from './eraModuleKit.ts';
-import {polishCheekBoxes, polishRoofGrid, stackTile} from './polandFrontEra.ts';
+import {polishCheekBoxes, polishRoofGrid, polishRoofSpine, zubrIILidCourse, stackTile} from './polandFrontEra.ts';
 import {strappedPack} from './modernizationFittings.ts';
 import {nationalLamp, nationalEye, nationalRoofSensor} from './nationalRoofSystems.ts';
 import {hullEquipment} from './nationalPoland.ts';
@@ -231,6 +231,8 @@ function buildZubrTurret(P: TankBuilderPort, casting: Stock): void {
   // fan, which this concept no longer carries (nationalDonorTurrets.ts reliktEra: false).
   polishCheekBoxes(P, casting, 1);
   polishRoofGrid(P, casting, 1);
+  // Release 230 (UA/PL round 11): the Krata roof spine and rear row.
+  polishRoofSpine(P, casting, 1);
   zubrScreens(P, casting, NATIONAL_ROOF_LOADOUTS.t72b3_zubr.lamp);
   rearRack(P, casting, ZUBR.rack);
   zubrRackLoad(P);
@@ -268,7 +270,7 @@ function cabinetPath(side: number): {outer: [number, number][]; inner: [number, 
 }
 
 function zubrIICabinets(P: TankBuilderPort, casting: Stock): void {
-  const w = ZUBR_II.wall;
+  const w = ZUBR_II.wall, lidPlates: THREE.BufferGeometry[] = [];
   for (const side of SIDES) {
     const {outer, inner} = cabinetPath(side);
     // The wall's lower edge clears the hull's deck cabinets where it sweeps beyond r 2.0 (its rear and shoulder).
@@ -284,10 +286,12 @@ function zubrIICabinets(P: TankBuilderPort, casting: Stock): void {
       const c = w.x - w.back - w.lid * Math.SQRT2;
       return i === 2 ? [side * (w.x - w.lid), (w.x - w.lid) - c] : [ox - side * w.lid / Math.SQRT2, oz + w.lid / Math.SQRT2];
     });
-    P.addExternalArmor('turret', loft(outer.map(([ox, oz], i) => {
+    const lid = loft(outer.map(([ox, oz], i) => {
       const [ix, iz] = lidIn[i];
       return [[ix, w.top - .02, iz], [ox, w.top - .02, oz], [ox, w.top + .004, oz], [ix, w.top + .004, iz]] as V3[];
-    })));
+    }));
+    P.addExternalArmor('turret', lid);
+    lidPlates.push(lid);
     // The welded floor under the boxes, from inside the casting's lower flank to the wall, ahead of the knee.
     const floorRings: V3[][] = [];
     for (let z = w.front; z >= w.knee - 1e-6; z -= (w.front - w.knee) / 5) {
@@ -325,8 +329,9 @@ function zubrIICabinets(P: TankBuilderPort, casting: Stock): void {
         P.addEquipment('turretDark', cylX(.013, .012, 8).rotateY(-side * Math.PI / 4), px + side * .0035, w.top - .045, pz - .0035);
       }
     }
-    // Bolted access lids; the right lid carries a clamped crowbar, the left keeps its middle clear as the drone dock's
-    // flat landing (ZUBR_II_DOCK), outside the remote station's sweep with nothing overhead.
+    // Bolted access lids; the left lid carries a clamped crowbar. (ZUBR_II_DOCK, the left lid's middle, was the drone
+    // dock's flat landing; the mission seat solver seats the dock on the roof front instead, outside the WKM-B station's
+    // sweep, and release 230's lid course tiles the lid's middle.)
     // Release 227 (national lamp clearance): the front lid's handle at its rear end, 15 mm behind the driving lamp's base
     // plate (centred on the lid it ran under the lamp, 10 mm up through the plate into the lamp's body).
     for (const z of [.25, -.70]) {
@@ -349,6 +354,8 @@ function zubrIICabinets(P: TankBuilderPort, casting: Stock): void {
     stanchionArm(P, casting, side, front[0], front[1], st.top, w.top - .01, side * (lidInner(front[1]) + .04));
     stanchionArm(P, casting, side, side * st.rear[0], st.rear[1], st.top, w.top - .01, side * (lidInner(st.rear[1]) + .04));
   }
+  // Release 230 (UA/PL round 11): the Krata-2 lid course on the lids, clear of every lid fitting laid above.
+  zubrIILidCourse(P, lidPlates);
 }
 
 /** The Zubr II's drone-dock landing on the left cabinet lid (turret frame: centre x, lid top y, centre z). */
@@ -400,6 +407,8 @@ function buildZubrIITurret(P: TankBuilderPort, casting: Stock): void {
   // Release 227: the Krata-2 raked terrace boxes and roof grid (polandFrontEra.ts).
   polishCheekBoxes(P, casting, 2);
   polishRoofGrid(P, casting, 2);
+  // Release 230 (UA/PL round 11): the Krata-2 roof spine and rear row.
+  polishRoofSpine(P, casting, 2);
   rearRack(P, casting, ZUBR_II.basket);
   zubrIIBasketLoad(P);
   zubrIISensors(P);
