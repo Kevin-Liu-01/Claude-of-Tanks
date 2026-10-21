@@ -46,7 +46,7 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
   // ---- stream neutrality
   assert.deepEqual(built.group.userData.streamDraws, base.built.group.userData.streamDraws, `${mapId}: the props' streams draw as on the map without the plan`);
   const key = (d) => `${d.kind}@${d.x.toFixed(1)},${d.z.toFixed(1)}`;
-  const seats = plan.areas.flatMap((a) => [...a.furniture, ...a.parking, ...a.lamps]);
+  const seats = [...plan.areas.flatMap((a) => [...a.furniture, ...a.parking, ...a.lamps]), ...(plan.streetParking ?? []), ...(plan.streetFurniture ?? [])];
   const ownSeat = (d) => seats.some((p) => p.kind === d.kind && Math.hypot(p.x - d.x, p.z - d.z) < 0.05);
   const outside = (b) => new Set(b.destructibles.filter((d) => d.slot >= 0 && !inAnyRoom(d.x, d.z) && !VEHICLES.has(d.kind) && d.kind !== 'hedgehog'
     && !ownSeat(d)).map(key));
@@ -77,6 +77,13 @@ for (const mapId of plans.CIVIC_PLAN_MAPS) {
   const structures = built.obstacles.filter((o) => o.kind === 'structure' || o.structureIdx != null);
   const inStructure = (x, z, m) => structures.some((o) => x > o.min[0] - m && x < o.max[0] + m && z > o.min[2] - m && z < o.max[2] + m
     && collision.collisionFootprintContainsPoint(o, x, z, m));
+  // (229) the street parking: each at its seat, on the ground, out of every structure, not moved by the separation passes
+  for (const p of [...(plan.streetParking ?? []), ...(plan.streetFurniture ?? [])]) {
+    const rec = built.destructibles.find((d) => d.kind === p.kind && d.slot >= 0 && Math.hypot(d.x - p.x, d.z - p.z) < 0.05);
+    assert.ok(rec, `${mapId}: the street parking's ${p.kind} at its seat (${p.x}, ${p.z})`);
+    assert.ok(Math.abs(rec.y - field.getHeightAt(p.x, p.z)) < 0.35, `${mapId}: the street parking's ${p.kind} at (${p.x}, ${p.z}) seated on the ground`);
+    assert.ok(!inStructure(p.x, p.z, 0.5), `${mapId}: the street parking's ${p.kind} at (${p.x}, ${p.z}) out of every structure`);
+  }
   for (const area of plan.areas) {
     const tag = `${mapId}/${area.id}`, room = area.room, C = area.centre;
     const records = built.destructibles.filter((d) => d.slot >= 0 && inRect(room, d.x, d.z));

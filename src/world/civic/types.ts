@@ -166,4 +166,11 @@ export interface CivicPlan {
     /** The lamp form the map's posts take (streetKit.ts LAMP_FORMS key). */
     readonly lampForm?: string;
   };
+  /** (229, the owner: "add a lot of cars") the parked vehicles and carts the plan seats along the town's streets, past its
+   *  areas: authored like an area's parking (the separation passes leave them), each at a seat clear of the structures,
+   *  the records and the objectives' holds that the base battles' hulls left alone. */
+  readonly streetParking?: readonly CivicFurniture[];
+  /** (229, the owner: "other decorations ... and so on") the street's own pieces the plan seats past its areas (a
+   *  rickshaw at the kerb, a hawker's stall, a basket): authored and checked as the street parking is. */
+  readonly streetFurniture?: readonly CivicFurniture[];
 }
