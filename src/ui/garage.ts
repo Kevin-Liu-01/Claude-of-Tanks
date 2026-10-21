@@ -14,7 +14,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { ensureFonts } from './fonts.ts';
 import { FEATURED_SHOTS } from './featuredShots.ts';
 import { preloadImage } from './imagePreload.ts';
-import { flagIconHTML, flagIconUrl } from './flags.ts';
+import { flagIconHTML } from './flags.ts';
 import { flagIconCode } from './flagCodes.ts';
 import { iconUrl } from './icons.ts';
 import { ensureTankThumbs, drainTankThumbs, requeueTankThumbs } from './tankThumbs.ts';
@@ -49,8 +49,9 @@ import type { GarageTechnicalViewId } from './garageDossier.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
 import {
   compareCountryThenTierThenName, countryFilterGroups, createGarageCountrySelectionMemory,
-  defaultGarageMapId, horizontalRailState, horizontalRailWheelDelta,
+  defaultGarageMapId, facetFilteredCountry, horizontalRailState, horizontalRailWheelDelta,
 } from './garageOrder.ts';
+import type { GarageFacetPanel } from './garageFacetPanel.ts';
 import { isGarageVisibleTankId } from '../game/matchmaking.ts';
 import { tankTier, tierNumeral } from '../vehicles/tier.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
@@ -62,6 +63,7 @@ import {
 import { t, formatNumber, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
 import { normalizeGameMode } from '../sim/matchModes.ts';
+import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
   isWaveMode, matchRulesetFor, modeCopyValues, rulesetSides, BATTLE_FIELD_LIMIT, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
 } from '../sim/matchRuleset.ts';
@@ -203,6 +205,8 @@ export interface GarageRuntime {
   attachSettingsControl(control: HTMLElement): void;
   getSelectedMap(): string;
   startSolo(): void;
+  /** Test drive a vehicle (default: the selected one) on the proving ground; false when it cannot launch now. */
+  testDrive(specId?: string | null): boolean;
   setSelectedMap(mapId: string): void;
 }
 
@@ -350,6 +354,13 @@ function equipmentPickerTiles(
     .map((item) => equipmentTileMarkup(item, spec, currentLoadout, openSlot))
     .join('');
   return emptyTile + itemTiles;
+}
+
+/** The roster card's tier chip, "Tier X": the word in the data face, the numeral in tungsten. */
+function tierChipHTML(numeral: string): string {
+  const text = t('garage.card.tier', { tier: numeral });
+  const at = text.lastIndexOf(numeral);
+  return at < 0 ? text : `${text.slice(0, at)}<b>${numeral}</b>${text.slice(at + numeral.length)}`;
 }
 
 const NATION_LABEL: Readonly<Record<string, string>> = {
@@ -638,6 +649,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<span class="choice-icon">${uiIconSVG('battleBots', 17)}</span>` +
     `<span><span class="choice-name">${t('garage.battle.soloLabel')}</span>` +
     `<span class="choice-description">${t('garage.battle.regularDescription')}</span></span></button>` +
+    // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the battle menu
+    `<button class="cot-battle-choice cot-battle-regular cot-battle-proving" type="button" data-proving>` +
+    `<span class="choice-icon">${uiIconSVG('modeProving', 17)}</span>` +
+    `<span><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span>` +
+    `<span class="choice-description">${t('garage.battle.provingDescription')}</span></span></button>` +
     `<div class="cot-battle-menu-label" id="cot-special-modes">${t('garage.battle.soloRules')}</div>` +
     `<div class="cot-battle-choice-grid" role="group" aria-labelledby="cot-special-modes">` +
     `<button class="cot-battle-choice" type="button" data-game-mode="drone" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeDrone', 17)}</span><span class="choice-name">${t('playMenu.matchMode.drone.label')}</span></button>` +
@@ -2100,6 +2116,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       activateTechnicalTab(technicalTab);
       return;
     }
+    if (target?.closest('[data-test-drive]')) {
+      startTestDrive(selectedId);
+      return;
+    }
     const galleryLink = target?.closest<HTMLElement>('[data-gallery-layer]');
     if (galleryLink) {
       openSelectedInGallery(galleryLink.dataset.galleryLayer || 'appearance');
@@ -2324,13 +2344,76 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         // Return to this nation's last selected vehicle. A nation without a
         // remembered choice opens on its highest-tier, far-left card.
         const preferred = countrySelection.preferredSpec(group.id);
-        if (preferred) api.setSelected(preferred.id);
+        // Under a roster filter, a remembered vehicle the filter hides yields to the nation's first match.
+        const firstMatch = preferred && !facetVisible(preferred.id)
+          ? (specsByCountry.get(group.id) || []).find((spec) => facetVisible(spec.id)) : undefined;
+        if (firstMatch) api.setSelected(firstMatch.id);
+        else if (preferred) api.setSelected(preferred.id);
       });
       chipsEl.appendChild(chip);
       chipById.set(group.id, chip);
     }
   }
   initializeCountryChips();
+
+  // --- ROSTER FILTER (class, role, era, search) -----------------------------
+  // The Filter toggle leads the flag rail. Its panel and the fleet facet tables load on the first press
+  // (garageFacetPanel.ts), never on the game entry; the panel hands back a visible-card predicate that narrows
+  // every national strip, re-counts the flags and keeps the strip on a nation with a match.
+  let rosterFacetMatch: ((specId: string) => boolean) | null = null;
+  const facetVisible = (specId: string): boolean => !rosterFacetMatch || rosterFacetMatch(specId);
+  const facetToggle = document.createElement('button');
+  facetToggle.type = 'button';
+  facetToggle.className = 'cot-facet-toggle';
+  facetToggle.setAttribute('aria-haspopup', 'dialog');
+  facetToggle.setAttribute('aria-expanded', 'false');
+  facetToggle.setAttribute('aria-label', t('fleet.filter.toggleAria'));
+  facetToggle.title = t('fleet.filter.toggleAria');
+  // Icon only (blind critic 2026-10-21: a text chip cost the flag rail a quarter of a phone's width); the name rides in
+  // aria-label and title, and the badge counts the active filters.
+  facetToggle.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 3h12l-4.6 5.4V13' +
+    'l-2.8 1.2V8.4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>' +
+    '<span class="ct num" hidden></span>';
+  chipsEl.prepend(facetToggle);
+  function setRosterFacetFilter(match: ((specId: string) => boolean) | null): void {
+    rosterFacetMatch = match;
+    for (const group of countryGroups) {
+      const pool = specsByCountry.get(group.id) || [];
+      const shown = match ? pool.filter((spec) => match(spec.id)).length : pool.length;
+      const chip = chipById.get(group.id);
+      const countEl = chip?.querySelector<HTMLElement>('.ct');
+      if (countEl) countEl.textContent = String(shown);
+      chip?.classList.toggle('is-facet-empty', shown === 0);
+    }
+    const hasMatch = (countryId: string) => (specsByCountry.get(countryId) || []).some((spec) => facetVisible(spec.id));
+    applyCountryFilter(facetFilteredCountry(countryFilter, countryGroups.map((group) => group.id), hasMatch)
+      || countryFilter);
+    // The stage never shows a vehicle the filter hides: once the filter settles (typing stays cheap), the strip's first
+    // match takes the pedestal.
+    if (facetSelectTimer !== null) clearTimeout(facetSelectTimer);
+    facetSelectTimer = setTimeout(() => {
+      facetSelectTimer = null;
+      if (facetVisible(selectedId) || vehicleLocked) return;
+      const first = (specsByCountry.get(countryFilter) || []).find((spec) => facetVisible(spec.id));
+      if (first) api.setSelected(first.id);
+    }, 320);
+  }
+  let facetSelectTimer: ReturnType<typeof setTimeout> | null = null;
+  let facetPanel: Promise<GarageFacetPanel> | null = null;
+  facetToggle.addEventListener('click', () => {
+    emit('ui:click', {});
+    facetPanel ??= Promise.all([import('./garageFacetPanel.ts'), import('./garageFacetPanel.css')])
+      .then(([{ mountGarageFacetPanel }]) => mountGarageFacetPanel({
+        anchor: countryRailEl,
+        toggle: facetToggle,
+        specs,
+        setFilter: setRosterFacetFilter,
+        click: () => emit('ui:click', {}),
+      }));
+    facetPanel.then((panel) => panel.toggle(), () => { facetPanel = null; });
+  });
+  // --- END roster filter ------------------------------------------------------
+
   function applyCountryFilter(countryId: string): void {
     const previousCountry = renderedCountryFilter;
     countryFilter = countryId;
@@ -2348,7 +2431,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (previousCountry && previousCountry !== countryId) {
       for (const card of cardsByCountry.get(previousCountry) || []) card.style.display = 'none';
     }
-    for (const card of cardsByCountry.get(countryId) || []) card.style.display = '';
+    for (const card of cardsByCountry.get(countryId) || []) {
+      card.style.display = facetVisible(card.dataset.specId || '') ? '' : 'none';
+    }
     renderedCountryFilter = countryId;
     // One compositor animation replaces a Web Animation per vehicle. The old
     // stagger created a burst of animation objects and style flushes on every
@@ -2406,17 +2491,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const displayName = spec.label?.displayName || spec.name;
       const shortName = spec.label?.shortName || displayName;
       card.title = developmentOnly ? `${displayName} — local development vehicle` : displayName;
-      card.setAttribute('aria-label', `${tierNumeral(spec.id) || ''} ${displayName}${developmentOnly ? t('garage.card.developmentVehicle') : ''}`.trim());
-      card.style.setProperty('--nation-flag', `url("${flagIconUrl(spec.nation)}")`);
-      // Stable pre-rendered 3/4 portrait generated from the final first-party
-      // procedural build; no live renderer or model swap is needed here.
+      const tier = tierNumeral(spec.id) || '';
+      const nationName = t(`nation.${spec.nation}`);
+      card.setAttribute('aria-label', `${tier
+        ? t('garage.card.aria', { tier, name: displayName, nation: nationName })
+        : t('garage.card.ariaUntiered', { name: displayName, nation: nationName })}${developmentOnly ? t('garage.card.developmentVehicle') : ''}`);
+      // Tank hero card (owner, 2026-10-17): the vehicle's 3/4 hero render over its waving national flag,
+      // added by the lazy heroCard.ts from offline layers; the box, the tier chip and the untruncated
+      // name are here. No era or nation text: the cloth flag is the nation.
       card.innerHTML =
-        `<span class="card-era">${vehicleEraLabelI18n(spec.era, t, { short: true })}</span>` +
+        (tier ? `<span class="hc-tier" aria-hidden="true">${tierChipHTML(tier)}</span>` : '') +
         (developmentOnly ? `<span class="dev-tag">${spec.roster?.tag || 'DEV'}</span>` : '') +
-        `<span class="flag">${flagIconHTML(spec.nation, 20)}<i>${NATION_LABEL[spec.nation] || spec.nation}</i></span>` +
-        `<img class="ti" data-cot-thumb="${spec.id}" alt="${displayName}" width="256" height="256" ` +
-        `loading="lazy" decoding="async" fetchpriority="low">` +
-        `<div class="nm"><b class="tiern">${tierNumeral(spec.id) || ''}</b><span class="nmt"></span></div>`;
+        `<div class="nm"><span class="nmt"></span></div>`;
       requiredElement<HTMLElement>(card, '.nmt').textContent = shortName;
       card.addEventListener('pointerenter', () => signalTankIntent(spec.id), { passive: true });
       card.addEventListener('pointerleave', () => clearTankIntent(spec.id), { passive: true });
@@ -2436,9 +2522,29 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   initializeTankCards();
   applyCountryFilter(countryFilter);
-  // Packaged PNGs avoid per-card WebGL contexts and remain deterministic
-  // across the garage carousel and screenshot harness.
-  ensureTankThumbs(allSpecs, { canWork: () => api.isOpen });
+  // Hero layers arrive with the lazy heroCard chunk and its manifest. A vehicle without a hero row (or
+  // every vehicle, when the chunk or the manifest is unavailable) keeps the packaged portrait and a
+  // flag chip: no per-card WebGL either way.
+  let heroCards: typeof import('./heroCard.ts') | null = null;
+  const legacyPortraits = (ids: readonly string[]): void => {
+    if (!ids.length) return;
+    for (const id of ids) {
+      const card = cardById.get(id);
+      const spec = specById.get(id);
+      if (!card || !spec || card.querySelector('.ti')) continue;
+      card.insertAdjacentHTML('afterbegin',
+        `<span class="flag">${flagIconHTML(spec.nation, 20)}</span>` +
+        `<img class="ti" data-cot-thumb="${spec.id}" alt="" width="256" height="256" loading="lazy" decoding="async" fetchpriority="low">`);
+    }
+    ensureTankThumbs(allSpecs, { canWork: () => api.isOpen });
+  };
+  // The card module and its stylesheet load together at this lazy boundary (no static CSS import in a graph).
+  Promise.all([import('./heroCard.ts'), import('./heroCard.css')])
+    .then(([module]) => {
+      heroCards = module;
+      return module.mountRosterHeroCards(cardsEl, cardById, selectedId, (id) => legacyPortraits([id]));
+    })
+    .then(legacyPortraits, () => legacyPortraits([...cardById.keys()]));
 
   const GARAGE_INFO = Object.freeze({
     Performance: t('garage.info.Performance'),
@@ -2676,6 +2782,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<button class="cot-gallery-link cot-technical-gallery" type="button" ` +
       `data-gallery-layer="${initialTechnicalView.galleryLayer}" data-technical-gallery>` +
       `${uiIconSVG('gallery', 15)}<span>${t('garage.dossier.inspectGallery')}</span>` +
+      `<span class="go">&#8250;</span></button>` +
+      // the proving ground (v2 progression, 2026-10-17): this vehicle on the measured range, one press from its dossier
+      `<button class="cot-gallery-link cot-test-drive" type="button" data-test-drive ` +
+      `aria-label="${escapeHtmlAttribute(t('garage.dossier.testDrive.aria', { name: spec.label?.displayName || spec.name }))}">` +
+      `${uiIconSVG('modeProving', 15)}<span>${t('garage.dossier.testDrive')}</span>` +
       `<span class="go">&#8250;</span></button></section>`;
     const moduleRows = garageModuleRows(spec);
     const crewRows = garageCrewRows(spec);
@@ -2832,11 +2943,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   function step(dir: number): void {
     if (vehicleLocked) return;
-    // Arrows walk the active national fleet only.
-    const pool = specsByCountry.get(countryFilter) || [];
+    // Arrows walk the active national fleet only, as the roster filter shows it.
+    const pool = (specsByCountry.get(countryFilter) || []).filter((s) => facetVisible(s.id));
     if (!pool.length) return;
     const idx = pool.findIndex((s) => s.id === selectedId);
-    const next = pool[(idx + dir + pool.length) % pool.length];
+    const next = idx < 0 ? pool[dir > 0 ? 0 : pool.length - 1] : pool[(idx + dir + pool.length) % pool.length];
     emit('ui:click', {});
     api.setSelected(next.id);
   }
@@ -2861,6 +2972,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       console.error('[garage] battle-start listener failed:', err);
     }
     if (onBattle) onBattle(specId, mapId, { gameMode }); // MAP-CONFIG WIRING
+  }
+
+  /** The proving ground with this vehicle (the dossier's button, the Gallery's link): never inside a room's lobby. */
+  function startTestDrive(specId: string | null | undefined): boolean {
+    if (vehicleLocked || !specId || !specById.has(specId)) return false;
+    if (specId !== selectedId) {
+      if (!applySelection(specId)) return false;
+      onSelect?.(specId);
+    }
+    closeBattleMenu();
+    setGaragePanel('');
+    const launch = testDriveLaunch(specId);
+    launchBattle(launch.specId, launch.mapId, { gameMode: launch.gameMode });
+    return true;
   }
 
   function openMultiplayer(mode: 'private' | 'lan' = 'private'): void {
@@ -3040,6 +3165,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (choice.dataset.mode === 'private' || choice.dataset.mode === 'lan') {
       openMultiplayer(choice.dataset.mode);
     } else setBattleMode(choice.dataset.mode);
+  });
+  requiredElement<HTMLButtonElement>(root, '.cot-battle-choice[data-proving]').addEventListener('click', () => {
+    emit('ui:click', {});
+    startTestDrive(selectedId);
   });
   for (const choice of battleRuleChoices) choice.addEventListener('click', () => {
     emit('ui:click', {});
@@ -3410,6 +3539,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       closeGarageVariantMenu();
       closeBattleMenu();
       setGaragePanel('');
+      void facetPanel?.then((panel) => panel.close(), () => {});
       root.style.display = 'none';
       if (api.isOpen) window.removeEventListener('keydown', onKey);
       api.isOpen = false;
@@ -3417,7 +3547,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     },
 
     /** Normalize packaged tank portraits (screenshot compatibility). */
-    drainThumbs() { drainTankThumbs(); },
+    drainThumbs() { drainTankThumbs(); heroCards?.drainHeroCards(cardsEl); },
 
     /** 2026-10-13: decorative Garage work (the picker's cold swatches) also holds while `covered()` is true. */
     setDecorativeWorkGate(covered: () => boolean) { garageSwatchCover = covered; },
@@ -3537,6 +3667,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     /** Enter the currently selected solo battle without reopening the play menu. */
     startSolo() {
       if (selectedId) launchBattle(selectedId, selectedMapId);
+    },
+
+    testDrive(specId?: string | null) {
+      return startTestDrive(specId ?? selectedId);
     },
 
     /**

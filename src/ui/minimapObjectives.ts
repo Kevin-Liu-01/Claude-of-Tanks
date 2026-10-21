@@ -30,17 +30,21 @@ export interface ObjectiveStateView {
   goals?: ReadonlyArray<{ team: ObjectiveTeamId; x: number; z: number }> | null;
   pickups?: ReadonlyArray<{ kind: string; x: number; z: number; active?: boolean }> | null;
   line?: { index?: number; total?: number; holdS?: number } | null;
+  /** The proving ground's range (v2 progression, 2026-10-17): a marker on every lane's mark. */
+  range?: { lanes: ReadonlyArray<{ index: number; x: number; z: number; rangeM: number }> } | null;
 }
 
-type ObjectiveKind = 'spawn' | 'flagBase' | 'flag' | 'zone' | 'sector' | 'goal' | 'ball' | 'pickup';
+type ObjectiveKind = 'spawn' | 'flagBase' | 'flag' | 'zone' | 'sector' | 'goal' | 'ball' | 'pickup' | 'lane';
 
 export interface ObjectiveMarker {
   kind: ObjectiveKind;
   x: number;
   z: number;
   side: ObjectiveSide;
-  /** zone letter, sector number */
+  /** zone letter, sector number, range lane number */
   label?: string;
+  /** lane: the lane's set range (m) */
+  rangeM?: number;
   /**
    * spawn: 'respawn' when the mode revives players there;
    * flag: 'home' | 'carried' | 'dropped'; flagBase: 'home' | 'away';
@@ -172,6 +176,13 @@ function pickupMarkers(state: ObjectiveStateView, out: ObjectiveMarker[]): void 
   }
 }
 
+/** The proving ground's lanes: a numbered target board on each lane's mark (the targets themselves are tanks). */
+function laneMarkers(state: ObjectiveStateView, out: ObjectiveMarker[]): void {
+  for (const lane of state.range?.lanes || []) {
+    out.push({ kind: 'lane', x: lane.x, z: lane.z, side: 'neutral', label: String(lane.index + 1), rangeM: lane.rangeM, priority: 1 });
+  }
+}
+
 /** Markers for the current mode state, sorted by draw priority (area markers first). */
 export function objectiveMarkers(state: ObjectiveStateView | null | undefined): ObjectiveMarker[] {
   if (!state || !state.id || state.id === 'standard') return [];
@@ -182,6 +193,7 @@ export function objectiveMarkers(state: ObjectiveStateView | null | undefined): 
   else if (state.id === 'zone_control' || state.id === 'mars' || state.id === 'ac130') zoneMarkers(state, perspective, out);
   else if (state.id === 'frontline_assault') sectorMarkers(state, perspective, out);
   else if (state.id === 'turbo_ball') turboMarkers(state, perspective, out);
+  laneMarkers(state, out);
   pickupMarkers(state, out);
   out.sort((a, b) => a.priority - b.priority);
   return out;

@@ -7003,7 +7003,12 @@ export function buildLeo2A4(builder: object) {
       jerryCan(P, 'turretCloth', -1.02, 0.30, -2.56, 0.15);
       tarpRoll(P, 'turretCloth', 0.42, 0.50, -2.52, 0.95, 0.085, true, P.q ? 12 : 8);
       ammoCan(P, 'turretDark', 1.05, 0.27, -2.57, 0.2);
-      spareTrackStrip(P, 'turret', -0.30, 0.53, -2.54, 2, 0, 0);
+      // 2026-10-21 (watertight-230): the A2's two links lie flat on the rear roof, the station the A3's seat search
+      // resolves to (support 100 %, gap 0.2 cm). Laid on the basket's soft stowage they failed their seat (host:soft)
+      // and the search carried them on a four-post rack over the roof's rear slope; the air the rack enclosed read as
+      // turret interior, and the interior fills filled it as stair-stepped dark filler under the links.
+      if (P.spec.id === 'leo2a2') spareTrackStrip(P, 'turret', -0.235, 0.7205, -1.7805, 2, 0, 0);
+      else spareTrackStrip(P, 'turret', -0.30, 0.53, -2.54, 2, 0, 0);
     }
     P.decal('turret', 'crossgrey', null, 0.32, [1.172, 0.40, -0.44], Math.PI / 2, 0, 0.042);
     P.decal('turret', 'crossgrey', null, 0.32, [-1.172, 0.40, -0.44], -Math.PI / 2, 0, -0.042);
@@ -14538,7 +14543,10 @@ function buildLeo2A4M(P: TankBuilderPort) {
       jerryCan(P, 'turretCloth', -1.02, 0.30, -2.56, 0.15);
       tarpRoll(P, 'turretCloth', 0.42, 0.50, -2.52, 0.95, 0.085, true, P.q ? 12 : 8);
       ammoCan(P, 'turretDark', 1.05, 0.27, -2.57, 0.2);
-      spareTrackStrip(P, 'turret', -0.30, 0.53, -2.54, 2, 0, 0);
+      // 2026-10-21 (watertight-230): the two links lie flat on the rear roof (seated as authored: support 100 %, gap
+      // 0.2 cm). Laid on the basket's soft stowage they failed their seat (host:soft) and rode a four-post rack 17 cm
+      // over the roof, whose enclosed air the interior fills filled as stair-stepped dark filler.
+      spareTrackStrip(P, 'turret', -0.235, 0.7205, -1.7805, 2, 0, 0);
     }
     P.decal('turret', 'crossgrey', null, 0.32, [1.172, 0.40, -0.44], Math.PI / 2, 0, 0.042);
     P.decal('turret', 'crossgrey', null, 0.32, [-1.172, 0.40, -0.44], -Math.PI / 2, 0, -0.042);

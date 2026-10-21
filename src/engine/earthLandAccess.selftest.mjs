@@ -6,9 +6,13 @@
 //   module's own cached texture (built on the first call, the same bytes), null before the load;
 // - the world build awaits the load before the world exists (map.ts createMapAsync), so every sky applied on a built
 //   world finds it loaded; sky.ts binds the placeholder (and the raster once it arrives) only for a sky applied without
-//   that build, and never imports the mask statically (tools/boot-static-closure.selftest.mjs keeps it out of the boot).
+//   that build, and never imports the mask statically (tools/boot-static-closure.selftest.mjs keeps it out of the boot);
+// - (229) a failed fetch of the mask's chunk does not fail the world: the build's own createMapAsync source, run over
+//   stub builders with the Moon's sky, still assembles its world (the sky keeps its placeholder and retries).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
+import ts from 'typescript-compiler-api';
 import { loadEarthLand, loadedEarthLandTexture, skyDrawsEarth } from './earthLandAccess.ts';
 import { getMapConfig, MAP_IDS } from '../world/maps/index.ts';
 import { runtimeImportSpecifiers } from '../../tools/static-import-closure.mjs';
@@ -54,4 +58,57 @@ const assembled = build.indexOf('const world = assembleWorld(');
 assert.ok(started > 0 && started < build.indexOf("await step('Surveying terrain'"), 'the load starts with the build, beside the terrain');
 assert.ok(awaited > started && awaited < assembled, 'and is awaited before the world is assembled');
 
-console.log('earthLandAccess.selftest: the Moon\'s land mask loads with its world (1024 x 512, one module, one raster)');
+// ---- (229) the Moon's world survives a failed fetch of the mask's chunk: map.ts's own createMapAsync, run over stub
+// builders (no geometry, no workers) with a sky that draws the Earth
+function declaration(text, name) {
+  const ast = ts.createSourceFile('map.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const matches = [];
+  (function visit(node) {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === name) matches.push(node);
+    ts.forEachChild(node, visit);
+  })(ast);
+  assert.equal(matches.length, 1, `unique actual declaration: ${name}`);
+  return matches[0].getText();
+}
+const mapAsync = declaration(map, 'createMapAsync');
+function moonBuild(earthLand) {
+  const events = [], field = { _layout: { spawns: { player: { x: 0, z: 0 } } } };
+  const moon = { id: 'moon', sky: { earth: 1 }, splat: {} };
+  const dependencies = {
+    worldBuildConfig: () => moon, getDeviceTier: () => 'desktop', preloadPropModels: () => Promise.resolve(),
+    skyDrawsEarth, loadEarthLand: () => { events.push('earth-load'); return earthLand; },
+    prepareSourcedTerrain: () => ({}), startPlannedWreckBakes: () => null, startSurfacePaints: () => null, plannedSurfacePaints: () => [],
+    selectHinterland: () => false, startHinterlandBuild: () => null, supplyHinterland: () => {}, withdrawHinterland: () => {},
+    startHorizonRingBuild: () => ({ stats: {}, dispose() {} }), supplyHorizonRing: () => {}, withdrawHorizonRing: () => {},
+    finishHorizonRingAsync: async () => {},
+    createHeightField: () => field, createHeightFieldAsync: async () => field, requireTerrainRoot: (value) => value,
+    buildTerrainMeshesAsync: async () => ({ userData: {} }), createVegetationAsync: async () => ({}), createPropsAsync: async () => ({}),
+    assembleWorld: () => { events.push('assembled'); return { mapId: 'moon' }; },
+  };
+  const run = new Function(...Object.keys(dependencies), stripTypeScriptTypes(mapAsync).replace('export ', '')
+    + '\nreturn createMapAsync;')(...Object.values(dependencies));
+  return { pending: run({}, { mapId: 'moon' }), events };
+}
+{
+  let release;
+  const h = moonBuild(new Promise((resolve) => { release = resolve; }));
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  assert.deepEqual(h.events, ['earth-load'], 'the build waits for the land mask before it assembles the world');
+  release(mask);
+  assert.equal((await h.pending).mapId, 'moon');
+  assert.deepEqual(h.events, ['earth-load', 'assembled']);
+}
+{
+  const warned = [], warn = console.warn;
+  console.warn = (...args) => warned.push(args.map(String).join(' '));
+  try {
+    const failure = new TypeError('Failed to fetch dynamically imported module: earthLandMask.js');
+    const h = moonBuild(Promise.reject(failure));
+    assert.equal((await h.pending).mapId, 'moon', 'a failed fetch of the mask\'s chunk still builds the Moon');
+    assert.deepEqual(h.events, ['earth-load', 'assembled']);
+    assert.equal(warned.length, 1, 'and says so once');
+    assert.match(warned[0], /land mask/);
+  } finally { console.warn = warn; }
+}
+
+console.log('earthLandAccess.selftest: the Moon\'s land mask loads with its world (1024 x 512, one module, one raster; a failed fetch keeps the placeholder)');

@@ -26,10 +26,28 @@ const COMPACT_ENCODING = 'primitive-kind-dict-v3';
  *   [the tree's index, radius, add] in place of [x, z, radius, add].
  * Decoding gives every record, key order, number (Object.is) and concealer back as v3 had them.
  */
-const ENCODING = 'primitive-kind-dict-v4';
+const REFERENCED_ENCODING = 'primitive-kind-dict-v4';
+/**
+ * (the maps lane, 2026-10-20: the shards' storage budget, integ/229 at 69.0 MB over the 68.66 MB budget) v4, plus five
+ * exact steps:
+ * - the primitive dictionary in order of use, the most used first (the shortest references);
+ * - a record as an array: the index of its key order in the 'keys' table, then its values in that order (the bounds' key
+ *   names their encoding: 'D' v4's steps, 'B' v3's integers, 'b' as packed), so no record spells its keys;
+ * - steps 'D' that are all zero as 0;
+ * - an inline compact part's position (a 'V' or 'W' part's first corner, a 'P' part's planes' origin and first corner, a
+ *   'C' or 'O' part's centre) as the step from the position before it in the same list, and its vertical extent (y0, y1)
+ *   as the step from the extent before it, then the span y1 - y0: a building's walls share their footing and stand a few
+ *   metres apart, so seven-digit coordinates become two- or three-digit steps;
+ * - a collider that is an obstacle's record exactly (every key, number and part) as that obstacle's index.
+ * Decoding gives every record, key order, number (Object.is) and concealer back as v4 had them. A dictionary primitive is
+ * written as v4 writes it (it stands for itself, not in a chain), and so is any part v4 leaves inexact.
+ */
+const ENCODING = 'primitive-kind-dict-v5';
 const MAX_PRIMITIVES = 131_072;
 const MAX_KINDS = 1024;
-type CollisionManifestEncoding = typeof LEGACY_ENCODING | typeof KIND_ENCODING | typeof COMPACT_ENCODING | typeof ENCODING;
+const MAX_KEY_ORDERS = 4096;
+type CollisionManifestEncoding = typeof LEGACY_ENCODING | typeof KIND_ENCODING | typeof COMPACT_ENCODING
+  | typeof REFERENCED_ENCODING | typeof ENCODING;
 type Shape = NonNullable<PackedCollisionRecord['s']>;
 type CompactSimple = readonly [string, ...number[]];
 type EncodedSimple = PackedSimpleShape | CompactSimple | number;
@@ -43,13 +61,16 @@ type EncodedRecord = Omit<PackedCollisionRecord, 's' | 'k' | 'b'> & {
 };
 type Concealer = NonNullable<CollisionManifest['concealers']>[number];
 type EncodedConcealer = Concealer | readonly [number, number, number];
+/** v5: [key order, ...values]; a collider may instead be an obstacle's index. */
+type PositionalRecord = readonly [number, ...RuntimeValue[]];
 
 interface EncodedManifest {
   encoding: CollisionManifestEncoding;
   shapes: PackedSimpleShape[];
   kinds?: string[];
-  obstacles: EncodedRecord[];
-  colliders: EncodedRecord[];
+  keys?: string[][];
+  obstacles: EncodedRecord[] | PositionalRecord[];
+  colliders: EncodedRecord[] | (PositionalRecord | number)[];
   concealers?: CollisionManifest['concealers'] | EncodedConcealer[];
   craters?: CollisionManifest['craters'];
 }
@@ -136,6 +157,63 @@ function isCompactSimple(value: RuntimeValue): value is readonly RuntimeValue[] 
   return Array.isArray(value) && typeof value[0] === 'string' && Object.hasOwn(PACKED_KIND, value[0]);
 }
 
+/** v5: the running position and footing of a list's inline compact parts (both start at 0 for each list). */
+interface Anchor { x: number; z: number; y: number }
+
+/** v5: where a compact part's position pairs (in chain order) and its vertical pair sit among its entries (the tag at 0;
+ *  y -1 when it has none), or null when the part is too short to hold them. */
+function anchorSlots(part: readonly RuntimeValue[]): { at: readonly number[]; y: number } | null {
+  const tag = part[0], n = part.length;
+  if (tag === 'V') return n >= 3 ? { at: [1], y: -1 } : null;
+  if (tag === 'W') return n >= 5 ? { at: [3], y: 1 } : null;
+  if (tag === 'C') return n === 4 || n === 6 ? { at: [1], y: n === 6 ? 4 : -1 } : null;
+  if (tag === 'O') return n === 6 || n === 8 ? { at: [1], y: n === 8 ? 6 : -1 } : null;
+  if (tag === 'P') {
+    const k = part[5];
+    if (typeof k !== 'number' || !Number.isInteger(k) || k < 1 || k > 64 || 7 + 3 * k >= n) return null;
+    return { at: [3, 6 + 3 * k], y: 1 };
+  }
+  return null;
+}
+
+/** v5 encode: a v4 compact part with its position pairs as steps along the list's chain and its vertical pair as the
+ *  step from the footing before it and its span. */
+function anchoredCompact(part: CompactSimple, anchor: Anchor): CompactSimple {
+  const slots = anchorSlots(part)!;
+  const out = part.slice() as [string, ...number[]];
+  for (const i of slots.at) {
+    const x = part[i] as number, z = part[i + 1] as number;
+    out[i] = x - anchor.x; out[i + 1] = z - anchor.z;
+    anchor.x = x; anchor.z = z;
+  }
+  if (slots.y > 0) {
+    const y0 = part[slots.y] as number, y1 = part[slots.y + 1] as number;
+    out[slots.y] = y0 - anchor.y; out[slots.y + 1] = y1 - y0;
+    anchor.y = y0;
+  }
+  return out;
+}
+
+/** v5 decode: anchoredCompact undone (the v4 compact part back), the chain moved on. */
+function unanchoredCompact(part: readonly RuntimeValue[], anchor: Anchor): readonly RuntimeValue[] {
+  const slots = anchorSlots(part);
+  if (!slots) throw new TypeError('collision primitive shape is invalid');
+  const out = part.slice();
+  for (const i of slots.at) {
+    const dx = part[i], dz = part[i + 1];
+    if (!Number.isSafeInteger(dx) || !Number.isSafeInteger(dz)) throw new TypeError('collision primitive shape is invalid');
+    anchor.x += dx as number; anchor.z += dz as number;
+    out[i] = anchor.x; out[i + 1] = anchor.z;
+  }
+  if (slots.y > 0) {
+    const dy = part[slots.y], span = part[slots.y + 1];
+    if (!Number.isSafeInteger(dy) || !Number.isSafeInteger(span)) throw new TypeError('collision primitive shape is invalid');
+    anchor.y += dy as number;
+    out[slots.y] = anchor.y; out[slots.y + 1] = anchor.y + (span as number);
+  }
+  return out;
+}
+
 /**
  * v4: a record's reference box in integers of 1/10000 m, [minX, minY, minZ, maxX, maxY, maxZ], from its packed shape
  * alone: the corners of 'v', 'w' and 'p' parts, a circle's centre +- radius, a box's centre, the vertical extents of
@@ -208,25 +286,51 @@ function eachPrimitive(manifest: CollisionManifest, visit: (shape: PackedSimpleS
 export function encodeCollisionManifest(
   manifest: CollisionManifest, encoding: CollisionManifestEncoding = ENCODING,
 ): EncodedManifest {
-  if (encoding !== LEGACY_ENCODING && encoding !== KIND_ENCODING && encoding !== COMPACT_ENCODING && encoding !== ENCODING) {
+  if (encoding !== LEGACY_ENCODING && encoding !== KIND_ENCODING && encoding !== COMPACT_ENCODING
+      && encoding !== REFERENCED_ENCODING && encoding !== ENCODING) {
     throw new TypeError('collision manifest encoding is invalid');
   }
-  const compact = encoding === COMPACT_ENCODING || encoding === ENCODING;
-  const referenced = encoding === ENCODING;
+  const positional = encoding === ENCODING;
+  const referenced = encoding === REFERENCED_ENCODING || positional;
+  const compact = encoding === COMPACT_ENCODING || referenced;
+  // (v5: a collider that is an obstacle exactly is that obstacle's index; its parts are written once, with the obstacle)
+  const colliderRefs: (number | null)[] = [];
+  if (positional) {
+    const firstObstacle = new Map<string, number>();
+    manifest.obstacles.forEach((value, i) => {
+      const key = JSON.stringify(value);
+      if (!firstObstacle.has(key)) firstObstacle.set(key, i);
+    });
+    for (const value of manifest.colliders) {
+      const i = firstObstacle.get(JSON.stringify(value));
+      colliderRefs.push(i !== undefined && sameRecord(manifest.obstacles[i], value) ? i : null);
+    }
+  }
   const counts = new Map<string, number>();
-  eachPrimitive(manifest, (shape) => {
+  const counted = positional
+    ? { ...manifest, colliders: manifest.colliders.filter((_, i) => colliderRefs[i] === null) } : manifest;
+  eachPrimitive(counted, (shape) => {
     const key = JSON.stringify(shape);
     counts.set(key, (counts.get(key) ?? 0) + 1);
   });
   const shapes: PackedSimpleShape[] = [];
   const ids = new Map<string, number>();
-  for (const [key, count] of counts) {
-    if (count < 2) continue;
+  // (v5: the most used first; the stable sort keeps first-seen ties. Before v5, in first-seen order)
+  const repeated = Array.from(counts).filter(([, count]) => count >= 2);
+  if (positional) repeated.sort((a, b) => b[1] - a[1]);
+  for (const [key] of repeated) {
     ids.set(key, shapes.length);
     shapes.push(JSON.parse(key) as PackedSimpleShape);
   }
-  const simple = (shape: PackedSimpleShape): EncodedSimple => ids.get(JSON.stringify(shape))
-    ?? (compact ? compactSimple(shape) : shape);
+  // (v5: a list's inline compact parts chained from one position and footing to the next; null before v5)
+  let anchor: Anchor | null = null;
+  const simple = (shape: PackedSimpleShape): EncodedSimple => {
+    const id = ids.get(JSON.stringify(shape));
+    if (id !== undefined) return id;
+    if (!compact) return shape;
+    const part = compactSimple(shape);
+    return anchor && isCompactSimple(part as RuntimeValue) ? anchoredCompact(part as CompactSimple, anchor) : part;
+  };
   const encode = (shape: Shape): EncodedShape => shape[0] === 'm'
     ? ['m', ...shape.slice(1).map((part) => simple(part as PackedSimpleShape))]
     : simple(shape);
@@ -265,13 +369,71 @@ export function encodeCollisionManifest(
     return result;
   };
   if (shapes.length > MAX_PRIMITIVES) throw new TypeError('collision primitive dictionary is too large');
+  const dictionary = compact ? shapes.map(compactSimple) as PackedSimpleShape[] : shapes;
+  const concealers = referenced ? encodeConcealers(manifest) : manifest.concealers;
+  if (!positional) {
+    return {
+      encoding, shapes: dictionary,
+      ...(encoding !== LEGACY_ENCODING ? { kinds } : {}),
+      obstacles: manifest.obstacles.map(record), colliders: manifest.colliders.map(record),
+      concealers,
+      ...(manifest.craters ? { craters: manifest.craters } : {}),
+    };
+  }
+  // v5: each list's records as v4 writes them, its inline parts chained; a collider that is an obstacle exactly is the
+  // obstacle's index (and moves no chain)
+  anchor = { x: 0, z: 0, y: 0 };
+  const obstacles = manifest.obstacles.map(record);
+  anchor = { x: 0, z: 0, y: 0 };
+  const colliders = manifest.colliders.map((value, i): EncodedRecord | number => colliderRefs[i] ?? record(value));
+  // the key orders, the most used first; the steps all zero as 0
+  const orderCounts = new Map<string, number>();
+  for (const list of [obstacles, colliders]) {
+    for (const value of list) {
+      if (typeof value === 'number') continue;
+      const order = Object.keys(value).join(',');
+      orderCounts.set(order, (orderCounts.get(order) ?? 0) + 1);
+    }
+  }
+  const orders = Array.from(orderCounts).sort((a, b) => b[1] - a[1]).map(([order]) => order);
+  if (orders.length > MAX_KEY_ORDERS) throw new TypeError('collision key-order table is too large');
+  const orderIds = new Map(orders.map((order, id) => [order, id]));
+  const positionalRecord = (value: EncodedRecord): PositionalRecord => {
+    const keys = Object.keys(value) as (keyof EncodedRecord)[];
+    const out: [number, ...RuntimeValue[]] = [orderIds.get(keys.join(','))!];
+    for (const key of keys) {
+      const entry = value[key] as RuntimeValue;
+      out.push(key === 'D' && (entry as number[]).every((n) => n === 0) ? 0 : entry);
+    }
+    return out;
+  };
   return {
-    encoding, shapes: compact ? shapes.map(compactSimple) as PackedSimpleShape[] : shapes,
-    ...(encoding !== LEGACY_ENCODING ? { kinds } : {}),
-    obstacles: manifest.obstacles.map(record), colliders: manifest.colliders.map(record),
-    concealers: referenced ? encodeConcealers(manifest) : manifest.concealers,
+    encoding, shapes: dictionary, kinds, keys: orders.map((order) => order.split(',')),
+    obstacles: obstacles.map(positionalRecord),
+    colliders: colliders.map((value) => (typeof value === 'number' ? value : positionalRecord(value))),
+    concealers,
     ...(manifest.craters ? { craters: manifest.craters } : {}),
   };
+}
+
+/** v5: two packed records alike in every key (in order), number (Object.is), string and part. */
+function sameRecord(a: RuntimeValue, b: RuntimeValue): boolean {
+  if (typeof a === 'number' || typeof b === 'number') return Object.is(a, b);
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (!sameRecord(a[i], b[i])) return false;
+    return true;
+  }
+  if (a !== null && typeof a === 'object') {
+    if (b === null || typeof b !== 'object') return false;
+    const ka = Object.keys(a), kb = Object.keys(b);
+    if (ka.length !== kb.length) return false;
+    for (let i = 0; i < ka.length; i++) {
+      if (ka[i] !== kb[i] || !sameRecord((a as Record<string, RuntimeValue>)[ka[i]], (b as Record<string, RuntimeValue>)[kb[i]])) return false;
+    }
+    return true;
+  }
+  return a === b;
 }
 
 /** v4: each concealer on a tree's exact circle centre as [tree index, radius, add]; any other as it is. */
@@ -315,8 +477,9 @@ function dictionary(value: RuntimeValue, compact: boolean): readonly PackedSimpl
   return shapes.map((shape) => Object.freeze(shape));
 }
 
-function resolveSimple(value: RuntimeValue, shapes: readonly PackedSimpleShape[], compact: boolean): PackedSimpleShape {
-  if (compact && isCompactSimple(value)) value = expandSimple(value);
+function resolveSimple(value: RuntimeValue, shapes: readonly PackedSimpleShape[], compact: boolean,
+  anchor: Anchor | null = null): PackedSimpleShape {
+  if (compact && isCompactSimple(value)) value = expandSimple(anchor ? unanchoredCompact(value, anchor) : value);
   if (typeof value === 'number') {
     if (!Number.isSafeInteger(value) || value < 0 || value >= shapes.length) {
       throw new TypeError('collision primitive reference is invalid');
@@ -327,18 +490,19 @@ function resolveSimple(value: RuntimeValue, shapes: readonly PackedSimpleShape[]
   return value;
 }
 
-function resolveShape(value: RuntimeValue, shapes: readonly PackedSimpleShape[], compact: boolean): Shape {
-  if (!Array.isArray(value) || value[0] !== 'm') return resolveSimple(value, shapes, compact);
+function resolveShape(value: RuntimeValue, shapes: readonly PackedSimpleShape[], compact: boolean,
+  anchor: Anchor | null = null): Shape {
+  if (!Array.isArray(value) || value[0] !== 'm') return resolveSimple(value, shapes, compact, anchor);
   if (value.length < 2 || value.length > COLLISION_COMPOUND_MAX_PARTS + 1) throw new TypeError('collision compound shape is invalid');
   const out: unknown[] = ['m'];
-  for (let i = 1; i < value.length; i++) out.push(resolveSimple(value[i], shapes, compact));
+  for (let i = 1; i < value.length; i++) out.push(resolveSimple(value[i], shapes, compact, anchor));
   return out as unknown as Shape;
 }
 
 /** v4 decode: the shape resolved as resolveShape does, its reference box into `box` in the same pass (an inline compact
  *  part's from its integers, a dictionary part's read once a shard, any other's by partBoxInto); false when it has none. */
 function resolveShapeBoxed(value: RuntimeValue, shapes: readonly PackedSimpleShape[], box: Float64Array, part: Float64Array,
-  cache: Map<object, Float64Array | null>, into: { shape: Shape | undefined }): boolean {
+  cache: Map<object, Float64Array | null>, into: { shape: Shape | undefined }, anchor: Anchor | null = null): boolean {
   const compound = Array.isArray(value) && value[0] === 'm';
   if (compound && ((value as unknown[]).length < 2 || (value as unknown[]).length > COLLISION_COMPOUND_MAX_PARTS + 1)) {
     throw new TypeError('collision compound shape is invalid');
@@ -352,7 +516,7 @@ function resolveShapeBoxed(value: RuntimeValue, shapes: readonly PackedSimpleSha
     let simple: PackedSimpleShape;
     let read: Float64Array | null;
     if (isCompactSimple(encoded)) {
-      simple = expandSimple(encoded, part) as PackedSimpleShape;
+      simple = expandSimple(anchor ? unanchoredCompact(encoded, anchor) : encoded, part) as PackedSimpleShape;
       if (!isSimpleShape(simple)) throw new TypeError('collision primitive shape is invalid');
       read = part;
     } else {
@@ -482,6 +646,98 @@ function resolveRecords(
   return out;
 }
 
+/** v5: a record key order of the 'keys' table, read once a shard: the decoded keys, where the shape and bounds sit. */
+interface KeyOrder { keys: readonly string[]; shapeAt: number; bounds: 'D' | 'B' | 'b' | null }
+
+function keyOrders(value: RuntimeValue): KeyOrder[] {
+  if (!Array.isArray(value) || value.length > MAX_KEY_ORDERS) throw new TypeError('collision key-order table is invalid');
+  return value.map((entry) => {
+    if (!Array.isArray(entry) || entry.length < 1 || entry.length > 16) throw new TypeError('collision key-order table is invalid');
+    const names = new Set<string>();
+    let bounds: KeyOrder['bounds'] = null;
+    for (const key of entry) {
+      // (the packed records' keys are short lowercase names; 'D' and 'B' name the bounds' encoding)
+      if (typeof key !== 'string' || !/^[A-Za-z]{1,8}$/.test(key)) throw new TypeError('collision key-order table is invalid');
+      const name = key === 'D' || key === 'B' ? 'b' : key;
+      if (names.has(name)) throw new TypeError('collision key-order table is invalid');
+      names.add(name);
+      if (name === 'b') bounds = key as 'D' | 'B' | 'b';
+    }
+    return { keys: entry as string[], shapeAt: entry.indexOf('s'), bounds };
+  });
+}
+
+const ZERO_STEPS: readonly number[] = Object.freeze([0, 0, 0, 0, 0, 0]);
+
+/** v5: an obstacle's record for the collider that names it, alike in every key and number, its own arrays. */
+function copiedRecord(record: PackedCollisionRecord): PackedCollisionRecord {
+  const copy = { ...record };
+  copy.b = record.b.slice() as unknown as PackedCollisionRecord['b'];
+  const shape = record.s;
+  if (shape) {
+    const own = (part: PackedSimpleShape) => (Object.isFrozen(part) ? part : part.slice() as unknown as PackedSimpleShape);
+    copy.s = shape[0] === 'm'
+      ? ['m', ...shape.slice(1).map((part) => own(part as PackedSimpleShape))] as unknown as Shape
+      : own(shape as PackedSimpleShape);
+  }
+  return copy;
+}
+
+/** v5 decode: a list of [key order, ...values] records (a collider may be an obstacle's index), its chain from 0. */
+function resolvePositionalRecords(
+  value: RuntimeValue, shapes: readonly PackedSimpleShape[], kinds: readonly string[] | undefined,
+  orders: readonly KeyOrder[], obstacles: readonly PackedCollisionRecord[] | null,
+): PackedCollisionRecord[] {
+  if (!Array.isArray(value)) throw new TypeError('collision records are invalid');
+  const box = new Float64Array(6), part = new Float64Array(6);
+  const cache = new Map<object, Float64Array | null>();
+  const slot: { shape: Shape | undefined } = { shape: undefined };
+  const anchor: Anchor = { x: 0, z: 0, y: 0 };
+  const out: PackedCollisionRecord[] = new Array(value.length);
+  for (let r = 0; r < value.length; r++) {
+    const entry = value[r];
+    if (typeof entry === 'number') {
+      if (!obstacles || !Number.isSafeInteger(entry) || entry < 0 || entry >= obstacles.length) {
+        throw new TypeError('collision record is invalid');
+      }
+      out[r] = copiedRecord(obstacles[entry]);
+      continue;
+    }
+    if (!Array.isArray(entry)) throw new TypeError('collision record is invalid');
+    const id = entry[0];
+    if (!Number.isSafeInteger(id) || (id as number) < 0 || (id as number) >= orders.length) throw new TypeError('collision record is invalid');
+    const order = orders[id as number];
+    if (entry.length !== order.keys.length + 1) throw new TypeError('collision record is invalid');
+    // (the shape first, whatever its place: the list's chain runs record by record, one shape a record)
+    let shape: Shape | undefined, boxed = false;
+    if (order.shapeAt >= 0) {
+      const encoded = entry[order.shapeAt + 1];
+      if (order.bounds === 'D') { boxed = resolveShapeBoxed(encoded, shapes, box, part, cache, slot, anchor); shape = slot.shape; }
+      else shape = resolveShape(encoded, shapes, true, anchor);
+    }
+    const resolved: Record<string, RuntimeValue> = {};
+    for (let i = 0; i < order.keys.length; i++) {
+      const key = order.keys[i], v = entry[i + 1];
+      if (key === 'D') {
+        const steps = v === 0 ? ZERO_STEPS : v;
+        if (!integerSix(steps) || !shape || !boxed) throw new TypeError('collision record is invalid');
+        resolved.b = [(steps[0] + box[0]) / SCALE, (steps[1] + box[1]) / SCALE, (steps[2] + box[2]) / SCALE,
+          (steps[3] + box[3]) / SCALE, (steps[4] + box[4]) / SCALE, (steps[5] + box[5]) / SCALE];
+      } else if (key === 'B') {
+        if (!integerSix(v)) throw new TypeError('collision record is invalid');
+        resolved.b = [v[0] / SCALE, v[1] / SCALE, v[2] / SCALE, v[3] / SCALE, v[4] / SCALE, v[5] / SCALE];
+      } else if (key === 'k') {
+        resolved.k = typeof v === 'number' ? resolveKind(v, kinds) : v;
+      } else if (key === 's') {
+        resolved.s = shape;
+      } else resolved[key] = v;
+    }
+    if (!isPackedCollisionMetadata(resolved)) throw new TypeError('collision record is invalid');
+    out[r] = resolved as PackedCollisionRecord;
+  }
+  return out;
+}
+
 /** Decode once at the I/O boundary; the match API and collision hot paths stay unchanged. */
 export function decodeCollisionManifest(value: RuntimeValue): CollisionManifest {
   if (!isRecord(value)) {
@@ -489,17 +745,25 @@ export function decodeCollisionManifest(value: RuntimeValue): CollisionManifest 
   }
   if (value.encoding === undefined && value.shapes === undefined) return readCollisionManifest(value);
   if (value.encoding !== LEGACY_ENCODING && value.encoding !== KIND_ENCODING && value.encoding !== COMPACT_ENCODING
-      && value.encoding !== ENCODING) {
+      && value.encoding !== REFERENCED_ENCODING && value.encoding !== ENCODING) {
     throw new TypeError('collision manifest encoding is invalid');
   }
-  const referenced = value.encoding === ENCODING;
+  const positional = value.encoding === ENCODING;
+  const referenced = value.encoding === REFERENCED_ENCODING || positional;
   const compact = value.encoding === COMPACT_ENCODING || referenced;
   const shapes = dictionary(value.shapes, compact);
   const kinds = value.encoding !== LEGACY_ENCODING ? kindDictionary(value.kinds) : undefined;
   // Metadata and each inline primitive are validated during this one pass;
   // dictionary primitives were validated once above, before any ref resolves.
-  const obstacles = resolveRecords(value.obstacles, shapes, kinds, compact, referenced);
-  const colliders = resolveRecords(value.colliders, shapes, kinds, compact, referenced);
+  let obstacles: PackedCollisionRecord[], colliders: PackedCollisionRecord[];
+  if (positional) {
+    const orders = keyOrders(value.keys);
+    obstacles = resolvePositionalRecords(value.obstacles, shapes, kinds, orders, null);
+    colliders = resolvePositionalRecords(value.colliders, shapes, kinds, orders, obstacles);
+  } else {
+    obstacles = resolveRecords(value.obstacles, shapes, kinds, compact, referenced);
+    colliders = resolveRecords(value.colliders, shapes, kinds, compact, referenced);
+  }
   return {
     obstacles, colliders,
     concealers: readCollisionConcealers(referenced ? decodeConcealers(value.concealers, [obstacles, colliders]) : value.concealers),

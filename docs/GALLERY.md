@@ -18,14 +18,21 @@ the canonical `src/vehicles/` sources.
 
 ## User capabilities
 
-- search by vehicle name, stable ID, alias, nation, role, era, or tier;
-- filter by nation and era;
+- search by vehicle name, stable ID, alias, nation, class, role, era, or tier, with
+  `class:`, `role:`, `status:`, `era:`, `nation:` and `tier:` tokens
+  (`src/vehicles/vehicleFacetSearch.ts`);
+- filter by nation, era, class (with the concept-and-prototype cut) and battle
+  role (`src/vehicles/vehicleFacets.ts`);
 - orbit, zoom, and select hero/front/left/right/rear/top/elevated cameras;
 - enable or pause an automatic turntable;
 - change hull yaw, turret yaw, and gun elevation within authored limits;
 - display exterior, armor, module, crew, or exact-surface markup layers;
-- select a diagnostic volume to read its identifier, ownership, dimensions,
-  and protection values;
+- read the armor as an absolute-millimetre heat map (kinetic, chemical or
+  nominal values), with ERA, spaced and external layers in their own colours;
+- open the X-ray: module models, P50 crew mannequins, exact hit volumes and
+  the exterior as a glass shell, each behind its own toggle;
+- select any plate, module or crew member, in 3D or through its badge, to read
+  its identifier, ownership, dimensions and protection values;
 - select a single triangle or connected coplanar patch from live geometry;
 - record inspect, remove, reshape, or add-here instructions with articulation
   ownership, rig path, local/world bounds, centroids, normals, and pose;
@@ -112,38 +119,59 @@ battle gallery, the manual's fleet reference and the Studio Director reach the
 same takes; `src/gallery/inAction.selftest.mjs` and `src/ui/fleetTakes.selftest.mjs`
 hold the contract.
 
-### Diagnostic overlays
+### Anatomy layers
 
-`overlays.js` builds transient Three.js geometry from the specification:
+The Armor, Modules and Crew layers draw the vehicle's combat armor model as
+real geometry. `anatomyView.ts` loads through `import()` the first time one of
+them opens, so the Gallery's first load and the game's boot graph do not carry
+it; the scene is built once per vehicle and specimen state and kept while the
+layers switch.
 
 | Layer | Canonical source | Presentation |
 | --- | --- | --- |
 | Exterior | Procedural vehicle rig | Current materials and geometry |
-| Armor | `armor.collisionShells`, layered plates and `armor.externalWeapons` | Closed body collision and finite launcher surfaces with canonical protection bands |
-| Modules | `armor.modules`, shared kill-cam anatomy builder and `armor.externalWeapons` | Recognizable internal systems plus the actual damageable launcher stock |
-| Crew | `armor.crew` + shared kill-cam anatomy builder | One seated human silhouette per crew station with dashed diagnostic lines |
+| Armor | `armor.collisionShells`, `hullPlates`/`turretPlates`, `externalWeapons`, `gunBarrel` | Opaque heat map on the absolute ramp (KE, CE or nominal mm); ERA, spaced, external and launcher layers translucent in identity colours; exterior as a faint glass shell |
+| Modules | `armor.modules` (parts and hit shapes), the gun calibre, the era | X-ray: one model per combat module part inside that part's hit-shape bounds, crew mannequins, optional exact hit volumes |
+| Crew | `armor.crew` (station boxes and hit shapes) | P50 (1.75 m) mannequins, head pinned on the combat head shape, posed by role; optional modules and hit volumes |
 
-Armor colors communicate broad kinetic-protection bands. ERA and spaced armor
-receive distinct colors because their behavior cannot be summarized by a
-single thickness gradient. Selecting a plate displays physical, kinetic, and
-chemical protection values separately.
+What is drawn is what the simulation tests:
 
-The main armor overlay is generated from the same procedural hull/turret source
-geometry and uses the same convex cells as authoritative combat. ERA, tracks,
-spaced screens and gun-follow layers remain separately authored. Modules and
-crew reuse the exact recognizable model builder used by the kill cam, changing
-only the material to the Gallery's dashed diagnostic treatment. Combat-shape
-segmentation never multiplies a logical module or crew station. Fleet topology,
-placement bands, evidence confidence, and source-aware visual forms come from
-`src/vehicles/internalLayoutRegistry.ts`; the research policy and primary
-references are recorded in `docs/history/research/internal-anatomy-evidence.md`.
+- **Armor** mirrors `traceTank`'s plate selection (`anatomyData.armorSurfaces`).
+  A frame with collision cells draws each cell as the intersection of its face
+  planes, the surfaces `traceTank` actually enters, rather than the cell's
+  triangle list (a few cells' triangles sit centimetres outside their own
+  planes); every plated face is drawn, the slab-boundary `internal` hint
+  included. Plates draw the test polygon of their own ray test in that test's
+  plane. Surfaces are one-sided like the sim. Main armor takes the ramp; the
+  ramp's lightness rises at every stop, so its order survives colour-vision
+  loss.
+- **Modules** are fitted, never moved: each model is built in its part's
+  hit-shape bounds and scaled down per axis until it sits inside them. The
+  form name, calibre and era choose the model; no model shows a part count,
+  round count or capacity the data does not hold (a launcher whose form names
+  its tube count draws that count, shared across its parts). Tracks are left
+  to the exterior shell and the hit volumes.
+- **Crew** mannequins are never scaled to their station. The head centre sits
+  on the station's combat head shape; the pose comes from the role, tucked
+  (trunk reclined, hips and knees flexed) until the boots clear the floor (the
+  exact hull-shell floor, or the top of a stowage or powerplant module under
+  the station) and the knees, ankles and toes stay inside the hull shell.
+  Where no tuck keeps the legs inside, the figure slides along its station,
+  head still inside the combat station box. A station too small for a person
+  stays visible as one: the figure is not shrunk. Each figure is tinted by its
+  role, with the role's colour on the helmet band.
+- **Hit volumes** draw every module, crew and barrel hit shape exactly.
 
-Exterior missile/rocket housings, canisters and firing supports are separately
-selectable in both armor and module layers. Their measured surfaces preserve
-open mouths and spaces between pods, follow their turret/gun articulation, and
-link to the existing missile-rack or gun damage state. Selecting a stock part
-does not create another logical module. The inspection readout identifies it
-as exterior stock, rather than an internal kill-cam model.
+`src/gallery/anatomyFidelity.selftest.mjs` holds this for every vehicle:
+rays from around each vehicle meet the drawn armor where `traceTank` strikes
+its first plate, on the same plate; every main-armor triangle carries its
+plate's ramp colour; module models sit inside their hit shapes in their combat
+frames; every mannequin's head is on its head shape; every hit volume spans
+its shape; and building the scene leaves the armor model byte-identical.
+
+The legacy `overlays.ts` builders still render the baked side diagrams
+(`tools/icons-page.html`) and the field-guide scenes; the Gallery no longer
+imports them.
 
 ### Damage workbench
 
@@ -160,11 +188,10 @@ stations can be disabled and restored. Ammo-rack wreck previews use the existing
 destruction presentation; diagnostic layers and articulation are disabled until
 reset because the detached wreck is no longer an intact combat specimen.
 
-**Combat hitboxes** replaces the illustrative module/crew anatomy with canonical
-ellipsoids, capsules, cylinders, compound boxes, and track prisms. These shapes
-follow the combat turret and trunnion frames independently of presentation-only
-rig scaling. Damage colors distinguish damaged and disabled parts. Exterior
-weapon stock remains selectable in module view.
+**Combat hitboxes** turns on the X-ray's Hit volumes: the canonical
+ellipsoids, capsules, cylinders and barrel the sim tests, in the combat turret
+and trunnion frames independently of presentation-only rig scaling. Damaged
+and disabled modules and crew take a yellow or red tint on their models.
 
 **Ray probe** traces a click through the current articulated specimen and reports
 ordered geometry contacts, plate thickness, and incidence angle. Dragging still
@@ -210,7 +237,9 @@ The Gallery uses query parameters so a record can be shared or restored:
 ```
 
 Supported `layer` values are `appearance`, `armor`, `modules`, `crew`, and
-`markup`. `appearance` is omitted from the canonical URL. The retired
+`markup`. `appearance` is omitted from the canonical URL. In the Armor layer,
+`metric=ce` or `metric=physical` selects the chemical or nominal value
+(`ke`, the default, is omitted). The retired
 `/surface-studio` path redirects to `/gallery?layer=markup` so existing review
 links remain useful.
 
