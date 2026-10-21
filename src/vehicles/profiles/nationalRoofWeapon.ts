@@ -217,46 +217,43 @@ function drumHousing(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:nu
  for(const at of [-.30,-.05,.32])g.add('turretDark',cylZ(w*(at===.32?.47:.73),.026,24),x,y,z+at);
 }
 
-/** The box-fed station's ammunition box with its lid and latches, and the feed bridge into the receiver. */
-function feed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
- const half=supportHalfWidth(l,w);
- const side=l.feedSide,fx=x+side*(half+.18),cannon=l.caliber===30;
- // round 4: the ammunition drum and box are issue drab, not the hull's camouflage ('turretAmmo', rendered builds)
- const h=cannon?.30:.23;
- g.add('turretAmmo',box(.25,h,.38),fx,y+.045,z-.15);
- g.add('turretAmmo',box(.269,.026,.399),fx,y+.045+h/2,z-.15);
- for(const dz of [-.26,-.04])g.add('turretDark',box(.036,.048,.032),fx+side*.13,y+.015,z+dz);
- feedBridge(g,side,half,x,y,y+.19,z);
-}
+/** The feed's inner and outer faces off the station's axis, past the yoke's half span: the inner face 12.5 mm clear of
+ * the bearing housing's outer end (half + .0775, boredYoke), the outer face where the 25 cm feeds' stood. */
+const FEED = {inner: .09, outer: .305} as const;
 
-/** The wedge station's box (release 227 land stage, geometry critic CN4-2: the box rides the pitch stage and its inner
- * face passed 22.5 mm through the yoke's trunnion boss at every pitch, as the Zubrs' did before UAPL-R5C-7): its inner
- * face stands 12.5 mm clear of the bearing housing (half + .09; the housing's outer end at half + .0775) and its outer
- * face, lid edge and latches stay where the plain feed's are (half + .305), so the station's swept envelope does not
- * grow (the Yun's arc and every 360-degree sweep keep their clearances); 21.5 cm wide, its lid with it; the bridge's
- * column stands 2 mm inside the bridge's front and back faces. */
-function wedgeFeed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
- const half=supportHalfWidth(l,w),inner=half+.09,outer=half+.305,bw=outer-inner;
+/** The box-fed station's ammunition box with its lid and latches, and the feed bridge into the receiver. Release 227 land
+ * stage (geometry critic CN4-2 on the wedge stations, then the fork and shield stations: the box rides the pitch stage
+ * and its inner face, at half + .055, passed 22.5 mm through the yoke's trunnion boss at every pitch, as the Zubrs' did
+ * before UAPL-R5C-7): its inner face stands at FEED.inner and its outer face, lid edge and latches stay where the 25 cm
+ * box's were (half + .305), so the station's swept envelope does not grow (the Yun's arc and every 360-degree sweep keep
+ * their clearances); 21.5 cm wide, its lid with it. */
+function feed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
+ const half=supportHalfWidth(l,w),inner=half+FEED.inner,outer=half+FEED.outer,bw=outer-inner;
  const side=l.feedSide,fx=x+side*(inner+outer)/2,cannon=l.caliber===30;
+ // round 4: the ammunition drum and box are issue drab, not the hull's camouflage ('turretAmmo', rendered builds)
  const h=cannon?.30:.23;
  g.add('turretAmmo',box(bw,h,.38),fx,y+.045,z-.15);
  g.add('turretAmmo',box(bw+.019,.026,.399),fx,y+.045+h/2,z-.15);
  for(const dz of [-.26,-.04])g.add('turretDark',box(.036,.048,.032),x+side*(half+.31),y+.015,z+dz);
- feedBridge(g,side,half,x,y,y+.19,z,.116);
+ feedBridge(g,side,half,x,y,y+.19,z);
 }
 
-/** The drum-fed station's ammunition drum with its end cap, and the feed bridge into the receiver. */
+/** The drum-fed station's ammunition drum with its end cap, and the feed bridge into the receiver. Release 227 land stage
+ * (as the box): the drum passed 22.5 mm through the trunnion boss at every pitch; its inner face stands at FEED.inner, its
+ * outer face and end cap where they were (half + .305, half + .315); 21.5 cm long. The chute keeps its height and its
+ * column stands 4 mm inside the chute's front and back faces (11.2 cm): at 2 mm the column's rounded top corners, 5 mm
+ * under the chute's, put one pair of their facets in one plane (the critic's coplanar census, 0.06 cm2). */
 function drumFeed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
- const half=supportHalfWidth(l,w);
- const side=l.feedSide,fx=x+side*(half+.18),cannon=l.caliber===30;
- g.add('turretAmmo',cylX(cannon?.205:.165,.25,24),fx,y+.005,z-.10);
- g.add('turretDark',cylX(cannon?.153:.115,.018,24),fx+side*.126,y+.005,z-.10);
- feedBridge(g,side,half,x,y,y+.17,z);
+ const half=supportHalfWidth(l,w),inner=half+FEED.inner,outer=half+FEED.outer;
+ const side=l.feedSide,fx=x+side*(inner+outer)/2,cannon=l.caliber===30;
+ g.add('turretAmmo',cylX(cannon?.205:.165,outer-inner,24),fx,y+.005,z-.10);
+ g.add('turretDark',cylX(cannon?.153:.115,.018,24),x+side*(half+.306),y+.005,z-.10);
+ feedBridge(g,side,half,x,y,y+.17,z,.112);
 }
 
-/** The link chute over the yoke into the receiver and its column. `columnDepth` .116 sets the column 2 mm inside the
- * chute's front and back faces (land stage 227, UAPL-R6C-3: the two shared those planes); the fleet rows keep .12. */
-function feedBridge(g:Gun,side:number,half:number,x:number,y:number,bridgeY:number,z:number,columnDepth=.12):void {
+/** The link chute over the yoke into the receiver and its column, the column (`columnDepth`) 2 mm inside the chute's
+ * front and back faces (land stage 227, UAPL-R6C-3: the two shared those planes). */
+function feedBridge(g:Gun,side:number,half:number,x:number,y:number,bridgeY:number,z:number,columnDepth=.116):void {
  g.add('turretDark',box(.22,.07,.12),x+side*(half+.06),bridgeY,z-.05);
  g.add('turretDark',box(.065,.15,columnDepth),x+side*(half-.025),y+.125,z-.05);
 }
@@ -326,7 +323,7 @@ function cradleFeed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:num
  g.add('turretAmmo',box(.20,.17,.30),fx,y+.03,z-.12);
  g.add('turretAmmo',box(.214,.02,.314),fx,y+.125,z-.12);
  for(const dz of [-.22,-.02])g.add('turretDark',box(.03,.04,.028),fx+side*.105,y+.04,z+dz);
- feedBridge(g,side,half,x,y,y+.153,z,.116);
+ feedBridge(g,side,half,x,y,y+.153,z);
 }
 
 /** The Zubr II's armoured emplacement. Round 4 (2026-10-17; the critic's D1: "the casemate is not a closed armoured box.
@@ -460,7 +457,10 @@ function supportHalfWidth(l:NationalRoofLoadout,w:number):number {
  * sits 13 mm into the cheek's top round the pin, so the pin turns in 3 mm of air and the pitch group never passes
  * through its yoke; the cross-beam ends 2 mm inside the cheeks' outer faces and its front and back faces 2 mm inside
  * theirs. The pitch group recoils 1.5 mm (`auxiliaryRecoilM`), half that air, so the pin keeps 1.5 mm from its bore. The plain yoke's
- * span, heights and the bosses' outer form are kept, so the station's silhouette does not change.
+ * span, heights and the bosses' outer form are kept, so the station's silhouette does not change. The fork, shield and
+ * drum rows had the same defects (the Zoria's, Hetman's, Sich's, Husarz's, Bulat-M's, Bars-M's and Bastion-M's stations:
+ * the pin through solid cheeks and bosses, 25 mm of recoil through them, the box or drum 22.5 mm through the boss, and on
+ * the 12.7 mm fork and shield stations the sight foot 1.5 mm through the cheek's top) and are bored as well.
  */
 const TRUNNION = {pin: .055, air: .003, outer: .073, length: .065, cap: .003, cheekTop: -.060, sides: 16} as const;
 function boredYoke(g:Gun,x:number,y:number,z:number,half:number):void {
@@ -501,14 +501,14 @@ interface NationalMountRow {
  finish?:(P:TankBuilderPort,l:NationalRoofLoadout,x:number,y:number,z:number,w:number)=>void;
  /** false: the 12.7 mm gun is laid without the open cradle's tray and rails (the mount carries its own). */
  cradle?:boolean;
- /** The yoke carries the trunnion pin in bored, capped bearing housings with 2 mm of air (boredYoke; land stage 227). */
+ /** The yoke carries the trunnion pin in bored, capped bearing housings with 3 mm of air (boredYoke; land stage 227). */
  boredTrunnion?:boolean;
 }
 const NATIONAL_MOUNTS:Readonly<Partial<Record<NationalRoofMount,NationalMountRow>>>={
- fork:{halfShare:.5,housing:forkHousing},
- shield:{halfShare:.5,housing:shieldHousing},
- wedge:{halfShare:.74,housing:wedgeHousing,feed:wedgeFeed,boredTrunnion:true},
- drum:{halfShare:.74,housing:drumHousing,feed:drumFeed},
+ fork:{halfShare:.5,housing:forkHousing,boredTrunnion:true},
+ shield:{halfShare:.5,housing:shieldHousing,boredTrunnion:true},
+ wedge:{halfShare:.74,housing:wedgeHousing,boredTrunnion:true},
+ drum:{halfShare:.74,housing:drumHousing,feed:drumFeed,boredTrunnion:true},
  cradle:{halfShare:.5,housing:cradleShield,feed:cradleFeed,boredTrunnion:true},
  casemate:{halfShare:.74,housing:casemateHousing,feed:casemateFeed,sight:casemateSight,bearing:casemateBearing,
   finish:casemateIlluminator,boredTrunnion:true},
