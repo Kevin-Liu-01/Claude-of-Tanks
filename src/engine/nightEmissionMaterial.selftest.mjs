@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
-import { NIGHT_EMISSION_ATTRIBUTE, NIGHT_HEADLIGHT_COLOR, NIGHT_RED_DISPLAY_LEVEL, NIGHT_RED_FLOOR_EXPOSURE, NIGHT_SHTORA_COLOR,
+import { NIGHT_EMISSION_ATTRIBUTE, NIGHT_HEADLIGHT_COLOR, NIGHT_LED_COLOR, NIGHT_RED_DISPLAY_LEVEL, NIGHT_RED_FLOOR_EXPOSURE, NIGHT_SHTORA_COLOR,
   setNightEmissionExposure, setNightEmissionMask, installNightEmissionMask } from './nightEmissionMaterial.ts';
 import { EXPOSURE_KEY, EXPOSURE_MIN, NIGHT_EV, exposureFor, whiteBalanceGains } from './lightModel.ts';
 import { EXPOSURE_REFERENCE_ILLUMINANCE, LEGACY_EXPOSURE, loadGroundedLightModel } from './lightModelCore.ts';
@@ -16,6 +16,9 @@ assert.equal(geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE).count, original.len
 assert.deepEqual([...geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE).array].filter(Boolean), [1, 1]);
 setNightEmissionMask(geometry, 0);
 assert.ok([...geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE).array].every(value => value === 0));
+// (release 230) the cool-white LED lens's mask
+setNightEmissionMask(geometry, 3, [5]);
+assert.deepEqual([...geometry.getAttribute(NIGHT_EMISSION_ATTRIBUTE).array].filter(Boolean), [3]);
 
 function compileMask(options = {}) {
   const material = new THREE.MeshStandardMaterial({ emissive: 0x123456, emissiveIntensity: .37 });
@@ -32,7 +35,18 @@ function compileMask(options = {}) {
   assert.match(shader.fragmentShader, /existing material hook/);
   assert.match(shader.fragmentShader, /step\(0\.5, vNightEmissionMask\)/, 'unmarked poles/periscopes get no new emission');
   assert.match(shader.fragmentShader, /clamp\(vNightEmissionActive, 0\.0, 1\.0\)/);
-  assert.match(material.customProgramCacheKey(), /^authored-base\|night-emission-mask-v1:/);
+  assert.match(material.customProgramCacheKey(), /^authored-base\|night-emission-mask-v2:/);
+  // Release 230 (UA/PL round 11): mask 3 takes the cool LED colour, masks 1 and 2 keep warm and red exactly, and the red
+  // lens's display ceiling (its gain and cap) applies to mask 2 alone
+  assert.ok(shader.fragmentShader.includes('vec3 nightEmissionTint = mix(mix(nightEmissionWarm, nightEmissionRed, step(1.5, vNightEmissionMask)), nightEmissionCool, step(2.5, vNightEmissionMask));'));
+  assert.ok(shader.fragmentShader.includes('float nightEmissionRedLens = step(1.5, vNightEmissionMask) * (1.0 - step(2.5, vNightEmissionMask)) * nightEmissionOn;'));
+  assert.deepEqual(shader.uniforms.nightEmissionCool.value.toArray(), new THREE.Color(NIGHT_LED_COLOR).toArray());
+  const step = (edge, x) => (x < edge ? 0 : 1), mix = (a, b, t) => a.map((v, i) => v * (1 - t) + b[i] * t);
+  const warm = new THREE.Color(NIGHT_HEADLIGHT_COLOR).toArray(), red = shader.uniforms.nightEmissionRed.value.toArray(), cool = new THREE.Color(NIGHT_LED_COLOR).toArray();
+  for (const [m, want, redLens] of [[0, warm, 0], [1, warm, 0], [2, red, 1], [3, cool, 0]]) {
+    assert.deepEqual(mix(mix(warm, red, step(1.5, m)), cool, step(2.5, m)), want, `mask ${m}: its tint`);
+    assert.equal(step(1.5, m) * (1 - step(2.5, m)), redLens, `mask ${m}: the red lens's ceiling`);
+  }
   const base = shader.uniforms.nightEmissionBase.value;
   assert.deepEqual(base.toArray(), new THREE.Color(0x123456).multiplyScalar(.37).toArray());
   // The shader's additive-baseline form is exact at day, mask0, and activity0.
@@ -191,7 +205,8 @@ assert.equal(regular.shader.uniforms.nightEmissionFloorExposure.value, NIGHT_RED
 assert.equal(NIGHT_RED_FLOOR_EXPOSURE, LEGACY_EXPOSURE, 'the floors hold the authored lenses\' key (the legacy rig\'s exposure)');
 assert.ok(NIGHT_RED_FLOOR_EXPOSURE >= EXPOSURE_KEY, 'at or above the grounded rig\'s day key');
 for (const line of [
-  'float nightEmissionRedLens = step(1.5, vNightEmissionMask) * nightEmissionOn;',
+  // (release 230: mask 3, the cool LED, is not a red lens)
+  'float nightEmissionRedLens = step(1.5, vNightEmissionMask) * (1.0 - step(2.5, vNightEmissionMask)) * nightEmissionOn;',
   'float nightEmissionLit = step(1e-4, dot(nightEmissionDriven, nightEmissionDriven));',
   'float nightEmissionRedPeak = max(max(totalEmissiveRadiance.r, totalEmissiveRadiance.g), max(totalEmissiveRadiance.b, 1e-6)) * nightEmissionExposure;',
   'float nightEmissionRedScale = mix(min(1.0, nightEmissionFloorExposure / nightEmissionExposure), min(1.0, nightEmissionRedLevel / nightEmissionRedPeak), nightEmissionLit);',

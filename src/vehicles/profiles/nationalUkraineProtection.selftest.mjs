@@ -100,7 +100,10 @@ for(const quality of ['high','low'])for(const id of ids){
    }
    if(g.userData.eraHitFaceVertexStarts?.length)counts[owner]++;
    const attachment=g.userData.ukrainianProtection;
-   const newEra=owner==='hull'&&g.userData.eraHitFaceVertexStarts!==undefined&&/ukrainianSkirtEra|addNationalUkraineProtection|glacisTiles/.test(new Error().stack);
+   // 2026-10-16 (release 227; the owner: "brand new era packages for both though, donnt make it just copy the t90ms.
+   // innovate for the hetman 2"): Hetman II's own frontal package (ukraineFrontEra.ts hetmanIIGlacis) is new hull ERA
+   // that the continuous main-gun envelope must clear, as the skirt banks are.
+   const newEra=owner==='hull'&&g.userData.eraHitFaceVertexStarts!==undefined&&/ukrainianSkirtEra|addNationalUkraineProtection|glacisTiles|hetmanIIGlacis|hetmanIISideBand|ukraineFrontEra/.test(new Error().stack);
    if(owner==='hull'&&(attachment||newEra))addedHull.push(g.clone());
    if(newEra&&g.userData.eraHitFaceVertexStarts.length)newHullEra++;
    if(attachment?.role==='support-pad')pads.push(attachment);
@@ -123,7 +126,9 @@ for(const quality of ['high','low'])for(const id of ids){
   // Sich retains one flank course over its lower field housings; the other
   // three have two. Its exposed forward banks still have two cheek courses.
   assert(counts.hull>=60&&counts.turret>=(id==='t72b3_sich'?18:24),id+': dense independently authored ERA cassettes '+JSON.stringify(counts));
-  assert.equal(newHullEra,id==='t72b3m_hetman_ii'?56:counts.hull,id+': continuous motion check includes every new hull ERA body');
+  // 2026-10-16 (release 227): Hetman II no longer carries the T-72B3M's own glacis sheet and skirt boxes (t72b3mX.ts
+  // nativeEra: false), so every one of its hull ERA bodies is new and in the continuous check, as on the other three.
+  assert.equal(newHullEra,counts.hull,id+': continuous motion check includes every new hull ERA body');
   const protectedHash=fingerprint(tank.root,['hullExternalArmor','turretExternalArmor']);
   const invariantNames=['hull','turret','gunMount','hullOpenLattice','turretOpenLattice'];
   const original=fingerprint(tank.root,invariantNames);

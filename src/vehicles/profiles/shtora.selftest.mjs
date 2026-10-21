@@ -25,7 +25,7 @@ for (const scale of [1, 1.32, 1.5]) for (const round of [false, true]) for (cons
     finite(lens.geometry, label);
     assert.equal(lens.material.color.getHex(), 0x54180e, `${label}: canonical deep red lens`);
     assert.equal(lens.material.emissive.getHex(), 0x7c2410);
-    assert.equal(lens.material.customProgramCacheKey(), 'veh-ambient-floor-v2|night-emission-mask-v1:');
+    assert.equal(lens.material.customProgramCacheKey(), 'veh-ambient-floor-v2|night-emission-mask-v2:');
     lens.geometry.dispose();
   }
   port._shtoraRed?.dispose(); port.mats.dark.dispose();
