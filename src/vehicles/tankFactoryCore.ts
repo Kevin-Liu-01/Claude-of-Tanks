@@ -1,6 +1,7 @@
 import { hypot2, hypot3 } from './scalarHypot.ts';
 import { WeaponDamageVisuals } from './weaponDamageVisuals.ts';
 import { casemateGunYaw } from './casemateGunPose.ts';
+import { authoringRigSpec } from './combatGunRigSeat.ts';
 import { tankSeedId } from './tankIdAliases.ts';
 import type { ModuleStateName } from '../sim/damage.ts';
 import { DetachedGear } from './detachedGear.ts';
@@ -7382,7 +7383,10 @@ function* createTankOwnedSteps(
   }
   const geometryOnly = materialMode === 'geometry-only';
   const engineCtx = normalizeTankEngineContext(engineContext);
-  const spec = getSpec(specId) as FactoryTankSpec;
+  const combatSpec = getSpec(specId) as FactoryTankSpec;
+  // 230: builders and every visual pass read the profile-authored frame; the combat-rig table moves only combat
+  // (combatGunRigSeat.ts). The same object when no row moved this tank's frame.
+  const spec = authoringRigSpec(combatSpec);
   const armor = spec.armor;
   const marking: VehicleMarkingRecord = spec.markings || vehicleMarkingRecord(spec);
   const usesSharedMaterialTextures = !geometryReceipt && !geometryOnly;
@@ -7809,7 +7813,7 @@ function* createTankOwnedSteps(
   const coreAuthoredStartedAt = performance.now();
   const sizeFactor = VEHICLE_SIZE_FACTORS[specId] ?? 1;
   if (sizeFactor !== 1) {
-    const sourceSpec = vehicleAuthoringSpec(spec);
+    const sourceSpec = vehicleAuthoringSpec(combatSpec);
     turretG.position.set(...sourceSpec.armor.turretPivot);
     gunG.position.set(...sourceSpec.armor.gunPivot);
     P.muzzleZ = sourceSpec.armor.gunBarrel.lengthM;

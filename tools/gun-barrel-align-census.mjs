@@ -131,7 +131,7 @@ function fitBore(meshes, mouth, sMax, cap) {
   const e1 = new THREE.Vector3().crossVectors(up, a).normalize();
   const e2 = new THREE.Vector3().crossVectors(a, e1).normalize();
   const stations = [];
-  for (let s = FIRST_STATION_M; s <= sMax + 1e-9; s += STATION_STEP_M) stations.push({ s, minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity, n: 0 });
+  for (let s = FIRST_STATION_M; s <= sMax + 1e-9; s += STATION_STEP_M) stations.push({ s, minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity, n: 0, pts: [] });
   const reach = Math.hypot(sMax, cap);
   _c.copy(a).multiplyScalar(-sMax / 2).add(O);
   for (const mesh of meshes) {
@@ -165,13 +165,29 @@ function fitBore(meshes, mouth, sMax, cap) {
           if (Math.hypot(x, y) > cap) continue;
           if (x < st.minX) st.minX = x; if (x > st.maxX) st.maxX = x;
           if (y < st.minY) st.minY = y; if (y > st.maxY) st.maxY = y;
-          st.n++;
+          st.n++; st.pts.push(x, y);
         }
       }
     }
   }
   // The run: round sections from the mouth back, stopping where the cut widens past twice the run's narrowest section or
   // fills the cap (mantlet, glacis, turret face), or after 0.24 m with nothing to cut.
+  // The ring, not the cut's box: a flat part or a clamp beside the tube (Leopard 2A4 V: 0.18 m wide, 0.10 m tall) widens
+  // the box one way. Seed from the box and the narrower half-width, keep the points within 1.3x of it, box again (twice).
+  for (const st of stations) {
+    for (let pass = 0; pass < 2 && st.n >= 6; pass++) {
+      const cx = (st.minX + st.maxX) / 2, cy = (st.minY + st.maxY) / 2;
+      const keep = 1.3 * Math.min(st.maxX - st.minX, st.maxY - st.minY) / 2;
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, n = 0;
+      for (let i = 0; i < st.pts.length; i += 2) {
+        const x = st.pts[i], y = st.pts[i + 1];
+        if (Math.hypot(x - cx, y - cy) > keep) continue;
+        if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; n++;
+      }
+      if (n < 6) break;
+      Object.assign(st, { minX, maxX, minY, maxY, n });
+    }
+  }
   const run = [];
   let gap = 0;
   for (const st of stations) {
@@ -230,11 +246,15 @@ function measurePose(root, spec, combat, meshes, pose) {
   const { kind, mouths } = collectMouths(root);
   if (!mouths.length) return { kind, mouths: 0 };
   const rigGun = gun ? new THREE.Vector3().setFromMatrixPosition(gun.matrixWorld) : null;
+  // The tube is cut among its own rig's meshes only: a turret gun's under rig_gun, a hull gun's outside rig_turret. Deck
+  // stowage or a fender under a depressed gun swung aft is never part of the bore (t72b3m_wilk read 0.78 deg off it).
+  const turretRig = root.getObjectByName('rig_turret');
+  const own = kind === 'turret' && gun ? meshes.filter((m) => isUnder(m, gun)) : meshes.filter((m) => !turretRig || !isUnder(m, turretRig));
   const fits = mouths.map((mouth) => {
     const nearest = Math.min(Infinity, ...mouths.filter((m) => m !== mouth).map((m) => m.origin.distanceTo(mouth.origin)));
     const cap = Math.max(0.03, Math.min(0.35, mouth.outer * CAP_FACTOR, nearest * 0.45));
     const span = kind === 'turret' && rigGun ? mouth.origin.distanceTo(rigGun) * 0.7 : spec.dims.hullLengthM * 0.5;
-    return fitBore(meshes, mouth, Math.min(3, Math.max(0.4, span)), cap)
+    return fitBore(own, mouth, Math.min(3, Math.max(0.4, span)), cap)
       ?? { point: mouth.origin.clone(), direction: mouth.axis.clone(), radius: mouth.outer, sEnd: 0, sections: 0, fallback: true };
   });
   const point = fits.reduce((t, f) => t.add(f.point), new THREE.Vector3()).divideScalar(fits.length);
@@ -283,10 +303,11 @@ function turretScaleOf(root) {
  * The combat articulation frame the drawn gun implies at rest (root, rig_turret and rig_gun unrotated): the turret pivot
  * where the builder seated rig_turret, the trunnion projected onto the drawn bore line (the combat barrel can only run
  * through its pivot), the barrel from there to the drawn mouth, and the drawn tube's median radius. A hull-fixed gun
- * keeps the authored turret pivot. Null when the bore was not measured or the gun is twin-bored.
+ * keeps the authored turret pivot; a twin-bored gun is measured on the mean of its tubes and keeps its radius. Null when the
+ * bore was not measured.
  */
 function measuredRig(root, spec, combat, rest) {
-  if (!rest?.line || rest.fallback || rest.mouths !== 1) return null;
+  if (!rest?.line || rest.fallback || !(rest.mouths >= 1)) return null;
   const P = new THREE.Vector3().fromArray(rest.line.point), d = new THREE.Vector3().fromArray(rest.line.direction);
   const turret = root.getObjectByName('rig_turret'), gun = root.getObjectByName('rig_gun');
   const hullFixed = rest.kind !== 'turret';
@@ -303,7 +324,7 @@ function measuredRig(root, spec, combat, rest) {
   const Q = factorySeat ? combatTrunnion.clone() : P.clone().addScaledVector(d, along);
   return {
     turretPivot: tp.toArray().map(r4), gunPivot: Q.clone().sub(tp).toArray().map(r4), lengthM: r4(-along),
-    radiusM: r4(rest.line.radius), boreOffsetMm: r1(trunnion.distanceTo(Q) * 1000),
+    radiusM: rest.line.radius === null ? null : r4(rest.line.radius), boreOffsetMm: r1(trunnion.distanceTo(Q) * 1000),
     restAngleDeg: r2(Math.acos(Math.min(1, Math.max(-1, d.z))) / DEG),
   };
 }
@@ -400,10 +421,10 @@ if (RIGS_PATH) {
   const rows = { ...COMBAT_GUN_RIGS };
   const rowFor = (r) => {
     const m = r.measuredRig, held = rows[r.id];
-    if (!m || r.kind !== 'turret') return { skip: m ? `${r.kind} gun` : 'no measured bore (twin bore, launcher or unmeasured tube)' };
+    if (!m || r.kind !== 'turret') return { skip: m ? `${r.kind} gun` : 'no measured bore (launcher or unmeasured tube)' };
     if (m.restAngleDeg > T.angleDeg) return { skip: `drawn bore ${m.restAngleDeg} deg off the hull's +Z at rest` };
     const combatRadius = r.detail?.[0]?.combatRadiusMm / 1000;
-    const radius = held?.radiusM !== undefined || Math.abs(combatRadius - m.radiusM) > T.radiusM;
+    const radius = m.radiusM !== null && (held?.radiusM !== undefined || Math.abs(combatRadius - m.radiusM) > T.radiusM);
     return { row: { turretPivot: m.turretPivot, gunPivot: m.gunPivot, lengthM: m.lengthM, ...(radius ? { radiusM: m.radiusM } : {}) } };
   };
   const written = [], skipped = [];

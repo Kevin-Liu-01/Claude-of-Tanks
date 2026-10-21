@@ -26,6 +26,7 @@ import {
 } from './calibrationStockGeometry.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
 import { COMBAT_GUN_RIGS, type CombatGunRig } from './combatGunRigs.generated.ts';
+import { rememberAuthoredRig } from './combatGunRigSeat.ts';
 import type {
   InternalCrewStation,
   InternalLayoutRecord,
@@ -1512,6 +1513,7 @@ function assignCollisionOutputs(
  */
 export function applyCombatGunRig(armor: ArmorAnatomy, rig: CombatGunRig | undefined): void {
   if (!rig || !armor.gunBarrel) return;
+  rememberAuthoredRig(armor);
   armor.turretPivot = [...rig.turretPivot];
   armor.gunPivot = [...rig.gunPivot];
   armor.gunBarrel = { ...armor.gunBarrel, lengthM: rig.lengthM, ...(rig.radiusM === undefined ? {} : { radiusM: rig.radiusM }) };
