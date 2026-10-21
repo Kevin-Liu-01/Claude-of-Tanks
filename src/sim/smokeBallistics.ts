@@ -18,8 +18,8 @@ export const SMOKE_SEGMENT = 7;
 export interface SmokeWorldHit { dist: number; normal?: SmokePoint | null; kind?: string }
 export interface SmokeWorld { raycast(origin: SmokePoint, direction: SmokePoint, maxDist: number): SmokeWorldHit | null }
 /** Into a wall a steel canister keeps this share of its speed out of it, and this share of its speed along it. */
-export const SMOKE_RESTITUTION = .35;
-export const SMOKE_FRICTION = .7;
+const SMOKE_RESTITUTION = .35;
+const SMOKE_FRICTION = .7;
 /** A surface facing up at least this much stops a canister where it strikes it (a roof, a rock's top, a ledge). */
 export const SMOKE_REST_NORMAL_Y = .6;
 /** After this many bounces the next strike stops it (a canister in a corner settles). */

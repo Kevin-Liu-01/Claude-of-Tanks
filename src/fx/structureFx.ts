@@ -720,7 +720,7 @@ export function wallStrike(C: BlastContext, x: number, y: number, z: number, nx:
 }
 
 /** The prop families effects.ts breaks (propBreakFamily) that this module dresses in their own materials. */
-export type PropFamily = 'woodbuilding' | 'canvasbuilding' | 'metalbuilding' | 'masonry' | 'sandbag' | 'wood' | 'hay';
+type PropFamily = 'woodbuilding' | 'canvasbuilding' | 'metalbuilding' | 'masonry' | 'sandbag' | 'wood' | 'hay';
 
 const CANVAS_LOOK = look(0x14120f, ['canvas', 0x8f8467, 0.7], ['timber', 0x6a5238, 0.3]);
 const HAY_LOOK = look(0x161208, ['thatch', 0xb59a5c, 0.85], ['earth', 0x6e5c45, 0.15]);

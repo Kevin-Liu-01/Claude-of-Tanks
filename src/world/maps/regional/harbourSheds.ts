@@ -274,7 +274,7 @@ export function mekongFishShed(ctx: RegionalBuildContext): RegionalParts {
 // ------------------------------------------------------------------------------------------------ Dalmatia
 
 /** The kit's joinery a builder here takes from its kit's call: the state its dialect dresses with. */
-export interface KitJoinery<S> { st: S; dialect: (st: S) => HouseDialect }
+interface KitJoinery<S> { st: S; dialect: (st: S) => HouseDialect }
 
 /**
  * The boathouse of a Dalmatian bay (kit:dalmatian/boatshed; the judges: "a flat-headed gateUnit under nine faceBoxes

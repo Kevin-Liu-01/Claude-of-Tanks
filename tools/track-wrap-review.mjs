@@ -21,6 +21,7 @@
 // > 3 mm inside its seat and `OFF-…` when it sits > 5 mm off the tangent wrap (`gl` = ground-level end, exempt).
 // --gate exits 1 when any unit CUTS or any side is CUT / OFF the tangent wrap.
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { resolve } from 'node:path';
 import './tank-surface-collect.mjs'; // node canvas shim
 import { endWrapRows, endWrapFlags } from './track-end-wrap.mjs';
@@ -30,7 +31,7 @@ const flag = (name) => args.includes(`--${name}`);
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const { KIT } = await import('../src/vehicles/tankFactoryCore.ts');
 const { ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
-const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', 'm1a1_abrams_hc,t72b3m_2022').split(',').filter(Boolean);
+const ids = flag('all') ? [...ALL_TANK_IDS] : uniqueIds(opt('ids', 'm1a1_abrams_hc,t72b3m_2022').split(',').filter(Boolean), 'track-wrap-review --ids');
 const EPS = 1e-6;
 
 function rampClearance(receipt, end) {

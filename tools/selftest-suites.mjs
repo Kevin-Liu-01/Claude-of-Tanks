@@ -20,6 +20,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/modeConfiguration.selftest.mjs',
     'src/sim/sixModes.selftest.mjs',
     'src/sim/infectedLifecycle.selftest.mjs',
+    // 2026-10-17 (owner): fragile zombies and sturdy humans in Infected and the Horde (rules, hunt, measured band), and
+    // unlimited rounds in every special and arcade mode
+    'src/sim/zombieBalance.selftest.mjs',
+    // the zombies' tier-down wiring in both bot builders (the authority per seat, the solo battle per setting)
+    'src/game/zombieBotTier.selftest.mjs',
+    'src/sim/specialModeAmmo.selftest.mjs',
     'src/sim/modeAdditions.selftest.mjs',
     'src/fx/sceneLightTint.selftest.mjs',
     'src/fx/droneModel.selftest.mjs',
@@ -42,7 +48,25 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/thermalVehicles.selftest.mjs',
     'src/engine/visionWarm.selftest.mjs',
     'src/game/juggernautVisual.selftest.mjs',
-    'src/fx/aerialTracers.selftest.mjs',
+    // 2026-10-19 (owner): the AC-130 on the October tracers and missile looks, the old ribbon retired, and its kills
+    // credited to the AC-130 (the drone's to the drone) on every surface
+    'src/fx/gunshipRounds.selftest.mjs',
+    'src/fx/retiredTracers.selftest.mjs',
+    'src/fx/shockRingLight.selftest.mjs',
+    'src/fx/thermalFireGain.selftest.mjs',
+    'src/fx/hullBurstEarth.selftest.mjs',
+    'src/fx/heavyColumn.selftest.mjs',
+    'src/fx/thermalGroundAndEmbers.selftest.mjs',
+    'src/engine/thermalWreckCooling.selftest.mjs',
+    'src/engine/thermalHullHeat.selftest.mjs',
+    'src/engine/thermalLensBloom.selftest.mjs',
+    'src/ui/aerialHitMark.selftest.mjs',
+    'src/ui/killFeedSource.selftest.mjs',
+    'src/ui/endScreenAircraft.selftest.mjs',
+    'src/sim/killSource.selftest.mjs',
+    'src/ui/killSurfaces.selftest.mjs',
+    // (r2) the AC-130's airframe, its own chunk staged under the cover, hidden only in its own lens; the warm path
+    'src/game/gunshipAirframe.selftest.mjs',
     'src/fx/timeOfDayMarks.selftest.mjs',
     'src/fx/localLights.selftest.mjs',
     'src/fx/worldWindPalette.selftest.mjs',
@@ -68,6 +92,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/earthriseCrossing.selftest.mjs',
     'src/sim/auxiliarySystems.selftest.mjs',
     'src/sim/roofStations.selftest.mjs',
+    // 2026-10-19 (owner): roof guns hold fire where their rounds cannot hurt; every round judged where it lands, host = solo
+    'src/sim/roofHoldFire.selftest.mjs',
+    // 2026-10-16 (227 guards; guards 229): counter-drone as the owner's 226 rule: the levers as data (keyable, ~0.5 s),
+    // then every pinned pilot run on the authority (~7 s; keyed on its closure with item/tests-speed-229's i18nChunkImport)
+    'src/sim/counterDroneEngagement.selftest.mjs',
+    'src/sim/counterDroneRuns.selftest.mjs',
     'src/vehicles/remoteGunFleet.selftest.mjs',
     'src/vehicles/profiles/mbt70Rh202.selftest.mjs',
     'src/vehicles/roofWeaponPolicy.selftest.mjs',
@@ -163,6 +193,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/moving-clearance-air.selftest.mjs',
     // 2026-10-02: the fleet watertight gate's own controls (the gate itself runs in fleetPassDefault)
     'src/vehicles/watertightAudit.selftest.mjs',
+    // 2026-10-16 (test-speed R7c): the gate's named carries (docs/geometry-gate/watertight-carry.json) and their rules
+    'tools/watertight-carry.selftest.mjs',
     'tools/barak-rear-bay-fill-policy.selftest.mjs',
     'src/vehicles/profiles/kurganetsRearDoorStock.selftest.mjs',
     'src/vehicles/profiles/kurganetsBowStock.selftest.mjs',
@@ -189,6 +221,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/existing-document-route.selftest.mjs',
     'tools/geometry-gate-policy.selftest.mjs',
     'tools/tank-sealed-check.selftest.mjs',
+    // 2026-10-17 (227 gun-gaps): the nine closed gun junctions at rest/elevation/depression and a seeded tube pull
+    'tools/gun-junction-census.selftest.mjs',
     'tools/reference-supplement.selftest.mjs',
     'tools/fidelity-component-floor.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',
@@ -200,11 +234,19 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/source-comparison-cameras.selftest.mjs',
     'tools/native-interior-fill-policy.selftest.mjs',
     'tools/interior-fill-selection.selftest.mjs',
+    // 2026-10-16 (test-speed R4c): duplicate ids fail loudly in every fleet tool; browser tools' ports and first loads
+    'tools/id-list.selftest.mjs',
+    'tools/tool-page-load.selftest.mjs',
     'tools/sealed-ledger-policy.selftest.mjs',
     'tools/muzzle-seat-policy.selftest.mjs',
     'tools/receipt-repin.selftest.mjs',
-    // the shared receipt kit (near, nearStrict, geometryHash) about 110 receipts import
+    // the shared receipt kit (near, nearStrict, geometryHash, graphLabels) about 150 receipts import
     'tools/receipt-kit.selftest.mjs',
+    // 2026-10-16 (test-speed R10): no assert equality on three.js graph objects in any receipt (the 226 T-72 receipts
+    // dumped and diffed two scene graphs to 28-40 GB); a per-file byte-keyed cache keeps an unchanged tree under 1 s
+    'tools/object3d-assert-lint.selftest.mjs',
+    // 229: the runtime half (every child preloads it): a failing graph-object assert fails fast with labels.
+    'tools/assert-graph-guard.selftest.mjs',
     'tools/muzzle-bore-inventory.selftest.mjs',
     'tools/source-x-oracle.selftest.mjs',
     'src/vehicles/eraAuthoredFaces.selftest.mjs',
@@ -226,6 +268,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/efficientReturnRoller.selftest.mjs',
     'src/vehicles/pairedRunningGearStock.selftest.mjs',
     'src/vehicles/loadedTrackContact.selftest.mjs',
+    // 229 perf: the allocation-free hypot the per-frame track paths use equals Math.hypot bit for bit
+    'src/vehicles/scalarHypot.selftest.mjs',
     'src/vehicles/roadWheelTrackSpan.selftest.mjs',
     'src/vehicles/runningGearGroundRun.selftest.mjs',
     'src/vehicles/restPoseBatchedGear.selftest.mjs',
@@ -273,6 +317,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-clip-result.selftest.mjs',
     'tools/track-clip-options.selftest.mjs',
     'tools/standard-continuity-policy.selftest.mjs',
+    // 2026-10-16 (test-speed R4b part 1): tank-standard-check --stages runs and reports every stage after a red one
+    'tools/standard-check-stages.selftest.mjs',
+    // 2026-10-16 (guards 227): the §B2 hull-anchored contiguity lattice; AABB-only add-ons never move a hole (226 class)
+    'tools/contig-grid.selftest.mjs',
+    // 2026-10-19 (guards 229): the fleet hidden-gap audit, committed (docs/geometry-gate/contig-hidden.json): listed gaps
+    // are known work orders, an unlisted, second or grown gap fails §B2; pure plan rectangles and the ledger JSON
+    'tools/contig-hidden-gaps.selftest.mjs',
     'tools/concept-fixture-runner.selftest.mjs',
     'tools/source-equipment-policy.selftest.mjs',
     'tools/photo-reference-policy.selftest.mjs',
@@ -325,6 +376,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/spareTrackAttachment.selftest.mjs',
     // 2026-10-15 (VEH-13): one seat solver for every spare-track run; the Strv 103 family builds clean; the fleet ledger
     'src/vehicles/spareTrackSeat.selftest.mjs',
+    // 2026-10-16 (VEH-13 outline rule): the receipt's PROUD class and its seeded break
+    'tools/spare-track-outline.selftest.mjs',
+    // 2026-10-18 (228): ledger keys hold no line number; a line-shifted tree gates green; --update then --gate round-trips
+    'tools/spare-track-key.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
     'src/vehicles/profiles/gunTopFixturePlacement.selftest.mjs',
     'src/vehicles/profiles/bradleyHullClosure.selftest.mjs',
@@ -452,7 +507,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/amx40XHullSkirts.selftest.mjs',
     'src/vehicles/profiles/amx40XFrontFittings.selftest.mjs',
     'src/vehicles/profiles/amx40XRoofFixtures.selftest.mjs',
-    'src/vehicles/profiles/primaryPhotoEquipment.selftest.mjs',
     'src/vehicles/profiles/amx40XTurretEquipment.selftest.mjs',
     'src/vehicles/profiles/t72b3XGeometry.selftest.mjs',
     'src/vehicles/profiles/t72b3mXGeometry.selftest.mjs',
@@ -475,14 +529,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/strv122XSuppliedEquipment.selftest.mjs',
     'src/vehicles/profiles/strv122XSuppliedCupola.selftest.mjs',
     'src/vehicles/profiles/strv122XSurfaceAssembly.selftest.mjs',
-    'src/vehicles/profiles/chieftain5XOptics.selftest.mjs',
     'src/vehicles/profiles/k1a1XWheels.selftest.mjs',
     'src/vehicles/profiles/k1a1XMachineGun.selftest.mjs',
     'src/vehicles/profiles/arieteXPhotoDetails.selftest.mjs',
     'src/vehicles/profiles/chieftain10XEngineDeck.selftest.mjs',
     'src/vehicles/profiles/chieftain10XGunCarriage.selftest.mjs',
-    'src/vehicles/profiles/challenger1XDeckFittings.selftest.mjs',
-    'src/vehicles/profiles/challenger1XFrontFittings.selftest.mjs',
     'src/vehicles/profiles/t90AwXTowCables.selftest.mjs',
     'src/vehicles/profiles/t90AwXCheekLeaves.selftest.mjs',
     'src/vehicles/profiles/t90AwXApsHousings.selftest.mjs',
@@ -498,10 +549,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/leclercXTrackLinks.selftest.mjs',
     'src/vehicles/profiles/leclercXRearShoulders.selftest.mjs',
     'src/vehicles/sourceXSecondWaveEra.selftest.mjs',
-    'src/vehicles/profiles/challenger1X.selftest.mjs',
     'src/vehicles/profiles/t72buXGeometry.selftest.mjs',
     'src/vehicles/profiles/awSecondWaveGeometry.selftest.mjs',
-    'src/vehicles/profiles/chieftain5X.selftest.mjs',
     'src/vehicles/profiles/chieftain5XSource.selftest.mjs',
     'src/vehicles/profiles/chieftain5XSourceClosure.selftest.mjs',
     'src/vehicles/profiles/roundedTrackContact.selftest.mjs',
@@ -603,6 +652,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/fleetPass.selftest.mjs',
     // 2026-10-01: the fleet geometry ledger (one full-fleet HIGH+LOW sweep) replaces the frozen per-receipt geometry pins.
     'src/vehicles/fleetGeometryLedger.selftest.mjs',
+    // 2026-10-17 (227 guards, after the 226 T-90M blade): every tank's belly pan, track bottom and combat hull box within
+    // 5 cm of docs/geometry-gate/sim-floors.json, read from the committed calibration (data only; a drifting id is built
+    // once to name the parts responsible); gen-combat-anatomy gates its own fresh measurement the same way.
+    'tools/anatomy-floor-drift.selftest.mjs',
     // 2026-10-01: one fleet on every path (each facade alone, every saved spec digested).
     'src/vehicles/fleetParity.selftest.mjs',
     'tools/media-production/pipeline.selftest.mjs',
@@ -610,11 +663,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/site50.selftest.mjs',
     'tools/media-r5/motion.selftest.mjs',
     'tools/media-r5/world-model.selftest.mjs',
+    'tools/media-r5/wire-model.selftest.mjs',
     'tools/media-r5/films/restore.selftest.mjs',
     'tools/media-r5/fleet-media.selftest.mjs',
     'tools/media-r5/site-video-budget.selftest.mjs',
     'tools/media-r5/fleet.selftest.mjs',
     'tools/media-r5/fleet-rekey.selftest.mjs',
+    'tools/media-r5/combat.selftest.mjs',
     'tools/media-r5/master-filter.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/tool-only-public-files.selftest.mjs',
@@ -646,6 +701,16 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/frame-budget-probe.selftest.mjs',
     'tools/capture-command.selftest.mjs',
     'tools/tank-release-plan.selftest.mjs',
+    // 2026-10-16 (227, owner: "no regenerating for tanks or anything else that didn't change"): the changed-only
+    // resolver on a fixture fleet, then the real fleet's partition, pinned dynamic reads and the chain order.
+    'tools/changed-only/resolver.selftest.mjs',
+    'tools/changed-only/fleet-partition.selftest.mjs',
+    // The world steps' per-map keys on a fixture world (map configs, world core, wreck donors, fail-closed reads).
+    'tools/changed-only/world.selftest.mjs',
+    // The real chain end to end on a fixture fleet: changed-only == whole-fleet regen byte for byte, order, --verify.
+    'tools/changed-only/chain.selftest.mjs',
+    // Generator freshness at resolver cost (R8d): committed fleet outputs current for release/fingerprints.tsv.
+    'tools/changed-only/fresh.selftest.mjs',
     'src/app/checkedIntegrationPort.selftest.mjs',
     'src/app/lazyRuntimeOwner.selftest.mjs',
     'src/app/lazyImportRetry.selftest.mjs',
@@ -653,6 +718,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/i18n.selftest.mjs',
     'src/ui/i18nRuntime.selftest.mjs',
     'src/ui/i18nLazyCatalog.selftest.mjs',
+    // 2026-10-16 (test-speed): the registry's chunk import keeps the locale runtime's receipts reusable
+    'src/ui/i18nChunkImport.selftest.mjs',
     'tools/i18n-page-catalogs.selftest.mjs',
     'src/dev/mapCaptureReadiness.selftest.mjs',
     'src/dev/debugTelemetry.selftest.mjs',
@@ -734,6 +801,20 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageYardWear.selftest.mjs',
     'src/ui/garageVerdantHall.selftest.mjs',
     'src/ui/garageQualityRubric.selftest.mjs',
+    // garage r9 (2026-10-17): the shared kit (pieces, cranes, walls, displays, platform, placement), its display atlas
+    // (generator check, rect names, the swap test) and the atmosphere
+    'src/ui/garageKit.selftest.mjs',
+    'src/ui/garageDisplayAtlas.selftest.mjs',
+    'src/ui/garageAtmosphere.selftest.mjs',
+    'src/ui/garageDisplayPlacement.selftest.mjs',
+    // garage r9 (g1 lane): the outside environment from each map (generator check, landmarks, budgets)
+    'src/ui/garageSkyline.selftest.mjs',
+    // garage r9 (g1 lane, criterion 16): the near facility's primitives rebuilt as kit geometry
+    'src/ui/garageFacilityNear.selftest.mjs',
+    // garage r9 per-garage lanes: the built skylines (named map landmarks at their bearings, deterministic, bounded)
+    'src/ui/garageSkylineKit.selftest.mjs',
+    // garage r9 (g3): Sirocco's and Steinburg's map landmarks at their bearings, bounded and deterministic
+    'src/ui/garageHorizonLandmarks.selftest.mjs',
     'tools/garage-terrain-patches.selftest.mjs',
     'tools/garage-variants-probe.selftest.mjs',
     'src/game/rosterPlanning.selftest.mjs',
@@ -795,6 +876,8 @@ export const SELFTEST_SUITES = Object.freeze({
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
     'src/vehicles/decorDockKeepOut.selftest.mjs',
+    // 2026-10-16 (test-speed): the dock's launch column is the ruleset's value, read from a leaf by the decor path
+    'src/sim/droneDockRules.selftest.mjs',
     'src/sim/missionDockSeats.selftest.mjs',
     'src/vehicles/equipmentPrimitives.selftest.mjs',
     'src/vehicles/fleetBalance.selftest.mjs',
@@ -814,6 +897,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t14RoofFidelity.selftest.mjs',
     'src/vehicles/profiles/t90SprocketTier.selftest.mjs',
     'src/vehicles/profiles/ztz85iiiAttachment.selftest.mjs',
+    // 2026-10-17 (227 gun-gaps): CV90 Mk 4 sight head on its neck and side plates on the wall; CV90 cradle root in the shell
+    'src/vehicles/profiles/cv90TurretSeating.selftest.mjs',
+    // 2026-10-18 (227 gun-gaps r3): the chevron ERA cassettes' caps on the gun channel walls are closed (no sawtooth)
+    'src/vehicles/profiles/chineseChannelWallCaps.selftest.mjs',
     'src/vehicles/runningGearCadence.selftest.mjs',
     'src/world/sourcedTextures.selftest.mjs',
     'src/world/sourcedImageCache.selftest.mjs',
@@ -917,6 +1004,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/particleTextureAssets.selftest.mjs',
     'src/fx/volumeMedia.selftest.mjs',
     'src/fx/structureStages.selftest.mjs',
+    'src/fx/structureStagesPieceHides.selftest.mjs', // 2026-10-16 props lane B (227 co-hold): a live run's named-piece hides wait for its wreck's birth, a settled run's apply at once
     'src/fx/structureDebris.selftest.mjs', // 2026-10-12: thrown pieces lie where their flight meets the ground; still pieces belong to their building
     'src/fx/rubbleBodies.selftest.mjs', // 2026-10-12: a building's larger falling pieces are bodies of the one physics engine
     // 2026-10-15 (the fracture package on integ/226): walls break where struck as cells, a section's fall keeps its stub and
@@ -958,6 +1046,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/worldNightLighting.selftest.mjs',
     'src/world/worldNightFixtureInstances.selftest.mjs',
     'src/world/worldNightEmissionGeometry.selftest.mjs',
+    'src/world/townNightLights.selftest.mjs', // 227 looks: the town kits' dwellings light their panes; Steinburg's street lamps beside its planned rows
     'src/dev/nightWindowInspection.selftest.mjs',
     'src/dev/nightWorldFixtureInspection.selftest.mjs',
     'src/world/villageWindowPlacement.selftest.mjs',
@@ -976,10 +1065,17 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/vehicleReadability.selftest.mjs',
     // 2026-10-04 (the vehicle-look lane): a cloned vehicle material (the track shoes) joins its source's cascade registration
     'src/vehicles/vehicleMaterialClone.selftest.mjs',
+    // 2026-10-17 (the wheel-band lane): no new raw Material.clone() of a vehicle material (the Garage skin's road-wheel band)
+    'src/vehicles/vehicleMaterialRawClone.selftest.mjs',
+    // 2026-10-17 (the wheel-band lane, round 2): every opaque lit material a tank draws holds its own vehicle registration
+    // (the band's tanks: the M46/M47 wheels, the KF51 tyres, the Abrams track grime, the Merkava voids ...)
+    'src/vehicles/vehicleMaterialRegistration.selftest.mjs',
     'src/vehicles/fleetRoundOneSurfaces.selftest.mjs',
     'src/engine/skyCloudBake.selftest.mjs',
     'src/engine/skyHorizonCache.selftest.mjs',
     'src/engine/skyEnvironmentCache.selftest.mjs',
+    // 2026-10-18 (the 228 entry diet): the Moon's land mask loads with the world that draws it, not with the entry chunk
+    'src/engine/earthLandAccess.selftest.mjs',
     'src/engine/skyEnvironmentEnclosure.selftest.mjs',
     'src/engine/atmosphere.selftest.mjs',
     // 2026-10-01: the grounded light model (lighting lane): sun through the atmosphere, the sky's own light, the deck, the exposure law
@@ -1167,7 +1263,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/session/roomInvite.selftest.mjs',
     'src/game/localWeaponPresentation.selftest.mjs',
     'server/githubStars.selftest.mjs',
-    'server/ice.selftest.mjs',
     'server/relayCredentials.selftest.mjs',
     'server/telemetryRecord.selftest.mjs',
     'server/telemetry.selftest.mjs',
@@ -1198,7 +1293,18 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/authoritativeBots.selftest.mjs',
     'server/botModes.selftest.mjs',
     'server/botObjectives.selftest.mjs',
+    // 2026-10-16 (test-speed R9a): the 132 pacing matches play in eight one-thread shards; battlePacing merges their
+    // records and judges them (the runner admits it last; it plays any share without records from this run).
+    'server/battlePacingShard1.selftest.mjs',
+    'server/battlePacingShard2.selftest.mjs',
+    'server/battlePacingShard3.selftest.mjs',
+    'server/battlePacingShard4.selftest.mjs',
+    'server/battlePacingShard5.selftest.mjs',
+    'server/battlePacingShard6.selftest.mjs',
+    'server/battlePacingShard7.selftest.mjs',
+    'server/battlePacingShard8.selftest.mjs',
     'server/battlePacing.selftest.mjs',
+    'server/battlePacingRun.selftest.mjs', // the shards' partition, report check, merge and hand-over, on fixtures
     // 2026-10-05 (owner: "floor as a tail rate"): the pacing gate's arithmetic and the tail's shard merge.
     'tools/pacing-tail.selftest.mjs',
     'server/roadCrossingSweep.selftest.mjs', // 2026-10-03: the maps lane's road crossings, driven both ways (nothing standing in a carriageway)
@@ -1283,6 +1389,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/phoneLayoutIdentity.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
+    // 2026-10-16 (bots lane, READY-227): the hard bot's Verdant approach, after the clearance bevel (the smock mill's needles)
+    'src/sim/botVerdantApproach.selftest.mjs',
     // 2026-10-03 (bots lane): an edge holds the side slope across it to the two-way slope rule.
     'src/sim/botRouteSideSlope.selftest.mjs',
     'src/sim/botNavigationWater.selftest.mjs',
@@ -1601,6 +1709,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // the scenery lane (after wave 57): the telegraph poles' weathered timber
     'src/world/poleTimber.selftest.mjs',
     'src/world/scenery.selftest.mjs',
+    'src/world/jebelSkin.selftest.mjs', // 2026-10-14 (maps lane, MA.12): a dome's jointed face — all round, normals out, proud, in budget, no mass
     'src/world/sceneryTierIdentity.selftest.mjs', // 2026-10-11 the hitbox lane: a phone builds the desktop's formation masses
     // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
     'src/world/fieldStoneSurface.selftest.mjs',
@@ -1629,6 +1738,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/wadiRumPosts.selftest.mjs',
     // the map-content lane (L2, wave 358a): a polar station's field works in its own stock (drums, drift fence)
     'src/world/maps/regional/polarWorks.selftest.mjs',
+    // (the Earthrise 228 rebuild, 2026-10-18) a lunar station's works and clutter in its own stock (regolith bags, the tether)
+    'src/world/maps/regional/lunarWorks.selftest.mjs',
     // props census #12 (2026-10-15): the stations as the Moon and Mars build them (maps/spaceKit.ts)
     'src/world/maps/spaceKit.selftest.mjs',
     'src/world/wireMaterial.selftest.mjs',
@@ -1758,6 +1869,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/ammoCrates.selftest.mjs',
     'src/world/maps/rollingStock.selftest.mjs',
     'src/world/maps/vehicleSetPieces.selftest.mjs',
+    // the map-content lane's R6 (wave 358a): the works vehicles on their own gear, their prints and ground contact
+    'src/world/maps/setPieceSeat.selftest.mjs',
     'src/world/maps/strandWrack.selftest.mjs',
     'src/world/maps/shoreJetty.selftest.mjs',
     // #16 r2 (Lane C, 2026-10-14): the waterside family in its members (jetty forms, gangway, driftwood, buoys, fords, reeds)
@@ -1789,6 +1902,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsModelStore.selftest.mjs',
     'src/world/structureKit.selftest.mjs',
     'src/world/maps/marsSettlement.selftest.mjs',
+    // (the Earthrise 228 rebuild, 2026-10-18) Taurus-Littrow Station's plan, set pieces and stock (maps/earthriseStation.ts)
+    'src/world/maps/earthriseStation.selftest.mjs',
     'src/world/orchardBathhouse.selftest.mjs',
     // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap
     'src/world/maps/regional/regionalArchitecture.selftest.mjs',
@@ -1887,11 +2002,21 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/touchControlsAccess.selftest.mjs',
     'src/ui/settingsAccess.selftest.mjs',
     'src/ui/hudMagazine.selftest.mjs',
+    // 2026-10-17 (owner): out of ammo, every reload indicator shows its empty state; unlimited rounds never run dry
+    'src/ui/hudAmmoOut.selftest.mjs',
+    // ...and the live HUD paints those states (reticle, rack, tray, struck controls) over a recording canvas
+    'src/ui/hudAmmoOutPaint.selftest.mjs',
+    // ...and the rendered capture reads its saved frames' tray marks, never clipping a shot (critic r4b)
+    'tools/hud-ammo-frame-ink.selftest.mjs',
     'src/ui/hudAmmunitionPresentation.selftest.mjs',
     'src/ui/hudConsumablePresentation.selftest.mjs',
     // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout
     'src/ui/vehicleControlOrder.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',
+    // 2026-10-16 (desk notices): the mouse centre notices clear the reticle, the instruments and the lanes on every census size.
+    'src/ui/mouseNoticePlan.selftest.mjs',
+    // r10e: a touch layout's centre notices keep off the reticle's footprint and the HUD's panels
+    'src/ui/touchNoticePlan.selftest.mjs',
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',
     'src/ui/fonts.selftest.mjs',
@@ -1908,6 +2033,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageOrder.selftest.mjs',
     'src/ui/garageAuxiliarySummary.selftest.mjs',
     'src/vehicles/auxiliaryRoofGuns.selftest.mjs',
+    // 2026-10-16 (the perf lane): the roof-gun table's compact form
+    'src/vehicles/auxiliaryRoofGunsCodec.selftest.mjs',
     'src/ui/randomPreviews.selftest.mjs',
     'src/ui/touchControls.selftest.mjs',
     'src/ui/mobileLayout.selftest.mjs',
@@ -1925,6 +2052,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-geometry.selftest.mjs',
     'tools/marketing-shots/battle-campaign.selftest.mjs',
     'tools/marketing-shots/showcase-r2.selftest.mjs',
+    // the multiplayer dual view: the published WebP is the one its manifest names, from one match
+    'tools/marketing-shots/capture-multiplayer-dual-screen.selftest.mjs',
+    // 2026-10-12 (home r2): the live-battle capture director's clock, freezes, bursts and staging helpers
+    'tools/marketing-shots/mode-battle-director.selftest.mjs',
   ]),
   post: Object.freeze([
     'src/audio/lazyAudio.selftest.mjs',
@@ -1944,6 +2075,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/leopardHullClosure.selftest.mjs',
     'src/vehicles/tankFactoryCore.selftest.mjs',
     'src/vehicles/tankFactoryStaging.selftest.mjs',
+    'src/vehicles/tankFactoryDeferredAssembly.selftest.mjs',
     'src/vehicles/plateDistanceScratch.selftest.mjs',
     'src/vehicles/profileBuilderAdapter.selftest.mjs',
     'src/vehicles/fleetSpecRegistry.selftest.mjs',
@@ -1951,6 +2083,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/spectatorSwitcher.selftest.mjs',
     'tools/marketing-shots/feature-evidence.selftest.mjs',
     'tools/marketing-shots/site50-media.selftest.mjs',
+    // 2026-10-15: the versus stills, the social cards' and marketing's foundations (public/media/versus-r1)
+    'tools/marketing-shots/versus-media.selftest.mjs',
     'src/ui/studioSiteTakes.selftest.mjs',
     // 2026-10-12: every tank's own take (src/ui/fleetTakes.ts) in the Gallery, the manual, the Garage and the Director
     'src/ui/fleetTakes.selftest.mjs',
@@ -1958,6 +2092,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/docs/referenceTakes.selftest.mjs',
     'src/ui/garageFleetTake.selftest.mjs',
     'tools/marketing-shots/landing-media.selftest.mjs',
+    // 2026-10-19: the media library (public/media/library-r2 since 10-20: the finals), by pack range and sheet
+    'tools/marketing-shots/media-library.selftest.mjs',
     // home r2 (2026-10-12): the home page's feature, mechanic and mode slots, their picks and the modes' registry order
     'tools/marketing-shots/home-shots.selftest.mjs',
     'src/docs/battleReels.selftest.mjs',

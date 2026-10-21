@@ -4,7 +4,7 @@
  * tank (whose family is loaded by construction). Each failure is logged by the caller; only when every attempt fails
  * does the build throw as before. Pure: the roster supplies the build options and the two fallback ids.
  */
-export interface RosterVisualAttempt<Options> {
+interface RosterVisualAttempt<Options> {
   readonly specId: string;
   readonly options: Options;
   readonly reason: 'authored' | 'other geometry tier' | 'donor' | 'stand-in';

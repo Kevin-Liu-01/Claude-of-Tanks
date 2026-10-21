@@ -52,7 +52,8 @@ export const DOCS_STAGES = {
 export const ENGINE_LATEST = ['final', 'review3', 'review2', 'review1'];
 export const CARD_FROM = ['final', 'review3', 'review2', 'r4'];
 const FRAME_TIMES = [0, 2.2, 4.37, 6.53];
-// The cover (the page's social image, generate-og-images.mjs's docs-filming card) is take 13's newest delivered still:
+// The cover (filming-r1/cover.webp; since 2026-10-15 the page's social card, generate-og-images.mjs's docs-filming, is
+// drawn from a current-game still instead) is take 13's newest delivered still:
 // --final's (round 14 delivers <id>-4k.jpg), else round seven's, else round four's (r14b, 2026-10-12: the owner asked
 // for every graphic in the current game's look; it was round four's).
 const coverStill = [`site50/${arg('final') ?? 'deliver-r7'}/s13-farm-race/s13-farm-race-4k.jpg`,

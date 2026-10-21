@@ -75,7 +75,7 @@ for(const quality of['high','low'])for(const id of ABRAMS_SOURCE_X_IDS){
     const d=new T.Vector3(0,-1,0).transformDirection(turretRig.matrixWorld);
     const h=new T.Raycaster(p,d,0,.10).intersectObjects(physical,false)[0];assert.ok(h,'bracket remains actual stock at rotated turret');
     let owner=h.object;while(owner&&owner!==turretRig)owner=owner.parent;
-    assert.equal(owner,turretRig,'support moves rigidly with turret, never hull-owned');
+    assert.ok(owner === turretRig,'support moves rigidly with turret, never hull-owned');
    }
    poses++;
   }

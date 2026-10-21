@@ -47,8 +47,15 @@ export interface GarageArchitectureStats {
   backdropLayers: number;
   horizonStyle: 'flat' | 'rolling' | 'urban' | 'coastal' | 'alpine' | 'mesa' | 'dune' | 'none';
   horizonMaxHeightM: number;
+  /** The horizon's largest elevation angle from the opening camera (deg). */
+  horizonMaxElevationDeg: number;
+  /** The map skyline's landmarks (type, name, compass bearing, distance, ring radius), or null for the biome backdrop. */
+  skylineLandmarks: ReadonlyArray<{ readonly type: string; readonly name: string | null; readonly azDeg: number; readonly distM: number;
+    readonly ringRadiusM: number; readonly elevationDeg: number }> | null;
   builtHorizonMassTopM: number;
   builtHorizonAccentTopM: number;
+  /** The named landmarks of the pack's built skyline (garage r9, garageSkylineKit.ts). */
+  kitSkylineLandmarks: readonly string[];
   groundCover: number;
   structures: number;
   wrecks: number;
@@ -95,6 +102,25 @@ export interface GarageArchitectureStats {
   platformGroundClearanceM: number;
   outdoorWarmReady: boolean;
   lastBuildMs: number;
+  /** The garage r9 kit's receipt for the selected pack (pieces, triangles, cranes, displays), or null. */
+  kit: GarageKitStats | null;
+}
+
+/** The kit receipt as the architecture stats publish it (garageKitPlacement.ts builds it). */
+interface GarageKitStats {
+  readonly kitPieces: number;
+  readonly kitTriangles: number;
+  readonly displayTriangles: number;
+  readonly decalTriangles: number;
+  readonly atmosphereTriangles: number;
+  readonly cranes: ReadonlyArray<{ readonly kind: string; readonly atWork: boolean; readonly load: string | null }>;
+  readonly brandPieces: number;
+  readonly tankImages: number;
+  readonly stations: number;
+  readonly stationMonitors: number;
+  readonly nameboards: number;
+  readonly displayRects: readonly string[];
+  readonly slideshow: { readonly position: readonly number[]; readonly yaw: number; readonly width: number; readonly height: number } | null;
 }
 
 const CACHE_LIMIT = 2;
@@ -203,8 +229,11 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     backdropLayers: 0,
     horizonStyle: 'none',
     horizonMaxHeightM: 0,
+    horizonMaxElevationDeg: 0,
+    skylineLandmarks: null,
     builtHorizonMassTopM: 0,
     builtHorizonAccentTopM: 0,
+    kitSkylineLandmarks: [],
     groundCover: 0,
     structures: 1,
     facilityProps: 0,
@@ -252,6 +281,7 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     maxGroundContactErrorM: 0,
     platformGroundClearanceM: 0.025,
     triangles: 0,
+    kit: null,
   });
   Object.assign(root.userData, stats, {
     mode: 'verdant-workshop',
@@ -407,8 +437,11 @@ export function createGarageArchitectureController(
       backdropLayers: numericStat(data.backdropLayers),
       horizonStyle: horizonStyleStat(data.horizonStyle),
       horizonMaxHeightM: numericStat(data.horizonMaxHeightM),
+      horizonMaxElevationDeg: numericStat(data.horizonMaxElevationDeg),
+      skylineLandmarks: Array.isArray(data.skylineLandmarks) ? data.skylineLandmarks as GarageArchitectureStats['skylineLandmarks'] : null,
       builtHorizonMassTopM: numericStat(data.builtHorizonMassTopM),
       builtHorizonAccentTopM: numericStat(data.builtHorizonAccentTopM),
+      kitSkylineLandmarks: Array.isArray(data.kitSkylineLandmarks) ? data.kitSkylineLandmarks as string[] : [],
       groundCover: numericStat(data.groundCover),
       structures: numericStat(data.structures),
       wrecks: numericStat(data.wrecks),
@@ -456,6 +489,7 @@ export function createGarageArchitectureController(
       outdoorWarmReady: selected?.architecture === 'field_shed'
         || warmedArchitectures.has(selected?.architecture || 'field_shed'),
       lastBuildMs,
+      kit: (data.kit as GarageKitStats | null | undefined) ?? null,
     };
   };
 
@@ -515,12 +549,18 @@ export function createGarageArchitectureController(
       : getEnvironmentKit().then(async (kit) => {
       if (disposed) return null;
       const library = ensureAssets(kit);
-      await kit.prepareGarageEnvironmentAssets(library, variant);
-      if (disposed) return null;
-      const startedAt = performance.now();
-      const build = kit.buildGarageEnvironment(engineCtx, library, variant, requestRender);
-      lastBuildMs = performance.now() - startedAt;
-      return build;
+      // its prepared pieces and skyline stay cached until its bake, however many Garages prepare at once
+      const release = kit.pinGarageEnvironmentCaches(variant);
+      try {
+        await kit.prepareGarageEnvironmentAssets(library, variant);
+        if (disposed) return null;
+        const startedAt = performance.now();
+        const build = kit.buildGarageEnvironment(engineCtx, library, variant, requestRender);
+        lastBuildMs = performance.now() - startedAt;
+        return build;
+      } finally {
+        release();
+      }
     })).then((build) => build ? attach(variant, build) : null)
       .finally(() => pending.delete(variant.architecture));
     pending.set(variant.architecture, task);

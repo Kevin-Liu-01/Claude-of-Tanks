@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Garage kit sheet</title>
+<style>
+  body { margin: 0; background: #202326; overflow: hidden; font: 600 11px/1.2 system-ui, sans-serif; }
+  canvas { display: block; }
+  #labels { position: absolute; inset: 0; pointer-events: none; }
+  .label { position: absolute; transform: translate(-50%, -100%); color: #fff; background: rgba(0, 0, 0, 0.55); padding: 1px 4px; border-radius: 3px; white-space: nowrap; }
+</style>
+</head>
+<body>
+<!-- garage r9 kit review stage (tools only; never built into the game): see tools/garage-kit-sheet.mjs -->
+<canvas id="c"></canvas>
+<div id="labels"></div>
+<script type="module" src="./garage-kit-sheet.mjs"></script>
+</body>
+</html>

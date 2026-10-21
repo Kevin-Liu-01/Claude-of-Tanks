@@ -169,7 +169,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 7.2,
+   "gapM2": 9.484,
    "invertedM2": 0
   },
   "queenstown/foundryoffice": {
@@ -276,8 +276,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.157,
-   "gapM2": 2.373,
+   "insideM2": 0.086,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "longleaf/rangerlodge": {
@@ -302,9 +302,9 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 3.727,
-   "insideM2": 0.877,
-   "gapM2": 55.573,
+   "holeM2": 3.589,
+   "insideM2": 0,
+   "gapM2": 55.485,
    "invertedM2": 0
   },
   "hessian/woodshed": {
@@ -329,18 +329,18 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 3.882,
-   "insideM2": 1.04,
-   "gapM2": 81.868,
+   "holeM2": 3.884,
+   "insideM2": 0.813,
+   "gapM2": 82.378,
    "invertedM2": 0
   },
   "landmark/copper_mesa:headframe#14": {
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 3.884,
+   "holeM2": 4.203,
    "insideM2": 0,
-   "gapM2": 53.071,
+   "gapM2": 48.659,
    "invertedM2": 0
   },
   "longleaf/farmhouse": {
@@ -374,9 +374,9 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 3.734,
+   "holeM2": 4.237,
    "insideM2": 0,
-   "gapM2": 64.028,
+   "gapM2": 63,
    "invertedM2": 0
   },
   "kolkhoz/chapel": {
@@ -399,11 +399,11 @@
   },
   "bengal/cottage": {
    "floating": 0,
-   "sliver": 8,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 1.622,
+   "insideM2": 0.058,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "generic/compound": {
@@ -660,11 +660,11 @@
   },
   "glencanyon/needletower": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 5.731,
    "invertedM2": 0
   },
   "queenstown/warehouse": {
@@ -1109,9 +1109,9 @@
    "invertedM2": 0
   },
   "shanghai/civichall": {
-   "floating": 2,
-   "sliver": 48,
-   "floatingM2": 0.086,
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
@@ -1190,9 +1190,9 @@
    "invertedM2": 0
   },
   "shanghai/warehouse": {
-   "floating": 1,
-   "sliver": 8,
-   "floatingM2": 0.205,
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
@@ -1239,7 +1239,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.248,
+   "insideM2": 0.244,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -1968,8 +1968,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 1.38,
+   "insideM2": 0.134,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "bengal/market": {
@@ -2653,7 +2653,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 5.451,
    "invertedM2": 0
   },
   "glencanyon/gantry": {
@@ -2868,8 +2868,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 3.934,
-   "gapM2": 5.072,
+   "insideM2": 1.953,
+   "gapM2": 9.304,
    "invertedM2": 0
   },
   "saar/gantry": {
@@ -2913,7 +2913,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.148,
+   "insideM2": 0.603,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2958,7 +2958,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 2.012,
+   "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -3490,7 +3490,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 30.214,
+   "gapM2": 44.046,
    "invertedM2": 0
   },
   "landmark/whiteout:guyedMast#11": {
@@ -4455,7 +4455,214 @@
    "insideM2": 0,
    "gapM2": 5.844,
    "invertedM2": 0
+  },
+  "olympus/gantry": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 2.169,
+   "gapM2": 23.681,
+   "invertedM2": 0
+  },
+  "olympus/containerRow": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.231,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "glencanyon/fieldHeadquarters": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.768,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "glencanyon/church": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0.183,
+   "invertedM2": 0
+  },
+  "glencanyon/shoppingCentre": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/polders:churchyard#8": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/polders:path#9": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "littrow/barn": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.116,
+   "gapM2": 3.401,
+   "invertedM2": 0
+  },
+  "littrow/chapel": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 2.072,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "littrow/farmhouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0.33,
+   "invertedM2": 0
+  },
+  "littrow/granary": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0.116,
+   "invertedM2": 0
+  },
+  "littrow/schoolhouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.15,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "littrow/cottage": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "littrow/mill": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 52.216,
+   "invertedM2": 0
+  },
+  "littrow/gantry": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 2.759,
+   "invertedM2": 0
+  },
+  "littrow/containerRow": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.257,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/moon:relayRepeater#9": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 7.66,
+   "invertedM2": 0
+  },
+  "landmark/moon:isruWorks#1": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 6.881,
+   "invertedM2": 0
+  },
+  "landmark/moon:solarTower#3": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 3.246,
+   "invertedM2": 0
+  },
+  "landmark/moon:apolloSite#0": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/moon:isruWorks#2": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/moon:solarTower#5": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/moon:stationDome#7": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T16:32:28.171Z"
+ "updatedAt": "2026-10-19T11:18:52.724Z"
 }

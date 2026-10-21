@@ -13,6 +13,7 @@
 // pattern), FLAT (dish paint less than --min-dish-tire-ratio times the tire lightness — the 2026-09-14 grey-wheel bug).
 // --gate exits 1 when any flag fires.
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { resolve } from 'node:path';
 import './tank-surface-collect.mjs'; // node canvas shim
 import { roadWheelAxialExtents } from './wheel-axial-extents.mjs';
@@ -27,7 +28,7 @@ const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS, TANK_SPECS } = await import('../src/vehicles/specs.ts');
 const { wheelPatternFor } = await import('../src/vehicles/wheelPatterns.ts');
 // tankFactory.ts registers the whole roster for node tools; fleetFactory (the browser's lazy owner) must not be imported here.
-const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', 'm1a1_abrams_hc,challenger2').split(',').filter(Boolean);
+const ids = flag('all') ? [...ALL_TANK_IDS] : uniqueIds(opt('ids', 'm1a1_abrams_hc,challenger2').split(',').filter(Boolean), 'wheel-review --ids');
 
 function lightness(color) { if (!color) return null; const r = color.r, g = color.g, b = color.b; return +((Math.max(r, g, b) + Math.min(r, g, b)) / 2).toFixed(3); }
 

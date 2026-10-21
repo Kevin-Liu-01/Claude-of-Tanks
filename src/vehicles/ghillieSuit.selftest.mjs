@@ -23,7 +23,7 @@ for (const id of ['t90a_2004', 'strv121', 't84bm_oplot_m']) {
     geometryReceipt: true,
     quality: 'high',
   });
-  assert.equal(control.root.getObjectByName(`${tankSeedId(id)}_ghillie_hull_net`), undefined,
+  assert.ok(control.root.getObjectByName(`${tankSeedId(id)}_ghillie_hull_net`) === undefined,
     `${id} remains net-free instead of inheriting a generic family blanket`);
   control.dispose();
 }
@@ -175,7 +175,7 @@ for (const id of ids) {
     }
     if (cfg.foliage === false) {
       for (const layer of ['leaves']) {
-        assert.equal(tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_${owner}_${layer}`), undefined,
+        assert.ok(tank.root.getObjectByName(`${tankSeedId(id)}_ghillie_${owner}_${layer}`) === undefined,
           `${id} keeps the carrier net but has no artificial leaf layer`);
       }
     }
@@ -388,7 +388,11 @@ for (const id of ['leo2a2', 't72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72
   P.postAssemble = (rig) => { before?.(rig); calls.push('field kit'); };
   const rig = { root, hullG, turretG, gunG, recoilG: gunG };
   P.postAssemble(rig);
-  for (const step of P.afterAssemble) step(rig);
+  // 2026-10-16: an assembly step returns its work as checkpoints (the factory runs them after the core); drain them here
+  for (const step of P.afterAssemble) {
+    const work = step(rig);
+    if (work) for (let next = work.next(); !next.done; next = work.next()) { /* every checkpoint */ }
+  }
   assert.deepEqual(calls, ['profile', 'field kit'], 'both profile postAssemble steps still run around the suit');
   assert.ok(turretG.getObjectByName('receipt_port_ghillie_turret_net')?.isMesh, 'the suit builds after assembly');
 }

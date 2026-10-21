@@ -25,12 +25,15 @@
 //
 // Gated classes (--check and --gate fail on any): ON_GUN, IN_SWEEP, HANGING, FLOATING, WEIRD, INTERSECTING, BURIED,
 // UNCOVERED, STALE (the ledger row's input hash is not the build's geometry digest). The ledger holds one row per id.
+// A row's run `site` is its ledger key (spare-track-digest.mjs ledgerSiteKeys): source, part, authoring function and
+// file, never a source line number.
 // Cost: about 10 s an id; one process. House rules: 4 GB heap, wall-clock alarm, --yield-load.
 
 import path from 'node:path';
+import { uniqueIds } from './id-list.mjs';
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { SPARE_TRACK_BUILD, spareTrackGeometryDigest } from './spare-track-digest.mjs';
+import { SPARE_TRACK_BUILD, spareTrackGeometryDigest, ledgerSiteKeys } from './spare-track-digest.mjs';
 
 const argv = process.argv.slice(2);
 const arg = (k, d) => { const a = argv.find((x) => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : d; };
@@ -96,6 +99,9 @@ function authorOf(chain) {
   return { site: site ? `${site.fn}@${site.file.replace(/^vehicles\//, '')}:${site.line}` : null, via: helper ? helper.fn : null,
     caller: caller ? `${caller.fn}@${caller.file.replace(/^vehicles\//, '')}:${caller.line}` : null };
 }
+// ------------------------------------------------------------------ ledger site keys
+// a run's ledger key (spare-track-digest.mjs ledgerSiteKeys): source, part and authoring function and file, no line
+const siteKeys = (names) => ledgerSiteKeys(names, srcLinesV);
 function captureStack() {
   const lim = Error.stackTraceLimit; Error.stackTraceLimit = 40;
   const s = new Error().stack; Error.stackTraceLimit = lim;
@@ -1110,17 +1116,29 @@ function exposureOf(B, grid, bodies) {
   }
   return { exposure: r3(vis / n), exposureAbove: r3(visUp / n), openness: r3(open / n), samples: n };
 }
-function analyse(id) {
+function analyse(id, remeasure = false) {
   const spec = specs.getSpec(id);
   const { visual, buildMs } = buildTank(id);
   const t1 = Date.now();
   const inputHash = spareTrackGeometryDigest(visual.root);
   const planAudit = visual.root.userData.spareTrackPlanAudit ?? null;
   // --update re-measures only ids whose geometry changed since their ledger row; --check trusts a current row (its
-  // geometry is byte-identical) and fails a stale one; --gate always measures afresh
-  if ((UPDATE || CHECK) && !GATE && !CROPS && ledger.rows[id]?.inputHash === inputHash && !flag('force')) {
+  // geometry is byte-identical) and fails a stale one; --gate always measures afresh. --update also re-measures a row
+  // whose run keys no longer match the build's (a stage function renamed or moved file): the row it keeps is one the
+  // gate accepts.
+  const prior = ledger.rows[id];
+  if ((UPDATE || CHECK) && !GATE && !CROPS && !remeasure && prior?.inputHash === inputHash && !flag('force')) {
+    let same = true;
+    if (UPDATE) {
+      try {
+        const { bodies, decorPieces } = collect(visual, spec);
+        const fresh = siteKeys(findBundles(visual, spec, bodies, decorPieces).map((B) => B.name));
+        same = fresh.length === prior.runs.length && fresh.every((k, i) => k === prior.runs[i].site);
+      } catch (e) { visual.dispose(); throw e; }
+    }
     visual.dispose();
-    return { unchanged: true, id, inputHash, planAudit };
+    // a fresh build for the measurement: collect() and findBundles() tag the census they read
+    return same ? { unchanged: true, id, inputHash, planAudit } : analyse(id, true);
   }
   // a hand-drawn course trimmed to the links that hold reports each kept link as `<site>#k`: one run here
   const buildReceipt = Array.isArray(visual.root.userData.spareTrack) ? {
@@ -1136,6 +1154,20 @@ function analyse(id) {
     const grid = new TriGrid(hostBodies.map((b) => b));
     const MM = motionModel(visual, spec, bodies);
     const ownIds = new Set(); bundles.forEach((B) => B.bodies.forEach((b) => ownIds.add(b.id)));
+    // the plan outline (x, z, root space): the hull rig's own bodies, never a run or the decor's loads. This is the seat
+    // pass's rule (spareTrackSeatPass.ts planOutline), measured independently: no run may stand past it (PROUD).
+    const outline = [Infinity, -Infinity, Infinity, -Infinity];
+    for (const b of bodies) {
+      if (b.rig !== 'hull' || b.kind === 'decor' || ownIds.has(b.id)) continue;
+      outline[0] = Math.min(outline[0], b.aabb[0]); outline[1] = Math.max(outline[1], b.aabb[3]);
+      outline[2] = Math.min(outline[2], b.aabb[2]); outline[3] = Math.max(outline[3], b.aabb[5]);
+    }
+    // --seed-proud (the receipt's seeded break): the first run's measured box is carried 5 cm past the outline's right
+    // edge, and it must read PROUD
+    if (SEED_PROUD && bundles.length) {
+      const B = bundles[0], dx = outline[1] + 0.05 - B.aabb[3];
+      B.aabb = [B.aabb[0] + dx, B.aabb[1], B.aabb[2], B.aabb[3] + dx, B.aabb[4], B.aabb[5]];
+    }
     let H = null;
     if (process.env.V_FAST !== '1' && !MM.turretless && bundles.some((B) => B.rig === 'hull')) H = sweepHeightmaps(MM, bodies, new Set());
     const out = [];
@@ -1244,6 +1276,7 @@ function analyse(id) {
         host: support.host, support: { ...support, host: undefined },
         intersections: inter, near, sweep, onMovingPart, flags, verdict: flags.length ? 'FLAG' : 'ok', alt, traverse, vis, registered: !!B.registered,
         racked: !!B.racked,
+        proud: proudOf(B.aabb, outline),
         index: B.index, gunPivot: MM.pivot ? MM.pivot.toArray().map(r3) : null,
       });
     }
@@ -1495,8 +1528,16 @@ async function renderCrop(res, focus, file, caption) {
 }
 
 // ------------------------------------------------------------------ classification (census v4 classes + the verifier's corrections)
-const PRIORITY = ['ON_GUN', 'IN_SWEEP', 'HANGING', 'FLOATING', 'WEIRD', 'INTERSECTING'];
+const PRIORITY = ['ON_GUN', 'IN_SWEEP', 'HANGING', 'FLOATING', 'WEIRD', 'INTERSECTING', 'PROUD'];
 const GATED = new Set([...PRIORITY, 'BURIED', 'UNCOVERED', 'STALE']);
+/** Past the plan outline by more than this (m) a run is PROUD (the seat pass refuses 2 mm; the receipt's boxes are exact). */
+const PROUD_M = 0.005;
+/** How far a run's box stands past the plan outline [x0, x1, z0, z1], and on which side. */
+function proudOf(a, o) {
+  const sides = [['left', o[0] - a[0]], ['right', a[3] - o[1]], ['rear', o[2] - a[2]], ['front', a[5] - o[3]]];
+  const [side, m] = sides.reduce((best, s) => (s[1] > best[1] ? s : best), ['none', 0]);
+  return { m: Math.round(m * 1000) / 1000, side };
+}
 // the shared seat roles that make a host WEIRD (spareTrackSeat.ts SeatRole -> tag)
 const ROLE_TAGS = { grille: 'grille', launcher: 'launcher', light: 'light', soft: 'softload', era: 'era', hatch: 'hatch',
   sight: 'sight', weapon: 'weapon', antenna: 'antenna' };
@@ -1633,6 +1674,7 @@ function classifyRun(b) {
     const d = inter[c]?.depthM || 0;
     if (d > 0.01) add('INTERSECTING', `cuts ${c} ${cm(d)} (${inter[c].with})`);
   }
+  if ((b.proud?.m ?? 0) > PROUD_M) add('PROUD', `stands ${cm(b.proud.m)} past the vehicle's plan outline (${b.proud.side})`);
   const hostLabel = b.host?.label, mdw = s.sunkMaxDepthWith || '';
   if ((s.sunkMaxDepthM || 0) > 0.01 && mdw && hostLabel && !mdw.startsWith(hostLabel) && !buried) add('INTERSECTING', `clips ${mdw.split(' [')[0]} by ${cm(s.sunkMaxDepthM)}`);
   if ((s.sunkDeep1cmShare || 0) > 0.10 && !buried) add('INTERSECTING', `${pct(s.sunkDeep1cmShare)} sunk > 1 cm into armour (max ${cm(s.sunkMaxDepthM || 0)})`);
@@ -1766,14 +1808,33 @@ if (RECLASSIFY) {
     if (!line.trim()) continue;
     const o = JSON.parse(line);
     if (!o.raw) continue;
-    const runs = o.raw.bundles.map((b) => {
+    const keys = siteKeys(o.raw.bundles.map((b) => b.bundle));
+    const runs = o.raw.bundles.map((b, i) => {
       const c = classifyRun({ ...b, __id: o.id });
-      return { index: b.index, site: b.bundle, source: b.source, frame: b.frame, registered: !!b.registered, classes: c.classes,
+      return { index: b.index, site: keys[i], source: b.source, frame: b.frame, registered: !!b.registered, classes: c.classes,
         primary: c.primary, why: Object.fromEntries(Object.entries(c.why).filter(([k]) => c.classes.includes(k))), notes: c.notes };
     });
     fs.appendFileSync(out, JSON.stringify({ id: o.id, inputHash: o.inputHash, runs, uncovered: coverageOf(o.raw) }) + '\n');
   }
   console.log(`[spare-track] reclassified ${RECLASSIFY} -> ${out}`);
+  process.exit(0);
+}
+// --rekey --ledger=<file>: rewrite every row's run sites as ledger keys (ledgerSiteKeys); nothing else in a row changes
+if (flag('rekey')) {
+  const file = path.resolve(WT, arg('ledger', 'docs/geometry-gate/spare-track.json'));
+  const L = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const strip = (row) => JSON.stringify({ ...row, runs: row.runs.map(({ site, ...r }) => r), hostSweep: (row.hostSweep || []).length });
+  let changed = 0;
+  for (const [id, row] of Object.entries(L.rows)) {
+    const keys = siteKeys(row.runs.map((r) => r.site));
+    const keyOf = new Map(row.runs.map((r, i) => [r.site, keys[i]]));
+    const next = { ...row, runs: row.runs.map((r, i) => ({ ...r, site: keys[i] })), hostSweep: (row.hostSweep || []).map((s) => keyOf.get(s) ?? s) };
+    if (strip(next) !== strip(row)) throw new Error(`${id}: the rekey changed more than a site`);
+    changed += row.runs.filter((r, i) => r.site !== keys[i]).length;
+    L.rows[id] = next;
+  }
+  fs.writeFileSync(file, JSON.stringify(L, null, 1) + '\n');
+  console.log(`[spare-track] rekeyed ${changed} run site(s) in ${path.relative(WT, file)}`);
   process.exit(0);
 }
 const JSONL = arg('jsonl', null);
@@ -1782,8 +1843,11 @@ const CROPS = arg('crops', null);
 const SHARD = arg('shard', null);
 const LEDGER = arg('ledger', null);
 const UPDATE = flag('update'), CHECK = flag('check'), GATE = flag('gate');
+// the receipt's seeded break (PROUD): never with --update, so a seeded row cannot reach the ledger
+const SEED_PROUD = flag('seed-proud');
+if (SEED_PROUD && UPDATE) throw new Error('--seed-proud is a seeded break: it never writes the ledger (drop --update)');
 const ALL_IDS = [...(specs.ALL_TANK_IDS ?? specs.SAVED_TANK_IDS ?? specs.TANK_IDS)];
-let ids = (arg('ids', '') || '').split(',').map((s) => s.trim()).filter(Boolean);
+let ids = uniqueIds((arg('ids', '') || '').split(',').map((s) => s.trim()).filter(Boolean), 'spare-track-placement-check --ids');
 if (ids.length === 1 && ids[0] === 'all') ids = [...ALL_IDS];
 let cropJobs = null;
 if (CROPS) { cropJobs = JSON.parse(fs.readFileSync(CROPS, 'utf8')); ids = [...new Set(cropJobs.map((j) => j.id))]; }
@@ -1812,9 +1876,10 @@ for (const id of ids) {
   if (res.planAudit) planAudits[id] = res.planAudit;
   if (res.unchanged) { results[id] = ledger.rows[id]; if (!QUIET) console.log(`${id}	unchanged (${res.inputHash})`); continue; }
   const { _bodies, _bundles, _visual, _MM, ...clean } = res;
-  const runs = clean.bundles.map((b) => {
+  const keys = siteKeys(clean.bundles.map((b) => b.bundle));
+  const runs = clean.bundles.map((b, i) => {
     const c = classifyRun({ ...b, __id: id });
-    return { index: b.index, site: b.bundle, source: b.source, frame: b.frame, registered: !!b.registered, classes: c.classes, primary: c.primary,
+    return { index: b.index, site: keys[i], source: b.source, frame: b.frame, registered: !!b.registered, classes: c.classes, primary: c.primary,
       why: Object.fromEntries(Object.entries(c.why).filter(([k]) => c.classes.includes(k))), notes: c.notes,
       measures: { support: b.support.supportedShare, gap: b.support.gapShare, air: b.support.overhangShare,
         hidden: b.support.hiddenShare, sunkMaxM: b.support.sunkMaxDepthM, sweepM: b.sweep?.depthM ?? null,
@@ -1881,8 +1946,9 @@ for (const [id, row] of Object.entries(results)) {
   const prior = ledger.rows[id];
   if ((CHECK || GATE) && prior && prior.inputHash !== row.inputHash) problems.push(`${id}: STALE (ledger ${prior.inputHash}, build ${row.inputHash}); run --update`);
   if (GATE && prior && prior.inputHash === row.inputHash) {
-    const key = (r) => `${r.site}|${r.classes.join(',')}`;
-    const was = new Set(prior.runs.map(key)), now = new Set(row.runs.map(key));
+    const key = (r, site) => `${site}|${r.classes.join(',')}`;
+    const priorKeys = siteKeys(prior.runs.map((r) => r.site));
+    const was = new Set(prior.runs.map((r, i) => key(r, priorKeys[i]))), now = new Set(row.runs.map((r) => key(r, r.site)));
     if (was.size !== now.size || [...now].some((k) => !was.has(k))) problems.push(`${id}: a fresh measurement differs from its ledger row`);
   }
   if ((CHECK || GATE) && !prior) problems.push(`${id}: no ledger row; run --update`);

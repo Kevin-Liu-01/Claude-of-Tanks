@@ -1,0 +1,355 @@
+{
+ "map": "urban",
+ "timeOfDay": "day",
+ "seed": 811,
+ "light": {
+  "sunAzimuthDeg": 35,
+  "sunElevationDeg": 45
+ },
+ "actors": [
+  {
+   "id": "leo2a6_x",
+   "name": "hero",
+   "pos": [
+    -51.3,
+    24.36
+   ],
+   "facingDeg": 130.65,
+   "turretDeg": 83.75,
+   "gunDeg": 1,
+   "camo": "paint_m1a1",
+   "camoSeed": 7101
+  },
+  {
+   "id": "t90sm",
+   "name": "foe0",
+   "pos": [
+    -61.72,
+    9.15
+   ],
+   "facingDeg": 27.93,
+   "turretDeg": 6.47,
+   "gunDeg": 1,
+   "camo": "digital",
+   "camoSeed": 7102
+  }
+ ],
+ "effects": [
+  {
+   "type": "dust",
+   "actor": "hero",
+   "tMs": 6780,
+   "params": {
+    "count": 12,
+    "intensity": 1
+   }
+  },
+  {
+   "type": "firing_moment",
+   "actor": "hero",
+   "tMs": 7000,
+   "params": {
+    "ageS": 0.05,
+    "slot": 0
+   }
+  },
+  {
+   "type": "impact",
+   "at": [
+    -52.5,
+    6.89,
+    22.6
+   ],
+   "tMs": 6870,
+   "params": {
+    "kind": "ricochet",
+    "caliberMm": 125,
+    "normal": [
+     -0.34,
+     0.66,
+     -0.49
+    ]
+   }
+  },
+  {
+   "type": "sparks",
+   "at": [
+    -52.5,
+    6.89,
+    22.6
+   ],
+   "tMs": 6895,
+   "params": {
+    "caliberMm": 120,
+    "normal": [
+     -0.34,
+     0.66,
+     -0.49
+    ]
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -52.5,
+    6.89,
+    22.6
+   ],
+   "tMs": 6880,
+   "params": {
+    "count": 14,
+    "speedMps": 8,
+    "hot": 0.9,
+    "scale": 0.45
+   }
+  },
+  {
+   "type": "firing_moment",
+   "actor": "foe0",
+   "tMs": 7000,
+   "params": {
+    "ageS": 0.045,
+    "slot": 0
+   }
+  },
+  {
+   "type": "impact",
+   "at": [
+    -59.98,
+    6.55,
+    11.69
+   ],
+   "tMs": 6870,
+   "params": {
+    "kind": "ricochet",
+    "caliberMm": 125,
+    "normal": [
+     0.34,
+     0.66,
+     0.49
+    ]
+   }
+  },
+  {
+   "type": "sparks",
+   "at": [
+    -59.98,
+    6.55,
+    11.69
+   ],
+   "tMs": 6895,
+   "params": {
+    "caliberMm": 120,
+    "normal": [
+     0.34,
+     0.66,
+     0.49
+    ]
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -59.98,
+    6.55,
+    11.69
+   ],
+   "tMs": 6880,
+   "params": {
+    "count": 14,
+    "speedMps": 8,
+    "hot": 0.9,
+    "scale": 0.45
+   }
+  },
+  {
+   "type": "mg_burst",
+   "actor": "foe0",
+   "tMs": 6580,
+   "params": {
+    "count": 8
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -68.68,
+    11.94
+   ],
+   "tMs": 6240,
+   "params": {
+    "size": "small",
+    "munition": "he",
+    "cause": "shot"
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -68.68,
+    6.5,
+    11.94
+   ],
+   "tMs": 6265,
+   "params": {
+    "count": 44,
+    "speedMps": 15,
+    "hot": 0.45,
+    "scale": 1.35
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -128.27,
+    14.09
+   ],
+   "tMs": 0,
+   "params": {
+    "size": "huge"
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -133.95,
+    -22.63
+   ],
+   "tMs": 1200,
+   "params": {
+    "size": "huge"
+   }
+  },
+  {
+   "type": "fire_field",
+   "at": [
+    -77.1,
+    0.88
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 4,
+    "durationS": 40,
+    "intensity": 1,
+    "smoke": true
+   }
+  },
+  {
+   "type": "embers",
+   "at": [
+    -77.1,
+    0.88
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 4,
+    "rate": 50,
+    "durationS": 20,
+    "rise": 3
+   }
+  }
+ ],
+ "fxTime": 7000,
+ "timeScale": 0,
+ "storyboard": {
+  "version": 1,
+  "durationMs": 8500,
+  "shots": [],
+  "actorTracks": [
+   {
+    "actor": "hero",
+    "keys": [
+     {
+      "id": "hero-0",
+      "tMs": 4400,
+      "pos": [
+       -62.15,
+       33.68
+      ],
+      "facingDeg": 130.65,
+      "turretDeg": 83.75,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-1",
+      "tMs": 7600,
+      "pos": [
+       -48.8,
+       22.21
+      ],
+      "facingDeg": 130.65,
+      "turretDeg": 83.75,
+      "gunDeg": 1,
+      "transition": "linear"
+     }
+    ]
+   }
+  ]
+ },
+ "picture": {
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "vignette": {
+   "amount": 0.22,
+   "roundness": 0.55,
+   "softness": 0.65
+  },
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0
+ },
+ "fx": {
+  "quality": "cinematic",
+  "trackDust": true
+ },
+ "autoPlace": false,
+ "meta": {
+  "id": "f6-leo2a6-steinburg",
+  "kind": "versus-still",
+  "pair": "leo2a6_x v t90sm",
+  "lens": "a",
+  "pick": "f6-leo2a6-steinburg:a",
+  "title": "Steinburg: Leopard 2A6 v T-90SM",
+  "note": "showcase-r2 15 (Scene Studio workspace), 2026-10-15: the f6 versus remake (shots/media-r5/remake/finals-v/f6-leo2a6-steinburg.json), seeked to its 7 s still moment"
+ },
+ "camera": {
+  "name": "a",
+  "pos": [
+   -36.9,
+   2.2,
+   24.7
+  ],
+  "lookAt": [
+   -56.22,
+   3.4,
+   19.52
+  ],
+  "fov": 37,
+  "rollDeg": 0,
+  "groundRel": true
+ },
+ "cameraVariants": [
+  {
+   "name": "a",
+   "pos": [
+    -36.9,
+    2.2,
+    24.7
+   ],
+   "lookAt": [
+    -56.22,
+    3.4,
+    19.52
+   ],
+   "fov": 37,
+   "rollDeg": 0,
+   "groundRel": true
+  }
+ ]
+}

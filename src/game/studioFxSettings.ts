@@ -35,7 +35,7 @@ export function studioFxState(settings: StudioFxSettings): { quality: StudioFxQu
     : { quality: settings.quality, trackDust: settings.trackDust };
 }
 
-export interface StudioFxParamDef {
+interface StudioFxParamDef {
   readonly key: string;
   readonly min: number;
   readonly max: number;
@@ -73,7 +73,7 @@ export function fxParam(type: string, key: string, value: unknown): number {
 }
 
 /** Signal / illumination flare colours. */
-export const STUDIO_FLARE_COLORS: Readonly<Record<string, number>> = Object.freeze({
+const STUDIO_FLARE_COLORS: Readonly<Record<string, number>> = Object.freeze({
   white: 0xfff1d6, red: 0xff4a2a, green: 0x6dff7a, amber: 0xffb347,
 });
 

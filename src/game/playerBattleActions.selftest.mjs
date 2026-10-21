@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createPlayerBattleActions } from './playerBattleActions.ts';
 import { createBus } from './stateCore.ts';
+import { matchRulesetFor, rulesetUnlimitedFor } from '../sim/matchRuleset.ts';
 
 function createInput() {
   const handlers = new Map();
@@ -105,6 +107,7 @@ const rules = {
     if (shell.count != null) return shell.count;
     return ({ APFSDS: 24, HE: 12 }[shell.type] ?? 20);
   },
+  rulesetUnlimitedFor,
   hasConsumableRule(slot) { return slot >= 0 && slot < 3; },
   cooldownRemaining(timeS, readyAtS) { return Math.max(0, readyAtS - timeS); },
   resetConsumableCooldowns(readyAt) { readyAt.fill(0); },
@@ -323,5 +326,43 @@ game.ruleset = { consumables: false, ammo: 'unlimited' };
 assert.ok(actions.setTank(spec).every((card) => card.unlimited === true), 'unlimited rounds mark every shell card');
 game.ruleset = null;
 assert.ok(actions.setTank(spec).every((card) => !('unlimited' in card)), 'finite loadouts carry no unlimited mark');
+
+// critic r3 (AC-130): the mark is per entity. Only the gunship refills (sim/matchRuleset rulesetUnlimitedFor, the read
+// both fire paths use), so an escort's cards carry no ∞ and show its real count; a seat that is no longer the gunship
+// loses the mark on the next sync, and every other unlimited mode marks every seat.
+game.ruleset = matchRulesetFor('ac130');
+assert.equal(game.ruleset.ammo, 'unlimited', 'the AC-130 table plays unlimited rounds');
+assert.ok(actions.setTank(spec).every((card) => !('unlimited' in card)), 'an AC-130 escort\'s cards carry no ∞');
+player.combat.ammo[0] = 0;
+actions.hasAmmo(0);
+assert.deepEqual([actions.shellCards[0].count, 'unlimited' in actions.shellCards[0]], [0, false],
+  'the escort reads its real empty count');
+player.aerial = { kind: 'gunship' };
+assert.ok(actions.setTank(spec).every((card) => card.unlimited === true), 'the gunship\'s cards carry ∞');
+player.aerial = null;
+actions.hasAmmo(0);
+assert.ok(actions.shellCards.every((card) => !('unlimited' in card)), 'a sync drops the mark the seat no longer has');
+for (const mode of ['juggernaut', 'infected', 'endless_horde']) {
+  game.ruleset = matchRulesetFor(mode);
+  assert.ok(actions.setTank(spec).every((card) => card.unlimited === true), `${mode}: every seat carries ∞`);
+}
+game.ruleset = null;
+
+// critic r4 (D2): the shipped composition hands these actions that same per-entity read. main.ts passes the battle
+// client access's function (battleClientAccess.selftest: the access hands out rulesetUnlimitedFor itself, and
+// app/combatAimComposition returns that access unwrapped); a mode-wide stand-in here would mark an escort's cards ∞.
+{
+  const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  const composition = readFileSync(new URL('../app/combatAimComposition.ts', import.meta.url), 'utf8');
+  const start = main.indexOf('playerBattleActions = createPlayerBattleActions({');
+  assert.ok(start >= 0, 'main.ts composes the player battle actions');
+  const call = main.slice(start, main.indexOf('\n});', start));
+  assert.deepEqual(call.match(/\brulesetUnlimitedFor\b[^,\n]*/g), ['rulesetUnlimitedFor: battleClientAccess.rulesetUnlimitedFor'],
+    'main.ts passes battleClientAccess.rulesetUnlimitedFor, and nothing else, as the actions\' unlimited read');
+  assert.match(main, /const \{\s*battleClient: battleClientAccess,[^}]*\} = createCombatAimComposition\(/,
+    'main.ts takes its battle client access from the combat aim composition');
+  assert.match(composition, /const battleClient = createBattleClientAccess\(/);
+  assert.match(composition, /return \{ battleClient, rig, targetVisible \};/, 'the composition returns the access as built');
+}
 
 console.log('playerBattleActions.selftest: ammo, cooldowns, local rules, and network routing passed');

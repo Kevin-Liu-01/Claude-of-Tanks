@@ -179,7 +179,7 @@ function evict(fixture) {
   const receipt = disposeObject3DResources(fixture.group, { onDispose(kind, resource) {
     if (kind === 'material') assert.equal(releaseCsmShaderMaterial(fixture.csm, resource), true);
   } });
-  assert.equal(fixture.group.parent, null); assert.equal(fixture.csm.shaders.size, 0);
+  assert.ok(fixture.group.parent === null); assert.equal(fixture.csm.shaders.size, 0);
   fixture.textures.forEach(texture => ownedTextures.delete(texture));
   return receipt;
 }
@@ -236,7 +236,7 @@ try {
     const unchanged = paletteSnapshot(first);
     for (let cycle = 1; cycle <= 3; cycle++) {
       assert.equal(releaseObject3DGpuResources(owner.group).textures, 8, '7 distinct plaster textures plus dummy, including empty buckets');
-      assert.equal(owner.group.parent, owner.scene);
+      assert.ok(owner.group.parent === owner.scene);
       assert.deepEqual(paletteSnapshot(first), unchanged, 'same CPU images/identities survive GPU suspension');
       for (const texture of owner.textures) assert.equal(counts.get(texture), cycle);
       for (const texture of other.textures) assert.equal(counts.get(texture), 0);

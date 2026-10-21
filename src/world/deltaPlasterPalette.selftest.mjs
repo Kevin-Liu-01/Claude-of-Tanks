@@ -153,6 +153,7 @@ if (process.argv[2] === '--fixture') {
     assert.deepEqual(folded.facadeVertexColors, [false], 'no new color attribute or shader variant');
     assert.deepEqual(folded.facadeAttributes, control.facadeAttributes,
       'every folded position/normal/UV/UV1 byte is preserved in original order');
+    // object3d-assert-ok: otherMeshes are plain recordGeometry summaries, not meshes
     assert.deepEqual(folded.otherMeshes, control.otherMeshes, 'all other geometry and instance records remain exact');
     assert.deepEqual(folded.physical, control.physical, 'all collision, destruction, grounding and feature records are exact');
     assert.ok(control.rng.length > 5 && control.rng.some(row => row.count > 1000));

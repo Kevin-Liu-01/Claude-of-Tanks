@@ -10,7 +10,7 @@ import { signSeatToken, type SeatClaims } from './seatToken.ts';
 import type { MatchService } from './service.ts';
 import { silentLogger, type Logger } from './log.ts';
 
-export interface LocalRoomSeat {
+interface LocalRoomSeat {
   playerId: string;
   name: string;
   team: 'alpha' | 'bravo' | 'spectator';
@@ -33,7 +33,7 @@ export interface LocalRoomOptions {
   endedLingerTicks?: number;
 }
 
-export interface LocalRoom {
+interface LocalRoom {
   roomId: string;
   actor: MatchActor;
   seats: ActorSeatSpec[];

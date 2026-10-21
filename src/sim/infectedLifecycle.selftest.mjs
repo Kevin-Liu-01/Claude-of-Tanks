@@ -7,6 +7,8 @@ import {createMatchModeController} from './matchModes.ts';
 import {matchRulesetFor} from './matchRuleset.ts';
 await ensureAuthorityFleet(['m1a1_abrams_hc']);
 const spec=getSpec('m1a1_abrams_hc'),rules=matchRulesetFor('infected');
+// the table's numbers (owner 2026-10-17: sturdy survivors, fragile infected); zombieBalance.selftest pins the values
+const {survivorHpScale,infectedHpScale,infectedReloadScale,infectedSpeed}=rules.infection,respawnS=rules.respawnS;
 for(const size of [4,14,30,42])for(const solo of [false,true]){
  const names=solo?['player','enemy']:['alpha','bravo'];
  const entities=Array.from({length:size},(_,i)=>({id:`tank-${i}`,team:names[i<3?1:0],spec,bot:i!==3,
@@ -19,23 +21,23 @@ for(const size of [4,14,30,42])for(const solo of [false,true]){
  for(let life=0;life<4;life++){
   entities[0].combat.destroyed=true;
   assert.equal(mode.step(1/60,++time),null);
-  time+=3;assert.equal(mode.step(1/60,time),null);
+  time+=respawnS;assert.equal(mode.step(1/60,time),null);
   assert.equal(entities[0].combat.destroyed,false);
-  assert.equal(entities[0].combat.maxHp,Math.round(spec.hp*1.25));
-  assert.equal(entities[0].combat.equipMults.reload,.7);
+  assert.equal(entities[0].combat.maxHp,Math.round(spec.hp*infectedHpScale));
+  assert.equal(entities[0].combat.equipMults.reload,infectedReloadScale);
  }
  for(let i=3;i<size;i++){
-  const e=entities[i];assert.equal(e.combat.maxHp,Math.round(spec.hp*.3));
+  const e=entities[i];assert.equal(e.combat.maxHp,Math.round(spec.hp*survivorHpScale));
   e.combat.destroyed=true;const outcome=mode.step(1/60,++time);
   assert.equal(e.team,names[1]);
   assert.equal(mode.state.infection.survivors,size-i-1);
   assert.equal(mode.state.infection.infected,i+1);
   assert.equal(mode.serialize(e.id).perspectiveTeam,'bravo');
   if(i===size-1){assert.equal(outcome.result,'bravo');assert.equal(outcome.reason,'outbreak_complete');break;}
-  assert.equal(outcome,null);time+=3;mode.step(1/60,time);
+  assert.equal(outcome,null);time+=respawnS;mode.step(1/60,time);
   assert.equal(e.combat.destroyed,false);
-  assert.equal(e.combat.maxHp,Math.round(spec.hp*1.25));assert.equal(e.combat.hp,e.combat.maxHp);
-  assert.equal(e.combat.equipMults.reload,.7);assert.equal(e.modeSpeedMultiplier,1.4);
+  assert.equal(e.combat.maxHp,Math.round(spec.hp*infectedHpScale));assert.equal(e.combat.hp,e.combat.maxHp);
+  assert.equal(e.combat.equipMults.reload,infectedReloadScale);assert.equal(e.modeSpeedMultiplier,infectedSpeed);
   assert.equal(e.state.pos.z,100,'converted tanks join the infected spawn');
  }
 }

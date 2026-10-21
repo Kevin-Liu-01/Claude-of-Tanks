@@ -394,8 +394,10 @@ the client reports in every INPUT. `R` holds for the shell's whole flight, so th
 truthful at any range and a victim is hit at most 250 ms "in the past". The rewind wraps the
 whole sweep (trace, damage localization, exit trace, HE bursts) through one additive seam in
 `authoritativeMatch.ts` and restores the live poses before the next shell; bots and spectators
-never rewind. `src/sim/poseHistory.selftest`: a target displaced 6 m after the shooter looked is
-missed live and hit rewound.
+never rewind, nor does a roof station's round (`shell.roofStation`: the authority lays the station
+on where the target will be in its own time, and a rewind would undo that lead; 2026-10-19,
+`src/sim/roofHoldFire.selftest` case 11). `src/sim/poseHistory.selftest`: a target displaced 6 m
+after the shooter looked is missed live and hit rewound.
 
 ### Measured
 

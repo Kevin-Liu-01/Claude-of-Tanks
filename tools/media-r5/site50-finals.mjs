@@ -6,7 +6,7 @@
 //   node tools/media-r5/site50-finals.mjs <resolvedDir> [--only=s01,s02] [--chunk=10] [--film-resolution=2160]
 //     [--still-supersample=1.5] [--film-master=prores|none] [--keep-film-masters] [--skip-films] [--skip-stills] [--skip-loops]
 //     [--min-free-gb=6] [--keep-place[=<stamp ms>]] [--lease-min=45] [--yield-holds=2] [--yield-fifo2=<runner.json>] [--film-proxy=false]
-//     [--order=s01,s04,…] [--portrait] [--master-after] [--masters-in-flight=2]
+//     [--order=s01,s04,…] [--portrait] [--master-after] [--masters-in-flight=2] [--cache-dir=<dir>]
 // The disk is shared with other sessions: a chunk starts only while --min-free-gb is free (a 2160p take with its formats
 // is ~0.35 GB); below it the run stops once the encodes in flight finish, and a re-run resumes where it stopped.
 // --film-master=none renders no ProRes master: site-loops encodes from the 2160p H.264 proxy (crf 14, ~97 Mbit/s), so
@@ -35,7 +35,9 @@ const flags = Object.fromEntries(args.filter(a => a.startsWith('--')).map(a => {
 const resolved = resolve(args.find(a => !a.startsWith('--')) ?? join(SHOTS, 'site50/review2'));
 const tag = flags.tag ? `-${flags.tag}` : '';
 const scenes = join(SHOTS, 'site50/scenes'), renders = join(SHOTS, `site50/renders${tag}`), deliver = join(SHOTS, `site50/deliver${tag}`);
-const cacheDir = join(SHOTS, '.vite-cinema');
+// --cache-dir=<dir>: the renderer's own Vite cache (combat round, 2026-10-13: a run from another export's tree keeps off the
+// cache the worktree's chains share)
+const cacheDir = flags['cache-dir'] ? resolve(flags['cache-dir']) : join(SHOTS, '.vite-cinema');
 const run = (label, cmd, cmdArgs) => {
   console.log(`[finals] ${label}: ${cmd} ${cmdArgs.join(' ')}`);
   const r = spawnSync(cmd, cmdArgs, { stdio: 'inherit', env: { ...process.env, MEDIA_R5_LIGHT: '1' } });

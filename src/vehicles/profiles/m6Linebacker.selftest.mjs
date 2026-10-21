@@ -85,7 +85,7 @@ for(const quality of ['high','low']){
       assert.ok(turret.worldToLocal(hit.point.clone()).y>.84*T,'roof hits the crown, not floor under a hole');
     }
     const mounting=root.getObjectByName('gunMount');
-    assert.equal(mounting.parent,gun,'canister housing and mask share elevation');
+    assert.ok(mounting.parent === gun,'canister housing and mask share elevation');
     const stationaryTurret=[];
     turret.traverse(o=>{
       if(!o.isMesh||o.userData.shadowOnly||o.userData.authoredShadowProxy)return;
@@ -130,7 +130,7 @@ for(const quality of ['high','low']){
           `${quality}: optic ${x}/${y}/${z} first hits ${hit.object.name}`);
         near(hit.distance,2+.043*T,.002,'lens visibly recessed 43 mm behind its metal rim');
         let owner=hit.object;while(owner&&owner!==turret)owner=owner.parent;
-        assert.equal(owner,turret,'optical lens follows turret yaw');
+        assert.ok(owner === turret,'optical lens follows turret yaw');
       }
     }
     turret.rotation.y=0;root.updateMatrixWorld(true);

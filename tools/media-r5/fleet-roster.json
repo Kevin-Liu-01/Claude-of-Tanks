@@ -2950,9 +2950,9 @@
   "time": "day",
   "anchor": [
    93,
-   183
+   228
   ],
-  "heading": 18,
+  "heading": 0,
   "template": 7,
   "action": "shellfire",
   "lineup": [
@@ -3792,10 +3792,10 @@
   "map": "whiteout",
   "time": "day",
   "anchor": [
-   48,
-   -132
+   -177,
+   318
   ],
-  "heading": 267,
+  "heading": 342,
   "template": 26,
   "action": "onTheMove",
   "lineup": [

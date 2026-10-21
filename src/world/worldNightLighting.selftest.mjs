@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { configureWorldLampMaterial, registerWorldNightLighting, WORLD_LAMP_ACTIVE_ATTRIBUTE } from './worldNightLighting.ts';
+import { configureWorldLampMaterial, registerWorldNightLighting, STREET_LAMP_CANDELA, WORLD_LAMP_ACTIVE_ATTRIBUTE } from './worldNightLighting.ts';
 import { createNightLightingRuntime } from '../engine/nightLightingRuntime.ts';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
 import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.ts';
 import { MAP_IDS } from './maps/catalog.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const scene = new THREE.Scene(), root = new THREE.Group();
 scene.add(root);
@@ -57,7 +58,10 @@ try {
   runtime.update(expected);
   const light = runtime.lights.find(light => light.isPointLight);
   assert.ok(light.position.distanceTo(expected) < 1e-10, 'light uses actual tilted/scaled instance lens, not pole base');
-  assert.equal(light.intensity, 6, 'near-facade point contribution is two stops below the captured 24 input');
+  // (the looks lane, 228: at 6 cd — two stops under the captured 24 — no lamp pool showed at any pose; the pool now reads
+  // beside a headlight's, its range still bounding the unshadowed spill)
+  assert.equal(light.intensity, STREET_LAMP_CANDELA, 'the street lamp pool reads on the pavement');
+  assert.equal(light.distance, 17, 'its unshadowed spill bounded to its own stretch of street');
   assert.equal(light.distance, 17, 'the original range/selection footprint is not reduced');
   assert.equal(light.color.getHex(), 0xffc889, 'no lamp palette change');
   assert.equal(curtain.emissive.getHex(), 0xffffff, 'authored mask supplies warm pane/red beacon tint');
@@ -73,7 +77,7 @@ try {
   assert.equal(curtain.version, originalVersion, 'emission changes do not recompile the material');
   assert.equal(curtain.customProgramCacheKey(), originalProgramKey);
   assert.strictEqual(curtain.onBeforeCompile, originalHook, 'same installed mask shader, no new variants');
-  assert.deepEqual(root.children, originalChildren, 'intensity inputs add no scene owners');
+  assert.deepEqual(graphLabels(root.children), graphLabels(originalChildren), 'intensity inputs add no scene owners');
   assert.equal(runtime.lights.length, 3, 'original two-spot/one-point pool only');
   assert.ok(runtime.lights.every(light => !light.castShadow && !light.shadow.map), 'no new shadow budget');
   for (const [key, bytes] of Object.entries(originalAttributes)) assert.deepEqual(geometry.getAttribute(key).array, bytes, `${key}: exact authored geometry and masks`);
@@ -102,7 +106,7 @@ try {
   assert.equal(runtime.emitterCount, 0, 'Garage return releases retained map/record references');
   runtime.prepare([{ root }], false);
   runtime.update(expected);
-  assert.equal(runtime.group.parent, null, 'day maps carry no light pool');
+  assert.ok(runtime.group.parent === null, 'day maps carry no light pool');
 
   for (const mapId of MAP_IDS) {
     const mapRoot = new THREE.Group();

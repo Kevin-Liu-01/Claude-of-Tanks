@@ -325,9 +325,9 @@ export interface ErrorMessage {
   detail: string;
 }
 
-export type ClientMessage =
+type ClientMessage =
   | HelloMessage | InputMessage | SnapshotAckMessage | PingMessage | ChatMessage | LeaveMessage | ResumeHintMessage;
-export type ServerMessage =
+type ServerMessage =
   | WelcomeMessage | SnapshotPacket | EventMessage | PongMessage | CloseMessage | ErrorMessage;
 export type WireMessage = ClientMessage | ServerMessage;
 

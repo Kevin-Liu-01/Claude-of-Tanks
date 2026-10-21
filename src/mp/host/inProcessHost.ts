@@ -9,7 +9,7 @@ import type { HostPort, HostToWorkerMessage, WorkerToHostMessage } from './hostP
 import { createMatchHostCore } from './matchHostCore.ts';
 import type { MatchHostCore, MatchHostCoreOptions } from './matchHostCore.ts';
 
-export interface InProcessHostOptions extends Omit<MatchHostCoreOptions, 'port' | 'buildWorld'> {
+interface InProcessHostOptions extends Omit<MatchHostCoreOptions, 'port' | 'buildWorld'> {
   /** 'dedicated' loads the map's collision shard (`server/world-collision-manifests`); 'terrain' the bare height field. */
   world?: 'dedicated' | 'terrain';
   onCore?: (core: MatchHostCore) => void;

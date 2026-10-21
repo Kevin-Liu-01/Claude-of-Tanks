@@ -35,9 +35,9 @@ export const LENS_FLARE_MOON = 0.12;
 /** Visibility easing rate (1/s). */
 export const LENS_FLARE_EASE_RATE = 14;
 /** Fade over the last tenth of the frame before the sun leaves it (NDC). */
-export const LENS_FLARE_EDGE_FADE = 0.1;
+const LENS_FLARE_EDGE_FADE = 0.1;
 
-export interface LensFlareGhost {
+interface LensFlareGhost {
   /** Position along the axis: 1 at the sun, 0 at the image centre, negative past it. */
   readonly a: number;
   /** Radius in screen-height units. */
@@ -52,7 +52,7 @@ export const LENS_FLARE_GHOSTS: readonly LensFlareGhost[] = Object.freeze([
   { a: -0.25, r: 0.085, tint: [0.62, 0.78, 1.0], k: 0.20 },
   { a: -0.62, r: 0.040, tint: [1.0, 0.74, 0.86], k: 0.36 },
 ]);
-export const LENS_FLARE_HALO_RADIUS = 0.42;
+const LENS_FLARE_HALO_RADIUS = 0.42;
 /**
  * 2026-10-04 (the gauntlet's wave 65 on Caldera's e-wall-300: "a translucent circular lens-flare artifact sits directly on
  * top of the mountain silhouette … breaking the solidity of the backlit ridge"): the sun stood above the ridge, so the
@@ -112,12 +112,12 @@ export function lensFlareVisibility(
  * times the sky), so their flare stays most of the way (0.30, 0.79); a closed deck (T 0 after the opaque cut) takes it all.
  */
 export const LENS_FLARE_CLOUD_FULL = 0.25;
-export function lensFlareCloudGate(t: number): number {
+function lensFlareCloudGate(t: number): number {
   const x = clamp01(t / LENS_FLARE_CLOUD_FULL);
   return x * x * (3 - 2 * x);
 }
 /** The cloud-transmittance taps over the visibility disc (uv offsets before the disc scale): the centre and its rim. */
-export const LENS_FLARE_CLOUD_TAPS: ReadonlyArray<readonly [number, number]> = Object.freeze([[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]);
+const LENS_FLARE_CLOUD_TAPS: ReadonlyArray<readonly [number, number]> = Object.freeze([[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]);
 
 /** Easing step toward the target visibility over dt seconds. */
 export function lensFlareEase(previous: number, target: number, dt: number): number {

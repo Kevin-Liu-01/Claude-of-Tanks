@@ -1,4 +1,5 @@
-import { initializeAerial, stepAerial, isGunship, droneTankAlong, strikeDrone, type AerialView, type AerialWorldQuery } from '../sim/aerialCombat.ts';
+import { initializeAerial, stepAerial, isGunship, droneTankAlong, strikeDrone, killSourceOf, supportKillSource, type AerialView,
+  type AerialWorldQuery, type KillSourceShell } from '../sim/aerialCombat.ts';
 import { mapCraterStampsOf, stampMapCraters, type MapCraterStamp } from '../world/mapCraters.ts';
 import { setModeWeapon } from '../sim/modeLoadout.ts';
 import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, type SmokeScreen } from '../sim/auxiliarySystems.ts';
@@ -44,8 +45,8 @@ import type {
 // RULESETS (2026-09-14): one pure description per mode of how the sim bends — hull, damage taken,
 // reload, ammunition, equipment slots, gravity, roster split and the clock (sim/matchRuleset.ts).
 import {
-  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap,
-  rulesetLoadout, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
+  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap, rulesetBotDifficulty,
+  rulesetLoadout, rulesetUnlimitedFor, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
   DEFAULT_BRAIN_SETTINGS, readBrainSettings, readTeamArrangement, type BrainSettings,
@@ -293,6 +294,8 @@ interface SoloHitEvent extends HitEvent {
   timeS?: number;
   attackerName?: string;
   attackerSpecId?: string;
+  /** (ac130-fx-228) the attacker's weapons platform when it is not the vehicle itself (sim/aerialCombat.ts killSourceOf) */
+  attackerSource?: 'ac130' | 'drone';
   targetName?: string;
   targetSpecId?: string;
   targetMaxHp?: number;
@@ -1106,7 +1109,8 @@ function createBattleBot(
   // round 62 pacing: the no-contact search plans its legs over the shared navigation grid (own seeded stream)
   const searchRng = mulberry32(18000 + entityIndex);
   const controller = createAI(entity, {
-    difficulty: getStoredDifficulty(),
+    // the battle's difficulty, stepped down for the Horde's zombies by the ruleset
+    difficulty: rulesetBotDifficulty(context.game.ruleset, entity.team, getStoredDifficulty()),
     rng: mulberry32(7000 + entityIndex),
     deps: {
       ...context.aiDependencies,
@@ -1839,6 +1843,7 @@ function enrichHitEvent(
   game: SoloGameState,
   event: SoloHitEvent,
   target: SoloPooledEntity | null,
+  shellSpec: KillSourceShell | null,
 ): void {
   event.timeS = game.timeS;
   const attacker = event.attackerId ? game.tankById.get(event.attackerId) : null;
@@ -1846,6 +1851,10 @@ function enrichHitEvent(
     event.attackerName = attacker.spec.name;
     event.attackerSpecId = attacker.specId;
   }
+  // (ac130-fx-228) the kill's source, decided here as the multiplayer authority decides it: the gunship's or the drone's
+  // round names its platform (the attacker keeps the kill; presentation renders the source)
+  const source = supportKillSource(killSourceOf(attacker, shellSpec ?? { name: event.shellName }));
+  if (source) event.attackerSource = source;
   if (!target) return;
   event.targetName = target.spec.name;
   event.targetSpecId = target.specId;
@@ -1888,15 +1897,16 @@ function notifyTeamUnderFire(
 }
 
 /** Emit the derived bus events flagged inside one HitEvent. */
-function emitHitOutcome(game: SoloGameState, bus: EventBus, event: SoloHitEvent): void {
+function emitHitOutcome(game: SoloGameState, bus: EventBus, event: SoloHitEvent,
+  shellSpec: KillSourceShell | null = null): void {
   const target = event.targetId ? game.tankById.get(event.targetId) || null : null;
-  enrichHitEvent(game, event, target);
+  enrichHitEvent(game, event, target, shellSpec);
   game.killcam?.onShellHit(event, target);
   bus.emit('shell:hit', event);
   emitHitStateEvents(bus, event);
   if (event.destroyed && isActiveSoloEntity(target) && !target._destroyedAnnounced) {
     announceDestroyed(game, bus, target, event.attackerId,
-      event.ammoRacked ? 'ammorack' : 'shot');
+      event.ammoRacked ? 'ammorack' : 'shot', event.attackerSource ?? null);
   }
   const shooter = game.tankById.get(event.attackerId);
   shooter?.aiCtl?.notifyShellResult(event);
@@ -1909,6 +1919,7 @@ function announceDestroyed(
   ent: SoloEntity,
   killerId: string | null,
   cause: 'ammorack' | 'shot' | 'ram' | 'fire' | HullImpactKind,
+  source: 'ac130' | 'drone' | null = null,
 ): void {
   ent._destroyedAnnounced = true;
   game.matchModeController?.recordDestruction(ent.id, killerId);
@@ -1931,6 +1942,8 @@ function announceDestroyed(
     pos: [ent.state.pos.x, ent.state.pos.y, ent.state.pos.z],
     killerId,
     cause,
+    // (ac130-fx-228) what the kill was made with, when not the killer's vehicle (sim/aerialCombat.ts killSourceOf)
+    ...(source ? { source } : {}),
   });
 }
 
@@ -2077,7 +2090,8 @@ function tryFire(
   // ruleset gravity rides the shooter's stamp (Turbo Ball: 0.6 g lobs); unlimited rounds refill the channel
   shell.rocket = isUnguidedRocket(entity.spec.gun, shellSpec);
   shell.gravityMps2 = shellGravityMps2(shellSpec) * (Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1);
-  if(game.ruleset.aerial!=='gunship'||isGunship(entity))refillUnlimitedAmmunition(game.ruleset, entity.combat, firedSlot);
+  // ... only where the entity really refills (the AC-130's escorts never do: sim/matchRuleset rulesetUnlimitedFor)
+  if (rulesetUnlimitedFor(game.ruleset, entity)) refillUnlimitedAmmunition(game.ruleset, entity.combat, firedSlot);
   game.shells.push(shell);
   const recoilScale = shotRecoilScale(entity.spec, shellSpec);
   if (!isGunship(entity)) applyShotFeedback(entity, shellSpec, muzzleIndex, recoilScale, rig);
@@ -2159,7 +2173,7 @@ function emitHeOutcomes(
     intersections,
     game.combatRng,
   );
-  for (const event of events) emitHitOutcome(game, bus, event);
+  for (const event of events) emitHitOutcome(game, bus, event, shell.spec);
 }
 
 /** The ruleset launch for a shot: the fired direction and the shooter's stamped recoil launch scale, or null. */
@@ -2201,6 +2215,7 @@ function resolveTankShellImpact(
       game,
       bus,
       resolveShellHit(shell, entity, intersections, game.combatRng),
+      shell.spec,
     );
   }
 }
@@ -3081,6 +3096,8 @@ function emitBattleEnded(game: SoloGameState, bus: EventBus): void {
       id: entity.id,
       specId: entity.specId,
       vehicle: entity.spec.name,
+      // (ac130-fx-228) the gunship's pilot: the report names the AC-130 (ui/killSourceIdentity.ts), not the garage tank
+      ...(isGunship(entity) ? { aircraft: true } : {}),
       team: entity.team,
       alive: !entity.combat.destroyed,
       isPlayer: game.player?.id === entity.id,

@@ -55,7 +55,9 @@ export function boardWall(sink: PartSink, face: Face, u0: number, u1: number, y0
  */
 export function veranda(sink: PartSink, face: Face, floorY: number, wallTop: number, width: number, depth: number, post: Rgb,
   roof: { bucket: RegionalBucket; colour?: Rgb; thatch?: RoofSpec['thatch'] }, rail = true,
-  under?: { eaveY: number; eave: number; tanP: number }): void {
+  under?: { eaveY: number; eave: number; tanP: number },
+  // (the looks lane, 2026-10-17, the Bengal kit) `round`: the posts are bamboo culms, round, not sawn squares
+  opts: { round?: boolean } = {}): ReturnType<typeof leanTo> {
   faceBox(sink, 'structureWood', face, 0, floorY + 0.08, depth / 2, width, 0.16, depth, { colour: shade(post, 1.05), uv: UV_MEMBER });
   // (props census #15, Lane C 2026-10-16: "the deck is one plain slab") its boards: a seam between each pair along the
   // face, the deck's edge board proud of them
@@ -73,10 +75,10 @@ export function veranda(sink: PartSink, face: Face, floorY: number, wallTop: num
   // the lean-to: a shed slab from the wall head out over the posts, on a plate over the post line
   const rise = Math.max(0.25, wallTop - floorY - 2.1);
   const pitch = Math.atan2(rise, depth) * 180 / Math.PI;
-  leanTo(sink, { face, u0: -width / 2, u1: width / 2, depth: depth - 0.1, highY: wallTop, ...(under ? { under } : {}),
+  return leanTo(sink, { face, u0: -width / 2, u1: width / 2, depth: depth - 0.1, highY: wallTop, ...(under ? { under } : {}),
     roof: { pitchDeg: Math.max(6, pitch), eave: 0.3, verge: 0.2, thickness: 0.07, bucket: roof.bucket, ...(roof.thatch ? { thatch: roof.thatch } : {}) },
     ...(roof.colour ? { roofColour: roof.colour } : {}),
-    posts: { at, size: 0.14, bucket: 'structureWood', colour: post, foot: floorY > 0.3 ? -0.4 : floorY },
+    posts: { at, size: 0.14, bucket: 'structureWood', colour: post, foot: floorY > 0.3 ? -0.4 : floorY, ...(opts.round ? { round: true } : {}) },
     plate: { h: 0.12, w: 0.14, bucket: 'structureWood', colour: shade(post, 0.92) } });
 }
 

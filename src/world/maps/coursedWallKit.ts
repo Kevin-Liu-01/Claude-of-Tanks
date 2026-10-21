@@ -22,7 +22,7 @@ import { wallStoneBox, wallStoneFor, type DestructiblePropType } from './inhabit
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
 
 const WALL_SEG = 3.0, UV = 0.7, Z0 = -WALL_SEG / 2, Z1 = WALL_SEG / 2;
-export type CoursedCoping = 'rollschicht' | 'saddleback' | 'tiled' | 'block' | 'slab';
+type CoursedCoping = 'rollschicht' | 'saddleback' | 'tiled' | 'block' | 'slab';
 const COPING: Readonly<Record<string, CoursedCoping>> = Object.freeze({
   ruhr: 'rollschicht', saar: 'rollschicht', franconian: 'saddleback', shanghai: 'tiled', glencanyon: 'block',
 });
@@ -154,7 +154,7 @@ export function buildCoursedWall(coping: CoursedCoping, broken = false): THREE.B
 }
 
 /** The coursed wall's record on a map (props.ts LOCAL_TYPES wallstone on a brick print): the legacy module's numbers. */
-export type CoursedWallType = DestructiblePropType & { fitGeometry?: THREE.BufferGeometry };
+type CoursedWallType = DestructiblePropType & { fitGeometry?: THREE.BufferGeometry };
 
 /**
  * The brick-print field wall in its region's build: `legacy` (inhabitKit COURSED_WALLSTONE) still builds first on the

@@ -10,6 +10,9 @@ export const FORMATIONS = {
   line: [[0, 0], [-14, -2], [14, -3], [-28, -6], [28, -5]],
   echelon: [[0, 0], [11, -11], [22, -22], [33, -33], [44, -44]],
   pair: [[0, 0], [11, -9]],
+  // (combat round, 2026-10-13: two foes in file down one lane of a street, the second 8 m nearer the hero; the hero takes
+  // the other lane, so a long lens from behind them sees it clear of both)
+  file: [[0, 0], [0, 16]],
   solo: [[0, 0]],
 };
 export function frame(anchor, heading) {
@@ -190,7 +193,7 @@ export function routePath(route, fr) {
 
 const catmull1 = (p0, p1, p2, p3, u) => 0.5 * ((2 * p1) + (-p0 + p2) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u * u + (-p0 + 3 * p1 - 3 * p2 + p3) * u * u * u);
 // (aheadM interpolates like the rest: held key to key it stepped the route leads' distance, S01's previz 2026-10-08)
-const CAM_FIELDS = ['side', 'along', 'lift', 'fov', 'roll', 'ls', 'la', 'll', 'orbit', 'radius', 'aheadM'];
+const CAM_FIELDS = ['side', 'along', 'lift', 'fov', 'roll', 'ls', 'la', 'll', 'orbit', 'radius', 'aheadM', 'spread', 'bias', 'fovMax'];
 /** Sample sparse camera keys (Catmull-Rom across keys, C1) at time t. */
 function sampleKeys(keys, t, ease) {
   const ks = keys;
@@ -218,6 +221,7 @@ function sampleKeys(keys, t, ease) {
  * Shot: { durMs, speed, curveDegS, foeSpeed, stepMs, ease, keepWidth, pinMs, turretSweep,
  *   turretKeys: [[tMs, deg]], turrets: { [actor]: deg | [[tMs, deg]] }, guns: { [actor]: deg | [[tMs, deg]] },
  *   routes: { [actor]: { pts, speed, v0, accel, startMs } }, aim: { [actor]: actor }, rail,
+ *   (a lens key's `hold: [actors]` makes it a group shot that aims and opens to keep them all in frame: holdShot)
  *   cam: [...], cues, effects, film, still: { tMs, exposureMs } }
  * `turrets` / `guns` pose any actor (turret relative to its hull, + toward the hull's left; gun elevation): a number
  * holds, keys ease (smoothstep) from one to the next. `routes` drive actors on their own curves (routePath; waypoints in
@@ -234,6 +238,28 @@ const keyAt = (spec, t) => {
   const u = (t - spec[i][0]) / (spec[i + 1][0] - spec[i][0]);
   return spec[i][1] + (spec[i + 1][1] - spec[i][1]) * u * u * (3 - 2 * u);
 };
+/**
+ * A group shot (combat round, 2026-10-13: "show more tanks and show the actual tank combat"): from a lens at `eye`
+ * ([x, z]) `lift` m over the ground, the look point and fov that hold every hull in `pts` ([[x, z]], their centres
+ * HOLD_Y m up, the ground taken as level): aimed at the middle of their bearings and of their heights and opened until
+ * the outermost sit `spread` (default 0.6) of the frame's half-width off its centre (and the highest and lowest 0.7 of
+ * its half-height), never tighter than `fov` (default 32) nor wider than `fovMax` (default 56); `bias` moves the aim
+ * toward the last hull named (+) or the first (−) by that share of their half spread. Returns [lookX, lookZ, fov, ll]
+ * (ll: the look point's height over the ground).
+ */
+const HOLD_Y = 1.3;
+export function holdShot(eye, pts, { spread = 0.6, fov = 32, fovMax = 56, bias = 0 } = {}, lift = 2, aspect = 16 / 9) {
+  const b0 = Math.atan2(pts[0][0] - eye[0], pts[0][1] - eye[1]);
+  const rel = pts.map(q => ((Math.atan2(q[0] - eye[0], q[1] - eye[1]) - b0 + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
+  const lo = Math.min(...rel), hi = Math.max(...rel), half = (hi - lo) / 2;
+  const aim = b0 + lo + half + bias * half * Math.sign(rel[rel.length - 1] - rel[0] || 1);
+  const dists = pts.map(q => Math.max(1, Math.hypot(q[0] - eye[0], q[1] - eye[1]) * Math.cos(Math.atan2(q[0] - eye[0], q[1] - eye[1]) - aim)));
+  const pitch = dists.map(d => Math.atan2(HOLD_Y - lift, d)), p0 = Math.min(...pitch), p1 = Math.max(...pitch);
+  const wantH = 2 * Math.atan(Math.tan(half) / spread / aspect), wantV = 2 * Math.atan(Math.tan((p1 - p0) / 2) / 0.7);
+  const dist = dists.reduce((sum, d) => sum + d, 0) / dists.length, look = (p0 + p1) / 2;
+  return [eye[0] + Math.sin(aim) * dist, eye[1] + Math.cos(aim) * dist,
+    Math.min(fovMax, Math.max(fov, Math.max(wantH, wantV) * 180 / Math.PI)), lift + Math.tan(look) * dist];
+}
 export function buildShot(s, m) {
   const scene = buildScene({ ...s, cameras: [] });
   delete scene.cameraVariants;
@@ -296,7 +322,7 @@ export function buildShot(s, m) {
   });
   const frameMode = c => c.frame ?? m.frame ?? 'hero';
   const lookMode = c => c.lookFrame ?? m.lookFrame ?? frameMode(c);
-  const sig = c => `${frameMode(c)}|${lookMode(c)}|${c.lookActor ?? ''}|${c.actor ?? ''}|${c.pos ? 'abs' : ''}|${c.orbit != null}`;
+  const sig = c => `${frameMode(c)}|${lookMode(c)}|${c.lookActor ?? ''}|${c.actor ?? ''}|${c.pos ? 'abs' : ''}|${c.orbit != null}|${c.hold?.join('+') ?? ''}`;
   // 'travel' frames ride with an actor but steer by its heading averaged over ±travelS (default 1.5 s), so a lens keyed
   // around a swerving tank flows with its course instead of swinging with every zig-zag of the hull
   const travelW = (m.travelS ?? 1.5) * 1000;
@@ -328,6 +354,10 @@ export function buildShot(s, m) {
     let side = c.side ?? 0, along = c.along ?? 0;
     if (c.orbit != null) { side = (c.radius ?? 12) * Math.sin(rad(c.orbit)); along = (c.radius ?? 12) * Math.cos(rad(c.orbit)); }
     const p = c.pos ? [c.pos[0], c.pos[2]] : fr.at(side, along);
+    if (c.hold) { // a group shot: the lens holds every hull named (holdShot)
+      const [lx, lz, fov, ll] = holdShot(p, c.hold.map(n => paths.get(n)(t).p), c, c.lift ?? 2);
+      return [p[0], c.lift ?? 2, p[1], lx, ll, lz, fov, c.roll ?? 0];
+    }
     const q = lf.at(c.ls, c.la);
     return [p[0], c.pos ? c.pos[1] : (c.lift ?? 2), p[1], q[0], c.ll, q[1], c.fov ?? 40, c.roll ?? 0];
   };

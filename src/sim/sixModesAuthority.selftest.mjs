@@ -5,7 +5,7 @@ import '../vehicles/tankFactory.ts';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
 import { arrangeModeRoster } from '../mp/host/modeRoster.ts';
-import { AERIAL_RULES } from './matchRuleset.ts';
+import { AERIAL_RULES, matchRulesetFor } from './matchRuleset.ts';
 const modes=['juggernaut','infected','realistic','gun_game','drone','ac130'];
 for(const mode of modes){
  const match=createAuthoritativeMatch({gameMode:mode,countdownS:0,mapId:'verdant',seed:23,
@@ -46,7 +46,7 @@ for(const mode of ['juggernaut','infected','ac130']){
  assert.ok(bots.length);assert.ok(seats.length+bots.length<=42);
  if(mode==='juggernaut')assert.equal([...seats,...bots].filter(e=>e.team==='alpha').length,1);
  else assert.ok(seats.every(seat=>seat.team==='alpha'));
- if(mode==='infected'){assert.equal(bots.filter(bot=>bot.team==='bravo').length,4);assert.equal(bots.filter(bot=>bot.team==='alpha').length,8,'fill the entire survivor roster');}
+ if(mode==='infected'){assert.equal(bots.filter(bot=>bot.team==='bravo').length,matchRulesetFor('infected').enemies);assert.equal(bots.filter(bot=>bot.team==='alpha').length,8,'fill the entire survivor roster');}
 }
 console.log('sixModesAuthority: all six modes spawn and step; multiplayer flight, visibility, roles and infection passed');
 
@@ -66,6 +66,8 @@ console.log('sixModesAuthority: all six modes spawn and step; multiplayer flight
   if(tick>90&&!pilot.aerial.active)break;
  }
  assert.ok(hits.length,'FPV collision produces a real shell impact');
+ // (ac130-fx-228) the authority names the drone as the hit's source (sim/aerialCombat.ts killSourceOf); the pilot stays the attacker
+ assert.ok(hits.every(hit=>hit.attackerSource==='drone'&&hit.attackerId==='pilot'),'the FPV hit carries its drone source');
  assert.ok(target.combat.hp<target.combat.maxHp||target.combat.destroyed,'FPV explosion damages the enemy');
  assert.equal(pilot.aerial.active,false,'impact exits flight');
  assert.ok(Math.hypot(pilot.state.pos.x,pilot.state.pos.z)<2,'flight inputs do not drive the parked tank');

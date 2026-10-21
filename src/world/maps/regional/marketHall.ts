@@ -7,10 +7,14 @@
 // rafters under the covering; a floor of setts in their courses inside a dressed kerb; trestle stalls heaped with the
 // season's produce, baskets, crates and sacks, a beam scale hung from a tie beam. The post frame is recorded as an open
 // frame with the roof its crown (lattice.ts recordLattice), so a shot hall comes down as its posts and its roof (damage.ts
-// describeLattice), never as the default kit's box spalls.
+// describeLattice), never as the default kit's box spalls. (The looks lane, 227; the r2 sweep: the Lorraine halle 64 % plain
+// boxes, its gable vents two dark plates on the boards) the dressing's timbers and boards with their arrises eased, the
+// setts laid in courses with their joints sunk between them, the vents' louvres in boxed frames (the structure — the
+// dés, the kerb, the posts, plates and ties — and so the collision as they were).
 import { PartSink, faceBox, pick, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { emitRoof, roofGeometry, type RoofGeometry, type RoofSpec } from './house.ts';
 import { recordLattice } from './lattice.ts';
+import { bevelMember, bevelSpan, orientedPrism } from './millWorks.ts';
 
 export interface HalleSpec {
   /** the floor's extent, the kerb's outside: across (x) and along (z) */
@@ -57,6 +61,29 @@ function kerbRun(sink: PartSink, alongX: boolean, a: number, b: number, at: numb
 }
 
 /**
+ * A course of setts across z0..z1, each [a, b, tone] along x: every sett's dressed top a little proud of the floor, the
+ * joint between two sunk in a V to the bedding, the course's ends turned down to it — one run, so a low sun picks out
+ * the joints (the r2 sweep: the setts were loose flat quads). Dressing.
+ */
+function settCourse(sink: PartSink, course: ReadonlyArray<readonly [number, number, number]>, z0: number, z1: number): void {
+  if (!course.length) return;
+  const top = FLOOR + 0.014, bed = FLOOR + 0.003, foot = FLOOR + 0.002;
+  const tone = (k: number, d = 1) => ({ decor: true, tint: [k * d, k * 0.99 * d, k * 0.97 * d] as Rgb });
+  const [a0, , k0] = course[0];
+  sink.quad('stone', [a0, foot, z0], [a0, foot, z1], [a0, top, z1], [a0, top, z0], tone(k0, 0.82));
+  for (let i = 0; i < course.length; i++) {
+    const [a, b, k] = course[i];
+    sink.quad('stone', [a, top, z1], [b, top, z1], [b, top, z0], [a, top, z0], tone(k));
+    const next = course[i + 1];
+    if (next) {
+      const m = (b + next[0]) / 2;
+      sink.quad('stone', [b, top, z1], [m, bed, z1], [m, bed, z0], [b, top, z0], tone(k, 0.7));
+      sink.quad('stone', [m, bed, z1], [next[0], top, z1], [next[0], top, z0], [m, bed, z0], tone(next[2], 0.7));
+    } else sink.quad('stone', [b, foot, z1], [b, foot, z0], [b, top, z0], [b, top, z1], tone(k, 0.82));
+  }
+}
+
+/**
  * Lay a covered market hall centred on the emitting frame's origin, its length along z. Returns the roof's geometry
  * (the caller dresses the covering's ends) and the posts' feet.
  */
@@ -70,15 +97,17 @@ export function timberHalle(sink: PartSink, spec: HalleSpec): { rg: RoofGeometry
   sink.dressing(spec.mobile, () => {
     // the setts in their courses: each a little out of the next's tone, the courses broken bond
     const sx0 = -W / 2 + KERB + 0.02, sx1 = W / 2 - KERB - 0.02, sz0 = -D / 2 + KERB + 0.02, sz1 = D / 2 - KERB - 0.02;
-    const step = 0.42;
+    // (227, the facade budget: the welded courses' joints cost four triangles a sett) each sett 0.72 m along its course
+    const step = 0.42, run = 0.72;
     for (let z = sz0, row = 0; z < sz1 - 0.05; z += step, row++) {
       const z1 = Math.min(sz1, z + step - 0.025);
-      for (let x = sx0 - (row % 2 ? step / 2 : 0); x < sx1 - 0.05; x += step) {
-        const a = Math.max(sx0, x), b = Math.min(sx1, x + step - 0.025);
+      const course: Array<[number, number, number]> = [];
+      for (let x = sx0 - (row % 2 ? run / 2 : 0); x < sx1 - 0.05; x += run) {
+        const a = Math.max(sx0, x), b = Math.min(sx1, x + run - 0.025);
         if (b - a < 0.08) continue;
-        const k = 0.86 + look() * 0.22;
-        sink.quad('stone', [a, FLOOR + 0.004, z1], [b, FLOOR + 0.004, z1], [b, FLOOR + 0.004, z], [a, FLOOR + 0.004, z], { decor: true, tint: [k, k * 0.99, k * 0.97] });
+        course.push([a, b, 0.86 + look() * 0.22]);
       }
+      settCourse(sink, course, z, z1);
     }
   });
   // ---- the posts on their dés, the plates and the tie beams
@@ -101,9 +130,9 @@ export function timberHalle(sink: PartSink, spec: HalleSpec): { rg: RoofGeometry
       const x = sx * px, z = zs[k];
       for (const dz of [-1, 1]) {
         if (k === 0 && dz < 0 || k === n - 1 && dz > 0) continue;
-        sink.member('structureWood', [x, H - 0.8, z + dz * 0.1], [x, H - 0.01, z + dz * 0.8], 0.1, 0.12, [1, 0, 0], { ...oakDark, decor: true, exposed: true }, 0.06);
+        bevelMember(sink, 'structureWood', [x, H - 0.8, z + dz * 0.1], [x, H - 0.01, z + dz * 0.8], 0.1, 0.12, [1, 0, 0], { ...oakDark, decor: true, exposed: true }, 0.06);
       }
-      sink.member('structureWood', [x - sx * 0.1, H - 0.7, z], [x - sx * 0.75, plateTop + 0.01, z], 0.1, 0.12, [0, 0, 1], { ...oakDark, decor: true, exposed: true }, 0.06);
+      bevelMember(sink, 'structureWood', [x - sx * 0.1, H - 0.7, z], [x - sx * 0.75, plateTop + 0.01, z], 0.1, 0.12, [0, 0, 1], { ...oakDark, decor: true, exposed: true }, 0.06);
     }
   });
   // ---- the roof: its covering on the plates, the trusses on the tie beams, the purlins and the common rafters
@@ -118,15 +147,29 @@ export function timberHalle(sink: PartSink, spec: HalleSpec): { rg: RoofGeometry
     const bc = spec.boardedGables;
     for (const sz of [-1, 1]) {
       const z = sz * (rd / 2 - 0.34);
-      for (let x = -px; x < px - 0.1; x += 0.2) {
-        const xm = x + 0.1, top = under(Math.abs(xm) + 0.1) - 0.04;
+      // (227, the facade budget: boards 24 cm, was 20)
+      for (let x = -px; x < px - 0.1; x += 0.24) {
+        const xm = x + 0.12, top = under(Math.abs(xm) + 0.12) - 0.04;
         if (top - tieTop < 0.1) continue;
-        sink.span('structureWood', x + 0.005, tieTop, z - 0.012, x + 0.195, top, z + 0.012, { colour: shade(bc, 0.88 + look() * 0.2), decor: true });
+        const board = { colour: shade(bc, 0.88 + look() * 0.2), decor: true };
+        // (the boards' eased arrises a desktop's: a phone draws them square; 227, the facade budget: only the two on the
+        // gable's outer face, the ones the field sees, a hexagonal section)
+        if (spec.mobile) sink.span('structureWood', x + 0.005, tieTop, z - 0.012, x + 0.235, top, z + 0.012, board);
+        else {
+          const x0 = x + 0.005, x1 = x + 0.235, zi = z - sz * 0.012, zo = z + sz * 0.012, c = 0.006 * sz;
+          orientedPrism(sink, 'structureWood', [[x0, tieTop, zi], [x1, tieTop, zi], [x1, tieTop, zo - c], [x1 - 0.006, tieTop, zo], [x0 + 0.006, tieTop, zo], [x0, tieTop, zo - c]],
+            [0, 1, 0], top - tieTop, board);
+        }
       }
       const face: Face = { origin: [0, 0, z + sz * 0.012], u: [sz, 0, 0], out: [0, 0, sz], width: 1 };
-      const vy = tieTop + (under(0) - tieTop) * 0.45;
+      const vy = tieTop + (under(0) - tieTop) * 0.45, zf = z + sz * 0.012, zo = zf + sz * 0.13;
       faceBox(sink, 'dark', face, 0, vy, 0.004, 0.6, 0.5, 0.008, { decor: true });
-      for (let k = 0; k < 4; k++) faceBox(sink, 'structureWood', face, 0, vy - 0.19 + k * 0.125, 0.02, 0.64, 0.05, 0.03, { colour: shade(bc, 0.8), decor: true, fine: true });
+      // (the r2 sweep: the vent read as a dark plate on the boards) its louvres in a boxed frame standing out of the gable,
+      // the dark of the roof space behind them at the frame's back
+      const vc = { colour: shade(bc, 0.74), decor: true } as const;
+      for (const sy of [-1, 1]) bevelSpan(sink, 'structureWood', -0.34, vy + sy * 0.25, zf, 0.34, vy + sy * 0.29, zo, 0.008, vc);
+      for (const sx of [-1, 1]) bevelSpan(sink, 'structureWood', sx * 0.3, vy - 0.25, zf, sx * 0.34, vy + 0.25, zo, 0.008, vc);
+      for (let k = 0; k < 4; k++) faceBox(sink, 'structureWood', face, 0, vy - 0.19 + k * 0.125, 0.07, 0.6, 0.05, 0.03, { colour: shade(bc, 0.8), decor: true, fine: true });
     }
   }
   // the frame recorded as an open frame: a shot hall falls as its posts and its timbers, the covering heaped where the
@@ -141,7 +184,7 @@ export function timberHalle(sink: PartSink, spec: HalleSpec): { rg: RoofGeometry
 
 /** What a hall's roof frame stands on: its roof, the tie beams' half span (`px`) and their places along it (`zs`), the
  *  ties' top, the eave, the roof's depth along the ridge, the oak. */
-export interface RoofFrame { rg: RoofGeometry; roof: RoofSpec; px: number; zs: readonly number[]; tieTop: number; eaveY: number; rd: number; timber: Rgb; mobile: boolean }
+interface RoofFrame { rg: RoofGeometry; roof: RoofSpec; px: number; zs: readonly number[]; tieTop: number; eaveY: number; rd: number; timber: Rgb; mobile: boolean }
 
 /**
  * The carpentry under a hall's covering, the roof's frame centred on the emitting frame's origin (the ridge along z): on
@@ -157,28 +200,28 @@ export function hallRoofTimbers(sink: PartSink, f: RoofFrame): void {
     const trussZs = roof.kind === 'gable' ? zs : zs.filter((z) => Math.abs(z) <= rg.ridgeHalf + 0.05 || zs.length <= 2);
     for (const z of trussZs) {
       // the principals from the tie's ends to the apex, the king post, the struts from its foot to the principals' middles
-      for (const s of [-1, 1]) sink.member('structureWood', [s * (px + 0.05), tieTop, z], [0, under(0) - 0.08, z], 0.16, 0.12, [0, 0, 1], t, 0.06);
-      sink.member('structureWood', [0, tieTop, z], [0, under(0) - 0.05, z], 0.16, 0.14, [0, 0, 1], t, 0.07);
-      for (const s of [-1, 1]) sink.member('structureWood', [s * 0.07, tieTop + 0.35, z], [s * px * 0.5, under(px * 0.5) - 0.12, z], 0.1, 0.1, [0, 0, 1], t, 0.05);
+      for (const s of [-1, 1]) bevelMember(sink, 'structureWood', [s * (px + 0.05), tieTop, z], [0, under(0) - 0.08, z], 0.16, 0.12, [0, 0, 1], t, 0.06);
+      bevelMember(sink, 'structureWood', [0, tieTop, z], [0, under(0) - 0.05, z], 0.16, 0.14, [0, 0, 1], t, 0.07);
+      for (const s of [-1, 1]) bevelMember(sink, 'structureWood', [s * 0.07, tieTop + 0.35, z], [s * px * 0.5, under(px * 0.5) - 0.12, z], 0.1, 0.1, [0, 0, 1], t, 0.05);
     }
     // the purlins along both slopes at the principals' middles, the ridge piece under the apex
     const ze0 = roof.kind === 'gable' ? -rd / 2 - roof.verge + 0.1 : -Math.max(0.2, rg.ridgeHalf) - 0.3;
     for (const s of [-1, 1]) {
       const x = s * px * 0.5;
-      sink.span('structureWood', x - 0.07, under(x) - 0.2, ze0, x + 0.07, under(x) - 0.06, -ze0, t);
+      bevelSpan(sink, 'structureWood', x - 0.07, under(x) - 0.2, ze0, x + 0.07, under(x) - 0.06, -ze0, 0.025, t);
     }
-    sink.span('structureWood', -0.08, under(0) - 0.24, ze0, 0.08, under(0) - 0.06, -ze0, t);
+    bevelSpan(sink, 'structureWood', -0.08, under(0) - 0.24, ze0, 0.08, under(0) - 0.06, -ze0, 0.025, t);
     // the common rafters under the covering, a pace apart along the ridge
     const rz = roof.kind === 'gable' ? rd / 2 + roof.verge - 0.15 : Math.max(0.3, rg.ridgeHalf);
     for (let z = -rz; z <= rz + 1e-6; z += Math.max(0.5, (2 * rz) / Math.max(1, Math.round(2 * rz / 0.75)))) {
-      for (const s of [-1, 1]) sink.member('structureWood', [s * (rg.s + roof.eave * 0.8), under(rg.s + roof.eave * 0.8) - 0.07, z],
+      for (const s of [-1, 1]) bevelMember(sink, 'structureWood', [s * (rg.s + roof.eave * 0.8), under(rg.s + roof.eave * 0.8) - 0.07, z],
         [s * 0.06, under(0.06) - 0.07, z], 0.12, 0.07, [0, 0, 1], { colour: shade(timber, 0.76), decor: true, exposed: true }, 0.035);
     }
     // a hip roof's hip rafters from the plates' corners to the ridge's ends
     if (roof.kind === 'hip') {
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
         const dx = -sx * (px + 0.1), dz = sz * (rg.ridgeHalf - rd / 2 + 0.02), dl = Math.hypot(dx, dz);
-        sink.member('structureWood', [sx * (px + 0.1), eaveY + 0.02, sz * (rd / 2 - 0.02)], [0, under(0) - 0.08, sz * rg.ridgeHalf], 0.14, 0.09, [dz / dl, 0, -dx / dl],
+        bevelMember(sink, 'structureWood', [sx * (px + 0.1), eaveY + 0.02, sz * (rd / 2 - 0.02)], [0, under(0) - 0.08, sz * rg.ridgeHalf], 0.14, 0.09, [dz / dl, 0, -dx / dl],
           { colour: shade(timber, 0.76), decor: true, exposed: true }, 0.045);
       }
     }
@@ -198,7 +241,7 @@ export function hallStalls(sink: PartSink, spec: HalleSpec, opts: { tables?: num
       const zc = rows === 1 ? 0 : (r / (rows - 1) - 0.5) * Math.min(D * 0.45, D - 2.6);
       for (const sx of [-1, 1]) {
         const x = sx * Math.min(px - 0.85, W * 0.2), L = Math.min(2.4, D * 0.36), y = FLOOR + 0.74;
-        sink.span('structureWood', x - 0.4, y, zc - L / 2, x + 0.4, y + 0.045, zc + L / 2, { colour: board, decor: true, shadow: true });
+        bevelSpan(sink, 'structureWood', x - 0.4, y, zc - L / 2, x + 0.4, y + 0.045, zc + L / 2, 0.012, { colour: board, decor: true, shadow: true });
         for (const dz of [-1, 1]) for (const dx of [-1, 1]) {
           sink.member('structureWood', [x + dx * 0.38, FLOOR, zc + dz * (L / 2 - 0.2)], [x + dx * 0.2, y, zc + dz * (L / 2 - 0.2)], 0.05, 0.05, [0, 0, 1],
             { colour: leg, decor: true, exposed: true }, 0);
@@ -215,8 +258,8 @@ export function hallStalls(sink: PartSink, spec: HalleSpec, opts: { tables?: num
         // (the integrity check, 2026-10-16: the open basket's inside showed its wall's back from above) heaped to its rim
         sink.cylinder('structureWood', [x, FLOOR + 0.335, bz], 'y', 0.07, 0.28, 9, { colour: pick(look, spec.produce), decor: true }, 0.16, true);
         const cx = x - sx * 0.62;
-        for (let s = 0; s < 3; s++) sink.span('structureWood', cx - 0.26, FLOOR + 0.02 + s * 0.11, bz - 0.2, cx + 0.26, FLOOR + 0.09 + s * 0.11, bz + 0.2, { colour: shade(board, 0.78 + s * 0.06), decor: true });
-        for (const dx of [-1, 1]) sink.span('structureWood', cx + dx * 0.25 - 0.02, FLOOR, bz - 0.2, cx + dx * 0.25 + 0.02, FLOOR + 0.34, bz + 0.2, { colour: shade(board, 0.7), decor: true });
+        for (let s = 0; s < 3; s++) bevelSpan(sink, 'structureWood', cx - 0.26, FLOOR + 0.02 + s * 0.11, bz - 0.2, cx + 0.26, FLOOR + 0.09 + s * 0.11, bz + 0.2, 0.01, { colour: shade(board, 0.78 + s * 0.06), decor: true });
+        for (const dx of [-1, 1]) bevelSpan(sink, 'structureWood', cx + dx * 0.25 - 0.02, FLOOR, bz - 0.2, cx + dx * 0.25 + 0.02, FLOOR + 0.34, bz + 0.2, 0.008, { colour: shade(board, 0.7), decor: true });
       }
       // sacks against a post
       for (let k = 0; k < 2; k++) sink.cylinder('structureWood', [-px + 0.45 + k * 0.5, FLOOR, zc + 0.6], 'y', 0.5, 0.22, 7, { colour: shade(sack, 0.9 + look() * 0.15), decor: true }, 0.16);

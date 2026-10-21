@@ -53,7 +53,7 @@ export const DUEL_SCENARIOS=MAP_IDS.map((map,index)=>{
 // verdant, coastal) with the tank pairs above, `directDuel({variant: index})`
 // and the seeds 24001 + 137 (index - 1). Its ids are `NN_alpha_vs_bravo_map`;
 // tools/studio-example-videos.mjs records them from this table.
-export const BATTLE_REEL_MAPS=Object.freeze([
+const BATTLE_REEL_MAPS=Object.freeze([
   'verdant','desert','winter','urban','coastal','autumn','steppe','railyard',
   'frontier','fjord','delta','badlands','monsoon','alpine','caldera','foundry',
   'desert','winter','verdant','coastal',
@@ -67,7 +67,7 @@ export const BATTLE_REEL_MAPS=Object.freeze([
 // hulls start inside r - 15 of a frozen pond so every duel-track drive stays on
 // the ice; `directDuel` keeps the lenses on the +p side of alpha→bravo for an
 // even variant (reels 18) and on the -p side for an odd one (3, 7).
-export const BATTLE_REEL_STAGES=Object.freeze({
+const BATTLE_REEL_STAGES=Object.freeze({
   // Challenger 3 vs Leopard 2A7V: south across the neck between the c(54,150)
   // r36 and c(38,70) r40 ponds north of the Bystra crossing; the lenses on
   // the open east bank look west over the ice at the terrace village's east

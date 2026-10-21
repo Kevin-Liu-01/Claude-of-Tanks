@@ -20,17 +20,17 @@ import { ASSAULT_TRENCH, planAssaultTrenchLines } from '../../../sim/assaultLine
 import type { YardStyle } from './types.ts';
 
 /** A placed plot (props buildingFeatures): centre, size along its local x and z, yaw. */
-export interface YardPlot { x: number; z: number; w: number; d: number; rot: number; kind?: string }
+interface YardPlot { x: number; z: number; w: number; d: number; rot: number; kind?: string }
 /** A hard solid's world box (props obstacles). */
 export interface YardSolid { min: ArrayLike<number>; max: ArrayLike<number> }
 /** A destructible already standing (props records). */
-export interface YardDestructible { x: number; z: number; r: number; kind: string }
+interface YardDestructible { x: number; z: number; r: number; kind: string }
 /** The layout's footprints a yard keeps off: discs [x, z, r] and oriented rectangles. */
 export interface YardKeepOut {
   discs: ReadonlyArray<readonly [number, number, number]>;
   rects: ReadonlyArray<{ x: number; z: number; ux: number; uz: number; halfAlong: number; halfAcross: number }>;
 }
-export interface YardGround {
+interface YardGround {
   roadDist(x: number, z: number): number;
   water(x: number, z: number): number;
   normalY(x: number, z: number): number;
@@ -42,7 +42,8 @@ export interface YardWorld {
   destructibles: readonly YardDestructible[];
   keepOut: YardKeepOut;
 }
-export interface YardPlacement { x: number; z: number; yaw: number }
+/** `s`: the module's scale to its slot (a tidy yard's run: YardStyle.tidy), 1 when absent. */
+export interface YardPlacement { x: number; z: number; yaw: number; s?: number }
 export interface YardPlan {
   side: '+x' | '-x' | '+z' | '-z';
   /** a side yard along the street (a flank of the plot), its gate onto the street; false: a back yard */
@@ -223,7 +224,17 @@ export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rn
   const plan: YardPlan = { side: sd.side, street: onFlank, depth, length, modules: [], gate: null, shed: null, garden: null };
   // the enclosure: the outer run along the yard's far edge, the two end runs back to the house wall; the gate takes the
   // outer run's middle module (or the one beside it)
-  const outerN = Math.max(1, Math.round(length / seg)), endN = Math.max(1, Math.round(depth / seg));
+  // (a tidy yard) a run's modules fill their slots without standing through each other: scaled down to the slot, at most
+  // to 0.8, else one module fewer
+  const fitRun = (len: number): { n: number; s: number } => {
+    let n = Math.max(1, Math.round(len / seg));
+    if (!style.tidy) return { n, s: 1 };
+    if (n > 1 && len / n / seg < 0.8) n--;
+    return { n, s: Math.min(1, len / n / seg) };
+  };
+  const outerFit = fitRun(length), endFit = fitRun(depth);
+  const outerN = outerFit.n, endN = endFit.n;
+  const scaled = (p: YardPlacement, s: number): YardPlacement => (style.tidy ? { ...p, s } : p);
   // every yard has its way in: a flank yard's gate opens onto the street (the middle of the end run nearer the road);
   // a back yard's in its outer run's middle module, or on a short run one of its end modules
   const streetEnd = onFlank
@@ -235,24 +246,34 @@ export function planYard(house: YardPlot, world: YardWorld, style: YardStyle, rn
     const a = -length / 2 + (i + 0.5) * length / outerN;
     const [x, z] = at(a, depth);
     if (!free(x, z)) continue;
-    if (i === gateAt) { if (style.gate) plan.gate = { x, z, yaw: yawAlong(t) }; continue; }
-    plan.modules.push({ x, z, yaw: yawAlong(t) });
+    if (i === gateAt) { if (style.gate) plan.gate = scaled({ x, z, yaw: yawAlong(t) }, outerFit.s); continue; }
+    plan.modules.push(scaled({ x, z, yaw: yawAlong(t) }, outerFit.s));
   }
   for (const end of [-1, 1]) for (let i = 0; i < endN; i++) {
     const b = (i + 0.5) * depth / endN;
     const [x, z] = at(end * length / 2, b);
     if (!free(x, z)) continue;
-    if (end === streetEnd && i === endGateAt) { if (style.gate) plan.gate = { x, z, yaw: yawAlong(n) }; continue; }
-    plan.modules.push({ x, z, yaw: yawAlong(n) });
+    if (end === streetEnd && i === endGateAt) { if (style.gate) plan.gate = scaled({ x, z, yaw: yawAlong(n) }, endFit.s); continue; }
+    plan.modules.push(scaled({ x, z, yaw: yawAlong(n) }, endFit.s));
   }
   // the outbuilding in one far corner, its door to the yard; the beds toward the other end
-  const corner = rng() < 0.5 ? -1 : 1;
+  const drawnCorner = rng() < 0.5 ? -1 : 1;
   const [sw, sdp] = style.shedSize ?? [YARD_SHED.w, YARD_SHED.d];
+  // (a tidy yard) the shed keeps out of the gate's way: a flank yard's takes the end away from its street gate; a back
+  // yard's, where the far corner's span along the outer run meets its gate's (0.6 m clear), stands in the near corner
+  const corner = style.tidy && onFlank ? -streetEnd : drawnCorner;
+  let shedNear = false;
+  if (style.tidy && !onFlank && plan.gate) {
+    const ga = -length / 2 + (gateAt + 0.5) * length / outerN, gw = seg * outerFit.s / 2;
+    const sa = corner * (length / 2 - sw / 2 - 0.45);
+    shedNear = Math.abs(ga - sa) < gw + sw / 2 + 0.6;
+  }
   if (style.shed && depth >= sdp + 1.2 && length >= sw + 3.0) {
-    const a = corner * (length / 2 - sw / 2 - 0.45), b = depth - sdp / 2 - 0.45;
+    const a = corner * (length / 2 - sw / 2 - 0.45), b = shedNear ? sdp / 2 + 0.45 : depth - sdp / 2 - 0.45;
     const [x, z] = at(a, b);
     if (rectClear(world, house, x, z, t, n, sw / 2 + 0.3, sdp / 2 + 0.3, ROAD_FRONTAGE_CLEARANCE, 0)) {
-      plan.shed = { x, z, yaw: yawAlong([-n[0], -n[1]]), w: sw, d: sdp };
+      // (its door into the yard: toward the house from the far corner, away from it in the near one)
+      plan.shed = { x, z, yaw: yawAlong(shedNear ? n : [-n[0], -n[1]]), w: sw, d: sdp };
     }
   }
   if (style.garden || style.graves) {
@@ -369,7 +390,10 @@ export function gardenParts(w: number, d: number, look: () => number, drop = 0, 
       for (let x = x0; x <= last + 1e-6; x += 0.45) {
         for (const [y, r] of [[0.45, 0.17], [0.85, 0.15], [1.2, 0.12]] as const) {
           // (the lowest clump sits down into the row's leafy foot: the r2 sweep found it a few centimetres over it)
-          const c: Vec3 = [x + (look() - 0.5) * 0.08, base + y - r * (y < 0.5 ? 0.9 : 0.6), z + (look() - 0.5) * 0.1];
+          // (the 227 sweep: a clump 2 cm off its cane on Caldera) each clump round its own cane where the cane stands at
+          // its height (a frame's canes lean in to their tie), its jitter a hand's breadth at most
+          const jx = look() - 0.5, jz = look() - 0.5, lean = frame ? 0.28 - 0.32 * Math.min(1, y / 1.45) : 0;
+          const c: Vec3 = [x + jx * 0.04, base + y - r * (y < 0.5 ? 0.9 : 0.6), z + (jz < 0 ? -lean : lean) + jz * 0.04];
           mound(sink, c, X, Z, r, r * 0.9, r * 1.5, shade(leaf, 0.85 + look() * 0.3), dec, look() * 6, 4);
           if (y < 1.2) clumps.push([c[0], c[1], c[2], r]);
         }
@@ -379,7 +403,8 @@ export function gardenParts(w: number, d: number, look: () => number, drop = 0, 
         for (const [cx, cy, cz, r] of clumps) {
           if (look() < 0.55) continue;
           const side = look() < 0.5 ? -1 : 1;
-          mound(sink, [cx + (look() - 0.5) * r * 0.6, cy - 0.02, cz + side * r * 0.5], X, Z, 0.05, 0.05, 0.08, rgb(0xb83020), dec, 0, 4);
+          // (the 227 sweep: one hung 2 cm off its clump on Caldera) set into the clump's side, not on its skin
+          mound(sink, [cx + (look() - 0.5) * r * 0.4, cy - 0.01, cz + side * r * 0.32], X, Z, 0.05, 0.05, 0.08, rgb(0xb83020), dec, 0, 4);
         }
       }
       continue;

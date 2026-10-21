@@ -75,7 +75,7 @@ const paths = new Set(['/', '/index.html', '/404', '/cn/', '/cn/index.html', '/c
   '/cn/surface-studio', '/surface-studio/', '/docs/unknown', '/docs/unknown/', '/cn/docs/unknown', '/docs/build/extra',
   '/Docs/Build', '/DOCS', '/docs.html', '/home.html', '/gallery.html', '/cn/gallery.html', '/docs-topic.html',
   '/assets/main-hc1qihnq.js', '/assets/missing-abcdefgh.js', '/maps/verdant.webp', '/mp-collision/index.json',
-  '/api/ice', '/api/ice/', '/robots.txt', '/nope', '/nope/', '/studio/x', '//', '/cn//docs']);
+  '/api/jev', '/api/jev/', '/robots.txt', '/nope', '/nope/', '/studio/x', '//', '/cn//docs']);
 for (const { source } of BEFORE.rewrites) {
   for (const path of [source, `${source}/`, `${source}.html`, `${source}/index.html`]) paths.add(path);
 }
@@ -136,7 +136,7 @@ assert.equal(securityRules.length, 1, 'one rule owns the security headers');
 assert.deepEqual(Object.fromEntries(securityRules[0].headers.map(({ key, value }) => [key.toLowerCase(), value])), SECURITY_HEADERS);
 assert.deepEqual(securityHeadersOf(resolve('/').headers), SECURITY_HEADERS, 'the root document');
 assert.deepEqual(securityHeadersOf(resolve('/assets/missing-abcdefgh.js').headers), SECURITY_HEADERS, 'a 404');
-assert.deepEqual(securityHeadersOf(resolve('/api/ice').headers), SECURITY_HEADERS, 'an API path');
+assert.deepEqual(securityHeadersOf(resolve('/api/jev').headers), SECURITY_HEADERS, 'an API path');
 assert.ok(!config.headers.some((rule) => rule.headers.some(({ key }) => /^content-security-policy$/i.test(key))),
   'no enforced Content-Security-Policy in this wave (it needs build-time inline-script hashes)');
 
@@ -153,7 +153,7 @@ for (const rule of hostRules) {
   assert.equal(rule.permanent, true, '308 keeps the method and body');
 }
 const hostSamples = [['/', ''], ['/', '?room=HKP5XW&host=Commander%2009HY&mode=lan'], ['/docs/build', ''], ['/cn/', '?x=1'],
-  ['/studio/', ''], ['/assets/main-hc1qihnq.js', ''], ['/api/ice', ''], ['/surface-studio', '?y=2'], ['/nope', '']];
+  ['/studio/', ''], ['/assets/main-hc1qihnq.js', ''], ['/api/jev', ''], ['/surface-studio', '?y=2'], ['/nope', '']];
 let aliasRedirects = 0;
 for (const host of ALIAS_HOSTS) {
   for (const [path, query] of hostSamples) {

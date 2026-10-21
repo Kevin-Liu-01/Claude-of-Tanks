@@ -174,11 +174,11 @@ for (const [id, target] of Object.entries(expected)) {
       `${id} track inner face is seated against its own belly section`);
     assert.equal(gear?.suspensionDynamic, true);
     assert.equal(gear?.suspensionPlacement, 'inboard-behind-road-wheel');
-    assert.equal(tank.root.getObjectByName('hullRubber'), undefined,
+    assert.ok(tank.root.getObjectByName('hullRubber') === undefined,
       `${id} no longer carries a detached full-length lower rubber strip`);
 
     const rws = tank.root.getObjectByName(target.rwsName);
-    assert.equal(rws?.parent, turret, `${id} K2B-style RWS is directly turret-owned`);
+    assert.ok(rws?.parent === turret, `${id} K2B-style RWS is directly turret-owned`);
     assert.equal(rws?.userData.fitting, 'openYokeRws');
     assert.equal(rws?.userData.designFamily, 'abramsx-open-yoke-v1');
     assert.equal(rws?.userData.stationVariant, 'korean-twin');

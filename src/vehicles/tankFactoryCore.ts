@@ -1,3 +1,4 @@
+import { hypot2, hypot3 } from './scalarHypot.ts';
 import { WeaponDamageVisuals } from './weaponDamageVisuals.ts';
 import { casemateGunYaw } from './casemateGunPose.ts';
 import { tankSeedId } from './tankIdAliases.ts';
@@ -39,7 +40,8 @@ import {
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 import {
   createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
-  setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, LIVE_HULL_DENTS, LIVE_TURRET_DENTS,
+  setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, tagUnlitVehicleMaterials, LIVE_HULL_DENTS,
+  LIVE_TURRET_DENTS,
 } from './materials.ts';
 import { bendGeometry, dentSamples, planBend, planDents, wreckRandom, type WreckDent } from './wreckDents.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
@@ -111,6 +113,7 @@ import {
   markVehicleShadowDetail, NEAR_SHADOW_DETAIL_MAX_MESHES, NEAR_SHADOW_DETAIL_NAMES, vehicleShadowDetailOf,
 } from '../engine/nearVehicleShadowDetail.ts';
 import { installArticulatedShadowBatch } from '../engine/articulatedShadowBatch.ts';
+import { splitProgramVariants } from '../engine/programVariants.ts';
 import type { FleetGunSpec, FleetTankSpec, FleetVisualSpec } from './specContracts.ts';
 import type { ArmorEnvelope } from './specHelpers.ts';
 import type { VehicleMarkingRecord } from './vehicleMarkings.ts';
@@ -982,9 +985,11 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
   /**
    * Steps that run after postAssemble, in the order they were added (round 5, 2026-10-08): equipment laid against the
    * finished armour (a camouflage suit, ghillieSuit.ts) adds itself here, so no profile's own postAssemble chain is
-   * wrapped or replaced, and it always runs after them.
+   * wrapped or replaced, and it always runs after them. 2026-10-16: they run after the core build, in slices of their
+   * own (a step may return its work as checkpoints), each against the vehicle as the assembly left it
+   * (runDeferredAssembly).
    */
-  readonly afterAssemble: Array<(rig: TankRig) => void>;
+  readonly afterAssemble: Array<(rig: TankRig) => void | Generator<void, void, void>>;
   addMudguard(
     label: string,
     bucket: string,
@@ -1119,6 +1124,10 @@ interface TankFactoryOptions {
    * positions moved up to 1,615 px in the P21 captures); 'off' keeps the separate
    * draws (A/B receipts and probes). */
   staticDrawMerge?: 'off' | 'identity' | 'translations';
+  /** Build the deferred assembly (TankBuilderPort.afterAssemble: a suit or field net) inside the core, where it ran
+   * before 2026-10-16, instead of in its own slices after the core checkpoint. Only the parity receipts pass it
+   * (tools/deferred-assembly-parity.mjs, tankFactoryDeferredAssembly.selftest.mjs): both builds must be identical. */
+  assemblyInCore?: boolean;
   /** FSP-06 material-role census (tools/material-roles-audit.mjs): observes every authored part with the
    * bucket it merges into, before the merge erases part identity. Diagnostic only; builds are byte-identical
    * when absent. */
@@ -1890,6 +1899,83 @@ function authoredShadowHull(
  * gun, the track bands and the instanced running gear (one draw each), never the greeble, decals, fills or the
  * 30k-triangle detailed track pads. Ordered by triangle count so the cap keeps the largest silhouettes.
  */
+function isSuitShadowCaster(object: THREE.Object3D): boolean {
+  return object.userData.fieldSuit === true && /_ghillie_/.test(object.name || '');
+}
+
+/** The suit meshes collectNearShadowDetail appends after the armour it picks, in its traversal order. */
+function collectSuitShadowDetail(groups: readonly THREE.Object3D[]): THREE.Object3D[] {
+  const camouflage = new Set<THREE.Object3D>();
+  for (const group of groups) {
+    group.traverse((object) => {
+      if ((isVehicleMesh(object) || isVehicleInstancedMesh(object)) && isSuitShadowCaster(object)) camouflage.add(object);
+    });
+  }
+  return [...camouflage];
+}
+
+/**
+ * 2026-10-16 (PERF: the garage's default tank, m1a3, wears a suit; its build was one long task at boot and in the
+ * countdown stream). Equipment laid against the finished armour (TankBuilderPort.afterAssemble: a camouflage suit or
+ * field net) is built after the core, in its own slices, and must come out exactly as it did inside the core. Each step
+ * sees the vehicle as the assembly left it: every child the core added since is lifted out for the step (and any it
+ * removed is back in its place), and afterwards the step's own children stand where they stood when it ran there,
+ * after the assembly's and before the core's later ones. The tree is private to the build throughout (no checkpoint
+ * publishes it), and a cancelled step still puts every child back before the visual is disposed.
+ */
+function captureAssemblyChildren(root: THREE.Object3D): Map<THREE.Object3D, THREE.Object3D[]> {
+  const children = new Map<THREE.Object3D, THREE.Object3D[]>();
+  root.traverse((object) => { children.set(object, object.children.slice()); });
+  return children;
+}
+
+function* runDeferredAssembly(
+  steps: ReadonlyArray<(rig: TankRig) => void | Generator<void, void, void>>,
+  assembled: Map<THREE.Object3D, THREE.Object3D[]>,
+  rig: TankRig,
+): Generator<void, THREE.Object3D[], void> {
+  const made: THREE.Object3D[] = [];
+  for (const step of steps) {
+    const stepMade: THREE.Object3D[] = [];
+    // the tree as the assembly left it: each parent's children exactly as they were, their parents restored
+    const now = new Map<THREE.Object3D, THREE.Object3D[]>();
+    const parents = new Map<THREE.Object3D, THREE.Object3D | null>();
+    for (const [parent, before] of assembled) {
+      const current = parent.children;
+      if (current.length === before.length && current.every((child, i) => child === before[i])) continue;
+      now.set(parent, current.slice());
+      for (const child of before) if (child.parent !== parent) { parents.set(child, child.parent); child.parent = parent; }
+      current.splice(0, current.length, ...before);
+    }
+    try {
+      const work = step(rig) as Generator<void, void, void> | undefined;
+      if (work) yield* work;
+    } finally {
+      for (const [parent, before] of assembled) {
+        const current = now.get(parent);
+        if (!current) continue;
+        // the step's own children, after the assembly's (still standing) and before the core's later ones
+        const held = new Set(before);
+        const added = parent.children.filter((child) => !held.has(child));
+        stepMade.push(...added);
+        parent.children.splice(0, parent.children.length,
+          ...current.filter((child) => held.has(child)), ...added, ...current.filter((child) => !held.has(child)));
+      }
+      for (const [parent, before] of assembled) {
+        if (now.has(parent)) continue;
+        const held = new Set(before);
+        stepMade.push(...parent.children.filter((child) => !held.has(child)));
+      }
+      for (const [child, parent] of parents) child.parent = parent;
+    }
+    // the next step starts from the vehicle with this one's work in place
+    for (const object of stepMade) if (object.parent) assembled.get(object.parent)?.push(object);
+    made.push(...stepMade);
+    yield;
+  }
+  return made;
+}
+
 function collectNearShadowDetail(groups: readonly THREE.Object3D[]): THREE.Object3D[] {
   const picked: { mesh: THREE.Object3D; triangles: number }[] = [];
   // 2026-10-11 (the netting lane's fix round, the coordinator: "solid clumps of cut branches ... casting shadow"): a
@@ -1900,7 +1986,7 @@ function collectNearShadowDetail(groups: readonly THREE.Object3D[]): THREE.Objec
   for (const group of groups) {
     group.traverse((object) => {
       if (!(isVehicleMesh(object) || isVehicleInstancedMesh(object))) return;
-      if (object.userData.fieldSuit === true && /_ghillie_/.test(object.name || '')) {
+      if (isSuitShadowCaster(object)) {
         camouflage.add(object);
         return;
       }
@@ -1915,6 +2001,11 @@ function collectNearShadowDetail(groups: readonly THREE.Object3D[]): THREE.Objec
   return [...picked.slice(0, NEAR_SHADOW_DETAIL_MAX_MESHES).map((entry) => entry.mesh), ...camouflage];
 }
 
+/** The procedural shadow proxies cast for every mesh under the hull, turret and recoil groups. */
+function castThroughProxies(object: THREE.Object3D): void {
+  if (isVehicleMesh(object) || isVehicleInstancedMesh(object)) object.castShadow = false;
+}
+
 function installProceduralShadowProxies(
   spec: FleetTankSpec,
   hullG: THREE.Group,
@@ -1925,11 +2016,7 @@ function installProceduralShadowProxies(
   additionalSources?: TankBuilderPort['additionalShadowSources'],
 ): THREE.Mesh[] {
   const sources: THREE.Mesh[] = [];
-  for (const group of [hullG, turretG, recoilG]) {
-    group.traverse((object) => {
-      if (isVehicleMesh(object) || isVehicleInstancedMesh(object)) object.castShadow = false;
-    });
-  }
+  for (const group of [hullG, turretG, recoilG]) group.traverse(castThroughProxies);
 
   const find = (owner: THREE.Object3D, names: readonly string[]) =>
     names.map((name) => owner.getObjectByName(name)).filter((item): item is THREE.Object3D => !!item);
@@ -2039,7 +2126,10 @@ function trackBandGeo(
 // every vertex through temporary Vector3s and BufferAttribute accessors, then
 // makes a second pass to normalize the result. Runtime track belts are plain
 // float position/normal buffers, so the same calculation can be performed in
-// one allocation-free scalar pass. This is mathematically identical for the
+// one allocation-free scalar pass (2026-10-19: hypot2/hypot3 instead of Math.hypot on
+// the per-frame track paths — V8's hypot allocates its argument array on every call,
+// ~0.3 MB a battle frame here; they return Math.hypot's exact bits, scalarHypot.ts).
+// This is mathematically identical for the
 // non-indexed procedural/extracted belts and preserves averaged normals for
 // indexed sourced belts, but removes one of the largest live CPU samples in a
 // full battle (28 animated bands at the near-camera gear cadence).
@@ -2076,7 +2166,7 @@ function recomputeTrackNormals(
       n[ci] += nx; n[ci + 1] += ny; n[ci + 2] += nz;
     }
     for (let i = 0; i < n.length; i += 3) {
-      const inv = 1 / (Math.hypot(n[i], n[i + 1], n[i + 2]) || 1);
+      const inv = 1 / (hypot3(n[i], n[i + 1], n[i + 2]) || 1);
       n[i] *= inv; n[i + 1] *= inv; n[i + 2] *= inv;
     }
   } else {
@@ -2092,7 +2182,7 @@ function recomputeTrackNormals(
       let nx = cby * abz - cbz * aby;
       let ny = cbz * abx - cbx * abz;
       let nz = cbx * aby - cby * abx;
-      const inv = 1 / (Math.hypot(nx, ny, nz) || 1);
+      const inv = 1 / (hypot3(nx, ny, nz) || 1);
       nx *= inv; ny *= inv; nz *= inv;
       n[i] = n[i + 3] = n[i + 6] = nx;
       n[i + 1] = n[i + 4] = n[i + 7] = ny;
@@ -4888,7 +4978,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     const z0=cfg.trackCarrierFromOuterFace?attribute.getZ(base+2)+(bandBasePos[(base+6)*3+2]-bandBasePos[(base+2)*3+2])/2:(attribute.getZ(base+2)+attribute.getZ(base+6))/2;
     const y1=cfg.trackCarrierFromOuterFace?attribute.getY(base)+(bandBasePos[(base+8)*3+1]-bandBasePos[base*3+1])/2:(attribute.getY(base)+attribute.getY(base+8))/2;
     const z1=cfg.trackCarrierFromOuterFace?attribute.getZ(base)+(bandBasePos[(base+8)*3+2]-bandBasePos[base*3+2])/2:(attribute.getZ(base)+attribute.getZ(base+8))/2;
-    const length=Math.max(Math.hypot(z1-z0,y1-y0),1e-6);
+    const length=Math.max(hypot2(z1-z0,y1-y0),1e-6);
     out.set(z0+(z1-z0)*t-(y1-y0)/length*rOut,
       y0+(y1-y0)*t+(z1-z0)/length*rOut);
   };
@@ -4920,7 +5010,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       + bandPosition.getZ(vertexBase + 8)) / 2;
     const y = y0 + (y1 - y0) * progress;
     const z = z0 + (z1 - z0) * progress;
-    const inverseLength = 1 / Math.max(Math.hypot(z1 - z0, y1 - y0), 1e-6);
+    const inverseLength = 1 / Math.max(hypot2(z1 - z0, y1 - y0), 1e-6);
     const tangentZ = (z1 - z0) * inverseLength;
     const tangentY = (y1 - y0) * inverseLength;
     _q.setFromAxisAngle(_X, Math.atan2(-tangentY, tangentZ));
@@ -8434,7 +8524,16 @@ function* createTankOwnedSteps(
   if (typeof P.postAssemble === 'function') {
     P.postAssemble({ root, hullG, turretG, gunG, recoilG });
   }
-  for (const step of P.afterAssemble) step({ root, hullG, turretG, gunG, recoilG });
+  // Equipment laid against the finished armour (a camouflage suit or field net) is built after the core, in slices of its
+  // own, against the vehicle exactly as it stands here (runDeferredAssembly).
+  const deferredAssembly = P.afterAssemble.splice(0);
+  if (opts.assemblyInCore === true) {
+    for (const step of deferredAssembly.splice(0)) {
+      const work = step({ root, hullG, turretG, gunG, recoilG }) as Generator<void, void, void> | undefined;
+      if (work) for (let next = work.next(); !next.done; next = work.next()) { /* the whole step, here */ }
+    }
+  }
+  const assembledChildren = deferredAssembly.length ? captureAssemblyChildren(root) : null;
 
   // ---- physically seated vehicle markings ----
   // Resolve these after all profile-owned regrouping so the support ray sees
@@ -10305,6 +10404,37 @@ function* createTankOwnedSteps(
     // No earlier yield: all core resources now belong to visual.dispose().
     // The root remains private through decoration and the unchanged finalizers.
     yield;
+    // The deferred assembly (a suit or field net), before the decorations that lay loads on it and drape it over them.
+    // Its resources join the core's disposables as they are made; the near-shadow casters gain its meshes exactly where
+    // the core's own list would have placed them (after the armour it picked).
+    if (assembledChildren) {
+      const made = yield* runDeferredAssembly(deferredAssembly, assembledChildren, { root, hullG, turretG, gunG, recoilG });
+      // the geometry receipt's caster work was measured over the hull and turret with the assembly's meshes casting
+      const casterWork = root.userData.shadowReplacementReceipt as ReturnType<typeof measureNearShadowCasterWork> | undefined;
+      if (casterWork) {
+        const laid = made.filter((object) => {
+          let owner: THREE.Object3D | null = object.parent;
+          while (owner && owner !== hullG && owner !== turretG) owner = owner.parent;
+          return !!owner;
+        });
+        const added = measureNearShadowCasterWork(laid);
+        root.userData.shadowReplacementReceipt = Object.freeze({ ...casterWork,
+          draws: casterWork.draws + added.draws, triangles: casterWork.triangles + added.triangles });
+      }
+      // the core's shadow proxies stand in for what the assembly put under the hull, turret and recoil groups
+      for (const object of made) {
+        let owner: THREE.Object3D | null = object.parent;
+        while (owner && owner !== hullG && owner !== turretG && owner !== recoilG) owner = owner.parent;
+        if (owner) object.traverse(castThroughProxies);
+      }
+      const shadowDetail = vehicleShadowDetailOf(root);
+      if (shadowDetail) {
+        markVehicleShadowDetail(root, {
+          detail: [...shadowDetail.detail, ...collectSuitShadowDetail([hullG, turretG, gunG, recoilG])],
+          proxies: shadowDetail.proxies,
+        });
+      }
+    }
     // FSP-01 (2026-09-25): the finisher stages after the core keep their own
     // elapsed-interval receipts (same contract as coreBuildTiming: bounded
     // non-await intervals, never CPU time) so a Garage switch profile can
@@ -10338,6 +10468,9 @@ function* createTankOwnedSteps(
     // scheme wheel paint; camouflage armor, skirts and guards are deliberately
     // outside this normalization.
     normalizeTankAppearance(root, { wheelPaint: mats.wheels, wheelPaintShade: mats.wheelsRecessed ?? null });
+    // 2026-10-18 (the wheel-band lane, round 3): the unlit flat parts (the KF51's mud flaps, the bore discs) write the
+    // vehicle tag a lit part does, so the ground occlusion never takes them for ground under the hull
+    tagUnlitVehicleMaterials(engineCtx, root);
     const tailNormalizeFinishedAt = performance.now();
 
     // Align complete banks before static batching can flatten their socket owners.
@@ -10442,6 +10575,12 @@ function* createTankOwnedSteps(
       return result.records;
     };
 
+    // 2026-10-19 (the 229 perf pass): one material object per program variant on the battle and Garage-hero builds
+    // (engine/programVariants.ts). The running gear's paint, rubber and gunmetal draw as plain meshes, instanced
+    // pools and the end-wheel batches: three re-resolved each one's program at every switch (18-36 getProgram
+    // calls a battle frame, 0.6-1.1 MB of parameter objects and key strings). Before the layers below, so each
+    // layer's material list holds the material its mesh draws.
+    if (batchStatic) root.userData.programVariants = splitProgramVariants(root);
     // Run after decoration, static batching and battle-detail regrouping so
     // every final color-pass mesh receives exactly one stable layer.
     let depthLayers = collectCoplanarDepthLayers(root);

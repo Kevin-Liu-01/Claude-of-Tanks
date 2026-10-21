@@ -63,7 +63,7 @@ import { nativeBrowserLaunchOptions, verifyNativeBrowserLaunch } from './native-
 
 const TOOL = fileURLToPath(import.meta.url);
 const REPO_ROOT = resolve(dirname(TOOL), '..');
-export const FLEET_COST_CENSUS = 'docs/history/research/fleet-continuation-20260921-census.csv';
+const FLEET_COST_CENSUS = 'docs/history/research/fleet-continuation-20260921-census.csv';
 
 /** The five Garage exhibit vehicles named by the FSP-01 brief. */
 export const GARAGE_FIVE = Object.freeze(['t90a_burlak_proto', 'm1a1_abrams_hc', 'leo2a4m', 't90am', 'xk2_black_panther']);
@@ -110,9 +110,9 @@ export function heaviestHullsFromCensus(csvText, { count = 12, exclude = [], ava
 }
 
 /** Dynamic entries resolved at switch time from the live carousel (garage.getNeighborIds(1)). */
-export const NEXT_CARD = '@next';
-export const PREV_CARD = '@prev';
-export const isDynamicEntry = (id) => id === NEXT_CARD || id === PREV_CARD;
+const NEXT_CARD = '@next';
+const PREV_CARD = '@prev';
+const isDynamicEntry = (id) => id === NEXT_CARD || id === PREV_CARD;
 
 /** Named sequences; `available` (the page's card ids) filters the census. */
 export function resolveProfileSequence(name, { censusText = '', available = null } = {}) {
@@ -637,7 +637,7 @@ export function normalizeStages(record, legacy) {
 }
 
 /** Self time by function and source line from a CDP sampling profile. */
-export function summarizeCpuProfile(profile, top = 30) {
+function summarizeCpuProfile(profile, top = 30) {
   const nodes = new Map((profile.nodes || []).map((node) => [node.id, node]));
   const selfUs = new Map();
   for (let index = 0; index < (profile.samples?.length || 0); index += 1) {

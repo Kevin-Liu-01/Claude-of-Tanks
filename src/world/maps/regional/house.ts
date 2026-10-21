@@ -85,7 +85,7 @@ export interface Opening {
   arch?: { spring?: number };
 }
 
-export interface ChimneySpec {
+interface ChimneySpec {
   /** position in the body frame */
   x: number;
   z: number;
@@ -557,7 +557,7 @@ function spallRender(sink: PartSink, spec: HouseSpec, wall: RegionalBucket, face
     // (clay under lime: the daub keeps its own tone to the edge, where the lime's broken lip shades it only a little)
     const edge = spec.spallTint ? 0.82 : 0.62;
     const rim = facadeOn() ? { shadeAt: (q: Vec3) => (Math.abs(q[0] - centre[0]) + Math.abs(q[1] - centre[1]) + Math.abs(q[2] - centre[2]) < 1e-6 ? 0.92 : edge) } : { shade: 0.86 };
-    sink.polygon(bucket, fan.map(([u, yy]) => facePoint(face, u, yy, 0.015)), { decor: true, ...rim, ...(spec.spallTint ? { tint: spec.spallTint } : {}) });
+    sink.polygon(bucket, fan.map(([u, yy]) => facePoint(face, u, yy, 0.015)), { decor: true, tag: 'renderLoss', ...rim, ...(spec.spallTint ? { tint: spec.spallTint } : {}) });
   }
 }
 
@@ -579,13 +579,13 @@ function layeredLoss(sink: PartSink, face: Face, wall: RegionalBucket, bucket: R
       const a = at(inner, p), b = at(outer, p), c = at(outer, q), d = at(inner, q);
       const pts = [a, b, c, d].map(([u, y]) => facePoint(face, u, y, o));
       const ins = new Set([0, 3]);
-      sink.polygon(wall, pts, { ...opts, shadeAt: (v: Vec3) => (ins.has(pts.findIndex((w) => w[0] === v[0] && w[1] === v[1] && w[2] === v[2])) ? shadeIn : shadeOut) });
+      sink.polygon(wall, pts, { ...opts, tag: 'renderLoss', shadeAt: (v: Vec3) => (ins.has(pts.findIndex((w) => w[0] === v[0] && w[1] === v[1] && w[2] === v[2])) ? shadeIn : shadeOut) });
     }
   };
   // the masonry: the hole, shaded toward its broken edge
   const centre = facePoint(face, cu, cy, 0.017);
   sink.polygon(bucket, [[cu, cy] as [number, number], ...ragged, ragged[0]].map(([u, y]) => facePoint(face, u, y, 0.017)), {
-    decor: true, shadeAt: (q: Vec3) => (Math.abs(q[0] - centre[0]) + Math.abs(q[1] - centre[1]) + Math.abs(q[2] - centre[2]) < 1e-6 ? 0.88 : 0.6),
+    decor: true, tag: 'renderLoss', shadeAt: (q: Vec3) => (Math.abs(q[0] - centre[0]) + Math.abs(q[1] - centre[1]) + Math.abs(q[2] - centre[2]) < 1e-6 ? 0.88 : 0.6),
   });
   if (room <= 1.04) return;
   const coat = Math.min(1.18, room);
@@ -823,7 +823,7 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
 }
 
 /** A shed roof laid by `placeShed`: its geometry (in its own frame) and the height of its underside over any point. */
-export interface PlacedShed {
+interface PlacedShed {
   rg: RoofGeometry;
   /** the underside of the slab over (x, z) of the emitting frame (past its eaves the plane runs on) */
   undersideAt(x: number, z: number): number;
@@ -854,7 +854,7 @@ export function placeShed(sink: PartSink, spec: { cx: number; cz: number; run: n
 }
 
 /** A lean-to against a wall: what `leanTo` lays and the heights it found. */
-export interface LeanToSpec {
+interface LeanToSpec {
   /** the wall it leans on and its run along the wall (face u) */
   face: Face;
   u0: number;

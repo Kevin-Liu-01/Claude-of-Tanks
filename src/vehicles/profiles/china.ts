@@ -574,8 +574,11 @@ function buildZTZ85III(P: ChinaBuilderPort): void {
   P.addGunExtra(cylZ(0.09, 0.13, 12), -0.38, 0.13, 0.24);
   P.addGunExtraDark(cylZ(0.094, 0.015, 12), -0.38, 0.13, 0.315);
   P.addGunExtraDark(box(0.05, 0.12, 0.05), -0.38, 0.015, 0.20);
+  // 227 gun-gaps (owner 2026-10-17, "fix any of these" with the C2 gun gap): the canvas collar's front cap stops at
+  // z 0.51 and the tube began at 0.52, a 10 mm see-through slit between them at every pose. The tube's rear now
+  // starts 30 mm inside the collar (0.48), so the collar seats on the tube; recoil only buries it deeper.
   tubeGun(P, [
-    [0.52, 1.50, 0.108], [1.50, 2.45, 0.098], [2.45, 3.05, 0.126],
+    [0.48, 1.50, 0.108], [1.50, 2.45, 0.098], [2.45, 3.05, 0.126],
     [3.05, 3.72, 0.094], [3.72, 4.03, 0.099],
   ], { rings: [[1.50, 0.112], [2.45, 0.129], [3.05, 0.129], [3.72, 0.103]], muzzle: 4.03 });
   muzzleBore(P, { r: 0.083 }); // §B3.1
@@ -1386,6 +1389,14 @@ function buildType59(P: ChinaBuilderPort): void {
       P.add('hullDark', cylY(0.022, 0.022, 0.022, 8),
         x + bx * w, 1.447, 1.88, -0.18, 0, 0);
     }
+  }
+  // VEH-13 (2026-10-16): a fender web closes each slot between the nose armour and the front track run. In world units,
+  // the slot was 3-6 cm wide at x 0.93-1.02, z 2.40-2.85, and open to the ground from above. A leg carries the web
+  // down to the lower nose plate. The B2 contiguity scan read the slot as enclosed sky once a remounted link course
+  // re-framed its grid. Hull-local values: the hull rig is scaled 0.855.
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.1404, 0.0292, 0.6082), side * 1.152, 1.3421, 3.076);
+    P.add('hull', box(0.0234, 0.269, 0.292), side * 1.0965, 1.193, 3.070);
   }
   // Segmented steel/rubber skirt armor hangs from the existing fender line;
   // broad hangers visibly transfer each panel into the hull instead of

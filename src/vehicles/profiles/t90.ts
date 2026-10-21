@@ -8,7 +8,7 @@ import { KIT as UNTYPED_KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzz
 import { paintAmmoVertexColours, prepareWeaponFinishGeometry } from '../weaponFinish.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { DRUM_ISSUE_PAINTS, barkLog, fabricRollParts, fuelDrumParts, latheY, place, sweptTube } from '../accessoryPrimitives.ts';
-import { vehicleAmbientFloorHook } from '../materials.ts';
+import { cloneFloorlessVehicleMaterial } from '../materials.ts';
 import { pushConvexQuad } from '../factoryGeometry.ts';
 import { clippedArmorSkin } from './armorFaceSampling.ts';
 import { buildPT91MPendekar } from './pt91mPendekar.ts';
@@ -1135,6 +1135,7 @@ function addT90ALegacyHullDeckAndGear(P: T90BuilderPort): void {
   // rides at the end of the build).
   {
     const lcMats = { ...P.mats, dark: rehookClone(P.mats.dark, 0x3a3e30, 0x10140c), detail: rehookClone(P.mats.detail, null, 0x0e120b) };
+    P.disposables.push(lcMats.dark, lcMats.detail); // each holds its own cascade registration (2026-10-17)
     for (const sL of [-1, 1]) {
       // x 0.95 (not the certified 1.54 drum seat): the 2-pod cluster's
       // footprint at the old seat rode the §B4 idler wrap/shoe envelope
@@ -2857,10 +2858,12 @@ function addT90MProryvRunningGearAndSkirts(P: T90BuilderPort): void {
   // Sprocket/idler BODY meshes keep scheme steel (the ref's end-wheel
   // zones read pale, win-luma 69-73).
   {
-    const darkTire = P.mats.rubber.clone();
+    // (2026-10-17, the wheel-band lane: floorless clones in the set's cascade registration — a raw clone draws
+    // untagged, and the ground occlusion bands untagged running gear under the belly line)
+    const darkTire = cloneFloorlessVehicleMaterial(P.mats.rubber);
     darkTire.color.setHex(0x22201b);
     darkTire.emissive.setHex(0x050504);
-    const darkDish = P.mats.wheels.clone();
+    const darkDish = cloneFloorlessVehicleMaterial(P.mats.wheels);
     // Keep the rubber course dark, but let the six authored steel dishes
     // read at gameplay scale.  The later wrapper made the whole suspension
     // a near-black strip; a restrained 0.68 steel tone restores the older
@@ -3389,8 +3392,12 @@ function addT90MProryvGunAndFinish(
   // world 2.35..3.2 read my 0.118 at 0.031 x6) and the bare-tube cy back to
   // 0 (the 0.010/0.021 seats overshot both quantized frames; r 0.102 at the
   // 1.61 axis splits them).
+  // 227 gun-gaps (owner 2026-10-17, "fix any of these" with the C2 gun gap): r1 shortened the saddle's root cone to
+  // end at z 0.45, but the sleeve still began at the 0.53 clamp (0.55), so a 60 mm see-through ring opened between
+  // the cone and the clamp at every pose. The sleeve's rear now starts inside the cone (0.42): the cone tapers onto
+  // the sleeve and the clamp rides it, as the comment above always described.
   tubeGun(P, [
-    [0.55, 0.85, 0.108, 0.108, 0, 0.006], [0.85, 1.40, 0.108, 0.108, 0, 0.006],
+    [0.42, 0.85, 0.108, 0.108, 0, 0.006], [0.85, 1.40, 0.108, 0.108, 0, 0.006],
     [1.40, 1.92, 0.108, 0.108, 0, 0.006],
     [1.92, 2.16, 0.102], [2.16, 2.62, 0.102],
     [2.62, 3.08, 0.102], [3.08, 3.54, 0.102],
@@ -3635,10 +3642,15 @@ function addT90SMLegacyHullDeckAndGear(P: T90BuilderPort): void {
     const log = FITTINGS.unditchingLog({ mats: P.mats, len: 0.9, r: 0.08, straps: 2, seed: 5 });
     log.position.set(0, 1.28, -2.90);
     P.hullG.add(log);
+    // VEH-13 outline rule (2026-10-17): the spare course rides the turret's bustle rack, laid across its top bars
+    // (turret frame; the finished turret is this frame x 1.05). The deck station (0.62, 0.60) sits in the turret's
+    // traverse and the gun's depression sweep, and so does every front-deck station. The solver's racks stood past
+    // the hull side.
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
-    links.position.set(0.62, 0, 0.60);
-    seatFittingOnHorizontalPlate(links, 1.40);
-    P.hullG.add(links);
+    links.position.set(0.43, 0, -1.90);
+    links.rotation.y = Math.PI / 2;
+    seatFittingOnHorizontalPlate(links, 0.562);
+    P.turretG.add(links);
     const cable = FITTINGS.towCable({
       mats: P.mats, eyes: false, r: 0.018,
       pts: [[-0.55, 1.424, -0.40], [-0.95, 1.420, -1.05], [-0.60, 1.428, -1.70]], seed: 9,
@@ -4349,6 +4361,7 @@ function buildT90(P: T90BuilderPort): void {
     // read as blue lens cells floating between the ERA rows; the print
     // carries its clusters on the fender line)
     const lcMats = { ...P.mats, dark: rehookClone(P.mats.dark, 0x3a3e30, 0x10140c), detail: rehookClone(P.mats.detail, null, 0x0e120b) };
+    P.disposables.push(lcMats.dark, lcMats.detail); // each holds its own cascade registration (2026-10-17)
     for (const sL of [-1, 1]) {
       const lc = FITTINGS.lightCluster({ nightKind: 'headlight', mats: lcMats, pods: 2, spacing: 0.15, rake: -0.30, seed: 3 });
       lc.position.set(sL * 1.66, 1.50, 2.62);   // base ON the fender shelf top (1.50)
@@ -5816,10 +5829,8 @@ function buildT90MS(P: T90BuilderPort): void {
     const log = FITTINGS.unditchingLog({ mats: P.mats, len: 0.9, r: 0.08, straps: 2, seed: 5 });
     log.position.set(0, 1.42, -3.05);
     P.hullG.add(log);
-    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
-    links.position.set(0.62, 0, 0.60);
-    seatFittingOnHorizontalPlate(links, 1.545);
-    P.hullG.add(links);
+    // VEH-13 outline rule (2026-10-17): the spare course moved to the bustle top (rebuildT90MSTurretExact); the deck
+    // station here sits in the gun's depression sweep, and the solver's rear-plate rack stood past the hull's length.
   }
   buildRunningGear(P, {
     // The 788 mm station cadence needs individually readable road wheels.
@@ -6324,6 +6335,15 @@ function rebuildT90MSTurretExact(P: T90BuilderPort): void {
       }
     }
   });
+  // VEH-13 outline rule (2026-10-17): the spare course rides the bustle top, laid across it (turret frame; the finished
+  // turret is this frame x 1.05). It is added after the rebuild, which clears the turret group.
+  {
+    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
+    links.position.set(0.38, 0, -1.90);
+    links.rotation.y = Math.PI / 2;
+    seatFittingOnHorizontalPlate(links, 0.653);
+    P.turretG.add(links);
+  }
   P.turretG.userData.t90MSCheekEraReceipt = Object.freeze({
     rowsPerCheek: chevronRows.length,
     modulesPerRow: 2,

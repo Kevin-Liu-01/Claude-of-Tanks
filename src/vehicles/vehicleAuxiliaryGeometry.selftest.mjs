@@ -15,7 +15,7 @@ bank.userData={fittingRoot:true,fitting:'smokeBank'};bank.rotation.y=2;
 alignSmokeBanks(root);root.updateMatrixWorld(true);
 const direction=new THREE.Vector3(...socket.direction).transformDirection(mesh.matrixWorld);
 assert.ok(direction.z>0,'complete bank alignment cannot leave rearward apertures');
-assert.equal(mesh.geometry,closed,'alignment preserves authored geometry');
+assert.ok(mesh.geometry === closed,'alignment preserves authored geometry');
 // Static batching must preserve the already-aligned rendered launcher frame.
 const batch=new THREE.Mesh();
 mesh.position.set(.4,.2,-.7);mesh.rotation.y=.35;mesh.scale.set(1.2,1.2,1.2);mesh.updateMatrix();

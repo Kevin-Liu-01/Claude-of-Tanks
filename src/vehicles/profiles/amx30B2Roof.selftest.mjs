@@ -28,7 +28,7 @@ for(const quality of ['high','low']) {
     assert.equal(roots.length,1,'exactly one complete roof machine gun');
     const names=['amx30b2_commander_machine_gun'];
     assert(turret.getObjectByName(names[0]).position.x<-.8,'commander MG follows negative-X cupola');
-    assert.equal(turret.getObjectByName('amx30b2_loader_machine_gun'),undefined,'no loader roof gun');
+    assert.ok(turret.getObjectByName('amx30b2_loader_machine_gun') === undefined,'no loader roof gun');
     assert(turret.getObjectByName(names[0]).userData.remoteControlled&&turret.getObjectByName(names[0]).getObjectByName('auxiliaryWeaponPitch'),
       'the commander MG is a working station');
     const localCupola=new Mesh(turret.getObjectByName('turretCupola').geometry,localShell.material);
@@ -56,7 +56,7 @@ for(const quality of ['high','low']) {
     for(const [yaw,pitch] of [[0,0],[-1.47,-.15],[1.2,.3]]) {
       turret.rotation.y=yaw;gun.rotation.x=pitch;tank.root.updateMatrixWorld(true);
       roots.forEach((weapon,i)=>{
-        assert.equal(weapon.parent,turret,'roof mount stays under turret yaw, outside main-gun pitch');
+        assert.ok(weapon.parent === turret,'roof mount stays under turret yaw, outside main-gun pitch');
         assert(weapon.position.distanceTo(rest[i])<1e-10);
         const expected=turret.localToWorld(rest[i].clone());
         assert(weapon.getWorldPosition(new Vector3()).distanceTo(expected)<1e-8,'actual fitting follows yaw');

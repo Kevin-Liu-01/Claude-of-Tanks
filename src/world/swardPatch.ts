@@ -41,14 +41,16 @@ const smooth = (a: number, b: number, v: number): number => {
  * them darker and its tips brighter. One uniform both tiers' materials share (the tufts' card contrast, the blades' root
  * and tip); the QA hook window.__SWARD_TONE flips it live.
  */
-export const SWARD_TONE: { value: number } = { value: 1 };
+// (227, the JUDGE's j1c: "darker roots and gaps read as isolated tufts on a bare flat green texture"; the flat sward reads
+// as a continuous, denser sward) off by default until the depth comes with more coverage; the lever stays for re-judging
+export const SWARD_TONE: { value: number } = { value: 0 };
 if (typeof window !== 'undefined') (window as unknown as { __SWARD_TONE?: { value: number } }).__SWARD_TONE = SWARD_TONE;
 
 /** A patch's multipliers on a sward tint (r, g, b), its cured share (0..1: last season's straw) and its light. */
 export interface SwardPatch { r: number; g: number; b: number; cured: number; value: number }
 
 /** The kinds whose sward carries russet stands (a reed bed, a dune's marram and the tundra's sedge do not). */
-export type SwardPatchKind = 'meadow' | 'steppe' | 'savanna' | 'reed' | 'tundra' | 'verge' | 'dune';
+type SwardPatchKind = 'meadow' | 'steppe' | 'savanna' | 'reed' | 'tundra' | 'verge' | 'dune';
 
 /**
  * The sward's patch at (x, z): fresh regrowth (an 11 m hue field's top quarter: greener, less red and blue), last

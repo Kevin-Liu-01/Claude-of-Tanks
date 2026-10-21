@@ -9,6 +9,7 @@ import {getSpec} from '../specs.ts';
 import {createTankState} from '../../sim/movement.ts';
 import {auditVisibleReturnRollerContact} from '../returnRollerContactTest.mjs';
 import {matrix,finiteClearance,continuousShoeClearance,moving} from '../returnRollerPhysicsTest.mjs';
+import { graphLabels } from '../../../tools/receipt-kit.test-support.mjs';
 
 // The literal published 6aa3bb6bf gear inputs (a frozen preservation witness) are retired: whole-tank change
 // detection of t14_armata is the fleet geometry ledger's. Four rollers/side is an inferred T14 layout; this test
@@ -49,10 +50,10 @@ function body(root){const out=[];root.traverse(o=>{
 });return out;}
 function rollerBounds(c){
  const tire=c.port.hullG.getObjectByName('gearReturnRollerRotors');
- assert.equal(tire.count,8);assert.deepEqual(tire.material,[c.port.mats.rubber,c.port.mats.wheels]);
+ assert.equal(tire.count,8);assert.deepEqual(graphLabels(tire.material),graphLabels([c.port.mats.rubber,c.port.mats.wheels]));
  assert.equal(tire.visible,true);assert.equal(tire.userData.appearanceRole,undefined,'Composite preserves its distinct material roles');
- assert.equal(c.port.hullG.getObjectByName('gearReturnRollerTires'),undefined);
- assert.equal(c.port.hullG.getObjectByName('gearReturnRollerDiscs'),undefined);
+ assert.ok(c.port.hullG.getObjectByName('gearReturnRollerTires') === undefined);
+ assert.ok(c.port.hullG.getObjectByName('gearReturnRollerDiscs') === undefined);
  const bounds=[];
  for(let i=0;i<8;i++){
   const m=matrix(tire,i,c.port.hullG),center=new T.Vector3().setFromMatrixPosition(m),box=new T.Box3();let radius=0;
@@ -72,8 +73,8 @@ function mounts(c,bounds){
  const mesh=c.port.hullG.getObjectByName('gearReturnRollerSpindles');
  assert.equal(mesh.count,8);assert.equal(mesh.geometry.parameters.radiusTop,.026);
  assert.equal(mesh.geometry.parameters.radialSegments,c.port.q?8:4);assert.equal(mesh.geometry.parameters.openEnded,false);
- assert.equal(mesh.material,c.port.mats.wheels);assert.equal(mesh.userData.runningGear,true);
- assert.equal(mesh.parent,c.port.hullG,'Mounts share the roller assembly owner, not a disposable detail LOD');
+ assert.ok(mesh.material === c.port.mats.wheels);assert.equal(mesh.userData.runningGear,true);
+ assert.ok(mesh.parent === c.port.hullG,'Mounts share the roller assembly owner, not a disposable detail LOD');
  for(const [i,b]of bounds.entries()){
   const g=mesh.geometry.clone().applyMatrix4(matrix(mesh,i,c.port.hullG));g.computeBoundingBox();const box=g.boundingBox,side=Math.sign(b.center.x);g.dispose();
   assert.ok(box.min.x<b.center.x&&box.max.x>b.center.x,'Spindle crosses finite hub interior');
@@ -89,8 +90,8 @@ function mounts(c,bounds){
 for(const quality of['high','low']){
  const old=capture('t14_armata',buildT14X,quality,true),current=capture('t14_armata',buildT14X,quality,false);
  try{
-  assert.equal(old.port.hullG.getObjectByName('gearReturnRollerTires'),undefined);
-  assert.equal(old.port.hullG.getObjectByName('gearReturnRollerRotors'),undefined);
+  assert.ok(old.port.hullG.getObjectByName('gearReturnRollerTires') === undefined);
+  assert.ok(old.port.hullG.getObjectByName('gearReturnRollerRotors') === undefined);
   assert.deepEqual(current.emissions,old.emissions,'Every old hull/turret/fitting emission remains byte-identical');
   assert.deepEqual(body(current.tank.root),body(old.tank.root),'Actual original structural buffers, materials and owner frames remain exact');
   for(const name of['rig_hull','rig_turret','rig_gun'])assert.deepEqual(current.tank.root.getObjectByName(name).matrixWorld.elements,old.tank.root.getObjectByName(name).matrixWorld.elements);

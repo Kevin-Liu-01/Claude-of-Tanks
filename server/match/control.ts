@@ -34,7 +34,7 @@ export interface MatchStartRequest {
   battleLimitS?: number;
 }
 
-export interface MatchControlStatus {
+interface MatchControlStatus {
   roomId: string;
   matchId: string | null;
   phase: string;
@@ -42,7 +42,7 @@ export interface MatchControlStatus {
   verdict: { result: 'alpha' | 'bravo' | 'draw'; reason: string } | null;
 }
 
-export interface MatchControlPort {
+interface MatchControlPort {
   actor(roomId: string): MatchActor | undefined;
   createActor(request: MatchStartRequest): MatchActor;
   removeActor(roomId: string, reason?: number): boolean;
@@ -75,7 +75,7 @@ function readBot(value: unknown): ActorBotSpec | null {
 }
 
 /** Validate an untrusted start body into the actor's shapes; null when malformed. */
-export function readMatchStartRequest(value: unknown): MatchStartRequest | null {
+function readMatchStartRequest(value: unknown): MatchStartRequest | null {
   if (!isRecord(value)) return null;
   if (typeof value.roomId !== 'string' || !ID_RE.test(value.roomId)) return null;
   if (typeof value.matchId !== 'string' || !/^[a-zA-Z0-9_-]{1,48}$/.test(value.matchId)) return null;

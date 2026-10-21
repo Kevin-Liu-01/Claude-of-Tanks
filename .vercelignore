@@ -10,3 +10,5 @@ shots
 .env.*
 !.env.example
 !.env.*.example
+# changed-only regen fingerprints (tools/changed-ids.mjs): a release tool input, never served
+release/

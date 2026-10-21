@@ -36,7 +36,7 @@ function checkFrames(tank){
   }
   turret.rotation.y=0;gun.rotation.x=0;tank.root.updateMatrixWorld(true);
   assert.ok(gun.getObjectByName('gunMount')?.isMesh,'actual pitching mount, not an empty joint');
-  assert.equal(gun.getObjectByName('rig_recoil').parent,gun);
+  assert.ok(gun.getObjectByName('rig_recoil').parent === gun);
 }
 function checkBore(tank){
   const cannon=tank.root.getObjectByName('gun'),all=visibleMeshes(tank.root);

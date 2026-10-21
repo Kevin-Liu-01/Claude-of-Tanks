@@ -129,14 +129,44 @@ function reactiveArmor(P: TankBuilderPort): void {
   }
 }
 
+// Owner 2026-10-17 (close-up of the C2 gun: "c2 ariete has gap in gun"): the C2 stretches the supplied barrel x1.22
+// along the bore about the trunnion, but the fixed gun shroud (gunMount) is not stretched, so the barrel's open rear
+// ring moved 52 mm (gun frame; 64 mm after the family scale) ahead of the shroud's front lip and left a see-through
+// ring slot. The barrel's rear ring continues backward as a closed sleeve of its own section: it starts inside the
+// shroud's front chamfer (buried below its skin) and ends 6 mm inside the barrel, where its front cap also closes the
+// barrel's open rear. 0.5 mm under the barrel radius (48 segments, phase-aligned) so the two skins never fight;
+// recoil slides it back into the shroud with the tube. Gun frame, before the family enlargement; the muzzle and the
+// barrel length datum are unchanged.
+const ARIETE_C2_BARREL_STRETCH = 1.22, ARIETE_C2_BARREL_RADIAL = 1.18;
+function seatStretchedBarrelInShroud(P: TankBuilderPort): void {
+  const barrelRearZ = (1.95976235 - SOURCE.trunnion[2]) * ARIETE_C2_BARREL_STRETCH;
+  const barrelRadius = .12248 * ARIETE_C2_BARREL_RADIAL;
+  // the shroud's front chamfer runs r .157286 at z 1.960603 to r .122 at its 2.043872 lip (arieteXSuppliedGun.ts)
+  const chamferRearZ = 1.960603 - SOURCE.trunnion[2], lipZ = 2.043872 - SOURCE.trunnion[2];
+  const sleeveRadius = barrelRadius - .0005;
+  const emergeZ = chamferRearZ + (lipZ - chamferRearZ) * (.157286 - sleeveRadius) / (.157286 - .122);
+  const z0 = emergeZ - .01, z1 = barrelRearZ + .006;
+  // r3: a cylinder, not a four-row lathe; the lathe averaged each rim's cap and side normals, so the sleeve shaded as
+  // a 45-degree bevel along its whole length and read glassy beside the barrel. The cylinder's caps carry their own
+  // vertices, and its 48 sides start at the lathe's phase (both sweep x = r sin, z = r cos from 0).
+  P.add('gun', new THREE.CylinderGeometry(sleeveRadius, sleeveRadius, z1 - z0, 48).rotateX(Math.PI / 2)
+    .translate(0, 0, (z0 + z1) / 2));
+}
+
 export function buildArieteC2X(P: TankBuilderPort): void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
   buildArieteXSupplied(P, D.boreRadiusM / S / 1.18, true);
   P.scaleBuckets(['gun', 'gunDark'], 1.18, 1.18, 1.22);
   P.muzzleZ *= 1.22;
+  seatStretchedBarrelInShroud(P);
   gunnerSight(P); panoramicSight(P); commanderWeapon(P); coolingDeck(P); protection(P); reactiveArmor(P);
   enlargeArieteXFamily(P);
+  // VEH-13 (2026-10-16): a seam strip under each forward glacis joint closes the 2-4 cm seam (x +-1.05, z 3.86-3.97)
+  // between the outer and inner plates, which was open to the ground from above. The B2 contiguity scan read it as
+  // enclosed sky once the re-seated forward link carry re-framed its grid. Set 2 mm under the lower plate and laid on
+  // the plates' 0.4555 rad slope; hull frame, after the family enlargement.
+  for (const side of [-1, 1]) P.add('hullDetail', KIT.box(0.07, 0.02, 0.165), side * 1.05, 1.3429, 3.915, 0.4555, 0, 0);
   addRearFieldStowage(P);
   P.hullG.userData.arieteC2Derivation = Object.freeze({ base: 'c1_ariete',
     originalPrimaryBodyRetained: false, unchangedPrimaryHullPieces: 9,

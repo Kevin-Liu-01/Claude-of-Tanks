@@ -34,13 +34,18 @@ tree with the cutover of 2026-09-29 (`docs/MULTIPLAYER-V2.md` §13.10).
 - `pacingRoster.test-support.ts` is the battle-pacing gate's roster fixture
   (`battlePacing.selftest.mjs`, `tools/pacing-trace.mjs`): the seeded
   era-matched bot fill the gate's bands were measured over.
+- The core pacing run plays in eight one-thread receipts,
+  `battlePacingShard1.selftest.mjs` to `battlePacingShard8.selftest.mjs`
+  (2026-10-16, test-speed R9a). `battlePacing.selftest.mjs` merges their records
+  from the run's directory (`COT_SELFTEST_RUN_DIR`) and judges all 132. Each share
+  is claimed by one live process, and the judge plays any share nobody plays
+  (`battlePacingRun.test-support.mjs`; docs/DEVELOPMENT.md, "The pacing tail").
 - `relayCredentials.ts` mints a seated player's short-lived TURN credentials
   inside the room (2026-10-02, `docs/MULTIPLAYER-V2.md` §13.14): the rooms Worker
   and the LAN helper hand it to the room actor's `relayCredentials` port, one
   grant per admitted `room_relay`, never cached or logged; STUN only when no
   secret is set. Run `node server/relayCredentials.selftest.mjs`. Credentials are
-  never committed; `api/ice.ts` is a deprecated STUN-only answer for one release
-  (`node server/ice.selftest.mjs`).
+  never committed (the deprecated STUN-only `api/ice.ts` route is retired, 229).
 - `telemetryRecord.ts` is the shared entry-telemetry schema; `jev/main.ts` is the
   local HTTP wrapper around `api/jev.ts` for the Vite dev server (`npm run jev:dev`,
   port 8794; docs/JEV-COMMANDER.md).

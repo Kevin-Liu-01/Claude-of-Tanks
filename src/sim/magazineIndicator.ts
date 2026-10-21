@@ -31,12 +31,14 @@ interface MagazineIndicatorCombat {
   launcherSalvoShots?: number | null;
   /** Network mirror only: the authority's indicator, decoded from the snapshot. The simulation never sets it. */
   magazineIndicator?: MagazineIndicator | null;
+  /** Shots left per shell slot, the loaded round included (sim/ammunition; mirrored by the network client). */
+  ammo?: ArrayLike<number> | null;
 }
 
 /** The spec fields the derivation reads. */
 export interface MagazineIndicatorSpec {
   gun?: {
-    shells?: ReadonlyArray<{ guided?: boolean } | undefined> | null;
+    shells?: ReadonlyArray<{ guided?: boolean; reloadGroup?: unknown } | undefined> | null;
     launcherSalvo?: { rounds: number } | null;
   } | null;
 }
@@ -86,6 +88,53 @@ export function magazineIndicator(
   const capacity = Math.max(0, Math.floor(magazine?.capacity ?? 0));
   if (!magazine || capacity <= 0) return null;
   return writeIndicator(out, Math.max(0, Math.min(capacity, Math.floor(magazine.rounds ?? 0))), capacity, false);
+}
+
+function stowedRounds(ammo: ArrayLike<number>, slot: number): number {
+  const count = Number(ammo[slot]);
+  return Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+}
+
+/**
+ * Shots left across the slots a cannon magazine feeds (every round that is neither guided nor on its own reload group,
+ * sim/damage startPostShotReload). The magazine itself is type-agnostic — a depleted type falls back to the next stocked
+ * one without a magazine reload — so its feed is the sum. Infinity when the state carries no inventory (fixtures).
+ */
+export function magazineFedRounds(
+  combat: Pick<MagazineIndicatorCombat, 'ammo'> | null | undefined,
+  spec: MagazineIndicatorSpec | null | undefined,
+): number {
+  const ammo = combat?.ammo;
+  const shells = spec?.gun?.shells;
+  if (!ammo || !shells) return Infinity;
+  let rounds = 0;
+  for (let slot = 0; slot < shells.length && slot < ammo.length; slot++) {
+    const shell = shells[slot];
+    if (shell?.guided === true || shell?.reloadGroup) continue;
+    rounds += stowedRounds(ammo, slot);
+  }
+  return rounds;
+}
+
+/**
+ * Owner 2026-10-17: "if you are out of ammo, the reload indicators should have a special edge case, including
+ * autoloader/missile indicators." The stowed rounds the shown group can still load. The group counters alone cannot
+ * say: a full magazine reload refills to capacity and a salvo counter wraps whatever is stowed, so an empty gun read
+ * as loading and then ready. A salvo rack loads from its guided slot; a cannon magazine from every magazine-fed slot.
+ * Infinity under unlimited rounds (the channel refills at fire) or without an inventory to read. Presentation only.
+ */
+export function magazineFeedRounds(
+  combat: MagazineIndicatorCombat | null | undefined,
+  spec: MagazineIndicatorSpec | null | undefined,
+  indicator: Pick<MagazineIndicator, 'launcher'> | null | undefined,
+  unlimited: boolean,
+): number {
+  if (unlimited || !combat || !indicator) return Infinity;
+  if (indicator.launcher) {
+    const ammo = combat.ammo;
+    return ammo ? stowedRounds(ammo, Math.max(0, combat.shellSlot ?? 0)) : Infinity;
+  }
+  return magazineFedRounds(combat, spec);
 }
 
 /** True when a hull's weapon table contains any multi-round group (for fleet audits and the garage). */
