@@ -1754,6 +1754,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/wadiRumPosts.selftest.mjs',
     // the map-content lane (L2, wave 358a): a polar station's field works in its own stock (drums, drift fence)
     'src/world/maps/regional/polarWorks.selftest.mjs',
+    // (the 229 follow-up) Taurus-Littrow's dish arms seated in their bowls' shells, none proud of a bowl's face
+    'src/world/maps/regional/littrow.selftest.mjs',
     // (the Earthrise 228 rebuild, 2026-10-18) a lunar station's works and clutter in its own stock (regolith bags, the tether)
     'src/world/maps/regional/lunarWorks.selftest.mjs',
     // props census #12 (2026-10-15): the stations as the Moon and Mars build them (maps/spaceKit.ts)
