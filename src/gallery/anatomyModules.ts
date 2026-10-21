@@ -234,13 +234,24 @@ function rack(s: ModuleSketch, caliberMm: number, axis: Axis, blowOff: boolean):
     }
   }
   s.rounds.push({ radius: r, length: length * 0.84, placements });
-  // Rack frame: end plates across the round axis and shelf rails between the rows.
+  // An open rack frame (corner posts and rails along the rounds) that never hides the stowed rounds.
+  const post = Math.max(0.012, Math.min(a, b) * 0.03);
   for (const end of [-1, 1]) {
-    const [x, y, z] = axis === 'x' ? [end * sx * 0.46, 0, 0] : axis === 'y' ? [0, end * sy * 0.46, 0] : [0, 0, end * sz * 0.46];
-    const size = axis === 'x' ? [sx * 0.04, sy * 0.96, sz * 0.96] : axis === 'y' ? [sx * 0.96, sy * 0.04, sz * 0.96] : [sx * 0.96, sy * 0.96, sz * 0.04];
-    s.box(size[0], size[1], size[2], 'accent', x, y, z);
+    for (const u of [-1, 1]) {
+      const along = end * length * 0.46;
+      const [x, y, z] = axis === 'x' ? [along, 0, u * sz * 0.47] : axis === 'y' ? [u * sx * 0.47, along, 0] : [u * sx * 0.47, 0, along];
+      const size = axis === 'x' ? [post, sy * 0.96, post] : axis === 'y' ? [post, post, sz * 0.96] : [post, sy * 0.96, post];
+      s.box(size[0], size[1], size[2], 'accent', x, y, z);
+    }
   }
-  if (blowOff && axis !== 'y') s.box(sx * 0.96, sy * 0.035, sz * 0.96, 'glass', 0, sy * 0.47, 0);
+  for (const v of [-1, 1]) {
+    for (const u of [-1, 1]) {
+      const [x, y, z] = axis === 'x' ? [0, v * sy * 0.47, u * sz * 0.47] : axis === 'y' ? [u * sx * 0.47, 0, v * sz * 0.47] : [u * sx * 0.47, v * sy * 0.47, 0];
+      const size = axis === 'x' ? [sx * 0.94, post, post] : axis === 'y' ? [post, sy * 0.94, post] : [post, post, sz * 0.94];
+      s.box(size[0], size[1], size[2], 'accent', x, y, z);
+    }
+  }
+  if (blowOff && axis !== 'y') s.box(sx * 0.96, sy * 0.03, sz * 0.96, 'glass', 0, sy * 0.47, 0);
 }
 
 function canisters(s: ModuleSketch, count: number, axis: Axis): void {
@@ -318,9 +329,11 @@ function ammunition(s: ModuleSketch, part: ModulePart, caliberMm: number): void 
     return;
   }
   if (/carousel|conveyor/i.test(form)) { carousel(s, caliberMm, false); return; }
-  if (/Canisters|twoPart|mixed152|MissileBins|sealed/i.test(form)) { canisters(s, 2, longest === 'y' ? 'y' : horizontal); return; }
+  if (/Canisters|MissileBins|sealed/i.test(form)) { canisters(s, 2, longest === 'y' ? 'y' : horizontal); return; }
   if (/Boxes|BeltBoxes|AmmoBox|ReadyBins|bmp3/i.test(form)) { ammoBoxes(s); return; }
-  rack(s, caliberMm, longest === 'y' && sy > Math.max(sx, sz) * 1.2 ? 'y' : horizontal, /blowOff|bustle/i.test(form));
+  // Bustle stowage holds its rounds pointing forward, base to the blow-off wall; other racks lie along their length.
+  const bustle = /blowOff|bustle/i.test(form) || (part.frame === 'turret' && !/hull/i.test(form));
+  rack(s, caliberMm, bustle ? 'z' : longest === 'y' && sy > Math.max(sx, sz) * 1.2 ? 'y' : horizontal, bustle);
 }
 
 // --- electronics and firepower -----------------------------------------------------------------------------------
