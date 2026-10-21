@@ -1202,7 +1202,7 @@
    "hostSweep": []
   },
   "leo2a2": {
-   "inputHash": "fa97506fac352fe0",
+   "inputHash": "fbe9c30c4212dddf",
    "runs": [
     {
      "index": 0,
@@ -1235,18 +1235,16 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.149,
-      "gap": 0.851,
+      "support": 0.94,
+      "gap": 0.06,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0,
+      "sunkMaxM": 0.003,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 1,
+      "exposure": 0.897,
       "host": "turret<buildLeo2A4TurretStage1@profiles/leopard.ts:6808>"
      }
     }
@@ -1596,7 +1594,7 @@
    "hostSweep": []
   },
   "leo2a4m_can": {
-   "inputHash": "405e7b37de198176",
+   "inputHash": "f3a6285a597be9d9",
    "runs": [
     {
      "index": 0,
@@ -1629,19 +1627,17 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.261,
-      "gap": 0.739,
+      "support": 0.94,
+      "gap": 0.06,
       "air": 0,
       "hidden": 0,
       "sunkMaxM": 0.003,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.989,
-      "host": "turret<buildLeo2A4MTurretStage1@profiles/leopard.ts:14378>"
+      "exposure": 0.897,
+      "host": "turret<buildLeo2A4MTurretStage1@profiles/leopard.ts:14383>"
      }
     }
    ],
@@ -2792,7 +2788,7 @@
    "hostSweep": []
   },
   "strv81": {
-   "inputHash": "7acf1a631d50e7e0",
+   "inputHash": "8b5c5e8ce2f3d628",
    "runs": [
     {
      "index": 0,
@@ -2803,19 +2799,17 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.012,
-      "gap": 0.988,
+      "support": 0.904,
+      "gap": 0.096,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0,
+      "sunkMaxM": 0.001,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 1,
-      "host": "hullDetail<centurionBuildHullStage2@profiles/uk.ts:2085>"
+      "exposure": 0.943,
+      "host": "hull<loftBand@profiles/uk.ts:351>"
      }
     },
     {
@@ -3399,7 +3393,7 @@
    "hostSweep": []
   },
   "t90a_burlak_proto": {
-   "inputHash": "348c2847274a9046",
+   "inputHash": "e46e158468903c05",
    "runs": [
     {
      "index": 0,
