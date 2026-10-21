@@ -91,6 +91,8 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/gen-interior-fills.mjs': lists('src/vehicles/interiorFillGroups/*.generated.ts'),
   'tools/i18n-scan.mjs': lists('src/**/*.{ts,tsx,js,mjs,cjs,html}'),
   'tools/id-list.selftest.mjs': lists('tools/*.mjs'),
+  // 230 (foliage-shadow-sites-228): every virtual: import under src resolves through the probe server's plugins
+  'tools/map-probe-runtime.selftest.mjs': lists('src/**/*'),
   'tools/marketing-shots/battle-campaign.selftest.mjs': lists('tools/marketing-shots/scenes-action-r3/*.json',
     'tools/marketing-shots/scenes-foreground-r3/*.json'),
   'tools/marketing-shots/versus-media.selftest.mjs': lists('public/media/versus-r*/*'),
