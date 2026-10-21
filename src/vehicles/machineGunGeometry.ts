@@ -621,7 +621,7 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
   // the fit (release 229), each round from the release-227 emplacement's dimensions at the round's recoil stroke
   let stroke = RIDING_CRADLE_RECOIL_M, head = near, pinIn = 0, feedFront = 0, floorFeedX = 0, barHalf = 0;
   let pinZ: [number, number] = [0, 0], feedZ: [number, number] | null = null, floorZ: [number, number] = [0, 0];
-  let shieldDZ = 0, shieldDrop = 0, portW = 0, portBelow = 0, portAbove = 0, armIn = 0, ringOut = 0, baseH = 0, baseTop = 0, ringDrop = 0, ringGap = 0;
+  let shieldDZ = 0, shieldDrop = 0, portW = 0, portBelow = 0, portAbove = 0, armIn = 0, ringOut = 0, armHalf = 0, baseH = 0, baseTop = 0, ringDrop = 0, ringGap = 0;
   // pitch group: the cheeks, the floor under the receiver, the shield's carrier and the class's furniture (the pin and its
   // head are drawn last)
   const drawCradle = (target: MachineGunParts): void => {
@@ -710,32 +710,56 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
       }
     }
     // the yaw stage: the side arm on the pin side 4 mm outboard of its cheek, its bearing ring round the pin, the base
-    armIn = pinIn + pinT + 0.004 * s; ringOut = 0.020 * s; baseH = 0.030 * s; baseTop = sweptLow - 0.010 * s; ringDrop = 0; ringGap = 0;
+    armIn = pinIn + pinT + 0.004 * s; ringOut = 0.020 * s; armHalf = ringOut; baseH = 0.030 * s; baseTop = sweptLow - 0.010 * s; ringDrop = 0; ringGap = 0;
     if (!gun) break;
     // the yaw stage's fit runs over the cradle as drawn (its parts' boxes) and the gun at rest and recoiled
     const drawn: { box: FitBox; spins: boolean }[] = [];
     drawCradle(recordingParts({ add: () => {} }, drawn));
     const moving: { T: ArrayLike<number>; stroke: number }[] = [{ T: gun, stroke }];
     for (const d of drawn) moving.push({ T: boxTriangles(d.box), stroke: 0 });
-    const poses: number[] = []; for (let a = -0.18; a < e; a += Math.PI / 180) poses.push(a); poses.push(e);
+    // the fleet's pitch range: 10.3 degrees down (the heavy and rifle profiles) to 0.76 rad up (their 0.75)
+    const poses: number[] = []; for (let a = -0.18; a < 0.76; a += Math.PI / 180) poses.push(a); poses.push(0.76);
+    let shorter = 0;
     for (let pass = 0; pass < 6; pass++) {
       const u0 = armIn - airYaw, u1 = armIn + armT + airYaw;
-      let closest = Infinity, out = armIn, blocked = false;
+      // the moving parts in the arm's slab: too close to the pin for a ring (radial), or sections the arm must clear
+      const secs: { sec: number[]; r: number; o: number; T: ArrayLike<number> }[] = [];
+      let closest = Infinity, out = armIn, radial = false;
       for (const { T, stroke: r } of moving) for (let o = 0; o < T.length; o += 9) {
         const sec = sectionInSlab(T, o, side, u0, u1);
         if (sec.length < 6) continue;
         const d = sectionDistance(sec, recY, recZ, r);
-        let hit = d < ringIn + 0.003 * s + airYaw;
-        if (!hit) for (const a of poses) for (const rr of r ? [0, r / 2, r] : [0]) {
-          if (sectionMeetsRect(posedSection(sec, recY, recZ, a, rr), -Infinity, recY - Math.min(ringOut, d - airYaw) + 0.004 * s + airYaw,
-            recZ - Math.min(ringOut, d - airYaw) - airYaw, recZ + Math.min(ringOut, d - airYaw) + airYaw)) { hit = true; break; }
-        }
-        if (hit) { blocked = true; out = Math.max(out, side * T[o]!, side * T[o + 3]!, side * T[o + 6]!); }
-        else closest = Math.min(closest, d);
+        if (d < ringIn + 0.003 * s + airYaw) { radial = true; out = Math.max(out, side * T[o]!, side * T[o + 3]!, side * T[o + 6]!); }
+        else { closest = Math.min(closest, d); secs.push({ sec, r, o, T }); }
       }
-      if (!blocked) { ringOut = Math.min(ringOut, closest - airYaw); break; }
+      const ringFit = Math.min(0.020 * s, closest - airYaw);
+      // the arm block under the ring (its top 4 mm into the ring), as deep as the ring or as much less as clears
+      const meets = (half: number): { T: ArrayLike<number>; o: number } | null => {
+        for (const { sec, r, o, T } of secs) for (const a of poses) for (const rr of r ? [0, r / 2, r] : [0]) {
+          if (sectionMeetsRect(posedSection(sec, recY, recZ, a, rr), -Infinity, recY - Math.max(ringFit - 0.004 * s, pinR + airYaw + 0.0005) + airYaw,
+            recZ - half - airYaw, recZ + half + airYaw)) return { T, o };
+        }
+        return null;
+      };
+      let blocker = radial ? null : meets(ringFit);
+      if (!radial && !blocker) { ringOut = ringFit; armHalf = ringFit; break; }
+      if (!radial && blocker) {
+        let lo = 0.006 * s, hi = ringFit;
+        if (!meets(lo)) {
+          for (let i = 0; i < 10; i++) { const mid = (lo + hi) / 2; if (meets(mid)) hi = mid; else lo = mid; }
+          ringOut = ringFit; armHalf = lo; break;
+        }
+        out = Math.max(out, side * blocker.T[blocker.o]!, side * blocker.T[blocker.o + 3]!, side * blocker.T[blocker.o + 6]!);
+      }
+      // a recoiling part (a small GPMG's charging knob) that would leave no room for the ring takes a shorter stroke (at
+      // least 6 mm) before the side arm steps outboard past it
+      if (pass === 0 && radial) {
+        const room = strokeRoom(gun, side, u0, u1, recY, recZ, ringIn + 0.003 * s + airYaw, stroke);
+        if (room < stroke && room >= 0.006) { shorter = Math.floor(room * 2000) / 2000; break; }
+      }
       armIn = out + airYaw + 0.001 * s;
     }
+    if (shorter) { stroke = shorter; continue; }
     // the base under the lowest anything comes over its footprint
     {
       const u0 = -0.045 * s - airYaw, u1 = armIn + armT + airYaw, reach = recY - baseTop - 0.02 * s;
@@ -795,7 +819,7 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
   if (baseTop - baseH < sleeveTop) baseH = Math.max(0.012 * s, baseTop - sleeveTop);
   const baseY = baseTop - baseH;
   if (baseY < sleeveTop - 1e-9) throw new Error('addPintleRidingCradle: no room for the yoke base over the riser');
-  const armX = side * (armIn + armT / 2), armD = 2 * ringOut;
+  const armX = side * (armIn + armT / 2), armD = 2 * armHalf;
   // yaw stage: flange, column, riser sleeve, the base and the side arm with its bearing ring round the pin, all in the
   // vehicle's paint (the cradle's slot; land stage, critic CN-D1)
   const painted = { ...context, supportSlot: cradleSlot, weaponSlot: cradleSlot };
@@ -805,7 +829,8 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
   addPintleRiserSleeve(painted);
   const baseIn = 0.045 * s, baseX0 = side * (armIn + armT), baseX1 = f * baseIn;
   parts.add(cradleSlot, block(Math.abs(baseX1 - baseX0), baseH, baseFront - baseRear), (baseX0 + baseX1) / 2, baseY + baseH / 2, (baseRear + baseFront) / 2);
-  const armTop = recY - ringOut + 0.004 * s;
+  // the arm's top 4 mm into the ring, never nearer the pin than the bearing's own air (a small gun's shrunk ring)
+  const armTop = recY - Math.max(ringOut - 0.004 * s, pinR + airYaw + 0.0005);
   parts.add(cradleSlot, block(armT, armTop - baseTop + 0.002 * s, armD), armX, (armTop + baseTop - 0.002 * s) / 2, recZ);
   parts.add(cradleSlot, place(machinedRing(ringIn, ringOut, armT, 0.002 * s, ringSeg), 0, 0, 0, 0, 0, Math.PI / 2),
     armX + armT / 2, recY, recZ);
