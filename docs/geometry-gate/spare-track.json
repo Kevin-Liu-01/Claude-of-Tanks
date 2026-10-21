@@ -3814,25 +3814,25 @@
    "hostSweep": []
   },
   "type96_72_long": {
-   "inputHash": "83440bd59ca5bf0b",
+   "inputHash": "6f2f1eee2363883f",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "type96_72m_lei": {
-   "inputHash": "7b1223cbb646191e",
+   "inputHash": "17acd99479f6d3aa",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "type96_80_feng": {
-   "inputHash": "dcc7ce67b746959d",
+   "inputHash": "f18193caca37ee7a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "type96b": {
-   "inputHash": "328001eaebfb1ea7",
+   "inputHash": "784eadd39ea06014",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
