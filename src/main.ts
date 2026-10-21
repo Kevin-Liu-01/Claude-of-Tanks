@@ -825,12 +825,12 @@ const { stage: garageStage, dressing: garageDressing } = await bootStage('garage
 // room-intent lane at a covered load's pace (the boot screen covers this tab, and its battle needs the world before
 // anything else); the battle entry promotes the build instead of starting it (worldBuildCoordinator). A wrong guess
 // (the match ended, the room moved on) is a build the room's lobby state cancels. Phones keep their boot memory.
-if (pendingRoomInvitePromise && getDeviceTier() !== 'mobile') {
-  void pendingRoomInvitePromise.then((invite) => {
-    const round = invite ? rememberedRoundFor(invite.roomCode) : null;
-    if (round) prefetchWorld(round.terrainVariant ? `${round.mapId}#${round.terrainVariant}` : round.mapId, { intent: true, pace: 'loading' });
-  }).catch(() => { /* the entry builds it */ });
-}
+const returningRound = pendingRoomInvitePromise && getDeviceTier() !== 'mobile'
+  ? pendingRoomInvitePromise.then((invite) => (invite ? rememberedRoundFor(invite.roomCode) : null), () => null)
+  : null;
+void returningRound?.then((round) => {
+  if (round) prefetchWorld(round.terrainVariant ? `${round.mapId}#${round.terrainVariant}` : round.mapId, { intent: true, pace: 'loading' });
+}).catch(() => { /* the entry builds it */ });
 // FEEL r12: stable zero-work diagnostics facade. Explicit QA and automation
 // acquire the exact existing HUD + telemetry owner near the ready boundary,
 // after every dependency exists. Ordinary players never transfer either
@@ -2381,7 +2381,8 @@ function beginMultiplayerV2Battle(request: BrowserLaunchRequest): Promise<boolea
     });
 }
 
-function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
+/** The composition's modules (one list: a returning tab's boot loads the same chunks ahead of its entry, lever 3c). */
+function importMultiplayerV2Modules() {
   return Promise.all([
     import('./mp/session/browserComposition.ts'),
     import('./mp/session/activationRuntime.ts'),
@@ -2390,7 +2391,11 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
     import('./mp/transport/iceConfig.ts'),
     // already in this chunk's graph (the composition paints its rounds with it): the roster prewarm below
     import('./mp/presentation/battlePresentation.ts'),
-  ]).then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE, loadObstacleIdentities }, { createRoomIceResolver }, { prewarmRosterVisuals }]) => {
+  ]);
+}
+
+function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
+  return importMultiplayerV2Modules().then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE, loadObstacleIdentities }, { createRoomIceResolver }, { prewarmRosterVisuals }]) => {
     // The launch runs on the app's ports: the loader, the world, the warm owners, the activation.
     const options = multiplayerAppPorts();
     const activation = createActivationRuntime(options.activation);
@@ -3395,6 +3400,13 @@ if (bootWorld) {
   bootWorld.update(0, camera.position);
   battlePresentation.update();
 }
+// 2026-10-20 (item/mp-rejoin-229, lever 3c): a returning tab (its remembered round, above) loads its battle's own
+// modules while the post stage links its programs: the network composition's chunks and the effects and killcam
+// modules (module loads only: their runtimes are built by the entry as before). Every load is retryable, and the entry
+// joins whatever is still in flight.
+void returningRound?.then((round) => (round
+  ? Promise.all([importMultiplayerV2Modules(), preloadFxModule(), preloadKillcamModule()])
+  : null)).catch(() => { /* the entry loads them */ });
 await bootStage('post', async () => {
   // The lazily loaded post passes (SMAA: engine/post.ts) take their places before any frame is warmed or shown.
   await post.ready;
