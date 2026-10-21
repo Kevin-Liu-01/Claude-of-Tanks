@@ -134,6 +134,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/smokeBallistics.selftest.mjs',
     'src/vehicles/smokeFan.selftest.mjs',
     'src/sim/smokeScreenCover.selftest.mjs',
+    'src/sim/smokeWind.selftest.mjs',
     'src/sim/smokeCollision.selftest.mjs', // 2026-10-09 the hitbox lane: canisters bounce off walls; screens stay out of houses
     'src/sim/smokeBlocksExact.selftest.mjs', // 2026-10-13 the MP stream: the footprint early-out answers exactly as before
     'src/sim/roofTargetOrder.selftest.mjs', // 2026-10-13 the MP stream: nearest-first roof-gun scan picks the same target
@@ -1084,6 +1085,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/deploymentSkew.selftest.mjs',
     'src/engine/offscreenWarm.selftest.mjs',
     'src/engine/lodEmptySentinels.selftest.mjs',
+    // sealed lane round 2 (2026-10-10): screen-size vehicle LODs, the sniper sight draws near detail
+    'src/engine/lodDistanceScale.selftest.mjs',
     'src/engine/battleWeatherPolicy.selftest.mjs',
     'src/engine/battleAtmosphereRuntime.selftest.mjs',
     'src/engine/nightLightingRuntime.selftest.mjs',

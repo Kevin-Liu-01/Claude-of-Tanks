@@ -230,16 +230,28 @@ vec3 toneCap( vec3 c ) {
 // emission — fire-lit smoke undersides and flare-lit trails keep glowing in a
 // dark night tint. Without the define the helper is exactly the historical
 // `color * light` expression and no varying or uniform is declared.
+/** (FX lane 2026-10-17) the dark puffs' night floor: the share of the sky's light (the tint's luminance) a smoke puff's
+ *  light never falls under at night (fxLit). Calibrated on the night takes (s63, s169, s214). */
+export const NIGHT_SMOKE_FLOOR = 0.14;
 const LIGHT_TINT_PARS = `
 #ifdef FX_LIGHT_TINT
 uniform vec3 uLightTint;
+uniform float uNightFloor;
 #endif
 `;
+// (FX lane 2026-10-17, the media critics' "flat black plume" on ~15 night takes) under a dim sky a dark smoke's shape
+// stays readable: its light never falls under a share of the sky's own (the tint's luminance, neutral grey), shaded
+// light on its sun-and-moon side and darker at its heart, so a night plume is a dark grey body with a form against the
+// sky, never a flat black cut-out. By day (the tint over ~0.6) the floor is gone: the judged day looks keep every bit.
 const LIGHT_TINT_PUFF_F = `
 ${LIGHT_TINT_PARS}
 #ifdef FX_LIGHT_TINT
 varying vec3 vEmit;
-vec3 fxLit( vec3 color, float light ) { return color * light * uLightTint + vEmit; }
+vec3 fxLit( vec3 color, float light ) {
+  float L = dot( uLightTint, vec3( 0.2126, 0.7152, 0.0722 ) );
+  float floorL = L * uNightFloor * ( 1.0 - smoothstep( 0.3, 0.6, L ) ) * ( 0.3 + 0.6 * clamp( light - 0.45, 0.0, 1.15 ) );
+  return max( color * light * uLightTint, vec3( floorL ) ) + vEmit;
+}
 #else
 vec3 fxLit( vec3 color, float light ) { return color * light; }
 #endif
@@ -1530,6 +1542,8 @@ interface ParticleSharing {
   readonly uCameraFar: { value: number };
   /** Ambient tint for FX_LIGHT_TINT shading (Studio only; white otherwise). */
   readonly uLightTint: { value: THREE.Color };
+  /** (FX lane 10-17) the dark puffs' night floor: a share of the tint's luminance their light never falls under. */
+  readonly uNightFloor: { value: number };
   readonly textures: Readonly<Record<'smoke' | 'fire' | 'prop' | 'dust' | 'flash' | 'jet', THREE.Texture>>;
 }
 
@@ -1567,6 +1581,8 @@ export function createParticleSystem(
   const uCameraNear = share ? share.uCameraNear : { value: 0.5 };
   const uCameraFar = share ? share.uCameraFar : { value: 4000 };
   const uLightTint = share ? share.uLightTint : { value: new THREE.Color(1, 1, 1) };
+  // (FX lane 10-17) the dark puffs' night floor (fxLit): one shared value, the Studio's companion pools read the same
+  const uNightFloor = share?.uNightFloor ?? { value: NIGHT_SMOKE_FLOOR };
   // Normal-blended media that honour FX_LIGHT_TINT (setLightTintShading).
   const tintMaterials: THREE.ShaderMaterial[] = [];
   let lateFxUntil = -Infinity;
@@ -1786,6 +1802,7 @@ export function createParticleSystem(
         uCameraNear,
         uCameraFar,
         uLightTint,
+        uNightFloor,
       }, localLightUniforms),
       transparent: true,
       depthWrite: false,
@@ -2009,7 +2026,7 @@ export function createParticleSystem(
   // Studio companion seam (see ParticleSystemOptions.share): the exact
   // uniform objects and sprite sheets, never copies.
   const sharing: ParticleSharing = Object.freeze({
-    uTime, uSceneDepth, uSoftViewport, uCameraNear, uCameraFar, uLightTint,
+    uTime, uSceneDepth, uSoftViewport, uCameraNear, uCameraFar, uLightTint, uNightFloor,
     textures: Object.freeze({
       smoke: smokeTex, fire: fireTex, prop: propTex, dust: dustTex, flash: flashTex, jet: jetTex,
     }),
