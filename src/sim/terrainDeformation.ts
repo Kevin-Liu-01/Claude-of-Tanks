@@ -91,7 +91,27 @@ export interface RubbleStamp {
   readonly crown: Float64Array;
 }
 
-export type TerrainStamp = CraterStamp | RubbleStamp;
+/**
+ * A graded earthwork (the proving ground's drive course, 2026-10-20): a band `hw` either side of its axis carrying a
+ * piecewise-linear profile along the axis (ramps, a flat top, a ditch, a run of moguls), a cosine skirt `skirtM` past the
+ * band's sides. Authored, not dug: the course sums apart from the battle's craters and heaps and keeps its own clamp, so
+ * a match without a course reads the ground it always did.
+ */
+export interface CourseStamp {
+  readonly kind: 'course';
+  readonly cx: number;
+  readonly cz: number;
+  /** The axis heading (forward = (sin yaw, cos yaw)) and its cos / sin. */
+  readonly yaw: number;
+  readonly c: number;
+  readonly s: number;
+  readonly hw: number;
+  readonly skirtM: number;
+  /** Knots (u, h) along the axis from its centre, u ascending; the profile is 0 past the first and last knot. */
+  readonly profile: Float64Array;
+}
+
+export type TerrainStamp = CraterStamp | RubbleStamp | CourseStamp;
 
 /**
  * The ground a stamp moves, as an axis-aligned box [minX, minZ, maxX, maxZ] into `out` (a crater's 2 R influence with
@@ -101,6 +121,10 @@ export function stampBounds(stamp: TerrainStamp, out: number[] | Float64Array): 
   if (stamp.kind === 'crater') {
     const reach = stamp.radiusM * CRATER_REACH * 1.1;
     out[0] = stamp.x - reach; out[1] = stamp.z - reach; out[2] = stamp.x + reach; out[3] = stamp.z + reach;
+    return out;
+  }
+  if (stamp.kind === 'course') {
+    courseExtent(stamp, out);
     return out;
   }
   const ex = Math.abs(stamp.s) * stamp.hd + Math.abs(stamp.c) * stamp.hw + stamp.falloffM;
@@ -129,6 +153,8 @@ export interface TerrainDeformation {
   /** A collapsed structure's heap over its footprint (cx, cz, half extents across/along, yaw), `heightM` high, rising
    * from `t0` (the overlay's clock; default now, or risen at once when no clock was set) over RUBBLE_GROW_S. */
   addRubble(cx: number, cz: number, hw: number, hd: number, yaw: number, heightM: number, t0?: number): void;
+  /** A graded earthwork (CourseStamp): always lands, risen at once. */
+  addCourse(stamp: CourseStamp): void;
   /** Every stamp gone (a cached world's next battle). */
   reset(): void;
   /** The overlay's clock (s, the match's own): a heap rises with it (physics stream, 2026-10-13). */
@@ -140,6 +166,8 @@ export interface TerrainDeformation {
   /** How far stamp `index` has risen (0..1; a crater 1). */
   stampGrowth(index: number): number;
 }
+
+const _courseBox = new Float64Array(4);
 
 function bucketIndex(value: number): number {
   const index = Math.floor((value + WORLD_HALF_M) / BUCKET_M);
@@ -163,6 +191,34 @@ export function rubbleGrowth(elapsedS: number, growS = RUBBLE_GROW_S): number {
 /** The rubble height for a structure of `heightM` (§7): 0.18 of its height, 0.6–2.6 m. */
 export function rubbleHeightFor(structureHeightM: number): number {
   return Math.max(0.6, Math.min(2.6, 0.18 * Math.max(0, structureHeightM)));
+}
+
+/** The course's own clamp: an authored earthwork may stand taller and dig deeper than a battle's heap or crater. */
+const MAX_COURSE_M = 6;
+
+/** The ground a course stamp moves, [minX, minZ, maxX, maxZ] into `out`. */
+function courseExtent(stamp: CourseStamp, out: number[] | Float64Array): void {
+  const profile = stamp.profile;
+  const half = Math.max(Math.abs(profile[0] ?? 0), Math.abs(profile[profile.length - 2] ?? 0));
+  const across = stamp.hw + stamp.skirtM;
+  const ex = Math.abs(stamp.s) * half + Math.abs(stamp.c) * across;
+  const ez = Math.abs(stamp.c) * half + Math.abs(stamp.s) * across;
+  out[0] = stamp.cx - ex; out[1] = stamp.cz - ez; out[2] = stamp.cx + ex; out[3] = stamp.cz + ez;
+}
+
+/** A course stamp's height at world (x, z): the profile along its axis, full across its band, a cosine skirt past it. */
+export function courseProfile(stamp: CourseStamp, x: number, z: number): number {
+  const dx = x - stamp.cx, dz = z - stamp.cz;
+  const u = dx * stamp.s + dz * stamp.c, v = Math.abs(dx * stamp.c - dz * stamp.s);
+  const past = v - stamp.hw;
+  if (past >= stamp.skirtM) return 0;
+  const profile = stamp.profile, last = profile.length - 2;
+  if (last < 0 || u <= profile[0] || u >= profile[last]) return 0;
+  let k = 0;
+  while (k + 2 < last && profile[k + 2] <= u) k += 2;
+  const u0 = profile[k], u1 = profile[k + 2];
+  const h = profile[k + 1] + (profile[k + 3] - profile[k + 1]) * (u1 > u0 ? (u - u0) / (u1 - u0) : 0);
+  return past > 0 ? h * 0.5 * (1 + Math.cos(Math.PI * past / stamp.skirtM)) : h;
 }
 
 /** A crater's profile at distance r from its centre and angle a (§7): a bowl, a rim broken round it, ragged by the
@@ -289,6 +345,7 @@ export function createTerrainDeformation(): TerrainDeformation {
   const slots = new Int32Array(BUCKETS * BUCKETS * STAMPS_PER_BUCKET);
   let revision = 0;
   let maxRaise = 0;
+  let courseRaise = 0;
   let now = NaN;
   let growthRevision = 0;
   /** Rubble stamps still rising (indices into `stamps`). */
@@ -324,17 +381,21 @@ export function createTerrainDeformation(): TerrainDeformation {
     const count = counts[bucket];
     if (count === 0) return 0;
     let sum = 0;
+    let course = 0;
     for (let k = 0; k < count; k++) {
       const stamp = stamps[slots[bucket * STAMPS_PER_BUCKET + k]];
       if (stamp.kind === 'crater') {
         const dx = x - stamp.x, dz = z - stamp.z;
         const r = Math.sqrt(dx * dx + dz * dz);
         if (r < stamp.radiusM * CRATER_REACH * 1.1) sum += craterProfile(stamp, r, Math.atan2(dz, dx));
+      } else if (stamp.kind === 'course') {
+        course += courseProfile(stamp, x, z);
       } else {
         sum += rubbleProfile(stamp, x, z, growthOf(stamp));
       }
     }
-    return sum < -MAX_DEPTH_M ? -MAX_DEPTH_M : sum > MAX_RAISE_M ? MAX_RAISE_M : sum;
+    const battle = sum < -MAX_DEPTH_M ? -MAX_DEPTH_M : sum > MAX_RAISE_M ? MAX_RAISE_M : sum;
+    return course === 0 ? battle : battle + (course < -MAX_COURSE_M ? -MAX_COURSE_M : course > MAX_COURSE_M ? MAX_COURSE_M : course);
   }
 
   function latticeOffset(ix: number, iz: number): number {
@@ -365,7 +426,7 @@ export function createTerrainDeformation(): TerrainDeformation {
   return {
     stamps,
     get revision() { return revision; },
-    get maxRaiseM() { return maxRaise; },
+    get maxRaiseM() { return maxRaise + courseRaise; },
     near: (x, z) => counts[bucketIndex(z) * BUCKETS + bucketIndex(x)] > 0,
     offsetAt,
     contactOffsetAt,
@@ -392,11 +453,19 @@ export function createTerrainDeformation(): TerrainDeformation {
       admit(stamp, cx - ex, cz - ez, cx + ex, cz + ez, true);
       maxRaise = Math.min(MAX_RAISE_M, maxRaise + height);
     },
+    addCourse(stamp) {
+      courseExtent(stamp, _courseBox);
+      admit(stamp, _courseBox[0], _courseBox[1], _courseBox[2], _courseBox[3], true);
+      let top = 0;
+      for (let k = 1; k < stamp.profile.length; k += 2) top = Math.max(top, stamp.profile[k]);
+      courseRaise = Math.min(MAX_COURSE_M, courseRaise + top);
+    },
     reset() {
       stamps.length = 0;
       counts.fill(0);
       revision++;
       maxRaise = 0;
+      courseRaise = 0;
       rising.length = 0;
     },
     setTime(timeS) {

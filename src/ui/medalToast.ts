@@ -33,7 +33,7 @@ body.cot-battle-ui-hidden .cot-medal-toasts,body.cot-si-report .cot-medal-toasts
 .cot-medal-toast .ey{display:block;font:800 8px ${FONT_COND};letter-spacing:.24em;text-transform:uppercase;color:#f0b04a;}
 .cot-medal-toast strong{display:block;margin-top:3px;font:800 17px ${FONT_COND};letter-spacing:.04em;color:#fff4dc;
   text-transform:uppercase;line-height:1.05;}
-.cot-medal-toast small{display:block;margin-top:4px;font-size:11px;line-height:1.3;color:#9eadb9;}
+.cot-medal-toast small{display:block;margin-top:4px;font-size:11px;line-height:1.3;color:#9eadb9;text-wrap:pretty;}
 @media (max-width:640px){
   .cot-medal-toast{min-width:0;gap:9px;padding:8px 24px;}
   .cot-medal-toast strong{font-size:14px;}

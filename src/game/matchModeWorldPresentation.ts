@@ -7,9 +7,10 @@ import {
 } from './modeObjects.ts';
 
 import type { MatchModePresentationState, ObjectiveTeam } from '../sim/matchModes.ts';
+import { createProvingRangeDressing, type ProvingRangeDressing } from './provingRangeDressing.ts';
 import { objectiveMarkers, type ObjectiveMarker } from '../ui/minimapObjectives.ts';
 import {
-  drawCheck, drawGoalGlyph, drawHexBadge, drawPennant, drawPickupGlyph, drawSpawnGlyph,
+  drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawPickupGlyph, drawSpawnGlyph,
   sideColor, sideFill, type ObjectiveSide,
 } from '../ui/objectiveGlyphs.ts';
 
@@ -296,6 +297,11 @@ export function createMatchModeWorldPresentation(
   let goalMarkers: MarkerGroup[] | null = null;
   let pickupMarkers: MarkerGroup[] | null = null;
   let spawnMarkers: MarkerGroup[] | null = null;
+  /** the proving ground's lane marks: an amber ring on each mark and the lane's board floating over it */
+  let laneMarkers: MarkerGroup[] = [];
+  let laneTether: THREE.CylinderGeometry | null = null;
+  /** the proving ground's furniture: the plate rack, the range boards, the drive course's boards and poles */
+  let rangeDressing: ProvingRangeDressing | null = null;
 
   // tactical map 2026-09-15: the same glyphs the minimap paints, rasterised
   // once per (kind, side, label, status) into sprite textures that float
@@ -768,6 +774,7 @@ export function createMatchModeWorldPresentation(
     if (ballMarker) ballMarker.visible = false;
     if (goalMarkers) for (const marker of goalMarkers) marker.visible = false;
     if (pickupMarkers) for (const marker of pickupMarkers) marker.visible = false;
+    for (const marker of laneMarkers) marker.visible = false;
   };
 
   const tintTeam = (marker: MarkerGroup, side: ObjectiveSide): void => {
@@ -945,6 +952,46 @@ export function createMatchModeWorldPresentation(
     }
   };
 
+  // the proving ground (v2 progression, 2026-10-17): one marker per lane, grown on demand (the minimap's lane glyph)
+  const buildLanes = (count: number): MarkerGroup[] => {
+    while (laneMarkers.length < count) {
+      const marker = new THREE.Group() as MarkerGroup;
+      marker.name = `range-lane-${laneMarkers.length + 1}`;
+      const ring = new THREE.Mesh(objectiveRing(5.8, 6.5), basic(AMBER, 0.3));
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.1;
+      // high over the hull: the laid hull's target plate sits just above it, the board well clear of the plate
+      const icon = iconSprite(`range-lane-${laneMarkers.length + 1}-icon`, 4.6, 11);
+      marker.userData.icon = icon;
+      // a thin tether from the ring up to the board: the board is the lane's marker, anchored to its mark
+      laneTether ??= new THREE.CylinderGeometry(0.05, 0.05, 1, 6, 1, true);
+      const tether = new THREE.Mesh(laneTether, basic(AMBER, 0.55));
+      tether.scale.y = 11 - 2.3;
+      tether.position.y = (11 - 2.3) / 2;
+      marker.add(ring, tether, icon);
+      marker.visible = false;
+      root.add(marker);
+      laneMarkers.push(marker);
+    }
+    return laneMarkers;
+  };
+
+  const updateLanes = (marks: readonly ObjectiveMarker[]): void => {
+    const lanes = marks.filter((mark) => mark.kind === 'lane');
+    const markers = buildLanes(lanes.length);
+    for (const [index, mark] of lanes.entries()) {
+      const marker = markers[index];
+      marker.visible = true;
+      marker.position.set(mark.x, options.groundHeight?.(mark.x, mark.z) ?? 0, mark.z);
+      fitObjectiveSurface(marker.children[0] as THREE.Mesh, marker.position.x, marker.position.y, marker.position.z, options.groundHeight);
+      // over the field the lane's board reads its range (the minimap's smaller board keeps the lane's number)
+      const label = mark.rangeM != null ? String(mark.rangeM) : mark.label ?? '';
+      const size = label.length > 2 ? 36 : 46;
+      setIcon(marker.userData.icon, `lane:${label}`, (ctx, c) => drawLaneGlyph(ctx, c, c, 44, label, `700 ${size}px system-ui, sans-serif`));
+      fadeByViewer(marker);
+    }
+  };
+
   const update = (state: MatchModePresentationState | null, timeS: number): void => {
     if (!state || state.id === 'standard') {
       if (root.visible) root.traverse(object => { delete object.userData.surfacePlacement; });
@@ -966,11 +1013,18 @@ export function createMatchModeWorldPresentation(
     // Caches coexist with objectives (Mars has both zones and drops).
     // Keep their lifecycle independent of the exclusive objective dispatch.
     if (state.pickups.length || state.id === 'endless_horde') updatePickups(state, timeS);
+    if (state.range) {
+      updateLanes(marks);
+      rangeDressing ??= createProvingRangeDressing(root, options);
+      rangeDressing.update(state.range);
+    } else rangeDressing?.update(null);
     updateSpawns(state, marks);
   };
 
   const dispose = (): void => {
     disposeLineWorks();
+    rangeDressing?.dispose();
+    rangeDressing = null;
     const geometries = new Set<THREE.BufferGeometry>();
     const materials = new Set<THREE.Material>();
     root.traverse((object) => {

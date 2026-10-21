@@ -149,7 +149,12 @@ runs into it, the chip waits hidden until the notice goes. The notice never
 moves the chip or any other mark. Moving it ran the chip into the furniture
 instead: 22 px into the left FIRE button at 320x568 and 16 m. Round r10 set the
 chip over the sight at 320x568, under the DETECTED notice. A short landscape
-keeps it in the left lane under the map. On the short landscape
+keeps it in the left lane under the map, and so does a portrait phone 340 px
+wide or less (r10g, the coordinator's call), at the map's width so it keeps
+8 px from the systems row. There every seat by the sight ran
+into the left FIRE button, the map or the speedometer, 12.22 px at worst. The
+struck round or rack still shows the empty gun by the sight. The left lane
+starts under the parked chip, and the notices' footprint leaves out its seat. On the short landscape
 scope stack the round leads the ammo readout line instead, and a rack's countdown
 sits beside the rack when the ring keeps clear of it there. The scope's vision switch sits beside the
 sight, level with the marker and past the widest ring, where no readout goes. A
@@ -192,7 +197,20 @@ ammo `∞` takes the numeral's size. Unlimited rounds are read per vehicle
 shows its real empty states. On a portrait phone a systems row that crosses the
 sight (`portraitSightClearTop`) moves below the scope readouts when there is
 room, otherwise above the ring. The sight's band covers the countdown, the rack,
-the struck round and the aim warning.
+the struck round and the aim warning. On a portrait phone under 720 px tall the
+row takes the top slot instead: right of the map, 4 px under the touch chrome, in
+a compact form (icons over labels, no key badges, the slot's width shared:
+`body[data-systems-slot='top']`). Each button keeps the 44 px touch target. What
+one row cannot hold sits beside the touch chrome, left of it and level with it,
+where that leaves a 44 px place (`data-slot-beside`). The five-control kit at
+320 wide puts its fifth button there: as a second row it met the ammo drawer's
+open shells. A wider overflow wraps to balanced rows. A 44 px row 8 px under the
+chrome left the scope's notices no clear band under it at 360x640, so the slot
+sits 4 px under the chrome. Round r10e's critic found the row clipped at
+320 wide ("Auto g"), the scope's readouts on its labels and the rack and struck
+round on the left FIRE button at 320x568, and the gun travel chip on its key
+badges at 360x640. Over the ring, the marks set there (the readout row, the chip,
+a rack) reach past the band the row kept clear.
 
 Round r5 described the tray as having no touching marks, with the desktop shell
 raised 3 px. Both were true only at 1000 px and up. Under 1000 px the stacked
@@ -283,12 +301,14 @@ empty racks, finite and endless rounds:
   ring). With the objective panel it is 22.75 px. The panel sits over the sight
   and the systems row under it, so the rack has no room above or below the
   ring; only the space right of the ring is free.
-- 320x568: 25.25 px (25.52 rendered). The readout row or the 156 px warning
-  chip sits on the systems row, and the left FIRE button sits under the sight.
-- 360x640: 8.87 px (9.64 rendered), the 24 px chip on the systems row's grey
-  underlines.
-- 375x667: 7.34 px, `0 ` on the systems row with the warning under the widest
-  ring, in every mode.
+- 320x568 with the objective panel: 10.59 px, the readout row set over the ring
+  on the systems row's top slot under the panel. Its standard battle keeps 3 px
+  since r10g parks the gun travel chip under the map. Seated by the sight, the
+  chip ran 12.22 px into the left FIRE button. Round r10e had 25.25 px on both
+  stages, with the readout row on the systems row's labels and a rack on the FIRE
+  button.
+- 360x640 and 375x667 keep 3 px since the systems row's top slot (r10g; they
+  were 8.87 px, the chip on the row's key badges and underline, and 7.34 px).
 - 740x360 and 640x360 with the objective panel: 0.37 px, an empty rack under the
   widest ring on the systems row.
 - 1024x400 with the objective panel: 7.62 px, the warning chip set over the
@@ -527,6 +547,100 @@ landscapes (568x256, 568x290, 568x320) and in the scope at 640x360 at rest.
 sizes and measures each notice against the reticle's recorded ink, the seated
 chip, the vision plate and the hint, with no screenshot. It notes the uncleared
 windows rather than failing them.
+
+Round r10g's top slot for the systems row took the place the notices used at
+360x640 and 375x667 in the scope. The footprint then left them no clear place
+there: its seated chip sat over the circle plus 30 px, 20 px over the stack
+hud.ts really sets. The reticle sets the readout row 3 px over the ring and the
+chip 3 px over or under it, so the footprint now keeps the ring's halo plus
+3 + 24 + 3 + 20 px for a seated chip. Both sizes clear in the scope again: the
+detection, compact, above the map and the alert under the systems row. With the
+fallback, the alert had sat on the AUTO AIM and SCOPE labels at 375x667. Those
+labels hang under the round buttons, outside the buttons' boxes, so the plan
+keeps clear of them too. Where nothing clears, a notice covers a label before the
+sight's footprint (`labels`, a quarter of the footprint's cost per px²). Where
+nothing clears, every block now counts out to its 6 px gap, so a fallback place
+no longer sits 0 px from the systems row or the quick buttons. The detection and
+the alert are also placed in whichever order reaches least far in all, and a
+notice already placed costs a hundred times a panel, so the two never stack
+while any other place remains. Only the overlap costs that much; the margin
+around a placed notice costs a panel's 10. A place over a block costs three times
+one in its gap. At 568x256 the two notices fit side by side only by touching
+each other, the chip and the consumables. Gap-wide costs at full weight had set
+the detection 10 px onto a consumable.
+
+The touch alert takes `width: max-content` up to its place's width, as the medal
+card does. An auto width shrank to the room right of its centre. At 320x568 a
+150 px alert centred at 237 px set five lines 96 px wide onto the ammo slot. The
+rendered receipt fails a wrapped alert narrower than its place. Touch notices
+also sit one layer over the controls and the map. At the controls' layer the
+map, later in the page, painted over the alert the scope ruling sets there; the
+receipt fails a notice that lies over the map but under it.
+
+Through the scope, the coordinator ruled that "0 APFSDS" and the zoom matter
+more than the map while a notice shows. The fallback weights there are:
+
+- the minimap: half the footprint's per-px² cost;
+- the circle: 1;
+- the readout rows and the range tag: 5;
+- a panel or a control: 10.
+
+The alert may also lie over the map at the map's width, 58 px tall at most, in
+the `alert-narrow` form. That happens where the map leaves room under the
+notices' first row. At 320x568 with both notices up at full bloom, the
+detection now takes the free band over the map, and the alert lies over the
+map. Before, the alert covered "0 APFSDS" and the "×" of the zoom plate. A
+short landscape's map sits beside the score, over the notices' first row, so
+its scope keeps the compact fallback. Those scenes stay notes in the receipt.
+In battle the footprint still goes before the map. Placing
+the detection first had taken the one free place at 640x360 and sent the alert
+onto the scope's zoom plate. The scan reads only the blocks that cross each row
+band, about 4 ms a plan on the smallest windows. The rendered receipt now also
+measures every notice against the controls, their labels, the panels, the map
+and the score. The uncleared windows are 320x568 in
+every scene, the pre-battle countdown at 360x640, 375x667 and 768x1024, the
+568 px landscapes, and the scope at 640x360 and 667x375.
+
+### Scope skeleton and polish (r10f, r10g)
+
+The notices session's critic on integ 11a74e4906 found these:
+
+- the scope's horizontal arm ran through the Daylight plate;
+- the lower post crossed the gun travel chip;
+- a mil tick crossed the rack onto the struck round.
+
+The cross arms and the mil ticks are now painted after the marks
+(`paintScopeSkeleton`). Each arm's run is cut 5 px around every mark this frame,
+the furniture and the target plate, and a tick within 2 px of one is left out.
+`hudAmmoOutPaint.selftest.mjs` 19f sweeps the desktop and touch sizes, where
+every arm segment keeps 3 px and every tick 2 px from the marks and the
+furniture.
+
+The same critic found three text and layout defects:
+
+- **Alert separator.** The ammunition alert left its "·" at a line end (1024x600
+  and the phones). It now breaks before the separator: each dot and the word
+  after it share a nowrap span, with an ordinary space between them. r10f first
+  used a no-break space, which rendered narrower than the space before the dot
+  ("EMPTY ·SELECT", 9.1 px against 4.1 px at 1024x768). A word joiner after an
+  ordinary space did not hold the break in Chrome.
+- **Medal wrap.** The medal card's description left "last." alone on its last
+  line, so it wraps evenly now (`text-wrap: pretty`).
+- **Tray gap.** A mouse layout's inline tray sat 4 px from the drive gauge at
+  1024 wide. It now shifts right to keep the gauge's 12 px
+  (`--hud-tray-shift`).
+
+`tools/hud-polish.browser.mjs` checks these defects and the r10g systems row
+with no screenshot:
+
+- the tray gap, the alert's line ends and the separator's spacing, and the
+  medal's last line;
+- at 320x568, 360x640 and 375x667 through the scope, at full bloom and at rest,
+  with the gun travel warning: the systems row shows whole, the reticle's ink
+  and the seated chip keep 3 px from its buttons, and the ink keeps 3 px from
+  the round touch buttons.
+
+On integ's files it fails 25 times.
 
 ### Verified local run — 2026-10-01
 

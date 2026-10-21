@@ -7970,6 +7970,12 @@ function finishT90BurlakNative2026(P: T90BuilderPort): void {
   P.add('turretDark', cylY(0.22, 0.22, 0.022, 16), -0.48, 0.84, -0.34);
   P.add('turret', cylY(0.20, 0.23, 0.09, 16), 0.38, 0.77, -0.24);
   P.add('turretDark', cylY(0.17, 0.17, 0.020, 14), 0.38, 0.825, -0.24);
+  // 2026-10-21 (watertight-230): each hatch ring stands on a cast collar down into the roof crown (0.64-0.68 under
+  // them). The rings were authored 6-9 cm over the crown, and the gap they and the commander's station closed over
+  // read as turret interior: the interior fills filled it as a dark stair-step under the left ring. The collars sit
+  // 8 mm inside each ring's lower radius and 1 cm up into it, so no face of a collar is coplanar with its ring.
+  P.add('turret', cylY(0.272, 0.272, 0.13, 18), -0.48, 0.675, -0.34);
+  P.add('turret', cylY(0.222, 0.222, 0.125, 16), 0.38, 0.6725, -0.24);
   // Restore the richer repository-authored roof cadence from the earlier
   // Burlak pass, but keep it below the corrected low combat envelope.  The
   // long left foundation is half buried in the crown; every periscope and

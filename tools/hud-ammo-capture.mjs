@@ -77,7 +77,7 @@ const CASES = Object.freeze([
   { name: 'landscape-932', width: 932, height: 430, touch: true, scale: 2, stages: SNIPER, crop: true },
   { name: 'landscape-667', width: 667, height: 375, touch: true, scale: 2, stages: [...BATTLE, ...SNIPER, ...SNIPER_WIDE, 'ammo-unlimited-sniper'], crop: true },
   // r10: a small portrait phone (its FIRE button under the sight) and a landscape phone under a browser's bars
-  { name: 'phone-360', width: 360, height: 640, touch: true, scale: 2, stages: [...SNIPER, ...SNIPER_WIDE], crop: true, tight: -10 },
+  { name: 'phone-360', width: 360, height: 640, touch: true, scale: 2, stages: [...SNIPER, ...SNIPER_WIDE], crop: true },
   { name: 'landscape-740', width: 740, height: 360, touch: true, scale: 2, stages: [...SNIPER, ...SNIPER_WIDE], crop: true },
   // the 44 px tall touch slots (a portrait under 341 px wide, a landscape under 300 px tall; the r6 critic's probe)
   { name: 'portrait-320', width: 320, height: 568, touch: true, scale: 2, stages: TRAY, crop: true },

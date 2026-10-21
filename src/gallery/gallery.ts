@@ -9,6 +9,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { pinchRestoresPage } from '../ui/pinchZoomGuard.ts';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { linkTankId, stampTankIdLink } from '../game/tankIdBoundaries.ts';
+import { testDriveHref } from '../game/testDriveLink.ts';
+import { hrefForLocale } from '../ui/localeRouting.ts';
 import { migrateStoredTankIds } from '../game/tankIdStorageMigration.ts';
 import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.ts';
 import {
@@ -18,7 +20,18 @@ import {
   technicalLabel,
 } from './catalog.ts';
 import type { GalleryRecord, GalleryVehicleSpec } from './catalog.ts';
+import type { HeroManifest } from '../ui/heroCard.ts';
 import { compareVehicleEras, VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
+import {
+  CONCEPT_PROTOTYPE_CLASS_FILTER,
+  CONCEPT_PROTOTYPE_FILTER_META,
+  VEHICLE_BATTLE_ROLE_META,
+  VEHICLE_BATTLE_ROLE_ORDER,
+  VEHICLE_CLASS_META,
+  VEHICLE_CLASS_ORDER,
+  vehicleFacetLabel,
+} from '../vehicles/vehicleFacets.ts';
+import { vehicleClassGlyphSVG, vehicleRoleGlyphSVG } from '../ui/vehicleFacetIcons.ts';
 import { createInspectionOverlay, inspectionLegend } from './overlays.ts';
 import type { InspectionMode } from './overlays.ts';
 import {
@@ -505,6 +518,17 @@ function renderLegend(): void {
   }));
 }
 
+let heroCards: { module: typeof import('../ui/heroCard.ts'); manifest: HeroManifest } | null = null;
+Promise.all([import('../ui/heroCard.ts'), import('../ui/heroCard.css')])
+  .then(async ([module]) => {
+    const manifest = await module.loadHeroManifest();
+    if (!manifest) return;
+    heroCards = { module, manifest };
+    vehicleList.style.setProperty('--hc-flag-mask', module.heroCardFlagMask(manifest));
+    renderRoster();
+  })
+  .catch(() => { /* the packaged angle icons stay */ });
+
 function renderRoster(): void {
   const fragment = document.createDocumentFragment();
   for (const record of filteredRecords) {
@@ -520,6 +544,12 @@ function renderRoster(): void {
     image.alt = '';
     image.loading = 'lazy';
     image.addEventListener('error', () => { image.style.visibility = 'hidden'; }, { once: true });
+    // The tank hero card (3/4 render over the nation's waving flag) once the lazy hero chunk has its
+    // manifest; the packaged angle icon until then, and for any vehicle without a hero row.
+    const thumb = document.createElement('span');
+    thumb.className = 'vehicle-thumb';
+    thumb.append(image);
+    if (heroCards?.module.decorateHeroCard(thumb, record.id, heroCards.manifest, { tankSizes: '90px', flagSizes: '110px' })) image.remove();
     const copy = document.createElement('span');
     const meta = document.createElement('small');
     meta.textContent = `${record.nation} // ${record.era}`;
@@ -531,13 +561,15 @@ function renderRoster(): void {
     }
     const title = document.createElement('strong');
     title.textContent = record.displayName;
-    const era = document.createElement('small');
-    era.textContent = record.era;
-    copy.append(meta, title, era);
+    // Class and role read under the name (nation and era already head the card).
+    const facets = document.createElement('small');
+    facets.textContent = [record.vehicleClass?.shortLabel, record.battleRole?.label].filter(Boolean).join(' · ')
+      || record.era;
+    copy.append(meta, title, facets);
     const tier = document.createElement('span');
     tier.className = 'vehicle-tier';
     tier.textContent = record.tierNumeral;
-    button.append(image, copy, tier);
+    button.append(thumb, copy, tier);
     button.addEventListener('click', () => loadTank(record.id));
     fragment.append(button);
   }
@@ -557,7 +589,8 @@ function renderRoster(): void {
 function renderDossier(record: GalleryRecord): void {
   const allIndex = records.findIndex((item) => item.id === record.id) + 1;
   $('#dossierIndex').textContent = String(allIndex).padStart(3, '0');
-  $('#dossierMeta').textContent = `${record.nation} // ${record.era} // Tier ${record.tierNumeral}`;
+  $('#dossierMeta').textContent = [record.nation, record.era, record.vehicleClass?.label,
+    `Tier ${record.tierNumeral}`].filter(Boolean).join(' // ');
   $('#dossierName').textContent = record.displayName;
   $('#dossierDesignation').textContent = `fleet://${record.id} · ${record.era}`;
   $('#dossierAuthor').textContent = t('gallery.dossier.authorLine', {
@@ -840,6 +873,8 @@ function applyFilters(): void {
     query: $('#gallerySearch').value,
     nation: $('#nationFilter').value,
     era: $('#eraFilter').value,
+    vehicleClass: $('#classFilter').value,
+    battleRole: $('#roleFilter').value,
   });
   renderRoster();
 }
@@ -870,9 +905,16 @@ function createGallerySelectIcon(
     icon.append(flag);
     return icon;
   }
-  const iconId = select.id === 'eraFilter'
-    ? (GALLERY_ERA_ICONS[option.value] || 'clock')
-    : 'globe';
+  // Class and role options show the fleet glyphs (constant markup, keyed by the option's facet id).
+  const facetGlyph = option.value === 'all' ? ''
+    : select.id === 'classFilter' ? vehicleClassGlyphSVG(option.value)
+      : select.id === 'roleFilter' ? vehicleRoleGlyphSVG(option.value) : '';
+  if (facetGlyph) {
+    if (select.id === 'classFilter') icon.classList.add('gallery-select-icon--wide');
+    icon.insertAdjacentHTML('beforeend', facetGlyph);
+    return icon;
+  }
+  const iconId = select.id === 'eraFilter' ? (GALLERY_ERA_ICONS[option.value] || 'clock') : 'globe';
   icon.insertAdjacentHTML('beforeend', uiIconSVG(iconId, 16));
   return icon;
 }
@@ -1021,10 +1063,20 @@ function populateFilters(): void {
       a[0] as Parameters<typeof compareVehicleEras>[0],
       b[0] as Parameters<typeof compareVehicleEras>[1],
     ));
+  // Class and role list only the values the registry holds, in the facet table's order.
+  const classes = VEHICLE_CLASS_ORDER.filter((id) => records.some((record) => record.vehicleClass?.id === id));
+  const roles = VEHICLE_BATTLE_ROLE_ORDER.filter((id) => records.some((record) => record.battleRole?.id === id));
   $('#nationFilter').append(...nations.map((nation) => new Option(nation, nation)));
   $('#eraFilter').append(...eras.map(([key, label]) => new Option(label, key)));
+  $('#classFilter').append(
+    ...classes.map((id) => new Option(vehicleFacetLabel(VEHICLE_CLASS_META[id], t), id)),
+    new Option(vehicleFacetLabel(CONCEPT_PROTOTYPE_FILTER_META, t), CONCEPT_PROTOTYPE_CLASS_FILTER),
+  );
+  $('#roleFilter').append(...roles.map((id) => new Option(vehicleFacetLabel(VEHICLE_BATTLE_ROLE_META[id], t), id)));
   mountGallerySelect($<HTMLSelectElement>('#nationFilter'));
   mountGallerySelect($<HTMLSelectElement>('#eraFilter'));
+  mountGallerySelect($<HTMLSelectElement>('#classFilter'));
+  mountGallerySelect($<HTMLSelectElement>('#roleFilter'));
 }
 
 async function writeClipboard(text: string, successMessage: string): Promise<void> {
@@ -1054,6 +1106,8 @@ function resize(): void {
 $('#gallerySearch').addEventListener('input', applyFilters);
 $('#nationFilter').addEventListener('change', applyFilters);
 $('#eraFilter').addEventListener('change', applyFilters);
+$('#classFilter').addEventListener('change', applyFilters);
+$('#roleFilter').addEventListener('change', applyFilters);
 $('#hullYaw').addEventListener('input', updateArticulation);
 $('#turretYaw').addEventListener('input', updateArticulation);
 $('#gunPitch').addEventListener('input', updateArticulation);
@@ -1066,6 +1120,11 @@ $('#autoRotate').addEventListener('click', () => {
   showToast(controls.autoRotate
     ? t('gallery.toast.turntableOn')
     : t('gallery.toast.turntableOff'));
+});
+// the proving ground (v2 progression, 2026-10-17): this vehicle on the game's measured range (game/testDriveLink.ts)
+$('#testDrive').addEventListener('click', () => {
+  if (!selectedId) return;
+  location.href = hrefForLocale(testDriveHref(selectedId), getLocale());
 });
 $('#copyLink').addEventListener('click', () => writeClipboard(
   location.href,

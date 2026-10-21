@@ -350,6 +350,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioTimeline.selftest.mjs',
     'src/game/studioCrush.selftest.mjs',
     'src/game/studioSceneLink.selftest.mjs',
+    'src/game/studioSceneShare.selftest.mjs',
     'src/ui/studioPlanView.selftest.mjs',
     'src/game/studioFilmPlan.selftest.mjs',
     'src/game/studioFilmSupport.selftest.mjs',
@@ -833,6 +834,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/rosterRotationMemory.selftest.mjs',
     'src/game/waveFormationSplit.selftest.mjs',
     'src/game/battleSides.selftest.mjs',
+    // 2026-10-17 (v2 progression): the proving ground run for real on its range, and the test drive's entry points.
+    'src/game/provingSession.selftest.mjs',
+    // 2026-10-20: the range's furniture — plates on the simulation's faces, boards, the course, the draw budget.
+    'src/game/provingRangeDressing.selftest.mjs',
     // 2026-10-08 (modes lane): the solo sim and the host seat every side on the same deployment slots.
     'src/game/deploymentParity.selftest.mjs',
     'src/game/rosterVisualStaging.selftest.mjs',
@@ -1117,6 +1122,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/vehicleGroundOcclusion.selftest.mjs',
     // 2026-10-09 (the shadows lane): the ground's sky beside the world's solids; the thin deck's beam
     'src/engine/structureGroundOcclusion.selftest.mjs',
+    // 2026-10-17 (the SKY lane, 227 SKY-03): a thin deck's aureole — the solids' soft shadow under Whiteout's stratus
+    'src/engine/structureAureole.selftest.mjs',
     // 2026-10-14 (the engine-cs lane; media wave f1 "hulls hover" on snow): the Studio support seats the snow takes' heroes on
     // the rendered ground, and the ground occlusion grounds them there (the snow cap, the crease's core; ordinary ground unchanged)
     'tools/studio-snow-contact.selftest.mjs',
@@ -1413,6 +1420,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-03 (bots lane): the frontline attack regroups before the last sector.
     'src/sim/frontlineRegroup.selftest.mjs',
     'src/sim/matchRuleset.selftest.mjs',
+    // 2026-10-17 (v2 progression): the proving ground's ruleset row, practice partition, range layout, card and drive.
+    'src/sim/provingGround.selftest.mjs',
     'src/sim/assaultLines.selftest.mjs',
     'src/sim/matchPlacement.selftest.mjs',
     'src/sim/authoritativeMatch.selftest.mjs',
@@ -1512,6 +1521,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-13: no two vehicles read the same (display and card names roster-wide; no X suffix).
     'src/vehicles/tankLabelUniqueness.selftest.mjs',
     'src/vehicles/taxonomy.selftest.mjs',
+    // 2026-10-17 (owner): class, battle role and design status for every playable id, once per facet.
+    'src/vehicles/vehicleFacets.selftest.mjs',
     'src/vehicles/afvBalance.selftest.mjs',
     'src/vehicles/tier.selftest.mjs',
     'src/vehicles/materialQuality.selftest.mjs',
@@ -2041,6 +2052,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageLocaleNavigation.selftest.mjs',
     'src/ui/garageVariantPicker.selftest.mjs',
     'src/ui/garageOrder.selftest.mjs',
+    'src/ui/garageFacetFilter.selftest.mjs',
     'src/ui/garageAuxiliarySummary.selftest.mjs',
     'src/vehicles/auxiliaryRoofGuns.selftest.mjs',
     // 2026-10-16 (the perf lane): the roof-gun table's compact form
@@ -2062,6 +2074,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-geometry.selftest.mjs',
     'tools/marketing-shots/battle-campaign.selftest.mjs',
     'tools/marketing-shots/showcase-r2.selftest.mjs',
+    // 2026-10-17 tank hero cards: the showroom camera with the whole tank facing left, the turret turned modestly
+    // toward the lens (owner 2026-10-20, policy v5), one flag mask and one placement rule for the compositor and the Garage CSS, the
+    // whole tank inside every card, the obverse flag, band-fit tricolours
+    'tools/hero-cards.selftest.mjs',
+    // 2026-10-18 tank hero cards: every fleet vehicle has its shipped card (its nation's flag, hull and gun left
+    // by projection, no clip, files matching the manifest, byte budgets); stale rows are reported for the
+    // changed-only re-render
+    'tools/hero-cards-check.mjs',
     // the multiplayer dual view: the published WebP is the one its manifest names, from one match
     'tools/marketing-shots/capture-multiplayer-dual-screen.selftest.mjs',
     // 2026-10-12 (home r2): the live-battle capture director's clock, freezes, bursts and staging helpers

@@ -13,7 +13,8 @@ specimen without duplicating the canonical fleet registry or combat metadata.
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
 `catalog.ts` derives read-only search, ratings, technical copy, and the versioned
-copy-data record from vehicle specs. `overlays.ts` turns canonical armor plates,
+copy-data record from vehicle specs; its class and role filters and facet search
+read `src/vehicles/vehicleFacets.ts` and `vehicleFacetSearch.ts`. `overlays.ts` turns canonical armor plates,
 module boxes, and crew boxes into disposable diagnostic geometry;
 `viewGlyphs.ts` owns the exhaustive camera-view icon vocabulary.
 `surfaceMarkup.ts` owns live triangle/patch selection, articulation ownership,

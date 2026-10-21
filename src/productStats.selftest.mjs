@@ -4,7 +4,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PRODUCT_STATS, PRODUCT_STAT_TOKENS, PRODUCT_DESCRIPTION, renderProductStats } from './productStats.ts';
 import { MAP_IDS } from './world/maps/index.ts';
-import { GAME_MODE_IDS } from './sim/matchModes.ts';
+import { BATTLE_MODE_IDS } from './sim/matchModes.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -28,7 +28,7 @@ const actual = {
   referenceVehicleRecords: RETIRED_EXTERNAL_PLACEHOLDER_IDS.size,
   battlePlayableVehicles: ALL_TANK_IDS.length,
   battlefields: MAP_IDS.length,
-  battleModes: GAME_MODE_IDS.length,
+  battleModes: BATTLE_MODE_IDS.length,
 };
 assert.equal(
   ALL_TANK_IDS.filter((id) => MODEL_SOURCE[id]?.candidateGlb).length,
