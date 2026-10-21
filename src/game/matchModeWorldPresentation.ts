@@ -959,7 +959,8 @@ export function createMatchModeWorldPresentation(
       const ring = new THREE.Mesh(objectiveRing(5.8, 6.5), basic(AMBER, 0.3));
       ring.rotation.x = -Math.PI / 2;
       ring.position.y = 0.1;
-      const icon = iconSprite(`range-lane-${laneMarkers.length + 1}-icon`, 4.6, 7.5);
+      // high over the hull: the laid hull's target plate sits just above it, the board well clear of the plate
+      const icon = iconSprite(`range-lane-${laneMarkers.length + 1}-icon`, 4.6, 11);
       marker.userData.icon = icon;
       marker.add(ring, icon);
       marker.visible = false;

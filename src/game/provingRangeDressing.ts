@@ -41,8 +41,8 @@ const POLE_OUT_M = 1.2;
 /** A plate laid back this far (deg) or more gets a plaque at its foot. */
 const PLAQUE_MIN_DEG = 45;
 const PLATE_TEX_W = 256;
-const STEEL = '#69727a';
-const PAINT_WHITE = '#eef1ec';
+const STEEL = '#4b5258';
+const PAINT_WHITE = '#f4f6f1';
 const PAINT_AMBER = '#f0a030';
 const SIGN_YELLOW = '#f2b233';
 const INK = '#151a1e';
@@ -119,7 +119,8 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
   const unitBox = geometry(new THREE.BoxGeometry(1, 1, 1));
   const panelBox = geometry(faceBox());
   const frameMaterial = material({ color: 0x4a5236, roughness: 0.78, metalness: 0.15 });
-  const steelSide = material({ color: 0x4f575d, roughness: 0.5, metalness: 0.55 });
+  // rolled plate: dark, matte mill scale (a bright metal read as frosted glass against the sky)
+  const steelSide = material({ color: 0x3e4449, roughness: 0.68, metalness: 0.3, envMapIntensity: 0.5 });
   const postMaterial = material({ color: 0x3b4044, roughness: 0.82, metalness: 0.1 });
   const poleMaterial = material({ color: 0xe9ece6, roughness: 0.6, metalness: 0 });
   const capMaterial = material({ color: 0xd8462a, roughness: 0.55, metalness: 0 });
@@ -167,7 +168,13 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
     ctx.fillStyle = PAINT_WHITE;
     ctx.font = `700 ${Math.round(h * 0.62)}px ${PROVING_DISPLAY}`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(String(rangeM), w / 2, h * 0.58);
+    ctx.fillText(String(rangeM), w * 0.46, h * 0.58);
+    // the unit, small, after the figure
+    const figureW = ctx.measureText(String(rangeM)).width;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(244,246,241,.7)';
+    ctx.font = `600 ${Math.round(h * 0.26)}px ${PROVING_DISPLAY}`;
+    ctx.fillText('m', w * 0.46 + figureW / 2 + h * 0.04, h * 0.7);
   };
 
   /** A plate's plaque: its thickness and the angle it is laid back, white and amber on slate. */
@@ -182,9 +189,12 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
     ctx.font = `700 ${Math.round(h * 0.56)}px ${PROVING_DISPLAY}`;
     ctx.fillText(String(mm), w * 0.56, h * 0.58);
     ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(244,246,241,.7)';
+    ctx.font = `600 ${Math.round(h * 0.24)}px ${PROVING_DISPLAY}`;
+    ctx.fillText('mm', w * 0.58, h * 0.4);
     ctx.fillStyle = PAINT_AMBER;
-    ctx.font = `600 ${Math.round(h * 0.4)}px ${PROVING_DISPLAY}`;
-    ctx.fillText(`${angle}°`, w * 0.62, h * 0.6);
+    ctx.font = `600 ${Math.round(h * 0.34)}px ${PROVING_DISPLAY}`;
+    ctx.fillText(`${angle}°`, w * 0.58, h * 0.72);
   };
 
   /** A course board: a yellow diamond, the feature's pictogram over its figure. */
@@ -269,11 +279,22 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const size = Math.min(w * 0.36, h * 0.22);
     ctx.font = `700 ${Math.round(size)}px ${PROVING_DISPLAY}`;
+    // a stencil: crisp white paint with a dark keyline so it reads at range
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(3, size * 0.08);
+    ctx.strokeStyle = 'rgba(12,15,18,.85)';
+    ctx.strokeText(String(plate.mm), w / 2, h * 0.26);
     ctx.fillText(String(plate.mm), w / 2, h * 0.26);
+    // its unit under it (and the angle it is laid back, in amber)
+    ctx.font = `600 ${Math.round(size * 0.42)}px ${PROVING_DISPLAY}`;
+    ctx.lineWidth = Math.max(2, size * 0.05);
+    ctx.strokeText('mm', w / 2, h * 0.26 + size * 0.72);
+    ctx.fillText('mm', w / 2, h * 0.26 + size * 0.72);
     if (plate.angleDeg) {
       ctx.fillStyle = PAINT_AMBER;
       ctx.font = `600 ${Math.round(size * 0.55)}px ${PROVING_DISPLAY}`;
-      ctx.fillText(`${plate.angleDeg}°`, w / 2, h * 0.26 + size * 0.85);
+      ctx.strokeText(`${plate.angleDeg}°`, w / 2, h * 0.26 + size * 1.25);
+      ctx.fillText(`${plate.angleDeg}°`, w / 2, h * 0.26 + size * 1.25);
     }
     // the strikes: u across from the centre (right +), v up the face from the centre
     for (const mark of plate.strikes) {
@@ -330,7 +351,7 @@ export function createProvingRangeDressing(parent: THREE.Object3D, options: Dres
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = 4;
       textures.push(texture);
-      const face = material({ map: texture, roughness: 0.48, metalness: 0.55 }, rangeLit);
+      const face = material({ map: texture, roughness: 0.64, metalness: 0.3, envMapIntensity: 0.5 }, rangeLit);
       const slab = new THREE.Mesh(panelBox, [steelSide, face]);
       _basis.makeBasis(r, u, n);
       slab.quaternion.setFromRotationMatrix(_basis);

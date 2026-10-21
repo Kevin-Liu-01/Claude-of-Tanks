@@ -67,12 +67,14 @@ interface ProvingRangeCard {
 }
 
 const AMBER = '#f0a030';
+/** A last shot older than this steps back (ms). */
+const STALE_SHOT_MS = 6000;
 const CSS = `
 .cot-range-card{position:absolute;z-index:var(--hud-layer-controls,30);left:12px;
   top:calc(var(--hud-left-top,120px) + var(--hud-toast-height,0px) + 8px);
   width:min(288px,var(--hud-side-width,288px));max-height:calc(var(--hud-left-height,60vh) - var(--hud-toast-height,0px) - 8px);
   overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;display:none;flex-direction:column;gap:6px;
-  padding:9px 10px 10px;color:#e8f0f5;background:linear-gradient(180deg,rgba(10,15,19,.9),rgba(7,11,14,.84));
+  padding:9px 10px 10px;color:#e8f0f5;background:linear-gradient(180deg,rgba(10,15,19,.95),rgba(7,11,14,.93));
   border:1px solid rgba(176,194,208,.2);border-top:2px solid ${AMBER};box-shadow:0 8px 22px rgba(0,0,0,.4);
   font:600 11px ${PROVING_DISPLAY};pointer-events:auto;}
 .cot-range-card.show{display:flex}
@@ -86,9 +88,12 @@ const CSS = `
 .cot-range-card .rc-shot{display:none;flex-direction:column;gap:4px;padding:7px 8px 8px;background:rgba(255,255,255,.035);
   border-left:3px solid var(--rc-tone,#9aa7b0)}
 .cot-range-card .rc-shot.on{display:flex}
+/* a last shot some seconds old steps back: it is history, not what the gun is laid on now */
+.cot-range-card .rc-shot.stale{opacity:.5;transition:opacity .4s}
 .cot-range-card .rc-verdict{display:flex;align-items:baseline;gap:8px}
 .cot-range-card .rc-verdict b{font:700 19px ${PROVING_DISPLAY};letter-spacing:.04em;text-transform:uppercase;color:var(--rc-tone,#e8f0f5)}
-.cot-range-card .rc-verdict .rc-at{margin-left:auto;font:500 12px ${PROVING_MONO};color:#c8d4dc;font-variant-numeric:tabular-nums}
+.cot-range-card .rc-verdict .rc-at{margin-left:auto;font:500 12px ${PROVING_MONO};color:#c8d4dc;font-variant-numeric:tabular-nums;
+  white-space:nowrap}
 .cot-range-card .rc-gauge{position:relative;height:9px;background:rgba(255,255,255,.08)}
 .cot-range-card .rc-gauge i{position:absolute;left:0;top:0;bottom:0;background:var(--rc-tone,#9aa7b0);opacity:.85}
 .cot-range-card .rc-gauge s{position:absolute;top:-3px;bottom:-3px;width:3px;margin-left:-1.5px;background:#f4f7f9;
@@ -131,8 +136,10 @@ body.cot-touch-layout .cot-range-card .rc-foot kbd,body.cot-touch-layout .cot-ra
 body.cot-touch-layout .cot-range-card .rc-foot{display:flex;gap:4px}
 body.cot-touch-layout .cot-range-card .rc-foot button{width:40px;min-height:40px;padding:0}
 body.cot-touch-layout .cot-range-card .rc-foot button svg{width:18px;height:18px}
-/* the last shot beside the card, one line, clear of the round controls under it */
-body.cot-touch-layout .cot-range-card .rc-shot{position:absolute;left:calc(100% + 6px);top:0;width:max-content;max-width:300px;
+/* the last shot at the top right under the screen's own buttons, one line: clear of the sight in the middle and of the
+   round controls under the card */
+body.cot-touch-layout .cot-range-card .rc-shot{position:fixed;left:auto;top:calc(env(safe-area-inset-top,0px) + 58px);
+  right:calc(env(safe-area-inset-right,0px) + 12px);width:max-content;max-width:min(320px,46vw);
   flex-direction:row;align-items:center;gap:8px;padding:6px 9px;background:rgba(7,11,14,.86);border:1px solid rgba(176,194,208,.2);
   border-left:3px solid var(--rc-tone,#9aa7b0)}
 body.cot-touch-layout .cot-range-card .rc-shot .rc-gauge,body.cot-touch-layout .cot-range-card .rc-shot .rc-tgt{display:none}
@@ -204,6 +211,8 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
   let lastMoving: boolean | null = null;
   let lastLaid = -2;
   let lastSerial = -1;
+  let shotAtMs = 0;
+  let stale = false;
   let lastLaidRange = -2;
   let lastResetKey = '';
   let lastMovingKey = '';
@@ -268,6 +277,11 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
       lastSerial = serial;
       shotEl.classList.toggle('on', !!range.lastShot);
       if (range.lastShot) renderShot(range.lastShot);
+      shotAtMs = performance.now();
+      if (stale) { stale = false; shotEl.classList.remove('stale'); }
+    } else if (!stale && range.lastShot && performance.now() - shotAtMs > STALE_SHOT_MS) {
+      stale = true;
+      shotEl.classList.add('stale');
     }
     if (range.moving !== lastMoving) {
       movingButton.setAttribute('aria-pressed', String(range.moving));

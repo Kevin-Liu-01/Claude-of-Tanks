@@ -1882,6 +1882,8 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-aerial-readout[hidden]{display:none}
 /* the proving ground: no sides to count (the rosters and the two scores leave; the clock keeps its place) */
 .range-mode .cot-ear,.range-mode .cot-top .sc{visibility:hidden!important}
+/* a target hull has no commander: the laid hull's plate names its vehicle, not a callsign */
+.range-mode .cot-tgt .nick{visibility:hidden}
 .realistic-mode .hprow,.realistic-mode .hptrack,.realistic-mode .hpm,.realistic-mode .cot-hpb .tr,.realistic-mode .cot-tgt .hp,.realistic-mode .cot-tgt .bar{display:none!important}
 
 body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);font-size:9px}
