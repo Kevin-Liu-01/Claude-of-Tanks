@@ -9,6 +9,7 @@
 //   node tools/genHeroCards.mjs --all --part=1/2 --out <dir>    (explicit full fleet, one capture-lock hold per part)
 //   node tools/genHeroCards.mjs --jobs=<jobs.json> --out <dir>  (sample boards: named jobs with overrides)
 //   --resume  skip jobs whose layer and meta already exist in <dir> (a hold that hit its alarm continues)
+//   --queue-stamp=<n>  join the capture queue at a stamp the coordinator issued for this hold (never self-issued)
 // Each layer is written with its own <name>.json meta as it renders; tank-layers.json collects them.
 // Then `node tools/hero-cards-compose.mjs ship --layers <dir> --ids=...` encodes and records them.
 //
@@ -19,7 +20,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
+import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock, ticketAt } from './capture-lock.mjs';
 import { fleetIds, planHeroCards, tankPolicyKey } from './hero-cards-plan.mjs';
 import { uniqueIds } from './id-list.mjs';
 
@@ -69,7 +70,8 @@ const policyKey = tankPolicyKey();
 
 const lockWait = Number(process.env.COT_SHOTS_LOCK_TIMEOUT_MS) || 4 * 3600 * 1000;
 console.log(`[hero-cards] ${jobs.length} jobs over ${ids.length} ids; waiting for the capture lock (<= ${Math.round(lockWait / 60000)} min)`);
-await acquireCaptureLock(lockWait);
+const queueStamp = Number(opt('queue-stamp', '0'));
+await acquireCaptureLock(lockWait, queueStamp ? { ticket: ticketAt(queueStamp) } : {});
 const heldAt = Date.now();
 console.log(`[hero-cards] lock taken ${new Date(heldAt).toISOString()}`);
 const refresher = setInterval(refreshCaptureLock, 30_000);
