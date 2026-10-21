@@ -1071,7 +1071,7 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
   const laidAt = (x: number, z: number): { rest: number | null; standing: boolean } => {
     const ceiling = panel.yAt(x, z) + (panel.riseLimitM ?? 0.35);
     let rest: number | null = null, centre: number | null = null, standing = false;
-    for (const [dx, dz] of [[0, 0], [0.03, 0.02], [-0.03, -0.02]] as const) {
+    for (const [dx, dz] of LAID_SAMPLES) {
       const sx = THREE.MathUtils.clamp(x + dx, x0, x1), sz = THREE.MathUtils.clamp(z + dz, z0, z1);
       const hits: Array<{ y: number; up: boolean; gear?: boolean }> = probe?.surfacesAt?.(sx, sz) ?? [];
       let here: number | null = null;
@@ -1547,6 +1547,8 @@ function foldAt(f: FoldField, u: number, below: number): number {
 
 /** The netting lane: how far under a laid net's level armour still holds it (m), and the step a laid cell never spans. */
 const LAID_DROP_M = 0.35;
+/** Where a laid net reads the armour round a point (its own and two 3.6 cm off it). */
+const LAID_SAMPLES: ReadonlyArray<readonly [number, number]> = [[0, 0], [0.03, 0.02], [-0.03, -0.02]];
 /** Release 227 (TopPanel.envelopeM): the most a net's envelope rises over the armour under a point (a stepped ERA
  * field's tops stand at most 18 cm over the plate between its rows; a taller fitting is cut round), and the unit
  * offsets it samples: sixteen directions at the reach and at half of it (an edge within 98 % of the reach is met). */
@@ -2511,14 +2513,20 @@ function netHeightRaster(geometries: readonly THREE.BufferGeometry[]): (x: numbe
     }
   }
   // each triangle's terms of the plan barycentrics, made once (2026-10-20, the ghillie perf lane: the same expressions,
-  // so the same values): [cx, cz, bz - cz, cx - bx, cz - az, ax - cx, d, ay, by, cy]
-  const TERMS = 10, terms = new Float64Array((tris.length / 9) * TERMS);
+  // so the same values): [cx, cz, bz - cz, cx - bx, cz - az, ax - cx, d, ay, by, cy], and the plan box a point must lie in
+  // to pass the test: each barycentric at least -1e-6 puts a point at most 3e-6 of a span past the box (twice that for
+  // their rounding, while d is not near 0; a triangle that thin keeps an open box)
+  const TERMS = 14, terms = new Float64Array((tris.length / 9) * TERMS);
   for (let t = 0, o = 0; o < tris.length; t++, o += 9) {
     const ax = tris[o], az = tris[o + 2], bx = tris[o + 3], bz = tris[o + 5], cx = tris[o + 6], cz = tris[o + 8];
     const k = t * TERMS;
     terms[k] = cx; terms[k + 1] = cz; terms[k + 2] = bz - cz; terms[k + 3] = cx - bx; terms[k + 4] = cz - az; terms[k + 5] = ax - cx;
-    terms[k + 6] = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
+    const d = terms[k + 6] = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
     terms[k + 7] = tris[o + 1]; terms[k + 8] = tris[o + 4]; terms[k + 9] = tris[o + 7];
+    const x0 = Math.min(ax, bx, cx), x1 = Math.max(ax, bx, cx), z0 = Math.min(az, bz, cz), z1 = Math.max(az, bz, cz);
+    const open = !(Math.abs(d) >= 1e-6), padX = 6e-6 * (x1 - x0) + 1e-9, padZ = 6e-6 * (z1 - z0) + 1e-9;
+    terms[k + 10] = open ? -Infinity : x0 - padX; terms[k + 11] = open ? Infinity : x1 + padX;
+    terms[k + 12] = open ? -Infinity : z0 - padZ; terms[k + 13] = open ? Infinity : z1 + padZ;
   }
   return (x, y, z) => {
     let best: number | null = null;
@@ -2526,6 +2534,7 @@ function netHeightRaster(geometries: readonly THREE.BufferGeometry[]): (x: numbe
     if (!list) return best;
     for (let n = 0; n < list.length; n++) {
       const k = list[n] * TERMS;
+      if (x < terms[k + 10] || x > terms[k + 11] || z < terms[k + 12] || z > terms[k + 13]) continue;
       const d = terms[k + 6];
       if (Math.abs(d) < 1e-12) continue;
       const cx = terms[k], cz = terms[k + 1];
@@ -2562,6 +2571,8 @@ const FIELD_DRAPE_RISE = 0.05;
  * lie on the armour there when that armour lies no more than FIELD_GAP_DIP_M under the net round the gap.
  */
 const FIELD_GAP_REACH_M = 0.15;
+/** The lines across a gap a bough's point is tested along (plan directions). */
+const GAP_LINES: ReadonlyArray<readonly [number, number]> = [[1, 0], [0.71, 0.71], [0, 1], [-0.71, 0.71]];
 const FIELD_GAP_DIP_M = 0.05;
 /** netting-proper round 2: the most a roof card's face may tilt off the net under its footprint (degrees). */
 const FIELD_FACE_TILT_DEG = 24;
@@ -2848,10 +2859,11 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
   // FIELD_GAP_REACH_M (a roof's edge has net on one side only), and the lowest of the net found round it; else null
   const netBeside = (x: number, y: number, z: number, stemY: number): number | null => {
     let low: number | null = null, across = false;
-    for (const [dx, dz] of [[1, 0], [0.71, 0.71], [0, 1], [-0.71, 0.71]]) {
+    for (const [dx, dz] of GAP_LINES) {
       const r = FIELD_GAP_REACH_M;
       const h1 = netUnder(x + dx * r, y + FIELD_OWN_NET_M, z + dz * r, stemY), h2 = netUnder(x - dx * r, y + FIELD_OWN_NET_M, z - dz * r, stemY);
-      for (const h of [h1, h2]) if (h !== null && (low === null || h < low)) low = h;
+      if (h1 !== null && (low === null || h1 < low)) low = h1;
+      if (h2 !== null && (low === null || h2 < low)) low = h2;
       if (h1 !== null && h2 !== null) across = true;
     }
     return across ? low : null;
@@ -4131,12 +4143,22 @@ function roofWeaponFloor(turret: THREE.Object3D, vehicleId: string): RoofWeaponF
       }
     });
   });
+  // each cell's lowest over itself and the eight round it, made once (2026-10-20, the ghillie perf lane: nine reads a
+  // query before; a minimum takes no account of order)
+  const fixedNear = new Map<number | string, number>();
+  for (const [key, y] of fixed) {
+    const [i, k] = typeof key === 'number'
+      ? [Math.floor(key / (2 * CELL_KEY2)) - CELL_KEY2, (key % (2 * CELL_KEY2)) - CELL_KEY2] : key.split(',').map(Number);
+    // (a cell off any finite raster is no finite cell's neighbour)
+    if (!Number.isFinite(i) || !Number.isFinite(k)) continue;
+    for (let a = i - 1; a <= i + 1; a++) for (let b = k - 1; b <= k + 1; b++) {
+      const near = cellKey2(a, b);
+      fixedNear.set(near, Math.min(fixedNear.get(near) ?? Infinity, y));
+    }
+  }
   const standing = (x: number, z: number): number => {
     let low = Infinity;
-    if (fixed.size) {
-      const i = Math.floor(x / FIXED_BIN), k = Math.floor(z / FIXED_BIN);
-      for (let a = i - 1; a <= i + 1; a++) for (let b = k - 1; b <= k + 1; b++) low = Math.min(low, fixed.get(cellKey2(a, b)) ?? Infinity);
-    }
+    if (fixed.size) low = Math.min(low, fixedNear.get(cellKey2(Math.floor(x / FIXED_BIN), Math.floor(z / FIXED_BIN))) ?? Infinity);
     return low;
   };
   const swept = sweeps.map((sweep) => (x: number, z: number): number => {
@@ -5161,7 +5183,9 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
   const netOk = (owner: GhillieOwner, p: readonly number[], garnish = false): boolean => !inDock(owner, p) && workingOk(owner, p, garnish);
   const lenses: Partial<Record<GhillieOwner, Float64Array>> = {}, smoke: Partial<Record<GhillieOwner, Float64Array>> = {};
   const offered: Partial<Record<GhillieOwner, Float64Array>> = {};
-  const ownerOf = (o: GhillieOwner): [THREE.Object3D, THREE.Object3D[]] => (o === 'hull' ? [hull, [turret, gun]] : o === 'turret' ? [turret, [gun]] : [gun, []]);
+  // each owner's rig and the rigs left out of it, made once (the lens and smoke queries asked for them on every point)
+  const owned: Readonly<Record<GhillieOwner, [THREE.Object3D, THREE.Object3D[]]>> = { hull: [hull, [turret, gun]], turret: [turret, [gun]], gun: [gun, []] };
+  const ownerOf = (o: GhillieOwner): [THREE.Object3D, THREE.Object3D[]] => owned[o === 'hull' || o === 'turret' ? o : 'gun'];
   /** Whether p lies in a cone or tube along a run of [origin, axis] rows. */
   const inLine = (rows: Float64Array, p: readonly number[], reach: number, base: number, slope: number, both = false): boolean => {
     for (let i = 0; i < rows.length; i += 6) {
