@@ -291,6 +291,47 @@ const rect = (x0: number, x1: number, z0: number, z1: number): Point2[] => (
   [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]
 );
 
+/**
+ * A raster cell's map key (2026-10-20, the ghillie perf lane: the template-string keys these maps used cost the suit's
+ * build its garbage collection): two (three) integer cell indices as one number while each is an integer under 2^20 (2^16)
+ * in size, every such key under 2^53, else the "a,b[,c]" string they were. Two cells share a key exactly when their
+ * indices do (and -0 is 0, as in the strings).
+ */
+const CELL_KEY2 = 0x100000, CELL_KEY3 = 0x10000;
+const cellKey2 = (a: number, b: number): number | string => (Number.isInteger(a) && Number.isInteger(b)
+  && Math.abs(a) < CELL_KEY2 && Math.abs(b) < CELL_KEY2 ? (a + CELL_KEY2) * (2 * CELL_KEY2) + (b + CELL_KEY2) : `${a},${b}`);
+const cellKey3 = (a: number, b: number, c: number): number | string => (Number.isInteger(a) && Number.isInteger(b)
+  && Number.isInteger(c) && Math.abs(a) < CELL_KEY3 && Math.abs(b) < CELL_KEY3 && Math.abs(c) < CELL_KEY3
+  ? ((a + CELL_KEY3) * (2 * CELL_KEY3) + (b + CELL_KEY3)) * (2 * CELL_KEY3) + (c + CELL_KEY3) : `${a},${b},${c}`);
+
+/**
+ * Math.floor(Math.hypot(a, b) / step) to the bit, by a square root (2026-10-20, the ghillie perf lane: the suit's
+ * occupancy rasters take hundreds of thousands of these). The root of the summed squares lies within a few ulps of
+ * Math.hypot, so the two floors can part only where the quotient falls within 1e-9 of a whole step: there (and for
+ * anything not finite) Math.hypot is asked.
+ */
+function hypotBin(a: number, b: number, step: number): number {
+  const q = Math.sqrt(a * a + b * b) / step, i = Math.floor(q);
+  return q - i > 1e-9 && q - i < 1 - 1e-9 ? i : Math.floor(Math.hypot(a, b) / step);
+}
+/**
+ * Math.hypot(x, y, z) < lim to the bit: by the summed squares unless they fall within 1e-9 of lim's square (the roots
+ * part by a few ulps at most; there, and for a limit not over 0, Math.hypot is asked).
+ */
+function hypot3Below(x: number, y: number, z: number, lim: number): boolean {
+  if (!(lim > 0)) return Math.hypot(x, y, z) < lim;
+  const s = x * x + y * y + z * z, l = lim * lim;
+  if (s > l * (1 + 1e-9)) return false;
+  return s < l * (1 - 1e-9) || Math.hypot(x, y, z) < lim;
+}
+/** Math.hypot(x, y, z) >= lim to the bit (hypot3Below's complement, but where either side is not a number). */
+function hypot3AtLeast(x: number, y: number, z: number, lim: number): boolean {
+  if (!(lim > 0)) return Math.hypot(x, y, z) >= lim;
+  const s = x * x + y * y + z * z, l = lim * lim;
+  if (s > l * (1 + 1e-9)) return true;
+  return !(s < l * (1 - 1e-9)) && Math.hypot(x, y, z) >= lim;
+}
+
 /** Each polygon's plan box [x0, x1, z0, z1], kept on first use (a point outside it is outside the polygon). */
 const polyBoxes = new WeakMap<readonly Point2[], [number, number, number, number]>();
 function polyBox(poly: readonly Point2[]): [number, number, number, number] {
@@ -317,12 +358,49 @@ function insidePoly(x: number, z: number, poly: readonly Point2[]): boolean {
   if (poly.length > 4 && !nearBox(x, z, poly, 0)) return false;
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const [xi, zi] = poly[i];
-    const [xj, zj] = poly[j];
+    const pi = poly[i], pj = poly[j];
+    const xi = pi[0], zi = pi[1], xj = pj[0], zj = pj[1];
     if (((zi > z) !== (zj > z))
       && (x < ((xj - xi) * (z - zi)) / ((zj - zi) || 1e-6) + xi)) inside = !inside;
   }
   return inside;
+}
+
+/**
+ * How far outside a polygon's plan box a point may lie and still be put to insidePoly's crossing test (2026-10-20, the
+ * ghillie perf lane). Past it the test answers outside to the bit: a crossing's x lies within a few ulps of its edge's
+ * ends, and every edge the point's row crosses then lies wholly on one side of it.
+ */
+const POLY_BOX_PAD_M = 1e-7;
+
+/** A panel's openings with their plan boxes [x0, x1, z0, z1] each, for the per-point tests a garnish card makes. */
+interface PolySet { readonly polys: readonly (readonly Point2[])[]; readonly box: Float64Array }
+function polySet(polys: readonly (readonly Point2[])[]): PolySet {
+  const box = new Float64Array(polys.length * 4);
+  polys.forEach((poly, k) => box.set(polyBox(poly), k * 4));
+  return { polys, box };
+}
+/** Whether (x, z) lies inside any of the set (each polygon's insidePoly, those whose padded box holds the point). */
+function insideAny(x: number, z: number, set: PolySet): boolean {
+  const { polys, box } = set;
+  for (let k = 0; k < polys.length; k++) {
+    const o = k * 4;
+    if (x < box[o] - POLY_BOX_PAD_M || x > box[o + 1] + POLY_BOX_PAD_M || z < box[o + 2] - POLY_BOX_PAD_M
+      || z > box[o + 3] + POLY_BOX_PAD_M) continue;
+    if (insidePoly(x, z, polys[k])) return true;
+  }
+  return false;
+}
+/** Whether (x, z) lies within `margin` of any of the set (each polygon's nearPolygon, its own box test made first here). */
+function nearAny(x: number, z: number, set: PolySet, margin: number): boolean {
+  const { polys, box } = set;
+  const pad = Math.max(0, margin);
+  for (let k = 0; k < polys.length; k++) {
+    const o = k * 4;
+    if (!(x >= box[o] - pad && x <= box[o + 1] + pad && z >= box[o + 2] - pad && z <= box[o + 3] + pad)) continue;
+    if (nearPolygon(x, z, polys[k], margin)) return true;
+  }
+  return false;
 }
 
 function makeGeometry(positions: number[], uvs: number[]): THREE.BufferGeometry {
@@ -685,27 +763,26 @@ class ArmourProbe implements SurfaceProbe {
   }
 
   private hit(g: ProbeGrid, a0: number, a1: number, aOut: number, p0: number, p1: number, sign: number): number | null {
-    const tri = this.tri;
+    const tri = this.tri, gear = this.gear;
     let best = -Infinity;
-    const test = (t: number): void => {
+    const c = Math.floor((p0 - g.min0) / PROBE_CELL_M), r = Math.floor((p1 - g.min1) / PROBE_CELL_M);
+    const cell = c >= 0 && r >= 0 && c < g.n0 && r < g.n1 ? r * g.n0 + c : -1;
+    // the point's cell, then the broad triangles (2026-10-20: the per-triangle test inlined, its closure made per query)
+    const k0 = cell >= 0 ? g.start[cell] : 0, k1 = cell >= 0 ? g.start[cell + 1] : 0, n = k1 - k0 + g.broad.length;
+    for (let q = 0; q < n; q++) {
+      const t = q < k1 - k0 ? g.items[k0 + q] : g.broad[q - (k1 - k0)];
       const o = t * 9;
       const x0 = tri[o + a0], y0 = tri[o + a1], x1 = tri[o + 3 + a0], y1 = tri[o + 3 + a1], x2 = tri[o + 6 + a0], y2 = tri[o + 6 + a1];
       const d = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
-      if (Math.abs(d) < 1e-12) return;
+      if (Math.abs(d) < 1e-12) continue;
       const l0 = ((y1 - y2) * (p0 - x2) + (x2 - x1) * (p1 - y2)) / d;
       const l1 = ((y2 - y0) * (p0 - x2) + (x0 - x2) * (p1 - y2)) / d;
       const l2 = 1 - l0 - l1;
-      if (l0 < -1e-7 || l1 < -1e-7 || l2 < -1e-7) return;
+      if (l0 < -1e-7 || l1 < -1e-7 || l2 < -1e-7) continue;
       // running gear is met with its clearance added (it moves with the suspension)
-      const value = sign * (l0 * tri[o + aOut] + l1 * tri[o + 3 + aOut] + l2 * tri[o + 6 + aOut]) + (this.gear[t] ? GEAR_CLEARANCE_M : 0);
+      const value = sign * (l0 * tri[o + aOut] + l1 * tri[o + 3 + aOut] + l2 * tri[o + 6 + aOut]) + (gear[t] ? GEAR_CLEARANCE_M : 0);
       if (value > best) best = value;
-    };
-    const c = Math.floor((p0 - g.min0) / PROBE_CELL_M), r = Math.floor((p1 - g.min1) / PROBE_CELL_M);
-    if (c >= 0 && r >= 0 && c < g.n0 && r < g.n1) {
-      const cell = r * g.n0 + c;
-      for (let k = g.start[cell]; k < g.start[cell + 1]; k++) test(g.items[k]);
     }
-    for (let k = 0; k < g.broad.length; k++) test(g.broad[k]);
     return best === -Infinity ? null : best;
   }
 
@@ -716,26 +793,25 @@ class ArmourProbe implements SurfaceProbe {
    * it faces up (a deck, a lid) or down (a bar's or a box's underside). Running gear is met with its clearance added.
    */
   surfacesAt(x: number, z: number): Array<{ y: number; up: boolean; gear: boolean }> {
-    const tri = this.tri, g = this.xz, out: Array<{ y: number; up: boolean; gear: boolean }> = [];
-    const test = (t: number): void => {
+    const tri = this.tri, g = this.xz, gear = this.gear, out: Array<{ y: number; up: boolean; gear: boolean }> = [];
+    const c = Math.floor((x - g.min0) / PROBE_CELL_M), r = Math.floor((z - g.min1) / PROBE_CELL_M);
+    const cell = c >= 0 && r >= 0 && c < g.n0 && r < g.n1 ? r * g.n0 + c : -1;
+    // the point's cell, then the broad triangles (as hit)
+    const k0 = cell >= 0 ? g.start[cell] : 0, k1 = cell >= 0 ? g.start[cell + 1] : 0, n = k1 - k0 + g.broad.length;
+    for (let q = 0; q < n; q++) {
+      const t = q < k1 - k0 ? g.items[k0 + q] : g.broad[q - (k1 - k0)];
       const o = t * 9;
       const x0 = tri[o], y0 = tri[o + 2], x1 = tri[o + 3], y1 = tri[o + 5], x2 = tri[o + 6], y2 = tri[o + 8];
       const d = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
-      if (Math.abs(d) < 1e-12) return;
+      if (Math.abs(d) < 1e-12) continue;
       const l0 = ((y1 - y2) * (x - x2) + (x2 - x1) * (z - y2)) / d, l1 = ((y2 - y0) * (x - x2) + (x0 - x2) * (z - y2)) / d;
       const l2 = 1 - l0 - l1;
-      if (l0 < -1e-7 || l1 < -1e-7 || l2 < -1e-7) return;
+      if (l0 < -1e-7 || l1 < -1e-7 || l2 < -1e-7) continue;
       // the face's normal y sign from its winding in plan (counter-clockwise from above faces up)
       const ny = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0);
-      out.push({ y: l0 * tri[o + 1] + l1 * tri[o + 4] + l2 * tri[o + 7] + (this.gear[t] ? GEAR_CLEARANCE_M : 0), up: ny < 0, gear: !!this.gear[t] });
-    };
-    const c = Math.floor((x - g.min0) / PROBE_CELL_M), r = Math.floor((z - g.min1) / PROBE_CELL_M);
-    if (c >= 0 && r >= 0 && c < g.n0 && r < g.n1) {
-      const cell = r * g.n0 + c;
-      for (let k = g.start[cell]; k < g.start[cell + 1]; k++) test(g.items[k]);
+      out.push({ y: l0 * tri[o + 1] + l1 * tri[o + 4] + l2 * tri[o + 7] + (gear[t] ? GEAR_CLEARANCE_M : 0), up: ny < 0, gear: !!gear[t] });
     }
-    for (let k = 0; k < g.broad.length; k++) test(g.broad[k]);
-    return out.sort((a, b) => b.y - a.y);
+    return out.length > 1 ? out.sort((a, b) => b.y - a.y) : out;
   }
   /**
    * The highest armour within `r` of (x, z): a cloth bridges slots and bolt heads instead of dipping into them. The
@@ -864,11 +940,24 @@ function dropIslands(positions: number[], uvs: number[], minTris = 8, share = 20
   if (triCount < 2) return;
   const parent = Int32Array.from({ length: triCount }, (_, i) => i);
   const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
-  const owner = new Map<string, number>();
+  // corners weld where their coordinates agree to 0.1 mm (toFixed(4)): each coordinate's rounded text is made once and
+  // numbered, a corner keyed by its three numbers (2026-10-20, the ghillie perf lane: one string per corner before)
+  const textId = new Map<string, number>(), coordId = new Map<number, number>();
+  const idOf = (v: number): number => {
+    let id = coordId.get(v);
+    if (id === undefined) {
+      const text = v.toFixed(4);
+      id = textId.get(text);
+      if (id === undefined) textId.set(text, id = textId.size);
+      coordId.set(v, id);
+    }
+    return id;
+  };
+  const owner = new Map<number | string, number>();
   for (let t = 0; t < triCount; t++) {
     for (let k = 0; k < 3; k++) {
       const o = (t * 3 + k) * 3;
-      const key = `${positions[o].toFixed(4)},${positions[o + 1].toFixed(4)},${positions[o + 2].toFixed(4)}`;
+      const key = cellKey3(idOf(positions[o]), idOf(positions[o + 1]), idOf(positions[o + 2]));
       const other = owner.get(key);
       if (other === undefined) owner.set(key, t);
       else parent[find(t)] = find(other);
@@ -892,7 +981,7 @@ function dropIslands(positions: number[], uvs: number[], minTris = 8, share = 20
 function clothDistance(geometry: THREE.BufferGeometry): (p: readonly number[]) => number {
   const pos = geometry.attributes.position as THREE.BufferAttribute;
   const cell = 0.12;
-  const grid = new Map<string, number[]>();
+  const grid = new Map<number | string, number[]>();
   const tris: THREE.Triangle[] = [];
   for (let k = 0; k + 2 < pos.count; k += 3) {
     const t = new THREE.Triangle(new THREE.Vector3().fromBufferAttribute(pos, k), new THREE.Vector3().fromBufferAttribute(pos, k + 1),
@@ -902,7 +991,7 @@ function clothDistance(geometry: THREE.BufferGeometry): (p: readonly number[]) =
     for (let x = Math.floor(box.min.x / cell); x <= Math.floor(box.max.x / cell); x++)
       for (let y = Math.floor(box.min.y / cell); y <= Math.floor(box.max.y / cell); y++)
         for (let z = Math.floor(box.min.z / cell); z <= Math.floor(box.max.z / cell); z++) {
-          const key = `${x},${y},${z}`;
+          const key = cellKey3(x, y, z);
           const list = grid.get(key);
           if (list) list.push(i); else grid.set(key, [i]);
         }
@@ -911,7 +1000,7 @@ function clothDistance(geometry: THREE.BufferGeometry): (p: readonly number[]) =
   return (p) => {
     q.set(p[0], p[1], p[2]);
     let best = Infinity;
-    for (const i of grid.get(`${Math.floor(p[0] / cell)},${Math.floor(p[1] / cell)},${Math.floor(p[2] / cell)}`) ?? []) {
+    for (const i of grid.get(cellKey3(Math.floor(p[0] / cell), Math.floor(p[1] / cell), Math.floor(p[2] / cell))) ?? []) {
       tris[i].closestPointToPoint(q, c);
       best = Math.min(best, q.distanceTo(c));
     }
@@ -966,6 +1055,7 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
   // the cloth's openings (authored holes, lids and lens slots); the garnish keeps its margin from the first two only
   const garnishHoles = panel.holes ?? [];
   const holes = panel.slots?.length ? [...garnishHoles, ...panel.slots] : garnishHoles;
+  const holeSet = polySet(holes), garnishHoleSet = polySet(garnishHoles), excludeSet = polySet(panel.foliageExclude ?? []);
   const NX = nx + 1, NZ = nz + 1;
   const xs = new Float64Array(NX), zs = new Float64Array(NZ);
   for (let i = 0; i < NX; i++) xs[i] = THREE.MathUtils.lerp(x0, x1, i / nx);
@@ -998,7 +1088,7 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
   const laidAt = (x: number, z: number): { rest: number | null; standing: boolean } => {
     const ceiling = panel.yAt(x, z) + (panel.riseLimitM ?? 0.35);
     let rest: number | null = null, centre: number | null = null, standing = false;
-    for (const [dx, dz] of [[0, 0], [0.03, 0.02], [-0.03, -0.02]] as const) {
+    for (const [dx, dz] of LAID_SAMPLES) {
       const sx = THREE.MathUtils.clamp(x + dx, x0, x1), sz = THREE.MathUtils.clamp(z + dz, z0, z1);
       const hits: Array<{ y: number; up: boolean; gear?: boolean }> = probe?.surfacesAt?.(sx, sz) ?? [];
       let here: number | null = null;
@@ -1057,7 +1147,7 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
     base[j * NX + i] = ok ? Math.min(rest + gap, authored + 0.15) : authored;
     // only the cloth itself rests on anything: a point in an opening (a sight head, a hatch ring) or outside the
     // carrier's outline holds nothing up
-    const cloth = (!outline || insidePoly(xs[i], zs[j], outline)) && !holes.some((hole) => insidePoly(xs[i], zs[j], hole));
+    const cloth = (!outline || insidePoly(xs[i], zs[j], outline)) && !insideAny(xs[i], zs[j], holeSet);
     supported[j * NX + i] = (probe && !ok) || !cloth ? 0 : 1;
   }
   const y = new Float64Array(NX * NZ);
@@ -1124,9 +1214,11 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
     for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) {
       const x = xs[i], z = zs[j];
       let l = 0, roll = 0;
+      const hb = holeSet.box;
       holes.forEach((hole, h) => {
         // past the rim's width of the opening's box, nothing (exact: the boundary lies inside the box)
-        if (!nearBox(x, z, hole, RIM_W_M) || insidePoly(x, z, hole)) return;
+        if (!(x >= hb[h * 4] - RIM_W_M && x <= hb[h * 4 + 1] + RIM_W_M && z >= hb[h * 4 + 2] - RIM_W_M && z <= hb[h * 4 + 3] + RIM_W_M)
+          || insidePoly(x, z, hole)) return;
         const d = boundaryDistance(x, z, hole);
         // the roll is bunched unevenly along the cut: thick in places, flat in others
         const bunch = Math.max(0, 0.25 + 0.95 * clothNoise(x * 1.7, z * 1.7, 0.22, s + h * 13));
@@ -1272,11 +1364,9 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
   const clipped = (i: number, j: number): boolean => (panel.clipToArmour === true && !!probe
     && (armoured[j * NX + i] + armoured[j * NX + i + 1] + armoured[(j + 1) * NX + i] + armoured[(j + 1) * NX + i + 1] < 2 || stepped(i, j)))
     || tall[j * NX + i] + tall[j * NX + i + 1] + tall[(j + 1) * NX + i] + tall[(j + 1) * NX + i + 1] > 0;
-  const cellOf = (x: number, z: number): [number, number] => [
-    THREE.MathUtils.clamp(Math.floor((x - x0) / ((x1 - x0) || 1) * nx), 0, nx - 1),
-    THREE.MathUtils.clamp(Math.floor((z - z0) / ((z1 - z0) || 1) * nz), 0, nz - 1)];
-  const inside = (x: number, z: number): boolean => (!outline || insidePoly(x, z, outline)) && !holes.some((hole) => insidePoly(x, z, hole))
-    && !clipped(...cellOf(x, z));
+  const inside = (x: number, z: number): boolean => (!outline || insidePoly(x, z, outline)) && !insideAny(x, z, holeSet)
+    && !clipped(THREE.MathUtils.clamp(Math.floor((x - x0) / ((x1 - x0) || 1) * nx), 0, nx - 1),
+      THREE.MathUtils.clamp(Math.floor((z - z0) / ((z1 - z0) || 1) * nz), 0, nz - 1));
   // geometry: the authored cell rule (outline, openings, torn perimeter cells)
   const positions: number[] = [], uvs: number[] = [];
   const [ou, ov] = panelUvOffset(panel, cfg.seed);
@@ -1287,9 +1377,9 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
     const cx = (xs[i] + xs[i + 1]) / 2, cz = (zs[j] + zs[j + 1]) / 2;
     if (outline && !insidePoly(cx, cz, outline)) continue;
-    if (holes.some((hole) => insidePoly(cx, cz, hole))) continue;
-    if (panel.strictHoles && holes.some((hole) => [[xs[i], zs[j]], [xs[i + 1], zs[j]], [xs[i + 1], zs[j + 1]], [xs[i], zs[j + 1]]]
-      .some(([px, pz]) => insidePoly(px, pz, hole)))) continue;
+    if (insideAny(cx, cz, holeSet)) continue;
+    if (panel.strictHoles && [[xs[i], zs[j]], [xs[i + 1], zs[j]], [xs[i + 1], zs[j + 1]], [xs[i], zs[j + 1]]]
+      .some(([px, pz]) => insideAny(px, pz, holeSet))) continue;
     if (clipped(i, j)) continue;
     const edge = i === 0 || j === 0 || i === nx - 1 || j === nz - 1;
     if (edge && noise01(i + j * nx + (panel.seed ?? 0), cfg.seed) < 0.23) continue;
@@ -1311,13 +1401,13 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
     },
     allowed(u, v, margin) {
       if (!inside(u, v)) return false;
-      if ((panel.foliageExclude ?? []).some((region) => nearPolygon(u, v, region, margin * 0.5))) return false;
-      return !garnishHoles.some((hole) => nearPolygon(u, v, hole, margin));
+      if (nearAny(u, v, excludeSet, margin * 0.5)) return false;
+      return !nearAny(u, v, garnishHoleSet, margin);
     },
     edge: (u, v) => edgeDistance(u, v, ring),
-    holeAt: (x, z) => holes.some((hole) => nearPolygon(x, z, hole, 0.02)),
+    holeAt: (x, z) => nearAny(x, z, holeSet, 0.02),
     cardOk(p) {
-      if (garnishHoles.some((hole) => nearPolygon(p[0], p[2], hole, (panel.garnishOpeningMarginM ?? 0.09) * 0.5))) return false;
+      if (nearAny(p[0], p[2], garnishHoleSet, (panel.garnishOpeningMarginM ?? 0.09) * 0.5)) return false;
       const h = heightAt(p[0], p[2]);
       // over the deck the spray stays above its own net (a field card's foot and edges may tuck under its folds); past the
       // deck's edge it may droop over it
@@ -1474,6 +1564,8 @@ function foldAt(f: FoldField, u: number, below: number): number {
 
 /** The netting lane: how far under a laid net's level armour still holds it (m), and the step a laid cell never spans. */
 const LAID_DROP_M = 0.35;
+/** Where a laid net reads the armour round a point (its own and two 3.6 cm off it). */
+const LAID_SAMPLES: ReadonlyArray<readonly [number, number]> = [[0, 0], [0.03, 0.02], [-0.03, -0.02]];
 /** Release 227 (TopPanel.envelopeM): the most a net's envelope rises over the armour under a point (a stepped ERA
  * field's tops stand at most 18 cm over the plate between its rows; a taller fitting is cut round), and the unit
  * offsets it samples: sixteen directions at the reach and at half of it (an edge within 98 % of the reach is met). */
@@ -2165,9 +2257,25 @@ interface TuftContext {
   readonly cardClear?: (card: FoliageCard) => boolean;
 }
 
+/**
+ * The last card's nine vertices (foliageCardPoints) and its dense raster (2026-10-20, the ghillie perf lane): a card's
+ * checks ask for them several times in a row, and a card is never changed once it is made, so each is made once a card.
+ * Read-only.
+ */
+let pointsCard: FoliageCard | null = null, pointsOfCard: ReadonlyArray<readonly number[]> = [];
+let denseCard: FoliageCard | null = null, denseOfCard: ReadonlyArray<readonly number[]> = [];
+function cardPoints(card: FoliageCard): ReadonlyArray<readonly number[]> {
+  if (card !== pointsCard) { pointsOfCard = foliageCardPoints(card); pointsCard = card; }
+  return pointsOfCard;
+}
+function denseCardPoints(card: FoliageCard): ReadonlyArray<readonly number[]> {
+  if (card !== denseCard) { denseOfCard = denseCardRaster(card); denseCard = card; }
+  return denseOfCard;
+}
+
 /** A card's face on a 5 x 5 raster (its three rows of three points interpolated), for clearances thinner than a card. */
-function denseCardPoints(card: FoliageCard): number[][] {
-  const g = foliageCardPoints(card);
+function denseCardRaster(card: FoliageCard): number[][] {
+  const g = cardPoints(card);
   const at = (r: number, c: number): readonly number[] => g[r * 3 + c];
   const out: number[][] = [];
   for (let i = 0; i <= 4; i++) for (let j = 0; j <= 4; j++) {
@@ -2289,7 +2397,7 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
           const len = length * scale;
           const root: [number, number, number] = [stem[0] + axis[0] * 0.05 * len, stem[1] + axis[1] * 0.05 * len, stem[2] + axis[2] * 0.05 * len];
           const card: FoliageCard = { stem: root, axis, face, out: nn, length: len, width: width * scale, tile, bend: droop, tint, fold };
-          const ok = foliageCardPoints(card).every((p) => Math.abs(p[0]) <= ctx.maxHalfWidth && p[1] >= ctx.hemFloor - 0.04 && surface.cardOk(p))
+          const ok = cardPoints(card).every((p) => Math.abs(p[0]) <= ctx.maxHalfWidth && p[1] >= ctx.hemFloor - 0.04 && surface.cardOk(p))
             && (!ctx.cardClear || ctx.cardClear(card));
           if (ok) { placed = card; break; }
         }
@@ -2421,18 +2529,36 @@ function netHeightRaster(geometries: readonly THREE.BufferGeometry[]): (x: numbe
       }
     }
   }
+  // each triangle's terms of the plan barycentrics, made once (2026-10-20, the ghillie perf lane: the same expressions,
+  // so the same values): [cx, cz, bz - cz, cx - bx, cz - az, ax - cx, d, ay, by, cy], and the plan box a point must lie in
+  // to pass the test: each barycentric at least -1e-6 puts a point at most 3e-6 of a span past the box (twice that for
+  // their rounding, while d is not near 0; a triangle that thin keeps an open box)
+  const TERMS = 14, terms = new Float64Array((tris.length / 9) * TERMS);
+  for (let t = 0, o = 0; o < tris.length; t++, o += 9) {
+    const ax = tris[o], az = tris[o + 2], bx = tris[o + 3], bz = tris[o + 5], cx = tris[o + 6], cz = tris[o + 8];
+    const k = t * TERMS;
+    terms[k] = cx; terms[k + 1] = cz; terms[k + 2] = bz - cz; terms[k + 3] = cx - bx; terms[k + 4] = cz - az; terms[k + 5] = ax - cx;
+    const d = terms[k + 6] = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
+    terms[k + 7] = tris[o + 1]; terms[k + 8] = tris[o + 4]; terms[k + 9] = tris[o + 7];
+    const x0 = Math.min(ax, bx, cx), x1 = Math.max(ax, bx, cx), z0 = Math.min(az, bz, cz), z1 = Math.max(az, bz, cz);
+    const open = !(Math.abs(d) >= 1e-6), padX = 6e-6 * (x1 - x0) + 1e-9, padZ = 6e-6 * (z1 - z0) + 1e-9;
+    terms[k + 10] = open ? -Infinity : x0 - padX; terms[k + 11] = open ? Infinity : x1 + padX;
+    terms[k + 12] = open ? -Infinity : z0 - padZ; terms[k + 13] = open ? Infinity : z1 + padZ;
+  }
   return (x, y, z) => {
     let best: number | null = null;
-    for (const t of cells.get(key(Math.floor(x / C), Math.floor(z / C))) ?? []) {
-      const o = t * 9;
-      const ax = tris[o], ay = tris[o + 1], az = tris[o + 2], bx = tris[o + 3], by = tris[o + 4], bz = tris[o + 5];
-      const cx = tris[o + 6], cy = tris[o + 7], cz = tris[o + 8];
-      const d = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
+    const list = cells.get(key(Math.floor(x / C), Math.floor(z / C)));
+    if (!list) return best;
+    for (let n = 0; n < list.length; n++) {
+      const k = list[n] * TERMS;
+      if (x < terms[k + 10] || x > terms[k + 11] || z < terms[k + 12] || z > terms[k + 13]) continue;
+      const d = terms[k + 6];
       if (Math.abs(d) < 1e-12) continue;
-      const l1 = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / d, l2 = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / d;
+      const cx = terms[k], cz = terms[k + 1];
+      const l1 = (terms[k + 2] * (x - cx) + terms[k + 3] * (z - cz)) / d, l2 = (terms[k + 4] * (x - cx) + terms[k + 5] * (z - cz)) / d;
       const l3 = 1 - l1 - l2;
       if (l1 < -1e-6 || l2 < -1e-6 || l3 < -1e-6) continue;
-      const h = l1 * ay + l2 * by + l3 * cy;
+      const h = l1 * terms[k + 7] + l2 * terms[k + 8] + l3 * terms[k + 9];
       if (h <= y + 0.1 && (best === null || h > best)) best = h;
     }
     return best;
@@ -2462,6 +2588,8 @@ const FIELD_DRAPE_RISE = 0.05;
  * lie on the armour there when that armour lies no more than FIELD_GAP_DIP_M under the net round the gap.
  */
 const FIELD_GAP_REACH_M = 0.15;
+/** The lines across a gap a bough's point is tested along (plan directions). */
+const GAP_LINES: ReadonlyArray<readonly [number, number]> = [[1, 0], [0.71, 0.71], [0, 1], [-0.71, 0.71]];
 const FIELD_GAP_DIP_M = 0.05;
 /** netting-proper round 2: the most a roof card's face may tilt off the net under its footprint (degrees). */
 const FIELD_FACE_TILT_DEG = 24;
@@ -2595,7 +2723,7 @@ function markingRaysOf(P: GhillieBuilderPort, owner: THREE.Object3D): MarkingRay
 
 /** Whether a card's face (its eight triangles, folded or flat) crosses a marking's sight rays (above the paint). */
 function cardHidesMarking(card: FoliageCard, marks: MarkingRays): boolean {
-  const g = foliageCardPoints(card);
+  const g = cardPoints(card);
   let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
   for (const p of g) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); z0 = Math.min(z0, p[2]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); z1 = Math.max(z1, p[2]); }
   if (x1 < marks.box.min.x || x0 > marks.box.max.x || y1 < marks.box.min.y || y0 > marks.box.max.y || z1 < marks.box.min.z || z0 > marks.box.max.z) return false;
@@ -2613,7 +2741,7 @@ function cardHidesMarking(card: FoliageCard, marks: MarkingRays): boolean {
 
 /** Whether a card's face (its eight triangles, folded or flat) passes through a cage member (a tube of radius r). */
 function cardCrossesTube(card: FoliageCard, tubes: readonly CageMember[]): boolean {
-  const g = foliageCardPoints(card);
+  const g = cardPoints(card);
   const tris: Array<[readonly number[], readonly number[], readonly number[]]> = [];
   for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) {
     const a = g[r * 3 + c], b = g[r * 3 + c + 1], d = g[(r + 1) * 3 + c], e = g[(r + 1) * 3 + c + 1];
@@ -2636,6 +2764,28 @@ function cardCrossesTube(card: FoliageCard, tubes: readonly CageMember[]): boole
     }
   }
   return false;
+}
+
+/**
+ * The roof cards an owner has laid, by plan cell (2026-10-20, the ghillie perf lane: a card's fan test scanned every
+ * card laid before it). A cell is wider than FIELD_FAN_STEM_M, so a stem that close to a point lies in the point's cell
+ * or one of the eight round it.
+ */
+const STEM_CELL_M = 0.04;
+const STEM_GRIDS = new WeakMap<ReadonlyArray<readonly number[]>, Map<number | string, number[]>>();
+function addStemCell(cells: Map<number | string, number[]>, stems: ReadonlyArray<readonly number[]>, k: number): void {
+  const key = cellKey2(Math.floor(stems[k][0] / STEM_CELL_M), Math.floor(stems[k][2] / STEM_CELL_M));
+  const list = cells.get(key);
+  if (list) list.push(k); else cells.set(key, [k]);
+}
+function stemGrid(stems: ReadonlyArray<readonly number[]>): Map<number | string, number[]> {
+  let cells = STEM_GRIDS.get(stems);
+  if (!cells) {
+    cells = new Map();
+    for (let k = 0; k < stems.length; k++) addStemCell(cells, stems, k);
+    STEM_GRIDS.set(stems, cells);
+  }
+  return cells;
 }
 
 function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: FieldTuftContext, seedBase: number): void {
@@ -2726,10 +2876,11 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
   // FIELD_GAP_REACH_M (a roof's edge has net on one side only), and the lowest of the net found round it; else null
   const netBeside = (x: number, y: number, z: number, stemY: number): number | null => {
     let low: number | null = null, across = false;
-    for (const [dx, dz] of [[1, 0], [0.71, 0.71], [0, 1], [-0.71, 0.71]]) {
+    for (const [dx, dz] of GAP_LINES) {
       const r = FIELD_GAP_REACH_M;
       const h1 = netUnder(x + dx * r, y + FIELD_OWN_NET_M, z + dz * r, stemY), h2 = netUnder(x - dx * r, y + FIELD_OWN_NET_M, z - dz * r, stemY);
-      for (const h of [h1, h2]) if (h !== null && (low === null || h < low)) low = h;
+      if (h1 !== null && (low === null || h1 < low)) low = h1;
+      if (h2 !== null && (low === null || h2 < low)) low = h2;
       if (h1 !== null && h2 !== null) across = true;
     }
     return across ? low : null;
@@ -2863,14 +3014,25 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
   // and deck nets): no three of them fan more than FIELD_FAN_SPREAD_DEG apart out of one point (stems within
   // FIELD_FAN_STEM_M), as a crew never stuffs a bunch of boughs into one mesh hole each turned its own way
   const laidStems = ctx.laidStems ?? [];
+  const stemCells = stemGrid(laidStems);
   const fanSpread = FIELD_FAN_SPREAD_DEG * Math.PI / 180;
   const fansOut = (pts: readonly (readonly number[])[]): boolean => {
     const s0 = pts[1], s2 = pts[7];
     const me = [s0[0], s0[1], s0[2], Math.atan2(s2[0] - s0[0], s2[2] - s0[2])] as const;
-    const close = (a: readonly number[], b: readonly number[]): boolean => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) < FIELD_FAN_STEM_M;
+    const close = (a: readonly number[], b: readonly number[]): boolean => hypot3Below(a[0] - b[0], a[1] - b[1], a[2] - b[2], FIELD_FAN_STEM_M);
+    // the laid cards close to a point: those in its plan cell and the eight round it (STEM_CELL_M; what a bunch makes of
+    // them takes no account of their order)
+    const near = (c: readonly number[]): Array<readonly number[]> => {
+      const out: Array<readonly number[]> = [];
+      const i = Math.floor(c[0] / STEM_CELL_M), j = Math.floor(c[2] / STEM_CELL_M);
+      for (let a = i - 1; a <= i + 1; a++) for (let b = j - 1; b <= j + 1; b++) {
+        for (const k of stemCells.get(cellKey2(a, b)) ?? []) if (close(laidStems[k], c)) out.push(laidStems[k]);
+      }
+      return out;
+    };
     // every bunch this card would join: round itself and round each laid card it lies beside
-    for (const centre of [me, ...laidStems.filter((q) => close(q, me))]) {
-      const bunch = [me, ...laidStems.filter((q) => close(q, centre))];
+    for (const centre of [me, ...near(me)]) {
+      const bunch = [me, ...near(centre)];
       if (bunch.length < 3) continue;
       // the headings' range about the centre's (at least their spread round the circle)
       let lo = 0, hi = 0;
@@ -2888,7 +3050,7 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
     for (const [scale, liftK, turn] of tries) {
       const card = make(scale, liftK, turn);
       if (!card) continue;
-      const pts = foliageCardPoints(card);
+      const pts = cardPoints(card);
       // the tip row first: a card that fails mostly fails where it reaches farthest
       let quick = !top || (lyingOk(pts, stem) && faceLies(pts, stem) && !fansOut(pts));
       for (let q = pts.length - 1; q >= 0 && quick; q--) {
@@ -3091,8 +3253,9 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
       if (placed) out.push(placed);
       if (placed && at === seat) seatTaken = true;
       if (placed && top) {
-        const q = foliageCardPoints(placed);
+        const q = cardPoints(placed);
         laidStems.push([q[1][0], q[1][1], q[1][2], Math.atan2(q[7][0] - q[1][0], q[7][2] - q[1][2])]);
+        addStemCell(stemCells, laidStems, laidStems.length - 1);
       }
     }
   }
@@ -3977,7 +4140,7 @@ function roofWeaponFloor(turret: THREE.Object3D, vehicleId: string): RoofWeaponF
   // stands in the net's way as it is. A crew gun (a pintle fitting with no elevating station: the PT-91 Twardy's NSVT
   // ran through its roof net) and a station's own base and yaw housing (the SEPv3 CROWS-LP's) each give their lowest
   // point over every raster cell; the swept elevating mass above keeps its sweep.
-  const fixed = new Map<string, number>();
+  const fixed = new Map<number | string, number>();
   turret.traverse((root) => {
     const gun = root.userData?.fittingRoot && ROOF_GUN_FITTINGS.test(String(root.userData.fitting || ''));
     if (!gun && !(root.userData?.remoteControlled && root.userData.firingAxis === '+Z')) return;
@@ -3992,22 +4155,32 @@ function roofWeaponFloor(turret: THREE.Object3D, vehicleId: string): RoofWeaponF
       toLocal.multiplyMatrices(toTurret, mesh.matrixWorld);
       for (let i = 0; i < pos.count; i++) {
         v.fromBufferAttribute(pos, i).applyMatrix4(toLocal);
-        const key = `${Math.floor(v.x / FIXED_BIN)},${Math.floor(v.z / FIXED_BIN)}`;
+        const key = cellKey2(Math.floor(v.x / FIXED_BIN), Math.floor(v.z / FIXED_BIN));
         fixed.set(key, Math.min(fixed.get(key) ?? Infinity, v.y));
       }
     });
   });
+  // each cell's lowest over itself and the eight round it, made once (2026-10-20, the ghillie perf lane: nine reads a
+  // query before; a minimum takes no account of order)
+  const fixedNear = new Map<number | string, number>();
+  for (const [key, y] of fixed) {
+    const [i, k] = typeof key === 'number'
+      ? [Math.floor(key / (2 * CELL_KEY2)) - CELL_KEY2, (key % (2 * CELL_KEY2)) - CELL_KEY2] : key.split(',').map(Number);
+    // (a cell off any finite raster is no finite cell's neighbour)
+    if (!Number.isFinite(i) || !Number.isFinite(k)) continue;
+    for (let a = i - 1; a <= i + 1; a++) for (let b = k - 1; b <= k + 1; b++) {
+      const near = cellKey2(a, b);
+      fixedNear.set(near, Math.min(fixedNear.get(near) ?? Infinity, y));
+    }
+  }
   const standing = (x: number, z: number): number => {
     let low = Infinity;
-    if (fixed.size) {
-      const i = Math.floor(x / FIXED_BIN), k = Math.floor(z / FIXED_BIN);
-      for (let a = i - 1; a <= i + 1; a++) for (let b = k - 1; b <= k + 1; b++) low = Math.min(low, fixed.get(`${a},${b}`) ?? Infinity);
-    }
+    if (fixed.size) low = Math.min(low, fixedNear.get(cellKey2(Math.floor(x / FIXED_BIN), Math.floor(z / FIXED_BIN))) ?? Infinity);
     return low;
   };
   const swept = sweeps.map((sweep) => (x: number, z: number): number => {
     let low = Infinity;
-    const bin = Math.floor(Math.hypot(x - sweep.x, z - sweep.z) / BIN);
+    const bin = hypotBin(x - sweep.x, z - sweep.z, BIN);
     for (let k = Math.max(0, bin - 1); k <= Math.min(sweep.floor.length - 1, bin + 1); k++) low = Math.min(low, sweep.floor[k]);
     return low;
   });
@@ -4227,6 +4400,8 @@ const LENS_REACH_M = 2.0;
 const LENS_TAN = Math.tan(22 * Math.PI / 180);
 /** The yaw offsets (rad) a point near the trunnion is tested at besides the ones that bring the gun across it. */
 const NEAR_YAWS = [-150, -120, -90, -60, -40, -20, 20, 40, 60, 90, 120, 150, 180].map((d) => d * Math.PI / 180);
+/** Their sines and cosines, made once (the same calls, so the same values). */
+const NEAR_SIN = NEAR_YAWS.map((off) => Math.sin(off)), NEAR_COS = NEAR_YAWS.map((off) => Math.cos(off));
 /** The step (m, across the bore) between the turret yaws that bring the gun's box over a hull point. */
 const GUN_STEP_M = 0.03;
 /** Heights over and under a deck point (m): the bare gun reaching any exempts the cloth lying flat on that deck. */
@@ -4303,7 +4478,8 @@ function forTrianglePoints(tri: Float32Array, cell: number, visit: (x: number, y
     const fx = tri[t + 6] - tri[t], fy = tri[t + 7] - tri[t + 1], fz = tri[t + 8] - tri[t + 2];
     const nx = Math.abs(ey * fz - ez * fy), ny = Math.abs(ez * fx - ex * fz), nz = Math.abs(ex * fy - ey * fx);
     // axes (a, b) span the plane, c is the one solved for
-    const [a, b, c] = ny >= nx && ny >= nz ? [0, 2, 1] : nx >= nz ? [1, 2, 0] : [0, 1, 2];
+    const deck = ny >= nx && ny >= nz, wall = !deck && nx >= nz;
+    const a = deck ? 0 : wall ? 1 : 0, b = deck ? 2 : wall ? 2 : 1, c = deck ? 1 : wall ? 0 : 2;
     const A0 = tri[t + a], B0 = tri[t + b], A1 = tri[t + 3 + a], B1 = tri[t + 3 + b], A2 = tri[t + 6 + a], B2 = tri[t + 6 + b];
     const d = (B1 - B2) * (A0 - A2) + (A2 - A1) * (B0 - B2);
     if (Math.abs(d) < 1e-9) continue;
@@ -4336,14 +4512,14 @@ function ownerLenses(parent: THREE.Object3D, others: readonly THREE.Object3D[]):
   if (!glass.length) return new Float64Array(0);
   const solid = ownerTriangles(parent, others, parent, (mesh) => notSuit(mesh) && !/Glass$/.test(mesh.name || ''));
   // the housing triangles hashed on a 0.2 m grid by their boxes, for short rays near each lens
-  const CELL = 0.2, cells = new Map<string, number[]>();
+  const CELL = 0.2, cells = new Map<number | string, number[]>();
   for (let t = 0; t < solid.length; t += 9) {
     const x0 = Math.floor(Math.min(solid[t], solid[t + 3], solid[t + 6]) / CELL), x1 = Math.floor(Math.max(solid[t], solid[t + 3], solid[t + 6]) / CELL);
     const y0 = Math.floor(Math.min(solid[t + 1], solid[t + 4], solid[t + 7]) / CELL), y1 = Math.floor(Math.max(solid[t + 1], solid[t + 4], solid[t + 7]) / CELL);
     const z0 = Math.floor(Math.min(solid[t + 2], solid[t + 5], solid[t + 8]) / CELL), z1 = Math.floor(Math.max(solid[t + 2], solid[t + 5], solid[t + 8]) / CELL);
     if ((x1 - x0 + 1) * (y1 - y0 + 1) * (z1 - z0 + 1) > 400) continue;
     for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++) {
-      const key = `${x},${y},${z}`;
+      const key = cellKey3(x, y, z);
       const list = cells.get(key);
       if (list) list.push(t); else cells.set(key, [t]);
     }
@@ -4351,11 +4527,10 @@ function ownerLenses(parent: THREE.Object3D, others: readonly THREE.Object3D[]):
   const ray = new THREE.Ray(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), hit = new THREE.Vector3();
   const housed = (o: THREE.Vector3, d: THREE.Vector3): boolean => {
     ray.set(o, d);
-    const key = `${Math.floor(o.x / CELL)},${Math.floor(o.y / CELL)},${Math.floor(o.z / CELL)}`;
+    const kx = Math.floor(o.x / CELL), ky = Math.floor(o.y / CELL), kz = Math.floor(o.z / CELL);
     const seen = new Set<number>();
     for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) {
-      const [kx, ky, kz] = key.split(',').map(Number);
-      for (const t of cells.get(`${kx + dx},${ky + dy},${kz + dz}`) ?? []) {
+      for (const t of cells.get(cellKey3(kx + dx, ky + dy, kz + dz)) ?? []) {
         if (seen.has(t)) continue;
         seen.add(t);
         a.set(solid[t], solid[t + 1], solid[t + 2]); b.set(solid[t + 3], solid[t + 4], solid[t + 5]); c.set(solid[t + 6], solid[t + 7], solid[t + 8]);
@@ -4368,10 +4543,10 @@ function ownerLenses(parent: THREE.Object3D, others: readonly THREE.Object3D[]):
   const count = glass.length / 9;
   const parentOf = Int32Array.from({ length: count }, (_, i) => i);
   const find = (i: number): number => { while (parentOf[i] !== i) { parentOf[i] = parentOf[parentOf[i]]; i = parentOf[i]; } return i; };
-  const weld = new Map<string, number>();
+  const weld = new Map<number | string, number>();
   for (let t = 0; t < count; t++) for (let j = 0; j < 3; j++) {
     const o = t * 9 + j * 3;
-    const key = `${Math.round(glass[o] / 0.003)},${Math.round(glass[o + 1] / 0.003)},${Math.round(glass[o + 2] / 0.003)}`;
+    const key = cellKey3(Math.round(glass[o] / 0.003), Math.round(glass[o + 1] / 0.003), Math.round(glass[o + 2] / 0.003));
     const w = weld.get(key);
     if (w === undefined) weld.set(key, t); else parentOf[find(t)] = find(w);
   }
@@ -4487,6 +4662,12 @@ interface FieldClearance {
   turretHemFloor(x: number, z: number): number;
   /** Adds the hull's own suit (laid by now) to the hull's top envelope the turret's suit clears. */
   addHullSuit(): void;
+  /**
+   * The owner's lenses as its suit's openings read them (ownerLenses), offered while that suit is built: the views ask
+   * for the same rows (2026-10-20, the ghillie perf lane), until withdrawn at the suit's end (a view first asked later
+   * reads the vehicle as it stands then).
+   */
+  offerLenses(owner: GhillieOwner, rows: Float64Array | null): void;
 }
 
 /**
@@ -4577,6 +4758,31 @@ function gunEnvelopeFloor(P: GhillieBuilderPort): Map<number, number> {
   return floor;
 }
 
+/** The least (greatest) of values[a..b], inclusive, for any a <= b in range: a sparse table, each query two reads. */
+function rangeLevels(values: Float64Array, most: boolean): Float64Array[] {
+  const levels = [values];
+  for (let w = 1; 2 * w <= values.length; w *= 2) {
+    const prev = levels[levels.length - 1], next = new Float64Array(values.length - 2 * w + 1);
+    for (let i = 0; i < next.length; i++) next[i] = most ? Math.max(prev[i], prev[i + w]) : Math.min(prev[i], prev[i + w]);
+    levels.push(next);
+  }
+  return levels;
+}
+function rangeMin(values: Float64Array): (a: number, b: number) => number {
+  const levels = rangeLevels(values, false);
+  return (a, b) => {
+    const k = 31 - Math.clz32(b - a + 1), level = levels[k];
+    return Math.min(level[a], level[b - (1 << k) + 1]);
+  };
+}
+function rangeMax(values: Float64Array): (a: number, b: number) => number {
+  const levels = rangeLevels(values, true);
+  return (a, b) => {
+    const k = 31 - Math.clz32(b - a + 1), level = levels[k];
+    return Math.max(level[a], level[b - (1 << k) + 1]);
+  };
+}
+
 function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGun = false): FieldClearance {
   const hull = P.hullG, turret = P.turretG, gun = P.gunG;
   // the rigs may be siblings under the vehicle's root: bring every frame up to date before reading any
@@ -4612,13 +4818,10 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
   // nothing beneath it
   const R_BINS = Math.ceil(6 / SWEEP_BIN_M), Y_BINS = Math.ceil(6 / SWEEP_BIN_M), Y_BASE = -2;
   const turretOcc = new Uint8Array(R_BINS * Y_BINS), hullOcc = new Uint8Array(R_BINS * Y_BINS);
-  const cellOf = (r: number, yT: number): number => {
-    const i = Math.floor(r / SWEEP_BIN_M), j = Math.floor((yT - Y_BASE) / SWEEP_BIN_M);
-    return i < 0 || j < 0 || i >= R_BINS || j >= Y_BINS ? -1 : i * Y_BINS + j;
-  };
+  const px = pivot.x, py = pivot.y, pz = pivot.z;
   const mark = (occ: Uint8Array, x: number, y: number, z: number): void => {
-    const k = cellOf(Math.hypot(x - pivot.x, z - pivot.z), y - pivot.y);
-    if (k >= 0) occ[k] = 1;
+    const i = hypotBin(x - px, z - pz, SWEEP_BIN_M), j = Math.floor((y - py - Y_BASE) / SWEEP_BIN_M);
+    if (!(i < 0 || j < 0 || i >= R_BINS || j >= Y_BINS)) occ[i * Y_BINS + j] = 1;
   };
   // 3 cm samples (the fix round's audit on the T-90M: at 6 cm the turret's front lower face read 5 cm higher than it
   // reaches, and a bough under its edge stood inside its sweep)
@@ -4681,9 +4884,9 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
     return best;
   };
   const reach = Math.ceil(clearance / SWEEP_BIN_M) + 1;
-  /** Whether `occ` holds anything within the clearance of (r, yT) through the traverse (`rad` bins either side). */
-  const occupied = (occ: Uint8Array, r: number, yT: number, rad = 3): boolean => {
-    const i0 = Math.floor(r / SWEEP_BIN_M), j0 = Math.floor((yT - Y_BASE) / SWEEP_BIN_M);
+  /** Whether `occ` holds anything within the clearance of (radius bin i0, yT) through the traverse (`rad` bins either side). */
+  const occupied = (occ: Uint8Array, i0: number, yT: number, rad = 3): boolean => {
+    const j0 = Math.floor((yT - Y_BASE) / SWEEP_BIN_M);
     for (let i = Math.max(0, i0 - rad); i <= Math.min(R_BINS - 1, i0 + rad); i++) {
       for (let j = Math.max(0, j0 - reach); j <= Math.min(Y_BINS - 1, j0 + reach); j++) if (occ[i * Y_BINS + j]) return true;
     }
@@ -4697,9 +4900,9 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
     }
     return false;
   };
-  /** The top of the hull under a turret drape at radius r (what stands under the turret's roof line, turret frame). */
-  const hullTopUnder = (r: number, below: number): number => {
-    const i0 = Math.floor(r / SWEEP_BIN_M), jTop = Math.min(Y_BINS - 1, Math.floor((below - Y_BASE) / SWEEP_BIN_M));
+  /** The top of the hull under a turret drape at radius bin i0 (what stands under the turret's roof line, turret frame). */
+  const hullTopUnder = (i0: number, below: number): number => {
+    const jTop = Math.min(Y_BINS - 1, Math.floor((below - Y_BASE) / SWEEP_BIN_M));
     let top = -Infinity;
     for (let i = Math.max(0, i0 - 4); i <= Math.min(R_BINS - 1, i0 + 4); i++) {
       for (let j = jTop; j >= 0; j--) if (hullOcc[i * Y_BINS + j]) { top = Math.max(top, Y_BASE + (j + 1) * SWEEP_BIN_M); break; }
@@ -4782,12 +4985,105 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
     }
   }
   const sweptThetas = new Float64Array(6);
+  // the farthest left and right any station's box reaches with the clearance: a point `lateral` outside them meets no
+  // box at the default margin, at any pitch (2026-10-20, the ghillie perf lane: the Yun's accepted deck points each ask
+  // about fifty yaws, most of them round the full circle near the turret)
+  let lateralLo = Infinity, lateralHi = -Infinity;
+  for (let slot = 0; slot < binCount; slot++) {
+    if (!boxHas[slot]) continue;
+    lateralLo = Math.min(lateralLo, boxL[slot] - clearance);
+    lateralHi = Math.max(lateralHi, boxR[slot] + clearance);
+  }
+  /**
+   * Whether a point `lateral` across from the bore lies beside every station's box (at the default margin), away from the
+   * trunnion (dy, dz: its offset from the trunnion; hypot is never less than either, so sweptBy's trunnion test fails).
+   */
+  const besideGun = (lateral: number, dy: number, dz: number): boolean => (lateral <= lateralLo || lateral >= lateralHi)
+    && (Math.abs(dy) >= 1e-6 || Math.abs(dz) >= 1e-6);
+  // A certain miss, made without the sweep's trigonometry (2026-10-20, the ghillie perf lane). Every pitch the sweep asks
+  // (the hull's yaw floors to the elevation, the turret's depression to the elevation) lies in pitchLow..pitchHigh; over
+  // that range the stations under a point (offset dy up and dz along from the trunnion) and its depth under the bore
+  // (its height over it) are bounded by their values at the range's ends, the station by the point's reach too (the
+  // bore's angle to the point stays inside a half turn either way). Where every station in those bounds lies wide of the
+  // point across, or every box there ends short of its depth or height (depthMiss), sweptBy answers no to the bit; CERT_M
+  // keeps the bounds far wider than either side's rounding.
+  const CERT_M = 1e-5;
+  const pitchLow = Math.min(tMinFront, -(spec.gunDepressionDeg ?? 0) * deg);
+  let pitchHigh = tMax;
+  for (const row of spec.gunPitchByYawDeg ?? []) pitchHigh = Math.max(pitchHigh, row[1] * deg);
+  pitchHigh += 1e-9;
+  const certain = binCount > 0 && pitchLow > -1.5 && pitchHigh < 1.5 && pitchLow <= pitchHigh;
+  const cosLow = Math.cos(pitchLow), sinLow = Math.sin(pitchLow), cosHigh = Math.cos(pitchHigh), sinHigh = Math.sin(pitchHigh);
+  // per station slot (none: no bound): the left and right with the clearance as sweptBy forms them, the depth and height
+  const slotLeft = new Float64Array(binCount), slotRight = new Float64Array(binCount);
+  const slotBelow = new Float64Array(binCount), slotAbove = new Float64Array(binCount);
+  for (let slot = 0; slot < binCount; slot++) {
+    slotLeft[slot] = boxHas[slot] ? boxL[slot] - clearance : Infinity;
+    slotRight[slot] = boxHas[slot] ? boxR[slot] + clearance : -Infinity;
+    slotBelow[slot] = boxHas[slot] ? boxB[slot] : -Infinity;
+    slotAbove[slot] = boxHas[slot] ? boxA[slot] : -Infinity;
+  }
+  const leftMin = rangeMin(slotLeft), rightMax = rangeMax(slotRight), belowMax = rangeMax(slotBelow), aboveMax = rangeMax(slotAbove);
+  const certainMiss = (lateral: number, dy: number, dz: number): boolean => {
+    if (!certain || !(Math.abs(dy) >= 1e-6 || Math.abs(dz) >= 1e-6)) return false;
+    const atLow = dz * cosLow + dy * sinLow, atHigh = dz * cosHigh + dy * sinHigh, reach = Math.abs(dy) + Math.abs(dz);
+    const ahead = dz > 0;
+    let a = Math.floor(((ahead ? Math.min(atLow, atHigh) : -reach) - CERT_M) / SWEEP_BIN_M) - binLo;
+    let b = Math.floor(((ahead ? reach : Math.max(atLow, atHigh)) + CERT_M) / SWEEP_BIN_M) - binLo;
+    if (a > binCount - 1 || b < 0) return true;
+    if (a < 0) a = 0;
+    if (b > binCount - 1) b = binCount - 1;
+    if (lateral <= leftMin(a, b) || lateral >= rightMax(a, b)) return true;
+    return depthMiss(dz * sinLow - dy * cosLow, dz * sinHigh - dy * cosHigh, atLow, atHigh);
+  };
+  /**
+   * The point's depth under the bore at a pitch, dz sin - dy cos (sweptBy's -off), is a sinusoid in the pitch: positive at
+   * both ends of the pitch range, it is positive over all of it and least at an end, and the station under the point (dz
+   * cos + dy sin, falling as the depth is positive) runs from its value at the high end to the low end's. Likewise for its
+   * height over the bore (the depth's negative). A depth or height past every box those stations hold is a miss.
+   */
+  const depthMiss = (belowLow: number, belowHigh: number, atLow: number, atHigh: number): boolean => {
+    if (belowLow > CERT_M && belowHigh > CERT_M) return boxesShort(Math.min(belowLow, belowHigh), atHigh, atLow, belowMax);
+    if (belowLow < -CERT_M && belowHigh < -CERT_M) return boxesShort(-Math.max(belowLow, belowHigh), atLow, atHigh, aboveMax);
+    return false;
+  };
+  /** Whether every box over stations s0..s1 ends short of `depth` (below or above the bore: `extent`), with the clearance. */
+  const boxesShort = (depth: number, s0: number, s1: number, extent: (a: number, b: number) => number): boolean => {
+    let a = Math.floor((s0 - CERT_M) / SWEEP_BIN_M) - binLo, b = Math.floor((s1 + CERT_M) / SWEEP_BIN_M) - binLo;
+    if (a > binCount - 1 || b < 0) return true;
+    if (a < 0) a = 0;
+    if (b > binCount - 1) b = binCount - 1;
+    return depth > extent(a, b) + clearance + CERT_M;
+  };
+  /**
+   * A whole sweep certainly missing a hull point (dy over the trunnion, radius r): its yaws dLo..dHi (or, `rear`, those
+   * turned through a half turn) bring the point dz along from the trunnion within the range their cosines span, and the
+   * depth (height) and stations are linear in dz: under (over) the bore past every box at the range's corners, it is under
+   * (over) it past them at every yaw of the sweep.
+   */
+  const sweepMiss = (dy: number, r: number, dLo: number, dHi: number, rear: boolean): boolean => {
+    if (!certain || !(r < 1e6)) return false;
+    const cosFar = Math.cos(Math.max(Math.abs(dLo), Math.abs(dHi))), slack = 1e-9 * (1 + r);
+    const dzA = (rear ? -r - slack : r * cosFar - slack) - gunAt.z, dzB = (rear ? -r * cosFar + slack : r + slack) - gunAt.z;
+    const lowA = dzA * sinLow - dy * cosLow, lowB = dzB * sinLow - dy * cosLow;
+    const highA = dzA * sinHigh - dy * cosHigh, highB = dzB * sinHigh - dy * cosHigh;
+    const least = Math.min(lowA, lowB, highA, highB), most = Math.max(lowA, lowB, highA, highB);
+    // the stations rise with dz (the pitches' cosines are positive)
+    if (least > CERT_M) return boxesShort(least, dzA * cosHigh + dy * sinHigh, dzB * cosLow + dy * sinLow, belowMax);
+    if (most < -CERT_M) return boxesShort(-most, dzA * cosLow + dy * sinLow, dzB * cosHigh + dy * sinHigh, aboveMax);
+    return false;
+  };
   /**
    * Whether the gun through pitches lo..hi meets a point `lateral` across from its bore (gun frame x, signed) at
    * turret-frame height qy and reach qz, within `margin` across and `rise` above and below.
    */
-  const sweptBy = (lateral: number, qy: number, qz: number, lo: number, hi: number, margin = clearance, rise = margin): boolean => {
+  const sweptBy = (lateral: number, qy: number, qz: number, lo: number, hi: number, margin = clearance, rise = margin,
+    sure = false): boolean => {
     const dy = qy - gunAt.y, dz = qz - gunAt.z;
+    // `sure`: the caller made both quick tests already
+    if (!sure && margin === clearance && besideGun(lateral, dy, dz)) return false;
+    if (!sure && margin === clearance && rise === clearance && Math.min(lo, hi) >= pitchLow && Math.max(lo, hi) <= pitchHigh
+      && certainMiss(lateral, dy, dz)) return false;
     const d = Math.hypot(dy, dz);
     if (d < 1e-6) return true;
     const phi = Math.atan2(dy, dz);
@@ -4796,21 +5092,24 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
     // the trunnion the turret's own roof lies between the breech and any cloth on it)
     const back = phi > 0 ? phi - Math.PI : phi + Math.PI;
     const nearest = THREE.MathUtils.clamp(phi, lo, hi);
+    // the station under the point at a pitch: at the point's own pitch the point lies on the bore (cos 0 is 1, sin 0 is 0)
+    const nearAlong = nearest === phi ? d : d * Math.cos(phi - nearest);
     let count = 0;
     sweptThetas[count++] = nearest;
     if (dy < 0 && dz < 0) sweptThetas[count++] = THREE.MathUtils.clamp(back, lo, hi);
     // near the trunnion the gun's section changes fast (a mantlet's corners): its ends and middle pitches as well
-    if (d * Math.cos(phi - nearest) < 0.8) {
+    if (nearAlong < 0.8) {
       sweptThetas[count++] = lo; sweptThetas[count++] = (lo + hi) / 2;
       sweptThetas[count++] = 0 > lo && 0 < hi ? 0 : hi; sweptThetas[count++] = hi;
     }
     for (let t = 0; t < count; t++) {
       const theta = sweptThetas[t];
-      const slot = Math.floor((d * Math.cos(phi - theta)) / SWEEP_BIN_M) - binLo;
+      const slot = Math.floor((t === 0 ? nearAlong : theta === phi ? d : d * Math.cos(phi - theta)) / SWEEP_BIN_M) - binLo;
       if (!(slot >= 0 && slot < binCount) || !boxHas[slot]) continue;
+      if (!(lateral > boxL[slot] - margin && lateral < boxR[slot] + margin)) continue;
       // the point's offset off the bore at that pitch: above (+) or below (-) it
-      const off = d * Math.sin(phi - theta);
-      if (lateral > boxL[slot] - margin && lateral < boxR[slot] + margin && off < boxA[slot] + rise && -off < boxB[slot] + rise) return true;
+      const off = theta === phi ? 0 : d * Math.sin(phi - theta);
+      if (off < boxA[slot] + rise && -off < boxB[slot] + rise) return true;
     }
     return false;
   };
@@ -4838,12 +5137,16 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
       // widest half-width), the gun through its pitch range at that yaw; near the trunnion the mantlet's wide base
       // sweeps it round the full circle besides
       const aim = Math.atan2(dx, dz);
-      const plate = deckAt(p[0], p[2]);
-      const flat = plate !== null && p[1] <= plate + 0.04;
-      const hitAt = (off: number): boolean => {
-        const lateral = r * Math.sin(off) - gunAt.x, along = r * Math.cos(off);
+      // the deck under the point, read where a yaw's sweep first meets a cloth point
+      let plate: number | null | undefined;
+      // (sin and cos of the yaw: the near yaws' from their table)
+      const hitAt = (off: number, sin = Math.sin(off), cos = Math.cos(off)): boolean => {
+        const lateral = r * sin - gunAt.x, along = r * cos;
+        // beside every station's box, or certainly missed, whatever the yaw's floor (sweptBy's own first tests, made
+        // before the floor is read: it lies in pitchLow..pitchHigh)
+        if (besideGun(lateral, qy - gunAt.y, along - gunAt.z) || certainMiss(lateral, qy - gunAt.y, along - gunAt.z)) return false;
         const lo = pitchFloor(aim - off);
-        if (!sweptBy(lateral, qy, along, lo, tMax)) return false;
+        if (!sweptBy(lateral, qy, along, lo, tMax, clearance, clearance, true)) return false;
         // a spec whose depression has no deck curve lets the bare gun reach its own deck: where the gun at that yaw's
         // lowest pitch, passing over the point (the same reach across), already comes down to within the cloth's 4 cm
         // of the armour under it (or into it), the cloth lying flat on that armour stays (the alternative is no net on
@@ -4851,8 +5154,10 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
         // inside the turret)
         // the coordinator on the fix round's audit (the TUSK's and Type 90's decks): garnish clears the gun's whole
         // elevation sweep, full depression included; it never takes the cloth's lying-flat exemption
-        if (garnish || !flat || along - gunAt.z < 0.05) return true;
-        for (const dy of FLAT_PROBES) if (sweptBy(lateral, plate! + dy - pivot.y, along, lo, lo, clearance, 0)) return false;
+        if (garnish) return true;
+        if (plate === undefined) plate = deckAt(p[0], p[2]);
+        if (plate === null || !(p[1] <= plate + 0.04) || along - gunAt.z < 0.05) return true;
+        for (const dy of FLAT_PROBES) if (sweptBy(lateral, plate + dy - pivot.y, along, lo, lo, clearance, 0)) return false;
         return true;
       };
       if (r > 1e-6) {
@@ -4860,7 +5165,7 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
         if (sHi > -1 && sLo < 1) {
           const dLo = Math.asin(Math.max(-1, sLo)), dHi = Math.asin(Math.min(1, sHi));
           const n = Math.max(2, Math.ceil(((dHi - dLo) * r) / GUN_STEP_M));
-          for (let k = 0; k <= n; k++) if (hitAt(dLo + ((dHi - dLo) * k) / n)) return false;
+          if (!sweepMiss(qy - gunAt.y, r, dLo, dHi, false)) for (let k = 0; k <= n; k++) if (hitAt(dLo + ((dHi - dLo) * k) / n)) return false;
         }
         // the fix round (the audit on the Griffin Viper's open mount): the yaws that bring the gun's rear (a breech or a
         // cradle reaching behind the trunnion) across the point, the gun turned away from it; its breech dips as the
@@ -4870,11 +5175,13 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
           if (rHi > -1 && rLo < 1) {
             const dLo = Math.asin(Math.max(-1, rLo)), dHi = Math.asin(Math.min(1, rHi));
             const n = Math.max(2, Math.ceil(((dHi - dLo) * r) / GUN_STEP_M));
-            for (let k = 0; k <= n; k++) if (hitAt(dLo + ((dHi - dLo) * k) / n + Math.PI)) return false;
+            if (!sweepMiss(qy - gunAt.y, r, dLo, dHi, true)) {
+              for (let k = 0; k <= n; k++) if (hitAt(dLo + ((dHi - dLo) * k) / n + Math.PI)) return false;
+            }
           }
         }
       }
-      if (r < gunAt.z + gunReach) for (const off of NEAR_YAWS) if (hitAt(off)) return false;
+      if (r < gunAt.z + gunReach) for (let k = 0; k < NEAR_YAWS.length; k++) if (hitAt(NEAR_YAWS[k], NEAR_SIN[k], NEAR_COS[k])) return false;
       return true;
     }
     if (owner === 'turret') {
@@ -4884,7 +5191,7 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
       // the hull's armour, fittings and suit within 10 cm across through the traverse
       // in the hull's units about the turret's axis (a scaled turret rig: see gunAt)
       const qx = p[0] * turretUnits.x, qy = p[1] * turretUnits.y, qz = p[2] * turretUnits.z;
-      if (occupied(hullOcc, Math.hypot(qx, qz), qy, 5)) return false;
+      if (occupied(hullOcc, hypotBin(qx, qz, SWEEP_BIN_M), qy, 5)) return false;
       return !sweptBy(qx - gunAt.x, qy, qz, tMinFront, tMax);
     }
     return true;
@@ -4892,7 +5199,10 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
   // and never inside the drone dock's boxes (cloth, garnish and every card vertex: suitDockBoxes)
   const netOk = (owner: GhillieOwner, p: readonly number[], garnish = false): boolean => !inDock(owner, p) && workingOk(owner, p, garnish);
   const lenses: Partial<Record<GhillieOwner, Float64Array>> = {}, smoke: Partial<Record<GhillieOwner, Float64Array>> = {};
-  const ownerOf = (o: GhillieOwner): [THREE.Object3D, THREE.Object3D[]] => (o === 'hull' ? [hull, [turret, gun]] : o === 'turret' ? [turret, [gun]] : [gun, []]);
+  const offered: Partial<Record<GhillieOwner, Float64Array>> = {};
+  // each owner's rig and the rigs left out of it, made once (the lens and smoke queries asked for them on every point)
+  const owned: Readonly<Record<GhillieOwner, [THREE.Object3D, THREE.Object3D[]]>> = { hull: [hull, [turret, gun]], turret: [turret, [gun]], gun: [gun, []] };
+  const ownerOf = (o: GhillieOwner): [THREE.Object3D, THREE.Object3D[]] => owned[o === 'hull' || o === 'turret' ? o : 'gun'];
   /** Whether p lies in a cone or tube along a run of [origin, axis] rows. */
   const inLine = (rows: Float64Array, p: readonly number[], reach: number, base: number, slope: number, both = false): boolean => {
     for (let i = 0; i < rows.length; i += 6) {
@@ -4902,7 +5212,7 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
       if (both && along < 0 && along > -0.3) along = -along;
       if (along < -0.05 || along > reach) continue;
       const lx = wx - rows[i + 3] * along, ly = wy - rows[i + 4] * along, lz = wz - rows[i + 5] * along;
-      if (Math.hypot(lx, ly, lz) < base + Math.max(0, along) * slope) return true;
+      if (hypot3Below(lx, ly, lz, base + Math.max(0, along) * slope)) return true;
     }
     return false;
   };
@@ -4910,7 +5220,7 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
     // a card's face, sampled densely, keeps out of the dock's boxes too (a card can straddle a thin cradle rail)
     if (inDock(owner, p)) return false;
     const [parent, others] = ownerOf(owner);
-    if (inLine(lenses[owner] ??= ownerLenses(parent, others), p, LENS_REACH_M, 0.06, LENS_TAN, true)) return false;
+    if (inLine(lenses[owner] ??= offered[owner] ?? ownerLenses(parent, others), p, LENS_REACH_M, 0.06, LENS_TAN, true)) return false;
     return !inLine(smoke[owner] ??= ownerSmokeLines(parent, others), p, SMOKE_REACH_M, SMOKE_LINE_M, 0.08);
   };
   // the fix round: a lens's field view (FieldClearance.fieldLinesOk)
@@ -4922,8 +5232,7 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
       if (along < 0 && along > -0.3) along = -along;
       if (along < -0.05 || along > FIELD_LENS_REACH_M) continue;
       const lx = wx - ax * along, ly = wy - ay * along, lz = wz - az * along;
-      const r = Math.hypot(lx, ly, lz), lim = 0.06 + Math.max(0, along) * LENS_TAN;
-      if (r >= lim) continue;
+      if (hypot3AtLeast(lx, ly, lz, 0.06 + Math.max(0, along) * LENS_TAN)) continue;
       if (along <= FIELD_LENS_NEAR_M) return true;
       // the vertical across the line of sight (a lens looking up or down past 60 degrees keeps its whole cone)
       const ux = -ax * ay, uy = 1 - ay * ay, uz = -az * ay, ul = Math.hypot(ux, uy, uz);
@@ -4936,7 +5245,7 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
   const fieldLinesOk = (owner: GhillieOwner, p: readonly number[]): boolean => {
     if (inDock(owner, p)) return false;
     const [parent, others] = ownerOf(owner);
-    if (inFieldView(lenses[owner] ??= ownerLenses(parent, others), p)) return false;
+    if (inFieldView(lenses[owner] ??= offered[owner] ?? ownerLenses(parent, others), p)) return false;
     return !inLine(smoke[owner] ??= ownerSmokeLines(parent, others), p, SMOKE_REACH_M, SMOKE_LINE_M, 0.08);
   };
   return {
@@ -4956,17 +5265,21 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
       ? cradleStations.map(([sx, , sz]) => [sx - CRADLE_KEEP_M, sx + CRADLE_KEEP_M, sz - CRADLE_KEEP_M, sz + CRADLE_KEEP_M] as const) : []),
     lensClear(owner, p) {
       const [parent, others] = ownerOf(owner);
-      return !inLine(lenses[owner] ??= ownerLenses(parent, others), p, CLOTH_LENS_REACH_M, 0.06, CLOTH_LENS_TAN, true);
+      return !inLine(lenses[owner] ??= offered[owner] ?? ownerLenses(parent, others), p, CLOTH_LENS_REACH_M, 0.06, CLOTH_LENS_TAN, true);
     },
     // a drape's hem keeps above what stands on the hull under the turret's line (60 cm over its ring: decks, bins,
     // hatches and the hull's own suit, never a frame or a cage reaching up round the turret)
     // a turret owner's plan point and height in the turret's own frame (a scaled turret rig: see gunAt)
     turretHemFloor(x, z) {
-      return (hullTopUnder(Math.hypot(x * turretUnits.x, z * turretUnits.z), 0.6) + clearance + 0.02) / turretUnits.y;
+      return (hullTopUnder(hypotBin(x * turretUnits.x, z * turretUnits.z, SWEEP_BIN_M), 0.6) + clearance + 0.02) / turretUnits.y;
     },
     addHullSuit() {
       hull.updateWorldMatrix(true, true);
       forTrianglePoints(ownerTriangles(hull, [turret, gun], hull, (mesh) => !notSuit(mesh)), 0.06, (x, y, z) => mark(hullOcc, x, y, z));
+    },
+    offerLenses(owner, rows) {
+      if (rows) offered[owner] = rows;
+      else delete offered[owner];
     },
   };
 }
@@ -4984,12 +5297,16 @@ function clearedGeometry(geometry: THREE.BufferGeometry, ok: (p: readonly number
   triangleOk?: (a: readonly number[], b: readonly number[], c: readonly number[]) => boolean, minPieceTris = 8): THREE.BufferGeometry {
   const pos = geometry.attributes.position as THREE.BufferAttribute, uv = geometry.attributes.uv as THREE.BufferAttribute | undefined;
   const positions: number[] = [], uvs: number[] = [];
-  // a corner shared by several triangles is asked once
-  const asked = new Map<string, boolean>();
+  // a corner shared by several triangles is asked once (keyed coordinate by coordinate: equal numbers, -0 as 0)
+  const asked = new Map<number, Map<number, Map<number, boolean>>>();
   const okAt = (i: number): boolean => {
-    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), key = `${x},${y},${z}`;
-    let v = asked.get(key);
-    if (v === undefined) { v = ok([x, y, z]); asked.set(key, v); }
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    let byY = asked.get(x);
+    if (!byY) asked.set(x, byY = new Map());
+    let byZ = byY.get(y);
+    if (!byZ) byY.set(y, byZ = new Map());
+    let v = byZ.get(z);
+    if (v === undefined) { v = ok([x, y, z]); byZ.set(z, v); }
     return v;
   };
   let dropped = 0;
@@ -5220,6 +5537,7 @@ function* addGhillieOwner(
   const slots: Point2[][] = [];
   if (autoOpen) {
     const lenses = ownerLenses(parent, others);
+    clearance?.offerLenses(owner, lenses);
     for (let i = 0; i < lenses.length; i += 6) {
       const [cx, , cz, nx, ny, nz] = lenses.subarray(i, i + 6);
       const h = Math.hypot(nx, nz);
@@ -5357,7 +5675,7 @@ function* addGhillieOwner(
       // and smoke lines clear (a line can pass between a card's vertices)
       cardClear: clearance ? field ? (card) => denseCardPoints(card).every((p) => clearance.fieldLinesOk(owner, p))
           && (!markRays || !cardHidesMarking(card, markRays))
-        : (card) => foliageCardPoints(card).every((p) => clearance.netOk(owner, p))
+        : (card) => cardPoints(card).every((p) => clearance.netOk(owner, p))
           && denseCardPoints(card).every((p) => clearance.linesOk(owner, p)) : undefined,
     };
     for (let k = 0; k < surfaces.length; k++) {
@@ -5431,6 +5749,7 @@ function* addGhillieOwner(
     P.disposables.push(leaves);
     if (!leavesShared) P.disposables.push(mat);
   }
+  clearance?.offerLenses(owner, null);
 }
 
 /** Fallback cover colours per theatre (a spec without a paint scheme). */
