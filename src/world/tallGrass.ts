@@ -5,6 +5,7 @@ import { resolveGroundReduxProfile, tallGrassQualityScale, type TallGrassBiome }
 import { createLandFieldSample, LAND_CROP, type LandFieldSample } from './landUse.ts';
 import { createCraterFollower, followCraters, type GroundCoverCraters } from './groundCoverCraters.ts';
 import { SWARD_TONE, swardCellSeed, swardNoise, swardPatchAt, type SwardPatch } from './swardPatch.ts';
+import { installSwardNearLight } from './swardNearLight.ts';
 import type { PaddyRiceSeat } from './paddies.ts';
 
 // Round 73 (2026-09-25, the ground redux; owner: "add tall grass that interacts with tanks"): the tall-grass tier.
@@ -498,6 +499,8 @@ varying vec3 vHeadCol; varying float vHeadT0; varying float vHerb;`);
       shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>',
         `#include <lights_fragment_end>\n${SHADED_SWARD_GLSL}`);
     }
+    // (229) a lamp close by saturates a blade's light softly instead of drawing it as a neon line (swardNearLight.ts)
+    installSwardNearLight(shader);
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <normal_fragment_begin>',
       '#include <normal_fragment_begin>\nnormal = normalize( vNormal );\nnonPerturbedNormal = normal;');
     shader.fragmentShader = mustReplace(shader.fragmentShader, '#include <color_fragment>',

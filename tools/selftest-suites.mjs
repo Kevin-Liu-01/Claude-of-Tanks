@@ -1665,6 +1665,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/steepFaces.selftest.mjs', // ground lane (2026-10-15): sheer faces bedded on every map, steep normals over three spans
     'src/world/groundPressure.selftest.mjs',
     'src/world/tallGrass.selftest.mjs',
+    // (229) a grass blade's light from a lamp close by: saturated softly, every pool unchanged
+    'src/world/swardNearLight.selftest.mjs',
     'src/world/swardPatch.selftest.mjs', // grass r2 (2026-10-15): the sward's patches, one field for the blades and the tufts
     'src/world/cinderYard.selftest.mjs', // ground lane (2026-10-08, wave 260): Cinder Junction's cinder yard and its weed clumps
     'src/world/swardTerrain.selftest.mjs', // ground lane (2026-10-08, wave 274): the field gate's band, the sward on its slopes, the thatch

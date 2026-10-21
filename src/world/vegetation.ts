@@ -7,6 +7,7 @@
 
 import * as THREE from 'three';
 import { createFoliageFadeSweep } from './foliageOcclusionSweep.ts';
+import { installSwardNearLight } from './swardNearLight.ts';
 import { keepStreams } from './geometryStreams.ts';
 import { RAIL_CUTTING_SEED_NORMAL_Y, railCuttingSeedAdmits } from './railSpurs.ts';
 import { shapeFarTreeBase } from './farTreeBase.ts';
@@ -4233,6 +4234,8 @@ function* vegetationBuildSteps(
     if (shader.fragmentShader.includes('#include <lights_fragment_end>')) {
       shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_end>', `#include <lights_fragment_end>\n${SHADED_SWARD_GLSL}`);
     }
+    // (229) a lamp close by saturates a tuft's light softly, as it does a tall blade's (swardNearLight.ts)
+    installSwardNearLight(shader);
     useAttributeNormal(shader);
     mipAlphaGuard(shader); // aa-r1: distance-stable blade coverage
   };
