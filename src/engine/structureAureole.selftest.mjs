@@ -139,7 +139,7 @@ const group = new THREE.Group();
 new THREE.Scene().add(group);
 const records = [box(0, 0, 2, 2, 3)];
 const handle = createStructureGroundOcclusion(records, { group, makeWorker: null, aureoleSun: sunX });
-assert.equal(handle.aureoleTexture, null, 'nothing before the bake lands');
+assert.ok(handle.aureoleTexture === null, 'nothing before the bake lands');
 assert.equal(await handle.whenReady(), true);
 assert.ok(handle.aureoleTexture instanceof THREE.DataTexture, 'the aureole raster after the capture\'s wait');
 handle.setInstant(true);
@@ -193,7 +193,7 @@ near(u.uAur.value.y, share * 0.4 / 0.5, 1e-9, 'its share of that ground\'s ambie
 // (229) the broadening off by default (v4b's blotches in the snow hollows); the knob keeps the pairs' arm
 near(u.uSgoBroad.value, SGO_DECK_BROAD, 1e-9, 'the occlusion under a closed deck as the knob sets it');
 assert.equal(SGO_DECK_BROAD, 1, 'no broadening by default');
-assert.equal(u.tAur.value, handle.aureoleTexture);
+assert.ok(u.tAur.value === handle.aureoleTexture, 'the pass reads the aureole raster');
 updateStructureGroundUniforms(u, scene, renderer, false);
 assert.equal(u.uAur.value.x, 0, 'off with the contact-shadow lever');
 scene.userData.lightModel = { deckAureole: 0, mode: 'physical', overcast: 1, deckClosure: 0 };
