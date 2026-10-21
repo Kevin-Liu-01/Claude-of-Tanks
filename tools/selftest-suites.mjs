@@ -806,6 +806,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/debrisPhysics.selftest.mjs',
     'src/gallery/chunkRecovery.selftest.mjs',
     'src/gallery/overlays.selftest.mjs',
+    // 2026-10-20: the Gallery anatomy layers draw the combat data exactly, all vehicles (traceTank rays, module parts,
+    // crew head shapes, hit volumes, armor model untouched)
+    'src/gallery/anatomyFidelity.selftest.mjs',
     'src/gallery/damageLab.selftest.mjs',
     'src/gallery/combatHitboxes.selftest.mjs',
     'src/game/armorAimOverlay.selftest.mjs',
@@ -1782,6 +1785,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/wadiRumPosts.selftest.mjs',
     // the map-content lane (L2, wave 358a): a polar station's field works in its own stock (drums, drift fence)
     'src/world/maps/regional/polarWorks.selftest.mjs',
+    // (the 229 follow-up) Taurus-Littrow's dish arms seated in their bowls' shells, none proud of a bowl's face
+    'src/world/maps/regional/littrow.selftest.mjs',
     // (the Earthrise 228 rebuild, 2026-10-18) a lunar station's works and clutter in its own stock (regolith bags, the tether)
     'src/world/maps/regional/lunarWorks.selftest.mjs',
     // props census #12 (2026-10-15): the stations as the Moon and Mars build them (maps/spaceKit.ts)

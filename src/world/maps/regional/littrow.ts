@@ -142,6 +142,45 @@ function hatchZ(sink: PartSink, x: number, y: number, z: number, r: number, out:
   sink.cylinder(M, [x, y, z + (out > 0 ? 0.18 : -0.24)], 'z', 0.04, r * 0.32, 8, { colour: DARK, decor: true, fine: true });
 }
 
+/** A dish's shell: its back sheet stands this far behind the bowl's face (dish below draws it at `back` 0.04). */
+const DISH_SHELL = 0.04;
+/** How far behind the bowl's face a support arm's deepest end corner stops: inside the shell, short of the face. */
+const DISH_ARM_SEAT = 0.012;
+
+/**
+ * Where a support arm `t` square from `a` toward a dish's vertex `c` ends (the dish `r` across and `depth` deep, its bowl
+ * open along `dir`): seated in the dish's shell, its deepest end corner DISH_ARM_SEAT behind the bowl's face. (229: an arm
+ * run to the vertex met a tilted bowl with its square end, and its corners stood 1.2-4.0 cm proud of the closed bowl's
+ * face, the relay mast's three dishes and the habitat's.) The face is the smooth bowl's; its facets are chords in front
+ * of it. bar() frames the arm: `out` = d x ref, across = d x out, both t/2 each side of the line.
+ */
+export function dishArmEnd(a: Vec3, c: Vec3, dir: Vec3, r: number, depth: number, t: number): Vec3 {
+  const w = normalize3(dir), len = Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2]);
+  const d: Vec3 = [(c[0] - a[0]) / len, (c[1] - a[1]) / len, (c[2] - a[2]) / len];
+  const ref: Vec3 = Math.abs(d[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+  const out = normalize3([d[1] * ref[2] - d[2] * ref[1], d[2] * ref[0] - d[0] * ref[2], d[0] * ref[1] - d[1] * ref[0]]);
+  const across = normalize3([d[1] * out[2] - d[2] * out[1], d[2] * out[0] - d[0] * out[2], d[0] * out[1] - d[1] * out[0]]);
+  // the end's corners' furthest stand in front of the bowl's face, the end `back` metres short of the vertex
+  const proud = (back: number): number => {
+    let most = -Infinity;
+    for (const p of [-1, 1]) for (const q of [-1, 1]) {
+      const rel: Vec3 = [-d[0] * back + (out[0] * p + across[0] * q) * t / 2, -d[1] * back + (out[1] * p + across[1] * q) * t / 2,
+        -d[2] * back + (out[2] * p + across[2] * q) * t / 2];
+      const along = rel[0] * w[0] + rel[1] * w[1] + rel[2] * w[2];
+      const rho = Math.hypot(rel[0] - w[0] * along, rel[1] - w[1] * along, rel[2] - w[2] * along);
+      most = Math.max(most, along - depth * (rho / r) * (rho / r));
+    }
+    return most;
+  };
+  let lo = 0, hi = len * 0.9;
+  if (!(proud(hi) < -DISH_ARM_SEAT)) throw new RangeError('A dish arm that cannot seat behind its bowl');
+  for (let k = 0; k < 40; k++) {
+    const mid = (lo + hi) / 2;
+    if (proud(mid) > -DISH_ARM_SEAT) lo = mid; else hi = mid;
+  }
+  return [c[0] - d[0] * hi, c[1] - d[1] * hi, c[2] - d[2] * hi];
+}
+
 /** A dish of radius `r` and depth `depth`, its vertex at `c`, its bowl open toward `dir`: the bowl and its back. Dressing. */
 function dish(sink: PartSink, c: Vec3, dir: Vec3, r: number, depth: number, colour: Rgb, mobile: boolean): void {
   const w = normalize3(dir), ref: Vec3 = Math.abs(w[1]) < 0.95 ? [0, 1, 0] : [1, 0, 0];
@@ -159,13 +198,13 @@ function dish(sink: PartSink, c: Vec3, dir: Vec3, r: number, depth: number, colo
     // the bowl faces out of its mouth (toward the axis and forward), the back faces away
     const mid = at(k + 0.5, i + 0.5, 0), toAxis: Vec3 = [c[0] + w[0] * depth * 2 - mid[0], c[1] + w[1] * depth * 2 - mid[1], c[2] + w[2] * depth * 2 - mid[2]];
     quadFacing(sink, M, at(k, i, 0), at(k, j, 0), at(k + 1, j, 0), at(k + 1, i, 0), toAxis, { colour, decor: true });
-    quadFacing(sink, M, at(k, i, 0.04), at(k, j, 0.04), at(k + 1, j, 0.04), at(k + 1, i, 0.04), back, { colour: shade(colour, 0.82), decor: true });
+    quadFacing(sink, M, at(k, i, DISH_SHELL), at(k, j, DISH_SHELL), at(k + 1, j, DISH_SHELL), at(k + 1, i, DISH_SHELL), back, { colour: shade(colour, 0.82), decor: true });
   }
   // the rim's edge between the bowl and its back
   for (let i = 0; i < segs; i++) {
     const j = (i + 1) % segs, a0 = at(rings, i, 0), mid = at(rings, i + 0.5, 0);
     const outward: Vec3 = [mid[0] - c[0] - w[0] * depth, mid[1] - c[1] - w[1] * depth, mid[2] - c[2] - w[2] * depth];
-    quadFacing(sink, M, a0, at(rings, j, 0), at(rings, j, 0.04), at(rings, i, 0.04), outward, { colour: shade(colour, 0.9), decor: true });
+    quadFacing(sink, M, a0, at(rings, j, 0), at(rings, j, DISH_SHELL), at(rings, i, DISH_SHELL), outward, { colour: shade(colour, 0.9), decor: true });
   }
   // the feed on its three struts at the focus, and the hub behind the vertex
   const focus: Vec3 = [c[0] + w[0] * depth * 1.6, c[1] + w[1] * depth * 1.6, c[2] + w[2] * depth * 1.6];
@@ -301,8 +340,9 @@ const habitat: RegionalBuilder = (ctx) => {
     const wy = (2.1 + ph - 0.4) / 2;
     if (ph - 0.4 - 2.15 > 0.12) sink.span('glass', cx - 0.9, wy - 0.06, pz1 - 0.01, cx - 0.45, wy + 0.06, pz1 + 0.02, { decor: true });
     const e = earthLocal(ctx), ax0 = cx + pw / 2 - 0.35, az0 = pz0 + 0.45;
-    bar(sink, [ax0, ph + 0.1, az0], [ax0, ph + 1.25, az0], 0.06, { colour: STEEL, decor: true });
-    dish(sink, [ax0, ph + 1.25, az0], e, 0.38, 0.1, PANEL, mobile);
+    const foot: Vec3 = [ax0, ph + 0.1, az0], vertex: Vec3 = [ax0, ph + 1.25, az0];
+    bar(sink, foot, dishArmEnd(foot, vertex, e, 0.38, 0.1, 0.06), 0.06, { colour: STEEL, decor: true });
+    dish(sink, vertex, e, 0.38, 0.1, PANEL, mobile);
   });
   if (look() < 0.15) {
     const z = zBack + (zFront - zBack) * (0.3 + look() * 0.4);
@@ -582,15 +622,15 @@ const commsTower: RegionalBuilder = (ctx) => {
   }
   // the high-gain dish on its arm off the head, turned to the Earth; the relay dish lower down, turned along the floor
   const e = earthLocal(ctx), hy = top + 2.4;
-  const arm: Vec3 = [cx + e[0] * 2.5, hy, cz + e[2] * 2.5];
-  bar(sink, [cx, top + 1.2, cz], arm, 0.16, { colour: STEEL, decor: true });
+  const arm: Vec3 = [cx + e[0] * 2.5, hy, cz + e[2] * 2.5], mount: Vec3 = [cx, top + 1.2, cz];
+  bar(sink, mount, dishArmEnd(mount, arm, e, 2.4, 0.62, 0.16), 0.16, { colour: STEEL, decor: true });
   dish(sink, arm, e, 2.4, 0.62, PANEL, mobile);
-  const ry = y0 + H * 0.78, rl = leg(1, H * 0.78);
-  bar(sink, rl, [rl[0] + 0.9, ry, rl[2]], 0.1, { colour: STEEL, decor: true });
-  dish(sink, [rl[0] + 0.9, ry, rl[2]], normalize3([1, 0.05, 0.2]), 1.3, 0.34, PANEL, mobile);
-  const ql = leg(3, H * 0.62);
-  bar(sink, ql, [ql[0] - 0.7, ql[1], ql[2]], 0.08, { colour: STEEL, decor: true });
-  dish(sink, [ql[0] - 0.7, ql[1], ql[2]], normalize3([-1, 0.12, -0.4]), 0.8, 0.22, PANEL, mobile);
+  const ry = y0 + H * 0.78, rl = leg(1, H * 0.78), relay: Vec3 = [rl[0] + 0.9, ry, rl[2]], relayDir = normalize3([1, 0.05, 0.2]);
+  bar(sink, rl, dishArmEnd(rl, relay, relayDir, 1.3, 0.34, 0.1), 0.1, { colour: STEEL, decor: true });
+  dish(sink, relay, relayDir, 1.3, 0.34, PANEL, mobile);
+  const ql = leg(3, H * 0.62), small: Vec3 = [ql[0] - 0.7, ql[1], ql[2]], smallDir = normalize3([-1, 0.12, -0.4]);
+  bar(sink, ql, dishArmEnd(ql, small, smallDir, 0.8, 0.22, 0.08), 0.08, { colour: STEEL, decor: true });
+  dish(sink, small, smallDir, 0.8, 0.22, PANEL, mobile);
   // the cable tray down a leg to the shelter; the climbing ladder up the opposite leg (its rungs and the panels' cell joints
   // fine joinery, drawn near the camera)
   bar(sink, leg(1, 0.2), leg(1, H * 0.78), 0.07, { colour: DARK, decor: true });
