@@ -1,12 +1,17 @@
 import { shorelineDistance, shorelineRadiusAt, shorelineWetnessFromDistance, type ShorelineDisc } from './shoreline.ts';
-import { WATER_BANK_REACH_M, waterCoverage, waterShoreFloor, waterlineDistance } from './waterBank.ts';
+import { WATER_BANK_LIP_FADE_M, waterCoverage, waterlineDistance } from './waterBank.ts';
 
 export interface LakeHeightResult {
   height: number; wetness: number;
   /** (2026-10-17, with a LakeBankLaw) the most covering lake's floor (its level) and its own coverage there (0: none
-   * covers the point), and the highest dry-shore floor of the lakes whose waterline the point lies past (-Infinity: none);
-   * the caller sets the bed by the water's true mask (terrain.ts applyHeightConstraints). */
-  bedLevel?: number; bedCoverage?: number; shoreFloor?: number;
+   * covers the point); the caller sets the bed by the water's true mask (terrain.ts applyHeightConstraints). */
+  bedLevel?: number; bedCoverage?: number;
+  /** (2026-10-21, waterBank.ts) the share of the lakes' levels in `height` (0: none grades the point, 1: a flat core): a
+   * bank graded from the water's top instead of the floor stands the depth in this share higher. */
+  liftWeight?: number;
+  /** (2026-10-21) the metres past the nearest dry-side waterline (Infinity: none within the lip's fade) and that lake's
+   * level (the lip stands over its top). */
+  shoreBeyondM?: number; shoreLevel?: number;
 }
 
 /** (the ground lane, 2026-10-17; waterBank.ts) a liquid lake's water held level in its banks: the map's water ramp, so
@@ -38,7 +43,7 @@ export function composeLakeHeight(
   out: LakeHeightResult, candidates: ArrayLike<number> | null = null, bank: LakeBankLaw | null = null,
 ): void {
   let oddsSum = 0, weightedLevel = 0, coreLevel = 0, coreCount = 0;
-  let floor = -Infinity, bedCoverage = 0, bedLevel = 0;
+  let bedCoverage = 0, bedLevel = 0, keep = 1, shoreBeyondM = Infinity, shoreLevel = 0;
   const continuous = authored && banks !== null;
   out.wetness = 0;
   // (2026-10-08, lakeCandidateIndex.ts) `candidates`: the ascending indices of the discs that can reach (x, z); the
@@ -61,12 +66,12 @@ export function composeLakeHeight(
       if (coverage > bedCoverage) { bedCoverage = coverage; bedLevel = levels[index]; }
       else if (coverage === 0) {
         const beyondM = Math.max(0, (distance - waterlineDistance(start, 0.96, bank.rampStart)) * radius);
-        if (beyondM <= WATER_BANK_REACH_M) floor = Math.max(floor, waterShoreFloor(levels[index] + bank.depthM, beyondM));
+        if (beyondM < WATER_BANK_LIP_FADE_M && beyondM < shoreBeyondM) { shoreBeyondM = beyondM; shoreLevel = levels[index]; }
       }
     }
     if (!(distance < band)) continue;
     const weight = bankWeight(distance, band, settlement, banks !== null);
-    if (!continuous) { height += (levels[index] - height) * weight; continue; }
+    if (!continuous) { height += (levels[index] - height) * weight; keep *= 1 - weight; continue; }
     // As weight approaches one, other aprons lose influence continuously.
     // Exact cores are handled separately to avoid division by zero.
     if (weight === 1) { coreLevel += levels[index]; coreCount++; continue; }
@@ -76,5 +81,10 @@ export function composeLakeHeight(
   }
   out.height = continuous ? (coreCount > 0 ? coreLevel / coreCount
     : (height + weightedLevel) / (1 + oddsSum)) : height;
-  if (bank) { out.bedLevel = bedLevel; out.bedCoverage = bedCoverage; out.shoreFloor = floor; }
+  if (bank) {
+    out.bedLevel = bedLevel; out.bedCoverage = bedCoverage; out.shoreBeyondM = shoreBeyondM; out.shoreLevel = shoreLevel;
+    // the levels' share: sequential blends keep (1 - w) of what came before each; the continuous odds give their sum's
+    // share over one (the input height's odds); a flat core is all level
+    out.liftWeight = continuous ? (coreCount > 0 ? 1 : oddsSum / (1 + oddsSum)) : 1 - keep;
+  }
 }

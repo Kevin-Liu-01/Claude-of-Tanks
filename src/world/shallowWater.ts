@@ -26,8 +26,6 @@ export const PADDY_MUD_RGB = [0.17, 0.15, 0.09] as const;
  * the wall and the wall hides it. A shore's dry corners, within this of the water, keep their bed-plus-depth height.
  */
 const WALL_RISE_M = 1.0;
-/** (2026-10-17) How far under its ground a shore's dry corner tucks where that ground stands lower than the water. */
-const SHORE_TUCK_M = 0.1;
 
 interface ShallowWaterGeometry {
   geometry: THREE.BufferGeometry;
@@ -216,9 +214,10 @@ export function* shallowWaterGeometrySteps(
         if ((dx || dz) && nx >= 0 && nz >= 0 && nx < count && nz < count && wet[nz * count + nx] > MIN_COVERAGE) water = Math.max(water, wetSurfaceY(nx, nz));
       }
       if (water > -Infinity) {
-        // (2026-10-17) on a field with bodies a shore's corner never stands over the water beside it: on a bank it holds
-        // that level (the bank hides the sheet's edge), on ground lower than the water it tucks under that ground
-        if (bodySurfaceAt) y = Math.min(water, y - SHORE_TUCK_M);
+        // (2026-10-17; 230) on a field with bodies a shore's corner holds the water's level beside it: on a bank the bank
+        // hides the sheet's edge, over lower dry ground the fragment discard does (no mask there), so every triangle of a
+        // body's water runs level (the 10-17 cut tucked such corners under their ground and tilted the shore's cells)
+        if (bodySurfaceAt) y = water;
         else if (y > water + WALL_RISE_M) y = water;
       }
     }

@@ -66,7 +66,9 @@ export const JETTY_OVER_CORE_M = 4.6; // deck over the planar core past its boun
 export const JETTY_FREEBOARD_M = 0.45; // deck top above the water surface
 export const JETTY_ROAD_CLEARANCE_M = 7; // the river landings' clearance
 export const JETTY_SPAWN_CLEARANCE_M = 26; // the terrain's own pad law
-export const JETTY_BANK_CLEARANCE_M = 0.30; // the ground under every station past the shore end stays this far below the underside
+// the ground under every station past the shore end stays this far below the underside: a pile's worth (0.30 m) less the
+// bank's lip at the waterline (waterBank.ts WATER_BANK_LIP_M, 0.12 m; 230: the strand meets the water at its top)
+export const JETTY_BANK_CLEARANCE_M = 0.18;
 export const JETTY_BANK_LANDING_M = 0.05; // on a bank shore the deck lands where the ground comes this close to its underside
 export const JETTY_CORE_SEARCH_M = 12; // how far inside the water's edge the planar core is looked for
 export const GANGWAY_MIN_RISE_M = 0.40; // a shore end higher than this over the ground gets a gangway
