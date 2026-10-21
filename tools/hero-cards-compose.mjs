@@ -27,6 +27,7 @@ import {
   FLAG_SVG_DIR, HERO_DIR, HERO_MANIFEST_PATH, fleetIds, fleetRecords, flagInputs, flagPolicyKey, planHeroCards,
   readHeroManifest, sha, tankInputs, tankPolicyKey,
 } from './hero-cards-plan.mjs';
+import { uniqueIds } from './id-list.mjs';
 
 // ---------------------------------------------------------------------------
 // Flag art
@@ -581,7 +582,7 @@ async function ship() {
   const fleet = fleetRecords();
   const plan = planHeroCards();
   let ids;
-  if (opt('ids')) ids = opt('ids').split(',').map((id) => id.trim()).filter(Boolean);
+  if (opt('ids')) ids = uniqueIds(opt('ids').split(',').map((id) => id.trim()).filter(Boolean));
   else if (args.includes('--plan')) ids = plan.stale.map((row) => row.id);
   else if (args.includes('--all')) ids = fleetIds();
   else if (args.includes('--flags-only')) ids = [];
@@ -696,7 +697,7 @@ async function board() {
   const out = resolve(opt('out'));
   mkdirSync(out, { recursive: true });
   const fleet = fleetRecords();
-  const ids = opt('ids', 'm1a2_abrams_sepv3,leo2a7v,t90m').split(',');
+  const ids = uniqueIds(opt('ids', 'm1a2_abrams_sepv3,leo2a7v,t90m').split(','));
   const strip = opt('strip', '').split(',').filter(Boolean);
   const flags = new Map();
   const load = async (id) => {

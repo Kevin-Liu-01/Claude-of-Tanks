@@ -21,6 +21,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock } from './capture-lock.mjs';
 import { fleetIds, planHeroCards, tankPolicyKey } from './hero-cards-plan.mjs';
+import { uniqueIds } from './id-list.mjs';
 
 const args = process.argv.slice(2);
 function opt(name, fallback = '') {
@@ -35,7 +36,7 @@ const outDir = resolve(opt('out', '.qa-dev/hero-cards'));
 const holdMinutes = Number(opt('hold-minutes', '18'));
 let jobs = [];
 if (opt('jobs')) jobs = JSON.parse(readFileSync(resolve(opt('jobs')), 'utf8'));
-else if (opt('ids')) jobs = opt('ids').split(',').map((id) => id.trim()).filter(Boolean).map((id) => ({ name: id, id }));
+else if (opt('ids')) jobs = uniqueIds(opt('ids').split(',').map((id) => id.trim()).filter(Boolean)).map((id) => ({ name: id, id }));
 else if (args.includes('--all')) jobs = fleetIds().map((id) => ({ name: id, id }));
 else if (args.includes('--plan')) {
   const plan = planHeroCards();
