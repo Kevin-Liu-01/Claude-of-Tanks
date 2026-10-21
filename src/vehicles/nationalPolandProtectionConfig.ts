@@ -105,9 +105,10 @@ function fieldSuit(d: Layout, m: number): GhillieConfig {
     // the same net; the far tier (LOW) keeps 35 % of them (the Zubr II's LOW was already 75.4 % of its HIGH bare)
     garnishBudget: {clumpCards: .7, lowShare: .35},
     // release 230 (the gun-hull lane; nationalGunClearance.selftest: the Zubr II's rear leaves 23.8 mm under its gun at yaw
-    // 174): the hull's suit keeps under the main gun's continuous envelope, as the Ukrainian suits do (ghillieSuit.ts
-    // conservativeGunEnvelope)
-    conservativeGunEnvelope: true,
+    // 174): the Zubrs' hull suits keep under the main gun's continuous envelope, as the Ukrainian suits do (ghillieSuit.ts
+    // conservativeGunEnvelope). The owner (2026-10-21): the Husarz keeps its engine-deck nets; its suit keeps 28.8 mm
+    // from the gun without the envelope.
+    ...(d.id !== 't80u_husarz' ? {conservativeGunEnvelope: true} : {}),
     // release 227 (round 2): the Zubrs' Krata glacis fields and cheek grids: no card passes into a cassette or a riser
     ...(d.id === 't72b3_zubr' || d.id === 't72b3_zubr_ii' ? {cardsClearOfArmour: true} : {}),
     light: [0x68724b, 0x73744d, 0x657547, 0x747852][m]!, dark: 0x2f3a2c, netColor: 'rgba(49,61,37,0.88)', netTextureSeed: 1101,
