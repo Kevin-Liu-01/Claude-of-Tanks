@@ -123,8 +123,13 @@ const lens = buildGunshipLensGuns({ setup: (m) => setup.push(m), release: () => 
   lens.pose(camera, 1 / 60, true);
   const hot = barrel('howitzer').material;
   assert.ok(hot.emissive.r > 0.5 && hot.emissive.r < 1.55, `a cool gun in the heat lens (${hot.emissive.r.toFixed(2)})`);
+  lens.fire('cannon'); lens.pose(camera, 1 / 60, true);
+  assert.ok(barrel('cannon').material.emissive.r > 1.55, `one 30 mm shot flashes its barrel hot (${barrel('cannon').material.emissive.r.toFixed(2)})`);
+  run(2, true);
+  assert.ok(barrel('cannon').material.emissive.r < 1.55, 'and it falls back under the threshold');
   for (let i = 0; i < 4; i++) { lens.fire('howitzer'); run(0.5, true); }
-  assert.ok(hot.emissive.r > 1.55, `a firing barrel reads hot (${hot.emissive.r.toFixed(2)})`);
+  run(2, true);
+  assert.ok(hot.emissive.r > 1.55, `a barrel fired hard stays hot past the flash (${hot.emissive.r.toFixed(2)})`);
   lens.pose(camera, 1 / 60, false);
   assert.equal(hot.emissive.r, 0, 'no glow in the daylight lens');
   lens.hide();
@@ -176,7 +181,17 @@ const round = (id, i, d) => ({ id, shooterId: 'pilot', isPlayer: true, dead: fal
   assert.ok(guns.getObjectByName('ac130-lens-cannon-barrel').position.z > 0.03, 'the shot recoils the 30 mm beside the lens');
   const tracers = fx.group.getObjectByName('Projectile tracers').geometry;
   assert.ok(tracers.instanceCount >= 1, 'from its lens a 30 mm round 20 m out is drawn (it was not before: lit 45 m out)');
-  const head = tracers.getAttribute('aHead'), tail = tracers.getAttribute('aTail');
+  const head = tracers.getAttribute('aHead'), tail = tracers.getAttribute('aTail'), coreA = tracers.getAttribute('aCore');
+  // (round 2) and its first metres as an even line from the muzzle (the tapered dash alone reads only near the centre)
+  let even = -1;
+  for (let i = 0; i < tracers.instanceCount; i++) if (coreA.getW(i) < 0) even = i;
+  assert.ok(even > 0, 'an untapered line from the muzzle to the round');
+  {
+    const lt = ndc(new THREE.Vector3(tail.getX(even), tail.getY(even), tail.getZ(even)), camera);
+    const lh = ndc(new THREE.Vector3(head.getX(even), head.getY(even), head.getZ(even)), camera);
+    assert.ok(Math.hypot(lt.x - muzzleNdc.x, lt.y - muzzleNdc.y) < 0.1, `the line starts at the muzzle (${lt.x.toFixed(2)}, ${lt.y.toFixed(2)})`);
+    assert.ok(Math.hypot(lh.x, lh.y) < Math.hypot(lt.x, lt.y) * 0.6, 'and runs in toward the centre with the round');
+  }
   const tailAt = new THREE.Vector3(tail.getX(0), tail.getY(0), tail.getZ(0));
   const t = ndc(tailAt, camera);
   assert.ok(Math.hypot(t.x - muzzleNdc.x, t.y - muzzleNdc.y) < 0.1 && t.x < -0.6 && t.y < -0.15,
@@ -207,6 +222,14 @@ const round = (id, i, d) => ({ id, shooterId: 'pilot', isPlayer: true, dead: fal
   at.setFromMatrixPosition(mtx);
   const a = ndc(at, camera), r = ndc(rail, camera);
   assert.ok(Math.hypot(a.x - r.x, a.y - r.y) < 0.2 && a.x < -0.5, `it leaves the rail on the left (${a.x.toFixed(2)}, ${a.y.toFixed(2)}; the rail ${r.x.toFixed(2)}, ${r.y.toFixed(2)})`);
+  // (round 2) it eases off the rail: 20 m into the simulation's flight the drawn round is still near the frame's edge
+  // (at full speed from the first step, one frame would carry it a third of the way to the centre)
+  frame([round(701, 2, 20)]);
+  bodies.getMatrixAt(0, mtx);
+  const eased = ndc(at.setFromMatrixPosition(mtx), camera);
+  const unEased = ndc(rail.clone().addScaledVector(dir, 20), camera);
+  assert.ok(Math.hypot(eased.x, eased.y) > Math.hypot(unEased.x, unEased.y) + 0.15,
+    `eased off the rail (${eased.x.toFixed(2)}, ${eased.y.toFixed(2)}; at full speed it would be at ${unEased.x.toFixed(2)}, ${unEased.y.toFixed(2)})`);
   frame([]);
 }
 {

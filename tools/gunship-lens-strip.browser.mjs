@@ -86,7 +86,7 @@ async function filmBuild(run, manifest) {
     executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' });
   try {
     for (const viewName of run.views) {
-      if (Date.now() - heldAt > HOLD_MS * 0.75) { log(`${run.tag} ${viewName}: skipped (the hold is nearly over)`); continue; }
+      if (Date.now() - heldAt > HOLD_MS * 0.55) { log(`${run.tag} ${viewName}: skipped (the hold is nearly over)`); continue; }
       const page = await browser.newPage();
       const errors = [];
       page.on('pageerror', (e) => errors.push(String(e?.message ?? e)));
@@ -117,6 +117,8 @@ async function filmBuild(run, manifest) {
       log(`${run.tag} ${viewName} programs`, JSON.stringify(programs));
       manifest.programs = [...(manifest.programs ?? []), { view: viewName, ...programs }];
       for (const lens of run.lenses) {
+        // a lens's three strips take a few minutes under load: none starts that the hold cannot finish
+        if (Date.now() - heldAt > HOLD_MS * 0.8) { log(`${run.tag} ${viewName} ${lens}: skipped (the hold is nearly over)`); continue; }
         if (!(await setLens(page, lens))) log(`${run.tag} ${viewName}: the lens did not reach ${lens}`);
         await sleep(800);
         for (const g of GUNS) {
@@ -169,7 +171,7 @@ try {
   }
   heldAt = Date.now();
   for (const run of runs) {
-    if (Date.now() - heldAt > HOLD_MS * 0.6) { log(`${run.tag}: skipped (the hold is ${Math.round((Date.now() - heldAt) / 60000)} min old)`); continue; }
+    if (Date.now() - heldAt > HOLD_MS * 0.55) { log(`${run.tag}: skipped (the hold is ${Math.round((Date.now() - heldAt) / 60000)} min old)`); continue; }
     const manifest = { tag: run.tag, dist: run.dist, soft, frames: [], errors: [] };
     await filmBuild(run, manifest);
     writeFileSync(resolve(out, `${run.tag}-manifest.json`), JSON.stringify(manifest, null, 2));

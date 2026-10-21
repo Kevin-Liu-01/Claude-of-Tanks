@@ -138,6 +138,10 @@ const LENS_EYE_M = 12;
 /** (ac130-barrels-230) a round drawn from its lens gun lights this far out of the muzzle (m): seen from beside the gun its
  *  class's ignite distance (6-8 m) is a third of its way to the screen's centre, so it would still start mid-air */
 const LENS_IGNITE_M = 0.4;
+/** (ac130-barrels-230) its first LENS_LINE_M also draw the frame's whole record from the muzzle to the round as an even
+ *  line (LENS_LINE_K of its radiance, dimming as it flies on): the tapered dash alone reads only near the screen's centre,
+ *  because seen from beside the gun its nearest metres fill most of its length on the screen */
+const LENS_LINE_M = 48, LENS_LINE_K = 0.75;
 /** (ac130-fx-228) the screenshot composer's frozen rounds held at once (pooled; the oldest reused past it) */
 const STATIC_CAPACITY = 8;
 /** (ac130-fx-228 r3) a distant backdrop round's radiance by day, as a share of its night radiance */
@@ -739,6 +743,15 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       r.k = k;
       r.speed = speed;
       put(r, k, tumbling ? wobble : 0);
+      if (r.lens === 2 && flown < LENS_LINE_M) {
+        // the drawn point at the ignite distance (on the line from the muzzle) to the round, untapered (a negative bead)
+        const back = (flown - ignite) / speed, ki = Math.max(0, 1 - ignite / r.lr), kl = k * LENS_LINE_K * (1 - flown / LENS_LINE_M);
+        const cls = r.cls;
+        write4(r.hx, r.hy, r.hz, shell.pos.x - v.x * back + r.lx * ki, shell.pos.y - v.y * back + r.ly * ki,
+          shell.pos.z - v.z * back + r.lz * ki, cls.halfWidthPx * (1 + (cls.dayWidthK ?? DAY_WIDTH_K) * (1 - dark)),
+          cls.haloPx * (0.45 + 0.55 * dark), r.day, r.core, cls.core * kl, r.halo, cls.halo * (HALO_DAY + (1 - HALO_DAY) * dark) * kl,
+          -1, cls.dayK ?? 1);
+      }
     },
     strike(id, pos, water = false) {
       if (id == null) return;

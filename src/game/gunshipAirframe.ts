@@ -334,8 +334,13 @@ const MISSILE_RAIL_S = 6.6, MISSILE_SLIDE_S = 0.4;
 /** barrel heat: each shot's share, its cooling (s); the heat lens reads emission 1.55..3.1 as cold..white-hot
  *  (engine/post.ts thermalHeat), so a resting gun stays under it and a firing barrel crosses it */
 const HEAT_SHOT: Readonly<Record<LensGun, number>> = Object.freeze({ cannon: 0.035, howitzer: 0.3, missile: 0 });
-const HEAT_COOL_S = 22, HEAT_REST = 1.05, HEAT_HOT = 3.4, HEAT_MOUNT = 0.85;
-const GUNMETAL = 0x383c3f, BLACKENED = 0x222527, PORTS = 0x0b0c0d, MOUNT = 0x50575b, OLIVE = 0x56603f, BAND = 0xc49a2a,
+const HEAT_COOL_S = 22, HEAT_REST = 0.8, HEAT_HOT = 3.4, HEAT_MOUNT = 0.6;
+/** (round 2) each shot's flash of heat in the barrel and brake (emission over the rest, and its fall, s): one shot of
+ *  either gun crosses the heat lens's threshold, so the heat lens sees each gun fire */
+const HEAT_FLASH: Readonly<Record<LensGun, readonly [number, number]>> = Object.freeze({
+  cannon: [1.3, 0.3], howitzer: [2.2, 0.7], missile: [0, 1],
+});
+const GUNMETAL = 0x383c3f, BLACKENED = 0x222527, PORTS = 0x0b0c0d, MOUNT = 0x50575b, OLIVE = 0x3d452c, BAND = 0xc49a2a,
   SEEKER = 0x101418;
 
 export interface GunshipLensGuns {
@@ -517,7 +522,9 @@ export function buildGunshipLensGuns(hooks: GunshipMaterialHooks | null): Gunshi
           g.mount.children[1]!.position.y = g.since < 0.25 ? 0.01 * Math.sin(g.since * 80) * Math.exp(-g.since / 0.07) : 0;
         } else g.slide.position.z = stroke(id, g.since);
         // (the rail's round is as cool as the mount: its motor has not lit)
-        g.hot.emissive.setScalar(!heatLens ? 0 : id === 'missile' ? HEAT_MOUNT : HEAT_REST + (HEAT_HOT - HEAT_REST) * Math.min(1, g.heat));
+        const [flash, fall] = HEAT_FLASH[id];
+        g.hot.emissive.setScalar(!heatLens ? 0 : id === 'missile' ? HEAT_MOUNT
+          : HEAT_REST + (HEAT_HOT - HEAT_REST) * Math.min(1, g.heat) + flash * Math.exp(-g.since / fall));
       }
       mountMaterial.emissive.setScalar(heatLens ? HEAT_MOUNT : 0);
       root.visible = true;
