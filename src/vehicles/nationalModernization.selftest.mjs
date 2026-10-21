@@ -241,9 +241,12 @@ for(const quality of ['high','low']) {
    tank.root.updateMatrixWorld(true);
    assert(Math.abs(new Box3().setFromObject(tank.root).getSize(new Vector3()).y-spec.dims.heightM)<.005,`${c.id}: listed height includes roof weapon and tallest fitting`);
    const rws=NATIONAL_DONOR_TURRETS[c.id]?turret.userData.nationalDonorStation.seat:(c.design??nationalModernizationDesign(c)).rws,stock=[];
-   tank.root.traverse(o=>{if(o.isMesh&&o.name.startsWith('sourceMachineGun_')&&o.name!=='sourceMachineGun_yawSupport')stock.push(o);});
    const loadout=NATIONAL_ROOF_LOADOUTS[c.id];
-   const contactRay=new Raycaster(),localPoints=[[rws[0],rws[1]+loadout.axisHeight,rws[2]+.255]];
+   // Release 227: a cupola emplacement (mount 'pintle') is the fleet's QJC-88 pintle fitting, its receiver and barrel in
+   // the working rig's pitch group (auxiliaryWeaponPitch) over the pintle's trunnion.
+   if(loadout.mount==='pintle')turret.getObjectByName(loadout.name)?.getObjectByName('auxiliaryWeaponPitch')?.traverse(o=>{if(o.isMesh)stock.push(o);});
+   else tank.root.traverse(o=>{if(o.isMesh&&o.name.startsWith('sourceMachineGun_')&&o.name!=='sourceMachineGun_yawSupport')stock.push(o);});
+   const contactRay=new Raycaster(),localPoints=[[rws[0],rws[1]+loadout.axisHeight,rws[2]+(loadout.mount==='pintle'?.10:.255)]];
    for(const p of localPoints){
     const origin=turret.localToWorld(new Vector3(p[0],p[1]+.20,p[2]));
     contactRay.set(origin,new Vector3(0,-1,0));contactRay.far=.40;
