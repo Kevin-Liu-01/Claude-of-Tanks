@@ -1422,17 +1422,45 @@ churches never taken to their end, the mills' pops).** The branch carries `origi
   0.3 m/s and 0.5 rad/s bakes where it is, and a landmark piece laid at rest — baked, its tween ended, or laid with no body —
   is laid as a heap's plate is (`layPerchedPlates` with the bodies' contact holds): none of it perched over nothing.
 
+- *The roofless storey's lid, as round 5's own films showed it* (`films/r5/after-46cdbbd2e3`: reservoir-s7-tavern-look and
+  urban-s15-church-narrow-back-look-r5x). The tavern's roof came down as bodies — three slabs at rest on its top floor and
+  across its wall heads, from the film's camera one flat dark slate plane to the clip's end, which the slab rules pass by
+  design (inside the walls, "a fallen roof where it belongs"); the church's nave roof came down through the hanging sweep,
+  no roof section falling, so its top storey never opened to the sky. A roof body at rest inside a standing shell drawing a
+  level plate with 6 m² or more of it in the top storey (over its floor line, up to its wall heads; `lidOverShell`) is the
+  lid: the slab cracks into its sheets and a sheet breaks up where it lies, its dust and broken tiles thrown. A roof whose
+  triangles the sweep took more than half of opens its top storey as a roof's fall does (`roofDropped`, the fracture's
+  `roofFell`). One room a storey (the kit's and the fracture's were laid one over the other and fought), and an open room is
+  lit a quarter under the sunlit face (the films' glare on its walls). The slab check reads the lid (`lid`: a fallen roof's
+  plate at rest in the roofless top storey, 8 m² inside its walls — the runtime acts a quarter under it: fjord #0's fishery,
+  R narrow-back 854166144, left a 2.9 x 2.4 m sheet on its top floor that the runtime read at 7.97 m² and the check at 8.1)
+  and replays a film's own strikes (`--strikes=<frames.json>`): the census runs every round-5 film's strikes (its F jobs).
+- *A room holds nothing up* (the census on 46cdbbd2e3: cliffbridge #24's farmhouse chimney stood over its roofless gable to
+  the end, held by its top storey's room; copper_mesa #0, polders #5 and whiteout #0 had pieces cut loose since
+  e9b378bcbc). The sweep reads a room as touching nothing it holds, and samples only what the room draws (its draw range: a
+  ceiling gone with the roof holds nothing). Fjord #0's 1.41 m truss beam (round 5's open item) no longer flags at any of its
+  three seeds (R narrow-back 1114308791, 732685761, 854166144; `r6/s3/fj`, `r6/s4/v1`).
+- *A tilted plate held by nothing is laid flat* (airfield #0's tower, R narrow, seed 1926340207: a 3.3 x 2.6 m plate of its
+  heap tilted 1.1 m up over nothing from its bake to the settled ruin; `layPerchedPlates` read flat plates alone). Plates
+  tilted up to 0.8 of their normal's rise are judged; one held by nothing turns flat about its middle and is lowered onto
+  the ground.
+- *The default kit's rim only where a wall is read behind both its edges* (verdant #9's church, A narrow-back, seed
+  1872341908: a hole at its cornice's corner laid its rim on round the corner, a quarter of it in the air past the walls
+  10 m up to the end).
+- *A sweep still making its building's intact reading starts over at no cost* (the census's phone tavern #7, reservoir Q
+  narrow 637292818: the sweep begun at the first hole made the reading for 6.4 s, then read the meshes it had listed at its
+  start, blind to the remnants its roof's fall laid 1.4 s in; they hung to 8.6 s). A change during the reading restarts the
+  sweep (the reading's steps outlive it), and a sweep's age counts from its reading.
+
 What stays open after round 5:
 
-- fjord #0's truss beam at two seeds of three (`R narrow-back` 1114308791, 854166144): a 1.41 m beam lying 0.5 m over
-  the eaves, 40 % of it on the wall head and the rest on the roof's frame (the slab check's intact reading, roof and all:
-  100 %; the hanging sweep's, which counts only what bears: 40 %, so it never bore and is not read again). At the roof's
-  fall `holdOverEaves` reads it on its 0.5 m grid as three cells, all held through the 3 x 3 neighbourhood and two of them
-  in their own cell. Tried (r5/dev/v6, v7; `r5/dev/v7/hoe-flat-own.patch`): a part lying flat (0.5 m or less from its
-  lowest point to its highest) held only over three quarters of its own cells — fjord #0 passes at all three seeds and the
-  R passes on verdant, reservoir, frontier and urban pass, but it also takes with the roof a stack's plaster cap (four of
-  six own cells) and the urban factory's stone cornice (ten of fourteen), which overhang what holds them. Not shipped: it
-  wants an own reading finer than the grid (or the part's middle over what holds it).
+- The phone's late sweep. A struck building's intact reading is made from its first hole at the phone's budget (4 steps
+  of 4,000 units a frame, a third of the desktop's): reservoir #7's tavern (Q narrow 637292818, `r6/s4/sw-rv7q.err`) has it
+  made at 6.13 s, the sweep after it done at 7.98 s, so the roof's remnants on its gable heads, laid as the roof fell under a
+  barrage of a round each 0.45 s, hang from 1.7 s to 7.98 s (desktop, same seed: gone inside the check's 2 s). Polders #0's
+  mill and urban #182's corner shop on the phone are the same (`r6/s3/ph1`); at a duel's pace (a round each 6-8 s) the
+  reading is made before a roof falls. Not shipped: a bigger phone budget for the reading (its frame cost) or a reading made
+  before the first hit (its memory for every building).
 - The sweep's frame cost (thread CPU per frame with sweep work at 4edd9817a9, load ~120, `r5/perf/sweepframe.txt`): verdant
   #9 p99 9.2 ms (round 4: 9.5), urban #15 p99 15.0 ms, 2 frames over 16.7 ms, its total 739 ms over a 24 s barrage (623: a
   restarted sweep's work is redone), skybridge #27 p99 11.9 ms (14.2). Weighing its units at their cost is still to do.

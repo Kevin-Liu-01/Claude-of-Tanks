@@ -381,8 +381,11 @@ const PLATE_PAST_SHARE = 0.05;
  * a roof plate at rest inside a standing shell with LID_M2 or more of it in the top storey (over its floor line less
  * LID_UNDER_M, up to its wall heads and LID_OVER_M over them), lying no steeper than LID_LEVEL, reads as a lid: the slab
  * cracks into its sheets, a sheet breaks up where it lies (its dust and broken tiles thrown) — the roof caved in.
+ * (round 5, resumed; the census's fjord #0 fishery, R narrow-back seed 854166144: a 2.9 x 2.4 m sheet of its roof at rest on
+ * the roofless top storey's floor read 7.97 m² here, the slab check's lid rule 8.1 — the same plate, sampled a little
+ * differently) a quarter under the slab check's 8 m², as the hanging rules act a quarter under what it calls.
  */
-const LID_M2 = 8, LID_UNDER_M = 0.3, LID_OVER_M = 0.5, LID_LEVEL = 0.5;
+const LID_M2 = 6, LID_UNDER_M = 0.3, LID_OVER_M = 0.5, LID_LEVEL = 0.5;
 const _boxMid: [number, number] = [0, 0];
 const _boxHalf = [0, 0, 0];
 /** panelsStanding's body frame (one, reused: it runs each frame of a collapse's first 40 s). */
