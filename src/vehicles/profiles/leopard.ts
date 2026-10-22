@@ -3910,6 +3910,11 @@ function buildLeo2A6(P: TankBuilderPort) {
       P.add('turretDark', KIT.cylY(0.257, 0.257, 0.006, ringSeg), 0.62, cyR + 0.014, -0.55, 0, 0, 0.079);
       P.add('turretDetail', KIT.cylY(0.222, 0.222, 0.005, ringSeg), 0.62, cyR + 0.0185, -0.55, 0, 0, 0.079);
       P.add('turretDark', KIT.cylY(0.155, 0.155, 0.010, P.q ? 24 : 16), 0.62, 0.806, -0.55);
+      // 2026-10-21 (sealed ledger work order, "a real slit about 1 cm tall along the turret roof line"): the shared
+      // hatch drum here is a 2 cm band (0.78..0.80) whose wall faced inward and showed between the disc stack
+      // (0.797) and the dark lid (0.801). A collar just outside the drum, plan-interior to the 0.222 disc, carries
+      // the stack up to the lid; its foot (0.775) is under the tilted discs' downhill edge too.
+      P.add('turretDetail', KIT.cylY(0.193, 0.193, 0.026, P.q ? 24 : 16), 0.62, 0.788, -0.55);
       P.add('turretDetail', box(0.06, 0.006, 0.024), 0.62, 0.8135, -0.44);
       for (let k = 0; k < 6; k++) {
         const a = (k / 6) * Math.PI * 2 + 0.2;
