@@ -360,7 +360,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     nextKey.length = 0;
     const countdown = root.querySelector<HTMLElement>('.cot-prebattle');
     const revive = root.querySelector<HTMLElement>('.cot-revive');
-    nextKey.push(width, height, Math.round(top), countdown?.offsetWidth ?? 0, countdown?.offsetHeight ?? 0, revive?.offsetWidth ?? 0, revive?.offsetHeight ?? 0);
+    const rules = root.querySelector<HTMLElement>('.cot-prebattle-rules');
+    nextKey.push(width, height, Math.round(top), countdown?.offsetWidth ?? 0, countdown?.offsetHeight ?? 0, revive?.offsetWidth ?? 0, revive?.offsetHeight ?? 0,
+      rules?.offsetWidth ?? 0, rules?.offsetHeight ?? 0);
     // each box [x, y, w, h, role]: 0 an instrument the notices keep off, 2 a panel or control the reticle's marks keep clear
     // of (SIGHT_FURNITURE, as publishSightFurniture measures it), 1 both
     const box = (x: number, y: number, w: number, h: number, role = 0) => {
@@ -429,7 +431,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       }
       const obstacles: PlanRect[] = [], furniture: PlanRect[] = [];
       let plainObstacles = 0;
-      for (let i = 7; i < boxesEnd; i += 5) {
+      for (let i = 9; i < boxesEnd; i += 5) {
         const r = { x: nextKey[i], y: nextKey[i + 1], w: nextKey[i + 2], h: nextKey[i + 3] }, role = nextKey[i + 4];
         if (role !== 2) { obstacles.push(r); if (i < plain) plainObstacles++; }
         if (role) furniture.push(r);
@@ -440,6 +442,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         width, height, top: nextKey[2], obstacles, furniture, lanes: [lane(boxesEnd), lane(boxesEnd + 4)],
         smallAlert: height <= 550 || width <= 480, compactDetection: height <= 550,
         countdown: countdown ? { w: nextKey[3], h: nextKey[4] } : null,
+        countdownRules: countdown && nextKey[7] > 0 ? { w: nextKey[7], h: nextKey[8] } : null,
         revive: revive ? { w: nextKey[5], h: nextKey[6] } : null,
         // medalToast.ts: the full card up to 380 px wide (84 px tall with its description; 74 without it at <= 640),
         // the compact card 250
@@ -489,6 +492,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
       setBodyVar(`--hud-${name}-x`, place ? `${outward(place.x + place.w / 2, width)}px` : '50%');
       setBodyVar(`--hud-${name}-scale`, place ? String(place.scale) : '1');
     }
+    // the countdown's rules panel on the centre line under the sight (its scale from its top centre)
+    const rules = up.countdown ? plan.countdown?.rules ?? null : null;
+    if (rules) {
+      setBodyVar('--hud-countdown-rules-top', `${Math.round(rules.y)}px`);
+      setBodyVar('--hud-countdown-rules-scale', String(rules.scale));
+    }
   }
   function refresh() {
     frame = 0;
@@ -502,7 +511,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       settleSightFurniture();
       return;
     }
-    observe('.cot-vehicle-status,.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
+    observe('.cot-vehicle-status,.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-prebattle-rules,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
     // the revive count is placed (mouse) as it shows
     if (!document.body.classList.contains('cot-touch-layout')) observe('.cot-revive');
     observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane,.cot-medal-toasts,.cot-si-cardhost,.cot-si-log', true);
@@ -830,6 +839,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       // (the countdown's own box, unscaled: the plan sets its scale)
       const countdownNode = document.querySelector<HTMLElement>('.cot-prebattle.on');
       const touchCountdown = countdownNode && shownBox(countdownNode) ? { w: countdownNode.offsetWidth, h: countdownNode.offsetHeight } : null;
+      const rulesNode = document.querySelector<HTMLElement>('.cot-prebattle-rules');
+      const touchRules = touchCountdown && rulesNode?.offsetWidth ? { w: rulesNode.offsetWidth, h: rulesNode.offsetHeight } : null;
       // (the alert's slot is the detection's width; its wrapped height measured there, while it shows in that form)
       const compactNow = document.body.dataset.touchNotices ?? '';
       const noticeSize: TouchSize = !compactNow.includes('notice-compact') && notice ? { w: notice.width, h: notice.height } : { w: 214, h: 48 };
@@ -845,7 +856,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         map: map ? { x0: map.left, y0: map.top, x1: map.right, y1: map.bottom } : null,
         scope: !!read('.cot-scope-vision'), seated: !touchChipParked(width, height), notice: noticeSize,
         alert: { w: noticeSize.w, h: alertBox?.height ?? TOUCH_ALERT_RESERVE_H },
-        countdown: touchCountdown,
+        countdown: touchCountdown, countdownRules: touchRules,
         banner: bannerBox ? { w: bannerBox.width, h: bannerBox.height } : null, fallbackTop: noticeTop });
       noticeTop = touchPlan.noticeTop;
       alertTop = touchPlan.alertTop;
@@ -916,12 +927,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'roster-right-height': Math.min(battleRosterHeight(height, rightBottom - rosterStart, root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, rosterCount, root.classList.contains('rosters-expanded')), dockReport ? Math.max(0, report.top - rosterStart - 32) : Infinity),
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
       'systems-beside-dy': systemsBeside && touchChrome ? touchChrome.top - systemsTop : 0,
-      'portrait-countdown-top': systemsTop < 391 && systemsTop + systemsHeight > 255 ? systemsTop + systemsHeight + 8 : 255,
       'notice-top': noticeTop, 'alert-top': alertTop,
       // (the touch plan's own names: the mouse layout's planner writes its own, on its side of the split)
       'touch-notice-cx': touchPlan?.noticeCx ?? width / 2, 'touch-alert-cx': touchPlan?.alertCx ?? width / 2,
       'touch-alert-w': touchPlan?.alertW ?? width - 24, 'touch-banner-cx': touchPlan?.bannerCx ?? width / 2,
       'touch-countdown-cx': touchPlan?.countdownCx ?? width / 2, 'touch-countdown-top': touchPlan?.countdownTop ?? top + 8,
+      'touch-rules-top': touchPlan?.rulesTop ?? height,
       'objective-top': scoreBottom, 'objective-bottom': top, 'banner-top': bannerTop, 'tray-shift': trayShift,
       'objective-width': objectiveWidth(score?.width || 344) - (touch && network && width > height ? 52 : 0),
       'objective-left': score ? score.left + score.width / 2 : width / 2,
@@ -943,11 +954,16 @@ export function installBattleHudLayout(root: HTMLElement): void {
       }
     }
     if (plan) writeMousePlan(plan, { countdown: !!countdown, revive: !!root.querySelector('.cot-revive.on'), medal: !!banner?.childElementCount }, width, medalWaiting, medalFeedWait);
-    // (the touch countdown's scale and the top slot's buttons a row, unitless)
+    // (the touch countdown's and its rules panel's scales and the top slot's buttons a row, unitless)
     const countdownScale = String(touchPlan?.countdownScale ?? 1);
     if (document.body.style.getPropertyValue('--hud-touch-countdown-scale') !== countdownScale) {
       document.body.style.setProperty('--hud-touch-countdown-scale', countdownScale);
     }
+    setBodyVar('--hud-touch-rules-scale', String(touchPlan?.rulesScale ?? 1));
+    // the rules panel shows only where its plan found it a place under the sight
+    const rulesPanel = root.querySelector<HTMLElement>('.cot-prebattle-rules');
+    const rulesPlaced = !countdown || (plan ? !!plan.countdown?.rules : !!touchPlan?.rulesShown);
+    if (rulesPanel && rulesPanel.classList.contains('unplaced') === rulesPlaced) rulesPanel.classList.toggle('unplaced', !rulesPlaced);
     const perRow = systemsPerRow ? String(systemsPerRow) : '';
     if (document.body.style.getPropertyValue('--hud-systems-per-row') !== perRow) {
       if (perRow) document.body.style.setProperty('--hud-systems-per-row', perRow);
