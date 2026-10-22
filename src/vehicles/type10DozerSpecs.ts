@@ -6,6 +6,7 @@
 import './sourceXSecondWaveSpecs.ts';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from './specs.ts';
 import { bindFleetRegistries, cloneFleetVariant, registerFleetSpecs, stripSilhouetteDimensions } from './fleetSpecRegistry.ts';
+import { type10DozerAppliquePlates } from './type10DozerArmor.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 
@@ -28,5 +29,10 @@ spec.visual = {
   scheme: 'digital', base: '#3e4b33', weather: '#545e43', patches: ['#1f271b', '#5e7040', '#735a3c'],
   marking: 'number', number: '24', camoScale: 0.40,
 };
+
+// Owner 2026-10-22 ("side armor and turret armor"): the field kit's bolted modules are spaced armour over their faces.
+const applique = type10DozerAppliquePlates();
+spec.armor.hullPlates.push(...applique.hullPlates);
+spec.armor.turretPlates.push(...applique.turretPlates);
 
 registerFleetSpecs(registries, ['type10_dozer'], { type10_dozer: spec });

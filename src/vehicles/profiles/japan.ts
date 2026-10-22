@@ -10,6 +10,7 @@ import { buildType10BBase } from '../modern3.ts';
 import { buildType90 } from './misc.ts';
 import { TYPE10_MANTLET_FIT } from './type10GunSeat.ts';
 import { addType10DozerKit } from './type10Dozer.ts';
+import { addType10DozerFieldKit } from './type10DozerFieldKit.ts';
 import { buildType10X } from './type10X.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -936,10 +937,12 @@ function buildType10B(P: JapaneseBuilderPort): void {
 }
 
 function buildType10Dozer(P: TankBuilderPort): void {
-  // The modern Type 10 (profiles/type10X.ts, owner 2026-10-22) with the JGSDF dozer kit. The blade rides stowed in battle
-  // and the Garage; spec.visual.dozerBlade = 'lowered' builds the presentation pose (profiles/type10Dozer.ts).
-  buildType10X(P);
+  // The modern Type 10 (profiles/type10X.ts, owner 2026-10-22) with the JGSDF dozer kit and its field kit: two remote
+  // autocannon turrets in place of the 12.7 mm station, cages, appliqué, lamps and bins (profiles/type10DozerFieldKit.ts).
+  // The blade rides stowed in battle and the Garage; spec.visual.dozerBlade = 'lowered' builds the presentation pose.
+  buildType10X(P, { remoteM2: false });
   addType10DozerKit(P, P.spec.visual.dozerBlade === 'lowered' ? 'lowered' : 'stowed');
+  addType10DozerFieldKit(P);
 }
 
 export const JAPAN_PROFILES = {
