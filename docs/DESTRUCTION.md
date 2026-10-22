@@ -1472,3 +1472,18 @@ What stays open after round 5:
   inside its plan (footprint 0.584).
 
 @CENSUS5@
+
+**233/238 (2026-10-22; the owner's "weird ugly boxes/surfaces": the roofless storey's lid).** In production's own film of
+the round-4 strikes on reservoir's tavern #7 (depot #8 the same way), the near-black plane over most of the roofless top
+storey is the far wall's inner face in its own shade (named by the slab check's false-colour replay of the film's
+strikes: the fracture's room, `fx-fracture-room-7`). The pale strip in front of it is the sunlit floor. The room material
+is not one of the engine's shadow materials (`engineCtx.setupShadowMaterial`), so it is lit as no world material is:
+every cascade's sun at once (the round-5 films' glare on the inner walls) and none of the world's sky fill in shade (this
+plane). Rooms behind holes keep it, dim by design. A room open to the sky now draws in its building's own world material
+(`roomMaterialFor(source, open)`; `openRoomMaterial` when its roof falls after it was laid), lit as the building's
+outside is: the faces the fracture redraws and the kit's rims already draw in it. Both the kit's room (`layInterior`,
+`openTopRooms`) and the fracture's (`roomFor`, `roofFell`) use it, at the face's own tint (OPEN_ROOM_SHADE 1, the kit's
+OPEN_ROOM_WALL/FLOOR 0.95/0.85: the quarter under them was round 6's answer to that glare). The fracture's room now also
+draws its walls in the face's render or infill (an interior is plastered; it drew the face's core, the tavern's timber
+frame, one dark board wall), its floor in the storey's own floor structure and its ceiling in what carries the storey
+above (it drew all three in the core's bucket), one mesh per bucket, as the kit's room does.

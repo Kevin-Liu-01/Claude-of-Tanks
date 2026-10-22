@@ -121,8 +121,10 @@ const FALL_SLOW = 1.25, FALL_MIN_S = 0.45, FALL_MAX_S = 1.6;
 const HOLD_OVER_EAVES = 0.75;
 /** (destruction-slabs 227 round 5) A top storey's room open to the sky (its roof fallen): its walls and floor lit as the
  *  outside is (laid dim, 0.55-0.6, they read as one flat dark plane over the roofless storey: the critics' tavern lid) —
- *  (round 6: at 0.95 and 0.85 the round-5 films' tavern's inner walls glared white in the sun) a quarter under it. */
-const OPEN_ROOM_WALL = 0.72, OPEN_ROOM_FLOOR = 0.68;
+ *  (round 6: at 0.95 and 0.85 the round-5 films' tavern's inner walls glared white in the sun) a quarter under it —
+ *  (238: the glare was the room material's light, roomMaterialFor; drawn in the building's own material, the quarter under
+ *  read near black beside the sunlit wall heads) as the outside is again. */
+const OPEN_ROOM_WALL = 0.95, OPEN_ROOM_FLOOR = 0.85;
 /** A room's floor this far over its floor line (m): the storey under it draws its own top there. */
 const ROOM_FLOOR_LIFT_M = 0.02;
 /** A tank round's hole through a wall (no charge: the shot's own): a ragged pierce sized by its calibre, its rim spalled. */
@@ -767,6 +769,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       // lit as the sky lights it, once
       if (m.userData.openToSky !== true) {
         m.userData.openToSky = true;
+        m.material = Array.isArray(m.material) ? m.material.map(openRoomMaterial) : openRoomMaterial(m.material);
+        changed = true;
         const col = g.getAttribute('color') as THREE.BufferAttribute | undefined;
         if (col) {
           for (let i = 0; i < col.count; i++) {
@@ -971,21 +975,38 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   // share of the sky's light (bound, so it holds); one program for every bucket (a map always: white where none)
   const ROOM_WHITE = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
   ROOM_WHITE.needsUpdate = true;
+  // (destruction-slabs 233; the owner's "weird ugly boxes/surfaces", the critics' dark lid over tavern #7's and depot #8's
+  // roofless top storeys) a room open to the sky is no interior. The room material is lit as no world material is (it is
+  // not the engine's shadow material, engineCtx.setupShadowMaterial: every cascade's sun at once, none of the world's sky
+  // fill), so the roofless storey's far wall in its own shade drew near black — one flat dark plane over the storey from
+  // the camera above — and its sunlit faces glared. Open, the room draws in its building's own material, lit as the
+  // building's outside is (the faces the fracture redraws and the kit's rims draw in it too); with none, a room material
+  // at the sky's full share and no light of its own
   const roomMaterials = new Map<string, THREE.MeshStandardMaterial>();
-  function roomMaterialFor(source: THREE.Material | null | undefined): THREE.MeshStandardMaterial {
+  function roomMaterialFor(source: THREE.Material | null | undefined, open = false): THREE.Material {
+    if (open && source) return source;
     const map = (source as (THREE.Material & { map?: THREE.Texture | null }) | null | undefined)?.map ?? null;
-    const key = map ? map.uuid : 'none';
+    const own = (source as THREE.MeshStandardMaterial | null | undefined)?.envMapIntensity;
+    const env = open ? (typeof own === 'number' && Number.isFinite(own) ? own : 1) : 0.35;
+    const key = `${map ? map.uuid : 'none'}${open ? `|open ${env}` : ''}`;
     let m = roomMaterials.get(key);
     if (!m) {
       const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: map ?? ROOM_WHITE, roughness: 1, metalness: 0,
-        vertexColors: true, envMapIntensity: 0.35, emissive: new THREE.Color(0.012, 0.0105, 0.009) });
+        vertexColors: true, envMapIntensity: env, emissive: open ? new THREE.Color(0, 0, 0) : new THREE.Color(0.012, 0.0105, 0.009) });
       mat.name = 'fx-structure-room';
+      mat.userData.roomSource = source ?? null;
+      if (open) mat.userData.openToSky = true;
       mat.onBeforeCompile = (shader) => { bindMaterialEnvIntensity(shader as unknown as { uniforms: Record<string, THREE.IUniform> }, mat); };
       mask.patch(mat);
       roomMaterials.set(key, mat);
       m = mat;
     }
     return m;
+  }
+  /** A room's material open to the sky (roomMaterialFor open: its source, the building's own); any other as it is. */
+  function openRoomMaterial(material: THREE.Material): THREE.Material {
+    if (material.name !== 'fx-structure-room' || material.userData.openToSky === true) return material;
+    return roomMaterialFor(material.userData.roomSource as THREE.Material | null, true);
   }
 
   /** The world's patched shadow depth material of a bucket this structure draws in (its spans' meshes carry them). */
@@ -1239,8 +1260,13 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     const coreSlot = face.layers[face.layers.length - 1] ?? wallSlot;
     const floorSlot = storey.floor?.structure ?? coreSlot;
     const ceilSlot = above?.floor?.structure ?? a.roof?.structure ?? floorSlot;
+    // (destruction-slabs 227 round 4, the visual and the engineering critics' tavern #7: a hole on the top storey after the
+    // roof fell laid a room whose ceiling stood as a flat dark plane at the wall heads, the roofless tavern read as a box with
+    // a lid) no ceiling under a roof that has fallen — (round 5) and open to the sky it is lit as the sky lights it
+    const open = !above && roofDown(seam);
     const byBucket = spanMaterials(seam);
-    const resolve = (bucket: string): THREE.Material => roomMaterialFor(worldMaterial(byBucket, bucket));
+    // (233) open to the sky, in the building's own material (roomMaterialFor)
+    const resolve = (bucket: string): THREE.Material => roomMaterialFor(worldMaterial(byBucket, bucket), open);
     const out = debris.begin(a.placement, resolve, 0, settled, { tag: STAGE_RUN_TAG + seam.structureIdx + 1, pieces: false, structure: seam.structureIdx });
     const m = out.mesh;
     // a quad facing `n` (body frame; wound to face it), its tile laid by the bucket's density on the plane it faces
@@ -1261,10 +1287,6 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       m.end();
     };
     const wt = wallSlot.tint, wb = wallSlot.bucket;
-    // (destruction-slabs 227 round 4, the visual and the engineering critics' tavern #7: a hole on the top storey after the
-    // roof fell laid a room whose ceiling stood as a flat dark plane at the wall heads, the roofless tavern read as a box with
-    // a lid) no ceiling under a roof that has fallen — (round 5) and open to the sky it is lit as the sky lights it
-    const open = !above && roofDown(seam);
     // its walls, facing in along the room's drawn boundary
     for (const [ax, az, bx, bz, nx, nz] of room.walls) {
       // (round 3: the owner's "dark grey-navy slabs" — a room's walls at 0.4 of the render read as one flat dark plane through
@@ -1571,7 +1593,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     storeyFalls.length = k;
   }
 
-  const fracture = o.fracture?.({ o, keep, dropRuns, clampPanel, finishFalls, run, worldMaterial, spanMaterials, roomMaterialFor,
+  const fracture = o.fracture?.({ o, keep, dropRuns, clampPanel, finishFalls, run, worldMaterial, spanMaterials, roomMaterialFor, openRoomMaterial,
     originalOf: (span) => originals.get(span) ?? null, roofDropped, claimRoom,
     falling: (structureIdx) => storeyFalls.some((f) => f.structureId === structureIdx) }) ?? null;
   return {
