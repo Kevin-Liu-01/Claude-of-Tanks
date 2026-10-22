@@ -3771,6 +3771,72 @@ export function seatedWheelY(botY: number, trackTh: number | undefined, wheelR: 
   return botY + Math.min(trackTh ?? TRACK_BAND_STANDARD_M, TRACK_BAND_STANDARD_M) / 2 + wheelR;
 }
 
+interface EndRelayPoint { index: number; a: number; rho: number }
+interface EndRelay {
+  side: 'front' | 'rear';
+  /** station index (into wheelZs) of the outer road wheel — the live wheel is found by station, not by z, because
+   * measured rigs seat each side's wheel on its own station (wheelZsLeftM / wheelZsRightM) */
+  wheelIndex: number;
+  wheelZ: number; wheelRestY: number; wheelRadius: number;
+  endZ: number; endY: number; endRadius: number; restDeg: number; farDeg: number;
+  wheelArc: EndRelayPoint[]; endArc: EndRelayPoint[]; ramp: { index: number; t: number }[];
+  vertices: Map<number, number[]>;
+}
+type BandPositions = ArrayLike<number> & { [index: number]: number };
+
+/** A running-gear unit's suspension arms and their pivot and axle bosses (two instanced draws per unit). */
+interface SuspensionLinkRig {
+  suspensionEntries: SuspensionEntry[];
+  wheelR: number;
+  suspensionDimensions: Readonly<SuspensionDimensions> | undefined;
+  suspensionIM: THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+  suspensionJointIndices: { anchor: number; axle: number }[];
+  suspensionJointIM: THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+}
+
+function placeSuspensionBoss(
+  rig: SuspensionLinkRig, index: number, link: SuspensionEntry, axle: boolean, y: number, z: number,
+): void {
+  const { suspensionDimensions, suspensionJointIM } = rig;
+  _q.identity();
+  _s.set(1, 1, 1);
+  _v.set(link.x, y, z);
+  if (suspensionDimensions) {
+    const width = axle ? suspensionDimensions.axleBossWidthM : suspensionDimensions.anchorBossWidthM;
+    const radius = axle ? suspensionDimensions.axleBossRadiusM : suspensionDimensions.anchorBossRadiusM;
+    const center = axle ? suspensionDimensions.axleBossCenterAbsXM : suspensionDimensions.anchorBossCenterAbsXM;
+    _s.set(width, radius, radius);
+    _v.x = link.side * center;
+  }
+  if (!axle && link.sharedAnchor) _s.set(0, 0, 0);
+  _m.compose(_v, _q, _s);
+  suspensionJointIM.setMatrixAt(index, _m);
+}
+
+const sourceArmMirror=new THREE.Quaternion(0,0,1,0);
+function updateSuspensionLinks(rig: SuspensionLinkRig): void {
+  const { suspensionEntries, wheelR, suspensionDimensions, suspensionIM, suspensionJointIndices, suspensionJointIM } = rig;
+  for (let i = 0; i < suspensionEntries.length; i++) {
+    const link = suspensionEntries[i];
+    const axleY = link.wheel.y + (link.wheel.off || 0);
+    const axleZ = link.wheel.z;
+    const dy = axleY - link.anchorY;
+    const dz = axleZ - link.anchorZ;
+    const length = Math.max(Math.hypot(dy, dz), wheelR * 0.25);
+    _v.set(link.x, (link.anchorY + axleY) * 0.5, (link.anchorZ + axleZ) * 0.5);
+    _q.setFromAxisAngle(_X, Math.atan2(-dy, dz));
+    if(suspensionDimensions?.armAxialShearM!==undefined&&link.side<0)_q.multiply(sourceArmMirror);
+    _s.set(1, 1, length);
+    _m.compose(_v, _q, _s);
+    suspensionIM.setMatrixAt(i, _m);
+
+    placeSuspensionBoss(rig, suspensionJointIndices[i].anchor, link, false, link.anchorY, link.anchorZ);
+    placeSuspensionBoss(rig, suspensionJointIndices[i].axle, link, true, axleY, axleZ);
+  }
+  suspensionIM.instanceMatrix.needsUpdate = true;
+  suspensionJointIM.instanceMatrix.needsUpdate = true;
+}
+
 function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): RunningGearUnit {
   if (!P.spec || !P.disposables) {
     throw new TypeError('Running gear requires a vehicle spec and disposal registry');
@@ -4459,46 +4525,11 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   };
   buildRunningGearRunningGearStage16();
 
-  function placeSuspensionBoss(index: number, link: SuspensionEntry, axle: boolean, y: number, z: number): void {
-    _q.identity();
-    _s.set(1, 1, 1);
-    _v.set(link.x, y, z);
-    if (suspensionDimensions) {
-      const width = axle ? suspensionDimensions.axleBossWidthM : suspensionDimensions.anchorBossWidthM;
-      const radius = axle ? suspensionDimensions.axleBossRadiusM : suspensionDimensions.anchorBossRadiusM;
-      const center = axle ? suspensionDimensions.axleBossCenterAbsXM : suspensionDimensions.anchorBossCenterAbsXM;
-      _s.set(width, radius, radius);
-      _v.x = link.side * center;
-    }
-    if (!axle && link.sharedAnchor) _s.set(0, 0, 0);
-    _m.compose(_v, _q, _s);
-    suspensionJointIM.setMatrixAt(index, _m);
-  }
-
-  const sourceArmMirror=new THREE.Quaternion(0,0,1,0);
-  function updateSuspensionLinks() {
-    for (let i = 0; i < suspensionEntries.length; i++) {
-      const link = suspensionEntries[i];
-      const axleY = link.wheel.y + (link.wheel.off || 0);
-      const axleZ = link.wheel.z;
-      const dy = axleY - link.anchorY;
-      const dz = axleZ - link.anchorZ;
-      const length = Math.max(Math.hypot(dy, dz), wheelR * 0.25);
-      _v.set(link.x, (link.anchorY + axleY) * 0.5, (link.anchorZ + axleZ) * 0.5);
-      _q.setFromAxisAngle(_X, Math.atan2(-dy, dz));
-      if(suspensionDimensions?.armAxialShearM!==undefined&&link.side<0)_q.multiply(sourceArmMirror);
-      _s.set(1, 1, length);
-      _m.compose(_v, _q, _s);
-      suspensionIM.setMatrixAt(i, _m);
-
-      placeSuspensionBoss(suspensionJointIndices[i].anchor, link, false, link.anchorY, link.anchorZ);
-      placeSuspensionBoss(suspensionJointIndices[i].axle, link, true, axleY, axleZ);
-    }
-    suspensionIM.instanceMatrix.needsUpdate = true;
-    suspensionJointIM.instanceMatrix.needsUpdate = true;
-  }
+  const suspensionLinks: SuspensionLinkRig = {
+    suspensionEntries, wheelR, suspensionDimensions, suspensionIM, suspensionJointIndices, suspensionJointIM,
+  };
   const buildRunningGearAssemblyStage8 = (): void => {
-    updateSuspensionLinks();
+    updateSuspensionLinks(suspensionLinks);
     // Profile-specific dish/rim decoration must participate in the exact same
     // suspension matrices as the canonical road wheels. Historically several
     // builders added shallow cylinders/rings to hullG after this call; those
@@ -5028,119 +5059,6 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     buildRunningGearReceiptStage12();
   };
   buildRunningGearRunningGearStage31();
-  // A covered return run is still a complete physical chain. Older builds
-  // collapsed its matrices to zero as a visibility workaround, leaving a
-  // real gap in the shoe/grouser course whenever a skirt angle exposed it.
-  // Bodywork now performs the occlusion; every shoe remains seated on the
-  // closed loop. `coveredTop` is retained only in authoring receipts so old
-  // profiles do not need a flag migration.
-  const findTrackSegment = (distance: number, fromIndex = 0): number => {
-    let index = fromIndex;
-    while (index < nP - 1 && distance >= segsT[index].c0 + segsT[index].l) index++;
-    return index;
-  };
-  const chordA=new THREE.Vector2(),chordB=new THREE.Vector2();
-  const sampleLiveShoeCourse=(attribute:THREE.BufferAttribute|THREE.InterleavedBufferAttribute,
-    distance:number,out:THREE.Vector2):void=>{
-    const d=((distance%loopLen)+loopLen)%loopLen,index=findTrackSegment(d),segment=segsT[index];
-    const base=index*24,t=(d-segment.c0)/segment.l;
-    const y0=cfg.trackCarrierFromOuterFace?attribute.getY(base+2)+(bandBasePos[(base+6)*3+1]-bandBasePos[(base+2)*3+1])/2:(attribute.getY(base+2)+attribute.getY(base+6))/2;
-    const z0=cfg.trackCarrierFromOuterFace?attribute.getZ(base+2)+(bandBasePos[(base+6)*3+2]-bandBasePos[(base+2)*3+2])/2:(attribute.getZ(base+2)+attribute.getZ(base+6))/2;
-    const y1=cfg.trackCarrierFromOuterFace?attribute.getY(base)+(bandBasePos[(base+8)*3+1]-bandBasePos[base*3+1])/2:(attribute.getY(base)+attribute.getY(base+8))/2;
-    const z1=cfg.trackCarrierFromOuterFace?attribute.getZ(base)+(bandBasePos[(base+8)*3+2]-bandBasePos[base*3+2])/2:(attribute.getZ(base)+attribute.getZ(base+8))/2;
-    const length=Math.max(hypot2(z1-z0,y1-y0),1e-6);
-    out.set(z0+(z1-z0)*t-(y1-y0)/length*rOut,
-      y0+(y1-y0)*t+(z1-z0)/length*rOut);
-  };
-  const writeTrackLinkMatrix = (
-    side: -1 | 1,
-    instanceIndex: number,
-    bandPosition: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
-    segmentIndex: number,
-    progress: number,
-  ): void => {
-    const vertexBase = segmentIndex * 24;
-    // Recover this LIVE belt segment's f0/f1 centerline directly from the
-    // deformed outer/inner face vertices. The visible casting belt is the
-    // shoe's sole position/tangent source, with only rOut along its normal.
-    // The opt-in uses the ORIGINAL nominal half-stock vector; native band
-    // conformance translates each cross-section without rotating its stock.
-    // Additional inner lining therefore cannot move either shoe sampler.
-    const y0 = cfg.trackCarrierFromOuterFace ? bandPosition.getY(vertexBase+2)
-      +(bandBasePos[(vertexBase+6)*3+1]-bandBasePos[(vertexBase+2)*3+1])/2 : (bandPosition.getY(vertexBase + 2)
-      + bandPosition.getY(vertexBase + 6)) / 2;
-    const z0 = cfg.trackCarrierFromOuterFace ? bandPosition.getZ(vertexBase+2)
-      +(bandBasePos[(vertexBase+6)*3+2]-bandBasePos[(vertexBase+2)*3+2])/2 : (bandPosition.getZ(vertexBase + 2)
-      + bandPosition.getZ(vertexBase + 6)) / 2;
-    const y1 = cfg.trackCarrierFromOuterFace ? bandPosition.getY(vertexBase)
-      +(bandBasePos[(vertexBase+8)*3+1]-bandBasePos[vertexBase*3+1])/2 : (bandPosition.getY(vertexBase)
-      + bandPosition.getY(vertexBase + 8)) / 2;
-    const z1 = cfg.trackCarrierFromOuterFace ? bandPosition.getZ(vertexBase)
-      +(bandBasePos[(vertexBase+8)*3+2]-bandBasePos[vertexBase*3+2])/2 : (bandPosition.getZ(vertexBase)
-      + bandPosition.getZ(vertexBase + 8)) / 2;
-    const y = y0 + (y1 - y0) * progress;
-    const z = z0 + (z1 - z0) * progress;
-    const inverseLength = 1 / Math.max(hypot2(z1 - z0, y1 - y0), 1e-6);
-    const tangentZ = (z1 - z0) * inverseLength;
-    const tangentY = (y1 - y0) * inverseLength;
-    _q.setFromAxisAngle(_X, Math.atan2(-tangentY, tangentZ));
-    _v.set(side * (xcForSide(side) + shoeOutboardOffset),
-      y + tangentZ * rOut, z - tangentY * rOut);
-    // 2026-09-17: rigid chords are the fleet default — a shoe tangent at its centre leaves the deformed course at its
-    // ends wherever the band bends (a kneeling Type 10 X put 3 cm of shoe into a raised tire); the chord between its
-    // two live pin stations never does. Profiles may still opt out with rigidLinkChords: false.
-    if(cfg.rigidLinkChords !== false) {
-      // A real rigid shoe spans two pins. On a rounded loaded-run transition
-      // a tangent at its centre puts its corners below the ground; the chord
-      // of those live pin stations does not. Both samples come from this
-      // same deformed carrier, without a world-floor clamp or detached layer.
-      const distance=segsT[segmentIndex].c0+segsT[segmentIndex].l*progress;
-      sampleLiveShoeCourse(bandPosition,distance-lp/2,chordA);
-      sampleLiveShoeCourse(bandPosition,distance+lp/2,chordB);
-      _v.y=(chordA.y+chordB.y)/2;_v.z=(chordA.x+chordB.x)/2;
-      _q.setFromAxisAngle(_X,Math.atan2(chordA.y-chordB.y,chordB.x-chordA.x));
-    }
-      // The shoe stays on this exact deformed belt normal. A historical
-      // hull-local floor clamp moved only the gray shoe layer upward on
-      // slopes / turn roll, creating the visibly detached second course.
-      // Ground clearance now comes from the measured shoe underside in
-      // contactGeom, so no post-course transform is permitted here.
-      // r1 de-track: the band is REMOVED from a thrown side (bare wheels +
-      // ground ribbon carry the read) — collapse that side's pads to zero
-    const broken = side < 0 ? brokenL : brokenR;
-    _s.set(broken ? 0 : 1, broken ? 0 : 1, broken ? 0 : 1);
-    _m.compose(_v, _q, _s);
-    for(const mesh of linkMeshes) mesh.setMatrixAt(instanceIndex,_m);
-  };
-  const placeTrackSide = (side: -1 | 1, scroll: number): void => {
-    const baseIndex = side < 0 ? 0 : nLinks;
-    const bandPosition = (side < 0 ? tgL : tgR).getAttribute('position');
-    const startDistance = ((scroll % loopLen) + loopLen) % loopLen;
-    let segmentIndex = findTrackSegment(startDistance);
-    let previousDistance = startDistance;
-    for (let linkIndex = 0; linkIndex < nLinks; linkIndex++) {
-      let distance = startDistance + linkIndex * lp;
-      if (distance >= loopLen) distance -= loopLen;
-      if (linkIndex && distance < previousDistance) segmentIndex = 0;
-      segmentIndex = findTrackSegment(distance, segmentIndex);
-      previousDistance = distance;
-      const segment = segsT[segmentIndex];
-      const segmentDistance = distance - segment.c0;
-      const progress = Math.max(0, Math.min(
-        1, segmentDistance / Math.max(segment.l, 1e-6),
-      ));
-      writeTrackLinkMatrix(
-        side, baseIndex + linkIndex, bandPosition, segmentIndex, progress,
-      );
-    }
-  };
-  const placeLinks = (leftScroll: number, rightScroll: number): void => {
-    // Link distances are monotonic around each side's loop. Walk the segment
-    // cursor with them instead of restarting a linear search for every shoe.
-    placeTrackSide(-1, leftScroll);
-    placeTrackSide(1, rightScroll);
-    for(const mesh of linkMeshes) mesh.instanceMatrix.needsUpdate=true;
-  };
 
   // Loose shoes and wheels are created only after a break, preserving the
   // undamaged fleet's geometry envelope and sharing its material ownership.
@@ -5159,28 +5077,6 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     buildRunningGearAssemblyStage17();
   };
   buildRunningGearRunningGearStage32();
-  const detached: Partial<Record<Side, DetachedGear>> = {};
-  let brokenL = 0, brokenR = 0, throwCount = 0;
-  const debrisLastPosition = new THREE.Vector3();
-  const debrisVelocity = new THREE.Vector3();
-  const debrisPosition = new THREE.Vector3();
-  let debrisPositionKnown = false;
-  function buildDetached(side: Side, pick: WheelEntry): DetachedGear {
-    if (detached[side]) return detached[side];
-    const geometry = mergeAll([
-      box(trackW * .96, .026, .17),
-      xform(box(trackW * .88, .022, .05), 0, .024, 0),
-      xform(box(.045, .055, .05), 0, .04, .02),
-    ]);
-    disposables.push(geometry);
-    const kit = new DetachedGear(hullG, geometry, ribMat, Math.max(8, Math.min(28, Math.ceil(Math.abs(sprocket.z - idler.z) / .18))));
-    for (const { im, list } of made) for (const e of list) {
-      if ((e.suspensionSource || e) !== pick) continue;
-      kit.addWheelLayer(im.geometry, im.material, e.x - pick.x, e.y - pick.y, e.z - pick.z);
-    }
-    detached[side] = kit;
-    return kit;
-  }
   const tlY0 = tl.position.y, trY0 = tr.position.y;
 
   // ---- movement-solve contact metadata (RUNTIME DATA ONLY — no geometry) ----
@@ -5264,58 +5160,6 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // ±bottomYM terrain deviation at every wheel and float/sink the whole wheel
   // train by that same deviation at rest.
   const conformPlaneY = gearContactGeom.bottomYM;
-  // The canonical road wheels conform() solves and their ground deviations, reused every update (round 8).
-  const conformWheels: WheelEntry[] = [];
-  const conformDevs: number[] = [];
-  /**
-   * The travel the track band gives wheel `k` between the nearest wheels fore and aft on its side that reach their
-   * ground (their travels, clamped as conform() clamps them, interpolated along the hull), or -Infinity without one on
-   * each side.
-   */
-  const supportedTrackLine = (k: number, count: number): number => {
-    const e = conformWheels[k];
-    const side = e.x < 0;
-    let fore = -1, aft = -1;
-    for (let j = 0; j < count; j++) {
-      if (j === k) continue;
-      const o = conformWheels[j];
-      if ((o.x < 0) !== side || !(conformDevs[j] >= -suspensionDroopM)) continue;
-      if (o.z > e.z && (fore < 0 || o.z < conformWheels[fore].z)) fore = j;
-      else if (o.z < e.z && (aft < 0 || o.z > conformWheels[aft].z)) aft = j;
-    }
-    if (fore < 0 || aft < 0) return -Infinity;
-    const travel = (dev: number): number => (dev > suspensionCompressionM ? suspensionCompressionM : dev);
-    const t = (e.z - conformWheels[aft].z) / Math.max(conformWheels[fore].z - conformWheels[aft].z, 1e-4);
-    return travel(conformDevs[aft]) * (1 - t) + travel(conformDevs[fore]) * t;
-  };
-  // The hull-local radius the canonical road wheels' footprints reach from the hull origin (measured on the first
-  // conform: the gear is complete by then): the sampler's standable-top query covers it once per conform.
-  let conformReachLocalM = -1;
-  const conformReachLocal = (): number => {
-    if (conformReachLocalM >= 0) return conformReachLocalM;
-    let reach = 0;
-    for (const { list } of made) {
-      for (let i = 0; i < list.length; i++) {
-        const e = list[i];
-        if (!e.road) continue;
-        const r = Math.hypot(Math.abs(e.x) + 0.5 * wheelW, Math.abs(e.z) + e.r);
-        if (r > reach) reach = r;
-      }
-    }
-    conformReachLocalM = reach;
-    return reach;
-  };
-  // Reused on every conformance update. Keeping this frame outside the hot
-  // method avoids allocating a transform object per render cadence.
-  const wheelConformFrame: WheelConformFrame = {
-    cb: 1, sb: 0, ca: 1, sa: 0, cr: 1, sr: 0,
-    px: 0, py: 0, pz: 0,
-    hsx: 1, hsy: 1, hsz: 1,
-    hpx: 0, hpy: 0, hpz: 0,
-    invHsy: 1,
-    conformPlaneY,
-    wheelW,
-  };
 
   // r1 per-bogie articulation: per-side sorted PROUD road wheels drive a
   // piecewise-linear offset field the deformable band bottom run and the
@@ -5420,17 +5264,6 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // road-wheel seat circle to the fixed end-wheel wrap circle, and the road-wheel arc, the ramp stations and the
   // end-wheel arc below its top exit are re-laid along it by their rest fractions. With the end wheel at rest the
   // rest vertices stay byte for byte (garage reset, receipts).
-  interface EndRelayPoint { index: number; a: number; rho: number }
-  interface EndRelay {
-    side: 'front' | 'rear';
-    /** station index (into wheelZs) of the outer road wheel — the live wheel is found by station, not by z, because
-     * measured rigs seat each side's wheel on its own station (wheelZsLeftM / wheelZsRightM) */
-    wheelIndex: number;
-    wheelZ: number; wheelRestY: number; wheelRadius: number;
-    endZ: number; endY: number; endRadius: number; restDeg: number; farDeg: number;
-    wheelArc: EndRelayPoint[]; endArc: EndRelayPoint[]; ramp: { index: number; t: number }[];
-    vertices: Map<number, number[]>;
-  }
   /** Common external tangent of the wheel seat circle and the end-wheel wrap circle, as the radial angle (arc()
    * convention: 0 = up, 90 = +z) shared by both tangent points — the same solve roadWheelWrap does for the authored
    * course, on measured radii so authored loops (KIT.trackLoopPoints studies) take part too. */
@@ -5575,7 +5408,6 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     for (const relay of endRelays) for (const index of relay.vertices.keys()) mask[index] = 1;
     return mask;
   })();
-  type BandPositions = ArrayLike<number> & { [index: number]: number };
   /** The outer road wheel of one side at a relay's STATION (interleaved layers share the travel; the canonical
    * conformed entry wins over its face layers). Matching by station instead of by z is what lets a side whose wheels
    * sit on their own measured stations (wheelZsLeftM / wheelZsRightM) take part — see the side-station bake below. */
@@ -5619,28 +5451,6 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     for (const station of relay.ramp) write(station.index, pW[0] + (pE[0] - pW[0]) * station.t, pW[1] + (pE[1] - pW[1]) * station.t);
     return true;
   };
-  const relayEnds = (arr: BandPositions, restPos: Float32Array, ws: WheelEntry[]): boolean => {
-    let moved = false;
-    for (const relay of endRelays) {
-      // the live outer road wheel of this side at the relay's station (interleaved layers share the travel)
-      const wheel = relayWheel(relay, ws);
-      // A shared authored course may use the opposite side's station list.
-      // Without an actual wheel at this relay's station, preserve that side's
-      // existing influence/contact result instead of falsely resetting it.
-      if (!wheel) continue;
-      const voff = wheel.voff || 0;
-      if (Math.abs(voff) <= 1e-6) {
-        // at rest the side's rest band (already laid about its own station by the bake below) is restored byte for byte
-        for (const index of relay.vertices.keys()) {
-          for (const vi of relay.vertices.get(index)!) { arr[vi * 3 + 1] = restPos[vi * 3 + 1]; arr[vi * 3 + 2] = restPos[vi * 3 + 2]; }
-        }
-        continue;
-      }
-      // the live seat: this side's own station (wheel.z) and its travelled height; a degenerate pose keeps the influence result
-      if (layRelay(relay, arr, restPos, wheel.z, relay.wheelRestY + voff)) moved = true;
-    }
-    return moved;
-  };
   // SIDE-STATION BAKE (owner 2026-09-21: the TOS-1A "tracks have the improper wrapping issue around the front road wheel
   // and back road wheel"). The course is laid once at the pair-midpoint stations (wheelZs) while measured rigs seat each
   // side's wheels on their own stations (wheelZsLeftM / wheelZsRightM — the T-90MS X left axles run 75 mm aft of the
@@ -5683,6 +5493,332 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     attr.needsUpdate = true;
     recomputeTrackNormals(geo);
   }
+
+  const gearUnit = createRunningGearRuntime({
+    cfg, disposables, hullG, mats, ribMat, entries, made, suspWheels, suspensionLinks, addRoadWheelLayer, xcForSide,
+    relayWheel, layRelay, xc, wheelY, wheelYs, wheelR, wheelW, wheelZs, roadWheelOutsetM, sideStationReceipt,
+    sideOutsetReceipt, runningGearUnitId, trackW, trackTh, sprocket, idler, suspensionDroopM, suspensionCompressionM,
+    shoeOutboardOffset, pts, nP, nLinks, loopLen, lp, segsT, rOut, trackTextureRepeatM, tl, tr, tgL, tgR, tlY0, trY0,
+    linkMeshes, spinners, spinnerInstances, bandBasePos, bandRestPos, bandBase, bandInfluence, loadedContact,
+    endRelays, relayPinned, gearContactGeom, conformPlaneY,
+  });
+  // TRACK-HITBOX metadata (RUNTIME DATA ONLY — no geometry, same channel as
+  // contactGeom): the real band silhouette + lateral extent of this unit's
+  // tracks, derived from the exact loop the visual band was built from.
+  // createTank hands it to specs.attachTrackShapes so hit resolution and the
+  // killcam x-ray follow the true \____/ trapezoid run instead of one AABB
+  // (owner order 2026-08-06). Expansion = half band thickness + 0.045 m shoe
+  // pad/grouser depth (family track shoes reach ~0.05-0.08 outward on
+  // the running faces; the old hand-authored boxes included none of it).
+  // Seat this unit's InstancedMesh matrices at rest NOW (scroll 0/0). The
+  // instanced wheels/link pads otherwise carry identity matrices — an origin
+  // blob reaching ~0.4 m below ground — until someone calls update(). The
+  // factory does call update(0,0) once after the profile builds, but through
+  // P.gear, which a LATER buildRunningGear call used to replace: on
+  // multi-unit rigs (t95 four-track) the earlier units never got seated and
+  // poisoned every silhouette/height measurement. Seating here is idempotent
+  // (the rest pose is exactly what the first syncFromState composes at 0/0),
+  // so profile-side warm-up calls and the factory's own remain harmless.
+  const buildRunningGearAssemblyStage21 = (): void => {
+    gearUnit.update(0, 0);
+    registerGearUnit(P, gearUnit);
+  };
+  const buildRunningGearRunningGearStage36 = (): void => {
+    buildRunningGearAssemblyStage21();
+  };
+  buildRunningGearRunningGearStage36();
+  return gearUnit;
+}
+
+/**
+ * What a built running-gear unit hands its runtime (createRunningGearRuntime: the wheel, band and shoe state and the
+ * update/conform/setBroken methods that drive them), under the names the runtime reads them by. A cloned visual
+ * (cloneTankVisual) runs the same runtime over its own copies of these.
+ */
+interface RunningGearRuntimeEnv {
+  cfg: RunningGearConfig;
+  disposables: DisposableVehicleResource[];
+  hullG: THREE.Group;
+  mats: TankMaterials;
+  ribMat: THREE.MeshStandardMaterial;
+  entries: WheelEntry[];
+  made: WheelInstanceLayer[];
+  suspWheels: Record<Side, WheelEntry[]>;
+  suspensionLinks: SuspensionLinkRig;
+  addRoadWheelLayer: RunningGearUnit['addRoadWheelLayer'];
+  xcForSide: (side: Side) => number;
+  relayWheel: (relay: EndRelay, ws: WheelEntry[]) => WheelEntry | null;
+  layRelay: (relay: EndRelay, arr: BandPositions, restPos: ArrayLike<number>, liveZ: number, liveY: number) => boolean;
+  xc: number;
+  wheelY: number;
+  wheelYs: number[] | undefined;
+  wheelR: number;
+  wheelW: number;
+  wheelZs: number[];
+  roadWheelOutsetM: number;
+  sideStationReceipt: { wheelZsRightM?: number[]; wheelZsLeftM?: number[] };
+  sideOutsetReceipt: { roadWheelOutsetRightM?: number; roadWheelOutsetLeftM?: number };
+  runningGearUnitId: number;
+  trackW: number;
+  trackTh: number;
+  sprocket: GearEndpoint;
+  idler: GearEndpoint;
+  suspensionDroopM: number;
+  suspensionCompressionM: number;
+  shoeOutboardOffset: number;
+  pts: TrackPoint[];
+  nP: number;
+  nLinks: number;
+  loopLen: number;
+  lp: number;
+  segsT: TrackCourseSegment[];
+  rOut: number;
+  trackTextureRepeatM: number;
+  tl: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+  tr: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+  tgL: THREE.BufferGeometry;
+  tgR: THREE.BufferGeometry;
+  tlY0: number;
+  trY0: number;
+  linkMeshes: THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>[];
+  spinners: WheelSpinner[];
+  spinnerInstances: SpinnerBatchRecord[];
+  bandBasePos: THREE.TypedArray;
+  bandRestPos: Partial<Record<Side, Float32Array>>;
+  bandBase: Record<Side, ArrayLike<number>>;
+  bandInfluence: Record<Side, BandInfluence>;
+  loadedContact: ReturnType<typeof loadedContactScratch> | null;
+  endRelays: EndRelay[];
+  relayPinned: Uint8Array | null;
+  gearContactGeom: GearContactGeometry;
+  conformPlaneY: number;
+}
+
+/** One band side's suspension influence on its bottom-run vertices (buildBandInfluence). */
+interface BandInfluence {
+  vertices: Uint32Array; wheelA: Int16Array; wheelB: Int16Array; weightA: Float32Array; weightB: Float32Array;
+  triangles: Uint32Array;
+}
+
+function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGearUnit {
+  const {
+    cfg, disposables, hullG, mats, ribMat, entries, made, suspWheels, suspensionLinks, addRoadWheelLayer, xcForSide,
+    relayWheel, layRelay, xc, wheelY, wheelYs, wheelR, wheelW, wheelZs, roadWheelOutsetM, sideStationReceipt,
+    sideOutsetReceipt, runningGearUnitId, trackW, trackTh, sprocket, idler, suspensionDroopM, suspensionCompressionM,
+    shoeOutboardOffset, pts, nP, nLinks, loopLen, lp, segsT, rOut, trackTextureRepeatM, tl, tr, tgL, tgR, tlY0, trY0,
+    linkMeshes, spinners, spinnerInstances, bandBasePos, bandRestPos, bandBase, bandInfluence, loadedContact,
+    endRelays, relayPinned, gearContactGeom, conformPlaneY,
+  } = env;
+  // A covered return run is still a complete physical chain. Older builds
+  // collapsed its matrices to zero as a visibility workaround, leaving a
+  // real gap in the shoe/grouser course whenever a skirt angle exposed it.
+  // Bodywork now performs the occlusion; every shoe remains seated on the
+  // closed loop. `coveredTop` is retained only in authoring receipts so old
+  // profiles do not need a flag migration.
+  const findTrackSegment = (distance: number, fromIndex = 0): number => {
+    let index = fromIndex;
+    while (index < nP - 1 && distance >= segsT[index].c0 + segsT[index].l) index++;
+    return index;
+  };
+  const chordA=new THREE.Vector2(),chordB=new THREE.Vector2();
+  const sampleLiveShoeCourse=(attribute:THREE.BufferAttribute|THREE.InterleavedBufferAttribute,
+    distance:number,out:THREE.Vector2):void=>{
+    const d=((distance%loopLen)+loopLen)%loopLen,index=findTrackSegment(d),segment=segsT[index];
+    const base=index*24,t=(d-segment.c0)/segment.l;
+    const y0=cfg.trackCarrierFromOuterFace?attribute.getY(base+2)+(bandBasePos[(base+6)*3+1]-bandBasePos[(base+2)*3+1])/2:(attribute.getY(base+2)+attribute.getY(base+6))/2;
+    const z0=cfg.trackCarrierFromOuterFace?attribute.getZ(base+2)+(bandBasePos[(base+6)*3+2]-bandBasePos[(base+2)*3+2])/2:(attribute.getZ(base+2)+attribute.getZ(base+6))/2;
+    const y1=cfg.trackCarrierFromOuterFace?attribute.getY(base)+(bandBasePos[(base+8)*3+1]-bandBasePos[base*3+1])/2:(attribute.getY(base)+attribute.getY(base+8))/2;
+    const z1=cfg.trackCarrierFromOuterFace?attribute.getZ(base)+(bandBasePos[(base+8)*3+2]-bandBasePos[base*3+2])/2:(attribute.getZ(base)+attribute.getZ(base+8))/2;
+    const length=Math.max(hypot2(z1-z0,y1-y0),1e-6);
+    out.set(z0+(z1-z0)*t-(y1-y0)/length*rOut,
+      y0+(y1-y0)*t+(z1-z0)/length*rOut);
+  };
+  const writeTrackLinkMatrix = (
+    side: -1 | 1,
+    instanceIndex: number,
+    bandPosition: THREE.BufferAttribute | THREE.InterleavedBufferAttribute,
+    segmentIndex: number,
+    progress: number,
+  ): void => {
+    const vertexBase = segmentIndex * 24;
+    // Recover this LIVE belt segment's f0/f1 centerline directly from the
+    // deformed outer/inner face vertices. The visible casting belt is the
+    // shoe's sole position/tangent source, with only rOut along its normal.
+    // The opt-in uses the ORIGINAL nominal half-stock vector; native band
+    // conformance translates each cross-section without rotating its stock.
+    // Additional inner lining therefore cannot move either shoe sampler.
+    const y0 = cfg.trackCarrierFromOuterFace ? bandPosition.getY(vertexBase+2)
+      +(bandBasePos[(vertexBase+6)*3+1]-bandBasePos[(vertexBase+2)*3+1])/2 : (bandPosition.getY(vertexBase + 2)
+      + bandPosition.getY(vertexBase + 6)) / 2;
+    const z0 = cfg.trackCarrierFromOuterFace ? bandPosition.getZ(vertexBase+2)
+      +(bandBasePos[(vertexBase+6)*3+2]-bandBasePos[(vertexBase+2)*3+2])/2 : (bandPosition.getZ(vertexBase + 2)
+      + bandPosition.getZ(vertexBase + 6)) / 2;
+    const y1 = cfg.trackCarrierFromOuterFace ? bandPosition.getY(vertexBase)
+      +(bandBasePos[(vertexBase+8)*3+1]-bandBasePos[vertexBase*3+1])/2 : (bandPosition.getY(vertexBase)
+      + bandPosition.getY(vertexBase + 8)) / 2;
+    const z1 = cfg.trackCarrierFromOuterFace ? bandPosition.getZ(vertexBase)
+      +(bandBasePos[(vertexBase+8)*3+2]-bandBasePos[vertexBase*3+2])/2 : (bandPosition.getZ(vertexBase)
+      + bandPosition.getZ(vertexBase + 8)) / 2;
+    const y = y0 + (y1 - y0) * progress;
+    const z = z0 + (z1 - z0) * progress;
+    const inverseLength = 1 / Math.max(hypot2(z1 - z0, y1 - y0), 1e-6);
+    const tangentZ = (z1 - z0) * inverseLength;
+    const tangentY = (y1 - y0) * inverseLength;
+    _q.setFromAxisAngle(_X, Math.atan2(-tangentY, tangentZ));
+    _v.set(side * (xcForSide(side) + shoeOutboardOffset),
+      y + tangentZ * rOut, z - tangentY * rOut);
+    // 2026-09-17: rigid chords are the fleet default — a shoe tangent at its centre leaves the deformed course at its
+    // ends wherever the band bends (a kneeling Type 10 X put 3 cm of shoe into a raised tire); the chord between its
+    // two live pin stations never does. Profiles may still opt out with rigidLinkChords: false.
+    if(cfg.rigidLinkChords !== false) {
+      // A real rigid shoe spans two pins. On a rounded loaded-run transition
+      // a tangent at its centre puts its corners below the ground; the chord
+      // of those live pin stations does not. Both samples come from this
+      // same deformed carrier, without a world-floor clamp or detached layer.
+      const distance=segsT[segmentIndex].c0+segsT[segmentIndex].l*progress;
+      sampleLiveShoeCourse(bandPosition,distance-lp/2,chordA);
+      sampleLiveShoeCourse(bandPosition,distance+lp/2,chordB);
+      _v.y=(chordA.y+chordB.y)/2;_v.z=(chordA.x+chordB.x)/2;
+      _q.setFromAxisAngle(_X,Math.atan2(chordA.y-chordB.y,chordB.x-chordA.x));
+    }
+      // The shoe stays on this exact deformed belt normal. A historical
+      // hull-local floor clamp moved only the gray shoe layer upward on
+      // slopes / turn roll, creating the visibly detached second course.
+      // Ground clearance now comes from the measured shoe underside in
+      // contactGeom, so no post-course transform is permitted here.
+      // r1 de-track: the band is REMOVED from a thrown side (bare wheels +
+      // ground ribbon carry the read) — collapse that side's pads to zero
+    const broken = side < 0 ? brokenL : brokenR;
+    _s.set(broken ? 0 : 1, broken ? 0 : 1, broken ? 0 : 1);
+    _m.compose(_v, _q, _s);
+    for(const mesh of linkMeshes) mesh.setMatrixAt(instanceIndex,_m);
+  };
+  const placeTrackSide = (side: -1 | 1, scroll: number): void => {
+    const baseIndex = side < 0 ? 0 : nLinks;
+    const bandPosition = (side < 0 ? tgL : tgR).getAttribute('position');
+    const startDistance = ((scroll % loopLen) + loopLen) % loopLen;
+    let segmentIndex = findTrackSegment(startDistance);
+    let previousDistance = startDistance;
+    for (let linkIndex = 0; linkIndex < nLinks; linkIndex++) {
+      let distance = startDistance + linkIndex * lp;
+      if (distance >= loopLen) distance -= loopLen;
+      if (linkIndex && distance < previousDistance) segmentIndex = 0;
+      segmentIndex = findTrackSegment(distance, segmentIndex);
+      previousDistance = distance;
+      const segment = segsT[segmentIndex];
+      const segmentDistance = distance - segment.c0;
+      const progress = Math.max(0, Math.min(
+        1, segmentDistance / Math.max(segment.l, 1e-6),
+      ));
+      writeTrackLinkMatrix(
+        side, baseIndex + linkIndex, bandPosition, segmentIndex, progress,
+      );
+    }
+  };
+  const placeLinks = (leftScroll: number, rightScroll: number): void => {
+    // Link distances are monotonic around each side's loop. Walk the segment
+    // cursor with them instead of restarting a linear search for every shoe.
+    placeTrackSide(-1, leftScroll);
+    placeTrackSide(1, rightScroll);
+    for(const mesh of linkMeshes) mesh.instanceMatrix.needsUpdate=true;
+  };
+
+  const detached: Partial<Record<Side, DetachedGear>> = {};
+  let brokenL = 0, brokenR = 0, throwCount = 0;
+  const debrisLastPosition = new THREE.Vector3();
+  const debrisVelocity = new THREE.Vector3();
+  const debrisPosition = new THREE.Vector3();
+  let debrisPositionKnown = false;
+  function buildDetached(side: Side, pick: WheelEntry): DetachedGear {
+    if (detached[side]) return detached[side];
+    const geometry = mergeAll([
+      box(trackW * .96, .026, .17),
+      xform(box(trackW * .88, .022, .05), 0, .024, 0),
+      xform(box(.045, .055, .05), 0, .04, .02),
+    ]);
+    disposables.push(geometry);
+    const kit = new DetachedGear(hullG, geometry, ribMat, Math.max(8, Math.min(28, Math.ceil(Math.abs(sprocket.z - idler.z) / .18))));
+    for (const { im, list } of made) for (const e of list) {
+      if ((e.suspensionSource || e) !== pick) continue;
+      kit.addWheelLayer(im.geometry, im.material, e.x - pick.x, e.y - pick.y, e.z - pick.z);
+    }
+    detached[side] = kit;
+    return kit;
+  }
+  // The canonical road wheels conform() solves and their ground deviations, reused every update (round 8).
+  const conformWheels: WheelEntry[] = [];
+  const conformDevs: number[] = [];
+  /**
+   * The travel the track band gives wheel `k` between the nearest wheels fore and aft on its side that reach their
+   * ground (their travels, clamped as conform() clamps them, interpolated along the hull), or -Infinity without one on
+   * each side.
+   */
+  const supportedTrackLine = (k: number, count: number): number => {
+    const e = conformWheels[k];
+    const side = e.x < 0;
+    let fore = -1, aft = -1;
+    for (let j = 0; j < count; j++) {
+      if (j === k) continue;
+      const o = conformWheels[j];
+      if ((o.x < 0) !== side || !(conformDevs[j] >= -suspensionDroopM)) continue;
+      if (o.z > e.z && (fore < 0 || o.z < conformWheels[fore].z)) fore = j;
+      else if (o.z < e.z && (aft < 0 || o.z > conformWheels[aft].z)) aft = j;
+    }
+    if (fore < 0 || aft < 0) return -Infinity;
+    const travel = (dev: number): number => (dev > suspensionCompressionM ? suspensionCompressionM : dev);
+    const t = (e.z - conformWheels[aft].z) / Math.max(conformWheels[fore].z - conformWheels[aft].z, 1e-4);
+    return travel(conformDevs[aft]) * (1 - t) + travel(conformDevs[fore]) * t;
+  };
+  // The hull-local radius the canonical road wheels' footprints reach from the hull origin (measured on the first
+  // conform: the gear is complete by then): the sampler's standable-top query covers it once per conform.
+  let conformReachLocalM = -1;
+  const conformReachLocal = (): number => {
+    if (conformReachLocalM >= 0) return conformReachLocalM;
+    let reach = 0;
+    for (const { list } of made) {
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (!e.road) continue;
+        const r = Math.hypot(Math.abs(e.x) + 0.5 * wheelW, Math.abs(e.z) + e.r);
+        if (r > reach) reach = r;
+      }
+    }
+    conformReachLocalM = reach;
+    return reach;
+  };
+  // Reused on every conformance update. Keeping this frame outside the hot
+  // method avoids allocating a transform object per render cadence.
+  const wheelConformFrame: WheelConformFrame = {
+    cb: 1, sb: 0, ca: 1, sa: 0, cr: 1, sr: 0,
+    px: 0, py: 0, pz: 0,
+    hsx: 1, hsy: 1, hsz: 1,
+    hpx: 0, hpy: 0, hpz: 0,
+    invHsy: 1,
+    conformPlaneY,
+    wheelW,
+  };
+  const relayEnds = (arr: BandPositions, restPos: Float32Array, ws: WheelEntry[]): boolean => {
+    let moved = false;
+    for (const relay of endRelays) {
+      // the live outer road wheel of this side at the relay's station (interleaved layers share the travel)
+      const wheel = relayWheel(relay, ws);
+      // A shared authored course may use the opposite side's station list.
+      // Without an actual wheel at this relay's station, preserve that side's
+      // existing influence/contact result instead of falsely resetting it.
+      if (!wheel) continue;
+      const voff = wheel.voff || 0;
+      if (Math.abs(voff) <= 1e-6) {
+        // at rest the side's rest band (already laid about its own station by the bake below) is restored byte for byte
+        for (const index of relay.vertices.keys()) {
+          for (const vi of relay.vertices.get(index)!) { arr[vi * 3 + 1] = restPos[vi * 3 + 1]; arr[vi * 3 + 2] = restPos[vi * 3 + 2]; }
+        }
+        continue;
+      }
+      // the live seat: this side's own station (wheel.z) and its travelled height; a degenerate pose keeps the influence result
+      if (layRelay(relay, arr, restPos, wheel.z, relay.wheelRestY + voff)) moved = true;
+    }
+    return moved;
+  };
 
   // deform one band's bottom run toward the wheel offset field (weight fades
   // to zero by the axle line so the top run / arcs never move)
@@ -5832,7 +5968,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
         im.instanceMatrix.needsUpdate = true;
       }
       updateGearSurface(l, r);
-      updateSuspensionLinks();
+      updateSuspensionLinks(suspensionLinks);
       // band bottom run follows the wheels (skipped on a thrown side — the
       // band is gone there)
       if (!brokenL) deformBand(-1);
@@ -6000,31 +6136,6 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
       detached[1]?.update(dt, sampler || undefined);
     },
   };
-  // TRACK-HITBOX metadata (RUNTIME DATA ONLY — no geometry, same channel as
-  // contactGeom): the real band silhouette + lateral extent of this unit's
-  // tracks, derived from the exact loop the visual band was built from.
-  // createTank hands it to specs.attachTrackShapes so hit resolution and the
-  // killcam x-ray follow the true \____/ trapezoid run instead of one AABB
-  // (owner order 2026-08-06). Expansion = half band thickness + 0.045 m shoe
-  // pad/grouser depth (family track shoes reach ~0.05-0.08 outward on
-  // the running faces; the old hand-authored boxes included none of it).
-  // Seat this unit's InstancedMesh matrices at rest NOW (scroll 0/0). The
-  // instanced wheels/link pads otherwise carry identity matrices — an origin
-  // blob reaching ~0.4 m below ground — until someone calls update(). The
-  // factory does call update(0,0) once after the profile builds, but through
-  // P.gear, which a LATER buildRunningGear call used to replace: on
-  // multi-unit rigs (t95 four-track) the earlier units never got seated and
-  // poisoned every silhouette/height measurement. Seating here is idempotent
-  // (the rest pose is exactly what the first syncFromState composes at 0/0),
-  // so profile-side warm-up calls and the factory's own remain harmless.
-  const buildRunningGearAssemblyStage21 = (): void => {
-    gearUnit.update(0, 0);
-    registerGearUnit(P, gearUnit);
-  };
-  const buildRunningGearRunningGearStage36 = (): void => {
-    buildRunningGearAssemblyStage21();
-  };
-  buildRunningGearRunningGearStage36();
   return gearUnit;
 }
 
@@ -7366,6 +7477,27 @@ function resolveTankPresentationSetup(
   };
 }
 
+/** (Re)compose every ERA brick at its as-built placement (undoes stripEra). */
+function seatEraBricks(
+  eraPlacements: readonly EraPlacementRecord[],
+  eraLocal: readonly THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>[],
+  armor: FactoryTankSpec['armor'],
+): void {
+  for (const e of eraPlacements) {
+    if (!e._mesh) continue;
+    _q.setFromEuler(new THREE.Euler(e.rx, e.ry, e.rz, 'YXZ'));
+    _v.set(
+      e.x,
+      e.turretLocal ? e.y - armor.turretPivot[1] : e.y,
+      e.turretLocal ? e.z - armor.turretPivot[2] : e.z,
+    );
+    _s.set(e.sx ?? 1, e.sy ?? 1, e.sz ?? 1);
+    _m.compose(_v, _q, _s);
+    e._mesh.setMatrixAt(e._index, _m);
+  }
+  for (const im of eraLocal) im.instanceMatrix.needsUpdate = true;
+}
+
 /** Construction-only checkpoints: the completed visual is returned, never yielded. */
 export function createTankSteps(
   specId: string,
@@ -8632,7 +8764,7 @@ function* createTankOwnedSteps(
         eraLocal.push(im);
         if (!eraMesh) eraMesh = im;
       }
-      seatEraBricks();
+      seatEraBricks(eraPlacements, eraLocal, armor);
     }
     root.userData.eraClusterNames = Object.freeze([
       ...new Set([...eraClusters.keys(), ...destructibleClusters.keys()]),
@@ -8813,23 +8945,6 @@ function* createTankOwnedSteps(
     detail: collectNearShadowDetail([hullG, turretG, gunG, recoilG]),
     proxies: proceduralShadowSources,
   });
-
-  /** (Re)compose every ERA brick at its as-built placement (undoes stripEra). */
-  function seatEraBricks() {
-    for (const e of eraPlacements) {
-      if (!e._mesh) continue;
-      _q.setFromEuler(new THREE.Euler(e.rx, e.ry, e.rz, 'YXZ'));
-      _v.set(
-        e.x,
-        e.turretLocal ? e.y - armor.turretPivot[1] : e.y,
-        e.turretLocal ? e.z - armor.turretPivot[2] : e.z,
-      );
-      _s.set(e.sx ?? 1, e.sy ?? 1, e.sz ?? 1);
-      _m.compose(_v, _q, _s);
-      e._mesh.setMatrixAt(e._index, _m);
-    }
-    for (const im of eraLocal) im.instanceMatrix.needsUpdate = true;
-  }
 
   // ---- anchors ----
   const muzzle = new THREE.Object3D();
@@ -9200,6 +9315,108 @@ function* createTankOwnedSteps(
     presentationAnchor,
     presentationTrackFloorYM,
   } = resolveTankPresentationSetup(specId, opts, geometryOnly, root, P.gear);
+  return yield* createTankRuntimeSteps({
+    specId, opts, legacyDecoration, coreStartedAt, coreMaterialsStartedAt, coreMaterialsFinishedAt,
+    coreAuthoredStartedAt, coreAuthoredFinishedAt, coreBindMergeFinishedAt, proceduralOnly, geometryQuality,
+    deferStaticBatch, batchStatic, battleDetailLod, staticDrawMerge, geometryOnly, engineCtx, spec, armor, mats, rng,
+    root, hullG, turretG, gunG, recoilG, launcherCursor, barrelGs, eraClusters, eraPlacements, eraLocal,
+    destructibleClusters, disposables, equipmentDamage, weaponDamage, P, deferredAssembly, assembledChildren,
+    decalMeshes, proceduralShadowSources, muzzle, physicalBore, physicalBoreEvidence, launcherTips, muzzleTips,
+    carvedMuzzleFrames, turretTop, staticPreview, restScan, gearCG, drawnCG, assetPresentationAnchor,
+    presentationAnchor, presentationTrackFloorYM,
+  });
+}
+
+/**
+ * What a finished build hands the visual's runtime (createTankRuntimeSteps: the per-actor state, the methods that
+ * drive it and the build's tail), under the names the runtime reads them by. The runtime reads nothing else of the
+ * build, so a clone of a finished visual (cloneTankVisual) runs the same runtime over its own copies of these.
+ */
+interface TankRuntimeEnv {
+  specId: string;
+  opts: TankFactoryOptions;
+  legacyDecoration: boolean;
+  coreStartedAt: number;
+  coreMaterialsStartedAt: number;
+  coreMaterialsFinishedAt: number;
+  coreAuthoredStartedAt: number;
+  coreAuthoredFinishedAt: number;
+  coreBindMergeFinishedAt: number;
+  proceduralOnly: boolean;
+  geometryQuality: 'high' | 'low';
+  deferStaticBatch: boolean;
+  batchStatic: boolean;
+  battleDetailLod: boolean;
+  staticDrawMerge: NonNullable<TankFactoryOptions['staticDrawMerge']>;
+  geometryOnly: boolean;
+  engineCtx: TankEngineContext | null | undefined;
+  spec: FactoryTankSpec;
+  armor: FactoryTankSpec['armor'];
+  mats: TankMaterials;
+  rng: Rng;
+  root: THREE.Group;
+  hullG: THREE.Group;
+  turretG: THREE.Group;
+  gunG: THREE.Group;
+  recoilG: THREE.Group;
+  launcherCursor: number;
+  barrelGs: THREE.Group[];
+  eraClusters: Map<string, EraClusterRange>;
+  eraPlacements: EraPlacementRecord[];
+  eraLocal: THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>[];
+  destructibleClusters: Map<string, DestructibleCluster>;
+  disposables: DisposableVehicleResource[];
+  equipmentDamage: EquipmentDamage;
+  weaponDamage: WeaponDamageVisuals;
+  P: Pick<TankBuilderPort, 'gear' | 'muzzleZ'>;
+  deferredAssembly: TankBuilderPort['afterAssemble'];
+  assembledChildren: Map<THREE.Object3D, THREE.Object3D[]> | null;
+  decalMeshes: VehicleMesh[];
+  proceduralShadowSources: THREE.Mesh[];
+  muzzle: THREE.Object3D;
+  physicalBore: PhysicalMuzzleBore | undefined;
+  physicalBoreEvidence: ReturnType<typeof verifyPhysicalMuzzleBore> | null;
+  launcherTips: THREE.Object3D[];
+  muzzleTips: THREE.Object3D[];
+  carvedMuzzleFrames: THREE.Object3D[];
+  turretTop: THREE.Object3D;
+  staticPreview: boolean;
+  restScan: RestContactReceipt | null;
+  gearCG: GearContactGeometry | null;
+  drawnCG: ReturnType<typeof drawnBandContact>;
+  assetPresentationAnchor: Readonly<PresentationAnchor>;
+  presentationAnchor: Readonly<PresentationAnchor>;
+  presentationTrackFloorYM: number | null;
+}
+
+/** A clone's runtime takes its source's finished tail (cloneTankVisual) instead of running it. */
+interface TankRuntimeAdoption {
+  mobileDetailObjects: StaticDetailRecord[];
+}
+
+/** A finished visual's runtime record: what cloneTankVisual copies a clone's runtime from. */
+interface TankCloneSource {
+  env: TankRuntimeEnv;
+  mobileDetailObjects: StaticDetailRecord[];
+  depthLayers: CoplanarLayerRecord[];
+}
+const TANK_CLONE_SOURCES = new WeakMap<TankVisual, TankCloneSource>();
+
+function* createTankRuntimeSteps(
+  env: TankRuntimeEnv,
+  adoption: TankRuntimeAdoption | null = null,
+): Generator<void, TankVisual, void> {
+  const {
+    specId, opts, legacyDecoration, coreStartedAt, coreMaterialsStartedAt, coreMaterialsFinishedAt,
+    coreAuthoredStartedAt, coreAuthoredFinishedAt, coreBindMergeFinishedAt, proceduralOnly, geometryQuality,
+    deferStaticBatch, batchStatic, battleDetailLod, staticDrawMerge, geometryOnly, engineCtx, spec, armor, mats, rng,
+    root, hullG, turretG, gunG, recoilG, barrelGs, eraClusters, eraPlacements, eraLocal, destructibleClusters,
+    disposables, equipmentDamage, weaponDamage, P, deferredAssembly, assembledChildren, decalMeshes,
+    proceduralShadowSources, muzzle, physicalBore, physicalBoreEvidence, launcherTips, muzzleTips, carvedMuzzleFrames,
+    turretTop, staticPreview, restScan, gearCG, drawnCG, assetPresentationAnchor, presentationAnchor,
+    presentationTrackFloorYM,
+  } = env;
+  let { launcherCursor } = env;
   const continuousRootFloor = (): number | undefined => {
     const floor = P.gear?.continuousShoeFloorYM;
     if (floor !== undefined) assertShoeFloorFrame(hullG, root.scale);
@@ -10341,7 +10558,7 @@ function* createTankOwnedSteps(
     /** Restore all ERA cassettes for a new round/replay reset. */
     resetEra() {
       if (!eraPlacements.length && !destructibleClusters.size) return false;
-      if (eraPlacements.length) seatEraBricks();
+      if (eraPlacements.length) seatEraBricks(eraPlacements, eraLocal, armor);
       for (const cluster of destructibleClusters.values()) {
         if (!cluster.spent) continue;
         cluster.spent = false;
@@ -10596,6 +10813,11 @@ function* createTankOwnedSteps(
   turretG.rotation.y = 0;
   gunG.rotation.x = 0;
   if (P.gear) P.gear.update(0, 0);
+  // A clone's tree is its source's finished one (decorated, filled, normalized and layered): only its state is new.
+  if (adoption) {
+    mobileDetailObjects = adoption.mobileDetailObjects;
+    return visual;
+  }
 
   // ---- DECORATION SYSTEM seam (src/vehicles/decorations.ts) ---------------
   // Cosmetic stowage/fittings under rig_decor_hull / rig_decor_turret.
@@ -10838,6 +11060,9 @@ function* createTankOwnedSteps(
       shareFinishedAt: performance.now(),
     };
 
+    TANK_CLONE_SOURCES.set(visual, {
+      env: { ...env, deferredAssembly: [], assembledChildren: null }, mobileDetailObjects, depthLayers,
+    });
     visualCompleted = true;
     return visual;
   } finally {
