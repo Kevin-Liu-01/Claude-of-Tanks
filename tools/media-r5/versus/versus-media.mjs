@@ -87,9 +87,11 @@ function itemOf(id) {
   const hero = tanks[scene.actors.findIndex((a) => a.name === 'hero')], foe = tanks[scene.actors.findIndex((a) => /^foe\d*$/.test(a.name))];
   if (!hero || !foe) throw new Error(`${id}: the scene names no hero and foe`);
   const map = scene.map, hour = scene.timeOfDay;
+  // a top-down still names its view in its place, so it reads apart from the close still of the same scene
+  const above = scene.meta?.view === 'top-down';
   const title = {
-    en: `${word(EN, `map.${map}`, 'en-US')}, ${word(EN, `atmosphere.${hour}`, 'en-US').toLowerCase()}: ${hero.displayName} v ${foe.displayName}`,
-    zh: `${word(ZH, `map.${map}`, 'zh-CN')}，${word(ZH, `atmosphere.${hour}`, 'zh-CN')}：${hero.displayName} 对 ${foe.displayName}`,
+    en: `${word(EN, `map.${map}`, 'en-US')}, ${word(EN, `atmosphere.${hour}`, 'en-US').toLowerCase()}${above ? ', from above' : ''}: ${hero.displayName} v ${foe.displayName}`,
+    zh: `${word(ZH, `map.${map}`, 'zh-CN')}，${word(ZH, `atmosphere.${hour}`, 'zh-CN')}${above ? '，俯瞰' : ''}：${hero.displayName} 对 ${foe.displayName}`,
   };
   return { id, round: roundOf(id), map, hour, title, tanks, scene: relative(ROOT, sceneFile) };
 }

@@ -36,7 +36,7 @@ A World of Tanks-style armored combat simulator built directly with Three.js and
 These are deterministic scenes staged in Scene Studio and rendered at 4K in the game engine—not concept art. The
 [visual archive](public/media/site50-r14/archive.json) holds the fifty frames and the key moment and close portrait of each of
 the site's takes. The [landing selection](public/media/landing-r1/manifest.json) records the 12 hero frames, the 22
-screenshots of the rail, the feature reel, the four camera-path loops, the destruction loop, the 12 versus stills, the
+screenshots of the rail, the feature reel, the four camera-path loops, the destruction loop, the 21 versus stills, the
 3 trailers, the 24-shot mosaic and the Scene Studio loop published on the site.
 
 ## Fight, inspect, and direct

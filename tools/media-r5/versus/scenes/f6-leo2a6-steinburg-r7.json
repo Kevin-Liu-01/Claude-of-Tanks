@@ -1,0 +1,537 @@
+{
+ "map": "urban",
+ "timeOfDay": "day",
+ "seed": 2706,
+ "light": {
+  "sunAzimuthDeg": 344.4,
+  "sunElevationDeg": 44
+ },
+ "actors": [
+  {
+   "id": "leo2a6_x",
+   "name": "hero",
+   "pos": [
+    -45.94,
+    -75.87
+   ],
+   "facingDeg": 275.64,
+   "turretDeg": -90.97,
+   "gunDeg": -0.69,
+   "camo": "urbanblock",
+   "camoSeed": 7101,
+   "recoilAgeS": 0.04
+  },
+  {
+   "id": "t90m_x",
+   "name": "foe0",
+   "pos": [
+    -47.16,
+    -90.79
+   ],
+   "facingDeg": 11.62,
+   "turretDeg": -29,
+   "gunDeg": -4,
+   "camo": "digital",
+   "camoSeed": 7102
+  }
+ ],
+ "effects": [
+  {
+   "type": "dust",
+   "at": [
+    -28.14,
+    -76.1
+   ],
+   "tMs": 5700,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 275.64
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -28.44,
+    -79.13
+   ],
+   "tMs": 5700,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 275.64
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -31.43,
+    -75.77
+   ],
+   "tMs": 6000,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 275.64
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -31.73,
+    -78.81
+   ],
+   "tMs": 6000,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 275.64
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -34.71,
+    -75.45
+   ],
+   "tMs": 6300,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 275.64
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -35.01,
+    -78.48
+   ],
+   "tMs": 6300,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 275.64
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -37.45,
+    -75.18
+   ],
+   "tMs": 6550,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 275.64
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -37.75,
+    -78.21
+   ],
+   "tMs": 6550,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 275.64
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -39.97,
+    -74.93
+   ],
+   "tMs": 6780,
+   "params": {
+    "count": 21,
+    "intensity": 1.3,
+    "dirDeg": 275.64
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -40.26,
+    -77.96
+   ],
+   "tMs": 6780,
+   "params": {
+    "count": 21,
+    "intensity": 1.3,
+    "dirDeg": 275.64
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -41.39,
+    -74.79
+   ],
+   "tMs": 6910,
+   "params": {
+    "count": 15,
+    "intensity": 1.3,
+    "dirDeg": 275.64
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -41.69,
+    -77.82
+   ],
+   "tMs": 6910,
+   "params": {
+    "count": 15,
+    "intensity": 1.3,
+    "dirDeg": 275.64
+   }
+  },
+  {
+   "type": "muzzle_flash",
+   "actor": "hero",
+   "tMs": 6958,
+   "params": {
+    "caliberMm": 120
+   }
+  },
+  {
+   "type": "impact",
+   "at": [
+    -44.34,
+    6.05,
+    -78.25
+   ],
+   "tMs": 6760,
+   "params": {
+    "kind": "ricochet",
+    "caliberMm": 125,
+    "normal": [
+     -0.34,
+     0.84,
+     -0.42
+    ]
+   }
+  },
+  {
+   "type": "sparks",
+   "at": [
+    -44.34,
+    6.05,
+    -78.25
+   ],
+   "tMs": 6780,
+   "params": {
+    "caliberMm": 125,
+    "normal": [
+     -0.34,
+     0.84,
+     -0.42
+    ]
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -44.34,
+    6.05,
+    -78.25
+   ],
+   "tMs": 6770,
+   "params": {
+    "count": 14,
+    "speedMps": 8,
+    "hot": 0.9,
+    "scale": 0.45
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -38.3,
+    12.39,
+    -84.9
+   ],
+   "tMs": 0,
+   "params": {
+    "size": "huge",
+    "cause": "shot"
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -38.3,
+    -82
+   ],
+   "tMs": 5750,
+   "params": {
+    "munition": "howitzer",
+    "wall": true,
+    "dirDeg": 180,
+    "hitH": 8.5
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -38.3,
+    12.39,
+    -85
+   ],
+   "tMs": 5850,
+   "params": {
+    "count": 36,
+    "speedMps": 10,
+    "hot": 0.25,
+    "scale": 1.25
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -38.3,
+    15.39,
+    -85
+   ],
+   "tMs": 6050,
+   "params": {
+    "count": 28,
+    "speedMps": 6,
+    "hot": 0.05,
+    "scale": 0.9
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -38.3,
+    -83.8
+   ],
+   "tMs": 5900,
+   "params": {
+    "count": 10,
+    "intensity": 1.2,
+    "dirDeg": 0
+   }
+  },
+  {
+   "type": "embers",
+   "at": [
+    -38.3,
+    12.39,
+    -84.9
+   ],
+   "tMs": 5800,
+   "params": {
+    "radiusM": 1.5,
+    "rate": 30,
+    "durationS": 20,
+    "rise": 2.5
+   }
+  },
+  {
+   "type": "embers",
+   "at": [
+    -48.3,
+    11,
+    -95.7
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 2,
+    "rate": 40,
+    "durationS": 20,
+    "rise": 3
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -48.3,
+    11,
+    -95.7
+   ],
+   "tMs": 6820,
+   "params": {
+    "size": "medium"
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -48.3,
+    11,
+    -95.7
+   ],
+   "tMs": 6830,
+   "params": {
+    "count": 18,
+    "speedMps": 9,
+    "hot": 0.35,
+    "scale": 1
+   }
+  },
+  {
+   "type": "fire_field",
+   "at": [
+    -43.6,
+    -95.3
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 2.5,
+    "durationS": 40,
+    "intensity": 1,
+    "smoke": true
+   }
+  },
+  {
+   "type": "embers",
+   "at": [
+    -43.6,
+    -95.3
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 2.5,
+    "rate": 40,
+    "durationS": 20,
+    "rise": 3
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -14.86,
+    -82.17
+   ],
+   "tMs": 0,
+   "params": {
+    "size": "huge"
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -14.26,
+    -81.57
+   ],
+   "tMs": 1000,
+   "params": {
+    "size": "huge"
+   }
+  }
+ ],
+ "fxTime": 7000,
+ "timeScale": 0,
+ "storyboard": {
+  "version": 1,
+  "durationMs": 8500,
+  "shots": [],
+  "actorTracks": [
+   {
+    "actor": "hero",
+    "keys": [
+     {
+      "id": "hero-0",
+      "tMs": 5600,
+      "pos": [
+       -30.61,
+       -77.38
+      ],
+      "facingDeg": 275.64,
+      "turretDeg": -90.97,
+      "gunDeg": -0.69,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-1",
+      "tMs": 7400,
+      "pos": [
+       -50.32,
+       -75.44
+      ],
+      "facingDeg": 275.64,
+      "turretDeg": -90.97,
+      "gunDeg": -0.69,
+      "transition": "linear"
+     }
+    ]
+   }
+  ]
+ },
+ "picture": {
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "vignette": {
+   "amount": 0.36,
+   "roundness": 0.55,
+   "softness": 0.6
+  },
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0,
+  "exposure": 0.3,
+  "vibrance": 0.14,
+  "contrast": 1.05
+ },
+ "fx": {
+  "quality": "cinematic",
+  "trackDust": true
+ },
+ "autoPlace": false,
+ "meta": {
+  "id": "f6-leo2a6-steinburg-r7",
+  "kind": "versus-still",
+  "pair": "leo2a6_x v t90m_x",
+  "round": 7,
+  "idea": "the street corner: the Leopard 2A6 noses out of a back lane at a low Dutch-angled lens, its gun on the T-90M come up through the south gate, firing as the sparks of the T-90M's last round fly off its turret",
+  "lens": "a",
+  "pick": "f6-leo2a6-steinburg-r7:a"
+ },
+ "camera": {
+  "name": "a",
+  "pos": [
+   -53.31,
+   0.56,
+   -71.14
+  ],
+  "lookAt": [
+   -39.64,
+   3.15,
+   -85.74
+  ],
+  "fov": 45.56,
+  "rollDeg": 11.92,
+  "groundRel": true
+ },
+ "cameraVariants": [
+  {
+   "name": "a",
+   "pos": [
+    -53.31,
+    0.56,
+    -71.14
+   ],
+   "lookAt": [
+    -39.64,
+    3.15,
+    -85.74
+   ],
+   "fov": 45.56,
+   "rollDeg": 11.92,
+   "groundRel": true
+  }
+ ]
+}

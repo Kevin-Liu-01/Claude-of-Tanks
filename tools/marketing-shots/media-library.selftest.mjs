@@ -48,7 +48,7 @@ assert.match(topics, /docs\.topic\.filming\.s11\.t/, 'the Filming manual has the
 assert.match(read('src/docs/filming.ts'), /#topic-section-11[\s\S]*mediaLibrary\.ts/, 'filming.ts mounts the library in it');
 for (const locale of ['en-US', 'zh-CN']) {
   const catalog = JSON.parse(read(`src/ui/i18nCatalog.${locale}.json`));
-  for (const key of ['mediaLibrary.total', 'mediaLibrary.openAria', 'mediaLibrary.loading', 'docs.topic.filming.s11.t',
+  for (const key of ['mediaLibrary.tabsAria', 'mediaLibrary.openAria', 'mediaLibrary.loading', 'docs.topic.filming.s11.t',
     'docs.topic.filming.s11.p1', 'docs.aside.libraryTitle']) {
     assert.ok(catalog[key], `${locale} has ${key}`);
   }
