@@ -10,8 +10,8 @@ import { KIT } from './kit.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { openTube, mirrorX } from './europeSourcePrimitives.ts';
-import { lathedWheelSection } from './lathedWheelStock.ts';
 import { buildType100RunningGear } from './type100RunningGear.ts';
+import { addClampFrame, addLaunchCanister, type LaunchCanister } from './missileCanisterStock.ts';
 
 const { cylX, cylY, cylZ } = KIT;
 const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
@@ -26,9 +26,16 @@ export const TYPE100_DATUMS = Object.freeze({
   turretRear: -1.16, turretFront: 1.20, turretRoof: .78,
   barrelLength: 2.35, barrelRadius: .045,
   launcherColumns: [-1.18, 1.18], launcherRows: [.12, .44],
-  launcherRear: -.55, launcherMouth: 1.00, launcherOuter: .14, launcherInner: .115,
+  launcherRear: -.55, launcherMouth: 1.00, launcherOuter: .14, launcherInner: .11,
 });
 const D = TYPE100_DATUMS;
+// 2026-10-21 (owner: "follow that of the object 695, and tagil"): round HJ-10 canisters in the Object 695 vocabulary,
+// a proud collar (D.launcherOuter) around a dark-lined bore (D.launcherInner) and a sealed terminal 90 mm deep.
+export const TYPE100_LAUNCH_CANISTER: LaunchCanister = Object.freeze({
+  bodyRadius: .120, collarRadius: D.launcherOuter, boreRadius: D.launcherInner, capRadius: .128, bandRadius: .127,
+  rear: D.launcherRear, mouth: D.launcherMouth, collarLength: .15, recess: .09,
+  bands: Object.freeze([-.28, .60]), segments: [20, 12] as const,
+});
 
 // The lower tub stays inside the belt lanes. Broad shoulders only emerge above
 // the actual sprocket return run; the nose has a continuous shallow upper plane.
@@ -144,7 +151,10 @@ function turretBody(P: TankBuilderPort): void {
     ]);
     P.add('turret', part(s < 0 ? mirrorX(cheek) : cheek, 'turret-cheek'));
     P.add('turret', part(cylX(.17, .70, P.q ? 24 : 12), 'pitch-bearing'), s * .62, .53, .65);
-    P.addEquipment('gunMount', part(cylX(.10, .28, P.q ? 20 : 10), 'launcher-journal'), s * 1.04, 0, 0);
+    // Fixed elevation drive: a gearbox on the cheek under the bearing it turns, its motor ahead. Both stay inboard
+    // of x .95; the pitching pods start at .9735, so the drive is clear at every pose.
+    P.addEquipment('turret', part(box(.19, .16, .24), 'elevation-gearbox'), s * .855, .285, .65);
+    P.addEquipment('turretDark', part(cylZ(.055, .16, P.q ? 16 : 10), 'elevation-motor'), s * .88, .26, .84);
   }
   P.add('turret', part(box(.57, .08, .94), 'cradle-floor'), 0, .085, .73);
   P.addHatch('turret', part(box(.65, .035, .54), 'turret-service-hatch'), 0, .7975, -.38);
@@ -168,19 +178,17 @@ function cannon(P: TankBuilderPort): void {
   }
 }
 function launchers(P: TankBuilderPort): void {
-  const n = P.q ? 24 : 12;
+  const C = TYPE100_LAUNCH_CANISTER, n = P.q ? 20 : 12;
   for (const x of D.launcherColumns) {
-    for (const y of D.launcherRows) {
-      const tube = lathedWheelSection([[D.launcherRear, D.launcherInner], [D.launcherRear, D.launcherOuter],
-        [D.launcherMouth, D.launcherOuter], [D.launcherMouth, D.launcherInner]], n).rotateY(-Math.PI / 2);
-      P.addModuleVisual('missileRack', 'gunMount', part(tube, 'missile-canister'), x, y, 0);
-      P.addEquipment('gunMountDark', part(cylZ(.14, .035, n), 'missile-backplate'), x, y, -.535);
-    }
-    // Armored rectangular pack with load-bearing tray and two cross webs.
-    for (const s of [-1, 1]) P.addEquipment('gunMount', part(box(.026, .64, 1.55), 'launcher-side'), x + s * .157, .28, .225);
-    for (const y of [-.027, .587]) P.addEquipment('gunMount', part(box(.34, .026, 1.55), 'launcher-deck'), x, y, .225);
-    for (const z of [-.40, .65]) P.addEquipment('gunMount', part(box(.31, .042, .09), 'launcher-web'), x, .28, z);
-    P.addEquipment('gunMount', part(box(.09, .14, .19), 'launcher-saddle'), x, -.005, 0);
+    const s = Math.sign(x);
+    for (const y of D.launcherRows) addLaunchCanister(P, part, C, x, y);
+    for (const z of C.bands) addClampFrame(P, part, C, [x], D.launcherRows, z);
+    // Cradle: a keel under both bottom straps and an inner plate across the inner posts and the bottom and row straps.
+    P.addEquipment('gunMount', part(new THREE.BoxGeometry(.05, .036, .96), 'launcher-keel'), x, -.053, .16);
+    P.addEquipment('gunMount', part(new THREE.BoxGeometry(.03, .43, .98), 'launcher-cradle-plate'), x - s * .17, .085, .16);
+    // Trunnion: the hub flange stands 3.5 mm off the turret bearing's end face; the journal runs inside both.
+    P.addEquipment('gunMount', part(cylX(.125, .024, n), 'launcher-hub'), x - s * .1945, 0, 0);
+    P.addEquipment('gunMountDark', part(cylX(.075, .09, n), 'launcher-journal'), x - s * .23, 0, 0);
   }
 }
 function sight(P: TankBuilderPort, x: number, y: number, z: number, w: number, h: number, d: number, name: string): void {
