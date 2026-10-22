@@ -3825,6 +3825,9 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         return { side, z0, z1: 0.80, nz: side < 0 ? 24 : 32, ny: 8,
           topAt: () => 0.80, bottomAt: (z: number) => 0.02 + Math.sin(z * 3.2) * 0.024,
           outAt: (z: number, t: number) => (z < -1.65 ? 1.52 : 1.68) + (1 - t) * 0.028, seed: 51 + side,
+          // 2026-10-21 (the owner: the star on the turret): the right flank's drape leaves a window for the national
+          // insignia (vehicleMarkings.ts), its 0.27 m footprint and a net cell (8 cm) on every side, from its top to the hem
+          cuts: side > 0 ? [[-0.90, -0.47, 0.085, 0.52] as const] : [],
           // round 3 ("along both turret sides the net rises as vertical free-standing fence panels"): the flank drape
           // rolls over the roof edge and tucks under the roof net
           shoulder: { z0, z1: 0.40, inAt: (z: number) => sepv3TurretRoofEdge(z) - 0.06, yAt: () => 0.874 } };
