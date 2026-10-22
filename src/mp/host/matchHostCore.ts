@@ -104,8 +104,14 @@ const CONFIG_INTERVAL_MS = 10_000;
  * seat (never welcomed: mp-world-events-audit / mp-room-lifecycle / mp-p2p-headless "every seat welcomed" at load >= 60).
  * The window only bounds a link that never says hello; once the HELLO is here, the check is this host's own work and has
  * no deadline (helloGate.selftest).
+ * 2026-10-20 (item/mp-rejoin-229): 15 s → 60 s. A seat entering a running match now opens its link beside its world load
+ * and says hello once its world is ready (matchSession.ts openEarlyPeerLink): 15 s closed that early link under a world
+ * load of 15.5 s on the 227 rejoins. Only a link from a seat the room relayed is ever open here, one per seat (a new offer
+ * replaces it), so the longer window bounds nothing new. A client that opens early links carries a prediction digest no
+ * earlier build has (matchClient.ts is in that closure, wire/matchBuild.ts), so a host of an earlier build refuses it at
+ * its HELLO: no early link ever meets the old 15 s window.
  */
-export const HELLO_TIMEOUT_MS = 15_000;
+export const HELLO_TIMEOUT_MS = 60_000;
 const HOUSEKEEPING_MS = 250;
 /** The vehicles the booted match fields (spectators ride none): the calibration groups the host loads. */
 const rosterSpecIds = (config: HostBootConfig): string[] => [

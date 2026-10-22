@@ -760,4 +760,44 @@ async function defaultForegroundUsesShortPaintBudget() {
 
 await defaultForegroundUsesShortPaintBudget();
 
+// (2026-10-20, item/mp-rejoin-229) a returning tab's battlefield under its boot screen: explicit intent paced as a
+// covered load — the foreground slices, the same world-intent lease at every checkpoint — and promoted as any prefetch
+{
+  let foregroundYields = 0, backgroundYields = 0, activeLeases = 0;
+  const kinds = [];
+  const progress = deferred();
+  const f = cancellationFixture({
+    acquireBackgroundWork: async (kind) => { kinds.push(kind); activeLeases++; return { release() { activeLeases--; } }; },
+    foregroundYielder: () => async () => { foregroundYields++; },
+    backgroundYielder: () => async () => { backgroundYields++; },
+    loadModule: async () => ({ async createMapAsync(_engine, _options, report) {
+      for (let index = 0; index < 4; index++) await report('Building terrain meshes', index / 4);
+      await progress.promise;
+      return { group: new THREE.Group() };
+    } }),
+  });
+  const prefetched = f.coordinator.prefetch('fjord', { intent: true, pace: 'loading' });
+  for (let turn = 0; turn < 200 && foregroundYields < 4; turn++) await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(foregroundYields, 4, 'a loading-paced prefetch takes the covered load\'s slices');
+  assert.equal(backgroundYields, 0, 'never the 4 ms frame budget');
+  assert.deepEqual(kinds, ['world-intent', 'world-intent', 'world-intent', 'world-intent'], 'with the room-intent lease at every checkpoint');
+  assert.equal(f.coordinator.prefetch('fjord', { intent: true, pace: 'loading' }), null, 'one build per map');
+  const demanded = f.coordinator.beginBuild('fjord').promise;
+  assert.equal(f.coordinator.stats.promoted, 1, 'the battle entry promotes it');
+  progress.resolve();
+  const world = await demanded;
+  assert.equal(await prefetched, world);
+  assert.equal(activeLeases, 0);
+  // the pace is only for explicit intent: passive speculation keeps its frame budget
+  const passive = cancellationFixture({
+    acquireBackgroundWork: async () => ({ release() {} }),
+    getGarageActivity: () => ({ phase: 'garage', transitionActive: false, lastActivityAt: -10_000 }),
+    foregroundYielder: () => async () => assert.fail('passive speculation is never loading-paced'),
+    backgroundYielder: () => async () => {},
+    loadModule: async () => ({ async createMapAsync(_engine, _options, report) { await report('Building terrain meshes', 0.5); return { group: new THREE.Group() }; } }),
+  });
+  assert.ok(await passive.coordinator.prefetch('alpine', { pace: 'loading' }));
+}
+console.log('worldBuildCoordinator.selftest: a loading-paced intent prefetch takes the covered slices under its lease and is promoted; passive speculation keeps its budget');
+
 console.log('worldBuildCoordinator.selftest: join, promotion, residency, eviction, intent pacing, progress dedup, cancellation and default foreground 6/16 policy passed');

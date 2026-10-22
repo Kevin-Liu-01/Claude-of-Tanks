@@ -136,7 +136,8 @@ assert.match(garageSource, /import\('\.\/garageFacetPanel\.css'\)/, 'the panel s
 assert.doesNotMatch(garageSource, /^import (?!type )[^;]*from '(?:\.\.\/vehicles\/vehicleFacets(?:Search)?|\.\/garageFacet(?:Filter|Panel))\.ts'/m,
   'garage.ts never imports the facet modules statically');
 assert.match(garageSource, /\.filter\(\(s\) => facetVisible\(s\.id\)\)/, 'arrow keys walk only the filtered strip');
-assert.match(garageCss, /\.cot-facet-toggle\{position:sticky;left:0;/, 'the toggle stays at the rail start while flags scroll');
+assert.match(garageCss, /\.cot-facet-toggle\{grid-column:2;position:relative;/, 'the toggle has its own rail slot before the flag track');
+assert.match(garageSource, /countryRailEl\.insertBefore\(facetToggle, chipsEl\);/, 'no flag ever scrolls beneath the toggle');
 assert.match(panelCss, /\.cot-country-chip\.is-facet-empty\{opacity:/, 'nations without a match read as empty');
 // boot budget: only the toggle's idle look rides garage.css; its open/active/badge styles load with the panel
 assert.doesNotMatch(garageCss, /is-facet-empty|cot-facet-toggle\.is-active|cot-facet-toggle \.ct|cot-facet-panel/,

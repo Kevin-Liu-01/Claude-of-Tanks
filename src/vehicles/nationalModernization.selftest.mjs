@@ -193,7 +193,7 @@ for(const quality of ['high','low']) {
  const silhouettes=new Set(),hullShapes=new Set();
  for(const c of configs){
   assert.equal(ALL_TANK_IDS.filter(id=>id===c.id).length,1);
-  const spec=getSpec(c.id);assert.deepEqual(decorManifestFor(spec,()=>.5),[],`${c.id}: authored equipment has no unsupported generic overlay`);assert(spec.name.endsWith('(Concept)'));assert.equal(spec.nation,c.nation);
+  const spec=getSpec(c.id);assert.deepEqual(decorManifestFor(spec,()=>.5),[],`${c.id}: authored equipment has no unsupported generic overlay`);assert(!/concept/i.test(spec.name),`${c.id}: the owner dropped the concept tag from the national names (2026-10-21); the status facet keeps the class`);assert.equal(spec.nation,c.nation);
   assert.equal(spec.gun.caliberMm,125);assert.equal(tankTier(c.id),10);
   for(const side of ['L','R'])assert(spec.armor.hullPlates.some(p=>p.name===`skirt_era_${side}`&&p.era),`${c.id}: visible skirt ERA has a damage sector`);
   const modules=spec.armor.modules.map(m=>m.module);assert.equal(new Set(modules).size,modules.length);

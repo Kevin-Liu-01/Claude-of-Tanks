@@ -2,7 +2,7 @@
 // It is a separate concept; the twelve current national designs are unchanged.
 export const HETMAN_II_DESIGN = {
   id: 't72b3m_hetman_ii',
-  name: 'T-72B3M Hetman II (Concept)',
+  name: 'T-72B3M Hetman II',
   y: 1.445, z: .114315,
   // Owner 2026-10-15 (VEH-21): the T-72B3M (2016) turret itself (nationalDonorTurrets.ts); the station stands on its
   // commander's cupola (turret frame).
