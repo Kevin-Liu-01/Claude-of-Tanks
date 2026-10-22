@@ -53,6 +53,13 @@ const CURVES = {
   // print's fore line (profiles/italy.ts)
   c1_ariete_proto_serie1: [],
   c2_ariete_proto: [],
+  // release 231: the M1A2 X family, its turret race cover and race inside the turret's ring disc
+  // (profiles/abramsSourceXHull.ts)
+  m1a2_abrams: [],
+  m1a2_abrams_tusk: [],
+  m1a2_abrams_sepv2: [],
+  m1a2_abrams_sepv3: [],
+  ua_m1a2_abrams: [],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type
