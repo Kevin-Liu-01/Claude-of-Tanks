@@ -3,6 +3,7 @@ import { collisionFootprintContainsPoint, type CollisionRecord, type ObstacleQue
 import { MATCH_OBJECTIVE_LAYOUTS, MATCH_MODE_ARENA_HALF_EXTENT_M } from './matchObjectiveLayouts.ts';
 import { PLAYABLE_HALF_EXTENT_M } from '../world/battlefieldBounds.ts';
 import { createObjectiveAccess } from './matchPlacementAccess.ts';
+import { CLIFF_GRADE } from './terrainMobility.ts';
 import type { BotNavigationGrid } from './botRoutePlanner.ts';
 import {
   createDeployment, deploymentFrame, DEPLOYMENT_CLEARED_SLOTS, DEPLOYMENT_LATTICE_M, DEPLOYMENT_SLOT_RADIUS_M,
@@ -27,7 +28,11 @@ export interface PlacementAnchors {
   deployments?: { alpha: readonly PlacementPoint[]; bravo: readonly PlacementPoint[] };
 }
 interface Reservation extends PlacementPoint { radius: number; key: string }
-interface OccupiedPlacement extends PlacementPoint { radius: number }
+/**
+ * A hull the search keeps clear of: its disc plus a metre, or `clearM` from its centre when set (a live enemy a respawn
+ * keeps its safe radius from: the ruleset's respawnSafeM, sim/matchModes.ts reviveAtSpawn).
+ */
+interface OccupiedPlacement extends PlacementPoint { radius: number; clearM?: number }
 interface PlacementWorld {
   heightField: PlacementTerrain;
   obstacles: readonly CollisionRecord[];
@@ -43,8 +48,20 @@ interface PlacementOptions extends PlacementWorld {
    */
   objectiveAxisM?: number | null;
 }
-interface Footprint { radius: number; relief: number; normalY: number; solidOnly?: boolean; halfExtent?: number }
+/** `facing`: a spawn's heading (yaw); its hull then also needs open ground ahead (spawnFacing). */
+interface Footprint { radius: number; relief: number; normalY: number; solidOnly?: boolean; halfExtent?: number; facing?: number }
 const SPAWN_NORMAL_Y = .90;
+/**
+ * A spawn faces open ground (spawns-234; the owner: "fix spawn points for all maps annd game modes too"): the hull's lane
+ * from 2 m past its disc to 12 m past it, sampled every 2 m, holds no live solid record in the hull's body band (a 1.8 m
+ * disc, 0.3-3 m over the ground there) and no stretch rising or falling steeper than CLIFF_GRADE (the wall the movement
+ * stops against and the routes never cross: terrainMobility.ts). A heading
+ * that fails turns by these steps (radians, nearest first) toward one that holds, so the hull still faces its front;
+ * when none holds the point is refused and the search moves on. Crushable records (fences, cars, hedges) do not close
+ * the lane: the hull drives through them.
+ */
+const SPAWN_LANE_M = 12, SPAWN_LANE_STEP_M = 2, SPAWN_LANE_HALF_M = 1.8;
+const SPAWN_TURNS = [0, 15, -15, 30, -30, 45, -45, 60, -60].map((deg) => deg * Math.PI / 180);
 const OBJECTIVE_NORMAL_Y = .94;
 const SEARCH_RADII = [8, 16, 24, 32, 48, 64, 80, 104, 128, 160, 200, 248, 304, 368];
 /** An axis objective moves at most this far across the axis (or inward) before the ring search takes over. */
@@ -72,6 +89,9 @@ function deploymentSpawnsOf(anchors: PlacementAnchors): DeploymentSpawns {
 
 /** A deployment slot's ground: the spawn footprint at the fleet's largest placement radius, whole inside the playable square. */
 const SLOT_FOOTPRINT: Footprint = { radius: DEPLOYMENT_SLOT_RADIUS_M, relief: 2, normalY: SPAWN_NORMAL_Y, halfExtent: PLAYABLE_HALF_EXTENT_M };
+
+/** A slot's lane starts past the fleet's narrowest hull (placementTankRadius's 3.5 m floor). */
+const SLOT_LANE_FROM_M = 3.5 + SPAWN_LANE_STEP_M;
 
 /** Own half by the placement's rule: a slot stands its radius and 16 m off the middle line, on its side. */
 function deploymentSideCheck(frame: DeploymentFrame): (team: DeploymentTeam, point: PlacementPoint) => boolean {
@@ -299,6 +319,48 @@ function blockedByWorld(world: PlacementWorld, point: PlacementPoint, footprint:
   return false;
 }
 
+/**
+ * Whether a hull at `point` with heading `yaw` faces open ground from `fromM` to `toM` ahead of its centre (a hull of
+ * radius r: r + SPAWN_LANE_STEP_M to r + SPAWN_LANE_M; no wall, no cliff).
+ */
+function laneOpen(world: PlacementWorld, point: PlacementPoint, fromM: number, toM: number, yaw: number,
+  scratch: CollisionRecord[]): boolean {
+  const field = world.heightField, fx = Math.sin(yaw), fz = Math.cos(yaw);
+  let previous = field.getHeightAt(point.x, point.z), previousD = 0;
+  for (let d = fromM; d <= toM + 1e-6; d += SPAWN_LANE_STEP_M) {
+    const x = point.x + fx * d, z = point.z + fz * d, y = field.getHeightAt(x, z);
+    if (!Number.isFinite(y) || Math.abs(y - previous) > CLIFF_GRADE * (d - previousD)) return false;
+    previous = y; previousD = d;
+    // the query reaches a metre past the lane: the footprint test's margin is mitered, so a sharp corner it touches can
+    // stand past the lane's own box
+    const r = SPAWN_LANE_HALF_M, q = r + 1;
+    const obstacles = world.queryObstacles ? world.queryObstacles(x - q, z - q, x + q, z + q, scratch) : world.obstacles;
+    for (const obstacle of obstacles) {
+      if (obstacle.crushed || obstacle.dead || obstacle.crushable) continue;
+      if (obstacle.max[1] < y + .3 || obstacle.min[1] > y + 3) continue;
+      if (collisionFootprintContainsPoint(obstacle, x, z, r)) return false;
+    }
+  }
+  return true;
+}
+
+/** The heading nearest `yaw` (SPAWN_TURNS) whose lane is open, or null. */
+function spawnFacing(world: PlacementWorld, point: PlacementPoint, radius: number, yaw: number,
+  scratch: CollisionRecord[]): number | null {
+  for (const turn of SPAWN_TURNS) {
+    if (laneOpen(world, point, radius + SPAWN_LANE_STEP_M, radius + SPAWN_LANE_M, yaw + turn, scratch)) return wrapAngle(yaw + turn);
+  }
+  return null;
+}
+
+function wrapAngle(angle: number): number {
+  const turn = Math.PI * 2;
+  let out = angle % turn;
+  if (out > Math.PI) out -= turn;
+  if (out <= -Math.PI) out += turn;
+  return out;
+}
+
 export interface MatchPlacement {
   readonly navigation: BotNavigationGrid | null;
   readonly anchors: PlacementAnchors;
@@ -322,9 +384,10 @@ export interface MatchPlacement {
     occupied?: readonly OccupiedPlacement[]): PlacementSpawn;
   respawn(point: PlacementSpawn, key: string, occupied: readonly OccupiedPlacement[]): PlacementSpawn | null;
   /**
-   * A respawn that stays near its point (gameplay-modes-228, the Horde's arrival ring): the same footprint, terrain and
-   * occupancy rules as `respawn`, searched only on the rings within `maxShiftM`, and null past them — never the
-   * map-wide lattice, which could put an arrival anywhere (beside the humans it was kept away from).
+   * A respawn that stays near its point (gameplay-modes-228, the Horde's arrival ring; spawns-234, a revive's pass
+   * clear of live enemies by the ruleset's respawnSafeM): the same footprint, terrain and occupancy rules as `respawn`,
+   * searched only on the rings within `maxShiftM`, and null past them — never the map-wide lattice, which could put an
+   * arrival anywhere (beside the humans it was kept away from).
    */
   respawnNear(point: PlacementSpawn, key: string, occupied: readonly OccupiedPlacement[], maxShiftM: number): PlacementSpawn | null;
   pickup(point: PlacementPoint, occupied?: readonly OccupiedPlacement[]): PlacementPoint | null;
@@ -342,24 +405,34 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
   const originalMiddle = { x: (anchors.alpha.x + anchors.bravo.x) * .5, z: (anchors.alpha.z + anchors.bravo.z) * .5 };
   const access = mode === 'standard' ? null : createObjectiveAccess(options, anchors);
 
+  /** The heading the last accepted spawn footprint faces (spawnFacing), read by `find` right after `acceptable`. */
+  let acceptedFacing = 0;
   function acceptable(point: PlacementPoint, footprint: Footprint, key: string,
-    half: number, occupied: readonly (PlacementPoint & { radius: number })[]): boolean {
+    half: number, occupied: readonly OccupiedPlacement[]): boolean {
     const along = (point.x - originalMiddle.x) * ux + (point.z - originalMiddle.z) * uz;
     if (half && along * half < footprint.radius + 16) return false;
     for (const other of reservations) {
       if (other.key !== key && Math.hypot(point.x - other.x, point.z - other.z) < footprint.radius + other.radius + 3) return false;
     }
     for (const other of occupied) {
-      if (Math.hypot(point.x - other.x, point.z - other.z) < footprint.radius + other.radius + 1) return false;
+      if (Math.hypot(point.x - other.x, point.z - other.z) < (other.clearM ?? footprint.radius + other.radius + 1)) return false;
     }
-    return !blockedByWorld(options, point, footprint, scratch)
-      && placementTerrainSafe(options.heightField, point, footprint)
-      && (!footprint.solidOnly || !access || access.reachable(point));
+    if (blockedByWorld(options, point, footprint, scratch) || !placementTerrainSafe(options.heightField, point, footprint)
+      || (footprint.solidOnly && access && !access.reachable(point))) return false;
+    if (footprint.facing === undefined) return true;
+    // a spawn drives out to the battle: a dry route from it into both deployments' flood (where the mode built one)
+    if (access && !access.departs(point)) return false;
+    const facing = spawnFacing(options, point, footprint.radius, footprint.facing, scratch);
+    if (facing === null) return false;
+    acceptedFacing = facing;
+    return true;
   }
 
+  /** The point (and, for a spawn footprint, the heading spawnFacing turned it to) nearest `preferred` that is acceptable. */
   function find(preferred: PlacementPoint, footprint: Footprint, key: string, half = 0,
-    occupied: readonly (PlacementPoint & { radius: number })[] = [], maxShiftM = Infinity): PlacementPoint | null {
-    if (acceptable(preferred, footprint, key, half, occupied)) return { x: preferred.x, z: preferred.z };
+    occupied: readonly OccupiedPlacement[] = [], maxShiftM = Infinity): (PlacementPoint & { yaw?: number }) | null {
+    const found = (x: number, z: number) => footprint.facing === undefined ? { x, z } : { x, z, yaw: acceptedFacing };
+    if (acceptable(preferred, footprint, key, half, occupied)) return found(preferred.x, preferred.z);
     const point = { x: 0, z: 0 };
     for (const radius of SEARCH_RADII) {
       if (radius > maxShiftM) return null;
@@ -368,20 +441,20 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
         const angle = step / steps * Math.PI * 2;
         point.x = preferred.x + Math.sin(angle) * radius;
         point.z = preferred.z + Math.cos(angle) * radius;
-        if (acceptable(point, footprint, key, half, occupied)) return { ...point };
+        if (acceptable(point, footprint, key, half, occupied)) return found(point.x, point.z);
       }
     }
     // Sparse local rings can miss a clearing on the opposite map edge. One
     // bounded 20 m lattice finds the nearest valid global fallback without
     // lowering terrain, water, footprint or reservation requirements.
-    let best: PlacementPoint | null = null, bestDistance = Infinity;
+    let best: (PlacementPoint & { yaw?: number }) | null = null, bestDistance = Infinity;
     const limit = placementLimit(options.heightField, footprint);
     for (let z = -limit; z <= limit; z += 20) for (let x = -limit; x <= limit; x += 20) {
       const distance = (x - preferred.x) ** 2 + (z - preferred.z) ** 2;
       if (distance >= bestDistance) continue;
       point.x = x; point.z = z;
       if (!acceptable(point, footprint, key, half, occupied)) continue;
-      best = { ...point }; bestDistance = distance;
+      best = found(x, z); bestDistance = distance;
     }
     return best;
   }
@@ -473,12 +546,16 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
     if (deployment) return deployment;
     const stage = groundStage(options.heightField, spawnsOf), ground = stage.deployment;
     const onSide = deploymentSideCheck(ground.frame);
-    const check: DeploymentCheck = (team, point, held) => {
+    // the slot's own heading faces open ground (the lane of the fleet's narrowest hull to its widest: SPAWN_LANE_M);
+    // a pair moves jointly, so both sides keep the same formation and facing
+    const check: DeploymentCheck = (team, point, held, yaw) => {
       if (!onSide(team, point) || !spacedFrom(point, held)) return false;
       for (const other of objectiveReservations) {
         if (Math.hypot(point.x - other.x, point.z - other.z) < SLOT_FOOTPRINT.radius + other.radius + 3) return false;
       }
-      return !blockedByWorld(options, point, SLOT_FOOTPRINT, scratch) && stage.ground(team, point);
+      return !blockedByWorld(options, point, SLOT_FOOTPRINT, scratch) && stage.ground(team, point)
+        && (!access || access.departs(point))
+        && (yaw === undefined || laneOpen(options, point, SLOT_LANE_FROM_M, SLOT_FOOTPRINT.radius + SPAWN_LANE_M, yaw, scratch));
     };
     return deployment = createDeployment(ground.frame, check, (k) => ground.pair(k));
   };
@@ -488,14 +565,17 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
     if (explicit) explicitKeys.add(key);
     const old = reservations.find(entry => entry.key === key);
     radius = radius ?? old?.radius ?? 4.5;
-    const footprint = { radius, relief: 2, normalY: SPAWN_NORMAL_Y };
+    // the facing and departure laws (spawnFacing, access.departs) hold for every battle seat; the proving ground's
+    // marks are its measured lanes, each hull presented at its lane's angle, so they stand as the range laid them out
+    const footprint: Footprint = { radius, relief: 2, normalY: SPAWN_NORMAL_Y,
+      ...(Number.isFinite(point.yaw) && mode !== 'proving_ground' ? { facing: point.yaw } : {}) };
     const along = (point.x - originalMiddle.x) * ux + (point.z - originalMiddle.z) * uz;
     const half = Math.abs(along) > 60 ? Math.sign(along) : 0;
     const found = explicitKeys.has(key) ? point : find(point, footprint, key, half, occupied, maxShiftM);
     if (!found) return null;
-    if (old) Object.assign(old, found, { radius });
-    else reservations.push({ ...found, radius, key });
-    return { ...found, yaw: point.yaw };
+    if (old) Object.assign(old, { x: found.x, z: found.z, radius });
+    else reservations.push({ x: found.x, z: found.z, radius, key });
+    return { x: found.x, z: found.z, yaw: found.yaw ?? point.yaw };
   }
 
   return {
@@ -523,6 +603,4 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
   };
 }
 
-export function placementTankRadius(spec: { dims?: { hullLengthM?: number; widthM?: number } }): number {
-  return Math.max(3.5, Math.hypot((spec.dims?.hullLengthM ?? 7) * .5, (spec.dims?.widthM ?? 3.5) * .5) + .6);
-}
+export { placementTankRadius } from './hullRadius.ts';

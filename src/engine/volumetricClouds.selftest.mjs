@@ -360,7 +360,8 @@ assert.deepEqual(table, {
   fjord: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1100, thicknessM: 760, shadow: true, streets: 0.4, cirrus: 0.15, farBand: 0.35, contrails: 0, rain: 0, virga: 0, fogBank: 0.4 },
   delta: { regime: 'towering-cumulus', coverage: 0.38, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3, contrails: 0, rain: 0.45, virga: 0.1, fogBank: 0 },
   badlands: { regime: 'cumulus-humilis', coverage: 0.18, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.35, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.9, fogBank: 0 },
-  monsoon: { regime: 'cumulonimbus-front', coverage: 0.4, baseM: 1000, thicknessM: 3000, shadow: true, streets: 0.1, cirrus: 0.25, farBand: 0.4, contrails: 0, rain: 0.85, virga: 0, fogBank: 0 },
+  // (233: Monsoon's congestus at 2 km under the front's wind and rain — the front's 4.8 km towers drew a translucent box)
+  monsoon: { regime: 'cumulonimbus-front', coverage: 0.45, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.1, cirrus: 0.25, farBand: 0.4, contrails: 0, rain: 0.85, virga: 0, fogBank: 0 },
   alpine: { regime: 'towering-cumulus', coverage: 0.26, baseM: 1900, thicknessM: 900, shadow: true, streets: 0, cirrus: 0.3, farBand: 0.5, contrails: 0, rain: 0.15, virga: 0.1, fogBank: 0 },
   caldera: { regime: 'cumulus-humilis', coverage: 0.22, baseM: 1500, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.45, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
   // (2026-10-18, the SKY lane's 228 census: Ironworks back on cumulus — the approved s146's lumpy cumulus over blue)
@@ -416,7 +417,8 @@ assert.deepEqual(table, {
   assert.ok(CLOUDSCAPE_REGIMES.altocumulus.cellM < 700 && CLOUDSCAPE_REGIMES.altocumulus.baseM >= 2500 && CLOUDSCAPE_REGIMES.altocumulus.stratiform < 0.5, 'altocumulus: small elements high, cumuliform enough to keep lit borders');
   // the monsoon front keeps the sky over the camera open (round 68's ruling) with scud and anvils; the
   // white-out ceiling is a sheet at its authored altitude; the winter deck is a lumpy stratocumulus
-  const monsoon = deriveCloudLayerPreset(skyOf('monsoon'));
+  // (233: the front by its regime's own row, under Monsoon's sky — the map draws its congestus since)
+  const monsoon = deriveCloudLayerPreset({ ...skyOf('monsoon'), cloudscape: { regime: 'cumulonimbus-front', windDirDeg: 200 } });
   assert.deepEqual([monsoon.clearRadiusM, monsoon.anvil, monsoon.scud > 0, monsoon.towers, monsoon.typeRange, monsoon.fieldMix], [2500, 1, true, 1, [0.65, 1], 0.9], 'the front: wide masses of the broad field, clustered towers, anvils, scud, the sky over the camera open');
   const whiteout = deriveCloudLayerPreset(skyOf('whiteout'));
   assert.ok(whiteout.stratiform >= CLOUD_LAYER_RULES.sheetStratiform && whiteout.baseM === 180 && whiteout.fieldMix >= 0.8 && whiteout.scud === 0, 'whiteout: a closed ceiling, no rags at the camera');

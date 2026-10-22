@@ -9,7 +9,7 @@ import { TANK_SPECS } from '../specs.ts';
 import { ensureInteriorFills, hasInteriorFills, interiorFillRecord, interiorFillBoxes } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { ZTZ100_PROTOTYPE_PROFILES, ZTZ100_PROTOTYPE_DATUMS as D,
-  ZTZ100_PROTOTYPE_LAUNCHER as L } from './ztz100Prototype.ts';
+  ZTZ100_PROTOTYPE_LAUNCHER as L, ZTZ100_PROTOTYPE_CANISTER as C } from './ztz100Prototype.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 const id = 'ztz100_prototype', spec = TANK_SPECS[id];
@@ -57,18 +57,19 @@ function cast(root, frame, origin, direction, far = 3) {
 }
 function checkLaunchMouths(root, frame) {
   for (const x of L.columns) for (const y of L.rows) {
+    // 2026-10-21 Object 695 canisters: open air down to a sealed launch terminal recessed in each collar.
     const back = cast(root, frame, [x, y, 1.02], [0, 0, -1]);
-    assert.ok(back, 'each open cell has a real rear plate');
-    near(frame.worldToLocal(back.point.clone()).z, -1.075, .001, 'launcher air reaches its deep rear plate');
+    assert.ok(back, 'each open cell has a real sealed terminal');
+    near(frame.worldToLocal(back.point.clone()).z, L.mouth - C.recess, .001, 'mouth air reaches its recessed terminal');
     for (let i = 0; i < 8; i++) {
       const a = (i + .173) * Math.PI / 4, cx = Math.cos(a), sy = Math.sin(a);
-      const rim = cast(root, frame, [x + cx * .16, y + sy * .16, 1.02], [0, 0, -1], .05);
+      const rim = cast(root, frame, [x + cx * .128, y + sy * .128, 1.02], [0, 0, -1], .05);
       assert.ok(rim, 'real terminal annulus must exist for all eight cells');
       near(frame.worldToLocal(rim.point.clone()).z, 1, .001, 'terminal annulus plane');
-      const wall = cast(root, frame, [x, y, .35], [cx, sy, 0], .20);
-      assert.ok(wall, 'real inward canister wall');
+      const wall = cast(root, frame, [x, y, .955], [cx, sy, 0], .20);
+      assert.ok(wall, 'real dark-lined collar bore');
       const point = frame.worldToLocal(wall.point.clone());
-      near(Math.hypot(point.x - x, point.y - y), .145, .004, 'full sized inner wall including LOW chord');
+      near(Math.hypot(point.x - x, point.y - y), L.innerRadius, .005, 'full sized bore including LOW chord');
     }
   }
 }
@@ -106,14 +107,18 @@ function checkSeats() {
   for (const s of [-1, 1]) {
     joint(stock('pitch-pedestal', s * .515), stock('concept-central-spine'), [s * .46, .20, .65], 'pedestal to spine');
     joint(stock('pitch-bearing', s * .515), stock('pitch-pedestal', s * .515), [s * .515, .53, .80], 'bearing to pedestal');
-    joint(stock('bank-inner-fork', s * .655), stock('bank-pitch-journal', s * .64), [s * .655, -.05, 0], 'journal to fork');
-    joint(stock('bank-inner-fork', s * .655), stock('bank-lower-tray', s * 1.08), [s * .655, -.19, 0], 'fork to tray');
-    joint(stock('bank-saddle-web', s * 1.08), stock('bank-lower-tray', s * 1.08), [s * 1.08, -.177, .54], 'tray to saddle web');
+    joint(stock('bank-pitch-journal', s * .645), stock('pod-trunnion-hub', s * .726), [s * .72, 0, 0], 'journal into hub');
+    joint(stock('pod-trunnion-hub', s * .726), stock('pod-cradle-plate', s * .752), [s * .739, 0, 0], 'hub on cradle plate');
+    joint(stock('pod-cradle-plate', s * .752), stock('pod-post', s * .7815), [s * .765, .10, L.frames[0]], 'plate across inner post');
+    joint(stock('pod-rail', s * .93), stock('pod-strap', s * 1.08), [s * .93, -.042, L.frames[1]], 'rail under bottom strap');
+    joint(stock('pod-saddle', s * 1.066), stock('pod-rail', s * .93), [s * .93, -.06, L.frames[0]], 'rail into saddle');
+    joint(stock('pod-elevation-sector', s * .7265), stock('pod-trunnion-hub', s * .726), [s * .7265, -.13, 0], 'sector on hub');
   }
   for (const x of L.columns) for (const y of L.rows) {
-    const saddles = stock('canister-saddle', x).filter(p => p.mesh.position.y === y);
-    joint(saddles, stock(y === .02 ? 'bank-saddle-web' : 'bank-between-row-web'), [x, y - .190, .54], 'web to saddle');
-    joint(saddles, stock('missile-canister', x).filter(p => p.mesh.position.y === y), [x + .174, y, .54], 'saddle to canister wall');
+    const bands = stock('canister-band', x).filter(p => p.mesh.position.y === y && L.frames.includes(p.mesh.position.z));
+    joint(bands, stock('missile-canister', x).filter(p => p.mesh.position.y === y), [x, y + .124, L.frames[1]], 'band clamps canister body');
+    const c = Math.sign(x) * L.podCenters[1];
+    joint(stock('pod-center-post', c), bands, [x - Math.sign(x - c) * .132, y, L.frames[0]], 'centre post bears on band');
   }
   joint(stock('sensor-bearing'), stock('concept-central-spine'), [.23, .485, -.10], 'sensor on actual roof');
   joint(stock('sensor-bearing'), stock('sensor-head'), [.23, .5775, -.10], 'sensor head on bearing');
@@ -159,17 +164,17 @@ function primitiveScene(frame) {
 function negatives(tank, gun) {
   const group = primitiveScene(gun); tank.root.updateMatrixWorld(true);
   checkLaunchMouths(group, gun);
-  const canister = group.children.find(m => m.userData.partTag === 'missile-canister');
+  const canister = group.children.find(m => m.userData.partTag === 'canister-mouth');
   canister.visible = false;
-  assert.throws(() => checkLaunchMouths(group, gun), assert.AssertionError, 'missing cell shell fails physical terminal rays');
+  assert.throws(() => checkLaunchMouths(group, gun), assert.AssertionError, 'missing collar fails physical mouth rays');
   canister.visible = true; canister.position.x += .12; tank.root.updateMatrixWorld(true);
   assert.throws(() => checkLaunchMouths(group, gun), assert.AssertionError, 'shifted shell fails terminal alignment');
   canister.position.x -= .12; gun.remove(group);
-  const fork = stock('bank-inner-fork')[0].mesh, oldY = fork.position.y;
-  fork.position.y += .15; fork.updateMatrixWorld(true);
-  assert.throws(checkSeats, assert.AssertionError, 'floating receiving fork fails finite joint');
-  fork.position.y = oldY; fork.updateMatrixWorld(true);
-  const cap = new THREE.Mesh(new THREE.CircleGeometry(.145, 24), front);
+  const plate = stock('pod-cradle-plate')[0].mesh, oldX = plate.position.x;
+  plate.position.x += Math.sign(oldX) * .05; plate.updateMatrixWorld(true);
+  assert.throws(checkSeats, assert.AssertionError, 'floating cradle plate fails finite joint');
+  plate.position.x = oldX; plate.updateMatrixWorld(true);
+  const cap = new THREE.Mesh(new THREE.CircleGeometry(.14, 24), front);
   cap.position.set(L.columns[0], L.rows[0], 1); gun.add(cap); tank.root.updateMatrixWorld(true);
   assert.throws(() => checkLaunchMouths(tank.root, gun), assert.AssertionError, 'painted missile mouth cap fails true air');
   gun.remove(cap); cap.geometry.dispose();
@@ -188,15 +193,15 @@ function fillBounds(record) {
 function assertFillAir(boxes) {
   for (const box of boxes) for (const x of L.columns) for (const y of L.rows) {
     const [gx, gy, gz] = D.trunnion;
-    if (box.max[2] <= gz - 1.075 || box.min[2] >= gz + L.mouth) continue;
+    if (box.max[2] <= gz + L.mouth - C.recess || box.min[2] >= gz + L.mouth) continue;
     const dx = Math.max(box.min[0] - gx - x, 0, gx + x - box.max[0]);
     const dy = Math.max(box.min[1] - gy - y, 0, gy + y - box.max[1]);
     assert.ok(Math.hypot(dx, dy) >= L.innerRadius,
-      'every generated box remains outside each complete open launch cylinder');
+      'every generated box remains outside each open launch recess');
   }
 }
 assertFillAir(fillBounds(fillRecord));
-assert.throws(() => assertFillAir([{ min: [-1.30, 2.04, .9], max: [-1.26, 2.10, 1.0] }]),
+assert.throws(() => assertFillAir([{ min: [-1.25, 2.15, 1.16], max: [-1.21, 2.19, 1.24] }]),
   assert.AssertionError, 'a hidden interior box in a real launch bore must fail');
 const results = [];
 try {
@@ -207,7 +212,7 @@ try {
     const materials = new Map();
     try {
       selectNear(tank.root); tank.root.updateMatrixWorld(true);
-      assert.equal(stock('missile-canister').length, 8); assert.equal(stock('missile-backplate').length, 8);
+      assert.equal(stock('missile-canister').length, 8); assert.equal(stock('canister-rear-cap').length, 8);
       const launchParts = tank.root.userData.combatGeometryParts.filter(p => p.module === 'missileRack');
       assert.equal(launchParts.length, 8, 'all physical cell shells publish the missile module');
       assert.ok(launchParts.every(p => p.parent === 'gunG'), 'missile module follows the pitching launcher');

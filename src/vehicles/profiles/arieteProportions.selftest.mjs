@@ -65,7 +65,8 @@ for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
     heightM: id === 'c1_ariete_proto_serie1' ? 2.805 : 2.827,
   }, `${id}: registered dimensions are exactly ten percent larger`);
   assert.equal(spec.visual.trackWidthM, 0.66, `${id}: shoe course scales by ten percent`);
-  assert(Math.abs(spec.armor.turretPivot[1] - 1.54) < 1e-12,
+  // release 231: the turret rides ARIETE_PROTO_TURRET_LIFT_M (0.04) over the print seat, so 1.44 x 1.10
+  assert(Math.abs(spec.armor.turretPivot[1] - 1.584) < 1e-9,
     `${id}: armor and turret rise together in the enlarged frame`);
   const trackPlate = spec.armor.hullPlates.find((plate) => plate.name === 'track_R');
   assert(Math.abs(Math.max(...trackPlate.verts.map((vertex) => vertex[1])) - 1.166) < 1e-12,
@@ -83,7 +84,7 @@ for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
   const bandWorldBounds = new THREE.Box3().setFromObject(leftBand);
   assert(bandWorldBounds.max.x - bandWorldBounds.min.x >= 0.649,
     `${id}: rendered band carries the enlarged 0.66 m shoe width`);
-  assert(Math.abs(turret.position.y - 1.54) < 1e-9,
+  assert(Math.abs(turret.position.y - 1.584) < 1e-9,
     `${id}: articulated turret is seated in the enlarged frame`);
   hull.geometry.computeBoundingBox();
   assert(hull.geometry.boundingBox.min.y >= 0.539,

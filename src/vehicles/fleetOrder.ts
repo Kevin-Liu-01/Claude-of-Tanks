@@ -51,7 +51,7 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
     'merkava4', 'merkava4b', 'namer_ifv', 'merkava4_trophy', 'merkava4_barak',
   ]),
   japan_mbt: Object.freeze([
-    'stb1', 'type74', 'type90_kyumaru', 'type90a', 'type10_tk_x', 'type10b',
+    'stb1', 'type74', 'type90_kyumaru', 'type90a', 'type10_tk_x', 'type10_dozer', 'type10b',
   ]),
   national_ua: Object.freeze(["t80u_zoria", "t72b3m_hetman", "t72b3m_hetman_ii", "t72b3_sich"]),
   national_pl: Object.freeze(["t80u_husarz", "t72b3m_wilk", "t72b3_zubr", "t72b3_zubr_ii"]),

@@ -74,72 +74,30 @@ const ztz99a2Prototype = inspect('ztz99a');
 const ztz99a2 = inspect('ztz99a2');
 const vt4a1 = inspect('vt4a1');
 
-// Type 99A keeps the certified native hull and running gear while replacing
-// the entire old rotating assembly with an independently scaled derivative
-// of the VT chevron architecture.
+// The Longwei (release 233) keeps the certified Type 99A hull and running gear under its own terraced turret; the
+// VT-derived chevron turret it carried through release 232 is retired (profiles/longwei.ts).
+const longweiReceipt = ztz99_longwei.turretRig.userData.longweiTurretReceipt;
 assert.equal(ztz99_longwei.hullRig.userData.runningGearReceipts[0].trackW, 0.629,
-  'Type 99A: certified native running gear is retained');
+  'Longwei: certified native running gear is retained');
 assert.deepEqual(ztz99_longwei.turretRig.position.toArray(), [0, 1.57, 0.64],
-  'Type 99A: complete VT-derived rotating assembly moves forward and slightly upward');
+  'Longwei: the turret pivot (a gameplay datum) is unchanged');
 assert.deepEqual(ztz99_longwei.gunRig.position.toArray(), [0, 0.3198, 0.74],
-  'Type 99A: gun is re-seated inside the new chevron throat');
-assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.derivativeOf, 'vt4a1',
-  'Type 99A: receipt declares the VT-4A1 design relationship');
-assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.legacyType99aTurretRemoved, true,
-  'Type 99A: old rotating assembly is absent');
-assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.turretEquipmentReseated, true,
-  'Type 99A: all roof and side equipment is re-seated');
-assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.turretHeightScale, 0.82,
-  'Type 99A: VT-derived shell matches the VT-4A1 vertical envelope');
-assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.matchedVt4a1TurretHeight, true,
-  'Type 99A: receipt records the requested VT-4A1 height normalization');
-assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.continuousCommanderSightStack, true,
-  'Type 99A: commander sight is continuously seated from roof to optic head');
-assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.frontShellLengthScale, 0.90,
-  'Type 99A: selected forward shell course is exactly 10% shorter');
-assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.chevronInnerAdvanceM, 0.18,
-  'Type 99A: chevron throat advances substantially beyond the shortened shell');
-assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.chevronOuterAdvanceM, 0.04,
-  'Type 99A: chevron advance tapers into the sidewall rather than detaching at the shoulder');
-assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.chevronSideJoinGapM, 0,
-  'Type 99A: mirrored chevron terminal caps close the former turret-side gap');
-assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.turretMovedForwardM, 0.42,
-  'Type 99A: receipt records the complete 0.42 m forward turret move');
-assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.turretRaisedM, 0.09,
-  'Type 99A: complete rotating assembly rises 0.09 m');
-assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.rearExtensionM, 0.50,
-  'Type 99A: integral bustle extends 0.50 m aft of its former stations');
-assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.rearUndersideLiftM, 0.42,
-  'Type 99A: rear underside climbs 0.42 m to clear the engine deck');
-assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.slopedBustleUnderside, true,
-  'Type 99A: receipt records the structural sloped bustle underside');
-assert(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.minimumRearDeckClearanceM >= 0.02,
-  'Type 99A: extended bustle retains positive rear-deck clearance');
+  'Longwei: the trunnion (a gameplay datum) is unchanged');
+assert.equal(longweiReceipt?.architecture, 'longwei-terraced-r233', 'Longwei: the terraced turret is built');
+assert.equal(longweiReceipt?.legacyVtDerivativeRetired, true, 'Longwei: the VT-derived turret is gone');
+assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt, undefined,
+  'Longwei: no VT-derivative receipt survives');
+assert(longweiReceipt.mantletHalfWidthM < longweiReceipt.throatHalfWidthM,
+  'Longwei: the box mantlet clears its throat walls');
 for (const name of ['turret', 'turretDark', 'turretExternalArmor']) {
   const object = ztz99_longwei.tank.root.getObjectByName(name);
   assert(object && minimumRearDeckClearance(object) >= 0.02,
-    `Type 99A: ${name} rear vertices clear the ramp and engine deck by at least 0.02 m`);
+    `Longwei: ${name} rear vertices clear the ramp and engine deck by at least 0.02 m`);
 }
-assert.equal(ztz99_longwei.hullRig.userData.rearFuelDrumReceipt?.fuelDrums, 2,
-  'Type 99A: rear service rack carries exactly two auxiliary fuel drums');
-assert.equal(ztz99_longwei.hullRig.userData.rearFuelDrumReceipt?.drumDiameterM, 0.50,
-  'Type 99A: rear drums have the requested large 0.50 m diameter');
-assert.equal(ztz99_longwei.hullRig.userData.rearFuelDrumReceipt?.drumLengthM, 1.12,
-  'Type 99A: twin transverse drums span the rear service wall');
-assert.equal(ztz99_longwei.hullRig.userData.rearFuelDrumReceipt?.supportedAndSeated, true,
-  'Type 99A: drum rack overlaps the transom and carries both barrels');
 assert.notEqual(ztz99_longwei.turretSignature, vt4a1.turretSignature,
-  'Type 99A: derivative is not a duplicate VT-4A1 mesh');
-assert.equal(ztz99_longwei.turretRig.userData.vtFamilyTurretReceipt?.architecture,
-  vt4a1.turretRig.userData.vtFamilyTurretReceipt?.architecture,
-  'Type 99A and VT-4A1 share one authored chevron architecture');
-assert.equal(ztz99_longwei.turretRig.userData.type99aVtDerivativeReceipt?.turretHeightScale,
-  vt4a1.turretRig.userData.vt4a1TurretReceipt?.turretHeightScale,
-  'Type 99A and VT-4A1 use the same primary turret height scale');
-const type99aPrimaryTurretSize = new Box3().setFromObject(ztz99_longwei.turret).getSize(new Vector3());
-const vt4a1PrimaryTurretSize = new Box3().setFromObject(vt4a1.turret).getSize(new Vector3());
-assert(Math.abs(type99aPrimaryTurretSize.y - vt4a1PrimaryTurretSize.y) < 1e-8,
-  'Type 99A and VT-4A1 primary turret meshes have the same measured height');
+  'Longwei: its turret is not the VT-4A1 mesh');
+assert.notEqual(ztz99_longwei.turretSignature, ztz99a2.turretSignature,
+  'Longwei: its turret is not the ZTZ-99A2 mesh');
 
 // VT-4A1 and ZTZ-99A2 intentionally share one exact hull builder.
 assert.equal(vt4a1.hullSignature, ztz99a2.hullSignature,
@@ -242,4 +200,4 @@ ztz99_longwei.tank.dispose();
 ztz99a2Prototype.tank.dispose();
 ztz99a2.tank.dispose();
 vt4a1.tank.dispose();
-console.log('type99AAngularTurret.selftest: forward/taller VT-4A1 and independent VT-derived Type 99A turret, equipment and deep bustle verified');
+console.log('type99AAngularTurret.selftest: forward/taller VT-4A1, the A2 family and the Longwei\'s own terraced turret verified');

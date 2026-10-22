@@ -8,7 +8,7 @@ import type {
 } from './armorAimOverlay.ts';
 import type { GameState } from './stateCore.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
-import { normalizeGameMode } from '../sim/matchModes.ts';
+import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import type { DamagePanelController } from '../ui/damagePanel.ts';
 import type {
   ConcealmentView,

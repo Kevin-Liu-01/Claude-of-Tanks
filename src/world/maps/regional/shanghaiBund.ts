@@ -331,8 +331,9 @@ const bundBank: RegionalBuilder = (ctx) => {
     // the bank's doors (bronze, at the back of their opening) and its name over them, sandbags along the front
     if (kind !== 'portico') {
       faceBox(sink, 'structureMetal', front, 0, 2.0, -rev + 0.03, doorW, 3.6, 0.04, { colour: shade(BRONZE, 0.7), decor: true });
-      faceBox(sink, 'structureMetal', front, 0, 4.25, 0.1, 4.2, 0.45, 0.04, { colour: BRONZE, decor: true });
-      faceBox(sink, 'structureMetal', front, 0, 4.25, 0.13, 3.2, 0.2, 0.01, { colour: GILT, decor: true, fine: true });
+      // (the owner, 2026-10-21: the towers' "floating parts") the plaque seated on the wall: its back stood 8 cm off it
+      faceBox(sink, 'structureMetal', front, 0, 4.25, 0.02, 4.2, 0.45, 0.04, { colour: BRONZE, decor: true });
+      faceBox(sink, 'structureMetal', front, 0, 4.25, 0.045, 3.2, 0.2, 0.01, { colour: GILT, decor: true, fine: true });
     }
     if (look() < 0.6) sandbags(sink, front, 0, 0, Math.min(W * 0.4, 8), 1.4, look);
     scars(sink, front, ground, look, mobile, false, [...holes[0], ...(rec > 0 ? [{ u0: -pw / 2, u1: pw / 2, y0: -1, y1: top }] : [])]);

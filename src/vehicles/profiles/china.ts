@@ -29,7 +29,6 @@ import { DoubleSide, Float32BufferAttribute, Mesh, MeshBasicMaterial, Raycaster,
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { mount } from './fittingMount.ts';
 import { smokeSocketsFor } from '../vehicleAuxiliaryGeometry.ts';
-import { DRUM_ISSUE_PAINTS, fuelDrumParts, hash01, place } from '../accessoryPrimitives.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import { bustleCutZ, ZTZ99A2_BUSTLE_CUT_FRONT_Z, ZTZ99A2_BUSTLE_CUT_REAR_Z } from '../donorBustleCut.ts';
 
@@ -89,79 +88,6 @@ function addSmokeBanks(
       rotation: [0, 0, -side * 0.12], seed: seed + (side > 0 ? 1 : 0),
     }), side * x, y, z);
   }
-}
-
-interface RearFuelDrumOptions {
-  readonly radius?: number;
-  readonly length?: number;
-  readonly centerX?: number;
-  readonly cradleDepth?: number;
-  readonly rearPlateZ?: number;
-}
-
-export function addRearFuelDrums(
-  P: ChinaBuilderPort,
-  y: number,
-  z: number,
-  seed: number,
-  options: RearFuelDrumOptions = {},
-): void {
-  const { cylY, box } = KIT;
-  const radius = options.radius ?? 0.17;
-  const length = options.length ?? 0.76;
-  const centerX = options.centerX ?? 0.78;
-  const cradleDepth = options.cradleDepth ?? Math.max(0.20, radius * 1.24);
-  const rearPlateZ = options.rearPlateZ ?? z + radius * 0.55;
-  const bandOffset = length * 0.31;
-  const outerX = centerX + length / 2;
-
-  // Each auxiliary barrel is a complete transverse cylinder with proud end
-  // hoops, two retaining bands and a filler cap.  The shared shelf overlaps
-  // both barrel bellies and the rear plate, while four triangular-looking
-  // feet carry that shelf back into the hull instead of leaving two floating
-  // cylinders behind the transom.
-  // 2026-10-07 (tank-accessories round 4; wave 215: "the left rear fuel drum ends in a squared, flat block instead of
-  // a round cap", "a strap on the near cylinder is a flat colour band, not raised"): the shared fuel drum
-  // (accessoryPrimitives.fuelDrumParts): round heads recessed in rolled chimes with the bung caps on the outer head,
-  // the retaining straps raised 4.5 mm with a buckle each, and the drum in the scheme's solid matte equipment paint
-  // (FSP-06 fitting paint; equipment, never the hull armour shell) instead of the camouflaged armour bucket.
-  P.add('hullDark', box(outerX * 2 + 0.10, 0.09, cradleDepth),
-    0, y - radius * 0.76, z + radius * 0.55);
-  for (const side of [-1, 1]) {
-    // Round 5 (2026-10-08; wave 255 on the Type 99A: "identical smooth tubes. Give them rims and ribs, rust at the
-    // straps, spill streaks and some variation"): bold chimes, hoops and swaged ribs; each drum its own issue paint
-    // (DRUM_ISSUE_PAINTS), rust baked where its straps chafe, a fuel stain from its bung, two dents, its straps a little
-    // off its twin's, all in the vertex-coloured matte draw the logs use (fuelDrumParts `paint`)
-    const k = side > 0 ? 1 : 0;
-    const paint = DRUM_ISSUE_PAINTS[(Math.floor(hash01(seed, 5) * 4) + k * 2) % DRUM_ISSUE_PAINTS.length];
-    const skew = (hash01(seed, 7, k) - 0.5) * 0.06;
-    const drum = fuelDrumParts({ r: radius, len: length, seg: 20, bold: true, paint, seed: seed + k * 31,
-      straps: [0.5 - bandOffset / length + skew, 0.5 + bandOffset / length + skew], buckleAt: 2.62 - k * 0.5,
-      bungHead: side > 0 ? 1 : -1 });
-    const alongX = (geometry: BufferGeometry): BufferGeometry => place(geometry, -length / 2, 0, 0, 0, 0, -Math.PI / 2);
-    P.add('hullBark', alongX(drum.body), side * centerX, y, z);
-    for (const part of [...drum.straps, ...drum.hardware]) P.add('hullDark', alongX(part), side * centerX, y, z);
-    for (const bandX of [centerX - bandOffset, centerX + bandOffset]) {
-      P.add('hullDark', box(0.060, radius * 0.92, cradleDepth),
-        side * bandX, y - radius * 0.67, z + radius * 0.42);
-    }
-    P.add('hullFittingPaint', cylY(0.045, 0.052, 0.062, 12),
-      side * centerX, y + radius + 0.025, z - radius * 0.08);
-  }
-  mount(P, 'hull', FITTINGS.stowageRack({
-    mats: P.mats, w: outerX * 2 + 0.06, d: cradleDepth, h: 0.18,
-    fill: 0, rails: 2, seed,
-  }), 0, y - radius * 0.86, z + radius * 0.56);
-  P.hullG.userData.rearFuelDrumReceipt = Object.freeze({
-    fuelDrums: 2,
-    axis: 'x',
-    drumDiameterM: radius * 2,
-    drumLengthM: length,
-    centerSpacingM: centerX * 2,
-    rearPlateOverlapM: Math.max(0, z + radius - rearPlateZ),
-    supportBrackets: 4,
-    supportedAndSeated: true,
-  });
 }
 
 function addZTZ99A2RearServiceComplex(P: ChinaBuilderPort): void {

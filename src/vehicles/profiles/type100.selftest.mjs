@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as T from 'three';
 import { createTank } from '../tankFactory.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
-import { TYPE100_PROFILES, TYPE100_DATUMS as D } from './type100.ts';
+import { TYPE100_PROFILES, TYPE100_DATUMS as D, TYPE100_LAUNCH_CANISTER } from './type100.ts';
 import { TANK_SPECS } from '../specs.ts';
 import { tankTier } from '../tier.ts';
 import { ensureInteriorFills } from '../interiorFills.ts';
@@ -85,15 +85,16 @@ function cast(root,frame,o,d,far=4) {
 }
 function mouths(root,gun,recoil) {
   for(const x of D.launcherColumns)for(const y of D.launcherRows){
-    const back=cast(root,gun,[x,y,1.025],[0,0,-1]);assert.ok(back,'physical cell backplate');
-    near(gun.worldToLocal(back.point.clone()).z/sizeFactor,-.5175,.001,'cell air to real rear plate');
+    // 2026-10-21 Object 695 canisters: the bore is open air down to a sealed launch terminal recessed in the collar.
+    const back=cast(root,gun,[x,y,1.025],[0,0,-1]);assert.ok(back,'physical sealed launch terminal');
+    near(gun.worldToLocal(back.point.clone()).z/sizeFactor,D.launcherMouth-TYPE100_LAUNCH_CANISTER.recess,.001,'mouth air to the recessed terminal');
     for(let i=0;i<8;i++){
       const a=(i+.173)*Math.PI/4;
       const rim=cast(root,gun,[x+Math.cos(a)*.128,y+Math.sin(a)*.128,1.02],[0,0,-1],.03);
       assert.ok(rim,'finite missile mouth annulus');near(gun.worldToLocal(rim.point.clone()).z/sizeFactor,1,.001,'terminal plane');
-      const side=cast(root,gun,[x,y,.1],[Math.cos(a),Math.sin(a),0],.15);
-      assert.ok(side,'actual inward canister walls');const v=gun.worldToLocal(side.point.clone()).divideScalar(sizeFactor);
-      near(Math.hypot(v.x-x,v.y-y),.115,.005,'canister bore including LOW chord');
+      const side=cast(root,gun,[x,y,.955],[Math.cos(a),Math.sin(a),0],.15);
+      assert.ok(side,'actual dark-lined collar bore');const v=gun.worldToLocal(side.point.clone()).divideScalar(sizeFactor);
+      near(Math.hypot(v.x-x,v.y-y),D.launcherInner,.006,'canister bore including LOW chord');
     }
   }
   // 2026-10-10: sampled off the axis (angle .173, inside the bore). The fleet's front shadow disc met the axial ray until
@@ -123,14 +124,20 @@ function seats() {
   joint('turret-body','gunner-sight-seat',[-.48,.777,-.05],'gunner sight foot meets roof');
   joint('gunner-sight-seat','gunner-sight-frame',[-.48,.832,-.05],'optic housing on its foot');
   for(const x of D.launcherColumns) {
-    joint('launcher-journal','launcher-saddle',[x-Math.sign(x)*.025,0,0],'launcher supported by real trunnion');
-    joint('launcher-saddle','launcher-deck',[x,-.025,0],'launcher tray attached to saddle');
-    joint('launcher-web','missile-canister',[x,.2595,.65],'lower cell attached to inter-cell web');
-    joint('launcher-web','missile-canister',[x,.3005,.65],'upper cell attached to inter-cell web');
+    const s=Math.sign(x);
+    joint('launcher-journal','launcher-hub',[x-s*.20,0,0],'journal runs into the trunnion hub');
+    joint('launcher-hub','launcher-cradle-plate',[x-s*.184,0,0],'hub bolted to the cradle plate');
+    joint('launcher-cradle-plate','pod-post',[x-s*.157,.10,-.28],'cradle plate across the inner post');
+    joint('pod-post','canister-band',[x-s*.126,.12,.66],'post bears on the band');
+    joint('canister-band','missile-canister',[x,.239,.66],'band clamps the canister body');
+    joint('pod-strap','launcher-saddle',[x,-.036,.66],'saddle under the bottom strap');
+    joint('launcher-saddle','launcher-rail',[x+.11,-.0575,.66],'rail into the saddle');
+    joint('elevation-sector','launcher-hub',[x-s*.194,-.11,0],'elevation sector on the trunnion hub');
+    joint('pod-row-strap','canister-band',[x,.246,-.28],'row strap between the canisters');
   }
 }
 function movingClearance(gun) {
-  for(const p of pieces.filter(p=>p.bucket==='gunMount' && !['launcher-journal','launcher-saddle'].includes(p.name))) {
+  for(const p of pieces.filter(p=>p.bucket==='gunMount' && !['launcher-journal','launcher-hub'].includes(p.name))) {
     const a=p.mesh.geometry.attributes.position;
     for(let i=0;i<a.count;i++){
       const world=new T.Vector3().fromBufferAttribute(a,i).applyMatrix4(p.mesh.matrixWorld).multiplyScalar(sizeFactor).applyMatrix4(gun.matrixWorld);

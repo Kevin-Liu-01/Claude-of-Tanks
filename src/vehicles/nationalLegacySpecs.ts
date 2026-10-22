@@ -6,6 +6,9 @@ import type {FleetTankSpec} from './specContracts.ts';
 import {NATIONAL_PROTECTION_WIDTHS_M} from './nationalProtectionDimensions.ts';
 import {NATIONAL_DONOR_TURRETS,NATIONAL_GUN_PITCH_BY_YAW} from './nationalDonorTurrets.ts';
 const entries:Record<string,FleetTankSpec>={};
+// Owner 2026-10-21 (the UA/PL turret decisions): Hetman II's Duplet ERA defeats tandem warheads — its frontal hull and
+// turret blocks carry EraProtection.antiTandem (sim/damage.ts); the side band stays ordinary ERA. Values unchanged.
+const ANTI_TANDEM_ERA:Readonly<Record<string,RegExp>>={t72b3m_hetman_ii:/^(?:glacis|turret)_era/};
 for(const c of NATIONAL_LEGACY_CONFIG){
   const s=cloneFleetVariant(TANK_SPECS,c.id,'t90sm',{name:c.name,nation:c.nation,era:'next-generation'});
   delete s.label;delete s.roster;delete s.publicVisualFallback;delete s.balancePeerOf;
@@ -25,6 +28,10 @@ export function synchronizeNationalLegacyMetadata():void {
     // independently counts any metric that later changes.
     s.balancePeerOf=c.predecessor;
     s.variantOf=c.donor;
+    const antiTandem=ANTI_TANDEM_ERA[c.id];
+    if(antiTandem)for(const p of [...s.armor.hullPlates,...s.armor.turretPlates]){
+      if(p.kind==='era'&&p.era&&antiTandem.test(p.name))p.era={...p.era,antiTandem:true};
+    }
     // Owner 2026-10-15 (VEH-21, VEH-22): a donor-turret descendant shares its predecessor's donor turret (armour,
     // modules, trunnion and barrel, cloned above) on its own ring seat.
     const donorTurret=NATIONAL_DONOR_TURRETS[c.id];

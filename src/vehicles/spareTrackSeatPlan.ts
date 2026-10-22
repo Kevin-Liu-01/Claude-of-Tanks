@@ -27,9 +27,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "bwp1": {
     "fitting@hull(1.38,1.27,-2.60)": [1.18, 1.272, -2.4, 0, 0, 0, 1, 1],
   },
-  "c1_ariete_preserie": {
-    "fitting@hull(-0.70,1.48,-2.98)": [-0.9, 1.478, -3.28, 0, 0, 0, 1, 1],
-  },
   "centurion3": {
     "strip@hull(-0.55,1.41,3.05)": 1,
     "strip@hull(-1.26,1.38,-3.58)": [0.7005, -2.92869, 4.59834, 0.89522, 0, 0, 0.44562, 1],
@@ -103,7 +100,7 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
     "fitting@hull(0.64,1.39,2.86)": [0.633, 0.68876, 3.61935, 0.63792, 0.30505, 0.63792, 0.30505, 1],
   },
   "m1a1ha": {
-    "fitting@turret(0.30,0.35,-3.22)": [0.32703, 0.8165, -2.0625, 0, 0.70711, 0, 0.70711, 0],
+    "fitting@turret(0.30,0.35,-3.22)": [0.32703, 0.8165, -2.022, 0, 0, 0, 1, 0],
   },
   "m3a3_bradley": {
     "fitting@hull(0.50,1.67,2.21)": [0.5098, 1.56662, 2.64883, 0.03951, 0.706, 0.03951, 0.706, 1],
@@ -180,6 +177,10 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "t90a_burlak_proto": {
     "fitting@hull(0.58,1.48,0.58)": [0.4976, 0.54584, -2.8502, 0.64984, -0.27875, 0.64984, -0.27875, 1],
   },
+  "type10_dozer": {
+    "fitting@hull(-1.12,1.79,-3.15)": [-1.70105, 1.01835, -2.658, 0.5, -0.5, 0.5, 0.5, 1],
+    "type10-rear-links@hull(1.12,1.17,-3.77)": [-0.574, 0.2941, -0.00225, -0.70711, 0, 0, 0.70711, 0],
+  },
   "type10_tk_x": {
     "fitting@hull(-1.12,1.79,-3.15)": [-1.70105, 1.01835, -2.658, 0.5, -0.5, 0.5, 0.5, 1],
     "type10-rear-links@hull(1.12,1.17,-3.77)": [-0.574, 0.2941, -0.00225, -0.70711, 0, 0, 0.70711, 0],
@@ -198,7 +199,7 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
     "fitting@turret(0.30,0.35,-3.22)": [0.254, 0.8165, -2.08, 0, 0.70711, 0, 0.70711, 0],
   },
   "ua_m1a2_abrams": {
-    "ua-abrams-rear-deck-shoes@hull(0.00,1.76,-3.55)": [0.143, 4.907, -3.46558, 0.5, 0.5, 0.5, -0.5, 1],
+    "ua-abrams-rear-deck-shoes@hull(0.00,1.76,-3.55)": [0.139, 5.057, -3.46558, 0.5, 0.5, 0.5, -0.5, 1],
   },
   "ua_m2a3_bradley": {
     "fitting@hull(0.50,1.67,2.21)": [0.55675, 1.72188, 2.20357, 0.05179, 0.70521, 0.05179, 0.70521, 1],

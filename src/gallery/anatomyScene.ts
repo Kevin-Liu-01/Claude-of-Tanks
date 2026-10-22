@@ -277,14 +277,22 @@ export function buildAnatomyScene(armor: AnatomyArmor, options: AnatomySceneOpti
     const geometry = new THREE.CylinderGeometry(radiusM, radiusM, lengthM, 24, 1, false);
     geometry.rotateX(Math.PI / 2);
     geometry.translate(0, 0, lengthM / 2);
-    const material = techMaterial({ color: '#59626b' });
+    // A glass tube with its bore axis drawn through it (the Gallery follow-up of 2026-10-21: the opaque hit cylinder read
+    // as a solid cone over the crew in close-ups); the tube keeps the exact tested radius and length.
+    const material = techMaterial({ color: '#8d9aa5', opacity: 0.3 });
     barrelMesh = new THREE.Mesh(geometry, material);
     barrelMesh.name = 'anatomy_barrel';
+    barrelMesh.renderOrder = 2;
     barrelMesh.userData.anatomyPick = { kind: 'barrel', lengthM, radiusM } satisfies AnatomyPick;
+    const axisGeometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, lengthM)]);
+    const axisMaterial = techLineMaterial('#dbe5ec', 0.9);
+    const axis = new THREE.Line(axisGeometry, axisMaterial);
+    axis.name = 'anatomy_barrel_axis';
+    barrelMesh.add(axis);
     // Every anatomy layer shows the barrel: inside the glass shell it is the gun's real reference line.
     holder('barrel', 'trunnion').add(barrelMesh);
     pickables.push(barrelMesh);
-    disposables.push(geometry, material);
+    disposables.push(geometry, material, axisGeometry, axisMaterial);
   }
 
   // --- modules ---------------------------------------------------------------------------------------------------

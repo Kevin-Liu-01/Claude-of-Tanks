@@ -8,6 +8,7 @@ import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { compactWreckGeometryForPaintSteps, compactWreckGeometrySteps } from './exactWreckGeometry.ts';
 import { collectWreckShellSolids, collectWreckSolids } from './wreckCollision.ts';
 import { crumpleWreckGeometry, planWreckCrumple, refineForCrumple } from './wreckCrumple.ts';
+import { buildTurretRingWellGeometry, cutTurretRingAperture, emptyTurretRingRim, planTurretRingHulk } from '../vehicles/turretRingWell.ts';
 
 // Explicit 5a13dadb0 pipeline control: paint every expanded corner, then run
 // the unchanged generic all-attribute compactor. The original source was
@@ -33,12 +34,15 @@ function pipeline(control, counts) {
   // collectWreckSolids: main's f6be3a54d bakes the wreck's hull/turret collision solids alongside the paint;
   // collectWreckShellSolids (the hitbox lane, e7c724c1d): their convex-hull corners for the shell record, beside them.
   // planWreckCrumple / crumpleWreckGeometry (destruction core, 2026-10-09): the wreck's dents and bends, before the paint.
+  // the ring's well and deck cut (tank-opt RING, 2026-10-16: turretRingWell.ts), merged into a cook-off's hulk.
   return new Function('THREE', 'mergeGeometries', 'compactWreckGeometryForPaintSteps',
     'compactWreckGeometrySteps', 'createTank', 'observePaint', 'collectWreckSolids', 'collectWreckShellSolids',
     'planWreckCrumple', 'crumpleWreckGeometry', 'refineForCrumple',
+    'buildTurretRingWellGeometry', 'cutTurretRingAperture', 'emptyTurretRingRim', 'planTurretRingHulk',
     stripTypeScriptTypes(body).replace(/^export /gm, '') + '\nreturn { bakeTankWreck, bakeTankWreckSteps };')(
     THREE, mergeGeometries, compactWreckGeometryForPaintSteps, compactWreckGeometrySteps,
-    createTank, () => { counts.painted++; }, collectWreckSolids, collectWreckShellSolids, planWreckCrumple, crumpleWreckGeometry, refineForCrumple);
+    createTank, () => { counts.painted++; }, collectWreckSolids, collectWreckShellSolids, planWreckCrumple, crumpleWreckGeometry, refineForCrumple,
+    buildTurretRingWellGeometry, cutTurretRingAperture, emptyTurretRingRim, planTurretRingHulk);
 }
 
 function arrayIdentity(array) {

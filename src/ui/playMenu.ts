@@ -55,7 +55,7 @@ import {
   GAME_MODE_DEFINITIONS,
   normalizeGameMode,
   type GameModeId,
-} from '../sim/matchModes.ts';
+} from '../sim/gameModeCatalog.ts';
 import { isCoopGameMode } from '../mp/room/roomPolicy.ts';
 import { MARS_CACHE_IDS, MARS_GRAVITY_IDS, matchRulesetFor, rulesetLines } from '../sim/matchRuleset.ts';
 import type { LobbyPlayer, LobbyTeam, SerializedLobby } from '../mp/room/lobbyShape.ts';

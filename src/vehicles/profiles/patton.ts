@@ -219,6 +219,7 @@ interface PattonHullConfig {
   readonly bellyFrontZ: number;
   readonly bellyRearZ: number;
   readonly gear: RunningGearConfig;
+  readonly aftCentreClosure?: boolean;
   readonly bandHW?: number;
   readonly bellyHW?: number;
   readonly bellyY?: number;
@@ -991,6 +992,37 @@ function curveHull(P: PattonBuilderPort, H: PattonHullConfig): BuiltHull {
     }
   };
   curveHullHullStage3();
+  // H.aftCentreClosure opt-in (owner 2026-10-21, "gaps in hull around the engines ... a top slab and bottom slab"):
+  // H.sponsonAftY lifts the WHOLE band floor aft, the centre between the tracks included, while the tub below it
+  // stops at the sponson line and the rear ramp climbs only slowly to the tail. Over the engine bay that left a
+  // see-through slot from track to track. The tub's side plates now carry on up into the band: one block over the
+  // flat tub and one riding the ramp's top face with its taper, flush with both side walls, its top buried 1 cm in
+  // the band. The lifted over-track soffit outboard stays as it was.
+  const curveHullAftClosure = (): void => {
+    if (!H.aftCentreClosure || H.sponsonAftY == null || H.sponsonAftZ == null || H.narrowTail) return;
+    const aftZ = H.sponsonAftZ;
+    const top = H.sponsonAftY + 0.01;
+    const tubTop = spons + 0.02;         // the lower hull box's top
+    const rampY0 = spons + 0.04;         // the rear ramp's top face, bellyRearZ -> tail
+    const rampY1 = tail[1] - 0.02;
+    const zr = H.bellyRearZ, zt = tail[0] + 0.02;
+    const twx = H.tailTaper ? Math.max(H.tailTaper.hw1, iw * 0.55) : iw * 0.92;
+    // the band floor starts to climb at the station ahead of the first lifted one
+    const lift = bandDeck.findIndex((p) => p[0] <= aftZ);
+    const za = lift > 0 ? Math.max(bandDeck[lift - 1][0], zr) : aftZ;
+    if (za > zr) P.add('hull', box(iw * 2, top - tubTop, za - zr), 0, (top + tubTop) / 2, (za + zr) / 2);
+    // the ramp meets the band floor here; the block ends inside the band
+    const f = Math.min(1, (H.sponsonAftY - rampY0) / Math.max(0.001, rampY1 - rampY0));
+    const ze = zr + (zt - zr) * f, ye = rampY0 + (rampY1 - rampY0) * f, we = iw + (twx - iw) * f;
+    P.add('hull', slab(
+      [-iw, rampY0, zr], [iw, rampY0, zr], [we, ye, ze], [-we, ye, ze],
+      [-iw, top, zr], [iw, top, zr], [we, Math.max(top, ye + 0.01), ze], [-we, Math.max(top, ye + 0.01), ze]));
+    P.hullG.userData.pattonAftCentreClosure = Object.freeze({
+      revision: 'engine-bay-tub-wall-r1', z0: +za.toFixed(3), z1: +ze.toFixed(3), halfWidth: +iw.toFixed(3),
+      tubTopY: +tubTop.toFixed(3), soffitY: H.sponsonAftY,
+    });
+  };
+  curveHullAftClosure();
   const rearUndercutBottomY = H.rearUndercutFloorJoin ? belly : belly + 0.3;
   const curveHullHullStage4 = (): void => {
     P.hullG.userData.pattonLowerHullReceipt = {
@@ -4211,7 +4243,11 @@ function m60EraCellAt(
   const verticalRate = Math.max(0.001, verticalTangent.length() / 0.036);
   const normal = new THREE.Vector3().crossVectors(verticalTangent, frontTangent)
     .multiplyScalar(side).normalize();
-  const xAxis = frontTangent.normalize().multiplyScalar(-side);
+  // Release 233 (owner: the M60s should match the Sabra's quality): every cassette keeps its own surface normal for the
+  // seat, but its long edge stays level (the horizontal tangent of that normal) instead of rolling with the needle
+  // nose's compound curvature, so a row reads as a fitted course rather than a scatter of tilted bricks.
+  const xAxis = new THREE.Vector3(0, 1, 0).cross(normal).normalize();
+  if (xAxis.dot(frontTangent) * -side < 0) xAxis.negate();
   const yAxis = new THREE.Vector3().crossVectors(normal, xAxis).normalize();
   xAxis.crossVectors(yAxis, normal).normalize();
   const rotation = new THREE.Matrix4().makeBasis(xAxis, yAxis, normal);
@@ -4255,8 +4291,11 @@ function m60EraCellAt(
 
 function addM60A3TurretEra(P: PattonBuilderPort): void {
   const turretPivot = P.spec.armor.turretPivot;
-  const frontTilesPerSide = 15;
-  const sideTilesPerSide = 18;
+  // Release 233 (owner: the M60s should reach the Sabra's quality): two courses of larger cassettes, three across the
+  // cheek and six along the flank, spaced so neighbours never overlap on the needle nose's compound curvature (the
+  // former 3 x 5 cheek grid stacked its tilted cells into a scatter).
+  const frontTilesPerSide = 6;
+  const sideTilesPerSide = 12;
   const castEmbedM = 0.025;
   const cassetteDepthM = 0.090;
   const cells: EraCell[] = [];
@@ -4270,16 +4309,16 @@ function addM60A3TurretEra(P: PattonBuilderPort): void {
 
   for (const side of [-1, 1]) {
     const frontCells: EraCell[] = [];
-    const frontZ = [1.62, 1.49, 1.36, 1.23, 1.10];
-    const frontHeights = [0.36, 0.50, 0.64];
-    for (let row = 0; row < 3; row++) {
-      for (let column = 0; column < 5; column++) {
-        // A regular three-by-five grid is parameterized on the casting.
+    const frontZ = [1.56, 1.34, 1.12];
+    const frontHeights = [0.38, 0.62];
+    for (let row = 0; row < frontHeights.length; row++) {
+      for (let column = 0; column < frontZ.length; column++) {
+        // A regular two-by-three grid is parameterized on the casting.
         // Every column shares one longitudinal station and every row one
         // dome height; the surface normal still makes each cassette hug the
         // compound cheek without producing the former terraced scatter.
         const cell = m60EraCellAt(side, frontZ[column], frontHeights[row],
-          0.22, 0.14, cassetteDepthM, castEmbedM);
+          0.20, 0.15, cassetteDepthM, castEmbedM);
         frontCells.push(cell);
         cells.push(cell);
       }
@@ -4290,11 +4329,11 @@ function addM60A3TurretEra(P: PattonBuilderPort): void {
 
     const sideCells: EraCell[] = [];
     const sideZ = [0.32, 0.07, -0.18, -0.43, -0.68, -0.93];
-    const sideHeights = [0.36, 0.50, 0.64];
-    for (let row = 0; row < 3; row++) {
-      for (let column = 0; column < 6; column++) {
+    const sideHeights = [0.38, 0.62];
+    for (let row = 0; row < sideHeights.length; row++) {
+      for (let column = 0; column < sideZ.length; column++) {
         const cell = m60EraCellAt(side, sideZ[column], sideHeights[row],
-          0.22, 0.14, cassetteDepthM, castEmbedM);
+          0.22, 0.15, cassetteDepthM, castEmbedM);
         sideCells.push(cell);
         cells.push(cell);
       }
@@ -4316,8 +4355,8 @@ function addM60A3TurretEra(P: PattonBuilderPort): void {
     layeredVehicleScaleCamouflage: true,
     layersPerCassette: 2,
     layout: 'surface-parameter-grid',
-    alignedRows: 3,
-    alignedFrontColumns: 5,
+    alignedRows: 2,
+    alignedFrontColumns: 3,
     alignedSideColumns: 6,
     blackOutlineStrips: 0,
     curvedSurfaceNormals: (frontTilesPerSide + sideTilesPerSide) * 2,
@@ -4329,6 +4368,67 @@ function addM60A3TurretEra(P: PattonBuilderPort): void {
   };
 }
 
+/**
+ * Release 233 (owner 2026-10-21: the M60A1 and M60A3 "should take inspo from the sabra", and stop looking alike): the
+ * US Army M60A3 runs with open running gear under full-length sheet fenders, as fielded, instead of the A1's USMC side
+ * armour. Each fender follows the deck line from the bow shoulder to the rear corner package, its outer edge turned
+ * down; welded gussets carry it from the sponson wall, and two stowage bins stand on the rear fenders clear of the
+ * turret's sweep and the left tow cable.
+ */
+function finishM60A3Fenders(P: PattonBuilderPort, deck: ProfileCurve): void {
+  const { box } = KIT;
+  const deckAt = deckLine(deck);
+  const inner = 1.70, outer = 1.8075, lipH = 0.065, sheet = 0.022;
+  const zFront = 2.04, zRear = -3.30;
+  const stations = [zFront, ...deck.map(([z]) => z).filter((z) => z < zFront && z > zRear), zRear];
+  for (const side of [-1, 1]) {
+    // orientedSlab winds every slab outward, so the left side mirrors its corner points, never the finished geometry
+    const slab = (...pts: Vec3Tuple[]): THREE.BufferGeometry => orientedSlab(...pts.map(([x, y, z]) => [side * x, y, z]));
+    for (let i = 0; i < stations.length - 1; i++) {
+      const z0 = stations[i], z1 = stations[i + 1];
+      const t0 = deckAt(z0) - 0.004, t1 = deckAt(z1) - 0.004;
+      const fender = slab(
+        [inner, t0 - sheet, z0], [outer, t0 - sheet, z0], [outer, t1 - sheet, z1], [inner, t1 - sheet, z1],
+        [inner, t0, z0], [outer, t0, z0], [outer, t1, z1], [inner, t1, z1]);
+      const lip = slab(
+        [outer - 0.012, t0 - lipH, z0], [outer, t0 - lipH, z0], [outer, t1 - lipH, z1], [outer - 0.012, t1 - lipH, z1],
+        [outer - 0.012, t0 - sheet, z0], [outer, t0 - sheet, z0], [outer, t1 - sheet, z1], [outer - 0.012, t1 - sheet, z1]);
+      P.add('hullDetail', fender);
+      P.add('hullDetail', lip);
+    }
+    // welded gussets under the fender, from the sponson wall out to the turned-down lip
+    for (const z of [1.62, 0.70, -0.22, -1.14, -2.06, -2.98]) {
+      const top = deckAt(z) - 0.004 - sheet;
+      const gusset = slab(
+        [inner - 0.004, top - 0.15, z - 0.006], [inner + 0.004, top - 0.15, z - 0.006],
+        [inner + 0.004, top - 0.15, z + 0.006], [inner - 0.004, top - 0.15, z + 0.006],
+        [inner - 0.004, top + 0.003, z - 0.006], [outer - 0.010, top + 0.003, z - 0.006],
+        [outer - 0.010, top + 0.003, z + 0.006], [inner - 0.004, top + 0.003, z + 0.006]);
+      P.add('hullDetail', gusset);
+    }
+    // rear fender stowage bin: lid, hinge line, two hasps
+    const binX = side * 1.635, binZ = -2.62, binW = 0.27, binH = 0.25, binL = 0.70;
+    const binY = deckAt(binZ) - 0.004 + binH / 2 - 0.003;
+    P.add('hullDetail', box(binW, binH, binL), binX, binY, binZ);
+    P.add('hullDetail', box(binW + 0.016, 0.022, binL + 0.016), binX, binY + binH / 2 + 0.008, binZ);
+    P.add('hullDark', box(0.012, 0.016, binL - 0.06), binX - side * (binW / 2 - 0.02), binY + binH / 2 + 0.002, binZ);
+    for (const dz of [-0.22, 0.22]) {
+      P.add('hullDark', box(0.010, 0.07, 0.04), binX + side * (binW / 2 + 0.005), binY + binH / 2 - 0.03, binZ + dz);
+    }
+  }
+  P.hullG.userData.m60a3FenderReceipt = Object.freeze({
+    designFamily: 'cot-m60a3-open-fender-v1',
+    openRunningGear: true,
+    fenderFollowsDeck: true,
+    innerX: inner,
+    outerX: outer,
+    zFront,
+    zRear,
+    gussetsPerSide: 6,
+    rearBins: 2,
+  });
+}
+
 function finishM60HullArmor(
   P: PattonBuilderPort,
   variant: string,
@@ -4336,6 +4436,10 @@ function finishM60HullArmor(
   a3: boolean,
 ): void {
   const { box } = KIT;
+  if (a3) {
+    finishM60A3Fenders(P, deck);
+    return;
+  }
 
   // USMC RISE/P-style side protection hangs below the 1.79 m fender datum.
   // A visible rail and short hangers now carry the course; the previous
@@ -4729,7 +4833,8 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     // fender flares: SEGMENTED strips carry the true 3.631 width envelope (the
     // reference's own station at z 0.0..0.5 narrows to 3.343 — its width
     // carriers are panels with a gap there, the round-2 family law).
-    for (const side of [-1, 1]) {
+    // (The M60A3's full-length fenders carry the width instead: finishM60A3Fenders.)
+    for (const side of cfg.a3 ? [] : [-1, 1]) {
       P.add('hull', box(hull.hw - 1.70, 0.03, 0.40), side * (1.70 + hull.hw) / 2, 1.732, -0.26);
       P.add('hull', box(hull.hw - 1.70, 0.03, 0.94), side * (1.70 + hull.hw) / 2, 1.732, 1.02);
     }
@@ -5123,9 +5228,18 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     P.decal('turret', 'number', P.spec.visual.number || '', 0.28, [1.225, yl(2.30), zl(-1.20)], Math.PI / 2);
     P.decal('turret', 'number', P.spec.visual.number || '', 0.28, [-1.225, yl(2.30), zl(-1.20)], -Math.PI / 2);
 
-    if (cfg.a3) { // crosswind sensor stub (the TTS housing is authored once below).
+    if (cfg.a3) { // crosswind sensor (the TTS housing is authored once below).
       P.add('turretDetail', cylY(0.030, 0.042, 0.046, 8), 0.35, yl(2.687), zl(-1.62));
       P.add('turretDark', box(0.05, 0.028, 0.05), 0.35, yl(2.696), zl(-1.62));
+      // Release 233: the A3's crosswind sensor stands on its own mast above the bustle roof, the M60A3 tell seen from
+      // any side: a tapered staff from the stub, the sensor drum and its four vanes.
+      P.add('turretDetail', cylY(0.011, 0.016, 0.46, 8), 0.35, yl(2.94), zl(-1.62));
+      P.add('turretDetail', cylY(0.034, 0.034, 0.055, 12), 0.35, yl(3.195), zl(-1.62));
+      for (let k = 0; k < 4; k++) {
+        const a = k * Math.PI / 2;
+        P.add('turretDark', box(0.006, 0.05, 0.05), 0.35 + Math.sin(a) * 0.055, yl(3.20),
+          zl(-1.62) + Math.cos(a) * 0.055, 0, a, 0);
+      }
     }
 
     // M140 mount: cast rotor + canvas boot at the nose throat (kept inside the
@@ -5169,6 +5283,14 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     for (const side of [-1, 1]) {
       P.add('hull', box(0.36, 0.025, 0.72), side * 0.965, 1.40, 3.22);
     }
+    // Release 233: the belly core stops at 1.52 m and the sponson band starts at 1.55 m, leaving a 3 cm slit through the
+    // hull under both sponsons. The A1's side armour hid it; the A3's open running gear shows daylight through it. A
+    // sponson floor plate overlapping both closes it along the belly's length on both marks.
+    P.add('hull', box(1.70, 0.08, 4.83), 0, 1.535, -0.125);
+    // ... and the hull side wall stands just inboard of each track (inner shoe edge 1.089 m), from over the return rollers
+    // (crowns 1.16 m) to the sponson floor, as on the M60: under the A3's open fenders the eye meets the side plate
+    // behind the shock absorbers and roller brackets instead of a 0.9 m void down to the belly core.
+    for (const side of [-1, 1]) P.add('hull', box(0.07, 0.27, 4.77), side * 1.035, 1.425, -0.125);
     // Uniformly reduce the complete articulated vehicle. The hull owns the
     // running gear and side protection; the turret owner contains its gun and
     // every roof fitting, so all attachment relationships survive unchanged.
@@ -6284,7 +6406,7 @@ function xformCyl(r: number): THREE.CylinderGeometry {
 const M46_HULL: PattonHullConfig = {
   W: 3.51, bandHW: 1.42, trackW: 0.60, trackInset: 0.10, sponsonY: 1.12, bellyY: 0.48, noseW: 1.30,
   ...M46_M47_TRACK_FINISH,
-  bellyHW: 1.025, glacisWingY0: 1.30, glacisWingDrop: 0.04, sponsonAftY: 1.35, sponsonAftZ: -2.39,
+  bellyHW: 1.025, glacisWingY0: 1.30, glacisWingDrop: 0.04, sponsonAftY: 1.35, sponsonAftZ: -2.39, aftCentreClosure: true,
   deckCorridor: { x: 1.02, floor: 1.28, z0: -2.70, z1: 1.40 },
   runningGearFit: true, runningGearFace: true,
   darkGearFit: true, // r7 A4 (m47 A3 recipe): muffler legs + roller brackets +
@@ -6358,7 +6480,7 @@ const M47_HULL: PattonHullConfig = {
   // 1.774 @ -3.25..-3.47, stepped tail descent).
   W: 3.51, bandHW: 1.40, trackW: 0.60, trackInset: 0.10, sponsonY: 1.12, bellyY: 0.468, bellyHW: 1.025, noseW: 1.30,
   ...M46_M47_TRACK_FINISH,
-  glacisWingY0: 1.40, sponsonAftY: 1.44, sponsonAftZ: -2.90,
+  glacisWingY0: 1.40, sponsonAftY: 1.44, sponsonAftZ: -2.90, aftCentreClosure: true,
   deckCorridor: { x: 1.02, floor: 1.34, z0: -2.90, z1: 1.40 },
   runningGearFit: true, runningGearFace: true,
   darkGearFit: true, // r4 A3: muffler legs + roller brackets off the pale bucket
@@ -6426,7 +6548,7 @@ const M48_HULL: PattonHullConfig = {
   // cols to ground). botY 0.045: pads land at 0.000 (r1: 0.02 hung them
   // -0.025 and heightM paid p95top+0.025).
   W: 3.631, bandHW: 1.705, trackW: 0.67, trackInset: 0.055, sponsonY: 1.39,
-  sponsonAftY: 1.54, sponsonAftZ: -2.60,
+  sponsonAftY: 1.54, sponsonAftZ: -2.60, aftCentreClosure: true,
   bellyY: 0.626, bellyHW: 1.00, noseW: 1.01, flatDeck: true,
   // Lift only the concealed over-track soffits above the moving shoe
   // orbit.  The source-exact outer wall and upper glacis faces stay fixed.

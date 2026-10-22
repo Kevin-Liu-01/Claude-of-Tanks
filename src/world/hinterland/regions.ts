@@ -267,7 +267,11 @@ export const HINTERLAND_REGIONS: Readonly<Record<HinterlandRegionId, HinterlandR
     // the Caldera item, HZ.20; a flat place's relief is its swells and its old stream banks, so a few metres)
     outland: { riseM: r([1.5, 4]), wavelengthM: 800, flat: true },
     geology: { rock: 'basalt', rockHex: 0x4a4744, strata: { bedM: 12, dipDeg: 4, contrast: 0.1 }, scree: 0.4, snow: NO_SNOW, gullies: 0.7, erosion: 0.5, rockSlopeDeg: 32, forestBandM: r([-40, 500]), sand: 0, varnish: 0 },
-    far: { form: 'volcanicField', reliefM: 600, distKm: r([4, 15]), layers: 1, treesM: 0 },
+    // (233, the media lane's maps-227 review: "a hard-edged beige haze wall erases the rim and horizon"): under the map's
+    // ash haze, the heaviest but two, the somma 6–8 km out took the full air past the drawn depth and stood as a flat band
+    // of the horizon's colour with the rim's level crest for its top edge; at a third of it the rim reads as a wooded wall
+    // in aerial perspective, as the old ring's hills did at 2–3 km
+    far: { form: 'volcanicField', reliefM: 600, distKm: r([4, 15]), layers: 1, treesM: 0, air: 0.3 },
   }),
   nagaHills: region({
     id: 'nagaHills', place: 'Kohima and the Naga hills, monsoon: forested ridges, ridge-top villages, Pulie Badze and Japfü in cloud',

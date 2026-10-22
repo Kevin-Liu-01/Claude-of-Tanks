@@ -70,12 +70,12 @@ function collapsedVertices(mesh) {
 // at its forward plane and broader where it enters the turret.
 // Main's owner-directed mantlet fit (2026-10-02, 245aa4e4e) replaced the VT4A1,
 // ZTZ-99A2 and ZTZ-99A gun roots with an articulated cover in a 0.80 m channel
-// (chineseGunOpening.ts; chineseMantletFit.selftest owns its clearances). The
+// (chineseGunOpening.ts; chineseMantletFit.selftest owns its clearances). The Longwei left this family in release 233
+// (its box mantlet: profiles/longwei.ts). The
 // same taper holds there: the cover is broad where it leaves the turret
 // (0.377 m half-width, inside the 0.40 m channel) and narrow at its nose.
 for (const audit of [
   { id: 'vt4a1', fitted: true },
-  { id: 'ztz99_longwei', rearZ: 0.13, rearR: 0.2444, frontZ: 0.81, frontR: 0.1456 },
   { id: 'ztz99a', fitted: true },
   { id: 'ztz99a2', fitted: true },
   { id: 'ztz85_iii', rearZ: 0.13, rearR: 0.23, frontZ: 0.51, frontR: 0.17 },
@@ -124,10 +124,6 @@ for (const audit of [
   {
     id: 'vt4a1', receipt: 'vtFamilyTurretReceipt',
     permanentPoints: [[-0.62, 0.73475, 0.14], [0.78, 0.1028, 0.68]], channel: { halfWidth: 0.40, minZ: 0.62 },
-  },
-  {
-    id: 'ztz99_longwei', receipt: 'vtFamilyTurretReceipt',
-    permanentPoints: [[-0.2112, 0.6724, 0.6124], [0.2112, 0.0328, 0.9132]],
   },
   {
     id: 'ztz99a2', receipt: 'ztz99a2ProductionReceipt',

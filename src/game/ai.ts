@@ -1548,6 +1548,9 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   function focusWeight(e: AiEntity | null | undefined): number {
     if (!e) return 1;
     const focus = focusCounts.get(e.id) || 0;
+    // pack fire (doctrine.packFire): every friend already on the hull draws this one to it instead
+    const pack = doctrineOf().packFire;
+    if (pack > 0) return 1 / (1 + pack * focus);
     if (focus === 1) return 1.35;
     if (focus === 2) return 1.7;
     if (focus === 3) return 2.05;

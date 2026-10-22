@@ -18,10 +18,16 @@
  * vehicleAnatomy) so a hull leaves it a crushed car, its glass bursting at the first press; a round's kill buckles it as
  * it burns (wreckCrumple.ts's burnt-out crumple, a share at the kill and the rest as the fire takes it), burns its tyres
  * to the rims and blackens its paint, chrome and rubber in its own colours (soot, oxide mottles, ash on the hot panels).
+ *
+ * (233) A car's copy carries bend segments: its long parts (frame rails, a box's floor, the trims along its edges, each
+ * one quad with corners only at its ends) are cut into short pieces (propCrush.ts bendSegments), so a box crossed in part
+ * bends them with its body instead of standing them as "a flat ramp" with "thin straight lines"; the burnt crumple is
+ * planned on the body's own vertices and the cuts follow it. Its burnt palette is calibrated in the game.
  */
 import * as THREE from 'three';
 import {
-  addDent, createCrushField, deformPositions, flatNormals, hullMeetsBox, pressField, sweepPose, vehicleAnatomy, type CrushField,
+  addDent, bendSegments, createCrushField, deformPositions, flatNormals, hullMeetsBox, pressField, sweepPose, vehicleAnatomy,
+  type BendPlan, type CrushField,
 } from './propCrush.ts';
 import { crumpleBurntVehicle } from './wreckCrumple.ts';
 
@@ -85,10 +91,17 @@ const CHAR_RGB = [0.07, 0.06, 0.055];
  *  updated at (a cheap upload) and its shape redrawn at (the press's full redraw), what is left of a tyre's radius on its
  *  rim, and the burnt build's colours (linear; vehicleMesh.ts shadeVertex's burn). */
 const CAR_BURN = { impact: 0.3, colourStep: 0.03, shapeStep: 0.1, rim: 0.72, canvas: 0.3 } as const;
-const SOOT: readonly [number, number, number] = [0.022, 0.019, 0.017];
-const STEEL: readonly [number, number, number] = [0.05, 0.048, 0.046];
-const OXIDE: readonly [number, number, number] = [0.105, 0.042, 0.018];
-const ASH: readonly [number, number, number] = [0.2, 0.19, 0.175];
+/** The burnt palette (233, calibrated in the game: r3's ash-and-steel at 0.09-0.2 rendered light grey by day, "undamaged"
+ *  at night; r4's single 0.03 steel read "a dark-painted car"): charred black-brown paint over the whole shell, heat
+ *  oxide in broad red-brown patches where the fire ran hottest, the steel bared blue-grey and dull-metallic in places
+ *  (it keeps a sheen to the night sky), a little white ash on the hot tops, soot. */
+const SOOT: readonly [number, number, number] = [0.014, 0.012, 0.011];
+const CHARRED: readonly [number, number, number] = [0.025, 0.022, 0.02];
+const OXIDE: readonly [number, number, number] = [0.1, 0.036, 0.014];
+const STEEL: readonly [number, number, number] = [0.12, 0.12, 0.128];
+const ASH: readonly [number, number, number] = [0.15, 0.145, 0.135];
+/** What of its livery the scorched paint under the waist keeps (a white van's 0.2 stayed a pale grey). */
+const SCORCHED_PAINT = 0.06;
 
 /** A car's burn in flight: its rest as it burns (the press draws from it), the intact and the burnt rests, colours and
  *  surface streams; `drawn` the share last drawn. */
@@ -117,6 +130,9 @@ interface CrushTarget {
   rest: Float32Array;
   /** The triangles it draws (its index, or its body's share of it). */
   readonly tris: Uint16Array | Uint32Array | null;
+  /** A car's bend segments (its long parts cut so the crush bends them): the plan and its body's own vertex count (the
+   *  added vertices follow them). */
+  readonly bend: { readonly plan: BendPlan; readonly base: number } | null;
   readonly field: CrushField;
   readonly inverse: THREE.Matrix4;
   /** The source it hid: the pool's intact slot, or its broken mesh's. */
@@ -199,13 +215,21 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     if (!src.boundingBox) src.computeBoundingBox();
     const box = src.boundingBox!;
     const hw = Math.max(-box.min.x, box.max.x, 0.2), hl = Math.max(-box.min.z, box.max.z, 0.2);
-    const geometry = src.clone();
     // a build that carries its far form (the maps lane's vehicleFarForm.ts: its vertices and triangles at the end of the
     // streams, tagged aVehicleLod for the material's fold past 120 m): the copy draws its body alone at every distance — the
     // far form's triangles out of its draw range, the tag gone (an untagged vertex never folds) — and reads, deforms and
     // burns the body alone
     const far = src.userData.vehicleFar as { vertexStart: number; indexStart: number } | undefined;
-    if (far) {
+    const allRest = (src.getAttribute('position') as THREE.BufferAttribute).array as Float32Array;
+    const restArray = far ? allRest.subarray(0, far.vertexStart * 3) : allRest;
+    const surf = src.getAttribute('surf') as THREE.BufferAttribute | undefined;
+    const car = !!host.vehicle?.(rec.kind);
+    // a car's long parts (its frame rails, a box's floor, the trims along its edges) cut into bend segments: its copy is
+    // its body alone with them (the far form never comes along), the pool's own build untouched
+    const plan = car && src.index ? bendSegments(restArray, src.index.array, (far ? far.indexStart : src.index.count) / 3) : null;
+    const bent = plan ? bentCopy(src, plan, restArray.length / 3) : null;
+    const geometry = bent ?? src.clone();
+    if (!bent && far) {
       geometry.setDrawRange(0, far.indexStart);
       if (geometry.getAttribute('aVehicleLod')) geometry.deleteAttribute('aVehicleLod');
     }
@@ -214,12 +238,19 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     (geometry.getAttribute('normal') as THREE.BufferAttribute | undefined)?.setUsage(THREE.DynamicDrawUsage);
     const material = source.mesh.material;
     const mesh = new THREE.InstancedMesh(geometry, material, 1);
-    const allRest = (src.getAttribute('position') as THREE.BufferAttribute).array as Float32Array;
-    const restArray = far ? allRest.subarray(0, far.vertexStart * 3) : allRest;
-    const surf = src.getAttribute('surf') as THREE.BufferAttribute | undefined;
-    // a car reads its own anatomy (its belt line, its wheels) for the crush
-    const anatomy = host.vehicle?.(rec.kind) && surf
+    // a car reads its own anatomy (its belt line, its wheels) for the crush, from its body's own vertices (a cut's vertex
+    // belongs to a wheel when both ends of its edge do)
+    let anatomy = car && surf
       ? vehicleAnatomy(restArray, surf.array as ArrayLike<number>, surf.normalized ? 255 : 1, box.max.y, hw) : null;
+    if (anatomy && bent && plan) {
+      const base = restArray.length / 3, wheelOf = new Int8Array(base + plan.t.length);
+      wheelOf.set(anatomy.wheelOf);
+      for (let v = 0; v < plan.t.length; v++) {
+        const w = anatomy.wheelOf[plan.a[v]];
+        wheelOf[base + v] = w === anatomy.wheelOf[plan.b[v]] ? w : -1;
+      }
+      anatomy = { ...anatomy, wheelOf };
+    }
     const matrix = pool.mats4[rec.slot];
     mesh.setMatrixAt(0, matrix);
     if (source.mesh.instanceColor) {
@@ -237,8 +268,11 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     source.mesh.setMatrixAt(source.slot, _zero);
     source.mesh.instanceMatrix.needsUpdate = true;
     const target: CrushTarget = {
-      index, kind: rec.kind, mesh, geometry, rest: restArray,
-      tris: geometry.index ? (far ? (geometry.index.array as Uint16Array | Uint32Array).subarray(0, far.indexStart) : geometry.index.array as Uint16Array | Uint32Array) : null,
+      index, kind: rec.kind, mesh, geometry,
+      // (the bent copy's rest is its own: the press writes its position stream)
+      rest: bent ? new Float32Array(position.array as Float32Array) : restArray,
+      tris: geometry.index ? (far && !bent ? (geometry.index.array as Uint16Array | Uint32Array).subarray(0, far.indexStart) : geometry.index.array as Uint16Array | Uint32Array) : null,
+      bend: bent && plan ? { plan, base: restArray.length / 3 } : null,
       field: createCrushField(hw, hl, box.max.y, undefined, host.cloth?.(rec.kind) ?? false, pool.meta?.crushFloor ?? 0, anatomy),
       inverse: new THREE.Matrix4().copy(matrix).invert(), fromBroken: source.broken,
       hw, hl, dirty: false, idle: 0, frozen: false, sweep: null,
@@ -373,13 +407,25 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
     const normal = t.geometry.getAttribute('normal') as THREE.BufferAttribute | undefined;
     if (!car || !color || !surf || !normal || !(color.array instanceof Float32Array) || !(surf.array instanceof Uint8Array)) return null;
     const from = new Float32Array(t.rest), n = from.length;
-    // the crumple, on a scratch geometry of its own rest (positions and the rest's normals)
+    // the crumple, on a scratch geometry of its body's own rest (positions and the rest's normals: planned on the body
+    // alone, a bent copy's cuts then follow their edges)
+    const body = t.bend ? t.bend.base * 3 : n;
     const scratch = new THREE.BufferGeometry();
-    scratch.setAttribute('position', new THREE.BufferAttribute(new Float32Array(from), 3));
-    scratch.setAttribute('normal', new THREE.BufferAttribute((normal.array as Float32Array).slice(0, n), 3));
+    scratch.setAttribute('position', new THREE.BufferAttribute(from.slice(0, body), 3));
+    scratch.setAttribute('normal', new THREE.BufferAttribute((normal.array as Float32Array).slice(0, body), 3));
     crumpleBurntVehicle(scratch, (Math.imul(t.index + 1, 2654435761) >>> 0) & 0x7fffffff);
-    const to = (scratch.getAttribute('position') as THREE.BufferAttribute).array as Float32Array;
+    const crumpled = (scratch.getAttribute('position') as THREE.BufferAttribute).array as Float32Array;
     scratch.dispose();
+    let to = crumpled;
+    if (t.bend) {
+      const { plan, base } = t.bend;
+      to = new Float32Array(n);
+      to.set(crumpled);
+      for (let v = 0; v < plan.t.length; v++) {
+        const a = plan.a[v] * 3, b = plan.b[v] * 3, o = (base + v) * 3, k = plan.t[v];
+        for (let d = 0; d < 3; d++) to[o + d] = crumpled[a + d] + (crumpled[b + d] - crumpled[a + d]) * k;
+      }
+    }
     // the tyres burnt to the rims, the body settled onto them by what its smallest tyre lost
     const scale = surf.normalized ? 255 : 1, sa = surf.array, w = car.wheels;
     let settle = 0;
@@ -405,35 +451,48 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
       if (inst && p > 0) { col0[v * 3] *= 1 + (inst.r - 1) * p; col0[v * 3 + 1] *= 1 + (inst.g - 1) * p; col0[v * 3 + 2] *= 1 + (inst.b - 1) * p; }
       surf0[v * 3 + 2] = 0;
     }
-    // its burnt colours (r1c: the critics read a uniform rust-orange by day and a black lump by night): over the waist the
-    // fire burns the panels through to grey ash and dark steel with oxide flecks, under it the paint is scorched dark
-    // (its own colour still under the soot), soot streaks the sides at the waist and darkens the underside; glass, rubber
-    // and the cabin go to soot
+    // its burnt colours (r1c: the critics read a uniform rust-orange by day and a black lump by night; r3: the ash-and-steel
+    // shell read light, "undamaged", in the game; r4: one flat dark tone, "a dark-painted car"): the paint charred
+    // black-brown all over; where the fire ran hottest (the cabin and the panels over the waist) it is burnt off to heat
+    // oxide in broad red-brown patches and, hottest, to bare steel, blue-grey and dull-metallic; a little white ash lies on
+    // the hot tops; under the waist the scorched paint keeps a trace of its livery; soot streaks the sides from the windows
+    // and the arches and darkens the underside; glass, rubber and the cabin go to soot
     const na = normal.array as Float32Array, belt = car.belt;
     for (let v = 0; v < n / 3; v++) {
       const x = from[v * 3], y = from[v * 3 + 1], z = from[v * 3 + 2], ny = na[v * 3 + 1];
       const rough = surf0[v * 3] / scale, metal = surf0[v * 3 + 1] / scale;
       const soft = metal < 0.05 && sa[v * 3 + 2] / scale < 0.05 && (rough < 0.12 || rough > 0.8);
+      let bare = 0;
       if (soft) { _burnt[0] = SOOT[0]; _burnt[1] = SOOT[1]; _burnt[2] = SOOT[2]; }
       else {
-        // over the waist and on the faces the fire rose past: steel burnt through to ash
-        _burnt[0] = STEEL[0]; _burnt[1] = STEEL[1]; _burnt[2] = STEEL[2];
-        mixInto(_burnt, ASH, 0.25 + 0.5 * smoothstep(0.35, 0.75, noise3(x * 1.7, y * 1.7, z * 1.7, 301)) * (0.5 + 0.5 * Math.max(0, ny)));
-        mixInto(_burnt, OXIDE, smoothstep(0.6, 0.9, noise3(x * 3.3, y * 3.3, z * 3.3, 303)) * 0.35);
-        // under the waist: the paint scorched, its colour still there under the soot
-        const k = ny > 0.5 ? 0 : 1 - smoothstep(belt * 0.55, belt * 1.05, y);
+        _burnt[0] = CHARRED[0]; _burnt[1] = CHARRED[1]; _burnt[2] = CHARRED[2];
+        // how hot the fire ran here: over the waist most, in broad blooms
+        const upper = smoothstep(belt * 0.6, belt * 1.1, y);
+        const hot = smoothstep(0.3, 0.7, noise3(x * 1.3, y * 1.3, z * 1.3, 301)) * (0.4 + 0.6 * upper);
+        mixInto(_burnt, OXIDE, smoothstep(0.5, 0.76, noise3(x * 2.1, y * 2.1, z * 2.1, 303)) * (0.2 + 0.6 * hot));
+        bare = smoothstep(0.48, 0.72, noise3(x * 2.9, y * 2.9, z * 2.9, 307)) * Math.min(1, hot * 1.5);
+        mixInto(_burnt, STEEL, bare);
+        mixInto(_burnt, ASH, smoothstep(0.68, 0.9, noise3(x * 3.7, y, z * 3.7, 309)) * smoothstep(0.6, 0.9, ny) * hot * 0.7);
+        // under the waist: the paint scorched, a trace of its colour still there under the soot
+        const k = ny > 0.5 ? 0 : (1 - smoothstep(belt * 0.55, belt * 1.05, y)) * 0.85;
         if (k > 0) {
-          _burnt[0] += (col0[v * 3] * 0.2 + SOOT[0] - _burnt[0]) * k;
-          _burnt[1] += (col0[v * 3 + 1] * 0.2 + SOOT[1] - _burnt[1]) * k;
-          _burnt[2] += (col0[v * 3 + 2] * 0.2 + SOOT[2] - _burnt[2]) * k;
+          _burnt[0] += (col0[v * 3] * SCORCHED_PAINT + CHARRED[0] * 0.8 - _burnt[0]) * k;
+          _burnt[1] += (col0[v * 3 + 1] * SCORCHED_PAINT + CHARRED[1] * 0.8 - _burnt[1]) * k;
+          _burnt[2] += (col0[v * 3 + 2] * SCORCHED_PAINT + CHARRED[2] * 0.8 - _burnt[2]) * k;
+          bare *= 1 - k;
         }
         // the soot the flames left streaked up the sides from the windows and round the wheel arches
-        if (Math.abs(ny) < 0.55) mixInto(_burnt, SOOT, smoothstep(0.5, 0.85, noise3(x * 2.4, y * 0.9, z * 2.4, 311)) * 0.55);
+        if (Math.abs(ny) < 0.55) {
+          const sooty = smoothstep(0.5, 0.85, noise3(x * 2.4, y * 0.9, z * 2.4, 311)) * 0.6;
+          mixInto(_burnt, SOOT, sooty);
+          bare *= 1 - sooty;
+        }
       }
       // the ground's and the underside's shade (the build's occlusion, which the burnt colours replace)
       const shade = (0.62 + 0.38 * smoothstep(0, 0.85, y)) * (ny < 0 ? 1 + 0.55 * ny : 1);
       col1[v * 3] = _burnt[0] * shade; col1[v * 3 + 1] = _burnt[1] * shade; col1[v * 3 + 2] = _burnt[2] * shade;
-      surf1[v * 3] = soft ? 250 : 230; surf1[v * 3 + 1] = soft ? 0 : 20; surf1[v * 3 + 2] = 0;
+      // matte char and oxide; the bared steel smoother and a little metallic
+      surf1[v * 3] = soft ? 250 : Math.round(235 - 95 * bare); surf1[v * 3 + 1] = soft ? 0 : Math.round(10 + 110 * bare); surf1[v * 3 + 2] = 0;
     }
     // its canvas (a tilt, a hood: matte cloth over the waist) burns away as the fire takes it (r1c: a burnt tilt read as
     // "a smooth black balloon")
@@ -683,6 +742,36 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
       return { copies: order.length, deforming, frozen };
     },
   };
+}
+
+/**
+ * A car's crush copy with its bend segments (allocates once, at the crush): its body's `base` vertices in every stream
+ * (the far form's tag dropped), then the cuts', each stream's value taken along its edge (the positions exactly as the
+ * plan measures them, so two faces' cuts on one edge coincide), over the plan's triangles. Null when a stream is
+ * interleaved (the plain clone then).
+ */
+function bentCopy(src: THREE.BufferGeometry, plan: BendPlan, base: number): THREE.BufferGeometry | null {
+  const geometry = new THREE.BufferGeometry();
+  const added = plan.t.length;
+  for (const name of Object.keys(src.attributes)) {
+    if (name === 'aVehicleLod') continue;
+    const attr = src.attributes[name];
+    if (!(attr instanceof THREE.BufferAttribute)) { geometry.dispose(); return null; }
+    const size = attr.itemSize, from = attr.array;
+    const out = new (from.constructor as new (n: number) => THREE.TypedArray)((base + added) * size);
+    out.set(from.subarray(0, base * size));
+    const whole = !(from instanceof Float32Array || from instanceof Float64Array);
+    for (let v = 0; v < added; v++) {
+      const a = plan.a[v] * size, b = plan.b[v] * size, t = plan.t[v], o = (base + v) * size;
+      for (let d = 0; d < size; d++) {
+        const x = from[a + d] + (from[b + d] - from[a + d]) * t;
+        out[o + d] = whole ? Math.round(x) : x;
+      }
+    }
+    geometry.setAttribute(name, new THREE.BufferAttribute(out, size, attr.normalized));
+  }
+  geometry.setIndex(new THREE.BufferAttribute(plan.index, 1));
+  return geometry;
 }
 
 /** Whether a burn's update last made at share `last` (−1: none) is due again at share `e`, every `step` and at its end. */

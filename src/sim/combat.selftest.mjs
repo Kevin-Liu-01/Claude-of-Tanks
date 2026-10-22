@@ -2052,6 +2052,15 @@ function mkShell(shellSpec, distM = 100) {
   // Indicator agrees (estimatePenRatio prices tandem the same way).
   const q = { plate: hits[1].plate, impactAngleDeg: 0, point: V(0, 1, 2), distM: 100, layers: hits };
   near(estimatePenRatio(tandem, 100, q), 700 / 650, 0.01, 'pen indicator honors tandem bypass');
+
+  // An antiTandem block (owner 2026-10-21: Hetman II's Duplet) still strips the main charge: 700 - 600 < 650.
+  const duplet = mkPlate({ name: 'duplet_glacis', kind: 'era', physicalMm: 10, keMm: 10, ceMm: 10, era: { keReduction: 0.2, ceFlatMm: 600, antiTandem: true }, verts: [[-1, 0, 2.6], [1, 0, 2.6], [1, 2, 2.6], [-1, 2, 2.6]] });
+  const guarded = mkTarget({ era: 'modern', hp: 2000 });
+  const dupletHits = [mkPlateHit(0.2, duplet, 0, V(0, 1, 2.6)), mkPlateHit(0.3, mkPlate({ name: 'glacis', physicalMm: 220, keMm: 490, ceMm: 650 }), 0)];
+  const stopped = resolveShellHit(mkShell(tandem, 100), guarded, dupletHits, rngHalf);
+  assert(stopped.kind !== 'pen', `an antiTandem block defeats the tandem round (got ${stopped.kind})`);
+  const dq = { plate: dupletHits[1].plate, impactAngleDeg: 0, point: V(0, 1, 2), distM: 100, layers: dupletHits };
+  near(estimatePenRatio(tandem, 100, dq), 100 / 650, 0.01, 'the pen indicator prices the antiTandem cut');
 }
 
 // ------- fuel tanks burn ONLY when destroyed (armor doc §9/§10 authority) ----

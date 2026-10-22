@@ -5,7 +5,7 @@
  * importing the solo battle authority (docs/SYSTEMS.md boot contract, tools/boot-static-closure.selftest.mjs).
  * game/state.ts seats the battle from the same plan.
  */
-import { normalizeGameMode } from '../sim/matchModes.ts';
+import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { isWaveMode, matchRulesetFor, rulesetAllyCap, type MatchRuleset } from '../sim/matchRuleset.ts';
 import { isCountryId, type CountryId } from '../sim/countries.ts';
 import { campaignEnemyNations, campaignOperationById, campaignRulesetInput } from './campaignOperations.ts';

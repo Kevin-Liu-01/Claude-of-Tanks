@@ -108,15 +108,16 @@ function trophyCounterweights(P: TankBuilderPort): void {
 
 /** Under-armour auxiliary power unit on the left rear sponson: armoured box on the fender, louvred
  * exhaust on top, exhaust stack, access door with hinges and latches, lifting eyes, bolt row and a
- * rear grille. Top at 1.80 m, under the rack floor (1.887 m) so the turret sweeps clear. */
+ * rear grille. Top at 1.74 m (release 231; was 1.80): the turret's rising aft belly and its rack pass over it at 1.77-1.85
+ * as it traverses, so the box, its stack and its louvres keep under them. */
 function auxiliaryPowerUnit(P: TankBuilderPort): void {
-  const x0 = -1.78, x1 = -1.16, z0 = -3.55, z1 = -2.25, y0 = 1.405, y1 = 1.80;
+  const x0 = -1.78, x1 = -1.16, z0 = -3.55, z1 = -2.25, y0 = 1.405, y1 = 1.74;
   const xc = (x0 + x1) / 2, zc = (z0 + z1) / 2;
   put(P, 'hull', 'hull', 'uaapu-box', box(x1 - x0, y1 - y0, z1 - z0), [xc, (y0 + y1) / 2, zc]);
   for (let i = 0; i < 9; i++) {
     put(P, 'hull', 'hullDark', 'uaapu-louver', box(.44, .012, .030).rotateX(.55), [xc, y1 + .012, z0 + .12 + i * .062]);
   }
-  put(P, 'hull', 'hullDark', 'uaapu-stack', cylY(.045, .045, .09, 12), [xc + .12, y1 + .045, z1 - .16]);
+  put(P, 'hull', 'hullDark', 'uaapu-stack', cylY(.045, .045, .06, 12), [xc + .12, y1 + .03, z1 - .16]);
   put(P, 'hull', 'hullDark', 'uaapu-door', box(.008, .30, .70), [x0 - .004, 1.60, zc + .10]);
   for (const dz of [-.30, .30]) put(P, 'hull', 'hullDark', 'uaapu-hinge', box(.020, .06, .03), [x0 - .010, 1.60, zc + .10 + dz]);
   for (const dy of [-.09, .09]) put(P, 'hull', 'hullDark', 'uaapu-latch', cylX(.015, .020, 8), [x0 - .014, 1.60 + dy, zc + .10 + .30]);
@@ -128,9 +129,11 @@ function auxiliaryPowerUnit(P: TankBuilderPort): void {
 
 /** Right rear sponson stowage box on the service cover, lid and latches. */
 function sponsonBox(P: TankBuilderPort): void {
-  const yc = 1.709765 + .075;
-  put(P, 'hull', 'hull', 'sponson-box', box(.50, .15, .66), [1.34, yc, -2.98]);
-  put(P, 'hull', 'hullDark', 'sponson-box-lid', box(.52, .012, .68), [1.34, yc + .081, -2.98]);
+  // release 231 (the gun-hull fleet lane): 9 cm deep (was 15), so its lid passes 18 mm under the bustle rack's 1.83 floor
+  // as the turret traverses (it stood 4.7 cm into it)
+  const yc = 1.709765 + .045;
+  put(P, 'hull', 'hull', 'sponson-box', box(.50, .09, .66), [1.34, yc, -2.98]);
+  put(P, 'hull', 'hullDark', 'sponson-box-lid', box(.52, .012, .68), [1.34, yc + .051, -2.98]);
   for (const dz of [-.22, .22]) put(P, 'hull', 'hullDark', 'sponson-box-latch', cylX(.012, .02, 8), [1.60, yc, -2.98 + dz]);
 }
 
@@ -157,7 +160,9 @@ function fenderStowage(P: TankBuilderPort): void {
   for (const z of [-1.50, .20, 1.90]) put(P, 'hull', 'hull', 'tow-clamp', box(.06, .05, .05), [-1.80, 1.435, z]);
   member(P, 'hull', 'hullDark', 'pioneer-tool', [1.74, 1.43, .25], [1.74, 1.43, 1.15], .015);
   put(P, 'hull', 'hullDark', 'pioneer-tool', box(.10, .02, .32), [1.74, 1.43, 1.32]);
-  for (const z of [-2.45, -2.05]) put(P, 'hull', 'hullDetail', 'jerry-can', box(.18, .42, .35), [1.52, 1.405 + .21, z]);
+  // release 231: 10 l cans (0.26 m), 3.5 cm under the turret's rising aft belly as it traverses (the 0.42 m cans stood
+  // 12.5 cm into it)
+  for (const z of [-2.45, -2.05]) put(P, 'hull', 'hullDetail', 'jerry-can', box(.18, .26, .35), [1.52, 1.405 + .13, z]);
 }
 
 export function buildAbramsSourceXSepv3Kit(P: TankBuilderPort): void {

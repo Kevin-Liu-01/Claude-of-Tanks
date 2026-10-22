@@ -8,7 +8,9 @@
  *  - the lanes: each lane's range, its hull and the angle it presents (a hull seen from above, turned as it stands), and
  *    the loaded round's expected verdict laid on its centre of mass (sim/provingGround.ts provingShellCard); the lane the
  *    gun is laid on is lit;
- *  - the controls: reset the range, moving targets, back to the Garage; their keys on a keyboard, the buttons on a phone.
+ *  - the drive course: while the hull is on it, its features in order (done, under the hull, ahead) and the way along;
+ *  - the controls: reset the range, back to the Garage, the moving-targets switch; each one labelled, its key beside it on
+ *    a keyboard, its short name under its icon on a phone.
  *
  * It renders only when its inputs change (the range record, the loaded slot, the laid lane, the switch, the last shot,
  * the key labels), so a steady frame does no DOM or string work.
@@ -22,6 +24,15 @@ import { PROVING_DISPLAY, PROVING_MONO, loadProvingType } from './provingType.ts
 /** The range as the HUD receives it (sim/matchModes.ts ProvingRangePresentation, structurally). */
 export interface RangeCardState {
   readonly moving: boolean;
+  /** The drive course (sim/matchModes.ts ProvingCoursePresentation): its line, graded width and features. */
+  readonly course?: {
+    readonly yaw: number;
+    readonly widthM: number;
+    readonly start: { readonly x: number; readonly z: number };
+    readonly end: { readonly x: number; readonly z: number };
+    readonly features: ReadonlyArray<{ readonly kind: string; readonly x0: number; readonly z0: number;
+      readonly x1: number; readonly z1: number; readonly first: number }>;
+  };
   readonly lanes: ReadonlyArray<{
     readonly index: number;
     readonly rangeM: number;
@@ -60,6 +71,9 @@ interface RangeCardInput {
   /** The hull the gun is laid on (the aim's gun target), or null; the range the gun is laid at (m), or null. */
   readonly laidTargetId: string | null;
   readonly laidRangeM: number | null;
+  /** The player's hull on the ground (x, z), for the drive course's progress; null without one. */
+  readonly hullX: number | null;
+  readonly hullZ: number | null;
   readonly resetKey: string;
   readonly movingKey: string;
 }
@@ -71,6 +85,8 @@ interface ProvingRangeCard {
 }
 
 const AMBER = '#f0a030';
+/** The course readout shows while the hull is within this margin (m) of the graded band and its two ends. */
+const COURSE_MARGIN_M = 6;
 /** A last shot older than this steps back (ms). */
 const STALE_SHOT_MS = 6000;
 const CSS = `
@@ -87,6 +103,7 @@ const CSS = `
 .cot-range-card .rc-round{font:700 13px ${PROVING_DISPLAY};letter-spacing:.02em;color:#fff1d6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cot-range-card .rc-rng{margin-left:auto;display:flex;align-items:center;gap:5px;font:500 15px ${PROVING_MONO};color:#e8f0f5;
   white-space:nowrap}
+.cot-range-card .rc-rng[hidden]{display:none}
 .cot-range-card .rc-rng svg{width:14px;height:14px;color:#7f909c}
 .cot-range-card .rc-rng small{font-size:11px;color:#7f909c;margin-left:-3px}
 .cot-range-card .rc-shot{display:none;flex-direction:column;gap:4px;padding:7px 8px 8px;background:rgba(255,255,255,.035);
@@ -122,23 +139,54 @@ const CSS = `
 .cot-range-card .rc-o{font:700 11px ${PROVING_DISPLAY};letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;
   border:1px solid currentColor;white-space:nowrap}
 .cot-range-card .rc-o.pen{color:#7ee87e}.cot-range-card .rc-o.marginal{color:#f3a536}.cot-range-card .rc-o.nopen{color:#f05a5a}
-.cot-range-card .rc-foot{display:grid;grid-template-columns:1fr 1fr 40px;gap:5px}
+.cot-range-card .rc-course{display:flex;flex-direction:column;gap:5px;padding:6px 7px 7px;background:rgba(255,255,255,.035)}
+.cot-range-card .rc-course[hidden]{display:none}
+.cot-range-card .rc-course-row{display:flex;align-items:center;gap:4px}
+.cot-range-card .rc-cf{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:3px 2px;
+  color:#7f909c;border:1px solid rgba(176,194,208,.16);font:500 11px ${PROVING_MONO}}
+.cot-range-card .rc-cf svg{width:24px;height:14px;display:block}
+.cot-range-card .rc-cf.done{color:#c9a46a;border-color:rgba(240,160,48,.35)}
+.cot-range-card .rc-cf.now{color:#fff1d6;border-color:${AMBER};background:rgba(240,160,48,.18)}
+.cot-range-card .rc-course-n{flex:0 0 auto;margin-left:3px;font:500 13px ${PROVING_MONO};color:#e8f0f5;white-space:nowrap}
+.cot-range-card .rc-course-n small{font-size:11px;color:#7f909c}
+.cot-range-card .rc-course-bar{position:relative;height:4px;background:rgba(255,255,255,.08)}
+.cot-range-card .rc-course-bar i{position:absolute;left:0;top:0;bottom:0;background:${AMBER}}
+.cot-range-card .rc-foot{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.cot-range-card .rc-foot [data-range-action='moving']{grid-column:1/-1}
+.cot-range-card .rc-foot .rc-s{display:none}
+.cot-range-card .rc-sw{position:relative;flex:0 0 auto;width:22px;height:12px;border:1px solid rgba(176,194,208,.55);
+  border-radius:6px;background:rgba(0,0,0,.25)}
+.cot-range-card .rc-sw::after{content:'';position:absolute;top:2px;left:2px;width:6px;height:6px;border-radius:50%;background:#9fb0bb;
+  transition:left .15s,background .15s}
+.cot-range-card [aria-checked='true'] .rc-sw{border-color:${AMBER};background:rgba(240,160,48,.3)}
+.cot-range-card [aria-checked='true'] .rc-sw::after{left:12px;background:#ffd27a}
 .cot-range-card .rc-foot button{min-height:32px;display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 6px;
   color:#e8f0f5;background:rgba(126,148,164,.12);border:1px solid rgba(176,194,208,.26);
   font:700 11px ${PROVING_DISPLAY};letter-spacing:.06em;text-transform:uppercase;cursor:pointer;touch-action:manipulation}
 .cot-range-card .rc-foot button:hover{border-color:rgba(240,160,48,.6)}
-.cot-range-card .rc-foot button[aria-pressed='true']{color:#fff1d6;border-color:${AMBER};background:rgba(240,160,48,.18)}
+.cot-range-card .rc-foot button[aria-checked='true']{color:#fff1d6;border-color:${AMBER};background:rgba(240,160,48,.18)}
 .cot-range-card .rc-foot button svg{width:15px;height:15px;flex:0 0 auto}
 .cot-range-card .rc-foot kbd{font:500 11px ${PROVING_MONO};color:${AMBER};border:1px solid rgba(240,160,48,.45);padding:0 4px}
-/* a phone: one row (the range, then the three controls as icons) and the last shot under it; the left lane is short there,
-   so the card never scrolls or clips its controls */
+/* a phone: one row (the range, then the three controls, each its icon over its short name) and the last shot under it; the
+   left lane is short there, so the card never scrolls or clips its controls */
 body.cot-touch-layout .cot-range-card{width:min(236px,var(--hud-side-width,236px));max-height:none;overflow:visible;
   flex-direction:row;flex-wrap:wrap;align-items:center;padding:6px 7px;gap:5px}
 body.cot-touch-layout .cot-range-card .rc-head{flex:1 1 auto;min-width:0}
 body.cot-touch-layout .cot-range-card .rc-round,body.cot-touch-layout .cot-range-card .rc-lanes,
-body.cot-touch-layout .cot-range-card .rc-foot kbd,body.cot-touch-layout .cot-range-card .rc-foot span{display:none}
+body.cot-touch-layout .cot-range-card .rc-foot kbd,body.cot-touch-layout .cot-range-card .rc-foot .rc-l{display:none}
 body.cot-touch-layout .cot-range-card .rc-foot{display:flex;gap:4px}
-body.cot-touch-layout .cot-range-card .rc-foot button{width:40px;min-height:40px;padding:0}
+body.cot-touch-layout .cot-range-card .rc-foot button{width:46px;min-height:44px;padding:3px 1px 2px;flex-direction:column;gap:2px;
+  letter-spacing:0;text-transform:none;font:600 11px/1.05 ${PROVING_DISPLAY}}
+body.cot-touch-layout .cot-range-card .rc-foot .rc-s{display:block;max-width:100%;text-align:center}
+body.cot-touch-layout .cot-range-card .rc-foot [data-range-action='moving']{order:1}
+body.cot-touch-layout .cot-range-card .rc-foot [data-range-action='exit']{order:2}
+/* the course on a phone stays in the one row: the feature under or ahead of the hull and the count take the head's place
+   (its icon and the laid range), and the way along is a line on the card's lower edge */
+body.cot-touch-layout .cot-range-card:has(.rc-course:not([hidden])) .rc-head{display:none}
+body.cot-touch-layout .cot-range-card .rc-course{flex:0 0 auto;padding:0;background:none}
+body.cot-touch-layout .cot-range-card .rc-cf{flex:0 0 auto;padding:2px 3px}
+body.cot-touch-layout .cot-range-card .rc-cf:not(.now,.next),body.cot-touch-layout .cot-range-card .rc-cf span{display:none}
+body.cot-touch-layout .cot-range-card .rc-course-bar{position:absolute;left:0;right:0;bottom:0;height:3px}
 body.cot-touch-layout .cot-range-card .rc-foot button svg{width:18px;height:18px}
 /* the last shot at the top right under the screen's own buttons, one line: clear of the sight in the middle and of the
    round controls under the card */
@@ -158,6 +206,15 @@ function presentedGlyph(deg: number): string {
     `<rect x="-4.2" y="-7" width="8.4" height="14" rx="1.2" fill="none" stroke="#c8d4dc" stroke-width="1.4"/>` +
     `<circle cx="0" cy="0.6" r="2.6" fill="#c8d4dc"/><path d="M0 -1.6V-9.6" stroke="#c8d4dc" stroke-width="1.5"/></g>` +
     `<path d="M-9 9.2h18" stroke="${AMBER}" stroke-width="1.2" opacity=".7"/></svg>`;
+}
+
+/** A course feature's pictogram, as its board on the ground draws it (game/provingRangeDressing.ts drawCourseBoard). */
+function courseGlyph(kind: string): string {
+  const shape = kind === 'ramp' ? '<path d="M2 12L12 4H22V12Z" fill="currentColor"/>'
+    : kind === 'ditch' ? '<path d="M1 5H7L10 12H14L17 5H23" fill="none" stroke="currentColor" stroke-width="2"/>'
+      : kind === 'moguls' ? '<path d="M1 12C3 4 6 4 8 12C10 4 13 4 15 12C17 4 20 4 22 12" fill="none" stroke="currentColor" stroke-width="2"/>'
+        : '<path d="M2 13L22 7" stroke="currentColor" stroke-width="2"/><path d="M8 9.6L17 6.9L16 3.6L7 6.3Z" fill="currentColor"/>';
+  return `<svg viewBox="0 0 24 14" aria-hidden="true">${shape}</svg>`;
 }
 
 /** The presented angle in words, for the glyph's title (screen readers and a hover). */
@@ -180,13 +237,17 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
     `<span class="rc-pen" title="${t('hud.range.penRoll')}">${uiIconSVG('penetration', 13)}<span></span><small></small></span>` +
     `<span class="rc-eff" title="${t('hud.range.armour')}">${uiIconSVG('shield', 13)}<span></span></span></div>` +
     `<div class="rc-tgt"></div></div>` +
+    `<div class="rc-course" hidden role="group" aria-label="${t('hud.range.course')}"><div class="rc-course-row"></div>` +
+    `<div class="rc-course-bar"><i></i></div></div>` +
     `<div class="rc-lanes" role="list"></div>` +
     `<div class="rc-foot"><button type="button" data-range-action="reset" title="${t('action.rangeReset')}">` +
-    `${uiIconSVG('reload', 15)}<span>${t('hud.range.reset')}</span><kbd></kbd></button>` +
-    `<button type="button" data-range-action="moving" aria-pressed="false" title="${t('action.rangeMoving')}">` +
-    `${uiIconSVG('modeProving', 15)}<span>${t('hud.range.moving')}</span><kbd></kbd></button>` +
+    `${uiIconSVG('reload', 15)}<span class="rc-l">${t('hud.range.reset')}</span><span class="rc-s">${t('hud.range.reset')}</span>` +
+    `<kbd></kbd></button>` +
     `<button type="button" data-range-action="exit" title="${t('hud.range.exit')}" aria-label="${t('hud.range.exit')}">` +
-    `${uiIconSVG('garage', 16)}</button></div>`;
+    `${uiIconSVG('garage', 16)}<span class="rc-l">${t('hud.range.garage')}</span><span class="rc-s">${t('hud.range.garage')}</span></button>` +
+    `<button type="button" role="switch" data-range-action="moving" aria-checked="false" title="${t('action.rangeMoving')}">` +
+    `<i class="rc-sw" aria-hidden="true"></i><span class="rc-l">${t('hud.range.moving')}</span>` +
+    `<span class="rc-s">${t('hud.range.movingShort')}</span><kbd></kbd></button></div>`;
   const roundEl = root.querySelector<HTMLElement>('.rc-round')!;
   const laidRangeEl = root.querySelector<HTMLElement>('.rc-rng span')!;
   const shotEl = root.querySelector<HTMLElement>('.rc-shot')!;
@@ -199,6 +260,9 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
   const effEl = shotEl.querySelector<HTMLElement>('.rc-eff span')!;
   const targetEl = shotEl.querySelector<HTMLElement>('.rc-tgt')!;
   const lanesEl = root.querySelector<HTMLElement>('.rc-lanes')!;
+  const courseEl = root.querySelector<HTMLElement>('.rc-course')!;
+  const courseRowEl = courseEl.querySelector<HTMLElement>('.rc-course-row')!;
+  const courseBarEl = courseEl.querySelector<HTMLElement>('.rc-course-bar i')!;
   const resetButton = root.querySelector<HTMLButtonElement>('[data-range-action="reset"]')!;
   const movingButton = root.querySelector<HTMLButtonElement>('[data-range-action="moving"]')!;
   const exitButton = root.querySelector<HTMLButtonElement>('[data-range-action="exit"]')!;
@@ -207,6 +271,21 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
   resetButton.addEventListener('click', (event) => { event.stopPropagation(); emit('ui:rangeReset'); });
   movingButton.addEventListener('click', (event) => { event.stopPropagation(); emit('ui:rangeMoving'); });
   exitButton.addEventListener('click', (event) => { event.stopPropagation(); emit('ui:rangeExit'); });
+  // The controls' names are set again whenever the card shows: it is built the moment its module lands, which can be
+  // before the locale's lazy strings are resident (critic 236: zh-CN controls read in English).
+  const labelControls = (): void => {
+    root.setAttribute('aria-label', t('hud.range.title'));
+    resetButton.title = t('action.rangeReset');
+    movingButton.title = t('action.rangeMoving');
+    exitButton.title = t('hud.range.exit');
+    exitButton.setAttribute('aria-label', t('hud.range.exit'));
+    const names: Array<[HTMLButtonElement, string, string]> = [[resetButton, 'hud.range.reset', 'hud.range.reset'],
+      [exitButton, 'hud.range.garage', 'hud.range.garage'], [movingButton, 'hud.range.moving', 'hud.range.movingShort']];
+    for (const [button, long, short] of names) {
+      button.querySelector('.rc-l')!.textContent = t(long);
+      button.querySelector('.rc-s')!.textContent = t(short);
+    }
+  };
   // touch: a tap on the card must not fall through to the battle's look/fire surface
   root.addEventListener('pointerdown', (event) => event.stopPropagation());
 
@@ -223,6 +302,65 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
   let lastResetKey = '';
   let lastMovingKey = '';
   let rows: HTMLElement[] = [];
+  let courseOf: RangeCardState['course'] | null = null;
+  let courseChips: HTMLElement[] = [];
+  let courseCountEl: HTMLElement | null = null;
+  /** Each feature's start and end along the course line (m), and the line's length, measured once per course. */
+  let courseSpans: number[] = [];
+  let courseLength = 1;
+  let courseKey = -1;
+
+  /** The course's features as chips (its pictogram over its figure) and the count; rebuilt when the course changes. */
+  const renderCourse = (course: NonNullable<RangeCardState['course']>): void => {
+    const fx = Math.sin(course.yaw), fz = Math.cos(course.yaw);
+    const along = (x: number, z: number): number => (x - course.start.x) * fx + (z - course.start.z) * fz;
+    courseLength = Math.max(1, along(course.end.x, course.end.z));
+    courseSpans = [];
+    courseRowEl.textContent = '';
+    courseChips = course.features.map((feature) => {
+      const a0 = along(feature.x0, feature.z0), a1 = along(feature.x1, feature.z1);
+      courseSpans.push(Math.min(a0, a1), Math.max(a0, a1));
+      const chip = createElement('span', 'rc-cf', courseRowEl);
+      const figure = feature.kind === 'ditch' || feature.kind === 'moguls'
+        ? `${feature.first.toFixed(feature.first % 1 ? 1 : 0)} m` : `${Math.round(feature.first)}°`;
+      const name = t(`hud.range.course.${feature.kind}`);
+      chip.title = `${name} · ${figure}`;
+      chip.setAttribute('aria-label', chip.title);
+      chip.innerHTML = `${courseGlyph(feature.kind)}<span>${figure}</span>`;
+      return chip;
+    });
+    courseCountEl = createElement('span', 'rc-course-n', courseRowEl);
+    courseOf = course;
+    courseKey = -1;
+  };
+
+  /** Where the hull is on the course: hidden off it; each feature done, under the hull or ahead, and the way along. */
+  const updateCourse = (course: RangeCardState['course'] | undefined, hullX: number | null, hullZ: number | null): void => {
+    if (!course || !course.features.length || hullX == null || hullZ == null) {
+      if (!courseEl.hidden) courseEl.hidden = true;
+      return;
+    }
+    if (course !== courseOf) renderCourse(course);
+    const dx = hullX - course.start.x, dz = hullZ - course.start.z;
+    const at = dx * Math.sin(course.yaw) + dz * Math.cos(course.yaw);
+    const across = Math.abs(dx * Math.cos(course.yaw) - dz * Math.sin(course.yaw));
+    const on = at >= -COURSE_MARGIN_M && at <= courseLength + COURSE_MARGIN_M && across <= course.widthM / 2 + COURSE_MARGIN_M;
+    if (courseEl.hidden === on) courseEl.hidden = !on;
+    if (!on) return;
+    // the features run in order down the line: those behind the hull are done, the one under it is now
+    let done = 0;
+    while (done < courseChips.length && at > courseSpans[done * 2 + 1]) done++;
+    const inside = done < courseChips.length && at >= courseSpans[done * 2] ? 1 : 0;
+    const fraction = Math.round(Math.max(0, Math.min(1, at / courseLength)) * 100);
+    const key = (fraction * 64 + done) * 2 + inside;
+    if (key === courseKey) return;
+    courseKey = key;
+    for (let i = 0; i < courseChips.length; i++) {
+      courseChips[i].className = i < done ? 'rc-cf done' : i === done ? (inside ? 'rc-cf now' : 'rc-cf next') : 'rc-cf';
+    }
+    courseCountEl!.innerHTML = `${done}<small>/${courseChips.length}</small>`;
+    courseBarEl.style.width = `${fraction}%`;
+  };
 
   const renderLanes = (range: RangeCardState, slot: number): void => {
     lanesEl.textContent = '';
@@ -271,7 +409,7 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
   const update = (input: RangeCardInput): void => {
     const range = input.range;
     if (!range || !range.lanes.length) { hide(); return; }
-    if (!shown) { shown = true; root.classList.add('show'); }
+    if (!shown) { shown = true; labelControls(); root.classList.add('show'); }
     if (range !== lastRange || input.shellSlot !== lastSlot) {
       renderLanes(range, input.shellSlot);
       lastRange = range;
@@ -280,9 +418,13 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
       lastSerial = -1;
     }
     if (input.shellName !== lastShellName) { roundEl.textContent = input.shellName; lastShellName = input.shellName; }
-    // the rangefinder: the range the gun is laid at, to the metre (a dash with nothing under the sight)
+    // the rangefinder: the range the gun is laid at, to the metre (no readout with nothing under the sight)
     const laidRange = input.laidRangeM != null && Number.isFinite(input.laidRangeM) ? Math.round(input.laidRangeM) : -1;
-    if (laidRange !== lastLaidRange) { laidRangeEl.textContent = laidRange >= 0 ? String(laidRange) : '—'; lastLaidRange = laidRange; }
+    if (laidRange !== lastLaidRange) {
+      laidRangeEl.textContent = laidRange >= 0 ? String(laidRange) : '';
+      laidRangeEl.parentElement!.hidden = laidRange < 0;
+      lastLaidRange = laidRange;
+    }
     const serial = range.lastShot?.serial ?? 0;
     if (serial !== lastSerial) {
       lastSerial = serial;
@@ -295,7 +437,7 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
       shotEl.classList.add('stale');
     }
     if (range.moving !== lastMoving) {
-      movingButton.setAttribute('aria-pressed', String(range.moving));
+      movingButton.setAttribute('aria-checked', String(range.moving));
       lastMoving = range.moving;
     }
     let laid = -1;
@@ -306,6 +448,7 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
       for (let i = 0; i < rows.length; i++) rows[i].classList.toggle('laid', i === laid);
       lastLaid = laid;
     }
+    updateCourse(range.course, input.hullX, input.hullZ);
     if (input.resetKey !== lastResetKey) { resetKeyEl.textContent = input.resetKey; lastResetKey = input.resetKey; }
     if (input.movingKey !== lastMovingKey) { movingKeyEl.textContent = input.movingKey; lastMovingKey = input.movingKey; }
   };

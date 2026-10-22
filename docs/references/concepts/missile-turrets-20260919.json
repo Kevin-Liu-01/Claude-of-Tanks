@@ -33,8 +33,8 @@
       "roofMachineGuns": 0,
       "hullLengthM": 6.94,
       "widthM": 3.734,
-      "tallestM": 2.74,
-      "silhouette": "Broad low armored turret with eight large canisters and a short backup cannon",
+      "tallestM": 2.64,
+      "silhouette": "Broad low armored turret with two open pods of four round canisters and a short backup cannon",
       "hullWidthM": 3.7,
       "overallLengthM": 7.7
     },
@@ -86,7 +86,7 @@
     }
   },
   "status": "Design contract only; no implementation or qualification result.",
-  "envelopeDefinition": "Hull recipe dimensions are retained separately from the complete neutral exterior envelope. Prototype measured unchanged hull fittings span3.734m and7.70m; highest new canister is2.74m. These approved design dimensions are not source-fidelity targets.",
+  "envelopeDefinition": "Hull recipe dimensions are retained separately from the complete neutral exterior envelope. Prototype measured unchanged hull fittings span3.734m and7.70m; highest canister pod strap is 2.64 m (2.74 m before the 2026-10-21 round-canister pods). These approved design dimensions are not source-fidelity targets.",
   "clearanceRevision": {
     "id": "object695_x",
     "approvedBy": "owner-delegated root implementation decision 2026-09-19",
@@ -100,6 +100,11 @@
     {
       "date": "2026-10-02",
       "request": "Make Object 695 ten percent smaller; retain its complete missile concept and capabilities."
+    },
+    {
+      "date": "2026-10-21",
+      "request": "make missible tubes like those for type 100 ifv, ztz 100 proto missile tubes, follow that of the object 695, and tagil, which are more prooper.",
+      "result": "ztz100_prototype: the two armored box banks became open pods of round 152 mm canisters (Object 695 collars, recessed sealed terminals, dark bore liners, bands, clamp frames, rails, cradle plates on the trunnion journals, fixed elevation drives). Eight cells and both missile loads unchanged; the canister pitch tightened to 0.30 m, so the launch mouths moved to x 0.93/1.23 and the lower row to y 0.12; the top fell from 2.74 m to 2.64 m."
     }
   ]
 }

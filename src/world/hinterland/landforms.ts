@@ -343,12 +343,19 @@ function placeCone(cfg: HinterlandLandformConfig, salt: number): PlacedLandform 
 /** A caldera: a rim wall round a sunken floor — a steep inner escarpment, a gentle outer slope. */
 function placeCaldera(cfg: HinterlandLandformConfig, salt: number): PlacedLandform {
   const f = frame(cfg, salt);
+  const [ox, oz] = seedOffset(salt, 17);
+  const rimQ = 0.72, rimM = rimQ * Math.sqrt(f.halfL * f.halfW);
   return place(f, 'pos', (u, v) => {
-    const { q } = roundQ(f, u, v, 0.1);
+    const { q, theta } = roundQ(f, u, v, 0.1);
     if (q >= 1) return 0;
-    const rimQ = 0.72, floor = Math.max(0, Math.min(0.5, cfg.floor ?? 0.08)), wall = Math.max(0.03, Math.min(0.4, cfg.wall ?? 0.12));
-    if (q < rimQ) return floor + (1 - floor) * smoothstep(rimQ - wall, rimQ, q);
-    return Math.pow(1 - (q - rimQ) / (1 - rimQ), 1.6);
+    // (233, the media lane's maps-227 review on Caldera: "a hard-edged ... wall erases the rim and horizon"; with every
+    // haze off the somma still stood as one dark band with a dead-level top) the crest's line round the ring: summits
+    // and saddles a couple of kilometres apart, the rim 0.68–1 of its height (Aso's inner wall 300–600 m), read on the
+    // circle so it closes without a seam
+    const crest = 0.68 + 0.32 * fbm2(Math.cos(theta) * rimM / 2400 + ox, Math.sin(theta) * rimM / 2400 + oz, 3);
+    const floor = Math.max(0, Math.min(0.5, cfg.floor ?? 0.08)), wall = Math.max(0.03, Math.min(0.4, cfg.wall ?? 0.12));
+    if (q < rimQ) return crest * (floor + (1 - floor) * smoothstep(rimQ - wall, rimQ, q));
+    return crest * Math.pow(1 - (q - rimQ) / (1 - rimQ), 1.6);
   });
 }
 

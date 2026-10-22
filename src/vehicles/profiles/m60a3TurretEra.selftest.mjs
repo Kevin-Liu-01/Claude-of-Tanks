@@ -28,19 +28,21 @@ const tank = createTank('m60a3', null, {
 const turret = tank.root.getObjectByName('rig_turret');
 const receipt = turret?.userData.m60a3EraReceipt;
 assert.ok(receipt, 'M60A3 publishes a conformal turret ERA seating receipt');
-assert.equal(receipt.frontTilesPerSide, 15, 'each cast cheek carries three dense five-tile courses');
-assert.equal(receipt.sideTilesPerSide, 18, 'each turret flank carries three wraparound six-tile courses');
-assert.equal(receipt.totalTiles, 66, 'the complete turret package carries 66 destructible modules');
+// Release 233 (owner 2026-10-21: the M60s should reach the Sabra's quality): two courses of larger cassettes replace the
+// three dense courses, whose tilted neighbours overlapped into a scatter on the needle nose.
+assert.equal(receipt.frontTilesPerSide, 6, 'each cast cheek carries two three-tile courses');
+assert.equal(receipt.sideTilesPerSide, 12, 'each turret flank carries two wraparound six-tile courses');
+assert.equal(receipt.totalTiles, 36, 'the complete turret package carries 36 destructible modules');
 assert.equal(receipt.curvedSurfaceNormals, receipt.totalTiles,
   'every ERA module derives its own normal from the rounded casting');
 assert.equal(receipt.tangentAxesPerTile, 2,
   'each tile uses longitudinal and dome tangents instead of a flat bank transform');
 assert.equal(receipt.layout, 'surface-parameter-grid',
   'M60A3 ERA follows regular longitudinal and dome stations');
-assert.equal(receipt.alignedRows, 3,
-  'M60A3 front and flank armor share three aligned height courses');
-assert.equal(receipt.alignedFrontColumns, 5,
-  'M60A3 cheeks use five repeatable longitudinal columns');
+assert.equal(receipt.alignedRows, 2,
+  'M60A3 front and flank armor share two aligned height courses');
+assert.equal(receipt.alignedFrontColumns, 3,
+  'M60A3 cheeks use three repeatable longitudinal columns');
 assert.equal(receipt.alignedSideColumns, 6,
   'M60A3 flanks use six repeatable longitudinal columns');
 assert.equal(receipt.blackOutlineStrips, 0,

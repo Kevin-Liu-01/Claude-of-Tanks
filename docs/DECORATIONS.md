@@ -257,6 +257,11 @@ and its painted rim stay masked clean.
    graduated tank should request rows in `TANK_MANIFESTS` (decorations-owned)
    rather than building stowage into gate-measured geometry; anything baked
    into profiles becomes silhouette the gate must re-pass.
+4. **Release 233 rows (2026-10-21, the distinct M1A1 marks and M60s lane)** —
+   `m1a1ha` keeps the default draw minus its bow shackles and tow chain (its
+   new track-width mine plow fills the bow); `m60a3` gets its own loadout, since
+   its new open fenders and rear bins differ from the A1's (see
+   `docs/history/research/abrams-m60-distinct-233.md`).
 
 ## Scratch probes kept from this round
 

@@ -68,7 +68,10 @@ for (const mode of ['capture_the_flag', 'zone_control', 'turbo_ball']) {
 {
   const alpha = entity('cooldown-a', 'alpha', 0, -180), bravo = entity('cooldown-b', 'bravo', 0, 180);
   let calls = 0, revives = 0, available = false;
-  const placement = { ...build({}, 'capture_the_flag'), respawn(spawn) { calls++; return available ? spawn : null; } };
+  // (234) a revive at its own spawn tries the safe ring first (respawnNear, the ruleset's respawnSafeM); the stub finds
+  // none there, so each attempt falls through to the blocked spawn this test throttles
+  const placement = { ...build({}, 'capture_the_flag'), respawnNear() { return null; },
+    respawn(spawn) { calls++; return available ? spawn : null; } };
   const controller = createMatchModeController({ mode: 'capture_the_flag', entities: [alpha, bravo], placement,
     revive(target) { revives++; target.combat.destroyed = false; } });
   alpha.combat.destroyed = true;
@@ -92,7 +95,12 @@ for (const mode of ['capture_the_flag', 'zone_control', 'turbo_ball']) {
   let calls = 0, available = false;
   const healthScales = [];
   const base = build({}, 'endless_horde');
-  const placement = { ...base, respawn(spawn) { calls++; return available ? spawn : null; } };
+  // (234) the retry at the hostile's own spawn tries the safe ring first (respawnNear with respawnSafeM clearances on the
+  // enemies); the stub finds none there, so the retry is the blocked final placement this test throttles. The arrival
+  // ring's own respawnNear calls (no clearances) stay the real ones.
+  const placement = { ...base, respawnNear(spawn, id, occupied, reach) {
+    return occupied.some(o => o.clearM != null) ? null : base.respawnNear(spawn, id, occupied, reach);
+  }, respawn(spawn) { calls++; return available ? spawn : null; } };
   const open = { ...matchRulesetFor('endless_horde'), horde: { ...matchRulesetFor('endless_horde').horde, spawnOutOfSight: false } };
   const controller = createMatchModeController({ mode: 'endless_horde', entities: [human, ...enemies], placement, ruleset: open,
     revive(target, spawn, scale) { healthScales.push(scale); target.combat.destroyed = false; Object.assign(target.state.pos, { x: spawn.x, z: spawn.z }); } });

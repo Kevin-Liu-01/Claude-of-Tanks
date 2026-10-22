@@ -52,6 +52,8 @@ function variant(
     name: options.name,
     nation: 'China',
   });
+  // a donor's measured deck-clearance curve belongs to its own hull and turret (release 233: the Longwei's)
+  delete spec.gunPitchByYawDeg;
   Object.assign(spec, options.stats || {});
   if (options.reloadS !== undefined && Number.isFinite(options.reloadS)) {
     spec.gun.reloadS = options.reloadS;

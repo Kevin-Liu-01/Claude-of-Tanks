@@ -10,6 +10,7 @@ import type { FleetDimensions, FleetTankSpec } from './specContracts.ts';
 import { vehicleEraForId } from './taxonomy.ts';
 import { restoreInstalledVehicleFrame } from './vehicleSizePolicy.ts';
 import { ADDITIONAL_SUPPLIED_SOURCE_STUDIES } from './suppliedSourceStudyIndex.ts';
+import { createType99Armor } from './profiles/type99Armor.ts';
 import { applyFleetLauncherMuzzles } from './fleetLauncherMuzzles.ts';
 import { GRIFFIN_HULL_LENGTH_M, GRIFFIN_TURRET_PIVOT, GRIFFIN_TURRET_SCALE as GRIFFIN_T } from './profiles/griffinProportions.ts';
 
@@ -260,6 +261,17 @@ function applyGuidedShellLabels(spec: FleetTankSpec): void {
 }
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
+
+/** Release 233: the Type 96B X's donor frame is the Longwei's retired VT-derivative envelope and gameplay size, frozen
+ * when the Longwei was rebuilt (profiles/longwei.ts), so its hit zones do not follow the new Longwei turret. */
+const TYPE96B_FRAME_DIMS: FleetDimensions = Object.freeze({ hullLengthM: 7.76, overallLengthM: 11.66, widthM: 3.7, heightM: 3.16 });
+
+/** The armor frame and size a study is fitted from: its structure donor's, or a frozen frame. */
+function structureFrame(id: string, donorId: string): Pick<FleetTankSpec, 'armor' | 'dims'> {
+  if (id === 'type96b') return { armor: createType99Armor('type96b_frame'), dims: TYPE96B_FRAME_DIMS };
+  return registries.tankSpecs[id === 'kurganets25' ? 'spz_puma' : donorId];
+}
+
 const specs: Record<string, FleetTankSpec> = {};
 for (const [id, donorId, name, nation, role] of entries) {
   const spec = cloneFleetVariant(registries.tankSpecs, id, donorId, {
@@ -271,7 +283,7 @@ for (const [id, donorId, name, nation, role] of entries) {
   spec.balancePeerOf = donorId;
   stripSilhouetteDimensions(spec.dims);
   // The tier-X peer owns combat tuning, not the already fitted source armor frame.
-  const structure = registries.tankSpecs[id === 'kurganets25' ? 'spz_puma' : donorId];
+  const structure = structureFrame(id, donorId);
   spec.armor = structuredClone(structure.armor);
   const donorDimensions = { ...structure.dims };
   Object.assign(spec.dims, dimensions[id]);
@@ -320,7 +332,7 @@ export function synchronizeSuppliedSourceCombatMetadata(): void {
     const target = registries.tankSpecs[id], donor = registries.tankSpecs[donorId];
     for (const field of fields) Object.assign(target, { [field]: structuredClone(donor[field]) });
     target.balancePeerOf = donorId;
-    const structure = registries.tankSpecs[id === 'kurganets25' ? 'spz_puma' : donorId];
+    const structure = structureFrame(id, donorId);
     target.armor = structuredClone(structure.armor);
     fitArmorToDims(target.armor, structure.dims, target.dims);
     applySourceFrame(target, id);

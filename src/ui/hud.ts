@@ -38,7 +38,7 @@ import { canSelfRightTank } from '../sim/rollover.ts';
 // RULESETS (2026-09-14): the clock, the objective targets and the pre-battle rule lines read the
 // same table the sim applies (sim/matchRuleset.ts)
 import { RULESET_SCORE_TARGETS, matchRulesetFor, rulesetLines, type MatchRuleset } from '../sim/matchRuleset.ts';
-import { GAME_MODE_DEFINITIONS, isPracticeMode, normalizeGameMode } from '../sim/matchModes.ts';
+import { GAME_MODE_DEFINITIONS, isPracticeMode, normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { markersStandOnSpawns, objectiveMarkers, type ObjectiveMarker, type ObjectiveStateView } from './minimapObjectives.ts';
 import {
   OBJECTIVE_PALETTE, drawBallGlyph, drawCheck, drawGoalGlyph, drawHexBadge, drawLaneGlyph, drawPennant, drawPickupGlyph,
@@ -7412,7 +7412,9 @@ export function initHud(bus: EventBus): HudRuntime {
     rangeCard.update({
       range, shellSlot: slot,
       shellName: player?.spec?.gun?.shells?.[slot]?.name || shellTypeLabel(player?.spec?.gun?.shells?.[slot]?.type || ''),
-      laidTargetId: frame.aim?.gunTargetId ?? null, laidRangeM: frame.aim?.distM ?? null,
+      // the range from the muzzle along the bore (the shot's own flight distance), not the camera ray's
+      laidTargetId: frame.aim?.gunTargetId ?? null, laidRangeM: frame.aim?.gunDistM ?? frame.aim?.distM ?? null,
+      hullX: player?.state?.pos.x ?? null, hullZ: player?.state?.pos.z ?? null,
       resetKey: frame.auxiliaryKeyLabels?.rangeReset || 'R', movingKey: frame.auxiliaryKeyLabels?.rangeMoving || 'Y',
     });
   }

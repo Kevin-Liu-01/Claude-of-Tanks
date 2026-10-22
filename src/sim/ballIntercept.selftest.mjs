@@ -23,7 +23,7 @@ assert.ok(Math.abs(TAU - 2.08) < 0.01, 'the coasting time constant');
 Object.assign(ball, { x: 0, z: 0, vx: 20, vz: 0 });
 const jobs = alpha.map((b) => mode.botObjective(b));
 const strikers = jobs.filter((j) => j.mission === 'striker');
-assert.equal(strikers.length, rules.ballBots.strikers, 'two strikers');
+assert.equal(strikers.length, rules.ballBots.strikers, 'the ruleset\'s strikers');
 assert.equal(jobs.filter((j) => j.mission === 'keeper').length, rules.ballBots.keepers, 'a keeper');
 // the chaser: the striker nearest the ball (the support striker and any shooter carry the ball on their objective too)
 const reach = (b) => Math.hypot(b.state.pos.x - ball.x, b.state.pos.z - ball.z);

@@ -267,8 +267,17 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
 .cot-battle-menu [hidden]{display:none;}
 .cot-battle-menu button:focus-visible,.cot-battle-menu input:focus-visible,.cot-battle-menu select:focus-visible{
   outline:2px solid #ffca78;outline-offset:-3px;}
-.cot-battle-menu-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;
+.cot-battle-menu-foot{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;
   padding:12px 16px;border-top:1px solid #a0b4c322;background:#131b23;}
+/* more modes below the launch row's edge (garage.ts syncBattleMenuScrollCue): a fade and a chevron */
+.cot-battle-menu-foot::before,.cot-battle-menu-foot::after{content:'';position:absolute;pointer-events:none;opacity:0;
+  transition:opacity .16s;}
+.cot-battle-menu-foot::before{left:0;right:6px;bottom:calc(100% + 1px);height:44px;
+  background:linear-gradient(180deg,rgba(14,20,26,0),rgba(14,20,26,.94));}
+.cot-battle-menu-foot::after{left:calc(50% - 5px);bottom:calc(100% + 12px);width:9px;height:9px;
+  border:solid #ffca78;border-width:0 2px 2px 0;transform:rotate(45deg);}
+.cot-battle-menu.has-more-below .cot-battle-menu-foot::before,
+.cot-battle-menu.has-more-below .cot-battle-menu-foot::after{opacity:1;}
 .cot-battle-menu-foot>span{color:#adbdc9;font-size:12px;font-weight:700;text-transform:uppercase;}
 .cot-battle-menu-foot button{min-height:44px;min-width:146px;display:flex;align-items:center;justify-content:center;
   gap:26px;padding:0 18px;border:1px solid #ffb74b;background:#ee941d;color:#211608;
@@ -429,8 +438,10 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
   font:700 11px var(--font-ui);letter-spacing:.01em;box-shadow:0 4px 12px rgba(0,0,0,.32);}
 .cot-garage .stats h3{font-size:17px;font-weight:700;letter-spacing:-.015em;color:#f3f7fa;
   min-width:0;line-height:1.1;text-wrap:balance;}
-/* the compact overlay head (phones) has no room for a second line: it keeps the one-line name */
-body[data-cot-panels='overlay'] .cot-garage .stats h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* the compact overlay head (phones) gives a long name a second line instead of cutting it ("M1A1 …", "C1 Ariete Prot…") */
+body[data-cot-panels='overlay'] .cot-garage .stats h3{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  overflow:hidden;white-space:normal;line-height:1.12;}
+body[data-cot-panels='overlay'] .cot-garage .stats h3.is-long{-webkit-line-clamp:3;font-size:11px;letter-spacing:0}
 .cot-garage .stats .sub{font-size:11px;font-weight:700;letter-spacing:.07em;color:#94a5b2;
   text-transform:uppercase;margin:7px 0 0 40px;display:flex;align-items:center;gap:7px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -604,22 +615,10 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b.stat-comparison{displ
 .cot-country-rail{--country-edge:34px;position:absolute;z-index:5;
   left:50%;bottom:186px;transform:translateX(-50%);
   width:min(1100px,calc(100vw - 640px));height:52px;display:grid;
-  grid-template-columns:var(--country-edge) minmax(0,1fr) var(--country-edge);
-  align-items:center;pointer-events:auto;isolation:isolate;}
-.cot-country-rail::before,.cot-country-rail::after{content:'';position:absolute;z-index:2;
-  top:0;bottom:4px;width:54px;opacity:0;pointer-events:none;
-  transition:opacity .16s,width .16s;}
-.cot-country-rail::before{left:var(--country-edge);
-  background:linear-gradient(90deg,rgba(7,11,15,.98),rgba(7,11,15,.70) 32%,transparent);}
-.cot-country-rail::after{right:var(--country-edge);
-  background:linear-gradient(270deg,rgba(7,11,15,.98),rgba(7,11,15,.70) 32%,transparent);}
-.cot-country-rail.has-more-left::before,.cot-country-rail.has-more-right::after{opacity:.78;}
-.cot-country-rail:hover::before,.cot-country-rail:hover::after,
-.cot-country-rail:focus-within::before,.cot-country-rail:focus-within::after{width:62px;}
-.cot-country-rail.has-more-left:hover::before,.cot-country-rail.has-more-right:hover::after,
-.cot-country-rail.has-more-left:focus-within::before,
-.cot-country-rail.has-more-right:focus-within::after{opacity:1;}
-.cot-country-chips{grid-column:2;display:flex;justify-content:safe center;gap:3px;width:100%;min-width:0;
+  grid-template-columns:var(--country-edge) auto minmax(0,1fr) var(--country-edge);
+  align-items:center;pointer-events:auto;isolation:isolate;direction:ltr;}
+.cot-country-chip.is-sliver{visibility:hidden;}
+.cot-country-chips{grid-column:3;display:flex;justify-content:safe center;gap:3px;width:100%;min-width:0;
   height:52px;padding:2px 3px 4px;
   overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
   scroll-snap-type:x proximity;scroll-padding-inline:18px;touch-action:pan-x;
@@ -633,7 +632,7 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b.stat-comparison{displ
   transition:color .14s,border-color .14s,background .14s,opacity .14s,
     box-shadow .14s,transform .12s ease-out;}
 .cot-country-edge.prev{grid-column:1;}
-.cot-country-edge.next{grid-column:3;}
+.cot-country-edge.next{grid-column:4;}
 .cot-country-edge:hover,.cot-country-edge:focus-visible{color:#ffd27a;border-color:rgba(240,176,74,.72);
   background:linear-gradient(180deg,rgba(42,30,14,.98),rgba(13,10,7,.98));opacity:1;
   box-shadow:0 0 18px rgba(240,160,48,.12);}
@@ -654,9 +653,11 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b.stat-comparison{displ
   background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
 .cot-country-chip .ct{font-weight:600;color:#6d7a86;letter-spacing:.04em;}
 .cot-country-chip.sel .ct{color:#d8a04c;}
-/* Roster Filter toggle, sticky at the rail's start so it stays reachable while the flags scroll beneath it. Only its
-   idle look rides the boot: its open, active and badge styles load with the panel (garageFacetPanel.css). */
-.cot-facet-toggle{position:sticky;left:0;z-index:3;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+/* Roster Filter toggle, in its own rail slot before the flag track (owner 2026-10-21: the sticky toggle covered the first
+   flag), so no flag ever scrolls beneath it and the arrows move the flags alone. Its height follows the track's padding.
+   Only its idle look rides the boot: its open, active and badge styles load with the panel (garageFacetPanel.css). */
+.cot-facet-toggle{grid-column:2;position:relative;z-index:3;align-self:stretch;margin:2px 0 4px 3px;
+  display:inline-flex;align-items:center;justify-content:center;
   min-width:42px;cursor:pointer;padding:6px 10px 5px;outline:none;color:#9fb0bf;background:rgba(9,13,17,.97);
   border:1px solid rgba(146,164,180,.3);border-bottom:2px solid rgba(146,164,180,.4);}
 .cot-facet-toggle svg{width:17px;height:17px;display:block;}
@@ -1449,7 +1450,7 @@ body[data-cot-panels='overlay'] .cot-country-chip{
   min-height:42px;padding:4px 9px 3px;font-size:11px;letter-spacing:.02em;gap:5px;
 }
 body[data-cot-panels='overlay'] .cot-country-chip .cot-flag{width:18px}
-body[data-cot-panels='overlay'] .cot-facet-toggle{min-height:42px;min-width:44px;padding:4px 9px 3px}
+body[data-cot-panels='overlay'] .cot-facet-toggle{min-height:42px;min-width:44px;padding:4px 9px 3px;margin-block:2px}
 body[data-cot-panels='overlay'] .cot-carousel{
   left:max(var(--cot-overlay-edge),env(safe-area-inset-left));
   right:max(var(--cot-overlay-edge),env(safe-area-inset-right));bottom:var(--cot-roster-bottom);
@@ -1516,6 +1517,12 @@ body[data-cot-width='phone'][data-cot-orientation='portrait'] :is(.cot-garage-ma
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage-tools,
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .stats{
   top:calc(max(120px,calc(env(safe-area-inset-top) + 114px)) + var(--cot-room-row-space,0px));
+}
+/* the dossier's height follows its lower portrait top, so it ends above the flag rail (it covered the rail's right half
+   and its › arrow) */
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .stats{
+  max-height:calc(var(--cot-viewport-height,100dvh) - max(120px,calc(env(safe-area-inset-top) + 114px))
+    - var(--cot-room-row-space,0px) - var(--cot-side-panel-bottom));
 }
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-eqpick.open{
   left:max(var(--cot-overlay-edge),env(safe-area-inset-left));right:max(var(--cot-overlay-edge),env(safe-area-inset-right));
@@ -1646,6 +1653,7 @@ body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels=
   position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-chip{min-height:36px;padding-block:2px}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-country-edge{height:36px}
+body[data-cot-height='short'][data-cot-panels='overlay']:not([data-cot-input='coarse']) .cot-facet-toggle{min-height:36px}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-card{
   min-height:var(--cot-roster-height);height:var(--cot-roster-height);width:102px;padding:0;
   --hc-band:20px;--hc-pad:5px;

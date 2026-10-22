@@ -141,7 +141,8 @@ vec3 hlStrataAt( vec3 w, vec3 n, out float ledge ) {
   float k = floor( ph ), fr = ph - k;
   float e = max( fwidth( ph ), 0.015 );
   float crisp = 1.0 - smoothstep( 0.22, 0.6, e );
-  float tone = 0.45 + 0.6 * hlHash( vec2( k, 7.13 ) );
+  // (a snowy face's beds a third closer in tone: under the snow the schist's bands read as rock, not as ruled stripes)
+  float tone = mix( 0.45 + 0.6 * hlHash( vec2( k, 7.13 ) ), 0.75, 0.35 * uHlStrata.z );
   // the along-strike coordinate: a bed's laminae smear along it, the fall line's streaks cross it
   vec2 sd = normalize( vec2( -n.z, n.x ) + vec2( 1e-4, 0.0 ) );
   float a = dot( q, sd );
@@ -149,17 +150,24 @@ vec3 hlStrataAt( vec3 w, vec3 n, out float ledge ) {
   float lam = ( hlNoise( vec2( a / 30.0, hb / 5.0 ) ) - 0.5 ) * ( 1.0 - smoothstep( 0.35, 0.9, fwidth( hb / 5.0 ) ) );
   // the joint under each bed: a dark line
   float joint = 1.0 - smoothstep( 0.03, 0.09 + e, fr );
-  // the ledge on its top: thin, broken into dashes of 8–60 m (over half of each bed's top), a bench bed's wider; and a
-  // second, sparser ledge mid-bed on some beds
+  // the ledges on the beds' tops, and the snow the face holds (233, the media lane's maps-227 review on Glacier: "a
+  // horizontal stripe/dash pattern across every mountain slope reads as stretched texture", "white horizontal streaks and
+  // smears" — a ledge on every bed, broken into dashes of one width along every bed's top, ruled the whole face in level
+  // white dashes): the snow lies on the benches' ledges and two beds in five of the rest, in patches that swell and thin
+  // along the strike, and in soft fields of a few hundred metres where the face eases, as the faces over Mont-Cenis hold
+  // it in April. (The blind critic on 233's first round: couloirs laid along the face's strike drew "crisp geometric
+  // white glyphs", V and X slashes where the strike turns at a spur — the fields take no direction from the face.)
   float bench = step( 0.82, hlHash( vec2( k, 11.9 ) ) );
-  float lw = 0.08 + 0.12 * hlHash( vec2( k, 3.71 ) ) + 0.12 * bench;
-  float run = smoothstep( 0.45, 0.57, 0.55 * hlNoise( q * 0.02 + vec2( k * 3.1, k * 1.7 ) ) + 0.45 * hlNoise( q * 0.09 + vec2( k * 5.3, k * 2.9 ) ) );
-  float mid = step( 0.55, hlHash( vec2( k, 5.27 ) ) ) * smoothstep( 0.55, 0.65, hlNoise( q * 0.05 + vec2( k * 7.7, 3.3 ) ) );
+  float snowBed = max( bench, step( 0.6, hlHash( vec2( k, 13.7 ) ) ) );
+  float swell = smoothstep( 0.42, 0.75, 0.6 * hlNoise( q * 0.013 + vec2( k * 2.3, k * 4.1 ) ) + 0.4 * hlNoise( q * 0.06 + vec2( k * 5.3, k * 2.9 ) ) );
+  float lw = ( 0.08 + 0.12 * hlHash( vec2( k, 3.71 ) ) + 0.12 * bench ) * ( 0.4 + 1.2 * swell );
+  float top = smoothstep( 1.0 - lw - e, 1.0 - lw + e, fr ) * swell * snowBed;
+  // (the field: world-space patches a few hundred metres across with ragged edges, on the faces that ease past ~60°)
+  float field = smoothstep( 0.56, 0.74, 0.6 * hlNoise( w.xz / 380.0 + vec2( 2.7, 8.1 ) ) + 0.25 * hlNoise( w.xz / 90.0 + vec2( 5.3, 1.9 ) )
+    + 0.15 * hlNoise( w.xz / 23.0 ) ) * smoothstep( 0.25, 0.5, n.y ) * 0.85;
   // (the steepest walls hold little)
   float hold = smoothstep( 0.12, 0.32, n.y );
-  float top = smoothstep( 1.0 - lw - e, 1.0 - lw + e, fr ) * run;
-  float sub = ( smoothstep( 0.46 - e, 0.46 + e, fr ) - smoothstep( 0.52 - e, 0.52 + e, fr ) ) * mid;
-  ledge = max( top, sub ) * hold * uHlStrata.z * crisp;
+  ledge = max( top * hold, field ) * uHlStrata.z * crisp;
   // the fall line's streaks (the water's varnish down the face): dark, here and there
   float streak = smoothstep( 0.5, 0.85, hlNoise( vec2( a / 10.0, hb / 120.0 ) ) ) * ( 1.0 - smoothstep( 0.3, 0.8, fwidth( a / 10.0 ) ) );
   // (a dark schist: two-thirds of the region's rock, each bed its own tone, its laminae and streaks)

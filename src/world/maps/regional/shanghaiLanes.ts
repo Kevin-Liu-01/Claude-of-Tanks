@@ -29,7 +29,8 @@ import { pottedPlant, washingLine } from './dressing.ts';
 import type { RegionalBuildContext } from './types.ts';
 import {
   AWNINGS, CASEMENT, CHAR, GILT, LACQUER, RED_BRICK, SIGN_BOARDS, TEAK, TILE_COPING, archOutline, brickBands, breach, choose, clampTo,
-  horseHeadWall, lantern, nameBoard, pocks, raisedRidge, roofHole, rowFill, sandbags, signboard, soot, uvOffset, type Bank,
+  horseHeadWall, lantern, laundryPoles, nameBoard, pocks, raisedRidge, roofHole, rowFill, sandbags, signboard, soot, streetLifeRng, uvOffset, wallAd,
+  type Bank,
 } from './shanghaiParts.ts';
 
 const DEC = { decor: true } as const;
@@ -366,6 +367,21 @@ export function shophouseRow(ctx: RegionalBuildContext, bank: Bank | null): Regi
         }
       }
     }
+    // (the owner, 2026-10-21: "improve the shanghai buildings a ton") the row's two end walls, blank from the street in
+    // Zhabei's gaps as often as they stood against a neighbour (the shikumen's took their windows on 10-15): each end its
+    // upper rooms' windows (two on a deep house, the jetty's reach with them), a painted advertisement over the storeys,
+    // or the bare fire wall; chosen from the street's own stream (shanghaiParts.ts streetLifeRng)
+    const life = streetLifeRng(ctx);
+    const ends = (['front', 'back'] as const).map((face) => ({ face, kind: ((r: number) => (r < 0.5 ? 'windows' : r < 0.8 ? 'ad' : 'blank'))(life()) }));
+    const endW = zf - zb;
+    for (const end of ends) {
+      if (end.kind !== 'windows') continue;
+      for (const st of ups) {
+        for (const eu of endW > 6.2 ? [-endW / 2 + 1.4, endW / 2 - 1.4] : [0]) {
+          openings.push({ face: end.face, storey: st, kind: 'window', u: eu, w: 0.8, y0: 0.8, h: 1.15, ...(burnt && life() < 0.6 ? { state: 'burnt' as const } : {}) });
+        }
+      }
+    }
     // each shop's kitchen stove at the back of the stores, its stack up through the back slope
     const roofX = -(zf - zr) / 2;
     const stacks = Array.from({ length: n }, (_, k) => ({ x: roofX + s - 0.75, z: -W / 2 + uw * k + 0.55, sx: 0.45, sz: 0.45, above: 0.65, bucket: wall, cap: 'slab' as const }));
@@ -447,6 +463,20 @@ export function shophouseRow(ctx: RegionalBuildContext, bank: Bank | null): Regi
       for (let k = 0; k < n; k++) {
         const ub = W / 2 - uw * (k + 0.5) + uw * 0.15;
         if (fr() < 0.5) washingLine(sink, back, ub - 0.7, ub + 0.7, s1 + 0.55, fr);
+      }
+    }
+    // (230) a painted advertisement across an end wall's upper storeys (the face u x up = out: +x's u runs to -z)
+    for (const end of ends) {
+      if (end.kind !== 'ad') continue;
+      const sx = end.face === 'front' ? 1 : -1;
+      const endFace: Face = { origin: [sx * W / 2, 0, (zb + zf) / 2], u: [0, 0, -sx], out: [sx, 0, 0], width: endW };
+      wallAd(sink, endFace, (life() - 0.5) * Math.max(0, endW - 6.6), s1 + 0.4, Math.min(endW - 1.2, 5.6), Math.min(eaveY - s1 - 0.75, 4.4), life);
+    }
+    // (230) bamboo poles out of the street casements with the washing on them (the facade craft's: a desktop's dressing)
+    if (facadeOn() && !burnt) {
+      for (const o of openings) {
+        if (o.face !== 'left' || o.kind !== 'window' || life() > 0.2) continue;
+        laundryPoles(sink, up, o.u, s1 + (o.storey - 1) * s2 + o.y0 + 0.02, 1.9 + life() * 0.9, life);
       }
     }
     // (the pocks clear of the casements cut through the front: a pock over an opening stood in the air)

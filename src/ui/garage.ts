@@ -1,4 +1,4 @@
-import { createCustomSelect } from './customSelect.ts';
+import type { CustomSelectController } from './customSelect.ts';
 import { tankSeedId } from '../vehicles/tankIdAliases.ts';
 import { guidedMissileSlot, specialActionKind, SPECIAL_ACTION_KINDS } from '../sim/specialActionPolicy.ts';
 // Counts only (4.8 kB): the 217 kB mount-geometry inventory stays on the battle path (FE-P2).
@@ -58,10 +58,10 @@ import { getPlayerRecord } from '../game/profile.ts';
 import { mountGitHubStars } from './githubStars.ts';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
-} from '../sim/spotting.ts';
+} from '../sim/spottingStats.ts';
 import { t, formatNumber, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
-import { normalizeGameMode } from '../sim/matchModes.ts';
+import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
   isWaveMode, matchRulesetFor, modeCopyValues, rulesetSides, BATTLE_FIELD_LIMIT, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
@@ -980,6 +980,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const battleBtn = requiredElement<HTMLButtonElement>(root, '.cot-battle');
   const battleModeBtn = requiredElement<HTMLButtonElement>(root, '.cot-battle-mode');
   const battleMenu = requiredElement<HTMLElement>(root, '.cot-battle-menu');
+  const battleMenuScroll = requiredElement<HTMLElement>(battleMenu, '.cot-battle-menu-scroll');
   const battleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-mode]')];
   const battleRuleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-game-mode]')];
   const roomReminder = requiredElement<HTMLButtonElement>(root, '.cot-room-reminder');
@@ -1363,7 +1364,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   window.addEventListener('resize', queueCarouselAffordances);
 
   // Country flags use the same honest overflow contract as the vehicle strip:
-  // fixed edge fades/buttons appear only where hidden content really exists.
+  // the edge buttons appear only where hidden content really exists.
   const syncCountryRailAffordances = () => {
     const { hasLeft, hasRight } = horizontalRailState(
       chipsEl.scrollLeft, chipsEl.scrollWidth, chipsEl.clientWidth,
@@ -2328,6 +2329,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let countryFilter = countryGroups[0]?.id || 'us';
   let renderedCountryFilter: string | null = null;
   const chipById = new Map<string, HTMLButtonElement>();
+  // A flag less than half inside the track hides (critic 236: slivers of a flag or a count read as stray glyphs beside
+  // the Filter toggle); a flag cut by the edge but mostly shown stays as the cue that the rail continues.
+  const chipSliverObserver = typeof IntersectionObserver === 'function'
+    ? new IntersectionObserver((entries) => {
+      for (const entry of entries) entry.target.classList.toggle('is-sliver', entry.intersectionRatio < 0.5);
+    }, { root: chipsEl, threshold: [0.5] })
+    : null;
   function initializeCountryChips(): void {
     for (const group of countryGroups) {
       const count = group.count;
@@ -2353,12 +2361,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
       chipsEl.appendChild(chip);
       chipById.set(group.id, chip);
+      chipSliverObserver?.observe(chip);
     }
   }
   initializeCountryChips();
 
   // --- ROSTER FILTER (class, role, era, search) -----------------------------
-  // The Filter toggle leads the flag rail. Its panel and the fleet facet tables load on the first press
+  // The Filter toggle leads the flag rail in its own slot, outside the scrolling flag track. Its panel and the fleet facet tables load on the first press
   // (garageFacetPanel.ts), never on the game entry; the panel hands back a visible-card predicate that narrows
   // every national strip, re-counts the flags and keeps the strip on a nation with a match.
   let rosterFacetMatch: ((specId: string) => boolean) | null = null;
@@ -2375,7 +2384,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   facetToggle.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 3h12l-4.6 5.4V13' +
     'l-2.8 1.2V8.4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>' +
     '<span class="ct num" hidden></span>';
-  chipsEl.prepend(facetToggle);
+  countryRailEl.insertBefore(facetToggle, chipsEl);
   function setRosterFacetFilter(match: ((specId: string) => boolean) | null): void {
     rosterFacetMatch = match;
     for (const group of countryGroups) {
@@ -2858,7 +2867,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<button class="cot-layer-link" type="button" data-gallery-layer="modules">${uiIconSVG('gallery', 13)}${t('garage.dossier.modules.open')}</button></section>` +
       `<section class="cot-stat-section">${statSectionTitle('crew', t('garage.dossier.section.crew'), `${crewRows.length} ${t('garage.dossier.crew.stations')}`, 'Crew')}` +
       `<div class="cot-crew-grid">${crewChips}</div></section>`;
-    requiredElement<HTMLElement>(statsEl, 'h3').textContent = spec.label?.displayName || spec.name;
+    const dossierName = requiredElement<HTMLElement>(statsEl, 'h3');
+    dossierName.textContent = spec.label?.displayName || spec.name;
+    // a long name sets a step smaller and may take a third line, so the compact phone head holds it whole (garage.css)
+    dossierName.classList.toggle('is-long', dossierName.textContent.length > 18);
     const technicalImage = statsEl.querySelector<HTMLImageElement>('[data-technical-image]');
     if (technicalImage) technicalImage.alt = `${spec.label?.displayName || spec.name} ${initialTechnicalViewCaption.toLowerCase()}`;
     const dossierHead = statsEl.querySelector('.cot-dossier-head');
@@ -3046,6 +3058,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     frontline_assault: { short: 'FRONT', label: t('garage.battle.frontLabel'), icon: 'modeZones' },
     mars: { short: 'GRAV', label: t('garage.battle.marsLabel'), icon: 'modeMars' },
   };
+  // The menu scrolls in one region between its head and launch row: where it continues below the footer (the special
+  // modes on a short window), a fade and a chevron over the footer's edge say so.
+  function syncBattleMenuScrollCue(): void {
+    const below = battleMenuScroll.scrollTop + battleMenuScroll.clientHeight < battleMenuScroll.scrollHeight - 4;
+    battleMenu.classList.toggle('has-more-below', below);
+  }
+  battleMenuScroll.addEventListener('scroll', syncBattleMenuScrollCue, { passive: true });
+  if (typeof ResizeObserver === 'function') {
+    const cueObserver = new ResizeObserver(() => { if (battleMenu.classList.contains('open')) syncBattleMenuScrollCue(); });
+    cueObserver.observe(battleMenuScroll);
+    for (const column of battleMenuScroll.children) cueObserver.observe(column);
+  }
   function closeBattleMenu({ restoreFocus = false } = {}) {
     arrangementPanel?.close();
     marsDropdowns.forEach(dropdown => dropdown.close());
@@ -3061,8 +3085,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     battleModeBtn.setAttribute('aria-expanded', 'true');
     const activeRule = battleMode !== 'solo' || battleGameMode === 'standard' ? null
       : battleRuleChoices.find((choice) => choice.dataset.gameMode === battleGameMode);
-    const scroller = requiredElement<HTMLElement>(battleMenu, '.cot-battle-menu-scroll');
+    const scroller = battleMenuScroll;
     scroller.scrollTop = 0;
+    syncBattleMenuScrollCue();
     const selectedChoice = activeRule || battleChoices.find((choice) => choice.dataset.mode === battleMode);
     const scrollBounds = scroller.getBoundingClientRect();
     const selectedBounds = selectedChoice?.getBoundingClientRect();
@@ -3216,7 +3241,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const marsLabel = requiredElement<HTMLElement>(battleMenu, '[data-mars-label]');
   const marsSettings = requiredElement<HTMLElement>(battleMenu, '[data-mars-settings]');
   const marsField = (name: string) => requiredElement<HTMLSelectElement>(marsSettings, `select[data-mars-field="${name}"]`);
-  const marsDropdowns = ['gravity', 'caches'].map(name => createCustomSelect(marsField(name)));
+  // The Mars selects' dropdowns load with the battle menu's first render, like the TEAMS control below (232 bundle diet:
+  // the custom select left the game's boot graph); until then the native selects stand in.
+  let marsDropdowns: CustomSelectController[] = [];
+  let marsDropdownsLoad: Promise<void> | null = null;
+  const loadMarsDropdowns = (): void => {
+    marsDropdownsLoad ??= import('./customSelect.ts').then(({ createCustomSelect }) => {
+      marsDropdowns = ['gravity', 'caches'].map(name => createCustomSelect(marsField(name)));
+      marsDropdowns.forEach(dropdown => { if (marsSettings.hidden) dropdown.close(); dropdown.refresh(); });
+    });
+  };
   const soloOptions = requiredElement<HTMLElement>(battleMenu, '[data-solo-options]');
   const teamOptions = requiredElement<HTMLElement>(battleMenu, '[data-team-options]');
   const refreshBattleTimes = bindBattleTimeChoices(battleMenu, () => emit('ui:click', {}));
@@ -3244,6 +3278,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   renderBattleOptions = () => {
     battleMenu.dataset.rule = battleGameMode;
     renderArrangementPanel();
+    loadMarsDropdowns();
     renderSides();
     const solo = battleMode === 'solo';
     const shown = solo && battleGameMode === 'mars';

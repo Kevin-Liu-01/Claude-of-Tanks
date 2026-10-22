@@ -454,7 +454,7 @@
   },
   "s66-type96-80-feng-skybridge": {
    "map": "skybridge",
-   "title": "A Type 96-80 Fēng (Concept) knocks out a Type 10 at Skybridge Chasm",
+   "title": "A Type 96-80 Fēng knocks out a Type 10 at Skybridge Chasm",
    "round": "deliver-fleet226",
    "current": true,
    "sound": true
@@ -657,14 +657,14 @@
   },
   "s128-pl-t72b3-zubr-ii-moon": {
    "map": "moon",
-   "title": "A T-72B3 Zubr II (Concept) knocks out a T-72B3 at Earthrise Basin",
+   "title": "A T-72B3 Zubr II knocks out a T-72B3 at Earthrise Basin",
    "round": "deliver-fleet226",
    "current": true,
    "sound": true
   },
   "s129-pl-t72b3m-modern-moon": {
    "map": "moon",
-   "title": "A T-72B3M Wilk (Concept) fires across Earthrise Basin",
+   "title": "A T-72B3M Wilk fires across Earthrise Basin",
    "round": "deliver-fleet226",
    "current": true,
    "sound": true
@@ -2685,8 +2685,8 @@
   },
   {
    "path": "media/site50-r14/fleet/index.json",
-   "bytes": 96405,
-   "sha256": "b6992f8ee5efc41857683371295bf24424ae537423a8b6891d343a7d1a0068a5",
+   "bytes": 95885,
+   "sha256": "2a93beb2c9c4d3092d62c42de82d6a9a59e34a74858e3fce95580ca9d27d99a5",
    "source": null,
    "vehicles": 185
   },
@@ -8278,8 +8278,8 @@
   },
   {
    "path": "media/site50-r14/scenes/index.json",
-   "bytes": 99044,
-   "sha256": "1bd2b2039394781fb3b160e6f9687e2b01bd4a939cbdc60fbac4382654e762f0",
+   "bytes": 98524,
+   "sha256": "995c2e37e1bf71150f1edbc2fd7e56280e48ca819f2c137367396bcddc2b416d",
    "source": null,
    "takes": 193
   },
@@ -8519,20 +8519,20 @@
   },
   {
    "path": "media/site50-r14/scenes/s127-pl-t72b3-modern-winter.scene.json",
-   "bytes": 91738,
-   "sha256": "8ee4a6872e0346cf8b9eb9ede47a4d3b46bbcc2f3b288d6beaa6d595b5da7373",
+   "bytes": 91728,
+   "sha256": "90b01117ca19d0ee7539da8e4a07401056ddcae7165072e73a185c5c56a8364b",
    "source": "shots/media-r5/site50/deliver-fleet/s127-pl-t72b3-modern-winter/s127-pl-t72b3-modern-winter.scene.json"
   },
   {
    "path": "media/site50-r14/scenes/s128-pl-t72b3-zubr-ii-moon.scene.json",
-   "bytes": 76366,
-   "sha256": "4b8d652ddc1d88f8ead00ace49e0c2f9accfc7baecd5a95eb04d10c555a4f5d5",
+   "bytes": 76356,
+   "sha256": "321d3b833caa4962fb74829b8120f53e713ce716ddb9da2b250d93d9cfaac266",
    "source": "shots/media-r5/site50/deliver-fleet226/s128-pl-t72b3-zubr-ii-moon/s128-pl-t72b3-zubr-ii-moon.scene.json"
   },
   {
    "path": "media/site50-r14/scenes/s129-pl-t72b3m-modern-moon.scene.json",
-   "bytes": 75055,
-   "sha256": "7b0a3f5320099affabeca893334740d570bcf2b82dd3e20848503dfb221efac2",
+   "bytes": 75045,
+   "sha256": "9854c7e3f87a33420be1b6127e5238855c925118ca75c20a7640f71cc07d4e1c",
    "source": "shots/media-r5/site50/deliver-fleet226/s129-pl-t72b3m-modern-moon/s129-pl-t72b3m-modern-moon.scene.json"
   },
   {
@@ -8609,20 +8609,20 @@
   },
   {
    "path": "media/site50-r14/scenes/s142-ru-t72b3-modern-whiteout.scene.json",
-   "bytes": 75736,
-   "sha256": "851c7937d57328f4bd4ed2c9ed48dbafd8c6b6dacca04d84fe6d6ed5c720ca8d",
+   "bytes": 75726,
+   "sha256": "eed8534c2333c07d6f3c7da69b1860189ad7dbe9268ce780b78985680b977eca",
    "source": "shots/media-r5/site50/deliver-fleet/s142-ru-t72b3-modern-whiteout/s142-ru-t72b3-modern-whiteout.scene.json"
   },
   {
    "path": "media/site50-r14/scenes/s143-ru-t72b3m-modern-mars.scene.json",
-   "bytes": 120747,
-   "sha256": "ac253c37365bfb2f0f9183eeac238d6de00baaff48b3c28cd3f0416cdfab6ced",
+   "bytes": 120737,
+   "sha256": "9aadf28ae76167b3aaee035980d062a58ead72d2fb135b25cefd40b7d93bd9bf",
    "source": "shots/media-r5/site50/deliver-fleet/s143-ru-t72b3m-modern-mars/s143-ru-t72b3m-modern-mars.scene.json"
   },
   {
    "path": "media/site50-r14/scenes/s144-ru-t80u-modern-steppe.scene.json",
-   "bytes": 61700,
-   "sha256": "7c43e957bdd5af537ba92d174900cd4fc0047b4c0adf3da777c543a1fe7f86f9",
+   "bytes": 61690,
+   "sha256": "3658ef9578d20083568b8226c3b4f1b65c2566d96746e55d07943de39f806c5a",
    "source": "shots/media-r5/site50/deliver-fleet/s144-ru-t80u-modern-steppe/s144-ru-t80u-modern-steppe.scene.json"
   },
   {
@@ -8825,14 +8825,14 @@
   },
   {
    "path": "media/site50-r14/scenes/s185-ua-t72b3-modern-frontier.scene.json",
-   "bytes": 76296,
-   "sha256": "74e2ef87602a803655ced3d62b12ba4379690a4853641e57602dddb1a2b31c6c",
+   "bytes": 76286,
+   "sha256": "3ea187dd2f192f97eb44a391469e41d4d72321b5d6992f2c41ff1780941505ca",
    "source": "shots/media-r5/site50/deliver-fleet/s185-ua-t72b3-modern-frontier/s185-ua-t72b3-modern-frontier.scene.json"
   },
   {
    "path": "media/site50-r14/scenes/s186-ua-t72b3m-modern-winter.scene.json",
-   "bytes": 94020,
-   "sha256": "61a78881268d0efb32af66420ea24b31337e7506df697c1ac86ed877ad45b822",
+   "bytes": 94010,
+   "sha256": "12ca65ad366c60186f8569bd601160078365818b457d408b82223c2ff99a7f66",
    "source": "shots/media-r5/site50/deliver-fleet/s186-ua-t72b3m-modern-winter/s186-ua-t72b3m-modern-winter.scene.json"
   },
   {
@@ -8849,8 +8849,8 @@
   },
   {
    "path": "media/site50-r14/scenes/s189-ua-t80u-modern-winter.scene.json",
-   "bytes": 78674,
-   "sha256": "36cc218ad72e5914f94309fdf68097fe1443bba8dc1f07a7d52575852da75e6e",
+   "bytes": 78664,
+   "sha256": "02102083e9b8346e1c90f442072c1503e154c44c40c274aa417bbb4e414b6cce",
    "source": "shots/media-r5/site50/deliver-fleet/s189-ua-t80u-modern-winter/s189-ua-t80u-modern-winter.scene.json"
   },
   {
@@ -9269,20 +9269,20 @@
   },
   {
    "path": "media/site50-r14/scenes/s60-cn-t72b3-modern-mangrove.scene.json",
-   "bytes": 76972,
-   "sha256": "757a79b5429fe8c7e2914db77154f32ffcec2a1d910fa8173c93e9e05f574510",
+   "bytes": 76962,
+   "sha256": "12da5f5a95e32ec7e3211f8a0820032be4ac7ab37543dacec4afc5c4411dfd3b",
    "source": "shots/media-r5/site50/deliver-fleet/s60-cn-t72b3-modern-mangrove/s60-cn-t72b3-modern-mangrove.scene.json"
   },
   {
    "path": "media/site50-r14/scenes/s61-cn-t72b3m-modern-skybridge.scene.json",
-   "bytes": 75715,
-   "sha256": "b4e395d946b9280e4a069b0430d7d0725ac93b4c4c40508d4c260dca473294a9",
+   "bytes": 75705,
+   "sha256": "9b11147353708deb6bb2c245b9fa060639a8dee8096b66d6033546ddecf8534e",
    "source": "shots/media-r5/site50/deliver-fleet/s61-cn-t72b3m-modern-skybridge/s61-cn-t72b3m-modern-skybridge.scene.json"
   },
   {
    "path": "media/site50-r14/scenes/s62-cn-t80u-modern-skybridge.scene.json",
-   "bytes": 90392,
-   "sha256": "273ce1708309e6c0a8ca595065aab75b59859c7d01e5c637ca4c3ba242ef8cb0",
+   "bytes": 90382,
+   "sha256": "ec413506540b2c47015455d968ee3461b45563821d9e723eb7dcba35320f7c07",
    "source": "shots/media-r5/site50/deliver-fleet/s62-cn-t80u-modern-skybridge/s62-cn-t80u-modern-skybridge.scene.json"
   },
   {
@@ -9299,8 +9299,8 @@
   },
   {
    "path": "media/site50-r14/scenes/s66-type96-80-feng-skybridge.scene.json",
-   "bytes": 76268,
-   "sha256": "d2fa9f99280cb6750b5dd37a4589fe5973acf35787c4809b8e0b8484af97dae1",
+   "bytes": 76258,
+   "sha256": "7b4d1a1cc5cfe2df3aa942f0aa037bc704d118aa56a8d9282abfae760de82206",
    "source": "shots/media-r5/site50/deliver-fleet226/s66-type96-80-feng-skybridge/s66-type96-80-feng-skybridge.scene.json"
   },
   {

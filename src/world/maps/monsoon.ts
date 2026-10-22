@@ -226,7 +226,14 @@ export default {
     forestHex: 0x193a28, rockHex: 0x59635a, haze: 0.97, grain: 0.64,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'cumulonimbus-front', windDirDeg: 200 },
+  // 233 (the media lane's maps-227 review: "a boxy cloud volume with hard edges and streaks"; the SKY lane's 10-14 C2
+  // critic: "a see-through box with straight walls and diagonal streaks"): the front's 4.8 km tower lane drew its cell
+  // envelope as one translucent prism, straight-walled to its flat base, streaked by the Beer map's light — no lever of
+  // the shell (warp, carving, footprint ramp, fragment cull, billow period, the anvil, the field's gathering, the far
+  // map's filter, the rain) and no tower under ~3.4 km took it away (233's Studio sweeps on the authored overview and an
+  // upward view). The monsoon's congestus at 2 km instead — the front's wind, rain, scud and heavy grey bases kept, its
+  // towers under the media lane's approved picture's height: big lit cumulus round a dark storm base, blue between
+  clouds: { regime: 'cumulonimbus-front', windDirDeg: 200, coverage: 0.45, baseM: 1200, thicknessM: 1500, towers: 0.6, anvil: 0.15, fieldMix: 0.45 },
   sky: {
     sunElevationDeg: 24, sunAzimuthDeg: 124, turbidity: 7.8, rayleigh: 2.05,
     mieCoefficient: 0.012, mieDirectionalG: 0.88, fogDensity: 0.00088,

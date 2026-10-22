@@ -13,12 +13,16 @@
 // every patientPollMs (2 s) for up to patientHeadMs (20 min), never taking the FIFO lock while it waits — the mutex's
 // holder is mid-hold and holds the FIFO lock itself, so waiting at the head costs nobody anything; past the cap it logs
 // the wait and steps behind as before. patientHeadMs 0 keeps the old rule.
-import { mkdirSync, readFileSync, readdirSync, rmSync, rmdirSync, statSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
+//
+// 2026-10-21 (item 233): the FIFO lock directory itself is taken, refreshed, released and reaped through
+// capture-lock.mjs's owned holds (an owner token; refresh/release only act on their own hold; only a dead owner's lock
+// is reaped), so this lock cannot remove another session's hold either.
+import { mkdirSync, readFileSync, readdirSync, rmSync, statSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { claimOwnedLock, reapDeadLock, refreshOwnedLock, releaseOwnedLock } from './capture-lock.mjs';
 
 const DEFAULT_QUEUE_DIR = '/tmp/cot-shots.queue';
 const DEFAULT_LOCK_DIR = '/tmp/cot-shots.lock';
-const LOCK_STALE_MS = 5 * 60 * 1000;
 const TICKET_STALE_MS = 60 * 60 * 1000;
 /** A session mutex younger than this is never reaped: its holder may sit between its mkdir and its pid write. */
 const PROBE_DEAD_GRACE_MS = 60 * 1000;
@@ -62,7 +66,7 @@ export function createPoliteCaptureLock({
   probeDeadGraceMs = PROBE_DEAD_GRACE_MS,
 }) {
   if (!probeDir) throw new Error('createPoliteCaptureLock needs the session mutex directory');
-  let fifoHeld = false, probeHeld = false;
+  let fifoHold = null, probeHeld = false;
   const arrived = Date.now();
   const stale = (name) => { try { return Date.now() - statSync(join(queueDir, name)).mtimeMs > ticketStaleMs; } catch { return false; } };
   // 2026-10-03: a waiter renews its own ticket and restores it if another waiter reaped it, as capture-lock.mjs does;
@@ -93,13 +97,6 @@ export function createPoliteCaptureLock({
     return own;
   };
   const tryMkdir = (dir) => { try { mkdirSync(dir); return true; } catch { return false; } };
-  const reapStaleLock = () => {
-    try {
-      if (Date.now() - statSync(lockDir).mtimeMs <= LOCK_STALE_MS) return false;
-      rmdirSync(lockDir);
-      return true;
-    } catch (error) { return error.code === 'ENOENT'; }
-  };
   // 2026-10-03: a session mutex whose holder died without releasing it (a SIGKILL, a crash) stayed busy for good, and
   // every lane's captures queued behind it until someone deleted it by hand. A mutex past the grace age whose recorded
   // pid is gone, or that never got its pid, is reaped; a live holder's mutex never is.
@@ -127,6 +124,7 @@ export function createPoliteCaptureLock({
         while (head(ticket) !== ticket) {
           if (late()) throw new Error('cot-shots lock timeout');
           if (Date.now() - keptAt >= ticketRefreshMs) { keepTicket(ticket); keptAt = Date.now(); }
+          reapDeadLock(lockDir); // a dead owner's lock, also while an older copy's head waits behind it
           await sleep(headPollMs);
         }
         let gotProbe = tryMkdir(probeDir) || (reapDeadProbe() && tryMkdir(probeDir));
@@ -159,12 +157,12 @@ export function createPoliteCaptureLock({
           writeFileSync(join(probeDir, 'pid'), String(process.pid));
           const headSince = Date.now();
           for (;;) {
-            if (tryMkdir(lockDir)) { fifoHeld = true; break; }
-            if (reapStaleLock()) continue;
+            if ((fifoHold = claimOwnedLock(lockDir, { ticket }))) break;
+            if (reapDeadLock(lockDir, { note: true })) continue;
             if (Date.now() - headSince > maxHolderWaitMs || late()) break;
             await sleep(300);
           }
-          if (fifoHeld) {
+          if (fifoHold) {
             log(`FIFO head and session mutex after ${Math.round((Date.now() - started) / 1000)} s (round ${round})`);
             return;
           }
@@ -183,13 +181,15 @@ export function createPoliteCaptureLock({
   return {
     acquire,
     refresh() {
-      if (!fifoHeld) return;
-      try { const now = new Date(); utimesSync(lockDir, now, now); } catch { /* released */ }
+      return refreshOwnedLock(fifoHold);
     },
     release() {
-      if (fifoHeld) { fifoHeld = false; try { rmdirSync(lockDir); } catch { /* released */ } }
+      const releasing = fifoHold;
+      fifoHold = null;
+      const released = releasing ? releaseOwnedLock(releasing) : false;
       dropProbe();
+      return released;
     },
-    get held() { return fifoHeld && probeHeld; },
+    get held() { return fifoHold !== null && probeHeld; },
   };
 }

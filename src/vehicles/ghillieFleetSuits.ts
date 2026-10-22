@@ -373,7 +373,9 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // round the driver's periscope, four drapes a side.
   c2_ariete_proto: {
     id: 'c2_ariete_proto', seed: 2043, style: 'leafy', ...DENSE, ...WOODLAND,
-    fieldClearanceM: 0.03, maxHalfWidth: 2.19, hemFloorM: 0.8,
+    // release 231: the hull net is cut round the whole gun's envelope (its mantlet plate's foot passed 11 mm over the
+    // track-guard drape at the -7 side stops)
+    fieldClearanceM: 0.03, maxHalfWidth: 2.19, hemFloorM: 0.8, conservativeGunEnvelope: true,
     turret: {
       top: [laid({
         x0: -1.71, x1: 1.71, z0: -2.72, z1: 2.06, nx: 43, nz: 60, y: 0.97,

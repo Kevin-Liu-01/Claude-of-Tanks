@@ -54,6 +54,9 @@ interface LandmarkPlan {
    *  anatomy read from the whole set piece's box (a 21 m remnant run stood past its walls). */
   bodyless: boolean;
   pieces: KeptPiece[];
+  /** (destruction-slabs 233) The named pieces too large to keep (PIECE_TRI_CAP): never laid, never the body's either —
+   *  they stand through every stage but the collapse (polders' tower mill's stage, 4,416 triangles, round its shaft). */
+  standing: Array<{ top: number; floor: number; outline: Float32Array }>;
 }
 
 export function landmarkPlanOf(anatomy: StructureDamageAnatomy): LandmarkPlan | null {
@@ -78,6 +81,55 @@ function keepRuns(input: StructureDescribeInput, name: string): PieceRun[] {
     }
   }
   return runs;
+}
+
+/** Directions of a standing piece's plan outline (planSupport). */
+const PLAN_DIRS = 32;
+/** (233) A named piece's plan outline as its reach along PLAN_DIRS level directions (set piece frame; a ring stands as a
+ *  ring, never as the box round it): reach k = max x cos(2πk/N) + z sin(2πk/N) over its vertices. */
+function planSupport(input: StructureDescribeInput, name: string): Float32Array {
+  const sup = new Float32Array(PLAN_DIRS).fill(-Infinity);
+  const cs = Array.from({ length: PLAN_DIRS }, (_, k) => [Math.cos((2 * Math.PI * k) / PLAN_DIRS), Math.sin((2 * Math.PI * k) / PLAN_DIRS)] as const);
+  for (const list of Object.values(input.parts)) for (const g of list as readonly BufferGeometry[]) {
+    if (g.userData.damagePiece !== name) continue;
+    const P = g.getAttribute('position');
+    if (!P) continue;
+    for (let i = 0; i < P.count; i++) {
+      const x = P.getX(i), z = P.getZ(i);
+      for (let k = 0; k < PLAN_DIRS; k++) { const v = x * cs[k]![0] + z * cs[k]![1]; if (v > sup[k]!) sup[k] = v; }
+    }
+  }
+  return sup;
+}
+/** (238) A named piece's floor (set piece frame, m): the height its up-facing surface covers most (a stage's deck under its
+ *  railing), to the decimetre; `top` where it has none. */
+function floorOf(input: StructureDescribeInput, name: string, top: number): number {
+  const bins = new Map<number, number>();
+  for (const list of Object.values(input.parts)) for (const g of list as readonly BufferGeometry[]) {
+    if (g.userData.damagePiece !== name) continue;
+    const P = g.getAttribute('position');
+    if (!P) continue;
+    const ix = g.getIndex();
+    const n = ix ? ix.count : P.count;
+    for (let t = 0; t + 2 < n; t += 3) {
+      const ia = ix ? ix.getX(t) : t, ib = ix ? ix.getX(t + 1) : t + 1, ic = ix ? ix.getX(t + 2) : t + 2;
+      const ux = P.getX(ib) - P.getX(ia), uy = P.getY(ib) - P.getY(ia), uz = P.getZ(ib) - P.getZ(ia);
+      const vx = P.getX(ic) - P.getX(ia), vy = P.getY(ic) - P.getY(ia), vz = P.getZ(ic) - P.getZ(ia);
+      const ny = uz * vx - ux * vz, l = Math.hypot(uy * vz - uz * vy, ny, ux * vy - uy * vx);
+      if (!(l > 0) || ny < 0.9 * l) continue;
+      const k = Math.round(((P.getY(ia) + P.getY(ib) + P.getY(ic)) / 3) * 10);
+      bins.set(k, (bins.get(k) ?? 0) + l / 2);
+    }
+  }
+  let best = top, area = 0;
+  for (const [k, w] of bins) if (w > area) { area = w; best = k / 10; }
+  return best;
+}
+/** A plan outline's reach along the level unit direction (dx, dz): its nearest table direction's either side, the larger. */
+function reachOf(sup: Float32Array, dx: number, dz: number): number {
+  const a = ((Math.atan2(dz, dx) / (2 * Math.PI)) * PLAN_DIRS + PLAN_DIRS) % PLAN_DIRS;
+  const k0 = Math.floor(a) % PLAN_DIRS, k1 = (k0 + 1) % PLAN_DIRS;
+  return Math.max(sup[k0]!, sup[k1]!);
 }
 
 /** The body's reading: the parts without the named pieces, through the map's regional kit, else the default. */
@@ -118,10 +170,14 @@ function describeLandmark(input: StructureDescribeInput): StructureDamageAnatomy
   if (!named.length && !lattice) return null;
   const body = describeBody(input);
   const pieces: KeptPiece[] = [];
-  named.forEach((p, index) => { if (p.triangles <= PIECE_TRI_CAP) pieces.push({ ...p, index, runs: keepRuns(input, p.name) }); });
+  const standing: LandmarkPlan['standing'] = [];
+  named.forEach((p, index) => {
+    if (p.triangles <= PIECE_TRI_CAP) pieces.push({ ...p, index, runs: keepRuns(input, p.name) });
+    else standing.push({ top: p.max[1], floor: floorOf(input, p.name, p.max[1]), outline: planSupport(input, p.name) });
+  });
   let own = 0;
   for (const list of Object.values(input.parts)) for (const g of list as readonly BufferGeometry[]) if (!g.userData.damagePiece) own++;
-  const plan: LandmarkPlan = { kind: 'landmark-pieces', body, lattice, bodyless: !lattice && own === 0, pieces };
+  const plan: LandmarkPlan = { kind: 'landmark-pieces', body, lattice, bodyless: !lattice && own === 0, pieces, standing };
   const bodyShaft = (body.kitPlan as { damage?: { shaft?: unknown } } | undefined)?.damage?.shaft;
   // a light frame goes over whole when it falls (the shaft topple); a body read as a shaft keeps its own topple
   const shaft = lattice && input.massClass !== 'landmark' ? { lattice: true } : bodyShaft;
@@ -144,8 +200,9 @@ function merge(into: DamageStageResult, from: DamageStageResult | null | undefin
 
 // ---------------------------------------------------------------------------------------------------------- the falls
 
-/** A rigid pose: world = R (p - pivot) + pivot + t (R row-major). */
-interface Pose { r: number[]; px: number; py: number; pz: number; tx: number; ty: number; tz: number }
+/** A rigid pose: world = R (p - pivot) + pivot + t (R row-major); `crumble`: the piece cannot fall clear of what stands
+ *  under it (fallWay) and breaks up where it stands instead. */
+interface Pose { r: number[]; px: number; py: number; pz: number; tx: number; ty: number; tz: number; crumble?: boolean }
 function rotation(ax: number, ay: number, az: number, angle: number): number[] {
   const l = Math.hypot(ax, ay, az) || 1, x = ax / l, y = ay / l, z = az / l, c = Math.cos(angle), s = Math.sin(angle), k = 1 - c;
   return [c + x * x * k, x * y * k - z * s, x * z * k + y * s, y * x * k + z * s, c + y * y * k, y * z * k - x * s, z * x * k - y * s, z * y * k + x * s, c + z * z * k];
@@ -165,6 +222,48 @@ function reachAlong(a: StructureDamageAnatomy, dx: number, dz: number): number {
   // (destruction-slabs 227) about the body's own centre (the default reading's faces stand about its walls' box)
   const [cx, cz] = anatomyCentre(a);
   return cx * dx + cz * dz + Math.abs(dx) * a.w / 2 + Math.abs(dz) * a.d / 2;
+}
+
+/** How high over what stands a falling piece passes it (m), and the farthest it is thrown past its own place (m). */
+const THROW_MARGIN_M = 0.4, THROW_MAX_M = 10;
+/**
+ * (destruction-slabs 233; the critics' polders #46: its upper tower's wall chunks sank straight down through the standing
+ * stage round the shaft and came to rest on the mound under it, gone from sight in one step) a piece too large to keep
+ * (plan.standing: never laid, never the body's) stands while the others fall, and is no thing to fall through. A fall
+ * goes out at its throw's pace and down at gravity's (structureStages fallMatrix: its throw as its time, its drop as the
+ * square of it), so it passes over a thing in its way only once it is past that thing's far side by the time it has come
+ * down to its top: the nearest a piece must land along (dx, dz) for that (`need`; -Infinity where nothing stands in its
+ * way: the collapse, where everything comes down, and an open frame's members, through which what falls goes), and the
+ * farthest a throw may take its nearest point (`limit`: THROW_MAX_M past where it stands). `crumble` where it stands no
+ * higher than such a thing's top (it stands on it: a tower's lower course on its stage).
+ */
+function fallWay(plan: LandmarkPlan, p: KeptPiece, dx: number, dz: number): { need: number; limit: number } | 'crumble' {
+  if (p.at === 'collapse' || plan.lattice || !plan.standing.length) return { need: -Infinity, limit: Infinity };
+  // the piece as it stands: its nearest point along the fall, its span across it, its foot over the ground under it
+  let near0 = Infinity, far0 = -Infinity, l0 = Infinity, l1 = -Infinity;
+  for (const run of p.runs) for (let i = 0; i < run.pos.length; i += 3) {
+    const x = run.pos[i], z = run.pos[i + 2], along = x * dx + z * dz, across = z * dx - x * dz;
+    if (along < near0) near0 = along; if (along > far0) far0 = along;
+    if (across < l0) l0 = across; if (across > l1) l1 = across;
+  }
+  if (!Number.isFinite(near0)) return { need: -Infinity, limit: Infinity };
+  // (a piece laid flat turns as it falls: its middle's height, not its lowest point's — a sail's tip over the stage)
+  const foot = (p.fall ?? 'topple') === 'flat' ? (p.min[1] + p.max[1]) / 2 : p.min[1];
+  const drop = foot - pieceGroundAt(p.ground, (p.min[0] + p.max[0]) / 2, (p.min[2] + p.max[2]) / 2);
+  let need = -Infinity;
+  let crumble = false;
+  const consider = (top: number, outline: Float32Array): void => {
+    // in its way: across the fall where it is, ahead of its nearest point, and under it (its top under the piece's)
+    const far = reachOf(outline, dx, dz), nearO = -reachOf(outline, -dx, -dz), a1 = reachOf(outline, -dz, dx), a0 = -reachOf(outline, dz, -dx);
+    if (a1 < l0 || a0 > l1 || far <= near0 + 0.1 || nearO >= far0 || top >= p.max[1]) return;
+    const over = foot - top - THROW_MARGIN_M;
+    if (!(over > 0) || !(drop > 0)) { crumble = true; return; }
+    // the share of its fall's time by which it has come down to that top: its throw must have taken it past the far side
+    const u = Math.sqrt(Math.min(1, over / drop));
+    need = Math.max(need, near0 + (far + THROW_MARGIN_M - near0) / u);
+  };
+  for (const st of plan.standing) consider(st.top, st.outline);
+  return crumble ? 'crumble' : { need, limit: near0 + THROW_MAX_M };
 }
 
 /** Where a piece comes to rest (its own seed): the pose before its seat on the ground. */
@@ -221,7 +320,11 @@ function restPose(a: StructureDamageAnatomy, plan: LandmarkPlan, p: KeptPiece): 
   if (high && fall !== 'slump' && (fall !== 'flat' || p.clear !== undefined)) {
     let near = Infinity;
     forEachVertex(p, pose, (x, _y, z) => { near = Math.min(near, x * dx + z * dz); });
-    const edge = p.clear !== undefined ? cx * dx + cz * dz + p.clear : reachAlong(plan.body, dx, dz) + 0.15;
+    let edge = p.clear !== undefined ? cx * dx + cz * dz + p.clear : reachAlong(plan.body, dx, dz) + 0.15;
+    // (233) and past what stands in its way, or it crumbles where it stands (on it, or no throw within reach clears it)
+    const way = fallWay(plan, p, dx, dz);
+    if (way === 'crumble' || way.need > Math.max(edge, way.limit)) pose.crumble = true;
+    else edge = Math.max(edge, way.need);
     if (near < edge) { pose.tx += dx * (edge - near); pose.tz += dz * (edge - near); }
   }
   return pose;
@@ -424,9 +527,90 @@ function fitGround(p: KeptPiece, pose: Pose): [number, number, number] | null {
   return [ga, gb, gc];
 }
 
+/** How long a piece that crumbles stands after its stage before it breaks up (s): its own seed's share of the span. */
+/** (238; the critic's polders #46: the upper walls, cap and sails hung over the stage the lower course had left) it stands
+ *  while what stood on it leaves it and goes as what comes down onto it reaches it (the tower mill's cap, 3.9 m over its
+ *  ragged top, at 0.75 s): no gap opens under what falls. */
+const CRUMBLE_S = [0.5, 0.7] as const;
+/** The debris a crumbling piece breaks into (238): how many, their size (m), the gravity their throw is solved under. */
+const BREAK_PIECES = 36, BREAK_SIZE_M = [0.3, 0.75] as const, BREAK_G = 9.81;
+/**
+ * (238; the critic's polders #46 film: the tower's lower course "vanishes with no debris" while the upper walls, cap and
+ * sails hung over the bared stage) a piece that crumbles breaks into pieces of its own wall where it stands, sampled over
+ * its surface by area, each thrown out from the set piece's middle hard enough to pass over what stands under it (a piece
+ * too large to keep: its outline's reach along the throw, its floor) — up first where it starts within a hand of that
+ * floor. The presentation throws them as the piece breaks up (DamageFall.debris: structureStages crumblePiece).
+ */
+function breakUp(a: StructureDamageAnatomy, plan: LandmarkPlan, p: KeptPiece): { bucket: string; debris: number[] } | null {
+  const run = p.runs.reduce<PieceRun | null>((best, r) => (!best || r.pos.length > best.pos.length ? r : best), null);
+  if (!run) return null;
+  const rng = damageRng(damageSeed(a.seed, 0xb2e4, p.index));
+  const tris = run.pos.length / 9;
+  const cum = new Float32Array(tris);
+  let total = 0;
+  for (let t = 0; t < tris; t++) {
+    const o = t * 9;
+    const ux = run.pos[o + 3] - run.pos[o], uy = run.pos[o + 4] - run.pos[o + 1], uz = run.pos[o + 5] - run.pos[o + 2];
+    const vx = run.pos[o + 6] - run.pos[o], vy = run.pos[o + 7] - run.pos[o + 1], vz = run.pos[o + 8] - run.pos[o + 2];
+    total += Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) / 2;
+    cum[t] = total;
+  }
+  if (!(total > 0)) return null;
+  const debris: number[] = [];
+  const pcx = (p.min[0] + p.max[0]) / 2, pcz = (p.min[2] + p.max[2]) / 2;
+  for (let i = 0; i < BREAK_PIECES; i++) {
+    // a point of its surface (by area), its colour there
+    const at = rng() * total;
+    let lo = 0, hi = tris - 1;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (cum[mid]! < at) lo = mid + 1; else hi = mid; }
+    let r1 = rng(), r2 = rng();
+    if (r1 + r2 > 1) { r1 = 1 - r1; r2 = 1 - r2; }
+    const o = lo * 9;
+    const x = run.pos[o] + (run.pos[o + 3] - run.pos[o]) * r1 + (run.pos[o + 6] - run.pos[o]) * r2;
+    const y = run.pos[o + 1] + (run.pos[o + 4] - run.pos[o + 1]) * r1 + (run.pos[o + 7] - run.pos[o + 1]) * r2;
+    const z = run.pos[o + 2] + (run.pos[o + 5] - run.pos[o + 2]) * r1 + (run.pos[o + 8] - run.pos[o + 2]) * r2;
+    // out from the middle (the piece's own middle where it stands on it), a little to either side
+    let dx = Math.hypot(x, z) > 0.3 ? x : pcx, dz = Math.hypot(x, z) > 0.3 ? z : pcz;
+    const dl = Math.hypot(dx, dz) || 1;
+    dx /= dl; dz /= dl;
+    const side = (rng() - 0.5) * 0.6;
+    const ex = dx - dz * side, ez = dz + dx * side, el = Math.hypot(ex, ez) || 1;
+    let vy = 0.3 + rng() * 1.6;
+    let vout = 1.5 + rng() * 2;
+    const r0 = x * dx + z * dz;
+    for (const st of plan.standing) {
+      const reach = reachOf(st.outline, dx, dz) + 0.3;
+      if (reach <= r0) continue;
+      const over = y - (st.floor + 0.2);
+      if (over < 0.6) vy = Math.max(vy, 2.6 - Math.max(0, over));
+      // (when it comes down to the floor) — the program's drag (0.35/s) taken back off the throw
+      const tf = (vy + Math.sqrt(Math.max(0, vy * vy + 2 * BREAK_G * over))) / BREAK_G;
+      if (tf > 0.05) vout = Math.max(vout, ((reach - r0) / tf) / Math.max(0.5, 1 - 0.175 * tf));
+    }
+    vout = Math.min(10, vout * (1 + rng() * 0.2));
+    const sz = BREAK_SIZE_M[0] + rng() * (BREAK_SIZE_M[1] - BREAK_SIZE_M[0]), spin = rng() * Math.PI * 2;
+    const k = lo * 3, c = run.col;
+    debris.push(x, y, z, (ex / el) * vout, vy, (ez / el) * vout, sz, c ? c[k * 3]! : 0.7, c ? c[k * 3 + 1]! : 0.7, c ? c[k * 3 + 2]! : 0.7, spin);
+  }
+  return { bucket: run.bucket, debris };
+}
 /** A piece comes off: its spans hidden, its triangles laid where it rests, chips thrown. */
 function detach(a: StructureDamageAnatomy, plan: LandmarkPlan, p: KeptPiece, out: DamageWriters, res: DamageStageResult): void {
   const pose = restPose(a, plan, p);
+  if (pose.crumble) {
+    // (233) it cannot fall clear of what stands under it: it breaks up where it stands — (238) into pieces of its own
+    // wall thrown over what stands under it (breakUp), its dust and shards (structureStages crumblePiece); nothing of it
+    // laid whole
+    res.hides.push({ section: null, partClass: null, piece: p.name } satisfies DamageHide);
+    const rng = damageRng(damageSeed(a.seed, 0xc7b1e, p.index));
+    const broken = breakUp(a, plan, p);
+    (res.falls ??= []).push({ piece: p.name, r: [1, 0, 0, 0, 1, 0, 0, 0, 1], pivot: [0, 0, 0], t: [0, 0, 0],
+      crumbleS: CRUMBLE_S[0] + rng() * (CRUMBLE_S[1] - CRUMBLE_S[0]),
+      ...(broken ? { debris: broken.debris, debrisBucket: broken.bucket } : {}) });
+    // (a late joiner's settled stage throws none: a few chips lie where it broke)
+    chips(p, a, out, 6);
+    return;
+  }
   const plane = fitGround(p, pose);
   seat(p, pose);
   // a thin piece over ground that is no plane (a mound's crest) drapes over it, vertex by vertex

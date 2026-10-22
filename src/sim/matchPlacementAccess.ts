@@ -1,5 +1,5 @@
 import { createBotNavigationGrid, createDryNavigationView, createNavigationReachability,
-  navigationReachabilityContains } from './botRoutePlanner.ts';
+  navigationReachabilityContains, navigationReachabilityNear } from './botRoutePlanner.ts';
 import { collisionFootprintContainsPoint, type CollisionRecord, type ObstacleQuery } from '../world/collision.ts';
 import type { PlacementAnchors, PlacementPoint, PlacementTerrain } from './matchPlacement.ts';
 
@@ -42,5 +42,8 @@ export function createObjectiveAccess(world: AccessWorld, anchors: PlacementAnch
     anchors.deployments?.bravo ?? [anchors.bravo], connectorClear);
   return { navigation, dryNavigation, alpha, bravo,
     reachable: (point: PlacementPoint) => navigationReachabilityContains(dryNavigation, alpha, point, connectorClear)
-      && navigationReachabilityContains(dryNavigation, bravo, point, connectorClear) };
+      && navigationReachabilityContains(dryNavigation, bravo, point, connectorClear),
+    /** A spawn's dry drive route out to both deployments' flood (spawns-234: kick-off rows and arrival rings in yards). */
+    departs: (point: PlacementPoint) => navigationReachabilityNear(dryNavigation, alpha, point, connectorClear)
+      && navigationReachabilityNear(dryNavigation, bravo, point, connectorClear) };
 }

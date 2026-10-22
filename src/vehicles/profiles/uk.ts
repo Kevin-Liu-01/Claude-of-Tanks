@@ -3922,6 +3922,11 @@ function addVickersMk1Hull(P: UKBuilderPort): void {
   }
   // ---- inner body + lower plates (all inside the track channel) ----
   P.add('hull', box(1.74, 0.58, 5.4), 0, 0.77, -0.35);
+  // Engine bay tub wall (owner 2026-10-21, "gaps in hull around the engines ... a top slab and bottom slab"): aft of
+  // the return-run corridor the tail band's floor climbs from 1.10 to 1.36 over the sprocket wrap, full width, while
+  // the inner body stops at 1.06, so a slot opened through the hull from track to track over -2.0..-3.05. The body's
+  // side plates carry on up into the band, flush with it, and meet the stern rake.
+  P.add('hull', box(1.74, 0.31, 1.06), 0, 1.215, -2.52);
   P.add('hull', slab(                                  // lower bow to the beak
     [-0.85, 0.48, 2.30], [0.85, 0.48, 2.30], [0.58, 1.20, 3.17], [-0.58, 1.20, 3.17],
     [-0.85, 1.06, 2.30], [0.85, 1.06, 2.30], [0.58, 1.30, 3.19], [-0.58, 1.30, 3.19]));

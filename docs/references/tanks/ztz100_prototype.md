@@ -1,9 +1,18 @@
 # ZTZ-100 Prototype (`ztz100_prototype`)
 
 The owner-directed Tier IX prototype preserves the original chassis and running
-gear, with a new low armored turret carrying eight large missile canisters in
-two four-cell banks. A short 35 mm cannon occupies the central corridor. The
-service `ztz100_x` remains unchanged.
+gear, with a new low armored turret carrying eight round 152 mm missile
+canisters in two open four-cell pods. A short 35 mm cannon occupies the central
+corridor. The service `ztz100_x` remains unchanged.
+
+On 2026-10-21 the owner asked for launcher tubes "like" the Object 695 and the
+TOS-1A. The armored box banks became pods in the Object 695 vocabulary, built
+from the shared `profiles/missileCanisterStock.ts`: proud mouth collars with
+dark bore liners around recessed sealed terminals, rear caps, clamp bands and
+post-and-strap frames, with rails, an inner cradle plate on each trunnion
+journal and a fixed elevation drive on each pitch pedestal. The eight cells,
+loads and reload are unchanged. The tighter 0.30 m canister pitch moved the launch
+mouths to x ±0.93/±1.23 and the lower row to y 0.12, and the top fell to 2.64 m.
 
 This is an original game concept requested on 2026-09-19. Its HJ-P9 missile
 names, armor, handling and weapon performance are authored game values. Three

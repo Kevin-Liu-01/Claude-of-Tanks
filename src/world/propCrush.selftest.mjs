@@ -12,7 +12,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { civilianVehicleTypes } from './maps/inhabitKit.ts';
-import { createCrushField, deformPositions, hullMeetsBox, pressField, vehicleAnatomy } from './propCrush.ts';
+import { bendSegments, createCrushField, deformPositions, hullMeetsBox, pressField, vehicleAnatomy } from './propCrush.ts';
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
 
 let seed = 7;
@@ -383,7 +383,10 @@ const slotScale = (im, i) => { const m = new THREE.Matrix4(); im.getMatrixAt(i, 
   let burst = 0;
   for (let k = 0; k < cix.length; k += 3) if (cix[k] === cix[k + 1] && cix[k] === cix[k + 2]) burst++;
   assert.ok(burst > 40, `a crushed car's glass bursts (${burst} triangles)`);
-  assert.equal(cix.length, golf.index.count, 'and it draws no triangle more or less');
+  // (233) its long parts cut into bend segments (a box's floor, its trims, the frame rails): its own triangles with those
+  // cuts, no other
+  const bend = bendSegments(grest, golf.index.array, golf.index.count / 3);
+  assert.equal(cix.length, bend ? bend.index.length : golf.index.count, 'and it draws its own triangles, its long parts cut to bend, and no other');
   cc.geometry.computeBoundingBox();
   const sweptTop = cc.geometry.boundingBox.max.y;
   assert.ok(sweptTop > 0.55 && sweptTop < 0.9, `an unseen ram sweeps a tank's belly over it, not a pancake (${sweptTop.toFixed(2)} m)`);
@@ -419,7 +422,20 @@ const slotScale = (im, i) => { const m = new THREE.Matrix4(); im.getMatrixAt(i, 
   const burntTop = sc.geometry.boundingBox.max.y, lum1 = lum(paintRgb()), upper = lum(paintRgb('upper')), lower = lum(paintRgb('lower'));
   assert.ok(burntTop < killTop - 0.03, `and more as it burns (${burntTop.toFixed(2)} m)`);
   assert.ok(lum1 < lum0 * 0.5, `its paint burnt dark (${lum0.toFixed(3)} -> ${lum1.toFixed(3)})`);
-  assert.ok(upper > lower * 1.5 && upper > 0.05, `its upper panels burnt through to ash over its scorched sides (${upper.toFixed(3)} over ${lower.toFixed(3)}; r1c: "a black lump" at night)`);
+  // (233, calibrated in the game: r3's ash and steel at 0.09-0.2 rendered light, "undamaged"; r4's one dark tone read "a
+  // dark-painted car") charred dark, and not one tone: heat oxide and bared steel in patches, hotter over the waist
+  const burntLum = [];
+  let oxide = 0;
+  for (let v = 0; v < gsurf.length; v += 3) {
+    if (gsurf[v + 2] <= 200) continue;
+    burntLum.push(lum([scol[v], scol[v + 1], scol[v + 2]]));
+    if (scol[v] > 2 * scol[v + 2] && scol[v] > 0.04) oxide++;
+  }
+  burntLum.sort((a, b) => a - b);
+  const p10 = burntLum[Math.floor(burntLum.length * 0.1)], p90 = burntLum[Math.floor(burntLum.length * 0.9)];
+  assert.ok(lum1 < 0.06, `charred dark (${lum1.toFixed(3)})`);
+  assert.ok(p90 > p10 * 2 && oxide > burntLum.length * 0.05 && upper > lower,
+    `in patches, not one tone (${p10.toFixed(3)}..${p90.toFixed(3)}, ${oxide} of ${burntLum.length} oxide; upper ${upper.toFixed(3)} over ${lower.toFixed(3)})`);
   let tyre = 0;
   for (let v = 0; v < grest.length; v += 3) {
     const k = an.wheelOf[v / 3];
@@ -465,7 +481,8 @@ const slotScale = (im, i) => { const m = new THREE.Matrix4(); im.getMatrixAt(i, 
     press.takes(0, 'ram', 1, 0, false);
     for (let i = 0; i < 60; i++) press.step(DT);
     const fc = group.children[0];
-    assert.equal(fc.geometry.drawRange.count, golf.index.count, 'a far-form build\'s copy draws its body\'s triangles alone');
+    // (233: a bent copy is its body alone, the far form never comes along; an unbent one's draw range ends at its body)
+    assert.equal(Math.min(fc.geometry.index.count, fc.geometry.drawRange.count), cix.length, 'a far-form build\'s copy draws its body\'s triangles alone');
     assert.equal(fc.geometry.hasAttribute('aVehicleLod'), false, 'and carries no fold tag (it never folds)');
     assert.equal(farGolf.hasAttribute('aVehicleLod'), true, 'the pool\'s own build keeps its tag');
     const fp = fc.geometry.getAttribute('position').array, cp = cc.geometry.getAttribute('position').array;
@@ -479,7 +496,7 @@ const slotScale = (im, i) => { const m = new THREE.Matrix4(); im.getMatrixAt(i, 
   }
   console.log(`  map car: Golf ${gtop.toFixed(2)} m, belt ${an.belt.toFixed(2)} m, ${wheels.length} wheels; crossed: belly ${one.belly.toFixed(2)} m, tracks ${one.track.toFixed(2)} m, `
     + `roof ${roofY.toFixed(2)} m over the belt's ${beltY.toFixed(2)} m; swept ${sweptTop.toFixed(2)} m, ${burst} glass triangles out; `
-    + `shot ${gtop.toFixed(2)} -> ${killTop.toFixed(2)} -> ${burntTop.toFixed(2)} m, paint ${lum0.toFixed(3)} -> ${lum1.toFixed(3)} (ash ${upper.toFixed(3)}, scorched ${lower.toFixed(3)}), tyres ${tyre.toFixed(2)} r`);
+    + `shot ${gtop.toFixed(2)} -> ${killTop.toFixed(2)} -> ${burntTop.toFixed(2)} m, paint ${lum0.toFixed(3)} -> ${lum1.toFixed(3)} (${p10.toFixed(3)}..${p90.toFixed(3)}, upper ${upper.toFixed(3)}, scorched ${lower.toFixed(3)}), tyres ${tyre.toFixed(2)} r`);
 }
 console.log('propCrush: a vehicle gives at contact and pancakes under the tracks, never rising, the same twice; the far side of a clip stands; '
   + 'the copy keeps its livery, the sim\'s crush swaps nothing, unseen crushes sweep (not in the Studio), heaps flatten again; heavy plant keeps its floor, racks, buckles and is shoved aside; a map car keeps its belly\'s clearance, its roof over its doors, its footprint and its wheels, bursts its glass, and buckles, blackens and burns to its rims when shot PASS');

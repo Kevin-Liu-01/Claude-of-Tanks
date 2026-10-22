@@ -35,8 +35,8 @@ export const FLEET_RENEWAL_NEW_IDS=['type96_72_long','type96_80_feng','type96_72
 const registry=bindFleetRegistries(TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS);
 const entries=[
   ['type96_72_long','type96b','Type 96-72 Lóng (Concept)','China'],
-  ['type96_80_feng','type96b','Type 96-80 Fēng (Concept)','China'],
-  ['type96_72m_lei','type96b','Type 96-72M Léi (Concept)','China'],
+  ['type96_80_feng','type96b','Type 96-80 Fēng','China'],
+  ['type96_72m_lei','type96b','Type 96-72M Léi','China'],
   ['t72_rys','t80u','T-72 Ryś (Concept)','Poland'],
 ] as const;
 const additions:Record<string,FleetTankSpec>={};

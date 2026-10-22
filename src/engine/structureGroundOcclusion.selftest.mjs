@@ -79,7 +79,7 @@ assert.equal(packed.length, 4 + 8, 'trees, kerbs under 0.3 m and broken solids a
   broken.crushed = false;
   assert.deepEqual([...packOccluders([house, tree, kerb, broken], parts)], [...packOccluders([house, tree, kerb, broken])], 'a restored solid too');
   broken.crushed = true;
-  const runtime = read('./structureGroundOcclusion.ts');
+  const runtime = read('./structureGroundOcclusionRuntime.ts');
   assert.match(runtime, /const parts = scale > 0 \? records\.map\(packRecordOccluders\) : \[\];/, 'the handle packs each solid once');
   assert.match(runtime, /for \(let i = 0; i < records\.length; i\+\+\) \{\s*if \(!parts\[i\]\) continue;/, 'a solid that hides no sky re-bakes nothing');
 }
@@ -144,7 +144,7 @@ assert.match(map, /groundOcclusion\.update\(dt\);/, 'the world polls its destroy
 assert.match(map, /groundOcclusion\.dispose\(\);/);
 const main = read('../main.ts');
 assert.match(main, /groundOcclusion\.setInstant\(true\);\s*await Promise\.race\(\[groundOcclusion\.whenReady\(\)/, 'a capture waits for the bake');
-const runtime = read('./structureGroundOcclusion.ts');
+const runtime = read('./structureGroundOcclusionRuntime.ts');
 assert.match(runtime, /new Worker\(new URL\('\.\/structureGroundOcclusionWorker\.ts', import\.meta\.url\)/, 'baked off the main thread');
 assert.match(runtime, /renderer\.copyTextureToTexture\(src, texture, null, new THREE\.Vector2\(i0, j0\)\)/, 'a re-bake patches in place');
 

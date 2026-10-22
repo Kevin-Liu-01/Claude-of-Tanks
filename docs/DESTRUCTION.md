@@ -1472,3 +1472,42 @@ What stays open after round 5:
   inside its plan (footprint 0.584).
 
 @CENSUS5@
+
+**233/238 (2026-10-22; the owner's "weird ugly boxes/surfaces": the roofless storey's lid).** In production's own film of
+the round-4 strikes on reservoir's tavern #7 (depot #8 the same way), the near-black plane over most of the roofless top
+storey is the far wall's inner face in its own shade (named by the slab check's false-colour replay of the film's
+strikes: the fracture's room, `fx-fracture-room-7`). The pale strip in front of it is the sunlit floor. The room material
+is not one of the engine's shadow materials (`engineCtx.setupShadowMaterial`), so it is lit as no world material is:
+every cascade's sun at once (the round-5 films' glare on the inner walls) and none of the world's sky fill in shade (this
+plane). Rooms behind holes keep it, dim by design. A room open to the sky now draws in its building's own world material
+(`roomMaterialFor(source, open)`; `openRoomMaterial` when its roof falls after it was laid), lit as the building's
+outside is: the faces the fracture redraws and the kit's rims already draw in it. Both the kit's room (`layInterior`,
+`openTopRooms`) and the fracture's (`roomFor`, `roofFell`) use it, at the face's own tint (OPEN_ROOM_SHADE 1, the kit's
+OPEN_ROOM_WALL/FLOOR 0.95/0.85: the quarter under them was round 6's answer to that glare). The fracture's room now also
+draws its walls in the face's render or infill (an interior is plastered; it drew the face's core, the tavern's timber
+frame, one dark board wall), its floor in the storey's own floor structure and its ceiling in what carries the storey
+above (it drew all three in the core's bucket), one mesh per bucket, as the kit's room does.
+
+**238 (mill; the integrator's critic on 233: polders #46's upper tower sank through its stage, then hung over it).** The
+tower mill's stage (stelling) has 4,416 triangles, over the kit's PIECE_TRI_CAP. It is a named piece, so the body leaves
+it out, and it is over the cap, so the kit never keeps it: it stood for good and nothing in the kit knew. The upper
+shaft's chunks, the cap and the sails were laid on the mound under it, along straight paths through its deck. A piece
+too large to keep is now `plan.standing` (its top, its floor, its plan outline in 32 directions).
+
+- *Thrown past what stands.* Falls are thrown (structureStages `fallMatrix`: out in proportion to the time, down in
+  proportion to its square), and `fallWay` lands a high piece far enough out that its arc clears what stands.
+- *A course that stands on it breaks into debris.* A piece that stands on such a thing, or one no throw within 10 m
+  clears, crumbles where it stands (`DamageFall.crumbleS`, with `debris`). The tower mill's lower course stands while
+  the upper course, cap and sails leave it. It breaks at 0.5-0.7 s, as the cap coming down onto it reaches its ragged
+  top, so no gap opens under what falls (in the critic's film the lower course had gone at 2.0-2.2 s with no debris,
+  and the upper walls, cap and sails hung over the bared stage). It breaks into 36 pieces of its own wall, sampled over
+  its surface by area and thrown over the stage's deck (`breakUp`; `crumblePiece` throws them as it breaks), with its
+  dust and shards (the stages' new `onLanding`/`onShards`).
+- *A fall lands without spinning.* Its turn is eased in and out. In the critic's film a chunk turned a fifth of its
+  turn in the last tenth of its fall and flipped from its pale inner face to its brick, "a box swapped".
+- *A piece laid again by a later stage waits for its fall.* At 2.2 s production showed the second breach's copies of
+  the falling chunks on the mound, with no flight before them. A fall that ends before its stage's longest lies at its
+  end until the laid copies show.
+
+At the builders' defaults the tower mill is the only set piece with a piece too large to keep that the rule reaches
+(the house row's houses slump; the troposcatter is an open frame, through which what falls goes).

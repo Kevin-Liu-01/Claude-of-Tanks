@@ -10,6 +10,7 @@ import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { sweptTube } from '../accessoryPrimitives.ts';
 import { ammoCanParts, fieldChestParts } from './fieldChest.ts';
+import { addM1A1VariantIdentity } from './abramsM1A1Identity.ts';
 // Strict TypeScript Abrams family procedural profiles — gate-v6 rebuild (2026-07-31).
 // Authored against TRUE-AXIS ortho mask traces (docs/references/profiles/*
 // re-extracted after the v6 camera fix, plus scratch probe curves decoded to
@@ -5740,6 +5741,8 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
       P.add('hullDetail', torus(0.028, 0.008, 10), dx, deckAt(g, dz) + 0.006, dz, Math.PI / 2, 0, 0);
     }
     abramsArmorHardware(P, vid, t);
+    // Release 233 (owner: the HA, AIM, FEP, HC and SA "kinda samey"): each mark's own field kit.
+    addM1A1VariantIdentity(P);
     // SEPv3 receives a tailored ULCANS-style multispectral cover. Other marks
     // retain their hard-surface identity unless explicitly configured by the
     // shared physical-ghillie registry.

@@ -429,7 +429,9 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   alpha.state.pos.x = enemyFlag.x; alpha.state.pos.z = enemyFlag.z;
   match.step(1 / 60, 1);
   assert.equal(enemyFlag.carrierId, 'alpha');
-  assert.ok(Math.abs(alpha.modeSpeedMultiplier - FLAG_CARRIER_SPEED_SCALE) < 1e-9, 'the carrier drives at 85 %');
+  // (233) the CTF ruleset sets its own carrier share (flagPitch.carrierSpeedScale: full speed); the 0.85 default is the fallback
+  const carrierShare = matchRulesetFor('capture_the_flag').flagPitch?.carrierSpeedScale ?? FLAG_CARRIER_SPEED_SCALE;
+  assert.ok(Math.abs(alpha.modeSpeedMultiplier - carrierShare) < 1e-9, `the carrier drives at its ruleset's share (${carrierShare})`);
   alpha.state.pos.x = ownFlag.baseX; alpha.state.pos.z = ownFlag.baseZ;
   match.step(1 / 60, 2);
   assert.equal(match.state.score.alpha, 1);
@@ -554,9 +556,9 @@ for (const mode of ['zone_control','mars','standard','capture_the_flag','turbo_b
   const bots = Array.from({length: 6}, (_, i) => entity(`ball-role-${i}`, 'alpha', i * 10, -80, {bot: true}));
   const {match} = controller('turbo_ball', [...bots, entity('goalkeeper', 'bravo', 0, 100)]);
   const jobs = bots.map(bot => match.botObjective(bot));
-  assert.equal(jobs.filter(job => job.mission === 'striker').length, 2, 'two strikers: the chaser and its support (gameplay-modes-228)');
+  assert.equal(jobs.filter(job => job.mission === 'striker').length, 3, 'three strikers: the chaser and its supports (gameplay-modes-233; two in 228)');
   assert.equal(jobs.filter(job => job.mission === 'keeper').length, 1, 'a keeper off the own goal');
-  assert.equal(jobs.filter(job => job.mission === 'screen').length, 3, 'the rest cover lanes');
+  assert.equal(jobs.filter(job => job.mission === 'screen').length, 2, 'the rest cover lanes');
   assert.ok(jobs.filter(job => job.mission !== 'striker').every(job => Math.hypot(job.x - match.state.ball.x, job.z - match.state.ball.z) >= 30
     || job === jobs.find(j => j.mission === 'screen')), 'the crowd cap: only the strikers and the first screen close on the ball');
   assert.ok(new Set(jobs.map(job => `${job.x.toFixed(1)}:${job.z.toFixed(1)}`)).size >= 3,

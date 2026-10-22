@@ -26,7 +26,7 @@ import { SPECIAL_ACTION_KINDS, createSpecialActionState } from '../../sim/specia
 import type { SpecialActionState } from '../../sim/specialActionPolicy.ts';
 import { AERIAL_RULES, matchRulesetFor, rulesetVerdictSide } from '../../sim/matchRuleset.ts';
 import type { MatchRuleset } from '../../sim/matchRuleset.ts';
-import { normalizeGameMode } from '../../sim/matchModes.ts';
+import { normalizeGameMode } from '../../sim/gameModeCatalog.ts';
 import { cloneTankVisual, createTank, ensureTankBuilder } from '../../vehicles/fleetFactory.ts';
 import { prebakeSharedTextures } from '../../vehicles/materials.ts';
 import type { FleetTankSpec } from '../../vehicles/specContracts.ts';
@@ -967,6 +967,8 @@ export function createBattlePresentation({
       shellType: payload.shellType, shellName: payload.shellName,
       weaponSound: payload.weaponSound || shellSpec?.soundProfile || shooter?.spec.gun.soundProfile || null,
       muzzleIndex, caliberMm: payload.caliberMm, velocityMps: payload.velocityMps, timeS: payload.timeS ?? game.timeS,
+      // (233) the round's own blast envelope (the gunship's howitzer), as the solo step publishes it
+      blastRadiusM: shellSpec?.blastRadiusM,
       muzzlePos, dir: [payload.dx, payload.dy, payload.dz], shooterSpecId: shooter?.specId,
       feedbackPredicted, rocket: isUnguidedRocket(shooter?.spec.gun, shellSpec), fireIntentSeq: payload.fireIntentSeq,
     });

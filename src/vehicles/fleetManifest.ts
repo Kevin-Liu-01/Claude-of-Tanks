@@ -120,7 +120,7 @@ export const FLEET_GROUP_IDS = Object.freeze({
     'bmp3', 'upior', 'bmpt_t90',
   ]),
   korea: Object.freeze(['k2b']),
-  japan: Object.freeze(['stb1', 'type90a', 'type10b']),
+  japan: Object.freeze(['stb1', 'type90a', 'type10b', 'type10_dozer']),
   germany: Object.freeze(['leo2a3']),
   sheridan: Object.freeze(['m551_sheridan', 'm551a1_tts']),
 } as const);

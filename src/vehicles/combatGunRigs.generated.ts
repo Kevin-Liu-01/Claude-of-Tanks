@@ -94,6 +94,7 @@ export const COMBAT_GUN_RIGS: Readonly<Record<string, CombatGunRig>> = Object.fr
   "t90m_proryv": {"turretPivot":[0,1.638,0.1365],"gunPivot":[0,0.144,1.1024],"lengthM":4.717},
   "t90ms_2011": {"turretPivot":[0,1.5152,0],"gunPivot":[0,0.399,1.05],"lengthM":5.586},
   "t90sm_2013": {"turretPivot":[0,1.47,0.0945],"gunPivot":[0,0.3044,1.2285],"lengthM":5.2185},
+  "type10_dozer": {"turretPivot":[0,1.672,0.2354],"gunPivot":[0,0.319,1.9365],"lengthM":4.4786,"radiusM":0.1275},
   "type10_tk_x": {"turretPivot":[0,1.672,0.2354],"gunPivot":[0,0.319,1.9365],"lengthM":4.4786,"radiusM":0.1275},
   "type10b": {"turretPivot":[0,1.672,0.2354],"gunPivot":[0,0.319,1.9365],"lengthM":4.4786,"radiusM":0.1275},
   "type59": {"turretPivot":[0,1.2657,0.578],"gunPivot":[0,0.3134,0.8712],"lengthM":3.6697,"radiusM":0.1009},

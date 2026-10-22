@@ -2648,11 +2648,15 @@ export function createAudio({
 
   function update(dt: number, listener: AudioListenerPose, list: readonly RuntimeValue[], shells: readonly RuntimeValue[] = []): void {
     if (!ready() || !mixer || !pool || !ctx) return;
-    frame.x = listener.pos.x;
-    frame.y = listener.pos.y;
-    frame.z = listener.pos.z;
+    // Keep the last finite pose: one NaN camera frame would otherwise poison every cue that frame.
+    const { x: lx, y: ly, z: lz } = listener.pos;
+    if (Number.isFinite(lx) && Number.isFinite(ly) && Number.isFinite(lz)) {
+      frame.x = lx;
+      frame.y = ly;
+      frame.z = lz;
+    }
     const fl = Math.hypot(listener.forward.x, listener.forward.z);
-    if (fl > 1e-3) { frame.fx = listener.forward.x / fl; frame.fz = listener.forward.z / fl; }
+    if (Number.isFinite(fl) && fl > 1e-3) { frame.fx = listener.forward.x / fl; frame.fz = listener.forward.z / fl; }
     listenerKind = listener.kind || 'camera';
     listenerOwnerId = listener.ownerId ?? null;
     listenerScoped = !!listener.scoped && listenerKind !== 'killcam-camera';

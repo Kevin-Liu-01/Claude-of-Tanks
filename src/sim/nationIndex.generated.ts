@@ -91,6 +91,7 @@ export const NATION_INDEX: readonly (readonly [string, CountryId | null, string 
   ["type90_kyumaru","japan","cold-war",9],
   ["type90a","japan","cold-war",9],
   ["type10_tk_x","japan","modern",10],
+  ["type10_dozer","japan","modern",10],
   ["type10b","japan","next-generation",10],
   ["m2a2_bradley","usa","cold-war",8],
   ["bmp2","russia","cold-war",7],

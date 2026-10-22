@@ -31,7 +31,13 @@ renderer-free openings into the game AI controller;
 `deployment.ts` is the one symmetric deployment law (each bravo slot the rotation of its
 alpha slot about the anchors' midpoint) that `matchPlacement.ts` resolves on the ground
 (`terrainDeployment`, the world's `deploymentClearings`) and on the world (`deploymentSlot`)
-for the authority, the browser host and the solo sim alike.
+for the authority, the browser host and the solo sim alike. Every spawn seat and revive also
+faces open ground (the hull's lane holds no solid and no stretch steeper than `CLIFF_GRADE`;
+a blocked heading turns up to 60°) and departs into both deployments' dry flood where the mode
+built one; a plain respawn keeps the ruleset's `respawnSafeM` from live enemies. Keep spawn
+laws in the match stage: the world dressing reads the ground stage, so changing it moves trees
+and props and stales the collision manifests. `tools/spawn-points-probe.mjs` measures every
+map x mode x seed headlessly (one process, 4 GB heap).
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

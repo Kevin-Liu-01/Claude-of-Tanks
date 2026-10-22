@@ -2,7 +2,7 @@ import { teamNationsFlags } from '../sim/teamNations.ts';
 import { checkedIntegrationPort } from '../app/checkedIntegrationPort.ts';
 import type { MainFxRuntime } from '../app/mainContracts.ts';
 import type { LazyAudio } from '../audio/lazyAudio.ts';
-import { normalizeGameMode } from '../sim/matchModes.ts';
+import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import type { WorkYielder } from '../engine/frameScheduler.ts';
 import { t } from '../ui/i18n.ts';
 import type { BattleLoadRosterRow, BattleLoadScreen } from '../ui/battleLoad.ts';

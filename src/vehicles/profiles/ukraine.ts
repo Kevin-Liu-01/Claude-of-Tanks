@@ -1,6 +1,6 @@
 import {resizeAuthoredVehicle} from './vehicleSize.ts';
 import {upgradeOplotFieldEquipment} from './fieldProtectionPack.ts';
-import { buildT64Modern } from './t72ModernVariants.ts';
+import { buildT64Modern } from './t64bvX.ts';
 import type { SnapGroupOptions, TankBuilderPort } from '../tankFactoryCore.ts';
 // Ukrainian tracked-vehicle family — §5.248 GROUND-UP REBUILDS (ukraine wave).
 //

@@ -1680,6 +1680,10 @@ export function createShowroomOrbit(
   function readWindow(): typeof win {
     const vw = camera.__cotViewW || (typeof window !== 'undefined' ? window.innerWidth : 1920);
     const vh = camera.__cotViewH || (typeof window !== 'undefined' ? window.innerHeight : 1080);
+    // A viewport with no area (a collapsed pane or embed reports 0 wide or 0 high) has no stage to frame: dividing by
+    // it made the window infinite and the solved camera NaN, and the Garage's audio listener is that camera (232's
+    // AudioParam throw). Keep the last window until the viewport has an area again.
+    if (!(vw > 0 && vh > 0)) return win;
     let r: ShowroomStageRect | null = null;
     try { r = deps.getStageRect ? deps.getStageRect() : null; } catch { r = null; }
     let x0 = 0, y0 = 0, x1 = vw, y1 = vh;
@@ -1700,6 +1704,11 @@ export function createShowroomOrbit(
     win.hx = (x1 - x0) / vw;                // NDC half-width
     win.hy = (y1 - y0) / vh;
     return win;
+  }
+
+  /** The camera's aspect, or 16:9 while the viewport has no area (the resize seam's w / 0 and 0 / 0 are no aspect). */
+  function viewAspect(): number {
+    return Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
   }
 
   function measureFixedFrame(frame: ShowroomFixedFrame): void {
@@ -1833,7 +1842,7 @@ export function createShowroomOrbit(
   function solve(y: number, p: number, fill: number, fixedDist: number): ShowroomSolve {
     const w = readWindow();
     const tanV = Math.tan(THREE.MathUtils.degToRad(SHOW_FOV_DEG) * 0.5);
-    const tanH = tanV * (camera.aspect || 16 / 9);
+    const tanH = tanV * viewAspect();
     const maxPc = prepareCornerProjection(y, p);
     const dFloor = Math.max(maxPc + SHOW_NEAR_PAD_M, nearDist, 1);
     let d = fixedDist || Math.max(dFloor, nearDist * 2.2);
@@ -1889,7 +1898,7 @@ export function createShowroomOrbit(
     if (_sbPos.y < minY) _sbPos.y = minY;
     _sbLook.copy(_sbPos).addScaledVector(_sbC, -d);
     rig.setExternalPose(_sbPos, _sbLook, SHOW_FOV_DEG);
-    appliedAspect = camera.aspect;
+    appliedAspect = viewAspect();
     appliedWin.cx = win.cx; appliedWin.cy = win.cy;
     appliedWin.hx = win.hx; appliedWin.hy = win.hy;
   }
@@ -1921,7 +1930,7 @@ export function createShowroomOrbit(
 
   function framingChanged(previousHeroDist: number): boolean {
     return Math.abs(heroDist - previousHeroDist) > SHOW_SETTLE_EPS ||
-      Math.abs(camera.aspect - appliedAspect) > SHOW_SETTLE_EPS ||
+      Math.abs(viewAspect() - appliedAspect) > SHOW_SETTLE_EPS ||
       Math.abs(win.cx - appliedWin.cx) > SHOW_SETTLE_EPS ||
       Math.abs(win.cy - appliedWin.cy) > SHOW_SETTLE_EPS ||
       Math.abs(win.hx - appliedWin.hx) > SHOW_SETTLE_EPS ||

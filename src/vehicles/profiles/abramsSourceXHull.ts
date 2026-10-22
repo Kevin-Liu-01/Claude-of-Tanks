@@ -103,8 +103,11 @@ function sheet(x0: number, x1: number, z0: number, z1: number,
 }
 
 function bearing(): THREE.BufferGeometry {
-  const profile = [[1.18, 1.482], [1.325172, 1.482], [1.325172, 1.492645],
-    [1.313084, 1.513295], [1.18, 1.513295], [1.18, 1.482]];
+  // Release 231 (the gun-hull fleet lane): the gun's cradle hangs in the turret's open central bay over this race at
+  // every bearing. Inside r 1.30, under the turret's ring disc, the race steps down to 1.4855, and its lip in the slit
+  // stands 12.5 mm over the deck (was 30 mm, to 1.513), so the cradle keeps the gun's 26 mm to full depression.
+  const profile = [[1.18, 1.482], [1.325172, 1.482], [1.325172, 1.489],
+    [1.319, 1.4955], [1.30, 1.4955], [1.30, 1.4855], [1.18, 1.4855], [1.18, 1.482]];
   return new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 64)
     .translate(-.000209, 0, .392931);
 }
@@ -123,14 +126,18 @@ function bearingDeck(): THREE.BufferGeometry {
 }
 
 /** Turret race cover: solid stock filling the bearing deck's 1.308 m aperture and
- * rising through the slit to the turret floor (1.649). Owner review 2026-09-13
+ * rising through the slit into the turret's ring disc. Owner review 2026-09-13
  * ("pour water into the turret and it must not spill out"): the open well below
  * the aperture was reachable from outside through the ring slit, so the whole
  * hull read see-through from under the bustle. The cover reads as the race ring
  * in the slit; everything above it is inside the turret. */
 function turretRaceCover(): THREE.BufferGeometry {
-  return new THREE.CylinderGeometry(1.312, 1.312, .30, 64)
-    .translate(-.000209, 1.60, .392931);
+  // Release 231 (the gun-hull fleet lane): it stops 3.5 mm into the turret's ring disc (r 1.308, 1.482-1.540), which
+  // closes over it, so the ring stays sealed and the race still shows in the slit. It stood to 1.75, 18 cm over the
+  // turret's 1.574 floor, where the gun's cradle (1.572 at the race radius, in the turret's open central bay) swept
+  // through it at every bearing and pitch; at 1.4855 the cradle keeps the gun's 26 mm to -9.
+  return new THREE.CylinderGeometry(1.312, 1.312, .0355, 64)
+    .translate(-.000209, 1.46775, .392931);
 }
 
 /** Engine-bay rear bulkhead: the source stock keeps the engine mouth open (no
@@ -376,8 +383,10 @@ function rearEquipment(P: TankBuilderPort): void {
     P.addEquipment('hullDetail', cylZ(.124, .194, 20), side * 1.59, 1.5634, -3.83);
     P.addEquipment('hullDark', cylZ(.092, .007, 20), side * 1.59, 1.5634, -3.931);
   }
-  P.addEquipment('hullDetail', box(.744, .031, .50), .70184, 1.704, -2.4721);
-  P.addEquipment('hullDetail', box(.41, .031, 1.02), -.8331, 1.704, -2.20);
+  // release 231 (the gun-hull fleet lane): the access plates lie 8 mm proud of the deck (were 25 mm); the turret's belly,
+  // which runs below the deck line, cut them as it traversed
+  P.addEquipment('hullDetail', box(.744, .008, .50), .70184, 1.698, -2.4721);
+  P.addEquipment('hullDetail', box(.41, .008, 1.02), -.8331, 1.698, -2.20);
   // the SEPv3's sponson boxes and auxiliary power unit live in abramsSourceXSepv3Kit.ts (2026-09-15)
 }
 

@@ -190,7 +190,8 @@ for (const id of ids) {
   if (id === 't64bv_donbas') {
     // 2026-10-01: the owner's Donbas rebuild (cdbfe54dc, "t64bv_donbas with supported foliage, net and cages";
     // profiles/donbasFieldCover.ts) replaced the deck-wide blanket with supported flank drapes over the five side
-    // ERA cassettes (z -1.9..1.7 on the t72b3 hull) and a bustle cover behind the open sights and hatches.
+    // ERA cassettes (z -1.9..1.7 on the t72b3 hull) and a bustle cover behind the open sights and hatches. 2026-10-21:
+    // the cover is re-seated on the T-64 shell (t64bvX.ts), the drapes on its fender edge, z -2.22..2.08.
     const cover = turretRig.userData.fieldCover;
     assert.deepEqual(cover, { supported: true, sightsOpen: true, hatchesOpen: true, revision: 1 },
       `${id} field cover is carried on real rails with sights and hatches open`);

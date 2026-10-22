@@ -127,8 +127,12 @@ export function nominalBravoSlot(frame: DeploymentFrame, k: number): DeploymentS
   return { x: from.x - frame.forward.x * back, z: from.z - frame.forward.z * back, yaw: from.yaw };
 }
 
-/** Is `point` a valid slot for `team`, given the slots that side already holds (in slot order)? */
-export type DeploymentCheck = (team: DeploymentTeam, point: DeploymentPoint, held: readonly DeploymentPoint[]) => boolean;
+/**
+ * Is `point` a valid slot for `team`, given the slots that side already holds (in slot order)? `yaw` is the slot's
+ * heading (a moved slot keeps its own), for a check that judges what the hull faces (the match stage's lane).
+ */
+export type DeploymentCheck = (team: DeploymentTeam, point: DeploymentPoint, held: readonly DeploymentPoint[],
+  yaw?: number) => boolean;
 
 interface ResolvedSlotPair {
   readonly alpha: DeploymentSlot;
@@ -168,14 +172,14 @@ function ringSearch(from: DeploymentPoint, check: (dx: number, dz: number) => bo
  */
 export function resolveSlotPair(alpha: DeploymentSlot, bravo: DeploymentSlot, check: DeploymentCheck,
   held: { readonly alpha: readonly DeploymentPoint[]; readonly bravo: readonly DeploymentPoint[] }): ResolvedSlotPair {
-  const joint = ringSearch(alpha, (dx, dz) => check('alpha', { x: alpha.x + dx, z: alpha.z + dz }, held.alpha)
-    && check('bravo', { x: bravo.x - dx, z: bravo.z - dz }, held.bravo));
+  const joint = ringSearch(alpha, (dx, dz) => check('alpha', { x: alpha.x + dx, z: alpha.z + dz }, held.alpha, alpha.yaw)
+    && check('bravo', { x: bravo.x - dx, z: bravo.z - dz }, held.bravo, bravo.yaw));
   if (joint) {
     return { alpha: { x: alpha.x + joint.dx, z: alpha.z + joint.dz, yaw: alpha.yaw },
       bravo: { x: bravo.x - joint.dx, z: bravo.z - joint.dz, yaw: bravo.yaw }, moveM: joint.radius, symmetric: true };
   }
   const own = (team: DeploymentTeam, slot: DeploymentSlot) => {
-    const found = ringSearch(slot, (dx, dz) => check(team, { x: slot.x + dx, z: slot.z + dz }, held[team]));
+    const found = ringSearch(slot, (dx, dz) => check(team, { x: slot.x + dx, z: slot.z + dz }, held[team], slot.yaw));
     return found ? { slot: { x: slot.x + found.dx, z: slot.z + found.dz, yaw: slot.yaw }, radius: found.radius } : { slot, radius: 0 };
   };
   const a = own('alpha', alpha), b = own('bravo', bravo);
