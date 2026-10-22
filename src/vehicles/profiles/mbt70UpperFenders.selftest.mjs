@@ -117,7 +117,8 @@ function contacts(c){
    }
    assert.ok(ray([m],[side*1.73,y+.05,z],[0,-1,0],.075).length,'Actual continuous top closure');stats.receiverSamples++;
   }
-  for(const [end,z,y]of[['front',2.58,1.36],['rear',-2.60,1.64]]){
+  // 2026-10-22: the front guard follows the MBT-70's clean upper glacis (its flange 1.362-1.445 at z 2.58)
+  for(const [end,z,y]of[['front',2.58,1.40],['rear',-2.60,1.64]]){
    const fender=c.receivers.find(o=>o.name===`mbt70_m1_${end}_fender_${side}`);assert.ok(fender);
    checkWebLap(fender,m,side,z,y);stats.receiverSamples++;
    const coplanar=new T.Mesh(m.geometry.clone().translate(-side*.002,0,0),material);coplanar.updateMatrixWorld(true);

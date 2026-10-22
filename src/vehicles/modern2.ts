@@ -807,14 +807,12 @@ function addMBT70UpperFenderReturns(P: Modern2BuilderPort): void {
   // both ends enter the existing fenders, ahead of the stern drive stock.
   // These hull-local stations follow the retained deck, before its .94 Z
   // scale and -.14 m seat. No running-gear or suspension datum changes.
+  // 2026-10-22: ahead of the turret ring the lip follows the MBT-70's own clean upper glacis (MBT70_DECK) 6 mm over it,
+  // at the same thirteen stations, in place of the donor's periscope shelf and splash band.
   const rows: readonly (readonly [number, number, number])[] = [
     [-2.62, 1.719, 1.716799], [-2.25, 1.719, 1.716],
     [-1.73, 1.719, 1.666], [-0.95, 1.719, 1.486],
-    [1.30, 1.719, 1.486], [1.88, 1.719, 1.461],
-    [1.95, 1.719, 1.516], [2.13, 1.719, 1.516],
-    [2.27, 1.719, 1.406], [2.32, 1.719, 1.458],
-    [2.46, 1.719, 1.454], [2.48, 1.719, 1.361],
-    [2.60, 1.719, 1.360294],
+    ...[1.30, 1.88, 1.95, 2.13, 2.27, 2.32, 2.46, 2.48, 2.60].map((z) => [z, 1.719, mbt70DeckY(z) + 0.006] as const),
   ];
   for (const side of [-1, 1]) {
     const geometry = foldedShoulderReturn({
@@ -984,10 +982,32 @@ function mbt70Strap(points: readonly (readonly [number, number])[], width: numbe
 
 // 2026-10-22 (owner, on the Garage side view: "rear wheels should be moved down so theyre not going into fender"): the
 // donor M1's raised drive sprocket (axle 1.10, its track crown 1.477) stood behind release 231's rear side plate, whose
-// lower edge is the aprons' line (1.137): the upper half of the wheel and its track wrap disappeared into the fender. The
-// sprocket comes down to the track's own top run, as on the real KPz 70 (the top run passes straight from the last return
-// roller onto the sprocket): its shoe crown at 1.075 stands 6 cm under the aprons' line, like the run ahead of it.
-const MBT70_SPROCKET_Y_M = 0.70;
+// lower edge is the aprons' line (1.137): the upper half of the wheel and its track wrap disappeared into the fender. A
+// first pass put it on the track's top run (axle 0.70); the owner on that: "wow thats vry ugly, bring it higher". It
+// stands raised again at 0.98 (its shoe crown 1.36, the top run climbing to it from the last return roller), and the
+// rear side plate is cut in an arch over it (addMBT70RearSidePlate), so the wheel and its wrap stay in full view.
+const MBT70_SPROCKET_Y_M = 0.98;
+/** The rear side plate's arch over the sprocket: centred on its axle, 4 cm outside its shoes (wrap radius 0.381). */
+const MBT70_REAR_ARCH = Object.freeze({ centerZ: -3.28, centerY: MBT70_SPROCKET_Y_M, radiusM: 0.421 });
+
+// 2026-10-22 (owner: "fix its frontal era annd upper glacis too"): the donor M1's deck carried its driver's periscope
+// shelf (1.51) and a splash band (1.45) under the turret's nose, three driver's periscopes and a V splash board, and the
+// glacis ERA lay as eight pillow-edged slabs, the aft row 4.4 cm into the turret's own foot. The KPz 70 has no hull
+// driver (the driver rides in the turret) and a clean upper glacis rising from the nose to the turret ring. The deck
+// below runs the donor's nose stations (to 3.52) and then one plane up to the ring at 2.25 (1.46, 3 cm under the
+// turret's base), level with the turret deck behind it (hull-local, before the 0.94 Z scale).
+const MBT70_DECK: readonly (readonly [number, number])[] = Object.freeze([
+  [3.881, 1.31], [3.84, 1.34], [3.52, 1.305], [2.25, 1.46], [1.88, 1.47], [1.30, 1.48],
+  [-0.95, 1.48], [-1.73, 1.66], [-2.25, 1.71], [-3.64, 1.713], [-3.877, 1.693], [-3.933, 1.405], [-3.937, 1.404],
+] as const);
+/** The deck's height at hull-local z (the loft's own piecewise-linear profile). */
+function mbt70DeckY(z: number): number {
+  for (let i = 1; i < MBT70_DECK.length; i++) {
+    const [z0, y0] = MBT70_DECK[i - 1], [z1, y1] = MBT70_DECK[i];
+    if (z <= z0 && z >= z1) return y0 + (y1 - y0) * (z - z0) / (z1 - z0);
+  }
+  return z > MBT70_DECK[0][0] ? MBT70_DECK[0][1] : MBT70_DECK[MBT70_DECK.length - 1][1];
+}
 
 /** 2026-10-22 (owner: "make the ... front shoulders and mudguards be properly built"): the front track guards were two
  * flat 9 cm boxes laid over the idler, and the bow's corners ended in the donor's bare blade face with its ragged lower
@@ -995,34 +1015,36 @@ const MBT70_SPROCKET_Y_M = 0.70;
  * inner edge carried by two gussets on the hull wall; a 35 mm cheek plate laid on the blade face closes the bow corner
  * on a clean line. Hull-local, before the hull's 0.94 Z scale. */
 function addMBT70FrontGuards(P: Modern2BuilderPort, side: number): void {
-  // The sheet runs level from the apron's front end (2.55, over its 1.36 roof lip) to 3.05, then sweeps down onto the
-  // blade's deck (1.305-1.31 at 3.49-3.52), seated 8 mm into it: the guard's front is the mudguard's own bend, not a box
-  // end. It lies 2 mm over the 1.355 glacis and 5 mm into the deck-edge wall at |x| 1.035. Its turned outer flange
-  // follows it 8 cm deep at |x| 1.728-1.750, 2 mm inside the apron web it laps (mbt70UpperFenders) and outboard of the
-  // 1.715 track edge. Underside 10.7 cm over the idler's shoe crown (1.25) at the bend, 15 cm at 3.25.
-  const inX = 1.03, top = 1.377, sheet = 0.02, flange = 0.08, z0 = 2.55, bend = 3.05, z1 = 3.49, nose = 1.322;
+  // The sheet lies 2.2 cm over the clean upper glacis (MBT70_DECK) from the apron's front end (2.55, over its roof lip)
+  // to 3.30, its bottom on the deck edge and 5 mm into the deck-edge wall at |x| 1.035, and sweeps down onto the blade's
+  // deck at 3.49, seated 7 mm into it: the guard's front is the mudguard's own bend, not a box end. Its turned outer
+  // flange follows it 8 cm deep at |x| 1.728-1.750, 2 mm inside the apron web it laps (mbt70UpperFenders) and outboard
+  // of the 1.715 track edge. Underside 13 cm over the idler's shoe crown (1.25).
+  const inX = 1.03, sheet = 0.02, flange = 0.08, z0 = 2.55, bend = 3.30, z1 = 3.49;
   const rise = 0.003; // the rolled rim of the flange stands 3 mm over the sheet (no coplanar top)
+  const topAt = (z: number) => z <= bend ? mbt70DeckY(z) + 0.022
+    : mbt70DeckY(bend) + 0.022 + (mbt70DeckY(z1) + 0.013 - mbt70DeckY(bend) - 0.022) * (z - bend) / (z1 - bend);
   const at = (x: number) => () => x;
-  const profile = (dy: number, below: number) => [[z0, top + dy - below], [bend, top + dy - below], [z1, nose + dy - below],
-    [z1, nose + dy], [bend, top + dy], [z0, top + dy]] as [number, number][];
+  const profile = (dy: number, below: number) => [[z0, topAt(z0) + dy - below], [bend, topAt(bend) + dy - below],
+    [z1, topAt(z1) + dy - below], [z1, topAt(z1) + dy], [bend, topAt(bend) + dy], [z0, topAt(z0) + dy]] as [number, number][];
   P.addMudguard(`mbt70_m1_front_fender_${side}`, 'hull', KIT.mergeAll([
     mbt70SidePlate(profile(0, sheet), at(inX), at(1.74), side),
     mbt70SidePlate(profile(rise, flange + rise), at(1.728), at(1.75), side),
   ]));
   // a pressed stiffening rib along the sheet's middle
-  P.add('hullDetail', mbt70SidePlate([[z0 + 0.04, top - 0.004], [bend, top - 0.004], [z1 - 0.04, nose + 0.002],
-    [z1 - 0.04, nose + 0.014], [bend, top + 0.008], [z0 + 0.04, top + 0.008]], at(1.385), at(1.415), side));
+  P.add('hullDetail', mbt70SidePlate([[z0 + 0.04, topAt(z0 + 0.04) - 0.004], [bend, topAt(bend) - 0.004],
+    [z1 - 0.04, topAt(z1 - 0.04) - 0.004], [z1 - 0.04, topAt(z1 - 0.04) + 0.008], [bend, topAt(bend) + 0.008],
+    [z0 + 0.04, topAt(z0 + 0.04) + 0.008]], at(1.385), at(1.415), side));
   // gussets on the hull wall (|x| 1.054-1.08 here) up into the sheet, inboard of the shoe pins (|x| >= 1.092)
   for (const z of [2.86, 3.24]) {
-    const hi = (z < bend ? top : top + (nose - top) * (z - bend) / (z1 - bend)) - sheet + 0.004;
+    const hi = topAt(z) - sheet + 0.004;
     const gusset = new THREE.Shape([new THREE.Vector2(1.068, hi), new THREE.Vector2(1.068, 1.25), new THREE.Vector2(1.135, hi)]);
     const g = new THREE.ExtrudeGeometry(gusset, { depth: 0.012, bevelEnabled: false }).translate(0, 0, z - 0.006);
     P.add('hullDetail', side > 0 ? g : mbt70MirrorX(g));
   }
   // bolt heads along the sheet's inner edge (into the deck-edge stock) and along the flange's face, clear of the apron lap
-  const sheetTop = (z: number) => (z < bend ? top : top + (nose - top) * (z - bend) / (z1 - bend));
-  for (const z of [2.66, 2.92, 3.18, 3.40]) P.add('hullDetail', KIT.cylY(0.016, 0.016, 0.008, 8), side * 1.06, sheetTop(z) + 0.003, z);
-  for (const z of [2.70, 2.88, 3.06, 3.24, 3.42]) P.add('hullDetail', KIT.cylX(0.016, 0.009, 8), side * 1.7535, sheetTop(z) - 0.04, z);
+  for (const z of [2.66, 2.92, 3.18, 3.40]) P.add('hullDetail', KIT.cylY(0.016, 0.016, 0.008, 8), side * 1.06, topAt(z) + 0.003, z);
+  for (const z of [2.70, 2.88, 3.06, 3.24, 3.42]) P.add('hullDetail', KIT.cylX(0.016, 0.009, 8), side * 1.7535, topAt(z) - 0.04, z);
   // The bow cheek: the blade face leans in from |x| 1.676 at y 0.65 to 1.630 at 1.30 (z 3.50-3.85); the plate's outer face
   // follows it 1.9 cm proud, its inner face 1.6 cm into it. Its top carries the guard's line on over the blade's
   // 1.305-1.34 deck, 1.5-2 cm over it; its lower edge runs straight under the blade's stepped nose (3.54, 0.64 to 3.83,
@@ -1043,6 +1065,9 @@ function buildMBT70BareHull(P: Modern2BuilderPort): void {
     returnTrackTopY: 1.06,
     returnRollerR: 0.11,
     sprocketY: MBT70_SPROCKET_Y_M,
+    deck: MBT70_DECK,
+    noDriverPeriscopes: true,
+    noGlacisBoard: true,
   });
   for (const side of [-1, 1]) {
     addMBT70FrontGuards(P, side);
@@ -1074,11 +1099,21 @@ function buildMBT70BareHull(P: Modern2BuilderPort): void {
     // 1.715): the plate's inner face stands at 1.756, 12 mm off the sprocket and 41 mm off the track. Its forward
     // 0.12 m laps the apron's end, 4 mm outboard of it.
     const fenderX = 1.54, fenderY = 1.64, fenderZ = -3.16, fenderRake = 0.035;
-    const plateIn = 1.756 - fenderX, plateT = 0.02, plateTop = 0.059, plateBottom = 1.137 - fenderY;
+    const plateIn = 1.756 - fenderX, plateT = 0.02;
     const guard = side < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR';
-    P.addMudguard(`mbt70_rear_side_plate_${side}`, guard,
-      box(plateT, plateTop - plateBottom, 1.32).translate(side * (plateIn + plateT / 2), (plateTop + plateBottom) / 2, 0),
-      side * fenderX, fenderY, fenderZ, fenderRake, 0, 0);
+    // 2026-10-22: with the sprocket raised again (MBT70_SPROCKET_Y_M) the plate is cut away over it: its lower edge stays
+    // on the aprons' 1.137 line where it laps them (to -2.61), steps up 4 cm over the track's climb to the sprocket, and
+    // runs round MBT70_REAR_ARCH, 4 cm outside the shoes, back down to 1.137 behind the wheel. Its top stays on the
+    // fender's raked edge (the fender's frame, 59 mm over its centre).
+    const { centerZ, centerY, radiusM } = MBT70_REAR_ARCH;
+    const archAt = (dz: number) => [centerZ + dz, centerY + Math.sqrt(radiusM * radiusM - dz * dz)] as [number, number];
+    const topAt = (z: number) => fenderY + 0.059 - (z - fenderZ) * Math.sin(fenderRake);
+    P.addMudguard(`mbt70_rear_side_plate_${side}`, guard, mbt70SidePlate([
+      [-2.50, 1.137], [-2.61, 1.137], [-2.635, 1.30], [-2.90, 1.345], [centerZ + 0.05, 1.40],
+      ...[0, -0.10, -0.20, -0.28, -0.34, -0.38].map(archAt), [-3.672, 1.137], [-3.82, 1.137],
+      [-3.82, topAt(-3.82)], [-2.50, topAt(-2.50)],
+    ], () => 1.756, () => 1.756 + plateT, side));
+    P.hullG.userData.mbt70RearPlateArch = { ...MBT70_REAR_ARCH, apexY: centerY + radiusM };
     const flangeIn = 0.15, flangeW = plateIn + plateT - flangeIn;
     P.addMudguard(`mbt70_rear_side_flange_${side}`, guard,
       box(flangeW, 0.02, 1.32).translate(side * (flangeIn + flangeW / 2), 0.049, 0),
@@ -1390,14 +1425,44 @@ function buildMBT70(P: Modern2BuilderPort) {
   }
   shellFaces.dispose();
   P.turretG.userData.mbt70SideStockSeats = sideSeats;
-  const hullEraStations = [
-    [-0.82, 1.405, 2.86], [-0.29, 1.405, 2.86], [0.29, 1.405, 2.86], [0.82, 1.405, 2.86],
-    // 2026-10-19 (owner float sweep): the aft row stood 15 mm over the glacis; lowered onto it.
-    [-0.78, 1.489, 2.38], [-0.26, 1.489, 2.38], [0.26, 1.489, 2.38], [0.78, 1.489, 2.38],
-  ];
-  for (const [x, y, z] of hullEraStations) {
-    P.add('hull', box(0.44, 0.09, 0.34), x, y, z, -0.035, 0, 0);
-    P.add('hullDetail', box(0.34, 0.018, 0.025), x, y + 0.052, z + 0.12, -0.035, 0, 0);
+  // ---- the glacis armour array --------------------------------------------
+  // 2026-10-22 (owner: "fix its frontal era annd upper glacis too"): two rows of four bolted cassettes on the clean upper
+  // glacis (MBT70_DECK), laid in its plane (it rises 12 % toward the ring), each a 12 mm base plate 3 mm into the plate,
+  // the 80 mm cassette on it under a bolted lid with a lifting bar, in a bed framed by two side rails and a nose bar.
+  // The array keeps clear of the turret's sweep (its foot reaches hull z 2.61 at full traverse): it starts at 2.74, where
+  // at the full 10 degrees of depression the gun's collar stands 3.5 cm over it, and ends on the blade's crest at 3.50.
+  // Plain armour stock, not gameplay ERA clusters (mbt70UpperFenders), so the anatomy ledger owns its volumes.
+  const glacisRows: readonly (readonly [number, number])[] = [[2.74, 3.115], [3.125, 3.50]];
+  const glacisSlope = Math.atan((MBT70_DECK[2][1] - MBT70_DECK[3][1]) / (MBT70_DECK[3][0] - MBT70_DECK[2][0]));
+  const glacisFrame = (x: number, z: number) => {
+    const n = new THREE.Vector3(0, Math.cos(glacisSlope), Math.sin(glacisSlope));
+    const t = new THREE.Vector3(0, -Math.sin(glacisSlope), Math.cos(glacisSlope));
+    return new THREE.Matrix4().makeBasis(new THREE.Vector3(1, 0, 0), n, t).setPosition(x, mbt70DeckY(z), z);
+  };
+  const crisp = (w: number, h: number, d: number, ly: number, lz = 0, lx = 0) => new THREE.BoxGeometry(w, h, d).translate(lx, ly, lz);
+  const hullEraStations: [number, number, number][] = [];
+  for (const [z0, z1] of glacisRows) {
+    const zc = (z0 + z1) / 2, length = (z1 - z0) / Math.cos(glacisSlope);
+    for (const x of [-0.765, -0.255, 0.255, 0.765]) {
+      const frame = glacisFrame(x, zc);
+      hullEraStations.push([x, mbt70DeckY(zc), zc]);
+      P.add('hullDetail', crisp(0.49, 0.012, length - 0.012, 0.003).applyMatrix4(frame));
+      P.add('hull', crisp(0.455, 0.08, length - 0.045, 0.012 + 0.04 - 0.001).applyMatrix4(frame));
+      // the cassette's bolted lid, 8 mm proud of its body on a 2 cm margin
+      const body = 0.012 + 0.08 - 0.001;
+      P.add('hullDetail', crisp(0.415, 0.009, length - 0.085, body + 0.0035).applyMatrix4(frame));
+      const top = body + 0.008;
+      for (const [bx, bz] of [[-0.18, -1], [0.18, -1], [-0.18, 1], [0.18, 1]]) {
+        P.add('hullDetail', KIT.cylY(0.015, 0.015, 0.01, 8).translate(bx, top + 0.004, bz * (length / 2 - 0.065)).applyMatrix4(frame));
+      }
+      for (const lx of [-0.06, 0.06]) P.add('hullDetail', crisp(0.014, 0.03, 0.014, top + 0.013, 0, lx).applyMatrix4(frame));
+      P.add('hullDetail', crisp(0.134, 0.012, 0.014, top + 0.03).applyMatrix4(frame));
+    }
+  }
+  {
+    const zc = (glacisRows[0][0] + glacisRows[1][1]) / 2, length = (glacisRows[1][1] - glacisRows[0][0]) / Math.cos(glacisSlope);
+    for (const s of [-1, 1]) P.add('hullDetail', crisp(0.016, 0.07, length, 0.032).applyMatrix4(glacisFrame(s * 1.02, zc)));
+    P.add('hullDetail', crisp(2.056, 0.07, 0.03, 0.032, length / 2 + 0.012).applyMatrix4(glacisFrame(0, zc)));
   }
 
   // Additional service kit is turret-owned but non-structural: paired side

@@ -276,17 +276,19 @@ for (const rollerZ of [1.46, 0, -1.46]) {
     && Math.abs(y - mbt70TopRunY) <= 1e-6),
   `MBT-70 upper track is supported by the return roller at z=${rollerZ}`);
 }
-// 2026-10-22 (owner: "rear wheels should be moved down so theyre not going into fender"): the drive sprocket sits on the
-// track's top run, level with it, and its wrap stands under the aprons' and rear side plates' lower line (1.137) with the
-// run's own clearance (the shoes stand ~4.5 cm over the loop's centreline); the idler's wrap stands 9 cm under the front
-// track guard's sheet (1.357).
+// 2026-10-22 (owner: "rear wheels should be moved down so theyre not going into fender", then of a first pass that put
+// the sprocket on the top run, "bring it higher"): the drive sprocket stands raised over the top run, and the rear side
+// plates are cut in an arch over it that stands 3 cm or more over its shoes (the shoes ~4.5 cm over the loop's
+// centreline), so the wheel never disappears behind them; the idler's wrap stands 9 cm under the front track guard.
 {
   const { sprocket, idler, loopPoints } = mbt70GearReceipt;
   const crown = (near) => Math.max(...loopPoints.filter(([z]) => Math.abs(z - near) < 0.4).map(([, y]) => y));
-  assert.ok(Math.abs(crown(sprocket.z) - mbt70TopRunY) < 0.02,
-    `the top run passes level onto the sprocket (${crown(sprocket.z).toFixed(3)} vs ${mbt70TopRunY.toFixed(3)})`);
-  assert.ok(crown(sprocket.z) + 0.045 <= 1.137 - 0.05,
-    `the sprocket's shoe crown clears the rear plates' 1.137 line by 5 cm (${crown(sprocket.z).toFixed(3)})`);
+  const arch = tank.root.getObjectByName('rig_hull').userData.mbt70RearPlateArch;
+  assert.ok(arch && Math.abs(arch.centerZ - sprocket.z) < 1e-9 && Math.abs(arch.centerY - sprocket.y) < 1e-9,
+    'the rear plates\' arch is centred on the sprocket\'s axle');
+  assert.ok(crown(sprocket.z) > mbt70TopRunY + 0.2, `the sprocket stands raised over the top run (${crown(sprocket.z).toFixed(3)})`);
+  assert.ok(crown(sprocket.z) + 0.045 <= arch.apexY - 0.03,
+    `the sprocket's shoe crown (${(crown(sprocket.z) + 0.045).toFixed(3)}) stands 3 cm under the plates' arch (${arch.apexY.toFixed(3)})`);
   assert.ok(crown(idler.z) + 0.045 <= 1.357 - 0.09,
     `the idler's shoe crown stands 9 cm under the front guard sheet (${crown(idler.z).toFixed(3)})`);
 }

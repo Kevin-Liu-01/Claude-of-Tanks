@@ -151,6 +151,10 @@ interface AbramsHullConfig {
   readonly periH?: number;
   readonly periHump?: number;
   readonly periHumpH?: number;
+  /** No hull driver: the driver's periscopes are left off the glacis crest (the MBT-70's driver rides in the turret). */
+  readonly noDriverPeriscopes?: boolean;
+  /** No V splash board on the glacis (the MBT-70 carries its glacis armour array there). */
+  readonly noGlacisBoard?: boolean;
   readonly deckInset?: number;
   readonly trackXc: number;
   readonly trackW: number;
@@ -273,6 +277,10 @@ interface BareHullOptions {
   readonly returnRollerR?: number;
   /** The drive sprocket's axle height, in place of the donor's raised M1 station. */
   readonly sprocketY?: number;
+  /** The deck profile, in place of the donor M1's (its driver's periscope shelf and splash band). */
+  readonly deck?: readonly Vec2Tuple[];
+  readonly noDriverPeriscopes?: boolean;
+  readonly noGlacisBoard?: boolean;
 }
 
 interface BrowningOptions {
@@ -1569,7 +1577,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
   const boardY = deckAt(g, boardZ);
   const abramsHullHullStage7 = (): void => {
     for (const side of [-1, 1]) {
-      P.add('hullDetail', box(0.8 * s, 0.03, 0.06), side * 0.38 * s, boardY + 0.002, boardZ, -0.18, side * 0.38, 0);
+      if (!g.noGlacisBoard) P.add('hullDetail', box(0.8 * s, 0.03, 0.06), side * 0.38 * s, boardY + 0.002, boardZ, -0.18, side * 0.38, 0);
       P.add('hullDetail', cylY(0.085 * s, 0.085 * s, 0.03, 12), side * 1.1 * s, deckAt(g, glacisTopZ - 0.5) + 0.015, glacisTopZ - 0.5);
       P.add('hullDetail', box(0.2 * s, 0.1 * s, 0.12), side * bowLightX, noseTipY - 0.14, bowLightZ - 0.3);
       headlight(P, side * bowLightX, noseTipY - 0.12, bowLightZ - 0.21, -0.12, 0.045 * s, !g.authoredBowLights);
@@ -1610,7 +1618,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     if (g.periHump) {
       P.add('hull', frustum(0.4 * s, humpZ + 0.24 * s, humpZ - 0.2 * s, 0.32 * s, humpZ + 0.14 * s, humpZ - 0.16 * s, humpY - 0.02, humpY + (g.periHumpH ?? 0.07)), humpX, 0, 0);
     }
-    for (const px of [-0.2, 0, 0.2]) {
+    if (!g.noDriverPeriscopes) for (const px of [-0.2, 0, 0.2]) {
       periscope(P, 'hullDetail', humpX + px * s, humpY + (g.periHump ? (g.periHumpH ?? 0.07) : 0.008), humpZ + 0.04 * s);
     }
     // g.noCable (visual r2, tejas): the dark tube arcing across the glacis read
@@ -2303,12 +2311,15 @@ const TEJAS_TURRET = {
 // second approximate Abrams hull, while deliberately omitting the deep skirt
 // wall so its wheels and track return remain exposed.
 export function buildM1A1BareHull(builder: RuntimeValue, {
-  returnRollerZs, returnTrackTopY, returnRollerR, sprocketY,
+  returnRollerZs, returnTrackTopY, returnRollerR, sprocketY, deck, noDriverPeriscopes, noGlacisBoard,
 }: BareHullOptions = {}): void {
   const P = requireAbramsBuilder(builder);
   abramsHull(P, {
     ...TEJAS_HULL,
     ...(sprocketY === undefined ? {} : { sprocketY }),
+    ...(deck === undefined ? {} : { deck }),
+    ...(noDriverPeriscopes ? { noDriverPeriscopes } : {}),
+    ...(noGlacisBoard ? { noGlacisBoard } : {}),
     hollowRoadWheels: false, // the MBT-70 draws its nation wheel (Germany: the Leopard 2A6 X paired dish, owner 2026-09-22) into the envelope of this solid stock
     // This donor omits the exposed Tejas pod stage. The MBT-70 assembled
     // hull requires 150 mm travel; its lens then clears the bow by 7.7 mm.
