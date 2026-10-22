@@ -137,12 +137,6 @@ interface GaragePedestalRuntimeOptions {
   getDeviceTier(): string;
   getPhase(): string;
   isBootComplete(): boolean;
-  /**
-   * 2026-10-21 (item/mp-rejoin-232): true while the hero must not be rebuilt by the resync watchdog: a battle entry is
-   * under way behind its cover, or a tab returning to its match skipped the boot's hero (main.ts). Only the watchdog reads
-   * it; explicit selections and the battle lending path are unchanged.
-   */
-  deferWatchdog?(): boolean;
   getSelectedId(): string;
   getNeighborIds(): readonly string[];
   /** Nearest cards constructed ahead into the warm cache while the Garage is quiet. */
@@ -219,7 +213,6 @@ export function createGaragePedestalRuntime({
   getDeviceTier,
   getPhase,
   isBootComplete,
-  deferWatchdog = () => false,
   getSelectedId,
   getNeighborIds,
   getSpeculativeIds = () => [],
@@ -901,7 +894,7 @@ export function createGaragePedestalRuntime({
   };
 
   const watchdog = scheduleWatchdog(() => {
-    if (disposed || !isBootComplete() || getPhase() !== 'garage' || deferWatchdog()) return;
+    if (disposed || !isBootComplete() || getPhase() !== 'garage') return;
     const wanted = getSelectedId();
     if (!wanted || switchPending()) return;
     if (current?.specId === wanted && isOnStage(current)) return;

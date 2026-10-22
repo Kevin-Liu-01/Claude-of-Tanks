@@ -305,15 +305,6 @@ const REMEMBERED_ROUND_KEY = 'cot.mp.rememberedRound.v1';
  * it must not cancel the returning tab's battlefield (the 229 block: every returning build was cancelled there).
  */
 let garageBootDone = false;
-/**
- * 2026-10-21 (item/mp-rejoin-232, lever 5): a tab returning to its remembered round skipped the boot's showroom hero
- * (2.7-3.4 s of every 231 rejoin's boot, a hero the tab never shows). The pedestal's resync watchdog leaves it unbuilt
- * while that tab's battle entry runs and for HERO_DEFER_AFTER_READY_MS after the boot; a Garage the match never took
- * (it had ended) builds its hero then, and a return from the battle adopts the battle tank as before.
- */
-let returningSkippedHero = false;
-let heroDeferUntil = Number.POSITIVE_INFINITY;
-const HERO_DEFER_AFTER_READY_MS = 15_000;
 const REMEMBERED_ROUND_MAX_AGE_MS = 20 * 60 * 1000;
 function rememberRound(round: { roomCode: string; matchId: string; mapId: string; terrainVariant: 'assault-trenches' | null } | null): void {
   try {
@@ -1067,7 +1058,6 @@ const pedestal = createGaragePedestalRuntime({
   getDeviceTier,
   getPhase: () => game.phase,
   isBootComplete: () => bootComplete,
-  deferWatchdog: () => returningSkippedHero && (battleEntryLifecycle.pending || performance.now() < heroDeferUntil),
   getSelectedId: () => selectedVehicle.id,
   getNeighborIds: () => garage?.getNeighborIds?.(2) || [],
   // FSP-01 R2: the two adjacent cards are built ahead in the quiet window.
@@ -1140,8 +1130,6 @@ if (!STUDIO_BOOT_INTENT && !/[?&]bootprecompile=0(&|$)/.test(location.search)) {
 }
 await bootStage('vehicle', async () => {
   if (STUDIO_BOOT_INTENT) return;
-  // lever 5: a tab returning to its remembered round goes into that match, not the Garage (returningSkippedHero above)
-  if (await returningRound) { returningSkippedHero = true; return; }
   // The branded boot screen is opaque. Keep its animation painting at a
   // bounded cadence, but do not charge one entire display frame for every
   // procedural texture checkpoint in the selected hero's cold bake.
@@ -3748,7 +3736,6 @@ if (testDriveSpecId) {
   }).catch((error) => console.error('[test-drive] failed to launch', error));
 }
 garageBootDone = true;
-if (returningSkippedHero) heroDeferUntil = performance.now() + HERO_DEFER_AFTER_READY_MS;
 window.__GAME_READY = true;
 studioBoot.scene?.open(STUDIO_BOOT_MAP).catch((error: unknown) => console.error('[studio] boot scene failed', error));
 // 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)
