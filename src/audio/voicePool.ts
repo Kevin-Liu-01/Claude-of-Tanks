@@ -169,6 +169,8 @@ export function createVoicePool({ mixer, library, random, budget, reverb }: Voic
     let distance = 0;
     let send = options.send ?? base.send;
     if (space === 'world' && options.x != null && options.z != null) {
+      // A non-finite emitter (a NaN pose upstream) would carry NaN into the AudioParams below, which throw.
+      if (!Number.isFinite(options.x) || !Number.isFinite(options.z) || (options.y != null && !Number.isFinite(options.y))) { culled++; return null; }
       toListenerFrame(frame, options.x, options.y ?? frame.y, options.z, rel);
       distance = rel.distance;
       if (distance > base.maxM) { culled++; return null; }
@@ -196,12 +198,14 @@ export function createVoicePool({ mixer, library, random, budget, reverb }: Voic
       const trim = mixer.admit((options.loudDb ?? base.loudDb) + (options.gainDb ?? 0), priority, options.drivesWindow ?? true);
       if (trim != null) levelDb += trim;
     }
+    const [lo, hi] = base.pitch;
+    const rate = (options.rate ?? 1) * (lo + (hi - lo) * random());
+    // AudioParam setters throw on NaN/Infinity: drop the cue rather than the frame.
+    if (!Number.isFinite(levelDb) || !Number.isFinite(delay) || !Number.isFinite(cutoff) || !Number.isFinite(pan) || !Number.isFinite(send) || !Number.isFinite(rate) || rate <= 0) { culled++; return null; }
     if (!makeRoom(id, base, priority, now)) { culled++; return null; }
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
-    const [lo, hi] = base.pitch;
-    const rate = (options.rate ?? 1) * (lo + (hi - lo) * random());
     source.playbackRate.value = rate;
     const gain = ctx.createGain();
     gain.gain.value = dbToGain(levelDb);
@@ -231,7 +235,7 @@ export function createVoicePool({ mixer, library, random, budget, reverb }: Voic
       sendGain.connect(mixer.reverbInput);
     }
     const when = now + 0.004 + delay;
-    let offset = clamp(options.offsetS ?? 0, 0, Math.max(0, buffer.duration - 0.01));
+    let offset = clamp(Number.isFinite(options.offsetS) ? options.offsetS as number : 0, 0, Math.max(0, buffer.duration - 0.01));
     let end: number;
     if (options.loop) {
       const loop = record?.l;
