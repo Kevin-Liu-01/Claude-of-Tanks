@@ -163,7 +163,9 @@ function measurableMesh(object: THREE.Object3D): object is THREE.Mesh {
   const mesh = object as THREE.Mesh;
   if (!mesh.isMesh || (mesh as THREE.InstancedMesh).isInstancedMesh || (mesh as THREE.BatchedMesh).isBatchedMesh) return false;
   const data = mesh.userData;
-  if (data.interiorFill || data.authoredShadowProxy || data.vehicleMarking || data.turretRingPlate) return false;
+  // the intact race (turretSeatRace.ts) is drawn from this measure: it never moves the deck it was measured on
+  if (data.interiorFill || data.authoredShadowProxy || data.vehicleMarking || data.turretRingPlate
+    || data.turretSeatRace) return false;
   if (!mesh.geometry?.getAttribute('position')) return false;
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
   return materials.some((material) => !!material && material.visible !== false && material.colorWrite !== false

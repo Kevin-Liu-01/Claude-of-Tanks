@@ -252,9 +252,15 @@ for (const id of ids) {
   if (receipt && calibration) registerCombatAnatomyCalibrations({ [id]: { ...calibration, turretRing: receipt } });
   row.live = receipt ? liveWreck(id, 'battle', receipt) : null;
   row.bot = receipt ? liveWreck(id, 'bot', receipt) : null;
-  // the fallback: the icons build measuring its own ring
-  if (calibration) registerCombatAnatomyCalibrations({ [id]: calibration });
+  // the fallback: the icons build measuring its own ring, as a build whose receipt is missing would (a published
+  // receipt is taken out for it, 2026-10-22: the anatomy update now publishes them; it also seats the turret and draws
+  // the intact race, turretSeatRace.ts, which this build is then without)
+  if (calibration) {
+    const { turretRing: _published, ...bare } = calibration;
+    registerCombatAnatomyCalibrations({ [id]: bare });
+  }
   row.fallback = liveWreck(id, 'icons', receipt);
+  if (calibration) registerCombatAnatomyCalibrations({ [id]: calibration });
   const L = row.live, B = row.bot, F = row.fallback;
   const builds = [L, B].filter(Boolean);
   const checks = {

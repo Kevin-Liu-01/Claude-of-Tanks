@@ -50,6 +50,7 @@ import type { TurretRingSeat, createTurretRingPresentation } from './turretRingW
 import { loadTurretRingModule, turretRingModule } from './turretRingLoader.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
+import { applyTurretSeatRace, seatTurretOverDeck } from './turretSeatRace.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
 import { measureNearShadowCasterWork } from './shadowCasterWork.ts';
 import { materialOnlyPaintSourceBucket } from './profiles/fixedPaintedPanel.ts';
@@ -10731,9 +10732,14 @@ function* createTankOwnedSteps(
     }, legacyDecoration);
     const tailDecorFinishedAt = performance.now();
 
+    // The turret seated over the deck round its ring and the ring's race in the seam (2026-10-22; the owner: "make sure
+    // all tank turrets are clear of hulls ... and have a proper turret ring/attachment area"), both from the
+    // calibration's ring receipt (turretSeatRace.ts), so they share their axis and seat with the wreck's ring plate.
+    seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables });
     // Interior fills 2026-09-13 (owner: every hull and turret must hold water):
     // generated buried solids for this tank, if its fleet group is resident.
     applyInteriorFills({ specId, hullG, turretG, gunG, material: mats.dark, disposables });
+    applyTurretSeatRace({ specId, hullG, material: mats.dark, high: geometryQuality !== 'low', disposables });
     if (physicalBore) {
       // Final stock includes generated gun fills and fixed pitch-owned parts.
       // Neither may re-cap the recoil-owned aperture that was verified earlier.
