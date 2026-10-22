@@ -308,11 +308,20 @@ void main() {
   vSeed = fract( aPB.w * 1.6180339 + aPB.x * 0.0713 + aPB.z * 0.1131 );
   vAge = age;
   vec3 wpos = aPB.xyz + particleDisplace( aVL.xyz, aC0.w, age, uDrag );
-  float size = mix( aSR.x, aSR.y, t );
-  float ang = aSR.z + aSR.w * age;
+  // (the car-wreck lane, 233: "fire is round flame sprites") a flame tongue, flagged by a negative end size: it stands
+  // upright from its foot, aSR.z times as tall as it is wide, narrowing to its tip, the tip swaying at aSR.w rad/s
+  float tongue = step( aSR.y, -1e-6 );
+  float size = mix( aSR.x, abs( aSR.y ), t );
+  float ang = ( aSR.z + aSR.w * age ) * ( 1.0 - tongue );
   float ca = cos( ang ), sa = sin( ang );
   vec2 corner = vec2( position.x * ca - position.y * sa,
                       position.x * sa + position.y * ca ) * size;
+  if ( tongue > 0.5 ) {
+    float up = position.y + 0.5;
+    float tall = size * aSR.z;
+    corner = vec2( position.x * size * ( 1.0 - 0.5 * up ) + sin( age * aSR.w + vSeed * 6.2832 ) * 0.32 * size * up * up,
+                   ( up - 0.22 ) * tall );
+  }
   vec3 camRight = vec3( viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0] );
   vec3 camUp    = vec3( viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1] );
   wpos += camRight * corner.x + camUp * corner.y;
