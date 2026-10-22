@@ -52,18 +52,20 @@ worktree and never stage generated tank work wholesale.
 
 ## Commands
 <!-- agent-docs:auto:commands start -->
-- Package scripts detected: 122. Use `package.json` as the exhaustive source.
-- `npm run build` - VITE_PUBLIC_BUILD=1 vite build && node tools/strip-nc-assets.mjs
-- `npm run test` - node tools/run-selftests.mjs core
-- `npm test` runs the pre → core → post receipt groups; a receipt whose observable inputs are
-  byte-identical to its last PASS is skipped with a SKIP line (`COT_SELFTEST_CACHE=0 npm test`
-  runs everything), every failure in a group is reported in one run (`COT_SELFTEST_FAIL_FAST=1`
-  stops at the first), and `tank:release:check` runs its fleet probes beside the suite and the
-  build after the serial scoring steps. See docs/DEVELOPMENT.md "Fast checks".
-- `npm run typecheck` - node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit && node tools/core-unused-check.mjs
+- Package scripts detected: 146. Use `package.json` as the exhaustive source.
+- `npm run build` - VITE_PUBLIC_BUILD=1 vite build && node tools/generate-localized-pages.mjs && node tools/strip-nc-assets.mjs && node tools/asset-provenance.mjs --write=dist/asset-provenance.json
+- `npm run test` - node tools/run-selftests.mjs all
+- `npm run lint` - oxlint
+- `npm run typecheck` - node tools/typecheck.mjs
 - `npm run agent-docs` - node scripts/run-agent-docs.ts
 - Keep this block compact. Put full command catalogs in a generated command index, not in AGENTS.md.
 <!-- agent-docs:auto:commands end -->
+`npm test` runs the pre → core → post receipt groups; a receipt whose observable inputs are
+byte-identical to its last PASS is skipped with a SKIP line (`COT_SELFTEST_CACHE=0 npm test` runs
+everything), every failure in a group is reported in one run (`COT_SELFTEST_FAIL_FAST=1` stops at the
+first), and `tank:release:check` runs its fleet probes beside the suite and the build after the serial
+scoring steps. `npm run typecheck` is one TypeScript 7 compile with Oxlint beside it; `npm run lint` is
+Oxlint alone. See docs/DEVELOPMENT.md "Fast checks".
 
 ## Directory index
 <!-- agent-docs:auto:dirmap start -->
@@ -189,9 +191,4 @@ skipped. The Graphify commands above need the same checkout (read
 `agent-docs:fill` markers; generated auto blocks are owned by the scaffold
 command.
 
-When a generated block lags, `package.json` wins. The Commands block predates
-the current scripts: `npm test` runs `tools/run-selftests.mjs all`;
-`npm run build` adds `tools/generate-localized-pages.mjs` between the Vite
-build and `tools/strip-nc-assets.mjs` (after the `i18n:validate` prebuild);
-`npm run typecheck` runs TypeScript 7 native (`@typescript/native`), then
-`tools/core-unused-check.mjs`.
+When a generated block lags, `package.json` wins.
