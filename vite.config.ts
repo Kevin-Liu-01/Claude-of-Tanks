@@ -37,6 +37,8 @@ import { sharedWorkerChunks } from './tools/viteSharedWorkers.ts';
 import { glslMinify } from './tools/viteGlslMinify.ts';
 import { BOOT_RUNTIME_MODULES, i18nPageCatalogs, VITE_PRELOAD_HELPER } from './tools/viteI18nPageCatalogs.ts';
 import { i18nStudioCatalog } from './tools/viteI18nStudioCatalog.ts';
+import { responsiveSeed } from './tools/viteResponsiveSeed.ts';
+import { speculationRules } from './tools/viteSpeculationRules.ts';
 
 const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
 /** The match build line every page and host Worker of this build send in their HELLO (src/mp/wire/matchBuild.ts). */
@@ -304,6 +306,10 @@ export default defineConfig({
     // every string the game's graph and its workers cannot show (the docs, home, gallery and media pages' strings).
     i18nStudioCatalog({ gameKeys: gameCatalogKeys }),
     pageCatalogs,
+    // 2026-10-22 (nav-perf-240): every public page prerenders or prefetches the next page on hover (the rules' comment),
+    // and every document paints its first frame with its viewport bands (the seed's comment).
+    speculationRules(),
+    responsiveSeed(),
     {
       name: 'cot-site-entry-output',
       enforce: 'post',

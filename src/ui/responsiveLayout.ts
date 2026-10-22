@@ -247,6 +247,46 @@ function measureViewport(
   };
 }
 
+/**
+ * What a snapshot writes: the body's `data-cot-*` bands and the root's size variables. Every layout rule in the CSS
+ * reads these, so the first paint must already have them: seedResponsiveLayout() writes them from an inline script at
+ * the top of each document's body, before anything is painted (tools/viteResponsiveSeed.ts).
+ */
+function viewportLayoutAttributes(next: ViewportSnapshot): {
+  readonly data: Readonly<Record<string, string>>;
+  readonly vars: Readonly<Record<string, string>>;
+} {
+  return {
+    data: {
+      cotWidth: next.widthBand,
+      cotHeight: next.heightBand,
+      cotWidthDensity: next.widthDensity,
+      cotHeightDensity: next.heightDensity,
+      cotOrientation: next.orientation,
+      cotInput: next.input,
+      cotPanels: next.overlayPanels ? 'overlay' : 'persistent',
+      cotViewport: 'visual',
+    },
+    vars: {
+      '--cot-viewport-width': `${next.width}px`,
+      '--cot-viewport-height': `${next.height}px`,
+      '--cot-ui-scale': next.scale.toFixed(4),
+    },
+  };
+}
+
+/** Write the first snapshot once, synchronously; installResponsiveLayout() keeps it current from then on. */
+export function seedResponsiveLayout(
+  win: Window | undefined = globalThis.window,
+  doc: Document | undefined = globalThis.document,
+): void {
+  if (!win || !doc?.documentElement || !doc.body) return;
+  const measured = measureViewport(win, win.matchMedia?.('(pointer: coarse)'), win.matchMedia?.('(hover: hover)'));
+  const { data, vars } = viewportLayoutAttributes(classifyViewport(measured));
+  for (const [key, value] of Object.entries(data)) doc.body.dataset[key] = value;
+  for (const [name, value] of Object.entries(vars)) doc.documentElement.style.setProperty(name, value);
+}
+
 /** Install the canonical responsive attributes and keep them synchronized. */
 export function installResponsiveLayout(
   win: Window | undefined = globalThis.window,
@@ -297,17 +337,9 @@ export function installResponsiveLayout(
     const changed = !current || layoutKeys.some((key) => current?.[key] !== next[key]);
     current = next;
 
-    setData('cotWidth', next.widthBand);
-    setData('cotHeight', next.heightBand);
-    setData('cotWidthDensity', next.widthDensity);
-    setData('cotHeightDensity', next.heightDensity);
-    setData('cotOrientation', next.orientation);
-    setData('cotInput', next.input);
-    setData('cotPanels', next.overlayPanels ? 'overlay' : 'persistent');
-    setData('cotViewport', 'visual');
-    setVar('--cot-viewport-width', `${next.width}px`);
-    setVar('--cot-viewport-height', `${next.height}px`);
-    setVar('--cot-ui-scale', next.scale.toFixed(4));
+    const { data, vars } = viewportLayoutAttributes(next);
+    for (const [key, value] of Object.entries(data)) setData(key, value);
+    for (const [name, value] of Object.entries(vars)) setVar(name, value);
 
     if (changed) {
       win.dispatchEvent(new CustomEvent('cot:layoutchange', { detail: next }));

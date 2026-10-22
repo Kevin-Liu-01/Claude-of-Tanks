@@ -9,8 +9,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import {
-  IMMUTABLE_CACHE_CONTROL, RUNTIME_CACHE_CONTROL, applyCacheRoutes, applyImmutableRoutes, buildCacheRoutes, buildImmutableRoutes,
-  cacheRoutePlan, isImmutableAssetRoute, isManagedCacheRoute, listCollisionManifests, listHashedAssets, listRuntimeFiles,
+  IMMUTABLE_CACHE_CONTROL, MANIFEST_CACHE_CONTROL, RUNTIME_CACHE_CONTROL, applyCacheRoutes, applyImmutableRoutes, buildCacheRoutes, buildImmutableRoutes,
+  cacheRoutePlan, isImmutableAssetRoute, isManagedCacheRoute, listCollisionManifests, listHashedAssets, listManifestFiles, listRuntimeFiles,
   uncoveredAssets, uncoveredFiles,
 } from './vercel-output-immutable.mjs';
 
@@ -32,7 +32,8 @@ const staticFiles = ['mp-collision/index.json', 'mp-collision/verdant.3700dca0d3
   'mp-collision/v3/index.json', 'mp-collision/v3/verdant.5e4d3c2b1a0f.json', 'mp-collision/v3/titan_gorge.5e4d3c2b1a0f.json',
   'textures/terrain/Grass004_1K-JPG_Color.jpg', 'icons/m1a2_sepv3_angle.webp', 'icons/pt91_side_silhouette.png', 'icons/tank-assets.json',
   'fonts/ABCMonumentGrotesk-Bold.woff2', 'fonts/inter/Inter.woff2', 'fonts/inter/OFL.txt', 'audio/shot.ogg', 'minimaps/verdant.webp',
-  'media/hero.mp4', 'brand/og-image.png'];
+  'media/hero.mp4', 'brand/og-image.png', 'media/site50-r14/archive.json', 'media/site50-r14/stills/s01.webp',
+  'icons/hero/hero-cards.json', 'brand/notes.txt'];
 for (const file of staticFiles) {
   mkdirSync(dirname(join(output, 'static', file)), { recursive: true });
   writeFileSync(join(output, 'static', file), 'bytes');
@@ -85,7 +86,11 @@ try {
   assert.deepEqual(runtime, {
     textures: ['terrain/Grass004_1K-JPG_Color.jpg'], icons: ['m1a2_sepv3_angle.webp', 'pt91_side_silhouette.png'],
     fonts: ['ABCMonumentGrotesk-Bold.woff2', 'inter/Inter.woff2'], audio: ['shot.ogg'], maps: ['verdant-a1b2c3d4.png'],
-    minimaps: ['verdant.webp'],
+    minimaps: ['verdant.webp'], media: ['hero.mp4', 'site50-r14/stills/s01.webp'], brand: ['og-image.png'], 'field-guide': [],
+  });
+  // The run-time manifests: JSON under media/, icons/ and field-guide/ (2026-10-22, nav-perf-240).
+  assert.deepEqual(listManifestFiles(join(output, 'static')), {
+    media: ['site50-r14/archive.json'], icons: ['hero/hero-cards.json', 'tank-assets.json'], 'field-guide': [],
   });
   const plan = cacheRoutePlan(join(output, 'static'));
   const full = applyCacheRoutes(baseConfig, plan, 2);
@@ -121,8 +126,11 @@ try {
   for (const [dir, files] of Object.entries(runtime)) {
     for (const file of files) assert.equal(cacheFor(`/${dir}/${file}`), RUNTIME_CACHE_CONTROL, `/${dir}/${file} takes the moderate TTL`);
   }
-  for (const path of ['/icons/missing_angle.webp', '/ICONS/m1a2_sepv3_angle.webp', '/icons/tank-assets.json', '/fonts/inter/OFL.txt',
-    '/media/hero.mp4', '/brand/og-image.png', '/textures/terrain/Grass004_1K-JPG_Color.jpg.bak', '/maps/verdant.webp']) {
+  for (const path of ['/media/site50-r14/archive.json', '/icons/hero/hero-cards.json', '/icons/tank-assets.json']) {
+    assert.equal(cacheFor(path), MANIFEST_CACHE_CONTROL, `${path} is a run-time manifest: a minute fresh, an hour stale`);
+  }
+  for (const path of ['/icons/missing_angle.webp', '/ICONS/m1a2_sepv3_angle.webp', '/fonts/inter/OFL.txt', '/brand/notes.txt',
+    '/media/missing.mp4', '/media/missing.json', '/textures/terrain/Grass004_1K-JPG_Color.jpg.bak', '/maps/verdant.webp']) {
     assert.equal(cacheFor(path), null, `${path} is not an existing runtime file and keeps max-age=0`);
   }
   assert.deepEqual(uncoveredFiles(full, plan), [], 'the check finds every family file covered');
@@ -140,19 +148,19 @@ try {
   writeFileSync(join(output, 'config.json'), JSON.stringify({ version: 3, routes: [{ handle: 'filesystem' }] }));
   assert.throws(() => execFileSync(process.execPath, [tool, `--output=${output}`, '--check'], { stdio: 'pipe' }), 'without routes --check exits non-zero');
   const first = execFileSync(process.execPath, [tool, `--output=${output}`, '--group=40'], { encoding: 'utf8' });
-  assert.match(first, /5 hashed files under \/assets → 1 immutable routes; 3 collision manifests → 1 immutable routes; 2 v2 collision manifests → 1 immutable routes; 2 v3 collision manifests → 1 immutable routes; 8 runtime files in textures, icons, fonts, audio, maps, minimaps → 6 routes/);
+  assert.match(first, /5 hashed files under \/assets → 1 immutable routes; 3 collision manifests → 1 immutable routes; 2 v2 collision manifests → 1 immutable routes; 2 v3 collision manifests → 1 immutable routes; 11 runtime files in textures, icons, fonts, audio, maps, minimaps, media, brand, field-guide → 8 routes \(public, max-age=3600, stale-while-revalidate=86400\); 3 manifests in media, icons, field-guide → 2 routes/);
   const once = JSON.parse(readFileSync(join(output, 'config.json'), 'utf8'));
   execFileSync(process.execPath, [tool, `--output=${output}`, '--group=40'], { encoding: 'utf8' });
   const twice = JSON.parse(readFileSync(join(output, 'config.json'), 'utf8'));
   assert.deepEqual(twice, once, 'running the tool again changes nothing');
   assert.equal(twice.routes.filter(isImmutableAssetRoute).length, 1);
-  assert.equal(twice.routes.filter(isManagedCacheRoute).length, 10, 'assets + the three collision routes + six runtime directories');
+  assert.equal(twice.routes.filter(isManagedCacheRoute).length, 14, 'assets + the three collision routes + eight runtime directories + two manifest directories');
   assert.equal(twice.routes[twice.routes.length - 1].handle, 'filesystem');
-  assert.match(execFileSync(process.execPath, [tool, `--output=${output}`, '--check'], { encoding: 'utf8' }), /every one of the 20 files is covered/);
+  assert.match(execFileSync(process.execPath, [tool, `--output=${output}`, '--check'], { encoding: 'utf8' }), /every one of the 26 files is covered/);
   // --check covers the new families: drop the collision route and it fails.
   writeFileSync(join(output, 'config.json'), JSON.stringify({ ...twice, routes: twice.routes.filter((route) => !route.src?.startsWith('^/mp-collision/')) }));
   assert.throws(() => execFileSync(process.execPath, [tool, `--output=${output}`, '--check'], { stdio: 'pipe' }), 'an uncovered collision manifest fails --check');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
-console.log('vercel-output-immutable.selftest: hashed-only listing, per-file routes ahead of the filesystem handle, no match for a miss, idempotent CLI and --check pass; collision manifests immutable, runtime media one hour + a day stale, misses and the index default');
+console.log('vercel-output-immutable.selftest: hashed-only listing, per-file routes ahead of the filesystem handle, no match for a miss, idempotent CLI and --check pass; collision manifests immutable, runtime and site media one hour + a day stale, run-time manifests a minute + an hour stale, misses and the index default');

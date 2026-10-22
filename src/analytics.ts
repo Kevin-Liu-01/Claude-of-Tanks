@@ -12,9 +12,18 @@ const mountAll = (): void => {
   void mountGoogleAnalytics();
 };
 
+// A page the browser prerendered (tools/viteSpeculationRules.ts) counts a visit only once the visitor opens it.
+const whenShown = (start: () => void): void => {
+  if ((document as Document & { prerendering?: boolean }).prerendering) {
+    document.addEventListener('prerenderingchange', start, { once: true });
+  } else start();
+};
+
 if (!selfHostedBuild) {
-  window.setTimeout(() => {
-    if ('requestIdleCallback' in window) requestIdleCallback(mountAll, { timeout: 4000 });
-    else mountAll();
-  }, 3800);
+  whenShown(() => {
+    window.setTimeout(() => {
+      if ('requestIdleCallback' in window) requestIdleCallback(mountAll, { timeout: 4000 });
+      else mountAll();
+    }, 3800);
+  });
 }

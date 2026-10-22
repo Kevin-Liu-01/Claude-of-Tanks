@@ -3735,6 +3735,17 @@ if (testDriveSpecId) {
     if (game.phase === 'garage' && !battleEntryLifecycle.pending) garage.testDrive(testDriveSpecId);
   }).catch((error) => console.error('[test-drive] failed to launch', error));
 }
+// 2026-10-22 (nav-perf-240): the two Garage panels a click opens, the settings and the play menu, take their chunks
+// (about 16 + 22 kB gzip) in the first quiet idle after the entry gate, so neither click waits on a download; a phone
+// has no hover to warm them.
+if (!STUDIO_BOOT_INTENT && !pendingRoomInvitePromise) {
+  void entryReady.then(() => requestQuietIdle(() => {
+    if (game.phase !== 'garage' || battleEntryLifecycle.pending) return;
+    settings.preload().catch((error) => console.warn('[settings] idle preload failed', error));
+    Promise.all([loadPlayMenuModule(), import('./mp/session/lobbyIntent.ts')])
+      .catch((error) => console.warn('[play-menu] idle preload failed', error));
+  }));
+}
 garageBootDone = true;
 window.__GAME_READY = true;
 studioBoot.scene?.open(STUDIO_BOOT_MAP).catch((error: unknown) => console.error('[studio] boot scene failed', error));

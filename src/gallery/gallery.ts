@@ -838,11 +838,15 @@ async function loadTank(
 
   disposeTank();
   selectedId = id;
+  const record = recordById.get(id);
+  if (!record) throw new Error(`Missing Gallery record for ${id}`);
+  // The dossier and the active card are the record's own data: they answer the click at once, and the tank builds
+  // behind them (2026-10-22, nav-perf-240: the old dossier stayed up until the builder chunk and the build finished).
+  renderDossier(record);
+  renderRoster();
   await ensureTankBuilder(id);
   if (version !== loadVersion) return;
   const spec = getSpec(id) as GalleryVehicleSpec;
-  const record = recordById.get(id);
-  if (!record) throw new Error(`Missing Gallery record for ${id}`);
   visual = createTank(id, engineCtx, {
     camoSeed: 4242,
     quality: 'high',
@@ -858,11 +862,9 @@ async function loadTank(
   forceHeroLod(visual.root);
   visual.root.updateMatrixWorld(true);
   surfaceMarkup.attachTank(visual.root, id);
-  renderDossier(record);
   visual.setGroundSampler(() => GALLERY_FLOOR_Y_M); // the lab's floor from the first frame (the lab sets it again)
   for (const input of [$('#hullYaw'), $('#turretYaw'), $('#gunPitch')]) input.disabled = false;
   configureArticulation(spec);
-  renderRoster();
   frameView(options.view || 'hero');
   setMode(options.mode || activeMode, false);
   updateUrl();
@@ -1122,6 +1124,14 @@ $('#nationFilter').addEventListener('change', applyFilters);
 $('#eraFilter').addEventListener('change', applyFilters);
 $('#classFilter').addEventListener('change', applyFilters);
 $('#roleFilter').addEventListener('change', applyFilters);
+// A card under the pointer fetches its vehicle's builder chunks, so the click only builds (nav-perf-240).
+const warmedBuilders = new Set<string>();
+vehicleList.addEventListener('pointerover', (event) => {
+  const id = event.target instanceof Element ? event.target.closest<HTMLElement>('.vehicle-card')?.dataset.id : undefined;
+  if (!id || warmedBuilders.has(id)) return;
+  warmedBuilders.add(id);
+  ensureTankBuilder(id).catch(() => warmedBuilders.delete(id));
+});
 $('#hullYaw').addEventListener('input', updateArticulation);
 $('#turretYaw').addEventListener('input', updateArticulation);
 $('#gunPitch').addEventListener('input', updateArticulation);
