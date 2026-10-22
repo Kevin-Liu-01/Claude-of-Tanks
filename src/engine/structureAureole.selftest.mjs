@@ -15,8 +15,9 @@ import {
 } from './structureAureoleBake.ts';
 import {
   AUREOLE_GATE_M, AUREOLE_SHARE_MAX, DECK_AUREOLE_GAIN, SGO_DARK_MAX, SGO_DECK_BROAD, STRUCTURE_GROUND_OCCLUSION_GLSL,
-  createStructureGroundOcclusion, createStructureGroundUniforms, updateStructureGroundUniforms,
+  createStructureGroundUniforms, updateStructureGroundUniforms,
 } from './structureGroundOcclusion.ts';
+import { createStructureGroundOcclusion } from './structureGroundOcclusionRuntime.ts';
 import { sunDirectionOf, skyPresetToAtmosphere } from './atmosphere.ts';
 import { loadGroundedLightModel, resolveLightModel } from './lightModelCore.ts';
 import { DECK_AUREOLE_G, DECK_AUREOLE_MAX } from './lightModel.ts';
@@ -220,7 +221,7 @@ assert.match(worker, /if \(data\.kind === 'aureole' && data\.sun\) \{\s*const au
 const map = read('../world/map.ts');
 assert.match(map, /aureoleSunOf\(mapSky\.sunElevationDeg, mapSky\.sunAzimuthDeg\)/, 'a thin deck\'s map starts the bake with its own sun');
 assert.match(map, /aureoleGroundAt: aureoleSun \? \(x, z\) => heightField\.getHeightAt\(x, z\) : null/, 'and its ground (229)');
-const handleSource = read('./structureGroundOcclusion.ts');
+const handleSource = read('./structureGroundOcclusionRuntime.ts');
 assert.match(handleSource, /worker\.postMessage\(\{ id, kind: 'aureole', packed, rect, sun, radius, ground \}/, 'the worker bakes on the ground');
 assert.equal(handleSource.match(/undefined, undefined, ground\)/g)?.length, 2,
   'and so do the idle slice and a failed worker\'s fallback (229)');

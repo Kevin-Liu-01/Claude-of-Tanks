@@ -1,4 +1,4 @@
-import { createCustomSelect } from './customSelect.ts';
+import type { CustomSelectController } from './customSelect.ts';
 import { tankSeedId } from '../vehicles/tankIdAliases.ts';
 import { guidedMissileSlot, specialActionKind, SPECIAL_ACTION_KINDS } from '../sim/specialActionPolicy.ts';
 // Counts only (4.8 kB): the 217 kB mount-geometry inventory stays on the battle path (FE-P2).
@@ -58,10 +58,10 @@ import { getPlayerRecord } from '../game/profile.ts';
 import { mountGitHubStars } from './githubStars.ts';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
-} from '../sim/spotting.ts';
+} from '../sim/spottingStats.ts';
 import { t, formatNumber, getLocale, setLocale } from './i18n.ts';
 import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts';
-import { normalizeGameMode } from '../sim/matchModes.ts';
+import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
   isWaveMode, matchRulesetFor, modeCopyValues, rulesetSides, BATTLE_FIELD_LIMIT, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
@@ -3216,7 +3216,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const marsLabel = requiredElement<HTMLElement>(battleMenu, '[data-mars-label]');
   const marsSettings = requiredElement<HTMLElement>(battleMenu, '[data-mars-settings]');
   const marsField = (name: string) => requiredElement<HTMLSelectElement>(marsSettings, `select[data-mars-field="${name}"]`);
-  const marsDropdowns = ['gravity', 'caches'].map(name => createCustomSelect(marsField(name)));
+  // The Mars selects' dropdowns load with the battle menu's first render, like the TEAMS control below (232 bundle diet:
+  // the custom select left the game's boot graph); until then the native selects stand in.
+  let marsDropdowns: CustomSelectController[] = [];
+  let marsDropdownsLoad: Promise<void> | null = null;
+  const loadMarsDropdowns = (): void => {
+    marsDropdownsLoad ??= import('./customSelect.ts').then(({ createCustomSelect }) => {
+      marsDropdowns = ['gravity', 'caches'].map(name => createCustomSelect(marsField(name)));
+      marsDropdowns.forEach(dropdown => { if (marsSettings.hidden) dropdown.close(); dropdown.refresh(); });
+    });
+  };
   const soloOptions = requiredElement<HTMLElement>(battleMenu, '[data-solo-options]');
   const teamOptions = requiredElement<HTMLElement>(battleMenu, '[data-team-options]');
   const refreshBattleTimes = bindBattleTimeChoices(battleMenu, () => emit('ui:click', {}));
@@ -3244,6 +3253,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   renderBattleOptions = () => {
     battleMenu.dataset.rule = battleGameMode;
     renderArrangementPanel();
+    loadMarsDropdowns();
     renderSides();
     const solo = battleMode === 'solo';
     const shown = solo && battleGameMode === 'mars';

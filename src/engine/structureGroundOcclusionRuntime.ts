@@ -1,0 +1,328 @@
+/**
+ * structureGroundOcclusionRuntime.ts — the world's structure ground occlusion handle (split from structureGroundOcclusion.ts
+ * in the 232 bundle diet): the worker, the rasters, the re-bake around destroyed or restored solids and the aureole's bake.
+ * map.ts creates it when a battle world assembles; the boot graph keeps only the aerial pass's block (the constants, the
+ * uniforms and the GLSL in structureGroundOcclusion.ts), so the bakes and their helpers load with the world.
+ * The lifecycle and the law are documented in structureGroundOcclusion.ts and structureGroundOcclusionBake.ts.
+ */
+import * as THREE from 'three';
+import {
+  SGO_HALF_M, SGO_REACH_MAX_M, SGO_SIZE, bakeStructureGroundOcclusion, packOccluders, packRecordOccluders, sgoRectOf,
+  type SgoRecord, type SgoRect,
+} from './structureGroundOcclusionBake.ts';
+import { AUREOLE_RADIUS_DEG, AUREOLE_REACH_M, bakeStructureAureole, sampleAureoleGroundSliced, type AureoleGround } from './structureAureoleBake.ts';
+import { lightTune } from './lightModelCore.ts';
+import { AUREOLE_SUN_COS, SGO_FADE_IN_S, SGO_POLL_S, type StructureGroundOcclusionHandle } from './structureGroundOcclusion.ts';
+
+export interface WorkerLike {
+  postMessage(message: unknown, transfer?: Transferable[]): void;
+  terminate(): void;
+  onmessage: ((event: MessageEvent) => void) | null;
+  onerror: ((event: Event) => void) | null;
+}
+
+export interface StructureGroundOcclusionOptions {
+  /** The world's group: the handle is active only while it is mounted and visible. */
+  group: THREE.Object3D;
+  /** The map's strength scale (sky.lighting.groundOcclusion; 1 by default, 0 turns the term off for the map). */
+  scale?: number;
+  /** A worker factory (null: bake on the main thread, sliced to an idle callback). */
+  makeWorker?: (() => WorkerLike | null) | null;
+  /** (227) The map's own sun when its deck is thin (deckBeam): the aureole's bake starts with the occlusion's. */
+  aureoleSun?: readonly number[] | null;
+  /** (229) The ground's height: the aureole's shadows fall on it, not on each solid's base plane (sampled in idle slices
+   *  before the aureole's first bake, which waits for it). */
+  aureoleGroundAt?: ((x: number, z: number) => number) | null;
+}
+
+/** A raster the handle owns: its CPU texels, its texture and the region patches that landed after its first upload. */
+interface SgoRaster {
+  data: Uint8Array;
+  texture: THREE.DataTexture;
+  uploadedOnce: boolean;
+  pending: { rect: SgoRect; rg: Uint8Array }[];
+}
+
+function makeRaster(name: string): SgoRaster {
+  const data = new Uint8Array(SGO_SIZE * SGO_SIZE * 2);
+  const texture = new THREE.DataTexture(data, SGO_SIZE, SGO_SIZE, THREE.RGFormat, THREE.UnsignedByteType);
+  texture.name = name;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.flipY = false;
+  texture.unpackAlignment = 2;
+  return { data, texture, uploadedOnce: false, pending: [] };
+}
+
+function defaultWorker(): WorkerLike | null {
+  try {
+    if (typeof Worker === 'undefined') return null;
+    return new Worker(new URL('./structureGroundOcclusionWorker.ts', import.meta.url), { type: 'module', name: 'cot-ground-occlusion' }) as unknown as WorkerLike;
+  } catch {
+    return null;
+  }
+}
+
+/** The world rectangle a changed record re-bakes: its bounds grown by the largest reach. */
+function recordRect(record: SgoRecord): SgoRect {
+  const m = SGO_REACH_MAX_M + 1;
+  return sgoRectOf(record.min[0] - m, record.min[2] - m, record.max[0] + m, record.max[2] + m);
+}
+
+function mergeRects(rects: SgoRect[]): SgoRect[] {
+  const out: SgoRect[] = [];
+  for (const r of rects) {
+    let merged = false;
+    for (const o of out) {
+      if (r[0] <= o[2] && r[2] >= o[0] && r[1] <= o[3] && r[3] >= o[1]) {
+        o[0] = Math.min(o[0], r[0]); o[1] = Math.min(o[1], r[1]); o[2] = Math.max(o[2], r[2]); o[3] = Math.max(o[3], r[3]);
+        merged = true;
+        break;
+      }
+    }
+    if (!merged) out.push([...r] as SgoRect);
+  }
+  return out;
+}
+
+export function createStructureGroundOcclusion(
+  records: readonly SgoRecord[], options: StructureGroundOcclusionOptions,
+): StructureGroundOcclusionHandle {
+  const sgo = makeRaster('structure-ground-occlusion');
+  const texture = sgo.texture;
+  const scale = Math.max(0, Math.min(1, options.scale ?? 1));
+  const stats = { parts: 0, bakeMs: 0, rebakes: 0, patches: 0, worker: false, aureoleMs: 0, aureoleBakes: 0 };
+  const flags = new Uint8Array(records.length);
+  for (let i = 0; i < records.length; i++) flags[i] = records[i]?.dead || records[i]?.crushed ? 1 : 0;
+  // each solid's parts, packed once (the shapes hold still; only the destroyed flags change): null hides no sky, so a
+  // tree or a kerb that breaks re-bakes nothing
+  const parts = scale > 0 ? records.map(packRecordOccluders) : [];
+  let ready = false, disposed = false, instant = false, fade = 0, pollT = 0, nextId = 1;
+  const inflight = new Map<number, true>();
+  // (227) the aureole: its raster (made on the first request), the sun its landed bake is for, the sun of the full bake in
+  // flight, its fade-in, and the promise a capture waits on while a full bake is in flight
+  let aur: SgoRaster | null = null;
+  let aurSun: number[] | null = null, aurWant: number[] | null = null, aurFade = 0;
+  let aurWait: Promise<boolean> | null = null, aurResolve: ((ok: boolean) => void) | null = null;
+  const aureoleRadius = (): number => lightTune('DECK_AUREOLE_RADIUS', AUREOLE_RADIUS_DEG);
+  let resolveReady: (ok: boolean) => void = () => {};
+  const readyPromise = new Promise<boolean>((resolve) => { resolveReady = resolve; });
+  const worker = scale > 0 ? (options.makeWorker === null ? null : (options.makeWorker ?? defaultWorker)()) : null;
+  stats.worker = !!worker;
+  // (229) the ground under the aureole's raster, sampled in idle slices from the start; the aureole's bakes wait for it
+  let ground: AureoleGround | null = null;
+  const groundWaits: (() => void)[] = [];
+  const awaitGround = (run: () => void): boolean => {
+    if (!options.aureoleGroundAt || ground) return false;
+    groundWaits.push(run);
+    return true;
+  };
+  const cancelGround = scale > 0 && options.aureoleGroundAt ? sampleAureoleGroundSliced(options.aureoleGroundAt, (g) => {
+    if (disposed) return;
+    ground = g;
+    for (const run of groundWaits.splice(0)) run();
+  }) : null;
+
+  function landIn(raster: SgoRaster, rect: SgoRect, rg: Uint8Array, full: boolean): void {
+    if (disposed) return;
+    const [i0, j0, i1, j1] = rect, w = i1 - i0;
+    for (let j = j0; j < j1; j++) raster.data.set(rg.subarray((j - j0) * w * 2, (j - j0 + 1) * w * 2), (j * SGO_SIZE + i0) * 2);
+    if (full || !raster.uploadedOnce) { raster.texture.needsUpdate = true; return; }
+    raster.pending.push({ rect, rg });
+  }
+  const land = (rect: SgoRect, rg: Uint8Array, full: boolean): void => landIn(sgo, rect, rg, full);
+
+  /** (227) An aureole bake landed: a full one for its sun swaps the raster in, a region one patches it. */
+  function landAureole(rect: SgoRect, rg: Uint8Array, full: boolean, sun: number[], ms: number): void {
+    if (disposed || !aur) return;
+    stats.aureoleMs += ms;
+    stats.aureoleBakes++;
+    landIn(aur, rect, rg, full);
+    if (!full) return;
+    aurSun = sun;
+    if (aurWant && aurWant.every((v, i) => v === sun[i])) {
+      aurWant = null;
+      aurResolve?.(true);
+      aurResolve = null;
+      aurWait = null;
+    }
+  }
+
+  function requestAur(rect: SgoRect | null, sun: number[]): void {
+    if (disposed || scale <= 0 || !aur) return;
+    if (awaitGround(() => requestAur(rect, sun))) return;
+    const packed = packOccluders(records);
+    const radius = aureoleRadius();
+    if (worker) {
+      const id = nextId++;
+      inflight.set(id, true);
+      worker.postMessage({ id, kind: 'aureole', packed, rect, sun, radius, ground }, [packed.buffer as ArrayBuffer]);
+      return;
+    }
+    const run = (): void => {
+      if (disposed) return;
+      const result = bakeStructureAureole(packed, sun, rect, radius, undefined, undefined, ground);
+      landAureole(result.rect, result.rg, !rect, sun, result.ms);
+    };
+    const idle = (globalThis as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
+    if (idle) idle(run, { timeout: 500 }); else setTimeout(run, 0);
+  }
+
+  function wantAureole(sun: readonly number[]): void {
+    if (disposed || scale <= 0) return;
+    const l = Math.hypot(sun[0], sun[1], sun[2]);
+    if (!(l > 1e-6) || !(sun[1] > 0)) return;
+    const s = [sun[0] / l, sun[1] / l, sun[2] / l];
+    const ref = aurWant ?? aurSun;
+    if (ref && ref[0] * s[0] + ref[1] * s[1] + ref[2] * s[2] >= AUREOLE_SUN_COS) return;
+    if (!aur) aur = makeRaster('structure-aureole-shadow');
+    aurWant = s;
+    if (!aurWait) aurWait = new Promise<boolean>((resolve) => { aurResolve = resolve; });
+    requestAur(null, s);
+  }
+
+  function request(rect: SgoRect | null): void {
+    if (disposed || scale <= 0) return;
+    const packed = packOccluders(records, parts);
+    if (worker) {
+      const id = nextId++;
+      inflight.set(id, true);
+      worker.postMessage({ id, packed, rect }, [packed.buffer as ArrayBuffer]);
+      return;
+    }
+    const run = (): void => {
+      if (disposed) return;
+      const result = bakeStructureGroundOcclusion(packed, rect);
+      stats.bakeMs += result.ms;
+      if (!rect) stats.parts = result.parts;
+      land(result.rect, result.rg, !rect);
+      if (!rect) { ready = true; resolveReady(true); } else stats.rebakes++;
+    };
+    const idle = (globalThis as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
+    if (idle) idle(run, { timeout: 500 }); else setTimeout(run, 0);
+  }
+
+  if (worker) {
+    worker.onmessage = (event: MessageEvent) => {
+      const msg = event.data as { id: number; kind?: string; rg: Uint8Array; rect: SgoRect; parts: number; ms: number; full?: boolean; sun?: number[] };
+      inflight.delete(msg.id);
+      if (msg.kind === 'aureole') { landAureole(msg.rect, msg.rg, !!msg.full, msg.sun ?? [0, 1, 0], msg.ms); return; }
+      const first = msg.id === 1;
+      stats.bakeMs += msg.ms;
+      if (first) stats.parts = msg.parts; else stats.rebakes++;
+      land(msg.rect, msg.rg, first);
+      if (first) { ready = true; resolveReady(true); }
+    };
+    worker.onerror = () => {
+      // a failed worker: bake the rest on the main thread
+      try { worker.terminate(); } catch { /* gone */ }
+      stats.worker = false;
+      if (!ready) {
+        const result = bakeStructureGroundOcclusion(packOccluders(records, parts), null);
+        stats.bakeMs += result.ms; stats.parts = result.parts;
+        land(result.rect, result.rg, true);
+        ready = true; resolveReady(true);
+      }
+      const bakeHere = (): void => {
+        if (!aurWant || disposed) return;
+        const sun = aurWant, result = bakeStructureAureole(packOccluders(records), sun, null, aureoleRadius(), undefined, undefined, ground);
+        landAureole(result.rect, result.rg, true, sun, result.ms);
+      };
+      if (aurWant && !awaitGround(bakeHere)) bakeHere();
+    };
+  }
+  if (scale > 0) request(null); else resolveReady(false);
+  // (227) a thin deck's map: the aureole's bake starts with the occlusion's (the pass re-bakes it if the battle's sun differs)
+  if (scale > 0 && options.aureoleSun) wantAureole(options.aureoleSun);
+
+  function poll(): void {
+    const rects: SgoRect[] = [];
+    for (let i = 0; i < records.length; i++) {
+      if (!parts[i]) continue;
+      const r = records[i];
+      const f = r?.dead || r?.crushed ? 1 : 0;
+      if (f !== flags[i]) { flags[i] = f; rects.push(recordRect(r)); }
+    }
+    if (!rects.length) return;
+    for (const rect of mergeRects(rects)) {
+      if (rect[2] > rect[0] && rect[3] > rect[1]) request(rect);
+    }
+    // (227) the aureole's shadows reach further: its re-bake grows each record by the shadow's reach
+    if (aur && aurSun) {
+      const grown: SgoRect[] = [];
+      for (const rect of rects) {
+        const m = Math.ceil((AUREOLE_REACH_M - SGO_REACH_MAX_M) / ((2 * SGO_HALF_M) / SGO_SIZE));
+        grown.push([Math.max(0, rect[0] - m), Math.max(0, rect[1] - m), Math.min(SGO_SIZE, rect[2] + m), Math.min(SGO_SIZE, rect[3] + m)]);
+      }
+      for (const rect of mergeRects(grown)) {
+        if (rect[2] > rect[0] && rect[3] > rect[1]) requestAur(rect, aurSun);
+      }
+    }
+  }
+
+  /** A raster's first bind uploads the whole texture (the patches are in its data already); later patches copy in place. */
+  function flushRaster(raster: SgoRaster, renderer: THREE.WebGLRenderer, landed: boolean): void {
+    const texture = raster.texture, pending = raster.pending;
+    if (!raster.uploadedOnce) {
+      raster.uploadedOnce = landed;
+      pending.length = 0;
+      return;
+    }
+    while (pending.length) {
+      const patch = pending.shift()!;
+      const [i0, j0, i1, j1] = patch.rect;
+      const src = new THREE.DataTexture(patch.rg, i1 - i0, j1 - j0, THREE.RGFormat, THREE.UnsignedByteType);
+      src.flipY = false;
+      src.unpackAlignment = 2;
+      try {
+        renderer.copyTextureToTexture(src, texture, null, new THREE.Vector2(i0, j0));
+        stats.patches++;
+      } catch {
+        texture.needsUpdate = true; // the whole texture again from its data
+      }
+      src.dispose();
+    }
+  }
+
+  return {
+    texture,
+    get ready() { return ready; },
+    get strength() { return ready ? fade * scale * Math.max(0, lightTune('STRUCT_GROUND_AO', 1)) : 0; },
+    get aureoleTexture() { return aur && aurSun ? aur.texture : null; },
+    get aureoleStrength() { return aur && aurSun ? aurFade * scale : 0; },
+    requestAureole: wantAureole,
+    active: () => !!options.group.parent && options.group.visible,
+    // (227) a capture also waits for an aureole bake in flight
+    whenReady: () => readyPromise.then(async (ok) => { if (aurWait) await aurWait; return ok; }),
+    update(dt: number) {
+      if (disposed) return;
+      if (aurSun) aurFade = instant || SGO_FADE_IN_S <= 0 ? 1 : Math.min(1, aurFade + Math.max(0, dt) / SGO_FADE_IN_S);
+      if (!ready) return;
+      fade = instant || SGO_FADE_IN_S <= 0 ? 1 : Math.min(1, fade + Math.max(0, dt) / SGO_FADE_IN_S);
+      pollT += Math.max(0, dt);
+      if (pollT >= SGO_POLL_S) { pollT = 0; poll(); }
+    },
+    flush(renderer: THREE.WebGLRenderer) {
+      flushRaster(sgo, renderer, ready);
+      if (aur) flushRaster(aur, renderer, !!aurSun);
+    },
+    setInstant(on: boolean) { instant = on; if (on && ready) fade = 1; if (on && aurSun) aurFade = 1; },
+    dispose() {
+      disposed = true;
+      cancelGround?.();
+      groundWaits.length = 0;
+      sgo.pending.length = 0;
+      inflight.clear();
+      try { worker?.terminate(); } catch { /* gone */ }
+      texture.dispose();
+      if (aur) { aur.pending.length = 0; aur.texture.dispose(); }
+      resolveReady(false);
+      aurResolve?.(false);
+    },
+    stats,
+  };
+}
+

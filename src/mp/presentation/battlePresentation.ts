@@ -26,7 +26,7 @@ import { SPECIAL_ACTION_KINDS, createSpecialActionState } from '../../sim/specia
 import type { SpecialActionState } from '../../sim/specialActionPolicy.ts';
 import { AERIAL_RULES, matchRulesetFor, rulesetVerdictSide } from '../../sim/matchRuleset.ts';
 import type { MatchRuleset } from '../../sim/matchRuleset.ts';
-import { normalizeGameMode } from '../../sim/matchModes.ts';
+import { normalizeGameMode } from '../../sim/gameModeCatalog.ts';
 import { createTank, ensureTankBuilder } from '../../vehicles/fleetFactory.ts';
 import { prebakeSharedTextures } from '../../vehicles/materials.ts';
 import type { FleetTankSpec } from '../../vehicles/specContracts.ts';

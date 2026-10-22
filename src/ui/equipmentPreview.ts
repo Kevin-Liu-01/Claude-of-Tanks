@@ -13,7 +13,7 @@ import {
   equipCamoBonus,
   equipViewMult,
   viewRangeOf,
-} from '../sim/spotting.ts';
+} from '../sim/spottingStats.ts';
 import { t } from './i18n.ts';
 
 interface EquipmentPreviewSpec {

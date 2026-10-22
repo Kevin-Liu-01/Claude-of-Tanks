@@ -32,7 +32,7 @@ import type { CollisionRecord } from '../../world/collision.ts';
 import { matchRulesetFor, rulesetPhysicsAt, type RulesetPhysics } from '../../sim/matchRuleset.ts';
 import { createHullSupportPose, createStructureSupportField, hullSupportPose } from '../../sim/structureSupport.ts';
 import { prefersVerticalTankContact, tanksVerticallyClear } from '../../sim/tankBodyContacts.ts';
-import { normalizeGameMode } from '../../sim/matchModes.ts';
+import { normalizeGameMode } from '../../sim/gameModeCatalog.ts';
 import type { PredictionWorld } from '../match/prediction.ts';
 
 export interface PredictionObstacle extends CollisionRecord {

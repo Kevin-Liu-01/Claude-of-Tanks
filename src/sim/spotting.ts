@@ -1,4 +1,3 @@
-import { VEHICLE_ROLE_PROFILES } from '../vehicles/roleProfiles.ts';
 
 /**
  * spotting.ts — WoT-style concealment & spotting simulation (pure logic,
@@ -47,6 +46,13 @@ import { VEHICLE_ROLE_PROFILES } from '../vehicles/roleProfiles.ts';
  */
 
 import { AERIAL_RULES } from './matchRuleset.ts';
+import {
+  BASE_CAMO, EQUIPMENT, VIEW_RANGE_M, baseCamoOf, equipCamoBonus, equipViewMult, viewRangeOf,
+  type SpottingTankSpec,
+} from './spottingStats.ts';
+
+// The view ranges, base camo and equipment effects live in spottingStats.ts (the Garage reads them without this system).
+export { BASE_CAMO, EQUIPMENT, VIEW_RANGE_M, baseCamoOf, equipCamoBonus, equipViewMult, viewRangeOf };
 
 export interface SpottingVector3 {
   x: number;
@@ -56,12 +62,6 @@ export interface SpottingVector3 {
 
 type SpottingModuleState = 'ok' | 'yellow' | 'red';
 
-interface SpottingTankSpec {
-  id: string;
-  role?: string;
-  dims?: { heightM: number };
-  gun?: { caliberMm?: number | null };
-}
 
 export interface SpottingTank {
   aerial?: {kind: string;active: boolean;launching: boolean;x: number;y: number;z: number};
@@ -160,18 +160,7 @@ export interface SpottingSystem {
   reset(): void;
 }
 
-interface CamoRow {
-  still: number;
-  moving: number;
-}
 
-interface EquipmentVisionEffect {
-  label: string;
-  camo?: number;
-  camoStill?: number;
-  view?: number;
-  viewStill?: number;
-}
 
 interface CamoParts {
   base: number;
@@ -255,26 +244,6 @@ const CHECK_MID_S = 1.0;
 const CHECK_FAR_S = 2.0;
 const LOS_TOLERANCE_M = 2.0;           // raycast slack when the hit is the target
 
-/** Explicit fleet profiles are shared by the garage and authoritative spotting. */
-export const VIEW_RANGE_M: Readonly<Record<string, number>> = Object.freeze(
-  Object.fromEntries(Object.entries(VEHICLE_ROLE_PROFILES).map(([id, profile]) => [id, profile.viewM])),
-);
-export const BASE_CAMO: Readonly<Record<string, CamoRow>> = VEHICLE_ROLE_PROFILES;
-
-/** Mechanical-role fallbacks for specs not in the tables. */
-const ROLE_CAMO: Readonly<Record<string, CamoRow>> = {
-  light:  { still: 0.34, moving: 0.34 },
-  ifv:    { still: 0.27, moving: 0.21 },
-  medium: { still: 0.23, moving: 0.17 },
-  heavy:  { still: 0.12, moving: 0.08 },
-  mbt:    { still: 0.18, moving: 0.13 },
-  td:     { still: 0.30, moving: 0.18 },
-  spg:    { still: 0.08, moving: 0.05 },
-};
-const ROLE_VIEW_M: Readonly<Record<string, number>> = {
-  light: 390, ifv: 435, medium: 370, heavy: 360, mbt: 440, td: 370, spg: 340,
-};
-const DEFAULT_CAMO: CamoRow = { still: 0.23, moving: 0.17 };
 
 // ---------------------------------------------------------------------------
 // Pure helpers
@@ -322,31 +291,6 @@ export function signalRangeM(ent: SpottingTank): number {
     : SIGNAL_RANGE_M;
 }
 
-/**
- * View range for a spec (table → mechanical-role fallback → medium default).
- * @param {object} spec TankSpec-like ({ id, role })
- * @returns {number} meters
- */
-export function viewRangeOf(spec: SpottingTankSpec | null | undefined): number {
-  const exact = spec ? VIEW_RANGE_M[spec.id] : undefined;
-  if (exact != null) return exact;
-  return (spec?.role ? ROLE_VIEW_M[spec.role] : undefined) || 370;
-}
-
-/**
- * Base camo for a spec.
- * @param {object} spec TankSpec-like
- * @param {boolean} moving hull is moving
- * @returns {number} camo in [0,1]
- */
-export function baseCamoOf(
-  spec: SpottingTankSpec | null | undefined,
-  moving: boolean,
-): number {
-  const row = (spec && (BASE_CAMO[spec.id] || (spec.role ? ROLE_CAMO[spec.role] : undefined)))
-    || DEFAULT_CAMO;
-  return moving ? row.moving : row.still;
-}
 
 /**
  * Firing bloom at `timeS` for a shot fired at `firedAtS` (1 → just fired).
@@ -373,67 +317,6 @@ function fireCamoLossFor(caliberMm: number | null | undefined): number {
   return 0.55 + 0.35 * clamp((caliberMm - 50) / 100, 0, 1);
 }
 
-// ---------------------------------------------------------------------------
-// Equipment layer (concealment/vision loadout builds — r7 depth item).
-// deps.getEquipment(ent) returns an array of ids from this table; effects:
-//   camo      — flat own-camo bonus, always active           (vents)
-//   camoStill — own-camo bonus while the TANK sits still     (camo net)
-//   view      — view-range multiplier bonus, always active   (vents/optics)
-//   viewStill — view-range bonus while the SPOTTER is still  (binoculars)
-// Wire-up lives in game/state.ts (getEquipment dep) + the garage loadout UI.
-// EQUIPMENT SYSTEM: this table owns only the VISION/CONCEALMENT effects; the
-// full catalog (reload/aim/repair/durability/fire gear + slot logic + AI
-// defaults) lives in game/equipment.ts and references these same ids.
-// ---------------------------------------------------------------------------
-export const EQUIPMENT: Readonly<Record<string, EquipmentVisionEffect>> = {
-  camo_net:   { label: 'Camouflage Net',       camoStill: 0.12 },
-  binoculars: { label: 'Binocular Telescope',  viewStill: 0.25 },
-  vents:      { label: 'Improved Ventilation', camo: 0.02, view: 0.025 },
-  optics:     { label: 'Coated Optics',        view: 0.10 },
-};
-
-/**
- * Own-camo bonus from equipment (additive with base + paint, so it is
- * stripped by fire bloom like the rest of the tank's own camo).
- * @param {?Array<string>} equipIds ids into EQUIPMENT
- * @param {boolean} moving hull is moving (disables *Still effects)
- * @returns {number} camo bonus in [0, ~0.14]
- */
-export function equipCamoBonus(
-  equipIds: readonly string[] | null | undefined,
-  moving: boolean,
-): number {
-  if (!equipIds) return 0;
-  let b = 0;
-  for (let i = 0; i < equipIds.length; i++) {
-    const e = EQUIPMENT[equipIds[i]];
-    if (!e) continue;
-    if (e.camo) b += e.camo;
-    if (e.camoStill && !moving) b += e.camoStill;
-  }
-  return b;
-}
-
-/**
- * View-range multiplier from equipment (applied to the spotter).
- * @param {?Array<string>} equipIds ids into EQUIPMENT
- * @param {boolean} moving spotter hull is moving (disables *Still effects)
- * @returns {number} multiplier >= 1
- */
-export function equipViewMult(
-  equipIds: readonly string[] | null | undefined,
-  moving: boolean,
-): number {
-  if (!equipIds) return 1;
-  let m = 1;
-  for (let i = 0; i < equipIds.length; i++) {
-    const e = EQUIPMENT[equipIds[i]];
-    if (!e) continue;
-    if (e.view) m *= 1 + e.view;
-    if (e.viewStill && !moving) m *= 1 + e.viewStill;
-  }
-  return m;
-}
 
 /**
  * The spotting formula (locked): spotRange = vr − (vr − 50) × camo,

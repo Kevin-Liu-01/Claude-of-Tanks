@@ -9,7 +9,7 @@ import {
   MARS_DEFAULT_RULES, isMarsCachesId, isMarsGravityId, type MarsCachesId, type MarsGravityId,
   DEFAULT_TEAM_NATIONS, isTeamNationsId, type TeamNationsId,
 } from '../sim/matchRuleset.ts';
-import { BATTLE_MODE_IDS } from '../sim/matchModes.ts';
+import { BATTLE_MODE_IDS } from '../sim/gameModeCatalog.ts';
 import { COUNTRIES } from '../sim/countries.ts';
 
 export const TEAM_ARRANGEMENT_STORAGE_KEY = 'cot.game.teams.v1';
