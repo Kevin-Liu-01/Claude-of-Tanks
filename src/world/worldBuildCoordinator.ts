@@ -60,6 +60,8 @@ interface BuildRecord<World extends WorldScene> {
   stageMark: number;
   background: boolean;
   waitForGarageLull: boolean;
+  /** A background build paced like a covered load (prefetch pace 'loading'): a returning tab's battlefield under its boot. */
+  loadingPace: boolean;
   cancelled: boolean;
   backgroundInterrupted: Promise<void>;
   interruptBackgroundWait(): void;
@@ -115,9 +117,9 @@ export interface WorldBuildCoordinator<World extends WorldScene = WorldScene> {
   beginBuild(
     mapId: string,
     onProgress?: ProgressListener | null,
-    options?: { background?: boolean; waitForGarageLull?: boolean },
+    options?: { background?: boolean; waitForGarageLull?: boolean; loadingPace?: boolean },
   ): WorldBuildRequest<World>;
-  prefetch(mapId: string, options?: { intent?: boolean }): Promise<World | null> | null;
+  prefetch(mapId: string, options?: { intent?: boolean; pace?: 'background' | 'loading' }): Promise<World | null> | null;
   cancelBackgroundExcept(mapId?: string | null): void;
 }
 
@@ -212,7 +214,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
   const beginBuild = (
     mapId: string,
     onProgress: ProgressListener | null = null,
-    options: { background?: boolean; waitForGarageLull?: boolean } = {},
+    options: { background?: boolean; waitForGarageLull?: boolean; loadingPace?: boolean } = {},
   ): WorldBuildRequest<World> => {
     const cached = cache.get(mapId);
     if (cached) {
@@ -250,6 +252,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         stageMark: now(),
         background,
         waitForGarageLull,
+        loadingPace: options.loadingPace ?? false,
         cancelled: false,
         backgroundInterrupted,
         interruptBackgroundWait,
@@ -341,7 +344,9 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
         throwIfCancelled();
         // Explicit room/Battle intent keeps the 4ms budget: fine terrain rows
         // must not each cost a display frame. Passive speculation stays forced.
-        if (created.background && backgroundLease) await yieldBackground(created.waitForGarageLull);
+        // A loading-paced build (a returning tab under its boot screen) takes
+        // the covered load's slices while it still holds its background lease.
+        if (created.background && backgroundLease && !created.loadingPace) await yieldBackground(created.waitForGarageLull);
         else await yieldForeground();
       };
 
@@ -412,7 +417,7 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
 
   const prefetch = (
     mapId: string,
-    options: { intent?: boolean } = {},
+    options: { intent?: boolean; pace?: 'background' | 'loading' } = {},
   ): Promise<World | null> | null => {
     if (!mapId || mapId === 'random' || cache.has(mapId) || builds.has(mapId)) return null;
     if (Number.isFinite(limits.worldScenes) && cache.size >= limits.worldScenes) {
@@ -424,6 +429,8 @@ export function createWorldBuildCoordinator<World extends WorldScene = WorldScen
     return beginBuild(mapId, null, {
       background: true,
       waitForGarageLull: !options.intent,
+      // (2026-10-20, item/mp-rejoin-229) 'loading' is explicit intent paced as a covered load
+      loadingPace: options.intent === true && options.pace === 'loading',
     }).promise.catch(() => null);
   };
 

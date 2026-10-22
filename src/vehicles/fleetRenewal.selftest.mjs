@@ -12,7 +12,9 @@ const stock=mesh=>Array.from(mesh.geometry.getAttribute('position').array);
 assert.equal(getSpec('t72b3m_2022').name,'T-72B3M obr. 2022');
 assert.equal(getSpec('t72b3m_2016').name,'T-72B3M obr. 2016');
 for(const id of FLEET_RENEWAL_NEW_IDS) {
-  assert(getSpec(id).name.includes('(Concept)'),'original hybrids are clearly named concepts');
+  // the owner (2026-10-21) dropped the tag from the Fēng's and the Léi's names; the Ryś and the Lóng keep it for now
+  if (id === 'type96_80_feng' || id === 'type96_72m_lei') assert(!/concept/i.test(getSpec(id).name), `${id}: no concept tag in the name`);
+  else assert(getSpec(id).name.includes('(Concept)'),'original hybrids are clearly named concepts');
   assert(VEHICLE_ROLE_PROFILES[id],'explicit shared scouting/concealment profile');
   assert.equal(getSpec(id).gun.caliberMm,125);
   const modules=getSpec(id).armor.modules.map(m=>m.module);
