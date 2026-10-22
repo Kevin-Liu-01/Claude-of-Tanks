@@ -131,69 +131,69 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
     "seats": [
       {
         "kind": "designation",
-        "parent": "turret",
-        "size": 0.23,
+        "parent": "hull",
+        "size": 0.22,
         "pos": [
-          -1.5339248,
-          0.3936,
-          -0.677167
+          1.863,
+          1.345,
+          1.6
         ],
         "quaternion": [
           0,
-          -0.7284099,
+          0.7071068,
           0,
-          0.6851416
+          0.7071068
         ],
-        "surfaceMesh": "turret",
+        "surfaceMesh": "hull",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0020551
+        "maximumSurfaceErrorM": 0
       },
       {
         "kind": "designation",
-        "parent": "turret",
-        "size": 0.23,
+        "parent": "hull",
+        "size": 0.22,
         "pos": [
-          1.5339248,
-          0.3936,
-          -0.677167
+          -1.863,
+          1.345,
+          1.6
         ],
         "quaternion": [
           0,
-          0.7284099,
+          -0.7071068,
           0,
-          0.6851416
+          0.7071068
         ],
-        "surfaceMesh": "turret",
+        "surfaceMesh": "hull",
         "anchorProfile": "authored-surface-seat",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0017451
+        "maximumSurfaceErrorM": 0
       },
       {
         "kind": "insignia",
         "parent": "turret",
-        "size": 0.24,
+        "size": 0.2112,
         "pos": [
-          -1.4693431,
-          0.5394986,
-          -1.1671795
+          -1.3772776,
+          0.284128,
+          -1.1677185
         ],
         "quaternion": [
-          -0.2165647,
-          -0.678516,
-          -0.2134323,
-          0.668702
+          -0.0788575,
+          -0.7339615,
+          -0.0720647,
+          0.6707374
         ],
         "surfaceMesh": "turret",
         "anchorProfile": "ztz99_longwei",
         "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.010799
+        "visibilityClearSamples": 6,
+        "visibilityRatio": 0.6666667,
+        "maximumSurfaceErrorM": null
       }
     ]
   },

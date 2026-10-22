@@ -3140,6 +3140,9 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       && !(row.kit === 'cargo' && softStowage.includes(row.v?.v as typeof softStowage[number]))
       && !(['tarp', 'camonet'].includes(row.kit) && row.slot[0].startsWith('turret')));
   }
+  // Release 233: the Longwei's terraced turret carries its own four four-tube banks on its side modules
+  // (profiles/longwei.ts); a decor pair on its cheek bricks would double them.
+  if (spec.id === 'ztz99_longwei') return manifest.filter(row => row.kit !== 'smoke');
   return manifest;
 }
 
