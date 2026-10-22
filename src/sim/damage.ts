@@ -5,7 +5,7 @@ import type { MagazineIndicator } from './magazineIndicator.ts';
 /**
  * damage.ts — complete hit resolution per docs/history/research/armor-penetration.md
  * §12 and shells-ballistics.md: ricochet, normalization with overmatch,
- * KE/CE effective thickness with slope exponents, ERA (incl. tandem bypass),
+ * KE/CE effective thickness with slope exponents, ERA (incl. tandem bypass, except an antiTandem block),
  * spaced-armor absorption with HEAT air-gap decay, the gun barrel as a
  * spaced layer, ±25% pen/damage rolls, module & crew saving throws, fires,
  * ammo-rack detonation, HE/HESH direct hits and blast-sphere splash, and
@@ -1069,7 +1069,7 @@ function resolveEraPlate(
   const { event, shell, shellSpec, behavior, combat } = resolution;
   combat.eraSpent.add(plate.name);
   recordEraActivation(event, hit);
-  if (shellSpec.tandem) return TRACE_CONTINUE;
+  if (shellSpec.tandem && !plate.era?.antiTandem) return TRACE_CONTINUE;
   const era = plate.era || { keReduction: 0, ceFlatMm: 0 };
   if (behavior.kindClass === 'CE') resolution.pen -= era.ceFlatMm;
   else resolution.pen *= 1 - era.keReduction;
@@ -2518,7 +2518,7 @@ function applyEstimatedEra(
   behavior: ShellBehavior,
   plate: DamageArmorPlate,
 ): number {
-  if (shellSpec.tandem) return pen;
+  if (shellSpec.tandem && !plate.era?.antiTandem) return pen;
   const era = plate.era || { keReduction: 0, ceFlatMm: 0 };
   return behavior.kindClass === 'CE'
     ? Math.max(0, pen - era.ceFlatMm)
@@ -2665,7 +2665,7 @@ function walkForHurt(
     }
     if (plate.kind === 'era') {
       hurtEra.push(plate.name);
-      if (shellSpec.tandem) continue;
+      if (shellSpec.tandem && !plate.era?.antiTandem) continue;
       pen = applyEstimatedEra(pen, shellSpec, behavior, plate);
       if (pen > 0 || hurtWalk.hullPen) continue;
       return;

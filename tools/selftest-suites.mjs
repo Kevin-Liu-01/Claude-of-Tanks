@@ -1316,6 +1316,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-p2p-peer.selftest.mjs',
     'tools/mp-p2p-decline.selftest.mjs',
     'tools/mp-p2p-stepdown.selftest.mjs',
+    'tools/mp-p2p-early-link.selftest.mjs', // 2026-10-20 item/mp-rejoin-229: a running match's re-entry links beside its load
     'tools/mp-room-lifecycle.selftest.mjs',
     'src/mp/session/browserComposition.selftest.mjs',
     'src/mp/session/lobbyIntent.selftest.mjs',
@@ -2094,6 +2095,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // the presentation's copy keeps its livery, the sim's crush swaps nothing, unseen crushes sweep, heaps flatten again.
     'src/world/propCrush.selftest.mjs',
     'src/world/wrecksSteps.selftest.mjs',
+    // 2026-10-16 (tank-opt RING; the owner: "when the turret blows off we should see that"): the ring a kill leaves — the
+    // measure, the anatomy's ring on it, the live plate's lifecycle (fingerprint byte-identical), the hulk's well
+    'src/vehicles/turretRingWell.selftest.mjs',
     'src/world/wreckPaintDedup.selftest.mjs',
     'src/world/wreckDiscardedPaint.selftest.mjs',
     'src/world/wreckBakeWire.selftest.mjs',
