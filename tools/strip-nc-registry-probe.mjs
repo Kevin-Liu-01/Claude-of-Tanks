@@ -19,7 +19,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MARKER = '__STRIP_NC_REGISTRY__';
 const INPUTS_MARKER = '__STRIP_NC_INPUTS__';
 
-// The fleet reads no files of its own (it also runs in the browser), so the modules it loads are its inputs.
+// The fleet also runs in the browser: it reads no files or environment of its own, so the modules it loads are
+// its inputs (strip-nc-probe-cache.selftest).
 const loaded = new Set();
 registerHooks({
   load(url, context, nextLoad) {
