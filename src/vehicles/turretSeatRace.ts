@@ -84,7 +84,7 @@ export function applyTurretSeatRace({ specId, hullG, material, high, disposables
 }
 
 const _toHull = new THREE.Matrix4(), _toLocal = new THREE.Matrix4(), _hullInverse = new THREE.Matrix4();
-const _v = new THREE.Vector3();
+const _v = new THREE.Vector3(), _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
 
 function underObject(object: THREE.Object3D, ancestor: THREE.Object3D | null): boolean {
   if (!ancestor) return false;
@@ -117,24 +117,53 @@ export function seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables }
     const source = mesh.geometry, position = source?.getAttribute('position');
     if (!position) return;
     _toHull.multiplyMatrices(_hullInverse, mesh.matrixWorld);
+    // a triangle reaching past the rim is seated whole (every corner under the plane comes up onto it), so a cap fanned
+    // from a centre inside the ring lies flat on the plane instead of sloping back down to that centre; a triangle all
+    // inside the rim (the basket, the collar) is left as built
+    const index = source.index, count = index ? index.count : position.count;
+    const corner = (k: number): number => (index ? index.getX(k) : k);
+    const outside = (k: number): boolean => {
+      _v.fromBufferAttribute(position, corner(k)).applyMatrix4(_toHull);
+      return (_v.x - cx) ** 2 + (_v.z - cz) ** 2 > keepR2;
+    };
+    const below = (k: number): boolean => _v.fromBufferAttribute(position, corner(k)).applyMatrix4(_toHull).y < seatY;
     let needs = false;
-    for (let i = 0; i < position.count && !needs; i++) {
-      _v.fromBufferAttribute(position, i).applyMatrix4(_toHull);
-      needs = _v.y < seatY && (_v.x - cx) ** 2 + (_v.z - cz) ** 2 > keepR2;
+    for (let k = 0; k + 2 < count && !needs; k += 3) {
+      needs = (outside(k) || outside(k + 1) || outside(k + 2)) && (below(k) || below(k + 1) || below(k + 2));
     }
     if (!needs) return;
-    const seated = source.clone();
+    // own corners per triangle (a corner shared with a triangle inside the rim must not move for it)
+    const seated = index ? source.toNonIndexed() : source.clone();
     const out = seated.getAttribute('position') as THREE.BufferAttribute;
+    const normal = seated.getAttribute('normal') as THREE.BufferAttribute | undefined;
     _toLocal.copy(_toHull).invert();
-    for (let i = 0; i < out.count; i++) {
-      _v.fromBufferAttribute(out, i).applyMatrix4(_toHull);
-      if (_v.y >= seatY || (_v.x - cx) ** 2 + (_v.z - cz) ** 2 <= keepR2) continue;
-      _v.y = seatY;
-      _v.applyMatrix4(_toLocal);
-      out.setXYZ(i, _v.x, _v.y, _v.z);
+    for (let k = 0; k + 2 < out.count; k += 3) {
+      let reaches = false;
+      for (let c = 0; c < 3 && !reaches; c++) {
+        _v.fromBufferAttribute(out, k + c).applyMatrix4(_toHull);
+        reaches = (_v.x - cx) ** 2 + (_v.z - cz) ** 2 > keepR2;
+      }
+      if (!reaches) continue;
+      let lifted = false;
+      for (let c = 0; c < 3; c++) {
+        _v.fromBufferAttribute(out, k + c).applyMatrix4(_toHull);
+        if (_v.y >= seatY) continue;
+        _v.y = seatY;
+        _v.applyMatrix4(_toLocal);
+        out.setXYZ(k + c, _v.x, _v.y, _v.z);
+        lifted = true;
+      }
+      if (!lifted || !normal) continue;
+      // the moved triangle's own face normal (unmoved triangles keep their authored, possibly smooth, normals)
+      _a.fromBufferAttribute(out, k); _b.fromBufferAttribute(out, k + 1); _c.fromBufferAttribute(out, k + 2);
+      _b.sub(_a); _c.sub(_a); _b.cross(_c);
+      if (_b.lengthSq() > 1e-18) {
+        _b.normalize();
+        for (let c = 0; c < 3; c++) normal.setXYZ(k + c, _b.x, _b.y, _b.z);
+      }
     }
     out.needsUpdate = true;
-    seated.computeVertexNormals();
+    if (normal) normal.needsUpdate = true;
     seated.computeBoundingBox();
     seated.computeBoundingSphere();
     disposables.push(seated);

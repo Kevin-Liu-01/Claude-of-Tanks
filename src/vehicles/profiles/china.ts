@@ -609,7 +609,10 @@ function crownRimTrim(
 // DISTINCT from the resident ztz99_longwei: longer/deeper cheek wedge, revised
 // roof optics, drum rack — and its own frame throughout.
 // The lofted hull's plate top line [z, y], stern to bow toe.
-const ZTZ99A2_DECK: readonly (readonly [number, number])[] = [[-4.05, 1.60], [-3.80, 1.68], [-2.05, 1.72],
+// release 240 (the gun-hull lane; the owner: "make sure all tank turrets are clear of hulls, esp tanks like the vt 4a1,
+// ztz 99a2, ztz 99a"): the rear deck's crest at 1.685 (the print's 1.72), so the three turrets on this hull, seated over
+// the deck round their rings at about 1.70 (turretSeatRace.ts), clear it and its fittings at every bearing
+const ZTZ99A2_DECK: readonly (readonly [number, number])[] = [[-4.05, 1.60], [-3.80, 1.68], [-2.05, 1.685],
   [-0.30, 1.68], [1.90, 1.64], [3.55, 1.02]];
 export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   const { box, cylY, cylZ, torus, buildRunningGear, headlight, periscope, towCable, liftEye } = KIT;
@@ -776,10 +779,11 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   };
   Array.from({ length: 7 }, (_, index) => index).forEach((i) => {
     louvre('hullDark', box(2.50, 0.018, 0.075), -2.10 - i * 0.24, 0.002 - 0.009);
-    louvre('hullDetail', box(2.50, 0.028, 0.026), -2.22 - i * 0.24, 0.014 - 0.002);
+    louvre('hullDetail', box(2.50, 0.020, 0.026), -2.22 - i * 0.24, 0.006);        // release 240: 16 mm proud (was 26), under the turrets' sweep
   });
+  // release 240: the two filler caps lie on the deck line (4 mm into it, 1 cm proud), under the turrets' sweep
   ([[-0.85, -1.75], [0.72, -1.88]] as const).forEach(([x, z]) => {
-    P.add('hullDetail', cylY(0.095, 0.095, 0.032, 10), x, 1.725, z);
+    P.add('hullDetail', cylY(0.095, 0.095, 0.014, 10), x, deckAt(z)[0] + 0.003, z);
   });
   P.add('hull', box(3.26, 0.94, 0.12), 0, 1.06, -3.99);
   P.add('hullDark', box(2.20, 0.50, 0.035), 0, 1.12, -4.055);
@@ -846,7 +850,9 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   const inset99 = [0.52, 0.56, 0.80, 0.82, 0.88, 0.92, 0.92, 0.88, 0.82, 0.80, 0.56, 0.52];
   const crown99 = 0.89;
   addChineseThroatStock(P, KIT.polyMultiLoft(plan99, [
-    { height: 0.03, inset: 1.0 },
+    // release 240: the bustle's underside rises aft, as the production A2's does, to clear the engine deck's louvres as
+    // the turret traverses (it ran flat at 0.03, under the deck)
+    { height: [0.03, 0.03, 0.03, 0.03, 0.24, 0.24, 0.24, 0.24, 0.03, 0.03, 0.03, 0.03], inset: 1.0 },
     { height: 0.34, inset: 1.0 },
     { height: crown99, inset: inset99, centerHeight: 0.89 },
   ]));

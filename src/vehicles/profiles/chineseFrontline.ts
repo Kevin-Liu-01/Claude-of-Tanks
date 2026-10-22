@@ -147,7 +147,9 @@ const VT_FAMILY_TURRETS: Readonly<Record<VtFamilyVariant, VtFamilyTurretConfig>>
     heightScale: 0.82, widthScale: 1, depthScale: 1, chevronDepthScale: 1,
     frontShellLengthScale: 1,
     chevronInnerAdvanceM: 0, chevronOuterAdvanceM: 0, chevronLiftM: 0.07,
-    rearExtensionM: 0, rearUndersideLiftM: 0, rearCrownLiftM: 0,
+    // release 240 (the gun-hull lane): the bustle's underside rises aft as the ZTZ-99A2's does, so it clears the engine
+    // deck and its louvres as the turret traverses (it ran flat at 0.02, under the deck)
+    rearExtensionM: 0, rearUndersideLiftM: 0.30, rearCrownLiftM: 0,
     gunY: 0.3198,
     gunZ: 0.75, gunLength: 5.95,
   }),
