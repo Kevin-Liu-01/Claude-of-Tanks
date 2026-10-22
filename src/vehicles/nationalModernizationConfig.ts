@@ -9,7 +9,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "package": "ua",
     "donor": "t80u",
     "model": 0,
-    "name": "T-80U Zoria (Concept)",
+    "name": "T-80U Zoria",
     "y": 1.565 - NATIONAL_TURRET_DROPS[0],
     "z": 0.07187
   },
@@ -19,7 +19,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "package": "ua",
     "donor": "t72b3m_2016",
     "model": 1,
-    "name": "T-72B3M Hetman (Concept)",
+    "name": "T-72B3M Hetman",
     "y": 1.545 - NATIONAL_TURRET_DROPS[1],
     "z": 0.114315
   },
@@ -29,7 +29,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "package": "ua",
     "donor": "t72b3",
     "model": 2,
-    "name": "T-72B3 Sich (Concept)",
+    "name": "T-72B3 Sich",
     "y": 1.475 - NATIONAL_TURRET_DROPS[2],
     "z": 0.065591
   },
@@ -39,7 +39,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "package": "pl",
     "donor": "t80u",
     "model": 0,
-    "name": "T-80U Husarz (Concept)",
+    "name": "T-80U Husarz",
     "y": 1.565 - NATIONAL_TURRET_DROPS[0],
     "z": 0.07187
   },
@@ -49,7 +49,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "package": "pl",
     "donor": "t72b3m_2016",
     "model": 1,
-    "name": "T-72B3M Wilk (Concept)",
+    "name": "T-72B3M Wilk",
     "y": 1.545 - NATIONAL_TURRET_DROPS[1],
     "z": 0.114315
   },
@@ -59,7 +59,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "package": "pl",
     "donor": "t72b3",
     "model": 2,
-    "name": "T-72B3 Zubr (Concept)",
+    "name": "T-72B3 Zubr",
     "y": 1.475 - NATIONAL_TURRET_DROPS[2],
     "z": 0.065591
   },
@@ -69,7 +69,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "package": "cn",
     "donor": "t80u",
     "model": 0,
-    "name": "T-80U Yun (Concept)",
+    "name": "T-80U Yun",
     "y": 1.565 - NATIONAL_TURRET_DROPS[0],
     "z": 0.07187
   },
@@ -79,7 +79,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "package": "cn",
     "donor": "t72b3m_2016",
     "model": 1,
-    "name": "T-72B3M Kunlun (Concept)",
+    "name": "T-72B3M Kunlun",
     "y": 1.545 - NATIONAL_TURRET_DROPS[1],
     "z": 0.114315
   },
@@ -89,7 +89,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "package": "cn",
     "donor": "t72b3",
     "model": 2,
-    "name": "T-72B3 Qilin (Concept)",
+    "name": "T-72B3 Qilin",
     "y": 1.475 - NATIONAL_TURRET_DROPS[2],
     "z": 0.065591
   },
@@ -99,7 +99,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "package": "ru",
     "donor": "t80u",
     "model": 0,
-    "name": "T-80U Bars-M (Concept)",
+    "name": "T-80U Bars-M",
     "y": 1.565 - NATIONAL_TURRET_DROPS[0],
     "z": 0.07187
   },
@@ -109,7 +109,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "package": "ru",
     "donor": "t72b3m_2016",
     "model": 1,
-    "name": "T-72B3M Bulat-M (Concept)",
+    "name": "T-72B3M Bulat-M",
     "y": 1.545 - NATIONAL_TURRET_DROPS[1],
     "z": 0.114315
   },
@@ -119,7 +119,7 @@ export const NATIONAL_MODERNIZATION_CONFIG = [
     "package": "ru",
     "donor": "t72b3",
     "model": 2,
-    "name": "T-72B3 Bastion-M (Concept)",
+    "name": "T-72B3 Bastion-M",
     "y": 1.475 - NATIONAL_TURRET_DROPS[2],
     "z": 0.065591
   }

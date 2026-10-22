@@ -14,7 +14,7 @@ const canonical = {
   'T-84BM Oplot-M': 't84bm_oplot_m',
   'ZTZ-85-III': 'ztz85_iii',
   'Type 96-72 Lóng (Concept)': 'type96_72_long',
-  'T-72B3M Hetman II (Concept)': 't72b3m_hetman_ii',
+  'T-72B3M Hetman II': 't72b3m_hetman_ii',
   'Challenger 2 (Ukraine)': 'ua_challenger2',
   'PL-01 (105)': 'pl01_105',
   'Merkava Mk 3C': 'merkava_mk3c',
@@ -37,7 +37,7 @@ assert.ok(accepts('M1A1 SA (Ukraine)', 'ua_m1a1'));
 assert.ok(accepts('BMP-3 (ROK)', 'bmp3_rok'));
 assert.ok(!accepts('Sabra Mk 2', 'mk2'), 'an Mk number never stands without its family word');
 assert.ok(!accepts('Challenger 1 Mk 2', 'challenger1_2'), 'a bare number glues only to a family word');
-assert.ok(!accepts('T-80U Bars-M (Concept)', 't80u_m'), 'a hyphenated name is one word');
+assert.ok(!accepts('T-80U Bars-M', 't80u_m'), 'a hyphenated name is one word');
 
 // The owner's Leopard example, its swap and the claim rule.
 const fleet = [
