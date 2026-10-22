@@ -318,6 +318,18 @@ function mbt70Armor() {
 // ---------------------------------------------------------------------------
 // Specs (the generator's source; the registry holds modern2Specs.generated.ts)
 // ---------------------------------------------------------------------------
+/**
+ * Release 240: the MBT-70's main gun by turret yaw, measured on the rebuilt vehicle (tools/gun-depression-sweep.mjs
+ * --ids=mbt70, the whole gun 26 mm off every hull mesh): the full 10 degrees dead ahead, where the old mantlet's chin had
+ * stopped it at -3 to -4.3 on the glacis ERA; -9 to -9.8 over the glacis array's front corners at 16-31 degrees and
+ * over the side plates abeam; and over the engine deck from 132 degrees, rising to +1.2 at 157-161 (the gun had no
+ * curve and passed through the deck there before).
+ */
+const MBT70_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -10], [14, -10], [15, -9.7], [18, -9.5], [20, -9.5],
+  [25, -9.8], [28, -9], [31, -9], [33, -10], [73, -10], [74, -9.9], [82, -9.9], [83, -10], [97, -10], [99, -9.9],
+  [106, -9.9], [107, -10], [130, -10], [132, -8.8], [138, -3.6], [141, -1.6], [142, -1.2], [147, 0.1], [150, 0.1],
+  [151, 0.9], [152, 1.1], [157, 1.2], [161, 1.2], [168, 1], [170, 0.5], [178, 0.5], [180, 0.2]] as const);
+
 // ztz99_longwei RE-LISTED 2026-08-08 (§5.38 owner priority wave: "fully model a
 // custom ztz99_longwei based on this model" — the Type 99A2 print drop VOIDS the
 // 2026-08-06 "no GLB" delist reason). The print is a LOCAL-ONLY measurement
@@ -476,6 +488,7 @@ export const MODERN2_SPECS: TankSpecRegistry = {
       compressionM: 0.65, droopM: 0.65,
     },
     turretTraverseDegS: 40, gunPitchDegS: 28, gunElevationDeg: 20, gunDepressionDeg: 10,
+    gunPitchByYawDeg: MBT70_GUN_PITCH_BY_YAW_DEG,
     gun: {
       caliberMm: 152, reloadS: 9.8, baseAccuracy: 0.30, aimTimeS: 1.9,
       bloom: { move: 0.07, hullRot: 0.08, turret: 0.06, afterShot: 2.0 },

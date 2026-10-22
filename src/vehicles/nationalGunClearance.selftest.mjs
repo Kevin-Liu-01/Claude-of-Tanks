@@ -60,6 +60,8 @@ const CURVES = {
   m1a2_abrams_sepv2: [],
   m1a2_abrams_sepv3: [],
   ua_m1a2_abrams: [],
+  // release 240: the rebuilt MBT-70 (its cast mantlet's chin raised over the glacis array, modern2.ts)
+  mbt70: [],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type
