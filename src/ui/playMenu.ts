@@ -1111,6 +1111,13 @@ export function createPlayMenu({
     const specId = getSelection().specId;
     return countryOfVehicle(specId, vehicles.find((vehicle) => vehicle.id === specId)?.nation);
   };
+  /**
+   * The arrangement the panel shows: the room's (in a lobby) or the player's stored one, over the mode defaults.
+   * (2026-10-21, the 231 Play menu) declared before the team-nations control: the control renders in its constructor and
+   * its enemyCountry reads this, so a later declaration threw "Cannot access before initialization" and no menu opened.
+   */
+  const currentArrangement = (mode: GameModeId): TeamArrangement | null =>
+    state && acceptsTeamArrangement(mode) ? (state.arrangement ?? null) : readTeamArrangement(mode);
   let teamsFromLobby = false;
   const teamsControl = createTeamNationsControl({
     read: () => (teamsFromLobby && state ? (state.arrangement?.teamNations === 'random' ? 'random' : 'mono') : readTeamNations()),
@@ -1143,9 +1150,6 @@ export function createPlayMenu({
   };
   const range = (from: number, to: number): Array<[string, string]> =>
     Array.from({ length: to - from + 1 }, (_, i) => [String(from + i), String(from + i)]);
-  /** The arrangement the panel shows: the room's (in a lobby) or the player's stored one, over the mode defaults. */
-  const currentArrangement = (mode: GameModeId): TeamArrangement | null =>
-    state && acceptsTeamArrangement(mode) ? (state.arrangement ?? null) : readTeamArrangement(mode);
   function refreshRuleLines(mode: GameModeId): void {
     const card = ruleButtons.find((button) => button.dataset.gameMode === mode);
     const lines = card?.querySelector<HTMLElement>('[data-rule-lines]');
