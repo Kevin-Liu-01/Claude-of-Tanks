@@ -1,14 +1,16 @@
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 :root{
   --cot-bg:#05080b;
   --cot-panel:#0b1014;
   --cot-panel-raised:#11181e;
-  --cot-ink:#edf3f7;
+  --cot-ink:var(--ink-1,#f6f3ec);
   --cot-copy:#b8c5ce;
   --cot-muted:#7f909d;
   --cot-line:rgba(161,181,196,.18);
   --cot-line-strong:rgba(161,181,196,.34);
-  --cot-amber:#f0a030;
-  --cot-gold:#ffd27a;
+  --cot-amber:var(--accent,#f0a030);
+  --cot-gold:var(--text-accent,#f0a030);
   --cot-cyan:#65d0dd;
   --cot-green:#6bd59c;
 }
@@ -62,49 +64,34 @@
 .media-lightbox button{min-width:42px;min-height:42px;border:1px solid var(--cot-line);background:transparent;color:var(--cot-gold);cursor:pointer;font-size:20px;transition:border-color var(--cot-motion-fast) ease,background-color var(--cot-motion-fast) ease,transform var(--cot-motion-fast) var(--cot-ease-out)}
 .media-lightbox button:active{transform:scale(.97)}
 
-body[data-cot-width='tablet'] .media-archive-grid,
-body[data-cot-width='compact'] .media-archive-grid,
-body[data-cot-width='phone'] .media-archive-grid{
+@media (width < 1100px){:root body .media-archive-grid{
   grid-template-columns:repeat(2,minmax(0,1fr))
-}
-body[data-cot-width='tablet'] .media-archive-card,
-body[data-cot-width='tablet'] .media-archive-card:nth-child(n),
-body[data-cot-width='compact'] .media-archive-card,
-body[data-cot-width='compact'] .media-archive-card:nth-child(n),
-body[data-cot-width='phone'] .media-archive-card,
-body[data-cot-width='phone'] .media-archive-card:nth-child(n){
+}}
+@media (width < 1100px){:root body .media-archive-card,
+:root body .media-archive-card:nth-child(n){
   grid-column:span 1;grid-row:auto;min-height:0;aspect-ratio:16/10
+}}
+@media (width < 1100px){:root body .media-archive-card:nth-child(7n+1){grid-column:1/-1;aspect-ratio:16/9}}
+
+@media (width < 768px){
+:root body .media-archive-toolbar{display:block}
+:root body .media-archive-status{justify-content:space-between;margin-top:12px}
+:root body .media-archive-count{display:block}
+:root body .media-archive-grid{display:block;background:transparent}
 }
-body[data-cot-width='tablet'] .media-archive-card:nth-child(7n+1),
-body[data-cot-width='compact'] .media-archive-card:nth-child(7n+1),
-body[data-cot-width='phone'] .media-archive-card:nth-child(7n+1){grid-column:1/-1;aspect-ratio:16/9}
+@media (width < 768px){:root body .media-archive-card,
+:root body .media-archive-card:nth-child(n){display:block;width:100%;margin-bottom:1px;aspect-ratio:16/10}}
+@media (width < 768px){
+:root body .media-archive-card-copy{left:13px;right:13px;bottom:12px}
+:root body .media-archive-card-copy small{display:none}
+}
+@media (width < 768px){:root body .media-archive--rail .media-archive-card,
+:root body .media-archive--rail .media-archive-card:nth-child(n){display:block;flex-basis:88vw;margin:0}}
+@media (width < 768px){:root body .media-lightbox figcaption{align-items:flex-end;padding:12px}}
 
-body[data-cot-width='compact'] .media-archive-toolbar,
-body[data-cot-width='phone'] .media-archive-toolbar{display:block}
-body[data-cot-width='compact'] .media-archive-status,
-body[data-cot-width='phone'] .media-archive-status{justify-content:space-between;margin-top:12px}
-body[data-cot-width='compact'] .media-archive-count,
-body[data-cot-width='phone'] .media-archive-count{display:block}
-body[data-cot-width='compact'] .media-archive-grid,
-body[data-cot-width='phone'] .media-archive-grid{display:block;background:transparent}
-body[data-cot-width='compact'] .media-archive-card,
-body[data-cot-width='compact'] .media-archive-card:nth-child(n),
-body[data-cot-width='phone'] .media-archive-card,
-body[data-cot-width='phone'] .media-archive-card:nth-child(n){display:block;width:100%;margin-bottom:1px;aspect-ratio:16/10}
-body[data-cot-width='compact'] .media-archive-card-copy,
-body[data-cot-width='phone'] .media-archive-card-copy{left:13px;right:13px;bottom:12px}
-body[data-cot-width='compact'] .media-archive-card-copy small,
-body[data-cot-width='phone'] .media-archive-card-copy small{display:none}
-body[data-cot-width='compact'] .media-archive--rail .media-archive-card,
-body[data-cot-width='compact'] .media-archive--rail .media-archive-card:nth-child(n),
-body[data-cot-width='phone'] .media-archive--rail .media-archive-card,
-body[data-cot-width='phone'] .media-archive--rail .media-archive-card:nth-child(n){display:block;flex-basis:88vw;margin:0}
-body[data-cot-width='compact'] .media-lightbox figcaption,
-body[data-cot-width='phone'] .media-lightbox figcaption{align-items:flex-end;padding:12px}
-
-body[data-cot-input='coarse'] .media-archive-filter,
-body[data-cot-input='coarse'] .media-archive-more,
-body[data-cot-input='coarse'] .media-lightbox button{min-height:44px}
+@media ((pointer: coarse) or (hover: none)){:root body .media-archive-filter,
+:root body .media-archive-more,
+:root body .media-lightbox button{min-height:44px}}
 
 @media(hover:hover) and (pointer:fine){
   .media-archive-filter:hover{color:var(--cot-ink);border-color:var(--cot-line-strong)}
@@ -114,3 +101,4 @@ body[data-cot-input='coarse'] .media-lightbox button{min-height:44px}
 }
 
 @media(prefers-reduced-motion:reduce){.media-archive-card img,.media-archive-filter,.media-archive-more,.media-lightbox button{transition:none}}
+}

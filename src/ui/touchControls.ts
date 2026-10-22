@@ -6,6 +6,7 @@ import { FONT_STACK, FONT_COND } from './fonts.ts';
 import { installPinchZoomGuard } from './pinchZoomGuard.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
+import { ensureStyle } from './styleLayers.ts';
 import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,
   MOBILE_PRESET_ORDER, PRESET_ORDER, PRESETS, resolvePresetName,
@@ -392,10 +393,7 @@ export function createTouchControls({
   input, bus, isBattleActive, isSniper = () => false, getFlightKind = () => undefined,
   onOpenSettings = () => {}, onToggleSound = () => false,
 }: TouchControlsOptions): TouchControlsRuntime {
-  if (!document.getElementById('cot-touch-style')) {
-    const style = document.createElement('style');
-    style.id = 'cot-touch-style'; style.textContent = CSS; document.head.appendChild(style);
-  }
+  ensureStyle('cot-touch-style', CSS, 'surfaces');
   const root = document.createElement('div');
   root.className = 'cot-touch';
   root.setAttribute('role', 'group');
@@ -405,7 +403,7 @@ export function createTouchControls({
   aimLayer.setAttribute('role', 'group');
   aimLayer.setAttribute('aria-label', t('touch.aimAria'));
   aimLayer.innerHTML = `<div class="aimpad" role="group" aria-label="${t('touch.aimHint')}"></div>` +
-    `<div class="aimhint">${t('touch.aimHint')}</div>`;
+    `<div class="aimhint" data-landscape="${t('touch.landscapeHint')}">${t('touch.aimHint')}</div>`;
   root.innerHTML = `<div class="mobile-chrome" role="toolbar" aria-label="${t('touch.toolbar')}">` +
     `<button class="quick sound" type="button" aria-label="${t('touch.mute')}">${SOUND}<span class="ql">${t('touch.sound')}</span></button>` +
     `<button class="quick graphics" type="button" aria-label="${t('touch.gfxAria')}">${GRAPHICS}<span class="ql">${t('touch.gfx')}</span></button>` +

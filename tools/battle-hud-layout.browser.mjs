@@ -29,9 +29,39 @@ const cases = [
   // the HUD's out-of-ammo marks among its furniture (r10, tools/fixtures/hud-sight-furniture.json): a mid ring's marks
   // reach the consumables at 800 x 400, and at 1280 x 431 the controls row sends the gun-limit chip over the sight
   ...[[800,400],[1280,431]].map(([w,h])=>[`mouse-${w}x${h}`,w,h,false,'en-US',{lite:true}]),
+  // BUI-F8 pseudo-locale: English about 40 % longer and accented (src/ui/i18nPseudo.ts, dev server ?pseudo=1). These
+  // and the Chinese cases also fail on clipped text (copy cut by its own box or a clipping ancestor).
+  ['pseudo-desktop',1920,1080,false,'en-US',{pseudo:true}],['pseudo-laptop',1366,768,false,'en-US',{pseudo:true}],
+  ['pseudo-phone',390,844,true,'en-US',{pseudo:true}],['pseudo-landscape',844,390,true,'en-US',{pseudo:true}],
 ];
 const states = ['idle','feed-burst','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','ended'];
 const reports=[];const errors=[];
+// Clipped copy (pseudo and Chinese cases): a text element whose own content overflows a box that hides overflow, or
+// whose text ends outside the nearest ancestor that clips. Only catalog copy counts — pseudo text (accented Latin-1 or
+// its middle-dot padding) or CJK — so names a design ellipsizes on purpose (players, vehicles) stay out of it. Kept out
+// of measure(), whose success path reads no styles.
+function clippedText(){
+  const localized=/[åçðéïñöþüýÅÇÐÉÏÑÖÞÜÝ·]|[\u3400-\u9fff]/;
+  const roots=[...document.querySelectorAll('.cot-hud,.cot-settings,.cot-es,.cot-end,.cot-touch,.cot-dp,.cot-minimap,.cot-si-toasthost,.cot-si-cardhost,.cot-kill-lane')];
+  const seen=new Set();const found=[];
+  const clips=(style)=>/(hidden|clip)/.test(style.overflowX+' '+style.overflow)||style.textOverflow==='ellipsis';
+  for(const root of roots)for(const el of root.querySelectorAll('*')){
+    if(seen.has(el))continue;seen.add(el);
+    const own=[...el.childNodes].filter(node=>node.nodeType===3&&node.nodeValue.trim()).map(node=>node.nodeValue.trim()).join(' ');
+    if(!own||!localized.test(own)||!el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))continue;
+    const style=getComputedStyle(el);
+    if(clips(style)&&el.scrollWidth>el.clientWidth+1){found.push(`clipped text: ${el.className||el.tagName} "${own.slice(0,48)}"`);continue;}
+    const range=document.createRange();range.selectNodeContents(el);const r=range.getBoundingClientRect();
+    if(r.width<1)continue;
+    for(let at=el.parentElement;at&&at!==document.body;at=at.parentElement){
+      if(!/(hidden|clip)/.test(getComputedStyle(at).overflowX))continue;
+      const box=at.getBoundingClientRect();
+      if(r.right>box.right+1||r.left<box.left-1){found.push(`clipped text: ${el.className||el.tagName} "${own.slice(0,48)}" cut by ${at.className||at.tagName}`);}
+      break;
+    }
+  }
+  return found;
+}
 // MOUSE CENTRE NOTICES (desk-notices, 2026-10-16: "Keep desktop centre notices off the crosshair"). On every mouse case
 // the detection, the alert (all 27 kinds; the four longest in every context), the countdown, the medal card and the
 // revive count are staged with 0 and 3 kill rows, in a kill burst, with 14 v 14 rosters, without an objective and in
@@ -351,6 +381,7 @@ function measure(state){
 }
 try {
   for (const [name,width,height,touch,locale='en-US',options={}] of cases) {
+    const pseudo=!!options.pseudo;
     if(arg('case','')&&!arg('case','').split(',').includes(name))continue;
     if(recordMain&&touch)continue;
     const context = await browser.newContext({viewport:{width,height},hasTouch:touch,isMobile:touch,
@@ -361,7 +392,7 @@ try {
       window.setTimeout=function(fn,ms,...rest){if(window.__stretchTimers&&[2400,3400,5200,6200].includes(ms))ms*=50;return later.call(this,fn,ms,...rest);};});
     const page=await context.newPage();
     page.on('pageerror',error=>errors.push(`${name}: ${error.message}`));
-    await page.goto(`${arg('url','http://127.0.0.1:5189')}/tools/fixtures/battle-hud-layout.html?locale=${locale}`,{waitUntil:'networkidle'});
+    await page.goto(`${arg('url','http://127.0.0.1:5189')}/tools/fixtures/battle-hud-layout.html?locale=${locale}${pseudo?'&pseudo=1':''}`,{waitUntil:'networkidle'});
     await page.waitForFunction(()=>!!window.__HUD_LAYOUT);
     // Exercise the real DOMTokenList/MutationObserver path. Removing a class
     // which is already absent still produces mutation records in browsers.
@@ -496,6 +527,7 @@ try {
     if(!touch&&(recordMain||options.lite||noticesOnly)){await centreNotices();await context.close();continue;}
     async function check(state){
       const result=await page.evaluate(measure,state);
+      if(pseudo||locale!=='en-US')result.failures.push(...await page.evaluate(clippedText));
       const score=result.rects.find(r=>r.name==='cot-top');
       const objective=result.rects.find(r=>r.name==='cot-mode-status show');
       if(score&&objective&&(objective.x<=score.x+25 || objective.right>=score.right-25))
@@ -569,7 +601,7 @@ try {
       }
       if(state==='notifications'||state==='combined'||state==='spectator'||state==='feed-burst'||result.failures.length)
         await page.screenshot({path:resolve(out,`${name}-${state}.png`)});
-      reports.push({name,...page.viewportSize(),touch,locale,state,...result});
+      reports.push({name,...page.viewportSize(),touch,locale,pseudo,state,...result});
       if(result.failures.length)console.log(`${name}/${state}: ${result.failures.join('; ')}`);
     }
     for(const state of states){

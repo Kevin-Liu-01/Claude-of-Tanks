@@ -36,6 +36,7 @@ import { createAssetLibrary, predecodeAssets, type AssetLibrary } from './assetL
 import { createMixer, type Mixer } from './mixer.ts';
 import { createVoicePool, type PlayOptions, type VoicePool } from './voicePool.ts';
 import { createCrewRadio, type CrewRadio } from './crewRadio.ts';
+import { CAPTION_EVENT, createCaptionStream, type CaptionSoundId } from './captions.ts';
 import { createAmbienceDirector, sceneAssets, type AmbienceDirector, type BellTower } from './ambienceDirector.ts';
 import { BELL_TOWERS, FLYOVER_BY_AIRCRAFT, GARAGE_SCENE, sceneForMap, type EnvironmentScene } from './environmentScenes.ts';
 import { propSoundAssets, propSoundRecipe } from './propSounds.ts';
@@ -485,6 +486,24 @@ export function createAudio({
   // ---- listener and battle context.
   const frame: ListenerFrame = { x: 0, y: 0, z: 0, fx: 0, fz: 1 };
   const rel: RelativePosition = { right: 0, up: 0, ahead: 0, distance: 0 };
+  // Captions (brand-ui SPEC 10 and 14, BUI-F9): every transmission the crew radio keys and the CAPTION_SOUNDS cues go out
+  // on the bus as 'audio:caption', with the speaker and the direction from the listener; the HUD's renderer shows them
+  // when the player turns captions on (src/audio/captions.ts).
+  let captionBus: EventBus | null = null;
+  const captions = createCaptionStream({
+    emit: (event) => { captionBus?.emit(CAPTION_EVENT, event); },
+    now: () => ctx?.currentTime ?? 0,
+  });
+  const captionRel: RelativePosition = { right: 0, up: 0, ahead: 0, distance: 0 };
+  /** Caption a cue heard at a world point (its direction from the listener), or inside our own tank (no point); a cue
+   *  whose sound is scheduled later (a shell's crack as it passes, an aircraft's pass) is captioned when it is heard. */
+  function caption(id: CaptionSoundId, x?: number, y?: number, z?: number, delayS = 0): void {
+    if (delayS > 0.05) { setTimeout(() => caption(id, x, y, z), delayS * 1000); return; }
+    if (phase !== 'battle' || battleOver) return;
+    if (x === undefined || y === undefined || z === undefined || !listenerValid) { captions.sound(id, null); return; }
+    toListenerFrame(frame, x, y, z, captionRel);
+    captions.sound(id, captionRel);
+  }
   let listenerValid = false;
   let listenerKind: AudioListenerPose['kind'] = 'camera';
   let listenerOwnerId: string | null = null;
@@ -876,6 +895,7 @@ export function createAudio({
     const velocity = event.velocityMps && event.velocityMps > 0 ? event.velocityMps : launcher ? 280 : 900;
     if (launcher && miss < 30 && !sameTeam(event.shooterId, playerId) && playerId && tanks.get(playerId)?.alive !== false) {
       play('missile_warning', { delayS: 0 });
+      caption('missileWarning', mp[0], mp[1], mp[2]);
       say('missile_incoming', { delayS: 0.05 });
     }
     if (miss > reach) return;
@@ -884,6 +904,7 @@ export function createAudio({
       : event.shellType === 'HE' || event.shellType === 'HEAT' ? 'shell_flyby_he' : 'shell_flyby_sabot';
     const lead = asset === 'bullet_crack' ? 0.01 : 0.12;
     play(asset, { x: cx, y: cy, z: cz, propagate: false, delayS: Math.max(0, passIn - lead), gainDb: -3 * (miss / reach), priority: 82 });
+    if (!sameTeam(event.shooterId, playerId)) caption('nearMiss', cx, cy, cz, Math.max(0, passIn - lead));
     if (!small && !launcher && miss < 9 && !sameTeam(event.shooterId, playerId)) say('near_miss', { prob: 0.25, delayS: passIn + 0.25 });
   }
 
@@ -891,6 +912,10 @@ export function createAudio({
     const ownShot = listenerOwnerId != null ? event.shooterId === listenerOwnerId : !!event.isPlayer;
     if (!event.feedbackPredicted) fireWeapon(event.muzzlePos, event.caliberMm, event.weaponSound, ownShot, event.muzzleIndex, false, event.shooterId, event.shellName ?? null);
     if (!ownShot) shellFlyby(event);
+    if (!ownShot && event.caliberMm >= 20 && !sameTeam(event.shooterId, playerId) && listenerValid) {
+      const [gx, gy, gz] = event.muzzlePos;
+      if (distanceTo(gx, gy, gz) < 350) caption('gunfire', gx, gy, gz);
+    }
     if (event.isPlayer) {
       if (/launch/.test(String(event.weaponSound || ''))) say('missile_away', { delayS: 0.1 });
       else say('firing', { prob: 0.1, delayS: 0.08 });
@@ -1150,8 +1175,13 @@ export function createAudio({
     logSound('shell:hit', { id: event.shellId, kind: event.kind, targetId: event.targetId, attackerId: event.attackerId, occupied: ownHull, damage: event.damage || 0 });
     if (playerId == null) return;
     if (event.targetId === playerId && (event.damage || 0) > 0) { damagedSinceStatus = true; hitOnUsAt = ctx?.currentTime ?? 0; movedSinceHit = false; }
-    if (event.targetId === playerId) reportIncoming(event);
-    else if (event.attackerId === playerId) reportOutgoing(event);
+    if (event.targetId === playerId) {
+      // where the round came from: the shooter when we know it, else the strike on our hull
+      const from = event.attackerId ? tanks.get(event.attackerId)?.pos : undefined;
+      const [hx, hy, hz] = from ? [from.x, from.y, from.z] : event.pos;
+      caption((event.damage || 0) > 0 ? 'hullHit' : 'hullBounce', hx, hy, hz);
+      reportIncoming(event);
+    } else if (event.attackerId === playerId) reportOutgoing(event);
   }
 
   function onShellExpired(event: ShellExpiredEvent): void {
@@ -1234,6 +1264,7 @@ export function createAudio({
       // (physics lane, 2026-10-10) the turret's landing plays where and when its body hits (bindBus: onTurretLanding)
     }
     if (!cinematic && cause !== 'fire' && event.id !== playerId) blastNearHull(distanceTo(x, y, z), cause === 'ammorack' ? 160 : 110);
+    if (!cinematic && event.id !== playerId && listenerValid && distanceTo(x, y, z) < 600) caption('explosion', x, y, z);
     if (!cinematic && ctx) {
       const now = ctx.currentTime;
       const voices: ReturnType<VoicePool['play']>[] = [];
@@ -1459,11 +1490,11 @@ export function createAudio({
     if (event.id === playerId && event.module === 'radio') radio?.setRadioDamage(rank(event.state) as 0 | 1 | 2);
     if (playerId == null || event.id !== playerId || phase !== 'battle') return;
     if (event.source === 'hit') {
-      if (worse && event.module === 'ammoRack') play('alarm_ammo', { delayS: 0.01 });
+      if (worse && event.module === 'ammoRack') { play('alarm_ammo', { delayS: 0.01 }); caption('ammoRack'); }
       return;
     }
     if (worse) {
-      if (event.module === 'ammoRack') play('alarm_ammo', { delayS: 0.01 });
+      if (event.module === 'ammoRack') { play('alarm_ammo', { delayS: 0.01 }); caption('ammoRack'); }
       const call = event.module === 'engine' && event.state === 'red' ? 'engine_destroyed' : MODULE_CALL[event.module];
       const track = event.module === 'trackL' || event.module === 'trackR';
       if (call && (event.state === 'red' || !track)) say(call, { delayS: 0.1 });
@@ -1663,6 +1694,7 @@ export function createAudio({
         heartbeatBelow = frac;
         heartbeatRig?.stop();
         heartbeatRig = loopRig('heartbeat_loop', { maxDurS: 6 });
+        caption('criticalDamage');
       }
     }
     // First move after rollout.
@@ -2213,7 +2245,8 @@ export function createAudio({
       seed: interfaceSeed });
     pool = createVoicePool({ mixer, library, random, budget: budget.voices, reverb: budget.reverb });
     pool.setOcclusionProbe((x, y, z) => occlusionAt(x, y, z));
-    radio = createCrewRadio({ mixer, library, random });
+    radio = createCrewRadio({ mixer, library, random,
+      onTransmit: (id, take, lang, durationS, priority) => { captions.radio(id, take, lang, durationS, priority); } });
     // Bells wait for the rollout: the countdown's frozen pre-battle (and every probe that holds a battle there) never tolls.
     ambience = createAmbienceDirector({ mixer, library, pool, random, getBellTowers: currentBellTowers, bellsAllowed: () => rolledOut });
     library.pin([...UI_SET, ...RADIO_SET]);
@@ -2283,6 +2316,7 @@ export function createAudio({
   }
 
   function bindBus(bus: EventBus): void {
+    captionBus = bus;
     const on = <T>(event: string, listener: (payload: T) => void): void => {
       bus.on(event, (payload) => { if (ready()) listener(payload as T); });
     };
@@ -2325,7 +2359,10 @@ export function createAudio({
       structureLayers(structureStageSounds(e.stage, sound), x, y, z,
         collapse ? STRUCTURE_FAR.collapse : e.stage === 'breached' ? STRUCTURE_FAR.breach : null);
       // a building coming down near us is news to the crew
-      if (collapse && listenerValid && distanceTo(x, y, z) < 160) say('building_down', { prob: 0.7, delayS: 0.9 });
+      if (collapse && listenerValid && distanceTo(x, y, z) < 160) {
+        caption('collapse', x, y, z);
+        say('building_down', { prob: 0.7, delayS: 0.9 });
+      }
       logSound('structure:stage', { id: e.structureId, stage: e.stage, material: sound.material });
     });
     // a section falling inside a standing building (P2): the roof caving in, a storey dropping, a wall panel going
@@ -2347,6 +2384,7 @@ export function createAudio({
           playerBurning = true;
           fireAlarm?.stop();
           fireAlarm = loopRig('alarm_fire_loop');
+          caption('fire');
           say('fire');
         } else if (!e.burning && playerBurning) {
           playerBurning = false;
@@ -2490,6 +2528,7 @@ export function createAudio({
         const vv = e.v[0] * e.v[0] + e.v[1] * e.v[1] + e.v[2] * e.v[2];
         const tc = vv > 1e-6 ? clamp(((frame.x - e.p0[0]) * e.v[0] + (frame.y - e.p0[1]) * e.v[1] + (frame.z - e.p0[2]) * e.v[2]) / vv, 0, half * 2) : 0;
         if (distanceTo(e.p0[0] + e.v[0] * tc, e.p0[1] + e.v[1] * tc, e.p0[2] + e.v[2] * tc) < 900) {
+          caption('aircraft', e.p0[0] + e.v[0] * tc, e.p0[1] + e.v[1] * tc, e.p0[2] + e.v[2] * tc, Math.max(0, half - 3.5));
           say('aircraft_overhead', { prob: 0.5, delayS: clamp(tc - 2, 0, 5) });
         }
       }
@@ -2814,6 +2853,7 @@ export function createAudio({
       get ctx() { return ctx; },
       get voiceLog() { return radio?.log ?? []; },
       get sayLog() { return sayLog; },
+      get captionLog() { return captions.log; },
       get voicesLoaded() { return !!radio && !!library?.voiceReady(radio.language); },
       get crewLanguage() { return radio?.language ?? null; },
       get sfxLog() { return pool?.log ?? []; },

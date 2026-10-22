@@ -26,7 +26,7 @@ interface EndOverlayOptions {
 
 export function endRecordMarkup(record: BattleRecord | null): string {
   if (!record) return '';
-  const killsText = record.kills === 1 ? t('endOverlay.kills.one') : t('endOverlay.kills.many', { count: formatNumber(record.kills) });
+  const killsText = t('endOverlay.kills', { count: record.kills });
   return `<span style="color:#ffd27a">${killsText}</span>`
     + `<span style="margin-left:14px;color:#cfd9e2">${t('endOverlay.damage', { count: formatNumber(record.damage) })}</span>`;
 }
@@ -61,6 +61,7 @@ export function createEndOverlayRuntime({
     + 'text-shadow:0 1px 8px rgba(0,0,0,0.8);';
   const returnButton = ownerDocument.createElement('button');
   returnButton.textContent = t('endOverlay.returnToGarage');
+  returnButton.dataset.uiSound = 'back';
   returnButton.style.cssText =
     'font-size:16px;font-weight:700;letter-spacing:0.2em;padding:14px 44px;cursor:pointer;'
     + 'color:#fff7ea;border:1px solid #ffc169;background:linear-gradient(180deg,#ffa02e,#d95f00);';

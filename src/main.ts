@@ -104,7 +104,6 @@ import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
 import { setDestroyedEventSink } from './world/destructibles.ts';
 import {
   MAP_IDS,
-  getMapName,
   getLocalizedMapName,
   resolveMapId,
 } from './world/maps/catalog.ts';
@@ -229,6 +228,7 @@ import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
+import { installAccessibility } from './ui/accessibilityPreferences.ts';
 import { installPinchZoomGuard } from './ui/pinchZoomGuard.ts';
 import {
   spawnTanks, ensureStagedVisuals, ensureStagedVisualsSteps, nextStagedBake, planBattleParticipantIds,
@@ -394,6 +394,9 @@ installResponsiveLayout();
 // Browser pinch-zoom is never a page zoom here (2026-09-20; the guard used to exist only inside the touch
 // controls). index.html's inline copy guards the splash from first paint; this hands over from it (2026-10-15).
 installPinchZoomGuard();
+// The player's accessibility choices (text and HUD size, colour preset, contrast, motion, shake, flash, toggles):
+// index.html seeded them on :root before first paint; from here they stay live (src/ui/accessibilityPreferences.ts).
+installAccessibility();
 // Apply static i18n attributes to the boot screen so the credits button,
 // gate prompt, and retry button respect the active locale from first paint.
 bindStaticI18nAuto();
@@ -2219,7 +2222,7 @@ const networkBattleIntentCover = createIntentCover({
   battleLoad,
   rosterRows: rosterPresentation.lobbyRows,
   getMapPresentation: (mapId, fallback) => ({
-    name: mapId ? getMapName(mapId) : fallback,
+    name: mapId ? getLocalizedMapName(mapId) : fallback,
     thumb: mapId ? battleBackdrop(mapId) : '',
     biome: mapId || 'none',
   }),
@@ -2323,7 +2326,7 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     deployment: soloBattleDeployment,
     lifecycle: battleEntryLifecycle,
     getPendingMapId: () => worldRuntime.pendingMapId,
-    getMapName,
+    getMapName: getLocalizedMapName, // the loading screen names the battlefield in the active locale (BUI-F8)
     loadMapConfig: (mapId: string) => import('./world/maps/index.ts')
       .then(({ getMapConfig }) => getMapConfig(mapId)),
     getMapThumb: (mapId: string) => battleBackdrop(mapId),
@@ -2579,7 +2582,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
         roster: {
           getMap: (mapId: string) => {
             return {
-              name: getMapName(mapId),
+              name: getLocalizedMapName(mapId),
               thumb: battleBackdrop(mapId),
               biome: mapId,
             };
@@ -2996,7 +2999,7 @@ const soloBattleEntry = createSoloBattleEntryRuntime({
   describePendingMap: (specId: string, mapId: string | null) => {
     const resolved = battleIntent.peekMap(specId, mapId || worldRuntime.pendingMapId);
     return (MAP_IDS as readonly string[]).includes(resolved)
-      ? { mapId: resolved, mapName: getMapName(resolved), thumb: battleBackdrop(resolved) } : null;
+      ? { mapId: resolved, mapName: getLocalizedMapName(resolved), thumb: battleBackdrop(resolved) } : null;
   },
   // Entry resilience (2026-09-25): the reason reaches the player over the
   // recovered Garage, and the beacon, instead of only the console.

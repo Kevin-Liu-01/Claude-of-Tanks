@@ -19,7 +19,8 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 import { MAX_BATTLE_NOTIFICATIONS } from './battleHudLayout.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
-import { createElement as el, ensureStyle } from './dom.ts';
+import { createElement as el } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import {
   hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
   type HitEventPresentation,
@@ -28,7 +29,7 @@ import {
 import { uiIconSVG } from './uiIcons.ts';
 import { maskIcon, iconUrl } from './icons.ts';
 import { schematicUrl as prepareSchematicUrl } from './shotSchematicClient.ts';
-import { MODULE_LABEL } from './moduleRegistry.ts';
+import { moduleName } from './moduleRegistry.ts';
 import {
   createShotDiagramProjection,
   impactForShotDiagram,
@@ -41,6 +42,7 @@ import {
   presentationProjectionFor,
 } from '../vehicles/presentationAnchors.generated.ts';
 import { getMapConfig } from '../world/maps/index.ts';
+import { getLocalizedMapName, isMapId } from '../world/maps/catalog.ts';
 // END SCREEN (killcam_endscreen r1): the full-screen battle report is now the
 // cinematic end screen in src/ui/endScreen.ts — this module keeps ALL the
 // bookkeeping (resolved-event sums, REPORT GATE) and hands a summary over.
@@ -296,9 +298,6 @@ function presentationSpec(id: string): PresentationTankSpec {
   return getSpec(id) as PresentationTankSpec;
 }
 
-function registryLabel(registry: Readonly<Record<string, string>>, id: string): string {
-  return registry[id] || id;
-}
 
 
 const COL = {
@@ -314,7 +313,7 @@ const SHELL_TYPE_COLOR: Readonly<Record<string, string>> = {
   APFSDS: '#ffc46b', HESH: '#ffb02e',
 };
 
-// MODULE_LABEL / CREW_LABEL come from ui/moduleRegistry.ts (single source —
+// Module names come from ui/moduleRegistry.ts moduleName() (the glossary-bound catalog; single source —
 // this file's local copy had already drifted to 'Fuel' vs the killcam's
 // 'Fuel Tank').
 
@@ -759,8 +758,8 @@ function appendShotCardSubtitle(card: HTMLDivElement, ev: ShotHitEvent): void {
 function armorPresentation(ev: ShotHitEvent): string {
   if (ev.kind === 'screen_pierce') {
     return ev.physicalMm && ev.physicalMm > 0
-      ? `${Math.round(ev.physicalMm)} mm screen`
-      : 'screen';
+      ? t('shotInfo.screenMm', { mm: Math.round(ev.physicalMm) })
+      : t('shotInfo.screen');
   }
   // a glance off the face tests no thickness: the plate and the angle it glanced at, not "→ 0 mm eff."
   if (ev.kind === 'ricochet' && (ev.nominalMm || ev.physicalMm || 0) > 0) {
@@ -770,11 +769,11 @@ function armorPresentation(ev: ShotHitEvent): string {
   }
   const hasArmor = (ev.nominalMm || 0) > 0 || (ev.effectiveMm || 0) > 0;
   if (hasArmor) {
-    return `${Math.round(ev.nominalMm || 0)} → ${Math.round(ev.effectiveMm || 0)} mm eff.`;
+    return t('shotInfo.armorEffective', { nominal: Math.round(ev.nominalMm || 0), effective: Math.round(ev.effectiveMm || 0) });
   }
   const external = !!ev.zone
     && ['optics', 'gun', 'gun_barrel', 'trackL', 'trackR'].includes(ev.zone);
-  return external ? 'external — no armor' : '—';
+  return external ? t('killcam.externalNoArmor') : '—';
 }
 
 function penetrationQualifier(
@@ -782,11 +781,11 @@ function penetrationQualifier(
   nominal: number,
   roll: number,
   fresh: number,
-): string {
-  if (ev.eraPlate) return 'ERA';
+): '' | 'era' | 'screens' {
+  if (ev.eraPlate) return 'era';
   const cut = fresh > roll + 1;
   return roll > 0 && (cut || (nominal > 0 && roll < nominal * 0.75 - 2))
-    ? 'SCREENS'
+    ? 'screens'
     : '';
 }
 
@@ -795,7 +794,7 @@ function penetrationPresentation(
   ev: ShotHitEvent,
 ): PenetrationPresentation {
   if (ev.kind === 'screen_pierce') {
-    return { html: 'passed through', qualifier: '', legend: '' };
+    return { html: t('shotInfo.passedThrough'), qualifier: '', legend: '' };
   }
   const nominal = nominalPenFor(ev);
   const roll = Math.round(ev.penRollMm || 0);
@@ -806,8 +805,8 @@ function penetrationPresentation(
   const qualifier = penetrationQualifier(ev, nominal, roll, fresh);
   const arrow = cut ? `${fresh} → ` : '';
   const legend = cut
-    ? `fresh → after ${qualifier === 'ERA' ? 'ERA' : 'screens'} / nominal`
-    : roll > 0 && nominal > 0 ? 'roll / nominal' : '';
+    ? t('killcam.legend.fresh', { tag: t(qualifier === 'era' ? 'killcam.era' : 'killcam.screens') })
+    : roll > 0 && nominal > 0 ? t('killcam.legend.roll') : '';
   if (roll <= 0 || nominal <= 0) {
     return {
       html: roll > 0 ? `${arrow}${roll} mm` : '—',
@@ -993,7 +992,7 @@ export function mergeEndRosterRow(
  */
 export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   ensureFonts();
-  ensureStyle('cot-si-style', SI_CSS);
+  ensureStyle('cot-si-style', SI_CSS, 'surfaces');
 
   const root = el('div', 'cot-si');
   const cardHost = el('div', 'cot-si-cardhost', root);
@@ -1251,25 +1250,27 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
 
     const body = el('div', 'cot-si-body', card);
     const rows = el('div', 'cot-si-rows', body);
-    const kv = (k: string, v: string, cls = ''): HTMLDivElement => {
+    // A row's glyph comes from its code name, its label from the catalog (BUI-F8: no English labels in zh).
+    const kv = (glyph: string, label: string, v: string, cls = ''): HTMLDivElement => {
       const r = el('div', `cot-si-kv${cls ? ` ${cls}` : ''}`, rows);
-      r.innerHTML = `<span class="cot-si-k">${GLYPH[k.toLowerCase()] || ''}<span>${k}</span></span><b>${v}</b>`;
+      r.innerHTML = `<span class="cot-si-k">${GLYPH[glyph] || ''}<span>${label}</span></span><b>${v}</b>`;
       return r;
     };
     const missileSplash = weaponHitKind(ev) === 'missile' && ev.kind === 'he_splash';
-    if (!missileSplash) kv('Angle', `${Math.round(ev.impactAngleDeg || 0)}°`, 'w');
-    if (!missileSplash) kv('Armor', armorPresentation(ev), 'w armor');
+    if (!missileSplash) kv('angle', t('shotInfo.angle'), `${Math.round(ev.impactAngleDeg || 0)}°`, 'w');
+    if (!missileSplash) kv('armor', t('killcam.stat.armor'), armorPresentation(ev), 'w armor');
     const penetration = penetrationPresentation(card, ev);
     // (a reference plate on the proving ground has no hull: no damage and no roll, no row)
-    if ((ev.damage || 0) > 0 || (ev.dmgRoll || 0) > 0) kv('Damage', `${Math.round(ev.damage || 0)} / ${Math.round(ev.dmgRoll || 0)}`, 'w');
-    if (weaponHitKind(ev) === 'missile') kv(t('shotInfo.range'), `${Math.round(ev.flightDistM || 0)} m`, 'w');
+    if ((ev.damage || 0) > 0 || (ev.dmgRoll || 0) > 0) kv('damage', t('killcam.stat.damage'), `${Math.round(ev.damage || 0)} / ${Math.round(ev.dmgRoll || 0)}`, 'w');
+    if (weaponHitKind(ev) === 'missile') kv('range', t('shotInfo.range'), `${Math.round(ev.flightDistM || 0)} m`, 'w');
     if (!missileSplash) {
-      const r = kv('Pen', penetration.html + (penetration.qualifier
-        ? `<span class="q" style="color:${penetration.qualifier === 'ERA' ? COL.yellow : '#9fb0bf'}">${penetration.qualifier}</span>`
+      const r = kv('pen', t('killcam.stat.pen'), penetration.html + (penetration.qualifier
+        ? `<span class="q" style="color:${penetration.qualifier === 'era' ? COL.yellow : '#9fb0bf'}">${
+          t(penetration.qualifier === 'era' ? 'killcam.era' : 'killcam.screens')}</span>`
         : ''), 'w pen');
       r.title = penetration.legend
-        ? `Penetration (mm): ${penetration.legend}`
-        : 'Penetration roll at impact';
+        ? t('killcam.penTitle', { legend: penetration.legend })
+        : t('killcam.penTitleRoll');
     }
     const diag = diagramFor(ev, cls);
     if (diag) {
@@ -1493,14 +1494,15 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   }
 
   function summaryMapName(): string | null {
-    let mapName = endInfo?.map || null;
-    if (!mapName) return null;
+    const mapId = endInfo?.map || null;
+    if (!mapId) return null;
+    // The battlefield's name in the active locale (map.<id>, BUI-F8); a removed map keeps its config name or raw id.
+    if (isMapId(mapId)) return getLocalizedMapName(mapId);
     try {
-      mapName = getMapConfig(mapName).name || mapName;
+      return getMapConfig(mapId).name || mapId;
     } catch (_) {
-      // Preserve the raw id when a replay references a removed map.
+      return mapId;
     }
-    return mapName;
   }
 
   function summaryTime(): number {
@@ -1646,7 +1648,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     if ((ev.damage || 0) <= 0 && outcome.blocked) stats.blocked += ev.dmgRoll || 0;
     const mods = (ev.modulesHit || [])
       .filter((module) => module.newState === 'red')
-      .map((module) => registryLabel(MODULE_LABEL, module.module))
+      .map((module) => moduleName(module.module))
       .join(', ');
     receivedLog.push({
       t: ev.timeS || 0,

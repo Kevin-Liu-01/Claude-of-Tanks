@@ -85,6 +85,7 @@ import { DESTRUCTION_BUS_EVENTS, type MunitionBlastEvent, type StructureBreachEv
 import { munitionChargeKg, munitionClassForShell, cookOffChargeKg, craterFor } from '../sim/munitionBlast.ts';
 import type { MunitionClass } from '../sim/destructionEvents.ts';
 import { getDeviceTier, onPresetChange, resolvePresetName } from '../engine/quality.ts';
+import { A11Y } from '../ui/accessibilityPreferences.ts';
 
 type Rng = () => number;
 type MutableVec3 = [number, number, number];
@@ -1367,7 +1368,8 @@ function* createFxSteps(
     }
     const age = lightAge(state);
     const k = Math.max(0, 1 - age / state.dur);
-    let v = state.peak * Math.pow(k, state.pow || 2);
+    // the Accessibility flash intensity (A11Y.flash, 0-1) scales every pulse of the muzzle and blast lights
+    let v = state.peak * Math.pow(k, state.pow || 2) * A11Y.flash;
     // r7 fire-moment exposure wash (critic: "at ignition the flash glow +
     // dust veil bleach the firing tank and ~half the frame to cream"): the
     // muzzle light ATTACKS over ~40 ms instead of stamping full peak on the
@@ -1703,6 +1705,19 @@ function* createFxSteps(
   let extraLateFxActive: (() => boolean) | null = null;
   // Studio night exposure scale for the pooled muzzle light (always 1 in battle).
   let muzzleLightScale = 1;
+  // The additive flash and jet cards' intensity: their built value x the Studio's night exposure (setMuzzleExposure,
+  // 1 in battle) x the player's flash intensity (A11Y.flash), re-applied when either moves.
+  const muzzleCardBase = new Map<THREE.ShaderMaterial, number>();
+  let muzzleCardScale = 1;
+  let appliedCardFlash = 1;
+  function applyFlashCardIntensity(): void {
+    appliedCardFlash = A11Y.flash;
+    for (const pool of ['flash', 'jet'] as const) {
+      const material = particles.pools[pool].mesh.material as THREE.ShaderMaterial;
+      if (!muzzleCardBase.has(material)) muzzleCardBase.set(material, material.uniforms.uIntensity.value);
+      material.uniforms.uIntensity.value = (muzzleCardBase.get(material) ?? 1) * muzzleCardScale * appliedCardFlash;
+    }
+  }
   // (fx 9) the Studio's cinematic quality writes the pools' scene tint itself (FxCinematicPort.setLightTintShading)
   let cinematicTintOwner = false;
   group.userData.softParticles = {
@@ -4358,6 +4373,7 @@ function* createFxSteps(
   }
 
   function updateClockDrivenLights(): void {
+    if (A11Y.flash !== appliedCardFlash) applyFlashCardIntensity();
     for (const st of lightStates) applyLight(st);
     for (const ring of shockRings) applyShockRing(ring);
     for (const ring of muzzleRings) applyMuzzleRing(ring);
@@ -6140,7 +6156,6 @@ function* createFxSteps(
   }) : null;
 
   let cinematicPortState: FxCinematicPort | null = null;
-  const muzzleCardBase = new Map<THREE.ShaderMaterial, number>();
   const fx: FxRuntime = {
     group,
 
@@ -7513,11 +7528,8 @@ function* createFxSteps(
         setLightTintShading: (on) => { cinematicTintOwner = on; },
         setMuzzleExposure: (light, cards) => {
           muzzleLightScale = light;
-          for (const pool of ['flash', 'jet'] as const) {
-            const material = particles.pools[pool].mesh.material as THREE.ShaderMaterial;
-            if (!muzzleCardBase.has(material)) muzzleCardBase.set(material, material.uniforms.uIntensity.value);
-            material.uniforms.uIntensity.value = (muzzleCardBase.get(material) ?? 1) * cards;
-          }
+          muzzleCardScale = cards;
+          applyFlashCardIntensity();
         },
         stampTrackPrint,
       };

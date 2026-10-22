@@ -1,0 +1,14 @@
+/* The shared player's control (src/presentation/mediaPlayer.ts; brand-ui SPEC 8.3, BUI-F7): a pause disc on a loop
+   that runs longer than five seconds, an amber play disc when motion waits for the viewer (reduced motion, data saving,
+   a crowded-out loop). The public pages load it with the player, beside their first bytes; each page places it. */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer components{
+.cot-media-toggle{position:absolute;z-index:var(--media-toggle-z);right:12px;bottom:12px;display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid var(--line-control);border-radius:50%;background:var(--scrim);color:var(--ink-1);cursor:pointer;box-shadow:var(--e2);transition:background-color var(--dur-base) var(--ease-enter),border-color var(--dur-base) var(--ease-enter),color var(--dur-base) var(--ease-enter)}
+.cot-media-toggle svg{display:block;width:16px;height:16px}
+.cot-media-toggle[data-state=paused]{border-color:transparent;background:var(--accent);color:var(--ink-on-accent)}
+.cot-media-toggle:hover{border-color:var(--accent);color:var(--accent-hi)}
+.cot-media-toggle[data-state=paused]:hover{background:var(--accent-hi);color:var(--ink-on-accent)}
+.cot-media-toggle:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.cot-media-toggle[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){.cot-media-toggle{transition:none}}
+}

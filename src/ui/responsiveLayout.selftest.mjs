@@ -18,7 +18,7 @@ const RESPONSIVE_SURFACES_CSS = await readFile(
 );
 const GARAGE_CSS = await readFile(new URL('./garage.css', import.meta.url), 'utf8');
 const INDEX_HTML = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
-const HOME_CSS = await readFile(new URL('../../public/home.css', import.meta.url), 'utf8');
+const HOME_CSS = await readFile(new URL('../presentation/home.css', import.meta.url), 'utf8');
 const GALLERY_CSS = await readFile(new URL('../gallery/gallery.css', import.meta.url), 'utf8');
 const PUBLIC_NAV_CSS = await readFile(new URL('../presentation/publicNav.css', import.meta.url), 'utf8');
 

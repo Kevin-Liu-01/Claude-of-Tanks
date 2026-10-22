@@ -1,3 +1,5 @@
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 body[data-cot-width] .cot-es.cot-es--record *{box-sizing:border-box;min-width:0}
 /* The debrief keeps result, personal highlights, rewards and team detail distinct. */
 body[data-cot-width] .cot-es.cot-es--record{box-sizing:border-box;justify-content:flex-start;gap:0;padding:clamp(12px,3vh,30px) max(16px,calc((100vw - 1280px)/2));overflow:hidden;pointer-events:auto;background:linear-gradient(90deg,#070e16f0,#070e1690 65%,#070e16d9),linear-gradient(0deg,#070e16 0%,#070e1633 100%),var(--report-map,none) center/cover no-repeat #080f16}
@@ -34,7 +36,7 @@ body[data-cot-width] .cot-es.cot-es--record .es-awards .aw b{white-space:normal;
 body[data-cot-width] .cot-es.cot-es--record .es-best{margin:18px 20px;background:linear-gradient(110deg,#5e472327,#16222dc9);border:1px solid #a68b5366}
 .cot-es--record .es-combat-details{padding:0 20px 18px}.cot-es--record .es-combat-details>summary{cursor:pointer;min-height:48px;display:flex;align-items:center;gap:10px;border-top:1px solid #ffffff18;color:#a8bdcc;font-size:12px;font-weight:700}.cot-es--record .es-combat-details>summary::before{content:'+';color:#f1b85f;font-size:22px}.cot-es--record .es-combat-details[open]>summary::before{content:'−'}
 body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{border:0;background:transparent;margin:16px 20px;gap:10px}.cot-es--record .es-combat-details .es-mini{padding:14px}.cot-es--record .es-combat-details .es-blow{font-size:12px;margin:10px 0;color:#9db4c5}
-body[data-cot-width] .cot-es.cot-es--record .es-kill-block{flex:none;min-height:0;padding:0}.cot-es--record .es-kl{max-height:none}
+body[data-cot-width] .cot-es.cot-es--record .es-kill-block{flex:none;min-height:0;padding:0}
 body[data-cot-width] .cot-es.cot-es--record .es-scoreboard{padding:22px;margin:0;background:transparent;border:0;border-bottom:1px solid #ffffff20}
 body[data-cot-width] .cot-es.cot-es--record .es-rosters{flex:none;min-height:0;padding:20px;gap:20px}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-list{overflow:visible;max-height:none;flex:none}
@@ -81,3 +83,4 @@ body[data-cot-width] .cot-es.cot-es--record :is(.es-tr,.es-room-player,.es-campa
 body[data-cot-width] .cot-es.cot-es--record .es-tr.me{border-color:#c89a5066;background:linear-gradient(90deg,#a2792920,#a2792908)}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-list{border-top-color:#93a5b438}
 body[data-cot-width] .cot-es.cot-es--record .es-report .es-rematch{border:1px solid #93a5b438}
+}

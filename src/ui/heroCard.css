@@ -9,6 +9,8 @@
    expression in container units: the core fills its share unless the whole tank would cross the 6 %
    side margins, then it slides back inside; the contact line sits 2 px under the art box, whatever the name's
    line count (a second line overlays the tank: garage.css .hc-n2). */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 .cot-hc{container-type:size;}
 .cot-hc .hc-flag{position:absolute;z-index:0;left:0;top:0;width:100%;height:calc(100% - var(--hc-band) * 0.35);
   max-width:none;object-fit:cover;object-position:0 0;-webkit-mask-image:var(--hc-flag-mask);mask-image:var(--hc-flag-mask);
@@ -32,3 +34,4 @@
   background:radial-gradient(ellipse 62% 62% at 50% 55%,rgba(120,170,205,.14),rgba(0,0,0,0) 100%),
     linear-gradient(180deg,#0f3a55 0%,#0b2a3e 55%,#0b0e11 100%);}
 .cot-es .es-vehicle-card .hc-host{--hc-band:4px;--hc-share:0.8;--hc-hshare:0.84;--hc-cxr:0.54;}
+}

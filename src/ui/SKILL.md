@@ -74,6 +74,57 @@ Decorative metadata such as repository stars must render a stable-width loading
 state or a bounded verified local cache, then refresh only through the cached
 same-origin endpoint. Never ship a hardcoded numeric fallback or make boot or
 Garage presentation depend on a third-party request.
+Design tokens have one source, `tokens/tokens.json` (OKLCH colours, type,
+space, radii, elevation, layers, motion, presets). `node tools/gen-tokens.mjs`
+writes `tokens/tokens.css` (linked first by `index.html`) and `tokens/tokens.ts`
+(resolved values for canvas and three.js); never edit either by hand.
+Canvas and three.js read `tokenValue(name, presets)`, which follows the
+colour-vision, contrast and motion presets through every derived token exactly
+as the tokens.css cascade does. `tokens/tokens.selftest.mjs` fails on drift,
+compares tokens.ts with the cascade under every preset combination and
+recomputes the contrast and colour-vision tables. Components read semantic or
+component tokens (`--surface-*`, `--ink-*`, `--accent*`, `--team-*`, `--btn-*`,
+`--hud-*`), never a ramp (`--graphite-*`, `--tungsten-*`). A control's border
+is `--line-control` (3:1 on every surface and plate); `--line-1/2/3` are
+decoration. Coloured words read `--text-*` (high contrast turns them to
+ink-1), never `--team-*` or `--ok`/`--danger` directly. The legacy
+`--cot-motion-*`, `--cot-ease-*`, `--hud-*` and `--cot-amber/ink/gold` names
+alias the nearest token of their family (`--cot-gold` folds into the accent,
+SPEC 4.2), with fallbacks equal to the token values. The font tokens equal
+`typeFaces.ts` `TYPE_STACK` (the selftest holds them together).
+Every stylesheet declares into the cascade layers of `styleLayers.ts` (`reset,
+tokens, base, components, surfaces, utilities, overrides`, SPEC §5): a `.css`
+file opens with `@layer reset,…,overrides;` (after any `@import`) and wraps its
+rules in one `@layer <name>{…}`; CSS-in-TS goes only through
+`ensureStyle(id, css, layer)` (never `createElement('style')`). A later layer
+beats an earlier one regardless of specificity, and an `!important` reverses
+that, so moving a sheet between layers changes contests that specificity decides
+today: every sheet that predates the layers (shell, HUD, pages, the legacy
+shared controls, the document defaults, the generated type head and zh-CN floor)
+sits in `surfaces`, `tokens.css` and `motion.css` in `tokens`; `components`
+fills as BUI-F5 builds controls for it. `styleLayers.selftest.mjs` enforces the
+structure.
+`tools/style-literal-census.mjs` counts colour, font-size, letter-spacing,
+z-index, shadow, duration and `!important` literals outside the token package
+(CSS, CSS-in-TS, HTML); `tools/style-literal-baseline.json` may only fall (a
+new file starts at zero). After replacing literals with tokens, lower it with
+`node tools/style-literal-census.mjs --write`.
+The player's accessibility choices (BUI-F9) live on `:root`: the game
+document's head seed (`index.html`) writes them before first paint and
+`accessibilitySettings.ts` `applyAccessibility()` after a change, identically
+(`accessibilityPreferences.selftest.mjs` pins the two): `data-cvd`,
+`data-contrast`, `data-motion` (reduce/full; none follows the OS),
+`data-drone-static`, `data-toggles`, `--cot-user-text`, `--cot-user-hud`,
+`--cot-shake-scale`, `--cot-flash-scale` and Custom `--team-own/-enemy`.
+`accessibilityPreferences.ts` is the boot reader (it rides in the `dom` chunk):
+per-frame code reads `A11Y` (shake, flash, reduceMotion, toggles) and script asks
+`prefersReducedMotion()`, never `matchMedia` alone; canvas reads `liveToken()`
+(`tokens/tokenSelection.ts` holds the selection, so boot carries no token table).
+The record, Custom pairs (refused under the floors by `colorVision.ts`), the
+Accessibility settings tab and the motion-rule override (`accessibilityMotion.ts`)
+are lazy. A new hold action joins `HOLD_ACTIONS` and the hold census in
+`src/game/inputHoldToggle.selftest.mjs`; a new screen flash multiplies by
+`A11Y.flash` (CSS: `--cot-flash-scale`), new camera motion by `A11Y.shake`.
 Shared DOM, font, generated-icon, image-preload, featured-media, and map-art
 primitives are strict TypeScript owners. Extend their exported contracts rather
 than creating screen-local unchecked copies.
@@ -108,6 +159,12 @@ display numerals). `'Cot UI'` (`var(--font-ui)`, `FONT_STACK`) is Plex Sans at
 Latin-only lockups `lang="en"` and track them on that element, so the zh-CN reset
 (no tracking on Chinese) leaves them alone; Chinese display headings take a CJK
 line-height (1.14-1.15). `typeSystem.selftest.mjs` holds all of it.
+Icons (brand-ui BUI-F4): every glyph is one `<symbol>` in `icons/sprite.svg`
+(24-unit masters, 16-unit optical masters `-s`), drawn through `icon()` in
+`icons/icon.ts`; never paste inline SVG glyphs into a surface. Glyphs carry no
+stroke width, caps, joins or colour (the host does: 1.5 / 1.25, square, mitre,
+currentColor). After a sprite edit run `node tools/gen-icon-sprite.mjs` and
+`node tools/icon-stroke-census.mjs`. `uiIconSVG` is the compatibility call.
 `garage.ts` is a strict presentation adapter: keep fleet, map, camouflage,
 loadout, room-status, and battle-intent inputs explicit; fail fast when its
 static markup contract is missing; and preserve its disclosure/event lifecycle
@@ -259,6 +316,19 @@ Every supported locale must keep exact key, placeholder, and vetted rich-markup
 parity. Plain `data-i18n` hosts cannot contain child markup because text
 replacement would destroy controls. Locale changes reload the current surface
 atomically; do not add screen-local partial refreshes.
+i18n infrastructure (BUI-F8): counts, dates and plurals go through Intl and the
+ICU subset (`{n, plural, one {# kill} other {# kills}}`, `select`,
+`date`), never `fooOne`/`fooMany` key pairs or a count printed beside a message
+that prints it (`tools/i18n-catalog-shape.mjs`). Modes, play surfaces, ammunition,
+outcomes, crew roles and modules take their names from `glossary.json`; edit the
+term there and run `node tools/glossary-sync.mjs` (never the bound catalog keys).
+Player-facing English literals are banned at DOM, accessible-name, markup, canvas,
+CSS `content:` and Studio-throw sinks; `tools/i18n-literal-lint.mjs --check` is a
+ratchet that only falls (`--update` after fixing). UI sounds come from roles
+(`data-ui-sound`, class or `data-action` code words), never labels. Layout probes
+take `?pseudo=1` on the dev server (English +40 %, `i18nPseudo.ts`), and
+`tools/zh-latin-audit.browser.mjs` lists any visible English in zh-CN captures.
+/cn public pages get their body copy at build time (`localizeBodyHtml`).
 
 ## Common tasks → first action
 

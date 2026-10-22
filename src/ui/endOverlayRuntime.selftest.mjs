@@ -5,6 +5,7 @@ class FakeElement {
   constructor(tagName) {
     this.tagName = tagName.toUpperCase();
     this.style = {};
+    this.dataset = {};
     this.children = [];
     this.listeners = new Map();
     this.className = '';
@@ -44,6 +45,7 @@ assert.equal(overlay.root.style.display, 'flex');
 assert.match(endRecordMarkup(record), /2 kills/);
 assert.match(endRecordMarkup(record), /4,312 damage/);
 assert.match(overlay.root.children[1].innerHTML, /4,312 damage/);
+assert.equal(overlay.returnButton.dataset.uiSound, 'back', 'the return action sounds as back by role, in every locale');
 overlay.returnButton.click();
 assert.deepEqual(events, [['ui:click', {}]]);
 assert.equal(returned, 1);

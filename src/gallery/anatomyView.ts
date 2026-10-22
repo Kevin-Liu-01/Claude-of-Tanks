@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { t, formatNumber } from '../ui/i18n.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
+import { ensureStyle } from '../ui/styleLayers.ts';
 import { TRACK_MODULES, plateMetricMm, type AnatomyArmor } from './anatomyData.ts';
 import { ghostMaterials } from './anatomyMaterials.ts';
 import {
@@ -216,10 +217,8 @@ function pickKey(pick: AnatomyPick | null): string | null {
 }
 
 export function createAnatomyView(host: AnatomyHost): AnatomyView {
-  const style = document.createElement('style');
+  const style = ensureStyle('cot-gallery-anatomy-style', STYLE, 'surfaces');
   style.dataset.galleryAnatomy = '';
-  style.textContent = STYLE;
-  document.head.append(style);
   const bar = document.createElement('div');
   bar.className = 'anatomy-bar';
   bar.setAttribute('role', 'toolbar');

@@ -70,6 +70,8 @@ interface CrewRadioOptions {
   random: () => number;
   /** The crew pack before the battle picks one (the engine sets the nation's at once). */
   initialLanguage?: string;
+  /** Every transmission the net keys: its line, the take spoken, the crew language, its length and priority (captions). */
+  onTransmit?(lineId: string, take: number | null, lang: string, durationS: number, priority: number): void;
 }
 
 function driveCurve(amount: number): Float32Array<ArrayBuffer> {
@@ -83,7 +85,7 @@ function driveCurve(amount: number): Float32Array<ArrayBuffer> {
   return curve;
 }
 
-export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-US' }: CrewRadioOptions): CrewRadio {
+export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-US', onTransmit }: CrewRadioOptions): CrewRadio {
   const ctx = mixer.ctx;
   const voiceBus = mixer.input('voice');
   let language = initialLanguage;
@@ -281,6 +283,10 @@ export function createCrewRadio({ mixer, library, random, initialLanguage = 'en-
     lastGroupPlay.set(currentGroup, { t: now, pri: line.pri });
     log.push({ id, lang: chosen.lang, t: +now.toFixed(3), dur: +dur.toFixed(3), ...(take != null ? { take } : {}) });
     if (log.length > 64) log.shift();
+    if (onTransmit) {
+      const spoken = take ?? library.voiceTake?.(chosen.lang, id) ?? -1;
+      onTransmit(id, spoken >= 0 ? spoken : null, chosen.lang, dur, line.pri);
+    }
     return true;
   }
 

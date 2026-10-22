@@ -109,7 +109,7 @@ for (const lazy of ['src/gallery/inAction.ts', 'src/ui/fleetTakes.ts']) {
 const css = read('src/gallery/gallery.css');
 assert.match(css, /\[hidden\]\{display:none!important\}/, 'a hidden block, loop or control stays hidden');
 assert.match(css, /\.fleet-take-host\{display:contents\}/, 'the host adds no box between dossier sections');
-assert.match(css, /body\[data-cot-input='coarse'\] \.fleet-take-toggle\{width:44px;height:44px\}/, 'a touch-size control');
+assert.match(css, /@media \(\(pointer: coarse\) or \(hover: none\)\)\{\s*:root body \.fleet-take-toggle\{width:44px;height:44px\}/, 'a touch-size control');
 
 // The page catalog (tools/i18n-page-catalogs.mjs): no module of the Gallery's first load spells the block's strings, so
 // they ride its lazy chunk, not its boot catalog. (A full scan of the Gallery's graph takes seconds; npm run i18n:check

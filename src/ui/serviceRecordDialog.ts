@@ -23,7 +23,7 @@ export function createServiceRecordDialog(names: RecordViewNames, onClose: () =>
   body.setAttribute('role','tabpanel'); body.tabIndex=0;
   modal.body.append(summary,tabs,body);
   const note=document.createElement('span'); note.className='cot-record-footnote';note.textContent=t('garage.record.inspectHint');modal.footer.append(note);
-  const close=document.createElement('button');close.type='button';close.className='cot-modal__button';close.textContent=t('garage.record.close');close.onclick=()=>modal.close();modal.footer.append(close);
+  const close=document.createElement('button');close.type='button';close.className='cot-modal__button';close.dataset.uiSound='back';close.textContent=t('garage.record.close');close.onclick=()=>modal.close();modal.footer.append(close);
   const tooltip=createRichTooltip(body,'[data-medal-tip],[data-achievement-tip]',awardDetails);
   function render(){
     tooltip.hide();

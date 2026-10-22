@@ -14,6 +14,9 @@ if (!localeRouteChanged) {
 
 // The meta description is localized before JavaScript: the build writes /cn/404.html and the middleware serves the
 // localized shell for other /cn misses (src/presentation/localizedHtml.ts), so the runtime sets only the tab title.
+// The action icons reference the shared sprite; it mounts from its own chunk, off the critical path.
+void import('../ui/icons/icon.ts').then(({ mountIconSprite }) => mountIconSprite());
+
 document.title = t('notFound.metaTitle');
 
 // GA4 as on the other public non-game pages (../googleAnalytics.ts gates the production host and Consent Mode), on

@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { formatDroneAltitude } from './aerialHud.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
+import { readIconSprite } from '../../tools/icon-sprite-lib.mjs';
 
 assert.equal(formatDroneAltitude(0.15), '0.1m', 'a skimming pilot reads tenths');
 assert.equal(formatDroneAltitude(0.16), '0.2m');
@@ -15,7 +16,8 @@ assert.equal(formatDroneAltitude(9.96), '10m', 'whole metres above it (no "10.0m
 assert.equal(formatDroneAltitude(57.4), '57m');
 assert.equal(formatDroneAltitude(-0.03), '0.0m', 'a probe a few centimetres under the ground never reads negative');
 
-assert.ok(uiIconIds().includes('altitude') && uiIconSVG('altitude', 24).includes('<path'), 'the altimeter has its own glyph');
+assert.ok(uiIconIds().includes('altitude') && uiIconSVG('altitude', 24).includes('href="#i-altitude"')
+  && readIconSprite().large.get('altitude').includes('<path'), 'the altimeter has its own glyph');
 const hud = readFileSync(new URL('./aerialHud.ts', import.meta.url), 'utf8');
 assert.match(hud, /const timer=instrument\(telemetry,'reload'[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*const altimeter=instrument\(telemetry,'altitude',t\('flight\.altitude'\)\)/,
   'the altimeter is the second drone instrument, beside the battery');

@@ -19,7 +19,8 @@ import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 // Contract: docs/ARCHITECTURE.md §3.7.1.
 import * as THREE from 'three';
 import { captureMinimapScene, requireSceneMinimap, type MinimapCaptureReceipt } from './minimapCapturePolicy.ts';
-import { createElement as el, ensureStyle } from './dom.ts';
+import { createElement as el } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { installBattleHudLayout, SCORE_BOTTOM_INSET, MAX_BATTLE_NOTIFICATIONS } from './battleHudLayout.ts';
 import { createPreBattleOverlay } from './preBattleOverlay.ts';
@@ -1154,6 +1155,7 @@ const RET_CEIL_FRAC = 0.15;
 // Shared type system (see src/ui/fonts.ts): FONT_COND drives the numeral/label
 // hierarchy (weight floor 500); readouts that tick in place take the .num class.
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
+import { A11Y } from './accessibilityPreferences.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import {
   CONSUMABLE_READY_MARK, CONSUMABLE_RULES, cooldownRemaining,
@@ -1427,10 +1429,10 @@ function drawShellIcon(canvas: HTMLCanvasElement, type: string): void {
 
 const HUD_CSS = `
 .cot-hud{position:fixed;inset:0;pointer-events:none;z-index:40;font-family:${FONT_STACK};isolation:isolate;
-  --hud-panel:rgba(7,11,15,.92);--hud-edge:rgba(181,199,212,.32);
-  --hud-muted:#93a3af;--hud-text:#e8f0f5;--hud-action:#f0a030;--hud-danger:#f05a5a;
-  --hud-layer-world:6;--hud-layer-sight:8;--hud-layer-status:18;
-  --hud-layer-controls:24;--hud-layer-score:30;
+  --hud-panel:var(--hud-plate,rgba(13,16,20,.92));--hud-edge:var(--line-3,rgba(246,243,236,.24));
+  --hud-muted:var(--ink-3,#9a9a95);--hud-text:var(--ink-1,#f6f3ec);--hud-action:var(--accent,#f0a030);--hud-danger:#f05a5a;
+  --hud-layer-world:var(--z-hud-world,6);--hud-layer-sight:var(--z-hud-sight,8);--hud-layer-status:var(--z-hud-status,18);
+  --hud-layer-controls:var(--z-hud-controls,24);--hud-layer-score:var(--z-hud-score,30);
   -webkit-user-select:none;user-select:none;color:var(--hud-text);overflow:hidden;}
 .cot-hud *{box-sizing:border-box;margin:0;padding:0;}
 .cot-ret{position:absolute;z-index:var(--hud-layer-sight);inset:0;width:100%;height:100%;display:block;}
@@ -2038,7 +2040,7 @@ export function hordeStatusCopy(modeState: HudMatchModeState, liveRuleset: Match
  */
 export function initHud(bus: EventBus): HudRuntime {
   ensureFonts();
-  ensureStyle('cot-hud-style', HUD_CSS);
+  ensureStyle('cot-hud-style', HUD_CSS, 'surfaces');
 
   const root = el('div', 'cot-hud');
   document.body.appendChild(root);
@@ -2054,9 +2056,6 @@ export function initHud(bus: EventBus): HudRuntime {
   let markShown = false, markX = NaN, markY = NaN;
   const on = (event: string, listener: (payload: HudEventPayload) => void): (() => void) =>
     bus.on(event, (payload) => listener(payload as HudEventPayload));
-  const reducedMotionQuery = typeof window.matchMedia === 'function'
-    ? window.matchMedia('(prefers-reduced-motion: reduce)')
-    : null;
   const hpLayer = el('div', 'cot-hpbars', root);
   const dmgLayer = el('div', 'cot-dmglayer', root);
 
@@ -2126,12 +2125,11 @@ export function initHud(bus: EventBus): HudRuntime {
   let netLastMs = 0;       // wall-clock of previous update (fps EMA only)
   let netLastPaintMs = 0;  // DOM values update at 4 Hz, not every render frame
   let netEmaDt = 1 / 60;
-  // Desktop keeps the player's Interface preference. Mobile always shows the
-  // compact readout directly below its top-right control row.
+  // The player's Interface preference on every device (off by default, brand-ui SPEC 12.1.6): touch layouts no longer
+  // force the readout on.
   let netOptIn = false;
   function updateNetReadout(frame: HudFrame): void {
-    const mobileRequired = document.body.classList.contains('cot-touch-layout');
-    if (!netOptIn && !mobileRequired) return;
+    if (!netOptIn) return;
     const now = performance.now();
     if (netLastMs > 0) {
       const dt = Math.min(0.25, (now - netLastMs) / 1000);
@@ -2265,14 +2263,16 @@ export function initHud(bus: EventBus): HudRuntime {
   /** (ac130-fx-228) the combatants flying the gunship: their vehicle is the AC-130 (its icon in the silhouette's place) */
   const aircraftById = new Set<string>();
   const earRows = new Map<string, EarRow>(); // tank id -> { root, hp, dead, name }
+  // Tab holds the rosters open, or toggles them when the player chose toggle for it (hold-or-toggle, Accessibility).
   window.addEventListener('keydown', event => {
     if (event.code !== 'Tab' || mode === 'hidden' || isAnyModalOpen() || document.querySelector('.cot-settings.open') ||
         (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable="true"],.cot-room-chat'))) return;
     event.preventDefault();
-    root.classList.add('rosters-expanded');
+    if (!A11Y.toggles.has('rosters')) root.classList.add('rosters-expanded');
+    else if (!event.repeat) root.classList.toggle('rosters-expanded');
   }, true);
   const collapseRosters = (): void => { root.classList.remove('rosters-expanded'); };
-  window.addEventListener('keyup', event => { if (event.code === 'Tab') collapseRosters(); }, true);
+  window.addEventListener('keyup', event => { if (event.code === 'Tab' && !A11Y.toggles.has('rosters')) collapseRosters(); }, true);
   window.addEventListener('blur', collapseRosters);
 
   const killfeed = el('div', 'cot-killfeed', root);
@@ -2495,7 +2495,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // The drone altimeter reads the same terrain height field as the spotting line-of-sight tests (set on map load).
   const aerialHud = createAerialHud(root,bus,() => heightFieldRef);
   const missileButton=el('button','cot-auxiliary',controlsRow);missileButton.type='button';missileButton.hidden=true;
-  missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">ATGM</span><span class="sk"></span><small class="system-status"></small>`;
+  missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">${t('systems.atgm')}</span><span class="sk"></span><small class="system-status"></small>`;
   let missilePlayer:HudTank|null|undefined=null,previousConventionalSlot=0;
   function toggleExtraMissile(){
     if(missileButton.hidden||missileButton.disabled||!missilePlayer)return;
@@ -2594,8 +2594,8 @@ export function initHud(bus: EventBus): HudRuntime {
       ? Number(action?.missileSlot) : -1;
     // Weapon channels keep the missile timer accurate even while the cannon is selected.
     const missileWait=extraMissileSlot>=0?Math.ceil(reloadForSlot(combat,extraMissileSlot,lastTimeS) || 0):0;
-    missileButton.querySelector('.sl')!.textContent=!missileEmpty&&missileWait>0?t('systems.cooldown',{seconds:missileWait}):'ATGM';
-    missileButton.setAttribute('aria-label', emptyMissileLabel ? `ATGM ${emptyMissileLabel}` : 'ATGM');
+    missileButton.querySelector('.sl')!.textContent=!missileEmpty&&missileWait>0?t('systems.cooldown',{seconds:missileWait}):t('systems.atgm');
+    missileButton.setAttribute('aria-label', emptyMissileLabel ? `${t('garage.shellType.ATGM')} ${emptyMissileLabel}` : t('garage.shellType.ATGM'));
     const specialMissileEmpty=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE&&missileEmpty;
     // A magazine reload with nothing stowed to load is spent too: no countdown, no pointless reload.
     // This frame's cards (the tray reads them after this update): the ruleset's unlimited mark never reads spent.
@@ -3284,7 +3284,8 @@ export function initHud(bus: EventBus): HudRuntime {
     if (modeId === 'standard') return 'modeStandard';
     if (modeId === 'capture_the_flag') return 'modeFlag';
     if (modeId === 'mars') return 'modeMars';
-    if (modeId === 'zone_control' || modeId === 'frontline_assault') return 'modeZones';
+    if (modeId === 'zone_control') return 'modeZones';
+    if (modeId === 'frontline_assault') return 'modeFrontline';
     if (modeId === 'turbo_ball') return 'modeTurbo';
     return 'modeHorde';
   }
@@ -3805,8 +3806,9 @@ export function initHud(bus: EventBus): HudRuntime {
       1,
       paint.rimHalfAngle,
     );
-    if (paint.age < 0.25) {
-      const flash = 1 - paint.age / 0.25;
+    if (paint.age < 0.25 && A11Y.flash > 0) {
+      // the white bloom of a fresh hit, scaled by the player's flash intensity (Accessibility)
+      const flash = (1 - paint.age / 0.25) * A11Y.flash;
       ctx.globalCompositeOperation = 'lighter';
       strokeHitIndicatorArc(
         frame,
@@ -3876,7 +3878,10 @@ export function initHud(bus: EventBus): HudRuntime {
       const critRadius = valueRadius + fontPx + 5;
       const critFontPx = Math.max(9, Math.round(fontPx * 0.55));
       ctx.font = `700 ${critFontPx}px ${FONT_COND}`;
-      const critHalf = ctx.measureText('CRIT').width / 2;
+      // A localized word behind a drawn diamond (never a Latin-only code; BUI-F8): 暴击 in zh, CRIT in en.
+      const crit = t('hud.dmg.crit');
+      const mark = critFontPx * 0.32;
+      const critHalf = ctx.measureText(crit).width / 2 + mark * 1.4;
       const critX = Math.min(Math.max(
         frame.centerX + Math.cos(paint.angle) * critRadius,
         critHalf + 8,
@@ -3886,9 +3891,17 @@ export function initHud(bus: EventBus): HudRuntime {
         critFontPx + 8,
       ), h - critFontPx - 8);
       ctx.lineWidth = 3.4;
-      ctx.strokeText('CRIT', critX, critY);
+      const wordX = critX + mark * 1.4;
+      const markX = critX - critHalf + mark;
+      ctx.strokeText(crit, wordX, critY);
       ctx.fillStyle = '#ffd0a8';
-      ctx.fillText('CRIT', critX, critY);
+      ctx.fillText(crit, wordX, critY);
+      ctx.beginPath();
+      ctx.moveTo(markX, critY - mark); ctx.lineTo(markX + mark, critY);
+      ctx.lineTo(markX, critY + mark); ctx.lineTo(markX - mark, critY); ctx.closePath();
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fill();
     }
     ctx.restore();
   }
@@ -3915,8 +3928,8 @@ export function initHud(bus: EventBus): HudRuntime {
   function drawHitMark(g: CanvasRenderingContext2D, cx: number, cy: number, timeS: number): void {
     if (!hitMark) return;
     const age = timeS - hitMark.t0;
-    const visual = hitConfirmVisualState(
-      age, !!reducedMotionQuery?.matches, hitConfirmScratch);
+    // Reduce motion is the player's choice or the OS while they follow it (accessibilityPreferences.ts).
+    const visual = hitConfirmVisualState(age, A11Y.reduceMotion, hitConfirmScratch);
     if (!visual.visible) { hitMark = null; return; }
 
     const baseColor = hitMark.bounced ? '202,218,232' : '255,166,48';
@@ -3966,8 +3979,8 @@ export function initHud(bus: EventBus): HudRuntime {
 
     // Brief center spark marks the exact impact acknowledgement. It vanishes
     // before the hold phase and is disabled entirely under reduced motion.
-    if (visual.flash > 0.001) {
-      const sparkAlpha = visual.opacity * visual.flash;
+    if (visual.flash * A11Y.flash > 0.001) {
+      const sparkAlpha = visual.opacity * visual.flash * A11Y.flash;
       const sparkR = 3.5 + 2.5 * visual.flash;
       g.strokeStyle = `rgba(5,8,12,${(sparkAlpha * 0.75).toFixed(3)})`;
       g.lineWidth = 3.2;
@@ -5203,7 +5216,7 @@ export function initHud(bus: EventBus): HudRuntime {
       slotPresentations[i].render(shells?.[i] || DEFAULT_SHELLS[i], i === slot, pending);
     }
     if (ammoSwitchingStatus.hidden === pending) {
-      ammoSwitchingStatus.textContent = pending ? 'SWITCHING' : '';
+      ammoSwitchingStatus.textContent = pending ? t('hud.ammo.switching') : '';
       ammoSwitchingStatus.hidden = !pending;
     }
     setTouchAmmoOpen(touchAmmoOpen);
@@ -7089,7 +7102,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // (with the repair), respawns, the flag changing hands, caches dropping
   on('mode:line_advanced', ({ line, total }) => {
     showAlert(t('hud.alert.lineTaken', { line: Math.max(1, Number(line) || 1), total: Math.max(1, Number(total) || 3) }), {
-      icon: 'modeZones', tone: 'success',
+      icon: 'modeFrontline', tone: 'success',
     });
   });
   on('mode:wave_cleared', ({ wave, nextWaveInS }) => {

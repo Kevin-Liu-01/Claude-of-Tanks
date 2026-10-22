@@ -15,6 +15,8 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { srcsetFor, stillRungs } from '../../src/presentation/responsivePicture.ts';
+import { imageSize } from '../media-page-scan.mjs';
 
 const MEDIA = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -153,7 +155,7 @@ function wireHomeShots(H) {
   }
   const v = homeStudio();
   swap(H, /<video data-home-slot="features\/studio" [^\n]*?<\/video>/,
-    () => `<video data-home-slot="features/studio" muted loop playsinline preload="none" data-poster="${v.poster}" data-autoplay-video data-label="${esc(v.label)}" aria-hidden="true"><source data-src="${v.video}" data-type="video/mp4" data-mobile-src="${v.mobile}" data-mobile-type="video/mp4"></video>`,
+    () => `<video data-home-slot="features/studio" muted loop playsinline preload="none" data-poster="${v.poster}" data-autoplay-video data-i18n-label="home.evidence.studioTitle" data-label="${esc(v.label)}" aria-hidden="true"><source data-src="${v.video}" data-type="video/mp4" data-mobile-src="${v.mobile}" data-mobile-type="video/mp4"></video>`,
     'home slot features/studio');
   // every slot on the page is a pick: a card added to home.html without one would keep whatever it was written with
   const orphans = [...get(H).matchAll(/data-home-slot="([^"]+)"/g)].map((m) => m[1]).filter((slot) => !slots.has(slot));
@@ -161,7 +163,7 @@ function wireHomeShots(H) {
 }
 
 // --- the landing page ---------------------------------------------------------------------------------------------
-const loopVideo = (id) => `<video muted loop playsinline preload="none" data-poster="${built(`${C}/loops/${id}.jpg`)}" data-autoplay-video data-label="${esc(take(id).en)}" aria-hidden="true"><source data-src="${built(`${C}/loops/${id}.webm`)}" data-type="video/webm" data-mobile-src="/media/web-video-r1/${id}-mobile.mp4" data-mobile-type="video/mp4"></video>`;
+const loopVideo = (id) => `<video muted loop playsinline preload="none" data-poster="${built(`${C}/loops/${id}.jpg`)}" data-autoplay-video data-i18n-label="${titleKey(id)}" data-label="${esc(take(id).en)}" aria-hidden="true"><source data-src="${built(`${C}/loops/${id}.webm`)}" data-type="video/webm" data-mobile-src="/media/web-video-r1/${id}-mobile.mp4" data-mobile-type="video/mp4"></video>`;
 function wireHome() {
   const H = 'site/home.html';
   const hero = PICKS.home.hero;
@@ -191,7 +193,7 @@ function wireHome() {
   swap(H, /(<div class="v5-trailer-grid" data-trailer-row>\n)(?:[ \t]*<figure [^\n]*<\/figure>\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${trailers.join('')}${close}`, 'trailers row');
   // the feature reel: its 900p VP9 webm, the same in H.264 for a browser that plays no VP9 (2026-10-14), the phone's mp4
   swap(H, /(<section class="v5-film"[^>]*>\n[ \t]*)<video [^\n]*?<\/video>/,
-    (_, open) => `${open}<video muted loop playsinline preload="none" data-poster="${built(`${C}/films/reel.jpg`)}" data-autoplay-video data-label="Claude of Tanks battle reel, rendered in the game engine" aria-hidden="true"><source data-src="${built(`${C}/films/reel.webm`)}" data-type="video/webm" data-fallback-src="${built(`${C}/films/reel.mp4`)}" data-fallback-type="video/mp4" data-mobile-src="/media/web-video-r1/reel-mobile.mp4" data-mobile-type="video/mp4"></video>`, 'feature reel');
+    (_, open) => `${open}<video muted loop playsinline preload="none" data-poster="${built(`${C}/films/reel.jpg`)}" data-autoplay-video data-i18n-label="home.reel.title" data-label="Claude of Tanks battle reel, rendered in the game engine" aria-hidden="true"><source data-src="${built(`${C}/films/reel.webm`)}" data-type="video/webm" data-fallback-src="${built(`${C}/films/reel.mp4`)}" data-fallback-type="video/mp4" data-mobile-src="/media/web-video-r1/reel-mobile.mp4" data-mobile-type="video/mp4"></video>`, 'feature reel');
   swap(H, /(<section class="v5-destruction"[^>]*>)<video [^\n]*?<\/video>/, (_, open) => `${open}${loopVideo(PICKS.home.destruction)}`, 'destruction loop');
   const paths = PICKS.home.paths.map((id) => `        <article>${loopVideo(id)}<div><p data-i18n="${titleKey(id)}">${esc(take(id).en)}</p></div></article>\n`);
   swap(H, /(<div class="v5-rail-grid">\n)(?:[ \t]*<article>[^\n]*<\/article>\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${paths.join('')}${close}`, 'camera-path grid');
@@ -216,6 +218,15 @@ function trailerFilm(name) {
 }
 
 // --- the manual ---------------------------------------------------------------------------------------------------
+// A chapter card's picture (brand-ui BUI-F7): the still's rungs (src/presentation/responsivePicture.ts), a quarter of the
+// row on a desktop, lazy, with its size, so the manual's index fetches no 1920 still before a scroll.
+const CHAPTER_SIZES = '(max-width: 767px) 100vw, (max-width: 1099px) 50vw, 25vw';
+function chapterImage(src, alt, key) {
+  const [width, height] = imageSize(src) ?? [1920, 1080];
+  const rungs = stillRungs(src, width);
+  const srcset = rungs.length > 1 ? ` srcset="${srcsetFor(rungs)}" sizes="${CHAPTER_SIZES}"` : '';
+  return `<img src="${src}"${srcset} width="${width}" height="${height}" alt="${alt}" data-i18n-alt="${key}" loading="lazy" decoding="async">`;
+}
 function wireDocs() {
   const D = 'site/docs.html';
   const hero = PICKS.docs.hero;
@@ -225,19 +236,20 @@ function wireDocs() {
   const trailer = BUILT.get(built(`${C}/films/trailer.mp4`));
   const seconds = String(Math.round(trailer.seconds));
   // the trailer (round six): its VP9 webm first, the H.264 mp4 for a browser that plays no VP9; it loads on a click
-  swap(D, /<video controls playsinline preload="metadata" poster="[^"]*" aria-label="[^"]*" data-i18n-aria-label="[^"]*">(?:<source src="[^"]*" type="video\/webm">)?<source src="[^"]*" type="video\/mp4">(?:<track [^>]*>)?<\/video>/,
-    () => `<video controls playsinline preload="metadata" poster="${built(`${C}/films/trailer.jpg`)}" aria-label="${esc(COPY.en['docs.hero.trailerAria'])}" data-i18n-aria-label="docs.hero.trailerAria"><source src="${built(`${C}/films/trailer.webm`)}" type="video/webm"><source src="${built(`${C}/films/trailer.mp4`)}" type="video/mp4"></video>`, 'trailer player');
+  swap(D, /<video controls playsinline preload="(?:metadata|none)" poster="[^"]*" aria-label="[^"]*" data-i18n-aria-label="[^"]*">(?:<source src="[^"]*" type="video\/webm">)?<source src="[^"]*" type="video\/mp4">(?:<track [^>]*>)?<\/video>/,
+    () => `<video controls playsinline preload="none" poster="${built(`${C}/films/trailer.jpg`)}" aria-label="${esc(COPY.en['docs.hero.trailerAria'])}" data-i18n-aria-label="docs.hero.trailerAria"><source src="${built(`${C}/films/trailer.webm`)}" type="video/webm"><source src="${built(`${C}/films/trailer.mp4`)}" type="video/mp4"></video>`, 'trailer player');
   swap(D, /<figcaption><span data-i18n="docs\.hero\.(?:reelCaption|trailerCaption)">[^<]*<\/span><strong data-i18n="docs\.hero\.(?:reelApproved|trailerSpec)"[^>]*>[^<]*<\/strong><\/figcaption>/,
     () => `<figcaption><span data-i18n="docs.hero.trailerCaption">${esc(COPY.en['docs.hero.trailerCaption'])}</span><strong data-i18n="docs.hero.trailerSpec" data-i18n-vars='{"seconds":"${seconds}"}'>${esc(COPY.en['docs.hero.trailerSpec'].replace('{seconds}', seconds))}</strong></figcaption>`, 'trailer caption');
   for (const [chapter, c] of Object.entries(PICKS.docs.chapters)) {
     swap(D, new RegExp(`(<a href="/docs/${chapter}"><span class="docs-chapter-media">)<img [^>]*>`),
-      (_, open) => `${open}<img src="${still(c.id, c.still)}" alt="${esc(take(c.id).en)}" data-i18n-alt="${titleKey(c.id)}">`, `chapter card ${chapter}`);
+      (_, open) => `${open}${chapterImage(still(c.id, c.still), esc(take(c.id).en), titleKey(c.id))}`, `chapter card ${chapter}`);
   }
   // the battle takes (battleReels.ts fills the grid; the first take is the page's static state)
   const reels = PICKS.docs.reels;
   const first = reels[0];
-  swap(D, /<video controls playsinline preload="metadata" poster="[^"]*" data-battle-reel-video aria-label="[^"]*" data-i18n-aria-label="[^"]*"><source src="[^"]*" type="video\/mp4"><\/video>/,
-    () => `<video controls playsinline preload="metadata" poster="${built(`${C}/reels/${first}.webp`)}" data-battle-reel-video aria-label="${esc(take(first).shortEn)}" data-i18n-aria-label="${shortKey(first)}"><source src="${built(`${C}/reels/${first}.mp4`)}" type="video/mp4"></video>`, 'battle-take player');
+  // (the battle-take player sits far below the fold: battleReels.ts sets its poster as it nears the viewport)
+  swap(D, /<video controls playsinline preload="(?:metadata|none)" (?:data-)?poster="[^"]*" data-battle-reel-video aria-label="[^"]*" data-i18n-aria-label="[^"]*"><source src="[^"]*" type="video\/mp4"><\/video>/,
+    () => `<video controls playsinline preload="none" data-poster="${built(`${C}/reels/${first}.webp`)}" data-battle-reel-video aria-label="${esc(take(first).shortEn)}" data-i18n-aria-label="${shortKey(first)}"><source src="${built(`${C}/reels/${first}.mp4`)}" type="video/mp4"></video>`, 'battle-take player');
   swap(D, /<strong data-battle-reel-title>[^<]*<\/strong><small data-battle-reel-map>[^<]*<\/small><\/span><b data-battle-reel-count>[^<]*<\/b>/,
     () => `<strong data-battle-reel-title>${esc(take(first).shortEn)}</strong><small data-battle-reel-map>${esc(mapName(take(first).map))} // ${esc(COPY.en['docs.studio.reelSpec'])}</small></span><b data-battle-reel-count>01 / ${reels.length}</b>`, 'battle-take status');
   swap(D, /(data-battle-reel-grid) aria-label="[^"]*" data-i18n-aria-label="[^"]*"/,
@@ -259,9 +271,10 @@ function wireDocs() {
   // the sheets are five 480×270 frames by two rows (site-media.mjs SHEET), not the old 2400×592 labelled strips
   swap('src/docs/docs.css', /(\.process-sheet-grid img\{[^}]*aspect-ratio:)2400\/592/, (_, open) => `${open}2400/540`, 'contact sheet aspect',
     /\.process-sheet-grid img\{[^}]*aspect-ratio:2400\/540/);
-  // the archive dialog's loops and both archive counts
-  const loops = PICKS.docs.archiveLoops.map((id) => `      <video muted loop playsinline preload="none" poster="${built(`${C}/loops/${id}.jpg`)}"><source src="${built(`${C}/loops/${id}-960.webm`)}" type="video/webm"></video>\n`);
-  swap(D, /(<div class="docs-motion-grid"[^>]*>\n)(?:[ \t]*<video [^\n]*<\/video>\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${loops.join('')}${close}`, 'archive loops');
+  // the archive dialog's loops (the shared player, src/presentation/mediaPlayer.ts: nothing loads until the dialog opens;
+  // the phone's H.264 rung is the fallback for a browser without VP9) and both archive counts
+  const loops = PICKS.docs.archiveLoops.map((id) => `      <div class="docs-motion-item"><video data-media-player muted loop playsinline preload="none" data-poster="${built(`${C}/loops/${id}.jpg`)}" data-i18n-label="${titleKey(id)}" data-label="${esc(take(id).en)}" aria-hidden="true"><source data-src="${built(`${C}/loops/${id}-960.webm`)}" type="video/webm"><source data-src="/media/web-video-r1/${id}-mobile.mp4" type="video/mp4" data-rung="phone"></video></div>\n`);
+  swap(D, /(<div class="docs-motion-grid"[^>]*>\n)(?:[ \t]*(?:<div class="docs-motion-item">)?<video [^\n]*<\/video>(?:<\/div>)?\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${loops.join('')}${close}`, 'archive loops');
   const n = String(WALL_COUNT);
   swap(D, /(data-i18n="docs\.aside\.archiveTitle" data-i18n-vars=')[^']*('>)\d+( field frames)/, (_, a, b, c) => `${a}{"count":"${n}"}${b}${n}${c}`, 'archive card count');
   swap(D, /(data-i18n="docs\.archive\.headIdx" data-i18n-vars=')[^']*('>Visual archive \/\/ )\d+( field frames)/, (_, a, b, c) => `${a}{"count":"${n}"}${b}${n}${c}`, 'archive dialog count');
@@ -349,7 +362,7 @@ function wireGame() {
 // --- the landing page's social cards (their battle photos sit at low opacity behind each quote) -------------------
 function wireSocialCards() {
   for (const [modifier, pick] of Object.entries(PICKS.home.socialCards)) {
-    swap('public/home.css', new RegExp(`(\\.v5-social-card--${modifier}\\{--social-card-image:url\\(')[^']+('\\))`),
+    swap('src/presentation/home.css', new RegExp(`(\\.v5-social-card--${modifier}\\{--social-card-image:url\\(')[^']+('\\))`),
       (_, open, close) => `${open}${still(pick.id, pick.still)}${close}`, `social card ${modifier}`);
   }
 }

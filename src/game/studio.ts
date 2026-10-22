@@ -5263,7 +5263,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
             };
           }
           for (const l of links) {
-            l.setAttribute('href', '/brand/nav/studio.svg');
+            l.setAttribute('href', '/brand/studio-tab.svg');
             l.setAttribute('type', 'image/svg+xml');
           }
           applySiteMetadataToDocument(document, localizedStudioMetadata(getLocale()));

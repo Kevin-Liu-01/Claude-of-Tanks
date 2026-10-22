@@ -11,6 +11,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 // Contract: docs/ARCHITECTURE.md §3.7.3.
 
 import { ensureFonts } from './fonts.ts';
+import { prefersReducedMotion } from './accessibilityPreferences.ts';
 import { FEATURED_SHOTS } from './featuredShots.ts';
 import { preloadImage } from './imagePreload.ts';
 import { flagIconHTML } from './flags.ts';
@@ -363,12 +364,9 @@ function tierChipHTML(numeral: string): string {
   return at < 0 ? text : `${text.slice(0, at)}<b>${numeral}</b>${text.slice(at + numeral.length)}`;
 }
 
-const NATION_LABEL: Readonly<Record<string, string>> = {
-  USA: 'USA', Germany: 'GER', USSR: 'USSR', Russia: 'RUS', 'USSR/Russia': 'RUS',
-  Sweden: 'SWE', Community: 'COM', UK: 'UK', France: 'FRA', Israel: 'ISR',
-  China: 'CHN', 'South Korea': 'KOR', Japan: 'JPN', Italy: 'ITA',
-  Poland: 'POL', Ukraine: 'UKR',
-};
+/** A nation's short name beside its flag (cards and filter chips): `nation.short.<nation>`, a code in en-US and the
+ *  country's name in zh-CN (BUI-F8: no Latin codes in Chinese). */
+const nationShort = (nation: string): string => t(`nation.short.${nation}`);
 const NATION_FULL_LABEL: Readonly<Record<string, string>> = {
   USA: 'United States', Germany: 'Germany', USSR: 'Soviet Union', Russia: 'Russia',
   'USSR/Russia': 'Russia', Sweden: 'Sweden', Community: 'Community', UK: 'United Kingdom',
@@ -413,10 +411,9 @@ const SHELL_TYPE_COLOR: Readonly<Record<string, string>> = {
 
 
 
-// garage_ui: one shared accessibility gate for the WAAPI micro-transitions
-// (the CSS entrance set is gated by the same media query in garage.css).
-const REDUCED_MOTION = typeof matchMedia === 'function' &&
-  matchMedia('(prefers-reduced-motion: reduce)').matches;
+// garage_ui: one shared accessibility gate for the WAAPI micro-transitions and smooth scrolls: the player's Reduce
+// motion choice, or the OS while they follow it (the CSS entrance set's media query follows the same choice,
+// accessibilityPreferences.ts).
 
 
 // --- CAMO PICKER SECTION: demand-loaded exact swatch painter -----------------
@@ -545,7 +542,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     id,
     count,
     nation: representative.nation,
-    label: representative.markings?.filterLabel || NATION_LABEL[representative.nation] || id.toUpperCase(),
+    label: nationShort(representative.nation),
     name: t(`nation.${representative.nation}`),
   }));
   const technicalViews = garageTechnicalViews();
@@ -568,26 +565,26 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<span lang="en">CLAUDE <b>OF TANKS</b></span></div>` +
     `<div class="cot-brand-utilities cot-header-nav" aria-label="${t('garage.nav.home')} & ${t('garage.nav.record')}">` +
     `<button class="nv" data-nav="home" type="button" aria-label="${t('garage.nav.home')}" title="${t('garage.nav.home')}">` +
-    `<img class="nvi nvi-product" src="/brand/nav/home.svg" alt="" draggable="false">` +
+    `${uiIconSVG('home', 16, 'currentColor', 'nvi nvi-product')}` +
     `<span class="nav-label">${t('garage.nav.home')}</span></button>` +
     `<button class="nv cot-record-trigger" type="button" aria-label="${t('garage.nav.record')}" ` +
     `title="${t('garage.nav.record')}" aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-record-modal">` +
-    `${uiIconSVG('battleRecord', 15, 'currentColor', 'nvi')}` +
+    `${uiIconSVG('record', 15, 'currentColor', 'nvi')}` +
     `<span class="nav-label">${t('garage.nav.record')}</span><span class="record-badge" aria-hidden="true">0</span>` +
     `<span class="record-new" aria-hidden="true" hidden></span></button>` +
     `</div></div>` +
     `<nav class="cot-nav cot-header-nav" aria-label="${t('garage.nav.garage')}">` +
-    `<button class="nv on cot-nav-desktop" data-nav="garage" type="button" aria-label="${t('garage.nav.garage')}" title="${t('garage.nav.garage')}">` +
-    `<img class="nvi nvi-product" src="/brand/nav/garage.svg" alt="" draggable="false">` +
+    `<button class="nv on cot-nav-desktop" data-nav="garage" type="button" aria-current="page" aria-label="${t('garage.nav.garage')}" title="${t('garage.nav.garage')}">` +
+    `${uiIconSVG('garage', 16, 'currentColor', 'nvi nvi-product')}` +
     `<span class="nav-label">${t('garage.nav.garage')}</span></button>` +
     `<button class="nv cot-nav-desktop" data-nav="studio" type="button" aria-label="${t('garage.nav.studio')}" title="${t('garage.nav.studio')}">` +
-    `<img class="nvi nvi-product" src="/brand/nav/studio.svg" alt="" draggable="false">` +
+    `${uiIconSVG('studio', 16, 'currentColor', 'nvi nvi-product')}` +
     `<span class="nav-label">${t('garage.nav.studio')}</span></button>` +
     `<button class="nv cot-nav-desktop" data-nav="gallery" type="button" aria-label="${t('garage.nav.gallery')}" title="${t('garage.nav.gallery')}">` +
-    `<img class="nvi nvi-product" src="/brand/nav/tank-gallery.svg" alt="" draggable="false">` +
+    `${uiIconSVG('gallery', 16, 'currentColor', 'nvi nvi-product')}` +
     `<span class="nav-label">${t('garage.nav.gallery')}</span></button>` +
     `<button class="nv cot-nav-desktop" data-nav="docs" type="button" aria-label="${t('garage.nav.docs')}" title="${t('garage.nav.docs')}">` +
-    `<img class="nvi nvi-product" src="/brand/nav/docs.svg" alt="" draggable="false">` +
+    `${uiIconSVG('manual', 16, 'currentColor', 'nvi nvi-product')}` +
     `<span class="nav-label">${t('garage.nav.docs')}</span></button>` +
     `<div class="cot-locale-credit-wrap cot-nav-desktop">` +
     `<button class="nv cot-locale-switcher" data-nav="locale" type="button" ` +
@@ -611,31 +608,31 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `${uiIconSVG('menu', 17, 'currentColor', 'nvi')}<span class="nav-label">${t('garage.nav.menu')}</span></button>` +
     `<div class="cot-mobile-nav-menu" id="cot-mobile-nav-menu" role="group" aria-label="${t('garage.nav.menu')}" hidden>` +
     `<button type="button" data-mobile-nav="home">` +
-    `<img src="/brand/nav/home.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
+    `${uiIconSVG('home', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.home')}</strong><small>${t('garage.nav.mobileHomeSub')}</small></span></button>` +
     `<button type="button" data-mobile-nav="garage" aria-current="page">` +
-    `<img src="/brand/nav/garage.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
+    `${uiIconSVG('garage', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.garage')}</strong><small>${t('garage.nav.mobileGarageSub')}</small></span></button>` +
     `<button type="button" data-mobile-nav="studio">` +
-    `<img src="/brand/nav/studio.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
+    `${uiIconSVG('studio', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.studio')}</strong><small>${t('garage.nav.mobileStudioSub')}</small></span></button>` +
     `<button type="button" data-mobile-nav="gallery">` +
-    `<img src="/brand/nav/tank-gallery.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
+    `${uiIconSVG('gallery', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.gallery')}</strong><small>${t('garage.nav.mobileGallerySub')}</small></span></button>` +
     `<button type="button" data-mobile-nav="docs">` +
-    `<img src="/brand/nav/docs.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
+    `${uiIconSVG('manual', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.docs')}</strong><small>${t('garage.nav.mobileDocsSub')}</small></span></button>` +
     `<button type="button" data-mobile-nav="locale" aria-label="${localeSwitchLabel}">` +
     `${uiIconSVG('globe', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('settings.language.title')}</strong><small>EN / 中文</small></span></button>` +
     `<button type="button" data-mobile-nav="record">` +
-    `${uiIconSVG('battleRecord', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
+    `${uiIconSVG('record', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.record')}</strong><small>${t('garage.nav.mobileRecordSub')}</small></span></button>` +
     `<button type="button" data-mobile-nav="environment">` +
     `${uiIconSVG('garage', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.stagingArea')}</strong><small>${t('garage.tools.chooseStaging')}</small></span></button></div></nav>` +
     `<div class="cot-battle-control">` +
-    `<button class="cot-battle" type="button" aria-label="${t('garage.battle.startBots')}">` +
+    `<button class="cot-battle" type="button" data-ui-sound="deploy" aria-label="${t('garage.battle.startBots')}">` +
     `<span class="battle-active-icon">${uiIconSVG('battleBots', 20)}</span>` +
     `<span class="battle-word">${t('garage.battle')}</span></button>` +
     `<button class="cot-battle-mode" type="button" aria-haspopup="dialog" aria-expanded="false" ` +
@@ -667,7 +664,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<span class="choice-name">${t('garage.battle.modeFlag')}</span></button>` +
     `<button class="cot-battle-choice" type="button" data-game-mode="infected" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeInfected', 17)}</span><span class="choice-name">${t('playMenu.matchMode.infected.label')}</span></button>` +
     `<button class="cot-battle-choice" type="button" data-game-mode="frontline_assault" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeZones', 17)}</span>` +
+    `<span class="choice-icon">${uiIconSVG('modeFrontline', 17)}</span>` +
     `<span class="choice-name">${t('garage.battle.modeFront')}</span></button>` +
     `<button class="cot-battle-choice" type="button" data-game-mode="realistic" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeRealistic', 17)}</span><span class="choice-name">${t('playMenu.matchMode.realistic.label')}</span></button>` +
     `<button class="cot-battle-choice" type="button" data-game-mode="gun_game" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeGunGame', 17)}</span><span class="choice-name">${t('playMenu.matchMode.gun_game.label')}</span></button>` +
@@ -749,7 +746,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<span class="cot-garage-preview-foot"><span data-garage-camo-name></span>` +
     `<small>${t('garage.setup.change')} ${uiIconSVG('chevronRight', 9)}</small></span></button></nav>` +
     `<button class="cot-garage-panel-scrim" type="button" aria-label="${t('garage.tools.close')}"></button>` +
-    `<div class="stats" id="cot-garage-dossier"></div>` +
+    `<div class="stats" id="cot-garage-dossier" data-locked="${t('garage.vehicleLocked')}"></div>` +
     `<div class="cot-country-rail">` +
     `<button class="cot-country-edge prev is-unavailable" type="button" disabled aria-hidden="true" ` +
     `aria-label="${t('garage.country.scrollLeft')}">${uiIconSVG('chevronLeft', 14)}</button>` +
@@ -778,7 +775,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `${uiIconSVG('chevronRight', 11, 'currentColor', 'cot-garage-variant-chevron')}</span></button></div>` +
     `<div class="cot-maps" id="cot-garage-maps"></div>` +
     `<div class="cot-camos" id="cot-garage-camos"></div></div>` +
-    `<div class="cot-garage-variant-menu" id="cot-garage-variant-menu" role="listbox" ` +
+    `<div class="cot-garage-variant-menu" id="cot-garage-variant-menu" role="listbox" data-heading="${t('garage.tools.stagingAreas')}" ` +
     `aria-label="${t('garage.tools.environments')}" hidden></div>` +
     `<div class="hint">&#8592; &#8594; ${t('garage.hint.select')} &nbsp;&middot;&nbsp; ${t('garage.hint.battle')}</div>`;
   document.body.appendChild(root);
@@ -1383,7 +1380,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const queueCountryRailAffordances = () => requestAnimationFrame(syncCountryRailAffordances);
   const scrollCountries = (direction: number): void => {
     const distance = Math.max(180, chipsEl.clientWidth * 0.72);
-    chipsEl.scrollBy({ left: direction * distance, behavior: REDUCED_MOTION ? 'auto' : 'smooth' });
+    chipsEl.scrollBy({ left: direction * distance, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
   };
   chipsEl.addEventListener('scroll', syncCountryRailAffordances, { passive: true });
   chipsEl.addEventListener('wheel', (event) => {
@@ -2214,7 +2211,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const genericKey = `garage.camo.generic.${selectedPatternId}`;
     const genericLabel = t(genericKey);
     compactCamoName.textContent = genericLabel !== genericKey ? genericLabel
-      : camoOpts?.label?.[selectedPatternId] || selectedPatternId || 'Factory';
+      : camoOpts?.label?.[selectedPatternId] || selectedPatternId || t('camoPattern.factory');
     const patternIds = [selectedPatternId, ...(camoOpts?.patterns || [])]
       .filter((patternId, index, ids) => ids.indexOf(patternId) === index);
     while (patternIds.length < compactCamoPreviews.length) patternIds.push(selectedPatternId);
@@ -2343,7 +2340,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       chip.type = 'button';
       chip.className = 'cot-country-chip';
       chip.dataset.country = group.id;
-      chip.title = `${group.name} · ${count} vehicles`;
+      chip.title = t('garage.country.chipTitle', { name: group.name, count });
       chip.setAttribute('aria-label', t('garage.country.chipAria', { name: group.name }));
       chip.innerHTML = `${flagIconHTML(group.nation, 22)}` +
         `<span class="code">${group.label}</span><span class="ct">${count}</span>`;
@@ -2436,7 +2433,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const activeChip = chipById.get(countryId);
     requestAnimationFrame(() => {
       if (api.isOpen && activeChip) activeChip.scrollIntoView({
-        block: 'nearest', inline: 'center', behavior: REDUCED_MOTION ? 'auto' : 'smooth',
+        block: 'nearest', inline: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth',
       });
       syncCountryRailAffordances();
     });
@@ -2451,7 +2448,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // stagger created a burst of animation objects and style flushes on every
     // nation switch, precisely while portraits were also decoding.
     if (previousCountry && previousCountry !== countryId && api.isOpen &&
-        cardsEl.animate && !REDUCED_MOTION) {
+        cardsEl.animate && !prefersReducedMotion()) {
       cardsEl.animate([{ opacity: 0.76 }, { opacity: 1 }],
         { duration: 140, easing: 'ease-out' });
     }
@@ -2502,7 +2499,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       card.style.display = cardCountry === countryFilter ? '' : 'none';
       const displayName = spec.label?.displayName || spec.name;
       const shortName = spec.label?.shortName || displayName;
-      card.title = developmentOnly ? `${displayName} — local development vehicle` : displayName;
+      card.title = developmentOnly ? `${displayName}${t('garage.card.developmentVehicle')}` : displayName;
       const tier = tierNumeral(spec.id) || '';
       const nationName = t(`nation.${spec.nation}`);
       card.setAttribute('aria-label', `${tier
@@ -2513,7 +2510,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       // name are here. No era or nation text: the cloth flag is the nation.
       card.innerHTML =
         (tier ? `<span class="hc-tier" aria-hidden="true">${tierChipHTML(tier)}</span>` : '') +
-        (developmentOnly ? `<span class="dev-tag">${spec.roster?.tag || 'DEV'}</span>` : '') +
+        (developmentOnly ? `<span class="dev-tag">${spec.roster?.tag || t('garage.card.devTag')}</span>` : '') +
         `<div class="nm"><span class="nmt"></span></div>`;
       requiredElement<HTMLElement>(card, '.nmt').textContent = shortName;
       card.addEventListener('pointerenter', () => signalTankIntent(spec.id), { passive: true });
@@ -2630,7 +2627,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const shouldAnimate = vehicleChanged
       && statsFor !== null
       && typeof statsEl.animate === 'function'
-      && !REDUCED_MOTION;
+      && !prefersReducedMotion();
     if (!shouldAnimate) return;
     statsEl.animate(
       [{ opacity: 0.25, transform: 'translateY(5px)' }, { opacity: 1, transform: 'none' }],
@@ -3038,26 +3035,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     readonly label: string;
     readonly icon: string;
   }
+  // The button names a mode with its glossary short name (src/ui/glossary.json), never a code (BUI-F8).
   const battleModeMeta: Readonly<Record<BattleMode, BattleChoiceMeta>> = {
     solo: { short: t('garage.battle.typeBots'), label: t('garage.battle.soloLabel'), icon: 'battleBots' },
-    private: { short: 'CODE', label: t('garage.battle.privateLabel'), icon: 'battlePrivate' },
-    lan: { short: 'LAN', label: t('garage.battle.lanLabel'), icon: 'battleLan' },
+    private: { short: t('garage.battle.typePrivate'), label: t('garage.battle.privateLabel'), icon: 'battlePrivate' },
+    lan: { short: t('garage.battle.typeLan'), label: t('garage.battle.lanLabel'), icon: 'battleLan' },
   };
-  const battleRuleMeta: Partial<Record<GameModeId, BattleChoiceMeta>> = {
-    juggernaut: { short: 'BOSS', label: t('playMenu.matchMode.juggernaut.label'), icon: 'modeJuggernaut' },
-    infected: { short: 'INFECT', label: t('playMenu.matchMode.infected.label'), icon: 'modeInfected' },
-    realistic: { short: 'REAL', label: t('playMenu.matchMode.realistic.label'), icon: 'modeRealistic' },
-    gun_game: { short: 'GUNS', label: t('playMenu.matchMode.gun_game.label'), icon: 'modeGunGame' },
-    drone: { short: 'FPV', label: t('playMenu.matchMode.drone.label'), icon: 'modeDrone' },
-    ac130: { short: 'AC-130', label: t('playMenu.matchMode.ac130.label'), icon: 'modeAc130' },
-
-    capture_the_flag: { short: 'CTF', label: t('garage.battle.ctfLabel'), icon: 'modeFlag' },
-    zone_control: { short: '750', label: t('garage.battle.zoneLabel'), icon: 'modeZones' },
-    turbo_ball: { short: 'TURBO', label: t('garage.battle.ballLabel'), icon: 'modeTurbo' },
-    endless_horde: { short: 'WAVE', label: t('garage.battle.hordeLabel'), icon: 'modeHorde' },
-    frontline_assault: { short: 'FRONT', label: t('garage.battle.frontLabel'), icon: 'modeZones' },
-    mars: { short: 'GRAV', label: t('garage.battle.marsLabel'), icon: 'modeMars' },
-  };
+  const battleRuleMeta = Object.fromEntries(Object.entries({
+    juggernaut: 'modeJuggernaut', infected: 'modeInfected', realistic: 'modeRealistic', gun_game: 'modeGunGame',
+    drone: 'modeDrone', ac130: 'modeAc130', capture_the_flag: 'modeFlag', zone_control: 'modeZones',
+    turbo_ball: 'modeTurbo', endless_horde: 'modeHorde', frontline_assault: 'modeFrontline', mars: 'modeMars',
+  }).map(([id, icon]) => [id, {
+    short: t(`playMenu.matchMode.${id}.short`), label: t(`playMenu.matchMode.${id}.label`), icon,
+  }])) as Partial<Record<GameModeId, BattleChoiceMeta>>;
   // The menu scrolls in one region between its head and launch row: where it continues below the footer (the special
   // modes on a short window), a fade and a chevron over the footer's edge say so.
   function syncBattleMenuScrollCue(): void {

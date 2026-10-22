@@ -78,12 +78,14 @@ import { killcamCameraFloor } from './killcamGround.ts';
 import * as THREE from 'three';
 import { createWheelNotcher } from './wheelNotches.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.ts';
-import { createElement as el, ensureStyle } from '../ui/dom.ts';
+import { createElement as el } from '../ui/dom.ts';
+import { ensureStyle } from '../ui/styleLayers.ts';
+import { A11Y } from '../ui/accessibilityPreferences.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
 import {
   hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
 } from '../ui/hitEventFormat.ts';
-import { MODULE_LABEL, CREW_LABEL } from '../ui/moduleRegistry.ts';
+import { crewName, moduleName } from '../ui/moduleRegistry.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { iconUrl } from '../ui/icons.ts';
 import { tierNumeral } from '../ui/battleLoad.ts';
@@ -742,8 +744,6 @@ const KC_MODULE_ICON: Readonly<Record<string, string>> = Object.freeze({
 const KC_CREW_ICON: Readonly<Record<string, string>> = Object.freeze({
   commander: 'crewCommander', gunner: 'crewGunner', driver: 'crewDriver', loader: 'crewLoader',
 });
-const KC_MODULE_LABELS = MODULE_LABEL as Readonly<Record<string, string>>;
-const KC_CREW_LABELS = CREW_LABEL as Readonly<Record<string, string>>;
 
 function killcamLabelIcon(key: string | null | undefined, fallback = 'penetration'): string {
   if (!key) return fallback;
@@ -778,7 +778,7 @@ const FIRING_CAMERA_SIDES = [1, -1] as const;
 // scratch camera for the x-ray framing solve (fov/aspect set per solve)
 const _fitCam = new THREE.PerspectiveCamera(42, 16 / 9, 0.5, 4000);
 
-// MODULE_LABEL / CREW_LABEL come from ui/moduleRegistry.ts (single source).
+// Module and crew names come from ui/moduleRegistry.ts moduleName() / crewName() (glossary-bound catalog keys).
 
 // ---------------------------------------------------------------------------
 // Shared x-ray material set (lazy singleton; depth-tested)
@@ -1141,7 +1141,7 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   background:radial-gradient(circle at 50% 52%,rgba(255,244,218,.78),rgba(242,165,54,.2) 34%,transparent 72%);
   opacity:0;pointer-events:none;}
 .cot-kc-flash.go{animation:cotKcFlash var(--cot-motion-scene) var(--cot-ease-out) forwards;}
-@keyframes cotKcFlash{0%{opacity:.62;}33%{opacity:.28;}100%{opacity:0;}}
+@keyframes cotKcFlash{0%{opacity:calc(.62*var(--cot-flash-scale,1));}33%{opacity:calc(.28*var(--cot-flash-scale,1));}100%{opacity:0;}}
 /* DEATH-VIEW GRADE (killcam_endscreen r1): subtle desaturation + vignette
    ramp over the whole death replay — screen-space only (the post chain is
    not this module's), ramped by CSS opacity so cancel() cleanly restores. */
@@ -1284,7 +1284,7 @@ body[data-cot-width='phone'] .cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px
   background:linear-gradient(135deg,rgba(22,27,28,.96),rgba(7,11,14,.96));
   border:1px solid var(--kc-line);border-right:3px solid var(--kc-amber);
   box-shadow:0 9px 22px rgba(0,0,0,.52);padding:10px 10px 5px;line-height:1.1;}
-.cot-kc-dmg::before{content:"DAMAGE";position:absolute;top:3px;right:9px;font:700 11px/1 ${FONT_COND};
+.cot-kc-dmg::before{content:attr(data-label);position:absolute;top:3px;right:9px;font:700 11px/1 ${FONT_COND};
   letter-spacing:.07em;color:#8f9ca6;text-align:right;}
 .cot-kc-dmg .ico{color:var(--kc-amber);}
 .cot-kc-leader{position:absolute;z-index:7;inset:0;width:100%;height:100%;overflow:visible;}
@@ -1294,7 +1294,7 @@ body[data-cot-width='phone'] .cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px
   .cot-kc .cot-kc-title{transform:translate(-50%,0)!important;}
   .cot-kc .cot-kc-annot,.cot-kc .cot-kc-killer{transform:none!important;}
   .cot-kc .cot-kc-anim{animation:none!important;opacity:1;}
-  .cot-kc-flash.go{animation:none!important;opacity:.12;}
+  .cot-kc-flash.go{animation:none!important;opacity:calc(.12*var(--cot-flash-scale,1));}
 }
 `;
 
@@ -1462,7 +1462,7 @@ export function createKillCam(deps: KillcamDeps) {
   function ensureDom(): KillcamDom {
     if (dom) return dom;
     ensureFonts();
-    ensureStyle('cot-kc-style', KC_CSS);
+    ensureStyle('cot-kc-style', KC_CSS, 'surfaces');
     const root = el('div', 'cot-kc');
     document.body.appendChild(root);
     el('div', 'cot-kc-grade', root); // death-view desat + vignette (class 'grade')
@@ -2416,7 +2416,7 @@ export function createKillCam(deps: KillcamDeps) {
     }
     const hasArmor = (event.nominalMm || 0) > 0 || (event.effectiveMm || 0) > 0;
     if (hasArmor) {
-      return `${Math.round(event.nominalMm || 0)} → ${Math.round(event.effectiveMm || 0)} mm eff.`;
+      return t('shotInfo.armorEffective', { nominal: Math.round(event.nominalMm || 0), effective: Math.round(event.effectiveMm || 0) });
     }
     const external = !!event.zone
       && ['optics', 'gun', 'gun_barrel', 'trackL', 'trackR'].includes(event.zone);
@@ -3914,7 +3914,8 @@ export function createKillCam(deps: KillcamDeps) {
     // peak displacement made the exact impact frame jump, while 47-61 Hz
     // oscillation read as camera jitter on low-refresh/mobile displays.
     const shakeIn = THREE.MathUtils.smoothstep(pb.itWall, 0, 0.08);
-    const shake = 0.055 * shakeIn * Math.exp(-pb.itWall / 0.3);
+    // scaled by the Accessibility camera-shake setting (0 holds the replay camera still)
+    const shake = 0.055 * shakeIn * Math.exp(-pb.itWall / 0.3) * A11Y.shake;
     if (shake > 0.004) {
       _a.x += Math.sin(pb.itWall * 19.0) * shake;
       _a.y += Math.sin(pb.itWall * 14.0) * shake * 0.55;
@@ -4774,7 +4775,7 @@ export function createKillCam(deps: KillcamDeps) {
         context,
         module,
         `m:${module.module}`,
-        KC_MODULE_LABELS[module.module] || module.module,
+        moduleName(module.module),
         entry,
         direction,
         innerLength,
@@ -4797,7 +4798,7 @@ export function createKillCam(deps: KillcamDeps) {
         context,
         crew,
         `c:${crew.crew}`,
-        KC_CREW_LABELS[crew.crew] || crew.crew,
+        crewName(crew.crew),
         entry,
         direction,
         innerLength,
@@ -5221,6 +5222,7 @@ export function createKillCam(deps: KillcamDeps) {
       d.labelHost,
     );
     if (big) {
+      label.dataset.label = t('killcam.stat.damage');
       const icon = el('span', 'ico', label);
       icon.innerHTML = uiIconSVG('damage', 15);
       el('span', 'val', label).textContent = main;
@@ -5318,7 +5320,7 @@ export function createKillCam(deps: KillcamDeps) {
         d,
         _p,
         xrayModuleStateColors[hit.newState],
-        KC_MODULE_LABELS[hit.module] || hit.module,
+        moduleName(hit.module),
         `${xrayModuleStateWords[hit.newState]}${damage}`,
         false,
         ok,
@@ -5333,7 +5335,7 @@ export function createKillCam(deps: KillcamDeps) {
       if (!anchor) continue;
       anchor.getWorldPosition(_p);
       addXrayLabel(
-        d, _p, '#ff7d8a', KC_CREW_LABELS[crewId] || crewId,
+        d, _p, '#ff7d8a', crewName(crewId),
         t('killcam.knockedOut'), false, false, `c:${crewId}`,
       );
     }

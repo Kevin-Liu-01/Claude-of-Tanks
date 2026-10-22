@@ -150,8 +150,40 @@
     })();
   </script>
   <script type="module" src="/src/ui/localeBootstrap.ts"></script>
-  <link rel="stylesheet" href="/src/presentation/mediaArchive.css" />
+  <script>
+    // The player's accessibility choices before first paint: colour preset, contrast, motion, drone static, hold or
+    // toggle, text and HUD size, camera shake and flash intensity, written on :root, where the game reads them
+    // (src/ui/accessibilityPreferences.ts) and where a change is written the same way (accessibilitySettings.ts
+    // applyAccessibility, which accessibilityPreferences.selftest.mjs pins to this seed). A Custom pair is re-checked.
+    (() => {
+      try {
+        const p = JSON.parse(localStorage.getItem('cot.accessibility.v1') || 'null');
+        if (!p || typeof p !== 'object') return;
+        const root = document.documentElement, data = root.dataset, hex = /^#[0-9a-f]{6}$/i;
+        const set = (name, value) => value !== 1 && root.style.setProperty(name, String(value));
+        const num = (v, lo, hi) => typeof v === 'number' && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : 1;
+        if (['deutan', 'protan', 'tritan', 'classic', 'custom'].includes(p.colorPreset)) data.cvd = p.colorPreset;
+        if (p.colorPreset === 'custom') {
+          set('--team-own', hex.test(p.customOwn) ? p.customOwn.toLowerCase() : '#57b8ff');
+          set('--team-enemy', hex.test(p.customEnemy) ? p.customEnemy.toLowerCase() : '#ff5a4e');
+        }
+        if (p.highContrast === true) data.contrast = 'high';
+        if (p.motion === 'reduce' || p.motion === 'full') data.motion = p.motion;
+        if (p.droneStatic === false) data.droneStatic = 'off';
+        const toggles = Array.isArray(p.toggles)
+          ? ['fire', 'handbrake', 'freeLook', 'freeCamera', 'rosters'].filter((action) => p.toggles.includes(action)) : [];
+        if (toggles.length) data.toggles = toggles.join(' ');
+        set('--cot-user-text', num(p.textScale, .8, 2));
+        set('--cot-user-hud', num(p.hudScale, .75, 1.5));
+        set('--cot-shake-scale', num(p.shake, 0, 1));
+        set('--cot-flash-scale', num(p.flash, 0, 1));
+      } catch (_) { /* no storage: the defaults */ }
+    })();
+  </script>
+  <link rel="stylesheet" href="/src/ui/tokens/tokens.css" />
   <style>
+    @layer reset,tokens,base,components,surfaces,utilities,overrides;
+    @layer surfaces {
     :root {
       /* One raster-quality contract for every DOM HUD mounted by the game.
          Most panels are composited translucent layers, where browser defaults
@@ -196,8 +228,11 @@
        a single module is fetched, and the bar below is driven by real load
        stages (see bootScreen.ts / main.ts BOOT STAGES).
        --------------------------------------------------------------------- */
+    }
   </style>
   <style>
+    @layer reset,tokens,base,components,surfaces,utilities,overrides;
+    @layer surfaces {
     #cot-boot {
       position: fixed; inset: 0; width: var(--cot-viewport-width, 100dvw);
       height: var(--cot-viewport-height, 100dvh); z-index: 200; overflow: hidden;
@@ -388,8 +423,12 @@
     .cot-boot-link:hover .cot-boot-link-icon { transform: scale(1.1); }
     .cot-boot-link:active { transform: translateY(0); box-shadow: none; transition-duration: .06s; }
     .cot-boot-link:focus-visible { outline: 2px solid #f0a030; outline-offset: 3px; }
-    body[data-cot-width-density='narrow'] .cot-boot-links { gap: 8px; }
-    body[data-cot-width-density='narrow'] .cot-boot-links > .cot-boot-link { padding-inline: 6px; }
+    /* The splash paints before any module writes body[data-cot-*]: its phone sizes read the same bands
+       (src/ui/responsiveLayout.ts) as media queries, so the first frame already has them (brand-ui SPEC 5.5). */
+    @media (width <= 380px) {
+      :root body .cot-boot-links { gap: 8px; }
+      :root body .cot-boot-links > .cot-boot-link { padding-inline: 6px; }
+    }
     @media (prefers-reduced-motion: reduce) {
       #cot-boot-hero .hly { transition-duration: .01ms; }
       #cot-boot.cot-boot-enter .cot-boot-mark,
@@ -488,9 +527,12 @@
     #cot-boot.cot-boot-enter .cot-boot-foot {
       animation: cot-boot-fade .42s cubic-bezier(.16,1,.3,1) .18s backwards;
     }
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-boot-mark { width: 92px; height: 92px; }
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-boot-load { margin-top: 32px; }
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-boot-tip { height: 144px; }
+    @media (width < 768px) {
+      .cot-boot-mark { width: 92px; height: 92px; }
+      .cot-boot-load { margin-top: 32px; }
+      .cot-boot-tip { height: 144px; }
+    }
+    }
   </style>
   <script>
     // CHUNK RECOVERY r4: production sessions are deployment-pinned by routing

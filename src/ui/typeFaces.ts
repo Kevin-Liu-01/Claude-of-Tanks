@@ -197,6 +197,9 @@ export const TYPE_DEFAULT_FAMILIES: readonly TypeFamilyKey[] = Object.freeze(['u
 
 const FONT_ROOT = '/fonts/';
 
+/** styleLayers.ts STYLE_LAYER_ORDER, repeated so this module stays dependency-free (styleLayers.selftest pins it). */
+const LAYER_ORDER = '@layer reset,tokens,base,components,surfaces,utilities,overrides;';
+
 function faceFor(voice: TypeVoice, weight: number): TypeFace {
   const face = TYPE_FACES.find((entry) => entry.voice === voice && entry.weight === weight);
   if (!face) throw new Error(`typeFaces: no ${voice} ${weight} face`);
@@ -328,7 +331,10 @@ export function typeHead(marker: TypeMarker | string): string {
   const parsed = typeof marker === 'string' ? parseTypeMarker(marker) : marker;
   const links = parsed.preload.map((token) =>
     `<link rel="preload" href="${typeFaceFile(token)}" as="font" type="font/woff2" crossorigin>`);
-  return `${links.join('')}<style id="cot-font-faces">${fontFaceCss(parsed.families)}\n${typeTokenCss(parsed)}</style>`;
+  // The head's rules sit in the surfaces layer with every other sheet (src/ui/styleLayers.ts): unlayered, they would
+  // beat every layered rule whatever its specificity.
+  return `${links.join('')}<style id="cot-font-faces">${LAYER_ORDER}@layer surfaces{${fontFaceCss(parsed.families)}\n`
+    + `${typeTokenCss(parsed)}}</style>`;
 }
 
 /** The document marker: `<!--cot:type ui mono display-700 body-500-->`. */

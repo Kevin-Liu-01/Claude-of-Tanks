@@ -142,6 +142,7 @@
     "hero-cards:check": "node tools/hero-cards-check.mjs",
     "hero-cards:plan": "node tools/hero-cards-plan.mjs",
     "roof:discipline": "node --max-old-space-size=4096 tools/roof-gun-discipline.mjs",
+    "media:motion-savedata": "node tools/media-motion-savedata.browser.mjs",
     "typecheck": "node tools/typecheck.mjs",
     "lint": "oxlint",
     "media:campaign": "node tools/media-production/campaign.mjs",

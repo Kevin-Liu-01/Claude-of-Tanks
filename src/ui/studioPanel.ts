@@ -18,6 +18,7 @@ import { mountStudioPicturePanel, type StudioPicturePanelApi } from './studioPic
  */
 import { FONT_STACK, ensureFonts } from './fonts.ts';
 import { iconUrl } from './icons.ts';
+import { uiIconSVG } from './uiIcons.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 import { mountMediaArchive } from '../presentation/mediaArchive.ts';
 import { PRODUCT_STATS } from '../productStats.ts';
@@ -25,6 +26,7 @@ import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
 import { createInfoButton, type InfoButton } from './contextInfo.ts';
 import { createPlanView, type StudioPlanFeatures } from './studioPlanView.ts';
 import { getLocale, t } from './i18n.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { STUDIO_FX_PARAMS } from '../game/studioFxSettings.ts';
 import { hrefForLocale } from './localeRouting.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
@@ -327,11 +329,11 @@ const CSS = `
 .cot-studio .badge{position:absolute;top:16px;left:20px;pointer-events:auto;display:flex;
   align-items:center;gap:10px;padding:8px 12px;background:rgba(6,9,12,.85);
   border:1px solid rgba(190,204,216,.28);border-left:3px solid #e69a2d;backdrop-filter:blur(4px);}
-.cot-studio .badge .bm{width:18px;height:18px;object-fit:contain;display:block;}
+.cot-studio .badge .bm{width:18px;height:18px;display:block;color:var(--accent);}.cot-studio .badge .bm svg{display:block;width:18px;height:18px;}
 .cot-studio .badge .t{font-size:12px;font-weight:700;letter-spacing:.26em;color:#ffd27a;}
 .cot-studio .badge .m{font-size:11px;font-weight:700;letter-spacing:.08em;color:#8a97a3;}
 .cot-studio .badge button{display:inline-flex;align-items:center;gap:5px;}
-.cot-studio .badge button img{display:block;width:18px;height:15px;object-fit:contain;}
+.cot-studio .badge button svg{display:block;width:18px;height:18px;}
 .cot-studio .busy{position:absolute;top:16px;left:50%;transform:translateX(-50%);
   padding:8px 18px;background:rgba(6,9,12,.88);border:1px solid rgba(230,154,45,.5);
   color:#ffd27a;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;display:none;}
@@ -646,12 +648,7 @@ const CSS = `
  */
 export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   ensureFonts();
-  if (!document.getElementById('cot-studio-css')) {
-    const st = document.createElement('style');
-    st.id = 'cot-studio-css';
-    st.textContent = CSS + STUDIO_PRODUCTION_CSS;
-    document.head.appendChild(st);
-  }
+  ensureStyle('cot-studio-css', CSS + STUDIO_PRODUCTION_CSS, 'surfaces');
 
   const root = el('div', 'cot-studio');
   document.body.appendChild(root);
@@ -667,15 +664,12 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
 
   // --- top badge -------------------------------------------------------------
   const badge = el('div', 'badge');
-  const badgeMark = document.createElement('img');
-  badgeMark.className = 'bm';
-  badgeMark.src = '/brand/nav/studio.svg';
-  badgeMark.alt = '';
-  badgeMark.draggable = false;
+  const badgeMark = el('span', 'bm');
+  badgeMark.innerHTML = uiIconSVG('studio', 18);
   const badgeTitle = el('div', 't', t('studioPanel.header.title'));
   const badgeMap = el('div', 'm', '');
   const galleryBtn = el('button');
-  galleryBtn.innerHTML = `<img src="/brand/nav/tank-gallery.svg" alt="">${t('studioPanel.tankGallery')}`;
+  galleryBtn.innerHTML = `${uiIconSVG('gallery', 18)}${t('studioPanel.tankGallery')}`;
   galleryBtn.addEventListener('click', () => {
     const id = S._internal.selected?.spec?.id;
     window.location.href = hrefForLocale(id ? galleryHref(id) : '/gallery', getLocale());
@@ -1776,7 +1770,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     dialog.showModal();
     const archiveRoot = dialog.querySelector<HTMLElement>('[data-media-archive]');
     if (!archiveRoot) throw new Error('[studio] missing production archive root');
-    mountMediaArchive(archiveRoot, { mode: 'compact', limit: 61 })
+    // The archive's stylesheet loads at this boundary, its one host in the game (the game boot does not carry it).
+    import('../presentation/mediaArchive.css')
+      .then(() => mountMediaArchive(archiveRoot, { mode: 'compact', limit: 61 }))
       .catch((error: RuntimeValue) => flashBusy(errorMessage(error)));
   });
   secArchive.append(archiveCopy, archiveBtn);

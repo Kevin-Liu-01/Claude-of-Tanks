@@ -14,6 +14,9 @@ import enUS from './i18nCatalog.en-US.json' with { type: 'json' };
 import zhCN from './i18nCatalog.zh-CN.json' with { type: 'json' };
 import { registerLocaleDictionary, type CatalogLocale } from './i18nDictionaries.ts';
 
+/** One formatter for server and browser (i18nDictionaries.ts: placeholders and the ICU subset); both locales are resident. */
+export { catalogText } from './i18nDictionaries.ts';
+
 registerLocaleDictionary('en-US', enUS);
 registerLocaleDictionary('zh-CN', zhCN);
 
@@ -23,14 +26,3 @@ export const CATALOG: Readonly<Record<CatalogLocale, Readonly<Record<string, str
   'en-US': enUS,
   'zh-CN': zhCN,
 } as const;
-
-export function catalogText(
-  locale: CatalogLocale,
-  key: string,
-  vars?: Readonly<Record<string, string | number>>,
-): string {
-  const source = CATALOG[locale][key] ?? CATALOG['en-US'][key] ?? key;
-  if (!vars) return source;
-  return source.replace(/\{(\w+)\}/g, (match, name: string) =>
-    Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : match);
-}

@@ -1,3 +1,5 @@
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 .cot-flight-hud{position:absolute;inset:0;pointer-events:none;color:#e1f5ee;text-shadow:0 1px 3px #000}
 .cot-flight-hud[hidden],.cot-flight-hud [hidden]{display:none!important}
 .flight-sight{position:absolute;left:50%;top:50%;width:42px;height:42px;transform:translate(-50%,-50%);background:
@@ -319,6 +321,8 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
 .cot-drone-signal-loss[hidden],.cot-scope-vision[hidden]{display:none!important}
 @keyframes drone-signal-grain{to{background-position:41px 27px}}
 @media(prefers-reduced-motion:reduce){.cot-drone-signal-loss::before{animation:none}}
+/* Drone static off (Accessibility): a lost feed shows its plain plate and words, no noise and no scan lines */
+:root[data-drone-static=off] .cot-drone-signal-loss::before,:root[data-drone-static=off] .cot-drone-signal-loss::after{display:none}
 /* The scope's vision switch sits beside the sight, level with the marker, past the widest dispersion ring (hud.ts
    RET_CEIL_FRAC: 15% of the short side), where none of the scope's readouts ever go (critic r8: seated under the sight,
    at 50% + 145px, it ran under the tray and the controls row on mouse windows under 616 px tall, and the readouts, the
@@ -377,3 +381,4 @@ body[data-scope-vision='none'] .cot-hud .cot-scope-vision{visibility:hidden}
 .cot-scope-vision[data-fold='1']:not(:hover,:focus-visible) .scope-vision-tag{display:block}
 .cot-scope-vision[data-fold='1']:not(:hover,:focus-visible) :is(.scope-vision-copy,.flight-key,.scope-vision-cycle){display:none}
 @media(forced-colors:active){.cot-hud .cot-scope-vision{outline:1px solid ButtonText}.cot-scope-vision:focus-visible{outline:3px solid Highlight}.scope-vision-step.active{background:Highlight}}
+}

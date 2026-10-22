@@ -721,6 +721,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/films/restore.selftest.mjs',
     'tools/media-r5/fleet-media.selftest.mjs',
     'tools/media-r5/site-video-budget.selftest.mjs',
+    // brand-ui BUI-F7: the site's one playback policy and still helper, and the media receipts (fallbacks, rounds,
+    // one still per page)
+    'src/presentation/mediaPlayer.selftest.mjs',
+    'src/presentation/responsivePicture.selftest.mjs',
+    'tools/media-fallback.selftest.mjs',
+    'tools/media-freshness.selftest.mjs',
+    'tools/media-page-unique.selftest.mjs',
+    'tools/viteGameEntryMeta.selftest.mjs',
     'tools/media-r5/fleet.selftest.mjs',
     'tools/media-r5/fleet-rekey.selftest.mjs',
     'tools/media-r5/combat.selftest.mjs',
@@ -733,6 +741,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/bundle-budget.selftest.mjs',
     'tools/viteSharedWorkers.selftest.mjs',
     'tools/viteGlslMinify.selftest.mjs',
+    // 2026-10-18 (brand-ui BUI-F3): the CSS-in-TS minifier keeps every literal the same stylesheet (Lightning CSS)
+    'tools/viteCssInTsMinify.selftest.mjs',
     'tools/telemetry-report.selftest.mjs',
     'tools/browser-failure-evidence.selftest.mjs',
     'tools/battle-entry-sweep.selftest.mjs',
@@ -777,6 +787,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/i18nLazyCatalog.selftest.mjs',
     // 2026-10-16 (test-speed): the registry's chunk import keeps the locale runtime's receipts reusable
     'src/ui/i18nChunkImport.selftest.mjs',
+    // 2026-10-18 BUI-F8: ICU/Intl formatting, the pseudo-locale and the catalog-shape check; the glossary as the single
+    // source of SPEC 11.2 names; the literal-ban lint's ratchet; build-time /cn body localization.
+    'src/ui/i18nFormat.selftest.mjs',
+    'src/ui/glossary.selftest.mjs',
+    'tools/i18n-literal-lint.selftest.mjs',
+    'src/presentation/localizedBody.selftest.mjs',
     'tools/i18n-page-catalogs.selftest.mjs',
     'src/dev/mapCaptureReadiness.selftest.mjs',
     'src/dev/debugTelemetry.selftest.mjs',
@@ -935,6 +951,23 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/pinch-zoom-probe.selftest.mjs',
     'src/ui/hudEditorPreview.selftest.mjs',
     'src/ui/runtimeStyles.selftest.mjs',
+    // 2026-10-17 (brand-ui BUI-F1): tokens.json -> tokens.css + tokens.ts in sync; SPEC 4.4 contrast and 4.5
+    // colour-vision floors from the token values; the legacy names alias the tokens
+    'src/ui/tokens/tokens.selftest.mjs',
+    // 2026-10-18 (brand-ui BUI-F3): every stylesheet declares into the cascade layers, CSS-in-TS only through
+    // ensureStyle(), every linked stylesheet hashed; the style-literal ratchet (counts may only fall)
+    'src/ui/styleLayers.selftest.mjs',
+    // 2026-10-22 (brand-ui BUI-F5): the shared component kit (markup, ARIA, roving focus, one tokens-only sheet)
+    'src/ui/components/components.selftest.mjs',
+    'tools/style-literal-census.selftest.mjs',
+    // 2026-10-18 (brand-ui BUI-F9): the accessibility core — the record, :root as its runtime source (the head seed and
+    // applyAccessibility agree), text and HUD scale, colour presets through tokens.ts, Custom pairs under the floors
+    // refused, Reduce motion over the OS both ways, shake/flash/static consumers, the 1 KB boot reader; hold or toggle
+    // and the perf meter default; the caption stream for radio, alarms and key sounds
+    'src/ui/accessibilityPreferences.selftest.mjs',
+    'src/ui/colorVision.selftest.mjs',
+    'src/game/inputHoldToggle.selftest.mjs',
+    'src/audio/captions.selftest.mjs',
     'src/ui/topAccentBorders.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',
     // 2026-10-09 (fix/camo-defaults): production's camouflage system, row for row (R113; the owner's 10-09 messages)
@@ -2160,6 +2193,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/entry/telemetry.selftest.mjs',
     'src/entry/inlineWatchdogSink.selftest.mjs',
     'src/ui/icons.selftest.mjs',
+    // 2026-10-18 (brand-ui BUI-F4): the one icon sprite: drawing rules, one stroke per optical size, the 10 KB sprite
+    // and 3 KB boot-slice budgets, the generated index in sync, the icon() host markup, no retired product marks
+    'src/ui/icons/icon.selftest.mjs',
     'src/ui/flags.selftest.mjs',
     'src/ui/garageLocaleNavigation.selftest.mjs',
     'src/ui/garageVariantPicker.selftest.mjs',

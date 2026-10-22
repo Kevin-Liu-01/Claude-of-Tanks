@@ -1,0 +1,21 @@
+{
+  "$description": "Ratchet for tools/i18n-literal-lint.mjs (BUI-F8): player-facing English literals per file. It only falls: fix literals, then run node tools/i18n-literal-lint.mjs --update. --check fails on any rise and on any stale pin. Three pins are attribute and CSS fragments the scanner reads as words (an SVG path tail in garage.ts, the icon host's fill-rule in icons/icon.ts, the layer wrapper in styleLayers.ts), not player copy.",
+  "total": 94,
+  "files": {
+    "src/game/studio.ts": 25,
+    "src/game/studioFilm.ts": 9,
+    "src/game/studioFilmAudio.ts": 1,
+    "src/game/studioFilmExport.ts": 7,
+    "src/game/studioFilmMux.ts": 10,
+    "src/game/studioFilmPlan.ts": 13,
+    "src/game/studioFxSettings.ts": 1,
+    "src/game/studioLight.ts": 6,
+    "src/game/studioLightRuntime.ts": 1,
+    "src/game/studioPicture.ts": 11,
+    "src/game/studioProduction.ts": 5,
+    "src/ui/garage.ts": 1,
+    "src/ui/icons/icon.ts": 1,
+    "src/ui/studioPanel.ts": 2,
+    "src/ui/styleLayers.ts": 1
+  }
+}

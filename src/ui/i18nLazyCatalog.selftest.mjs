@@ -66,7 +66,9 @@ assert.equal(dictionaries.localeDictionary('zh-CN'), undefined, 'a windowless co
 assert.ok(dictionaries.localeDictionary('en-US'), 'Node keeps the full English catalog resident');
 assert.equal(worker.t('garage.battle'), 'BATTLE', 'a windowless Node context translates through English');
 const runtimeSource = readFileSync(resolve(ROOT, 'src/ui/i18n.ts'), 'utf8');
-const bootAwait = /^if \(typeof window !== 'undefined'\) \{\s*await Promise\.all\(\[\s*loadLocaleDictionary\(FALLBACK_LOCALE\),\s*loadLocaleDictionary\(detectLocale\(\)\)\.catch\([\s\S]*?\]\);\s*\} else if \(!import\.meta\.env\) \{\s*await loadLocaleDictionary\(FALLBACK_LOCALE\);\s*\}\s*$/m;
+// (BUI-F8: a dev-server-only pseudo-locale branch may follow the boot await inside the browser block; production builds
+// compile it out because it is gated on import.meta.env.DEV.)
+const bootAwait = /^if \(typeof window !== 'undefined'\) \{\s*await Promise\.all\(\[\s*loadLocaleDictionary\(FALLBACK_LOCALE\),\s*loadLocaleDictionary\(detectLocale\(\)\)\.catch\([\s\S]*?\]\);\s*(?:(?:\/\/[^\n]*\s*)*if \(import\.meta\.env\?\.DEV && [^\n]*\{\n[\s\S]*?\n {2}\}\s*)?\} else if \(!import\.meta\.env\) \{\s*await loadLocaleDictionary\(FALLBACK_LOCALE\);\s*\}\s*$/m;
 assert.match(runtimeSource, bootAwait,
   'browser documents await English (a failure propagates) and the boot locale (a failure degrades); only Node awaits otherwise');
 assert.equal(runtimeSource.match(/^\s*await /gm)?.length, 2, 'the runtime has no other top-level await');

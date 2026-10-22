@@ -6,10 +6,11 @@ import { CAMO_PAINT_BONUS, combineCamo } from '../sim/spotting.ts';
 import { resolveInfoImage, resolveInfoImages } from './contextInfo.ts';
 import { MODAL_FOCUSABLE_SELECTOR, normalizeModalSize } from './modal.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
+import { readIconSprite } from '../../tools/icon-sprite-lib.mjs';
 
 assert(uiIconIds().includes('info'), 'the shared UI set owns the info glyph');
-assert.match(uiIconSVG('info', 13), /<circle/);
-assert.match(uiIconSVG('info', 13), /<path/);
+assert.match(uiIconSVG('info', 13), /href="#i-info-s"/, 'the 13 px info icon takes the 16-unit optical master');
+assert.match(readIconSprite().small.get('info'), /<path/);
 
 assert.deepEqual(
   resolveInfoImage('/icons/m1a2_angle.webp', {

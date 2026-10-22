@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 
-const [main, garageSource, responsiveCss, garageCss, motionCss, publicNavCss] = await Promise.all([
+const [main, gameHtml, garageSource, responsiveCss, garageCss, motionCss, publicNavCss] = await Promise.all([
   readFile(new URL('../main.ts', import.meta.url), 'utf8'),
+  readFile(new URL('../../index.html', import.meta.url), 'utf8'),
   readFile(new URL('./garage.ts', import.meta.url), 'utf8'),
   readFile(new URL('./responsiveSurfaces.css', import.meta.url), 'utf8'),
   readFile(new URL('./garage.css', import.meta.url), 'utf8'),
@@ -15,6 +16,13 @@ const responsiveImport = main.indexOf("import './ui/responsiveSurfaces.css';");
 const garageImport = main.indexOf("import './ui/garage.css';");
 const garageRuntimeImport = main.indexOf("from './ui/garage.ts';");
 
+// The design tokens are the game document's first stylesheet, linked ahead of the entry (whose CSS imports read them).
+const tokensLink = gameHtml.indexOf('<link rel="stylesheet" href="/src/ui/tokens/tokens.css" />');
+assert.ok(tokensLink >= 0 && tokensLink === gameHtml.search(/<link rel="stylesheet"/),
+  'the game document must link the design tokens before any other stylesheet');
+assert.ok(tokensLink < gameHtml.indexOf('<script type="module" src="/src/main.ts">'),
+  'the design tokens must load ahead of the game entry');
+assert.ok(!main.includes('tokens.css'), 'the tokens load once, from the game document, not again from the entry');
 assert.ok(motionImport >= 0, 'composition root must own the shared motion contract');
 assert.ok(responsiveImport > motionImport,
   'motion tokens must load before responsive and component styles consume them');
@@ -115,8 +123,8 @@ for (const headerClass of [
 assert.match(garageCss,
   /\.cot-sidebar-section-title > span\{[^}]*white-space:nowrap;/,
   'Garage sidebar headings must remain on one readable line');
-assert.match(motionCss, /--cot-ease-out:\s*cubic-bezier\(/,
-  'motion contract must publish the standard responsive easing');
+assert.match(motionCss, /--cot-ease-out:\s*var\(--ease-camera,\s*cubic-bezier\(/,
+  'motion contract must publish the standard responsive easing as an alias of the camera easing token');
 for (const band of ['instant', 'fast', 'base', 'slow', 'scene']) {
   assert.match(motionCss, new RegExp(`--cot-motion-${band}:`),
     `motion contract must publish its ${band} duration band`);

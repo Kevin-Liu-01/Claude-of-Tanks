@@ -10,14 +10,16 @@
  *
  * Nothing here runs at import, and every surface reaches this module through import() at use. The index is fetched
  * once per document, at the first lookup; a missing index, a malformed entry or a vehicle the index lacks shows
- * nothing. The player names no video source until its frame is on screen and motion is allowed: reduced motion and
- * data saving keep the poster until the viewer presses play, an off-screen or hidden frame pauses, and a paused source
- * is released after a short grace so a scroll reversal does not restart the transfer.
+ * nothing, never another vehicle's take. The player is the site's shared one (src/presentation/mediaPlayer.ts, brand-ui
+ * SPEC 8.3): no video source until its frame is on screen and motion is allowed; reduced motion and data saving keep
+ * the poster until the viewer presses play; an off-screen or hidden frame pauses; a paused source is released after ten
+ * seconds so a scroll reversal does not restart the transfer.
  */
 import { getLocale, t, type SupportedLocale } from './i18n.ts';
 import { hrefForLocale } from './localeRouting.ts';
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
 import { resolveTankId } from '../vehicles/tankIdAliases.ts';
+import { createMediaPlayer, mediaType } from '../presentation/mediaPlayer.ts';
 
 /** The media lane's per-vehicle index, beside the loops and posters it names. */
 export const FLEET_TAKES_INDEX = '/media/site50-r14/fleet/index.json';
@@ -100,52 +102,6 @@ export function fleetTakeStudioHref(take: FleetTake, locale: SupportedLocale = g
   return hrefForLocale(`/studio?scene=${take.scene}`, locale);
 }
 
-interface ConnectionHints { readonly saveData?: boolean; readonly effectiveType?: string }
-
-// Reduced motion, data saving and very slow links wait for the viewer's play (as src/presentation/publicPages.ts does).
-function manualPlayback(motion: MediaQueryList | null): boolean {
-  const connection = typeof navigator === 'undefined' ? undefined
-    : (navigator as Navigator & { connection?: ConnectionHints }).connection;
-  return !!motion?.matches || !!connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || '');
-}
-
-const SVG_NS = 'http://www.w3.org/2000/svg';
-const PLAY_ICON = 'M4.5 2.5v11l9-5.5z';
-const PAUSE_ICON = 'M4 2.5h3v11H4zM9 2.5h3v11H9z';
-// A paused source survives a scroll reversal this long, then its decoder is freed (sooner in a hidden tab).
-const RELEASE_MS = 15000;
-const HIDDEN_RELEASE_MS = 5000;
-// Playback needs a quarter of the frame on screen; the poster loads once the frame is within a quarter screen of it.
-const VISIBLE_RATIO = 0.25;
-// At most two loops play at once on a page (the coordinator, 2026-10-13): a third that starts pauses the one that has
-// played longest, which resumes once a slot frees while it is still in view; the viewer's own play always wins a slot.
-const MAX_PLAYING = 2;
-interface PlayingSlot { crowded: boolean; sync(): void }
-const playingNow: PlayingSlot[] = [];
-const crowdedOut = new Set<PlayingSlot>();
-function claimSlot(slot: PlayingSlot): void {
-  if (playingNow.includes(slot)) return;
-  playingNow.push(slot);
-  while (playingNow.length > MAX_PLAYING) {
-    const oldest = playingNow.shift();
-    if (!oldest) break;
-    oldest.crowded = true;
-    crowdedOut.add(oldest);
-    oldest.sync();
-  }
-}
-function vacateSlot(slot: PlayingSlot): void {
-  const at = playingNow.indexOf(slot);
-  if (at < 0) return;
-  playingNow.splice(at, 1);
-  for (const waiting of [...crowdedOut]) {
-    if (playingNow.length >= MAX_PLAYING) break;
-    crowdedOut.delete(waiting);
-    waiting.crowded = false;
-    waiting.sync();
-  }
-}
-
 export interface FleetTakePlayer {
   /** Show this take's poster, and its loop once the frame is visible and motion is allowed; null empties the frame. */
   show(take: FleetTake | null): void;
@@ -158,162 +114,40 @@ export interface FleetTakePlayer {
 
 /**
  * A muted, inline, looping player inside `frame`: a decorative video (the surface's caption names the take) and one
- * play/pause control. `autoplay` is a surface's further gate on starting by itself; the viewer's play bypasses it.
+ * play/pause control, under the site's one playback policy (src/presentation/mediaPlayer.ts: a source only on screen,
+ * one transfer at a time, two playing at most, release after ten seconds, reduced motion and data saving wait for the
+ * viewer). `autoplay` is a surface's further gate on starting by itself; the viewer's play bypasses it.
  */
 export function createFleetTakePlayer(frame: HTMLElement, autoplay: () => boolean = () => true): FleetTakePlayer {
   const video = document.createElement('video');
   video.className = 'fleet-take-video';
-  // The muted property, not only the attribute, lets the browser start a clip without a gesture.
-  video.muted = true;
-  video.defaultMuted = true;
-  video.loop = true;
-  video.playsInline = true;
-  video.preload = 'none';
-  video.disablePictureInPicture = true;
   video.hidden = true;
   video.tabIndex = -1;
   video.setAttribute('aria-hidden', 'true');
-  const control = document.createElement('button');
-  control.type = 'button';
-  control.className = 'fleet-take-toggle';
-  control.hidden = true;
-  const icon = document.createElementNS(SVG_NS, 'svg');
-  icon.setAttribute('viewBox', '0 0 16 16');
-  icon.setAttribute('aria-hidden', 'true');
-  const glyph = document.createElementNS(SVG_NS, 'path');
-  glyph.setAttribute('fill', 'currentColor');
-  icon.append(glyph);
-  control.append(icon);
-  frame.append(video, control);
-
-  const motion = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+  frame.append(video);
   let take: FleetTake | null = null;
-  let near = typeof IntersectionObserver !== 'function';
-  let visible = near;
-  let wanted = false; // the viewer pressed play: survives reduced motion, ends with the take
-  let held = false; // the viewer pressed pause: holds every later take too
-  let source = '';
-  let failed = '';
-  let releaseTimer: ReturnType<typeof setTimeout> | 0 = 0;
-
-  const release = (): void => {
-    if (releaseTimer) clearTimeout(releaseTimer);
-    releaseTimer = 0;
-    if (!source) return;
-    source = '';
-    video.pause();
-    video.removeAttribute('src');
-    video.load();
-  };
-  const slot: PlayingSlot = { crowded: false, sync: () => sync() };
-  const playing = (): boolean => !!take && take.loop !== failed && visible && !document.hidden && !slot.crowded
-    && (wanted || (!held && !manualPlayback(motion) && autoplay()));
-
-  const sync = (): void => {
-    if (!take) {
-      vacateSlot(slot);
-      crowdedOut.delete(slot);
-      slot.crowded = false;
-      release();
-      control.hidden = true;
-      return;
-    }
-    if (near && video.getAttribute('poster') !== take.poster) video.poster = take.poster;
-    const play = playing();
-    if (play) claimSlot(slot);
-    else vacateSlot(slot);
-    if (play) {
-      if (releaseTimer) clearTimeout(releaseTimer);
-      releaseTimer = 0;
-      if (source !== take.loop) {
-        source = take.loop;
-        video.src = source;
-      }
-      video.play().catch((error: unknown) => {
-        // A browser that refuses even a muted start keeps the poster until the viewer presses play.
-        if (error instanceof Error && error.name === 'NotAllowedError' && take?.loop === source) {
-          wanted = false;
-          held = true;
-          sync();
-        }
-      });
-    } else if (source) {
-      video.pause();
-      if (!releaseTimer) releaseTimer = setTimeout(release, document.hidden ? HIDDEN_RELEASE_MS : RELEASE_MS);
-    }
-    control.hidden = take.loop === failed;
-    const label = t(play ? 'media.fleet.pause' : 'media.fleet.play', { title: fleetTakeText(take, 'short') });
-    control.setAttribute('aria-label', label);
-    control.title = label;
-    control.dataset.state = play ? 'playing' : 'paused';
-    glyph.setAttribute('d', play ? PAUSE_ICON : PLAY_ICON);
-  };
-
-  const toggle = (): void => {
-    if (!take) return;
-    const play = !playing();
-    wanted = play;
-    held = !play;
-    if (play) {
-      crowdedOut.delete(slot);
-      slot.crowded = false;
-    }
-    sync();
-  };
-  control.addEventListener('click', (event) => {
-    event.stopPropagation(); // the frame's own click (the Garage's shot) is the surface's
-    toggle();
+  const player = createMediaPlayer(video, {
+    frame,
+    controlParent: frame,
+    controlClass: 'fleet-take-toggle',
+    control: 'always',
+    gate: autoplay,
+    label: (playing) => (take ? t(playing ? 'media.fleet.pause' : 'media.fleet.play', { title: fleetTakeText(take, 'short') }) : ''),
   });
-  // A loop that fails to load leaves the poster and no control; another take still tries its own.
-  video.addEventListener('error', () => {
-    if (!source || !video.error) return;
-    failed = source;
-    release();
-    sync();
-  });
-
-  const watch = (rootMargin: string, update: (entry: IntersectionObserverEntry) => void): IntersectionObserver | null => {
-    if (typeof IntersectionObserver !== 'function') return null;
-    const observer = new IntersectionObserver((entries) => {
-      const entry = entries[entries.length - 1];
-      if (entry) update(entry);
-      sync();
-    }, { rootMargin, threshold: [0, VISIBLE_RATIO, 0.75] });
-    observer.observe(frame);
-    return observer;
-  };
-  const warmObserver = watch('25% 0px', (entry) => { near = entry.isIntersecting; });
-  const viewObserver = watch('0px', (entry) => {
-    visible = entry.isIntersecting && entry.intersectionRatio >= VISIBLE_RATIO;
-  });
-  document.addEventListener('visibilitychange', sync);
-  motion?.addEventListener?.('change', sync);
-
   return {
     show(next) {
-      if (next?.loop !== take?.loop) {
-        release();
-        wanted = false;
-      }
-      // The poster follows the take as soon as the frame is near the viewport (sync), never an earlier take's.
-      if (next?.poster !== take?.poster) video.removeAttribute('poster');
       take = next;
       video.hidden = !next;
-      sync();
+      // A take is one silent loop and its poster (the index names no other rung yet); the player picks nothing a
+      // browser cannot play, and leaves the poster.
+      player.show(next ? { sources: [{ src: next.loop, type: mediaType(next.loop) }], poster: next.poster } : null);
     },
-    sync,
-    toggle,
+    sync: player.sync,
+    toggle: player.toggle,
     dispose() {
-      warmObserver?.disconnect();
-      viewObserver?.disconnect();
-      document.removeEventListener('visibilitychange', sync);
-      motion?.removeEventListener?.('change', sync);
       take = null;
-      vacateSlot(slot);
-      crowdedOut.delete(slot);
-      release();
+      player.dispose();
       video.remove();
-      control.remove();
     },
   };
 }

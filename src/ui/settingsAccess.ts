@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import { createElement, ensureStyle } from './dom.ts';
+import { createElement } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
@@ -35,17 +36,16 @@ interface SettingsAccess {
 const TRIGGER_CSS = `
 .cot-gear{position:fixed;top:60px;right:26px;z-index:62;width:42px;height:42px;display:none;
   align-items:center;justify-content:center;cursor:pointer;background:rgba(11,15,20,.8);
-  border:1px solid rgba(146,164,180,.3);transition:border-color .12s;pointer-events:auto;}
-.cot-gear:hover{border-color:rgba(240,176,74,.6);}
-.cot-gear:hover svg path{fill:#f0b04a;}
+  border:1px solid rgba(146,164,180,.3);transition:border-color .12s,color var(--dur-fast);pointer-events:auto;color:var(--ink-3);}
+.cot-gear:hover{border-color:rgba(240,176,74,.6);color:#f0b04a;}
 `;
 
 function createDefaultGear(): HTMLButtonElement {
-  ensureStyle('cot-settings-trigger-style', TRIGGER_CSS);
+  ensureStyle('cot-settings-trigger-style', TRIGGER_CSS, 'surfaces');
   const gear = createElement('button', 'cot-gear') as HTMLButtonElement;
   gear.type = 'button';
   gear.setAttribute('aria-label', t('settings.gearAria'));
-  gear.innerHTML = uiIconSVG('settings', 22, '#9fb0bf');
+  gear.innerHTML = uiIconSVG('settings', 22);
   gear.title = t('settings.gearAria');
   document.body.appendChild(gear);
   return gear;

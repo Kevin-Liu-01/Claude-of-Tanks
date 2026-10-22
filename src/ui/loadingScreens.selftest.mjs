@@ -123,8 +123,8 @@ assert.match(bootHtml, /\.cot-boot-ticks \{[\s\S]*?min-height: 2px;/,
 assert.match(bootHtml, /\.cot-boot-tip \{[\s\S]*?height: 84px;[\s\S]*?overflow: hidden;/,
   'rotating boot tips must not resize the vertically centered splash');
 assert.match(bootHtml,
-  /:where\(body\[data-cot-width='compact'\],body\[data-cot-width='phone'\]\) \.cot-boot-tip \{ height: 144px; \}/,
-  'narrow boot tip space must follow the centralized width policy rather than an independent breakpoint');
+  /@media \(width < 768px\) \{\s*\.cot-boot-mark \{[^}]*\}\s*\.cot-boot-load \{[^}]*\}\s*\.cot-boot-tip \{ height: 144px; \}/,
+  'narrow boot tip space follows the centralized width bands (responsiveLayout.ts phone/compact, < 768) at first paint');
 assert.equal(new Set(FEATURED_IMAGES).size, FEATURED_IMAGES.length, 'featured URLs must be unique');
 assert.ok(FEATURED_IMAGES.every((img) => img.startsWith(siteStills) && /\/s\d\d-[a-z0-9-]+\.webp$/.test(img)),
   'only the site fifty\'s stills may enter the loading-screen rotation');
