@@ -513,7 +513,7 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
   root.innerHTML =
     `<div class="hprow"><span class="hplabel">HP</span><span class="hpnum num">—</span></div>` +
     `<div class="hptrack"><div class="hpfill"></div></div>` +
-    `<div class="fire">ON FIRE</div>`;
+    `<div class="fire">${t('damagePanel.onFire')}</div>`;
   const hpNum = requiredElement<HTMLElement>(root, '.hpnum');
   const hpFill = requiredElement<HTMLElement>(root, '.hpfill');
   const fireEl = requiredElement<HTMLElement>(root, '.fire');

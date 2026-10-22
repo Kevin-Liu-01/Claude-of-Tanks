@@ -403,7 +403,7 @@ export function createTouchControls({
   aimLayer.setAttribute('role', 'group');
   aimLayer.setAttribute('aria-label', t('touch.aimAria'));
   aimLayer.innerHTML = `<div class="aimpad" role="group" aria-label="${t('touch.aimHint')}"></div>` +
-    `<div class="aimhint">${t('touch.aimHint')}</div>`;
+    `<div class="aimhint" data-landscape="${t('touch.landscapeHint')}">${t('touch.aimHint')}</div>`;
   root.innerHTML = `<div class="mobile-chrome" role="toolbar" aria-label="${t('touch.toolbar')}">` +
     `<button class="quick sound" type="button" aria-label="${t('touch.mute')}">${SOUND}<span class="ql">${t('touch.sound')}</span></button>` +
     `<button class="quick graphics" type="button" aria-label="${t('touch.gfxAria')}">${GRAPHICS}<span class="ql">${t('touch.gfx')}</span></button>` +

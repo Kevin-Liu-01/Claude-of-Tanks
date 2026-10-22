@@ -839,7 +839,7 @@ export function createPlayMenu({
       <div class="room-failure-actions">
         <button class="action" data-room-failure="retry" type="button">${t('playMenu.failure.retry')}</button>
         <button class="action alt" data-room-failure="code" type="button">${t('playMenu.failure.editCode')}</button>
-        <button class="action alt" data-room-failure="garage" type="button">${t('playMenu.failure.returnGarage')}</button>
+        <button class="action alt" data-room-failure="garage" data-ui-sound="back" type="button">${t('playMenu.failure.returnGarage')}</button>
       </div>
     </section><div class="lobby">
       <div class="roomhead"><div><div class="roommeta">${t('playMenu.advanced.roomCode')}</div><div class="code"></div></div>

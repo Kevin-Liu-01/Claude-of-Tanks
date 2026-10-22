@@ -2496,7 +2496,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // The drone altimeter reads the same terrain height field as the spotting line-of-sight tests (set on map load).
   const aerialHud = createAerialHud(root,bus,() => heightFieldRef);
   const missileButton=el('button','cot-auxiliary',controlsRow);missileButton.type='button';missileButton.hidden=true;
-  missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">ATGM</span><span class="sk"></span><small class="system-status"></small>`;
+  missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">${t('systems.atgm')}</span><span class="sk"></span><small class="system-status"></small>`;
   let missilePlayer:HudTank|null|undefined=null,previousConventionalSlot=0;
   function toggleExtraMissile(){
     if(missileButton.hidden||missileButton.disabled||!missilePlayer)return;
@@ -2595,8 +2595,8 @@ export function initHud(bus: EventBus): HudRuntime {
       ? Number(action?.missileSlot) : -1;
     // Weapon channels keep the missile timer accurate even while the cannon is selected.
     const missileWait=extraMissileSlot>=0?Math.ceil(reloadForSlot(combat,extraMissileSlot,lastTimeS) || 0):0;
-    missileButton.querySelector('.sl')!.textContent=!missileEmpty&&missileWait>0?t('systems.cooldown',{seconds:missileWait}):'ATGM';
-    missileButton.setAttribute('aria-label', emptyMissileLabel ? `ATGM ${emptyMissileLabel}` : 'ATGM');
+    missileButton.querySelector('.sl')!.textContent=!missileEmpty&&missileWait>0?t('systems.cooldown',{seconds:missileWait}):t('systems.atgm');
+    missileButton.setAttribute('aria-label', emptyMissileLabel ? `${t('garage.shellType.ATGM')} ${emptyMissileLabel}` : t('garage.shellType.ATGM'));
     const specialMissileEmpty=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE&&missileEmpty;
     // A magazine reload with nothing stowed to load is spent too: no countdown, no pointless reload.
     // This frame's cards (the tray reads them after this update): the ruleset's unlimited mark never reads spent.
@@ -3878,7 +3878,10 @@ export function initHud(bus: EventBus): HudRuntime {
       const critRadius = valueRadius + fontPx + 5;
       const critFontPx = Math.max(9, Math.round(fontPx * 0.55));
       ctx.font = `700 ${critFontPx}px ${FONT_COND}`;
-      const critHalf = ctx.measureText('CRIT').width / 2;
+      // A localized word behind a drawn diamond (never a Latin-only code; BUI-F8): 暴击 in zh, CRIT in en.
+      const crit = t('hud.dmg.crit');
+      const mark = critFontPx * 0.32;
+      const critHalf = ctx.measureText(crit).width / 2 + mark * 1.4;
       const critX = Math.min(Math.max(
         frame.centerX + Math.cos(paint.angle) * critRadius,
         critHalf + 8,
@@ -3888,9 +3891,17 @@ export function initHud(bus: EventBus): HudRuntime {
         critFontPx + 8,
       ), h - critFontPx - 8);
       ctx.lineWidth = 3.4;
-      ctx.strokeText('CRIT', critX, critY);
+      const wordX = critX + mark * 1.4;
+      const markX = critX - critHalf + mark;
+      ctx.strokeText(crit, wordX, critY);
       ctx.fillStyle = '#ffd0a8';
-      ctx.fillText('CRIT', critX, critY);
+      ctx.fillText(crit, wordX, critY);
+      ctx.beginPath();
+      ctx.moveTo(markX, critY - mark); ctx.lineTo(markX + mark, critY);
+      ctx.lineTo(markX, critY + mark); ctx.lineTo(markX - mark, critY); ctx.closePath();
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fill();
     }
     ctx.restore();
   }
@@ -5205,7 +5216,7 @@ export function initHud(bus: EventBus): HudRuntime {
       slotPresentations[i].render(shells?.[i] || DEFAULT_SHELLS[i], i === slot, pending);
     }
     if (ammoSwitchingStatus.hidden === pending) {
-      ammoSwitchingStatus.textContent = pending ? 'SWITCHING' : '';
+      ammoSwitchingStatus.textContent = pending ? t('hud.ammo.switching') : '';
       ammoSwitchingStatus.hidden = !pending;
     }
     setTouchAmmoOpen(touchAmmoOpen);

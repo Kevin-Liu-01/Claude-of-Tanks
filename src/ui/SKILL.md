@@ -300,6 +300,19 @@ Every supported locale must keep exact key, placeholder, and vetted rich-markup
 parity. Plain `data-i18n` hosts cannot contain child markup because text
 replacement would destroy controls. Locale changes reload the current surface
 atomically; do not add screen-local partial refreshes.
+i18n infrastructure (BUI-F8): counts, dates and plurals go through Intl and the
+ICU subset (`{n, plural, one {# kill} other {# kills}}`, `select`,
+`date`), never `fooOne`/`fooMany` key pairs or a count printed beside a message
+that prints it (`tools/i18n-catalog-shape.mjs`). Modes, play surfaces, ammunition,
+outcomes, crew roles and modules take their names from `glossary.json`; edit the
+term there and run `node tools/glossary-sync.mjs` (never the bound catalog keys).
+Player-facing English literals are banned at DOM, accessible-name, markup, canvas,
+CSS `content:` and Studio-throw sinks; `tools/i18n-literal-lint.mjs --check` is a
+ratchet that only falls (`--update` after fixing). UI sounds come from roles
+(`data-ui-sound`, class or `data-action` code words), never labels. Layout probes
+take `?pseudo=1` on the dev server (English +40 %, `i18nPseudo.ts`), and
+`tools/zh-latin-audit.browser.mjs` lists any visible English in zh-CN captures.
+/cn public pages get their body copy at build time (`localizeBodyHtml`).
 
 ## Common tasks → first action
 

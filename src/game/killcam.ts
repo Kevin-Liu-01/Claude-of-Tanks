@@ -84,7 +84,7 @@ import { uiIconSVG } from '../ui/uiIcons.ts';
 import {
   hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
 } from '../ui/hitEventFormat.ts';
-import { MODULE_LABEL, CREW_LABEL } from '../ui/moduleRegistry.ts';
+import { crewName, moduleName } from '../ui/moduleRegistry.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { iconUrl } from '../ui/icons.ts';
 import { tierNumeral } from '../ui/battleLoad.ts';
@@ -743,8 +743,6 @@ const KC_MODULE_ICON: Readonly<Record<string, string>> = Object.freeze({
 const KC_CREW_ICON: Readonly<Record<string, string>> = Object.freeze({
   commander: 'crewCommander', gunner: 'crewGunner', driver: 'crewDriver', loader: 'crewLoader',
 });
-const KC_MODULE_LABELS = MODULE_LABEL as Readonly<Record<string, string>>;
-const KC_CREW_LABELS = CREW_LABEL as Readonly<Record<string, string>>;
 
 function killcamLabelIcon(key: string | null | undefined, fallback = 'penetration'): string {
   if (!key) return fallback;
@@ -779,7 +777,7 @@ const FIRING_CAMERA_SIDES = [1, -1] as const;
 // scratch camera for the x-ray framing solve (fov/aspect set per solve)
 const _fitCam = new THREE.PerspectiveCamera(42, 16 / 9, 0.5, 4000);
 
-// MODULE_LABEL / CREW_LABEL come from ui/moduleRegistry.ts (single source).
+// Module and crew names come from ui/moduleRegistry.ts moduleName() / crewName() (glossary-bound catalog keys).
 
 // ---------------------------------------------------------------------------
 // Shared x-ray material set (lazy singleton; depth-tested)
@@ -1285,7 +1283,7 @@ body[data-cot-width='phone'] .cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px
   background:linear-gradient(135deg,rgba(22,27,28,.96),rgba(7,11,14,.96));
   border:1px solid var(--kc-line);border-right:3px solid var(--kc-amber);
   box-shadow:0 9px 22px rgba(0,0,0,.52);padding:10px 10px 5px;line-height:1.1;}
-.cot-kc-dmg::before{content:"DAMAGE";position:absolute;top:3px;right:9px;font:700 11px/1 ${FONT_COND};
+.cot-kc-dmg::before{content:attr(data-label);position:absolute;top:3px;right:9px;font:700 11px/1 ${FONT_COND};
   letter-spacing:.07em;color:#8f9ca6;text-align:right;}
 .cot-kc-dmg .ico{color:var(--kc-amber);}
 .cot-kc-leader{position:absolute;z-index:7;inset:0;width:100%;height:100%;overflow:visible;}
@@ -2417,7 +2415,7 @@ export function createKillCam(deps: KillcamDeps) {
     }
     const hasArmor = (event.nominalMm || 0) > 0 || (event.effectiveMm || 0) > 0;
     if (hasArmor) {
-      return `${Math.round(event.nominalMm || 0)} → ${Math.round(event.effectiveMm || 0)} mm eff.`;
+      return t('shotInfo.armorEffective', { nominal: Math.round(event.nominalMm || 0), effective: Math.round(event.effectiveMm || 0) });
     }
     const external = !!event.zone
       && ['optics', 'gun', 'gun_barrel', 'trackL', 'trackR'].includes(event.zone);
@@ -4775,7 +4773,7 @@ export function createKillCam(deps: KillcamDeps) {
         context,
         module,
         `m:${module.module}`,
-        KC_MODULE_LABELS[module.module] || module.module,
+        moduleName(module.module),
         entry,
         direction,
         innerLength,
@@ -4798,7 +4796,7 @@ export function createKillCam(deps: KillcamDeps) {
         context,
         crew,
         `c:${crew.crew}`,
-        KC_CREW_LABELS[crew.crew] || crew.crew,
+        crewName(crew.crew),
         entry,
         direction,
         innerLength,
@@ -5222,6 +5220,7 @@ export function createKillCam(deps: KillcamDeps) {
       d.labelHost,
     );
     if (big) {
+      label.dataset.label = t('killcam.stat.damage');
       const icon = el('span', 'ico', label);
       icon.innerHTML = uiIconSVG('damage', 15);
       el('span', 'val', label).textContent = main;
@@ -5319,7 +5318,7 @@ export function createKillCam(deps: KillcamDeps) {
         d,
         _p,
         xrayModuleStateColors[hit.newState],
-        KC_MODULE_LABELS[hit.module] || hit.module,
+        moduleName(hit.module),
         `${xrayModuleStateWords[hit.newState]}${damage}`,
         false,
         ok,
@@ -5334,7 +5333,7 @@ export function createKillCam(deps: KillcamDeps) {
       if (!anchor) continue;
       anchor.getWorldPosition(_p);
       addXrayLabel(
-        d, _p, '#ff7d8a', KC_CREW_LABELS[crewId] || crewId,
+        d, _p, '#ff7d8a', crewName(crewId),
         t('killcam.knockedOut'), false, false, `c:${crewId}`,
       );
     }

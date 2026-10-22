@@ -289,7 +289,7 @@ assert.match(shotInfo,
   /if \(isTouchBattleLayout\(\)(?: \|\| logOpen)?\) return;[\s\S]*const card = buildCard/,
   'touch hits must skip hidden card and diagram construction instead of wasting mobile render work');
 assert.match(shotInfo,
-  /kv\('Angle',[^\n]*'w'\);[\s\S]*kv\('Armor',[\s\S]*kv\('Damage',[^\n]*'w'\);[\s\S]*const r = kv\('Pen'/,
+  /kv\('angle', t\('shotInfo\.angle'\),[^\n]*'w'\);[\s\S]*kv\('armor', t\('killcam\.stat\.armor'\),[\s\S]*kv\('damage', t\('killcam\.stat\.damage'\),[^\n]*'w'\);[\s\S]*const r = kv\('pen', t\('killcam\.stat\.pen'\)/,
   'the report must keep only angle, armor, damage, and penetration analysis rows');
 assert.doesNotMatch(shotInfo, /kv\('(?:Distance|Result)'/,
   'the compact report must not render distance or result rows');
@@ -314,7 +314,7 @@ assert.match(settings,
   /body\.cot-touch-layout \.cot-settings button\{min-height:44px;\}[\s\S]*\.cot-set-close\{width:44px;height:44px;\}/,
   'touch settings controls must retain a 44 px finger-target floor');
 assert.match(settings,
-  /range\.setAttribute\('aria-label', label\)[\s\S]*num\.setAttribute\('aria-label', `\$\{label\} value`\)/,
+  /range\.setAttribute\('aria-label', label\)[\s\S]*num\.setAttribute\('aria-label', t\('settings\.valueAria', \{ label \}\)\)/,
   'settings sliders and exact-value fields must expose their visible labels to assistive technology');
 assert.match(touch,
   /root\.setAttribute\('role', 'group'\)[\s\S]*aimLayer\.setAttribute\('role', 'group'\)[\s\S]*role="group" aria-label="\$\{t\('touch\.aimHint'\)\}"[\s\S]*role="toolbar" aria-label="\$\{t\('touch\.toolbar'\)\}"[\s\S]*role="group" aria-label="\$\{t\('touch\.joystick'\)\}"/,

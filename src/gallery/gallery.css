@@ -84,7 +84,6 @@ button{cursor:pointer}
 
 .viewer{min-width:0;min-height:0;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 36%,#293137 0,#14191d 43%,#080b0e 78%)}
 .viewer::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;background:linear-gradient(rgba(255,255,255,.019) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.019) 1px,transparent 1px),radial-gradient(circle at 50% 45%,transparent 45%,rgba(0,0,0,.66) 100%);background-size:64px 64px,64px 64px,auto}
-.viewer::after{content:"BAY  /  G-01";position:absolute;right:20px;bottom:17px;z-index:3;color:#667176;font-size:11px;letter-spacing:.11em}
 .viewer canvas{display:block;width:100%;height:100%;position:relative;z-index:0;touch-action:none}
 .viewer-head{position:absolute;z-index:4;left:20px;right:20px;top:18px;display:flex;align-items:center;justify-content:space-between;pointer-events:none}
 .live-pill,.viewer-record{padding:8px 10px;border:1px solid var(--line);background:rgba(7,10,12,.72);backdrop-filter:blur(12px);font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#98a3a7}

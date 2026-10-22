@@ -305,6 +305,32 @@ export function presetEffects(source, tokens = flattenTokens(source)) {
   return out;
 }
 
+/**
+ * Per-script overrides (`locale` in tokens.json, SPEC 4.7 CJK): each locale's declarations for :root:lang(<locale>).
+ * A value is a literal or a `{token}` reference (emitted as var()); every overridden and referenced token must exist.
+ * @returns {Array<[string, string[]]>}
+ */
+export function localeOverrides(source, tokens = flattenTokens(source)) {
+  const names = new Set(tokens.map((token) => token.name));
+  const out = [];
+  for (const [locale, entries] of Object.entries(source.locale ?? {})) {
+    if (isMeta(locale)) continue;
+    if (!/^[a-z]{2}(?:-[A-Z]{2})?$/.test(locale)) throw new Error(`gen-tokens: bad locale ${locale}`);
+    const decls = [];
+    for (const [name, value] of Object.entries(entries)) {
+      if (isMeta(name)) continue;
+      if (!names.has(name)) throw new Error(`gen-tokens: locale ${locale} overrides unknown token --${name}`);
+      const css = String(value).replace(/\{([a-z0-9-]+)\}/g, (_, ref) => {
+        if (!names.has(ref)) throw new Error(`gen-tokens: locale ${locale} --${name} references unknown token --${ref}`);
+        return `var(--${ref})`;
+      });
+      decls.push(`--${name}:${css};`);
+    }
+    out.push([locale, decls]);
+  }
+  return out;
+}
+
 function cssBlock(selector, decls) {
   return `${selector}{\n${decls.map((line) => `  ${line}`).join('\n')}\n}\n`;
 }
@@ -332,6 +358,7 @@ function generateCss(source) {
     text += cssBlock(`:root[data-${axis}=${preset}]`, decls);
     if (media) text += `@media ${media}{\n${cssBlock(':root', decls).replace(/^/gm, '  ').trimEnd()}\n}\n`;
   }
+  for (const [locale, decls] of localeOverrides(source, tokens)) text += cssBlock(`:root:lang(${locale})`, [decls.join('')]);
   return `${text}}\n`;
 }
 

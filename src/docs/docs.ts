@@ -49,11 +49,11 @@ document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((button) => 
     try {
       await navigator.clipboard.writeText(target.textContent.trim());
       const original = button.textContent;
-      button.textContent = 'Copied';
-      announce('Copied to clipboard');
+      button.textContent = t('contextInfo.copied');
+      announce(t('contextInfo.copied'));
       setTimeout(() => { button.textContent = original; }, 1400);
     } catch (_) {
-      announce('Clipboard permission unavailable');
+      announce(t('gallery.toast.clipboardUnavailable'));
     }
   });
 });

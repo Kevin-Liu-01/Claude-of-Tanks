@@ -95,4 +95,7 @@
     --dur-instant:1ms;--dur-fast:1ms;--dur-base:1ms;--dur-screen:1ms;--dur-stage:1ms;
   }
 }
+:root:lang(zh-CN){
+  --track-label:0;--track-label-s:0;--track-title:0;--track-display:0;--lh-body:var(--lh-cjk);--lh-docs:var(--lh-cjk);--measure-body:var(--measure-cjk);--measure-docs:var(--measure-cjk);--fs-11:var(--fs-13);--fs-12:var(--fs-13);--hollow-stroke:0;--hollow-fill:var(--hollow-ink);
+}
 }

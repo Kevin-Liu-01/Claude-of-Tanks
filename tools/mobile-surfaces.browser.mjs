@@ -11,19 +11,22 @@ await mkdir(out,{recursive:true});
 const browser=await chromium.launch({headless:true,channel:'chrome',args:['--disable-gpu']});
 const reports=[],errors=[];
 try {
-for(const [name,width,height,locale='en-US'] of [
+for(const [name,width,height,locale='en-US',pseudo=false] of [
   ['small-phone',320,568],['phone',390,844],['short-landscape',568,256],['small-landscape',667,375],['landscape',844,390],['wide-landscape',932,430],
   ['tiny-landscape',568,320],['browser-landscape',844,300],['chinese-landscape',667,375,'zh-CN'],
+  // BUI-F8 pseudo-locale (English about 40 % longer, accented; dev server ?pseudo=1): these and the Chinese case also
+  // fail on clipped copy.
+  ['pseudo-phone',390,844,'en-US',true],['pseudo-landscape',667,375,'en-US',true],['pseudo-wide',932,430,'en-US',true],
 ]) {
   if(arg('case','')&&!arg('case','').split(',').includes(name))continue;
   const context=await browser.newContext({viewport:{width,height},hasTouch:true,isMobile:true,deviceScaleFactor:1,reducedMotion:'reduce'});
   const page=await context.newPage();page.setDefaultTimeout(5000);
   page.on('pageerror',e=>errors.push(`${name}: ${e.message}`));
-  await page.goto(`${arg('url','http://127.0.0.1:5204')}/tools/fixtures/mobile-surfaces.html?locale=${locale}`,{waitUntil:'networkidle'});
+  await page.goto(`${arg('url','http://127.0.0.1:5204')}/tools/fixtures/mobile-surfaces.html?locale=${locale}${pseudo?'&pseudo=1':''}`,{waitUntil:'networkidle'});
   await page.waitForFunction(()=>!!window.__MOBILE_SURFACES);
   const tap=async selector=>page.locator(selector).tap();
   async function check(label,selectors){
-    const issues=await page.evaluate(selectors=>{
+    const issues=await page.evaluate(({selectors,clipCheck})=>{
       const issues=[];
       for(const selector of selectors){
         const el=document.querySelector(selector);
@@ -33,8 +36,16 @@ for(const [name,width,height,locale='en-US'] of [
         if(r.width<1||r.height<1)issues.push(`${selector}: collapsed`);
       }
       if(document.documentElement.scrollWidth>innerWidth+1)issues.push('page spills horizontally');
+      if(clipCheck)for(const selector of selectors)for(const root of document.querySelectorAll(selector))for(const el of [root,...root.querySelectorAll('*')]){
+        const own=[...el.childNodes].filter(node=>node.nodeType===3&&node.nodeValue.trim()).map(node=>node.nodeValue.trim()).join(' ');
+        // catalog copy only (pseudo text or CJK): player and vehicle names may ellipsize by design
+        if(!own||!/[åçðéïñöþüýÅÇÐÉÏÑÖÞÜÝ·]|[\u3400-\u9fff]/.test(own)||!el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))continue;
+        const style=getComputedStyle(el);
+        if((/(hidden|clip)/.test(style.overflowX)||style.textOverflow==='ellipsis')&&el.scrollWidth>el.clientWidth+1)
+          issues.push(`${selector}: clipped text ${el.className||el.tagName} "${own.slice(0,40)}"`);
+      }
       return issues;
-    },selectors);
+    },{selectors,clipCheck:pseudo||locale!=='en-US'});
     reports.push({name,label,width:page.viewportSize().width,height:page.viewportSize().height,issues});
     if(issues.length)await page.screenshot({path:resolve(out,`${name}-${label}-FAIL.png`)});
   }

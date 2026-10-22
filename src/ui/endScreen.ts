@@ -483,17 +483,9 @@ export function damageComparisonPercent(damage: RuntimeValue, maxDamage: Runtime
  */
 export function rosterRowDetails(row: Pick<EndScreenTeamRow, 'kills' | 'deaths'>, revives: boolean): string[] {
   const details: string[] = [];
-  if (row.kills > 0) {
-    details.push(t(row.kills === 1
-      ? 'endScreen.killsCountOne'
-      : 'endScreen.killsCountMany', { count: row.kills }));
-  }
+  if (row.kills > 0) details.push(t('endScreen.kills', { count: row.kills }));
   const deaths = Math.max(0, Math.floor(Number(row.deaths) || 0));
-  if (revives && deaths > 0) {
-    details.push(t(deaths === 1
-      ? 'endScreen.deathsCountOne'
-      : 'endScreen.deathsCountMany', { count: deaths }));
-  }
+  if (revives && deaths > 0) details.push(t('endScreen.deaths', { count: deaths }));
   return details;
 }
 

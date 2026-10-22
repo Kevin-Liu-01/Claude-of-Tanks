@@ -18,8 +18,8 @@
 //    reads a colour ramp.
 // 6. When the type package's src/ui/typeFaces.ts is in the tree, its head CSS and these tokens agree on every property
 //    both declare and every token it reads exists (one source for the font stacks, SPEC 4.1 and 4.7).
-// The :lang(zh-CN) rules under the SPEC 4.14 sheet are rules, not tokens: the i18n package (BUI-F8, CJK tokens) adds
-// them with its zh captures; this sheet carries font-cjk, lh-cjk and measure-cjk.
+// The per-script block (:root:lang(zh-CN), from tokens.json `locale`, BUI-F8) redefines typography tokens for CJK: no
+// caps tracking, the CJK leading and measure, a 13 px label floor, solid display type.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -96,10 +96,26 @@ const cssRest = cssBody.replace(/@media ([^{]+)\{\s*:root\{([^}]*)\}\s*\}/g, (_,
   return '';
 });
 const cssBlocks = [];
-const cssLeft = cssRest.replace(/(:root(?:\[data-([a-z]+)=([a-z]+)\])?)\{([^}]*)\}/g, (_, sel, axis, preset, decls) => {
+const localeBlocks = new Map();
+const cssLeft = cssRest.replace(/:root:lang\(([a-zA-Z-]+)\)\{([^}]*)\}/g, (_, locale, decls) => {
+  localeBlocks.set(locale, parseDecls(decls));
+  return '';
+}).replace(/(:root(?:\[data-([a-z]+)=([a-z]+)\])?)\{([^}]*)\}/g, (_, sel, axis, preset, decls) => {
   cssBlocks.push({ axis: axis ?? null, preset: preset ?? null, decls: parseDecls(decls) });
   return '';
 });
+// Per-script typography (SPEC 4.7 CJK, BUI-F8): zh-CN drops caps tracking, reads at 1.7 within 40 em, floors labels at
+// 13 px and never draws outline type.
+const zhTokens = localeBlocks.get('zh-CN');
+assert.ok(zhTokens, 'tokens.css carries the :root:lang(zh-CN) typography block');
+for (const name of ['track-label', 'track-label-s', 'track-title', 'track-display', 'hollow-stroke']) assert.equal(zhTokens.get(name), '0', `zh-CN --${name}`);
+assert.equal(zhTokens.get('lh-body'), 'var(--lh-cjk)');
+assert.equal(zhTokens.get('measure-body'), 'var(--measure-cjk)');
+assert.equal(zhTokens.get('fs-11'), 'var(--fs-13)', 'the zh-CN label floor is 13 px');
+assert.equal(zhTokens.get('fs-12'), 'var(--fs-13)');
+assert.equal(zhTokens.get('hollow-fill'), 'var(--hollow-ink)', 'zh-CN display type stays solid');
+assert.throws(() => generate({ ...JSON.parse(readFileSync(TOKENS_JSON, 'utf8')), locale: { 'zh-CN': { 'no-such-token': '0' } } }),
+  /overrides unknown token --no-such-token/);
 assert.equal(cssLeft.trim(), '', 'tokens.css has no rule but :root token blocks');
 assert.equal(cssBlocks.filter((b) => b.axis === null).length, 1, 'one :root block of defaults');
 

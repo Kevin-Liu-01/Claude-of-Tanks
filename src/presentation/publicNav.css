@@ -229,7 +229,7 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
   box-shadow:0 22px 60px rgba(0,0,0,.72);
 }
 .public-nav__menu::before{
-  content:'Navigate';
+  content:attr(aria-label);
   display:block;
   padding:5px 8px 9px;
   color:#e9a346;

@@ -493,7 +493,7 @@ body.cot-touch-layout[data-cot-width='phone'] .cot-minimap{width:92px!important;
    its own line, right-aligned under the hint, which stays where it was (the scope's readouts rest over it), in a tighter
    spacing that keeps both lines clear of the left controls */
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch-aim .aimhint{text-align:right;bottom:calc(31% - 12px)}
-body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch-aim .aimhint::after{content:'LANDSCAPE RECOMMENDED';display:block;margin-top:2px;font-size:11px;letter-spacing:.02em}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch-aim .aimhint::after{content:attr(data-landscape);display:block;margin-top:2px;font-size:11px;letter-spacing:.02em}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch .mobile-chrome{top:calc(max(8px,env(safe-area-inset-top)) + 48px)}
 body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-minimap{
   top:calc(max(8px,env(safe-area-inset-top)) + 100px);

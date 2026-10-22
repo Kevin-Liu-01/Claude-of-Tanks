@@ -128,7 +128,7 @@
   background:linear-gradient(150deg,rgba(18,24,30,.99),rgba(6,10,14,.995));
   border:1px solid rgba(166,184,199,.42);box-shadow:0 24px 70px rgba(0,0,0,.8),0 0 0 1px rgba(0,0,0,.5) inset;
   scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.5) rgba(8,11,14,.8);}
-.cot-garage-variant-menu::before{content:var(--cot-garage-variant-label,'Battlefield staging areas');grid-column:1/-1;padding:4px 4px 2px;
+.cot-garage-variant-menu::before{content:attr(data-heading);grid-column:1/-1;padding:4px 4px 2px;
   color:#e5a74a;font:700 11px var(--font-ui);
   letter-spacing:.08em;text-transform:uppercase;}
 .cot-garage-variant-card{position:relative;min-width:0;min-height:82px;padding:5px;display:grid;
@@ -173,7 +173,7 @@
   background:linear-gradient(155deg,rgba(17,23,29,.99),rgba(6,10,14,.99));
   border:1px solid rgba(166,184,199,.38);
   box-shadow:0 22px 60px rgba(0,0,0,.72),0 0 0 1px rgba(0,0,0,.55) inset;}
-.cot-mobile-nav-menu::before{content:'Navigate';padding:6px 8px 7px;color:#f0b04a;
+.cot-mobile-nav-menu::before{content:attr(aria-label);padding:6px 8px 7px;color:#f0b04a;
   font:700 11px var(--font-ui);letter-spacing:.08em;text-transform:uppercase;}
 .cot-mobile-nav-menu button{width:100%;min-height:44px;padding:7px 9px;display:grid;
   grid-template-columns:24px 1fr;align-items:center;gap:9px;text-align:left;cursor:pointer;
@@ -385,7 +385,7 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
   pointer-events:auto;cursor:default;backdrop-filter:blur(2px)}
 .cot-garage.vehicle-locked .cot-card:not(.sel),.cot-garage.vehicle-locked .cot-car-arrow,
 .cot-garage.vehicle-locked .cot-camo-card,.cot-garage.vehicle-locked .eqrow{pointer-events:none;opacity:.42}
-.cot-garage.vehicle-locked .cot-card.sel{cursor:not-allowed}.cot-garage.vehicle-locked .stats::after{content:'VEHICLE LOCKED · UNREADY TO CHANGE';
+.cot-garage.vehicle-locked .cot-card.sel{cursor:not-allowed}.cot-garage.vehicle-locked .stats::after{content:attr(data-locked);
   display:block;margin-top:8px;color:#79d890;font:700 11px var(--font-ui);letter-spacing:.05em}
 .cot-battle-choice{position:relative;min-height:60px;display:grid;grid-template-columns:24px minmax(0,1fr);align-items:center;
   gap:8px;padding:9px 23px 9px 9px;border:1px solid #a0b4c31c;background:#18222c;

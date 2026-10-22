@@ -786,6 +786,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/i18nLazyCatalog.selftest.mjs',
     // 2026-10-16 (test-speed): the registry's chunk import keeps the locale runtime's receipts reusable
     'src/ui/i18nChunkImport.selftest.mjs',
+    // 2026-10-18 BUI-F8: ICU/Intl formatting, the pseudo-locale and the catalog-shape check; the glossary as the single
+    // source of SPEC 11.2 names; the literal-ban lint's ratchet; build-time /cn body localization.
+    'src/ui/i18nFormat.selftest.mjs',
+    'src/ui/glossary.selftest.mjs',
+    'tools/i18n-literal-lint.selftest.mjs',
+    'src/presentation/localizedBody.selftest.mjs',
     'tools/i18n-page-catalogs.selftest.mjs',
     'src/dev/mapCaptureReadiness.selftest.mjs',
     'src/dev/debugTelemetry.selftest.mjs',

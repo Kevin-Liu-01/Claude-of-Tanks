@@ -820,7 +820,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     range.step = o.step || '0.05';
     const num = el('input', 'num', wrap);
     num.type = 'number';
-    num.setAttribute('aria-label', `${label} value`);
+    num.setAttribute('aria-label', t('settings.valueAria', { label }));
     num.min = String(toD(min));
     num.max = String(toD(max));
     num.step = o.dispStep || '0.05';
