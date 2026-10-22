@@ -47,6 +47,7 @@ import {
 import {
   resetVehicleGround, setVehicleGroundFromRoot, supportsShadowHook, vehicleAmbientFloorHook,
 } from './materials.ts';
+import { programVariantOrigin } from '../engine/programVariants.ts';
 
 const TURRET_RING_WELL_ASSET_ID = 'urn:claude-of-tanks:vehicle-helper:turret-ring-well';
 /** The plate's object name (the census and the bake find it by it). */
@@ -676,6 +677,30 @@ function clipPolygon(poly: number[], plane: RingPlane, keepOutside: boolean,
   return out.length >= 3 * POLY_STRIDE ? out : [];
 }
 
+/** Which side of a plane a polygon lies on, to SIDE_EPS_M: 1 outside, −1 inside, 0 across it. */
+const SIDE_EPS_M = 1e-9;
+function sideOf(plane: RingPlane, poly: ArrayLike<number>): -1 | 0 | 1 {
+  let out = true, inn = true;
+  for (let i = 0; i < poly.length; i += POLY_STRIDE) {
+    const d = planeDistance(plane, poly, i);
+    if (d < -SIDE_EPS_M) out = false;
+    if (d > SIDE_EPS_M) inn = false;
+  }
+  return out && !inn ? 1 : inn && !out ? -1 : out && inn ? -1 : 0;
+}
+
+/** A clip polygon without repeated corners (a clip through one of its corners repeats it); empty under three. */
+function distinctCorners(poly: number[]): number[] {
+  const n = poly.length / POLY_STRIDE;
+  const out: number[] = [];
+  for (let c = 0; c < n; c++) {
+    const o = c * POLY_STRIDE, p = ((c + n - 1) % n) * POLY_STRIDE;
+    if (Math.abs(poly[o] - poly[p]) + Math.abs(poly[o + 1] - poly[p + 1]) + Math.abs(poly[o + 2] - poly[p + 2]) < 1e-12) continue;
+    for (let k = 0; k < POLY_STRIDE; k++) out.push(poly[o + k]);
+  }
+  return out.length >= 3 * POLY_STRIDE ? out : [];
+}
+
 /** Whether every corner of a polygon lies on the plane's outside (or, `outside` false, its inside). */
 function wholly(plane: RingPlane, poly: ArrayLike<number>, outside: boolean): boolean {
   for (let i = 0; i < poly.length; i += POLY_STRIDE) {
@@ -698,7 +723,10 @@ function wholly(plane: RingPlane, poly: ArrayLike<number>, outside: boolean): bo
  * (233) Every split goes through the sectors first, the zone only choosing which long faces are refined: clipped
  * against the polygons' sides one after another, a long face's outside left a long sliver between each two neighbouring
  * sides' lines, out to its far edge, and a dent folded those over (the Hetman II's deck showed a fan of holes beside the
- * ring). Within one sector a piece faces one side of each polygon, so one clip per polygon cuts it exactly.
+ * ring). Within one sector a piece faces one side of each polygon, so one clip per polygon cuts it exactly; every
+ * plane cuts every part of the wedge, so its parts meet corner to corner. The new points a long face gets past the zone
+ * are placed for the dents (placeForDents): the face there bends as one plane, as it did whole, so a neighbour that kept
+ * none of them shows no crack (up to 11 cm on the Hetman II's deck before) and no sliver of it folds.
  */
 const LIVE_ZONE_M = 0.36;
 const LIVE_BAND_M = 0.08;
@@ -748,11 +776,11 @@ function sectorOf(cut: TurretRingCut, poly: ArrayLike<number>): number {
 
 /**
  * Split one triangle (hull-frame corners `t`, 9 numbers) at the cutter. Returns false when it lies clear (keep it as it
- * is). Otherwise its pieces go to `emit` (disjoint, covering exactly the triangle less the prism): clipped against the
- * caps (what lies under the floor or over the top is kept as it is), split on the sectors' lines, and per wedge (one
- * sector, side k) its side of the band (a long face in the zone) and of the prism. A face across the prism that nothing
- * inside it took is kept as it is. What lies inside the prism is gone; `onRim(k, y)` hears every point side k leaves on
- * that side of the polygon (the cut faces' reach on bearing k).
+ * is). Otherwise its pieces go to `emit` (disjoint, covering exactly the triangle less the prism): split on the sectors'
+ * lines, then per wedge (one sector, side k) every part on the band's side k (a long face in the zone), the prism's side
+ * k and the caps alike, so the parts meet corner to corner (no point on one part's side that its neighbour lacks); what
+ * lies inside the prism's side between the caps is gone. A face across the prism that nothing inside it took is kept as
+ * it is. `onRim(k, y)` hears every point side k leaves on that side of the polygon (the cut faces' reach on bearing k).
  */
 function splitAtRing(cutter: RingCutter, t: ArrayLike<number>, emit: (poly: number[]) => void,
   onRim: ((k: number, y: number) => void) | null): boolean {
@@ -770,76 +798,48 @@ function splitAtRing(cutter: RingCutter, t: ArrayLike<number>, emit: (poly: numb
   const across = !prism.sides.some((side) => wholly(side, triangle, true));
   const refine = !!cutter.zone && longFace(t) && maxY > cut.top - REFINE_UNDER_M;
   if (!across && !refine) return false;
-  // the pieces wait for the verdict: a triangle that nothing split is kept as it is
-  const pieces: number[][] = [];
-  let split = false;
-  const keep = (poly: number[]): void => { if (poly.length) pieces.push(poly); };
-  const sideCut = (k: number) => (onRim ? (x: number, y: number, z: number): void => {
-    // on side k's segment between its corners (a point beyond them is a seam between outside pieces, not a cut face)
-    const a = ((k + 0.5) / cut.sides) * Math.PI * 2;
-    const u = ((x - cut.cx) * Math.cos(a) - (z - cut.cz) * Math.sin(a)) / prism.halfEdge;
-    if (Math.abs(u) <= 1.02) onRim(k, y);
-  } : null);
-  // the caps
-  let rest = triangle;
-  for (const cap of prism.caps) {
-    if (wholly(cap, rest, false)) continue;
-    keep(clipPolygon(rest, cap, true));
-    rest = clipPolygon(rest, cap, false);
-    split = true;
-    if (!rest.length) break;
-  }
   const band = refine ? cutter.band : null;
-  // between the caps a face that is not refined is split only if the prism takes something of it
-  if (rest.length && !band && prism.sides.some((side) => wholly(side, rest, true))) {
-    keep(rest);
-    rest = [];
-  }
-  if (rest.length) {
-    // the wedges: both sides of each line through two opposite corners
-    let wedges = [rest];
-    let sectored = false;
-    for (const line of cutter.sectors) {
-      const next: number[][] = [];
-      for (const poly of wedges) {
-        if (wholly(line, poly, true) || wholly(line, poly, false)) { next.push(poly); continue; }
-        const a = clipPolygon(poly, line, true), b = clipPolygon(poly, line, false);
-        if (a.length) next.push(a);
-        if (b.length) next.push(b);
-        sectored = true;
-      }
-      wedges = next;
+  let split = false;
+  // every part of `parts` on both sides of a plane (a part within a hair of it counts as on one side: the corners a clip
+  // puts on a plane sit there to rounding)
+  const splitAll = (parts: number[][], plane: RingPlane): number[][] => {
+    const next: number[][] = [];
+    for (const part of parts) {
+      if (sideOf(plane, part) !== 0) { next.push(part); continue; }
+      const a = distinctCorners(clipPolygon(part, plane, true)), b = distinctCorners(clipPolygon(part, plane, false));
+      if (a.length) next.push(a);
+      if (b.length) next.push(b);
+      split = true;
     }
-    // per wedge, its side of the band (both kept) and of the prism (its inside gone)
-    const kept = pieces.length;
-    let taken = false;
-    for (const wedge of wedges) {
-      const k = sectorOf(cut, wedge);
-      const rimSide = prism.sides[k];
-      let inner = wedge;
-      if (band) {
-        const bandSide = band.sides[k];
-        if (wholly(bandSide, wedge, true)) { keep(wedge); continue; }
-        if (!wholly(bandSide, wedge, false)) {
-          keep(clipPolygon(wedge, bandSide, true));
-          inner = clipPolygon(wedge, bandSide, false);
-          sectored = true;
-        }
-        if (!inner.length) continue;
-      }
-      if (wholly(rimSide, inner, true)) { keep(inner); continue; }
+    return next;
+  };
+  // the wedges: both sides of each line through two opposite corners
+  let wedges = [triangle];
+  for (const line of cutter.sectors) wedges = splitAll(wedges, line);
+  const pieces: number[][] = [];
+  let taken = false;
+  for (const wedge of wedges) {
+    const k = sectorOf(cut, wedge);
+    const rimSide = prism.sides[k];
+    let parts = [wedge];
+    if (band) parts = splitAll(parts, band.sides[k]);
+    parts = splitAll(parts, rimSide);
+    for (const cap of prism.caps) parts = splitAll(parts, cap);
+    for (const part of parts) {
+      if (sideOf(rimSide, part) > 0 || prism.caps.some((cap) => sideOf(cap, part) > 0)) { pieces.push(part); continue; }
       taken = true;
-      keep(clipPolygon(inner, rimSide, true, sideCut(k)));
+      if (!onRim) continue;
+      // its corners on side k's segment between its corners (a point beyond them is a seam between outside pieces)
+      const a = ((k + 0.5) / cut.sides) * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+      for (let o = 0; o < part.length; o += POLY_STRIDE) {
+        if (Math.abs(planeDistance(rimSide, part, o)) > 1e-7) continue;
+        const u = ((part[o] - cut.cx) * ca - (part[o + 2] - cut.cz) * sa) / prism.halfEdge;
+        if (Math.abs(u) <= 1.02) onRim(k, part[o + 1]);
+      }
     }
-    if (taken || (band && sectored)) split = true;
-    else {
-      // nothing taken and nothing to refine: the face between the caps stays whole
-      pieces.length = kept;
-      keep(rest);
-    }
-    rest = [];
   }
-  if (!split) return false;
+  // nothing taken and nothing to refine: the face stays whole
+  if (!taken && !(band && split)) return false;
   for (const poly of pieces) emit(poly);
   return true;
 }
@@ -882,7 +882,8 @@ function boxReaches(box: THREE.Box3, cut: TurretRingCut, margin = 0): boolean {
  * A live mesh's geometry without the prism (`toHull`: its positions to the hull frame; null, the hull frame itself):
  * indexed, every attribute and group of the source kept (a clipped corner interpolates them on its source triangle;
  * its normal renormalized), the source's bounds kept (a subset of them). Null when nothing of it reaches the prism.
- * `rim` takes the cut faces' reach per side.
+ * `rim` takes the cut faces' reach per side. `dents`: the mesh takes the burn hook's vertex dents (its frame the hull's),
+ * and its new corners past the zone are placed for them (placeForDents).
  */
 export function cutGeometryAtTurretRing(
   geometry: THREE.BufferGeometry,
@@ -890,6 +891,7 @@ export function cutGeometryAtTurretRing(
   toHull: THREE.Matrix4 | null,
   rim: Float64Array | null = null,
   refine = true,
+  dents: TurretRingDents | null = null,
 ): THREE.BufferGeometry | null {
   const position = geometry.getAttribute('position');
   if (!position || Object.keys(geometry.morphAttributes).length) return null;
@@ -943,6 +945,7 @@ export function cutGeometryAtTurretRing(
   if (!touched) return null;
   const extra = blends.length / 6;
   const result = new THREE.BufferGeometry();
+  let moved = 0;
   for (const name of Object.keys(geometry.attributes)) {
     const source = geometry.getAttribute(name);
     const size = source.itemSize;
@@ -969,16 +972,63 @@ export function cutGeometryAtTurretRing(
         array[o] /= l; array[o + 1] /= l; array[o + 2] /= l;
       }
     }
+    if (name === 'position' && dents && !integer && size === 3) moved = placeForDents(array, base, extra, blends, words, stride, offset, cut, dents);
     result.setAttribute(name, new THREE.BufferAttribute(array, size, source.normalized));
   }
   result.setIndex(base + extra > 65535 ? new THREE.Uint32BufferAttribute(indices, 1) : new THREE.Uint16BufferAttribute(indices, 1));
   if (geometry.groups.length) for (const group of outGroups) result.addGroup(group.start, group.count, group.materialIndex);
-  result.boundingBox = geometry.boundingBox!.clone();
-  if (geometry.boundingSphere) result.boundingSphere = geometry.boundingSphere.clone();
-  else result.computeBoundingSphere();
+  result.boundingBox = geometry.boundingBox!.clone().expandByScalar(moved);
+  if (geometry.boundingSphere) {
+    result.boundingSphere = geometry.boundingSphere.clone();
+    result.boundingSphere.radius += moved;
+  } else result.computeBoundingSphere();
   result.name = geometry.name;
   result.userData = { ...geometry.userData, turretRingCut: true };
   return result;
+}
+
+/**
+ * (233) A dented mesh's new corners past the zone, placed so that the burn hook's vertex dent (the field at the vertex,
+ * at full share) carries each one where its source triangle's corners carry it, the triangle moving as one plane. A long
+ * face split out there then bends as it did whole: no crack along a neighbour's edge that holds none of its points, no
+ * sliver of it folded over by the field between its corners (the Hetman II's deck: up to 11 cm cracks and a fan of
+ * holes beside the ring). Inside the zone the field at their own points bends them, with the plate on the same law.
+ * Every rule here depends on the point alone, so two faces sharing an edge place its points alike. Returns the farthest
+ * a corner moved. The burn hook ramps the dents in over 0.35 s (DENT_RAMP_S): during the blast the placed corners sit
+ * that share off their faces.
+ */
+function placeForDents(array: NumericArray, base: number, extra: number, blends: readonly number[],
+  words: ArrayLike<number>, stride: number, offset: number, cut: TurretRingCut, dents: TurretRingDents): number {
+  const zone = cut.r + LIVE_ZONE_M;
+  const f = new Float64Array(3);
+  let moved = 0;
+  for (let e = 0; e < extra; e++) {
+    const o = (base + e) * 3;
+    const x = array[o], y = array[o + 1], z = array[o + 2];
+    if (Math.hypot(x - cut.cx, z - cut.cz) <= zone) continue;
+    // where the source triangle's corners carry it
+    const b = e * 6;
+    let tx = x, ty = y, tz = z;
+    for (let j = 0; j < 3; j++) {
+      const w = blends[b + 3 + j];
+      if (!w) continue;
+      const i = blends[b + j] * stride + offset;
+      dentAt(dents, words[i], words[i + 1], words[i + 2], f);
+      tx += w * f[0]; ty += w * f[1]; tz += w * f[2];
+    }
+    // the rest point the field carries there (the field's slope under 1: the iteration contracts)
+    let px = x, py = y, pz = z;
+    for (let it = 0; it < 32; it++) {
+      dentAt(dents, px, py, pz, f);
+      const nx = tx - f[0], ny = ty - f[1], nz = tz - f[2];
+      const step = Math.abs(nx - px) + Math.abs(ny - py) + Math.abs(nz - pz);
+      px = nx; py = ny; pz = nz;
+      if (step < 1e-7) break;
+    }
+    array[o] = px; array[o + 1] = py; array[o + 2] = pz;
+    moved = Math.max(moved, Math.hypot(px - x, py - y, pz - z));
+  }
+  return moved;
 }
 
 /** A mesh the ring's cut may take: a drawn, non-instanced hull mesh (not the turret's, not a shadow proxy's, not the
@@ -1022,20 +1072,34 @@ function cutEntryKey(geometry: THREE.BufferGeometry, cut: TurretRingCut, toHull:
     + `|${position.version ?? 0}|${normal?.version ?? 0}`;
 }
 
-/** Swap every hull mesh crossing the prism for its cut copy (the kill). */
-function cutTurretRingMeshes(root: THREE.Object3D, hull: THREE.Object3D, cut: TurretRingCut): TurretRingHullCut {
+/** Whether a mesh takes the burn hook's vertex dents from this field: drawn in the hull's frame (the hook's own test,
+ *  crSameFrame) with a material that carries the field (applyBurnHook, through a program variant's original). */
+function takesDents(mesh: THREE.Mesh, hull: THREE.Object3D, dents: TurretRingDents): boolean {
+  const a = mesh.matrixWorld.elements, b = hull.matrixWorld.elements;
+  for (let i = 0; i < 16; i++) if (Math.abs(a[i] - b[i]) >= 1e-4) return false;
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  return materials.some((material) => !!material
+    && programVariantOrigin(material).userData.__burnU?.uCrHull?.value === dents.centres);
+}
+
+/** Swap every hull mesh crossing the prism for its cut copy (the kill), its new corners placed for the hull's dents. */
+function cutTurretRingMeshes(root: THREE.Object3D, hull: THREE.Object3D, cut: TurretRingCut,
+  dents: TurretRingDents | null): TurretRingHullCut {
   root.updateMatrixWorld(true);
   const hullInverse = hull.matrixWorld.clone().invert();
   const result: TurretRingHullCut = { swaps: [], rim: emptyTurretRingRim(cut.sides) };
+  const live = dents && dents.centres.some((c) => c.w > 0) ? dents : null;
+  const dentKey = live ? `|${live.centres.concat(live.dirs).map((v) => v.toArray().map((x) => x.toFixed(5)).join(',')).join(';')}` : '';
   hullSideMeshes(root, (mesh) => {
     const geometry = mesh.geometry;
     const toHull = new THREE.Matrix4().multiplyMatrices(hullInverse, mesh.matrixWorld);
-    const key = cutEntryKey(geometry, cut, toHull);
+    const dented = live && takesDents(mesh, hull, live) ? live : null;
+    const key = cutEntryKey(geometry, cut, toHull) + (dented ? dentKey : '');
     let byKey = RING_CUTS.get(geometry);
     let entry = byKey?.get(key);
     if (!entry) {
       const rim = emptyTurretRingRim(cut.sides);
-      const cutGeometry = cutGeometryAtTurretRing(geometry, cut, isIdentity(toHull) ? null : toHull, rim);
+      const cutGeometry = cutGeometryAtTurretRing(geometry, cut, isIdentity(toHull) ? null : toHull, rim, true, dented);
       if (!cutGeometry) return;
       entry = { geometry: cutGeometry, rim, refs: 0 };
       if (!byKey) RING_CUTS.set(geometry, byKey = new Map());
@@ -1620,10 +1684,11 @@ export function createTurretRingPresentation(options: TurretRingPresentationOpti
     show() {
       const seat = resolve();
       if (!rendered || !seat || plate) return;
-      hullCut = cutTurretRingMeshes(root, hull, turretRingCut(seat, sides));
+      const dents = options.dents();
+      hullCut = cutTurretRingMeshes(root, hull, turretRingCut(seat, sides), dents);
       plate = attach(seat, hullCut.rim);
       const position = plate.geometry.getAttribute('position') as THREE.BufferAttribute;
-      offsets = turretRingPlateDents(plate.geometry, plate.position, options.dents());
+      offsets = turretRingPlateDents(plate.geometry, plate.position, dents);
       rest = offsets ? (position.array as Float32Array).slice() : null;
       share = 0;
       if (offsets) {
