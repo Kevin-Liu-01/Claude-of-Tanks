@@ -33,6 +33,8 @@ const PRODUCTION = join(ROOT, 'public/media/production-r1/manifest.json');
 const WALL_COUNT = ARCHIVE.shots.length + (existsSync(PRODUCTION) ? JSON.parse(readFileSync(PRODUCTION, 'utf8')).shots.length : 0);
 // the versus stills (versus-media.mjs: public/media/versus-r1), which the landing's hero opens on and its versus wall shows
 const VERSUS = JSON.parse(readFileSync(join(ROOT, 'public/media/versus-r1/manifest.json'), 'utf8'));
+// the versus films (versus-films.mjs: public/media/versus-films-r1), which the landing's versus section plays above its wall
+const VERSUS_FILMS = JSON.parse(readFileSync(join(ROOT, 'public/media/versus-films-r1/manifest.json'), 'utf8'));
 
 // --- names --------------------------------------------------------------------------------------------------------
 const camel = (id) => id.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
@@ -53,6 +55,14 @@ const versus = (id) => {
   if (!v) throw new Error(`unknown versus still ${id} (public/media/versus-r1/manifest.json)`);
   if (!existsSync(join(ROOT, 'public', v.path))) throw new Error(`versus still ${id}: ${v.path} is not published`);
   return v;
+};
+const versusFilm = (id) => {
+  const f = VERSUS_FILMS.items.find((item) => item.id === id);
+  if (!f) throw new Error(`unknown versus film ${id} (public/media/versus-films-r1/manifest.json)`);
+  for (const part of [f.film, f.mobile, f.poster]) {
+    if (!existsSync(join(ROOT, 'public', part.path))) throw new Error(`versus film ${id}: ${part.path} is not published`);
+  }
+  return f;
 };
 const versusKey = (part, id) => `media.versus.${part}.${camel(id)}`;
 // a versus title is "<place>: <matchup>" ("Sirocco Wadi, day: M1A2 Abrams SEPv3 v T-90M"; 西罗科旱谷，白天：…)
@@ -182,6 +192,13 @@ function wireHome() {
     return `        <figure><img src="${v.path}" alt="${esc(v.title.en)}" data-i18n-alt="${versusKey('title', id)}" width="${v.width}" height="${v.height}" loading="lazy" decoding="async"><figcaption><b data-i18n="${versusKey('match', id)}">${esc(match)}</b><span data-i18n="${versusKey('place', id)}">${esc(place)}</span></figcaption></figure>\n`;
   });
   swap(H, /(<div class="v5-versus-wall">\n)(?:[ \t]*<figure>[^\n]*<\/figure>\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${wall.join('')}${close}`, 'versus wall');
+  // the versus films (2026-10-22): each scene's moving take above the wall, a muted loop that plays in view
+  // (publicPages.ts mountViewportVideo), its first frame the poster, the phone's own 540p mp4
+  const films = PICKS.home.versusFilms.map((id) => {
+    const f = versusFilm(id);
+    return `        <figure><video muted loop playsinline preload="none" data-poster="${f.poster.path}" data-autoplay-video data-label="${esc(f.title.en)}" aria-hidden="true"><source data-src="${f.film.path}" data-type="video/mp4" data-mobile-src="${f.mobile.path}" data-mobile-type="video/mp4"></video></figure>\n`;
+  });
+  swap(H, /(<div class="v5-versus-wall v5-versus-films">\n)(?:[ \t]*<figure>[^\n]*<\/figure>\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${films.join('')}${close}`, 'versus films');
   // the trailers row (2026-10-19): each trailer plays on a click; its poster loads as the row nears the viewport and one
   // plays at a time (publicPages.ts mountTrailerRow)
   const trailers = PICKS.home.trailers.map((name) => {
@@ -201,7 +218,7 @@ function wireHome() {
   swap(H, /(<section class="v5-cta">)<img [^>]*>/,
     (_, open) => `${open}<img src="${still(cta.id, cta.still)}" alt="${esc(take(cta.id).en)}" data-i18n-alt="${titleKey(cta.id)}" loading="lazy">`, 'closing image');
   for (const key of ['home.reel.title', 'home.reel.lede', 'home.reel.cta', 'home.shots.lede', 'home.mosaic.lede',
-    'home.versus.title', 'home.versus.lede', 'home.trailers.title', 'home.trailers.lede']) swapText(H, key, COPY.en[key]);
+    'home.versus.title', 'home.trailers.title', 'home.trailers.lede']) swapText(H, key, COPY.en[key]);
   wireHomeShots(H);
 }
 /** A trailer the landing's row plays: its built files, length and shape, and its name's catalog keys. */
@@ -411,6 +428,10 @@ function wireLandingManifest() {
       : { id: h.id, title: take(h.id).en, src: still(h.id, h.still), still: h.still })),
     rail: PICKS.home.rail.map((id) => ({ id, title: take(id).en, src: still(id) })),
     versus: PICKS.home.versus.map((id) => ({ id, title: versus(id).title.en, src: versus(id).path })),
+    versusFilms: PICKS.home.versusFilms.map((id) => {
+      const f = versusFilm(id);
+      return { id, title: f.title.en, src: f.film.path, mobile: f.mobile.path, poster: f.poster.path, seconds: f.film.seconds };
+    }),
     trailers: PICKS.home.trailers.map((name) => {
       const f = trailerFilm(name);
       return { film: name, webm: f.webm, mp4: f.mp4, poster: f.poster, width: f.width, height: f.height, seconds: Number(f.seconds) };
@@ -444,7 +465,6 @@ const COPY = {
     'home.shots.lede': 'Each scene was staged in Scene Studio and rendered at 4K in the game engine.',
     'home.mosaic.lede': "These frames show close combat and long-range fire across the game's battlefields, by day, at sunset and at night.",
     'home.versus.title': 'Pit any two tanks against each other',
-    'home.versus.lede': `${PICKS.home.versus.length} matchups on the game's own battlefields, each staged in Scene Studio and rendered in the game engine.`,
     'home.trailers.title': 'Watch the trailers',
     'home.trailers.lede': 'The trailer, its 30-second cut and its vertical cut for phones, each filmed in the game engine with its score and battle sound.',
     'home.trailers.trailer': 'Trailer',
@@ -485,7 +505,6 @@ const COPY = {
     'home.shots.lede': '每个场景都在 Scene Studio 中编排，并在游戏引擎中以 4K 渲染。',
     'home.mosaic.lede': '这些画面呈现游戏各个战场上的近距离交火与远程射击，白昼、日落与夜间皆有。',
     'home.versus.title': '让任意两辆坦克正面交锋',
-    'home.versus.lede': `游戏自己战场上的 ${PICKS.home.versus.length} 场对决，每一场都在 Scene Studio 中编排、在游戏引擎中渲染。`,
     'home.trailers.title': '观看预告片',
     'home.trailers.lede': '预告片、它的 30 秒剪辑版与适合手机的竖屏版，均在游戏引擎中拍摄，配有配乐与战场音效。',
     'home.trailers.trailer': '预告片',
