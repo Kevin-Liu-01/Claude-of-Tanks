@@ -1647,6 +1647,23 @@ function buildMBT70BareHull(P: Modern2BuilderPort): void {
       side * 1.31, 1.69, -3.05, 0.025 * side, 0, 0);
     P.add('hullDetail', box(0.035, 0.34, 1.18), side * 1.00, 1.43, -3.05,
       0.025 * side, 0, 0);
+    // 2026-10-21 (owner: "rear of tank side armor (fender side armor) is missing, and tracks would touch it if they were
+    // there"): the side aprons end at z -2.62, and aft of them the sprocket and the track's wrap stood bare under the
+    // rear fender. A side plate hangs from the rear fender's outer edge down to the aprons' lower line (y 1.137), on a
+    // flange seated 6 mm into the fender's top, both in the fender's frame (its centre and 0.035 rad rake). The aprons'
+    // own line would have met the sprocket, whose outer disc stands to |x| 1.744 within 0.27 m of its axle (the band to
+    // 1.715): the plate's inner face stands at 1.756, 12 mm off the sprocket and 41 mm off the track. Its forward
+    // 0.12 m laps the apron's end, 4 mm outboard of it.
+    const fenderX = 1.54, fenderY = 1.64, fenderZ = -3.16, fenderRake = 0.035;
+    const plateIn = 1.756 - fenderX, plateT = 0.02, plateTop = 0.059, plateBottom = 1.137 - fenderY;
+    const guard = side < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR';
+    P.addMudguard(`mbt70_rear_side_plate_${side}`, guard,
+      box(plateT, plateTop - plateBottom, 1.32).translate(side * (plateIn + plateT / 2), (plateTop + plateBottom) / 2, 0),
+      side * fenderX, fenderY, fenderZ, fenderRake, 0, 0);
+    const flangeIn = 0.15, flangeW = plateIn + plateT - flangeIn;
+    P.addMudguard(`mbt70_rear_side_flange_${side}`, guard,
+      box(flangeW, 0.02, 1.32).translate(side * (flangeIn + flangeW / 2), 0.049, 0),
+      side * fenderX, fenderY, fenderZ, fenderRake, 0, 0);
     for (const z of [-3.48, -3.05, -2.62]) {
       P.add('hullDetail', box(0.11, 0.035, 0.035), side * 1.20, 1.66, z);
     }

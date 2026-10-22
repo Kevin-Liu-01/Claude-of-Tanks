@@ -63,18 +63,18 @@ for (const quality of ['high', 'low']) {
     for (let yaw = gun.yawArc[0]; yaw <= gun.yawArc[1] + 1e-9; yaw += DEG) {
       for (let p = 0; p <= profile.elevationRad + 1e-9; p += .05) assert.ok(!probe(yaw, p), `clear at ${(yaw / DEG).toFixed(0)}°, +${p.toFixed(2)}`);
     }
-    // The depression the authority allows at a yaw (auxiliarySystems.ts depressionAt: outside the table the profile's,
-    // inside it the lesser end of the interval) holds against the stock over the whole arc: every half degree, and
-    // every 0.05 degree across the table's span (the left whip's tip is a few centimetres across).
-    const table = gun.depressionByYaw;
+    // The depression the authority allows at a yaw (auxiliarySystems.ts depressionAt: outside a depression table, or
+    // with none, the profile's; inside it the lesser end of the interval) holds against the stock over the whole arc:
+    // every half degree, and every 0.05 degree across a table's span (a whip's tip is a few centimetres across).
+    const table = gun.depressionByYaw ?? [];
     const allowed = (yaw) => {
-      if (yaw < table[0][0] || yaw > table.at(-1)[0]) return profile.depressionRad;
+      if (!table.length || yaw < table[0][0] || yaw > table.at(-1)[0]) return profile.depressionRad;
       for (let i = 1; i < table.length; i++) if (yaw <= table[i][0]) return Math.min(profile.depressionRad, table[i - 1][1], table[i][1]);
       return Math.min(profile.depressionRad, table.at(-1)[1]);
     };
     const yaws = [];
     for (let deg = gun.yawArc[0] / DEG; deg < gun.yawArc[1] / DEG; deg += 0.5) yaws.push(deg);
-    for (let deg = table[0][0] / DEG; deg <= table.at(-1)[0] / DEG; deg += 0.05) yaws.push(deg);
+    if (table.length) for (let deg = table[0][0] / DEG; deg <= table.at(-1)[0] / DEG; deg += 0.05) yaws.push(deg);
     yaws.push(gun.yawArc[1] / DEG);
     stationDepression(tank.root, station, profile, yaws).forEach((deepest, i) => {
       const want = allowed(yaws[i] * DEG);
