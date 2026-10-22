@@ -852,10 +852,10 @@
     },
     "s184-ua-t64bv-frontier": {
       "map": "frontier",
-      "en": "A T-64BV Donbas fires on the move at Frontier Basin",
-      "zh": "一辆 T-64BV Donbas 在边疆盆地行进间射击",
-      "shortEn": "T-64BV Donbas, Frontier Basin",
-      "shortZh": "T-64BV Donbas，边疆盆地",
+      "en": "A T-64BV mod. 2017 fires on the move at Frontier Basin",
+      "zh": "一辆 T-64BV mod. 2017 在边疆盆地行进间射击",
+      "shortEn": "T-64BV mod. 2017, Frontier Basin",
+      "shortZh": "T-64BV mod. 2017，边疆盆地",
       "fleet": true
     },
     "s187-ua-t80bv-winter": {

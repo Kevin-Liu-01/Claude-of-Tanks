@@ -264,7 +264,7 @@ const BASE_CAMO_PATTERN_LABEL: Readonly<Record<typeof BASE_CAMO_PATTERN_IDS[numb
   sig_namer_ifv: 'Namer Sinai Field',
   sig_t84: 'T-84 Oplot',
   sig_ua_challenger2: 'UA Challenger 2',
-  sig_ua_t64bv: 'T-64BV Donbas',
+  sig_ua_t64bv: 'T-64BV mod. 2017',
   sig_ua_t80bv: 'UA T-80BV',
   sig_ua_t80u_kursk: 'T-80U Kursk',
   sig_ua_t84_oplot_m: 'T-84BM Oplot-M',

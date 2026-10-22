@@ -72,7 +72,7 @@ function variant(
 
 const UKRAINE_SPECS = {
   t64bv_donbas: variant('t64bv_donbas', 't64bv1', {
-    name: 'T-64BV Donbas', number: 'UA 64', base: '#46503d', weather: '#5a604d',
+    name: 'T-64BV mod. 2017', number: 'UA 64', base: '#46503d', weather: '#5a604d',
     patches: ['#30382f', '#655f49', '#776c52'], camoScale: 0.48,
     dims: { hullLengthM: 6.54, overallLengthM: 9.23, widthM: 3.42, heightM: 2.17 },
     stats: { hp: 2050, enginePowerHp: 850, weightTons: 43.5, topSpeedKmh: 60 },

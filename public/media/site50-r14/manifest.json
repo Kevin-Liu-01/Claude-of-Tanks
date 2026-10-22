@@ -790,7 +790,7 @@
   },
   "s184-ua-t64bv-frontier": {
    "map": "frontier",
-   "title": "A T-64BV Donbas fires on the move at Frontier Basin",
+   "title": "A T-64BV mod. 2017 fires on the move at Frontier Basin",
    "round": "deliver-fleet226",
    "current": true,
    "sound": true
@@ -2685,8 +2685,8 @@
   },
   {
    "path": "media/site50-r14/fleet/index.json",
-   "bytes": 95885,
-   "sha256": "2a93beb2c9c4d3092d62c42de82d6a9a59e34a74858e3fce95580ca9d27d99a5",
+   "bytes": 95897,
+   "sha256": "8e7247122e9309b38c696f9b5e6790c4df8c1441b82b308328cd77fa26a9a45e",
    "source": null,
    "vehicles": 185
   },
@@ -8278,8 +8278,8 @@
   },
   {
    "path": "media/site50-r14/scenes/index.json",
-   "bytes": 98524,
-   "sha256": "995c2e37e1bf71150f1edbc2fd7e56280e48ca819f2c137367396bcddc2b416d",
+   "bytes": 98536,
+   "sha256": "f7adae9ffbbec187f0480b5ab9cc3192873706c3442a39035f529e668394c3cd",
    "source": null,
    "takes": 193
   },
@@ -8819,8 +8819,8 @@
   },
   {
    "path": "media/site50-r14/scenes/s184-ua-t64bv-frontier.scene.json",
-   "bytes": 76265,
-   "sha256": "511efe7d8f808f71e49f7d6d9d33791278e60ce113c74439840e96da64f9c4f9",
+   "bytes": 76268,
+   "sha256": "ef55def7a7d19a753055b4f5d65414e166bcdbbeeebb7c7b6a248dca035f4a66",
    "source": "shots/media-r5/site50/deliver-fleet226/s184-ua-t64bv-frontier/s184-ua-t64bv-frontier.scene.json"
   },
   {

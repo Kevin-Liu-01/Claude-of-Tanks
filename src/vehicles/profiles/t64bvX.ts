@@ -1,5 +1,7 @@
 // The T-64BV1's own procedural build (owner 2026-10-21, verbatim: "make the t64bv1 look a lot different from the t72b3,
 // rn they look identical"). Until this file the T-64BV1 and the Donbas were the T-72B3 study with a few extra cassettes.
+// The Ukrainian T-64BV mod. 2017 (t64bv_donbas) went back to that study (owner 2026-10-22: "the ukranian t64bv1 should
+// just be its previous model with an updated name"; t72ModernVariants.ts buildT64BV2017).
 // First-party solids from published facts (docs/references/tanks/t64bv1.md, "2026-10-21 distinct T-64 build"): six small
 // steel-tyred dual road wheels with internal shock absorbers and four return rollers per side, a narrower double-pin
 // track, a raised front idler and a twelve-tooth rear sprocket; the 68-degree glacis under a Kontakt-1 brick field, the
@@ -23,7 +25,6 @@ import {T72B3_X_SOURCE_DATUMS} from '../t72b3XArmor.ts';
 import {buildT72B3XMainGun} from './t72b3X.ts';
 import {turnedGearStock,returnRollerStock,gearFastener} from '../runningGearPrimitives.ts';
 import {mergeAll} from '../factoryGeometry.ts';
-import {addDonbasFieldCover} from './donbasFieldCover.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 const {box,cylX,cylZ,torus}=KIT;
@@ -175,24 +176,22 @@ function front(P:TankBuilderPort):void {
   }
 }
 
-function rear(P:TankBuilderPort,drums:boolean):void {
+function rear(P:TankBuilderPort):void {
   // The 5TDF's exhaust leaves through the louvred box across the top of the transom (the T-72 exhausts on its left
   // flank); the drums ride low on the plate, under the barrel's sweep, with the unditching log beneath them.
   const face=-3.07;
   P.addEquipment('hullDetail',box(1.30,.20,.05),0,1.215,face-.025);
   for(let i=0;i<6;i++)P.addEquipment('hullDark',box(1.24,.012,.06),0,1.14+i*.03,face-.055,.5,0,0);
   // The drums ride the rear corners, either side of the louvre, on a cradle of four arms off the plate and saddles.
-  if(drums){
-    const dz=-3.56,dy=1.00;
-    for(const side of [-1,1]){
-      const x=side*1.02;
-      P.addEquipment('hullDetail',cylX(.29,.64,16),x,dy,dz);
-      for(const dx of [-.22,.22])P.addEquipment('hullDark',new THREE.LatheGeometry([[.288,-.03],[.302,-.03],[.302,.03],[.288,.03],[.288,-.03]]
-        .map(([r,y])=>new THREE.Vector2(r,y)),16).rotateZ(Math.PI/2),x+dx,dy,dz);
-      for(const z of [dz+.16,dz-.16])P.addEquipment('hullDetail',box(.74,.09,.05),x,.715,z);
-    }
-    for(const x of [-1.00,-.62,.62,1.00])P.addEquipment('hullDetail',box(.05,.05,.78),x,.685,-3.40);
+  const dz=-3.56,dy=1.00;
+  for(const side of [-1,1]){
+    const x=side*1.02;
+    P.addEquipment('hullDetail',cylX(.29,.64,16),x,dy,dz);
+    for(const dx of [-.22,.22])P.addEquipment('hullDark',new THREE.LatheGeometry([[.288,-.03],[.302,-.03],[.302,.03],[.288,.03],[.288,-.03]]
+      .map(([r,y])=>new THREE.Vector2(r,y)),16).rotateZ(Math.PI/2),x+dx,dy,dz);
+    for(const z of [dz+.16,dz-.16])P.addEquipment('hullDetail',box(.74,.09,.05),x,.715,z);
   }
+  for(const x of [-1.00,-.62,.62,1.00])P.addEquipment('hullDetail',box(.05,.05,.78),x,.685,-3.40);
   const log=FITTINGS.unditchingLog({mats:P.mats,len:2.00,r:.10,straps:2,seed:643});
   log.position.set(0,.48,-3.14);P.hullG.add(log);
   for(const x of [-.62,.62])P.addEquipment('hullDetail',box(.06,.14,.12),x,.50,-3.02);
@@ -463,7 +462,7 @@ function sideStowage(P:TankBuilderPort):void {
   seat(-1,2.70,.30,[.15,.24,.44]);
 }
 
-function rearStowage(P:TankBuilderPort,snorkels:boolean):void {
+function rearStowage(P:TankBuilderPort):void {
   // The bustle locker: its front follows the cast rear wall, its back is straight; the OPVT snorkel tubes lie strapped
   // on its lid ("carried on the top rear of the turret").
   const wallZ=(x:number,y:number)=>{const c=courseAt(y),s=Math.min(.999,(Math.abs(x)/c[3])**(1/PX));
@@ -474,7 +473,6 @@ function rearStowage(P:TankBuilderPort,snorkels:boolean):void {
     [-(wallZ(x,low)+.03),low],[-back,low],[-back,top],[-(wallZ(x,top)+.03),top]] as readonly SectionPoint[]})))
     .rotateY(Math.PI/2));
   for(const x of [-.36,.36])P.addEquipment('turretDark',box(.03,.012,.36),x,top+.006,-1.50);
-  if(!snorkels)return;
   // the tubes lie on the left half of the lid; its right half stays clear as the drone dock's pad
   P.addEquipment('turretDetail',cylX(.12,.95,20),.225,top+.12-.004,-1.40);
   P.addEquipment('turretDetail',cylX(.07,.80,16),.30,top+.07-.004,-1.595);
@@ -490,26 +488,18 @@ function mainGun(P:TankBuilderPort):void {
   buildT72B3XMainGun(P);
 }
 
-export interface T64BVXOptions {
-  /** The two droppable 200 l drums on the transom (the Donbas carries cages there instead). */
-  rearDrums?:boolean;
-  /** The OPVT snorkels on the bustle locker (the Donbas's field cover lies over the locker instead). */
-  snorkels?:boolean;
-}
-
-export function buildT64BVX(P:TankBuilderPort,options:T64BVXOptions={}):void {
+export function buildT64BVX(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);
   hullCore(P);fenders(P);glacisEra(P);for(const side of [-1,1])skirtEra(P,side);deck(P);front(P);
-  rear(P,options.rearDrums!==false);runningGear(P);
+  rear(P);runningGear(P);
   casting(P);turretEra(P);searchlight(P);roofEquipment(P);commanderGun(P);smoke(P);sideStowage(P);
-  rearStowage(P,options.snorkels!==false);mainGun(P);
+  rearStowage(P);mainGun(P);
   P.topY=roofY(.38,-.75)+.12+2.6;
 }
 
-export function buildT64Modern(P:TankBuilderPort,ukrainian=false):void {
-  buildT64BVX(P,{rearDrums:!ukrainian,snorkels:!ukrainian});
-  if(ukrainian)addDonbasFieldCover(P);
-  P.hullG.userData.familyRebuild={donor:'t64bv1',revision:ukrainian?3:2,variant:ukrainian?'donbas':'bv1',
+export function buildT64Modern(P:TankBuilderPort):void {
+  buildT64BVX(P);
+  P.hullG.userData.familyRebuild={donor:'t64bv1',revision:2,variant:'bv1',
     features:['six-small-steel-wheels','four-return-rollers','double-pin-track','k1-horseshoe','k1-glacis',
       'rear-exhaust','l2g-searchlight','remote-nsvt','left-smoke-banks','opvt-snorkels']};
 }
