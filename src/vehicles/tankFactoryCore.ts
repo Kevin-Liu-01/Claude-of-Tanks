@@ -46,7 +46,8 @@ import {
   LIVE_TURRET_DENTS,
 } from './materials.ts';
 import { bendGeometry, dentSamples, planBend, planDents, wreckBarrelSpan, wreckRandom, type WreckDent } from './wreckDents.ts';
-import { createTurretRingPresentation, type TurretRingSeat } from './turretRingWell.ts';
+import type { TurretRingSeat, createTurretRingPresentation } from './turretRingWell.ts';
+import { loadTurretRingModule, turretRingModule } from './turretRingLoader.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
@@ -9434,7 +9435,9 @@ function* createTankOwnedSteps(
   // (tank-opt RING, 2026-10-16; the owner: "give tanks proper turret ring areas because when the turret blows off we
   // should see that") the ring a kill leaves on the hull: the hull's meshes swapped for copies cut inside the ring and a
   // plate made on it at the kill, both undone at a rematch, so an intact tank holds nothing of it (turretRingWell.ts)
-  const turretRing = createTurretRingPresentation({
+  // (235 bundle budget) the ring's module loads lazily (turretRingLoader.ts): asked for as the visual is built, it is in
+  // long before a kill; a kill that comes first shows the ring as the module lands, at the wreck's age by then
+  const turretRingOptions: Parameters<typeof createTurretRingPresentation>[0] = {
     specId,
     root,
     hull: hullG,
@@ -9444,7 +9447,30 @@ function* createTankOwnedSteps(
     high: geometryQuality !== 'low',
     rendered: !geometryOnly,
     dents: () => (burnU.uCrOn.value ? { centres: burnU.uCrHull.value, dirs: burnU.uCrHullDir.value } : null),
-  });
+  };
+  let turretRingImpl: ReturnType<typeof createTurretRingPresentation> | null = null;
+  let turretRingShown = false;
+  const turretRingNow = (): ReturnType<typeof createTurretRingPresentation> | null =>
+    (turretRingImpl ??= turretRingModule()?.createTurretRingPresentation(turretRingOptions) ?? null);
+  void loadTurretRingModule().catch(() => {});
+  const turretRing = {
+    seat: (): TurretRingSeat | null => turretRingNow()?.seat() ?? null,
+    show(): void {
+      turretRingShown = true;
+      const ring = turretRingNow();
+      if (ring) { ring.show(); return; }
+      void loadTurretRingModule().then(() => {
+        if (!turretRingShown) return;
+        const late = turretRingNow();
+        late?.show();
+        if (wreckAge >= 0) late?.ramp(wreckAge);
+      }).catch(() => {});
+    },
+    ramp(ageS: number): void { turretRingImpl?.ramp(ageS); },
+    stageWarm: (): (() => void) => turretRingNow()?.stageWarm() ?? (() => {}),
+    hide(): void { turretRingShown = false; turretRingImpl?.hide(); },
+    dispose(): void { turretRingShown = false; turretRingImpl?.dispose(); },
+  };
   // ammo-rack turret pop (physics arc + spin, settles askew on the hull)
   let popActive = false;
   let popT = 0;
