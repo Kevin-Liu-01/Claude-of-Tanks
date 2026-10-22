@@ -10,10 +10,10 @@
 // Until 2026-10-22 typecheck ran two full compiles: plain tsc, then this file (then core-unused-check.mjs)
 // with the unused flags. One compile gives the same verdicts in half the time.
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { relative, resolve, sep } from 'node:path';
 import process from 'node:process';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 // Byte-authenticated sources keep their remaining unused names until the receipts that compare their
 // exact text move: the map configs (badlandsRelief's historical byte projection, villageWear and
@@ -84,7 +84,8 @@ function runNode(root, args) {
   });
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Run as a command, compared by real path: a checkout reached through a symlink must never skip this silently.
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const root = process.cwd();
   const started = Date.now();
   const elapsed = () => `${((Date.now() - started) / 1000).toFixed(1)} s`;

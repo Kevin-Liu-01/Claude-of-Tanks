@@ -21,6 +21,8 @@ assert.equal(manifest.scripts.typecheck, 'node tools/typecheck.mjs', 'typecheck 
 assert.match(typecheckSource, /node_modules\/@typescript\/native\/bin\/tsc/,
   'typecheck must invoke TypeScript 7 explicitly instead of relying on npm bin-link ordering');
 assert.match(typecheckSource, /'--noUnusedLocals', '--noUnusedParameters'/, 'one compile carries the unused-symbol flags');
+assert.match(typecheckSource, /realpathSync\(process\.argv\[1\]\) === fileURLToPath\(import\.meta\.url\)/,
+  'typecheck runs as a command through a symlinked checkout too, never skipping silently');
 assert.match(manifest.devDependencies.oxlint, /^\d+\.\d+\.\d+$/, 'oxlint is pinned to an exact version');
 assert.equal(manifest.scripts.lint, 'oxlint', 'npm run lint runs oxlint with .oxlintrc.json');
 
