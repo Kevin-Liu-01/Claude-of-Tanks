@@ -393,7 +393,7 @@
    "hostSweep": []
   },
   "c1_ariete_preserie": {
-   "inputHash": "c7204946f467eee8",
+   "inputHash": "24c3c8966d18ec82",
    "runs": [
     {
      "index": 0,
@@ -406,15 +406,15 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.847,
-      "gap": 0.153,
+      "support": 0.979,
+      "gap": 0.021,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.01,
+      "sunkMaxM": 0.002,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.978,
-      "host": "hull<buildArieteHullStage2@profiles/misc.ts:475>"
+      "exposure": 0.944,
+      "host": "hull<buildArieteHullStage2@profiles/misc.ts:494>"
      }
     }
    ],

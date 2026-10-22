@@ -480,7 +480,8 @@ export function buildAriete(P: MiscBuilderPort): void {
     // hump (1.475-1.646) when the turret turned rearward, and 6.5 mm into the main deck. A turret that traverses must
     // clear every hull top within its sweep, so the main deck, the steps, the hump and the swept rear deck sit at 1.4125
     // (3.3 cm under the cheeks); the tail deck past the sweep keeps its 1.565 run under the bustle. The turret and its
-    // 2.50 m height are unchanged.
+    // 2.50 m height are unchanged. The lowered rear deck runs on to -3.27, so the spare links lie on it past the cheeks'
+    // 2.50 m reach, behind the basket at rest and under the bustle's 1.575 sweep, against the tail deck's front face.
     P.add('hull', box(3.06, 0.04, 0.36), 0, 1.3925, -0.53);                       // step 1.475 (z -0.35..-0.71)
     P.add('hull', box(3.06, 0.045, 0.40), 0, 1.39, -0.91);                     // step 1.505 (z -0.71..-1.11)
     P.add('hull', box(3.00, 0.05, 0.22), 0, 1.3875, -1.22);                       // step 1.535
@@ -490,11 +491,11 @@ export function buildAriete(P: MiscBuilderPort): void {
       P.add('hull', box(0.338, 0.166, 0.63), s * 1.164, 1.3295, -1.645);          // hump OUTER shoulder 1.646 (x 0.995-1.333 -> rendered 1.667; also the side 1.669 line, extended aft to -1.96 per the fresh side rows)
     }
     P.add('hullDark', box(2.20, 0.014, 0.55), 0, 1.417, -1.645);
-    P.add('hull', box(3.00, 0.14, 0.90), 0, 1.3425, -2.41);                      // release 231: lowered under the turret's sweep, to z -2.86                       // rear deck 1.595 (z -1.96..-2.80 — the ref 1.595 run; fwd edge meets the extended hump)
-    P.add('hull', box(2.90, 0.10, 0.64), 0, 1.505, -3.18);                       // release 231: starts at -2.86, past the front cheeks' 2.44 m sweep; top 1.555 (3 cm under the rear basket's 1.576 sweep)                       // tail deck 1.565 (z -2.80..-3.50)
+    P.add('hull', box(3.00, 0.14, 1.31), 0, 1.3425, -2.615);                     // release 231: lowered under the turret's sweep, z -1.96..-3.27                       // rear deck 1.595 (z -1.96..-2.80 — the ref 1.595 run; fwd edge meets the extended hump)
+    P.add('hull', box(2.90, 0.10, 0.23), 0, 1.505, -3.385);                      // release 231: starts at -3.27, behind the spare links; top 1.555 (2 cm under the rear basket's 1.576 sweep)                       // tail deck 1.565 (z -2.80..-3.50)
     P.add('hull', box(1.66, 0.10, 0.14), 0, 1.495, -3.57);                       // tail deck rear center (to -3.64; push-2 notch: the x 0.85-0.97 window stops at -3.50 = the ref's -3.53/-3.57 rear-notch cols)
     for (const s of [-1, 1]) P.add('hull', box(0.46, 0.10, 0.14), s * 1.22, 1.495, -3.57); // tail deck rear outer
-    for (let k = 0; k < 5; k++) P.add('hullDetail', box(2.20, 0.014, 0.05), 0, -2.10 - k * 0.22 > -2.86 ? 1.4175 : 1.558, -2.10 - k * 0.22);
+    for (let k = 0; k < 4; k++) P.add('hullDetail', box(2.20, 0.014, 0.05), 0, 1.4175, -2.10 - k * 0.22); // release 231: the fifth slat's station carries the spare links
     P.add('hullDark', box(0.24, 0.20, 0.28), -1.30, 1.30, -2.86);                // left exhaust box (r12: bottom 1.20 — the raised sprocket wrap climbed to 1.15 rendered and clipped the old 1.05 base, 50 voxels)
     for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.03, 0.18, 0.24), -1.435, 1.30, -2.86 + (k - 1) * 0.0);
     // driver station on the dip plate + episcopes + V splash rail
@@ -521,8 +522,9 @@ export function buildAriete(P: MiscBuilderPort): void {
     for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.66, 0.010, 0.04), -0.98, 1.4175, 0.78 + k * 0.12);
     P.add('hullDark', box(0.50, 0.008, 0.34), 1.06, 1.4155, 0.95);                // stowage panel R
     {
-      const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.46, seed: 7 });
-      links.position.set(-0.70, 1.478, -2.98);                                   // spare links SUNK to tops 1.578 (r3 1024: the 1.645 tops printed the 0.57-1.05 front cols where the ref line is 1.598 rendered; 1.578 renders 1.598 exactly — the front want AND the low edge of the side 1.598-1.631 band)
+      // release 231: across the lowered rear deck (feet 2 mm into it), 2.55 m and more from the ring, tops 1.518
+      const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.46, seed: 7, rotation: [0, Math.PI / 2, 0] });
+      links.position.set(-0.84, 1.4515, -3.03);                                   // spare links SUNK to tops 1.578 (r3 1024: the 1.645 tops printed the 0.57-1.05 front cols where the ref line is 1.598 rendered; 1.578 renders 1.598 exactly — the front want AND the low edge of the side 1.598-1.631 band)
       P.hullG.add(links);
     }
     // release 231: the centre exhaust is a grate flush on the lowered rear deck (its 1.638 stack stood 20 cm into the
