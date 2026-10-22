@@ -8651,7 +8651,8 @@ function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
       for (let k = 0; k < 7; k++) {
         P.add('hull', box(0.060, 0.77, 0.468), s * 1.640, 0.915, -2.86 + 0.48 * k + 0.24);
       }
-      P.add('hullDark', box(0.01, 0.05, 3.36), s * 1.19, 0.335, -1.18);          // under-tub gap filler (y 0.31..0.36 — above the pad crown, behind the wheels)
+      // 2026-10-22 (owner float calls): the under-tub gap filler (y 0.31..0.36 at x 1.19) hung 0.28 m off the hull with no
+      // tub face left at 1.20 to back it: removed.
       // r14-e CORRIDOR ROOF: pulling the wing to 1.553 exposed the 6cm
       // deck-edge<->skirt corridor to the top-down flood over the bow zone
       // (two 3px x ~40px slivers at x ±1.58) — the ref reads its own DECK
@@ -8667,7 +8668,7 @@ function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
       // bow-band zone reads; 1.428 <= the 1.435 shelf-root line) — mask-free
       // by construction, top-down closure identical to the r14-e mechanism.
       P.add('hull', box(0.062, 0.09, 1.02), s * 1.584, 1.48, 1.565);             // corridor roof A (z 1.055..2.075, top 1.525)
-      P.add('hull', box(0.062, 0.09, 0.70), s * 1.584, 1.383, 2.46);             // corridor roof B (z 2.11..2.81, top 1.428)
+      P.add('hull', box(0.0694, 0.09, 0.70), s * 1.5803, 1.383, 2.46);           // corridor roof B (z 2.11..2.81, top 1.428; 2026-10-22: widened 7 mm inboard onto the deck edge it stood off)
       for (let k = 0; k < 3; k++) {
         P.add('hull', box(0.060, 0.94, 0.5055), s * 1.640, 0.83, 1.70 + 0.5175 * k + 0.5175 / 2);
       }
@@ -8697,8 +8698,8 @@ function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
         [hemX0, 0.777, 3.5885], [hemX1, 0.777, 3.5885], [hemX1, 0.870, 3.6995], [hemX0, 0.870, 3.6995],
         [hemX0, 1.30, 3.5885], [hemX1, 1.30, 3.5885], [hemX1, 1.114, 3.6995], [hemX0, 1.114, 3.6995]));
       P.add('hull', slab(                                                        // tip nub: bot 0.89 capped 1.02 (col 3.77 — keeps the ±1.6 plan front at 3.766 without flipping the bin to BODY); r14-d: front face raked 14deg (top edge 3.766 -> 3.734), bottom edge keeps the plan front
-        [s * 1.610, 0.89, 3.7245], [s * 1.670, 0.89, 3.7245], [s * 1.670, 0.89, 3.766], [s * 1.610, 0.89, 3.766],
-        [s * 1.610, 1.02, 3.7245], [s * 1.670, 1.02, 3.7245], [s * 1.670, 1.02, 3.734], [s * 1.610, 1.02, 3.734]));
+        [s * 1.610, 0.89, 3.7195], [s * 1.670, 0.89, 3.7195], [s * 1.670, 0.89, 3.766], [s * 1.610, 0.89, 3.766],   // 2026-10-22: back face onto the 3.7195 face it stood 5 mm off
+        [s * 1.610, 1.02, 3.7195], [s * 1.670, 1.02, 3.7195], [s * 1.670, 1.02, 3.734], [s * 1.610, 1.02, 3.734]));
       // r5 OUTER SKIRT LIP (plan ±1.71 columns): the ref reads x ~1.69 content
       // out to z 3.74 in plan while its FRONT ±1.71 columns bottom at 0.727 R
       // / 0.409 L (flap) — a partial-height lip carries the plan reach without
@@ -9915,8 +9916,10 @@ function buildKF51(P: TankBuilderPort) {
           }
         }
         for (const z of [-2.90, -1.42, 0.06, 1.54, 2.36]) {
+          // 2026-10-22 (owner float calls): aft of the last armor lid the lower tie stood 11 mm over the cage's
+          // 0.769 bottom rail; it sits on the rail there.
           P.addEquipment('hullDark', box(0.072, 0.040, 0.055),
-            s * 1.768, 0.80, z);
+            s * 1.768, z < -2.5 ? 0.789 : 0.80, z);
           P.addEquipment('hullDark', box(0.072, 0.040, 0.055),
             s * 1.768, 1.36, z);
         }
@@ -10021,56 +10024,25 @@ function buildKF51(P: TankBuilderPort) {
       // where the eye sees between the moving chain runs.
       P.add('hullShadow', box(0.104, 0.175, 0.03), s * 1.174, 0.6325, 3.25);     // upper filler, inner corridor (x 1.122..1.226)
       P.add('hullShadow', box(0.096, 0.175, 0.03), s * 1.352, 0.6325, 3.25);     // upper filler, outer corridor (x 1.304..1.400)
-      P.add('hullShadow', box(0.52, 0.12, 0.03), s * 1.30, 0.26, 3.25);          // lower filler y 0.20..0.32
-      // r3 #2 side-effect repair: the pad de-tooth pulled the idler wrap's
-      // low fringe — the ref z 3.71 side column reads a 0.40 bottom the bare
-      // band cannot make (same class as the certified rear-flap carrier).
-      // Small idler flap: the same 0.40-bottom carrier now sits immediately
-      // ahead of the animated shoe envelope instead of sharing its last 29 mm.
-      // r6 #3c: widened 0.30 -> 0.52 (span 1.00..1.52 inside the 0.94..1.58
-      // window — the wrap-front rib rungs showed beside it; ref column is
-      // FLAT p5-p95 58-68). y/z EXACT (the 0.40-bottom carrier class).
-      P.add('hullShadow', box(0.52, 0.30, 0.025), s * 1.26, 0.55, 3.795);
-      // r4 #5c FRONT-IDLER CORNER FILL: view-left x1082-1116 read BACKGROUND
-      // where the ref shows idler+fender+flap (the zone z 3.70..3.83 below the
-      // wrap shoulder, plus the outer corner z 3.44..3.72). A real forward
-      // mudflap board stays behind the 3.83 beak tip while clearing the shoes
-      // hangs at the wheel plane and an outer corner flap panel drops from the
-      // drooping fender tip; both sit inside the certified front/plan unions
-      // (front rows: band-owned bottoms, tops < wrap 1.24; plan: wrap-owned to
-      // 3.79 / fender-tip-owned at x 1.71..1.77).
-      // r6 #3c FLANKING-RIB KILL (front identity): the board grows 0.32 ->
-      // 0.56 (span 1.00..1.56, near the whole 0.94..1.58 window — the ref
-      // front column is FLAT 58-68 with its own black flap square; ours
-      // showed bright pad rungs BESIDE the narrow board, p95 87.9). Front
-      // mask inert: every new column keeps its 0.013 band-ground bottom and
-      // the 1.02 top sits far under the wrap's 1.2-1.38 line; side/plan
-      // untouched (same y/z envelope).
-      // r8 #2 (front pair): the board stops impersonating the FLAP — the ref
-      // front flap is the same 0.51 x 0.43 corner square as the rear (front
-      // render 25.2 dead-flat at x 1.21..1.71, y 0.39..0.81; front_hull col
-      // 1.68 refBot 0.39 = the flap line, plan cols 1.62..1.73 fore 3.76-3.78
-      // = its face). The 16-class flat flap lives in the tone block at that
-      // exact footprint; this
-      // board shrinks to the UNDER-FENDER SHADOW remnant above it (y 0.70..
-      // 1.02 — rung cover duty x 1.00..1.56 intact: y 0.39..0.81 is flap-
-      // covered, 0.40..0.70 board-covered below via the 3.71 idler flap) and
-      // retreats behind the flap plane.
-      // r4 CONTAINMENT: board + bracket now sit wholly ahead of the shoe front
-      // (3.767), with rear faces >=3.78 and the same y/x envelopes.
-      P.add('hullShadow', box(0.56, 0.32, 0.04), s * 1.28, 0.86, 3.805);         // under-fender shadow board y 0.70..1.02
-      P.add('hullDark', box(0.18, 0.09, 0.06), s * 1.28, 1.06, 3.81);            // flap hanger bracket ahead of the wrap shoulder
-      P.add('hullDark', box(0.10, 0.09, 0.05), s * 1.46, 0.855, 3.805);          // flap hanger onto the new corner flap (y 0.81..0.90)
+      // 2026-10-22 (owner float calls): the lower filler board (y 0.20..0.32) hung 18 cm under the bow, between the track
+      // runs, with nothing holding it: removed.
+      // 2026-10-22 (owner float calls): the idler flap, the under-fender shadow board and their two hangers stood 12 mm
+      // ahead of the flap with nothing over them (the fender stopped at 3.70, the beak's chamfered corner behind
+      // 3.77). The fender now runs on to the beak's 3.83 front line over the track, and the front flap hangs from it
+      // the way the rear one does (2026-10-19): a 20 mm steel mudguard from the lip's underside down to 20 mm behind
+      // the flap's top edge, the flap (tone block) on its front face, all ahead of the 3.767 shoe front.
+      const lipRing = (aft: number, fore: number): FourPointRing => {
+        const ring: FourPointRing = [[s * 1.10, aft, 3.70], [s * 1.72, aft, 3.70], [s * 1.72, fore, 3.83], [s * 1.10, fore, 3.83]];
+        return s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring;               // mirror-winding law (a6 r6)
+      };
+      P.add('hull', slab(...lipRing(1.205, 1.205), ...lipRing(1.255, 1.235)));   // fender lip over the track front, top on the beak's line
+      P.addMudguard('kf51-front-mudguard-hanger', 'hull', box(0.49, 0.415, 0.020), s * 1.46, 0.9975, 3.795);
+      P.add('hullDetail', box(0.53, 0.04, 0.012), s * 1.46, 1.185, 3.811);       // clamp bar under the lip, on the mudguard's face
       P.add('hullShadow', box(0.05, 0.42, 0.28), s * 1.7375, 0.98, 3.58);        // outer corner flap panel under the fender tip
       P.add('hullDark', box(0.05, 0.05, 0.30), s * 1.7375, 1.21, 3.57);          // fender-tip gusset joining tip → flap
     }
-    // r3 #2 GROUND ANCHOR: the de-toothed pads raised the proc's global
-    // min-y from the grouser tips (0.005) to the band bottom (0.013) and the
-    // harness re-grounded the WHOLE model 8 mm down — every side/front top
-    // row dropped one raster pixel and side dy slid −0.003 → −0.013 (the
-    // frozen-box law's vertical twin). One buried centerline contact shim
-    // restores the exact 0.005 floor without entering either track sweep.
-    P.add('hullDark', box(0.02, 0.010, 0.02), 0, 0.010, -1.585);
+    // 2026-10-22 (owner float calls): the r3 ground-anchor shim (a 2 cm cube on the ground under the belly, 0.46 m below
+    // the hull, kept only to pin the gate harness's floor) is gone.
     // engine deck furniture — r5 #6 REAR DECK DE-INVENT (hero-zoom): the fan
     // discs + pale torus shoulder arcs + long slat grilles had no ref
     // counterpart (ref deck = dot-perforated dark plates + low stowage).
@@ -10090,7 +10062,7 @@ function buildKF51(P: TankBuilderPort) {
       P.add('hullDetail', cylY(0.09, 0.09, 0.02, 12), s * 1.30, 1.786, -1.60);   // torsion caps (kept — real deck fittings)
     }
     P.add('hullDark', box(2.6, 0.016, 0.44), 0, 1.826, -3.28);                   // transverse grille inset (dark panel kept; pale slats -> dot rows in the tone block)
-    P.add('hullDark', box(1.9, 0.014, 0.03), 0, 1.612, 2.20);                    // crease weld seam
+    P.add('hullDark', box(1.9, 0.014, 0.03), 0, 1.6074, 2.20);                   // crease weld seam (2026-10-22: on the 1.6004 crease, it stood 5 mm over it)
     // flat tie-down cleats, NOT proud lift eyes (a6 law: a 0.07 eye ring was
     // the +0.09 side_hull column over the bare deck line)
     P.add('hullDetail', box(0.16, 0.022, 0.07), -1.35, 1.80, -1.9);
@@ -10126,8 +10098,8 @@ function buildKF51(P: TankBuilderPort) {
     }
     P.add('hullShadow', box(3.06, 0.006, 0.085), 0, 1.811, -2.3425);             // rear cross strip (fan discs start −2.39: 5 mm clear; +9 mm over the 1.805 deck row)
     P.add('hullShadow', slab(                                                    // front cross strip ON the glacis slope (crease 2.22 → knee: y 1.5897@2.24 → 1.5382@2.34)
-      [-1.53, 1.5462, 2.34], [1.53, 1.5462, 2.34], [1.53, 1.5977, 2.24], [-1.53, 1.5977, 2.24],
-      [-1.53, 1.5542, 2.34], [1.53, 1.5542, 2.34], [1.53, 1.6057, 2.24], [-1.53, 1.6057, 2.24]));
+      [-1.53, 1.5382, 2.34], [1.53, 1.5382, 2.34], [1.53, 1.5897, 2.24], [-1.53, 1.5897, 2.24],   // 2026-10-22: on the slope (it rode 8 mm over it)
+      [-1.53, 1.5462, 2.34], [1.53, 1.5462, 2.34], [1.53, 1.5977, 2.24], [-1.53, 1.5977, 2.24]));
     // r7 #2: the "Y-051" number decal DELETED — critic r6: an INVENTION (the
     // ref carries no lettering anywhere) and the brightest rear element
     // (max 117.8). Decal plane was silhouette-interior (plate/bin surround).
@@ -10245,8 +10217,8 @@ function buildKF51(P: TankBuilderPort) {
       // bottom to 0.40 there — every between-wheel column keeps its certified
       // 0.40 band bottom while the piers rise off the wheel equator. Columns
       // beyond the course (idler/sprocket ramps) are untouched.
-      P.add('hullShadow', pbox(0.012, 0.32, 5.10), s * 1.155, 0.58, 0.145);
-      P.add('hullShadow', pbox(0.012, 0.04, 4.1775), s * 1.155, 0.42, -0.29375);
+      // 2026-10-22 (owner float calls): the wall stood 21 cm off the hull side, threaded through the wheels' inner
+      // rims; it is gone, and the slits show the lower hull side and the suspension arms behind the wheels.
       // sprocket/idler drum-face packages — the bare drum faces sampled as
       // blank grey placeholder discs (critic #8 "grey hub disc"): rim ring +
       // dark hub + bolt collar, inside the pad-wrapped silhouette.
@@ -11326,7 +11298,7 @@ function buildKF51(P: TankBuilderPort) {
         const buildKF51AssemblyStage16 = (): void => {
           for (const s of [-1, 1] as const) {
             tone(flapRear16, KIT.xform(KIT.box(0.50, 0.42, 0.024), s * 1.46, 0.60, -3.700));
-            tone(flapFront25, KIT.xform(KIT.box(0.50, 0.42, 0.024), s * 1.46, 0.60, 3.756));
+            tone(flapFront25, KIT.xform(KIT.box(0.50, 0.42, 0.024), s * 1.46, 0.60, 3.817)); // 2026-10-22: on the front mudguard's face, ahead of the 3.767 shoe front (it stood inside the wrap's sweep at 3.744)
           }
           // ---- r6 #6a turret-side AO grade, geometry half: wall-base shadow
           // shells 1.2mm proud and slope-parallel to the cheek/mid wall frusta

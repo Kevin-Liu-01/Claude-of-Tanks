@@ -141,7 +141,10 @@ function frontEquipment(P:TankBuilderPort):void {
     for(const [x,y,z]of[[.819851,.93502,3.689617],[.630664,1.15166,3.571928]]) {
       const eye=new THREE.TorusGeometry(.052,.017,8,24);eye.rotateY(Math.PI/2);
       P.addEquipment('hullDetail',eye,side*x,y,z);
-      P.addEquipment('hullDetail',box(.041955,.10,.06),side*x,y-.028,z-.048);
+      // 2026-10-22 (owner float calls): the lower eye's lug stood 42 mm proud of the 3.570 nose face; it now runs back
+      // onto the face and stops at the face's .902 lower edge.
+      if(z>3.6)P.addEquipment('hullDetail',box(.041955,.055,z-.018-3.570),side*x,.9295,(z-.018+3.570)/2);
+      else P.addEquipment('hullDetail',box(.041955,.10,.06),side*x,y-.028,z-.048);
     }
   }
 }

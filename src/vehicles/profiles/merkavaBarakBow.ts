@@ -8,6 +8,13 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 // World X is divided by the family's existing .972 hull scale only at emission.
 const HULL_X_SCALE = .972;
 type Station = readonly [z: number, bottom: number, top: number];
+// Chain stock (2026-10-22, owner float calls): oval links, a torus .043/.0085 drawn .90 wide and 1.20 long. A link's
+// inner end bears on its neighbour's, so the pitch is the inner length. The eye at each strap's nose is a ring whose
+// bridge carries a junction link; the two runs hang from that link's lower end.
+const LINK_R=.043,LINK_TUBE=.0085,LINK_W=.90,LINK_L=1.20;
+const HALF_IN_L=LINK_L*(LINK_R-LINK_TUBE),HALF_IN_W=LINK_W*(LINK_R-LINK_TUBE),PITCH=2*HALF_IN_L;
+const EYE={outer:.0387,hole:.025,width:.0577,y:.7722,z:4.2398};
+interface ChainLink { center: THREE.Vector3; long: THREE.Vector3; width: THREE.Vector3 }
 
 function stock(P: TankBuilderPort, geometry: THREE.BufferGeometry, x=0, y=0, z=0, dark=false): void {
   geometry.scale(1/HULL_X_SCALE,1,1);
@@ -30,8 +37,12 @@ function towStrap(P: TankBuilderPort, side: number): void {
     [3.853499,.886448,.9490845],[4.108192,.790013,.8302690]]);
   strip(P,x,width,[[3.7155,.7814,.7946],[3.798166,.76879,.8208968],
     [4.105916,.743637,.7812032],[4.108192,.743451,.790513]]);
-  strip(P,x,width,[[4.106,.743630,.831292],[4.230045,.7334915,.774769]]);
-  stock(P,KIT.cylX(.0387,width,16),x,.7722,4.2398);
+  // The nose stops at the eye's hole (it ran on to 4.230 inside the old solid boss).
+  strip(P,x,width,[[4.106,.743630,.831292],[4.2148,.734737,.781717]]);
+  const shape=new THREE.Shape().absarc(0,0,EYE.outer,0,Math.PI*2,false);
+  shape.holes.push(new THREE.Path().absarc(0,0,EYE.hole,0,Math.PI*2,true));
+  stock(P,new THREE.ExtrudeGeometry(shape,{depth:EYE.width,bevelEnabled:false,curveSegments:P.q?24:12})
+    .translate(0,0,-EYE.width/2).rotateY(Math.PI/2),x,EYE.y,EYE.z);
 }
 
 function mountPlate(P: TankBuilderPort, x: number): void {
@@ -80,23 +91,68 @@ function strapMounts(P: TankBuilderPort, side: number): void {
   stock(P,KIT.cylX(.017,.166,12),side*.6022+offset,.645,3.6322);
 }
 
-function towingChain(P: TankBuilderPort): void {
-  const path=new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-.62,.654,3.64),new THREE.Vector3(-.657,.582,3.84),
-    new THREE.Vector3(-.667,.694,4.09),new THREE.Vector3(-.596,.782,4.222),
-    new THREE.Vector3(-.35,.625,4.232),new THREE.Vector3(0,.548,4.226),
-    new THREE.Vector3(.35,.625,4.213),new THREE.Vector3(.595,.775,4.211),
-    new THREE.Vector3(.663,.693,4.09),new THREE.Vector3(.632,.576,3.87),
-    new THREE.Vector3(.602,.662,3.77),
-  ],false,'centripetal');
-  const count=38;
-  for(let i=0;i<count;i++){
-    const t=i/(count-1),point=path.getPointAt(t),tangent=path.getTangentAt(t).normalize();
-    const g=KIT.torus(.043,.0085,P.q?12:8,P.q?6:4);
-    g.scale(.78,1.20,1);g.rotateY(i%2?Math.PI/2:0);
-    g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),tangent));
-    stock(P,g,point.x,point.y,point.z,true);
+/** n+1 bearing points of an n-link chain hanging from a to b: a catenary in their vertical plane. */
+function catenary(a: THREE.Vector3, b: THREE.Vector3, n: number): THREE.Vector3[] {
+  const dx=b.x-a.x,dz=b.z-a.z,h=Math.hypot(dx,dz),v=b.y-a.y,length=n*PITCH,span=Math.sqrt(length*length-v*v);
+  let lo=1e-4,hi=100;
+  for(let i=0;i<100;i++){const k=(lo+hi)/2;if(2*k*Math.sinh(h/(2*k))>span)lo=k;else hi=k;}
+  const k=(lo+hi)/2;
+  lo=-50;hi=50;
+  for(let i=0;i<100;i++){const m=(lo+hi)/2;if(k*(Math.cosh((h-m)/k)-Math.cosh(-m/k))>v)lo=m;else hi=m;}
+  const m=(lo+hi)/2,s0=k*Math.sinh(-m/k);
+  return Array.from({length:n+1},(_,i)=>{
+    const t=m+k*Math.asinh((i*length/n+s0)/k);
+    return new THREE.Vector3(a.x+dx*t/h,a.y+k*(Math.cosh((t-m)/k)-Math.cosh(-m/k)),a.z+dz*t/h);
+  });
+}
+
+/** Links between consecutive bearing points; each link's width runs along the previous link's normal (it hooks
+ * through that link's opening). */
+function hang(points: THREE.Vector3[], width: THREE.Vector3): ChainLink[] {
+  const out: ChainLink[]=[];
+  let w=width.clone();
+  for(let i=0;i+1<points.length;i++){
+    const long=points[i+1].clone().sub(points[i]).normalize();
+    w=w.addScaledVector(long,-w.dot(long)).normalize();
+    out.push({center:points[i].clone().add(points[i+1]).multiplyScalar(.5),long,width:w});
+    w=long.clone().cross(w).normalize();
   }
+  return out;
+}
+
+function emitLink(P: TankBuilderPort, link: ChainLink): void {
+  const g=new THREE.TorusGeometry(LINK_R,LINK_TUBE,P.q?6:4,16);
+  g.scale(LINK_W,LINK_L,1);
+  g.applyMatrix4(new THREE.Matrix4().makeBasis(link.width,link.long,link.width.clone().cross(link.long)));
+  stock(P,g,link.center.x,link.center.y,link.center.z,true);
+}
+
+function towingChain(P: TankBuilderPort): void {
+  // 2026-10-22 (owner float calls): the 38 rings stood on a spline, apart from each other and from every hook; the
+  // right run ended 14 cm short of its clevis. Each side now runs from the clevis pin (the end link around it, bearing
+  // on its far side) to the junction link in the strap's eye, which rests on the eye bridge's two upper corners; the
+  // front run hangs between the two junction links. Odd counts keep each run's end links square to their hooks.
+  const SIDE_LINKS=9,FRONT_LINKS=15,offset=.014,pinR=.017;
+  const fronts: THREE.Vector3[]=[];
+  for(const side of[-1,1]){
+    const x=side<0?-.6011018:.6001018,inward=-side;
+    // (+.6 mm: the 16-facet link's inner arc runs that far under the true ellipse at the bridge's edges)
+    const junctionY=EYE.y-EYE.hole-HALF_IN_L*Math.sqrt(1-(EYE.width/2/HALF_IN_W)**2)+.0006;
+    emitLink(P,{center:new THREE.Vector3(x,junctionY,EYE.z),long:new THREE.Vector3(0,1,0),width:new THREE.Vector3(1,0,0)});
+    // the two runs bear on the junction's lower inner arc either side of its tip, clear of each other
+    const arcY=junctionY-HALF_IN_L*Math.sqrt(1-(offset/HALF_IN_W)**2);
+    fronts.push(new THREE.Vector3(x+inward*offset,arcY+.001,EYE.z));
+    const top=new THREE.Vector3(x-inward*offset,arcY+.0055,EYE.z);
+    const pin=new THREE.Vector3(side*.6022+(side<0?-.001:0),.645,3.6322);
+    let start=pin.clone().add(new THREE.Vector3(0,pinR,0)),points=catenary(start,top,SIDE_LINKS);
+    for(let i=0;i<8;i++){
+      start=pin.clone().addScaledVector(points[1].clone().sub(pin).normalize(),-pinR);
+      points=catenary(start,top,SIDE_LINKS);
+    }
+    const first=points[1].clone().sub(points[0]).normalize();
+    for(const link of hang(points,new THREE.Vector3(1,0,0).cross(first)))emitLink(P,link);
+  }
+  for(const link of hang(catenary(fronts[0],fronts[1],FRONT_LINKS),new THREE.Vector3(0,0,1)))emitLink(P,link);
 }
 
 export function addBarakBowEquipment(P: TankBuilderPort): void {

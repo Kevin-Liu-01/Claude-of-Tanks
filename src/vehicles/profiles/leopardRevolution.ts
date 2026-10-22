@@ -119,8 +119,14 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
         [side * 1.95, yTop(front) - 0.17, front], [side * 1.64, yTop(front) - 0.015, front],
       ));
       for (const z of [rear + 0.13, front - 0.13]) {
-        P.addEquipment('hullDetail', box(0.025, 0.045, 0.12), side * 1.956, 1.24, z);
-        P.addEquipment('hullDark', cylX(0.016, 0.028, 8), side * 1.972, 1.24, z);
+        // 2026-10-22 (owner float calls): the brackets stood 5-7 mm off the module's raked outer face; each now leans
+        // with that face and sits on it, its cap riding its outer face as before.
+        const t = (z - rear) / (front - rear), low = 0.77 + 0.05 * t, high = yTop(z) - 0.17;
+        const rake = Math.atan2(0.07, high - low), faceX = 1.88 + 0.07 * (1.24 - low) / (high - low);
+        const cx = faceX + 0.0125 / Math.cos(rake);
+        P.addEquipment('hullDetail', box(0.025, 0.045, 0.12), side * cx, 1.24, z, 0, 0, -side * rake);
+        P.addEquipment('hullDark', cylX(0.016, 0.028, 8), side * (cx + 0.016 * Math.cos(rake)), 1.24 - 0.016 * Math.sin(rake), z,
+          0, 0, -side * rake);
       }
     }
     // Broad front corner follows the same upper glacis angle, not a box
