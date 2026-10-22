@@ -9,7 +9,7 @@ import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection, type SectionPoint } from './sectionSolid.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
-import { addClampFrame, addLaunchCanister, type LaunchCanister } from './missileCanisterStock.ts';
+import { addClampFrame, addLaunchCanister, elevationSector, type LaunchCanister } from './missileCanisterStock.ts';
 
 const { box, cylX, cylY, cylZ, torus } = KIT;
 type XYZ = [number, number, number];
@@ -263,7 +263,7 @@ const T = { roof: .49, gunY: .64, gunZ: .80, gunLen: 1.45, pivotY: 1.41, pivotZ:
 export const ZTZ100_PROTOTYPE_LAUNCHER = Object.freeze({
   podCenters: [-1.08, 1.08] as const, pitch: .30,
   columns: [-1.23, -.93, .93, 1.23] as const, rows: [.12, .42] as const,
-  rear: -1.10, mouth: 1.00, outerRadius: .143, innerRadius: .112, frames: [-.62, .58] as const,
+  rear: -1.10, mouth: 1.00, outerRadius: .143, innerRadius: .112, frames: [-.62, .66] as const,
   gunPivot: [0, T.gunY, T.gunZ] as const, backupLength: T.gunLen,
   backupOuterRadius: .045, backupInnerRadius: .0175, backupDepth: .09,
 });
@@ -271,7 +271,7 @@ const L = ZTZ100_PROTOTYPE_LAUNCHER;
 export const ZTZ100_PROTOTYPE_CANISTER: LaunchCanister = Object.freeze({
   bodyRadius: .126, collarRadius: L.outerRadius, boreRadius: L.innerRadius, capRadius: .134, bandRadius: .133,
   rear: L.rear, mouth: L.mouth, collarLength: .16, recess: .095,
-  bands: Object.freeze([L.frames[0], -.02, L.frames[1]]), segments: [20, 12] as const,
+  bands: Object.freeze([L.frames[0], .02, L.frames[1]]), segments: [20, 12] as const,
 });
 
 function bodySection(z: number, width: number, top: number): SolidSection {
@@ -302,6 +302,8 @@ function armoredBody(P: TankBuilderPort): void {
     // stay inboard of x .70 (the journal clears the gearbox by 5 mm); the pitching pods start at .711.
     P.addEquipment('turret', part(box(.10, .20, .28), 'elevation-gearbox'), s * .635, .405, T.gunZ);
     P.addEquipment('turretDark', part(cylZ(.06, .24, P.q ? 16 : 10), 'elevation-motor'), s * .64, .26, T.gunZ + .06);
+    // Its pinion, straight below the pitch axis, stands 2 mm off the tips of the pod's elevation sector.
+    P.addEquipment('turretDark', part(cylX(.036, .05, P.q ? 16 : 10), 'elevation-pinion'), s * .70, .282, T.gunZ);
   }
 }
 
@@ -313,11 +315,18 @@ function pod(P: TankBuilderPort, side: number): void {
   for (const x of columns) for (const y of L.rows) addLaunchCanister(P, part, C, x, y, bands);
   let bottom = 0;
   for (const z of L.frames) bottom = addClampFrame(P, part, C, columns, L.rows, z).bottom;
-  for (const dx of [-L.pitch / 2, L.pitch / 2]) {
-    P.addEquipment('gunMount', part(new THREE.BoxGeometry(.045, .04, 1.30), 'pod-rail'), c + dx, bottom - .034, -.02);
+  // Ladder cradle: a saddle under each frame from the inner plate to the outer post, two rails ending inside them.
+  for (const z of L.frames) {
+    P.addEquipment('gunMount', part(new THREE.BoxGeometry(.652, .058, .08), 'pod-saddle'), c - side * .014, bottom - .039, z);
   }
-  P.addEquipment('gunMount', part(new THREE.BoxGeometry(.03, .52, 1.32), 'pod-cradle-plate'), c - side * .328, .06, -.02);
+  for (const dx of [-L.pitch / 2, L.pitch / 2]) {
+    P.addEquipment('gunMount', part(new THREE.BoxGeometry(.045, .04, 1.34), 'pod-rail'), c + dx, bottom - .034, .02);
+  }
+  P.addEquipment('gunMount', part(new THREE.BoxGeometry(.03, .52, 1.40), 'pod-cradle-plate'), c - side * .328, .06, .02);
   P.addEquipment('gunMount', part(cylX(.165, .03, n), 'pod-trunnion-hub'), c - side * .354, 0, 0);
+  // Elevation sector on the hub, meshing with the pedestal pinion below the axis over the whole -6..+20 degree range.
+  P.addEquipment('gunMountDark', part(elevationSector(.10, .30, .02, -120, -74, 10, .025, P.q), 'pod-elevation-sector'),
+    c - side * .3535, 0, 0);
   // The journal runs from inside the fixed bearing (x .415-.615) into the hub.
   P.addEquipment('gunMountDark', part(cylX(.13, .16, n), 'bank-pitch-journal'), side * .645, 0, 0);
 }

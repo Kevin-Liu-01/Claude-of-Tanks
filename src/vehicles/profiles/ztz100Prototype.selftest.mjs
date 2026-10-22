@@ -111,6 +111,8 @@ function checkSeats() {
     joint(stock('pod-trunnion-hub', s * .726), stock('pod-cradle-plate', s * .752), [s * .739, 0, 0], 'hub on cradle plate');
     joint(stock('pod-cradle-plate', s * .752), stock('pod-post', s * .7815), [s * .765, .10, L.frames[0]], 'plate across inner post');
     joint(stock('pod-rail', s * .93), stock('pod-strap', s * 1.08), [s * .93, -.042, L.frames[1]], 'rail under bottom strap');
+    joint(stock('pod-saddle', s * 1.066), stock('pod-rail', s * .93), [s * .93, -.06, L.frames[0]], 'rail into saddle');
+    joint(stock('pod-elevation-sector', s * .7265), stock('pod-trunnion-hub', s * .726), [s * .7265, -.13, 0], 'sector on hub');
   }
   for (const x of L.columns) for (const y of L.rows) {
     const bands = stock('canister-band', x).filter(p => p.mesh.position.y === y && L.frames.includes(p.mesh.position.z));

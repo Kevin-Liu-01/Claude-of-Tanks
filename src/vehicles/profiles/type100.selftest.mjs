@@ -128,9 +128,11 @@ function seats() {
     joint('launcher-journal','launcher-hub',[x-s*.20,0,0],'journal runs into the trunnion hub');
     joint('launcher-hub','launcher-cradle-plate',[x-s*.184,0,0],'hub bolted to the cradle plate');
     joint('launcher-cradle-plate','pod-post',[x-s*.157,.10,-.28],'cradle plate across the inner post');
-    joint('pod-post','canister-band',[x-s*.126,.12,.60],'post bears on the band');
-    joint('canister-band','missile-canister',[x,.239,.60],'band clamps the canister body');
-    joint('pod-strap','launcher-keel',[x,-.036,.60],'keel under the bottom strap');
+    joint('pod-post','canister-band',[x-s*.126,.12,.66],'post bears on the band');
+    joint('canister-band','missile-canister',[x,.239,.66],'band clamps the canister body');
+    joint('pod-strap','launcher-saddle',[x,-.036,.66],'saddle under the bottom strap');
+    joint('launcher-saddle','launcher-rail',[x+.11,-.0575,.66],'rail into the saddle');
+    joint('elevation-sector','launcher-hub',[x-s*.194,-.11,0],'elevation sector on the trunnion hub');
     joint('pod-row-strap','canister-band',[x,.246,-.28],'row strap between the canisters');
   }
 }
