@@ -335,6 +335,17 @@ function mbt70Armor() {
 // 2026-08-06 "no GLB" delist reason). The print is a LOCAL-ONLY measurement
 // oracle for the hull; release 233 rebuilt the vehicle as an original design on
 // that hull (profiles/longwei.ts, owner 2026-10-21).
+/**
+ * Release 233: the Longwei's main gun by turret yaw, measured (tools/gun-depression-sweep.mjs --ids=ztz99_longwei, the
+ * whole gun 26 mm off every hull mesh): the full 7 degrees except over the front quarters, where the raised glacis
+ * shoulders hold it to about -4 degrees at 40-50 degrees of yaw, and over the raised engine deck from 135 degrees,
+ * where it stays 0.5-3.5 degrees above level. Before the redesign the gun had no curve and passed through the deck.
+ */
+const LONGWEI_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -7], [19, -7], [20, -6.6], [23, -5.9], [36, -4.4], [39, -4.1],
+  [44, -4.1], [46, -3.9], [48, -3.9], [49, -4], [50, -4.5], [52, -6.7], [53, -7], [132, -7], [133, -6.1], [135, -1.5],
+  [136, -0.1], [137, 0.5], [141, 0.8], [143, 0.8], [144, 2], [145, 2.8], [148, 3], [166, 3], [178, 3.5], [179, 3.4],
+  [180, 3.1]] as const);
+
 export const MODERN2_SPECS: TankSpecRegistry = {
   leo2a2: {
     id: 'leo2a2', name: 'Leopard 2A2', nation: 'Germany', era: 'modern', role: 'mbt',
@@ -526,6 +537,7 @@ export const MODERN2_SPECS: TankSpecRegistry = {
     hullTraverseDegS: 42,
     terrainResistance: MODERN_TR, pivotStyle: 'neutral',
     turretTraverseDegS: 38, gunPitchDegS: 30, gunElevationDeg: 14, gunDepressionDeg: 7,
+    gunPitchByYawDeg: LONGWEI_GUN_PITCH_BY_YAW_DEG,
     gun: {
       caliberMm: 125, reloadS: 7.0, baseAccuracy: 0.33, aimTimeS: 2.1,
       bloom: BLOOM_MODERN,
