@@ -23,6 +23,28 @@ const C1_ARIETE_PRESERIE_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -4.3], [19, -
   [25, 0.2], [27, 0], [28, -0.4], [29, -3.1], [33, -3], [44, -4.4], [49, -5.3], [131, -5.3], [136, -4.4], [151, -2.5],
   [152, -0.5], [153, 0], [154, 0.2], [180, 0.2]] as const);
 
+/** Release 231 (owner 2026-10-21: "make the c2 and c1 prototypes' turrets be lifted a lil so its not fused with hull"):
+ * the Ariete prototypes' turret and gun ride this far (metres, the builder's frame before the family's ×1.10) over the
+ * print seat. profiles/italy.ts lifts the turret by it; the armor frames below carry it. */
+export const ARIETE_PROTO_TURRET_LIFT_M = 0.04;
+
+/** Release 231 (the gun-hull fleet lane): the Ariete prototypes' main-gun depression by absolute turret yaw (degrees;
+ * sim/gunPitchLimits.ts), measured with tools/gun-depression-sweep.mjs (the C2 without its field suit, which is cut to
+ * these stops) after their turrets came up ARIETE_PROTO_TURRET_LIFT_M with every buried underside at the hull's slab,
+ * the gun's block mantlet became a narrow plate in the cheeks' slot and the roof ahead of the turret's front plate came
+ * down to the print's 1.40 fore line (profiles/italy.ts): no mount conflict, nothing blocked at full elevation. The C1
+ * keeps -5.5 to -6.7 over the front arc and -7 over the sides; the C2's glacis add-on rows hold its front to -3.8; both
+ * ride near level over the slab's quarters and +1 to +2 where the deck's lift eyes and stowage pass under the tube. */
+const C1_ARIETE_PROTO_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -6.4], [9, -6.2], [10, -5.7], [11, -5.5], [15, -5.5],
+  [16, -6], [17, -6.7], [21, -6.5], [22, -5.1], [23, -2.3], [24, -0.9], [25, -0.6], [43, -0.3], [58, -0.3],
+  [79, -0.6], [80, -0.9], [81, -3.7], [82, -6.7], [97, -7], [99, -6.5], [100, -3.5], [101, -2.4], [103, -0.8],
+  [104, -0.6], [129, -0.3], [149, -0.3], [151, 1.5], [152, 1.9], [155, 1.9], [156, 1.4], [157, 0.2], [165, 1.2],
+  [167, 1.2], [168, 1.1], [177, -0.3], [180, -0.3]] as const);
+const C2_ARIETE_PROTO_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -4.6], [1, -4.4], [13, -3.9], [19, -3.8], [22, -3.9],
+  [23, -2.3], [24, -0.9], [25, -0.6], [43, -0.3], [58, -0.3], [79, -0.6], [80, -0.9], [81, -3.7], [82, -6.9],
+  [94, -7.2], [99, -6.5], [100, -3.5], [101, -2.4], [103, -0.8], [104, -0.6], [129, -0.3], [149, -0.3], [151, 1.5],
+  [152, 1.9], [155, 1.9], [156, 1.4], [157, 0.2], [165, 1.2], [167, 1.2], [168, 1.1], [177, -0.3], [180, -0.3]] as const);
+
 const BLOOM_MODERN: Readonly<AimBloom> = {
   move: 0.06,
   hullRot: 0.08,
@@ -750,6 +772,7 @@ const MODERN3_SPECS = {
     terrainResistance: { hard: 0.68, medium: 0.79, soft: 1.46 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 40, gunPitchDegS: 32, gunElevationDeg: 20, gunDepressionDeg: 9,
+    gunPitchByYawDeg: C1_ARIETE_PROTO_GUN_PITCH_BY_YAW_DEG,
     gun: {
       caliberMm: 120, reloadS: 5.9, baseAccuracy: 0.28, aimTimeS: 1.6,
       bloom: BLOOM_MODERN,
@@ -768,7 +791,7 @@ const MODERN3_SPECS = {
       // geometric FRAME params re-seated on the arrafi-print measured build
       // (profiles/italy.ts buildArieteMk); every RHAe VALUE byte-identical.
       hl: 3.8, hw: 1.80, inW: 1.22, floor: 0.50, trkTop: 1.06, roofY: 1.59,
-      turretPivot: [0, 1.40, -0.10], gunPivot: [0, 0.35, 1.05],
+      turretPivot: [0, 1.40 + ARIETE_PROTO_TURRET_LIFT_M, -0.10], gunPivot: [0, 0.35, 1.05],
       barrelLenM: 4.93, barrelRadM: 0.105,
       glacis: [55, 380, 520], lower: [55, 320, 430], side: [45, 110, 150],
       skirt: [45, 120, 320], rear: 40, roof: 40,
@@ -791,6 +814,7 @@ const MODERN3_SPECS = {
     terrainResistance: { hard: 0.65, medium: 0.76, soft: 1.40 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 44, gunPitchDegS: 36, gunElevationDeg: 22, gunDepressionDeg: 10,
+    gunPitchByYawDeg: C2_ARIETE_PROTO_GUN_PITCH_BY_YAW_DEG,
     gun: {
       caliberMm: 120, reloadS: 5.4, baseAccuracy: 0.26, aimTimeS: 1.45,
       bloom: BLOOM_MODERN,
@@ -809,7 +833,7 @@ const MODERN3_SPECS = {
       // frame re-seated on the shared buildArieteMk base; RHAe VALUES
       // byte-identical (the C2 package keeps its uparmored rows).
       hl: 3.8, hw: 1.80, inW: 1.22, floor: 0.50, trkTop: 1.06, roofY: 1.59,
-      turretPivot: [0, 1.40, -0.10], gunPivot: [0, 0.35, 1.05],
+      turretPivot: [0, 1.40 + ARIETE_PROTO_TURRET_LIFT_M, -0.10], gunPivot: [0, 0.35, 1.05],
       barrelLenM: 4.93, barrelRadM: 0.105,
       glacis: [70, 520, 760], lower: [65, 450, 620], side: [50, 160, 240],
       skirt: [55, 230, 520], rear: 45, roof: 45,

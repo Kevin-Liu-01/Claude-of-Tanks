@@ -38,6 +38,7 @@ import { mount as addFitting } from './fittingMount.ts';
 import { sampleArmorFace } from './armorFaceSampling.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { ARIETE_PROTO_TURRET_LIFT_M } from '../modern3Specs.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -172,7 +173,9 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   // the body lift and family scale. Both prototypes share this ownership;
   // merging them into the hull leaves equipment behind during turret yaw.
   const buildArieteMkAssemblyStage1 = (): void => {
-    P.turretG.position.set(0, 1.30 + BODY_RIDE_LIFT, -0.10);
+    // release 231 (owner: "lifted a lil so its not fused with hull"): the turret and gun ride ARIETE_PROTO_TURRET_LIFT_M
+    // over the print seat, so the turret's underside stands clear of the hull's slab with a dark ring in the seam
+    P.turretG.position.set(0, 1.30 + BODY_RIDE_LIFT + ARIETE_PROTO_TURRET_LIFT_M, -0.10);
   };
   buildArieteMkAssemblyStage1();
   const L = (zWorld: number): number => zWorld + 0.10;                         // world z -> turret local
@@ -185,8 +188,8 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   // reviewed widths; only this hidden inner tub clears the animated course.
   const buildArieteMkHullStage1 = (): void => {
     P.add('hull', box(1.60, 0.90, 6.30), 0, 0.85, 0.05);                         // tub x ±0.80, belly 0.40
-    P.add('hull', box(3.07, 0.15, 5.24), 0, 1.435, -0.95);                       // hull side walls ±1.535 (stations st0-5 w 3.04-3.07), y 1.36..1.51 —
-    // §5.299: walls END at the driver line +1.67 (the old +2.87 overshoot
+    P.add('hull', box(3.07, 0.15, 4.87), 0, 1.435, -1.135);                      // hull side walls ±1.535 (stations st0-5 w 3.04-3.07), y 1.36..1.51 —
+    // §5.299: walls END at the driver line +1.67 (release 231: at the turret's front plate +1.30; the old +2.87 overshoot
     // painted a flat 1.51 shelf over the whole glacis; the print's own side
     // silhouette rakes 1.51@1.62 -> 1.17@3.7 — rear extreme -3.57 byte-held)
     // ---- decks (gate ref side_hull) -------------------------------------------
@@ -195,7 +198,11 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     P.add('hull', box(3.05, 0.045, 0.24), 0, 1.4275, -0.95);                     // dip step 1.45 (z -1.07..-0.83)
     P.add('hull', box(3.05, 0.045, 0.30), 0, 1.3375, -0.68);                     // dip low 1.36 (z -0.83..-0.53)
     P.add('hull', box(3.05, 0.05, 1.10), 0, 1.415, 0.02);                        // ring deck 1.44 (z -0.53..+0.57, under the cage)
-    P.add('hull', box(3.05, 0.05, 1.10), 0, 1.42, 1.12);                         // fore deck 1.445 (z +0.57..+1.67, under the fairing)
+    P.add('hull', box(3.05, 0.05, 0.73), 0, 1.42, 0.935);                        // fore deck 1.445 (z +0.57..+1.30, under the turret)
+    // release 231: ahead of the turret's front plate the roof is the print's lower fore line (cheek undersides 1.35@+0.8 ->
+    // 1.53@+1.8, fore fairing falling to 1.36): the strip to the glacis at 1.40, under the cheeks' overhang, so the gun
+    // depresses over the front arc instead of standing on a 1.51 roof. The slab above stops at the front plate.
+    P.add('hull', box(3.05, 0.05, 0.37), 0, 1.375, 1.485);                       // fore strip 1.40 (z +1.30..+1.67)
     // ---- glacis: §5.299 SLOPED RE-LOFT (owner order). The certified flat-step
     // frustums (horizontal tops 1.375/1.32) read as a table; the print's own
     // line is a raked plane through the SAME measured points (gate ref:
@@ -261,17 +268,23 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       P.addEquipment('turretDetail', box(0.43, 0.03, 0.03), side * 1.25, localY(1.78), L(0.62));
     }
     P.add('hull', cylY(0.84, 0.86, 0.08, P.q ? 26 : 14), 0, 1.48, 0.02); // fixed bearing race
+    // release 231: the ring's outer race in the seam under the lifted turret (1 cm into the slab, 5 mm short of the
+    // turret's underside), set 18 cm inside its narrowest reach so it reads as the ring in shadow
+    P.add('hullDark', cylY(1.06, 1.06, ARIETE_PROTO_TURRET_LIFT_M - 0.005, P.q ? 40 : 24), 0,
+      1.50 + (ARIETE_PROTO_TURRET_LIFT_M - 0.005) / 2, -0.10);
     P.addEquipment('turret', box(0.57, 0.76, 0.80), -0.565, localY(1.82), L(0.02));
     P.addEquipment('turret', box(0.08, 0.86, 0.22), -0.815, localY(1.90), L(0.06));
     P.addEquipment('turretDark', box(0.06, 0.03, 0.18), -0.815, localY(2.33), L(0.06));
     // Structural fairing remains part of the cheek armor, not hull furniture.
+    // release 231: its underside at 1.50 (1 cm into the hull's slab), its nose lip at 1.56: it dipped to 1.34 over the
+    // glacis and swung through the track guards and the glacis grille as the turret traversed
     P.add('turret', slab(
-      [-0.85, 1.44, 0.42], [-0.48, 1.44, 0.42], [-0.48, 1.42, 1.05], [-0.85, 1.42, 1.05],
+      [-0.85, 1.50, 0.42], [-0.48, 1.50, 0.42], [-0.48, 1.50, 1.05], [-0.85, 1.50, 1.05],
       [-0.85, 2.02, 0.42], [-0.48, 2.02, 0.42], [-0.48, 1.95, 1.05], [-0.85, 1.95, 1.05]),
     0, localY(0), L(0));
     P.add('turret', slab(
-      [-0.85, 1.42, 1.05], [-0.48, 1.42, 1.05], [-0.48, 1.34, 1.78], [-0.85, 1.34, 1.78],
-      [-0.85, 1.95, 1.05], [-0.48, 1.95, 1.05], [-0.48, 1.475, 1.66], [-0.85, 1.475, 1.66]),
+      [-0.85, 1.50, 1.05], [-0.48, 1.50, 1.05], [-0.48, 1.50, 1.78], [-0.85, 1.50, 1.78],
+      [-0.85, 1.95, 1.05], [-0.48, 1.95, 1.05], [-0.48, 1.56, 1.66], [-0.85, 1.56, 1.66]),
     0, localY(0), L(0));
     P.addEquipment('turret', box(0.58, 0.24, 0.72), 0.55, localY(1.57), L(-0.04));
     for (const [px, top] of [[0.30, 2.11], [0.51, 2.10], [0.77, 2.09]]) {
@@ -280,12 +293,13 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     P.addEquipment('turretDark', box(0.50, 0.02, 0.50), -0.565, localY(2.205), L(0.02));
     // CENTER driver valley (gate front: 1.51-1.79 between the groups): plate,
     // flush hatch, episcope row, small center pod
-    P.add('hull', box(0.76, 0.045, 1.66), -0.11, 1.485, 0.52);                   // driver plate 1.51 (x -0.49..+0.27)
+    P.add('hull', box(0.76, 0.045, 1.61), -0.11, 1.485, 0.495);                   // driver plate 1.51 (x -0.49..+0.27)
     P.add('hullDark', box(0.40, 0.012, 0.44), -0.11, 1.514, 0.62);
   };
   buildArieteMkHullStage1();               // hatch seam
   const buildArieteMkHullStage2 = (): void => {
-    for (let k = -1; k <= 1; k++) periscope(P, 'hullDetail', -0.11 + k * 0.15, 1.53, 1.06, k * 0.08);
+    // release 231: no episcopes on the driver plate: it lies under the turret, and they stood through its side walls
+    // as it traversed
     P.add('hull', box(0.12, 0.27, 0.30), 0.0, 1.65, 0.02);                       // center pod to 1.79 (gate front 1.79 @ x -0.02..+0.06)
     // ---- stern (plan_hull rear + side_hull tail) ------------------------------
     P.add('hull', slab(                                                          // stern rake: bottoms 0.72@-3.30 -> 0.90@-3.66 (x ±0.85)
@@ -328,9 +342,9 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       for (let k = 0; k < 6; k++) {
         P.add('hullDetail', box(0.006, 0.085, 0.028), s * 1.536, 1.43, -2.24 - k * 0.15);
       }
-      P.add('hullDark', box(0.018, 0.02, 2.07), s * 1.527, 1.50, 0.585);         // s5322-C6 fender shadow line under the sponson crest (outer face flush w/ the 1.536 wall — the 1.5535 seat nicked the front-view corner, measured + pulled in)
+      P.add('hullDark', box(0.018, 0.02, 1.75), s * 1.527, 1.50, 0.425);         // s5322-C6 fender shadow line under the sponson crest (outer face flush w/ the 1.536 wall — the 1.5535 seat nicked the front-view corner, measured + pulled in)
     }
-    stowage(P, 'hullCloth', rng, [[-1.25, 1.53, -2.62, 0.42, 0.10, 0.72]]);
+    stowage(P, 'hullCloth', rng, [[-0.80, 1.53, -3.30, 0.80, 0.10, 0.36]]); // release 231: across the tail, past the side racks' 2.9 m sweep (was at -2.62 under it)
     {
       // VEH-13 (2026-10-16): the rear deck station sits under the bustle's traverse, so the seat solver racked the course
       // 14 cm proud of the rear plate, which left an enclosed slot between the two (B2 contiguity, 17 cells). The
@@ -457,8 +471,8 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       rearTrackContactZM: -2.50,
       linkedCourseAdjusted: true,
     });
-    liftEye(P, 'hullDetail', -1.40, 1.52, -1.60);
-    liftEye(P, 'hullDetail', 1.40, 1.52, -1.60);
+    liftEye(P, 'hullDetail', -1.40, 1.52, -2.90);                               // release 231: aft of the side racks' sweep (were at -1.60, under it)
+    liftEye(P, 'hullDetail', 1.40, 1.52, -2.90);
     P.decal('hull', 'number', c2 ? 'EI 135' : 'EI 121', 0.24,
       [-0.80, 1.29 + BODY_RIDE_LIFT, 2.72], 0, -0.16);
   };
@@ -474,8 +488,13 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     [-1.17, L(1.28)],
   ];
   const buildArieteMkTurretStage1 = (): void => {
+    // Release 231 (the gun-hull fleet lane; the owner: "the older c1 arietes clip through hull"): the hull's top is one
+    // full-width slab at 1.51 (0.21 in this frame), and every lower edge of the turret below it was buried there at
+    // rest and swung out through the hull's sides, its lift eyes and its rear stowage as the turret traversed. The
+    // shell, bustle, cheeks, chin, cavity wall, rear basket, side rails and panels now stop 1 cm into the slab (0.20):
+    // nothing shows at rest that did not before, and nothing below 0.20 swings out at any bearing.
     P.add('turret', KIT.polyMultiLoft(ARIETE_SHELL, [
-      { height: 0.03, inset: 1.0 },
+      { height: 0.20, inset: 1.0 },
       { height: [0.62, 0.62, 0.63, 0.70, 0.72, 0.72, 0.70, 0.70, 0.72, 0.72, 0.70, 0.63], inset: 0.99 },
       { height: [0.73, 0.73, 0.74, 0.85, 0.86, 0.86, 0.84, 0.84, 0.86, 0.86, 0.85, 0.74],
         inset: [0.87, 0.87, 0.88, 0.90, 0.91, 0.91, 0.90, 0.90, 0.91, 0.91, 0.90, 0.88] },
@@ -492,10 +511,10 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     // move).
     for (const s of [-1, 1]) {
       P.add('turret', slab(                                                      // upper cheek: ridge sweeping (±0.20,+2.10) -> wall corner (±1.17,+1.28)
-        [s * 0.20, 0.14, L(2.06)], [s * 1.08, 0.20, L(1.70)], [s * 1.17, 0.20, L(1.26)], [s * 0.20, 0.14, L(1.28)],
+        [s * 0.20, 0.20, L(2.06)], [s * 1.08, 0.20, L(1.70)], [s * 1.17, 0.20, L(1.26)], [s * 0.20, 0.20, L(1.28)],
         [s * 0.20, 0.64, L(1.62)], [s * 1.08, 0.62, L(1.42)], [s * 1.17, 0.70, L(1.24)], [s * 0.20, 0.72, L(1.26)]));
       P.add('turret', slab(                                                      // lower cheek chin: raked underside 1.44@+1.30 -> 1.56@+2.02
-        [s * 0.20, 0.14, L(2.02)], [s * 0.96, 0.16, L(1.66)], [s * 1.10, 0.14, L(1.30)], [s * 0.20, 0.14, L(1.30)],
+        [s * 0.20, 0.20, L(2.02)], [s * 0.96, 0.20, L(1.66)], [s * 1.10, 0.20, L(1.30)], [s * 0.20, 0.20, L(1.30)],
         [s * 0.20, 0.30, L(2.04)], [s * 0.98, 0.32, L(1.68)], [s * 1.14, 0.30, L(1.31)], [s * 0.20, 0.30, L(1.31)]));
       // s5322-B3 cheek LIFTING LUGS on the §5.299 raked faces (owner MBT
       // order; leaned D-rings + seat plates, tops flush with the certified
@@ -505,9 +524,9 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       P.add('turret', box(0.06, 0.016, 0.05), s * 0.85, 0.652, L(1.38), -0.22, 0, 0);
       P.add('turretDetail', torus(0.034, 0.010, 10), s * 0.85, 0.657, L(1.38), 1.05, 0, s * 0.35);
     }
-    P.add('turret', box(0.84, 0.52, 0.30), 0, 0.38, L(1.42));                    // mantlet cavity back wall (closes the nose between cheeks)
+    P.add('turret', box(0.84, 0.44, 0.30), 0, 0.42, L(1.42));                    // mantlet cavity back wall (closes the nose between cheeks)
     for (const s2 of [-1, 1]) P.add('turret', slab(                              // cavity side cheeks to the mantlet flanks (no see-through at yaw)
-      [s2 * 0.375, 0.16, L(1.56)], [s2 * 0.42, 0.16, L(1.56)], [s2 * 0.42, 0.16, L(1.30)], [s2 * 0.375, 0.16, L(1.30)],
+      [s2 * 0.375, 0.20, L(1.56)], [s2 * 0.42, 0.20, L(1.56)], [s2 * 0.42, 0.20, L(1.30)], [s2 * 0.375, 0.20, L(1.30)],
       [s2 * 0.375, 0.62, L(1.52)], [s2 * 0.42, 0.62, L(1.52)], [s2 * 0.42, 0.64, L(1.28)], [s2 * 0.375, 0.64, L(1.28)]));
     // ring skirt chin: gate ref bottoms dip 1.21-1.26 @ +0.30..+0.72
     P.add('turret', box(1.60, 0.14, 0.46), 0, -0.025, L(0.51));
@@ -519,26 +538,26 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   ];
   const buildArieteMkTurretStage2 = (): void => {
     P.add('turret', KIT.polyMultiLoft(ARIETE_BUSTLE, [
-      { height: 0.02, inset: 1.0 },
+      { height: 0.10, inset: 1.0 },
       { height: 0.70, inset: 0.995 },
       { height: 0.76, inset: 0.93 },
     ]), 0, 0.10, 0);
     // rear baskets: tops 2.03 -> 1.98, bottoms 1.43, center bay to -2.44
     // (§K.4 real rack: frames + mesh floor + fill, no marker-only census)
     P.add('turret', box(2.10, 0.055, 0.68), 0, 0.70, L(-2.03));                  // basket top frame 2.00 (z -1.69..-2.37: the ref's -2.44 end pairs here
-    P.add('turret', box(2.10, 0.05, 0.66), 0, 0.155, L(-2.03));                  // under the measured compression registration — packet-documented)
+    P.add('turret', box(2.10, 0.05, 0.66), 0, 0.23, L(-2.03));                  // under the measured compression registration — packet-documented)
     for (const bx of [-1.02, -0.35, 0.35, 1.02]) {
-      P.add('turret', box(0.05, 0.60, 0.52), bx, 0.43, L(-1.99));                // basket dividers
+      P.add('turret', box(0.05, 0.525, 0.52), bx, 0.4675, L(-1.99));             // basket dividers
     }
     // 2026-10-19 (owner float sweep): the mesh face stood 22 mm over the floor frame, the bottles 35 mm over it, the left
     // bundle 25 mm off its divider and the right strap 13 mm behind its bundle; the face now spans floor to top frame,
     // the bottles rest on the floor, the bundle meets the divider and the strap sits on the bundle face.
-    P.add('turretDark', openRackGrid(2.04, 0.52, 0.020, 5, 10),
-      0, 0.425, L(-2.36), Math.PI / 2, 0, 0);                                    // open rear mesh face in the registered frame
+    P.add('turretDark', openRackGrid(2.04, 0.42, 0.020, 5, 10),
+      0, 0.4625, L(-2.36), Math.PI / 2, 0, 0);                                    // open rear mesh face in the registered frame
     for (const [bx2, blen] of [[-0.70, 0.52], [0.02, 0.44], [0.72, 0.48]]) {
-      P.add('turretDetail', KIT.xform(KIT.cylX(0.085, blen, 12), 0, 0, 0), bx2, 0.262, L(-1.99)); // strapped stores bottles in the bays (owner c425f495)
-      P.add('turretDark', box(0.03, 0.18, 0.14), bx2 - blen * 0.28, 0.262, L(-1.99));
-      P.add('turretDark', box(0.03, 0.18, 0.14), bx2 + blen * 0.28, 0.262, L(-1.99));
+      P.add('turretDetail', KIT.xform(KIT.cylX(0.085, blen, 12), 0, 0, 0), bx2, 0.34, L(-1.99)); // strapped stores bottles in the bays (owner c425f495)
+      P.add('turretDark', box(0.03, 0.18, 0.14), bx2 - blen * 0.28, 0.34, L(-1.99));
+      P.add('turretDark', box(0.03, 0.18, 0.14), bx2 + blen * 0.28, 0.34, L(-1.99));
     }
     stowage(P, 'turretDetail', rng, [[-0.63, 0.50, L(-1.98), 0.52, 0.20, 0.42], [0.42, 0.48, L(-1.98), 0.62, 0.16, 0.40],
       [-0.05, 0.52, L(-2.02), 0.55, 0.18, 0.40], [0.80, 0.46, L(-1.98), 0.32, 0.14, 0.34]]);  // s5322-B2 bustle bays read as CARGO (owner MBT order; tops <= 1.91 world; right item CLAMPED inside the ±1.13 bustle plan — the 1.17 overflow cost plan_turret, measured + pulled in)
@@ -555,14 +574,14 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       // st1 topPct 11.2 — both reverted). Caps are authored as end PLATES
       // flush INSIDE the certified -2.58 rail envelope: capped-rail read,
       // zero new extreme, st1 slab untouched.
-      P.add('turret', box(0.05, 0.07, 3.55), s * 1.50, 0.18, L(-0.805));         // side rack rail at 1.44..1.51 (gate front cols ±1.5 read 1.44-1.50;
+      P.add('turret', box(0.05, 0.07, 3.55), s * 1.50, 0.24, L(-0.805));         // side rack rail at 1.44..1.51 (gate front cols ±1.5 read 1.44-1.50;
       for (const rz of [0.90, 0.30, -0.44, -1.10, -1.76, -2.42]) {               // end caps stay out of the st1 slab — prism law)
-        P.add('turret', box(0.045, 0.16, 0.06), s * 1.50, 0.24, L(rz));          // stanchions tying the rail to the bay lip
+        P.add('turret', box(0.045, 0.115, 0.06), s * 1.50, 0.2625, L(rz));      // stanchions tying the rail to the bay lip
       }
-      P.add('turret', box(0.05, 0.11, 0.04), s * 1.50, 0.155, L(-2.556));        // s5322-B1 rack-end cap plates (inside the certified envelope)
-      P.add('turretDark', box(0.056, 0.05, 0.014), s * 1.50, 0.185, L(-2.572));  // cap end faces (dark hardware read)
+      P.add('turret', box(0.05, 0.11, 0.04), s * 1.50, 0.26, L(-2.556));         // s5322-B1 rack-end cap plates (inside the certified envelope)
+      P.add('turretDark', box(0.056, 0.05, 0.014), s * 1.50, 0.26, L(-2.572));   // cap end faces (dark hardware read)
       for (const az of [-0.50, -1.44, -2.10]) {
-        P.add('turret', box(0.29, 0.06, 0.05), s * 1.355, 0.34, L(az));          // rack arms overlap the shell/panel and the outer rail
+        P.add('turret', box(0.29, 0.06, 0.05), s * 1.355, 0.27, L(az));          // rack arms overlap the shell/panel and the outer rail
       }
       // Owner-marked panel re-seat. Its old inner face sat at |x|=1.40 while
       // the turret/bustle carrier is |x|≈1.13, leaving 27 cm of daylight. The
@@ -570,7 +589,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       // turret-local. An aft bridge returns the cantilever into the rear basket
       // frame, while the three rack arms tie its outer face to the rail.
       P.add('turret', slab(
-        [s * 1.115, 0.15, L(-1.20)], [s * 1.235, 0.15, L(-1.20)], [s * 1.235, 0.15, L(-2.55)], [s * 1.115, 0.15, L(-2.55)],
+        [s * 1.115, 0.205, L(-1.20)], [s * 1.235, 0.205, L(-1.20)], [s * 1.235, 0.205, L(-2.55)], [s * 1.115, 0.205, L(-2.55)],
         [s * 1.115, 0.58, L(-1.20)], [s * 1.235, 0.58, L(-1.20)], [s * 1.235, 0.58, L(-2.55)], [s * 1.115, 0.58, L(-2.55)]));
       P.add('turret', box(0.22, 0.16, 0.06), s * 1.14, 0.62, L(-2.03));         // rear basket-to-panel bridge; overlaps both structures
       // GALIX 80mm banks on their platform (identity cue; ±1.24-1.40, z -0.30..-0.95)
@@ -664,11 +683,15 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       P.add('turretDark', box(0.05, 0.05, 0.07), s * 0.795, 0.864, L(-0.90));    // tuner feed box inboard of the pot; 2026-10-19 (owner float sweep): was 32 mm up
       P.add('turretDark', torus(0.030, 0.008, 8), s * 0.76, 0.856, L(-0.90));    // coiled cable service loop (dark, FSP-06) nested under the base-drum column
     }
-    // mantlet: protruding central block + backward-raked wedge cheeks + coax
-    // (gate ref band 1.55..1.86 over +1.7..+2.12 zW)
-    P.addGunExtra(box(0.75, 0.33, 0.44), 0, 0.045, 0.95);                        // central mantlet block 1.53..1.86 (world z 1.68..2.12)
-    P.addGunExtra(box(0.52, 0.40, 0.34), 0, 0.02, 0.62);                         // collar shroud closing the cavity behind the block (§5.18 no-air)
-    P.addGunExtra(cylZ(0.165, 0.30, 14, 0.14), 0, 0, 1.22);                      // gun collar lead
+    // mantlet (release 231; owner: "make the way the gun fits into turret more like the actual c2 and c1 ariete, instead
+    // of a huge block mantlet"): the gun enters a narrow slot between the converging cheeks. Its own mantlet is a
+    // 0.44 m plate set 9 cm inside the cheek ridge, its face raked back 37 degrees with them, its sides inside the cheeks'
+    // inner faces and its foot on the turret's underside line; a collar where the tube leaves it. The old 0.75 m block
+    // stood 6 cm proud of the ridge with a deeper shroud behind it.
+    P.addGunExtra(slab(
+      [-0.22, -0.15, 0.50], [0.22, -0.15, 0.50], [0.22, -0.15, 1.02], [-0.22, -0.15, 1.02],
+      [-0.22, 0.22, 0.50], [0.22, 0.22, 0.50], [0.22, 0.22, 0.74], [-0.22, 0.22, 0.74]), 0, 0, 0);
+    P.addGunExtra(cylZ(0.13, 0.26, 16), 0, 0, 0.93);                             // tube collar emerging from the raked face
     // s5322-A1 coax MG 42/59 — REAL aperture (owner MBT order): armored collar
     // ring at the block face + recessed dark throat + 5cm stub barrel w/
     // booster cap. Protrusion budget measured twice (0.30-proud rod −0.67
@@ -676,14 +699,14 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     // now reads via the collar/tone with ≤0.06 proud of the face, sub-column
     // beside the bare ref tube. Gun-bucketed so the coax ELEVATES with the
     // 120mm (§B5/§B3.1).
-    P.addGunExtra(cylZ(0.050, 0.055, 10), 0.28, 0.07, 1.145);                    // aperture collar at the block face
-    P.addGunExtraDark(cylZ(0.034, 0.09, 8), 0.28, 0.07, 1.135);                  // port throat (recessed dark)
-    P.addGunExtraDark(cylZ(0.014, 0.04, 8), 0.28, 0.07, 1.185);                  // MG 42/59 stub muzzle
-    P.addGunExtraDark(cylZ(0.019, 0.025, 8), 0.28, 0.07, 1.215);                 // booster cap
+    P.addGunExtra(cylZ(0.050, 0.055, 10), 0.165, 0.10, 0.85);                    // aperture collar on the mantlet face, right of the tube
+    P.addGunExtraDark(cylZ(0.034, 0.09, 8), 0.165, 0.10, 0.835);                 // port throat (recessed dark)
+    P.addGunExtraDark(cylZ(0.014, 0.04, 8), 0.165, 0.10, 0.89);                  // MG 42/59 stub muzzle
+    P.addGunExtraDark(cylZ(0.019, 0.025, 8), 0.165, 0.10, 0.92);                 // booster cap
     for (const s of [-1, 1]) {
-      P.add('turret', slab(                                                      // raked mantlet wedge cheeks (turret-fixed) — tops pulled back with the
-        [s * 0.375, 0.26, L(2.00)], [s * 0.55, 0.26, L(1.76)], [s * 0.55, 0.26, L(1.58)], [s * 0.375, 0.26, L(1.70)],  // §5.299 cheek rake (33°) so the wedges hug
-        [s * 0.375, 0.57, L(1.80)], [s * 0.55, 0.54, L(1.58)], [s * 0.55, 0.54, L(1.54)], [s * 0.375, 0.58, L(1.64)]));  // the new face; rear contacts byte-held
+      P.add('turret', slab(                                                      // raked wedge lips lining the mantlet slot (turret-fixed; release 231: moved in
+        [s * 0.20, 0.26, L(2.00)], [s * 0.375, 0.26, L(1.76)], [s * 0.375, 0.26, L(1.58)], [s * 0.20, 0.26, L(1.70)],  // from x 0.375-0.55 with the narrow
+        [s * 0.20, 0.57, L(1.80)], [s * 0.375, 0.54, L(1.58)], [s * 0.375, 0.54, L(1.54)], [s * 0.20, 0.58, L(1.64)]));  // mantlet; §5.299 33° cheek rake)
     }
     liftEye(P, 'turretDetail', -1.05, 0.82, L(0.60), 0.3);                      // 2026-10-19 (owner float sweep): eyes were 78 mm up
     liftEye(P, 'turretDetail', 1.05, 0.82, L(0.60), -0.3);
@@ -696,9 +719,9 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       const buildArieteMkMarkingsCourse1 = (): void => {
         for (const s of [-1, 1]) {
           const buildArieteMkTurretCourse1 = (): void => {
-            const cheekBottom: Quad = [
-              [s * 0.40, 0.16, L(2.04)], [s * 1.10, 0.24, L(1.72)],
-              [s * 1.18, 0.22, L(1.30)], [s * 0.42, 0.16, L(1.58)],
+            const cheekBottom: Quad = [                                              // release 231: no lower than the C1 arrow's 0.20 floor
+              [s * 0.40, 0.20, L(2.04)], [s * 1.10, 0.24, L(1.72)],
+              [s * 1.18, 0.22, L(1.30)], [s * 0.42, 0.20, L(1.58)],
             ];
             const cheekTop: Quad = [
               [s * 0.40, 0.62, L(1.70)], [s * 1.04, 0.56, L(1.48)],
@@ -916,7 +939,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       lane.poly = lane.poly.map(([z, y]) => [z * scale, y * scale]);
     }
     P.muzzleZ *= scale;
-    P.topY = (2.55 + BODY_RIDE_LIFT) * scale;
+    P.topY = (2.55 + BODY_RIDE_LIFT + ARIETE_PROTO_TURRET_LIFT_M) * scale;
   };
   buildArieteMkAssemblyStage3();
   const scaleReceipt = Object.freeze({
