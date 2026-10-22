@@ -34,6 +34,7 @@ import { clampPieceTops } from './uprightPlates.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import { toppleHingeM } from '../world/toppleHinge.ts';
 import { breachBlowFor } from './structureFx.ts';
+import { createMillimetreWeld } from './millimetreWeld.ts';
 import {
   COLLAPSE_S, MAX_HOLES, STAGE_RUN_TAG, collapseFrontTime, collapseWallHeight, holeOutlinePhase01, toppleLandS, type StructureMask,
 } from './structureMask.ts';
@@ -49,6 +50,8 @@ interface OverEavesSpan {
   readonly n: number;
   readonly start: number;
   readonly drawn: Uint8Array;
+  /** Each triangle's corners in the world (9 a triangle), as flattenRoofFurniture read them. */
+  readonly w: Float64Array;
 }
 
 export interface StructureStages {
@@ -628,6 +631,21 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     if (changed) seam.touchShadows();
   }
 
+  // (perf-240) flattenRoofFurniture's welds: a corner at its world position to the millimetre (millimetreWeld.ts: the
+  // string key a corner it replaces was half the roof furniture's time, read again at every section's fall once the roof
+  // is down)
+  const weld = createMillimetreWeld();
+  // its parts' extents (by root triangle), each part listed once in the order its first triangle comes
+  let partSeen = new Uint8Array(0), partOrder = new Int32Array(0);
+  let partLo = new Float64Array(0), partHi = new Float64Array(0), partMx = new Float64Array(0), partMz = new Float64Array(0);
+  let partN = new Float64Array(0);
+  function partsBegin(n: number): void {
+    if (partSeen.length < n) {
+      const m = Math.max(n, partSeen.length * 2);
+      partSeen = new Uint8Array(m); partOrder = new Int32Array(m); partLo = new Float64Array(m); partHi = new Float64Array(m);
+      partMx = new Float64Array(m); partMz = new Float64Array(m); partN = new Float64Array(m);
+    } else partSeen.fill(0, 0, n);
+  }
   /**
    * The roof's furniture out of the world's buckets when its roof falls (destruction-slabs 227 round 2): every triangle of
    * the structure's other spans wholly over the eaves line (less 15 cm), centred in the footprint plus 1.5 m, over a cluster
@@ -664,56 +682,58 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       const start = span.first + ((3 - (span.first % 3)) % 3);
       const n = Math.max(0, Math.floor((span.first + span.count - start) / 3));
       if (!n) continue;
-      // each triangle's corners in the world (the buckets stand at identity) and its connected part (corners welded)
+      // each triangle's corners in the world (the buckets stand at identity), kept for the passes after this one (perf-240:
+      // read again from the same positions through the same matrix, each was the same number), and its connected part
+      // (corners welded)
       const parent = new Int32Array(n);
       for (let t = 0; t < n; t++) parent[t] = t;
       const find = (t: number): number => { while (parent[t] !== t) { parent[t] = parent[parent[t]]!; t = parent[t]!; } return t; };
-      const owner = new Map<string, number>();
       const drawn = new Uint8Array(n);
+      const w = new Float64Array(n * 9);
+      weld.begin(n * 3);
       for (let t = 0; t < n; t++) {
         const i = start + t * 3;
         _ta.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
         _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
         _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
+        const k = t * 9;
+        w[k] = _ta.x; w[k + 1] = _ta.y; w[k + 2] = _ta.z; w[k + 3] = _tb.x; w[k + 4] = _tb.y; w[k + 5] = _tb.z;
+        w[k + 6] = _tc.x; w[k + 7] = _tc.y; w[k + 8] = _tc.z;
         _e1.subVectors(_tb, _ta); _e2.subVectors(_tc, _ta);
         if (!(_e1.cross(_e2).lengthSq() > 1e-18)) continue;
         drawn[t] = 1;
-        for (const v of [_ta, _tb, _tc]) {
-          const key = `${Math.round(v.x * 1000)},${Math.round(v.y * 1000)},${Math.round(v.z * 1000)}`;
-          const prev = owner.get(key);
-          if (prev === undefined) owner.set(key, t);
-          else { const ra = find(prev), rb = find(t); if (ra !== rb) parent[ra] = rb; }
+        for (let q = 0; q < 9; q += 3) {
+          const prev = weld.claim(w[k + q]!, w[k + q + 1]!, w[k + q + 2]!, t);
+          if (prev >= 0) { const ra = find(prev), rb = find(t); if (ra !== rb) parent[ra] = rb; }
         }
       }
-      // per part: its lowest and highest corner (body y) and its middle (body frame)
-      const lo = new Map<number, number>(), hi = new Map<number, number>(), mid = new Map<number, [number, number, number]>();
+      // per part (first seen in triangle order): its lowest and highest corner (body y) and its middle (body frame)
+      partsBegin(n);
+      let parts = 0;
       for (let t = 0; t < n; t++) {
         if (!drawn[t]) continue;
-        const r = find(t), i = start + t * 3;
-        _ta.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
-        _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
-        _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
-        const y0 = Math.min(_ta.y, _tb.y, _tc.y) - py, y1 = Math.max(_ta.y, _tb.y, _tc.y) - py;
-        lo.set(r, Math.min(lo.get(r) ?? Infinity, y0)); hi.set(r, Math.max(hi.get(r) ?? -Infinity, y1));
-        const wx = (_ta.x + _tb.x + _tc.x) / 3 - px, wz = (_ta.z + _tb.z + _tc.z) / 3 - pz;
-        const m = mid.get(r) ?? [0, 0, 0];
-        m[0] += wx * c - wz * sn; m[1] += wx * sn + wz * c; m[2]++;
-        mid.set(r, m);
+        const r = find(t), k = t * 9;
+        const ay = w[k + 1]!, by = w[k + 4]!, cy = w[k + 7]!;
+        const y0 = Math.min(ay, by, cy) - py, y1 = Math.max(ay, by, cy) - py;
+        if (!partSeen[r]) { partSeen[r] = 1; partOrder[parts++] = r; partLo[r] = Infinity; partHi[r] = -Infinity; partMx[r] = 0; partMz[r] = 0; partN[r] = 0; }
+        partLo[r] = Math.min(partLo[r]!, y0); partHi[r] = Math.max(partHi[r]!, y1);
+        const wx = (w[k]! + w[k + 3]! + w[k + 6]!) / 3 - px, wz = (w[k + 2]! + w[k + 5]! + w[k + 8]!) / 3 - pz;
+        partMx[r] += wx * c - wz * sn; partMz[r] += wx * sn + wz * c; partN[r]++;
       }
-      for (const [r, y0] of lo) {
-        const m = mid.get(r)!;
-        if (!(y0 >= eaveY - 1 && hi.get(r)! > eaveY + 0.3)) continue;
-        if (Math.abs(m[0] / m[2] - bcx) > reachX || Math.abs(m[1] / m[2] - bcz) > reachZ) continue;
+      for (let p = 0; p < parts; p++) {
+        const r = partOrder[p]!;
+        if (!(partLo[r]! >= eaveY - 1 && partHi[r]! > eaveY + 0.3)) continue;
+        if (Math.abs(partMx[r]! / partN[r]! - bcx) > reachX || Math.abs(partMz[r]! / partN[r]! - bcz) > reachZ) continue;
         candidates.push({ span, r });
       }
-      perSpan.push({ span, find, n, start, drawn });
+      perSpan.push({ span, find, n, start, drawn, w });
     }
     // what holds a part over the eaves up: the structure's other parts standing under it (its walls, a gable drawn in a
     // wall's bucket, a stack drawn from below — never the roof that falls, nor another part over the eaves until it is
     // held itself: two verge boards side by side hold nothing up); held over half its lowest points, it stands
     const goes = holdOverEaves(a, perSpan, candidates, eaveY);
     for (const ps of perSpan) {
-      const { span, find, n, start, drawn } = ps;
+      const { span, find, n, start, drawn, w } = ps;
       const arr = span.position.array as Float32Array;
       spanMatrices(span);
       let touched = false;
@@ -721,9 +741,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         if (!drawn[t]) continue;
         const i = start + t * 3;
         if (!goes.get(span)?.has(find(t))) {
-          _ta.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
-          _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
-          _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
+          const k = t * 9;
+          _ta.set(w[k]!, w[k + 1]!, w[k + 2]!); _tb.set(w[k + 3]!, w[k + 4]!, w[k + 5]!); _tc.set(w[k + 6]!, w[k + 7]!, w[k + 8]!);
           // (round 3, the visual critic: a tavern's top storey stood capped by one flat dark plane, its interior's dark
           // volume's top the roof had covered) the dark bucket's level tops in the top storey's upper half go too
           // its centroid in the body frame
@@ -825,42 +844,52 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     const c = Math.cos(yaw), sn = Math.sin(yaw);
     const pending = new Map<StructureSpan, Set<number>>();
     for (const { span, r } of candidates) { let set = pending.get(span); if (!set) pending.set(span, set = new Set()); set.add(r); }
-    /** Every sample (body frame, ~0.4 m apart) of span `ps`'s triangles in parts `pick(root)`: visit(cell, y). */
-    const samples = (ps: OverEavesSpan, pick: (root: number) => boolean, visit: (cell: number, y: number) => void): void => {
-      spanMatrices(ps.span);
-      const arr = ps.span.position.array as Float32Array;
-      for (let t = 0; t < ps.n; t++) {
-        if (!ps.drawn[t] || !pick(ps.find(t))) continue;
-        const i = ps.start + t * 3;
-        _ta.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
-        _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
-        _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
-        const la = _ta.distanceTo(_tb), lb = _tb.distanceTo(_tc), lc = _tc.distanceTo(_ta);
-        const k = Math.max(1, Math.min(40, Math.ceil(Math.max(la, lb, lc) / 0.4)));
-        for (let u = 0; u <= k; u++) for (let v = 0; v <= k - u; v++) {
-          const wa = 1 - (u + v) / k, wb = u / k, wc = v / k;
-          const x = _ta.x * wa + _tb.x * wb + _tc.x * wc - px, y = _ta.y * wa + _tb.y * wb + _tc.y * wc - py, z = _ta.z * wa + _tb.z * wb + _tc.z * wc - pz;
-          const bx = x * c - z * sn, bz = x * sn + z * c;
-          const ci = Math.floor((bx - x0) / CELL), ck = Math.floor((bz - z0) / CELL);
-          if (ci < 0 || ck < 0 || ci >= nx || ck >= nx) continue;
-          visit(ck * nx + ci, y);
-        }
+    /** Every sample (body frame, ~0.4 m apart) of triangle `t` of span `ps`: raised into `top`, else lowered into `lowAt`.
+     *  (perf-240) Its corners as flattenRoofFurniture read them (ps.w), one specialised loop (the visitor a closure was). */
+    const lowAt = new Map<number, number>();
+    const sample = (ps: OverEavesSpan, t: number, raise: boolean): void => {
+      const w = ps.w, q = t * 9;
+      _ta.set(w[q]!, w[q + 1]!, w[q + 2]!); _tb.set(w[q + 3]!, w[q + 4]!, w[q + 5]!); _tc.set(w[q + 6]!, w[q + 7]!, w[q + 8]!);
+      const la = _ta.distanceTo(_tb), lb = _tb.distanceTo(_tc), lc = _tc.distanceTo(_ta);
+      const k = Math.max(1, Math.min(40, Math.ceil(Math.max(la, lb, lc) / 0.4)));
+      for (let u = 0; u <= k; u++) for (let v = 0; v <= k - u; v++) {
+        const wa = 1 - (u + v) / k, wb = u / k, wc = v / k;
+        const x = _ta.x * wa + _tb.x * wb + _tc.x * wc - px, y = _ta.y * wa + _tb.y * wb + _tc.y * wc - py, z = _ta.z * wa + _tb.z * wb + _tc.z * wc - pz;
+        const bx = x * c - z * sn, bz = x * sn + z * c;
+        const ci = Math.floor((bx - x0) / CELL), ck = Math.floor((bz - z0) / CELL);
+        if (ci < 0 || ck < 0 || ci >= nx || ck >= nx) continue;
+        const cell = ck * nx + ci;
+        if (raise) { if (y > top[cell]!) top[cell] = y; }
+        else { const was = lowAt.get(cell); if (was === undefined || y < was) lowAt.set(cell, y); }
       }
     };
+    // what stands round the candidates: every drawn triangle of a part that is none
     for (const ps of perSpan) {
       const mine = pending.get(ps.span);
-      samples(ps, (root) => !mine?.has(root), (cell, y) => { if (y > top[cell]!) top[cell] = y; });
+      for (let t = 0; t < ps.n; t++) if (ps.drawn[t] && !mine?.has(ps.find(t))) sample(ps, t, true);
+    }
+    // each candidate's own triangles, in triangle order (a pass read its span's every triangle through the root's filter)
+    const own = new Map<OverEavesSpan, Map<number, number[]>>();
+    for (const ps of perSpan) {
+      const mine = pending.get(ps.span);
+      if (!mine?.size) continue;
+      const lists = new Map<number, number[]>();
+      for (const r of mine) lists.set(r, []);
+      for (let t = 0; t < ps.n; t++) if (ps.drawn[t]) lists.get(ps.find(t))?.push(t);
+      own.set(ps, lists);
     }
     for (let pass = 0; pass < 6; pass++) {
       let held = 0;
       for (const ps of perSpan) {
         const mine = pending.get(ps.span);
         if (!mine?.size) continue;
+        const lists = own.get(ps)!;
         for (const root of [...mine]) {
-          const low = new Map<number, number>();
-          samples(ps, (r) => r === root, (cell, y) => { const v = low.get(cell); if (v === undefined || y < v) low.set(cell, y); });
+          const tris = lists.get(root)!;
+          lowAt.clear();
+          for (let j = 0; j < tris.length; j++) sample(ps, tris[j]!, false);
           let ok = 0;
-          for (const [cell, y] of low) {
+          for (const [cell, y] of lowAt) {
             const ci = cell % nx, ck = (cell - ci) / nx;
             let t = -Infinity;
             for (let dk = -1; dk <= 1; dk++) for (let di = -1; di <= 1; di++) {
@@ -872,9 +901,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           // (round 5; the census's fjord #0 fishery, R narrow-back: a 1.4 m beam of its roof's frame 6.6 m up, held over half
           // its cells, hung 40 % held once the roof fell — the slab check calls a quarter less than it was held hanging) held
           // over three quarters of its lowest points, it stands
-          if (low.size && ok >= HOLD_OVER_EAVES * low.size) {
+          if (lowAt.size && ok >= HOLD_OVER_EAVES * lowAt.size) {
             mine.delete(root); held++;
-            samples(ps, (r) => r === root, (cell, y) => { if (y > top[cell]!) top[cell] = y; });
+            for (let j = 0; j < tris.length; j++) sample(ps, tris[j]!, true);
           }
         }
       }
@@ -1531,7 +1560,11 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
 
   /** A storey's drop in flight: what it moves and where it all stood when it began (spans in their own frame, runs'
    *  world heights), how far it has come down (d), and its clock. */
-  interface FallSpan { span: StructureSpan; obj: Float32Array; ride: boolean }
+  interface FallSpan {
+    span: StructureSpan; obj: Float32Array; ride: boolean;
+    /** (perf-240) obj carried into the world through the span's matrix once (fallWorld), and that matrix. */
+    world?: Float64Array; at?: Float64Array;
+  }
   interface FallRun { mesh: THREE.Mesh; pos: THREE.BufferAttribute; y: Float32Array }
   interface StoreyFall {
     structureId: number; seam: StructureDamageSeam; storey: DamageStorey; settled: boolean;
@@ -1590,15 +1623,33 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     storeyFalls.push(f);
     falling.push({ seam, until: f.t0 + f.T });
   }
+  /** A falling span's positions as they stood, in the world through its matrix as spanMatrices left it in `_m`: carried
+   *  once and kept while the matrix is the same (each frame carried every vertex again to the same numbers). */
+  function fallWorld(fs: FallSpan): Float64Array {
+    const e = _m.elements;
+    let same = !!fs.world && !!fs.at;
+    for (let k = 0; same && k < 16; k++) if (fs.at![k] !== e[k]) same = false;
+    if (same) return fs.world!;
+    const n = fs.span.count, world = fs.world && fs.world.length === n * 3 ? fs.world : new Float64Array(n * 3);
+    for (let k = 0; k < n; k++) {
+      const j = k * 3;
+      _p.set(fs.obj[j]!, fs.obj[j + 1]!, fs.obj[j + 2]!).applyMatrix4(_m);
+      world[j] = _p.x; world[j + 1] = _p.y; world[j + 2] = _p.z;
+    }
+    fs.world = world;
+    fs.at = Float64Array.from(e);
+    return world;
+  }
   /** The fall at depth d: every vertex it moves from where it stood, the holes above the band down with them. */
   function applyFall(f: StoreyFall, d: number): void {
     for (const fs of f.spans) {
       const { span } = fs;
       spanMatrices(span);
       const arr = span.position.array as Float32Array;
+      const world = fallWorld(fs);
       for (let k = 0; k < span.count; k++) {
         const i = span.first + k, j = k * 3;
-        _p.set(fs.obj[j], fs.obj[j + 1], fs.obj[j + 2]).applyMatrix4(_m);
+        _p.set(world[j]!, world[j + 1]!, world[j + 2]!);
         const wx = _p.x - f.px, wz = _p.z - f.pz, by = _p.y - f.py;
         const to = fs.ride ? by - d : fallTo(f, wx * f.c - wz * f.s, by, wx * f.s + wz * f.c, d);
         if (to === by) { arr[i * 3] = fs.obj[j]; arr[i * 3 + 1] = fs.obj[j + 1]; arr[i * 3 + 2] = fs.obj[j + 2]; continue; }

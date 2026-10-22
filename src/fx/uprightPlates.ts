@@ -26,6 +26,7 @@
 import * as THREE from 'three';
 import type { RigidEnvironment, RigidWorld } from '../sim/rigidBody.ts';
 import type { CollisionRecord } from '../world/collision.ts';
+import { createMillimetreWeld } from './millimetreWeld.ts';
 
 /** A plate: through it at most this (m); in its plane at least these (m, m², m up). */
 const THIN_M = 0.6, SIDE_M = 1.6, AREA_M2 = 4, TALL_M = 1.4;
@@ -60,6 +61,9 @@ function leastAxis(cv: readonly number[]): [number, number, number] | null {
   return l > 1e-9 ? [x / l, y / l, z / l] : null;
 }
 
+/** The corners' welds (millimetreWeld.ts, perf-240: a string key a corner before). */
+const weld = createMillimetreWeld();
+
 function find(parent: Int32Array, i: number): number {
   while (parent[i] !== i) { parent[i] = parent[parent[i]!]!; i = parent[i]!; }
   return i;
@@ -67,14 +71,12 @@ function find(parent: Int32Array, i: number): number {
 
 /** A drawing's connected pieces (corners welded at a millimetre, as the slab check splits them): each piece's vertices. */
 function piecesOf(w: Float64Array, count: number, index: THREE.BufferAttribute | null): Map<number, number[]> {
-  const weld = new Map<string, number>();
   const id = new Int32Array(count);
   let ids = 0;
+  weld.begin(count);
   for (let i = 0; i < count; i++) {
-    const key = `${Math.round(w[i * 3]! * 1000)},${Math.round(w[i * 3 + 1]! * 1000)},${Math.round(w[i * 3 + 2]! * 1000)}`;
-    let k = weld.get(key);
-    if (k === undefined) { k = ids++; weld.set(key, k); }
-    id[i] = k;
+    const k = weld.claim(w[i * 3]!, w[i * 3 + 1]!, w[i * 3 + 2]!, ids);
+    id[i] = k < 0 ? ids++ : k;
   }
   const parent = new Int32Array(ids);
   for (let k = 0; k < ids; k++) parent[k] = k;
@@ -341,14 +343,12 @@ function worldPositions(d: PlateDrawing): Float64Array {
 
 /** A drawing's connected pieces (as piecesOf) with each triangle's piece (its root). */
 function piecesWithTriangles(w: Float64Array, count: number, index: THREE.BufferAttribute | null): { pieces: Map<number, number[]>; tri: Int32Array } {
-  const weld = new Map<string, number>();
   const id = new Int32Array(count);
   let ids = 0;
+  weld.begin(count);
   for (let i = 0; i < count; i++) {
-    const key = `${Math.round(w[i * 3]! * 1000)},${Math.round(w[i * 3 + 1]! * 1000)},${Math.round(w[i * 3 + 2]! * 1000)}`;
-    let k = weld.get(key);
-    if (k === undefined) { k = ids++; weld.set(key, k); }
-    id[i] = k;
+    const k = weld.claim(w[i * 3]!, w[i * 3 + 1]!, w[i * 3 + 2]!, ids);
+    id[i] = k < 0 ? ids++ : k;
   }
   const parent = new Int32Array(ids);
   for (let k = 0; k < ids; k++) parent[k] = k;
