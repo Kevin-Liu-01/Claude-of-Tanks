@@ -529,8 +529,9 @@ function fitGround(p: KeptPiece, pose: Pose): [number, number, number] | null {
 
 /** How long a piece that crumbles stands after its stage before it breaks up (s): its own seed's share of the span. */
 /** (238; the critic's polders #46: the upper walls, cap and sails hung over the stage the lower course had left) it stands
- *  while what stood on it leaves it, then goes before the cap coming down could reach it. */
-const CRUMBLE_S = [0.35, 0.55] as const;
+ *  while what stood on it leaves it and goes as what comes down onto it reaches it (the tower mill's cap, 3.9 m over its
+ *  ragged top, at 0.75 s): no gap opens under what falls. */
+const CRUMBLE_S = [0.5, 0.7] as const;
 /** The debris a crumbling piece breaks into (238): how many, their size (m), the gravity their throw is solved under. */
 const BREAK_PIECES = 36, BREAK_SIZE_M = [0.3, 0.75] as const, BREAK_G = 9.81;
 /**
