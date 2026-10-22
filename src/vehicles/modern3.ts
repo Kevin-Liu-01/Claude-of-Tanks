@@ -68,6 +68,12 @@ export interface Modern3BuilderPort {
 
 interface Type10BuildOptions {
   compactRightGunnerSight?: boolean;
+  /** Hull registration plates (bow and stern). */
+  hullNumber?: string;
+  /** False when a bow fitting (the dozer blade) carries the front plate instead of the nose. */
+  bowNumberPlate?: boolean;
+  /** Turret-side tactical number. */
+  turretNumber?: string;
 }
 
 const scaledGeometryTransform = KIT.xform as (
@@ -1637,7 +1643,9 @@ function buildK1A1(P: Modern3BuilderPort) {
 // wheel exposure, rotation-invariant end-drum face anatomy.
 function buildType10Native2026(
   P: Modern3BuilderPort,
-  { compactRightGunnerSight = true }: Type10BuildOptions = {},
+  {
+    compactRightGunnerSight = true, hullNumber = '99-4083', bowNumberPlate = true, turretNumber = '73',
+  }: Type10BuildOptions = {},
 ) {
   const { box, cylX, cylY, cylZ, polyMultiLoft, buildGun, buildRunningGear,
     fenders, liftEye, periscope, openRackGrid, stowage, ammoCan, torus } = KIT;
@@ -1930,8 +1938,8 @@ function buildType10Native2026(
       P.add('hullDark', box(0.292, 0.022, 0.045), s * 1.386, 1.412, 2.345);       // cinch strap
       P.add('hullDark', box(0.292, 0.022, 0.045), s * 1.386, 1.412, 2.815);       // cinch strap
     }
-    P.decal('hull', 'number', '99-4083', 0.286, [0, 1.034, 3.7565], 0, -0.10);
-    P.decal('hull', 'number', '99-4083', 0.242, [0.935, 1.43, -3.7675], Math.PI);
+    if (bowNumberPlate) P.decal('hull', 'number', hullNumber, 0.286, [0, 1.034, 3.7565], 0, -0.10);
+    P.decal('hull', 'number', hullNumber, 0.242, [0.935, 1.43, -3.7675], Math.PI);
     // rear plate furniture (§B3.2)
     for (const s of [-1, 1]) {
       P.add('hullDark', box(0.176, 0.099, 0.0264), s * 1.364, 1.474, -3.7697);    // taillight clusters (every rear face <=1.5 cm proud of the -3.757 plate)
@@ -2234,8 +2242,8 @@ function buildType10Native2026(
         bustleOverlapM: zF - (-2.596),
       };
     }
-    P.decal('turret', 'number', '73', 0.264, [1.5752, 0.407, -0.55], Math.PI / 2, 0, 0.05); // on the module face
-    P.decal('turret', 'number', '73', 0.264, [-1.5752, 0.407, -0.33], -Math.PI / 2, 0, -0.05);
+    P.decal('turret', 'number', turretNumber, 0.264, [1.5752, 0.407, -0.55], Math.PI / 2, 0, 0.05); // on the module face
+    P.decal('turret', 'number', turretNumber, 0.264, [-1.5752, 0.407, -0.33], -Math.PI / 2, 0, -0.05);
     P.topY = 1.32;
   };
   buildType10Native2026MarkingsStage2();
@@ -2253,6 +2261,15 @@ function buildType10Native2026(
 // profiles/japan.ts addType10BPackage, re-seated at the ×1.10 frame.
 export function buildType10BBase(P: Modern3BuilderPort) {
   buildType10Native2026(P, { compactRightGunnerSight: false });
+}
+
+// ======================== Type 10 (Dozer) shared base =======================
+// Owner order 2026-10-21: "make a new type 10 variannt based off the version with a dozer!" The JGSDF fits some
+// production Type 10s with the ドーザ装置 (dozer kit). The production hull and turret stay whole; its plate moves from
+// the nose, which the blade covers, onto the blade (profiles/type10Dozer.ts), and it carries its own hull and turret
+// numbers.
+export function buildType10DozerBase(P: Modern3BuilderPort) {
+  buildType10Native2026(P, { hullNumber: '99-0239', bowNumberPlate: false, turretNumber: '24' });
 }
 
 // ================================ M2A2 Bradley ==============================

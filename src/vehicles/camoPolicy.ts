@@ -114,10 +114,11 @@ export const NATIONAL_CAMO_PATTERN_IDS = Object.freeze([
  * Authored paints generated after GT joined the catalog (fix/camo-defaults, 2026-10-09). The generated table keeps its
  * ids sorted, so a new paint would land among the earlier ones and shift every later serialized index. These sit after
  * GT instead, in the order they joined. The M6 Linebacker's own desert three-tone came with main's Linebacker rebuild
- * (030b3ff96 lineage). Production (deploy 206) lists 170 ids; those 170 keep their exact indices
+ * (030b3ff96 lineage); the Type 10 (Dozer)'s JGSDF digital joined with that tank (2026-10-21). Production (deploy 206)
+ * lists 170 ids; those 170 keep their exact indices
  * (camoCatalogProductionIndices.selftest.mjs).
  */
-const AUTHORED_PAINT_IDS_AFTER_GT = Object.freeze(['paint_m6_linebacker'] as const);
+const AUTHORED_PAINT_IDS_AFTER_GT = Object.freeze(['paint_m6_linebacker', 'paint_type10_dozer'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id);

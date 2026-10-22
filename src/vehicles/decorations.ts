@@ -2887,6 +2887,17 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     { kit: 'tracks', p: 1, v: { n: 3, linkW: 0.42 }, slot: ['turretSidePlate', { side: -1 }] },
   ],
+  // the production kit; the dozer blade covers the bow, so no bow shackles
+  type10_dozer: () => [
+    { kit: 'basket', p: 1, v: { w: 1.3, d: 0.36, h: 0.28 }, slot: ['turretRearFrame', {}] },
+    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'drape', len: 0.9, w: 0.8 }, slot: ['rearDeck', { center: true }] },
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.5, h: 0.28, d: 0.36 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.0 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
+    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
+    { kit: 'tracks', p: 1, v: { n: 3, linkW: 0.42 }, slot: ['turretSidePlate', { side: -1 }] },
+  ],
   t90am: () => [
     { kit: 'log', p: 1, v: { len: 2.6 }, slot: ['hullRearLow', {}] },
     { kit: 'drums', p: 1, v: { v: 'twin' }, slot: ['hullRear', {}] },
