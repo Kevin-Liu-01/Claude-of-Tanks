@@ -192,13 +192,14 @@ for (const id of ids) {
     // profiles/donbasFieldCover.ts) replaced the deck-wide blanket with supported flank drapes over the five side
     // ERA cassettes (z -1.9..1.7 on the t72b3 hull) and a bustle cover behind the open sights and hatches. 2026-10-22:
     // back on the t72b3 hull with the T-64BV mod. 2017's previous build (owner: "its previous model"), its flanks now
-    // carrying Kontakt-1 containers on the leading skirt panels (t64bv2017.ts); the drapes still run z -2.22..2.08.
+    // carrying Kontakt-1 containers on the leading skirt panels (t64bv2017.ts); the drapes now stop behind the first
+    // of them (z -2.22..0.92) so the K-1 row stays in sight.
     const cover = turretRig.userData.fieldCover;
     assert.deepEqual(cover, { supported: true, sightsOpen: true, hatchesOpen: true, revision: 1 },
       `${id} field cover is carried on real rails with sights and hatches open`);
     assert.ok(hullBounds.min.x < -1.7 && hullBounds.max.x > 1.7, `${id} drapes hang on both flanks`);
-    assert.ok(hullBounds.min.z <= -1.9 && hullBounds.max.z >= 1.7,
-      `${id} flank drapes run past every side cassette instead of one selected panel`);
+    assert.ok(hullBounds.min.z <= -1.9 && hullBounds.max.z >= .85,
+      `${id} flank drapes run from the rear of the flank up to the skirt's Kontakt-1 row instead of one selected panel`);
   } else {
     assert.ok(hullBounds.max.z - hullBounds.min.z > 5.5,
       `${id} hull blanket spans the vehicle instead of one selected panel`);

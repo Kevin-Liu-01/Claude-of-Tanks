@@ -17,7 +17,9 @@ export function addDonbasFieldCover(P:TankBuilderPort):void {
     turret:{top:[{x0:-.72,x1:.72,z0:-1.86,z1:-.70,nx:14,nz:16,
       yAt:()=>.62,seed:29}],side:[-1,1].map(side=>({side,z0:-1.86,z1:-.72,nz:16,ny:6,
       topAt:()=>.62,bottomAt:()=>.20,outAt:()=>.74,seed:37+side}))},
-    hull:{side:[-1,1].map(side=>({side,z0:-2.22,z1:2.08,nz:30,ny:7,
+    // 2026-10-22 (the T-64BV mod. 2017's Kontakt-1 cues, t64bv2017.ts): the drapes stop behind the first skirt
+    // container (z 0.97), leaving the leading panels' K-1 row in sight
+    hull:{side:[-1,1].map(side=>({side,z0:-2.22,z1:.92,nz:22,ny:7,
       topAt:()=>1.36,bottomAt:z=>.91+.035*Math.sin(z*3),outAt:()=>1.87,seed:10+side}))},
   });
   P.turretG.userData.fieldCover={supported:true,sightsOpen:true,hatchesOpen:true,revision:1};
