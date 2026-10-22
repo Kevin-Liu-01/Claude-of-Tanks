@@ -1523,10 +1523,13 @@ function buildDecorMaterials(
     } : { color: equipmentPalette.steel, roughness: 0.86, metalness: 0.06, vertexColors: true, envMapIntensity: 0.35 }),
     // dark oily gunmetal: MGs, cables, tools, shackles, track links
     // 2026-10-06 (round 2): matte, oily steel; at 0.62 roughness and 0.35 metalness thin handles read as mirror chrome
+    // 2026-10-08 (round 5 per-material surfaces; wave 264: "nothing reads as steel, rubber or canvas"): the vehicle's
+    // own gunmetal response, a third metallic at 0.7 (was 0.78 / 0.16 / 0.35), so a tool head or a shackle takes a soft
+    // steel gleam; still a step rougher and less metallic than round 2's chrome handles.
     steel: () => painted({
-      color: equipmentPalette.steel, roughness: 0.78, metalness: 0.16,
+      color: equipmentPalette.steel, roughness: 0.7, metalness: 0.32,
       roughnessMap: canPaint ? getSharedRoughnessTexture(spec) : undefined,
-      vertexColors: true, envMapIntensity: 0.35,
+      vertexColors: true, envMapIntensity: 0.3,
     }),
     // round 4 (2026-10-07): matte, greyer, weathered issue-crate wood (was 0x97815f, roughness 0.9, a warm stain that
     // read as varnished mahogany): woodTex's grey-brown ground x a near-neutral multiplier, about #5f5648 in all
@@ -1534,13 +1537,14 @@ function buildDecorMaterials(
       map: woodTex(), color: 0xaca8a5, roughness: 0.96, metalness: 0.0,
       vertexColors: true, envMapIntensity: 0.08,
     }),
+    // round 5 (2026-10-08): woven cloth mirrors almost none of the sky (0.06, was 0.12 / 0.1), dead matte beside paint
     canvas: () => painted({
       map: weaveTex(), color: equipmentPalette.canvas, roughness: 0.96, metalness: 0.0,
-      vertexColors: true, envMapIntensity: 0.12,
+      vertexColors: true, envMapIntensity: 0.06,
     }),
     burlap: () => painted({
       map: weaveTex(), color: equipmentPalette.burlap, roughness: 0.98, metalness: 0.0,
-      vertexColors: true, envMapIntensity: 0.1,
+      vertexColors: true, envMapIntensity: 0.06,
     }),
     rubber: () => ({
       color: 0x232425, roughness: 0.94, metalness: 0.04,
@@ -1581,6 +1585,8 @@ function buildDecorMaterials(
         const def = { ...defs[key]() };
         if (!def.map) delete def.map; // node safety (no canvas available)
         const material = new THREE.MeshStandardMaterial(def);
+        // VH.05 (240): rubber stays rubber (owner 2026-10-21): the field-dust term (materials.ts) leaves it out
+        if (key === 'rubber') material.defines = { ...material.defines, COT_NO_FIELD_DUST: 1 };
         made[key] = material;
         setup(material);
         material.name = `Decor_${key}`;
