@@ -3297,7 +3297,9 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     P.add('hull', box(1.18, 0.032, 0.94), 0, 2.062, -1.62);
     P.add('hullDetail', box(0.09, 0.05, 0.16), -0.50, 2.06, -1.15);
     P.add('hullDetail', box(0.09, 0.05, 0.16), 0.50, 2.06, -1.15);
-    for (const s of [-1, 1]) P.add('hullDetail', cylY(0.07, 0.09, 0.06, 10), s * 1.05, 2.08, -1.02);
+    // 2026-10-21 (the turret's lower seat): the troop-bay periscope domes stand 25 mm lower; the turret's rear corners
+    // sweep over them
+    for (const s of [-1, 1]) P.add('hullDetail', cylY(0.07, 0.09, 0.035, 10), s * 1.05, 2.0675, -1.02);
     P.add('hullDetail', cylY(0.05, 0.06, 0.10, 8), 1.12, 2.10, -2.55);
     // ---- rear: power door (panel face at -3.17 = the length razor), vision
     // block, hinge stacks, corner bins with lid seams + latches, lower slat
@@ -3454,7 +3456,10 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     P.turretG.position.set(0.125, 2.02, 0.55);
     P.gunG.position.set(0.05, 0.285, 0.55);
     // ring race + hull splash collar
-    P.add('turret', cylY(0.74, 0.78, 0.16, 20), 0, -0.06, 0);
+    // 2026-10-21 (the turret's lower seat, below): the race sits 5 mm shallower. The turret buckets move 0.25 m aft of
+    // the yaw axis (offsetBuckets below), so the race swings out to 1.13 m (vehicle scale) as the turret turns, over
+    // the deck's side edge: it clears it by 8 mm.
+    P.add('turret', cylY(0.74, 0.78, 0.155, 20), 0, -0.0575, 0);
     P.add('hull', cylY(0.80, 0.82, 0.055, 20), 0.125, 1.958, 0.55);
     // Main welded crew cell, raked face and tapered rear shoulder. These coarse
     // authored sections deliberately remain independent of the oracle mesh.
@@ -3671,7 +3676,11 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     // The component oracle places the turret at y 1.61..2.83. Compress the
     // complete seated package as one articulation-owned assembly, including
     // its sights, basket, smoke banks and gun cradle.
-    P.turretG.position.y = 1.74;
+    // 2026-10-21 (owner: "the fv510 warriors and its MILAN variant turret is kind of floating above the hull"): its flat
+    // underside stood 60 mm over the deck all round the ring (vehicle scale, the 1.10 below included). It sits 52 mm
+    // lower (1.74 -> 1.6927 here): 8 mm of running clearance over the deck and the deck's side edge, and over the
+    // troop-bay periscope domes its rear corners sweep (lowered 25 mm for it).
+    P.turretG.position.y = 1.6927;
     P.turretG.scale.y = 0.84;
     // Fleet visual standard (2026-09-12): the RARDEN rides inside that
     // squashed assembly, so counter-scale the elevating gun group (the
@@ -3715,10 +3724,12 @@ function fv510MilanBuild(P: UKBuilderPort): void {
     // Additional modular side armor is seated directly on the existing WRAP
     // panels, not substituted for them.  The shallow course keeps the full
     // zig-zag armor and outer rib cage readable underneath.
+    // 2026-10-21 (the turret's lower seat, fv510PhotoBuild): the course's top edge comes down 4 cm (to 1.59) so the
+    // turret's rear corners, sweeping 2.0 m from its pivot, clear it.
     for (let k = 0; k < 6; k++) {
       const z = 1.95 - k * 0.77;
-      P.add('hull', box(0.036, 0.32, 0.61), s * 1.515, 1.47, z);
-      P.add('hullDark', box(0.010, 0.026, 0.47), s * 1.536, 1.62, z);
+      P.add('hull', box(0.036, 0.28, 0.61), s * 1.515, 1.45, z);
+      P.add('hullDark', box(0.010, 0.026, 0.47), s * 1.536, 1.58, z);
       P.add('hullDetail', box(0.045, 0.050, 0.16), s * 1.535, 1.32, z);
     }
   }
@@ -3726,9 +3737,14 @@ function fv510MilanBuild(P: UKBuilderPort): void {
   // ---- glacis service equipment: a protected central IR lamp, paired large
   // white-light pods and their brush guards, plus tools/cable runs.  These are
   // semantic equipment rather than armor and therefore use addEquipment.
-  P.addEquipment('hull', box(0.30, 0.18, 0.25), 0.48, 1.55, 2.18, -0.35, 0, 0);
-  P.addEquipment('hullDark', cylZ(0.090, 0.12, 16), 0.48, 1.58, 2.31, -0.18, 0, 0);
-  P.addEquipment('hullGlass', cylZ(0.068, 0.014, 16), 0.48, 1.59, 2.377, -0.18, 0, 0);
+  // 2026-10-21 (the turret's lower seat, fv510PhotoBuild): the turret's rear corners sweep 2.0 m from its pivot, and
+  // the lamp's front stood 2.05 m out, 26 mm into their sweep even before; it moves 8 cm up the glacis (to 1.97 m)
+  // and is dropped onto the plate.
+  P.snapGroup('fv510-milan-ir-lamp', () => {
+    P.addEquipment('hull', box(0.30, 0.18, 0.25), 0.48, 1.62, 2.10, -0.35, 0, 0);
+    P.addEquipment('hullDark', cylZ(0.090, 0.12, 16), 0.48, 1.65, 2.23, -0.18, 0, 0);
+    P.addEquipment('hullGlass', cylZ(0.068, 0.014, 16), 0.48, 1.66, 2.297, -0.18, 0, 0);
+  }, { reachM: 0.10, mode: 'down' });
   for (const s of [-1, 1]) {
     // 2026-10-19 (owner float sweep): the lamp and its guard stood 23 mm over the bow shoulder; they drop onto it
     P.snapGroup('fv510-milan-lamp', () => {
@@ -3748,7 +3764,8 @@ function fv510MilanBuild(P: UKBuilderPort): void {
   P.addEquipment('hullDetail', box(0.055, 0.055, 0.88), 0.13, 1.60, 2.04, 0, -0.12, 0);
   for (const x of [-0.72, -0.45, -0.18]) {
     // 2026-10-19 (owner float sweep): two of the three pads stood 24 mm over the deck; each drops onto it
-    P.snapGroup('fv510-milan-deck-pad', () => P.addEquipment('hullDark', box(0.20, 0.035, 0.28), x, 1.59, 1.52, 0, -0.10, 0),
+    // 2026-10-21 (the turret's lower seat): 15 mm thick, not 35: the turret's sides sweep over them
+    P.snapGroup('fv510-milan-deck-pad', () => P.addEquipment('hullDark', box(0.20, 0.015, 0.28), x, 1.58, 1.52, 0, -0.10, 0),
       { reachM: 0.05, mode: 'down' });
   }
 
