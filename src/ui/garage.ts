@@ -2865,7 +2865,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<button class="cot-layer-link" type="button" data-gallery-layer="modules">${uiIconSVG('gallery', 13)}${t('garage.dossier.modules.open')}</button></section>` +
       `<section class="cot-stat-section">${statSectionTitle('crew', t('garage.dossier.section.crew'), `${crewRows.length} ${t('garage.dossier.crew.stations')}`, 'Crew')}` +
       `<div class="cot-crew-grid">${crewChips}</div></section>`;
-    requiredElement<HTMLElement>(statsEl, 'h3').textContent = spec.label?.displayName || spec.name;
+    const dossierName = requiredElement<HTMLElement>(statsEl, 'h3');
+    dossierName.textContent = spec.label?.displayName || spec.name;
+    // a long name sets a step smaller and may take a third line, so the compact phone head holds it whole (garage.css)
+    dossierName.classList.toggle('is-long', dossierName.textContent.length > 18);
     const technicalImage = statsEl.querySelector<HTMLImageElement>('[data-technical-image]');
     if (technicalImage) technicalImage.alt = `${spec.label?.displayName || spec.name} ${initialTechnicalViewCaption.toLowerCase()}`;
     const dossierHead = statsEl.querySelector('.cot-dossier-head');

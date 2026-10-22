@@ -179,7 +179,10 @@ body.cot-touch-layout .cot-range-card .rc-foot button{width:46px;min-height:44px
 body.cot-touch-layout .cot-range-card .rc-foot .rc-s{display:block;max-width:100%;text-align:center}
 body.cot-touch-layout .cot-range-card .rc-foot [data-range-action='moving']{order:1}
 body.cot-touch-layout .cot-range-card .rc-foot [data-range-action='exit']{order:2}
-body.cot-touch-layout .cot-range-card .rc-course{flex:1 1 100%;padding:5px 6px}
+/* the course on a phone: its own compact row under the controls, each feature its glyph (its figure in its title) */
+body.cot-touch-layout .cot-range-card .rc-course{order:3;flex:1 1 100%;gap:4px;padding:4px 6px 5px}
+body.cot-touch-layout .cot-range-card .rc-cf{padding:2px 1px}
+body.cot-touch-layout .cot-range-card .rc-cf span{display:none}
 body.cot-touch-layout .cot-range-card .rc-foot button svg{width:18px;height:18px}
 /* the last shot at the top right under the screen's own buttons, one line: clear of the sight in the middle and of the
    round controls under the card */

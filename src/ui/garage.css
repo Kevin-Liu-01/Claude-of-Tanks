@@ -441,6 +441,7 @@ body[data-cot-height='short'] .cot-battle-menu-foot{padding-block:6px;}
 /* the compact overlay head (phones) gives a long name a second line instead of cutting it ("M1A1 …", "C1 Ariete Prot…") */
 body[data-cot-panels='overlay'] .cot-garage .stats h3{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
   overflow:hidden;white-space:normal;line-height:1.12;}
+body[data-cot-panels='overlay'] .cot-garage .stats h3.is-long{-webkit-line-clamp:3;font-size:11px;letter-spacing:0}
 .cot-garage .stats .sub{font-size:11px;font-weight:700;letter-spacing:.07em;color:#94a5b2;
   text-transform:uppercase;margin:7px 0 0 40px;display:flex;align-items:center;gap:7px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
