@@ -17,7 +17,6 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
 import { buildChallenger3RearTurretClosure } from './challenger3RearTurret.ts';
 import { facetedSlab } from './facetedSlab.ts';
-import { markFixedPaintedPanel } from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Shared geometry and exact-equipment fittings come from the cycle-free
 // profile kit; builders destructure the geometry they use at call time.
@@ -386,10 +385,7 @@ function challenger1Build(P: ChallengerBuilderPort): void {
       // sweep (<=4.065) and the 4.047 column boundary (§C). The wrap owns
       // the 3.982 column's 0.49 bottom regardless (the flap never painted
       // it), so the move is mask-free.
-      // Art fixes 230 (2026-10-21, hero-card critics: "light-grey untextured plates at the front corners"): the tip
-      // flaps are painted in the vehicle scheme with the wings they hang from. Finish only.
-      P.hangMudguard('challenger1-front-flap', 'hullFixedPaintedBodywork',
-        markFixedPaintedPanel(box(0.16, 0.30, 0.04), 'challenger1-front-flap', 'hullRubber'), s * 1.62, 0.85, 4.02);
+      P.hangMudguard('challenger1-front-flap', 'hullRubber', box(0.16, 0.30, 0.04), s * 1.62, 0.85, 4.02);
       // (r3 note: trim planks were TRIED here per the revolution r15 recipe
       // and removed — r15's plank painted a line its band couldn't reach
       // behind the skirt window; HERE the band is visible and reads LOWER

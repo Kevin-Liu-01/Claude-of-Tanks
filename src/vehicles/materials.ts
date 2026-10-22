@@ -44,6 +44,7 @@ import { liftSrgbToWheelFloor } from './wheelPaintFloor.ts';
 import { drawNationalInsignia, drawTacticalNumber, vehicleMarkingRecord } from './vehicleMarkings.ts';
 import type { VehicleMarkingRecord } from './vehicleMarkings.ts';
 import { isPostwarVehicleEra } from './taxonomy.ts';
+import { paintRubberSurface } from './rubberSurface.ts';
 // MOBILE r1: central texture-resolution lever (quality.ts). Every canvas bake
 // below allocates through texSize(): desktop tiers get the authored size
 // unchanged; the mobile tier halves it and clamps to the device texture cap.
@@ -393,6 +394,23 @@ function spareLinkWearTexture(aniso: number): THREE.CanvasTexture {
   side.addColorStop(0.93, 'rgba(120,118,110,0)'); side.addColorStop(1, 'rgba(120,118,110,0.45)');
   g.fillStyle = side; g.fillRect(0, 0, n, n);
   return canvasTex(c, { srgb: true, aniso });
+}
+
+// The fleet rubber's detail maps (rubberSurface.ts), painted once per process; each material set uploads its own textures.
+let rubberSurfaceCanvases: { albedo: HTMLCanvasElement; roughness: HTMLCanvasElement; normal: HTMLCanvasElement } | null = null;
+function rubberSurfaceMaps(): { albedo: HTMLCanvasElement; roughness: HTMLCanvasElement; normal: HTMLCanvasElement } {
+  if (rubberSurfaceCanvases) return rubberSurfaceCanvases;
+  const pixels = paintRubberSurface();
+  const upload = (data: Uint8ClampedArray): HTMLCanvasElement => {
+    const canvas = makeCanvas(pixels.width, pixels.height);
+    const context = canvas2d(canvas);
+    const image = context.createImageData(pixels.width, pixels.height);
+    image.data.set(data);
+    context.putImageData(image, 0, 0);
+    return canvas;
+  };
+  rubberSurfaceCanvases = { albedo: upload(pixels.albedo), roughness: upload(pixels.roughness), normal: upload(pixels.normal) };
+  return rubberSurfaceCanvases;
 }
 
 function canvasTex(canvas: HTMLCanvasElement, { srgb = true, aniso = 4, repeat = false }: CanvasTextureOptions = {}): THREE.CanvasTexture {
@@ -3085,9 +3103,18 @@ export function createTankMaterials(
   // Launch night 2026-10-08 (wave 289: "no rubber tyres"; the coordinator: "real road-wheel tyres are near-black under
   // dust, so dusty dark grey is right and pale grey is not"): the tyres had three's default sky reflection (1), which
   // mirrored the sky round every tread and read pale grey. Dusty rubber takes 0.3 of it.
+  // Art fixes 230 (owner 2026-10-21: "rubber all over the place, including for flaps, mudguards, and tyres, need proper
+  // textures"): the tyres, flaps, mudguards, mats and skirts drawn in this rubber carry rubberSurface.ts's detail maps over
+  // the palette tone (grime and dust, glazed wear, pebble grain), on UVs in metres (tankFactoryCore applyRubberSurfaceUVs).
+  const rubberMaps = rubberSurfaceMaps();
   const rubber = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x292a28, roughness: 0.96, metalness: 0.0, envMapIntensity: 0.3,
+    color: 0x292a28, roughness: 1.0, metalness: 0.0, envMapIntensity: 0.3,
+    map: track(canvasTex(rubberMaps.albedo, { srgb: false, aniso, repeat: true })),
+    roughnessMap: track(canvasTex(rubberMaps.roughness, { srgb: false, aniso, repeat: true })),
+    normalMap: track(canvasTex(rubberMaps.normal, { srgb: false, aniso, repeat: true })),
+    normalScale: new THREE.Vector2(0.65, 0.65),
   })));
+  rubber.userData.rubberSurface = true;
   // Fleet lane 2026-10-08: the wheel insets (lightening holes, hub wells, bolt heads in the well) take the rubber's paint
   // with a cavity's light (COT_GEAR_CAVITY) and little of the sky, so a hole reads as a hole in the Garage and the field.
   const rubberCavity = track(setup(new THREE.MeshStandardMaterial({
